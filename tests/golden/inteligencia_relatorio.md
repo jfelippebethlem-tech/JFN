@@ -41,6 +41,12 @@ SNAPSHOT ENGENHARIA E SERVICOS LTDA (CNPJ 11.222.333/0001-81) Pagamentos (OBs) �
 > Cruza o **CPF dos sócios/administradores** do QSA com os **benefícios de subsistência** por CPF (Bolsa Família, BPC, Auxílio Emergencial, PETI, Garantia-Safra, Seguro-Defeso — Portal da Transparência/CGU). Ser **dono/gestor** de empresa que recebe recursos públicos **e** receber benefício de subsistência é **indício clássico de testa-de-ferro (laranja)** — interposição de pessoas (art. 337-F CP; art. 11 Lei 8.429/92). CPF mascarado (LGPD); resolvido por fontes oficiais (favorecidos PF + TSE). **INDISPONÍVEL ≠ ausência de benefício.**
 
 _Sem sócios/administradores com CPF mascarado no QSA deste fornecedor (ou QSA público não ingerido) — **INDISPONÍVEL** (não equivale a ausência de benefício)._
+## 1-D0. EMENDAS PARLAMENTARES — RECURSO PÚBLICO POR INDICAÇÃO
+
+> Recursos que chegaram à entidade por **emenda parlamentar** (individual, de bancada ou relator), com o **autor** de cada uma. Para ONG/OSC, é a principal via de financiamento e o ponto onde a captura política se materializa: o parlamentar indica → o recurso é repassado → a entidade executa, muitas vezes por **termo de fomento/colaboração sem licitação** (Lei 13.019/2014). Concentração de muitas emendas numa única entidade e execução por OSC recém-relacionada são **indícios de direcionamento** — Lei 14.133 art. 5º; MROSC art. 30; presunção de legitimidade, **nunca acusação**.
+
+_Nenhuma emenda parlamentar localizada para o CNPJ na base ingerida — **INDISPONÍVEL / sem registro** (≠ inexistência; a base cobre emendas federais coletadas)._
+
 ## 1-D. DOAÇÕES ELEITORAIS — CONFLITO DOADOR ↔ CONTRATO (TSE)
 
 > Cruza as **doações eleitorais** (TSE) da empresa **e de seus sócios** com os contratos/pagamentos do Estado, fechando a cadeia **doador → fornecedor → candidato → UG pagadora → processo SEI**. Doar a campanha e contratar com o poder público é **indício de relação política / conflito de interesse** a verificar (Lei 9.504/97; Lei 14.133 art. 14) — presunção de legitimidade, **nunca acusação**.

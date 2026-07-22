@@ -192,6 +192,17 @@ def _fatores_risco(ctx: dict) -> list[tuple]:
         t1 = p["por_ano"][a1]["total"]
         if t1 > t0 * 3:
             fatores.append((f"Crescimento abrupto de pagamentos ({a0}→{a1})", 5, 6))
+    # emendas parlamentares: recurso público por indicação concentrado numa OSC = captura política
+    em = ctx.get("emendas") or {}
+    if em.get("tem_dados"):
+        na = em.get("n_autores", 0)
+        if na >= 5:
+            fatores.append((f"Operador de emendas: {na} padrinhos parlamentares "
+                            f"(R$ {moeda(em.get('total', 0))})", 7, 7))
+        elif na >= 2:
+            fatores.append((f"Recurso público por indicação parlamentar ({na} autores)", 5, 6))
+        else:
+            fatores.append(("Financiamento por emenda parlamentar", 3, 5))
     return fatores or [("Risco base", 2, 3)]
 
 

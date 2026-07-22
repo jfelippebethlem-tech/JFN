@@ -416,6 +416,97 @@ def _render_beneficios_socios(ctx: dict) -> str:
     return "\n".join(L)
 
 
+def emendas_do_favorecido(cnpj: str, db_path=None) -> dict:
+    """Emendas parlamentares (Câmara/Portal da Transparência) recebidas pela empresa — por
+    autor/tipo/ano. É a via de recurso público típica de ONG/OSC e o eixo de risco central
+    do caso Con-tato (R$ 100 mi por 12 parlamentares). Fonte: emenda_favorecidos × emendas.
+    Só fase 'Pagamento' (dinheiro que SAIU); INDISPONÍVEL ≠ 0."""
+    import sqlite3
+
+    from compliance_agent.reporting.intel_base import _DB
+    cn = so_digitos(cnpj)
+    con = sqlite3.connect(f"file:{db_path or _DB}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        try:
+            linhas = con.execute(
+                "SELECT e.autor_norm autor, e.tipo, e.ano, COUNT(*) n, ROUND(SUM(f.valor),2) v "
+                "FROM emenda_favorecidos f LEFT JOIN emendas e ON e.codigo=f.codigo_emenda "
+                "WHERE f.documento_favorecido=? AND f.fase='Pagamento' "
+                "GROUP BY e.autor_norm, e.tipo, e.ano ORDER BY v DESC", (cn,)).fetchall()
+        except sqlite3.OperationalError:
+            return {"tem_dados": False}
+        if not linhas:
+            return {"tem_dados": False}
+        por_autor: dict[str, dict] = {}
+        total = 0.0
+        for r in linhas:
+            a = por_autor.setdefault(r["autor"] or "—", {"autor": r["autor"] or "—",
+                                                          "tipo": r["tipo"], "n": 0, "v": 0.0,
+                                                          "anos": set()})
+            a["n"] += r["n"]
+            a["v"] += r["v"] or 0.0
+            if r["ano"]:
+                a["anos"].add(r["ano"])
+            total += r["v"] or 0.0
+        autores = sorted(por_autor.values(), key=lambda a: -a["v"])
+        for a in autores:
+            a["anos"] = ", ".join(str(x) for x in sorted(a["anos"]))
+        bancada = sum(a["v"] for a in autores if "bancada" in (a["tipo"] or "").lower())
+        return {"tem_dados": True, "total": total, "n_autores": len(autores),
+                "autores": autores, "total_bancada": bancada,
+                "total_individual": total - bancada}
+    finally:
+        con.close()
+
+
+def _render_emendas(ctx: dict) -> str:
+    """Seção 1-D0 — EMENDAS PARLAMENTARES × favorecido. Para ONG/OSC, a emenda é a porta de
+    entrada do recurso público e o vetor de captura política (autor da emenda → repasse →
+    execução por entidade sem licitação). Dado completo + leitura + conclusão honesta."""
+    em = ctx.get("emendas")
+    if em is None:
+        em = emendas_do_favorecido(ctx.get("cnpj", ""))
+        ctx["emendas"] = em
+    L: list[str] = []
+    add = L.append
+    add("## 1-D0. EMENDAS PARLAMENTARES — RECURSO PÚBLICO POR INDICAÇÃO")
+    add("")
+    add("> Recursos que chegaram à entidade por **emenda parlamentar** (individual, de bancada ou "
+        "relator), com o **autor** de cada uma. Para ONG/OSC, é a principal via de financiamento e o "
+        "ponto onde a captura política se materializa: o parlamentar indica → o recurso é repassado → "
+        "a entidade executa, muitas vezes por **termo de fomento/colaboração sem licitação** "
+        "(Lei 13.019/2014). Concentração de muitas emendas numa única entidade e execução por OSC "
+        "recém-relacionada são **indícios de direcionamento** — Lei 14.133 art. 5º; MROSC art. 30; "
+        "presunção de legitimidade, **nunca acusação**.")
+    add("")
+    if not em.get("tem_dados"):
+        add("_Nenhuma emenda parlamentar localizada para o CNPJ na base ingerida — **INDISPONÍVEL / "
+            "sem registro** (≠ inexistência; a base cobre emendas federais coletadas)._")
+        add("")
+        return "\n".join(L)
+    add(f"**{em['n_autores']} parlamentar(es)** direcionaram recurso a esta entidade, somando "
+        f"**R$ {moeda(em['total'])}** pagos — R$ {moeda(em['total_individual'])} por emenda "
+        f"individual e R$ {moeda(em['total_bancada'])} por bancada.")
+    add("")
+    add("| # | Parlamentar (autor) | Tipo de emenda | Anos | Nº | Valor pago (R$) |")
+    add("|---:|---|---|---|---:|---:|")
+    for i, a in enumerate(em["autores"][:25], 1):
+        tipo = (a["tipo"] or "—").replace("Emenda Individual - Transferências com Finalidade Definida",
+                                          "Individual (TFD)").replace("Emenda de Bancada", "Bancada")
+        add(f"| {i} | **{a['autor']}** | {tipo} | {a['anos']} | {a['n']} | {moeda(a['v'])} |")
+    add(f"| | **TOTAL** | | | | **{moeda(em['total'])}** |")
+    add("")
+    add("> 🔴 **Eixo de risco central (OSC):** concentração de recurso público de **múltiplos "
+        "padrinhos parlamentares** numa mesma entidade sinaliza um **operador de emendas** — "
+        "verificar, para cada repasse: o **instrumento** (termo de fomento/convênio × contrato), a "
+        "**chamada pública** (dispensada indevidamente?), a **prestação de contas** e a **execução "
+        "real** do objeto (o furo típico é o recurso entrar por indicação e não virar entrega). "
+        "Cruzar os autores com o QSA e as doações eleitorais (seção 1-D). **Indício forte a apurar.**")
+    add("")
+    return "\n".join(L)
+
+
 def _render_doacoes_tse(ctx: dict) -> str:
     """Seção 1-D — doações eleitorais (TSE) × contratos: conflito doador↔contrato. Cruzamento inteligente
     (paridade com o PDF): dado completo (cadeia doador→fornecedor→candidato→UG→SEI) + leitura + conclusão."""
@@ -835,6 +926,9 @@ def render_md(ctx: dict) -> str:
 
     # 1-C. Cruzamento de benefícios sociais dos sócios/administradores (laranja/testa-de-ferro)
     add(_render_beneficios_socios(ctx))
+
+    # 1-D0. Emendas parlamentares — recurso por indicação (eixo central de ONG/OSC; caso Con-tato)
+    add(_render_emendas(ctx))
 
     # 1-D. Doações eleitorais (TSE) × contratos — conflito doador↔contrato (paridade com o PDF)
     add(_render_doacoes_tse(ctx))

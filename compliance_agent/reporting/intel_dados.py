@@ -422,7 +422,8 @@ def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
                       score_ext: int, risco_ext: str,
                       coendereco: Optional[list] = None, anomalias: Optional[dict] = None,
                       natureza_sem_fins: Optional[dict] = None,
-                      sede_status: Optional[str] = None) -> dict:
+                      sede_status: Optional[str] = None,
+                      emendas: Optional[dict] = None) -> dict:
     """Risco JFN = MAIOR entre o score externo e o score interno por sinais REAIS do relatório.
     Corrige o caso em que o enriquecedor externo devolve 0 mas há indícios (conflito, pago≫contratado,
     crescimento atípico, concentração, magnitude, rede mesma-sede §1-B, anomalias PyOD §8-C).
@@ -496,6 +497,19 @@ def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
             s += 8; sinais.append(f"natureza §1: {nat_txt} ('3xxx') recebendo como fornecedor comum (Lei 9.637/98; Lei 13.019/2014 — MROSC)")
         else:
             s += 6; sinais.append(f"natureza §1: {nat_txt} ('3xxx') recebendo como fornecedor comum (Lei 9.637/98; Lei 13.019/2014 — MROSC)")
+
+    # Emendas parlamentares (§1-D0): OSC financiada por indicação política. Concentração de MUITOS
+    # padrinhos numa mesma entidade = operador de emendas (captura). Peso conservador, escalonado.
+    em = emendas or {}
+    if em.get("tem_dados"):
+        na = int(em.get("n_autores") or 0)
+        if na >= 5:
+            s += 22; sinais.append(f"operador de emendas §1-D0: {na} padrinhos parlamentares "
+                                   f"financiam a entidade (R$ {moeda(em.get('total', 0))})")
+        elif na >= 2:
+            s += 12; sinais.append(f"recurso por indicação parlamentar §1-D0: {na} autores")
+        else:
+            s += 6; sinais.append("financiamento por emenda parlamentar §1-D0")
 
     interno = min(100, s)
     final = max(int(score_ext or 0), interno)

@@ -28,12 +28,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
-
+logger = logging.getLogger(__name__)
 
 
 
@@ -128,7 +129,7 @@ from compliance_agent.reporting.intel_analise import (  # noqa: F401,E402
     _FEAT_ANOM, _NOTA_CARDINALIDADE, _anomalias_fornecedor, _fatores_risco, _fatos_para_raciocinio, _frase_cardinalidade, _gazetas_lookup, _natureza_sem_fins, _normaliza_raciocinio, _red_flags, _resumo_executivo, _termos_significativos, cardinalidade_contratual, parecer_fornecedor, parecer_raciocinado, troca_controle_societaria,
 )
 from compliance_agent.reporting.intel_md import (  # noqa: F401,E402
-    _RCLONE_BIN, _SEDE_ONDEMAND_DIAS, _add_rede_fachada, _beneficios_socios, _capital_recebido_md, _fachada_b2_html, _foto_fachada_b2, _num_brl, _realidade_sede, _realidade_sede_texto, _render_anomalias, _render_beneficios_socios, _render_benford, _render_conflito_pessoal, _render_cruzamento, _render_doacoes_tse, _render_execucao, _render_rodizio_fornecedor, _rodizio_fornecedor, _sede_status_cacheado, _sede_total_pago, _sede_velho, _verificar_sede_ondemand, render_md,
+    _RCLONE_BIN, _SEDE_ONDEMAND_DIAS, _add_rede_fachada, _beneficios_socios, _capital_recebido_md, _fachada_b2_html, _foto_fachada_b2, _num_brl, _realidade_sede, _realidade_sede_texto, _render_anomalias, _render_beneficios_socios, _render_benford, _render_conflito_pessoal, _render_cruzamento, _render_doacoes_tse, _render_emendas, _render_execucao, _render_rodizio_fornecedor, _rodizio_fornecedor, _sede_status_cacheado, _sede_total_pago, _sede_velho, _verificar_sede_ondemand, emendas_do_favorecido, render_md,
 )
 from compliance_agent.reporting.intel_pdf import (  # noqa: F401,E402
     _emit_md_table, _mc, _registrar_fonte, _render_parecer_pdf, _tab_header, _tab_row, render_pdf, render_pdf_html,
@@ -245,9 +246,17 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 
     # RISCO recalibrado (externo + sinais internos reais) — corrige "BAIXO 0" com indícios. Inclui rede
     # mesma-sede §1-B e anomalias §8-C (peso conservador) p/ o NÚMERO refletir a prosa, não inflar.
+    # Emendas parlamentares (§1-D0): computadas 1× AQUI (query local barata) p/ entrarem no SCORE
+    # e serem reusadas no render (md+pdf) sem 2ª consulta. Eixo central de risco de OSC/ONG.
+    try:
+        emendas = emendas_do_favorecido(cnpj_d)
+    except Exception as _exc_em:  # noqa: BLE001 — nunca derruba o relatório por causa da seção
+        logger.warning("emendas do favorecido falhou: %s", str(_exc_em)[:120])
+        emendas = {"tem_dados": False}
     cal = _recalibrar_risco(pagamentos, rede, contratado_tcerj, enriq.get("score", 0), enriq.get("risco", "—"),
                             coendereco=coend_score, anomalias=anomalias,
-                            natureza_sem_fins=natureza_sem_fins, sede_status=sede_status)
+                            natureza_sem_fins=natureza_sem_fins, sede_status=sede_status,
+                            emendas=emendas)
     risco, score = cal["risco"], cal["score"]
 
     fonte_global = "REAL" if pagamentos["tem_dados"] else "SEM_DADOS_OB"
@@ -257,7 +266,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         "pagamentos": pagamentos, "contratos": contratos, "cardinalidade": cardinalidade, "enriq": enriq,
         "fonte_enriq": enriq.get("_fonte", "INDISPONIVEL"),
         "cruzamento": cruz, "conflito_rede": rede, "anomalias": anomalias,
-        "natureza_sem_fins": natureza_sem_fins,
+        "natureza_sem_fins": natureza_sem_fins, "emendas": emendas,
         "tcerj_itens": tcerj_itens, "contratado_tcerj": contratado_tcerj,
         "calibragem": cal,
     }

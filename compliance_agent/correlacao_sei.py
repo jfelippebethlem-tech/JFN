@@ -92,17 +92,36 @@ def processo_de_ob(numero_ob: str) -> str:
 
 
 def processos_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
-    """Processos SEI ligados a um CNPJ (via OBs), com nº de OBs e valor total. Insumo do Lex por fornecedor."""
+    """Processos SEI ligados a um CNPJ (via OBs), com nº de OBs e valor total. Insumo do Lex por
+    fornecedor. UNIÃO das duas fontes (2026-07-22): `ob_orcamentaria_siafe.processo` (SIAFE = fonte
+    de verdade, regra da casa) ∪ `ordens_bancarias.numero_sei` (espelho TFE) — antes só o TFE era
+    lido e processos que SÓ a SIAFE conhece ficavam invisíveis p/ o Lex (caso CPASC: 1 de 2)."""
     if not _DB.exists():
         return []
     cnpj = re.sub(r"\D", "", cnpj or "")
     con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
     try:
-        rows = con.execute(
-            "SELECT numero_sei, COUNT(*) n_obs, ROUND(SUM(valor),2) total, MIN(exercicio) ano "
-            "FROM ordens_bancarias WHERE favorecido_cpf=? AND numero_sei IS NOT NULL AND numero_sei!='' "
-            "GROUP BY numero_sei ORDER BY total DESC LIMIT ?", (cnpj, limite)).fetchall()
-        return [dict(r) for r in rows]
+        por_proc: dict[str, dict] = {}
+        for sql, params in (
+            ("SELECT numero_sei p, COUNT(*) n_obs, ROUND(SUM(valor),2) total, MIN(exercicio) ano "
+             "FROM ordens_bancarias WHERE favorecido_cpf=? AND numero_sei IS NOT NULL AND numero_sei!='' "
+             "GROUP BY numero_sei", (cnpj,)),
+            ("SELECT processo p, COUNT(*) n_obs, ROUND(SUM(valor),2) total, MIN(exercicio) ano "
+             "FROM ob_orcamentaria_siafe WHERE REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')=? "
+             "AND processo IS NOT NULL AND processo!='' GROUP BY processo", (cnpj,)),
+        ):
+            try:
+                for r in con.execute(sql, params):
+                    d = por_proc.setdefault(r["p"], {"numero_sei": r["p"], "n_obs": 0,
+                                                     "total": 0.0, "ano": r["ano"]})
+                    # fontes se sobrepõem (mesma OB nas duas tabelas): fica o MAIOR, não a soma
+                    d["n_obs"] = max(d["n_obs"], r["n_obs"] or 0)
+                    d["total"] = max(d["total"], r["total"] or 0.0)
+                    d["ano"] = min(d["ano"] or r["ano"], r["ano"]) if r["ano"] else d["ano"]
+            except sqlite3.OperationalError:
+                continue  # tabela ausente nesta base (ex.: base de teste) — segue com a outra fonte
+        out = sorted(por_proc.values(), key=lambda d: -d["total"])[:limite]
+        return out
     finally:
         con.close()
 

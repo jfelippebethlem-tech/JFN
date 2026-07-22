@@ -134,6 +134,32 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         secoes.append({"titulo": "2-C. Capital social × recebido (subcapitalização)",
                        "html": f"<p>{esc(_cap_txt)}</p>"})
 
+    # 2-C0. EMENDAS PARLAMENTARES — recurso por indicação (eixo central OSC; caso Con-tato). Paridade MD §1-D0.
+    from compliance_agent.reporting.intel_md import emendas_do_favorecido as _emf
+    _em = ctx.get("emendas") or _emf(cnpj)
+    ctx["emendas"] = _em
+    if _em.get("tem_dados"):
+        _linhas_em = "".join(
+            f"<tr><td>{i}</td><td><b>{esc(a['autor'])}</b></td>"
+            f"<td>{esc((a['tipo'] or '—').replace('Emenda Individual - Transferências com Finalidade Definida','Individual (TFD)').replace('Emenda de Bancada','Bancada'))}</td>"
+            f"<td>{esc(a['anos'])}</td><td style='text-align:right'>{a['n']}</td>"
+            f"<td style='text-align:right'>R$ {moeda(a['v'])}</td></tr>"
+            for i, a in enumerate(_em["autores"][:25], 1))
+        _html_em = (
+            f"<p><b>{_em['n_autores']} parlamentar(es)</b> direcionaram recurso a esta entidade, somando "
+            f"<b>R$ {moeda(_em['total'])}</b> pagos (R$ {moeda(_em['total_individual'])} individual · "
+            f"R$ {moeda(_em['total_bancada'])} bancada).</p>"
+            "<table><tr><th>#</th><th>Parlamentar (autor)</th><th>Tipo</th><th>Anos</th><th>Nº</th>"
+            f"<th style='text-align:right'>Valor pago</th></tr>{_linhas_em}"
+            f"<tr><td></td><td><b>TOTAL</b></td><td></td><td></td><td></td>"
+            f"<td style='text-align:right'><b>R$ {moeda(_em['total'])}</b></td></tr></table>"
+            "<p>🔴 <b>Eixo de risco central (OSC):</b> concentração de recurso público de múltiplos "
+            "padrinhos parlamentares numa mesma entidade sinaliza operador de emendas — verificar por "
+            "repasse o instrumento (fomento/convênio × contrato), a chamada pública (dispensa indevida?), "
+            "a prestação de contas e a execução real do objeto (MROSC, Lei 13.019/2014; Lei 14.133 art. 5º). "
+            "Indício forte a apurar, nunca acusação.</p>")
+        secoes.append({"titulo": "2-C0. Emendas parlamentares — recurso público por indicação", "html": _html_em})
+
     # 2-D. Rodízio de vencedores / cartel (bid rotation) — paridade com o MD §1-E
     _rodf = ctx.get("rodizio_forn") or _rodizio_fornecedor(cnpj)
     if _rodf.get("ok"):
