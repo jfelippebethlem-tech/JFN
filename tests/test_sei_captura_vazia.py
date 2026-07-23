@@ -67,6 +67,33 @@ def test_formato_antigo_lista_continua_funcionando(tmp_path):
     assert m["captura_completa"] is None, "manifesto antigo não declara — não mentir True/False"
 
 
+def test_captura_vazia_nao_destroi_arquivo_bom(tmp_path):
+    """Rerun com cache vazio NÃO pode apagar um arquivo que já tinha documentos.
+
+    Aconteceu em 2026-07-06: 33 processos ficaram com manifesto 'docs: []' enquanto
+    9,2 MB de texto extraído (um deles com 210 documentos) seguiam no disco —
+    invisíveis para todo consumidor E ignorados pela fila, que os via como prontos.
+    """
+    destino = tmp_path / "arq"
+    (destino / "texto").mkdir(parents=True)
+    (destino / "texto" / "000_contrato.txt").write_text("teor do contrato", encoding="utf-8")
+    (destino / "manifest.json").write_text(json.dumps({
+        "processo": "080001/007110/2023", "docs": [{"i": 0, "titulo": "Contrato",
+        "fase": "contratacao", "tipo": "contrato", "texto": "texto/000_contrato.txt",
+        "chars": 16, "ocr": False, "fotos": []}], "lacunas": [], "fotos_total": 0,
+    }), encoding="utf-8")
+
+    origem = tmp_path / "integra_080001_007110_2023"
+    origem.mkdir()
+    (origem / "manifest.json").write_text("[]", encoding="utf-8")   # captura falhou
+
+    m = arquivar(origem, destino, processo="080001/007110/2023", ocr=False)
+
+    assert len(m["docs"]) == 1, "arquivo bom preservado"
+    gravado = json.loads((destino / "manifest.json").read_text(encoding="utf-8"))
+    assert len(gravado["docs"]) == 1, "manifesto no disco NÃO foi zerado"
+
+
 def test_manifesto_gravado_preserva_a_declaracao(tmp_path):
     origem = tmp_path / "integra_000001_000001_2025"
     origem.mkdir()
