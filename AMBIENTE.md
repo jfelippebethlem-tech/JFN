@@ -150,7 +150,7 @@ Todo número é marcado **REAL** vs **ESTIMADO/CACHE**; nunca fabricar valor. (V
 | `SEI_CACHE_TTL` | `86400` | TTL (s) do cache de leitura `data/sei_cache/` | `tools/sei_reader.py` |
 | `SEI_MAX_PAG` | `40` | bound de páginas na íntegra completa | `tools/sei_integra_completa.py` |
 | `SEI_DOC_TIMEOUT` | `15` | timeout (s) por documento na íntegra | `sei_integra_completa.py` |
-| `SEI_INTEGRA_OCR` | `0` | `1` embute PDF escaneado + página OCR na íntegra (pesado — VM 2 vCPU) | `sei_integra_completa.py` |
+| ~~`SEI_INTEGRA_OCR`~~ | — | REMOVIDA 2026-07-23: escaneado agora SEMPRE preserva o PDF original + OCR (via árvore viva), sem flag | — |
 | `SEI_SEM_TG` | — | `1` só arquiva a íntegra (não envia Telegram) | `sei_integra_completa.py` |
 | `SEI_PROXY_URL` / `PROXY_URL` | — | proxy p/ furar WAF do SEI | `tools/sei_cdp.py` |
 | `SEI_DEBUG_SHOT` | — | screenshots de debug do login/leitura | `tools/sei_reader.py` |

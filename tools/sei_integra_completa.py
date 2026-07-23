@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ÍNTEGRA COMPLETA de um processo SEI: pagina TODOS os documentos, baixa cada um (PDF ou HTML→PDF),
-junta num PDF único e ENVIA ao Telegram (divide em partes <45MB). OCR opcional via SEI_INTEGRA_OCR=1 (default OFF — escaneado entra com as páginas originais + texto OCR; sem a flag, comportamento antigo). Guardado.
+junta num PDF único e ENVIA ao Telegram (divide em partes <45MB). Conteúdo lido SEMPRE pela árvore
+viva (cross-unit sem envenenar a sessão, 2026-07-23): nativo=texto do editor; escaneado=PDF original
+preservado (imagens/fotos de prova) + OCR já feito por _conteudo_via_arvore. Guardado.
 Uso: .venv/bin/python tools/sei_integra_completa.py "330020/000762/2021"
 """
 import os
