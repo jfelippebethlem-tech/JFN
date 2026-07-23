@@ -110,11 +110,16 @@ async def main():
                 txt = ((c or {}).get("conteudo") or "").strip()
                 if len(txt) < 15:
                     return False
+                # escritor que CONFERE o retorno: insert_textbox cru devolvia negativo
+                # em despacho com muitas linhas curtas e salvava página EM BRANCO
+                # declarando sucesso (11.901 documentos perdidos assim até 2026-07-23)
+                from compliance_agent.sei.pdf_texto import escrever_texto
                 doc = fitz.open()
-                doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), f"[{x['t']}]\n\n" + txt[:6000], fontsize=8)
-                rest = txt[6000:]
-                while rest:
-                    doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), rest[:6500], fontsize=8); rest = rest[6500:]
+                escrever_texto(doc, x["t"], txt)
+                if not any(p.get_text().strip() for p in doc):
+                    doc.close()
+                    print(f"  doc sem teor gravável: {x['t'][:40]}", flush=True)
+                    return False          # nunca gravar PDF mudo como se fosse sucesso
                 doc.save(str(fp)); doc.close(); return True
 
             # manifest com os TÍTULOS da árvore: é ele que permite classificar a

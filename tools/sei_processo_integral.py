@@ -190,13 +190,12 @@ def _pdf(ck: dict) -> fitz.Document:
         titulo = (d.get("titulo") or f"Documento {i}").strip()
         txt = (ck["conteudos"].get(d.get("idd") or "", {}).get("conteudo") or "").strip()
         pno = out.page_count + 1
-        p = out.new_page()
-        p.insert_textbox(fitz.Rect(40, 36, 555, 62), f"[{i:03d}] {titulo}", fontsize=9, color=(0.48, 0.12, 0.12))
         body = txt if txt else "(documento sem texto extraível — provável imagem/anexo; consta da árvore)"
-        p.insert_textbox(fitz.Rect(40, 68, 555, 800), body[:5600], fontsize=8)
-        rest = body[5600:]
-        while rest:
-            pp = out.new_page(); pp.insert_textbox(fitz.Rect(40, 40, 555, 800), rest[:6200], fontsize=8); rest = rest[6200:]
+        # escritor que confere o retorno: o insert_textbox cru deixava a página EM
+        # BRANCO quando o texto tinha muitas linhas curtas (despacho, nota) — ver
+        # compliance_agent/sei/pdf_texto.py
+        from compliance_agent.sei.pdf_texto import escrever_texto
+        escrever_texto(out, f"[{i:03d}] {titulo}", body)
         toc.append([2, f"[{i:03d}] {titulo[:64]}", pno])
     out.set_toc(toc)
     return out
