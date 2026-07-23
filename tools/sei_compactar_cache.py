@@ -38,8 +38,8 @@ def _paginas(pdf: Path) -> int:
         n = d.page_count
         d.close()
         return n
-    except Exception:      # noqa: BLE001 — qualquer falha de leitura = não confiável
-        return -1
+    except (RuntimeError, ValueError, OSError, TypeError):
+        return -1      # PDF que não abre não é contabilizável
 
 
 def _integral_cobre(tag: str, pecas: list[Path]) -> tuple[bool, str]:

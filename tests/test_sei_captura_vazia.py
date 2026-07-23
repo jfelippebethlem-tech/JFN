@@ -104,3 +104,30 @@ def test_manifesto_gravado_preserva_a_declaracao(tmp_path):
     gravado = json.loads((destino / "manifest.json").read_text(encoding="utf-8"))
     assert gravado["captura_vazia"] is True
     assert gravado["lacunas"] == []
+
+
+def _pdf_branco(caminho):
+    """PDF em branco: sem texto e sem imagem — o SEI não serviu o conteúdo."""
+    import fitz
+    d = fitz.open()
+    d.new_page()
+    d.save(str(caminho))
+    d.close()
+
+
+def test_pdf_em_branco_marca_conteudo_negado(tmp_path):
+    """Documento em branco ≠ documento vazio: é conteúdo NÃO ENTREGUE pelo SEI."""
+    origem = tmp_path / "integra_070002_004135_2025"
+    origem.mkdir()
+    _pdf_branco(origem / "000.pdf")
+    _pdf(origem / "001.pdf")            # este tem texto de verdade
+    (origem / "manifest.json").write_text(json.dumps([
+        {"i": 0, "arquivo": "000.pdf", "titulo": "Despacho", "contexto": "", "url": "", "ok": True},
+        {"i": 1, "arquivo": "001.pdf", "titulo": "Termo de Referência", "contexto": "",
+         "url": "", "ok": True}]), encoding="utf-8")
+
+    m = arquivar(origem, tmp_path / "arq", processo="070002/004135/2025", ocr=False)
+
+    assert m["conteudo_negado"] == 1, "só o documento em branco conta"
+    assert m["docs"][0].get("conteudo_negado") is True
+    assert not m["docs"][1].get("conteudo_negado"), "documento com texto não é negado"

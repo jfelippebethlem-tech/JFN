@@ -144,6 +144,13 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             if len(t2) > len(texto):
                 texto, entrada["ocr"] = t2, True
 
+        # PDF sem texto E sem imagem = o SEI NÃO SERVIU o conteúdo (documento em branco
+        # cross-unit / acesso negado). Não é "documento vazio": é conteúdo não entregue.
+        # Sem esta marca, 11.901 documentos (2026-07-23) ficavam indistinguíveis de peça
+        # legitimamente sem teor — e a análise os lia como nada a ver.
+        if not texto and not any(doc[p].get_images() for p in range(doc.page_count)):
+            entrada["conteudo_negado"] = True
+
         txt_rel = f"texto/{i:03d}_{_slug(titulo)}.txt"
         (destino / txt_rel).write_text(
             f"[{titulo}] (fase: {fase} · tipo: {tipo})\n\n{texto}",
@@ -182,8 +189,9 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                     print(f"  preservado: {destino.name} já tinha "
                           f"{len(anterior['docs'])} docs — captura vazia ignorada", flush=True)
                     return anterior
-            except (ValueError, OSError):
-                pass   # manifesto ilegível: segue e regrava
+            except (ValueError, OSError) as exc:
+                print(f"  {destino.name}: manifesto anterior ilegível ({str(exc)[:40]}) "
+                      "— sigo e regravo", flush=True)
     manifest = {
         "processo": processo,
         "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -195,6 +203,8 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         "lacunas": [] if vazio else lacunas(fases_presentes, _modalidade(tipos_vistos),
                                             com_pagamento=tem_pagamento),
         "captura_vazia": vazio,
+        # quantos documentos vieram EM BRANCO do SEI (conteúdo não servido, não ausente)
+        "conteudo_negado": sum(1 for d in docs_saida if d.get("conteudo_negado")),
         "captura_completa": captura_completa,   # None = manifesto antigo, não declarava
         "total_arvore": total_arvore,
         "fotos_total": sum(len(d["fotos"]) for d in docs_saida),

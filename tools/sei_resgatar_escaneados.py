@@ -36,8 +36,8 @@ def _so_imagem(pdf: Path) -> bool:
         texto = sum(len(pg.get_text().strip()) for pg in d)
         imgs = sum(len(pg.get_images()) for pg in d)
         d.close()
-    except Exception:      # noqa: BLE001 — ilegível não é candidato
-        return False
+    except (RuntimeError, ValueError, OSError, TypeError):
+        return False   # ilegível não é candidato a resgate
     return texto < 40 and imgs > 0
 
 
@@ -59,9 +59,9 @@ def resgatar(tag: str, aplicar: bool) -> list[dict]:
             continue
         try:
             texto = (ocr_documento(pdf.read_bytes(), tipo="pdf") or "").strip()
-        except Exception as exc:      # noqa: BLE001 — OCR falho não derruba o resgate
+        except (RuntimeError, ValueError, OSError, TypeError, ImportError) as exc:
             print(f"  {tag} doc {d['i']}: OCR falhou ({str(exc)[:50]})")
-            continue
+            continue   # um documento falho não derruba o resgate dos outros
         if len(texto) < MIN_UTIL:
             continue
         ganhos.append({"tag": tag, "i": d["i"], "titulo": d.get("titulo", ""),
