@@ -115,8 +115,12 @@ def _pdf_branco(caminho):
     d.close()
 
 
-def test_pdf_em_branco_marca_conteudo_negado(tmp_path):
-    """Documento em branco ≠ documento vazio: é conteúdo NÃO ENTREGUE pelo SEI."""
+def test_pdf_em_branco_marca_sem_conteudo(tmp_path):
+    """Documento em branco fica MARCADO para reprocessar — sem afirmar a causa.
+
+    (A causa se apurou depois: era o nosso insert_textbox falhando calado. O dado
+    guarda o FATO 'não tem teor', não o diagnóstico.)
+    """
     origem = tmp_path / "integra_070002_004135_2025"
     origem.mkdir()
     _pdf_branco(origem / "000.pdf")
@@ -128,6 +132,6 @@ def test_pdf_em_branco_marca_conteudo_negado(tmp_path):
 
     m = arquivar(origem, tmp_path / "arq", processo="070002/004135/2025", ocr=False)
 
-    assert m["conteudo_negado"] == 1, "só o documento em branco conta"
-    assert m["docs"][0].get("conteudo_negado") is True
-    assert not m["docs"][1].get("conteudo_negado"), "documento com texto não é negado"
+    assert m["sem_conteudo"] == 1, "só o documento em branco conta"
+    assert m["docs"][0].get("sem_conteudo") is True
+    assert not m["docs"][1].get("sem_conteudo"), "documento com texto tem teor"

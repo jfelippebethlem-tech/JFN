@@ -144,12 +144,12 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             if len(t2) > len(texto):
                 texto, entrada["ocr"] = t2, True
 
-        # PDF sem texto E sem imagem = o SEI NÃO SERVIU o conteúdo (documento em branco
-        # cross-unit / acesso negado). Não é "documento vazio": é conteúdo não entregue.
-        # Sem esta marca, 11.901 documentos (2026-07-23) ficavam indistinguíveis de peça
-        # legitimamente sem teor — e a análise os lia como nada a ver.
+        # PDF sem texto E sem imagem: o documento NÃO tem teor gravado. Marca neutra de
+        # propósito — a causa se apurou depois (nosso insert_textbox falhava calado, ver
+        # compliance_agent/sei/pdf_texto.py), e o dado não deve carregar diagnóstico.
+        # Serve para REPROCESSAR: 11.901 documentos assim em 2026-07-23.
         if not texto and not any(doc[p].get_images() for p in range(doc.page_count)):
-            entrada["conteudo_negado"] = True
+            entrada["sem_conteudo"] = True
 
         txt_rel = f"texto/{i:03d}_{_slug(titulo)}.txt"
         (destino / txt_rel).write_text(
@@ -203,8 +203,8 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         "lacunas": [] if vazio else lacunas(fases_presentes, _modalidade(tipos_vistos),
                                             com_pagamento=tem_pagamento),
         "captura_vazia": vazio,
-        # quantos documentos vieram EM BRANCO do SEI (conteúdo não servido, não ausente)
-        "conteudo_negado": sum(1 for d in docs_saida if d.get("conteudo_negado")),
+        # quantos documentos ficaram SEM TEOR gravado (candidatos a reprocessar)
+        "sem_conteudo": sum(1 for d in docs_saida if d.get("sem_conteudo")),
         "captura_completa": captura_completa,   # None = manifesto antigo, não declarava
         "total_arvore": total_arvore,
         "fotos_total": sum(len(d["fotos"]) for d in docs_saida),
