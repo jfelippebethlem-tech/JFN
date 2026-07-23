@@ -19,7 +19,6 @@ import fitz
 PROC = sys.argv[1]
 TAG = re.sub(r"[^0-9]", "_", PROC)
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
-OCR_ON = os.environ.get("SEI_INTEGRA_OCR", "0") == "1"   # OFF por padrão (peso na VM 2 vCPU)
 ENV = Path("/home/ubuntu/.hermes/.env")
 def _k(n):
     m = re.search(rf"^{n}=(.+)$", ENV.read_text(), re.M); return m.group(1).strip().strip('"').strip("'") if m else ""
@@ -88,40 +87,14 @@ async def main():
             paths = []
 
             async def baixa_um(x, fp):
-                # CONTEÚDO via _conteudo_doc (drill no iframe, MESMA sessão) — é o que FUNCIONA cross-unit
-                # (o GET direto do ctx.request voltava um PDF em branco de ~1KB, passando falso-positivo).
-                # O GET só é tentado quando confiável: PDF com >2KB E texto extraível (docs da unidade do login).
-                try:
-                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=12000)
-                    body = await resp.body()
-                    if body[:5] == b"%PDF-" and len(body) > 2048:
-                        import fitz as _f
-                        _d = _f.open(stream=body, filetype="pdf")
-                        if _d.page_count and sum(len(p.get_text()) for p in _d) > 40:
-                            fp.write_bytes(body); _d.close(); return True
-                        # SEI_INTEGRA_OCR=1: PDF escaneado (tem IMAGEM, não tem texto) entra na
-                        # íntegra com as páginas originais + página de texto OCR quando possível
-                        # (antes: doc simplesmente FALTAVA na íntegra — medição/NF escaneada sumia).
-                        # O guard de imagem separa o escaneado real do "PDF em branco" cross-unit.
-                        if OCR_ON and _d.page_count and any(p.get_images() for p in _d):
-                            fp.write_bytes(body)
-                            try:
-                                from compliance_agent.sei.ocr_docs import ocr_documento
-                                txt_ocr = (ocr_documento(body) or "").strip()
-                                if len(txt_ocr) > 60:
-                                    _o = _f.open(str(fp))
-                                    pg_o = _o.new_page()
-                                    pg_o.insert_textbox(_f.Rect(40, 40, 555, 800),
-                                                        f"[OCR — {x['t']}]\n\n" + txt_ocr[:6000],
-                                                        fontsize=8)
-                                    _o.saveIncr(); _o.close()
-                            except (ImportError, RuntimeError, OSError, ValueError) as e_ocr:
-                                # OCR indisponível → fica só o escaneado original (já é ganho)
-                                print(f"  ocr pulado ({x['t'][:30]}): {str(e_ocr)[:40]}", flush=True)
-                            _d.close(); return True
-                        _d.close()
-                except (PWError, RuntimeError, ValueError, OSError):
-                    pass
+                # CONTEÚDO só pela ÁRVORE VIVA (_conteudo_doc). O GET-direto que existia
+                # aqui (ctx.request.get de documento_visualizar) ENVENENAVA a sessão para
+                # documento de OUTRA unidade: o request com o infra_hash invalidado fazia o
+                # SEI resetar o contexto server-side de documento/unidade, e a partir dali
+                # TODA leitura pela árvore voltava vazia — causa provada dos 11.9k "brancos"
+                # (2026-07-23: 0/646 docs com o GET; _conteudo_via_arvore sozinho rende 2.348
+                # chars/doc). O drill na árvore serve nativo (texto do editor) e escaneado
+                # (baixa o anexo + OCR) sem envenenar — mesmo caminho de sei_processo_integral.
                 c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
                 txt = ((c or {}).get("conteudo") or "").strip()
                 if len(txt) < 15:
