@@ -62,3 +62,29 @@ def _maior_pedaco_que_cabe(pagina: fitz.Page, texto: str, caixa: fitz.Rect,
     escrito = "\n".join(linhas[:melhor])
     pagina.insert_textbox(caixa, escrito, fontsize=fontsize)
     return escrito, "\n".join(linhas[melhor:])
+
+
+def gravar_doc(fp, titulo: str, texto: str, anexo_bytes: bytes | None = None) -> bool:
+    """Grava UM documento da íntegra em `fp` (Path). Retorna True se gravou algo útil.
+
+    - Escaneado (há `anexo_bytes` que É um PDF): grava o PDF ORIGINAL, preservando as
+      IMAGENS — é delas que o arquivador extrai as fotos de prova (medição, relatório
+      fotográfico, fiscalização). Perder isso foi a regressão que o fix do GET-direto
+      envenenador quase introduziu (2026-07-23).
+    - Nativo (texto do editor, sem imagem a preservar): grava um PDF de texto via
+      `escrever_texto`, que confere o retorno e nunca deixa página em branco.
+    """
+    from pathlib import Path
+    fp = Path(fp)
+    if anexo_bytes and anexo_bytes[:5] == b"%PDF-":
+        fp.write_bytes(anexo_bytes)
+        return True
+    if len((texto or "").strip()) < 15:
+        return False
+    doc = fitz.open()
+    escrever_texto(doc, titulo, texto)
+    ok = any(p.get_text().strip() for p in doc)
+    if ok:
+        doc.save(str(fp))
+    doc.close()
+    return ok

@@ -661,7 +661,11 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                 loop = asyncio.get_event_loop()
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
                 if txt_ocr and len(txt_ocr.strip()) > 20:
-                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:20000], "via": "ocr"}
+                    # anexo_bytes preserva o PDF ORIGINAL (imagens/fotos de prova) p/ quem
+                    # arquiva — só quando é PDF (imagem solta não vira .pdf direto). Chave
+                    # ADITIVA: outros chamadores leem só conteudo/doc/via.
+                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:20000],
+                            "via": "ocr", "anexo_bytes": body if tipo == "pdf" else None}
             except (PWError, RuntimeError, OSError, ValueError) as exc:
                 logger.warning("download/OCR do anexo (via árvore) %r falhou: %s", (doc.get("texto") or "")[:60], str(exc)[:80])
         return None

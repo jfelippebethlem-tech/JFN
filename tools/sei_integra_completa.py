@@ -104,17 +104,14 @@ async def main():
                     # Gravar isso seria inventar teor — melhor registrar a falta.
                     print(f"  doc NÃO SERVIDO (tela de unidade): {x['t'][:40]}", flush=True)
                     return False
-                # escritor que CONFERE o retorno: insert_textbox cru devolvia negativo
-                # em despacho com muitas linhas curtas e salvava página EM BRANCO
-                # declarando sucesso (11.901 documentos perdidos assim até 2026-07-23)
-                from compliance_agent.sei.pdf_texto import escrever_texto
-                doc = fitz.open()
-                escrever_texto(doc, x["t"], txt)
-                if not any(p.get_text().strip() for p in doc):
-                    doc.close()
+                # gravar_doc preserva o PDF ORIGINAL quando escaneado (imagens = fotos de
+                # prova) e usa texto p/ nativo; nunca deixa página em branco (confere o
+                # retorno de insert_textbox). anexo_bytes vem de _conteudo_via_arvore.
+                from compliance_agent.sei.pdf_texto import gravar_doc
+                if not gravar_doc(fp, x["t"], txt, (c or {}).get("anexo_bytes")):
                     print(f"  doc sem teor gravável: {x['t'][:40]}", flush=True)
-                    return False          # nunca gravar PDF mudo como se fosse sucesso
-                doc.save(str(fp)); doc.close(); return True
+                    return False
+                return True
 
             # manifest com os TÍTULOS da árvore: é ele que permite classificar a
             # fase de cada documento depois (tools/sei_arquivar.py).
