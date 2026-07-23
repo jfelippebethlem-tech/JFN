@@ -33,6 +33,22 @@ def envia(path, caption):
                           files={"document": (Path(path).name, f, "application/pdf")}, timeout=300).json().get("ok")
 
 
+# Siglas que só aparecem juntas na TELA DE SELEÇÃO DE UNIDADE do SEI. Quando o
+# documento é de outra unidade, o SEI não serve o teor: devolve essa lista. Capturá-la
+# como conteúdo grava a relação de órgãos no lugar do comprovante/despacho — falso
+# conteúdo, pior que conteúdo ausente (achado em 2026-07-23, SEI-260007/004617/2024).
+_SIGLAS_UNIDADE = ("AGENERSA", "AGETRANSP", "CECIERJ", "CEHAB", "DEGASE",
+                   "FAETEC", "FAPERJ", "EMATER", "DETRO", "CODIN")
+
+
+def parece_pagina_de_unidade(texto: str) -> bool:
+    """True se o texto é a tela de escolha de unidade, não o documento."""
+    t = (texto or "").upper()
+    if len(t) < 60:
+        return False
+    return sum(1 for s in _SIGLAS_UNIDADE if s in t) >= 5
+
+
 async def main():
     G.cleanup_orphans()
     ok, m = G.preflight()
@@ -109,6 +125,11 @@ async def main():
                 c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
                 txt = ((c or {}).get("conteudo") or "").strip()
                 if len(txt) < 15:
+                    return False
+                if parece_pagina_de_unidade(txt):
+                    # o SEI não serviu o documento: devolveu a tela de unidades.
+                    # Gravar isso seria inventar teor — melhor registrar a falta.
+                    print(f"  doc NÃO SERVIDO (tela de unidade): {x['t'][:40]}", flush=True)
                     return False
                 # escritor que CONFERE o retorno: insert_textbox cru devolvia negativo
                 # em despacho com muitas linhas curtas e salvava página EM BRANCO
