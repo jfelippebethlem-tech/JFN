@@ -656,9 +656,17 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                 body = await r.body()
                 ct = (r.headers.get("content-type") or "").lower()
                 tipo = "pdf" if (body[:5] == b"%PDF-" or "pdf" in ct) else ("imagem" if ct.startswith("image/") else None)
-                if not tipo:
-                    continue
                 loop = asyncio.get_event_loop()
+                if not tipo:
+                    # anexo OFFICE (planilha Excel de medição/faturamento, minuta Word):
+                    # antes caía aqui em `continue` e o doc sumia. Extrai o texto direto
+                    # (openpyxl/xlrd/python-docx). .doc binário antigo devolve '' honesto.
+                    from compliance_agent.sei.office_texto import texto_de_office
+                    off = await loop.run_in_executor(None, lambda: texto_de_office(body, ct))
+                    if off and len(off.strip()) > 20:
+                        return {"doc": (doc.get("texto") or "")[:80],
+                                "conteudo": off.strip()[:20000], "via": "office"}
+                    continue
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
                 if txt_ocr and len(txt_ocr.strip()) > 20:
                     # anexo_bytes preserva o PDF ORIGINAL (imagens/fotos de prova) p/ quem
