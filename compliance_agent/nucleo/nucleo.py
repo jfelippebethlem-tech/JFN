@@ -32,7 +32,7 @@ from typing import Any
 from compliance_agent.nucleo import parametros as P
 from compliance_agent.nucleo.dossie import Contratacao, Dossie, Fornecedor
 from compliance_agent.nucleo.extracao_robusta import Campo, LLMFn, extrair
-from compliance_agent.nucleo.indicadores import Achado, avaliar_todos
+from compliance_agent.nucleo.indicadores import Achado, apurabilidade, avaliar_todos
 from compliance_agent.nucleo.scoring import Veredito, pontuar
 
 
@@ -71,6 +71,8 @@ class Laudo:
             "achados": [asdict(a) for a in self.veredito.achados],
             "avisos": self.dossie.avisos + self.extracao_avisos,
             "fontes": self.fontes,
+            # INDISPONÍVEL ≠ 0: quantos indicadores tinham insumo para falar
+            "apurabilidade": apurabilidade(self.dossie),
         }
 
     def texto(self) -> str:
@@ -84,7 +86,12 @@ class Laudo:
             "═" * 68,
         ]
         if not v.achados:
-            linhas.append("Nenhum indicador de irregularidade disparou.")
+            ap = apurabilidade(self.dossie)
+            linhas.append(f"Nenhum dos {ap['n_apuraveis']} de {ap['n_total']} indicadores "
+                          "APURÁVEIS neste dossiê disparou.")
+            for i in ap["indisponiveis"]:
+                linhas.append(f"    • INDISPONÍVEL (≠ regular): {i['titulo']} "
+                              f"— falta {', '.join(f.split('.')[-1] for f in i['falta'])}")
         for i, a in enumerate(v.achados, 1):
             linhas += [
                 f"\n[{i}] {a.titulo}  ({a.severidade.upper()}, confiança {a.confianca:.0%})",

@@ -109,9 +109,18 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     (destino / "fotos").mkdir(parents=True, exist_ok=True)
 
     titulos = {}
+    captura_completa = None   # None = manifesto antigo (não declara); True/False = novo
+    total_arvore = None
     mpath = origem / "manifest.json"
     if mpath.exists():
-        for e in json.loads(mpath.read_text(encoding="utf-8")):
+        bruto = json.loads(mpath.read_text(encoding="utf-8"))
+        # formato NOVO (grava incremental): {"docs": [...], "completo": bool, ...}
+        # formato ANTIGO (lista pura) segue lido igual — 355 processos já arquivados
+        if isinstance(bruto, dict):
+            captura_completa = bool(bruto.get("completo"))
+            total_arvore = bruto.get("total_arvore")
+            bruto = bruto.get("docs") or []
+        for e in bruto:
             titulos[int(e["i"])] = e.get("titulo") or e.get("contexto") or ""
 
     docs_saida, tipos_vistos = [], set()
@@ -157,6 +166,10 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
 
     fases_presentes = {d["fase"] for d in docs_saida} - {"indefinida"}
     tem_pagamento = any(d["fase"] == "despesa" for d in docs_saida)
+    # INDISPONÍVEL ≠ 0: com ZERO documento capturado não se afirma o que falta NOS AUTOS.
+    # Sem esta guarda o manifesto acusava "🔴 falta Seleção (edital/julgamento)" em processo
+    # que talvez tenha tudo — nós é que não baixamos nada (94 casos em 2026-07-23).
+    vazio = not docs_saida
     manifest = {
         "processo": processo,
         "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -165,10 +178,22 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         "docs": docs_saida,
         "linha_do_tempo": {f: sum(1 for d in docs_saida if d["fase"] == f)
                            for f in FASES},
-        "lacunas": lacunas(fases_presentes, _modalidade(tipos_vistos),
-                           com_pagamento=tem_pagamento),
+        "lacunas": [] if vazio else lacunas(fases_presentes, _modalidade(tipos_vistos),
+                                            com_pagamento=tem_pagamento),
+        "captura_vazia": vazio,
+        "captura_completa": captura_completa,   # None = manifesto antigo, não declarava
+        "total_arvore": total_arvore,
         "fotos_total": sum(len(d["fotos"]) for d in docs_saida),
     }
+    if vazio:
+        manifest["aviso"] = ("Nada foi capturado desta íntegra (falha/pendência de coleta). "
+                             "NÃO interpretar como processo sem documentos — reprocessar.")
+    elif captura_completa is False:
+        # morreu no meio: o que veio vale, mas o que FALTA nos autos ainda não se sabe
+        manifest["lacunas"] = []
+        manifest["aviso"] = (
+            f"Captura PARCIAL ({len(docs_saida)} de {total_arvore or '?'} documentos da árvore) — "
+            "download interrompido. Lacunas não afirmadas: retomar antes de concluir.")
     (destino / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     return manifest

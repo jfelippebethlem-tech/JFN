@@ -117,25 +117,43 @@ async def main():
                     doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), rest[:6500], fontsize=8); rest = rest[6500:]
                 doc.save(str(fp)); doc.close(); return True
 
+            # manifest com os TÍTULOS da árvore: é ele que permite classificar a
+            # fase de cada documento depois (tools/sei_arquivar.py).
+            # GRAVAÇÃO INCREMENTAL (2026-07-23): antes o manifesto só era escrito DEPOIS do
+            # loop inteiro — quando a fila matava o processo por timeout (900s) no meio de
+            # centenas de documentos, TODO o trabalho baixado virava lixo não catalogado.
+            # Agora cada documento é registrado na hora e `completo` só vira True no fim,
+            # então uma morte no meio deixa uma captura PARCIAL aproveitável e retomável.
+            import json as _json
+            man_path = outdir / "manifest.json"
+
+            def _grava(man: list, completo: bool) -> None:
+                tmp = outdir / "manifest.json.tmp"   # atômico: morte no meio não corrompe
+                tmp.write_text(_json.dumps(
+                    {"processo": PROC, "total_arvore": len(docs), "completo": completo,
+                     "docs": man}, ensure_ascii=False, indent=1), encoding="utf-8")
+                tmp.replace(man_path)
+
             manifest = []
+            _grava(manifest, False)   # marca "em andamento" já no primeiro instante
             for i, x in enumerate(docs):
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
-                try:
-                    if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "15"))):
-                        paths.append(fp); ok = True
-                except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
-                    print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
+                if fp.exists() and fp.stat().st_size > 0:
+                    paths.append(fp); ok = True     # retomada: não rebaixa o que já veio
+                else:
+                    try:
+                        if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "15"))):
+                            paths.append(fp); ok = True
+                    except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
+                        print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
                 manifest.append({"i": i, "arquivo": fp.name, "titulo": x.get("t") or "",
                                  "contexto": x.get("pai") or "", "url": x.get("u") or "",
                                  "ok": ok})
+                _grava(manifest, False)
                 if i % 15 == 0:
                     print(f"  {i}/{len(docs)} ({len(paths)} ok)", flush=True)
-            # manifest com os TÍTULOS da árvore: é ele que permite classificar a
-            # fase de cada documento depois (tools/sei_arquivar.py)
-            import json as _json
-            (outdir / "manifest.json").write_text(
-                _json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
+            _grava(manifest, True)
             # junta
             out = fitz.open()
             sep = fitz.open(); spg = sep.new_page(); spg.insert_text((60, 120), f"ÍNTEGRA — PROCESSO SEI-{PROC} ({len(paths)} documentos)", fontsize=14); out.insert_pdf(sep); sep.close()

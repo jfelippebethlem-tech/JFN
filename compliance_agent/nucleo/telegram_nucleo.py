@@ -76,7 +76,16 @@ def _fmt_laudo(laudo, referencia: str = "", titulo_humano: str = "",
     if c.valor:
         linhas.append(f"Valor: {_brl(c.valor)}")
     if not v.achados:
-        linhas.append("\n✅ Nenhum indicador disparou.")
+        # INDISPONÍVEL ≠ 0: dizer "nada disparou" sem dizer QUANTOS podiam disparar
+        # transforma falta de dado em atestado de limpeza (caso CPASC, R$ 16,4 mi)
+        from compliance_agent.nucleo.indicadores import apurabilidade
+        ap = apurabilidade(laudo.dossie)
+        linhas.append(f"\n✅ Nenhum dos *{ap['n_apuraveis']} de {ap['n_total']}* "
+                      "indicadores apuráveis disparou.")
+        if ap["indisponiveis"]:
+            faltas = sorted({f.split(".")[-1] for i in ap["indisponiveis"] for f in i["falta"]})
+            linhas.append(f"⚠️ *{len(ap['indisponiveis'])} INDISPONÍVEIS* (não medidos, "
+                          f"≠ regulares) — falta: {', '.join(faltas)}.")
     else:
         linhas.append(f"\n*Achados ({len(v.achados)}):*")
         for a in v.achados[:6]:

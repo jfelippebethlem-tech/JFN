@@ -377,6 +377,57 @@ INDICADORES: list[Indicador] = [
 _POR_ID: dict[str, Indicador] = {i.id: i for i in INDICADORES}
 
 
+# Insumo mínimo de cada indicador: sem ele, o silêncio é INDISPONÍVEL, não "limpo".
+# (regra da casa: INDISPONÍVEL ≠ 0 — o mesmo idioma das famílias do Índice de Direcionamento)
+_INSUMO: dict[str, tuple[str, ...]] = {
+    "IND-FRAC-01": ("historico_orgao_fornecedor",),
+    "IND-EMP-01": ("fornecedor.data_abertura",),
+    "IND-ADT-01": ("contratacao.tem_aditivos_conhecidos",),
+    "IND-SUP-01": ("referencia_categoria",),
+    "IND-DIR-01": ("contratacao.propostas_validas",),
+    "IND-DIR-02": ("contratacao.prazo_edital_dias",),
+    "IND-SAN-01": ("fornecedor.cnpj",),
+    "IND-SIT-01": ("fornecedor.situacao",),
+    "IND-QPQ-01": ("fornecedor.cnpj",),
+    "IND-LIM-01": ("contratacao.modalidade",),
+}
+
+
+def _tem_insumo(d: Dossie, campo: str) -> bool:
+    if campo == "historico_orgao_fornecedor":
+        return bool(d.historico_orgao_fornecedor)
+    if campo == "referencia_categoria":
+        return bool((d.referencia_categoria or {}).get("mediana"))
+    # aditivo: fonte de OB/pagamento não conhece aditivo — 0 ali é ignorância, não ausência
+    if campo == "contratacao.tem_aditivos_conhecidos":
+        return (d.contratacao.fonte or "") not in ("", "tfe_ob", "siafe_ob")
+    obj, attr = campo.split(".")
+    return bool(getattr(getattr(d, obj), attr, None))
+
+
+def apurabilidade(dossie: Dossie) -> dict:
+    """
+    Quais indicadores TINHAM matéria-prima neste dossiê — e quais ficaram cegos.
+
+    Silêncio de indicador sem insumo não é "nada irregular": é INDISPONÍVEL.
+    Sem isso, uma OB de R$ 16,4 mi por termo de cooperação (fonte que não carrega
+    licitação nem aditivo) saía como "risco 0/100, nenhum indicador disparou" —
+    lido pelo humano como auditado e limpo.
+    """
+    apuraveis, indisponiveis = [], []
+    for ind in INDICADORES:
+        faltando = [c for c in _INSUMO.get(ind.id, ()) if not _tem_insumo(dossie, c)]
+        if faltando:
+            indisponiveis.append({"indicador": ind.id, "titulo": ind.titulo,
+                                  "falta": faltando})
+        else:
+            apuraveis.append(ind.id)
+    n = len(INDICADORES)
+    return {"n_total": n, "n_apuraveis": len(apuraveis), "apuraveis": apuraveis,
+            "indisponiveis": indisponiveis,
+            "cobertura": round(len(apuraveis) / n, 3) if n else 0.0}
+
+
 def avaliar_todos(dossie: Dossie) -> list[Achado]:
     """
     Roda todos os indicadores sobre um Dossiê e devolve os achados que dispararam,
