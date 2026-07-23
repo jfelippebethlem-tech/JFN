@@ -82,12 +82,39 @@ def _esperar_browser_livre(espera_max: int = 300) -> None:
         time.sleep(10)
 
 
+# Data do fix do escritor de PDF (compliance_agent/sei/pdf_texto.py). Arquivo gerado
+# ANTES disso e sem teor foi vítima do insert_textbox mudo → merece nova captura.
+# Gerado DEPOIS e ainda sem teor é vazio de verdade → aceitar, ou a fila rebaixa eterno.
+CORTE_ESCRITOR = "2026-07-23"
+
+
 def _arquivado_ok(dir_arq: Path) -> bool:
     """True só se o arquivo tem CONTEÚDO real (>=1 texto/*.txt). Um STUB (manifest.json docs=0 de
     download que falhou) NÃO conta — senão a fila pula pra sempre e o processo nunca é baixado
-    ('uns salvos, outros não'). Fix 2026-07-03; ver vault/aprendizados/sei-leitura-itkava."""
+    ('uns salvos, outros não'). Fix 2026-07-03; ver vault/aprendizados/sei-leitura-itkava.
+
+    2026-07-23: existir .txt não basta. Os ~11.9k documentos danificados pelo escritor
+    mudo deixaram arquivos só com o CABEÇALHO (`[Título] (fase: … · tipo: …)`), e
+    cabeçalho é .txt — a fila os via prontos e nunca rebaixava."""
     txt = dir_arq / "texto"
-    return txt.is_dir() and any(txt.glob("*.txt"))
+    if not txt.is_dir() or not any(txt.glob("*.txt")):
+        return False
+    man = dir_arq / "manifest.json"
+    if not man.exists():
+        return True                     # sem manifesto, mantém o critério antigo
+    try:
+        m = json.loads(man.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return True
+    docs = m.get("docs") or []
+    if not docs:
+        return False
+    entradas = [d for d in docs if isinstance(d, dict)]
+    if len(entradas) != len(docs):
+        return True                     # manifesto fora do formato: não julgo o teor
+    if any((d.get("chars") or 0) >= 40 for d in entradas):
+        return True                     # tem teor de verdade em algum documento
+    return (m.get("gerado_em") or "") >= CORTE_ESCRITOR
 
 
 def _valor_por_processo() -> dict:
