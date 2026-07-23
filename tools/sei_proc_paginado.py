@@ -82,17 +82,18 @@ async def main():
             Path(f"data/sei_cache/paginado_{TAG}.json").write_text(json.dumps(docs, ensure_ascii=False))
             alvo = [x for x in docs if re.search(KW, (x["t"] + " " + x["pai"]), re.I)]
             print(f"\n⭐ {len(alvo)} docs-alvo:", [(x['t'] or x['pai'][:35])[:45] for x in alvo[:30]], flush=True)
-            from compliance_agent.sei.ocr_docs import ocr_documento
             feitos = 0
             for x in alvo:
                 if feitos >= MAX_OCR:
                     print(f"  [stop OCR: limite {MAX_OCR}; restam {len(alvo)-feitos} alvos]", flush=True); break
                 try:  # NÃO chamar cleanup_orphans aqui: mataria o próprio browser em uso!
-                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=45000)
-                    body = await resp.body()
-                    ct = (resp.headers.get("content-type") or "").lower()
-                    tipo = "pdf" if "pdf" in ct else ("image" if "image" in ct else "pdf")
-                    txt = await asyncio.get_event_loop().run_in_executor(None, lambda: ocr_documento(body, tipo=tipo) or "")
+                    # CONTEÚDO pela ÁRVORE VIVA (já carregada acima). O GET-direto a
+                    # documento_visualizar envenenava a sessão cross-unit (SEI resetava o
+                    # contexto → login shell → OCR de HTML → vazio). _conteudo_doc serve
+                    # nativo (texto do editor) e escaneado (anexo + OCR) sem envenenar —
+                    # mesmo fix de sei_integra_completa (2026-07-23).
+                    c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
+                    txt = ((c or {}).get("conteudo") or "")
                     nome = re.sub(r"[^0-9A-Za-z]", "_", (x["t"] or "doc")[:30])
                     Path(f"data/sei_cache/ocr_{TAG}_{feitos:02d}_{nome}.txt").write_text(txt)
                     sig = len(re.findall(r"remunera|encargo|m[óo]dulo|insumo|BDI|sal[áa]rio|R\$ ?[0-9]|piso", txt, re.I))
