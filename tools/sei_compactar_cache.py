@@ -30,7 +30,40 @@ CACHE = RAIZ / "data" / "sei_cache"
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 
 
-def _seguro(tag: str) -> tuple[bool, str]:
+def _paginas(pdf: Path) -> int:
+    """Nº de páginas, ou -1 se ilegível (não confiar em PDF que não abre)."""
+    try:
+        import fitz
+        d = fitz.open(str(pdf))
+        n = d.page_count
+        d.close()
+        return n
+    except Exception:      # noqa: BLE001 — qualquer falha de leitura = não confiável
+        return -1
+
+
+def _integral_cobre(tag: str, pecas: list[Path]) -> tuple[bool, str]:
+    """O PDF integral tem de conter TODAS as páginas das peças.
+
+    Existir não basta: se o processo foi rebaixado depois e o integral não foi
+    remontado, ele está DESATUALIZADO e apagar as peças perderia documento.
+    O integral traz 1 página de separador a mais — por isso o >= puro.
+    """
+    soma = 0
+    for p in pecas:
+        n = _paginas(p)
+        if n < 0:
+            return False, "peça ilegível (não arrisco)"
+        soma += n
+    n_int = _paginas(CACHE / f"INTEGRA_{tag}.pdf")
+    if n_int < 0:
+        return False, "PDF integral ilegível"
+    if n_int < soma:
+        return False, f"integral DESATUALIZADO ({n_int} pgs < {soma} das peças)"
+    return True, ""
+
+
+def _seguro(tag: str, pecas: list[Path] | None = None) -> tuple[bool, str]:
     if not (CACHE / f"INTEGRA_{tag}.pdf").exists():
         return False, "sem PDF integral consolidado"
     dir_txt = ARQUIVO / tag / "texto"
@@ -52,6 +85,8 @@ def _seguro(tag: str) -> tuple[bool, str]:
             return False, "arquivo sem documentos"
     except (ValueError, OSError):
         return False, "manifesto de arquivo ilegível"
+    if pecas:                       # 4ª garantia: conferir PÁGINA A PÁGINA, não só existir
+        return _integral_cobre(tag, pecas)
     return True, ""
 
 
@@ -70,7 +105,7 @@ def main() -> int:
         if not pecas:
             continue
         peso = sum(p.stat().st_size for p in pecas)
-        ok, motivo = _seguro(tag)
+        ok, motivo = _seguro(tag, pecas)
         if not ok:
             mantem += peso
             motivos[motivo] = motivos.get(motivo, 0) + 1

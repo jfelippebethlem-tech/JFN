@@ -63,6 +63,8 @@ Fonte = Union[str, Path, bytes]
 MAX_PAGINAS_OCR = 15
 # Abaixo de ~40 chars úteis por página, consideramos a página um scan (sem texto nativo).
 MIN_CHARS_POR_PAGINA = 40
+# Abaixo disso o OCR da página é "fraco" e vale reconferir sem pré-processamento.
+_MIN_OCR_UTIL = 60
 
 
 def eh_escaneado(texto_extraido: str, n_paginas: int) -> bool:
@@ -137,12 +139,26 @@ def _preprocess_para_ocr(img):
 
 
 def _ocr_pil(img, lang: str) -> str:
-    """OCR de UMA imagem PIL/ndarray via pytesseract (assume _tesseract_ok já checado)."""
+    """OCR de UMA imagem PIL/ndarray via pytesseract (assume _tesseract_ok já checado).
+
+    O pré-processamento AJUDA em scan sujo e ATRAPALHA em scan claro: numa NF real
+    (2480×3508) o threshold adaptativo levou 2.272 caracteres a ZERO. Por isso o
+    resultado é o MELHOR DOS DOIS — mesmo idioma de `ocr_documento`, que já devolve
+    "ocr or texto_nativo". A 2ª passada só roda quando a 1ª veio fraca, então o
+    custo extra é pago apenas nos casos em que o pré-processamento falhou.
+    """
     import pytesseract
 
     alvo = _preprocess_para_ocr(img)
     try:
-        return pytesseract.image_to_string(alvo, lang=lang) or ""
+        saida = pytesseract.image_to_string(alvo, lang=lang) or ""
+        if len(saida.strip()) < _MIN_OCR_UTIL and alvo is not img:
+            cru = pytesseract.image_to_string(img, lang=lang) or ""
+            if len(cru.strip()) > len(saida.strip()):
+                log.debug("ocr: pré-processamento piorou (%d → %d chars) — usando original",
+                          len(saida.strip()), len(cru.strip()))
+                return cru
+        return saida
     except pytesseract.TesseractError as exc:
         # ex.: traineddata do idioma ausente → tenta o default ('eng') uma vez.
         if lang != "eng":
