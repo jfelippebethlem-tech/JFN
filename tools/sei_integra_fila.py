@@ -233,6 +233,44 @@ def _fila_empresa(cnpj: str, busca_viva: bool = False) -> list[str]:
     return sorted(out)
 
 
+def _baixar_e_arquivar(proc: str, env: dict) -> str:
+    """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'erro'.
+
+    O timeout de 900s NUNCA propaga: um processo grande (646 docs > 15min) estourava
+    o subprocess.run e crashava a fila inteira (finally removia as pausas e encerrava).
+    A íntegra parcial já ficou salva pelo manifesto incremental — a próxima passada
+    retoma. Converter em status deixa o loop seguir para o próximo processo.
+    """
+    try:
+        rc = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
+                            cwd=RAIZ, env=env, timeout=900,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
+                             cwd=RAIZ, env=env, timeout=900,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        return "ok" if rc == 0 and rc2 == 0 else "erro"
+    except subprocess.TimeoutExpired:
+        return "timeout"
+    except OSError:
+        return "erro"
+
+
+def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
+    """Processa os alvos sequencialmente até o deadline. Um timeout/erro num processo
+    não derruba os demais. Retorna quantos foram tentados."""
+    feitos = 0
+    for proc in alvos:
+        if deadline and time.time() > deadline:
+            log(f"orçamento esgotado — encerrando limpo ({feitos} feitos)")
+            break
+        log(f"ÍNTEGRA {proc} …")
+        status = _baixar_e_arquivar(proc, env)
+        log(f"  {proc}: {status}")
+        feitos += 1
+        time.sleep(5)
+    return feitos
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=int(os.environ.get("INTEGRA_FILA_MAX", "2")))
@@ -295,27 +333,11 @@ def main() -> int:
     feitos = 0
     try:
         env = dict(os.environ, SEI_SEM_TG="1", PYTHONPATH=str(RAIZ))
-        for proc in alvos:
-            if deadline and time.time() > deadline:
-                _log(f"orçamento de {args.segundos}s esgotado — encerrando limpo ({feitos} feitos)")
-                break
-            _log(f"ÍNTEGRA {proc} …")
-            rc = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
-                                cwd=RAIZ, env=env, timeout=900,
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.STDOUT).returncode
-            _log(f"  download rc={rc}")
-            rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
-                                 cwd=RAIZ, env=env, timeout=900,
-                                 stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.STDOUT).returncode
-            _log(f"  arquivar rc={rc2}")
-            feitos += 1
-            time.sleep(5)
+        feitos = _rodar_fila(alvos, env, deadline, _log)
     finally:
         PAUSA.unlink(missing_ok=True)
         PAUSA_SEI.unlink(missing_ok=True)
-        _log(f"rodada encerrada — sweeps despausados ({feitos} arquivado(s))")
+        _log(f"rodada encerrada — sweeps despausados ({feitos} tentado(s))")
     return 0
 
 
