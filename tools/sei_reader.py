@@ -81,8 +81,35 @@ async def _tem_resultado_ou_arvore(pg) -> bool:
         r"""()=>!!document.querySelector('a[href*="procedimento_trabalhar"],#tblResultado,table.resultado,#conteudo table')"""))
 
 
-async def login(pg, tentativas=40) -> bool:
-    """Loga no SEI interno (itkava/ITERJ) vencendo o flap do WAF. Retorna True se autenticou."""
+def escolher_orgao(opcoes: list[dict], pedido: str | None) -> str | None:
+    """Valor do `#selOrgao` para o órgão `pedido` — ou o ITERJ (padrão histórico).
+
+    O SEI só serve o TEOR de documentos do órgão da sessão; para os demais devolve a
+    lista de órgãos (que o coletor capturava como se fosse o documento). Poder escolher
+    o órgão é o que destrava a leitura cross-unit — o itkava enxerga todos.
+
+    Pedido inválido NÃO derruba o login: cai no padrão. Sem o padrão na lista, devolve
+    None (não escolher é mais honesto que escolher o órgão errado).
+    """
+    def _casa(texto: str, alvo: str) -> bool:
+        # \b para não casar SES dentro de SESPORT
+        return bool(re.search(rf"\b{re.escape(alvo)}\b", texto or "", re.I))
+
+    if pedido:
+        for o in opcoes:
+            if _casa(o.get("t", ""), pedido.strip()):
+                return o.get("v")
+    for o in opcoes:
+        if re.search(r"\biterj\b|terras", o.get("t", ""), re.I):
+            return o.get("v")
+    return None
+
+
+async def login(pg, tentativas=40, orgao: str | None = None) -> bool:
+    """Loga no SEI interno (itkava) vencendo o flap do WAF. Retorna True se autenticou.
+
+    `orgao` escolhe a unidade da sessão (sigla ou parte do nome). Sem ele, ITERJ —
+    comportamento histórico dos 18 chamadores existentes."""
     for _ in range(tentativas):
         if not await _goto_retry(pg, URL, 3):
             continue
@@ -94,9 +121,9 @@ async def login(pg, tentativas=40) -> bool:
         try: await pg.fill('#pwdSenha', P)
         except Exception as exc: logger.debug("fill do #pwdSenha falhou (fallback via evaluate): %s", exc)
         await pg.evaluate(r"""(p)=>{document.querySelectorAll('#pwdSenha,input[name=\"pwdSenha\"]').forEach(e=>e.value=p);}""", P)
-        cand = [o for o in form["opts"] if re.search(r"\biterj\b|terras", o["t"], re.I)]
-        if cand:
-            await pg.select_option('#selOrgao', value=cand[0]["v"])
+        valor = escolher_orgao(form["opts"], orgao)
+        if valor:
+            await pg.select_option('#selOrgao', value=valor)
         await pg.evaluate(r"""()=>{const b=[...document.querySelectorAll('button,input[type=submit],a')].find(e=>/acessar|entrar|logar/i.test((e.value||e.innerText||'').trim()));if(b)b.click();}""")
         await _ate(pg, lambda: _sair_do_login(pg), 6000)
         if "login.php" not in pg.url:
