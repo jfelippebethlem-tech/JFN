@@ -1117,7 +1117,13 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 th{color:var(--mut);font-weight:600}.pill{font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px}
 .pill.RESTRITO{background:var(--crit);color:#fff}.pill.RESTRITO\?{background:var(--alta);color:#fff}.pill.PARCIAL{background:var(--med);color:#111}
 .upd{color:var(--mut);font-size:12px;margin-top:2em}code{background:#222;padding:1px 5px;border-radius:4px}
+.voltar{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--tx);
+  background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;
+  font-weight:600;font-size:13.5px;margin-bottom:12px;transition:.15s}
+.voltar:hover{border-color:var(--mut);background:#1d212a}
+.voltar .a{font-size:16px;line-height:1}
 </style></head><body>
+<a class=voltar href="/painel" aria-label="Voltar ao painel"><span class=a>←</span> Voltar ao painel</a>
 <h1>🛡️ JFN — Controle de fiscalização</h1>
 <div class=meta>Flags vermelhos graves e processos SEI restritos. Atualiza sozinho ao longo dos sweeps.</div>
 <h2 id=hf>🚩 Flags vermelhos graves</h2><div id=flags>carregando…</div>
