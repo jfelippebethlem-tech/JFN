@@ -24,12 +24,14 @@ def _default_doc_timeout() -> int:
     return int(m.group(1))
 
 
-def test_timeout_cobre_ocr_de_documento_escaneado():
-    # 15 páginas (MAX_PAGINAS_OCR) a ~8s/pg medidos ≈ 120s; + download/click ≈ 130s.
-    # Piso 120s dá margem real (o antigo 15s cancelava a 6ª parte do trabalho).
-    assert _default_doc_timeout() >= 120, (
-        "SEI_DOC_TIMEOUT curto demais: cancela OCR de obra escaneada (diário/memória "
-        "de cálculo) antes de terminar — prova de execução perdida"
+def test_timeout_e_rede_de_seguranca_acima_do_orcamento_ocr():
+    # O OCR se auto-limita por OCR_BUDGET_S (300s) e declara parcial. Este timeout é só a
+    # REDE DE SEGURANÇA acima disso — tem de ficar acima do orçamento + overhead, senão
+    # cortaria o OCR que já se limita sozinho. NÃO é mais acoplado a nº de páginas.
+    from compliance_agent.sei.ocr_docs import OCR_BUDGET_S
+    assert _default_doc_timeout() > OCR_BUDGET_S, (
+        "SEI_DOC_TIMEOUT (rede de segurança) tem de ficar ACIMA do OCR_BUDGET_S — senão "
+        "cortaria o OCR que já para sozinho no orçamento"
     )
 
 

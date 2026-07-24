@@ -141,13 +141,12 @@ async def main():
                     paths.append(fp); ok = True     # retomada: não rebaixa o que já veio
                 else:
                     try:
-                        # 150s (era 15s): o OCR de obra escaneada leva ~8s/pág × até
-                        # MAX_PAGINAS_OCR(15) ≈ 120s (Memória de Cálculo 6pg medida em 47,9s).
-                        # 15s cancelava o OCR legítimo — e como ele roda em thread pool (não
-                        # cancelável), o trabalho era feito e o resultado jogado fora, doc
-                        # marcado ok=False. Diário de obra/memória de cálculo/folhas de ponto
-                        # (provas de execução) eram perdidos. O request tem timeout próprio (45s).
-                        if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "150"))):
+                        # REDE DE SEGURANÇA acima do orçamento do OCR (OCR_BUDGET_S=300s): o
+                        # OCR de scan se AUTO-LIMITA por tempo e declara parcial, então este
+                        # wait_for não precisa mais casar com nº de páginas (o design frágil
+                        # antigo). 450 = 300 do OCR + ~150 de download/render/click, com folga.
+                        # Só dispara se algo travar de verdade (o request tem timeout próprio, 45s).
+                        if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "450"))):
                             paths.append(fp); ok = True
                     except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
                         print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)

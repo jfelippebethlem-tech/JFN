@@ -49,9 +49,11 @@ monta ``conteudo_documentos`` (~linha 216), quando o ``innerText`` do doc vier v
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Optional, Union
 
@@ -60,7 +62,13 @@ log = logging.getLogger(__name__)
 Fonte = Union[str, Path, bytes]
 
 # Limite de páginas para OCR (proteção de CPU/memória nesta VM sem swap).
-MAX_PAGINAS_OCR = 15
+# CONTROLE POR ORÇAMENTO DE TEMPO (não por nº de páginas). O OCR de scan roda página a
+# página, acumula cada uma, e PARA LIMPO quando o orçamento acaba — declarando quantas
+# páginas ficaram. Sem acoplamento cap×timeout (a fonte de erro do design antigo): um
+# único botão (OCR_BUDGET_S) manda, nada é perdido, nada é cancelado no meio. O cap de
+# páginas vira só uma trava de segurança anti-runaway (memória já é bounded pelo page-a-page).
+OCR_BUDGET_S = int(os.environ.get("OCR_BUDGET_S", "300"))
+MAX_PAGINAS_OCR = int(os.environ.get("MAX_PAGINAS_OCR", "300"))   # trava anti-runaway
 # Abaixo de ~40 chars úteis por página, consideramos a página um scan (sem texto nativo).
 MIN_CHARS_POR_PAGINA = 40
 # Abaixo disso o OCR da página é "fraco" e vale reconferir sem pré-processamento.
@@ -208,6 +216,24 @@ def _texto_nativo_pdf(dados: bytes) -> tuple[str, int]:
         return "", 0
 
 
+def _iter_paginas_pdf(dados: bytes, max_paginas: int):
+    """Rende as páginas UMA POR VEZ (memória bounded). fitz preferido; se faltar,
+    cai para _render_paginas_pdf (lista) e itera sobre ela (mesma cobertura)."""
+    try:
+        import fitz
+        from PIL import Image
+        with fitz.open(stream=dados, filetype="pdf") as doc:
+            for i in range(min(doc.page_count, max_paginas)):
+                pix = doc.load_page(i).get_pixmap(dpi=200)
+                yield Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        return
+    except ImportError:
+        pass
+    except (RuntimeError, ValueError, OSError, TypeError) as exc:
+        log.warning("ocr_documento: render página-a-página via fitz falhou (%s) — poppler", exc)
+    yield from _render_paginas_pdf(dados, max_paginas)
+
+
 def _render_paginas_pdf(dados: bytes, max_paginas: int):
     """Renderiza páginas do PDF em imagens PIL. Tenta fitz; cai p/ poppler (pdftoppm).
 
@@ -313,11 +339,37 @@ def ocr_documento(fonte: Fonte, *, tipo: Optional[str] = None, lang: str = "por"
     if not _tesseract_ok():
         return texto.strip()  # sem OCR: devolve o pouco que houver (honesto)
 
-    imagens = _render_paginas_pdf(dados, MAX_PAGINAS_OCR)
-    if not imagens:
+    partes, n_feitas = _ocr_ate_orcamento(
+        _iter_paginas_pdf(dados, MAX_PAGINAS_OCR), lang, OCR_BUDGET_S)
+    if not partes:
         return texto.strip()
-
-    partes = [_ocr_pil(img, lang) for img in imagens]
-    ocr = "\n".join(p for p in partes if p).strip()
+    ocr = _texto_ocr_com_ressalva(partes, n_pag, n_feitas)
     # Devolve o melhor dos dois: o OCR, ou o texto nativo se o OCR vier vazio.
     return ocr or texto.strip()
+
+
+def _ocr_ate_orcamento(imagens, lang: str, budget_s: int):
+    """OCR das páginas (iterável de imagens PIL) até o ORÇAMENTO DE TEMPO acabar.
+    Para LIMPO ENTRE páginas — nunca no meio de uma, então nada é perdido nem cancelado.
+    Sempre faz ao menos a 1ª página (para não devolver vazio por orçamento zero).
+    Retorna (lista de textos, nº de páginas feitas)."""
+    partes, n = [], 0
+    t0 = time.monotonic()
+    for img in imagens:
+        if n and time.monotonic() - t0 > budget_s:
+            break
+        partes.append(_ocr_pil(img, lang))
+        n += 1
+    return partes, n
+
+
+def _texto_ocr_com_ressalva(partes: list, n_pag: int, n_feitas: int) -> str:
+    """Junta o OCR das páginas FEITAS e, se sobraram páginas (por tempo/trava), DECLARA
+    quantas ficaram — INDISPONÍVEL ≠ 0, nunca some com página em silêncio. A ressalva
+    depende só de 'quantas fiz vs total', não do PORQUÊ parei (tempo ou trava)."""
+    ocr = "\n".join(p for p in partes if p).strip()
+    if ocr and n_pag and n_feitas < n_pag:
+        ocr += (f"\n\n[⚠️ OCR PARCIAL: transcritas {n_feitas} de {n_pag} páginas deste "
+                "documento escaneado (limite de tempo de processamento). As demais NÃO "
+                "foram lidas; reprocessar com OCR_BUDGET_S maior se necessário.]")
+    return ocr
