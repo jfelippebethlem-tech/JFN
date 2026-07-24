@@ -189,7 +189,11 @@ async def _gerar_default(messages: list[dict]) -> str:
                 erros.append(f"{nome}: {str(e)[:50]}")
     except Exception as e:  # noqa: BLE001 — import/setup do fallback falhou: cai no raise honesto
         erros.append(f"fallback-extra indisponível: {str(e)[:50]}")
-    raise RuntimeError("nenhum LLM respondeu (ou em cooldown) — " + " | ".join(erros) or "todos em cooldown")
+    # Parênteses obrigatórios: `+` liga antes de `or`, então sem eles o fallback era
+    # código morto e o log saía com a cauda vazia ("… — ") justamente no caso em que
+    # não havia erro a contar (todos em cooldown) — a mensagem mais informativa sumia.
+    raise RuntimeError("nenhum LLM respondeu (ou em cooldown) — "
+                       + (" | ".join(erros) or "todos em cooldown"))
 
 
 import threading as _threading
@@ -350,6 +354,62 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
     raise RuntimeError(f"Gemini+Cerebras: {len(modelos)} modelos × {n} chaves falharam ({','.join(erros[:14])})")
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# FUSÃO determinístico × subjetivo — concilia as duas camadas num único veredito.
+# Doutrina (dono 2026-07-24): "não só deterministicamente, mas subjetivamente também". NENHUM alarme é
+# silenciado: o grau final é o MAIOR dos dois quando ambos são conclusivos; se um é inconclusivo
+# (indeterminado/indisponível), vale o outro; a DIVERGÊNCIA entre camadas conclusivas é sinalizada para a
+# análise crítica do auditor (o LLM pode subestimar um sinal literal; ou ver direcionamento sistêmico que o
+# regex não capta). Puro, sem rede — testável isoladamente.
+_ORDEM_GRAU = {"verde": 1, "amarelo": 2, "vermelho": 3}
+
+
+def _nivel(grau) -> int | None:
+    """Nível conclusivo do grau (1/2/3); None para inconclusivo (indeterminado/indisponivel/vazio)."""
+    return _ORDEM_GRAU.get((grau or "").strip().lower())
+
+
+def fundir_graus(grau_llm, grau_det) -> dict:
+    """Concilia o grau subjetivo (LLM) e o objetivo (determinístico) num veredito único.
+
+    Retorna {grau, fonte_grau, divergencia}. `fonte_grau` diz qual camada DRIVOU o final:
+    'subjetivo' | 'objetivo' | 'subjetivo+objetivo' (concordância) | 'nenhum'. `divergencia` só existe
+    quando AMBAS as camadas são conclusivas e discordam (≥1 nível) — carrega qual foi mais severa e por quê.
+    """
+    n_llm, n_det = _nivel(grau_llm), _nivel(grau_det)
+    if n_llm is None and n_det is None:
+        return {"grau": "indeterminado", "fonte_grau": "nenhum", "divergencia": None}
+    if n_llm is None:
+        return {"grau": grau_det.strip().lower(), "fonte_grau": "objetivo", "divergencia": None}
+    if n_det is None:
+        return {"grau": grau_llm.strip().lower(), "fonte_grau": "subjetivo", "divergencia": None}
+    g_llm, g_det = grau_llm.strip().lower(), grau_det.strip().lower()
+    if n_llm == n_det:
+        return {"grau": g_llm, "fonte_grau": "subjetivo+objetivo", "divergencia": None}
+    if n_det > n_llm:
+        grau, fonte, severa = g_det, "objetivo", "objetivo"
+        nota = ("Camada objetiva (regex/jurisprudência sobre trechos literais) mais severa que o LLM — o "
+                "modelo pode ter subestimado cláusula restritiva/cascata literal; revisar sinais_deterministicos.")
+    else:
+        grau, fonte, severa = g_llm, "subjetivo", "subjetivo"
+        nota = ("Camada subjetiva (LLM) mais severa que o determinístico — possível direcionamento "
+                "interpretativo/sistêmico não captável por regex; revisar exigencias_restritivas do parecer.")
+    return {"grau": grau, "fonte_grau": fonte,
+            "divergencia": {"grau_llm": g_llm, "grau_det": g_det, "delta": abs(n_llm - n_det),
+                            "camada_mais_severa": severa, "nota": nota}}
+
+
+def _com_fusao(base: dict, grau_llm, grau_det) -> dict:
+    """Aplica a fusão sobre um dict de retorno: define grau (conciliado), grau_llm, grau_det e divergencia."""
+    fus = fundir_graus(grau_llm, grau_det)
+    base["grau"] = fus["grau"]
+    base["grau_llm"] = (grau_llm or None)
+    base["grau_det"] = (grau_det or None)
+    base["fonte_grau"] = fus["fonte_grau"]
+    base["divergencia"] = fus["divergencia"]
+    return base
+
+
 async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None,
                                  gerar=None) -> dict:
     """Avalia indícios de direcionamento (LLM sobre edital+ata). `gerar`: callable async(messages)->str
@@ -359,6 +419,11 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
     # desligado, §4.1). Reaproveita a doutrina (cláusulas restritivas + cascata) sobre edital+ata.
     from compliance_agent.direcionamento_sinais import analisar_direcionamento_det
     sinais_det = analisar_direcionamento_det(((edital_txt or "") + "\n\n" + (ata_txt or "")).strip())
+    grau_det = sinais_det.get("grau_det")  # vermelho|amarelo|verde|indeterminado (camada objetiva/offline)
+    # PRESENÇA de sinal objetivo (amarelo/vermelho) ≠ ausência (verde). Só a PRESENÇA resgata um veredito
+    # quando o LLM cai: "verde" determinístico com LLM offline seria falso conforto (ausência de red flag
+    # ≠ regularidade — a camada interpretativa nem rodou). Honestidade: absence of evidence ≠ evidence of absence.
+    det_presenca = grau_det if (grau_det or "").lower() in ("amarelo", "vermelho") else None
     base = {"presinais": sig, "sinais_deterministicos": sinais_det, "fonte": "direcionamento_cerebro"}
     # dados suficientes = tem ATA (cascata) OU o texto realmente PARECE um edital de licitação (marcadores
     # de habilitação/qualificação). Evita "analisar" menu do SEI ou contrato de execução como se fosse edital.
@@ -367,6 +432,14 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
         ed_low.count(k) for k in ("edital", "atestado", "qualificac", "habilitac", "pregao", "pregão",
                                   "termo de referencia", "termo de referência", "licitac", "proposta")) >= 3)
     if not sig["tem_ata"] and not edital_de_licitacao:
+        # O cérebro não vê edital/ata. Se a camada objetiva achou PRESENÇA de sinal (gate próprio), o grau
+        # surge dela (não fica cego); senão, indeterminado honesto (não invento juízo).
+        if det_presenca:
+            return _com_fusao({**base, "dados_suficientes": True,
+                    "resumo": f"O LLM não viu edital/ata claros, mas a camada determinística achou sinal "
+                              f"objetivo (grau {det_presenca}) — indício a verificar.",
+                    "ressalva": "veredito objetivo; buscar o edital/ata para o parecer interpretativo completo"},
+                    None, grau_det)
         return {**base, "grau": "indeterminado", "dados_suficientes": False,
                 "resumo": "Dados insuficientes: o texto não é um edital de licitação nem uma ata de julgamento "
                           "(provável processo de execução/contrato ou tela do SEI) — nada a avaliar aqui.",
@@ -375,17 +448,30 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
     messages = [{"role": "system", "content": _SYS}, {"role": "user", "content": _montar_user(edital_txt, ata_txt, contexto)}]
     try:
         raw = await gerar(messages)
-    except Exception as e:  # noqa: BLE001 — LLM indisponível: honesto, não fabrica
+    except Exception as e:  # noqa: BLE001 — LLM indisponível: honesto, não fabrica. Mas o SINAL objetivo VALE.
+        if det_presenca:
+            return _com_fusao({**base, "dados_suficientes": True,
+                    "resumo": f"LLM indisponível ({str(e)[:50]}) — veredito pela camada determinística "
+                              f"(grau {det_presenca}): sinal objetivo achado; indício a verificar.",
+                    "ressalva": "veredito objetivo (LLM offline); indício a apurar, não acusação"},
+                    None, grau_det)
         return {**base, "grau": "indisponivel", "dados_suficientes": False,
-                "resumo": f"LLM indisponível ({str(e)[:60]}) — análise não realizada.",
-                "ressalva": "sem juízo (LLM offline)"}
+                "resumo": f"LLM indisponível ({str(e)[:60]}) e sem sinal objetivo — análise não realizada.",
+                "ressalva": "sem juízo (LLM offline); ausência de red flag objetivo ≠ regularidade"}
     dados = _parse_json(raw)
     if not isinstance(dados, dict):
+        if det_presenca:
+            return _com_fusao({**base, "dados_suficientes": True,
+                    "resumo": f"Resposta do LLM não-parseável — veredito pela camada determinística "
+                              f"(grau {det_presenca}); indício a verificar.",
+                    "ressalva": "veredito objetivo (LLM não-parseável); indício a apurar, não acusação"},
+                    None, grau_det)
         return {**base, "grau": "indisponivel", "dados_suficientes": False,
-                "resumo": "Resposta do LLM não-parseável — análise descartada (honesto).",
+                "resumo": "Resposta do LLM não-parseável e sem sinal objetivo — análise descartada (honesto).",
                 "ressalva": "sem juízo"}
     dados.setdefault("ressalva", "presunção de legitimidade; indício a apurar, não acusação")
-    return {**base, **dados}
+    # Fusão do grau do LLM com o determinístico: nenhum alarme silenciado + divergência sinalizada.
+    return _com_fusao({**base, **dados}, dados.get("grau"), grau_det)
 
 
 def _parse_json(raw: str):
@@ -450,10 +536,22 @@ def montar_pacote_claude(contratacao: dict, resultado: dict, trecho_doc: str = "
         "```",
         "",
         "🤖 *PARECER DO GEMINI:*",
-        f"*Grau:* {str(resultado.get('grau','?')).upper()} · dados_suficientes: {resultado.get('dados_suficientes')}",
+        f"*Grau CONCILIADO (objetivo+subjetivo):* {str(resultado.get('grau','?')).upper()} · "
+        f"dados_suficientes: {resultado.get('dados_suficientes')}",
         f"*Resumo:* {resultado.get('resumo','')}",
         f"*Raciocínio do Gemini:* {resultado.get('raciocinio','(não informado)')}",
     ]
+    # DIVERGÊNCIA entre a camada subjetiva (LLM) e a objetiva (determinística) — gatilho de análise
+    # crítica: quando discordam, o auditor precisa saber qual foi mais severa e por quê.
+    div = resultado.get("divergencia")
+    if div:
+        linhas += [
+            "",
+            f"⚠️ *DIVERGÊNCIA entre camadas* — LLM disse *{str(resultado.get('grau_llm','?')).upper()}*, "
+            f"determinístico *{str(resultado.get('grau_det','?')).upper()}*; "
+            f"prevaleceu a camada *{div.get('camada_mais_severa','?')}* (mais severa, não silenciar alarme).",
+            f"  {div.get('nota','')}",
+        ]
     if ex:
         linhas.append("*Exigências que o Gemini achou restritivas:*")
         for e in ex[:5]:

@@ -115,7 +115,11 @@ def test_wired_no_cerebro_sem_llm():
         return '{"grau":"amarelo","resumo":"x","dados_suficientes":true}'
     out2 = asyncio.run(DC.avaliar_direcionamento(_EDITAL, _ATA, gerar=_fake_ok))
     assert out2["sinais_deterministicos"]["grau_det"] == "vermelho"
-    assert out2["grau"] == "amarelo"  # caminho LLM preservado (aditivo, não quebra)
+    # FUSÃO (2026-07-24): o alarme objetivo FORTE+cascata (vermelho) NÃO é mais silenciado por um LLM que
+    # subestima (amarelo). O grau final concilia pelo MAIOR e sinaliza a divergência p/ o auditor revisar.
+    assert out2["grau"] == "vermelho"
+    assert out2["grau_llm"] == "amarelo"
+    assert out2["divergencia"]["camada_mais_severa"] == "objetivo"
 
 
 # ───────────────────── novas famílias (expansão 2026-07-16) ─────────────────────
