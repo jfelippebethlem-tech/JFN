@@ -65,3 +65,38 @@ def test_bytes_lixo_devolve_vazio():
 def test_pdf_nao_e_tratado_aqui():
     """PDF não é Office — devolve '' (o caminho de PDF/OCR cuida dele)."""
     assert texto_de_office(b"%PDF-1.7 ...") == ""
+
+
+def _tem_soffice():
+    import shutil
+    return shutil.which("soffice") is not None
+
+
+def _doc_antigo_bytes(paragrafos):
+    """Cria um .doc BINÁRIO antigo convertendo um .docx via libreoffice (o único jeito
+    de gerar .doc em teste — não há lib Python que escreva .doc)."""
+    import subprocess, tempfile, os
+    from pathlib import Path
+    docx = _docx_bytes(paragrafos)
+    with tempfile.TemporaryDirectory() as td:
+        src = Path(td) / "x.docx"
+        src.write_bytes(docx)
+        subprocess.run(["soffice", "--headless",
+                        f"-env:UserInstallation=file://{td}/prof",
+                        "--convert-to", "doc", "--outdir", td, str(src)],
+                       capture_output=True, timeout=120)
+        doc = Path(td) / "x.doc"
+        return doc.read_bytes() if doc.exists() else b""
+
+
+def test_doc_binario_antigo_extrai_com_libreoffice():
+    import pytest
+    if not _tem_soffice():
+        pytest.skip("soffice (libreoffice) não instalado")
+    body = _doc_antigo_bytes(["MINUTA DE RESOLUCAO ANTIGA",
+                              "Art. 1 Fica aprovada a contratacao pelo valor de 500 mil."])
+    assert body[:4] == b"\xd0\xcf\x11\xe0", "fixture deveria ser .doc OLE2"
+    from compliance_agent.sei.office_texto import texto_de_office
+    txt = texto_de_office(body)
+    assert "MINUTA DE RESOLUCAO" in txt
+    assert "500 mil" in txt

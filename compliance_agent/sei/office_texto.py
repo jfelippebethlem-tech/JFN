@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import logging
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +71,33 @@ def _do_docx(body: bytes) -> str:
     return "\n".join(partes)
 
 
+def _do_doc(body: bytes) -> str:
+    """.doc binário antigo (Word 97-2003) via LibreOffice headless → txt.
+
+    python-docx/xlrd não leem .doc antigo; o soffice converte. Perfil de usuário
+    ÚNICO por chamada (permite runs concorrentes na recaptura); timeout próprio.
+    """
+    import subprocess
+    import tempfile
+    from pathlib import Path
+    if not shutil.which("soffice"):
+        return ""
+    with tempfile.TemporaryDirectory() as td:
+        src = Path(td) / "in.doc"
+        src.write_bytes(body)
+        try:
+            subprocess.run(
+                ["soffice", "--headless", "--norestore",
+                 f"-env:UserInstallation=file://{td}/prof",
+                 "--convert-to", "txt:Text", "--outdir", td, str(src)],
+                capture_output=True, timeout=120, check=False)
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            logger.debug("office_texto: soffice falhou (%s)", str(exc)[:60])
+            return ""
+        out = Path(td) / "in.txt"
+        return out.read_text(encoding="utf-8", errors="ignore") if out.exists() else ""
+
+
 def texto_de_office(body: bytes, content_type: str = "") -> str:
     """Texto de um anexo Office; '' se não for Office suportado (nunca levanta)."""
     if not body:
@@ -85,8 +113,12 @@ def texto_de_office(body: bytes, content_type: str = "") -> str:
         else:
             tentativas = [_do_xlsx, _do_docx]
     elif body[:4] == _OLE2:
-        # ole2 = xls OU doc antigo. xlrd lê xls; doc não tem tool → '' após falhar.
-        tentativas = [_do_xls]
+        # ole2 = xls OU doc antigo. content-type desempata; senão tenta os dois.
+        # xlrd lê .xls; .doc antigo vai pro LibreOffice (_do_doc).
+        if "word" in ct or "msword" in ct:
+            tentativas = [_do_doc, _do_xls]
+        else:
+            tentativas = [_do_xls, _do_doc]
     else:
         return ""
     for fn in tentativas:
