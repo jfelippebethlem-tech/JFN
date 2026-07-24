@@ -19,11 +19,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import tempfile
 
 from compliance_agent import anexos_remotes as _ar
 
+logger = logging.getLogger(__name__)
 CATEGORIA = "analises"
 
 
@@ -71,14 +73,15 @@ def guardar_analise(numero_sei: str, veredito: dict, *, versao_hash: str, criado
             json.dump(pacote, f, ensure_ascii=False)
             tmp = f.name
         return subir(tmp, objeto)
-    except Exception:  # noqa: BLE001 — falha de I/O/serialização: degrada honesto
+    except (OSError, TypeError, ValueError) as e:  # I/O/serialização: degrada honesto
+        logger.debug("guardar_analise falhou (%s): %s", numero_sei, e)
         return None
     finally:
         if tmp and os.path.exists(tmp):
             try:
                 os.unlink(tmp)
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("não removeu tmp %s: %s", tmp, e)
 
 
 def ler_analise(loc: str, *, ler=None) -> dict | None:

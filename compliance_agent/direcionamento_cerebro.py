@@ -511,7 +511,8 @@ async def obter_edital_ata(texto: str, *, buscar_docs, contexto: dict | None = N
     refs = extrair_certames(texto or "")
     try:
         docs = await buscar_docs(refs, contexto or {}) or []
-    except Exception as e:  # noqa: BLE001 — busca falhou: honesto, reporta o erro, não inventa
+    except Exception as e:  # noqa: BLE001 — fetcher injetado pode falhar de qualquer forma: degrada honesto
+        logger.debug("obter_edital_ata: busca falhou (refs=%s): %s", refs, e)
         return {"obtido": False, "edital_txt": "", "ata_txt": "", "refs": refs, "erro": str(e)[:80],
                 "fontes": [], "n_docs": 0}
     ed_parts, at_parts, fontes = [], [], []
@@ -543,11 +544,9 @@ async def _buscar_docs_pncp(refs: dict, contexto: dict) -> list[dict]:
     uf = (contexto or {}).get("uf", "RJ")
     orgao = (contexto or {}).get("orgao_cnpj") or (contexto or {}).get("cnpj_orgao")
     hoje = date.today()
-    try:
-        cs = await pncp.buscar_contratacoes(uf=uf, data_ini=hoje - timedelta(days=1460), data_fim=hoje,
-                                            orgao_cnpj=orgao, max_paginas=2)
-    except Exception:  # noqa: BLE001
-        return []
+    # buscar_contratacoes degrada internamente (retorna [] em erro de rede) — sem except redundante aqui.
+    cs = await pncp.buscar_contratacoes(uf=uf, data_ini=hoje - timedelta(days=1460), data_fim=hoje,
+                                        orgao_cnpj=orgao, max_paginas=2)
     alvos = {re.sub(r"\D", "", p) for p in pregoes if p}
     for c in cs or []:
         num = re.sub(r"\D", "", str(c.get("numero") or c.get("objeto") or ""))

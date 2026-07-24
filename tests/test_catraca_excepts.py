@@ -64,7 +64,14 @@ REPO = Path(__file__).resolve().parent.parent
 # design com logger.warning (a seção nunca derruba o relatório inteiro); o commit 8509159f
 # esqueceu de auditar aqui. Os 2 genéricos novos do /fornecedor (nome + sinal de emendas)
 # foram para exceção ESPECÍFICA — não contam.
-BASELINE = 1519
+# 2026-07-24: +1 (1519→1520) — 4º estágio-coletor em pcrj/harvester.varrer (contratação D.O.):
+# mesmo padrão "coletor não derruba a orquestração" dos 3 irmãos (esfera/D.O./PPP), que já usam
+# except Exception. sweep_contratacao já trata rede por termo; este catch é o backstop do estágio.
+# 2026-07-24: +1 (1520→1521) — obter_edital_ata (direcionamento_cerebro): fronteira do fetcher de
+# edital+ata INJETADO (prod=PNCP; teste=fake). O fetcher pode falhar de qualquer forma; o catch degrada
+# honesto (obtido=False + erro no retorno + logger.debug) para não derrubar a análise. buscar_contratacoes
+# já degrada interna, então _buscar_docs_pncp NÃO precisou de catch (redundância removida).
+BASELINE = 1521
 
 
 def _contar() -> int:
