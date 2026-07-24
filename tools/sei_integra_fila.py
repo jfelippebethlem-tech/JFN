@@ -113,8 +113,33 @@ def _arquivado_ok(dir_arq: Path) -> bool:
     if len(entradas) != len(docs):
         return True                     # manifesto fora do formato: não julgo o teor
     if any((d.get("chars") or 0) >= 40 for d in entradas):
-        return True                     # tem teor de verdade em algum documento
+        # tem teor — MAS re-captura se o cache tem docs FALHOS ainda não declarados no
+        # arquivo (falharam antes de um fix e o arquivo não os marca não_capturado). Sem
+        # isto, processo com 1 minuta falha ficava PRESO (passava por 'pronto') e a minuta
+        # nunca era re-capturada. Auto-limitante: pós-re-captura os fixáveis viram ok=True
+        # e o resto vira declarado → contagens batem → não repete (12 casos em 2026-07-23).
+        if _tem_falha_nao_declarada(dir_arq, m):
+            return False
+        return True
     return (m.get("gerado_em") or "") >= CORTE_ESCRITOR
+
+
+def _tem_falha_nao_declarada(dir_arq: Path, arq_manifest: dict) -> bool:
+    """O cache tem mais docs falhos (ok=False) do que o arquivo declara como
+    não_capturado? Então há falha não contabilizada → vale re-capturar (fix pode tê-la
+    tornado capturável). Auto-limitante: após re-capturar, fixáveis→ok, resto→declarado."""
+    cache_man = dir_arq.parent.parent / "sei_cache" / f"integra_{dir_arq.name}" / "manifest.json"
+    if not cache_man.exists():
+        return False
+    try:
+        c = json.loads(cache_man.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return False
+    if not isinstance(c, dict):
+        return False                    # cache formato antigo (lista) — não julgo
+    falhas_cache = sum(1 for d in (c.get("docs") or [])
+                       if isinstance(d, dict) and not d.get("ok"))
+    return falhas_cache > (arq_manifest.get("nao_capturados") or 0)
 
 
 def _valor_por_processo() -> dict:

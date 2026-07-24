@@ -62,3 +62,34 @@ def test_manifesto_fora_do_formato_nao_derruba(tmp_path):
     (tmp_path / "texto" / "001_despacho.txt").write_text("conteudo real", encoding="utf-8")
     (tmp_path / "manifest.json").write_text('{"docs": [1]}', encoding="utf-8")
     assert _arquivado_ok(tmp_path) is True
+
+
+def _monta_cache_e_arquivo(tmp_path, *, chars_ok, falhas_cache, nao_capturados_arq):
+    """Monta um par cache/arquivo: arquivo tem texto; cache tem N docs falhos (ok=False);
+    o arquivo declara M como nao_capturados."""
+    tag = "080001_000749_2024"
+    cache = tmp_path / "sei_cache" / f"integra_{tag}"
+    arq = tmp_path / "sei_arquivo" / tag
+    (cache).mkdir(parents=True)
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "000.txt").write_text("teor real do despacho", encoding="utf-8")
+    cdocs = [{"i": 0, "titulo": "Despacho", "ok": True}]
+    cdocs += [{"i": 10 + k, "titulo": "Anexo minuta", "ok": False} for k in range(falhas_cache)]
+    (cache / "manifest.json").write_text(json.dumps({"docs": cdocs, "completo": True}),
+                                         encoding="utf-8")
+    (arq / "manifest.json").write_text(json.dumps({
+        "docs": [{"i": 0, "titulo": "Despacho", "chars": chars_ok}],
+        "nao_capturados": nao_capturados_arq}), encoding="utf-8")
+    return arq
+
+
+def test_recaptura_processo_com_falha_nao_declarada(tmp_path):
+    """Processo com texto MAS docs falhos no cache não declarados no arquivo → re-captura."""
+    arq = _monta_cache_e_arquivo(tmp_path, chars_ok=500, falhas_cache=3, nao_capturados_arq=0)
+    assert _arquivado_ok(arq) is False, "3 falhas no cache, 0 declaradas → tem de re-capturar"
+
+
+def test_nao_recaptura_quando_falhas_ja_declaradas(tmp_path):
+    """Pós-re-captura: as falhas restantes já estão declaradas → não repete (auto-limitante)."""
+    arq = _monta_cache_e_arquivo(tmp_path, chars_ok=500, falhas_cache=2, nao_capturados_arq=2)
+    assert _arquivado_ok(arq) is True, "cache falhas == declaradas → done, não re-captura eterno"
