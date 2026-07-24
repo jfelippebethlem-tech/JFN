@@ -204,6 +204,36 @@ raise SystemExit(0)
 '''
 
 
+_RUN_USER = "/run/user"
+
+
+def _dbus_bus():
+    """Socket D-Bus do usuário se existir. `systemd-run --user` PRECISA dele; sem ele (cron
+    sem sessão) falha com 'Failed to connect to bus: No medium found' e o render morre."""
+    bus = os.path.join(_RUN_USER, str(os.getuid()), "bus")
+    return bus if os.path.exists(bus) else None
+
+
+def _cmd_env_render(lat: float, lon: float, heading: float, out: Path):
+    """(cmd, env) do render. COM D-Bus: systemd-run --user (cap de RAM do cgroup) + o env do
+    bus explícito (o cron não herda XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS → 'No medium found';
+    25.478 renders falharam assim). SEM D-Bus: render direto — sem cap de cgroup, mas o gate de
+    mem/load + timeout ainda protegem a VM — melhor render sem cap do que 0 fotos."""
+    env = dict(os.environ)
+    py = [sys.executable, "-c", _RENDER_SRC, str(lat), str(lon), str(heading), str(out)]
+    bus = _dbus_bus()
+    if bus:
+        env["XDG_RUNTIME_DIR"] = os.path.join(_RUN_USER, str(os.getuid()))
+        env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={bus}"
+        cmd = ["timeout", str(_RENDER_TIMEOUT_S),
+               "systemd-run", "--user", "--scope", "--quiet",
+               "-p", f"MemoryMax={_MEM_MAX}", "-p", "MemorySwapMax=0",
+               "nice", f"-n{_NICE}"] + py
+    else:
+        cmd = ["timeout", str(_RENDER_TIMEOUT_S), "nice", f"-n{_NICE}"] + py
+    return cmd, env
+
+
 def _render_protegido(lat: float, lon: float, heading: float, out: Path,
                       mem_min: int, load_max: float) -> dict:
     """Gate (mem/load) + render num SUBPROCESSO com cap de RAM REAL do cgroup (systemd-run) + timeout.
@@ -212,14 +242,10 @@ def _render_protegido(lat: float, lon: float, heading: float, out: Path,
     if not _gate(mem_min, load_max):
         return {"ok": False, "skip": True, "antes": antes, "depois": _snap(),
                 "motivo": f"GATE não liberou (mem≥{mem_min}MB/load≤{load_max}); adia (resumível)"}
-    cmd = ["timeout", str(_RENDER_TIMEOUT_S),
-           "systemd-run", "--user", "--scope", "--quiet",
-           "-p", f"MemoryMax={_MEM_MAX}", "-p", "MemorySwapMax=0",
-           "nice", f"-n{_NICE}",
-           sys.executable, "-c", _RENDER_SRC, str(lat), str(lon), str(heading), str(out)]
+    cmd, env = _cmd_env_render(lat, lon, heading, out)
     rc, err = None, ""
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_RENDER_TIMEOUT_S + 12)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=_RENDER_TIMEOUT_S + 12, env=env)
         rc, err = proc.returncode, (proc.stderr or "")[-400:]
     except subprocess.TimeoutExpired:
         rc, err = 124, "subprocess.run estourou (teardown lento)"
