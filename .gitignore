@@ -175,3 +175,9 @@ data/cedae_atos/
 .firecrawl/
 data/folha_estado_progresso.json
 data/folha_estado.lock
+
+# Runtime/gerados — nunca versionar (siafe_profile=perfil Chromium 21MB; cache; corpus 16MB gerado
+# do sei_arquivo). Causavam OOM no GitNexus (analyze varre o disco; detect_changes diffa o corpus).
+data/siafe_profile/
+data/cache/
+data/corpus_bombeiros_integra.txt
