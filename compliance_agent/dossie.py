@@ -251,6 +251,9 @@ async def montar_ctx_completo(alvo: str) -> dict:
         from compliance_agent.correlacao_sei import processos_de_fornecedor
         procs = [p.get("numero_sei") for p in processos_de_fornecedor(cnpj, limite=12) if p.get("numero_sei")]
         if procs:
+            # execução/controle prévio ANTES da árvore: o leitor precisa do veredito (o que foi pago × o
+            # que foi comprovado, condicionantes do parecer) antes do despejo documental que o sustenta.
+            novas.append(_cap.secao_execucao_controle_previo(procs))
             novas.append(_cap.secao_sei_arvore(procs))
     except Exception as exc:  # noqa: BLE001 — capítulo SEI é bônus; nunca derruba o dossiê
         logger.debug("capítulo SEI do dossiê completo indisponível p/ %s: %s", cnpj, exc)
