@@ -491,6 +491,106 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
     return _com_fusao({**base, **dados}, dados.get("grau"), grau_det)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# OBTENÇÃO do edital+ata — "se vira pra conseguir" (dono 2026-07-24)
+# Direcionamento EXIGE edital e ata. Um processo de execução/pagamento não os traz, mas CITA o certame-
+# lastro (Pregão/ARP). Em vez de fingir veredito sobre a peça errada, o sistema VAI BUSCAR o edital+ata do
+# certame e reavalia sobre os documentos reais. Honesto: só reporta lacuna quando a busca genuinamente falha.
+# ──────────────────────────────────────────────────────────────────────────────
+# tipos (classificador_doc) que compõem a ATA de julgamento (onde mora a cascata) vs. o material do EDITAL.
+_TIPOS_ATA = {"ata_rp", "mapa_lances", "homologacao"}
+
+
+async def obter_edital_ata(texto: str, *, buscar_docs, contexto: dict | None = None) -> dict:
+    """Obtém o edital+ata do certame-lastro citado no texto. `buscar_docs`: async(refs, contexto) -> lista
+    de docs [{titulo,tipo,texto}] (prod = `_buscar_docs_pncp`; fake no teste). Classifica cada doc e separa
+    material de EDITAL de ATA de julgamento. Retorna {obtido, edital_txt, ata_txt, refs, fontes, n_docs}.
+    Honesto: obtido=False quando a busca nada retorna (não fabrica)."""
+    from compliance_agent.direcionamento_sinais import extrair_certames
+    from compliance_agent.sei.classificador_doc import classificar_doc
+    refs = extrair_certames(texto or "")
+    try:
+        docs = await buscar_docs(refs, contexto or {}) or []
+    except Exception as e:  # noqa: BLE001 — busca falhou: honesto, reporta o erro, não inventa
+        return {"obtido": False, "edital_txt": "", "ata_txt": "", "refs": refs, "erro": str(e)[:80],
+                "fontes": [], "n_docs": 0}
+    ed_parts, at_parts, fontes = [], [], []
+    for d in docs:
+        txt = (d.get("texto") or "").strip()
+        if not txt:
+            continue
+        tipo = classificar_doc(d.get("titulo") or d.get("tipo") or "", txt)
+        fontes.append({"titulo": d.get("titulo"), "tipo_classificado": tipo})
+        (at_parts if tipo in _TIPOS_ATA else ed_parts).append(txt)
+    edital_txt, ata_txt = "\n\n".join(ed_parts), "\n\n".join(at_parts)
+    return {"obtido": bool(edital_txt.strip() or ata_txt.strip()), "edital_txt": edital_txt,
+            "ata_txt": ata_txt, "refs": refs, "fontes": fontes, "n_docs": len(fontes)}
+
+
+async def _buscar_docs_pncp(refs: dict, contexto: dict) -> list[dict]:
+    """Fetcher REAL (default): resolve o certame no PNCP e baixa os documentos (edital/TR/ata). Best-effort e
+    honesto (retorna [] quando não acha). Usa `id_pncp` do contexto se houver; senão busca por órgão/UF e
+    casa pelo nº do pregão referenciado. Sem login (API pública)."""
+    from compliance_agent.collectors import pncp
+    id_pncp = (contexto or {}).get("id_pncp")
+    if id_pncp:
+        return await pncp.baixar_documentos(id_pncp, max_arquivos=6)
+    # sem id direto: busca contratações do órgão/UF e casa pelo nº do pregão citado
+    pregoes = (refs or {}).get("pregoes") or []
+    if not pregoes:
+        return []
+    from datetime import date, timedelta
+    uf = (contexto or {}).get("uf", "RJ")
+    orgao = (contexto or {}).get("orgao_cnpj") or (contexto or {}).get("cnpj_orgao")
+    hoje = date.today()
+    try:
+        cs = await pncp.buscar_contratacoes(uf=uf, data_ini=hoje - timedelta(days=1460), data_fim=hoje,
+                                            orgao_cnpj=orgao, max_paginas=2)
+    except Exception:  # noqa: BLE001
+        return []
+    alvos = {re.sub(r"\D", "", p) for p in pregoes if p}
+    for c in cs or []:
+        num = re.sub(r"\D", "", str(c.get("numero") or c.get("objeto") or ""))
+        if any(a and a in num for a in alvos) and c.get("id_pncp"):
+            docs = await pncp.baixar_documentos(c["id_pncp"], max_arquivos=6)
+            if docs:
+                return docs
+    return []
+
+
+async def avaliar_direcionamento_resolvido(texto: str = "", *, contexto: dict | None = None, gerar=None,
+                                           buscar_docs=None) -> dict:
+    """Avalia direcionamento e, se o texto NÃO for edital/ata, VAI BUSCAR o edital+ata do certame-lastro e
+    reavalia sobre os documentos reais — em vez de dar um veredito sobre a peça errada. `buscar_docs`
+    injetável (default = PNCP). Só reporta lacuna ('edital_ata_nao_obtido') quando a obtenção falha de
+    verdade, dizendo o que tentou. Honesto: sem edital+ata não se afirma direcionamento."""
+    from compliance_agent.direcionamento_sinais import extrair_certames
+    sig = presinais(texto)
+    refs = extrair_certames(texto or "")
+    # gatilho de busca: NÃO temos a ata (sem cascata visível) MAS o texto CITA um certame → obter o real.
+    precisa_buscar = (not sig["tem_ata"]) and refs.get("n_refs", 0) >= 1
+    if not precisa_buscar:
+        return await avaliar_direcionamento(edital_txt=texto, contexto=contexto, gerar=gerar)
+    fetch = buscar_docs or _buscar_docs_pncp
+    obt = await obter_edital_ata(texto, buscar_docs=fetch, contexto=contexto)
+    if obt.get("obtido"):
+        res2 = await avaliar_direcionamento(edital_txt=obt["edital_txt"], ata_txt=obt["ata_txt"],
+                                            contexto=contexto, gerar=gerar)
+        res2["obtencao"] = {k: obt.get(k) for k in ("refs", "fontes", "n_docs")}
+        res2["_nota_obtencao"] = ("edital/ata OBTIDOS do certame-lastro citado no processo e analisados "
+                                  "sobre os documentos reais")
+        return res2
+    # honesto: tentou obter e não conseguiu — reporta a lacuna, não maquia (mantém o scan do que existe)
+    base_res = await avaliar_direcionamento(edital_txt=texto, contexto=contexto, gerar=gerar)
+    return {**base_res, "grau": "edital_ata_nao_obtido", "dados_suficientes": False,
+            "obtencao": {"refs": refs, "erro": obt.get("erro"), "n_docs": obt.get("n_docs", 0)},
+            "resumo": ("Falta a ATA de julgamento (a cascata) e o veredito de direcionamento a exige. Tentei "
+                       f"obter o edital+ata do certame-lastro citado (refs: {refs}), mas a busca não retornou "
+                       "os documentos. Sem eles NÃO há veredito honesto — coletar o processo licitatório "
+                       "(PNCP/SEI) e reavaliar."),
+            "ressalva": "honesto: sem edital+ata não se afirma nem se descarta direcionamento (a peça é indispensável)"}
+
+
 def _parse_json(raw: str):
     """Extrai o 1º objeto JSON do texto do LLM (tolera cercas/lixo ao redor)."""
     if not raw:

@@ -537,8 +537,9 @@ def analisar_direcionamento_det(texto: str) -> dict:
 # (adesão sem vantajosidade comprovada; ARP de outro órgão; item trocado por "mesma marca" pós-registro).
 # A maior parte do gasto do FUNESBOM passa por adesão a ARP/PE: o despacho/publicação cita o PE/ARP-lastro,
 # não o edital. Mapear o certame permite PRIORIZAR qual edital/ata coletar para a perícia de direcionamento.
-_RE_ARP = re.compile(r"Ata de Registro de Pre[çc]os\s*n[°ºo]*\s*([\d./-]+)", re.I)
-_RE_PE = re.compile(r"\b(?:PE|Preg[ãa]o Eletr[ôo]nico)\s*n?[°ºo]*\s*([\d./-]+)", re.I)
+# a referência deve COMEÇAR com dígito — senão o "." de "Eletrônico." vira ref vazia (falso n_refs).
+_RE_ARP = re.compile(r"Ata de Registro de Pre[çc]os\s*n[°ºo]*\s*(\d[\d./-]*)", re.I)
+_RE_PE = re.compile(r"\b(?:PE|Preg[ãa]o Eletr[ôo]nico)\s*n?[°ºo]*\s*(\d[\d./-]*)", re.I)
 _RE_ADESAO = re.compile(r"ades[ãa]o", re.I)
 
 
