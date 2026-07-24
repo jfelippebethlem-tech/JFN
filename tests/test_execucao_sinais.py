@@ -81,6 +81,50 @@ def test_honesto_ausencia_nao_e_acusacao():
     assert "≠" in r["ressalva"] or "indispon" in r["ressalva"].lower() or "fragil" in r["resumo"].lower()
 
 
+# ---------------------------------------------------------------- §2: OB ≠ empenho (calibração 1.4)
+
+def test_empenho_sem_ob_nao_e_pagamento_efetivo():
+    # SÓ empenho (compromisso, cancelável) e NENHUMA prova: fragilidade REAL, mas não "pagou sem prova"
+    txt = ("Nota de Empenho nº 2024NE000123 emitida em favor do fornecedor no valor de R$ 100.000,00. "
+           "Despacho de encaminhamento.")
+    r = ES.analisar_execucao_det(txt)
+    assert r["tem_empenho"] is True and r["tem_ob"] is False
+    assert r["estagio_despesa"] == "empenho"
+    assert r["pagamento_efetivo"] is False
+    assert r["grau"] == "amarelo"          # teto: sem OB não houve pagamento (§2)
+    assert "empenho" in r["resumo"].lower()
+
+
+def test_ob_sem_nenhuma_prova_vermelho_pagamento_efetivo():
+    txt = ("Ordem Bancária emitida para pagamento do valor de R$ 100.000,00. Despacho de encaminhamento.")
+    r = ES.analisar_execucao_det(txt)
+    assert r["tem_ob"] is True and r["pagamento_efetivo"] is True
+    assert r["estagio_despesa"] == "ob"
+    assert r["grau"] == "vermelho"
+
+
+def test_codigo_ob_do_siafe_conta_como_pagamento_efetivo():
+    txt = "Documento 2025OB800123 processado. Despacho de encaminhamento ao setor."
+    r = ES.analisar_execucao_det(txt)
+    assert r["tem_ob"] is True and r["estagio_despesa"] == "ob"
+
+
+def test_liquidacao_sem_ob_nao_e_pagamento_efetivo():
+    txt = "Nota de Liquidação 2025NL000777 da despesa. Sem mais documentos."
+    r = ES.analisar_execucao_det(txt)
+    assert r["tem_liquidacao"] is True and r["tem_ob"] is False
+    assert r["estagio_despesa"] == "liquidacao" and r["pagamento_efetivo"] is False
+    assert r["grau"] == "amarelo"
+
+
+def test_nf_cancelada_e_vermelha_mesmo_sem_ob():
+    # vício do documento independe do estágio da despesa (o teto do §2 vale só p/ ausência de prova)
+    txt = "Nota de Empenho nº 2024NE000123. A nota fiscal foi cancelada após a emissão."
+    r = ES.analisar_execucao_det(txt)
+    assert r["grau"] == "vermelho"
+    assert any(s["tipo"] == "nota_fiscal_cancelada" for s in r["sinais"])
+
+
 def test_grau_nunca_indeterminado_nem_indisponivel():
     for txt in ("", "qualquer coisa", _pgto(), _pgto("nota fiscal e medição e atesto")):
         assert ES.analisar_execucao_det(txt)["grau"] not in ("indeterminado", "indisponivel")

@@ -33,6 +33,16 @@ _PAGAMENTO = (
     "programacao de desembolso", " ob ", "2024ne", "2025ne", "2026ne",
 )
 
+# ESTÁGIO da despesa (§2 REGRA ABSOLUTA: Empenho ≠ Liquidação ≠ OB — só a Ordem Bancária é "pago").
+# Empenho = compromisso (pode ser cancelado); liquidação = dívida reconhecida; OB = dinheiro que SAIU.
+_OB = ("ordem bancaria", " ob ", "(ob)", "ordem bancária")
+_EMPENHO = ("nota de empenho", "empenho", "empenhado", "empenhada")
+_LIQUIDACAO = ("nota de liquidacao", "liquidacao", "liquidado", "liquidada")
+# códigos do SIAFE: 2025OB800123 / 2024NE000123 / 2025NL000777
+_RE_OB = re.compile(r"\b20\d{2}ob\d+")
+_RE_NE = re.compile(r"\b20\d{2}ne\d+")
+_RE_NL = re.compile(r"\b20\d{2}nl\d+")
+
 # Provas de ENTREGA/EXECUÇÃO. As 3 ESSENCIAIS gatilham o grau; 'relatorio_fotografico' LASTREIA o atesto
 # (dono: o atesto não basta existir — precisa de foto por trás e fazer sentido).
 _PROVAS: dict[str, tuple[str, ...]] = {
@@ -68,21 +78,58 @@ def _primeiro_trecho(texto: str, low: str, marcadores: tuple[str, ...], janela: 
     return ""
 
 
+def estagio_despesa(texto: str) -> dict:
+    """Em que ESTÁGIO a despesa está no texto (§2). Retorna {tem_ob, tem_liquidacao, tem_empenho, estagio}.
+    `estagio`: 'ob' (pagou de verdade) > 'liquidacao' > 'empenho' > 'generico' (fala em pagamento sem
+    identificar o estágio) > 'nenhum'. HONESTO: é o que o TEXTO mostra — a fonte de verdade do pagamento
+    continua sendo a OB do SIAFE, não o texto do processo."""
+    low = _norm(texto or "")
+    tem_ob = any(k in low for k in _OB) or bool(_RE_OB.search(low))
+    tem_nl = any(k in low for k in _LIQUIDACAO) or bool(_RE_NL.search(low))
+    tem_ne = any(k in low for k in _EMPENHO) or bool(_RE_NE.search(low))
+    if tem_ob:
+        est = "ob"
+    elif tem_nl:
+        est = "liquidacao"
+    elif tem_ne:
+        est = "empenho"
+    elif any(k in low for k in _PAGAMENTO):
+        est = "generico"
+    else:
+        est = "nenhum"
+    return {"tem_ob": tem_ob, "tem_liquidacao": tem_nl, "tem_empenho": tem_ne, "estagio": est}
+
+
 def sinais_execucao(texto: str) -> dict:
     """Presença de PAGAMENTO e das PROVAS de entrega no texto. Determinístico.
-    Retorna {tem_pagamento, provas_presentes:[...], faltantes:[...], faltam_essenciais:[...], trecho_pagamento}."""
+    Retorna {tem_pagamento, estagio/tem_ob/…, provas_presentes:[...], faltantes:[...], faltam_essenciais:[...],
+    trecho_pagamento}."""
     low = _norm(texto or "")
     tem_pag = any(k in low for k in _PAGAMENTO)
+    est = estagio_despesa(texto)
     presentes = [k for k, kws in _PROVAS.items() if any(w in low for w in kws)]
     faltantes = [k for k in _PROVAS if k not in presentes]
     faltam_ess = [k for k in _ESSENCIAIS if k not in presentes]
     return {
-        "tem_pagamento": tem_pag,
+        "tem_pagamento": tem_pag or est["estagio"] != "nenhum",
+        **{k: est[k] for k in ("tem_ob", "tem_liquidacao", "tem_empenho")},
+        "estagio_despesa": est["estagio"],
+        "pagamento_efetivo": est["tem_ob"],   # §2: só a Ordem Bancária é "pago"
         "provas_presentes": presentes,
         "faltantes": faltantes,
         "faltam_essenciais": faltam_ess,
-        "trecho_pagamento": _primeiro_trecho(texto or "", low, _PAGAMENTO) if tem_pag else "",
+        "trecho_pagamento": _trecho_pagamento(texto or "", low, tem_pag, est["estagio"]),
     }
+
+
+def _trecho_pagamento(texto: str, low: str, tem_pag: bool, estagio: str) -> str:
+    """Trecho literal que sustenta o contexto de despesa — pelas palavras OU pelo código do SIAFE (2025OB…)."""
+    trecho = _primeiro_trecho(texto, low, _PAGAMENTO) if tem_pag else ""
+    if not trecho and estagio != "nenhum":
+        m = _RE_OB.search(low) or _RE_NL.search(low) or _RE_NE.search(low)
+        if m:
+            trecho = _primeiro_trecho(texto, low, (m.group(0),))
+    return trecho
 
 
 def analisar_execucao_det(texto: str) -> dict:
@@ -92,10 +139,17 @@ def analisar_execucao_det(texto: str) -> dict:
     amarelo (falta 1-2 essenciais) · vermelho (falta as 3 — pagamento sem NENHUMA prova de entrega).
     HONESTO: cada achado cita o trecho do pagamento; ausência = FRAGILIDADE a verificar (captura incompleta
     ou execução não comprovada), não acusação.
+
+    §2 (OB ≠ empenho): o vermelho da AUSÊNCIA de prova pressupõe que o dinheiro SAIU — i.e., Ordem Bancária.
+    Sem OB no texto (empenho/liquidação apenas, ou menção genérica a pagamento) o grau dessa família tem TETO
+    amarelo: empenho é compromisso e pode ser cancelado; não se acusa "pagou sem comprovar" o que não foi pago.
+    O teto NÃO se aplica a vício do próprio documento (NF cancelada), que independe do estágio da despesa.
     """
     sig = sinais_execucao(texto)
     if not sig["tem_pagamento"]:
         return {"grau": "nao_aplicavel", "faltantes": [], "sinais": [], "faltam_essenciais": [],
+                "tem_ob": False, "tem_liquidacao": False, "tem_empenho": False,
+                "estagio_despesa": "nenhum", "pagamento_efetivo": False,
                 "resumo": "Não é um processo de pagamento/execução (sem OB/empenho/liquidação) — "
                           "a comprovação de execução não se avalia sobre esta peça.",
                 "ressalva": "veredito resolvido: fora do escopo de execução; presunção de legitimidade",
@@ -113,11 +167,17 @@ def analisar_execucao_det(texto: str) -> dict:
             grau = novo
 
     # 1) provas essenciais ausentes (sensível: dispara na ausência; honesto: fragilidade, não prova)
+    efetivo = sig["pagamento_efetivo"]          # §2: só a OB é "pago"
+    est = sig["estagio_despesa"]
+    _DESP = {"ob": "Ordem Bancária (pagamento efetivo)", "liquidacao": "liquidação (despesa reconhecida, "
+             "ainda NÃO paga)", "empenho": "empenho (compromisso, ainda NÃO pago e cancelável)",
+             "generico": "menção a pagamento sem identificar o estágio (empenho/liquidação/OB)"}
     for k in faltam_ess:
         sinais.append({"tipo": f"falta_{k}", "trecho": trecho,
-                       "observacao": f"Há pagamento, mas não consta {_NOME[k]} no processo lido — fragilidade a verificar."})
+                       "observacao": f"Há {_DESP.get(est, 'despesa')}, mas não consta {_NOME[k]} no processo "
+                                     "lido — fragilidade a verificar."})
     if len(faltam_ess) == 3:
-        _bump("vermelho")
+        _bump("vermelho" if efetivo else "amarelo")   # §2: sem OB não houve pagamento — teto amarelo
     elif faltam_ess:
         _bump("amarelo")
 
@@ -146,12 +206,19 @@ def analisar_execucao_det(texto: str) -> dict:
                   "camada interpretativa/verificação (a fazer).")
     else:
         pend = [_NOME[k] for k in faltam_ess] + (["relatório fotográfico do atesto"] if atesto_seco else [])
-        resumo = ("Fragilidade a verificar em pagamento: " + ("; ".join(s["observacao"] for s in sinais[:3]))
+        resumo = ("Fragilidade a verificar em despesa no estágio "
+                  f"'{est}' — {_DESP.get(est, 'estágio não identificado')}: "
+                  + ("; ".join(s["observacao"] for s in sinais[:3]))
                   + " INDISPONÍVEL ≠ irregular (pode ser captura incompleta).")
+        if not efetivo and len(faltam_ess) == 3:
+            resumo += (" §2: sem Ordem Bancária no texto, o dinheiro ainda NÃO saiu (empenho ≠ pagamento) — "
+                       "grau limitado a amarelo; confirmar a OB no SIAFE antes de tratar como despesa paga.")
         if pend:
             resumo += " Pendências: " + ", ".join(pend) + "."
     return {"grau": grau, "faltantes": sig["faltantes"], "faltam_essenciais": faltam_ess,
             "provas_presentes": presentes, "atesto_sem_foto": atesto_seco, "sinais": sinais, "resumo": resumo,
+            "tem_ob": sig["tem_ob"], "tem_liquidacao": sig["tem_liquidacao"], "tem_empenho": sig["tem_empenho"],
+            "estagio_despesa": est, "pagamento_efetivo": efetivo,
             # o que a camada interpretativa (LLM) e a verificação live precisam checar — dono 2026-07-24
             "a_verificar": ["atesto FAZ SENTIDO? (coerência com medição/objeto)",
                             "NF autorizada/cancelada/contingência na SEFAZ (chave de acesso)",
