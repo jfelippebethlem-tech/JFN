@@ -126,6 +126,35 @@ _RESSALVA = ("indício a apurar, não acusação; INDISPONÍVEL ≠ irregular; a
              "presunção de legitimidade")
 
 
+def _triar_e_hashear(caminho) -> int | None:
+    """Filtro + hash em UMA passada. Decodificar a imagem é o custo dominante: manter `informativa()` e
+    `dhash()` separados fazia TRÊS decodificações por arquivo, e o sweep das 5,5 mil fotos passava de dez
+    minutos. Devolve o dHash quando a imagem serve como registro de execução; None quando não serve."""
+    try:
+        from PIL import Image, ImageStat
+        with Image.open(caminho) as im:
+            if min(im.size) < LADO_MINIMO:
+                return None
+            cinza = im.convert("L")
+            st = ImageStat.Stat(cinza)
+            if st.stddev[0] < DESVIO_MINIMO:
+                return None                        # branco/preto/fundo liso
+            if (st.mean[0] > BRILHO_DOCUMENTO
+                    and ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1] < SATURACAO_DOCUMENTO):
+                return None                        # página de documento escaneada, não fotografia
+            g = cinza.resize((_LADO, 8))
+            px = list(g.get_flattened_data() if hasattr(g, "get_flattened_data") else g.getdata())
+    except Exception as e:  # noqa: BLE001 — ilegível/corrompida: fora do índice (não acusa)
+        logger.debug("triagem de imagem falhou (%s): %s", caminho, e)
+        return None
+    h = 0
+    for linha in range(8):
+        base = linha * _LADO
+        for col in range(8):
+            h = (h << 1) | int(px[base + col] > px[base + col + 1])
+    return h
+
+
 def indexar(dirs_processos) -> tuple[dict, int]:
     """({dhash: [{processo, arquivo}]}, n_descartadas) — só imagens INFORMATIVAS entram no índice."""
     idx: dict[int, list[dict]] = {}
@@ -133,10 +162,7 @@ def indexar(dirs_processos) -> tuple[dict, int]:
     for d in dirs_processos or []:
         d = Path(d)
         for f in _fotos_do_processo(d):
-            if not informativa(f):
-                descartadas += 1
-                continue
-            h = dhash(f)
+            h = _triar_e_hashear(f)
             if h is None:
                 descartadas += 1
                 continue
