@@ -93,3 +93,28 @@ def test_nao_recaptura_quando_falhas_ja_declaradas(tmp_path):
     """Pós-re-captura: as falhas restantes já estão declaradas → não repete (auto-limitante)."""
     arq = _monta_cache_e_arquivo(tmp_path, chars_ok=500, falhas_cache=2, nao_capturados_arq=2)
     assert _arquivado_ok(arq) is True, "cache falhas == declaradas → done, não re-captura eterno"
+
+
+def test_recaptura_arquivo_incompleto_docs_menos_que_arvore(tmp_path):
+    """Arquivo com MENOS docs que total_arvore = captura parcial (timeout) → re-captura.
+    Caso real: 260007/004617 = 215 de 646 docs, 431 nunca capturados, mas _arquivado_ok=True."""
+    tag = "260007_004617_2024"
+    arq = tmp_path / "sei_arquivo" / tag
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "000.txt").write_text("teor real", encoding="utf-8")
+    (arq / "manifest.json").write_text(json.dumps({
+        "docs": [{"i": i, "titulo": f"doc{i}", "chars": 500} for i in range(215)],
+        "total_arvore": 646}), encoding="utf-8")
+    assert _arquivado_ok(arq) is False, "215 de 646 docs = incompleto → tem de re-capturar"
+
+
+def test_nao_recaptura_arquivo_completo(tmp_path):
+    """docs == total_arvore = capturou tudo (ou declarou) → não re-captura."""
+    tag = "080001_000001_2025"
+    arq = tmp_path / "sei_arquivo" / tag
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "000.txt").write_text("teor", encoding="utf-8")
+    (arq / "manifest.json").write_text(json.dumps({
+        "docs": [{"i": i, "titulo": f"d{i}", "chars": 500} for i in range(40)],
+        "total_arvore": 40, "nao_capturados": 0}), encoding="utf-8")
+    assert _arquivado_ok(arq) is True, "40 de 40 = completo → não re-captura"

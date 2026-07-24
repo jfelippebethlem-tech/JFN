@@ -135,3 +135,29 @@ def test_pdf_em_branco_marca_sem_conteudo(tmp_path):
     assert m["sem_conteudo"] == 1, "só o documento em branco conta"
     assert m["docs"][0].get("sem_conteudo") is True
     assert not m["docs"][1].get("sem_conteudo"), "documento com texto tem teor"
+
+
+def test_captura_menor_nao_regride_arquivo_maior(tmp_path):
+    """Cache zerado/parcial (ex.: 260007/004617 cache=19) NÃO pode regredir um arquivo
+    que já tinha mais docs capturados (215). Re-captura cresce; nunca perde o que tinha."""
+    destino = tmp_path / "arq"
+    (destino / "texto").mkdir(parents=True)
+    # arquivo ANTERIOR com 5 docs capturados
+    (destino / "manifest.json").write_text(json.dumps({
+        "processo": "260007/004617/2024",
+        "docs": [{"i": i, "titulo": f"d{i}", "texto": f"texto/{i:03d}.txt", "chars": 500}
+                 for i in range(5)], "total_arvore": 646}), encoding="utf-8")
+
+    # nova captura (cache) com só 2 PDFs → 2 docs
+    origem = tmp_path / "integra_260007_004617_2024"
+    origem.mkdir()
+    for i in range(2):
+        _pdf(origem / f"{i:03d}.pdf")
+    (origem / "manifest.json").write_text(json.dumps({
+        "processo": "260007/004617/2024", "total_arvore": 646, "completo": False,
+        "docs": [{"i": i, "titulo": f"d{i}", "ok": True} for i in range(2)]}), encoding="utf-8")
+
+    m = arquivar(origem, destino, processo="260007/004617/2024", ocr=False)
+
+    cap = sum(1 for d in m["docs"] if not d.get("nao_capturado"))
+    assert cap >= 5, f"não pode regredir de 5 para 2 docs (tem {cap})"

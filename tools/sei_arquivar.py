@@ -194,21 +194,24 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     # Sem esta guarda o manifesto acusava "🔴 falta Seleção (edital/julgamento)" em processo
     # que talvez tenha tudo — nós é que não baixamos nada (94 casos em 2026-07-23).
     vazio = not any(not d.get("nao_capturado") for d in docs_saida)  # sem NENHUM capturado
-    # NUNCA destruir captura boa com captura vazia: rerun que não achou nada no cache
-    # zerava um manifesto que já tinha documentos (33 casos em 2026-07-06, 9,2 MB de
-    # texto ficaram órfãos e a fila passou a vê-los como prontos — zona morta).
-    if vazio:
-        mdest_ant = destino / "manifest.json"
-        if mdest_ant.exists():
-            try:
-                anterior = json.loads(mdest_ant.read_text(encoding="utf-8"))
-                if anterior.get("docs"):
-                    print(f"  preservado: {destino.name} já tinha "
-                          f"{len(anterior['docs'])} docs — captura vazia ignorada", flush=True)
-                    return anterior
-            except (ValueError, OSError) as exc:
-                print(f"  {destino.name}: manifesto anterior ilegível ({str(exc)[:40]}) "
-                      "— sigo e regravo", flush=True)
+    # NUNCA REGREDIR: uma captura MENOR (rerun sem nada, ou cache zerado/parcial) não pode
+    # apagar um arquivo que já tinha MAIS docs capturados. Cobre o caso vazio (33 órfãos em
+    # 2026-07-06) E o cache zerado regredindo um parcial maior (215→menos). Re-captura
+    # cresce por resume; só regride se o cache foi perdido — aí preservamos o melhor.
+    cap_novos = sum(1 for d in docs_saida if not d.get("nao_capturado"))
+    mdest_ant = destino / "manifest.json"
+    if mdest_ant.exists():
+        try:
+            anterior = json.loads(mdest_ant.read_text(encoding="utf-8"))
+            cap_ant = sum(1 for d in (anterior.get("docs") or [])
+                          if isinstance(d, dict) and not d.get("nao_capturado"))
+            if cap_ant > cap_novos:
+                print(f"  preservado: {destino.name} já tinha {cap_ant} docs capturados "
+                      f"(> {cap_novos} agora) — não regrido", flush=True)
+                return anterior
+        except (ValueError, OSError) as exc:
+            print(f"  {destino.name}: manifesto anterior ilegível ({str(exc)[:40]}) "
+                  "— sigo e regravo", flush=True)
     manifest = {
         "processo": processo,
         "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),

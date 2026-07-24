@@ -113,11 +113,16 @@ def _arquivado_ok(dir_arq: Path) -> bool:
     if len(entradas) != len(docs):
         return True                     # manifesto fora do formato: não julgo o teor
     if any((d.get("chars") or 0) >= 40 for d in entradas):
-        # tem teor — MAS re-captura se o cache tem docs FALHOS ainda não declarados no
-        # arquivo (falharam antes de um fix e o arquivo não os marca não_capturado). Sem
-        # isto, processo com 1 minuta falha ficava PRESO (passava por 'pronto') e a minuta
-        # nunca era re-capturada. Auto-limitante: pós-re-captura os fixáveis viram ok=True
-        # e o resto vira declarado → contagens batem → não repete (12 casos em 2026-07-23).
+        # tem teor — MAS re-captura se a captura está INCOMPLETA:
+        # (a) menos docs que a árvore (total_arvore) → captura parou no meio (timeout) e
+        #     centenas de docs nunca foram tentados (260007/004617 = 215 de 646!);
+        # (b) o cache tem docs FALHOS não declarados no arquivo (minuta que falhou pré-fix).
+        # Sem isto o processo ficava PRESO por 'tem texto' (14 arquivos incompletos +
+        # 12 com falha, 2026-07-23). Auto-limitante: captura completa → docs == total_arvore
+        # (capturados + declarados) e falhas == declaradas → não repete.
+        total = m.get("total_arvore")
+        if total and len(entradas) < total:
+            return False
         if _tem_falha_nao_declarada(dir_arq, m):
             return False
         return True
