@@ -28,7 +28,8 @@ DB = REPO / "data" / "compliance.db"
 
 # colunas do parecer LLM anexadas à linha de score (migração aditiva, idempotente)
 _COLS_LLM = ("llm_grau TEXT", "llm_resumo TEXT", "llm_raciocinio TEXT", "llm_json TEXT",
-             "llm_modelo TEXT", "llm_em TEXT")
+             "llm_modelo TEXT", "llm_em TEXT",
+             "analise_loc TEXT", "analise_versao TEXT")  # ponteiro do snapshot durável (B2/R2) + hash da versão
 _REAVALIAR_DIAS = 30          # cache: não reavalia se o parecer tem < 30 dias (salvo --forcar)
 _MAX_TXT_ARVORE = 8000        # teto de texto por dossiê
 _MAX_TXT_TOTAL = 24000        # teto somado (cabe no budget do cérebro)
@@ -106,7 +107,11 @@ async def avaliar_fornecedor(cnpj: str, nome: str, arvores: list[str], *, gerar=
             contexto["padroes_ligados"] = padroes
     except Exception:  # noqa: BLE001
         pass
-    return await avaliar_direcionamento(edital_txt=texto, contexto=contexto, gerar=gerar)
+    res = await avaliar_direcionamento(edital_txt=texto, contexto=contexto, gerar=gerar)
+    # assinatura da VERSÃO da captura (p/ snapshot versionado + detecção de delta quando o processo muda)
+    from compliance_agent import analise_remotes
+    res["_versao_hash"] = analise_remotes.hash_versao(texto)
+    return res
 
 
 def _persistir(con: sqlite3.Connection, cnpj: str, res: dict, modelo: str) -> None:
@@ -118,10 +123,30 @@ def _persistir(con: sqlite3.Connection, cnpj: str, res: dict, modelo: str) -> No
     con.commit()
 
 
+def _snapshot_analise(con, cnpj: str, res: dict) -> str | None:
+    """Guarda um SNAPSHOT durável (B2/R2) da análise SE a versão da captura MUDOU (detecção de delta) e grava
+    o ponteiro+versão no DB. Idempotente: mesma captura (mesmo hash) não re-sobe. Degrada honesto (None)."""
+    vh = res.get("_versao_hash")
+    if not vh:
+        return None
+    from compliance_agent import analise_remotes
+    prev = con.execute("SELECT analise_versao FROM sei_direcionamento WHERE fornecedor_cnpj=?", (cnpj,)).fetchone()
+    if not analise_remotes.mudou(vh, {prev[0]} if prev and prev[0] else set()):
+        return None  # processo inalterado → sem novo snapshot
+    from datetime import datetime
+    loc = analise_remotes.guardar_analise(cnpj, res, versao_hash=vh, criado_em=datetime.now().isoformat())
+    if loc:
+        con.execute("UPDATE sei_direcionamento SET analise_loc=?, analise_versao=? WHERE fornecedor_cnpj=?",
+                    (loc, vh, cnpj))
+        con.commit()
+    return loc
+
+
 def avaliar_top(top_n: int = 10, *, forcar: bool = False, min_score: int = 1, cnpj: str | None = None,
-                gerar=None, modelo: str = "gemini") -> dict:
+                gerar=None, modelo: str = "gemini", snapshot: bool = False) -> dict:
     """Seleciona os TOP-SCORE (ou um --cnpj) e roda o cérebro on-demand, persistindo o parecer. CACHE: pula
-    quem tem parecer < 30 dias salvo `forcar`. Retorna {avaliados, pulados, top:[...]}."""
+    quem tem parecer < 30 dias salvo `forcar`. `snapshot`=True guarda cada análise no storage durável
+    (B2/R2), versionada pelo hash da captura (só re-sobe quando o processo muda). Retorna {avaliados, ...}."""
     if not DB.exists():
         return {"erro": "compliance.db ausente"}
     con = _conectar()
@@ -156,6 +181,8 @@ def avaliar_top(top_n: int = 10, *, forcar: bool = False, min_score: int = 1, cn
             arvores = []
         res = asyncio.run(avaliar_fornecedor(fcnpj, fnome or "", arvores, gerar=gerar, con=con))
         _persistir(con, fcnpj, res, modelo)
+        if snapshot:
+            _snapshot_analise(con, fcnpj, res)   # storage durável versionado (só re-sobe se a captura mudou)
         avaliados += 1
         out.append({"cnpj": fcnpj, "nome": fnome, "score": score,
                     "grau": res.get("grau"), "resumo": (res.get("resumo") or "")[:160]})
@@ -203,8 +230,11 @@ def main() -> int:
     ap.add_argument("--min-score", type=int, default=1, help="score mínimo p/ entrar na avaliação")
     ap.add_argument("--cnpj", type=str, default=None, help="avalia só este fornecedor (ignora --top)")
     ap.add_argument("--forcar", action="store_true", help="reavalia mesmo com parecer recente (<30d)")
+    ap.add_argument("--sem-snapshot", action="store_true",
+                    help="NÃO guarda o snapshot durável (B2/R2) da análise (por padrão guarda)")
     a = ap.parse_args()
-    r = avaliar_top(top_n=a.top, forcar=a.forcar, min_score=a.min_score, cnpj=a.cnpj)
+    r = avaliar_top(top_n=a.top, forcar=a.forcar, min_score=a.min_score, cnpj=a.cnpj,
+                    snapshot=not a.sem_snapshot)
     if r.get("erro"):
         print(f"[sei_direc_llm] ERRO: {r['erro']}")
         return 1

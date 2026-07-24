@@ -92,6 +92,30 @@ def test_cache_nao_reavalia_recente(db):
     assert r3["avaliados"] == 1
 
 
+def test_snapshot_guarda_analise_e_detecta_delta(db, monkeypatch):
+    """snapshot=True → guarda a análise no storage (B2/R2) e grava o ponteiro+versão no DB. 2ª vez com a
+    MESMA captura (mesmo hash) NÃO re-sobe (detecção de delta). Storage injetado (sem rede)."""
+    from compliance_agent import anexos_remotes as ar
+    subiu = []
+    def _fake_subir(local_path, objeto_rel):
+        subiu.append(objeto_rel)
+        return f"r2:jorgefelippe/{objeto_rel}"
+    monkeypatch.setattr(ar, "subir_anexo", _fake_subir)
+    monkeypatch.setattr(ar, "existe_anexo", lambda loc: False)
+    r = dl.avaliar_top(top_n=10, gerar=_fake_gerar, snapshot=True)
+    assert r["avaliados"] == 1
+    assert len(subiu) == 1 and "analises" in subiu[0] and subiu[0].endswith(".json")
+    con = sqlite3.connect(str(db))
+    loc, ver = con.execute(
+        "SELECT analise_loc, analise_versao FROM sei_direcionamento WHERE fornecedor_cnpj=?",
+        ("12345678000190",)).fetchone()
+    con.close()
+    assert loc.startswith("r2:jorgefelippe/") and ver                     # ponteiro + versão persistidos
+    subiu.clear()
+    dl.avaliar_top(top_n=10, gerar=_fake_gerar, snapshot=True, forcar=True)  # mesma captura → mesmo hash
+    assert subiu == []                                                     # não re-sobe (delta = nenhum)
+
+
 def test_parecer_fornecedor_none_quando_nao_avaliado(db):
     assert dl.parecer_fornecedor("99999999000199") is None  # existe? nem está na tabela → None
 
