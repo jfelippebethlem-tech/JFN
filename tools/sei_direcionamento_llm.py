@@ -84,9 +84,11 @@ async def avaliar_fornecedor(cnpj: str, nome: str, arvores: list[str], *, gerar=
         if con is None:
             _con.close()
     if not texto.strip():
-        return {"grau": "indeterminado", "dados_suficientes": False, "fonte": "direcionamento_cerebro",
-                "resumo": "Sem dossiê consolidado para as árvores deste fornecedor (nada a avaliar).",
-                "ressalva": "INDISPONÍVEL ≠ irregular — rodar o sweep/sei_arvore_build antes."}
+        # RESOLVIDO (não 'indeterminado'): a peça é avaliável, só ainda não foi CAPTURADA. Ação clara.
+        return {"grau": "pendente_captura", "dados_suficientes": False, "fonte": "direcionamento_cerebro",
+                "resumo": "Ainda não há dossiê consolidado das árvores SEI deste fornecedor — a captura está "
+                          "pendente. AÇÃO: rodar o sweep (sei_arvore_build) para as árvores e reavaliar.",
+                "ressalva": "veredito resolvido: captura pendente; ausência de captura ≠ regularidade"}
     contexto = {"fornecedor": nome, "cnpj": cnpj, "n_arvores": len(arvores),
                 "nota": "texto = DOSSIÊ consolidado das árvores SEI do fornecedor (não o edital cru)"}
     # ELO CROSS-FORNECEDOR: padrões já aprendidos de fornecedores LIGADOS (mesmos sócios/veículos), via SQL

@@ -137,3 +137,53 @@ def test_pacote_sem_divergencia_nao_polui():
                  "divergencia": None, "resumo": "x", "presinais": {}}
     pac = DC.montar_pacote_claude({"objeto": "obra Y", "id_pncp": "2"}, resultado)
     assert "DIVERGÊNCIA" not in pac.upper()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 4) NADA de "indeterminado"/"indisponivel" — veredito SEMPRE resolvido e detalhado (diretriz do dono)
+# ──────────────────────────────────────────────────────────────────────────────
+_EDITAL_LIMPO = ("EDITAL DE PREGAO ELETRONICO. Termo de Referencia. Objeto: aquisicao de material de consumo. "
+                 "Habilitacao juridica e fiscal conforme a lei. Qualificacao economico-financeira usual. "
+                 "A proposta sera julgada pelo menor preco. Licitacao processada na forma eletronica. " * 12)
+
+
+def test_texto_nao_licitatorio_vira_nao_aplicavel(monkeypatch):
+    """Contrato/execução (não é edital/ata) → veredito RESOLVIDO 'nao_aplicavel' com o TIPO do doc e o que
+    buscar — nunca o beco 'indeterminado'."""
+    monkeypatch.setattr(DC, "_gemini_keys", lambda: [])
+    contrato = "TERMO DE CONTRATO N 12/2024 firmado entre o Estado e a empresa para execucao do objeto. " * 30
+    res = DC.avaliar_sync(edital_txt=contrato, gerar=_fake({"grau": "verde"}))
+    assert res["grau"] == "nao_aplicavel"
+    assert res["grau"] not in ("indeterminado", "indisponivel")
+    assert res.get("tipo_documento") == "contrato"                    # classificou o documento
+    assert any(p in res["resumo"].lower() for p in ("buscar", "licitat", "edital"))  # acionável
+
+
+def test_llm_offline_edital_limpo_vira_pendente(monkeypatch):
+    """Edital real, det=verde, IA caiu → 'pendente_reprocessar' (NÃO 'indisponivel', NÃO falso 'verde'):
+    reporta o resultado determinístico + ação clara de reprocessar."""
+    monkeypatch.setattr(DC, "_gemini_keys", lambda: [])
+    async def _boom(_):
+        raise RuntimeError("todos os provedores em cooldown")
+    res = DC.avaliar_sync(edital_txt=_EDITAL_LIMPO, gerar=_boom)
+    assert res["grau"] == "pendente_reprocessar"
+    assert res["grau"] not in ("indeterminado", "indisponivel", "verde")  # sem falso conforto
+    assert "reprocess" in res["resumo"].lower()
+    assert "determin" in res["resumo"].lower()   # "determinística" (acento no í)
+
+
+def test_grau_manchete_nunca_indeterminado_nem_indisponivel(monkeypatch):
+    """Guarda-trilho: em NENHUM caminho o veredito-manchete é 'indeterminado' ou 'indisponivel'."""
+    monkeypatch.setattr(DC, "_gemini_keys", lambda: [])
+    async def _boom(_):
+        raise RuntimeError("offline")
+    casos = [
+        dict(edital_txt="oi", gerar=_fake({"grau": "verde"})),                    # curto/não-edital
+        dict(edital_txt=_EDITAL_LIMPO, gerar=_boom),                               # edital + IA offline
+        dict(edital_txt=_EDITAL_LIMPO, gerar=_fake({"grau": "amarelo"})),         # caminho normal
+        dict(edital_txt="TERMO DE CONTRATO " * 40, gerar=_fake({"grau": "verde"})),  # contrato
+        dict(edital_txt=_EDITAL_LIMPO, gerar=_fake({"lixo": "nao-json-schema"})),  # resposta imprópria
+    ]
+    for c in casos:
+        g = DC.avaliar_sync(**c)["grau"]
+        assert g not in ("indeterminado", "indisponivel"), f"vazou grau={g}"

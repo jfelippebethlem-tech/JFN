@@ -440,10 +440,16 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
                               f"objetivo (grau {det_presenca}) — indício a verificar.",
                     "ressalva": "veredito objetivo; buscar o edital/ata para o parecer interpretativo completo"},
                     None, grau_det)
-        return {**base, "grau": "indeterminado", "dados_suficientes": False,
-                "resumo": "Dados insuficientes: o texto não é um edital de licitação nem uma ata de julgamento "
-                          "(provável processo de execução/contrato ou tela do SEI) — nada a avaliar aqui.",
-                "ressalva": "sem juízo; buscar o PROCESSO DE LICITAÇÃO (edital/ata), não o de execução"}
+        # RESOLVIDO (não 'indeterminado'): classifica o QUE o documento é e diz o que buscar. Acionável.
+        from compliance_agent.sei.classificador_doc import classificar_doc
+        tipo = classificar_doc("", ((edital_txt or "") + " " + (ata_txt or "")).strip())
+        return {**base, "grau": "nao_aplicavel", "dados_suficientes": False,
+                "tipo_documento": tipo, "grau_llm": None, "grau_det": grau_det,
+                "fonte_grau": "nenhum", "divergencia": None,
+                "resumo": f"Documento classificado como '{tipo}': não é edital de licitação nem ata de "
+                          "julgamento — direcionamento não se avalia sobre esta peça. Para avaliar, buscar o "
+                          "PROCESSO LICITATÓRIO (edital + ata de julgamento) que originou esta contratação.",
+                "ressalva": "veredito resolvido: peça licitatória ausente; presunção de legitimidade"}
     gerar = gerar or _gerar_default
     messages = [{"role": "system", "content": _SYS}, {"role": "user", "content": _montar_user(edital_txt, ata_txt, contexto)}]
     try:
@@ -455,9 +461,15 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
                               f"(grau {det_presenca}): sinal objetivo achado; indício a verificar.",
                     "ressalva": "veredito objetivo (LLM offline); indício a apurar, não acusação"},
                     None, grau_det)
-        return {**base, "grau": "indisponivel", "dados_suficientes": False,
-                "resumo": f"LLM indisponível ({str(e)[:60]}) e sem sinal objetivo — análise não realizada.",
-                "ressalva": "sem juízo (LLM offline); ausência de red flag objetivo ≠ regularidade"}
+        return {**base, "grau": "pendente_reprocessar", "dados_suficientes": False,
+                "grau_llm": None, "grau_det": grau_det, "fonte_grau": "deterministico_parcial",
+                "divergencia": None,
+                "resumo": ("A camada DETERMINÍSTICA varreu o texto e não achou cláusula restritiva nem cascata; "
+                           f"o parecer interpretativo (IA) não pôde ser gerado agora ({str(e)[:40]}). "
+                           "REPROCESSAR com a IA para o veredito completo — não é 'verde' (a análise "
+                           "interpretativa está pendente)."),
+                "ressalva": "veredito resolvido: pendente de reprocessamento; ausência de red flag "
+                            "determinístico ≠ regularidade"}
     dados = _parse_json(raw)
     if not isinstance(dados, dict):
         if det_presenca:
@@ -466,9 +478,14 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
                               f"(grau {det_presenca}); indício a verificar.",
                     "ressalva": "veredito objetivo (LLM não-parseável); indício a apurar, não acusação"},
                     None, grau_det)
-        return {**base, "grau": "indisponivel", "dados_suficientes": False,
-                "resumo": "Resposta do LLM não-parseável e sem sinal objetivo — análise descartada (honesto).",
-                "ressalva": "sem juízo"}
+        return {**base, "grau": "pendente_reprocessar", "dados_suficientes": False,
+                "grau_llm": None, "grau_det": grau_det, "fonte_grau": "deterministico_parcial",
+                "divergencia": None,
+                "resumo": ("A camada DETERMINÍSTICA varreu o texto e não achou cláusula restritiva nem cascata; "
+                           "a IA respondeu em formato inválido (não-parseável). REPROCESSAR com a IA para o "
+                           "veredito completo — não é 'verde' (a análise interpretativa está pendente)."),
+                "ressalva": "veredito resolvido: pendente de reprocessamento; ausência de red flag "
+                            "determinístico ≠ regularidade"}
     dados.setdefault("ressalva", "presunção de legitimidade; indício a apurar, não acusação")
     # Fusão do grau do LLM com o determinístico: nenhum alarme silenciado + divergência sinalizada.
     return _com_fusao({**base, **dados}, dados.get("grau"), grau_det)

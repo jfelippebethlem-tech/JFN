@@ -27,13 +27,13 @@ def test_parse_json_tira_cercas():
 
 
 def test_dados_insuficientes_nao_chama_llm():
-    # sem ata e sem edital com conteúdo → grau verde honesto, sem tocar no LLM
+    # sem ata e sem edital com conteúdo → veredito RESOLVIDO 'nao_aplicavel' (não 'indeterminado'), sem tocar no LLM
     chamou = {"n": 0}
     async def _fake(_):
         chamou["n"] += 1
         return "{}"
     out = asyncio.run(DC.avaliar_direcionamento("", "", gerar=_fake))
-    assert out["grau"] == "indeterminado" and out["dados_suficientes"] is False and chamou["n"] == 0
+    assert out["grau"] == "nao_aplicavel" and out["dados_suficientes"] is False and chamou["n"] == 0
     # texto que NÃO é edital (menu do SEI / contrato) também é insuficiente — não chama o LLM
     out2 = asyncio.run(DC.avaliar_direcionamento("Controle de Processos. Termo Aditivo ao Contrato. " * 80, "", gerar=_fake))
     assert out2["dados_suficientes"] is False and chamou["n"] == 0
@@ -52,4 +52,7 @@ def test_llm_indisponivel_e_honesto():
     async def _boom(_):
         raise RuntimeError("offline")
     out = asyncio.run(DC.avaliar_direcionamento("edital " * 400, "", gerar=_boom))
-    assert out["grau"] == "indisponivel" and out["dados_suficientes"] is False
+    # Diretriz do dono (2026-07-24): nada de 'indisponivel'/'indeterminado' como beco. Com a IA offline e
+    # sem sinal determinístico, o veredito é RESOLVIDO 'pendente_reprocessar' (determinístico + ação clara).
+    assert out["grau"] == "pendente_reprocessar" and out["dados_suficientes"] is False
+    assert "reprocess" in out["resumo"].lower()
