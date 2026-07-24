@@ -295,3 +295,99 @@ def secao_sei_arvore(processos_sei: list[str], max_docs_por_processo: int = 40,
                      "da íntegra</b> dos documentos-chave — parecer jurídico, ata de julgamento, edital, "
                      "despacho decisório. A leitura vem do arquivo documental; o texto é transcrito "
                      "como está no processo.</p>" + "\n".join(blocos))}
+
+
+# ─────────────────────────── Execução contratual e controle prévio ───────────────────────────
+# WIRING (2026-07-24): capítulo que traz para o dossiê os detectores construídos nesta frente —
+# execução sem comprovação (§2: OB ≠ empenho), NF-e pela chave de acesso, cumprimento das
+# condicionantes do parecer da PGE e reciclagem de foto de medição. Sem este capítulo os módulos
+# existiriam sem chegar a nenhum produto.
+_GRAU_ROTULO = {"vermelho": "🔴 alto", "amarelo": "🟡 médio", "verde": "🟢 sem achado",
+                "a_verificar": "🟡 a verificar", "nao_aplicavel": "— não se aplica",
+                "pendente_captura": "— captura pendente", "pendente_reprocessar": "— análise pendente"}
+
+
+def _docs_do_processo(numero: str) -> tuple[list[dict], str]:
+    """Documentos NA ORDEM do processo (o que separa 'antes' de 'depois' do parecer) + texto completo."""
+    pdir = _ARQUIVO_SEI / _slug_processo(numero)
+    man = pdir / "manifest.json"
+    if not man.exists():
+        return [], ""
+    try:
+        j = json.loads(man.read_text())
+    except (ValueError, OSError):
+        return [], ""
+    docs, partes = [], []
+    for i, doc in enumerate(j.get("docs") or []):
+        txt = ""
+        if doc.get("texto"):
+            f = pdir / doc["texto"]
+            if f.exists():
+                try:
+                    txt = html.unescape(f.read_text(errors="replace")).strip()
+                except OSError:
+                    txt = ""
+        docs.append({"ref": str(doc.get("i", i)), "tipo": doc.get("titulo") or doc.get("tipo") or "",
+                     "texto": txt})
+        if txt:
+            partes.append(txt)
+    return docs, "\n\n".join(partes)
+
+
+def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int = 8) -> dict | None:
+    """Capítulo: a despesa foi COMPROVADA e o controle prévio foi CUMPRIDO?
+
+    Roda sobre o arquivo documental já capturado (regra da casa: arquivo antes de browser), sem IA e
+    sem rede — as camadas subjetivas (coerência do atesto, leitura visual da foto) ficam de fora aqui e
+    são apontadas como pendentes quando fazem falta. Sem arquivo → None (honesto)."""
+    from compliance_agent import execucao_sinais, foto_medicao, nfe_verifica, parecer_cumprimento
+
+    linhas, detalhes = [], []
+    analisados = 0
+    for numero in (processos_sei or [])[:max_processos]:
+        docs, texto = _docs_do_processo(numero)
+        if not docs or not texto.strip():
+            continue
+        analisados += 1
+        ex = execucao_sinais.analisar_execucao_det(texto)
+        pg = parecer_cumprimento.auditar_parecer_pge(docs)
+        chaves = nfe_verifica.extrair_chaves(texto)
+        contingencia = [c for c in chaves if nfe_verifica.tp_emissao(c)["contingencia"]]
+        linhas.append(
+            f"<tr><td>{_esc(numero)}</td>"
+            f"<td>{_esc(_GRAU_ROTULO.get(ex.get('grau'), ex.get('grau')))}</td>"
+            f"<td>{_esc(ex.get('estagio_despesa'))}</td>"
+            f"<td>{_esc(_GRAU_ROTULO.get(pg.get('grau'), pg.get('grau')))}</td>"
+            f"<td>{len(chaves)}{' (' + str(len(contingencia)) + ' em contingência)' if contingencia else ''}</td></tr>")
+        bloco = [f"<h3>Processo {_esc(numero)}</h3>"]
+        if ex.get("grau") not in ("verde", "nao_aplicavel"):
+            bloco.append(f"<p><b>Comprovação da execução:</b> {_esc(ex.get('resumo'))}</p>")
+        if pg.get("veredito") not in ("SEM_PARECER_LOCALIZADO", "SEM_CONDICIONANTES"):
+            itens = "".join(
+                f"<li><b>({_esc(c.get('id'))}) {_esc(c.get('tipo'))}</b> — {_esc(c.get('status'))}: "
+                f"{_esc(c.get('texto'))[:220]}</li>" for c in (pg.get("condicionantes") or [])[:8])
+            bloco.append("<p><b>Condicionantes do parecer jurídico</b> (art. 53 da Lei 14.133/2021 — a "
+                         f"manifestação é prévia e vincula a instrução): {_esc(pg.get('leitura'))}</p>"
+                         + (f"<ul>{itens}</ul>" if itens else ""))
+        if contingencia:
+            bloco.append(f"<p><b>Nota fiscal:</b> {len(contingencia)} NF-e emitida(s) em CONTINGÊNCIA "
+                         "(lido na própria chave de acesso). Emitir em contingência é lícito; verificar a "
+                         "autorização definitiva na SEFAZ.</p>")
+        if len(bloco) > 1:
+            detalhes.append("\n".join(bloco))
+    if not analisados:
+        return None
+    rec = foto_medicao.reciclagem([_ARQUIVO_SEI / _slug_processo(n) for n in (processos_sei or [])])
+    if rec.get("grau") == "vermelho":
+        detalhes.append("<h3>Registro fotográfico</h3><p><b>" + _esc(rec.get("resumo")) + "</b></p>")
+    return {"titulo": "Execução contratual e cumprimento do controle prévio",
+            "html": ("<p>Este capítulo confronta o que foi <b>pago</b> com o que foi <b>comprovado</b> nos "
+                     "autos e verifica se as <b>condicionantes do parecer jurídico</b> foram atendidas. "
+                     "Regra observada: empenho e liquidação não são pagamento — só a Ordem Bancária "
+                     "significa dinheiro efetivamente saído. A ausência de um documento no processo lido é "
+                     "fragilidade a verificar, jamais prova de irregularidade.</p>"
+                     "<table class='tabela'><tr><th>Processo</th><th>Comprovação da execução</th>"
+                     "<th>Estágio da despesa</th><th>Condicionantes do parecer</th><th>NF-e</th></tr>"
+                     + "\n".join(linhas) + "</table>"
+                     + ("\n".join(detalhes) if detalhes else
+                        "<p>Nenhum apontamento nos processos lidos.</p>"))}
