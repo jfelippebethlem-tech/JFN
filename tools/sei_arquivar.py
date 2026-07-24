@@ -171,12 +171,29 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         if apagar_pdf:
             pdf.unlink(missing_ok=True)
 
-    fases_presentes = {d["fase"] for d in docs_saida} - {"indefinida"}
-    tem_pagamento = any(d["fase"] == "despesa" for d in docs_saida)
+    # INDISPONÍVEL ≠ 0 no ARQUIVO: docs que existem na árvore mas NÃO foram capturados
+    # (formato raro — ZIP de PDFs, .odt, etc.) entram MARCADOS, com o título, para o
+    # auditor saber que existem e buscar à mão. Sem isso sumiam sem rastro do arquivo.
+    capturados = {d["i"] for d in docs_saida}
+    for i, titulo in sorted(titulos.items()):
+        if i in capturados:
+            continue
+        fase_nc, tipo_nc = classificar(titulo)
+        docs_saida.append({"i": i, "titulo": titulo, "fase": fase_nc, "tipo": tipo_nc,
+                           "texto": "", "chars": 0, "ocr": False, "fotos": [],
+                           "nao_capturado": True})
+    docs_saida.sort(key=lambda d: d["i"])
+
+    # fases/lacunas SÓ pelos capturados: um doc não-capturado não tem conteúdo, então
+    # NÃO pode fazer a fase dele parecer coberta (senão lacunas() mentiria).
+    fases_presentes = {d["fase"] for d in docs_saida
+                       if not d.get("nao_capturado")} - {"indefinida"}
+    tem_pagamento = any(d["fase"] == "despesa" and not d.get("nao_capturado")
+                        for d in docs_saida)
     # INDISPONÍVEL ≠ 0: com ZERO documento capturado não se afirma o que falta NOS AUTOS.
     # Sem esta guarda o manifesto acusava "🔴 falta Seleção (edital/julgamento)" em processo
     # que talvez tenha tudo — nós é que não baixamos nada (94 casos em 2026-07-23).
-    vazio = not docs_saida
+    vazio = not any(not d.get("nao_capturado") for d in docs_saida)  # sem NENHUM capturado
     # NUNCA destruir captura boa com captura vazia: rerun que não achou nada no cache
     # zerava um manifesto que já tinha documentos (33 casos em 2026-07-06, 9,2 MB de
     # texto ficaram órfãos e a fila passou a vê-los como prontos — zona morta).
@@ -198,13 +215,16 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         "origem": str(origem),
         "modalidade": _modalidade(tipos_vistos),
         "docs": docs_saida,
-        "linha_do_tempo": {f: sum(1 for d in docs_saida if d["fase"] == f)
+        "linha_do_tempo": {f: sum(1 for d in docs_saida
+                                  if d["fase"] == f and not d.get("nao_capturado"))
                            for f in FASES},
         "lacunas": [] if vazio else lacunas(fases_presentes, _modalidade(tipos_vistos),
                                             com_pagamento=tem_pagamento),
         "captura_vazia": vazio,
         # quantos documentos ficaram SEM TEOR gravado (candidatos a reprocessar)
         "sem_conteudo": sum(1 for d in docs_saida if d.get("sem_conteudo")),
+        # docs da árvore não capturados (formato raro) — registrados p/ o auditor achar
+        "nao_capturados": sum(1 for d in docs_saida if d.get("nao_capturado")),
         "captura_completa": captura_completa,   # None = manifesto antigo, não declarava
         "total_arvore": total_arvore,
         "fotos_total": sum(len(d["fotos"]) for d in docs_saida),
