@@ -22,11 +22,16 @@ LIMITES: dict[int, dict] = {
 }
 
 
-def limite_dispensa(ano: int, tipo: str = "compras") -> float:
+def limite_dispensa(ano: int, tipo: str = "compras", *, duplicado: bool = False) -> float:
     """Limite do exercício (R$). `tipo`: 'compras' (art. 75-II) ou 'obras' (art. 75-I).
-    Ano fora da tabela → o mais recente conhecido (atualizar a tabela quando sair decreto)."""
+    Ano fora da tabela → o mais recente conhecido (atualizar a tabela quando sair decreto).
+
+    `duplicado=True` aplica o **art. 75, §2º**: "Os valores referidos nos incisos I e II do caput serão
+    DUPLICADOS para compras, obras e serviços contratados por CONSÓRCIO PÚBLICO ou por AUTARQUIA ou
+    FUNDAÇÃO qualificadas como AGÊNCIAS EXECUTIVAS." Sem isso, o teto aplicado a esses entes é METADE do
+    legal — e o detector acusa fracionamento onde a lei não vê nenhum."""
     info = LIMITES.get(int(ano)) or LIMITES[max(LIMITES)]
-    return info[tipo]
+    return info[tipo] * 2 if duplicado else info[tipo]
 
 
 def ato_normativo(ano: int) -> str:

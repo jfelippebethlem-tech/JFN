@@ -46,18 +46,19 @@ from compliance_agent.limites_dispensa import LIMITES as LIMITES_DISPENSA
 _DEFAULT_EXERCICIO = 2024
 
 
-def limite_dispensa(exercicio: int | None, tipo: str = "compras") -> float | None:
+def limite_dispensa(exercicio: int | None, tipo: str = "compras", *, duplicado: bool = False) -> float | None:
     """Limite de dispensa por valor vigente no EXERCÍCIO (art. 75, I/II). `tipo`: 'obras' (engenharia) ou
     'compras' (demais). Exercício desconhecido → cai no mais próximo ≤ exercício (decretos são cumulativos).
     Retorna None se não houver tabela aplicável (→ detector marca nao_avaliavel, honesto)."""
     tipo = "obras" if (tipo or "").lower().startswith("obra") else "compras"
     if not exercicio:
         exercicio = _DEFAULT_EXERCICIO
+    fator = 2 if duplicado else 1        # art. 75, §2º (consórcio público / agência executiva)
     if exercicio in LIMITES_DISPENSA:
-        return LIMITES_DISPENSA[exercicio][tipo]
+        return LIMITES_DISPENSA[exercicio][tipo] * fator
     anteriores = [e for e in LIMITES_DISPENSA if e <= exercicio]
     if anteriores:
-        return LIMITES_DISPENSA[max(anteriores)][tipo]
+        return LIMITES_DISPENSA[max(anteriores)][tipo] * fator
     return None
 
 
@@ -96,50 +97,24 @@ def _grupo_objeto(c: dict) -> str | None:
     return None
 
 
-def clusterizar(contratacoes: list[dict], limiar_sim: float = 0.8) -> list[list[int]]:
-    """Agrupa contratações por similaridade de objeto ≥ `limiar_sim` (ou mesmo grupo CATMAT/CATSER explícito).
-    Retorna lista de clusters (cada um = lista de índices em `contratacoes`). União simples (single-linkage)."""
-    n = len(contratacoes)
-    pai = list(range(n))
+def clusterizar(contratacoes: list[dict], limiar: float | None = None, *,
+                por_ramo: bool = False) -> list[list[int]]:
+    """Agrupa contratações pelo MESMO OBJETO (art. 75 §1º). Delega a `objeto_similaridade.agrupar`.
 
-    def find(x: int) -> int:
-        while pai[x] != x:
-            pai[x] = pai[pai[x]]
-            x = pai[x]
-        return x
+    REFINO 2026-07-24 (dono: "refinar muito o fracionamento"): o critério anterior era similaridade de
+    SEQUÊNCIA (difflib ≥ 0.8) sobre a descrição, que pesa todas as palavras igual — e por isso errava dos
+    dois lados: não juntava "material de limpeza" com "produtos de limpeza" (mesmo objeto, palavras
+    diferentes) e quase juntava "material de limpeza" com "material de escritório" (textos parecidos,
+    objetos distintos). Agora cada termo é pesado pelo que DISCRIMINA no lote (TF-IDF/cosseno), com
+    stemming de plural, chave dura oficial (CATMAT/CATSER/natureza de despesa do SIAFE) com precedência e
+    objeto genérico isolado. A DOUTRINA do P4 (limites, âncoras, exculpatórias) não muda — só o
+    agrupamento, que é o insumo dela. `limiar` None ⇒ `objeto_similaridade.LIMIAR`.
 
-    def union(a: int, b: int) -> None:
-        ra, rb = find(a), find(b)
-        if ra != rb:
-            pai[rb] = ra
-
-    # pré-computa normalização e grupo explícito UMA vez (era recalculado por PAR — O(n²) normalizações;
-    # num sweep de ~600 contratações isso dominava o custo). Comportamento idêntico.
-    grupos_expl = [_grupo_objeto(c) for c in contratacoes]
-    normados = [_norm_objeto(c.get("objeto", "")) for c in contratacoes]
-
-    for i in range(n):
-        gi = grupos_expl[i]
-        for j in range(i + 1, n):
-            gj = grupos_expl[j]
-            if gi and gj:
-                if gi == gj:
-                    union(i, j)
-            else:
-                na, nb = normados[i], normados[j]
-                if not na or not nb:
-                    continue
-                # poda EXATA: quick_ratio/real_quick_ratio são upper bounds do ratio (difflib) —
-                # se o teto já fica abaixo do limiar, o ratio caro nunca alcançaria. Zero mudança de resultado.
-                sm = difflib.SequenceMatcher(None, na, nb)
-                if (sm.real_quick_ratio() >= limiar_sim and sm.quick_ratio() >= limiar_sim
-                        and sm.ratio() >= limiar_sim):
-                    union(i, j)
-
-    grupos: dict[int, list[int]] = {}
-    for i in range(n):
-        grupos.setdefault(find(i), []).append(i)
-    return list(grupos.values())
+    `por_ramo=True` aplica o critério LEGAL do art. 75, §1º, II ("objetos de mesma natureza … mesmo ramo
+    de atividade") — é o que o `avaliar` usa. O default (por objeto) serve ao detalhamento do dossiê.
+    """
+    from compliance_agent.objeto_similaridade import LIMIAR, agrupar
+    return agrupar(contratacoes, limiar if limiar is not None else LIMIAR, por_ramo=por_ramo)
 
 
 # ───────────────────────────── helpers de campo ─────────────────────────────
@@ -177,6 +152,46 @@ def _exercicio(c: dict, d: date | None) -> int | None:
 def _fornecedor(c: dict) -> str | None:
     v = c.get("fornecedor") or c.get("favorecido_cpf") or c.get("cnpj") or c.get("favorecido_nome")
     return str(v).strip() if v else None
+
+
+def _unidade_gestora(c: dict) -> str | None:
+    """UNIDADE GESTORA da contratação (art. 75, §1º, I — o somatório é DELA, não do órgão inteiro).
+    Ausente → None: aí não se particiona (não se inventa unidade), e o achado registra a limitação."""
+    for k in ("unidade_gestora", "ug", "unidade", "ug_codigo", "orgao_unidade"):
+        v = c.get(k)
+        if v not in (None, ""):
+            return str(v).strip()
+    return None
+
+
+# Dispensa POR VALOR = art. 75, incisos I (obras/engenharia) e II (compras e demais serviços). Só ELA
+# entra no somatório do §1º. Emergência/calamidade (VIII), guerra (III), hortifrúti (XII), etc. têm
+# fundamento próprio: contratar por eles não é "picar" a mesma despesa para fugir do certame.
+_RE_INCISO = re.compile(r"(?:art\.?\s*75|artigo\s*75)?[^\w]{0,12}"
+                        r"(?:inciso\s*)?\b(I{1,3}|IV|V|VI{0,3}|IX|X{1,2}I{0,3}|XIV|XV)\b", re.I)
+_RE_FUNDAMENTO_VALOR = re.compile(r"75\s*[,\s]*\s*(?:inciso\s*)?(?:I|II)\b(?!\w)|dispensa\s+(?:em\s+raz[ãa]o\s+)?"
+                                  r"(?:por|de)\s+valor|baixo\s+valor|pequeno\s+valor", re.I)
+_RE_FUNDAMENTO_OUTRO = re.compile(
+    r"emerg[êe]nc|calamidade|guerra|grave\s+perturba|seguran[çc]a\s+nacional|hortifrutigranjeiro|"
+    r"art\.?\s*74|inexigibilidade|notoria\s+especializa|fornecedor\s+exclusivo|"
+    r"75\s*[,\s]*\s*(?:inciso\s*)?(?:III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV)\b", re.I)
+
+
+def _dispensa_por_valor(c: dict) -> bool | None:
+    """A dispensa é POR VALOR (art. 75, I/II)? True/False, None quando o fundamento não consta.
+
+    None NÃO exclui a contratação do somatório: o fundamento costuma faltar no dado, e exigi-lo cegaria o
+    detector. Mas o fundamento EXPLÍCITO de outro inciso exclui — não se acusa de fracionar quem
+    contratou por emergência ou inexigibilidade, que têm hipótese legal própria."""
+    txt = " ".join(str(c.get(k) or "") for k in
+                   ("enquadramento_legal", "afastamento", "fundamento", "modalidade", "tipo", "amparo_legal"))
+    if not txt.strip():
+        return None
+    if _RE_FUNDAMENTO_OUTRO.search(txt):
+        return False
+    if _RE_FUNDAMENTO_VALOR.search(txt):
+        return True
+    return None
 
 
 def _grupo_economico(c: dict) -> str:
@@ -238,11 +253,30 @@ class P4Fracionamento(Detector):
             res.valores = {"n_contratacoes": len(contratacoes), "dispensas_identificaveis": 0}
             return res
 
-        # clusteriza por objeto e escolhe o cluster de maior valor somado de DISPENSAS como o achado principal.
-        clusters = clusterizar(contratacoes)
+        # ── art. 75, §1º, I: o somatório é da respectiva UNIDADE GESTORA. Misturar UGs no mesmo
+        # somatório é ilegal e infla o indício — cada UG é avaliada isoladamente e vence a de maior soma.
+        por_ug: dict = {}
+        for i, c in enumerate(contratacoes):
+            por_ug.setdefault(_unidade_gestora(c), []).append(i)
+        multi_ug = len([u for u in por_ug if u is not None]) > 1
+
+        # ── só a DISPENSA POR VALOR (art. 75, I e II) entra no somatório do §1º. Emergência (VIII),
+        # calamidade, guerra e demais incisos têm outro fundamento e NÃO somam para o teto de valor.
+        def _elegivel(i: int) -> bool:
+            return _is_dispensa(contratacoes[i]) is True and _dispensa_por_valor(contratacoes[i]) is not False
+
+        # clusteriza por RAMO DE ATIVIDADE (art. 75, §1º, II) dentro de cada UG e escolhe o cluster de
+        # maior valor somado de dispensas elegíveis como o achado principal.
+        clusters = []
+        for _ug, idxs_ug in por_ug.items():
+            locais = clusterizar([contratacoes[i] for i in idxs_ug], por_ramo=True)
+            clusters.extend([[idxs_ug[k] for k in g] for g in locais])
         melhor = None
+        n_excluidas_inciso = 0
         for idxs in clusters:
-            disp_idxs = [i for i in idxs if _is_dispensa(contratacoes[i]) is True]
+            disp_idxs = [i for i in idxs if _elegivel(i)]
+            n_excluidas_inciso += sum(1 for i in idxs
+                                      if _is_dispensa(contratacoes[i]) is True and i not in disp_idxs)
             if len(disp_idxs) < 2:
                 continue  # fracionamento exige ≥2 dispensas do mesmo grupo
             soma = sum(float(contratacoes[i].get("valor") or 0) for i in disp_idxs)
@@ -251,19 +285,33 @@ class P4Fracionamento(Detector):
 
         if melhor is None:
             res.status = "descartado"
-            res.motivo_refutacao = "nenhum grupo de objeto com ≥2 dispensas — sem indício de fracionamento"
-            res.valores = {"n_contratacoes": len(contratacoes), "n_clusters": len(clusters)}
-            res.explicacao_inocente = "as dispensas são de objetos distintos (não somam para o limite)"
+            res.motivo_refutacao = ("nenhum grupo de mesma natureza (art. 75, §1º, II) com ≥2 dispensas por "
+                                    "valor NA MESMA UNIDADE GESTORA (§1º, I) — sem indício de fracionamento")
+            res.valores = {"n_contratacoes": len(contratacoes), "n_clusters": len(clusters),
+                           "unidades_gestoras": len(por_ug),
+                           "dispensas_fora_do_teto_de_valor": n_excluidas_inciso}
+            res.explicacao_inocente = (
+                "as dispensas são de ramos de atividade distintos (não somam para o limite)"
+                + ("; e há mais de uma UNIDADE GESTORA no conjunto — o art. 75, §1º, I manda somar por "
+                   "unidade gestora, não por órgão inteiro" if multi_ug else "")
+                + ("; parte das dispensas tem fundamento diverso da dispensa por valor (art. 75, incisos "
+                   "III+), que não soma para este teto" if n_excluidas_inciso else ""))
             return res
 
         disp_idxs, soma, _todos_idxs = melhor
         disp = [contratacoes[i] for i in disp_idxs]
 
+        # ── art. 75, §2º: os limites são DUPLICADOS para consórcio público e para autarquia/fundação
+        # qualificada como AGÊNCIA EXECUTIVA. Sem isso, aplica-se metade do teto legal a esses entes — e
+        # o detector acusa fracionamento onde a lei não vê nenhum.
+        duplicado = bool(contexto.get("consorcio_publico") or contexto.get("agencia_executiva")
+                         or any(c.get("consorcio_publico") or c.get("agencia_executiva") for c in disp))
+
         # exercício e limite vigente NA DATA (spec §1.5)
         datas = [d for d in (_data(c) for c in disp) if d]
         exercicio = next((_exercicio(c, _data(c)) for c in disp if _exercicio(c, _data(c))), None)
         tipo_obj = next((c.get("tipo_obj") for c in disp if c.get("tipo_obj")), "compras")
-        limite = limite_dispensa(exercicio, tipo_obj)
+        limite = limite_dispensa(exercicio, tipo_obj, duplicado=duplicado)
 
         # partição por EXERCÍCIO: a soma de cada ano é comparada ao limite DAQUELE ano (somar exercícios
         # distintos contra o limite de um ano só inflaria o indício — anti-FP).
@@ -274,7 +322,7 @@ class P4Fracionamento(Detector):
         for ex, cs in por_exercicio.items():
             somas_exercicio[str(ex)] = {
                 "soma": round(sum(float(c.get("valor") or 0) for c in cs), 2),
-                "limite": limite_dispensa(ex, tipo_obj),
+                "limite": limite_dispensa(ex, tipo_obj, duplicado=duplicado),
                 "n": len(cs),
             }
 
@@ -284,6 +332,17 @@ class P4Fracionamento(Detector):
             "exercicio": exercicio,
             "tipo_objeto": tipo_obj,
             "limite_dispensa_vigente": limite,
+            "limite_duplicado_art75_p2": duplicado,
+            "fundamento_limite": (
+                "art. 75, §2º, Lei 14.133/2021 — limites DUPLICADOS (consórcio público / autarquia ou "
+                "fundação qualificada como agência executiva)" if duplicado else
+                "art. 75, I/II, Lei 14.133/2021 — limite simples do exercício"),
+            "fundamento_agrupamento": (
+                "art. 75, §1º, II — somatório por objetos de MESMA NATUREZA (mesmo ramo de atividade); "
+                "§1º, I — por unidade gestora e exercício financeiro"),
+            "unidade_gestora": _unidade_gestora(disp[0]) if disp else None,
+            "unidades_gestoras_no_conjunto": len(por_ug),
+            "dispensas_fora_do_teto_de_valor": n_excluidas_inciso,
             "soma_por_exercicio": somas_exercicio,
             # rastreabilidade probatória (§7.4): QUAIS processos compõem o cluster achado — permite a
             # consumidores (ex.: sweep em lote) auditar/remover o cluster e citar os autos na evidência.
@@ -304,7 +363,7 @@ class P4Fracionamento(Detector):
         estouro = None
         for ex, cs in por_exercicio.items():
             soma_ex = sum(float(c.get("valor") or 0) for c in cs)
-            lim_ex = limite_dispensa(ex, tipo_obj)
+            lim_ex = limite_dispensa(ex, tipo_obj, duplicado=duplicado)
             if lim_ex is not None and len(cs) >= 2 and soma_ex > lim_ex:
                 if estouro is None or soma_ex > estouro[1]:
                     estouro = (ex, soma_ex, lim_ex, len(cs))
