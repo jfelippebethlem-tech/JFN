@@ -34,3 +34,20 @@ def test_dbus_bus_detecta_socket_real(monkeypatch, tmp_path):
     assert SV._dbus_bus() == str(ok)
     ok.unlink()
     assert SV._dbus_bus() is None
+
+
+def test_preflight_embed_403_aborta():
+    """403 (Maps Embed API desabilitada no projeto) → preflight retorna False (aborta o
+    sweep antes de disparar 1272 renders condenados)."""
+    assert SV._embed_api_ok("chave", fetch_status=lambda url: 403) is False
+
+
+def test_preflight_embed_200_ok():
+    assert SV._embed_api_ok("chave", fetch_status=lambda url: 200) is True
+
+
+def test_preflight_erro_de_rede_nao_bloqueia():
+    """Erro transitório de rede NÃO deve abortar (fail-open — só o 403 determinístico aborta)."""
+    def _boom(url):
+        raise OSError("timeout")
+    assert SV._embed_api_ok("chave", fetch_status=_boom) is True

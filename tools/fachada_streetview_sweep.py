@@ -207,6 +207,26 @@ raise SystemExit(0)
 _RUN_USER = "/run/user"
 
 
+def _embed_api_ok(key: str, fetch_status=None) -> bool:
+    """A Maps Embed API está HABILITADA no projeto? (não basta a chave existir). Uma
+    requisição; 403 = API desabilitada no console → False (aborta antes de 1272 renders
+    condenados). Erro de rede = fail-open (True), só o 403 determinístico aborta."""
+    url = (f"https://www.google.com/maps/embed/v1/streetview?key={key}"
+           "&location=-22.9,-43.2&heading=0")
+    if fetch_status is None:
+        def fetch_status(u):
+            import urllib.request
+            try:
+                with urllib.request.urlopen(u, timeout=15) as r:
+                    return r.status
+            except urllib.error.HTTPError as e:
+                return e.code
+    try:
+        return int(fetch_status(url)) != 403
+    except (OSError, ValueError):
+        return True     # rede/transitório → não bloqueia (só 403 determinístico aborta)
+
+
 def _dbus_bus():
     """Socket D-Bus do usuário se existir. `systemd-run --user` PRECISA dele; sem ele (cron
     sem sessão) falha com 'Failed to connect to bus: No medium found' e o render morre."""
@@ -526,9 +546,16 @@ def main() -> int:
     a = ap.parse_args()
     _carregar_env()
 
-    if not os.environ.get("GOOGLE_MAPS_KEY", "").strip():
+    _key = os.environ.get("GOOGLE_MAPS_KEY", "").strip()
+    if not _key:
         print("[sv_sweep] ⛔ GOOGLE_MAPS_KEY ausente (.env/os.environ). Abortando.", flush=True)
         return 2
+    if not _embed_api_ok(_key):
+        print("[sv_sweep] ⛔ Maps Embed API 403 (DESABILITADA no projeto Google Cloud). "
+              "Todo render sairia tela-de-erro — aborto em vez de disparar renders condenados. "
+              "Habilite a 'Maps Embed API' no console (é grátis) OU pause este sweep "
+              "(data/.pause_fachada_streetview_sweep).", flush=True)
+        return 3
     if not Path(_RCLONE).exists():
         print(f"[sv_sweep] ⛔ rclone não encontrado em {_RCLONE} (defina RCLONE_BIN). Abortando.", flush=True)
         return 2
