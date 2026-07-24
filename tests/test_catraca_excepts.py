@@ -71,7 +71,16 @@ REPO = Path(__file__).resolve().parent.parent
 # edital+ata INJETADO (prod=PNCP; teste=fake). O fetcher pode falhar de qualquer forma; o catch degrada
 # honesto (obtido=False + erro no retorno + logger.debug) para não derrubar a análise. buscar_contratacoes
 # já degrada interna, então _buscar_docs_pncp NÃO precisou de catch (redundância removida).
-BASELINE = 1521
+# 2026-07-24: +3 (1521→1524) — três FRONTEIRAS DE CALLABLE INJETADO, mesmo padrão já aceito em
+# obter_edital_ata (o injetado pode falhar de qualquer forma; o catch degrada honesto e loga):
+#   • execucao_cerebro.avaliar_coerencia_atesto — `gerar` (LLM): degrada p/ 'pendente_reprocessar'
+#     (NUNCA 'verde' por omissão) + logger.debug;
+#   • nfe_verifica.situacao — `consultar` (SEFAZ: rede/certificado A1/captcha, cada um com sua
+#     exceção): degrada p/ 'nao_verificada'/'a_verificar' + logger.debug;
+#   • parecer_cumprimento.avaliar_parecer_cumprimento — `gerar` (LLM): mantém o veredito
+#     determinístico do cumprimento das condicionantes + logger.debug.
+# Nenhum deles engole o erro: todos registram e o veredito continua RESOLVIDO e honesto.
+BASELINE = 1524
 
 
 def _contar() -> int:
