@@ -11,13 +11,13 @@ citada no processo é auto-descritiva; dela saem, SEM REDE:
   • **cDV** (mod 11) valida a chave — é o que separa uma chave real de um número de 44 dígitos qualquer
     (protocolo, código de barras) e evita falso positivo na varredura de texto.
 
-CANCELAMENTO/DENEGAÇÃO **não** está na chave: exige consulta à SEFAZ. Três caminhos, todos com custo ou
-credencial — **decisão pendente do dono** (§4.1 "nunca assumir free tier"):
-    (a) webservice `NfeConsultaProtocolo` — exige certificado digital A1 (custo + guarda da chave privada);
-    (b) portal público nfe.fazenda.gov.br / portal estadual — sem certificado, mas com captcha;
-    (c) agregador pago por consulta.
-Por isso `situacao()` recebe a consulta INJETADA (`consultar`). Sem ela o veredito é **`nao_verificada` /
-`a_verificar`** — NUNCA "autorizada" por omissão: ausência de verificação ≠ regularidade.
+CANCELAMENTO/DENEGAÇÃO **não** está na chave: exige consulta à SEFAZ. **Nada pago entra aqui** (decisão do
+dono 2026-07-24): certificado digital A1 e agregadores por consulta estão FORA. O único caminho admitido é
+o **portal público** (nfe.fazenda.gov.br / portais estaduais), que consulta pela chave sem credencial — o
+captcha é resolvido pelo **ddddocr LOCAL** que já roda de graça no sweep SEI-PCRJ da VM-2. Por isso
+`situacao()` recebe a consulta INJETADA (`consultar`): o módulo não amarra fornecedor nenhum.
+Sem consulta disponível o veredito é **`nao_verificada` / `a_verificar`** — NUNCA "autorizada" por
+omissão: ausência de verificação ≠ regularidade.
 
 HONESTIDADE: indício ≠ acusação; contingência é lícita (é sinal a verificar, não vício); só a NF cancelada
 ou denegada lastreando **OB paga** (§2: só a Ordem Bancária é "pago") é vermelho forte.
@@ -103,21 +103,20 @@ def tp_emissao(chave: str) -> dict:
 
 async def situacao(chave: str, *, consultar=None) -> dict:
     """Situação da NF na SEFAZ (autorizada/cancelada/denegada/inutilizada). `consultar`: async(chave)->dict
-    — INJETADO (webservice com certificado A1, portal com captcha ou agregador; decisão do dono).
+    — INJETADO. Caminho admitido: portal público + ddddocr local (grátis). Nada pago.
 
     Sem consulta, ou se ela falhar: `verificado=False`, `situacao='nao_verificada'`, grau `a_verificar`.
     Nunca se afirma que a nota está regular só porque não se conseguiu perguntar."""
     pend = {"chave": re.sub(r"\D", "", chave or ""), "verificado": False, "situacao": "nao_verificada",
             "grau": "a_verificar",
-            "acao": ("consultar a situação da NF-e na SEFAZ pela chave de acesso (webservice "
-                     "NfeConsultaProtocolo com certificado A1, portal público ou agregador) — decisão de "
-                     "custo/credencial pendente"),
+            "acao": ("consultar a situação da NF-e no portal público da SEFAZ pela chave de acesso "
+                     "(captcha resolvido localmente por ddddocr — sem custo e sem credencial)"),
             "ressalva": "ausência de verificação ≠ nota regular"}
     if consultar is None:
         return pend
     try:
         r = await consultar(chave)
-    except Exception as e:  # noqa: BLE001 — rede/certificado/captcha: degrada honesto, não inventa
+    except Exception as e:  # noqa: BLE001 — rede/captcha/portal fora do ar: degrada honesto, não inventa
         logger.debug("situacao NF-e: consulta falhou (%s): %s", chave, e)
         return {**pend, "erro": str(e)[:120]}
     if not isinstance(r, dict) or not r.get("situacao"):
@@ -179,7 +178,8 @@ async def analisar_nfe(texto: str = "", *, consultar=None) -> dict:
         resumo += (" Situação na SEFAZ NÃO verificada para ao menos uma nota (sem consulta disponível) — "
                    "não se afirma que estão autorizadas.")
     return {"grau": grau, "chaves": chaves, "notas": notas, "sinais": sinais, "resumo": resumo,
-            "acao": "" if consultar else "habilitar a consulta à SEFAZ por chave (decisão de custo/credencial)",
+            "acao": "" if consultar else ("ligar a consulta ao portal público da SEFAZ por chave "
+                                          "(ddddocr local resolve o captcha; sem custo)"),
             "estagio_despesa": est["estagio"], "pagamento_efetivo": est["tem_ob"],
             "ressalva": "indício a apurar, não acusação; contingência é lícita; presunção de legitimidade",
             "fonte": "nfe_verifica"}
