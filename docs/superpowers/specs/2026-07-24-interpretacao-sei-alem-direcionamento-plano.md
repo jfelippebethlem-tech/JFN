@@ -1,5 +1,23 @@
 # Plano — Interpretação SEI além de direcionamento (#4)
 
+> ## STATUS DE EXECUÇÃO — 2026-07-24 (sessão seguinte)
+>
+> | Item | Situação | Onde |
+> |---|---|---|
+> | 1.4 OB ≠ empenho (§2) | ✅ feito | `execucao_sinais.estagio_despesa` + teto amarelo sem OB (`dfb30e47`) |
+> | 1.1 Atesto faz-sentido (LLM) | ✅ feito | `execucao_cerebro.avaliar_coerencia_atesto` (`60828ce4`) |
+> | 1.5 Fusão + snapshot execução | ✅ feito | `execucao_cerebro.avaliar_execucao` / `guardar_snapshot_execucao` |
+> | 1.3 NF-e | ✅ offline completo · live PENDENTE DE DECISÃO | `nfe_verifica` (chave/DV/tpEmis); `situacao()` injetável |
+> | 2.1 Aditivo · 2.2 Antecipado · 2.3 Fracionamento | ⚠️ **replanejado — a regra JÁ EXISTIA** | X1 / X3 / P4 já cobrem; entregue a PONTE `execucao_fatos.py` (`a35bc95e`) |
+> | 1.2 VLM foto | ⛔ não iniciado — depende de decisão de custo do dono | — |
+> | **PGE: cumprimento de condicionantes** (fora do plano, pedido do dono) | ✅ feito | `parecer_cumprimento.py` (`ee2add3b`), calibrado em 296 processos reais |
+>
+> **Decisões que continuam pendentes do dono:** (a) consulta live à SEFAZ — certificado A1 × portal com
+> captcha × agregador pago; (b) VLM para relatório fotográfico (custo por imagem); (c) critério de "mesmo
+> objeto" para estender o fracionamento à fonte SIAFE (que tem data, e destravaria os sinais temporais do
+> P4 hoje desligados por falta de data em `compras_diretas_tcerj`).
+
+
 **Data:** 2026-07-24 · **Autor:** Claude (sessão fusão/obtenção/storage) · **Status:** plano para NOVA SESSÃO
 **Contexto-pai:** esta sessão entregou o direcionamento completo (fusão det×LLM, veredito resolvido, ponte de
 obtenção, storage versionado B2/R2) + o **primeiro** detector de execução (`compliance_agent/execucao_sinais.py`,
