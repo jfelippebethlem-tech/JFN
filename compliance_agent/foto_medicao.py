@@ -31,6 +31,12 @@ LADO_MINIMO = 200       # abaixo disso é logo/ícone/carimbo, não registro de 
 # CALIBRADO no arquivo SEI real (2026-07-24): página em branco = 0.00; as fotos de medição reais vão de
 # 21 a 95 (mediana 40). O corte em 8 fica na terra de ninguém entre os dois — não descarta foto legítima.
 DESVIO_MINIMO = 8.0
+# PÁGINA DE DOCUMENTO escaneada (folha de ponto, ofício, planilha impressa) vs FOTOGRAFIA. Medido no
+# arquivo real: documento tem brilho ~245-253 e saturação ~0,2; as fotos de obra têm brilho 134-168 e
+# saturação 38-67 — separação limpa. E 29 de 40 arquivos do diretório "fotos/" são, na verdade, páginas
+# de PDF: sem este corte, o detector acusa "reciclagem" de rodapé de formulário, não de registro de obra.
+BRILHO_DOCUMENTO = 200.0
+SATURACAO_DOCUMENTO = 12.0
 _EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 _LADO = 9               # dHash: 9×8 pixels → 64 comparações horizontais
 
@@ -67,11 +73,17 @@ def informativa(caminho) -> bool:
         with Image.open(caminho) as im:
             if min(im.size) < LADO_MINIMO:
                 return False
-            desvio = ImageStat.Stat(im.convert("L")).stddev[0]
+            cinza = ImageStat.Stat(im.convert("L"))
+            desvio, brilho = cinza.stddev[0], cinza.mean[0]
+            saturacao = ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1]
     except Exception as e:  # noqa: BLE001 — ilegível: trata como não informativa (não acusa)
         logger.debug("informativa falhou (%s): %s", caminho, e)
         return False
-    return desvio >= DESVIO_MINIMO
+    if desvio < DESVIO_MINIMO:
+        return False                                   # branco/preto/fundo liso
+    if brilho > BRILHO_DOCUMENTO and saturacao < SATURACAO_DOCUMENTO:
+        return False                                   # página de documento escaneada, não fotografia
+    return True
 
 
 def distancia(a: int | None, b: int | None) -> int:

@@ -173,3 +173,27 @@ def test_vlm_que_falha_nao_derruba_o_veredito(tmp_path):
     r = FM.avaliar_fotos(p.parent, objeto="Reforma", descrever=descrever)
     assert r["grau"] not in ("indeterminado", "indisponivel")
     assert r["coerencia_objeto"]["grau"] == "pendente_reprocessar"
+
+
+def test_pagina_de_documento_escaneada_nao_e_foto_de_medicao(tmp_path):
+    """Medido no arquivo real: 16 processos 'compartilhavam' uma imagem — era FOLHA DE PONTO digitalizada,
+    cujo rodapé padrão se repete em todo processo. Documento tem brilho ~250 e saturação ~0; fotografia de
+    obra tem brilho 134-168 e saturação 38-67."""
+    doc = tmp_path / "ponto.jpg"
+    img = Image.new("RGB", (900, 1200), (252, 252, 252))
+    d = ImageDraw.Draw(img)
+    for linha in range(14):                     # linhas de texto escuro sobre fundo branco
+        d.rectangle([60, 40 + linha * 30, 840, 52 + linha * 30], fill=(30, 30, 30))
+    img.save(doc)
+    assert FM.informativa(doc) is False
+
+
+def test_foto_colorida_de_obra_continua_valendo(tmp_path):
+    obra = tmp_path / "obra.jpg"
+    img = Image.new("RGB", (900, 700), (90, 120, 60))
+    d = ImageDraw.Draw(img)
+    for i in range(8):
+        d.rectangle([i * 100, i * 60, i * 100 + 220, i * 60 + 180],
+                    fill=((30 * i) % 256, (200 - 20 * i) % 256, (90 + 15 * i) % 256))
+    img.save(obra)
+    assert FM.informativa(obra) is True

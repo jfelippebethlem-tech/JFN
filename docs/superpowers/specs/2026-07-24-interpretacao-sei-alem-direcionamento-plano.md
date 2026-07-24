@@ -12,10 +12,17 @@
 > | 1.2 VLM foto | ⛔ não iniciado — depende de decisão de custo do dono | — |
 > | **PGE: cumprimento de condicionantes** (fora do plano, pedido do dono) | ✅ feito | `parecer_cumprimento.py` (`ee2add3b`), calibrado em 296 processos reais |
 >
-> **Decisões que continuam pendentes do dono:** (a) consulta live à SEFAZ — certificado A1 × portal com
-> captcha × agregador pago; (b) VLM para relatório fotográfico (custo por imagem); (c) critério de "mesmo
-> objeto" para estender o fracionamento à fonte SIAFE (que tem data, e destravaria os sinais temporais do
-> P4 hoje desligados por falta de data em `compras_diretas_tcerj`).
+> **Decisões DECIDIDAS pelo dono (2026-07-24, mesma noite) — nenhuma pendência aberta:**
+>
+> | Questão | Decisão | Resultado |
+> |---|---|---|
+> | Consulta live à SEFAZ | **nada pago** — certificado A1 e agregador fora | portal público + `ddddocr` local (já roda no sweep SEI-PCRJ da VM-2); contingência continua saindo da chave, offline |
+> | VLM do relatório fotográfico | **gratuito**, e não Mapillary | `foto_medicao.py`: reciclagem por dHash (offline, sem IA) + VLM local injetado (moondream2 / SmolVLM em llama.cpp na VM-2) |
+> | Fracionamento sobre o SIAFE | **seguir** | `fracionamento_siafe.py` — triagem por UG+credor+exercício com data e OB paga; grau sempre `a_verificar` (a fonte não tem objeto nem modalidade) |
+>
+> **1.2 e 2.3-SIAFE entregues** (`95f9bbab`). O que o dado real corrigiu, em ambos, está nos docstrings —
+> página em branco, folha de ponto, OB excluída, órgão público, concessionária e parcelas do mesmo processo
+> eram falsos positivos que só apareceram ao rodar sobre 5.525 fotos e 60 mil Ordens Bancárias.
 
 
 **Data:** 2026-07-24 · **Autor:** Claude (sessão fusão/obtenção/storage) · **Status:** plano para NOVA SESSÃO
