@@ -39,6 +39,20 @@ BRILHO_DOCUMENTO = 200.0
 SATURACAO_DOCUMENTO = 12.0
 _EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 _LADO = 9               # dHash: 9×8 pixels → 64 comparações horizontais
+# Recorte da foto embutida em página de relatório fotográfico (ver `_regioes_foto`). Aferido em
+# 070002_005897_2024/023_p29.jpg (INEA/DIRRAM, contrato 35/2023, 7ª medição): as 2 fotos da página
+# saem nas coordenadas certas, e o cabeçalho/legenda ficam de fora.
+_FUNDO_PAGINA = 235     # canal acima disso em TODOS = branco de página
+_LINHA_DENSA = 0.55     # fração de não-branco que caracteriza linha de FOTO (linha de texto fica bem abaixo)
+_MIN_ALTURA = 0.06      # faixa mais baixa que isto da página não é foto
+_MIN_LARGURA = 0.25
+_MIN_AREA_PX = 90_000   # área mínima no ORIGINAL: abaixo disso é selo/assinatura digitalizada
+_COBRE_PAGINA = 0.92    # caixa maior que isto = a imagem é a própria foto, não há o que recortar
+# Fundo de papel (ver `_fundo_de_papel`) — pega o escaneado BEGE que escapa do corte por saturação.
+_MODO_CLARO = 190       # abaixo disso o tom dominante não é papel
+_DOMINANCIA_PAPEL = 0.80
+_MODO_BRANCO = 235      # fundo BRANCO de página: tabela densa domina menos, mas branco puro entrega
+_DOMINANCIA_BRANCO = 0.50
 
 
 def dhash(caminho) -> int | None:
@@ -126,33 +140,112 @@ _RESSALVA = ("indício a apurar, não acusação; INDISPONÍVEL ≠ irregular; a
              "presunção de legitimidade")
 
 
-def _triar_e_hashear(caminho) -> int | None:
-    """Filtro + hash em UMA passada. Decodificar a imagem é o custo dominante: manter `informativa()` e
-    `dhash()` separados fazia TRÊS decodificações por arquivo, e o sweep das 5,5 mil fotos passava de dez
-    minutos. Devolve o dHash quando a imagem serve como registro de execução; None quando não serve."""
-    try:
-        from PIL import Image, ImageStat
-        with Image.open(caminho) as im:
-            if min(im.size) < LADO_MINIMO:
-                return None
-            cinza = im.convert("L")
-            st = ImageStat.Stat(cinza)
-            if st.stddev[0] < DESVIO_MINIMO:
-                return None                        # branco/preto/fundo liso
-            if (st.mean[0] > BRILHO_DOCUMENTO
-                    and ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1] < SATURACAO_DOCUMENTO):
-                return None                        # página de documento escaneada, não fotografia
-            g = cinza.resize((_LADO, 8))
-            px = list(g.get_flattened_data() if hasattr(g, "get_flattened_data") else g.getdata())
-    except Exception as e:  # noqa: BLE001 — ilegível/corrompida: fora do índice (não acusa)
-        logger.debug("triagem de imagem falhou (%s): %s", caminho, e)
+def _regioes_foto(im, _amostra: int = 420) -> list[tuple[int, int, int, int]]:
+    """Caixas das fotografias EMBUTIDAS numa página de relatório fotográfico.
+
+    Lista vazia = o arquivo já É a fotografia (ou é só texto) — hasheie a imagem inteira.
+
+    Existe porque a medição de obra costuma chegar como RELATÓRIO FOTOGRÁFICO: uma página com
+    cabeçalho do órgão, número da medição, período, e as fotos DENTRO dela. Hashear o arquivo
+    compara o MODELO da página, não a foto — falha nos dois sentidos (mesma foto em páginas
+    diferentes não casa; páginas do mesmo modelo com fotos diferentes casam).
+
+    Fundo de página é quase-branco: a projeção da máscara de não-branco por linha acha as faixas
+    de foto, e a projeção por coluna dentro da faixa acha as bordas laterais."""
+    import numpy as np
+    W, H = im.size
+    p = im.copy()
+    p.draft("RGB", (_amostra, _amostra))           # decodifica reduzido: o JPEG nem chega inteiro
+    p.thumbnail((_amostra, _amostra))
+    nb = np.asarray(p.convert("RGB")).min(axis=2) < _FUNDO_PAGINA
+    h, w = nb.shape
+
+    faixas, ini = [], None
+    for y, dens in enumerate(list(nb.mean(axis=1)) + [0.0]):
+        if dens >= _LINHA_DENSA and ini is None:
+            ini = y
+        elif dens < _LINHA_DENSA and ini is not None:
+            if (y - ini) >= _MIN_ALTURA * h:
+                faixas.append((ini, y))
+            ini = None
+
+    caixas = []
+    for y0, y1 in faixas:
+        xs = np.flatnonzero(nb[y0:y1].mean(axis=0) >= _LINHA_DENSA)
+        if not len(xs) or (xs[-1] + 1 - xs[0]) < _MIN_LARGURA * w:
+            continue
+        c = (round(int(xs[0]) * W / w), round(y0 * H / h),
+             round((int(xs[-1]) + 1) * W / w), round(y1 * H / h))
+        area = (c[2] - c[0]) * (c[3] - c[1])
+        if _MIN_AREA_PX <= area < _COBRE_PAGINA * W * H:   # cobrir a página inteira = é a própria foto
+            caixas.append(c)
+    return caixas
+
+
+def _fundo_de_papel(cinza) -> bool:
+    """Papel é papel: UM tom de fundo claro dominando a imagem, com marcas escuras em cima.
+
+    O corte por saturação (`SATURACAO_DOCUMENTO`) só pega documento CINZA. Papel envelhecido é
+    bege — saturação 38-40, passava como fotografia — e foi assim que duas folhas de ponto do
+    HEGV (CTI ADULTO 2 · Cardiologia) viraram um par de "reciclagem" na varredura do acervo.
+    Aqui a cor não importa: mede-se a dominância do MODO do histograma, seja o papel branco,
+    bege ou amarelado.
+
+    Medido no acervo (500 imagens ao acaso): a dominância é bimodal, com a massa de papel em
+    0,80-1,00. As folhas do HEGV dão 0,91; fotografias de campo verificadas a olho dão 0,30.
+
+    **Perda declarada:** foto de superfície clara e uniforme (parede recém-pintada, céu limpo)
+    pode cair aqui e ficar fora do índice de reciclagem. É o lado certo para errar — alarme
+    vermelho falso contamina a fila do fiscal; uma foto a menos no índice só deixa de achar."""
+    h = cinza.histogram()
+    tot = sum(h) or 1
+    modo = max(range(256), key=lambda i: h[i])
+    if modo < _MODO_CLARO:
+        return False
+    dom = sum(h[max(0, modo - 18):modo + 19]) / tot
+    return dom >= _DOMINANCIA_PAPEL or (modo >= _MODO_BRANCO and dom >= _DOMINANCIA_BRANCO)
+
+
+def _hashear(im) -> int | None:
+    """dHash de UMA fotografia já aberta; None quando a imagem não serve como registro de execução."""
+    from PIL import ImageStat
+    if min(im.size) < LADO_MINIMO:
         return None
+    cinza = im.convert("L")
+    st = ImageStat.Stat(cinza)
+    if st.stddev[0] < DESVIO_MINIMO:
+        return None                                # branco/preto/fundo liso
+    if (st.mean[0] > BRILHO_DOCUMENTO
+            and ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1] < SATURACAO_DOCUMENTO):
+        return None                                # página de documento escaneada, não fotografia
+    if _fundo_de_papel(cinza):
+        return None                                # papel AMARELADO: escapava do corte por saturação
+    g = cinza.resize((_LADO, 8))
+    px = list(g.get_flattened_data() if hasattr(g, "get_flattened_data") else g.getdata())
     h = 0
     for linha in range(8):
         base = linha * _LADO
         for col in range(8):
             h = (h << 1) | int(px[base + col] > px[base + col + 1])
     return h
+
+
+def _triar_e_hashear(caminho) -> list[int]:
+    """Filtro + hash em UMA passada. Decodificar a imagem é o custo dominante: manter `informativa()` e
+    `dhash()` separados fazia TRÊS decodificações por arquivo, e o sweep das 5,5 mil fotos passava de dez
+    minutos.
+
+    Devolve UM hash por FOTOGRAFIA do arquivo — normalmente uma (a imagem inteira), mas página de
+    relatório fotográfico traz várias embutidas, e cada uma vira um item do índice. Lista vazia = nada
+    no arquivo serve como registro de execução."""
+    try:
+        from PIL import Image
+        with Image.open(caminho) as im:
+            alvos = [im.crop(c) for c in _regioes_foto(im)] or [im]
+            return [h for h in (_hashear(a) for a in alvos) if h is not None]
+    except Exception as e:  # noqa: BLE001 — ilegível/corrompida: fora do índice (não acusa)
+        logger.debug("triagem de imagem falhou (%s): %s", caminho, e)
+        return []
 
 
 def indexar(dirs_processos) -> tuple[dict, int]:
@@ -162,11 +255,15 @@ def indexar(dirs_processos) -> tuple[dict, int]:
     for d in dirs_processos or []:
         d = Path(d)
         for f in _fotos_do_processo(d):
-            h = _triar_e_hashear(f)
-            if h is None:
+            hs = _triar_e_hashear(f)
+            if not hs:
                 descartadas += 1
                 continue
-            idx.setdefault(h, []).append({"processo": d.name, "arquivo": str(f)})
+            for i, h in enumerate(hs):
+                item = {"processo": d.name, "arquivo": str(f)}
+                if len(hs) > 1:                    # foto embutida: dizer QUAL, senão a prova fica vaga
+                    item["foto_na_pagina"] = i + 1
+                idx.setdefault(h, []).append(item)
     return idx, descartadas
 
 
