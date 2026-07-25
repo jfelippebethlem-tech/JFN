@@ -1569,6 +1569,21 @@
     .nu-chip::before{animation:none;opacity:.8;transform:translateX(-50%)}
     .nu-chip::after{transition:none}}
 
+  /* ── v14 · PRIORIDADE DOS NÓS — peso visual que segue a gravidade, não o gosto.
+     A lei da casa é que coisas graves brilham graves. O grau vem do nó, não de uma
+     escolha estética: 1 = grave, 2 = atenção, 3 = informativo. Só pintura. */
+  .nu-chip[data-pri="1"]{border-color:color-mix(in srgb,var(--nc) 72%,transparent)}
+  .nu-chip[data-pri="1"]::before{filter:blur(3px);animation-duration:2.4s}
+  .nu-chip[data-pri="1"]::after{height:12px;box-shadow:0 0 11px var(--nc)}
+  .nu-chip[data-pri="1"] .n{text-shadow:0 0 14px color-mix(in srgb,var(--nc) 70%,transparent)}
+  .nu-chip[data-pri="3"]::before{opacity:.4;filter:blur(1.5px);animation-duration:4.6s}
+  .nu-chip[data-pri="3"]::after{height:7px;opacity:.7}
+  /* quem pediu menos movimento mantém a HIERARQUIA (o grave continua mais forte),
+     só perde o pulso — mesma decisão do sabre no v13. */
+  @media (prefers-reduced-motion:reduce){
+    .nu-chip[data-pri="1"]::before{animation:none;opacity:1}
+    .nu-chip[data-pri="3"]::before{animation:none;opacity:.45}}
+
 </style>
 </head>
 <body>
@@ -3652,16 +3667,20 @@ async function renderCockpit(){
 
 // ═══ NÚCLEO ORGÂNICO — a mesma informação do cockpit em forma viva (dados/eventos REAIS) ═══
 const NU_NODES=[
-  {id:'radar',  lab:'radar de risco', tab:'g_radar', cor:'#5fd9ff', cor2:'#7d7dff', orb:.9,  sp:1},
-  {id:'alertas',lab:'alertas',        tab:'e_alertas',cor:'#ff7a8a', cor2:'#ff5470', orb:.66, sp:-.7},
+  {id:'radar',  lab:'radar de risco', tab:'g_radar', cor:'#5fd9ff', cor2:'#7d7dff', pri:2, orb:.9,  sp:1},
+  {id:'alertas',lab:'alertas',        tab:'e_alertas',cor:'#ff7a8a', cor2:'#ff5470', pri:1, orb:.66, sp:-.7},
   // "ninhos" agora é a MESMA SALA, não o mesmo prédio: dividir 'Rua da Assembleia 10'
   // (318 CNPJs, edifício comercial) não diz nada; dividir a SALA com 2+ recebendo é a
   // assinatura de interposição. Rótulo mudou junto — o número é outro e menor, de propósito.
-  {id:'ninho',  lab:'mesma sala',     tab:'g_riscos', cor:'#f2b544', cor2:'#ff8804', orb:.88, sp:.8},
-  {id:'fenix',  lab:'empresa morta',  tab:'g_fenix',  cor:'#ff9a6a', cor2:'#ff5472', orb:.6,  sp:1.15},
-  {id:'com',    lab:'comunidades',    tab:'g_comun',  cor:'#c096ff', cor2:'#59a3ff', orb:.92, sp:-.55},
-  {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', cor2:'#61da92', orb:.68, sp:.9},
-  {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', cor2:'#c096ff', orb:.86, sp:-.95},
+  {id:'ninho',  lab:'mesma sala',     tab:'g_riscos', cor:'#f2b544', cor2:'#ff8804', pri:1, orb:.88, sp:.8},
+  {id:'fenix',  lab:'empresa morta',  tab:'g_fenix',  cor:'#ff9a6a', cor2:'#ff5472', pri:1, orb:.6,  sp:1.15},
+  {id:'com',    lab:'comunidades',    tab:'g_comun',  cor:'#c096ff', cor2:'#59a3ff', pri:3, orb:.92, sp:-.55},
+  {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', cor2:'#61da92', pri:2, orb:.68, sp:.9},
+  {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', cor2:'#c096ff', pri:1, orb:.86, sp:-.95},
+  /* v14: `lift` e `orgao` ja eram alimentados pelo cockpit (ckFill -> nuSet) e
+     nao apareciam na mesa. Entram sem inventar nada — dado sintetico e proibido. */
+  {id:'lift',   lab:'melhor detector',tab:'g_prioridade',cor:'#61da92', cor2:'#5fd9ff', pri:2, orb:.72, sp:.62},
+  {id:'orgao',  lab:'órgão que economiza',tab:'e_comp',  cor:'#90d7ff', cor2:'#61da92', pri:3, orb:.95, sp:-.42},
 ];
 let _nuRAF=0,_nuPulses=[],_nuVals={},_nuFlux=[],_sweepAtivo=null,_swInt=0;
 // qual sweep alimenta o sistema agora → mostra no reator e o acelera
@@ -3803,7 +3822,7 @@ function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
   const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
   $('nu-chips').innerHTML=NU_NODES.map((n,i)=>
-    `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor};--nc2:${n.cor2||n.cor};--ni:${i}" onclick="ir('${n.tab}')"
+    `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor};--nc2:${n.cor2||n.cor};--ni:${i}" data-pri="${n.pri||3}" onclick="ir('${n.tab}')"
        onpointerenter="_nuHover='${n.id}'" onpointerleave="_nuHover=null">
       <small>${n.lab}</small><span class="n">—</span></button>`).join('');
   /* três altitudes em vez de sete órbitas quase iguais: a mesa lê como escada
