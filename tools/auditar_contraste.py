@@ -8,7 +8,9 @@ e lendo de volta: funciona para QUALQUER notacao que o navegador entenda.
 O fundo efetivo tambem e resolvido de verdade — subindo a cadeia de ancestrais ate achar
 um fundo opaco, que e o que o olho enxerga atras do texto.
 """
+import hashlib
 import json
+import pathlib
 import sys
 import time
 import urllib.request as ur
@@ -138,6 +140,21 @@ cmd("Emulation.setDeviceMetricsOverride", {"width": 1600, "height": 1000,
 cmd("Page.navigate", {"url": "http://127.0.0.1:8000/painel"})
 time.sleep(26)
 
+# IMPRESSAO DIGITAL DO QUE FOI MEDIDO. Uma varredura inteira ja foi feita contra o
+# painel ANTERIOR a uma correcao porque o `systemctl restart` nao chegou a valer, e
+# o laudo saiu com cara de atual. Um laudo que nao diz o que mediu e um laudo que
+# pode mentir com numero certo. Comparar `servido` com o disco antes de acreditar.
+_disco = hashlib.sha1(
+    (pathlib.Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html")
+    .read_bytes()).hexdigest()[:12]
+_servido = js("(()=>document.documentElement.outerHTML.length)()")
+_dim = js("getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()")
+print(f"\npainel medido: sha1(disco)={_disco} · html servido={_servido} bytes · --dim={_dim}")
+if _dim and "0.63" not in _dim:
+    print("  !! ATENCAO: --dim nao e o valor corrente do disco — a pagina medida esta VELHA."
+          "\n     Rode `systemctl --user restart jfn`, espere 25s e refaca.")
+print()
+
 todos = {}
 for aba in ABAS:
     js(f"try{{ir('{aba}')}}catch(e){{}}")
@@ -176,4 +193,5 @@ for aba in ABAS:
 
 print(f"\n=== {len(todos)} padrao(oes) de texto abaixo do minimo WCAG ===")
 for o in sorted(todos.values(), key=lambda x: x["cr"])[:25]:
-    print(f"  {o['cr']:5.2f}:1 (exige {o['exige']})  {o['px']:>5}px  {o['el'][:34]:34s} {o['cor'][:26]:26s} {o['txt'][:30]!r}")
+    print(f"  {o['cr']:5.2f}:1 (exige {o['exige']})  {o['px']:>5}px  {o.get('aba','?'):12s} "
+          f"{o['el'][:30]:30s} {o['cor'][:26]:26s} {o['txt'][:28]!r}")
