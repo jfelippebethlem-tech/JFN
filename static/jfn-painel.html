@@ -2994,8 +2994,10 @@ let _nuEvTotal=0,_nuHover=null;
    deformado para a perspectiva em faixas afins; o resultado fica em cache e só
    é refeito quando a câmera realmente se move. Em repouso, o piso custa um
    drawImage por quadro. */
+/* alfa 0..1 -> par hexadecimal, para concatenar em '#rrggbb' sem montar rgba() */
+const _hex2=a=>Math.max(0,Math.min(255,Math.round(a*255))).toString(16).padStart(2,'0');
 const HOLO={PL:1.10, ELEV:0.56, CAMD:3.15, SZ:520,    // piso, elevação (rad), distância, resolução do bitmap
-            ESP:0.045, ARO:1.11};                     // espessura da laje do território · raio do aro da mesa
+            ESP:0.045, ARO:1.11, GIRO:-0.28};         // espessura da laje · aro · giro do território (rad)
 function _holoProj(x,y,z,c){                          // mundo → tela (x direita, y altura, z profundidade)
   const X=x*c.cy_ - z*c.sy_, Z=x*c.sy_ + z*c.cy_;     // giro em torno do eixo vertical (yaw)
   const Y2=y*c.cp + Z*c.sp;                           // inclinação da câmera (elevação)
@@ -3008,11 +3010,19 @@ function _holoProj(x,y,z,c){                          // mundo → tela (x direi
 function _rjPlaca(M,SZ){
   const c=document.createElement('canvas');c.width=c.height=SZ;
   const x=c.getContext('2d');
-  const s=Math.min(SZ*0.92/M.w,SZ*0.92/M.h),ox=(SZ-M.w*s)/2,oy=(SZ-M.h*s)/2;
+  /* GIRO DO TERRITÓRIO (v12.2) — o RJ é largo no eixo leste-oeste e a placa é redonda:
+     alinhado ao eixo x ele deixava vazias as duas pontas da elipse. Girado, usa a
+     DIAGONAL, que é o maior diâmetro aparente da mesa em perspectiva. E a ocupação
+     sobe de 0,92 para 0,99 porque o cálculo agora usa a caixa DEPOIS do giro. */
+  const GIRO=HOLO.GIRO;
+  const cg=Math.abs(Math.cos(GIRO)),sg=Math.abs(Math.sin(GIRO));
+  const lw=M.w*cg+M.h*sg,lh=M.w*sg+M.h*cg;
+  const s=Math.min(SZ*0.99/lw,SZ*0.99/lh),ox=(SZ-M.w*s)/2,oy=(SZ-M.h*s)/2;
   const mk=flat=>{const p=new Path2D();let X=flat[0],Y=flat[1];
     p.moveTo(ox+X/M.q*s,oy+Y/M.q*s);
     for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];p.lineTo(ox+X/M.q*s,oy+Y/M.q*s);}
     p.closePath();return p;};
+  x.translate(SZ/2,SZ/2);x.rotate(GIRO);x.translate(-SZ/2,-SZ/2);
   x.lineJoin=x.lineCap='round';
   x.strokeStyle='rgba(120,170,245,0.22)';x.lineWidth=0.9;      // as 92 divisas municipais
   M.m.forEach(f=>x.stroke(mk(f)));
@@ -3031,11 +3041,16 @@ function _rjPlaca(M,SZ){
    isso por quadro é irrisório, e é o que permite dar ESPESSURA ao território: sem parede
    lateral a malha é um decalque deitado no chão, e o olho lê desenho, não objeto. */
 function _rjContornoMundo(M){
-  const PL=HOLO.PL, SZ=HOLO.SZ;
-  const s=Math.min(SZ*0.92/M.w,SZ*0.92/M.h), ox=(SZ-M.w*s)/2, oy=(SZ-M.h*s)/2;
+  const PL=HOLO.PL, SZ=HOLO.SZ, GIRO=HOLO.GIRO;
+  const cg=Math.abs(Math.cos(GIRO)), sg=Math.abs(Math.sin(GIRO));
+  const lw=M.w*cg+M.h*sg, lh=M.w*sg+M.h*cg;
+  const s=Math.min(SZ*0.99/lw,SZ*0.99/lh), ox=(SZ-M.w*s)/2, oy=(SZ-M.h*s)/2;
   return M.o.map(flat=>{
     const pts=[];let X=flat[0],Y=flat[1];
-    const põe=()=>{const sx=ox+X/M.q*s, sy=oy+Y/M.q*s;
+    /* o MESMO giro da placa: sem ele a parede lateral da laje descola da malha */
+    const põe=()=>{const rx=ox+X/M.q*s-SZ/2, ry=oy+Y/M.q*s-SZ/2;
+      const sx=SZ/2+rx*Math.cos(GIRO)-ry*Math.sin(GIRO);
+      const sy=SZ/2+rx*Math.sin(GIRO)+ry*Math.cos(GIRO);
       pts.push([sx/SZ*2*PL-PL, PL-sy/SZ*2*PL]);};   // inverso exato do mapeamento da placa
     põe();
     for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];põe();}
@@ -3066,7 +3081,7 @@ function nucleoStart(){
      holográfica e os rótulos param de brigar. Raio e altura andam juntos —
      quanto mais perto do reator, mais alto. */
   const ANEIS=[{r:0.46,h:0.62},{r:0.74,h:0.42},{r:1.00,h:0.24}];
-  NU_NODES.forEach(n=>{n._an=n.orb<=0.7?0:(n.orb<=0.88?1:2);});
+  NU_NODES.forEach((n,i)=>{n._an=n.orb<=0.7?0:(n.orb<=0.88?1:2);n._idx=i;});
   /* FASE FIXA E DISTRIBUÍDA dentro do próprio anel, com UMA velocidade para todos.
      Antes cada domínio tinha velocidade própria: eles derivavam, formavam aglomerado
      e os rótulos se empilhavam de um lado da mesa enquanto o outro ficava vazio.
@@ -3138,7 +3153,7 @@ function nucleoStart(){
     /* escala: o piso é um trapézio (borda perto × borda longe) e ainda há o que
        FLUTUA acima dele — a cena a enquadrar é piso + altura do projetor. */
     const PL=HOLO.PL, kN=cam.camd/Math.max(.42,cam.camd-PL*cam.cp), kF=cam.camd/(cam.camd+PL*cam.cp);
-    const A=PL*cam.sp*kF, B=PL*cam.sp*kN, HT=0.72*cam.cp*1.14;
+    const A=PL*cam.sp*kF, B=PL*cam.sp*kN, HT=0.60*cam.cp*1.14;
     const gut=_compacto?10:132;      // faixa em volta da mesa: é onde os rótulos pousam
     const Hu=Math.max(150,H-_gradeH);                      // altura util: a grade tem a dela
     cam.s=Math.min(Hu*0.94/(A+B+HT), Math.max(140,W-2*gut)/(2*PL*kN));
@@ -3272,11 +3287,36 @@ function nucleoStart(){
     if(!_compacto){
       /* O REATOR É ÁREA RESERVADA: entra na lista de colisão antes de qualquer rótulo,
          então nada pousa em cima dele. Foi o defeito que escondeu o projetor no v12. */
-      const _hc=P(0,0.72,0), _hr=64*_hc.k*Math.min(1.5,cam.s/240);
+      const _hc=P(0,0.60,0), _hr=64*_hc.k*Math.min(1.5,cam.s/240);
       const _cx=[{x:_hc.x,y:_hc.y,w:_hr*2,h:_hr*2}];
-      if(!draw._m||draw._m>45){draw._m=0;NU_NODES.forEach(n=>{const e=$('nu-'+n.id);
-        if(e){n._w=e.offsetWidth||96;n._h=e.offsetHeight||34;}});}
+      /* A PÍLULA DE SWEEP também é território ocupado quando está acesa. Ela vive no
+         topo e ao centro; um rótulo empurrado para cima cobria o "alimentando · SEI".
+         Só restringe quem de fato cruza a faixa horizontal dela — quem está na
+         lateral continua podendo subir. */
+      /* Toda leitura de geometria (offset*) entra no MESMO cache de 45 quadros. Ler
+         `offset*` depois de escrever estilo força LAYOUT SÍNCRONO: medir a pílula a
+         cada quadro levou o teto do desenho de 5,7 ms para 44,7 ms. */
+      /* `classList.contains` não custa layout — então a MUDANÇA de estado da pílula
+         força a remedição na hora, em vez de esperar o ciclo de 45 quadros. Nesta VM,
+         a 3 fps, esperar o ciclo significava até 15 s com o rótulo em cima do sweep. */
+      const _pOn=(()=>{const e=$('nu-sweep');return !!(e&&e.classList.contains('on'));})();
+      if(_pOn!==draw._pOn){draw._pOn=_pOn;draw._m=999;}
+      if(!draw._m||draw._m>45){
+        draw._m=0;
+        NU_NODES.forEach(n=>{const e=$('nu-'+n.id);
+          if(e){n._w=e.offsetWidth||96;n._h=e.offsetHeight||34;}});
+        const pil=$('nu-sweep');
+        if(pil&&pil.classList.contains('on')){
+          /* pela CAIXA RENDERIZADA, não por `offsetLeft`: a pílula é centrada com
+             `left:50%` + `translateX(-50%)`, e offsetLeft ignora o transform — a faixa
+             reservada saía deslocada meia largura e o rótulo cobria o sweep assim mesmo. */
+          const rb=box.getBoundingClientRect(), rp=pil.getBoundingClientRect();
+          draw._pX=[rp.left-rb.left,rp.right-rb.left];
+          draw._pB=rp.bottom-rb.top+10;
+        }else{draw._pX=null;draw._pB=0;}
+      }
       draw._m=(draw._m||0)+1;
+      const _pX=draw._pX, _pB=draw._pB||0;
       pos.slice().sort((a,b)=>b.k-a.k).forEach(o=>{
         const n=o.n,el=$('nu-'+n.id);if(!el)return;
         /* empurrão radial a partir do centro do PRÓPRIO ANEL do nó, não do centro do
@@ -3293,7 +3333,8 @@ function nucleoStart(){
             y=(y<=c.y)?c.y-(h+c.h)/2-9:c.y+(h+c.h)/2+9;
         }
         x=Math.max(w/2+8,Math.min(W-w/2-8,x));      // nunca sai da caixa
-        y=Math.max(h+8,Math.min(H-8,y));
+        const cruzaPilula=_pX&&(x-w/2)<_pX[1]+6&&(x+w/2)>_pX[0]-6;
+        y=Math.max(h+(cruzaPilula?_pB:8),Math.min(H-8,y));
         _cx.push({x,y,w,h});
         const tf='translate3d('+Math.round(x)+'px,'+Math.round(y)+'px,0) '
                 +'translate(-50%,-100%) scale('+sc.toFixed(2)+')';
@@ -3334,8 +3375,72 @@ function nucleoStart(){
       const rg=ctx.createRadialGradient(x,y,0,x,y,R);
       rg.addColorStop(0,n.cor+'e6');rg.addColorStop(.35,n.cor+'4a');rg.addColorStop(1,n.cor+'00');
       ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,R,0,6.283);ctx.fill();
+      /* ── APARELHAGEM DO NÓ (v12.3) ────────────────────────────────────────────
+         O domínio era um ponto de luz num palito: ao lado do reator detalhado ele
+         lia como marcador de mapa, não como instrumento da mesma máquina.
+
+         RELÓGIO PRÓPRIO: cada domínio respira no SEU tempo — período e fase derivados
+         do índice (determinístico; a casa proíbe gerador aleatório em cena). Sete
+         pulsos em compassos diferentes é o que faz a mesa parecer VIVA; sete pulsos
+         no mesmo compasso é uma luz de natal piscando junta.
+
+         Custo: dois Path2D por nó (estrutura e ping), não um traço por elemento. */
+      const S=v=>v*k, idx=n._idx||0;
+      const per=1+((idx*7)%5)*0.34;                          // 1,00 · 1,34 · 1,68 · 2,02 · 2,36
+      const fase=idx*1.97;
+      const pul=rm?0.55:0.5+0.5*Math.sin(t*0.0017/per+fase); // respiração do nó
+      const gir=rm?0:t*0.00040/per+fase;                     // e ele gira no próprio ritmo
+      const ap=new Path2D();
+
+      // brackets de mira: 4 cantos que ABREM e FECHAM com a respiração (o gesto que
+      // um retículo de Star Wars faz ao travar o alvo)
+      const rb1=S((viva?17:13)+4.5*pul);
+      for(let q=0;q<4;q++){
+        const a0=gir*0.6+q*1.5708-0.34;
+        ap.moveTo(x+Math.cos(a0)*rb1,y+Math.sin(a0)*rb1);
+        ap.arc(x,y,rb1,a0,a0+0.68);
+        const ae=a0+0.68;                                    // perninhas do bracket
+        ap.moveTo(x+Math.cos(ae)*rb1,y+Math.sin(ae)*rb1);
+        ap.lineTo(x+Math.cos(ae)*(rb1+S(3.4)),y+Math.sin(ae)*(rb1+S(3.4)));
+      }
+      // câmara de contenção hexagonal, girando ao contrário
+      const rh=S((viva?9.5:7.4)+1.3*pul);
+      for(let q=0;q<6;q++){
+        const a=-gir*1.7+q*1.0472, hx=x+Math.cos(a)*rh, hy=y+Math.sin(a)*rh;
+        q?ap.lineTo(hx,hy):ap.moveTo(hx,hy);
+      }
+      ap.closePath();
+      // travessas do feixe + pacote de energia subindo (cada nó no seu passo)
+      const dxb=px-x, dyb=py-y;
+      for(let q=1;q<=4;q++){
+        const u=q/5, bx=x+dxb*u, by=y+dyb*u, lw2=S(4.2)*(1-u*0.45);
+        ap.moveTo(bx-lw2,by);ap.lineTo(bx+lw2,by);
+      }
+      const rb2=S(7.5);                                      // suporte no pé, sobre a laje
+      ap.moveTo(px-rb2,py);ap.arc(px,py,rb2,Math.PI,Math.PI+1.05);
+      ap.moveTo(px+rb2,py);ap.arc(px,py,rb2,0,-1.05,true);
+      ctx.strokeStyle=n.cor+(viva?'dd':'7a');
+      ctx.lineWidth=Math.max(.5,S(viva?1.2:0.85));
+      ctx.stroke(ap);
+
+      if(!rm){
+        // PING: um anel que sai do nó e some — o radar de cada domínio, no seu período
+        const png=((t*0.00034/per)+idx*0.37)%1;
+        const rp2=S(11+34*png);
+        ctx.strokeStyle=n.cor+_hex2(0.42*(1-png)*(viva?1.6:1));
+        ctx.lineWidth=Math.max(.4,S(1.1*(1-png)));
+        ctx.beginPath();ctx.arc(x,y,rp2,0,6.283);ctx.stroke();
+        // PACOTE: uma centelha sobe o feixe do pé até o nó, no passo do domínio
+        const u2=1-(((t*0.00052/per)+idx*0.29)%1);
+        const cx2=x+dxb*u2, cy2=y+dyb*u2;
+        const gp=ctx.createRadialGradient(cx2,cy2,0,cx2,cy2,S(4.4));
+        gp.addColorStop(0,'rgba(255,255,255,.92)');gp.addColorStop(.4,n.cor+'aa');
+        gp.addColorStop(1,n.cor+'00');
+        ctx.fillStyle=gp;ctx.beginPath();ctx.arc(cx2,cy2,S(4.4),0,6.283);ctx.fill();
+      }
+      // coração do nó: ponto branco-quente que INCHA com a respiração
       ctx.fillStyle='rgba(255,255,255,'+Math.min(.98,0.34+0.55*k).toFixed(2)+')';
-      ctx.beginPath();ctx.arc(x,y,1.1+1.5*k,0,6.283);ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,(1.1+1.5*k)*(0.82+0.32*pul),0,6.283);ctx.fill();
     };
     /* 7 · EVENTOS EM TRÂNSITO — cada pacote saiu de um domínio REAL e cai no
        reator, agora em 3D. Vida só com evento do barramento: nada é sintético. */
@@ -3345,7 +3450,7 @@ function nucleoStart(){
         const o=pos.find(q=>q.n.id===f.id);if(!o)return;
         f.p+=0.022;
         const e=1-Math.pow(1-f.p,2),e2=Math.max(0,e-0.10);
-        const at=u=>P(o.wx*(1-u),o.h+(0.70-o.h)*u,o.wz*(1-u));
+        const at=u=>P(o.wx*(1-u),o.h+(0.60-o.h)*u,o.wz*(1-u));
         const a=at(e),b=at(e2);
         ctx.strokeStyle='rgba('+f.c+','+(0.34*(1-f.p)).toFixed(2)+')';ctx.lineWidth=1.2;
         ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
@@ -3355,7 +3460,7 @@ function nucleoStart(){
     }
     /* 8 · PROJETOR — coluna de energia do piso até o coração, e o coração no ar.
        É a fonte de luz da mesa: tudo que flutua vem daqui. */
-    const base=P(0,ESP,0), heart=P(0,0.72,0);            // o projetor nasce DA laje
+    const base=P(0,ESP,0), heart=P(0,0.60,0);            // o projetor nasce DA laje
     const desenhaProjetor=()=>{
     for(let a=0;a<3;a++){                                    // anéis do reator, deitados no piso
       const rad=0.10+a*0.055, seg=10+a*5, dir=(a%2?-1:1);
@@ -3394,28 +3499,103 @@ function nucleoStart(){
        (billboard) em volta do núcleo, girando em sentidos alternados, e a escala
        respeita a perspectiva pelo `heart.k`. O anel de graduação de 72 ticks devolve
        a leitura de instrumento — precisão, não enfeite. */
-    const RR=heart.k*Math.min(1.5,cam.s/240);
+    const RR=heart.k*Math.min(1.5,cam.s/240), R=v=>v*RR;
     ctx.save();ctx.translate(heart.x,heart.y);
-    for(let a=0;a<4;a++){
-      const rad=(16+a*7.5)*RR, seg=8+a*4, dir=(a%2?-1:1), arco=6.283/seg*0.62;
-      ctx.strokeStyle=`rgba(150,205,255,${((.46-a*.07)*pulse).toFixed(3)})`;
-      ctx.lineWidth=Math.max(.8,(2.2-a*.35)*RR);
-      for(let sg=0;sg<seg;sg++){
-        const a0=sg/seg*6.283+spin*26*dir*(1+a*0.22);
-        ctx.beginPath();ctx.arc(0,0,rad,a0,a0+arco);ctx.stroke();
-      }
+    /* Nota de custo: TUDO aqui é batelado em Path2D — um traço por camada, não um por
+       segmento. A versão anterior gastava 72 `stroke()` só no anel de graduação; esta
+       tem muito mais detalhe e custa MENOS, porque 56 arcos + 72 ticks viraram 6 traços. */
+
+    // a · CARCAÇA — anel espesso com bisel claro por dentro e sombra por fora: é o
+    //     bisel que dá espessura de peça usinada em vez de círculo desenhado.
+    ctx.lineWidth=R(5.5);ctx.strokeStyle=`rgba(104,150,215,${(0.30*pulse).toFixed(3)})`;
+    ctx.beginPath();ctx.arc(0,0,R(41),0,6.283);ctx.stroke();
+    ctx.lineWidth=Math.max(.6,R(1));
+    ctx.strokeStyle=`rgba(198,228,255,${(0.34*pulse).toFixed(3)})`;
+    ctx.beginPath();ctx.arc(0,0,R(38.4),0,6.283);ctx.stroke();
+    ctx.strokeStyle=`rgba(24,44,86,${(0.62*pulse).toFixed(3)})`;
+    ctx.beginPath();ctx.arc(0,0,R(43.7),0,6.283);ctx.stroke();
+
+    // b · BOBINAS — 10 segmentos radiais (o enrolamento). É o que enche o vazio entre
+    //     o núcleo e a carcaça, que antes era só ar.
+    const NB=10, folga=0.13, giroB=spin*9;
+    const pb=new Path2D();
+    for(let k=0;k<NB;k++){
+      const a0=k/NB*6.283+giroB, a1=a0+6.283/NB-folga;
+      pb.moveTo(Math.cos(a0)*R(23),Math.sin(a0)*R(23));
+      pb.arc(0,0,R(23),a0,a1);
+      pb.arc(0,0,R(36.5),a1,a0,true);
+      pb.closePath();
     }
+    const gb=ctx.createRadialGradient(0,0,R(21),0,0,R(37));
+    gb.addColorStop(0,`rgba(150,205,255,${(0.30*pulse).toFixed(3)})`);
+    gb.addColorStop(.55,`rgba(110,165,235,${(0.16*pulse).toFixed(3)})`);
+    gb.addColorStop(1,`rgba(70,115,190,${(0.07*pulse).toFixed(3)})`);
+    ctx.fillStyle=gb;ctx.fill(pb);
+    ctx.lineWidth=Math.max(.5,R(0.75));
+    ctx.strokeStyle=`rgba(186,222,255,${(0.30*pulse).toFixed(3)})`;ctx.stroke(pb);
+
+    // c · ANEL DE ENTALHES — 24 dentes curtos entre bobina e carcaça
+    const pe=new Path2D();
+    for(let k=0;k<24;k++){
+      const a=k/24*6.283-giroB*1.6, cx0=Math.cos(a), sy0=Math.sin(a);
+      pe.moveTo(cx0*R(37.6),sy0*R(37.6));pe.lineTo(cx0*R(40.4),sy0*R(40.4));
+    }
+    ctx.lineWidth=Math.max(.5,R(1.1));
+    ctx.strokeStyle=`rgba(160,205,255,${(0.26*pulse).toFixed(3)})`;ctx.stroke(pe);
+
+    // c2 · BRASA INTERNA — o reator estava inteiro em azul-íon, e íon é o polo do
+    //      CONSOLE. Sem a chama por dentro ele lê como instrumento, não como fonte de
+    //      energia. É a única entrada de laranja aqui, e ela fica ATRÁS do triângulo.
+    const gq=ctx.createRadialGradient(0,0,0,0,0,R(22));
+    gq.addColorStop(0,`rgba(255,214,150,${(0.34*pulse).toFixed(3)})`);
+    gq.addColorStop(.45,`rgba(255,150,70,${(0.15*pulse).toFixed(3)})`);
+    gq.addColorStop(1,'rgba(255,130,50,0)');
+    ctx.fillStyle=gq;ctx.beginPath();ctx.arc(0,0,R(22),0,6.283);ctx.fill();
+
+    // d · TRIÂNGULO — a silhueta que faz o objeto ser lido como REATOR e não como
+    //     alvo de mira. Gira devagar no sentido contrário ao das bobinas.
+    const pt=new Path2D(), aT=-Math.PI/2-spin*5;
+    for(let k=0;k<3;k++){
+      const a=aT+k*2.0944, x0=Math.cos(a)*R(15.5), y0=Math.sin(a)*R(15.5);
+      k?pt.lineTo(x0,y0):pt.moveTo(x0,y0);
+    }
+    pt.closePath();
+    ctx.lineJoin='round';
+    ctx.lineWidth=Math.max(.8,R(1.9));
+    ctx.strokeStyle=`rgba(214,238,255,${(0.52*pulse).toFixed(3)})`;ctx.stroke(pt);
+    ctx.lineWidth=Math.max(1.4,R(5));
+    ctx.strokeStyle=`rgba(120,190,255,${(0.13*pulse).toFixed(3)})`;ctx.stroke(pt);
+
+    // e · FILAMENTOS — do núcleo até a base de cada bobina. Determinísticos (nada de
+    //     Math.random: a casa proíbe gerador sintético) e modulados pelo mesmo pulso.
     if(!rm){
-      ctx.save();ctx.rotate(spin*7);
-      for(let sg=0;sg<72;sg++){ctx.rotate(6.283/72);
-        const card=sg%18===0, len=(card?6:(sg%6===0?4:2.4))*RR;
-        ctx.strokeStyle=`rgba(150,200,255,${((card?0.38:0.16)*pulse).toFixed(3)})`;
-        ctx.lineWidth=(card?1.3:.7)*RR;
-        ctx.beginPath();ctx.moveTo(0,46*RR);ctx.lineTo(0,(46*RR)+len);ctx.stroke();}
-      ctx.restore();
+      const pf=new Path2D();
+      for(let k=0;k<NB;k++){
+        const a=(k+0.5)/NB*6.283+giroB;
+        const v=0.55+0.45*Math.sin(t*0.0026+k*1.7);
+        pf.moveTo(Math.cos(a)*R(7),Math.sin(a)*R(7));
+        pf.lineTo(Math.cos(a)*R(7+15*v),Math.sin(a)*R(7+15*v));
+      }
+      ctx.lineWidth=Math.max(.5,R(0.9));
+      ctx.strokeStyle=`rgba(226,244,255,${(0.30*pulse).toFixed(3)})`;ctx.stroke(pf);
+    }
+
+    // f · GRADUAÇÃO — 72 ticks, cardeais mais longos. Dois traços, não 72.
+    if(!rm){
+      const gir=spin*7, pc=new Path2D(), pn=new Path2D();
+      for(let k=0;k<72;k++){
+        const a=k/72*6.283+gir, card=k%18===0, len=(card?6:(k%6===0?4:2.4))*RR;
+        const c0=Math.cos(a), s0=Math.sin(a);
+        (card?pc:pn).moveTo(c0*R(46),s0*R(46));
+        (card?pc:pn).lineTo(c0*(R(46)+len),s0*(R(46)+len));
+      }
+      ctx.lineWidth=Math.max(.4,R(0.7));
+      ctx.strokeStyle=`rgba(150,200,255,${(0.16*pulse).toFixed(3)})`;ctx.stroke(pn);
+      ctx.lineWidth=Math.max(.7,R(1.3));
+      ctx.strokeStyle=`rgba(180,220,255,${(0.40*pulse).toFixed(3)})`;ctx.stroke(pc);
     }
     ctx.restore();
-    const cr=32*pulse*heart.k*Math.min(1.4,cam.s/240);
+    const cr=38*pulse*heart.k*Math.min(1.4,cam.s/240);
     const cg=ctx.createRadialGradient(heart.x,heart.y,0,heart.x,heart.y,cr);
     cg.addColorStop(0,'rgba(255,244,226,1)');cg.addColorStop(.16,'rgba(255,192,120,.92)');
     cg.addColorStop(.40,'rgba(150,220,255,.70)');cg.addColorStop(.7,'rgba(120,150,255,.22)');
