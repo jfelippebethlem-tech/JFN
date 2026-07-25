@@ -759,7 +759,16 @@ def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
     try:
         from compliance_agent.lex_conflito import conflito
 
+        # CACHE (2026-07-24): medido no painel, esta rota levava 13 s TAMBÉM na segunda chamada — era a
+        # mais lenta de todas, e sem cache, ao contrário das vizinhas. O cruzamento varre doações do TSE
+        # (GROUP BY) e monta o índice de sócios; as duas bases mudam por coleta, não por requisição.
+        # TTL de 1 h acompanha o das outras rotas pesadas deste arquivo.
+        ck = f"conflito:{cnpj}:{candidato}:{limite}"
+        if (cache := _cache_get(ck, 3600)) is not None:
+            return JSONResponse(content=cache)
         res = conflito(cnpj=cnpj or None, candidato=candidato or None, limite=limite)
+        if res.get("ok"):
+            _cache_put(ck, res)
         return JSONResponse(content=res)
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)

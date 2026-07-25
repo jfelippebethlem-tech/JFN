@@ -24,6 +24,11 @@ URLS=(
   "compliance/painel"
   "certames/lista?esfera=prefeitura&limite=600"
   "certames/lista?esfera=estado&limite=600"
+  # 2026-07-24: /api/conflito era a rota MAIS LENTA do painel (13 s, e também na 2ª chamada — não tinha
+  # cache). Com o cache aplicado ela cai para 40 ms; entra aqui para que nem a primeira visita espere.
+  "conflito"
+  "coendereco/clusters"
+  "compliance/graph"
 )
 {
   echo "── $(date -Is) prewarm"
