@@ -1940,7 +1940,24 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
                 "n_raizes": n_raizes, "n_publicos": n_pub, "n_setores": n_setores,
                 "cnpjs": amostra, "n_recebem_ob": n_ob,
                 "total_recebido_ob": round(total, 2), "risco": risco, "motivo": motivo})
+        # ── UM CNPJ recebendo não é ninho: é um fornecedor com vizinhos ─────────────────
+        # A assinatura de interposição é o dinheiro entrando por MAIS DE UMA casca da mesma
+        # âncora. Medido em 25/07/2026 sobre os 88 grupos de risco alto (R$ 16,09 bi):
+        #     48 grupos (R$ 8,05 bi — 50,0%) tinham `n_recebem_ob <= 1`
+        # e os maiores eram endereços de escritório em avenida — Av. Dra. Ruth Cardoso 7221
+        # (Pinheiros/SP), Av. Presidente Vargas 2000 (Centro/RJ) —, onde UMA empresa real
+        # recebeu centenas de milhões e as outras do prédio nunca receberam nada. Somar o
+        # OB dela e chamar de "ninho de fachada" infla o número em 2×.
+        # Mesmo padrão do resto: o conjunto amplo continua, e o par COESO é o que vira
+        # manchete. `n_cnpjs` alto também não é ninho — 67 CNPJs num endereço é condomínio.
+        _altos = [g for g in grupos if g.get("risco") == "alto"]
+        _coesos = [g for g in _altos if (g.get("n_recebem_ob") or 0) >= 2]
         return {"ok": True, "grupos": grupos, "n": len(grupos), "chave": chave,
+                "n_alto": len(_altos),
+                "total_alto": round(sum(g.get("total_recebido_ob") or 0 for g in _altos), 2),
+                "n_multi_recebedor": len(_coesos),
+                "total_multi_recebedor": round(sum(g.get("total_recebido_ob") or 0
+                                                   for g in _coesos), 2),
                 "explicacao": ("Uma âncora física (endereço, telefone ou e-mail) usada por vários "
                                "CNPJs é a assinatura de 'ninho de fantasmas' — empresas de fachada "
                                "abertas em lote compartilham o mesmo contato. 'alto' = grupo coeso "

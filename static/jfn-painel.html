@@ -4083,11 +4083,19 @@ function ckPull(first){
        Silêncio ≠ INDISPONÍVEL: se a rota não respondeu, o card diz isso. */
     if(!d||!d.ok){ckFill('ninho',{txt:'—',meta:erroHumano(d&&d.erro)});return;}
     const gs=(d.grupos||[]),altos=gs.filter(g=>g.risco==='alto');
-    const tot=altos.reduce((s,g)=>s+(g.total_recebido_ob||0),0);
+    // Um CNPJ recebendo não é ninho — é um fornecedor com vizinhos. A assinatura de
+    // interposição é o dinheiro entrando por MAIS DE UMA casca da mesma âncora. Medido:
+    // 48 dos 88 grupos "alto" (R$ 8,05 bi, metade exata do total) tinham 1 só recebedor,
+    // e os maiores eram prédios de escritório em avenida (Av. Dra. Ruth Cardoso 7221,
+    // Av. Presidente Vargas 2000). O card passa a contar quem tem 2+ recebendo.
+    const multi=altos.filter(g=>(g.n_recebem_ob||0)>=2);
+    const tot=multi.reduce((s,g)=>s+(g.total_recebido_ob||0),0);
+    const soUm=altos.length-multi.length;
     const frescor=d.do_cache&&d.gerado_em?` · <span class="dim">apurado em ${esc(d.gerado_em)}</span>`:'';
-    ckFill('ninho',{num:altos.length,meta:`grupos de CNPJs no mesmo tel/endereço com OB — <b>${fmtRc(tot)}</b> recebidos${frescor}`});
+    ckFill('ninho',{num:multi.length,meta:`grupos com <b>2+ CNPJs recebendo</b> na mesma âncora — <b>${fmtRc(tot)}</b> em OB`
+      +(soUm?` · outros ${fmtN(soUm)} têm só um recebedor (fornecedor com vizinhos, não ninho)`:'')+frescor});
     const nomeChave={endereco:'endereço',telefone:'telefone',email:'e-mail'};
-    ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ ninho por ${nomeChave[g.chave]||esc(g.chave)} — <b>${fmtN(g.n_cnpjs)} CNPJs</b> · ${fmtRc(g.total_recebido_ob)} em OB`})));});
+    ckPush(multi.slice(0,3).map(g=>({c:'a',h:`◉ ninho por ${nomeChave[g.chave]||esc(g.chave)} — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${fmtRc(g.total_recebido_ob)} em OB`})));});
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok){
       // herói nunca fica preso no placeholder: erro vira mensagem humana + retry
       const big=$('ck-econ');if(big&&/—/.test(big.textContent)){big.textContent='—';
