@@ -1,0 +1,56 @@
+# As 50 falhas de AMBIENTE da VM-2 em 25/07/2026 (2.524 passando, 6 puladas).
+# O handoff manda comparar nome a nome (contagem igual pode ser 50 falhas DIFERENTES),
+# mas esta base nunca tinha sido gravada. Uso:
+#   ./tools/testar_na_vm2.sh > /tmp/s.log
+#   grep '^FAILED' /tmp/s.log | sed 's/ - .*//' | sort > /tmp/agora.txt
+#   comm -13 <(grep -v '^#' tests/BASE-FALHAS-VM2.txt) /tmp/agora.txt   # vazio = sem regressao
+FAILED tests/test_catraca_excepts.py::test_baseline_atualizada_quando_melhora
+FAILED tests/test_catraca_excepts.py::test_except_exception_nao_cresce
+FAILED tests/test_cron_systemctl_user.py::test_helper_faz_systemctl_user_funcionar_sob_cron
+FAILED tests/test_cron_systemctl_user.py::test_todo_script_de_cron_que_reinicia_servico_carrega_o_guard
+FAILED tests/test_golden_numbers.py::test_golden_cobertura
+FAILED tests/test_golden_numbers.py::test_golden_iterj_ug133100
+FAILED tests/test_golden_numbers.py::test_golden_mgs_clean
+FAILED tests/test_hermes_metacognicao.py::test_backup_memoria_exporta_e_roda_rotacao
+FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.auditoria.auditar_fornecedor]
+FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.auditoria.sei_auditor]
+FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.auditoria.tfe_fornecedor]
+FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.sei_driver]
+FAILED tests/test_inteligencia_snapshot.py::test_relatorio_inteligencia_snapshot_identico
+FAILED tests/test_jfn2_onda0.py::test_capabilities_valido
+FAILED tests/test_jfn2_onda10.py::test_capability_mandato_pronto
+FAILED tests/test_jfn2_onda11.py::test_capability_memoria_pronto
+FAILED tests/test_jfn2_onda12.py::test_capability_grafo_ftm_pronto
+FAILED tests/test_jfn2_onda2.py::test_capability_conflito_pronto_no_registro
+FAILED tests/test_jfn2_onda2.py::test_capability_pncp_pronto
+FAILED tests/test_jfn2_onda3.py::test_capability_sobrepreco_pronto
+FAILED tests/test_jfn2_onda4.py::test_capability_dossie_pronto
+FAILED tests/test_jfn2_onda4.py::test_capability_grafo_pronto
+FAILED tests/test_jfn2_onda5.py::test_capability_direcionamento_pronto
+FAILED tests/test_jfn2_onda6.py::test_capabilities_radar_pronto
+FAILED tests/test_jfn2_skilltree.py::test_cinco_skills_sistema_presentes
+FAILED tests/test_jfn2_skilltree.py::test_detalhe_skill_e_inexistente
+FAILED tests/test_jfn2_skilltree.py::test_reload_popula_estado_e_diff
+FAILED tests/test_jfn2_skilltree.py::test_render_agrupa_por_dominio_e_filtra
+FAILED tests/test_jfn2_skilltree.py::test_render_menu_curado_e_enxuto
+FAILED tests/test_jfn2_skilltree.py::test_rotas_http_skilltree
+FAILED tests/test_jfn2_skilltree.py::test_tool_specs_ignora_ondas
+FAILED tests/test_jfn2_skilltree.py::test_validate_reusa_validador_unico
+FAILED tests/test_lex_snapshot.py::test_parecer_lex_snapshot_identico
+FAILED tests/test_penalidades_tce_view.py::test_auto_match_secretaria_e_acronimo
+FAILED tests/test_penalidades_tce_view.py::test_dedup_solidaria_nao_infla_erario
+FAILED tests/test_penalidades_tce_view.py::test_depurar_sem_match_zero
+FAILED tests/test_penalidades_tce_view.py::test_leitura_cita_debito_multa_e_fato_julgado
+FAILED tests/test_penalidades_tce_view.py::test_por_ug_saude_agrega_so_o_orgao_certo
+FAILED tests/test_penalidades_tce_view.py::test_por_ug_tj_no_tribunal_nao_no_fundo
+FAILED tests/test_penalidades_tce_view.py::test_tipo_discrimina_orgao_de_fundo
+FAILED tests/test_relatorio_inteligencia.py::test_hhi_calculo
+FAILED tests/test_relatorio_inteligencia.py::test_iterj_separado_da_secretaria_na_concentracao
+FAILED tests/test_relatorio_inteligencia.py::test_montar_gera_md_e_pdf
+FAILED tests/test_relatorio_inteligencia.py::test_nome_ambiguo_lista_candidatos
+FAILED tests/test_relatorio_inteligencia.py::test_orgao_iterj_pagamentos_por_ano
+FAILED tests/test_relatorio_inteligencia.py::test_orgao_montar_gera_md_pdf_com_parecer
+FAILED tests/test_relatorio_inteligencia.py::test_orgao_resolve_iterj_por_nome
+FAILED tests/test_relatorio_inteligencia.py::test_pagamentos_por_ano_mgs
+FAILED tests/test_relatorio_inteligencia.py::test_planilha_excel_gerada
+FAILED tests/test_relatorio_inteligencia.py::test_resolver_por_nome_parcial_mgs

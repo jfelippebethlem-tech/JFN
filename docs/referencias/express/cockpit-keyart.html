@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>JFN · Cockpit SABRE — key art e sistema de design</title>
+<meta name="hz:slide-selector" content=".slide">
+<meta name="hz:canvas-width" content="1920">
+<meta name="hz:canvas-height" content="1080">
+<link rel="stylesheet" href="https://use.typekit.net/ldl7iih.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#05070f;display:flex;flex-direction:column;align-items:center;gap:40px;padding:40px}
+
+.slide{position:relative;width:1920px;height:1080px;background:#010410;overflow:hidden}
+
+/* malha do console — o "chão" tech, discreto o bastante para não competir com o dado */
+.malha{position:absolute;left:0;top:0;width:1920px;height:1080px;
+  background-image:linear-gradient(rgba(89,163,255,.055) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(89,163,255,.055) 1px,transparent 1px);
+  background-size:100% 60px,60px 100%}
+.brilho{position:absolute;left:0;top:0;width:1920px;height:1080px;
+  background:radial-gradient(1100px 620px at 30% 42%,rgba(89,163,255,.14),transparent 70%)}
+.brasa{position:absolute;left:0;top:0;width:1920px;height:1080px;
+  background:radial-gradient(620px 480px at 76% 44%,rgba(255,136,4,.13),transparent 72%)}
+
+/* cantoneiras de HUD — só onde há ÁREA. Num controle pequeno os cantos se
+   encontram e o olho lê borda quebrada; numa placa de 1920 elas emolduram. */
+.canto{position:absolute;width:56px;height:56px;border:2px solid rgba(89,163,255,.5)}
+.ct-se{left:44px;top:44px;border-right:0;border-bottom:0}
+.ct-sd{right:44px;top:44px;border-left:0;border-bottom:0}
+.ct-ie{left:44px;bottom:44px;border-right:0;border-top:0}
+.ct-id{right:44px;bottom:44px;border-left:0;border-top:0}
+
+.eyebrow{position:absolute;font-family:"ibm-plex-mono",monospace;font-weight:500;
+  font-size:19px;letter-spacing:5.4px;color:#59A3FF;text-transform:uppercase}
+.display{position:absolute;font-family:"ibm-plex-sans",sans-serif;font-weight:700;
+  color:#EAF3F8;letter-spacing:-2.4px;line-height:.94}
+.leitura{position:absolute;font-family:"ibm-plex-sans",sans-serif;font-weight:600;
+  font-size:25px;line-height:1.5;color:#90A5B2}
+.leitura b{color:#EAF3F8;font-weight:700}
+.leitura .fogo{color:#FFBF5C}
+
+/* instrumento: rótulo mono minúsculo, número grande mono, leitura embaixo */
+.inst{position:absolute;width:378px;height:186px;background:#081222;
+  border:1px solid rgba(89,163,255,.26);border-radius:12px;padding:22px 24px}
+.inst .lab{font-family:"ibm-plex-mono",monospace;font-weight:500;font-size:14px;
+  letter-spacing:2.1px;color:#90A5B2;text-transform:uppercase}
+.inst .num{font-family:"ibm-plex-mono",monospace;font-weight:600;font-size:52px;
+  line-height:1;margin-top:20px;letter-spacing:-1.6px;color:#EAF3F8}
+.inst .sub{font-family:"ibm-plex-sans",sans-serif;font-weight:600;font-size:16px;
+  line-height:1.4;margin-top:16px;color:#90A5B2}
+.inst .ponto{position:absolute;right:24px;top:24px;width:11px;height:11px;border-radius:50%}
+.n-fogo .num{color:#FFBF5C} .n-grave .num{color:#FF5472} .n-ion .num{color:#90D7FF}
+
+.rodape{position:absolute;font-family:"ibm-plex-mono",monospace;font-weight:500;
+  font-size:16px;letter-spacing:2.4px;color:#5C7285;text-transform:uppercase}
+
+/* ── folha 2: sistema de design ── */
+.h2{position:absolute;font-family:"ibm-plex-sans",sans-serif;font-weight:700;
+  font-size:44px;color:#EAF3F8;letter-spacing:-1.1px}
+.bloco{position:absolute;background:#081222;border:1px solid rgba(89,163,255,.22);
+  border-radius:12px;padding:28px 30px}
+.bloco .tit{font-family:"ibm-plex-mono",monospace;font-weight:600;font-size:15px;
+  letter-spacing:2.6px;color:#59A3FF;text-transform:uppercase;margin-bottom:22px}
+.swatch{display:flex;align-items:center;gap:15px;margin-bottom:11px}
+.swatch .chip{width:48px;height:48px;border-radius:9px;flex:0 0 auto}
+.swatch .hex{font-family:"ibm-plex-mono",monospace;font-weight:600;font-size:18px;color:#EAF3F8;width:106px}
+.swatch .papel{font-family:"ibm-plex-sans",sans-serif;font-weight:600;font-size:16px;color:#90A5B2}
+.tipo{margin-bottom:18px}
+.tipo .amostra{color:#EAF3F8;line-height:1.1}
+.tipo .nota{font-family:"ibm-plex-mono",monospace;font-weight:500;font-size:13px;
+  letter-spacing:1.2px;color:#5C7285;margin-top:7px;text-transform:uppercase;white-space:nowrap}
+.regra{font-family:"ibm-plex-sans",sans-serif;font-weight:600;font-size:18px;
+  line-height:1.55;color:#90A5B2;margin-bottom:14px;padding-left:22px;position:relative}
+.regra::before{content:"";position:absolute;left:0;top:11px;width:9px;height:9px;
+  border-radius:2px;background:#FF8804}
+.regra b{color:#EAF3F8;font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ══ FOLHA 1 · key art do cockpit ══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080">
+  <div class="malha"></div><div class="brilho"></div><div class="brasa"></div>
+  <div class="canto ct-se"></div><div class="canto ct-sd"></div>
+  <div class="canto ct-ie"></div><div class="canto ct-id"></div>
+
+  <!-- reator: brasa laranja por dentro (a FONTE), carcaça azul-íon (o console).
+       Só geometria e gradiente — sem filtro, para importar idêntico. -->
+  <svg style="position:absolute;left:1156px;top:132px" width="620" height="620" viewBox="0 0 620 620">
+    <defs>
+      <radialGradient id="brasa" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#FFE8C4"/><stop offset="26%" stop-color="#FFBF5C"/>
+        <stop offset="62%" stop-color="#FF8804"/><stop offset="100%" stop-color="#8A3D00"/>
+      </radialGradient>
+      <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#FF8804" stop-opacity=".42"/>
+        <stop offset="60%" stop-color="#FF8804" stop-opacity=".10"/>
+        <stop offset="100%" stop-color="#FF8804" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="aro" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#90D7FF"/><stop offset="52%" stop-color="#59A3FF"/>
+        <stop offset="100%" stop-color="#1D4C86"/>
+      </linearGradient>
+    </defs>
+    <circle cx="310" cy="310" r="298" fill="url(#halo)"/>
+    <circle cx="310" cy="310" r="248" fill="none" stroke="url(#aro)" stroke-width="2" opacity=".55"/>
+    <circle cx="310" cy="310" r="228" fill="none" stroke="url(#aro)" stroke-width="10"/>
+    <circle cx="310" cy="310" r="206" fill="#03080F" stroke="rgba(144,215,255,.42)" stroke-width="1.5"/>
+    <!-- 72 ticks de graduação -->
+    <g stroke="#59A3FF" stroke-width="2" opacity=".62">
+      <path d="M310 96 v16 M310 508 v16 M96 310 h16 M508 310 h16"/>
+      <path d="M461.3 158.7 l11.3 -11.3 M147.4 472.6 l11.3 -11.3 M461.3 461.3 l11.3 11.3 M147.4 147.4 l11.3 11.3" />
+    </g>
+    <!-- 10 bobinas radiais -->
+    <g stroke="#3D7BC4" stroke-width="9" stroke-linecap="round" opacity=".85">
+      <path d="M310 128 v46"/><path d="M310 446 v46"/><path d="M128 310 h46"/><path d="M446 310 h46"/>
+      <path d="M181.4 181.4 l32.5 32.5"/><path d="M406.1 406.1 l32.5 32.5"/>
+      <path d="M438.6 181.4 l-32.5 32.5"/><path d="M213.9 406.1 l-32.5 32.5"/>
+    </g>
+    <circle cx="310" cy="310" r="150" fill="none" stroke="#2E6DB5" stroke-width="14"/>
+    <circle cx="310" cy="310" r="128" fill="#020610" stroke="rgba(144,215,255,.55)" stroke-width="2"/>
+    <circle cx="310" cy="310" r="104" fill="url(#brasa)"/>
+    <path d="M310 244 l57 99 h-114 z" fill="#02060E" opacity=".72"/>
+    <circle cx="310" cy="310" r="34" fill="#FFF3DE"/>
+  </svg>
+
+  <div class="eyebrow" style="left:120px;top:174px">Central de inteligência · SIAFE · PNCP · SEI · 2026</div>
+  <h1 class="display" style="left:118px;top:214px;font-size:118px;width:1000px">CONTROLE<br>EXTERNO</h1>
+
+  <!-- o sabre: núcleo branco-quente no MEIO DA ESPESSURA e halo saturado por
+       fora. Camadas empilhadas em vez de filtro — importa igual em qualquer lugar. -->
+  <svg style="position:absolute;left:118px;top:464px" width="880" height="40" viewBox="0 0 880 40">
+    <defs>
+      <linearGradient id="pontas" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#FF8804" stop-opacity="0"/>
+        <stop offset="7%" stop-color="#FF8804" stop-opacity="1"/>
+        <stop offset="93%" stop-color="#FF8804" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#FF8804" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="pontasC" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#FFF6E6" stop-opacity="0"/>
+        <stop offset="9%" stop-color="#FFF6E6" stop-opacity="1"/>
+        <stop offset="91%" stop-color="#FFF6E6" stop-opacity="1"/>
+        <stop offset="100%" stop-color="#FFF6E6" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="6"    width="880" height="28" rx="14"  fill="url(#pontas)" opacity=".13"/>
+    <rect x="0" y="12"   width="880" height="16" rx="8"   fill="url(#pontas)" opacity=".26"/>
+    <rect x="0" y="16"   width="880" height="8"  rx="4"   fill="url(#pontas)" opacity=".62"/>
+    <rect x="0" y="18.2" width="880" height="3.6" rx="1.8" fill="url(#pontasC)"/>
+  </svg>
+
+  <p class="leitura" style="left:120px;top:520px;width:920px">
+    Todo pagamento do Estado do Rio cruzado, ao vivo, com sanção, quadro societário,
+    situação cadastral e mediana de mercado. <b>Ordem bancária é pagamento</b> — empenho
+    não. <b>Indício não é acusação</b>, e <span class="fogo">indisponível nunca vira zero</span>.
+  </p>
+
+  <div class="inst n-fogo" style="left:120px;top:722px">
+    <span class="ponto" style="background:#FF8804"></span>
+    <div class="lab">Economia identificada</div><div class="num">R$ 15,6 mi</div>
+    <div class="sub">em 337 compras acima da mediana de mercado do item</div>
+  </div>
+  <div class="inst n-ion" style="left:522px;top:722px">
+    <span class="ponto" style="background:#59A3FF"></span>
+    <div class="lab">Radar de risco</div><div class="num">2.189</div>
+    <div class="sub">fornecedores com sinal objetivo disparado</div>
+  </div>
+  <div class="inst n-grave" style="left:924px;top:722px">
+    <span class="ponto" style="background:#FF5472"></span>
+    <div class="lab">Pago a empresa morta</div><div class="num">R$ 4 bi</div>
+    <div class="sub">373 empresas BAIXADA/INAPTA que receberam do Estado</div>
+  </div>
+  <div class="inst n-fogo" style="left:1326px;top:722px">
+    <span class="ponto" style="background:#FFBF5C"></span>
+    <div class="lab">Ninhos de fachada</div><div class="num">88</div>
+    <div class="sub">grupos de CNPJ no mesmo telefone/endereço com OB</div>
+  </div>
+
+  <div class="rodape" style="left:120px;top:968px">Apurado em 25/07/2026 · fonte primária SIAFE-Rio, PNCP, CEIS/CNEP, Receita Federal</div>
+</div>
+
+<!-- ══ FOLHA 2 · sistema de design ═══════════════════════════════════════ -->
+<div class="slide" data-canvas-width="1920" data-canvas-height="1080">
+  <div class="malha"></div>
+  <div class="brilho" style="background:radial-gradient(900px 520px at 22% 30%,rgba(89,163,255,.11),transparent 70%)"></div>
+  <div class="canto ct-se"></div><div class="canto ct-sd"></div>
+  <div class="canto ct-ie"></div><div class="canto ct-id"></div>
+
+  <div class="eyebrow" style="left:120px;top:112px">Sistema de design · cockpit SABRE</div>
+  <h2 class="h2" style="left:118px;top:146px">A gramática visual do painel</h2>
+  <svg style="position:absolute;left:118px;top:212px" width="360" height="14" viewBox="0 0 360 14">
+    <rect x="0" y="1"   width="360" height="12" rx="6"   fill="#59A3FF" opacity=".16"/>
+    <rect x="0" y="4"   width="360" height="6"  rx="3"   fill="#59A3FF" opacity=".55"/>
+    <rect x="0" y="5.6" width="360" height="2.8" rx="1.4" fill="#EAF6FF"/>
+  </svg>
+
+  <div class="bloco" style="left:120px;top:262px;width:520px;height:452px">
+    <div class="tit">Paleta — cor sem significado é proibida</div>
+    <div class="swatch"><span class="chip" style="background:#59A3FF"></span><span class="hex">#59A3FF</span><span class="papel">console: estrutura e interação</span></div>
+    <div class="swatch"><span class="chip" style="background:#FF8804"></span><span class="hex">#FF8804</span><span class="papel">energia: ação e dinheiro</span></div>
+    <div class="swatch"><span class="chip" style="background:#FFBF5C"></span><span class="hex">#FFBF5C</span><span class="papel">número de dinheiro</span></div>
+    <div class="swatch"><span class="chip" style="background:#FF5472"></span><span class="hex">#FF5472</span><span class="papel">severidade crítica — nunca decorativo</span></div>
+    <div class="swatch"><span class="chip" style="background:#61DA92"></span><span class="hex">#61DA92</span><span class="papel">conforme</span></div>
+    <div class="swatch" style="margin-bottom:0"><span class="chip" style="background:#010410;border:1px solid rgba(89,163,255,.3)"></span><span class="hex">#010410</span><span class="papel">fundo — céu profundo, não cinza</span></div>
+  </div>
+
+  <div class="bloco" style="left:684px;top:262px;width:520px;height:452px">
+    <div class="tit">Tipografia — serifa-menos-mono</div>
+    <div class="tipo"><div class="amostra" style="font-family:'ibm-plex-sans',sans-serif;font-weight:700;font-size:44px;letter-spacing:-1.2px">Título de comando</div>
+      <div class="nota">Plex Sans Bold · manchete e capa de aba</div></div>
+    <div class="tipo"><div class="amostra" style="font-family:'ibm-plex-sans',sans-serif;font-weight:600;font-size:23px">Leitura que explica o número</div>
+      <div class="nota">Plex Sans SemiBold · corpo</div></div>
+    <div class="tipo"><div class="amostra" style="font-family:'ibm-plex-mono',monospace;font-weight:600;font-size:37px;letter-spacing:-1px">R$ 15,6 mi · 2.189</div>
+      <div class="nota">Plex Mono SemiBold · número, CNPJ, telemetria</div></div>
+    <div class="tipo" style="margin-bottom:0"><div class="amostra" style="font-family:'ibm-plex-mono',monospace;font-weight:500;font-size:16px;letter-spacing:2.2px;color:#90A5B2;text-transform:uppercase">Rótulo de instrumento</div>
+      <div class="nota">Plex Mono Medium · sempre em caixa alta</div></div>
+  </div>
+
+  <div class="bloco" style="left:1248px;top:262px;width:552px;height:452px">
+    <div class="tit">Anatomia do sabre</div>
+    <svg width="490" height="104" viewBox="0 0 490 104">
+      <rect x="0" y="26" width="490" height="52" rx="26" fill="#FF8804" opacity=".10"/>
+      <rect x="0" y="38" width="490" height="28" rx="14" fill="#FF8804" opacity=".24"/>
+      <rect x="0" y="45" width="490" height="14" rx="7"  fill="#FF8804" opacity=".64"/>
+      <rect x="0" y="49" width="490" height="6"  rx="3"  fill="#FFF6E6"/>
+      <g stroke="#5C7285" stroke-width="1.4" fill="none">
+        <path d="M245 22 v-14"/><path d="M245 82 v14"/>
+      </g>
+    </svg>
+    <div class="regra" style="margin-top:14px"><b>Núcleo branco-quente</b> corre na espessura, não no comprimento — é o que separa lâmina de barrinha acesa.</div>
+    <div class="regra"><b>Três camadas de halo</b> (perto, médio, longe) põem ar aceso ao redor, como a câmera vê.</div>
+    <div class="regra" style="margin-bottom:0"><b>Zumbido irregular:</b> senoide limpa lê como fade de CSS; a lâmina do filme oscila fora de compasso.</div>
+  </div>
+
+  <div class="bloco" style="left:120px;top:738px;width:1680px;height:222px">
+    <div class="tit">Leis da casa — valem antes de qualquer efeito</div>
+    <div style="display:flex;gap:52px">
+      <div style="width:520px">
+        <div class="regra"><b>Coisas graves brilham graves.</b> Se tudo grita, nada grita — e zero crítico não é alarme.</div>
+        <div class="regra" style="margin-bottom:0"><b>Indisponível ≠ zero.</b> O painel diz que não sabe em vez de afirmar que é nada.</div>
+      </div>
+      <div style="width:520px">
+        <div class="regra"><b>Indício ≠ acusação.</b> Todo score vem acompanhado das regras que o dispararam.</div>
+        <div class="regra" style="margin-bottom:0"><b>Ordem bancária é pagamento.</b> Empenho é valor bruto que ainda pode ser cancelado.</div>
+      </div>
+      <div style="width:520px">
+        <div class="regra"><b>Movimento com propósito.</b> Animação que atrapalha a leitura é design ruim disfarçado de moderno.</div>
+        <div class="regra" style="margin-bottom:0"><b>Quem pede menos movimento</b> continua com a lâmina acesa: sai o zumbido, fica a estética.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

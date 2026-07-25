@@ -259,7 +259,10 @@
     .live{display:none}
     .htop{gap:8px;padding:11px 14px 9px}
     .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{padding:6px 9px;font-size:11.5px;white-space:nowrap}
-    .brand small{max-width:38vw}
+    /* 38vw datava de quando as ações dividiam a linha com a marca; hoje elas
+       quebram para a 2ª linha e sobravam ~320px vazios à direita — o subtítulo
+       era cortado ("CENTRAL DE INTELIGÊN…") sem necessidade nenhuma. */
+    .brand small{max-width:78vw}
   }
 
   main{flex:1;padding:18px 16px 104px}
@@ -1140,6 +1143,184 @@
     box-shadow:0 0 22px -5px var(--nc)}
   @media (max-width:900px){.nu-chip{--rail-w:150px}.nu-chip small{font-size:8.5px}.nu-chip .n{font-size:14px}}
   @media (max-width:600px){.ck-nucleo{height:clamp(470px,132vw,580px)}}
+
+  /* ══ v13 "SABRE" ═══════════════════════════════════════════════════════════
+     Um sabre de luz NÃO é uma barra colorida com brilho: é um núcleo
+     branco-quente com o halo saturado por fora. O branco corre na ESPESSURA
+     (gradiente 180deg), não no comprimento — era exatamente isso que faltava
+     para a lâmina parar de ler como "barrinha acesa". Três camadas de bloom
+     (perto/médio/longe) põem ar aceso ao redor, como a câmera vê a lâmina. */
+  .sabre{--sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent)}
+  /* o zumbido: passos IRREGULARES. Uma senoide limpa lê como "fade" de CSS;
+     a lâmina do filme oscila fora de compasso — é o que a faz parecer viva. */
+  @keyframes sabreHum{
+    0%{filter:brightness(1)}      13%{filter:brightness(1.13)}
+    27%{filter:brightness(.965)}  41%{filter:brightness(1.19)}
+    58%{filter:brightness(1.02)}  73%{filter:brightness(1.15)}
+    86%{filter:brightness(.98)}   100%{filter:brightness(1)}}
+  /* ignição: estende do punho, passa do ponto e assenta — com um clarão que
+     decai depois, que é o excesso de luz do primeiro instante. */
+  @keyframes sabreIgnic{0%{transform:scaleX(0)}72%{transform:scaleX(1.02)}100%{transform:scaleX(1)}}
+  @keyframes sabreFlash{0%{filter:brightness(2.6) saturate(.55)}100%{filter:brightness(1)}}
+
+  /* a régua da capa da aba e o sublinhado da aba ativa passam a ser lâmina */
+  .cover::before{height:3px;border-radius:2px}
+  .cover::before,.cover.estado::before,.cover.prefeitura::before,.cover.geral::before{
+    --sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .38s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .55s ease-out,
+              sabreHum 3.1s ease-in-out .55s infinite}
+  nav.tabs button.on::after{height:3px;--sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .3s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .5s ease-out,
+              sabreHum 3.1s ease-in-out .5s infinite!important}
+  /* a esfera ativa acende a própria lâmina no pé — é onde o olho pousa
+     primeiro, e é a troca de esfera que o dono vê o dia inteiro. */
+  .sph.on::after{content:"";position:absolute;left:10%;right:10%;bottom:-1px;height:3px;
+    border-radius:2px;pointer-events:none;transform-origin:left center;
+    --sbr:var(--sphc);--sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .34s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .52s ease-out,
+              sabreHum 3.1s ease-in-out .52s infinite}
+  /* quem pede menos movimento CONTINUA com a lâmina acesa — sai o zumbido e a
+     ignição, fica a estética. Apagar o sabre seria tirar a identidade. */
+  @media (prefers-reduced-motion:reduce){
+    .cover::before,nav.tabs button.on::after,.sph.on::after{animation:none!important;filter:none}}
+
+  /* ══ celular: as esferas se SOBREPUNHAM ════════════════════════════════════
+     Raiz medida a 390px: `.sph{flex:1;min-width:0}` deixa o botão encolher
+     ABAIXO do próprio texto, e sem clipping o rótulo vaza por cima do vizinho
+     — o ícone da Prefeitura pousava em cima da palavra "Estado". Largura
+     natural (`flex:0 0 auto`) torna a sobreposição IMPOSSÍVEL; o resto do
+     ajuste é só para as quatro caberem sem precisar rolar num 390. */
+  @media (max-width:600px){
+    .spheres{gap:3px;padding:0 8px 12px}
+    .sph{flex:0 0 auto;min-width:0;white-space:nowrap;gap:5px;padding:8px 5px;font-size:11.5px}
+    .sph .i .jico{width:16px;height:16px}
+  }
+
+  /* a segunda fila saía 5+3 (esfarrapada) porque cabiam 5 colunas de 216px.
+     Colunas maiores → 4+4, e o valor grande deixa de ser espremido. */
+  .ck-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+
+  /* ══ v13 "COCKPIT" — o conteúdo das abas para de ser papel ═════════════════
+     A camada holográfica do v12.3 pegou só os ACIONÁVEIS; tabela e lista
+     ficaram mortas (a `g_radar` tem ~100 linhas completamente paradas).
+     Regra de custo, medida na v12: só PINTURA. Nada aqui toca `left/top`,
+     `width` ou `height` — `background-position`, `opacity` e `transform` de
+     composição apenas, senão são 60 layouts por segundo em 100 linhas. */
+
+  /* ── a linha ENTRA, em cascata, e depois fica quieta (`both`, sem loop) ── */
+  @keyframes linhaEntra{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+  tbody tr,.barw .row{animation:linhaEntra .34s cubic-bezier(.2,.8,.25,1) both;
+    animation-delay:calc(var(--li,0) * 26ms)}
+  /* a cascata só faz sentido no que o olho alcança na primeira olhada; da 15ª
+     linha em diante o atraso viraria espera. Sem JS: o índice é o seletor. */
+  tbody tr:nth-child(1),.barw .row:nth-child(1){--li:0}
+  tbody tr:nth-child(2),.barw .row:nth-child(2){--li:1}
+  tbody tr:nth-child(3),.barw .row:nth-child(3){--li:2}
+  tbody tr:nth-child(4),.barw .row:nth-child(4){--li:3}
+  tbody tr:nth-child(5),.barw .row:nth-child(5){--li:4}
+  tbody tr:nth-child(6),.barw .row:nth-child(6){--li:5}
+  tbody tr:nth-child(7),.barw .row:nth-child(7){--li:6}
+  tbody tr:nth-child(8),.barw .row:nth-child(8){--li:7}
+  tbody tr:nth-child(9),.barw .row:nth-child(9){--li:8}
+  tbody tr:nth-child(10),.barw .row:nth-child(10){--li:9}
+  tbody tr:nth-child(11),.barw .row:nth-child(11){--li:10}
+  tbody tr:nth-child(12),.barw .row:nth-child(12){--li:11}
+  tbody tr:nth-child(13),.barw .row:nth-child(13){--li:12}
+  tbody tr:nth-child(14),.barw .row:nth-child(14){--li:13}
+  tbody tr:nth-child(15),.barw .row:nth-child(15){--li:14}
+
+  /* ── varredura na linha sob o cursor: um facho atravessa a linha ────────── */
+  @keyframes varredura{from{background-position:180% 0}to{background-position:-80% 0}}
+  tbody tr:hover,.barw .row:hover{
+    background-image:linear-gradient(90deg,transparent 38%,
+      color-mix(in oklch,var(--esf) 13%,transparent) 50%,transparent 62%);
+    background-size:220% 100%;background-repeat:no-repeat;
+    animation:varredura 1.15s linear infinite}
+  tbody tr:hover td:first-child{color:var(--tx);text-shadow:0 0 12px color-mix(in oklch,var(--esf) 45%,transparent)}
+
+  /* ── o scan do cabeçalho foi RETIRADO de propósito ───────────────────────
+     Ele existia como `background-image` no `thead tr` — o MESMO elemento que
+     carrega o texto do cabeçalho. Mesmo sendo uma faixa de 1px no rodapé da
+     linha (`background-size:260% 1px`), pôr decoração no fundo de quem tem
+     texto torna o fundo efetivo ambíguo: `auditar_contraste.py` passou a ler
+     "Fornecedor" a 1,02:1 contra o azul do facho, quando o mínimo da casa é
+     4,5:1. Era laudo falso — o facho não fica atrás da palavra —, mas a cura
+     certa não é ensinar o auditor a ignorar: é não decorar o fundo do texto.
+     A cascata e a varredura da linha já entregam o "vivo"; este 1px não valia
+     uma métrica de acessibilidade cega. */
+
+  /* ── o medidor grave fala a mesma língua da lâmina: núcleo branco-quente ── */
+  .meter.crit i{background:linear-gradient(180deg,
+      color-mix(in oklch,var(--rose) 92%,transparent),
+      color-mix(in oklch,var(--rose) 16%,white) 42%,
+      color-mix(in oklch,var(--rose) 16%,white) 58%,
+      color-mix(in oklch,var(--rose) 92%,transparent));
+    box-shadow:0 0 6px color-mix(in oklch,var(--rose) 80%,transparent),
+               0 0 16px color-mix(in oklch,var(--rose) 42%,transparent)}
+
+  /* ── o A→Z tinha saído de dentro do campo de busca ───────────────────────
+     A MESMA armadilha do v12.3 (`.nu-chip`), num elemento que passou batido:
+     o bloco do vidro líquido declara `.btn,.chip,.search .az,…{position:relative}`
+     e isso sobrescreveu o `absolute` do botão. Em `relative` o `top/right` desloca
+     a partir do FLUXO, então ele desceu para fora do campo e ficou órfão à
+     esquerda (medido: botão em x=127,y=512; campo em x=133,y=467,h=40).
+     Regra da casa, agora pela segunda vez: nunca imponha `position` a quem já
+     está posicionado. */
+  .search .az{position:absolute}
+
+  /* ── higiene de tabela: as colunas estavam ENCOSTADAS ────────────────────
+     `tbody td{padding:8px 0}` não deixa respiro lateral nenhum, então na
+     `g_radar` o número de sinais colava no medidor de score e os dois liam
+     como um borrão só ("2▮▮▮▮"). Vale para TODAS as tabelas do painel. */
+  tbody td+td,thead th+th{padding-left:14px}
+
+  /* ── a barra de abas inferior cortava no meio da palavra ────────────────
+     17 abas roláveis terminando em "Se…" sem esmaecimento lê como texto
+     vazando, não como "tem mais para o lado" — mesmo idioma já usado e
+     aprovado no ticker. Em px (não %) para não comer meia aba em tela larga. */
+  nav.tabs{-webkit-mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+           mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
+
+  /* menos movimento: a linha aparece pronta, o facho e o radar somem. */
+  @media (prefers-reduced-motion:reduce){
+    tbody tr,.barw .row,thead tr,tbody tr:hover,.barw .row:hover{animation:none!important}
+    tbody tr:hover,.barw .row:hover{background-image:none;
+      background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}
+  /* aba oculta: `html.rest *` (v10) já pausa tudo — nada a declarar aqui. */
 
 </style>
 </head>
@@ -2606,8 +2787,13 @@ async function renderRadar(){
   if(!d.ok)return sec('Radar')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Radar de risco — todos os detectores somados','Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.','🎯')+acoesAba('radar_risco');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null)}${kpi(fmtN(d.n_vermelho||0),'Score ≥50 (crítico)','var(--rose)')}
-      ${kpi(a.length?a[0].score:'—','Maior score','var(--rose)')}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null)}</div>`;
+  // a cor era 'var(--rose)' FIXA: com zero críticos o painel mostrava "0" em vermelho
+  // com triângulo de alerta — boa notícia vestida de alarme, e o oposto de "coisas
+  // graves brilham graves" (se tudo grita, nada grita). A cor segue o número contra
+  // o limiar que a própria escala declara; abaixo dele, neutro e sem ícone.
+  const _nVerm=Number(d.n_vermelho||0), _maior=a.length?Number(a[0].score):null;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null)}${kpi(fmtN(_nVerm),'Score ≥50 (crítico)',_nVerm>0?'var(--rose)':null)}
+      ${kpi(_maior!=null?_maior:'—','Maior score',_maior!=null&&_maior>=50?'var(--rose)':null)}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null)}</div>`;
   h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-tbl tbody tr')"></div>`;
   h+=`<div class="card" style="padding:4px 15px;overflow-x:auto"><table id="radar-tbl"><thead><tr><th>Fornecedor</th><th style="text-align:left">Sinais que dispararam</th><th class="right">Nº</th><th class="right">Score</th></tr></thead><tbody>`+
@@ -2648,7 +2834,9 @@ async function renderComunidades(){
   if(!d.ok)return sec('Comunidades')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.comunidades||[];const g=d.grafo||{};
   let h=cover('geral','Comunidades — clusters família-empresa-órgão (Louvain)','Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.','🧩')+acoesAba('comunidades',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">Grafo das comunidades</a>`);
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩')}${kpi(fmtN(a.filter(x=>x.score>=50).length),'Score ≥50 (🔴)','var(--rose)','🚨')}
+  // mesmo conserto do radar: zero cluster crítico não é alarme (cor e 🚨 eram fixos)
+  const _nCrit=a.filter(x=>x.score>=50).length;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩')}${kpi(fmtN(_nCrit),'Score ≥50 (🔴)',_nCrit>0?'var(--rose)':null,_nCrit>0?'🚨':'')}
       ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️')}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗')}</div>`;
   h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;
@@ -3821,7 +4009,10 @@ function ckPull(first){
     if($('ck-sub'))$('ck-sub').innerHTML=`Se cada uma das <b>${fmtN(d.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item.`;
     ckFill('compras',{num:d.n_compras_acima_mediana,meta:'acima da mediana de mercado, priorizadas por economia'});
     const o=d.por_orgao&&d.por_orgao[0],onm=o?(o.orgao||''):'';
-    ckFill('orgao',{txt:onm?(onm.length>26?onm.slice(0,25).trimEnd()+'…':onm):'—',meta:o?`<b>${esc(onm)}</b> — potencial de <b>${fmtRc(o.economia)}</b> a recuperar`:'—'});
+    // o valor grande é a caixa do NÚMERO: um nome de órgão cortado duas vezes (25 chars
+    // no JS + reticências do CSS a 26px) virava "PREFEITURA …", que não informa nada.
+    // O número é a economia; o nome do órgão vive inteiro na linha de baixo.
+    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> — potencial a recuperar`:'—'});
     ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_total)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras`}]);});
   J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
