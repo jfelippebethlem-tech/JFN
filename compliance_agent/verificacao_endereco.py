@@ -436,7 +436,9 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
     if not txt:  # fallback OpenRouter (visão)
         chave = os.environ.get("OPENROUTER_API_KEY", "").strip()
         if chave:
-            modelo = os.environ.get("OPENROUTER_VISION_MODEL", "google/gemini-2.5-flash-lite")
+            # Default GRÁTIS de verdade: `gemini-2.5-flash-lite` não tem variante `:free` no OpenRouter,
+            # então o guard o transformaria em 404. Estes dois têm visão e são `:free` (testados no acervo).
+            modelo = os.environ.get("OPENROUTER_VISION_MODEL", "google/gemma-4-31b-it:free")
             b64 = base64.b64encode(img).decode()
             messages = [{"role": "user", "content": [
                 {"type": "text", "text": prompt},

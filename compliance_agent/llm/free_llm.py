@@ -89,6 +89,14 @@ def _openai_compat_chat_sync(
     if extra_headers:
         headers.update(extra_headers)
 
+    # GUARD ESTRUTURAL: no OpenRouter, SEMPRE `:free` — regra absoluta do dono. O guard ficava só nos
+    # wrappers (openrouter_chat etc.), e quem chamasse esta função direto passava por fora:
+    # `verificacao_endereco` mandava a visão para `google/gemini-2.5-flash-lite` (PAGO — não tem variante
+    # `:free`) em toda análise de fachada. Aqui não há como contornar. Não vale para os demais provedores:
+    # `:free` é sufixo do OpenRouter.
+    if OPENROUTER_BASE in (base_url or ""):
+        model = _forcar_free(model)
+
     payload = {
         "model": model,
         "messages": messages,
