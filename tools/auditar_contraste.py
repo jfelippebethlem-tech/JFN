@@ -9,12 +9,30 @@ O fundo efetivo tambem e resolvido de verdade — subindo a cadeia de ancestrais
 um fundo opaco, que e o que o olho enxerga atras do texto.
 """
 import json
+import sys
 import time
 import urllib.request as ur
+
 import websocket
 
-ABAS = ["i_cockpit", "e_alertas", "e_comp", "g_radar", "g_comun", "g_fenix",
-        "g_riscos", "p_folha", "t_busca"]
+# Nivel 2. O import tem duas formas porque este arquivo e chamado como SCRIPT
+# (`python tools/auditar_contraste.py`, e ai sys.path[0] e `tools/`) e tambem
+# importado como modulo do pacote em teste.
+try:
+    from tools.auditar_contraste_pixel import medir_pagina_atual
+except ImportError:  # pragma: no cover - depende de como o processo foi iniciado
+    from auditar_contraste_pixel import medir_pagina_atual
+
+try:
+    from tools.painel_abas import abas as _abas_do_painel
+except ImportError:  # pragma: no cover
+    from painel_abas import abas as _abas_do_painel
+
+# 51 abas, lidas do proprio painel — a lista fixa de 9 envelhecia calada e o laudo
+# parcial era lido como laudo do painel inteiro.
+ABAS = _abas_do_painel()
+if len(sys.argv) > 1:            # uma aba so, para depurar sem pagar as 51
+    ABAS = sys.argv[1:]
 tabs = json.load(ur.urlopen("http://127.0.0.1:9222/json"))
 alvo = next(t for t in tabs if t.get("type") == "page")
 ws = websocket.create_connection(alvo["webSocketDebuggerUrl"], timeout=120, suppress_origin=True)
@@ -68,7 +86,7 @@ MEDE = r"""(()=>{
   };
   const vis=e=>{const s=getComputedStyle(e);
     return s.display!=='none'&&s.visibility!=='hidden'&&e.offsetParent!==null&&+s.opacity>0.05};
-  const out=[],naoMedidos=[];
+  const out=[];let delegados=0;
   for(const e of document.querySelectorAll('body *')){
     if(!vis(e))continue;
     const t=[...e.childNodes].filter(n=>n.nodeType===3).map(n=>n.nodeValue.trim()).join('');
@@ -88,25 +106,16 @@ MEDE = r"""(()=>{
       const c0=rgb(getComputedStyle(n).backgroundColor);
       if(c0&&c0[3]>=0.999)break;                 // fundo opaco antes de qualquer imagem
     }
-    let bg;
-    if(img){
-      /* Gradiente de cores solidas: extrai as paradas e mede o PIOR caso (a parada
-         cuja luminancia esta mais perto da do texto). Sem isso ~21 elementos por aba
-         ficavam sem laudo — e auditoria que nao cobre o card, que e onde o dado mora,
-         nao e auditoria. Se as paradas nao forem legiveis, declara que nao sabe. */
-      /* SO a primeira camada. `background-image` empilha camadas e a PRIMEIRA e a de
-         cima; as de baixo podem nem tocar o texto — o herói do painel, por exemplo, tem
-         um conico recortado no `border-box` que so pinta o anel de 1px, e le-lo como
-         fundo do texto acusava 1,03:1 num texto perfeitamente legivel. */
-      const topo=(()=>{let d=0,ini=0;for(let k=0;k<img.length;k++){
-        const ch=img[k];if(ch==='(')d++;else if(ch===')')d--;
-        else if(ch===','&&d===0)return img.slice(ini,k);}return img;})();
-      const paradas=(topo.match(/oklch\([^)]*\)|oklab\([^)]*\)|rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}/g)||[])
-        .map(rgb).filter(c=>c&&c[3]>0.05);
-      if(!paradas.length){naoMedidos.push((e.id||e.className||e.tagName).toString().slice(0,40));continue;}
-      const Lf=L(fg0);
-      bg=paradas.reduce((pior,c)=>Math.abs(L(c)-Lf)<Math.abs(L(pior)-Lf)?c:pior).slice(0,3);
-    } else bg=fundoEfetivo(e);
+    /* Fundo NAO plano -> nivel 2. Ate 2026-07-25 este ramo tentava adivinhar o
+       fundo pelas PARADAS de cor declaradas no gradiente, e errava nos dois
+       sentidos: acusava "Fornecedor" a 1,02:1 por causa de uma faixa de 1px longe
+       do glifo (falso positivo, do qual nasceu uma regra de projeto inteira), e
+       aprovava texto claro sobre camada de baixo clara porque so lia a camada de
+       cima (falso negativo, o pior dos dois). Contra o gabarito de 4 casos ele
+       acertava 1. Agora nao adivinha: delega para `auditar_contraste_pixel`, que
+       fotografa o fundo em vez de deduzi-lo. */
+    if(img){delegados++;continue;}
+    const bg=fundoEfetivo(e);
     const fg=fg0[3]<1?mistura(fg0,bg):fg0;
     const a=L(fg),b=L(bg);
     const cr=(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
@@ -120,7 +129,7 @@ MEDE = r"""(()=>{
   // deduplica por classe+tamanho: interessa o PADRAO, nao cada instancia
   const visto={},uniq=[];
   for(const o of out){const k=o.el+'|'+o.px;if(visto[k])continue;visto[k]=1;uniq.push(o);}
-  return {abaixo:uniq.sort((x,y)=>x.cr-y.cr), nao_medidos:[...new Set(naoMedidos)].length};
+  return {abaixo:uniq.sort((x,y)=>x.cr-y.cr), delegados:delegados};
 })()"""
 
 cmd("Runtime.enable")
@@ -137,13 +146,33 @@ for aba in ABAS:
     if not isinstance(r, dict) or "abaixo" not in r:
         print(f"  {aba}: erro {r}")
         continue
-    nm = r.get("nao_medidos", 0)
+    delegados = r.get("delegados", 0)
     r = r["abaixo"]
     for o in (r or []):
         k = (o["el"], o["px"])
         if k not in todos or o["cr"] < todos[k]["cr"]:
             todos[k] = dict(o, aba=aba)
-    print(f"  {aba:12s} {len(r or [])} abaixo do exigido · {nm} com fundo em gradiente (nao medivel)")
+
+    # NIVEL 2 — quem tem fundo nao plano e medido no pixel, na mesma aba ja aberta.
+    # Nao existe mais "nao medido": ou o nivel 1 resolveu exatamente, ou o nivel 2
+    # fotografou. Silencio de auditor e o que deixa defeito passar.
+    n2_falhas = 0
+    for o in medir_pagina_atual(ws):
+        if o.get("cr") is None:
+            print(f"  {aba:12s} ATENCAO: '{o['id'][:30]}' nao pintou glifo — investigar")
+            continue
+        if o["passa"]:
+            continue
+        n2_falhas += 1
+        k = (o["id"], o["px"])
+        norm = {"el": o["id"], "px": o["px"], "cr": o["cr"], "exige": o["exige"],
+                "cor": f"rgb{tuple(o['cor'])}", "txt": o["txt"], "aba": aba,
+                "fundo": o.get("fundo"), "nivel": 2}
+        if k not in todos or o["cr"] < todos[k]["cr"]:
+            todos[k] = norm
+
+    print(f"  {aba:12s} {len(r or [])} abaixo do exigido (nivel 1) · "
+          f"{delegados} delegado(s) ao pixel, {n2_falhas} abaixo (nivel 2)")
 
 print(f"\n=== {len(todos)} padrao(oes) de texto abaixo do minimo WCAG ===")
 for o in sorted(todos.values(), key=lambda x: x["cr"])[:25]:

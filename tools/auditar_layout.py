@@ -38,8 +38,14 @@ import urllib.request as ur
 
 import websocket
 
-ABAS = ["i_cockpit", "e_alertas", "e_comp", "g_radar", "g_comun", "g_fenix",
-        "g_riscos", "p_folha", "t_busca"]
+try:
+    from tools.painel_abas import abas as _abas_do_painel
+except ImportError:  # pragma: no cover - depende de como o processo foi iniciado
+    from painel_abas import abas as _abas_do_painel
+
+# 51 abas, lidas do proprio painel. A lista fixa de 9 envelhecia calada, e um
+# laudo que cobre 9 abas era lido como laudo do painel inteiro.
+ABAS = _abas_do_painel()
 LARGURAS = [1440, 390]
 
 if len(sys.argv) > 1:

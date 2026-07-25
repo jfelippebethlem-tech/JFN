@@ -87,7 +87,11 @@ LIMIAR_MASCARA = 3
 # dezenas de pixels reais. O numero e declarado, nao escondido.
 RUIDO = 0.02
 
-_id = [0]
+# Comeca alto de proposito: quando o auditor de nivel 1 (`auditar_contraste.py`)
+# delega para ca, os dois dividem o MESMO socket CDP. Dois contadores partindo de
+# zero produziriam ids iguais, e cada um leria a resposta do outro — um bug que so
+# aparece sob carga e parece "o Chrome travou".
+_id = [1_000_000]
 
 
 # ─────────────────────────────────────────────────────────────── CDP cru ──
@@ -152,7 +156,21 @@ INVENTARIO = r"""(()=>{
       if(c&&c[3]>=0.999)return false;      /* fundo opaco antes de qualquer imagem */
     }
     return false;};
-  let n=0;const fora=[];
+  /* Assinatura do PADRAO. `.card` do painel pinta o proprio fundo com gradiente,
+     entao todo texto dentro de card cai no nivel 2 — sao centenas de elementos por
+     aba, e tres capturas cada seria inviavel numa VM de 2 vCPU. O auditor de nivel
+     1 ja deduplicava por classe+tamanho DEPOIS de medir, dizendo que "interessa o
+     PADRAO, nao cada instancia"; aqui a mesma dedup acontece ANTES, que e onde ela
+     economiza. A chave inclui o fundo do ancestral pintado: duas instancias da
+     mesma classe sobre fundos diferentes continuam sendo medidas separadamente. */
+  const fundoDoAncestral=e=>{
+    for(let n=e;n&&n!==document.documentElement;n=n.parentElement){
+      const s=getComputedStyle(n);
+      if(s.backgroundImage&&s.backgroundImage!=='none')return s.backgroundImage.slice(0,120);
+      const c=rgb(s.backgroundColor); if(c&&c[3]>=0.999)return s.backgroundColor;
+    }
+    return '';};
+  let n=0;const fora=[],visto={};let colapsados=0;
   for(const e of document.querySelectorAll('body *')){
     if(!vis(e))continue;
     const t=[...e.childNodes].filter(x=>x.nodeType===3).map(x=>x.nodeValue.trim()).join('');
@@ -161,6 +179,10 @@ INVENTARIO = r"""(()=>{
     const s=getComputedStyle(e);
     const cor=rgb(s.color); if(!cor)continue;
     const px=parseFloat(s.fontSize), peso=parseInt(s.fontWeight)||400;
+    const chave=[(e.id||e.className||e.tagName).toString(),Math.round(px*10),
+                 s.color,s.fontWeight,fundoDoAncestral(e)].join('|');
+    if(visto[chave]){colapsados++;continue;}
+    visto[chave]=1;
     e.setAttribute('data-cpx',String(++n));
     fora.push({cpx:n, cor:cor.slice(0,3), alfa:cor[3],
                px:Math.round(px*10)/10, grande:(px>=24||(px>=18.66&&peso>=700)),
@@ -168,7 +190,8 @@ INVENTARIO = r"""(()=>{
                verdade:e.getAttribute('data-verdade')||null,
                txt:t.slice(0,40)});
   }
-  return fora;})()"""
+  /* Nada e truncado em silencio: quem colapsou sai no laudo. */
+  return {alvos:fora, colapsados:colapsados};})()"""
 
 
 def _caixa(ws, cpx: int) -> dict | None:
@@ -183,18 +206,55 @@ def _caixa(ws, cpx: int) -> dict | None:
     )
 
 
+def _png(dados: str) -> Image.Image:
+    return Image.open(io.BytesIO(base64.b64decode(dados))).convert("RGB")
+
+
 def _capturar(ws, caixa: dict) -> Image.Image:
-    r = cmd(
-        ws,
-        "Page.captureScreenshot",
-        {
-            "format": "png",
-            "captureBeyondViewport": True,
-            "clip": {"x": caixa["x"], "y": caixa["y"],
-                     "width": caixa["w"], "height": caixa["h"], "scale": 1},
-        },
-    )
-    return Image.open(io.BytesIO(base64.b64decode(r["data"]))).convert("RGB")
+    """Uma caixa. `captureBeyondViewport` fica FALSO de proposito.
+
+    Medido nesta VM: com `True` a captura custa 1,88 s; com `False`, 0,97 s — o
+    `True` obriga o Chrome a recompor a pagina inteira alem do viewport a cada
+    disparo. Os pixels sao os mesmos (conferido: a diferenca entre as duas fica em
+    ate 2 por canal, que e jitter de antialiasing e passa longe do limiar de
+    mascara). Quem chama ja rolou o elemento para a tela em `_caixa`.
+    """
+    r = cmd(ws, "Page.captureScreenshot", {
+        "format": "png", "captureBeyondViewport": False,
+        "clip": {"x": caixa["x"], "y": caixa["y"],
+                 "width": caixa["w"], "height": caixa["h"], "scale": 1}})
+    return _png(r["data"])
+
+
+def _capturar_viewport(ws) -> Image.Image:
+    """O viewport inteiro, sem clip — a base do lote."""
+    return _png(cmd(ws, "Page.captureScreenshot", {"format": "png"})["data"])
+
+
+def _congelar(ws) -> None:
+    """Para o painel antes de medir.
+
+    O painel e vivo por projeto: sabre, conduite, auroras, canvas. As tres
+    capturas de um elemento sao separadas por ~1 s, e o que se mexer entre elas
+    entra na mascara como se fosse glifo. Congelar torna o laudo determinista —
+    duas execucoes seguidas dao o mesmo numero, que e requisito de auditor.
+    Usa o mecanismo que o proprio painel ja tem (`html.rest`, do v10 "orcamento
+    de vida") somado ao controle nativo do CDP.
+    """
+    cmd(ws, "Animation.enable")
+    cmd(ws, "Animation.setPlaybackRate", {"playbackRate": 0})
+    js(ws, """(()=>{document.documentElement.classList.add('rest');
+      let s=document.getElementById('__congelar');
+      if(!s){s=document.createElement('style');s.id='__congelar';document.head.appendChild(s);}
+      s.textContent='*,*::before,*::after{animation-play-state:paused!important;transition:none!important}';
+      return 1;})()""")
+    time.sleep(0.4)
+
+
+def _descongelar(ws) -> None:
+    js(ws, """(()=>{document.documentElement.classList.remove('rest');
+      const s=document.getElementById('__congelar'); if(s)s.remove(); return 1;})()""")
+    cmd(ws, "Animation.setPlaybackRate", {"playbackRate": 1})
 
 
 def _pintar_texto(ws, cpx: int, cor: str) -> None:
@@ -204,6 +264,42 @@ def _pintar_texto(ws, cpx: int, cor: str) -> None:
           e.dataset.cpxCor=e.style.color||'';e.dataset.cpxSombra=e.style.textShadow||'';}}
         e.style.setProperty('color','{cor}','important');
         e.style.setProperty('text-shadow','none','important');}})()""")
+
+
+def _pintar_lote(ws, cpxs: list[int], cor: str) -> None:
+    """A mesma coisa para um LOTE — e o que permite 3 capturas por aba em vez de 3
+    por elemento. So entram no lote alvos que nao contem outro alvo: se um contivesse,
+    os glifos do filho apareceriam dentro da caixa do pai e entrariam na mascara dele."""
+    js(ws, f"""(()=>{{for(const n of {json.dumps(cpxs)}){{
+        const e=document.querySelector('[data-cpx="'+n+'"]'); if(!e)continue;
+        if(e.dataset.cpxCor===undefined){{
+          e.dataset.cpxCor=e.style.color||'';e.dataset.cpxSombra=e.style.textShadow||'';}}
+        e.style.setProperty('color','{cor}','important');
+        e.style.setProperty('text-shadow','none','important');}}return 1;}})()""")
+
+
+def _restaurar_lote(ws, cpxs: list[int]) -> None:
+    js(ws, f"""(()=>{{for(const n of {json.dumps(cpxs)}){{
+        const e=document.querySelector('[data-cpx="'+n+'"]'); if(!e)continue;
+        e.style.color=e.dataset.cpxCor||'';e.style.textShadow=e.dataset.cpxSombra||'';
+        delete e.dataset.cpxCor;delete e.dataset.cpxSombra;}}return 1;}})()""")
+
+
+# Alvos elegiveis ao lote: dentro do viewport e sem outro alvo dentro. Medido no
+# painel: 17 de 20 em g_radar, 22 de 27 no cockpit, 20 de 22 no panorama.
+ELEGIVEIS_LOTE = r"""(()=>{
+  const els=[...document.querySelectorAll('[data-cpx]')];
+  const fora=[];
+  for(const e of els){
+    if(els.some(o=>o!==e&&e.contains(o)))continue;      /* contem outro alvo */
+    const r=e.getBoundingClientRect();
+    if(r.width<2||r.height<2)continue;
+    if(r.top<0||r.left<0||r.bottom>innerHeight||r.right>innerWidth)continue;
+    fora.push({cpx:+e.getAttribute('data-cpx'),
+               x:Math.round(r.left),y:Math.round(r.top),
+               w:Math.round(r.width),h:Math.round(r.height)});
+  }
+  return fora;})()"""
 
 
 def _restaurar_texto(ws, cpx: int) -> None:
@@ -241,9 +337,80 @@ def _pior_fundo(b: Image.Image, c1: Image.Image, c2: Image.Image, lum_texto: flo
 
 
 # ────────────────────────────────────────────────────────────── auditoria ──
+def medir_pagina_atual(ws) -> list[dict]:
+    """Mede a pagina JA carregada, sem navegar.
+
+    E por aqui que `auditar_contraste.py` delega: ele ja abriu o painel e trocou de
+    aba; navegar de novo perderia o estado. Devolve so quem o nivel 1 nao resolve.
+    """
+    _congelar(ws)
+    try:
+        inv = js(ws, INVENTARIO) or {}
+        alvos = {a["cpx"]: a for a in inv.get("alvos", [])}
+        if inv.get("colapsados"):
+            # Declarado, nunca calado. Auditor que reduz o universo sem dizer
+            # quanto produz laudo que PARECE cobertura total — o
+            # `auditar_layout.py` ja pagou essa conta uma vez.
+            print(f"    [pixel] {len(alvos)} padrao(oes) a medir · "
+                  f"{inv['colapsados']} instancia(s) colapsada(s) em padrao identico")
+        if not alvos:
+            return []
+
+        laudo: list[dict] = []
+        medidos: set[int] = set()
+
+        # ── LOTE: 3 capturas do viewport resolvem TODOS os alvos independentes.
+        # Medido: a captura custa ~1 s nesta VM; uma por elemento daria 114 s por
+        # aba (97 min nas 51). Por lote da ~15 s por aba.
+        lote = js(ws, ELEGIVEIS_LOTE) or []
+        if lote:
+            cpxs = [x["cpx"] for x in lote]
+            _pintar_lote(ws, cpxs, "transparent"); vb = _capturar_viewport(ws)
+            _pintar_lote(ws, cpxs, "#000");        v1 = _capturar_viewport(ws)
+            _pintar_lote(ws, cpxs, "#fff");        v2 = _capturar_viewport(ws)
+            _restaurar_lote(ws, cpxs)
+            for x in lote:
+                cx = (x["x"], x["y"], x["x"] + x["w"], x["y"] + x["h"])
+                laudo.append(_veredito(alvos[x["cpx"]],
+                                       vb.crop(cx), v1.crop(cx), v2.crop(cx)))
+                medidos.add(x["cpx"])
+
+        # ── INDIVIDUAL: quem contem outro alvo (a mascara do pai pegaria os glifos
+        # do filho) ou esta fora do viewport. Sao poucos — 2 a 5 por aba, medido.
+        for cpx, alvo in alvos.items():
+            if cpx in medidos:
+                continue
+            caixa = _caixa(ws, cpx)
+            if not caixa:
+                continue
+            _pintar_texto(ws, cpx, "transparent"); b = _capturar(ws, caixa)
+            _pintar_texto(ws, cpx, "#000");        c1 = _capturar(ws, caixa)
+            _pintar_texto(ws, cpx, "#fff");        c2 = _capturar(ws, caixa)
+            _restaurar_texto(ws, cpx)
+            laudo.append(_veredito(alvo, b, c1, c2))
+        return laudo
+    finally:
+        _descongelar(ws)
+
+
+def _veredito(alvo: dict, b: Image.Image, c1: Image.Image, c2: Image.Image) -> dict:
+    """Junta as tres capturas num laudo de um elemento."""
+    lum_tx = _lum(alvo["cor"])
+    lum_bg, rgb_bg, n_glifo = _pior_fundo(b, c1, c2, lum_tx)
+    if lum_bg is None:
+        # Preto e branco no mesmo lugar deram a MESMA imagem: nao ha glifo pintando
+        # nesta caixa (cortado por ancestral, `font-size:0`, `visibility` do filho,
+        # texto fora do clip). Declarar, nao inventar.
+        return dict(alvo, cr=None, motivo="glifo nao pintou", pixels=0)
+    cr = _contraste(lum_tx, lum_bg)
+    exige = 3.0 if alvo["grande"] else 4.5
+    return dict(alvo, cr=round(cr, 2), exige=exige, fundo=rgb_bg,
+                pixels=n_glifo, passa=cr >= exige)
+
+
 def auditar(url: str, ws=None, largura: int = 1600, altura: int = 1000,
             espera: float = 3.0) -> list[dict]:
-    """Mede, no pixel, todo texto sobre fundo que o auditor de paradas nao resolve."""
+    """Navega ate `url` e mede. Usado pelo gabarito e pela linha de comando."""
     proprio = ws is None
     ws = ws or conectar()
     try:
@@ -256,35 +423,7 @@ def auditar(url: str, ws=None, largura: int = 1600, altura: int = 1000,
             {"width": largura, "height": altura, "deviceScaleFactor": 1, "mobile": False})
         cmd(ws, "Page.navigate", {"url": url})
         time.sleep(espera)
-
-        alvos = js(ws, INVENTARIO) or []
-        laudo = []
-        for alvo in alvos:
-            caixa = _caixa(ws, alvo["cpx"])
-            if not caixa:
-                continue
-            # tres capturas da MESMA caixa, mudando so a cor do texto deste elemento
-            _pintar_texto(ws, alvo["cpx"], "transparent")
-            b = _capturar(ws, caixa)
-            _pintar_texto(ws, alvo["cpx"], "#000")
-            c1 = _capturar(ws, caixa)
-            _pintar_texto(ws, alvo["cpx"], "#fff")
-            c2 = _capturar(ws, caixa)
-            _restaurar_texto(ws, alvo["cpx"])
-
-            lum_tx = _lum(alvo["cor"])
-            lum_bg, rgb_bg, n_glifo = _pior_fundo(b, c1, c2, lum_tx)
-            if lum_bg is None:
-                # Preto e branco no mesmo lugar deram a MESMA imagem: nao ha glifo
-                # pintando nesta caixa (cortado por ancestral, `font-size:0`,
-                # `visibility` do filho, texto fora do clip). Declarar, nao inventar.
-                laudo.append(dict(alvo, cr=None, motivo="glifo nao pintou", pixels=0))
-                continue
-            cr = _contraste(lum_tx, lum_bg)
-            exige = 3.0 if alvo["grande"] else 4.5
-            laudo.append(dict(alvo, cr=round(cr, 2), exige=exige, fundo=rgb_bg,
-                              pixels=n_glifo, passa=cr >= exige))
-        return laudo
+        return medir_pagina_atual(ws)
     finally:
         if proprio:
             ws.close()
