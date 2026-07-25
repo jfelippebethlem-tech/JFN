@@ -272,8 +272,13 @@ def _cobertura(dirs_processos, idx: dict) -> dict:
 
     Medido no acervo em 25/07/2026: dos 2.051 processos com pasta `fotos/`, **1.929 (94%) têm a
     pasta VAZIA**, e de 122 com arquivo, 29 só têm página em branco — sobram 93 com imagem
-    aproveitável. Dizer "2.051 processos, nenhuma reciclagem" seria apresentar lacuna de CAPTURA
-    como resultado de auditoria; é o mesmo vício que já apareceu nas red flags do SEI."""
+    aproveitável. Dizer "2.051 processos, nenhuma reciclagem" seria falar por 2.051 quando se
+    olhou 93.
+
+    E isso NÃO é falha de captura: os 2.050 manifestos declaram `fotos_total`, 1.947 declaram
+    ZERO fotos, e não há um só caso de foto declarada e não baixada. São processos de pagamento
+    e liquidação, que não têm relatório fotográfico. O detector alcança tudo o que existe — só
+    não pode fingir que 2.051 é o tamanho do que ele examinou."""
     dirs = [Path(d) for d in (dirs_processos or [])]
     com_arquivo = sum(1 for d in dirs if _fotos_do_processo(d))
     com_foto = len({o["processo"] for v in idx.values() for o in v})
