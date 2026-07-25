@@ -72,6 +72,21 @@ _NF_CONTINGENCIA = ("contingencia", "emitida em contingencia", "emissao em conti
                     "scan ", "formulario de seguranca", "dpec")
 _ORDEM_SEV = {"verde": 0, "amarelo": 1, "vermelho": 2}
 
+# ── TRANSFERÊNCIA ≠ CONTRATAÇÃO (erro conceitual corrigido em 2026-07-24, achado no acervo) ──
+# Repasse fundo a fundo (Fundo Estadual de Saúde → Fundo Municipal), convênio, termo de cooperação e
+# transferência a organismo internacional NÃO têm nota fiscal, boletim de medição nem atesto de
+# recebimento: a comprovação é a PRESTAÇÃO DE CONTAS (RDQA/RAG — art. 16 do Decreto estadual 48.300/2022;
+# Lei 8.080/1990 para o SUS). Cobrar NF de repasse do SUS é erro de direito financeiro, e transformaria
+# transferência regular em "pagamento sem comprovação". Dos 30 achados brutos, boa parte era isto.
+_TRANSFERENCIA = (
+    # abreviações reais do favorecido no SIAFE: "Fundo Munic.de Saude", "FMS de ...", "Fdo Mun Saude"
+    "fundo a fundo", "fundo municipal", "fundo munic", "fundo mun ", "fdo mun", "fms de ", "fes de ",
+    "fundo estadual de saude", "fundo nacional de saude", "repasse ao municipio", "prefeitura municipal",
+    "transferencia voluntaria", "transferencia obrigatoria", "termo de cooperacao", "convenio",
+    "deliberacao cib", "organizacao pan-americana", "organismo internacional", "consorcio publico",
+    "auxilio financeiro", "subvencao", "termo de fomento", "termo de colaboracao",
+)
+
 
 def _primeiro_trecho(texto: str, low: str, marcadores: tuple[str, ...], janela: int = 90, limite: int = 200) -> str:
     """Recorta o trecho VERBATIM ao redor do 1º marcador encontrado (índices da string normalizada, que tem o
@@ -139,7 +154,7 @@ def _trecho_pagamento(texto: str, low: str, tem_pag: bool, estagio: str) -> str:
     return trecho
 
 
-def analisar_execucao_det(texto: str) -> dict:
+def analisar_execucao_det(texto: str, favorecido: str = "") -> dict:
     """Veredito DETERMINÍSTICO e RESOLVIDO de execução sem comprovação.
 
     Grau (SENSÍVEL): nao_aplicavel (sem contexto de pagamento) · verde (todas as 3 provas essenciais) ·
@@ -152,9 +167,29 @@ def analisar_execucao_det(texto: str) -> dict:
     amarelo: empenho é compromisso e pode ser cancelado; não se acusa "pagou sem comprovar" o que não foi pago.
     O teto NÃO se aplica a vício do próprio documento (NF cancelada), que independe do estágio da despesa.
     """
+    # o DESTINATÁRIO define a natureza tanto quanto o texto — e o nome dele mora na Ordem Bancária
+    # (banco), não no processo. Quem tiver o dado passa em `favorecido`.
+    low_all = _norm((texto or "") + " " + (favorecido or ""))
+    natureza = "transferencia" if any(k in low_all for k in _TRANSFERENCIA) else "contratacao"
     sig = sinais_execucao(texto)
+    if natureza == "transferencia":
+        return {"grau": "nao_aplicavel", "natureza": natureza, "faltantes": [], "sinais": [],
+                "faltam_essenciais": [], "tem_ob": sig["tem_ob"], "tem_liquidacao": sig["tem_liquidacao"],
+                "tem_empenho": sig["tem_empenho"], "estagio_despesa": sig["estagio_despesa"],
+                "pagamento_efetivo": sig["pagamento_efetivo"], "provas_presentes": sig["provas_presentes"],
+                "resumo": ("Despesa de TRANSFERÊNCIA (repasse fundo a fundo, convênio, termo de cooperação "
+                           "ou organismo internacional), não de contratação: nota fiscal, boletim de "
+                           "medição e atesto de recebimento NÃO são exigíveis aqui. A comprovação própria "
+                           "é a PRESTAÇÃO DE CONTAS do destinatário (no SUS: RDQA e RAG — art. 16 do "
+                           "Decreto estadual 48.300/2022), que se verifica em outro rito."),
+                "a_verificar": ["prestação de contas do destinatário (RDQA/RAG) no prazo",
+                                "pactuação/deliberação que autoriza o repasse",
+                                "aplicação dos recursos na finalidade pactuada"],
+                "ressalva": "transferência regular não se confunde com contratação; INDISPONÍVEL ≠ irregular",
+                "fonte": "execucao_sinais (determinístico/offline)"}
     if not sig["tem_pagamento"]:
-        return {"grau": "nao_aplicavel", "faltantes": [], "sinais": [], "faltam_essenciais": [],
+        return {"grau": "nao_aplicavel", "natureza": natureza, "faltantes": [], "sinais": [],
+                "faltam_essenciais": [],
                 "tem_ob": False, "tem_liquidacao": False, "tem_empenho": False,
                 "estagio_despesa": "nenhum", "pagamento_efetivo": False,
                 "resumo": "Não é um processo de pagamento/execução (sem OB/empenho/liquidação) — "
@@ -224,7 +259,8 @@ def analisar_execucao_det(texto: str) -> dict:
                        "grau limitado a amarelo; confirmar a OB no SIAFE antes de tratar como despesa paga.")
         if pend:
             resumo += " Pendências: " + ", ".join(pend) + "."
-    return {"grau": grau, "faltantes": sig["faltantes"], "faltam_essenciais": faltam_ess,
+    return {"grau": grau, "natureza": natureza, "faltantes": sig["faltantes"],
+            "faltam_essenciais": faltam_ess,
             "provas_presentes": presentes, "atesto_sem_foto": atesto_seco, "sinais": sinais, "resumo": resumo,
             "tem_ob": sig["tem_ob"], "tem_liquidacao": sig["tem_liquidacao"], "tem_empenho": sig["tem_empenho"],
             "estagio_despesa": est, "pagamento_efetivo": efetivo,

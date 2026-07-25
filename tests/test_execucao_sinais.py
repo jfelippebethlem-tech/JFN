@@ -155,3 +155,51 @@ def test_nota_fiscal_cancelada_de_verdade_continua_sendo_apontada():
                 "pelo emitente após a emissão.")
     r = ES.analisar_execucao_det(txt)
     assert any(s["tipo"] == "nota_fiscal_cancelada" for s in r["sinais"])
+
+
+# ───────── TRANSFERÊNCIA ≠ CONTRATAÇÃO (erro conceitual achado no acervo, 2026-07-24) ─────────
+
+def test_repasse_a_fundo_municipal_nao_exige_nota_fiscal():
+    """Achado real: 30 processos com OB paga e "sem prova de entrega" — mas boa parte era REPASSE
+    fundo a fundo (Fundo Estadual de Saúde → Fundo Municipal). Transferência intergovernamental não tem
+    nota fiscal, boletim de medição nem atesto de recebimento: a comprovação é a PRESTAÇÃO DE CONTAS
+    (RDQA/RAG, art. 16 do Decreto estadual 48.300/2022; Lei 8.080/1990). Cobrar NF disso é erro de
+    direito financeiro — e acusaria o repasse do SUS de irregularidade."""
+    txt = ("Ordem Bancária 2025OB004321. Repasse fundo a fundo do Fundo Estadual de Saúde ao FUNDO "
+           "MUNICIPAL DE SAÚDE DE MAGÉ, conforme Deliberação CIB-RJ, para custeio da rede assistencial.")
+    r = ES.analisar_execucao_det(txt)
+    assert r["grau"] == "nao_aplicavel"
+    assert r["natureza"] == "transferencia"
+    assert "presta" in r["resumo"].lower()          # aponta a comprovação correta
+
+
+def test_transferencia_a_organismo_internacional_tambem():
+    txt = ("Ordem Bancária 2025OB009999 em favor da ORGANIZACAO PAN-AMERICANA DA SAUDE — termo de "
+           "cooperação técnica internacional.")
+    r = ES.analisar_execucao_det(txt)
+    assert r["grau"] == "nao_aplicavel" and r["natureza"] == "transferencia"
+
+
+def test_contratacao_de_fornecedor_privado_continua_exigindo_prova():
+    txt = ("Ordem Bancária 2025OB001234 paga à empresa contratada para fornecimento de materiais. "
+           "Despacho de encaminhamento.")
+    r = ES.analisar_execucao_det(txt)
+    assert r["natureza"] == "contratacao"
+    assert r["grau"] == "vermelho"
+
+
+def test_natureza_tambem_olha_o_FAVORECIDO_da_ob():
+    """O nome do destinatário mora na Ordem Bancária (banco), não no texto do processo: 'Fundo Municipal
+    de Saúde de Magé' aparecia como fornecedor da OB enquanto o texto capturado nada dizia. Sem isso, o
+    repasse continuava contado como contratação sem prova."""
+    txt = "Ordem Bancária 2026OB005456. Processo de despesa. Despacho de encaminhamento."
+    r = ES.analisar_execucao_det(txt, favorecido="Fundo Municipal De Saude De Mage")
+    assert r["natureza"] == "transferencia" and r["grau"] == "nao_aplicavel"
+    # sem o favorecido, o mesmo texto é contratação sem prova
+    assert ES.analisar_execucao_det(txt)["natureza"] == "contratacao"
+
+
+def test_favorecido_empresa_privada_nao_vira_transferencia():
+    txt = "Ordem Bancária 2026OB005457 paga. Despacho."
+    r = ES.analisar_execucao_det(txt, favorecido="ALFA COMERCIO DE MATERIAIS LTDA")
+    assert r["natureza"] == "contratacao"
