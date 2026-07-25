@@ -2,6 +2,27 @@
 
 *Apurado em 25/07/2026 na documentação oficial da Adobe.*
 
+> ## ⚠️ ATUALIZAÇÃO (25/07/2026, mesma noite) — existe caminho por MCP
+>
+> O dono conectou o **"Adobe for creativity"**, servidor MCP remoto **oficial** da Adobe
+> (`https://adobe-creativity.adobe.io/mcp`, transporte HTTP streamable, OAuth no primeiro
+> uso). Verificado por `claude mcp list`: **✔ Connected**. Ele liga Photoshop, Lightroom,
+> Illustrator, Firefly, Premiere, **Express**, InDesign e Stock.
+>
+> Isso **supera o veredito da seção 1** para quem usa um cliente MCP: não é preciso
+> entitlement de organização no Admin Console para operar por aqui — a autorização é a do
+> próprio usuário, por OAuth. A seção 1 continua valendo para a **Express API REST**
+> (aquela sim é empresarial), que é coisa diferente.
+>
+> **Como usar:** as ferramentas de um MCP entram no conjunto do assistente no **início da
+> sessão**. Se o servidor foi conectado com a sessão já aberta, rode `/clear` ou abra uma
+> nova — aí elas aparecem. Conferir com `claude mcp list`.
+>
+> A ponte local (`tools/express_ponte.py`) **continua valendo e não depende de nada**:
+> `--spec` (identidade do painel em HEX), `--gerar` (arte na marca, grátis) e `--importar`
+> (validação + versionamento). Use o MCP quando quiser o Express/Firefly de verdade;
+> use a ponte quando quiser arte de fundo em 2 s sem gastar crédito.
+
 ---
 
 ## 1 · O veredito, sem rodeio
