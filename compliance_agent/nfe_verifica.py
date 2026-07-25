@@ -12,12 +12,25 @@ citada no processo é auto-descritiva; dela saem, SEM REDE:
     (protocolo, código de barras) e evita falso positivo na varredura de texto.
 
 CANCELAMENTO/DENEGAÇÃO **não** está na chave: exige consulta à SEFAZ. **Nada pago entra aqui** (decisão do
-dono 2026-07-24): certificado digital A1 e agregadores por consulta estão FORA. O único caminho admitido é
-o **portal público** (nfe.fazenda.gov.br / portais estaduais), que consulta pela chave sem credencial — o
-captcha é resolvido pelo **ddddocr LOCAL** que já roda de graça no sweep SEI-PCRJ da VM-2. Por isso
-`situacao()` recebe a consulta INJETADA (`consultar`): o módulo não amarra fornecedor nenhum.
-Sem consulta disponível o veredito é **`nao_verificada` / `a_verificar`** — NUNCA "autorizada" por
-omissão: ausência de verificação ≠ regularidade.
+dono 2026-07-24): certificado digital A1 e agregadores por consulta estão FORA. Por isso `situacao()`
+recebe a consulta INJETADA (`consultar`): o módulo não amarra fornecedor nenhum. Sem consulta disponível o
+veredito é **`nao_verificada` / `a_verificar`** — NUNCA "autorizada" por omissão: ausência de verificação
+≠ regularidade.
+
+⚠️ **O caminho gratuito descrito aqui até 25/07/2026 NÃO EXISTE MAIS — medido, não suposto.** A versão
+anterior deste texto dizia que bastava o "portal público, que consulta pela chave sem credencial, com o
+captcha resolvido pelo **ddddocr** local". Testado nesta data, por **duas** razões independentes:
+
+  · **`www.nfe.fazenda.gov.br` não conecta** — cadeia TLS quebrada do lado deles (certificado Let's Encrypt
+    `CN=YR2` sem emissor local). Não é bundle velho aqui: PNCP, minhareceita, opencnpj, brasil.io e o
+    próprio `dfe-portal.svrs.rs.gov.br` respondem normalmente com o mesmo `certifi`;
+  · **o portal estadual (SVRS) passou a exigir login gov.br** — `GET /NFE/Consulta` redireciona para
+    `sso.acesso.gov.br/login`. Não é mais consulta anônima.
+
+E mesmo que conectasse: a página se chama `consultaRecaptcha.aspx` — é **reCAPTCHA do Google**, que o
+**ddddocr NÃO resolve** (ele faz OCR de captcha de imagem simples). A premissa estava errada em dois
+níveis. Enquanto não houver caminho gratuito e sem credencial, a situação na SEFAZ fica **INDISPONÍVEL**,
+que é o comportamento-padrão desta função — e isso não é o mesmo que "nota regular".
 
 HONESTIDADE: indício ≠ acusação; contingência é lícita (é sinal a verificar, não vício); só a NF cancelada
 ou denegada lastreando **OB paga** (§2: só a Ordem Bancária é "pago") é vermelho forte.
