@@ -1007,23 +1007,48 @@
        ::after  = varredura holográfica que atravessa a peça.
      O atraso `--hd` é dado por índice: cada botão respira num tempo diferente —
      a mesma decisão que faz a mesa parecer viva em vez de piscar junta. */
-  .btn,.chip,.tab,.lnk,.ck-inst,.nu-chip,.htop a{position:relative}
+  /* `position:relative` SÓ em quem é estático. `.nu-chip` já é ABSOLUTO desde o v12 —
+     rebaixá-lo a relative devolveu os rótulos ao fluxo normal: os `top` inline
+     continuavam certos (373/373/408/408) e o render saía empilhado (374/403/467/496),
+     porque em relative o `top` DESLOCA a partir da posição de fluxo em vez de definir
+     a posição. Quebrou a mesa no celular e no desktop de uma vez. */
+  .btn,.chip,.tab,.lnk,.ck-inst,.htop a{position:relative}
+  .nu-chip{position:absolute}
   .hlx{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
     overflow:hidden;--hc:color-mix(in oklch,var(--ion-hi,#8ecbff) 78%,transparent);
     --hs:color-mix(in oklch,var(--ion-hi,#8ecbff) 30%,transparent)}
-  .hlx::before{content:"";position:absolute;inset:3px;
+  /* CANTONEIRA só onde há ÁREA para ela ler como cantoneira. Numa peça de 90×36 px os
+     quatro cantos quase se encontram e o olho lê BORDA QUEBRADA — defeito, não HUD.
+     Então bracket fica nas superfícies grandes (KPI e etiqueta da mesa); botão, aba e
+     chip recebem outro gesto, logo abaixo. */
+  .ck-inst>.hlx::before,.nu-chip>.hlx::before,.lnk>.hlx::before{content:"";position:absolute;inset:4px;
     background:
-      linear-gradient(var(--hc),var(--hc)) 0 0/8px 1px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 0 0/1px 8px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 100% 0/8px 1px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 100% 0/1px 8px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 0 100%/8px 1px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 0 100%/1px 8px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 100% 100%/8px 1px no-repeat,
-      linear-gradient(var(--hc),var(--hc)) 100% 100%/1px 8px no-repeat;
-    opacity:.16;transform:scale(1.02);
+      linear-gradient(var(--hc),var(--hc)) 0 0/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 0/1px 10px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 0/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 0/1px 10px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 100%/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 100%/1px 10px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 100%/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 100%/1px 10px no-repeat;
+    opacity:.18;transform:scale(1.015);
     animation:hlxRespira 3.8s ease-in-out infinite;animation-delay:var(--hd,0s);
     transition:opacity .18s cubic-bezier(.22,1,.36,1),transform .18s cubic-bezier(.22,1,.36,1)}
+  /* BOTÃO / ABA / CHIP / ATALHO: o gesto é um ARO que acende POR DENTRO, no ritmo
+     próprio de cada peça. Fica dentro do raio da borda, não desenha canto solto e
+     não briga com a borda que a peça já tem. */
+  .btn>.hlx::before,.chip>.hlx::before,.tab>.hlx::before,.htop a>.hlx::before{
+    content:"";position:absolute;inset:0;border-radius:inherit;opacity:1;
+    animation:hlxAro 4.2s ease-in-out infinite;animation-delay:var(--hd,0s);
+    transition:box-shadow .18s cubic-bezier(.22,1,.36,1)}
+  @keyframes hlxAro{
+    0%,100%{box-shadow:inset 0 0 0 1px transparent, inset 0 9px 16px -14px transparent}
+    50%{box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--hc) 22%,transparent),
+                   inset 0 9px 16px -11px color-mix(in oklch,var(--hc) 58%,transparent)}}
+  .btn:hover>.hlx::before,.chip:hover>.hlx::before,.tab:hover>.hlx::before,
+  .htop a:hover>.hlx::before{animation-play-state:paused;
+    box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--hc) 62%,transparent),
+               inset 0 10px 20px -10px color-mix(in oklch,var(--hc) 78%,transparent)}
   .hlx::after{content:"";position:absolute;left:-10%;right:-10%;top:-60%;height:220%;
     background:linear-gradient(180deg,transparent 44%,var(--hs) 50%,transparent 56%);
     opacity:0;animation:hlxVarre 7.5s cubic-bezier(.4,0,.2,1) infinite;
@@ -1033,10 +1058,8 @@
   @keyframes hlxVarre{0%,72%{opacity:0;transform:translateY(-46%)}
     76%{opacity:1}100%{opacity:0;transform:translateY(46%)}}
   /* o toque acende os cantos e trava a peça — é o gesto de "alvo travado" */
-  .btn:hover>.hlx::before,.chip:hover>.hlx::before,.tab:hover>.hlx::before,
-  .lnk:hover>.hlx::before,.ck-inst:hover>.hlx::before,.nu-chip:hover>.hlx::before,
-  .htop a:hover>.hlx::before{opacity:.92;transform:scale(1);animation-play-state:paused}
-  .btn:active>.hlx::before,.chip:active>.hlx::before{transform:scale(.965)}
+  .lnk:hover>.hlx::before,.ck-inst:hover>.hlx::before,.nu-chip:hover>.hlx::before{
+    opacity:.92;transform:scale(1);animation-play-state:paused}
   /* quem carrega SEVERIDADE tinge as cantoneiras com a própria cor: o holograma
      nunca contradiz o semáforo (regra da casa — cor só fala se significa algo) */
   .btn.red>.hlx,.chip.sev-alta>.hlx,.card.hl .hlx{--hc:color-mix(in oklch,var(--rose) 82%,transparent);
@@ -1103,14 +1126,20 @@
   .nu-chip .n{font-size:14.5px;white-space:nowrap}
   /* em tela estreita não há espaço em volta da mesa: ali a pílula horizontal em grade
      continua sendo a decisão certa (medido a 390px). */
-  .ck-nucleo.compacto .nu-chip{flex-direction:row;align-items:baseline;justify-content:space-between;
-    gap:10px;max-width:none;transform:none}
-  .ck-nucleo.compacto .nu-chip small{text-align:left}
+  .ck-nucleo.compacto .nu-chip{flex-direction:row;align-items:center;justify-content:space-between;
+    gap:8px;max-width:none;transform:none;padding:5px 8px;overflow:hidden}
+  /* O rótulo herdava `white-space:nowrap` do regime de CENA (lá ele é uma etiqueta
+     solta e PODE ser largo). Na grade a largura é FIXA: sem quebrar linha o conteúdo
+     transbordava e era cortado pela caixa — foi o que apareceu no celular do dono.
+     Aqui ele quebra, encolhe e nunca vaza. */
+  .ck-nucleo.compacto .nu-chip small{text-align:left;white-space:normal;min-width:0;
+    font-size:8px;letter-spacing:.4px;line-height:1.15;overflow-wrap:anywhere}
+  .ck-nucleo.compacto .nu-chip .n{font-size:13px;flex:0 0 auto}
   /* o nó correspondente está sob o cursor (ou o próprio trilho está) → os dois acendem juntos */
   .nu-chip.viva{border-color:var(--nc);background:color-mix(in srgb,var(--nc) 18%,oklch(0.14 0.03 260/.78));
     box-shadow:0 0 22px -5px var(--nc)}
   @media (max-width:900px){.nu-chip{--rail-w:150px}.nu-chip small{font-size:8.5px}.nu-chip .n{font-size:14px}}
-  @media (max-width:600px){.ck-nucleo{height:clamp(430px,118vw,540px)}}
+  @media (max-width:600px){.ck-nucleo{height:clamp(470px,132vw,580px)}}
 
 </style>
 </head>
