@@ -34,9 +34,14 @@ def _conn():
 
 
 def _obs_de(c, cnpj: str, ug: str) -> list[dict]:
-    cur = c.execute("""SELECT numero_ob,status,COALESCE(nl,'') nl,COALESCE(re,'') re,COALESCE(pd,'') pd,
+    # `data_emissao` e TEXTO DD/MM/AAAA: um ORDER BY cru ordena por DIA DO MES (01/10/2024
+    # vinha antes de 16/12/2022). A ordem errada nao quebra nada — sai calada no parecer,
+    # e daqui a cadeia vai ate lex_render.render_pdf, o PDF que vai para fora. Mesmo idioma
+    # ISO que retro_auditoria.py e cruzamentos_intel.py ja usavam (`_OB_ISO`).
+    iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+    cur = c.execute(f"""SELECT numero_ob,status,COALESCE(nl,'') nl,COALESCE(re,'') re,COALESCE(pd,'') pd,
         valor,competencia,data_emissao,COALESCE(processo,'') processo,nome_credor
-        FROM ob_orcamentaria_siafe WHERE credor=? AND ug_emitente=? ORDER BY data_emissao,numero_ob""", (cnpj, ug))
+        FROM ob_orcamentaria_siafe WHERE credor=? AND ug_emitente=? ORDER BY {iso},numero_ob""", (cnpj, ug))
     return [dict(r) for r in cur.fetchall()]
 
 

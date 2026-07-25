@@ -74,6 +74,26 @@ injeção: falha com o órfão, passa sem ele.
 Fato colateral da mesma caçada: **margem não se aplica a `display:table-cell`** — para
 alargar o fundo de uma célula, sombra sólida ou tirar o padding do rolador.
 
+### 0.37 `ob_orcamentaria_siafe.data_emissao` é TEXTO `DD/MM/AAAA`
+
+Não é data. Consequências, todas medidas:
+
+- **`ORDER BY data_emissao` ordena por DIA DO MÊS.** `01/10/2024` vem antes de `16/12/2022`.
+  Era o caso de `pericia_sweep._obs_de`, e a ordem errada **não quebra nada** — sai calada
+  no parecer, e a cadeia vai até `lex_render.render_pdf`, o PDF que vai para fora.
+  Corrigido, com teste que reproduz (`tests/test_pericia_ordem_cronologica.py`).
+- **`min()`/`max()` nessa coluna são lexicográficos**, portanto sem sentido.
+- **Ordenar/filtrar exige a expressão ISO**, que o projeto já tinha em dois módulos:
+  `substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)`
+  (`_OB_ISO` em `retro_auditoria.py` e `cruzamentos_intel.py`).
+
+**Não confunda com o ORM.** `OrdemBancaria.data_emissao` é `Column(Date)` na tabela
+`ordens_bancarias` (o espelho TFE) — lá `>=` e `strftime` estão **corretos**. Conferi antes
+de acusar; a armadilha é só no SQL cru contra a tabela do SIAFE.
+
+Sobra declarado, não corrigido: `tools/_arquivo/mgs_iterj_2021/…` tem o mesmo `ORDER BY`
+cru, mas é código arquivado e filtra por exercício. Mencionado, não tocado.
+
 ### 0.4 Nunca decore o `background` de quem carrega TEXTO
 
 Nova, desta rodada. O scan do cabeçalho de tabela era `background-image` no próprio
@@ -186,8 +206,27 @@ O que a prática ensinou (detalhe em `~/.claude/.../memory/adobe-express-so-empr
    injetável; falta subir **moondream2** ou **SmolVLM** em llama.cpp na VM-2.
 4. **Consulta à SEFAZ por chave de NF-e** — `nfe_verifica.situacao(consultar=…)` pronto; o
    caminho gratuito é o portal público com captcha pelo **ddddocr local** (já na VM-2).
-5. **I.D.E.A.S** — R$ 3,56 bi pelo Fundo Estadual de Saúde (UG 296100), 124 processos SEI,
-   743 OBs. Com o motor calibrado, vale o dossiê dedicado.
+5. **I.D.E.A.S — número CORRIGIDO, o do handoff anterior não se reproduz.** Estava escrito
+   "R$ 3,56 bi pelo Fundo Estadual de Saúde (UG 296100), 124 processos SEI, 743 OBs".
+   Medido hoje no `compliance.db`, nada bate com isso:
+
+   | | OB | valor | processos SEI |
+   |---|---|---|---|
+   | **I.D.E.A.S** (CNPJ 24.006.302/0004-88) | **102** | **R$ 489.347.718,70** | **13** |
+   | UG 296100 inteira (Fundo Est. Saúde) | 25.144 | R$ 10.213.809.848,07 | 14.308 |
+   | maior credor da UG: Fundação Saúde do RJ | 118 | R$ 3.074.574.065,48 | — |
+
+   Nenhum dos três é R$ 3,56 bi. O mais próximo é a **Fundação Saúde** (3,07 bi), que é outra
+   entidade. **Não carregue o 3,56 bi para dentro de nenhum dossiê** — pode ter sido empenho
+   em vez de OB (o pecado capital da casa), outro recorte, ou outra data-base. Enquanto não
+   for reproduzido de fonte primária, o número é `INDISPONÍVEL`, não 3,56 bi.
+
+   O que o dado sustenta: I.D.E.A.S é o **5º maior recebedor** do Fundo Estadual de Saúde,
+   R$ 489,3 mi entre 16/12/2022 e 10/07/2026, concentrado em 4 processos
+   (`SEI-080001/005089/2022` R$ 164,4 mi · `002641/2022` R$ 118,2 mi · `025088/2021`
+   R$ 74,6 mi · `025266/2021` R$ 58,8 mi), e **já aparece no radar com score 35**
+   (sanção vigente à época +25, perfil fantasma médio +10). Indício, não acusação — mas é
+   fila de apuração legítima e o dossiê vale.
 6. **Fracionamento pelo SIAFE** — 4 casos com prioridade ≥ 0,7 em 2024; o primeiro
    (4ID MÉDICOS, UG 294200) tem 12 pagamentos, 12 processos distintos, todos ≥ 80% do teto.
 7. **Duas perdas decorativas no import do Express** (malha do console e marcadores das
