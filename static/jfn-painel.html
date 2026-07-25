@@ -985,6 +985,16 @@
   .card.hl{background-image:linear-gradient(165deg,var(--card),var(--card2));
     animation:graveGlow 3.2s ease-in-out infinite}
 
+  /* ── CONTRASTE: `--dim` estava ABAIXO do mínimo da casa (≥4.5:1) ──────────────
+     Medido no navegador, com a cor resolvida em canvas e o fundo composto camada a
+     camada: `--dim` (L=0.57) rendia 4,22–4,47:1 nos textos de 9,5 a 12px que é onde
+     ele vive (`.hsub`, `.hfload`, `.tl`, `.dim`, `.c`). O v10 já tinha criado
+     `--dim-sm` (L=0.68) para isso, mas ele só chegou a duas regras — e adotá-lo em
+     tudo encostaria `--dim` em `--mut` (L=0.71), apagando um degrau de hierarquia.
+     L=0.60 é o menor passo que resolve: **4,78:1** no pior caso medido, com o degrau
+     para `--mut` preservado. Auditável de novo por `tools/auditar_contraste.py`. */
+  :root{--dim:oklch(0.60 0.03 240)}
+
   /* o ticker cortava no meio da palavra nas duas bordas — lia como texto vazando o
      container. Máscara de esmaecimento resolve sem tirar conteúdo nenhum. */
   .ck-ticker{-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
