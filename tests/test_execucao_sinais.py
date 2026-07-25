@@ -203,3 +203,40 @@ def test_favorecido_empresa_privada_nao_vira_transferencia():
     txt = "Ordem Bancária 2026OB005457 paga. Despacho."
     r = ES.analisar_execucao_det(txt, favorecido="ALFA COMERCIO DE MATERIAIS LTDA")
     assert r["natureza"] == "contratacao"
+
+
+# ───────── o TÍTULO do documento também é prova (FP real, 2026-07-24) ─────────
+
+def test_titulo_do_documento_conta_como_prova():
+    """Caso real (260007/017749/2024): o processo foi apontado como "pagou sem nota fiscal", mas na
+    árvore havia o documento **"Anexo NF 16787 - VENDA"**. O que faltou foi o TEXTO extraído dele (625
+    caracteres em 8 documentos), não a nota. Um documento chamado 'NF 16787' comprova a presença da peça
+    tanto quanto o texto — ignorar o título é acusar o Estado pela falha da nossa captura."""
+    txt = "Ordem Bancária 2024OB11557. Despacho de solicitação de liquidação de despesa."
+    titulos = ["Anexo NE ORIGINAL - NE05017", "Anexo NF 16787 - VENDA",
+               "Nota de Liquidação - NL 2024NL06791", "Comprovante 2024OB11557"]
+    r = ES.analisar_execucao_det(txt, titulos_documentos=titulos)
+    assert "nota_fiscal" in r["provas_presentes"]
+    assert r["grau"] != "vermelho"          # com a NF na árvore, não é "pagou sem nenhuma prova"
+
+
+def test_titulo_de_medicao_e_atesto_tambem_contam():
+    txt = "Ordem Bancária 2025OB000111 paga."
+    titulos = ["Boletim de Medição nº 7", "Termo de Recebimento Definitivo", "Nota Fiscal 4432"]
+    r = ES.analisar_execucao_det(txt, titulos_documentos=titulos)
+    assert set(("medicao", "nota_fiscal", "atesto")).issubset(set(r["provas_presentes"]))
+
+
+def test_titulo_generico_nao_inventa_prova():
+    txt = "Ordem Bancária 2025OB000222 paga. Despacho."
+    r = ES.analisar_execucao_det(txt, titulos_documentos=["Despacho de Encaminhamento", "Ofício 123"])
+    assert r["grau"] == "vermelho"
+
+
+def test_orgao_publico_como_favorecido_e_transferencia_nao_contratacao():
+    """Tributo/repasse entre entes (Ministério da Fazenda, Receita, INSS, Secretaria de Fazenda) não é
+    contratação: não há nota fiscal nem medição a exigir."""
+    txt = "Ordem Bancária 2026OB016271. Recolhimento. Despacho."
+    for fav in ("MINISTÉRIO DA FAZENDA", "Secretaria De Estado De Fazenda", "Instituto Nacional De Seguro Social"):
+        r = ES.analisar_execucao_det(txt, favorecido=fav)
+        assert r["natureza"] == "transferencia", fav

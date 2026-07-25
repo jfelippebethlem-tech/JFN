@@ -55,6 +55,14 @@ _PROVAS: dict[str, tuple[str, ...]] = {
 }
 _ESSENCIAIS = ("medicao", "nota_fiscal", "atesto")
 
+# ABREVIAÇÕES que só aparecem em TÍTULO de documento da árvore ("Anexo NF 16787 - VENDA", "BM 07",
+# "TRD - Termo de Recebimento"). No corpo do texto seriam ambíguas demais; no título, são o nome da peça.
+_PROVAS_TITULO: dict[str, str] = {
+    "nota_fiscal": r"\bnf-?e?\b|\bnfs-?e\b|\bdanfe\b|\bnota\s*fisc",
+    "medicao": r"\bbm\s*\d|\bb\.?m\.?\s*n|\bmedi[çc]",
+    "atesto": r"\btrd\b|\btrp\b|\batest|\brecebimento\s+(?:definitivo|provis)",
+}
+
 _NOME = {"medicao": "boletim de medição", "nota_fiscal": "nota fiscal",
          "atesto": "atesto/termo de recebimento", "relatorio_fotografico": "relatório fotográfico"}
 
@@ -85,6 +93,10 @@ _TRANSFERENCIA = (
     "transferencia voluntaria", "transferencia obrigatoria", "termo de cooperacao", "convenio",
     "deliberacao cib", "organizacao pan-americana", "organismo internacional", "consorcio publico",
     "auxilio financeiro", "subvencao", "termo de fomento", "termo de colaboracao",
+    # ÓRGÃO PÚBLICO como favorecido = tributo, encargo ou repasse entre entes — não há o que "entregar"
+    "ministerio", "secretaria de estado", "secretaria municipal", "receita federal", "tesouro",
+    "instituto nacional de seguro social", "inss", "procuradoria", "tribunal de", "camara municipal",
+    "universidade estadual", "universidade federal", "autarquia", "banco do brasil", "caixa economica",
 )
 
 
@@ -122,14 +134,23 @@ def estagio_despesa(texto: str) -> dict:
     return {"tem_ob": tem_ob, "tem_liquidacao": tem_nl, "tem_empenho": tem_ne, "estagio": est}
 
 
-def sinais_execucao(texto: str) -> dict:
+def sinais_execucao(texto: str, titulos_documentos=()) -> dict:
     """Presença de PAGAMENTO e das PROVAS de entrega no texto. Determinístico.
     Retorna {tem_pagamento, estagio/tem_ob/…, provas_presentes:[...], faltantes:[...], faltam_essenciais:[...],
     trecho_pagamento}."""
     low = _norm(texto or "")
-    tem_pag = any(k in low for k in _PAGAMENTO)
-    est = estagio_despesa(texto)
-    presentes = [k for k, kws in _PROVAS.items() if any(w in low for w in kws)]
+    # O TÍTULO do documento na árvore é prova tanto quanto o texto: "Anexo NF 16787 - VENDA" diz que a
+    # nota fiscal ESTÁ nos autos, mesmo quando a extração não trouxe o conteúdo (caso real
+    # 260007/017749/2024: 8 documentos, 625 caracteres de texto). Ignorar o título é acusar o órgão pela
+    # falha da NOSSA captura.
+    low_titulos = _norm(" \n ".join(str(t) for t in (titulos_documentos or [])))
+    low_busca = low + " \n " + low_titulos
+    tem_pag = any(k in low_busca for k in _PAGAMENTO)
+    est = estagio_despesa(texto + " " + low_titulos)
+    presentes = [k for k, kws in _PROVAS.items() if any(w in low_busca for w in kws)]
+    for chave, pat in _PROVAS_TITULO.items():          # abreviações valem no TÍTULO da peça
+        if chave not in presentes and low_titulos and re.search(pat, low_titulos, re.I):
+            presentes.append(chave)
     faltantes = [k for k in _PROVAS if k not in presentes]
     faltam_ess = [k for k in _ESSENCIAIS if k not in presentes]
     return {
@@ -154,7 +175,7 @@ def _trecho_pagamento(texto: str, low: str, tem_pag: bool, estagio: str) -> str:
     return trecho
 
 
-def analisar_execucao_det(texto: str, favorecido: str = "") -> dict:
+def analisar_execucao_det(texto: str, favorecido: str = "", titulos_documentos=()) -> dict:
     """Veredito DETERMINÍSTICO e RESOLVIDO de execução sem comprovação.
 
     Grau (SENSÍVEL): nao_aplicavel (sem contexto de pagamento) · verde (todas as 3 provas essenciais) ·
@@ -171,7 +192,7 @@ def analisar_execucao_det(texto: str, favorecido: str = "") -> dict:
     # (banco), não no processo. Quem tiver o dado passa em `favorecido`.
     low_all = _norm((texto or "") + " " + (favorecido or ""))
     natureza = "transferencia" if any(k in low_all for k in _TRANSFERENCIA) else "contratacao"
-    sig = sinais_execucao(texto)
+    sig = sinais_execucao(texto, titulos_documentos)
     if natureza == "transferencia":
         return {"grau": "nao_aplicavel", "natureza": natureza, "faltantes": [], "sinais": [],
                 "faltam_essenciais": [], "tem_ob": sig["tem_ob"], "tem_liquidacao": sig["tem_liquidacao"],

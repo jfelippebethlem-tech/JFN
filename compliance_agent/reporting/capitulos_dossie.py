@@ -360,7 +360,10 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
         if not docs or not texto.strip():
             continue
         analisados += 1
-        ex = execucao_sinais.analisar_execucao_det(texto)
+        # títulos da árvore entram como prova: "Anexo NF 16787" diz que a nota fiscal está nos autos
+        # mesmo quando a extração não trouxe o texto dela.
+        ex = execucao_sinais.analisar_execucao_det(
+            texto, titulos_documentos=[d.get("tipo") or "" for d in docs])
         pg = parecer_cumprimento.auditar_parecer_pge(docs)
         chaves = nfe_verifica.extrair_chaves(texto)
         contingencia = [c for c in chaves if nfe_verifica.tp_emissao(c)["contingencia"]]
