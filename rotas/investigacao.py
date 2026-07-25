@@ -1986,16 +1986,29 @@ def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
     de 'ninho de fantasmas'. Guarda anti-FP rebaixa massa legítima (contador, galeria, coworking)."""
     from datetime import datetime as _dt
     try:
-        from compliance_agent.cruzamentos_intel import hub_compartilhado
+        from compliance_agent.cruzamentos_intel import hub_compartilhado, ler_cache_intel
         ch = chave if chave in ("endereco", "telefone", "email") else "endereco"
         mn = int(min or 5)
         mn = 2 if mn < 2 else (100 if mn > 100 else mn)
-        if not (d := _cache_get(f"intel:hub:{ch}:{mn}", 600)):
+        d = _cache_get(f"intel:hub:{ch}:{mn}", 600)
+        # O cálculo ao vivo cruza o dump da Receita (6,1 mi de estabelecimentos) com as OB:
+        # medido, NÃO responde em 90 s enquanto o sweep escreve no compliance.db — e era por
+        # isso que o card "ninhos de fachada" ficava eternamente em "—". O cache em disco
+        # gerado por `gerar_cache_intel` já existe e usa EXATAMENTE estes parâmetros
+        # (endereco/5); a rota só não o lia. Fora desses parâmetros não há cache: aí sim
+        # calcula ao vivo, mas isso é caminho de exceção, não o do painel.
+        if d is None and ch == "endereco" and mn == 5:
+            if (c := ler_cache_intel("hub_compartilhado")) and c.get("grupos"):
+                c["do_cache"] = True
+                d = _cache_put(f"intel:hub:{ch}:{mn}", c)
+        if d is None:
             d = _cache_put(f"intel:hub:{ch}:{mn}", hub_compartilhado(chave=ch, min_cnpjs=mn))
         return JSONResponse({"ok": d.get("ok", True), "grupos": d.get("grupos", []),
                              "erro": d.get("erro"), "explicacao": d.get("explicacao"),
                              "ressalva": d.get("ressalva"),
-                             "gerado_em": _dt.now().strftime("%Y-%m-%d %H:%M")})
+                             # honestidade de frescor: dado de cache não se apresenta como de agora
+                             "do_cache": bool(d.get("do_cache")),
+                             "gerado_em": d.get("gerado_em") or _dt.now().strftime("%Y-%m-%d %H:%M")})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 

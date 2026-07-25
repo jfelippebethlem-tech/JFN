@@ -1022,16 +1022,30 @@
   .ck-nucleo.compacto .nu-hud{top:8px}
   .ck-nucleo.compacto .nu-sweep{top:auto;bottom:calc(var(--grade-h,150px) + 6px)}
   .nu-legend{top:auto;bottom:11px;left:14px;max-width:46%;color:var(--dim-sm,var(--dim))}
-  .nu-chip{width:auto;min-width:var(--rail-w,168px);max-width:calc(var(--rail-w,168px) + 58px);
-    box-sizing:border-box;flex-direction:row;align-items:baseline;justify-content:space-between;
-    gap:10px;padding:7px 11px;border-radius:var(--r-s,8px);transform:none;opacity:1;
+  /* v12.1 — A IDENTIFICAÇÃO VOLTA PARA JUNTO DA COISA.
+     O trilho lateral resolvia colisão, mas separava o rótulo do ponto de luz que ele
+     nomeia: o olho tinha de fazer a ligação por uma linha, e o alvo clicável deixava
+     de estar onde o dado está. Agora o rótulo é uma etiqueta compacta ancorada ao
+     próprio nó — e os três defeitos que o trilho havia curado ficam curados por
+     CÓDIGO, não por layout: empurrão radial + anti-colisão + trava dentro da caixa
+     (ver o passo 11 do desenho). */
+  /* Posicionar por `left/top` a cada quadro dispara LAYOUT em 7 elementos, 60x/s:
+     medido, levou o p90 do desenho de 2,3 ms para 8,5 ms. Ancorado em 0,0 e movido
+     só por `transform`, o navegador resolve na composição — sem layout. */
+  .nu-chip{left:0;top:0;will-change:transform;
+    width:auto;min-width:0;max-width:190px;box-sizing:border-box;
+    flex-direction:column;align-items:center;gap:1px;
+    padding:5px 10px;border-radius:var(--r-s,8px);opacity:1;
+    transform:translate(-50%,-100%);
     transition:box-shadow .18s cubic-bezier(.22,1,.36,1),border-color .18s cubic-bezier(.22,1,.36,1),
                background-color .18s cubic-bezier(.22,1,.36,1)}
-  /* mesma ordem de leitura nos dois trilhos (rótulo → número): inverter num dos
-     lados obriga o olho a trocar de gramática no meio da mesma lista. O número
-     nunca quebra linha — é ele que dá a altura igual a todos os chips. */
-  .nu-chip small{flex:1 1 auto;min-width:0;font-size:9.5px;letter-spacing:.9px;text-align:left;line-height:1.25}
-  .nu-chip .n{flex:0 0 auto;font-size:16px;white-space:nowrap}
+  .nu-chip small{font-size:9px;letter-spacing:.8px;text-align:center;line-height:1.2;white-space:nowrap}
+  .nu-chip .n{font-size:14.5px;white-space:nowrap}
+  /* em tela estreita não há espaço em volta da mesa: ali a pílula horizontal em grade
+     continua sendo a decisão certa (medido a 390px). */
+  .ck-nucleo.compacto .nu-chip{flex-direction:row;align-items:baseline;justify-content:space-between;
+    gap:10px;max-width:none;transform:none}
+  .ck-nucleo.compacto .nu-chip small{text-align:left}
   /* o nó correspondente está sob o cursor (ou o próprio trilho está) → os dois acendem juntos */
   .nu-chip.viva{border-color:var(--nc);background:color-mix(in srgb,var(--nc) 18%,oklch(0.14 0.03 260/.78));
     box-shadow:0 0 22px -5px var(--nc)}
@@ -1104,11 +1118,23 @@ async function J(ep,opt){
   const isGet=!opt||!opt.method||opt.method==='GET';
   const cacheavel=isGet&&!/\/stream|\/status|\/api\/eventos/.test(ep);
   if(cacheavel){const c=_jCache.get(ep);if(c&&Date.now()-c.t<90000)return c.d;}
+  /* TETO DE ESPERA: `fetch` sem AbortController espera para SEMPRE. Uma rota lenta não
+     virava erro — virava um card parado em "—" sem explicação nenhuma, indistinguível de
+     "não há dado". Foi assim que o "ninhos de fachada" ficou mudo. Agora estoura em 30 s
+     e vira mensagem humana, que é honesto: INDISPONÍVEL ≠ 0, mas silêncio ≠ INDISPONÍVEL. */
+  const TETO=(opt&&opt.tetoMs)||30000;
   for(let t=0;;t++){
-    try{const r=await fetch(ep,opt);const d=await r.json();
+    const ac=('AbortController' in window)?new AbortController():null;
+    const relogio=ac?setTimeout(()=>ac.abort(),TETO):0;
+    try{const r=await fetch(ep,ac?Object.assign({},opt,{signal:ac.signal}):opt);
+      const d=await r.json();
       if(cacheavel&&d&&d.ok!==false)_jCache.set(ep,{t:Date.now(),d});
       return d;}
-    catch(e){if(!isGet||t>=1)return{erro:String(e)};await new Promise(rs=>setTimeout(rs,1200));}
+    catch(e){
+      const estourou=e&&e.name==='AbortError';
+      if(!isGet||t>=1)return{erro:estourou?`a rota ${ep} não respondeu em ${TETO/1000}s`:String(e)};
+      await new Promise(rs=>setTimeout(rs,1200));}
+    finally{if(relogio)clearTimeout(relogio);}
   }
 }
 const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
@@ -3041,6 +3067,13 @@ function nucleoStart(){
      quanto mais perto do reator, mais alto. */
   const ANEIS=[{r:0.46,h:0.62},{r:0.74,h:0.42},{r:1.00,h:0.24}];
   NU_NODES.forEach(n=>{n._an=n.orb<=0.7?0:(n.orb<=0.88?1:2);});
+  /* FASE FIXA E DISTRIBUÍDA dentro do próprio anel, com UMA velocidade para todos.
+     Antes cada domínio tinha velocidade própria: eles derivavam, formavam aglomerado
+     e os rótulos se empilhavam de um lado da mesa enquanto o outro ficava vazio.
+     Com fase homogênea por anel a distribuição é estável para sempre — e é ela, não
+     um algoritmo de colisão, que resolve o empilhamento na raiz. */
+  [0,1,2].forEach(a=>{const nós=NU_NODES.filter(n=>n._an===a);
+    nós.forEach((n,i)=>{n._fase=(i/nós.length)*2*Math.PI + a*0.7;});});
   const ESP=HOLO.ESP, ARO=HOLO.ARO;
   /* `_nuVisivel` fica AQUI, com o resto do estado, e nao junto do observador la
      embaixo: `repinta()` chama `draw()` antes daquele ponto e um `let` ainda em zona
@@ -3072,7 +3105,7 @@ function nucleoStart(){
         const el=$('nu-'+no.id);if(!el)return;
         el.classList.remove('r');
         el.style.width=cw+'px';el.style.minWidth='0';el.style.maxWidth='none';
-        el.style.transform='none';el.style.right='auto';
+        el.style.transform='none';el.style.right='auto';no._tf=null;no._z=null;
         ch=el.offsetHeight||34;
         el.style.left=(marg+(i%cols)*(cw+gap))+'px';
         no._ax=null;                        // sem trilho, sem linha-guia
@@ -3085,21 +3118,18 @@ function nucleoStart(){
       return;
     }
     _gradeH=0;
-    const esq=NU_NODES.filter((_,i)=>i%2===0), dir=NU_NODES.filter((_,i)=>i%2===1);
-    const pad=Math.max(34,H*0.11), alt=Math.max(40,H-pad*2);
-    const põe=(lista,lado)=>lista.forEach((no,j)=>{
-      const el=$('nu-'+no.id);if(!el)return;
-      el.classList.toggle('r',lado==='R');
-      el.style.width='';el.style.minWidth='';el.style.maxWidth='';
-      const y=pad+(lista.length===1?alt/2:j*alt/(lista.length-1));
-      el.style.top=Math.round(y)+'px';el.style.transform='translateY(-50%)';
-      if(lado==='L'){el.style.left='14px';el.style.right='auto';}
-      else{el.style.right='14px';el.style.left='auto';}
-      no._rail=lado;no._ry=y;
-      if(el.offsetWidth)_railW=el.offsetWidth;
-    });
-    põe(esq,'L');põe(dir,'R');
-    NU_NODES.forEach(n=>{n._ax=n._rail==='L'?14+_railW:W-14-_railW;});   // âncora da linha-guia
+    /* Fora do regime compacto o rótulo não mora mais num trilho: ele é ancorado ao
+       próprio nó, quadro a quadro, no passo 11 do desenho. Aqui só se limpa o que o
+       trilho havia deixado inline — sem isso um `right:14px` sobrevive e prega o
+       rótulo na borda para sempre. */
+    NU_NODES.forEach(no=>{const el=$('nu-'+no.id);if(!el)return;
+      el.classList.remove('r');
+      el.style.width='';el.style.minWidth='';el.style.maxWidth='';el.style.right='auto';
+      /* left/top do regime compacto TÊM de sair: eles são inline, vencem o `left:0`
+         do CSS e somariam ao translate3d — o rótulo sairia deslocado ao atravessar
+         o limiar de 720px de volta para a cena. */
+      el.style.left='';el.style.top='';no._tf=null;no._z=null;
+      no._rail=null;});
   }
   function size(){
     W=box.clientWidth;H=box.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
@@ -3109,7 +3139,7 @@ function nucleoStart(){
        FLUTUA acima dele — a cena a enquadrar é piso + altura do projetor. */
     const PL=HOLO.PL, kN=cam.camd/Math.max(.42,cam.camd-PL*cam.cp), kF=cam.camd/(cam.camd+PL*cam.cp);
     const A=PL*cam.sp*kF, B=PL*cam.sp*kN, HT=0.72*cam.cp*1.14;
-    const gut=_compacto?10:_railW+26;                      // as laterais são dos trilhos
+    const gut=_compacto?10:132;      // faixa em volta da mesa: é onde os rótulos pousam
     const Hu=Math.max(150,H-_gradeH);                      // altura util: a grade tem a dela
     cam.s=Math.min(Hu*0.94/(A+B+HT), Math.max(140,W-2*gut)/(2*PL*kN));
     cam.cx=W/2;
@@ -3224,12 +3254,55 @@ function nucleoStart(){
     });
     /* 4 · posição 3D de cada domínio (o ângulo continua girando devagar) */
     const pos=NU_NODES.map((n,i)=>{
-      const an=ANEIS[n._an],a=-Math.PI/2+i*(2*Math.PI/N)+(rm?0:t*0.000045*(n.sp||1));
+      const an=ANEIS[n._an],a=-Math.PI/2+(n._fase||0)+(rm?0:t*0.000030);
       const wx=Math.cos(a)*an.r, wz=Math.sin(a)*an.r;
       const p=P(wx,an.h,wz), pe=P(wx,ESP,wz);               // nó no ar · pé na laje
       return {n,a,wx,wz,h:an.h,x:p.x,y:p.y,k:p.k,z:p.z,px:pe.x,py:pe.y,pk:pe.k};
     });
     pos.forEach(p=>{p.n._x=p.x;p.n._y=p.y;p.n._k=p.k;});
+    /* 4b · IDENTIFICAÇÃO NO LUGAR — o rótulo fica junto do próprio nó, que é onde o
+       olho procura e onde a mão clica. Os três defeitos que o trilho lateral havia
+       curado por layout ficam curados aqui por código:
+         · empurrão RADIAL para fora (o rótulo sai de cima da mesa e usa a faixa vazia);
+         · anti-colisão contra os já posicionados, com o mais PRÓXIMO decidindo primeiro
+           (quem está perto do olho não cede lugar);
+         · trava dentro da caixa — era assim que o "empresa morta" saía clipado no v11.
+       Posicionado ANTES do desenho para que o conector do passo 11 use a posição
+       desta volta, não a da anterior. */
+    if(!_compacto){
+      /* O REATOR É ÁREA RESERVADA: entra na lista de colisão antes de qualquer rótulo,
+         então nada pousa em cima dele. Foi o defeito que escondeu o projetor no v12. */
+      const _hc=P(0,0.72,0), _hr=64*_hc.k*Math.min(1.5,cam.s/240);
+      const _cx=[{x:_hc.x,y:_hc.y,w:_hr*2,h:_hr*2}];
+      if(!draw._m||draw._m>45){draw._m=0;NU_NODES.forEach(n=>{const e=$('nu-'+n.id);
+        if(e){n._w=e.offsetWidth||96;n._h=e.offsetHeight||34;}});}
+      draw._m=(draw._m||0)+1;
+      pos.slice().sort((a,b)=>b.k-a.k).forEach(o=>{
+        const n=o.n,el=$('nu-'+n.id);if(!el)return;
+        /* empurrão radial a partir do centro do PRÓPRIO ANEL do nó, não do centro do
+           piso: todo nó flutua acima do piso, então usar o piso como eixo empurrava
+           todos para CIMA e eles se empilhavam no topo. O centro do anel devolve o
+           anel de rótulos em volta da órbita — que era o comportamento do v11. */
+        const rc=P(0,o.h,0);
+        const dx=o.x-rc.x, dy=o.y-rc.y, d=Math.hypot(dx,dy)||1;
+        const sc=Math.max(.84,Math.min(1.06,o.k));
+        const w=(n._w||96)*sc, h=(n._h||34)*sc;
+        let x=o.x+dx/d*54, y=o.y+dy/d*34-18;
+        for(const c of _cx){
+          if(Math.abs(x-c.x)<(w+c.w)/2+8 && Math.abs(y-c.y)<(h+c.h)/2+8)
+            y=(y<=c.y)?c.y-(h+c.h)/2-9:c.y+(h+c.h)/2+9;
+        }
+        x=Math.max(w/2+8,Math.min(W-w/2-8,x));      // nunca sai da caixa
+        y=Math.max(h+8,Math.min(H-8,y));
+        _cx.push({x,y,w,h});
+        const tf='translate3d('+Math.round(x)+'px,'+Math.round(y)+'px,0) '
+                +'translate(-50%,-100%) scale('+sc.toFixed(2)+')';
+        if(n._tf!==tf){n._tf=tf;el.style.transform=tf;}       // só escreve o que mudou
+        const z=String(2+Math.round(40*o.k));
+        if(n._z!==z){n._z=z;el.style.zIndex=z;}
+        n._lx=x;n._ly=y-h/2;                        // âncora do conector até o nó
+      });
+    }
     /* 5 · LIGAÇÕES entre domínios vizinhos: nenhum indício vive isolado */
     for(let i=0;i<pos.length;i++){
       const A=pos[i],B=pos[(i+1)%pos.length];
@@ -3315,6 +3388,33 @@ function nucleoStart(){
     ctx.globalAlpha=1;
     ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.beginPath();
     ctx.moveTo(base.x,base.y);ctx.lineTo(heart.x,heart.y);ctx.stroke();
+    /* ARC REACTOR — o coração É o reator, e reator se lê DE FRENTE. Deitado no piso
+       (como ficou quando a cena virou mesa) ele era só mais um anel de chão: perdeu a
+       silhueta que o identifica. Aqui os anéis são desenhados voltados para a câmera
+       (billboard) em volta do núcleo, girando em sentidos alternados, e a escala
+       respeita a perspectiva pelo `heart.k`. O anel de graduação de 72 ticks devolve
+       a leitura de instrumento — precisão, não enfeite. */
+    const RR=heart.k*Math.min(1.5,cam.s/240);
+    ctx.save();ctx.translate(heart.x,heart.y);
+    for(let a=0;a<4;a++){
+      const rad=(16+a*7.5)*RR, seg=8+a*4, dir=(a%2?-1:1), arco=6.283/seg*0.62;
+      ctx.strokeStyle=`rgba(150,205,255,${((.46-a*.07)*pulse).toFixed(3)})`;
+      ctx.lineWidth=Math.max(.8,(2.2-a*.35)*RR);
+      for(let sg=0;sg<seg;sg++){
+        const a0=sg/seg*6.283+spin*26*dir*(1+a*0.22);
+        ctx.beginPath();ctx.arc(0,0,rad,a0,a0+arco);ctx.stroke();
+      }
+    }
+    if(!rm){
+      ctx.save();ctx.rotate(spin*7);
+      for(let sg=0;sg<72;sg++){ctx.rotate(6.283/72);
+        const card=sg%18===0, len=(card?6:(sg%6===0?4:2.4))*RR;
+        ctx.strokeStyle=`rgba(150,200,255,${((card?0.38:0.16)*pulse).toFixed(3)})`;
+        ctx.lineWidth=(card?1.3:.7)*RR;
+        ctx.beginPath();ctx.moveTo(0,46*RR);ctx.lineTo(0,(46*RR)+len);ctx.stroke();}
+      ctx.restore();
+    }
+    ctx.restore();
     const cr=32*pulse*heart.k*Math.min(1.4,cam.s/240);
     const cg=ctx.createRadialGradient(heart.x,heart.y,0,heart.x,heart.y,cr);
     cg.addColorStop(0,'rgba(255,244,226,1)');cg.addColorStop(.16,'rgba(255,192,120,.92)');
@@ -3349,14 +3449,14 @@ function nucleoStart(){
        objeto. Sem elas o trilho seria uma legenda solta; com elas, o número na
        lateral e o ponto de luz na mesa são a MESMA coisa. */
     pos.forEach(o=>{
-      const n=o.n;if(_compacto||n._ax==null)return;
-      const viva=_nuHover===n.id, ax=n._ax, ay=n._ry, cot=ax+(n._rail==='L'?16:-16);
-      ctx.strokeStyle=n.cor+(viva?'bb':'26');
-      ctx.lineWidth=viva?1.4:0.85;
-      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(cot,ay);ctx.lineTo(o.x,o.y);ctx.stroke();
-      ctx.fillStyle=n.cor+(viva?'ff':'99');
-      ctx.beginPath();ctx.arc(ax,ay,viva?2.8:1.9,0,6.283);ctx.fill();
-      const el=$('nu-'+n.id);if(el)el.classList.toggle('viva',viva);
+      const n=o.n, el=$('nu-'+n.id), viva=_nuHover===n.id;
+      if(el)el.classList.toggle('viva',viva);
+      if(_compacto||n._lx==null)return;
+      /* conector CURTO: o rótulo já está junto do nó, então basta o traço que diz
+         "esta etiqueta é DESTE ponto". Linha longa cruzando a mesa era ruído. */
+      ctx.strokeStyle=n.cor+(viva?'bb':'3a');
+      ctx.lineWidth=viva?1.4:0.9;
+      ctx.beginPath();ctx.moveTo(n._lx,n._ly);ctx.lineTo(o.x,o.y);ctx.stroke();
     });
     if(!rm)_nuRAF=requestAnimationFrame(draw);
   }
@@ -3396,9 +3496,13 @@ function ckPull(first){
   J('/api/compliance/painel').then(d=>{const n=(d&&d.lista_alertas||[]).length;
     if(n)nuSet('alertas',n);});
   if(first)J('/api/intel/hub_compartilhado?limite=40').then(d=>{   // caro a frio: só no boot da aba
-    if(!d||!d.ok)return;const gs=(d.grupos||[]),altos=gs.filter(g=>g.risco==='alto');
+    /* Falhar em SILÊNCIO deixava o card em "—" — indistinguível de "não há ninho".
+       Silêncio ≠ INDISPONÍVEL: se a rota não respondeu, o card diz isso. */
+    if(!d||!d.ok){ckFill('ninho',{txt:'—',meta:erroHumano(d&&d.erro)});return;}
+    const gs=(d.grupos||[]),altos=gs.filter(g=>g.risco==='alto');
     const tot=altos.reduce((s,g)=>s+(g.total_recebido_ob||0),0);
-    ckFill('ninho',{num:altos.length,meta:`grupos de CNPJs no mesmo tel/endereço com OB — <b>${fmtRc(tot)}</b> recebidos`});
+    const frescor=d.do_cache&&d.gerado_em?` · <span class="dim">apurado em ${esc(d.gerado_em)}</span>`:'';
+    ckFill('ninho',{num:altos.length,meta:`grupos de CNPJs no mesmo tel/endereço com OB — <b>${fmtRc(tot)}</b> recebidos${frescor}`});
     const nomeChave={endereco:'endereço',telefone:'telefone',email:'e-mail'};
     ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ ninho por ${nomeChave[g.chave]||esc(g.chave)} — <b>${fmtN(g.n_cnpjs)} CNPJs</b> · ${fmtRc(g.total_recebido_ob)} em OB`})));});
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok){

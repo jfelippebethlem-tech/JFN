@@ -22,6 +22,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import math
 import re
@@ -224,11 +225,95 @@ def importar() -> list[dict]:
     return novos
 
 
+# ── geração de arte (o que dispensa o Express para fundo) ────────────────────────
+# Slots de arte que o painel realmente consome. A dimensão NÃO é chutada: sai do
+# arquivo que já está em produção (ver `artes_existentes`).
+ARTES = {
+    "portal": ("portal-nebula.jpg", "nebulosa profunda de ignição, o portal de entrada"),
+    "estado": ("nebula-estado.jpg", "nebulosa fria e institucional — a esfera Estado"),
+    "prefeitura": ("nebula-prefeitura.jpg", "nebulosa quente e urbana — a esfera Prefeitura"),
+    "transversal": ("nebula-transversal.jpg", "nebulosa violeta — a esfera Transversal"),
+}
+POLL = "https://image.pollinations.ai/prompt/{p}?width={w}&height={h}&nologo=true&model=flux&seed={s}"
+
+
+def _prompt_da_marca(cores: dict, extra: str) -> str:
+    """A arte já nasce NA MARCA: os HEX do painel entram no prompt.
+
+    Sem isso a arte volta bonita e fora da paleta, e alguém a corrige à mão depois —
+    que é exatamente o trabalho que esta ponte existe para eliminar.
+    """
+    ion = cores.get("ion", "#59A3FF")
+    flame = cores.get("flame", "#FF8804")
+    bg = cores.get("bg", "#010410")
+    return (f"{extra}, deep space background {bg}, ion blue {ion} and flame orange {flame} "
+            "accents only, volumetric light, holographic, cinematic, high detail, "
+            "no text, no watermark, no logo, no people, no user interface")
+
+
+def gerar_arte(alvo: str, seeds: int = 3) -> list[Path]:
+    """Gera candidatos de arte pelo Pollinations (grátis, sem chave, sem login).
+
+    Vai para a pasta de ENTRADA, não direto para `static/`: a escolha entre as seeds é
+    do dono — o comando entrega candidatos, não decide estética por conta própria.
+    """
+    import urllib.parse
+    import urllib.request
+
+    if alvo not in ARTES:
+        raise SystemExit(f"alvo inválido: {alvo!r} (use {', '.join(ARTES)})")
+    nome, descricao = ARTES[alvo]
+    w, h = 1920, 820
+    for arquivo, dim in artes_existentes():
+        if arquivo == nome:
+            w, h = (int(x) for x in dim.split("×"))
+            break
+    ENTRADA.mkdir(parents=True, exist_ok=True)
+    prompt = _prompt_da_marca(tokens_do_painel(), descricao)
+    print(f"alvo {alvo} → {nome}  {w}×{h}")
+    print(f"prompt: {prompt[:110]}…\n")
+    saidas = []
+    for s in range(1, seeds + 1):
+        url = POLL.format(p=urllib.parse.quote(prompt, safe=""), w=w, h=h, s=s * 17)
+        destino = ENTRADA / f"{alvo}-seed{s}.jpg"
+        # User-Agent obrigatorio: com o `Python-urllib/3.x` padrao o Pollinations
+        # responde 403 (medido). Com um UA de navegador, 200 em ~2 s.
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) JFN/express_ponte",
+            "Accept": "image/*",
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                dados = r.read()
+        except OSError as e:
+            print(f"  seed {s}: falhou ({e})")
+            continue
+        try:                                              # nunca gravar lixo como imagem
+            from PIL import Image
+            with Image.open(io.BytesIO(dados)) as im:
+                dim = f"{im.width}×{im.height}"
+        except Exception as e:                            # noqa: BLE001
+            print(f"  seed {s}: resposta não é imagem ({e}) — descartada")
+            continue
+        destino.write_bytes(dados)
+        saidas.append(destino)
+        aviso = "  ⚠ acima do teto" if len(dados) > TETO_BYTES else ""
+        print(f"  seed {s}: {dim}  {len(dados)//1000} KB → {destino.relative_to(RAIZ)}{aviso}")
+    if saidas:
+        print("\nescolha uma, apague as outras e rode:  python -m tools.express_ponte --importar")
+    return saidas
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--spec", action="store_true", help="gera a especificação de design para o Express")
     ap.add_argument("--importar", action="store_true", help="traz o que está em docs/referencias/express/entrada/")
+    ap.add_argument("--gerar", metavar="ALVO", help=f"gera arte na marca, grátis ({', '.join(ARTES)})")
+    ap.add_argument("--seeds", type=int, default=3, help="quantos candidatos gerar (padrão 3)")
     args = ap.parse_args()
+    if args.gerar:
+        gerar_arte(args.gerar, max(1, min(6, args.seeds)))
+        return 0
     if not (args.spec or args.importar):
         ap.print_help()
         return 1
