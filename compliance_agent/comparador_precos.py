@@ -359,7 +359,7 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
 
 def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
                        min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60,
-                       esfera: str | None = None) -> dict:
+                       esfera: str | None = None, disp_max: float = 4.0) -> dict:
     """QUANTO os cofres públicos economizariam se cada compra acima da mediana tivesse pago a
     MEDIANA de mercado do item. Economia = Σ (preço_pago − mediana) × quantidade, sobre as compras
     com preço > mediana, em grupos comparáveis. Quebra por ITEM, ÓRGÃO e FORNECEDOR.
@@ -372,6 +372,8 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
     try:
         certs = _certs_alvo(con, esfera)   # mediana GLOBAL (mercado); achado = entes fiscalizados
         total = 0.0
+        total_homog = 0.0          # só grupos de descrição consistente (dispersão <= disp_max)
+        n_compras_homog = 0
         por_item: dict[str, dict] = {}
         por_orgao: dict[str, dict] = {}
         por_forn: dict[str, dict] = {}
@@ -394,6 +396,20 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
             n_perto = len({r["certame"] for r in itens if r["vu"] <= 2 * med})
             if n_perto < 0.6 * n_cert:
                 continue
+            # ── DISPERSÃO: a mediana é válida, mas a cauda CARA é o mesmo produto? ────────
+            # O guarda acima responde "a mediana faz sentido?"; não responde "quem está
+            # acima dela é comparável?". Em 'Pneu veículo automotivo' a mediana é R$ 594
+            # (pneu leve) e a cauda vai a R$ 3.105 (pneu pesado) — os dois têm a MESMA
+            # descrição no PNCP. Medido em 25/07/2026: **60,4% da economia (R$ 9,41 mi de
+            # R$ 15,58 mi) vinha de grupos assim**, e as descrições denunciam sozinhas —
+            # 'Locação de Veículos - Leves / Pesados' com dispersão 300,9× e
+            # 'peça de veículo' (parafuso e motor são ambos "peça") com 1292,5×.
+            # Não se descarta: separa-se. O total continua inteiro, e quem lê sabe qual
+            # parte se apoia em comparação de produto igual.
+            p10 = precos[int(len(precos) * 0.10)]
+            p90 = precos[int(len(precos) * 0.90) - 1] if len(precos) > 1 else precos[0]
+            dispersao = round(p90 / p10, 1) if p10 > 0 else None
+            generico = dispersao is None or dispersao > disp_max
             piso = 0.10 * med
             teto = teto_razao * med                    # cap anti-artefato: preço efetivo p/ economia
             for r in itens:
@@ -409,9 +425,13 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
                     continue
                 total += excesso
                 n_compras_caras += 1
+                if not generico:
+                    total_homog += excesso
+                    n_compras_homog += 1
                 org = r["unidade_nome"] or r["orgao_nome"] or "—"
                 it = por_item.setdefault(base, {"item": r["d"], "unidade_medida": r["un"],
-                                                "economia": 0.0, "n": 0})
+                                                "economia": 0.0, "n": 0,
+                                                "dispersao": dispersao, "descricao_generica": generico})
                 it["economia"] += excesso
                 it["n"] += 1
                 og = por_orgao.setdefault(org, {"orgao": org, "economia": 0.0, "n": 0})
@@ -431,6 +451,12 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
 
         return {"ok": True, "economia_total": round(total, 2),
                 "n_compras_acima_mediana": n_compras_caras,
+                # o par HOMOGÊNEO é o que se sustenta em comparação de produto igual —
+                # é ele que deve virar manchete; o resto entra como faixa superior.
+                "economia_homogenea": round(total_homog, 2),
+                "n_compras_homogeneas": n_compras_homog,
+                "economia_descricao_generica": round(total - total_homog, 2),
+                "dispersao_max": disp_max,
                 "por_item": _top(por_item), "por_orgao": _top(por_orgao),
                 "por_fornecedor": _top(por_forn),
                 "explicacao": ("Economia potencial = quanto o poder público deixaria de gastar se "

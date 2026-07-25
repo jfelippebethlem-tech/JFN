@@ -4093,9 +4093,21 @@ function ckPull(first){
       const big=$('ck-econ');if(big&&/—/.test(big.textContent)){big.textContent='—';
         if($('ck-sub'))$('ck-sub').innerHTML=erroHumano(d&&d.erro);}
       return;}
-    _ckCount($('ck-econ'),d.economia_total,fmtRc,first?1300:900);
-    if($('ck-sub'))$('ck-sub').innerHTML=`Se cada uma das <b>${fmtN(d.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item.`;
-    ckFill('compras',{num:d.n_compras_acima_mediana,meta:'acima da mediana de mercado, priorizadas por economia'});
+    // A manchete passa a ser a economia HOMOGÊNEA — a que se apoia em comparação de
+    // produto igual. Medido em 25/07/2026: dos R$ 15,6 mi, R$ 9,4 mi (60,4%) vinham de
+    // grupos cuja descrição do PNCP mistura produtos diferentes ('Locação de Veículos -
+    // Leves / Pesados', dispersão 300,9×; 'peça de veículo', onde parafuso e motor têm a
+    // mesma descrição, 1292,5×). O total não some: vira o teto da faixa, ao lado.
+    const _eco=(d.economia_homogenea!=null?d.economia_homogenea:d.economia_total);
+    const _nc =(d.n_compras_homogeneas!=null?d.n_compras_homogeneas:d.n_compras_acima_mediana);
+    _ckCount($('ck-econ'),_eco,fmtRc,first?1300:900);
+    if($('ck-sub'))$('ck-sub').innerHTML=
+      `Se cada uma das <b>${fmtN(_nc)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item`
+      +(d.economia_descricao_generica>0
+        ? ` — contando só itens de <b>descrição consistente</b>. Há mais <b>${fmtRc(d.economia_descricao_generica)}</b>`
+          +` em itens de descrição genérica (ex.: "peça de veículo"), onde a mediana pode comparar produtos diferentes.`
+        : `.`);
+    ckFill('compras',{num:_nc,meta:'acima da mediana, em itens de descrição consistente'});
     const o=d.por_orgao&&d.por_orgao[0],onm=o?(o.orgao||''):'';
     // o valor grande é a caixa do NÚMERO: um nome de órgão cortado duas vezes (25 chars
     // no JS + reticências do CSS a 26px) virava "PREFEITURA …", que não informa nada.
