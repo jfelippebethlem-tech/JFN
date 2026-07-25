@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS sei_arvore (
   objeto        TEXT,
   nivel_risco   TEXT,
   n_membros     INTEGER,
+  -- ATENÇÃO: n_docs = quantos PONTOS a ficha citou como achado (len(ficha["documentos"])), NÃO quantos
+  -- documentos a análise leu nem quantos o processo tem. Vale 1-16 no acervo inteiro, e isso é normal:
+  -- é contagem de ACHADO. Já me levou a suspeitar de captura truncada — o processo SEI-070002/005897/2024
+  -- tem n_docs=3, 861 documentos na árvore e 187 capturados, e mesmo assim a análise recebeu MEGABYTES
+  -- de texto (medido: 14,1 MB contra 16,4 MB do arquivo local, nos 13 processos com os dois lados).
   n_docs        INTEGER,
   n_obs         INTEGER,
   total_pago    REAL,
