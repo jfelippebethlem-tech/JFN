@@ -1142,7 +1142,11 @@
   .nu-chip.viva{border-color:var(--nc);background:color-mix(in srgb,var(--nc) 18%,oklch(0.14 0.03 260/.78));
     box-shadow:0 0 22px -5px var(--nc)}
   @media (max-width:900px){.nu-chip{--rail-w:150px}.nu-chip small{font-size:8.5px}.nu-chip .n{font-size:14px}}
-  @media (max-width:600px){.ck-nucleo{height:clamp(470px,132vw,580px)}}
+  /* No celular a mesa é limitada pela LARGURA (94% de ocupação a 390px, com a
+     restrição de altura sobrando 259 contra 107): esticar o card não aumenta o
+     território em um pixel, só abre uma faixa morta entre a mesa e a grade de
+     rótulos. Card menor = mesmo território, sem o vazio. */
+  @media (max-width:600px){.ck-nucleo{height:clamp(340px,96vw,440px)}}
 
   /* ══ v13 "SABRE" ═══════════════════════════════════════════════════════════
      Um sabre de luz NÃO é uma barra colorida com brilho: é um núcleo
@@ -3363,7 +3367,13 @@ let _nuEvTotal=0,_nuHover=null;
 /* alfa 0..1 -> par hexadecimal, para concatenar em '#rrggbb' sem montar rgba() */
 const _hex2=a=>Math.max(0,Math.min(255,Math.round(a*255))).toString(16).padStart(2,'0');
 const HOLO={PL:1.10, ELEV:0.56, CAMD:3.15, SZ:520,    // piso, elevação (rad), distância, resolução do bitmap
-            ESP:0.045, ARO:1.11, GIRO:-0.28};         // espessura da laje · aro · giro do território (rad)
+            ESP:0.045, ARO:1.11, GIRO:-0.28,          // espessura da laje · aro · giro do território (rad)
+            /* ALT = teto da cena: altura do reator e do anel mais alto. Era 0.60 solto em
+               três lugares (o HT do enquadramento e os dois P(0,0.60,0) do reator), e
+               esse ar reservado acima do piso era o que fazia o TERRITÓRIO ficar numa
+               faixa fina no meio do card — o "pequeno e vazio" que o dono viu. Baixar
+               para 0.46 devolve a altura ao piso e mantém a escada de três degraus. */
+            ALT:0.46};
 function _holoProj(x,y,z,c){                          // mundo → tela (x direita, y altura, z profundidade)
   const X=x*c.cy_ - z*c.sy_, Z=x*c.sy_ + z*c.cy_;     // giro em torno do eixo vertical (yaw)
   const Y2=y*c.cp + Z*c.sp;                           // inclinação da câmera (elevação)
@@ -3446,7 +3456,7 @@ function nucleoStart(){
   /* três altitudes em vez de sete órbitas quase iguais: a mesa lê como escada
      holográfica e os rótulos param de brigar. Raio e altura andam juntos —
      quanto mais perto do reator, mais alto. */
-  const ANEIS=[{r:0.46,h:0.62},{r:0.74,h:0.42},{r:1.00,h:0.24}];
+  const ANEIS=[{r:0.46,h:0.48},{r:0.74,h:0.32},{r:1.00,h:0.18}];  // escalados por HOLO.ALT/0.60
   NU_NODES.forEach((n,i)=>{n._an=n.orb<=0.7?0:(n.orb<=0.88?1:2);n._idx=i;});
   /* FASE FIXA E DISTRIBUÍDA dentro do próprio anel, com UMA velocidade para todos.
      Antes cada domínio tinha velocidade própria: eles derivavam, formavam aglomerado
@@ -3519,10 +3529,15 @@ function nucleoStart(){
     /* escala: o piso é um trapézio (borda perto × borda longe) e ainda há o que
        FLUTUA acima dele — a cena a enquadrar é piso + altura do projetor. */
     const PL=HOLO.PL, kN=cam.camd/Math.max(.42,cam.camd-PL*cam.cp), kF=cam.camd/(cam.camd+PL*cam.cp);
-    const A=PL*cam.sp*kF, B=PL*cam.sp*kN, HT=0.60*cam.cp*1.14;
-    const gut=_compacto?10:132;      // faixa em volta da mesa: é onde os rótulos pousam
+    const A=PL*cam.sp*kF, B=PL*cam.sp*kN, HT=HOLO.ALT*cam.cp*1.14;
+    /* A faixa lateral era 132px de cada lado e era a LARGURA que limitava a mesa:
+       medido a 1440, o território ocupava só 77% do card (894 de 1158px) enquanto a
+       altura sobrava 9%. E a reserva nem estava em uso — o rótulo mais externo parava
+       a 170px da borda, ou seja, DENTRO da mesa. 48px basta para o empurrão radial e
+       devolve ~140px de território ao quadrado. */
+    const gut=_compacto?10:48;       // faixa em volta da mesa: é onde os rótulos pousam
     const Hu=Math.max(150,H-_gradeH);                      // altura util: a grade tem a dela
-    cam.s=Math.min(Hu*0.94/(A+B+HT), Math.max(140,W-2*gut)/(2*PL*kN));
+    cam.s=Math.min(Hu*0.965/(A+B+HT), Math.max(140,W-2*gut)/(2*PL*kN));
     cam.cx=W/2;
     cam.cy=(Hu-(A+B+HT)*cam.s)/2+(A+HT)*cam.s;             // centraliza a CENA, não só o piso
     piso=document.createElement('canvas');piso.width=W*dpr;piso.height=H*dpr;
@@ -3653,7 +3668,7 @@ function nucleoStart(){
     if(!_compacto){
       /* O REATOR É ÁREA RESERVADA: entra na lista de colisão antes de qualquer rótulo,
          então nada pousa em cima dele. Foi o defeito que escondeu o projetor no v12. */
-      const _hc=P(0,0.60,0), _hr=64*_hc.k*Math.min(1.5,cam.s/240);
+      const _hc=P(0,HOLO.ALT,0), _hr=64*_hc.k*Math.min(1.5,cam.s/240);
       const _cx=[{x:_hc.x,y:_hc.y,w:_hr*2,h:_hr*2}];
       /* A PÍLULA DE SWEEP também é território ocupado quando está acesa. Ela vive no
          topo e ao centro; um rótulo empurrado para cima cobria o "alimentando · SEI".
@@ -3826,7 +3841,7 @@ function nucleoStart(){
     }
     /* 8 · PROJETOR — coluna de energia do piso até o coração, e o coração no ar.
        É a fonte de luz da mesa: tudo que flutua vem daqui. */
-    const base=P(0,ESP,0), heart=P(0,0.60,0);            // o projetor nasce DA laje
+    const base=P(0,ESP,0), heart=P(0,HOLO.ALT,0);            // o projetor nasce DA laje
     const desenhaProjetor=()=>{
     for(let a=0;a<3;a++){                                    // anéis do reator, deitados no piso
       const rad=0.10+a*0.055, seg=10+a*5, dir=(a%2?-1:1);
