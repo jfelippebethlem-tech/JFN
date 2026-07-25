@@ -974,7 +974,16 @@
       linear-gradient(var(--bd2),var(--bd2));
     background-clip:padding-box,border-box,border-box;
     background-origin:border-box;border-color:transparent}
-  .card.hl{background-image:none}
+  /* O card GRAVE saía duas vezes prejudicado pela regra do v11:
+     (a) o cônico inundava a superfície dele com azul/laranja — cor que não é a dele,
+         competindo com o rosa que É o sinal de severidade;
+     (b) `animation:holoSpin` da mesma regra SOBRESCREVEU o `graveGlow` da linha 341 —
+         desde o v11 o card grave não pulsava mais a gravidade, girava um gradiente.
+     Aqui ele recupera as duas coisas: a superfície própria (idêntica à do `.card`) e o
+     pulso de gravidade. Nada de dessaturar quem já brilha — ao contrário, o rosa volta
+     a ser o único a falar. */
+  .card.hl{background-image:linear-gradient(165deg,var(--card),var(--card2));
+    animation:graveGlow 3.2s ease-in-out infinite}
 
   /* o ticker cortava no meio da palavra nas duas bordas — lia como texto vazando o
      container. Máscara de esmaecimento resolve sem tirar conteúdo nenhum. */

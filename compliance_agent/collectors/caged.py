@@ -20,6 +20,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from compliance_agent.database.models import Alerta, Pessoa, RegistroFolha
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +210,7 @@ async def cruzar_folhas_multiplas(session) -> list[dict]:
                     descricao=(
                         f"'{row.nome}' (CPF {row.cpf}) aparece em {row.n_orgaos} órgãos "
                         f"distintos: {', '.join(orgaos[:5])}. Remuneração total: "
-                        f"R$ {row.total_bruto:,.2f}."
+                        f"R$ {moeda(row.total_bruto)}."
                         + (f" Também encontrado no funcionalismo federal ({federal_data.get('orgao', '')})." if also_federal else "")
                     ),
                     evidencias=json.dumps(suspeito, ensure_ascii=False, default=str),

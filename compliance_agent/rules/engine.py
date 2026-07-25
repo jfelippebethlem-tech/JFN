@@ -27,6 +27,7 @@ from compliance_agent.database.models import (
     Alerta, Contrato, Empresa, EmpresaSocio, OrdemBancaria, Pessoa,
     PublicacaoDOERJ, RegistroFolha,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 
 # ── Limites legais (Lei 14.133/21) ────────────────────────────────────────────
@@ -182,9 +183,9 @@ class MotorCompliance:
                 severidade = "alta",
                 titulo     = f"Remuneração acima do teto — {reg.nome}",
                 descricao  = (
-                    f"'{reg.nome}' recebeu R$ {reg.remuneracao_liquida:,.2f} líquidos "
+                    f"'{reg.nome}' recebeu R$ {moeda(reg.remuneracao_liquida)} líquidos "
                     f"em {competencia}, acima do teto estadual de "
-                    f"R$ {TETO_REMUNERATORIO_RJ:,.2f}."
+                    f"R$ {moeda(TETO_REMUNERATORIO_RJ)}."
                 ),
                 evidencias = {
                     "nome": reg.nome, "cpf": reg.cpf,
@@ -226,8 +227,8 @@ class MotorCompliance:
                 titulo     = f"Possível fracionamento — {row.orgao_contrat} × {nome_emp}",
                 descricao  = (
                     f"Órgão '{row.orgao_contrat}' possui {row.qtd} contratos por dispensa "
-                    f"com '{nome_emp}' totalizando R$ {row.soma:,.2f}, acima do limite de "
-                    f"R$ {LIMITES_LICITACAO['servicos']['dispensa']:,.2f}."
+                    f"com '{nome_emp}' totalizando R$ {moeda(row.soma)}, acima do limite de "
+                    f"R$ {moeda(LIMITES_LICITACAO['servicos']['dispensa'])}."
                 ),
                 evidencias = {
                     "orgao": row.orgao_contrat, "empresa": nome_emp,
@@ -277,7 +278,7 @@ class MotorCompliance:
                         f"'{socio.pessoa.nome}' ({socio.pessoa.cargo} em {socio.pessoa.orgao}) "
                         f"é sócio de '{empresa.razao_social}' (CNPJ {empresa.cnpj}), "
                         f"que possui contrato nº {contrato.numero} com o mesmo órgão "
-                        f"no valor de R$ {contrato.valor_total:,.2f}."
+                        f"no valor de R$ {moeda(contrato.valor_total)}."
                     ),
                     evidencias = {
                         "servidor": socio.pessoa.nome,
@@ -355,7 +356,7 @@ class MotorCompliance:
                         descricao  = (
                             f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}) foi aberta em "
                             f"{empresa.data_abertura} e assinou contrato apenas {delta} dias depois "
-                            f"(contrato nº {contrato.numero}, R$ {contrato.valor_total:,.2f})."
+                            f"(contrato nº {contrato.numero}, R$ {moeda(contrato.valor_total)})."
                         ),
                         evidencias = {
                             "empresa": empresa.razao_social,
@@ -407,7 +408,7 @@ class MotorCompliance:
                         f"'{item['nome']}' (CPF {item['cpf']}) recebe remuneração de "
                         f"{item['n_fontes']} fontes públicas distintas: "
                         f"{', '.join(item['fontes'])}. "
-                        f"Remuneração total: R$ {item['remuneracao_total']:,.2f}. "
+                        f"Remuneração total: R$ {moeda(item['remuneracao_total'])}. "
                         f"{item['motivo']}"
                     ),
                     evidencias=item,
@@ -453,7 +454,7 @@ class MotorCompliance:
                 descricao=(
                     f"'{row.nome}' (CPF {row.cpf}) aparece com remuneração ativa em "
                     f"{row.n_orgaos} órgãos distintos na competência {competencia}, "
-                    f"totalizando R$ {row.total_bruto:,.2f}. Órgãos: {row.lista_orgaos}."
+                    f"totalizando R$ {moeda(row.total_bruto)}. Órgãos: {row.lista_orgaos}."
                 ),
                 evidencias={
                     "cpf": row.cpf, "nome": row.nome,
@@ -554,7 +555,7 @@ class MotorCompliance:
                 titulo     = f"Fracionamento OB — {row.favorecido_nome or row.favorecido_cpf} / UG {row.ug_codigo}",
                 descricao  = (
                     f"{row.n_obs} OBs para '{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) "
-                    f"na UG {row.ug_codigo} totalizaram R$ {row.total:,.2f} "
+                    f"na UG {row.ug_codigo} totalizaram R$ {moeda(row.total)} "
                     f"entre {row.data_ini} e {row.data_fim}. "
                     f"Valor ultrapassa o limite de dispensa (R$ {LIMITE_DISPENSA:,.0f}) "
                     f"sugerindo fracionamento para evitar licitação."
@@ -595,10 +596,10 @@ class MotorCompliance:
             self._criar_alerta(
                 tipo            = "ob_sem_processo",
                 severidade      = "média",
-                titulo          = f"OB sem processo SEI — R$ {ob.valor:,.2f} para {ob.favorecido_nome or ob.favorecido_cpf}",
+                titulo          = f"OB sem processo SEI — R$ {moeda(ob.valor)} para {ob.favorecido_nome or ob.favorecido_cpf}",
                 descricao       = (
                     f"OB nº {ob.numero_ob} (UG {ob.ug_codigo}, {ob.data_emissao}) "
-                    f"no valor de R$ {ob.valor:,.2f} para '{ob.favorecido_nome}' "
+                    f"no valor de R$ {moeda(ob.valor)} para '{ob.favorecido_nome}' "
                     f"não possui número de processo SEI ou processo administrativo associado. "
                     f"Todo pagamento acima de R$ {VALOR_MINIMO:,.0f} exige processo formal."
                 ),
@@ -653,7 +654,7 @@ class MotorCompliance:
                 titulo     = f"Favorecido em {row.n_ugs} UGs distintas — {row.favorecido_nome or row.favorecido_cpf} ({row.mes})",
                 descricao  = (
                     f"'{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) recebeu OBs de "
-                    f"{row.n_ugs} UGs diferentes em {row.mes}, totalizando R$ {row.total:,.2f}. "
+                    f"{row.n_ugs} UGs diferentes em {row.mes}, totalizando R$ {moeda(row.total)}. "
                     f"UGs: {row.ugs}. "
                     f"Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado."
                 ),
@@ -700,7 +701,7 @@ class MotorCompliance:
                     severidade      = "alta",
                     titulo          = f"OB para empresa nova ({delta}d) — {empresa.razao_social}",
                     descricao       = (
-                        f"OB nº {ob.numero_ob} no valor de R$ {ob.valor:,.2f} foi paga a "
+                        f"OB nº {ob.numero_ob} no valor de R$ {moeda(ob.valor)} foi paga a "
                         f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}), empresa aberta "
                         f"apenas {delta} dias antes do pagamento ({empresa.data_abertura}). "
                         f"Padrão de empresa criada para receber contrato específico."
@@ -749,7 +750,7 @@ class MotorCompliance:
                     titulo          = f"OB com valor exatamente redondo — R$ {ob.valor:,.0f} / {ob.favorecido_nome or ob.favorecido_cpf}",
                     descricao       = (
                         f"OB nº {ob.numero_ob} (UG {ob.ug_codigo}, {ob.data_emissao}) tem "
-                        f"valor exatamente redondo de R$ {ob.valor:,.2f} para "
+                        f"valor exatamente redondo de R$ {moeda(ob.valor)} para "
                         f"'{ob.favorecido_nome}'. Valores redondos grandes em OBs avulsas "
                         f"frequentemente indicam estimativas sem respaldo técnico. "
                         f"Verificar se há medição/fatura correspondente no processo SEI."
@@ -832,7 +833,7 @@ class MotorCompliance:
                     severidade      = "alta",
                     titulo          = f"OB para favorecido com publicação suspeita no DOERJ — {nome}",
                     descricao       = (
-                        f"OB nº {ob.numero_ob} (R$ {ob.valor:,.2f}, UG {ob.ug_codigo}) "
+                        f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}, UG {ob.ug_codigo}) "
                         f"tem como favorecido '{nome}', que aparece em {len(suspeitos)} "
                         f"publicação(ões) do DOERJ com termos suspeitos: "
                         f"{[s['termo_suspeito'] for s in suspeitos]}. "

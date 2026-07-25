@@ -36,6 +36,7 @@ from compliance_agent.detectores.base import (
     avaliar_rubrica,
     sem_acentos,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 # tipos de exigência que disparam razões objetivas (chaves canônicas)
 _TIPO_ATESTADO = ("atestado", "capacidade_tecnica", "qualificacao_tecnica")
@@ -166,7 +167,7 @@ class E1Barreira(Detector):
                         razoes.append(f"capital/PL exigido = {pct:.1%} do valor estimado (>10% — teto do art. 69 §3º)")
                         exig_suspeitas.append(e)
                         res.add_evidencia(fonte="exigência de habilitação (capital/PL)",
-                                          trecho=f"{texto[:80]} — exige R$ {vexig:,.2f} = {pct:.1%} do estimado")
+                                          trecho=f"{texto[:80]} — exige R$ {moeda(vexig)} = {pct:.1%} do estimado")
 
         # 3) exigências que SÓ este órgão pede (vs análogos) — candidatas a "sob medida"
         sob_medida = self._exigencias_sob_medida(exigencias, analogos)

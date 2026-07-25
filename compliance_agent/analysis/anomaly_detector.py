@@ -22,6 +22,7 @@ import statistics
 from collections import defaultdict
 from datetime import date
 from typing import Optional
+from compliance_agent.reporting.intel_base import moeda
 
 
 def _dias_uteis_no_mes(d: date) -> list[date]:
@@ -61,11 +62,11 @@ def detectar_fracionamento_threshold(obs: list, session) -> list[dict]:
                     "severidade": "alta",
                     "titulo": (
                         f"OB a {100-pct:.1f}% do limite de licitação — "
-                        f"R$ {v:,.2f} ({nome_limite.replace('_',' ')})"
+                        f"R$ {moeda(v)} ({nome_limite.replace('_',' ')})"
                     ),
                     "descricao": (
                         f"OB nº {ob.numero_ob} para '{ob.favorecido_nome}' "
-                        f"tem valor R$ {v:,.2f}, apenas {100-pct:.1f}% abaixo do "
+                        f"tem valor R$ {moeda(v)}, apenas {100-pct:.1f}% abaixo do "
                         f"limite de {nome_limite.replace('_',' ')} "
                         f"(R$ {limite:,.0f}). Padrão clássico de fracionamento "
                         f"para fugir da obrigação de licitar."
@@ -207,7 +208,7 @@ def detectar_valores_outlier(obs: list) -> list[dict]:
                     "titulo": f"OB com valor outlier na UG {ug} — R$ {ob.valor:,.0f} (z={z_score:.1f}σ)",
                     "descricao": (
                         f"OB nº {ob.numero_ob} para '{ob.favorecido_nome}' tem valor "
-                        f"R$ {ob.valor:,.2f}, que é {z_score:.1f} desvios-padrão acima "
+                        f"R$ {moeda(ob.valor)}, que é {z_score:.1f} desvios-padrão acima "
                         f"da média da UG {ug} (média R$ {media:,.0f}, DP R$ {desvio:,.0f}). "
                         f"Verificar se o valor tem respaldo em medição/contrato."
                     ),
@@ -244,13 +245,13 @@ def detectar_obs_duplicadas(obs: list) -> list[dict]:
                     "tipo": "ob_duplicada",
                     "severidade": "alta",
                     "titulo": (
-                        f"Possível pagamento duplicado — R$ {a.valor:,.2f} "
+                        f"Possível pagamento duplicado — R$ {moeda(a.valor)} "
                         f"para {a.favorecido_nome or a.favorecido_cpf}"
                     ),
                     "descricao": (
                         f"OBs {a.numero_ob} e {b.numero_ob} têm mesmo favorecido "
                         f"'{a.favorecido_nome}' (CNPJ/CPF {a.favorecido_cpf}), "
-                        f"mesmo valor R$ {a.valor:,.2f} e mesma UG {a.ug_codigo}, "
+                        f"mesmo valor R$ {moeda(a.valor)} e mesma UG {a.ug_codigo}, "
                         f"com diferença de apenas "
                         f"{abs((a.data_emissao - b.data_emissao).days)} dia(s). "
                         f"Verificar se é pagamento duplicado ou parcelas de fracionamento."

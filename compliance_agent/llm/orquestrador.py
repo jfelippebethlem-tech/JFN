@@ -23,6 +23,7 @@ import logging
 from datetime import date, timedelta
 
 from rich.console import Console
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +84,7 @@ async def escolher_proximo_alvo(session) -> dict | None:
             "tipo": "ob_alto_valor",
             "nome": nome,
             "cnpj": cnpj if len(cnpj) == 14 else "",
-            "motivo": f"OB {ob.numero_ob} de R$ {ob.valor:,.2f} em {ob.data_emissao}",
+            "motivo": f"OB {ob.numero_ob} de R$ {moeda(ob.valor)} em {ob.data_emissao}",
             "ob_id": ob.id,
             "ob_numero": ob.numero_ob,
         }

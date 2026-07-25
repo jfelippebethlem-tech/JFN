@@ -24,6 +24,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from compliance_agent.cruzamentos_intel import _mediana, _norm_item
+from compliance_agent.reporting.intel_base import moeda
 
 _REPO = Path(__file__).resolve().parent.parent
 _DB = str(_REPO / "data" / "compliance.db")
@@ -62,11 +63,38 @@ def _certs(con, esfera: str | None) -> set | None:
     return certames_da_esfera(con, esfera)
 
 
-def _grupos(con, certs: set | None = None) -> dict:
+# Os dois entes que o gabinete fiscaliza. É o alvo PADRÃO do sobrepreço: sem escolher
+# aba, o achado não deve listar órgão federal nem de outro município (a MEDIANA segue
+# global — mercado; só o ACHADO é restrito). Pedido do dono 2026-07-24.
+_ESFERAS_FISCALIZADAS = ("estado", "prefeitura")
+
+
+def _certs_alvo(con, esfera: str | None) -> set | None:
+    """Certames do ACHADO de sobrepreço. 'todas' → None (tudo, quem pedir explicitamente);
+    esfera específica → só ela (aba); vazio/None → união {estado, prefeitura}."""
+    if esfera == "todas":
+        return None
+    if esfera:
+        return _certs(con, esfera)
+    from compliance_agent.collectors.pncp_resultados import certames_das_esferas
+    return certames_das_esferas(con, set(_ESFERAS_FISCALIZADAS))
+
+
+def _grupos(con, certs: set | None = None, por_medida: bool = False) -> dict:
+    """Agrupa compras comparáveis. `por_medida=True` refina a chave com a assinatura de
+    tamanho/embalagem (medida_item) e a unidade canônica — só os DETECTORES DE ALERTA usam,
+    para não comparar fardo com copinho (chave de 3: base, unidade_canon, sig). A navegação
+    (catálogo/comparar) mantém a chave de 2 (base, unidade), sem fragmentar a exploração."""
     g: dict[tuple, list] = defaultdict(list)
     for r in _linhas(con, certs):
         base = _norm_item(r["d"])
-        if base:
+        if not base:
+            continue
+        if por_medida:
+            from compliance_agent.medida_item import assinatura_medida, un_canon
+            sig = assinatura_medida(r["d"], r["un"])["sig"]
+            g[(base, un_canon(r["un"]), sig)].append(r)
+        else:
             g[(base, _un(r["un"]))].append(r)
     return g
 
@@ -342,13 +370,15 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
     Artefato (<10% da mediana) descartado. Só compras com quantidade real entram."""
     con = _ro(db_path)
     try:
-        certs = _certs(con, esfera)   # mediana continua GLOBAL (mercado); só o ACHADO é da esfera
+        certs = _certs_alvo(con, esfera)   # mediana GLOBAL (mercado); achado = entes fiscalizados
         total = 0.0
         por_item: dict[str, dict] = {}
         por_orgao: dict[str, dict] = {}
         por_forn: dict[str, dict] = {}
         n_compras_caras = 0
-        for (base, un), itens in _grupos(con).items():
+        # por_medida: fardo não entra na mesma mediana de copinho (medida_item). Não perde
+        # cobertura — a fusão de unidade (galao/gl/gal) compensa a separação por tamanho.
+        for (base, un, _sig), itens in _grupos(con, por_medida=True).items():
             orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
             n_cert = len({r["certame"] for r in itens})
             # amostra E diversidade suficientes → a mediana é confiável e um único item genérico
@@ -432,7 +462,7 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
     from compliance_agent.sancao_abrangencia import classificar_sancao, veda_ente
     con = _ro(db_path)
     try:
-        certs_esf = _certs(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
+        certs_esf = _certs_alvo(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
         # sanções que vedam (algum ente) por CNPJ, com vigência
         sanc: dict[str, list] = {}
         for r in con.execute(
@@ -579,9 +609,9 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
         except Exception:  # noqa: BLE001
             radar = {}
 
-        certs = _certs(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
+        certs = _certs_alvo(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
         achados = []
-        for (base, un), itens in _grupos(con).items():
+        for (base, un, _sig), itens in _grupos(con, por_medida=True).items():   # fardo ≠ copinho
             orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
             n_cert = len({r["certame"] for r in itens})
             if len(orgaos) < min_orgaos or n_cert < min_certames:
@@ -650,14 +680,14 @@ if __name__ == "__main__":
                 print(f"   {o['vs_geral']:5}x  R${o['mediana']:>10.2f}  {(o['nome'] or '')[:44]} (n={o['n']})")
     elif cmd == "vedada":
         d = economia_vedada()
-        print(f"ECONOMIA PAGA A FORNECEDOR VEDADO: R${d['economia_vedada_total']:,.2f}  "
+        print(f"ECONOMIA PAGA A FORNECEDOR VEDADO: R${moeda(d['economia_vedada_total'])}  "
               f"({d['n_compras']} compras) | por abrangência: {d['por_abrangencia']}")
         for f in d["por_fornecedor"][:12]:
             print(f"   R${f['economia_vedada']:>12,.2f}  [{f['abrangencia']}]  "
                   f"{(f['fornecedor'] or '')[:40]:40} (n={f['n']})")
     elif cmd == "economia":
         d = economia_potencial()
-        print(f"ECONOMIA POTENCIAL: R${d['economia_total']:,.2f}  "
+        print(f"ECONOMIA POTENCIAL: R${moeda(d['economia_total'])}  "
               f"({d['n_compras_acima_mediana']} compras acima da mediana)")
         print(" TOP itens:")
         for x in d["por_item"][:8]:

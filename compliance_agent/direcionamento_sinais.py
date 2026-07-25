@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from compliance_agent.reporting.intel_base import moeda
 
 
 def _sem_acento(s: str) -> str:
@@ -461,7 +462,7 @@ def analisar_direcionamento_det(texto: str) -> dict:
     if certame["desconto"]:
         d = certame["desconto"]
         sinais.append(f"resultado: desconto irrisório de {d['desconto_pct']}% sobre o estimado "
-                      f"(R$ {d['estimado']:,.2f} → R$ {d['homologado']:,.2f}) — quem combina não desconta")
+                      f"(R$ {moeda(d['estimado'])} → R$ {moeda(d['homologado'])}) — quem combina não desconta")
     if certame.get("mesmo_representante"):
         sinais.append("conluio (OCDE): MESMO representante/procurador para 2+ licitantes — indício de "
                       "propostas coordenadas (cover bidding / propostas de cobertura)")

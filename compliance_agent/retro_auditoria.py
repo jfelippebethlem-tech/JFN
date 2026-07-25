@@ -24,6 +24,7 @@ import json
 import logging
 import sqlite3
 from pathlib import Path
+from compliance_agent.reporting.intel_base import moeda
 
 _REPO = Path(__file__).resolve().parent.parent
 _DB = str(_REPO / "data" / "compliance.db")
@@ -303,4 +304,4 @@ if __name__ == "__main__":
         for e in d["exemplos"][:8]:
             tag = "⚖️ SANÇÃO DEPOIS" if e["sancao_depois"] else "💸"
             print(f"  {tag} {e['cnpj']} [{e['sinal']}] desde {e['desde']} "
-                  f"pago_depois=R${e['pago_depois']:,.2f}")
+                  f"pago_depois=R${moeda(e['pago_depois'])}")

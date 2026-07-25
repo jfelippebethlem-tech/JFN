@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 _REPO = Path(__file__).resolve().parent.parent.parent
 DATA = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data"))
@@ -113,7 +114,7 @@ def main():
         z = baixar(force=True); print(f"baixado: {z} ({z.stat().st_size:,} bytes)")
     if a.ingest:
         n, total = ingest(a.ano)
-        print(f"INGERIDAS {n:,} OBs de {a.ano} | TOTAL PAGO: R$ {total:,.2f}")
+        print(f"INGERIDAS {n:,} OBs de {a.ano} | TOTAL PAGO: R$ {moeda(total)}")
     if not (a.baixar or a.ingest):
         # resumo
         cnt = sum(1 for _ in parse_ano(a.ano))

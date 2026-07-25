@@ -26,6 +26,7 @@ import os
 import re
 import sqlite3
 from datetime import datetime
+from compliance_agent.reporting.intel_base import moeda
 
 _BASE = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 _DB = os.environ.get("JFN_DB", os.path.join(_BASE, "data", "compliance.db"))
@@ -398,10 +399,10 @@ if __name__ == "__main__":
         r = clusters_mesmo_endereco(limite=a.limite)
         print(f"Clusters de mesma sede (com OBs): {r['n_clusters']}\n")
         for c in r["clusters"]:
-            print(f"• {c['n_fornecedores']} forn. ({c['n_com_obs']} c/ OB) · R$ {c['total_pago']:,.2f} · "
+            print(f"• {c['n_fornecedores']} forn. ({c['n_com_obs']} c/ OB) · R$ {moeda(c['total_pago'])} · "
                   f"{c['municipio']}/{c['uf']} · {c['endereco'][:60]}")
             for e in c["empresas"][:6]:
-                print(f"    - {e['cnpj']} {(e['razao'] or '')[:42]} · {e['n_obs']} OBs · R$ {e['total_pago']:,.2f}")
+                print(f"    - {e['cnpj']} {(e['razao'] or '')[:42]} · {e['n_obs']} OBs · R$ {moeda(e['total_pago'])}")
         if r["_nota"]:
             print("\n" + r["_nota"])
     elif a.orgao:

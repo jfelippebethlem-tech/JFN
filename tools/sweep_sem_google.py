@@ -14,6 +14,7 @@ Uso: python -m tools.sweep_sem_google [--dry]
 import argparse
 import os
 import sqlite3
+from compliance_agent.reporting.intel_base import moeda
 
 DB = os.environ.get("JFN_DB") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "compliance.db")
 
@@ -51,7 +52,7 @@ def main():
         alvos = [r for r in cands if r[0] not in vetado and not _excluir(r[1] or "")]
         excl = len(cands) - len(alvos)
         val = sum(r[2] or 0 for r in alvos)
-        print(f"[{nivel}] {len(alvos)} empresas · R$ {val:,.2f} (excluídos {excl}: ente público/veredito-humano)" + (" (dry)" if a.dry else ""))
+        print(f"[{nivel}] {len(alvos)} empresas · R$ {moeda(val)} (excluídos {excl}: ente público/veredito-humano)" + (" (dry)" if a.dry else ""))
         if not a.dry and alvos:
             for cnpj, razao, tr in alvos:
                 con.execute("UPDATE verificacao_sede SET status='INDICIO', nivel=?, evidencia=? WHERE cnpj=? AND status='AFASTADO'", (nivel, ev, cnpj))

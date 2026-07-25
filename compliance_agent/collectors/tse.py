@@ -19,6 +19,7 @@ import httpx
 from compliance_agent.database.models import (
     Alerta, Contrato, DoacaoEleitoral, Empresa,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -278,9 +279,9 @@ def cruzar_doacoes_contratos(session) -> list[dict]:
                 titulo=titulo[:300],
                 descricao=(
                     f"A empresa '{empresa.razao_social}' (CNPJ {cnpj}) realizou doações "
-                    f"eleitorais totalizando R$ {soma_doacoes:,.2f} para candidatos "
+                    f"eleitorais totalizando R$ {moeda(soma_doacoes)} para candidatos "
                     f"({', '.join(str(a) for a in anos)}) e possui {len(contratos)} "
-                    f"contrato(s) com o governo no valor total de R$ {soma_contratos:,.2f}. "
+                    f"contrato(s) com o governo no valor total de R$ {moeda(soma_contratos)}. "
                     f"Candidatos beneficiados: {', '.join(candidatos[:5])}."
                 ),
                 evidencias=json.dumps(

@@ -28,6 +28,7 @@ import sqlite3
 from compliance_agent.direcionamento_cerebro import _parse_json  # parse tolerante a cercas ```json
 from compliance_agent.editais.indice_certame import _conectar_ro, calcular, garantir_tabela
 from compliance_agent.emendas.db import conectar
+from compliance_agent.reporting.intel_base import moeda
 
 PROMPT_VERSAO = "v1"
 ALPHA = 0.3                # §3.4: α ≤ 0,3 — realce máximo do LLM sobre o score determinístico
@@ -127,7 +128,7 @@ def montar_prompt(indice: dict, evidencias: dict) -> str:
         + _NORMA + "\n\n"
         "## ÍNDICE DETERMINÍSTICO (calculado por regras; não recalcule)\n"
         f"Certame {indice['certame']} · score {indice['score']}/100 · faixa {indice['faixa']} · "
-        f"confiança {indice['confianca']} · valor total R$ {indice.get('valor_total', 0):,.2f}\n"
+        f"confiança {indice['confianca']} · valor total R$ {moeda(indice.get('valor_total', 0))}\n"
         "Drivers:\n" + "\n".join(linhas_drivers)
     )
     rodape = "\n\n" + _ANCORAS + "\n\n" + _SAIDA

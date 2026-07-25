@@ -31,6 +31,7 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
+from compliance_agent.reporting.intel_base import moeda
 
 RAIZ = Path(__file__).resolve().parent.parent
 DB = RAIZ / "data" / "compliance.db"
@@ -100,7 +101,7 @@ def main(argv=None) -> int:
     print(f"  arquivados (com texto): {len(r['arquivados']):,}")
     print(f"  lidos, falta arquivar:  {len(r['lidos_nao_arquivados']):,}")
     print(f"  NUNCA TOCADOS:          {len(r['nunca_tocados']):,}  "
-          f"— R$ {r['dinheiro_nunca_tocado']:,.2f} pagos")
+          f"— R$ {moeda(r['dinheiro_nunca_tocado'])} pagos")
     fila = (r["nunca_tocados"] + r["lidos_nao_arquivados"])[:a.top]
     print(f"\ntop {min(10, len(fila))} da fila proposta (por valor pago):")
     for i in fila[:10]:

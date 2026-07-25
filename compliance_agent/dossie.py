@@ -99,7 +99,7 @@ def _red_flags_estruturais(cnpj: str, cadastro: dict) -> list[dict]:
             share = (tot_antes / tg * 100) if tg else 0
             if tot_antes >= 1_000_000 and share >= 15:
                 out.append({"flag": "troca_controle_pos_receita",
-                            "obs": f"Ingresso no QSA em {recente} posterior a R$ {tot_antes:,.2f} já pagos "
+                            "obs": f"Ingresso no QSA em {recente} posterior a R$ {_brl(tot_antes)} já pagos "
                                    f"({n_antes} OBs, {share:.0f}%) — sucessão/interposição a verificar."})
     except Exception as exc:  # noqa: BLE001
         logger.warning("red flag troca de controle×OB falhou p/ CNPJ %s: %s", cnpj, exc)
@@ -490,7 +490,7 @@ def _gerar_pdf(d: dict) -> str:
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(0, 6, "Pagamentos (OB)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9)
-    pdf.cell(0, 5, _ascii(f"Total pago: R$ {ob.get('total_ob',0):,.2f}  |  OBs: {ob.get('n_ob',0)}  |  "
+    pdf.cell(0, 5, _ascii(f"Total pago: R$ {_brl(ob.get('total_ob',0))}  |  OBs: {ob.get('n_ob',0)}  |  "
                           f"UGs: {ob.get('n_ugs',0)}  |  Concentracao top UG: {ob.get('concentracao_top_ug')}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(1)
 

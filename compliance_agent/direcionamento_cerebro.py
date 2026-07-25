@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import json
 import re
+from compliance_agent.reporting.intel_base import moeda
 
 _SYS = (
     "Você é AUDITOR DE CONTROLE EXTERNO (TCU/TCE-RJ) avaliando INDÍCIOS de DIRECIONAMENTO em licitação. "
@@ -636,7 +637,7 @@ def montar_pacote_claude(contratacao: dict, resultado: dict, trecho_doc: str = "
     linhas = [
         "🧠 *AVALIAÇÃO DE DIRECIONAMENTO — peça ao Claude pensar em cima do Gemini*",
         f"*Contratação:* {obj}",
-        f"*Órgão:* {org} · *Valor:* {('R$ %s' % f'{val:,.2f}'.replace(',','.')) if val else '?'}",
+        f"*Órgão:* {org} · *Valor:* {('R$ %s' % f'{moeda(val)}'.replace(',','.')) if val else '?'}",
         f"*PNCP:* {link}",
         f"*Id:* `{contratacao.get('id_pncp','?')}`",
         "",

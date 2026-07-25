@@ -148,7 +148,7 @@ LABELS = {
 # ===================== RELATÓRIO 1 — POR CONTRATO/TEMA =====================
 MD1 = f"""
 ## 1. Sumário executivo
-A **Enge Prat Engenharia e Serviços Ltda.** (CNPJ 03.314.057/0001-53) já **recebeu R$ {TOTAL:,.2f}** do Estado do RJ em **{NOBS} ordens bancárias** (SIAFE, 2019–2026). O objeto da consulta — **Túnel Extravasor de Petrópolis** — é o **Contrato nº 033/2023** (SEIOP/SEIC), processo **SEI-460001/000779/2023**, de **{brl(tunel_c)}**, com **{brl(tunel_p)} já pagos** e **{brl(tunel_s)} de saldo**.
+A **Enge Prat Engenharia e Serviços Ltda.** (CNPJ 03.314.057/0001-53) já **recebeu R$ {brl(TOTAL)}** do Estado do RJ em **{NOBS} ordens bancárias** (SIAFE, 2019–2026). O objeto da consulta — **Túnel Extravasor de Petrópolis** — é o **Contrato nº 033/2023** (SEIOP/SEIC), processo **SEI-460001/000779/2023**, de **{brl(tunel_c)}**, com **{brl(tunel_p)} já pagos** e **{brl(tunel_s)} de saldo**.
 
 > **Eixo:** OB (SIAFE) = **já recebido**; contrato + aditivos (SEI/TCE) = **teto a faturar**. Saldo a receber = `Contratado − Pago`.
 > **Reconciliação:** os {NOBS} pagamentos somam **{brl(TOTAL)}** e estão 100% alocados abaixo (dif. R$ 0,00).
@@ -202,7 +202,7 @@ MD1 += f"""
 - **Concentração:** {brl(TOTAL)} / {NOBS} OB. Dois blocos dominam: **topografia/cadastro urbano {brl(sb['Topografia / cadastro urbano (SEINFRA · Cidades)'])}** ({sb['Topografia / cadastro urbano (SEINFRA · Cidades)']/TOTAL*100:.0f}%) e **manutenção predial contínua {brl(sb['Manutenção predial contínua (CBMERJ · SEINFRA)'])}** ({sb['Manutenção predial contínua (CBMERJ · SEINFRA)']/TOTAL*100:.0f}%).
 - **Aditivos (SIAFE):** os CTTs do CBMERJ (080–089/2022) foram **prorrogados ano a ano de 24/06/2022 até 23/06/2026** (até 4ª prorrogação) — verificar limite legal de prorrogação e reajustes. 006/2024 (2º GMAR) tem 1º TA.
 - **Dispensa emergencial recorrente** (art. 75, VIII, Lei 14.133/21): Túnel, RJ-145 (DER), contenções de Petrópolis — apurar se a reiteração de "emergência" ao mesmo fornecedor observa o caráter excepcional.
-- **Correção de premissa:** *não há* "pagamento acima do contrato" na topografia. O **007/2023 (SEINFRA, R$ {rec('007/2023'):,.2f} pagos)** e o **contrato ITERJ (SEI-330020/000101A/2023, {brl(iterj_c)})** são **registros distintos**; equipará-los seria erro. Vínculo a reconciliar no SEI.
+- **Correção de premissa:** *não há* "pagamento acima do contrato" na topografia. O **007/2023 (SEINFRA, R$ {brl(rec('007/2023'))} pagos)** e o **contrato ITERJ (SEI-330020/000101A/2023, {brl(iterj_c)})** são **registros distintos**; equipará-los seria erro. Vínculo a reconciliar no SEI.
 - **Saldo a faturar (rastreável, contratos com pago identificado): ≈ {brl(saldo_rastreavel)}**; além disso, contrato ITERJ topografia com teto de {brl(iterj_c)} (execução não vinculada às OB coletadas).
 
 > **Ressalva:** Indício ≠ acusação; INDISPONÍVEL ≠ irregular. Só a OB contabilizada é paga; "a receber" é teto. "s/ nº"/"não legível" = número de contrato ausente no histórico da OB, a confirmar no SEI. Nenhum dado indisponível foi fabricado.

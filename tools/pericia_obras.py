@@ -16,6 +16,7 @@ import datetime
 import json
 import os
 import sqlite3
+from compliance_agent.reporting.intel_base import moeda
 
 DB = os.environ.get("JFN_DB") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "compliance.db")
 OBRA = ("(LOWER(objeto) LIKE '%obra%' OR LOWER(objeto) LIKE '%constru%' OR LOWER(objeto) LIKE '%reforma%' "
@@ -94,7 +95,7 @@ def main():
 
     L = [f"# Perícia de Obras — execução físico-financeira ({a.hoje})\n",
          f"Fonte: contratos_tcerj (TCE-RJ) + perícia SEI. {len(peritadas)} contratos de obra · "
-         f"R$ {sum(p['valor_contrato'] or 0 for p in peritadas):,.2f} contratado. **Indício de perícia, não acusação.**\n",
+         f"R$ {moeda(sum(p['valor_contrato'] or 0 for p in peritadas))} contratado. **Indício de perícia, não acusação.**\n",
          "## Distribuição por fase"]
     for f, n in dist.most_common():
         L.append(f"- **{f}**: {n}")
@@ -105,7 +106,7 @@ def main():
                  f"{p['vig_fim'] or '—'} | {p['objeto'][:42]} | {(p['fornecedor'] or '')[:26]} |")
     open(a.md, "w").write("\n".join(L))
     print(f"[perícia obras] {len(peritadas)} obras | distribuição: {dict(dist)}")
-    print(f"[perícia obras] 🔴 PARADAS/VENCIDAS-SUSPEITAS: {len(paradas)} (R$ {sum(p['valor_contrato'] or 0 for p in paradas):,.2f} contratado)")
+    print(f"[perícia obras] 🔴 PARADAS/VENCIDAS-SUSPEITAS: {len(paradas)} (R$ {moeda(sum(p['valor_contrato'] or 0 for p in paradas))} contratado)")
     print(f"[perícia obras] relatório: {a.md} / .json")
 
 

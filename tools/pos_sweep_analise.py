@@ -16,6 +16,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 import logging
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -81,14 +82,14 @@ def main():
     a = analisar()
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     linhas = [f"# Análise pós-sweep — {ts}", "",
-              f"- **Total OBs (SIAFE Orçamentária):** {a['total']:,} | R$ {a['valor']:,.2f}",
+              f"- **Total OBs (SIAFE Orçamentária):** {a['total']:,} | R$ {moeda(a['valor'])}",
               f"- **SIAFE 1 (2016–2023):** {a['siafe1']:,} OBs | **SIAFE 2 (2024–2026):** {a['siafe2']:,} OBs",
               f"- **Com nº processo SEI:** {a['com_sei']:,} | **UGs distintas:** {a['ugs']}",
               f"- **OBs (TFE) ligadas a SEI (correlação):** {a['ob_sei_tfe']:,}",
               f"- **CNPJs com sócios/diretores (QSA):** {a['socios']:,}", "",
               "## OBs por ano"]
     for ano, n, v in a["por_ano"]:
-        linhas.append(f"- {ano}: {n:,} OBs (R$ {v:,.2f})")
+        linhas.append(f"- {ano}: {n:,} OBs (R$ {moeda(v)})")
     linhas += ["", "## Top UGs por nº de OBs"]
     for ug, n in a["top_ug"]:
         linhas.append(f"- {ug}: {n:,}")

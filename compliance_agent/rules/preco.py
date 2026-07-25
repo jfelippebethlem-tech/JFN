@@ -17,6 +17,7 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import Alerta, Contrato, Empresa
+from compliance_agent.reporting.intel_base import moeda
 
 
 # Palavras-chave para categorias de contratos
@@ -144,9 +145,9 @@ class AnalisadorPrecos:
                             descricao  = (
                                 f"Contrato nº {c.numero} ({c.orgao_contrat}) "
                                 f"para '{c.objeto[:100]}' com {nome_emp} "
-                                f"custa R$ {c.valor_total:,.2f}, "
+                                f"custa R$ {moeda(c.valor_total)}, "
                                 f"{item['acima_por']} acima da mediana de "
-                                f"R$ {mediana:,.2f} para a categoria '{categoria}'."
+                                f"R$ {moeda(mediana)} para a categoria '{categoria}'."
                             ),
                             evidencias  = json.dumps(item, ensure_ascii=False, default=str),
                             empresa_id  = empresa.id if empresa else None,

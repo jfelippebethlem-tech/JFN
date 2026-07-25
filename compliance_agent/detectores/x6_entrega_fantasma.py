@@ -36,6 +36,7 @@ from compliance_agent.detectores.base import (
     ancora,
     avaliar_rubrica,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 # ───────────────────────────── Rubricas fechadas (LLM-opcional; degradam honesto) ─────────────────────────────
 # (1) Especificidade do conteúdo dos atestos → nível de âncora.
@@ -142,7 +143,7 @@ class X6EntregaFantasma(Detector):
             for p in (pagos_sem_nf + pagos_sem_receb)[:6]:
                 res.add_evidencia(
                     fonte="tríade documental (pagamento × NF × recebimento)",
-                    trecho=(f"pagamento R$ {float(p.get('valor') or 0):,.2f} data={p.get('data') or '?'} "
+                    trecho=(f"pagamento R$ {moeda(float(p.get('valor') or 0))} data={p.get('data') or '?'} "
                             f"tem_nf={p.get('tem_nf')} tem_recebimento={p.get('tem_recebimento')}"))
 
         # ── REGRA 2 (CÓDIGO): volume × CAPACIDADE do fornecedor (cruza C2) → forte ──
@@ -192,7 +193,7 @@ class X6EntregaFantasma(Detector):
                 score = max(score, ancora("fraco"))
                 razoes.append(
                     f"cadência suspeita: {len(valores_medicao)} medições com valor IDÊNTICO repetido "
-                    f"(R$ {valores_medicao[0]:,.2f}) sem natureza de valor fixo")
+                    f"(R$ {moeda(valores_medicao[0])}) sem natureza de valor fixo")
 
         # ── REGRA 4 (CÓDIGO): baixa ROTAÇÃO de fiscal → AGRAVA (+0.10) ──
         if fiscais:

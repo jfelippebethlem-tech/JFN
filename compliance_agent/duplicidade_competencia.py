@@ -12,6 +12,7 @@ Ver [[casos/iterj-mgs-clean-pagamentos]] e [[aprendizados/duplicidade-ob-compete
 from __future__ import annotations
 
 from collections import defaultdict
+from compliance_agent.reporting.intel_base import moeda
 
 
 def _money(s) -> float:
@@ -81,7 +82,7 @@ def detectar(obs: list[dict], favorecido: str = "", orgao: str = "") -> list[dic
         mi = _mes_idx(comp)
         vizinho_vazio = mi is not None and ((mi - 1) not in presentes or (mi + 1) not in presentes)
         sev = "baixa" if vizinho_vazio else "media"
-        ev = (f"{len(grandes)} OBs de R$ {grandes[0]['val']:,.2f}~ na competência {comp} com REs/PDs distintos "
+        ev = (f"{len(grandes)} OBs de R$ {moeda(grandes[0]['val'])}~ na competência {comp} com REs/PDs distintos "
               f"({', '.join(x['re'] for x in grandes)}). "
               + ("Mês vizinho AUSENTE → provável recuperação de mês atrasado (timing); " if vizinho_vazio
                  else "SEM vizinho ausente → "))

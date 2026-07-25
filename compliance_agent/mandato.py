@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 from pathlib import Path
@@ -47,7 +48,7 @@ def _contexto(base: str) -> dict:
             ob = _resumo_ob(cnpj)
             if ob.get("total_ob"):
                 ctx["linhas"].append(
-                    f"Pagamentos (Ordens Bancárias) ao CNPJ {cnpj}: R$ {ob['total_ob']:,.2f} em "
+                    f"Pagamentos (Ordens Bancárias) ao CNPJ {cnpj}: R$ {moeda(ob['total_ob'])} em "
                     f"{ob.get('n_ob', 0)} OBs, concentração na principal UG de "
                     f"{round((ob.get('concentracao_top_ug') or 0) * 100)}%.")
         except Exception as exc:  # noqa: BLE001

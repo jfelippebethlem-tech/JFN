@@ -41,6 +41,7 @@ from compliance_agent.detectores.base import (
     ancora,
     avaliar_rubrica,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 # ───────────────────────────── Tetos do art. 125 (Lei 14.133/2021) ─────────────────────────────
 _TETO_PADRAO = 0.25  # 25% — regra geral (acréscimos)
@@ -210,20 +211,20 @@ class X1CrescimentoAditivo(Detector):
         if estourou:
             score = ancora("critico")
             razoes.append(
-                f"ESTOURO do teto do art.125: acréscimos somam R$ {acrescimos:,.2f} = {pct_acrescimo*100:.1f}% do "
-                f"valor inicial atualizado (R$ {valor_atualizado:,.2f}), acima do teto de {teto*100:.0f}%")
+                f"ESTOURO do teto do art.125: acréscimos somam R$ {moeda(acrescimos)} = {pct_acrescimo*100:.1f}% do "
+                f"valor inicial atualizado (R$ {moeda(valor_atualizado)}), acima do teto de {teto*100:.0f}%")
             res.add_evidencia(
                 fonte="cálculo do teto art.125 (Lei 14.133/2021)",
-                trecho=(f"acréscimos=R$ {acrescimos:,.2f} ({pct_acrescimo*100:.1f}%) > teto {teto*100:.0f}% sobre "
-                        f"valor inicial atualizado R$ {valor_atualizado:,.2f} (índice {indice})"))
+                trecho=(f"acréscimos=R$ {moeda(acrescimos)} ({pct_acrescimo*100:.1f}%) > teto {teto*100:.0f}% sobre "
+                        f"valor inicial atualizado R$ {moeda(valor_atualizado)} (índice {indice})"))
         elif pct_acrescimo >= teto * _FRACAO_FORTE:
             score = max(score, ancora("forte"))
             razoes.append(
                 f"acréscimo rente ao teto: {pct_acrescimo*100:.1f}% (teto {teto*100:.0f}%) — margem mínima ao limite")
             res.add_evidencia(
                 fonte="cálculo do teto art.125",
-                trecho=(f"acréscimos R$ {acrescimos:,.2f} = {pct_acrescimo*100:.1f}% do valor atualizado "
-                        f"R$ {valor_atualizado:,.2f}; rente ao teto {teto*100:.0f}%"))
+                trecho=(f"acréscimos R$ {moeda(acrescimos)} = {pct_acrescimo*100:.1f}% do valor atualizado "
+                        f"R$ {moeda(valor_atualizado)}; rente ao teto {teto*100:.0f}%"))
         elif pct_acrescimo >= teto * _FRACAO_MEDIO:
             score = max(score, ancora("medio"))
             razoes.append(f"acréscimo na metade do teto: {pct_acrescimo*100:.1f}% (teto {teto*100:.0f}%)")

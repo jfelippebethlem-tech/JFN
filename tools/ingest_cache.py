@@ -17,6 +17,7 @@ import json
 import os
 import sqlite3
 from pathlib import Path
+from compliance_agent.reporting.intel_base import moeda
 
 REPO = Path(__file__).resolve().parent.parent
 DB = Path(os.environ.get("JFN_DATA_DIR", REPO / "data")) / "compliance.db"
@@ -98,7 +99,7 @@ def main():
         con.close()
     print("Ingestão concluída:")
     print(f"  empresas: {emp} (novas/atualizadas nesta rodada: {total_emp})")
-    print(f"  contratos: {ct[0]} | valor total: R$ {ct[1]:,.2f} (ingeridos: {total_ct})")
+    print(f"  contratos: {ct[0]} | valor total: R$ {moeda(ct[1])} (ingeridos: {total_ct})")
     print(f"  ordens_bancarias: {ob}  <- vazio é esperado; OBs nominais dependem da coleta no SIAFE")
     return 0
 

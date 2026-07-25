@@ -24,6 +24,7 @@ import json
 from datetime import date
 
 import networkx as nx
+from compliance_agent.reporting.intel_base import moeda
 
 
 def construir_grafo(session) -> nx.DiGraph:
@@ -133,7 +134,7 @@ def detectar_triangulos_suspeitos(G: nx.DiGraph) -> list[dict]:
                         "descricao": (
                             f"'{nome_pessoa}' ({node}) é servidor da {ug} E sócio "
                             f"da empresa {empresa}, que recebeu {n_obs} OB(s) "
-                            f"totalizando R$ {valor:,.2f} da mesma {ug}. "
+                            f"totalizando R$ {moeda(valor)} da mesma {ug}. "
                             f"Configura nepotismo/conflito de interesse (SV 13/STF, "
                             f"Lei 9.784/99 art. 18)."
                         ),
@@ -178,7 +179,7 @@ def detectar_hubs_suspeitos(G: nx.DiGraph, min_ugs: int = 3) -> list[dict]:
                 ),
                 "descricao": (
                     f"'{nome}' ({node}) recebeu OBs de {len(ugs_pagadoras)} unidades "
-                    f"gestoras distintas, totalizando R$ {total:,.2f}. "
+                    f"gestoras distintas, totalizando R$ {moeda(total)}. "
                     f"Alta capilaridade em múltiplos órgãos pode indicar contrato "
                     f"de fachada ou empresa usada como intermediário de desvio."
                 ),

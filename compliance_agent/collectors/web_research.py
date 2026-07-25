@@ -19,6 +19,7 @@ from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +303,7 @@ async def investigar_obs_alto_valor(session, target_date: date = None,
                     severidade="alta",
                     titulo=titulo,
                     descricao=(
-                        f"OB {ob.numero_ob} (R$ {ob.valor:,.2f}) para '{nome}'. "
+                        f"OB {ob.numero_ob} (R$ {moeda(ob.valor)}) para '{nome}'. "
                         f"Busca na internet encontrou termos de risco: "
                         f"{', '.join(dossie['riscos_detectados'])}. "
                         f"Resumo: {dossie['resumo'][:400]}"

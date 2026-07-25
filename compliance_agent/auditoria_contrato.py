@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from compliance_agent.reporting.intel_base import moeda
 
 # Reusa o detector determinístico de duplicidade já validado no caso (T07).
 try:
@@ -542,7 +543,7 @@ def _t23_auto_aritmetica(d) -> dict:
     for m in re.finditer(r"R\$\s*([\d.]+,\d{2})\s*\(\s*(\d+)\s*[x×]\s*R\$\s*([\d.]+,\d{2})", txt):
         total, n, unit = _money(m.group(1)), int(m.group(2)), _money(m.group(3))
         if abs(n * unit - total) > 1.0:
-            erros.append(f"'{m.group(2)}× R$ {m.group(3)}' declarado R$ {m.group(1)}, mas {n}×={n*unit:,.2f} (Δ {n*unit-total:+,.2f})")
+            erros.append(f"'{m.group(2)}× R$ {m.group(3)}' declarado R$ {m.group(1)}, mas {n}×={moeda(n*unit)} (Δ {n*unit-total:+,.2f})")
     if erros:
         ev = ("Erro(s) aritmético(s) no relatório derivado (o N× não fecha com o total declarado): "
               + " | ".join(erros[:4]) + ". Contamina as totalizações 'devido' que dependem dessas linhas.")
@@ -571,7 +572,7 @@ def _t24_bruto_liquido(d) -> dict:
     fantasma = [v for v in glosados if not any(abs(v - o) < 0.02 for o in vals_ob)]
     if fantasma:
         ev = (f"Valor(es) tratado(s) como 'glosado/pago' SEM lastro em nenhuma OB líquida: "
-              f"{', '.join(f'R$ {v:,.2f}' for v in fantasma[:4])}. É valor BRUTO de NF (não pagamento) — "
+              f"{', '.join(f'R$ {moeda(v)}' for v in fantasma[:4])}. É valor BRUTO de NF (não pagamento) — "
               f"vício bruto×líquido que infla o saldo/crédito apurado pelo órgão.")
         return _hip("T24-BRUTO-LIQUIDO", "Valor-âncora bruto sem lastro em OB", "INDICIO", "alto", ev,
                     "Relatório do órgão × ob_orcamentaria_siafe", "Lei 4.320/64 art. 63; ISSAI 4000", _PESO["alta"])
@@ -614,10 +615,10 @@ def _t25_jogo_planilha(d) -> dict:
     recuperou = est > 0 and vg >= est * 0.98  # aditivos levam o global de volta à estimativa
     limiar = 25.0  # teto legal ordinário de acréscimo (art. 125) — acima disso o padrão é sensível
     if eh_obra and n_adit >= 1 and acresc >= limiar and (mergulho or recuperou or est == 0):
-        partes = [f"contrato de obra/engenharia adjudicado por R$ {vi:,.2f} e elevado a R$ {vg:,.2f} "
+        partes = [f"contrato de obra/engenharia adjudicado por R$ {moeda(vi)} e elevado a R$ {moeda(vg)} "
                   f"via {n_adit} aditivo(s) (+{acresc:.1f}%)"]
         if mergulho:
-            partes.append(f"após MERGULHO na licitação ({desc_pct:.1f}% abaixo da estimativa de R$ {est:,.2f})")
+            partes.append(f"após MERGULHO na licitação ({desc_pct:.1f}% abaixo da estimativa de R$ {moeda(est)})")
         if recuperou:
             partes.append("com o global RECUPERANDO a estimativa original — assinatura clássica do jogo de planilha")
         ev = ("; ".join(partes) + f". Acréscimo por aditivo acima do teto ordinário de {limiar:.0f}% do art. 125 "
@@ -628,7 +629,7 @@ def _t25_jogo_planilha(d) -> dict:
                     "valor_inicial × valor_global × estimativa (PNCP/TCE-RJ)",
                     "Lei 14.133/2021 arts. 125-126; Acórdãos TCU 1.755/2004, 2.988/2018-Plenário", _PESO["alta"])
     return _hip("T25-JOGO-PLANILHA", "Jogo de planilha (recuperação por aditivo)", "AFASTADO", "—",
-                f"Acréscimo por aditivo {acresc:.1f}% (adjudicado R$ {vi:,.2f} → global R$ {vg:,.2f})"
+                f"Acréscimo por aditivo {acresc:.1f}% (adjudicado R$ {moeda(vi)} → global R$ {moeda(vg)})"
                 + ("" if eh_obra else "; objeto não é obra/engenharia (padrão típico de obras)")
                 + " — sem o padrão de mergulho-e-recuperação característico do jogo de planilha.",
                 "valor_inicial × valor_global", "Lei 14.133/2021 art. 125", _PESO["media"])

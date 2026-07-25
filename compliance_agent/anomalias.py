@@ -30,6 +30,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from compliance_agent.reporting.intel_base import moeda
 
 _DB = os.environ.get("JFN_DB", os.path.join(os.path.dirname(__file__), "..", "data", "compliance.db"))
 _DB = os.path.abspath(_DB)
@@ -176,7 +177,7 @@ def regras(df: pd.DataFrame, con) -> int:
         for _, r in sd.iterrows():
             flags.append((int(r["maxid"]), "R_FRACIONAMENTO_SAMEDAY", 0.6,
                           f"{int(r['n'])} OBs ao mesmo fornecedor pela UG {r['ug_codigo']} em {r['data_emissao']} "
-                          f"somando R$ {r['soma']:,.2f} (> teto de dispensa R$ {LIMITE_DISPENSA:,.2f}).",
+                          f"somando R$ {moeda(r['soma'])} (> teto de dispensa R$ {moeda(LIMITE_DISPENSA)}).",
                           "Art. 75 §1º Lei 14.133 (anti-fracionamento); Art. 23 §§1º-5º Lei 8.666"))
 
     # R_FRACIONAMENTO_MES: mesmo fornecedor+UG no mês com várias OBs abaixo do teto somando acima
@@ -189,7 +190,7 @@ def regras(df: pd.DataFrame, con) -> int:
         for _, r in mm.iterrows():
             flags.append((int(r["maxid"]), "R_FRACIONAMENTO_MES", 0.5,
                           f"{int(r['n'])} OBs no mês {r['mes']} (UG {r['ug_codigo']}), cada uma < teto mas somando "
-                          f"R$ {r['soma']:,.2f} — possível fracionamento temporal.",
+                          f"R$ {moeda(r['soma'])} — possível fracionamento temporal.",
                           "Art. 75 §1º Lei 14.133; Súmula TCU 247"))
 
     if flags:
@@ -367,4 +368,4 @@ if __name__ == "__main__":
     if a.top:
         for r in top_anomalias(a.top, a.orgao, a.fornecedor):
             print(f"[{r['score']:.2f}] OB {r['numero_ob']} | UG {r['ug_codigo']} | {r['favorecido_nome']} | "
-                  f"R$ {r['valor']:,.2f} | flags: {r['regras'] or '-'}")
+                  f"R$ {moeda(r['valor'])} | flags: {r['regras'] or '-'}")

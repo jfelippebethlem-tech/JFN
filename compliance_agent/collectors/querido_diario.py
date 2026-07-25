@@ -18,6 +18,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 QD_API = "https://queridodiario.ok.org.br/api/gazettes"
 
@@ -142,7 +143,7 @@ async def enriquecer_obs_com_historico(session, target_date: date = None) -> lis
                     severidade="alta",
                     titulo=titulo,
                     descricao=(
-                        f"'{nome}' recebeu OB de R$ {ob.valor:,.2f} (nº {ob.numero_ob}) "
+                        f"'{nome}' recebeu OB de R$ {moeda(ob.valor)} (nº {ob.numero_ob}) "
                         f"e aparece {hist['total_publicacoes']} vez(es) no histórico do DOERJ "
                         f"nos últimos 3 anos, incluindo {n_sancoes} publicação(ões) de sanção. "
                         f"Verificar se as sanções anteriores foram regularizadas antes do pagamento."

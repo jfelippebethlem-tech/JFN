@@ -42,6 +42,7 @@ from compliance_agent.detectores.base import (
     ancora,
     avaliar_rubrica,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 # Rubrica fechada do PODER DECISÓRIO do beneficiário sobre a contratação (spec C6). LLM-opcional; degrada honesto.
 # Só 'decisor-direto' e 'influencia-indireta' pontuam; 'sem-poder' não. Score-teto do C6 é 'medio' (conservador):
@@ -255,11 +256,11 @@ class C6VinculoPolitico(Detector):
         razoes: list[str] = []
         if valor_doado >= _LIMIAR_DOACAO_MEDIO:
             score = ancora("medio")
-            razoes.append(f"agregado doado pelos sócios a beneficiário(s) com poder = R$ {valor_doado:,.2f} "
+            razoes.append(f"agregado doado pelos sócios a beneficiário(s) com poder = R$ {moeda(valor_doado)} "
                           f"(≥ R$ {_LIMIAR_DOACAO_MEDIO:,.0f}) — indício 'medio'")
         else:
             score = ancora("fraco")
-            razoes.append(f"agregado doado a beneficiário(s) com poder = R$ {valor_doado:,.2f} "
+            razoes.append(f"agregado doado a beneficiário(s) com poder = R$ {moeda(valor_doado)} "
                           f"(< R$ {_LIMIAR_DOACAO_MEDIO:,.0f}) — indício 'fraco' (só vale em convergência)")
 
         # sequência temporal e razão retorno/doação são MODULADORES de razão — registrados, mas o teto é 0.6.

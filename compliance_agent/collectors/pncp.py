@@ -21,6 +21,7 @@ from typing import Optional
 import logging
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -399,7 +400,7 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
                     severidade="alta",
                     titulo=titulo,
                     descricao=(
-                        f"OB nº {ob.numero_ob} (R$ {ob.valor:,.2f}) paga a "
+                        f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}) paga a "
                         f"'{ob.favorecido_nome}' (CNPJ {cnpj}) em {target_date}. "
                         f"Nenhum contrato encontrado no PNCP para este fornecedor "
                         f"nos últimos {JANELA_DIAS} dias. Pagamento sem amparo contratual "

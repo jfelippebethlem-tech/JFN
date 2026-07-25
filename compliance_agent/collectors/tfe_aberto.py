@@ -22,6 +22,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 CKAN = "https://dadosabertos.rj.gov.br/api/3/action/package_show?id=tfe-despesa"
 UA = {"User-Agent": "Mozilla/5.0 (compatible; JFN-Auditor/1.0)"}
@@ -154,14 +155,14 @@ def main():
         return
     if a.ingest:
         n, pago = ingest_db(a.ano)
-        print(f"despesa_execucao {a.ano}: {n:,} linhas | PAGO TOTAL R$ {pago:,.2f}")
+        print(f"despesa_execucao {a.ano}: {n:,} linhas | PAGO TOTAL R$ {moeda(pago)}")
         return
     r = resumo(a.ano, a.orgao)
     print(f"== TFE Despesa {r['ano']} (espelho SIAFE D-1) — {r['linhas']:,} linhas ==")
     t = r["totais"]
-    print(f"  Empenhado: R$ {t.get('empenhado',0):,.2f}")
-    print(f"  Liquidado: R$ {t.get('liquidado',0):,.2f}")
-    print(f"  PAGO:      R$ {t.get('pago',0):,.2f}")
+    print(f"  Empenhado: R$ {moeda(t.get('empenhado',0))}")
+    print(f"  Liquidado: R$ {moeda(t.get('liquidado',0))}")
+    print(f"  PAGO:      R$ {moeda(t.get('pago',0))}")
     print("  Top órgãos por valor PAGO:")
     for o, pago, emp in r["top_orgaos"]:
         print(f"    R$ {pago:>18,.2f} | {o[:50]}")

@@ -29,6 +29,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from compliance_agent.database.models import Alerta, Pessoa, RegistroFolha
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -742,7 +743,7 @@ def detectar_cpf_duplicado_entre_fontes(session, competencia: str) -> list[dict]
                         descricao=(
                             f"'{row.nome}' (CPF {row.cpf}) recebe remuneração de "
                             f"{row.n_fontes} fontes públicas distintas: {', '.join(fontes)}. "
-                            f"Remuneração total: R$ {row.total or 0:,.2f}. {motivo}"
+                            f"Remuneração total: R$ {moeda(row.total or 0)}. {motivo}"
                         ),
                         evidencias=json.dumps(resultado, ensure_ascii=False, default=str),
                         pessoa_id=pessoa.id if pessoa else None,
@@ -998,8 +999,8 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
                             "regra":  "servidor_e_terceirizado",
                             "motivo": (
                                 f"Servidor {fr.vinculo or 'efetivo'} em '{fr.orgao_nome}' "
-                                f"(R$ {fr.remuneracao_bruta:,.2f}) e terceirizado pela empresa "
-                                f"'{tr.orgao_nome}' (R$ {tr.remuneracao_bruta:,.2f}). "
+                                f"(R$ {moeda(fr.remuneracao_bruta)}) e terceirizado pela empresa "
+                                f"'{tr.orgao_nome}' (R$ {moeda(tr.remuneracao_bruta)}). "
                                 "Vedado — não se pode contratar como terceirizado quem já é servidor."
                             ),
                             "severidade": "alta",
@@ -1020,8 +1021,8 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
                         "regra":  "aposentado_comissionado",
                         "motivo": (
                             f"'{inativo.nome}' é {inativo.vinculo} recebendo "
-                            f"R$ {inativo.remuneracao_bruta:,.2f} E exerce cargo comissionado "
-                            f"em '{comiss.orgao_nome}' recebendo R$ {comiss.remuneracao_bruta:,.2f}. "
+                            f"R$ {moeda(inativo.remuneracao_bruta)} E exerce cargo comissionado "
+                            f"em '{comiss.orgao_nome}' recebendo R$ {moeda(comiss.remuneracao_bruta)}. "
                             + (
                                 f"O valor do cargo ({comiss.remuneracao_bruta:,.2f}) supera 1/4 da "
                                 f"pensão ({limite:,.2f}) — possível violação do CF/88 art. 37, §10."
@@ -1043,9 +1044,9 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
                         "nome":   servidor.nome,
                         "regra":  "bolsista_servidor",
                         "motivo": (
-                            f"Bolsista FAPERJ ('{bolsista.cargo}', R$ {bolsista.remuneracao_bruta:,.2f}) "
+                            f"Bolsista FAPERJ ('{bolsista.cargo}', R$ {moeda(bolsista.remuneracao_bruta)}) "
                             f"e servidor ativo em '{servidor.orgao_nome}' "
-                            f"(R$ {servidor.remuneracao_bruta:,.2f}). "
+                            f"(R$ {moeda(servidor.remuneracao_bruta)}). "
                             "Verificar compatibilidade pela Resolução FAPERJ 007/2023."
                         ),
                         "severidade": "média",
@@ -1064,8 +1065,8 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
                         "regra":  "estagiario_servidor_efetivo",
                         "motivo": (
                             f"Estagiário em '{est.orgao_nome}' "
-                            f"(R$ {est.remuneracao_bruta:,.2f}) e servidor {efet.vinculo} "
-                            f"em '{efet.orgao_nome}' (R$ {efet.remuneracao_bruta:,.2f}). "
+                            f"(R$ {moeda(est.remuneracao_bruta)}) e servidor {efet.vinculo} "
+                            f"em '{efet.orgao_nome}' (R$ {moeda(efet.remuneracao_bruta)}). "
                             "Lei 11.788/08 art. 3º, §1º veda expressamente."
                         ),
                         "severidade": "alta",

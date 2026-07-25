@@ -30,6 +30,7 @@ import time
 
 import httpx
 import logging
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -916,7 +917,7 @@ def analisar_red_flags_contrato(objeto: str, orgao: str, valor: float) -> list[s
     prompt = (
         "Analise este contrato público e liste sinais de alerta de fraude ou irregularidade.\n"
         "Seja breve: máximo 5 itens. Se não houver, responda 'Nenhum sinal identificado'.\n\n"
-        f"Órgão: {orgao}\nObjeto: {objeto[:300]}\nValor: R$ {valor:,.2f}"
+        f"Órgão: {orgao}\nObjeto: {objeto[:300]}\nValor: R$ {moeda(valor)}"
     )
     try:
         llm_flags = best_free_chat(prompt, fallback="")

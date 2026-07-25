@@ -24,14 +24,14 @@ from datetime import date
 from pathlib import Path
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
-GROQ_API_KEY = os.environ.get(
-    "GROQ_API_KEY",
-    "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",
-)
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama3-70b-8192")
+# Sem fallback literal: chave hardcoded aqui (removida em 2026-07-23) já estava
+# revogada e produzia 401 disfarçado de "LLM não respondeu" — pior que falhar.
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 MEMORY_FILE = Path("data/groq_memory.json")
@@ -434,7 +434,7 @@ async def analisar_obs_com_groq(obs: list[dict]) -> dict:
         f"{contexto_aprendido}\n\n" if contexto_aprendido else ""
     ) + (
         f"Analise {len(obs)} Ordens Bancárias do Estado do RJ.\n"
-        f"Total em valores: R$ {total_valor:,.2f}\n"
+        f"Total em valores: R$ {moeda(total_valor)}\n"
         f"OBs sem processo SEI: {sem_processo}\n"
         f"OBs sem valor registrado: {sem_valor}\n\n"
         f"Dados das OBs:\n{json.dumps(resumo_obs, ensure_ascii=False, indent=2)}\n\n"

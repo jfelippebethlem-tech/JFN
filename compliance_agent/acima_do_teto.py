@@ -14,6 +14,7 @@ não são remuneração mensal). Acúmulo LÍCITO (art. 37 XVI) tem teto por ví
 Honestidade: é **indício**, não acusação; cita a composição e a competência. `relatorio()` gera o porquê por servidor.
 """
 from __future__ import annotations
+from compliance_agent.reporting.intel_base import moeda
 
 # Subsídio Ministro do STF (CF 37 XI). ⚠ atualizado por lei — verificar o valor do exercício analisado.
 TETO_CF_37_XI = 46366.19  # vigente em ref. 2025/2026 (confirmar reajuste anual)
@@ -52,8 +53,8 @@ def classificar(bruto: float, componentes: dict | None = None, teto: float = TET
         status, motivo = "VERIFICAR", ("acima do teto no BRUTO, mas sem detalhe de verbas — indenizatórias/abono "
             "de permanência podem explicar (não contam para o teto). Puxar a composição do contracheque")
     elif base > teto:
-        status, motivo = "INDICIO_SUPERSALARIO", (f"mesmo excluindo verbas indenizatórias/abono (R$ {excl:,.2f}), "
-            f"a base do teto (R$ {base:,.2f}) supera o teto em R$ {excesso:,.2f} — indício de supersalário a apurar")
+        status, motivo = "INDICIO_SUPERSALARIO", (f"mesmo excluindo verbas indenizatórias/abono (R$ {moeda(excl)}), "
+            f"a base do teto (R$ {moeda(base)}) supera o teto em R$ {moeda(excesso)} — indício de supersalário a apurar")
     else:
         status, motivo = "DENTRO_APOS_EXCLUSAO", ("acima no bruto, mas dentro do teto após excluir verbas "
             "indenizatórias/abono — provavelmente regular")
@@ -83,28 +84,28 @@ def relatorio(reg: dict, teto: float = TETO_CF_37_XI) -> str:
     """Relatório (o PORQUÊ) de um servidor acima do teto."""
     cls = classificar(reg.get("remuneracao_bruta"), reg.get("componentes"), teto)
     if not cls.get("acima"):
-        return f"{reg.get('nome')}: dentro do teto (R$ {reg.get('remuneracao_bruta', 0):,.2f} ≤ R$ {teto:,.2f})."
+        return f"{reg.get('nome')}: dentro do teto (R$ {moeda(reg.get('remuneracao_bruta', 0))} ≤ R$ {moeda(teto)})."
     L = [f"# Acima do teto — {reg.get('nome')}",
          f"- Órgão/cargo: {reg.get('orgao')} / {reg.get('cargo')} ({reg.get('vinculo')}) · competência {reg.get('competencia')}",
-         f"- Bruto: **R$ {cls['bruto']:,.2f}** · teto (CF 37 XI): R$ {teto:,.2f} · excesso sobre o teto: R$ {cls['excesso_sobre_teto']:,.2f}",
+         f"- Bruto: **R$ {moeda(cls['bruto'])}** · teto (CF 37 XI): R$ {moeda(teto)} · excesso sobre o teto: R$ {moeda(cls['excesso_sobre_teto'])}",
          f"- **Classificação:** {cls['status']} — {cls['motivo']}"]
     comp = reg.get("componentes")
     if comp:
         L.append("- Composição (por quê):")
         for nome, val in sorted(comp.items(), key=lambda x: -float(x[1] or 0))[:12]:
             conta = "↘ não conta p/ teto" if any(k in _cf(nome) for k in _INDENIZATORIAS) else "conta"
-            L.append(f"    - {nome}: R$ {float(val or 0):,.2f} ({conta})")
+            L.append(f"    - {nome}: R$ {moeda(float(val or 0))} ({conta})")
     L.append("> Indício, não prova. Bruto > teto pode ser legal (indenizatórias/abono/RRA/acúmulo). CF 37 XI/§11.")
     return "\n".join(L)
 
 
 def _leitura(n: int, cont: dict, teto: float) -> str:
     if not n:
-        return f"Nenhum registro acima do teto (R$ {teto:,.2f}) na amostra (ou base sem remuneração)."
+        return f"Nenhum registro acima do teto (R$ {moeda(teto)}) na amostra (ou base sem remuneração)."
     ind = cont.get("INDICIO_SUPERSALARIO", 0)
     rra = cont.get("RRA_RETROATIVO_PROVAVEL", 0)
     ver = cont.get("VERIFICAR", 0)
-    return (f"**{n}** registro(s) com bruto acima do teto (R$ {teto:,.2f}). **Bruto > teto NÃO é ilegal por si** "
+    return (f"**{n}** registro(s) com bruto acima do teto (R$ {moeda(teto)}). **Bruto > teto NÃO é ilegal por si** "
             f"(CF 37 §11): destes, **{rra}** são provável **RRA/retroativo** (não mensal), **{ver}** precisam da "
             f"**composição** (indenizatórias/abono podem explicar) e **{ind}** têm **indício de supersalário** "
             "(acima do teto mesmo excluindo indenizatórias). Puxar o contracheque detalhado para o 'porquê'.")

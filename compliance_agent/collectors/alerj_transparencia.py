@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
+from compliance_agent.reporting.intel_base import moeda
 
 _BASE_REPORT = "https://transparencia.alerj.rj.gov.br/section/report/{rid}"
 _VERARQ = "https://www2.alerj.rj.gov.br/leideacesso/verArquivo.asp?idArquivo={idA}"
@@ -124,7 +125,7 @@ if __name__ == "__main__":  # pragma: no cover
         r = parsear_pagamentos(_pdf_texto(sys.argv[1]))
         print(f"{r['mes_ano']}: {r['n']} pagamentos")
         for it in r["itens"][:15]:
-            print(f"  {it['data']} {it['credor'][:40]:40} {it['empenho']} R$ {it['valor']:,.2f}")
+            print(f"  {it['data']} {it['credor'][:40]:40} {it['empenho']} R$ {moeda(it['valor'])}")
     else:
         for d in listar_documentos(int(sys.argv[1]) if len(sys.argv) > 1 else 120)[:10]:
             print(d)

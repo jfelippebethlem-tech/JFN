@@ -9,6 +9,7 @@ Usa:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from compliance_agent.reporting.intel_base import moeda
 
 # Limite legal dispensa licitação (obras/serviços de engenharia) — Lei 14.133/21
 LIMITE_DISPENSA_OBRAS = 119_812.02
@@ -27,7 +28,7 @@ REGRAS_OBRAS: tuple[RegraObra, ...] = (
         id="acima_dispensa_sem_contrato",
         titulo="OB de obra acima do limite de dispensa sem amparo contratual/publicação",
         descricao=(
-            f"Valor da OB de obra acima de R$ {LIMITE_DISPENSA_OBRAS:,.2f} "
+            f"Valor da OB de obra acima de R$ {moeda(LIMITE_DISPENSA_OBRAS)} "
             "sem publicação de contrato no PNCP."
         ),
         severidade="alta",

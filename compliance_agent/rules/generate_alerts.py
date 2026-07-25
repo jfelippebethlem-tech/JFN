@@ -20,6 +20,7 @@ from pathlib import Path
 
 from compliance_agent.database.models import get_session, init_db, Alerta
 from compliance_agent.rules.default_audit_config import CONFIG_PADRAO
+from compliance_agent.reporting.intel_base import moeda
 
 DB = Path(__file__).resolve().parent.parent.parent / "data" / "compliance.db"
 
@@ -98,7 +99,7 @@ def gerar_alertas(session=None) -> int:
         v = o["valor"]
         if v >= 5_000 and abs(v - round(v, -2)) < cfg.valores_redondos_tolerancia:
             txt = (
-                f"OB {o['numero_ob']} tem valor redondo suspeito: R$ {v:,.2f}. "
+                f"OB {o['numero_ob']} tem valor redondo suspeito: R$ {moeda(v)}. "
                 "Pode indicar estimativa sem cotação real ou direcionamento."
             )
             gerar_alerta("valor_redondo", "media", o["id"], txt, referencia=o["numero_ob"])
@@ -115,7 +116,7 @@ def gerar_alertas(session=None) -> int:
             ids = [i["id"] for i in itens[:3]]
             txt = (
                 f"Concentração de {len(itens)} pagamentos para "
-                f"'{chave}' totalizando R$ {total:,.2f}. "
+                f"'{chave}' totalizando R$ {moeda(total)}. "
                 "Pode indicar direcionamento ou dispensa indevida."
             )
             gerar_alerta("concentracao_favorecido_ug", "alta", ids[0], txt, referencia=chave)
@@ -134,7 +135,7 @@ def gerar_alertas(session=None) -> int:
                 ids = [i["id"] for i in itens[:3]]
                 txt = (
                     f"Possível fracionamento em {len(itens)} pagamentos para "
-                    f"'{chave}' no mês, totalizando R$ {total:,.2f}. "
+                    f"'{chave}' no mês, totalizando R$ {moeda(total)}. "
                     "Verificar fraude à licitação e dispensa indevida."
                 )
                 gerar_alerta("fracionamento_suspeito", "alta", ids[0], txt, referencia=chave)

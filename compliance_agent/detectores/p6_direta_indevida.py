@@ -37,6 +37,7 @@ import re
 
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
 from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
+from compliance_agent.reporting.intel_base import moeda
 
 MODALIDADE_DISPENSA = 8
 MODALIDADE_INEXIGIBILIDADE = 9
@@ -90,7 +91,7 @@ class P6DiretaIndevida(Detector):
 
         if float(valor) <= teto_tipo:
             res.status = "descartado"
-            res.motivo_refutacao = (f"R$ {float(valor):,.2f} dentro do limite de dispensa "
+            res.motivo_refutacao = (f"R$ {moeda(float(valor))} dentro do limite de dispensa "
                                     f"do exercício ({ato_normativo(int(ano))})")
             return res
 
@@ -99,8 +100,8 @@ class P6DiretaIndevida(Detector):
             res.status = "confirmado"
             res.valores["teste_objetivo"] = "violado"  # acima de QUALQUER teto por valor → flag A
             res.evidencia = [(
-                f"dispensa de R$ {float(valor):,.2f} em {ano} — acima até do teto de OBRAS "
-                f"(R$ {teto_obras:,.2f}; {ato_normativo(int(ano))}) sem outro amparo declarado "
+                f"dispensa de R$ {moeda(float(valor))} em {ano} — acima até do teto de OBRAS "
+                f"(R$ {moeda(teto_obras)}; {ato_normativo(int(ano))}) sem outro amparo declarado "
                 "(Lei 14.133/2021 art. 75 I-II c/c art. 182)"
             )]
             return res
@@ -109,8 +110,8 @@ class P6DiretaIndevida(Detector):
         res.status = "confirmado"
         res.valores["teste_objetivo"] = "nao_aferivel"  # pode ser engenharia (teto maior) — dúvida declarada
         res.evidencia = [(
-            f"dispensa de R$ {float(valor):,.2f} em {ano} — acima do teto de "
-            f"'{tipo}' (R$ {teto_tipo:,.2f}) mas dentro do de obras (R$ {teto_obras:,.2f}); "
+            f"dispensa de R$ {moeda(float(valor))} em {ano} — acima do teto de "
+            f"'{tipo}' (R$ {moeda(teto_tipo)}) mas dentro do de obras (R$ {moeda(teto_obras)}); "
             "verificar se o objeto é engenharia antes de qualquer conclusão"
         )]
         return res

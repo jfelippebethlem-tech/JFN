@@ -29,6 +29,7 @@ import logging
 import re
 import unicodedata
 from datetime import date, datetime
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ def _s_capital(p):
         # não pode dominar a triagem (senão a lista vira só entidade sem fins)
         peso = 6 if _e_sem_fins_lucrativos(p) else 22
         return dict(id="capital_incompativel", peso=peso,
-                    detalhe=f"capital R$ {cap:,.2f} vs recebido R$ {tot:,.2f}{razao}")
+                    detalhe=f"capital R$ {moeda(cap)} vs recebido R$ {moeda(tot)}{razao}")
 
 
 def _s_endereco_compartilhado(p):
@@ -123,7 +124,7 @@ def _s_aberta_as_vesperas(p):
         if 0 <= dias <= 365 and tot >= 500_000:
             return dict(id="aberta_as_vesperas", peso=18,
                         detalhe=f"aberta {dias} dias antes do 1º pagamento "
-                                f"(R$ {tot:,.2f})")
+                                f"(R$ {moeda(tot)})")
 
 
 def _s_socio_unico(p):
@@ -131,7 +132,7 @@ def _s_socio_unico(p):
     cap = p.get("capital_social")
     if n == 1 and cap is not None and cap <= 5_000 and not _e_sem_fins_lucrativos(p):
         return dict(id="socio_unico_capital_baixo", peso=12,
-                    detalhe=f"sócio único, capital R$ {cap:,.2f}")
+                    detalhe=f"sócio único, capital R$ {moeda(cap)}")
 
 
 def _s_cnae(p):
@@ -153,9 +154,29 @@ def _s_sancionada(p):
                     detalhe="consta em CEIS/CNEP (sanção)")
 
 
+def _s_sede_sem_substancia(p):
+    """Veredito físico do verificador de sede (sem Google/Mapillary).
+
+    Vem de `compliance_agent.geo.sede_real` — coabitação por PRÉDIO na base da
+    Receita, sala compartilhada, e-mail raro repetido, OSM/CEP. Complementa o
+    `endereco_compartilhado` acima, que conta por `endereco_norm` COM complemento
+    e por isso enxerga sala, não prédio (subconta ~3-6×).
+    """
+    v = p.get("sede_veredito")
+    if v == "forte_suspeita":
+        peso = 22
+    elif v == "suspeita":
+        peso = 12
+    else:
+        return None
+    return dict(id="sede_sem_substancia", peso=peso,
+                detalhe=f"verificação de sede real: {v} "
+                        f"(suspeita {p.get('sede_score_suspeita')})")
+
+
 _SINAIS = [_s_situacao, _s_capital, _s_endereco_compartilhado,
            _s_endereco_residencial, _s_aberta_as_vesperas, _s_socio_unico,
-           _s_cnae, _s_sancionada]
+           _s_cnae, _s_sancionada, _s_sede_sem_substancia]
 
 
 def avaliar_perfil(perfil: dict) -> dict:
@@ -175,6 +196,7 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
     ausente vira None e o sinal dependente simplesmente não dispara.
     """
     from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError
     cnpj = re.sub(r"\D", "", str(cnpj or ""))
     if len(cnpj) != 14:
         return None
@@ -224,6 +246,16 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
             p["n_socios"] = n[0] if n else None
     except Exception as exc:
         logger.warning("consulta de nº de sócios falhou p/ CNPJ %s: %s", cnpj, exc)
+    # veredito de sede real (tools/sweep_sede_real). Ausente = sinal simplesmente
+    # não dispara — nunca vira acusação por falta de dado.
+    try:
+        s = session.execute(text(
+            "SELECT veredito, score_suspeita FROM verificacao_sede_real WHERE cnpj=:c"),
+            {"c": cnpj}).fetchone()
+        if s:
+            p["sede_veredito"], p["sede_score_suspeita"] = s[0], s[1]
+    except SQLAlchemyError as exc:  # tabela ainda não criada = sweep nunca rodou
+        logger.warning("veredito de sede indisponível p/ CNPJ %s (sinal mudo): %s", cnpj, exc)
     # sanção vigente (reusa a lógica do Núcleo)
     try:
         from compliance_agent.nucleo.adaptador_db import _tem_sancao_vigente

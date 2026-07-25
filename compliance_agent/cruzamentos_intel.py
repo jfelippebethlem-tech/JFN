@@ -24,6 +24,7 @@ import logging
 import re
 import sqlite3
 from pathlib import Path
+from compliance_agent.reporting.intel_base import moeda
 
 _REPO = Path(__file__).resolve().parent.parent
 _DB = str(_REPO / "data" / "compliance.db")
@@ -910,14 +911,18 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
             "unidade_nome, fornecedor_cnpj, fornecedor_nome, municipio, data_pub "
             "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
             "AND item_descricao IS NOT NULL AND length(item_descricao)>=3").fetchall()
+        from compliance_agent.medida_item import assinatura_medida, un_canon
         grupos: dict[tuple, list] = {}
         for r in rows:
             base = _norm_item(r["d"])
             if not base:
                 continue
             # a UNIDADE DE MEDIDA entra na chave: "óleo" em litro ≠ em tambor; "refeição" ≠ "evento".
-            un = re.sub(r"[^a-z]", "", (r["un"] or "").lower())[:8]
-            grupos.setdefault((base, un), []).append(r)
+            # + assinatura de tamanho/embalagem (medida_item): fardo de 1,5L não entra na mesma
+            # mediana de copinho de 200ml (senão vira sobrepreço falso). Descrição+unidade.
+            un = un_canon(r["un"])
+            sig = assinatura_medida(r["d"], r["un"])["sig"]
+            grupos.setdefault((base, un, sig), []).append(r)
         achados = []
         n_grupos_validos = 0
         for chave, itens in grupos.items():
@@ -1907,7 +1912,7 @@ def _hub_risco(chave: str, valor: str, n_cnpjs: int, n_ativos: int,
     if (min_ok := n_recebem_ob >= 1) and n_cnpjs <= _HUB_TETO_ALTO and \
             (n_ativos < n_cnpjs / 2 or total_recebido_ob >= _HUB_TOTAL_ALTO):
         return "alto", (f"grupo coeso ({n_cnpjs} CNPJs), {n_recebem_ob} recebem OB "
-                        f"(R${total_recebido_ob:,.2f}), {n_ativos} ativos — ninho com materialidade")
+                        f"(R${moeda(total_recebido_ob)}), {n_ativos} ativos — ninho com materialidade")
     if min_ok:
         return "medio", f"{n_recebem_ob} de {n_cnpjs} CNPJs recebem OB — verificar vínculo"
     return "baixo", "nenhum CNPJ do grupo recebe OB do Estado — sem materialidade"
@@ -2027,7 +2032,7 @@ if __name__ == "__main__":
         d = sancionadas_contratadas()
         print(f"{d['n']} empresas ({d['n_a_epoca']} com ato À ÉPOCA da sanção)")
         for e in d["empresas"][:10]:
-            print(f"  {e['cnpj']} {e['nome'][:40]:40} estado_durante=R${e['estado']['valor_durante']:,.2f} "
+            print(f"  {e['cnpj']} {e['nome'][:40]:40} estado_durante=R${moeda(e['estado']['valor_durante'])} "
                   f"pncp_durante={e['pncp']['vitorias_durante']}")
     elif cmd == "sancionadas_municipio":
         d = sancionadas_municipio()
@@ -2035,7 +2040,7 @@ if __name__ == "__main__":
               f"descartados por esfera: {d['descartados_outra_esfera']}")
         for e in d["empresas"][:10]:
             print(f"  {e['cnpj']} {e['nome'][:38]:38} durante={e['contratos_durante']} "
-                  f"R${e['valor_durante']:,.2f}")
+                  f"R${moeda(e['valor_durante'])}")
     elif cmd == "perdedoras":
         d = perdedoras_contumazes()
         print(f"{d['n']} perdedoras contumazes")
@@ -2046,7 +2051,7 @@ if __name__ == "__main__":
         print(f"{d['n']} grupos com possível fracionamento (colado no teto)")
         for g in d["grupos"][:12]:
             print(f"  {(g['nome'] or '')[:26]:26} UG{g['ug_emitente']} {g['mes']} "
-                  f"{g['n_colado']}/{g['n']} colados ({int(g['concentracao']*100)}%) soma R${g['soma']:,.2f}")
+                  f"{g['n_colado']}/{g['n']} colados ({int(g['concentracao']*100)}%) soma R${moeda(g['soma'])}")
     elif cmd == "aditivos":
         d = aditivos_estouro()
         print(f"aditivos: {d['n']} (estouram teto={d['n_estoura_teto']}, série={d['n_serie']}) "

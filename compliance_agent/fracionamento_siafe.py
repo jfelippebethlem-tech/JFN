@@ -30,6 +30,7 @@ import statistics
 from datetime import date, datetime
 
 from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
+from compliance_agent.reporting.intel_base import moeda
 
 MIN_OBS = 3          # o padrão do art. 75 §1º é a REPETIÇÃO; duas compras não fazem série
 _STATUS_NAO_PAGO = ("exclu", "cancelad", "estornad", "anulad")
@@ -151,8 +152,8 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
             "obs": [o["numero_ob"] for o in obs][:20],
             "resumo": (f"{len(obs)} Ordens Bancárias ({len(processos_distintos)} processos distintos) "
                        f"pagas à mesma empresa pela UG {ug} em {exercicio}, "
-                       f"todas abaixo do limite de dispensa (R$ {limite:,.2f}) e somando "
-                       f"R$ {soma:,.2f} — {soma/limite:.1f}× o teto"
+                       f"todas abaixo do limite de dispensa (R$ {moeda(limite)}) e somando "
+                       f"R$ {moeda(soma)} — {soma/limite:.1f}× o teto"
                        + (f", com intervalo mediano de {mediana:.0f} dia(s) entre pagamentos" if mediana
                           is not None else "")
                        + (f". {len(rente)} pagamento(s) ficaram RENTES ao teto (≥80% do limite) — encaixe "

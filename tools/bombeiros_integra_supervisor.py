@@ -28,6 +28,7 @@ import json
 import re
 import time
 from pathlib import Path
+from compliance_agent.reporting.intel_base import moeda
 
 REPO = Path(__file__).resolve().parent.parent
 FILA = REPO / "data" / "bombeiros_sei_fila.json"
@@ -128,7 +129,7 @@ def main() -> None:
                 status = "integra"
                 # escreve no corpus
                 corpus.write(SEP + "\n")
-                corpus.write(f"SEI: {sei} | FORN: {forn} | R$ {valor:,.2f} | score {score}\n")
+                corpus.write(f"SEI: {sei} | FORN: {forn} | R$ {moeda(valor)} | score {score}\n")
                 corpus.write(f"URL: {d.get('url', '')}\n")
                 cnpjs = d.get("cnpjs") or []
                 if cnpjs:

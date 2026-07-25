@@ -25,6 +25,7 @@ import re
 import collections
 import urllib.request
 import urllib.parse
+from compliance_agent.reporting.intel_base import moeda
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:
@@ -152,14 +153,14 @@ def main():
     por_mes, por_org, contratos, processos, total, n = consultar(cnpj, ano)
     print("\n===== EMPENHADO POR MES (%s, %s) =====" % (cnpj, ano))
     for mes in sorted(por_mes):
-        print("  %s: %2d empenhos | R$ %15s" % (mes, por_mes[mes][0], "{:,.2f}".format(por_mes[mes][1])))
-    print("  TOTAL: %d empenhos | R$ %s" % (n, "{:,.2f}".format(total)))
+        print("  %s: %2d empenhos | R$ %15s" % (mes, por_mes[mes][0], moeda(por_mes[mes][1])))
+    print("  TOTAL: %d empenhos | R$ %s" % (n, moeda(total)))
     print("\n===== POR ORGAO (top 10) =====")
     for o, v in sorted(por_org.items(), key=lambda x: -x[1])[:10]:
-        print("  R$ %15s  %s" % ("{:,.2f}".format(v), o[:55]))
+        print("  R$ %15s  %s" % (moeda(v), o[:55]))
     print("\n===== CONTRATOS (nº no historico) =====")
     for k, v in sorted(contratos.items(), key=lambda x: -x[1]):
-        print("  Contrato %-14s R$ %15s" % (k, "{:,.2f}".format(v)))
+        print("  Contrato %-14s R$ %15s" % (k, moeda(v)))
     print("\n===== PROCESSOS SEI (%d) =====" % len(processos))
     print("  " + ", ".join(sorted(processos.keys())))
     print("\n(ATENCAO: valores EMPENHADOS, nao necessariamente pagos. Empenhos sem nº de")

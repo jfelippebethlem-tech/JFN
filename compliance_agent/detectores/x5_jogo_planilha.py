@@ -38,6 +38,7 @@ from compliance_agent.detectores.base import (
     ancora,
     avaliar_rubrica,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 # Rubrica fechada da justificativa técnica das variações de quantitativo (spec X5). LLM-opcional; degrada honesto.
 # Nota: 'erro de projeto' NÃO salva quando há correlação direcional (combinação é feita no código, não na rubrica):
@@ -232,14 +233,14 @@ class X5JogoDePlanilha(Detector):
                 dano_computavel = True
         if dano_computavel:
             valores["dano_estimado_reais"] = round(dano, 2)
-            razoes.append(f"dano estimado (sobrepreço × qtd executada nos itens caros): R$ {dano:,.2f}")
+            razoes.append(f"dano estimado (sobrepreço × qtd executada nos itens caros): R$ {moeda(dano)}")
 
         # ── Evidência (higiene probatória §7.4): itens sobreprecificados que cresceram + a correlação ──
         for ln in sorted(sobreprecificados, key=lambda x: x["desvio"], reverse=True)[:8]:
             cresceu = ln["var_qtd"] is not None and ln["var_qtd"] > 0
             res.add_evidencia(
                 fonte=f"item '{ln['item']}' (planilha × referencial × execução)",
-                trecho=(f"preço_contratado=R$ {ln['preco_contratado']:,.2f} referencial=R$ {ln['referencial']:,.2f} "
+                trecho=(f"preço_contratado=R$ {moeda(ln['preco_contratado'])} referencial=R$ {moeda(ln['referencial'])} "
                         f"desvio={ln['desvio'] * 100:+.1f}% "
                         f"var_qtd={'%.1f%%' % (ln['var_qtd'] * 100) if ln['var_qtd'] is not None else '?'} "
                         f"{'CRESCEU' if cresceu else ''}".strip()),

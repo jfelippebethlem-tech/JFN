@@ -30,6 +30,7 @@ from typing import Union
 
 import httpx
 import logging
+from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +327,7 @@ async def _obs_reply() -> str:
             linhas = [f"*📋 Últimas {len(obs)} OBs:*\n"]
             for ob in obs:
                 fav = (ob.favorecido_nome or "sem detalhe")[:35]
-                val = f"R$ {ob.valor:,.2f}" if ob.valor else "—"
+                val = f"R$ {moeda(ob.valor)}" if ob.valor else "—"
                 linhas.append(f"• `{ob.numero_ob}` {ob.data_emissao} {val}\n  ↳ {fav}")
             return "\n".join(linhas)
         finally:
@@ -430,7 +431,7 @@ async def _top_reply() -> str:
                 return "Sem dados de favorecidos no banco ainda."
             linhas = ["*🏆 Top 10 Favorecidos (total histórico):*\n"]
             for i, r in enumerate(rows, 1):
-                linhas.append(f"{i}. *{r.favorecido_nome[:40]}*\n   R$ {r.total:,.2f} ({r.n} OBs)")
+                linhas.append(f"{i}. *{r.favorecido_nome[:40]}*\n   R$ {moeda(r.total)} ({r.n} OBs)")
             return "\n".join(linhas)
         finally:
             session.close()
@@ -468,7 +469,7 @@ async def _buscar_reply(termo: str) -> str:
             if obs:
                 linhas.append(f"*OBs encontradas ({len(obs)}):*")
                 for ob in obs:
-                    v = f"R$ {ob.valor:,.2f}" if ob.valor else "—"
+                    v = f"R$ {moeda(ob.valor)}" if ob.valor else "—"
                     linhas.append(f"• `{ob.numero_ob}` {ob.data_emissao} {v}")
             else:
                 linhas.append("Nenhuma OB encontrada.")
@@ -740,7 +741,7 @@ async def _coletar_contexto_db() -> str:
             linhas = [
                 f"DADOS ATUAIS DO BANCO (hoje={hoje}):",
                 f"- OBs no banco: {total_obs} (hoje: {obs_hoje})",
-                f"- Valor total das OBs de hoje: R$ {total_valor:,.2f}",
+                f"- Valor total das OBs de hoje: R$ {moeda(total_valor)}",
             ]
             if ult_sessao:
                 linhas.append(f"- Última coleta: {ult_sessao.data_sessao} "
@@ -753,7 +754,7 @@ async def _coletar_contexto_db() -> str:
             if top:
                 linhas.append("\nMAIORES FAVORECIDOS (histórico):")
                 for nome, t in top:
-                    linhas.append(f"- {nome}: R$ {t:,.2f}")
+                    linhas.append(f"- {nome}: R$ {moeda(t)}")
             return "\n".join(linhas)
         finally:
             session.close()

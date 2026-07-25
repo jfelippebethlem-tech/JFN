@@ -17,6 +17,7 @@ from datetime import date, datetime
 from typing import Optional
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 BRASILAPI = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
 RECEITAWS  = "https://www.receitaws.com.br/v1/cnpj/{cnpj}"  # fallback
@@ -140,7 +141,7 @@ async def enriquecer_ob_cnpj(session, ob) -> dict:
             "descricao": (
                 f"Empresa {empresa.razao_social} (CNPJ {cnpj}) está com situação "
                 f"'{situacao}' na Receita Federal e recebeu OB nº {ob.numero_ob} "
-                f"de R$ {ob_valor:,.2f}. Pagamento a empresa irregular é vedado."
+                f"de R$ {moeda(ob_valor)}. Pagamento a empresa irregular é vedado."
             ),
         })
 
@@ -152,7 +153,7 @@ async def enriquecer_ob_cnpj(session, ob) -> dict:
                 "severidade": "alta",
                 "descricao": (
                     f"{empresa.razao_social} foi aberta há apenas {dias} dias "
-                    f"({data_abertura}) e já recebeu R$ {ob_valor:,.2f} via OB {ob.numero_ob}."
+                    f"({data_abertura}) e já recebeu R$ {moeda(ob_valor)} via OB {ob.numero_ob}."
                 ),
             })
 
@@ -165,7 +166,7 @@ async def enriquecer_ob_cnpj(session, ob) -> dict:
                 "severidade": "média",
                 "descricao": (
                     f"{empresa.razao_social} tem endereço residencial "
-                    f"({logradouro} {complemento}) e recebeu R$ {ob_valor:,.2f}."
+                    f"({logradouro} {complemento}) e recebeu R$ {moeda(ob_valor)}."
                 ),
             })
 

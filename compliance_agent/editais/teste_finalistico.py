@@ -9,6 +9,7 @@ Sem número aferível → nao_aferivel (INDISPONÍVEL ≠ 0; o juízo volta ao c
 from __future__ import annotations
 
 import re
+from compliance_agent.reporting.intel_base import moeda
 
 # percentual: "30%", "30 %", "30,5%" (a forma por extenso entre parênteses é redundante no edital)
 _RE_PCT = re.compile(r"(\d{1,3}(?:[.,]\d{1,2})?)\s*%")
@@ -53,7 +54,7 @@ def _teto_percentual(subtipo, clausula, valor_estimado, teto, fonte, rotulo) -> 
             pct = round(absoluto / valor_estimado * 100, 1)
         elif absoluto:
             return _res(subtipo, "nao_aferivel",
-                        f"{rotulo} exigido em valor absoluto (R$ {absoluto:,.2f}) e o valor estimado do "
+                        f"{rotulo} exigido em valor absoluto (R$ {moeda(absoluto)}) e o valor estimado do "
                         "certame não está disponível para aferir o percentual", absoluto, teto, fonte)
         else:
             return _res(subtipo, "nao_aferivel", f"cláusula não traz percentual nem valor de {rotulo} aferível",

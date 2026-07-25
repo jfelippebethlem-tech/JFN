@@ -36,6 +36,7 @@ from compliance_agent.detectores.base import (
     ancora,
     avaliar_rubrica,
 )
+from compliance_agent.reporting.intel_base import moeda
 
 # ───────────────────────────── Limiares (CÓDIGO, nunca no prompt) ─────────────────────────────
 # Compressão da tríade empenho→liquidação→pagamento: ciclo total (empenho→pagamento) abaixo disso = "rápido demais".
@@ -162,7 +163,7 @@ class X3ExecucaoFinanceira(Detector):
                 res.add_evidencia(
                     fonte="SIAFE pagamento × atesto",
                     trecho=(f"pago em {dp.isoformat()} ANTES do atesto em {da.isoformat()} "
-                            f"(valor R$ {val:,.2f})"))
+                            f"(valor R$ {moeda(val)})"))
 
         # ── (c) SAZONALIDADE: % dos pagamentos (em valor) em dezembro ──
         total_valor = sum(float(p.get("valor") or 0) for p in pagamentos)
@@ -199,7 +200,7 @@ class X3ExecucaoFinanceira(Detector):
             if "ressalva_dezembro" not in valores:
                 res.add_evidencia(
                     fonte="SIAFE sazonalidade de pagamentos",
-                    trecho=(f"R$ {valor_dezembro:,.2f} de R$ {total_valor:,.2f} pagos em dezembro "
+                    trecho=(f"R$ {moeda(valor_dezembro)} de R$ {moeda(total_valor)} pagos em dezembro "
                             f"({pct_dezembro:.0%}); cronograma={tem_cronograma}"))
 
         # ── (d) INVERSÃO da ordem cronológica da fila (pago na frente de quem chegou antes) ──

@@ -25,6 +25,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import httpx
+from compliance_agent.reporting.intel_base import moeda
 
 CACHE_DIR = Path("data")
 _CACHE_FILE = CACHE_DIR / "sancoes_cache.json"
@@ -205,7 +206,7 @@ async def verificar_obs_contra_sancoes(session, target_date: date = None) -> lis
                 continue
             session.add(Alerta(
                 tipo="empresa_sancionada", severidade="alta", titulo=titulo,
-                descricao=(f"OB nº {ob.numero_ob} (R$ {ob.valor:,.2f}) paga a "
+                descricao=(f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}) paga a "
                            f"'{ob.favorecido_nome}' (CPF/CNPJ {cpf_cnpj}), que consta no {fonte} "
                            f"com sanção: '{tipo_sancao}'. Sancionado por: {orgao}. "
                            f"Período: {data_ini} a {data_fim or 'indeterminado'}. "

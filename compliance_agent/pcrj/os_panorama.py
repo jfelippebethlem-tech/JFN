@@ -19,6 +19,7 @@ from pathlib import Path
 import fitz
 import requests
 import urllib3
+from compliance_agent.reporting.intel_base import moeda
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -107,7 +108,7 @@ def coletar(urls: list[str] | None = None) -> dict:
             con.execute("INSERT OR REPLACE INTO os_rdp VALUES (?,?,?,?,?,?,?,?,?,?)",
                         (os_, uni, comp, ano, mes, head, ncar, desp, url, agora))
             ok += 1
-            print(f"  {os_:8} {uni[:34]:34} {comp:16} head={head:4} R$ {desp:,.2f}", flush=True)
+            print(f"  {os_:8} {uni[:34]:34} {comp:16} head={head:4} R$ {moeda(desp)}", flush=True)
         con.commit()
         tot = con.execute("SELECT COUNT(*) n, SUM(headcount) h, SUM(despesa_pessoal) d, "
                           "COUNT(DISTINCT os) o FROM os_rdp").fetchone()

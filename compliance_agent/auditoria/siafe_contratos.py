@@ -23,6 +23,7 @@ import re
 import json
 import time
 from playwright.sync_api import sync_playwright
+from compliance_agent.reporting.intel_base import moeda
 
 def filtrar(cnpj_digits):
     with sync_playwright() as pw:
@@ -63,10 +64,10 @@ def filtrar(cnpj_digits):
         def val(s):
             m = re.search(r'([\d\.]+,\d{2})', s or ''); return float(m.group(1).replace('.','').replace(',','.')) if m else 0.0
         tot = sum(val(r[11]) for r in rows if len(r) > 11)
-        print("CONTRATOS:", len(rows), "| VALOR TOTAL: R$ %s" % "{:,.2f}".format(tot))
+        print("CONTRATOS:", len(rows), "| VALOR TOTAL: R$ %s" % moeda(tot))
         for r in rows:
             if len(r) > 11:
-                print("  R$ %15s | %-18s | %s" % ("{:,.2f}".format(val(r[11])), (r[2] or r[1] or r[0])[:18], r[6][:32]))
+                print("  R$ %15s | %-18s | %s" % (moeda(val(r[11])), (r[2] or r[1] or r[0])[:18], r[6][:32]))
         _cache = os.environ.get("JFN_DATA_DIR") and os.path.join(os.environ["JFN_DATA_DIR"], "sei_cache") \
             or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "sei_cache")
         os.makedirs(_cache, exist_ok=True)

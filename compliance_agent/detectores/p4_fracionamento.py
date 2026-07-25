@@ -42,6 +42,7 @@ from compliance_agent.detectores.base import (
 # Fonte ÚNICA verificada verbatim nos decretos (Planalto): compliance_agent/limites_dispensa.py — nunca duplicar
 # a tabela aqui (§1.5: usar o limite da DATA da contratação). I = obras/engenharia · II = demais (compras/serviços).
 from compliance_agent.limites_dispensa import LIMITES as LIMITES_DISPENSA
+from compliance_agent.reporting.intel_base import moeda
 
 _DEFAULT_EXERCICIO = 2024
 
@@ -370,8 +371,8 @@ class P4Fracionamento(Detector):
         if estouro:
             ex, soma_ex, lim_ex, n_ex = estouro
             score = max(score, ancora("forte"))
-            razoes.append(f"soma das {n_ex} dispensas do exercício {ex} (R$ {soma_ex:,.2f}) "
-                          f"excede o limite do ano (R$ {lim_ex:,.2f})")
+            razoes.append(f"soma das {n_ex} dispensas do exercício {ex} (R$ {moeda(soma_ex)}) "
+                          f"excede o limite do ano (R$ {moeda(lim_ex)})")
 
         # 2) Clustering sob o teto: ≥2 com valor individual entre 80%–100% do limite → forte
         sob_teto = [c for c in disp if limite * 0.8 <= float(c.get("valor") or 0) <= limite]
@@ -405,7 +406,7 @@ class P4Fracionamento(Detector):
             d = _data(c)
             res.add_evidencia(
                 fonte=f"contratação {_fornecedor(c) or '?'}",
-                trecho=(f"objeto='{(c.get('objeto') or '')[:80]}' valor=R$ {float(c.get('valor') or 0):,.2f} "
+                trecho=(f"objeto='{(c.get('objeto') or '')[:80]}' valor=R$ {moeda(float(c.get('valor') or 0))} "
                         f"data={d.isoformat() if d else '?'} dispensa={_is_dispensa(c)}"),
             )
 
