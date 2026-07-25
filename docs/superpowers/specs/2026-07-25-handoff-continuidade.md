@@ -80,6 +80,29 @@ invalidado só quando a câmera se move.
 > canvas parados** — SwiftShader por software, 2 vCPU. FPS aqui **não** mede a experiência
 > do usuário; o que mede é o ms/quadro do desenho.
 
+**Segunda rodada do pipeline (papel 8 → papel 2).** A auditoria sobre o próprio resultado
+apontou que faltavam duas coisas para deixar de parecer desenho e passar a parecer objeto:
+
+- **o território não tinha espessura** — era um contorno deitado no tampo, e contorno
+  deitado o olho lê como decalque. Virou **laje**: parede lateral até `ESP=0.045`, tampo de
+  vidro fumê (que de quebra esconde a parede de trás, como deve) e a malha assada projetada
+  na altura da laje. São 294 pontos de contorno, convertidos para mundo pelo inverso exato
+  do mapeamento da placa. Tudo o que pousa passou a pousar **na laje**: pé do feixe, onda de
+  evento, base do projetor, anéis do reator;
+- **a mesa não tinha borda** — o piso só esmaecia, e sem limite físico o olho aceita como
+  fundo. Ganhou **aro** com halo.
+
+Custo depois da extrusão, em 63 quadros: **mediana 1,1 ms · p90 2,3 ms · teto 6 ms** (o p90
+dobrou; segue 7× abaixo do orçamento).
+
+> **A lição que mais vale desta rodada** — e que o commit `e3a0937c` perdeu, porque as
+> crases da mensagem foram comidas pelo shell: `repinta()` chamava `draw()` **antes** da
+> declaração de `_nuVisivel`, e um `let` em **zona morta temporal** derrubava a mesa inteira
+> com `ReferenceError` — mas **só** em `prefers-reduced-motion`, o único caminho em que
+> `repinta()` desenha. Era o defeito da mesa em branco **voltando por outra porta**.
+> Moral: **reduced-motion é um caminho de código distinto e tem de ser testado a cada
+> rodada** — a tela normal não o exercita.
+
 Defeitos achados por auditoria visual e corrigidos:
 
 | Defeito | Causa-raiz |
