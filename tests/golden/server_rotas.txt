@@ -59,6 +59,7 @@ GET /api/intel/hub_compartilhado -> api_intel_hub_compartilhado
 GET /api/intel/lift -> api_intel_lift
 GET /api/intel/nepotismo -> api_intel_nepotismo
 GET /api/intel/nepotismo_cruzado -> api_intel_nepotismo_cruzado
+GET /api/intel/ninho_sala -> api_intel_ninho_sala
 GET /api/intel/pdf -> api_intel_pdf
 GET /api/intel/perdedoras -> api_intel_perdedoras
 GET /api/intel/porta_giratoria -> api_intel_porta_giratoria

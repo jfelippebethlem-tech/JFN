@@ -1980,6 +1980,31 @@ def api_intel_fantasmas(limite: int = 50):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/ninho_sala")
+def api_intel_ninho_sala(limite: int = 120):
+    """Ninho pela SALA (endereço + complemento) e por CONJUNTO de fatores.
+
+    Dividir o PRÉDIO não diz nada — 'Rua da Assembleia 10' tem 318 CNPJs e é edifício
+    comercial. Dividir a SALA, com dois ou mais recebendo dinheiro público, é a assinatura
+    de interposição. O grau vem do acúmulo de fatores, nunca de um sinal só.
+    """
+    try:
+        # cache primeiro (o cálculo a frio leva ~16 s e o painel corta em 30 s); sem cache,
+        # calcula ao vivo e diz que veio ao vivo — nunca fica mudo.
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        c = ler_cache_intel("ninho_sala")
+        if c and c.get("ok"):
+            c["do_cache"] = True
+            c["grupos"] = (c.get("grupos") or [])[:limite]
+            return JSONResponse(c)
+        from compliance_agent.ninho_sala import ninhos_por_sala
+        d = ninhos_por_sala(limite=limite)
+        d["do_cache"] = False
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001 — degrada honesto, nunca lista vazia
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/hub_compartilhado")
 def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
     """Hub compartilhado: 1 âncora física (endereço/telefone/e-mail) usada por N CNPJs — assinatura

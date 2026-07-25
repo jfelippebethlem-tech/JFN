@@ -2090,6 +2090,12 @@ def gerar_cache_intel(db_path: str | None = None) -> dict:
                      ("beneficios_vinculo", _beneficios_vinculo_resumo),
                      ("conluio_qsa", lambda: conluio_qsa(db_path)),
                      ("hub_compartilhado", lambda: hub_compartilhado(db_path=db_path)),
+                     # ninho por SALA: ~16 s a frio (74 mil lookups por chave primária no dump
+                     # da Receita) — perto demais do teto de 30 s do `J()` do painel, e o card
+                     # ficava em "aguardando…" para sempre. Materializado aqui como os outros.
+                     ("ninho_sala", lambda: __import__(
+                         "compliance_agent.ninho_sala", fromlist=["ninhos_por_sala"]
+                     ).ninhos_por_sala(db_path=db_path)),
                      ("comunidades", _comunidades),
                      ("radar_risco", lambda: radar_risco(db_path))):
         try:

@@ -3326,7 +3326,10 @@ async function renderCockpit(){
 const NU_NODES=[
   {id:'radar',  lab:'radar de risco', tab:'g_radar', cor:'#5fd9ff', orb:.9,  sp:1},
   {id:'alertas',lab:'alertas',        tab:'e_alertas',cor:'#ff7a8a', orb:.66, sp:-.7},
-  {id:'ninho',  lab:'ninhos',         tab:'g_riscos', cor:'#f2b544', orb:.88, sp:.8},
+  // "ninhos" agora é a MESMA SALA, não o mesmo prédio: dividir 'Rua da Assembleia 10'
+  // (318 CNPJs, edifício comercial) não diz nada; dividir a SALA com 2+ recebendo é a
+  // assinatura de interposição. Rótulo mudou junto — o número é outro e menor, de propósito.
+  {id:'ninho',  lab:'mesma sala',     tab:'g_riscos', cor:'#f2b544', orb:.88, sp:.8},
   {id:'fenix',  lab:'empresa morta',  tab:'g_fenix',  cor:'#ff9a6a', orb:.6,  sp:1.15},
   {id:'com',    lab:'comunidades',    tab:'g_comun',  cor:'#c096ff', orb:.92, sp:-.55},
   {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', orb:.68, sp:.9},
@@ -4078,24 +4081,20 @@ function ckPull(first){
   _ckTick=[];
   J('/api/compliance/painel').then(d=>{const n=(d&&d.lista_alertas||[]).length;
     if(n)nuSet('alertas',n);});
-  if(first)J('/api/intel/hub_compartilhado?limite=40').then(d=>{   // caro a frio: só no boot da aba
+  if(first)J('/api/intel/ninho_sala?limite=60').then(d=>{
     /* Falhar em SILÊNCIO deixava o card em "—" — indistinguível de "não há ninho".
        Silêncio ≠ INDISPONÍVEL: se a rota não respondeu, o card diz isso. */
     if(!d||!d.ok){ckFill('ninho',{txt:'—',meta:erroHumano(d&&d.erro)});return;}
-    const gs=(d.grupos||[]),altos=gs.filter(g=>g.risco==='alto');
-    // Um CNPJ recebendo não é ninho — é um fornecedor com vizinhos. A assinatura de
-    // interposição é o dinheiro entrando por MAIS DE UMA casca da mesma âncora. Medido:
-    // 48 dos 88 grupos "alto" (R$ 8,05 bi, metade exata do total) tinham 1 só recebedor,
-    // e os maiores eram prédios de escritório em avenida (Av. Dra. Ruth Cardoso 7221,
-    // Av. Presidente Vargas 2000). O card passa a contar quem tem 2+ recebendo.
-    const multi=altos.filter(g=>(g.n_recebem_ob||0)>=2);
-    const tot=multi.reduce((s,g)=>s+(g.total_recebido_ob||0),0);
-    const soUm=altos.length-multi.length;
-    const frescor=d.do_cache&&d.gerado_em?` · <span class="dim">apurado em ${esc(d.gerado_em)}</span>`:'';
-    ckFill('ninho',{num:multi.length,meta:`grupos com <b>2+ CNPJs recebendo</b> na mesma âncora — <b>${fmtRc(tot)}</b> em OB`
-      +(soUm?` · outros ${fmtN(soUm)} têm só um recebedor (fornecedor com vizinhos, não ninho)`:'')+frescor});
-    const nomeChave={endereco:'endereço',telefone:'telefone',email:'e-mail'};
-    ckPush(multi.slice(0,3).map(g=>({c:'a',h:`◉ ninho por ${nomeChave[g.chave]||esc(g.chave)} — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${fmtRc(g.total_recebido_ob)} em OB`})));});
+    /* Passou a ser MESMA SALA (endereço + complemento), não mesmo prédio: 'Rua da
+       Assembleia 10' tem 318 CNPJs e é edifício comercial. E o grau vem do ACÚMULO de
+       fatores — 2+ recebendo, maioria baixada, abertura em lote, telefone comum —,
+       nunca de um sinal só. Por isso o número é menor: ele agora sustenta o que diz. */
+    const gs=(d.grupos||[]),altos=gs.filter(g=>g.grau==='alto');
+    ckFill('ninho',{num:altos.length,
+      meta:`grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada`
+           +(gs.length>altos.length?` · outros ${fmtN(gs.length-altos.length)} com menos fatores`:'')
+           +` — <b>${fmtRc(d.total_recebido_ob||0)}</b> em OB no conjunto`});
+    ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores||[])[1]||'')} · ${fmtRc(g.total_recebido_ob)}`})));});
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok){
       // herói nunca fica preso no placeholder: erro vira mensagem humana + retry
       const big=$('ck-econ');if(big&&/—/.test(big.textContent)){big.textContent='—';
