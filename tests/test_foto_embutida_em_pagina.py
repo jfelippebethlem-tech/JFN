@@ -91,6 +91,50 @@ def test_papel_amarelado_fica_fora_do_indice(tmp_path):
     assert fm._triar_e_hashear(p) == [], "papel bege entrou no índice de reciclagem"
 
 
+def test_leitura_visual_tem_teto_e_amostra_espacada():
+    """Há processo no acervo com 570 e com 1.281 arquivos em `fotos/`. Uma chamada de visão por
+    arquivo não termina nem cabe em cota nenhuma — e ler só os N primeiros leria só a primeira
+    medição, então a amostra tem de ser espaçada."""
+    fotos = list(range(100))
+    idx = sorted(fm._amostra_para_ler(fotos, 10))
+    assert len(idx) == 10
+    assert idx[0] == 0 and idx[-1] >= 85, f"amostra concentrada no começo: {idx}"
+    vaos = [b - a for a, b in zip(idx, idx[1:])]
+    assert max(vaos) - min(vaos) <= 1, f"espaçamento irregular: {vaos}"
+
+
+def test_abaixo_do_teto_le_tudo():
+    assert fm._amostra_para_ler(list(range(5)), 12) == {0, 1, 2, 3, 4}
+
+
+def test_resultado_declara_que_foi_amostra(tmp_path):
+    """Conclusão tirada de amostra apresentada como se fosse do todo é a mentira mais fácil aqui."""
+    d = tmp_path / "proc" / "fotos"
+    d.mkdir(parents=True)
+    for i in range(9):
+        _foto(i).resize((700, 400)).save(d / f"f{i}.jpg", quality=90)
+
+    r = fm.avaliar_fotos(tmp_path / "proc", objeto="obra", descrever=lambda p: "escavadeira",
+                         max_descricoes=3)
+    lv = r["leitura_visual"]
+    assert lv["amostra"] is True
+    assert lv["arquivos_enviados"] == 3 and lv["arquivos_no_processo"] == 9
+    assert "AMOSTRA" in lv["observacao"] and "3 de 9" in lv["observacao"]
+
+    r2 = fm.avaliar_fotos(tmp_path / "proc", objeto="obra", descrever=lambda p: "escavadeira",
+                          max_descricoes=50)
+    assert r2["leitura_visual"]["amostra"] is False
+    assert "TODOS" in r2["leitura_visual"]["observacao"]
+
+
+def test_sem_leitura_visual_nao_finge_que_apurou(tmp_path):
+    d = tmp_path / "proc" / "fotos"
+    d.mkdir(parents=True)
+    _foto(1).resize((700, 400)).save(d / "f.jpg", quality=90)
+    lv = fm.avaliar_fotos(tmp_path / "proc", objeto="obra")["leitura_visual"]
+    assert lv["executada"] is False and "não foi apurada" in lv["observacao"]
+
+
 _REAL = Path("data/sei_arquivo/070002_005897_2024/fotos/023_p29.jpg")
 
 

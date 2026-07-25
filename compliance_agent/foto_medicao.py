@@ -328,6 +328,51 @@ def _tokens(txt: str) -> set[str]:
     return set(tokens(txt or ""))
 
 
+_PROMPT_VISAO = (
+    "Você audita a MEDIÇÃO de um contrato público a partir da foto anexada ao processo. Descreva "
+    "OBJETIVAMENTE, em português, em até 3 frases: (1) que lugar, obra ou objeto aparece; (2) que "
+    "serviço, equipamento ou material está visível, e em que estado; (3) se há placa, régua, "
+    "identificação de local ou data na imagem. Use substantivos concretos (asfalto, dragagem, poste, "
+    "escavadeira, tubulação, prédio). Se a imagem não permitir dizer, escreva NÃO É POSSÍVEL AFIRMAR. "
+    "Nunca invente o que não está visível.")
+
+
+def descrever_com_visao(caminho, *, max_tokens: int = 260) -> str:
+    """`descrever` pronto para `avaliar_fotos`: lê a FOTOGRAFIA e devolve texto em português.
+
+    Devolve '' quando o arquivo não é fotografia (página de texto, papel escaneado) — e isso é
+    deliberado: `coerencia_objeto` só conta descrição não vazia, então documento fica FORA da conta
+    em vez de virar um 'verde' comprado com descrição de formulário. Se nada no processo for foto,
+    o veredito fica `pendente_reprocessar`, que é a verdade.
+
+    Página de relatório fotográfico é descrita FOTO A FOTO (ver `_regioes_foto`), não como página.
+
+    Custo: passa por `llm.visao`, que tem teto (`JFN_VISAO_TETO`) e kill-switch (`JFN_VISAO_OFF`).
+    Falha de provedor devolve '' — visão é enriquecimento e não derruba a camada objetiva."""
+    import io
+
+    from compliance_agent.llm import visao
+    try:
+        from PIL import Image
+        with Image.open(caminho) as im:
+            alvos = [im.crop(c) for c in _regioes_foto(im)] or [im.copy()]
+            alvos = [a for a in alvos if _hashear(a) is not None]   # mesma triagem do índice
+            if not alvos:
+                return ""
+            partes = []
+            for i, a in enumerate(alvos):
+                buf = io.BytesIO()
+                a.convert("RGB").save(buf, "JPEG", quality=85)
+                r = visao.descrever(buf.getvalue(), _PROMPT_VISAO, max_tokens=max_tokens)
+                if r.get("ok"):
+                    rot = f"Foto {i + 1} da página: " if len(alvos) > 1 else ""
+                    partes.append(rot + r["texto"].strip())
+            return "\n".join(partes)
+    except Exception as e:  # noqa: BLE001 — leitura visual é enriquecimento, nunca derruba a análise
+        logger.debug("descrição visual falhou (%s): %s", caminho, e)
+        return ""
+
+
 def coerencia_objeto(descricoes: list[dict], objeto: str) -> dict:
     """A descrição da foto (produzida pelo VLM) conversa com o objeto contratado? Determinístico sobre a
     descrição: compara os termos DISCRIMINANTES do objeto com os da foto (reusa o vocabulário do
@@ -337,7 +382,7 @@ def coerencia_objeto(descricoes: list[dict], objeto: str) -> dict:
         return {"grau": "pendente_reprocessar", "coerente": None, "descricoes": descricoes,
                 "resumo": "A leitura visual das fotos não foi executada — a correspondência entre a foto "
                           "e o objeto contratado continua PENDENTE (não é 'verde').",
-                "acao": "rodar o VLM local (moondream2/SmolVLM em llama.cpp na VM-2) e reavaliar"}
+                "acao": "rodar a leitura visual (`descrever=descrever_com_visao`) e reavaliar"}
     alvo = _tokens(objeto)
     if not alvo:
         return {"grau": "pendente_captura", "coerente": None, "descricoes": descricoes,
@@ -357,19 +402,38 @@ def coerencia_objeto(descricoes: list[dict], objeto: str) -> dict:
             "acao": "conferir manualmente as fotos apontadas contra o boletim de medição"}
 
 
-def avaliar_fotos(dir_processo, *, objeto: str = "", descrever=None, outros_processos=()) -> dict:
+def _amostra_para_ler(fotos: list, teto: int) -> set:
+    """Quais fotos mandar para a leitura visual quando o processo tem mais que o teto.
+
+    Amostra ESPAÇADA sobre a lista ordenada — os anexos vêm em ordem de juntada, então espaçar
+    cobre medições diferentes, enquanto pegar as N primeiras leria só a primeira medição."""
+    if len(fotos) <= teto:
+        return set(range(len(fotos)))
+    passo = len(fotos) / teto
+    return {min(len(fotos) - 1, int(i * passo)) for i in range(teto)}
+
+
+def avaliar_fotos(dir_processo, *, objeto: str = "", descrever=None, outros_processos=(),
+                  max_descricoes: int = 12) -> dict:
     """Veredito RESOLVIDO das fotos de um processo: reciclagem (objetivo, offline) + coerência com o
-    objeto (VLM local injetado). `descrever`: callable(caminho)->str; None ⇒ só a camada objetiva."""
+    objeto (leitura visual injetada). `descrever`: callable(caminho)->str; None ⇒ só a camada objetiva.
+
+    `max_descricoes` limita a leitura visual. Não é economia decorativa: há processo no acervo com
+    **570 e com 1.281** arquivos em `fotos/`, e uma chamada por arquivo não termina nem cabe em cota
+    nenhuma. Acima do teto a leitura vira AMOSTRA espaçada — e o resultado **declara** isso em
+    `leitura_visual`, porque conclusão tirada de amostra apresentada como se fosse do todo é a
+    mentira mais fácil de cometer aqui."""
     d = Path(dir_processo)
     fotos = _fotos_do_processo(d)
     rec = reciclagem([d, *outros_processos]) if outros_processos else reciclagem([d])
+    ler = _amostra_para_ler(fotos, max_descricoes) if descrever is not None else set()
     descricoes = []
-    for f in fotos:
+    for i, f in enumerate(fotos):
         item = {"arquivo": str(f), "exif": exif_resumo(f), "descricao": None}
-        if descrever is not None:
+        if descrever is not None and i in ler:
             try:
                 item["descricao"] = descrever(str(f))
-            except Exception as e:  # noqa: BLE001 — VLM local pode cair; degrada honesto
+            except Exception as e:  # noqa: BLE001 — a leitura visual pode cair; degrada honesto
                 logger.debug("VLM falhou (%s): %s", f, e)
                 item["erro"] = str(e)[:100]
         descricoes.append(item)
@@ -385,7 +449,19 @@ def avaliar_fotos(dir_processo, *, objeto: str = "", descrever=None, outros_proc
     if ordem.get(grau, 0) == 0:                    # nenhuma das camadas acusou: preserva o estado honesto
         grau = rec["grau"] if rec["grau"] != "verde" else ("verde" if coer["grau"] == "verde"
                                                            else coer["grau"])
+    lidas = sum(1 for x in descricoes if x.get("descricao"))
+    leitura = {"executada": descrever is not None, "arquivos_no_processo": len(fotos),
+               "arquivos_enviados": len(ler), "com_descricao": lidas,
+               "amostra": bool(ler) and len(ler) < len(fotos)}
+    leitura["observacao"] = (
+        "leitura visual não executada — a correspondência com o objeto não foi apurada"
+        if descrever is None else
+        f"leitura visual por AMOSTRA: {len(ler)} de {len(fotos)} arquivos, espaçados na ordem de "
+        f"juntada ({lidas} renderam descrição; os demais eram papel ou o provedor não respondeu). "
+        "A conclusão sobre correspondência vale para a amostra, não para o processo inteiro."
+        if leitura["amostra"] else
+        f"leitura visual em TODOS os {len(fotos)} arquivos ({lidas} eram fotografia).")
     return {"grau": grau, "n_fotos": len(fotos), "reciclagem": rec, "coerencia_objeto": coer,
-            "sinais": sinais, "fotos": descricoes,
+            "sinais": sinais, "fotos": descricoes, "leitura_visual": leitura,
             "resumo": " ".join(s["observacao"] for s in sinais) or rec["resumo"],
             "ressalva": _RESSALVA, "fonte": "foto_medicao"}
