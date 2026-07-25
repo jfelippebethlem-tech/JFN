@@ -154,7 +154,7 @@ def secao_veredito_fachada(d: dict) -> dict | None:
                         "juízo de fachada (INDISPONÍVEL ≠ ausência de risco). Nada foi fabricado.</p>"}
     classe = (fant.get("classificacao")
               or ("FORTE" if (score or 0) >= 70 else "MODERADO" if (score or 0) >= 40 else "FRACO"))
-    itens = "".join(f"<li>{_esc(s)}</li>" for s in sinais[:12]) or "<li>—</li>"
+    itens = "".join(f"<li>{_esc(s)}</li>" for s in sinais) or "<li>—</li>"
     prosa = (f"<p>O perfil cadastral e financeiro deste fornecedor foi submetido a oito sinais "
              f"objetivos de empresa-fachada (situação na Receita, capital frente ao recebido, "
              f"endereço, idade do CNPJ, quadro societário, CNAE, sanções). O escore consolidado é "
@@ -181,7 +181,7 @@ def secao_suspeitas(con: sqlite3.Connection, cnpj: str, d: dict) -> dict | None:
             itens.append(f"Cláusula <b>{_esc(r[0])}</b> no certame {_esc(r[2])}: colegiado {r[1]}/10 — "
                          "abaixo do limiar de direcionamento, mas fora do padrão (acompanhar).")
     # red flags de gravidade média do dossiê
-    for f in (d.get("red_flags") or [])[:8]:
+    for f in (d.get("red_flags") or []):
         obs = f.get("obs") if isinstance(f, dict) else str(f)
         grav = f.get("grav") if isinstance(f, dict) else None
         if grav is not None and grav <= 2 and obs:
@@ -244,8 +244,8 @@ def _slug_processo(numero: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in (numero or "").replace("SEI-", "")).strip("_")
 
 
-def secao_sei_arvore(processos_sei: list[str], max_docs_por_processo: int = 40,
-                     max_recorte_chars: int = 1200) -> dict | None:
+def secao_sei_arvore(processos_sei: list[str], max_docs_por_processo: int | None = None,
+                     max_recorte_chars: int | None = None) -> dict | None:
     """Capítulo: a ÁRVORE do SEI (lista de documentos por processo, com fase/tipo/datas) e RECORTES
     da íntegra dos documentos-chave (parecer, ata, edital, despacho decisório). Lê o arquivo compacto
     em data/sei_arquivo (regra da casa: arquivo antes de browser). Sem arquivo → None (honesto)."""
@@ -265,7 +265,8 @@ def secao_sei_arvore(processos_sei: list[str], max_docs_por_processo: int = 40,
             continue
         arvore = ["<table class='tabela'><tr><th>#</th><th>Documento</th><th>Fase</th><th>Tipo</th></tr>"]
         recortes = []
-        for i, doc in enumerate(docs[:max_docs_por_processo]):
+        # sem teto por padrão — a árvore inteira e a íntegra dos documentos-chave (diretriz do dono)
+        for i, doc in enumerate(docs[:max_docs_por_processo] if max_docs_por_processo else docs):
             arvore.append(f"<tr><td>{doc.get('i', i)}</td><td>{_esc(doc.get('titulo'))}</td>"
                           f"<td>{_esc(doc.get('fase'))}</td><td>{_esc(doc.get('tipo'))}</td></tr>")
             if doc.get("tipo") in tipos_chave and doc.get("texto"):
@@ -276,11 +277,13 @@ def secao_sei_arvore(processos_sei: list[str], max_docs_por_processo: int = 40,
                     except OSError:
                         continue
                     if txt:
+                        corte = txt[:max_recorte_chars] if max_recorte_chars else txt
                         recortes.append(
                             f"<div class='recorte'><b>{_esc(doc.get('titulo'))}</b> "
                             f"<span class='dim'>({_esc(doc.get('tipo'))})</span>"
-                            f"<blockquote>{_esc(txt[:max_recorte_chars])}"
-                            + ("…" if len(txt) > max_recorte_chars else "") + "</blockquote></div>")
+                            f"<blockquote>{_esc(corte)}"
+                            + ("…" if max_recorte_chars and len(txt) > max_recorte_chars else "")
+                            + "</blockquote></div>")
         arvore.append("</table>")
         blocos.append(f"<h3>Processo {_esc(numero)}</h3>"
                       f"<p class='dim'>{len(docs)} documento(s) na árvore.</p>"
@@ -334,7 +337,7 @@ def _docs_do_processo(numero: str) -> tuple[list[dict], str]:
     return docs, "\n\n".join(partes)
 
 
-def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int = 8) -> dict | None:
+def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int | None = None) -> dict | None:
     """Capítulo: a despesa foi COMPROVADA e o controle prévio foi CUMPRIDO?
 
     Roda sobre o arquivo documental já capturado (regra da casa: arquivo antes de browser), sem IA e
@@ -344,7 +347,10 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
 
     linhas, detalhes = [], []
     analisados = 0
-    for numero in (processos_sei or [])[:max_processos]:
+    # SEM TETO por padrão (diretriz do dono: dossiê completo, sem limite de páginas). `max_processos`
+    # existe só para chamadas pontuais que queiram uma amostra.
+    lista = list(processos_sei or [])
+    for numero in (lista[:max_processos] if max_processos else lista):
         docs, texto = _docs_do_processo(numero)
         if not docs or not texto.strip():
             continue
@@ -363,9 +369,15 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
         if ex.get("grau") not in ("verde", "nao_aplicavel"):
             bloco.append(f"<p><b>Comprovação da execução:</b> {_esc(ex.get('resumo'))}</p>")
         if pg.get("veredito") not in ("SEM_PARECER_LOCALIZADO", "SEM_CONDICIONANTES"):
+            # TODAS as condicionantes, com o texto INTEIRO: é a peça que o auditor vai cobrar item a
+            # item — resumir aqui obrigaria a voltar ao processo para saber o que foi exigido.
             itens = "".join(
                 f"<li><b>({_esc(c.get('id'))}) {_esc(c.get('tipo'))}</b> — {_esc(c.get('status'))}: "
-                f"{_esc(c.get('texto'))[:220]}</li>" for c in (pg.get("condicionantes") or [])[:8])
+                f"{_esc(c.get('texto'))}"
+                + (f"<br><span class='dim'>evidência: {_esc(c.get('evidencia'))}</span>"
+                   if c.get("evidencia") else "")
+                + f"<br><span class='dim'>{_esc(c.get('observacao'))}</span></li>"
+                for c in (pg.get("condicionantes") or []))
             bloco.append("<p><b>Condicionantes do parecer jurídico</b> (art. 53 da Lei 14.133/2021 — a "
                          f"manifestação é prévia e vincula a instrução): {_esc(pg.get('leitura'))}</p>"
                          + (f"<ul>{itens}</ul>" if itens else ""))

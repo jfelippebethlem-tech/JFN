@@ -52,7 +52,7 @@ def _resumo_ob(cnpj: str) -> dict:
         "n_ugs": len(rows),
         "concentracao_top_ug": round(top, 3),
         "ugs": [{"ug": r[0], "nome": _ugs.nome_canonico(str(r[0]), fallback="") or r[1],
-                 "total": round(r[2] or 0, 2)} for r in rows[:5]],
+                 "total": round(r[2] or 0, 2)} for r in rows],   # TODAS as UGs (dossiê completo)
     }
 
 
@@ -158,8 +158,8 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     # 4) conflito doador↔contrato (TSE)
     try:
         from compliance_agent.lex_conflito import conflito
-        c = conflito(cnpj=cnpj, limite=20)
-        d["conflito"] = {"n": len(c.get("rede", [])), "rede": c.get("rede", [])[:10],
+        c = conflito(cnpj=cnpj, limite=200)
+        d["conflito"] = {"n": len(c.get("rede", [])), "rede": c.get("rede", []),
                          "_nota": c.get("_nota")}
     except Exception as e:  # noqa: BLE001
         d["conflito"] = {"_nota": f"INDISPONÍVEL: {e}"}
@@ -249,7 +249,9 @@ async def montar_ctx_completo(alvo: str) -> dict:
     # árvore + íntegra dos processos SEI do fornecedor (arquivo primeiro)
     try:
         from compliance_agent.correlacao_sei import processos_de_fornecedor
-        procs = [p.get("numero_sei") for p in processos_de_fornecedor(cnpj, limite=12) if p.get("numero_sei")]
+        # TODOS os processos do fornecedor (antes: 12). O dossiê completo não amostra — se o fornecedor
+        # tem 40 processos, os 40 entram, com árvore e íntegra. Diretriz do dono: sem limite de páginas.
+        procs = [p.get("numero_sei") for p in processos_de_fornecedor(cnpj, limite=500) if p.get("numero_sei")]
         if procs:
             # execução/controle prévio ANTES da árvore: o leitor precisa do veredito (o que foi pago × o
             # que foi comprovado, condicionantes do parecer) antes do despejo documental que o sustenta.
@@ -385,7 +387,7 @@ def _ctx_dossie(d: dict) -> dict:
     else:
         nos = rede.get("nos") or []
         amostra = "".join(f"<li>{_esc(n.get('rotulo') or n.get('id'))} <i>({_esc(n.get('tipo'))})</i></li>"
-                          for n in nos[:20])
+                          for n in nos)      # rede inteira, não amostra
         secoes.append({"titulo": "5. Rede de poder (2 saltos)",
                        "html": f"<p>{rede.get('n_nos', 0)} nós e {rede.get('n_arestas', 0)} arestas "
                                "(sócios, servidores, doações, contratos, nomeações). Amostra:</p>"
@@ -430,7 +432,7 @@ def _ctx_dossie(d: dict) -> dict:
     links = d.get("links_investigacao") or []
     if links:
         linhas = "".join(f"<li>{_esc(l.get('fonte'))} <i>({_esc(l.get('categoria'))})</i>: "
-                         f"<a href='{_esc(l.get('url'))}'>{_esc(l.get('url'))}</a></li>" for l in links[:20])
+                         f"<a href='{_esc(l.get('url'))}'>{_esc(l.get('url'))}</a></li>" for l in links)
         secoes.append({"titulo": "10. Pistas de investigação (fontes hospedadas — uso manual)",
                        "html": f"<ul>{linhas}</ul>"})
 
@@ -480,7 +482,7 @@ def _gerar_pdf(d: dict) -> str:
     pdf.set_font("Helvetica", "B", 12)
     pdf.cell(0, 7, _ascii(f"Score de convergencia: {sc.get('score','-')} ({sc.get('faixa','-')})"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9)
-    for c in (sc.get("contribuicoes") or [])[:8]:
+    for c in (sc.get("contribuicoes") or []):
         pdf.cell(0, 5, _ascii(f"  - {c['flag']}: +{c['contribuicao']}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 

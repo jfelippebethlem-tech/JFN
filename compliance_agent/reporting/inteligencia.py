@@ -207,7 +207,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     async def _conflito_async():
         try:
             from compliance_agent.lex_conflito import conflito as _c
-            return (await asyncio.to_thread(_c, cnpj=cnpj_d, limite=30)).get("rede", [])
+            return (await asyncio.to_thread(_c, cnpj=cnpj_d, limite=300)).get("rede", [])  # completo (dono)
         except Exception:  # noqa: BLE001
             return []
 
