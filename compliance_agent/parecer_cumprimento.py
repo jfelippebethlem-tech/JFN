@@ -41,9 +41,44 @@ _RE_GATILHO = re.compile(
     r"as\s+seguintes\s+(?:ressalvas|recomenda[çc][õo]es|condicionantes)|ressalvas?:|recomenda[çc][õo]es:|"
     r"sane-?se|providencie-?se|corrija-?se)", re.I)
 # Enumeração dos itens: (i)/(ii)/(iii)… · a)/b) · 1./2.
-_RE_ITEM = re.compile(r"[\(\[]\s*(x{0,3}i{1,3}|iv|vi{0,3}|ix|x|[a-h])\s*[\)\]]|(?:^|\s)(\d{1,2})\s*[\)\.]\s+", re.I)
+# aceita "(i)" e também "i." / "a." — formato real do acervo ("notadamente: i. … ii. … iii. …").
+# O ponto sem parênteses só entra precedido de espaço/início e seguido de espaço, e a sequência ordinal
+# (`_sequencia_valida`) descarta o que não formar lista — é o que impede "art." e "n." de virarem itens.
+_RE_ITEM = re.compile(
+    r"[\(\[]\s*(x{0,3}i{1,3}|iv|vi{0,3}|ix|x|[a-h])\s*[\)\]]"
+    r"|(?:^|\s)(\d{1,2})\s*[\)\.]\s+"
+    r"|(?:^|[\s:;])(i{1,3}|iv|vi{0,3}|ix|[a-h])\.\s+", re.I)
 _MAX_COND = 400   # corte do texto de uma condicionante (o trecho é literal, mas não despeja o parecer inteiro)
+_CABECALHO = 1200  # janela do topo onde um parecer se identifica (o resto do texto é fundamentação)
 _MIN_COND = 25    # anti-FP (arquivo SEI real): "(a) Engenheiro" não é condicionante, é rótulo solto
+
+# FECHO do parecer — onde mora o que ELE exige. Medido no acervo (parecer de 101 mil caracteres): o
+# primeiro gatilho de condicionalidade aparecia lá atrás, na FUNDAMENTAÇÃO, dentro de uma citação a outro
+# parecer ("celebrado desde que seguidas as condições … do Parecer nº 02/2017") — e essa citação virava
+# "a condicionante". Havendo fecho, a leitura começa nele; sem fecho, o parecer inteiro vale (curtos).
+_RE_CONCLUSAO = re.compile(
+    r"(isto\s+posto|ante\s+o\s+exposto|diante\s+d[oe]\s+exposto|pelo\s+exposto|face\s+ao\s+exposto|"
+    r"em\s+face\s+do\s+exposto|conclus[ãa]o\s*[:.\-]|concluo|posto\s+isso|do\s+exposto|ex\s+positis|"
+    r"[ée]\s+o\s+parecer|sub\s+censura|salvo\s+melhor\s+ju[íi]zo)", re.I)
+
+# VERBO OPINATIVO — o que separa a exigência DESTE parecer de tudo o mais que ele contém. Dois falsos
+# positivos reais mostraram que o gatilho sozinho não basta:
+#   • aula de doutrina: "Resoluções são atos administrativos … DESDE QUE complementar à lei" (Parecer 126,
+#     96 mil caracteres);
+#   • transcrição de norma: "nos termos do Decreto nº …, o expediente deverá ser instruído com: (i) … (ii) …"
+#     — repetida IDÊNTICA em vários processos, porque é a norma, não o caso.
+# Condicionante é o que o parecerista IMPÕE; ela anda colada a "opino/recomendo/condiciono/determino".
+_RE_OPINATIVO = re.compile(
+    r"\b(opino|opina-?se|opinamos|recomendo|recomenda-?se|recomendamos|condiciono|condiciona-?se|"
+    r"determino|determina-?se|manifesto-?me|sugiro|sugere-?se|concluo|conclui-?se|entendo\s+que|"
+    r"aprovo|aprova-?se|autorizo|ressalvo|ressalva-?se)\b", re.I)
+_JANELA_OPINATIVO = 400   # distância máxima entre o verbo opinativo e o gatilho (mesmo período/parágrafo)
+
+# TRANSCRIÇÃO DE NORMA logo antes do gatilho: o que vem é o texto legal, não a exigência do parecerista.
+_RE_TRANSCRICAO = re.compile(
+    r"(nos\s+termos\s+d[oae]s?|na\s+forma\s+d[oae]s?|conforme\s+(?:disp[õo]e|prev[êe]|estabelece)|"
+    r"disp[õo]e\s+o\s+art|prev[êe]\s+o\s+art|estabelece\s+o\s+art|segundo\s+o\s+art|"
+    r"reza\s+o\s+art|de\s+acordo\s+com\s+o\s+art)[^.]{0,80}$", re.I)
 
 # O documento É um parecer? (anti-FP medido no arquivo SEI real 2026-07-24: minutas e contratos CITAM a
 # Procuradoria — "previamente examinado pela PGE" — e viravam falsos pareceres, com cláusulas contratuais
@@ -67,8 +102,11 @@ def e_parecer(tipo: str, texto: str) -> bool:
         return True
     if _RE_NAO_PARECER.search(rot):
         return False
-    corpo = (texto or "")[:3000]
-    return bool(_RE_PECA_PARECER.search(corpo)) and not _RE_NAO_PARECER.search(corpo)
+    # No CORPO, a marca vale só no CABEÇALHO: um parecer se anuncia no topo ("PARECER Nº …/… ", "opino").
+    # Citação a outro parecer aparece no meio do texto — e foi assim que um anexo de 38 mil caracteres
+    # ("Anexo 2024PD26194", programação de desembolso) passou por peça opinativa no acervo real.
+    corpo = (texto or "")[:_CABECALHO]
+    return bool(_RE_PECA_PARECER.search(corpo)) and not _RE_NAO_PARECER.search((texto or "")[:3000])
 
 
 def _sequencia_valida(marcas: list[tuple[int, str]]) -> list[tuple[int, str]]:
@@ -144,12 +182,28 @@ def extrair_condicionantes(texto_parecer: str) -> list[dict]:
     HONESTO: nada de inventar — parecer sem gatilho de condicionalidade devolve []; boilerplate de
     checklist/certidão (que casa 'recomenda-se' mas não é ressalva substantiva) é descartado."""
     txt = texto_parecer or ""
-    m = _RE_GATILHO.search(txt)
+    # a exigência deste parecer está no FECHO; o que vem antes é relatório e fundamentação (onde moram as
+    # citações a outros pareceres). Só se recua para o texto inteiro quando não há fecho identificável.
+    mc = None
+    for mc in _RE_CONCLUSAO.finditer(txt):
+        pass                       # a ÚLTIMA ocorrência é o fecho de verdade (as outras são anúncios)
+    escopo = txt[mc.start():] if mc else txt
+    # entre todos os gatilhos do escopo, vale o que o PARECERISTA impõe: precedido de verbo opinativo por
+    # perto e NÃO precedido de marca de transcrição de norma.
+    m = None
+    for cand in _RE_GATILHO.finditer(escopo):
+        antes = escopo[max(0, cand.start() - _JANELA_OPINATIVO):cand.start()]
+        if _RE_TRANSCRICAO.search(antes.rstrip()):
+            continue                      # o que vem a seguir é a norma citada, não a exigência
+        if _RE_OPINATIVO.search(antes) or (mc and cand.start() < 200):
+            m = cand
+            break
     if not m:
         return []
-    corpo = txt[m.end():]
+    corpo = escopo[m.end():]
     marcas = _sequencia_valida(
-        [(mm.start(), (mm.group(1) or mm.group(2) or "").lower()) for mm in _RE_ITEM.finditer(corpo)])
+        [(mm.start(), (mm.group(1) or mm.group(2) or mm.group(3) or "").lower())
+         for mm in _RE_ITEM.finditer(corpo)])
     conds: list[dict] = []
     if len(marcas) >= 2:
         for j, (pos, rot) in enumerate(marcas):

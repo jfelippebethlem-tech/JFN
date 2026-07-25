@@ -223,3 +223,98 @@ def test_llm_indisponivel_mantem_veredito_deterministico():
 def test_snapshot_tem_hash_da_versao():
     r = asyncio.run(PC.avaliar_parecer_cumprimento(_docs(), gerar=None))
     assert r["_versao_hash"] and len(r["_versao_hash"]) == 16
+
+
+# ───────── parecer LONGO: a condicionante mora na CONCLUSÃO (regressão do dado real) ─────────
+
+def test_condicionante_vem_da_conclusao_nao_da_fundamentacao():
+    """Medido no acervo (parecer real de 101 mil caracteres): o gatilho casava primeiro dentro da
+    FUNDAMENTAÇÃO — numa citação de outro parecer ('seguidas as condições e requisitos exarados do
+    Parecer nº 02/2017') — e devolvia como se fosse exigência deste parecer. A condicionante que obriga
+    está no fecho ('Isto posto, opino …')."""
+    txt = ("PARECER Nº 2848/2024 FS/DIRJUR. RELATÓRIO. Trata-se de processo administrativo. "
+           "FUNDAMENTAÇÃO. O ajuste anterior foi celebrado desde que seguidas as condições e requisitos "
+           "exarados do Parecer nº 02/2017 GAVI/DIJUR, conforme ali consignado. Prossegue a análise. "
+           "ISTO POSTO, opino favoravelmente ao prosseguimento, desde que: "
+           "(i) seja juntada a pesquisa de preços atualizada; "
+           "(ii) conste a declaração de adequação orçamentária.")
+    conds = PC.extrair_condicionantes(txt)
+    assert [c["id"] for c in conds] == ["i", "ii"]
+    assert not any("02/2017" in c["texto"] for c in conds)
+
+
+def test_parecer_sem_marcador_de_conclusao_continua_funcionando():
+    txt = ("PARECER PGE. Opino favoravelmente desde que: (i) seja juntada a pesquisa de preços; "
+           "(ii) conste a dotação orçamentária.")
+    assert [c["id"] for c in PC.extrair_condicionantes(txt)] == ["i", "ii"]
+
+
+def test_citacao_de_outro_parecer_na_fundamentacao_nao_vira_condicionante_deste():
+    """O caso REAL que falhou (parecer de 101 mil chars, sem enumeração): o único gatilho de
+    condicionalidade estava numa CITAÇÃO dentro da fundamentação — 'seguidas as condições e requisitos
+    exarados do Parecer nº 02/2017' — e virava 'a condicionante' deste parecer. O que obriga está no
+    fecho ('Isto posto, opino …')."""
+    txt = ("PARECER Nº 2848/2024 FS/DIRJUR. RELATÓRIO. Trata-se de processo administrativo de "
+           "prorrogação. FUNDAMENTAÇÃO. O ajuste anterior foi celebrado desde que seguidas as condições "
+           "e requisitos exarados do Parecer nº 02/2017 GAVI/DIJUR, conforme ali consignado, matéria "
+           "que não se repete aqui. ISTO POSTO, opino pelo prosseguimento, condicionado a que seja "
+           "juntada aos autos a pesquisa de preços atualizada antes da assinatura do termo.")
+    conds = PC.extrair_condicionantes(txt)
+    assert len(conds) == 1
+    assert "02/2017" not in conds[0]["texto"]
+    assert conds[0]["tipo"] == "pesquisa_precos"
+
+
+def test_anexo_que_apenas_cita_um_parecer_nao_e_parecer():
+    """Caso real: 'Anexo 2024PD26194' (programação de desembolso, 38 mil chars) citava 'Parecer nº
+    02/2017' lá no meio e era tratado como peça opinativa. Um parecer se ANUNCIA no cabeçalho."""
+    anexo = ("Anexo — Programação de Desembolso 2024PD26194. Governo do Estado do Rio de Janeiro. "
+             + "Relação de notas e valores. " * 60
+             + "O ajuste observou as condições do Parecer nº 02/2017 GAVI/DIJUR, conforme consignado.")
+    assert PC.e_parecer("Anexo 2024PD26194", anexo) is False
+
+
+def test_parecer_de_verdade_se_anuncia_no_cabecalho():
+    corpo = ("PARECER Nº 2848/2024 FS/DIRJUR. PROCESSO Nº SEI-080002/020895/2024. "
+             + "Trata-se de análise da prorrogação contratual. " * 40
+             + "ISTO POSTO, opino pelo prosseguimento, condicionado a que seja juntada a pesquisa de preços.")
+    assert PC.e_parecer("Anexo", corpo) is True
+
+
+def test_explicacao_doutrinaria_nao_e_condicionante():
+    """Caso real (Parecer 126, 96 mil chars): o gatilho 'desde que' caiu numa aula sobre resoluções
+    ('Resoluções são atos administrativos … desde que complementar à lei'). Condicionante é o que o
+    parecerista IMPÕE — anda junto de verbo opinativo ('opino', 'recomendo', 'condiciono')."""
+    txt = ("PARECER Nº 126/2024. Resoluções são atos administrativos normativos emanados de autoridades "
+           "de elevado escalão, por meio dos quais podem ser tratadas as matérias de sua competência, "
+           "desde que complementar à lei ou a outro ato legislativo já existente sobre a temática.")
+    assert PC.extrair_condicionantes(txt) == []
+
+
+def test_transcricao_de_norma_nao_e_condicionante_do_caso():
+    """Outro padrão real, repetido em vários processos: o parecer TRANSCREVE o decreto que lista o que
+    deve instruir o expediente. Isso é norma citada, não exigência dirigida a este processo."""
+    txt = ("PARECER Nº 55/2024. Nos termos do art. 3º do Decreto nº 46.302/2018, o expediente deverá ser "
+           "instruído com as seguintes peças: (i) exposição de motivos, justificativa técnica e nota "
+           "explicativa; (ii) projeto do ato pretendido; e (iii) parecer conclusivo do órgão de "
+           "assessoramento jurídico da respectiva Secretaria de Estado.")
+    assert PC.extrair_condicionantes(txt) == []
+
+
+def test_condicionante_imposta_pelo_parecerista_continua_valendo():
+    txt = ("PARECER Nº 77/2024. Após análise, OPINO favoravelmente ao prosseguimento, desde que: "
+           "(i) seja juntada a pesquisa de preços; (ii) conste a dotação orçamentária.")
+    assert [c["id"] for c in PC.extrair_condicionantes(txt)] == ["i", "ii"]
+
+
+def test_enumeracao_romana_com_ponto_e_reconhecida():
+    """Formato real (Parecer 174): 'desde que observados os apontamentos … notadamente: i. … ii. … iii. …'
+    — romano seguido de PONTO, sem parênteses. Antes, a lista inteira virava uma condicionante só."""
+    txt = ("PARECER Nº 174/2026. IV. CONCLUSÃO. Ante o exposto, esta Assessoria não vislumbra óbice "
+           "jurídico à edição da minuta anexa, desde que observados os apontamentos presentes neste "
+           "parecer, notadamente: i. seja corrigida a redação do art. 2º da minuta de resolução; "
+           "ii. seja juntada a manifestação do setor técnico competente; "
+           "iii. conste a indicação da dotação orçamentária correspondente.")
+    conds = PC.extrair_condicionantes(txt)
+    assert [c["id"] for c in conds] == ["i", "ii", "iii"]
+    assert conds[2]["tipo"] == "dotacao_orcamentaria"
