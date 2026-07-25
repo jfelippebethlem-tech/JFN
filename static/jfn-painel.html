@@ -386,6 +386,11 @@
   .kpi .v.counting{color:var(--accent)}
   @media (prefers-reduced-motion:reduce){.rise,.card.hl.rise{animation:none;opacity:1}.card.beat::after,.kpi.rise::after{animation:none}}
   .kpi{position:relative;overflow:hidden}
+  .kpi-go{cursor:pointer}
+  .kpi-go::after{content:"›";position:absolute;top:8px;right:10px;font-size:16px;color:var(--mut);opacity:.5;transition:.15s}
+  .kpi-go:hover{border-color:color-mix(in oklch,var(--accent) 55%,transparent);transform:translateY(-1px)}
+  .kpi-go:hover::after{opacity:1;color:var(--accent);transform:translateX(2px)}
+  .kpi-go:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .kpi .l{color:var(--mut);font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;font-family:var(--mono)}
   .kpi .v{font-size:1.35rem;font-weight:600;letter-spacing:-.3px;line-height:1.15;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
   .kpi .gl{display:none}
@@ -875,6 +880,70 @@
     #view td,#view .card{overflow-wrap:anywhere}
   }
   html,body{overflow-x:clip}
+
+  /* ═══════════════════ CAMADA HOLOGRÁFICA (v11 "PRISMA") ═══════════════════
+     Elevação pedida pelo dono: mais futurista e holográfico, SEM regressão. Tudo aqui é ADITIVO e roda
+     em CSS/GPU — nenhuma lib, nenhum canvas novo, nada que dispute a CPU (a VM tem 2 vCPU e o shader do
+     portal já é o gasto que vale). Quatro marcas do holograma que faltavam:
+       1. VARREDURA  — a linha que percorre a projeção (assinatura visual do holograma);
+       2. ARESTA VIVA — energia circulando na borda dos elementos de comando;
+       3. FRANJA CROMÁTICA — o desalinhamento RGB de uma projeção real, só no hover e sutil;
+       4. GRADE DE PERSPECTIVA — o chão infinito que dá profundidade de cena, atrás de tudo.
+     Regra herdada: quem já brilha (grave, ouro, alerta) NÃO é dessaturado por nada disto. */
+  :root{
+    --holo-scan:oklch(0.92 0.10 205 / .055);   /* varredura: luz fria, quase imperceptível */
+    --holo-edge:oklch(0.86 0.13 250 / .55);    /* aresta: íon */
+    --holo-edge2:oklch(0.84 0.14 60 / .40);    /* aresta: chama (o segundo polo do painel) */
+    --holo-grid:oklch(0.62 0.09 245 / .09);    /* grade do chão */
+    --holo-t:14s;
+  }
+
+  /* 1 · VARREDURA — uma faixa de luz desce devagar sobre a superfície de vidro.
+     Fica no ::after (o ::before já é a luz especular/spotlight — não se toca nele). */
+  .card::after,.ck-hero::after{content:"";position:absolute;inset:0;border-radius:inherit;
+    pointer-events:none;z-index:0;opacity:0;
+    background:linear-gradient(180deg,transparent 42%,var(--holo-scan) 50%,transparent 58%);
+    background-size:100% 260%;animation:holoScan var(--holo-t) linear infinite;transition:opacity .35s}
+  .card:hover::after,.ck-hero::after{opacity:1}
+  @keyframes holoScan{from{background-position:0 -160%}to{background-position:0 160%}}
+
+  /* 2 · ARESTA VIVA — gradiente cônico girando na borda. Máscara deixa só a moldura de 1px acesa,
+     então o custo é o de um gradiente, não de uma sombra. Só onde há COMANDO (o olho segue a energia). */
+  .ck-hero,.btn.primary,.card.hl{position:relative}
+  .ck-hero::before,.btn.primary::after,.card.hl::before{--holo-a:0deg}
+  @property --holo-a{syntax:"<angle>";inherits:false;initial-value:0deg}
+  .holo-edge,.ck-hero,.card.hl{
+    background-image:conic-gradient(from var(--holo-a),transparent 0 62%,var(--holo-edge) 74%,
+                    var(--holo-edge2) 84%,transparent 92% 100%);
+    background-origin:border-box;background-clip:padding-box,border-box;
+    animation:holoSpin 9s linear infinite}
+  @keyframes holoSpin{to{--holo-a:360deg}}
+
+  /* 3 · FRANJA CROMÁTICA — o desalinhamento RGB da projeção. Dose homeopática (0.6px) e SÓ no hover:
+     em repouso o texto tem de ser perfeitamente legível (é um painel de trabalho, não uma vitrine). */
+  .card:hover .num,.ck-hero .num{text-shadow:
+      -0.6px 0 0 oklch(0.72 0.19 25 / .22), 0.6px 0 0 oklch(0.80 0.14 210 / .26), 0 0 18px var(--esf)}
+
+  /* 4 · GRADE DE PERSPECTIVA — chão infinito atrás de todo o conteúdo. `fixed` + máscara em direção ao
+     horizonte: aparece no rodapé da tela e some antes de encostar no texto. */
+  body::after{content:"";position:fixed;inset:auto 0 0 0;height:38vh;pointer-events:none;z-index:0;
+    background:
+      repeating-linear-gradient(90deg,var(--holo-grid) 0 1px,transparent 1px 84px),
+      repeating-linear-gradient(0deg,var(--holo-grid) 0 1px,transparent 1px 84px);
+    transform:perspective(320px) rotateX(66deg);transform-origin:bottom center;
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 78%);
+    mask-image:linear-gradient(180deg,transparent,#000 78%);opacity:.5}
+
+  /* ACESSIBILIDADE E CPU: quem pediu menos movimento não recebe nenhum. A grade e a aresta ficam
+     ESTÁTICAS (a estética permanece), a varredura desliga. */
+  @media (prefers-reduced-motion:reduce){
+    .card::after,.ck-hero::after{animation:none;opacity:0}
+    .holo-edge,.ck-hero,.card.hl{animation:none}
+    body::after{opacity:.35}
+  }
+  /* telas pequenas: a grade some (rouba contraste no celular) e a varredura só no toque */
+  @media (max-width:640px){body::after{display:none}}
+
 </style>
 </head>
 <body>
@@ -953,8 +1022,11 @@ const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
 const _kpiIco=cor=>{const c=String(cor||'');
   if(/rose/.test(c))return'§alert'; if(/gold|amber/.test(c))return'§money';
   if(/green/.test(c))return'§ok'; if(/accent|teal|blue|violet|purple/.test(c))return'§info'; return'';};
-const kpi=(v,l,cor,gl)=>{const ik=_kpiIco(cor);
-  return `<div class="card kpi"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}${ik?`<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>`:''}</div>`;};
+// dest (opcional) = id de aba: torna o KPI clicável e leva à aba (ir() troca de esfera sozinho;
+// a11yfy() já torna qualquer [onclick] operável por teclado). Ex.: kpi(n,'Alertas ativos',cor,'🚨','e_alertas').
+const kpi=(v,l,cor,gl,dest)=>{const ik=_kpiIco(cor);
+  const go=dest?` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}`:'';
+  return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}${ik?`<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>`:''}</div>`;};
 const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
 const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
 const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="cover-row">${ic?`<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>`:''}<div class="cover-tx"><div class="t">${t}</div><div class="s">${s}</div></div></div></div>`;
@@ -1406,8 +1478,8 @@ async function renderPanoramaEstado(){
   if(coletaErro)h+=`<div class="warn">Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
   h+=`<div class="grid g2">
     ${kpi(fmtN(o.total),'Ordens Bancárias',null,'💳')}${kpi(fmtRc(o.valor_total),'Valor fiscalizado',null,'💰')}
-    ${kpi(fmtN(a.total??0),'Alertas ativos',(a.alta?'var(--rose)':'#fff'),'🚨')}${kpi(nc,'Conluio (estado)','var(--purple)','🕸️')}
-    ${kpi(fmtN(sc.n_a_epoca??'—'),'Sancionadas à época','var(--rose)','🚫')}${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)')}
+    ${kpi(fmtN(a.total??0),'Alertas ativos',(a.alta?'var(--rose)':'#fff'),'🚨','e_alertas')}${kpi(nc,'Conluio (estado)','var(--purple)','🕸️','e_conluio')}
+    ${kpi(fmtN(sc.n_a_epoca??'—'),'Sancionadas à época','var(--rose)','🚫','e_sanc')}${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)',null,'e_alertas')}
     ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+esc(st.exercicio||'—'))}${kpi(fmtN(o.hoje??0),'OBs hoje')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
@@ -1874,9 +1946,9 @@ async function renderPanoramaPref(){
   const cov=cj.cobertura||{},cap=cj.captura||[],rod=cj.rodizio_vencedores||[];
   let h=cover('prefeitura','Prefeitura do Rio de Janeiro','Licitações do MUNICÍPIO do Rio pelo PNCP (esfera oficial), folha de comissionados, candidaturas e benefícios sociais. Os demais municípios do RJ ficam em Transversal → Conluio → chip "Municípios".','🏙️');
   h+=`<div class="grid g2">
-    ${kpi(fmtN(cov.certames_com_resultado),'Certames do município',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}
-    ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️')}${kpi(fmtN(cc.n_pessoas??cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️')}
-    ${kpi(fmtN((bv.resumo||{}).n_alta??'—'),'Benefício DURANTE vínculo (certeza alta)','var(--rose)','🚨')}${kpi(fmtN((bv.resumo||{}).n_ainda??'—'),'Ainda recebendo','var(--rose)','⏰')}</div>`;
+    ${kpi(fmtN(cov.certames_com_resultado),'Certames do município',null,'📄','p_contr')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢','p_gastos')}
+    ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️','p_conluio')}${kpi(fmtN(cc.n_pessoas??cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️','p_comis')}
+    ${kpi(fmtN((bv.resumo||{}).n_alta??'—'),'Benefício DURANTE vínculo (certeza alta)','var(--rose)','🚨','p_benef')}${kpi(fmtN((bv.resumo||{}).n_ainda??'—'),'Ainda recebendo','var(--rose)','⏰','p_benef')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
     ${card(`<div style="font-weight:700">Perícia de gastos D7–D10</div><div class="muted" style="font-size:13px">fracionamento, credor recém-aberto, sócio na folha, rede entre concorrentes</div><div class="btns"><button class="btn accent" onclick="ir('p_gastos')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Comissionados</div><div class="muted" style="font-size:13px">ex-candidatos + benefício social durante o vínculo</div><div class="btns"><button class="btn accent" onclick="ir('p_comis')">Abrir</button></div>`)}
@@ -2928,11 +3000,28 @@ function nucleoStart(){
       ctx.beginPath();ctx.arc(CX,CY,p.r,0,6.283);ctx.stroke();});
     /* rótulos empurrados para FORA, na direção da própria órbita: dois domínios
        angularmente próximos deixam de sobrepor o rótulo um do outro. */
+    // ANTI-COLISÃO (v11): o empurrão radial sozinho não bastava — dois domínios no MESMO ângulo eram
+    // empurrados para a MESMA direção e os rótulos se sobrepunham ("ninhos" sumia sob "comunidades",
+    // visto na auditoria visual). Agora, além do empurrão radial, cada rótulo que ainda colide com um
+    // já posicionado é deslocado no eixo Y para o lado livre mais próximo. As medidas ficam em cache
+    // (recalculadas a cada 45 quadros) para não forçar layout a 60fps.
+    const _cx=[];
+    if(!draw._m||draw._m>45){draw._m=0;NU_NODES.forEach(n=>{const e=$('nu-'+n.id);
+      if(e){n._w=e.offsetWidth||96;n._h=e.offsetHeight||34;}});}
+    draw._m=(draw._m||0)+1;
     NU_NODES.forEach(n=>{const el=$('nu-'+n.id);
       if(!el||n._x==null)return;
       const dx=n._x-CX,dy=n._y-CY,d=Math.hypot(dx,dy)||1;
-      el.style.left=(n._x+dx/d*32)+'px';
-      el.style.top=(n._y+dy/d*24-24)+'px';});
+      let x=n._x+dx/d*32, y=n._y+dy/d*24-24;
+      const w=n._w||96,h=n._h||34;
+      for(const c of _cx){                       // colidiu? sobe ou desce até liberar
+        if(Math.abs(x-c.x)<(w+c.w)/2+8 && Math.abs(y-c.y)<(h+c.h)/2+8){
+          y = (y<=c.y) ? c.y-(h+c.h)/2-9 : c.y+(h+c.h)/2+9;
+        }
+      }
+      _cx.push({x,y,w,h});
+      el.style.left=x+'px';
+      el.style.top=y+'px';});
     if(!rm)_nuRAF=requestAnimationFrame(draw);
   }
   cancelAnimationFrame(_nuRAF);draw(performance.now());
@@ -2961,6 +3050,7 @@ function ckBoot(){
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
+  a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
   nucleoStart();
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
