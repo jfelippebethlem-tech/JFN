@@ -220,8 +220,27 @@ O que a prática ensinou (detalhe em `~/.claude/.../memory/adobe-express-so-empr
    **18.843 processos nunca tocados, R$ 2,11 bi** (`tools/sei_fila_por_dinheiro.py`).
 3. **VLM local para fotos de medição** — `foto_medicao.avaliar_fotos(descrever=…)` pronto e
    injetável; falta subir **moondream2** ou **SmolVLM** em llama.cpp na VM-2.
-4. **Consulta à SEFAZ por chave de NF-e** — `nfe_verifica.situacao(consultar=…)` pronto; o
-   caminho gratuito é o portal público com captcha pelo **ddddocr local** (já na VM-2).
+4. **Consulta à SEFAZ por chave de NF-e** — a consulta em si continua pendente, mas o
+   módulo foi **auditado contra o acervo e tinha dois defeitos**, ambos corrigidos:
+
+   - **o DV sozinho não valida.** O módulo 11 aceita ~1 em 11 sequências por acaso; o
+     docstring afirmava que o DV era "anti-falso-positivo" e **49 das 845 chaves eram
+     lixo** (UF 20/85/30, modelo 00/24/43, emitentes que não estão em nenhuma OB). Elas
+     geraram um alarme de **"20 notas em contingência"** do qual **1** era real — e **11**
+     diziam **SCAN, desativada desde 2014**, numa nota de 2026. Agora exige UF na tabela
+     oficial + modelo de DF-e conhecido + AAMM plausível;
+   - **nem toda chave de 44 dígitos é NF-e.** É o formato de todo documento fiscal
+     eletrônico: **640 das 845 eram modelo 66 = NF3e, conta de ENERGIA ELÉTRICA**, de dois
+     emitentes só (Ampla 393, Light 247). Comecei tratando o 66 como lixo; foi olhar o CNPJ
+     emitente que mostrou o contrário. `decompor()` devolve `modelo_nome` e `eh_nfe`.
+
+   Acervo real depois: **798 chaves** (640 NF3e, 156 NF-e, 2 CT-e) e **1 contingência
+   verdadeira** — NF-e da CDEL, SVC-RS, em `SEI-420001/003431/2024`.
+
+   **O que falta e por quê:** cancelamento/denegação não está na chave. `situacao()` já
+   aceita a consulta injetada e, sem ela, devolve `nao_verificada`/`a_verificar` — nunca
+   "autorizada" por omissão. O caminho gratuito é o portal público com captcha pelo
+   **ddddocr**, que só existe na **VM-2** — e mexer nela depende de pedido seu.
 5. **I.D.E.A.S — número CORRIGIDO, o do handoff anterior não se reproduz.** Estava escrito
    "R$ 3,56 bi pelo Fundo Estadual de Saúde (UG 296100), 124 processos SEI, 743 OBs".
    Medido hoje no `compliance.db`, nada bate com isso:
