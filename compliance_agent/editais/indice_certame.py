@@ -45,6 +45,7 @@ import sqlite3
 
 from pathlib import Path
 
+from compliance_agent.collectors.pncp import MODALIDADE_NOME   # tabela de dominio do PNCP (existia, nao era usada)
 from compliance_agent.cruzamentos_intel import _mediana, _norm_item
 from compliance_agent.editais.db import DDL_CERTAME_INDICE, conectar
 from compliance_agent.editais.screens_conluio import screens
@@ -92,6 +93,14 @@ LIMIAR_DRIVER = 0.5            # família ≥ 0.5 vira driver (flag máximo + ev
 # máxima (Banca d'Italia: discricionariedade é o preditor); dispensa tem hipóteses objetivas.
 MODALIDADE_DISPENSA = 8
 MODALIDADE_INEXIGIBILIDADE = 9
+# Credenciamento (12) NÃO é procedimento com disputa: contrata-se TODO mundo que atende aos
+# requisitos, sem competição entre os credenciados (Lei 14.133 art. 79). Ele não estava
+# previsto aqui, e o `else` da família de transparência afirmava "procedimento com disputa"
+# para qualquer código fora de 8 e 9 — afirmação FALSA num documento de fiscalização. Hoje
+# o defeito é latente (o coletor só traz 4, 6, 8 e 9), mas basta alguém ampliar
+# MODALIDADES_PADRAO para ele acordar.
+MODALIDADE_CREDENCIAMENTO = 12
+VALOR_FLAG_CREDENCIAMENTO = 0.5   # sem disputa, mas com regra objetiva de adesão: entre dispensa e nada
 VALOR_FLAG_INEXIGIBILIDADE = 1.0
 VALOR_FLAG_DISPENSA = 0.7
 VALOR_FLAG_SEM_DATA_PUB = 0.4  # registro incompleto no PNCP = opacidade documental (fraca)
@@ -167,14 +176,27 @@ def _f_transparencia(ctx: dict) -> dict:
         return _familia([], "pncp_resultado", "certame sem registro em pncp_resultado")
     flags = []
     mod = ctx["modalidade"]
+    # o nome vem de MODALIDADE_NOME (Manual de Integração do PNCP), que existia no projeto e
+    # nunca tinha sido usada: o dossiê saía dizendo "modalidade 6", código cru num entregável.
+    nome = MODALIDADE_NOME.get(mod)
+    rot = f"modalidade {mod} ({nome})" if nome else f"modalidade {mod}"
     if mod == MODALIDADE_INEXIGIBILIDADE:
         flags.append(_flag("contratacao_direta", VALOR_FLAG_INEXIGIBILIDADE,
-                           "modalidade 9 = inexigibilidade (art. 74 Lei 14.133) — sem disputa"))
+                           f"{rot} = inexigibilidade (art. 74 Lei 14.133) — sem disputa"))
     elif mod == MODALIDADE_DISPENSA:
         flags.append(_flag("contratacao_direta", VALOR_FLAG_DISPENSA,
-                           "modalidade 8 = dispensa (art. 75 Lei 14.133) — sem disputa"))
+                           f"{rot} = dispensa (art. 75 Lei 14.133) — sem disputa"))
+    elif mod == MODALIDADE_CREDENCIAMENTO:
+        flags.append(_flag("contratacao_direta", VALOR_FLAG_CREDENCIAMENTO,
+                           f"{rot} = credenciamento (art. 79 Lei 14.133) — contratação de TODOS "
+                           "os que atendem aos requisitos, sem disputa entre eles"))
+    elif nome:
+        flags.append(_flag("contratacao_direta", 0.0, f"{rot} — procedimento com disputa"))
     else:
-        flags.append(_flag("contratacao_direta", 0.0, f"modalidade {mod} — procedimento com disputa"))
+        # código fora da tabela de domínio: não afirmar nem disputa nem ausência dela.
+        flags.append(_flag("contratacao_direta", 0.0,
+                           f"{rot} — código fora da tabela de domínio do PNCP; "
+                           "natureza do procedimento INDISPONÍVEL"))
     flags.append(_flag("sem_data_publicacao", 0.0 if ctx["data_pub"] else VALOR_FLAG_SEM_DATA_PUB,
                        f"data de publicação: {ctx['data_pub'] or 'AUSENTE no registro PNCP'}"))
     return _familia(flags, "pncp_resultado")

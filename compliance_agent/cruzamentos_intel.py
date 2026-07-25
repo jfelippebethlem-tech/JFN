@@ -594,11 +594,8 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         teto_expr = f"(CASE {ano} {casos_teto} ELSE {_TETO_DEFAULT} END)"
         # favorecido que é ENTE PÚBLICO = repasse/transferência (fundo-a-fundo, parcelas iguais),
         # não compra fatiada — fora do detector (senão vira falso-positivo).
-        publico = ("nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' "
-                   "AND nome_credor NOT LIKE '%MUNICIPIO%' AND nome_credor NOT LIKE '%MUNICÍPIO%' "
-                   "AND nome_credor NOT LIKE '%SECRETARIA%' AND nome_credor NOT LIKE '%C_MARA%' "
-                   "AND nome_credor NOT LIKE '%TRIBUNAL%' AND nome_credor NOT LIKE '%INSTITUTO DE PREV%' "
-                   "AND nome_credor NOT LIKE '%ESTADO DO RIO%' AND nome_credor NOT LIKE '%DEFENSORIA%'")
+        # a cópia local divergente saiu: uma fonte só (_SQL_NAO_PUBLICO), definida abaixo.
+        publico = _SQL_NAO_PUBLICO
         q = f"""
         SELECT credor, MAX(nome_credor) nome, ug_emitente, {iso_mes} mes,
                COUNT(*) n, SUM(valor) soma, MAX(valor) maior,
@@ -1059,13 +1056,27 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
         con.close()
 
 
-# favorecido que é ENTE PÚBLICO/banco (repasse, não fornecedor comercial) — SQL reutilizável
+# favorecido que é ENTE PÚBLICO/banco (repasse ou tributo, não fornecedor comercial) —
+# fonte ÚNICA. Havia DUAS cópias divergentes disto no arquivo: esta e uma local dentro de
+# `fracionamento`, cada uma excluindo o que a outra não excluía (só aqui: ASSEMBLEIA, BANCO,
+# CAIXA ECON, EQUALIZ; só lá: C_MARA). O resultado media: 6 dos 63 grupos de "fracionamento"
+# eram MINISTÉRIO DA FAZENDA e INSS — recolhimento de tributo e previdência apresentado como
+# compra fatiada, num relatório de fiscalização. Uma cópia só, com os dois conjuntos unidos.
+#
+# Os padrões federais foram conferidos contra o universo de credores antes de entrar, para
+# não derrubar fornecedor privado: `%UNIAO%` ficou DE FORA porque pegaria a "União Química
+# Farmacêutica"; `%INSTITUTO%` sozinho ficou de fora porque derrubaria OSS reais — por isso
+# o INSS é excluído pelo nome inteiro, não pela palavra "Instituto".
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "
     "AND nome_credor NOT LIKE '%MUNICÍPIO%' AND nome_credor NOT LIKE '%SECRETARIA%' AND nome_credor NOT LIKE '%BANCO%' "
     "AND nome_credor NOT LIKE '%CAIXA ECON%' AND nome_credor NOT LIKE '%EQUALIZ%' AND nome_credor NOT LIKE '%TRIBUNAL%' "
     "AND nome_credor NOT LIKE '%ESTADO DO RIO%' AND nome_credor NOT LIKE '%INSTITUTO DE PREV%' "
-    "AND nome_credor NOT LIKE '%DEFENSORIA%' AND nome_credor NOT LIKE '%ASSEMBLEIA%'")
+    "AND nome_credor NOT LIKE '%DEFENSORIA%' AND nome_credor NOT LIKE '%ASSEMBLEIA%' "
+    "AND nome_credor NOT LIKE '%C_MARA%' "
+    # federais que vazavam e produziam o falso positivo medido:
+    "AND nome_credor NOT LIKE 'MINIST_RIO%' AND nome_credor NOT LIKE '%INSTITUTO NACIONAL D_ SEGURO%' "
+    "AND nome_credor NOT LIKE '%PROCURADORIA%' AND nome_credor NOT LIKE '%CONTROLADORIA%'")
 
 
 _NEP_CONECT = {"DA", "DE", "DO", "DAS", "DOS", "E"}

@@ -94,6 +94,22 @@ de acusar; a armadilha é só no SQL cru contra a tabela do SIAFE.
 Sobra declarado, não corrigido: `tools/_arquivo/mgs_iterj_2021/…` tem o mesmo `ORDER BY`
 cru, mas é código arquivado e filtra por exercício. Mencionado, não tocado.
 
+### 0.38 Constante copiada para dentro do detector diverge — e o falso positivo é público
+
+`limites_dispensa.py` já avisa no topo: *"NUNCA duplicar esta tabela em detector"*. Aconteceu
+de novo, com outra constante. Havia **duas** cópias do filtro "não é ente público" em
+`cruzamentos_intel.py`: uma local dentro de `fracionamento` e a `_SQL_NAO_PUBLICO` dita
+reutilizável. Só a local tinha `C_MARA`; só a outra tinha `ASSEMBLEIA`, `BANCO`,
+`CAIXA ECON`, `EQUALIZ`. Resultado medido: **6 dos 63 grupos de "fracionamento" eram
+MINISTÉRIO DA FAZENDA e INSS** — tributo e previdência apresentados como compra fatiada num
+relatório de fiscalização. Unificado: 63 → 57 grupos, zero ente público vazando.
+
+**Ao ampliar filtro por nome, meça contra o universo ANTES de aplicar.** `%UNIAO%` pegaria a
+**União Química Farmacêutica** (privada); `%INSTITUTO%` sozinho derrubaria OSS reais como o
+I.D.E.A.S. Filtro ganancioso apaga fornecedor de verdade da fila — pior que o falso positivo
+que ele resolve. `tests/test_fracionamento_ente_publico.py` trava os dois lados **e conta as
+cópias do filtro**, para a duplicação não voltar.
+
 ### 0.4 Nunca decore o `background` de quem carrega TEXTO
 
 Nova, desta rodada. O scan do cabeçalho de tabela era `background-image` no próprio
@@ -227,8 +243,23 @@ O que a prática ensinou (detalhe em `~/.claude/.../memory/adobe-express-so-empr
    R$ 74,6 mi · `025266/2021` R$ 58,8 mi), e **já aparece no radar com score 35**
    (sanção vigente à época +25, perfil fantasma médio +10). Indício, não acusação — mas é
    fila de apuração legítima e o dossiê vale.
-6. **Fracionamento pelo SIAFE** — 4 casos com prioridade ≥ 0,7 em 2024; o primeiro
-   (4ID MÉDICOS, UG 294200) tem 12 pagamentos, 12 processos distintos, todos ≥ 80% do teto.
+6. **Fracionamento pelo SIAFE — detector AUDITADO, com um resultado negativo importante.**
+   O falso positivo de ente público foi corrigido (§0.38): 63 → 57 grupos.
+
+   **Hipótese testada e REPROVADA — não refazer.** Parecia óbvio que *"N pagamentos em N
+   processos distintos"* fosse a assinatura de fatiamento (um contrato em parcelas
+   compartilharia o processo). O dado diz que **não**: de 37 grupos com processo
+   preenchido, **25 têm razão 1,00 e nenhum tem tudo num processo só** — no SIAFE-RJ cada
+   OB já tende a ter processo próprio, então o sinal não discrimina. Pior: ordenar por ele
+   põe no topo a *Comercial Milano* com 59 OB e concentração **0,08** (valores variados =
+   fornecimento pulverizado). **Teria piorado a fila.** O discriminador certo continua
+   sendo a concentração colada no teto, que o detector já usava — o método estava certo.
+
+   **O que falta de verdade:** o handoff anterior citava *4ID MÉDICOS (UG 294200), 12
+   pagamentos em 12 processos, todos ≥ 80% do teto*. Esse caso **não aparece** no topo
+   atual por concentração; confirmar de onde veio antes de tratá-lo como fato — mesmo
+   cuidado do item 5. Os grupos de concentração 1,00 hoje são outros (o primeiro é
+   REPÚBLICA ADMINISTRAÇÃO E SERVIÇOS, 5 OB coladas, UG 294200, 12/2023).
 7. **Duas perdas decorativas no import do Express** (malha do console e marcadores das
    regras). Se incomodarem, redesenhar as duas como SVG inline.
 
