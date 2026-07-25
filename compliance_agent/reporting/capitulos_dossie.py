@@ -345,7 +345,8 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
     Roda sobre o arquivo documental já capturado (regra da casa: arquivo antes de browser), sem IA e
     sem rede — as camadas subjetivas (coerência do atesto, leitura visual da foto) ficam de fora aqui e
     são apontadas como pendentes quando fazem falta. Sem arquivo → None (honesto)."""
-    from compliance_agent import execucao_sinais, foto_medicao, nfe_verifica, parecer_cumprimento
+    from compliance_agent import (cadeia_processo, execucao_sinais, foto_medicao, nfe_verifica,
+                                  parecer_cumprimento)
 
     linhas, detalhes = [], []
     analisados = 0
@@ -365,6 +366,9 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
         ex = execucao_sinais.analisar_execucao_det(
             texto, titulos_documentos=[d.get("tipo") or "" for d in docs])
         pg = parecer_cumprimento.auditar_parecer_pge(docs)
+        # ORDEM dos atos (art. 53 da Lei 14.133; arts. 60/62-63 da Lei 4.320): presença sem sequência
+        # não prova regularidade — e a inversão é o vício mais eloquente do processo.
+        cad = cadeia_processo.analisar_cadeia([{"titulo": d.get("tipo"), "tipo": ""} for d in docs])
         chaves = nfe_verifica.extrair_chaves(texto)
         contingencia = [c for c in chaves if nfe_verifica.tp_emissao(c)["contingencia"]]
         linhas.append(
@@ -389,6 +393,9 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
             bloco.append("<p><b>Condicionantes do parecer jurídico</b> (art. 53 da Lei 14.133/2021 — a "
                          f"manifestação é prévia e vincula a instrução): {_esc(pg.get('leitura'))}</p>"
                          + (f"<ul>{itens}</ul>" if itens else ""))
+        for inv in (cad.get("inversoes") or []):
+            bloco.append(f"<p><b>Ordem dos atos:</b> {_esc(inv['observacao'])} "
+                         f"<span class='dim'>({_esc(inv['fundamento'])} · {_esc(inv['como_soube'])})</span></p>")
         if contingencia:
             bloco.append(f"<p><b>Nota fiscal:</b> {len(contingencia)} NF-e emitida(s) em CONTINGÊNCIA "
                          "(lido na própria chave de acesso). Emitir em contingência é lícito; verificar a "

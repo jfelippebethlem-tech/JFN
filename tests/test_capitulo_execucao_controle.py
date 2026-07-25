@@ -110,3 +110,17 @@ def test_processo_da_INTEGRA_nao_recebe_a_ressalva(arquivo):
     ])
     s = CD.secao_execucao_controle_previo(["SEI-120001/000010/2024"])
     assert "cache do sweep" not in s["html"].lower()
+
+
+def test_capitulo_traz_a_inversao_de_cadeia(arquivo):
+    """A análise de cadeia (ordem legal dos atos) entra no mesmo capítulo: o leitor vê, junto, o que foi
+    pago, o que foi comprovado e se os atos estão na ordem que a lei exige."""
+    _processo(arquivo, "SEI-120001/000011/2024", [
+        ("Termo de Contrato 45/2024 (68000000)", "contrato", "Contrato firmado com a empresa."),
+        ("Parecer Jurídico PGE 88/2024 (69000000)", "parecer_juridico",
+         "PARECER PGE. Opino favoravelmente à contratação."),
+    ])
+    s = CD.secao_execucao_controle_previo(["SEI-120001/000011/2024"])
+    h = s["html"]
+    assert "53" in h                       # o dispositivo do controle prévio
+    assert "ordem" in h.lower() or "antes" in h.lower()
