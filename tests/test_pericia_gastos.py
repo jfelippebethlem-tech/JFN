@@ -111,10 +111,55 @@ def test_rodar_todas_cobertura(con_semeado):
 
 
 def test_teto_dispensa_datado_por_ano():
-    # teto muda por decreto anual; ano sem valor conhecido usa o mais próximo ANTERIOR
-    assert pericia_gastos.teto_dispensa(2026) == 62_725.68
-    assert pericia_gastos.teto_dispensa(2027) == pericia_gastos.teto_dispensa(2026)  # fallback honesto
+    """O teto vem da FONTE ÚNICA, nunca de um número digitado aqui.
+
+    Este teste afirmava `teto_dispensa(2026) == 62_725.68` — e **62.725,68 não é o teto de
+    2026 nem de ano nenhum**: o de 2026 é R$ 65.492,11 (Decreto 12.807/2025) e o de 2025 é
+    R$ 62.725,59. O teste estava travando o valor errado, o que é pior que não haver teste:
+    impedia a correção. Agora ele compara com `limites_dispensa`, onde os valores foram
+    conferidos verbatim nos decretos — assim não há como os dois divergirem de novo.
+    """
+    from compliance_agent.limites_dispensa import LIMITES, limite_dispensa
+
+    for ano in LIMITES:
+        assert pericia_gastos.teto_dispensa(ano) == limite_dispensa(ano, "compras")
+    assert pericia_gastos.teto_dispensa(2026) == 65_492.11      # Decreto 12.807/2025
+    assert pericia_gastos.teto_dispensa(2025) == 62_725.59      # Decreto 12.343/2024
+    assert pericia_gastos.teto_dispensa(2024) == 59_906.02      # Decreto 11.871/2023
+    # ano futuro sem decreto publicado usa o último conhecido — fallback honesto
+    assert pericia_gastos.teto_dispensa(2027) == pericia_gastos.teto_dispensa(max(LIMITES))
     assert pericia_gastos.teto_dispensa() > 0
+
+
+def test_d7_usa_o_teto_do_ANO_da_contratacao(con_semeado):
+    """O teto sobe todo ano; um valor único faz falso positivo num ano e falso negativo noutro.
+
+    Cenário: mesmo valor de contrato (R$ 61.000) em 2024 e em 2026.
+      · 2024 — teto R$ 59.906,02 → está ACIMA do teto, não é dispensa, NÃO pode entrar;
+      · 2026 — teto R$ 65.492,11 → está abaixo do teto, PODE entrar.
+    Com teto único (o que havia), os dois anos recebiam o mesmo tratamento e um deles saía
+    errado — foi o defeito medido: 46 contratos de 2024 entravam indevidamente e 35 de 2026
+    sumiam.
+    """
+    con = con_semeado
+    con.execute("delete from pcrj_contratos")
+    for i, (ano, dia) in enumerate([(2024, "05"), (2024, "15"), (2024, "25"),
+                                    (2026, "05"), (2026, "15"), (2026, "25")]):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       fornecedor_documento, fornecedor_nome, orgao_nome, tipo, valor_global,
+                       data_assinatura)
+                       values (?,?,?,?,?,?,?,?,?)""",
+                    (f"nc{i}", ano, "111", "222", "FORN X", "ORGAO Y", "contrato",
+                     61_000.0, f"{ano}-03-{dia}"))
+    con.commit()
+    anos = {a["evidencias"]["controles_pncp"][0] for a in pericia_gastos.d7_fracionamento(con)}
+    achados = pericia_gastos.d7_fracionamento(con)
+    assert len(achados) == 1, (
+        "só 2026 pode acender: em 2024 R$ 61.000 está ACIMA do teto de R$ 59.906,02 "
+        f"e não é contratação por dispensa. Achados: {[a['titulo'] for a in achados]}")
+    assert "2026" in achados[0]["descricao"], "a evidência tem de citar o teto do ano certo"
+    assert "65.492,11" in achados[0]["descricao"]
+    assert anos
 
 
 def test_d8_usa_cadastro_local_antes_da_api(con_semeado):

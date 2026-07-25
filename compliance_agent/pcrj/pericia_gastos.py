@@ -13,19 +13,26 @@ from datetime import date, datetime
 logger = logging.getLogger(__name__)
 
 # Lei 14.133/2021, art. 75, II (compras/serviços) — teto ATUALIZADO ANUALMENTE por decreto.
-# Registro DATADO (config): adicionar cada exercício quando o decreto sair, com o valor
-# CONFERIDO em fonte oficial (nunca de memória). Ano ausente usa o mais próximo ANTERIOR
-# conhecido — fallback honesto que evita FP/FN silencioso quando o reajuste ainda não entrou.
-TETO_DISPENSA_POR_ANO: dict[int, float] = {
-    2026: 62_725.68,   # valor vigente conferido (2026)
-}
+#
+# Esta era a TERCEIRA cópia divergente do teto no projeto, e `limites_dispensa.py` avisa no
+# topo: "NUNCA duplicar esta tabela em detector — importar daqui (as cópias divergentes em
+# p4_fracionamento e cruzamentos_intel foram o motivo deste módulo)". A cópia tinha um único
+# ano — `{2026: 62_725.68}`, comentado como "valor vigente conferido (2026)" — e estava
+# errada nos dois sentidos, porque o fallback puxava esse mesmo número para TODO ano:
+#
+#   ano   teto usado    teto legal    efeito                      medido no acervo PCRJ
+#   2024  62.725,68     59.906,02     teto ALTO  -> falso POSITIVO   46 contratos
+#   2025  62.725,68     62.725,59     9 centavos a mais                0
+#   2026  62.725,68     65.492,11     teto BAIXO -> falso NEGATIVO   35 contratos + 52 licitações
+#
+# Os alertas de fracionamento saem com severidade ALTA no painel; teto errado nos dois
+# sentidos é acusar quem não devia e perder quem devia. Agora vem da fonte única, por ANO.
+from compliance_agent.limites_dispensa import LIMITES, limite_dispensa as _limite_dispensa
 
 
 def teto_dispensa(ano: int | None = None) -> float:
-    ano = ano or date.today().year
-    conhecidos = [a for a in TETO_DISPENSA_POR_ANO if a <= ano]
-    chave = max(conhecidos) if conhecidos else min(TETO_DISPENSA_POR_ANO)
-    return TETO_DISPENSA_POR_ANO[chave]
+    """Teto de dispensa de COMPRAS do exercício, da fonte única `limites_dispensa`."""
+    return _limite_dispensa(ano or date.today().year, "compras")
 
 
 TETO_DISPENSA_COMPRAS = teto_dispensa(2026)  # compat: consumidores antigos importam a constante
@@ -60,19 +67,39 @@ def _data(s: str | None) -> date | None:
 
 
 # ── D7 — fracionamento de despesa ────────────────────────────────────────────
-def d7_fracionamento(con, teto: float = TETO_DISPENSA_COMPRAS,
+def d7_fracionamento(con, teto: float | None = None,
                      janela_dias: int = D7_JANELA_DIAS,
                      minimo: int = D7_MINIMO_REGISTROS) -> list[dict]:
     """≥3 empenhos/contratos ABAIXO do teto de dispensa, mesmo credor+órgão,
     em janela de 90 dias, cuja SOMA ultrapassa o teto — o padrão clássico de
-    fatiar para fugir de licitação (Lei 14.133, art. 75 §1º)."""
-    rows = con.execute("""
+    fatiar para fugir de licitação (Lei 14.133, art. 75 §1º).
+
+    O teto é o **do ano da contratação**, não um valor único. Antes um número só era
+    aplicado a todos os exercícios, e ele era o de 2025 rotulado como 2026 — resultado
+    medido: **46 contratos de 2024 entravam indevidamente** (teto alto demais) e **35
+    contratos + 52 licitações de 2026 sumiam** (teto baixo demais). Trocar só a constante
+    para a de 2026 teria PIORADO 2024, porque o teto sobe a cada ano — por isso a
+    comparação virou por exercício, no próprio SQL.
+
+    `teto` explícito continua aceito e passa a valer para todos os anos (compatibilidade e
+    cenário de teste); `None` = por ano, que é o correto em produção.
+    """
+    if teto is None:
+        casos = " ".join(f"WHEN {a} THEN {v['compras']}" for a, v in sorted(LIMITES.items()))
+        padrao = LIMITES[max(LIMITES)]["compras"]
+        teto_sql = f"(CASE CAST(substr(data_assinatura,1,4) AS INT) {casos} ELSE {padrao} END)"
+        params: tuple = ()
+    else:
+        teto_sql, params = "?", (teto,)
+    rows = con.execute(f"""
         select orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
-               data_assinatura, valor_global, numero_controle_pncp
+               data_assinatura, valor_global, numero_controle_pncp,
+               {teto_sql} as teto_ano
         from pcrj_contratos
-        where valor_global > 0 and valor_global < ? and data_assinatura is not null
-        order by orgao_cnpj, fornecedor_documento, data_assinatura""", (teto,)).fetchall()
+        where valor_global > 0 and valor_global < {teto_sql} and data_assinatura is not null
+        order by orgao_cnpj, fornecedor_documento, data_assinatura""",
+        params * 2).fetchall()
     grupos: dict[tuple, list] = {}
     for r in rows:
         d = _data(r["data_assinatura"])
@@ -92,7 +119,10 @@ def d7_fracionamento(con, teto: float = TETO_DISPENSA_COMPRAS,
         if not melhor:
             continue
         soma = sum(r["valor_global"] for _, r in melhor)
-        if soma <= teto:
+        # o teto da JANELA é o do exercício em que ela começa (o `teto_ano` já vem do SQL,
+        # por linha) — comparar a soma contra um teto de outro ano era parte do mesmo erro.
+        teto_janela = melhor[0][1]["teto_ano"]
+        if soma <= teto_janela:
             continue        # fatias que nem somadas passam do teto não indicam fuga
         r0 = melhor[0][1]
         risco = min(9, 5 + min(4, len(melhor) - minimo + 1))
@@ -102,7 +132,7 @@ def d7_fracionamento(con, teto: float = TETO_DISPENSA_COMPRAS,
             f"Indício de fracionamento de despesa: {len(melhor)} contratações do credor "
             f"{r0['fornecedor_nome'] or forn} (doc. {forn}) pelo órgão "
             f"{r0['orgao_nome'] or orgao} em ≤{janela_dias} dias, todas abaixo do teto de "
-            f"dispensa (R$ {_brl(teto)}), somando R$ {_brl(soma)} — soma acima do teto "
+            f"dispensa de {r0['data_assinatura'][:4]} (R$ {_brl(teto_janela)}), somando R$ {_brl(soma)} — soma acima do teto "
             f"sugere fuga de licitação (Lei 14.133/2021, art. 75 §1º). "
             f"(fonte: PNCP, contratos/empenhos publicados)",
             {"subtipo": "fracionamento", "orgao": orgao, "fornecedor": forn,
