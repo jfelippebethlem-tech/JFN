@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Gabarito de contraste — casos de verdade conhecida</title>
+<!--
+  GABARITO DO AUDITOR DE CONTRASTE.
+
+  Cada bloco abaixo tem uma verdade CONHECIDA, declarada em `data-verdade`
+  ("reprova" ou "aprova"), e um `data-hoje` com o que o auditor de PARADAS
+  (tools/auditar_contraste.py) responde hoje. Onde os dois divergem esta a razao
+  de existir o auditor de PIXEL.
+
+  Nao e um teste de estilo: e o instrumento que prova que a troca de auditor foi
+  uma melhora, e nao apenas uma mudanca. Se um dia alguem "simplificar" o auditor
+  novo, este arquivo diz exatamente o que quebrou.
+-->
+<style>
+  html,body{margin:0;background:#04070f;font-family:system-ui,sans-serif}
+  .caso{width:520px;margin:18px;padding:16px 18px 26px;border-radius:8px;
+        color:#eaf3f8;font-size:14px;line-height:1.5}
+  .rot{display:block;font:600 10px/1 ui-monospace,monospace;letter-spacing:1px;
+       color:#7d8ea0;margin:22px 0 4px 18px;text-transform:uppercase}
+
+  /* ── CASO 1 — falha REAL: o gradiente passa por baixo dos glifos e chega ao
+     branco justamente onde o texto e branco. Os dois auditores tem de reprovar;
+     e o caso de controle, que prova que o auditor novo nao virou permissivo. */
+  #c1{background-image:linear-gradient(90deg,#000 0%,#fff 100%)}
+
+  /* ── CASO 2 — o FALSO POSITIVO que custou a "lei da casa" (1,02:1 em
+     "Fornecedor"). O fundo real atras do texto e escuro e solido; a unica coisa
+     clara e uma faixa de 1px encostada na borda de baixo, 10px abaixo da ultima
+     linha por causa do padding. O auditor de paradas nao sabe ONDE o gradiente
+     pinta: le a parada clara e acusa. O de pixel olha so onde o glifo esta. */
+  #c2{background-color:#0b1020;
+      background-image:linear-gradient(#7cc4ff,#7cc4ff);
+      background-size:100% 1px;background-position:left bottom;
+      background-repeat:no-repeat}
+
+  /* ── CASO 3 — o FALSO NEGATIVO, que e o defeito mais grave: uma falha real
+     que passa calada. Duas camadas. A de CIMA e quase transparente (6%) e
+     escura; a de BAIXO e clara e opaca, e e ela que encosta no texto. O auditor
+     de paradas so le a primeira camada (remendo das linhas 97-100), enxerga uma
+     parada escura, e aprova texto claro sobre fundo claro. */
+  #c3{background-image:linear-gradient(rgba(10,16,32,.06),rgba(10,16,32,.06)),
+                       linear-gradient(#f2f6ff,#f2f6ff)}
+
+  /* ── CASO 4 — o que o v14 vai usar de verdade: arte em `url()`. Placa de
+     holocron, nebulosa, textura. Nao ha parada de cor para extrair, entao o
+     auditor de paradas declara "nao medido" — silencio, nao laudo. O de pixel
+     mede, porque pixel toda imagem tem. */
+  #c4{background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23f4f7ff'/%3E%3C/svg%3E");
+      background-size:cover}
+</style>
+
+<span class="rot">caso 1 · gradiente sob os glifos</span>
+<div class="caso" id="c1" data-verdade="reprova" data-hoje="reprova">
+  Texto branco sobre gradiente que termina em branco — falha real de contraste em boa parte da linha.
+</div>
+
+<span class="rot">caso 2 · faixa de 1px longe do texto</span>
+<div class="caso" id="c2" data-verdade="aprova" data-hoje="reprova">
+  Fornecedor contratado pelo orgao estadual no exercicio corrente — texto claro sobre fundo escuro solido.
+</div>
+
+<span class="rot">caso 3 · camada de cima transparente</span>
+<div class="caso" id="c3" data-verdade="reprova" data-hoje="aprova">
+  Texto claro sobre uma camada clara que o auditor de paradas nao enxerga porque so le a de cima.
+</div>
+
+<span class="rot">caso 4 · fundo em url()</span>
+<div class="caso" id="c4" data-verdade="reprova" data-hoje="nao_medido">
+  Texto claro sobre arte em url() — sem parada de cor para extrair, o auditor antigo fica mudo.
+</div>
