@@ -3029,6 +3029,7 @@ function nucleoStart(){
   const cam={cx:0,cy:0,s:1,camd:HOLO.CAMD,yaw:0,tyaw:0,elev:HOLO.ELEV,telev:HOLO.ELEV,
              cp:0,sp:0,cy_:1,sy_:0};
   window.__holoCam=cam;      // gancho de auditoria: o screenshot sozinho não diz onde a câmera está
+  window.__nuEstado=()=>({vis:_nuVisivel,raf:_nuRAF});   // idem para o orçamento de vida
   function setCam(){cam.cp=Math.cos(cam.elev);cam.sp=Math.sin(cam.elev);
     cam.cy_=Math.cos(cam.yaw);cam.sy_=Math.sin(cam.yaw);}
   /* TRILHOS DE CHAMADA: metade dos domínios à esquerda, metade à direita, em
@@ -3115,8 +3116,22 @@ function nucleoStart(){
     cv.style.cursor=_nuHover?'pointer':'default';};
   cv.onpointerleave=()=>{_nuHover=null;cam.tyaw=0;cam.telev=HOLO.ELEV;};
   cv.onclick=()=>{const n=NU_NODES.find(q=>q.id===_nuHover);if(n)ir(n.tab);};
+  /* ORÇAMENTO DE VIDA — a mesa é a cena mais cara do painel e continuava desenhando a
+     60fps depois que o usuário rolou para as tabelas: trabalho inteiramente jogado fora
+     numa VM de 2 vCPU. `document.hidden` já cobria a aba oculta; faltava o SCROLL.
+     Aqui o laço PARA de vez quando a caixa sai da viewport e o próprio observador o
+     retoma na volta — não é um rAF que acorda 60×/s só para desistir. */
+  let _nuVisivel=true;
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(es=>{
+      const antes=_nuVisivel;
+      _nuVisivel=es.some(e=>e.isIntersecting);
+      if(_nuVisivel&&!antes&&!rm&&cv.isConnected){cancelAnimationFrame(_nuRAF);draw(performance.now());}
+    },{rootMargin:'80px'}).observe(box);      // margem: retoma um pouco antes de aparecer
+  }
   function draw(t){
     if(!cv.isConnected){cancelAnimationFrame(_nuRAF);_nuRAF=0;return;}
+    if(!_nuVisivel){_nuRAF=0;return;}                  // fora da viewport: o observador retoma
     if(document.hidden){_nuRAF=requestAnimationFrame(draw);return;}
     // câmera com inércia (ease exponencial, sem mola nem bounce)
     if(Math.abs(cam.tyaw-cam.yaw)>2e-4||Math.abs(cam.telev-cam.elev)>2e-4){
