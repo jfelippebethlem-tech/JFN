@@ -1627,6 +1627,32 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
   .nu-chip{max-width:200px}
 
+  /* ── v14b · a cena da capa quando é INSTRUMENTO ──────────────────────────── */
+  .cover-cena.viva{opacity:.9;cursor:pointer;width:132px;height:56px}
+  .cover-cena .cbar{fill:color-mix(in oklch,var(--fac) 42%,transparent);
+    transition:fill .16s,transform .16s cubic-bezier(.2,.7,.2,1);transform-origin:50% 100%}
+  .cover-cena .cbar:hover,.cover-cena .cbar:focus-visible{fill:var(--fac);outline:0;transform:scaleY(1.08)}
+  .cover-cena .cbar:focus-visible{stroke:var(--kyber);stroke-width:.6}
+  .cover-cena .cbar.on{fill:var(--kyber)}
+  .cena-aviso{display:flex;align-items:center;gap:8px;margin-top:9px;
+    font-family:var(--mono);font-size:11px;color:var(--tx2)}
+  .cena-aviso b{color:var(--fac);font-weight:600;letter-spacing:.5px}
+  .cena-aviso button{appearance:none;border:1px solid color-mix(in oklch,var(--fac) 40%,transparent);
+    background:transparent;color:var(--tx2);font:inherit;font-size:10.5px;
+    padding:3px 9px;border-radius:6px;cursor:pointer;min-height:24px}
+  .cena-aviso button:hover{border-color:var(--fac);color:var(--tx)}
+  @media (prefers-reduced-motion:reduce){.cover-cena .cbar{transition:none}}
+  @media (max-width:600px){.cover-cena.viva{display:block;width:100%;height:44px;margin:8px 0 0}}
+
+  /* v14b · O CHIP NÃO PODE ENGORDAR. Rótulos longos levaram o chip de ~140px para
+     212px em três linhas, e os nós passaram a dominar a mesa — clareza ganha,
+     proporção perdida. A frase inteira vive no `title`; na tela fica o rótulo
+     curto, em UMA linha, com reticências. O sujeito continua, menor. */
+  .nu-chip{max-width:172px}
+  .nu-chip small{max-width:158px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;display:block}
+  .nu-sub{max-width:158px;font-size:8px;opacity:.9}
+
 </style>
 </head>
 <body>
@@ -2119,6 +2145,7 @@ function vivo(){
   const v=$('view'); if(!v) return;
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
   instrumentar(v);   // v14: a coluna se identifica antes de a cascata começar
+  cenaInstrumento(); // v14b: a cena da capa vira histograma do que está na tela
   const top=[...v.querySelectorAll('.card,.cover')].filter(el=>!el.parentElement.closest('.card,.cover'));
   // 1) cascata de entrada + pulso "ao vivo" no 1º KPI
   top.forEach((el,i)=>{el.classList.add('rise');el.style.setProperty('--d',Math.min(i*18,220)+'ms');});
@@ -2154,6 +2181,123 @@ function instrumentar(root){
     th.dataset.inst=achou?achou[1]:'';
   });
 }
+/* ═══ v14b · A CENA DA CAPA VIRA INSTRUMENTO ═════════════════════════════════════
+   O v14 pôs uma cena SVG decorativa na capa de cada aba. Aqui ela deixa de ser
+   enfeite e vira CONTROLE — a regra do v14b é que todo movimento novo precisa ser
+   agarrável ou informativo, e um desenho que não responde não é nenhum dos dois.
+
+   Como isto alcança 51 abas sem 51 implementações: a cena lê as LINHAS QUE JÁ
+   ESTÃO NA TELA e monta um histograma do próprio dado renderizado. A chave de cada
+   linha vem da família do instrumento, que o registro ASSINATURA já declara:
+     moeda  -> o maior valor em R$ da linha
+     tempo  -> a data (DD/MM/AAAA)
+     fila / rede / mapa / pessoa -> o último número da linha (score, contagem)
+   Clicar numa barra filtra; clicar de novo (ou no X) desfaz.
+
+   Três honestidades que isto NÃO pode violar:
+   1. nada é sintético — se a aba não tiver linha ou chave legível, a cena continua
+      decorativa e nenhum controle aparece. Falha para o lado de não afirmar;
+   2. filtro aplicado é SEMPRE visível e reversível. Filtro invisível é o jeito mais
+      fácil de um painel de fiscalização mentir;
+   3. tudo opera sobre dado JÁ carregado — nenhuma requisição por gesto (2 vCPU). */
+const _CENA_BINS=12;
+let _cenaEstado=null;
+
+function _cenaChave(tr,inst){
+  const txt=tr.textContent||'';
+  if(inst==='moeda'){
+    const m=[...txt.matchAll(/R\$\s*([\d.]{1,18},\d{2})/g)].map(x=>
+      parseFloat(x[1].replace(/\./g,'').replace(',','.')));
+    if(m.length)return Math.max(...m);
+    const c=txt.match(/R\$\s*([\d.,]+)\s*(mi|bi|mil)\b/);
+    if(c){const v=parseFloat(c[1].replace(/\./g,'').replace(',','.'));
+      return v*({mil:1e3,mi:1e6,bi:1e9}[c[2]]||1);}
+    return null;
+  }
+  if(inst==='tempo'){
+    const d=txt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if(d)return new Date(+d[3],+d[2]-1,+d[1]).getTime();
+    const a=txt.match(/\b(20\d{2})\b/);
+    return a?new Date(+a[1],0,1).getTime():null;
+  }
+  const cels=[...tr.querySelectorAll('td')];
+  for(let i=cels.length-1;i>=0;i--){
+    const n=(cels[i].textContent||'').trim().replace(/\./g,'').replace(',','.');
+    if(/^-?\d+(\.\d+)?$/.test(n))return parseFloat(n);
+  }
+  return null;
+}
+
+function _cenaRotulo(v,inst){
+  if(inst==='moeda')return fmtRc(v);
+  if(inst==='tempo'){const d=new Date(v);
+    return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
+  return fmtN(Math.round(v));
+}
+
+function cenaInstrumento(){
+  const svg=document.querySelector('#view .cover-cena');if(!svg)return;
+  const inst=(document.body.dataset.inst)||'mapa';
+  const linhas=[...document.querySelectorAll('#view tbody tr')];
+  if(linhas.length<4)return;                       // pouca linha: histograma mente
+  const pares=linhas.map(tr=>[tr,_cenaChave(tr,inst)]).filter(x=>x[1]!=null&&isFinite(x[1]));
+  if(pares.length<4)return;                        // sem chave legível: fica decorativa
+  const vs=pares.map(x=>x[1]), lo=Math.min(...vs), hi=Math.max(...vs);
+  if(hi<=lo)return;                                // tudo igual: não há o que distribuir
+  const nb=Math.min(_CENA_BINS,Math.max(4,Math.round(Math.sqrt(pares.length))));
+  const baldes=Array.from({length:nb},()=>[]);
+  pares.forEach(([tr,v])=>{
+    const i=Math.min(nb-1,Math.floor((v-lo)/(hi-lo)*nb));baldes[i].push(tr);});
+  const topo=Math.max(...baldes.map(b=>b.length))||1;
+  _cenaEstado={inst,baldes,lo,hi,nb,linhas};
+
+  const W=48,H=32,bw=W/nb;
+  svg.innerHTML=baldes.map((b,i)=>{
+    const h=b.length?Math.max(1.5,b.length/topo*(H-4)):0.8;
+    const de=_cenaRotulo(lo+(hi-lo)*i/nb,inst), ate=_cenaRotulo(lo+(hi-lo)*(i+1)/nb,inst);
+    return `<rect class="cbar" data-i="${i}" x="${(i*bw+.5).toFixed(2)}" y="${(H-h).toFixed(2)}"
+      width="${(bw-1).toFixed(2)}" height="${h.toFixed(2)}" rx="1"
+      tabindex="0" role="button" aria-label="${b.length} de ${de} a ${ate}"
+      onclick="cenaFiltra(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cenaFiltra(${i})}"
+      ><title>${b.length} · ${de} a ${ate}</title></rect>`;}).join('');
+  svg.setAttribute('viewBox','0 0 48 32');
+  svg.classList.add('viva');
+  svg.removeAttribute('aria-hidden');
+  svg.setAttribute('role','group');
+  svg.setAttribute('aria-label','Distribuição — clique numa barra para filtrar');
+}
+
+function cenaFiltra(i){
+  const e=_cenaEstado;if(!e)return;
+  const svg=document.querySelector('#view .cover-cena');
+  const jaAtiva=svg&&svg.dataset.sel===String(i);
+  if(jaAtiva){cenaLimpa();return;}
+  e.linhas.forEach(tr=>{tr.style.display='none';});
+  e.baldes[i].forEach(tr=>{tr.style.display='';});
+  if(svg){svg.dataset.sel=String(i);
+    svg.querySelectorAll('.cbar').forEach(r=>r.classList.toggle('on',r.dataset.i===String(i)));}
+  const de=_cenaRotulo(e.lo+(e.hi-e.lo)*i/e.nb,e.inst),
+        ate=_cenaRotulo(e.lo+(e.hi-e.lo)*(i+1)/e.nb,e.inst);
+  _cenaAviso(`${e.baldes[i].length} de ${e.linhas.length} · ${de} a ${ate}`);
+}
+
+function cenaLimpa(){
+  const e=_cenaEstado;if(!e)return;
+  e.linhas.forEach(tr=>{tr.style.display='';});
+  const svg=document.querySelector('#view .cover-cena');
+  if(svg){delete svg.dataset.sel;svg.querySelectorAll('.cbar').forEach(r=>r.classList.remove('on'));}
+  const a=$('cena-aviso');if(a)a.remove();
+}
+
+/* O aviso NÃO é decoração: é a garantia de que o filtro é visível e reversível.
+   Sem ele o usuário lê uma tabela cortada achando que é o universo. */
+function _cenaAviso(txt){
+  let a=$('cena-aviso');
+  const cover=document.querySelector('#view .cover');if(!cover)return;
+  if(!a){a=document.createElement('div');a.id='cena-aviso';a.className='cena-aviso';cover.appendChild(a);}
+  a.innerHTML=`<b>filtro</b> ${esc(txt)} <button type="button" onclick="cenaLimpa()" aria-label="Remover filtro">mostrar tudo ✕</button>`;
+}
+
 function _countUp(el){
   const raw=(el.textContent||'').trim();
   const m=raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/); if(!m)return;
@@ -3783,20 +3927,20 @@ async function renderCockpit(){
 
 // ═══ NÚCLEO ORGÂNICO — a mesma informação do cockpit em forma viva (dados/eventos REAIS) ═══
 const NU_NODES=[
-  {id:'radar',  lab:'fornecedores com sinal', tit:'Fornecedores que acenderam algum sinal de risco. Clique para ver a fila.', tab:'g_radar', cor:'#5fd9ff', cor2:'#7d7dff', pri:2, orb:.9,  sp:1},
+  {id:'radar',  lab:'fornecedores', tit:'Fornecedores que acenderam algum sinal de risco. Clique para ver a fila.', tab:'g_radar', cor:'#5fd9ff', cor2:'#7d7dff', pri:2, orb:.9,  sp:1},
   {id:'alertas',lab:'alertas não lidos', tit:'Alertas que o motor levantou e ninguém leu ainda.',        tab:'e_alertas',cor:'#ff7a8a', cor2:'#ff5470', pri:1, orb:.66, sp:-.7},
   // "ninhos" agora é a MESMA SALA, não o mesmo prédio: dividir 'Rua da Assembleia 10'
   // (318 CNPJs, edifício comercial) não diz nada; dividir a SALA com 2+ recebendo é a
   // assinatura de interposição. Rótulo mudou junto — o número é outro e menor, de propósito.
-  {id:'ninho',  lab:'empresas na mesma sala', tit:'Grupos de empresas que dividem a MESMA sala e receberam dinheiro público.',     tab:'g_riscos', cor:'#f2b544', cor2:'#ff8804', pri:1, orb:.88, sp:.8},
-  {id:'fenix',  lab:'pago a empresa fechada', tit:'Dinheiro pago DEPOIS de a empresa ser baixada na Receita.',  tab:'g_fenix',  cor:'#ff9a6a', cor2:'#ff5472', pri:1, orb:.6,  sp:1.15},
-  {id:'com',    lab:'grupos ligados por sócios', tit:'Agrupamentos que o grafo societário revela: família, empresa e órgão.',    tab:'g_comun',  cor:'#c096ff', cor2:'#59a3ff', pri:3, orb:.92, sp:-.55},
-  {id:'compras',lab:'compras acima do preço típico', tit:'Compras pagas acima do preço mediano de itens comparáveis.',tab:'e_comp',cor:'#eec276', cor2:'#61da92', pri:2, orb:.68, sp:.9},
-  {id:'dossie', lab:'itens caros de fornecedor suspeito', tit:'Itens pagos caro a fornecedor sancionado ou sem estrutura.',tab:'e_comp',   cor:'#ff7ab8', cor2:'#c096ff', pri:1, orb:.86, sp:-.95},
+  {id:'ninho',  lab:'mesma sala', tit:'Grupos de empresas que dividem a MESMA sala e receberam dinheiro público.',     tab:'g_riscos', cor:'#f2b544', cor2:'#ff8804', pri:1, orb:.88, sp:.8},
+  {id:'fenix',  lab:'empresa fechada', tit:'Dinheiro pago DEPOIS de a empresa ser baixada na Receita.',  tab:'g_fenix',  cor:'#ff9a6a', cor2:'#ff5472', pri:1, orb:.6,  sp:1.15},
+  {id:'com',    lab:'grupos por sócios', tit:'Agrupamentos que o grafo societário revela: família, empresa e órgão.',    tab:'g_comun',  cor:'#c096ff', cor2:'#59a3ff', pri:3, orb:.92, sp:-.55},
+  {id:'compras',lab:'acima do preço', tit:'Compras pagas acima do preço mediano de itens comparáveis.',tab:'e_comp',cor:'#eec276', cor2:'#61da92', pri:2, orb:.68, sp:.9},
+  {id:'dossie', lab:'caros e suspeitos', tit:'Itens pagos caro a fornecedor sancionado ou sem estrutura.',tab:'e_comp',   cor:'#ff7ab8', cor2:'#c096ff', pri:1, orb:.86, sp:-.95},
   /* v14: `lift` e `orgao` ja eram alimentados pelo cockpit (ckFill -> nuSet) e
      nao apareciam na mesa. Entram sem inventar nada — dado sintetico e proibido. */
   {id:'lift',   lab:'sinal que mais acerta', tit:'O detector que mais concentra fraude acima da média.',tab:'g_prioridade',cor:'#61da92', cor2:'#5fd9ff', pri:2, orb:.72, sp:.62},
-  {id:'orgao',  lab:'onde há mais a recuperar', tit:'O órgão com a maior economia potencial identificada.',tab:'e_comp',  cor:'#90d7ff', cor2:'#61da92', pri:3, orb:.95, sp:-.42},
+  {id:'orgao',  lab:'mais a recuperar', tit:'O órgão com a maior economia potencial identificada.',tab:'e_comp',  cor:'#90d7ff', cor2:'#61da92', pri:3, orb:.95, sp:-.42},
 ];
 let _nuRAF=0,_nuPulses=[],_nuVals={},_nuFlux=[],_sweepAtivo=null,_swInt=0;
 // qual sweep alimenta o sistema agora → mostra no reator e o acelera
