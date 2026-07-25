@@ -358,7 +358,7 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
             f"<td>{_esc(_GRAU_ROTULO.get(ex.get('grau'), ex.get('grau')))}</td>"
             f"<td>{_esc(ex.get('estagio_despesa'))}</td>"
             f"<td>{_esc(_GRAU_ROTULO.get(pg.get('grau'), pg.get('grau')))}</td>"
-            f"<td>{len(chaves)}{' (' + str(len(contingencia)) + ' em contingência)' if contingencia else ''}</td></tr>")
+            f"<td>{(str(len(chaves)) + (' (' + str(len(contingencia)) + ' em contingência)' if contingencia else '')) if chaves else '—'}</td></tr>")
         bloco = [f"<h3>Processo {_esc(numero)}</h3>"]
         if ex.get("grau") not in ("verde", "nao_aplicavel"):
             bloco.append(f"<p><b>Comprovação da execução:</b> {_esc(ex.get('resumo'))}</p>")
