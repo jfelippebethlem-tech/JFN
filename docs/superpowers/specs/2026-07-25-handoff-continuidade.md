@@ -1,193 +1,164 @@
-# Handoff — continuidade da sessão de 24/07 → 25/07/2026
+# Handoff — estado em 25/07/2026 (sessão da noite)
 
 **Para retomar:** *"continue pelo docs/superpowers/specs/2026-07-25-handoff-continuidade.md"*.
-Branch: `feat/painel-v8-melhorias` (tudo commitado e no remoto).
+Branch: `feat/painel-v8-melhorias` — tudo commitado e **no remoto** (`37e763ac` → `19a62daf`).
 
 ---
 
-## 1. O QUE FICOU PARA A PRÓXIMA SESSÃO (prioridade do dono)
+## 1 · O QUE FICOU ABERTO (e o que depende de você)
 
-### 1.1 PAINEL — refazer o visual (o dono não gostou do que foi entregue)
+### 1.1 Painel — a foto de referência (DEPENDE DE VOCÊ)
 
-**Briefing literal (25/07):** *"queremos o painel nas cores **azul e laranja**, **ultrafuturista**,
-**Jarvis**, **sci-fi**, **cyber**, **holográfico**, **3D super foda** e **Star Wars**."*
+O painel foi reformulado (item 2.1) sem a foto que você mandou ao Yoda — ela nunca chegou
+ao disco da VM. **Se ainda quiser aquela direção específica, anexe a foto no chat da
+sessão** (aí é vista direto) ou salve em `~/JFN/docs/referencias/`. Sem ela, qualquer
+tentativa de imitar a referência é chute.
 
-**Referência visual:** o dono enviou uma foto ao **Yoda (Telegram)**. Ela **não chegou ao disco da VM**
-— o cache de imagens do Hermes (`~/.hermes/cache/images/`) só tem `img_0d3122f04234.jpg`, de 09/07.
-**Peça a foto de novo, anexada no chat da sessão** (aí é vista direto) ou salva em
-`~/JFN/docs/referencias/`. Sem ela, qualquer tentativa é chute — foi o que aconteceu nesta sessão.
+### 1.2 Adobe Express — o teste de 5 minutos (DEPENDE DE VOCÊ)
 
-**O que já existe (não recomeçar do zero):**
-- `static/jfn-painel.html` (~3.440 linhas, arquivo único). Paleta OKLCH com dois polos já definidos:
-  `--ion` (azul) e `--flame` (laranja) — **as cores pedidas já são a base do tema**.
-- Portal com **shader WebGL de passe único** (0 KB de dependência; escolha deliberada: a VM tem 2 vCPU).
-- Núcleo orbital em canvas com a malha real do RJ (IBGE) ao fundo.
-- Camada holográfica **v11 "PRISMA"** acrescentada nesta sessão (varredura, aresta cônica animada,
-  franja cromática no hover, grade de perspectiva) — commit `7c563b4c`.
-- Anti-colisão dos rótulos orbitais (o "NINHOS" sumia sob "COMUNIDADES").
+Veredito apurado e documentado em **`docs/referencias/express/PASSO-A-PASSO.md`**: a API
+exige entitlement de **organização** (Admin Console, product profiles com *Firefly
+Creative Production for Enterprise*) — assinatura individual não habilita. A ponte que
+funciona hoje, sem credencial e sem custo, está em `tools/express_ponte.py`.
 
-**Veredito honesto do que foi feito:** a camada v11 é **sutil demais** para o que o dono pediu. Ele quer
-uma mudança de *impressão*, não de detalhe. O caminho provável é reformular a **primeira dobra** (hero +
-núcleo) com profundidade real, não decorar o que já existe.
+**O que só você pode fazer:** entrar em `developer.adobe.com/console` → *Create new
+project* → *Add API* → procurar **Adobe Express API**. Se aparecer e deixar criar
+credencial `OAuth Server-to-Server`, a conta tem o entitlement e dá para automatizar
+daqui. Se não aparecer, o veredito está confirmado e o caminho é o passo a passo.
 
-**Como auditar sem chutar** (foi o que funcionou):
-```bash
-# screenshot + erros de console pelo Chrome que já roda na VM (CDP 9222)
-.venv/bin/python /tmp/shot_painel.py      # recriar a partir deste doc se /tmp foi limpo
-```
-O script usa `websocket.create_connection(..., suppress_origin=True)` — sem isso o Chrome recusa com
-403. Para página inteira: `Page.getLayoutMetrics` → `setDeviceMetricsOverride` → `captureScreenshot`
-com `captureBeyondViewport: True`.
+### 1.3 Yoda — 413 com foto: **VERIFICADO** (falta só o teste ao vivo)
 
-**Regras que não podem ser violadas na reforma:**
-- `prefers-reduced-motion` desliga o movimento (a estética fica);
-- nada de CDN (0 dependência externa) e nada que dispute CPU com o servidor do JFN;
-- **quem já brilha (grave/ouro/alerta) não pode ser dessaturado**;
-- é um painel de trabalho: número tem de ficar legível em repouso.
+O patch (`6f222a1a2` no `hermes-agent`) sobreviveu ao auto-update das 04:00 e está em HEAD.
+Testado nesta sessão com foto pesada sintética:
 
-### 1.2 ADOBE EXPRESS — o que dá e o que não dá (o dono tem assinatura)
-
-Apurado na documentação oficial (25/07/2026):
-
-| Caminho | Serve para automação daqui? | Observação |
+| | antes | depois |
 |---|---|---|
-| **Adobe Express API (beta)** — REST | **Talvez** | Modifica elementos marcados de um documento e gera variações/exportações. Exige app registrado no Adobe Developer Console, `X-API-KEY` + token com escopos `openid`, `AdobeID`, **`ee.express_api`**. A doc **não diz** se assinatura individual habilita. |
-| **Firefly Services** (Firefly/Photoshop/Lightroom APIs) | Sim, mas **é pago** | Plataforma empresarial. O dono já vetou qualquer coisa paga (24/07). |
-| **Add-on SDK** | Não | O add-on roda **dentro** do Express (JS no navegador), não no servidor. |
-| **Embed SDK** | Parcial | Embute o editor numa página; ainda exige API key do Developer Console. |
+| dimensão | 4000×3000 | 1568×1176 |
+| arquivo | 8.568 KB | 1.229 KB (−85,7%) |
+| **payload base64** (o que estourava o corpo do provedor) | **11,16 MB** | **1,60 MB** |
 
-**Teste definitivo (5 min, faça primeiro):** entrar em `developer.adobe.com/console` com a conta da
-assinatura → *Create new project* → *Add API* → procurar **Adobe Express API**. Se o escopo
-`ee.express_api` aparecer para a conta, dá para automatizar daqui; se não aparecer, é plano empresarial.
+O original em tamanho pleno fica preservado ao lado (`img_*.orig.jpg`). Falta só você
+mandar uma foto pesada no Telegram para confirmar o caminho vivo.
 
-**O caminho que funciona hoje, sem depender disso:** fluxo assistido — a sessão gera especificação de
-design (tokens, paleta OKLCH, SVG, hero em HTML), o dono ajusta no Express e exporta **SVG/PNG** para
-`~/JFN/docs/referencias/`, e a sessão integra o asset no painel. Nenhuma credencial, nenhum custo.
+### 1.4 Continua na fila (do handoff anterior, sem mudança)
 
-### 1.3 YODA — o 413 com foto (CORRIGIDO, mas verificar na prática)
+3. **VLM local para fotos de medição** — `foto_medicao.avaliar_fotos(descrever=…)` está
+   pronto e injetável; falta subir **moondream2** ou **SmolVLM** em llama.cpp na VM-2.
+4. **Consulta à SEFAZ por chave de NF-e** — `nfe_verifica.situacao(consultar=…)` pronto;
+   caminho gratuito é o portal público com captcha pelo **ddddocr local** (já roda na VM-2).
+5. **I.D.E.A.S** — R$ 3,56 bi pelo Fundo Estadual de Saúde (UG 296100), 124 processos SEI,
+   743 OBs. Com o motor calibrado, vale o dossiê completo dedicado.
+6. **Fracionamento pelo SIAFE** — 4 casos com prioridade ≥ 0,7 em 2024; o primeiro
+   (4ID MÉDICOS, UG 294200) tem 12 pagamentos, 12 processos distintos, todos ≥ 80% do teto.
 
-**Sintoma relatado pelo dono (25/07):** ao enviar a foto de referência no Telegram, o Yoda respondeu
-`Request payload too large (413). Cannot compress further.` — *"isso não pode acontecer nunca"*.
+### 1.5 Achado NÃO tratado (decisão consciente)
 
-**Causa-raiz encontrada:** a imagem ia **inteira** ao provedor. Em
-`~/hermes-agent/gateway/platforms/base.py` havia apenas um teto de 20 MB que **descartava** a imagem;
-não havia redimensionamento. Uma foto de 12 MP vira 5-8 MB em base64 e estoura o limite de corpo de
-vários provedores. O segundo efeito é pior que o primeiro: ao receber o 413, o compressor de contexto
-(`agent/turn_context.py`) tenta encolher **texto** — a imagem continua igual, nada muda, ele conclui
-"não houve progresso" e desiste. O usuário fica sem resposta.
-
-**Correção aplicada** (commit `6f222a1a2` no repo `hermes-agent`): em `cache_image_from_bytes` — ponto
-único por onde toda imagem recebida passa, em qualquer plataforma — a versão enviada cai para **1568 px**
-no maior lado (JPEG 85), e o **original em tamanho pleno é preservado** como `img_<id>.orig.jpg`.
-Medido: 4000×3000 de 956 KB → **96 KB** ao provedor. Degrada honesto (sem Pillow ou arquivo corrompido,
-envia o original). Pillow 12.2.0 confirmado no venv do Hermes.
-
-**Sobre qualidade:** para o modelo não há perda — Gemini, GPT e Claude reduzem internamente para
-~1568 px de qualquer forma. Para detalhe fino (ler texto pequeno numa foto), o caminho é **recortar a
-região do `.orig`** e mandar o recorte, não mandar a foto inteira maior.
-
-**A verificar na próxima sessão:** o dono reenviar uma foto pesada ao Yoda e confirmar que responde.
-Atenção ao **auto-update do Hermes (04:00)**: se o merge com o upstream reverter este patch, reaplicar
-(ver [[hermes-update-git-merge-seguro]]).
+`reporting.intel_base.moeda(None)` e `moeda('x')` devolvem **`0,00`** — o que **afirma que
+o valor é zero**, contra a regra `INDISPONÍVEL ≠ 0`. **Não foi mexido de propósito:** a
+função tem **178 chamadas** e mudar a semântica dela derrubaria os goldens em massa. Fica
+registrado como dívida com raio de impacto medido. Nos 152 sítios corrigidos nesta sessão
+o risco é nulo (todos já pressupunham valor numérico; hoje `f"{None:,.2f}"` levantaria
+`TypeError`).
 
 ---
 
-## 2. O QUE FOI FEITO NESTA SESSÃO (para não refazer)
+## 2 · O QUE FOI FEITO NESTA SESSÃO
 
-### 2.1 Motor de análise de processos (o grosso do trabalho)
+### 2.1 Painel v12 "HOLOMESA" — 3D de verdade no núcleo (`a426ea00`)
 
-| Módulo | O que responde |
+O núcleo deixou de ser um círculo visto de frente e virou **mesa de holograma**: o
+território do RJ é o **chão** (perspectiva com divisão por z), os domínios **flutuam** em
+três altitudes, cada um preso ao piso por feixe vertical e pegada de luz, e no centro está
+o projetor. Profundidade vem dos quatro sinais que faltavam — divisão por z, oclusão por
+ordem de pintura, paralaxe do cursor, contato com um plano.
+
+**Custo medido no próprio navegador: 0,9 ms/quadro** (p90 1,1 · teto 3) num orçamento de
+16,6 ms. O piso é assado em bitmap ortogonal e deformado em faixas afins, com cache
+invalidado só quando a câmera se move.
+
+> **Armadilha de medição, para não cair de novo:** o FPS da VM é **4 mesmo com TODOS os
+> canvas parados** — SwiftShader por software, 2 vCPU. FPS aqui **não** mede a experiência
+> do usuário; o que mede é o ms/quadro do desenho.
+
+Defeitos achados por auditoria visual e corrigidos:
+
+| Defeito | Causa-raiz |
 |---|---|
-| `execucao_sinais` | pagou e comprovou? (§2: só a **OB** é pagamento; empenho não) |
-| `execucao_cerebro` | o **atesto faz sentido** com a medição e o objeto? (LLM injetado) |
-| `nfe_verifica` | NF **cancelada / em contingência**? (contingência sai da própria chave, offline) |
-| `parecer_cumprimento` | as **condicionantes da PGE** foram cumpridas, item a item? |
-| `foto_medicao` | **foto reciclada** entre processos? (dHash, sem IA) |
-| `execucao_fatos` | ponte texto → fatos que alimentam os detectores X1/X3 já existentes |
-| `fracionamento_siafe` | fila de candidatos a fracionamento pela ótica do **pagamento** |
-| `objeto_similaridade` | "mesmo objeto" por TF-IDF + **ramo de atividade** (art. 75, §1º, II) |
-| `cadeia_processo` | os atos estão na **ORDEM** que a lei exige? (art. 53; Lei 4.320) |
-| `coerencia_valores` | o pago cabe no **teto contratual**? o favorecido é a **contratada**? |
+| lâmina de luz atravessando o herói | `background-clip:padding-box,border-box` com **uma** camada de imagem: a 2ª fatia não tem o que recortar e o cônico inundou o card. Correção em 3 camadas |
+| mesa **em branco** em `prefers-reduced-motion` | desenho único + `canvas.width=…` no `size()` limpa o bitmap; o 1º resize apagava tudo para sempre |
+| ticker **vazio** em reduced-motion | `padding-left:100%` só faz sentido com a animação que traz o texto |
+| rótulos empilhados, um clipado, um cobrindo o projetor | viraram **trilho de chamada** lateral com linha-guia |
+| número longo cortado na borda do chip | largura fixa; virou `min/max-width` |
+| mesa esmagada em tela estreita | **regime compacto**: grade sob a cena abaixo de 720px |
+| pílula de sweep cobrindo a legenda | foi para o topo |
 
-Todos ligados ao **dossiê completo** pelo capítulo *"Execução contratual e cumprimento do controle
-prévio"* (`reporting/capitulos_dossie.secao_execucao_controle_previo`) — **nenhum ficou órfão**.
+### 2.2 R$ no padrão brasileiro — 152 lugares + trava (`70e67766`)
 
-### 2.2 A lição que mais vale para as próximas sessões
+`f"{v:,.2f}"` produz `57,208.00`, que no Brasil se lê como **cinquenta e sete reais**.
+Havia **164 linhas** montando `R$` assim. 152 trocas em 57 arquivos para o formatador
+canônico da casa (`reporting.intel_base.moeda`), reusando o formatador **local** onde já
+havia um. `tests/test_moeda_padrao_brasileiro.py` varre o código e **falha se voltar**.
 
-**Todo achado bruto do motor era falso.** Auditando um a um:
+> O `_brl` de `editais/teste_finalistico.py` é um **parser** (`str→float`): usá-lo seria
+> bug, e o script de transformação o rejeita explicitamente.
 
-- 30 processos "com OB paga e sem prova de entrega" (R$ 138,8 mi) → **0**. Eram transferências fundo a
-  fundo (que não têm nota fiscal — a comprovação é prestação de contas: RDQA/RAG), documentos cujo
-  **título** provava a peça ("Anexo NF 16787") sem texto extraído, e tributo a órgão público;
-- 9 processos com "condicionante da PGE descumprida" → **0**. Era **transcrição de norma** repetida
-  igual em vários pareceres, e aula de doutrina casando o gatilho "desde que";
-- 107 inversões de cadeia → **30**. "Parecer Técnico de Medição" lido como parecer jurídico, e
-  diferenças de ID que eram **minutos** (o ID do SEI anda ~113 mil/dia — medido no acervo);
-- 5 divergências de valor → **0**. Teto zero por contrato sem valor legível, e multa diária virando
-  teto contratual;
-- 99 grupos de "foto reciclada" → **0**. Eram páginas em branco e **folhas de ponto** digitalizadas
-  (29 de 40 arquivos do diretório `fotos/` são página de documento, não fotografia).
+**Suíte: 2.524 passando, as MESMAS 50 falhas de ambiente da VM-2** (nenhuma nova, nenhuma
+sumiu), comparadas **nome a nome** — não por contagem.
 
-**Regra:** rodar no acervo real **antes** de considerar pronto, e transformar cada caso real em teste de
-regressão. Sem isso, o sistema produziria um relatório de controle externo imputando R$ 138 milhões
-inexistentes contra fundos municipais de saúde e fornecedores cujas notas estão nos autos.
+### 2.3 Contraste abaixo do mínimo da casa (`37e763ac`)
 
-### 2.3 Acervo e infraestrutura
+Medido, não estimado: `--dim` (L=0.57) rendia **4,22–4,47:1** nos textos de 9,5–12px onde
+ele vive — abaixo do 4,5:1 que a `PRODUCT.md` declara obrigatório. **L=0.60** é o menor
+passo que resolve (**4,78:1**) sem encostar em `--mut` e apagar um degrau de hierarquia.
+Depois: **0 violações e 0 elementos não medidos nas 9 abas**.
 
-- **Acervo SEI: 356 → 2.005 processos analisáveis** (`tools/sei_arquivar_do_cache.py`), arquivando o
-  texto que o sweep já tinha lido. **Integridade conferida antes**: parte do cache guarda só ~400
-  caracteres por documento (amostra) — a ferramenta **recusa** esses; 0 amostras entraram.
-- `tools/sei_reparar_vazios.py` — recuperou 290.903 caracteres (3 pareceres, um de 101 mil chars) de
-  documentos cujo PDF estava em disco e o texto, zerado.
-- `tools/sei_fila_por_dinheiro.py` — dos 22.587 processos com OB, **18.843 nunca foram tocados**,
-  somando **R$ 2,11 bilhões**. A captura noturna (03:30) agora regenera essa fila e drena o caso ativo
-  (bombeiros) primeiro, depois o dinheiro.
-- **Túnel vm1↔vm2**: Tailscale + **porta 2222** (a 22 é interceptada pelo Tailscale SSH na vm1), rotas
-  `vm1-ts`/`vm2-ts`, auto-reparo a cada 30 min, apt blindado com `--force-confold`.
-- **Alerta de crash/reboot** nas duas VMs (distingue reboot limpo de queda) + heartbeat mútuo.
-- **VM-2**: `apt upgrade` órfãou 4 venvs (Python 3.10→3.12) — sweep SEI-PCRJ e Massare recriados.
-- `tools/testar_na_vm2.sh` — suíte pesada roda na VM-2 (**3 min** contra 13 na VM-1).
+`tools/auditar_contraste.py` guarda o auditor. Três coisas que ele aprendeu a fazer certo,
+cada uma nascida de um laudo falso que ele mesmo deu:
+- resolve a cor pintando 1px num canvas (ler `oklch(0.96 0.012 230)` com regex de dígitos e
+  tratá-los como RGB **inventa número**);
+- compõe o fundo camada a camada até um opaco (texto rosa sobre véu de rosa a 7% dava 1,00:1);
+- lê só a **primeira** camada de `background-image` e declara "não sei medir" quando não sabe.
 
-**Suíte: 2.500 passando.** As 50 falhas da VM-2 são de ambiente (falta `data/` lá) — confirmado rodando
-as mesmas na VM-1.
+### 2.4 O card GRAVE recuperou o que o v11 tomara dele
+
+Duas perdas silenciosas desde o v11: o cônico **inundava** a superfície com azul/laranja
+(cor que não é dele, competindo com o rosa que É o sinal), e `animation:holoSpin` da mesma
+regra **sobrescreveu o `graveGlow`** — o card grave não pulsava gravidade havia uma versão
+inteira. Ambos de volta.
+
+### 2.5 Ponte do Adobe Express (`19a62daf`)
+
+`tools/express_ponte.py`: `--spec` exporta a identidade do painel (paleta **OKLCH→HEX**,
+fontes, medidas, teto de peso) e `--importar` traz de volta o que sair do Express,
+validado e versionado. Conversão de cor conferida contra os cinco pontos de referência do
+sRGB. Testada ponta a ponta, inclusive **recusando** arquivo com extensão mentindo.
 
 ---
 
-## 3. PENDÊNCIAS ABERTAS
-
-1. **Painel** (item 1.1) — a foto de referência e a reforma da primeira dobra.
-2. **Adobe Express** (item 1.2) — o teste do Developer Console decide o caminho.
-3. **VLM local para as fotos de medição** — `foto_medicao.avaliar_fotos(descrever=...)` está pronto e
-   injetável; falta subir **moondream2** ou **SmolVLM** em llama.cpp na VM-2 (ambos gratuitos, CPU/ARM).
-4. **Consulta à SEFAZ por chave de NF-e** — `nfe_verifica.situacao(consultar=...)` está pronto; o
-   caminho gratuito é o portal público com captcha resolvido pelo **ddddocr local** (já roda no
-   sweep SEI-PCRJ da VM-2).
-5. **I.D.E.A.S** — R$ 3,56 bilhões pelo Fundo Estadual de Saúde (UG 296100), 124 processos SEI, 743 OBs.
-   Já é caso vermelho no vault. Com o motor calibrado, vale o dossiê completo dedicado.
-6. **Fracionamento pelo SIAFE** — a fila de 2024 tem 4 casos com prioridade ≥ 0,7; o primeiro
-   (4ID MÉDICOS, UG 294200) tem **12 pagamentos, 12 processos distintos, todos ≥ 80% do teto**.
-7. **Confirmar o fix do 413** no Yoda com uma foto pesada (item 1.3) e vigiar o auto-update do Hermes.
-8. **Varredura de formatação de moeda** — corrigido em `coerencia_valores` e `scheduler` (o alerta
-   chegava como "R$ 57,208", que no Brasil se lê como cinquenta e sete reais). Vale varrer o resto:
-   `grep -rn ':,\.2f' --include=*.py compliance_agent/ tools/` — cada `f"{v:,.2f}"` sem `_brl()` é um
-   número em padrão americano num documento brasileiro.
-
----
-
-## 4. COMANDOS ÚTEIS
+## 3 · COMANDOS ÚTEIS
 
 ```bash
-# suíte completa (na VM-2, deixando a VM-1 livre)
+# suíte completa (na VM-2, deixando a VM-1 livre) — compare nome a nome com as 50 de base
 ./tools/testar_na_vm2.sh
 
-# reavaliar o acervo com o motor (scripts em /tmp são descartáveis — refaça se sumirem)
-.venv/bin/python -m tools.sei_fila_por_dinheiro            # gap de captura por dinheiro
-.venv/bin/python -m tools.sei_arquivar_do_cache            # o que dá para arquivar sem browser
-.venv/bin/python -m tools.sei_reparar_vazios               # documentos sem texto com PDF em disco
+# auditoria de contraste no navegador que já roda na VM (CDP 9222)
+.venv/bin/python tools/auditar_contraste.py
+
+# ponte do Express
+.venv/bin/python -m tools.express_ponte --spec
+.venv/bin/python -m tools.express_ponte --importar
 
 # painel
 systemctl --user restart jfn && curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/painel
 ```
 
-**Regras da casa que valeram em cada passo:** OB é pagamento (empenho não); INDISPONÍVEL ≠ irregular;
-indício ≠ acusação; nunca dessaturar o que já brilha; e **a VM tem 2 vCPU** — um pesado por vez.
+**Como auditar o painel sem chutar** (foi o que funcionou): screenshot + erros de console
+pelo Chrome que já roda na VM (CDP 9222), com
+`websocket.create_connection(..., suppress_origin=True)` — sem isso o Chrome recusa com 403.
+Recorte de um elemento: pegue o `getBoundingClientRect()` e passe em `clip` com `scale:2`.
+**Variantes que revelam defeito que a tela normal esconde:** `Emulation.setEmulatedMedia`
+com `prefers-reduced-motion:reduce`, e `setDeviceMetricsOverride` a 390px.
+
+**Regras da casa que valeram em cada passo:** OB é pagamento (empenho não); INDISPONÍVEL ≠
+irregular; indício ≠ acusação; nunca dessaturar o que já brilha; e **a VM tem 2 vCPU** — um
+pesado por vez.
