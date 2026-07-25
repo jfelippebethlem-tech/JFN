@@ -21,6 +21,15 @@ import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+def _brl(v) -> str:
+    """R$ no padrão BRASILEIRO. O ',.2f' do Python produz formato americano — e num alerta que vai para
+    o Telegram do dono "R$ 57,208" se lê como cinquenta e sete reais. Erro de leitura, não de estética."""
+    try:
+        return f"{float(v):,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    except (TypeError, ValueError):
+        return str(v)
+
+
 from rich.console import Console
 
 # Carrega credenciais (.env e/ou .env.txt) ANTES de ler qualquer variável
@@ -102,7 +111,7 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                     "severidade": "alta",
                     "titulo": titulo[:300],
                     "descricao": (
-                        f"R$ {ob.valor:,.2f} para {ob.favorecido_nome} — consta no CEIS/CNEP. "
+                        f"R$ {_brl(ob.valor)} para {ob.favorecido_nome} — consta no CEIS/CNEP. "
                         f"Lei 14.133/2021 art. 14, I veda contratação de empresa punida."
                     ),
                 })
@@ -123,7 +132,7 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                     "descricao": (
                         f"CNPJ {cpf_cnpj} com situação '{situacao}'. "
                         f"Lei 14.133/2021 art. 68 exige regularidade cadastral. "
-                        f"Valor: R$ {ob.valor:,.2f}."
+                        f"Valor: R$ {_brl(ob.valor)}."
                     ),
                 })
             # Empresa muito nova (< 6 meses)?
@@ -139,7 +148,7 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                             "titulo": f"OB {ob.numero_ob} — empresa com {(hoje-dt_ab).days} dias: {ob.favorecido_nome}",
                             "descricao": (
                                 f"Empresa aberta há apenas {(hoje-dt_ab).days} dias "
-                                f"recebeu R$ {ob.valor:,.2f}. "
+                                f"recebeu R$ {_brl(ob.valor)}. "
                                 f"TCU Acórdão 6.100/2022 elenca empresa nova como indício de fachada."
                             ),
                         })
@@ -167,10 +176,10 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                 alertas.append({
                     "tipo": "fracionamento",
                     "severidade": "alta",
-                    "titulo": f"Fracionamento — {ob.favorecido_nome} ({outras+1} OBs = R$ {total:,.2f})",
+                    "titulo": f"Fracionamento — {ob.favorecido_nome} ({outras+1} OBs = R$ {_brl(total)})",
                     "descricao": (
                         f"{ob.favorecido_nome} recebeu {outras+1} OBs hoje "
-                        f"somando R$ {total:,.2f}, acima do limite de dispensa (R$ 57.208). "
+                        f"somando R$ {_brl(total)}, acima do limite de dispensa (R$ 57.208). "
                         f"Lei 14.133/2021 art. 75; TCU Acórdão 1.793/2011-Plenário."
                     ),
                 })
@@ -182,9 +191,9 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
         alertas.append({
             "tipo": "sem_processo",
             "severidade": "media",
-            "titulo": f"OB {ob.numero_ob} — R$ {ob.valor:,.2f} sem processo SEI",
+            "titulo": f"OB {ob.numero_ob} — R$ {_brl(ob.valor)} sem processo SEI",
             "descricao": (
-                f"OB de R$ {ob.valor:,.2f} para {ob.favorecido_nome or 'sem nome'} "
+                f"OB de R$ {_brl(ob.valor)} para {ob.favorecido_nome or 'sem nome'} "
                 f"sem processo SEI associado. Lei 4.320/64 art. 58-64 exige empenho "
                 f"e liquidação com documentação. TCE-RJ Acórdão 7.801/2023."
             ),
@@ -201,7 +210,7 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                     "severidade": "media",
                     "titulo": f"OB {ob.numero_ob} — contrato não publicado no PNCP",
                     "descricao": (
-                        f"OB de R$ {ob.valor:,.2f} para {ob.favorecido_nome}: "
+                        f"OB de R$ {_brl(ob.valor)} para {ob.favorecido_nome}: "
                         f"contrato não encontrado no PNCP. "
                         f"Lei 14.133/2021 art. 94 §1º; TCU Acórdão 5.782/2023."
                     ),
@@ -214,9 +223,9 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
         alertas.append({
             "tipo": "valor_suspeito",
             "severidade": "baixa",
-            "titulo": f"OB {ob.numero_ob} — valor redondo suspeito: R$ {ob.valor:,.2f}",
+            "titulo": f"OB {ob.numero_ob} — valor redondo suspeito: R$ {_brl(ob.valor)}",
             "descricao": (
-                f"OB com valor exato R$ {ob.valor:,.2f} (múltiplo de R$10k) para "
+                f"OB com valor exato R$ {_brl(ob.valor)} (múltiplo de R$10k) para "
                 f"{ob.favorecido_nome or 'sem nome'}. Valores redondos elevados são "
                 f"incomuns na prática e merecem atenção."
             ),
