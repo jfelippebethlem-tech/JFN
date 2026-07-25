@@ -46,6 +46,34 @@ Base atual: **2.524 passando · 50 falhas de ambiente da VM-2 · 6 puladas** (do
 `FileNotFoundError`). Nenhum teste lê `static/jfn-painel.html` — conferido com
 `grep -rl jfn-painel tests/` (vazio). Mudança de painel **não pode** quebrar a suíte Python.
 
+### 0.35 CSS que "não pegou": pergunte ao elemento, não a si mesmo
+
+A lição mais cara da 2ª rodada. Uma regra `@media` simplesmente **não existia** no
+navegador. Levantei três hipóteses plausíveis em sequência — o valor de `right`, a margem
+negativa, a limitação do Chrome com `border-collapse:collapse` — e **as três estavam
+erradas**. Uma consulta ao DOM vivo resolveu em um passo:
+
+```python
+js("getComputedStyle(document.querySelector('#radar-tbl td:last-child')).position")
+# -> "static"  COM matchMedia('(max-width:600px)').matches === true
+```
+
+Propriedade no valor inicial **com a media query casando** = o problema é de **PARSE**, não
+de valor. Pare de mexer no valor.
+
+A causa era um **fecha-comentário órfão** dentro de um comentário CSS: o comentário terminou
+cedo, o texto seguinte virou seletor inválido e o parser **consumiu o `@media` inteiro
+abaixo como bloco de declaração dele**. Sem erro, sem console, sem nada. Ironia registrada —
+o comentário que eu escrevi para *explicar* o órfão continha os dois caracteres literais e
+reproduziu o próprio bug. **Nunca escreva o fecha-comentário dentro de um comentário.**
+
+`tests/test_painel_css_integro.py` trava a volta disso em 0,1 s (balanceamento de
+comentários e chaves + presença nominal das regras que já sumiram antes). Provado por
+injeção: falha com o órfão, passa sem ele.
+
+Fato colateral da mesma caçada: **margem não se aplica a `display:table-cell`** — para
+alargar o fundo de uma célula, sombra sólida ou tirar o padding do rolador.
+
 ### 0.4 Nunca decore o `background` de quem carrega TEXTO
 
 Nova, desta rodada. O scan do cabeçalho de tabela era `background-image` no próprio
@@ -93,6 +121,33 @@ Regra de custo respeitada: **só pintura** — nada toca `left/top/width/height`
 | Subtítulo do cabeçalho truncado no celular | `max-width:38vw` datava de quando as ações dividiam a linha → 78vw |
 
 **Contraste depois de tudo: 0 violações e 0 não medidos nas 9 abas.**
+
+### 1.2b Auditor de LAYOUT — a casa não tinha (`23ec2fd2`)
+
+Contraste tinha auditor; **geometria não**, e foi por aí que os defeitos desta safra
+entraram. `tools/auditar_layout.py` mede, nas 9 abas a 1440 e a 390: sobreposição entre
+irmãos, vazamento do pai, texto truncado com reticências, elemento fora da tela e alvo de
+toque pequeno.
+
+Ele precisou de **duas rodadas para valer**, e isso é parte da lição: na 1ª gritou lobo —
+acusou o ticker e a tabela do radar de saírem da tela, quando os dois transbordam de
+propósito dentro de um ancestral que corta; e media alvo de toque contra 44px, misturando
+conforto com norma. Agora sobe a cadeia procurando quem corta, separa `alvo_viola_norma`
+(<24px, WCAG 2.5.8) de `alvo_aperta` (24–43px), e **nunca trunca a lista em silêncio**.
+Auditor que exagera é ignorado.
+
+Laudo atual: **1440px limpo nas 9 abas; 0 violações de norma no celular.** O que sobra a
+390px é `alvo_aperta` em tabela densa, onde a própria WCAG isenta alvo em linha de texto —
+forçar 44px dobraria a altura da tabela. É escolha, não defeito.
+
+Dois defeitos reais que ele achou e que foram corrigidos:
+
+- **`.clk` a 22px** — o nome do fornecedor é o acionável que abre o dossiê, e a regra de
+  44px do `pointer:coarse` nunca o incluiu. Cura sem tocar em layout: `.clk` é
+  `display:inline`, e em inline o padding vertical não entra na altura da caixa de linha;
+- **o SCORE saía da tela no celular** — a tabela rola na horizontal (correto), mas a coluna
+  que sai é a última, e a última é o número pelo qual a tabela existe. Agora fica grudada
+  na borda direita, com o medidor de 64px escondido no telefone.
 
 ### 1.3 Adobe Express — exercitado fim a fim
 
@@ -167,8 +222,13 @@ que já existia em disco.
 grep '^FAILED' /tmp/s.log | sed 's/ - .*//' | sort > /tmp/agora.txt
 comm -13 <(grep -v '^#' tests/BASE-FALHAS-VM2.txt) /tmp/agora.txt
 
-# contraste no navegador que já roda na VM (CDP 9222)
+# os dois auditores do painel (CDP 9222) — cor e geometria
 .venv/bin/python tools/auditar_contraste.py
+.venv/bin/python tools/auditar_layout.py            # 9 abas × 1440 e 390
+.venv/bin/python tools/auditar_layout.py g_radar 390 # uma aba, uma largura
+
+# integridade do CSS (roda em 0,1 s; pega comentário órfão que engole regra)
+.venv/bin/python -m pytest tests/test_painel_css_integro.py -q
 
 # ponte do Express (independe do MCP)
 .venv/bin/python -m tools.express_ponte --spec       # paleta OKLCH→HEX, fontes, medidas
