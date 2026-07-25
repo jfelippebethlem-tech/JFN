@@ -310,16 +310,18 @@ _GRAU_ROTULO = {"vermelho": "🔴 alto", "amarelo": "🟡 médio", "verde": "�
                 "pendente_captura": "— captura pendente", "pendente_reprocessar": "— análise pendente"}
 
 
-def _docs_do_processo(numero: str) -> tuple[list[dict], str]:
-    """Documentos NA ORDEM do processo (o que separa 'antes' de 'depois' do parecer) + texto completo."""
+def _docs_do_processo(numero: str) -> tuple[list[dict], str, bool]:
+    """Documentos NA ORDEM do processo (o que separa 'antes' de 'depois' do parecer) + texto completo +
+    se o arquivo veio do CACHE (parcial) em vez da íntegra."""
     pdir = _ARQUIVO_SEI / _slug_processo(numero)
     man = pdir / "manifest.json"
     if not man.exists():
-        return [], ""
+        return [], "", False
     try:
         j = json.loads(man.read_text())
     except (ValueError, OSError):
-        return [], ""
+        return [], "", False
+    do_cache = str(j.get("origem") or "").startswith("cache CDP")
     docs, partes = [], []
     for i, doc in enumerate(j.get("docs") or []):
         txt = ""
@@ -334,7 +336,7 @@ def _docs_do_processo(numero: str) -> tuple[list[dict], str]:
                      "texto": txt})
         if txt:
             partes.append(txt)
-    return docs, "\n\n".join(partes)
+    return docs, "\n\n".join(partes), do_cache
 
 
 def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int | None = None) -> dict | None:
@@ -350,8 +352,11 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
     # SEM TETO por padrão (diretriz do dono: dossiê completo, sem limite de páginas). `max_processos`
     # existe só para chamadas pontuais que queiram uma amostra.
     lista = list(processos_sei or [])
+    parciais = []
     for numero in (lista[:max_processos] if max_processos else lista):
-        docs, texto = _docs_do_processo(numero)
+        docs, texto, do_cache = _docs_do_processo(numero)
+        if do_cache:
+            parciais.append(numero)
         if not docs or not texto.strip():
             continue
         analisados += 1
@@ -402,4 +407,10 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
                      "<th>Estágio da despesa</th><th>Condicionantes do parecer</th><th>NF-e</th></tr>"
                      + "\n".join(linhas) + "</table>"
                      + ("\n".join(detalhes) if detalhes else
-                        "<p>Nenhum apontamento nos processos lidos.</p>"))}
+                        "<p>Nenhum apontamento nos processos lidos.</p>")
+                     + (("<p class='dim'><b>Cobertura:</b> "
+                         f"{len(parciais)} processo(s) desta lista foram lidos do CACHE do sweep — é o "
+                         "texto dos documentos que o sweep alcançou, <b>não é a íntegra</b> do processo "
+                         "(sem anexos binários e sem fotos de medição). Neles, a ausência de um documento "
+                         "indica <b>lacuna de captura</b> tanto quanto ausência real: para afirmar "
+                         "qualquer coisa, capturar a íntegra e reavaliar.</p>") if parciais else ""))}

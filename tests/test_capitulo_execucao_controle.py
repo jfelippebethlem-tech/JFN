@@ -85,3 +85,28 @@ def test_processo_regular_nao_inventa_achado(arquivo):
     s = CD.secao_execucao_controle_previo(["SEI-120001/000004/2024"])
     h = (s or {}).get("html", "").lower()
     assert "vermelho" not in h or "não" in h            # sem pagamento não se acusa execução
+
+
+def test_processo_vindo_do_CACHE_traz_ressalva_de_cobertura(arquivo, monkeypatch):
+    """Arquivo montado a partir do cache do sweep contém só o TEXTO dos documentos lidos — não a íntegra
+    com anexos. Nele, "não consta boletim de medição" pode ser LACUNA DE CAPTURA, não ausência real.
+    O capítulo tem de dizer isso; senão a fragilidade lida como se fosse achado."""
+    import json as _json
+    pdir = _processo(arquivo, "SEI-120001/000009/2024", [
+        ("Ordem Bancária", "ob", "Ordem Bancária 2024OB000111 paga ao fornecedor. Despacho."),
+    ])
+    m = _json.loads((pdir / "manifest.json").read_text())
+    m["origem"] = "cache CDP (cdp_120001_000009_2024.json) — texto já lido pelo sweep"
+    (pdir / "manifest.json").write_text(_json.dumps(m), encoding="utf-8")
+    s = CD.secao_execucao_controle_previo(["SEI-120001/000009/2024"])
+    h = s["html"].lower()
+    assert "captura" in h or "cobertura" in h
+    assert "parcial" in h or "não é a íntegra" in h or "nao e a integra" in h
+
+
+def test_processo_da_INTEGRA_nao_recebe_a_ressalva(arquivo):
+    _processo(arquivo, "SEI-120001/000010/2024", [
+        ("Ordem Bancária", "ob", "Ordem Bancária 2024OB000222 paga. Despacho de encaminhamento."),
+    ])
+    s = CD.secao_execucao_controle_previo(["SEI-120001/000010/2024"])
+    assert "cache do sweep" not in s["html"].lower()
