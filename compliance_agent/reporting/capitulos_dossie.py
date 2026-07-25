@@ -345,8 +345,8 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
     Roda sobre o arquivo documental já capturado (regra da casa: arquivo antes de browser), sem IA e
     sem rede — as camadas subjetivas (coerência do atesto, leitura visual da foto) ficam de fora aqui e
     são apontadas como pendentes quando fazem falta. Sem arquivo → None (honesto)."""
-    from compliance_agent import (cadeia_processo, execucao_sinais, foto_medicao, nfe_verifica,
-                                  parecer_cumprimento)
+    from compliance_agent import (cadeia_processo, coerencia_valores, execucao_sinais, foto_medicao,
+                                  nfe_verifica, parecer_cumprimento)
 
     linhas, detalhes = [], []
     analisados = 0
@@ -369,6 +369,9 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
         # ORDEM dos atos (art. 53 da Lei 14.133; arts. 60/62-63 da Lei 4.320): presença sem sequência
         # não prova regularidade — e a inversão é o vício mais eloquente do processo.
         cad = cadeia_processo.analisar_cadeia([{"titulo": d.get("tipo"), "tipo": ""} for d in docs])
+        # o dinheiro fecha? (pago × teto contratual) e o favorecido é a contratada?
+        val = coerencia_valores.analisar_valores(
+            [{"titulo": d.get("tipo"), "tipo": "", "texto": d.get("texto")} for d in docs])
         chaves = nfe_verifica.extrair_chaves(texto)
         contingencia = [c for c in chaves if nfe_verifica.tp_emissao(c)["contingencia"]]
         linhas.append(
@@ -393,6 +396,11 @@ def secao_execucao_controle_previo(processos_sei: list[str], max_processos: int 
             bloco.append("<p><b>Condicionantes do parecer jurídico</b> (art. 53 da Lei 14.133/2021 — a "
                          f"manifestação é prévia e vincula a instrução): {_esc(pg.get('leitura'))}</p>"
                          + (f"<ul>{itens}</ul>" if itens else ""))
+        if val.get("grau") == "vermelho":
+            bloco.append(f"<p><b>Valores:</b> {_esc(val['resumo'])} "
+                         "<span class='dim'>Explicações que precisam ser descartadas antes de qualquer "
+                         "apontamento: " + _esc("; ".join(val.get("explicacoes_possiveis") or [])) +
+                         ".</span></p>")
         for inv in (cad.get("inversoes") or []):
             bloco.append(f"<p><b>Ordem dos atos:</b> {_esc(inv['observacao'])} "
                          f"<span class='dim'>({_esc(inv['fundamento'])} · {_esc(inv['como_soube'])})</span></p>")

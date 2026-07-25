@@ -124,3 +124,15 @@ def test_capitulo_traz_a_inversao_de_cadeia(arquivo):
     h = s["html"]
     assert "53" in h                       # o dispositivo do controle prévio
     assert "ordem" in h.lower() or "antes" in h.lower()
+
+
+def test_capitulo_aponta_pagamento_acima_do_teto_contratual(arquivo):
+    _processo(arquivo, "SEI-120001/000012/2024", [
+        ("Termo de Contrato 9/2024", "contrato", "O valor global do contrato é de R$ 100.000,00."),
+        ("Ordem Bancária 2024OB777", "ordem_bancaria",
+         "Ordem Bancária no valor de R$ 150.000,00 paga ao fornecedor. Boletim de medição. "
+         "Nota fiscal 12. Atesto. Relatório fotográfico."),
+    ])
+    h = CD.secao_execucao_controle_previo(["SEI-120001/000012/2024"])["html"]
+    assert "150.000,00" in h and "100.000,00" in h
+    assert "aditivo" in h.lower()          # a explicação legítima vem junto, não só a acusação

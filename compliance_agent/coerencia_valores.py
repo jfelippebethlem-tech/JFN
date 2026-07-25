@@ -44,6 +44,12 @@ _RESSALVA = ("divergência de valor ou de favorecido é INDÍCIO: aditivo, reaju
              "Indício a apurar, não acusação; presunção de legitimidade")
 
 
+def _brl(v: float) -> str:
+    """R$ no padrão BRASILEIRO (ponto de milhar, vírgula decimal). O f-string ',.2f' do Python produz
+    formato americano — num relatório de controle externo brasileiro isso é erro de apresentação."""
+    return f"{v:,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
 def valores(texto: str) -> list[float]:
     """Todos os valores em R$ do texto, na ordem. Sem 'R$' não é dinheiro (evita confundir com nº de
     processo, CNPJ e data, que também têm ponto e dígito)."""
@@ -109,8 +115,8 @@ def analisar_valores(docs: list[dict]) -> dict:
     if teto is not None and pago and pago > teto * (1 + _TOLERANCIA):
         excesso = round(pago - teto, 2)
         grau = "vermelho"
-        sinais.append(f"pagamento de R$ {pago:,.2f} contra teto contratual de R$ {teto:,.2f} "
-                      f"(excesso de R$ {excesso:,.2f})")
+        sinais.append(f"pagamento de R$ {_brl(pago)} contra teto contratual de R$ {_brl(teto)} "
+                      f"(excesso de R$ {_brl(excesso)})")
         explicacoes += ["termo ADITIVO de valor não capturado nos autos lidos (art. 125 da Lei 14.133)",
                         "REAJUSTE/repactuação contratual (art. 92, §3º)",
                         "o valor lido como 'contrato' pode ser de uma parcela, não do global"]
@@ -124,14 +130,14 @@ def analisar_valores(docs: list[dict]) -> dict:
         if teto is None:
             return {"grau": "a_verificar", "contratado": None, "pago": pago or None, "excesso": None,
                     "cnpj_divergente": False, "explicacoes_possiveis": [],
-                    "resumo": (f"Há pagamento de R$ {pago:,.2f} nos autos, mas o valor CONTRATADO não foi "
+                    "resumo": (f"Há pagamento de R$ {_brl(pago)} nos autos, mas o valor CONTRATADO não foi "
                                "localizado nas peças lidas — sem ele não se afirma excesso nem regularidade."),
                     "acao": "localizar o contrato/instrumento equivalente e reavaliar",
                     "ressalva": _RESSALVA, "fonte": "coerencia_valores (determinístico/offline)"}
         return {"grau": "verde", "contratado": teto, "pago": pago or None, "excesso": None,
                 "cnpj_divergente": False, "explicacoes_possiveis": [],
-                "resumo": (f"Pagamento de R$ {pago:,.2f} dentro do teto contratual de R$ {teto:,.2f}"
-                           + (f" (contrato R$ {contratado:,.2f} + aditivos R$ {aditivos:,.2f})"
+                "resumo": (f"Pagamento de R$ {_brl(pago)} dentro do teto contratual de R$ {_brl(teto)}"
+                           + (f" (contrato R$ {_brl(contratado)} + aditivos R$ {_brl(aditivos)})"
                               if aditivos else "") + "; favorecido compatível com a contratada."),
                 "acao": "", "ressalva": _RESSALVA, "fonte": "coerencia_valores (determinístico/offline)"}
     return {"grau": grau, "contratado": teto, "pago": pago or None, "excesso": excesso,
