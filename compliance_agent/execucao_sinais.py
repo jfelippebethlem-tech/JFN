@@ -59,8 +59,15 @@ _NOME = {"medicao": "boletim de medição", "nota_fiscal": "nota fiscal",
          "atesto": "atesto/termo de recebimento", "relatorio_fotografico": "relatório fotográfico"}
 
 # NF suspeita LEGÍVEL NO TEXTO (a verificação LIVE na SEFAZ pela chave de acesso é a fazer — ver plano).
-_NF_CANCELADA = ("nota fiscal cancelada", "nf cancelada", "nf-e cancelada", "cancelamento da nota",
-                 "cancelamento de nf", "cancelamento da nf", "nota fiscal foi cancelada", "cancelada a nota")
+# ATENÇÃO ao que se cancela: NOTA FISCAL é documento do FORNECEDOR (vício grave se lastreia pagamento);
+# NOTA DE LIQUIDAÇÃO e NOTA DE EMPENHO são documentos ORÇAMENTÁRIOS do próprio Estado, e cancelá-los é
+# rotina do SIAFE (reemissão, correção de classificação). Falso positivo medido no acervo real
+# (080001/006770/2024): "após cancelamento da Nota de Liquidação" era acusado como nota fiscal cancelada.
+# regex (não substring): no texto real vem "nota fiscal nº 555 foi cancelada" — número no meio. A janela
+# de até 40 chars liga os dois termos sem atravessar a frase inteira.
+_RE_NF_CANCELADA = re.compile(
+    r"(nota\s+fiscal|nf-?e|danfe)[^.;]{0,40}\bcancelad|cancelamento\s+d[ae]\s+(nota\s+fiscal|nf-?e|danfe)",
+    re.I)
 _NF_CONTINGENCIA = ("contingencia", "emitida em contingencia", "emissao em contingencia", "epec",
                     "scan ", "formulario de seguranca", "dpec")
 _ORDEM_SEV = {"verde": 0, "amarelo": 1, "vermelho": 2}
@@ -191,9 +198,11 @@ def analisar_execucao_det(texto: str) -> dict:
                                      "se não é atesto meramente formal e se FAZ SENTIDO (bate com a medição e o objeto)."})
 
     # 3) NF cancelada / em contingência LEGÍVEL no texto (a verificação live na SEFAZ é a fazer — ver plano)
-    if any(w in low for w in _NF_CANCELADA):
+    m_nfc = _RE_NF_CANCELADA.search(low)
+    if m_nfc:
         _bump("vermelho")
-        sinais.append({"tipo": "nota_fiscal_cancelada", "trecho": _primeiro_trecho(texto or "", low, _NF_CANCELADA),
+        sinais.append({"tipo": "nota_fiscal_cancelada",
+                       "trecho": _primeiro_trecho(texto or "", low, (m_nfc.group(0)[:40],)),
                        "observacao": "Menção a NOTA FISCAL CANCELADA lastreando o pagamento — indício grave a verificar."})
     if any(w in low for w in _NF_CONTINGENCIA):
         _bump("amarelo")

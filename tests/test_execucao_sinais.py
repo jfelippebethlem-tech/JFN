@@ -128,3 +128,30 @@ def test_nf_cancelada_e_vermelha_mesmo_sem_ob():
 def test_grau_nunca_indeterminado_nem_indisponivel():
     for txt in ("", "qualquer coisa", _pgto(), _pgto("nota fiscal e medição e atesto")):
         assert ES.analisar_execucao_det(txt)["grau"] not in ("indeterminado", "indisponivel")
+
+
+# ───────── anti-FP medido no acervo real (2026-07-24) ─────────
+
+def test_cancelamento_de_NOTA_DE_LIQUIDACAO_nao_e_nota_fiscal_cancelada():
+    """Trecho REAL (processo 080001/006770/2024): "Encaminho o presente processo, após cancelamento da
+    Nota de Liquidação". O detector acusava NOTA FISCAL cancelada — vício grave — quando o cancelado foi
+    um documento ORÇAMENTÁRIO (NL), rotina do SIAFE. Acusar isso num relatório seria erro grosseiro."""
+    txt = _pgto("Encaminho o presente processo, após cancelamento da Nota de Liquidação 2025NL0345, "
+                "para reemissão. Boletim de medição anexo. Nota fiscal nº 88. Atesto do fiscal. "
+                "Relatório fotográfico.")
+    r = ES.analisar_execucao_det(txt)
+    assert not any(s["tipo"] == "nota_fiscal_cancelada" for s in r["sinais"])
+
+
+def test_cancelamento_de_nota_de_empenho_tambem_nao_e_NF():
+    txt = _pgto("Cancelamento da nota de empenho 2024NE000999. Medição, nota fiscal e atesto juntados. "
+                "Relatório fotográfico.")
+    r = ES.analisar_execucao_det(txt)
+    assert not any(s["tipo"] == "nota_fiscal_cancelada" for s in r["sinais"])
+
+
+def test_nota_fiscal_cancelada_de_verdade_continua_sendo_apontada():
+    txt = _pgto("Boletim de medição. Atesto. Relatório fotográfico. A nota fiscal nº 555 foi cancelada "
+                "pelo emitente após a emissão.")
+    r = ES.analisar_execucao_det(txt)
+    assert any(s["tipo"] == "nota_fiscal_cancelada" for s in r["sinais"])
