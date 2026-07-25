@@ -21,6 +21,7 @@ Uso: PYTHONPATH=. .venv/bin/python -m tools.sei_arvore_build [--limite N]
 from __future__ import annotations
 
 import argparse
+from tools.sei_depurar_db import nivel_risco_norm   # a arvore herda o nivel da ficha: mesma grafia
 import json
 import re
 import sqlite3
@@ -264,7 +265,7 @@ def construir(limite: int = 0) -> dict:
                  total_pago=excluded.total_pago,fornecedores=excluded.fornecedores,lifecycle=excluded.lifecycle,
                  ultima_ob=excluded.ultima_ob,situacao=excluded.situacao,encerrado=excluded.encerrado,
                  txt_path=excluded.txt_path,atualizado_em=datetime('now')""",
-            (numero, r["objeto"], r["nivel_risco"], r["n_membros"], r["n_docs"], r["n_obs"],
+            (numero, r["objeto"], nivel_risco_norm(r["nivel_risco"]), r["n_membros"], r["n_docs"], r["n_obs"],
              r["total_pago"], json.dumps(r["fornecedores"], ensure_ascii=False),
              r["lifecycle"], r["ultima_ob"], r["situacao"], r["encerrado"], str(path)))
         feitos += 1

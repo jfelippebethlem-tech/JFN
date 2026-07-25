@@ -82,9 +82,29 @@ def levantar(fornecedor: str | None = None) -> dict:
             lidos.append(item)          # já lido: a fila de íntegra existente cuida
         else:
             faltam.append(item)         # nunca tocado: é este o buraco
+    # ── RECAPTURAR: lido, mas lido MAL ────────────────────────────────────────────────
+    # Medido no acervo (25/07/2026): 874 processos já lidos têm red flags que são TODAS
+    # queixa de captura ("ausência de informação sobre a modalidade"), nenhuma é achado
+    # sobre o processo. Eles não são fila do fiscal — são fila do COLETOR: a auditoria não
+    # anda sem o documento, e enquanto isso o dinheiro deles já está pago. Ordenados por
+    # valor, viram a fila de recaptura mais rentável que existe. Ver
+    # `compliance_agent/sei_triagem_flags`.
+    try:
+        from compliance_agent.sei_triagem_flags import encaminhamento
+        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+        try:
+            mal = {n for n, rf in con.execute("SELECT numero_sei, red_flags FROM sei_ficha")
+                   if encaminhamento(rf) == "recapturar"}
+        finally:
+            con.close()
+    except Exception:      # a triagem é um PLUS: se faltar, a fila original segue igual
+        mal = set()
+    recapturar = [i for i in lidos if i["sei"] in mal]
+
     return {"total": len(linhas), "arquivados": arquivados, "lidos_nao_arquivados": lidos,
-            "nunca_tocados": faltam,
-            "dinheiro_nunca_tocado": round(sum(i["valor_ob"] for i in faltam), 2)}
+            "nunca_tocados": faltam, "recapturar": recapturar,
+            "dinheiro_nunca_tocado": round(sum(i["valor_ob"] for i in faltam), 2),
+            "dinheiro_recapturar": round(sum(i["valor_ob"] for i in recapturar), 2)}
 
 
 def main(argv=None) -> int:
@@ -102,6 +122,13 @@ def main(argv=None) -> int:
     print(f"  lidos, falta arquivar:  {len(r['lidos_nao_arquivados']):,}")
     print(f"  NUNCA TOCADOS:          {len(r['nunca_tocados']):,}  "
           f"— R$ {moeda(r['dinheiro_nunca_tocado'])} pagos")
+    if r.get("recapturar"):
+        print(f"  RECAPTURAR (lido mal):  {len(r['recapturar']):,}  "
+              f"— R$ {moeda(r['dinheiro_recapturar'])} pagos")
+        print("      ↑ todas as red flags são 'ausência de documento': é fila do COLETOR,")
+        print("        não do fiscal. INDISPONÍVEL ≠ irregular.")
+        for i in r["recapturar"][:5]:
+            print(f"        R$ {i['valor_ob']:>13,.2f}  {i['sei']:28s} {i['forn'][:32]}")
     fila = (r["nunca_tocados"] + r["lidos_nao_arquivados"])[:a.top]
     print(f"\ntop {min(10, len(fila))} da fila proposta (por valor pago):")
     for i in fila[:10]:

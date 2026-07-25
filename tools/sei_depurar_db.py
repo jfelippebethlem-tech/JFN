@@ -56,6 +56,37 @@ CREATE INDEX IF NOT EXISTS ix_sei_ficha_relevante ON sei_ficha(relevante);
 """
 
 _CAMPOS = ("objeto", "modalidade", "fundamento_legal", "resumo", "analise", "nivel_risco", "situacao")
+
+
+def nivel_risco_norm(v) -> str:
+    """Um nível de risco só, escrito de um jeito só.
+
+    O prompt do `sei_ficha.py` pede `baixo|medio|alto`, mas o modelo devolve **`médio`
+    com acento em 15% das vezes** — e ninguém normalizava na entrada. Resultado medido no
+    acervo: 2.465 `medio` + 566 `médio`, a MESMA categoria em duas grafias, nas duas
+    tabelas (`sei_ficha` e `sei_arvore`).
+
+    O projeto já contornava isso em dois consumidores — `correlacao_sei` compara com
+    `IN ('alto','medio','médio')` e `inteligencia_orgao` faz `.replace("médio","medio")` —,
+    prova de que o defeito era conhecido e foi remendado no LEITOR duas vezes em vez de
+    curado na FONTE. Os outros quatro (`pericia_obras`, `bombeiros_alerta_telegram`,
+    `sei_direcionamento_varre`, `lex_sei_leitura`) apenas repassam o valor cru, então lá
+    o estrago não é sumiço: é **rótulo inconsistente** e contagem partida em dois
+    ao agrupar. O risco calado é o próximo `WHERE nivel_risco='medio'` que alguém
+    escrever sem saber — media 2.465 de 3.031 e parece certo.
+
+    Sinônimo desconhecido NÃO vira palpite: passa adiante só com caixa e espaço limpos,
+    para não inventar categoria (INDISPONÍVEL ≠ chutar).
+    """
+    s = str(v or "").strip().lower()
+    if not s:
+        return ""
+    for base, variantes in (("baixo", ("baixo", "baixa", "low")),
+                            ("medio", ("medio", "médio", "media", "média", "medium", "moderado")),
+                            ("alto", ("alto", "alta", "high", "elevado"))):
+        if s in variantes:
+            return base
+    return s
 _LISTAS = ("valores", "cnpjs", "partes", "datas", "red_flags", "documentos")
 
 
@@ -116,6 +147,7 @@ def depurar(stats_only: bool = False) -> dict:
                 return json.dumps(v, ensure_ascii=False)
             return v if v is not None else ""
         vals = {c: _scalar(ficha.get(c)) for c in _CAMPOS}
+        vals["nivel_risco"] = nivel_risco_norm(vals["nivel_risco"])   # 'médio' e 'medio' são o MESMO nível
         listas = {c: json.dumps(ficha.get(c) or [], ensure_ascii=False) for c in _LISTAS}
         docs = ficha.get("documentos") or []
         # perícias = objetos {achados[],verificar[],conclusao}; persiste como JSON ("" se ausente)
