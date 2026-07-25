@@ -91,6 +91,24 @@ def test_papel_amarelado_fica_fora_do_indice(tmp_path):
     assert fm._triar_e_hashear(p) == [], "papel bege entrou no índice de reciclagem"
 
 
+def test_reciclagem_declara_de_quantos_processos_fala(tmp_path):
+    """94% das pastas `fotos/` do acervo estão VAZIAS (1.929 de 2.051). Dizer '2.051 processos,
+    nenhuma reciclagem' apresenta lacuna de CAPTURA como resultado de auditoria."""
+    com = tmp_path / "tem" / "fotos"
+    com.mkdir(parents=True)
+    _foto(1).resize((700, 400)).save(com / "obra.jpg", quality=92)
+    (tmp_path / "vazio" / "fotos").mkdir(parents=True)
+    branca = tmp_path / "branca" / "fotos"
+    branca.mkdir(parents=True)
+    PIL.new("RGB", (900, 1200), (255, 255, 255)).save(branca / "nada.jpg", quality=92)
+
+    cob = fm.reciclagem([tmp_path / "tem", tmp_path / "vazio", tmp_path / "branca"])["cobertura"]
+    assert cob["processos_pedidos"] == 3
+    assert cob["com_arquivo"] == 2 and cob["sem_arquivo"] == 1
+    assert cob["com_foto_utilizavel"] == 1
+    assert "NÃO se estende" in cob["observacao"]
+
+
 def test_leitura_visual_tem_teto_e_amostra_espacada():
     """Há processo no acervo com 570 e com 1.281 arquivos em `fotos/`. Uma chamada de visão por
     arquivo não termina nem cabe em cota nenhuma — e ler só os N primeiros leria só a primeira

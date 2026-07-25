@@ -267,15 +267,35 @@ def indexar(dirs_processos) -> tuple[dict, int]:
     return idx, descartadas
 
 
+def _cobertura(dirs_processos, idx: dict) -> dict:
+    """De quantos processos este veredito realmente fala.
+
+    Medido no acervo em 25/07/2026: dos 2.051 processos com pasta `fotos/`, **1.929 (94%) têm a
+    pasta VAZIA**, e de 122 com arquivo, 29 só têm página em branco — sobram 93 com imagem
+    aproveitável. Dizer "2.051 processos, nenhuma reciclagem" seria apresentar lacuna de CAPTURA
+    como resultado de auditoria; é o mesmo vício que já apareceu nas red flags do SEI."""
+    dirs = [Path(d) for d in (dirs_processos or [])]
+    com_arquivo = sum(1 for d in dirs if _fotos_do_processo(d))
+    com_foto = len({o["processo"] for v in idx.values() for o in v})
+    return {"processos_pedidos": len(dirs), "com_arquivo": com_arquivo, "com_foto_utilizavel": com_foto,
+            "sem_arquivo": len(dirs) - com_arquivo,
+            "observacao": (
+                f"o confronto alcançou {com_foto} processo(s) com fotografia utilizável, de "
+                f"{len(dirs)} pedido(s): {len(dirs) - com_arquivo} não têm arquivo capturado e "
+                f"{max(0, com_arquivo - com_foto)} só trouxeram papel ou página em branco. "
+                "Ausência de reciclagem NÃO se estende aos processos não alcançados.")}
+
+
 def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
     """MESMA foto em processos DIFERENTES — veredito resolvido.
 
     Agrupa por proximidade de hash (não por igualdade exata), para pegar a mesma imagem recomprimida.
     Repetição dentro do MESMO processo é ignorada: anexo duplicado é rotina, não indício."""
     idx, descartadas = indexar(dirs_processos)
+    cob = _cobertura(dirs_processos, idx)
     if not idx:
         return {"grau": "nao_aplicavel", "n_fotos": 0, "n_grupos": 0, "grupos": [],
-                "n_descartadas_nao_informativas": descartadas,
+                "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
                 "resumo": "Nenhuma foto de medição capturada nestes processos — não há o que confrontar.",
                 "acao": "capturar as fotos de medição (sei_consultar) e reavaliar",
                 "ressalva": _RESSALVA, "fonte": "foto_medicao (dHash, offline)"}
@@ -308,13 +328,13 @@ def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
     n_fotos = sum(len(v) for v in idx.values())
     if not grupos:
         return {"grau": "verde", "n_fotos": n_fotos, "n_grupos": 0, "grupos": [],
-                "n_descartadas_nao_informativas": descartadas,
+                "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
                 "resumo": f"{n_fotos} foto(s) analisada(s): nenhuma imagem se repete entre processos "
                           "distintos (sem indício de registro fotográfico reciclado).",
                 "acao": "", "ressalva": _RESSALVA, "fonte": "foto_medicao (dHash, offline)"}
     total = sum(len(g["ocorrencias"]) for g in grupos)
     return {"grau": "vermelho", "n_fotos": n_fotos, "n_grupos": len(grupos), "grupos": grupos,
-            "n_descartadas_nao_informativas": descartadas,
+            "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
             "resumo": (f"{len(grupos)} imagem(ns) aparece(m) em MAIS DE UM PROCESSO ({total} ocorrências "
                        f"em {n_fotos} fotos): o mesmo registro fotográfico lastreia medições de processos "
                        "diferentes — indício GRAVE de comprovação reciclada, a confirmar nos autos."),
