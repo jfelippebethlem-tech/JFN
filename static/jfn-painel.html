@@ -3002,15 +3002,37 @@ async function renderFenix(){
   const d=await J('/api/intel/fenix?limite=150');
   if(!d.ok)return sec('Fênix')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
+  // O texto de cada item pedia ao leitor "verificar se os pagamentos são posteriores à
+  // baixa" — pergunta que o dado JÁ responde desde que a data da baixa entrou no detector.
+  // E citava o total recebido de TODOS os tempos como se fosse o valor pago à empresa
+  // morta: a IDESI aparecia com "R$ 508,1 mi", quando o que veio depois da baixa foi
+  // R$ 1,33 mi. Agora afirma o que sabe e diz INDISPONÍVEL quando não sabe.
+  const _fenixLeitura=x=>{
+    const quem=`<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita`;
+    if(x.pagou_apos_baixa===true)
+      return `${quem} desde <b>${esc(x.data_baixa)}</b> e ainda assim recebeu `
+        +`<b>${fmtRc(x.valor_apos_baixa)}</b> em <b>${fmtN(x.n_ob_apos_baixa)} OB posteriores à baixa</b> `
+        +`(de ${fmtRc(x.total_recebido)} no total). Pagamento a empresa baixada/inapta é irregular — indício forte.`;
+    if(x.pagou_apos_baixa===false)
+      return `${quem} desde <b>${esc(x.data_baixa)}</b>, mas <b>todos</b> os ${fmtRc(x.total_recebido)} `
+        +`foram pagos <b>antes</b> da baixa — situação comum, <b>não é</b> pagamento a empresa morta. `
+        +`Fica na lista como contexto do fornecedor, não como indício.`;
+    return `${quem} e recebeu ${fmtRc(x.total_recebido)} do Estado. A <b>data da baixa</b> não está `
+      +`na base da Receita local, então não dá para dizer se os pagamentos são posteriores — `
+      +`<b>INDISPONÍVEL</b>, que não é o mesmo que regular.`;
+  };
   let h=cover('geral','Empresa fênix — morta que recebe, ou nascida para faturar','Empresa <b>BAIXADA/INAPTA</b> na Receita que mesmo assim recebeu do Estado (pagamento a empresa morta), ou <b>aberta poucos meses antes</b> do primeiro pagamento (nasceu já para faturar — perfil de laranja).','🦅')+acoesAba('fenix');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas fênix','var(--rose)','🦅')}${kpi(fmtN(d.n_defunta),'Baixada/inapta que recebeu','var(--rose)','💀')}
-      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume envolvido',null,'💰')}${kpi(fmtN(a.filter(x=>x.tipo==='recem_aberta').length),'Aberta às vésperas','var(--amber)','🐣')}</div>`;
+  // o KPI vermelho é o CONFIRMADO (recebeu depois da baixa); "baixada hoje" fica neutro,
+  // porque estar baixada hoje e ter recebido antes disso não é indício de nada.
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas fênix','var(--rose)','🦅')}${kpi(fmtN(d.n_defunta_confirmada||0),'Recebeu DEPOIS da baixa',(d.n_defunta_confirmada?'var(--rose)':null),'💀')}
+      ${kpi(fmtRc(d.total_apos_baixa||0),'Pago após a baixa',(d.total_apos_baixa?'var(--rose)':null),'💰')}${kpi(fmtN(d.n_defunta||0),'Baixada hoje (recebeu antes)',null,'🗓️')}</div>`;
+  h+=`<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
   h+=`<div id="fenix-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(x.cnpj)}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">${x.tipo==='defunta'?`<span class="tag rose">${esc(x.situacao)}</span>`:'<span class="tag amber">recém-aberta</span>'} · aberta ${esc(x.data_abertura)} · 1ª OB ${esc(x.primeira_ob)}</div></div>
       <div class="right"><div class="num" style="font-weight:800">${fmtRc(x.total_recebido)}</div><div class="dim">recebido</div></div></div>
-      ${leitura(x.tipo==='defunta'?`<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita mas recebeu ${fmtRc(x.total_recebido)} do Estado. Pagar empresa baixada/inapta é irregular — verificar se os pagamentos são posteriores à baixa.`:`<b>${esc(x.nome)}</b> foi aberta em ${esc(x.data_abertura)} e recebeu o 1º pagamento ${x.meses_ate_ob} meses depois. Empresa que nasce e já fatura com o Estado é perfil de laranja/fachada.`)}`,
+      ${leitura(x.tipo==='defunta'?_fenixLeitura(x):`<b>${esc(x.nome)}</b> foi aberta em ${esc(x.data_abertura)} e recebeu o 1º pagamento ${x.meses_ate_ob} meses depois. Empresa que nasce e já fatura com o Estado é perfil de laranja/fachada.`)}`,
     x.tipo==='defunta'?'hl':'')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
@@ -4089,8 +4111,16 @@ function ckPull(first){
   J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
     ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
   J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;
-    ckFill('fenix',{txt:fmtRc(d.total_defunta||0),meta:`<b>${fmtN(d.n_defunta)}</b> empresas BAIXADA/INAPTA que receberam do Estado`});
-    ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_defunta)}</b> pagos a ${fmtN(d.n_defunta)} empresas MORTAS/irregulares`}]);});
+    // "Pago a empresa MORTA" só vale para quem recebeu DEPOIS da baixa. O card mostrava
+    // `total_defunta` — o conjunto AMPLO de "hoje está baixada e um dia recebeu" — e dizia
+    // R$ 4 bi. Medido: só R$ 18,3 mi (54 empresas) foram pagos APÓS a baixa; os outros
+    // R$ 2,56 bi são pagamentos anteriores à morte, que não têm nada de irregular (a Cruz
+    // Vermelha, baixada em 2005, sozinha respondia por R$ 305 mi). O número da manchete
+    // passa a ser o confirmado; o amplo vira contexto na linha de baixo, sem sumir.
+    ckFill('fenix',{txt:fmtRc(d.total_apos_baixa||0),
+      meta:`<b>${fmtN(d.n_defunta_confirmada||0)}</b> empresas receberam <b>depois</b> da baixa na Receita`
+           +` · outras ${fmtN((d.n_defunta||0)-(d.n_defunta_confirmada||0))} estão baixadas hoje mas só receberam antes`});
+    if(d.n_defunta_confirmada)ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} empresas DEPOIS da baixa na Receita`}]);});
   J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
     const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#5fe0a1';
       if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f2b544';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff7a8a';

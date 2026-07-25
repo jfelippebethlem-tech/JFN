@@ -1401,6 +1401,34 @@ def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_em
         con.close()
 
 
+def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
+    """A baixa é ANTERIOR ao último pagamento? Só então "pago a empresa morta" se sustenta.
+
+    Devolve sempre as três chaves, com `None`/`False` quando não dá para saber — a ausência
+    do dado NÃO vira "regular" nem "irregular" (INDISPONÍVEL ≠ 0). O valor pago depois só é
+    somado para quem de fato qualifica, para não fazer 373 varreduras à toa.
+    """
+    vazio = {"data_baixa": None, "motivo_baixa": None, "pagou_apos_baixa": None,
+             "valor_apos_baixa": 0.0, "n_ob_apos_baixa": 0}
+    try:
+        r = con.execute("SELECT data_situacao, motivo_situacao FROM estab.estabelecimentos "
+                        "WHERE cnpj=?", (cnpj,)).fetchone()
+    except sqlite3.OperationalError:
+        return vazio
+    if not r or not str(r["data_situacao"] or "").strip():
+        return vazio
+    d = str(r["data_situacao"])[:10]
+    if len(d) == 8 and d.isdigit():                      # AAAAMMDD do dump → ISO
+        d = f"{d[:4]}-{d[4:6]}-{d[6:8]}"
+    out = {**vazio, "data_baixa": d, "motivo_baixa": str(r["motivo_situacao"] or "") or None}
+    if not ultima_ob or ultima_ob <= d:
+        return {**out, "pagou_apos_baixa": False}        # morreu DEPOIS do último pagamento
+    q = con.execute(f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) v FROM ob_orcamentaria_siafe "
+                    f"WHERE credor=? AND {iso} > ?", (cnpj, d)).fetchone()
+    return {**out, "pagou_apos_baixa": bool(q["n"]),
+            "valor_apos_baixa": round(q["v"] or 0.0, 2), "n_ob_apos_baixa": q["n"]}
+
+
 def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
     """Empresa FÊNIX: (a) BAIXADA/INAPTA na Receita que ainda recebeu do Estado (paga a empresa
     morta); ou (b) aberta ≤12 meses antes do 1º pagamento (nasceu já para faturar). Exclui
@@ -1412,9 +1440,34 @@ def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
         pago = {r["favorecido_cpf"]: (r["total_pago"] or 0.0, r["n_obs"] or 0) for r in con.execute(
             "SELECT favorecido_cpf, total_pago, n_obs FROM favorecido_resumo WHERE total_pago>0")}
         iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
-        prim = {r["credor"]: r["p"] for r in con.execute(
-            f"SELECT credor, MIN({iso}) p FROM ob_orcamentaria_siafe "
+        janela = {r["credor"]: (r["p"], r["u"]) for r in con.execute(
+            f"SELECT credor, MIN({iso}) p, MAX({iso}) u FROM ob_orcamentaria_siafe "
             "WHERE length(credor)=14 AND valor>0 GROUP BY credor")}
+        prim = {k: v[0] for k, v in janela.items()}
+        # ── A DATA DA BAIXA, que faltava ────────────────────────────────────────────────
+        # "Pago a empresa MORTA" só é verdade se o pagamento veio DEPOIS da baixa, e este
+        # detector nunca perguntou isso: comparava a situação ATUAL da Receita contra o
+        # total pago de todos os tempos. O projeto já tem a doutrina em outro lugar — o
+        # radar usa "sanção vigente À ÉPOCA" —, ela é que não chegava aqui.
+        #
+        # Medido em 25/07/2026 sobre as 373 apontadas (R$ 3,99 bi):
+        #     54 pagaram DEPOIS da baixa  ->  R$   18.266.205,85   (o indício se sustenta)
+        #    319 só pagaram ANTES         ->  R$ 2.558.961.415,54  (não é empresa morta)
+        # A Cruz Vermelha, baixada em 2005, respondia por R$ 305 mi do total — pagamentos
+        # obviamente anteriores. O número de manchete estava ~218× superestimado.
+        #
+        # A cura é ACRESCENTAR a prova, não apagar o sinal: quem recebeu muito e hoje está
+        # baixada continua valendo conhecimento, só não é "pagamento a empresa morta".
+        # `data_situacao` vive no dump da Receita (DB separado), e o lookup é por chave
+        # primária — 0 ms por CNPJ. NUNCA varrer por situacao_cadastral: sem índice, 25 s.
+        baixa: dict[str, tuple] = {}
+        try:
+            con.execute("ATTACH DATABASE ? AS estab",
+                        (f"file:{_REPO / 'data' / 'receita_estab.db'}?mode=ro",))
+            _tem_estab = True
+        except sqlite3.OperationalError as exc:
+            logger.debug("empresa_fenix: receita_estab indisponível (%s) — data da baixa fica INDISPONÍVEL", exc)
+            _tem_estab = False
         rx_spe = re.compile(r"CONSORCIO|CONSÓRCIO|\bSPE\b| S/?A\b|SOCIEDADE DE PROPOSITO|CONCESSION", re.I)
         _DEFUNTA = ("BAIXADA", "INAPTA", "SUSPENSA", "NULA", "INAPTA/BAIXADA")
         achados = []
@@ -1438,15 +1491,27 @@ def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
                      and not rx_spe.search(e["razao_social"] or ""))
             if not (defunta or recem):
                 continue
-            achados.append({
+            item = {
                 "cnpj": e["cnpj"], "nome": e["razao_social"], "data_abertura": ab, "primeira_ob": p,
                 "meses_ate_ob": meses, "situacao": e["situacao"], "total_recebido": tot,
-                "n_obs": n_obs, "tipo": "defunta" if defunta else "recem_aberta"})
+                "n_obs": n_obs, "tipo": "defunta" if defunta else "recem_aberta"}
+            if defunta and _tem_estab:
+                item.update(_pagou_apos_baixa(con, e["cnpj"], janela.get(e["cnpj"], (None, None))[1], iso))
+            achados.append(item)
         achados.sort(key=lambda a: (a["tipo"] != "defunta", -(a["total_recebido"] or 0)))
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
                 "n_defunta": sum(1 for a in achados if a["tipo"] == "defunta"),
                 "total_defunta": round(sum(a["total_recebido"] for a in achados
                                            if a["tipo"] == "defunta"), 2),
+                # ── o número que PODE ser dito em público ────────────────────────────────
+                # `n_defunta`/`total_defunta` são o conjunto AMPLO: "hoje está baixada e um
+                # dia recebeu". Isso não é "pago a empresa morta" — a Cruz Vermelha foi
+                # baixada em 2005 e respondia por R$ 305 mi do total. O par CONFIRMADO só
+                # conta quem recebeu DEPOIS da baixa, e só ele deve virar manchete.
+                "n_defunta_confirmada": sum(1 for a in achados if a.get("pagou_apos_baixa")),
+                "total_apos_baixa": round(sum(a.get("valor_apos_baixa") or 0 for a in achados), 2),
+                "n_sem_data_baixa": sum(1 for a in achados
+                                        if a["tipo"] == "defunta" and a.get("pagou_apos_baixa") is None),
                 "explicacao": ("Empresa BAIXADA/INAPTA/SUSPENSA na Receita que mesmo assim recebeu do "
                                "Estado (pagamento a empresa morta/irregular), ou aberta ≤12 meses antes "
                                "do 1º pagamento (nasceu já para faturar — perfil de laranja/fachada)."),
