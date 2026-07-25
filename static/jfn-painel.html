@@ -995,6 +995,66 @@
      para `--mut` preservado. Auditável de novo por `tools/auditar_contraste.py`. */
   :root{--dim:oklch(0.60 0.03 240)}
 
+  /* ═══════════ v12.3 "HOLOGRAMA UNIVERSAL" — todo acionável fica vivo ═══════════
+     Brief do dono: pulso, movimento e holograma em CADA botão, de TODAS as abas.
+
+     Por que uma camada injetada e não pseudo-elemento: em `.btn` e `.chip` os dois
+     pseudos já estão ocupados desde o v7/v9 (::before = brilho que atravessa,
+     ::after = halo de foco). Sobrescrevê-los seria desfazer o que já existe — e a
+     ordem é ADICIONAR. Então cada acionável recebe um `<i class="hlx">` (injetado
+     uma vez, marcado para nunca repetir) que traz os seus PRÓPRIOS dois pseudos:
+       ::before = cantoneiras de HUD (4 cantos em L, oito gradientes, zero imagem);
+       ::after  = varredura holográfica que atravessa a peça.
+     O atraso `--hd` é dado por índice: cada botão respira num tempo diferente —
+     a mesma decisão que faz a mesa parecer viva em vez de piscar junta. */
+  .btn,.chip,.tab,.lnk,.ck-inst,.nu-chip,.htop a{position:relative}
+  .hlx{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+    overflow:hidden;--hc:color-mix(in oklch,var(--ion-hi,#8ecbff) 78%,transparent);
+    --hs:color-mix(in oklch,var(--ion-hi,#8ecbff) 30%,transparent)}
+  .hlx::before{content:"";position:absolute;inset:3px;
+    background:
+      linear-gradient(var(--hc),var(--hc)) 0 0/8px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 0/1px 8px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 0/8px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 0/1px 8px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 100%/8px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 100%/1px 8px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 100%/8px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 100%/1px 8px no-repeat;
+    opacity:.16;transform:scale(1.02);
+    animation:hlxRespira 3.8s ease-in-out infinite;animation-delay:var(--hd,0s);
+    transition:opacity .18s cubic-bezier(.22,1,.36,1),transform .18s cubic-bezier(.22,1,.36,1)}
+  .hlx::after{content:"";position:absolute;left:-10%;right:-10%;top:-60%;height:220%;
+    background:linear-gradient(180deg,transparent 44%,var(--hs) 50%,transparent 56%);
+    opacity:0;animation:hlxVarre 7.5s cubic-bezier(.4,0,.2,1) infinite;
+    animation-delay:var(--hd,0s)}
+  @keyframes hlxRespira{0%,100%{opacity:.13;transform:scale(1.02)}
+    50%{opacity:.30;transform:scale(1)}}
+  @keyframes hlxVarre{0%,72%{opacity:0;transform:translateY(-46%)}
+    76%{opacity:1}100%{opacity:0;transform:translateY(46%)}}
+  /* o toque acende os cantos e trava a peça — é o gesto de "alvo travado" */
+  .btn:hover>.hlx::before,.chip:hover>.hlx::before,.tab:hover>.hlx::before,
+  .lnk:hover>.hlx::before,.ck-inst:hover>.hlx::before,.nu-chip:hover>.hlx::before,
+  .htop a:hover>.hlx::before{opacity:.92;transform:scale(1);animation-play-state:paused}
+  .btn:active>.hlx::before,.chip:active>.hlx::before{transform:scale(.965)}
+  /* quem carrega SEVERIDADE tinge as cantoneiras com a própria cor: o holograma
+     nunca contradiz o semáforo (regra da casa — cor só fala se significa algo) */
+  .btn.red>.hlx,.chip.sev-alta>.hlx,.card.hl .hlx{--hc:color-mix(in oklch,var(--rose) 82%,transparent);
+    --hs:color-mix(in oklch,var(--rose) 26%,transparent)}
+  .btn.green>.hlx{--hc:color-mix(in oklch,var(--green) 82%,transparent);
+    --hs:color-mix(in oklch,var(--green) 26%,transparent)}
+  .btn.primary>.hlx,.chip.on>.hlx{--hc:color-mix(in oklch,var(--flame-hi,var(--gold)) 84%,transparent);
+    --hs:color-mix(in oklch,var(--flame-hi,var(--gold)) 28%,transparent)}
+  .nu-chip>.hlx{--hc:color-mix(in srgb,var(--nc) 80%,transparent);
+    --hs:color-mix(in srgb,var(--nc) 26%,transparent)}
+  /* reduced-motion: a estética FICA (cantoneiras acesas), o movimento sai */
+  @media (prefers-reduced-motion:reduce){
+    .hlx::before{animation:none;opacity:.22}
+    .hlx::after{display:none}
+  }
+  /* aba oculta: o v10 já pausa animação CSS via html.rest — a camada obedece */
+  html.rest .hlx::before,html.rest .hlx::after{animation-play-state:paused}
+
   /* o ticker cortava no meio da palavra nas duas bordas — lia como texto vazando o
      container. Máscara de esmaecimento resolve sem tirar conteúdo nenhum. */
   .ck-ticker{-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
@@ -1349,7 +1409,45 @@ function a11yfy(root){
   (root||document).querySelectorAll('[onclick]:not(button):not(input):not([tabindex]):not(a[href])').forEach(el=>{
     el.tabIndex=0; if(!el.hasAttribute('role'))el.setAttribute('role','button');
   });
+  holografar(root);
 }
+
+/* ═══ HOLOGRAMA UNIVERSAL — a camada viva de cada acionável ═══════════════════════
+   Injeta um `<i class="hlx">` em todo botão/chip/aba/atalho. Três decisões que valem
+   ser lidas antes de mexer:
+   1. É elemento REAL, não pseudo: em `.btn` e `.chip` os dois pseudos já estão
+      ocupados desde o v7/v9. A camada traz os seus próprios.
+   2. `--hd` (atraso) sai de um contador global — cada peça respira num tempo
+      diferente. Botão pulsando junto lê como pisca-pisca; pulsando desencontrado lê
+      como sistema com muitas partes vivas.
+   3. `aria-hidden` + `pointer-events:none`: é decoração e não pode aparecer para
+      leitor de tela nem roubar clique. Marca `data-hlx` para nunca duplicar. */
+const HLX_SEL='.btn,.chip,.tab,.lnk,.ck-inst,.nu-chip,.htop a';
+let _hlxN=0;
+function holografar(root){
+  const alvo=root||document;
+  let els;
+  try{els=alvo.querySelectorAll(HLX_SEL);}catch(_){return;}
+  els.forEach(el=>{
+    if(el.dataset.hlx)return;
+    el.dataset.hlx='1';
+    const i=document.createElement('i');
+    i.className='hlx';i.setAttribute('aria-hidden','true');
+    i.style.setProperty('--hd',(((_hlxN++)*0.37)%4.2).toFixed(2)+'s');
+    el.appendChild(i);
+  });
+}
+/* As abas são renderizadas depois — e algumas nem existem no boot. O observador é o
+   que faz isto valer para o painel INTEIRO, e não só para o que estava na tela. */
+addEventListener('DOMContentLoaded',()=>{
+  holografar(document);
+  try{
+    new MutationObserver(ms=>{
+      for(const m of ms)for(const nó of m.addedNodes)
+        if(nó.nodeType===1)holografar(nó.matches&&nó.matches(HLX_SEL)?nó.parentNode:nó);
+    }).observe(document.body,{childList:true,subtree:true});
+  }catch(_){}
+});
 document.addEventListener('keydown',e=>{
   const el=e.target;
   if((e.key==='Enter'||e.key===' ')&&el.matches&&el.matches('[role="button"][tabindex]:not(button)')){
