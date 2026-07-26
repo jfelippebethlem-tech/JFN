@@ -1760,6 +1760,23 @@
      `cover` fica. */
   @media (min-width:900px){.ck-nucleo::before{background-size:190% auto;background-position:50% 45%}}
 
+
+  /* == v25 SELO USINADO ====================================================
+     Duas geracoes de folha de icones no Firefly sairam com forma PREENCHIDA e
+     espessura desigual - reprova pela regra dura do guia (traco identico no set
+     inteiro), e a 16-24px isso vira borrao. Entao a arte gerada entra onde
+     raster de fato ganha: no selo da capa, que tem 48-54px.
+     Mesmo padrao que deu certo no reator: a ARTE da o corpo (bisel usinado,
+     ranhuras, ticks), o CODIGO continua dando a vida (o glifo tingido por
+     --esf, o anel conico que varre, a respiracao). Dessaturada a 25%: metal e
+     incolor, entao o mesmo asset serve as quatro esferas sem brigar de matiz.
+     z-index -2 para ficar atras do anel conico (que ja mora no -1); o selo tem
+     isolation:isolate, entao o negativo nao escapa do cartao.               */
+  .cover-seal::after{content:"";position:absolute;inset:-3px;z-index:-2;pointer-events:none;
+    background:url(/static/assets/selo-anel.webp) center/contain no-repeat;
+    opacity:.9;mix-blend-mode:screen;filter:saturate(.25) brightness(1.1)}
+  @media (prefers-reduced-transparency:reduce){.cover-seal::after{opacity:.5}}
+
 </style>
 </head>
 <body>
