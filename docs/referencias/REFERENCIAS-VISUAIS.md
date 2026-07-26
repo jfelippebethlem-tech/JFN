@@ -153,3 +153,32 @@ cd ~/JFN
 Navegador automatizado reporta `visibilityState: "hidden"`, o rAF congela e
 **todo canvas mede vazio** — isso me custou uma rodada inteira caçando um
 defeito que não existia.
+
+---
+
+## 9. Sessão 2026-07-26 (noite) — v35→v43
+
+- **v36 FACETA COM SENTIDO**: `data-nav-dir` (posto pelo `ir()`) gira o miolo
+  em Y **para o lado do destino** — inclusive entre esferas (o `trocarEsfera`
+  pré-atribuía `aba` e apagava o sentido; corrigido). `perspective()` dentro do
+  próprio transform: pseudo-elementos de view transition não herdam cena 3D.
+- **v37/v38/v41 ENCAIXE PROGRESSIVO**: vídeo da nebulosa por esfera, corpo do
+  nó e núcleo-holo-RJ ligam sozinhos quando o arquivo aparecer em
+  `static/assets/` (sonda HEAD; 404 = segue como está). `.on` só no evento
+  `playing` — o Chromium do Playwright **não tem H.264**, então `play()` que
+  resolve não prova quadro.
+- **v39**: a lâmina do trilho v26 agora corre de verdade (12s, cor da esfera).
+- **v40**: 7 contrastes de token fechados; holofeed 97% opaco (o pior pixel
+  não pode depender da esfera). Auditor agora **zera one-shots de chegada**
+  no congelar — mede o repouso, não o flash do barramento.
+- **v42 COCKPIT DO SISTEMA**: g_sweeps virou a sala de máquinas (fila SEI com
+  barra, arquivo compacto, pipelines SLO, aprendizados; refresh 30s em lugar).
+- **v43 O KPI QUE SUMIA (lição dura, sintoma novo da armadilha velha)**: dentro
+  de `.grid`, a `entraCascata` sobrescrevia a `rise` e, ao terminar
+  (`backwards`), a opacity caía no **0 estático** da `.rise` — KPI invisível
+  em toda aba com grid. O rastro no laudo eram as dezenas de "não pintou
+  glifo". **Aba com área vazia + 'não pintou glifo' no auditor = procure
+  animação sobrescrita, não dado faltando.**
+- **Canal com o desktop**: Syncthing do it-campo morto desde 05/07 — pedido de
+  arte foi por **Taildrop** + aviso via Telegram. Conferir `FOGTP75` conectado
+  antes de esperar resposta por `_handoff`.

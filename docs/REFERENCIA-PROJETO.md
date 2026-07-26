@@ -216,6 +216,7 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- 2026-07-26 (noite): painel v35→v43 — faceta 3D com sentido, encaixes progressivos p/ arte viva (it-campo via Taildrop), cockpit do SISTEMA, contraste lote 1, e o v43 que curou KPIs invisíveis em toda aba com grid.
 - **07-20c (pacote completo G1-G7 + síntese reflexiva):** `/api/dossie/completo`
   (`dossie.montar_ctx_completo`: 360 + veredito de fachada + cláusulas restritivas na ÍNTEGRA +
   suspeitas + árvore/íntegra SEI, `reporting/capitulos_dossie`) + Lex + planilha; **gate de
