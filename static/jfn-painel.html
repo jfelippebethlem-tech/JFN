@@ -1777,6 +1777,30 @@
     opacity:.9;mix-blend-mode:screen;filter:saturate(.25) brightness(1.1)}
   @media (prefers-reduced-transparency:reduce){.cover-seal::after{opacity:.5}}
 
+
+  /* == v26 TRILHO — a capa da aba ganha uma barra de instrumento ===========
+     A regra do dono: onde ha texto, pode haver arte. A capa era so tipografia
+     sobre uma linha de 1px. Agora a base dela e um TRILHO usinado gerado no
+     Firefly - canal de vidro com a lamina de luz correndo dentro.
+     Cuidado que custou um recorte: o gerador escreveu numerais falsos nas duas
+     faixas de cima e de baixo da peca. Em painel de AUDITORIA numero inventado
+     e inaceitavel mesmo ilegivel - a fatia usada e so o canal de luz, entre as
+     duas faixas, e nenhum digito sobreviveu.
+     Dessaturado a 40%: metal e incolor, e quem carrega a matiz da esfera e a
+     barra de acento que ja existia (.cover::before) - decoracao nova nao rouba
+     o trabalho da antiga.
+     Mora em .cover-row::before porque os dois pseudos de .cover ja estao
+     ocupados (acento e boot-sweep). Absoluto dentro de um flex NAO vira item de
+     flex, entao a linha do cabecalho nao se mexe.                          */
+  .cover{isolation:isolate}
+  .cover-row::before{content:"";position:absolute;left:0;right:0;bottom:-11px;height:26px;
+    z-index:-1;pointer-events:none;
+    background:url(/static/assets/trilho-hud.jpg) center/100% 100% no-repeat;
+    opacity:.55;mix-blend-mode:screen;filter:saturate(.4);
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%)}
+  @media (prefers-reduced-transparency:reduce){.cover-row::before{opacity:.3}}
+
 </style>
 </head>
 <body>
