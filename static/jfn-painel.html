@@ -1620,12 +1620,11 @@
   /* dasharray SO durante a ignicao: pathLength e atributo SVG e nao pode ser
      setado por CSS, entao dasharray fixo cortava qualquer glifo com caminho
      maior que 100 unidades. Aqui o traco fica intacto por padrao.        */
-  .sph.on .i .jico *,.cover-seal .jico *,nav.tabs button.on .ti .jico *{
-    animation:v18traca .85s cubic-bezier(.2,.8,.2,1) both}
-  @keyframes v18traca{
-    from{stroke-dasharray:0 999;stroke-dashoffset:0}
-    to{stroke-dasharray:999 0;stroke-dashoffset:0}}
-
+  /* A ignicao por stroke-dasharray foi REMOVIDA: com fill-mode both o estado
+     inicial (dash 0 / gap 999) deixa o traco invisivel enquanto a animacao
+     nao roda, e o icone da aba ATIVA sumia — sobrava so o fallback textual.
+     Icone precisa estar visivel sempre; efeito que arrisca sumir com o
+     conteudo nao vale o ganho. O volume 3D e o glow, abaixo, ficam.      */
   /* ── o glifo ganha volume: inclina em 3D e adianta no eixo Z ─────────
      Movimento pequeno (8deg / 6px) porque ícone é alvo de clique — se ele
      foge do cursor, vira erro de mira, não charme.                       */
@@ -1715,6 +1714,7 @@
 
   /* ── peso: hierarquia por peso, não por mais um tamanho ──────────────*/
   .kpi .v,.ck-inst .val{font-weight:600;letter-spacing:-.01em}
+
 </style>
 </head>
 <body>
