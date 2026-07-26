@@ -140,6 +140,47 @@ _RESSALVA = ("indício a apurar, não acusação; INDISPONÍVEL ≠ irregular; a
              "presunção de legitimidade")
 
 
+
+# Limiares medidos no acervo (2026-07-25). Frouxos de proposito: perder uma foto
+# custa uma verificacao a menos; aceitar uma tabela custa um laudo falso.
+# Limiares MEDIDOS no acervo (2026-07-25, 140 arquivos), nao chutados:
+#            saturacao mediana   meio-tom mediano
+#   foto           50,3               0,77
+#   documento       0,8               0,11
+# Duas ordens de grandeza separam os dois. A 1a versao usou 14 / 0,22 com OU e nao
+# rejeitou NADA — texto antialiasado tem meio-tom de sobra, e o OU basta um passar.
+# Agora e E, com o corte no vale entre as duas distribuicoes.
+_MIN_SATURACAO = 18.0      # p90 do documento e 15,6; mediana da foto e 50,3
+_MIN_MEIO_TOM = 0.35       # p10 da foto e 0,60; mediana do documento e 0,11
+
+
+def _parece_fotografia(im_reduzida, caixa) -> bool:
+    """A regiao tem conteudo FOTOGRAFICO, ou e tabela/texto denso?
+
+    Densidade de pixel escuro nao separa os dois — tabela e tao densa quanto foto, e
+    foi por isso que nota fiscal e planilha de medicao entravam como "fotografia".
+    Aqui decide o conteudo tonal: saturacao media (foto tem cor) e fracao de
+    meio-tom (foto tem gradiente; texto e preto-ou-branco).
+
+    Degrada honesto: qualquer falha devolve True — o comportamento anterior — porque
+    perder uma foto e menos grave que descartar em silencio.
+    """
+    try:
+        import numpy as np
+
+        x0, y0, x1, y1 = (max(0, int(v)) for v in caixa)
+        if x1 - x0 < 8 or y1 - y0 < 8:
+            return False
+        rec = im_reduzida.convert("RGB").crop((x0, y0, x1, y1))
+        sat = float(np.asarray(rec.convert("HSV"))[:, :, 1].mean())
+        cinza = np.asarray(rec.convert("L"))
+        meio = float(((cinza > 60) & (cinza < 205)).mean())
+        # E, nao OU: texto antialiasado passa sozinho no meio-tom, e a saturacao
+        # sozinha deixa passar carimbo colorido em pagina branca.
+        return sat >= _MIN_SATURACAO and meio >= _MIN_MEIO_TOM
+    except Exception:  # noqa: BLE001 — foto e acessorio: nunca derruba a analise
+        return True
+
 def _regioes_foto(im, _amostra: int = 420) -> list[tuple[int, int, int, int]]:
     """Caixas das fotografias EMBUTIDAS numa página de relatório fotográfico.
 
@@ -178,7 +219,15 @@ def _regioes_foto(im, _amostra: int = 420) -> list[tuple[int, int, int, int]]:
              round((int(xs[-1]) + 1) * W / w), round(y1 * H / h))
         area = (c[2] - c[0]) * (c[3] - c[1])
         if _MIN_AREA_PX <= area < _COBRE_PAGINA * W * H:   # cobrir a página inteira = é a própria foto
-            caixas.append(c)
+            # A densidade sozinha nao distingue FOTO de TABELA: as duas sao densas.
+            # Medido em 2026-07-25: o detector devolvia nota fiscal e planilha de
+            # medicao como se fossem fotografia, e a pericia "conferia a entrega"
+            # contra uma tabela. O que separa e o CONTEUDO TONAL — foto tem cor e
+            # meio-tom continuo; texto e tinta escura sobre branco, quase sem
+            # saturacao e com histograma bimodal.
+            if _parece_fotografia(p, (round(c[0] * w / W), round(c[1] * h / H),
+                                      round(c[2] * w / W), round(c[3] * h / H))):
+                caixas.append(c)
     return caixas
 
 
