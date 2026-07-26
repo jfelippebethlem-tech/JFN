@@ -82,3 +82,26 @@ Saem em `screenshots/holo/`. Puxar com `scp` e **olhar** antes de seguir.
 `docs/referencias/design/ADOBE-MANUAL.md` — manual operacional (color grading, máscaras, grain/banding, Express).
 
 Backups: `static/jfn-painel.html.bak-v15`, `_SANDBOX/painel.antes-v15layer.html`, `_SANDBOX/painel.antes-v16.html`.
+
+---
+
+# ATUALIZAÇÃO 26/07 (fim da sessão) — v17/v18/v19 entregues
+
+| commit | camada |
+|---|---|
+| `ebe3cf69` | **v17 ARC REACTOR Mark II** — contra-rotação 14s×9s (anel só girando é spinner; dois opostos são mecanismo), halo pré-borrado animando opacity+scale, `.sweep` acelera a máquina inteira, hover 3D, halo no núcleo do cockpit |
+| `bb53f07c` | **v18 GLIFO VIVO** — ícones se traçam na ignição, volume 3D no hover (8deg/6px — ícone é alvo de clique, se foge do cursor vira erro de mira), glifo da esfera ativa respira no MESMO período do kyber (3.4s), território pulsa + varredura de radar |
+| `5d2ed910` | **v19 GRAMÁTICA** — caixa normalizada por CSS + **correção de regressão que eu causei na v18** |
+
+## ⚠️ LIÇÃO CARA (não repetir)
+`pathLength` é **ATRIBUTO SVG**, não propriedade CSS. Setar `pathLength:100` em CSS não faz nada, então o `stroke-dasharray:100` fixo cortou todo glifo com caminho > 100 unidades e **o ícone do cabeçalho sumiu**. Peguei no screenshot, não no teste — os testes não olham pixel. **Confirma a regra do dono: screenshot a cada etapa, sempre.** Correção: dasharray só existe DENTRO do @keyframes.
+
+## PRÓXIMO: arte individual no Firefly (pedido explícito do dono)
+Gerar **cada peça** no Firefly, não só fundos:
+1. **Ícones** — 51 abas. Hoje são glifos Lucide (ISC) em `static/assets/jfn-icones.js` (mapa emoji→SVG paths). Gerar no Firefly como **SVG/vetor** ou PNG→`image_vectorize`. **Regra dura do guia**: espessura de traço IDÊNTICA no set inteiro; nunca escalar 24→16 (traço vira 1,33px e borra).
+2. **Botões** — arte de estado (repouso/hover/ativo).
+3. **Núcleo/reator e nós do mapa** — o dono quer muito melhores; hoje são SVG+canvas procedurais.
+4. **Fonte sci-fi** — hoje IBM Plex Sans/Mono self-hosted em `static/assets/fonts/`. Candidatos do guia: **Orbitron** (feita como alternativa a Eurostile/Bank Gothic), **Chakra Petch**, Rajdhani. Baixar woff2, subsetar Latin+Latin-Ext (pt-BR precisa `ãõçáéíóúâêô`), `font-display:swap`, máx 3 arquivos. **Só para DISPLAY/labels — nunca em corpo ou tabela.**
+5. **Onde há texto, pode haver arte** — cabeçalhos de aba e capas de seção.
+
+**Fluxo Firefly** (validado nesta sessão): Chrome logado → `firefly.adobe.com/generate/image` → Image 5, 16:9, 2K → **clicar no TEXTO do placeholder por coordenada** (a árvore de acessibilidade não expõe o campo; `find` falha) → digitar → Gerar → hover → download → cai em `C:\Users\iterj\Downloads\Firefly_<prompt>.png`. Menu "..." tem **Imagem para vídeo**, Photoshop na Web, Express.
