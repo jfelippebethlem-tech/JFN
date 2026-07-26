@@ -1541,6 +1541,70 @@
     .hd::after,h2::after{animation:none;opacity:.5;transform:none}
     tbody tr{animation:none}
     .live .dot,#aovivo .dot,.badge-live::before{animation:none}}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v17 ARC REACTOR MARK II — o núcleo vira reator
+     ══════════════════════════════════════════════════════════════════════
+     O kyber já tinha arco de progresso, trilho, segmentos girando e núcleo
+     pulsando. Faltava o que faz um reator LER como reator: contra-rotação.
+     Um anel só girando é um spinner; dois girando em sentidos opostos são
+     um mecanismo — o olho lê engrenagem, não carregamento.
+
+     E o pulso do núcleo passa a significar: `.sweep` (que o painel já liga
+     quando há coleta em campo) acelera a máquina inteira, não só um anel.  */
+
+  #kyber{transform-style:preserve-3d}
+
+  /* halo externo: a luz que o reator joga no console em volta.
+     Pseudo-elemento e não box-shadow animado — sombra animada repinta a
+     caixa toda por frame; opacity+scale numa camada pré-borrada é composite. */
+  #kyber::before{
+    content:"";position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:-1;
+    background:radial-gradient(closest-side,color-mix(in oklch,var(--saber) 55%,transparent),transparent 72%);
+    filter:blur(5px);opacity:.5;
+    animation:v17halo 3.4s ease-in-out infinite}
+  @keyframes v17halo{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.8;transform:scale(1.1)}}
+
+  /* CONTRA-ROTAÇÃO: o trilho gira ao contrário dos segmentos.
+     Períodos primos entre si (14s x 9s) para o padrão não se repetir em
+     ciclo curto — repetição visível é o que denuncia animação barata.    */
+  #kyber .ktrk{transform-origin:15px 15px;animation:v17contra 9s linear infinite;
+    stroke:color-mix(in oklch,var(--saber) 22%,var(--bd2));stroke-dasharray:1 7}
+  @keyframes v17contra{to{transform:rotate(-360deg)}}
+
+  /* o arco de progresso ganha brilho vivo na ponta */
+  #kyber .karc{filter:drop-shadow(0 0 3px color-mix(in oklch,var(--saber) 80%,transparent))}
+
+  /* núcleo: respira em escala além da opacidade — volume, não piscada */
+  #kyber .knuc{transform-origin:15px 15px;animation:v17nucleo 3.4s ease-in-out infinite}
+  @keyframes v17nucleo{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(.88)}}
+
+  /* SWEEP = coleta em campo acontecendo: a máquina inteira acelera.
+     Antes só os segmentos e o núcleo mudavam; agora o trilho e o halo
+     entram junto, então o reator inteiro "engrena" quando há trabalho.   */
+  #kyber.sweep .ktrk{animation-duration:2.2s}
+  #kyber.sweep::before{animation-duration:1.2s}
+  #kyber.sweep .knuc{animation:v17nucleo 1s ease-in-out infinite}
+  #kyber.sweep{filter:drop-shadow(0 0 9px color-mix(in oklch,var(--saber) 75%,transparent))}
+
+  /* hover: o reator se inclina em 3D na direção do cursor (Jarvis) */
+  #kyber:hover{transform:rotateX(12deg) rotateY(-12deg) scale(1.08);
+    transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  #kyber:hover::before{opacity:.95}
+
+  /* ── o mesmo reator, em escala grande, no cockpit ─────────────────────
+     O núcleo do mapa é o MESMO objeto do header — o portal já entrega a
+     energia a ele no handoff. Contra-rotação idêntica mantém a leitura.  */
+  #nucleo::before,.ck-core::before{
+    content:"";position:absolute;inset:-14%;border-radius:50%;pointer-events:none;z-index:-1;
+    background:radial-gradient(closest-side,color-mix(in oklch,var(--esf,var(--ion)) 34%,transparent),transparent 70%);
+    filter:blur(10px);animation:v17halo 4.2s ease-in-out infinite}
+
+  @media (prefers-reduced-motion:reduce){
+    #kyber::before,#kyber .ktrk,#kyber .knuc,
+    #kyber.sweep .ktrk,#kyber.sweep::before,#kyber.sweep .knuc,
+    #nucleo::before,.ck-core::before{animation:none}
+    #kyber:hover{transform:none}}
 </style>
 </head>
 <body>
