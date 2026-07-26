@@ -298,23 +298,104 @@ async def _auth_jfn(request: Request, call_next):
 
 
 _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><title>JFN — Acesso</title>
-<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;
-background:#0b1020;color:#e8edf7;font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif}
-.card{background:#141b30;border:1px solid #243049;border-radius:16px;padding:34px 30px;width:330px;
-box-shadow:0 18px 50px rgba(0,0,0,.45)}h1{margin:0 0 4px;font-size:21px;letter-spacing:.3px}
-p{margin:0 0 20px;color:#8a97b3;font-size:13px}input{width:100%;padding:12px 14px;border-radius:10px;
-border:1px solid #2a3650;background:#0d1424;color:#e8edf7;font-size:15px;margin-bottom:12px}
-button{width:100%;padding:12px;border:0;border-radius:10px;background:#3b82f6;color:#fff;font-size:15px;
-font-weight:600;cursor:pointer}button:hover{background:#2f6fe0}.err{color:#f87171;font-size:13px;
-margin:-4px 0 12px;min-height:18px}.foot{margin-top:16px;color:#5d6a87;font-size:11px;text-align:center}</style>
-</head><body><form class=card method=post action=/login_jfn>
-<h1>🔐 JFN</h1><p>Motor de auditoria/compliance — RJ</p>
-<div class=err>{{ERRO}}</div>
-<input type=password name=senha placeholder="Senha de acesso" autofocus autocomplete=current-password>
-<button type=submit>Entrar</button>
-<div class=foot>Acesso restrito · dados de auditoria (LGPD art. 7º,II/23)</div>
-</form></body></html>"""
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=color-scheme content=dark><meta name=robots content="noindex,nofollow">
+<title>Acesso — Controle Externo</title>
+<style>
+  /* A porta de entrada usava paleta, fonte e botao de outro produto: azul de
+     framework, emoji no lugar da marca, campo sem rotulo. Quem entra aqui via
+     uma tela generica e so depois descobria o painel. Agora e o mesmo predio. */
+  @font-face{font-family:"Plex";src:url(/static/assets/fonts/IBMPlexSans-Regular.woff2) format("woff2");
+    font-weight:400;font-display:swap}
+  @font-face{font-family:"Plex";src:url(/static/assets/fonts/IBMPlexSans-SemiBold.woff2) format("woff2");
+    font-weight:600;font-display:swap}
+  @font-face{font-family:"PlexMono";src:url(/static/assets/fonts/IBMPlexMono-Medium.woff2) format("woff2");
+    font-weight:500;font-display:swap}
+  :root{
+    --bg:oklch(0.035 0.014 265); --surf:oklch(0.108 0.021 265);
+    --bd:oklch(0.30 0.031 265);  --bd2:oklch(0.24 0.026 265);
+    --tx:oklch(0.95 0.008 265);  --tx2:oklch(0.80 0.014 265);
+    --mut:oklch(0.70 0.019 265);            /* 4.5:1 no fundo — nao e cinza claro */
+    --ion:oklch(0.72 0.175 258); --gold:oklch(0.80 0.128 78);
+    --rose:oklch(0.66 0.20 18);
+    --mono:"PlexMono",ui-monospace,Menlo,Consolas,monospace}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;
+    background:var(--bg);color:var(--tx);
+    font:400 16px/1.5 "Plex",system-ui,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  /* a mesma peca da abertura do painel, em vinheta: reconhecivel, nunca disputando
+     com o formulario. `fixed` + z-index -1 mantem fora do fluxo e do foco.       */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;
+    background:url(/static/assets/portal-hero.jpg) 50% 42%/cover no-repeat;
+    opacity:.22;filter:saturate(.85)}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(ellipse 70% 55% at 50% 44%,transparent,oklch(0.035 0.014 265/.82) 62%,var(--bg) 100%)}
+  .card{position:relative;width:min(370px,100%);padding:32px 30px 26px;
+    border:1px solid var(--bd2);border-radius:16px;
+    background:color-mix(in oklch,var(--surf) 84%,transparent);
+    box-shadow:0 24px 70px oklch(0 0 0/.55),0 0 0 1px oklch(1 0 0/.03) inset}
+  .marca{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+  /* o selo do painel, nao um emoji: a marca tem que ser a mesma dos dois lados */
+  .selo{width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
+    font:600 13px/1 var(--mono);letter-spacing:.5px;color:oklch(0.98 0.01 265);
+    background:linear-gradient(150deg,var(--ion),oklch(0.52 0.16 268));
+    box-shadow:0 0 16px color-mix(in oklch,var(--ion) 45%,transparent)}
+  h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.1px}
+  .sub{margin:2px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:2px;
+    text-transform:uppercase;color:var(--ion)}
+  label{display:block;font-size:12.5px;color:var(--tx2);margin-bottom:7px}
+  input{width:100%;padding:13px 14px;border-radius:10px;font-size:15px;
+    border:1px solid var(--bd);background:oklch(0.06 0.016 265);color:var(--tx);
+    transition:border-color .16s,box-shadow .16s}
+  input::placeholder{color:var(--mut)}          /* mesmo 4.5:1 do corpo */
+  input:focus-visible{outline:0;border-color:var(--ion);
+    box-shadow:0 0 0 3px color-mix(in oklch,var(--ion) 26%,transparent)}
+  button{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;cursor:pointer;
+    font:600 15px/1 "Plex",system-ui,sans-serif;color:oklch(0.99 0.005 265);
+    background:linear-gradient(180deg,var(--ion),oklch(0.60 0.17 260));
+    box-shadow:0 6px 18px color-mix(in oklch,var(--ion) 30%,transparent);
+    transition:filter .16s,transform .1s}
+  button:hover{filter:brightness(1.09)}
+  button:active{transform:translateY(1px)}
+  button:focus-visible{outline:2px solid var(--ion);outline-offset:3px}
+  button[aria-busy=true]{pointer-events:none;filter:saturate(.5) brightness(.86)}
+  button[aria-busy=true] .rot{display:inline-block;width:12px;height:12px;margin-right:8px;
+    vertical-align:-1px;border:2px solid oklch(1 0 0/.35);border-top-color:#fff;border-radius:50%;
+    animation:gira .7s linear infinite}
+  @keyframes gira{to{transform:rotate(1turn)}}
+  /* erro com borda inteira e tinta — sem faixa lateral, sem cor sozinha */
+  .err{margin:14px 0 0;padding:9px 12px;border-radius:8px;font-size:13px;line-height:1.4;
+    border:1px solid color-mix(in oklch,var(--rose) 46%,transparent);
+    background:color-mix(in oklch,var(--rose) 11%,transparent);color:oklch(0.84 0.11 18)}
+  .err:empty{display:none}                      /* sem espaco reservado a vazio */
+  .foot{margin:18px 0 0;font-size:11.5px;line-height:1.5;color:var(--mut);text-align:center}
+  .vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip-path:inset(50%);white-space:nowrap}
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+    button:active{transform:none}}
+</style></head><body>
+<form class=card method=post action=/login_jfn>
+  <div class=marca><div class=selo aria-hidden=true>CE</div>
+    <div><h1>Controle Externo</h1><p class=sub>Central de Inteligência · RJ</p></div></div>
+  <label for=senha>Senha de acesso</label>
+  <input id=senha type=password name=senha autofocus autocomplete=current-password
+    required aria-describedby=lgpd placeholder="digite para entrar">
+  <div class=err role=alert>{{ERRO}}</div>
+  <button type=submit><span class=rot aria-hidden=true></span>Entrar</button>
+  <p class=foot id=lgpd>Acesso restrito · dados de auditoria
+    <span class=vh>conforme</span> LGPD art. 7º, II</p>
+</form>
+<script>
+  /* o botao dizia "Entrar" durante os segundos da checagem e parecia travado.
+     aria-busy vira o estado, o texto conta o que esta acontecendo.            */
+  document.querySelector('form').addEventListener('submit',e=>{
+    const b=e.currentTarget.querySelector('button');
+    b.setAttribute('aria-busy','true');
+    b.lastChild.textContent='Verificando…';
+  });
+</script></body></html>"""
 
 
 @app.get("/login_jfn", response_class=HTMLResponse)
