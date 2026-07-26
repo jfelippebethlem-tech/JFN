@@ -1976,6 +1976,50 @@
   .ck-inst .lab{flex:0 0 auto}
   .ck-inst .sub,.ck-inst .foot{margin-top:auto}
 
+
+  /* == v28.4 VAZIO QUE ENSINA + CASCATA ====================================
+     (a) o cartao sem dado dizia "aguardando...", que informa zero: nao diz o que
+     vai aparecer ali nem de onde vem. Agora nomeia a fonte, e pulsa de leve para
+     ler como "em curso" e nao como "quebrado".                                */
+  .ck-inst .meta.esperando{color:var(--dim);animation:esperaPulsa 2.4s ease-in-out infinite}
+  @keyframes esperaPulsa{0%,100%{opacity:.55}50%{opacity:.92}}
+
+  /* (b) CASCATA. O conteudo das dezenas de abas trocava de uma vez, sem nada que
+     dissesse "isto e novo", e o painel lia como estatico apesar do movimento de
+     fundo.
+
+     O indice vem de nth-child em CSS PURO. A primeira tentativa numerava com um
+     MutationObserver em #view e derrubou a montagem do painel inteiro (12 botoes
+     e 4 esferas viraram 0) — revertido e refeito sem uma linha de JS. Nada que
+     seja so enfeite tem o direito de ficar entre o painel e o dado.
+
+     Duas travas: parte de opacidade .35 e NUNCA de 0, porque animacao de CSS
+     tambem congela em aba de segundo plano e um reveal partindo de 0 deixaria a
+     aba em branco para quem volta o foco no meio (a mesma familia de bug do
+     portal, corrigido em 3cf2a6a1); e o atraso tem TETO de 380ms, senao a
+     decima quarta linha esperaria segundos e leria como travado, nao vivo.     */
+  #view .grid>*:nth-child(1),#view .cols>*:nth-child(1){--i:0}
+  #view .grid>*:nth-child(2),#view .cols>*:nth-child(2){--i:1}
+  #view .grid>*:nth-child(3),#view .cols>*:nth-child(3){--i:2}
+  #view .grid>*:nth-child(4),#view .cols>*:nth-child(4){--i:3}
+  #view .grid>*:nth-child(5),#view .cols>*:nth-child(5){--i:4}
+  #view .grid>*:nth-child(6),#view .cols>*:nth-child(6){--i:5}
+  #view .grid>*:nth-child(7),#view .cols>*:nth-child(7){--i:6}
+  #view .grid>*:nth-child(8),#view .cols>*:nth-child(8){--i:7}
+  #view .grid>*:nth-child(9),#view .cols>*:nth-child(9){--i:8}
+  #view .grid>*:nth-child(10),#view .cols>*:nth-child(10){--i:9}
+  #view .grid>*:nth-child(11),#view .cols>*:nth-child(11){--i:10}
+  #view .grid>*:nth-child(12),#view .cols>*:nth-child(12){--i:11}
+  #view .grid>*:nth-child(13),#view .cols>*:nth-child(13){--i:12}
+  #view .grid>*:nth-child(14),#view .cols>*:nth-child(14){--i:13}
+  #view .grid>.card,#view .cols>.card,#view .grid>.ck-inst,#view .cols>.ck-inst{
+    animation:entraCascata .34s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms)}
+  @keyframes entraCascata{from{opacity:.35;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){
+    #view .grid>.card,#view .cols>.card,#view .grid>.ck-inst,#view .cols>.ck-inst{animation:none}
+    .ck-inst .meta.esperando{animation:none;opacity:.8}}
+
 </style>
 </head>
 <body>
@@ -4669,11 +4713,11 @@ function nucleoStart(){
 }
 function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
   <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
-  <div class="val ${valc}">—</div><div class="meta">aguardando…</div>
+  <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
   </div>`;}
 function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
-  if(meta!=null)m.innerHTML=meta;
+  if(meta!=null){m.innerHTML=meta;m.classList.remove(esperando);}
   nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt);   // espelha no Núcleo orbital
 }
 let _ckTick=[];
