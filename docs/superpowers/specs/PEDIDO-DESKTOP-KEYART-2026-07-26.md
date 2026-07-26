@@ -189,6 +189,11 @@ Trabalho fechado nesta sessão, branch `feat/painel-v15-holo`
   no portal (o segundo guarda-corpo da abertura nunca existiu).
 - **v46** o chip ativo passou a falar a cor da esfera (era azul fixo em aba
   âmbar da Prefeitura).
+- **v48** o mapa do núcleo **nascia vazio**: os 7 nós só apareciam se você
+  voltasse para a aba, e o canvas ficava em 300×150 (nunca dimensionado).
+  Timer não serializa com paint assíncrono — quem monta agora é o `ir()`,
+  depois de pintar. É o cockpit que a arte vai encontrar: reator + mapa do RJ
+  + 7 nós com número real.
 
 O núcleo está **procedural e limpo** esperando a Peça 1. O vídeo interino que
 usei para testar o encaixe foi arquivado em
