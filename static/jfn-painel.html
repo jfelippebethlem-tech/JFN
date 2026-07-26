@@ -1617,10 +1617,14 @@
   /* ── ignição do glifo: o traço se desenha quando o ícone entra ────────
      pathLength normaliza todo caminho para 100, então o MESMO dasharray
      vale para qualquer glifo, de qualquer tamanho — sem medir nada.     */
-  .jico *{stroke-dasharray:100;stroke-dashoffset:0;pathLength:100}
+  /* dasharray SO durante a ignicao: pathLength e atributo SVG e nao pode ser
+     setado por CSS, entao dasharray fixo cortava qualquer glifo com caminho
+     maior que 100 unidades. Aqui o traco fica intacto por padrao.        */
   .sph.on .i .jico *,.cover-seal .jico *,nav.tabs button.on .ti .jico *{
     animation:v18traca .85s cubic-bezier(.2,.8,.2,1) both}
-  @keyframes v18traca{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+  @keyframes v18traca{
+    from{stroke-dasharray:0 999;stroke-dashoffset:0}
+    to{stroke-dasharray:999 0;stroke-dashoffset:0}}
 
   /* ── o glifo ganha volume: inclina em 3D e adianta no eixo Z ─────────
      Movimento pequeno (8deg / 6px) porque ícone é alvo de clique — se ele
@@ -1664,6 +1668,53 @@
     .sph.on .i .jico,#rjbg,#rjbg::after{animation:none}
     .jico *{stroke-dashoffset:0}
     .sph:hover .i .jico,nav.tabs button:hover .ti .jico,.nu-chip:hover{transform:none}}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v19 GRAMÁTICA — a caixa vira regra, não escolha de quem digitou
+     ══════════════════════════════════════════════════════════════════════
+     O CSS já era consistente (15 uppercase, todos com tracking). A bagunça
+     estava no CONTEÚDO: o mesmo tipo de rótulo aparecia "ALERTAS", "Alertas"
+     e "alertas" conforme quem escreveu. Normalizar no CSS resolve os três de
+     uma vez e impede a próxima divergência — quem digitar errado amanhã sai
+     certo na tela.
+
+     A regra que vale para o painel inteiro:
+       · LABEL de instrumento  → CAIXA ALTA + tracking largo (é etiqueta)
+       · TÍTULO / conteúdo     → como foi escrito (é linguagem)
+       · NÚMERO                → mono tabular (já era)
+     Etiqueta de máquina é caixa alta; frase de humano não.               */
+
+  /* ── etiquetas de instrumento: uma só voz ────────────────────────────
+     +0.08em em 10-11px é o que a literatura dá como legível em caixa alta;
+     sem tracking, maiúscula pequena vira bloco cinza.                    */
+  .kpi .l,.ck-inst .lab,.eco .k,.sect,thead th,.sph .s,
+  nav.tabs button .tl,.chip,.pill,.tag{
+    text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);
+    font-variant-numeric:tabular-nums}
+
+  /* rótulo de aba na barra inferior é curto e apertado: menos tracking,
+     senão 22 abas não cabem no rolo do celular. */
+  nav.tabs button .tl{letter-spacing:.04em;font-size:9.5px}
+
+  /* ── títulos ficam como foram escritos ───────────────────────────────
+     Caixa alta em frase longa destrói a silhueta da palavra e derruba a
+     velocidade de leitura — o auditor lê estes, não escaneia.            */
+  h1,h2,h3,.hd,.tit,.eco p,p,.sub,td{text-transform:none;letter-spacing:normal}
+
+  /* ── o número é sempre mono tabular, em todo lugar ───────────────────
+     Sem tabular-nums a linha inteira treme quando o dígito muda de largura;
+     é o indício isolado mais visível de dashboard amador.                */
+  .kpi .v,.ck-inst .val,.money,.score,td,.big,.num{
+    font-variant-numeric:tabular-nums lining-nums}
+
+  /* ── títulos de seção ganham prefixo de terminal ─────────────────────
+     Marca hierarquia sem gastar mais um tamanho de fonte — a escala já tem
+     tamanhos demais para sustentar.                                      */
+  .sect::before{content:"// ";color:color-mix(in oklch,var(--esf,var(--ion)) 70%,transparent);
+    font-weight:600}
+
+  /* ── peso: hierarquia por peso, não por mais um tamanho ──────────────*/
+  .kpi .v,.ck-inst .val{font-weight:600;letter-spacing:-.01em}
 </style>
 </head>
 <body>
