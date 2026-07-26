@@ -59,14 +59,35 @@ def levantar(fornecedor: str | None = None) -> dict:
         return {"erro": "compliance.db ausente"}
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     try:
-        sql = ("SELECT numero_sei, ROUND(SUM(valor),2) v, MAX(favorecido_nome) nome, "
-               "       MAX(REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')) cnpj, COUNT(*) n "
-               "FROM ordens_bancarias WHERE numero_sei LIKE 'SEI-%/%/20%'")
+        # FONTE: SIAFE, nao o espelho TFE. Medido em 2026-07-25, o mesmo filtro
+        # `SEI-%` devolve:
+        #     ordens_bancarias (TFE)     22.838 processos · R$  6.792.153.266,79
+        #     ob_orcamentaria_siafe      42.244 processos · R$ 21.494.378.517,31
+        # São **19.837 processos que existem SÓ no SIAFE** — a fila que decide o que
+        # periciar primeiro nunca os enxergou. Não é diferença de recorte: os dois
+        # usam o mesmo formato de numero e 22.407 aparecem nos dois; o TFE e que e
+        # espelho parcial. E a lei da casa, escrita no CLAUDE.md: OB e pagamento, e
+        # pagamento vem do SIAFE — nunca do espelho.
+        # STATUS: só `Contabilizado` é pagamento. Medido em 2026-07-25, entre as OB
+        # do SIAFE com processo SEI-:
+        #     Contabilizado       64.827 OB · R$ 17.054.410.718,32   <- pago
+        #     Excluído             2.269 OB · R$  3.932.797.164,24   <- NAO pago
+        #     Anulado                567 OB · R$    417.045.966,38   <- NAO pago
+        #     Não contabilizado      152 OB · R$     90.124.668,37   <- ainda nao
+        # Somar tudo infla o universo em R$ 4,4 bi (26%). E a mesma familia de erro
+        # do "empenho apresentado como pago", so que um passo adiante: aqui e OB
+        # CANCELADA apresentada como paga.
+        sql = ("SELECT processo AS numero_sei, ROUND(SUM(valor),2) v, "
+               "       MAX(nome_credor) nome, "
+               "       MAX(REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')) cnpj, "
+               "       COUNT(*) n "
+               "FROM ob_orcamentaria_siafe "
+               "WHERE processo LIKE 'SEI-%/%/20%' AND status = 'Contabilizado'")
         params: list = []
         if fornecedor:
-            sql += " AND REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','') = ?"
+            sql += " AND REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','') = ?"
             params.append(re.sub(r"\D", "", fornecedor))
-        sql += " GROUP BY numero_sei ORDER BY v DESC"
+        sql += " GROUP BY processo ORDER BY v DESC"
         linhas = con.execute(sql, params).fetchall()
     finally:
         con.close()
