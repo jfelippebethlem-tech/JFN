@@ -5,12 +5,23 @@
 determinística → LLM só no que sobra). Não chama IA nenhuma: lê o manifesto de
 cada processo em ``data/sei_arquivo/`` e aplica regras que ou batem ou não batem.
 
-**A separação que decide tudo: LACUNA ≠ ACHADO.**
-59% das red flags de uma safra anterior eram queixa de CAPTURA — documento que
-não foi lido — apresentada como se fosse vício do processo. 874 processos só
-tinham lacuna e viraram fila do fiscal à toa. Aqui os dois saem em campos
-separados e um nunca vira o outro: falta de peça é ``lacunas``; contradição no
-que EXISTE é ``achados``.
+**A separação que decide tudo — e ela tem TRÊS baldes, não dois.**
+
+A lição de que "59% das red flags eram queixa de CAPTURA" continua valendo, mas ela
+foi mal aplicada na 1ª versão deste arquivo: eu joguei toda lacuna num balde só e a
+tratei como ruído. **Está errado.** Em controle externo, peça que deveria estar no
+processo e não está é falha de controle tão grave quanto contradição — processo que
+paga R$ 11,4 mi sem uma única evidência de execução é achado, não silêncio.
+
+O que não pode é confundir a falta DELE com a falha NOSSA:
+
+* ``achados``          — contradição no que EXISTE (contrato antes do parecer);
+* ``lacunas_processo`` — peça que deveria estar no processo e não está. **Pesa como
+  achado.** Só vale quando a captura está íntegra: sem isso não dá para saber de
+  quem é a falta;
+* ``lacunas_captura``  — nós não lemos. É trabalho nosso, nunca vício dele.
+
+Foi a confusão entre o 2º e o 3º que pôs 874 processos na fila do fiscal à toa.
 
 **Honestidade das regras.** Cada achado diz em que documento se apoia. Nenhuma
 regra conclui por ausência: "não achei o parecer" é lacuna, não irregularidade.
@@ -51,6 +62,61 @@ _RX_EXEC_TIT = re.compile(
 _RX_PESQ_TIT = re.compile(
     r"pesquisa de pre[çc]|mapa de pre[çc]|cota[çc][ãa]o|or[çc]amento"
     r"|proposta comercial|painel de pre|tabela sinapi", re.I)
+
+# NATUREZA DO PROCESSO — repasse nao e contratacao (2026-07-25).
+# Medido: os SEIS maiores da fila (R$ 168 mi) eram Fundos Municipais de Saude, e o
+# Gemini leu neles "Informacao de conta bancaria para repasse financeiro" e "Repasse
+# da Resolucao SES 3618". Nao ha contrato, nao ha licitacao, nao ha entrega a medir:
+# e transferencia fundo a fundo. Um "parecer com ressalva sem acatamento expresso"
+# ali nao tem o peso que tem num contrato de obra — tratar os dois igual poe R$ 168
+# mi de repasse na fila com peso de vicio contratual, e o fiscal perde a viagem.
+# CALIBRAGEM 2026-07-25, 2a volta. A 1a versao punha "empenho" na lista de
+# contratacao — e TODO processo de pagamento tem Nota de Empenho, entao tudo virava
+# contratacao e os seis Fundos Municipais de Saude (R$ 168 mi) continuaram na fila
+# com peso de vicio contratual. O sinal certo estava nos titulos o tempo todo:
+# "Relacao de Ordens Bancarias EXTERNAS" — OB externa e pagamento a OUTRO ente, que
+# e a assinatura de transferencia fundo a fundo. Contratacao exige prova de
+# contrato/licitacao, nao de despesa: despesa toda execucao tem.
+_RX_REPASSE = re.compile(
+    r"repasse|cofinanciamento|fundo a fundo|transfer[êe]ncia volunt[áa]ria"
+    r"|resolu[çc][ãa]o SES|conv[êe]nio|termo de fomento|termo de colabora[çc][ãa]o"
+    r"|emenda parlamentar|subven[çc][ãa]o|ordens? banc[áa]ri[ao]s? externa", re.I)
+_RX_CONTRATACAO = re.compile(
+    r"contrato|licita[çc][ãa]o|preg[ãa]o|dispensa de licita|inexigibilidade"
+    r"|ata de registro|termo aditivo|ordem de in[íi]cio|medi[çc][ãa]o"
+    r"|termo de refer[êe]ncia|projeto b[áa]sico", re.I)
+
+
+# OVERRIDE FORTE, no mesmo idioma que `pcrj/esfera.py` usa para a raiz de CNPJ:
+# ha sinal que nao se decide por contagem. "Ordens Bancarias EXTERNAS" e pagamento a
+# OUTRO ente — so aparece em transferencia. Um processo de repasse cita "contrato" em
+# documento acessorio (minuta, anexo), entao contar palavra fazia contratacao vencer
+# 14 a 1 e os seis Fundos Municipais de Saude (R$ 168 mi) seguiam na fila com peso de
+# vicio contratual. Sinal inequivoco decide sozinho; o resto vai por contagem.
+_RX_OB_EXTERNA = re.compile(r"ordens? banc[áa]ri[ao]s? externa|OB externa", re.I)
+_RX_CONTRATO_FORTE = re.compile(
+    r"\bcontrato n[ºo°]|termo de contrato|termo aditivo|ordem de in[íi]cio"
+    r"|ata de registro de pre[çc]o", re.I)
+
+
+def natureza(man: dict, docs: list[dict]) -> str:
+    """contratacao | repasse | indefinido. Nunca chuta: sem sinal, fica indefinido."""
+    txt = " | ".join(str(d.get("titulo") or "") for d in docs)
+    # 1) sinais inequivocos decidem sozinhos, na ordem: contrato forte vence OB externa
+    #    (obra paga por OB externa continua sendo contratacao).
+    if _RX_CONTRATO_FORTE.search(txt):
+        return "contratacao"
+    if _RX_OB_EXTERNA.search(txt):
+        return "repasse"
+    # 2) sem sinal forte, decide a contagem
+    r = len(_RX_REPASSE.findall(txt))
+    c = len(_RX_CONTRATACAO.findall(txt))
+    if r and r >= c * 2:
+        return "repasse"
+    if c and c > r:
+        return "contratacao"
+    return "indefinido"
+
 
 _RX_ACATA = re.compile(
     r"\bacat(a|o|ando|ada)\b|\bem aten[çc][ãa]o ao parecer\b|\bcumprida[s]? as\b"
@@ -100,6 +166,7 @@ def periciar(pasta: Path) -> dict | None:
 
     docs = _docs(man)
     tipos = Counter(str(d.get("tipo") or "").lower() for d in docs)
+    nat = natureza(man, docs)
     achados: list[dict] = []
     observacoes: list[dict] = []   # estrutural, NAO e contradicao — ver nota abaixo
 
@@ -140,9 +207,10 @@ def periciar(pasta: Path) -> dict | None:
                 "apoio": f"parecer na posição {pos}, {len(docs)} documentos no total",
             })
         elif not acatou:
-            achados.append({
-                "codigo": "A3_PARECER_COM_RESSALVA_SEM_ACATAMENTO_EXPRESSO",
-                "grau": "medio",
+            (observacoes if nat == "repasse" else achados).append({
+                "codigo": ("A3_REPASSE_PARECER_SEM_ACATAMENTO" if nat == "repasse"
+                           else "A3_PARECER_COM_RESSALVA_SEM_ACATAMENTO_EXPRESSO"),
+                "grau": "baixo" if nat == "repasse" else "medio",
                 "diz": "há documentos posteriores, mas nenhum registra acatamento do parecer",
                 "apoio": f"parecer na posição {pos} · {len(posteriores)} documento(s) posterior(es)",
             })
@@ -174,14 +242,32 @@ def periciar(pasta: Path) -> dict | None:
             "apoio": f"{tem_liq} doc(s) de liquidação, 0 de execução, 0 fotos",
         })
 
+    # A captura íntegra é o que permite atribuir a falta ao PROCESSO. Sem ela, a
+    # mesma ausência pode ser nossa — e vender falha nossa como vício dele foi o
+    # erro que pôs 874 processos na fila à toa.
+    #
+    # MEDIR PELO TEXTO, NÃO PELA ETIQUETA. A 1ª versão exigia
+    # `qualidade_cache == "completo"` e zerou as lacunas de processo — mas só 791 de
+    # 2.050 têm essa marca, e medido: os 1.259 "sem-marca" têm arquivo de texto em
+    # **96%** dos casos. "Sem-marca" é arquivador antigo que não preenchia o campo,
+    # não captura ruim. Pior: os **214 processos com lacuna declarada são TODOS
+    # "sem-marca"** — o gate pela etiqueta jogava fora exatamente o que interessa.
+    _txt = pasta / "texto"
+    _n_txt = len(list(_txt.glob("*"))) if _txt.exists() else 0
+    captura_integra = bool(docs) and _n_txt >= max(1, int(len(docs) * 0.6))
+    lac = man.get("lacunas") or []
     return {
         "processo": man.get("processo") or pasta.name,
         "pasta": pasta.name,
         "n_docs": len(docs),
         "fotos": fotos,
         "qualidade": man.get("qualidade_cache") or "sem-marca",
-        # LACUNA e ACHADO em campos SEPARADOS, de propósito. Um nunca vira o outro.
-        "lacunas": man.get("lacunas") or [],
+        "natureza": nat,
+        # TRÊS baldes. A lacuna do PROCESSO pesa como achado; a de CAPTURA é nossa.
+        "lacunas_processo": lac if captura_integra else [],
+        "lacunas_captura": [] if captura_integra else lac,
+        "lacunas": lac,                       # compatibilidade com quem já lia isto
+        "captura_integra": captura_integra,
         "achados": achados,
         # OBSERVAÇÃO ≠ ACHADO. A4 e A5 batiam em mais da METADE do acervo (149 e 132
         # de 299) mesmo depois de calibradas — e regra que acusa metade do universo
@@ -213,19 +299,23 @@ def main(argv=None) -> int:
         linhas.append(r)
         for x in r.get("observacoes", []):
             cod["(obs) " + x["codigo"]] += 1
-        if r["achados"]:
+        if r.get("lacunas_processo"):
+            for _l in r["lacunas_processo"]:
+                cod["LP_" + str(_l.get("falta", "?"))[:34].upper().replace(" ", "_")] += 1
+            grau["lacuna_processo"] += len(r["lacunas_processo"])
+        if r["achados"] or r.get("lacunas_processo"):
             com_achado += 1
             for x in r["achados"]:
                 cod[x["codigo"]] += 1
                 grau[x["grau"]] += 1
-        elif r["lacunas"]:
+        elif r.get("lacunas_captura"):
             so_lacuna += 1
         else:
             limpo += 1
 
     print(f"\n=== TRIAGEM DETERMINÍSTICA · {len(linhas)} processos do acervo ===\n")
-    print(f"  com ACHADO (contradição no que existe) .. {com_achado}")
-    print(f"  só LACUNA (falta peça — é captura) ...... {so_lacuna}")
+    print(f"  na FILA (achado ou lacuna do processo) .. {com_achado}")
+    print(f"  só lacuna de CAPTURA (falha nossa) ...... {so_lacuna}")
     print(f"  sem achado e sem lacuna ................. {limpo}")
     print("\n  achados por código:")
     for k, v in cod.most_common():
