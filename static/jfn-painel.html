@@ -2223,6 +2223,78 @@
   .nu-legend{color:var(--leg)}
   .dim{color:oklch(0.64 0.03 240)}
 
+  /* ================= v36 A FACETA GIRA =====================================
+     O v31 ja fazia a troca ler como profundidade; faltava o SENTIDO. Com o
+     data-nav-dir posto pelo ir(), o miolo que sai e o que chega giram em Y
+     como faces do mesmo cristal: destino a direita gira num sentido, a
+     esquerda no outro. O painel vira UMA coisa que se vira para voce, nao
+     duas telas trocadas. perspective() vive dentro do proprio transform
+     porque os pseudo-elementos da view transition nao herdam cena 3D.
+     Lei do alvo de clique: o quadro que ENTRA nunca parte menor que 1.     */
+  @keyframes facetaSaiFwd{to{opacity:0;
+    transform:perspective(1400px) rotateY(-6deg) translateX(-2.2%) scale(.985)}}
+  @keyframes facetaChegaFwd{from{opacity:0;
+    transform:perspective(1400px) rotateY(6deg) translateX(2.6%) scale(1.014)}
+    to{opacity:1;transform:none}}
+  @keyframes facetaSaiBack{to{opacity:0;
+    transform:perspective(1400px) rotateY(6deg) translateX(2.2%) scale(.985)}}
+  @keyframes facetaChegaBack{from{opacity:0;
+    transform:perspective(1400px) rotateY(-6deg) translateX(-2.6%) scale(1.014)}
+    to{opacity:1;transform:none}}
+  :root[data-nav-dir="fwd"]::view-transition-old(jfn-miolo){
+    animation:facetaSaiFwd .22s cubic-bezier(.4,0,1,1) forwards}
+  :root[data-nav-dir="fwd"]::view-transition-new(jfn-miolo){
+    animation:facetaChegaFwd .34s cubic-bezier(.16,.84,.3,1) .05s backwards}
+  :root[data-nav-dir="back"]::view-transition-old(jfn-miolo){
+    animation:facetaSaiBack .22s cubic-bezier(.4,0,1,1) forwards}
+  :root[data-nav-dir="back"]::view-transition-new(jfn-miolo){
+    animation:facetaChegaBack .34s cubic-bezier(.16,.84,.3,1) .05s backwards}
+  @media (prefers-reduced-motion:reduce){
+    :root[data-nav-dir]::view-transition-old(jfn-miolo),
+    :root[data-nav-dir]::view-transition-new(jfn-miolo){animation:none}}
+
+  /* ================= v37 NEBULOSA VIVA =====================================
+     O loop de video da esfera entra DENTRO do quadro da nebulosa, por cima
+     do JPG que vira poster. O pai ja carrega opacidade, mascara e o drift —
+     o video so precisa cobrir o quadro e surgir em fade quando toca.       */
+  #esfnebula video{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;opacity:0;transition:opacity 1.4s ease}
+  #esfnebula video.on{opacity:1}
+  @media (prefers-reduced-motion:reduce){#esfnebula video{display:none}}
+
+  /* ================= v39 A LAMINA CORRE NO TRILHO ==========================
+     O trilho v26 e arte parada: o "canal de vidro com a lamina de luz
+     correndo" so descrevia a foto. Regra do dono: NADA estatico. A lamina
+     agora existe de verdade — um feixe fino na cor da esfera varrendo o
+     canal, lento (12s) para ser presenca e nao ruido. Vive no
+     .cover-row::after, que estava livre; mesma mascara do trilho para a
+     lamina morrer nas pontas junto com ele.                                */
+  .cover-row::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:26px;
+    z-index:-1;pointer-events:none;opacity:.5;mix-blend-mode:screen;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 85%,white 18%) 50%,transparent);
+    background-size:18% 100%;background-repeat:no-repeat;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
+    animation:laminaCorre 12s cubic-bezier(.4,.1,.6,.9) infinite}
+  @keyframes laminaCorre{from{background-position:-22% 0}to{background-position:122% 0}}
+  @media (prefers-reduced-motion:reduce){.cover-row::after{animation:none;opacity:0}}
+
+  /* ================= v38 O NO GANHA CORPO ==================================
+     Pendencia declarada no handoff v27: os nos do mapa eram 100% procedurais.
+     Quando /static/assets/no-energia.png existir (encomendado ao it-campo),
+     cada no ganha um anel usinado sob o chip — metal INCOLOR como o selo-anel
+     (o mesmo asset serve as 4 esferas), a cor vem do brilho drop-shadow na
+     matiz do no. body.art-no e posto pelo JS so se o arquivo responder 200.
+     Nao mexe em position: .nu-chip ja e absoluto desde o v12.               */
+  body.art-no .nu-chip::after{content:"";position:absolute;left:50%;bottom:-15px;
+    width:28px;height:28px;transform:translateX(-50%);pointer-events:none;
+    background:url(/static/assets/no-energia.png) center/contain no-repeat;
+    filter:saturate(.25) drop-shadow(0 0 7px color-mix(in srgb,var(--nc) 65%,transparent));
+    animation:noPulsa 3.4s ease-in-out infinite}
+  @keyframes noPulsa{0%,100%{opacity:.72}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){body.art-no .nu-chip::after{animation:none}}
+
 </style>
 </head>
 <body>
@@ -2278,6 +2350,8 @@ const svgIco=e=>{const g=window.JFN_ICO&&window.JFN_ICO[e];
 var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtN=n=>(n==null?'—':Number(n).toLocaleString('pt-BR'));
+/* pct assinado: o + so aparece quando e positivo — '+-8%' era bug em e_adit */
+const fmtPct=p=>(p==null?'—':(p>0?'+':'')+fmtN(p)+'%');
 const fmtR=v=>'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
 const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
   if(a>=1e9)return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
@@ -2436,7 +2510,7 @@ const TABS={
     {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
     {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
     {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
-    {id:'e_escal',   ic:'📈',tl:'Escalada', render:renderEscalada},
+    {id:'e_escal',   ic:'🪜',tl:'Escalada', render:renderEscalada},
     {id:'e_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'e_adit',    ic:'📑',tl:'Aditivos',render:renderAditivos},
     {id:'e_certames',ic:'🧮',tl:'Certames',render:renderCertames},
@@ -2444,14 +2518,14 @@ const TABS={
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
     {id:'e_alertas', ic:'🚨',tl:'Alertas', render:renderAlertas},
-    {id:'e_siafe',   ic:'💰',tl:'SIAFE',   render:renderSiafe},
+    {id:'e_siafe',   ic:'💵',tl:'SIAFE',   render:renderSiafe},
   ],
   prefeitura:[
     {id:'p_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaPref},
     {id:'p_gastos',  ic:'✂️',tl:'Gastos', render:renderGastosPref},
     {id:'p_sanc',    ic:'🚫',tl:'Sancionadas',render:renderSancionadasMun},
     {id:'p_sobre',   ic:'📈',tl:'Sobrepreço',render:()=>renderSobrepreco('prefeitura')},
-    {id:'p_escal',   ic:'📈',tl:'Escalada',render:()=>renderEscalada('prefeitura')},
+    {id:'p_escal',   ic:'🪜',tl:'Escalada',render:()=>renderEscalada('prefeitura')},
     {id:'p_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'p_adit',    ic:'📑',tl:'Aditivos',render:()=>renderAditivos('prefeitura')},
     {id:'p_cartel',  ic:'🔗',tl:'Concentração',render:renderCartelMun},
@@ -2473,7 +2547,7 @@ const TABS={
     {id:'g_dep',     ic:'🔗',tl:'Cativos', render:renderFornecedorDependente},
     {id:'g_capital', ic:'🫧',tl:'Capital irrisório',render:renderCapital},
     {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
-    {id:'g_ocult',   ic:'🕸️',tl:'Sócio oculto',render:renderSocioOculto},
+    {id:'g_ocult',   ic:'🫥',tl:'Sócio oculto',render:renderSocioOculto},
     {id:'g_nep',     ic:'👪',tl:'Nepotismo',render:renderNepotismo},
     {id:'g_nepx',    ic:'🔀',tl:'Nepot. cruzado',render:renderNepotismoCruzado},
     {id:'g_fenix',   ic:'🦅',tl:'Fênix',   render:renderFenix},
@@ -2484,7 +2558,7 @@ const TABS={
     {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
     {id:'g_sweeps',  ic:'🛰️',tl:'Sweeps',  render:renderSweeps},
-    {id:'g_acoes',   ic:'⚡',tl:'Ações',   render:renderAcoes},
+    {id:'g_acoes',   ic:'☑️',tl:'Ações',   render:renderAcoes},
   ],
 };
 let esfera='inicio',aba='i_cockpit';
@@ -2497,14 +2571,25 @@ function montarTabs(){
   $('tabs').style.display=TABS[esfera].length<2?'none':'';
   $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
-function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
+/* v36: NAO pre-atribuir `aba` aqui — o ir() ja seta aba e monta as tabs, e a
+   pre-atribuicao apagava o sentido do giro na troca de esfera (_abaAntes
+   ficava igual ao destino). */
+function trocarEsfera(id){esfera=id;montarSpheres();ir(TABS[id][0].id);}
 let _nav=0; // token anti-corrida
 async function ir(id){
+  const _abaAntes=aba; // v36: quem eu era antes da troca decide o sentido do giro
   // blindagem: se o id não é da esfera atual, procura a esfera dona e troca (evita crash)
   let t=TABS[esfera].find(x=>x.id===id);
   if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){esfera=e;t=cand;montarSpheres();break;}}}
   if(!t)return;
   aba=id;montarTabs();
+  /* v36: sentido da navegacao — a faceta do cristal gira PARA o lado do
+     destino (aba a direita gira num sentido, a esquerda no outro). Sem
+     sentido (primeira carga, mesma aba) o atributo sai e vale o v31. */
+  {const _flat=Object.values(TABS).flat().map(x=>x.id);
+   const _da=_flat.indexOf(_abaAntes),_pa=_flat.indexOf(id);
+   if(_da<0||_pa<0||_da===_pa)document.documentElement.removeAttribute('data-nav-dir');
+   else document.documentElement.setAttribute('data-nav-dir',_pa>_da?'fwd':'back');}
   /* o fio corre na barra de abas durante a troca — o mesmo feixe do
      cabecalho, agora reagindo a navegacao em vez de so decorar. */
   document.body.classList.remove('navegando');void document.body.offsetWidth;
@@ -2512,6 +2597,7 @@ async function ir(id){
   setTimeout(()=>document.body.classList.remove('navegando'),560);
   document.body.setAttribute('data-esf',esfera);   // tinge hovers/energia com a cor da esfera
   if(typeof _rjbgTinge==='function')_rjbgTinge();   // território de fundo re-tinge na cor da esfera
+  if(typeof nebulaViva==='function')nebulaViva();   // v37: liga o loop de video da esfera, se existir
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
   /* v31: a troca era um corte — spinner sai, conteudo novo entra, e cada aba
@@ -2992,17 +3078,17 @@ async function renderAditivos(esf='estado'){
   let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
   h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨')}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑')}
-      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄')}${kpi(a.length?'+'+a[0].pct+'%':'—','Pior acréscimo','var(--rose)')}</div>`;
+      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄')}${kpi(a.length?fmtPct(a[0].pct):'—','Pior acréscimo','var(--rose)')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
   h+=`<div id="adt-list" class="grid">`+a.map(x=>{
     const forte=x.estoura_teto;
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${clk(x.cnpj,x.fornecedor||x.cnpj_fmt)} ${forte?`<span class="tag rose">+${x.pct}%</span>`:`<span class="tag amber">${x.num_aditivos} aditivos</span>`}</div>
+      <div style="min-width:0"><div style="font-weight:700">${clk(x.cnpj,x.fornecedor||x.cnpj_fmt)} ${forte?`<span class="tag rose">${fmtPct(x.pct)}</span>`:`<span class="tag amber">${x.num_aditivos} aditivos</span>`}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,46))}</div>
       <div class="dim" style="margin-top:2px">${esc((x.objeto||'').slice(0,90))}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;color:${forte?'var(--rose)':'var(--tx2)'}">${forte?'+'+x.pct+'%':x.num_aditivos+'×'}</div><div class="dim">${forte?'acréscimo':'aditivos'}</div></div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:${forte?'var(--rose)':'var(--tx2)'}">${forte?fmtPct(x.pct):x.num_aditivos+'×'}</div><div class="dim">${forte?'acréscimo':'aditivos'}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">R$ inicial ${fmtRc(x.valor_inicial)} → global ${fmtRc(x.valor_global)}${x.acrescimo_real!=null?` · acréscimo real ${fmtRc(x.acrescimo_real)}`:''}</span><b>teto ${x.teto_pct}%</b></div>
-      ${leitura(forte?`Contrato de <b>${esc(x.fornecedor||'—')}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>+${x.pct}%</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real!=null?'Acréscimo classificado no termo: '+fmtRc(x.acrescimo_real)+'.':'Separar reajuste do acréscimo no termo aditivo.'}`:`${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor||'—')} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
+      ${leitura(forte?`Contrato de <b>${esc(x.fornecedor||'—')}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real!=null?'Acréscimo classificado no termo: '+fmtRc(x.acrescimo_real)+'.':'Separar reajuste do acréscimo no termo aditivo.'}`:`${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor||'—')} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
     forte?'hl':'');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
@@ -3040,7 +3126,7 @@ async function renderEscalada(esf='estado'){
   const d=await J('/api/intel/escalada?limite=120&esfera='+esf);
   if(!d.ok)return sec('Escalada')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
-  let h=cover(esf,'Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','📈')+acoesAba('escalada');
+  let h=cover(esf,'Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','🪜')+acoesAba('escalada');
   if(!a.length){
     h+=`<div class="warn" style="margin-top:12px">Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
@@ -3828,7 +3914,7 @@ async function renderSocioOculto(){
   const d=await J('/api/intel/socio_oculto?limite=150');
   if(!d.ok)return sec('Sócio oculto')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
-  let h=cover('geral','Sócio oculto — um dono, vários fornecedores','Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.','🕸️')+acoesAba('socio_oculto');
+  let h=cover('geral','Sócio oculto — um dono, vários fornecedores','Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.','🫥')+acoesAba('socio_oculto');
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Sócios com ≥3 empresas','var(--amber)','🕸️')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume das empresas',null,'💰')}
       ${kpi(a.length?a[0].n_empresas:'—','Mais empresas (1 sócio)','var(--rose)')}${kpi(a.filter(x=>x.holding).length,'Holdings/PJ',null,'🏢')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por sócio ou empresa…" oninput="filtrar(this,'#ocult-list .card')"></div>`;
@@ -4028,7 +4114,7 @@ async function validar(v){const f=_valLista[_valIdx];if(!f)return;const nota=($(
 async function renderAcoes(){
   const reps=await J('/api/compliance/reports');const pdfs=((reps&&reps.length?reps:[])||[]).filter(x=>x.type==='pdf').slice(0,12);
   const repsHtml=pdfs.length?`<div class="lnks">`+pdfs.map(f=>`<a class="lnk" href="${f.url}" target="_blank"><span class="ic"></span><div><div class="t">${esc(f.name)}</div></div><span class="ar">→</span></a>`).join('')+`</div>`:card('<div class="muted">Nenhum relatório gerado ainda — peça um pelo botão "Gerar PDF" de qualquer aba, ou pelo /relatorio no Telegram; ele aparece aqui na hora.</div>');
-  return cover('geral','Gerar relatórios & atalhos','Relatório de fornecedor/órgão com Lex forense, dossiê 360, cruzamento e painéis.','⚡')+
+  return cover('geral','Gerar relatórios & atalhos','Relatório de fornecedor/órgão com Lex forense, dossiê 360, cruzamento e painéis.','☑️')+
     card(`<label class="fld">Relatório de fornecedor (+ Lex forense)</label><div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('relatorio')">Gerar</button></div>
       <div style="height:11px"></div><label class="fld">Relatório de órgão (+ Lex)</label><div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('orgao')">Gerar</button></div>
       <div style="height:11px"></div><label class="fld">Dossiê 360</label><div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('dossie')">Gerar</button></div>
@@ -5076,6 +5162,38 @@ function ckPull(first){
    reconecta sozinho; o badge diz a verdade ("reconectando"), e o painel segue no
    polling de 30s que sempre existiu — tempo real é elevação, não dependência. */
 const _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* v37: NEBULOSA VIVA — o fundo da esfera deixa de ser foto parada quando o
+   loop de video existe em /static/assets/<nome>.mp4. Encaixe progressivo:
+   o JPG segue por baixo como poster; se o arquivo nao existe (HEAD != 200),
+   nada muda — os loops encomendados ao it-campo acendem sozinhos ao chegar.
+   portal-hero.mp4 ja existe: o inicio acende hoje. */
+const _nebVid={};
+async function nebulaViva(){
+  const mapa={estado:'nebula-estado',prefeitura:'nebula-prefeitura',
+              geral:'nebula-transversal',inicio:'portal-hero'};
+  const nome=mapa[esfera],host=$('esfnebula');
+  if(!nome||!host||_redMotion)return;
+  const url='/static/assets/'+nome+'.mp4';
+  if(_nebVid[nome]===undefined){
+    try{_nebVid[nome]=(await fetch(url,{method:'HEAD'})).ok}
+    catch(e){_nebVid[nome]=false}}
+  let v=host.querySelector('video');
+  if(!_nebVid[nome]){if(v)v.classList.remove('on');return;}
+  if(!v){v=document.createElement('video');
+    v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+    v.setAttribute('aria-hidden','true');
+    /* .on so quando ha QUADRO de verdade — play() que resolve sem codec
+       (Chromium sem H.264) deixaria o veu ligado sobre video preto. */
+    v.addEventListener('playing',()=>v.classList.add('on'));
+    host.appendChild(v);}
+  if(!v.src.endsWith(url)){v.classList.remove('on');v.src=url;}
+  v.play().catch(()=>{});
+}
+/* v38: se o corpo do no (anel usinado) ja chegou do it-campo, liga a camada.
+   Checagem unica no boot — 404 hoje significa "segue procedural", sem erro. */
+fetch('/static/assets/no-energia.png',{method:'HEAD'})
+  .then(r=>{if(r.ok)document.body.classList.add('art-no')}).catch(()=>{});
 const _saberCor={ok:'var(--teal)',carga:'var(--amber)',critico:'var(--rose)'};
 let _hfN=0;
 function hfToggle(){$('holofeed').classList.toggle('open');}
