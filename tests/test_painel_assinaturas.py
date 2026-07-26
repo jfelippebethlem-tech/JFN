@@ -20,11 +20,24 @@ Nao roda navegador: le o HTML. Vale na VM-2, que roda a suite sem Chrome.
 
 import json
 import re
+
+import pytest
 from pathlib import Path
 
 from tools.painel_abas import abas
 
 PAINEL = Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html"
+
+# O v14 foi REVERTIDO do painel em 2026-07-25 (o dono reprovou o resultado visual;
+# os rotulos longos quebravam letra por letra na grade compacta do celular). O
+# trabalho esta preservado no commit 62ffd7dc e em /tmp/painel-v14-preservado.html.
+# Estes testes NAO foram apagados: eles se re-armam sozinhos quando o registro
+# voltar ao painel. Apagar perderia o guarda-corpo junto com a feature.
+_TEM_V14 = "const ASSINATURA={" in PAINEL.read_text(encoding="utf-8")
+pytestmark = pytest.mark.skipif(
+    not _TEM_V14,
+    reason="v14 revertido do painel (preservado em 62ffd7dc); testes re-armam quando voltar",
+)
 LIMITE_MATIZ = 34
 INSTRUMENTOS = {"fila", "rede", "tempo", "moeda", "mapa", "pessoa"}
 

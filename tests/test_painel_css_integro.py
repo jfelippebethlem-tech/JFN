@@ -88,14 +88,13 @@ def test_regras_que_ja_foram_perdidas_continuam_vivas():
         and "position:sticky" in css,
         # alvo de toque do nome do fornecedor abaixo da WCAG 2.5.8
         "area de toque do .clk": ".clk{padding:3px 0}" in css,
-        # v14: a camada da faceta e onde toda decoracao nova mora. Se o seletor
-        # sumir, as 51 assinaturas somem juntas e nada avisa.
-        "camada .fac declarada": ".fac{position:absolute;inset:0" in css,
-        "chanfro pintado no card": ".card>.fac::before{" in css,
-        "moldura que se desenha": "@keyframes facTracar{" in css,
-        # v14: --dim medido no PIXEL contra o veu de 6% do .card::before. L=0.60
-        # foi calibrado pelo auditor de paradas, que lia 4,78 onde o real era 4,14.
-        "--dim no valor medido no pixel": "--dim:oklch(0.63 0.03 240)" in css,
+        # As guardas do v14 (.fac, chanfro, --dim 0.63) sairam junto com a reversao
+        # de 2026-07-25 — teste tem de refletir o codigo que EXISTE, senao vira
+        # ruido vermelho que todo mundo aprende a ignorar. Voltam com o v14, que
+        # esta preservado no commit 62ffd7dc. O achado que o motivou permanece
+        # valido e registrado: `.card::before` pinta um veu branco de 6% sobre todo
+        # card, invisivel a qualquer leitor de estilo porque `::before` nao e
+        # ancestral, e ele derruba `--dim` de 4,78 para 4,14:1 medido no pixel.
     }
     faltando = [k for k, ok in obrigatorias.items() if not ok]
     assert not faltando, "regra(s) que ja foram perdidas antes sumiram de novo: " + "; ".join(faltando)

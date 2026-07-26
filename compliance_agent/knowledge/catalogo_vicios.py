@@ -49,6 +49,13 @@ class Vicio:
     escalada: str = "diligencia"              # uma de ESCALADAS
     origem: tuple[str, ...] = ("casa",)       # proveniência metodológica
     status: str = "coberto"                   # coberto | parcial | lacuna
+    # REDAÇÃO-CONFORME (2026-07-25). O parecer dizia o que está ERRADO e parava aí.
+    # Quem vai representar ao tribunal precisa do outro lado: como a cláusula fica
+    # CERTA. Sem isso o órgão recebe um apontamento e não sabe o que escrever, e a
+    # diligência volta com o mesmo vício redigido de outro jeito.
+    # Texto direto, na voz do edital, citável — não é conselho, é a cláusula pronta.
+    # Vazio ("") = vício sem cláusula a reescrever (é conduta, não texto).
+    redacao_conforme: str = ""
 
 
 CATALOGO: tuple[Vicio, ...] = (
@@ -59,7 +66,9 @@ CATALOGO: tuple[Vicio, ...] = (
           clausulas=("marca_dirigida",), dispositivos=("Lei 14.133/2021 art. 9º I", "Lei 14.133/2021 art. 41 I"),
           sumulas=("Súmula TCU 270", "Súmula TCU 177"),
           teste_objetivo="marca sem 'ou equivalente/similar' → violado (teste_finalistico:marca)",
-          escalada="representacao", origem=("casa", "TCU")),
+          escalada="representacao", origem=("casa", "TCU"),
+          redacao_conforme=(
+              "Especificar por DESEMPENHO e requisitos funcionais mínimos, sem marca, modelo ou part-number. Quando a marca for tecnicamente indispensável, justificar nos autos e acrescentar \u201cou equivalente\u201d, definindo objetivamente os critérios de equivalência (Lei 14.133/2021, art. 41, I e §1º).")),
     Vicio("cotacoes_combinadas", "Cotações combinadas (orçamentos de fachada)", "planejamento",
           "Pesquisa de preços com orçamentos de empresas ligadas entre si ou emitidos em sequência/mesma digital.",
           detectores=("P2",), redflags_lex=("R3",),
@@ -69,7 +78,9 @@ CATALOGO: tuple[Vicio, ...] = (
           detectores=("P3",), redflags_lex=("R3", "R4"), fraudes=("superfaturamento_preco",),
           dispositivos=("Lei 14.133/2021 art. 11 III", "Lei 14.133/2021 art. 23"),
           teste_objetivo="preço unitário vs mediana/p90 interna (comparador_precos)",
-          escalada="diligencia", origem=("casa", "ALICE/CGU")),
+          escalada="diligencia", origem=("casa", "ALICE/CGU"),
+          redacao_conforme=(
+              "A estimativa observará a ordem do art. 23, §1º, priorizando o Painel de Preços e contratações similares de entes públicos; cotação direta com fornecedor é subsidiária e exige justificativa. Descartar outliers com memória de cálculo juntada aos autos.")),
     Vicio("fracionamento_despesa", "Fracionamento de despesa", "planejamento",
           "Despesas do mesmo objeto/UG/exercício divididas para caber no teto de dispensa ou fugir de modalidade.",
           detectores=("P4",), redflags_lex=("R2",), fraudes=("fracionamento_objeto",),
@@ -100,29 +111,39 @@ CATALOGO: tuple[Vicio, ...] = (
           dispositivos=("Lei 14.133/2021 art. 67", "Lei 14.133/2021 art. 69"),
           sumulas=("Súmula TCU 263", "Súmula TCU 272", "Súmula TCU 275", "Súmula TCU 289", "Súmula TCE-RJ 10"),
           teste_objetivo="atestado ≤50% (S.263); capital/PL ≤10% e não cumulado (S.275) — teste_finalistico",
-          escalada="representacao_cautelar", origem=("casa", "TCU", "redflags.eu")),
+          escalada="representacao_cautelar", origem=("casa", "TCU", "redflags.eu"),
+          redacao_conforme=(
+              "A qualificação técnica limitar-se-á às parcelas de maior relevância e valor significativo do objeto, admitido o SOMATÓRIO de atestados, sem exigência de quantitativo superior a 50% do licitado (Lei 14.133/2021, art. 67, §§1º e 2º).")),
     Vicio("faturamento_minimo_exigido", "Faturamento/receita mínima exigida", "edital",
           "Exigência de faturamento mínimo não consta do rol restrito de habilitação econômico-financeira do "
           "art. 69 (capital OU patrimônio líquido, ≤ 10%); acima de 10% é desproporcional por analogia direta.",
           detectores=("E1", "E7"), clausulas=("faturamento_minimo",),
           dispositivos=("Lei 14.133/2021 art. 69", "Lei 14.133/2021 art. 66"), sumulas=("Súmula TCU 275",),
           teste_objetivo=">10% do estimado → violado; qualquer % → atípico, juízo ao colegiado (teste_finalistico)",
-          escalada="diligencia", origem=("redflags.eu",)),
+          escalada="diligencia", origem=("redflags.eu",),
+          redacao_conforme=(
+              "A qualificação econômico-financeira restringir-se-á aos índices contábeis justificados no processo e, quando exigido capital ou patrimônio líquido mínimo, este não excederá 10% do valor estimado (Lei 14.133/2021, art. 69, §§2º e 4º).")),
     Vicio("publicidade_prazos_minimizados", "Publicidade e prazos minimizados", "edital",
           "Prazo útil entre publicação e abertura abaixo do mínimo do art. 55, data-sombra ou retificação "
           "substancial sem reabertura de prazo.",
           detectores=("E2",), dispositivos=("Lei 14.133/2021 art. 54", "Lei 14.133/2021 art. 55"),
           teste_objetivo="dias ÚTEIS reais vs tabela MINIMOS_ART55 (E2) — violação objetiva se abaixo",
-          escalada="representacao_cautelar", origem=("casa", "ALICE/CGU", "redflags.eu")),
+          escalada="representacao_cautelar", origem=("casa", "ALICE/CGU", "redflags.eu"),
+          redacao_conforme=(
+              "O prazo mínimo de divulgação observará o art. 55 conforme o objeto e o regime; qualquer alteração do edital que afete a formulação das propostas reabre o prazo integralmente (art. 55, §1º, II).")),
     Vicio("lote_pacote", "Lote-pacote (agregação anticompetitiva)", "edital",
           "Objetos divisíveis reunidos num lote único que só o incumbente/grupo consegue atender.",
           detectores=("E3",), sumulas=("Súmula TCU 247",),
           teste_objetivo="divisibilidade do objeto vs adjudicação global (E3)",
-          escalada="diligencia", origem=("casa", "TCU")),
+          escalada="diligencia", origem=("casa", "TCU"),
+          redacao_conforme=(
+              "O objeto será dividido em itens ou lotes sempre que técnica e economicamente viável, com estudo que demonstre a inviabilidade quando houver agregação (Lei 14.133/2021, art. 40, V, \u2018b\u2019, e Súmula TCU 247).")),
     Vicio("visita_tecnica_filtro", "Visita técnica obrigatória como filtro", "edital",
           "Visita presencial obrigatória (janela única/agendamento restrito) usada para censo e coação de entrantes.",
           detectores=("E4",), clausulas=("visita_tecnica",), dispositivos=("Lei 14.133/2021 art. 63",),
-          sumulas=("Súmula TCE-RJ 01",), escalada="diligencia", origem=("casa", "TCE-RJ")),
+          sumulas=("Súmula TCE-RJ 01",), escalada="diligencia", origem=("casa", "TCE-RJ"),
+          redacao_conforme=(
+              "A visita técnica é FACULTATIVA, podendo ser substituída por declaração de pleno conhecimento das condições de execução; quando indispensável, será admitida em múltiplas datas e sem exigência de representante específico, por ser vedada cláusula que restrinja o caráter competitivo (Lei 14.133/2021, art. 9º, I).")),
     Vicio("republicacao_dirigida", "Republicações dirigidas do edital", "edital",
           "Edital republicado com mudanças que estreitam a competição a cada versão (diff entre versões).",
           detectores=("E5",), dispositivos=("Lei 14.133/2021 art. 55 §1º",),
@@ -131,7 +152,9 @@ CATALOGO: tuple[Vicio, ...] = (
           "Quesitos de pontuação subjetivos/onerosos que dirigem técnica-e-preço ao fornecedor pré-escolhido.",
           detectores=("E6",), clausulas=("pontuacao_dirigida",),
           dispositivos=("Lei 14.133/2021 arts. 36-37",), sumulas=("Súmula TCU 272",),
-          escalada="representacao", origem=("casa", "TCU")),
+          escalada="representacao", origem=("casa", "TCU"),
+          redacao_conforme=(
+              "Os critérios de julgamento técnico serão objetivos, com pontuação vinculada a requisitos mensuráveis do objeto e faixas previamente definidas, vedado atributo que só um licitante possa comprovar (Lei 14.133/2021, art. 37).")),
     Vicio("clausula_restritiva_combinada", "Efeito combinado de cláusulas restritivas", "edital",
           "Cláusulas individualmente defensáveis que, somadas (≥3 categorias distintas), fecham o certame — "
           "aferição finalística cláusula-a-cláusula com cascata na ata (E7).",
@@ -143,7 +166,9 @@ CATALOGO: tuple[Vicio, ...] = (
           detectores=("E1", "E7"), clausulas=("garantia_proposta",),
           dispositivos=("Lei 14.133/2021 art. 58 §1º",), sumulas=("Súmula TCU 275",),
           teste_objetivo="garantia ≤1% (teste_finalistico); cumulação com capital/PL = vício autônomo (S.275)",
-          escalada="diligencia", origem=("casa", "redflags.eu")),
+          escalada="diligencia", origem=("casa", "redflags.eu"),
+          redacao_conforme=(
+              "A garantia de proposta, quando exigida, não excederá 1% do valor estimado da contratação (Lei 14.133/2021, art. 58).")),
     Vicio("vigencia_excessiva", "Vigência inicial excessiva ou indeterminada", "edital",
           "Serviço contínuo com vigência inicial acima de 5 anos (art. 106) ou prazo indeterminado fora da "
           "hipótese de monopólio (art. 109); contratos por escopo seguem regra própria (art. 111).",
@@ -151,17 +176,23 @@ CATALOGO: tuple[Vicio, ...] = (
           dispositivos=("Lei 14.133/2021 art. 106", "Lei 14.133/2021 art. 107",
                         "Lei 14.133/2021 art. 109", "Lei 14.133/2021 art. 111"),
           teste_objetivo=">60 meses contínuo ou indeterminado sem monopólio → violado (teste_finalistico)",
-          escalada="diligencia", origem=("redflags.eu",)),
+          escalada="diligencia", origem=("redflags.eu",),
+          redacao_conforme=(
+              "A vigência será de até 1 ano, prorrogável na forma dos arts. 106 e 107 mediante demonstração de vantajosidade e disponibilidade de créditos; é vedada vigência indeterminada (Lei 14.133/2021, art. 105).")),
     Vicio("recorte_geografico", "Recorte geográfico de habilitação", "edital",
           "Sede/filial/escritório local exigido como CONDIÇÃO de participação (não de execução).",
           detectores=("E7",), clausulas=("recorte_geografico",),
           dispositivos=("Lei 14.133/2021 art. 9º I 'b'",), escalada="representacao",
-          origem=("casa", "redflags.eu")),
+          origem=("casa", "redflags.eu"),
+          redacao_conforme=(
+              "É vedada exigência de sede, filial ou domicílio em localidade determinada como condição de habilitação; a comprovação de estrutura local, quando indispensável à execução, será exigida apenas do VENCEDOR e após a adjudicação, por ser vedada cláusula que comprometa o caráter competitivo (Lei 14.133/2021, art. 9º, I).")),
     Vicio("atestado_unico", "Vedação de somatório de atestados", "edital",
           "Exigir que a experiência venha de UM só contrato/atestado quando o somatório demonstraria a aptidão.",
           detectores=("E7",), clausulas=("atestado_identico",), sumulas=("Súmula TCU 263",),
           dispositivos=("Lei 14.133/2021 art. 67",), escalada="diligencia",
-          origem=("casa", "TCU", "redflags.eu")),
+          origem=("casa", "TCU", "redflags.eu"),
+          redacao_conforme=(
+              "Admite-se o SOMATÓRIO de atestados para comprovar os quantitativos mínimos, vedada a exigência de execução em contrato único (Lei 14.133/2021, art. 67, §2º).")),
     Vicio("deserto_fracassado_dirigido", "Deserto/fracassado reincidente → contratação direta", "edital",
           "Certame repetidamente deserto/fracassado (edital propositalmente inviável) para justificar dispensa "
           "(art. 75 III). Detector E8 sobre a série do órgão/objeto; exculpatória = republicação flexibilizada.",
@@ -248,11 +279,15 @@ CATALOGO: tuple[Vicio, ...] = (
           detectores=("X1",), redflags_lex=("R9",), fraudes=("aditivo_excessivo",),
           dispositivos=("Lei 14.133/2021 arts. 125-126",),
           teste_objetivo="Σ aditivos vs teto 25%/50% (X1)", escalada="representacao",
-          origem=("casa", "claude-for-legal")),
+          origem=("casa", "claude-for-legal"),
+          redacao_conforme=(
+              "As alterações quantitativas observarão o limite de 25% do valor inicial atualizado (50% para reforma de edifício ou equipamento), com justificativa técnica e memória de cálculo nos autos (Lei 14.133/2021, art. 125).")),
     Vicio("prorrogacao_perpetua", "Prorrogação perpétua", "execucao",
           "Contrato renovado além do teto decenal ou sem demonstração de vantajosidade a cada prorrogação.",
           detectores=("X2",), dispositivos=("Lei 14.133/2021 art. 107",),
-          teste_objetivo="vigência acumulada > 10 anos (X2)", escalada="diligencia", origem=("casa",)),
+          teste_objetivo="vigência acumulada > 10 anos (X2)", escalada="diligencia", origem=("casa",),
+          redacao_conforme=(
+              "A prorrogação exigirá pesquisa de preços que demonstre vantajosidade a cada termo aditivo, observado o prazo máximo de 10 anos para serviços contínuos (Lei 14.133/2021, art. 107).")),
     Vicio("execucao_financeira_anomala", "Execução financeira anômala", "execucao",
           "Tríade empenho→liquidação→OB com estornos, OB R$ 0,00, liquidação sem lastro (só OB SIAFE = pago).",
           detectores=("X3",), redflags_lex=("R10",),
@@ -260,11 +295,15 @@ CATALOGO: tuple[Vicio, ...] = (
     Vicio("carona_abusiva", "Carona abusiva em ata de registro de preços", "execucao",
           "Adesões além dos limites do art. 86 ou por órgãos sem pertinência com o objeto registrado.",
           detectores=("X4",), dispositivos=("Lei 14.133/2021 art. 86 §§3º-4º",),
-          escalada="diligencia", origem=("casa",)),
+          escalada="diligencia", origem=("casa",),
+          redacao_conforme=(
+              "A adesão por não participante observará o limite de 50% dos quantitativos registrados por órgão aderente e o dobro do total da ata, com anuência do gerenciador e demonstração de vantajosidade (Lei 14.133/2021, art. 86, §§2º a 5º).")),
     Vicio("jogo_planilha", "Jogo de planilha", "execucao",
           "Mergulho no certame recuperado por aditivos que engordam exatamente os itens subcotados.",
           detectores=("X5",), redflags_lex=("R13",),
-          dispositivos=("Lei 14.133/2021 art. 125",), escalada="representacao", origem=("casa", "TCU")),
+          dispositivos=("Lei 14.133/2021 art. 125",), escalada="representacao", origem=("casa", "TCU"),
+          redacao_conforme=(
+              "A planilha de custos vinculará os preços unitários ao orçamento estimado; alterações quantitativas manterão os unitários originais, salvo revisão fundamentada, vedada a elevação seletiva de itens cujo quantitativo tenda a crescer; qualquer alteração quantitativa observará os limites e a justificativa do art. 125 da Lei 14.133/2021.")),
     Vicio("entrega_fantasma", "Entrega fantasma / atesto de fachada", "execucao",
           "Pagamento sem contraprestação verificável (medições sem prova, atesto genérico, foto reciclada).",
           detectores=("X6",), fraudes=("medicao_fraudulenta",),

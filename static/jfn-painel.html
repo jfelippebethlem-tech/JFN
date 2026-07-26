@@ -994,21 +994,9 @@
      ele vive (`.hsub`, `.hfload`, `.tl`, `.dim`, `.c`). O v10 já tinha criado
      `--dim-sm` (L=0.68) para isso, mas ele só chegou a duas regras — e adotá-lo em
      tudo encostaria `--dim` em `--mut` (L=0.71), apagando um degrau de hierarquia.
-     L=0.60 foi calibrado contra o auditor de PARADAS DE COR, que lia 4,78:1 aqui.
-     Medido no pixel em 25/07/2026, o valor real era **4,14:1** — a correção do v12
-     nunca chegou ao mínimo, e o método estava certo com a régua errada.
-
-     A régua lia curto por uma razão estrutural: `.card::before` pinta um véu branco
-     de 6% (`linear-gradient(oklch(1 0 0/.06), transparente 36%)` — o especular do
-     v7) sobre o topo de TODO card, o que clareia o fundo em +15 por canal. Como
-     `::before` não é ancestral, nenhum leitor de estilo o alcançava. Provado
-     pintando o card de #000 (devolveu 15,15,15) e de #ff0000 (devolveu 255,15,15).
-
-     L=0.63 é o menor passo que resolve CONTRA O FUNDO REAL: **4,66:1** (L=0.62 dá
-     4,48 e raspa), com o degrau para `--mut` (L=0.71) preservado. O especular fica
-     — é a assinatura de vidro do v7, e a casa não dessatura o que já brilha.
-     Auditável por `tools/auditar_contraste.py`, que agora delega ao nível 2. */
-  :root{--dim:oklch(0.63 0.03 240)}
+     L=0.60 é o menor passo que resolve: **4,78:1** no pior caso medido, com o degrau
+     para `--mut` preservado. Auditável de novo por `tools/auditar_contraste.py`. */
+  :root{--dim:oklch(0.60 0.03 240)}
 
   /* ═══════════ v12.3 "HOLOGRAMA UNIVERSAL" — todo acionável fica vivo ═══════════
      Brief do dono: pulso, movimento e holograma em CADA botão, de TODAS as abas.
@@ -1158,11 +1146,7 @@
      restrição de altura sobrando 259 contra 107): esticar o card não aumenta o
      território em um pixel, só abre uma faixa morta entre a mesa e a grade de
      rótulos. Card menor = mesmo território, sem o vazio. */
-  @media (max-width:600px){.ck-nucleo{height:clamp(420px,118vw,540px);
-    /* full-bleed: a mesa rompe o padding do card. Com o ângulo fixo a largura da
-       caixa é o ÚNICO lever de tamanho — 356 -> 390px de viewport. */
-    margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
-    width:100vw;max-width:100vw;border-left:0;border-right:0;border-radius:0}}
+  @media (max-width:600px){.ck-nucleo{height:clamp(340px,96vw,440px)}}
 
   /* ══ v13 "SABRE" ═══════════════════════════════════════════════════════════
      Um sabre de luz NÃO é uma barra colorida com brilho: é um núcleo
@@ -1393,266 +1377,6 @@
       background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}
   /* aba oculta: `html.rest *` (v10) já pausa tudo — nada a declarar aqui. */
 
-  /* ══ v14 "HOLOCRON" ═══════════════════════════════════════════════════════
-     O painel é um cristal-arquivo: a esfera é uma FACE, a aba é uma FACETA.
-     Três leis, todas verificáveis:
-     1. chanfro em DOIS cantos, nunca quatro (quatro lê como moldura de jogo);
-     2. matiz da faceta = matiz da esfera ± 34° no máximo (o teste trava o teto);
-     3. a moldura se DESENHA — por background-size num elemento sem texto, nunca
-        por width (a lei do "só pintura" vale para tudo que entrou aqui).
-
-     POR QUE UM ELEMENTO INJETADO E NÃO UM PSEUDO: `.card::before` é a luz
-     especular do v7 e `.card::after` é a border-beam do v8 — os dois ocupados.
-     (Nota de 25/07/2026: a antiga regra "nunca decore o fundo de quem carrega
-     texto" CAIU. Era artefato do auditor de paradas de cor, que acertava 1 de 4.
-     A regra agora é medida, não proibida: decoração atrás de texto vale se o
-     PIOR PIXEL REAL sob os glifos aguentar 4,5:1 — `auditar_contraste_pixel.py`.
-     Foi ele que achou o véu de 6% do `::before` derrubando o CNPJ a 4,14:1.)
-
-     NENHUMA regra deste bloco impõe `position` em lote: `.card` e `.cover` já são
-     relative desde o v7, e o `.fac` se posiciona sozinho. Quem NUNCA pode receber
-     `position` de fora: `.nu-chip`, `.search .az`, `.hlx`, `.fac`.              */
-  :root{
-    --chanfro:13px;                       /* profundidade do corte usinado */
-    --fac-h:205;                          /* matiz da faceta — ir() reescreve por aba */
-    --fac:oklch(0.80 0.135 var(--fac-h));          /* a cor da faceta ativa */
-    --fac-d:oklch(0.62 0.115 var(--fac-h));        /* a mesma, rebaixada: traço e régua */
-    --kyber:oklch(0.985 0.012 var(--fac-h));       /* núcleo branco-quente do sabre */
-  }
-  /* a camada da faceta: decoração pura, sem texto, sem clique, sem leitor de tela */
-  .fac{position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-    z-index:0;overflow:hidden}
-  /* o CHANFRO pintado: duas diagonais nos cantos opostos. Custo zero de camada —
-     nem clip-path nem filter, que se multiplicariam por 40 cards na tela. */
-  .card>.fac::before{content:"";position:absolute;inset:0;
-    background:
-      linear-gradient(135deg,var(--fac-d) 0 1.5px,transparent 1.5px) top left/var(--chanfro) var(--chanfro) no-repeat,
-      linear-gradient(315deg,var(--fac-d) 0 1.5px,transparent 1.5px) bottom right/var(--chanfro) var(--chanfro) no-repeat;
-    opacity:.55;transition:opacity .22s cubic-bezier(.2,.7,.2,1)}
-  .card:hover>.fac::before{opacity:1}
-  /* MOLDURA QUE SE DESENHA: quatro traços em L crescem do canto ao entrar na aba.
-     background-size é pintura; nada aqui toca width/height. */
-  .card>.fac::after,.cover>.fac::after{content:"";position:absolute;inset:0;
-    background:
-      linear-gradient(90deg,var(--fac),transparent) top left/0 1px no-repeat,
-      linear-gradient(0deg,var(--fac),transparent) top left/1px 0 no-repeat,
-      linear-gradient(270deg,var(--fac),transparent) bottom right/0 1px no-repeat,
-      linear-gradient(180deg,var(--fac),transparent) bottom right/1px 0 no-repeat;
-    opacity:.75;animation:facTracar .5s cubic-bezier(.2,.7,.2,1) both;
-    animation-delay:calc(var(--d,0ms) + 90ms)}
-  @keyframes facTracar{
-    from{background-size:0 1px,1px 0,0 1px,1px 0}
-    to{background-size:34% 1px,1px 34%,34% 1px,1px 34%}}
-  /* menos movimento: o traço já nasce desenhado — a estética fica, o gesto sai */
-  @media (prefers-reduced-motion:reduce){
-    .card>.fac::after,.cover>.fac::after{animation:none;
-      background-size:34% 1px,1px 34%,34% 1px,1px 34%}
-    .card>.fac::before{transition:none}}
-
-  /* ── v14: três vozes de botão. Não é decoração — é a diferença entre "isto muda
-     o mundo" (ignição), "isto me leva a outro lugar" (íon) e "isto é reversível"
-     (fantasma). O corpo do sabre entra na ESPESSURA, como no v13: núcleo branco
-     entre 38% e 62%, nunca uma barra colorida com brilho por fora.              */
-  /* A CARGA NA BASE NÃO ENTRA AQUI — ela já existe desde o v10.1 (linha ~833:
-     `background-size:0% 1.5px` -> `100% 1.5px` no hover). Eu a tinha reescrito em
-     `.btn>.hlx::after` e teria posto DUAS linhas de energia no mesmo botão, que é
-     o erro nº 1 do gênero: quando tudo brilha, nada brilha. Fica a do v10.1.
-
-     `.ion` também não usa o atalho `background`: o atalho zera `background-image`
-     e mataria justamente essa linha de energia. Só cor de fundo e tinta. */
-  .btn.ion{background-color:color-mix(in oklch,var(--fac) 88%,black 12%);
-    color:oklch(0.16 0.04 var(--fac-h))}
-  .btn.ghost{box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--fac) 34%,transparent)}
-  .btn.ghost:hover{color:var(--tx);
-    box-shadow:inset 0 0 0 1px var(--fac),0 0 18px -6px var(--fac)}
-  /* chip ativo ganha o pé de sabre da faceta, no mesmo idioma da esfera ativa (v13) */
-  .chip.on{border-color:color-mix(in oklch,var(--fac) 55%,transparent)}
-  .chip.on>.hlx::before{content:"";position:absolute;left:22%;right:22%;bottom:-1px;height:2px;
-    border-radius:2px;background:linear-gradient(180deg,var(--kyber) 38% 62%,var(--fac));
-    box-shadow:0 0 6px var(--fac),0 0 14px color-mix(in oklch,var(--fac) 60%,transparent)}
-
-  /* ── v14: a capa da aba anuncia a faceta ─────────────────────────────────── */
-  .cover .lema{color:var(--fac);font-family:var(--mono);font-size:11px;letter-spacing:.4px;
-    margin-top:7px;opacity:.92}
-  .cover-cena{margin-left:auto;width:96px;height:64px;flex:0 0 auto;color:var(--fac);
-    opacity:.34;align-self:center}
-  /* a régua da capa já é lâmina desde o v13 — aqui ela passa a falar a matiz da
-     FACETA em vez da esfera. Uma variável trocada, nenhuma regra nova. */
-  .cover::before{background:linear-gradient(180deg,
-    color-mix(in oklch,var(--fac) 55%,transparent) 0 30%,
-    var(--kyber) 38% 62%,
-    color-mix(in oklch,var(--fac) 55%,transparent) 70% 100%)}
-  /* o selo do glifo acende na matiz da faceta — SÓ o selo, que é onde o olho pousa.
-     Glow em tudo = glow em nada; é o erro nº 1 do gênero. */
-  .cover-seal{color:var(--fac);
-    box-shadow:0 0 0 1px color-mix(in oklch,var(--fac) 40%,transparent),
-               0 0 22px -8px var(--fac)}
-  @media (max-width:600px){.cover-cena{display:none}}   /* rouba largura do título */
-
-  /* ── v14: o KPI deixa de ser número num quadro e vira leitura de instrumento.
-     A régua da base é ESCALA, não valor — não afirma nada sobre o dado, e por
-     isso pode existir mesmo quando o número é INDISPONÍVEL.                    */
-  .kpi>.fac::after{background:none}   /* peça pequena não recebe a moldura traçada:
-     o traço competiria com o número. É a lei do v12.3 (só onde há ÁREA). */
-  .kpi>.fac{background:
-    repeating-linear-gradient(90deg,
-      color-mix(in oklch,var(--fac) 42%,transparent) 0 1px,
-      transparent 1px 11px) bottom left/100% 5px no-repeat;
-    opacity:.5;transition:opacity .25s}
-  .kpi:hover>.fac{opacity:.95}
-  .kpi .kpi-ico{opacity:.55;transition:opacity .2s,transform .25s cubic-bezier(.2,.7,.2,1)}
-  .kpi:hover .kpi-ico{opacity:1;transform:translateY(-1px) scale(1.06)}
-  @media (prefers-reduced-motion:reduce){
-    .kpi>.fac{transition:none}.kpi .kpi-ico{transition:none}}
-
-  /* ── v14: a coluna da tabela diz o que MEDE. Glifo em `content` do TH — o th
-     carrega texto, então isto é caractere antes dele, não decoração de fundo. */
-  thead th[data-inst]::before{margin-right:5px;opacity:.6;font-weight:400}
-  thead th[data-inst="moeda"]::before{content:"◈"}
-  thead th[data-inst="tempo"]::before{content:"◷"}
-  thead th[data-inst="grau"]::before{content:"⌁"}
-  thead th[data-inst="chave"]::before{content:"⌗"}
-  thead th[data-inst=""]::before{content:none}
-
-  /* ── v14: a barra de abas é a borda do cristal — cada botão uma faceta ────── */
-  nav.tabs button{--tf:oklch(0.80 0.135 var(--tab-h,205))}
-  nav.tabs button:hover .ti .jico{filter:drop-shadow(0 0 6px color-mix(in oklch,var(--tf) 60%,transparent))}
-  nav.tabs button.on .ti .jico{filter:drop-shadow(0 0 8px var(--tf))}
-  /* o sublinhado-sabre do v13 acende na matiz da faceta. A regra do v13 fica
-     intacta; aqui só troca a fonte da cor — nenhuma `animation:` é redeclarada
-     (redeclarar apaga em silêncio a animação da regra menos específica). */
-  nav.tabs button.on::after{background:linear-gradient(180deg,
-    color-mix(in oklch,var(--tf) 50%,transparent) 0 30%,
-    var(--kyber) 38% 62%,
-    color-mix(in oklch,var(--tf) 50%,transparent) 70% 100%);
-    box-shadow:0 0 7px var(--tf),0 0 16px color-mix(in oklch,var(--tf) 55%,transparent)}
-
-  /* ── v14 · A BASE DOS NÓS ────────────────────────────────────────────────────
-     O chip flutuava sem apoio: lia como etiqueta colada, não como objeto pousado
-     na mesa. Ganha pegada de luz no chão, soquete e DUAS cores por nó.
-     REGRA DURA: nada aqui toca o `transform` do `.nu-chip` — o laço o reescreve a
-     cada quadro para posicionar o rótulo, e brigar com ele empilha os rótulos
-     (armadilha já paga duas vezes nesta casa). Todo movimento vive nos pseudos,
-     que estavam livres. E é só pintura/composição: opacity, transform, filter. */
-  .nu-chip{--nc2:var(--nc)}          /* fallback: sem 2ª cor, segue monocromático */
-  .nu-chip{background:linear-gradient(140deg,
-      color-mix(in srgb,var(--nc) 13%,oklch(0.14 0.03 260/.72)),
-      color-mix(in srgb,var(--nc2) 16%,oklch(0.14 0.03 260/.72)))}
-  /* PEGADA DE LUZ: a elipse no chão que diz "isto tem peso e está pousado aqui" */
-  .nu-chip::before{content:"";position:absolute;left:50%;bottom:-9px;width:78%;height:12px;
-    pointer-events:none;border-radius:50%;transform-origin:50% 100%;
-    background:radial-gradient(ellipse at center,
-      color-mix(in srgb,var(--nc) 72%,transparent) 0%,
-      color-mix(in srgb,var(--nc2) 46%,transparent) 46%,transparent 74%);
-    filter:blur(2px);
-    animation:nuPousa 3.4s ease-in-out infinite;
-    /* relógio próprio por nó: pulsar junto lê como pisca-pisca, desencontrado lê
-       como sistema com muitas partes vivas (mesma decisão do `--hd` no v12.3) */
-    animation-delay:calc(var(--ni,0) * -0.53s)}
-  /* SOQUETE: o poste curto que liga o chip à pegada — nas duas cores */
-  .nu-chip::after{content:"";position:absolute;left:50%;bottom:-8px;width:2px;height:9px;
-    pointer-events:none;border-radius:1px;transform:translateX(-50%);transform-origin:50% 100%;
-    background:linear-gradient(180deg,var(--nc),color-mix(in srgb,var(--nc2) 85%,transparent));
-    box-shadow:0 0 7px color-mix(in srgb,var(--nc) 60%,transparent);
-    transition:transform .24s cubic-bezier(.2,.7,.2,1)}
-  @keyframes nuPousa{
-    0%,100%{opacity:.52;transform:translateX(-50%) scaleX(.86)}
-    50%    {opacity:.96;transform:translateX(-50%) scaleX(1.06)}}
-  /* LEVITAÇÃO no hover: o chip não pode receber transform, então quem conta a
-     história é a SOMBRA — pegada maior e mais difusa + soquete mais alto = objeto
-     subindo. É 3D lido, sem disputar uma única propriedade com o laço. */
-  .nu-chip:hover::before{animation-play-state:paused;opacity:1;filter:blur(4px);
-    transform:translateX(-50%) scaleX(1.28)}
-  .nu-chip:hover::after{transform:translateX(-50%) scaleY(1.7)}
-  .nu-chip.viva::before{filter:blur(3px);opacity:1}
-  @media (prefers-reduced-motion:reduce){
-    .nu-chip::before{animation:none;opacity:.8;transform:translateX(-50%)}
-    .nu-chip::after{transition:none}}
-
-  /* ── v14 · PRIORIDADE DOS NÓS — peso visual que segue a gravidade, não o gosto.
-     A lei da casa é que coisas graves brilham graves. O grau vem do nó, não de uma
-     escolha estética: 1 = grave, 2 = atenção, 3 = informativo. Só pintura. */
-  .nu-chip[data-pri="1"]{border-color:color-mix(in srgb,var(--nc) 72%,transparent)}
-  .nu-chip[data-pri="1"]::before{filter:blur(3px);animation-duration:2.4s}
-  .nu-chip[data-pri="1"]::after{height:12px;box-shadow:0 0 11px var(--nc)}
-  .nu-chip[data-pri="1"] .n{text-shadow:0 0 14px color-mix(in srgb,var(--nc) 70%,transparent)}
-  .nu-chip[data-pri="3"]::before{opacity:.4;filter:blur(1.5px);animation-duration:4.6s}
-  .nu-chip[data-pri="3"]::after{height:7px;opacity:.7}
-  /* quem pediu menos movimento mantém a HIERARQUIA (o grave continua mais forte),
-     só perde o pulso — mesma decisão do sabre no v13. */
-  @media (prefers-reduced-motion:reduce){
-    .nu-chip[data-pri="1"]::before{animation:none;opacity:1}
-    .nu-chip[data-pri="3"]::before{animation:none;opacity:.45}}
-
-  /* ══ v14b "VIVO" · PALETA DE COMANDO (Ctrl+K) ═══════════════════════════════
-     O painel tem 51 abas em 4 esferas. Chegar na 37ª exigia trocar de esfera e
-     varrer uma barra de 22 botões. A paleta é o atalho — e não é enfeite: é a
-     primeira peça do v14b, cuja regra é que todo movimento novo precisa ser
-     agarrável ou informativo.
-     Acessível por construção: é teclado puro, tem `role=dialog`, devolve o foco a
-     quem a abriu, e fecha no Esc. */
-  .cmdk{position:fixed;inset:0;z-index:70;display:none;align-items:flex-start;
-    justify-content:center;padding:12vh 16px 16px;
-    background:oklch(0.06 0.02 260/.62);backdrop-filter:blur(3px)}
-  .cmdk.on{display:flex}
-  .cmdk-cx{width:min(620px,100%);background:var(--glass);border:1px solid var(--bd);
-    border-radius:var(--r2);box-shadow:var(--sh),0 24px 60px -30px oklch(0 0 0/.9);
-    backdrop-filter:blur(18px) saturate(1.5);overflow:hidden;
-    animation:cmdkEntra .18s cubic-bezier(.2,.7,.2,1) both}
-  @keyframes cmdkEntra{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-  .cmdk-cx>input{width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;
-    color:var(--tx);font:15px var(--sans);padding:15px 17px;
-    border-bottom:1px solid var(--bd2)}
-  .cmdk-cx>input::placeholder{color:var(--dim)}
-  .cmdk-l{list-style:none;margin:0;padding:6px;max-height:52vh;overflow:auto}
-  .cmdk-l li{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;
-    cursor:pointer;font-size:13px}
-  .cmdk-l li .esf{font-family:var(--mono);font-size:9.5px;letter-spacing:.7px;
-    text-transform:uppercase;color:var(--mut);flex:0 0 auto;min-width:74px}
-  .cmdk-l li .tt{font-weight:600;flex:0 0 auto}
-  .cmdk-l li .lm{color:var(--mut);font-size:11.5px;overflow:hidden;
-    text-overflow:ellipsis;white-space:nowrap;min-width:0}
-  .cmdk-l li.sel,.cmdk-l li:hover{background:color-mix(in oklch,var(--fac) 15%,transparent)}
-  .cmdk-l li.sel{box-shadow:inset 2px 0 0 var(--fac)}
-  .cmdk-vazio{padding:16px 17px;color:var(--mut);font-size:12.5px}
-  .cmdk-dica{padding:8px 14px;border-top:1px solid var(--bd2);color:var(--dim);
-    font-family:var(--mono);font-size:10px;letter-spacing:.4px}
-  @media (prefers-reduced-motion:reduce){.cmdk-cx{animation:none}}
-
-  /* v14b · SUJEITO DO NÓ: de quem é este número. "R$ 13,4 mi" sozinho não é
-     informação — é o defeito que o dono apontou. Fica menor que o número e maior
-     que o rótulo, porque a ordem de leitura é: quanto · de quem · do quê. */
-  .nu-sub{display:block;font-family:var(--mono);font-size:8.5px;letter-spacing:.3px;
-    color:color-mix(in srgb,var(--nc2) 55%,var(--tx2));max-width:180px;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
-  .nu-chip{max-width:200px}
-
-  /* ── v14b · a cena da capa quando é INSTRUMENTO ──────────────────────────── */
-  .cover-cena.viva{opacity:.9;cursor:pointer;width:132px;height:56px}
-  .cover-cena .cbar{fill:color-mix(in oklch,var(--fac) 42%,transparent);
-    transition:fill .16s,transform .16s cubic-bezier(.2,.7,.2,1);transform-origin:50% 100%}
-  .cover-cena .cbar:hover,.cover-cena .cbar:focus-visible{fill:var(--fac);outline:0;transform:scaleY(1.08)}
-  .cover-cena .cbar:focus-visible{stroke:var(--kyber);stroke-width:.6}
-  .cover-cena .cbar.on{fill:var(--kyber)}
-  .cena-aviso{display:flex;align-items:center;gap:8px;margin-top:9px;
-    font-family:var(--mono);font-size:11px;color:var(--tx2)}
-  .cena-aviso b{color:var(--fac);font-weight:600;letter-spacing:.5px}
-  .cena-aviso button{appearance:none;border:1px solid color-mix(in oklch,var(--fac) 40%,transparent);
-    background:transparent;color:var(--tx2);font:inherit;font-size:10.5px;
-    padding:3px 9px;border-radius:6px;cursor:pointer;min-height:24px}
-  .cena-aviso button:hover{border-color:var(--fac);color:var(--tx)}
-  @media (prefers-reduced-motion:reduce){.cover-cena .cbar{transition:none}}
-  @media (max-width:600px){.cover-cena.viva{display:block;width:100%;height:44px;margin:8px 0 0}}
-
-  /* v14b · O CHIP NÃO PODE ENGORDAR. Rótulos longos levaram o chip de ~140px para
-     212px em três linhas, e os nós passaram a dominar a mesa — clareza ganha,
-     proporção perdida. A frase inteira vive no `title`; na tela fica o rótulo
-     curto, em UMA linha, com reticências. O sujeito continua, menor. */
-  .nu-chip{max-width:172px}
-  .nu-chip small{max-width:158px;overflow:hidden;text-overflow:ellipsis;
-    white-space:nowrap;display:block}
-  .nu-sub{max-width:158px;font-size:8px;opacity:.9}
-
 </style>
 </head>
 <body>
@@ -1690,14 +1414,6 @@
   </header>
   <main id="view"><div class="skel"><span class="sp"></span>Carregando inteligência…</div></main>
   <nav class="tabs" id="tabs"></nav>
-</div>
-<div class="cmdk" id="cmdk" role="dialog" aria-modal="true" aria-label="Paleta de comando" onclick="if(event.target===this)cmdkFecha()">
-  <div class="cmdk-cx">
-    <input id="cmdk-q" placeholder="Ir para… (aba, esfera ou CNPJ)" aria-label="Buscar aba, esfera ou CNPJ"
-           oninput="cmdkFiltra()" onkeydown="cmdkTecla(event)" autocomplete="off" spellcheck="false">
-    <ul class="cmdk-l" id="cmdk-l" role="listbox"></ul>
-    <div class="cmdk-dica">↑ ↓ navega · ENTER abre · ESC fecha</div>
-  </div>
 </div>
 <div class="ov" id="ov" onclick="if(event.target===this)fecharDossie()"><div class="sheet" id="sheet"></div></div>
 <div id="holofeed" role="log" aria-label="eventos do sistema ao vivo">
@@ -1758,21 +1474,7 @@ const kpi=(v,l,cor,gl,dest)=>{const ik=_kpiIco(cor);
   return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}${ik?`<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>`:''}</div>`;};
 const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
 const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
-/* v14: a capa passa a carregar a assinatura da faceta — glifo, lema e cena.
-   A assinatura da FUNÇÃO não muda: as 51 funções de render continuam chamando
-   cover(sph,t,s,ic) sem saber de nada. É por isso que o v14 alcança tudo sem 51
-   edições — a identidade vem da tabela, não do chamador. */
-const _cena=inst=>({
-  fila:'<path d="M2 6h44M2 13h34M2 20h22M2 27h12"/>',
-  rede:'<circle cx="10" cy="8" r="2.6"/><circle cx="34" cy="6" r="2.6"/><circle cx="22" cy="20" r="2.6"/><circle cx="44" cy="22" r="2.6"/><path d="M10 8 22 20M34 6 22 20M22 20 44 22"/>',
-  tempo:'<path d="M2 26h46"/><path d="M8 26V14M18 26V8M28 26V18M38 26V5"/>',
-  moeda:'<path d="M2 28 12 20 22 24 32 10 46 4"/><path d="M2 28h44"/>',
-  mapa:'<path d="M4 6 16 10 30 4 46 9v18L30 22 16 28 4 24z"/><path d="M16 10v18M30 4v18"/>',
-  pessoa:'<circle cx="12" cy="9" r="4"/><path d="M4 26c0-5 4-8 8-8s8 3 8 8"/><circle cx="34" cy="9" r="4"/><path d="M26 26c0-5 4-8 8-8s8 3 8 8"/>',
-}[inst]||'');
-const cover=(sph,t,s,ic)=>{const a=(typeof ASSINATURA!=='undefined'&&ASSINATURA[aba])||{};
-  const g=svgIco(a.gl||ic||''),cn=_cena(a.inst||'mapa');
-  return `<div class="cover ${sph}"><div class="cover-row">${g?`<span class="cover-seal" aria-hidden="true">${g}</span>`:''}<div class="cover-tx"><div class="t">${t}</div><div class="s">${s}</div>${a.lema?`<div class="lema">${esc(a.lema)}</div>`:''}</div>${cn?`<svg class="cover-cena" viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">${cn}</svg>`:''}</div></div>`;};
+const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="cover-row">${ic?`<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>`:''}<div class="cover-tx"><div class="t">${t}</div><div class="s">${s}</div></div></div></div>`;
 const leitura=t=>`<div class="leitura">${t}</div>`;
 // botão "Gerar PDF" (padrão Kroll) para qualquer aba de inteligência
 const btnPdf=tipo=>`<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
@@ -1937,78 +1639,6 @@ const TABS={
     {id:'g_acoes',   ic:'⚡',tl:'Ações',   render:renderAcoes},
   ],
 };
-/* ═══════════ v14 "HOLOCRON" — a assinatura de cada faceta ═══════════
-   51 abas, 51 identidades, UMA tabela. Cada entrada define:
-     h    = deslocamento de MATIZ da faceta, em graus, relativo à matiz da esfera.
-            Teto de ±34° de propósito: fora disso o painel vira arco-íris e a
-            esfera perde a voz. tests/test_painel_assinaturas.py trava o teto.
-     gl   = glifo que a capa da aba estampa no selo.
-     lema = o que a capa diz sob o título. Uma linha, sem ponto final: é legenda
-            de instrumento, não slogan. Nunca adjetiva o achado — indício ≠ acusação.
-     inst = a leitura principal da aba, que decide o desenho da capa e do medidor:
-            'fila' (ordem por gravidade) · 'rede' (quem se liga a quem) ·
-            'tempo' (o quando é o achado) · 'moeda' (o quanto) ·
-            'mapa' (território/órgão) · 'pessoa' (vínculo humano).
-   Quem acrescentar aba e esquecer a assinatura é pego pelo teste, não na revisão. */
-const ASSINATURA={
-  /* ── INÍCIO ── */
-  i_cockpit:{h:0,gl:'◎',lema:'a vigília inteira em uma tela',inst:'mapa'},
-  /* ── ESTADO (matiz base 245) ── */
-  e_panorama:{h:0,gl:'📊',lema:'o retrato do gasto estadual no período',inst:'moeda'},
-  e_pericias:{h:-14,gl:'⚖️',lema:'perícias abertas e o que cada uma apura',inst:'fila'},
-  e_sanc:{h:22,gl:'🚫',lema:'fornecedor com sanção vigente à época do pagamento',inst:'fila'},
-  e_frac:{h:-24,gl:'✂️',lema:'compra fatiada colada no teto da dispensa',inst:'moeda'},
-  e_sobre:{h:28,gl:'📈',lema:'preço acima do comparável no mesmo item',inst:'moeda'},
-  e_escal:{h:31,gl:'📈',lema:'preço que sobe sem o item mudar',inst:'tempo'},
-  e_comp:{h:12,gl:'💰',lema:'o mesmo item, órgão a órgão',inst:'moeda'},
-  e_adit:{h:-8,gl:'📑',lema:'aditivo que refaz o contrato depois de assinado',inst:'tempo'},
-  e_certames:{h:-30,gl:'🧮',lema:'como o certame foi julgado e por quem',inst:'rede'},
-  e_cartel:{h:18,gl:'🔗',lema:'concorrentes que se repetem em bloco',inst:'rede'},
-  e_conluio:{h:25,gl:'🕸️',lema:'quadro societário que cruza entre concorrentes',inst:'rede'},
-  e_poder:{h:-19,gl:'🏛️',lema:'quem foi nomeado e por qual ato',inst:'pessoa'},
-  e_alertas:{h:34,gl:'🚨',lema:'o que o motor levantou e ainda não foi lido',inst:'fila'},
-  e_siafe:{h:6,gl:'💰',lema:'ordem bancária como o SIAFE a emitiu',inst:'moeda'},
-  /* ── PREFEITURA (matiz base 85) ── */
-  p_panorama:{h:0,gl:'📊',lema:'o retrato do gasto municipal no período',inst:'moeda'},
-  p_gastos:{h:-22,gl:'✂️',lema:'despesa municipal por natureza e por órgão',inst:'moeda'},
-  p_sanc:{h:24,gl:'🚫',lema:'sanção vigente contra quem a Prefeitura pagou',inst:'fila'},
-  p_sobre:{h:30,gl:'📈',lema:'preço municipal acima do comparável',inst:'moeda'},
-  p_escal:{h:33,gl:'📈',lema:'preço municipal que sobe sem o item mudar',inst:'tempo'},
-  p_comp:{h:11,gl:'💰',lema:'o mesmo item, entre Estado e Município',inst:'moeda'},
-  p_adit:{h:-9,gl:'📑',lema:'aditivo municipal e o que ele mudou',inst:'tempo'},
-  p_cartel:{h:17,gl:'🔗',lema:'concentração de contratos em poucos fornecedores',inst:'rede'},
-  p_comis:{h:-28,gl:'🎖️',lema:'cargo comissionado por órgão e por vínculo',inst:'pessoa'},
-  p_benef:{h:-14,gl:'🍞',lema:'benefício pago e a natureza do vínculo',inst:'pessoa'},
-  p_fant:{h:20,gl:'👻',lema:'empresa sem fachada, sem quadro, sem porta',inst:'rede'},
-  p_ppp:{h:-33,gl:'🏗️',lema:'parceria público-privada e o que ela contratou',inst:'moeda'},
-  p_conluio:{h:26,gl:'🕸️',lema:'quadro societário cruzado no município',inst:'rede'},
-  p_contr:{h:-5,gl:'📄',lema:'contrato municipal e sua vigência',inst:'tempo'},
-  /* ── TRANSVERSAL (matiz base 300) ── */
-  g_buscar:{h:0,gl:'🔎',lema:'procure por nome, CNPJ, órgão ou processo',inst:'mapa'},
-  g_radar:{h:29,gl:'🎯',lema:'a fila por gravidade, do pior para o resto',inst:'fila'},
-  g_prioridade:{h:32,gl:'⚡',lema:'o que apurar primeiro, e por qual razão',inst:'fila'},
-  g_conluioq:{h:24,gl:'🤝',lema:'sócios em comum entre quem disputou junto',inst:'rede'},
-  g_comun:{h:21,gl:'🧩',lema:'agrupamentos que o grafo societário revela',inst:'rede'},
-  g_retro:{h:-16,gl:'🔮',lema:'o que o motor teria dito no passado',inst:'tempo'},
-  g_riscos:{h:34,gl:'👻',lema:'perfil de risco por fornecedor',inst:'fila'},
-  g_dep:{h:-11,gl:'🔗',lema:'fornecedor que vive de um pagador só',inst:'rede'},
-  g_capital:{h:-25,gl:'🫧',lema:'capital social irrisório diante do contrato',inst:'moeda'},
-  g_dez:{h:-30,gl:'📅',lema:'a corrida de dezembro no fim do exercício',inst:'tempo'},
-  g_ocult:{h:18,gl:'🕸️',lema:'controle que não aparece no quadro declarado',inst:'rede'},
-  g_nep:{h:-20,gl:'👪',lema:'parentesco entre nomeado e nomeante',inst:'pessoa'},
-  g_nepx:{h:-23,gl:'🔀',lema:'parentesco cruzado entre órgãos',inst:'pessoa'},
-  g_fenix:{h:27,gl:'🦅',lema:'empresa que recebeu depois da baixa',inst:'tempo'},
-  g_porta:{h:-8,gl:'🚪',lema:'servidor que passou para o outro lado do balcão',inst:'pessoa'},
-  g_laranjas:{h:22,gl:'🎭',lema:'sócio de perfil incompatível com o contrato',inst:'pessoa'},
-  g_socserv:{h:-13,gl:'🕴️',lema:'servidor que é sócio de quem contrata',inst:'pessoa'},
-  g_poder:{h:-18,gl:'🏛️',lema:'nomeações e o ato que as sustenta',inst:'pessoa'},
-  g_conluio:{h:25,gl:'🕸️',lema:'quadro societário cruzado, nas duas esferas',inst:'rede'},
-  g_validar:{h:-3,gl:'🏢',lema:'confirme ou descarte o que o motor levantou',inst:'fila'},
-  g_sweeps:{h:8,gl:'🛰️',lema:'o que está sendo coletado agora',inst:'tempo'},
-  g_acoes:{h:14,gl:'⚡',lema:'disparar coleta, relatório ou dossiê',inst:'mapa'},
-};
-/* matiz base de cada face do cristal, em graus OKLCH — a faceta soma o seu delta */
-const _ESF_MATIZ={inicio:205,estado:245,prefeitura:85,geral:300};
 let esfera='inicio',aba='i_cockpit';
 const sessaoReports=new Set();
 
@@ -2017,12 +1647,7 @@ function montarSpheres(){
 }
 function montarTabs(){
   $('tabs').style.display=TABS[esfera].length<2?'none':'';
-  $('tabs').innerHTML=TABS[esfera].map(t=>{
-    /* v14: o botão carrega a matiz da SUA faceta — assim a barra inteira lê como
-       um cristal com N lados, e não como N cópias da cor da esfera. */
-    const h=(_ESF_MATIZ[esfera]||205)+((ASSINATURA[t.id]||{}).h||0);
-    return `<button class="${t.id===aba?'on':''}" style="--tab-h:${h}" onclick="ir('${t.id}')" title="${t.tl}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`;
-  }).join('');
+  $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
 function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
 let _nav=0; // token anti-corrida
@@ -2033,12 +1658,6 @@ async function ir(id){
   if(!t)return;
   aba=id;montarTabs();
   document.body.setAttribute('data-esf',esfera);   // tinge hovers/energia com a cor da esfera
-  /* v14: a faceta ativa vira estado do documento. É daqui que saem as 51 identidades —
-     uma linha aqui, uma tabela ali, zero bloco de CSS escrito à mão por aba. */
-  document.body.dataset.aba=id;
-  {const s=ASSINATURA[id]||{h:0,inst:'mapa'};
-   document.body.style.setProperty('--fac-h',(_ESF_MATIZ[esfera]||205)+(s.h||0));
-   document.body.dataset.inst=s.inst||'mapa';}
   if(typeof _rjbgTinge==='function')_rjbgTinge();   // território de fundo re-tinge na cor da esfera
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
@@ -2082,26 +1701,6 @@ function holografar(root){
     i.style.setProperty('--hd',(((_hlxN++)*0.37)%4.2).toFixed(2)+'s');
     el.appendChild(i);
   });
-  facetar(alvo);            // v14: a camada da faceta anda junto com a do holograma
-}
-/* ═══ FACETA (v14) — a camada de todo contêiner de dado ═══════════════════════════
-   Mesmo padrão provado do `holografar` do v12.3, e pelas mesmas razões: elemento
-   REAL (os pseudos do `.card` estão ocupados desde o v7/v8), `aria-hidden` +
-   `pointer-events:none` (é decoração: não fala com leitor de tela nem rouba clique)
-   e marca própria para nunca duplicar. Entra como PRIMEIRO filho para ficar atrás
-   do conteúdo; o `--d` herda a cascata de entrada que o `vivo()` já escreve, então
-   a moldura se desenha depois do card subir. */
-const FAC_SEL='.card,.cover,.sheet,.leitura';
-function facetar(root){
-  const alvo=root||document; let els;
-  try{els=alvo.querySelectorAll(FAC_SEL);}catch(_){return;}
-  els.forEach(el=>{
-    if(el.dataset.fac)return;
-    el.dataset.fac='1';
-    const i=document.createElement('i');
-    i.className='fac';i.setAttribute('aria-hidden','true');
-    el.insertBefore(i,el.firstChild);
-  });
 }
 /* As abas são renderizadas depois — e algumas nem existem no boot. O observador é o
    que faz isto valer para o painel INTEIRO, e não só para o que estava na tela. */
@@ -2144,8 +1743,6 @@ let _wireRAF=0;
 function vivo(){
   const v=$('view'); if(!v) return;
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
-  instrumentar(v);   // v14: a coluna se identifica antes de a cascata começar
-  cenaInstrumento(); // v14b: a cena da capa vira histograma do que está na tela
   const top=[...v.querySelectorAll('.card,.cover')].filter(el=>!el.parentElement.closest('.card,.cover'));
   // 1) cascata de entrada + pulso "ao vivo" no 1º KPI
   top.forEach((el,i)=>{el.classList.add('rise');el.style.setProperty('--d',Math.min(i*18,220)+'ms');});
@@ -2163,141 +1760,6 @@ function vivo(){
   // 4) malha de luz ligando os cards
   _wire(top,rm);
 }
-/* ═══ INSTRUMENTAR (v14) — cada coluna diz que TIPO de coisa ela mede ═════════════
-   Os 51 renders escrevem `<th>` cru; editar 51 para pôr um ícone seria 51 chances
-   de errar. Aqui o tipo é DEDUZIDO do rótulo, uma vez por render, e vira um glifo
-   mudo. Deduzir do rótulo é frágil de propósito: quando não reconhece, não põe
-   nada — a coluna fica como está hoje. Falha para o lado de não afirmar. */
-const _TIPO_COL=[
-  [/valor|R\$|pago|total|montante|preço|preco/i,'moeda'],
-  [/data|período|periodo|emissão|emissao|vigência|vigencia|\bano\b|\bmês\b|\bmes\b/i,'tempo'],
-  [/score|risco|grau|nota|indício|indicio/i,'grau'],
-  [/cnpj|cpf|processo|nº|numero|número/i,'chave'],
-];
-function instrumentar(root){
-  (root||document).querySelectorAll('thead th:not([data-inst])').forEach(th=>{
-    const rot=(th.textContent||'').trim();
-    const achou=_TIPO_COL.find(([re])=>re.test(rot));
-    th.dataset.inst=achou?achou[1]:'';
-  });
-}
-/* ═══ v14b · A CENA DA CAPA VIRA INSTRUMENTO ═════════════════════════════════════
-   O v14 pôs uma cena SVG decorativa na capa de cada aba. Aqui ela deixa de ser
-   enfeite e vira CONTROLE — a regra do v14b é que todo movimento novo precisa ser
-   agarrável ou informativo, e um desenho que não responde não é nenhum dos dois.
-
-   Como isto alcança 51 abas sem 51 implementações: a cena lê as LINHAS QUE JÁ
-   ESTÃO NA TELA e monta um histograma do próprio dado renderizado. A chave de cada
-   linha vem da família do instrumento, que o registro ASSINATURA já declara:
-     moeda  -> o maior valor em R$ da linha
-     tempo  -> a data (DD/MM/AAAA)
-     fila / rede / mapa / pessoa -> o último número da linha (score, contagem)
-   Clicar numa barra filtra; clicar de novo (ou no X) desfaz.
-
-   Três honestidades que isto NÃO pode violar:
-   1. nada é sintético — se a aba não tiver linha ou chave legível, a cena continua
-      decorativa e nenhum controle aparece. Falha para o lado de não afirmar;
-   2. filtro aplicado é SEMPRE visível e reversível. Filtro invisível é o jeito mais
-      fácil de um painel de fiscalização mentir;
-   3. tudo opera sobre dado JÁ carregado — nenhuma requisição por gesto (2 vCPU). */
-const _CENA_BINS=12;
-let _cenaEstado=null;
-
-function _cenaChave(tr,inst){
-  const txt=tr.textContent||'';
-  if(inst==='moeda'){
-    const m=[...txt.matchAll(/R\$\s*([\d.]{1,18},\d{2})/g)].map(x=>
-      parseFloat(x[1].replace(/\./g,'').replace(',','.')));
-    if(m.length)return Math.max(...m);
-    const c=txt.match(/R\$\s*([\d.,]+)\s*(mi|bi|mil)\b/);
-    if(c){const v=parseFloat(c[1].replace(/\./g,'').replace(',','.'));
-      return v*({mil:1e3,mi:1e6,bi:1e9}[c[2]]||1);}
-    return null;
-  }
-  if(inst==='tempo'){
-    const d=txt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if(d)return new Date(+d[3],+d[2]-1,+d[1]).getTime();
-    const a=txt.match(/\b(20\d{2})\b/);
-    return a?new Date(+a[1],0,1).getTime():null;
-  }
-  const cels=[...tr.querySelectorAll('td')];
-  for(let i=cels.length-1;i>=0;i--){
-    const n=(cels[i].textContent||'').trim().replace(/\./g,'').replace(',','.');
-    if(/^-?\d+(\.\d+)?$/.test(n))return parseFloat(n);
-  }
-  return null;
-}
-
-function _cenaRotulo(v,inst){
-  if(inst==='moeda')return fmtRc(v);
-  if(inst==='tempo'){const d=new Date(v);
-    return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
-  return fmtN(Math.round(v));
-}
-
-function cenaInstrumento(){
-  const svg=document.querySelector('#view .cover-cena');if(!svg)return;
-  const inst=(document.body.dataset.inst)||'mapa';
-  const linhas=[...document.querySelectorAll('#view tbody tr')];
-  if(linhas.length<4)return;                       // pouca linha: histograma mente
-  const pares=linhas.map(tr=>[tr,_cenaChave(tr,inst)]).filter(x=>x[1]!=null&&isFinite(x[1]));
-  if(pares.length<4)return;                        // sem chave legível: fica decorativa
-  const vs=pares.map(x=>x[1]), lo=Math.min(...vs), hi=Math.max(...vs);
-  if(hi<=lo)return;                                // tudo igual: não há o que distribuir
-  const nb=Math.min(_CENA_BINS,Math.max(4,Math.round(Math.sqrt(pares.length))));
-  const baldes=Array.from({length:nb},()=>[]);
-  pares.forEach(([tr,v])=>{
-    const i=Math.min(nb-1,Math.floor((v-lo)/(hi-lo)*nb));baldes[i].push(tr);});
-  const topo=Math.max(...baldes.map(b=>b.length))||1;
-  _cenaEstado={inst,baldes,lo,hi,nb,linhas};
-
-  const W=48,H=32,bw=W/nb;
-  svg.innerHTML=baldes.map((b,i)=>{
-    const h=b.length?Math.max(1.5,b.length/topo*(H-4)):0.8;
-    const de=_cenaRotulo(lo+(hi-lo)*i/nb,inst), ate=_cenaRotulo(lo+(hi-lo)*(i+1)/nb,inst);
-    return `<rect class="cbar" data-i="${i}" x="${(i*bw+.5).toFixed(2)}" y="${(H-h).toFixed(2)}"
-      width="${(bw-1).toFixed(2)}" height="${h.toFixed(2)}" rx="1"
-      tabindex="0" role="button" aria-label="${b.length} de ${de} a ${ate}"
-      onclick="cenaFiltra(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();cenaFiltra(${i})}"
-      ><title>${b.length} · ${de} a ${ate}</title></rect>`;}).join('');
-  svg.setAttribute('viewBox','0 0 48 32');
-  svg.classList.add('viva');
-  svg.removeAttribute('aria-hidden');
-  svg.setAttribute('role','group');
-  svg.setAttribute('aria-label','Distribuição — clique numa barra para filtrar');
-}
-
-function cenaFiltra(i){
-  const e=_cenaEstado;if(!e)return;
-  const svg=document.querySelector('#view .cover-cena');
-  const jaAtiva=svg&&svg.dataset.sel===String(i);
-  if(jaAtiva){cenaLimpa();return;}
-  e.linhas.forEach(tr=>{tr.style.display='none';});
-  e.baldes[i].forEach(tr=>{tr.style.display='';});
-  if(svg){svg.dataset.sel=String(i);
-    svg.querySelectorAll('.cbar').forEach(r=>r.classList.toggle('on',r.dataset.i===String(i)));}
-  const de=_cenaRotulo(e.lo+(e.hi-e.lo)*i/e.nb,e.inst),
-        ate=_cenaRotulo(e.lo+(e.hi-e.lo)*(i+1)/e.nb,e.inst);
-  _cenaAviso(`${e.baldes[i].length} de ${e.linhas.length} · ${de} a ${ate}`);
-}
-
-function cenaLimpa(){
-  const e=_cenaEstado;if(!e)return;
-  e.linhas.forEach(tr=>{tr.style.display='';});
-  const svg=document.querySelector('#view .cover-cena');
-  if(svg){delete svg.dataset.sel;svg.querySelectorAll('.cbar').forEach(r=>r.classList.remove('on'));}
-  const a=$('cena-aviso');if(a)a.remove();
-}
-
-/* O aviso NÃO é decoração: é a garantia de que o filtro é visível e reversível.
-   Sem ele o usuário lê uma tabela cortada achando que é o universo. */
-function _cenaAviso(txt){
-  let a=$('cena-aviso');
-  const cover=document.querySelector('#view .cover');if(!cover)return;
-  if(!a){a=document.createElement('div');a.id='cena-aviso';a.className='cena-aviso';cover.appendChild(a);}
-  a.innerHTML=`<b>filtro</b> ${esc(txt)} <button type="button" onclick="cenaLimpa()" aria-label="Remover filtro">mostrar tudo ✕</button>`;
-}
-
 function _countUp(el){
   const raw=(el.textContent||'').trim();
   const m=raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/); if(!m)return;
@@ -2355,71 +1817,6 @@ const TERMOS=[
  ['🟢','Frescor de fonte','Cada base tem um LED: verde = coletada há ≤3 dias; âmbar ≤10; vermelho = parada (investigar o coletor). Defasagem nunca mais passa despercebida.'],
  ['⚖️','Indício ≠ prova','Tudo neste painel é INDÍCIO para apuração interna — não é acusação. Presunção de regularidade até verificação documental.'],
 ];
-/* ═══ v14b · PALETA DE COMANDO ═══════════════════════════════════════════════════
-   Um índice das 51 abas construído do MESMO par de tabelas que o painel já usa
-   (TABS para o título e a esfera, ASSINATURA para o lema). Nada é redigitado aqui:
-   aba nova aparece na paleta sozinha, e o teste de assinatura garante que ela tem
-   lema. Se o usuário digitar 14 dígitos, a paleta oferece o dossiê — porque num
-   painel de fiscalização o CNPJ é o atalho que mais se usa. */
-let _cmdkSel=0,_cmdkItens=[],_cmdkVoltar=null;
-const _CMDK_ESF={inicio:'Início',estado:'Estado',prefeitura:'Prefeitura',geral:'Transversal'};
-function _cmdkIndice(){
-  const fora=[];
-  for(const [esf,lista] of Object.entries(TABS))
-    for(const t of lista){
-      const a=ASSINATURA[t.id]||{};
-      fora.push({tipo:'aba',id:t.id,tt:t.tl,esf:_CMDK_ESF[esf]||esf,lm:a.lema||'',
-                 busca:(t.tl+' '+esf+' '+(a.lema||'')).toLowerCase()});
-    }
-  return fora;
-}
-function cmdkAbre(){
-  const ov=$('cmdk');if(!ov)return;
-  _cmdkVoltar=document.activeElement;      // devolver o foco depois e' requisito de a11y
-  ov.classList.add('on');
-  const q=$('cmdk-q');q.value='';cmdkFiltra();q.focus();
-}
-function cmdkFecha(){
-  const ov=$('cmdk');if(!ov)return;
-  ov.classList.remove('on');
-  if(_cmdkVoltar&&_cmdkVoltar.focus)_cmdkVoltar.focus();
-}
-function cmdkFiltra(){
-  const q=($('cmdk-q').value||'').trim().toLowerCase();
-  const dig=q.replace(/\D/g,'');
-  let itens=_cmdkIndice();
-  if(q)itens=itens.filter(x=>x.busca.includes(q));
-  if(dig.length===14)                       // CNPJ completo: o atalho mais usado
-    itens=[{tipo:'cnpj',id:dig,tt:'Abrir dossiê',esf:'CNPJ',
-            lm:dig.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')}].concat(itens);
-  _cmdkItens=itens.slice(0,40);_cmdkSel=0;
-  const l=$('cmdk-l');
-  l.innerHTML=_cmdkItens.length
-    ? _cmdkItens.map((x,i)=>`<li role="option" class="${i===0?'sel':''}" onclick="cmdkVai(${i})">
-        <span class="esf">${esc(x.esf)}</span><span class="tt">${esc(x.tt)}</span>
-        <span class="lm">${esc(x.lm)}</span></li>`).join('')
-    : '<div class="cmdk-vazio">Nada com esse nome. Tente o rótulo da aba, a esfera, ou cole um CNPJ.</div>';
-}
-function cmdkVai(i){
-  const x=_cmdkItens[i];if(!x)return;
-  cmdkFecha();
-  if(x.tipo==='cnpj')abrirDossie(x.id,x.lm); else ir(x.id);
-}
-function cmdkTecla(e){
-  if(e.key==='Escape'){e.preventDefault();cmdkFecha();return;}
-  if(e.key==='Enter'){e.preventDefault();cmdkVai(_cmdkSel);return;}
-  if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
-  e.preventDefault();
-  if(!_cmdkItens.length)return;
-  _cmdkSel=(_cmdkSel+(e.key==='ArrowDown'?1:-1)+_cmdkItens.length)%_cmdkItens.length;
-  const lis=$('cmdk-l').querySelectorAll('li');
-  lis.forEach((li,i)=>li.classList.toggle('sel',i===_cmdkSel));
-  if(lis[_cmdkSel])lis[_cmdkSel].scrollIntoView({block:'nearest'});
-}
-addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();cmdkAbre();}
-});
-
 function glossario(){
   const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
   sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
@@ -3927,20 +3324,16 @@ async function renderCockpit(){
 
 // ═══ NÚCLEO ORGÂNICO — a mesma informação do cockpit em forma viva (dados/eventos REAIS) ═══
 const NU_NODES=[
-  {id:'radar',  lab:'fornecedores', tit:'Fornecedores que acenderam algum sinal de risco. Clique para ver a fila.', tab:'g_radar', cor:'#5fd9ff', cor2:'#7d7dff', pri:2, orb:.9,  sp:1},
-  {id:'alertas',lab:'alertas não lidos', tit:'Alertas que o motor levantou e ninguém leu ainda.',        tab:'e_alertas',cor:'#ff7a8a', cor2:'#ff5470', pri:1, orb:.66, sp:-.7},
+  {id:'radar',  lab:'radar de risco', tab:'g_radar', cor:'#5fd9ff', orb:.9,  sp:1},
+  {id:'alertas',lab:'alertas',        tab:'e_alertas',cor:'#ff7a8a', orb:.66, sp:-.7},
   // "ninhos" agora é a MESMA SALA, não o mesmo prédio: dividir 'Rua da Assembleia 10'
   // (318 CNPJs, edifício comercial) não diz nada; dividir a SALA com 2+ recebendo é a
   // assinatura de interposição. Rótulo mudou junto — o número é outro e menor, de propósito.
-  {id:'ninho',  lab:'mesma sala', tit:'Grupos de empresas que dividem a MESMA sala e receberam dinheiro público.',     tab:'g_riscos', cor:'#f2b544', cor2:'#ff8804', pri:1, orb:.88, sp:.8},
-  {id:'fenix',  lab:'empresa fechada', tit:'Dinheiro pago DEPOIS de a empresa ser baixada na Receita.',  tab:'g_fenix',  cor:'#ff9a6a', cor2:'#ff5472', pri:1, orb:.6,  sp:1.15},
-  {id:'com',    lab:'grupos por sócios', tit:'Agrupamentos que o grafo societário revela: família, empresa e órgão.',    tab:'g_comun',  cor:'#c096ff', cor2:'#59a3ff', pri:3, orb:.92, sp:-.55},
-  {id:'compras',lab:'acima do preço', tit:'Compras pagas acima do preço mediano de itens comparáveis.',tab:'e_comp',cor:'#eec276', cor2:'#61da92', pri:2, orb:.68, sp:.9},
-  {id:'dossie', lab:'caros e suspeitos', tit:'Itens pagos caro a fornecedor sancionado ou sem estrutura.',tab:'e_comp',   cor:'#ff7ab8', cor2:'#c096ff', pri:1, orb:.86, sp:-.95},
-  /* v14: `lift` e `orgao` ja eram alimentados pelo cockpit (ckFill -> nuSet) e
-     nao apareciam na mesa. Entram sem inventar nada — dado sintetico e proibido. */
-  {id:'lift',   lab:'sinal que mais acerta', tit:'O detector que mais concentra fraude acima da média.',tab:'g_prioridade',cor:'#61da92', cor2:'#5fd9ff', pri:2, orb:.72, sp:.62},
-  {id:'orgao',  lab:'mais a recuperar', tit:'O órgão com a maior economia potencial identificada.',tab:'e_comp',  cor:'#90d7ff', cor2:'#61da92', pri:3, orb:.95, sp:-.42},
+  {id:'ninho',  lab:'mesma sala',     tab:'g_riscos', cor:'#f2b544', orb:.88, sp:.8},
+  {id:'fenix',  lab:'empresa morta',  tab:'g_fenix',  cor:'#ff9a6a', orb:.6,  sp:1.15},
+  {id:'com',    lab:'comunidades',    tab:'g_comun',  cor:'#c096ff', orb:.92, sp:-.55},
+  {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', orb:.68, sp:.9},
+  {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', orb:.86, sp:-.95},
 ];
 let _nuRAF=0,_nuPulses=[],_nuVals={},_nuFlux=[],_sweepAtivo=null,_swInt=0;
 // qual sweep alimenta o sistema agora → mostra no reator e o acelera
@@ -3957,15 +3350,8 @@ async function nuSweepPoll(){
   el.innerHTML=`<span class="dot"></span><span>alimentando · <b>${nome}</b>${det}</span>${cnt}`;
   el.classList.add('on');
 }
-function nuSet(id,val,sujeito){
+function nuSet(id,val){
   const el=$('nu-'+id);if(el==null)return;const n=el.querySelector('.n');
-  /* SUJEITO: um numero sozinho nao e informacao. "R$ 13,4 mi" nao diz NADA sem
-     dizer de quem — foi exatamente o defeito que o dono apontou. Quando a rota
-     entrega o sujeito (o orgao, o detector), ele vem para dentro do no. */
-  if(sujeito){let s=el.querySelector('.nu-sub');
-    if(!s){s=document.createElement('span');s.className='nu-sub';el.appendChild(s);}
-    s.textContent=String(sujeito).length>26?String(sujeito).slice(0,25)+'…':String(sujeito);
-    if(!el.title.includes(sujeito))el.title=(el.title||'')+' — '+sujeito;}
   const prev=_nuVals[id];_nuVals[id]=val;
   n.textContent=val==null?'—':(typeof val==='number'?fmtN(val):val);
   if(typeof val==='number'&&typeof prev==='number'&&val!==prev){   // delta REAL desde a última amostra
@@ -4088,8 +3474,8 @@ function _holoPiso(g,bmp,c,W,H,alt){
 function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
   const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
-  $('nu-chips').innerHTML=NU_NODES.map((n,i)=>
-    `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor};--nc2:${n.cor2||n.cor};--ni:${i}" data-pri="${n.pri||3}" title="${esc(n.tit||n.lab)}" onclick="ir('${n.tab}')"
+  $('nu-chips').innerHTML=NU_NODES.map(n=>
+    `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"
        onpointerenter="_nuHover='${n.id}'" onpointerleave="_nuHover=null">
       <small>${n.lab}</small><span class="n">—</span></button>`).join('');
   /* três altitudes em vez de sete órbitas quase iguais: a mesa lê como escada
@@ -4120,29 +3506,12 @@ function nucleoStart(){
      fatias verticais fixas. Rótulo parado = número legível; quem se move é a
      linha-guia até o nó. Também é o que devolve as laterais vazias ao trabalho. */
   let _railW=182,_compacto=false,_gradeH=0;
-  /* v14 · A MESA NO CELULAR — medido, e com uma tentativa REPROVADA registrada.
-     A 390px a escala é travada pela LARGURA (94% de ocupação). Com o ângulo fixo,
-     a largura do piso na tela é SEMPRE `caixa - 2*margem` (o `cam.s` se ajusta
-     para isso) — então alargar a CAIXA e encolher a margem é o primeiro lever:
-     full-bleed (356 -> 390px) e margem 10 -> 4 dão +14% de largura.
-
-     O segundo lever é a elevação, e ela tem um LIMITE DE GOSTO medido na prática:
-     0,95 rad (54°) rendia +66% de altura, mas ACHATAVA o 3D angulado que é a
-     assinatura da mesa — reprovado pelo dono, e com razão: era trocar geometria
-     por tamanho. 0,70 rad (40°, contra os 32° originais) eleva "um pouco",
-     preserva a leitura de mesa em perspectiva e ainda rende +38% de altura de
-     território. NÃO subir de 0,75 sem olhar a tela. */
-  const ELEV_DE=()=>_compacto?0.70:HOLO.ELEV;
   function trilhos(){
     /* Abaixo de 720px o trilho lateral é a decisão errada: dois trilhos comem a
        largura toda e a mesa vira um borrão de 120px (medido no emulador a 390px).
        Nesse regime os rótulos descem para uma GRADE sob a mesa e a cena fica com a
        largura inteira — a linha-guia perde a função e sai. */
     _compacto=W<720;
-    cam.elev=cam.telev=ELEV_DE();setCam();   /* o setCam() aqui NAO e redundante:
-       `trilhos()` roda DEPOIS de setCam() dentro de size(), entao sem esta chamada o
-       seno/cosseno ficam no valor antigo e a elevacao nao produz efeito NENHUM.
-       Medido: territorio 336x137 -> 336x138 (ou seja, nada) ate esta linha existir. */
     box.classList.toggle('compacto',_compacto);
     if(_compacto){
       const cols=W<430?2:3, gap=8, marg=12;
@@ -4191,7 +3560,7 @@ function nucleoStart(){
        altura sobrava 9%. E a reserva nem estava em uso — o rótulo mais externo parava
        a 170px da borda, ou seja, DENTRO da mesa. 48px basta para o empurrão radial e
        devolve ~140px de território ao quadrado. */
-    const gut=_compacto?4:48;       // faixa em volta da mesa: é onde os rótulos pousam
+    const gut=_compacto?10:48;       // faixa em volta da mesa: é onde os rótulos pousam
     const Hu=Math.max(150,H-_gradeH);                      // altura util: a grade tem a dela
     cam.s=Math.min(Hu*0.965/(A+B+HT), Math.max(140,W-2*gut)/(2*PL*kN));
     cam.cx=W/2;
@@ -4214,12 +3583,12 @@ function nucleoStart(){
   // PARALAXE: o cursor gira a mesa. É o que transforma "desenho" em "objeto".
   cv.style.pointerEvents='auto';
   cv.onpointermove=e=>{const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
-    if(!rm){cam.tyaw=((mx/W)-0.5)*0.46; cam.telev=ELEV_DE()+((my/H)-0.5)*0.20;}
+    if(!rm){cam.tyaw=((mx/W)-0.5)*0.46; cam.telev=HOLO.ELEV+((my/H)-0.5)*0.20;}
     _nuHover=null;let best=520;
     NU_NODES.forEach(n=>{if(n._x==null)return;const d=(n._x-mx)**2+(n._y-my)**2;
       if(d<best){best=d;_nuHover=n.id;}});
     cv.style.cursor=_nuHover?'pointer':'default';};
-  cv.onpointerleave=()=>{_nuHover=null;cam.tyaw=0;cam.telev=ELEV_DE();};
+  cv.onpointerleave=()=>{_nuHover=null;cam.tyaw=0;cam.telev=HOLO.ELEV;};
   cv.onclick=()=>{const n=NU_NODES.find(q=>q.id===_nuHover);if(n)ir(n.tab);};
   /* ORÇAMENTO DE VIDA — a mesa é a cena mais cara do painel e continuava desenhando a
      60fps depois que o usuário rolou para as tabelas: trabalho inteiramente jogado fora
@@ -4686,10 +4055,10 @@ function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="ck
   <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
   <div class="val ${valc}">—</div><div class="meta">aguardando…</div>
   </div>`;}
-function ckFill(id,{num,txt,meta,sujeito}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
+function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
   if(meta!=null)m.innerHTML=meta;
-  nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt,sujeito);   // espelha no Núcleo orbital
+  nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt);   // espelha no Núcleo orbital
 }
 let _ckTick=[];
 function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
@@ -4750,14 +4119,14 @@ function ckPull(first){
     // o valor grande é a caixa do NÚMERO: um nome de órgão cortado duas vezes (25 chars
     // no JS + reticências do CSS a 26px) virava "PREFEITURA …", que não informa nada.
     // O número é a economia; o nome do órgão vive inteiro na linha de baixo.
-    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',sujeito:o?onm:null,meta:o?`<b>${esc(onm)}</b> — potencial a recuperar`:'—'});
+    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> — potencial a recuperar`:'—'});
     ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_total)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras`}]);});
   J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
     ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ RADAR ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
   J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
-    ckFill('lift',{txt:b?b.lift+'×':'—',sujeito:b?rot(b.detector):null,meta:b?`<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
+    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
   J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
     ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
   J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;

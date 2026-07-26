@@ -47,7 +47,16 @@ _FEDERAL = re.compile(
     r"AG[ÊE]NCIA ESPACIAL|IND[ÚU]STRIAS NUCLEARES|INSTITUTO BRASILEIRO|"
     r"DEPARTAMENTO NACIONAL|SUPERINTEND[ÊE]NCIA (FEDERAL|NACIONAL)", re.I)
 
-ESFERAS = ("federal", "estadual-rj", "municipal-rio", "indefinido")
+# Outros municipios do RJ. Sem este balde uma prefeitura que nao fosse a do Rio caia
+# em "indefinido" — ou pior, escorregava para "federal" quando o nome trazia palavra
+# generica. O dono pediu a separacao explicita: Estado do RJ x Prefeitura do Rio x
+# outros entes federais OU MUNICIPAIS. Vem DEPOIS de _MUNICIPAL_RIO na ordem de teste,
+# entao o Rio nunca vaza para ca.
+_MUNICIPAL_OUTRO = re.compile(
+    r"MUNIC[IÍ]PIO\s+D[EO]\s+|PREFEITURA\s+(MUNICIPAL\s+)?D[EO]\s+|"
+    r"C[ÂA]MARA\s+MUNICIPAL\s+D[EO]\s+|FUNDO MUNICIPAL\b|SECRETARIA MUNICIPAL\b", re.I)
+
+ESFERAS = ("federal", "estadual-rj", "municipal-rio", "municipal-outro", "indefinido")
 
 
 def classificar_esfera(orgao_nome: str = "", orgao_cnpj: str = "") -> str:
@@ -65,6 +74,10 @@ def classificar_esfera(orgao_nome: str = "", orgao_cnpj: str = "") -> str:
         return "municipal-rio"
     if _ESTADUAL_RJ.search(nome):
         return "estadual-rj"
+    # ANTES de federal, de proposito: "MUNICIPIO DE SAO GONCALO" nao pode cair em
+    # federal por conter palavra generica. Municipal-Rio ja foi testado acima.
+    if _MUNICIPAL_OUTRO.search(nome):
+        return "municipal-outro"
     if _FEDERAL.search(nome):
         return "federal"
     return "indefinido"
@@ -74,7 +87,7 @@ _SCHEMA_MAPA = """
 CREATE TABLE IF NOT EXISTS pcrj_orgao_esfera (
     orgao_cnpj   TEXT PRIMARY KEY,
     orgao_nome   TEXT,
-    esfera       TEXT,           -- federal | estadual-rj | municipal-rio | indefinido
+    esfera       TEXT,           -- federal | estadual-rj | municipal-rio | municipal-outro | indefinido
     n_registros  INTEGER,
     classificado_em TEXT
 );
