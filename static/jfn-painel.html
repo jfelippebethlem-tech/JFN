@@ -4227,8 +4227,19 @@ function nucleoStart(){
   const repinta=()=>{if(rm&&cv.isConnected)draw(performance.now());};
   size();repinta();
   addEventListener('resize',()=>{if(cv.isConnected){size();repinta();}});
-  _rjCarregar(()=>{if(cv.isConnected){placa=_rjPlaca(window.RJ_MALHA,HOLO.SZ);
-    contorno=_rjContornoMundo(window.RJ_MALHA);pisoSujo=true;repinta();}});
+  const _rjMontar=()=>{if(!cv.isConnected||!window.RJ_MALHA)return;
+    placa=_rjPlaca(window.RJ_MALHA,HOLO.SZ);
+    contorno=_rjContornoMundo(window.RJ_MALHA);pisoSujo=true;repinta();};
+  _rjCarregar(_rjMontar);
+  /* v28.6: a malha chega por <script async> e o callback agenda o quadro no
+     rAF. Se a aba estiver em segundo plano nesse instante o rAF esta
+     congelado: o quadro nunca sai e NADA re-agenda quando a aba volta — a
+     mesa de vigilia ficava so com o piso, sem o mapa nem os marcadores.
+     Medido no Chrome do dono: RJ_MALHA carregada, _rjPlaca devolvendo
+     object, canvas conectado. Nao faltava dado; faltava um quadro.
+     Mesma familia do portal preso (3cf2a6a1).                          */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&cv.isConnected)_rjMontar();});
   // PARALAXE: o cursor gira a mesa. É o que transforma "desenho" em "objeto".
   cv.style.pointerEvents='auto';
   cv.onpointermove=e=>{const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
@@ -4990,7 +5001,10 @@ function _rjCarregar(cb){
   _rjLoading=true;
   const s=document.createElement('script');
   s.src='/static/assets/rj-malha.js';s.async=true;
-  s.onload=()=>{const l=_rjCbs.slice();_rjCbs.length=0;l.forEach(fn=>{try{fn();}catch(_){}});};
+  s.onload=()=>{const l=_rjCbs.slice();_rjCbs.length=0;
+    /* era `catch(_){}` — um catch vazio. Se o desenho da malha falhasse, a
+       falha sumia sem rastro e o mapa ficava vazio sem nada no console.  */
+    l.forEach(fn=>{try{fn();}catch(e){console.warn('[rj] callback da malha falhou:',e);}});};
   s.onerror=()=>{_rjLoading=false;};             // sem malha o painel segue igual
   document.head.appendChild(s);
 }
