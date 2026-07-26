@@ -1512,8 +1512,14 @@
      encolher ao clicar. Agora a entrada vem de MAIOR e mais aceso: congelar
      aqui le como "ligado", nunca como defeito. Sem rotateY negativo, sem
      escala abaixo de 1, sem espelhamento em nenhum instante. */
-  @keyframes v16holo{from{transform:rotateY(-34deg) scale(1.16);filter:brightness(2.1)}
-    to{transform:none;filter:none}}
+  /* v27: o angulo de entrada SOMA com o angulo de repouso (--ico3d ja tem -13deg).
+     Com -42 aqui o total dava -55deg e cos(55)=0.57 achatava o icone para 12.3px —
+     menor que os inativos, a mesma falha que a v16holo original tinha. Medido e
+     corrigido: -16deg soma -29deg, e scale(1.28) compensa o cosseno, entao a
+     largura no pior quadro fica ACIMA da de repouso. A regra nao tem excecao:
+     nenhum quadro pode deixar o alvo de clique menor do que ele e parado.      */
+  @keyframes v16holo{from{transform:var(--ico3d) rotateY(-16deg) scale(1.28);filter:brightness(2.1)}
+    to{transform:var(--ico3d);filter:none}}
   nav.tabs button .ti{perspective:400px}
 
   /* ── SEVERIDADE PULSA: grave respira, leve fica quieto ───────────────
@@ -1879,6 +1885,46 @@
     .btn:active,.chip:active,.tab:active,.lnk:active,.ck-inst:active,
     nav.tabs button:active,.sph:active,.htop a:active{transform:none}
     .onda{display:none}.carimbo{animation:none}}
+
+
+  /* == v27 ICONE COM CORPO ==================================================
+     Os glifos ja eram vetor Lucide — traco de espessura unica. O que faltava
+     era volume. `--ico3d` da o angulo (a peca vista de canto, nao de frente) e
+     `--icoExt` empilha o contorno em profundidade: cada drop-shadow segue a
+     silhueta do glifo, entao o resultado le como chapa recortada, nao como
+     sombra colada atras.
+
+     Regra herdada da v16holo e mantida aqui: nada disso encolhe o alvo de
+     clique. O angulo e do DESENHO, a area de toque continua reta e cheia.     */
+  :root{
+    --ico3d:perspective(180px) rotateY(-13deg) rotateX(5deg);
+    --ico3dFrente:perspective(180px) rotateY(-4deg) rotateX(2deg)}
+
+  .sph .i .jico,nav.tabs button .ti .jico,.cover-seal .jico{
+    transform:var(--ico3d);transform-style:preserve-3d;
+    transform-origin:60% 50%}
+
+  /* extrusao: tres degraus de contorno, do vivo ao quase apagado. Mais que
+     tres vira borrao em 18px; menos que tres nao fecha a lateral.             */
+  .sph.on .i .jico,nav.tabs button.on .ti .jico{
+    filter:drop-shadow(1.5px 1px 0 color-mix(in oklch,var(--esf,var(--ion)) 46%,black))
+           drop-shadow(2.5px 2px 0 color-mix(in oklch,var(--esf,var(--ion)) 26%,black))
+           drop-shadow(0 0 8px color-mix(in oklch,var(--esf,var(--ion)) 62%,transparent))}
+  .cover-seal .jico{
+    filter:drop-shadow(2px 1.5px 0 color-mix(in oklch,var(--esf) 44%,black))
+           drop-shadow(3.5px 3px 0 color-mix(in oklch,var(--esf) 22%,black))
+           drop-shadow(0 0 11px color-mix(in oklch,var(--esf) 55%,transparent))}
+
+  /* ao apontar, a peca gira para quase de frente: o 3D vira resposta, nao
+     enfeite parado. E o unico jeito de um icone estatico parecer vivo.        */
+  .sph:hover .i .jico,nav.tabs button:hover .ti .jico,.cover-seal:hover .jico{
+    transform:var(--ico3dFrente) scale(1.06)}
+
+  @media (max-width:560px){                 /* em 16px o angulo come o traco */
+    :root{--ico3d:perspective(200px) rotateY(-8deg) rotateX(3deg)}}
+  @media (prefers-reduced-motion:reduce){
+    :root{--ico3d:none;--ico3dFrente:none}
+    .sph.on .i .jico,nav.tabs button.on .ti .jico,.cover-seal .jico{filter:none}}
 
 </style>
 </head>
