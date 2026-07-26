@@ -2072,6 +2072,79 @@
     ::view-transition-old(jfn-miolo),::view-transition-new(jfn-miolo){animation:none}
     body.navegando nav.tabs::after{animation:none;opacity:0}}
 
+
+  /* == v32 MALHA DE ENERGIA =================================================
+     O painel tinha luz em cada peca e nenhuma luz ENTRE as pecas: cada bloco
+     era uma ilha acesa no escuro. A malha e o que faz o conjunto ler como uma
+     instalacao ligada — o mesmo circuito atravessando tudo, na cor da esfera.
+
+     Tres elementos, todos em pseudo-elemento e todos animando so background-
+     position ou transform (compositor; nao forcam layout):
+
+       · TRILHO   — a linha vertical que desce ligando um bloco ao seguinte
+       · PULSO    — a particula de luz que percorre o trilho de cima para baixo
+       · BARRAMENTO — a linha horizontal que liga os cartoes da mesma fileira
+
+     Regra herdada da sessao: nada disso intercepta clique (pointer-events:none
+     em tudo) e nada disso pisca conteudo — a malha e uma camada de luz por
+     baixo, nunca uma condicao de visibilidade.                               */
+
+  /* o trilho nasce no rodape de cada bloco e desce ate o proximo */
+  #view > .fade > .card,#view > .fade > .ck-inst,#view > .fade > section,
+  #view > .fade > .ck-hero,#view > .fade > .ck-nucleo{position:relative}
+  #view > .fade > *:not(:last-child)::before{
+    content:"";position:absolute;left:50%;bottom:-22px;width:1px;height:22px;
+    pointer-events:none;z-index:0;transform:translateX(-50%);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--esf,var(--ion)) 52%,transparent),
+      color-mix(in oklch,var(--esf,var(--ion)) 8%,transparent));
+    opacity:.6}
+
+  /* o pulso desce pelo trilho: um ponto de luz, nao um degrade animado —
+     degrade animado em gradiente forca repaint; transform nao.              */
+  #view > .fade > *:not(:last-child)::after{
+    content:"";position:absolute;left:50%;bottom:-22px;width:3px;height:3px;
+    margin-left:-1.5px;border-radius:50%;pointer-events:none;z-index:1;
+    background:color-mix(in oklch,var(--esf,var(--ion)) 92%,white 30%);
+    box-shadow:0 0 7px color-mix(in oklch,var(--esf,var(--ion)) 80%,transparent);
+    animation:pulsoDesce 2.8s cubic-bezier(.55,0,.45,1) infinite;
+    animation-delay:calc(var(--i,0) * 240ms)}
+  @keyframes pulsoDesce{
+    0%{transform:translateY(0);opacity:0}
+    18%{opacity:1}
+    82%{opacity:1}
+    100%{transform:translateY(22px);opacity:0}}
+
+  /* barramento: liga os cartoes da mesma fileira por tras deles */
+  .grid,.cols{position:relative}
+  .grid::before,.cols::before{content:"";position:absolute;left:6%;right:6%;top:50%;
+    height:1px;pointer-events:none;z-index:0;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 26%,transparent) 12%,
+      color-mix(in oklch,var(--esf,var(--ion)) 26%,transparent) 88%,transparent);
+    opacity:.34}
+  /* a corrente que percorre o barramento — background-position anima sem
+     repintar o elemento inteiro porque a camada e so 1px de altura.         */
+  .grid::after,.cols::after{content:"";position:absolute;left:6%;right:6%;top:50%;
+    height:1px;pointer-events:none;z-index:1;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 95%,white 25%),transparent);
+    background-size:22% 100%;background-repeat:no-repeat;
+    animation:correnteAnda 5.5s linear infinite}
+  @keyframes correnteAnda{from{background-position:-25% 0}to{background-position:125% 0}}
+
+  /* o cartao acende quando a corrente passa por ele: e o mesmo circuito, nao
+     um efeito separado. So no ponteiro — no toque quem responde e a onda.   */
+  .card:hover,.ck-inst:hover{
+    box-shadow:var(--lift),0 0 0 1px color-mix(in oklch,var(--esf,var(--ion)) 34%,transparent)}
+
+  @media (prefers-reduced-motion:reduce){
+    #view > .fade > *:not(:last-child)::after{animation:none;opacity:0}
+    .grid::after,.cols::after{animation:none;opacity:0}}
+  @media (max-width:560px){
+    /* em coluna unica o barramento horizontal nao liga nada — some. */
+    .grid::before,.grid::after,.cols::before,.cols::after{display:none}}
+
 </style>
 </head>
 <body>
