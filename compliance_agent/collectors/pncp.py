@@ -740,22 +740,28 @@ if __name__ == "__main__":
     import json
     import sqlite3
     import sys
+    from compliance_agent.coleta_lock import coleta_lock
     args = sys.argv[1:]
-    con = sqlite3.connect("data/compliance.db", timeout=60)
-    con.execute("PRAGMA busy_timeout=60000")
-    if "--aditivos" in args:
-        # SÓ fase 2: termos aditivos sobre os contratos estaduais já coletados (desacopla do rate-limit)
-        lim = next((int(a) for a in args if a.isdigit()), 8000)
-        r = asyncio.run(coletar_contratos_estado(con, so_aditivos=True, limite_termos=lim))
-    elif "--incremental" in args:
-        # timer diário: contratos dos 2 meses recentes + fatia de termos p/ completar a cobertura
-        hoje = date.today()
-        ai, mi = (hoje.year - 1, 12) if hoje.month == 1 else (hoje.year, hoje.month - 1)
-        r = asyncio.run(coletar_contratos_estado(con, ano_ini=ai, mes_ini=mi,
-                                                 ano_fim=hoje.year, mes_fim=hoje.month, limite_termos=800))
-    else:
-        ai = int(args[0]) if args and args[0].isdigit() else 2021
-        lim = next((int(a) for a in args[1:] if a.isdigit()), 4000)
-        r = asyncio.run(coletar_contratos_estado(con, ano_ini=ai, limite_termos=lim))
-    con.close()
+    # Este entrypoint escreve no MESMO compliance.db que o fisc_coletar_tudo (que já pega o
+    # lock). Sem pegar deste lado, o mutex não serializa nada: o intel-cache das 07:10 atropelou
+    # o fisc-refresh em 2026-07-20 e morreu ele próprio em 2026-07-25, ambos com 'database is
+    # locked'. 60s de busy_timeout não seguram a janela matinal — 5 min seguram.
+    with coleta_lock():
+        con = sqlite3.connect("data/compliance.db", timeout=300)
+        con.execute("PRAGMA busy_timeout=300000")
+        if "--aditivos" in args:
+            # SÓ fase 2: termos aditivos sobre os contratos estaduais já coletados (desacopla do rate-limit)
+            lim = next((int(a) for a in args if a.isdigit()), 8000)
+            r = asyncio.run(coletar_contratos_estado(con, so_aditivos=True, limite_termos=lim))
+        elif "--incremental" in args:
+            # timer diário: contratos dos 2 meses recentes + fatia de termos p/ completar a cobertura
+            hoje = date.today()
+            ai, mi = (hoje.year - 1, 12) if hoje.month == 1 else (hoje.year, hoje.month - 1)
+            r = asyncio.run(coletar_contratos_estado(con, ano_ini=ai, mes_ini=mi,
+                                                     ano_fim=hoje.year, mes_fim=hoje.month, limite_termos=800))
+        else:
+            ai = int(args[0]) if args and args[0].isdigit() else 2021
+            lim = next((int(a) for a in args[1:] if a.isdigit()), 4000)
+            r = asyncio.run(coletar_contratos_estado(con, ano_ini=ai, limite_termos=lim))
+        con.close()
     print(json.dumps(r, ensure_ascii=False), flush=True)
