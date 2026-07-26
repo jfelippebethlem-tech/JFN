@@ -2340,6 +2340,30 @@
     vertical-align:middle;margin-right:6px;flex:0 0 auto}
   .sisbar{position:relative;height:10px;border-radius:6px;background:var(--bg2);
     border:1px solid var(--bd2);overflow:hidden;margin-top:8px}
+  /* ================= v47 CONTRASTE — lote 2 (os casos REAIS) ==============
+     Do laudo das 51: hfvazio 4.21 e a leitura da capa (.cover .s) 4.32 —
+     perto do minimo, mas abaixo. Os demais do laudo foram VERIFICADOS um a um
+     e sao artefato de medicao (o auditor pega o pior pixel de gradiente/luz
+     viajante): chip.on mede 1.36 mas e texto escuro sobre chip claro,
+     conferido no pixel e no olho. Nao dessaturar o que ja brilha por causa de
+     numero de instrumento — a lei e o olho + o pixel juntos.                */
+  #holofeed .hf-vazio{color:oklch(0.90 0.02 235)}
+  .cover .s{color:oklch(0.79 0.025 240)}
+
+  /* ================= v46 O CHIP ATIVO FALA A COR DA ESFERA =================
+     .chip.on nasceu com --accent (ciano) travado: numa aba da Prefeitura o
+     chip ligado ficava AZUL sobre teatro ambar — quebra a lei da casa de que
+     trocar de esfera troca a cor de todo o circuito. Agora herda --esf, com
+     ciano de fallback (esfera 'inicio').                                    */
+  #view .chip.on{
+    background:linear-gradient(var(--esf,var(--accent)),var(--esf,var(--accent))) padding-box,
+      conic-gradient(from var(--angle),white 0 40deg,
+        color-mix(in oklch,var(--esf,var(--accent)) 55%,transparent) 40deg 360deg) border-box;
+    box-shadow:0 0 16px -6px color-mix(in oklch,var(--esf,var(--accent)) 60%,transparent)}
+  #view .chip.on::after{border-color:color-mix(in oklch,var(--esf,var(--accent)) 45%,transparent)}
+  @media (prefers-reduced-motion:reduce){
+    #view .chip.on{background:var(--esf,var(--accent));border-color:var(--esf,var(--accent))}}
+
   .sisbar>i{position:absolute;top:0;bottom:0;left:0;border-radius:inherit;
     background:linear-gradient(90deg,
       color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent),var(--esf,var(--ion)));
@@ -2412,6 +2436,11 @@ const $=id=>document.getElementById(id);
 // ícone da aba = glifo SVG sci-fi (Lucide/ISC), tingido pela esfera. Fallback: emoji.
 const svgIco=e=>{const g=window.JFN_ICO&&window.JFN_ICO[e];
   return g?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>`:e;};
+/* v45: _redMotion vive no TOPO. Estava declarado 2.800 linhas abaixo e o boot
+   (nucleoStart, canvas do nucleo) o lia antes — ReferenceError de TDZ que
+   matava a montagem do nucleo em toda carga. Mesmo motivo do _rjCbs. */
+var _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes da def
 var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtN=n=>(n==null?'—':Number(n).toLocaleString('pt-BR'));
@@ -5296,14 +5325,14 @@ function ckPull(first){
    da lâmina (estado) e o arco do Kyber (carga da VM). Se o SSE cair, o EventSource
    reconecta sozinho; o badge diz a verdade ("reconectando"), e o painel segue no
    polling de 30s que sempre existiu — tempo real é elevação, não dependência. */
-const _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* v45: declarado no TOPO — ver comentario da declaracao. */
 
 /* v37: NEBULOSA VIVA — o fundo da esfera deixa de ser foto parada quando o
    loop de video existe em /static/assets/<nome>.mp4. Encaixe progressivo:
    o JPG segue por baixo como poster; se o arquivo nao existe (HEAD != 200),
    nada muda — os loops encomendados ao it-campo acendem sozinhos ao chegar.
    portal-hero.mp4 ja existe: o inicio acende hoje. */
-const _nebVid={};
+/* v45: _nebVid vive no TOPO (mesmo TDZ do _redMotion). */
 async function nebulaViva(){
   const mapa={estado:'nebula-estado',prefeitura:'nebula-prefeitura',
               geral:'nebula-transversal',inicio:'portal-hero'};
@@ -5653,8 +5682,12 @@ function portalStart(){
           atraso acumulado — melhor entregar o painel do que exibir a animacao
           em avanco rapido.                                                     */
   setTimeout(portalFim,FIM+90);
-  document.addEventListener(visibilitychange,()=>{
-    if(document.visibilityState===visible&&performance.now()-t0>=FIM)portalFim();});
+  /* v45: as aspas destes dois literais foram comidas pelo shell no patch que
+     criou a trava (armadilha ja documentada: heredoc com aspas duplas por
+     fora). O ReferenceError matava o RESTO do bloco do portal — o segundo
+     guarda-corpo da abertura nunca existiu. */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'&&performance.now()-t0>=FIM)portalFim();});
 }
 portalStart();
 
