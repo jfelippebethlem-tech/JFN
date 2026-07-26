@@ -1961,8 +1961,13 @@
      porque o texto de apoio varia de uma linha a quatro. Em painel, fileira
      desalinhada le como quebrado. O grid ja iguala; o que faltava era o corpo
      do cartao empurrar o rodape para baixo em vez de deixar buraco no meio.   */
-  .kpi{display:flex;flex-direction:column}
-  .kpi .foot,.kpi .sub:last-child{margin-top:auto}
+  /* v28.1: a regra mirava `.kpi`, que NAO EXISTE no inicio — os cartoes do
+     cockpit sao `.ck-inst`. A correcao de altura nao atingia alvo nenhum; so
+     descobri medindo (querySelectorAll(.kpi) = 0 na aba inicio). Fica valendo:
+     conferir que o seletor casa com algo ANTES de dar o fix por feito.        */
+  .ck-inst{display:flex;flex-direction:column}
+  .ck-inst .lab{flex:0 0 auto}
+  .ck-inst .sub,.ck-inst .foot{margin-top:auto}
 
 </style>
 </head>
