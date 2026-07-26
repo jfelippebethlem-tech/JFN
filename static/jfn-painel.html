@@ -40,7 +40,7 @@
     --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     --r:10px; --r2:12px;
     /* vidro líquido: highlight especular no topo + profundidade + luz ambiente */
-    --sh:inset 0 1px 0 oklch(1 0 0/.07), inset 0 -1px 0 oklch(0 0 0/.18), 0 1px 2px oklch(0 0 0/.3), 0 14px 34px -24px oklch(0 0 0/.65);
+    --sh:inset 0 1px 0 -0.5px oklch(1 0 0/.08), inset 0 -1px 0 -0.5px oklch(0 0 0/.2), 0 1px 2px oklch(0 0 0/.3), 0 14px 34px -24px oklch(0 0 0/.65);
     --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
     --saber:var(--teal); --esf:var(--accent)}
   body[data-esf="estado"]{--esf:var(--blue)}
@@ -622,7 +622,14 @@
     --card:oklch(0.183 0.036 259); --card2:oklch(0.159 0.033 260); --raise:oklch(0.228 0.042 257);
     --bd:oklch(0.50 0.08 255/.5); --bd2:oklch(0.42 0.062 258/.34); --glass:oklch(0.142 0.036 261/.76);
     /* profundidade física: uma sombra só, usada por todo controle que salta do plano */
-    --lift:inset 0 1px 0 oklch(1 0 0/.10), inset 0 -1px 0 oklch(0 0 0/.32),
+    /* v28.2: o bisel era `inset 0 1px 0` + `inset 0 -1px 0` — duas LINHAS de 1px
+       por dentro da borda de 1px do cartao. Em tela de DPR fracionario (o Chrome
+       do dono roda a 1.5) a linha inset e a borda caem em subpixels diferentes e
+       o navegador pinta as duas: o cartao ganha um contorno fantasma deslocado e
+       le como dois cartoes sobrepostos — foi isso que o dono chamou de "botao
+       duplicado". Trocado por spread negativo: o bisel encolhe meio pixel para
+       dentro, entao nunca disputa a mesma fileira de pixels com a borda.       */
+    --lift:inset 0 1px 0 -0.5px oklch(1 0 0/.11), inset 0 -1px 0 -0.5px oklch(0 0 0/.34),
            0 2px 4px -2px oklch(0 0 0/.5), 0 12px 28px -18px oklch(0 0 0/.8);
     --persp:640px}
   body[data-esf="estado"]{--esf:var(--ion)}
