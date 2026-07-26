@@ -691,7 +691,7 @@
   body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/nebula-estado.jpg);opacity:.20}
   body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/nebula-prefeitura.jpg);opacity:.20}
   body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/nebula-transversal.jpg);opacity:.19}
-  body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/portal-nebula.jpg);opacity:.16}
+  body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/portal-hero.jpg);opacity:.14}
   @keyframes nebulaDrift{from{transform:translate3d(-1.5%,0,0) scale(1.04)}to{transform:translate3d(1.5%,1.5%,0) scale(1.09)}}
   @media (prefers-reduced-motion:reduce){#esfnebula{animation:none}}
 
@@ -736,8 +736,8 @@
      comia as palavras do meio e a frase virava ilegível).                   */
   #portal{position:fixed;inset:0;z-index:100;
     /* nebulosa fotográfica (Pollinations/Flux) escurecida sob o shader procedural */
-    background:linear-gradient(oklch(0.04 0.015 265/.52),oklch(0.035 0.014 265/.72)),
-               url(/static/assets/portal-nebula.jpg) center/cover no-repeat,
+    background:linear-gradient(oklch(0.04 0.015 265/.34),oklch(0.035 0.014 265/.60)),
+               url(/static/assets/portal-hero.jpg) 50% 46%/cover no-repeat,
                oklch(0.035 0.014 265);
     display:flex;align-items:flex-end;justify-content:center;cursor:pointer;
     transition:opacity .34s ease,filter .34s ease}
@@ -745,7 +745,23 @@
   #portal::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56%;z-index:1;pointer-events:none;
     background:linear-gradient(180deg,transparent,oklch(0.035 0.014 265/.62) 46%,oklch(0.035 0.014 265/.94))}
   #portal.off{opacity:0;pointer-events:none;filter:blur(6px)}
-  #pcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  /* v27: o shader desenhava um nucleo azul OPACO em cima do nucleo incandescente
+     da arte — dois nucleos disputando o mesmo pixel, e o de cima era um borrao.
+     Em `screen` o preto do shader some e so a luz soma: a maquina fotografada
+     continua visivel POR BAIXO, e o procedural volta a ser o que deve ser —
+     o que se mexe, nao o que tapa. */
+  #pcv{position:absolute;inset:0;width:100%;height:100%;display:block;
+    mix-blend-mode:screen;opacity:.62;
+    /* o shader nao desenha onde a arte JA e heroi. O nucleo procedural era um
+       disco azul saturado bem em cima do nucleo incandescente da foto: dois
+       nucleos no mesmo pixel, e ganhava o borrao. A mascara abre um furo
+       exatamente no centro do reator (51% x 46%, onde o shader poe seu miolo),
+       entao sobra do procedural o que ele faz bem — raios, particulas, o campo
+       que se mexe — e o coracao volta a ser a peca fotografada. */
+    -webkit-mask-image:radial-gradient(circle min(27vmin,250px) at 51% 46%,
+      transparent 0 46%,rgba(0,0,0,.30) 72%,#000 100%);
+    mask-image:radial-gradient(circle min(27vmin,250px) at 51% 46%,
+      transparent 0 46%,rgba(0,0,0,.30) 72%,#000 100%)}
   /* o território: malha REAL do RJ (IBGE) revelada pela varredura do reator */
   #pmap{position:absolute;inset:0;width:100%;height:100%;display:block;mix-blend-mode:screen;opacity:.92}
   #portal .pui{position:relative;z-index:2;text-align:center;pointer-events:none;
@@ -1822,6 +1838,47 @@
   @font-face{font-family:"Orbitron";src:url(/static/assets/fonts/Orbitron-var.woff2) format("woff2");
     font-weight:400 900;font-display:swap;
     unicode-range:U+0020-007E,U+00C0-00FF,U+0100-017F}
+
+
+  /* == v27 TATO — todo controle responde ao toque ==========================
+     O dono: "cheio de botoes estanques", "voce clica e tem que ter animacao".
+     Ele esta certo: o painel tinha hover em tudo e ACTIVE em nada. Hover nao
+     existe no celular, entao no telefone o painel inteiro era mudo ao toque.
+
+     Sao tres respostas, todas em compositor (transform/opacity), nenhuma
+     forcando layout:
+       1. afunda   — o controle cede 1px sob o dedo. E o feedback mais antigo
+                     que existe e o unico que le como "eu registrei".
+       2. onda     — um circulo de luz nasce no controle e se abre. Vive num
+                     pseudo com pointer-events:none, entao nao rouba o clique.
+       3. carimbo  — a linha de tabela e o card piscam a cor da esfera.
+     Nada aqui encolhe alvo de clique: a licao da v16holo vale para todos.    */
+  .btn,.chip,.tab,.lnk,.clk,.ck-inst,.card,nav.tabs button,.sph,.htop a{
+    -webkit-tap-highlight-color:transparent}
+  .btn:active,.chip:active,.tab:active,.lnk:active,.ck-inst:active,
+  nav.tabs button:active,.sph:active,.htop a:active{
+    transform:translateY(1px) scale(.995)}
+  .clk:active{filter:brightness(1.35)}
+
+  /* a onda. `--ondaC` herda a esfera, entao a cor do toque muda de esfera. */
+  .btn,.chip,.lnk,.ck-inst,nav.tabs button,.sph{--ondaC:var(--esf,var(--ion))}
+  .btn::after,.chip::after,.lnk::after,nav.tabs button::after,.sph::after{pointer-events:none}
+  .onda{position:absolute;border-radius:50%;pointer-events:none;z-index:3;
+    background:radial-gradient(circle,color-mix(in oklch,var(--ondaC) 62%,white 20%) 0%,
+      color-mix(in oklch,var(--ondaC) 30%,transparent) 45%,transparent 70%);
+    transform:translate(-50%,-50%) scale(0);opacity:.85;
+    animation:ondaAbre .52s cubic-bezier(.2,.8,.3,1) forwards}
+  @keyframes ondaAbre{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+
+  /* carimbo: a linha que respondeu pisca a cor da esfera e volta */
+  @keyframes carimbo{0%{background-color:color-mix(in oklch,var(--esf,var(--ion)) 26%,transparent)}
+    100%{background-color:transparent}}
+  .carimbo{animation:carimbo .6s ease-out 1}
+
+  @media (prefers-reduced-motion:reduce){
+    .btn:active,.chip:active,.tab:active,.lnk:active,.ck-inst:active,
+    nav.tabs button:active,.sph:active,.htop a:active{transform:none}
+    .onda{display:none}.carimbo{animation:none}}
 
 </style>
 </head>
@@ -4982,6 +5039,43 @@ function _sphMask(){const s=document.querySelector('.spheres');if(!s)return;
 addEventListener('resize',_sphMask);
 document.addEventListener('scroll',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('spheres'))_sphMask();},true);
 setTimeout(_sphMask,600);
+
+/* ── v27 TATO: a onda nasce onde o dedo tocou ────────────────────────────
+   Um listener so, delegado no documento, em vez de um por controle: o painel
+   troca o innerHTML de #view a cada aba, entao listener por elemento morreria
+   junto com a aba. Delegacao sobrevive a troca.
+   `pointerdown` e nao `click`: a resposta tem que sair no TOQUE, nao na
+   soltura — 100ms de atraso ja le como travado.                            */
+(function(){
+  const ALVO='.btn,.chip,.tab,.lnk,.ck-inst,nav.tabs button,.sph,.htop a,.kpi';
+  let ultima=0;
+  addEventListener('pointerdown',ev=>{
+    const agora=performance.now();
+    if(agora-ultima<60)return;                       // teto: nao empilha onda
+    const el=ev.target&&ev.target.closest&&ev.target.closest(ALVO);
+    if(!el)return;
+    if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    ultima=agora;
+    const r=el.getBoundingClientRect();
+    const cs=getComputedStyle(el);
+    if(cs.position==='static')el.style.position='relative';
+    if(cs.overflow==='visible')el.style.overflow='hidden';
+    const d=Math.max(r.width,r.height)*2.1;
+    const o=document.createElement('span');
+    o.className='onda';
+    o.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(ev.clientX-r.left)+'px;top:'+(ev.clientY-r.top)+'px';
+    el.appendChild(o);
+    setTimeout(()=>o.remove(),560);
+  },{passive:true});
+
+  /* linha de tabela e card: carimbo da esfera ao serem acionados */
+  addEventListener('click',ev=>{
+    const l=ev.target&&ev.target.closest&&ev.target.closest('tr,.card');
+    if(!l||matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    l.classList.remove('carimbo');void l.offsetWidth;l.classList.add('carimbo');
+    setTimeout(()=>l.classList.remove('carimbo'),620);
+  },{passive:true});
+})();
 </script>
 </body>
 </html>
