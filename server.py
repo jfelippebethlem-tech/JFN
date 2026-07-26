@@ -385,7 +385,13 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
      `contain` mostra a peca inteira e a ancora no alto, atras da marca; a
      vinheta cresce para o rodape para o cartao continuar pousado no escuro. */
   @media (max-width:560px){
-    body::before{background-size:150% auto;background-position:50% 16%;opacity:.30}
+    /* `auto` faz a peca terminar numa linha reta no meio da tela: abaixo dela
+       nao ha imagem, e a emenda com o preto aparece como um corte. A mascara
+       dissolve o rodape da propria peca, entao ela FUNDE no fundo em vez de
+       acabar. Vale so em retrato — no desktop `cover` ja preenche tudo.      */
+    body::before{background-size:168% auto;background-position:50% 13%;opacity:.34;
+      -webkit-mask-image:linear-gradient(180deg,#000 0 46%,transparent 92%);
+      mask-image:linear-gradient(180deg,#000 0 46%,transparent 92%)}
     body::after{background:radial-gradient(ellipse 120% 34% at 50% 16%,transparent,
       oklch(0.035 0.014 265/.80) 64%,var(--bg) 100%)}
     /* "CENTRAL DE INTELIGENCIA · RJ" quebrava com o RJ orfao na segunda linha.
