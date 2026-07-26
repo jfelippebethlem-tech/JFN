@@ -73,9 +73,22 @@
     color:var(--gold);font-variant-numeric:tabular-nums;margin:8px 0 6px;
     text-shadow:0 0 22px color-mix(in oklch,var(--gold) 38%,transparent)}
   .ck-sub{color:var(--mut);font-size:13.5px;max-width:64ch;line-height:1.55}.ck-sub b{color:var(--tx);font-weight:600}
-  @media (min-width:820px){.ck-hero{display:grid;grid-template-columns:1.5fr 1fr;gap:28px;align-items:center}.ck-hero .ck-ved{margin-top:0}}
+  /* v28: o hero reservava 1fr para o veredito, que nasce oculto ate a API de
+     fornecedor vedado responder — e quando nao ha vedado, NUNCA responde. Metade
+     direita do primeiro card do painel ficava vazia por construcao. `:has` deixa
+     a coluna existir so quando ha o que por nela; sem veredito o texto assume uma
+     coluna com medida de leitura, em vez de uma coluna morta ao lado.          */
+  @media (min-width:820px){
+    .ck-hero{display:grid;grid-template-columns:minmax(0,1fr);gap:28px;align-items:center}
+    .ck-hero:has(.ck-ved:not([hidden])){grid-template-columns:1.5fr 1fr}
+    .ck-hero:not(:has(.ck-ved:not([hidden]))) .ck-sub{max-width:72ch}
+    .ck-hero .ck-ved{margin-top:0}}
   .ck-ved{margin-top:14px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:10px 14px;
-    border:1px solid color-mix(in oklch,var(--rose) 32%,transparent);border-left:2px solid var(--rose);
+    /* v28: era `border-left:2px solid` — faixa lateral colorida, o padrao que a
+       skill impeccable proibe: le como enfeite de callout, nao como estado. A
+       gravidade agora vem da borda INTEIRA mais forte e da tinta de fundo, que e
+       o mesmo sinal sem o vies de "alerta de template". */
+    border:1px solid color-mix(in oklch,var(--rose) 48%,transparent);
     border-radius:8px;background:color-mix(in oklch,var(--rose) 7%,transparent);animation:graveGlow 3.2s ease-in-out infinite}
   .ck-ved .n{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--rose);font-variant-numeric:tabular-nums;
     text-shadow:0 0 14px color-mix(in oklch,var(--rose) 45%,transparent)}
@@ -1925,6 +1938,31 @@
   @media (prefers-reduced-motion:reduce){
     :root{--ico3d:none;--ico3dFrente:none}
     .sph.on .i .jico,nav.tabs button.on .ti .jico,.cover-seal .jico{filter:none}}
+
+
+  /* == v28 INICIO ==========================================================
+     Tres defeitos do register product, na tela que todo mundo ve primeiro.   */
+
+  /* (a) VAZIO QUE ENSINA. Os cartoes sem dado mostravam um traco e a palavra
+     "aguardando...". Vazio nao e ausencia de estado: e um estado, e ele tem
+     que dizer o que vai aparecer ali e por que ainda nao apareceu. O traco
+     fica (e a marca honesta de "sem numero"), mas ganha legenda.             */
+  .card .num:empty::after,.kpi .num:empty::after{content:"—";color:var(--dim)}
+  .ck-vazio{display:block;margin-top:6px;font-size:11.5px;line-height:1.45;color:var(--dim)}
+  .ck-vazio b{color:var(--mut);font-weight:500}
+
+  /* (b) O TICKER cortava palavra nas duas pontas — a primeira e a ultima frase
+     entravam pela metade. Mascara nas bordas: o texto ENTRA e SAI, nao e
+     decepado. E o `overflow:hidden` continua fazendo o trabalho por baixo.    */
+  .ck-ticker{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 44px,#000 calc(100% - 44px),transparent 100%);
+    mask-image:linear-gradient(90deg,transparent 0,#000 44px,#000 calc(100% - 44px),transparent 100%)}
+
+  /* (c) ALTURA. A segunda fileira de KPI tinha cartoes de alturas diferentes
+     porque o texto de apoio varia de uma linha a quatro. Em painel, fileira
+     desalinhada le como quebrado. O grid ja iguala; o que faltava era o corpo
+     do cartao empurrar o rodape para baixo em vez de deixar buraco no meio.   */
+  .kpi{display:flex;flex-direction:column}
+  .kpi .foot,.kpi .sub:last-child{margin-top:auto}
 
 </style>
 </head>
@@ -3857,7 +3895,7 @@ async function renderCockpit(){
       <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
       <div class="ck-big" id="ck-econ">R$ ——</div>
       <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div></div>
-      <div class="ck-ved" id="ck-vedbox" style="display:none"><span class="n" id="ck-ved">R$ —</span>
+      <div class="ck-ved" id="ck-vedbox" hidden><span class="n" id="ck-ved">R$ —</span>
         <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
     </div>
     <div class="ck-nucleo" id="ck-nucleo"><canvas id="nucleo-cv" aria-hidden="true"></canvas>
@@ -4690,7 +4728,7 @@ function ckPull(first){
     // desta mesma tela já publica a homogênea (6,2 mi/106). O ticker ficou com o número velho:
     // duas manchetes contraditórias a 30px uma da outra. Uma fonte só, a defensável.
     ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_homogenea)}</b> em ${fmtN(d.n_compras_homogeneas)} compras`}]);});
-  J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
+  J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.hidden=false;_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
     ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ RADAR ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
