@@ -398,8 +398,13 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
        Menos tracking e balance resolvem sem encolher a letra a ponto de sumir. */
     .sub{font-size:9.5px;letter-spacing:1.3px;text-wrap:balance}
     .card{padding:26px 22px 22px}
-    /* o cartao ficava acima do centro optico com um vazio grande embaixo */
-    body{align-items:center;padding-bottom:12svh}
+    /* O cartao pousava no terco superior e a metade de baixo ficava preta e
+       morta. Duas coisas resolvem: o cartao vai para o centro optico de vez
+       (sem o padding que o empurrava para cima), e a peca deixa de ser so uma
+       faixa no topo — sobe para 210% e desce por tras do cartao, entao o escuro
+       de baixo passa a ser o fim da imagem e nao a ausencia dela.            */
+    body{align-items:center;padding-bottom:0}
+    body::before{background-size:210% auto;background-position:50% 4%}
   }
 </style></head><body>
 <form class=card method=post action=/login_jfn>
