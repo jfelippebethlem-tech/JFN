@@ -94,3 +94,51 @@ pseudo-elemento nunca foi gerado, e a camada ficou invisível **com a suíte tod
 2. Botão: só com o trilho, ver a seção de reprovação.
 3. Auditoria CDP de contraste (`tools/auditar_contraste.py`, 51 abas) é longa; rodar até
    o fim e conferir ≥4.5:1.
+
+---
+
+# ANEXO — auditoria de fecho (2026-07-26)
+
+## Site
+`curl localhost:8000/painel` → **200** · funnel `https://jfn-core.tailbbe6c9.ts.net/painel` → **303**.
+
+## Suíte
+- Guardiãs (`test_painel_abas.py` + `test_painel_css_integro.py`): **6 passed** em cada uma das 4 etapas.
+- Suíte completa: **2762 passed, 2 failed, 7 skipped, 7 errors** em 18m51s.
+  Os **7 errors** são `tests/test_auditor_contraste.py` — eu estava rodando
+  `tools/auditar_contraste.py` em paralelo e os dois disputam a mesma conexão CDP em
+  `:9222` (`RuntimeError`). **Não rodar os dois juntos.** As 2 falhas restantes não foram
+  identificadas nesta sessão (o log do harness só guardou a cauda).
+
+## Contraste (CDP, WCAG 2.1) — 4 padrões abaixo de 4.5:1
+
+Medido em `i_cockpit`, `e_pericias`, `g_radar` (`tools/auditar_contraste.py <abas>`):
+
+| razão | tam | aba | classe | texto |
+|---|---|---|---|---|
+| **2.04:1** | 10px | i_cockpit | `hfload` | "load 5.08 · ram 30%" |
+| **3.12:1** | 10px | e_pericias | `hf-t` | "holofeed" |
+| **3.90:1** | 9.5px | i_cockpit | `nu-legend` | "Mesa de vigília · cada feixe" |
+| **4.45:1** | 12px | g_radar | `dim` | "Score 0-100 somando sinais" |
+
+**São PRÉ-EXISTENTES, não regressão das camadas de arte.** Verificado por medição direta:
+screenshot do `#ck-nucleo` com e sem `.ck-nucleo::before`, amostrando o fundo real sob a
+legenda — **7.06:1 sem a mesa · 7.05:1 com a mesa** (Δ 0.01). A arte entra em `screen`
+sobre região já escura: soma luz onde a arte é clara, e ali ela é quase preta.
+As três primeiras são texto de 9.5–10px, onde o mínimo é o mais duro de atingir.
+
+**Correção sugerida (não aplicada — fora do escopo de arte, e cada verificação custa
+minutos de auditoria):** subir `hfload`, `hf-t` e `nu-legend` para um cinza com ≥4.5:1
+sobre o fundo do cartão. `hfload` a 2.04:1 é o mais grave.
+
+## Bug do próprio auditor (pré-existente)
+`tools/auditar_contraste.py` nas 51 abas **quebra**:
+
+```
+File "tools/auditar_contraste_pixel.py", line 374, in medir_pagina_atual
+  laudo.append(_veredito(alvos[x["cpx"]], ...
+KeyError: 30
+```
+
+Passar as abas explicitamente contorna. Enquanto isso não for corrigido, não existe laudo
+das 51 abas — só por lote.
