@@ -742,6 +742,29 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
     return None
 
 
+def leitura_truncada(tentados: int, com_conteudo: int, pagina_viva: bool) -> bool:
+    """A leitura morreu no meio, ou o processo é legitimamente sem conteúdo?
+
+    Só é truncada quando faltou conteúdo E a página já não responde. Documento
+    restrito (cadeado) devolve conteúdo vazio com a página VIVA — isso é dado
+    real e deve ser cacheado normalmente.
+    """
+    if tentados <= 0:
+        return False
+    return com_conteudo < tentados and not pagina_viva
+
+
+async def _pagina_viva(pg) -> bool:
+    """Sonda barata de vida do browser. Erro = morto (nunca presume vivo)."""
+    try:
+        if pg.is_closed():
+            return False
+        await pg.evaluate("1")
+        return True
+    except PWError:  # inclui TargetClosedError (page/context/browser fechado)
+        return False
+
+
 async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool = True) -> dict:
     """Monta o resultado canônico (mesmo formato de ``ler_processo``) a partir do dump CRACKED:
     extrai o conteúdo dos primeiros docs, regex de cnpjs/valores e grava ``cdp_*.json``. Honesto:
@@ -836,8 +859,9 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava"}}
     # conteúdo dos documentos (TODOS, bounded a 40 p/ não estourar; OCR de scan via _conteudo_doc)
     _max_docs = int(os.environ.get("SEI_MAX_DOCS", "40"))
+    _tentados = dump["documentos"][:_max_docs]
     docs_txt = []
-    for doc in dump["documentos"][:_max_docs]:
+    for doc in _tentados:
         c = await _conteudo_doc(pg, doc)
         if c:
             docs_txt.append(c)
@@ -852,6 +876,19 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     # 2026-07-10: o filtro do menu (sei_cdp) zerou o rel~40 da caixa → rel>=15 ficou cego; o sinal
     # direto agora é arvore_vista=False (nenhum frame com infraArvoreNo = processo NÃO abriu).
     if not res["documentos"] and (len(res["relacionados"]) >= 15 or not dump.get("arvore_vista")):
+        res["indisponivel"] = True
+        return res
+    # LEITURA TRUNCADA (browser morto no meio do laço de conteúdo) → NÃO gravar cache.
+    # Sem esta guarda a árvore (já extraída) era salva com conteudo_documentos=[] e o
+    # checkpoint marcava n_docs>0 — o processo NUNCA mais voltava à fila. 75 processos
+    # foram perdidos assim até 2026-07-23. É o mesmo pecado do insert_textbox: salvar
+    # como sucesso o que falhou. A sonda de vida separa isto de "todos os docs são
+    # restritos" (conteúdo vazio LEGÍTIMO, com a página viva).
+    if leitura_truncada(len(_tentados), len(docs_txt), await _pagina_viva(pg)):
+        logger.warning("leitura truncada em %s (%d/%d docs com conteúdo, browser caiu) "
+                       "— NÃO gravando cache p/ o processo voltar à fila",
+                       proc, len(docs_txt), len(_tentados))
+        res["_leitura_truncada"] = True
         res["indisponivel"] = True
         return res
     try:

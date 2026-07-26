@@ -46,7 +46,7 @@ while : ; do
   fi
 
   say "rodando sei_sweep (guards OK: ${guard#*|})"
-  nice -n 15 ionice -c3 timeout 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1
+  nice -n 15 ionice -c3 timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1
   say "sei_sweep rc=$?"
   sleep 15   # respiro entre sessões (deixa a VM e o itkava respirarem)
 done

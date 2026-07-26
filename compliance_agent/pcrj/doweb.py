@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sqlite3
 import time
 from datetime import datetime, timezone
 from typing import Optional
@@ -57,10 +58,23 @@ _TIPOS = [
     ("homologacao", re.compile(
         r"homolog\w*\s+(o\s+|a\s+)?(resultado|julgamento|a\s+licita|licita[çc][ãa]o|preg[ãa]o|"
         r"concorr[êe]ncia|certame|adjudica)|adjudico?\s+o\s+objeto", re.I)),
+    # dispensa/inexigibilidade ANTES de 'edital' (contêm a palavra 'licitação', mas são o oposto:
+    # contratação direta — o vetor de risco mais comum de sobrepreço/direcionamento no município)
+    ("dispensa", re.compile(
+        r"dispensa de licita[çc][ãa]o|dispensa eletr[ôo]nica|(?<!in)exig[íi]vel.{0,20}dispensa", re.I)),
+    ("inexigibilidade", re.compile(
+        r"inexigibilidade de licita[çc][ãa]o|inexig[íi]vel a licita|art\.?\s*74.{0,30}14\.?133", re.I)),
+    # termo aditivo (prorrogação/acréscimo) — distinto do contrato original
+    ("aditivo", re.compile(
+        r"termo aditivo|extrato d[eo]\s+aditamento|\baditamento contratual\b|"
+        r"\d[ºo]?\s+aditivo ao contrato", re.I)),
+    # ata de registro de preços
+    ("ata_registro_preco", re.compile(
+        r"ata de registro de pre[çc]os|extrato de ata de registro|\bSRP\b.{0,30}\bata\b", re.I)),
     # extrato de contrato (não "contrato" solto)
     ("extrato_contrato", re.compile(
-        r"extrato d[eo]\s+(termo de\s+)?contrato|termo de contrato n|extrato de instrumento contratual|"
-        r"extrato d[eo]\s+aditamento", re.I)),
+        r"extrato d[eo]\s+(termo de\s+)?contrato|termo de contrato n|extrato de instrumento contratual",
+        re.I)),
     # edital/aviso de licitação
     ("edital", re.compile(
         r"\bedital\b|concorr[êe]ncia p[úu]blica|preg[ãa]o eletr[ôo]nico|preg[ãa]o presencial|"
@@ -213,18 +227,73 @@ def reprocessar(db_path=None) -> dict:
     return {"linhas": len(rows), "reprocessadas": mudados}
 
 
+# Atos de CONTRATAÇÃO municipal — frases exatas para varrer o D.O. inteiro (todos os órgãos),
+# não só saúde/PPP. É o backbone do "acesso total e detalhado" à contratação da Prefeitura sem
+# depender do SEI/SIGA (que têm captcha/bot-defense): o D.O. publica o extrato de tudo.
+TERMOS_CONTRATACAO = [
+    "extrato de contrato",
+    "extrato de termo de contrato",
+    "termo aditivo",
+    "extrato de aditamento",
+    "dispensa de licitação",
+    "inexigibilidade de licitação",
+    "ata de registro de preços",
+    "aviso de licitação",
+    "homologo o resultado",
+    "ratifico a dispensa",
+]
+
+
+def sweep_contratacao(*, anos: Optional[list[int]] = None, ano_min: int = 2024,
+                      max_paginas: int = 8, pausa: float = 1.2, db_path=None,
+                      termos: Optional[list[str]] = None) -> dict:
+    """Varre o D.O. Rio por TODOS os atos de contratação (contrato, aditivo, dispensa,
+    inexigibilidade, ata de RP, homologação) de todos os órgãos — reusa coletar_termo por termo.
+
+    É a fonte P2 do refino PCRJ: barata (ES aberto, sem captcha), abrangente e idempotente.
+    Serial e com pausa (VM 2 vCPU). Retorna o consolidado por termo e por tipo.
+    """
+    termos = termos or TERMOS_CONTRATACAO
+    por_termo = {}
+    por_tipo: dict[str, int] = {}
+    procs: set = set()
+    gravadas = 0
+    for termo in termos:
+        # erro de rede num termo NÃO pode abortar os demais (cada termo é independente)
+        try:
+            r = coletar_termo(termo, ano_min=ano_min, max_paginas=max_paginas,
+                              exata=True, anos=anos, pausa=pausa, db_path=db_path)
+        except (httpx.HTTPError, OSError, ValueError, sqlite3.Error) as exc:
+            por_termo[termo] = {"erro": f"{type(exc).__name__}: {exc}"}
+            continue
+        por_termo[termo] = {"gravadas": r["gravadas"], "por_tipo": r["por_tipo"]}
+        gravadas += r["gravadas"]
+        procs.update(r["processos"])
+        for t, n in r["por_tipo"].items():
+            por_tipo[t] = por_tipo.get(t, 0) + n
+    return {"termos": len(termos), "gravadas_total": gravadas,
+            "processos_unicos": len(procs), "por_tipo": por_tipo, "por_termo": por_termo}
+
+
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Coletor do D.O. Rio (doweb) — busca por termo.")
-    ap.add_argument("termo", help="termo de busca (frase exata por padrão)")
+    ap = argparse.ArgumentParser(description="Coletor do D.O. Rio (doweb).")
+    ap.add_argument("termo", nargs="?", help="termo de busca (frase exata). Omita com --contratacao.")
     ap.add_argument("--ano-min", type=int, default=2021)
     ap.add_argument("--paginas", type=int, default=5)
     ap.add_argument("--anos", default=None, help="filtro nativo por ano no servidor, ex.: 2025,2024")
     ap.add_argument("--nao-exata", action="store_true", help="busca OR (mais ruído)")
+    ap.add_argument("--contratacao", action="store_true",
+                    help="varredura ampla de TODOS os atos de contratação (ignora 'termo')")
     ap.add_argument("--db", default=None)
     a = ap.parse_args()
     anos = [int(x) for x in a.anos.split(",")] if a.anos else None
-    r = coletar_termo(a.termo, ano_min=a.ano_min, max_paginas=a.paginas,
-                      exata=not a.nao_exata, anos=anos, db_path=a.db)
+    if a.contratacao:
+        r = sweep_contratacao(anos=anos, ano_min=a.ano_min, max_paginas=a.paginas, db_path=a.db)
+    elif a.termo:
+        r = coletar_termo(a.termo, ano_min=a.ano_min, max_paginas=a.paginas,
+                          exata=not a.nao_exata, anos=anos, db_path=a.db)
+    else:
+        ap.error("informe um 'termo' ou use --contratacao")
     print(json.dumps(r, ensure_ascii=False, indent=2))
 
 

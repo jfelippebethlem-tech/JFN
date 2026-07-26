@@ -16,7 +16,7 @@ say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
 do_sei(){
   [ -f data/.pause_sei_sweep ] && return
-  say "SEI: lote (--max 10)"; timeout 1800 $PY -m tools.sei_sweep --max 10 >> data/sei_cache/sei_sweep_loop.out 2>&1 || say "SEI rc=$?"
+  say "SEI: lote (--max 10)"; timeout -k 120 --foreground 1800 $PY -m tools.sei_sweep --max 10 >> data/sei_cache/sei_sweep_loop.out 2>&1 || say "SEI rc=$?"
   CPFOUT=$(timeout 600 $PY -m tools.sei_cpf_sweep 2>&1 | tail -1); say "CPF: $CPFOUT"
 }
 do_endereco(){

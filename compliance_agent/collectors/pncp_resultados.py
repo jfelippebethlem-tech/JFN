@@ -495,13 +495,23 @@ def certames_da_esfera(con, esfera: str | None) -> set | None:
     nenhum detector deve reinventar a classificação (exceções de unidade vivem no classificar_esfera)."""
     if not esfera or esfera == "todas":
         return None
+    return certames_das_esferas(con, {esfera})
+
+
+def certames_das_esferas(con, esferas) -> set | None:
+    """Como certames_da_esfera, mas aceita um CONJUNTO de esferas numa única passada.
+    Usado pelo achado de sobrepreço restrito aos entes fiscalizados ({estado, prefeitura}).
+    Conjunto vazio/None → sem filtro (None)."""
+    alvo = {e for e in (esferas or ()) if e and e != "todas"}
+    if not alvo:
+        return None
     oficial = esferas_por_ente(con)
     certs: set = set()
     for r in con.execute(
             "SELECT certame, MAX(orgao_cnpj) orgao_cnpj, MAX(orgao_nome) orgao_nome, "
             "MAX(unidade_nome) unidade_nome, MAX(municipio) municipio "
             "FROM pncp_resultado GROUP BY certame"):
-        if classificar_esfera(dict(r), oficial) == esfera:
+        if classificar_esfera(dict(r), oficial) in alvo:
             certs.add(r["certame"])
     return certs
 

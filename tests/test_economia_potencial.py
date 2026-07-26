@@ -34,7 +34,10 @@ def db(tmp_path):
 
 
 def test_economia_soma_excesso_vezes_quantidade(db):
-    d = CP.economia_potencial(db_path=db, min_amostra=3, min_orgaos=2, min_certames=3)
+    # esfera='todas': estes testes exercem a MATEMÁTICA (excesso×qtd, cap), não o
+    # roteamento por ente — cujo default agora é {estado, prefeitura}, coberto em
+    # tests/test_economia_esferas_rj.py.
+    d = CP.economia_potencial(db_path=db, esfera="todas", min_amostra=3, min_orgaos=2, min_certames=3)
     assert d["ok"] is True
     # excesso (30-10) × 100 = 2.000
     assert d["economia_total"] == pytest.approx(2000.0)
@@ -62,10 +65,11 @@ def test_cap_anti_artefato_limita_excesso(tmp_path):
     ])
     con.commit()
     con.close()
-    d = CP.economia_potencial(db_path=p, min_amostra=3, min_orgaos=2, min_certames=3, teto_razao=20.0)
+    d = CP.economia_potencial(db_path=p, esfera="todas", min_amostra=3, min_orgaos=2,
+                              min_certames=3, teto_razao=20.0)
     assert d["economia_total"] == pytest.approx(380.0)   # (200 capado − 10) × 2, não (5000−10)×2
 
 
 def test_ressalva_teto_teorico(db):
-    d = CP.economia_potencial(db_path=db)
+    d = CP.economia_potencial(db_path=db, esfera="todas")
     assert "teto" in d["ressalva"].lower() and "Indício" in d["ressalva"]

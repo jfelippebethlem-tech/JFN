@@ -144,7 +144,9 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
     try:
         txt = gerar(prompt, _SYS, 60.0)
     except Exception as e:
-        print(f"  [{numero_sei}] erro LLM: {str(e)[:80]}")
+        # TimeoutError do futuro (60 s) vem sem argumentos: str(e) == "" e o log
+        # dizia só "erro LLM: ". O tipo é o que identifica a falha.
+        print(f"  [{numero_sei}] erro LLM: {type(e).__name__}: {str(e)[:80]}")
         return None
     r = _parse_json(txt) or {}
     nota = r.get("nota_risco_execucao")
@@ -251,7 +253,13 @@ def main() -> None:
             return
         print(f"avaliando execução de {len(alvos)} processo(s) via cadeia LLM (gemini→groq→cerebras→extra)…")
         for ns, obj, val, dl, rfl in alvos:
-            res = avaliar_processo(con, ns, obj, val, dl, rfl, gerar_sync)
+            try:
+                res = avaliar_processo(con, ns, obj, val, dl, rfl, gerar_sync)
+            except sqlite3.OperationalError as e:
+                # write-lock alheio (sweeps concorrentes) não pode abortar o lote e
+                # jogar fora os pareceres de LLM já gastos dos demais processos.
+                print(f"  [{ns}] banco ocupado ({e}) — segue para o próximo")
+                continue
             if res:
                 v = res["verdict"]
                 print(f"  {ns}: execução={v.get('execucao_comprovada','?')} coerência={v.get('coerencia_objeto_evidencia','?')} "

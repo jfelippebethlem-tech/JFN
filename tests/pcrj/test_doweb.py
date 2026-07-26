@@ -71,3 +71,37 @@ def test_homologacao_de_ppp_real_e_ppp():
 
 def test_concessao_solta_nao_e_ppp():
     assert classificar("Concessão de diária ao servidor para viagem.") == "outro"
+
+
+# ── novos tipos de ato de contratação (refino PCRJ 2026-07-24) ──────────────
+
+def test_classifica_dispensa():
+    t = ("RATIFICO a DISPENSA DE LICITAÇÃO com fundamento no art. 75, II da Lei "
+         "14.133/2021, em favor da empresa XPTO LTDA, no valor de R$ 48.000,00.")
+    assert classificar(t) == "dispensa"
+
+
+def test_classifica_inexigibilidade():
+    t = ("Reconheço a INEXIGIBILIDADE DE LICITAÇÃO, art. 74, caput, da Lei nº "
+         "14.133/2021, por inviabilidade de competição, favor de FORNECEDOR ÚNICO S.A.")
+    assert classificar(t) == "inexigibilidade"
+
+
+def test_classifica_aditivo():
+    t = ("EXTRATO DE TERMO ADITIVO Nº 03 ao Contrato nº 12/2023. Objeto: "
+         "prorrogação de prazo e acréscimo de 25% do valor contratual.")
+    assert classificar(t) == "aditivo"
+
+
+def test_classifica_ata_registro_preco():
+    t = "EXTRATO DE ATA DE REGISTRO DE PREÇOS Nº 045/2025 - Pregão Eletrônico 078/2025."
+    assert classificar(t) == "ata_registro_preco"
+
+
+def test_dispensa_tem_prioridade_sobre_edital_solto():
+    """'dispensa de licitação' contém a palavra 'licitação' mas é dispensa, não edital."""
+    assert classificar("DISPENSA DE LICITAÇÃO nº 10/2025 ratificada.") == "dispensa"
+
+
+def test_diaria_de_viagem_nao_e_aditivo():
+    assert classificar("Concede diárias e adiantamento ao servidor.") == "outro"

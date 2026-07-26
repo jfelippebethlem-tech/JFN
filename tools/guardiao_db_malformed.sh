@@ -14,6 +14,7 @@
 # porque aí o problema é de dado, não de processo (indício ≠ diagnóstico).
 set -u
 cd /home/ubuntu/JFN || exit 1
+. tools/lib/systemd_user_env.sh
 LOG=data/guardiao_db_malformed.log
 exec 9>/tmp/guardiao_db_malformed.lock
 flock -n 9 || exit 0
@@ -42,7 +43,10 @@ if [ "$integro" != "ok" ]; then
 fi
 
 echo "$(date -Is) ⚠️ malformed em /$doente com arquivo ÍNTEGRO = -shm morto no processo; reiniciando jfn.service" >> "$LOG"
-systemctl --user restart jfn.service
+if ! erro=$(systemctl --user restart jfn.service 2>&1); then
+  echo "$(date -Is) 🔴 systemctl NÃO executou o restart: ${erro:-sem mensagem} — vigia impotente, não é o banco" >> "$LOG"
+  exit 1
+fi
 for _ in $(seq 1 30); do
   curl -s -o /dev/null -m 2 http://127.0.0.1:8000/api/compliance/painel && break
   sleep 2

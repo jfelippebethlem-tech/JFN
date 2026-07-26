@@ -394,10 +394,15 @@ async def _resolver_captcha_ocr(page) -> bool:
 
 # ── API original: busca crua e devolve texto/HTML ─────────────────────────────
 
-async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_CAPTCHA) -> dict:
+async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_CAPTCHA,
+                            url_pesquisa: str | None = None, login_interno: bool = True) -> dict:
     """
     Busca um processo no SEI e devolve o texto/HTML da página de resultado.
     Resolve o CAPTCHA de imagem via OCR automaticamente.
+
+    ``url_pesquisa`` (opcional) aponta para outra instância SEI (ex.: prefeitura.sei.rio,
+    o SEI municipal). Default = SEI-RJ estadual. ``login_interno=False`` pula o login itkava
+    (o municipal é público, não tem usuário interno) — a mesma máquina de captcha OCR serve.
     """
     if not await _chrome_disponivel():
         return {"erro": "Chrome 9222 indisponível. Abra o Chrome debug (HERMES.bat passo 4)."}
@@ -412,13 +417,14 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
             return {"erro": "Nenhuma aba encontrada no Chrome."}
 
         # Login interno (usuário itkava) quando há credenciais — sessão autenticada dispensa CAPTCHA.
-        if _tem_credenciais_sei():
+        # Só no SEI estadual: o municipal (prefeitura.sei.rio) é pesquisa pública, sem usuário interno.
+        if login_interno and _tem_credenciais_sei():
             lg = await login_sei_interno(page)
             if lg.get("erro"):
                 # WAF bloqueia o IP da VM até no login; segue p/ a pesquisa pública (best-effort)
                 pass
 
-        await page.goto(SEI_PESQUISA_PUBLICA, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(url_pesquisa or SEI_PESQUISA_PUBLICA, wait_until="domcontentloaded", timeout=30000)
         await asyncio.sleep(1.5)
 
         await page.evaluate(_JS_PREENCHE_BUSCA, numero)

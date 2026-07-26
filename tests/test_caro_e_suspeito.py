@@ -48,7 +48,7 @@ def db(tmp_path, monkeypatch):
 
 
 def test_dossie_cruza_caro_com_sancionado(db):
-    d = CP.caro_e_suspeito(db_path=db, fator=3.0, min_certames=3)
+    d = CP.caro_e_suspeito(db_path=db, esfera='todas', fator=3.0, min_certames=3)
     assert d["ok"] is True and d["n"] == 1 and d["n_sancionada"] == 1
     a = d["achados"][0]
     assert a["fornecedor_cnpj"] == "99999999000199"
@@ -59,16 +59,16 @@ def test_dossie_cruza_caro_com_sancionado(db):
 
 
 def test_caro_mas_fornecedor_limpo_nao_entra(db):
-    d = CP.caro_e_suspeito(db_path=db, fator=3.0, min_certames=3)
+    d = CP.caro_e_suspeito(db_path=db, esfera='todas', fator=3.0, min_certames=3)
     # a Gaze cara (12×) tem fornecedor limpo → não aparece no dossiê
     assert all("Gaze" not in a["item"] for a in d["achados"])
 
 
 def test_fator_alto_filtra(db):
-    d = CP.caro_e_suspeito(db_path=db, fator=50.0, min_certames=3)
+    d = CP.caro_e_suspeito(db_path=db, esfera='todas', fator=50.0, min_certames=3)
     assert d["n"] == 0                      # 10× não passa do fator 50×
 
 
 def test_ressalva_fontes_independentes(db):
-    d = CP.caro_e_suspeito(db_path=db)
+    d = CP.caro_e_suspeito(db_path=db, esfera='todas')
     assert "INDEPENDENTES" in d["ressalva"] and "Indício" in d["ressalva"]

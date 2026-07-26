@@ -39,17 +39,22 @@ PPPS_SAUDE = [
 
 
 def varrer(*, termos=None, anos=None, max_paginas: int = 3, pausa: float = 1.5,
-           incluir_ppp: bool = True, incluir_esfera: bool = True, db_path=None) -> dict:
-    """Roda a varredura municipal de saúde, serial. Retorna resumo agregado.
+           incluir_ppp: bool = True, incluir_esfera: bool = True,
+           incluir_contratacao: bool = True, db_path=None) -> dict:
+    """Roda a varredura municipal, serial. Retorna resumo agregado.
 
     Idempotente (cada coletor faz UPSERT). ``anos`` usa o filtro nativo do D.O.
     (default 2021→2025). Nunca paraleliza (VM-safe).
+
+    ``incluir_contratacao`` acrescenta a varredura AMPLA de atos de contratação
+    (contrato/aditivo/dispensa/inexigibilidade/ata RP) de TODOS os órgãos — o
+    "acesso total e detalhado" à contratação municipal, via D.O. aberto (sem captcha).
     """
     db.inicializar(db_path)
     termos = termos or TERMOS_SAUDE
     anos = anos or [2025, 2024, 2023, 2022, 2021]
 
-    resumo = {"esfera": None, "doe": [], "ppp": [], "anos": anos}
+    resumo = {"esfera": None, "doe": [], "ppp": [], "contratacao": None, "anos": anos}
 
     # 1) mapa de esfera (leitura da compliance.db, escrita só na pcrj.db)
     if incluir_esfera:
@@ -68,6 +73,16 @@ def varrer(*, termos=None, anos=None, max_paginas: int = 3, pausa: float = 1.5,
         except Exception as e:
             resumo["doe"].append({"termo": termo, "erro": f"{type(e).__name__}: {e}"})
         time.sleep(pausa)
+
+    # 2b) contratação AMPLA (todos os órgãos): contrato/aditivo/dispensa/inexigibilidade/ata RP
+    if incluir_contratacao:
+        # 4º estágio-coletor: nunca derruba a varredura (mesmo padrão dos irmãos esfera/D.O./PPP)
+        try:
+            resumo["contratacao"] = doweb.sweep_contratacao(
+                anos=anos, ano_min=min(anos), max_paginas=max_paginas,
+                pausa=pausa, db_path=db_path)
+        except Exception as e:  # noqa: BLE001 — coletor não pode derrubar a orquestração
+            resumo["contratacao"] = {"erro": f"{type(e).__name__}: {e}"}
 
     # 3) PPPs da CCPAR (serial)
     if incluir_ppp:
@@ -88,6 +103,8 @@ def main() -> None:
     ap.add_argument("--anos", default="2025,2024,2023,2022,2021")
     ap.add_argument("--paginas", type=int, default=3)
     ap.add_argument("--sem-ppp", action="store_true")
+    ap.add_argument("--sem-contratacao", action="store_true",
+                    help="pula a varredura ampla de atos de contratação")
     ap.add_argument("--so-esfera", action="store_true", help="só (re)constrói o mapa de esfera")
     ap.add_argument("--db", default=None)
     a = ap.parse_args()
@@ -95,7 +112,8 @@ def main() -> None:
         print(json.dumps(esfera.construir_mapa(db_path=a.db), ensure_ascii=False, indent=2))
         return
     anos = [int(x) for x in a.anos.split(",")]
-    r = varrer(anos=anos, max_paginas=a.paginas, incluir_ppp=not a.sem_ppp, db_path=a.db)
+    r = varrer(anos=anos, max_paginas=a.paginas, incluir_ppp=not a.sem_ppp,
+               incluir_contratacao=not a.sem_contratacao, db_path=a.db)
     print(json.dumps(r, ensure_ascii=False, indent=2))
 
 

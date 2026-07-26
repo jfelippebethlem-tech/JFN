@@ -48,7 +48,7 @@ def db(tmp_path):
 
 
 def test_soma_sobrepreco_a_inidoneo_vigente(db):
-    d = CP.economia_vedada(db_path=db, min_amostra=5, min_orgaos=1, min_certames=3)
+    d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
     assert d["ok"] is True
     # mediana [9,10,10,11,30]=10 → excesso (30-10)×10 = 200
     assert d["economia_vedada_total"] == pytest.approx(200.0)
@@ -63,7 +63,7 @@ def test_sancao_fora_da_vigencia_nao_conta(db):
     con.commit()
     con.close()
     # compra em 2025-06-10, sanção só a partir de 2026 → NÃO estava vedado à época
-    d = CP.economia_vedada(db_path=db, min_amostra=5, min_orgaos=1, min_certames=3)
+    d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
     assert d["economia_vedada_total"] == 0.0
 
 
@@ -74,10 +74,10 @@ def test_impedimento_federal_nao_veda_comprador_estadual(db):
     con.commit()
     con.close()
     # impedimento FEDERAL não veda contrato com órgão ESTADUAL (esfera E) → não conta
-    d = CP.economia_vedada(db_path=db, min_amostra=5, min_orgaos=1, min_certames=3)
+    d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1, min_certames=3)
     assert d["economia_vedada_total"] == 0.0
 
 
 def test_ressalva_presente(db):
-    d = CP.economia_vedada(db_path=db, min_amostra=5, min_orgaos=1)
+    d = CP.economia_vedada(db_path=db, esfera='todas', min_amostra=5, min_orgaos=1)
     assert "Indício" in d["ressalva"] and "independentes" in d["ressalva"].lower()

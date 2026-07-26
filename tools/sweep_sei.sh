@@ -4,6 +4,10 @@
 # (o cron repete; NÃO é loop contínuo — esse era o lane ruim que segurava Chromium na memória 24h).
 set -u
 cd /home/ubuntu/JFN || exit 1
+# O cron não herda o .env: sem isto só o Gemini sobrevive na cadeia (ele lê as chaves
+# do disco), e Groq/Cerebras/extras ficam "indisponíveis" — foi por isso que os 1.696
+# pareceres do Lex saíram 100% do Gemini. Ver tools/obra_fase_sei no crontab (mesmo padrão).
+[ -f .env ] && { set -a; . ./.env; set +a; }
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/sweep_sei.log
@@ -26,19 +30,22 @@ PRIO="nice -n 10 ionice -c2 -n6"
 say "início (best-effort baixa prio, bounded)"
 # LEITURA COMPLETA = padrão (ler() canônico: TODOS os docs + OCR de scan, WAF-safe + cracked). ~3x mais pesada/processo
 # → batch menor p/ caber no timeout e não saturar os 2 vCPU (cron repete; cobre a fila ao longo dos runs).
-$PRIO timeout 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
+# --foreground: o SIGTERM do bound vai SÓ para o Python (que para limpo entre processos). Sem ele o
+# `timeout` sinaliza o GRUPO e mata o Chromium junto → TargetClosedError com a leitura em voo perdida.
+# -k 120: repõe a garantia (SIGKILL se o Python travar).
+$PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
 # Mesma sessão única itkava (sequencial, DEPOIS do sweep geral); bounded; resumível.
 if [ -f data/ugs_foco.txt ]; then
   while read -r ugcod _resto; do
     case "$ugcod" in ''|\#*) continue;; esac
-    $PRIO timeout 700 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
+    $PRIO timeout -k 120 --foreground 700 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
   done < data/ugs_foco.txt
 fi
 # SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
 # execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;
 # resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
-$PRIO timeout 900  $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
+$PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.
