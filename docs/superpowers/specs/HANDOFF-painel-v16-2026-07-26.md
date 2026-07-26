@@ -105,3 +105,33 @@ Gerar **cada peça** no Firefly, não só fundos:
 5. **Onde há texto, pode haver arte** — cabeçalhos de aba e capas de seção.
 
 **Fluxo Firefly** (validado nesta sessão): Chrome logado → `firefly.adobe.com/generate/image` → Image 5, 16:9, 2K → **clicar no TEXTO do placeholder por coordenada** (a árvore de acessibilidade não expõe o campo; `find` falha) → digitar → Gerar → hover → download → cai em `C:\Users\iterj\Downloads\Firefly_<prompt>.png`. Menu "..." tem **Imagem para vídeo**, Photoshop na Web, Express.
+
+---
+
+# FIM DA SESSÃO — 14 commits, site NO AR (local:200 · funnel:303)
+
+## Entregue e verificado no olho
+`ebe3cf69` v17 ARC REACTOR Mark II · `bb53f07c` v18 GLIFO VIVO · `5d2ed910` v19 GRAMÁTICA ·
+`0f1d185a` fix ícones · `33d48446` **v22 EUROSTILE (Orbitron aplicado e conferido)**
+
+## ⚠️ AS DUAS LIÇÕES QUE CUSTARAM CARO (não repetir)
+
+**1. `pathLength` é ATRIBUTO SVG, não propriedade CSS.** Setá-lo em CSS não faz nada, então o `stroke-dasharray:100` fixo cortou glifos com caminho > 100 unidades.
+
+**2. Animação com `fill-mode: both` pode SUMIR com o conteúdo.** O estado inicial (`dash 0 / gap 999`) deixava o traço invisível antes da animação rodar, e o ícone da aba ATIVA desaparecia — sobrava só o fallback textual (reticências).
+**Diagnóstico que eu errei primeiro:** culpei a fonte Orbitron. Reverti a fonte → sintoma PERMANECEU. Só então vi que o ícone RADAR da barra inferior estava igual: o comum não era a fonte, era serem a **aba ativa**. **Método: quando dois elementos quebram junto, procure o que eles COMPARTILHAM, não o que você mexeu por último.**
+
+**3. Fonte de display: SÓ em classe folha, NUNCA em container.** Container tem filho que você não controla — o selo do cabeçalho caiu para emoji, e Orbitron não tem glifo de emoji. Escopo que funciona (v22, verificado): `.sect, .eco .k, .kpi .l, .ck-inst .lab, #portal .l1, nav.tabs button .tl`.
+
+**4. Teste não pega isso.** As 13 suítes passaram com o ícone sumido. **Screenshot a cada etapa não é zelo, é o único detector.**
+
+## PENDENTE — geração individual no Firefly (pedido explícito do dono)
+Não executado por limite de contexto, **não por decisão**. Cada peça exige round-trip de browser (navegar → digitar → gerar → esperar → baixar → conferir no olho) — inviável para 51 ícones no contexto restante, e gerar sem conferir cada um seria o "às cegas" que o dono proibiu na primeira mensagem.
+
+**Ordem sugerida** (fazer em lotes pequenos, conferindo cada lote):
+1. **Ícones** — 51 abas, hoje glifos Lucide em `static/assets/jfn-icones.js` (mapa emoji→SVG paths). Gerar no Firefly → `image_vectorize` para SVG. **Espessura de traço IDÊNTICA no set inteiro**; nunca escalar 24→16.
+2. **Núcleo/reator e nós do mapa** — hoje SVG+canvas procedurais.
+3. **Botões** — arte de estado (repouso/hover/ativo).
+4. **Capas de seção** — onde há texto pode haver arte.
+
+**Fluxo Firefly validado:** Chrome logado → `firefly.adobe.com/generate/image` → Image 5, 16:9, 2K (10 créditos) → **clicar no TEXTO do placeholder por coordenada** (árvore de acessibilidade não expõe o campo; `find` falha) → digitar → Gerar → hover na imagem → download → `C:\Users\iterj\Downloads\Firefly_<prompt>.png`. Menu "..." tem **Imagem para vídeo**, Photoshop na Web, Express.
