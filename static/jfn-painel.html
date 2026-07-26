@@ -2172,6 +2172,20 @@
     100%{color:inherit;text-shadow:none}}
   #view .num.mudou,#view .val.mudou,#view b.mudou{animation:numTroca 1.1s ease-out 1}
 
+  /* v34: o valor CHEGA. Marcado sozinho pela varredura, cada numero sobe e
+     ganha foco ao entrar na aba — vida no momento em que ha o que dizer, e
+     silencio depois. Numero que pisca em repouso vira ruido para quem esta
+     lendo uma coluna inteira; numero que chega diz "este e o dado".
+     O atraso escalonado faz a coluna ser LIDA de cima para baixo, na ordem em
+     que o auditor leria de qualquer jeito. Teto de 420ms: sem ele, o
+     octogesimo valor de pericias entraria segundos depois e leria como travado. */
+  @keyframes numChega{from{opacity:0;transform:translateY(7px);filter:blur(2px)}
+    to{opacity:1;transform:none;filter:none}}
+  #view .num,#view .val{
+    animation:numChega .42s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:calc(min(var(--i,0) * 22ms,420ms))}
+  @media (prefers-reduced-motion:reduce){#view .num,#view .val{animation:none}}
+
   /* (c) barra e medidor crescem do zero ao entrar: o comprimento E o dado,
      entao ve-lo crescer e ler o dado, nao decoracao.                        */
   #view .bar > i,#view .meter > i,#view .prog > i{
@@ -2498,7 +2512,7 @@ async function ir(id){
      O render assincrono termina ANTES de abrir a transicao — senao o
      navegador congelaria a tela durante o fetch.                          */
   try{const html=await t.render();if(meu!==_nav)return;
-    const pintar=()=>{v.innerHTML=`<div class="fade">${html}</div>`;};
+    const pintar=()=>{v.innerHTML=`<div class="fade">${html}</div>`;if(typeof marcarValores==='function')marcarValores(v);};
     if(document.startViewTransition&&!_redMotion){
       await document.startViewTransition(pintar).updateCallbackDone;
     }else{pintar();}}
@@ -5029,7 +5043,7 @@ function ckPull(first){
         <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 }
 
-(async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();await ir('i_cockpit');
+(async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();await ir('i_cockpit');marcarValores(document.getElementById('view'));
   const st=await J('/status');
   if(st.exercicio){
     /* v27: estado do SIAFE era um dingbat. Medido: nenhuma das tres fontes
@@ -5471,6 +5485,49 @@ setTimeout(_sphMask,600);
     });
   }).observe(v,{characterData:true,subtree:true});
 })();
+
+/* ── v34 MARCACAO AUTOMATICA DE VALOR ───────────────────────────────────────
+   O numero e o assunto do painel, mas vinha renderizado como texto solto — sem
+   marcacao, as regras de vida da v33 nao tinham onde pegar. Marcar a mao em
+   cada funcao de render seria lento e quebraria na proxima aba nova.
+
+   Esta passada roda depois de cada render e reconhece valor pelo FORMATO:
+     R$ 6,2 mi · 2.193 · 15,9% · 2.15x · 54
+   So marca no de TEXTO (sem filhos), entao nunca etiqueta um container inteiro,
+   e ignora o que ja tem classe de valor. Custo: uma varredura de TreeWalker por
+   troca de aba — em pericias, a aba mais pesada, sao ~750 nos.
+
+   Nao usa MutationObserver: observar mutacao dentro de #view ja derrubou a
+   montagem do painel uma vez nesta sessao.                                   */
+function marcarValores(raiz){
+  if(!raiz)raiz=document.getElementById('view');
+  if(!raiz)return;
+  /* R$ / milhar / decimal / percentual / multiplicador — com ou sem sufixo */
+  const EH_VALOR=/^(R\$\s*)?-?\d{1,3}([.\s]\d{3})*(,\d+)?\s*(mi|bi|mil|%|x|×)?$/i;
+  const it=document.createTreeWalker(raiz,NodeFilter.SHOW_ELEMENT,{
+    acceptNode(e){
+      if(e.children.length)return NodeFilter.FILTER_SKIP;      /* so folha */
+      if(e.closest('nav,header,.ck-ticker'))return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }});
+  let e,n=0;
+  while((e=it.nextNode())){
+    if(e.classList.contains('num')||e.classList.contains('val'))continue;
+    const t=(e.textContent||'').trim();
+    if(t.length>18||t.length<1)continue;
+    if(!EH_VALOR.test(t))continue;
+    e.classList.add('num');n++;
+    if(n>400)break;               /* teto: aba gigante nao paga varredura infinita */
+  }
+  /* severidade textual vira severidade marcada, para o ritmo poder ordenar a
+     fila no canto do olho (a regra .sev da v33 faz o resto).                 */
+  raiz.querySelectorAll('.tag,.chip,.badge,.pill').forEach(x=>{
+    const t=(x.textContent||'').trim().toLowerCase();
+    if(x.classList.contains('sev'))return;
+    if(/^(grave|alta|alto|crítico|critico)$/.test(t))x.classList.add('sev','alta');
+    else if(/^(m[ée]dia|m[ée]dio|aten[çc][ãa]o)$/.test(t))x.classList.add('sev','media');
+  });
+}
 </script>
 </body>
 </html>
