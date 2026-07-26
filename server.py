@@ -375,6 +375,26 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
   @media (prefers-reduced-motion:reduce){
     *{animation-duration:.01ms!important;transition-duration:.01ms!important}
     button:active{transform:none}}
+
+  /* == TELEFONE ============================================================
+     A peca e 16:9. Em `cover` numa tela de 390x844 ela e ampliada ~3x para
+     cobrir a altura, e o que sobra na tela e um canto sem forma — o reator,
+     que e o assunto da imagem, fica fora do enquadramento. Em retrato o
+     enquadramento tem que mudar, nao so encolher.
+
+     `contain` mostra a peca inteira e a ancora no alto, atras da marca; a
+     vinheta cresce para o rodape para o cartao continuar pousado no escuro. */
+  @media (max-width:560px){
+    body::before{background-size:150% auto;background-position:50% 16%;opacity:.30}
+    body::after{background:radial-gradient(ellipse 120% 34% at 50% 16%,transparent,
+      oklch(0.035 0.014 265/.80) 64%,var(--bg) 100%)}
+    /* "CENTRAL DE INTELIGENCIA · RJ" quebrava com o RJ orfao na segunda linha.
+       Menos tracking e balance resolvem sem encolher a letra a ponto de sumir. */
+    .sub{font-size:9.5px;letter-spacing:1.3px;text-wrap:balance}
+    .card{padding:26px 22px 22px}
+    /* o cartao ficava acima do centro optico com um vazio grande embaixo */
+    body{align-items:center;padding-bottom:12svh}
+  }
 </style></head><body>
 <form class=card method=post action=/login_jfn>
   <div class=marca><div class=selo aria-hidden=true>CE</div>
