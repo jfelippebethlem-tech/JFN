@@ -250,7 +250,13 @@ def _congelar(ws) -> None:
     js(ws, """(()=>{document.documentElement.classList.add('rest');
       let s=document.getElementById('__congelar');
       if(!s){s=document.createElement('style');s.id='__congelar';document.head.appendChild(s);}
-      s.textContent='*,*::before,*::after{animation-play-state:paused!important;transition:none!important}';
+      s.textContent='*,*::before,*::after{animation-play-state:paused!important;transition:none!important}'
+        /* One-shots de CHEGADA (flash .novo 22 por cento da esfera, numTroca) sao
+           informacao transitoria, nao estado: o barramento empurra linha nova a
+           qualquer momento e o pause congelava o flash como se fosse o fundo REAL
+           do texto — foi assim que leitura/muted mediram 2.1:1 em p_sanc. Zera-las
+           faz o laudo medir o REPOUSO, que e o que o auditor afirma. */
+        +'#view .novo,#view .num.mudou,#view .val.mudou,#view b.mudou{animation:none!important}';
       return 1;})()""")
     time.sleep(0.4)
 

@@ -2295,6 +2295,71 @@
   @keyframes noPulsa{0%,100%{opacity:.72}50%{opacity:1}}
   @media (prefers-reduced-motion:reduce){body.art-no .nu-chip::after{animation:none}}
 
+  /* ================= v40 CONTRASTE, lote 1 — o primeiro laudo das 51 ======
+     O laudo completo (2026-07-26) achou 17 padroes abaixo de 4.5:1. Este lote
+     fecha os 7 que sao TOKEN puro (texto claro demais ou fundo escuro demais
+     no proprio elemento). Os casos sobre-arte (muted/dim/leitura em regiao
+     clara) ficam para o lote 2, com o pixel investigado — corrigir no chute
+     seria dessaturar o que brilha.                                          */
+  .skel{color:var(--leg)}                     /* 1.15 — cinza igual ao shimmer  */
+  #holofeed .hf-vazio{color:var(--leg)}       /* 1.88 — silencio honesto legivel */
+  .htop a.ctrl{color:color-mix(in oklch,var(--rose) 72%,white 28%)} /* 3.76 */
+  .tag.rose{color:color-mix(in oklch,var(--rose) 55%,white 45%)}    /* 2.63 */
+  .tag.amber{color:color-mix(in oklch,var(--amber) 55%,white 45%)}  /* 2.89 */
+  /* botao de acao: o flame poe texto ESCURO em todo .btn, mas red/green
+     desciam com gradiente escuro — texto de tinta sobre fundo de tinta.
+     A saida e a mesma do primario: fundo ACESO, texto escuro. Consistente
+     e mensuravel (pior pixel do gradiente >= 0.24 de luminancia).          */
+  .btn.red{background:linear-gradient(180deg,
+    color-mix(in oklch,var(--rose) 80%,white 20%),
+    color-mix(in oklch,var(--rose) 96%,black 4%))}
+  .btn.green{background:linear-gradient(180deg,
+    color-mix(in oklch,var(--green) 88%,white 12%),
+    color-mix(in oklch,var(--green) 78%,black 6%))}
+
+  /* ================= v41 NUCLEO-HOLO ======================================
+     O corpo de video do arc reactor (holograma da silhueta do RJ, gerado no
+     it-campo) entra SOB o canvas procedural do nucleo. Blend screen: o preto
+     da arte some no fundo radial — mesma regra do piso de preto do reator. */
+  .ck-nucleo video.holo{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;opacity:0;transition:opacity 1.6s ease;
+    mix-blend-mode:screen;pointer-events:none}
+  .ck-nucleo video.holo.on{opacity:.85}
+  @media (prefers-reduced-motion:reduce){.ck-nucleo video.holo{display:none}}
+
+  /* v40 lote 2a: holofeed 97 por cento opaco — com 88, nebulosa clara vazava
+     pelo blur e o pior pixel afundava o texto pequeno (hfload 3.29:1 em
+     e_conluio). O vidro continua; a legibilidade para de depender da esfera. */
+  #holofeed{background:color-mix(in oklch,var(--bg2) 97%,transparent)}
+
+  /* ================= v42 COCKPIT DO SISTEMA ================================
+     A aba g_sweeps virou o cockpit da maquina toda. A barra de fila e um
+     instrumento: comprimento E o dado (contrato v33 — ela cresce do zero ao
+     entrar e desliza quando o refresh de 30s move o numero).               */
+  #view .sinal{width:7px;height:7px;border-radius:50%;display:inline-block;
+    vertical-align:middle;margin-right:6px;flex:0 0 auto}
+  .sisbar{position:relative;height:10px;border-radius:6px;background:var(--bg2);
+    border:1px solid var(--bd2);overflow:hidden;margin-top:8px}
+  .sisbar>i{position:absolute;top:0;bottom:0;left:0;border-radius:inherit;
+    background:linear-gradient(90deg,
+      color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent),var(--esf,var(--ion)));
+    box-shadow:0 0 14px color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent);
+    transition:width 1s cubic-bezier(.2,.9,.25,1)}
+
+  /* ================= v43 O KPI QUE SUMIA ===================================
+     A armadilha documentada ("animation: sobrescreve em silencio") em plena
+     acao: dentro de .grid/.cols, a entraCascata da cascata SOBRESCREVIA a
+     rise dos cards .rise — e ao terminar (fill backwards) a opacity caia no
+     0 ESTATICO da .rise. Resultado: KPI invisivel em toda aba com grid, e as
+     dezenas de "nao pintou glifo" do laudo. Compor as duas e a cura; o both
+     da rise fica por ultimo e segura opacity 1 no fim.                     */
+  #view .grid>.card.rise,#view .cols>.card.rise{
+    animation:entraCascata .34s cubic-bezier(.2,.9,.25,1) backwards,
+              rise .3s cubic-bezier(.2,.7,.2,1) both;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms),var(--d,0ms)}
+  @media (prefers-reduced-motion:reduce){
+    #view .grid>.card.rise,#view .cols>.card.rise{animation:none;opacity:1}}
+
 </style>
 </head>
 <body>
@@ -2557,7 +2622,7 @@ const TABS={
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
     {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
-    {id:'g_sweeps',  ic:'🛰️',tl:'Sweeps',  render:renderSweeps},
+    {id:'g_sweeps',  ic:'🛰️',tl:'Sistema', render:renderSweeps},
     {id:'g_acoes',   ic:'☑️',tl:'Ações',   render:renderAcoes},
   ],
 };
@@ -4084,9 +4149,55 @@ async function renderSiafe(){
   return h;
 }
 async function renderSweeps(){
-  const d=await J('/api/sweeps/status');const badge=d.pausado?'<span class="tag rose">pausado</span>':(d.sei?.rodando?'<span class="tag green">rodando</span>':'<span class="tag green">agendado</span>');
-  let h=sec('Sweeps SEI / SIAFE')+card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${d.pausado?'pausado':'ativo'}</b></div><div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div><div class="kv"><span class="k" title="OB = Ordem Bancária — o único valor efetivamente PAGO (empenho não é pagamento)">SIAFE 2 — OBs (pagamentos reais)</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+(d.sei?.ultima?`<div style="height:12px"></div><pre>${esc((d.sei.ultima||'').replace(/\*\*/g,''))}</pre>`:'')+`<div class="btns"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir(aba)">↻ Atualizar</button></div>`;
+  // Cockpit do SISTEMA (pedido do dono 2026-07-26): sweeps, fila SEI com barra,
+  // arquivo compacto, pipelines e aprendizados — vivo, atualizando em 30s.
+  const [d,a]=await Promise.all([J('/api/sweeps/status'),J('/api/sistema/atividade')]);
+  const sei=a.sei||{},apr=a.aprendizados||{};
+  const gb=v=>v==null?'—':(v/1e9).toFixed(2)+' GB';
+  const idade=st=>st==null?'—':(st<90?'agora':(st<5400?Math.round(st/60)+' min atrás':Math.round(st/3600)+' h atrás'));
+  const aprTotal=(apr.memoria_db||0)+(apr.fichas_sei||0)+(apr.direcionamentos||0)+(apr.vault_notas||0);
+  let h=cover('geral','Sistema — a atividade de toda a máquina',
+    'O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.','🛰️');
+  h+=`<div class="grid g2" id="sis-live">
+    ${kpi(sei.pct_lido==null?'—':sei.pct_lido+'%','Fila SEI já lida',null,'📄')}
+    ${kpi(fmtN(sei.arquivados),'Processos no arquivo compacto')}
+    ${kpi(gb(sei.arquivo_bytes),'Espaço do arquivo (texto+fases+fotos)')}
+    ${kpi(fmtN(aprTotal),'Aprendizados acumulados','var(--accent)','🧠')}</div>`;
+  const falta=(sei.fila_total!=null&&sei.arquivados!=null)?sei.fila_total-sei.arquivados:null;
+  h+=card(`<div class="kv"><span class="k">Fila SEI por dinheiro — lidos × restantes</span><b><span class="num" id="sis-lidos">${fmtN(sei.arquivados)}</span> de ${fmtN(sei.fila_total)}${falta!=null?` · faltam <span class="num" id="sis-falta">${fmtN(falta)}</span>`:''}</b></div>
+    <div class="sisbar bar" title="${sei.pct_lido==null?'fila total indisponível':sei.pct_lido+'% lido'}"><i id="sis-barra" style="width:${sei.pct_lido==null?0:Math.max(1.2,sei.pct_lido)}%"></i></div>
+    ${sei.pct_lido==null?leitura('Total da fila <b>INDISPONÍVEL</b> agora (não é zero) — a barra volta quando o compliance.db responder.'):''}`);
+  h+=`<div style="height:14px"></div>`+sec('Sweeps de coleta',(a.sweeps||[]).length);
+  h+=card((a.sweeps||[]).map(s0=>{
+    const on=s0.vivo,sup=s0.supervisor;
+    const est=a.pausado?'pausado':(on?'rodando':(sup?'supervisionado (aguardando janela)':'parado'));
+    const cor=a.pausado?'var(--amber)':(on?'var(--green)':(sup?'var(--accent)':'var(--rose)'));
+    return `<div class="kv"><span class="k"><span class="sinal" style="background:${cor};box-shadow:0 0 8px ${cor}"></span> ${esc(s0.nome)}</span><b>${est} · <span class="num">${idade(s0.atividade_s)}</span></b></div>`;}).join('')
+    +`<div class="btns" style="margin-top:10px"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir(aba)">↻ Atualizar</button></div>`);
+  if((a.pipelines||[]).length){
+    h+=`<div style="height:14px"></div>`+sec('Pipelines (SLO)',a.pipelines.length);
+    h+=card(`<div style="display:flex;flex-wrap:wrap;gap:8px">`+a.pipelines.map(p0=>{
+      const ok=String(p0.estado).toLowerCase().startsWith('ok');
+      return `<span class="tag ${ok?'green':'amber'}" title="${esc(p0.estado)}"><span class="sinal" style="background:${ok?'var(--green)':'var(--amber)'}"></span>${esc(p0.nome)}</span>`;}).join('')+`</div>`);}
+  h+=`<div style="height:14px"></div>`+sec('Aprendizados — o que a leitura já produziu');
+  h+=card(`<div class="kv"><span class="k">Fichas SEI montadas</span><b class="num">${fmtN(apr.fichas_sei)}</b></div>
+    <div class="kv"><span class="k">Análises de direcionamento</span><b class="num">${fmtN(apr.direcionamentos)}</b></div>
+    <div class="kv"><span class="k">Árvores de processo capturadas</span><b class="num">${fmtN(apr.arvores_sei)}</b></div>
+    <div class="kv"><span class="k">Memória de aprendizado (DB)</span><b class="num">${fmtN(apr.memoria_db)}</b></div>
+    <div class="kv"><span class="k">Notas de aprendizado no vault</span><b class="num">${fmtN(apr.vault_notas)}</b></div>`);
+  h+=(d.sei?.ultima?`<div style="height:12px"></div><pre>${esc((d.sei.ultima||'').replace(/\*\*/g,''))}</pre>`:'');
   h+=`<div style="height:16px"></div>`+await frescorHtml();
+  clearInterval(window._sisTick);
+  window._sisTick=setInterval(async()=>{
+    if(aba!=='g_sweeps'||!document.getElementById('sis-live')){clearInterval(window._sisTick);return;}
+    try{const n=await J('/api/sistema/atividade');const ns=n.sei||{};
+      const up=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null&&e.textContent!==String(v))e.textContent=v;};
+      up('sis-lidos',fmtN(ns.arquivados));
+      if(ns.fila_total!=null&&ns.arquivados!=null)up('sis-falta',fmtN(ns.fila_total-ns.arquivados));
+      const b=document.getElementById('sis-barra');
+      if(b&&ns.pct_lido!=null)b.style.width=Math.max(1.2,ns.pct_lido)+'%';
+    }catch(e){}
+  },30000);
   return h;
 }
 async function sweep(a){if(a==='pausar'&&!await jfnConfirm('Pausar <b>todos</b> os sweeps de coleta? O painel continua no ar — só a alimentação de dados novos para até você retomar.','⏸ Pausar tudo'))return;await J('/api/sweeps/'+a,{method:'POST'});jfnToast(a==='pausar'?'Sweeps pausados.':'Sweeps retomados.','green');setTimeout(()=>ir(aba),500);}
@@ -4429,6 +4540,20 @@ function _holoPiso(g,bmp,c,W,H,alt){
 }
 function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
+  /* v41: NUCLEO-HOLO — o arc reactor que projeta o holograma do RJ (arte do
+     it-campo) entra como corpo de video SOB o canvas; o procedural (feixes,
+     chips, dados reais) segue por cima. Progressivo: sem arquivo, nada muda. */
+  if(!_redMotion)fetch('/static/assets/nucleo-holo-rj.mp4',{method:'HEAD'}).then(r=>{
+    if(!r.ok)return;
+    let v=box.querySelector('video.holo');
+    if(!v){v=document.createElement('video');v.className='holo';
+      v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+      v.setAttribute('aria-hidden','true');
+      v.addEventListener('playing',()=>v.classList.add('on'));
+      v.src='/static/assets/nucleo-holo-rj.mp4';
+      box.insertBefore(v,box.firstChild);}
+    v.play().catch(()=>{});
+  }).catch(()=>{});
   const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
   $('nu-chips').innerHTML=NU_NODES.map(n=>
     `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"

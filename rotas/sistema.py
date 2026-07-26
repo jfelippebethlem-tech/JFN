@@ -447,3 +447,109 @@ async def api_eventos_stream():
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ── Cockpit do SISTEMA (aba g_sweeps evoluída, pedido do dono 2026-07-26) ──────
+# Números caros (du do arquivo SEI, COUNT DISTINCT de processos) ficam num cache
+# de 15 min: a aba se atualiza a cada 30 s e não pode custar disco a cada tick.
+_SIS_CACHE: dict = {"t": 0.0}
+
+
+def _sis_medidas_caras() -> dict:
+    import sqlite3
+    import subprocess
+    import time as _t
+    if _t.time() - _SIS_CACHE.get("t", 0) < 900 and "sei_arquivo_bytes" in _SIS_CACHE:
+        return _SIS_CACHE
+    m: dict = {"t": _t.time()}
+    base = RAIZ / "data" / "sei_arquivo"
+    try:
+        m["sei_arquivados"] = sum(1 for e in os.scandir(base) if e.is_dir())
+    except Exception:  # noqa: BLE001
+        m["sei_arquivados"] = None
+    try:
+        out = subprocess.run(["du", "-sb", str(base)], capture_output=True, text=True, timeout=90).stdout
+        m["sei_arquivo_bytes"] = int(out.split()[0]) if out else None
+    except Exception:  # noqa: BLE001
+        m["sei_arquivo_bytes"] = None
+    try:
+        con = sqlite3.connect(RAIZ / "data" / "compliance.db")
+        m["sei_fila_total"] = con.execute(
+            "SELECT COUNT(DISTINCT processo) FROM ob_orcamentaria_siafe "
+            "WHERE processo IS NOT NULL AND processo!=''").fetchone()[0]
+        con.close()
+    except Exception:  # noqa: BLE001
+        m["sei_fila_total"] = None
+    _SIS_CACHE.clear()
+    _SIS_CACHE.update(m)
+    return _SIS_CACHE
+
+
+@router.get("/api/sistema/atividade")
+def api_sistema_atividade():
+    """Atividade de TODA a máquina numa resposta: sweeps vivos (e quando mexeram),
+    fila SEI lida × restante, arquivo compacto (nº e bytes), pipelines (SLO) e
+    aprendizados acumulados. INDISPONÍVEL vira null, nunca 0 inventado."""
+    import sqlite3
+    import subprocess
+    import time as _t
+
+    def _alive(pat: str) -> bool:
+        try:
+            return bool(subprocess.run(["pgrep", "-f", pat], capture_output=True).stdout.strip())
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _idade_s(rel: str):
+        try:
+            return int(_t.time() - (RAIZ / rel).stat().st_mtime)
+        except Exception:  # noqa: BLE001
+            return None
+
+    pausado = (RAIZ / "data/.pause_sei_sweep").exists() or (RAIZ / "data/.pause_sweep_2").exists()
+    sweeps = [
+        {"nome": "SEI sweep", "vivo": _alive("tools[.]sei_sweep"), "supervisor": _alive("sei_supervisor.sh"),
+         "atividade_s": _idade_s("data/sei_cache/sei_sweep_loop.out")},
+        {"nome": "SIAFE 2 (OB)", "vivo": _alive("siafe[_]sweep_full"), "supervisor": _alive("siafe_supervisor.sh"),
+         "atividade_s": _idade_s("data/siafe_sweep_full_2.log")},
+        {"nome": "Coleta SIAFE diária", "vivo": _alive("compliance_agent[.]siafe_runner"), "supervisor": None,
+         "atividade_s": _idade_s("data/siafe_cron.log")},
+    ]
+
+    pipelines = []
+    try:
+        slo = json.loads((RAIZ / "data/pipelines_slo_estado.json").read_text())
+        pipelines = [{"nome": k, "estado": (v if isinstance(v, str) else json.dumps(v)[:40])}
+                     for k, v in sorted(slo.items())]
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("sistema/atividade: sem pipelines_slo_estado.json: %s", exc)
+
+    apr = {"vault_notas": None, "memoria_db": None, "fichas_sei": None,
+           "direcionamentos": None, "arvores_sei": None}
+    try:
+        apr["vault_notas"] = len(list((Path.home() / "vault" / "aprendizados").glob("*.md")))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        con = sqlite3.connect(RAIZ / "data" / "compliance.db")
+        for chave, tab in (("memoria_db", "memoria_aprendizado"), ("fichas_sei", "sei_ficha"),
+                           ("direcionamentos", "sei_direcionamento"), ("arvores_sei", "sei_arvore")):
+            try:
+                apr[chave] = con.execute(f"SELECT COUNT(*) FROM {tab}").fetchone()[0]
+            except Exception:  # noqa: BLE001
+                pass
+        con.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sistema/atividade: compliance.db indisponível p/ aprendizados: %s", exc)
+
+    caras = _sis_medidas_caras()
+    sei = {"arquivados": caras.get("sei_arquivados"),
+           "arquivo_bytes": caras.get("sei_arquivo_bytes"),
+           "fila_total": caras.get("sei_fila_total")}
+    if sei["arquivados"] is not None and sei["fila_total"]:
+        sei["pct_lido"] = round(100.0 * sei["arquivados"] / sei["fila_total"], 1)
+    else:
+        sei["pct_lido"] = None
+
+    return JSONResponse({"ok": True, "pausado": pausado, "sweeps": sweeps,
+                         "pipelines": pipelines, "sei": sei, "aprendizados": apr})
