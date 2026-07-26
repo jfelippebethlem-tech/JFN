@@ -170,6 +170,10 @@ INVENTARIO = r"""(()=>{
       const c=rgb(s.backgroundColor); if(c&&c[3]>=0.999)return s.backgroundColor;
     }
     return '';};
+  /* data-cpx da aba ANTERIOR sobrevive no chrome persistente (cabecalho,
+     holofeed): o lote reencontrava um numero que este run nao emitiu e o
+     laudo estourava KeyError. Limpar antes de marcar. */
+  for(const e of document.querySelectorAll('[data-cpx]'))e.removeAttribute('data-cpx');
   let n=0;const fora=[],visto={};let colapsados=0;
   for(const e of document.querySelectorAll('body *')){
     if(!vis(e))continue;
@@ -363,6 +367,12 @@ def medir_pagina_atual(ws) -> list[dict]:
         # Medido: a captura custa ~1 s nesta VM; uma por elemento daria 114 s por
         # aba (97 min nas 51). Por lote da ~15 s por aba.
         lote = js(ws, ELEGIVEIS_LOTE) or []
+        # Defesa declarada: se ainda assim aparecer cpx que este run nao emitiu
+        # (DOM mutou entre marcar e medir), sai do lote com aviso — nao estoura.
+        orfaos = [x for x in lote if x["cpx"] not in alvos]
+        if orfaos:
+            print(f"    [pixel] {len(orfaos)} alvo(s) com data-cpx orfao ignorado(s)")
+            lote = [x for x in lote if x["cpx"] in alvos]
         if lote:
             cpxs = [x["cpx"] for x in lote]
             _pintar_lote(ws, cpxs, "transparent"); vb = _capturar_viewport(ws)

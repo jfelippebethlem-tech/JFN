@@ -2213,6 +2213,16 @@
     #view .sev.alta,#view .sev.grave,#view .sev.media,#view .novo,
     #view .num.mudou,#view .val.mudou{animation:none}}
 
+  /* ================= v35 CONTRASTE — fecha os 4 padroes abaixo de 4.5:1 do
+     laudo v27 (hfload 2.04 · hf-t 3.12 · nu-legend 3.90 · dim 4.45).
+     Regra da casa: corpo >= 4.5:1; cinza "por elegancia" e o defeito n.1 de
+     painel escuro. Camada ADITIVA: so cor de texto, nenhum layout.          */
+  :root{--leg:oklch(0.84 0.025 235)}
+  /* o cabecalho do holofeed senta sobre faixa mais clara — precisa de mais luz */
+  #holofeed .hf-t{color:oklch(0.92 0.02 235)}
+  .nu-legend{color:var(--leg)}
+  .dim{color:oklch(0.64 0.03 240)}
+
 </style>
 </head>
 <body>
@@ -2255,7 +2265,7 @@
 </div>
 <div class="ov" id="ov" onclick="if(event.target===this)fecharDossie()"><div class="sheet" id="sheet"></div></div>
 <div id="holofeed" role="log" aria-label="eventos do sistema ao vivo">
-  <div class="hf-t"><b>◈</b> holofeed <span id="hfload" style="margin-left:auto;color:var(--dim)"></span></div>
+  <div class="hf-t"><b>◈</b> holofeed <span id="hfload" style="margin-left:auto;color:var(--leg)"></span></div>
   <ul id="hflist"></ul><div class="hf-vazio" id="hfvazio">Silêncio honesto — sem eventos novos; a lâmina respira.</div>
 </div>
 
