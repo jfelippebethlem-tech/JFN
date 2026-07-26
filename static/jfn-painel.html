@@ -2034,6 +2034,44 @@
   #portal .pui,#pcv,#pmap{z-index:2}
   @media (prefers-reduced-motion:reduce){#pvid{display:none}}
 
+
+  /* == v31 A NAVEGACAO VIRA UM MOVIMENTO SO =================================
+     Sem `view-transition-name` o navegador cruza a pagina inteira de uma vez.
+     Nomeando as pecas que sobrevivem a troca, cada uma passa a ser interpolada
+     em separado: o cabecalho e a barra de abas ficam PARADOS enquanto o miolo
+     desliza, que e o que faz a navegacao parecer uma peca continua e nao duas
+     telas trocadas.                                                          */
+  header{view-transition-name:jfn-topo}
+  nav.tabs{view-transition-name:jfn-abas}
+  #view{view-transition-name:jfn-miolo}
+
+  ::view-transition-group(jfn-topo),
+  ::view-transition-group(jfn-abas){animation-duration:.001s}
+
+  ::view-transition-old(jfn-miolo){
+    animation:mioloSai .19s cubic-bezier(.4,0,1,1) forwards}
+  ::view-transition-new(jfn-miolo){
+    animation:mioloEntra .3s cubic-bezier(.16,.84,.3,1) .06s backwards}
+  /* o miolo sai para tras e o novo chega da frente: a leitura e de PROFUNDIDADE,
+     nao de troca lateral — combina com o resto, que ja e 3D angulado.        */
+  @keyframes mioloSai{to{opacity:0;transform:translateZ(0) scale(.985) translateY(-6px)}}
+  @keyframes mioloEntra{from{opacity:0;transform:scale(1.012) translateY(10px)}
+    to{opacity:1;transform:none}}
+
+  /* o fio de energia da barra de abas acompanha a troca: e o mesmo feixe que
+     corria no cabecalho, agora respondendo a navegacao.                      */
+  @keyframes fioCorre{from{background-position:-140% 0}to{background-position:240% 0}}
+  nav.tabs::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+    pointer-events:none;opacity:0;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 92%,white 20%) 46%,transparent);
+    background-size:44% 100%;background-repeat:no-repeat}
+  body.navegando nav.tabs::after{opacity:1;animation:fioCorre .52s cubic-bezier(.3,.7,.3,1) 1}
+
+  @media (prefers-reduced-motion:reduce){
+    ::view-transition-old(jfn-miolo),::view-transition-new(jfn-miolo){animation:none}
+    body.navegando nav.tabs::after{animation:none;opacity:0}}
+
 </style>
 </head>
 <body>
@@ -2316,11 +2354,27 @@ async function ir(id){
   if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){esfera=e;t=cand;montarSpheres();break;}}}
   if(!t)return;
   aba=id;montarTabs();
+  /* o fio corre na barra de abas durante a troca — o mesmo feixe do
+     cabecalho, agora reagindo a navegacao em vez de so decorar. */
+  document.body.classList.remove('navegando');void document.body.offsetWidth;
+  document.body.classList.add('navegando');
+  setTimeout(()=>document.body.classList.remove('navegando'),560);
   document.body.setAttribute('data-esf',esfera);   // tinge hovers/energia com a cor da esfera
   if(typeof _rjbgTinge==='function')_rjbgTinge();   // território de fundo re-tinge na cor da esfera
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
-  try{const html=await t.render();if(meu!==_nav)return;v.innerHTML=`<div class="fade">${html}</div>`;}
+  /* v31: a troca era um corte — spinner sai, conteudo novo entra, e cada aba
+     nascia e morria isolada. Com startViewTransition o navegador fotografa o
+     antes e o depois e INTERPOLA entre os dois: o que existe nas duas abas
+     (cabecalho, barra de abas, o proprio quadro do conteudo) se move em vez
+     de piscar, e a navegacao le como um movimento so.
+     O render assincrono termina ANTES de abrir a transicao — senao o
+     navegador congelaria a tela durante o fetch.                          */
+  try{const html=await t.render();if(meu!==_nav)return;
+    const pintar=()=>{v.innerHTML=`<div class="fade">${html}</div>`;};
+    if(document.startViewTransition&&!_redMotion){
+      await document.startViewTransition(pintar).updateCallbackDone;
+    }else{pintar();}}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
   if(aba!=='i_cockpit')vivo();   // cockpit tem animação própria; demais abas herdam a "vida"
