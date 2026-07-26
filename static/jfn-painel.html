@@ -3694,6 +3694,12 @@ const NU_NODES=[
   {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', orb:.86, sp:-.95},
 ];
 let _nuRAF=0,_nuPulses=[],_nuVals={},_nuFlux=[],_sweepAtivo=null,_swInt=0;
+/* v23 CARCACA REAL — a arte do reator vem do gerador (Firefly Image 5), nao do
+   codigo. Ela entra como TEXTURA por baixo do instrumento vivo: a peca usinada,
+   o god-ray e o flare sao fotografia; os aneis, bobinas e o triangulo continuam
+   procedurais por cima, porque so eles sabem a carga real da VM. Composicao
+   aditiva ('lighter'): os cantos pretos da arte somam zero, entao nao ha caixa. */
+const _reatorArt=new Image();_reatorArt.src='/static/assets/reator-core.webp';
 // qual sweep alimenta o sistema agora → mostra no reator e o acelera
 async function nuSweepPoll(){
   const el=$('nu-sweep');if(!el)return;
@@ -4265,6 +4271,17 @@ function nucleoStart(){
        a leitura de instrumento — precisão, não enfeite. */
     const RR=heart.k*Math.min(1.5,cam.s/240), R=v=>v*RR;
     ctx.save();ctx.translate(heart.x,heart.y);
+    /* a0 · CARCACA FOTOGRAFICA — a arte entra ANTES de tudo e um pouco maior que a
+       carcaca procedural (R(43.7)), para ler como o corpo da maquina em volta do
+       instrumento, nao como um segundo anel disputando o mesmo raio. Nao gira: o
+       flare anamorfico e da CAMERA, e camera nao roda junto com a peca. */
+    if(_reatorArt.complete&&_reatorArt.naturalWidth){
+      const DA=R(104);
+      ctx.globalCompositeOperation='lighter';
+      ctx.globalAlpha=Math.min(1,0.50*pulse);
+      ctx.drawImage(_reatorArt,-DA/2,-DA/2,DA,DA);
+      ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+    }
     /* Nota de custo: TUDO aqui é batelado em Path2D — um traço por camada, não um por
        segmento. A versão anterior gastava 72 `stroke()` só no anel de graduação; esta
        tem muito mais detalhe e custa MENOS, porque 56 arcos + 72 ticks viraram 6 traços. */
