@@ -16,14 +16,26 @@ Site: `curl localhost:8000/painel` → 200 · funnel `https://jfn-core.tailbbe6c
 
 ## PENDENTE (ordem de valor)
 
-### 1. Arc reactor do núcleo — PEDIDO EXPLÍCITO, não feito
+### 1. ~~Arc reactor do núcleo~~ — FEITO (`ebe3cf69`, v17 Mark II: contra-rotação 14s x 9s, halo pré-borrado, `.sweep` acelera a máquina inteira, hover 3D, halo no núcleo do cockpit)
+
+### 1b. PRÓXIMO: ícones + mapa RJ
 O `#kyber` (linha ~174 do HTML) já é sofisticado: arcos `.karc`, trilho `.ktrk`, segmentos tracejados `.kseg`, núcleo `.knuc` com `knucGlow`, e modo `.sweep`. **Elevar para arc reactor Mark II**: anéis concêntricos contra-rotativos, núcleo que pulsa com a atividade real dos sweeps (já existe a classe `.sweep`), partículas orbitando, e o handoff do portal→kyber (já existe, ver `portalFim()` linha ~4440) ficar mais cinematográfico. **Onde mais faz sentido**: o reator central do mapa do RJ no cockpit (`i_cockpit`), e o ícone da aba ativa.
 
 ### 2. Mapa do RJ holográfico (task #8)
 DECISÃO JÁ TOMADA: geradores **não acertam a geografia do RJ** (testado — Flux produz litoral genérico). Então: arte gerada = **mesa/ambiente** (anéis de radar, feixes de luz, brilho); contorno real continua vindo de `rj-malha.js` (IBGE) por cima, com tratamento holográfico. **Nunca falsear geografia em painel de auditoria.**
 Arte da mesa já gerada e arquivada: `docs/referencias/keyart/gemini/mesa-projecao_1440.jpg`.
 
-### 3. content-visibility (task #10)
+### 3. ~~content-visibility~~ — NAO SE APLICA (verificado 26/07)
+O painel usa **um unico `#view`** cujo `innerHTML` e trocado a cada aba (linha ~1891).
+Nao existem 51 containers no DOM, entao nao ha nos inativos para ocultar. O painel
+JA FAZ o que o guia recomenda como ideal: "nunca monte o DOM das 51 abas".
+**Minha recomendacao anterior partia de premissa errada. Fechado, sem acao.**
+
+### 3b. ~~backdrop-filter~~ — DENTRO DO TETO (verificado 26/07)
+Sao 4 seletores: `header`, `nav.tabs`, `.ov`, `.sheet`. Os dois ultimos sao modal/sheet
+sob demanda, entao coexistem **2 a 3**, dentro do teto recomendado de 2-4. **Sem acao.**
+
+### 3c. (obsoleto) content-visibility (task #10)
 `content-visibility` = 0 ocorrências. Com 51 abas é a maior alavanca de perf (web.dev mediu 232ms→30ms, ~7×). Usar **`hidden`, não `auto`** — preserva estado de render, volta instantânea.
 **BLOQUEIO**: a classe do container de aba não é `.tabc` (não existe). Achar a classe/estrutura real antes de aplicar — minha primeira tentativa virou código morto e eu removi.
 **Gotcha**: chamar `offsetHeight`/`getBoundingClientRect` no conteúdo oculto anula o ganho.
