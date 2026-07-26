@@ -107,8 +107,11 @@ pseudo-elemento nunca foi gerado, e a camada ficou invisível **com a suíte tod
 - Suíte completa: **2762 passed, 2 failed, 7 skipped, 7 errors** em 18m51s.
   Os **7 errors** são `tests/test_auditor_contraste.py` — eu estava rodando
   `tools/auditar_contraste.py` em paralelo e os dois disputam a mesma conexão CDP em
-  `:9222` (`RuntimeError`). **Não rodar os dois juntos.** As 2 falhas restantes não foram
-  identificadas nesta sessão (o log do harness só guardou a cauda).
+  `:9222` (`RuntimeError`). **Não rodar os dois juntos.**
+  As 2 falhas são `test_catraca_excepts.py::test_except_exception_nao_cresce` e
+  `test_lex_snapshot.py::test_parecer_lex_snapshot_identico` — **pré-existentes e sem
+  relação com o painel**: o diff desta sessão (`git diff 9866933e..HEAD --name-only`) não
+  tocou em nenhum `.py`, só em `static/jfn-painel.html`, 4 assets e a documentação.
 
 ## Contraste (CDP, WCAG 2.1) — 4 padrões abaixo de 4.5:1
 
