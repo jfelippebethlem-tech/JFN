@@ -1735,6 +1735,31 @@
   .sect,.eco .k,.kpi .l,.ck-inst .lab,#portal .l1{
     font-family:var(--display);letter-spacing:.1em}
   nav.tabs button .tl{font-family:var(--display);letter-spacing:.02em;font-size:9px}
+
+  /* == v24 MESA - a superficie ganha corpo =================================
+     A mesa do cockpit era um gradiente radial: cor, sem materia. Agora a
+     superficie e ARTE GERADA (Firefly Image 5) - placa de vidro com aneis de
+     radar gravados, ticks de graduacao e feixes subindo por baixo. O que ela
+     NAO faz: geografia. O contorno do RJ continua vindo de rj-malha.js (IBGE),
+     desenhado pelo canvas POR CIMA - em painel de auditoria territorio nunca
+     pode ser inventado por gerador.
+     Mascara radial: a arte morre antes da borda do cartao, entao a placa nunca
+     desenha um retangulo dentro do retangulo. Blend screen sobre o gradiente
+     antigo: soma luz, nao substitui a base (o dark original fica intacto). */
+  .ck-nucleo::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:url(/static/assets/mesa-projecao.jpg) 50% 42%/cover no-repeat;
+    opacity:.5;mix-blend-mode:screen;
+    -webkit-mask-image:radial-gradient(ellipse 70% 74% at 50% 62%,#000 16%,rgba(0,0,0,.35) 70%,transparent 96%);
+    mask-image:radial-gradient(ellipse 70% 74% at 50% 62%,#000 16%,rgba(0,0,0,.35) 70%,transparent 96%)}
+  @media (prefers-reduced-transparency:reduce){.ck-nucleo::before{opacity:.24}}
+  /* No desktop o cartao tem quase a proporcao da arte, entao `cover` mostraria a
+     placa INTEIRA - e a borda reta dela cortava o territorio como um risco fora
+     de lugar. Aproximar 190% deixa so o INTERIOR da mesa no quadro: aneis,
+     ticks e feixes, sem aresta nenhuma. No celular a caixa e retrato e a
+     convergencia das arestas para o canto de baixo LE como mesa, entao la
+     `cover` fica. */
+  @media (min-width:900px){.ck-nucleo::before{background-size:190% auto;background-position:50% 45%}}
+
 </style>
 </head>
 <body>
