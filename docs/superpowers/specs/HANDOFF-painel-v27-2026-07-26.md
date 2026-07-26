@@ -145,3 +145,84 @@ KeyError: 30
 
 Passar as abas explicitamente contorna. Enquanto isso não for corrigido, não existe laudo
 das 51 abas — só por lote.
+
+---
+
+# v27 — systematic-debugging aplicado aos bugs relatados (2026-07-26)
+
+Skills baixadas da VM (`~/.claude/plugins/cache/claude-plugins-official/superpowers/6.2.0/skills/`)
+para `~/.claude/skills/` no desktop: `brainstorming`, `systematic-debugging`.
+
+## O erro de método que a Fase 1 evitou
+
+Medi a abertura no **Chromium headless da VM** e achei `domready=2850ms`, uma long task de
+**2381ms** e **3 quadros em 4,5s**. Ia "otimizar" o painel.
+
+Antes disso medi no **Chrome real do dono** (24 CPUs, 32 GB, dpr 1.5):
+`ttfb 74ms · domInteractive 217ms · load 612ms · maior long task 56ms`.
+
+**A página não é lenta.** Os 2,4s eram SwiftShader — a VM não tem GPU. Se eu tivesse
+"consertado" o que medi na VM, teria mexido no que não estava quebrado.
+*Diferença de ambiente é item 3 da Fase 1 por um motivo.*
+
+## Os três bugs, com a medição de cada um
+
+### 1. "letras estranhas"
+Cobertura medida por canvas nas três fontes embarcadas:
+
+| fonte | não tem |
+|---|---|
+| Orbitron (display) | `· → ↔ ₂ º ª § ✓ ✗` |
+| IBM Plex Mono | `✗` |
+| IBM Plex Sans | `✗` |
+
+**Nenhuma das três tem U+2717 (`✗`)** — com o SIAFE fora do ar o cabeçalho renderizava um
+caractere de sistema. E `✓` a 10px com letter-spacing largo **lê como a letra "v"** (era
+isso que aparecia em `SIAFE ✓ · 2026`).
+**Fix:** estado de sistema virou **sinal** (ponto verde/vermelho com `aria-label`), que não
+depende de fonte. `A→Z ✓` e `identidade ✓` viraram palavra. `unicode-range` trava o
+Orbitron no que ele cobre de fato.
+
+### 2. "ícones que quando clica ficam pequenos"
+Medido 3s **depois** do clique, na aba ativa:
+`transform: matrix3d(-0.8, 0, 0, 0, 0, 0.8, ...)` — **espelhado no X e 20% menor**,
+com a animação em `running` e **`currentTime` travado em 0**.
+
+Hipótese H1 (a nav é recriada em laço, reiniciando a animação) → **REFUTADA**:
+0 nós adicionados, 0 mutações em 5s.
+
+Causa real: `@keyframes v16holo{from{transform:rotateY(-180deg) scale(.8)}}` — o **quadro
+inicial** encolhia e espelhava justamente o alvo de clique, e é nele que a animação
+congela em qualquer engasgo de quadro.
+**Fix:** a entrada agora vem de **maior e mais aceso** (`rotateY(-34deg) scale(1.16)`,
+`brightness(2.1)`). Medido depois: **17,5×21,5 contra 19,6×17,9 dos inativos** — congelar
+ali lê como "ligado", nunca como defeito. Sem escala < 1, sem espelhamento em instante nenhum.
+
+### 3. "demorando a fazer tudo"
+Não é carga (load 612ms). Era o **portal**: `FIM=3520ms` + `760ms` de saída = **4,3s de
+espera obrigatória** toda abertura. Agora **1960 + 420**.
+
+## O que mais entrou
+
+- **Abertura 3D angulada** (Firefly Image 5): reator massivo em três quartos, carcaça com
+  espessura, anéis de plasma em ângulos diferentes. O shader desenhava um disco azul
+  chapado bem em cima do núcleo incandescente da arte — máscara radial abre um furo no
+  `#pcv` exatamente ali, e do procedural sobra o que ele faz bem.
+  *Gotcha:* o furo precisou de duas tentativas — o primeiro raio (`42%` de 158px = 66px)
+  era menor que o blob (~90px) e não mudou nada na tela.
+- **Tato em todo controle.** O painel tinha `:hover` em tudo e `:active` em nada — e hover
+  não existe no celular, então **no telefone o painel era mudo ao toque**. Agora: afunda
+  1px, onda de luz nasce onde o dedo tocou, linha acionada carimba a cor da esfera.
+  UM listener delegado no documento (o `#view` troca de innerHTML a cada aba: listener por
+  elemento morreria junto), em `pointerdown` e não `click` — resposta no toque.
+  Verificado: `.onda` presente, 138px, `animationName: ondaAbre`, `:active` aplicado.
+
+## Continua pendente (dito com clareza)
+
+- **Ícones "feios"**: continuam sendo os glifos de linha. Duas gerações no Firefly foram
+  reprovadas com evidência (forma preenchida, espessura desigual). Text-to-image **não**
+  produz sistema de ícone com traço uniforme. Caminho real: desenhar o set com traço único
+  ou vetorizar em ferramenta de traçado, não em gerador.
+- **Movimento no conteúdo das dezenas de abas**: entrou o tato (toque/clique em todos os
+  controles). A entrada em cascata dos cards por aba usa o stagger v16 e **não foi
+  auditada aba a aba** nesta sessão.
