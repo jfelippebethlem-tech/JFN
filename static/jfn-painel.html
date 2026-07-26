@@ -740,7 +740,7 @@
                url(/static/assets/portal-nebula.jpg) center/cover no-repeat,
                oklch(0.035 0.014 265);
     display:flex;align-items:flex-end;justify-content:center;cursor:pointer;
-    transition:opacity .5s ease,filter .5s ease}
+    transition:opacity .34s ease,filter .34s ease}
   /* véu inferior: garante contraste do texto contra qualquer quadro da cena */
   #portal::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56%;z-index:1;pointer-events:none;
     background:linear-gradient(180deg,transparent,oklch(0.035 0.014 265/.62) 46%,oklch(0.035 0.014 265/.94))}
@@ -1490,8 +1490,14 @@
   /* ── HOLOCRON: o ícone da aba gira em 3D ao ser escolhido ────────────
      Só o ícone da aba ATIVA, e uma volta só. É confirmação de escolha —
      ícone girando eternamente vira enfeite e o olho para de ver.        */
-  nav.tabs button.on .ti .jico{animation:v16holo .8s cubic-bezier(.3,.7,.2,1) 1}
-  @keyframes v16holo{from{transform:rotateY(-180deg) scale(.8)}to{transform:rotateY(0) scale(1)}}
+  nav.tabs button.on .ti .jico{animation:v16holo .46s cubic-bezier(.2,.9,.25,1.1) 1}
+  /* v27: o quadro inicial NAO pode ser menor nem espelhado. Se o aparelho
+     engasga, e nesse quadro que o icone congela — e o dono via o icone
+     encolher ao clicar. Agora a entrada vem de MAIOR e mais aceso: congelar
+     aqui le como "ligado", nunca como defeito. Sem rotateY negativo, sem
+     escala abaixo de 1, sem espelhamento em nenhum instante. */
+  @keyframes v16holo{from{transform:rotateY(-34deg) scale(1.16);filter:brightness(2.1)}
+    to{transform:none;filter:none}}
   nav.tabs button .ti{perspective:400px}
 
   /* ── SEVERIDADE PULSA: grave respira, leve fica quieto ───────────────
@@ -1801,6 +1807,22 @@
     mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%)}
   @media (prefers-reduced-transparency:reduce){.cover-row::before{opacity:.3}}
 
+
+  /* == v27 SINAL DE ESTADO =================================================
+     Medido com canvas: Orbitron nao tem · → ↔ ₂ º ª § ✓ ✗, e nem Plex Mono nem
+     Plex Sans tem ✗. Dingbat de estado dependia de um glifo que nao existe.
+     Agora o estado e um ponto: cor + brilho, zero dependencia de fonte.      */
+  .htop .sinal{width:7px;height:7px;border-radius:50%;display:inline-block;
+    vertical-align:middle;margin:0 1px;flex:0 0 auto}
+  .htop .sinal.ok{background:var(--green);box-shadow:0 0 7px color-mix(in oklch,var(--green) 70%,transparent)}
+  .htop .sinal.off{background:var(--rose);box-shadow:0 0 7px color-mix(in oklch,var(--rose) 70%,transparent)}
+  /* `unicode-range` faz o navegador NAO consultar o Orbitron fora do que ele
+     cobre: latino basico + acentuado. Sem isso, cada simbolo fora do subset
+     obrigava um passe de fallback silencioso a cada repintura.               */
+  @font-face{font-family:"Orbitron";src:url(/static/assets/fonts/Orbitron-var.woff2) format("woff2");
+    font-weight:400 900;font-display:swap;
+    unicode-range:U+0020-007E,U+00C0-00FF,U+0100-017F}
+
 </style>
 </head>
 <body>
@@ -1975,8 +1997,8 @@ function ordenar(sel,btn){
   const chave=c=>((c.querySelector('.clk,b,strong,a')||c).textContent||'').trim().toLowerCase();
   const az=btn.classList.toggle('on');
   if(az){cards.forEach((c,i)=>{if(c.dataset.ord0==null)c.dataset.ord0=i;});
-         cards.sort((a,b)=>chave(a).localeCompare(chave(b),'pt'));btn.textContent='A→Z ✓';}
-  else{cards.sort((a,b)=>(+a.dataset.ord0)-(+b.dataset.ord0));btn.textContent='A→Z';}
+         cards.sort((a,b)=>chave(a).localeCompare(chave(b),'pt'));btn.textContent='A-Z ativo';}
+  else{cards.sort((a,b)=>(+a.dataset.ord0)-(+b.dataset.ord0));btn.textContent='A-Z';}
   cards.forEach(c=>cont.appendChild(c));
   const cv=document.querySelector('#view .view-wire'); if(cv)cv.remove();   // posições mudaram → tira malha estática
 }
@@ -2910,7 +2932,7 @@ async function renderBeneficiosPref(chips){
   h+=buscaPag('bv-list','filtrar por nome, órgão, cargo, partido — busca em TODOS os casos…');
   const _montarBV=x=>{
     const idOk=x.certeza==='ALTA';
-    const selo=idOk?'<span class="sev alta" title="um só servidor com este nome + CPF bate — é esta pessoa">identidade ✓</span>'
+    const selo=idOk?'<span class="sev alta" title="um só servidor com este nome + CPF bate — é esta pessoa">identidade confere</span>'
                   :'<span class="sev media" title="nome comum — confirmar CPF antes de usar">conferir homônimo</span>';
     return card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
@@ -4594,7 +4616,20 @@ function ckPull(first){
 }
 
 (async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();await ir('i_cockpit');
-  const st=await J('/status');if(st.exercicio)$('hsub').textContent='CENTRAL DE INTELIGÊNCIA · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
+  const st=await J('/status');
+  if(st.exercicio){
+    /* v27: estado do SIAFE era um dingbat. Medido: nenhuma das tres fontes
+       embarcadas tem U+2717, e U+2713 a 10px le como a letra "v". Estado de
+       sistema e SINAL, nao caractere — e sinal nao depende de fonte. */
+    const hs=$('hsub'); hs.textContent='';
+    hs.append('CENTRAL DE INTELIGÊNCIA · SIAFE ');
+    const pt=document.createElement('i');
+    pt.className='sinal '+(st.logged_in?'ok':'off');
+    pt.title=st.logged_in?'SIAFE conectado':'SIAFE sem sessão';
+    pt.setAttribute('role','img');
+    pt.setAttribute('aria-label',pt.title);
+    hs.append(pt,' · '+st.exercicio);
+  }})();
 
 /* ── SABRE: motor do Conduíte + Kyber core + holofeed ─────────────────────────
    Assina /api/eventos/stream (SSE). Cada evento REAL vira: (a) pulso de plasma
@@ -4806,7 +4841,8 @@ function portalStart(){
   const cv=$('pcv'),pm=$('pmap');
   const dpr=Math.min(devicePixelRatio||1,1.5);   // 4K real na GPU da VM não paga o pixel
   let gl=null,U={},raf=0,morto=false,mapC=null,mx=0,my=0;
-  const t0=performance.now(),IGN=[120,900],JUMP=[2600,3320],FIM=3520;
+  const t0=performance.now(),IGN=[80,560],JUMP=[1320,1780],FIM=1960;   /* v27: era 3520+760=4,3s de espera. Medido no Chrome do dono a pagina
+      carrega em 612ms — quem segurava a tela era a propria abertura. */
 
   try{gl=cv.getContext('webgl',{antialias:false,alpha:true,premultipliedAlpha:false})||cv.getContext('experimental-webgl');}catch(_){}
   if(gl)try{
@@ -4892,7 +4928,7 @@ function portalStart(){
         h.style.transform=`translate(${kr.left+kr.width/2-innerWidth/2}px,`+
           `${kr.top+kr.height/2-innerHeight/2}px) scale(${(kr.width/S).toFixed(4)})`;
         h.style.opacity='0';});
-      setTimeout(()=>h.remove(),700);
+      setTimeout(()=>h.remove(),420);
     }
     el.classList.add('off');
     // a lâmina do Conduíte reacende: o portal entrega a energia ao painel
@@ -4900,7 +4936,7 @@ function portalStart(){
     if(b){b.style.animation='none';void b.offsetWidth;
       b.style.animation='ignicao .5s cubic-bezier(.2,.9,.25,1.2) 1,respira 4.5s ease-in-out .5s infinite';}
     setTimeout(()=>{el.remove();
-      if(gl){const x=gl.getExtension('WEBGL_lose_context');if(x)x.loseContext();}},760);
+      if(gl){const x=gl.getExtension('WEBGL_lose_context');if(x)x.loseContext();}},420);
   }
   el.addEventListener('click',portalFim);
   addEventListener('keydown',portalFim);
