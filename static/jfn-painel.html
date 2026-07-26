@@ -4379,7 +4379,11 @@ async function renderCockpit(){
       <div id="nu-chips"></div></div>
     <div class="ck-grid" id="ck-grid"></div>
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
-  setTimeout(ckBoot,0);   // preenche após o innerHTML assentar
+  /* v44: com View Transitions (v31+) o paint e ASSINCRONO — o setTimeout(0)
+     corria ANTES do innerHTML assentar, o ck-grid nao existia e o ckBoot
+     virava no-op silencioso: cockpit sem cards, sem canvas e sem nucleo.
+     Reagenda ate o grid existir (teto ~2s; se nao vier, a aba mudou). */
+  (function agenda(n){setTimeout(()=>{if($('ck-grid'))ckBoot();else if(n<40)agenda(n+1);},50)})(0);
   return html;
 }
 
@@ -4543,14 +4547,20 @@ function nucleoStart(){
   /* v41: NUCLEO-HOLO — o arc reactor que projeta o holograma do RJ (arte do
      it-campo) entra como corpo de video SOB o canvas; o procedural (feixes,
      chips, dados reais) segue por cima. Progressivo: sem arquivo, nada muda. */
-  if(!_redMotion)fetch('/static/assets/nucleo-holo-rj.mp4',{method:'HEAD'}).then(r=>{
+  /* matchMedia direto: nucleoStart roda no boot ANTES do const _redMotion
+     (TDZ) — referencia-lo aqui matava a funcao inteira em ReferenceError. */
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)
+    fetch('/static/assets/nucleo-holo-rj.mp4',{method:'HEAD'}).then(r=>{
     if(!r.ok)return;
     let v=box.querySelector('video.holo');
     if(!v){v=document.createElement('video');v.className='holo';
       v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
       v.setAttribute('aria-hidden','true');
       v.addEventListener('playing',()=>v.classList.add('on'));
-      v.src='/static/assets/nucleo-holo-rj.mp4';
+      /* v41.1: par de sources — webm primeiro (Chromium sem H.264 decodifica
+         VP9; o Chrome real pega qualquer um). O que faltar cai pro proximo. */
+      v.innerHTML='<source src="/static/assets/nucleo-holo-rj.webm" type="video/webm">'
+                 +'<source src="/static/assets/nucleo-holo-rj.mp4" type="video/mp4">';
       box.insertBefore(v,box.firstChild);}
     v.play().catch(()=>{});
   }).catch(()=>{});
@@ -5312,7 +5322,11 @@ async function nebulaViva(){
        (Chromium sem H.264) deixaria o veu ligado sobre video preto. */
     v.addEventListener('playing',()=>v.classList.add('on'));
     host.appendChild(v);}
-  if(!v.src.endsWith(url)){v.classList.remove('on');v.src=url;}
+  if(v.dataset.neb!==nome){v.classList.remove('on');v.dataset.neb=nome;
+    /* v41.1: webm primeiro (harness sem H.264), mp4 como caminho canonico */
+    v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'
+               +'<source src="'+url+'" type="video/mp4">';
+    v.load();}
   v.play().catch(()=>{});
 }
 /* v38: se o corpo do no (anel usinado) ja chegou do it-campo, liga a camada.
