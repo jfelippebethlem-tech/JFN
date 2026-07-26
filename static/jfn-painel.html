@@ -2020,10 +2020,26 @@
     #view .grid>.card,#view .cols>.card,#view .grid>.ck-inst,#view .cols>.ck-inst{animation:none}
     .ck-inst .meta.esperando{animation:none;opacity:.8}}
 
+
+  /* == v30 A ABERTURA GANHA MOVIMENTO REAL ==================================
+     A peca da abertura era uma foto parada com o shader por cima. Agora e um
+     plano de video em loop (Gemini) e a MESMA foto vira o `poster`: o quadro
+     aparece no primeiro instante e o video assume quando termina de chegar —
+     nunca ha buraco preto esperando 1,3MB.
+
+     `muted` e `playsinline` sao o que deixa o autoplay acontecer em telefone;
+     sem os dois o navegador recusa e a abertura ficaria so no poster.        */
+  #pvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    z-index:0;pointer-events:none;opacity:.92}
+  #portal .pui,#pcv,#pmap{z-index:2}
+  @media (prefers-reduced-motion:reduce){#pvid{display:none}}
+
 </style>
 </head>
 <body>
-<div id="portal" hidden><canvas id="pcv" aria-hidden="true"></canvas><canvas id="pmap" aria-hidden="true"></canvas>
+<div id="portal" hidden><video id="pvid" autoplay muted loop playsinline preload="auto" aria-hidden="true"
+    poster="/static/assets/portal-hero.jpg"><source src="/static/assets/portal-hero.mp4" type="video/mp4"></video>
+  <canvas id="pcv" aria-hidden="true"></canvas><canvas id="pmap" aria-hidden="true"></canvas>
   <div class="pui">
     <div class="pln l1">Reator — online</div>
     <div class="pln l2">Cada real tem um rastro.</div>
