@@ -2710,6 +2710,7 @@ async function ir(id){
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
   if(aba!=='i_cockpit')vivo();   // cockpit tem animação própria; demais abas herdam a "vida"
+  else if(typeof ckBoot==='function')ckBoot();   // v48: monta o cockpit DEPOIS do paint
   a11yfy(document.body);         // torna chips/spheres/.clk operáveis por teclado (audit a11y #1)
 }
 
@@ -4409,11 +4410,11 @@ async function renderCockpit(){
       <div id="nu-chips"></div></div>
     <div class="ck-grid" id="ck-grid"></div>
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
-  /* v44: com View Transitions (v31+) o paint e ASSINCRONO — o setTimeout(0)
-     corria ANTES do innerHTML assentar, o ck-grid nao existia e o ckBoot
-     virava no-op silencioso: cockpit sem cards, sem canvas e sem nucleo.
-     Reagenda ate o grid existir (teto ~2s; se nao vier, a aba mudou). */
-  (function agenda(n){setTimeout(()=>{if($('ck-grid'))ckBoot();else if(n<40)agenda(n+1);},50)})(0);
+  /* v48: quem monta o cockpit e o ir(), DEPOIS de pintar — nao um timer daqui.
+     O v44 reagendava ate achar o ck-grid, mas o grid que ele achava era o do
+     quadro ANTERIOR: o innerHTML final entrava depois e jogava fora o que
+     havia sido montado (canvas voltava a 300x150, os 7 nos do mapa sumiam).
+     Timer nao serializa com paint assincrono; chamada apos o paint, sim. */
   return html;
 }
 
