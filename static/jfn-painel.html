@@ -4717,7 +4717,7 @@ function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="ck
   </div>`;}
 function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
-  if(meta!=null){m.innerHTML=meta;m.classList.remove(esperando);}
+  if(meta!=null){m.innerHTML=meta;m.classList.remove("esperando");}
   nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt);   // espelha no Núcleo orbital
 }
 let _ckTick=[];
