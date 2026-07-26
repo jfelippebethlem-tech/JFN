@@ -4226,7 +4226,16 @@ function nucleoStart(){
      uma caixa preta. Toda vez que a geometria muda, repinta explicitamente. */
   const repinta=()=>{if(rm&&cv.isConnected)draw(performance.now());};
   size();repinta();
-  addEventListener('resize',()=>{if(cv.isConnected){size();repinta();}});
+  /* v28.7: `size()` faz cv.width=..., e atribuir width a um canvas LIMPA o
+     bitmap E invalida a placa/contorno ja rasterizados para o tamanho velho.
+     O handler so chamava repinta(), que redesenha as camadas dinamicas mas
+     nao reconstroi o que e cache — entao o primeiro resize depois da pintura
+     inicial apagava a mesa e nada a trazia de volta. Medido no Chrome do
+     dono: getImageData no canvas devolvia opacas=0, canvas inteiramente
+     vazio, enquanto o piso visivel na tela vinha do CSS.
+     _rjMontar reconstroi placa e contorno no tamanho novo e marca o piso
+     sujo antes de repintar.                                              */
+  addEventListener('resize',()=>{if(cv.isConnected){size();_rjMontar();}});
   const _rjMontar=()=>{if(!cv.isConnected||!window.RJ_MALHA)return;
     placa=_rjPlaca(window.RJ_MALHA,HOLO.SZ);
     contorno=_rjContornoMundo(window.RJ_MALHA);pisoSujo=true;repinta();};
