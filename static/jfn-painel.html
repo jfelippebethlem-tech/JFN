@@ -5093,6 +5093,23 @@ function portalStart(){
   }
   el.addEventListener('click',portalFim);
   addEventListener('keydown',portalFim);
+
+  /* v28.3: a abertura media o tempo com performance.now() mas so AVANCAVA dentro
+     do requestAnimationFrame. O Chrome congela rAF em aba de segundo plano — quem
+     abria o painel e trocava de aba voltava e achava o portal ainda na tela (nao
+     termina), e no instante em que a aba volta ao foco o rAF dispara com `t` ja
+     muito alem de FIM: a cena corre todos os quadros de uma vez, que e o
+     "rapidas e embaralhadas" que o dono viu.
+
+     Duas travas, as duas independentes de quadro (portalFim ja e idempotente
+     pela guarda `morto`, entao chamar duas vezes nao custa nada):
+       1. um relogio de verdade fecha a abertura mesmo se nenhum quadro rodar;
+       2. ao voltar de segundo plano, se o tempo ja passou, fecha SEM correr o
+          atraso acumulado — melhor entregar o painel do que exibir a animacao
+          em avanco rapido.                                                     */
+  setTimeout(portalFim,FIM+90);
+  document.addEventListener(visibilitychange,()=>{
+    if(document.visibilityState===visible&&performance.now()-t0>=FIM)portalFim();});
 }
 portalStart();
 
