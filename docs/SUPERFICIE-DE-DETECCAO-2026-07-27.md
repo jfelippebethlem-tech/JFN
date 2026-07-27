@@ -178,4 +178,27 @@ com limite de palavra — o "s" de "NFs" furava o `\b`. A guarda robusta não é
 | 4 | Remover a 5ª cópia do teto (`lex_analise_conteudo.py:307`) | Fecha a família de bug |
 | 5 | Subir a cobertura de responsáveis de 8% para ≥30% | Destrava art. 117 e segregação como achado |
 | 6 | Rodar os 31 detectores em lote e persistir num só lugar | Hoje só 4 regras têm resultado no banco |
-| 7 | Fila formal para os processos sob sigilo | Ver documento de inventário de captura |
+| 7 | Fila formal para os 77 processos sob restrição | `docs/SEI-SIGILO-E-FILA-CAPTURA-2026-07-27.md` |
+
+---
+
+## 6. Captura do SEI: o que falta e o que está restrito
+
+| Medida | Valor |
+|---|---:|
+| Processos conhecidos pelo pipeline (`sei_arvore`) | 3.864 |
+| Com texto capturado | 2.007 |
+| **Conhecidos e sem texto (fila real)** | **3.216** |
+| Caches de varredura | 5.663 |
+| **Caches com árvore de documentos que não carregou** | **2.579 (46%)** |
+| **Processos com marcador de restrição de acesso** | **77** |
+
+São dois universos quase disjuntos — apenas 688 processos aparecem nos dois lados. O arquivo local
+nasceu da fila das Ordens Bancárias; o pipeline de análise conhece outro conjunto.
+
+**A exposição financeira dessa fila é INDISPONÍVEL, não zero:** `total_pago` está preenchido em
+apenas 6 dos 3.216 processos (R$ 5.356.912,08).
+
+O marcador de restrição foi **testado antes de virar lista**: cadeado aparece em 22,42% dos caches
+sem documentos contra 0,02% dos caches com documentos — mil vezes de diferença, o que exclui
+artefato de seletor CSS. Detalhe do teste e a lista dos 77 no documento próprio.

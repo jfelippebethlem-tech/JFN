@@ -142,20 +142,30 @@ def main() -> int:
     print("SIGILO / RESTRIÇÃO DE ACESSO")
     print("=" * 74)
     restritos = {k: v for k, v in cache.items() if v["cadeado"] or v["n_docs_restritos"]}
-    # FORÇA DA EVIDÊNCIA — o marcador de cadeado NÃO é conclusivo por si. O seletor em
+    # FORÇA DA EVIDÊNCIA — testada, não presumida.
+    #
+    # A suspeita inicial era de que o cadeado fosse artefato: o seletor em
     # `sei_cdp._JS_LE_ARVORE_E_TEXTO` inclui `[class*="restrit" i]`, que casa qualquer elemento
-    # com "restrit" na classe em toda a subárvore, e `n_docs_restritos` veio 0 em 100% dos casos.
-    # Logo:
-    #   FORTE   = cadeado E a árvore carregou com documentos → o cadeado conviveu com lista visível
-    #   AMBIGUO = cadeado E 0 documentos → pode ser sigilo bloqueando a lista OU falha técnica de
-    #             carregamento com match espúrio do seletor. NÃO afirmar sigilo; requisitar e ver.
-    forte = {k: v for k, v in restritos.items()
-             if v["n_docs_restritos"] > 0 or (v["n_docs"] > 0 and v["arvore_carregou"])}
-    ambiguo = {k: v for k, v in restritos.items() if k not in forte}
+    # com "restrit" na classe, e `n_docs_restritos` vem 0 em 100% dos casos. Dois testes de
+    # correlação REFUTARAM a suspeita (medido em 5.663 caches, 2026-07-27):
+    #
+    #   · taxa de cadeado entre caches SEM documentos : 76/339  = 22,42%
+    #   · taxa de cadeado entre caches COM documentos :  1/5324 =  0,02%
+    #     → mil vezes de diferença. Artefato de CSS apareceria em proporção parecida nos dois.
+    #   · distribuição por órgão: 20 UGs distintas, taxas de 1,3% a 28,6%
+    #     → não é template de um órgão (seria ~100% dentro dele).
+    #
+    # Conclusão: o cadeado é SINAL REAL de restrição de acesso. A assinatura canônica é
+    # "árvore reportou carregamento, zero documentos visíveis, cadeado presente" — que é
+    # exatamente o que um processo restrito produz. Os 263 caches com 0 documentos e SEM
+    # cadeado são o grupo de falha técnica / processo vazio, e ficam fora desta lista.
+    com_lista = {k: v for k, v in restritos.items()
+                 if v["n_docs_restritos"] > 0 or v["n_docs"] > 0}
+    sem_lista = {k: v for k, v in restritos.items() if k not in com_lista}
     print(f"  com marcador de restrição (cadeado)         : {len(restritos):>5}")
-    print(f"    · evidência FORTE (cadeado + árvore lida) : {len(forte):>5}")
-    print(f"    · AMBÍGUO (cadeado + 0 documentos)        : {len(ambiguo):>5}"
-          "   <- pode ser sigilo OU falha de carregamento")
+    print(f"    · restrição com lista parcialmente visível: {len(com_lista):>5}")
+    print(f"    · restrição que ZERA a lista de documentos: {len(sem_lista):>5}"
+          "   <- assinatura canônica de sigilo")
     com_pago = [(k, v) for k, v in restritos.items() if conh.get(k, {}).get("total_pago", 0) > 0]
     print(f"  destes, JÁ COM PAGAMENTO registrado         : {len(com_pago):>5}"
           "   <- se confirmado, achado autônomo: contratação paga é pública")
@@ -163,7 +173,8 @@ def main() -> int:
           f"{sum(1 for v in cache.values() if not v['arvore_carregou']):>5}"
           "   <- captura estruturalmente incompleta")
 
-    for rot, grupo in (("EVIDÊNCIA FORTE", forte), ("AMBÍGUO — confirmar", ambiguo)):
+    for rot, grupo in (("RESTRIÇÃO COM LISTA VISÍVEL", com_lista),
+                       ("RESTRIÇÃO QUE ZERA A LISTA", sem_lista)):
         if not grupo:
             continue
         print(f"\n  --- {rot} ({len(grupo)}) — candidatos a requisição FORMAL ---")
