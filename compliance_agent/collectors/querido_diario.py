@@ -9,18 +9,26 @@ desde ~2019. Útil para:
   - Ver em quantas licitações uma empresa participou
   - Detectar padrões ao longo do tempo
 
-API: https://queridodiario.ok.org.br/api/gazettes
+API: https://api.queridodiario.ok.org.br/gazettes
 Sem autenticação, gratuita.
+
+ATENÇÃO (corrigido 2026-07-27): `queridodiario.ok.org.br/api/*` é a SPA do site — devolve
+HTTP **200 com HTML**, então `r.json()` estourava e o `except` engolia: o coletor inteiro
+retornava lista vazia em silêncio. O back-end real é `api.queridodiario.ok.org.br`. Os nomes
+dos parâmetros também estavam errados (`territory_id`/`since`/`until`): a API aceita
+`territory_ids`, `published_since`, `published_until` e IGNORA os nomes antigos sem erro —
+a busca vinha do Brasil inteiro, não do RJ. Verificado contra a API real.
 """
 
 import asyncio
+import logging
 from datetime import date, timedelta
 from typing import Optional
 
 import httpx
 from compliance_agent.reporting.intel_base import moeda
 
-QD_API = "https://queridodiario.ok.org.br/api/gazettes"
+QD_API = "https://api.queridodiario.ok.org.br/gazettes"
 
 # ID do município do Rio de Janeiro no Querido Diário
 # Para diário ESTADUAL do RJ, usar territory_id do estado
@@ -40,25 +48,27 @@ async def buscar_historico(
     """
     params = {
         "querystring": termo,
-        "territory_id": RJ_TERRITORY,
+        "territory_ids": RJ_TERRITORY,
         "size": max_resultados,
         "offset": 0,
         "sort_by": "relevance",
     }
     if desde:
-        params["since"] = desde.strftime("%Y-%m-%d")
+        params["published_since"] = desde.strftime("%Y-%m-%d")
     if ate:
-        params["until"] = ate.strftime("%Y-%m-%d")
+        params["published_until"] = ate.strftime("%Y-%m-%d")
 
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.get(QD_API, params=params,
                                  headers={"User-Agent": "JFN-Compliance/1.0"})
-            if r.status_code == 200:
-                data = r.json()
-                return data.get("gazettes", [])
-    except Exception:
-        pass
+            # 200 com HTML = SPA/erro de rota: não engolir calado (foi assim que o coletor morreu).
+            if r.status_code == 200 and "json" in r.headers.get("content-type", ""):
+                return r.json().get("gazettes", [])
+            logging.warning("QueridoDiario: resposta inesperada %s %s",
+                            r.status_code, r.headers.get("content-type"))
+    except Exception as e:
+        logging.warning("QueridoDiario indisponível: %s", e)
     return []
 
 
