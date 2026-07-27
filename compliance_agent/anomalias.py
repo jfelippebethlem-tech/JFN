@@ -39,6 +39,24 @@ MODELO_VERSAO = "onda1-v1.0"
 # Limite de dispensa (Lei 14.133/2021 art. 75, valores atualizados 2024 — bens/serviços comuns).
 # Configurável; para obras/serviços de engenharia o teto é ~R$ 119.812,02.
 LIMITE_DISPENSA = float(os.environ.get("JFN_LIMITE_DISPENSA", "59906.02"))
+# ↑ mantido só como override manual (env). O teto REAL é POR EXERCÍCIO e vem da fonte única
+# `limites_dispensa` — este valor fixo era o de 2024 e estava sendo aplicado a todos os anos:
+# em 2025 (62.725,59) e 2026 (65.492,11) acusava fracionamento abaixo do teto legal (falso
+# positivo) e em 2021-2023 deixava passar (falso negativo). É a 4ª cópia divergente do teto
+# encontrada no projeto — o módulo canônico existe justamente para isso e proíbe duplicar.
+from compliance_agent.limites_dispensa import limite_dispensa as _limite_do_ano  # noqa: E402
+
+
+def _teto(exercicio) -> float:
+    """Teto de dispensa do exercício (art. 75-II). Override por env vence, para teste."""
+    if os.environ.get("JFN_LIMITE_DISPENSA"):
+        return LIMITE_DISPENSA
+    try:
+        return _limite_do_ano(int(exercicio), "compras")
+    except (TypeError, ValueError):
+        return LIMITE_DISPENSA
+
+
 CONCENTRACAO_LIMIAR = float(os.environ.get("JFN_CONCENTRACAO_LIMIAR", "0.30"))  # 30% do gasto da UG
 
 
@@ -141,6 +159,14 @@ def regras(df: pd.DataFrame, con) -> int:
     agora = datetime.now().isoformat(timespec="seconds")
     flags = []  # (ob_id, regra, peso, parecer, fundamento)
 
+    # Repasse intragoverno, tributo e encargo NÃO são contratação: não existe fracionamento nem
+    # captura de fornecedor em pagamento obrigatório. O filtro já existia no módulo e era aplicado
+    # só no RELATÓRIO — as regras rodavam sobre tudo. Medido no acervo: dos 4.453 grupos que a
+    # regra same-day marcava com credor CNPJ, 349 eram repasse fundo-a-fundo do SUS e transferência
+    # a fundo municipal de saúde. `df_c` = universo de CONTRATAÇÃO.
+    df_c = df[~df["favorecido_nome"].map(_eh_nao_fornecedor).fillna(False)] \
+        if "favorecido_nome" in df else df
+
     # R_VALOR_SIMBOLICO (aprendizado CASHPAGO: R$ 0,01 esconde remuneração extraorçamentária)
     simb = df[(df["valor"] > 0) & (df["valor"] <= 1.0)]
     for _, r in simb.iterrows():
@@ -150,8 +176,8 @@ def regras(df: pd.DataFrame, con) -> int:
                       "Art. 5º Lei 14.133 (princípios); Lei 8.429/92 art. 10 (dano ao erário) — apurar"))
 
     # R_CONCENTRACAO: fornecedor > limiar do gasto da UG no exercício
-    g = (df.groupby(["ug_codigo", "exercicio", "favorecido_cpf"])["valor"].sum().reset_index(name="tot_forn"))
-    ug_tot = df.groupby(["ug_codigo", "exercicio"])["valor"].sum().reset_index(name="tot_ug")
+    g = (df_c.groupby(["ug_codigo", "exercicio", "favorecido_cpf"])["valor"].sum().reset_index(name="tot_forn"))
+    ug_tot = df_c.groupby(["ug_codigo", "exercicio"])["valor"].sum().reset_index(name="tot_ug")
     g = g.merge(ug_tot, on=["ug_codigo", "exercicio"])
     g["share"] = g["tot_forn"] / g["tot_ug"].replace(0, np.nan)
     conc = g[(g["share"] >= CONCENTRACAO_LIMIAR) & (g["tot_ug"] > 0)]
@@ -170,23 +196,28 @@ def regras(df: pd.DataFrame, con) -> int:
                           "Art. 37 CF/88; risco de captura (bid rigging) — Art. 36 §3º I 'd' Lei 12.529"))
 
     # R_FRACIONAMENTO_SAMEDAY: mesmo fornecedor+UG+dia, várias OBs somando > limite de dispensa
-    if "data_emissao" in df:
-        sd = (df.groupby(["favorecido_cpf", "ug_codigo", "data_emissao"])
+    if "data_emissao" in df_c:
+        sd = (df_c.groupby(["favorecido_cpf", "ug_codigo", "data_emissao", "exercicio"])
                 .agg(n=("id", "size"), soma=("valor", "sum"), maxid=("id", "max")).reset_index())
-        sd = sd[(sd["n"] >= 2) & (sd["soma"] > LIMITE_DISPENSA)]
+        sd["teto"] = sd["exercicio"].map(_teto)
+        sd = sd[(sd["n"] >= 2) & (sd["soma"] > sd["teto"])]
         for _, r in sd.iterrows():
-            flags.append((int(r["maxid"]), "R_FRACIONAMENTO_SAMEDAY", 0.6,
+            flags.append((int(r["maxid"]), "R_FRACIONAMENTO_SAMEDAY", 0.3,
                           f"{int(r['n'])} OBs ao mesmo fornecedor pela UG {r['ug_codigo']} em {r['data_emissao']} "
-                          f"somando R$ {moeda(r['soma'])} (> teto de dispensa R$ {moeda(LIMITE_DISPENSA)}).",
+                          f"somando R$ {moeda(r['soma'])} (> teto de dispensa de {r['exercicio']}: "
+                          f"R$ {moeda(r['teto'])}). RESSALVA: esta tabela não traz processo/empenho, "
+                          f"então NÃO se pôde excluir execução de um MESMO contrato licitado — que é "
+                          f"pagamento normal, não fracionamento. Sinal FRACO: só vale em convergência.",
                           "Art. 75 §1º Lei 14.133 (anti-fracionamento); Art. 23 §§1º-5º Lei 8.666"))
 
     # R_FRACIONAMENTO_MES: mesmo fornecedor+UG no mês com várias OBs abaixo do teto somando acima
-    if "data_emissao" in df:
-        d = df.dropna(subset=["data_emissao"]).copy()
+    if "data_emissao" in df_c:
+        d = df_c.dropna(subset=["data_emissao"]).copy()
         d["mes"] = d["data_emissao"].astype(str).str.slice(0, 7)
-        mm = (d.groupby(["favorecido_cpf", "ug_codigo", "mes"])
+        mm = (d.groupby(["favorecido_cpf", "ug_codigo", "mes", "exercicio"])
                 .agg(n=("id", "size"), soma=("valor", "sum"), maxv=("valor", "max"), maxid=("id", "max")).reset_index())
-        mm = mm[(mm["n"] >= 3) & (mm["soma"] > LIMITE_DISPENSA) & (mm["maxv"] < LIMITE_DISPENSA)]
+        mm["teto"] = mm["exercicio"].map(_teto)
+        mm = mm[(mm["n"] >= 3) & (mm["soma"] > mm["teto"]) & (mm["maxv"] < mm["teto"])]
         for _, r in mm.iterrows():
             flags.append((int(r["maxid"]), "R_FRACIONAMENTO_MES", 0.5,
                           f"{int(r['n'])} OBs no mês {r['mes']} (UG {r['ug_codigo']}), cada uma < teto mas somando "

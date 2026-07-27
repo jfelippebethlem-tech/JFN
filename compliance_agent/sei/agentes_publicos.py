@@ -104,9 +104,15 @@ _RE_DESIGNACAO = re.compile(
 
 # Cada padrão foi colhido do acervo real. Um "Fiscal" seguido destes NÃO é pessoa.
 _RUIDO_APOS_FISCAL = re.compile(
-    r"^\s*[:\-–—]?\s*(?:NF\b|nota\s+fiscal|IBS|CBS|eletr[ôo]nic|de\s+servi[çc]o|"
+    r"^\s*[:\-–—]?\s*(?:NFs?\b|nota\s+fiscal|IBS|CBS|eletr[ôo]nic|de\s+servi[çc]o|"
     r"relator|relatora|empresa\b|certid|/\s*NF|n[ºo°]\s*\d)",
     re.IGNORECASE)
+
+# Guarda mais forte que a lista de ruído: se vem "Nota" (ou "danfe"/"cupom") imediatamente ANTES
+# de "Fiscal", trata-se de DOCUMENTO fiscal — nunca de pessoa. Foi assim que "NFs Consig" entrou
+# como fiscal de contrato em 6 processos: o título do documento era "Nota Fiscal - NFs Consig", e
+# a lista de ruído só barrava "NF" com limite de palavra (o "s" de "NFs" furava o \b).
+_DOCUMENTO_FISCAL_ANTES = re.compile(r"(?:nota|danfe|cupom|documento)\s*$", re.IGNORECASE)
 
 # Palavras que nunca compõem nome de pessoa (colhidas de falsos positivos reais).
 _NAO_NOME = {
@@ -196,6 +202,9 @@ def _por_rotulo(texto: str) -> list[AgenteEncontrado]:
         # ruído: "Fiscal - NF 313028", "Fiscal – Empresa X", "FISCAL - Relator"
         resto = texto[m.end("rotulo"):m.end("rotulo") + 40]
         if _RUIDO_APOS_FISCAL.match(resto):
+            continue
+        # "Nota Fiscal - <qualquer coisa>" é documento, não pessoa
+        if _DOCUMENTO_FISCAL_ANTES.search(texto[max(0, m.start() - 12):m.start()]):
             continue
         nome = m.group("nome").strip()
         if not nome_plausivel(nome):

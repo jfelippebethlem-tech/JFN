@@ -160,3 +160,24 @@ def test_resumo_texto_monta_tabela_e_alertas():
 def test_resumo_vazio_quando_nada_encontrado():
     f = ap.FichaResponsabilidade(processo="X")
     assert ap.resumo_texto(f) == ""
+
+
+@pytest.mark.parametrize("titulo", [
+    "[Nota Fiscal - NFs Consig. - SEI-5355-2026 (131593503)]",
+    "Nota Fiscal - NFs CONSIG (85664531)",
+    "Nota Fiscal: Materiais Diversos",
+    "DANFE Fiscal - Item Unico",
+])
+def test_titulo_de_nota_fiscal_nao_produz_pessoa(titulo):
+    """'NFs Consig' entrou como fiscal de contrato em 6 processos do acervo real.
+
+    A lista de ruído barrava 'NF' com limite de palavra e o 's' de 'NFs' furava o \\b. A guarda
+    boa é a palavra ANTERIOR: se vem 'Nota'/'DANFE' antes de 'Fiscal', é documento, não gente.
+    """
+    assert ap.extrair_agentes(titulo) == []
+
+
+def test_fiscal_legitimo_continua_passando_apos_a_guarda():
+    """A guarda não pode cegar o caso bom."""
+    ag = ap.extrair_agentes("Fiscal do Contrato: Gustavo Silva Trovão")
+    assert ag and ag[0].nome == "Gustavo Silva Trovão"
