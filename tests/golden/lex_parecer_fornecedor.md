@@ -148,3 +148,5 @@ No plano cadastral, a empresa recebeu a primeira OB estadual **0,4 ano(s)** apó
 > 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. 2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — TCE-RJ, Proc. 101.922-9/12). 3. **Não se afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. 5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.
 
 _Parecer gerado automaticamente por sistema de controle externo em 2026-07-06. Fundamentação em doutrina de Direito Administrativo e controle externo (doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._
+
+_Nota de conferência: 1 citação(ões) verificada(s) contra a Jurisprudência Selecionada do TCU (dados abertos oficiais); 1 confirmada(s)._

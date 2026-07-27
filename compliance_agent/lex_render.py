@@ -993,7 +993,17 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add(f"_Parecer gerado automaticamente por sistema de controle externo em {ctx.get('data','')}. "
         "Fundamentação em doutrina de Direito Administrativo e controle externo "
         "(doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._")
-    return "\n".join(L)
+
+    # GATE DE CITAÇÕES — último instante antes de o texto virar entregável (o PDF também passa
+    # por aqui, via render_pdf). Acórdão que não existe no acervo do TCU é suprimido; colegiado
+    # errado é corrigido; o que não se confirmou vai declarado na nota ao pé. Nunca derruba a
+    # geração: falha do gate degrada para "não conferido", e diz isso na peça.
+    from compliance_agent.reporting.gate_citacoes import sanear_parecer
+    try:
+        return sanear_parecer("\n".join(L), contexto="parecer Lex")
+    except Exception as e:  # índice corrompido, disco cheio: a peça sai, sem o carimbo
+        logging.warning("gate de citações indisponível (%s) — parecer emitido sem conferência", e)
+        return "\n".join(L)
 
 
 def render_pdf(ctx: dict, destino: str, analise: dict | None = None, md: str | None = None) -> str:

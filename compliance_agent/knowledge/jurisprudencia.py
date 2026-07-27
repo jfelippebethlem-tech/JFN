@@ -287,14 +287,16 @@ ACORDAOS_TCU: list[Acordao] = [
     ),
     Acordao(
         orgao="TCU",
-        numero="Acórdão 4.021/2022-Plenário",
-        ano=2022,
-        tema="Dispensa de licitação reiterada — simulação de emergência",
+        # Substitui a citação nº 4.021/2022-Plenário (2026-07-27): aquele número era impossível —
+        # o Plenário fechou 2022 na casa dos 3.6 mil. Enunciado abaixo conferido no acervo oficial.
+        numero="Acórdão 645/2007-Plenário",
+        ano=2007,
+        tema="Dispensa de licitação por emergência — falta de planejamento",
         ementa=(
-            "A reiteração de contratos emergenciais para o mesmo objeto com o mesmo "
-            "fornecedor configura planejamento inadequado da Administração e simulação "
-            "de emergência. A partir da 2ª contratação emergencial ininterrupta, "
-            "o TCU presume a ausência do requisito de urgência e aplica multa ao gestor."
+            "As dispensas de licitação, por motivo de emergência ou de calamidade pública, "
+            "somente são admissíveis caso não se tenham originado, total ou parcialmente, "
+            "da falta de planejamento, da desídia administrativa ou da má gestão dos "
+            "recursos disponíveis."
         ),
         irregularidade="dispensa_indevida",
         temas=["emergencia", "dispensa", "reiteracao", "planejamento", "urgencia"],
@@ -315,14 +317,19 @@ ACORDAOS_TCU: list[Acordao] = [
     ),
     Acordao(
         orgao="TCU",
-        numero="Acórdão 5.782/2023-Plenário",
+        # Substitui a citação nº 5.782/2023-Plenário (2026-07-27): número impossível.
+        # A tese da eficácia condicionada à divulgação é LEGAL (art. 94 da Lei 14.133), não
+        # jurisprudencial — a ementa passa a refletir o que o acórdão real efetivamente decidiu.
+        numero="Acórdão 585/2023-Plenário",
         ano=2023,
-        tema="Contrato sem publicação no PNCP — nulidade",
+        tema="Publicidade contratual — divulgação obrigatória no PNCP",
         ementa=(
-            "A partir de 1º/01/2023, a eficácia dos contratos regidos pela Lei "
-            "14.133/2021 fica condicionada à publicação no PNCP. O TCU determinou "
-            "que contratos não publicados no prazo legal (20 dias — art. 94, §1º) "
-            "sejam considerados sem efeito até regularização, vedado novos pagamentos."
+            "Além da observância da legislação pertinente à publicação de seus contratos, "
+            "em especial a Lei 13.303/2016 e a Lei 12.527/2011, as empresas estatais devem "
+            "disponibilizar informações atualizadas referentes a seus contratos no Portal "
+            "Nacional de Contratações Públicas (PNCP), de que trata a Lei 14.133/2021. "
+            "A eficácia do contrato condicionada à divulgação no PNCP decorre do art. 94 "
+            "da Lei 14.133/2021 (fundamento legal, não jurisprudencial)."
         ),
         irregularidade="sem_publicacao_pncp",
         temas=["PNCP", "publicacao", "eficacia", "nulidade", "14133"],
@@ -344,15 +351,20 @@ ACORDAOS_TCU: list[Acordao] = [
     ),
     Acordao(
         orgao="TCU",
-        numero="Acórdão 6.100/2022-Plenário",
-        ano=2022,
-        tema="Empresa de fachada — indícios de 'laranja'",
+        # Substitui a citação nº 6.100/2022-Plenário (2026-07-27): número impossível.
+        # A lista de indícios (capital irrisório, CAGED vazio, endereço residencial) é
+        # METODOLOGIA DO JFN, não holding do TCU — foi movida para o campo `temas` e para
+        # `METODOLOGIA-EMPRESA-FANTASMA.md`. O que o TCU decidiu é a admissibilidade da
+        # prova indiciária, que é justamente o que sustenta o nosso método.
+        numero="Acórdão 888/2011-Plenário",
+        ano=2011,
+        tema="Fraude à licitação caracterizada por conjunto de indícios",
         ementa=(
-            "São indícios de empresa de fachada: capital social irrisório (< R$50k), "
-            "data de constituição inferior a 6 meses, endereço em residência, ausência "
-            "de empregados registrados no CAGED, e sócios sem histórico no setor. "
-            "A contratação de tais empresas pode configurar desvio de recursos públicos "
-            "e gera responsabilidade solidária do gestor contratante."
+            "É possível caracterizar fraude a licitação com base em conjunto de indícios. "
+            "(Aplicação no JFN: os indicadores de empresa de fachada — capital social "
+            "irrisório, constituição recente, endereço residencial, ausência de empregados "
+            "no CAGED, sócios sem histórico no setor — valem como CONJUNTO indiciário, "
+            "nunca isoladamente, e sempre sujeitos a contraditório.)"
         ),
         irregularidade="empresa_laranja",
         temas=["empresa fachada", "laranja", "capital", "CAGED", "endereco", "constitucao"],
@@ -374,15 +386,16 @@ ACORDAOS_TCU: list[Acordao] = [
     ),
     Acordao(
         orgao="TCU",
-        numero="Acórdão 7.002/2023-Plenário",
-        ano=2023,
-        tema="Despesas sem licitação acima do limite legal",
+        # Substitui a citação nº 7.002/2023-Plenário (2026-07-27): número impossível.
+        # Os limites em reais são LEI (art. 75 da 14.133, atualizados por decreto anual) e
+        # vivem em `catalogo_vicios`/`acima_do_teto` — não se pendura valor de teto em ementa.
+        numero="Acórdão 2470/2008-Plenário",
+        ano=2008,
+        tema="Fracionamento de despesa para fugir da modalidade licitatória",
         ementa=(
-            "Contratações diretas acima dos limites previstos no art. 75 da Lei "
-            "14.133/2021 (R$ 57.208 para compras e R$ 114.416 para obras, valores "
-            "vigentes em 2023) configuram irregularidade grave e violação ao dever de "
-            "licitar. O TCU determinou a nulidade dos contratos e a apuração de "
-            "responsabilidade do gestor contratante."
+            "É irregular o fracionamento de despesa com o objetivo de fugir da modalidade "
+            "licitatória apropriada (art. 23, §1º, da Lei 8.666/1993; hoje art. 75, §1º, "
+            "da Lei 14.133/2021)."
         ),
         irregularidade="dispensa_acima_limite",
         temas=["limite", "dispensa", "14133", "art75", "contratacao direta"],
@@ -403,14 +416,19 @@ ACORDAOS_TCU: list[Acordao] = [
     ),
     Acordao(
         orgao="TCU",
-        numero="Acórdão 1.273/2020-Plenário",
-        ano=2020,
-        tema="Responsabilidade fiscal — despesa sem dotação",
+        # Substitui a citação nº 1.273/2020-Plenário (2026-07-27). O verificador acusou
+        # divergência de colegiado, mas o problema era pior: o nº 1273/2020 existe (Primeira
+        # Câmara) e trata de TEMPO DE SERVIÇO RELIGIOSO para aposentadoria — nada a ver com
+        # despesa sem dotação. Era citação inteiramente trocada.
+        numero="Acórdão 1936/2011-Plenário",
+        ano=2011,
+        tema="Certame aberto sem dotação orçamentária suficiente",
         ementa=(
-            "Constitui crime de responsabilidade fiscal (Lei 10.028/2000) e infração "
-            "às normas da LRF ordenar ou autorizar despesa sem dotação orçamentária "
-            "suficiente. O TCU determinou a anulação das despesas e o ressarcimento, "
-            "além de encaminhar ao Ministério Público para apuração criminal."
+            "A abertura de certame licitatório sem dotação orçamentária suficiente é motivo "
+            "para aplicação de multa ao gestor, ainda que não tenha havido prejuízo ao erário "
+            "e que tenham sido posteriormente assegurados créditos adicionais. (A tipificação "
+            "como crime contra as finanças públicas é da Lei 10.028/2000 e compete ao "
+            "Judiciário — não é decisão do TCU.)"
         ),
         irregularidade="despesa_sem_dotacao",
         temas=["dotacao", "orcamento", "LRF", "responsabilidade fiscal", "crime"],
@@ -633,25 +651,31 @@ def contexto_jurisprudencial_para_prompt() -> str:
     do LLM. Inclui apenas os temas mais frequentes para não desperdiçar tokens.
     """
     temas_resumidos = {
-        "Fracionamento (TCE-RJ 1.234/2021; TCU 1.793/2011)":
+        # Números do TCU conferidos contra o acervo oficial em 2026-07-27
+        # (`knowledge/tcu_juris_index`). O 1.793/2011 saiu daqui: existe, mas decide sobre
+        # adesão a ata de registro de preços vencida, não fracionamento. O nº 2.622/2015 não
+        # existe — o clássico do BDI é o nº 2.622/2013: era erro de ano.
+        "Fracionamento (TCE-RJ 1.234/2021; TCU 2.470/2008)":
             "Dividir objeto para burlar licitação é ilegal. O valor de referência é "
             "o total do objeto, não das parcelas.",
-        "Superfaturamento (TCE-RJ 5.102/2023; TCU 2.622/2015)":
+        "Superfaturamento (TCE-RJ 5.102/2023; TCU 2.622/2013)":
             "Comparar com SINAPI/SICRO/pesquisa de mercado (3 fornecedores). "
             "Diferença positiva = dano ao erário ressarcível.",
-        "Dispensa indevida (TCE-RJ 2.891/2022; TCU 4.021/2022)":
-            "Emergência reiterada é simulada. 2ª contratação ininterrupta: "
-            "presunção de ausência de urgência.",
+        "Dispensa indevida (TCE-RJ 2.891/2022; TCU 645/2007)":
+            "Emergência que nasceu de falta de planejamento, desídia ou má gestão "
+            "não autoriza dispensa.",
         "Nepotismo (TCE-RJ 3.445/2022)":
             "SV13 veda cargo comissionado para parente de detentor de mandato "
             "ou de chefe na mesma unidade.",
-        "Empresa irregular (TCU 6.100/2022)":
-            "Indícios: capital < R$50k, menos de 6 meses, sem CAGED, endereço "
-            "residencial. Responsabilidade solidária do gestor.",
-        "PNCP (TCU 5.782/2023)":
-            "Eficácia do contrato condicionada à publicação. Sem publicação: "
-            "vedado novos pagamentos.",
-        "Conflito de interesse (TCU 3.654/2020)":
+        "Empresa irregular (TCU 888/2011)":
+            "Fraude à licitação pode ser caracterizada por CONJUNTO de indícios "
+            "(capital irrisório, sem CAGED, endereço residencial) — nunca por um só.",
+        "PNCP (TCU 585/2023; art. 94 da Lei 14.133)":
+            "Contrato deve ser divulgado no PNCP; a eficácia condicionada à "
+            "divulgação é da LEI, não de acórdão.",
+        # Sem número de acórdão: a regra é legal (Lei 14.133 art. 9º, III e art. 14) e não
+        # localizamos julgado confirmado no acervo — não se cita o que não se conferiu.
+        "Conflito de interesse (Lei 14.133, arts. 9º, III e 14)":
             "Sócio doador de campanha do gestor licitante = conflito grave. "
             "Suspender pagamentos, acionar MP.",
     }

@@ -162,10 +162,54 @@ assinatura tolerando OCR sujo. Cada uma é medida antes e depois, na mesma amost
 
 ## Bloco E — Lex *(pendente)*
 
-| # | Item | Critério |
+| # | Item | Estado | Critério |
+|---|---|---|---|
+| E1 | **Gate de citação** ligado em `lex_render.parecer_md` | ✅ | `reporting/gate_citacoes` · 13 testes |
+| E2 | Trocar as citações defeituosas da base curada | ✅ | `verificar_citacao` sobre `jurisprudencia.py`: **0** impossíveis, **0** colegiado errado |
+
+### E1 — como o gate ficou
+
+Ponto único: `lex_render.parecer_md`, por onde passa markdown **e** PDF. Comportamento por estado:
+
+| Estado | Ação | Razão |
 |---|---|---|
-| E1 | **Gate de citação**: `citacoes_suspeitas()` barra parecer com acórdão inexistente | Nenhuma peça sai com citação `numero_impossivel` |
-| E2 | Trocar as 5 citações defeituosas da base curada | `verificar_citacao` sobre `jurisprudencia.py` sem `numero_impossivel` |
+| `numero_impossivel` | citação **suprimida** do texto | não existe |
+| `colegiado_diverge` | colegiado **corrigido** | o acórdão existe; conserta-se, não se descarta |
+| `nao_confirmado` | mantida + **declarada** na nota ao pé | dúvida legítima; lacuna ≠ inexistência |
+| `fora_do_escopo` | intocada | TCE-RJ/TCM não são cobertos por este índice |
+| `indice_ausente` | nada é alterado e a peça **declara que não conferiu** | nunca fingir conferência |
+
+Não levanta exceção (ao contrário de `garantir_neutro`): derrubar a geração de um parecer no
+meio de um sweep noturno por causa de uma *dúvida* seria pior que o problema. Existe o modo
+`estrito=True` para quem quiser falhar alto. Toda supressão vai para o log com o teto medido.
+
+Ao pé de cada peça passa a constar quantas citações foram conferidas contra o acervo oficial,
+quantas foram suprimidas e quais precisam de conferência na fonte.
+
+### E2 — o que foi trocado
+
+Cada substituto foi **buscado no acervo oficial** e sua ementa foi reescrita para dizer o que o
+acórdão real decidiu — não se herda a tese de uma citação inventada.
+
+| Antes (inexistente) | Depois (conferido) | Observação |
+|---|---|---|
+| 4.021/2022-Plenário | **645/2007-Plenário** | Emergência nascida de falta de planejamento não autoriza dispensa |
+| 5.782/2023-Plenário | **585/2023-Plenário** | Eficácia condicionada ao PNCP é **lei** (art. 94), não jurisprudência — corrigido no texto |
+| 6.100/2022-Plenário | **888/2011-Plenário** | A lista de indícios de fachada é metodologia nossa; o TCU decidiu a admissibilidade da prova indiciária |
+| 7.002/2023-Plenário | **2.470/2008-Plenário** | Valores de teto são lei e vivem em `catalogo_vicios`, não em ementa |
+| 1.273/2020-Plenário | **1.936/2011-Plenário** | Não era erro de colegiado: o 1273/2020 existe e trata de **tempo de serviço religioso** — citação inteiramente trocada |
+
+Achados adicionais no bloco injetado nos prompts (`contexto_jurisprudencial_para_prompt`):
+
+- **2.622/2015 não existe** — o clássico do BDI é **2.622/2013**. Era erro de ano, e o número
+  errado ia para o prompt de toda análise de superfaturamento.
+- **1.793/2011** existe, mas decide sobre adesão a ata de registro de preços vencida — estava
+  rotulado como precedente de *fracionamento*. Trocado por 2.470/2008.
+- **3.654/2020** (conflito de interesse) não se confirmou: o número saiu e a regra passou a citar
+  a base legal (Lei 14.133, arts. 9º, III e 14). Não se cita o que não se conferiu.
+
+**Restam 9 citações `nao_confirmado`** — números dentro da faixa plausível, ausentes do recorte
+selecionado. Não são erro presumido; entram na nota ao pé como pendência de conferência na fonte.
 | E3 | Fundamentar por acervo real (`fundamentar()`) em vez de memória do modelo | Todo achado com acórdão conferível |
 | E4 | Seção "Responsáveis" no parecer, vinda de `montar_ficha` | Parecer individualiza quem responde |
 | E5 | `judicializacao_de_documento` no fluxo: matéria já sub judice muda a recomendação | Representação × subsídio ao MP decidido por dado |

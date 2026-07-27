@@ -89,6 +89,19 @@ def test_citacao_de_outra_corte_nao_e_julgada_por_este_indice(db):
     assert r["status"] == "fora_do_escopo"
 
 
+def test_marcador_de_outra_corte_nao_contamina_a_citacao_vizinha(db):
+    """Falso NEGATIVO encontrado ao rodar o gate num parecer de verdade.
+
+    A janela de contexto de ±120 caracteres atravessava a citação seguinte: o 'TCE-RJ' da
+    primeira excusava a segunda, que é do TCU. Num gate, deixar passar é o erro perigoso.
+    """
+    texto = ("O TCE-RJ, no Acórdão 25279/2022 — Pleno, decidiu assim.\n"
+             "Aplica-se ainda o Acórdão 9244/2022-Plenário.")
+    por_num = {c["numero"]: c["status"] for c in T.verificar_citacao(texto, db=db)}
+    assert por_num[25279] == "fora_do_escopo"
+    assert por_num[9244] == "numero_impossivel", "a citação do TCU tem de ser julgada"
+
+
 def test_sumula_confirmada_e_inventada(db):
     res = T.verificar_citacao("Súmula TCU 292 e Súmula 999", db=db)
     por_num = {c["numero"]: c["status"] for c in res if c["tipo"] == "sumula"}

@@ -212,14 +212,26 @@ def verificar_citacao(texto: str, db: str | Path | None = None) -> list[dict]:
     con = abrir(db)
     achados: list[dict] = []
 
-    for m in _RE_CITACAO.finditer(texto or ""):
+    # Fronteiras de TODAS as citações: a janela de contexto de uma nunca pode invadir a vizinha.
+    # Sem isso, "TCE-RJ, Acórdão 25279/2022 — Pleno. Aplica-se o Acórdão 3654/2020-Plenário"
+    # fazia o marcador TCE-RJ da PRIMEIRA excusar a SEGUNDA, que é do TCU — falso negativo, o
+    # erro perigoso num gate (citação inventada passaria batida).
+    spans = [(m.start(), m.end()) for m in _RE_CITACAO.finditer(texto or "")]
+
+    for idx, m in enumerate(_RE_CITACAO.finditer(texto or "")):
         num = int(m.group(1).replace(".", ""))
         ano = int(m.group(2))
         coleg = _canon_colegiado(m.group(3))
         item = {"tipo": "acordao", "citacao": m.group(0).strip(), "numero": num,
                 "ano": ano, "colegiado_citado": coleg}
         # Janela de contexto: só o que é do TCU pode ser conferido contra este acervo.
-        janela = (texto or "")[max(0, m.start() - 120):m.end() + 120]
+        ini = max(0, m.start() - 120)
+        fim = m.end() + 120
+        if idx > 0:
+            ini = max(ini, spans[idx - 1][1])
+        if idx + 1 < len(spans):
+            fim = min(fim, spans[idx + 1][0])
+        janela = (texto or "")[ini:fim]
         if _RE_OUTRA_CORTE.search(janela):
             item["status"] = "fora_do_escopo"
             item["observacao"] = "citação de outra corte de contas — este índice cobre só o TCU"
