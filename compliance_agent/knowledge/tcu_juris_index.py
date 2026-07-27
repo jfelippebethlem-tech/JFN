@@ -309,7 +309,7 @@ def fundamentar(achado: str, area: str = "Licitação", limite: int = 3,
     itens = buscar_enunciados(achado, area=area, limite=limite, db=db)
     if not itens:
         return ""
-    linhas = [f"**Fundamentação jurisprudencial (TCU — Jurisprudência Selecionada, acervo oficial):**"]
+    linhas = ["**Fundamentação jurisprudencial (TCU — Jurisprudência Selecionada, acervo oficial):**"]
     for i in itens:
         linhas.append(
             f"- **Acórdão {i['numero']}/{i['ano']}-{i['colegiado']}** "
