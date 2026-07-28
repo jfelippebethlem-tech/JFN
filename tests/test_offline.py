@@ -139,10 +139,14 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
     async def fake_groq_fail(prompt, system="", smart=False, max_tokens=1024):
         raise RuntimeError("Retryable status 429 from groq")
 
+    # Lista fixa aqui de propósito: o teste exercita a CASCATA, não a resolução do catálogo
+    # (que é de test_openrouter_catalogo.py e não pode ir à rede aqui).
+    _MODELOS = ["principal/x:free", "reserva/y:free"]
+
     async def fake_retry(base_url, api_key, model, messages,
                          max_tokens=1024, extra_headers=None, max_retries=4):
         modelos_or.append(model)
-        if model == h._HERMES_MODELO_PRINCIPAL:
+        if model == _MODELOS[0]:
             raise RuntimeError("Retryable status 429 from openrouter")
         return '{"ok": true}'  # primeiro fallback responde
 
@@ -156,11 +160,13 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
     orig_qwen = fl.qwen_chat_async
     orig_cerebras = fl.cerebras_chat_async
     orig_gemini = fl.gemini_chat_async
+    orig_modelos = h._hermes_modelos
     # Cadeia real do _hermes: groq → cerebras → gemini → OpenRouter. Cerebras tem chave
     # nesta VM e interceptava o fallback; desligar os do meio p/ exercitar groq→OpenRouter.
     fl.qwen_chat_async = _off
     fl.cerebras_chat_async = _off
     fl.gemini_chat_async = _off
+    h._hermes_modelos = lambda: list(_MODELOS)
     fl.groq_chat_async = fake_groq_fail
     fl._groq_key = lambda: "gsk_fake"
     fl._openai_compat_chat_retry = fake_retry
@@ -169,9 +175,9 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
     try:
         result = asyncio.run(h._hermes("sys", "prompt", max_tokens=10))
         assert result == '{"ok": true}'
-        assert modelos_or[0] == h._HERMES_MODELO_PRINCIPAL  # tentou o principal OR
-        assert len(modelos_or) >= 2                          # caiu para fallback OR
-        assert modelos_or[1] in h._HERMES_MODELOS_FALLBACK
+        assert modelos_or[0] == _MODELOS[0]   # tentou o primeiro do catálogo
+        assert len(modelos_or) >= 2           # caiu para o seguinte
+        assert modelos_or[1] in _MODELOS[1:]
     finally:
         fl.groq_chat_async = orig_groq
         fl._groq_key = orig_key_groq
@@ -180,6 +186,7 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
         fl.qwen_chat_async = orig_qwen
         fl.cerebras_chat_async = orig_cerebras
         fl.gemini_chat_async = orig_gemini
+        h._hermes_modelos = orig_modelos
 
 
 # ─── 4. Bootstrap do Hermes (LLM simulado) ────────────────────────────────────

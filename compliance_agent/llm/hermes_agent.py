@@ -50,13 +50,23 @@ _ultima_chamada: float = 0.0
 # ATENÇÃO: ambos rodam no provider Venice e COMPARTILHAM o teto :free (429 juntos).
 # Por isso mantemos llama-3.3-70b + deepseek como rede NÃO-Venice quando os dois
 # uncensored estiverem rate-limited — assim a cascata sempre devolve algo.
-_HERMES_MODELO_PRINCIPAL = "nousresearch/hermes-3-llama-3.1-405b:free"
-_HERMES_MODELOS_FALLBACK = [
-    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-r1:free",
-    "mistralai/mistral-7b-instruct:free",
-]
+# ATUALIZAÇÃO 2026-07-28: esta lista estava 100% MORTA — o OpenRouter havia aposentado os
+# CINCO ids, e como o 404 era tratado como erro transitório, cada tentativa gastava segundos
+# de backoff para redescobrir o mesmo 404. O Hermes caía inteiro para Groq/Cerebras sem que
+# nada no log dissesse por quê. Literal de modelo `:free` apodrece; agora a escolha vem do
+# catálogo VIVO, por capacidade (ver compliance_agent/llm/openrouter_catalogo.py).
+def _hermes_modelos() -> list[str]:
+    """Modelos do Hermes, do mais capaz para o mais barato, resolvidos no catálogo vivo.
+
+    `HERMES_MODELO` fixa um id específico (depuração). O raciocínio longo do auditor pede
+    perfil `documento`/`smart`; `fast` entra só como último degrau.
+    """
+    fixo = os.environ.get("HERMES_MODELO", "")
+    if fixo:
+        return [fixo]
+    from compliance_agent.llm.openrouter_catalogo import escolher
+    ordem = [escolher("documento"), escolher("smart"), escolher("fast")]
+    return list(dict.fromkeys([m for m in ordem if m]))
 
 
 # Teto de tokens para o "pensamento" do Hermes. O auditor precisa raciocinar
@@ -108,13 +118,17 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-        for model in [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK:
+        modelos = _hermes_modelos()
+        if not modelos:
+            logger.warning("Hermes: catálogo OpenRouter indisponível — pulando para a cadeia")
+            return None
+        for model in modelos:
             try:
                 from compliance_agent.llm.free_llm import _forcar_free
                 out = await _openai_compat_chat_retry(
                     OPENROUTER_BASE, key, _forcar_free(model), messages,
                     max_tokens=max_tokens, extra_headers=OPENROUTER_HEADERS, max_retries=1)
-                if model != _HERMES_MODELO_PRINCIPAL:
+                if model != modelos[0]:
                     console.print(f"[dim]Hermes: usando {model.split('/')[-1]} (fallback uncensored)[/dim]")
                 return out
             except Exception:

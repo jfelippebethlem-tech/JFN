@@ -43,18 +43,38 @@ OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
 FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "").lower()
 
 # Qwen via OpenRouter (fallbacks possíveis)
-OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
-OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+# Sem literal de modelo: o OpenRouter aposenta os `:free` o tempo todo e um id fixo apodrece
+# calado (medido em 2026-07-28: 5 dos 6 ids do código estavam mortos). `modelo_or()` resolve
+# pelo catálogo vivo, por perfil de capacidade. O env continua podendo fixar, para depuração.
+def modelo_or(perfil: str) -> str:
+    """Id `:free` vivo para o perfil, ou "" quando o catálogo não está disponível.
+
+    O override por env é HONRADO MAS VERIFICADO. O `.env` desta VM apontava para
+    `meta-llama/llama-3.3-70b-instruct:free`, aposentado pelo OpenRouter — um override que
+    fixa modelo morto é pior que nenhum override, porque desliga justamente o mecanismo que
+    existe para sobreviver à aposentadoria. Fora do catálogo, o env é ignorado com aviso.
+    """
+    try:
+        from compliance_agent.llm.openrouter_catalogo import catalogo, escolher
+    except Exception as e:  # noqa: BLE001 — catálogo é melhoria, não dependência dura
+        logger.warning("catálogo OpenRouter indisponível (%s)", str(e)[:80])
+        return os.environ.get(f"OPENROUTER_{perfil.upper()}_MODEL", "")
+
+    fixo = os.environ.get(f"OPENROUTER_{perfil.upper()}_MODEL", "")
+    if fixo:
+        vivos = {m["id"] for m in catalogo()}
+        if not vivos or fixo in vivos:
+            return fixo          # catálogo vazio = não sei; respeito o que o operador fixou
+        logger.warning("OPENROUTER_%s_MODEL=%s não está no catálogo :free — ignorando o "
+                       "override e escolhendo pelo catálogo vivo", perfil.upper(), fixo)
+    return escolher(perfil) or ""
 
 # Modelo de CÓDIGO (uncensored, p/ o Hermes codar). Qwen3-Coder = SOTA aberto em código,
 # 1M de contexto, alinhamento leve (pouco recusa). APENAS :free (regra do dono). Fallbacks
 # não-Venice p/ quando o primário rate-limitar. Env: OPENROUTER_CODER_MODEL.
-OPENROUTER_MODEL_CODER = os.environ.get("OPENROUTER_CODER_MODEL", "qwen/qwen3-coder:free")
-OPENROUTER_CODER_FALLBACK = [
-    "qwen/qwen3-next-80b-a3b-instruct:free",
-    "cohere/north-mini-code:free",
-    "deepseek/deepseek-r1:free",
-]
+# A lista fixa apodreceu igual: em 2026-07-28, 3 dos 4 ids aqui estavam mortos. O catálogo
+# resolve o primário; o env segue podendo fixar para depuração.
+OPENROUTER_MODEL_CODER = os.environ.get("OPENROUTER_CODER_MODEL", "")
 
 
 def _forcar_free(model: str) -> str:
@@ -118,6 +138,30 @@ def _openai_compat_chat_sync(
 # ── Retry helpers para OpenRouter (trata 429 e erros transitórios) ───────────
 
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# 4xx que NÃO melhoram com espera: modelo aposentado (404), payload ruim (400), chave inválida
+# ou sem permissão (401/403). Retentar isso é só queimar relógio — ver _erro_permanente.
+_PERMANENTE_STATUS = {400, 401, 403, 404}
+
+
+def _erro_permanente(exc: Exception) -> bool:
+    """Erro que não adianta retentar. 404 de modelo morto marca o id no catálogo."""
+    resp = getattr(exc, "response", None)
+    codigo = getattr(resp, "status_code", None)
+    if codigo not in _PERMANENTE_STATUS:
+        return False
+    if codigo == 404:
+        try:
+            corpo = getattr(resp, "request", None)
+            modelo = ""
+            if corpo is not None and getattr(corpo, "content", None):
+                import json as _json
+                modelo = (_json.loads(corpo.content) or {}).get("model", "")
+            if modelo and "openrouter" in str(getattr(corpo, "url", "")):
+                from compliance_agent.llm.openrouter_catalogo import marcar_morto
+                marcar_morto(modelo, motivo="404 no uso real")
+        except Exception:  # noqa: BLE001 — anotar o óbito nunca pode derrubar a chamada
+            logger.debug("não consegui registrar o modelo morto")
+    return True
 
 
 def _sleep_backoff(attempt: int, base: float = 2.0, cap: float = 120.0) -> None:
@@ -168,6 +212,12 @@ def _openai_compat_chat_sync_retry(
                 return data["choices"][0]["message"]["content"]
         except (httpx.HTTPError, RuntimeError) as e:
             last_exc = e
+            if _erro_permanente(e):
+                # 404/400/401/403 não melhoram esperando. Medido em 2026-07-28: o modelo
+                # `:free` fixado no código havia sido aposentado, e cada chamada gastava
+                # 33 s em backoff para reencontrar o mesmo 404. Falha rápido e sobe — a
+                # cadeia tem outros degraus e o cooldown por provedor cuida do resto.
+                raise
             if attempt < max_retries:
                 _sleep_backoff(attempt)
             else:
@@ -218,6 +268,8 @@ async def _openai_compat_chat_retry(
                 return data["choices"][0]["message"]["content"]
         except (httpx.HTTPError, RuntimeError) as e:
             last_exc = e
+            if _erro_permanente(e):
+                raise            # 404/400/401/403 não melhoram esperando — ver _erro_permanente
             if attempt < max_retries:
                 await asyncio.sleep(min(120.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1))
             else:
@@ -302,7 +354,7 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False,
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    model = _forcar_free(OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST)
+    model = _forcar_free(modelo_or("smart" if smart else "fast"))
     return _openai_compat_chat_sync_retry(
         OPENROUTER_BASE,
         key,
@@ -325,7 +377,7 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    model = _forcar_free(OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST)
+    model = _forcar_free(modelo_or("smart" if smart else "fast"))
     return await _openai_compat_chat_retry(
         OPENROUTER_BASE,
         key,
@@ -378,7 +430,9 @@ async def coder_chat_async(prompt: str, system: str = "", max_tokens: int = 4096
     if not key:
         raise RuntimeError("Coder local indisponível e OPENROUTER_API_KEY não configurada.")
     ultimo_erro = None
-    for model in [OPENROUTER_MODEL_CODER] + OPENROUTER_CODER_FALLBACK:
+    # Primário do env (se fixado) e depois a escolha viva do catálogo, sem repetir.
+    _cands = [m for m in (OPENROUTER_MODEL_CODER, modelo_or("coder"), modelo_or("smart")) if m]
+    for model in list(dict.fromkeys(_cands)):
         try:
             return await _openai_compat_chat_retry(
                 OPENROUTER_BASE, key, _forcar_free(model), messages,
@@ -955,8 +1009,8 @@ def status_provedores() -> dict:
         },
         "openrouter": {
             "disponivel": openrouter_available(),
-            "modelo_fast": OPENROUTER_MODEL_FAST,
-            "modelo_smart": OPENROUTER_MODEL_SMART,
+            "modelo_fast": modelo_or("fast"),
+            "modelo_smart": modelo_or("smart"),
             "destaque": "Hermes-3 405B disponível gratuitamente",
             "custo": "gratuito (modelos :free)",
             "obter_chave": "https://openrouter.ai",
