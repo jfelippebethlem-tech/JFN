@@ -84,8 +84,21 @@ _CONECT = r"(?:d[aeoi]s?|e|del|van|von)"
 _NOME = rf"{_PALAVRA}(?:[ \t]+(?:{_CONECT}|{_PALAVRA})){{1,5}}"
 _RE_NOME_LINHA = re.compile(rf"^\s*({_NOME})\s*$")
 
-_RE_ID_FUNCIONAL = re.compile(r"ID[\s\-]?funcional\s*n?[ºo°.]*\s*(\d{6,8}-?\d?)", re.IGNORECASE)
-_RE_MATRICULA = re.compile(r"matr[íi]cula\s*n?[ºo°.]*\s*(\d{4,10}-?\d?)", re.IGNORECASE)
+# GRAFIAS MEDIDAS NO ACERVO (2026-07-28). A régua antiga exigia a palavra "funcional" e falhava
+# em 128 dos 317 agentes sem ID — e nesses 128 o ID ESTAVA no contexto capturado. Ou seja, 40%
+# das "ausências" eram falha de extração. As formas contadas: "ID:" sozinho (22×), "Id. Funcional:"
+# (9×), "ID. Funcional nº" (4×), "– ID:" (6×), além de "IDENTIFICAÇÃO FUNCIONAL Nº".
+#
+# O ID funcional do Estado tem 6 a 8 dígitos + dígito verificador. Exigir o hífen com o
+# verificador é o que separa ID de número de processo, valor e CPF — daí `-\d` obrigatório.
+_RE_ID_FUNCIONAL = re.compile(
+    r"\b(?:id|identifica[cç][aã]o)\.?\s*(?:[\s\-–]*funcional)?\s*[:\-–]?\s*n?[ºo°.]*\s*"
+    r"(\d{6,8}-\d)\b",
+    re.IGNORECASE)
+# Matrícula aparece com separador de milhar no acervo ("Matrícula 27.646-9"), que o padrão
+# anterior não previa — o `\d{4,10}` parava no ponto e devolvia None.
+_RE_MATRICULA = re.compile(r"matr[íi]cula\s*n?[ºo°.]*\s*(\d{1,3}(?:\.\d{3})+-?\d?|\d{4,10}-?\d?)",
+                           re.IGNORECASE)
 
 # Rótulo seguido de nome na mesma linha: "Fiscal: Fulano", "Gestor do Contrato - Beltrano".
 _RE_ROTULO_NOME = re.compile(
