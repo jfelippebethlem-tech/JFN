@@ -354,6 +354,11 @@ def montar_ficha(processo: str, documentos: dict[str, str]) -> FichaResponsabili
     Honesto: LACUNA DE CAPTURA ≠ INEXISTÊNCIA. Se nenhum documento de designação foi capturado,
     a ficha diz que não achou — e manda conferir, não acusa.
     """
+    # Entidade HTML crua no acervo ("Subsecret&aacute;rio") quebra o casamento de nome e o
+    # agente inteiro se perde. Medido em 2026-07-28: 1% dos processos, mas concentrado em
+    # despacho e portaria — que é exatamente onde os responsáveis aparecem.
+    import html as _html
+    documentos = {k: _html.unescape(v or "") for k, v in (documentos or {}).items()}
     ficha = FichaResponsabilidade(processo=processo)
     marcas_execucao = re.compile(
         r"medi[çc][ãa]o|liquida[çc][ãa]o|nota\s+fiscal|aceite\s+definitivo|recebimento\s+definitivo",

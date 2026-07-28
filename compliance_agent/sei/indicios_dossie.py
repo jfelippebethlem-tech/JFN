@@ -179,8 +179,94 @@ def i_divergencia_declarada(dossie: str) -> Indicio | None:
         linhas[:5], {"n": len(linhas)})
 
 
+_RE_UNICO = re.compile(
+    r"apenas\s+(?:uma|1)\s+(?:proposta|licitante|empresa|cota[cç][aã]o)"
+    r"|(?:proposta|licitante|cota[cç][aã]o)\s+[úu]nic[ao]"
+    r"|[úu]nic[ao]\s+(?:proposta|licitante|interessad[ao]|participante)"
+    r"|somente\s+(?:uma|1)\s+(?:proposta|empresa|licitante)", re.IGNORECASE)
+
+
+def i_licitante_unico(dossie: str) -> Indicio | None:
+    """Um só proponente — o fato que a leitura registrou de passagem e vale por si.
+
+    Nasceu de um dossiê real: o modelo mencionou "apenas uma proposta" apenas para DESCARTAR
+    cotações combinadas, e seguiu adiante. Mas proponente único é, ele mesmo, o que os
+    detectores J4 (supressão de propostas) e E8 (deserto dirigido) investigam. Não prova nada
+    — mercado de nicho tem um fornecedor só, e é explicação inocente frequente —, mas é
+    exatamente o caso em que se quer olhar o edital.
+    """
+    linhas = [ln for ln in _linhas_com(dossie, _RE_UNICO) if "[doc" in ln]
+    if not linhas:
+        return None
+    return Indicio(
+        "LU", "Proponente único no certame", "atencao",
+        "A leitura registrou proposta ou licitante único. Isso não prova direcionamento — "
+        "mercado de nicho tem fornecedor único, e é a explicação inocente mais comum —, mas é "
+        "a hipótese que os detectores de supressão de propostas (J4) e deserto dirigido (E8) "
+        "investigam. Cabe conferir as exigências de habilitação do edital.",
+        linhas[:4], {"n_mencoes": len(linhas)})
+
+
+# Vício do catálogo AFIRMADO pela leitura. A moldura jurídica dá ao modelo os 42 identificadores
+# canônicos, e ele os percorre como checklist — respondendo à esmagadora maioria NEGATIVAMENTE.
+#
+# A 1ª versão procurava negação para descartar, e falhou feio: apontou 27 vícios "afirmados" num
+# processo onde as linhas eram "`subcontratacao_cruzada`: não.", "`vigencia_excessiva`: ARP 12
+# meses, normal.", "`publicidade_prazos_minimizados`: pregão eletrônico com prazo normal". Listar
+# formas de negar é perder sempre: a língua tem infinitas, e "normal" nem parece negação.
+#
+# O padrão certo é o inverso, e é o mesmo da presunção de legitimidade que rege a casa: o default
+# é NÃO ser achado. Só vira indício quando a leitura AFIRMA, com marca explícita.
+_RE_AFIRMA = re.compile(
+    r"\bsim\b|h[aá]\s+ind[ií]cio|verifica-se|constata-se|observa-se|identificad[oa]"
+    r"|configurad[oa]|caracterizad[oa]|presente\s+no|foi\s+constatad|evidencia-se"
+    r"|aparent(?:a|emente)\s+(?:haver|configurar)|poss[íi]vel\s+(?:ind[ií]cio|ocorr)",
+    re.IGNORECASE)
+
+
+def _afirma(linha: str) -> bool:
+    """Afirmação de verdade, e não a que vem dentro de uma negação.
+
+    "não há indício" contém "há indício" — a marca afirmativa embutida na negação. Lookbehind
+    de largura variável não existe em `re`, então a checagem fica aqui: olha os caracteres
+    imediatamente anteriores ao casamento.
+    """
+    for m in _RE_AFIRMA.finditer(linha or ""):
+        antes = linha[max(0, m.start() - 12):m.start()].lower()
+        if "não" in antes or "nao" in antes or "sem" in antes:
+            continue
+        return True
+    return False
+
+
+def i_vicio_afirmado(dossie: str) -> Indicio | None:
+    """Vício do catálogo que a leitura AFIRMA — não o que ela apenas menciona para descartar."""
+    from compliance_agent.knowledge.catalogo_vicios import CATALOGO
+
+    ids = {v.id for v in CATALOGO}
+    achados: list[str] = []
+    vistos: set[str] = set()
+    for ln in (dossie or "").splitlines():
+        if not _afirma(ln):
+            continue                       # sem afirmação explícita, não é achado
+        for vid in ids:
+            if f"`{vid}`" in ln or vid.replace("_", " ") in ln.lower():
+                if vid not in vistos:
+                    vistos.add(vid)
+                    achados.append(ln.strip())
+                break
+    if not achados:
+        return None
+    return Indicio(
+        "VC", "Vício do catálogo apontado pela leitura", "prioritario",
+        f"A leitura AFIRMOU {len(vistos)} vício(s) do catálogo canônico: "
+        f"{', '.join(sorted(vistos))}. Vem da leitura do documento, não de régua de código — "
+        "por isso exige conferência humana no trecho citado antes de qualquer encaminhamento.",
+        achados[:5], {"vicios": sorted(vistos)})
+
+
 DETECTORES = (i_juros_multa, i_direta_sem_justificativa, i_execucao_sem_fiscal,
-              i_divergencia_declarada)
+              i_divergencia_declarada, i_licitante_unico, i_vicio_afirmado)
 
 
 def varrer(dossie: str) -> list[Indicio]:

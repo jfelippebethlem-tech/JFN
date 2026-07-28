@@ -38,6 +38,7 @@ HONESTIDADE (invariantes da casa, aplicados aqui):
 """
 from __future__ import annotations
 
+import html
 import logging
 import pathlib
 from dataclasses import dataclass, field
@@ -123,7 +124,12 @@ def carregar_documentos(pasta: pathlib.Path) -> list[Documento]:
             txt = f.read_text(errors="replace")
         except OSError:
             continue
-        docs.append(Documento(nome=f.name, titulo=titulos.get(f.name, ""), texto=txt))
+        # ENTIDADE HTML NÃO DECODIFICADA no acervo: "Subsecret&aacute;rio" em vez de
+        # "Subsecretário". Medido em 2026-07-28 numa amostra de 300 processos: 5 processos e 45
+        # arquivos afetados, 727 ocorrências. Pouco em volume, mas quebra o casamento de NOME —
+        # e é justamente em despacho e portaria, que é onde estão os responsáveis.
+        docs.append(Documento(nome=f.name, titulo=titulos.get(f.name, ""),
+                              texto=html.unescape(txt)))
     return docs
 
 
@@ -346,6 +352,27 @@ def classificar_tema(rotulo: str) -> str:
     return "Outros fatos extraídos"
 
 
+def _bullets(bloco: str) -> list[tuple[str, str]]:
+    """Cada marcador do bloco como item próprio, sem rótulo — para classificar por CONTEÚDO.
+
+    Nem todo modelo usa rótulo em negrito. Medido em 2026-07-28: o `nemotron-3-ultra-550b`
+    devolve bullets em prosa corrida, e o dossiê inteiro caía em "Outros fatos extraídos"
+    porque a classificação só olhava o rótulo. Sem rótulo, o próprio texto do item decide.
+    """
+    import re as _re
+
+    itens, atual = [], []
+    for linha in (bloco or "").splitlines():
+        if _re.match(r"^\s*[-*•]\s+\S", linha) and atual:
+            itens.append("\n".join(atual).strip())
+            atual = [linha]
+        else:
+            atual.append(linha)
+    if atual:
+        itens.append("\n".join(atual).strip())
+    return [("", t) for t in itens if t]
+
+
 def _itens_do_bloco(bloco: str) -> list[tuple[str, str]]:
     """(rótulo, corpo) de cada item rotulado do bloco; o resto vai como corpo sem rótulo."""
     import re as _re
@@ -353,8 +380,7 @@ def _itens_do_bloco(bloco: str) -> list[tuple[str, str]]:
     padrao = _re.compile(r"^\s*[-*]?\s*\*\*(.{2,80}?)\*\*\s*:?\s*(.*)$", _re.M)
     marcas = list(padrao.finditer(bloco or ""))
     if not marcas:
-        corpo = (bloco or "").strip()
-        return [("", corpo)] if corpo else []
+        return _bullets(bloco)
     itens, antes = [], (bloco[:marcas[0].start()] or "").strip()
     if antes:
         itens.append(("", antes))
@@ -405,7 +431,9 @@ def consolidar(blocos: list[str]) -> str:
             if chave in vistos:
                 continue
             vistos.add(chave)
-            secao = classificar_tema(rotulo) if rotulo else "Outros fatos extraídos"
+            # Sem rótulo, o conteúdo decide — só as primeiras palavras, que é onde o item
+            # anuncia do que trata; o corpo inteiro casaria com tudo.
+            secao = classificar_tema(rotulo or corpo[:120])
             prefixo = f"**{rotulo}** — " if rotulo else ""
             por_secao[secao].append(f"- {prefixo}{corpo}")
 

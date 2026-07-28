@@ -54,3 +54,19 @@ def test_nao_captura_numero_solto_como_id():
 def test_cpf_nao_e_confundido_com_id_funcional():
     idf, _ = _identificadores("CPF 123.456.789-00")
     assert idf is None
+
+
+def test_entidade_html_crua_nao_impede_a_extracao():
+    """O acervo tem texto com entidade HTML não decodificada: "Subsecret&aacute;rio" em vez de
+    "Subsecretário". Medido em 2026-07-28 numa amostra de 300 processos: 5 processos, 45
+    arquivos, 727 ocorrências — pouco em volume, mas concentrado em despacho e portaria, que é
+    onde os responsáveis são nomeados."""
+    from compliance_agent.sei.agentes_publicos import montar_ficha
+
+    docs = {"009_despacho.txt": "Jo&atilde;o Carlos Souza Junior\n"
+                                "Subsecret&aacute;rio do Fundo Estadual de Sa&uacute;de\n"
+                                "Ordenador de Despesas\nID: 1012634-1"}
+    ficha = montar_ficha("080001_003535_2025", docs)
+    assert ficha.agentes, "o agente sumiu por causa da entidade HTML"
+    ids = {a.id_funcional for a in ficha.agentes}
+    assert "1012634-1" in ids

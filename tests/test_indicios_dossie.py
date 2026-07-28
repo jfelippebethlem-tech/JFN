@@ -106,3 +106,45 @@ def test_indicios_saem_do_mais_prioritario_para_o_menos():
     graus = [i.grau for i in varrer(texto)]
     assert graus == sorted(graus, key=lambda g: -["informativo", "atencao",
                                                   "prioritario"].index(g))
+
+
+# ── O checklist do catálogo é respondido quase todo NEGATIVAMENTE ──────────────────────────
+# A moldura jurídica entrega ao modelo os 42 vícios canônicos, e ele os percorre um a um. A 1ª
+# versão deste indício procurava negação para descartar e apontou 27 vícios "afirmados" num
+# processo onde as respostas eram "não.", "normal", "não é contratação". Listar formas de negar
+# é perder sempre; o default tem de ser NÃO ser achado — a mesma presunção de legitimidade que
+# rege o resto da casa.
+
+_CHECKLIST_NEGATIVO = """- - `subcontratacao_cruzada`: não.
+- - `vigencia_excessiva`: ARP 12 meses, normal.
+- - `publicidade_prazos_minimizados`: pregão eletrônico com prazo normal (28/09 a 16/10).
+- - `contratacao_direta_indevida`: adesão a ARP é permitida legalmente. Não é contratação direta.
+- - `cotacoes_combinadas`: não há indício de cotações combinadas (apenas uma proposta).
+"""
+
+
+def test_checklist_respondido_negativamente_nao_vira_achado():
+    from compliance_agent.sei.indicios_dossie import i_vicio_afirmado
+    assert i_vicio_afirmado(_CHECKLIST_NEGATIVO) is None
+
+
+def test_resposta_telegrafica_nao_e_confundida_com_afirmacao():
+    from compliance_agent.sei.indicios_dossie import i_vicio_afirmado
+    assert i_vicio_afirmado("- `fracionamento_despesa`: não.") is None
+    assert i_vicio_afirmado("- `lote_pacote`: normal.") is None
+
+
+def test_vicio_realmente_afirmado_e_apontado():
+    from compliance_agent.sei.indicios_dossie import i_vicio_afirmado
+    ind = i_vicio_afirmado(
+        "- `especificacao_dirigida`: verifica-se marca sem 'ou equivalente' [doc 001_tr.txt]")
+    assert ind is not None
+    assert ind.valores["vicios"] == ["especificacao_dirigida"]
+    assert ind.grau == "prioritario"
+
+
+def test_proponente_unico_e_apontado_com_a_explicacao_inocente():
+    from compliance_agent.sei.indicios_dossie import i_licitante_unico
+    ind = i_licitante_unico("- Houve apenas uma proposta no certame [doc 004_ata.txt]")
+    assert ind is not None
+    assert "nicho" in ind.motivo, "tem de trazer a explicação inocente mais comum"

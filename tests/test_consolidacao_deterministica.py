@@ -105,3 +105,35 @@ def test_linha_com_citacao_nunca_e_removida():
     from compliance_agent.sei.dossie_fracionado import limpar_monologo
     linha = "We must note the value R$ 68.143,66 de juros [doc 091_despacho.txt]"
     assert limpar_monologo(linha) == linha
+
+
+# ── Modelos que não usam rótulo em negrito ────────────────────────────────────────────────
+# Medido em 2026-07-28: `nemotron-3-ultra-550b` devolve bullets em prosa corrida, sem
+# `**Rótulo**`. O dossiê inteiro caía em "Outros fatos extraídos" — 62 citações sem nenhuma
+# seção útil. Sem rótulo, o CONTEÚDO do item decide.
+
+_SEM_ROTULO = """- Objeto: contratação de serviços de manutenção predial [doc 001_tr.txt]
+- Valor total do contrato: R$ 480.000,00 [doc 002_contrato.txt]
+- Fiscal do contrato designado: Fulano de Tal, ID 5143197-1 [doc 003_portaria.txt]
+- Vigência: 12 meses a partir de 01/03/2025 [doc 002_contrato.txt]
+"""
+
+
+def test_bullets_sem_rotulo_sao_classificados_pelo_conteudo():
+    md = consolidar([_SEM_ROTULO])
+    assert "## Objeto e enquadramento" in md
+    assert "## Valores" in md
+    assert "## Partes e responsáveis" in md
+    assert "## Linha do tempo" in md
+
+
+def test_bullets_sem_rotulo_nao_caem_todos_em_outros():
+    md = consolidar([_SEM_ROTULO])
+    outros = md.split("## Outros fatos extraídos")[-1] if "## Outros" in md else ""
+    assert outros.count("[doc") <= 1, "quase tudo devia ter seção própria"
+
+
+def test_cada_bullet_vira_um_item_e_nao_um_bloco_unico():
+    md = consolidar([_SEM_ROTULO])
+    for doc in ("001_tr.txt", "002_contrato.txt", "003_portaria.txt"):
+        assert f"[doc {doc}]" in md
