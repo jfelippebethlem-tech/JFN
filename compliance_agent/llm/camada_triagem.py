@@ -79,6 +79,28 @@ def orcamento_restante() -> int:
     return max(0, MAX_DIA - int(ler_uso().get("chamadas", 0)))
 
 
+def _com_moldura(sistema: str) -> str:
+    """Prefixa a moldura jurídica brasileira ao `system` que o detector passou.
+
+    Sem isto, a camada 2 do 24/7 julgava licitação brasileira com o que quer que o modelo
+    tivesse aprendido na internet: errava o dispositivo, citava súmula inexistente e tratava a
+    Lei 8.666/1993 como vigente para contratação nova. O ponto único é aqui porque TODO detector
+    passa por `gerar(prompt, sistema)` — corrigir em cada card seria esquecer metade.
+
+    Usa a moldura COMPACTA (sem o catálogo dos 42 vícios): a rubrica já vem fechada pelo
+    detector, que dita os níveis válidos. O que o modelo precisa é do regime vigente e dos
+    deveres de honestidade — cerca de 1.100 tokens em vez de 3.200, o que importa quando a
+    chamada é curta e o modelo é pequeno.
+    """
+    try:
+        from compliance_agent.knowledge.moldura_juridica import moldura
+        return f"{moldura(com_catalogo=False)}\n\n{sistema}" if sistema else moldura(
+            com_catalogo=False)
+    except Exception as e:  # noqa: BLE001 — sem a moldura a triagem piora, mas não pode parar
+        logger.warning("moldura jurídica indisponível (%s) — triagem segue sem ela", str(e)[:80])
+        return sistema
+
+
 def gerar_triagem(*, max_dia: int | None = None) -> Callable[[str, str], str]:
     """Devolve o callable `gerar(prompt, sistema) -> str` que os detectores esperam.
 
@@ -93,6 +115,7 @@ def gerar_triagem(*, max_dia: int | None = None) -> Callable[[str, str], str]:
 
     def gerar(prompt: str, sistema: str = "") -> str:
         dados = ler_uso()
+        sistema = _com_moldura(sistema)
 
         if pausado():
             dados["bloqueadas_pause"] = dados.get("bloqueadas_pause", 0) + 1

@@ -161,3 +161,45 @@ def test_status_mostra_o_que_esta_bloqueando(isolar, monkeypatch):
     assert st["restante"] == 4
     assert st["pausado"] is True
     assert st["arquivo_pause"].endswith(".pause_llm_triagem")
+
+
+# ── moldura jurídica ───────────────────────────────────────────────────────────────────────
+# A camada 2 julga licitação brasileira em volume. Sem a moldura, fazia isso com o que o modelo
+# tivesse aprendido na internet: dispositivo errado, súmula inexistente, Lei 8.666/1993 tratada
+# como vigente para contratação nova. O ponto de injeção é `gerar()` porque TODO detector passa
+# por ele — corrigir card a card seria esquecer metade.
+
+def test_moldura_juridica_entra_no_system(isolar, monkeypatch):
+    capturado = {}
+
+    import sys
+    import types
+    falso = types.ModuleType("compliance_agent.llm.free_llm")
+
+    def best_free_chat(prompt, system="", smart=False, fallback=""):
+        capturado["system"] = system
+        return "ok"
+
+    falso.best_free_chat = best_free_chat
+    monkeypatch.setitem(sys.modules, "compliance_agent.llm.free_llm", falso)
+
+    T.gerar_triagem()("prompt", "Classifique em escala fechada.")
+    sistema = capturado["system"]
+    assert "14.133/2021" in sistema, "o regime vigente tem de estar no prompt"
+    assert "presunção de legitimidade" in sistema.lower()
+    assert "Classifique em escala fechada." in sistema, "a instrução do detector foi perdida"
+
+
+def test_moldura_compacta_nao_carrega_o_catalogo_inteiro(isolar, monkeypatch):
+    """A rubrica já vem fechada pelo detector; os 42 vícios seriam 3.200 tokens de ruído."""
+    capturado = {}
+
+    import sys
+    import types
+    falso = types.ModuleType("compliance_agent.llm.free_llm")
+    falso.best_free_chat = lambda prompt, system="", smart=False, fallback="": (
+        capturado.setdefault("system", system), "ok")[1]
+    monkeypatch.setitem(sys.modules, "compliance_agent.llm.free_llm", falso)
+
+    T.gerar_triagem()("p", "s")
+    assert "VÍCIOS CATALOGADOS" not in capturado["system"]

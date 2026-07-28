@@ -254,6 +254,18 @@ def consultar_orgao(ug: str, anos: Optional[list[int]] = None) -> dict:
 
     out["por_ano"] = por_ano
     out["anos"] = sorted(por_ano.keys())
+    # AVISO DE SUBORDINAÇÃO. A série por ano soma a mesma UNIDADE (o código identifica a
+    # unidade, e `ugs.nome_canonico` dá o nome estável) — mas o ÓRGÃO SUPERIOR pode ter mudado
+    # no intervalo, e com ele a cadeia de responsabilidade: ordenador de despesas e autoridade
+    # homologadora respondem pela secretaria da época, não pela atual. O ITERJ (UG 133100)
+    # passou por três secretarias entre 2019 e 2026. Quem lê um total de oito anos precisa
+    # saber disso para não atribuir a despesa inteira ao gestor de hoje.
+    if out["anos"]:
+        try:
+            from compliance_agent.ug_nomes import alerta_serie
+            out["aviso_subordinacao"] = alerta_serie(str(ug), min(out["anos"]), max(out["anos"]))
+        except Exception:  # noqa: BLE001 — aviso é melhoria, não pode derrubar o relatório
+            out["aviso_subordinacao"] = None
     out["n_geral"] = sum(b["n"] for b in por_ano.values())
     out["total_geral"] = sum(b["total"] for b in por_ano.values())
     out["por_favorecido_geral"] = dict(sorted(forn_geral.items(), key=lambda kv: kv[1], reverse=True))
@@ -620,6 +632,12 @@ def parecer_orgao(ctx: dict) -> str:
     add("")
     add("> **Ressalva:** baseado em dados de pagamento (OB) públicos; sem exame documental dos contratos. "
         "Vigora a presunção de regularidade dos atos administrativos até prova em contrário.")
+    # Quem responde pela unidade muda quando ela troca de secretaria — e uma série de oito anos
+    # pode atravessar três. Sem este aviso, o total inteiro parece imputável ao gestor atual.
+    _aviso = p.get("aviso_subordinacao")
+    if _aviso:
+        add("")
+        add(f"> **Cadeia de responsabilidade:** {_aviso}")
     return "\n".join(L)
 
 
