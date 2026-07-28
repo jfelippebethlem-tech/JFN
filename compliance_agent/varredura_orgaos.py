@@ -155,18 +155,56 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
     if doacoes:
         ctx["doacoes"] = doacoes
 
-    # Total pago à empresa pela UG — alimenta a razão retorno/doação do C6.
+    # CADASTRO — `empresas.raw_json` já está no formato que `investigacao_dd.investigar` espera
+    # (situacao, abertura, capital, porte, cnae, logradouro, numero, bairro, socios[]). Sem isto o
+    # detector C (fachada) chamava o caminho de REDE e voltava sem hipótese: 0 de 312 avaliáveis na
+    # medição de 2026-07-27. Passar um dict (mesmo incompleto) também evita a ida à rede, que numa
+    # varredura de 118 UGs seria inviável.
     try:
-        sql = "SELECT SUM(valor) FROM ob_orcamentaria_siafe WHERE credor = ?"
+        linha = con.execute(
+            "SELECT raw_json, situacao, data_abertura, porte, capital_social, atividade_princ "
+            "FROM empresas WHERE cnpj = ?", (cnpj,)).fetchone()
+    except sqlite3.OperationalError:
+        linha = None
+    if linha:
+        cad: dict[str, Any] = {}
+        if linha[0]:
+            try:
+                cad = json.loads(linha[0]) or {}
+            except json.JSONDecodeError:
+                cad = {}
+        # colunas normalizadas prevalecem sobre o json bruto quando existem
+        for chave, valor in (("situacao", linha[1]), ("abertura", linha[2]), ("porte", linha[3]),
+                             ("capital", linha[4]), ("cnae", linha[5])):
+            if valor not in (None, ""):
+                cad[chave] = valor
+        if qsa and not cad.get("socios"):
+            cad["socios"] = [{"nome": q["nome"], "doc": q.get("cpf")} for q in qsa]
+        ctx["cadastral"] = cad
+
+    # PEGADA NAS OBs — total pago, nº de ordens e a primeira data. Alimenta tanto a razão
+    # retorno/doação do C6 quanto a hipótese "empresa recém-aberta antes do 1º recebimento".
+    try:
+        sql = ("SELECT SUM(valor), COUNT(*), MIN(data_emissao) FROM ob_orcamentaria_siafe "
+               "WHERE credor = ?")
         params: list = [cnpj]
         if ug:
             sql += " AND ug_emitente = ?"
             params.append(ug)
-        total = con.execute(sql, params).fetchone()[0]
+        total, n_obs, primeira = con.execute(sql, params).fetchone()
         if total:
             ctx["valor_contratado"] = float(total)
+            ctx["pagamentos"] = {"total_pago": float(total), "n_obs": int(n_obs or 0),
+                                 "primeira_data": primeira}
     except sqlite3.OperationalError:
         pass
+
+    # Rede e geocode ficam DESLIGADOS na varredura: cruzamento de co-endereço em DuckDB e
+    # Nominatim a 1 req/s são inviáveis em 118 UGs. Quem quiser o exame profundo roda o dossiê
+    # do fornecedor, que é o produto feito para isso.
+    ctx.setdefault("usar_rede", False)
+    ctx.setdefault("geocode", False)
+    ctx.setdefault("usar_beneficios", False)
     return ctx
 
 

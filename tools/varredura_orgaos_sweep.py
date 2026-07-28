@@ -36,14 +36,27 @@ def main() -> int:
     ap.add_argument("--limite-ugs", type=int)
     ap.add_argument("--max-fornecedores", type=int, default=15)
     ap.add_argument("--gravar", action="store_true")
+    ap.add_argument("--com-ia", action="store_true",
+                    help="liga a CAMADA 2 (rubrica fechada na cadeia grátis). Respeita o "
+                         "kill-switch data/.pause_llm_triagem e o teto diário.")
     a = ap.parse_args()
+
+    gerar = None
+    if a.com_ia:
+        from compliance_agent.llm.camada_triagem import gerar_triagem, status
+        st = status()
+        if st["pausado"]:
+            print(f"CAMADA 2 pausada por {st['arquivo_pause']} — seguindo só com a determinística")
+        else:
+            gerar = gerar_triagem()
+            print(f"CAMADA 2 ligada · {st['restante']} de {st['teto_dia']} chamadas disponíveis hoje")
 
     ro = V.abrir_leitura()
     achados = V.abrir_achados() if a.gravar else None
     t0 = time.time()
 
     if a.ug:
-        r = V.varrer_ug(ro, a.ug, exercicio=a.exercicio,
+        r = V.varrer_ug(ro, a.ug, exercicio=a.exercicio, gerar=gerar,
                         max_fornecedores=a.max_fornecedores, con_achados=achados)
         print(f"UG {r['ug']}: {r['n_confirmados']} achado(s) · avaliáveis "
               f"{r['n_avaliaveis']}/{r['n_detectores']} · {r['n_fornecedores']} fornecedores")
@@ -53,13 +66,18 @@ def main() -> int:
     else:
         res = V.varrer_todas(ro, exercicio=a.exercicio, limite_ugs=a.limite_ugs,
                              max_fornecedores=a.max_fornecedores, con_achados=achados,
-                             log=print)
+                             gerar=gerar, log=print)
         n_av = sum(u["n_avaliaveis"] for u in res["por_ug"])
         n_tot = sum(u["n_detectores"] for u in res["por_ug"])
         print(f"\n{res['n_ugs']} UGs · {res['total_achados']} achado(s) confirmado(s)")
         print(f"COBERTURA: {n_av}/{n_tot} avaliações possíveis "
               f"({(n_av * 100 // n_tot) if n_tot else 0}%) — o resto é campo que a base não tem")
 
+    if gerar is not None:
+        from compliance_agent.llm.camada_triagem import status as _st
+        u = _st()
+        print(f"camada 2: {u['chamadas_hoje']} chamada(s) hoje · {u['ok']} com resposta · "
+              f"{u['vazias']} vazias · {u['erros']} erro(s) · restam {u['restante']}")
     if achados is not None:
         achados.close()
     print(f"tempo: {time.time() - t0:.0f}s")
