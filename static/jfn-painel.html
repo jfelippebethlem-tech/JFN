@@ -2595,6 +2595,40 @@ const SPHERES=[
   {id:'prefeitura',ic:'🏙️', tl:'Prefeitura·Rio',c:'município do Rio (PNCP + folha)'},
   {id:'geral',     ic:'🌐', tl:'Transversal',  c:'riscos, busca, poder, ferramentas'},
 ];
+// ═══ RESPONSÁVEIS pelo processo (ordenador · gestor · fiscal) ═══
+// Declarado ANTES de TABS de propósito: TABS é `const` e referencia o render na avaliação —
+// um `const renderX` declarado depois daria TDZ e mataria o boot em silêncio (já aconteceu).
+// `async function` é hoisted, mas a ordem aqui é explícita para quem vier depois.
+let _respProc='';
+// O payload traz `cargo`, e o extrator às vezes deposita ali o e-mail da assinatura do
+// documento. E-mail pessoal de servidor não vai para a tela: mostra-se o cargo só quando é
+// cargo. O dado continua no banco; o que não se faz é publicá-lo.
+const _ehEmail=s=>/@/.test(String(s||''));
+async function renderResponsaveis(){
+  let h=cover('estado','Responsáveis pelo processo','Quem responde por um processo SEI: ordenador de despesa, gestor e fiscal do contrato, com ID funcional quando o documento o traz.','🧑‍⚖️');
+  h+=`<div class="search"><span class="mag"></span><input id="resp-proc" placeholder="número SEI (ex.: SEI-070002/006145/2024)…" value="${esc(_respProc)}" onchange="_respProc=this.value;ir('e_resp')" onkeydown="if(event.key==='Enter'){_respProc=this.value;ir('e_resp')}"></div>`;
+  if(!_respProc.trim())return h+card('<div class="muted">Informe o número do processo. A busca lê o que já foi capturado — ela responde uma pergunta, não varre o acervo.</div>');
+  let d;
+  try{ d=await J('/api/responsaveis?processo='+encodeURIComponent(_respProc.trim())); }
+  catch(e){ return h+card(`<div class="muted">Não foi possível consultar: ${esc(String(e&&e.message||e))}</div>`); }
+  if(!d||d.ok===false)return h+card(`<div class="muted">${esc((d&&d.erro)||'consulta sem resposta')}</div>`);
+  const ag=d.agentes||[];
+  h+=card(`<div style="font-weight:700">${esc(d.processo||_respProc)}</div><div class="dim">${ag.length} responsável(is) identificado(s) nos documentos capturados</div>`);
+  if(!ag.length){
+    // LACUNA declarada, nunca "não há responsável": em 97% dos processos o ato de designação
+    // vive no processo de contratação, não no de pagamento. Confundir os dois produziria
+    // acusação falsa de execução sem fiscal.
+    return h+card('<div class="muted">Nenhum responsável identificado <b>nos documentos capturados</b>. Isso é lacuna de captura ou de instrução — <b>não</b> afirmação de que o processo corra sem responsável designado: o ato de designação costuma viver no processo de contratação, não no de pagamento.</div>');
+  }
+  h+=`<div class="grid">`+ag.map(a=>card(
+    `<div><div style="font-weight:700">${esc(a.nome||'—')}</div>
+     <div class="dim">${esc(String(a.papel||'').replace(/_/g,' '))}${a.id_funcional?` · ID ${esc(a.id_funcional)}`:''}${a.cargo&&!_ehEmail(a.cargo)?` — ${esc(a.cargo)}`:''}</div>
+     <div class="dim" style="font-size:12px">origem: ${esc(a.origem||'—')}${a.documento?` · ${esc(a.documento)}`:''}</div></div>`)).join('')+`</div>`;
+  const lac=d.lacunas||[];
+  if(lac.length)h+=card(`<div style="font-weight:700">Lacunas apontadas</div><ul style="margin:6px 0 0 18px">${lac.slice(0,5).map(l=>`<li>${esc(l.descricao||l.tipo||'—')}</li>`).join('')}</ul>`);
+  return h;
+}
+
 const TABS={
   inicio:[
     {id:'i_cockpit', ic:'◎',tl:'Cockpit', render:renderCockpit},
@@ -2613,6 +2647,7 @@ const TABS={
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
     {id:'e_alertas', ic:'🚨',tl:'Alertas', render:renderAlertas},
+    {id:'e_resp',    ic:'🧑‍⚖️',tl:'Responsáveis',render:renderResponsaveis},
     {id:'e_siafe',   ic:'💵',tl:'SIAFE',   render:renderSiafe},
   ],
   prefeitura:[

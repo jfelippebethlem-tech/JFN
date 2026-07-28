@@ -92,6 +92,7 @@ GET /api/pncp/conluio -> api_pncp_conluio
 GET /api/poder/nomeados_candidatos -> api_nomeados_candidatos
 GET /api/ppp/triagem -> api_ppp_triagem
 GET /api/radar/status -> api_radar_status
+GET /api/responsaveis -> api_responsaveis
 GET /api/restritos -> api_restritos
 GET /api/rodizio -> api_rodizio
 GET /api/route -> api_route
@@ -102,6 +103,7 @@ GET /api/sei/empresa/status -> api_sei_empresa_status
 GET /api/sei/empresa/zip -> api_sei_empresa_zip
 GET /api/siafe/stats -> api_siafe_stats
 GET /api/siafe/status -> api_siafe_status
+GET /api/sistema/atividade -> api_sistema_atividade
 GET /api/skill -> api_skill
 GET /api/skills -> api_skills
 GET /api/skills/validate -> api_skills_validate
