@@ -514,11 +514,14 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
     from compliance_agent.collectors.sei_cdp import _proxy_do_env
     from tools.sei_reader import login, ler_processo, _ler_cracked, _montar_resultado_cracked
-    from tools.sei_pais import carregar_cache, detectar_pais, _norm
+    from tools.sei_pais import detectar_pais, _norm
     from playwright.async_api import async_playwright
 
-    cache = carregar_cache()
-    pais = detectar_pais(cache, incluir_relacionados=not so_alta)
+    # SEM `carregar_cache()`: ela materializa os 18 GB do acervo em RAM e é o que derrubou a VM
+    # (OOM 11× em 27/07 + a queda das 22:22 + mais um às 23:04, este último causado por rodar a
+    # validação com o chamador ainda antigo). `detectar_pais()` sem argumento percorre o cache em
+    # streaming, com pico medido de 807 MB.
+    pais = detectar_pais(incluir_relacionados=not so_alta, log=_log)
     if cnpj:  # foca nos pais citados por dockets do CNPJ alvo (pré-carrega o /relatorio dele)
         cd = re.sub(r"\D", "", cnpj)
         # origem é o docket que citou; cruza com as OBs do CNPJ

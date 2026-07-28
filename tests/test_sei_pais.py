@@ -169,3 +169,28 @@ def test_streaming_da_o_mesmo_resultado_da_carga_integral(cache_tmp):
     por_carga = sei_pais.detectar_pais(cache=sei_pais.carregar_cache())
     assert [p["pai"] for p in por_streaming] == [p["pai"] for p in por_carga]
     assert [p["n_citacoes"] for p in por_streaming] == [p["n_citacoes"] for p in por_carga]
+
+
+def test_nenhum_modulo_de_producao_chama_carregar_cache():
+    """Trava o erro que eu mesmo cometi: consertar a função e esquecer o CHAMADOR.
+
+    `detectar_pais` virou streaming, mas `tools/sei_sweep.run_pais` continuava chamando
+    `carregar_cache()` e passando o dict pronto — a validação do próprio conserto causou um OOM
+    de 9 GB às 23:04 de 27/07. Verificação estática: nenhum módulo de produção pode invocá-la.
+    """
+    import pathlib
+    import re
+
+    raiz = pathlib.Path(__file__).resolve().parent.parent
+    permitido = {"tools/sei_pais.py"}  # onde a função é DEFINIDA
+    chamada = re.compile(r"^\s*[^#\n]*\bcarregar_cache\s*\(", re.MULTILINE)
+    ofensores = []
+    for f in list(raiz.glob("tools/*.py")) + list(raiz.glob("compliance_agent/**/*.py")):
+        rel = f.relative_to(raiz).as_posix()
+        if rel in permitido:
+            continue
+        if chamada.search(f.read_text(errors="replace")):
+            ofensores.append(rel)
+    assert not ofensores, (
+        "carregar_cache() materializa os 18 GB do acervo e estoura a VM — "
+        f"usar detectar_pais()/iter_resumos(): {ofensores}")

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Guard de OOM: este sweep morre ANTES da sessão do dono (ver tools/lib/oom_guard.sh).
+source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # sweep_sede.sh — verificação de SEDE REAL sem Google e sem Mapillary.
 #
 # 2026-07-23: o motor Google (Places/Street View/Geocoding) foi APOSENTADO. Desde o

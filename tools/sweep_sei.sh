@@ -1,4 +1,6 @@
 #!/bin/bash
+# Guard de OOM: este sweep morre ANTES da sessão do dono (ver tools/lib/oom_guard.sh).
+source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # sweep_sei — GRUPO SEI (itkava/browser): sei_sweep + sei_cpf. Roda SOZINHO (sessão única livre p/ leitura
 # manual entre execuções). LEVE: nice/ionice idle (só CPU/IO ocioso), bounded por timeout, SINGLE-PASS
 # (o cron repete; NÃO é loop contínuo — esse era o lane ruim que segurava Chromium na memória 24h).
@@ -45,14 +47,13 @@ fi
 # SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
 # execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;
 # resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
-# ⛔ DESLIGADO 2026-07-27 — este passo DERRUBOU A VM. Vazamento de memória: chega a ~10 GB de RSS
-# em ~10 min (VM tem 11,9 GB) e o OOM killer o matou 11 vezes só em 27/07 (12:50, 16:52, 19:23,
-# 20:40 — horários batendo ao segundo com `sei_pais rc=137` em data/sweep_sei.log). Às 22:22:49 a
-# máquina não aguentou e travou de vez: o journald já vinha falhando por watchdog desde as 20:40.
-# Religar SÓ depois de achar e corrigir o vazamento (o `--max 5` limita processos lidos, não memória).
-# Para religar: descomentar a linha abaixo.
-# $PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
-say "sei_pais DESLIGADO (vazamento de memória — ver comentário acima)"
+# HISTÓRICO: este passo DERROU A VM em 27/07 (OOM 11× no dia; queda às 22:22:49). Não era vazamento:
+# `sei_pais.carregar_cache()` materializava os 18 GB do acervo em RAM. RELIGADO em 27/07 23:1x depois
+# de (a) `detectar_pais()` virar streaming — pico medido de 807 MB — e (b) o CHAMADOR aqui parar de
+# chamar `carregar_cache()`, que era o que ainda faltava (um OOM de 9 GB às 23:04 nasceu justamente
+# de validar o conserto com o chamador antigo). O guard de OOM no topo deste arquivo garante que,
+# se algo escapar, quem morre é o sweep — nunca a sessão do dono.
+$PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.

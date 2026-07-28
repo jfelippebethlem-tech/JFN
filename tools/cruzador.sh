@@ -1,4 +1,6 @@
 #!/bin/bash
+# Guard de OOM: este sweep morre ANTES da sessão do dono (ver tools/lib/oom_guard.sh).
+source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # cruzador — ao FIM do dia, CRUZA todos os dados coletados: OB↔SEI (correlacao_sei) + concentração por grupo
 # econômico (cartel/diversidade fictícia). Roda SOZINHO à noite → sem sweep competindo → DuckDB seguro.
 # LEVE: nice/ionice idle, bounded.

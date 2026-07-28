@@ -1,4 +1,6 @@
 #!/bin/bash
+# Guard de OOM: este sweep morre ANTES da sessão do dono (ver tools/lib/oom_guard.sh).
+source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # Manutenção DIÁRIA leve da compliance.db (auditoria 2026-06-18): ANALYZE (planner escolhe os
 # índices certos após ingestões diárias de centenas de milhares de linhas — OB/folha/doações) +
 # wal_checkpoint(TRUNCATE) para o WAL não crescer entre os VACUUMs semanais. NÃO faz VACUUM (caro;

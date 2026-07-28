@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Guard de OOM: este sweep morre ANTES da sessão do dono (ver tools/lib/oom_guard.sh).
+source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # socios_dump_refresh — refresh MENSAL da base reversa de sócios da Receita, VM-safe e RESUMÍVEL.
 #
 # FLUXO (idempotente; cada etapa é regenerável a partir da fonte):

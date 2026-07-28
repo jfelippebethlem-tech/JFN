@@ -83,9 +83,12 @@ def carregar_cache() -> dict[str, dict]:
     return out
 
 
-# Teto por arquivo. Acima disto o JSON não é parseado (o de 697 MB vira ~3 GB de objetos Python).
+# Teto por arquivo. Acima disto o JSON não é parseado (o maior, de 697 MB, vira alguns GB de
+# objetos Python). Calibrado na distribuição real do acervo (6.093 arquivos, 2026-07-27):
+#   teto  64 MB -> 81 arquivos de fora   teto 256 MB -> 4 de fora   teto 384 MB -> 1 de fora
+# 256 MB deixa 99,93% do acervo dentro com pico medido bem abaixo do limite da VM.
 # O que ficou de fora é SEMPRE declarado no log — nunca silenciosamente.
-LIMITE_ARQUIVO_MB = int(os.environ.get("JFN_SEI_PAIS_MAX_MB", "64"))
+LIMITE_ARQUIVO_MB = int(os.environ.get("JFN_SEI_PAIS_MAX_MB", "256"))
 
 
 def _resumir(d: dict) -> dict:

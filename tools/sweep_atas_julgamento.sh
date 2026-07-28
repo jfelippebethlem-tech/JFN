@@ -1,4 +1,6 @@
 #!/bin/bash
+# Guard de OOM: este sweep morre ANTES da sessão do dono (ver tools/lib/oom_guard.sh).
+source "$(dirname "$0")/lib/oom_guard.sh" 2>/dev/null || true
 # Sweep noturno de ATAS DE JULGAMENTO (PNCP) → julgamento → lances → índice.
 # Fecha a maior lacuna do Índice de Direcionamento (2026-07-22: 31 atas p/ 52k resultados;
 # famílias certame_ata e conluio ficavam INDISPONÍVEIS por falta desta matéria-prima).
