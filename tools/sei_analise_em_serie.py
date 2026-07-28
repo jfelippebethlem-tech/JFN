@@ -128,6 +128,44 @@ def sem_texto(limite: int | None = None) -> list[tuple[str, float]]:
     return vazios[:limite] if limite else vazios
 
 
+def recaptura(limite: int | None = None, *, minimo_vazios: float = 0.30) -> list[dict]:
+    """Processos capturados PELA METADE — a fila de RECAPTURA.
+
+    A Fase C2 do plano previa "re-extrair os 4.695 documentos com chars=0". Medido em
+    2026-07-28: **é impossível como planejado**. Os .txt existem e estão vazios (4.692 de
+    4.695), mas o arquivo de ORIGEM não foi guardado — o acervo tem `texto/` e `fotos/`, e um
+    único PDF em 2.055 processos. Não há de onde re-extrair.
+
+    Logo, esses documentos precisam de RECAPTURA no SEI, não de reprocessamento local. Esta
+    função monta essa fila, priorizada por valor pago e por proporção de documentos cegos: um
+    processo lido pela metade é pior que um não lido, porque parece analisado.
+    """
+    import json
+
+    pagos = _pagos_por_chave()
+    fila = []
+    for pasta in sorted(ACERVO.iterdir()):
+        manifesto = pasta / "manifest.json"
+        if not manifesto.is_file():
+            continue
+        try:
+            docs = (json.loads(manifesto.read_text()).get("docs") or [])
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not docs:
+            continue
+        vazios = sum(1 for d in docs if not int(d.get("chars") or 0))
+        if not vazios:
+            continue
+        prop = vazios / len(docs)
+        if prop < minimo_vazios:
+            continue
+        fila.append({"processo": pasta.name, "n_docs": len(docs), "vazios": vazios,
+                     "proporcao": prop, "pago": pagos.get(_chave(pasta.name), 0.0)})
+    fila.sort(key=lambda x: (-x["pago"], -x["proporcao"]))
+    return fila[:limite] if limite else fila
+
+
 def _ler_indice() -> dict:
     try:
         return json.loads(INDICE.read_text())
@@ -258,6 +296,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=5, help="quantos processos analisar")
     ap.add_argument("--fila", action="store_true", help="só mostra a ordem; não analisa")
+    ap.add_argument("--fila-recaptura", action="store_true",
+                    help="processos lidos pela metade (documentos com texto vazio)")
     ap.add_argument("--fila-captura", action="store_true",
                     help="processos com pagamento e SEM texto — o que pedir primeiro")
     ap.add_argument("--sem-vault", action="store_true")
@@ -270,6 +310,22 @@ def main() -> int:
         for p, v in ordem[:25]:
             print(f"  {('R$ %0.2f' % v).replace('.', ','):>22}  {p}")
         print("\n0,00 = OB não localizada para este número, NÃO 'não houve pagamento'.")
+        return 0
+
+    if a.fila_recaptura:
+        pendentes_rec = recaptura()
+        tot_vazios = sum(x["vazios"] for x in pendentes_rec)
+        com_valor = [x for x in pendentes_rec if x["pago"] > 0]
+        print(f"{len(pendentes_rec)} processo(s) com ao menos 30% dos documentos sem texto · "
+              f"{tot_vazios} documento(s) cegos · {len(com_valor)} com pagamento localizado\n")
+        for x in pendentes_rec[:30]:
+            v = (f"R$ {x['pago']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                 if x["pago"] else "—")
+            print(f"  {v:>20}  {x['processo']:<22} {x['vazios']:>3}/{x['n_docs']:<3} "
+                  f"({x['proporcao']*100:.0f}% cegos)")
+        print("\nEstes documentos NÃO podem ser re-extraídos: o arquivo de origem não foi "
+              "guardado (o acervo tem só `texto/` e `fotos/`). Precisam de RECAPTURA no SEI.")
+        print("Processo lido pela metade é pior que não lido — parece analisado.")
         return 0
 
     if a.fila_captura:
