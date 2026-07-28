@@ -44,7 +44,11 @@ GOLDEN = {
     # 2026-07-20: total revisado DE PROPÓSITO 295.179.659,72 → 295.301.277,60 (+121.617,88).
     # Mesmas 2.524 OBs e 197 fornecedores — o sweep SIAFE atualizou VALORES de OBs in place
     # (correção da fonte). Drift auditado antes da revisão (contagem e fornecedores intactos).
-    "iterj_ug": {"ug": "133100", "obs": 2524, "total": 295301277.60, "fornecedores": 197},
+    # 2026-07-28: 2524 → 2526 (+R$ 140.256,42). Conferido antes de revisar, porque golden que
+    # se atualiza sozinho não é golden: as duas OBs novas são da EFATA COMERCIO & SERVIÇOS,
+    # pagas em 2026-07-01, e o número de fornecedores distintos NÃO mudou (197) — assinatura
+    # de coleta incremental, não de reprocessamento que reescreve histórico.
+    "iterj_ug": {"ug": "133100", "obs": 2526, "total": 295441534.02, "fornecedores": 197},
     "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
 

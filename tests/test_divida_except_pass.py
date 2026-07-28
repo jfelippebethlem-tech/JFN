@@ -23,8 +23,18 @@ SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__
 # (rotas/investigacao idioma-das-rotas + scripts de sweep sei_busca_mgs/socios_dump_sweep/
 # sei_ficha/siafe_sweep_full, vários UNTRACKED que o rglob conta). O código de HOJE tem ZERO
 # pass mudo novo (OCR da íntegra → print logado; manifest Lex/narrativa → exceção específica).
-# DÉBITO REGISTRADO: curadoria p/ voltar a ≤147 pende nos 5 piores arquivos listados no erro.
-TETO_MUDOS_PRODUCAO = 156
+#
+# 2026-07-28: 156→153, DÉBITO ACIMA PAGO EM PARTE. Duas correções distintas:
+#   (a) o rglob contava arquivos NÃO VERSIONADOS — 4 vinham de `.agents/skills/higgsfield-*`,
+#       plugin de terceiro que ninguém desta casa mantém. A catraca de `except Exception` já
+#       usa `git ls-files`; esta passou a usar também. Medir dívida alheia como se fosse nossa
+#       polui o sinal nos dois sentidos: infla hoje e some sozinho amanhã.
+#   (b) 8 `pass` mudos curados de verdade, com log de contexto: 5 em `rotas/investigacao.py`
+#       (busca de nomeados estado/prefeitura, temas por família, enriquecimento cadastral,
+#       evidências não-JSON) e 3 em `rotas/sistema.py` — onde dois viraram exceção ESPECÍFICA
+#       (`OSError` no vault, `sqlite3.Error` na contagem por tabela), porque ali o silêncio
+#       fazia INDISPONÍVEL parecer contagem legítima.
+TETO_MUDOS_PRODUCAO = 153
 
 
 def _mudos(py: Path) -> list[int]:
@@ -41,9 +51,22 @@ def _mudos(py: Path) -> list[int]:
     ]
 
 
+def _versionados() -> list[Path]:
+    """Só o que o repositório versiona — dívida de plugin de terceiro não é dívida nossa.
+
+    O `rglob` contava `.agents/skills/higgsfield-*`, que ninguém desta casa mantém. A catraca
+    de `except Exception` já media por `git ls-files`; as duas agora concordam.
+    """
+    import subprocess
+
+    saida = subprocess.run(["git", "ls-files", "*.py"], cwd=ROOT,
+                           capture_output=True, text=True, check=True).stdout
+    return [ROOT / rel for rel in saida.splitlines() if rel]
+
+
 def test_divida_except_pass_nao_cresce():
     por_arquivo = {}
-    for py in ROOT.rglob("*.py"):
+    for py in _versionados():
         s = str(py)
         if any(k in s for k in SKIP):
             continue

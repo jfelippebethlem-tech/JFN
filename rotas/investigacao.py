@@ -730,8 +730,8 @@ def api_sugestoes(q: str = "", limite: int = 8):
         nomeados = [{"nome": r["nome"], "cargo": r["cargo"], "orgao": r["orgao_nome"], "esfera": "estado"}
                     for r in rows2]
         con.close()
-    except Exception:  # noqa: BLE001
-        pass  # sugestão é best-effort — indisponibilidade não deve quebrar a caixa de busca
+    except Exception as e:  # noqa: BLE001 — best-effort: não quebra a caixa de busca
+        logger.debug("busca de nomeados do estado falhou (%s) — sugestão segue sem eles", e)
     try:
         conp = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
         conp.row_factory = _sq.Row
@@ -742,8 +742,8 @@ def api_sugestoes(q: str = "", limite: int = 8):
         nomeados += [{"nome": r["nome"], "cargo": r["cargo"], "orgao": r["orgao"], "esfera": "prefeitura"}
                      for r in rows3]
         conp.close()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as e:  # noqa: BLE001
+        logger.debug("busca de nomeados da prefeitura falhou (%s) — sugestão segue sem eles", e)
     return JSONResponse({"ok": True, "empresas": empresas[:lim], "nomeados": nomeados[:lim]})
 
 
@@ -1226,8 +1226,8 @@ def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = "
                     ({"familia": nome, "valor": round(f["valor"], 2)}
                      for nome, f in fams.items() if f.get("apuravel") and (f.get("valor") or 0) > 0),
                     key=lambda t: -t["valor"])
-            except (ValueError, TypeError):
-                pass
+            except (ValueError, TypeError) as e:
+                logger.debug("temas por família não somaram (%s) — seção fica vazia, não zerada", e)
         itens.append({"nc": r["nc"], "ano": r["ano"], "objeto": r["objeto"],
                       "valor_estimado": r["valor_estimado"], "analisado": analisado,
                       "score": r["score"] if analisado else None,
@@ -1450,8 +1450,8 @@ def api_perfil(cnpj: str):
                     out["estab"] = {"situacao": e["situacao_cadastral"], "cnae": e["cnae_principal"],
                                     "tem_telefone": bool(e["telefone1"]), "tem_email": bool(e["correio_eletronico"]),
                                     "hub_compartilhado": hub or None}
-        except Exception:  # noqa: BLE001 — enriquecimento opcional; nunca derruba o dossiê
-            pass
+        except Exception as e:  # noqa: BLE001 — enriquecimento opcional; nunca derruba o dossiê
+            logger.debug("enriquecimento cadastral do dossiê falhou (%s) — segue sem ele", e)
         con.close()
         return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
@@ -2155,8 +2155,8 @@ def api_pcrj_gastos_achados(limite_por_detector: int = 40):
             ev = {}
             try:
                 ev = _json.loads(r["evidencias"] or "{}")
-            except ValueError:
-                pass
+            except ValueError as e:
+                logger.debug("evidências não são JSON (%s) — registro segue sem elas", e)
             det = _sub2det.get(ev.get("subtipo") or "", r["tipo"].replace("pcrj_", ""))
             if len(por_det.setdefault(det, [])) >= lim:
                 continue

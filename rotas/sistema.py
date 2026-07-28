@@ -417,8 +417,8 @@ async def _bus_sampler():
             for q in list(_bus_subs):
                 try:
                     q.put_nowait(ev)
-                except Exception:  # noqa: BLE001 — fila cheia = cliente lento; descarta p/ ele
-                    pass
+                except Exception as exc:  # noqa: BLE001 — fila cheia = cliente lento
+                    logger.debug("evento descartado para cliente lento (%s)", exc)
         ciclo += 1
         await asyncio.sleep(4)
 
@@ -528,16 +528,16 @@ def api_sistema_atividade():
            "direcionamentos": None, "arvores_sei": None}
     try:
         apr["vault_notas"] = len(list((Path.home() / "vault" / "aprendizados").glob("*.md")))
-    except Exception:  # noqa: BLE001
-        pass
+    except OSError as exc:  # vault ausente/sem permissão: INDISPONÍVEL (None), não zero
+        logger.debug("sistema/atividade: não contei as notas do vault (%s)", exc)
     try:
         con = sqlite3.connect(RAIZ / "data" / "compliance.db")
         for chave, tab in (("memoria_db", "memoria_aprendizado"), ("fichas_sei", "sei_ficha"),
                            ("direcionamentos", "sei_direcionamento"), ("arvores_sei", "sei_arvore")):
             try:
                 apr[chave] = con.execute(f"SELECT COUNT(*) FROM {tab}").fetchone()[0]
-            except Exception:  # noqa: BLE001
-                pass
+            except sqlite3.Error as exc:  # tabela ainda não criada: fica None (INDISPONÍVEL)
+                logger.debug("sistema/atividade: sem contagem de %s (%s)", tab, exc)
         con.close()
     except Exception as exc:  # noqa: BLE001
         logger.warning("sistema/atividade: compliance.db indisponível p/ aprendizados: %s", exc)
