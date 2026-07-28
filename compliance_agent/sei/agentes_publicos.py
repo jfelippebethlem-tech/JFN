@@ -274,7 +274,14 @@ def _por_assinatura(texto: str) -> list[AgenteEncontrado]:
             if m and nome_plausivel(m.group(1)):
                 nome = m.group(1).strip()
                 break
-            if cargo is None and len(cand) <= 70 and not _e_identificador(cand):
+            # E-mail NÃO é cargo. O bloco de assinatura do SEI traz o endereço logo abaixo do
+            # nome, e ele satisfazia a descrição "linha curta que não é identificador":
+            # medido, 22 dos 392 agentes ficaram com um gmail no campo `cargo`. Dois danos —
+            # o campo deixa de significar cargo (e é por ele que se responde "quem responde
+            # pelo processo"), e um endereço pessoal de servidor vira dado publicável por
+            # acidente num produto de controle externo. Cargo ausente é lacuna, não e-mail.
+            if cargo is None and len(cand) <= 70 and not _e_identificador(cand) \
+                    and "@" not in cand:
                 cargo = cand
         if not nome:
             continue
