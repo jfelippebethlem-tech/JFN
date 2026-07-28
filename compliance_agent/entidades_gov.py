@@ -15,7 +15,18 @@ _NAO_FORNECEDOR = re.compile(
     r"tesouro|receita federal|fazenda nacional|procuradoria|inss\b|instituto nacional do seguro|"
     r"seguro social|fgts|pasep|\bpis\b|caixa econ[oô]mica|banco central|tribunal de|"
     r"c[âa]mara municipal|assembleia legislativa|defensoria|encargos gerais|"
-    r"fundo (municipal|estadual|nacional)|fundo (de|da|do) sa[úu]de|previd[êe]ncia)", re.I)
+    r"fundo (municipal|estadual|nacional)|fundo (de|da|do) sa[úu]de|previd[êe]ncia|"
+    # FAMÍLIAS ACRESCENTADAS EM 2026-07-28, ao montar a fila de captura prioritária: os TRÊS
+    # maiores pagamentos sem processo capturado não eram contratação nenhuma —
+    #   R$ 1,42 bi  FUNDO DE EQUALIZACAO FEDERATIVA - FEF  (transferência constitucional)
+    #   R$ 571 mi   RIOPREV/INATIVOS                       (previdência)
+    #   R$ 276 mi   FOLHA DE PAGAMENTOS                    (pessoal)
+    # Nenhum passa por licitação e nenhum tem fornecedor a fiscalizar; no topo de uma fila de
+    # COMPRAS eles só gastam a atenção do analista e inflam qualquer número de manchete.
+    # `folha de (pagamento|pessoal)` e não `folha` solto: "Construtora Folha Verde" é fornecedor.
+    r"fundo (de )?(equaliza[cç][aã]o|participa[cç][aã]o)|riorev|rioprev|"
+    r"folha de (pagamento|pessoal)|precat[óo]rio|senten[cç]as? judicia|"
+    r"restitui[cç][aã]o de receita|inativos e pensionistas|\binativos\b|\bpensionistas\b)", re.I)
 
 
 def eh_nao_fornecedor(nome: str) -> bool:

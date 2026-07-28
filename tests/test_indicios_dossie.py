@@ -1,0 +1,108 @@
+# -*- coding: utf-8 -*-
+"""Indícios lidos do dossiê — e as duas inflações que a primeira versão produziu.
+
+O número de manchete deste indício saiu, em três medições sucessivas sobre o MESMO dossiê:
+
+    R$ 3.995.001,04   somando todo valor da linha que mencionasse "multa"
+    R$    86.961,77   somando só o valor adjacente ao termo
+    R$    65.681,99   deduplicando o lançamento descrito em dois itens
+
+Os dois erros são da mesma família das manchetes superestimadas do painel: o número parece
+medido, tem casas decimais, e está errado por uma ordem de grandeza. Cada teste abaixo trava
+uma das correções com o trecho REAL que a produziu.
+"""
+from __future__ import annotations
+
+from compliance_agent.sei.indicios_dossie import (
+    i_direta_sem_justificativa, i_execucao_sem_fiscal, i_juros_multa, resumo_md, varrer,
+)
+
+# Trecho real do processo 030001_004946_2026: quatro valores na linha, um só é multa.
+_LINHA_FATURA = ("- Abril/2026 agrupamento 9928: Bruto R$ 314.366,12; IR R$ 6.455,96; "
+                 "multa R$ 9.288,31; líquido R$ 314.366,12. [doc 074_planilha.txt]")
+
+# O mesmo lançamento descrito em dois itens diferentes do dossiê.
+_DUPLICADO = ("- Juros e multa (julho/2026): R$ 7.093,26 [doc 000_planilha.txt]\n"
+              "- Cobrança de juros e multa (R$ 7.093,26) por pagamento extemporâneo, onerando "
+              "o erário [doc 008_despacho.txt]")
+
+
+def test_soma_apenas_o_valor_adjacente_ao_termo():
+    """Bruto e líquido não são multa por estarem na mesma linha que ela."""
+    ind = i_juros_multa(_LINHA_FATURA)
+    assert ind.valores["total"] == 9288.31
+
+
+def test_nao_conta_o_mesmo_lancamento_duas_vezes():
+    """'Juros e multa' é UMA expressão; e o mesmo valor descrito em dois itens é um lançamento."""
+    ind = i_juros_multa(_DUPLICADO)
+    assert ind.valores["n_lancamentos"] == 1
+    assert ind.valores["total"] == 7093.26
+
+
+def test_juros_e_multa_nao_casa_como_duas_ocorrencias():
+    ind = i_juros_multa("- Juros e multa: R$ 1.000,00 [doc a.txt]")
+    assert ind.valores["total"] == 1000.00
+
+
+def test_mencao_sem_valor_declara_indisponivel_e_nao_zero():
+    """INDISPONÍVEL ≠ 0 — o invariante da casa, aqui também."""
+    ind = i_juros_multa("- Houve cobrança de juros por atraso [doc a.txt]")
+    assert ind.grau == "informativo"
+    assert "INDISPONÍVEL, não zero" in ind.motivo
+    assert "total" not in ind.valores
+
+
+def test_sem_mencao_nenhuma_nao_inventa_indicio():
+    assert i_juros_multa("- Objeto: fornecimento de energia [doc a.txt]") is None
+
+
+def test_grau_escala_com_o_valor():
+    assert i_juros_multa("- multa R$ 100,00 [doc a.txt]").grau == "informativo"
+    assert i_juros_multa("- multa R$ 10.000,00 [doc a.txt]").grau == "atencao"
+    assert i_juros_multa("- multa R$ 90.000,00 [doc a.txt]").grau == "prioritario"
+
+
+# ── os demais indícios ─────────────────────────────────────────────────────────────────────
+
+def test_contratacao_direta_com_justificativa_nao_vira_indicio():
+    texto = ("- Inexigibilidade de licitação [doc a.txt]\n"
+             "- Justificativa de preço juntada aos autos [doc b.txt]")
+    assert i_direta_sem_justificativa(texto) is None
+
+
+def test_contratacao_direta_sem_justificativa_declara_a_duvida_de_captura():
+    ind = i_direta_sem_justificativa("- Inexigibilidade de licitação [doc a.txt]")
+    assert ind is not None
+    assert "CAPTURA" in ind.motivo, "tem de distinguir lacuna de captura de lacuna de instrução"
+
+
+def test_execucao_com_fiscal_identificado_nao_vira_indicio():
+    texto = "- Atestado de realização [doc a.txt]\n- Fiscal do contrato: Fulano [doc b.txt]"
+    assert i_execucao_sem_fiscal(texto) is None
+
+
+def test_execucao_sem_fiscal_cita_o_art_117():
+    ind = i_execucao_sem_fiscal("- Atestado de realização de serviços [doc a.txt]")
+    assert ind and "117" in ind.motivo
+
+
+# ── honestidade da apresentação ────────────────────────────────────────────────────────────
+
+def test_ausencia_de_indicio_nao_e_declarada_como_ausencia_de_problema():
+    md = resumo_md([])
+    assert "NÃO significa ausência de problema" in md
+
+
+def test_resumo_declara_que_indicio_nao_e_acusacao():
+    md = resumo_md(varrer(_LINHA_FATURA))
+    assert "hipótese a verificar" in md
+    assert "não afirmação de irregularidade" in md
+
+
+def test_indicios_saem_do_mais_prioritario_para_o_menos():
+    texto = _LINHA_FATURA + "\n- Inexigibilidade de licitação [doc c.txt]\n" + \
+        "- multa R$ 90.000,00 [doc d.txt]"
+    graus = [i.grau for i in varrer(texto)]
+    assert graus == sorted(graus, key=lambda g: -["informativo", "atencao",
+                                                  "prioritario"].index(g))
