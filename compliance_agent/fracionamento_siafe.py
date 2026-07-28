@@ -180,3 +180,70 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
             "grupos_descartados_processo_unico": desc_processo_unico,
             "exercicio": exercicio, "limite_dispensa": limite, "ato": ato_normativo(exercicio),
             "fonte": "fracionamento_siafe (OB paga — §2)"}
+
+
+# ──────────────────────────────────────────────────────────────────────────────────────────
+# DISCRIMINANTE FINAL — a contratação era DIRETA?
+#
+# A fila acima é TRIAGEM, não achado. Pagamentos fracionados sob contrato LICITADO são execução
+# normal de contrato; sob contratação DIRETA repetida ao mesmo credor, na mesma unidade e no
+# mesmo exercício, é o que o art. 75, § 1º da Lei 14.133/2021 veda. Sem este discriminante a
+# fila mistura as duas coisas e obriga o analista a abrir cada uma.
+#
+# O cruzamento possível é por FORNECEDOR + UNIDADE + EXERCÍCIO: o campo `processo` do SIAFE é
+# número interno e NÃO casa com o `sei_norm` do TCE-RJ (já verificado). Isso produz falso
+# negativo quando o nome está grafado de outro jeito — e falso negativo é o erro tolerável aqui.
+
+_SUFIXOS_SOCIETARIOS = re.compile(
+    # "S/A" com barra é a grafia mais comum no cadastro e não passava por `S\.?\s?A`.
+    r"\b(?:LTDA|EIRELI|S[./\s]?A|ME|EPP|EI|MEI|SS|SOCIEDADE\s+SIMPLES)\b\.?", re.IGNORECASE)
+
+
+def normalizar_fornecedor(nome: str) -> str:
+    """Nome comparável entre bases: sem acento, sem pontuação, sem sufixo societário.
+
+    "ACME SERVICOS LTDA", "Acme Serviços Ltda." e "ACME SERVICOS S/A" viram a mesma chave —
+    são a mesma empresa para efeito deste cruzamento, e tratá-las como distintas produziria
+    falso negativo em massa.
+    """
+    import unicodedata
+
+    t = "".join(c for c in unicodedata.normalize("NFD", str(nome or ""))
+                if unicodedata.category(c) != "Mn").upper()
+    t = _SUFIXOS_SOCIETARIOS.sub(" ", t)
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9 ]+", " ", t)).strip()
+
+
+def fornecedor_teve_direta(con: sqlite3.Connection, grupo: dict) -> bool | None:
+    """O fornecedor do grupo aparece no registro de contratações DIRETAS do TCE-RJ, neste
+    exercício?
+
+    ATENÇÃO AO QUE ESTA FUNÇÃO **NÃO** RESPONDE. Ela não diz que ESTA despesa foi direta. A
+    unidade ficou FORA da chave porque as duas bases a guardam de formas incompatíveis: o
+    TCE-RJ por nome ("SEPLAG - Secretaria de Estado de Planejamento e Gestão") e o SIAFE por
+    código ("294200"), e o mapa de códigos disponível cobre 3% das UGs da fila. Com a unidade
+    na chave, o cruzamento confirmava ZERO de 1.175 grupos — um discriminante que nunca
+    discrimina não é conservador, é inútil.
+
+    Então `True` significa: *este fornecedor teve contratação direta registrada no Estado neste
+    exercício*. É sinal de triagem — sobe a prioridade do grupo, não fecha juízo sobre ele. Por
+    isso o nome da função diz "fornecedor teve", e não "confirmar".
+
+    `None` quando não há registro, e `None` NUNCA vira `False`: ausência de prova de dispensa
+    não é prova de licitação.
+    """
+    alvo = normalizar_fornecedor(grupo.get("nome_credor"))
+    if not alvo:
+        return None                      # nome vazio casaria com tudo — o pior falso positivo
+    try:
+        rows = con.execute(
+            "SELECT fornecedor FROM compras_diretas_tcerj WHERE ano_processo = ?",
+            (int(grupo.get("exercicio") or 0),),
+        ).fetchall()
+    except (sqlite3.OperationalError, TypeError, ValueError):
+        return None
+    for r in rows:
+        nome = r["fornecedor"] if isinstance(r, sqlite3.Row) else r[0]
+        if normalizar_fornecedor(nome) == alvo:
+            return True
+    return None
