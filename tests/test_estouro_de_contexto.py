@@ -50,3 +50,20 @@ def test_razao_real_permite_recalcular_o_corte():
     assert 0.9 < fator < 1.0
     # Com margem, o próximo corte precisa ser menor que o fator bruto.
     assert fator * 0.85 < 0.85
+
+
+def test_variante_you_requested_about(tmp_path=None):
+    """2ª grafia, encontrada em 2026-07-28 num endpoint diferente do mesmo agregador:
+    'you requested about N tokens' em vez de 'your messages resulted in N tokens'. Sem
+    reconhecê-la, o lote não era subdividido — só marcado como falha e descartado."""
+    bruto = ("This endpoint's maximum context length is 256000 tokens. However, you requested "
+             "about 260344 tokens (256344 of text input, 4000 in the output).")
+    assert estouro_de_contexto(bruto) == (256_000, 260_344)
+
+
+def test_as_duas_grafias_convivem():
+    a = estouro_de_contexto("maximum context length is 1000 tokens. However, your messages "
+                            "resulted in 1200 tokens.")
+    b = estouro_de_contexto("maximum context length is 1000 tokens. However, you requested "
+                            "about 1200 tokens.")
+    assert a == b == (1000, 1200)

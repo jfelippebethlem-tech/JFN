@@ -178,8 +178,13 @@ def garantir_sem_erro(data) -> None:
         raise RespostaProvedorErro("resposta sem 'choices' e sem 'error'")
 
 
+# Duas grafias medidas em 2026-07-28, no MESMO agregador e endpoints diferentes:
+#   "...maximum context length is 1000000 tokens. However, your messages resulted in 1040739..."
+#   "...maximum context length is 256000 tokens. However, you requested about 260344 tokens..."
+# Reconhecer só a primeira fazia o lote ser descartado em vez de subdividido.
 _RE_ESTOURO = re.compile(
-    r"maximum context length is\s*(\d+)\s*tokens.{0,80}?resulted in\s*(\d+)\s*tokens",
+    r"maximum context length is\s*(\d+)\s*tokens"
+    r".{0,120}?(?:resulted in|requested(?:\s+about)?)\s*(\d+)\s*tokens",
     re.IGNORECASE | re.DOTALL)
 
 
