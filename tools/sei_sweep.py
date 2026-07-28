@@ -79,6 +79,42 @@ def _browser_morto(exc: BaseException) -> bool:
     return any(s in msg for s in _SINAIS_BROWSER_MORTO)
 
 
+def na_minha_fatia(processo: str, indice: int, total: int) -> bool:
+    """Este processo pertence à fatia `indice` de `total`? Determinístico e sem coordenação.
+
+    Duas máquinas capturando o SEI puxam a mesma fila, na mesma ordem, e começariam pelo mesmo
+    processo — dobrando browser e sessão para entregar metade. O `pgrep` do `sweep_sei.sh`
+    protege contra dois sweeps na MESMA máquina; entre máquinas não havia nada.
+
+    A divisão é pelo hash do número: sem lock distribuído, sem heartbeat, sem uma máquina
+    precisar saber que a outra existe. Duas máquinas offline uma para a outra não colidem.
+
+    Configuração errada levanta em vez de cair no padrão: uma fatia inválida em silêncio faria
+    a máquina varrer o vazio por dias, ou as duas varrerem tudo, que é o defeito original.
+    """
+    import hashlib
+
+    if total < 1 or not (0 <= indice < total):
+        raise ValueError(f"fatia inválida: {indice}/{total} (exige 0 <= índice < total, total >= 1)")
+    if total == 1:
+        return True
+    digest = hashlib.sha256(str(processo or "").encode("utf-8")).hexdigest()
+    return int(digest[:8], 16) % total == indice
+
+
+def fatia_desta_maquina() -> tuple[int, int]:
+    """`JFN_SWEEP_FATIA=1/2` → `(1, 2)`. Sem a variável, máquina única `(0, 1)`."""
+    bruto = (os.environ.get("JFN_SWEEP_FATIA") or "").strip()
+    if not bruto:
+        return 0, 1
+    try:
+        indice, total = (int(x) for x in bruto.split("/", 1))
+    except ValueError as e:
+        raise ValueError(f"JFN_SWEEP_FATIA malformada: {bruto!r} — use 'indice/total', ex. 1/2") from e
+    na_minha_fatia("teste", indice, total)   # valida os limites, levantando se inválido
+    return indice, total
+
+
 def _carregar_prog() -> dict:
     if PROG.exists():
         try:
@@ -176,6 +212,14 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     con.close()
     legiveis = _unidades_legiveis()
     rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1, -(r[2] or 0)))
+    # FATIA da máquina: com duas capturando, cada uma fica com metade determinística do
+    # universo. Sem isto as duas começam pelo mesmo processo (mesma fila, mesma ordem) e
+    # gastam o dobro de browser para entregar a mesma coisa. Ver `na_minha_fatia`.
+    indice, total = fatia_desta_maquina()
+    if total > 1:
+        antes = len(rows)
+        rows = [r for r in rows if na_minha_fatia(r[0], indice, total)]
+        _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
     return rows
 
 
