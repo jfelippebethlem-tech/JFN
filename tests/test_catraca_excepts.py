@@ -94,7 +94,15 @@ REPO = Path(__file__).resolve().parent.parent
 #   • sei_agentes_sweep — ler o processo-pai é bônus; sem ele o sweep segue;
 #   • sei_analise_em_serie — um processo ruim não pode parar a série inteira;
 #   • _SANDBOX/walker_humano.py — fora do código de produção.
-BASELINE = 1579
+#
+# 2026-07-28 — 1579 → 1580. A contagem tinha ido a 1582; DOIS foram removidos de verdade em
+# `sei/extrator_precos.py` (import de pdfplumber ausente é `ImportError`, e a camada LLM agora
+# usa o parse único da casa em vez de desembrulhar `` ```json `` à mão). O +1 que fica é
+# deliberado: `tests/test_json_resposta_paridade.py` guarda as TRÊS implementações antigas do
+# parser verbatim, e a do Groq capturava `Exception`. Reescrever essa cópia para agradar a
+# catraca destruiria a única coisa que ela serve para provar — que o parser novo não regride
+# em relação ao que existia. Cópia histórica dentro de teste não é captura genérica nova.
+BASELINE = 1580
 
 
 def _contar() -> int:

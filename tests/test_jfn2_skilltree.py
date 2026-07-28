@@ -143,7 +143,10 @@ def test_render_menu_curado_e_enxuto():
     st.reload()
     m = st.render_menu()
     n_itens = m.count("\n• ")
-    assert 6 <= n_itens <= 24                          # curado (grupos + exemplos), não as ~47 prontas; cresceu c/ novas capacidades
+    # 25 em 2026-07-28: entrou "Responsáveis de um processo SEI" (/responsaveis). Teto subiu
+    # depois de ler o menu inteiro — 25 capacidades distintas, nenhuma repetida nem variante
+    # da outra. O teto existe contra despejo do catálogo, não contra capacidade nova.
+    assert 6 <= n_itens <= 25                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota

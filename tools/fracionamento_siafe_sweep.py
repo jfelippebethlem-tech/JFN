@@ -30,6 +30,7 @@ from datetime import datetime
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from compliance_agent.fracionamento_siafe import triagem  # noqa: E402
+from compliance_agent.reporting.intel_base import moeda  # noqa: E402  formatador da casa (BR)
 
 DB = os.environ.get("JFN_DB", "data/compliance.db")
 
@@ -107,7 +108,7 @@ def main() -> int:
         r = triagem(con, exercicio=ano, limite_ug=a.ug)
         cands = r["candidatos"]
         total += len(cands)
-        print(f"\n=== {ano} — teto R$ {r['limite_dispensa']:,.2f} ({r['ato']}) ===")
+        print(f"\n=== {ano} — teto R$ {moeda(r['limite_dispensa'])} ({r['ato']}) ===")
         print(f"  OBs lidas {r['obs_lidas']:>7} · descartadas: status {r['obs_descartadas_status']:>5}, "
               f"credor não-licitável {r['obs_descartadas_credor']:>6}, "
               f"processo único {r['grupos_descartados_processo_unico']:>4}")
@@ -122,7 +123,7 @@ def main() -> int:
         if cands:
             soma = sum(c.get("soma") or 0 for c in com_direta)
             print(f"    dos quais com fornecedor que teve DIRETA no exercício: "
-                  f"{len(com_direta)} (R$ {soma:,.2f}) — prioridade de diligência")
+                  f"{len(com_direta)} (R$ {moeda(soma)}) — prioridade de diligência")
         for c in cands[:a.top]:
             print(f"    prio={c['prioridade']:.3f}  {(c['nome_credor'] or '')[:36]:38} "
                   f"UG {c['ug_emitente']:8} OBs={c['n_obs']:>3} proc={c['n_processos']:>3} "

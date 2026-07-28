@@ -12,6 +12,7 @@ HONESTO: confiança baixa / sem tabela → ([], 'falha', 0.0). NUNCA chuta núme
 from __future__ import annotations
 
 import io
+import logging
 import re
 
 ITEM_SCHEMA = ["item", "descricao", "marca", "unidade", "quantidade",
@@ -24,6 +25,9 @@ _COLMAP = {  # cabeçalho (normalizado) → campo do schema
     "unitario": "valor_unitario", "valor total": "valor_total", "preco total": "valor_total",
     "total": "valor_total", "fornecedor": "fornecedor", "cnpj": "cnpj",
 }
+
+
+logger = logging.getLogger(__name__)
 
 
 def _num_br(s) -> float | None:
@@ -65,7 +69,7 @@ def _camada_tabela_pdf(pdf_bytes: bytes) -> list[dict]:
     """pdfplumber: extrai tabelas e mapeia colunas → schema. Genérico até calibração (SPEC §8)."""
     try:
         import pdfplumber
-    except Exception:  # noqa: BLE001
+    except ImportError:  # dependência opcional ausente — [] honesto, não erro
         return []
     itens: list[dict] = []
     try:
@@ -95,7 +99,10 @@ def _texto_pdf(pdf_bytes: bytes) -> str:
         import pdfplumber
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             return "\n".join((p.extract_text() or "") for p in pdf.pages)
-    except Exception:  # noqa: BLE001
+    except ImportError:  # dependência opcional ausente
+        return ""
+    except Exception as e:  # noqa: BLE001 — PDF corrompido/protegido: sem texto, com rastro
+        logger.debug("pdfplumber não extraiu texto (%s)", str(e)[:80])
         return ""
 
 
@@ -103,13 +110,18 @@ def _camada_llm_texto(texto: str, gerar) -> list[dict]:
     prompt = ('Extraia a tabela de itens (preço unitário) deste documento de licitação como JSON: lista de '
               '{"item","descricao","marca","unidade","quantidade","valor_unitario","valor_total","fornecedor","cnpj"}. '
               'Números em formato brasileiro. Se NÃO houver tabela de preços, responda [].\n\nTEXTO:\n' + (texto or "")[:12000])
-    import json
+    # O desembrulho à mão (`removeprefix("```json")`) só acertava a forma mais simples e
+    # devolvia [] para cerca no meio da prosa, vírgula sobrando ou resposta cortada — e []
+    # aqui não é "sem tabela de preços": é a tabela sendo jogada fora depois de paga, num
+    # documento cujo preço unitário é a matéria-prima do sobrepreço. Parse único da casa.
+    from compliance_agent.llm.json_resposta import parse_json_llm
+
     try:
-        raw = (gerar(prompt) or "").strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        data = json.loads(raw)
-        return data if isinstance(data, list) else []
-    except Exception:  # noqa: BLE001
+        data = parse_json_llm(gerar(prompt))
+    except (ValueError, TypeError) as e:  # o gerador falhou/devolveu lixo — não é achado
+        logger.debug("camada LLM de preços não produziu JSON: %s", e)
         return []
+    return data if isinstance(data, list) else []
 
 
 def extrair_itens(conteudo, *, gerar=None, ver_imagem=None) -> tuple[list[dict], str, float]:
