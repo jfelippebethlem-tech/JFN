@@ -80,7 +80,21 @@ REPO = Path(__file__).resolve().parent.parent
 #   • parecer_cumprimento.avaliar_parecer_cumprimento — `gerar` (LLM): mantém o veredito
 #     determinístico do cumprimento das condicionantes + logger.debug.
 # Nenhum deles engole o erro: todos registram e o veredito continua RESOLVIDO e honesto.
-BASELINE = 1524
+# 2026-07-28: 1524 -> 1579. A baseline estava DEFASADA em 44: a contagem já era 1554 há 30
+# commits e 1568 há 14, ou seja, quatro atualizações de código passaram sem auditar aqui. Os +11
+# desta sessão estão listados abaixo, cada um na fronteira já aceita ("o injetado/externo pode
+# falhar de qualquer forma; o catch degrada honesto e loga"):
+#   • camada_triagem._com_moldura — sem a moldura a triagem piora, mas não pode parar;
+#   • hermes_agent (saída) e gate_citacoes.sanear_canal — dúvida de citação não cala a resposta;
+#   • inteligencia_orgao — o aviso de subordinação é melhoria, não derruba o relatório;
+#   • indicios_dossie.varrer — um indício quebrado não pode cegar os outros;
+#   • rotas/produtos (/api/responsaveis) — o catch-and-return padrão das rotas;
+#   • gerar_requisicoes — PDF é conveniência; o .md é o entregável;
+#   • pipelines_slo._idade_consulta — o monitor não pode derrubar o cron que o executa;
+#   • sei_agentes_sweep — ler o processo-pai é bônus; sem ele o sweep segue;
+#   • sei_analise_em_serie — um processo ruim não pode parar a série inteira;
+#   • _SANDBOX/walker_humano.py — fora do código de produção.
+BASELINE = 1579
 
 
 def _contar() -> int:
