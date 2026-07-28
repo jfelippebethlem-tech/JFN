@@ -165,9 +165,40 @@ def _params_b(model_id: str) -> float:
     return max(achados) if achados else 0.0
 
 
-def _nota_medida(model_id: str) -> float | None:
-    """Nota do benchmark de domínio, quando existe. Medição vence heurística, sempre."""
-    return (_ranking() or {}).get(model_id)
+# Cada perfil se importa com provas diferentes. Medido em 2026-07-28 e é o ponto todo:
+# `cohere/north-mini-code` tira 100 nas provas curtas e **0** em documento longo; o
+# `nemotron-3-super-120b` faz o mesmo. Uma nota agregada os promoveria para `documento` (onde
+# falham) ou os eliminaria de `fast` (onde são bons). A pergunta "qual o melhor modelo" não tem
+# resposta única — tem uma por tarefa.
+_PROVAS_DO_PERFIL = {
+    "documento": ("documento_longo",),
+    "smart": ("documento_longo", "vicio", "ausencia"),
+    "fast": ("rubrica", "ausencia", "extracao"),
+    "coder": ("extracao", "rubrica"),
+    "visao": ("extracao", "ausencia"),
+}
+
+
+def _nota_medida(model_id: str, perfil: str = "") -> float | None:
+    """Nota do banco de provas para o PERFIL pedido. `None` quando não há medição aplicável.
+
+    Sem perfil (ou perfil desconhecido), devolve a nota agregada — compatível com quem já
+    chamava assim.
+    """
+    provas = _PROVAS_DO_PERFIL.get(perfil)
+    if not provas:
+        return (_ranking() or {}).get(model_id)
+    det = (_detalhe() or {}).get(model_id) or {}
+    notas = [det[p]["nota"] for p in provas
+             if isinstance(det.get(p), dict) and det[p].get("nota") is not None]
+    return round(sum(notas) / len(notas), 1) if notas else None
+
+
+def _detalhe() -> dict:
+    try:
+        return json.loads(RANKING.read_text()).get("detalhe") or {}
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def _ranking() -> dict:
@@ -210,7 +241,7 @@ def _pontuar(m: dict, perfil: str) -> float | None:
         return params * 1000 + ctx / 1000
 
     if perfil == "smart":
-        medida = _nota_medida(m["id"])
+        medida = _nota_medida(m["id"], perfil)
         if medida is not None:
             return 1_000_000 + medida
         return params * 1000 + ctx / 1000
@@ -218,7 +249,7 @@ def _pontuar(m: dict, perfil: str) -> float | None:
     # fast: rubrica fechada em volume. Como toda a lista é grátis, não há motivo para preferir
     # o modelo mais fraco — o que se exige é saída limpa (daí a exclusão dos `reasoning`).
     # A medição, quando existir, decide; sem ela, tamanho com o contexto de desempate.
-    medida = _nota_medida(m["id"])
+    medida = _nota_medida(m["id"], perfil)
     if medida is not None:
         return 1_000_000 + medida
     return params * 1000 + ctx / 1000

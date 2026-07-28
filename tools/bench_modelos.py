@@ -184,6 +184,57 @@ def _com_formato(pontuar):
     return _p
 
 
+# ── Prova 5: COMPREENSÃO DE DOCUMENTO LONGO ───────────────────────────────────────────────
+# A lacuna que eu mesmo declarei: as quatro provas acima usam textos curtos e NÃO medem o que o
+# dono desconfiava desde o início — que modelo pequeno "não vai analisar os documentos direito".
+# Uma janela de contexto grande diz quanto texto CABE; esta prova mede o que o modelo ENTENDE
+# depois de atravessá-lo.
+#
+# O documento é REAL, do acervo (~25 mil tokens), e as duas perguntas foram escolhidas por
+# propriedades que um teste sintético não teria:
+#   · o valor de tributos está a 78% de profundidade — quem lê só as primeiras páginas erra;
+#   · há DOIS números de empenho no documento, o segundo bem depois do primeiro. Perguntar
+#     "quais" mede COMPLETUDE, não só recuperação: achar um é o resultado típico de quem
+#     desiste no meio.
+#
+# Pontuação assimétrica, e é deliberado: dizer "não localizei" vale mais que inventar um valor.
+# Um modelo que erra com confiança é pior, para esta casa, que um que se declara incapaz.
+DOC_LONGO = pathlib.Path(
+    "data/sei_arquivo/080001_031401_2024/texto/006_85918993.txt")
+_VALOR_TRIBUTOS = "74.650,31"
+_EMPENHOS = ("2024NE07134", "2024NE08035")
+
+
+def _carregar_doc_longo() -> str | None:
+    """O documento real, ou `None` quando o acervo não está disponível.
+
+    `None` faz a prova ser PULADA (não medida), nunca zerada — a mesma regra que vale para o
+    resto do medidor: ausência de medição não é nota ruim.
+    """
+    try:
+        return DOC_LONGO.read_text(errors="replace")
+    except OSError:
+        return None
+
+
+def _p_documento_longo(r: str) -> int:
+    n = _norm(r)
+    nota = 0
+
+    # (a) recuperação a 78% de profundidade
+    if _VALOR_TRIBUTOS in r or "74650,31" in r.replace(".", ""):
+        nota += 50
+    elif re.search(r"n[aã]o\s+(?:localiz|encontr|consta|consegu)", n):
+        nota += 20          # falha honesta vale mais que valor inventado
+    elif re.search(r"\b\d{1,3}(?:\.\d{3})*,\d{2}\b", r):
+        return 0            # deu OUTRO valor: alucinação com aparência de resposta
+
+    # (b) completude: os DOIS empenhos, espalhados pelo documento
+    achados = sum(1 for e in _EMPENHOS if e.lower() in n)
+    nota += {0: 0, 1: 20, 2: 50}[achados]
+    return min(100, nota)
+
+
 PROVAS = [
     ("extracao",
      "Você extrai fatos de documentos oficiais. Responda APENAS com o que está escrito no "
@@ -207,6 +258,18 @@ PROVAS = [
      f"{_CLAUSULA}\n\nQual vício da lista esta cláusula caracteriza? Cite o trecho.",
      _com_formato(_p_vicio)),
 ]
+
+_DOC = _carregar_doc_longo()
+if _DOC:
+    PROVAS.append((
+        "documento_longo",
+        "Você lê documentos fiscais longos e responde APENAS com o que está escrito. Se um dado "
+        "não estiver no documento, diga que não localizou — nunca estime, nunca invente número.",
+        f"{_DOC}\n\n---\n\nCom base no documento acima, responda:\n"
+        "1) Qual é o valor aproximado dos tributos (Val Aprox Tributos) informado?\n"
+        "2) Quais são TODOS os números de empenho (formato AAAANEnnnnn) citados no documento?",
+        _com_formato(_p_documento_longo),
+    ))
 
 
 def _chamar(model_id: str, sistema: str, prompt: str, timeout_s: int = 90) -> str:
@@ -270,7 +333,11 @@ def avaliar_modelo(model_id: str, tarefas=None) -> dict:
                          "amostra": resp[:160]}
         notas.append(nota)
 
-    medido = len(notas) >= MIN_PROVAS_MEDIDAS
+    # O piso existe para não dar nota a quem mal foi medido — mas ele não pode bloquear uma
+    # execução deliberadamente restrita (`--tarefa documento_longo`). O mínimo é o menor entre
+    # o piso e o número de provas PEDIDAS.
+    minimo = min(MIN_PROVAS_MEDIDAS, len(provas))
+    medido = len(notas) >= minimo
     return {"modelo": model_id,
             "nota": round(sum(notas) / len(notas), 1) if medido else None,
             "n_provas": len(notas),
@@ -336,7 +403,15 @@ def main() -> int:
         notas = dict(anterior.get("notas") or {})
         detalhe = dict(anterior.get("detalhe") or {})
         notas.update({r["modelo"]: r["nota"] for r in medidos})
-        detalhe.update({r["modelo"]: r["detalhe"] for r in linhas if r["nota"] is not None})
+        # FUNDIR PROVA A PROVA, não modelo a modelo. `detalhe.update({modelo: novo})` substitui
+        # o dicionário inteiro — então rodar `--tarefa documento_longo` APAGAVA as notas de
+        # rubrica/ausência/extração medidas antes, e o perfil `fast` ficava sem medição. Mesma
+        # família do "medição acumula, não substitui" que já corrigi no nível do modelo.
+        for r in linhas:
+            if r["nota"] is None:
+                continue
+            alvo = detalhe.setdefault(r["modelo"], {})
+            alvo.update(r["detalhe"])
         SAIDA.parent.mkdir(parents=True, exist_ok=True)
         SAIDA.write_text(json.dumps(
             {"medido_em": time.strftime("%Y-%m-%dT%H:%M:%S"),
