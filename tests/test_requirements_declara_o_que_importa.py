@@ -103,6 +103,19 @@ def test_todo_import_de_terceiros_esta_declarado():
     )
 
 
+def test_quem_monta_venv_nova_consegue_RODAR_a_suite():
+    """Instalar tudo e mesmo assim não poder testar é meio defeito consertado.
+
+    A VM-2 instalou `requirements.txt` com exit 0 e continuou sem conseguir rodar a suíte:
+    `pytest` só existia como configuração no `pyproject.toml`, nunca como dependência.
+    """
+    dev = RAIZ / "requirements-dev.txt"
+    assert dev.exists(), "requirements-dev.txt sumiu — a suíte volta a exigir adivinhação"
+    texto = dev.read_text(encoding="utf-8").lower()
+    for ferramenta in ("pytest", "pytest-timeout", "ruff"):
+        assert ferramenta in texto, f"{ferramenta} não declarado em requirements-dev.txt"
+
+
 def test_a_excecao_do_oci_vale_so_no_arquivo_que_a_justifica():
     """Se `oci` aparecer no caminho de análise, a exceção não pode cobri-lo."""
     assert EXCECOES == {("oci", "tools/criar_vm_oracle2.py")}, \

@@ -1,0 +1,17 @@
+# Dependências de DESENVOLVIMENTO — não entram em produção.
+#
+# Por que este arquivo existe: a VM-2 montou uma venv nova a partir de `requirements.txt`,
+# instalou tudo com exit 0, e ainda assim não conseguiu rodar a suíte — `pytest` não estava
+# declarado em lugar nenhum, só a configuração em `pyproject.toml [tool.pytest.ini_options]`.
+# Quem chega novo tinha de adivinhar. Não é o mesmo defeito dos 10 pacotes de produção
+# (aqueles quebravam o código); este quebra a capacidade de VERIFICAR o código.
+#
+#     pip install -r requirements.txt -r requirements-dev.txt
+#
+# Browser do Playwright NÃO entra aqui: é download de ~150 MB mais `playwright install-deps`
+# com sudo. Nenhum teste deve exigi-lo — quando um exigia, era defeito do teste (ver
+# tests/test_import_nao_executa_trabalho.py).
+
+pytest>=8.0            # a suíte
+pytest-timeout>=2.3    # `--timeout` por teste; sem ele, um teste pendurado trava a rodada
+ruff>=0.6              # lint chamado pelo hook de pre-commit
