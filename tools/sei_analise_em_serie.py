@@ -406,11 +406,29 @@ def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict, *,
     return "\n".join(linhas)
 
 
-def analisar(pasta: str, pago: float, *, vault: bool = True) -> dict:
+def analisar(pasta: str, pago: float, *, vault: bool = True, refazer: bool = False) -> dict:
+    """Analisa um processo. `refazer=True` LÊ DE NOVO, ignorando o dossiê já em disco.
+
+    Por padrão o dossiê existente é reaproveitado, e isso está certo: refazer custa cota de
+    modelo, e a maior parte das reanálises quer apenas reaplicar as réguas sobre o texto já
+    extraído. Mas tirar o processo do índice NÃO basta para relê-lo — descoberto do jeito
+    caro: 22 processos foram devolvidos à fila para releitura com o teto de contexto já
+    corrigido, a série os pegou, achou os dossiês antigos e os marcou como analisados de
+    novo; medido depois, 0 de 22 tinham dossiê refeito.
+
+    Ao refazer, o dossiê anterior vai para `output/dossies/_substituidos/` — sobrescrever sem
+    guardar apagaria a evidência de como a leitura antiga era, que é justamente o que se quer
+    comparar.
+    """
     from tools.sei_dossie_md import gerar
     from compliance_agent.sei.indicios_dossie import varrer
 
     destino = pathlib.Path("output/dossies") / f"{pasta}.md"
+    if refazer and destino.exists():
+        guardados = destino.parent / "_substituidos"
+        guardados.mkdir(parents=True, exist_ok=True)
+        carimbo = time.strftime("%Y%m%d-%H%M%S")
+        destino.replace(guardados / f"{pasta}.{carimbo}.md")
     if not destino.exists():
         gerar(pasta, vault=False)
     if not destino.exists():
@@ -449,6 +467,14 @@ def main() -> int:
     ap.add_argument("--fila-captura", action="store_true",
                     help="processos com pagamento e SEM texto — o que pedir primeiro")
     ap.add_argument("--sem-vault", action="store_true")
+    # `--refazer` (já existente) reaplica as RÉGUAS sobre o dossiê que está em disco: custo
+    # zero de modelo. `--reler` é outra coisa e cobra: joga fora o dossiê e LÊ o processo de
+    # novo. Nomes distintos de propósito — confundi-los gastaria cota sem querer.
+    ap.add_argument("--reler", action="store_true",
+                    help="LÊ DE NOVO (custa cota): ignora o dossiê em disco, que é guardado "
+                         "em output/dossies/_substituidos/")
+    ap.add_argument("--fila-releitura", action="store_true",
+                    help="analisa só os processos de data/fila_releitura.json")
     ap.add_argument("--refazer", action="store_true", help="ignora o índice e reanalisa")
     a = ap.parse_args()
 
@@ -513,7 +539,16 @@ def main() -> int:
         return 0
 
     indice = {} if a.refazer else _ler_indice()
-    pendentes = [(p, v) for p, v in ordem if p not in indice][:a.n]
+    if a.fila_releitura:
+        # A fila de releitura tem ordem PRÓPRIA: por valor pago registrado no momento em que
+        # ela foi montada, não pela `fila()` — que exclui credor não-fornecedor e daria R$ 0,00
+        # justamente para os repasses de maior valor, jogando-os para o fim.
+        alvos = json.loads(pathlib.Path("data/fila_releitura.json").read_text())
+        pendentes = [(k, v["pago"]) for k, v in
+                     sorted(alvos.items(), key=lambda kv: -kv[1]["pago"])][:a.n]
+        print(f"fila de RELEITURA: {len(alvos)} alvo(s); analisando {len(pendentes)}")
+    else:
+        pendentes = [(p, v) for p, v in ordem if p not in indice][:a.n]
     if not pendentes:
         print("nada pendente — use --refazer para reanalisar")
         return 0
@@ -522,7 +557,7 @@ def main() -> int:
     for i, (pasta, pago) in enumerate(pendentes, 1):
         print(f"[{i}/{len(pendentes)}] {pasta}")
         try:
-            r = analisar(pasta, pago, vault=not a.sem_vault)
+            r = analisar(pasta, pago, vault=not a.sem_vault, refazer=a.reler)
         except Exception as e:  # noqa: BLE001 — um processo ruim não para a série
             print(f"    falhou: {type(e).__name__}: {str(e)[:120]}")
             continue

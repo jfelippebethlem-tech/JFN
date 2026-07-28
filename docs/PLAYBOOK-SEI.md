@@ -80,6 +80,19 @@ destrói a citação, e achado sem citação não vale em peça.
   modelos devolveram o próprio raciocínio, truncado.
 - **Estouro de contexto se resolve com a contagem VERDADEIRA** que o provedor devolve no erro,
   não com constante de chars/token (a razão medida varia de 1,5 a 3,8 conforme o documento).
+- **⚠️ Contexto DECLARADO não é permissão** (2026-07-28). O plano usava o contexto que o
+  catálogo anuncia. Com 1M declarado, SEI-080001/003535/2025 (801.665 caracteres, ~400.827
+  tokens) saiu como *"Modo de leitura: leitura integral"* e produziu **10 KB de dossiê com
+  ZERO documentos citados** — processo de R$ 15,4 milhões, nota no vault sem indício algum.
+  Agora vale `TETO_PRATICO_CTX = 128_000` (`sei/dossie_fracionado`), cortando **para baixo,
+  nunca para cima**. Medido: **61 processos** do acervo iam numa tacada só, o maior com 544
+  mil tokens. O banco de provas já dizia o porquê: três modelos que gabaritam tarefa curta
+  ZERAM num documento de 25 mil tokens.
+- **Dossiê vazio ≠ processo limpo.** Quando nenhum provedor responde, o dossiê registra "lote
+  N não pôde ser lido" e segue — mas o cabeçalho continua dizendo "Documentos com texto: 35",
+  porque essa contagem vem da CAPTURA. Medido: 4 dos 157 processos analisados estavam assim,
+  somando R$ 70,2 mi, e os 4 geraram nota com `indicios: 0`. Hoje a nota nasce com ⚠️,
+  `leitura_incompleta: N` no frontmatter e o aviso ANTES do número.
 
 ## 5. Indícios e análise em série  ⭐ NOVO 2026-07-28
 ```bash
@@ -99,6 +112,38 @@ As três filas respondem perguntas diferentes e não se substituem:
 
 **Processo lido pela metade é PIOR que não lido: parece analisado.** Um processo saiu com
 "0 indícios" e era o primeiro da fila de recaptura, 100% cego.
+
+### Reavaliar o que já foi lido — sem gastar cota  ⭐ NOVO 2026-07-28
+```bash
+.venv/bin/python tools/sei_reindiciar.py             # só relata o que mudaria
+.venv/bin/python tools/sei_reindiciar.py --gravar    # regrava as notas que mudaram
+```
+Melhorar a régua **não conserta o que ela já escreveu**. O DV parou de contar o rótulo do
+roteiro às 14:34; às 13:50 uma nota já dizia "4 divergência(s)" — três falsas. 81 das 145
+notas nasceram antes do conserto; **43 foram saneadas**, custo zero (o dossiê está em
+`output/dossies/`, e régua é código sobre texto já citado).
+
+Duas armadilhas que o reindiciador ensinou, e valem para qualquer reprocessamento:
+- **Contagem igual não é conteúdo igual.** A 1ª versão comparava o NÚMERO de indícios e deu
+  como inalterada justamente a nota que motivou tudo (3 antes, 3 depois; o DV dentro dela caiu
+  de 4 para 1). Compara-se o TEXTO, ignorando `analisado_em`.
+- **Reavaliar não é reler:** a data de leitura é preservada. Carimbar hoje mentiria sobre
+  quando o processo foi lido.
+
+### `--refazer` ≠ `--reler` (um é grátis, o outro cobra)  ⭐ NOVO 2026-07-28
+| flag | o que faz | custo |
+|---|---|---|
+| `--refazer` | ignora o índice e reaplica as RÉGUAS sobre o dossiê em disco | zero |
+| `--reler` | joga fora o dossiê e LÊ o processo de novo (antigo vai para `_substituidos/`) | cota de modelo |
+| `--fila-releitura` | analisa só `data/fila_releitura.json`, na ordem de valor DELA | — |
+
+**Tirar o processo do índice NÃO faz o dossiê ser refeito.** `analisar()` só chama o gerador
+quando o arquivo não existe. Foram 22 processos devolvidos à fila para releitura, a série os
+pegou, achou os dossiês antigos, reaproveitou e marcou como analisados: medido depois, **0 de
+22 tinham dossiê refeito**. Para reler de verdade, `--reler`.
+
+`--fila-releitura` tem ordem própria de propósito: a `fila()` normal exclui credor
+não-fornecedor e daria **R$ 0,00** para os repasses de maior valor, jogando-os para o fim.
 
 ## Responsáveis: quem responde pelo processo  ⭐ NOVO 2026-07-28
 ```bash
@@ -127,6 +172,38 @@ Lacuna CRÍTICA clássica: **pagamento sem evidência de execução** (OB/NF sem
 medição/atesto/relatório fotográfico). Fotos de medição são PROVA — o arquivador
 as preserva em `fotos/` justamente para conferir se o serviço foi feito.
 
+## Quais N documentos ler — nunca só "quantos"  ⭐ NOVO 2026-07-28
+
+`SEI_MAX_DOCS=40` limita a leitura por tempo de browser, e isso está certo. O erro era a
+ESCOLHA: `documentos[:40]` pega os PRIMEIROS da árvore, e a árvore do SEI começa nos despachos
+de abertura. Em SEI-070002/006145/2024 (791 documentos), os 40 primeiros traziam 32 peças de
+tramitação e 4 de valor alto — enquanto o processo tem 38 de valor alto, **33 deles pareceres
+jurídicos**, todos cabendo no mesmo orçamento. A ficha resultante afirmava faltar "documentação
+da licitação e comprovante de pagamento" num processo com **30 Ordens Bancárias** nos autos.
+
+`classificador_doc.ordenar_para_leitura` escolhe por valor fiscalizatório, preservando a ordem
+da árvore dentro de cada faixa (a árvore é cronológica: entre peças igualmente decisivas, a
+sequência dos atos importa). Medido em 473 processos onde o corte morde: documentos decisivos
+lidos **3.032 → 6.472 (2,1×)**, e **zero** processos perdem.
+
+> A Ordem Bancária não existia na taxonomia central e caía em `outros` → valor baixo → texto
+> descartado. `cadeia_processo` já a reconhecia; a taxonomia ficou para trás. **Ao criar
+> régua nova, procurar a taxonomia que já existe** — duas listas de tipos divergentes é dívida
+> que só aparece quando alguém compara.
+
+**A regra geral, que não é sobre o SEI:** limite sem critério vira amostragem por acaso. Onde
+a casa corta lista, perguntar **quais** N.
+
+## Recapturar ≠ reanalisar  ⭐ NOVO 2026-07-28
+
+`sei_triagem_flags.encaminhamento` manda **recapturar** todo processo cujas flags são só
+lacuna, supondo que a queixa reflete o acervo. Nem sempre reflete: o processo acima tem 294
+documentos arquivados aqui. Recapturar gastaria sessão SEI para trazer o que já temos e
+devolveria a mesma ficha enquanto a leitura continuasse nos 2 documentos.
+
+`encaminhamento_com_acervo(flags, docs_no_acervo=…, docs_lidos=…)` separa **reanalisar** de
+**recapturar**; sem saber o acervo, devolve o que a régua antiga devolvia.
+
 ## NUNCA
 - ❌ Culpar acesso/WAF: o login SEMPRE funciona (cron prova). Falha = seu método.
 - ❌ Browser em foreground ou 2 browsers: use background + `tools/vm_guard.py`.
@@ -139,6 +216,19 @@ as preserva em `fotos/` justamente para conferir se o serviço foi feito.
 - ❌ **Ler "0 indícios" como processo limpo** sem olhar a cobertura do dossiê.
 - ❌ Fixar id de modelo `:free` em código: eles são aposentados o tempo todo e apodrecem
   calados. O catálogo vivo resolve (`llm/openrouter_catalogo.py`).
+- ❌ **Confiar no contexto DECLARADO do catálogo** para decidir "cabe inteiro" — corte pelo
+  teto prático (128k). Capacidade anunciada ≠ capacidade real.
+- ❌ **Tirar do índice achando que isso reler** o processo: sem `--reler`, o dossiê em disco é
+  reaproveitado e o processo volta marcado como analisado, com o mesmo dossiê de antes.
+- ❌ **Editar `data/analise_serie.json` com a série rodando.** O lote em execução tem o índice
+  em memória; ao terminar, ele grava — e antes de `gravar_indice_mesclado` isso apagava a
+  edição em silêncio. Pare o produtor por PID, e **`pgrep -f` casa o wrapper `timeout` junto**:
+  filtre pelo interpretador (`grep -E "^[0-9]+ [^ ]*python"`) e confira com `ps` antes de
+  matar. Matar o wrapper deixa o filho vivo, gravando.
+- ❌ **Apresentar transferência a ente federativo como pagamento de contratação.** Repasse a
+  prefeitura ou a fundo municipal é despesa legítima e de fiscalização DIFERENTE (prestação de
+  contas do convênio); a nota declara a natureza — não se espera ali edital, contrato ou
+  fiscal designado.
 
 ## Lanes de coleta (quem lança o sweep — NUNCA 2 lançadores)
 - **Lane geral = SÓ o cron `*/30 tools/sweep_sei.sh`** (bounded, single-pass). É ele quem roda o
