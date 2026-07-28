@@ -56,17 +56,63 @@ _PISTAS_NOMINATIVO = re.compile(
     re.IGNORECASE,
 )
 _OU_EQUIVALENTE = re.compile(r"ou\s+(equivalente|similar|superior)", re.IGNORECASE)
+# Acima disto o `tr_texto` não é a descrição de um item: é o edital inteiro. Uma pista solta aí
+# vale como indício fraco, não como achado — ver o comentário na âncora, em `avaliar`.
+LIMIAR_TEXTO_LONGO = 20_000
 # contexto de NEGAÇÃO: "é vedada a indicação de marca", "não será aceita marca", "sem indicação de marca"
 # NÃO é requisito nominativo — é a própria cláusula que proíbe (anti-FP).
-_NEGACAO_MARCA = re.compile(r"vedad|n[aã]o\s+ser[aá]\s+aceit|sem\s+indica[cç][aã]o", re.IGNORECASE)
+_NEGACAO_MARCA = re.compile(
+    r"vedad|n[aã]o\s+ser[aá]\s+aceit|sem\s+indica[cç][aã]o|n[aã]o\s+(?:poder[aá]|dever[aá])\s+"
+    r"(?:conter|indicar)|é\s+proibid|proibida\s+a\s+indica", re.IGNORECASE)
+
+# Homônimos: as palavras da pista têm uso corrente que NADA tem a ver com marca de produto.
+# Medido em 2026-07-28 numa varredura de 150 certames: P1 disparou em 106 (71%), e a amostra
+# mostrou que a maioria era isto —
+#   · "conforme descrição no TERMO DE REFERÊNCIA" casava a pista `referência`;
+#   · "MODELO DE TERMO DE RECEBIMENTO" e "modelo digital de elevação" casavam `modelo`;
+#   · "indicações referentes a: marca, fabricante, modelo" era a CITAÇÃO DA PRÓPRIA VEDAÇÃO
+#     do art. 41 — o detector acusava de indicar marca justamente a cláusula que a proíbe.
+# 71% dos certames com especificação dirigida é implausível; a régua é que estava errada.
+_NAO_E_MARCA = re.compile(
+    r"termos?\s+de\s+refer[eê]nci"
+    r"|modelo\s+(?:de|da|do)\s+(?:termo|contrato|declara|proposta|ordem|gest[aã]o|neg[oó]ci"
+    r"|planilha|of[ií]cio|requerimento|minuta|carta|ata|documento|relat[oó]rio|edital"
+    r"|credenciamento|procura[cç])"
+    r"|modelo\s+(?:digital|matem[aá]tic|econ[oô]mic|estat[ií]stic|conceitual|l[oó]gic)"
+    r"|refer[eê]ncia\s+(?:desta|deste|da\s+contrata|do\s+contrat|de\s+pre[cç]o)"
+    # 2ª rodada de medição, mesmo dia: com as famílias acima corrigidas, P1 ainda acusava 89 de
+    # 150 (59%). A amostra mostrou mais quatro homônimos, um deles o INVERSO do vício —
+    #   · "Marca; Fabricante; Descrição do objeto" é a lista de campos que o LICITANTE preenche
+    #     na proposta. Exigir que ele declare a marca ofertada é o oposto de dirigir a
+    #     especificação: é o que permite comparar o que cada um está oferecendo;
+    #   · "conforme especificações do fabricante" remete ao manual do equipamento (instalação,
+    #     garantia, manutenção) e não nomeia fabricante nenhum;
+    #   · "todas as referências de tempo no edital" é fuso horário;
+    #   · "modelo elaborado pela Administração" é formulário.
+    r"|especifica[cç][oõ]es\s+d[oae]s?\s+fabricante"
+    r"|refer[eê]ncias?\s+de\s+(?:tempo|hor[aá]rio)"
+    r"|modelo\s+elaborado"
+    r"|(?:marca|fabricante)\s*[;:]\s*\d*\.?\d*\s*(?:fabricante|descri[cç]|modelo|marca)"
+    r"|(?:valor|pre[cç]o)\s+(?:unit[aá]rio|total)[^.]{0,80}marca",
+    re.IGNORECASE)
 
 
 def _pista_nominativa(texto: str) -> re.Match | None:
-    """Primeiro match nominativo FORA de contexto de negação (janela ±60 chars). None se só há negações."""
+    """Primeiro match nominativo que é MESMO indicação de marca.
+
+    Descarta dois contextos, ambos medidos como falso positivo no acervo real:
+      · NEGAÇÃO — a cláusula que veda indicar marca não é indicação de marca (janela ±160;
+        com ±60 a palavra 'vedadas' ficava fora do alcance em texto com espaçamento de PDF);
+      · HOMÔNIMO — 'termo de referência', 'modelo de termo', 'modelo digital' e afins.
+    """
     for m in _PISTAS_NOMINATIVO.finditer(texto):
-        janela = texto[max(0, m.start() - 60):m.end() + 60]
-        if not _NEGACAO_MARCA.search(janela):
-            return m
+        janela = texto[max(0, m.start() - 160):m.end() + 160]
+        if _NEGACAO_MARCA.search(janela):
+            continue
+        vizinhanca = texto[max(0, m.start() - 40):m.end() + 40]
+        if _NAO_E_MARCA.search(vizinhanca):
+            continue
+        return m
     return None
 
 
@@ -170,16 +216,27 @@ class P1EspecificacaoDirigida(Detector):
                 )
         # marca solta no corpo do TR (sem estar em requisito estruturado), sem "ou equivalente";
         # ignora contexto de negação ("é vedada a indicação de marca" não é evidência nominativa)
+        achado_no_corpo_longo = False
         if tr_texto and not _OU_EQUIVALENTE.search(tr_texto) and not nominativos:
             m = _pista_nominativa(tr_texto)
             if m:
                 ini = max(0, m.start() - 30)
                 nominativos.append({"requisito": tr_texto[ini:m.end() + 30]})
+                achado_no_corpo_longo = len(tr_texto) > LIMIAR_TEXTO_LONGO
                 res.add_evidencia(fonte="TR (corpo)",
                                   trecho=f"marca/modelo no corpo do TR sem 'ou equivalente': '{tr_texto[ini:m.end() + 30]}'")
         valores["n_requisitos_nominativos"] = len(nominativos)
+        valores["pista_em_texto_longo"] = achado_no_corpo_longo
         if nominativos:
-            score = max(score, ancora("critico"))
+            # A FORÇA DA EVIDÊNCIA DEPENDE DO TAMANHO DO PALHEIRO. Uma pista nominativa dentro
+            # de um requisito estruturado de duas linhas é achado. A MESMA pista solta num
+            # edital inteiro de 200 mil caracteres é indício fraco: a chance de homônimo cresce
+            # com o texto, e nenhuma lista de exceções dá conta de língua natural em escala.
+            # Medido em 2026-07-28: varrendo edital integral, P1 acusava 106 de 150 certames
+            # (71%); depois de três rodadas de guarda lexical ainda eram 83 (55%). Nenhum órgão
+            # dirige especificação em metade das compras — o que estava errado era tratar as
+            # duas situações com a mesma âncora.
+            score = max(score, ancora("fraco" if achado_no_corpo_longo else "critico"))
             razoes.append(f"{len(nominativos)} requisito(s) nominativo(s) (marca/modelo/código) sem 'ou equivalente' (art. 41)")
 
         # 2) valores NÃO-redondos (copiados de datasheet)

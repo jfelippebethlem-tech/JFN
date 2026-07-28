@@ -155,13 +155,32 @@ def planejar(processo: str, pasta: pathlib.Path, *, contexto_modelo: int) -> Pla
                  docs_vazios=len(todos) - len(docs))
 
 
-_SISTEMA_MAP = (
+_INSTRUCAO_MAP = (
     "Você é analista de controle externo lendo peças de um processo administrativo. "
     "EXTRAIA fatos, não resuma. Cada fato deve vir com a origem entre colchetes, no formato "
     "[doc <arquivo>]. Se um dado não estiver no texto, escreva 'não consta' — nunca estime, "
     "nunca escreva zero no lugar de ausente, nunca invente nome, número ou data. "
     "Não conclua por irregularidade: você registra fatos e indícios, não acusa."
 )
+
+
+def _sistema_map() -> str:
+    """Instrução + moldura jurídica brasileira.
+
+    Sem a moldura, o modelo opinava sobre licitação brasileira com o que tivesse aprendido na
+    internet: errava o dispositivo, citava súmula inexistente e tratava a Lei 8.666/1993 como
+    vigente para contratação nova. A moldura dá o regime, o vocabulário fechado de vícios e o
+    dispositivo de cada um — e cabe em ~3.200 tokens, folgado num lote de 144 mil.
+    """
+    try:
+        from compliance_agent.knowledge.moldura_juridica import moldura
+        return f"{_INSTRUCAO_MAP}\n\n{moldura()}"
+    except Exception as e:  # noqa: BLE001 — sem a moldura a leitura piora, mas não pode parar
+        logger.warning("moldura jurídica indisponível (%s) — seguindo sem ela", str(e)[:80])
+        return _INSTRUCAO_MAP
+
+
+_SISTEMA_MAP = _INSTRUCAO_MAP   # compatibilidade: quem importava a constante segue funcionando
 
 _ROTEIRO_MAP = """Extraia, quando houver, e sempre com [doc <arquivo>]:
 - objeto e sua descrição
@@ -179,7 +198,7 @@ Responda em tópicos curtos. Sem introdução e sem conclusão."""
 
 def prompt_map(lote: Lote) -> tuple[str, str]:
     partes = [f"### [doc {d.nome}] {d.titulo}".rstrip() + f"\n{d.texto}" for d in lote.docs]
-    return _SISTEMA_MAP, f"{_ROTEIRO_MAP}\n\n---\n\n" + "\n\n---\n\n".join(partes)
+    return _sistema_map(), f"{_ROTEIRO_MAP}\n\n---\n\n" + "\n\n---\n\n".join(partes)
 
 
 _SISTEMA_REDUCE = (
@@ -188,6 +207,15 @@ _SISTEMA_REDUCE = (
     "contradisserem, registre a contradição em vez de escolher uma. Não introduza nenhum fato "
     "que não esteja nas extrações. O que faltar entra na seção de lacunas."
 )
+
+
+def _sistema_reduce() -> str:
+    try:
+        from compliance_agent.knowledge.moldura_juridica import moldura
+        return f"{_SISTEMA_REDUCE}\n\n{moldura(com_catalogo=False)}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("moldura jurídica indisponível (%s)", str(e)[:80])
+        return _SISTEMA_REDUCE
 
 
 def prompt_reduce(processo: str, blocos: list[str]) -> tuple[str, str]:
@@ -210,7 +238,7 @@ liste o que se esperaria encontrar num processo desse tipo e não foi localizado
 ---
 
 {corpo}"""
-    return _SISTEMA_REDUCE, roteiro
+    return _sistema_reduce(), roteiro
 
 
 def cabecalho_md(plano: Plano, modelo: str) -> str:

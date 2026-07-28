@@ -17,6 +17,7 @@ registra no cabeçalho qual modelo de fato respondeu.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import pathlib
 import sys
@@ -27,6 +28,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
 SAIDA = pathlib.Path("output/dossies")
 VAULT = pathlib.Path(os.path.expanduser("~/vault/processos"))
+# Retomada de dossiê interrompido por cota — ver o bloco de checkpoint em gerar().
+CHECKPOINTS = pathlib.Path("data/dossie_checkpoints")
 
 
 def _contexto_do_modelo(model_id: str, padrao: int = 128_000) -> int:
@@ -37,25 +40,62 @@ def _contexto_do_modelo(model_id: str, padrao: int = 128_000) -> int:
     return padrao
 
 
+def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300) -> str:
+    import httpx
+    r = httpx.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+        json={"model": model_id,
+              "messages": [{"role": "system", "content": sistema},
+                           {"role": "user", "content": prompt}],
+              "max_tokens": 4000, "temperature": 0.1},
+        timeout=timeout_s)
+    r.raise_for_status()
+    return (r.json()["choices"][0]["message"].get("content") or "").strip()
+
+
 def _chamar(model_id: str, sistema: str, prompt: str) -> str:
-    """Modelo escolhido primeiro; a cadeia grátis como rede. Vazio = não deu, e quem chama declara."""
-    if model_id:
-        try:
-            import httpx
-            r = httpx.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
-                json={"model": model_id,
-                      "messages": [{"role": "system", "content": sistema},
-                                   {"role": "user", "content": prompt}],
-                      "max_tokens": 4000, "temperature": 0.1},
-                timeout=300)
-            r.raise_for_status()
-            return (r.json()["choices"][0]["message"].get("content") or "").strip()
-        except Exception as e:  # noqa: BLE001 — cai para a cadeia, mas diz o porquê
-            print(f"    modelo {model_id} falhou ({type(e).__name__}) — usando a cadeia grátis")
+    """Uma etapa do dossiê, encarando o limite de cota do jeito que ele aparece de verdade.
+
+    Modelo `:free` NÃO cai de uma vez: ele estoura cota no meio da tarefa, tipicamente com 429
+    depois de algumas chamadas seguidas. Num processo de 16 lotes isso é quase certo. Três
+    defesas, nesta ordem:
+
+      1. **esperar** — 429 é condição do momento; recuar e repetir resolve a maioria;
+      2. **trocar de modelo** — insistindo, passa para o próximo id vivo do catálogo, porque a
+         cota é POR MODELO e o vizinho costuma estar livre;
+      3. **cair para a cadeia** — Cerebras/Gemini/Groq etc., que têm cota independente.
+
+    Vazio só depois de tudo isso — e aí quem chama registra a lacuna no dossiê em vez de fingir
+    que o lote foi lido.
+    """
+    import httpx
+
+    from compliance_agent.llm.openrouter_catalogo import escolher
+
+    tentar = [m for m in (model_id, escolher("smart"), escolher("fast")) if m]
+    tentar = list(dict.fromkeys(tentar))
+    for i, mid in enumerate(tentar):
+        for espera in (0, 20, 60):
+            if espera:
+                print(f"    429 em {mid} — aguardando {espera}s (cota é por modelo)")
+                time.sleep(espera)
+            try:
+                return _post(mid, sistema, prompt)
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code == 429:
+                    continue
+                print(f"    {mid} respondeu {e.response.status_code} — próximo")
+                break
+            except Exception as e:  # noqa: BLE001
+                print(f"    {mid} falhou ({type(e).__name__}) — próximo")
+                break
+        if i + 1 < len(tentar):
+            print(f"    trocando de modelo: {tentar[i + 1]}")
+
     try:
         from compliance_agent.llm.free_llm import best_free_chat
+        print("    caindo para a cadeia grátis (cota independente do OpenRouter)")
         return best_free_chat(prompt, system=sistema, smart=True, fallback="")
     except Exception as e:  # noqa: BLE001
         print(f"    cadeia grátis indisponível ({type(e).__name__})")
@@ -86,16 +126,41 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
     if so_plano:
         return None
 
+    # CHECKPOINT POR LOTE. Um processo de 16 lotes leva quase meia hora, e a cota de modelo
+    # grátis estoura no meio com frequência. Sem isto, um 429 no 12º lote joga fora os onze
+    # anteriores — e a próxima execução paga tudo de novo. Cada lote é gravado assim que
+    # responde; relançar o comando retoma de onde parou.
+    ckpt = CHECKPOINTS / f"{nome_pasta}.jsonl"
+    ckpt.parent.mkdir(parents=True, exist_ok=True)
+    feitos: dict[int, str] = {}
+    if ckpt.exists():
+        for linha in ckpt.read_text().splitlines():
+            try:
+                d = json.loads(linha)
+                feitos[int(d["lote"])] = d["texto"]
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+        if feitos:
+            print(f"  retomando: {len(feitos)} de {len(plano.lotes)} lote(s) já no checkpoint")
+
     blocos: list[str] = []
     for lote in plano.lotes:
+        if lote.indice in feitos:
+            blocos.append(feitos[lote.indice])
+            continue
         sistema, prompt = prompt_map(lote)
         t0 = time.monotonic()
         saida = _chamar(modelo, sistema, prompt)
         print(f"  lote {lote.indice}/{len(plano.lotes)}: {len(lote.docs)} doc(s) · "
               f"{lote.tokens:,} tk · {time.monotonic() - t0:.0f}s · "
               f"{'ok' if saida else 'SEM RESPOSTA'}".replace(",", "."))
+        if saida:
+            with ckpt.open("a") as fh:
+                fh.write(json.dumps({"lote": lote.indice, "texto": saida},
+                                    ensure_ascii=False) + "\n")
         blocos.append(saida or f"_(lote {lote.indice} não pôde ser lido — nenhum provedor "
-                               "respondeu; os documentos deste lote NÃO entraram no dossiê)_")
+                               "respondeu; os documentos deste lote NÃO entraram no dossiê. "
+                               "Relançar o comando retoma só os lotes que faltam.)_")
 
     if len(blocos) == 1:
         corpo = blocos[0]
@@ -104,10 +169,17 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
         corpo = _chamar(modelo, sistema, prompt) or "\n\n".join(blocos)
 
     md = cabecalho_md(plano, modelo or "cadeia grátis") + "\n" + corpo + "\n"
+    # `garantir_neutro` VALIDA e levanta; não devolve texto. Atribuir o retorno dele a `md`
+    # apagava o dossiê inteiro (None) depois de meia hora de chamadas — erro cometido aqui em
+    # 2026-07-28. O gate avisa e o trabalho segue: perder o dossiê por causa de um termo
+    # interno seria pior que entregá-lo com o aviso.
     try:
-        from compliance_agent.reporting.neutralidade import garantir_neutro
-        md = garantir_neutro(md, contexto=f"dossiê {nome_pasta}")
-    except Exception as e:  # noqa: BLE001 — o gate não pode impedir a entrega do trabalho
+        from compliance_agent.reporting.neutralidade import termos_proibidos
+        internos = termos_proibidos(md)
+        if internos:
+            print(f"  ⚠️ gate de neutralidade acusou termo interno: {internos} — revisar antes "
+                  "de encaminhar")
+    except Exception as e:  # noqa: BLE001
         print(f"  gate de neutralidade não rodou ({type(e).__name__})")
 
     SAIDA.mkdir(parents=True, exist_ok=True)

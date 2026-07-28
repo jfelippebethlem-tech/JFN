@@ -190,3 +190,65 @@ def test_schema_de_saida_conforme_spec():
     assert d["detector"] == "P1"
     assert d["status"] in STATUS_VALIDOS
     assert 0.0 <= d["score"] <= 1.0
+
+
+# ── Falsos positivos medidos no acervo real (2026-07-28) ──────────────────────────────────
+# A varredura por certame acusou P1 em 106 de 150 certames (71%). Nenhum órgão dirige
+# especificação em 71% das compras: a régua é que casava homônimo. Cada teste abaixo é um
+# trecho REAL que produzia achado, com o hash da evidência guardado no banco de achados.
+
+_CTX = {"processo": "SEI-TESTE/000001/2026"}
+
+
+def test_termo_de_referencia_nao_e_indicacao_de_marca():
+    """O caso mais comum: 'conforme descrição no Termo de Referência' casava a pista
+    `referência`. Praticamente todo edital contém essa frase."""
+    res = P1EspecificacaoDirigida().avaliar({
+        **_CTX,
+        "tr_texto": "O objeto está detalhado conforme descrição no Termo de Referência:\n"
+                    "2.3.1 previsão de contratação para o exercício corrente.",
+    })
+    assert res.status != "confirmado", res.motivo_refutacao
+
+
+def test_modelo_de_formulario_anexo_nao_e_marca():
+    """'MODELO DE TERMO DE RECEBIMENTO' é um anexo, não um produto."""
+    res = P1EspecificacaoDirigida().avaliar({
+        **_CTX,
+        "tr_texto": "ANEXO II — MINUTA DE ORDEM DE SERVIÇO\n"
+                    "2. MODELO DE TERMO DE RECEBIMENTO PARCIAL DO OBJETO",
+    })
+    assert res.status != "confirmado", res.motivo_refutacao
+
+
+def test_modelo_digital_de_elevacao_nao_e_marca():
+    """Cartografia. 'modelo' aqui é vocabulário técnico do objeto contratado."""
+    res = P1EspecificacaoDirigida().avaliar({
+        **_CTX,
+        "tr_texto": "Levantamento do canal Maxambomba. Associado ao modelo digital de "
+                    "elevação obtido a partir de restituição aerofotogramétrica.",
+    })
+    assert res.status != "confirmado", res.motivo_refutacao
+
+
+def test_citacao_da_propria_vedacao_legal_nao_e_violacao_dela():
+    """O trecho que mais incomoda: o TR reproduz o art. 41, que PROÍBE indicar marca, e o
+    detector acusava essa reprodução de ser indicação de marca."""
+    res = P1EspecificacaoDirigida().avaliar({
+        **_CTX,
+        "tr_texto": "São vedadas, na especificação do objeto, indicações referentes a: "
+                    "marca, fabricante, modelo, procedência ou qualquer outra que restrinja "
+                    "a competitividade, nos termos do art. 41 da Lei 14.133/2021.",
+    })
+    assert res.status != "confirmado", res.motivo_refutacao
+
+
+def test_marca_de_verdade_continua_sendo_pega():
+    """A correção não pode cegar o detector: indicação real de marca segue acusada."""
+    res = P1EspecificacaoDirigida().avaliar({
+        **_CTX,
+        "tr_texto": "Item 3.1 — Notebook marca Dell Latitude 5540, processador i7, "
+                    "conforme especificação do fabricante.",
+    })
+    assert res.status == "confirmado"
+    assert res.score > 0
