@@ -95,7 +95,13 @@ def _to_datetime(v) -> datetime | None:
     if isinstance(v, date):
         return datetime(v.year, v.month, v.day)
     if isinstance(v, str):
-        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M", "%Y-%m-%d", "%d/%m/%Y"):
+        # ATENÇÃO À ORDEM: os formatos COM hora vêm todos antes dos formatos só-data. Faltavam as
+        # variantes ISO sem segundos (`...T17:00`), que é como o PNCP costuma entregar — sem elas,
+        # "2026-07-03T17:00" casava com "%Y-%m-%d" (por causa do truncamento abaixo) e virava
+        # 00:00, DESCARTANDO A HORA em silêncio. Efeito: a regra de data-sombra (sexta após 16h,
+        # véspera de feriado) nunca disparava para data em ISO — falso negativo calado.
+        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M",
+                    "%d/%m/%Y %H:%M", "%Y-%m-%d", "%d/%m/%Y"):
             try:
                 return datetime.strptime(v.strip()[:len(fmt) + 2], fmt)
             except ValueError:
