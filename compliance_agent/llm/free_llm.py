@@ -132,10 +132,75 @@ def _openai_compat_chat_sync(
         )
         resp.raise_for_status()
         data = resp.json()
-        return data["choices"][0]["message"]["content"]
+        return conteudo_da_resposta(data)
 
 
 # ── Retry helpers para OpenRouter (trata 429 e erros transitórios) ───────────
+
+class RespostaProvedorErro(RuntimeError):
+    """Provedor devolveu HTTP 200 com corpo de ERRO em vez de resposta.
+
+    Medido em 2026-07-28: o OpenRouter responde 200 com
+    `{"error": {"message": "Upstream error from Nvidia: ResourceExhausted...", "code": 502}}`
+    quando o provedor de trás falha. Como o status é 200, `raise_for_status()` passa e o
+    `data["choices"]` estourava `KeyError` — que NÃO é HTTPError nem RuntimeError e por isso
+    escapava do laço de retry sem uma única retentativa, derrubando o degrau inteiro em
+    cooldown por causa de um soluço de capacidade que se resolveria repetindo.
+
+    Herda de RuntimeError de propósito: é o que os laços de retry já capturam.
+    """
+
+    # Erro embutido que NÃO melhora esperando — mesma lógica de _PERMANENTE_STATUS.
+    _PERMANENTES = {400, 401, 402, 403, 404}
+
+    def __init__(self, mensagem: str, codigo: int | None = None):
+        super().__init__(mensagem)
+        self.codigo = codigo
+        self.retentavel = codigo not in self._PERMANENTES
+
+
+def garantir_sem_erro(data) -> None:
+    """Levanta se o corpo carrega erro embutido. Para quem precisa do dict inteiro.
+
+    `conteudo_da_resposta` devolve só o texto; quem usa `finish_reason`, `tool_calls` ou
+    `reasoning_content` precisa do dict — mas precisa igualmente da guarda, senão repete o
+    defeito de tratar corpo de erro como resposta.
+    """
+    if not isinstance(data, dict):
+        raise RespostaProvedorErro(f"corpo inesperado do provedor: {type(data).__name__}")
+    erro = data.get("error")
+    if erro:
+        if isinstance(erro, dict):
+            raise RespostaProvedorErro(str(erro.get("message") or erro),
+                                       _codigo_int(erro.get("code")))
+        raise RespostaProvedorErro(str(erro))
+    if not data.get("choices"):
+        raise RespostaProvedorErro("resposta sem 'choices' e sem 'error'")
+
+
+def conteudo_da_resposta(data) -> str:
+    """Texto da resposta OpenAI-compatible, ou exceção CLASSIFICÁVEL.
+
+    Ponto único de leitura: o mesmo parse cru estava repetido em sete lugares do projeto, e
+    todos compartilhavam o mesmo defeito.
+    """
+    if not isinstance(data, dict):
+        raise RespostaProvedorErro(f"corpo inesperado do provedor: {type(data).__name__}")
+    garantir_sem_erro(data)
+    escolhas = data["choices"]
+    try:
+        # `content: null` acontece; virar a string "None" contaminaria o entregável.
+        return (escolhas[0].get("message", {}).get("content") or "")
+    except (AttributeError, IndexError, TypeError) as e:
+        raise RespostaProvedorErro(f"'choices' em formato inesperado: {e}") from e
+
+
+def _codigo_int(v) -> int | None:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
 
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 # 4xx que NÃO melhoram com espera: modelo aposentado (404), payload ruim (400), chave inválida
@@ -145,6 +210,8 @@ _PERMANENTE_STATUS = {400, 401, 403, 404}
 
 def _erro_permanente(exc: Exception) -> bool:
     """Erro que não adianta retentar. 404 de modelo morto marca o id no catálogo."""
+    if isinstance(exc, RespostaProvedorErro):
+        return not exc.retentavel
     resp = getattr(exc, "response", None)
     codigo = getattr(resp, "status_code", None)
     if codigo not in _PERMANENTE_STATUS:
@@ -209,7 +276,7 @@ def _openai_compat_chat_sync_retry(
                     continue
                 resp.raise_for_status()
                 data = resp.json()
-                return data["choices"][0]["message"]["content"]
+                return conteudo_da_resposta(data)
         except (httpx.HTTPError, RuntimeError) as e:
             last_exc = e
             if _erro_permanente(e):
@@ -265,7 +332,7 @@ async def _openai_compat_chat_retry(
                     continue
                 resp.raise_for_status()
                 data = resp.json()
-                return data["choices"][0]["message"]["content"]
+                return conteudo_da_resposta(data)
         except (httpx.HTTPError, RuntimeError) as e:
             last_exc = e
             if _erro_permanente(e):
@@ -724,6 +791,10 @@ _COOLDOWN_MOTIVO: dict[str, str] = {}
 def _classificar_erro(exc: Exception) -> tuple[str, float]:
     """(motivo, segundos_de_cooldown) por TIPO de erro — em vez de tratar tudo igual."""
     status = getattr(getattr(exc, "response", None), "status_code", None)
+    # Erro embutido em HTTP 200 carrega o código real no próprio objeto — sem isto, um 502
+    # do upstream caía no genérico de 15 s em vez do cooldown de servidor.
+    if status is None:
+        status = getattr(exc, "codigo", None)
     s = (str(exc) or "").lower()
     if status == 429 or "429" in s or "rate limit" in s or "quota" in s or "too many requests" in s:
         return ("rate-limit", 45.0)

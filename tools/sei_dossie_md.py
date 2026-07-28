@@ -51,7 +51,10 @@ def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300) -> str
               "max_tokens": 4000, "temperature": 0.1},
         timeout=timeout_s)
     r.raise_for_status()
-    return (r.json()["choices"][0]["message"].get("content") or "").strip()
+    # HTTP 200 pode trazer corpo de ERRO (upstream do OpenRouter). Ver
+    # `conteudo_da_resposta` — parse cru aqui estourava KeyError e escapava do tratamento.
+    from compliance_agent.llm.free_llm import conteudo_da_resposta
+    return conteudo_da_resposta(r.json()).strip()
 
 
 def _chamar(model_id: str, sistema: str, prompt: str) -> str:

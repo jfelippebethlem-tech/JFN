@@ -48,6 +48,8 @@ def _gerar_deepseek(prompt: str, system: str, timeout: float = 150.0) -> str:
                                       {"role": "user", "content": prompt}]}, timeout=timeout)
     r.raise_for_status()
     j = r.json()
+    from compliance_agent.llm.free_llm import garantir_sem_erro
+    garantir_sem_erro(j)          # 200 pode trazer {"error": ...} do upstream
     msg = j["choices"][0]["message"]
     tok = (j.get("usage") or {}).get("total_tokens")
     return (msg.get("content") or msg.get("reasoning_content") or ""), tok

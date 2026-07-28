@@ -184,7 +184,8 @@ def _chamar(model_id: str, sistema: str, prompt: str, timeout_s: int = 90) -> st
               "max_tokens": 700, "temperature": 0.1},
         timeout=timeout_s)
     r.raise_for_status()
-    return (r.json()["choices"][0]["message"].get("content") or "").strip()
+    from compliance_agent.llm.free_llm import conteudo_da_resposta
+    return conteudo_da_resposta(r.json()).strip()
 
 
 # Provas medidas mínimas para o modelo receber nota. Abaixo disso ele é `não medido` — e

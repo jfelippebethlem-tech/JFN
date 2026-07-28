@@ -697,6 +697,10 @@ class ComplianceAgent:
                 fallback=self._fallback,
             )
 
+            # HTTP 200 com corpo de erro é resposta válida para o transporte e inválida para
+            # nós — sem esta guarda o acesso a "choices" estoura KeyError longe da causa.
+            from compliance_agent.llm.free_llm import garantir_sem_erro
+            garantir_sem_erro(data)
             choice  = data["choices"][0]
             msg     = choice["message"]
             finish  = choice.get("finish_reason", "stop")
