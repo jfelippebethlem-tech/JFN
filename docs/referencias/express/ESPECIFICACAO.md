@@ -1,6 +1,6 @@
 # Especificação de design — JFN (para usar no Adobe Express)
 
-> Gerado de `static/jfn-painel.html` em 25/07/2026 09:22. **Não editar à mão** — rode
+> Gerado de `static/jfn-painel.html` em 25/07/2026 19:02. **Não editar à mão** — rode
 > `python -m tools.express_ponte --spec` de novo quando a paleta mudar.
 
 ## 1 · Paleta (HEX, convertida do OKLCH do painel)

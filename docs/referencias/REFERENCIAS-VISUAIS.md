@@ -179,6 +179,8 @@ defeito que não existia.
   em toda aba com grid. O rastro no laudo eram as dezenas de "não pintou
   glifo". **Aba com área vazia + 'não pintou glifo' no auditor = procure
   animação sobrescrita, não dado faltando.**
-- **Canal com o desktop**: Syncthing do it-campo morto desde 05/07 — pedido de
-  arte foi por **Taildrop** + aviso via Telegram. Conferir `FOGTP75` conectado
-  antes de esperar resposta por `_handoff`.
+- **Canal com o desktop (corrigido)**: o desktop tem duas identidades Syncthing
+  — `FOGTP75` (morta) e `QBL7LAM`/"Desktop-JFN" (viva). O handoff falhava porque
+  `shared-brain` só era compartilhada com a morta; agora está compartilhada com
+  a viva (aguarda aceite lá). Reservas que funcionam: Taildrop, Telegram e o
+  SSH deles→cá. Laço de confirmação por arquivo-recibo tocado via SSH.

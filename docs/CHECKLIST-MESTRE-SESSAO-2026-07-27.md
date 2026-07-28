@@ -85,12 +85,12 @@
 
 > *"quantas irregularidades podemos pegar? quais delas?"*
 
-- [x] **5.1** Inventário medido: **42 vícios · 31 detectores · 23 com teste · 4 regras disparando**
+- [x] **5.1** Inventário medido: **42 vícios · 31 detectores · 4 regras disparando**. O "23 com teste" que relatei estava errado (casamento frouxo de nome): eram **6**; hoje são **31**
 - [x] **5.2** Fracionamento **26× inflado** desmontado: 59.209 → 2.225, com cada filtro medido
 - [x] **5.3** Teto de dispensa **por exercício** da fonte única (era o valor de 2024 fixo para todo ano)
 - [x] **5.4** Filtro de intragoverno movido para **dentro** das regras (estava só no relatório)
-- [ ] 🟡 **5.5** `ob_redflag` reprocessada — 60.664 flags. **Falta** migrar a regra para a fonte SIAFE (Fase B do plano)
-- [ ] ⬜ **5.6** Remover a **5ª cópia** do teto em `lex_analise_conteudo.py:307`
+- [x] **5.5** `ob_redflag` reprocessada (60.664) **e** a fila SIAFE materializada: `siafe_fracionamento` com 1.170 candidatos
+- [x] **5.6** Família do teto FECHADA — eram mais que 5: o teste-catraca achou **outras 4** (hermes_goal, rules/default_audit_config em duas listas, rules/obra, nucleo/parametros)
 
 ---
 
@@ -117,7 +117,7 @@
 - [x] **7.4** **Erro meu corrigido**: o chamador `run_pais` ainda usava `carregar_cache()` e causou novo OOM às 23:04
 - [x] **7.5** Teste estático que impede qualquer módulo de produção de chamar `carregar_cache()`
 - [x] **7.6** **Guard de OOM nos 8 sweeps** — `oom_score_adj=1000`: o sweep morre antes da sua sessão. **É a resposta ao Claude/tmux fechando sozinhos**
-- [ ] 🟡 **7.7** `sei_pais` religado — **falta** a confirmação da validação em produção (rodando agora, com `/usr/bin/time -v`)
+- [x] **7.7** `sei_pais` religado e **validado em produção**: pico de **826 MB** (`/usr/bin/time -v`), contra o critério de < 2 GB do plano
 
 ---
 
