@@ -283,3 +283,134 @@ def cabecalho_md(plano: Plano, modelo: str) -> str:
             "",
         ]
     return "\n".join(linhas)
+
+
+# ──────────────────────────────────────────────────────────────────────────────────────────
+# Consolidação DETERMINÍSTICA — sem IA.
+#
+# Medido em 2026-07-28, duas tentativas com dois modelos: nenhum modelo grátis produziu as sete
+# seções ao consolidar 7 lotes; ambos devolveram o próprio raciocínio, truncado. E é uma tarefa
+# em que o modelo não agrega nada — as extrações já vêm rotuladas por tema pelo `map`, e juntar
+# rótulo com rótulo é trabalho de código: determinístico, sem cota, sem alucinação, e sem perder
+# citação. A IA lê os documentos; o código arruma o resultado.
+
+SECOES = (
+    "Objeto e enquadramento",
+    "Partes e responsáveis",
+    "Linha do tempo",
+    "Valores",
+    "Indícios a verificar",
+    "Contradições entre documentos",
+    "Lacunas",
+    "Outros fatos extraídos",
+)
+
+# Ordem IMPORTA: o primeiro padrão que casar decide. "inconsistência" precisa ser testada antes
+# de "documento", e "restrinja a competição" antes de "cláusula".
+_TEMAS = (
+    ("Contradições entre documentos",
+     r"inconsist|contradi|diverg|conflit|discrep"),
+    ("Indícios a verificar",
+     r"ind[ií]cio|restrinj|restri[cç]|competi|alerta|aten[cç][aã]o|irregular|suspeit|red\s*flag"),
+    ("Lacunas",
+     r"lacuna|n[aã]o\s+consta|ausent|faltant|n[aã]o\s+localiz|n[aã]o\s+identific"),
+    # Valores ANTES de partes: "Valores (estimado, contratado, pago)" casava `contratad` e ia
+    # parar em Partes. "Contratado" ali é adjetivo do valor, não nome de parte — por isso Partes
+    # só reconhece `contratada`/`contratante`, que são as palavras que designam quem contrata.
+    ("Valores",
+     r"valor|pre[cç]o|reten[cç]|empenho|pagament|liquida[cç]|juros|multa|desconto|total"
+     r"|or[cç]ament|desembolso|r\$"),
+    ("Partes e responsáveis",
+     r"respons[aá]|ordenador|gestor|fiscal|parte|fornecedor|credor|contratad[ao]s?\b"
+     r"|contratante|[oó]rg[aã]o|unidade|cnpj|empresa"),
+    ("Linha do tempo",
+     r"data|prazo|vig[eê]nci|per[ií]odo|cronogram|prorroga|aditiv|assinatur|publica[cç]"
+     r"|abertur|compet[eê]ncia"),
+    ("Objeto e enquadramento",
+     r"objeto|enquadrament|modalidade|fundament|amparo|inexigibilidade|dispensa|legal"
+     r"|contrata[cç][aã]o|licita[cç]"),
+)
+_TEMAS_RE = tuple((sec, __import__("re").compile(rx, __import__("re").IGNORECASE))
+                  for sec, rx in _TEMAS)
+
+
+def classificar_tema(rotulo: str) -> str:
+    """Seção do dossiê a que um rótulo do `map` pertence.
+
+    Sem casamento, devolve "Outros fatos extraídos" — nunca descarta. Item extraído e jogado
+    fora é pior que item mal arrumado, porque some sem deixar rastro.
+    """
+    for secao, rx in _TEMAS_RE:
+        if rx.search(rotulo or ""):
+            return secao
+    return "Outros fatos extraídos"
+
+
+def _itens_do_bloco(bloco: str) -> list[tuple[str, str]]:
+    """(rótulo, corpo) de cada item rotulado do bloco; o resto vai como corpo sem rótulo."""
+    import re as _re
+
+    padrao = _re.compile(r"^\s*[-*]?\s*\*\*(.{2,80}?)\*\*\s*:?\s*(.*)$", _re.M)
+    marcas = list(padrao.finditer(bloco or ""))
+    if not marcas:
+        corpo = (bloco or "").strip()
+        return [("", corpo)] if corpo else []
+    itens, antes = [], (bloco[:marcas[0].start()] or "").strip()
+    if antes:
+        itens.append(("", antes))
+    for i, m in enumerate(marcas):
+        fim = marcas[i + 1].start() if i + 1 < len(marcas) else len(bloco)
+        corpo = (m.group(2) + "\n" + bloco[m.end():fim]).strip()
+        if corpo:
+            itens.append((m.group(1).strip(), corpo))
+    return itens
+
+
+# Deliberação do modelo sobre a própria tarefa. Vem misturada às extrações porque nem todo
+# modelo grátis separa raciocínio de resposta; medido em 9 dos 16 lotes da primeira execução.
+# Some na consolidação: é ruído do processo, não fato do processo administrativo.
+_LINHA_MONOLOGO = __import__("re").compile(
+    r"^\s*(?:(?:we|i|let(?:'s|\s+me))\b|the\s+(?:user|instruction|prompt)\b"
+    r"|(?:vamos|preciso|devo)\s+(?:analisar|extrair|listar|verificar|come[cç]ar))",
+    __import__("re").IGNORECASE)
+
+
+def limpar_monologo(texto: str) -> str:
+    """Remove linhas de deliberação do modelo, preservando qualquer linha com citação.
+
+    A citação é o critério de segurança: se a linha traz `[doc ...]`, ela carrega fato e fica,
+    por mais que comece com uma palavra do padrão. Perder fato para limpar ruído seria péssimo
+    negócio.
+    """
+    saida = [ln for ln in (texto or "").splitlines()
+             if "[doc" in ln or not _LINHA_MONOLOGO.match(ln)]
+    return "\n".join(saida)
+
+
+def _chave_dedup(texto: str) -> str:
+    import re as _re
+    t = _re.sub(r"\[doc [^\]]+\]", "", texto)          # citação não distingue o fato
+    return _re.sub(r"\s+", " ", t).strip().lower()[:220]
+
+
+def consolidar(blocos: list[str]) -> str:
+    """Junta as extrações por lote nas seções do dossiê, sem IA e sem perder citação."""
+    por_secao: dict[str, list[str]] = {s: [] for s in SECOES}
+    vistos: set[str] = set()
+    for bloco in blocos:
+        for rotulo, corpo in _itens_do_bloco(limpar_monologo(bloco)):
+            if not corpo.strip():
+                continue
+            chave = _chave_dedup(f"{rotulo}|{corpo}")
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            secao = classificar_tema(rotulo) if rotulo else "Outros fatos extraídos"
+            prefixo = f"**{rotulo}** — " if rotulo else ""
+            por_secao[secao].append(f"- {prefixo}{corpo}")
+
+    partes = []
+    for secao in SECOES:
+        if por_secao[secao]:
+            partes.append(f"## {secao}\n\n" + "\n\n".join(por_secao[secao]))
+    return "\n\n".join(partes)

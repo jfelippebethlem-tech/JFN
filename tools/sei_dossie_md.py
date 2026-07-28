@@ -217,7 +217,7 @@ def _mapear_subdividido(modelo: str, lote, fator: float, prompt_map) -> str:
 
 def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pathlib.Path | None:
     from compliance_agent.sei.dossie_fracionado import (
-        cabecalho_md, planejar, prompt_map, prompt_reduce,
+        cabecalho_md, planejar, prompt_map,
     )
     from compliance_agent.llm.openrouter_catalogo import escolher
 
@@ -274,23 +274,22 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
                                "respondeu; os documentos deste lote NÃO entraram no dossiê. "
                                "Relançar o comando retoma só os lotes que faltam.)_")
 
-    if len(blocos) == 1:
-        corpo = blocos[0]
-    else:
-        sistema, prompt = prompt_reduce(nome_pasta, blocos)
-        corpo = _chamar(modelo, sistema, prompt, max_tokens=12_000)
+    # CONSOLIDAÇÃO POR CÓDIGO, não por IA. Medido em 2026-07-28, duas tentativas e dois
+    # modelos: nenhum produziu as sete seções — ambos devolveram o próprio raciocínio,
+    # truncado. E é tarefa em que o modelo não agrega nada: as extrações já vêm rotuladas por
+    # tema pelo `map`, e agrupar rótulo com rótulo é determinístico, sem cota e sem alucinação.
+    # A IA lê os documentos; o código arruma o resultado.
+    from compliance_agent.sei.dossie_fracionado import consolidar
+    corpo = consolidar(blocos)
         # DEFESA EM PROFUNDIDADE. Medido em 2026-07-28: o modelo consolidou 16 lotes devolvendo
         # o próprio raciocínio em inglês, truncado no meio de uma frase, sem nenhuma das sete
         # seções — enquanto os blocos do `map` traziam 232 citações [doc ...] e valores reais.
         # Consolidação ruim não pode apagar extração boa: sem as seções, entrega-se o material
         # bruto, que é útil, em vez do monólogo, que não é.
-        if not _consolidacao_utilizavel(corpo):
-            print("  ⚠️ consolidação inutilizável (monólogo ou sem as seções) — entregando as "
-                  "extrações por lote, que preservam as citações")
-            corpo = ("> ⚠️ A consolidação automática não produziu as seções esperadas. Abaixo, as "
-                     "extrações por lote, com as citações preservadas.\n\n"
-                     + "\n\n".join(f"## Extração do lote {i}\n\n{b}"
-                                   for i, b in enumerate(blocos, 1)))
+    if not corpo.strip():
+        # Só acontece se TODOS os lotes vierem vazios — a lacuna é declarada, não escondida.
+        corpo = ("> ⚠️ Nenhum lote produziu extração utilizável. O processo NÃO foi lido; a "
+                 "ausência de achados aqui não significa ausência de problema.")
 
     md = cabecalho_md(plano, modelo or "cadeia grátis") + "\n" + corpo + "\n"
     # `garantir_neutro` VALIDA e levanta; não devolve texto. Atribuir o retorno dele a `md`
