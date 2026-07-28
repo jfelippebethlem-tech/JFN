@@ -124,9 +124,9 @@ def test_todo_detector_do_registro_tem_arquivo_de_teste():
     # (P4, E7, J8, C6, X1, X3). Uma medição anterior chegou a relatar "23 com teste" — estava
     # errada: casava o id do detector como substring do nome do arquivo, e a chave "C" casa com
     # quase qualquer nome. Números de cobertura precisam de mapa explícito, nunca de heurística.
-    DIVIDA_CONHECIDA = {
-        "C", "J5", "J6", "J7",
-    }
+    # DÍVIDA ZERADA em 2026-07-27: os 31 detectores do REGISTRO têm arquivo de teste.
+    # A partir daqui a catraca é absoluta — detector novo sem teste falha na hora.
+    DIVIDA_CONHECIDA: set[str] = set()
     sem_arquivo = {did for did in REGISTRO if esperado[did] not in existentes}
 
     novos = sorted(sem_arquivo - DIVIDA_CONHECIDA)
