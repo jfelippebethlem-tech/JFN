@@ -95,6 +95,12 @@ class J3DescontoAnomalo(Detector):
             "item_preco_regulado": item_regulado,
         }
 
+        # concorrentes DISTINTOS: a regra do desconto irrisório só faz sentido sob disputa
+        n_concorrentes = len({str(p.get("cnpj") or p.get("fornecedor_cnpj") or "")
+                              for p in (contexto.get("propostas") or [])
+                              if (p.get("cnpj") or p.get("fornecedor_cnpj"))})
+        valores["n_concorrentes"] = n_concorrentes
+
         score = 0.0
         razoes: list[str] = []
 
@@ -110,16 +116,33 @@ class J3DescontoAnomalo(Detector):
                 trecho=(f"estimado={estimado:,.2f}, homologado={homologado:,.2f} ⇒ homologação {abs(desc):.2%} "
                         "acima do estimado (art. 59 III)"))
         # ── REGRA OBJETIVA: desconto irrisório (rente ao teto) ──
-        elif desc < _DESCONTO_IRRISORIO and not item_regulado:
+        # EXIGE DISPUTA. "Vencedor fechou rente ao teto" descreve competição; com um único
+        # fornecedor não houve quem cobrisse, e fechar no valor de referência é o resultado
+        # esperado de dispensa, inexigibilidade ou licitação fracassada. Medido em 2026-07-28,
+        # na varredura de 1.331 certames com cláusula extraída: dos 395 achados de "desconto
+        # irrisório", **395 (100%)** eram de certame com UM fornecedor — nenhum com disputa. No
+        # acervo, 1.152 dos 1.190 certames em que o homologado bate com o estimado ao centavo
+        # também têm um só. Contar isso como achado de julgamento inflava a fila e ensinava o
+        # leitor a ignorar o J3. (A 1ª medição desta mesma sessão disse 88%; era um `grep -B 3`
+        # associando o achado ao certame do bloco anterior. O parse sequencial corrigiu.)
+        elif desc < _DESCONTO_IRRISORIO and item_regulado:
+            razoes.append(f"desconto baixo ({desc:.1%}) MAS item de preço REGULADO/tabelado — exculpatória "
+                          "(desconto naturalmente baixo, margem fina) — não pontua sozinho")
+        elif desc < _DESCONTO_IRRISORIO and n_concorrentes == 1:
+            # UM fornecedor: não houve disputa, e o silêncio aqui seria pior que a lacuna.
+            razoes.append(f"desconto de {desc:.1%} com 1 fornecedor: NÃO HOUVE DISPUTA — fechar no valor de "
+                          "referência é o esperado em dispensa/inexigibilidade/fracassada; a ausência de "
+                          "concorrência é achado de outra família, não deste")
+        elif desc < _DESCONTO_IRRISORIO:
             score = max(score, ancora("medio"))
-            razoes.append(f"desconto irrisório ({desc:.1%} < {_DESCONTO_IRRISORIO:.0%}) — vencedor fechou rente ao teto")
+            sufixo = ("" if n_concorrentes >= 2
+                      else " (nº de concorrentes NÃO verificado — sem resultado de propostas na base)")
+            razoes.append(f"desconto irrisório ({desc:.1%} < {_DESCONTO_IRRISORIO:.0%}) — vencedor fechou "
+                          f"rente ao teto{sufixo}")
             res.add_evidencia(
                 fonte="valores do certame (estimado × homologado)",
                 trecho=(f"estimado={estimado:,.2f}, homologado={homologado:,.2f} ⇒ desconto {desc:.2%} "
                         f"(< {_DESCONTO_IRRISORIO:.0%}, rente ao teto)"))
-        elif desc < _DESCONTO_IRRISORIO and item_regulado:
-            razoes.append(f"desconto baixo ({desc:.1%}) MAS item de preço REGULADO/tabelado — exculpatória "
-                          "(desconto naturalmente baixo, margem fina) — não pontua sozinho")
 
         # ── COMPARAÇÃO com baseline de categoria (agrava se muito abaixo da categoria) ──
         baseline = desc_categoria if desc_categoria is not None else desc_orgao
@@ -144,8 +167,16 @@ class J3DescontoAnomalo(Detector):
             # irrisório escusado por preço tabelado saía do parecer como "compatível com competição",
             # o que é enganoso: ele não era compatível — foi ESCUSADO, e o leitor precisa saber disso
             # para julgar a exculpatória (a commodity é mesmo tabelada?).
-            base = (f"desconto de {desc:.1%} compatível com competição/estimativa realista; sem recorrência de "
-                    "desconto irrisório nem distância anômala do baseline da categoria — sem indício")
+            # Sem disputa, dizer "compatível com competição" é pior que calar: afirma que houve
+            # concorrência onde havia um fornecedor só. Cada caso diz o que de fato ocorreu.
+            if n_concorrentes == 1:
+                base = (f"desconto de {desc:.1%} com {n_concorrentes} fornecedor(es): NÃO HOUVE DISPUTA, "
+                        "logo o desconto não mede competição — fechar no valor de referência é o "
+                        "esperado em dispensa/inexigibilidade/fracassada. A ausência de concorrência é "
+                        "achado de outra família, não deste")
+            else:
+                base = (f"desconto de {desc:.1%} compatível com competição/estimativa realista; sem recorrência de "
+                        "desconto irrisório nem distância anômala do baseline da categoria — sem indício")
             res.motivo_refutacao = "; ".join([*razoes, base]) if razoes else base
             res.valores = valores
             res.explicacao_inocente = "desconto compatível com a categoria; estimativa de referência bem calibrada"
