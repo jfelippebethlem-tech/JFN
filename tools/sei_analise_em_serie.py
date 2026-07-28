@@ -31,6 +31,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import sqlite3
 import sys
 import time
@@ -252,25 +253,50 @@ def confronto_responsaveis(pasta: str, dossie: str) -> dict:
     }
 
 
+def leitura_incompleta(dossie: str) -> int:
+    """Quantos lotes de documentos ficaram FORA do dossiê por falha de leitura.
+
+    O dossiê fracionado registra "lote N não pôde ser lido — nenhum provedor respondeu" e
+    segue. A contagem do cabeçalho ("Documentos com texto: 35", "leitura integral") vem da
+    CAPTURA, não da leitura — então um dossiê sem um único fato extraído continua parecendo
+    completo. Medido em 2026-07-28: 4 dos 157 processos analisados estavam assim, somando
+    R$ 70.201.773,31, e os 4 geraram nota com `indicios: 0`.
+    """
+    return len(re.findall(r"lote \d+ não pôde ser lido", dossie or ""))
+
+
 def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict) -> str:
     from compliance_agent.sei.indicios_dossie import resumo_md
 
     graus = {i.grau for i in indicios}
-    tag = ("🔴" if "prioritario" in graus else "🟡" if "atencao" in graus else "🔵")
+    perdidos = leitura_incompleta(dossie)
+    # Leitura incompleta nunca sai como 🔵: "0 indícios" só pode significar "procurei e não
+    # achei". Quando o modelo não respondeu, o honesto é "não procurei", e isso precisa vir
+    # ANTES do número — é a diferença entre processo limpo e processo não lido.
+    tag = ("🔴" if "prioritario" in graus else "🟡" if "atencao" in graus
+           else "⚠️" if perdidos else "🔵")
     valor = (f"R$ {pago:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
              if pago else "não localizado no SIAFE")
+    aviso = ([f"> ⚠️ **LEITURA INCOMPLETA — {perdidos} lote(s) de documentos não foram lidos** "
+              "(nenhum provedor respondeu na hora da extração). Os documentos desse(s) lote(s) "
+              "**não entraram** neste dossiê: o número de indícios abaixo mede o que foi lido, "
+              "não o processo. Relançar `tools/sei_dossie_md.py` retoma só os lotes que faltam.",
+              ""] if perdidos else [])
     linhas = [
         "---",
         f"processo: {_norm_sei(pasta)}",
         f"pago_ob_siafe: {pago:.2f}" if pago else "pago_ob_siafe: null",
         f"indicios: {len(indicios)}",
+        *([f"leitura_incompleta: {perdidos}"] if perdidos else []),
         f"analisado_em: {time.strftime('%Y-%m-%d')}",
         "---",
         "",
         f"# {tag} Processo {_norm_sei(pasta)}",
         "",
+        *aviso,
         f"**Pago (OB SIAFE):** {valor}  ",
-        f"**Indícios apontados:** {len(indicios)}",
+        f"**Indícios apontados:** {len(indicios)}"
+        + (" *(sobre a parte lida — ver aviso acima)*" if perdidos else ""),
         "",
         "> Documento de trabalho. Indício é hipótese a verificar, não afirmação de "
         "irregularidade — vigora a presunção de legitimidade dos atos administrativos.",
