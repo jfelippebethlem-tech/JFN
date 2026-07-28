@@ -10,7 +10,9 @@ HONESTIDADE HERDADA DO MÓDULO: isto é **triagem, não achado**. O SIAFE não t
 modalidade, e seu número de processo não casa com o do SEI. O grau é sempre `a_verificar`, e
 cada linha carrega os processos para o auditor puxar os autos.
 
-IDEMPOTENTE: `INSERT OR REPLACE` por (exercicio, ug, credor). **Nunca `DELETE`** — a lição de
+IDEMPOTENTE: `INSERT OR REPLACE` por (exercicio, ug, credor), mais uma retirada ESCOPADA das
+gerações anteriores do MESMO exercício (ver `persistir`) — sem ela, melhorar a régua não limpa
+a fila. Nunca um `DELETE` global — a lição de
 `anomalias.regras()`, que truncou a `ob_redflag` de 69.807 para 12.215 ao ser testada com amostra.
 
     .venv/bin/python tools/fracionamento_siafe_sweep.py --exercicio 2026 [--gravar] [--top 15]
@@ -49,7 +51,21 @@ def init_schema(con: sqlite3.Connection) -> None:
     con.commit()
 
 
-def persistir(con: sqlite3.Connection, candidatos: list[dict]) -> int:
+def persistir(con: sqlite3.Connection, candidatos: list[dict], *,
+              exercicio: int | None = None) -> int:
+    """Grava a fila do exercício e RETIRA o que a régua atual já não considera candidato.
+
+    `INSERT OR REPLACE` sozinho só acrescenta e atualiza — nunca tira. Consequência medida em
+    2026-07-28: melhorei o filtro de entidade pública (49 dos 617 credores da fila eram Fundo
+    Municipal de Saúde, Prefeitura, Associação de Apoio à Escola — abreviados, que o padrão
+    antigo não pegava), reprocessei, e a fila continuou com 1.175 grupos. As linhas velhas
+    ficaram, e o analista seguiria abrindo processo de repasse achando que era compra.
+
+    A retirada é ESCOPADA e auditável: só o exercício reprocessado, e só linhas de gerações
+    ANTERIORES a esta execução. Não é o `DELETE` global de `anomalias.regras()`, que truncou
+    `ob_redflag` de 69.807 para 12.215 quando rodado com amostra — aqui, se a execução trouxer
+    zero candidatos, nada é apagado, porque não há geração nova para suceder a antiga.
+    """
     init_schema(con)
     agora = datetime.now().isoformat(timespec="seconds")
     con.executemany(
@@ -62,6 +78,13 @@ def persistir(con: sqlite3.Connection, candidatos: list[dict]) -> int:
           " ".join(str(p) for p in c["processos"]), " ".join(str(o) for o in c["obs"]),
           c["resumo"], c["acao"], c["ressalva"], c["fundamento"], agora)
          for c in candidatos])
+    if exercicio is not None and candidatos:
+        removidas = con.execute(
+            "DELETE FROM siafe_fracionamento WHERE exercicio = ? AND gerado_em < ?",
+            (int(exercicio), agora)).rowcount
+        if removidas:
+            print(f"    retiradas {removidas} linha(s) de gerações anteriores do exercício "
+                  f"{exercicio} (a régua atual já não as considera candidatas)")
     con.commit()
     return len(candidatos)
 
@@ -88,16 +111,30 @@ def main() -> int:
         print(f"  OBs lidas {r['obs_lidas']:>7} · descartadas: status {r['obs_descartadas_status']:>5}, "
               f"credor não-licitável {r['obs_descartadas_credor']:>6}, "
               f"processo único {r['grupos_descartados_processo_unico']:>4}")
+        # DISCRIMINANTE: o fornecedor teve contratação direta registrada neste exercício?
+        # Sem isto a fila mistura execução de contrato licitado (normal) com direta repetida
+        # (o que o art. 75, § 1º veda), e obriga o analista a abrir cada um dos 1.175.
+        from compliance_agent.fracionamento_siafe import fornecedor_teve_direta
+        for c in cands:
+            c["fornecedor_teve_direta"] = fornecedor_teve_direta(con, c)
+        com_direta = [c for c in cands if c.get("fornecedor_teve_direta")]
         print(f"  CANDIDATOS (a_verificar): {len(cands)}")
+        if cands:
+            soma = sum(c.get("soma") or 0 for c in com_direta)
+            print(f"    dos quais com fornecedor que teve DIRETA no exercício: "
+                  f"{len(com_direta)} (R$ {soma:,.2f}) — prioridade de diligência")
         for c in cands[:a.top]:
             print(f"    prio={c['prioridade']:.3f}  {(c['nome_credor'] or '')[:36]:38} "
                   f"UG {c['ug_emitente']:8} OBs={c['n_obs']:>3} proc={c['n_processos']:>3} "
                   f"rente={c['n_rente_ao_teto']:>2} R$ {c['soma']:>13,.2f} ({c['razao_soma_limite']}× o teto)")
         if a.gravar:
-            print(f"  gravados: {persistir(con, cands)}")
+            print(f"  gravados: {persistir(con, cands, exercicio=ano)}")
     con.close()
     print(f"\nTOTAL de candidatos: {total}")
     print("Lembrete: TRIAGEM, não achado — falta objeto e modalidade; puxar os autos antes de concluir.")
+    print("`fornecedor_teve_direta` diz que o FORNECEDOR teve contratação direta no exercício, "
+          "não que ESTA despesa foi direta — a unidade não entra na chave (as bases a guardam "
+          "de formas incompatíveis).")
     return 0
 
 

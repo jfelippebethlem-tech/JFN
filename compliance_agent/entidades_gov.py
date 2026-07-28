@@ -26,7 +26,15 @@ _NAO_FORNECEDOR = re.compile(
     # `folha de (pagamento|pessoal)` e não `folha` solto: "Construtora Folha Verde" é fornecedor.
     r"fundo (de )?(equaliza[cç][aã]o|participa[cç][aã]o)|riorev|rioprev|"
     r"folha de (pagamento|pessoal)|precat[óo]rio|senten[cç]as? judicia|"
-    r"restitui[cç][aã]o de receita|inativos e pensionistas|\binativos\b|\bpensionistas\b)", re.I)
+    r"restitui[cç][aã]o de receita|inativos e pensionistas|\binativos\b|\bpensionistas\b|"
+    # ABREVIAÇÕES — o dado real não escreve por extenso. Medido em 2026-07-28 na fila viva de
+    # fracionamento: 617 credores, 20 escapando por isso. "Fundo Munic.de Saude/sus Munic.de
+    # Resende" chegava ao analista como candidato a fracionamento de COMPRA.
+    r"fundo\s+mun(?:ic)?\.?\s*(?:de|d[oa])?\s*sa[úu]de|pref\.?\s+munic|"
+    r"diretoria\s+regional\s+administrativa|"
+    # Associação de Apoio à Escola recebe TRANSFERÊNCIA para custeio da unidade escolar; não é
+    # fornecedor de compra. `\baae\b` com fronteira para não pegar palavra que a contenha.
+    r"associa[cç][aã]o\s+de\s+apoio\s+[àa]?\s*escola|\baae\b)", re.I)
 
 
 def eh_nao_fornecedor(nome: str) -> bool:

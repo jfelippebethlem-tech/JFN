@@ -49,3 +49,41 @@ def test_as_familias_antigas_continuam_valendo():
     for nome in ("Fundo Municipal De Saude De Itaborai", "MUNICIPIO DE NITEROI",
                  "INSS", "Secretaria de Estado de Educacao"):
         assert eh_nao_fornecedor(nome) is True
+
+
+# ── abreviações: o dado real não escreve por extenso ───────────────────────────────────────
+# Medido em 2026-07-28 na fila viva de fracionamento: 617 credores, 20 escapando do filtro por
+# abreviação. "Fundo Munic.de Saude/sus Munic.de Resende" é entidade pública e estava sendo
+# ofertada ao analista como candidato a fracionamento de COMPRA.
+
+@pytest.mark.parametrize("nome", [
+    "Fundo Munic.de Saude/sus Munic.de Resende",
+    "Fundo Mun.de Saude De Eng.paulo De Frontin",
+    "Fundo Munic.de Saude De Cachoeiras De Macacu",
+    "Pref Munic De Campos De Goytacazes",
+    "DIRETORIA REGIONAL ADMINISTRATIVA METROPOLITANA VII",
+])
+def test_abreviacoes_de_ente_publico_sao_filtradas(nome):
+    assert eh_nao_fornecedor(nome) is True
+
+
+@pytest.mark.parametrize("nome", [
+    "Aae Ciep Brizolao 218 Ministro Hermes Lima",
+    "ASSOCIAÇÃO DE APOIO A ESCOLA CIEP BRIZOLÃO 393 PREFEITO CARLOS EMI",
+    "Aae Do Inst De Ed Prof Ismael Coutinho",
+])
+def test_associacao_de_apoio_a_escola_recebe_repasse_nao_contrata(nome):
+    """AAE recebe transferência para custeio da unidade escolar — não é fornecedor de compra,
+    e numa fila de fracionamento de COMPRA ela é ruído."""
+    assert eh_nao_fornecedor(nome) is True
+
+
+@pytest.mark.parametrize("nome", [
+    "FUNDACAO GETULIO VARGAS",
+    "REPÚBLICA ADMINISTRAÇÃO E SERVIÇOS LTDA",
+    "ASSOCIACAO BRASILEIRA DE ENSINO LTDA",
+    "INSTITUTO DE PESQUISA APLICADA LTDA",
+])
+def test_privado_com_nome_institucional_nao_e_filtrado(nome):
+    """O risco simétrico: filtro largo demais cega a fiscalização sobre fornecedor real."""
+    assert eh_nao_fornecedor(nome) is False
