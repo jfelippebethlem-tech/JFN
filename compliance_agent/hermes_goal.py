@@ -503,17 +503,24 @@ class HermesGoalAgent:
             limite = float(limite)
         except (TypeError, ValueError):
             limite = None
+        from datetime import date as _date
+
         from compliance_agent.database.models import OrdemBancaria
+        from compliance_agent.limites_dispensa import limite_dispensa as _limite_do_ano
         from sqlalchemy import select
         obs = self.session.execute(select(OrdemBancaria)).scalars().all()
         linhas = []
         for o in obs:
             v = float(o.valor) if o.valor is not None else 0.0
+            # Teto POR EXERCÍCIO da fonte única — o literal aqui era o valor de 2024 aplicado a
+            # toda a série de OBs, o que inverte o veredito nas pontas (falso positivo em 2025/2026,
+            # falso negativo em 2021-2023).
+            _ano_ob = getattr(o, "exercicio", None) or _date.today().year
             if tipo == "dispensa_obras":
-                if o.categoria and "obra" in o.categoria.lower() and v > 119_812.02:
+                if o.categoria and "obra" in o.categoria.lower() and v > _limite_do_ano(int(_ano_ob), "obras"):
                     linhas.append((o.numero_ob, v, o.favorecido_nome, o.ug_codigo, o.numero_processo, o.numero_sei))
             elif tipo == "dispensa_compras":
-                if o.categoria not in {"obras"} and v > 59_906.02:
+                if o.categoria not in {"obras"} and v > _limite_do_ano(int(_ano_ob), "compras"):
                     linhas.append((o.numero_ob, v, o.favorecido_nome, o.ug_codigo, o.numero_processo, o.numero_sei))
             elif tipo == "fracionamento":
                 # Retorno simplificado; o padrão real será detalhado em identificar_padroes

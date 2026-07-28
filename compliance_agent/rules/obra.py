@@ -11,8 +11,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from compliance_agent.reporting.intel_base import moeda
 
-# Limite legal dispensa licitação (obras/serviços de engenharia) — Lei 14.133/21
-LIMITE_DISPENSA_OBRAS = 119_812.02
+# Limite legal de dispensa (obras/serviços de engenharia) — Lei 14.133/2021, art. 75, I.
+# O valor é POR EXERCÍCIO (decreto anual, art. 182): aqui havia o literal de 2024 congelado.
+# Mantém-se o nome antigo como o teto do ano CORRENTE, para não quebrar quem importa a constante,
+# mas o uso correto é `limite_dispensa(ano, "obras")` da fonte única.
+from datetime import date as _date
+
+from compliance_agent.limites_dispensa import limite_dispensa
+
+LIMITE_DISPENSA_OBRAS = limite_dispensa(_date.today().year, "obras")
 
 
 @dataclass(frozen=True)

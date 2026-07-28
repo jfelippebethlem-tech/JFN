@@ -165,3 +165,37 @@ def test_ordena_por_prioridade(con):
     cands = FS.triagem(con, exercicio=2024)["candidatos"]
     assert len(cands) == 2
     assert cands[0]["nome_credor"] == "GAMA LTDA"     # o mais colado no tempo vem primeiro
+
+
+def test_fundo_municipal_de_saude_nao_e_fornecedor_licitavel(con):
+    """Repasse fundo-a-fundo do SUS é transferência LEGAL — fracionar ali é juridicamente impossível.
+
+    Medido no acervo real em 2026-07-27: 70 dos 1.240 candidatos eram ente público que o regex
+    local deixava passar, e "Fundo Municipal De Saude De Itaboraí" liderava a fila de 2024. A
+    correção reusa `entidades_gov.eh_nao_fornecedor`, o classificador canônico da casa, em vez de
+    engordar mais uma lista paralela.
+    """
+    for i in range(3):
+        _ob(con, numero_ob=f"2024OB77{i}", nome_credor="Fundo Municipal De Saude De Itaborai",
+            valor=25000.0, processo=f"2024-060077{i}")
+    assert FS.triagem(con, exercicio=2024)["candidatos"] == []
+
+
+@pytest.mark.parametrize("nome", [
+    "Prefeitura Municipal de Niterói",
+    "Fundo Estadual de Saúde",
+    "Instituto Nacional do Seguro Social",
+])
+def test_outros_entes_publicos_tambem_ficam_fora(con, nome):
+    for i in range(3):
+        _ob(con, numero_ob=f"2024OB88{i}", nome_credor=nome, valor=25000.0,
+            processo=f"2024-060088{i}")
+    assert FS.triagem(con, exercicio=2024)["candidatos"] == []
+
+
+def test_fornecedor_privado_continua_entrando(con):
+    """A peneira não pode cegar o caso bom."""
+    for i in range(3):
+        _ob(con, numero_ob=f"2024OB99{i}", nome_credor="ACME MATERIAIS HOSPITALARES LTDA",
+            valor=25000.0, processo=f"2024-060099{i}")
+    assert len(FS.triagem(con, exercicio=2024)["candidatos"]) == 1

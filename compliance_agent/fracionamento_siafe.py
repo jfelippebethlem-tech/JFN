@@ -29,6 +29,7 @@ import sqlite3
 import statistics
 from datetime import date, datetime
 
+from compliance_agent.entidades_gov import eh_nao_fornecedor
 from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
 from compliance_agent.reporting.intel_base import moeda
 
@@ -108,7 +109,12 @@ def triagem(con: sqlite3.Connection, *, exercicio: int, tipo: str = "compras",
             desc_status += 1
             continue
         nome = (r["nome_credor"] or "").strip()
-        if not nome or _CREDOR_NAO_LICITAVEL.search(nome):
+        # Duas peneiras: o regex local (tributo, folha, precatório, concessionária) MAIS o
+        # classificador canônico da casa. Medido no dado real em 2026-07-27: 70 dos 1.240
+        # candidatos eram ente público que o regex local deixava passar — "Fundo Municipal de
+        # Saúde de Itaboraí" liderava a fila de 2024. Repasse fundo-a-fundo do SUS é transferência
+        # legal, não contratação: fracionar é juridicamente impossível ali.
+        if not nome or _CREDOR_NAO_LICITAVEL.search(nome) or eh_nao_fornecedor(nome):
             desc_credor += 1
             continue
         valor = float(r["valor"] or 0)

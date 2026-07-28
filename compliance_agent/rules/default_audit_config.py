@@ -17,18 +17,31 @@ class RegraLimite:
     fundamento: str
 
 
+def _teto_corrente(tipo: str) -> float:
+    """Teto de dispensa do exercício CORRENTE, da fonte única `limites_dispensa`.
+
+    Aqui havia o literal de 2024 congelado em DUAS listas (limites_dispensa e regras_dispensa).
+    Como esta configuração é o default de toda auditoria, o número errado se propagava por tudo.
+    O `default_factory` é avaliado a cada instância, então a virada de ano é absorvida sozinha.
+    """
+    from datetime import date
+
+    from compliance_agent.limites_dispensa import limite_dispensa
+    return limite_dispensa(date.today().year, tipo)
+
+
 @dataclass(frozen=True)
 class ConfiguracaoAuditoria:
     limites_dispensa: List[RegraLimite] = field(
         default_factory=lambda: [
             RegraLimite(
                 tipo="obras e serviços de engenharia",
-                valor=119_812.02,
+                valor=_teto_corrente("obras"),
                 fundamento="Lei 14.133/2021, arts. 29 e 75, §5º",
             ),
             RegraLimite(
                 tipo="compras e serviços comuns",
-                valor=59_906.02,
+                valor=_teto_corrente("compras"),
                 fundamento="Lei 14.133/2021, art. 75, caput",
             ),
         ]
@@ -53,12 +66,12 @@ class ConfiguracaoAuditoria:
         default_factory=lambda: [
             RegraLimite(
                 tipo="obras e serviços de engenharia",
-                valor=119_812.02,
+                valor=_teto_corrente("obras"),
                 fundamento="Lei 14.133/2021, arts. 29 e 75, §5º",
             ),
             RegraLimite(
                 tipo="compras e serviços comuns",
-                valor=59_906.02,
+                valor=_teto_corrente("compras"),
                 fundamento="Lei 14.133/2021, art. 75, caput",
             ),
         ]

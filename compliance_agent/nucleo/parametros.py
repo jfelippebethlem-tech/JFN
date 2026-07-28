@@ -57,15 +57,27 @@ class Parametro:
 # Cada valor tem procedência. "orientativo"/"empirico" são calibráveis; "lei"
 # não deve ser afrouxado (é o limite legal), mas pode ser endurecido.
 
+def _teto_corrente(tipo: str) -> float:
+    """Teto de dispensa do exercício CORRENTE, da fonte única `limites_dispensa`.
+
+    Aqui havia o literal de 2024 congelado no parâmetro padrão — e como este módulo alimenta o
+    núcleo de avaliação, o número errado se propagava para todo o resto.
+    """
+    from datetime import date
+
+    from compliance_agent.limites_dispensa import limite_dispensa
+    return limite_dispensa(date.today().year, tipo)
+
+
 _PADRAO: list[Parametro] = [
     # Limites de contratação direta (Lei 14.133/2021, valores 2023+ atualizados)
     Parametro(
-        "limite_dispensa_compras", 59_906.02, "reais",
+        "limite_dispensa_compras", _teto_corrente("compras"), "reais",
         "Teto de dispensa de licitação para compras e serviços comuns.",
         "Lei 14.133/2021, art. 75, II", "lei", minimo=50_000, maximo=120_000,
     ),
     Parametro(
-        "limite_dispensa_obras", 119_812.02, "reais",
+        "limite_dispensa_obras", _teto_corrente("obras"), "reais",
         "Teto de dispensa para obras e serviços de engenharia.",
         "Lei 14.133/2021, art. 75, I", "lei", minimo=100_000, maximo=240_000,
     ),

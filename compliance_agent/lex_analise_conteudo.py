@@ -302,23 +302,38 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
     # Lei 14.133). NÃO é fracionamento: várias OBs de um mesmo contrato (parcelas mensais/medição/pagamento parcial),
     # nem atuar em vários órgãos, nem a pluralidade de contratos de serviço contínuo. Agrupa por (ano, UG, ramo).
     from collections import defaultdict
-    # dispensa por valor — art. 75, II, Lei 14.133 (serviços/compras). Reajustado por decreto anual:
-    # override sem tocar código via LEX_TETO_DISPENSA no .env (valor de referência 2024/2025 = 59.906,02).
-    _TETO_DISP = float(os.environ.get("LEX_TETO_DISPENSA", "") or 59906.02)
+    # Dispensa por valor — art. 75, II, Lei 14.133. O teto é POR EXERCÍCIO (decreto anual, art. 182)
+    # e vem da fonte única `limites_dispensa`. Aqui havia o literal 59906.02 (valor de 2024) aplicado a
+    # TODOS os anos — 5ª cópia divergente do teto encontrada no projeto: falso positivo em 2025/2026
+    # (tetos reais 62.725,59 e 65.492,11) e falso negativo em 2021-2023. Como o agrupamento já é por
+    # (ano, unidade, ramo), o teto passa a ser resolvido POR GRUPO.
+    from compliance_agent.limites_dispensa import limite_dispensa as _limite_do_ano
+
+    _TETO_OVERRIDE = os.environ.get("LEX_TETO_DISPENSA")
+
+    def _teto_do_ano(ano) -> float:
+        if _TETO_OVERRIDE:
+            return float(_TETO_OVERRIDE)
+        try:
+            return _limite_do_ano(int(ano), "compras")
+        except (TypeError, ValueError):
+            from datetime import date as _date
+            return _limite_do_ano(_date.today().year, "compras")
     grupos = defaultdict(list)
     for c in diretas:
         grupos[(c.get("ano_processo"), (c.get("unidade") or "")[:40], _ramo_objeto(c.get("objeto")))].append(c)
     candidatos = []
     for (ano, unid, ramo), itens in grupos.items():
-        sob_teto = [i for i in itens if 0 < (i.get("valor") or 0) <= _TETO_DISP]
+        teto = _teto_do_ano(ano)
+        sob_teto = [i for i in itens if 0 < (i.get("valor") or 0) <= teto]
         soma = sum(i.get("valor") or 0 for i in itens)
-        if len(sob_teto) >= 2 and soma > _TETO_DISP:   # ≥2 dispensas da mesma natureza que, somadas, furam o teto
-            candidatos.append((ano, unid, ramo, len(sob_teto), soma))
+        if len(sob_teto) >= 2 and soma > teto:   # ≥2 dispensas da mesma natureza que, somadas, furam o teto
+            candidatos.append((ano, unid, ramo, len(sob_teto), soma, teto))
     if candidatos:
-        ano, unid, ramo, n, soma = max(candidatos, key=lambda x: x[4])
+        ano, unid, ramo, n, soma, teto = max(candidatos, key=lambda x: x[4])
         achados.append({"rf": "R2", "grav": 3,
                         "obs": f"**{n} dispensas** de objeto de mesma natureza (**{ramo}**) na unidade **{unid}** no "
-                               f"exercício {ano}, cada uma sob o teto de dispensa (≈R$ {moeda(_TETO_DISP)}) mas somando "
+                               f"exercício {ano}, cada uma sob o teto de dispensa do ano (R$ {moeda(teto)}) mas somando "
                                f"R$ {moeda(soma)} — indício de **FRACIONAMENTO** (substituição da licitação obrigatória "
                                "por múltiplas dispensas do mesmo objeto; art. 75 §1º Lei 14.133; Ac. 1.620/2010-TCU-"
                                "Pleno). Diligência: confirmar identidade de objeto/natureza e somatório no exercício."})
