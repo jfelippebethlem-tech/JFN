@@ -64,12 +64,23 @@ def _norm_email(e) -> str:
 
 
 def _norm_end(e) -> str:
+    """Endereço comparável: sem acento, sem pontuação, sem tipo de logradouro, espaço único.
+
+    A ORDEM importa e estava errada: a pontuação era removida DEPOIS (na verdade, nunca), então
+    `\\b(...|r\\.|,|-)\\b` não casava nem a abreviação "R." nem a vírgula — `,` e `.` não são
+    caracteres de palavra, e o `\\b` exigido dos dois lados impedia o match. Resultado: "Rua São
+    João, nº 100" normalizava para "sao joao, 100" e "R. Sao Joao 100" para "r. sao joao 100" —
+    o MESMO endereço não casava, e o vínculo por sede compartilhada (um dos sinais mais fortes de
+    cotação orquestrada) passava batido. Agora a pontuação cai primeiro e os tipos depois.
+    """
     s = str(e or "").lower()
-    s = (s.replace("ã", "a").replace("á", "a").replace("é", "e").replace("í", "i")
-         .replace("ó", "o").replace("ç", "c"))
-    s = re.sub(r"\b(rua|av|avenida|r\.|al|alameda|trav|travessa|nº|n\.|numero|número|,|-)\b", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+    for a, b in (("ã", "a"), ("á", "a"), ("â", "a"), ("é", "e"), ("ê", "e"), ("í", "i"),
+                 ("ó", "o"), ("ô", "o"), ("ú", "u"), ("ç", "c")):
+        s = s.replace(a, b)
+    s = re.sub(r"[.,;/#\-º°ª]+", " ", s)                   # pontuação e ordinal ("nº") primeiro
+    s = re.sub(r"\b(rua|r|av|avenida|al|alameda|trav|travessa|pca|praca|rod|rodovia|"
+               r"no|num|numero|n)\b", " ", s)              # tipos de logradouro e "nº"
+    return re.sub(r"\s+", " ", s).strip()
 
 
 def _socios(qsa) -> set[str]:
@@ -219,8 +230,12 @@ class P2CotacoesCombinadas(Detector):
 
         if score <= 0:
             res.status = "descartado"
-            res.motivo_refutacao = ("cotantes sem vínculo societário/cadastral, metadados distintos, vencedor fora "
-                                    "dos cotantes e valores dispersos — pesquisa de preços aparentemente independente")
+            # Preserva as razões acumuladas (mesmo defeito já corrigido no J3): um CV baixo escusado
+            # por preço tabelado saía do parecer como "valores dispersos", que é o CONTRÁRIO do que
+            # se mediu. O leitor precisa ver a exculpatória para poder contestá-la.
+            base = ("cotantes sem vínculo societário/cadastral, metadados distintos, vencedor fora "
+                    "dos cotantes e valores dispersos — pesquisa de preços aparentemente independente")
+            res.motivo_refutacao = "; ".join([*razoes, base]) if razoes else base
             res.valores = valores
             res.explicacao_inocente = "pesquisa de preços com fornecedores independentes"
             return res
