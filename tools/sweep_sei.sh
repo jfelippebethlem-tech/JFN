@@ -45,7 +45,14 @@ fi
 # SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
 # execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;
 # resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
-$PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
+# ⛔ DESLIGADO 2026-07-27 — este passo DERRUBOU A VM. Vazamento de memória: chega a ~10 GB de RSS
+# em ~10 min (VM tem 11,9 GB) e o OOM killer o matou 11 vezes só em 27/07 (12:50, 16:52, 19:23,
+# 20:40 — horários batendo ao segundo com `sei_pais rc=137` em data/sweep_sei.log). Às 22:22:49 a
+# máquina não aguentou e travou de vez: o journald já vinha falhando por watchdog desde as 20:40.
+# Religar SÓ depois de achar e corrigir o vazamento (o `--max 5` limita processos lidos, não memória).
+# Para religar: descomentar a linha abaixo.
+# $PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
+say "sei_pais DESLIGADO (vazamento de memória — ver comentário acima)"
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.

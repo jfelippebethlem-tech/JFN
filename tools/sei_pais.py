@@ -23,6 +23,7 @@ real vem dos dockets que LERAM documentos e citam o pai de contratação no corp
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -63,7 +64,16 @@ def _cache_path(proc: str) -> Path:
 
 
 def carregar_cache() -> dict[str, dict]:
-    """Carrega todos os cdp_SEI_*.json (path -> dict). Tolera arquivos corrompidos (pula)."""
+    """⚠️ CARGA INTEGRAL — foi isto que DERRUBOU A VM em 2026-07-27.
+
+    O cache tem 6.093 arquivos e **18 GB em disco** (um só deles com 697 MB). Carregar tudo em
+    `dict` estoura os 11,9 GB da VM: o OOM killer matou este passo 11 vezes só em 27/07 e às
+    22:22 a máquina travou de vez. Não é vazamento — é carga eager, morte determinística que
+    piora a cada sweep (o cache cresce).
+
+    Mantida apenas para compatibilidade e testes com acervo pequeno. **Em produção use
+    `iter_resumos()`**, que lê um arquivo por vez e guarda só os campos necessários.
+    """
     out: dict[str, dict] = {}
     for cf in CACHE.glob("cdp_SEI_*.json"):
         try:
@@ -71,6 +81,68 @@ def carregar_cache() -> dict[str, dict]:
         except Exception:  # noqa: BLE001
             continue
     return out
+
+
+# Teto por arquivo. Acima disto o JSON não é parseado (o de 697 MB vira ~3 GB de objetos Python).
+# O que ficou de fora é SEMPRE declarado no log — nunca silenciosamente.
+LIMITE_ARQUIVO_MB = int(os.environ.get("JFN_SEI_PAIS_MAX_MB", "64"))
+
+
+def _resumir(d: dict) -> dict:
+    """Reduz um docket ao mínimo de que `detectar_pais` precisa (bytes, não gigabytes).
+
+    Os filtros de denylist e de raridade dependem de estatística do acervo INTEIRO, então aqui
+    os candidatos saem SEM filtrar (deny vazio, freq vazia) e a filtragem acontece no fim, sobre
+    os resumos. O resultado é idêntico ao da versão que carregava tudo — só não estoura a memória.
+    """
+    numero = d.get("numero") or ""
+    self_digits = _norm(numero)
+    refs_texto = {_fmt(m) for m in set(_PAT_SEI.findall(d.get("texto") or ""))}
+    refs_rel: set[str] = set()
+    for r in (d.get("relacionados") or []):
+        blob = (r.get("texto") or "") + " " + (r.get("titulo") or "")
+        for m in _PAT_SEI.findall(blob):
+            refs_rel.add(_fmt(m))
+    return {
+        "numero": numero,
+        "self_digits": self_digits,
+        "refs_texto": refs_texto,
+        "refs_rel": refs_rel,
+        "cand_conteudo": _refs_de_conteudo_com_kw(d, self_digits, set()),
+        "cand_rel": _refs_relacionados_raros(d, self_digits, {}, set(), teto=10**9),
+    }
+
+
+def iter_resumos(log=None):
+    """Percorre o cache UM ARQUIVO POR VEZ, devolvendo o resumo compacto de cada docket.
+
+    Pico de memória = o maior arquivo aceito (≤ `LIMITE_ARQUIVO_MB`) + os resumos acumulados
+    (poucas dezenas de MB para o acervo inteiro), em vez dos 18 GB da carga integral.
+    """
+    grandes: list[tuple[str, int]] = []
+    ilegiveis = 0
+    for cf in sorted(CACHE.glob("cdp_SEI_*.json")):
+        try:
+            tam = cf.stat().st_size
+        except OSError:
+            continue
+        if tam > LIMITE_ARQUIVO_MB * 1024 * 1024:
+            grandes.append((cf.name, tam // (1024 * 1024)))
+            continue
+        try:
+            d = json.loads(cf.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            ilegiveis += 1
+            continue
+        yield _resumir(d)
+        del d
+    if log:
+        if grandes:
+            log(f"[pais] {len(grandes)} arquivo(s) acima de {LIMITE_ARQUIVO_MB} MB NÃO lidos "
+                f"(evita OOM): {', '.join(f'{n} ({mb} MB)' for n, mb in grandes[:5])}"
+                + (" …" if len(grandes) > 5 else ""))
+        if ilegiveis:
+            log(f"[pais] {ilegiveis} arquivo(s) de cache ilegíveis (pulados).")
 
 
 def construir_denylist(cache: dict[str, dict], min_freq: int = 40) -> set[str]:
@@ -155,21 +227,36 @@ def _freq_relacionados(cache: dict[str, dict]) -> dict[str, int]:
     return dict(c)
 
 
-def detectar_pais(cache: dict[str, dict] | None = None, incluir_relacionados: bool = True) -> list[dict]:
+def detectar_pais(cache: dict[str, dict] | None = None, incluir_relacionados: bool = True,
+                  log=None) -> list[dict]:
     """Detecta os PROCESSOS-PAI de contratação referenciados pelos dockets em cache que AINDA NÃO estão
     no cache. Retorna uma lista priorizada de dicts:
         {pai, fonte: 'conteudo'|'relacionado', confianca: 'alta'|'media',
          origem: <docket que citou>, trecho: <evidência>, n_citacoes: <quantos dockets citam>}
     Ordem: confiança alta (conteúdo+keyword) primeiro, depois nº de citações desc (um pai citado por
-    vários dockets = mais central). Anti-duplicata: um pai aparece UMA vez (agrega as origens)."""
-    if cache is None:
-        cache = carregar_cache()
-    deny = construir_denylist(cache)
-    freq_rel = _freq_relacionados(cache) if incluir_relacionados else {}
-    # conjunto de números JÁ em cache (qualquer grafia) p/ não re-enfileirar o que já temos
+    vários dockets = mais central). Anti-duplicata: um pai aparece UMA vez (agrega as origens).
+
+    Memória: por padrão percorre o cache em STREAMING (`iter_resumos`), guardando só os campos
+    necessários. A versão anterior chamava `carregar_cache()` e segurava os 18 GB do acervo em
+    RAM — foi o que derrubou a VM em 2026-07-27. Passar `cache` explicitamente ainda funciona
+    (testes e acervos pequenos) e mantém o comportamento antigo."""
+    if cache is not None:
+        resumos = [_resumir(d) for d in cache.values()]
+    else:
+        resumos = list(iter_resumos(log=log))
+
+    from collections import Counter
+    freq_texto: Counter = Counter()
+    freq_rel_c: Counter = Counter()
     em_cache: set[str] = set()
-    for d in cache.values():
-        em_cache.add(_norm(d.get("numero") or ""))
+    for r in resumos:
+        em_cache.add(r["self_digits"])
+        for ref in r["refs_texto"]:
+            freq_texto[ref] += 1
+        for ref in r["refs_rel"]:
+            freq_rel_c[ref] += 1
+    deny = {ref for ref, n in freq_texto.items() if n >= 40}
+    freq_rel = dict(freq_rel_c) if incluir_relacionados else {}
 
     # agrega por pai
     pais: dict[str, dict] = {}
@@ -187,13 +274,16 @@ def detectar_pais(cache: dict[str, dict] | None = None, incluir_relacionados: bo
             if conf == "alta" and p["confianca"] != "alta":
                 p.update(confianca="alta", fonte=fonte, origem=origem, trecho=trecho)
 
-    for d in cache.values():
-        self_digits = _norm(d.get("numero") or "")
-        for ref, trecho in _refs_de_conteudo_com_kw(d, self_digits, deny):
-            _registrar(ref, "conteudo", "alta", d.get("numero") or "", trecho)
+    # Os candidatos vieram SEM filtro (a estatística só existe depois de ver o acervo todo);
+    # aplicar aqui deny e raridade dá exatamente o mesmo resultado da versão que carregava tudo.
+    for r in resumos:
+        for ref, trecho in r["cand_conteudo"]:
+            if ref not in deny:
+                _registrar(ref, "conteudo", "alta", r["numero"], trecho)
         if incluir_relacionados:
-            for ref, trecho in _refs_relacionados_raros(d, self_digits, freq_rel, deny):
-                _registrar(ref, "relacionado", "media", d.get("numero") or "", trecho)
+            for ref, trecho in r["cand_rel"]:
+                if ref not in deny and freq_rel.get(ref, 0) <= 5:
+                    _registrar(ref, "relacionado", "media", r["numero"], trecho)
 
     ordem = {"alta": 0, "media": 1}
     return sorted(pais.values(), key=lambda x: (ordem[x["confianca"]], -x["n_citacoes"]))
