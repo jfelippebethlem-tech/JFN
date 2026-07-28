@@ -125,7 +125,7 @@ def test_todo_detector_do_registro_tem_arquivo_de_teste():
     # errada: casava o id do detector como substring do nome do arquivo, e a chave "C" casa com
     # quase qualquer nome. Números de cobertura precisam de mapa explícito, nunca de heurística.
     DIVIDA_CONHECIDA = {
-        "C", "E1", "E4", "E5", "E6",
+        "C", "E1", "E6",
         "J5", "J6", "J7", "X2", "X4", "X5", "X6",
     }
     sem_arquivo = {did for did in REGISTRO if esperado[did] not in existentes}
