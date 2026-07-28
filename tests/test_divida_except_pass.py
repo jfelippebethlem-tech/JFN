@@ -14,6 +14,9 @@ Curas: 6 levas até 280aa62 (250) + 8ª (24) + 9ª 2026-07-11 (5: vault-nota/cer
 import ast
 from pathlib import Path
 
+import pytest
+from _pytest import outcomes as _outcomes
+
 ROOT = Path(__file__).resolve().parent.parent
 
 # Fora da catraca: experimental/debug (baixo valor) e infra.
@@ -80,3 +83,26 @@ def test_divida_except_pass_nao_cresce():
         f"Dívida de except-pass mudos CRESCEU: {total} > teto {TETO_MUDOS_PRODUCAO}. "
         f"Troque `pass` por logger.debug/warning com contexto. Piores: {piores}"
     )
+
+
+def test_sem_repositorio_git_o_teste_PULA_em_vez_de_quebrar(monkeypatch):
+    """O ramo do `skip` precisa ser exercitado AQUI, onde há repositório.
+
+    A 1ª versão chamava `pytest.skip` sem `import pytest` no topo: nesta máquina o ramo nunca
+    roda (o `git ls-files` funciona), então o teste passava verde enquanto quebrava com
+    `NameError` exatamente na máquina que o skip existe para atender. Foi a VM-2, que roda uma
+    cópia sem repositório, quem descobriu.
+    """
+    import subprocess as _sub
+
+    class _Falhou:
+        returncode = 128
+        stdout = ""
+
+    monkeypatch.setattr(_sub, "run", lambda *a, **k: _Falhou())
+    # `Skipped` herda de BaseException, não de Exception: `pytest.raises(Exception)` NÃO a
+    # captura — o skip escapa e o próprio teste vira "skipped", passando por verde sem
+    # verificar coisa alguma. Foi o que aconteceu na 1ª tentativa deste teste.
+    with pytest.raises(_outcomes.Skipped) as erro:
+        _versionados()
+    assert "repositório" in str(erro.value)

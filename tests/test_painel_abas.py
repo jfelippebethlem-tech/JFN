@@ -13,8 +13,10 @@ from tools.painel_abas import abas, abas_por_esfera
 
 # Se o painel ganhar ou perder aba, ATUALIZE estes numeros de proposito: a
 # mudanca tem de ser uma decisao, nao um efeito colateral que ninguem viu.
-TOTAL = 51
-POR_ESFERA = {"inicio": 1, "estado": 14, "prefeitura": 14, "geral": 22}
+# 2026-07-28: 51 → 52 e estado 14 → 15. Entrou a aba "Responsáveis" (esfera Estado), que expõe
+# `/api/responsaveis` — capacidade que existia desde 27/07 sem nenhuma tela.
+TOTAL = 52
+POR_ESFERA = {"inicio": 1, "estado": 15, "prefeitura": 14, "geral": 22}
 
 
 def test_le_todas_as_abas_do_painel():
