@@ -15,6 +15,7 @@ Educado com a VM (2 vCPU): lê texto já capturado, um processo por vez.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import pathlib
 import sqlite3
@@ -27,7 +28,10 @@ from compliance_agent.sei.agentes_publicos import (  # noqa: E402
     PAPEIS_DECISORIOS, PAPEIS_FISCALIZACAO, montar_ficha,
 )
 
+logger = logging.getLogger(__name__)
+
 ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
+CACHE = pathlib.Path(os.environ.get("JFN_SEI_CACHE", "data/sei_cache"))
 DB = os.environ.get("JFN_DB", "data/compliance.db")
 MAX_DOCS_POR_PROCESSO = 60
 
@@ -91,6 +95,19 @@ def main() -> int:
 
     for i, pasta in enumerate(pastas, 1):
         docs = _textos(pasta)
+        # PROCESSO-PAI. O ato de designação quase nunca está no processo de PAGAMENTO — só 68
+        # dos 2.053 processos (3,3%) têm algum. Ele vive no processo de CONTRATAÇÃO, e 18% dos
+        # caches citam outro número SEI. O documento vindo de lá entra prefixado com `rel:`
+        # para a evidência dizer de onde veio: responsável atribuído ao processo errado é pior
+        # que responsável não identificado.
+        try:
+            from compliance_agent.sei.relacionados import (
+                pasta_para_numero, relacionados_de, textos_do_relacionado,
+            )
+            for rel in relacionados_de(pasta_para_numero(pasta.name), CACHE)[:3]:
+                docs.update(textos_do_relacionado(rel, ACERVO))
+        except Exception as e:  # noqa: BLE001 — o pai é bônus; sem ele o sweep segue
+            logger.debug("relacionados de %s indisponíveis: %s", pasta.name, e)
         if not docs:
             continue
         n_proc += 1

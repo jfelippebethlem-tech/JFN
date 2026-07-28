@@ -166,6 +166,42 @@ def recaptura(limite: int | None = None, *, minimo_vazios: float = 0.30) -> list
     return fila[:limite] if limite else fila
 
 
+def pais_nao_capturados(limite: int | None = None) -> list[dict]:
+    """Processos-PAI citados pelos capturados e ausentes do acervo — a fila que destrava
+    os responsáveis.
+
+    Medido em 2026-07-28 sobre os 300 primeiros processos: 77 citam um relacionado, somando 114
+    processos-pai apontados, e **apenas 8 têm texto no acervo (7%)**. Por isso ler o pai não
+    elevou a cobertura de responsáveis em nada: o mecanismo funciona, mas não há o que ler do
+    outro lado.
+
+    O ato de designação de fiscal e gestor vive no processo de CONTRATAÇÃO, e o que se captura
+    em volume é o de PAGAMENTO. Cada linha desta fila é um pai que, capturado, tende a
+    identificar os responsáveis de um ou mais processos já lidos — e prioriza-se pelo valor
+    pago dos FILHOS, que é o que está em jogo.
+    """
+    from compliance_agent.sei.relacionados import (
+        numero_para_pasta, pasta_para_numero, relacionados_de,
+    )
+
+    cache = pathlib.Path(os.environ.get("JFN_SEI_CACHE", "data/sei_cache"))
+    pagos = _pagos_por_chave()
+    por_pai: dict[str, dict] = {}
+    for p in sorted(ACERVO.iterdir()):
+        if not (p / "texto").is_dir():
+            continue
+        for rel in relacionados_de(pasta_para_numero(p.name), cache)[:3]:
+            alvo = ACERVO / numero_para_pasta(rel)
+            if (alvo / "texto").is_dir() and any((alvo / "texto").glob("*.txt")):
+                continue                       # o pai já está capturado
+            d = por_pai.setdefault(rel, {"pai": rel, "filhos": [], "valor_filhos": 0.0})
+            d["filhos"].append(p.name)
+            d["valor_filhos"] += pagos.get(_chave(p.name), 0.0)
+    fila = sorted(por_pai.values(),
+                  key=lambda x: (-x["valor_filhos"], -len(x["filhos"])))
+    return fila[:limite] if limite else fila
+
+
 def _ler_indice() -> dict:
     try:
         return json.loads(INDICE.read_text())
@@ -296,6 +332,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=5, help="quantos processos analisar")
     ap.add_argument("--fila", action="store_true", help="só mostra a ordem; não analisa")
+    ap.add_argument("--fila-pais", action="store_true",
+                    help="processos-pai citados e não capturados (destravam os responsáveis)")
     ap.add_argument("--fila-recaptura", action="store_true",
                     help="processos lidos pela metade (documentos com texto vazio)")
     ap.add_argument("--fila-captura", action="store_true",
@@ -310,6 +348,30 @@ def main() -> int:
         for p, v in ordem[:25]:
             print(f"  {('R$ %0.2f' % v).replace('.', ','):>22}  {p}")
         print("\n0,00 = OB não localizada para este número, NÃO 'não houve pagamento'.")
+        return 0
+
+    if a.fila_pais:
+        # Nome local distinto de propósito: `fila` é função de módulo e sombreá-la já quebrou
+        # este arquivo duas vezes (F823 — referenciada antes da atribuição, lá embaixo).
+        pendentes_pai = pais_nao_capturados()
+        com_valor = [x for x in pendentes_pai if x["valor_filhos"] > 0]
+        # NÃO somar `valor_filhos` entre pais: um filho que cita DOIS pais teria seu valor
+        # contado duas vezes, e o total inflaria. O que está em jogo é o conjunto de FILHOS
+        # distintos cujos responsáveis seguem desconhecidos.
+        filhos_distintos = {f for x in pendentes_pai for f in x["filhos"]}
+        pagos_map = _pagos_por_chave()
+        total = sum(pagos_map.get(_chave(f), 0.0) for f in filhos_distintos)
+        print(f"{len(pendentes_pai)} processo(s)-pai citados e NÃO capturados · "
+              f"{len(com_valor)} com filho que tem pagamento · "
+              f"{len(filhos_distintos)} filho(s) distinto(s) afetado(s), somando "
+              f"R$ {total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + "\n")
+        for x in pendentes_pai[:30]:
+            v = (f"R$ {x['valor_filhos']:,.2f}".replace(",", "X").replace(".", ",")
+                 .replace("X", ".") if x["valor_filhos"] else "—")
+            print(f"  {v:>20}  {x['pai']:<24} {len(x['filhos'])} filho(s) já capturado(s)")
+        print("\nO ato de designação de fiscal e gestor vive no processo de CONTRATAÇÃO; o que "
+              "se captura em volume é o de PAGAMENTO. Capturar estes tende a identificar os "
+              "responsáveis dos filhos já lidos.")
         return 0
 
     if a.fila_recaptura:
