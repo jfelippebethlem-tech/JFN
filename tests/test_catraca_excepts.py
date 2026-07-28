@@ -8,6 +8,8 @@ logar (`logger.debug/warning`) — nunca `except Exception: pass` mudo (perda si
 lição da dívida de 1.404 ocorrências mapeada no MOC-Ecossistema 2026-06-24/07-07).
 """
 import subprocess
+
+import pytest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -106,9 +108,13 @@ BASELINE = 1580
 
 
 def _contar() -> int:
-    arquivos = subprocess.run(
-        ["git", "ls-files", "*.py"], cwd=REPO, capture_output=True, text=True, check=True,
-    ).stdout.splitlines()
+    # `check=True` derrubava a catraca em máquina que tem o CÓDIGO mas não o repositório (a
+    # VM-2 roda uma cópia por rsync): exit 128, "not a git repository". Medir dívida exige
+    # saber o que é versionado, então sem repositório a resposta honesta é `skip`, não falha.
+    git = subprocess.run(["git", "ls-files", "*.py"], cwd=REPO, capture_output=True, text=True)
+    if git.returncode != 0:
+        pytest.skip("cópia sem repositório git — não dá para separar versionado de alheio")
+    arquivos = git.stdout.splitlines()
     total = 0
     for rel in arquivos:
         if rel.startswith("massare") or rel == "tests/test_catraca_excepts.py":

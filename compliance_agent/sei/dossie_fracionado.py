@@ -62,6 +62,15 @@ CHARS_POR_TOKEN = 2.0
 # é receita de truncamento silencioso no meio do último documento.
 FRACAO_UTIL = 0.55
 
+# TETO PRÁTICO do contexto, independente do que o catálogo DECLARA. Medido em
+# SEI-080001/003535/2025 (20 documentos, 801.665 caracteres, ~400.827 tokens): o catálogo
+# declarava 1M para o modelo, o plano disse "cabe inteiro", e o dossiê saiu com 10 KB e ZERO
+# documentos citados — num processo de R$ 15,4 milhões, cuja nota foi para o vault sem
+# indício algum. A casa já mediu que capacidade declarada ≠ capacidade real: no banco de
+# provas, três modelos que gabaritam tarefa curta ZERAM num documento de 25 mil tokens.
+# O valor não é novo: é o mesmo 128k que `sei_dossie_md` assume quando não conhece o modelo.
+TETO_PRATICO_CTX = 128_000
+
 
 def estimar_tokens(texto: str) -> int:
     return int(len(texto or "") / CHARS_POR_TOKEN)
@@ -134,7 +143,8 @@ def carregar_documentos(pasta: pathlib.Path) -> list[Documento]:
 
 
 def orcamento_tokens(contexto_modelo: int) -> int:
-    return max(2_000, int(contexto_modelo * FRACAO_UTIL))
+    """Orçamento por lote. Corta pelo TETO PRÁTICO — para baixo, nunca para cima."""
+    return max(2_000, int(min(contexto_modelo, TETO_PRATICO_CTX) * FRACAO_UTIL))
 
 
 def planejar(processo: str, pasta: pathlib.Path, *, contexto_modelo: int) -> Plano:

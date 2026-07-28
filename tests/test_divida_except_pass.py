@@ -59,9 +59,10 @@ def _versionados() -> list[Path]:
     """
     import subprocess
 
-    saida = subprocess.run(["git", "ls-files", "*.py"], cwd=ROOT,
-                           capture_output=True, text=True, check=True).stdout
-    return [ROOT / rel for rel in saida.splitlines() if rel]
+    git = subprocess.run(["git", "ls-files", "*.py"], cwd=ROOT, capture_output=True, text=True)
+    if git.returncode != 0:  # cópia sem repositório (VM-2): `skip`, nunca falha
+        pytest.skip("cópia sem repositório git — não dá para separar versionado de alheio")
+    return [ROOT / rel for rel in git.stdout.splitlines() if rel]
 
 
 def test_divida_except_pass_nao_cresce():
