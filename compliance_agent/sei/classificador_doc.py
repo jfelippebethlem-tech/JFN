@@ -30,6 +30,11 @@ TIPOS: dict[str, list[str]] = {
     "etp": ["estudo tecnico preliminar", "etp", "estudo preliminar"],
     "tr": ["termo de referencia", "projeto basico"],
     "edital": ["edital", "aviso de licitacao", "pregao eletronico", "pregao presencial"],
+    # A OB é a peça que prova o PAGAMENTO — a regra da casa ("OB = verdade") exige que ela seja
+    # reconhecida. Sem esta linha ela caía em 'outros' → valor baixo → texto descartado, e a
+    # análise do processo concluía "não consta comprovante de pagamento" com 30 OBs nos autos.
+    # `cadeia_processo._MARCOS` já a reconhecia como marco 'pagamento'; a taxonomia central não.
+    "ordem_bancaria": ["ordem bancaria", "ordem bancária", "ob "],
     "empenho": ["nota de empenho", "empenho"],
     "liquidacao": ["nota de liquidacao", "liquidacao"],
     "autorizacao_despesa": ["autorizacao de despesa", "nota de autorizacao de despesa", "nad"],
@@ -48,7 +53,7 @@ DOCS_COM_PRECO = ("homologacao", "ata_rp", "contrato", "mapa_lances", "planilha_
 _VALOR = {
     "alto": {"parecer_juridico", "homologacao", "ata_rp", "contrato", "mapa_lances", "planilha_preco",
              "pesquisa_precos", "etp", "tr", "edital"},
-    "medio": {"empenho", "liquidacao", "autorizacao_despesa"},
+    "medio": {"empenho", "liquidacao", "autorizacao_despesa", "ordem_bancaria"},
 }
 
 
@@ -92,6 +97,27 @@ def valor_doc(tipo: str) -> str:
     if tipo in _VALOR["medio"]:
         return "medio"
     return "baixo"
+
+
+def ordenar_para_leitura(documentos: list[dict], limite: int | None = None) -> list[dict]:
+    """Os documentos na ordem em que vale a pena LÊ-LOS, cortados no orçamento de leitura.
+
+    O leitor do SEI lê no máximo `SEI_MAX_DOCS` documentos por processo (40, por tempo de
+    browser). Ele vinha cortando por POSIÇÃO — `documentos[:40]` —, e a árvore do SEI começa
+    pelos despachos de abertura. Medido no SEI-070002/006145/2024, de 791 documentos: os 40
+    primeiros trazem 32 peças de tramitação e 4 de valor alto, enquanto o processo inteiro tem
+    38 de valor alto (33 pareceres jurídicos, 4 contratos, 1 termo de referência) — todos
+    caberiam no mesmo orçamento. A ficha resultante afirmava faltar o que nunca foi aberto.
+
+    A ordem da árvore é cronológica e carrega a sequência dos atos, então ela é preservada
+    DENTRO de cada faixa de valor: reordena-se por decisão, não por acaso.
+    """
+    faixa = {"alto": 0, "medio": 1, "baixo": 2}
+    ordenados = sorted(
+        documentos or [],
+        key=lambda d: faixa.get(valor_doc(classificar_doc(str((d or {}).get("titulo") or ""))), 2),
+    )
+    return ordenados if limite is None else ordenados[:limite]
 
 
 _KW_MOTIVACAO = ("emergênc", "emergenc", "urgênc", "urgenc", "ratific", "justific",

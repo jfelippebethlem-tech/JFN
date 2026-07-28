@@ -19,7 +19,6 @@ import asyncio
 import json
 import logging
 import os
-import re
 from datetime import date
 from pathlib import Path
 
@@ -106,27 +105,20 @@ async def _groq(messages: list[dict], max_tokens: int = 800, temperature: float 
 
 
 def _parse_json(raw: str) -> dict | list | None:
-    """Extrai JSON de uma resposta do LLM (ignora texto ao redor)."""
-    raw = raw.strip()
-    # Remove markdown code fences
-    raw = re.sub(r"```(?:json)?", "", raw).replace("```", "").strip()
-    # Find first { or [
-    for start_char, end_char in [('{', '}'), ('[', ']')]:
-        idx = raw.find(start_char)
-        if idx >= 0:
-            # find matching close
-            depth = 0
-            for i, c in enumerate(raw[idx:], idx):
-                if c == start_char:
-                    depth += 1
-                elif c == end_char:
-                    depth -= 1
-                    if depth == 0:
-                        try:
-                            return json.loads(raw[idx:i+1])
-                        except Exception:
-                            break
-    return None
+    """Extrai JSON de uma resposta do LLM (parse único da casa: `llm/json_resposta`).
+
+    Aqui todo prompt pede um OBJETO. Modelo que embrulha o objeto numa lista de um item é
+    desembrulhado — o parser antigo acertava esse caso por acidente (procurava `{` antes de `[`)
+    e, na lista com vários itens, devolvia o primeiro como se fosse a resposta inteira. Lista
+    com mais de um item passa adiante como lista: o chamador a rejeita e registra `parse_error`,
+    que é honesto, em vez de tratar fragmento como análise completa.
+    """
+    from compliance_agent.llm.json_resposta import parse_json_llm
+
+    dados = parse_json_llm(raw)
+    if isinstance(dados, list) and len(dados) == 1 and isinstance(dados[0], dict):
+        return dados[0]
+    return dados
 
 
 # ─── 1. Navegação autônoma no browser ────────────────────────────────────────

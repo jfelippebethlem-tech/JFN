@@ -779,9 +779,12 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava+cracked"}}
     # Mesmo bound do caminho normal (SEI_MAX_DOCS=40): o antigo [:8] deixava os anexos
     # de NF (que vêm tarde na árvore) fora do OCR — gargalo corrigido. OCR de scan via _conteudo_doc.
+    # A ESCOLHA dos 40 é por valor fiscalizatório, não por posição na árvore (que começa nos
+    # despachos de abertura) — ver `ordenar_para_leitura`.
+    from compliance_agent.sei.classificador_doc import ordenar_para_leitura
     _max_docs = int(os.environ.get("SEI_MAX_DOCS", "40"))
     docs_txt = []
-    for doc in dump.get("documentos", [])[:_max_docs]:
+    for doc in ordenar_para_leitura(dump.get("documentos", []), limite=_max_docs):
         c = await _conteudo_doc(pg, doc)
         if c:
             docs_txt.append(c)
@@ -857,9 +860,12 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
            "relacionados": dump.get("relacionados", []), "cadeado": dump.get("cadeado", False),
            "n_docs_restritos": dump.get("n_docs_restritos", 0), "texto": dump["texto"],
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava"}}
-    # conteúdo dos documentos (TODOS, bounded a 40 p/ não estourar; OCR de scan via _conteudo_doc)
+    # conteúdo dos documentos (TODOS, bounded a 40 p/ não estourar; OCR de scan via _conteudo_doc).
+    # Os 40 são os de maior valor fiscalizatório, não os 40 primeiros da árvore — ver
+    # `ordenar_para_leitura` (a árvore começa nos despachos; o parecer e a OB ficavam de fora).
+    from compliance_agent.sei.classificador_doc import ordenar_para_leitura
     _max_docs = int(os.environ.get("SEI_MAX_DOCS", "40"))
-    _tentados = dump["documentos"][:_max_docs]
+    _tentados = ordenar_para_leitura(dump["documentos"], limite=_max_docs)
     docs_txt = []
     for doc in _tentados:
         c = await _conteudo_doc(pg, doc)

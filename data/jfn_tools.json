@@ -1,6 +1,6 @@
 {
   "_gerado_de": "capabilities.yaml (NÃO editar à mão)",
-  "versao": "2.3.0",
+  "versao": "2.4.0",
   "base_http": "http://127.0.0.1:8000",
   "tools": [
     {
@@ -178,6 +178,33 @@
         "metodo": "GET",
         "status": "PRONTO",
         "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "responsaveis_processo",
+        "description": "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo. Ausencia vem como LACUNA declarada, nunca como inexistencia de responsavel. — usar quando: 'quem e o fiscal do processo X', 'quem assinou', 'quem autorizou', 'ordenador de despesas do SEI Y', '/responsaveis' — chamar: GET /api/responsaveis (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "processo": {
+              "type": "string",
+              "description": "string (numero SEI, com ou sem prefixo SEI-)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/responsaveis",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
       }
     },
     {

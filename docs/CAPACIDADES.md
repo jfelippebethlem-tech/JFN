@@ -1,6 +1,6 @@
 # CAPACIDADES (gerado de capabilities.yaml — NÃO editar à mão)
 
-Versão 2.3.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m`
+Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m`
 
 | id | agente | tipo | rota/comando | status | quando usar |
 |---|---|---|---|---|---|
@@ -36,6 +36,7 @@ Versão 2.3.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | CNPJ sozinho na mensagem; nome de empresa sozinho; 'relatorio/auditoria/due diligence/dossie de <empresa>'; 'analisa a empresa X'; 'quem e o CNPJ Y' |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |
+| `responsaveis_processo` | jfn | http | `/api/responsaveis` | PRONTO | 'quem e o fiscal do processo X', 'quem assinou', 'quem autorizou', 'ordenador de despesas do SEI Y', '/responsaveis' |
 | `rodizio` | jfn | http | `/api/rodizio` | PRONTO | rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?' |
 | `sei_acatamento` | jfn | http | `/api/sei/acatamento` | PRONTO | os pareceres juridicos/controladoria foram atendidos no processo X? |
 | `sobrepreco` | lex | http | `/api/sobrepreco` | PRONTO | 'esta caro?', superfaturamento, R4 |

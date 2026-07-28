@@ -81,6 +81,29 @@ def encaminhamento(red_flags) -> str:
     return "recapturar" if t["so_lacuna"] else "sem_sinal"
 
 
+def encaminhamento_com_acervo(red_flags, *, docs_no_acervo: int | None = None,
+                              docs_lidos: int | None = None) -> str:
+    """O encaminhamento depois de perguntar se o documento falta MESMO.
+
+    `encaminhamento` manda **recapturar** todo processo cujas flags são só lacuna. Isso
+    supõe que a queixa ("não consta a Ordem Bancária") reflete o acervo. Medido no caso
+    SEI-070002/006145/2024, não reflete: o processo tem **294 documentos em disco, 30
+    deles Ordens Bancárias**, e a leitura viu 36 de 791 da árvore e citou 2. A queixa é da
+    LEITURA, não da captura — e recapturar traria de novo o que já está aqui, gastando
+    browser e sessão SEI para produzir a mesma ficha.
+
+    `reanalisar` — só lacuna, e há documento capturado que a análise não leu.
+    `recapturar` — só lacuna, e não há material em disco (ou tudo já foi lido).
+    `apurar` / `sem_sinal` — inalterados: acervo não lido não rebaixa achado substantivo.
+
+    Sem saber o acervo (`None`), devolve exatamente o que a régua antiga devolvia.
+    """
+    base = encaminhamento(red_flags)
+    if base != "recapturar" or docs_no_acervo is None or docs_lidos is None:
+        return base
+    return "reanalisar" if docs_no_acervo > docs_lidos else "recapturar"
+
+
 def risco_sustentado(nivel_risco, red_flags) -> tuple[str, str | None]:
     """O nível de risco só se sustenta se houver achado substantivo por trás.
 

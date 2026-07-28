@@ -286,25 +286,10 @@ def verificar_adversarial(
 
 
 def _parse_json(raw: str | None):
-    """Extrai o 1º objeto JSON do texto do LLM (tolera cercas markdown/lixo ao redor)."""
-    if not raw:
-        return None
-    s = raw.strip()
-    if s.startswith("```"):
-        import re
-        s = re.sub(r"^```[a-z]*\s*", "", s)
-        s = re.sub(r"\s*```$", "", s)
-    try:
-        return json.loads(s)
-    except (json.JSONDecodeError, ValueError):
-        import re
-        m = re.search(r"\{.*\}", s, re.DOTALL)
-        if not m:
-            return None
-        try:
-            return json.loads(m.group(0))
-        except (json.JSONDecodeError, ValueError):
-            return None
+    """Extrai o 1º objeto JSON do texto do LLM (parse único da casa: `llm/json_resposta`)."""
+    from compliance_agent.llm.json_resposta import parse_json_llm
+
+    return parse_json_llm(raw)
 
 
 def aplicar_exculpatoria(res: ResultadoDetector, achado: str, *, gerar=None) -> ResultadoDetector:
