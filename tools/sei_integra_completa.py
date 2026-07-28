@@ -18,7 +18,7 @@ from playwright.async_api import async_playwright, Error as PWError
 import httpx
 import fitz
 
-PROC = sys.argv[1]
+PROC = sys.argv[1] if len(sys.argv) > 1 else ""   # import (pytest) não traz argumento
 TAG = re.sub(r"[^0-9]", "_", PROC)
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
 ENV = Path("/home/ubuntu/.hermes/.env")
@@ -185,5 +185,5 @@ async def main():
             await b.close()
     G.cleanup_orphans()
 
-
-asyncio.run(main())
+if __name__ == "__main__":   # importar este módulo NÃO pode disparar o trabalho
+    asyncio.run(main())

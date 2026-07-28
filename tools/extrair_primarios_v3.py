@@ -107,5 +107,5 @@ async def main():
     Path(f"data/sei_cache/primarios_v3_{re.sub(r'[^0-9]','',PROC)}.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     print("SALVO.")
 
-
-asyncio.run(main())
+if __name__ == "__main__":   # importar este módulo NÃO pode disparar o trabalho
+    asyncio.run(main())

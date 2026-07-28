@@ -15,7 +15,7 @@ from tools import vm_guard as G
 from playwright.async_api import async_playwright
 import httpx
 
-PROC = sys.argv[1]
+PROC = sys.argv[1] if len(sys.argv) > 1 else ""   # import (pytest) não traz argumento
 KW = sys.argv[2] if len(sys.argv) > 2 else r"termo|planilha|parecer|cota|proposta|anexo|atestado|nota fiscal|edital|contrato|reequil"
 MAXN = int(os.environ.get("SEI_OCR_DOCS", "12"))
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "20"))
@@ -108,5 +108,5 @@ async def main():
             await b.close()
     G.cleanup_orphans()
 
-
-asyncio.run(main())
+if __name__ == "__main__":   # importar este módulo NÃO pode disparar o trabalho
+    asyncio.run(main())
