@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+import logging
 from pathlib import Path
 
 import yaml
@@ -31,6 +32,57 @@ def _idade_h(p: Path) -> float | None:
         return None
 
 
+def _idade_consulta(db: str, sql: str) -> float | None:
+    """Horas desde o registro mais recente que a consulta devolve. `None` = não deu para saber.
+
+    POR QUE ISTO EXISTE. O SLO olhava o mtime do arquivo-sentinela, e para uma COLETA isso é o
+    sinal errado: o runner escreve o log em toda execução, inclusive quando não traz linha
+    nenhuma. Medido em 2026-07-28: a coleta SIAFE ficou 10 dos últimos 30 dias sem produzir uma
+    linha, com o SLO verde o tempo todo.
+
+    `None` quando a consulta não devolve data — e `None` NUNCA vira 0: zero horas significaria
+    "acabou de coletar", exatamente o oposto de "não sei".
+    """
+    import sqlite3 as _sq
+    from datetime import datetime
+
+    try:
+        con = _sq.connect(f"file:{db}?mode=ro", uri=True, timeout=15)
+        linha = con.execute(sql).fetchone()
+        con.close()
+    except Exception as e:  # noqa: BLE001 — monitor não pode derrubar o cron
+        logging.getLogger(__name__).debug("consulta de frescor falhou: %s", str(e)[:90])
+        return None
+    if not linha or not linha[0]:
+        return None
+    try:
+        quando = datetime.fromisoformat(str(linha[0]).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if quando.tzinfo:
+        return max(0.0, (datetime.now(quando.tzinfo) - quando).total_seconds() / 3600)
+
+    # CARIMBO SEM FUSO: a casa grava dos dois jeitos — `datetime('now')` do SQLite é UTC, e
+    # `datetime.now()` do Python é local. Nesta VM (UTC-1) comparar um carimbo UTC contra o
+    # relógio local dá idade NEGATIVA, e a versão anterior clampava com `max(0.0, ...)`,
+    # devolvendo "0 horas" = "acabou de coletar" — exatamente o oposto da verdade, e escondendo
+    # o problema que este monitor existe para achar.
+    #
+    # Um carimbo no FUTURO é impossível. Então: mede contra o relógio local; se der negativo, o
+    # carimbo era UTC e a medida certa é contra o UTC. Sem clamp silencioso.
+    from datetime import timezone
+
+    idade_local = (datetime.now() - quando).total_seconds() / 3600
+    if idade_local >= 0:
+        return idade_local
+    idade_utc = (datetime.now(timezone.utc).replace(tzinfo=None) - quando).total_seconds() / 3600
+    if idade_utc >= 0:
+        return idade_utc
+    logging.getLogger(__name__).warning(
+        "frescor: carimbo %s está no futuro em qualquer fuso — relógio ou dado suspeito", quando)
+    return None
+
+
 def checar() -> list[dict]:
     itens = yaml.safe_load(CFG.read_text())["pipelines"]
     out = []
@@ -40,7 +92,13 @@ def checar() -> list[dict]:
             arq = BASE / arq
         pausa = it.get("pausa")
         pausado = bool(pausa) and (BASE / pausa).exists()
-        idade = _idade_h(arq)
+        # `consulta` (frescor do DADO) tem precedência sobre `arquivo` (frescor do log):
+        # para coleta, o output é a linha no banco, não o arquivo escrito de qualquer jeito.
+        if it.get("consulta"):
+            idade = _idade_consulta(str(BASE / it.get("db", "data/compliance.db")),
+                                    it["consulta"])
+        else:
+            idade = _idade_h(arq)
         if pausado:
             status = "pausado"
         elif idade is None:

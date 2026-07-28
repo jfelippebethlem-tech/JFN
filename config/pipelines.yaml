@@ -11,9 +11,14 @@ pipelines:
   # ---- BASE (dados-fonte, diários) ----
   - nome: siafe-runner
     arquivo: data/siafe_runner_cron.log
+    consulta: "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe"
     max_stale_h: 30
     grupo: base
-    nota: coleta SIAFE diária 05:00 (cron)
+    nota: >-
+      coleta SIAFE diária 05:00 (cron). Vigia o DADO (última OB coletada), não o log: medido em
+      2026-07-28, a coleta ficou 10 dos últimos 30 dias sem produzir uma linha e o SLO seguiu
+      verde, porque o runner escreve o log mesmo quando não traz nada. O sintoma apareceu antes
+      no diário do vault — 19 e 20/07 com o mesmo número ao centavo.
 
   - nome: folha-orquestrador
     arquivo: data/folha_orquestrador_cron.log
