@@ -66,7 +66,9 @@ class J1Cartel(Detector):
 
         if not isinstance(conc, dict) or conc.get("n_cnpjs", 0) == 0:
             res.motivo_refutacao = "nao_avaliavel: sem fornecedores PJ na UG (base ausente/vazia) — campo ausente ≠ 0"
-            res.valores = {"n_cnpjs": (conc or {}).get("n_cnpjs", 0)}
+            # `conc` pode NÃO ser dict aqui (é a própria condição que nos trouxe): chamar .get()
+            # nele estourava AttributeError e derrubava o detector em vez de degradar honesto.
+            res.valores = {"n_cnpjs": conc.get("n_cnpjs", 0) if isinstance(conc, dict) else 0}
             return res
 
         rodizio = contexto.get("rodizio")

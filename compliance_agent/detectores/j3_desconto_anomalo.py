@@ -140,9 +140,13 @@ class J3DescontoAnomalo(Detector):
 
         if score <= 0:
             res.status = "descartado"
-            res.motivo_refutacao = (
-                f"desconto de {desc:.1%} compatível com competição/estimativa realista; sem recorrência de desconto "
-                "irrisório nem distância anômala do baseline da categoria — sem indício")
+            # As razões acumuladas ficam no motivo mesmo quando NÃO se pontua. Sem isso, um desconto
+            # irrisório escusado por preço tabelado saía do parecer como "compatível com competição",
+            # o que é enganoso: ele não era compatível — foi ESCUSADO, e o leitor precisa saber disso
+            # para julgar a exculpatória (a commodity é mesmo tabelada?).
+            base = (f"desconto de {desc:.1%} compatível com competição/estimativa realista; sem recorrência de "
+                    "desconto irrisório nem distância anômala do baseline da categoria — sem indício")
+            res.motivo_refutacao = "; ".join([*razoes, base]) if razoes else base
             res.valores = valores
             res.explicacao_inocente = "desconto compatível com a categoria; estimativa de referência bem calibrada"
             return res
