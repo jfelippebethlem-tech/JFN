@@ -43,3 +43,22 @@ splink>=4.0           # entity resolution sobre DuckDB (Onda 4)
 #   weasyprint      -> HTML→PDF (Onda 7); precisa cairo/pango (apt). Alt sem apt: Playwright page.pdf()
 python-docx
 pdfplumber  # Onda 5: extração de tabela de preços do SEI (camada 1)
+
+# --- O QUE O CÓDIGO IMPORTA E NINGUÉM TINHA DECLARADO (achado pela VM-2 em 2026-07-28,
+# montando uma venv NOVA: a coleta do pytest morreu com 8 erros de import antes de rodar um
+# único teste). Na VM-1 não aparecia porque a venv é antiga e já os tinha. O custo real não é
+# o pytest: `fitz` é a leitura de PDF do SEI (`sei/pdf_texto.py`, `sei/ocr_docs.py`) — uma
+# instalação limpa quebrava exatamente na espinha do acervo. Trava: tests/test_requirements_
+# declara_o_que_importa.py ---
+pymupdf>=1.24.0      # `import fitz` — PDF do SEI (8 módulos); o que matou a venv nova
+requests>=2.31.0     # coletores PCRJ/TSE/captcha (não estava em NENHUM requirements)
+xlrd>=2.0.1          # `sei/office_texto.py` — planilha .xls antiga anexada ao processo
+pypdf>=4.0.0         # manipulação de PDF nos relatórios
+pdfminer.six>=20231228  # extração de texto (camada 2 do PDF)
+pillow>=10.0.0       # `import PIL` — imagem/foto de medição
+cryptography>=42.0.0 # assinatura/credencial
+jinja2>=3.1.0        # template de relatório (uso direto, não só via fastapi)
+starlette>=0.37.0    # uso direto em `obs_trace.py` (não só como dependência do fastapi)
+urllib3>=2.0.0       # uso direto (retry/pool) nos coletores
+# oci: NÃO entra aqui de propósito — SDK pesado usado só por `tools/criar_vm_oracle2.py`
+# (provisionamento de VM, fora do caminho de análise). Instale sob demanda: pip install oci
