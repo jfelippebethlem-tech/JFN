@@ -59,7 +59,7 @@ class EstouroDeContexto(RuntimeError):
 
 
 def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300,
-          max_tokens: int = 4000) -> str:
+          max_tokens: int = 12_000) -> str:
     import httpx
     r = httpx.post(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -73,10 +73,20 @@ def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300,
     # HTTP 200 pode trazer corpo de ERRO (upstream do OpenRouter). Ver
     # `conteudo_da_resposta` — parse cru aqui estourava KeyError e escapava do tratamento.
     from compliance_agent.llm.free_llm import conteudo_da_resposta
-    return conteudo_da_resposta(r.json()).strip()
+    corpo = r.json()
+    texto = conteudo_da_resposta(corpo).strip()
+    # `finish_reason == "length"` é o provedor DIZENDO que cortou. Ignorá-lo fazia o dossiê
+    # apresentar extração truncada como leitura completa — 6 de 7 lotes no maior processo.
+    try:
+        if (corpo["choices"][0].get("finish_reason") or "") == "length":
+            from compliance_agent.sei.dossie_fracionado import marcar_truncado
+            texto = marcar_truncado(texto)
+    except (KeyError, IndexError, TypeError):
+        pass
+    return texto
 
 
-def _chamar(model_id: str, sistema: str, prompt: str, *, max_tokens: int = 4000) -> str:
+def _chamar(model_id: str, sistema: str, prompt: str, *, max_tokens: int = 12_000) -> str:
     """Uma etapa do dossiê, encarando o limite de cota do jeito que ele aparece de verdade.
 
     Modelo `:free` NÃO cai de uma vez: ele estoura cota no meio da tarefa, tipicamente com 429
@@ -217,7 +227,8 @@ def _mapear_subdividido(modelo: str, lote, fator: float, prompt_map) -> str:
 
 def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pathlib.Path | None:
     from compliance_agent.sei.dossie_fracionado import (
-        cabecalho_md, planejar, prompt_map,
+        aviso_truncamento as aviso_truncamento_mod, cabecalho_md,
+        parece_truncado as parece_truncado_mod, planejar, prompt_map,
     )
     from compliance_agent.llm.openrouter_catalogo import escolher
 
@@ -245,6 +256,14 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
     # responde; relançar o comando retoma de onde parou.
     ckpt = CHECKPOINTS / f"{nome_pasta}.jsonl"
     feitos = ler_checkpoint(ckpt, plano)
+    # Lote truncado é leitura INCOMPLETA: reaproveitá-lo na retomada congelaria a perda. Com o
+    # teto de tokens agora maior, refazê-lo tende a completar.
+    truncados = {i for i, t in feitos.items()
+                 if aviso_truncamento_mod(t) or parece_truncado_mod(t)}
+    for i in truncados:
+        feitos.pop(i, None)
+    if truncados:
+        print(f"  {len(truncados)} lote(s) do checkpoint estavam truncados — serão relidos")
     if feitos:
         print(f"  retomando: {len(feitos)} de {len(plano.lotes)} lote(s) já no checkpoint")
     elif ckpt.exists():
@@ -291,7 +310,13 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
         corpo = ("> ⚠️ Nenhum lote produziu extração utilizável. O processo NÃO foi lido; a "
                  "ausência de achados aqui não significa ausência de problema.")
 
-    md = cabecalho_md(plano, modelo or "cadeia grátis") + "\n" + corpo + "\n"
+    from compliance_agent.sei.dossie_fracionado import aviso_truncamento
+    n_trunc = sum(1 for b in blocos if aviso_truncamento(b))
+    if n_trunc:
+        print(f"  ⚠️ {n_trunc} lote(s) com LEITURA INCOMPLETA (resposta cortada no limite) — "
+              "declarado no cabeçalho")
+    md = (cabecalho_md(plano, modelo or "cadeia grátis", lotes_truncados=n_trunc)
+          + "\n" + corpo + "\n")
     # `garantir_neutro` VALIDA e levanta; não devolve texto. Atribuir o retorno dele a `md`
     # apagava o dossiê inteiro (None) depois de meia hora de chamadas — erro cometido aqui em
     # 2026-07-28. O gate avisa e o trabalho segue: perder o dossiê por causa de um termo

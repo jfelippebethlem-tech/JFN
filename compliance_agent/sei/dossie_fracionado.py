@@ -256,7 +256,7 @@ liste o que se esperaria encontrar num processo desse tipo e não foi localizado
     return _sistema_reduce(), roteiro
 
 
-def cabecalho_md(plano: Plano, modelo: str) -> str:
+def cabecalho_md(plano: Plano, modelo: str, *, lotes_truncados: int = 0) -> str:
     """Cabeçalho de cobertura — o dossiê declara o que leu antes de dizer o que achou."""
     modo = ("leitura integral" if plano.cabe_inteiro
             else f"leitura fracionada em {len(plano.lotes)} lote(s)")
@@ -274,6 +274,8 @@ def cabecalho_md(plano: Plano, modelo: str) -> str:
     ]
     if cortados:
         linhas.append(f"| Lotes com documento cortado | {cortados} |")
+    if lotes_truncados:
+        linhas.append(f"| Lotes com LEITURA INCOMPLETA | {lotes_truncados} |")
     linhas += [
         "",
         "> Documento de trabalho. Os itens de indício são **hipóteses a verificar**, não "
@@ -281,6 +283,13 @@ def cabecalho_md(plano: Plano, modelo: str) -> str:
         "administrativos. Dado ausente é registrado como lacuna, nunca como zero.",
         "",
     ]
+    if lotes_truncados:
+        linhas += [
+            f"> ⚠️ {lotes_truncados} lote(s) tiveram a leitura **incompleta**: a resposta do "
+            "modelo foi cortada no limite de tamanho. Parte dos documentos desses lotes NÃO foi "
+            "lida, e a ausência de fatos sobre eles não significa ausência de conteúdo.",
+            "",
+        ]
     if plano.docs_vazios:
         linhas += [
             f"> ⚠️ {plano.docs_vazios} documento(s) do processo não têm texto extraído e "
@@ -411,6 +420,56 @@ def limpar_monologo(texto: str) -> str:
     saida = [ln for ln in (texto or "").splitlines()
              if "[doc" in ln or not _LINHA_MONOLOGO.match(ln)]
     return "\n".join(saida)
+
+
+# ── Truncamento ────────────────────────────────────────────────────────────────────────────
+# Medido em 2026-07-28: 6 dos 7 lotes do maior processo terminavam no meio de uma frase, e um
+# deles trazia 98 caracteres para 37 documentos. O `max_tokens` do passo de leitura era pequeno
+# demais, e o dossiê apresentava a extração cortada como se fosse completa — quem lesse
+# concluiria que aqueles documentos nada tinham. O sinal autoritativo é `finish_reason ==
+# "length"`, que o provedor devolve; adivinhar pela pontuação final é heurística, o campo é fato.
+
+_MARCA_TRUNCADO = ("\n\n> ⚠️ **LEITURA INCOMPLETA DESTE LOTE** — a resposta do modelo atingiu o "
+                   "limite de tamanho e foi cortada. Os documentos seguintes deste lote **não "
+                   "foram lidos**; a ausência de fatos sobre eles NÃO significa ausência de "
+                   "conteúdo.")
+
+
+def marcar_truncado(texto: str) -> str:
+    """Anexa o aviso de leitura incompleta, sem duplicar se já houver."""
+    if aviso_truncamento(texto):
+        return texto
+    return (texto or "") + _MARCA_TRUNCADO
+
+
+def aviso_truncamento(texto: str) -> bool:
+    """O lote está marcado como leitura incompleta?
+
+    Só o marcador — é o sinal AUTORITATIVO, posto a partir de `finish_reason == "length"`.
+    Para checkpoints gravados antes de o marcador existir, use `parece_truncado`.
+    """
+    return "LEITURA INCOMPLETA" in (texto or "")
+
+
+# Fechos plausíveis de uma extração completa: fim de frase, de item, de citação ou de lista.
+_FECHOS = (".", "!", "?", ")", "]", ":", "—", "-", "_", "*", "\u201d", '"')
+
+
+def parece_truncado(texto: str) -> bool:
+    """HEURÍSTICA para entradas antigas, sem o marcador — nunca substitui `finish_reason`.
+
+    Checkpoints gravados antes de 2026-07-28 têm truncamento INVISÍVEL: o corte aconteceu, mas
+    nada o registrou. Sem esta checagem, a retomada congela a perda para sempre, porque o lote
+    incompleto parece pronto e nunca é relido.
+
+    Deliberadamente conservadora: só acusa quando o texto termina sem QUALQUER fecho plausível,
+    porque marcar um lote bom como truncado custa uma releitura à toa — barato —, enquanto
+    deixar passar um truncado custa conteúdo perdido no entregável.
+    """
+    t = (texto or "").rstrip()
+    if not t:
+        return False
+    return not t.endswith(_FECHOS)
 
 
 def _chave_dedup(texto: str) -> str:
