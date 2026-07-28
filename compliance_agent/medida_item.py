@@ -38,7 +38,7 @@ _UN_CANON = {
     "metro": "metro", "m": "metro", "mt": "metro",
     "comprimido": "comprimido", "capsula": "capsula", "cap": "capsula",
     "kg": "kg", "quilo": "kg", "quilograma": "kg", "g": "g", "grama": "g",
-    "mg": "mg", "litro": "litro", "mililitro": "mililitro",
+    "mg": "mg", "mililitro": "mililitro",   # "litro" já está acima, com os aliases
 }
 
 

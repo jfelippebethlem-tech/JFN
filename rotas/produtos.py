@@ -444,6 +444,70 @@ async def api_certame_indice(certame: Optional[str] = None):
         return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/responsaveis")
+async def api_responsaveis(processo: Optional[str] = None):
+    """Quem responde por um processo SEI: ordenador, gestor e fiscal, com ID funcional.
+
+    GET ?processo=SEI-030001/004724/2026 (aceita também `030001_004724_2026`).
+
+    Lê a tabela já materializada por `tools/sei_agentes_sweep.py` — a rota responde a uma
+    pergunta de chat e não pode varrer o acervo. Ausência de responsável é devolvida como
+    LACUNA declarada, nunca como inexistência: em 97% dos processos o ato de designação não
+    integra o processo de pagamento, e confundir as duas coisas produziria acusação falsa de
+    execução sem fiscal.
+    """
+    numero = (processo or "").strip()
+    if not numero:
+        return JSONResponse({"ok": False, "erro": "informe ?processo=<número SEI>"},
+                            status_code=400)
+    try:
+        return JSONResponse(await asyncio.to_thread(_responsaveis_payload, numero))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
+
+
+def _responsaveis_payload(numero: str) -> dict:
+    import os
+    import sqlite3
+
+    from compliance_agent.sei.relacionados import numero_para_pasta, pasta_para_numero
+
+    pasta = numero_para_pasta(numero)
+    con = sqlite3.connect(f"file:{os.environ.get('JFN_DB', 'data/compliance.db')}?mode=ro",
+                          uri=True, timeout=20)
+    con.row_factory = sqlite3.Row
+    try:
+        linhas = [dict(r) for r in con.execute(
+            "SELECT nome, papel, id_funcional, cargo, origem, documento "
+            "FROM agente_processo WHERE processo = ? ORDER BY papel, nome", (pasta,))]
+        lacunas = [dict(r) for r in con.execute(
+            "SELECT * FROM agente_lacuna WHERE processo = ?", (pasta,))]
+    except sqlite3.OperationalError:
+        linhas, lacunas = [], []
+    finally:
+        con.close()
+
+    texto = [f"*Responsáveis — processo {pasta_para_numero(pasta)}*", ""]
+    if linhas:
+        for a in linhas:
+            papel = str(a["papel"] or "").replace("_", " ").title()
+            ident = f" · ID {a['id_funcional']}" if a["id_funcional"] else ""
+            cargo = f" — {a['cargo']}" if a["cargo"] else ""
+            texto.append(f"• *{papel}*: {a['nome']}{ident}{cargo}")
+    else:
+        texto.append("Nenhum responsável identificado nos documentos capturados.")
+        texto.append("")
+        texto.append("_Isso é lacuna de captura ou de instrução, NÃO afirmação de que o "
+                     "processo corra sem responsável designado: o ato de designação "
+                     "frequentemente vive no processo de contratação, não no de pagamento._")
+    if lacunas:
+        texto += ["", "*Lacunas apontadas:*"]
+        texto += [f"• {l.get('descricao') or l.get('tipo') or '—'}" for l in lacunas[:5]]
+
+    return {"ok": True, "processo": pasta_para_numero(pasta), "n": len(linhas),
+            "agentes": linhas, "lacunas": lacunas, "texto": "\n".join(texto)}
+
+
 async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
     """Dossiê Mestre de licitações (PDF Kroll): portfólio de órgãos (sem alvo) ou um órgão (CNPJ)."""
     from compliance_agent.notifications import telegram as _tg

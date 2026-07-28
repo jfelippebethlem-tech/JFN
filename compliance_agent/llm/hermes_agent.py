@@ -478,7 +478,16 @@ async def responder_hermes(pergunta: str, contexto_db: str, session) -> str:
     )
 
     try:
-        return await _hermes(_SYSTEM_RESPOSTA, prompt, max_tokens=HERMES_MAX_TOKENS)
+        _resp = await _hermes(_SYSTEM_RESPOSTA, prompt, max_tokens=HERMES_MAX_TOKENS)
+        # GATE DE CITAÇÕES TAMBÉM AQUI. O dano de afirmar um acórdão que não existe é o mesmo
+        # no parecer e no Telegram — e já encontramos quatro citações impossíveis por aritmética
+        # na base curada. A variante de canal suprime igual e resume o aviso em uma linha.
+        try:
+            from compliance_agent.reporting.gate_citacoes import sanear_canal
+            return sanear_canal(_resp, contexto="resposta do assistente")
+        except Exception as _e:  # noqa: BLE001 — o gate não pode calar a resposta
+            logger.warning("gate de citações não rodou na resposta (%s)", str(_e)[:80])
+            return _resp
     except Exception as e:
         return f"Hermes indisponível agora ({e}). Tente /status ou pergunte de forma mais simples."
 

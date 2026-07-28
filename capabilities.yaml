@@ -3,8 +3,8 @@
 # Origem: JFN-DOCUMENTO-MESTRE-CONSOLIDADO §7 (docs/refs/). Status: PRONTO = já existe; "ONDA N" = alvo da onda.
 # Regra de ouro do roteador: o Yoda só pode chamar ids presentes aqui; fora do registro = erro explícito.
 meta:
-  versao: "2.3.0"   # 2026-07-20: +certame_indice, +conjunto_orgao, +conjunto_portfolio, +sei_acatamento (dossiê mestre)
-  atualizado: "2026-07-20"
+  versao: "2.4.0"   # 2026-07-20: +certame_indice, +conjunto_orgao, +conjunto_portfolio, +sei_acatamento (dossiê mestre)
+  atualizado: "2026-07-28"
   base_http: "http://127.0.0.1:8000"
   cli_prefixo: "cd ~/JFN && PYTHONPATH=. .venv/bin/python -m"
   invariantes:
@@ -38,6 +38,11 @@ capacidades:
   - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
      descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
      args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}"}
+  - {id: responsaveis_processo, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/responsaveis, status: PRONTO,
+     descricao: "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo. Ausencia vem como LACUNA declarada, nunca como inexistencia de responsavel.", quando_usar: "'quem e o fiscal do processo X', 'quem assinou', 'quem autorizou', 'ordenador de despesas do SEI Y', '/responsaveis'", exemplo: "/responsaveis SEI-030001/004724/2026",
+     args: {processo: "string (numero SEI, com ou sem prefixo SEI-)"},
+     retorno: "{ok,processo,n,agentes[],lacunas[],texto}", enviar_telegram: [],
+     menu: {grupo: "🔎 Investigação", nome: "Responsáveis de um processo SEI", exemplo: "/responsaveis SEI-030001/004724/2026", ordem: 25, cmd: "/responsaveis"}}
   - {id: conjunto_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conjunto/orgao, status: PRONTO,
      descricao: "Avaliacao de CONJUNTO dos certames de um orgao (mediana/p90 do indice, reincidencia de clausula restritiva -> auditoria tematica, eliminacoes triviais, HHI de vitorias)", quando_usar: "visao de portfolio de um orgao licitante (CNPJ do orgao)", exemplo: "conjunto dos certames do CNPJ 34023077000107",
      args: {cnpj: "string (CNPJ do orgao no PNCP)"}, retorno: "{ok,avaliacao,secao_html}"}

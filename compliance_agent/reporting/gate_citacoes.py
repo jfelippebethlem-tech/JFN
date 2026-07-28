@@ -31,6 +31,8 @@ from pathlib import Path
 
 from compliance_agent.knowledge import tcu_juris_index as T
 
+logger = logging.getLogger(__name__)
+
 _MARCA_REMOVIDA = "[citação suprimida — acórdão inexistente no acervo do TCU]"
 
 _COLEGIADO_NO_TEXTO = re.compile(
@@ -133,3 +135,38 @@ def sanear_parecer(texto: str, db: str | Path | None = None,
     """Atalho de uso: saneia e já anexa a nota de conferência ao pé do documento."""
     saneado, rel = aplicar(texto, db=db, contexto=contexto)
     return saneado + nota_de_auditoria(rel)
+
+
+def sanear_canal(texto: str, db: str | Path | None = None,
+                 contexto: str = "canal") -> str:
+    """Saneia para canal conversacional (Telegram, CLI) — nota de UMA linha, e só se mudou algo.
+
+    O `sanear_parecer` anexa a nota completa de conferência, que é o certo numa peça e é ruído
+    numa resposta de chat. Aqui a citação impossível é suprimida do mesmo jeito — o dano de
+    afirmar um acórdão que não existe é igual nos dois canais —, mas o rodapé só aparece quando
+    houve supressão ou correção, e cabe numa linha.
+
+    Nunca levanta: uma dúvida de citação não pode derrubar a resposta ao usuário. O gate
+    protege contra afirmar o inexistente, não contra responder.
+    """
+    try:
+        saneado, rel = aplicar(texto, db=db, contexto=contexto, estrito=False)
+    except Exception as e:  # noqa: BLE001 — canal não pode cair por causa do gate
+        logger.warning("gate de citações não rodou em %s (%s)", contexto, str(e)[:90])
+        return texto
+
+    # As chaves são as de `aplicar()`: impossiveis (suprimidas), colegiado_errado (corrigidas)
+    # e nao_confirmadas (mantidas, mas declaradas). Ler o contrato em vez de supor os nomes.
+    n_sup = len(rel.get("impossiveis") or [])
+    n_cor = len(rel.get("colegiado_errado") or [])
+    n_dub = len(rel.get("nao_confirmadas") or [])
+    if not (n_sup or n_cor or n_dub):
+        return saneado
+    partes = []
+    if n_sup:
+        partes.append(f"{n_sup} suprimida(s) por numeração impossível")
+    if n_cor:
+        partes.append(f"{n_cor} com colegiado corrigido")
+    if n_dub:
+        partes.append(f"{n_dub} não confirmada(s) no índice")
+    return saneado + f"\n\n_⚖️ Conferência de citações: {'; '.join(partes)}._"
