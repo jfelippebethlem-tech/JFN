@@ -160,9 +160,17 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     # processos de TODAS as OBs (pedido do dono). O `run` filtra os já feitos e pega o próximo lote;
     # o skip-após-3-tentativas trata os fora-de-escopo (acesso do itkava) sem martelar. Ordena: unidade
     # LEGÍVEL primeiro (rende docs), depois por valor — o trabalho útil sai antes; o resto marcha depois.
+    # FONTE = SIAFE, não o espelho TFE. Medido em 2026-07-28: o universo do espelho tem 22.016
+    # processos e o do SIAFE tem 41.740 — com o TFE INTEIRAMENTE CONTIDO no SIAFE. O sweep
+    # estava cego para 19.724 processos (+90%), e o log dizia "nada novo na fila" enquanto
+    # metade do acervo nunca fora oferecida a ele. É a regra da casa aplicada onde faltava:
+    # OB/pagamento vem do SIAFE, nunca do espelho.
+    where_siafe = where.replace("numero_sei", "processo").replace("ug_codigo", "ug_emitente")
+    where_siafe = where_siafe.replace(
+        "replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')", "credor")
     rows = con.execute(
-        f"SELECT numero_sei, COUNT(*) nob, ROUND(SUM(valor),2) tot FROM ordens_bancarias "
-        f"WHERE {where} GROUP BY numero_sei ORDER BY tot DESC",
+        f"SELECT processo, COUNT(*) nob, ROUND(SUM(valor),2) tot FROM ob_orcamentaria_siafe "
+        f"WHERE {where_siafe} GROUP BY processo ORDER BY tot DESC",
         tuple(args),
     ).fetchall()
     con.close()

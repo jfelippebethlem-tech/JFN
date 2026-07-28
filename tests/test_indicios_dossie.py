@@ -13,6 +13,8 @@ uma das correções com o trecho REAL que a produziu.
 """
 from __future__ import annotations
 
+import pytest
+
 from compliance_agent.sei.indicios_dossie import (
     i_direta_sem_justificativa, i_execucao_sem_fiscal, i_juros_multa, resumo_md, varrer,
 )
@@ -148,3 +150,64 @@ def test_proponente_unico_e_apontado_com_a_explicacao_inocente():
     ind = i_licitante_unico("- Houve apenas uma proposta no certame [doc 004_ata.txt]")
     assert ind is not None
     assert "nicho" in ind.motivo, "tem de trazer a explicação inocente mais comum"
+
+
+# ── DV: detectar a PERGUNTA em vez da resposta ─────────────────────────────────────────────
+# A 1ª versão disparou em 70% dos 72 processos analisados. A causa era minha: o roteiro de
+# extração PEDE "inconsistências entre documentos do próprio lote" como item, e o modelo
+# responde "não consta". Eu contava o rótulo do roteiro como achado. Mesma lição do checklist
+# de vícios, que eu já tinha aprendido e não apliquei aqui.
+
+_REAIS_NEGATIVAS = [
+    "- - Inconsistências entre documentos do próprio lote: não consta [doc 001.txt]",
+    "- - inconsistências entre documentos do próprio lote: não consta [doc 002.txt]",
+    "- **Inconsistências entre documentos** — nenhuma identificada [doc 003.txt]",
+]
+
+_REAIS_POSITIVAS = [
+    "- - Inconsistência: valor total empenhado (R$ 76.392.525,00) difere da nota "
+    "(R$ 76.000.000,00) [doc 004.txt]",
+    "- **Inconsistências** — Divergência de competência: a NL cita 03/2025 enquanto a OB "
+    "cita 04/2025 [doc 005.txt]",
+]
+
+
+@pytest.mark.parametrize("linha", _REAIS_NEGATIVAS)
+def test_rotulo_do_roteiro_nao_e_achado(linha):
+    from compliance_agent.sei.indicios_dossie import i_divergencia_declarada
+    assert i_divergencia_declarada(linha) is None
+
+
+@pytest.mark.parametrize("linha", _REAIS_POSITIVAS)
+def test_divergencia_concreta_e_apontada(linha):
+    from compliance_agent.sei.indicios_dossie import i_divergencia_declarada
+    ind = i_divergencia_declarada(linha)
+    assert ind is not None and ind.codigo == "DV"
+
+
+def test_divergencia_exige_nomear_o_que_difere():
+    """"Há inconsistências" sem dizer QUAIS não é achado — é anúncio de achado."""
+    from compliance_agent.sei.indicios_dossie import i_divergencia_declarada
+    assert i_divergencia_declarada(
+        "- Foram observadas inconsistências no processo [doc 006.txt]") is None
+
+
+def test_regua_quebrada_APARECE_no_log_em_vez_de_sumir(caplog):
+    """O `except Exception` do `varrer` engoliu um NameError e o indício deixou de existir —
+    sem erro, sem log, sem nada. Silêncio é pior que a falha: a fila fica limpa por engano."""
+    import logging
+
+    from compliance_agent.sei import indicios_dossie as I
+
+    def _quebrada(_dossie):
+        raise RuntimeError("régua com defeito")
+
+    original = I.DETECTORES
+    I.DETECTORES = (_quebrada,)
+    try:
+        with caplog.at_level(logging.ERROR):
+            assert I.varrer("qualquer texto") == []
+    finally:
+        I.DETECTORES = original
+    assert any("PULADO" in r.message or "PULADO" in r.getMessage() for r in caplog.records), \
+        "a régua quebrada tem de aparecer no log"

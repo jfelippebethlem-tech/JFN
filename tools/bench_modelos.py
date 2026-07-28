@@ -293,19 +293,45 @@ def _chamar(model_id: str, sistema: str, prompt: str, timeout_s: int = 90) -> st
 # Provas medidas mínimas para o modelo receber nota. Abaixo disso ele é `não medido` — e
 # `não medido` NUNCA vira zero: um 429 diz respeito à cota do momento, não à capacidade.
 MIN_PROVAS_MEDIDAS = 3
-_TENTATIVAS_429 = 3
+_TENTATIVAS_429 = 4
+_ESPERA_BASE = 15        # 15s, 30s, 45s — generoso de propósito (ver _chamar_com_paciencia)
 
 
 def _chamar_com_paciencia(model_id: str, sistema: str, prompt: str) -> str:
-    """Chama insistindo no 429. Cota estourada é condição do momento, não defeito do modelo."""
+    """Insiste enquanto o erro for TRANSITÓRIO. Condição do momento não é defeito do modelo.
+
+    Duas famílias de erro passageiro, e a segunda estava escapando: além do 429 (cota), o
+    agregador devolve HTTP 200 com `{"error": {code: 502, ResourceExhausted}}` quando o provedor
+    de trás está sem capacidade — o que `RespostaProvedorErro.retentavel` já classifica. O bench
+    só retentava o 429, então um soluço de capacidade virava "não medido" e o modelo ficava fora
+    do ranking sem ter sido avaliado. Foi o que aconteceu com `gemma-4-26b` em 2026-07-28.
+
+    Espera crescente e generosa: medir 15 modelos é raro e barato; medir errado sai caro, porque
+    a nota decide qual modelo lê 2.045 processos.
+    """
     import httpx
+
+    from compliance_agent.llm.free_llm import RespostaProvedorErro
+
+    ultimo: Exception | None = None
     for tentativa in range(_TENTATIVAS_429):
         try:
             return _chamar(model_id, sistema, prompt)
         except httpx.HTTPStatusError as e:
-            if e.response.status_code != 429 or tentativa == _TENTATIVAS_429 - 1:
+            ultimo = e
+            if e.response.status_code != 429:
                 raise
-            time.sleep(8 * (tentativa + 1))
+        except RespostaProvedorErro as e:
+            ultimo = e
+            if not e.retentavel:
+                raise            # 400/401/403/404 não melhoram esperando
+        if tentativa < _TENTATIVAS_429 - 1:
+            espera = _ESPERA_BASE * (tentativa + 1)
+            print(f"      {model_id}: {type(ultimo).__name__} — aguardando {espera}s "
+                  f"(tentativa {tentativa + 2}/{_TENTATIVAS_429})")
+            time.sleep(espera)
+    if ultimo:
+        raise ultimo
     return ""
 
 
@@ -325,7 +351,20 @@ def avaliar_modelo(model_id: str, tarefas=None) -> dict:
         try:
             resp = _chamar_com_paciencia(model_id, sistema, prompt)
         except Exception as e:  # noqa: BLE001 — falha de chamada não é nota
+            # 404 "No endpoints found" NÃO é cota: o catálogo lista o modelo, mas ele não tem
+            # servidor. Tratar isso como "não medido" (transitório) faria o medidor voltar a
+            # tentá-lo para sempre e sugeriria que a nota chegaria um dia. Registra o óbito no
+            # catálogo e diz o que é — "não consegui medir agora" e "não existe" são fatos
+            # diferentes, e confundi-los é o erro que esta casa persegue.
+            permanente = "404" in str(e) or "No endpoints found" in str(e)
+            if permanente:
+                try:
+                    from compliance_agent.llm.openrouter_catalogo import marcar_morto
+                    marcar_morto(model_id, motivo="sem endpoint (404) no banco de provas")
+                except Exception:  # noqa: BLE001
+                    pass
             detalhe[nome] = {"nota": None, "ms": int((time.monotonic() - t0) * 1000),
+                             "indisponivel": bool(permanente),
                              "erro": f"{type(e).__name__}: {str(e)[:90]}"}
             continue
         nota = pontuar(resp)
@@ -341,6 +380,7 @@ def avaliar_modelo(model_id: str, tarefas=None) -> dict:
     return {"modelo": model_id,
             "nota": round(sum(notas) / len(notas), 1) if medido else None,
             "n_provas": len(notas),
+            "indisponivel": any(v.get("indisponivel") for v in detalhe.values()),
             "detalhe": detalhe}
 
 
@@ -383,12 +423,20 @@ def main() -> int:
     for r in medidos:
         print(f"{r['nota']:>6.1f}  {r['modelo']}  ({r['n_provas']} prova(s))")
     if nao_medidos:
-        print(f"\nNÃO MEDIDOS ({len(nao_medidos)}) — cota ou erro de chamada, NÃO incapacidade; "
-              "ficam de fora do ranking e a heurística de tamanho decide por eles:")
-        for r in nao_medidos:
-            motivos = {v.get("erro", "").split(":")[0] for v in r["detalhe"].values()
-                       if v.get("erro")}
-            print(f"        {r['modelo']}  ({', '.join(sorted(motivos)) or '?'})")
+        indisp = [r for r in nao_medidos if r.get("indisponivel")]
+        transit = [r for r in nao_medidos if not r.get("indisponivel")]
+        if indisp:
+            print(f"\nINDISPONÍVEIS ({len(indisp)}) — o catálogo lista, mas NÃO há endpoint "
+                  "(404). Não é cota e não vai melhorar esperando; marcados como mortos:")
+            for r in indisp:
+                print(f"        {r['modelo']}")
+        if transit:
+            print(f"\nNÃO MEDIDOS ({len(transit)}) — cota ou erro passageiro, NÃO incapacidade; "
+                  "ficam de fora do ranking e a heurística de tamanho decide por eles:")
+            for r in transit:
+                motivos = {v.get("erro", "").split(":")[0] for v in r["detalhe"].values()
+                           if v.get("erro")}
+                print(f"        {r['modelo']}  ({', '.join(sorted(motivos)) or '?'})")
 
     if a.gravar:
         # MEDIÇÃO ACUMULA, não substitui. A 1ª versão sobrescrevia `notas` com só o que esta

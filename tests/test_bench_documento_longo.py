@@ -95,3 +95,50 @@ def test_prova_isolada_nao_apaga_as_medicoes_anteriores(tmp_path, monkeypatch):
 
     assert set(detalhe["m/x:free"]) == {"rubrica", "ausencia", "documento_longo"}, \
         "as provas antigas foram apagadas pela execução isolada"
+
+
+# ── "não medido" e "não existe" são fatos diferentes ───────────────────────────────────────
+
+def test_404_sem_endpoint_marca_o_modelo_como_morto(tmp_path, monkeypatch):
+    """`poolside/laguna-m.1:free` está no catálogo e responde 404 "No endpoints found" — não é
+    cota, é ausência de servidor. Reportá-lo como "não medido" faria o medidor tentá-lo para
+    sempre e sugeriria que a nota chegaria um dia."""
+    import httpx
+
+    from tools import bench_modelos as B
+
+    mortos = []
+    monkeypatch.setattr("compliance_agent.llm.openrouter_catalogo.marcar_morto",
+                        lambda mid, motivo="": mortos.append(mid))
+
+    def _falha(*a, **k):
+        raise httpx.HTTPStatusError(
+            "404 No endpoints found", request=None,
+            response=type("R", (), {"status_code": 404, "text": "No endpoints found"})())
+
+    monkeypatch.setattr(B, "_chamar_com_paciencia", _falha)
+    r = B.avaliar_modelo("poolside/laguna-m.1:free", ["documento_longo"])
+    assert r["nota"] is None
+    assert r["indisponivel"] is True
+    assert "poolside/laguna-m.1:free" in mortos
+
+
+def test_429_continua_sendo_transitorio(monkeypatch):
+    """O simétrico: cota cheia NÃO pode marcar o modelo como morto."""
+    import httpx
+
+    from tools import bench_modelos as B
+
+    mortos = []
+    monkeypatch.setattr("compliance_agent.llm.openrouter_catalogo.marcar_morto",
+                        lambda mid, motivo="": mortos.append(mid))
+
+    def _falha(*a, **k):
+        raise httpx.HTTPStatusError(
+            "429 rate limit", request=None,
+            response=type("R", (), {"status_code": 429, "text": "rate limit"})())
+
+    monkeypatch.setattr(B, "_chamar_com_paciencia", _falha)
+    r = B.avaliar_modelo("m/x:free", ["documento_longo"])
+    assert r["indisponivel"] is False
+    assert mortos == []

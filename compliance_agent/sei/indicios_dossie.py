@@ -25,8 +25,11 @@ Os indícios nascem do que foi de fato encontrado no acervo, não de um catálog
 """
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 # Grau = prioridade INTERNA de diligência. Nunca sai em documento público como nota.
 GRAUS = ("informativo", "atencao", "prioritario")
@@ -165,10 +168,42 @@ def i_execucao_sem_fiscal(dossie: str) -> Indicio | None:
 _RE_DIVERG = re.compile(r"inconsist|diverg|contradi|discrep", re.IGNORECASE)
 
 
+# Uma divergência REAL nomeia o que difere: dois valores, duas datas, dois nomes. O rótulo
+# sozinho não é achado — e o roteiro de extração PEDE "inconsistências entre documentos" como
+# item, então o cabeçalho aparece em quase toda leitura, com "não consta" logo depois.
+# Negação explícita: o modelo responde ao item do roteiro dizendo que não há inconsistência.
+_RE_NEGA = re.compile(
+    r"n[aã]o\s+(?:h[aá]|consta|foram|foi|se\s+(?:verific|observ|constat))|nenhum[ao]?\b"
+    r"|aus[eê]ncia\s+de|inexist|sem\s+ind[ií]cio|nada\s+a\s+(?:apontar|registrar)",
+    re.IGNORECASE)
+
+_RE_CONCRETO = re.compile(
+    r"\bdifere\b|\bdiverg[ei]|\benquanto\b|\bvs\.?\b|\bcontra\b|\bmas\s+o\b"
+    r"|R\$\s*[\d.]+,\d{2}.{0,80}R\$\s*[\d.]+,\d{2}"
+    r"|\d{2}/\d{2}/\d{4}.{0,60}\d{2}/\d{2}/\d{4}", re.IGNORECASE)
+
+
+def _afirma_divergencia(linha: str) -> bool:
+    """A linha afirma uma divergência concreta, ou só repete o rótulo do roteiro?"""
+    if _RE_NEGA.search(linha):
+        return False
+    return bool(_RE_CONCRETO.search(linha))
+
+
 def i_divergencia_declarada(dossie: str) -> Indicio | None:
-    """Divergência entre documentos apontada na própria leitura."""
-    linhas = _linhas_com(dossie, _RE_DIVERG)
-    linhas = [ln for ln in linhas if "[doc" in ln]
+    """Divergência entre documentos AFIRMADA pela leitura, com o que difere nomeado.
+
+    A 1ª versão contava qualquer linha com a palavra "inconsistência", e disparou em **70% dos
+    72 processos** analisados — implausível. A causa era minha: o roteiro de extração PEDE
+    "inconsistências entre documentos do próprio lote" como item, e o modelo responde ao item
+    com "não consta". Eu estava detectando a PERGUNTA, não a resposta.
+
+    É a mesma lição do checklist de vícios, que eu já havia aprendido e não apliquei aqui: o
+    default é NÃO ser achado. Agora a linha precisa (a) não estar negada e (b) NOMEAR o que
+    difere — dois valores, duas datas, ou um verbo de comparação. Sem isso, é rótulo.
+    """
+    linhas = [ln.strip() for ln in _linhas_com(dossie, _RE_DIVERG)
+              if "[doc" in ln and _afirma_divergencia(ln)]
     if not linhas:
         return None
     return Indicio(
@@ -275,7 +310,12 @@ def varrer(dossie: str) -> list[Indicio]:
     for fn in DETECTORES:
         try:
             r = fn(dossie or "")
-        except Exception:  # noqa: BLE001 — um indício quebrado não cega os outros
+        except Exception as e:  # noqa: BLE001 — um indício quebrado não cega os outros
+            # MAS ELE PRECISA APARECER. Em 2026-07-28 um `NameError` numa régua recém-editada
+            # foi engolido aqui, e o indício simplesmente deixou de existir — sem erro, sem
+            # log, sem nada. Silêncio é pior que a falha: a fila fica limpa por engano.
+            logger.error("indício %s falhou e foi PULADO (%s: %s)",
+                         getattr(fn, "__name__", "?"), type(e).__name__, str(e)[:120])
             continue
         if r is not None:
             achados.append(r)
