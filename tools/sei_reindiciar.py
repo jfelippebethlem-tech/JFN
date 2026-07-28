@@ -81,7 +81,7 @@ def preservar_data_de_analise(nota_nova: str, nota_antiga: str) -> str:
 
 
 def regravar_nota(pasta: str, dossie: str, nota_antiga: str,
-                  monta_nota, varrer, confronto) -> int:
+                  monta_nota, varrer, confronto, natureza=None) -> int:
     """Escreve a nota recalculada preservando a data de leitura. Devolve 1 se escreveu.
 
     `monta_nota` (`_nota_vault`) devolve o TEXTO da nota, não o caminho, e não escreve nada —
@@ -90,7 +90,9 @@ def regravar_nota(pasta: str, dossie: str, nota_antiga: str,
     """
     m = re.search(r"^pago_ob_siafe:\s*([\d.]+)", nota_antiga, re.MULTILINE)
     pago = float(m.group(1)) if m else 0.0
-    texto = monta_nota(pasta, pago, dossie, varrer(dossie), confronto(pasta, dossie))
+    credor, prop = natureza(pasta) if natureza else (None, 0.0)
+    texto = monta_nota(pasta, pago, dossie, varrer(dossie), confronto(pasta, dossie),
+                       credor=credor, prop_nao_fornecedor=prop)
     NOTAS.mkdir(parents=True, exist_ok=True)
     (NOTAS / f"{pasta}.md").write_text(preservar_data_de_analise(texto, nota_antiga),
                                        encoding="utf-8")
@@ -104,7 +106,8 @@ def _reavaliar(pasta: str) -> dict | None:
     comparação é do texto, não da contagem (ver `precisa_regravar`).
     """
     from compliance_agent.sei.indicios_dossie import varrer
-    from tools.sei_analise_em_serie import _nota_vault, confronto_responsaveis
+    from tools.sei_analise_em_serie import (_nota_vault, confronto_responsaveis,
+                                            natureza_do_pagamento)
 
     arq_dossie, arq_nota = DOSSIES / f"{pasta}.md", NOTAS / f"{pasta}.md"
     if not arq_dossie.exists() or not arq_nota.exists():
@@ -113,8 +116,10 @@ def _reavaliar(pasta: str) -> dict | None:
     antiga = arq_nota.read_text(encoding="utf-8", errors="ignore")
     m = re.search(r"^pago_ob_siafe:\s*([\d.]+)", antiga, re.MULTILINE)
     indicios = varrer(dossie)
+    credor, prop = natureza_do_pagamento(pasta)
     nova = _nota_vault(pasta, float(m.group(1)) if m else 0.0, dossie, indicios,
-                       confronto_responsaveis(pasta, dossie))
+                       confronto_responsaveis(pasta, dossie),
+                       credor=credor, prop_nao_fornecedor=prop)
     return {"pasta": pasta, "dossie": dossie, "antiga": antiga,
             "antes": indicios_declarados_na_nota(antiga), "agora": len(indicios),
             "muda": precisa_regravar(antiga, len(indicios), texto_novo=nova)}
@@ -153,10 +158,12 @@ def main() -> int:
         return 0
 
     from compliance_agent.sei.indicios_dossie import varrer
-    from tools.sei_analise_em_serie import _nota_vault, confronto_responsaveis
+    from tools.sei_analise_em_serie import (_nota_vault, confronto_responsaveis,
+                                            natureza_do_pagamento)
 
-    escritas = sum(regravar_nota(r["pasta"], r["dossie"], r["antiga"],
-                                 _nota_vault, varrer, confronto_responsaveis) for r in mudaram)
+    escritas = sum(regravar_nota(r["pasta"], r["dossie"], r["antiga"], _nota_vault, varrer,
+                                 confronto_responsaveis, natureza_do_pagamento)
+                   for r in mudaram)
     print(f"\nnotas regravadas: {escritas}")
     return 0
 

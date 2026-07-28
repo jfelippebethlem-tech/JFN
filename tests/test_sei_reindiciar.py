@@ -99,12 +99,14 @@ def test_a_escrita_no_vault_grava_o_recalculado_com_a_data_antiga(tmp_path, monk
     monkeypatch.setattr(R, "NOTAS", tmp_path)
     antiga = NOTA.replace("2026-07-28", "2026-07-11")
 
-    def monta_nota(pasta, pago, dossie, indicios, conf):
+    def monta_nota(pasta, pago, dossie, indicios, conf, *, credor=None, prop_nao_fornecedor=0.0):
         assert pago == 7910916.00, "o valor pago vem da nota antiga, não é recalculado"
+        assert credor == "Fulano Ltda", "a natureza do pagamento chega ao montador da nota"
         return f"---\nprocesso: {pasta}\nindicios: {len(indicios)}\nanalisado_em: 2026-07-28\n---\n# ok"
 
     escritas = R.regravar_nota("420001_004984_2025", "dossiê", antiga,
-                               monta_nota, lambda d: ["um"], lambda p, d: {})
+                               monta_nota, lambda d: ["um"], lambda p, d: {},
+                               lambda p: ("Fulano Ltda", 0.0))
 
     gravada = (tmp_path / "420001_004984_2025.md").read_text()
     assert escritas == 1

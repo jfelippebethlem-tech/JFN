@@ -276,6 +276,61 @@ def confronto_responsaveis(pasta: str, dossie: str) -> dict:
     }
 
 
+def natureza_do_pagamento(pasta: str) -> tuple[str | None, float]:
+    """`(credor_principal, proporção do pago que é de credor NÃO-fornecedor)`.
+
+    Uma consulta por processo, só quando a nota vai ser escrita. Degrada honesto: sem banco,
+    devolve `(None, 0.0)` — e `ressalva_de_natureza` então não afirma nada.
+    """
+    from compliance_agent.entidades_gov import eh_nao_fornecedor
+
+    alvo = _chave(pasta)
+    if not alvo:
+        return None, 0.0
+    total = nao_forn = 0.0
+    principal, maior = None, 0.0
+    try:
+        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
+        for numero, nome, soma in con.execute(
+            "SELECT processo, MIN(nome_credor), SUM(COALESCE(valor,0)) FROM ob_orcamentaria_siafe "
+            "WHERE COALESCE(processo,'') <> '' GROUP BY processo"
+        ):
+            if _chave(numero) != alvo:
+                continue
+            v = float(soma or 0)
+            total += v
+            if eh_nao_fornecedor(nome or ""):
+                nao_forn += v
+            if v > maior:
+                principal, maior = nome, v
+        con.close()
+    except sqlite3.Error as e:
+        logger_msg = f"natureza do pagamento indisponível para {pasta} ({e})"
+        print(f"    aviso: {logger_msg}")
+        return None, 0.0
+    return principal, (nao_forn / total if total else 0.0)
+
+
+def ressalva_de_natureza(credor: str | None, proporcao_nao_fornecedor: float) -> str | None:
+    """Aviso de NATUREZA da despesa quando o pagamento é transferência, não contratação.
+
+    A fila da análise já exclui credor não-fornecedor (`_pagos_por_chave(so_contratacao=True)`)
+    porque ali não há licitação do Estado a fiscalizar. A nota, porém, anunciava o valor cheio:
+    SEI-420001/004819/2025 dizia "Pago (OB SIAFE): R$ 21.657.753,00" com credor "Pref Munic De
+    Campos De Goytacazes", enquanto a mesma fila dava R$ 0,00 para o processo. Produto e fila
+    mediam coisas diferentes, e quem lê a nota entende contratação.
+
+    Não é aviso de suspeita: transferência é despesa legítima. É aviso de que a diligência
+    cabível é outra — prestação de contas do convênio, não edital e contrato.
+    """
+    if not credor or proporcao_nao_fornecedor <= 0.5:
+        return None
+    return (f"> 💸 **Natureza da despesa:** o pagamento deste processo é majoritariamente "
+            f"**transferência a ente federativo** (credor: {credor}), não contratação do "
+            f"Estado. A fiscalização cabível é a de prestação de contas do repasse; não se "
+            f"espera aqui edital, contrato ou fiscal designado.")
+
+
 def leitura_incompleta(dossie: str) -> int:
     """Quantos lotes de documentos ficaram FORA do dossiê por falha de leitura.
 
@@ -288,7 +343,8 @@ def leitura_incompleta(dossie: str) -> int:
     return len(re.findall(r"lote \d+ não pôde ser lido", dossie or ""))
 
 
-def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict) -> str:
+def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict, *,
+                credor: str | None = None, prop_nao_fornecedor: float = 0.0) -> str:
     from compliance_agent.sei.indicios_dossie import resumo_md
 
     graus = {i.grau for i in indicios}
@@ -300,6 +356,7 @@ def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict) -> s
            else "⚠️" if perdidos else "🔵")
     valor = (f"R$ {pago:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
              if pago else "não localizado no SIAFE")
+    natureza = ressalva_de_natureza(credor, prop_nao_fornecedor)
     aviso = ([f"> ⚠️ **LEITURA INCOMPLETA — {perdidos} lote(s) de documentos não foram lidos** "
               "(nenhum provedor respondeu na hora da extração). Os documentos desse(s) lote(s) "
               "**não entraram** neste dossiê: o número de indícios abaixo mede o que foi lido, "
@@ -317,6 +374,7 @@ def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict) -> s
         f"# {tag} Processo {_norm_sei(pasta)}",
         "",
         *aviso,
+        *([natureza, ""] if natureza else []),
         f"**Pago (OB SIAFE):** {valor}  ",
         f"**Indícios apontados:** {len(indicios)}"
         + (" *(sobre a parte lida — ver aviso acima)*" if perdidos else ""),
@@ -364,7 +422,10 @@ def analisar(pasta: str, pago: float, *, vault: bool = True) -> dict:
 
     if vault:
         VAULT.mkdir(parents=True, exist_ok=True)
-        (VAULT / f"{pasta}.md").write_text(_nota_vault(pasta, pago, dossie, indicios, conf))
+        credor, prop = natureza_do_pagamento(pasta)
+        (VAULT / f"{pasta}.md").write_text(
+            _nota_vault(pasta, pago, dossie, indicios, conf,
+                        credor=credor, prop_nao_fornecedor=prop))
 
     return {"processo": pasta, "pago": pago, "n_indicios": len(indicios),
             "indicios": [i.to_dict() for i in indicios],
