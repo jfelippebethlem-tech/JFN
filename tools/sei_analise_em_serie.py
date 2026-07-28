@@ -210,9 +210,32 @@ def _ler_indice() -> dict:
         return {}
 
 
+def gravar_indice_mesclado(caminho, feitos_nesta_rodada: dict) -> None:
+    """Grava relendo o disco: esta rodada só afirma o que ELA analisou.
+
+    O read-modify-write sem merge já custou caro: 22 processos foram removidos do índice para
+    releitura (leitura antiga feita com tacada acima do teto de contexto) e o lote que já
+    rodava, com o índice lido ANTES da remoção, gravou a sua cópia por cima. Os 22 voltaram a
+    constar como "analisados" sem que um único dossiê fosse refeito. Dois lotes concorrentes
+    se apagariam do mesmo jeito, em silêncio.
+
+    Adição de terceiro fica; remoção de terceiro é respeitada — a menos que ESTA rodada tenha
+    analisado o mesmo item agora, caso em que o fato novo prevalece.
+    """
+    caminho = pathlib.Path(caminho)
+    try:
+        no_disco = json.loads(caminho.read_text())
+        if not isinstance(no_disco, dict):
+            no_disco = {}
+    except (OSError, json.JSONDecodeError):
+        no_disco = {}
+    no_disco.update(feitos_nesta_rodada)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    caminho.write_text(json.dumps(no_disco, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def _gravar_indice(d: dict) -> None:
-    INDICE.parent.mkdir(parents=True, exist_ok=True)
-    INDICE.write_text(json.dumps(d, ensure_ascii=False, indent=1))
+    gravar_indice_mesclado(INDICE, d)
 
 
 def confronto_responsaveis(pasta: str, dossie: str) -> dict:
@@ -443,7 +466,9 @@ def main() -> int:
             print(f"    falhou: {type(e).__name__}: {str(e)[:120]}")
             continue
         indice[pasta] = r
-        _gravar_indice(indice)
+        # grava só o resultado DESTA rodada; o merge preserva o disco (ver
+        # `gravar_indice_mesclado`) e não ressuscita o que foi removido para releitura
+        gravar_indice_mesclado(INDICE, {pasta: r})
         if r.get("erro"):
             print(f"    {r['erro']}")
             continue
