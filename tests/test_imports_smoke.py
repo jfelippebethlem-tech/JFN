@@ -26,6 +26,22 @@ _DENY = {
 }
 
 
+# Extras OPCIONAIS: `requirements-sei.txt` declara, no próprio cabeçalho, que o core roda só
+# com `requirements.txt` — logo, a ausência destes não é regressão. A VM-2 montou uma venv só
+# com o core e levou 4 falhas por `websocket` e `selenium`, que escondiam a falha de verdade no
+# meio do ruído. Extra ausente vira `skip` COM O NOME; qualquer outro ImportError continua
+# falhando (ver tests/test_imports_smoke_extras.py).
+EXTRAS_OPCIONAIS = {"websocket", "selenium", "webdriver_manager", "easyocr", "cv2", "pytesseract"}
+
+
+def extra_opcional_faltando(exc: BaseException) -> str | None:
+    """Nome do extra opcional que faltou, ou `None` se o erro é outro (e deve falhar)."""
+    if not isinstance(exc, ModuleNotFoundError) or not exc.name:
+        return None
+    raiz = exc.name.split(".")[0]
+    return raiz if raiz in EXTRAS_OPCIONAIS else None
+
+
 def _modulos():
     mods = []
     for pkg_nome in _PACOTES:
@@ -44,5 +60,12 @@ def _modulos():
 
 @pytest.mark.parametrize("modulo", _modulos())
 def test_modulo_importa(modulo):
-    """Cada módulo core importa sem erro."""
-    importlib.import_module(modulo)
+    """Cada módulo core importa sem erro — extra opcional ausente pula, declarando o nome."""
+    try:
+        importlib.import_module(modulo)
+    except ModuleNotFoundError as exc:
+        extra = extra_opcional_faltando(exc)
+        if not extra:
+            raise
+        pytest.skip(f"{modulo} depende do extra opcional '{extra}' "
+                    f"(requirements-sei.txt, não instalado nesta máquina)")
