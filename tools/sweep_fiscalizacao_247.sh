@@ -47,10 +47,26 @@ $PRIO timeout -k 60 1800 $PY tools/varredura_orgaos_sweep.py \
       >> data/varredura_orgaos.log 2>&1
 say "varredura_orgaos rc=$? (camada 2: ${IA:-desligada})"
 
+# ── CAMADA 1b — varredura por CERTAME. É o que levanta a cobertura: por UG dá 3 detectores de
+# 41 (a maioria é por certame e pede edital/propostas/ata); por certame dá 8, e medido em
+# 2026-07-28 são 62% das avaliações possíveis contra 7%. Idempotente (INSERT OR REPLACE).
+$PRIO timeout -k 60 1200 $PY tools/varredura_certames_sweep.py \
+      --com-clausulas --limite 400 --gravar $IA \
+      >> data/varredura_certames.log 2>&1
+say "varredura_certames rc=$?"
+
 # ── Fila de fracionamento do exercício corrente (leitura do SIAFE; sem IA).
 $PRIO timeout -k 60 900 $PY tools/fracionamento_siafe_sweep.py \
       --exercicio "$ANO" --gravar --top 0 >> data/fracionamento_siafe.log 2>&1
 say "fracionamento_siafe rc=$?"
+
+# ── Saúde do FALLBACK de IA. Sem isto, "a camada 2 rodou e nada achou" e "a camada 2 nunca
+# conseguiu chamar ninguém" são indistinguíveis no log — as duas produzem `nao_avaliavel`.
+# Roda uma vez por dia (slot das 00h30) para não gastar chamada à toa.
+if [ "$(date +%H)" = "00" ]; then
+    $PY tools/diagnostico_fallback_llm.py --json >> data/fallback_llm_saude.log 2>&1
+    say "diagnostico_fallback rc=$? (detalhe em data/fallback_llm_saude.log)"
+fi
 
 # ── Uso da camada 2 no dia, para a conta ser auditável em vez de estimada.
 $PY -c "
