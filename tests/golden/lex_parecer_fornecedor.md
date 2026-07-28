@@ -22,6 +22,10 @@
 
 > Não houve leitura de íntegra nesta execução (sem processos correlacionados ou leitura desabilitada).
 
+## II-B2. RESPONSÁVEIS IDENTIFICADOS
+
+> Nenhum responsável foi identificado nos documentos lidos. Isso é **lacuna de captura ou de instrução**, não afirmação de que o processo corra sem responsável designado — o ato de designação frequentemente não integra o processo de pagamento. **Diligência:** requisitar o ato de designação de fiscal e gestor (art. 117 da Lei 14.133/2021).
+
 ## II-C. CONTRATOS E COMPRAS DIRETAS — TCE-RJ (Dados Abertos)
 
 > Não há contratos nem compras diretas deste CNPJ na base de Dados Abertos do TCE-RJ. Isso pode ocorrer quando a contratação é municipal, federal, ou ainda não publicada — **diligência:** confirmar no PNCP e no próprio processo SEI.
@@ -36,7 +40,7 @@ Nenhum indício de fachada/laranja identificado nas hipóteses verificáveis (n�
 
 > Nenhuma hipótese de fachada/laranja se confirmou nas fontes verificáveis nesta varredura.
 
-> **Cobertura da investigação (honestidade):** endereco residencial: verificado (sem marcador); geocode: não solicitado; coendereco: verificado (nenhum); capital: INDISPONIVEL; recencia: verificado; situacao cadastral: verificado; porte: verificado; pep: INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY); beneficio social: INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY).
+> **Cobertura da investigação (honestidade):** endereco residencial: INDISPONIVEL (endereço não ingerido); geocode: INDISPONIVEL; coendereco: verificado (nenhum); capital: INDISPONIVEL; recencia: verificado; situacao cadastral: verificado; porte: INDISPONIVEL; pep: INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY); beneficio social: INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY).
 
 > **Veredito raciocinado (IA):** veredito LLM desligado (JFN_VEREDITO_LLM_DISABLED) — os sinais determinísticos acima permanecem válidos por si (degradação honesta).
 
@@ -106,7 +110,7 @@ _Nenhum indicador de risco disparado a partir dos dados disponíveis._
 
 ## IV-B. ANÁLISE DE MÉRITO
 
-> **Régua empírica (aprendida da base histórica):** Base: 1.138.236 OBs (chave única numero_ob+ug+exercício), 152 UGs, 74.780 fornecedores, exercícios 2019–2026. p90 do valor de OB ≈ R$ 148.959,46.
+> **Régua empírica (aprendida da base histórica):** Base: 1.138.236 OBs (chave única numero_ob+ug+exercício), 152 UGs, 74.781 fornecedores, exercícios 2019–2026. p90 do valor de OB ≈ R$ 148.953,26.
 
 **1. Perfil do fornecedor e aderência cadastral.** Trata-se de empresa fornecedora do Estado, com exposição de **R$ 4.320.000,00** em 6 ordens bancárias junto a 2 órgão(s) no período (janela observada: 2023-03-10 a 2025-08-20). A pulverização entre órgãos, isoladamente, não indica irregularidade.
 

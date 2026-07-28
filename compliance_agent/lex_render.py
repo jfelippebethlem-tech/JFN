@@ -551,6 +551,44 @@ def _secao_pacote_fachada(add, pac: dict, veredito: dict) -> None:
         add("")
 
 
+def _secao_responsaveis(sei: list) -> list[str]:
+    """Fichas de responsabilidade dos processos SEI do contexto, prontas para o parecer.
+
+    Lê a tabela já materializada por `tools/sei_agentes_sweep.py` em vez de reprocessar texto:
+    o parecer é gerado sob orçamento de tempo e não pode depender de varrer o acervo. Falha de
+    leitura devolve lista vazia — o parecer declara a lacuna, que é a resposta honesta.
+    """
+    import os
+    import sqlite3
+
+    numeros = [s.get("numero_sei", "") for s in (sei or []) if s.get("numero_sei")]
+    if not numeros:
+        return []
+    blocos: list[str] = []
+    try:
+        con = sqlite3.connect(f"file:{os.environ.get('JFN_DB', 'data/compliance.db')}?mode=ro",
+                              uri=True, timeout=15)
+        con.row_factory = sqlite3.Row
+        for numero in numeros[:6]:
+            pasta = "".join(c if c.isalnum() else "_" for c in numero.replace("SEI-", ""))
+            linhas = list(con.execute(
+                "SELECT nome, papel, id_funcional, cargo, documento FROM agente_processo "
+                "WHERE processo = ? ORDER BY papel, nome", (pasta,)))
+            if not linhas:
+                continue
+            bloco = [f"**Processo {numero}**", "",
+                     "| Papel | Nome | ID funcional | Cargo |", "|---|---|---|---|"]
+            for r in linhas:
+                papel = str(r["papel"] or "").replace("_", " ").title()
+                bloco.append(f"| {papel} | {r['nome']} | {r['id_funcional'] or '—'} | "
+                             f"{(r['cargo'] or '—')[:44]} |")
+            blocos.append("\n".join(bloco))
+        con.close()
+    except sqlite3.Error:
+        return []
+    return blocos
+
+
 def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     if analise is None:
         from compliance_agent.lex import _analise  # tardio: evita ciclo com a fachada lex.py
@@ -645,6 +683,27 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
                 "**Diligência:** reexecutar a leitura (o cache é preenchido) ou abrir manualmente.")
         else:
             add("> Não houve leitura de íntegra nesta execução (sem processos correlacionados ou leitura desabilitada).")
+        add("")
+
+    # II-B2. RESPONSÁVEIS — quem responde pelos atos do processo.
+    # Sem esta seção o parecer descreve o QUE aconteceu e cala sobre QUEM praticou, e
+    # responsabilização sem individualização não existe: "João da Silva, fiscal" não identifica
+    # ninguém num quadro de 200 mil servidores — por isso o ID funcional entra sempre que houver.
+    # A ausência é declarada como LACUNA, nunca como inexistência de responsável: em 97% dos
+    # processos do acervo o ato de designação simplesmente não foi capturado.
+    add("## II-B2. RESPONSÁVEIS IDENTIFICADOS")
+    add("")
+    _blocos_resp = _secao_responsaveis(sei)
+    if _blocos_resp:
+        for _b in _blocos_resp:
+            add(_b)
+            add("")
+    else:
+        add("> Nenhum responsável foi identificado nos documentos lidos. Isso é **lacuna de "
+            "captura ou de instrução**, não afirmação de que o processo corra sem responsável "
+            "designado — o ato de designação frequentemente não integra o processo de pagamento. "
+            "**Diligência:** requisitar o ato de designação de fiscal e gestor (art. 117 da Lei "
+            "14.133/2021).")
         add("")
 
     # II-C. Contratos e compras diretas no TCE-RJ (Dados Abertos — independe do SEI/WAF)

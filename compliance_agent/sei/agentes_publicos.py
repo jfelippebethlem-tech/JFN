@@ -202,6 +202,18 @@ def _papel_do_rotulo(rotulo: str) -> str | None:
     return None
 
 
+# Linha que declara identificador NÃO é cargo. Medido em 2026-07-28: 15 dos 73 cargos
+# preenchidos (20%) eram "ID Funcional nº 5117607-6" — a linha do ID caindo no campo do cargo,
+# porque no bloco de assinatura ela vem logo abaixo do nome, onde o cargo costuma estar.
+_RE_SO_IDENTIFICADOR = re.compile(
+    r"^\s*(?:id|identifica[cç][aã]o|matr[íi]cula)\b\.?\s*(?:funcional)?\s*"
+    r"[\s.:ºo°n\-–]*\d[\d.\-]*\s*$", re.IGNORECASE)
+
+
+def _e_identificador(texto: str) -> bool:
+    return bool(_RE_SO_IDENTIFICADOR.match(texto or ""))
+
+
 def _identificadores(janela: str) -> tuple[str | None, str | None]:
     idf = _RE_ID_FUNCIONAL.search(janela)
     mat = _RE_MATRICULA.search(janela)
@@ -262,7 +274,7 @@ def _por_assinatura(texto: str) -> list[AgenteEncontrado]:
             if m and nome_plausivel(m.group(1)):
                 nome = m.group(1).strip()
                 break
-            if cargo is None and len(cand) <= 70:
+            if cargo is None and len(cand) <= 70 and not _e_identificador(cand):
                 cargo = cand
         if not nome:
             continue

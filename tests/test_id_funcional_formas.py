@@ -70,3 +70,18 @@ def test_entidade_html_crua_nao_impede_a_extracao():
     assert ficha.agentes, "o agente sumiu por causa da entidade HTML"
     ids = {a.id_funcional for a in ficha.agentes}
     assert "1012634-1" in ids
+
+
+def test_linha_de_identificador_nao_vira_cargo():
+    """Medido em 2026-07-28: 15 de 73 cargos preenchidos (20%) eram "ID Funcional nº ...".
+    No bloco de assinatura a linha do ID vem logo abaixo do nome, exatamente onde o cargo
+    costuma estar — e o parecer saía atribuindo ao servidor o "cargo" de ter um ID."""
+    from compliance_agent.sei.agentes_publicos import _e_identificador
+
+    for linha in ("ID Funcional nº 5117607-6", "ID. 51212412", "ID.: 5143252-8",
+                  "Matrícula 27.646-9", "IDENTIFICAÇÃO FUNCIONAL 5149448-5"):
+        assert _e_identificador(linha) is True, f"{linha!r} devia ser reconhecido como ID"
+
+    for linha in ("Subsecretário de Logística", "Chefe de Serviço de Empenho",
+                  "Assistente Executivo - COOFIC/SUPIE", "Fiscal do Contrato"):
+        assert _e_identificador(linha) is False, f"{linha!r} é cargo de verdade"

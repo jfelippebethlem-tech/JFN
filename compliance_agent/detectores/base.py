@@ -28,14 +28,14 @@ Os módulos citados vivem em `compliance_agent/`.
                                                           + `rede_societaria`/`relacoes` (vínculo cotantes)
   P3  Sobrepreço na estimativa ....................... ✅ `precos_extract` + `sobrepreco.py` + `anomalias.py`
   P4  Fracionamento de despesa ....................... ✅ `detectores/p4_fracionamento.py` (ESTE pacote)
-  P5  Emergência fabricada ........................... ⬜ (timeline em `correlacao_sei`/`processos_sei`; falta o card)
+  P5  Emergência fabricada ......................... ✅ (`detectores/p5_emergencia_fabricada.py`)
 
   FASE DE EDITAL
   E1  Barreira de entrada (qualificação) ............. 🟡 `direcionamento_cerebro` (exigências restritivas/atestado)
-  E2  Publicidade e prazos minimizados ............... ⬜ (datas no PNCP; falta o card)
-  E3  Lote-pacote (agregação anticompetitiva) ........ ⬜
-  E4  Visita técnica como filtro ..................... ⬜
-  E5  Edital iterado (republicações dirigidas) ....... ⬜ (`corpus_editais` guarda versões; falta o diff)
+  E2  Publicidade e prazos minimizados ............. ✅ (`detectores/e2_prazos.py`)
+  E3  Lote-pacote (agregação anticompetitiva) ...... ✅ (`detectores/e3_lote_pacote.py`)
+  E4  Visita técnica como filtro ................... ✅ (`detectores/e4_visita_tecnica.py`)
+  E5  Edital iterado (republicações dirigidas) ..... ✅ (`detectores/e5_edital_iterado.py`)
   E6  Pontuação técnica dirigida ..................... 🟡 `direcionamento_cerebro` (matriz/cascata de julgamento)
 
   FASE DE JULGAMENTO (conluio — estatístico, exige série)
@@ -44,7 +44,7 @@ Os módulos citados vivem em `compliance_agent/`.
   J2  Propostas de cobertura (screens de preço) ...... 🟡 `anomalias.py` (Benford/dispersão); falta CV/RD/DIFFP
   J3  Desconto anômalo ............................... 🟡 `anomalias.py` / `sobrepreco.py` (desconto vs baseline)
   J4  Supressão de propostas / licitante único ....... 🟡 `rodizio_temporal` (perdedora profissional)
-  J5  Digitais compartilhadas (metadados) ............ ⬜ (exiftool; falta o card)
+  J5  Digitais compartilhadas (metadados) .......... ✅ (`detectores/j5_digitais_compartilhadas.py`)
   J6  Subcontratação cruzada / consórcio ............. 🟡 `rede_societaria`/`grafo_cartel.socios_compartilhados`
   J7  Inabilitação seletiva (dois pesos) ............. 🟡 `direcionamento_cerebro` (lê a ata de julgamento)
 
@@ -59,11 +59,11 @@ Os módulos citados vivem em `compliance_agent/`.
 
   EXECUÇÃO
   X1  Crescimento aditivo (contrato engorda) ......... 🟡 `contratos` (aditivos); falta o teto art.125
-  X2  Prorrogação perpétua ........................... ⬜
+  X2  Prorrogação perpétua ......................... ✅ (`detectores/x2_prorrogacao_perpetua.py`)
   X3  Execução financeira anômala .................... ✅ `ob_orcamentaria_siafe` + `ordens_bancarias`
                                                           (tríade empenho→liquidação→pagamento) + `anomalias.py`
-  X4  Carona abusiva em Ata de Registro de Preços .... ⬜ (limites art.86; falta o card)
-  X5  Jogo de planilha ............................... ⬜ (precisa execução medida item a item)
+  X4  Carona abusiva em Ata de Registro de Preços .. ✅ (`detectores/x4_carona_abusiva.py`)
+  X5  Jogo de planilha ............................. ✅ (`detectores/x5_jogo_planilha.py`)
   X6  Entrega fantasma / atesto de fachada ........... 🟡 `correlacao_sei` (atesto↔OB) + `verificacao_endereco` (C2)
 
   TRANSVERSAIS (já no JFN, alimentam vários cards)
@@ -72,6 +72,16 @@ Os módulos citados vivem em `compliance_agent/`.
   · Investigação doubt-driven (H-hipóteses) ........ ✅ `investigacao_dd` / `investigacao_orgao_dd`
   · Priorização / dual scoring (§7.3) .............. ✅ `priorizacao.py`
   · Cérebro LLM (Gemini→Groq→Cerebras) ............. ✅ `direcionamento_cerebro` (reusado por `verificar_adversarial`)
+
+  ACRESCENTADOS EM 2026-07-28 — existiam no REGISTRO e não constavam neste mapa.
+  Mapa que OMITE detector engana tanto quanto mapa que declara inexistente o que existe:
+  um manda reconstruir o pronto, o outro esconde o que já poderia estar em uso.
+  C   Perfil do contratado (fachada/laranja) ....... ✅ (`detectores/c_fachada.py`)
+  C7  Sancionada contratada (sanção vigente à ép ... ✅ (`detectores/c7_sancionada_contratada.py`)
+  E7  Cláusula restritiva (análise finalística + ... ✅ (`detectores/e7_clausula_restritiva.py`)
+  E8  Deserto/fracassado dirigido (edital inviáv ... ✅ (`detectores/e8_deserto_dirigido.py`)
+  J8  Atestado de capacidade técnica cruzado (em ... ✅ (`detectores/j_atestado_cruzado.py`)
+  P6  Contratação direta acima do limite de disp ... ✅ (`detectores/p6_direta_indevida.py`)
 """
 from __future__ import annotations
 
