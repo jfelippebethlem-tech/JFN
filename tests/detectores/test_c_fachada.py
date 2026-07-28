@@ -56,8 +56,18 @@ def test_indicio_nunca_vira_critico():
 
 # ───────────────────────────── invariante de honestidade ──────────────────────────────────────
 
-def test_investigacao_indisponivel_e_nao_avaliavel():
-    """Sem `investigacao` no contexto o card tenta o módulo pesado; falhando, declara."""
+def test_investigacao_indisponivel_e_nao_avaliavel(monkeypatch):
+    """Sem `investigacao` no contexto o card tenta o módulo pesado; falhando, declara.
+
+    O `finally` daqui fazia `sys.modules.pop(...)`, que REMOVE em vez de RESTAURAR: o módulo
+    real era reimportado depois como um objeto NOVO, e quem já tinha `from ... import
+    investigar` continuava com a função do objeto ANTIGO. Isso contaminava
+    `test_ponte_cpf_mascarado_destrava_beneficio` — que passava sozinho e falhava na suíte
+    cheia, em DUAS máquinas: o `monkeypatch` dele caía na instância nova enquanto a
+    `investigar` chamada era a velha, e o benefício nunca era consultado.
+
+    `monkeypatch.setitem` restaura o valor ANTERIOR, que é o que sempre se quis aqui.
+    """
     import sys
     import types
 
@@ -67,14 +77,11 @@ def test_investigacao_indisponivel_e_nao_avaliavel():
         raise RuntimeError("DuckDB fora do ar")
 
     falso.investigar = _explode
-    sys.modules["compliance_agent.investigacao_dd"] = falso
-    try:
-        res = CFachada().avaliar({"cnpj": _CNPJ})
-        assert res.status == "nao_avaliavel"
-        assert res.score == 0.0
-        assert "indisponível" in res.motivo_refutacao
-    finally:
-        sys.modules.pop("compliance_agent.investigacao_dd", None)
+    monkeypatch.setitem(sys.modules, "compliance_agent.investigacao_dd", falso)
+    res = CFachada().avaliar({"cnpj": _CNPJ})
+    assert res.status == "nao_avaliavel"
+    assert res.score == 0.0
+    assert "indisponível" in res.motivo_refutacao
 
 
 def test_empresa_sem_sinais_e_nao_avaliavel_nao_regular():
