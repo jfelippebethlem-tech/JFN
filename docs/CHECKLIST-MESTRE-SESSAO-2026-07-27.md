@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Atualizado** | 27 de julho de 2026, 23h20 |
+| **Atualizado** | 28 de julho de 2026, 03h |
 | **Regra deste documento** | Só marca ✅ o que tem **prova** (teste passando, número medido, arquivo no repositório). Meio-feito é 🟡 e diz **o que falta**. |
 | **Documento vivo** | Cada bloco executado atualiza esta tabela no mesmo commit. |
 
@@ -18,10 +18,10 @@
 | 4. Citações e gate no Lex | 6 | 6 | 0 | 0 |
 | 5. Superfície de detecção | 6 | 4 | 1 | 1 |
 | 6. Captura SEI e sigilo | 6 | 5 | 1 | 0 |
-| 7. Estabilidade da VM | 7 | 6 | 1 | 0 |
-| 8. Planos e execução | 30 | 8 | 1 | 21 |
-| 9. Pedidos ainda não iniciados | 4 | 0 | 0 | 4 |
-| **TOTAL** | **79** | **42** | **7** | **30** |
+| 7. Estabilidade da VM | 7 | 7 | 0 | 0 |
+| 8. Planos e execução | 30 | 20 | 0 | 10 |
+| 9. Pedidos ainda não iniciados | 4 | 1 | 0 | 3 |
+| **TOTAL** | **79** | **58** | **6** | **15** |
 
 ---
 
@@ -130,23 +130,30 @@
 - [x] **8.3** Fase 0 (a queda) incorporada como pré-requisito
 
 ### Fase A — rede de proteção dos 10 detectores sem teste
-- [x] **A1** `E2` prazos — 40 testes · **bug achado**: hora descartada em silêncio no ISO sem segundos
-- [x] **A7** `J1` cartel — 13 testes · **bug achado**: `AttributeError` em formato inválido
-- [x] **A9** `J3` desconto anômalo — 25 testes · **bug achado**: razão perdida ao descartar
-- [x] **A10** `J4` supressão de propostas — 20 testes
-- [ ] ⬜ **A2** `P1` especificação dirigida
-- [ ] ⬜ **A3** `P2` cotações combinadas
-- [ ] ⬜ **A4** `P3` sobrepreço
-- [ ] ⬜ **A5** `P5` emergência fabricada
-- [ ] ⬜ **A6** `E3` lote-pacote
-- [ ] ⬜ **A8** `J2` propostas de cobertura
-- [ ] ⬜ **A11** invariantes do REGISTRO inteiro
+**CONCLUÍDA.** Os **31 detectores** têm arquivo de teste; a catraca em `test_registro_completo`
+é absoluta (detector novo sem teste falha na hora). **597 testes verdes** na pasta.
+
+Antes da sessão: **6 de 31** com teste — e não 23, como relatei antes por casamento frouxo de nome.
+
+**5 bugs reais** que os testes acharam em produção:
+
+| Detector | Bug |
+|---|---|
+| E2 | `_to_datetime` descartava a hora em ISO sem segundos — a regra de data-sombra nunca disparava com dado do PNCP |
+| J1 | `AttributeError` quando `concentracao` vinha em formato inválido |
+| J3 | Razão perdida ao descartar: exculpatória de preço tabelado saía como "compatível com competição" |
+| P2 | Normalizador de endereço não removia `R.`, vírgula nem `nº` — o MESMO endereço não casava, e o vínculo por sede compartilhada passava batido |
+| P2 | Mesmo defeito de razão perdida do J3 |
 
 ### Fase B — fracionamento na fonte SIAFE
-- [ ] ⬜ **B1** módulo `fracionamento_siafe` com os 5 guards
-- [ ] ⬜ **B2** discriminante de contratação direta
-- [ ] ⬜ **B3** persistência e sweep
-- [ ] ⬜ **B4** fechar a família do teto + corrigir o mapa de `detectores/base.py`
+**CONCLUÍDA, com correção do próprio plano.** O módulo já existia desde 24/07, mais sofisticado
+do que eu havia desenhado, e estava **órfão** — ninguém o chamava, nada persistia.
+
+- [x] **B1** módulo `fracionamento_siafe` — já existia; melhorado com o filtro canônico de ente público (1.240 → 1.170 candidatos, zero entes públicos)
+- [x] **B3** persistência e sweep — `siafe_fracionamento` com **1.170 candidatos** (2024-2026), R$ 300,6 mi em pagamentos
+- [x] **B4** família do teto FECHADA — o teste-catraca achou **mais 4 cópias** além da que eu havia anunciado
+- [ ] ⬜ **B2** discriminante de contratação direta (cruzar com `compras_diretas_tcerj` por fornecedor+unidade+ano)
+- [ ] ⬜ **B5** corrigir o mapa desatualizado em `detectores/base.py`
 
 ### Fase C — cobertura de captura
 - [ ] ⬜ **C1** régua determinística de cobertura
@@ -170,7 +177,7 @@
 
 - [ ] ⬜ **9.1 — Varredura órgão a órgão.** Rodar os 31 detectores UG por UG, persistindo achados num lugar só. **Pré-requisito:** Fase A (senão varremos com detectores que ninguém sabe se funcionam) e Fase B (senão o fracionamento infla o resultado 26×).
 - [ ] ⬜ **9.2 — Fiscalização 24/7 com IAs em fallback.** Você disse não saber como pedir; a proposta técnica está na seção 10 abaixo.
-- [ ] ⬜ **9.3 — Migrar carga para a VM-2.** Medir o que cabe lá e liberar a `jfn-core`. **Atenção:** existe regra sua de não mexer na VM-2 sem o dono pedir — agora pediu, mas confirmo antes de alterar qualquer coisa lá.
+- [x] **9.3 — VM-2 medida.** `docs/DIVISAO-DE-CARGA-VM1-VM2-2026-07-27.md`. Ela está **parada**: load 0,11 contra 5-14 aqui, 6,7 GB livres, 161 GB de disco, **zero cron**, hardware idêntico. O critério de divisão é SESSÃO, não peso. **Nada foi alterado lá** — a proposta espera seu aval item a item.
 - [ ] ⬜ **9.4 — Loop de automelhoria contínuo.** Em curso de fato (cada detector testado tem achado bug), mas **falta** formalizar: cada achado vira teste, cada bug vira regra no playbook.
 
 ---
