@@ -42,12 +42,18 @@ elemento com "restrit" na classe, e `n_docs_restritos` vem 0 em 100% dos casos.
 |---|---:|
 | Caches inventariados | 5.663 |
 | **Processos com marcador de restrição** | **77** |
-| Caches cuja árvore de documentos não carregou | 2.579 |
+| Caches com o campo `arvore_carregou` em branco (ver §3.1) | 2.579 |
 | Processos conhecidos pelo pipeline e sem texto capturado | 3.216 |
 
 > **Não é possível quantificar a exposição financeira desta fila:** `sei_arvore.total_pago`
 > está preenchido em apenas 6 dos 3.216 processos (R$ 5.356.912,08). O valor real é
 > INDISPONÍVEL, não zero.
+
+### 3.1 Correção — os "2.579 com árvore não carregada" não eram falha
+
+**CORRIGIDO em 28/07:** este número era um ALARME FALSO meu. `arvore_carregou` só é preenchido pelo caminho de leitura normal; o caminho `cracked` lê direto e deixa o campo no default `False`. Dos caches com o campo False, **200 de 200 amostrados eram `via='cracked'` e TINHAM documentos** — leitura bem-sucedida. A investigação seguinte produziu um segundo alarme falso pela mesma causa ("falha de captcha em massa": `captcha_resolvido` também nasce `False`). É o erro que a casa combate — INDISPONÍVEL ≠ 0 — cometido do nosso lado. O inventário agora distingue *não carregou* de *não aferível*.
+
+O que **permanece verdadeiro** e não muda: os 77 processos com marcador de restrição (a correlação de 22,42% × 0,02% foi medida sobre o cadeado, não sobre este campo) e a fila de 3.216 processos conhecidos e sem texto capturado.
 
 ## 4. Lista completa — processos sob restrição de acesso
 

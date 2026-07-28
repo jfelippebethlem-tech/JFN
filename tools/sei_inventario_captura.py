@@ -49,7 +49,7 @@ def init_schema(con: sqlite3.Connection) -> None:
             sei_norm TEXT,
             cadeado INTEGER,          -- processo marcado como restrito
             n_docs_restritos INTEGER, -- documentos individualmente restritos
-            arvore_carregou INTEGER,  -- 0 = vimos a capa mas não a lista de documentos
+            arvore_carregou INTEGER,  -- 1 carregou · 0 não carregou · NULL não aferível (via cracked)
             n_docs INTEGER,
             tem_texto_local INTEGER,  -- há pasta em data/sei_arquivo com texto
             fonte TEXT,
@@ -63,6 +63,26 @@ def init_schema(con: sqlite3.Connection) -> None:
         );
     """)
     con.commit()
+
+
+def _arvore_carregou(d: dict) -> int | None:
+    """1 = carregou · 0 = NÃO carregou (medido) · None = não aferível neste caminho de leitura.
+
+    O leitor tem dois caminhos: o normal, que carrega a árvore lazy-load e SETA o campo, e o
+    `cracked`, que lê direto e nunca o toca — deixando o `False` do dicionário inicial. Tratar
+    esse default como medição gerou dois alarmes falsos em 2026-07-27: "2.579 capturas
+    estruturalmente incompletas" e, na investigação seguinte, "falha de captcha em massa" (mesma
+    causa — `captcha_resolvido` também nasce False). Dos caches com o campo False, 200 de 200
+    amostrados eram `via='cracked'` e TINHAM documentos: leitura bem-sucedida.
+    """
+    via = (d.get("via") or "").strip().lower()
+    valor = d.get("arvore_carregou")
+    if via == "cracked":
+        return None                       # este caminho não afere a árvore; o False é default
+    if valor is False:
+        # False com documentos na mão é contraditório: a leitura trouxe conteúdo.
+        return None if (d.get("documentos") or []) else 0
+    return 1
 
 
 def ler_caches() -> dict[str, dict]:
@@ -81,8 +101,17 @@ def ler_caches() -> dict[str, dict]:
             "numero_sei": num,
             "cadeado": 1 if d.get("cadeado") else 0,
             "n_docs_restritos": int(d.get("n_docs_restritos") or 0),
-            # ausente ≠ False: só marcamos 0 quando o campo diz explicitamente False
-            "arvore_carregou": 0 if d.get("arvore_carregou") is False else 1,
+            # `arvore_carregou` SÓ é confiável no caminho de leitura que a preenche. O leitor
+            # tem dois caminhos: o normal (que carrega a árvore lazy-load e seta o campo) e o
+            # `cracked` (que lê direto e NUNCA toca no campo, deixando-o no default False do
+            # dicionário inicial). Medido em 2026-07-27: dos caches com o campo False, 200 de 200
+            # amostrados eram `via='cracked'` E TINHAM documentos — leitura bem-sucedida.
+            # Tratar esse default como "árvore não carregou" produziu um alarme falso de 2.579
+            # capturas incompletas, e depois um segundo alarme falso de "falha de captcha em
+            # massa" (mesma causa: `captcha_resolvido` também nasce False e o caminho cracked não
+            # o atualiza). É o erro que a casa combate — INDISPONÍVEL ≠ 0 — do nosso lado.
+            "arvore_carregou": _arvore_carregou(d),
+            "via": (d.get("via") or "") or None,
             "n_docs": len(docs) if isinstance(docs, list) else 0,
             "fonte": f.name,
         }
@@ -169,9 +198,12 @@ def main() -> int:
     com_pago = [(k, v) for k, v in restritos.items() if conh.get(k, {}).get("total_pago", 0) > 0]
     print(f"  destes, JÁ COM PAGAMENTO registrado         : {len(com_pago):>5}"
           "   <- se confirmado, achado autônomo: contratação paga é pública")
-    print(f"  árvore de documentos NÃO carregou (geral)   : "
-          f"{sum(1 for v in cache.values() if not v['arvore_carregou']):>5}"
-          "   <- captura estruturalmente incompleta")
+    nao_carregou = sum(1 for v in cache.values() if v["arvore_carregou"] == 0)
+    nao_afericao = sum(1 for v in cache.values() if v["arvore_carregou"] is None)
+    print(f"  árvore de documentos NÃO carregou           : {nao_carregou:>5}"
+          "   <- captura de fato incompleta")
+    print(f"  árvore NÃO AFERÍVEL (lido por outro caminho): {nao_afericao:>5}"
+          "   <- leitura OK; o campo não se aplica")
 
     for rot, grupo in (("RESTRIÇÃO COM LISTA VISÍVEL", com_lista),
                        ("RESTRIÇÃO QUE ZERA A LISTA", sem_lista)):

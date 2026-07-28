@@ -103,7 +103,7 @@
 - [x] **6.3** Marcador **validado por correlação** (22,42% vs 0,02% — mil vezes de diferença) — refutou minha própria ressalva de que seria artefato
 - [x] **6.4** Fila de **3.216 conhecidos e não capturados** em `sei_fila_captura`
 - [x] **6.5** Peça para requisição formal — `docs/SEI-SIGILO-E-FILA-CAPTURA-2026-07-27.md`
-- [ ] 🟡 **6.6** **2.579 caches (46%) com árvore não carregada** — **falta** diagnosticar a causa (Fase C4 do plano)
+- [x] **6.6** Os "2.579 caches com árvore não carregada" (46%) eram **alarme falso meu** — ver correção no documento de sigilo. Inventário corrigido para distinguir *não carregou* de *não aferível*.
 
 ---
 

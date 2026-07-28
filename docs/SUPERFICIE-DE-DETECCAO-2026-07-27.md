@@ -12,7 +12,11 @@
 
 ## 1. Resposta curta
 
-**42 tipos catalogados · 31 detectores implementados · 23 com teste · 4 regras disparando em escala.**
+**42 tipos catalogados · 31 detectores implementados · 31 com teste · 4 regras disparando em escala.**
+
+> **Correção de 28/07:** a primeira versão deste documento dizia "23 com teste". Estava errado — a
+> medição casava o id do detector como substring do nome do arquivo, e a chave `"C"` casa com quase
+> qualquer nome. O real era **6**. Hoje são **31 de 31**, com catraca que impede regressão.
 
 A distância entre 42 e 4 é a resposta honesta. E o número que mais impressionava era o mais frágil:
 das **59.209** marcações de fracionamento no banco, **2.225** sobrevivem a uma verificação
@@ -23,7 +27,7 @@ elementar — as outras 57 mil não são achados.
 | Vícios catalogados (`knowledge/catalogo_vicios`) | **42** | Tipologia de referência, com lacunas declaradas |
 | Red flags do parecer (`lex_redflags._RF`) | **24** | 14 regras R2–R15 + 10 hipóteses de fachada (DD/H-*) |
 | Detectores estruturados (`detectores/`) | **31** | Implementados e registrados; framework com âncoras fixas |
-| — destes, com teste automatizado | **23** | 8 detectores sem rede de proteção |
+| — destes, com teste automatizado | **31** | catraca absoluta: detector novo sem teste falha na hora |
 | Regras rodando sobre todo o acervo de pagamentos | **4** | `ob_redflag`: fracionamento (2), valor simbólico, concentração |
 | Tipos de alerta persistidos nos sweeps PCRJ/emendas | **12** | 7.058 alertas gravados |
 
@@ -37,19 +41,19 @@ de detecção, está registrado, tem teste):
 ### Planejamento — 6 detectores
 | Código | Irregularidade | Teste |
 |---|---|:-:|
-| P1 | Especificação dirigida / marca disfarçada | ⬜ |
-| P2 | Cotações combinadas (orçamentos de fachada) | ⬜ |
-| P3 | Sobrepreço na estimativa | ⬜ |
+| P1 | Especificação dirigida / marca disfarçada | ✅ |
+| P2 | Cotações combinadas (orçamentos de fachada) | ✅ |
+| P3 | Sobrepreço na estimativa | ✅ |
 | P4 | Fracionamento de despesa (cluster por objeto, por exercício) | ✅ |
-| P5 | Emergência fabricada | ⬜ |
+| P5 | Emergência fabricada | ✅ |
 | P6 | Contratação direta indevida | ✅ |
 
 ### Edital — 8 detectores
 | Código | Irregularidade | Teste |
 |---|---|:-:|
 | E1 | Barreira de entrada na qualificação | ✅ |
-| E2 | Publicidade e prazos minimizados | ⬜ |
-| E3 | Lote-pacote (agregação anticompetitiva) | ⬜ |
+| E2 | Publicidade e prazos minimizados | ✅ |
+| E3 | Lote-pacote (agregação anticompetitiva) | ✅ |
 | E4 | Visita técnica usada como filtro | ✅ |
 | E5 | Edital iterado (republicação dirigida) | ✅ |
 | E6 | Pontuação técnica dirigida | ✅ |
@@ -59,10 +63,10 @@ de detecção, está registrado, tem teste):
 ### Julgamento — 8 detectores
 | Código | Irregularidade | Teste |
 |---|---|:-:|
-| J1 | Cartel / rodízio de vencedores | ⬜ |
-| J2 | Propostas de cobertura | ⬜ |
-| J3 | Desconto anômalo | ⬜ |
-| J4 | Supressão de propostas | ⬜ |
+| J1 | Cartel / rodízio de vencedores | ✅ |
+| J2 | Propostas de cobertura | ✅ |
+| J3 | Desconto anômalo | ✅ |
+| J4 | Supressão de propostas | ✅ |
 | J5 | Digitais compartilhadas (metadados de arquivo) | ✅ |
 | J6 | Subcontratação cruzada / consórcio de fachada | ✅ |
 | J7 | Inabilitação seletiva (dois pesos, duas medidas) | ✅ |
@@ -90,8 +94,16 @@ de detecção, está registrado, tem teste):
 `e2_prazos` (332 linhas), `x4_carona_abusiva` (397) e `p5_emergencia_fabricada` (259). O sistema
 é **maior** do que a própria documentação afirmava.
 
-**Os 8 sem teste** são o risco real: P1, P2, P3, P5, E2, E3, J1, J2, J3, J4 (10 arquivos, sendo 8
-detectores de card e 2 auxiliares). Detector sem teste é detector que ninguém sabe se ainda funciona.
+**Todos passaram a ter teste em 28/07** — e a rede de proteção pagou na hora: **5 bugs reais** que
+estavam em produção apareceram ao escrever os testes.
+
+| Detector | Bug encontrado pelo teste |
+|---|---|
+| E2 | `_to_datetime` descartava a hora em ISO sem segundos — a regra de data-sombra **nunca** disparava com dado do PNCP |
+| J1 | `AttributeError` quando `concentracao` vinha em formato inválido: o guard detectava e a linha seguinte chamava `.get()` mesmo assim |
+| J3 | Razão perdida ao descartar — exculpatória de preço tabelado saía do parecer como "compatível com competição" |
+| P2 | Normalizador de endereço não removia `R.`, vírgula nem `nº`: o **mesmo** endereço não casava, e o vínculo por sede compartilhada passava batido |
+| P2 | Mesmo defeito de razão perdida do J3 |
 
 ---
 
@@ -124,7 +136,10 @@ os processos eram contratação **direta**? Sem isso, o sinal é fila de triagem
    (R$ 59.906,02) fixo, aplicado a todos os anos: falso positivo em 2025 e 2026 (tetos reais
    R$ 62.725,59 e R$ 65.492,11) e falso negativo em 2021–2023. É a **4ª cópia divergente** do teto
    encontrada no projeto — e existe um módulo canônico (`limites_dispensa`) cujo docstring
-   literalmente proíbe duplicar a tabela. A 5ª cópia está em `lex_analise_conteudo.py:307`.
+   literalmente proíbe duplicar a tabela. **Correção de 28/07:** um teste-catraca varreu a base e
+   achou **mais quatro** cópias além dessa — `hermes_goal`, `rules/default_audit_config` (em duas
+   listas, e é o default de toda auditoria), `rules/obra` e `nucleo/parametros`. Todas resolvem por
+   exercício agora, e o teste impede a próxima.
 2. **Filtro de intragoverno dentro das regras.** `eh_nao_fornecedor` já era importado por
    `anomalias.py` — e usado **só no relatório**. As regras rodavam sobre tributo, encargo e
    repasse a fundo municipal de saúde, onde fracionamento é juridicamente impossível.
@@ -190,7 +205,7 @@ com limite de palavra — o "s" de "NFs" furava o `\b`. A guarda robusta não é
 | Com texto capturado | 2.007 |
 | **Conhecidos e sem texto (fila real)** | **3.216** |
 | Caches de varredura | 5.663 |
-| **Caches com árvore de documentos que não carregou** | **2.579 (46%)** |
+| Caches com o campo `arvore_carregou` em branco | 2.579 — **não é falha**, ver correção abaixo |
 | **Processos com marcador de restrição de acesso** | **77** |
 
 São dois universos quase disjuntos — apenas 688 processos aparecem nos dois lados. O arquivo local
