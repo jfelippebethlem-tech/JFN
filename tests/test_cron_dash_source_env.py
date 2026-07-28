@@ -61,7 +61,12 @@ def test_com_barra_a_linha_sobrevive():
 
 
 def _linhas_do_cron() -> list[str]:
-    crontab = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
+    # Sem o binário `crontab` (máquina de processamento, contêiner) não há cron a examinar:
+    # `skip` declarado, não falha — ausência do objeto examinado não é violação da regra.
+    try:
+        crontab = subprocess.run(["crontab", "-l"], capture_output=True, text=True).stdout
+    except FileNotFoundError:
+        pytest.skip("sem o binário `crontab` nesta máquina — nada de cron a examinar")
     return [
         linha
         for linha in crontab.splitlines()

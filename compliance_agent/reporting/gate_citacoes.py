@@ -155,6 +155,15 @@ def sanear_canal(texto: str, db: str | Path | None = None,
         logger.warning("gate de citações não rodou em %s (%s)", contexto, str(e)[:90])
         return texto
 
+    # Índice ausente: NÃO dá para suprimir (o teto por colegiado e ano vem dele, e inventar
+    # teto seria trocar um erro por outro) — mas calar faz a citação chegar ao destinatário
+    # idêntica a uma que passou pela conferência. O `logging.warning` que já existia ninguém
+    # lê no chat. INDISPONÍVEL ≠ OK, dentro do próprio gate que existe para barrar citação
+    # fabricada. Texto sem citação nenhuma não ganha aviso: aí seria ruído puro.
+    if rel.get("indice_ausente") and rel.get("total"):
+        return (texto or "") + ("\n\n_⚖️ Citações NÃO conferidas: índice de jurisprudência "
+                                "indisponível nesta máquina._")
+
     # As chaves são as de `aplicar()`: impossiveis (suprimidas), colegiado_errado (corrigidas)
     # e nao_confirmadas (mantidas, mas declaradas). Ler o contrato em vez de supor os nomes.
     n_sup = len(rel.get("impossiveis") or [])

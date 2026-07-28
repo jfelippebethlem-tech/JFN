@@ -375,8 +375,13 @@ def avaliar_modelo(model_id: str, tarefas=None) -> dict:
     # O piso existe para não dar nota a quem mal foi medido — mas ele não pode bloquear uma
     # execução deliberadamente restrita (`--tarefa documento_longo`). O mínimo é o menor entre
     # o piso e o número de provas PEDIDAS.
+    # ...mas com ZERO provas o mínimo virava 0, `len(notas) >= 0` era verdade, e o "medido"
+    # abria caminho para `sum(notas) / len(notas)` — ZeroDivisionError (achado pela VM-2 em
+    # 2026-07-28, numa máquina sem o acervo). Nada medido é INDISPONÍVEL, não nota: é a mesma
+    # regra que esta ferramenta já teve de aprender sobre si mesma quando somava 0 para prova
+    # estourada por 429.
     minimo = min(MIN_PROVAS_MEDIDAS, len(provas))
-    medido = len(notas) >= minimo
+    medido = bool(notas) and len(notas) >= minimo
     return {"modelo": model_id,
             "nota": round(sum(notas) / len(notas), 1) if medido else None,
             "n_provas": len(notas),
