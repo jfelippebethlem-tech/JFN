@@ -115,12 +115,49 @@ errada), e a chave `"litro"` duplicada em `medida_item` não escondia bug nenhum
 
 ---
 
+## 4-bis. Divisão de carga com a VM-2, e o que deliberadamente não se moveu
+
+A `JFN-Agent-2` estava ociosa (load 0,07 em 3 dias). Passaram para lá as **duas varreduras
+determinísticas** — leem a produção em só-leitura, escrevem em banco próprio, e são a carga que
+fazia a VM-1 competir consigo mesma. Timer systemd de 3 em 3 h, prioridade baixa, cedendo a vez
+aos timers do dono (Massare, descobre-doe, sei-pcrj).
+
+**Duas coisas NÃO foram migradas, e a razão importa mais que a decisão:**
+
+· **Coletores SIAFE.** O SIAFE aceita UMA sessão por IP, e a segunda **derruba** a primeira —
+  numa coleta noturna, perde-se a janela inteira. A restrição era invisível no código: um rsync
+  e um cron copiado a quebrariam em silêncio. Virou trava (`compliance_agent/host_siafe.py`).
+  O primeiro deploy expôs o óbvio: o marcador vive em `data/`, que fica fora do rsync de código,
+  e a trava ficou **inerte justamente na máquina que ela protege**.
+
+· **A análise em série.** Medida: 0,2% de CPU e um socket — ela espera cota de modelo `:free`,
+  que é por CHAVE de API, não por máquina. Migrar dividiria a mesma cota em dois lugares. O que
+  multiplica vazão é distribuir entre MODELOS, porque a cota é por modelo.
+
+## 4-ter. A prova de documento longo, e a inversão do piso
+
+O banco de provas ganhou a prova que faltava: documento real de ~25 mil tokens, com o fato
+pedido a **78% de profundidade** e **dois** números de empenho espalhados (mede completude, não
+só recuperação). O resultado confirma a desconfiança original do titular:
+
+| modelo | provas curtas | documento longo |
+|---|---|---|
+| nemotron-3-ultra-550b | 75–100 | **100** |
+| ling-3.0-flash | 75 | **100** |
+| nemotron-3-super-120b, cohere/north-mini-code, gpt-oss-20b | **100** | **0** |
+
+Três modelos que gabaritam tarefa curta **zeram** em documento longo. Isso quebrou a premissa da
+nota agregada — ela os promoveria a `documento` (onde falham) ou os eliminaria de `fast` (onde
+são os melhores). A nota passou a ser **por tarefa**.
+
+E a medição **inverteu o piso de parâmetros**: `ling-3.0-flash` não declara tamanho no id e
+provou que lê; o 120B declara e provou que não. Excluir quem provou que lê, admitindo quem
+provou que não, seria preferir a estimativa ao fato.
+
 ## 5. O que continua aberto
 
-- **Análise em série**: 6 de 2.055 processos. Código pronto e retomável; falta tempo de execução.
-- **Migração para a VM-2**: proposta escrita, execução pendente do dono.
-- **Banco de provas não mede documento longo** — as provas são curtas. O piso de parâmetros do
-  perfil `documento` é salvaguarda por tamanho declarado, não por desempenho medido.
+- **Análise em série**: rodando em laço contínuo (`tools/sei_serie_continua.sh`), em lotes com
+  gravação incremental. Limitada por cota de modelo, não por máquina.
 - **16% das pesquisas OSINT** terminam com resposta não-parseável do LLM (degradação honesta,
   mas melhorável).
 
