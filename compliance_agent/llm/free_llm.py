@@ -178,6 +178,31 @@ def garantir_sem_erro(data) -> None:
         raise RespostaProvedorErro("resposta sem 'choices' e sem 'error'")
 
 
+_RE_ESTOURO = re.compile(
+    r"maximum context length is\s*(\d+)\s*tokens.{0,80}?resulted in\s*(\d+)\s*tokens",
+    re.IGNORECASE | re.DOTALL)
+
+
+def estouro_de_contexto(mensagem) -> tuple[int, int] | None:
+    """`(limite, usado)` quando o erro é de janela de contexto; `None` caso contrário.
+
+    POR QUE ISTO EXISTE. Estimar tokens a partir de caracteres não funciona: medido em
+    2026-07-28, um processo de faturas de energia tinha razão de **1,50 char/token** onde a
+    constante do projeto assumia 3,5 — subestimativa de 2,3×, e o lote estourava a janela de
+    1.000.000. Amostrando 36 processos, a razão varia de 2,4 a 3,8; não há constante que sirva
+    para todo tipo de documento.
+
+    Mas o provedor informa a contagem VERDADEIRA na mensagem de erro. Ler esse número é melhor
+    que qualquer heurística, porque vem do tokenizador que de fato será usado.
+    """
+    if not mensagem:
+        return None
+    m = _RE_ESTOURO.search(str(mensagem))
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2))
+
+
 def conteudo_da_resposta(data) -> str:
     """Texto da resposta OpenAI-compatible, ou exceção CLASSIFICÁVEL.
 

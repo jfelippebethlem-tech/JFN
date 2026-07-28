@@ -47,7 +47,16 @@ logger = logging.getLogger(__name__)
 # Português jurídico é denso em palavra longa e número; ~3,5 caracteres por token é a razão
 # medida no acervo. Estimativa serve para PLANEJAR — a verdade é o tokenizador do provedor,
 # por isso a margem de segurança abaixo.
-CHARS_POR_TOKEN = 3.5
+# MEDIDO em 2026-07-28, e a lição é que NÃO EXISTE constante boa. Num processo de faturas de
+# energia (tabela densa, números, espaçamento de PDF) o tokenizador real contou 1.036.551 tokens
+# onde 3,5 char/token previa 445.259 — razão verdadeira de **1,50**, subestimativa de 2,3×, e o
+# lote estourou a janela de 1.000.000. Amostrando 36 processos do acervo, a razão vai de 2,4 a
+# 3,8. Por isso 2,0: conservador, perto do pior caso observado.
+#
+# A defesa que realmente resolve não é este número, é reagir à contagem VERDADEIRA que o provedor
+# devolve no erro de estouro — ver `llm/free_llm.estouro_de_contexto` e a subdivisão em
+# `tools/sei_dossie_md`. A constante só evita gastar a primeira chamada à toa.
+CHARS_POR_TOKEN = 2.0
 # Fração do contexto reservada ao prompt, ao sistema e à resposta. Encher a janela até a borda
 # é receita de truncamento silencioso no meio do último documento.
 FRACAO_UTIL = 0.55

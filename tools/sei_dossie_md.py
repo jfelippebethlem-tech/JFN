@@ -40,7 +40,26 @@ def _contexto_do_modelo(model_id: str, padrao: int = 128_000) -> int:
     return padrao
 
 
-def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300) -> str:
+class EstouroDeContexto(RuntimeError):
+    """O lote não cabe na janela — com a contagem REAL informada pelo provedor.
+
+    Estimar token por caractere não funciona (razão medida de 1,50 a 3,8 conforme o documento).
+    Em vez de calibrar uma constante que vai errar no próximo tipo de peça, o planejamento
+    reage ao número verdadeiro: divide o lote pelo fator `limite/usado`, com margem.
+    """
+
+    def __init__(self, limite: int, usado: int):
+        super().__init__(f"lote usou {usado:,} tokens; a janela é {limite:,}".replace(",", "."))
+        self.limite, self.usado = limite, usado
+
+    @property
+    def fator(self) -> float:
+        """Quanto o lote precisa encolher, com 15% de margem para a variação entre lotes."""
+        return (self.limite / self.usado) * 0.85
+
+
+def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300,
+          max_tokens: int = 4000) -> str:
     import httpx
     r = httpx.post(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -48,7 +67,7 @@ def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300) -> str
         json={"model": model_id,
               "messages": [{"role": "system", "content": sistema},
                            {"role": "user", "content": prompt}],
-              "max_tokens": 4000, "temperature": 0.1},
+              "max_tokens": max_tokens, "temperature": 0.1},
         timeout=timeout_s)
     r.raise_for_status()
     # HTTP 200 pode trazer corpo de ERRO (upstream do OpenRouter). Ver
@@ -57,7 +76,7 @@ def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300) -> str
     return conteudo_da_resposta(r.json()).strip()
 
 
-def _chamar(model_id: str, sistema: str, prompt: str) -> str:
+def _chamar(model_id: str, sistema: str, prompt: str, *, max_tokens: int = 4000) -> str:
     """Uma etapa do dossiê, encarando o limite de cota do jeito que ele aparece de verdade.
 
     Modelo `:free` NÃO cai de uma vez: ele estoura cota no meio da tarefa, tipicamente com 429
@@ -84,11 +103,18 @@ def _chamar(model_id: str, sistema: str, prompt: str) -> str:
                 print(f"    429 em {mid} — aguardando {espera}s (cota é por modelo)")
                 time.sleep(espera)
             try:
-                return _post(mid, sistema, prompt)
+                return _post(mid, sistema, prompt, max_tokens=max_tokens)
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429:
                     continue
-                print(f"    {mid} respondeu {e.response.status_code} — próximo")
+                corpo = (e.response.text or "")[:300]
+                from compliance_agent.llm.free_llm import estouro_de_contexto
+                estouro = estouro_de_contexto(corpo)
+                if estouro:
+                    # Sobe para quem planeja: a contagem VERDADEIRA do tokenizador permite
+                    # refazer o corte, e é melhor que qualquer estimativa por caractere.
+                    raise EstouroDeContexto(*estouro) from e
+                print(f"    {mid} respondeu {e.response.status_code}: {corpo[:150]} — próximo")
                 break
             except Exception as e:  # noqa: BLE001
                 print(f"    {mid} falhou ({type(e).__name__}) — próximo")
@@ -103,6 +129,90 @@ def _chamar(model_id: str, sistema: str, prompt: str) -> str:
     except Exception as e:  # noqa: BLE001
         print(f"    cadeia grátis indisponível ({type(e).__name__})")
         return ""
+
+
+def assinatura_do_plano(plano) -> str:
+    """Identidade do plano de leitura — o que torna um lote comparável entre execuções.
+
+    O checkpoint era indexado só pelo NÚMERO do lote, e isso não identifica conteúdo: trocar o
+    modelo muda o contexto, refaz o plano, e o mesmo processo passa de 16 lotes para 4. Os
+    índices 1..4 continuavam existindo e a retomada colava extrações do plano ANTIGO num plano
+    NOVO — dossiê afirmando cobrir 291 documentos com a leitura de ~57, sem um aviso.
+    """
+    import hashlib
+    bruto = f"{len(plano.lotes)}|{plano.n_docs}|{plano.orcamento}|" + ",".join(
+        f"{lote.indice}:{len(lote.docs)}:{lote.tokens}" for lote in plano.lotes)
+    return hashlib.sha256(bruto.encode()).hexdigest()[:16]
+
+
+def ler_checkpoint(caminho: pathlib.Path, plano) -> dict[int, str]:
+    """Lotes já feitos PARA ESTE PLANO. Plano diferente devolve vazio, e é o ponto do conserto."""
+    assinatura = assinatura_do_plano(plano)
+    feitos: dict[int, str] = {}
+    try:
+        linhas = pathlib.Path(caminho).read_text().splitlines()
+    except OSError:
+        return {}
+    for linha in linhas:
+        try:
+            d = json.loads(linha)
+            if d.get("plano") != assinatura:     # inclui o formato antigo, que não tem a chave
+                continue
+            feitos[int(d["lote"])] = d["texto"]
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+            continue
+    return feitos
+
+
+def gravar_lote(caminho: pathlib.Path, plano, indice: int, texto: str) -> None:
+    caminho = pathlib.Path(caminho)
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    with caminho.open("a") as fh:
+        fh.write(json.dumps({"plano": assinatura_do_plano(plano), "lote": indice,
+                             "texto": texto}, ensure_ascii=False) + "\n")
+
+
+_SECOES = ("Objeto e enquadramento", "Partes e responsáveis", "Linha do tempo", "Valores",
+           "Indícios a verificar", "Contradições entre documentos", "Lacunas")
+
+
+def _consolidacao_utilizavel(texto: str) -> bool:
+    """A consolidação vale se traz as seções pedidas e não é monólogo do modelo.
+
+    Exigir 5 das 7 (e não as 7) porque o modelo às vezes funde duas seções legitimamente. O que
+    NÃO se aceita é o texto que apenas ECOA a lista de seções dentro do raciocínio — daí a
+    checagem de monólogo junto, e não em vez.
+    """
+    if not (texto or "").strip():
+        return False
+    from tools.bench_modelos import penalidade_formato
+    presentes = sum(1 for sec in _SECOES if sec.lower() in texto.lower())
+    return presentes >= 5 and penalidade_formato(texto) < 24
+
+
+def _mapear_subdividido(modelo: str, lote, fator: float, prompt_map) -> str:
+    """Reprocessa um lote que estourou, dividindo seus DOCUMENTOS em partes menores.
+
+    Divide por documento, como o planejamento original — o corte por caractere continua sendo o
+    último recurso, porque é ele que destrói a citação.
+    """
+    from compliance_agent.sei.dossie_fracionado import Lote
+
+    partes = max(2, round(1 / max(0.05, fator)))
+    docs = lote.docs
+    tamanho = max(1, len(docs) // partes)
+    saidas = []
+    for n, i in enumerate(range(0, len(docs), tamanho), 1):
+        sub = Lote(indice=lote.indice, docs=docs[i:i + tamanho])
+        sistema, prompt = prompt_map(sub)
+        try:
+            texto = _chamar(modelo, sistema, prompt)
+        except EstouroDeContexto as e:
+            print(f"      parte {n} ainda estourou — dividindo de novo")
+            texto = _mapear_subdividido(modelo, sub, e.fator, prompt_map)
+        if texto:
+            saidas.append(f"_(parte {n} do lote {lote.indice})_\n\n{texto}")
+    return "\n\n".join(saidas)
 
 
 def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pathlib.Path | None:
@@ -134,17 +244,12 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
     # anteriores — e a próxima execução paga tudo de novo. Cada lote é gravado assim que
     # responde; relançar o comando retoma de onde parou.
     ckpt = CHECKPOINTS / f"{nome_pasta}.jsonl"
-    ckpt.parent.mkdir(parents=True, exist_ok=True)
-    feitos: dict[int, str] = {}
-    if ckpt.exists():
-        for linha in ckpt.read_text().splitlines():
-            try:
-                d = json.loads(linha)
-                feitos[int(d["lote"])] = d["texto"]
-            except (json.JSONDecodeError, KeyError, ValueError):
-                continue
-        if feitos:
-            print(f"  retomando: {len(feitos)} de {len(plano.lotes)} lote(s) já no checkpoint")
+    feitos = ler_checkpoint(ckpt, plano)
+    if feitos:
+        print(f"  retomando: {len(feitos)} de {len(plano.lotes)} lote(s) já no checkpoint")
+    elif ckpt.exists():
+        print("  checkpoint existe mas é de outro plano de leitura (o modelo mudou) — "
+              "relendo do zero, para não misturar lotes de planos diferentes")
 
     blocos: list[str] = []
     for lote in plano.lotes:
@@ -153,14 +258,18 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
             continue
         sistema, prompt = prompt_map(lote)
         t0 = time.monotonic()
-        saida = _chamar(modelo, sistema, prompt)
+        try:
+            saida = _chamar(modelo, sistema, prompt)
+        except EstouroDeContexto as e:
+            # Não é falha: é a medição certa chegando tarde. Refaz o corte com ela.
+            print(f"    lote {lote.indice} estourou ({e}) — subdividindo em "
+                  f"{max(2, round(1 / e.fator))} parte(s) com a contagem real")
+            saida = _mapear_subdividido(modelo, lote, e.fator, prompt_map)
         print(f"  lote {lote.indice}/{len(plano.lotes)}: {len(lote.docs)} doc(s) · "
               f"{lote.tokens:,} tk · {time.monotonic() - t0:.0f}s · "
               f"{'ok' if saida else 'SEM RESPOSTA'}".replace(",", "."))
         if saida:
-            with ckpt.open("a") as fh:
-                fh.write(json.dumps({"lote": lote.indice, "texto": saida},
-                                    ensure_ascii=False) + "\n")
+            gravar_lote(ckpt, plano, lote.indice, saida)
         blocos.append(saida or f"_(lote {lote.indice} não pôde ser lido — nenhum provedor "
                                "respondeu; os documentos deste lote NÃO entraram no dossiê. "
                                "Relançar o comando retoma só os lotes que faltam.)_")
@@ -169,7 +278,19 @@ def gerar(nome_pasta: str, *, so_plano: bool = False, vault: bool = False) -> pa
         corpo = blocos[0]
     else:
         sistema, prompt = prompt_reduce(nome_pasta, blocos)
-        corpo = _chamar(modelo, sistema, prompt) or "\n\n".join(blocos)
+        corpo = _chamar(modelo, sistema, prompt, max_tokens=12_000)
+        # DEFESA EM PROFUNDIDADE. Medido em 2026-07-28: o modelo consolidou 16 lotes devolvendo
+        # o próprio raciocínio em inglês, truncado no meio de uma frase, sem nenhuma das sete
+        # seções — enquanto os blocos do `map` traziam 232 citações [doc ...] e valores reais.
+        # Consolidação ruim não pode apagar extração boa: sem as seções, entrega-se o material
+        # bruto, que é útil, em vez do monólogo, que não é.
+        if not _consolidacao_utilizavel(corpo):
+            print("  ⚠️ consolidação inutilizável (monólogo ou sem as seções) — entregando as "
+                  "extrações por lote, que preservam as citações")
+            corpo = ("> ⚠️ A consolidação automática não produziu as seções esperadas. Abaixo, as "
+                     "extrações por lote, com as citações preservadas.\n\n"
+                     + "\n\n".join(f"## Extração do lote {i}\n\n{b}"
+                                   for i, b in enumerate(blocos, 1)))
 
     md = cabecalho_md(plano, modelo or "cadeia grátis") + "\n" + corpo + "\n"
     # `garantir_neutro` VALIDA e levanta; não devolve texto. Atribuir o retorno dele a `md`

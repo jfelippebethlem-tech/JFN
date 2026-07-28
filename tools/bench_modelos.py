@@ -44,6 +44,37 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 SAIDA = pathlib.Path("data/modelos_ranking.json")
 
 
+# Deliberação em primeira pessoa sobre a PRÓPRIA tarefa — o modelo pensando em voz alta em vez
+# de responder. Não é qualquer verbo modal: "o gestor deve atestar" é texto legítimo. O gatilho
+# é o modelo falando de si e do enunciado.
+_MONOLOGO = re.compile(
+    r"\b(?:we|i)\s+(?:need\s+to|must|should|will|have\s+to|can|could|'ll)\b"
+    r"|\blet(?:'s|\s+me)\b"
+    r"|\bthe\s+(?:user|instruction|prompt|question)\s+(?:says|wants|asks|is)\b"
+    r"|\bpreciso\s+(?:encontrar|listar|verificar|analisar)\b"
+    r"|\bvamos\s+(?:analisar|come[cç]ar|verificar|extrair)\b"
+    r"|\bdevo\s+(?:listar|extrair|responder|verificar)\b",
+    re.IGNORECASE)
+
+# Cada marcador desconta isto da nota da prova, com teto de 100 (nota nunca fica negativa).
+PESO_MONOLOGO = 12
+
+
+def penalidade_formato(resposta: str) -> int:
+    """Desconto por monólogo interno na resposta.
+
+    PONTO CEGO CORRIGIDO EM 2026-07-28. A pontuação das provas casa SUBSTRING, então um modelo
+    que despeja o próprio raciocínio e ao final menciona o nome certo pontuava igual a um que
+    responde limpo. `nemotron-3-super-120b` tirou 100,0 assim — e, ao consolidar um dossiê real
+    de 16 lotes, devolveu 13 marcadores de monólogo em inglês, truncado no meio de uma frase,
+    sem nenhuma das sete seções pedidas. Conteúdo bom, formato inutilizável.
+
+    Isso importa porque `escolher("documento")` passou a confiar na nota medida: o ponto cego do
+    medidor virava escolha de modelo errada para a tarefa mais caras que temos.
+    """
+    return min(100, PESO_MONOLOGO * len(_MONOLOGO.findall(resposta or "")))
+
+
 def _norm(s: str) -> str:
     t = "".join(c for c in unicodedata.normalize("NFD", str(s or ""))
                 if unicodedata.category(c) != "Mn")
@@ -145,28 +176,36 @@ def _p_vicio(r: str) -> int:
     return base + (30 if "atestado" in n else 0)
 
 
+def _com_formato(pontuar):
+    """Aplica a penalidade de formato a qualquer pontuador — ponto único, para não corrigir uma
+    prova e esquecer as outras."""
+    def _p(resposta: str) -> int:
+        return max(0, pontuar(resposta) - penalidade_formato(resposta))
+    return _p
+
+
 PROVAS = [
     ("extracao",
      "Você extrai fatos de documentos oficiais. Responda APENAS com o que está escrito no "
      "documento. Nunca invente nome ou número.",
      f"{_ATO}\n\nListe os responsáveis designados: nome completo, ID funcional e papel.",
-     _p_extracao),
+     _com_formato(_p_extracao)),
     ("rubrica",
      "Você classifica cláusulas de edital em escala FECHADA. Responda em duas linhas: "
      "'nivel: <ausente|fraco|medio|forte|critico>' e 'trecho: <citação literal do edital>'. "
      "Não escreva mais nada.",
      f"{_CLAUSULA}\n\nClassifique o grau de restrição à competitividade desta cláusula.",
-     _p_rubrica),
+     _com_formato(_p_rubrica)),
     ("ausencia",
      "Você lê documentos oficiais. Se a informação pedida não estiver no documento, diga "
      "exatamente que ela não consta. Nunca estime, nunca preencha com zero.",
      f"{_SEM_VALOR}\n\nQual é o valor estimado da contratação neste documento?",
-     _p_ausencia),
+     _com_formato(_p_ausencia)),
     ("vicio",
      "Você é analista de controle externo. Escolha UM vício da lista e cite o trecho que o "
      "sustenta. Lista: " + "; ".join(_VICIOS),
      f"{_CLAUSULA}\n\nQual vício da lista esta cláusula caracteriza? Cite o trecho.",
-     _p_vicio),
+     _com_formato(_p_vicio)),
 ]
 
 
@@ -247,6 +286,8 @@ def main() -> int:
     ap.add_argument("--gravar", action="store_true")
     ap.add_argument("--modelo", action="append", help="limita a um id (repetível)")
     ap.add_argument("--tarefa", action="append", choices=[p[0] for p in PROVAS])
+    ap.add_argument("--pausa", type=float, default=6.0,
+                    help="segundos entre modelos (evita 429 contra si mesmo)")
     a = ap.parse_args()
 
     ids = a.modelo or [m["id"] for m in catalogo()]
@@ -256,7 +297,11 @@ def main() -> int:
     print(f"medindo {len(ids)} modelo(s) × {len(a.tarefa or PROVAS)} prova(s)\n")
 
     linhas = []
-    for mid in ids:
+    for n, mid in enumerate(ids):
+        if n:
+            # Ritmo: medir 15 modelos em rajada gera 429 contra si mesmo — foi o que aconteceu
+            # em 2026-07-28 (8 de 15 ficaram sem medição por cota).
+            time.sleep(a.pausa)
         r = avaliar_modelo(mid, a.tarefa)
         linhas.append(r)
         det = " ".join(f"{k}={'--' if v['nota'] is None else v['nota']:>3}"
@@ -279,13 +324,28 @@ def main() -> int:
             print(f"        {r['modelo']}  ({', '.join(sorted(motivos)) or '?'})")
 
     if a.gravar:
+        # MEDIÇÃO ACUMULA, não substitui. A 1ª versão sobrescrevia `notas` com só o que esta
+        # execução mediu — e como bater na API três vezes seguidas gera 429, uma rodada com cota
+        # cheia APAGAVA medição boa de rodadas anteriores. Mesmo erro de família do
+        # `INDISPONÍVEL ≠ 0`: ausência de medição virava ausência de nota.
+        anterior = {}
+        try:
+            anterior = json.loads(SAIDA.read_text())
+        except (OSError, json.JSONDecodeError):
+            pass
+        notas = dict(anterior.get("notas") or {})
+        detalhe = dict(anterior.get("detalhe") or {})
+        notas.update({r["modelo"]: r["nota"] for r in medidos})
+        detalhe.update({r["modelo"]: r["detalhe"] for r in linhas if r["nota"] is not None})
         SAIDA.parent.mkdir(parents=True, exist_ok=True)
         SAIDA.write_text(json.dumps(
             {"medido_em": time.strftime("%Y-%m-%dT%H:%M:%S"),
-             "notas": {r["modelo"]: r["nota"] for r in medidos},
-             "nao_medidos": [r["modelo"] for r in nao_medidos],
-             "detalhe": {r["modelo"]: r["detalhe"] for r in linhas}},
+             "notas": notas,
+             "nao_medidos_nesta_rodada": [r["modelo"] for r in nao_medidos],
+             "detalhe": detalhe},
             ensure_ascii=False, indent=1))
+        print(f"  ranking acumulado: {len(notas)} modelo(s) com nota "
+              f"({len(medidos)} medidos agora)")
         print(f"\ngravado em {SAIDA} — escolher() passa a usar a nota medida no lugar da "
               "heurística de tamanho")
     return 0
