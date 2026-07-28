@@ -18,6 +18,12 @@ say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 [ -f data/.pause_sweeps ] && { say "pausado (.pause_sweeps) — pulei"; exit 0; }
 [ -f data/.pause_sei_sweep ] && { say "pausado (.pause_sei_sweep) — pulei"; exit 0; }
 # bracket evita auto-match; se já há um sei_sweep, NÃO abrir 2ª sessão itkava (o SEI expulsa a duplicada)
+# FATIA desta máquina no universo de processos (hash determinístico do número). A VM-1 fica com
+# 0/2 e a VM-2 com 1/2, então as duas nunca capturam o mesmo processo — medido em 2026-07-28:
+# 21.045 + 20.695 = 41.740, o universo inteiro, sem sobreposição. Sem a variável, `sei_sweep`
+# assume máquina única (0/1) e nada muda para quem nunca dividiu.
+export JFN_SWEEP_FATIA="${JFN_SWEEP_FATIA:-0/2}"
+
 if pgrep -f 'tools\.sei_swee[p]' >/dev/null; then say "já rodando — pula"; exit 0; fi
 # backstop VM-safe: se a VM já está muito carregada, adia (o cron repete no próximo slot)
 L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — adia"; exit 0; }
