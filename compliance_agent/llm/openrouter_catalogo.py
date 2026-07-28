@@ -231,13 +231,17 @@ def _pontuar(m: dict, perfil: str) -> float | None:
         return (params * 1000 + ctx) * (10.0 if "code" in mid else 1.0)
 
     if perfil == "documento":
-        if params and params < PISO_PARAMS_DOCUMENTO:
-            return None                   # capacidade insuficiente para ler peça processual
-        if not params:
-            return None                   # id que não declara tamanho não entra por suposição
-        medida = _nota_medida(m["id"])
+        # A MEDIÇÃO MANDA, e aqui isso INVERTE o piso. O piso de parâmetros era um PROXY de
+        # capacidade, válido enquanto não havia como medir. Com a prova de documento longo:
+        #   · `ling-3.0-flash` tira 100 e não declara tamanho no id — o piso o excluiria;
+        #   · `nemotron-3-super-120b` tem 120B, passa folgado no piso, e ZERA na prova.
+        # Excluir quem PROVOU que lê, e admitir quem provou que não lê, seria preferir a
+        # estimativa ao fato. Medido decide; o piso só vale para quem nunca foi medido.
+        medida = _nota_medida(m["id"], perfil)
         if medida is not None:
-            return 1_000_000 + medida     # medido supera qualquer estimativa de tamanho
+            return None if medida <= 0 else 1_000_000 + medida
+        if not params or params < PISO_PARAMS_DOCUMENTO:
+            return None
         return params * 1000 + ctx / 1000
 
     if perfil == "smart":
@@ -275,6 +279,35 @@ def escolher(perfil: str = "fast", *, forcar: bool = False) -> str | None:
         return None
     # Desempate pelo id para a escolha ser estável entre execuções (log comparável).
     return sorted(candidatos, key=lambda x: (-x[0], x[1]))[0][1]
+
+
+def escolher_varios(perfil: str = "documento", n: int = 3, *,
+                    forcar: bool = False) -> list[str]:
+    """Os `n` melhores ids vivos para o perfil, do melhor para o pior.
+
+    POR QUE ISTO EXISTE. A cota dos modelos `:free` é **por modelo**, não por conta nem por
+    máquina. Um pipeline que lê 2.049 processos com UM modelo passa a maior parte do tempo
+    esperando 429; o mesmo pipeline distribuído entre três modelos aptos multiplica a vazão sem
+    pedir cota a ninguém.
+
+    Isso também é a resposta para "mandar a carga para a outra VM": não adianta. A série usa
+    0,2% de CPU e espera rede — as duas máquinas dividiriam a MESMA cota, com o dobro de
+    complexidade operacional e nenhum ganho.
+
+    Lista vazia quando o catálogo não está disponível — nunca um id inventado.
+    """
+    if perfil not in PERFIS:
+        raise ValueError(f"perfil inválido: {perfil!r}")
+    mortos = _mortos_recentes()
+    candidatos = []
+    for m in catalogo(forcar=forcar):
+        if m["id"] in mortos:
+            continue
+        nota = _pontuar(m, perfil)
+        if nota is not None:
+            candidatos.append((nota, m["id"]))
+    ordenados = [mid for _, mid in sorted(candidatos, key=lambda x: (-x[0], x[1]))]
+    return ordenados[:max(1, n)]
 
 
 def resumo() -> dict:

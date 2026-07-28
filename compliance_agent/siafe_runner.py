@@ -187,6 +187,12 @@ async def coletar_ug(ug: str, exercicio: int | None = None) -> dict:
 
 
 def main():
+    # SIAFE aceita UMA sessão por IP: logar de duas máquinas DERRUBA a sessão em curso.
+    # A trava é código porque a restrição é invisível — um cron copiado para outra VM
+    # a quebraria em silêncio. Ver compliance_agent/host_siafe.py.
+    from compliance_agent.host_siafe import exigir_autorizacao
+    exigir_autorizacao()
+
     cmd = sys.argv[1] if len(sys.argv) > 1 else "diario"
     if cmd == "diario":
         ano = int(sys.argv[2]) if len(sys.argv) > 2 else None

@@ -103,14 +103,38 @@ def test_perfil_invalido_falha_alto(isolar, monkeypatch):
 # ── medição vence heurística ──────────────────────────────────────────────────────────────
 
 def test_nota_medida_supera_o_tamanho_declarado(isolar, monkeypatch):
-    """O ponto do banco de provas: se o 550B se sai mal no NOSSO domínio e outro se sai bem,
-    manda a medição — tamanho é estimativa, nota é observação."""
-    _semear(monkeypatch, _FROTA)
+    """O ponto do banco de provas: tamanho é estimativa, nota é observação — e a nota é POR
+    PROVA, porque cada perfil se importa com provas diferentes."""
     grande = {"id": "nvidia/nemotron-3-super-120b-a12b:free", "ctx": 262_144,
               "modalidades": ["text"]}
     _semear(monkeypatch, _FROTA + [grande])
-    (isolar / "ranking.json").write_text(json.dumps({"notas": {grande["id"]: 95.0}}))
+    (isolar / "ranking.json").write_text(json.dumps({
+        "notas": {grande["id"]: 95.0},
+        "detalhe": {grande["id"]: {"documento_longo": {"nota": 95}}}}))
     assert C.escolher("documento") == grande["id"]
+
+
+def test_medicao_admite_quem_nao_declara_tamanho(isolar, monkeypatch):
+    """A inversão do piso: `ling-3.0-flash` tirou 100 em documento longo e não declara tamanho
+    no id. Excluí-lo por isso seria preferir a estimativa ao fato."""
+    sem_tamanho = {"id": "inclusionai/ling-3.0-flash:free", "ctx": 262_144,
+                   "modalidades": ["text"]}
+    _semear(monkeypatch, [sem_tamanho])
+    assert C.escolher("documento") is None, "sem medição, o piso decide e ele não passa"
+    (isolar / "ranking.json").write_text(json.dumps({
+        "notas": {}, "detalhe": {sem_tamanho["id"]: {"documento_longo": {"nota": 100}}}}))
+    assert C.escolher("documento") == sem_tamanho["id"]
+
+
+def test_medicao_exclui_quem_provou_que_nao_le(isolar, monkeypatch):
+    """O simétrico: 120B passa folgado no piso e ZEROU na prova. Admiti-lo seria o mesmo erro
+    ao contrário."""
+    grande = {"id": "nvidia/nemotron-3-super-120b-a12b:free", "ctx": 262_144,
+              "modalidades": ["text"]}
+    _semear(monkeypatch, [grande])
+    (isolar / "ranking.json").write_text(json.dumps({
+        "notas": {}, "detalhe": {grande["id"]: {"documento_longo": {"nota": 0}}}}))
+    assert C.escolher("documento") is None
 
 
 # ── indisponível ≠ vazio ──────────────────────────────────────────────────────────────────

@@ -1011,6 +1011,12 @@ async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000)
 
 
 def main():
+    # SIAFE aceita UMA sessão por IP: logar de duas máquinas DERRUBA a sessão em curso.
+    # A trava é código porque a restrição é invisível — um cron copiado para outra VM
+    # a quebraria em silêncio. Ver compliance_agent/host_siafe.py.
+    from compliance_agent.host_siafe import exigir_autorizacao
+    exigir_autorizacao()
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--exercicio", type=int, default=2025)
     ap.add_argument("--max", type=int, default=300)

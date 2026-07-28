@@ -36,7 +36,7 @@ while :; do
 
     ANTES=$($PY -c "import json,pathlib;print(len(json.loads(pathlib.Path('data/analise_serie.json').read_text())))" 2>/dev/null || echo 0)
     nice -n 12 ionice -c2 -n7 timeout -k 60 3600 \
-        $PY tools/sei_analise_em_serie.py --n "$LOTE" >> data/analise_serie_saida.log 2>&1
+        $PY -u tools/sei_analise_em_serie.py --n "$LOTE" >> data/analise_serie_saida.log 2>&1
     rc=$?
     DEPOIS=$($PY -c "import json,pathlib;print(len(json.loads(pathlib.Path('data/analise_serie.json').read_text())))" 2>/dev/null || echo 0)
     say "lote rc=$rc · índice ${ANTES} -> ${DEPOIS}"

@@ -38,22 +38,46 @@ PRIO="nice -n 12 ionice -c2 -n7"
 ANO=$(date +%Y)
 say "início (exercício $ANO)"
 
+# ── DIVISÃO DE CARGA COM A VM-2 (2026-07-28, a pedido do dono). As duas varreduras
+# determinísticas passaram a rodar na JFN-Agent-2, que estava ociosa (load 0,07 em 3 dias) e
+# tem a mesma capacidade. Elas são CPU/IO e leem a produção em SÓ-LEITURA — exatamente a carga
+# que fazia esta VM competir consigo mesma quando vários sweeps coincidiam.
+#
+# O que NÃO foi migrado, e por quê:
+#   · coletores SIAFE — o SIAFE aceita UMA sessão por IP e a segunda DERRUBA a primeira
+#     (trava em compliance_agent/host_siafe.py; marcador aponta para jfn-core);
+#   · a análise em série — usa 0,2% de CPU e espera cota de modelo :free, que é por CHAVE e
+#     não por máquina. Distribuí-la só dividiria a mesma cota em dois lugares.
+#
+# Para trazer de volta: apagar data/.varredura_na_vm2 aqui e parar o timer lá
+# (`systemctl --user disable --now jfn-sweeps.timer`).
+NA_VM2=""
+[ -f data/.varredura_na_vm2 ] && NA_VM2=1
+
 # ── CAMADA 1 — determinística. `--limite-ugs` mantém cada execução curta; como a persistência é
 # idempotente (INSERT OR REPLACE), as execuções sucessivas cobrem a fila inteira ao longo do dia.
 IA=""
 [ -f data/.pause_llm_triagem ] || IA="--com-ia"
-$PRIO timeout -k 60 1800 $PY tools/varredura_orgaos_sweep.py \
-      --exercicio "$ANO" --limite-ugs 25 --max-fornecedores 12 --gravar $IA \
-      >> data/varredura_orgaos.log 2>&1
-say "varredura_orgaos rc=$? (camada 2: ${IA:-desligada})"
+if [ -n "$NA_VM2" ]; then
+    say "varredura_orgaos: delegada à VM-2 (data/.varredura_na_vm2)"
+else
+    $PRIO timeout -k 60 1800 $PY tools/varredura_orgaos_sweep.py \
+          --exercicio "$ANO" --limite-ugs 25 --max-fornecedores 12 --gravar $IA \
+          >> data/varredura_orgaos.log 2>&1
+    say "varredura_orgaos rc=$? (camada 2: ${IA:-desligada})"
+fi
 
 # ── CAMADA 1b — varredura por CERTAME. É o que levanta a cobertura: por UG dá 3 detectores de
 # 41 (a maioria é por certame e pede edital/propostas/ata); por certame dá 8, e medido em
 # 2026-07-28 são 62% das avaliações possíveis contra 7%. Idempotente (INSERT OR REPLACE).
-$PRIO timeout -k 60 1200 $PY tools/varredura_certames_sweep.py \
-      --com-clausulas --limite 400 --gravar $IA \
-      >> data/varredura_certames.log 2>&1
-say "varredura_certames rc=$?"
+if [ -n "$NA_VM2" ]; then
+    say "varredura_certames: delegada à VM-2 (data/.varredura_na_vm2)"
+else
+    $PRIO timeout -k 60 1200 $PY tools/varredura_certames_sweep.py \
+          --com-clausulas --limite 400 --gravar $IA \
+          >> data/varredura_certames.log 2>&1
+    say "varredura_certames rc=$?"
+fi
 
 # ── Fila de fracionamento do exercício corrente (leitura do SIAFE; sem IA).
 $PRIO timeout -k 60 900 $PY tools/fracionamento_siafe_sweep.py \
