@@ -63,6 +63,8 @@ from compliance_agent.detectores.x5_jogo_planilha import X5JogoDePlanilha
 from compliance_agent.detectores.x6_entrega_fantasma import X6EntregaFantasma
 from compliance_agent.detectores.x7_reequilibrio_indevido import X7ReequilibrioIndevido
 from compliance_agent.detectores.x8_aditivo_retroativo import X8AditivoRetroativo
+from compliance_agent.detectores.x9_supressao_abusiva import X9SupressaoAbusiva
+from compliance_agent.detectores.x10_aditivo_desinstruido import X10AditivoDesinstruido
 
 # REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
 REGISTRO: dict[str, Detector] = {
@@ -100,6 +102,8 @@ REGISTRO: dict[str, Detector] = {
         X6EntregaFantasma(),      # execução — entrega fantasma / atesto de fachada (culmina em diligência)
         X7ReequilibrioIndevido(),  # execução — reequilíbrio indevido (art. 124): dupla correção, índice trocado, álea ordinária
         X8AditivoRetroativo(),     # execução — termo assinado APÓS o fim da vigência (ON AGU 3/2009; art. 107)
+        X9SupressaoAbusiva(),      # execução — supressão acima do teto ou que esvazia o objeto (arts. 125 e 126)
+        X10AditivoDesinstruido(),  # execução — checklist de instrução do aditivo nos autos (art. 53, 124, 94)
     )
 }
 
@@ -136,6 +140,8 @@ PESOS_DETECTOR: dict[str, float] = {
     "X6": PESOS_FAMILIA["execucao"],
     "X7": PESOS_FAMILIA["execucao"],
     "X8": PESOS_FAMILIA["execucao"],
+    "X9": PESOS_FAMILIA["execucao"],
+    "X10": PESOS_FAMILIA["execucao"],
 }
 
 
@@ -265,7 +271,7 @@ def rodar_execucao(processo: str, *, contexto: dict | None = None, exculpatoria:
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8")]
+    dets = [d for d in REGISTRO.values() if d.id in ("X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", "X9", "X10")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 

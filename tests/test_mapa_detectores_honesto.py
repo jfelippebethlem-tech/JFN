@@ -19,9 +19,19 @@ _MAPA = pathlib.Path("compliance_agent/detectores/base.py").read_text()
 
 
 def _linhas_do_mapa() -> dict[str, str]:
-    """id → linha do mapa, para os ids que aparecem como entrada de card."""
+    """id → linha do mapa, para os ids que aparecem como entrada de card.
+
+    Duas correções vieram do primeiro card de id com TRÊS caracteres (X10):
+
+      · `\\d{0,2}` e não `\\d?` — senão o id de dois dígitos não casa;
+      · `\\s+` e não `\\s{2,}` — o mapa alinha a coluna da descrição, então um id de 3 caracteres
+        é seguido de UM espaço, não de dois.
+
+    O efeito do parser estreito era o pior possível para uma catraca: acusar "detector ausente do
+    mapa" para um detector que ESTAVA no mapa, mandando reescrever documentação correta.
+    """
     out = {}
-    for m in re.finditer(r"^  ([A-Z]\d?)\s{2,}(.+)$", _MAPA, re.M):
+    for m in re.finditer(r"^  ([A-Z]\d{0,2})\s+(\S.+)$", _MAPA, re.M):
         out.setdefault(m.group(1), m.group(2))
     return out
 

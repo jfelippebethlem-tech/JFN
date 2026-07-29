@@ -335,3 +335,31 @@ def test_objeto_continua_vencendo_o_fundamento():
         "prorrogação do prazo de vigência",
         fundamento_legal='art. 124, inciso I, alínea "b"')
     assert (tipo, origem) == ("prazo", "objeto")
+
+
+# ───────────── a assimetria do art. 125: 50% é SÓ do acréscimo ────────────────────────────────
+# "o contratado será obrigado a aceitar ... acréscimos ou supressões de até 25% ..., e, no caso de
+# reforma de edifício ou de equipamento, o limite para os ACRÉSCIMOS será de 50%" (texto conferido
+# no Planalto em 2026-07-29). Usar o mesmo teto dos dois lados daria 50% de folga a uma supressão
+# em reforma — falso negativo justamente onde a supressão costuma esvaziar o objeto depois de
+# vencida a licitação.
+
+def test_supressao_em_reforma_continua_limitada_a_25():
+    from compliance_agent.limites_aditivo import teto_supressao
+
+    assert teto_supressao("reforma") == pytest.approx(0.25)
+    assert teto_supressao("reforma de edifício") == pytest.approx(0.25)
+    assert teto_acrescimo("reforma") == pytest.approx(0.50), "o acréscimo é que sobe"
+
+
+@pytest.mark.parametrize("tipo", [None, "", "obra", "servico_continuado", "reforma"])
+def test_teto_de_supressao_e_o_mesmo_para_todo_objeto(tipo):
+    from compliance_agent.limites_aditivo import teto_supressao
+
+    assert teto_supressao(tipo) == pytest.approx(0.25)
+
+
+def test_supressao_no_regime_antigo_tambem_e_25():
+    from compliance_agent.limites_aditivo import teto_supressao
+
+    assert teto_supressao("reforma", regime="8666") == pytest.approx(0.25)

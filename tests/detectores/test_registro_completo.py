@@ -111,6 +111,8 @@ def test_todo_detector_do_registro_tem_arquivo_de_teste():
         "X6": "test_x6_entrega_fantasma.py",
         "X7": "test_x7_reequilibrio.py",
         "X8": "test_x8_aditivo_retroativo.py",
+        "X9": "test_x9_supressao_abusiva.py",
+        "X10": "test_x10_aditivo_desinstruido.py",
     }
     raiz = pathlib.Path(__file__).resolve().parent.parent
     existentes = {p.name for p in raiz.rglob("test_*.py")}

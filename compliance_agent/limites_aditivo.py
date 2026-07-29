@@ -65,6 +65,21 @@ def teto_acrescimo(tipo_objeto: str | None = None, *, regime: str = REGIME_VIGEN
         else tabela["padrao"]
 
 
+def teto_supressao(tipo_objeto: str | None = None, *, regime: str = REGIME_VIGENTE) -> float:
+    """Teto de SUPRESSÃO — sempre 25%, inclusive em reforma.
+
+    O texto do art. 125 é explícito e a assimetria passa despercebida com facilidade: "o
+    contratado será obrigado a aceitar ... acréscimos ou supressões de até 25% ..., e, no caso de
+    reforma de edifício ou de equipamento, **o limite para os ACRÉSCIMOS será de 50%**". A
+    elevação para 50% é só do acréscimo; a supressão continua nos 25% em qualquer objeto.
+
+    Usar `teto_acrescimo()` para os dois lados daria 50% de folga a uma supressão em reforma —
+    falso negativo silencioso justamente no tipo de contrato onde a supressão costuma esvaziar o
+    objeto contratado depois de vencida a licitação. Texto conferido no Planalto em 2026-07-29.
+    """
+    return TETOS.get(str(regime), TETOS[REGIME_VIGENTE])["padrao"]
+
+
 def ato_normativo(regime: str = REGIME_VIGENTE) -> str:
     """Dispositivo a citar na peça. Sem isso o percentual é inverificável."""
     return ATO_NORMATIVO.get(str(regime), ATO_NORMATIVO[REGIME_VIGENTE])
