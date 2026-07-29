@@ -274,9 +274,17 @@ class GrafoVinculos:
         mostra "ALFA HOLDING LTDA", e é preciso subir mais um degrau — às vezes vários. Duas
         armadilhas que a implementação trata:
 
+          · **Direção.** O grafo é não-direcionado, mas a aresta `socio_de` não é: ela vai do
+            SÓCIO para a EMPRESA. Subir a cadeia é seguir apenas as arestas em que o nó atual é o
+            DESTINO. Sem essa restrição acontecem dois erros que só o dado real mostrou: a subida
+            seguia a mesma aresta de volta (`A → B → A`) e relatava ciclo onde havia uma cadeia
+            simples de dois degraus; e, ao chegar numa holding, descia para as OUTRAS empresas de
+            que ela é sócia, devolvendo os sócios das IRMÃS como beneficiários finais da empresa de
+            origem — vínculo lateral lido como vertical.
           · **Ciclo.** A empresa A é sócia da B, que é sócia da A. Sem detecção, a subida não
             termina; com detecção, o ciclo é ACHADO, porque participação cruzada circular é
-            estrutura que costuma existir para dificultar a identificação.
+            estrutura que costuma existir para dificultar a identificação. Com a direção
+            respeitada, só o ciclo verdadeiro dispara.
           · **Confiança por salto.** Cada degrau usa o QSA daquele momento e pode ter sido lido
             por nome. A confiança do caminho é o produto das forças — três saltos por aresta
             fraca não identificam beneficiário nenhum, e o resultado tem de dizer isso.
@@ -294,8 +302,10 @@ class GrafoVinculos:
             for viz, a in self.vizinhos(no):
                 if a.tipo != "socio_de" or viz == no:
                     continue
-                # a aresta socio_de é (pessoa|empresa) → empresa; subimos do lado da empresa
-                if viz == caminho[-1] if len(caminho) > 1 else False:
+                # a aresta socio_de vai do SÓCIO para a EMPRESA: só sobe quem chega no nó atual.
+                # Sem esta linha, a travessia volta pela mesma aresta (falso ciclo) e desce para as
+                # empresas irmãs da holding (falso beneficiário).
+                if a.destino != no or a.origem != viz:
                     continue
                 if viz in caminho:
                     ciclo = caminho[caminho.index(viz):] + [viz]

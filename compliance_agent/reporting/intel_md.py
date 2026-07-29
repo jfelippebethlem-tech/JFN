@@ -15,7 +15,7 @@ from compliance_agent.reporting.intel_analise import (
     _frase_cardinalidade, _red_flags, _resumo_executivo, parecer_fornecedor,
 )
 from compliance_agent.reporting.intel_base import _num_brl
-from compliance_agent.reporting.completude import campo, top_declarado, tudo
+from compliance_agent.reporting.completude import tudo
 from compliance_agent import fachada_remotes as _fr
 
 _FB2_TIMEOUT = float(os.environ.get("JFN_FACHADA_B2_TIMEOUT", "20"))
