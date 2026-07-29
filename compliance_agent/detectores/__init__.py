@@ -32,6 +32,7 @@ from compliance_agent.detectores.base import (
 )
 from compliance_agent.detectores.c6_vinculo_politico import C6VinculoPolitico
 from compliance_agent.detectores.c7_sancionada_contratada import C7SancionadaContratada
+from compliance_agent.detectores.c8_servidor_socio import C8ServidorSocio
 from compliance_agent.detectores.c_fachada import CFachada
 from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
@@ -96,6 +97,7 @@ REGISTRO: dict[str, Detector] = {
         P6DiretaIndevida(),         # planejamento — dispensa por valor acima do teto do exercício (art. 75 I-II)
         C6VinculoPolitico(),   # perfil do contratado — vínculo político-financeiro (doações TSE); multiplicador
         C7SancionadaContratada(),  # perfil do contratado — sanção impeditiva vigente à época (art. 156 §§4º-5º)
+        C8ServidorSocio(),     # perfil do contratado — agente público no QSA (art. 9º / vedação de gerência)
         X1CrescimentoAditivo(),  # execução — crescimento aditivo (teto art. 125)
         X2ProrrogacaoPerpetua(),  # execução — prorrogação perpétua sem teste de mercado
         X3ExecucaoFinanceira(),   # execução — execução financeira anômala (tríade SIAFE/atesto/fila)
@@ -126,6 +128,7 @@ PESOS_DETECTOR: dict[str, float] = {
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
     "C6": PESOS_FAMILIA["perfil"],
+    "C8": PESOS_FAMILIA["perfil"],
     "E1": PESOS_FAMILIA["desenho_certame"],
     "E2": PESOS_FAMILIA["desenho_certame"],
     "E3": PESOS_FAMILIA["desenho_certame"],

@@ -25,8 +25,11 @@ def _classes_detector() -> dict[str, str]:
 
 
 def test_todo_detector_citado_em_teste():
+    # `rglob`, não `glob`: metade dos testes de detector vive em `tests/detectores/`, e a busca
+    # não-recursiva não os enxergava — a catraca podia acusar detector que TEM teste (e, pior,
+    # deixava de cobrar quem só tivesse teste lá). Um teste em subpasta é um teste.
     corpus = "\n".join(p.read_text(encoding="utf-8", errors="ignore")
-                       for p in TESTS.glob("test_*.py") if p.name != Path(__file__).name)
+                       for p in TESTS.rglob("test_*.py") if p.name != Path(__file__).name)
     classes = _classes_detector()
     sem_teste = [f"{cls} ({classes[cls]}.py)" for cls in classes if cls not in corpus]
     assert not sem_teste, (

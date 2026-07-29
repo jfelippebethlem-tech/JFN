@@ -98,7 +98,7 @@ def divergencias(esperado: dict[str, str] | None = None) -> list[dict[str, str]]
     for pid, reg in REGISTRO.items():
         try:
             atual = impressao(reg["alvo"])
-        except Exception as exc:  # noqa: BLE001 — alvo movido/renomeado é o caso a denunciar
+        except (ImportError, AttributeError, TypeError, OSError) as exc:
             fora.append({"prompt_id": pid, "alvo": reg["alvo"], "erro": str(exc)[:120]})
             continue
         if ref.get(pid) != atual:

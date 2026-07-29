@@ -103,6 +103,7 @@ def test_todo_detector_do_registro_tem_arquivo_de_teste():
         "C": "test_c_fachada.py",
         "C6": "test_detector_c6.py",
         "C7": "test_c7_sancionada_contratada.py",
+        "C8": "test_c8_servidor_socio.py",
         "X1": "test_detector_x1.py",
         "X2": "test_x2_prorrogacao_perpetua.py",
         "X3": "test_detector_x3.py",
