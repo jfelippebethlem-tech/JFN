@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -82,6 +83,36 @@ def _baixar(url: str, destino: Path) -> int:
     return n
 
 
+def _gravar_com_espera(con, sql: str, buf: list[tuple], *, tentativas: int = 8) -> None:
+    """Grava o lote esperando o escritor concorrente sair.
+
+    O `busy_timeout=60000` do `_conectar` não bastou: a primeira execução deste backfill morreu com
+    `database is locked` no 7º de 17 snapshots, porque outra sessão manteve transação de escrita
+    aberta por mais de um minuto (o `compliance.db` é compartilhado com sweeps e com o enxame). Meia
+    hora de download perdida por não haver espera aqui.
+
+    Espera crescente até ~4 min no total; se nem assim, propaga — perder o lote em silêncio seria
+    produzir uma série com buraco que ninguém veria, e buraco não observado vira falsa "saída".
+    """
+    import time
+
+    espera = 2.0
+    for tentativa in range(1, tentativas + 1):
+        try:
+            con.executemany(sql, buf)
+            con.commit()
+            return
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e).lower() and "busy" not in str(e).lower():
+                raise
+            if tentativa == tentativas:
+                raise
+            print(f"[serie] base ocupada (tentativa {tentativa}/{tentativas}); "
+                  f"aguardando {espera:.0f}s", flush=True)
+            time.sleep(espera)
+            espera = min(espera * 1.8, 60.0)
+
+
 def _stream_para_snapshot(zf: Path, raizes: set[str], qualif: dict, con, mes: str) -> tuple[int, int]:
     """Lê o ZIP linha-a-linha e grava em `socio_snapshot` só as raízes-alvo.
 
@@ -108,9 +139,9 @@ def _stream_para_snapshot(zf: Path, raizes: set[str], qualif: dict, con, mes: st
             buf.append((mes, p[0], p[3], _norm(p[2]), p[1], qualif.get(cod, cod), p[5]))
             casadas += 1
             if len(buf) >= _BATCH:
-                con.executemany(sql, buf); con.commit(); buf.clear()
+                _gravar_com_espera(con, sql, buf); buf.clear()
         if buf:
-            con.executemany(sql, buf); con.commit()
+            _gravar_com_espera(con, sql, buf)
     finally:
         proc.stdout.close()
         proc.wait()

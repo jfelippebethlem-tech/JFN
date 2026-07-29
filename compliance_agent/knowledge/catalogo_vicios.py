@@ -268,10 +268,14 @@ CATALOGO: tuple[Vicio, ...] = (
           dispositivos=("Lei 14.133/2021 art. 9º", "Lei 12.813/2013"),
           escalada="representacao", origem=("casa",)),
     Vicio("servidor_socio", "Servidor público no QSA de contratada", "perfil_contratado",
-          "Agente público do órgão contratante como sócio/administrador da contratada (folha × QSA em "
-          "cruzamentos_intel, corroboração por fragmento de CPF — fora do REGISTRO).",
-          dispositivos=("Lei 14.133/2021 art. 14 I", "Lei 8.429/1992 art. 11"),
-          escalada="representacao", origem=("casa", "CGU"), status="parcial"),
+          "Agente público do órgão contratante como sócio/administrador da contratada. O C8 separa o "
+          "impedimento do art. 9º (participação no certame) da gerência efetiva e da simples "
+          "condição de quotista, porque a consequência de cada um é distinta; a corroboração usa "
+          "fragmento de CPF, e homônimo sem documento fica declarado como não confirmado.",
+          detectores=("C8",), redflags_lex=("R2",),
+          dispositivos=("Lei 14.133/2021 art. 9º", "Lei 14.133/2021 art. 14 I",
+                        "Lei 8.429/1992 art. 11"),
+          escalada="representacao", origem=("casa", "CGU"), status="coberto"),
 
     # ─────────────────────────────── EXECUÇÃO ───────────────────────────────
     Vicio("aditivo_excessivo", "Crescimento aditivo acima dos limites", "execucao",
@@ -309,6 +313,53 @@ CATALOGO: tuple[Vicio, ...] = (
           detectores=("X6",), fraudes=("medicao_fraudulenta",),
           dispositivos=("Lei 4.320/1964 arts. 62-63", "Código Penal art. 337-L"),
           escalada="representacao", origem=("casa", "CGU")),
+    Vicio("reequilibrio_indevido", "Reequilíbrio econômico-financeiro indevido", "execucao",
+          "Revisão de preço concedida sem álea extraordinária comprovada, ou tratada como acréscimo "
+          "de valor. A distinção importa: a revisão do art. 124, II, 'd' NÃO consome o teto de "
+          "acréscimo do art. 125 — somar as duas foi o que fabricou 45% dos achados de X1 na "
+          "primeira varredura.",
+          detectores=("X7",), redflags_lex=("R9",),
+          dispositivos=("Lei 14.133/2021 art. 124 II 'd'", "Lei 14.133/2021 art. 130"),
+          escalada="diligencia", origem=("casa", "TCU")),
+    Vicio("aditivo_retroativo", "Aditivo assinado após o fim da vigência", "execucao",
+          "Termo aditivo firmado depois de expirada a vigência do contrato: não há contrato a aditar, "
+          "e o que houve entre o termo final e a assinatura é execução sem cobertura contratual.",
+          detectores=("X8",), redflags_lex=("R9",),
+          dispositivos=("Lei 14.133/2021 art. 105", "Lei 14.133/2021 art. 107",
+                        "Lei 14.133/2021 art. 111"),
+          escalada="representacao", origem=("casa", "TCU")),
+    Vicio("supressao_abusiva", "Supressão abusiva de quantitativos", "execucao",
+          "Supressão além do limite legal, esvaziando o objeto contratado. O art. 125 é assimétrico: "
+          "o teto de 50% em reforma vale só para ACRÉSCIMO — para supressão o limite é 25% em "
+          "qualquer caso, e tratar os dois lados como iguais subestima o vício.",
+          detectores=("X9",), redflags_lex=("R9",),
+          dispositivos=("Lei 14.133/2021 art. 125", "Lei 14.133/2021 art. 126"),
+          escalada="diligencia", origem=("casa", "TCU")),
+    Vicio("aditivo_desinstruido", "Aditivo desinstruído", "execucao",
+          "Termo aditivo sem os elementos de instrução que a lei exige: justificativa técnica, "
+          "demonstração do interesse público, parecer jurídico, comprovação de vantajosidade, "
+          "manifestação do fiscal, disponibilidade orçamentária e autorização da autoridade. Cada "
+          "item vem em três estados — presente, ausente ou não observado —, porque documento não "
+          "capturado não é documento inexistente.",
+          detectores=("X10",), redflags_lex=("R9",),
+          dispositivos=("Lei 14.133/2021 art. 124", "Lei 14.133/2021 art. 53",
+                        "Lei 14.133/2021 art. 72"),
+          escalada="diligencia", origem=("casa", "TCU")),
+    Vicio("objeto_descaracterizado", "Objeto descaracterizado por aditivo", "execucao",
+          "Sucessão de aditivos que muda a natureza do objeto licitado — o contrato executado deixa "
+          "de ser o que foi disputado, e a competição original perde sentido. É vedação autônoma do "
+          "art. 126, não uma questão de percentual.",
+          detectores=("X11",), redflags_lex=("R9",), fraudes=("aditivo_excessivo",),
+          dispositivos=("Lei 14.133/2021 art. 126", "Lei 14.133/2021 art. 125"),
+          escalada="representacao", origem=("casa", "TCU")),
+    Vicio("quantitativos_manipulados", "Quantitativos com distribuição anômala", "execucao",
+          "Distribuição de primeiro dígito dos quantitativos da planilha fora do esperado (Benford), "
+          "indício de valores construídos em vez de medidos. Só é aferível com n suficiente: com "
+          "amostra pequena o teste rotula série legítima como anômala, e abaixo do n mínimo o "
+          "resultado sai como NÃO AFERÍVEL, nunca como conformidade nem como desvio.",
+          detectores=("X12",),
+          dispositivos=("Lei 14.133/2021 art. 6º XXV", "Lei 14.133/2021 art. 18 §1º"),
+          escalada="diligencia", origem=("casa", "ACFE"), status="parcial"),
     Vicio("sub_rogacao_ilegal", "Sub-rogação/troca de controle pós-contrato", "execucao",
           "Contrato transferido de fato a terceiro (sub-rogação vedada) ou controle societário alterado após "
           "receita pública relevante. X13 separa o que a lei veda (cessão, subcontratação total) "
@@ -367,6 +418,17 @@ def validar() -> list[str]:
     ids = [v.id for v in CATALOGO]
     for dup in {i for i in ids if ids.count(i) > 1}:
         problemas.append(f"id duplicado: {dup}")
+    # CHECAGEM INVERSA — detector que existe e o catálogo não conhece.
+    # Só a direção "coberto sem detector" era cobrada, e por isso passaram sete detectores órfãos:
+    # o C8 (servidor no QSA) e os seis de aditivo X7–X12, todos construídos em 2026-07-29 sem o
+    # vício correspondente. O efeito era o pior possível num catálogo: ele SUBESTIMAVA a cobertura
+    # em silêncio, e `lacunas()` mandava construir o que já existia.
+    apontados = {d for v in CATALOGO for d in v.detectores}
+    for det in sorted(set(REGISTRO) - apontados):
+        problemas.append(
+            f"detector '{det}' ({REGISTRO[det].nome}) existe no REGISTRO e nenhum vício do catálogo "
+            "o aponta — catalogue o vício ou explique a exceção")
+
     for v in CATALOGO:
         if v.fase not in FASES:
             problemas.append(f"{v.id}: fase desconhecida '{v.fase}'")

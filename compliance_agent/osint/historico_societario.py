@@ -140,6 +140,31 @@ def _meses_entre(a: str, b: str) -> int:
     return (by - ay) * 12 + (bm - am)
 
 
+def _com_espera(fn, *, tentativas: int = 10, rotulo: str = "gravação"):
+    """Executa `fn` esperando o escritor concorrente sair da base.
+
+    O `compliance.db` é compartilhado: o cron `sweep_sei.sh` roda a cada 30 minutos e mantém
+    transação de escrita aberta por vários minutos. Sem esta espera, o recálculo do histórico morre
+    com `database is locked` e — pior — deixa `socio_historico` VAZIO, porque o `DELETE` já passou.
+    Uma tabela de histórico vazia é lida como "nenhuma saída de sócio", que é a falsa negativa mais
+    perigosa deste módulo.
+    """
+    import time
+
+    espera = 3.0
+    for tentativa in range(1, tentativas + 1):
+        try:
+            return fn()
+        except sqlite3.OperationalError as e:
+            if ("locked" not in str(e).lower() and "busy" not in str(e).lower()) \
+                    or tentativa == tentativas:
+                raise
+            print(f"[historico] base ocupada em {rotulo} (tentativa {tentativa}/{tentativas}); "
+                  f"aguardando {espera:.0f}s", flush=True)
+            time.sleep(espera)
+            espera = min(espera * 1.7, 90.0)
+
+
 def diff_snapshots(con: sqlite3.Connection) -> dict:
     """Recalcula `socio_historico` a partir de TODOS os snapshots ingeridos.
 
@@ -154,14 +179,16 @@ def diff_snapshots(con: sqlite3.Connection) -> dict:
         return {"ok": False, "motivo": "nenhum snapshot ingerido", "meses": []}
 
     ultimo = meses[-1]
-    con.execute("DELETE FROM socio_historico")
     linhas = con.execute(
         "SELECT cnpj_basico, doc_socio, nome_norm, "
         "       MIN(fonte_mes) visto_de, MAX(fonte_mes) visto_ate, "
         "       MAX(qualificacao) qualificacao, MAX(data_entrada) data_entrada "
         "FROM socio_snapshot GROUP BY cnpj_basico, doc_socio, nome_norm").fetchall()
 
+    # DELETE só depois de ter as linhas em mão, e dentro da mesma espera do INSERT: apagar antes
+    # e falhar depois deixaria a tabela VAZIA, que se lê como "nenhuma saída de sócio".
     n_saiu = n_ativo = 0
+    _com_espera(lambda: con.execute("DELETE FROM socio_historico"), rotulo="limpeza")
     for raiz, doc, nome, visto_de, visto_ate, qualif, dt_ent in linhas:
         if visto_ate == ultimo:
             status, saiu_entre, confiavel = "ativo", None, 1
@@ -181,7 +208,7 @@ def diff_snapshots(con: sqlite3.Connection) -> dict:
             "qualificacao, data_entrada, visto_de, visto_ate, saiu_entre, status, janela_confiavel) "
             "VALUES (?,?,?,?,?,?,?,?,?,?)",
             (raiz, doc, nome, qualif, dt_ent, visto_de, visto_ate, saiu_entre, status, confiavel))
-    con.commit()
+    _com_espera(con.commit, rotulo="commit do histórico")
     return {
         "ok": True, "meses": meses, "n_meses": len(meses),
         "n_vinculos": len(linhas), "n_ativos": n_ativo, "n_sairam": n_saiu,

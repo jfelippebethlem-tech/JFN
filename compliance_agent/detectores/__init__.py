@@ -156,6 +156,20 @@ PESOS_DETECTOR: dict[str, float] = {
     "X13": PESOS_FAMILIA["execucao"],
 }
 
+# ── Sincronia com o REGISTRO ─────────────────────────────────────────────────────────────────────
+# O dicionário acima é literal por dois motivos legítimos: alguns pesos são decisão editorial, e a
+# família C emite SUB-IDS (`C1`, `C2`, `C3/C5`, `C4` — ver `CFachada.avaliar_todos`) que não são
+# ids do REGISTRO e por isso não podem ser derivados dele.
+#
+# O que NÃO é legítimo é o inverso: detector no REGISTRO sem peso aqui. `score_processo` cai no
+# default 0.6, e a conta ficou medida: `C7` (sancionada contratada) e `P6` (contratação direta
+# indevida) são da família `violacao_legal`, peso 1.0 — pesavam 0.6, ou seja, o score
+# SUBESTIMAVA os dois sinais mais graves do sistema. `C` (empresa-fachada) perdia 0.8 para 0.6.
+# Preencher por família é o comportamento correto e é o que a linha abaixo garante, para sempre:
+# detector novo entra com o peso da sua família, sem ninguém precisar lembrar.
+for _id, _det in REGISTRO.items():
+    PESOS_DETECTOR.setdefault(_id, PESOS_FAMILIA.get(_det.familia, 0.6))
+
 
 def rodar_orgao(ug: str, *, contexto: dict | None = None, exculpatoria: bool = False, gerar=None) -> list[ResultadoDetector]:
     """Orquestra os detectores de ÓRGÃO (entrada = UG). Hoje: J1 (conluio/cartel por concentração de grupo +
@@ -185,7 +199,12 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
     resultados: list[ResultadoDetector] = []
     # P3 (preço) + C6 (perfil/vínculo político, multiplicador) — detectores de fornecedor de 1-resultado via
     # pipeline padrão. C6 é conservador (máx. medio) e nao_avaliavel sem QSA+doações no contexto (honesto).
-    simples = [d for d in REGISTRO.values() if d.familia == "preco" or d.id == "C6"]
+    # C7 e C8 entraram aqui em 2026-07-29: existiam no REGISTRO e nenhum runner os alcançava, então
+    # quem chamava `rodar_fornecedor` nunca via "sancionada contratada" nem "servidor no QSA" — dois
+    # detectores de família `violacao_legal`/`perfil`, os de maior peso do sistema. Sem o contexto
+    # necessário eles degradam para `nao_avaliavel`, que é honesto; ausência de execução não era.
+    simples = [d for d in REGISTRO.values()
+               if d.familia == "preco" or d.id in ("C6", "C7", "C8")]
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
     # C (fachada) — multi-resultado por investigação
@@ -239,7 +258,9 @@ def rodar_planejamento(processo: str, *, contexto: dict | None = None, exculpato
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("P1", "P2", "P5")]
+    # P4 e P6 entraram em 2026-07-29 (antes, alcançáveis só pelo REGISTRO direto): fracionamento de
+    # despesa e contratação direta acima do limite de dispensa são família `violacao_legal`, peso 1,0.
+    dets = [d for d in REGISTRO.values() if d.id in ("P1", "P2", "P4", "P5", "P6")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
@@ -262,7 +283,7 @@ def rodar_julgamento(processo: str, *, contexto: dict | None = None, exculpatori
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7")]
+    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7", "J8")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
