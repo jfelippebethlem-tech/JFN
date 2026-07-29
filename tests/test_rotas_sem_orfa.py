@@ -29,7 +29,7 @@ _STATIC = _RAIZ / "static"
 
 # ── Teto da dívida. SÓ PODE CAIR. ────────────────────────────────────────────────────────────────
 # Ligou uma órfã? Abaixe o número no mesmo commit. Subir exige justificativa no corpo do commit.
-TETO_ORFAS = 2
+TETO_ORFAS = 0
 
 # Rotas que por desenho não têm (nem devem ter) ponto de entrada no painel.
 _SEM_UI_POR_DESENHO = {
@@ -115,7 +115,7 @@ def test_divida_de_rotas_orfas_nao_cresce():
 def test_teto_esta_apertado():
     """O teto tem de acompanhar a realidade: folga grande deixa a dívida crescer sem alarme."""
     fora = orfas()
-    assert len(fora) >= TETO_ORFAS - 2, (
+    assert len(fora) >= TETO_ORFAS, (
         f"só {len(fora)} órfãs contra teto de {TETO_ORFAS} — baixe o teto para {len(fora)} e "
         "trave o ganho"
     )
