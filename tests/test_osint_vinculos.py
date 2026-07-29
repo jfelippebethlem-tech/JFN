@@ -189,3 +189,87 @@ def test_cpf_e_mascarado_na_saida():
 
 def test_mascarar_nao_estraga_cnpj():
     assert "11.222.333/0001-81" in mascarar_cpf("CNPJ 11.222.333/0001-81")
+
+
+# ───────────────────────────── beneficiário final ─────────────────────────────────────────────
+
+def _cadeia_holding():
+    """Alfa (contratada) ← Holding ← João. Dois degraus até a pessoa física."""
+    g = GrafoVinculos()
+    holding = no_pj("55.666.777/0001-88", "Alfa Holding")
+    g.rotular(VENCEDORA, "Alfa Ltda")
+    g.rotular(holding, "Alfa Holding")
+    g.rotular(SOCIO, "João da Silva")
+    g.ligar(holding, VENCEDORA, "socio_de", fonte="QSA")
+    g.ligar(SOCIO, holding, "socio_de", fonte="QSA")
+    return g, holding
+
+
+def test_sobe_a_cadeia_ate_a_pessoa_fisica():
+    """QSA que mostra 'ALFA HOLDING LTDA' esconde quem manda — é preciso subir mais um degrau."""
+    g, _ = _cadeia_holding()
+    r = g.beneficiario_final(VENCEDORA)
+    assert r["n_pessoas"] == 1
+    p = r["pessoas"][0]
+    assert p["rotulo"] == "João da Silva" and p["saltos"] == 2 and p["documentado"] is True
+    assert "Alfa Holding" in p["caminho"]
+
+
+def test_socio_direto_sai_com_um_salto():
+    g = GrafoVinculos()
+    g.rotular(SOCIO, "João da Silva")
+    g.ligar(SOCIO, VENCEDORA, "socio_de", fonte="QSA")
+    assert g.beneficiario_final(VENCEDORA)["pessoas"][0]["saltos"] == 1
+
+
+def test_confianca_cai_a_cada_degrau():
+    g, _ = _cadeia_holding()
+    direto = GrafoVinculos()
+    direto.ligar(SOCIO, VENCEDORA, "socio_de", fonte="QSA")
+    assert (g.beneficiario_final(VENCEDORA)["pessoas"][0]["confianca"]
+            < direto.beneficiario_final(VENCEDORA)["pessoas"][0]["confianca"])
+
+
+def test_participacao_circular_e_ACHADO_nao_loop_infinito():
+    """A é sócia da B e a B é sócia da A — estrutura que costuma existir para dificultar."""
+    g = GrafoVinculos()
+    b = no_pj("99.888.777/0001-66", "Beta Holding")
+    g.rotular(VENCEDORA, "Alfa Ltda")
+    g.rotular(b, "Beta Holding")
+    g.ligar(b, VENCEDORA, "socio_de", fonte="QSA")
+    g.ligar(VENCEDORA, b, "socio_de", fonte="QSA")
+    r = g.beneficiario_final(VENCEDORA)
+    assert r["ciclos"], "ciclo societário não foi registrado"
+
+
+def test_pessoa_sem_documento_e_marcada_como_nao_documentada():
+    g = GrafoVinculos()
+    anonimo = no_pf("", "João da Silva")
+    g.rotular(anonimo, "João da Silva")
+    g.ligar(anonimo, VENCEDORA, "socio_de", fonte="QSA")
+    assert g.beneficiario_final(VENCEDORA)["pessoas"][0]["documentado"] is False
+
+
+def test_cadeia_que_nao_fecha_declara_lacuna_em_vez_de_afirmar_ausencia():
+    g = GrafoVinculos()
+    holding = no_pj("55.666.777/0001-88")
+    g.ligar(holding, VENCEDORA, "socio_de", fonte="QSA")
+    r = g.beneficiario_final(VENCEDORA)
+    assert r["n_pessoas"] == 0
+    assert "lacuna de captura" in r["motivo"]
+
+
+def test_limite_de_saltos_evita_subida_infinita():
+    g = GrafoVinculos()
+    cadeia = [no_pj(f"111111110000{i:02d}") for i in range(8)]
+    for a, b in zip(cadeia, cadeia[1:]):
+        g.ligar(b, a, "socio_de", fonte="QSA")
+    pf = no_pf("111.222.333-44")
+    g.ligar(pf, cadeia[-1], "socio_de", fonte="QSA")
+    assert g.beneficiario_final(cadeia[0], max_saltos=3)["n_pessoas"] == 0
+    assert g.beneficiario_final(cadeia[0], max_saltos=9)["n_pessoas"] == 1
+
+
+def test_ressalva_registra_o_que_o_QSA_nao_mostra():
+    g, _ = _cadeia_holding()
+    assert "interposta pessoa" in g.beneficiario_final(VENCEDORA)["ressalva"]

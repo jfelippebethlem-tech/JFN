@@ -267,6 +267,75 @@ class GrafoVinculos:
         return sorted(vistos - {origem})
 
 
+    def beneficiario_final(self, pj: str, *, max_saltos: int = 5) -> dict[str, Any]:
+        """Sobe a cadeia societária de uma PJ até chegar em pessoas físicas.
+
+        POR QUE ISTO NÃO É TRIVIAL. Empresa cujo sócio é outra empresa esconde quem manda: o QSA
+        mostra "ALFA HOLDING LTDA", e é preciso subir mais um degrau — às vezes vários. Duas
+        armadilhas que a implementação trata:
+
+          · **Ciclo.** A empresa A é sócia da B, que é sócia da A. Sem detecção, a subida não
+            termina; com detecção, o ciclo é ACHADO, porque participação cruzada circular é
+            estrutura que costuma existir para dificultar a identificação.
+          · **Confiança por salto.** Cada degrau usa o QSA daquele momento e pode ter sido lido
+            por nome. A confiança do caminho é o produto das forças — três saltos por aresta
+            fraca não identificam beneficiário nenhum, e o resultado tem de dizer isso.
+
+        Devolve `{pessoas, cadeias, ciclos, saltos_max, confianca_media}`. Lista vazia de pessoas
+        com PJs intermediárias encontradas é resultado honesto: a cadeia existe e não fecha.
+        """
+        pessoas: dict[str, dict] = {}
+        ciclos: list[list[str]] = []
+        cadeias: list[dict] = []
+
+        def subir(no: str, caminho: list[str], forca: float, saltos: int) -> None:
+            if saltos > max_saltos:
+                return
+            for viz, a in self.vizinhos(no):
+                if a.tipo != "socio_de" or viz == no:
+                    continue
+                # a aresta socio_de é (pessoa|empresa) → empresa; subimos do lado da empresa
+                if viz == caminho[-1] if len(caminho) > 1 else False:
+                    continue
+                if viz in caminho:
+                    ciclo = caminho[caminho.index(viz):] + [viz]
+                    if ciclo not in ciclos:
+                        ciclos.append([self.rotulos.get(x, x) for x in ciclo])
+                    continue
+                nova_forca = forca * a.forca
+                if viz.startswith("pf:") or viz.startswith("pf_nome:"):
+                    atual = pessoas.get(viz)
+                    if atual is None or nova_forca > atual["confianca"]:
+                        pessoas[viz] = {
+                            "no": viz, "rotulo": self.rotulos.get(viz, viz),
+                            "confianca": round(nova_forca, 4), "saltos": saltos,
+                            "documentado": viz.startswith("pf:"),
+                            "caminho": [self.rotulos.get(x, x) for x in caminho + [viz]],
+                        }
+                    cadeias.append({"ate": self.rotulos.get(viz, viz), "saltos": saltos,
+                                    "confianca": round(nova_forca, 4)})
+                else:
+                    subir(viz, caminho + [viz], nova_forca, saltos + 1)
+
+        subir(pj, [pj], 1.0, 1)
+        lista = sorted(pessoas.values(), key=lambda d: (-d["confianca"], d["saltos"]))
+        conf = (sum(p["confianca"] for p in lista) / len(lista)) if lista else 0.0
+        return {
+            "pj": self.rotulos.get(pj, pj),
+            "pessoas": lista,
+            "n_pessoas": len(lista),
+            "ciclos": ciclos,
+            "saltos_max": max((p["saltos"] for p in lista), default=0),
+            "confianca_media": round(conf, 4),
+            "motivo": ("beneficiário final identificado" if lista else
+                       "cadeia societária não chega a pessoa física com os dados disponíveis — "
+                       "lacuna de captura, não ausência de beneficiário"),
+            "ressalva": ("Beneficiário final apurado em fonte aberta reflete o QSA COLETADO; "
+                         "participação por procuração, acordo de acionistas ou interposta pessoa "
+                         "não aparece no registro."),
+        }
+
+
 def narrar(passos: list[dict]) -> str:
     """A frase que vai para a peça. Sem fonte, a frase não se escreve."""
     if not passos:

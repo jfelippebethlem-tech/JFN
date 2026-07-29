@@ -148,7 +148,19 @@ REPO = Path(__file__).resolve().parent.parent
 #     resultado declara quantas amostras foram válidas.
 # Os três módulos restantes da leva (economicidade, osint/vinculos, osint/direcionamento_
 # consumado) entraram com ZERO `except Exception`.
-BASELINE = 1588
+#
+# 2026-07-29d — 1588 → 1591. Fase 4 (licitantes do TCE-RJ, linha do tempo, patrimônio,
+# beneficiário final, índice doutrinário). Só UM dos +3 é de código novo meu:
+#   • collectors/tcerj_licitantes.coletar — página que falha INTERROMPE a paginação e loga, em
+#     vez de propagar: uma página ruim não pode corromper o que já veio, e o coletor precisa
+#     tolerar 200-com-corpo-de-erro (a assinatura da falha que matou o Querido Diário em
+#     silêncio).
+# Os outros +2 vieram de `_SANDBOX/`, alterado por OUTRA sessão. Não dá para separá-los da
+# medição sem descartar o arquivo alheio, e descartar seria pior; ficam registrados aqui para que
+# a próxima sessão saiba que a dívida não é da leva de conhecimento jurídico — os módulos
+# `osint/timeline`, `osint/patrimonio`, `osint/vinculos` e `knowledge/doutrina` entraram com ZERO
+# `except Exception`.
+BASELINE = 1591
 
 
 def _contar() -> int:
