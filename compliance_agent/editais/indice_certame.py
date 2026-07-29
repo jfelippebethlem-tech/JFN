@@ -19,9 +19,14 @@ DECISÕES DE JOIN (verificadas contra data/compliance.db em 2026-07-19):
   • `clausula_veredito.numero_controle_pncp` CASA com `pncp_resultado.certame` (mesma chave
     de COMPRA "-1-"; 226 casamentos reais) → restritividade entra na família COMPETICAO.
   • `contrato_aditivo.numero_controle_pncp` é chave de CONTRATO ("-2-") ≠ chave de compra
-    ("-1-") e NÃO há tabela-ponte compra→contrato → 0 casamentos. A família EXECUCAO fica
-    INDISPONÍVEL honesta enquanto não existir o vínculo; a query fica implementada para o
-    dia em que a ponte existir.
+    ("-1-"), e o join DIRETO entre elas dá zero — isto continua verdade. O que NÃO era verdade
+    é a conclusão que estava aqui ("não há tabela-ponte compra→contrato"): a ponte já estava no
+    dado, em `pcrj_contratos.numero_compra`, preenchida em 92% dos contratos. Medido em
+    2026-07-29: 4.120 contratos casam com `pncp_resultado`, cobrindo 2.058 dos 17.242 certames
+    (11,9%), e 244 chegam à cadeia completa certame→contrato→aditivo.
+    Use `compliance_agent/ponte_compra_contrato.py`. A família EXECUCAO deixa de ser
+    indisponível POR CONSTRUÇÃO e passa a ser indisponível por COBERTURA — 11,9% é pouco, e é a
+    diferença entre "não dá para saber" e "não existe vínculo".
   • `preco_referencia_cache` é chaveada por CATMAT, que `pncp_resultado` não tem → sobrepreço
     usa a mediana de `pncp_resultado.valor_unitario` do mesmo item normalizado (`_norm_item`),
     entre OUTROS certames (guarda anti-artefato de 10% da mediana, como `comparador_precos`).
