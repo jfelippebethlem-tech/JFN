@@ -715,6 +715,11 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+> **📋 HANDOFF 2026-07-29 → `docs/HANDOFF-2026-07-29.md`** — comece por ele: os 7 achados que
+> decidem como mexer em qualquer detector, o pendente ORDENADO por valor/esforço (o nº 1 é
+> E.0.1, porque só 0,66% dos certames têm classificado além do 1º lugar), as fontes
+> bloqueadas com o sintoma exato, e como rodar a suíte nesta VM (em lotes).
+>
 > **⏯️ 2026-07-29 — Execução do plano de hermenêutica/OSINT (8 commits):** lições em
 > `~/vault/aprendizados/sessao-2026-07-29-hermeneutica-osint-e-acervos.md`; ferramenta nova documentada em
 > `~/vault/codigo/tcu-indice-existencia.md`. **FEITO:** (1) `editais/screens_participacao` — par de cobertura
