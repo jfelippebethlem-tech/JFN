@@ -272,7 +272,9 @@ def api_eval_hermeneutica():
     try:
         from compliance_agent.reporting import painel_acuracia
         return JSONResponse(content=painel_acuracia.montar())
-    except Exception as e:  # noqa: BLE001
+    # Estreito de propósito: `montar()` já é defensivo (arquivo ausente/corrompido vira estado
+    # declarado), então aqui só restam falha de import e erro de leitura/forma.
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
@@ -287,7 +289,9 @@ def api_eval_lift():
     try:
         from compliance_agent.reporting import painel_lift
         return JSONResponse(content=painel_lift.montar())
-    except Exception as e:  # noqa: BLE001
+    # Estreito de propósito: `montar()` já é defensivo (arquivo ausente/corrompido vira estado
+    # declarado), então aqui só restam falha de import e erro de leitura/forma.
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
