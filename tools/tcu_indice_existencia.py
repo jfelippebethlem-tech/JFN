@@ -328,7 +328,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
             _guarda()
             try:
                 r = ingerir_ano(ano, con, forcar=a.forcar)
-            except Exception as exc:  # noqa: BLE001 — um ano ruim não pode derrubar a série
+            except (csv.Error, sqlite3.Error, OSError, ValueError) as exc:
                 r = {"ano": ano, "erro": f"{type(exc).__name__}: {str(exc)[:120]}"}
             print(f"[tcu-ex] {r}", flush=True)
             if r.get("erro"):
