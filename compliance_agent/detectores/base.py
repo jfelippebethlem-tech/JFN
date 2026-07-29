@@ -71,6 +71,7 @@ Os módulos citados vivem em `compliance_agent/`.
   X10 Aditivo desinstruído (checklist dos autos) .. ✅ (`detectores/x10_aditivo_desinstruido.py`)
   X11 Objeto descaracterizado (art. 126) .......... ✅ (`detectores/x11_objeto_descaracterizado.py`)
   X12 Benford nos quantitativos (triagem) ......... ✅ (`detectores/x12_benford_quantitativos.py`)
+  X13 Sub-rogação de fato / troca de controle ...... ✅ (`detectores/x13_sub_rogacao.py`)
 
   TRANSVERSAIS (já no JFN, alimentam vários cards)
   · Teto remuneratório CF 37 XI ..................... ✅ `acima_do_teto.py` (não é card de licitação, mas é detector)

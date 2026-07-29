@@ -311,10 +311,13 @@ CATALOGO: tuple[Vicio, ...] = (
           escalada="representacao", origem=("casa", "CGU")),
     Vicio("sub_rogacao_ilegal", "Sub-rogação/troca de controle pós-contrato", "execucao",
           "Contrato transferido de fato a terceiro (sub-rogação vedada) ou controle societário alterado após "
-          "receita pública relevante (R6 no Lex — fora do REGISTRO).",
-          redflags_lex=("R6",), fraudes=("sub_rogacao_ilegal",),
-          dispositivos=("Lei 14.133/2021 art. 14",), escalada="diligencia",
-          origem=("casa",), status="parcial"),
+          "receita pública relevante. X13 separa o que a lei veda (cessão, subcontratação total) "
+          "do que ela admite (fusão/cisão/incorporação — art. 137, §2º, III) e do que é apenas "
+          "indício (troca de sócios em janela curta após receita alta).",
+          detectores=("X13",), redflags_lex=("R6",), fraudes=("sub_rogacao_ilegal",),
+          dispositivos=("Lei 14.133/2021 art. 14", "Lei 14.133/2021 art. 122",
+                        "Lei 14.133/2021 art. 137 §1º e §2º III"), escalada="diligencia",
+          origem=("casa",), status="coberto"),
 )
 
 POR_ID: dict[str, Vicio] = {v.id: v for v in CATALOGO}
