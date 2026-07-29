@@ -190,6 +190,64 @@ def test_orgao_renderiza_contratos_por_fornecedor_no_pdf():
     )
 
 
+# Onde cada assunto do relatório de FORNECEDOR aparece em cada render. O MD e o PDF numeram
+# diferente (§1-G × §9-C) porque cada um tem sua sequência editorial — o que não pode acontecer é um
+# ASSUNTO existir num e não no outro, e foi o que a auditoria encontrou: o PDF, que é o documento
+# que circula, saía sem a pergunta mais direta que um tribunal faz (pagou-se; há prova de entrega?).
+_ASSUNTOS_DO_FORNECEDOR = {
+    "execucao_contratual": ("_render_execucao", "Execução contratual"),
+    "beneficios_socios": ("BENEFÍCIOS SOCIAIS", "Benefícios sociais"),
+    "emendas": ("EMENDAS PARLAMENTARES", "Emendas parlamentares"),
+    "rodizio": ("RODÍZIO DE VENCEDORES", "Rodízio de vencedores"),
+    "conflito_pessoal": ("CONFLITO DE PESSOAL", "Conflito de pessoal"),
+    "doacoes": ("DOAÇÕES ELEITORAIS", "Doações eleitorais"),
+    "benford": ("BENFORD", "Benford"),
+    "anomalias_ob": ("ANOMALIAS NAS ORDENS", "Anomalias nas Ordens"),
+    "listas_restritivas": ("LISTAS RESTRITIVAS", "Listas restritivas"),
+    "matriz_risco": ("MATRIZ DE RISCO", "Matriz de risco"),
+}
+
+
+def test_md_e_pdf_do_fornecedor_cobrem_os_mesmos_assuntos():
+    """Numeração pode divergir; ASSUNTO não. Quem lê o PDF e quem lê o MD tinham relatórios
+    diferentes sobre a mesma empresa — indefensável num produto de controle externo."""
+    md = (_RAIZ / "compliance_agent/reporting/intel_md.py").read_text()
+    pdf = (_RAIZ / "compliance_agent/reporting/intel_pdf.py").read_text()
+    faltando = []
+    for assunto, (marca_md, marca_pdf) in _ASSUNTOS_DO_FORNECEDOR.items():
+        if marca_md not in md:
+            faltando.append(f"{assunto}: ausente no Markdown (procurei {marca_md!r})")
+        if marca_pdf not in pdf:
+            faltando.append(f"{assunto}: ausente no PDF (procurei {marca_pdf!r})")
+    assert not faltando, "assunto presente num render e não no outro:\n  " + "\n  ".join(faltando)
+
+
+def test_render_nao_imprime_nome_interno_em_titulo():
+    """O gate de neutralidade existe e roda em UM caminho só (`dossie.py`) — por isso "JFN" saía
+    impresso no título da seção 3 do PDF de órgão e em duas seções do PDF de fornecedor.
+
+    Checar a FONTE é mais barato que gerar PDF e extrair texto, e falha no commit em vez de falhar
+    no entregável. Só título e legenda entram aqui: docstring e comando de uso podem citar o repo.
+    """
+    from compliance_agent.reporting.neutralidade import termos_proibidos
+
+    alvos = ("compliance_agent/reporting/inteligencia_orgao.py",
+             "compliance_agent/reporting/intel_md.py",
+             "compliance_agent/intel_relatorio.py",
+             "compliance_agent/reporting/intel_pdf.py")
+    sujos: list[str] = []
+    for rel in alvos:
+        for i, linha in enumerate((_RAIZ / rel).read_text().splitlines(), 1):
+            limpa = linha.split("#", 1)[0]
+            # só texto que VAI para o documento: cell/mc/add/append de string literal
+            if not re.search(r"(pdf\.cell|_mc\(|\badd\(|L\.append\(|\.multi_cell|\"html\"|nota_cal)", limpa):
+                continue
+            for trecho in re.findall(r'"([^"]{4,})"', limpa) + re.findall(r"'([^']{4,})'", limpa):
+                if termos_proibidos(trecho):
+                    sujos.append(f"{rel}:{i} → {trecho[:80]}")
+    assert not sujos, "nome interno impresso no entregável:\n  " + "\n  ".join(sujos)
+
+
 def test_orgao_usa_o_mesmo_teto_de_ob_no_md_e_no_pdf():
     """Mesma UG, dois números: o MD mostrava 40 OBs/ano e o PDF 12 — e o comentário do código
     afirmava 'sem limite, tudo no PDF'."""

@@ -2673,7 +2673,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Parecer jurídico e de mérito
     pdf.add_page()
     pdf.set_font(pdf._fam, "B", 14); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0)
     raciocinio = ctx.get("raciocinio")
     if raciocinio:

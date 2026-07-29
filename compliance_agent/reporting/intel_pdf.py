@@ -9,6 +9,7 @@ from pathlib import Path
 
 from fpdf.enums import XPos, YPos
 
+from compliance_agent.reporting.completude import campo
 from compliance_agent.reporting.intel_base import fmt_cnpj, moeda
 from compliance_agent.reporting.intel_dados import _crescimento
 from compliance_agent.reporting.intel_analise import (
@@ -293,7 +294,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             li = "".join(f"<li><a href='{esc(x.get('url'))}'>{esc(x.get('fonte'))}</a> "
                          f"<span class='nota'>— {esc(x.get('categoria'))}</span></li>" for x in links)
             secoes.append({"titulo": "4-D. Pistas de investigação (OSINT hospedado — uso manual)",
-                           "html": "<p class='nota'>Agregadores e fontes hospedadas grátis (você pesquisa; o JFN só "
+                           "html": "<p class='nota'>Agregadores e fontes hospedadas grátis (você pesquisa; a ferramenta só "
                                    "monta o link já preenchido com o alvo). Aprofundamento de DD — não são dados coletados.</p>"
                                    f"<ul>{li}</ul>"})
     except Exception as exc:  # noqa: BLE001
@@ -469,6 +470,50 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                        "destacada pelo modelo (não afasta outras irregularidades).</p>")
             secoes.append({"titulo": "9-B. Anomalias nas Ordens Bancárias (modelo de detecção)", "html": _ah})
 
+    # 9-C. Execução contratual (prova de entrega) — OB paga × perícia SEI.
+    # Existia SÓ no Markdown (§1-G). O PDF é o que circula, e circulava sem a pergunta mais direta
+    # que um tribunal faz: pagou-se, e há prova de que foi entregue? Consome o mesmo
+    # `correlacao_sei.execucao_de_fornecedor` do MD, para os dois não divergirem de novo.
+    try:
+        from compliance_agent import correlacao_sei
+        _ex = correlacao_sei.execucao_de_fornecedor(ctx.get("cnpj", "") or "")
+    except Exception as _e:  # noqa: BLE001 — degrada honesto
+        _ex, _ex_erro = [], str(_e)[:60]
+    else:
+        _ex_erro = ""
+    _susp = [x for x in _ex if x.get("exec") in ("nao", "parcial", "indeterminado")
+             and (x.get("total") or 0) > 0]
+    _peric = [x for x in _ex if x.get("exec")]
+    _cab = ("<p class='nota'>Cruza os processos <b>pagos</b> (Ordem Bancária) com a <b>perícia de "
+            "execução</b> dos autos: há prova de entrega e fiscalização? Pagar sem execução "
+            "comprovada é <i>red flag</i> — a liquidação exige a comprovação (Lei 4.320/64 art. 63; "
+            "Lei 14.133/2021 arts. 117 e 140). Indício, não prova: INDISPONÍVEL não é irregular.</p>")
+    if _ex_erro:
+        _eh = _cab + f"<p class='nota'>Cruzamento indisponível nesta execução ({esc(_ex_erro)}) — INDISPONÍVEL.</p>"
+    elif not _susp:
+        _eh = _cab + (f"<p class='nota'>Dos <b>{len(_peric)}</b> processo(s) pago(s) com perícia "
+                      "disponível, <b>nenhum</b> com execução não comprovada — execução aparentemente "
+                      "regular nos autos periciados; os demais seguem INDISPONÍVEL.</p>"
+                      if _peric else
+                      "<p class='nota'>Nenhum processo deste fornecedor foi periciado quanto à "
+                      "execução — <b>INDISPONÍVEL</b>. A perícia documental roda por sweep e pode não "
+                      "ter alcançado este fornecedor; não é atestado de regularidade.</p>")
+    else:
+        _etot = sum(x.get("total") or 0 for x in _susp)
+        _erows = "".join(
+            f"<tr><td>{esc(x.get('numero_sei'))}</td><td>{esc(x.get('n_obs'))}</td>"
+            f"<td>{esc(moeda(x.get('total')))}</td><td>{esc(x.get('exec'))}</td>"
+            f"<td>{esc(x.get('nota'))}/10</td><td>{esc(campo(x.get('resumo'), 110))}</td></tr>"
+            for x in sorted(_susp, key=lambda y: -(y.get("total") or 0)))
+        _eh = _cab + (
+            f"<p class='nota'>🟡 <b>{len(_susp)}</b> processo(s) pago(s) — <b>R$ {moeda(_etot)}</b> — "
+            "sem execução comprovada nos autos. Cabe exigir do gestor atesto, nota fiscal, medição e "
+            "relatório fotográfico antes de novo pagamento.</p>"
+            "<table><tr><th>Processo SEI</th><th>OBs</th><th>Pago</th><th>Execução</th>"
+            f"<th>Nota</th><th>Resumo da perícia</th></tr>{_erows}</table>")
+    secoes.append({"titulo": "9-C. Execução contratual — prova de entrega (OB paga × perícia dos autos)",
+                   "html": _eh})
+
     # 10. Co-endereço / sócios em comum (sinal de cartel/laranja) — sempre presente (sem buraco de numeração)
     coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
     if coend:
@@ -514,7 +559,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             flags.append("🟡 " + esc(_tit.split("—", 1)[-1].strip()) + ": " + esc(_resumo) + ".")
     if not flags:
         flags.append("🟢 Sem red flags estruturais automáticos nesta triagem (não exclui exame manual).")
-    nota_cal = (f"<p class='nota'>Risco JFN recalibrado: <b>{esc(ctx.get('risco'))}</b> (score {ctx.get('score')}/100 = "
+    nota_cal = (f"<p class='nota'>Risco recalibrado: <b>{esc(ctx.get('risco'))}</b> (score {ctx.get('score')}/100 = "
                 f"máx[externo {cal.get('score_externo',0)}, interno {cal.get('score_interno',0)}]). "
                 "O score interno incorpora os sinais REAIS do relatório — inclusive rede mesma-sede (§1-B) e "
                 "anomalias nas OBs (§8-C) — com peso conservador. "
