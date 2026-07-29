@@ -31,6 +31,7 @@ GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
 GET /api/empresa -> api_empresa
 GET /api/eval/hermeneutica -> api_eval_hermeneutica
+GET /api/eval/lift -> api_eval_lift
 GET /api/eventos/stream -> api_eventos_stream
 GET /api/fachada/revisar -> api_fachada_revisar
 GET /api/flags -> api_flags

@@ -276,6 +276,21 @@ def api_eval_hermeneutica():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/eval/lift")
+def api_eval_lift():
+    """G.8 — poder preditivo MEDIDO de cada detector, contra sanção POSTERIOR ao sinal.
+
+    Publicar o número é o que muda a fila: sem ele, sinal bom e sinal inútil disputam a mesma
+    atenção. Lift abaixo de 1 sai como ALERTA, não escondido — aponta para empresas menos
+    sancionadas que a base, e priorizar por ele desperdiça o tempo do fiscal.
+    """
+    try:
+        from compliance_agent.reporting import painel_lift
+        return JSONResponse(content=painel_lift.montar())
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/agenda")
 async def api_agenda():
     """Observabilidade central: timers systemd + crons + pausas num relatório só (determinístico, leitura-só).
