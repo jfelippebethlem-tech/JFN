@@ -160,7 +160,18 @@ REPO = Path(__file__).resolve().parent.parent
 # a próxima sessão saiba que a dívida não é da leva de conhecimento jurídico — os módulos
 # `osint/timeline`, `osint/patrimonio`, `osint/vinculos` e `knowledge/doutrina` entraram com ZERO
 # `except Exception`.
-BASELINE = 1591
+#
+# 2026-07-29e — 1591 → 1595. Fases 5 e 6 (subsunção auditável, X9/X10/X11). Os +4 são meus e
+# nenhum é mudo:
+#   • knowledge/subsuncao._verificar_norma (+3) — um por base consultada (súmula, acervo do TCU,
+#     base legal). O motivo é de honestidade, não de conveniência: se a base de jurisprudência
+#     falhar ao importar, o módulo NÃO pode concluir "norma inválida" e derrubar uma fundamentação
+#     correta. Base indisponível segue para a próxima tentativa; só o esgotamento das três recusa.
+#   • detectores/x11_objeto_descaracterizado (+1) — `gerar` (LLM) da rubrica de pertinência: a
+#     parte objetiva do card (mudança de natureza, item sem correspondente) permanece, e a
+#     indisponibilidade entra nas evidências.
+# X9 e X10 entraram com ZERO `except Exception`.
+BASELINE = 1595
 
 
 def _contar() -> int:
