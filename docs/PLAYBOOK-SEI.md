@@ -204,6 +204,35 @@ devolveria a mesma ficha enquanto a leitura continuasse nos 2 documentos.
 `encaminhamento_com_acervo(flags, docs_no_acervo=…, docs_lidos=…)` separa **reanalisar** de
 **recapturar**; sem saber o acervo, devolve o que a régua antiga devolvia.
 
+## Processo ENCERRADO não se relê — mas segue auditável  ⭐ NOVO 2026-07-28
+
+O sweep de captura já pulava árvore encerrada; a ANÁLISE, que gasta cota, não. Três condições,
+todas necessárias (`compliance_agent/sei/encerramento.py`):
+
+    já foi lido        — nunca pular o que nunca se leu; encerrado e não lido é o PIOR caso
+    está encerrado     — Termo de Encerramento no arquivo OU `sei_arvore.encerrado`
+    sem pagamento novo — OB posterior à leitura reabre; pagar depois do encerramento é sinal
+
+Leitura INCOMPLETA não conta como lida — pular por "já lido" cristalizaria dossiê que não cobriu
+o processo. Medido: 308 encerrados pelo arquivo, 184 pela árvore, **51 concordam** (a divergência
+é informação: árvore sem termo no arquivo sugere captura parcial). Tira 23 de 170 da fila.
+
+`--incluir-encerrados` força. O veredito traz sempre o MOTIVO: o que cai é a prioridade de
+RELER, nunca a de fiscalizar.
+
+## Duas máquinas capturando: fatia determinística  ⭐ NOVO 2026-07-28
+
+```bash
+JFN_SWEEP_FATIA=0/2 bash tools/sweep_sei.sh     # VM-1 (padrão do script)
+JFN_SWEEP_FATIA=1/2 bash tools/sweep_sei.sh     # VM-2 (imposto pelo timer systemd)
+```
+Divide pelo hash do número do processo: sem lock distribuído, sem heartbeat, sem uma máquina
+precisar saber que a outra existe. Medido: **21.045 + 20.695 = 41.740**, o universo inteiro, sem
+sobreposição. Configuração inválida LEVANTA — cair no padrão faria as duas varrerem tudo.
+
+> Contexto: 45.939 processos citados em OB, 2.007 com texto, vazão de 102/dia. Uma máquina só
+> levaria ~430 dias.
+
 ## NUNCA
 - ❌ Culpar acesso/WAF: o login SEMPRE funciona (cron prova). Falha = seu método.
 - ❌ Browser em foreground ou 2 browsers: use background + `tools/vm_guard.py`.

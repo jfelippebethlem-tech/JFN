@@ -406,6 +406,26 @@ def _nota_vault(pasta: str, pago: float, dossie: str, indicios, conf: dict, *,
     return "\n".join(linhas)
 
 
+def _arvore_encerradas_set() -> set[str]:
+    """Processos com encerramento AUTORITATIVO (`sei_arvore.encerrado`). Vazio se indisponível.
+
+    Na dúvida devolve vazio — e vazio significa "não pula nada", que é o lado seguro: pular
+    análise por engano esconde processo, enquanto reanalisar à toa só custa cota.
+    """
+    try:
+        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=20)
+        try:
+            if not con.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                               "AND name='sei_arvore'").fetchone():
+                return set()
+            return {r[0] for r in con.execute(
+                "SELECT numero_sei FROM sei_arvore WHERE encerrado=1")}
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return set()
+
+
 def analisar(pasta: str, pago: float, *, vault: bool = True, refazer: bool = False) -> dict:
     """Analisa um processo. `refazer=True` LÊ DE NOVO, ignorando o dossiê já em disco.
 
@@ -473,6 +493,8 @@ def main() -> int:
     ap.add_argument("--reler", action="store_true",
                     help="LÊ DE NOVO (custa cota): ignora o dossiê em disco, que é guardado "
                          "em output/dossies/_substituidos/")
+    ap.add_argument("--incluir-encerrados", action="store_true",
+                    help="não pula processo encerrado já lido (padrão: pula, para poupar cota)")
     ap.add_argument("--fila-releitura", action="store_true",
                     help="analisa só os processos de data/fila_releitura.json")
     ap.add_argument("--refazer", action="store_true", help="ignora o índice e reanalisa")
@@ -549,6 +571,25 @@ def main() -> int:
         print(f"fila de RELEITURA: {len(alvos)} alvo(s); analisando {len(pendentes)}")
     else:
         pendentes = [(p, v) for p, v in ordem if p not in indice][:a.n]
+
+    # ENCERRADOS já lidos saem da fila: releitura sem fato novo gasta cota que faltaria para os
+    # 43.932 processos ainda sem uma linha lida. Encerrado NÃO é inauditável — o que cai é a
+    # prioridade de reler. Medido em 2026-07-28: 23 dos 169 processos do índice (14%).
+    if not a.incluir_encerrados:
+        from compliance_agent.sei.encerramento import deve_reanalisar, situacao_do_processo
+        encerradas = _arvore_encerradas_set()
+        mantidos, pulados = [], []
+        for pasta, valor in pendentes:
+            sit = situacao_do_processo(pasta, arvore_encerradas=encerradas)
+            d = deve_reanalisar(ja_lido=pasta in indice, encerrado=sit["encerrado"],
+                                ob_apos_leitura=False)
+            (mantidos if d["reanalisar"] else pulados).append((pasta, valor, d["motivo"]))
+        for pasta, _v, motivo in pulados:
+            print(f"  pulado {pasta}: {motivo[:96]}")
+        if pulados:
+            print(f"  ({len(pulados)} processo(s) fora da fila por encerramento — "
+                  f"use --incluir-encerrados para forçar)")
+        pendentes = [(p, v) for p, v, _m in mantidos]
     if not pendentes:
         print("nada pendente — use --refazer para reanalisar")
         return 0
