@@ -114,6 +114,79 @@ def test_todo_exercicio_cita_o_ato_normativo():
 
 # ───────────────────────────── a trava contra a 6ª cópia ──────────────────────────────────────
 
+def _tetos_formatados() -> set[str]:
+    """O mesmo teto, nas grafias em que ele aparece dentro de TEXTO.
+
+    A trava numérica acima usa `tokenize` e só enxerga tokens NUMBER — por isso deixou passar
+    seis cópias escondidas em *strings*: system-prompts de LLM (`llm/groq_agent.py`,
+    `llm/hermes_agent.py`), base de conhecimento injetada no prompt (`llm/memoria.py`,
+    `knowledge/base_legal.py`) e mensagem de alerta (`scheduler.py`). Um teto escrito no prompt é
+    pior que no código: o modelo o repete como se fosse a lei vigente, e ninguém revisa prompt.
+    """
+    grafias: set[str] = set()
+    for v in _valores_de_teto():
+        inteiro = int(v)
+        grafias.add(f"{inteiro:,}".replace(",", "."))          # 57.208
+        grafias.add(f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))  # 57.208,33
+        grafias.add(str(inteiro))                              # 59906  (default de env)
+        grafias.add(f"{v:.2f}")                                # 59906.02
+    return grafias
+
+
+def _tetos_em_string(caminho: pathlib.Path) -> set[str]:
+    """Tetos dentro de literais de string que NÃO são docstring.
+
+    Usa `ast`, não `tokenize`, por dois motivos: comentários simplesmente não existem na árvore
+    (ficam isentos de graça, como já são na trava numérica) e docstring é identificável por
+    `ast.get_docstring` — explicar por que o número mudou de ano continua legítimo. O que não
+    pode é o número **operar**: virar prompt, alerta ou verbete de base legal.
+    """
+    import ast
+
+    achados: set[str] = set()
+    grafias = _tetos_formatados()
+    try:
+        arvore = ast.parse(caminho.read_text(encoding="utf-8"))
+    except (SyntaxError, OSError, UnicodeDecodeError):
+        return achados
+    docs = {
+        d for no in ast.walk(arvore)
+        if isinstance(no, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+        for d in [ast.get_docstring(no, clean=False)] if d
+    }
+    for no in ast.walk(arvore):
+        if not (isinstance(no, ast.Constant) and isinstance(no.value, str)):
+            continue
+        if no.value in docs:
+            continue
+        achados |= {g for g in grafias if g in no.value}
+    return achados
+
+
+def test_nenhum_prompt_nem_texto_repete_o_valor_do_teto():
+    """A 6ª cópia não estava no código — estava no prompt.
+
+    `llm/groq_agent.py` mandava ao modelo "R$ 57.208 compras / R$ 114.416 obras" (valores de
+    2023) enquanto o teto de 2026 é R$ 65.492,11 / R$ 130.984,20 — 12% de defasagem numa
+    instrução que o modelo trata como lei. É a violação literal da regra escrita em
+    `compliance_agent/detectores/base.py:7`: limiar numérico fica no código, nunca no prompt.
+    """
+    raiz = pathlib.Path(__file__).resolve().parent.parent
+    ofensores: dict[str, list[str]] = {}
+    alvos = list(raiz.glob("compliance_agent/**/*.py")) + list(raiz.glob("tools/**/*.py"))
+    for f in alvos:
+        rel = f.relative_to(raiz).as_posix()
+        if rel in _PERMITIDO:
+            continue
+        achados = _tetos_em_string(f)
+        if achados:
+            ofensores[rel] = sorted(achados)
+    assert not ofensores, (
+        "teto de dispensa escrito em TEXTO (prompt, alerta ou base de conhecimento) — o valor é "
+        "por exercício e deve ser injetado de compliance_agent.limites_dispensa em tempo de "
+        f"execução, nunca redigido: {ofensores}")
+
+
 def test_nenhum_modulo_repete_o_valor_do_teto():
     raiz = pathlib.Path(__file__).resolve().parent.parent
     ofensores: dict[str, list[str]] = {}

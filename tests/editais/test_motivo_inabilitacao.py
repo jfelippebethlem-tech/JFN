@@ -79,17 +79,38 @@ def test_rubrica_nao_roda_quando_gabarito_decide():
     assert r["classe"] == "trivial" and not chamado  # determinístico decidiu; LLM nem foi chamada
 
 
+def test_rubrica_chama_gerar_na_ordem_da_casa():
+    """`gerar(prompt, sistema)` — não o inverso.
+
+    Este módulo chamava `gerar(_SYS_RUBRICA, "MOTIVO DA ELIMINAÇÃO: ...")`, invertendo o contrato
+    padrão (`gerar_sync(prompt, sistema)`, `detectores/base`, `camada_triagem`). Os testes usavam
+    `lambda sys, p`, que é posicional e aceita qualquer ordem — por isso cimentavam a inversão em
+    vez de pegá-la. Injetar `gerar_sync` de verdade aqui mandaria o system-prompt como fala do
+    usuário e a pergunta como system.
+    """
+    from compliance_agent.editais.motivo_inabilitacao import _SYS_RUBRICA, classificar_com_rubrica
+    visto = {}
+
+    def espiao(prompt, sistema=""):
+        visto["prompt"], visto["sistema"] = prompt, sistema
+        return '{"classe":"nao_sei","trecho":""}'
+
+    classificar_com_rubrica("a empresa não demonstrou aderência à visão estratégica", gerar=espiao)
+    assert visto["sistema"] == _SYS_RUBRICA, "o system-prompt tem de ir no 2º argumento"
+    assert "MOTIVO DA ELIMINAÇÃO" in visto["prompt"], "o 1º argumento é a pergunta do usuário"
+
+
 def test_rubrica_exige_citacao_literal():
     from compliance_agent.editais.motivo_inabilitacao import classificar_com_rubrica
     motivo = "a empresa não demonstrou aderência à visão estratégica"
-    fake = lambda sys, p: '{"classe":"substancial","trecho":"texto que não está no motivo original"}'  # noqa: E731
+    fake = lambda p, sys="": '{"classe":"substancial","trecho":"texto que não está no motivo original"}'  # noqa: E731
     assert classificar_com_rubrica(motivo, gerar=fake)["classe"] == "ambiguo"  # citação falsa → descarta
 
 
 def test_rubrica_valida_promove_com_origem_llm():
     from compliance_agent.editais.motivo_inabilitacao import classificar_com_rubrica
     motivo = "a empresa não demonstrou aderência à visão estratégica do órgão"
-    fake = lambda sys, p: '{"classe":"trivial","trecho":"não demonstrou aderência à visão"}'  # noqa: E731
+    fake = lambda p, sys="": '{"classe":"trivial","trecho":"não demonstrou aderência à visão"}'  # noqa: E731
     r = classificar_com_rubrica(motivo, gerar=fake)
     assert r["classe"] == "trivial" and r["origem_llm"] is True
     assert "SUSPEITO" in r["fundamento"]

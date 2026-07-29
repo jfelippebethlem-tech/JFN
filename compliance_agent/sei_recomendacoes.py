@@ -16,7 +16,6 @@ trecho/fonte; nunca afirma irregularidade — aponta "recomendação aparentemen
 """
 from __future__ import annotations
 
-import json
 import re
 
 # órgãos de controle/jurídico cujo parecer/despacho carrega recomendação/ressalva
@@ -190,8 +189,11 @@ def avaliar_pensante(texto: str, timeout: float = 60.0) -> dict:
         from tools.sei_ficha import STEPFUN, _chamar_nous
         prompt = f"DESPACHO/PARECER:\n{(texto or '')[:4000]}\n\nResponda só o JSON."
         raw = asyncio.run(asyncio.wait_for(_chamar_nous(_SYS_PENSANTE + "\n\n" + prompt, STEPFUN), timeout))
-        m = re.search(r"\{.*\}", raw or "", re.S)
-        return json.loads(m.group(0)) if m else {"_nota": "LLM sem JSON", "atendida": "indeterminado"}
+        # 6ª cópia do `re.search(r"\{.*\}")` — parser único, paridade provada em
+        # tests/test_json_resposta_paridade.py::antigo_sei_recomendacoes.
+        from compliance_agent.llm.json_resposta import parse_json_llm
+        j = parse_json_llm(raw)
+        return j if isinstance(j, dict) else {"_nota": "LLM sem JSON", "atendida": "indeterminado"}
     except Exception as exc:  # noqa: BLE001
         return {"_nota": f"INDISPONÍVEL (nous): {str(exc)[:120]}", "atendida": "indeterminado"}
 

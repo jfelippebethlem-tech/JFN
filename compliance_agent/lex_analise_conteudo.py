@@ -182,19 +182,15 @@ _SYS_DISCURSIVO = (
 
 
 def _json_lex(texto: str):
-    """Extrai JSON (lista/obj) de uma resposta de LLM, tolerante a cercas ```json e texto ao redor."""
-    import json
-    t = (texto or "").strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    try:
-        return json.loads(t)
-    except Exception:
-        m = re.search(r"(\[.*\]|\{.*\})", t, re.DOTALL)
-        if m:
-            try:
-                return json.loads(m.group(1))
-            except Exception:
-                return None
-        return None
+    """Extrai JSON (lista/obj) de uma resposta de LLM.
+
+    Era uma 4ª implementação paralela ao parser único. Delega para
+    `llm/json_resposta.parse_json_llm`, que cobre tudo o que esta cobria (inclusive lista no topo,
+    que é o formato da análise discursiva) e ainda recupera resposta truncada — paridade provada
+    caso a caso em `tests/test_json_resposta_paridade.py::antigo_lex`.
+    """
+    from compliance_agent.llm.json_resposta import parse_json_llm
+    return parse_json_llm(texto)
 
 
 def analise_discursiva(achados: list[dict], gerar=None) -> list[dict]:

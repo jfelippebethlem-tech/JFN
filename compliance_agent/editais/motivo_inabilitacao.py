@@ -121,12 +121,13 @@ def classificar_com_rubrica(motivo: str, gerar=None, *, houve_diligencia: bool =
     r = classificar(motivo, houve_diligencia=houve_diligencia)
     if r["classe"] != "ambiguo" or gerar is None:
         return r
-    import json as _json
-    import re as _re
+    # Contrato da casa: gerar(prompt, sistema). Esta chamada já esteve invertida — e os testes,
+    # com `lambda sys, p`, aceitavam qualquer ordem e cimentavam o erro.
+    from compliance_agent.llm.json_resposta import parse_json_llm
     try:
-        raw = gerar(_SYS_RUBRICA, f"MOTIVO DA ELIMINAÇÃO:\n{(motivo or '')[:2000]}\n\nResponda só o JSON.")
-        m = _re.search(r"\{.*\}", raw or "", _re.S)
-        j = _json.loads(m.group(0)) if m else {}
+        raw = gerar(f"MOTIVO DA ELIMINAÇÃO:\n{(motivo or '')[:2000]}\n\nResponda só o JSON.",
+                    _SYS_RUBRICA)
+        j = parse_json_llm(raw) or {}
     except Exception:  # noqa: BLE001 — LLM caído = segue ambíguo (indisponível ≠ decidido)
         return r
     classe, trecho = j.get("classe"), (j.get("trecho") or "").strip()

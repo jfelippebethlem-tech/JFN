@@ -18,7 +18,6 @@ Roda dentro do loop contínuo do scheduler, em paralelo ao monitoramento.
 """
 
 import asyncio
-import json
 import logging
 from datetime import date, timedelta
 
@@ -184,13 +183,11 @@ async def investigar_alvo(alvo: dict, session) -> dict:
         resultado["dossie_web"] = {"erro": str(e)}
 
     # 3. Determina nível de risco
-    texto = (resultado["conclusao_agente"] + " "
-             + json.dumps(resultado["dossie_web"], ensure_ascii=False)).lower()
     riscos_web = (resultado.get("dossie_web") or {}).get("riscos", [])
-    if riscos_web or "alto" in texto or "irregular" in texto or "fraude" in texto:
-        resultado["risco"] = "alto"
-    elif "médio" in texto or "medio" in texto or "suspeit" in texto:
-        resultado["risco"] = "médio"
+    veredito = _classificar_risco(resultado["conclusao_agente"], riscos_web)
+    resultado["risco"] = veredito["risco"]
+    resultado["risco_fonte"] = veredito["fonte"]
+    resultado["risco_citacao"] = veredito.get("citacao", "")
 
     # 4. Salva na memória (aprende)
     try:
@@ -211,6 +208,87 @@ async def investigar_alvo(alvo: dict, session) -> dict:
         await _alertar_investigacao(alvo, resultado, session)
 
     return resultado
+
+
+_ESCALA_RISCO = ("baixo", "médio", "alto")
+
+_SYS_RISCO = (
+    "Você é AUDITOR DE CONTROLE EXTERNO classificando o RISCO de uma entidade a partir da "
+    "conclusão de uma investigação preliminar. Regras ABSOLUTAS: (1) indício ≠ acusação — "
+    "presunção de legitimidade; (2) classifique APENAS o que o texto AFIRMA: texto que NEGA "
+    "irregularidade ('não há indício de fraude') é risco BAIXO, jamais alto; (3) toda "
+    "classificação diferente de 'baixo' DEVE vir com o TRECHO LITERAL do texto que a sustenta — "
+    "sem trecho, responda 'baixo'; (4) não invente fato que não esteja no texto. "
+    'Responda SOMENTE um objeto JSON: {"risco":"baixo|médio|alto",'
+    '"citacao":"trecho LITERAL copiado do texto","justificativa":"1 frase"}'
+)
+
+
+_GERAR_PADRAO = object()  # sentinela: resolver a cascata de produção. `gerar=None` = sem LLM.
+
+
+def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_PADRAO) -> dict:
+    """Classifica o risco de uma investigação autônoma. NUNCA por substring.
+
+    A versão anterior fazia `"fraude" in texto` sobre a conclusão do agente concatenada ao dossiê
+    web. Como a forma mais comum de a palavra aparecer num parecer honesto é a NEGAÇÃO, um texto
+    concluindo "não há indício de fraude" virava risco ALTO — `Alerta` de severidade alta no banco
+    e mensagem no Telegram. "alto" era pior: casava dentro de "Planalto", "altos", "alterado".
+
+    Hierarquia nova:
+
+    1. **Sinal estruturado** (`riscos_web`, que o coletor já devolve como lista de achados) decide
+       sozinho — é dado, não prosa.
+    2. **Texto livre** só é julgado por rubrica fechada, com escala nomeada e citação literal
+       CONFERIDA contra o próprio texto (o trecho tem de existir na fonte, no molde de
+       `editais/motivo_inabilitacao`). Sem citação ancorada, o juízo é descartado.
+    3. **Sem LLM ou resposta inválida** ⇒ ``indeterminado`` — nunca ``baixo``. Ausência de juízo
+       não é declaração de regularidade (INDISPONÍVEL ≠ 0).
+
+    `gerar` é injetável para teste; em produção usa a cascata free (Gemini primeiro).
+    """
+    from compliance_agent.llm.json_resposta import parse_json_llm
+
+    if riscos_web:
+        return {"risco": "alto", "fonte": "estruturado", "riscos_web": list(riscos_web),
+                "citacao": "", "justificativa": "achado estruturado da pesquisa web"}
+
+    texto = (conclusao or "").strip()
+    if not texto:
+        return {"risco": "indeterminado", "fonte": "indisponivel", "citacao": "",
+                "justificativa": "sem conclusão do agente"}
+
+    if gerar is _GERAR_PADRAO:
+        try:
+            from compliance_agent.direcionamento_cerebro import gerar_sync as gerar
+        except ImportError:  # sem a camada de LLM o veredito é indeterminado, não baixo
+            gerar = None
+    if gerar is None:
+        return {"risco": "indeterminado", "fonte": "indisponivel", "citacao": "",
+                "justificativa": "camada de juízo indisponível"}
+
+    try:
+        bruto = gerar(f"TEXTO A CLASSIFICAR:\n{texto[:4000]}\n\nResponda só o JSON.", _SYS_RISCO)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("classificação de risco indisponível: %s", exc)
+        return {"risco": "indeterminado", "fonte": "indisponivel", "citacao": "",
+                "justificativa": f"provedor indisponível: {exc}"}
+
+    j = parse_json_llm(bruto) or {}
+    risco = str(j.get("risco") or "").strip().lower()
+    citacao = str(j.get("citacao") or "").strip()
+    if risco not in _ESCALA_RISCO:
+        return {"risco": "indeterminado", "fonte": "rubrica_invalida", "citacao": citacao,
+                "justificativa": f"nível fora da escala: {risco!r}"}
+    if risco == "baixo":
+        return {"risco": "baixo", "fonte": "rubrica_llm", "citacao": citacao,
+                "justificativa": str(j.get("justificativa") or "")}
+    # Acima de 'baixo' a citação é obrigatória E precisa existir mesmo no texto.
+    if not citacao or citacao[:40].lower() not in texto.lower():
+        return {"risco": "indeterminado", "fonte": "citacao_nao_ancorada", "citacao": citacao,
+                "justificativa": "trecho citado não localizado no texto de origem"}
+    return {"risco": risco, "fonte": "rubrica_llm", "citacao": citacao,
+            "justificativa": str(j.get("justificativa") or "")}
 
 
 async def _alertar_investigacao(alvo: dict, resultado: dict, session):

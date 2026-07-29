@@ -343,6 +343,31 @@ async def _execute_nav_action(page, action: dict) -> dict:
 
 # ─── 2. Análise de compliance com Groq ───────────────────────────────────────
 
+def _tetos_para_prompt() -> str:
+    """Tabela do teto de dispensa por exercício, GERADA da fonte única.
+
+    O prompt trazia "R$ 57.208 compras / R$ 114.416 obras" escrito à mão — os valores de 2023,
+    12% abaixo do teto de 2026, numa instrução que o modelo trata como se fosse a lei vigente.
+    Prompt não passa por revisão de código e o número envelhece calado; por isso a tabela é
+    derivada de `limites_dispensa.LIMITES` em tempo de montagem e nunca redigida aqui.
+    """
+    from compliance_agent.limites_dispensa import LIMITES, ato_normativo
+
+    def _brl(v: float) -> str:
+        return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    linhas = [
+        f"    · {ano}: R$ {_brl(LIMITES[ano]['compras'])} compras / "
+        f"R$ {_brl(LIMITES[ano]['obras'])} obras ({ato_normativo(ano)})"
+        for ano in sorted(LIMITES)
+    ]
+    return (
+        "  O teto do art. 75 da Lei 14.133/2021 é POR EXERCÍCIO — use o do ano da OB:\n"
+        + "\n".join(linhas)
+        + "\n  A conferência do enquadramento é do sistema; não afirme o teto de memória.\n"
+    )
+
+
 def _build_analysis_system() -> str:
     """Monta o system prompt de análise injetando base legal e jurisprudência."""
     base = (
@@ -350,8 +375,8 @@ def _build_analysis_system() -> str:
         "Analisa Ordens Bancárias (OBs) do SIAFE2 e publicações do DOERJ em busca de\n"
         "irregularidades, corrupção e fraudes.\n\n"
         "PADRÕES A IDENTIFICAR:\n"
-        "- Fracionamento: múltiplas OBs para o mesmo favorecido abaixo do limite de licitação "
-        "(R$ 57.208 compras / R$ 114.416 obras — Lei 14.133/2021 art. 75)\n"
+        "- Fracionamento: múltiplas OBs para o mesmo favorecido abaixo do limite de dispensa\n"
+        f"{_tetos_para_prompt()}"
         "- Superfaturamento: valores muito acima do mercado para o serviço descrito\n"
         "- Nepotismo: favorecidos com sobrenomes iguais a servidores nomeados no DOERJ (SV13)\n"
         "- Direcionamento: contratos sem licitação para empresas recém-abertas\n"

@@ -35,16 +35,17 @@ from compliance_agent.reporting.intel_base import moeda
 _DB = os.environ.get("JFN_DB", os.path.join(os.path.dirname(__file__), "..", "data", "compliance.db"))
 _DB = os.path.abspath(_DB)
 
-MODELO_VERSAO = "onda1-v1.0"
-# Limite de dispensa (Lei 14.133/2021 art. 75, valores atualizados 2024 — bens/serviços comuns).
-# Configurável; para obras/serviços de engenharia o teto é ~R$ 119.812,02.
-LIMITE_DISPENSA = float(os.environ.get("JFN_LIMITE_DISPENSA", "59906.02"))
-# ↑ mantido só como override manual (env). O teto REAL é POR EXERCÍCIO e vem da fonte única
-# `limites_dispensa` — este valor fixo era o de 2024 e estava sendo aplicado a todos os anos:
-# em 2025 (62.725,59) e 2026 (65.492,11) acusava fracionamento abaixo do teto legal (falso
-# positivo) e em 2021-2023 deixava passar (falso negativo). É a 4ª cópia divergente do teto
-# encontrada no projeto — o módulo canônico existe justamente para isso e proíbe duplicar.
 from compliance_agent.limites_dispensa import limite_dispensa as _limite_do_ano  # noqa: E402
+
+MODELO_VERSAO = "onda1-v1.0"
+# Limite de dispensa (Lei 14.133/2021 art. 75-II, bens/serviços comuns). O teto é POR EXERCÍCIO e
+# vem da fonte única `limites_dispensa` — esta linha já carregou o valor de 2024 fixo, aplicado a
+# todos os anos: em 2025 e 2026 acusava fracionamento abaixo do teto legal (falso positivo) e em
+# 2021-2023 deixava passar (falso negativo). Era a 4ª cópia divergente encontrada no projeto.
+# O env continua valendo como override manual de teste; sem ele, o default é o teto do ano
+# corrente vindo da fonte única — nunca um número escrito aqui.
+LIMITE_DISPENSA = float(os.environ.get("JFN_LIMITE_DISPENSA")
+                        or _limite_do_ano(datetime.now().year, "compras"))
 
 
 def _teto(exercicio) -> float:

@@ -26,12 +26,16 @@ from compliance_agent.database.models import MemoriaAprendizado, get_session
 # ─── Conhecimento-base inicial sobre a administração pública do RJ ────────────
 
 CONTEXTO_INICIAL = [
+    # Sem número aqui de propósito: estes verbetes vão para dentro do prompt, e o teto do art. 75
+    # muda por exercício (decreto anual). Os valores que estavam escritos eram os de 2024 e
+    # envelheceram calados — quem resolve o teto é `compliance_agent/limites_dispensa.py`.
     ("limite_dispensa_obras",
-     "Lei 14.133/21 art. 75 I: dispensa de licitação para obras/serviços de "
-     "engenharia até R$ 119.812,02 (atualizado). Fracionamento para fugir disso é ilegal."),
+     "Lei 14.133/21 art. 75 I: dispensa de licitação para obras/serviços de engenharia até o "
+     "teto DO EXERCÍCIO (resolvido pelo sistema). Fracionamento para fugir disso é ilegal."),
     ("limite_dispensa_compras",
-     "Lei 14.133/21 art. 75 II: dispensa para compras e outros serviços até "
-     "R$ 59.906,02. Múltiplas compras ao mesmo fornecedor somando acima disso = fracionamento."),
+     "Lei 14.133/21 art. 75 II: dispensa para compras e outros serviços até o teto DO EXERCÍCIO "
+     "(resolvido pelo sistema). Múltiplas compras ao mesmo fornecedor somando acima disso = "
+     "fracionamento."),
     ("limite_convite_antigo",
      "Lei 8.666/93 (ainda aplicável a contratos antigos): convite até R$ 176.000 "
      "para obras, R$ 80.000 para compras."),

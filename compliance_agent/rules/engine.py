@@ -19,6 +19,7 @@ Referências legais:
 """
 
 import json
+from datetime import date as _date
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -31,15 +32,18 @@ from compliance_agent.reporting.intel_base import moeda
 
 
 # ── Limites legais (Lei 14.133/21) ────────────────────────────────────────────
+# O teto de DISPENSA (art. 75 I e II) não mora aqui: é por exercício e vem de
+# `compliance_agent/limites_dispensa.py`. Esta tabela chegou a trazer 30.000 para obras — valor
+# que não corresponde a exercício nenhum do art. 75 — e 50.000 para serviços, o valor original de
+# 2021 aplicado a todos os anos. As faixas de modalidade abaixo são do regime da Lei 8.666/93 e
+# seguem aqui só para os contratos antigos que ainda usam esse vocabulário.
 LIMITES_LICITACAO = {
     "obras":          {
-        "dispensa":     30_000,      # art. 75, I
         "convite":     330_000,
         "tomada":    3_300_000,
         "concorrencia": float("inf"),
     },
     "servicos":       {
-        "dispensa":     50_000,      # art. 75, II (serviços comuns)
         "convite":     165_000,
         "tomada":    1_650_000,
         "concorrencia": float("inf"),
@@ -205,6 +209,17 @@ class MotorCompliance:
         """
         from sqlalchemy import func
 
+        from compliance_agent.limites_dispensa import ato_normativo, limite_dispensa
+
+        # RESSALVA de precisão, declarada em vez de silenciada: o agrupamento abaixo NÃO tem
+        # janela temporal — soma todos os contratos por dispensa do par órgão×empresa, de
+        # qualquer ano, apesar de a docstring falar em 12 meses. Enquanto a janela não existir,
+        # o teto usado é o do exercício MAIS RECENTE (o maior), que é a leitura conservadora:
+        # erra para menos achados, nunca para acusação indevida. Corrigir a janela é mudança de
+        # desenho do detector, não desta correção de fonte única.
+        _exercicio_ref = _date.today().year
+        _teto_dispensa = limite_dispensa(_exercicio_ref, "compras")
+
         # Agrupa por órgão + empresa, soma valores em janela de 12 meses
         q = (
             self.session.query(
@@ -215,7 +230,7 @@ class MotorCompliance:
             )
             .filter(Contrato.modalidade.in_(["dispensa", "Dispensa", "dispensada", "Dispensada"]))
             .group_by(Contrato.orgao_contrat, Contrato.empresa_id)
-            .having(func.sum(Contrato.valor_total) > LIMITES_LICITACAO["servicos"]["dispensa"])
+            .having(func.sum(Contrato.valor_total) > _teto_dispensa)
         )
 
         for row in q.all():
@@ -228,7 +243,8 @@ class MotorCompliance:
                 descricao  = (
                     f"Órgão '{row.orgao_contrat}' possui {row.qtd} contratos por dispensa "
                     f"com '{nome_emp}' totalizando R$ {moeda(row.soma)}, acima do limite de "
-                    f"R$ {moeda(LIMITES_LICITACAO['servicos']['dispensa'])}."
+                    f"dispensa de {_exercicio_ref} (R$ {moeda(_teto_dispensa)} — "
+                    f"{ato_normativo(_exercicio_ref)})."
                 ),
                 evidencias = {
                     "orgao": row.orgao_contrat, "empresa": nome_emp,
@@ -504,13 +520,22 @@ class MotorCompliance:
         """
         Fracionamento de pagamentos via OB: mesmo favorecido recebe múltiplos
         pagamentos em 30 dias cujo total ultrapassa o limite de dispensa de
-        licitação (R$ 50.000 para serviços, Lei 14.133/21 art. 75).
+        licitação do EXERCÍCIO (Lei 14.133/21 art. 75, corrigido por decreto anual).
 
         Padrão clássico para burlar obrigação de licitar.
+
+        O teto estava congelado em R$ 50.000 — o valor original de 2021 — aplicado a todos os
+        anos. Era mais uma cópia divergente da tabela que `limites_dispensa.py` centraliza: em
+        2026 o teto de compras é R$ 65.492,11, ou seja, a regra acusava fracionamento em grupos
+        até 31% abaixo do limite legal, com severidade "alta".
         """
         from sqlalchemy import func
 
-        LIMITE_DISPENSA = 50_000.0
+        from compliance_agent.limites_dispensa import LIMITES, ato_normativo, limite_dispensa
+
+        # O SQL não sabe o exercício de cada grupo, então filtra pelo MENOR teto conhecido (piso
+        # que não descarta nada) e o enquadramento exato é feito no laço, ano a ano.
+        LIMITE_DISPENSA = min(float(LIMITES[a]["compras"]) for a in LIMITES)
         # Janela de ~30 dias aproximada pelo agrupamento por mês-calendário (strftime abaixo).
 
         # Agrupa OBs por favorecido + UG + janela de 30 dias
@@ -543,7 +568,11 @@ class MotorCompliance:
         )
 
         for row in subq:
-            if not row.total or row.total <= LIMITE_DISPENSA:
+            if not row.total:
+                continue
+            exercicio = getattr(row.data_ini, "year", None) or _date.today().year
+            teto = limite_dispensa(exercicio, "compras")
+            if row.total <= teto:
                 continue
             empresa = (
                 self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
@@ -557,7 +586,8 @@ class MotorCompliance:
                     f"{row.n_obs} OBs para '{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) "
                     f"na UG {row.ug_codigo} totalizaram R$ {moeda(row.total)} "
                     f"entre {row.data_ini} e {row.data_fim}. "
-                    f"Valor ultrapassa o limite de dispensa (R$ {LIMITE_DISPENSA:,.0f}) "
+                    f"Valor ultrapassa o limite de dispensa de {exercicio} "
+                    f"(R$ {moeda(teto)} — {ato_normativo(exercicio)}), "
                     f"sugerindo fracionamento para evitar licitação."
                 ),
                 evidencias = {
@@ -568,7 +598,9 @@ class MotorCompliance:
                     "total": row.total,
                     "data_ini": str(row.data_ini),
                     "data_fim": str(row.data_fim),
-                    "limite_dispensa": LIMITE_DISPENSA,
+                    "exercicio": exercicio,
+                    "limite_dispensa": teto,
+                    "limite_dispensa_ato": ato_normativo(exercicio),
                 },
                 empresa = empresa,
             )

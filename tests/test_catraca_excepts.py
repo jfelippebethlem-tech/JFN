@@ -104,7 +104,27 @@ REPO = Path(__file__).resolve().parent.parent
 # parser verbatim, e a do Groq capturava `Exception`. Reescrever essa cópia para agradar a
 # catraca destruiria a única coisa que ela serve para provar — que o parser novo não regride
 # em relação ao que existia. Cópia histórica dentro de teste não é captura genérica nova.
-BASELINE = 1580
+#
+# 2026-07-29 — 1580 → 1583. Fase 1 do plano de hermenêutica. Delta DOS ARQUIVOS QUE TOQUEI: +4,
+# e a árvore já trazia -1 de outra sessão em `_SANDBOX/` (fora do código de produção). Auditoria
+# item a item, todos na fronteira já aceita ("o injetado/externo pode falhar de qualquer forma;
+# o catch degrada honesto e loga"), nenhum mudo:
+#   • orquestrador._classificar_risco — `gerar` (LLM injetado): degrada p/ `indeterminado`,
+#     NUNCA `baixo` (ausência de juízo não declara regularidade) + logger.warning. O segundo
+#     catch que este bloco teria virou `except ImportError`, que é a exceção real do caso.
+#   • render_html — o gate de citações não pode derrubar o entregável: PDF sai sem a nota de
+#     conferência, mas sai, e o motivo vai para logger.warning.
+#   • varredura_execucao.varrer_contrato — rodar detector arbitrário, idêntico ao catch por
+#     detector de `varredura_certames` (amplo por design correto; um card quebrado não pode
+#     cegar os outros) + logger.warning.
+#   • tests/test_json_resposta_paridade.py: +3, e são CÓPIAS HISTÓRICAS verbatim. O teste agora
+#     guarda os SEIS parsers antigos (juntaram-se lex_analise_conteudo, enxame/lentes e
+#     sei_recomendacoes), e dois deles capturavam `Exception`. Vale o precedente já registrado
+#     em 2026-07-28: reescrever a cópia para agradar a catraca destruiria a única coisa que ela
+#     prova — que o parser único não regride em relação ao que existia.
+# Em contrapartida, `lex_analise_conteudo` PERDEU 2 de verdade: `_json_lex` deixou de reimplementar
+# o parser e passou a delegar ao único da casa.
+BASELINE = 1583
 
 
 def _contar() -> int:

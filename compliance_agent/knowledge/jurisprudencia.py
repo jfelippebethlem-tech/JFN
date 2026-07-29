@@ -256,20 +256,28 @@ ACORDAOS_TCU: list[Acordao] = [
         irregularidade="fracionamento",
         temas=["fracionamento", "valor total", "objeto", "parcelas", "8666"],
     ),
+    # Esta entrada carregava DOIS erros que se sustentavam um ao outro. O número era
+    # "2.622/2015-Plenário", que o acervo oficial devolve como `nao_confirmado` — o correto é
+    # 2.622/2013-Plenário, como o resumo de prompt (`contexto_jurisprudencial_para_prompt`) já
+    # reconhecia desde 2026-07-27, enquanto ESTA base curada seguia divergindo dele. E a ementa
+    # atribuía ao acórdão uma tese que ele não decide: a metodologia SINAPI/SICRO com dano igual
+    # a (contratado − referência) × quantidade executada. O enunciado real, conferido em
+    # `data/tcu_juris.db` (status `confirmado`), é sobre o ISS na composição do BDI. Corrigir só
+    # o número teria deixado uma ementa inventada com selo de conferida — pior que o erro
+    # original. O enunciado abaixo é VERBATIM do acervo.
     Acordao(
         orgao="TCU",
-        numero="Acórdão 2.622/2015-Plenário",
-        ano=2015,
-        tema="Superfaturamento — metodologia de apuração",
+        numero="Acórdão 2.622/2013-Plenário",
+        ano=2013,
+        tema="Orçamento estimativo — BDI e ISS",
         ementa=(
-            "Para apurar superfaturamento, o TCU adota como referência os preços "
-            "medianos do SINAPI, SICRO ou pesquisa de mercado com ao menos 3 fornecedores. "
-            "A diferença positiva entre o valor contratado e o de referência, "
-            "multiplicada pela quantidade executada, define o dano ao erário a ser "
-            "ressarcido solidariamente pelo contratado e pelo gestor."
+            "Na composição do BDI, os órgãos e entidades da Administração Pública Federal devem "
+            "utilizar o percentual de ISS compatível com a legislação tributária do(s) "
+            "município(s) onde serão prestados os serviços, observando a forma de definição da "
+            "base de cálculo do tributo prevista na legislação municipal."
         ),
-        irregularidade="superfaturamento",
-        temas=["superfaturamento", "SINAPI", "SICRO", "preco", "mercado", "apuracao"],
+        irregularidade="sobrepreco",
+        temas=["BDI", "ISS", "orcamento", "estimativa", "sobrepreco", "obras"],
     ),
     Acordao(
         orgao="TCU",

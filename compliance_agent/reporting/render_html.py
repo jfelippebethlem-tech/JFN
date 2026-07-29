@@ -12,8 +12,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _REPORTS = Path(__file__).resolve().parent.parent.parent / "reports"
 
@@ -119,13 +122,53 @@ _TEMPLATE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 </body></html>"""
 
 
+def _sanear_secoes(secoes: list, db=None) -> tuple[list, str]:
+    """Passa as seções pelo gate de citações e devolve `(secoes, nota_para_o_rodape)`.
+
+    O gate (`reporting/gate_citacoes`) estava ligado em dois pontos apenas — parecer Lex e canal
+    do Hermes. Todo o resto dos entregáveis (dossiê mestre, capítulos, intel, perícia) desemboca
+    aqui e saía impresso sem conferência: acórdão aritmeticamente impossível chegava ao PDF com a
+    mesma aparência de um confirmado. Como este módulo é o funil de TODO produto em PDF, é aqui
+    que a conferência tem de morar — um lugar, cobertura total, sem depender de cada produtor
+    lembrar de chamá-la.
+
+    A auditoria é feita sobre o texto concatenado (uma consulta ao índice, não N) e o saneamento
+    é aplicado seção a seção. Índice ausente não é silêncio: a nota diz que não houve conferência.
+    """
+    from compliance_agent.reporting.gate_citacoes import aplicar, nota_de_auditoria
+
+    tudo = "\n".join(str((s or {}).get("html") or "") for s in (secoes or []))
+    if not tudo.strip():
+        return secoes, ""
+    _, rel = aplicar(tudo, db=db, contexto="relatório")
+    if rel.get("indice_ausente") or (rel.get("limpo") and not rel.get("total")):
+        return secoes, nota_de_auditoria(rel)
+    saneadas = []
+    for s in secoes or []:
+        s = dict(s or {})
+        if s.get("html"):
+            s["html"], _ = aplicar(str(s["html"]), db=db, contexto="seção")
+        saneadas.append(s)
+    return saneadas, nota_de_auditoria(rel)
+
+
 def render_html(ctx: dict) -> str:
     """Renderiza o HTML do relatório a partir do contexto. Calcula o hash de integridade."""
     from jinja2 import Template
 
+    # O hash atesta a PROVENIÊNCIA (os dados de origem), não o texto renderizado — por isso é
+    # calculado antes do saneamento: suprimir uma citação inventada não altera o dado de origem.
     dados_hash = hashlib.sha256(json.dumps(ctx.get("_dados", ctx), sort_keys=True, default=str)
                                 .encode()).hexdigest()
     faixa = (ctx.get("faixa") or "BAIXO").upper()
+    secoes = ctx.get("secoes", [])
+    nota_citacoes = ""
+    try:
+        secoes, nota_citacoes = _sanear_secoes(secoes, db=ctx.get("_gate_db"))
+    except Exception as exc:  # noqa: BLE001 — dúvida de citação não derruba o entregável
+        logger.warning("gate de citações não rodou no relatório: %s", str(exc)[:120])
+    ressalva = ctx.get("ressalva", "Indícios para apuração interna; presunção de legitimidade dos "
+                                   "atos administrativos. Nenhum dado indisponível foi fabricado.")
     full = {
         "classificacao": ctx.get("classificacao", "CONFIDENCIAL — USO INTERNO"),
         "titulo": ctx.get("titulo", "Relatório de Inteligência"),
@@ -137,10 +180,9 @@ def render_html(ctx: dict) -> str:
         "cor_faixa": _FAIXA_COR.get(faixa, "#777"),
         "rotulo_score": ctx.get("rotulo_score", "Índice de risco"),
         "top_flags": ctx.get("top_flags", []),
-        "secoes": ctx.get("secoes", []),
+        "secoes": secoes,
         "proveniencia": ctx.get("proveniencia", []),
-        "ressalva": ctx.get("ressalva", "Indícios para apuração interna; presunção de legitimidade dos "
-                                        "atos administrativos. Nenhum dado indisponível foi fabricado."),
+        "ressalva": (ressalva + nota_citacoes) if nota_citacoes else ressalva,
         "hash": dados_hash[:32],
     }
     return Template(_TEMPLATE).render(**full)

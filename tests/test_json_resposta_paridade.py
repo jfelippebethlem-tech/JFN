@@ -70,7 +70,53 @@ def antigo_groq(raw: str):
     return None
 
 
-ANTIGOS = (antigo_direcionamento, antigo_base, antigo_groq)
+def antigo_lex(texto: str):
+    """`compliance_agent/lex_analise_conteudo.py::_json_lex` até 2026-07-29.
+
+    O único dos seis que aceitava lista no topo de propósito (`(\\[.*\\]|\\{.*\\})`) — a análise
+    discursiva do Lex devolve uma lista de achados.
+    """
+    t = (texto or "").strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        return json.loads(t)
+    except Exception:  # noqa: BLE001
+        m = re.search(r"(\[.*\]|\{.*\})", t, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(1))
+            except Exception:  # noqa: BLE001
+                return None
+        return None
+
+
+def antigo_lentes(resp: str):
+    """`compliance_agent/enxame/lentes.py::_parse` até 2026-07-29 — só a parte de PARSE.
+
+    A normalização do voto (clamp 0-10, corte de justificativa) fica no chamador e não é parse;
+    aqui compara-se apenas o objeto extraído.
+    """
+    m = re.search(r"\{.*\}", resp or "", re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+def antigo_sei_recomendacoes(raw: str):
+    """`compliance_agent/sei_recomendacoes.py::avaliar_pensante` até 2026-07-29 (parse inline)."""
+    m = re.search(r"\{.*\}", raw or "", re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+ANTIGOS = (antigo_direcionamento, antigo_base, antigo_groq,
+           antigo_lex, antigo_lentes, antigo_sei_recomendacoes)
 
 
 # ── corpus: formas reais de resposta do LLM ──────────────────────────────────────────────────

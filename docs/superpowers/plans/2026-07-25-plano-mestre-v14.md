@@ -130,7 +130,7 @@ vice-versa, provado por teste que conta o cruzamento contra o acervo real; entes
 ganham rótulo próprio em vez de caírem em "Estado" por omissão.
 
 ### P3 · Qualidade jurídica
-**Precisa ler:** `compliance_agent/knowledge/catalogo_vicios.py` (40 vícios, `lacunas()`),
+**Precisa ler:** `compliance_agent/knowledge/catalogo_vicios.py` (42 vícios, `lacunas()`),
 `compliance_agent/editais/flags.py` (`grau_flag`), `compliance_agent/editais/escalada.py`,
 e os dez módulos `compliance_agent/lex_*.py`.
 **Skill obrigatória:** `analise-clausulas-br` (classificação por desvio, redline com

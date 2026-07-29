@@ -11,8 +11,6 @@ Parse honesto: JSON malformado → voto=None (não conta na síntese; INDISPONÍ
 """
 from __future__ import annotations
 
-import json
-import re
 
 from compliance_agent.direcionamento_cerebro import gerar_sync
 
@@ -23,11 +21,18 @@ _SISTEMA = ("Você é perito em licitações (Lei 14.133/2021) do controle exter
 
 
 def _parse(resp: str) -> dict:
-    m = re.search(r"\{.*\}", resp or "", re.DOTALL)
-    if not m:
+    """Voto de uma lente. O PARSE é do parser único; aqui fica só a normalização do voto.
+
+    A extração era uma 5ª cópia de `re.search(r"\\{.*\\}")` — paridade provada em
+    `tests/test_json_resposta_paridade.py::antigo_lentes`. Voto ausente ou inválido continua
+    `None`, e `None` NÃO entra na mediana do colegiado (INDISPONÍVEL ≠ 0).
+    """
+    from compliance_agent.llm.json_resposta import parse_json_llm
+
+    j = parse_json_llm(resp)
+    if not isinstance(j, dict):
         return {"voto": None, "justificativa": "sem JSON na resposta", "citacao": ""}
     try:
-        j = json.loads(m.group(0))
         v = j.get("voto")
         v = int(v) if v is not None and str(v).strip() != "" else None
         if v is not None:

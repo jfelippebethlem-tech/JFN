@@ -112,15 +112,17 @@ DISPOSITIVOS: list[Dispositivo] = [
     ),
     Dispositivo(
         "Lei 14.133/2021", "Nova Lei de Licitações", "art. 75, I",
-        "Dispensa de licitação para obras e serviços de engenharia de valor até "
-        "o limite legal atualizado (≈ R$ 119.812,02). Acima disso exige licitação.",
+        "Dispensa de licitação para obras e serviços de engenharia de valor até o limite legal "
+        "DO EXERCÍCIO (corrigido anualmente por decreto; resolvido em "
+        "compliance_agent/limites_dispensa.py). Acima disso exige licitação.",
         ["dispensa", "limite", "obras", "engenharia", "fracionamento"],
         "fracionamento",
     ),
     Dispositivo(
         "Lei 14.133/2021", "Nova Lei de Licitações", "art. 75, II",
-        "Dispensa de licitação para compras e serviços comuns de valor até o "
-        "limite legal atualizado (≈ R$ 59.906,02). Somatório ao mesmo fornecedor "
+        "Dispensa de licitação para compras e serviços comuns de valor até o limite legal "
+        "DO EXERCÍCIO (corrigido anualmente por decreto; resolvido em "
+        "compliance_agent/limites_dispensa.py). Somatório ao mesmo fornecedor "
         "acima do limite caracteriza fracionamento ilegal.",
         ["dispensa", "limite", "compras", "fracionamento"],
         "fracionamento",

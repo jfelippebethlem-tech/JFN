@@ -233,7 +233,7 @@ manuais quando expirarem (caem no nous até lá).
   `/api/dossie/mestre`, portfólio ou 1 órgão); paridade municipal já existia por construção
   (corpus.py lê pcrj_licitacoes). Commit `a37f874`.
 - **07-20 (dossiê mestre + catálogo de vícios + loops com dado real):** pesquisa claude-for-legal/
-  redflags.eu/ALICE → `knowledge/catalogo_vicios.py` (40 vícios, fonte única, `validar()`/`lacunas()`),
+  redflags.eu/ALICE → `knowledge/catalogo_vicios.py` (42 vícios, fonte única, `validar()`/`lacunas()`),
   `editais/{flags,escalada,motivo_inabilitacao,avaliacao_conjunto,restritividade via indice}`;
   `certame_julgamento` persiste ata (7ª família **certame_ata** no índice; confiança /7);
   `teste_finalistico` +faturamento_minimo/vigencia_contratual; J3 +art. 59 III; `auditar_acatamento`

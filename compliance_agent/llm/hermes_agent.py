@@ -541,7 +541,10 @@ _SYSTEM_BOOTSTRAP = (
     "  1. Listar os 5 TIPOS DE IRREGULARIDADE mais comuns em estados brasileiros\n"
     "     (fracionamento, superfaturamento, nepotismo, empresa fachada, etc.)\n"
     "  2. Para cada tipo: quais SINAIS nas OBs/DOERJ indicariam esse esquema?\n"
-    "  3. Quais REGRAS NUMÉRICAS específicas do RJ merecem atenção imediata?\n"
+    "  3. Quais REGRAS NUMÉRICAS específicas do RJ merecem atenção imediata? Descreva a REGRA\n"
+    "     e a fonte do limiar (ex.: 'teto de dispensa do exercício, art. 75 da Lei 14.133/2021');\n"
+    "     NUNCA escreva o valor de memória — limiar legal muda por exercício e quem o resolve é\n"
+    "     o sistema, a partir de `compliance_agent/limites_dispensa.py`.\n"
     "  4. Formule 3 HIPÓTESES INICIAIS sobre o que provavelmente encontraremos\n"
     "     quando os dados do SIAFE2 chegarem.\n\n"
     "Responda em JSON:\n"
@@ -551,7 +554,8 @@ _SYSTEM_BOOTSTRAP = (
     '"lei_aplicavel": "Lei 14.133/2021 art. 75"}\n'
     "  ],\n"
     '  "regras_numericas_rj": [\n'
-    '    {"regra": "Dispensa compras <= R$ 57.208", "alerta_se": "soma diária > R$ 57.208"}\n'
+    '    {"regra": "soma de OBs ao mesmo favorecido acima do teto de dispensa do exercício", '
+    '"fonte_do_limiar": "Lei 14.133/2021 art. 75 — valor resolvido por limites_dispensa"}\n'
     "  ],\n"
     '  "hipoteses_iniciais": [\n'
     '    {"chave": "id_curto", "hipotese": "texto da hipótese a verificar nos dados"}\n'
