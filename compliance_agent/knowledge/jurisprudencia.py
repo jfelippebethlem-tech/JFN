@@ -536,9 +536,18 @@ ACORDAOS_TCU: list[Acordao] = [
         irregularidade="pontuacao_dirigida",
         temas=["tecnica e preco", "pontuacao", "criterio", "subjetivo", "art 37", "motivacao"],
     ),
+    # COLEGIADO CORRIGIDO em 2026-07-29, contra o acervo COMPLETO do TCU
+    # (`tools/tcu_indice_existencia`, 202.633 acórdãos de 1993–2013): **não existe Acórdão
+    # 3.831/2012 no Plenário**. O número existe duas vezes naquele ano, em outros colegiados —
+    # Primeira Câmara (03/07/2012, rel. Walton Alencar Rodrigues, TC 015.221/2012-1) e Segunda
+    # Câmara (05/06/2012, ACÓRDÃO DE RELAÇÃO, rel. Aroldo Cedraz, TC 006.697/2012-7).
+    # Qual dos dois carrega esta tese não é aferível pelo índice de existência, que guarda
+    # cabeçalho e não texto — então o colegiado sai do número em vez de ser trocado por um chute.
+    # Trocar "Plenário" por "Primeira Câmara" sem ler o inteiro teor repetiria o erro do Acórdão
+    # 2.622, em que corrigir só o número teria deixado no lugar uma ementa inventada.
     Acordao(
         orgao="TCU",
-        numero="Acórdão 3.831/2012-Plenário",
+        numero="Acórdão 3.831/2012 [colegiado a confirmar: 1ª ou 2ª Câmara, NÃO Plenário]",
         ano=2012,
         tema="Visita técnica restritiva (data única / RT específico)",
         ementa=(

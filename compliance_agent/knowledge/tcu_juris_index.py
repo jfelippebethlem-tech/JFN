@@ -194,6 +194,40 @@ def implausivel(numero: int, colegiado: str | None, ano: int,
     return teto is not None and numero > teto
 
 
+def _conferir_no_acervo(con, numero: int, ano: int, colegiado: str) -> dict:
+    """Segunda instância da conferência: o acervo COMPLETO do ano, quando indexado.
+
+    Devolve `confirmado_acervo` (existe, sem tese curada), `colegiado_diverge`, `inexistente`
+    (ano varrido e número ausente) ou `nao_confirmado` (ano não indexado — lacuna de cobertura).
+    Nunca converte lacuna em negativa: é a mesma disciplina de INDISPONÍVEL ≠ 0.
+    """
+    try:
+        coberto = con.execute("SELECT 1 FROM tcu_existencia_cobertura WHERE ano=?",
+                              (ano,)).fetchone()
+    except sqlite3.OperationalError:
+        return {"status": "nao_confirmado",
+                "observacao": "índice de existência ausente — rode tools/tcu_indice_existencia"}
+    if not coberto:
+        return {"status": "nao_confirmado",
+                "observacao": f"ano {ano} ainda não indexado no acervo completo — lacuna de "
+                              "cobertura, NÃO negativa"}
+    linhas = con.execute("SELECT colegiado, tipo, data_sessao, relator, processo "
+                         "FROM tcu_acordao_existencia WHERE ano=? AND numero=?",
+                         (ano, numero)).fetchall()
+    if not linhas:
+        return {"status": "inexistente",
+                "observacao": f"o acervo completo de {ano} está indexado e o número não consta"}
+    cols = {(l["colegiado"] or "").strip() for l in linhas}
+    if colegiado and not any(_canon_colegiado(c) == colegiado for c in cols):
+        return {"status": "colegiado_diverge", "colegiado_real": sorted(cols),
+                "observacao": "existe no acervo completo, em outro colegiado"}
+    escolhida = linhas[0]
+    return {"status": "confirmado_acervo", "colegiado_real": escolhida["colegiado"],
+            "tipo_deliberacao": escolhida["tipo"], "data_sessao": escolhida["data_sessao"],
+            "relator": escolhida["relator"], "processo": escolhida["processo"],
+            "observacao": "existe no acervo completo; sem tese na Jurisprudência Selecionada"}
+
+
 def verificar_citacao(texto: str, db: str | Path | None = None) -> list[dict]:
     """Extrai toda citação de acórdão/súmula do TCU em `texto` e confere contra o acervo real.
 
@@ -205,9 +239,20 @@ def verificar_citacao(texto: str, db: str | Path | None = None) -> list[dict]:
       `colegiado_diverge` — o acórdão existe, mas em outro colegiado
       `numero_impossivel` — o número extrapola a série anual daquele colegiado. **Não existe.**
                           É a assinatura de citação fabricada por LLM. Barra o parecer.
-      `nao_confirmado` — não está na Jurisprudência Selecionada. **Não é prova de inexistência**:
+      `nao_confirmado` — não está na Jurisprudência Selecionada NEM no índice de existência do
+                          ano — ou o ano não foi indexado. **Não é prova de inexistência**:
                           a Selecionada é um recorte curado. Trate como "citar só após conferir".
+      `confirmado_acervo` — não está na Selecionada, mas EXISTE no acervo completo do ano
+                          (`tools/tcu_indice_existencia`). O acórdão é real; o que não há é tese
+                          curada. Vale para não barrar citação legítima no gate.
+      `inexistente` — o ano ESTÁ indexado no acervo completo e o número não consta. Diferente de
+                          `nao_confirmado`: aqui a negativa é afirmável.
       `indice_ausente` — índice não construído (rode `indexar_selecionada`)
+
+    A SEGUNDA CONSULTA EXISTE PORQUE A PRIMEIRA NÃO BASTA. A Selecionada tem 17.510 acórdãos; o
+    acervo completo tem centenas de milhares. Sem o índice de existência, todo acórdão real que
+    não virou tese curada voltava como `nao_confirmado`, indistinguível de citação fabricada — e
+    tratar os dois igual ou barra o legítimo ou deixa passar o inventado.
     """
     con = abrir(db)
     achados: list[dict] = []
@@ -244,10 +289,11 @@ def verificar_citacao(texto: str, db: str | Path | None = None) -> list[dict]:
                 "SELECT colegiado, area, tema, enunciado FROM tcu_acordao WHERE numero=? AND ano=?",
                 (num, ano)).fetchall()
             if not linhas:
-                item["status"] = ("numero_impossivel" if implausivel(num, coleg, ano, db)
-                                  else "nao_confirmado")
-                if item["status"] == "numero_impossivel":
+                if implausivel(num, coleg, ano, db):
+                    item["status"] = "numero_impossivel"
                     item["teto_do_ano"] = teto_numeracao(coleg, ano, db)
+                else:
+                    item.update(_conferir_no_acervo(con, num, ano, coleg))
             elif coleg and not any(l["colegiado"] == coleg for l in linhas):
                 item["status"] = "colegiado_diverge"
                 item["colegiado_real"] = sorted({l["colegiado"] for l in linhas})

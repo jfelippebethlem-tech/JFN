@@ -120,12 +120,36 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             captura_completa = bool(bruto.get("completo"))
             total_arvore = bruto.get("total_arvore")
             bruto = bruto.get("docs") or []
+        # DOCUMENTO DE OUTRO PROCESSO NÃO ENTRA. A íntegra do SEI às vezes traz peças alheias
+        # junto: medido em 2026-07-29, `080001/000744/2024` (R$ 51,6 mi, repasse do Fundo
+        # Estadual de Saúde) recebeu 24 documentos de 22 outros processos — despacho da
+        # Educação sobre frequência de colégio, correspondências de RH, assinaturas de
+        # merendeira e de PM —, e o dossiê atribuiu tudo àquele processo, RESPONSÁVEIS
+        # inclusive. O manifest já sabia de quem era cada um, no campo `contexto`.
+        # Documento SEM número no contexto FICA: ausência de dado não prova que é alheio, e
+        # descartá-lo trocaria contaminação por perda silenciosa.
+        if processo:
+            from compliance_agent.sei.documentos_alheios import separar_alheios
+            sep = separar_alheios(bruto, processo)
+            if sep["alheios"]:
+                de_quem = ", ".join(f"{k} ({v})" for k, v in
+                                    sorted(sep["por_processo_alheio"].items(), key=lambda kv: -kv[1])[:3])
+                print(f"  {destino.name}: {len(sep['alheios'])} documento(s) de OUTRO processo "
+                      f"fora do arquivo — {de_quem}")
+                alheios_i = {int(e["i"]) for e in sep["alheios"] if str(e.get("i", "")).isdigit()}
+            else:
+                alheios_i = set()
+            bruto = sep["proprios"]
+        else:
+            alheios_i = set()
         for e in bruto:
             titulos[int(e["i"])] = e.get("titulo") or e.get("contexto") or ""
 
     docs_saida, tipos_vistos = [], set()
     for pdf in sorted(origem.glob("[0-9][0-9][0-9]*.pdf")):
         i = int(pdf.name[:3])
+        if i in alheios_i:      # peça de outro processo: não vira texto nem entra no manifest
+            continue
         titulo = titulos.get(i, "")
         fase, tipo = classificar(titulo)
         tipos_vistos.add(tipo)
