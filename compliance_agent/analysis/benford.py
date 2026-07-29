@@ -46,6 +46,41 @@ def _significativos(v) -> str | None:
     return f"{v:.8f}".replace(".", "")
 
 
+# ── quando a FAIXA de Nigrini pode ser lida ───────────────────────────────────────────────────
+# As faixas de conformidade do MAD pressupõem amostra grande. Abaixo disso, o MAD de uma série
+# PERFEITAMENTE benfordiana já ultrapassa o limite de 0,015 por puro ruído amostral — e o
+# resultado sai "NÃO CONFORMIDADE" sobre um dado impecável.
+#
+# Medido nesta base em 2026-07-29 (200 séries sintéticas 10^U por tamanho, contando quantas foram
+# rotuladas "NÃO CONFORMIDADE" no 1º dígito):
+#
+#       n  |   50   100   200   400   800  1500
+#   falso  | 100%   95%   64%   20%    2%    0%
+#
+# O `min_n` padrão deste módulo é 50, e nesse tamanho a taxa é de CEM POR CENTO. O default não foi
+# alterado para não mudar em silêncio o comportamento dos cinco caminhos de relatório que já o
+# usam; em vez disso, o resultado passa a DECLARAR que a faixa não é legível abaixo do limiar
+# confiável. Faixa ilegível apresentada como conclusão é pior que faixa ausente.
+N_CONFIAVEL_MAD = 800
+N_MARGINAL_MAD = 400
+
+
+def confiabilidade_mad(n: int) -> dict:
+    """A faixa de Nigrini é legível com este `n`? Devolve `{confiavel, classe, nota}`."""
+    if n >= N_CONFIAVEL_MAD:
+        return {"confiavel": True, "classe": "adequada",
+                "nota": f"n={n} — faixa de conformidade legível"}
+    if n >= N_MARGINAL_MAD:
+        return {"confiavel": False, "classe": "marginal",
+                "nota": (f"n={n} — abaixo de {N_CONFIAVEL_MAD}: cerca de 1 em 5 séries "
+                         f"perfeitamente benfordianas é rotulada 'NÃO CONFORMIDADE' por ruído "
+                         f"amostral. A faixa é indicativa, não conclusiva.")}
+    return {"confiavel": False, "classe": "insuficiente",
+            "nota": (f"n={n} — muito abaixo de {N_CONFIAVEL_MAD}: nesse tamanho a maioria (e em "
+                     f"n≈50 a totalidade) das séries benfordianas é rotulada 'NÃO CONFORMIDADE' "
+                     f"por ruído amostral. NÃO leia a faixa como achado.")}
+
+
 def _faixa(mad: float, faixas) -> str:
     for limite, rotulo in faixas:
         if mad <= limite:
@@ -57,10 +92,16 @@ def _analise_digito(contagem: dict[int, int], esperado: dict[int, float], faixas
     n = sum(contagem.values())
     obs = {d: (contagem.get(d, 0) / n if n else 0.0) for d in esperado}
     mad = sum(abs(obs[d] - esperado[d]) for d in esperado) / len(esperado)
+    conf = confiabilidade_mad(n)
     return {
         "n": n,
         "mad": round(mad, 5),
         "faixa_nigrini": _faixa(mad, faixas),
+        # A faixa continua saindo — ela é útil quando o n permite —, mas nunca sozinha: quem
+        # consome tem de conseguir ver que, naquele tamanho, ela pode não significar nada.
+        "faixa_confiavel": conf["confiavel"],
+        "faixa_classe": conf["classe"],
+        "faixa_nota": conf["nota"],
         "obs": {str(d): round(obs[d], 4) for d in esperado},
         "esp": {str(d): round(esperado[d], 4) for d in esperado},
     }
@@ -89,7 +130,9 @@ def benford(valores, min_n: int = 50) -> dict:
         "primeiro_digito": _analise_digito(c1, esperado_primeiro(), _FAIXAS_D1),
         "segundo_digito": _analise_digito(c2, esperado_segundo(), _FAIXAS_D2),
         "_nota": ("INDÍCIO estatístico de triagem (Nigrini), não prova. "
-                  + ("" if suficiente else f"n={n} < {min_n}: amostra pequena, resultado pouco confiável.")),
+                  + ("" if suficiente else f"n={n} < {min_n}: amostra pequena, resultado pouco confiável. ")
+                  + confiabilidade_mad(n)["nota"]),
+        "mad_confiavel": confiabilidade_mad(n)["confiavel"],
     }
 
 

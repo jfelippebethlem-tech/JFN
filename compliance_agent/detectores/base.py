@@ -70,6 +70,7 @@ Os módulos citados vivem em `compliance_agent/`.
   X9  Supressão abusiva (arts. 125 e 126) ......... ✅ (`detectores/x9_supressao_abusiva.py`)
   X10 Aditivo desinstruído (checklist dos autos) .. ✅ (`detectores/x10_aditivo_desinstruido.py`)
   X11 Objeto descaracterizado (art. 126) .......... ✅ (`detectores/x11_objeto_descaracterizado.py`)
+  X12 Benford nos quantitativos (triagem) ......... ✅ (`detectores/x12_benford_quantitativos.py`)
 
   TRANSVERSAIS (já no JFN, alimentam vários cards)
   · Teto remuneratório CF 37 XI ..................... ✅ `acima_do_teto.py` (não é card de licitação, mas é detector)
@@ -114,7 +115,7 @@ PESOS_FAMILIA: dict[str, float] = {
     "perfil": 0.8,           # C1–C6 (perfil do contratado)
     "preco": 0.8,            # P2/P3
     "desenho_certame": 0.6,  # E1–E6
-    "execucao": 0.8,         # X1–X11
+    "execucao": 0.8,         # X1–X12
 }
 
 STATUS_VALIDOS = ("confirmado", "descartado", "nao_avaliavel")
