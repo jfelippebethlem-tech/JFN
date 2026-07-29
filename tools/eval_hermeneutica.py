@@ -139,9 +139,100 @@ def avaliar(casos: list[dict], gerar: Callable, *, limite: int | None = None) ->
     m["baseline_burro"] = baseline_classe_majoritaria(alvo)
     m["bate_o_baseline"] = m["f1_macro"] > m["baseline_burro"].get("f1_macro", 0.0)
     m["prompt_versao"] = PROMPT_VERSAO
+    # Hash da FONTE do prompt, não só a versão declarada: versão é o que alguém lembrou de subir.
+    from compliance_agent.nucleo.prompt_versao import impressao, REGISTRO
+    m["prompt_hash"] = impressao(REGISTRO["hermeneutica"]["alvo"])
     m["condicionados"] = sum(1 for d in detalhes if d.get("condicionada")) / n
     m["detalhes"] = detalhes
     return m
+
+
+# ── catraca de qualidade ──────────────────────────────────────────────────────────────────────
+# Uma medição que não vira trava não impede regressão: o número aparece no relatório, ninguém
+# compara com o anterior, e a qualidade cai sem que nada acuse. A catraca é um ARQUIVO com o
+# resultado aceito e uma comparação explícita contra ele.
+#
+# Por que isto NÃO é teste unitário: a medição exige chamar o modelo, e teste desta casa não toca
+# a rede. A trava roda como job (off-hours) e o teste unitário cobre a lógica de comparação — que
+# é onde mora o erro silencioso (tolerância frouxa demais, métrica errada, direção invertida).
+BASELINE_PADRAO = "data/hermeneutica_baseline.json"
+
+# Tolerância: variação de amostragem do modelo é real, e travar no valor exato produziria alarme
+# a cada rodada. 3 pontos de F1 macro é folga suficiente para ruído e apertada o bastante para
+# pegar regressão de prompt.
+TOLERANCIA_F1 = 0.03
+# Alucinação de citação NÃO tem tolerância para cima: é o invariante mais duro da casa.
+TOLERANCIA_ALUCINACAO = 0.0
+
+
+def comparar_com_baseline(atual: dict, baseline: dict | None,
+                          *, tolerancia_f1: float = TOLERANCIA_F1) -> dict[str, Any]:
+    """Compara uma medição com o resultado aceito. `{ok, regressoes, melhorias, motivo}`.
+
+    Três regras, e a ordem delas importa:
+      1. sem baseline, NÃO reprova — a primeira medição é a que cria a linha de base;
+      2. F1 macro abaixo do aceito além da tolerância é REGRESSÃO;
+      3. alucinação de citação acima do aceito é regressão SEM tolerância — um motor que passa a
+         inventar citação piorou, ainda que o F1 tenha subido.
+    """
+    if not baseline:
+        return {"ok": True, "primeira_medicao": True, "regressoes": [], "melhorias": [],
+                "motivo": "sem baseline — esta medição passa a ser a linha de base"}
+
+    regressoes: list[str] = []
+    melhorias: list[str] = []
+
+    f1_a, f1_b = float(atual.get("f1_macro") or 0), float(baseline.get("f1_macro") or 0)
+    if f1_a < f1_b - tolerancia_f1:
+        regressoes.append(f"F1 macro caiu de {f1_b:.3f} para {f1_a:.3f} "
+                          f"(tolerância {tolerancia_f1:.2f})")
+    elif f1_a > f1_b + tolerancia_f1:
+        melhorias.append(f"F1 macro subiu de {f1_b:.3f} para {f1_a:.3f}")
+
+    al_a = float(atual.get("alucinacao_citacao") or 0)
+    al_b = float(baseline.get("alucinacao_citacao") or 0)
+    if al_a > al_b + TOLERANCIA_ALUCINACAO:
+        regressoes.append(f"alucinação de citação subiu de {al_b:.1%} para {al_a:.1%} — "
+                          f"invariante sem tolerância")
+    elif al_a < al_b:
+        melhorias.append(f"alucinação de citação caiu de {al_b:.1%} para {al_a:.1%}")
+
+    if not atual.get("bate_o_baseline", True):
+        regressoes.append("o motor deixou de bater o baseline da classe majoritária — um "
+                          "papagaio que responde sempre a classe mais comum teria F1 macro igual "
+                          "ou melhor")
+
+    for classe, f1 in (atual.get("f1_por_classe") or {}).items():
+        anterior = (baseline.get("f1_por_classe") or {}).get(classe)
+        if anterior is not None and float(f1) < float(anterior) - tolerancia_f1:
+            regressoes.append(f"F1 da classe '{classe}' caiu de {anterior:.3f} para {f1:.3f}")
+
+    return {
+        "ok": not regressoes, "primeira_medicao": False,
+        "regressoes": regressoes, "melhorias": melhorias,
+        "prompt_versao_atual": atual.get("prompt_versao"),
+        "prompt_versao_baseline": baseline.get("prompt_versao"),
+        "motivo": ("sem regressão" if not regressoes else
+                   f"{len(regressoes)} regressão(ões) frente ao baseline aceito"),
+    }
+
+
+def resumo_para_baseline(resultado: dict) -> dict[str, Any]:
+    """O que se guarda como linha de base — nunca os `detalhes`, que carregam o holdout."""
+    return {k: resultado.get(k) for k in
+            ("n", "acuracia", "f1_macro", "f1_por_classe", "abstencao", "alucinacao_citacao",
+             "indisponivel", "invalido", "bate_o_baseline", "prompt_versao", "prompt_hash")}
+
+
+def carregar_baseline(caminho: str = BASELINE_PADRAO) -> dict | None:
+    import os
+    if not os.path.exists(caminho):
+        return None
+    try:
+        with open(caminho, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
 
 
 def por_vicio(resultado: dict) -> dict[str, dict]:
@@ -162,6 +253,10 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap.add_argument("--limite", type=int, default=100)
     ap.add_argument("--por-vicio", action="store_true")
     ap.add_argument("--saida", help="grava o JSON completo aqui")
+    ap.add_argument("--catraca", action="store_true",
+                    help="compara com data/hermeneutica_baseline.json e falha (exit 1) em regressão")
+    ap.add_argument("--aceitar", action="store_true",
+                    help="grava a medição atual como novo baseline aceito")
     a = ap.parse_args(argv)
 
     casos = carregar()
@@ -185,6 +280,19 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
         with open(a.saida, "w", encoding="utf-8") as fh:
             json.dump(r, fh, ensure_ascii=False, indent=2, default=str)
         print(f"\ndetalhes → {a.saida}")
+
+    if a.aceitar:
+        import os
+        os.makedirs(os.path.dirname(BASELINE_PADRAO) or ".", exist_ok=True)
+        with open(BASELINE_PADRAO, "w", encoding="utf-8") as fh:
+            json.dump(resumo_para_baseline(r), fh, ensure_ascii=False, indent=2)
+        print(f"\nbaseline aceito gravado → {BASELINE_PADRAO}")
+
+    if a.catraca:
+        cmp = comparar_com_baseline(r, carregar_baseline())
+        print("\ncatraca:", json.dumps(cmp, ensure_ascii=False, indent=2))
+        if not cmp["ok"]:
+            return 1
     return 0
 
 

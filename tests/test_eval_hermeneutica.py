@@ -176,3 +176,80 @@ def test_limite_respeitado():
     casos = [_caso(ident=f"a{i}") for i in range(10)]
     r = avaliar(casos, _resposta("nao_sei", ""), limite=3)
     assert r["n"] == 3
+
+
+# ───────────────────── a catraca de qualidade (A.3.4) ─────────────────────────────────────────
+# Uma medição que não vira trava não impede regressão: o número aparece no relatório, ninguém
+# compara com o anterior, e a qualidade cai sem que nada acuse. A comparação roda como job (a
+# medição exige rede, e teste desta casa não toca rede); o que se testa aqui é a LÓGICA dela —
+# que é onde mora o erro silencioso: tolerância frouxa demais, métrica errada, direção invertida.
+
+from tools.eval_hermeneutica import (  # noqa: E402
+    TOLERANCIA_F1,
+    comparar_com_baseline,
+    resumo_para_baseline,
+)
+
+
+def _medicao(**kw):
+    base = {"f1_macro": 0.53, "f1_por_classe": {"vicio": 0.61, "licito": 0.32},
+            "alucinacao_citacao": 0.0, "bate_o_baseline": True, "prompt_versao": "v1",
+            "n": 60, "acuracia": 0.57, "abstencao": 0.05}
+    base.update(kw)
+    return base
+
+
+def test_primeira_medicao_nao_reprova():
+    r = comparar_com_baseline(_medicao(), None)
+    assert r["ok"] is True and r["primeira_medicao"] is True
+
+
+def test_queda_de_F1_alem_da_tolerancia_e_regressao():
+    r = comparar_com_baseline(_medicao(f1_macro=0.40), _medicao())
+    assert r["ok"] is False
+    assert any("F1 macro caiu" in x for x in r["regressoes"])
+
+
+def test_variacao_dentro_da_tolerancia_nao_alarma():
+    """Travar no valor exato produziria alarme a cada rodada — amostragem do modelo varia."""
+    r = comparar_com_baseline(_medicao(f1_macro=0.53 - TOLERANCIA_F1 / 2), _medicao())
+    assert r["ok"] is True and r["regressoes"] == []
+
+
+def test_alucinacao_NAO_tem_tolerancia_para_cima():
+    """O invariante mais duro da casa: passar a inventar citação é piorar, mesmo com F1 melhor."""
+    r = comparar_com_baseline(_medicao(f1_macro=0.80, alucinacao_citacao=0.01), _medicao())
+    assert r["ok"] is False
+    assert any("alucinação" in x for x in r["regressoes"])
+
+
+def test_deixar_de_bater_o_papagaio_e_regressao():
+    r = comparar_com_baseline(_medicao(bate_o_baseline=False), _medicao())
+    assert r["ok"] is False
+    assert any("papagaio" in x for x in r["regressoes"])
+
+
+def test_colapso_de_UMA_classe_e_pego_mesmo_com_macro_estavel():
+    """Média estável esconde a classe que o motor deixou de entender."""
+    r = comparar_com_baseline(
+        _medicao(f1_por_classe={"vicio": 0.90, "licito": 0.03}), _medicao())
+    assert r["ok"] is False
+    assert any("classe 'licito'" in x for x in r["regressoes"])
+
+
+def test_melhoria_e_registrada_nao_so_a_regressao():
+    r = comparar_com_baseline(_medicao(f1_macro=0.70, alucinacao_citacao=0.0), _medicao())
+    assert r["ok"] is True and r["melhorias"]
+
+
+def test_versao_do_prompt_acompanha_a_comparacao():
+    """Sem ela, uma regressão não se liga à mudança que a causou."""
+    r = comparar_com_baseline(_medicao(prompt_versao="v2"), _medicao(prompt_versao="v1"))
+    assert r["prompt_versao_atual"] == "v2" and r["prompt_versao_baseline"] == "v1"
+
+
+def test_baseline_gravado_NAO_carrega_o_holdout():
+    """`detalhes` traz os casos; gravá-los no baseline vazaria o holdout para dentro do repo."""
+    r = resumo_para_baseline({**_medicao(), "detalhes": [{"id": "caso-do-holdout"}]})
+    assert "detalhes" not in r
+    assert "f1_macro" in r and "alucinacao_citacao" in r

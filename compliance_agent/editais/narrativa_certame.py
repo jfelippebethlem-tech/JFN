@@ -31,6 +31,12 @@ from compliance_agent.emendas.db import conectar
 from compliance_agent.reporting.intel_base import moeda
 
 PROMPT_VERSAO = "v1"
+
+
+def _impressao_do_prompt() -> str:
+    """Hash da fonte do prompt (`nucleo/prompt_versao`) — versão declarada não pega edição calada."""
+    from compliance_agent.nucleo.prompt_versao import REGISTRO, impressao
+    return impressao(REGISTRO["narrativa_certame"]["alvo"])
 ALPHA = 0.3                # §3.4: α ≤ 0,3 — realce máximo do LLM sobre o score determinístico
 LIMITE_PROMPT = 8000       # modelos 8B colapsam acima disso (lição instruir-ias-fracas)
 TRECHO_MAX = 700           # recorte por trecho de evidência
@@ -183,7 +189,8 @@ def parse_rubrica(txt: str) -> dict | None:
 def _base(certame: str, indice: dict) -> dict:
     return {"certame": certame, "faixa": indice["faixa"], "confianca": indice["confianca"],
             "score_det": round(indice["score"] / 100.0, 4), "drivers": indice["drivers"],
-            "prompt_versao": PROMPT_VERSAO}
+            "prompt_versao": PROMPT_VERSAO,
+            "prompt_hash": _impressao_do_prompt()}
 
 
 def _template(certame: str, indice: dict) -> dict:
