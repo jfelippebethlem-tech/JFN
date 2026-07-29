@@ -139,7 +139,16 @@ REPO = Path(__file__).resolve().parent.parent
 # Os nove módulos NOVOS de conhecimento jurídico (limites_aditivo, corpus_veredito,
 # golden_veredito, tipicidade, standard_prova, grounding, qualificacao_juridica) entraram com
 # ZERO `except Exception`.
-BASELINE = 1586
+#
+# 2026-07-29c — 1586 → 1588. Fase 3 (auto-consistência do veredito, CRI, economicidade, grafo de
+# vínculos). Os +2 são de mesma natureza dos anteriores e nenhum é mudo:
+#   • editais/cri — bandeira que quebra vira INDISPONÍVEL, nunca zero; tratá-la como zero faria
+#     um órgão sem dado parecer o mais limpo da fila, que é o oposto de um índice de risco;
+#   • nucleo/autoconsistencia — amostra perdida não derruba a votação; o erro entra no voto e o
+#     resultado declara quantas amostras foram válidas.
+# Os três módulos restantes da leva (economicidade, osint/vinculos, osint/direcionamento_
+# consumado) entraram com ZERO `except Exception`.
+BASELINE = 1588
 
 
 def _contar() -> int:

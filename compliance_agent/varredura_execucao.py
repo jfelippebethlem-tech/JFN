@@ -31,6 +31,11 @@ O QUE FICA DE FORA, e por quê — a mesma regra de `varredura_certames`:
   · X5 (jogo de planilha) pede a planilha orçamentária item a item — não há tabela de itens de
     contrato na base.
   · X6 (entrega fantasma) pede atestos e medições.
+  · X8 (aditivo retroativo) pede a data de ASSINATURA do termo, e `contrato_aditivo` não a tem —
+    guarda `vigencia_fim` e `coletado_em`, que são outra coisa. Usar a data de coleta como proxy
+    faria todo termo parecer retroativo; usar a de publicação mediria atraso de publicação, que é
+    irregularidade de outra natureza. O card existe e roda sobre autos do SEI, onde a data de
+    assinatura consta; na varredura tabular ele fica fora, declarado.
 
 Rodá-los aqui devolveria `nao_avaliavel` em massa, que não informa nada e ainda faz a cobertura
 parecer maior do que é. Quando a ponte contrato↔OB existir (é item do plano), X3 entra aqui.

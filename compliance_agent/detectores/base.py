@@ -66,6 +66,7 @@ Os módulos citados vivem em `compliance_agent/`.
   X5  Jogo de planilha ............................. ✅ (`detectores/x5_jogo_planilha.py`)
   X6  Entrega fantasma / atesto de fachada ........... 🟡 `correlacao_sei` (atesto↔OB) + `verificacao_endereco` (C2)
   X7  Reequilíbrio indevido (art. 124) ............. ✅ (`detectores/x7_reequilibrio_indevido.py`)
+  X8  Aditivo retroativo (fora da vigência) ....... ✅ (`detectores/x8_aditivo_retroativo.py`)
 
   TRANSVERSAIS (já no JFN, alimentam vários cards)
   · Teto remuneratório CF 37 XI ..................... ✅ `acima_do_teto.py` (não é card de licitação, mas é detector)
@@ -110,7 +111,7 @@ PESOS_FAMILIA: dict[str, float] = {
     "perfil": 0.8,           # C1–C6 (perfil do contratado)
     "preco": 0.8,            # P2/P3
     "desenho_certame": 0.6,  # E1–E6
-    "execucao": 0.8,         # X1–X7
+    "execucao": 0.8,         # X1–X8
 }
 
 STATUS_VALIDOS = ("confirmado", "descartado", "nao_avaliavel")
