@@ -260,6 +260,22 @@ def api_memoria(limite: int = 15):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/eval/hermeneutica")
+def api_eval_hermeneutica():
+    """A.3.5 — acurácia MEDIDA do juízo jurídico, visível junto do produto.
+
+    Métrica que só existe em log de job não disciplina ninguém: quem lê o relatório não sabe
+    quanto vale o juízo que está lendo, e quem mexe no prompt não vê o efeito. Sem medição a rota
+    devolve `estado='sem_medicao'` — nunca zero, que seria afirmar qualidade nula onde não houve
+    aferição.
+    """
+    try:
+        from compliance_agent.reporting import painel_acuracia
+        return JSONResponse(content=painel_acuracia.montar())
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/agenda")
 async def api_agenda():
     """Observabilidade central: timers systemd + crons + pausas num relatório só (determinístico, leitura-só).
