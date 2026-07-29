@@ -81,9 +81,20 @@ CREATE TABLE IF NOT EXISTS tcu_existencia_cobertura (
 
 LOTE = 5000
 # O voto e o relatório de um acórdão passam de 1 MB; o limite padrão do módulo `csv` é 128 KB e
-# levanta `field larger than field limit` no meio do fluxo. Subimos para 16 MB — o campo é lido e
-# DESCARTADO na mesma linha, então isto não custa memória acumulada.
-csv.field_size_limit(16 * 1024 * 1024)
+# levanta `field larger than field limit` no meio do fluxo. Subir para 16 MB não bastou: o acervo
+# de 2020 estourou até isso. O idioma correto é pedir o máximo da plataforma e recuar até caber —
+# o campo é lido e DESCARTADO na mesma linha, então o teto não custa memória acumulada.
+def _maior_campo_possivel() -> int:
+    limite = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limite)
+            return limite
+        except OverflowError:
+            limite //= 2
+
+
+_maior_campo_possivel()
 
 
 def _conectar() -> sqlite3.Connection:
