@@ -1,0 +1,187 @@
+# -*- coding: utf-8 -*-
+"""Rotas de VÍNCULOS — beneficiário final, parentesco inferido e histórico societário.
+
+Domínio novo, em módulo próprio de propósito: `rotas/investigacao.py` já tem 2.291 linhas e 98
+rotas, e somar aqui o que é um eixo inteiro só pioraria o problema. O split por domínio é o mesmo
+critério de 2026-07-06 (hermes / produtos / sistema / investigacao).
+
+Todas as rotas deste módulo têm uma obrigação comum: **nenhuma resposta afirma vínculo sem dizer o
+que não observou.** Beneficiário final declara a cobertura de QSA da cadeia; parentesco declara a
+prevalência do eixo que acendeu; histórico societário responde INDISPONÍVEL — com a diligência
+anexa — quando a data pedida está fora da série de snapshots.
+"""
+from __future__ import annotations
+
+import logging
+import sqlite3
+from typing import Optional
+
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+def _db_ro() -> sqlite3.Connection:
+    from compliance_agent.reporting.intel_base import _DB
+    return sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+
+
+@router.get("/api/osint/beneficiario_final")
+def api_beneficiario_final(cnpj: str, profundidade: int = 4):
+    """G.3 — sobe a cadeia societária de uma PJ até as pessoas físicas.
+
+    Cadeia que não chega a pessoa física NÃO significa que não haja beneficiário: significa lacuna
+    de captura, e é o que o campo `motivo` diz. `cobertura` informa quantas empresas da cadeia
+    tinham QSA na base — sem isso o leitor não sabe o quanto da subida foi observada.
+    """
+    try:
+        from compliance_agent.osint.fonte_grafo import beneficiario_final_do_cnpj
+
+        return JSONResponse(beneficiario_final_do_cnpj(
+            cnpj, profundidade=max(1, min(int(profundidade), 8))))
+    except Exception as exc:  # noqa: BLE001 — degrada honesto
+        logger.exception("beneficiario_final falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/parentesco")
+def api_parentesco(cnpj: str):
+    """Hipóteses de vínculo familiar no QSA, com a prevalência de cada eixo acionado.
+
+    Não existe base aberta brasileira de parentesco — o que sai daqui é inferência calibrada por
+    prevalência, e o eixo de sobrenome (16,9% da base) nunca acende sozinho.
+    """
+    try:
+        from compliance_agent.osint.parentesco import avaliar
+
+        raiz = "".join(ch for ch in str(cnpj) if ch.isdigit())[:8]
+        if len(raiz) < 8:
+            return JSONResponse({"ok": False, "erro": "CNPJ inválido"}, status_code=400)
+        con = _db_ro()
+        try:
+            return JSONResponse({"ok": True, **avaliar(con, raiz)})
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("parentesco falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/parentesco/prevalencia")
+def api_parentesco_prevalencia():
+    """Prevalência de cada eixo NA BASE DE HOJE, contra a calibração declarada.
+
+    Publicar isto é o que impede a calibração de envelhecer em silêncio: um eixo cuja prevalência
+    subiu deixou de discriminar, e quem lê o produto tem de poder ver isso.
+    """
+    try:
+        from compliance_agent.osint.parentesco import EIXOS, prevalencia
+
+        p = prevalencia()
+        p["declarado"] = {k: {"prevalencia_medida": v.prevalencia_medida,
+                              "pode_acender_sozinho": v.pode_acender_sozinho,
+                              "descricao": v.descricao} for k, v in EIXOS.items()}
+        return JSONResponse({"ok": True, **p})
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("prevalencia falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/vinculo_na_data")
+def api_vinculo_na_data(cnpj: str, data: str, nome: str = "", doc: str = ""):
+    """*Fulano era sócio desta empresa NESTA data?* — a pergunta que fecha direcionamento.
+
+    Três respostas: SIM, NAO (com a ressalva da defasagem mensal da publicação da Receita) e
+    INDISPONIVEL, que é a que importa — perguntar por data fora da série não pode devolver "não
+    era sócio". Nesse caso vem o pedido de diligência à JUCERJA.
+    """
+    try:
+        from compliance_agent.osint.historico_societario import vinculo_na_data
+
+        raiz = "".join(ch for ch in str(cnpj) if ch.isdigit())[:8]
+        con = _db_ro()
+        try:
+            return JSONResponse({"ok": True, **vinculo_na_data(
+                con, raiz, data, doc_socio=doc, nome=nome)})
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("vinculo_na_data falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/historico_socio")
+def api_historico_socio(nome: str = "", doc: str = ""):
+    """Todas as sociedades de uma pessoa ao longo da série, com entrada e saída observadas."""
+    try:
+        from compliance_agent.osint.historico_societario import historico_do_socio
+
+        if not (nome or doc):
+            return JSONResponse({"ok": False, "erro": "informe nome ou doc"}, status_code=400)
+        con = _db_ro()
+        try:
+            linhas = historico_do_socio(con, doc_socio=doc, nome=nome)
+        finally:
+            con.close()
+        return JSONResponse({"ok": True, "n": len(linhas), "vinculos": linhas})
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("historico_socio falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/trocas_societarias")
+def api_trocas_societarias(cnpj: str, data: str, janela: int = 6):
+    """Troca de quadro societário perto de uma data — sócio que entra depois da homologação, ou
+    que sai depois do pagamento. O padrão que a linha do tempo sempre quis ler e não tinha fonte."""
+    try:
+        from compliance_agent.osint.historico_societario import trocas_perto_de
+
+        raiz = "".join(ch for ch in str(cnpj) if ch.isdigit())[:8]
+        con = _db_ro()
+        try:
+            return JSONResponse({"ok": True, **trocas_perto_de(
+                con, raiz, data, meses_janela=max(1, min(int(janela), 36)))})
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("trocas_societarias falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/serie_societaria")
+def api_serie_societaria():
+    """Estado da série de snapshots: o denominador que impede ler silêncio como limpeza.
+
+    Enquanto houver um único snapshot, saída de sócio é inobservável — e o painel tem de mostrar
+    isso, não esconder.
+    """
+    try:
+        from compliance_agent.osint.fonte_grafo import cobertura_qsa
+        from compliance_agent.osint.historico_societario import snapshots_ingeridos
+
+        con = _db_ro()
+        try:
+            meses = snapshots_ingeridos(con)
+            try:
+                por_status = dict(con.execute(
+                    "SELECT status, COUNT(*) FROM socio_historico GROUP BY status").fetchall())
+            except sqlite3.Error:
+                por_status = {}
+        finally:
+            con.close()
+        return JSONResponse({
+            "ok": True,
+            "snapshots": meses,
+            "n_snapshots": len(meses),
+            "cobertura": f"{meses[0]} a {meses[-1]}" if meses else None,
+            "vinculos_por_status": por_status,
+            "qsa": cobertura_qsa(),
+            "fonte": ("espelho público dados-abertos-rf-cnpj.casadosdados.com.br — 41 snapshots "
+                      "mensais de 2023-03 a 2026-07, sem chave e sem custo. Os caminhos oficiais da "
+                      "Receita respondem 404 desde janeiro/2026."),
+        })
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("serie_societaria falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
