@@ -15,8 +15,16 @@ from tools.painel_abas import abas, abas_por_esfera
 # mudanca tem de ser uma decisao, nao um efeito colateral que ninguem viu.
 # 2026-07-28: 51 → 52 e estado 14 → 15. Entrou a aba "Responsáveis" (esfera Estado), que expõe
 # `/api/responsaveis` — capacidade que existia desde 27/07 sem nenhuma tela.
-TOTAL = 52
-POR_ESFERA = {"inicio": 1, "estado": 15, "prefeitura": 14, "geral": 22}
+# 2026-07-29: 52 → 57 e geral 22 → 27. A auditoria mediu 57 de 158 rotas SEM ponto de entrada no
+# painel; entraram cinco abas transversais que ligam o que estava implementado e invisível:
+# Vínculos (beneficiário final, parentesco, histórico societário), Peças (dossiê completo, dossiê
+# mestre, minuta .docx, PPP, acatamento, conjunto), Fontes externas (os seis providers),
+# Hub físico (detector que nasceu sem tela) e Acurácia (/api/eval/hermeneutica e /api/eval/lift).
+# Segunda onda do mesmo dia: Detectores (dez leituras que existiam sem tela), Instrumentação
+# (agenda, pipelines, memória, UGs, SIAFE, radar, núcleo) e Missões (a fila paralela do Hermes, que
+# só existia no backend). Órfãs: 57 → 22.
+TOTAL = 60
+POR_ESFERA = {"inicio": 1, "estado": 15, "prefeitura": 14, "geral": 30}
 
 
 def test_le_todas_as_abas_do_painel():

@@ -2629,6 +2629,566 @@ async function renderResponsaveis(){
   return h;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// ABAS NOVAS (2026-07-29) — o que estava implementado no backend e invisível para quem decide.
+//
+// A auditoria mediu: 57 de 158 rotas não tinham NENHUM ponto de entrada no painel, incluindo o
+// dossiê completo, o dossiê mestre, a minuta .docx pronta para o gabinete assinar, e todo o eixo
+// de vínculos. Rota órfã não é detalhe de UI: é trabalho feito que não vira decisão de fiscalização.
+// A catraca que impede isso de voltar a crescer é tests/test_rotas_sem_orfa.py.
+//
+// ⚠️ Estes renders ficam ANTES de `const TABS` de propósito: TABS é const e referencia o render na
+// avaliação — declarar depois daria TDZ e mataria o boot em silêncio (já custou 13 versões).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+// ═══ VÍNCULOS — beneficiário final · parentesco · histórico societário ═══
+async function renderVinculos(){
+  const s=await J('/api/osint/serie_societaria');
+  let h=cover('geral','Vínculos — quem está atrás da empresa, e desde quando',
+    'Sobe a cadeia societária de PJ em PJ até chegar à pessoa física (<b>beneficiário final</b>), infere <b>parentesco</b> por eixos calibrados na própria base, e responde <b>desde quando</b> cada vínculo existe — usando a série de snapshots mensais da Receita. Vínculo é indício; parentesco só se prova por certidão.','🕸️');
+
+  // Estado da série: é o denominador. Sem ele, o leitor supõe que o vínculo é atual.
+  if(s.ok){
+    const n=s.n_snapshots||0, st=s.vinculos_por_status||{};
+    h+=`<div class="grid g2">${kpi(fmtN(n),'Snapshots mensais na série',n>=2?'var(--emerald)':'var(--rose)','📅')}
+        ${kpi(esc(s.cobertura||'—'),'Janela observada',null,'🗓️')}
+        ${kpi(fmtN(st.saiu||0),'Saídas de sócio detectadas','var(--amber)','🚪')}
+        ${kpi(fmtN(st.ativo||0),'Vínculos vistos no último mês',null,'✅')}</div>`;
+    h+=leitura(n<2
+      ? `<b>Série com ${n} snapshot(s).</b> Com menos de dois meses observados, <b>saída de sócio é inobservável</b> — a base da Receita traz data de entrada e nenhuma de saída. Toda pergunta do tipo "era sócio na data do certame?" sai como INDISPONÍVEL, nunca como afastada.`
+      : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
+    h+=`<div class="note" style="margin-top:8px">Fonte: ${esc(s.fonte||'')}</div>`;
+  }else{
+    h+=card(`<div class="warn">${erroHumano(s.erro)}</div>`);
+  }
+
+  h+=sec('Consultar uma empresa');
+  h+=card(`<div class="search"><span class="mag"></span>
+      <input id="vinc-cnpj" placeholder="CNPJ da empresa (com ou sem pontuação)…"
+             onkeydown="if(event.key==='Enter')vincConsultar()"></div>
+    <div class="btns" style="margin-top:10px">
+      <button type="button" class="btn" onclick="vincConsultar()">Beneficiário final</button>
+      <button type="button" class="btn ghost" onclick="vincParentesco()">Parentesco no QSA</button>
+      <button type="button" class="btn ghost" onclick="vincTrocas()">Trocas de quadro</button>
+      <button type="button" class="btn ghost" onclick="vincGrafo()">Rede de poder</button>
+      <button type="button" class="btn ghost" onclick="vincFtm()">Exportar FollowTheMoney</button>
+    </div>
+    <div class="dim" style="margin-top:8px">Histórico de uma <b>pessoa</b> (de quais empresas foi sócia):
+      <input id="vinc-pessoa" placeholder="nome do sócio…" style="margin-left:6px">
+      <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincHistoricoPessoa()">Ver histórico</button>
+    </div>
+    <div class="dim" style="margin-top:8px">Para <b>"era sócio nesta data?"</b> informe também a data:
+      <input id="vinc-data" type="date" style="margin-left:6px">
+      <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincNaData()">Verificar na data</button>
+    </div>`);
+  h+=`<div id="vinc-out"></div>`;
+
+  h+=sec('Calibração dos eixos de parentesco');
+  h+=card(`<div class="dim">Nenhuma base aberta brasileira publica filiação. O que sai daqui é
+      inferência, e a única forma honesta de inferir é medir a <b>prevalência de cada eixo na própria
+      base</b> antes de deixá-lo pesar — um eixo que acende na maioria mede a base, não o alvo.</div>
+    <div class="btns" style="margin-top:10px"><button type="button" class="btn ghost" onclick="vincPrevalencia()">Medir na base de hoje</button></div>
+    <div id="vinc-prev"></div>`);
+  return h;
+}
+
+function _vincCnpj(){const v=($('vinc-cnpj')?.value||'').replace(/\D/g,'');return v.length>=8?v:'';}
+
+async function vincConsultar(){
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">subindo a cadeia societária…</div>');
+  const d=await J('/api/osint/beneficiario_final?cnpj='+encodeURIComponent(c));
+  if(d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const cob=d.cobertura||{}, ps=d.pessoas||[];
+  let h=sec('Beneficiário final — '+esc(d.pj||c));
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas),'Pessoas físicas na cadeia',ps.length?'var(--emerald)':'var(--amber)','👤')}
+      ${kpi((cob.pct==null?'—':cob.pct+'%'),'Cobertura de QSA da cadeia',cob.pct>=80?null:'var(--amber)','🔍')}
+      ${kpi(fmtN(d.saltos_max),'Degraus até a pessoa física')}
+      ${kpi(fmtN((d.ciclos||[]).length),'Participações cruzadas circulares',(d.ciclos||[]).length?'var(--rose)':null,'🔄')}</div>`;
+  h+=leitura(esc(d.motivo||''));
+  if(ps.length){
+    h+=`<div class="grid">`+ps.map(p=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+         <div style="min-width:0"><div style="font-weight:700">${esc(p.rotulo)}
+           ${p.documentado?'<span class="tag">documento confirmado</span>':'<span class="tag amber">CPF mascarado na fonte</span>'}</div>
+           <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((p.caminho||[]).join(' → '))}</div></div>
+         <div class="right"><div class="num" style="font-weight:800;font-size:20px">${(p.confianca*100).toFixed(0)}%</div>
+           <div class="dim">confiança · ${p.saltos} degrau(s)</div></div></div>`,
+      p.confianca>=0.85?'hl':'')).join('')+`</div>`;
+  }
+  if((d.ciclos||[]).length){
+    h+=card(`<div style="font-weight:700">Participação cruzada circular</div>`+
+      (d.ciclos||[]).map(c=>`<div class="muted" style="font-size:12.5px">${esc((c||[]).join(' → '))}</div>`).join('')+
+      leitura('Empresa A sócia da B, que é sócia da A. É lícito, e é também a estrutura que mais dificulta identificar quem manda — cabe olhar o contrato social.'));
+  }
+  h+=`<div class="note">${esc((d.documentacao||{}).nota||'')}</div>`;
+  h+=`<div class="note">${esc((d.temporalidade||{}).nota||'')}</div>`;
+  h+=`<div class="note">${esc(cob.nota||'')}</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  o.innerHTML=h;
+}
+
+async function vincParentesco(){
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">medindo eixos…</div>');
+  const d=await J('/api/osint/parentesco?cnpj='+encodeURIComponent(c));
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const cor={indicio:'var(--rose)',hipotese:'var(--amber)',hipotese_fraca:null}[d.grau]||null;
+  let h=sec('Parentesco inferido — CNPJ raiz '+esc(d.cnpj_basico));
+  h+=`<div class="grid g2">${kpi(esc(d.grau||'nenhum eixo'),'Grau',cor,'👪')}
+      ${kpi(fmtN(d.n_hipoteses),'Hipóteses')}
+      ${kpi(d.falso_positivo_esperado_pct+'%','Falso positivo esperado',d.falso_positivo_esperado_pct>=10?'var(--amber)':null,'📉')}
+      ${kpi(fmtN(d.n_socios_pf),'Sócios PF no QSA')}</div>`;
+  h+=leitura(esc(d.leitura||''));
+  if((d.eixos_acionados||[]).length){
+    h+=`<div class="grid">`+(d.eixos_acionados||[]).map(e=>card(
+      `<div style="font-weight:700">${esc(e.descricao)}
+         ${e.pode_acender_sozinho?'<span class="tag">eixo forte</span>':'<span class="tag amber">não acende sozinho</span>'}</div>
+       <div class="dim" style="margin-top:4px">Prevalência na base: <b>${e.prevalencia_na_base_pct}%</b></div>
+       ${leitura('Explicação inocente: '+esc(e.explicacao_inocente))}`)).join('')+`</div>`;
+  }
+  if((d.hipoteses||[]).length){
+    h+=sec('Pessoas',d.hipoteses.length);
+    h+=`<div class="grid">`+d.hipoteses.map(x=>card(
+      `<div style="font-weight:700">${esc((x.pessoas||[]).join('  ·  '))}</div>
+       <div class="dim" style="margin-top:3px">${esc(x.onde||'')}${x.familia?' · família '+esc(x.familia):''}
+         · hipótese: <b>${esc(x.tipo_provavel)}</b></div>
+       <div class="dim">eixos: ${esc((x.eixos||[]).join(', '))}</div>`)).join('')+`</div>`;
+  }
+  if(d.diligencia){
+    h+=card(`<div style="font-weight:700">Diligência que fecha a questão</div>
+      <div class="dim" style="margin-top:4px">${esc(d.diligencia.por_que)}</div>
+      <ul class="dim">`+(d.diligencia.fontes||[]).map(f=>`<li>${esc(f)}</li>`).join('')+`</ul>
+      <div class="note">${esc(d.diligencia.metodologia_citavel)}</div>`);
+  }
+  o.innerHTML=h;
+}
+
+async function vincNaData(){
+  const c=_vincCnpj(), dt=($('vinc-data')?.value||''); const o=$('vinc-out');
+  if(!c||!dt){o.innerHTML=card('<div class="warn">Informe CNPJ e data.</div>');return;}
+  o.innerHTML=card('<div class="dim">consultando a série…</div>');
+  const d=await J(`/api/osint/vinculo_na_data?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const cor={SIM:'var(--rose)',NAO:null,INDISPONIVEL:'var(--amber)'}[d.resposta]||null;
+  let h=sec('Havia vínculo societário em '+esc(dt)+'?');
+  h+=`<div class="grid g2">${kpi(esc(d.resposta),'Resposta',cor,'⚖️')}
+      ${kpi(esc(d.mes_observado||'—'),'Mês efetivamente observado')}
+      ${kpi(d.defasagem_meses==null?'—':d.defasagem_meses,'Defasagem (meses)')}
+      ${kpi(fmtN((d.serie||{}).n_meses),'Meses na série')}</div>`;
+  if(d.resposta==='INDISPONIVEL') h+=leitura('<b>INDISPONÍVEL não é NÃO.</b> '+esc(d.motivo||''));
+  else h+=leitura(esc(d.ressalva||''));
+  if((d.socios||[]).length){
+    h+=`<div class="grid">`+d.socios.map(s=>card(
+      `<div style="font-weight:700">${esc(s.nome)}</div>
+       <div class="dim">${esc(s.qualificacao||'—')} · entrada declarada ${esc(s.data_entrada||'—')}</div>`)).join('')+`</div>`;
+  }
+  if(d.diligencia){
+    h+=card(`<div style="font-weight:700">${esc(d.diligencia.orgao)}</div>
+      <div class="dim" style="margin-top:4px">${esc(d.diligencia.documento)}</div>
+      <div class="note">${esc(d.diligencia.por_que)}</div>
+      <div class="note">${esc(d.diligencia.como)}</div>`);
+  }
+  o.innerHTML=h;
+}
+
+async function vincTrocas(){
+  const c=_vincCnpj(), dt=($('vinc-data')?.value||''); const o=$('vinc-out');
+  if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  if(!dt){o.innerHTML=card('<div class="warn">Informe a data de referência (homologação, assinatura ou pagamento).</div>');return;}
+  o.innerHTML=card('<div class="dim">procurando trocas de quadro…</div>');
+  const d=await J(`/api/osint/trocas_societarias?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro||d.motivo)}</div>`);return;}
+  let h=sec('Trocas de quadro societário perto de '+esc(dt));
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_entradas),'Entradas na janela',d.n_entradas?'var(--amber)':null,'➡️')}
+      ${kpi(fmtN(d.n_saidas),'Saídas na janela',d.n_saidas?'var(--amber)':null,'🚪')}
+      ${kpi(fmtN(d.janela_meses),'Janela (meses)')}</div>`;
+  h+=leitura(esc(d.leitura||''));
+  const linhas=[...(d.entradas||[]).map(x=>['entrada',x]),...(d.saidas||[]).map(x=>['saída',x])];
+  if(linhas.length){
+    h+=`<div class="grid">`+linhas.map(([tipo,x])=>card(
+      `<div style="font-weight:700">${esc(x.nome_norm)} <span class="tag ${tipo==='saída'?'amber':''}">${tipo}</span></div>
+       <div class="dim">${esc(x.qualificacao||'—')} · visto de ${esc(x.visto_de)} a ${esc(x.visto_ate)}
+         ${x.saiu_entre?' · saiu entre '+esc(x.saiu_entre):''}
+         ${x.janela_confiavel===0?' · <b>janela com mês não observado</b>':''}</div>`)).join('')+`</div>`;
+  }
+  o.innerHTML=h;
+}
+
+async function vincPrevalencia(){
+  const o=$('vinc-prev'); o.innerHTML='<div class="dim">medindo na base…</div>';
+  const d=await J('/api/osint/parentesco/prevalencia');
+  if(!d.ok){o.innerHTML=`<div class="warn">${erroHumano(d.erro)}</div>`;return;}
+  const dec=d.declarado||{};
+  let h=`<table class="tb" style="margin-top:10px"><thead><tr><th>Eixo</th><th class="r">Prevalência hoje</th><th class="r">Calibração declarada</th><th>Acende sozinho?</th></tr></thead><tbody>`;
+  for(const [k,v] of Object.entries(d.eixos||{})){
+    const dd=dec[k]||{}, alerta=v>(dd.prevalencia_medida||0)*1.5;
+    h+=`<tr><td>${esc(dd.descricao||k)}</td><td class="r ${alerta?'bad':''}"><b>${v}%</b></td>
+        <td class="r dim">${dd.prevalencia_medida==null?'—':dd.prevalencia_medida+'%'}</td>
+        <td>${dd.pode_acender_sozinho?'sim':'<span class="dim">não — mede a base</span>'}</td></tr>`;
+  }
+  h+=`</tbody></table><div class="note">${esc(d.regra||'')}</div>`;
+  o.innerHTML=h;
+}
+
+// ═══ PEÇAS — os produtos entregáveis que não tinham botão ═══
+async function renderPecas(){
+  let h=cover('geral','Peças — o que sai daqui assinável',
+    'Os produtos completos do motor: <b>dossiê completo</b> por CNPJ, <b>dossiê mestre</b> de licitações por órgão, <b>minuta em .docx</b> pronta para o gabinete assinar (requerimento ALERJ ou representação ao TCE), dossiê pericial de PPP, auditoria de acatamento de parecer e avaliação de conjunto dos certames. Geração assíncrona: o arquivo chega no Telegram e aparece em Relatórios.','📜');
+  h+=card(`<div class="search"><span class="mag"></span>
+      <input id="pc-alvo" placeholder="CNPJ, nome de fornecedor, órgão ou UG…"></div>
+    <div class="dim" style="margin-top:8px">Para acatamento de parecer, informe o número do processo SEI.</div>`);
+  const b=(rota,rot,desc,campo)=>card(
+    `<div style="font-weight:700">${esc(rot)}</div><div class="dim" style="margin-top:4px">${desc}</div>
+     <div class="btns" style="margin-top:10px"><button type="button" class="btn" onclick="pecaGerar('${rota}','${campo}')">Gerar</button></div>`);
+  h+=`<div class="grid g2" style="margin-top:12px">`+[
+    b('/api/dossie/completo','Dossiê completo (CNPJ)','360 + fachada + cláusulas na íntegra + suspeitas + árvore SEI + parecer + planilha.','cnpj'),
+    b('/api/dossie/mestre','Dossiê mestre de licitações','Portfólio de certames do órgão, com ranking por dano e escalada sugerida.','orgao'),
+    b('/api/mandato/minuta','Minuta .docx para assinar','Requerimento de informação (ALERJ) ou representação ao TCE-RJ, já fundamentado.','alvo'),
+    b('/api/ppp','Dossiê pericial de PPP/concessão','Perícia de parceria público-privada: equilíbrio, aportes, matriz de risco.','alvo'),
+    b('/api/sei/acatamento','Acatamento de parecer (art. 53)','O gestor seguiu o parecer jurídico? Divergência não motivada é achado.','processo'),
+    b('/api/conjunto/orgao','Avaliação de conjunto dos certames','Lê o órgão como conjunto, não certame a certame — §5 da metodologia.','orgao'),
+  ].join('')+`</div><div id="pc-out"></div>`;
+  h+=`<div class="note">Toda peça passa pelo gate de neutralidade (nenhum nome interno) e pelo gate de citações (nenhum acórdão inexistente).</div>`;
+  return h;
+}
+
+async function pecaGerar(rota,campo){
+  const v=($('pc-alvo')?.value||'').trim(); const o=$('pc-out');
+  if(!v){o.innerHTML=card('<div class="warn">Informe o alvo acima.</div>');return;}
+  o.innerHTML=card('<div class="dim">acionando… a geração é assíncrona; o arquivo chega no Telegram e em Relatórios.</div>');
+  try{
+    const d=await J(rota,{method:'POST',headers:{'Content-Type':'application/json'},
+                          body:JSON.stringify({[campo]:v,alvo:v})});
+    if(d&&d.ambiguo){
+      o.innerHTML=card(`<div style="font-weight:700">${esc(d.pergunta||'Alvo ambíguo')}</div>`+
+        `<div class="grid" style="margin-top:8px">`+(d.candidatos||[]).map(c=>
+          `<button type="button" class="btn ghost" onclick="$('pc-alvo').value='${esc(c.cnpj||c.ug||c.nome)}';pecaGerar('${rota}','${campo}')">${esc(c.nome||c.razao||c.cnpj)}</button>`).join('')+`</div>`);
+      return;
+    }
+    o.innerHTML=card(`<div class="ok">Acionado.</div><div class="dim" style="margin-top:6px">${esc(d.mensagem||d.status||'A peça chega no Telegram quando terminar.')}</div>`);
+  }catch(e){ o.innerHTML=card(`<div class="warn">${erroHumano(String(e))}</div>`); }
+}
+
+// ═══ FONTES EXTERNAS — os seis providers que ninguém alcançava ═══
+async function renderFontesExternas(){
+  let h=cover('geral','Fontes externas — o que se sabe fora da nossa base',
+    'Consulta pontual às fontes abertas já integradas: cadastro da Receita, idoneidade (CEIS/CNEP), estrutura societária global (GLEIF), vazamentos indexados (ICIJ), rastro na web e diário oficial municipal. Todas gratuitas; nenhuma exige chave paga.','🛰️');
+  h+=card(`<div class="search"><span class="mag"></span>
+      <input id="fx-alvo" placeholder="CNPJ, CPF mascarado, nome ou domínio…"
+             onkeydown="if(event.key==='Enter')fxConsultar('/api/empresa')"></div>
+    <div class="btns" style="margin-top:10px;flex-wrap:wrap">
+      <button type="button" class="btn" onclick="fxConsultar('/api/empresa')">Cadastro (Receita)</button>
+      <button type="button" class="btn ghost" onclick="fxConsultar('/api/idoneidade')">Idoneidade</button>
+      <button type="button" class="btn ghost" onclick="fxConsultar('/api/ownership')">Estrutura (GLEIF)</button>
+      <button type="button" class="btn ghost" onclick="fxConsultar('/api/leaks')">Vazamentos (ICIJ)</button>
+      <button type="button" class="btn ghost" onclick="fxConsultar('/api/links')">Rastro na web</button>
+      <button type="button" class="btn ghost" onclick="fxConsultar('/api/diario')">Diário oficial</button>
+    </div>`);
+  h+=`<div id="fx-out"></div>`;
+  h+=`<div class="note">Ausência de resultado numa fonte externa é <b>INDISPONÍVEL</b>, não prova de inexistência: a cobertura de cada base é parcial e declarada por ela mesma.</div>`;
+  return h;
+}
+
+async function fxConsultar(rota){
+  const v=($('fx-alvo')?.value||'').trim(); const o=$('fx-out');
+  if(!v){o.innerHTML=card('<div class="warn">Informe o alvo.</div>');return;}
+  o.innerHTML=card('<div class="dim">consultando…</div>');
+  const d=await J(rota+'?alvo='+encodeURIComponent(v)+'&cnpj='+encodeURIComponent(v)+'&q='+encodeURIComponent(v));
+  if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  o.innerHTML=sec(esc(rota.replace('/api/','')))+card(
+    `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1))}</pre>`);
+}
+
+// ═══ HUB FÍSICO — uma âncora, vários CNPJs (detector novo que nasceu sem aba) ═══
+async function renderHubFisico(){
+  const d=await J('/api/intel/hub_compartilhado?limite=150');
+  if(!d.ok)return sec('Hub compartilhado')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  const a=d.achados||d.hubs||[];
+  let h=cover('geral','Hub físico — uma âncora, vários fornecedores',
+    'Endereço, telefone ou e-mail <b>idêntico</b> em empresas distintas que vendem ao Estado. A lição já paga: <b>mesma sala</b> significa muito, <b>mesmo prédio</b> quase nada — o topo do acervo por prédio é um endereço com 318 CNPJs. Só a âncora com complemento (sala/andar) pesa.','🏢')+acoesAba('hub_compartilhado');
+  h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs','var(--amber)','🏢')}
+      ${kpi(fmtN(a.reduce((s,x)=>s+(x.n_cnpjs||x.n||0),0)),'CNPJs envolvidos')}
+      ${kpi(fmtN(a.filter(x=>(x.tipo||'').includes('sala')||x.complemento).length),'Com complemento (sala/andar)','var(--rose)','🚪')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por âncora ou empresa…" oninput="filtrar(this,'#hub-list .card')"></div>`;
+  h+=`<div id="hub-list" class="grid">`+a.map(x=>card(
+    `<div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')} <span class="tag">${esc(x.tipo||'endereço')}</span></div>
+     <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((x.empresas||x.cnpjs||[]).join(' · '))}</div>
+     <div class="dim" style="margin-top:4px">${fmtN(x.n_cnpjs||x.n||(x.empresas||[]).length)} empresas</div>`,
+    (x.n_cnpjs||x.n||0)>=4?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'Coworking, escritório virtual e prédio comercial hospedam empresas sem relação — a âncora é indício, não prova.')}</div>`;
+  return h;
+}
+
+// ═══ ACURÁCIA — o motor medido, publicado junto do produto ═══
+async function renderAcuracia(){
+  let h=cover('geral','Acurácia — o quanto o juízo do motor acerta',
+    'Publica a métrica do próprio motor: acurácia do juízo jurídico contra o conjunto-ouro de casos do TCU (F1 macro contra baseline burro) e o <b>lift</b> de cada detector — quantas vezes ele acerta acima da taxa-base. Detector com lift abaixo de 1 é <b>anti-preditivo</b>: acende mais no regular que no irregular.','🎯');
+  const [he,lf]=await Promise.all([J('/api/eval/hermeneutica'),J('/api/eval/lift')]);
+  if(he&&he.ok!==false){
+    h+=sec('Juízo jurídico (conjunto-ouro TCU)');
+    h+=`<div class="grid g2">${kpi(he.f1_macro==null?'—':Number(he.f1_macro).toFixed(3),'F1 macro',null,'⚖️')}
+        ${kpi(he.baseline_f1==null?'—':Number(he.baseline_f1).toFixed(3),'F1 do baseline burro')}
+        ${kpi(he.acuracia==null?'—':(100*he.acuracia).toFixed(1)+'%','Acurácia')}
+        ${kpi(he.n==null?'—':fmtN(he.n),'Casos rotulados')}</div>`;
+    if(he.alucinacao_citacao!=null)
+      h+=leitura(`Alucinação de citação: <b>${(100*he.alucinacao_citacao).toFixed(1)}%</b>. Abstenção: ${he.abstencao==null?'—':(100*he.abstencao).toFixed(0)+'%'} — abster-se é resultado honesto, não falha.`);
+  }else h+=card(`<div class="dim">Acurácia do juízo indisponível nesta execução${he&&he.erro?': '+esc(he.erro):''}.</div>`);
+
+  if(lf&&lf.ok!==false){
+    const ds=lf.detectores||lf.itens||[];
+    h+=sec('Lift por detector',ds.length);
+    if(lf.taxa_base!=null) h+=`<div class="dim">Taxa-base do acervo: <b>${(100*lf.taxa_base).toFixed(2)}%</b>. Lift 1,0 = o detector não informa nada.</div>`;
+    h+=`<table class="tb" style="margin-top:10px"><thead><tr><th>Detector</th><th class="r">Lift</th><th class="r">n</th><th>Leitura</th></tr></thead><tbody>`;
+    for(const d of ds){
+      const L=Number(d.lift||0);
+      const cls=L<1?'bad':(L>=3?'ok':'');
+      const lei=L<1?'ANTI-preditivo — acende mais no regular':(d.circular?'lift alto porém CIRCULAR (usa sanção como insumo)':(L>=3?'discrimina bem':'informa pouco'));
+      h+=`<tr><td>${esc(d.detector||d.id)}</td><td class="r ${cls}"><b>${L.toFixed(2)}</b></td>
+          <td class="r dim">${fmtN(d.n)}</td><td class="dim">${esc(lei)}</td></tr>`;
+    }
+    h+=`</tbody></table>`;
+    h+=`<div class="note">Lift alto por circularidade não é mérito: se o detector usa sanção como insumo e a sanção é o alvo, ele está prevendo o passado.</div>`;
+  }else h+=card(`<div class="dim">Lift indisponível nesta execução${lf&&lf.erro?': '+esc(lf.erro):''}.</div>`);
+  return h;
+}
+
+
+async function vincGrafo(){
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">montando a rede…</div>');
+  const d=await J('/api/grafo?alvo='+encodeURIComponent(c)+'&saltos=2');
+  if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const nos=d.nos||[], ar=d.arestas||[];
+  o.innerHTML=sec('Rede de poder — 2 saltos')+
+    `<div class="grid g2">${kpi(fmtN(nos.length),'Nós')}${kpi(fmtN(ar.length),'Arestas')}
+      ${kpi(fmtN((d.comunidades||[]).length),'Comunidades')}</div>`+
+    card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
+      <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`)+
+    leitura('A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.');
+}
+async function vincFtm(){
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">exportando…</div>');
+  const d=await J('/api/grafo/ftm?alvo='+encodeURIComponent(c)+'&saltos=2');
+  if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const ents=d.entidades||d.entities||[];
+  o.innerHTML=sec('FollowTheMoney')+card(
+    `<div class="dim">${fmtN(ents.length)} entidade(s) no vocabulário FtM — interopera com Aleph e Gephi sem migrar nada.</div>
+     <pre style="white-space:pre-wrap;font-size:11.5px;margin-top:8px;max-height:300px;overflow:auto">${esc(JSON.stringify(ents.slice(0,20),null,1))}</pre>`);
+}
+async function vincHistoricoPessoa(){
+  const n=($('vinc-pessoa')?.value||'').trim(); const o=$('vinc-out');
+  if(!n){o.innerHTML=card('<div class="warn">Informe o nome do sócio.</div>');return;}
+  o.innerHTML=card('<div class="dim">consultando a série…</div>');
+  const d=await J('/api/osint/historico_socio?nome='+encodeURIComponent(n));
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const vs=d.vinculos||[];
+  if(!vs.length){o.innerHTML=card(`<div class="note">Nenhum vínculo desta pessoa na série. <b>INDISPONÍVEL não é ausência</b>: a série cobre só as raízes-alvo do acervo, não o Brasil inteiro.</div>`);return;}
+  let h=sec('Sociedades de '+esc(n),vs.length)+`<table class="tb"><thead><tr><th>CNPJ raiz</th><th>Qualificação</th><th>Visto de</th><th>até</th><th>Situação</th></tr></thead><tbody>`;
+  for(const v of vs)
+    h+=`<tr><td>${esc(v.cnpj_basico)}</td><td class="dim">${esc(v.qualificacao||'—')}</td>
+        <td>${esc(v.visto_de)}</td><td>${esc(v.visto_ate)}</td>
+        <td class="${v.status==='saiu'?'bad':''}">${esc(v.status)}${v.saiu_entre?' ('+esc(v.saiu_entre)+')':''}${v.janela_confiavel===0?' ⚠ janela com mês não observado':''}</td></tr>`;
+  h+=`</tbody></table>`;
+  o.innerHTML=h;
+}
+
+// ═══ DETECTORES ÓRFÃOS — segunda onda do "ligar tudo" (2026-07-29) ═══
+// Cada um destes existia no backend, com teste, e sem uma tela: anomalias por PyOD, rodízio
+// temporal, conflito doador↔contrato, sobrepreço contra mediana de mercado, co-endereço,
+// concentração geográfica e as duas leituras do D.O. do Rio.
+const _DETS_ORFAOS=[
+  {id:'anomalias', rota:'/api/anomalias?top=40', tl:'Anomalias nos pagamentos',
+   ic:'🌡️', desc:'Ordens bancárias que fogem do padrão do próprio órgão (ensemble de detecção de outlier + Benford). Outlier não é irregularidade: é onde vale olhar primeiro.', campo:'alertas'},
+  {id:'rodizio', rota:'/api/rodizio?top=40', tl:'Rodízio de vencedores',
+   ic:'🔄', desc:'Empresas que se revezam nas vitórias do mesmo órgão. Alternância pode ser mercado pequeno — ou combinação. O sinal está na regularidade do revezamento.', campo:'achados'},
+  {id:'conflito', rota:'/api/conflito', tl:'Conflito doador ↔ contrato',
+   ic:'🗳️', desc:'Doador de campanha (TSE) que é sócio de empresa paga pelo Estado. Doação é lícita e pública; a questão é o que veio depois dela.', campo:'achados'},
+  {id:'doador_contrato', rota:'/api/doador_contrato', tl:'Doador × contrato (via QSA)',
+   ic:'💸', desc:'Mesma pergunta pelo outro lado: partindo do contrato, chega-se a um doador no quadro societário?', campo:'achados'},
+  {id:'sobrepreco', rota:'/api/sobrepreco?top=40', tl:'Sobrepreço vs mercado',
+   ic:'📈', desc:'Preço unitário acima da mediana de mercado para item comparável. Só vale sobre item homogêneo — descrição genérica compara produtos diferentes.', campo:'itens'},
+  {id:'coendereco', rota:'/api/coendereco/clusters?limite=80', tl:'Co-endereço (grupos por sede)',
+   ic:'🏠', desc:'Empresas que dividem a mesma sede. Mesma SALA significa muito; mesmo PRÉDIO quase nada — o topo do acervo por prédio tem 318 CNPJs.', campo:'clusters'},
+  {id:'cidades', rota:'/api/orgao/cidades', tl:'Concentração geográfica',
+   ic:'🗺️', desc:'De onde vêm os fornecedores do órgão. Concentração num município distante do objeto é indício a explicar.', campo:'cidades'},
+  {id:'doe_conc', rota:'/api/pcrj/doe_concentracao', tl:'D.O. Rio — concentração em atas',
+   ic:'📰', desc:'Concentração de fornecedores nas atas de registro de preço publicadas no Diário Oficial do Rio.', campo:'achados'},
+  {id:'doe_canal', rota:'/api/pcrj/doe_canal_informal', tl:'D.O. Rio — canal informal',
+   ic:'📧', desc:'Contratação cujo canal de propostas é e-mail pessoal (gmail e afins) em vez de sistema oficial.', campo:'achados'},
+  {id:'tse_ano', rota:'/api/compliance/tse/2022', tl:'Doações eleitorais (TSE) por ano',
+   ic:'🗳️', desc:'Doações declaradas ao TSE no exercício. Base pública e lícita — serve para cruzar com quadro societário de fornecedor.', campo:'doacoes'},
+  {id:'sei_direc', rota:'/api/sei/direcionamento', tl:'Direcionamento em editais (SEI)',
+   ic:'🎯', desc:'Varre os autos do SEI procurando cláusula restritiva de competição, item a item, com a base legal de cada uma.', campo:'achados'},
+  {id:'sancoes_det', rota:'/api/sancoes/detalhar', tl:'Sanção — veda de fato?',
+   ic:'🚫', desc:'Detalha a sanção: qual cadastro, qual abrangência, qual vigência. Nem toda sanção impede contratar com o Estado.', campo:'sancoes'},
+];
+
+async function renderDetectoresOrfaos(){
+  let h=cover('geral','Detectores — leituras que não tinham tela',
+    'Dez leituras já implementadas e testadas no motor que nunca tiveram um botão: anomalia em pagamento, rodízio de vencedores, doador que virou fornecedor, sobrepreço contra mercado, sede compartilhada, concentração geográfica e as duas varreduras do Diário Oficial do Rio. Toda leitura aqui é <b>indício</b> — a explicação inocente vem junto.','🧪');
+  h+=`<div class="grid g2">`+_DETS_ORFAOS.map(d=>card(
+    `<div style="font-weight:700">${svgIco(d.ic)} ${esc(d.tl)}</div>
+     <div class="dim" style="margin-top:5px">${d.desc}</div>
+     <div class="btns" style="margin-top:10px"><button type="button" class="btn ghost" onclick="detRodar('${d.id}')">Rodar</button></div>
+     <div id="det-${d.id}"></div>`)).join('')+`</div>`;
+  return h;
+}
+
+async function detRodar(id){
+  const d=_DETS_ORFAOS.find(x=>x.id===id); const o=$('det-'+id);
+  o.innerHTML='<div class="dim" style="margin-top:8px">lendo…</div>';
+  const r=await J(d.rota);
+  if(r&&r.ok===false){o.innerHTML=`<div class="warn" style="margin-top:8px">${erroHumano(r.erro)}</div>`;return;}
+  const itens=(r&&(r[d.campo]||r.achados||r.itens||r.clusters||r.alertas))||[];
+  if(!itens.length){
+    o.innerHTML=`<div class="note" style="margin-top:8px">Nada retornado nesta execução. <b>INDISPONÍVEL não é zero</b> — pode ser cobertura parcial da fonte, não ausência do fato.</div>`;
+    return;
+  }
+  let h=`<div class="dim" style="margin-top:8px"><b>${fmtN(itens.length)}</b> linha(s)</div>`;
+  h+=`<div style="max-height:320px;overflow:auto;margin-top:6px"><table class="tb"><tbody>`;
+  for(const it of itens.slice(0,60)){
+    const txt=typeof it==='object'
+      ? Object.entries(it).filter(([k,v])=>v!=null&&typeof v!=='object').slice(0,5)
+          .map(([k,v])=>`<b>${esc(k)}</b> ${esc(String(v)).slice(0,60)}`).join(' · ')
+      : esc(String(it));
+    h+=`<tr><td style="font-size:12px">${txt}</td></tr>`;
+  }
+  h+=`</tbody></table></div>`;
+  if(itens.length>60) h+=`<div class="note">60 de ${fmtN(itens.length)} linhas acima — a lista completa sai no relatório do órgão.</div>`;
+  if(r.ressalva) h+=`<div class="note">${esc(r.ressalva)}</div>`;
+  o.innerHTML=h;
+}
+
+// ═══ INSTRUMENTAÇÃO — agenda, pipelines, memória, UGs, SIAFE, radar, núcleo ═══
+async function renderInstrumentacao(){
+  let h=cover('geral','Instrumentação — o estado da máquina, sem abrir terminal',
+    'Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.','🔧');
+  const [ag,pp,mm,ug,sf,rd]=await Promise.all([
+    J('/api/agenda'),J('/api/pipelines'),J('/api/memoria'),J('/api/ugs?limite=15'),
+    J('/api/siafe/status'),J('/api/radar/status')]);
+
+  h+=sec('Frescor das fontes (SLO por pipeline)');
+  const ps=(pp&&(pp.pipelines||pp.itens))||[];
+  if(ps.length){
+    h+=`<table class="tb"><thead><tr><th>Pipeline</th><th>Estado</th><th class="r">Idade</th></tr></thead><tbody>`;
+    for(const p of ps){
+      const ok=String(p.estado||'').toLowerCase().startsWith('ok');
+      h+=`<tr><td>${esc(p.nome||p.id)}</td><td class="${ok?'ok':'bad'}">${esc(p.estado||'—')}</td>
+          <td class="r dim">${p.idade_dias==null?'—':p.idade_dias+' d'}</td></tr>`;
+    }
+    h+=`</tbody></table>`;
+  }else h+=card(`<div class="dim">Pipelines indisponíveis nesta execução.</div>`);
+
+  h+=sec('Agenda (timers e crons)');
+  const js=(ag&&(ag.jobs||ag.itens||ag.agenda))||[];
+  if(js.length){
+    h+=`<table class="tb"><thead><tr><th>Job</th><th>Quando</th><th>Último</th></tr></thead><tbody>`;
+    for(const j of js.slice(0,40))
+      h+=`<tr><td>${esc(j.nome||j.id||'—')}</td><td class="dim">${esc(j.quando||j.cron||j.schedule||'—')}</td>
+          <td class="dim">${esc(j.ultimo||j.last||'—')}</td></tr>`;
+    h+=`</tbody></table>`;
+  }else h+=card(`<div class="dim">Agenda indisponível nesta execução.</div>`);
+
+  h+=sec('SIAFE e radar');
+  h+=`<div class="grid g2">
+    ${kpi(esc((sf&&(sf.estado||sf.status))||'—'),'SIAFE',null,'💵')}
+    ${kpi(fmtN(sf&&(sf.n_obs||sf.obs)),'OBs coletadas')}
+    ${kpi(esc((rd&&(rd.estado||rd.status))||'—'),'Radar',null,'🎯')}
+    ${kpi(fmtN(mm&&(mm.n||mm.total||mm.aprendizados)),'Itens na memória','var(--accent)','🧠')}</div>`;
+  h+=card(`<div class="btns" style="flex-wrap:wrap">
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/status','GET')">Status SIAFE</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/atualizar','POST')">Atualizar SIAFE</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/sweep','POST')">Sweep SIAFE</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/radar/status','GET')">Status radar</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/radar/ciclo','POST')">Ciclo do radar</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/radar/vigiar','POST')">Colocar sob vigilância</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/compliance/stats','GET')">Estatísticas</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/compliance/alerts','GET')">Alertas</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/compliance/relatorio_30d','GET')">Relatório 30 dias</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/nucleo/comando','POST')">Núcleo de perícia</button>
+    </div><div id="inst-out"></div>`);
+
+  h+=sec('Catálogo de UGs');
+  const us=(ug&&(ug.ugs||ug.itens))||[];
+  if(us.length){
+    h+=card(`<div class="search"><span class="mag"></span>
+        <input id="inst-ug" placeholder="filtrar UG por nome ou código…" onkeydown="if(event.key==='Enter')instUgs()"></div>
+      <div id="inst-ugs" style="margin-top:10px">`+us.map(u=>
+        `<div class="kv"><span class="k">${esc(u.codigo||u.ug)} — ${esc(u.nome||'')}</span><b>${fmtRc(u.total||u.total_pago)}</b></div>`).join('')+`</div>
+      <div class="dim" style="margin-top:6px">${fmtN(ug.n_total||us.length)} UGs no catálogo.</div>`);
+  }else h+=card(`<div class="dim">Catálogo de UGs indisponível.</div>`);
+
+  h+=sec('Fila do fiscal (flags e restritos)');
+  h+=card(`<div class="btns">
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/flags','GET')">Flags de triagem</button>
+      <button type="button" class="btn ghost" onclick="instAcionar('/api/restritos','GET')">Processos restritos</button>
+    </div><div class="dim" style="margin-top:6px">A página <code>/controle</code> mostra o mesmo em tela dedicada.</div>`);
+  return h;
+}
+
+async function instUgs(){
+  const f=($('inst-ug')?.value||'').trim();
+  const d=await J('/api/ugs?limite=40&filtro='+encodeURIComponent(f));
+  const us=(d&&(d.ugs||d.itens))||[];
+  $('inst-ugs').innerHTML=us.length
+    ? us.map(u=>`<div class="kv"><span class="k">${esc(u.codigo||u.ug)} — ${esc(u.nome||'')}</span><b>${fmtRc(u.total||u.total_pago)}</b></div>`).join('')
+    : '<div class="dim">Nenhuma UG com esse filtro.</div>';
+}
+
+async function instAcionar(rota,metodo){
+  const o=$('inst-out'); o.innerHTML='<div class="dim" style="margin-top:8px">acionando…</div>';
+  try{
+    const d=await J(rota, metodo==='POST'?{method:'POST'}:undefined);
+    o.innerHTML=sec(esc(rota))+card(
+      `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,4000)}</pre>`);
+  }catch(e){ o.innerHTML=card(`<div class="warn">${erroHumano(String(e))}</div>`); }
+}
+
+// ═══ MISSÕES DO HERMES — a fila paralela que só existia no backend ═══
+async function renderMissoes(){
+  let h=cover('geral','Missões — a fila do auditor autônomo',
+    'O Hermes aceita <b>várias missões em paralelo</b> desde sempre no backend; a tela só sabia operar uma. Aqui a fila fica visível: o que está rodando, o que já terminou, e o resultado de cada uma.','🛰️');
+  h+=card(`<div class="search"><span class="mag"></span>
+      <input id="ms-txt" placeholder="descreva a missão (ex.: audite os pagamentos do ITERJ em 2025)…"
+             onkeydown="if(event.key==='Enter')missaoCriar()"></div>
+    <div class="btns" style="margin-top:10px">
+      <button type="button" class="btn" onclick="missaoCriar()">Enfileirar missão</button>
+      <button type="button" class="btn ghost" onclick="missaoListar()">↻ Atualizar fila</button>
+    </div>`);
+  h+=`<div id="ms-out"></div>`;
+  setTimeout(missaoListar,50);
+  return h;
+}
+
+async function missaoListar(){
+  const o=$('ms-out'); if(!o)return;
+  const d=await J('/api/hermes/missoes');
+  const ms=(d&&(d.missoes||d.itens))||[];
+  if(!ms.length){o.innerHTML=card('<div class="dim">Nenhuma missão na fila.</div>');return;}
+  o.innerHTML=sec('Fila',ms.length)+`<div class="grid">`+ms.map(m=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+       <div style="min-width:0"><div style="font-weight:700">${esc(m.titulo||m.objetivo||m.id)}</div>
+         <div class="dim" style="margin-top:3px">${esc(m.estado||m.status||'—')}${m.criada_em?' · '+esc(m.criada_em):''}</div></div>
+       <button type="button" class="btn ghost" onclick="missaoVer('${esc(m.id)}')">Ver</button></div>
+     <div id="ms-${esc(m.id)}"></div>`)).join('')+`</div>`;
+}
+
+async function missaoCriar(){
+  const t=($('ms-txt')?.value||'').trim(); if(!t)return;
+  await J('/api/hermes/missoes',{method:'POST',headers:{'Content-Type':'application/json'},
+                                body:JSON.stringify({objetivo:t,titulo:t})});
+  jfnToast('Missão enfileirada.','green'); $('ms-txt').value=''; setTimeout(missaoListar,400);
+}
+
+async function missaoVer(id){
+  const o=$('ms-'+id); if(!o)return;
+  o.innerHTML='<div class="dim" style="margin-top:8px">lendo…</div>';
+  const d=await J('/api/hermes/missoes/'+encodeURIComponent(id));
+  o.innerHTML=`<pre style="white-space:pre-wrap;font-size:12px;margin-top:8px">${esc(JSON.stringify(d,null,1)).slice(0,3000)}</pre>`;
+}
+
 const TABS={
   inicio:[
     {id:'i_cockpit', ic:'◎',tl:'Cockpit', render:renderCockpit},
@@ -2670,6 +3230,14 @@ const TABS={
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
     {id:'g_radar',   ic:'🎯',tl:'Radar',   render:renderRadar},
     {id:'g_prioridade',ic:'⚡',tl:'Prioridade',render:renderPrioridade},
+    {id:'g_vinculos', ic:'🕸️',tl:'Vínculos', render:renderVinculos},
+    {id:'g_pecas',    ic:'📜',tl:'Peças',    render:renderPecas},
+    {id:'g_fontes',   ic:'🛰️',tl:'Fontes externas',render:renderFontesExternas},
+    {id:'g_hub',      ic:'🏢',tl:'Hub físico',render:renderHubFisico},
+    {id:'g_acuracia', ic:'🎯',tl:'Acurácia', render:renderAcuracia},
+    {id:'g_dets',     ic:'🧪',tl:'Detectores',render:renderDetectoresOrfaos},
+    {id:'g_instr',    ic:'🔧',tl:'Instrumentação',render:renderInstrumentacao},
+    {id:'g_missoes',  ic:'🛰️',tl:'Missões',  render:renderMissoes},
     {id:'g_conluioq',ic:'🤝',tl:'Conluio QSA',render:renderConluioQSA},
     {id:'g_comun',   ic:'🧩',tl:'Comunidades',render:renderComunidades},
     {id:'g_retro',   ic:'🔮',tl:'Retro',   render:renderRetro},

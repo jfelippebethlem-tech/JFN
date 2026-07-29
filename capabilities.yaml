@@ -179,6 +179,32 @@ capacidades:
   - {id: grafo_ftm, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo/ftm, status: PRONTO,
      descricao: "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar)", quando_usar: "'exporte a rede de X p/ FtM/Aleph'",
      args: {alvo: obrigatorio, saltos: "int=2"}, retorno: "{entidades[FtM]}", fonte: "Grafo de Poder -> FtM (Onda 12)"}
+  # ---- VINCULOS (2026-07-29: o eixo do tempo e da cadeia societaria — G.3 do roadmap) ----
+  - {id: beneficiario_final, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/osint/beneficiario_final, status: PRONTO,
+     descricao: "Sobe a cadeia societaria de PJ em PJ ate chegar na pessoa fisica (beneficiario final). Detecta participacao cruzada circular. Cadeia que nao chega em PF e LACUNA DE CAPTURA declarada, nunca ausencia de beneficiario; a resposta traz a cobertura de QSA da cadeia.", quando_usar: "'quem esta por tras da empresa X', 'quem e o dono real', 'beneficiario final do CNPJ Y', 'o socio e outra empresa, sobe mais'", exemplo: "quem esta atras do CNPJ 12.035.062/0001-00",
+     args: {cnpj: "string obrigatorio", profundidade: "int=4 (max 8 degraus)"},
+     retorno: "{pessoas[],n_pessoas,ciclos[],cobertura{pct,nota},documentacao,temporalidade,motivo,ressalva}", enviar_telegram: [],
+     menu: {grupo: "🕸️ Rede & Idoneidade", nome: "Beneficiário final (sobe a cadeia societária)", exemplo: "quem está por trás do CNPJ X", ordem: 32, cmd: "/beneficiario"}}
+  - {id: parentesco_qsa, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/osint/parentesco, status: PRONTO,
+     descricao: "Hipoteses de vinculo FAMILIAR no QSA, por eixos calibrados na propria base. Nao existe base aberta brasileira de parentesco: o eixo de sobrenome tem prevalencia de 16,9% e por isso NUNCA acende sozinho. Toda saida traz a prevalencia do eixo, a explicacao inocente e o rol de diligencias. Grau: hipotese_fraca | hipotese | indicio — nunca conclusao.", quando_usar: "'os socios sao parentes?', 'tem familia no quadro da empresa X', 'nepotismo societario'", exemplo: "os socios do CNPJ X sao parentes?",
+     args: {cnpj: "string obrigatorio"},
+     retorno: "{grau,hipoteses[],eixos_acionados[],falso_positivo_esperado_pct,leitura,diligencia}", enviar_telegram: [],
+     menu: {grupo: "🕸️ Rede & Idoneidade", nome: "Parentesco entre sócios (hipótese medida)", exemplo: "os sócios do CNPJ X são parentes?", ordem: 33}}
+  - {id: vinculo_na_data, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/osint/vinculo_na_data, status: PRONTO,
+     descricao: "Fulano era socio desta empresa NESTA data? Responde SIM, NAO (com a ressalva da defasagem mensal da publicacao da Receita) ou INDISPONIVEL — e INDISPONIVEL nao e NAO: quando a data pedida esta fora da serie de snapshots, vem o pedido de diligencia a JUCERJA. E a pergunta que fecha caso de direcionamento.", quando_usar: "'ele ja era socio na data do certame', 'quando entrou/saiu da sociedade', 'o vinculo existia em <data>'", exemplo: "o socio X ja era socio do CNPJ Y em 2025-03-14",
+     args: {cnpj: "string obrigatorio", data: "AAAA-MM-DD obrigatorio", nome: "string opcional", doc: "string opcional"},
+     retorno: "{resposta:SIM|NAO|INDISPONIVEL,mes_observado,defasagem_meses,socios[],ressalva,diligencia}", enviar_telegram: [],
+     menu: {grupo: "🕸️ Rede & Idoneidade", nome: "Era sócio nesta data? (série histórica)", exemplo: "o sócio X já era sócio em 2025-03-14", ordem: 34}}
+  - {id: trocas_societarias, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/osint/trocas_societarias, status: PRONTO,
+     descricao: "Troca de quadro societario perto de uma data — socio que ENTRA logo depois da homologacao, ou que SAI logo depois do pagamento. Indicio de reorganizacao oportunista, igualmente compativel com sucessao familiar ou reestruturacao ordinaria.", quando_usar: "'trocaram de socio depois de ganhar a licitacao?', 'mudanca no quadro perto do contrato'", exemplo: "trocas de socio do CNPJ X perto de 2025-06-01",
+     args: {cnpj: "string obrigatorio", data: "AAAA-MM-DD obrigatorio", janela: "int=6 meses"},
+     retorno: "{entradas[],saidas[],n_entradas,n_saidas,leitura}", enviar_telegram: []}
+  - {id: historico_socio, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/osint/historico_socio, status: PRONTO,
+     descricao: "Todas as sociedades de uma pessoa ao longo da serie de snapshots, com entrada e saida OBSERVADAS. Saida com janela_confiavel=0 significa que ha mes nao observado no intervalo — a saida vale, a precisao mensal nao.", quando_usar: "'de quais empresas fulano e/foi socio', 'historico societario da pessoa X'", exemplo: "de quais empresas JOSE DA SILVA foi socio",
+     args: {nome: "string (um de nome|doc)", doc: "string (CPF mascarado ***NNNNNN**)"}, retorno: "{n,vinculos[]}", enviar_telegram: []}
+  - {id: serie_societaria, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/osint/serie_societaria, status: PRONTO,
+     descricao: "Estado da serie de snapshots de socios: quantos meses observados e a janela. E o DENOMINADOR — com menos de dois meses, saida de socio e inobservavel e nenhuma pergunta sobre 'era socio a epoca' pode ser respondida.", quando_usar: "'desde quando temos historico societario', 'a serie cobre 2024?', antes de afirmar que alguem nao era socio", exemplo: "qual a cobertura da serie societaria",
+     args: {}, retorno: "{snapshots[],n_snapshots,cobertura,vinculos_por_status,qsa,fonte}", enviar_telegram: []}
   # ---- PROVIDERS (Onda 12: consulta hospedada sob demanda, sem baixar base; fallback+cache+proveniencia) ----
   - {id: consultar_empresa, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/empresa, status: PRONTO,
      descricao: "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback)", quando_usar: "'dados da empresa X', socios de um CNPJ",
@@ -316,6 +342,7 @@ menu_lista:
     🏢 **Relatório de fornecedor** — tudo que uma empresa recebeu do Estado, com rede e risco.
     🏛️ **Relatório de órgão** — quanto uma secretaria/UG pagou, e a quem.
     🔎 **Investigar** — cartel, rede de sócios e se a empresa está sancionada.
+    🕸️ **Vínculos** — quem está atrás da empresa, parentesco entre sócios, e desde quando o vínculo existe.
     🕵️ **Fiscalização & perícias** — emendas, gastos e editais da Prefeitura, parecer de contratos.
     👥 **Pessoal × benefícios** — quem do quadro (nomeado? efetivo?) recebe benefício; sócios também.
     📚 **Ver todas as funções** — o catálogo completo.
@@ -325,6 +352,7 @@ menu_lista:
     - [["🏢 Relatório de fornecedor", "menu:forn"]]
     - [["🏛️ Relatório de órgão", "menu:orgao"]]
     - [["🔎 Investigar (cartel/rede)", "menu:invest"]]
+    - [["🕸️ Vínculos (dono real · parentesco · desde quando)", "menu:vinc"]]
     - [["🕵️ Fiscalização & perícias", "menu:fisc"]]
     - [["👥 Pessoal × benefícios", "menu:benef"]]
     - [["📚 Ver todas as funções", "menu:all"]]
@@ -344,6 +372,15 @@ menu_lista:
       Cartel/conluio entre fornecedores, rede de poder (sócios e doações de campanha) e se a empresa está sancionada (CEIS/CNEP).
 
       Ex.: *tem cartel na UG 133100?* · *quem está ligado à empresa X*.
+    vinc: |
+      🕸️ **Vínculos — quem está atrás, e desde quando**
+
+      • **Beneficiário final** — sobe a cadeia societária de empresa em empresa até chegar à pessoa física. Cadeia que não fecha é **lacuna de captura declarada**, não ausência de dono.
+      • **Parentesco entre sócios** — hipótese medida por eixos calibrados na própria base. Não existe base aberta de parentesco no Brasil: sobrenome compartilhado atinge 16,9% do acervo, então **nunca acende sozinho**. Sai como hipótese com diligência, nunca como conclusão.
+      • **Era sócio nesta data?** — série de snapshots mensais da Receita (retroativa a 2023). Responde SIM, NÃO ou **INDISPONÍVEL** — e INDISPONÍVEL não é NÃO: fora da janela observada vem o pedido de diligência à JUCERJA.
+      • **Trocas de quadro** — sócio que entra logo depois da homologação, ou que sai logo depois do pagamento.
+
+      Ex.: *quem está por trás do CNPJ X* · *os sócios são parentes?* · *ele já era sócio em 2025-03-14?*
     fisc: |
       🕵️ **Fiscalização & perícias**
       Perícia das emendas parlamentares (RJ), gastos da Prefeitura (fracionamento/credor recém-aberto), direcionamento em editais (cláusula a cláusula) e parecer de contratos estilo Tribunal de Contas. Também a perícia na hora: /pericia e /fantasma.

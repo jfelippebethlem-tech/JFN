@@ -41,6 +41,12 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - grafo_poder(alvo,saltos,so_contrato) [GET /api/grafo] — 'quem esta ligado a X', 'a N saltos do deputado Y com contrato'
 - dossie(alvo) [POST /api/dossie] — 'monte um dossie sobre X', 'dossie do CNPJ Y' (pacote completo: painel 360 + due diligence + Lex)
 - grafo_ftm(alvo,saltos) [GET /api/grafo/ftm] — 'exporte a rede de X p/ FtM/Aleph'
+- beneficiario_final(cnpj,profundidade) [GET /api/osint/beneficiario_final] — 'quem esta por tras da empresa X', 'quem e o dono real', 'beneficiario final do CNPJ Y', 'o socio e outra empresa, sobe mais'
+- parentesco_qsa(cnpj) [GET /api/osint/parentesco] — 'os socios sao parentes?', 'tem familia no quadro da empresa X', 'nepotismo societario'
+- vinculo_na_data(cnpj,data,nome,doc) [GET /api/osint/vinculo_na_data] — 'ele ja era socio na data do certame', 'quando entrou/saiu da sociedade', 'o vinculo existia em <data>'
+- trocas_societarias(cnpj,data,janela) [GET /api/osint/trocas_societarias] — 'trocaram de socio depois de ganhar a licitacao?', 'mudanca no quadro perto do contrato'
+- historico_socio(nome,doc) [GET /api/osint/historico_socio] — 'de quais empresas fulano e/foi socio', 'historico societario da pessoa X'
+- serie_societaria() [GET /api/osint/serie_societaria] — 'desde quando temos historico societario', 'a serie cobre 2024?', antes de afirmar que alguem nao era socio
 - consultar_empresa(cnpj) [GET /api/empresa] — 'dados da empresa X', socios de um CNPJ
 - consultar_idoneidade(cnpj,nome) [GET /api/idoneidade] — 'a empresa X esta sancionada?', PEP
 - consultar_ownership(nome,lei) [GET /api/ownership] — vinculo societario cross-jurisdicao

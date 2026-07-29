@@ -49,6 +49,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `siafe_stats` | jfn | http | `/api/siafe/stats` | PRONTO | 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia' |
 | `siafe_status` | jfn | http | `/api/siafe/status` | PRONTO | 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?' |
 | `sweeps_status` | jfn | http | `/api/sweeps/status` | PRONTO | 'como esta o sweep', 'o sweep do SEI/dados esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' |
+| `beneficiario_final` | jfn | http | `/api/osint/beneficiario_final` | PRONTO | 'quem esta por tras da empresa X', 'quem e o dono real', 'beneficiario final do CNPJ Y', 'o socio e outra empresa, sobe mais' |
 | `consultar_diario` | jfn | http | `/api/diario` | PRONTO | 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal |
 | `consultar_empresa` | jfn | http | `/api/empresa` | PRONTO | 'dados da empresa X', socios de um CNPJ |
 | `consultar_idoneidade` | lex | http | `/api/idoneidade` | PRONTO | 'a empresa X esta sancionada?', PEP |
@@ -59,7 +60,11 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `dossie` | jfn | http | `/api/dossie` | PRONTO | 'monte um dossie sobre X', 'dossie do CNPJ Y' (pacote completo: painel 360 + due diligence + Lex) |
 | `grafo_ftm` | jfn | http | `/api/grafo/ftm` | PRONTO | 'exporte a rede de X p/ FtM/Aleph' |
 | `grafo_poder` | jfn | http | `/api/grafo` | PRONTO | 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' |
+| `historico_socio` | jfn | http | `/api/osint/historico_socio` | PRONTO | 'de quais empresas fulano e/foi socio', 'historico societario da pessoa X' |
 | `investigar_web` | jfn | http | `/api/compliance/investigar` | PRONTO | 'pesquise na web sobre X', 'noticias recentes de X', 'atividade publica/aparicoes na midia de X', 'o que saiu sobre X', monitoramento diario de uma pessoa |
+| `parentesco_qsa` | jfn | http | `/api/osint/parentesco` | PRONTO | 'os socios sao parentes?', 'tem familia no quadro da empresa X', 'nepotismo societario' |
+| `trocas_societarias` | jfn | http | `/api/osint/trocas_societarias` | PRONTO | 'trocaram de socio depois de ganhar a licitacao?', 'mudanca no quadro perto do contrato' |
+| `vinculo_na_data` | jfn | http | `/api/osint/vinculo_na_data` | PRONTO | 'ele ja era socio na data do certame', 'quando entrou/saiu da sociedade', 'o vinculo existia em <data>' |
 | `busca_juridica` | lex | cli | `compliance_agent.collectors.lexml_fetcher --termo "<TERMO>"` | PRONTO | 'qual a lei sobre...', jurisprudencia |
 | `buscar_direcionamento` | lex | http | `/api/sei/direcionamento` | PRONTO | 'ache editais restritivos na UG X' |
 | `consultar_pncp` | lex | http | `/api/pncp` | PRONTO | analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos) |
@@ -70,6 +75,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
 | `agenda_jobs` | jfn | http | `/api/agenda` | PRONTO | 'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado' |
 | `memoria` | jfn | http | `/api/memoria` | PRONTO | 'o que voce aprendeu', consolidar memoria |
+| `serie_societaria` | jfn | http | `/api/osint/serie_societaria` | PRONTO | 'desde quando temos historico societario', 'a serie cobre 2024?', antes de afirmar que alguem nao era socio |
 | `skill_detalhe` | yoda | cli | `telegram /skill <id>` | PRONTO | 'como funciona a skill X', detalhe de uma capacidade |
 | `skills` | yoda | cli | `telegram /skills [filtro]` | PRONTO | 'o que voce sabe fazer', 'quais skills', 'capacidades' |
 | `skills_reload` | yoda | cli | `telegram /skills_reload` | PRONTO | apos editar o YAML na VM |

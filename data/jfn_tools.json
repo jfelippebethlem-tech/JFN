@@ -1246,6 +1246,201 @@
     {
       "type": "function",
       "function": {
+        "name": "beneficiario_final",
+        "description": "Sobe a cadeia societaria de PJ em PJ ate chegar na pessoa fisica (beneficiario final). Detecta participacao cruzada circular. Cadeia que nao chega em PF e LACUNA DE CAPTURA declarada, nunca ausencia de beneficiario; a resposta traz a cobertura de QSA da cadeia. — usar quando: 'quem esta por tras da empresa X', 'quem e o dono real', 'beneficiario final do CNPJ Y', 'o socio e outra empresa, sobe mais' — chamar: GET /api/osint/beneficiario_final (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "string obrigatorio"
+            },
+            "profundidade": {
+              "type": "integer",
+              "description": "int=4 (max 8 degraus)"
+            }
+          },
+          "required": [
+            "cnpj"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/osint/beneficiario_final",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "parentesco_qsa",
+        "description": "Hipoteses de vinculo FAMILIAR no QSA, por eixos calibrados na propria base. Nao existe base aberta brasileira de parentesco: o eixo de sobrenome tem prevalencia de 16,9% e por isso NUNCA acende sozinho. Toda saida traz a prevalencia do eixo, a explicacao inocente e o rol de diligencias. Grau: hipotese_fraca | hipotese | indicio — nunca conclusao. — usar quando: 'os socios sao parentes?', 'tem familia no quadro da empresa X', 'nepotismo societario' — chamar: GET /api/osint/parentesco (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "string obrigatorio"
+            }
+          },
+          "required": [
+            "cnpj"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/osint/parentesco",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "vinculo_na_data",
+        "description": "Fulano era socio desta empresa NESTA data? Responde SIM, NAO (com a ressalva da defasagem mensal da publicacao da Receita) ou INDISPONIVEL — e INDISPONIVEL nao e NAO: quando a data pedida esta fora da serie de snapshots, vem o pedido de diligencia a JUCERJA. E a pergunta que fecha caso de direcionamento. — usar quando: 'ele ja era socio na data do certame', 'quando entrou/saiu da sociedade', 'o vinculo existia em <data>' — chamar: GET /api/osint/vinculo_na_data (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "string obrigatorio"
+            },
+            "data": {
+              "type": "string",
+              "description": "AAAA-MM-DD obrigatorio"
+            },
+            "nome": {
+              "type": "string",
+              "description": "string opcional"
+            },
+            "doc": {
+              "type": "string",
+              "description": "string opcional"
+            }
+          },
+          "required": [
+            "cnpj",
+            "data"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/osint/vinculo_na_data",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "trocas_societarias",
+        "description": "Troca de quadro societario perto de uma data — socio que ENTRA logo depois da homologacao, ou que SAI logo depois do pagamento. Indicio de reorganizacao oportunista, igualmente compativel com sucessao familiar ou reestruturacao ordinaria. — usar quando: 'trocaram de socio depois de ganhar a licitacao?', 'mudanca no quadro perto do contrato' — chamar: GET /api/osint/trocas_societarias (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "string obrigatorio"
+            },
+            "data": {
+              "type": "string",
+              "description": "AAAA-MM-DD obrigatorio"
+            },
+            "janela": {
+              "type": "integer",
+              "description": "int=6 meses"
+            }
+          },
+          "required": [
+            "cnpj",
+            "data"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/osint/trocas_societarias",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "historico_socio",
+        "description": "Todas as sociedades de uma pessoa ao longo da serie de snapshots, com entrada e saida OBSERVADAS. Saida com janela_confiavel=0 significa que ha mes nao observado no intervalo — a saida vale, a precisao mensal nao. — usar quando: 'de quais empresas fulano e/foi socio', 'historico societario da pessoa X' — chamar: GET /api/osint/historico_socio (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "string (um de nome|doc)"
+            },
+            "doc": {
+              "type": "string",
+              "description": "string (CPF mascarado ***NNNNNN**)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/osint/historico_socio",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "serie_societaria",
+        "description": "Estado da serie de snapshots de socios: quantos meses observados e a janela. E o DENOMINADOR — com menos de dois meses, saida de socio e inobservavel e nenhuma pergunta sobre 'era socio a epoca' pode ser respondida. — usar quando: 'desde quando temos historico societario', 'a serie cobre 2024?', antes de afirmar que alguem nao era socio — chamar: GET /api/osint/serie_societaria (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "sistema",
+        "tipo": "http",
+        "rota": "/api/osint/serie_societaria",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "consultar_empresa",
         "description": "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback) — usar quando: 'dados da empresa X', socios de um CNPJ — chamar: GET /api/empresa (base http://127.0.0.1:8000)",
         "parameters": {
