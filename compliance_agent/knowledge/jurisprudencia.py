@@ -558,6 +558,10 @@ ACORDAOS_TCU: list[Acordao] = [
         irregularidade="direcionamento",
         temas=["visita tecnica", "vistoria", "declaracao", "data unica", "restritiva", "art 63"],
     ),
+    # CONFERIDO em 2026-07-29 contra o acervo completo (521.090 acórdãos, 1993–2026): existe no
+    # Plenário (07/02/2007, rel. Ubiratan Aguiar). O número 110/2007 também existe na Primeira e
+    # na Segunda Câmara — por isso a conferência mostra o colegiado CITADO, e não o primeiro da
+    # lista, que faria a confirmação parecer ser de outra deliberação.
     Acordao(
         orgao="TCU",
         numero="Acórdão 110/2007-Plenário",

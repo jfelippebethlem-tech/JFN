@@ -221,8 +221,13 @@ def _conferir_no_acervo(con, numero: int, ano: int, colegiado: str) -> dict:
     if colegiado and not any(_canon_colegiado(c) == colegiado for c in cols):
         return {"status": "colegiado_diverge", "colegiado_real": sorted(cols),
                 "observacao": "existe no acervo completo, em outro colegiado"}
-    escolhida = linhas[0]
+    # Quando o colegiado citado bate, mostre ESSE — não o primeiro da lista. O número pode
+    # existir em vários colegiados no mesmo ano (110/2007 existe nos três), e exibir um que não é
+    # o citado faz a conferência parecer ter confirmado outra coisa.
+    escolhida = next((l for l in linhas
+                      if not colegiado or _canon_colegiado(l["colegiado"]) == colegiado), linhas[0])
     return {"status": "confirmado_acervo", "colegiado_real": escolhida["colegiado"],
+            "colegiados_no_ano": sorted(cols) if len(cols) > 1 else None,
             "tipo_deliberacao": escolhida["tipo"], "data_sessao": escolhida["data_sessao"],
             "relator": escolhida["relator"], "processo": escolhida["processo"],
             "observacao": "existe no acervo completo; sem tese na Jurisprudência Selecionada"}

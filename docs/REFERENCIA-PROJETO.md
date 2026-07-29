@@ -216,6 +216,7 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- 2026-07-29: **hermenêutica + OSINT + acervos.** Screens de participação por *lift* · catraca de F1 (A.3.4) · prompt rastreável por hash da fonte (B.3.5) · perfil de laranja (G.4 — calibração real derrubou de 55% para 1,4% da base) · QSA perdedoras×vencedor (E.3.2) · detector **C8** servidor no QSA (E.3.3) · **índice de existência do TCU: 521.090 acórdãos, C.3 FECHADO — as 8 citações em limbo EXISTEM** · descontaminação de 7 pastas SEI (210 docs alheios). Ingestões: sócios RFB 44.571→59.497; acervo TCU 1993–2026 sem lacuna.
 - 2026-07-26 (noite): painel v35→v43 — faceta 3D com sentido, encaixes progressivos p/ arte viva (it-campo via Taildrop), cockpit do SISTEMA, contraste lote 1, e o v43 que curou KPIs invisíveis em toda aba com grid.
 - **07-20c (pacote completo G1-G7 + síntese reflexiva):** `/api/dossie/completo`
   (`dossie.montar_ctx_completo`: 360 + veredito de fachada + cláusulas restritivas na ÍNTEGRA +
@@ -714,6 +715,24 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+> **⏯️ 2026-07-29 — Execução do plano de hermenêutica/OSINT (8 commits):** lições em
+> `~/vault/aprendizados/sessao-2026-07-29-hermeneutica-osint-e-acervos.md`; ferramenta nova documentada em
+> `~/vault/codigo/tcu-indice-existencia.md`. **FEITO:** (1) `editais/screens_participacao` — par de cobertura
+> por **lift** sobre o esperado, não por contagem bruta; (2) **catraca de F1** (`comparar_com_baseline`,
+> `--catraca`/`--aceitar`) e **`nucleo/prompt_versao`** (hash da FONTE do prompt — versão declarada não pega
+> edição calada); (3) **`osint/interposicao`** (G.4) — a calibração no acervo real derrubou de **55% para 1,4%**
+> ao medir a prevalência de cada eixo; (4) **`osint/qsa_certame`** (E.3.2) — zero pares com sócio comum,
+> confirmado por `JOIN` fora do módulo; (5) detector **C8** (servidor no QSA) separando art. 9º × gerência ×
+> quotista; (6) **`tools/tcu_indice_existencia`** — 521.090 acórdãos de 1993–2026 indexados SEM guardar texto;
+> **C.3 FECHADO**, nenhuma citação fabricada, e o **3.831/2012 não é do Plenário**; (7) `tools/sei_descontaminar`
+> — 210 documentos alheios saíram de 7 pastas, nada apagado (`_alheios/` + backup do manifest).
+> **PENDENTE acionável:** **282 manifests de íntegra não avaliáveis** (sem `contexto`) — não são "limpos", são
+> não observados, só recaptura muda; **A.3.5** painel de acurácia e o conserto do desenho da tarefa de 3 classes;
+> **D.3** curva ABC + `contrato_item`; **E.0.1** ampliar coleta de propostas (só 0,66% dos certames têm disputa
+> registrada — é o que trava o E.3.2); **I.2** CEPIM/CEAF/JUCERJA; verificação de citação **TCE-RJ** (exige CDP).
+> **Dívida herdada, não absorvida:** `test_divida_except_pass` segue vermelho por `_SANDBOX/walker_humano.py`,
+> alterado por outra sessão.
+>
 > **⏯️ 2026-07-06 — Maratona de aprimoramento (debug + consolidação agêntica + god-files zerados):** checkpoint
 > completo em `~/vault/aprendizados/sessao-2026-07-06-checkpoint.md`. FEITO: (1) debug do ecossistema (proveniência
 > LLM real, fallback Markdown do Telegram, gateway restart→exit 0); (2) consolidação agêntica 4 passos (fonte única
