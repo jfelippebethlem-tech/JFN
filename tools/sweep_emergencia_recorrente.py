@@ -24,7 +24,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from compliance_agent.fracionamento_emergencia import agrupar_emergencias  # noqa: E402
+from compliance_agent.fracionamento_emergencia import (agrupar_emergencias,  # noqa: E402
+                                                       sinais_do_dominante)
 
 DB = os.environ.get("JFN_DB", "data/compliance.db")
 
@@ -62,6 +63,8 @@ def main() -> int:
                     help="emergências no mesmo exercício para virar indício (padrão 5)")
     ap.add_argument("--top", type=int, default=30)
     ap.add_argument("--md", help="grava o relatório em markdown neste caminho")
+    ap.add_argument("--cadastro", action="store_true",
+                    help="cruza o fornecedor dominante com o cadastro (sinais e LACUNAS)")
     a = ap.parse_args()
 
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
@@ -76,6 +79,29 @@ def main() -> int:
         print(f"  {g['unidade'][:44]:46s} {g['exercicio']} · {g['n']:4d} emerg. · "
               f"R$ {_moeda(g['total']):>16s} · {g['concentracao_dominante']:.0%} em "
               f"{g['fornecedor_dominante'][:28]}")
+    if a.cadastro:
+        # SINAL é o que sabemos da empresa; LACUNA é o que nós não temos. Ausência no cadastro
+        # não diz nada sobre o contratado — diz que o enriquecimento não chegou nele.
+        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=30)
+        try:
+            print()
+            for g in grupos[:a.top]:
+                nome = g["fornecedor_dominante"]
+                row = con.execute(
+                    "SELECT situacao, data_abertura FROM empresas WHERE UPPER(razao_social) LIKE ? LIMIT 1",
+                    (f"%{nome[:20].upper()}%",)).fetchone()
+                cad = {"situacao": row[0], "data_abertura": row[1]} if row else None
+                d = sinais_do_dominante(g, cad)
+                if not (d["sinais"] or d["lacunas"]):
+                    continue
+                print(f"  {g['unidade'][:40]} {g['exercicio']}")
+                for x in d["sinais"]:
+                    print(f"     ⚠ {x}")
+                for x in d["lacunas"]:
+                    print(f"     ◌ {x}")
+        finally:
+            con.close()
+
     if a.md:
         pathlib.Path(a.md).write_text(relatorio_md(grupos[:a.top], a.minimo), encoding="utf-8")
         print(f"\nmarkdown: {a.md}")

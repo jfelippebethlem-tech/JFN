@@ -81,3 +81,63 @@ def agrupar_emergencias(linhas, *, minimo: int = 5) -> list[dict]:
         saida.append(g)
     saida.sort(key=lambda g: -g["total"])
     return saida
+
+
+# Empresa aberta há menos disto, concentrando emergência, é indício a APURAR — nunca prova.
+# O mercado tem entrantes legítimos, e "nova" não é sinônimo de fachada; o que pesa é a
+# combinação com a concentração e com o volume.
+_ANOS_RECENTE = 5
+_CONCENTRACAO_ALTA = 0.80
+
+
+def sinais_do_dominante(grupo: dict, cadastro: dict | None) -> dict:
+    """`{"sinais": [...], "lacunas": [...]}` sobre o fornecedor que concentra a emergência.
+
+    A separação entre as duas listas é o ponto: **sinal** é o que sabemos sobre a empresa;
+    **lacuna** é o que NÓS não temos. Ausência no cadastro não diz nada sobre o contratado —
+    diz que o enriquecimento não chegou nele. Confundir as duas coisas transformaria buraco de
+    dado em acusação, que é o erro que esta casa persegue (INDISPONÍVEL ≠ irregular).
+
+    Medido em 2026-07-28, entre os dominantes dos 28 grupos: BRASVIP (aberta em 2020) com 92%
+    de R$ 60,9 mi no DER-RJ; UP MED (2020) com 45% de R$ 120,1 mi no HU/UERJ; e quatro
+    dominantes — entre eles a AGILE CORP, com 100% de R$ 159,7 mi — simplesmente ausentes do
+    cadastro local.
+    """
+    import datetime
+
+    sinais: list[str] = []
+    lacunas: list[str] = []
+    conc = float(grupo.get("concentracao_dominante") or 0)
+    nome = str(grupo.get("fornecedor_dominante") or "?")
+
+    if conc >= 0.999:
+        sinais.append(f"concentração INTEGRAL (100%) da emergência em {nome}: nenhum outro "
+                      "contratado no exercício")
+    elif conc >= _CONCENTRACAO_ALTA:
+        sinais.append(f"concentração de {conc:.0%} em {nome}")
+
+    if not cadastro:
+        lacunas.append(f"{nome} não consta no cadastro local — enriquecimento pendente; "
+                       "ausência de dado NÃO é sinal contra a empresa")
+        return {"sinais": sinais, "lacunas": lacunas}
+
+    situacao = str(cadastro.get("situacao") or "").strip().upper()
+    if situacao and situacao not in ("ATIVA",):
+        sinais.append(f"situação cadastral {situacao} (irregular para contratar, a apurar na data "
+                      "dos fatos — empresa pode ter sido baixada DEPOIS)")
+    elif not situacao:
+        lacunas.append("situação cadastral desconhecida")
+
+    bruto = str(cadastro.get("data_abertura") or "").strip()
+    try:
+        abertura = datetime.date.fromisoformat(bruto[:10])
+    except ValueError:
+        lacunas.append(f"data de abertura ilegível ({bruto!r}) — idade da empresa não avaliada")
+        abertura = None
+    if abertura is not None:
+        exercicio = int(grupo.get("exercicio") or abertura.year)
+        idade = exercicio - abertura.year
+        if idade <= _ANOS_RECENTE:
+            sinais.append(f"empresa RECENTE: aberta em {abertura.isoformat()}, {idade} ano(s) antes "
+                          f"do exercício {exercicio} — indício a apurar, não prova")
+    return {"sinais": sinais, "lacunas": lacunas}
