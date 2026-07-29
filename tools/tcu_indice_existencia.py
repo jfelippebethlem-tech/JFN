@@ -118,8 +118,34 @@ def _num(s: str) -> int | None:
 
 
 def ingerir_ano(ano: int, con: sqlite3.Connection, *, forcar: bool = False,
-                timeout: float = 120.0) -> dict:
-    """Baixa em fluxo o CSV do ano e grava só o cabeçalho de cada acórdão."""
+                timeout: float = 120.0, tentativas: int = 3) -> dict:
+    """Baixa em fluxo o CSV do ano e grava só o cabeçalho de cada acórdão.
+
+    RETENTA a conexão: medido em 2026-07-29, o servidor do TCU fechou o socket no meio de um
+    arquivo de 335 MB (recebidos 180 MB). Uma leitura parcial não pode virar cobertura — o ano só
+    entra em `tcu_existencia_cobertura` depois que o fluxo termina inteiro, e é isso que impede a
+    lacuna de virar `inexistente`. As linhas já gravadas ficam (são verdadeiras) e a retentativa
+    as reencontra com `INSERT OR IGNORE`.
+    """
+    import httpx as _hx
+
+    ultimo = ""
+    for tentativa in range(1, max(1, tentativas) + 1):
+        try:
+            return _ingerir_ano_uma_vez(ano, con, forcar=forcar, timeout=timeout)
+        except (_hx.RemoteProtocolError, _hx.ReadError, _hx.ReadTimeout,
+                _hx.ConnectError, _hx.ConnectTimeout) as exc:
+            ultimo = f"{type(exc).__name__}: {str(exc)[:120]}"
+            print(f"[tcu-ex] {ano}: conexão caiu ({ultimo}) — tentativa {tentativa}/{tentativas}",
+                  flush=True)
+            _guarda()
+            time.sleep(5 * tentativa)
+    return {"ano": ano, "erro": f"conexão instável após {tentativas} tentativas — {ultimo}",
+            "parcial": True}
+
+
+def _ingerir_ano_uma_vez(ano: int, con: sqlite3.Connection, *, forcar: bool = False,
+                         timeout: float = 120.0) -> dict:
     ja = con.execute("SELECT linhas FROM tcu_existencia_cobertura WHERE ano=?", (ano,)).fetchone()
     if ja and not forcar:
         return {"ano": ano, "pulado": True, "linhas": ja[0]}
@@ -286,13 +312,21 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
             for ano, n, quando in linhas:
                 print(f"  {ano}: {n:>8} linhas  ({quando})")
             return 0
+        falhos: list[int] = []
         for ano in _anos(a.anos):
             _guarda()
-            r = ingerir_ano(ano, con, forcar=a.forcar)
+            try:
+                r = ingerir_ano(ano, con, forcar=a.forcar)
+            except Exception as exc:  # noqa: BLE001 — um ano ruim não pode derrubar a série
+                r = {"ano": ano, "erro": f"{type(exc).__name__}: {str(exc)[:120]}"}
             print(f"[tcu-ex] {r}", flush=True)
             if r.get("erro"):
-                print(f"[tcu-ex] ABORTA em {ano}: {r['erro']}", file=sys.stderr)
-                return 1
+                # Ano com erro NÃO entra na cobertura e a série continua: abortar deixaria os
+                # anos seguintes sem indexar por causa de um servidor instável num só arquivo.
+                falhos.append(ano)
+        if falhos:
+            print(f"[tcu-ex] anos NÃO indexados (repetir depois): {falhos}", file=sys.stderr)
+            return 1
     finally:
         con.close()
     return 0

@@ -170,3 +170,59 @@ def test_faixa_de_anos_e_expandida():
     assert T._anos("2007,2012") == [2007, 2012]
     assert T._anos("2019-2021") == [2019, 2020, 2021]
     assert T._anos("2019-2020,2007") == [2007, 2019, 2020]
+
+
+def test_conexao_que_cai_no_meio_NAO_vira_cobertura(con, monkeypatch):
+    """Medido em 2026-07-29: o servidor do TCU fechou o socket após 180 MB de um arquivo de
+    335 MB. Marcar o ano como coberto ali transformaria a leitura parcial em 'inexistente' para
+    todo acórdão que ficou do outro lado do corte."""
+    import httpx
+
+    class _Cai:
+        status_code = 200
+
+        def iter_bytes(self):
+            yield _CAB_NOVO + b'"K1"|"ACORDAO"|"T"|"1"|"2014"|"1"|"Plenario"|"d"|"r"|"s"|"p"\n'
+            raise httpx.RemoteProtocolError("peer closed connection")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(httpx, "stream", lambda *a, **k: _Cai())
+    r = T.ingerir_ano(2014, con, forcar=True, tentativas=2)
+    assert r.get("parcial") is True and "conexão instável" in r["erro"]
+    assert con.execute("SELECT COUNT(*) FROM tcu_existencia_cobertura WHERE ano=2014"
+                       ).fetchone()[0] == 0
+    # e a citação daquele ano continua sendo lacuna, nunca negativa
+    assert T.conferir("Acórdão 9999/2014", con)["status"] == "ano_nao_indexado"
+
+
+def test_retentativa_que_da_certo_na_segunda_conta_como_sucesso(con, monkeypatch):
+    import httpx
+
+    estado = {"n": 0}
+
+    class _Instavel:
+        status_code = 200
+
+        def iter_bytes(self):
+            estado["n"] += 1
+            if estado["n"] == 1:
+                yield _CAB_NOVO
+                raise httpx.RemoteProtocolError("caiu")
+            yield _CAB_NOVO + b'"K1"|"ACORDAO"|"T"|"7"|"2014"|"1"|"Plenario"|"d"|"r"|"s"|"p"\n'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(httpx, "stream", lambda *a, **k: _Instavel())
+    monkeypatch.setattr(T.time, "sleep", lambda *_: None)
+    r = T.ingerir_ano(2014, con, forcar=True, tentativas=3)
+    assert r.get("gravadas") == 1
+    assert T.conferir("Acórdão 7/2014", con)["status"] == "confirmado"
