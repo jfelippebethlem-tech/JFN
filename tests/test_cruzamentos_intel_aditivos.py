@@ -21,7 +21,7 @@ def db(tmp_path):
         unidade TEXT, objeto TEXT, valor_inicial REAL, valor_global REAL, num_aditivos INTEGER,
         vigencia_fim TEXT);
     CREATE TABLE contrato_aditivo (
-        numero_controle_pncp TEXT, qualif_acrescimo TEXT, valor_acrescido REAL);
+        numero_controle_pncp TEXT, qualif_acrescimo TEXT, valor_acrescido REAL, objeto TEXT);
     """)
     ins = ("INSERT INTO pcrj_contratos VALUES (?,?,?,?,?,?,?,?,?,?)")
     con.executemany(ins, [
@@ -32,10 +32,15 @@ def db(tmp_path):
         # K3: sem contrato_aditivo → vg−vi=+50% vira indício NÃO confirmado (rebaixado, não removido)
         ("K3", "GAMA", "33333333000133", "SME", "SME", "fornecimento de merenda", 100000.0, 150000.0, 1, "2025-12-31"),
     ])
-    con.executemany("INSERT INTO contrato_aditivo VALUES (?,?,?)", [
-        ("K1", "1", 10000.0),
-        ("K1", "2", 30000.0),   # qualif≠'1' (reajuste) não entra no acréscimo real
-        ("K2", "1", 30000.0),
+    # O discriminador é o OBJETO, não o `qualif_acrescimo`. A versão anterior deste fixture
+    # usava `qualif='2'` para dizer "isto é reajuste" — convenção que não existe na base real,
+    # onde o campo vem '1' para quase tudo (medido em `contratos/thoughts`, caso AVANTY). Note
+    # que os dois termos do K1 trazem qualif='1', como no PNCP de verdade: se o filtro fosse o
+    # qualificador, o reajuste de R$ 30 mil entraria no teto do art. 125.
+    con.executemany("INSERT INTO contrato_aditivo VALUES (?,?,?,?)", [
+        ("K1", "1", 10000.0, "acréscimo quantitativo de itens"),
+        ("K1", "1", 30000.0, "reajuste contratual pelo IPCA"),
+        ("K2", "1", 30000.0, "acréscimo de quantitativo do contrato"),
     ])
     con.commit()
     con.close()

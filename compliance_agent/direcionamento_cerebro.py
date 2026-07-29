@@ -411,6 +411,67 @@ def _com_fusao(base: dict, grau_llm, grau_det) -> dict:
     return base
 
 
+_CAMPOS_COM_TRECHO = ("exigencias_restritivas", "cascata")
+
+
+def _filtrar_por_ancora(dados: dict, edital_txt: str, ata_txt: str) -> tuple[dict, dict]:
+    """Descarta achados cujo `trecho` não existe nos documentos, e rebaixa o grau se sobrar nada.
+
+    Duas decisões que mudam o resultado:
+
+      · o descarte é do ACHADO, não da citação. Manter o achado sem a citação inventada seria
+        pior: viraria afirmação sem fonte, que é justamente o que a casa proíbe.
+      · se TODOS os achados caírem, o grau do LLM não pode continuar vermelho/amarelo — ele foi
+        construído sobre citações que não existem. Vira `pendente_reprocessar`, não `verde`:
+        ausência de achado ancorado não é declaração de regularidade.
+
+    A camada determinística NÃO é tocada: ela não cita trecho de LLM e continua valendo pela
+    fusão (`fundir_graus`), inclusive quando o LLM inteiro é descartado aqui.
+    """
+    from compliance_agent.nucleo.grounding import ancorar
+
+    fonte = f"{edital_txt or ''}\n{ata_txt or ''}"
+    total = descartados = 0
+    exemplos: list[str] = []
+    for campo in _CAMPOS_COM_TRECHO:
+        itens = dados.get(campo)
+        if not isinstance(itens, list):
+            continue
+        mantidos = []
+        for item in itens:
+            if not isinstance(item, dict):
+                continue
+            total += 1
+            anc = ancorar(item.get("trecho"), fonte)
+            if anc["ancorado"]:
+                item["trecho_ancorado"] = True
+                item["similaridade_ancora"] = anc["similaridade"]
+                mantidos.append(item)
+            else:
+                descartados += 1
+                if len(exemplos) < 5:
+                    exemplos.append(str(item.get("trecho") or "")[:120])
+        dados[campo] = mantidos
+
+    llm_descartado = bool(
+        total and descartados == total
+        and str(dados.get("grau") or "").lower() in {"amarelo", "vermelho"})
+    grounding = {"n": total, "descartados": descartados,
+                 "taxa_alucinacao": (descartados / total) if total else 0.0,
+                 "descartados_exemplos": exemplos,
+                 "llm_descartado": llm_descartado,
+                 "fonte_conferida": bool((edital_txt or "").strip() or (ata_txt or "").strip())}
+
+    if llm_descartado:
+        dados.pop("grau", None)
+        dados["resumo"] = (
+            "Todos os achados do parecer interpretativo citavam trechos que NÃO existem nos "
+            "documentos lidos — foram descartados. O grau do LLM não se sustenta e o caso volta "
+            "para reprocessamento. Isto NÃO é veredito de regularidade."
+        ) + f" (descartados: {descartados}/{total})"
+    return dados, grounding
+
+
 async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None,
                                  gerar=None) -> dict:
     """Avalia indícios de direcionamento (LLM sobre edital+ata). `gerar`: callable async(messages)->str
@@ -488,8 +549,29 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
                 "ressalva": "veredito resolvido: pendente de reprocessamento; ausência de red flag "
                             "determinístico ≠ regularidade"}
     dados.setdefault("ressalva", "presunção de legitimidade; indício a apurar, não acusação")
+    # Grounding CONFERIDO: o `_SYS` exige, em maiúsculas, que cada achado cite o trecho literal —
+    # e até aqui nada verificava se o trecho existia mesmo no documento. Este é o achado mais
+    # grave do sistema (grau vermelho vira representação) e era o menos conferido.
+    dados, grounding = _filtrar_por_ancora(dados, edital_txt, ata_txt)
     # Fusão do grau do LLM com o determinístico: nenhum alarme silenciado + divergência sinalizada.
-    return _com_fusao({**base, **dados}, dados.get("grau"), grau_det)
+    if grounding["llm_descartado"]:
+        # Todos os achados do LLM citavam trecho inexistente: a camada subjetiva não produziu
+        # juízo utilizável. Tratar como LLM INDISPONÍVEL — mesmo caminho de quando o provedor
+        # cai —, porque o contrário é o falso conforto que a casa proíbe: se o determinístico
+        # estiver 'verde', a fusão devolveria 'verde' e o caso sairia como regular quando na
+        # verdade a análise interpretativa não existe.
+        if det_presenca:
+            r = _com_fusao({**base, **dados, "dados_suficientes": True}, None, grau_det)
+        else:
+            r = {**base, **dados, "grau": "pendente_reprocessar", "dados_suficientes": False,
+                 "grau_llm": None, "grau_det": grau_det,
+                 "fonte_grau": "deterministico_parcial", "divergencia": None,
+                 "ressalva": "veredito resolvido: pendente de reprocessamento; ausência de "
+                             "achado ancorado ≠ regularidade"}
+    else:
+        r = _com_fusao({**base, **dados}, dados.get("grau"), grau_det)
+    r["grounding"] = grounding
+    return r
 
 
 # ──────────────────────────────────────────────────────────────────────────────

@@ -9,8 +9,15 @@ from __future__ import annotations
 
 import re
 
-ADITIVO_LIMITE = 0.25          # art. 125 — acréscimo de valor
-ADITIVO_REFORMA = 0.50         # 50% só reforma de edifício/equipamento
+from compliance_agent.limites_aditivo import (
+    classificar_natureza as _classificar_natureza,
+    teto_acrescimo as _teto_acrescimo,
+)
+
+# art. 125 — teto de acréscimo de valor. Os números moram em `limites_aditivo` (fonte única);
+# estes nomes seguem exportados porque o resto do módulo e os testes os usam.
+ADITIVO_LIMITE = _teto_acrescimo(None)        # 25% — regra geral
+ADITIVO_REFORMA = _teto_acrescimo("reforma")  # 50% — reforma de edifício/equipamento
 SOBREPRECO_RATIO = 1.3         # >30% acima da referência = candidato
 SOBREPRECO_RATIO_MAX = 8.0     # acima disso = quase sempre CATMAT errado/unidade divergente, NÃO sobrepreço real
 SOBREPRECO_MIN_N = 3           # referência só vale com base de mercado suficiente
@@ -27,13 +34,19 @@ def _e_acrescimo_de_valor(aditivo: dict) -> bool:
     O PNCP grava o valor do período renovado em valorAcrescido mesmo numa
     prorrogação — o que NÃO é o acréscimo do art. 125. O campo qualif_acrescimo
     vem '1' para quase tudo (inútil); o objeto é o discriminador confiável
-    (revisão à mão 2026-07-11: contrato AVANTY, +R$ 51mi era renovação de 12 meses)."""
-    obj = aditivo.get("objeto") or ""
-    if _RX_SEM_ACRESCIMO.search(obj):
-        return False                       # o próprio texto nega o acréscimo
-    if _RX_PRORROGA.search(obj):
-        return False                       # prorrogação de prazo = art. 107, não 125
-    return (aditivo.get("valor_acrescido") or 0) > 0
+    (revisão à mão 2026-07-11: contrato AVANTY, +R$ 51mi era renovação de 12 meses).
+
+    A regra passou a viver em `limites_aditivo.classificar_natureza`, que é a mesma usada pela
+    varredura de execução e pelo intel. Esta função era uma das TRÊS respostas divergentes para
+    a mesma pergunta jurídica; e a que ficou não conhecia o reequilíbrio do art. 124, II, "d",
+    que respondeu por 45% dos falsos positivos medidos em 2026-07-29."""
+    tipo, _ = _classificar_natureza(
+        aditivo.get("objeto"), fundamento_legal=aditivo.get("fundamento_legal"),
+        qualif_acrescimo=aditivo.get("qualif_acrescimo"),
+        qualif_vigencia=aditivo.get("qualif_vigencia"),
+        qualif_reajuste=aditivo.get("qualif_reajuste"),
+        prazo_aditado_dias=aditivo.get("prazo_aditado_dias"))
+    return tipo == "valor" and (aditivo.get("valor_acrescido") or 0) > 0
 
 
 def _brl(v) -> str:
@@ -46,28 +59,52 @@ def _achado(dimensao, risco, texto, norma, proveniencia) -> dict:
 
 
 def t_aditivo(d: dict) -> list[dict]:
-    """Acréscimo de VALOR acumulado dos termos > 25% (50% só reforma). Prazo puro não conta."""
+    """Acréscimo de VALOR acumulado dos termos > 25% (50% só reforma). Prazo puro não conta.
+
+    Usa `limites_aditivo.acrescimo_computavel`, a mesma régua do X1, do intel e da varredura de
+    execução. Além de somar só o que entra no teto, ela DECLARA o que não deu para classificar:
+    aditivo que traz dinheiro sem dizer a que título vira `aditivo_sem_natureza`, e termo que faz
+    revisão e acréscimo no mesmo instrumento vira `aditivo_misto`. Antes, um termo sem descrição
+    era contado como acréscimo por padrão — o que inflava o percentual — e depois passou a ser
+    silenciosamente ignorado, o que é o erro oposto. O certo é ficar fora do teto E aparecer.
+    """
+    from compliance_agent.limites_aditivo import acrescimo_computavel
+
     c = d.get("contrato", {})
     vi = c.get("valor_inicial") or 0
     if vi <= 0:
         return []
-    # só acréscimo de VALOR/escopo entra no art. 125; prorrogação de prazo NÃO
-    soma = sum((a.get("valor_acrescido") or 0) for a in d.get("aditivos", [])
-               if _e_acrescimo_de_valor(a))
-    if soma <= 0:
-        return []                                  # só prazo/reajuste → não é acréscimo do art. 125
-    ratio = soma / vi
+    comp = acrescimo_computavel(d.get("aditivos", []))
+    soma = comp["acrescimo"]
     objetos = " ".join((a.get("objeto") or "") for a in d.get("aditivos", []))
     limite = ADITIVO_REFORMA if _RX_REFORMA.search(objetos + " " + (c.get("objeto") or "")) else ADITIVO_LIMITE
-    if ratio <= limite:
-        return []
-    risco = min(9, 5 + int(ratio * 4))
-    return [_achado(
-        "aditivo", risco,
-        f"Acréscimo de valor de {ratio:.0%} (R$ {_brl(soma)} sobre R$ {_brl(vi)}) acima do "
-        f"limite de {limite:.0%} do art. 125 da Lei 14.133/2021.",
-        "Lei 14.133/2021, art. 125",
-        {"ratio": round(ratio, 3), "valor_acrescido": soma, "valor_inicial": vi})]
+
+    achados: list[dict] = []
+    if comp["lacunas"]:
+        # Lacuna de leitura não é achado de mérito, mas some se ninguém a registrar — e "0% de
+        # acréscimo" com metade dos termos ilegíveis é conclusão falsa com cara de medição.
+        indeterminado = sum(v for k, v in comp["fora_do_teto"].items()
+                            if k in ("sem_natureza", "misto"))
+        achados.append(_achado(
+            "aditivo", 3,
+            f"Não foi possível classificar a natureza de {len(comp['lacunas'])} situação(ões) de "
+            f"aditivo (R$ {_brl(indeterminado)} sem enquadramento): "
+            f"{', '.join(comp['lacunas'])}. O valor NÃO entrou no cálculo do teto — conferir os "
+            f"termos nos autos antes de concluir pela regularidade.",
+            "Lei 14.133/2021, art. 125 (aferição prejudicada)",
+            {"lacunas": comp["lacunas"], "valor_nao_classificado": indeterminado}))
+
+    if soma > 0:
+        ratio = soma / vi
+        if ratio > limite:
+            risco = min(9, 5 + int(ratio * 4))
+            achados.append(_achado(
+                "aditivo", risco,
+                f"Acréscimo de valor de {ratio:.0%} (R$ {_brl(soma)} sobre R$ {_brl(vi)}) acima do "
+                f"limite de {limite:.0%} do art. 125 da Lei 14.133/2021.",
+                "Lei 14.133/2021, art. 125",
+                {"ratio": round(ratio, 3), "valor_acrescido": soma, "valor_inicial": vi}))
+    return achados
 
 
 def t_prorrogacao(d: dict) -> list[dict]:

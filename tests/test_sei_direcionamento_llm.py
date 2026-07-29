@@ -43,7 +43,12 @@ async def _fake_gerar(messages):
         "raciocinio": "O atestado idêntico ao objeto pode restringir a competição.",
         "exigencias_restritivas": [{"trecho": "atestado idêntico ao objeto",
                                     "por_que_restringe": "limita concorrentes", "jurisprudencia": "Súmula TCU 263"}],
-        "cascata": [{"licitante": "EMP A", "ordem_preco": 1, "situacao": "desclassificado", "motivo": "atestado"}],
+        # `trecho` é obrigatório no schema do `_SYS` e, desde 2026-07-29, é CONFERIDO contra o
+        # documento (`nucleo/grounding`): item sem citação — ou com citação que o dossiê não tem —
+        # é descartado, como já ocorria nas rubricas de `detectores/base`.
+        "cascata": [{"licitante": "EMP A", "ordem_preco": 1, "situacao": "desclassificado",
+                     "motivo": "atestado",
+                     "trecho": "exigência de atestado idêntico ao objeto"}],
         "dados_suficientes": True})
 
 

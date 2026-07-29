@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re as _re_reforma
 from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 #
 # Os alertas de fracionamento saem com severidade ALTA no painel; teto errado nos dois
 # sentidos é acusar quem não devia e perder quem devia. Agora vem da fonte única, por ANO.
+from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
 from compliance_agent.limites_dispensa import LIMITES, limite_dispensa as _limite_dispensa
 
 
@@ -36,11 +38,14 @@ def teto_dispensa(ano: int | None = None) -> float:
 
 
 TETO_DISPENSA_COMPRAS = teto_dispensa(2026)  # compat: consumidores antigos importam a constante
+_RE_REFORMA_OBJ = _re_reforma.compile(r"reforma\s+(?:de\s+)?(?:edif[íi]cio|pr[ée]dio|im[óo]vel|equipamento|cobertura)|reforma\s+d[ao]\s", _re_reforma.I)
 D7_JANELA_DIAS = 90
 D7_MINIMO_REGISTROS = 3
 D8_DIAS_RECEM_ABERTA = 180
 D8_VALOR_MINIMO = 100_000.0
-D10_LIMITE_ADITIVO = 1.25    # art. 125: acréscimo até 25% (50% só reforma de edifício/equip.)
+# art. 125: acréscimo até 25% (50% só reforma de edifício/equip.). O número vem da fonte única
+# `limites_aditivo`; aqui fica como MULTIPLICADOR (1 + teto) porque a consulta compara global×inicial.
+D10_LIMITE_ADITIVO = 1.0 + _teto_acrescimo(None)
 
 
 def _brl(v: float | None) -> str:
@@ -289,28 +294,64 @@ def d10_rede_concorrentes(con) -> list[dict]:
 # (vivia DENTRO do d10 sob o MESMO código de detector — duas análises num rótulo só
 # confundiam contagem, KPI e ficha; split 2026-07-18, subtipo preservado p/ compat)
 def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> list[dict]:
-    achados = []
-    # valor global estourando o limite legal de acréscimo sobre o inicial
+    """Acréscimo por aditivo acima do teto do art. 125.
+
+    A versão anterior comparava apenas `valor_global > valor_inicial * 1.25`, sem olhar os termos:
+    reajuste, reequilíbrio e prorrogação entravam no teto como se fossem acréscimo de escopo, e o
+    tipo do objeto era ignorado (reforma tem teto de 50%). Agora a natureza de cada termo vem da
+    régua única (`limites_aditivo`), a mesma do X1 e do intel; quando os termos existem em
+    `contrato_aditivo`, o percentual é o do ACRÉSCIMO REAL. Sem eles, o achado ainda sai — mas
+    declarado como `nao_confirmado`, porque global−inicial não é acréscimo do art. 125.
+    """
+    from compliance_agent.limites_aditivo import acrescimo_computavel, ato_normativo
+
+    # pré-filtro largo pelo MENOR teto possível: nada que possa estourar é descartado no SQL.
     rows = con.execute("""
         select numero_controle_pncp, ano, orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
-               valor_inicial, valor_global
+               coalesce(objeto,'') as objeto, valor_inicial, valor_global
         from pcrj_contratos
         where valor_inicial > 0 and valor_global > valor_inicial * ?""",
         (limite_aditivo,)).fetchall()
+
+    por_contrato: dict[str, list[dict]] = {}
+    try:
+        for a in con.execute(
+                "select numero_controle_pncp, objeto, valor_acrescido, prazo_aditado_dias, "
+                "qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal "
+                "from contrato_aditivo"):
+            por_contrato.setdefault(a["numero_controle_pncp"], []).append(dict(a))
+    except Exception as exc:  # noqa: BLE001 — sem a tabela, degrada p/ nao_confirmado (não cala)
+        logger.debug("contrato_aditivo indisponível no d11: %s", exc)
+
+    achados = []
     for r in rows:
-        pct = (r["valor_global"] / r["valor_inicial"] - 1) * 100
+        e_reforma = bool(_RE_REFORMA_OBJ.search(r["objeto"]))
+        teto = _teto_acrescimo("reforma" if e_reforma else None)
+        ads = por_contrato.get(r["numero_controle_pncp"])
+        if ads:
+            comp = acrescimo_computavel(ads)
+            pct_frac, confirmado = comp["acrescimo"] / r["valor_inicial"], True
+            lacunas = comp["lacunas"]
+        else:
+            pct_frac, confirmado, lacunas = (r["valor_global"] / r["valor_inicial"] - 1), False, []
+        if pct_frac <= teto:
+            continue
+        pct = pct_frac * 100
+        origem = ("acréscimo apurado nos termos aditivos" if confirmado
+                  else "global−inicial (NÃO confirmado: pode incluir reajuste ou prorrogação)")
         achados.append(_achado(
-            "d11_aditivo_estourado", min(9, 6 + int(pct // 50)),
+            "d11_aditivo_estourado", min(9, 6 + int(pct // 50)) - (0 if confirmado else 2),
             f"Aditivos acima do limite — {r['fornecedor_nome'] or r['fornecedor_documento']}",
             f"Indício de acréscimo contratual acima do limite: contrato "
             f"{r['numero_controle_pncp']} ({r['orgao_nome'] or r['orgao_cnpj']}, {r['ano']}) "
             f"saiu de R$ {_brl(r['valor_inicial'])} para R$ {_brl(r['valor_global'])} "
-            f"(+{pct:.0f}%), acima dos 25% do art. 125 da Lei 14.133/2021 "
-            f"(50% só p/ reforma de edifício/equipamento — conferir a natureza). "
-            f"(fonte: PNCP)",
+            f"(+{pct:.0f}%), acima dos {teto:.0%} do {ato_normativo()} "
+            f"{'(reforma de edifício/equipamento)' if e_reforma else ''}. "
+            f"Base do percentual: {origem}. (fonte: PNCP)",
             {"subtipo": "aditivo_estourado", "controle": r["numero_controle_pncp"],
-             "pct_acrescimo": round(pct, 1)}))
+             "pct_acrescimo": round(pct, 1), "teto_pct": round(teto * 100),
+             "acrescimo_confirmado": confirmado, "lacunas_aditivo": lacunas}))
     return achados
 
 

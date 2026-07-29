@@ -65,6 +65,7 @@ Os módulos citados vivem em `compliance_agent/`.
   X4  Carona abusiva em Ata de Registro de Preços .. ✅ (`detectores/x4_carona_abusiva.py`)
   X5  Jogo de planilha ............................. ✅ (`detectores/x5_jogo_planilha.py`)
   X6  Entrega fantasma / atesto de fachada ........... 🟡 `correlacao_sei` (atesto↔OB) + `verificacao_endereco` (C2)
+  X7  Reequilíbrio indevido (art. 124) ............. ✅ (`detectores/x7_reequilibrio_indevido.py`)
 
   TRANSVERSAIS (já no JFN, alimentam vários cards)
   · Teto remuneratório CF 37 XI ..................... ✅ `acima_do_teto.py` (não é card de licitação, mas é detector)
@@ -109,7 +110,7 @@ PESOS_FAMILIA: dict[str, float] = {
     "perfil": 0.8,           # C1–C6 (perfil do contratado)
     "preco": 0.8,            # P2/P3
     "desenho_certame": 0.6,  # E1–E6
-    "execucao": 0.8,         # X1–X6
+    "execucao": 0.8,         # X1–X7
 }
 
 STATUS_VALIDOS = ("confirmado", "descartado", "nao_avaliavel")
@@ -201,7 +202,8 @@ class ResultadoDetector:
 
 
 # ───────────────────────────── Rubrica fechada (spec §1.3, regras de ouro) ─────────────────────────────
-def avaliar_rubrica(resposta: dict | None, escala: dict[str, str]) -> tuple[str | None, float, str]:
+def avaliar_rubrica(resposta: dict | None, escala: dict[str, str],
+                    fonte: str | None = None) -> tuple[str | None, float, str]:
     """Avalia uma resposta de LLM contra uma RUBRICA FECHADA (escala nomeada 3-4 níveis → nível de âncora).
 
     `escala`: {nivel_da_rubrica: nivel_de_ancora}, ex.: {"ausente": "critico", "generica": "medio",
@@ -209,6 +211,12 @@ def avaliar_rubrica(resposta: dict | None, escala: dict[str, str]) -> tuple[str 
 
     REGRA DE OURO (spec §1.3): citação obrigatória — resposta SEM `trecho` é DESCARTADA (retorna nao_avaliavel,
     score 0, motivo). `nao_avaliavel` é resposta válida e preferível a chute. Honesto: nunca pontua sem citação.
+
+    `fonte` (opcional): o TEXTO de onde o trecho deveria ter saído. Quando informado, a citação é
+    CONFERIDA contra ele por `nucleo/grounding.ancorar` — antes, a regra de ouro exigia apenas que
+    o campo `trecho` não estivesse vazio, de modo que qualquer frase inventada passava como
+    "citação literal". Sem `fonte`, o comportamento é o de antes (presença), e o motivo declara
+    que a conferência não foi feita: grounding não conferido ≠ grounding aprovado.
 
     Retorna (nivel_ancora | None, score, motivo). `None` + score 0 = descartado/sem juízo."""
     if not isinstance(resposta, dict):
@@ -222,8 +230,16 @@ def avaliar_rubrica(resposta: dict | None, escala: dict[str, str]) -> tuple[str 
     if not trecho:
         # citação obrigatória: sem trecho, a classificação é descartada (não pontua)
         return None, 0.0, "rubrica: classificação SEM citação literal (trecho) — descartada (regra de ouro §1.3)"
+    sufixo = " [citação não conferida — fonte não informada]"
+    if fonte:
+        from compliance_agent.nucleo.grounding import ancorar
+        anc = ancorar(trecho, fonte)
+        if not anc["ancorado"]:
+            return None, 0.0, (f"rubrica: citação NÃO localizada na fonte ({anc['motivo']}) — "
+                               "descartada (grounding conferido, não declarado)")
+        sufixo = f" [citação ancorada, similaridade {anc['similaridade']:.2f}]"
     nivel_ancora = escala[nivel]
-    return nivel_ancora, ancora(nivel_ancora), f"rubrica: {nivel} → âncora {nivel_ancora}"
+    return nivel_ancora, ancora(nivel_ancora), f"rubrica: {nivel} → âncora {nivel_ancora}{sufixo}"
 
 
 # ───────────────────────────── Verificador adversarial (spec §1.3) ─────────────────────────────
@@ -292,10 +308,115 @@ def _parse_json(raw: str | None):
     return parse_json_llm(raw)
 
 
-def aplicar_exculpatoria(res: ResultadoDetector, achado: str, *, gerar=None) -> ResultadoDetector:
+# ── painel adversarial: três lentes de refutação, não uma ─────────────────────────────────────
+# O `verificar_adversarial` acima é bom e é UMA chamada com UMA lente ("a melhor explicação
+# inocente"). Um achado pode ser falso por três razões diferentes, e a lente única só investiga a
+# primeira delas:
+#
+#   (i)   o ato tem explicação ADMINISTRATIVA lícita — a hipótese que a lente original testa;
+#   (ii)  o dado está FALTANDO ou capturado pela metade, e a ausência foi lida como irregularidade
+#         — a causa de 59% das 9.863 red flags do sweep SEI, que eram queixa de captura;
+#   (iii) o DETECTOR errou — o padrão casa com um falso positivo já conhecido da casa (MINISTÉRIO
+#         DA FAZENDA em lista de fracionamento; "Rua da Assembleia 10" como ninho; empresa
+#         "morta" que na verdade recebeu antes da baixa).
+#
+# Regra de maioria: ≥2 refutações descartam; 1 rebaixa e vai com ressalva. Redundância de lentes
+# idênticas mede a mesma coisa três vezes; lentes distintas cobrem falhas distintas.
+_LENTES_ADVERSARIAIS: tuple[tuple[str, str], ...] = (
+    ("administrativa",
+     "Sua hipótese é que o ato tem EXPLICAÇÃO ADMINISTRATIVA LÍCITA: prática usual do setor, "
+     "exigência técnica real, obstáculo concreto do gestor (LINDB art. 22) ou norma que autoriza "
+     "o que parece anômalo. Refuta se essa explicação basta para o que a evidência mostra."),
+    ("captura",
+     "Sua hipótese é que o achado é LACUNA DE DADO, não irregularidade: documento não capturado, "
+     "campo vazio na base, série incompleta, período fora da coleta. INDISPONÍVEL não é "
+     "irregular. Refuta se o achado se explica por ausência de dado em vez de desvio."),
+    ("detector",
+     "Sua hipótese é que o DETECTOR errou: o padrão casa com um falso positivo conhecido — órgão "
+     "público tratado como fornecedor, endereço de prédio comercial lido como sede compartilhada, "
+     "reajuste contado como acréscimo, unidade de medida divergente inflando comparação de preço. "
+     "Refuta se a evidência é compatível com esse tipo de artefato."),
+)
+
+
+def painel_adversarial(evidencia_list: Sequence[dict], achado: str, *,
+                       gerar: Callable[[str, str], str] | None = None,
+                       maioria: int = 2) -> dict:
+    """Três refutadores com hipóteses DISTINTAS. `{refutada, votos, refutacoes, explicacoes}`.
+
+    Honesto como a lente única: lente indisponível não vota (INDISPONÍVEL ≠ refutado e ≠
+    confirmado), e o quórum é medido sobre as lentes que responderam — nunca sobre as três
+    nominais. Painel inteiro fora do ar devolve `refutada=False` com o motivo declarado.
+    """
+    votos: list[dict] = []
+    for nome, hipotese in _LENTES_ADVERSARIAIS:
+        sistema = _SYS_ADVERSARIAL + "\n\nHIPÓTESE DESTA LENTE: " + hipotese
+        try:
+            refutada, motivo, explicacao = verificar_adversarial(
+                evidencia_list, achado, gerar=_com_sistema(gerar, sistema))
+        except Exception as e:  # noqa: BLE001 — uma lente quebrada não derruba o painel
+            votos.append({"lente": nome, "voto": None, "motivo": f"lente falhou: {str(e)[:60]}"})
+            continue
+        indisponivel = motivo.startswith("nao_avaliavel")
+        votos.append({"lente": nome, "voto": None if indisponivel else refutada,
+                      "motivo": motivo, "explicacao_inocente": explicacao})
+
+    validos = [v for v in votos if v["voto"] is not None]
+    refutam = [v for v in validos if v["voto"]]
+    quorum = min(maioria, len(validos)) if validos else 0
+    refutada = bool(validos) and len(refutam) >= max(1, quorum) and len(refutam) >= maioria
+    return {
+        "refutada": refutada,
+        "n_lentes": len(_LENTES_ADVERSARIAIS),
+        "n_responderam": len(validos),
+        "n_refutaram": len(refutam),
+        "rebaixa": bool(refutam) and not refutada,
+        "votos": votos,
+        "motivo": (
+            "; ".join(f"[{v['lente']}] {v['motivo']}" for v in refutam) if refutam
+            else ("painel adversarial indisponível — exculpatória não realizada" if not validos
+                  else "achado sobreviveu às três lentes de refutação")),
+        "explicacao_inocente": next((v.get("explicacao_inocente") for v in votos
+                                     if v.get("explicacao_inocente")), ""),
+    }
+
+
+def _com_sistema(gerar, sistema: str):
+    """Envolve `gerar` fixando o system-prompt da lente. `None` resolve a cascata de produção."""
+    if gerar is None:
+        try:
+            from compliance_agent.direcionamento_cerebro import gerar_sync as gerar  # type: ignore
+        except ImportError:
+            return None
+    return lambda prompt, _sys="": gerar(prompt, sistema)
+
+
+def aplicar_exculpatoria(res: ResultadoDetector, achado: str, *, gerar=None,
+                         painel: bool = False) -> ResultadoDetector:
     """Roda o verificador adversarial sobre um ResultadoDetector e ATUALIZA seus campos `refutada`,
     `motivo_refutacao`, `explicacao_inocente`. Se refutado → status vira `descartado`. Honesto: se a exculpatória
-    é nao_avaliavel (LLM offline), NÃO muda o status (o achado objetivo do código permanece)."""
+    é nao_avaliavel (LLM offline), NÃO muda o status (o achado objetivo do código permanece).
+
+    `painel=True` usa as TRÊS lentes de `painel_adversarial` em vez da lente única. Custa 3× em
+    inferência, e por isso é opt-in: vale nos achados que vão virar peça, não na triagem em massa.
+    Uma refutação isolada não descarta — rebaixa o score pela metade e registra a ressalva, porque
+    discordância entre lentes é informação para quem assina, não empate a ser resolvido em silêncio.
+    """
+    if painel:
+        r = painel_adversarial(res.evidencia, achado, gerar=gerar)
+        res.refutada = r["refutada"]
+        res.motivo_refutacao = r["motivo"]
+        if r["explicacao_inocente"] and not res.explicacao_inocente:
+            res.explicacao_inocente = r["explicacao_inocente"]
+        if r["refutada"]:
+            res.status = "descartado"
+        elif r["rebaixa"]:
+            res.score = round(res.score * 0.5, 4)
+            res.motivo_refutacao = (
+                f"{r['n_refutaram']}/{r['n_responderam']} lentes refutaram — sem maioria, o "
+                f"achado sobrevive com score REBAIXADO e ressalva: {r['motivo']}")
+        res.valores = {**(res.valores or {}), "painel_adversarial": r["votos"]}
+        return res
     refutada, motivo, explicacao = verificar_adversarial(res.evidencia, achado, gerar=gerar)
     res.refutada = refutada
     res.motivo_refutacao = motivo

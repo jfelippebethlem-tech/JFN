@@ -44,8 +44,9 @@ from compliance_agent.detectores.base import (
 from compliance_agent.reporting.intel_base import moeda
 
 # ───────────────────────────── Tetos do art. 125 (Lei 14.133/2021) ─────────────────────────────
-_TETO_PADRAO = 0.25  # 25% — regra geral (acréscimos)
-_TETO_REFORMA = 0.50  # 50% — reforma de edifício ou de equipamento
+# O número mora em `compliance_agent/limites_aditivo.py` — fonte única, como `limites_dispensa`
+# é para o teto de dispensa. Este módulo já foi uma das CINCO cópias divergentes.
+from compliance_agent.limites_aditivo import teto_acrescimo as _teto_da_fonte  # noqa: E402
 
 # Limiares de proximidade ao teto (CÓDIGO, nunca no prompt): fração do teto a partir da qual o acréscimo é grave.
 _FRACAO_FORTE = 0.80  # ≥80% do teto (ex.: ≥20% no padrão / ≥45% na reforma) → forte
@@ -57,8 +58,7 @@ _DIAS_ADITIVO_PRECOCE = 90
 
 def teto_art125(tipo_objeto: str | None) -> float:
     """Teto de acréscimos do art.125: 50% para REFORMA de edifício/equipamento, 25% nos demais casos."""
-    t = (tipo_objeto or "").strip().lower()
-    return _TETO_REFORMA if t.startswith("reforma") else _TETO_PADRAO
+    return _teto_da_fonte(tipo_objeto)
 
 
 # Rubrica (1): natureza da JUSTIFICATIVA de um aditivo. LLM-opcional; degrada honesto.

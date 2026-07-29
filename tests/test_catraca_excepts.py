@@ -124,7 +124,22 @@ REPO = Path(__file__).resolve().parent.parent
 #     prova — que o parser único não regride em relação ao que existia.
 # Em contrapartida, `lex_analise_conteudo` PERDEU 2 de verdade: `_json_lex` deixou de reimplementar
 # o parser e passou a delegar ao único da casa.
-BASELINE = 1583
+#
+# 2026-07-29b — 1583 → 1586. Fase 2 do plano de hermenêutica (fonte única do art. 125, conjunto-
+# ouro, grounding conferido, tipicidade, X7). Os +3 são todos fronteira de callable injetado ou
+# de lente adversarial, e nenhum é mudo:
+#   • detectores/base.painel_adversarial — uma das TRÊS lentes pode falhar sozinha; o painel
+#     registra o voto como `None` (INDISPONÍVEL ≠ refutado) e segue com as outras duas;
+#   • pcrj/pericia_gastos.d11 — leitura da `contrato_aditivo`: sem a tabela, o percentual degrada
+#     para `nao_confirmado` (global−inicial) em vez de calar, com `logger.debug`;
+#   • detectores/x7_reequilibrio_indevido — `gerar` (LLM) da rubrica de álea: a parte objetiva
+#     do card permanece e a indisponibilidade entra em `lacunas`;
+#   • tools/eval_hermeneutica — provedor fora do ar vira `previsto="indisponivel"`, que é métrica
+#     própria no resultado, e não erro de hermenêutica do modelo.
+# Os nove módulos NOVOS de conhecimento jurídico (limites_aditivo, corpus_veredito,
+# golden_veredito, tipicidade, standard_prova, grounding, qualificacao_juridica) entraram com
+# ZERO `except Exception`.
+BASELINE = 1586
 
 
 def _contar() -> int:

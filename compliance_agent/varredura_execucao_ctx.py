@@ -27,7 +27,7 @@ import re
 import sqlite3
 from typing import Any
 
-from compliance_agent.execucao_fatos import _natureza  # ordem reajuste → prazo → valor
+from compliance_agent.limites_aditivo import classificar_natureza as _classificar
 
 # Reforma de edifício/equipamento tem teto de 50% no art. 125 (os demais, 25%). Quem aplica é o
 # X1 — aqui só se classifica o objeto, com o mesmo padrão já usado em `execucao_fatos`.
@@ -36,73 +36,20 @@ _RE_REFORMA = re.compile(r"reforma\s+(?:de\s+)?(?:edif[íi]cio|pr[ée]dio|im[óo
 _RE_SUPRESSAO = re.compile(r"supress[ãa]o|suprimir", re.I)
 
 
-# ── vocabulário aprendido na PRIMEIRA varredura sobre a base real (2026-07-29) ────────────────
-# `execucao_fatos._natureza` foi escrito para o texto corrido do processo SEI e não cobre a
-# redação dos extratos do PNCP. Na estreia, a lacuna produziu um achado CRÍTICO fabricado: o
-# contrato 30051023000196-2-000348/2024 (MPRJ, auxílio alimentação) teve R$ 40,6 mi de "revisão
-# ... dos valores vigentes do benefício", com fundamento no art. 124, II, "d", somados ao teto
-# do art. 125 como se fossem acréscimo quantitativo — X1 confirmado com score 1.0. Revisão do
-# art. 124 é REEQUILÍBRIO: recompõe o valor, não amplia o escopo, e não consome teto nenhum.
-_RE_REEQUILIBRIO = re.compile(
-    # A janela `[^.;]{0,80}` entre "revisão" e "dos valores" não é frescura: o extrato real diz
-    # "a revisão, a contar de 01/06/2025, dos valores vigentes do benefício" — com a data
-    # encaixada no meio. Exigir as palavras coladas foi o que deixou passar os R$ 40,6 mi.
-    r"reequil[íi]brio|revis[ãa]o\b[^.;]{0,80}?\bd[oe]s?\s+(?:pre[çc]|valor)|repactua|reajust|"
-    r"art(?:igo)?\.?\s*124\b|corre[çc][ãa]o\s+monet|\bIPCA\b|\bINCC\b|\bIGP-?M\b", re.I)
-_RE_ACRESCIMO = re.compile(
-    r"acr[ée]scim|acrescer|supress[ãa]o|suprimir|aditamento\s+de\s+valor|majora|"
-    r"\baporte\b|alter[aç][çã][ãa]o\s+quantitativ", re.I)
-_RE_PRAZO = re.compile(r"prorroga|prazo\s+de\s+vig[êe]ncia|dilata[çc][ãa]o\s+de\s+prazo", re.I)
-# Termos que não mexem em valor nem em prazo — trocam a parte, corrigem erro material, ajustam
-# cláusula. Reconhecê-los evita que caiam no balaio 'indeterminado' e pareçam lacuna de leitura.
-_RE_OUTRO = re.compile(
-    r"sub-?roga|retifica|rerratifica|erro\s+material|adequa[çc][ãa]o|altera[çc][ãa]o\s+da\s+"
-    r"vers[ãa]o|altera[çc][ãa]o\s+de\s+cl[áa]usula|transfer[êe]ncia\s+d[ao]\s+contratante", re.I)
-
-
-def _flag(v: Any) -> bool:
-    """Qualificador do PNCP é texto ('1'/'0'/'true'). Ausente ≠ falso, mas aqui só interessa o sim."""
-    return str(v or "").strip().lower() in {"1", "true", "sim", "s"}
-
-
 def _tipo_do_aditivo(ad: sqlite3.Row) -> tuple[str, str]:
-    """(tipo, origem). O OBJETO manda; o qualificador do PNCP é o último recurso.
+    """(tipo, origem) pela régua ÚNICA de `limites_aditivo.classificar_natureza`.
 
-    Tipos: `valor` (entra no teto do art. 125) · `prazo` · `reajuste` (inclui reequilíbrio do
-    art. 124) · `misto` (faz revisão E acréscimo no mesmo termo, com um valor só) · `outro`
-    (sub-rogação, retificação, erro material) · `""` (não deu para saber).
-
-    `misto` existe porque a base tem termos assim e eles não têm resposta certa: o
-    `valor_acrescido` cobre as duas coisas e não há memória de cálculo para repartir. Contar
-    inteiro infla o percentual do art. 125; contar zero esconde acréscimo real. Declarar a
-    ambiguidade é a única saída honesta.
+    Este módulo chegou a ter vocabulário próprio, aprendido na estreia da varredura sobre a base
+    real (2026-07-29) — foi ele que descobriu que a "revisão dos valores" do art. 124, II, "d"
+    estava entrando no teto do art. 125 e produzindo 45% de falso positivo. O vocabulário foi
+    promovido para `limites_aditivo`, que agora é a mesma régua do X1, do `contratos/thoughts`,
+    do `cruzamentos_intel` e do `pericia_gastos` — antes, três respostas diferentes para a mesma
+    pergunta jurídica rodavam ao mesmo tempo.
     """
-    objeto = ad["objeto"] or ""
-    tem_reeq = bool(_RE_REEQUILIBRIO.search(objeto))
-    tem_acre = bool(_RE_ACRESCIMO.search(objeto))
-    if tem_reeq and tem_acre:
-        return "misto", "objeto"
-    if tem_reeq:
-        return "reajuste", "objeto"
-    if _RE_PRAZO.search(objeto):
-        return "prazo", "objeto"
-    if tem_acre:
-        return "valor", "objeto"
-    # `execucao_fatos._natureza` é a régua do texto do SEI; fica como segunda opinião.
-    nat = _natureza(objeto)
-    if nat:
-        return nat, "objeto"
-    if _RE_OUTRO.search(objeto):
-        return "outro", "objeto"
-    if _RE_REEQUILIBRIO.search(ad["fundamento_legal"] or ""):
-        return "reajuste", "fundamento_legal"
-    if _flag(ad["qualif_reajuste"]):
-        return "reajuste", "qualificador_pncp"
-    if _flag(ad["qualif_vigencia"]) or (ad["prazo_aditado_dias"] or 0) > 0:
-        return "prazo", "qualificador_pncp"
-    if _flag(ad["qualif_acrescimo"]):
-        return "valor", "qualificador_pncp"
-    return "", "indeterminado"
+    return _classificar(
+        ad["objeto"], fundamento_legal=ad["fundamento_legal"],
+        qualif_acrescimo=ad["qualif_acrescimo"], qualif_vigencia=ad["qualif_vigencia"],
+        qualif_reajuste=ad["qualif_reajuste"], prazo_aditado_dias=ad["prazo_aditado_dias"])
 
 
 def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[str, Any]:

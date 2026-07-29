@@ -61,6 +61,7 @@ from compliance_agent.detectores.x3_execucao_financeira import X3ExecucaoFinance
 from compliance_agent.detectores.x4_carona_abusiva import X4CaronaAbusiva
 from compliance_agent.detectores.x5_jogo_planilha import X5JogoDePlanilha
 from compliance_agent.detectores.x6_entrega_fantasma import X6EntregaFantasma
+from compliance_agent.detectores.x7_reequilibrio_indevido import X7ReequilibrioIndevido
 
 # REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
 REGISTRO: dict[str, Detector] = {
@@ -96,6 +97,7 @@ REGISTRO: dict[str, Detector] = {
         X4CaronaAbusiva(),        # execução — carona abusiva em ARP (limites art. 86)
         X5JogoDePlanilha(),       # execução — jogo de planilha (sobrepreço correlacionado a aditivo)
         X6EntregaFantasma(),      # execução — entrega fantasma / atesto de fachada (culmina em diligência)
+        X7ReequilibrioIndevido(),  # execução — reequilíbrio indevido (art. 124): dupla correção, índice trocado, álea ordinária
     )
 }
 
@@ -130,6 +132,7 @@ PESOS_DETECTOR: dict[str, float] = {
     "X4": PESOS_FAMILIA["execucao"],
     "X5": PESOS_FAMILIA["execucao"],
     "X6": PESOS_FAMILIA["execucao"],
+    "X7": PESOS_FAMILIA["execucao"],
 }
 
 
@@ -259,7 +262,7 @@ def rodar_execucao(processo: str, *, contexto: dict | None = None, exculpatoria:
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("X1", "X2", "X3", "X4", "X5", "X6")]
+    dets = [d for d in REGISTRO.values() if d.id in ("X1", "X2", "X3", "X4", "X5", "X6", "X7")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 

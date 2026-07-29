@@ -49,6 +49,7 @@ RESSALVA = ("Indício para apuração interna, não acusação. Sanção impedit
 # Abaixo dele o gestor pode contratar SEM licitação — o incentivo a "fatiar" a despesa para
 # caber embaixo é o vetor clássico de fracionamento (Lei 14.133 art. 75 §1º).
 # Fonte única verificada nos decretos (Planalto): compliance_agent/limites_dispensa.py.
+from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
 from compliance_agent.limites_dispensa import LIMITES as _LIMITES_DISP
 
 _TETO_DISPENSA = {a: v["compras"] for a, v in _LIMITES_DISP.items()}
@@ -643,12 +644,34 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
     con = _ro(db_path)
     try:
         # acréscimos reais (não reajuste) por contrato, do contrato_aditivo (fonte granular)
-        acresc = {}
+        # A natureza de cada termo vem de `limites_aditivo.classificar_natureza` — a MESMA régua
+        # do X1, do thoughts e da varredura de execução. Antes, o filtro era
+        # `qualif_acrescimo='1'`, campo que a própria casa já havia declarado inútil em
+        # `contratos/thoughts` ("vem '1' para quase tudo"): prorrogação e reequilíbrio entravam
+        # como acréscimo. Foi o mesmo erro que produziu 45% de falso positivo na estreia da
+        # varredura de execução (2026-07-29), lá com R$ 40,6 mi de revisão do art. 124.
+        from compliance_agent.limites_aditivo import acrescimo_computavel
+        acresc, lacunas_ad = {}, {}
         try:
-            for r in con.execute("SELECT numero_controle_pncp c, SUM(valor_acrescido) v "
-                                 "FROM contrato_aditivo WHERE qualif_acrescimo='1' AND valor_acrescido>0 "
-                                 "GROUP BY numero_controle_pncp"):
-                acresc[r["c"]] = r["v"]
+            # A lista de colunas é montada a partir do schema REAL. Pedir uma coluna que não
+            # existe levantaria OperationalError e o `except` engoliria a tabela inteira — todos
+            # os contratos cairiam em vg−vi silenciosamente, que é justamente o número que não
+            # se pode usar. Schema parcial degrada campo a campo, não de uma vez.
+            existentes = {r[1] for r in con.execute("PRAGMA table_info(contrato_aditivo)")}
+            uteis = [c for c in ("objeto", "valor_acrescido", "prazo_aditado_dias",
+                                 "qualif_acrescimo", "qualif_vigencia", "qualif_reajuste",
+                                 "fundamento_legal") if c in existentes]
+            por_contrato: dict[str, list[dict]] = {}
+            for r in con.execute(
+                    f"SELECT numero_controle_pncp c{',' if uteis else ''}{','.join(uteis)} "
+                    "FROM contrato_aditivo"):
+                por_contrato.setdefault(r["c"], []).append(dict(r))
+            for cc, ads in por_contrato.items():
+                comp = acrescimo_computavel(ads)
+                if comp["acrescimo"] > 0:
+                    acresc[cc] = comp["acrescimo"]
+                if comp["lacunas"]:
+                    lacunas_ad[cc] = comp["lacunas"]
         except sqlite3.OperationalError:
             pass
         # sanity: exclui valor_global lixo (> R$ 1 bi quase sempre é erro de coleta do PNCP)
@@ -680,13 +703,15 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             # segue (honestidade: vira indício NÃO confirmado, rebaixado na ordenação).
             confirmado = r["cc"] in acresc and vi
             pct = (acresc[r["cc"]] / vi) if confirmado else ((vg - vi) / vi if vi else 0)
-            estouro = pct >= 0.25
+            # Teto aplicável: 50% SÓ para REFORMA de edifício ou equipamento. A versão anterior
+            # dava 50% a qualquer OBRA/CONSTRUÇÃO/ENGENHARIA — o art. 125 não faz isso, e o
+            # efeito era falso NEGATIVO: obra nova com 30% de acréscimo passava calada.
+            obj = _norm_nome(r["objeto"])
+            teto = _teto_acrescimo("reforma" if re.search(r"REFORMA", obj) else None)
+            estouro = pct >= teto
             serie = nad >= 3
             if not (estouro or serie):
                 continue
-            # limite aplicável: 50% se o objeto sugere reforma/obra, senão 25%
-            obj = _norm_nome(r["objeto"])
-            teto = 0.50 if re.search(r"REFORMA|OBRA|EDIFIC|CONSTRU|ENGENHARIA", obj) else 0.25
             cnpj = re.sub(r"\D", "", r["fornecedor_documento"] or "")
             achados.append({
                 "contrato": r["cc"], "fornecedor": r["fornecedor_nome"],
@@ -698,6 +723,7 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                 "estoura_teto": pct >= teto,
                 "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
                 "acrescimo_confirmado": bool(confirmado),
+                "lacunas_aditivo": lacunas_ad.get(r["cc"], []),
                 "tipo": ("estouro" if estouro else "serie"),
                 "vigencia_fim": r["vigencia_fim"]})
         # ranking: estoura o teto legal primeiro, acréscimo CONFIRMADO antes do não confirmado
@@ -713,7 +739,8 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                                "(25% em regra; 50% p/ reforma — Lei 14.133 art. 125). Também marca "
                                "CHANGE ORDERS EM SÉRIE (≥3 aditivos), red-flag de fraude por aditivos "
                                "(OCDE/Banco Mundial). 'acréscimo real' vem do termo aditivo quando "
-                               "classificado como acréscimo (não reajuste)."),
+                               "classificado como acréscimo (não reajuste, não reequilíbrio do "
+                               "art. 124, não prorrogação) pela régua única de limites_aditivo."),
                 "ressalva": ("Achado com acrescimo_confirmado=False usa vg−vi, que inclui REAJUSTE "
                              "(correção inflacionária) — NÃO conta no limite de 25%; confirmar no termo "
                              "aditivo se é acréscimo quantitativo. Base de contratos ainda parcial (PNCP). "

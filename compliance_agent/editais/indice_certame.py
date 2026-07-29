@@ -45,6 +45,7 @@ import sqlite3
 
 from pathlib import Path
 
+from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
 from compliance_agent.collectors.pncp import MODALIDADE_NOME   # tabela de dominio do PNCP (existia, nao era usada)
 from compliance_agent.cruzamentos_intel import _mediana, _norm_item
 from compliance_agent.editais.db import DDL_CERTAME_INDICE, conectar
@@ -116,8 +117,11 @@ SOBREPRECO_FATOR = 2.0         # razão preço/mediana que satura o flag em 1.0 
 MIN_AMOSTRA_PRECO = 5          # mediana só com ≥5 preços de OUTROS certames (robustez)
 PISO_ARTEFATO = 0.10           # preço <10% da mediana = artefato de unidade (comparador_precos)
 
-# Execução: Lei 14.133 art. 125 — acréscimo contratual limitado a 25%
-LIMITE_ADITIVO_LEGAL = 0.25
+# Execução: Lei 14.133 art. 125 — acréscimo contratual limitado a 25%.
+# O teto vem da fonte única `limites_aditivo` (era a 6ª cópia do número no projeto).
+LIMITE_ADITIVO_LEGAL = _teto_acrescimo(None)
+# NOTA de leitura: 0.5 aqui é a NOTA do driver quando o acréscimo passou da metade do teto sem
+# estourá-lo — é pontuação do índice, não percentual legal. Nome mantido por compatibilidade.
 VALOR_ADITIVO_METADE_LIMITE = 0.5
 
 FAIXAS_ROTULO = ("BAIXO", "MEDIO", "ALTO", "EXTREMO")

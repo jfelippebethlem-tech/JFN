@@ -164,3 +164,43 @@ def test_score_processo_convergencia_multiplicativa():
 def test_score_processo_ignora_refutado():
     rs = [base.ResultadoDetector(detector="A", processo="p", score=0.85, status="confirmado", refutada=True)]
     assert base.score_processo(rs, {"A": 1.0}) == 0.0
+
+
+# ─────────────── grounding CONFERIDO na rubrica (2026-07-29) ───────────────────────────────────
+
+def test_rubrica_com_fonte_descarta_citacao_inventada():
+    """A regra de ouro exigia trecho NÃO VAZIO; qualquer frase inventada passava como literal.
+
+    Com `fonte`, a citação é conferida por `nucleo/grounding.ancorar`. É a diferença entre
+    grounding declarado e grounding conferido — e o descarte é honesto: vira nao_avaliavel,
+    não vira achado fraco.
+    """
+    from compliance_agent.detectores.base import avaliar_rubrica
+
+    escala = {"generica": "medio", "robusta": "ausente"}
+    fonte = "A justificativa da contratação limita-se a mencionar a necessidade do serviço."
+    nivel, score, motivo = avaliar_rubrica(
+        {"nivel": "generica", "trecho": "o gestor confessou o direcionamento"}, escala, fonte)
+    assert nivel is None and score == 0.0
+    assert "NÃO localizada" in motivo
+
+
+def test_rubrica_com_fonte_aceita_citacao_real():
+    from compliance_agent.detectores.base import avaliar_rubrica
+
+    escala = {"generica": "medio"}
+    fonte = "A justificativa da contratação limita-se a mencionar a necessidade do serviço."
+    nivel, score, motivo = avaliar_rubrica(
+        {"nivel": "generica", "trecho": "limita-se a mencionar a necessidade"}, escala, fonte)
+    assert nivel == "medio" and score > 0
+    assert "ancorada" in motivo
+
+
+def test_rubrica_sem_fonte_mantem_o_comportamento_antigo_e_declara():
+    """Retrocompatível: sem fonte, vale a presença — mas o motivo diz que não conferiu."""
+    from compliance_agent.detectores.base import avaliar_rubrica
+
+    nivel, score, motivo = avaliar_rubrica(
+        {"nivel": "generica", "trecho": "qualquer coisa"}, {"generica": "medio"})
+    assert nivel == "medio" and score > 0
+    assert "não conferida" in motivo

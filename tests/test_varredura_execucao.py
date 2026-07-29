@@ -67,7 +67,10 @@ def _aditivo(con, **kw):
     d = {"id": None, "numero_controle_pncp": _PNCP, "sequencial_termo": 1, "numero_termo": "1",
          "objeto": "", "valor_acrescido": 0.0, "valor_global": 1_000_000.0,
          "prazo_aditado_dias": 0, "vigencia_fim": "", "qualif_acrescimo": "1",
-         "qualif_vigencia": "0", "qualif_reajuste": "0", "fundamento_legal": "art. 125"}
+         # fundamento em branco por padrão: ele DECIDE antes do qualificador (art. 124 =
+         # reequilíbrio, art. 125 = acréscimo), então deixá-lo preenchido no fixture mascararia
+         # justamente o caminho do qualificador que alguns testes querem exercitar.
+         "qualif_vigencia": "0", "qualif_reajuste": "0", "fundamento_legal": ""}
     d.update(kw)
     con.execute(f"INSERT INTO contrato_aditivo VALUES ({','.join('?' * len(d))})", tuple(d.values()))
     con.commit()
@@ -298,8 +301,11 @@ def test_tipo_objeto_define_o_teto(con, objeto, esperado):
 def test_so_roda_detectores_que_a_base_alimenta():
     """X3/X4/X5/X6 pedem pagamento por contrato, itens de ARP e planilha orçamentária — nada
     disso existe nestas tabelas. Rodá-los produziria `nao_avaliavel` em massa, que esconde a
-    cobertura real em vez de revelá-la (mesma regra de `varredura_certames`)."""
-    assert DETECTORES_EXECUCAO == ("X1", "X2")
+    cobertura real em vez de revelá-la (mesma regra de `varredura_certames`).
+
+    X7 entra porque três dos seus cinco testes (dupla correção, magnitude, reiteração) rodam só
+    com data e valor do termo, que a base tem; os outros dois viram lacuna declarada."""
+    assert DETECTORES_EXECUCAO == ("X1", "X2", "X7")
 
 
 def test_varrer_contrato_devolve_achados_e_cobertura(con):

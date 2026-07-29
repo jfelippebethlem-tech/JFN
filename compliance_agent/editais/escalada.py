@@ -29,7 +29,8 @@ def _degrau_por_sv(sv: int) -> int:
 
 def recomendar(sv: int, *, certame_aberto: bool = False, sessao_marcada: bool = False,
                vinculo_societario_vencedor: bool = False, agente_publico_qsa: bool = False,
-               reincidencia_orgao: int = 0, teste_objetivo_violado: bool = False) -> dict:
+               reincidencia_orgao: int = 0, teste_objetivo_violado: bool = False,
+               grau_evidencia: str | None = None, familias_independentes: int = 1) -> dict:
     """Recomenda a peça de controle externo para um achado pontuado na matriz S×V.
 
     Args:
@@ -41,10 +42,17 @@ def recomendar(sv: int, *, certame_aberto: bool = False, sessao_marcada: bool = 
       agente_publico_qsa: agente público do órgão no QSA de licitante (conflito de interesses).
       reincidencia_orgao: nº de certames do MESMO órgão com o mesmo padrão (≥3 → auditoria temática).
       teste_objetivo_violado: teste finalístico determinístico confirmou violação de teto legal.
+      grau_evidencia: grau A-E de `editais/flags`. Quando informado, a peça é conferida contra o
+        STANDARD PROBATÓRIO da pretensão (`knowledge/standard_prova`) e REBAIXADA se a evidência
+        não o alcança. A régua S×V mede gravidade e verossimilhança do padrão; ela não mede
+        quanto de prova existe — e representação sobre grau C (juízo de IA) é exatamente a
+        inflação de peça que a casa já corrigiu sete vezes. Sem o argumento, nada muda.
+      familias_independentes: quantas famílias de detecção convergiram. Duas leituras do mesmo
+        campo não são duas famílias.
 
     Returns:
       {peca, urgencia ("rotina"|"prioritaria"|"imediata"), gatilhos (list[str]), fundamento,
-       auditoria_tematica (bool), sv}
+       auditoria_tematica (bool), sv, standard (dict|None)}
     """
     sv_c = max(1, min(25, int(sv)))
     degrau = _degrau_por_sv(sv_c)
@@ -83,5 +91,24 @@ def recomendar(sv: int, *, certame_aberto: bool = False, sessao_marcada: bool = 
         4: "vício grave em certame aberto — representação com pedido de medida cautelar (suspensão)",
     }[degrau]
 
-    return {"peca": PECAS[degrau], "urgencia": urgencia, "gatilhos": gatilhos,
-            "fundamento": fundamento, "auditoria_tematica": auditoria, "sv": sv_c}
+    r = {"peca": PECAS[degrau], "urgencia": urgencia, "gatilhos": gatilhos,
+         "fundamento": fundamento, "auditoria_tematica": auditoria, "sv": sv_c,
+         "standard": None}
+
+    if grau_evidencia:
+        from compliance_agent.knowledge.standard_prova import rebaixar_peca
+
+        st = rebaixar_peca(r["peca"], grau_evidencia,
+                           familias_independentes=familias_independentes)
+        r["standard"] = st
+        if st.get("rebaixada"):
+            # A urgência NÃO é rebaixada junto: certame aberto com sessão marcada continua
+            # urgente ainda que a prova só sustente diligência — o que muda é a peça, não o prazo.
+            antes = r["peca"]
+            r["peca"] = st["peca"] if st["peca"] in PECAS else "diligencia"
+            r["gatilhos"].append(
+                f"standard probatório: evidência grau {grau_evidencia} atinge "
+                f"'{st['standard_atingido']}', abaixo do exigido para '{antes}' "
+                f"('{st['standard_exigido']}') — peça rebaixada para '{r['peca']}'")
+            r["fundamento"] += (f" | REBAIXADA por standard probatório: {st['motivo']}")
+    return r

@@ -15,7 +15,11 @@ O QUE A BASE ALIMENTA, medido em 2026-07-29:
     pcrj_contratos     54.624 linhas   valor_inicial, valor_global, vigência, objeto, num_aditivos
     contrato_aditivo    1.728 linhas   valor_acrescido, prazo_aditado_dias, vigencia_fim, objeto
 
-Isso alimenta X1 (teto do art. 125) e X2 (prorrogação perpétua) com dado real. **Só esses dois.**
+Isso alimenta X1 (teto do art. 125), X2 (prorrogação perpétua) e X7 (reequilíbrio indevido do
+art. 124) com dado real. **Só esses três.** O X7 entra porque a classificação de natureza já
+separa a recomposição do acréscimo, e três dos seus cinco testes — dupla correção no exercício,
+magnitude e reiteração — rodam apenas com data e valor. Os outros dois (índice contratado,
+existência de pleito) saem como lacuna DECLARADA, não como ausência de irregularidade.
 
 O QUE FICA DE FORA, e por quê — a mesma regra de `varredura_certames`:
 
@@ -57,7 +61,7 @@ DB_LEITURA = os.environ.get("JFN_DB", "data/compliance.db")
 DB_ACHADOS = os.environ.get("JFN_DB_ACHADOS", "data/achados.db")
 
 # Manter esta lista curta e honesta é o ponto — ver o cabeçalho.
-DETECTORES_EXECUCAO = ("X1", "X2")
+DETECTORES_EXECUCAO = ("X1", "X2", "X7")
 
 
 def abrir_leitura(caminho: str | None = None) -> sqlite3.Connection:

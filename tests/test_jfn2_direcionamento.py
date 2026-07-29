@@ -41,8 +41,13 @@ def test_dados_insuficientes_nao_chama_llm():
 
 def test_avaliar_parseia_resposta_llm():
     edital = "Exige-se atestado de capacidade tecnica. " * 80  # >1500 chars
+    # O `trecho` precisa EXISTIR no edital: desde 2026-07-29 a citação é conferida contra o
+    # documento (`nucleo/grounding`), e não apenas exigida como campo não-vazio. O fixture antigo
+    # citava "atestado X", que o edital nunca teve — hoje isso é descartado, que é o ponto.
     async def _fake(_):
-        return '{"grau":"amarelo","resumo":"indício","exigencias_restritivas":[{"trecho":"atestado X","por_que_restringe":"muito especifico","jurisprudencia":"Súmula TCU 263"}],"dados_suficientes":true}'
+        return ('{"grau":"amarelo","resumo":"indício","exigencias_restritivas":'
+                '[{"trecho":"atestado de capacidade tecnica","por_que_restringe":"muito especifico",'
+                '"jurisprudencia":"Súmula TCU 263"}],"dados_suficientes":true}')
     out = asyncio.run(DC.avaliar_direcionamento(edital, "", gerar=_fake))
     assert out["grau"] == "amarelo" and out["exigencias_restritivas"][0]["jurisprudencia"] == "Súmula TCU 263"
     assert "presinais" in out and out["ressalva"]

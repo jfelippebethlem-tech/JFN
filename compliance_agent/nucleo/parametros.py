@@ -32,6 +32,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from compliance_agent.limites_aditivo import ato_normativo as _ato_aditivo, teto_acrescimo as _teto_adit
+
+_TETO_ADITIVO_PADRAO = _teto_adit(None)
+_TETO_ADITIVO_REFORMA = _teto_adit("reforma")
+_ATO_ADITIVO = _ato_aditivo()
+
 
 # Local do arquivo de overrides (calibração do perito + aprendizado).
 ARQUIVO_OVERRIDES = Path(
@@ -109,9 +115,12 @@ _PADRAO: list[Parametro] = [
     ),
     # Aditivos
     Parametro(
-        "aditivo_limite_frac", 0.25, "razao",
+        # Valor e faixa vêm da fonte única `limites_aditivo` — este era a 7ª cópia do teto.
+        # Sendo `origem="lei"`, o parâmetro não deveria ser calibrável para fora dos limites
+        # legais, e é justamente por isso que o número não pode ser digitado aqui.
+        "aditivo_limite_frac", _TETO_ADITIVO_PADRAO, "razao",
         "Acréscimo máximo legal por aditivo sobre o valor original (obras/serviços).",
-        "Lei 14.133/2021, art. 125", "lei", minimo=0.25, maximo=0.50,
+        _ATO_ADITIVO, "lei", minimo=_TETO_ADITIVO_PADRAO, maximo=_TETO_ADITIVO_REFORMA,
     ),
     Parametro(
         "aditivo_max_qtd", 3, "contagem",
