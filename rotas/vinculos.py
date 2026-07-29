@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from typing import Optional
+
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
