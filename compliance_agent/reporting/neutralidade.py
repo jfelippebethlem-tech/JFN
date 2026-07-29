@@ -14,8 +14,11 @@ from __future__ import annotations
 
 import re
 
-# nomes internos que JAMAIS podem chegar ao dono num entregável
-_PROIBIDOS = ("jfn", "yoda", "itkava", "iterj", "hermes", "massare", "jfelippe")
+# nomes internos que JAMAIS podem chegar ao dono num entregável.
+# NÃO acrescentar aqui sigla de ÓRGÃO PÚBLICO: "iterj" esteve nesta lista e fazia qualquer peça
+# sobre o Instituto de Terras e Cartografia do ERJ (UG 133100 — alvo declarado no CLAUDE.md)
+# explodir em AssertionError. Nome de auditado é conteúdo do relatório, não vazamento.
+_PROIBIDOS = ("jfn", "yoda", "itkava", "hermes", "massare", "jfelippe")
 _RE_PROIBIDOS = re.compile(r"\b(" + "|".join(_PROIBIDOS) + r")\b", re.I)
 _RE_LEX = re.compile(r"\bLex\b")  # "Lex" isolado (o agente) — mas não "Alexandre/Complexo/flex"
 

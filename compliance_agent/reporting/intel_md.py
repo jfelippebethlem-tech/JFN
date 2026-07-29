@@ -15,6 +15,7 @@ from compliance_agent.reporting.intel_analise import (
     _frase_cardinalidade, _red_flags, _resumo_executivo, parecer_fornecedor,
 )
 from compliance_agent.reporting.intel_base import _num_brl
+from compliance_agent.reporting.completude import campo, top_declarado, tudo
 from compliance_agent import fachada_remotes as _fr
 
 _FB2_TIMEOUT = float(os.environ.get("JFN_FACHADA_B2_TIMEOUT", "20"))
@@ -64,7 +65,7 @@ def _render_cruzamento(ctx: dict) -> str:
         add("")
         add("| Empresa (CNPJ) | OBs | Pago (R$) | SEI |")
         add("|---|---:|---:|---:|")
-        for c in coend[:25]:
+        for c in tudo(coend):
             add(f"| {(c.get('razao') or '—')[:48]} ({fmt_cnpj(c['cnpj'])}) | {c.get('n_obs',0)} | "
                 f"{moeda(c.get('total_pago',0))} | {c.get('n_sei',0)} |")
         add("")
@@ -89,7 +90,7 @@ def _render_cruzamento(ctx: dict) -> str:
     add("")
     add("| Empresa (CNPJ) | Sócio(s) em comum | Cidade-sede | OBs | Pago (R$) | SEI | Mesma sede? |")
     add("|---|---|---|---:|---:|---:|:---:|")
-    for r in rel[:25]:
+    for r in tudo(rel):
         razao = (r.get("razao") or "—")[:38]
         comuns = (r.get("socios_comuns") or "—")
         comuns = (comuns[:40] + "…") if len(comuns) > 40 else comuns
@@ -491,7 +492,7 @@ def _render_emendas(ctx: dict) -> str:
     add("")
     add("| # | Parlamentar (autor) | Tipo de emenda | Anos | Nº | Valor pago (R$) |")
     add("|---:|---|---|---|---:|---:|")
-    for i, a in enumerate(em["autores"][:25], 1):
+    for i, a in enumerate(tudo(em["autores"]), 1):
         tipo = (a["tipo"] or "—").replace("Emenda Individual - Transferências com Finalidade Definida",
                                           "Individual (TFD)").replace("Emenda de Bancada", "Bancada")
         add(f"| {i} | **{a['autor']}** | {tipo} | {a['anos']} | {a['n']} | {moeda(a['v'])} |")
@@ -537,7 +538,7 @@ def _render_doacoes_tse(ctx: dict) -> str:
     add("")
     add("| Doador | Via | Candidato | Partido | Ano | Valor doado (R$) | Órgão (UG) pagador | Processos SEI |")
     add("|---|---|---|---|---:|---:|---|---|")
-    for r in rede[:20]:
+    for r in tudo(rede):
         ugs = r.get("ugs") or []
         ug_cell = ("; ".join(f"{u.get('nome')} (R$ {moeda(u.get('total'))})" for u in ugs[:2])
                    + (f" (+{len(ugs) - 2} UG)" if len(ugs) > 2 else "")) if ugs else "—"
@@ -627,7 +628,7 @@ def _render_execucao(ctx: dict) -> str:
     add("")
     add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Resumo da perícia |")
     add("|---|---:|---:|:--:|:--:|---|")
-    for x in sorted(suspeitos, key=lambda x: -(x.get("total") or 0))[:20]:
+    for x in tudo(sorted(suspeitos, key=lambda x: -(x.get("total") or 0))):
         res = (x.get("resumo") or "")[:90].replace("|", "/")
         add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {x.get('nota')}/10 | {res} |")
     add("")
@@ -726,7 +727,7 @@ def _render_conflito_pessoal(ctx: dict) -> str:
         add("")
         add("| Sócio/Administrador | Papel (QSA) | Órgão (folha) | Cargo | Vínculo | Competência |")
         add("|---|---|---|---|---|---|")
-        for it in itens[:20]:
+        for it in tudo(itens):
             add(f"| {it['nome']} | {it['papel']} | {it['orgao']} | {it['cargo']} | {it['vinculo']} | {it['competencia']} |")
         add("")
         add("> 🟡 **Indício a confirmar:** confirmar a identidade (nome + 5 díg admite homonímia rara) e a natureza "
@@ -886,7 +887,7 @@ def render_md(ctx: dict) -> str:
         if socios:
             add("")
             add("**Quadro societário:**")
-            for s in socios[:15]:
+            for s in tudo(socios):
                 add(f"- {s.get('nome','—')} — {s.get('qualificacao','—')} (entrada: {s.get('data_entrada','—')})")
     else:
         add(f"> ⚠️ Perfil cadastral **{ctx['fonte_enriq']}** "
@@ -1047,7 +1048,7 @@ def render_md(ctx: dict) -> str:
             add("")
             add("| Processo | Ano | Objeto | Critério | Valor (R$) | Unidade |")
             add("|---|---:|---|---|---:|---|")
-            for i in _ctr[:10]:
+            for i in tudo(_ctr):
                 obj = (i.get("objeto") or "").strip()
                 obj = (obj[:55] + "…") if len(obj) > 55 else (obj or "—")
                 proc = (i.get("processo") or "").split(",")[0].strip()
@@ -1060,7 +1061,7 @@ def render_md(ctx: dict) -> str:
             add("")
             add("| Processo | Ano | Objeto | Afastamento | Enquadramento legal | Valor (R$) |")
             add("|---|---:|---|---|---|---:|")
-            for i in _dispensa[:10]:
+            for i in tudo(_dispensa):
                 obj = (i.get("objeto") or "").strip()
                 obj = (obj[:40] + "…") if len(obj) > 40 else (obj or "—")
                 enq = (i.get("enquadramento_legal") or "").strip()
@@ -1079,7 +1080,7 @@ def render_md(ctx: dict) -> str:
     if ctx["enriq"].get("ok"):
         add(f"**Rating:** {ctx['risco']} (score {ctx['score']}/100).")
         add("")
-        for s in (ctx["enriq"].get("sinais") or [])[:30]:
+        for s in tudo((ctx["enriq"].get("sinais") or [])):
             nivel = s.get("nivel", "")
             emoji = {"ALTO": "🔴", "MÉDIO": "🟡", "BAIXO": "🟢"}.get(nivel, "•")
             desc = s.get("descricao", "")

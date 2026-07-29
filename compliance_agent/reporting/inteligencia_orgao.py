@@ -29,6 +29,12 @@ from typing import Optional
 from fpdf.enums import XPos, YPos
 
 from compliance_agent import ugs
+from compliance_agent.reporting.completude import campo, top_declarado, tudo
+
+# Quantas OBs por exercício entram no corpo do relatório. `None` = TODAS.
+# Já foi 40 no Markdown e 12 no PDF ao mesmo tempo — a mesma UG, dois números —, com o comentário
+# do código afirmando "sem limite, tudo no PDF". Diretriz do dono (2026-07-29): sem corte.
+TOP_OB_ANO: int | None = None
 from compliance_agent.reporting.inteligencia import (
     cabecalho_frescor,
     _DB, _REPORTS, _foto_fachada_b2, _hhi, _mc, _registrar_fonte, _render_parecer_pdf, _slug,
@@ -823,7 +829,7 @@ def _painel_detectores_orgao(ug: str) -> dict:
         ev = (r.evidencia or [{}])[0] if r.evidencia else {}
         trecho = str(ev.get("trecho") or "").strip().replace("\n", " ")
         if not trecho and r.valores:
-            trecho = "; ".join(f"{k}={v}" for k, v in list(r.valores.items())[:3])
+            trecho = "; ".join(f"{k}={v}" for k, v in tudo(r.valores.items()))
         return (trecho or "—")[:120]
 
     confirmados = [r for r in resultados if r.status == "confirmado" and not r.refutada]
@@ -951,7 +957,7 @@ def _secao_sei_risco_md(add, ctx: dict) -> None:
     add("")
     add("| Processo SEI | Risco | Pago (R$) | OBs | Objeto | 1ª red flag |")
     add("|---|:--:|---:|---:|---|---|")
-    for x in itens[:20]:
+    for x in tudo(itens):
         try:
             rf = _json.loads(x.get("red_flags") or "[]")
         except Exception:
@@ -985,7 +991,6 @@ def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
     Dados Abertos `contratos_tcerj`) ATIVOS × ARQUIVADOS, com objeto, processo, vigência, critério de julgamento,
     valor CONTRATADO × valor efetivamente PAGO pela UG. Responde 'que contratos o órgão tem, quais ativos/
     arquivados, qual o objeto, quanto pagou'. Indício/checagem documental, não acusação."""
-    import sqlite3
     ug = str(ctx.get("ug") or "")
     add("## 1-L. CONTRATOS POR FORNECEDOR (ATIVOS × ARQUIVADOS · OBJETO · CONTRATADO × PAGO)")
     add("")
@@ -997,64 +1002,103 @@ def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
     add("")
     if not ug:
         add("_UG não resolvida — **INDISPONÍVEL**._"); add(""); return
-    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+    dados = dados_contratos_fornecedor(ug, (ctx.get("nome") or ""))
+    if dados.get("erro"):
+        add(f"_Seção de contratos indisponível nesta execução ({dados['erro']}) — **INDISPONÍVEL**._")
+        add(""); return
+
+    add(f"**Universo:** {dados['n_fornecedores']} fornecedor(es) PJ pago(s) por esta UG; "
+        f"{len(dados['com_contrato'])} com contrato registrado no TCE-RJ e "
+        f"{len(dados['sem_contrato'])} sem. **Todos aparecem abaixo** — nada foi omitido por tamanho.")
+    add("")
+    for bloco in tudo(dados["com_contrato"]):
+        add(f"### {bloco['nome']} — CNPJ {bloco['cnpj']}")
+        add(f"**Pago por esta UG:** R$ {moeda(bloco['pago'])} em {bloco['n_obs']} OBs · "
+            f"**Contratos TCE-RJ:** {bloco['n_contratos']} ({bloco['n_ativos']} ativo(s), "
+            f"{bloco['n_arquivados']} arquivado(s)).")
+        add("")
+        add("| Situação | Objeto | Processo | Vigência | Critério | Contratado (R$) | Pago no contrato (R$) |")
+        add("|:--|:--|:--|:--:|:--:|--:|--:|")
+        for c in tudo(bloco["contratos"]):
+            add(f"| {c['badge']}{c['marca']} | {c['objeto']} | {c['processo']} | {c['vigencia']} | "
+                f"{c['criterio']} | {c['contratado']} | {c['pago_no_contrato']} |")
+        add("")
+    if not dados["com_contrato"]:
+        add("_Nenhum fornecedor desta UG tem contrato no `contratos_tcerj` (cobertura TCE-RJ parcial, ou "
+            "repasses intragovernamentais sem contrato) — **INDISPONÍVEL ≠ ausência de contrato.**_")
+        add("")
+    if dados["sem_contrato"]:
+        add(f"> **Sem contrato no TCE-RJ ({len(dados['sem_contrato'])} fornecedor(es)):** "
+            + "; ".join(f"{s['nome']} (R$ {moeda(s['pago'])})" for s in tudo(dados["sem_contrato"]))
+            + ". Pode ser repasse intragovernamental, contrato não coletado (cobertura parcial) ou "
+              "execução fora de contrato — **a apurar, INDISPONÍVEL ≠ 0**.")
+        add("")
+    add("> **Vigência ativa com pagamento, ou objeto divergente da finalidade da UG, ou critério não "
+        "competitivo (dispensa/inexigibilidade) → priorizar leitura do processo. Indício, não prova.**")
+    add("")
+
+
+def dados_contratos_fornecedor(ug: str, nome_ug: str = "") -> dict:
+    """CONSULTA da §1-L, separada do render — é o que permite MD e PDF mostrarem a MESMA coisa.
+
+    Antes desta separação a §1-L só existia no Markdown: o PDF de órgão saía sem ~1.000 linhas (45
+    fornecedores nominados, com objeto e valor) e não avisava o leitor. Quem lia o PDF e quem lia o
+    MD liam relatórios diferentes sobre o mesmo órgão.
+
+    Também não há mais `LIMIT 50` na consulta de fornecedores — era o pior tipo de corte, porque
+    acontecia na ORIGEM: o relatório não sabia sequer quantos ficaram de fora, e portanto nada podia
+    declarar.
+    """
+    import sqlite3
+
+    out: dict = {"n_fornecedores": 0, "com_contrato": [], "sem_contrato": [], "erro": ""}
+    nome_ug_l = (nome_ug or "").lower()
+    con = sqlite3.connect(_DB)
+    con.row_factory = sqlite3.Row
     try:
         forns = con.execute(
             "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, ROUND(SUM(valor),2) pago, COUNT(*) n "
             "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 AND valor>0 "
-            "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC LIMIT 50", (ug,)).fetchall()
-        nome_ug = (ctx.get("nome") or "").lower()
-        algum = False
-        sem_contrato: list[str] = []
-        for f in forns:
+            "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC", (ug,)).fetchall()
+        out["n_fornecedores"] = len(forns)
+        for f in tudo(forns):
+            nome = (f["nome"] or "—").strip()
             contratos = con.execute(
-                "SELECT objeto, processo, ano_processo, valor_contrato, valor_pago, status, vig_inicio, vig_fim, "
-                "criterio_julgamento, unidade FROM contratos_tcerj WHERE cnpj=? "
-                "ORDER BY (CASE WHEN lower(status) LIKE 'ativo%' OR lower(status) LIKE 'em aberto%' THEN 0 ELSE 1 END), "
-                "valor_contrato DESC", (f["cnpj"],)).fetchall()
+                "SELECT objeto, processo, ano_processo, valor_contrato, valor_pago, status, vig_inicio, "
+                "vig_fim, criterio_julgamento, unidade FROM contratos_tcerj WHERE cnpj=? "
+                "ORDER BY (CASE WHEN lower(status) LIKE 'ativo%' OR lower(status) LIKE 'em aberto%' "
+                "THEN 0 ELSE 1 END), valor_contrato DESC", (f["cnpj"],)).fetchall()
             if not contratos:
-                sem_contrato.append(f"{(f['nome'] or '')[:34]} (R$ {moeda(f['pago'])})")
+                out["sem_contrato"].append({"cnpj": f["cnpj"], "nome": nome, "pago": f["pago"]})
                 continue
-            algum = True
-            n_at = sum(1 for c in contratos if _classe_contrato(c["status"])[1] == "ativo")
-            n_ar = sum(1 for c in contratos if _classe_contrato(c["status"])[1] == "arquivado")
-            cnpj_fmt = f["cnpj"]
-            add(f"### {(f['nome'] or '—').strip()} — CNPJ {cnpj_fmt}")
-            add(f"**Pago por esta UG:** R$ {moeda(f['pago'])} em {f['n']} OBs · "
-                f"**Contratos TCE-RJ:** {len(contratos)} ({n_at} ativo(s), {n_ar} arquivado(s)).")
-            add("")
-            add("| Situação | Objeto | Processo | Vigência | Critério | Contratado (R$) | Pago no contrato (R$) |")
-            add("|:--|:--|:--|:--:|:--:|--:|--:|")
-            for c in contratos[:50]:
-                badge = _classe_contrato(c["status"])[0]
-                obj = (c["objeto"] or "—").strip().replace("|", "/").replace("\n", " ")[:90]
-                proc = (c["processo"] or "—").replace("|", "/")
+            linhas = []
+            for c in tudo(contratos):
                 uni = (c["unidade"] or "").strip().lower()
-                marca = " ◇" if (uni and uni not in nome_ug and nome_ug not in uni) else ""
-                vig = f"{(c['vig_inicio'] or '?')}→{(c['vig_fim'] or '?')}"
-                crit = (c["criterio_julgamento"] or "—")[:18]
-                vc = moeda(c["valor_contrato"]) if c["valor_contrato"] else "—"
-                vp = moeda(c["valor_pago"]) if c["valor_pago"] else "n/d"
-                add(f"| {badge}{marca} | {obj} | {proc} | {vig} | {crit} | {vc} | {vp} |")
-            add("")
-            if len(contratos) > 12:
-                add(f"> _(+{len(contratos) - 12} contrato(s) deste fornecedor omitido(s) — ver xlsx)._"); add("")
-        if not algum:
-            add("_Nenhum dos maiores fornecedores desta UG tem contrato no `contratos_tcerj` (cobertura TCE-RJ "
-                "parcial, ou repasses intragovernamentais sem contrato) — **INDISPONÍVEL ≠ ausência de contrato.**_")
-            add("")
-        if sem_contrato:
-            add(f"> **Sem contrato no TCE-RJ (entre os maiores pagos):** {'; '.join(sem_contrato[:10])}. "
-                "Pode ser repasse intragovernamental, contrato não coletado (cobertura parcial) ou execução "
-                "fora de contrato — **a apurar, INDISPONÍVEL ≠ 0**.")
-            add("")
-        add("> **Vigência ativa com pagamento, ou objeto divergente da finalidade da UG, ou critério não "
-            "competitivo (dispensa/inexigibilidade) → priorizar leitura do processo. Indício, não prova.**")
-        add("")
+                fora = bool(uni and nome_ug_l and uni not in nome_ug_l and nome_ug_l not in uni)
+                linhas.append({
+                    "badge": _classe_contrato(c["status"])[0],
+                    "marca": " ◇" if fora else "",
+                    # objeto INTEIRO: é a informação que mais importa numa carteira, e saía cortado
+                    # em 90 caracteres sem sequer uma reticência
+                    "objeto": (c["objeto"] or "—").strip().replace("|", "/").replace("\n", " "),
+                    "processo": (c["processo"] or "—").replace("|", "/"),
+                    "vigencia": f"{(c['vig_inicio'] or '?')}→{(c['vig_fim'] or '?')}",
+                    "criterio": (c["criterio_julgamento"] or "—").strip(),
+                    "contratado": moeda(c["valor_contrato"]) if c["valor_contrato"] else "—",
+                    "pago_no_contrato": moeda(c["valor_pago"]) if c["valor_pago"] else "n/d",
+                })
+            out["com_contrato"].append({
+                "cnpj": f["cnpj"], "nome": nome, "pago": f["pago"], "n_obs": f["n"],
+                "n_contratos": len(contratos),
+                "n_ativos": sum(1 for c in contratos if _classe_contrato(c["status"])[1] == "ativo"),
+                "n_arquivados": sum(1 for c in contratos if _classe_contrato(c["status"])[1] == "arquivado"),
+                "contratos": linhas,
+            })
     except Exception as e:  # noqa: BLE001 — degrada honesto
-        add(f"_Seção de contratos indisponível nesta execução ({str(e)[:70]}) — **INDISPONÍVEL**._"); add("")
+        out["erro"] = str(e)[:70]
     finally:
         con.close()
+    return out
 
 
 def _quadrante_persecucao(r: dict) -> dict:
@@ -1216,7 +1260,7 @@ def _secao_beneficios_md(add, ctx: dict) -> None:
         add("| Fornecedor | Sócio/Administrador | Papel | Benefício | Fonte do CPF |")
         add("|---|---|---|---|---|")
         _fonte = {"favorecidos_pf": "favorecidos PF", "tse_doadores": "doadores TSE"}
-        for it in itens[:20]:
+        for it in tudo(itens):
             tipos = ", ".join(it.get("tipos") or []) or "(tipo não detalhado)"
             forn = (it.get("razao") or "—")[:38]
             add(f"| {forn} | {(it.get('nome') or '—')[:34]} | {it.get('papel', '')} | {tipos} | "
@@ -1266,7 +1310,7 @@ def _secao_tce_md(add, ctx: dict) -> None:
     if itens:
         add("| Processo | Ano | Tipo | Valor (R$) | Resp. | Natureza | Sessão | Órgão (TCE) |")
         add("|---|---|---|---|---|---|---|---|")
-        for it in itens[:20]:
+        for it in tudo(itens):
             flag = " ⚠" if it.get("confianca") == "media" else ""
             resp = f"{it.get('n_resp', 1)}×" if it.get("n_resp", 1) > 1 else "1"
             add(f"| {it['processo']} | {it.get('ano', '—')} | {it['tipo']} | {moeda(it['valor'])} | {resp} | "
@@ -1310,7 +1354,7 @@ def _secao_concentracao_grupo_md(add, ctx: dict) -> None:
     if grupos_multi:
         add("| # | Grupo (raiz) | Nº CNPJs | Nº raízes | Share % | Total (R$) | Maior CNPJ do grupo |")
         add("|--:|---|--:|--:|--:|--:|---|")
-        for i, g in enumerate(grupos_multi[:50], 1):
+        for i, g in enumerate(tudo(grupos_multi), 1):
             add(f"| {i} | {fmt_cnpj(g['grupo']) if g.get('grupo') else '—'} | {g['n_cnpjs']} | {g['n_raizes']} | "
                 f"{g['share']:.1f}% | {moeda(g['total'])} | {(g.get('top_nome') or '—')[:36]} |")
         add("")
@@ -1601,7 +1645,7 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
     if rede:
         add("| # | Administrador (doc) | Nº fornecedores do órgão | Qualificações |")
         add("|--:|---|--:|---|")
-        for i, r in enumerate(rede[:15], 1):
+        for i, r in enumerate(tudo(rede), 1):
             add(f"| {i} | {(r['nome_socio'] or '—')[:34]} ({r.get('doc_socio', '')}) | "
                 f"{r['n_fornecedores']} | {(r.get('qualificacoes') or '—')[:34]} |")
         add("")
@@ -1620,7 +1664,7 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
         add("")
         add("| # | Administrador (doc) | Nº de CNPJs (Brasil) |")
         add("|--:|---|--:|")
-        for i, r in enumerate(veic[:40], 1):
+        for i, r in enumerate(tudo(veic), 1):
             add(f"| {i} | {(r['nome_socio'] or '—')[:38]} ({r.get('doc_socio', '')}) | {r['n_cnpjs_brasil']} |")
         add("")
         add("> ⚠ **Ressalva importante:** aparecer em dezenas/centenas de CNPJs é o padrão de **executivos de "
@@ -1636,7 +1680,7 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
     if su:
         add("| # | Razão social | Total recebido (R$) | Único administrador (qualif.) |")
         add("|--:|---|--:|---|")
-        for i, r in enumerate(su[:15], 1):
+        for i, r in enumerate(tudo(su), 1):
             tag = " · sem-fins" if r.get("sem_fins") else ""
             add(f"| {i} | {(r['razao_social'] or '—')[:38]}{tag} | {moeda(r['total'])} | "
                 f"{(r.get('socio_unico') or '—')[:24]} ({(r.get('qualificacao') or '—')[:16]}) |")
@@ -1723,7 +1767,7 @@ def render_md(ctx: dict) -> str:
         tot = p["total_geral"] or 1
         from compliance_agent.entidades_gov import eh_nao_fornecedor
         _tem_intergov = False
-        for nome, val in list(p["por_favorecido_geral"].items())[:120]:
+        for nome, val in tudo(list(p["por_favorecido_geral"].items())):
             tag = ""
             if eh_nao_fornecedor(nome):
                 tag = " ⟨transf. intergov.⟩"
@@ -1798,7 +1842,7 @@ def render_md(ctx: dict) -> str:
     if grupos:
         add("| Fornecedor (CNPJ) | Valor unitário (R$) | Repetições | Total (R$) |")
         add("|---|---:|---:|---:|")
-        for g in grupos[:40]:
+        for g in tudo(grupos):
             forn = f"{g['favorecido']} ({fmt_cnpj(g['cnpj'])})" if g["cnpj"] else g["favorecido"]
             add(f"| {forn} | {moeda(g['valor'])} | {g['n']}× | {moeda(g['total'])} |")
         add("")
@@ -1842,21 +1886,21 @@ def render_md(ctx: dict) -> str:
         "estornos/regularizações.")
     add("")
     if p["tem_dados"]:
-        TOP_OB_ANO = 40  # material ampliado (diretriz 2026-07-11: sem limite, tudo no PDF); cauda no XLSX
         for a in p["anos"]:
             b = p["por_ano"][a]
             add(f"### Exercício {a} — {b['n']} OBs — Total pago: R$ {moeda(b['total'])}")
             add("")
-            maiores = sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0))[:TOP_OB_ANO]
+            maiores, _nota = top_declarado(
+                sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0)),
+                TOP_OB_ANO, "OBs do exercício", onde="na planilha XLSX anexa")
             add("| # | Nº OB | Data | Fornecedor (CNPJ) | Valor (R$) |")
             add("|---:|---|---|---|---:|")
             for i, ln in enumerate(maiores, 1):
                 forn = f"{ln['favorecido']} ({fmt_cnpj(ln['cnpj'])})" if ln["cnpj"] else ln["favorecido"]
                 add(f"| {i} | {ln['numero_ob']} | {ln['data']} | {forn} | {moeda(ln['valor'])} |")
             add(f"| | | | **Total {a} ({b['n']} OBs)** | **{moeda(b['total'])}** |")
-            if b["n"] > len(maiores):
-                add("")
-                add(f"> _{len(maiores)} maiores de {b['n']} OBs do exercício — lista completa na planilha XLSX._")
+            if _nota:
+                add(""); add(_nota)
             add("")
     else:
         add("_Sem OBs para esta UG._")
@@ -2005,7 +2049,7 @@ def _secao_beneficios_pdf(pdf, _t, ctx: dict) -> None:
     if itens:
         pdf.ln(1); _tab_header(pdf, [("Fornecedor", 70), ("Sócio/Admin", 56), ("Papel", 30), ("Benefício", 36)])
         pdf.set_font(pdf._fam, "", 7)
-        for it in itens[:20]:
+        for it in tudo(itens):
             tipos = ", ".join(it.get("tipos") or []) or "-"
             _tab_row(pdf, [(_t(it.get("razao", "")[:42]), 70, "L"), (_t(it.get("nome", "")[:34]), 56, "L"),
                            (_t(it.get("papel", "")[:18]), 30, "L"), (_t(tipos)[:22], 36, "L")], h=4.6)
@@ -2013,6 +2057,73 @@ def _secao_beneficios_pdf(pdf, _t, ctx: dict) -> None:
         _mc(pdf, 4, _t("Indício de interposição (laranja), não prova; confirmar no contrato social/procuração/SEI. "
                        "CPF de uso interno (LGPD)."))
         pdf.set_text_color(0, 0, 0)
+
+
+def _secao_contratos_fornecedor_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — §1-L, a carteira de contratos por fornecedor.
+
+    Esta seção existia SÓ no Markdown. O PDF de órgão — que é o que efetivamente circula — saía sem
+    ela e sem qualquer aviso, perdendo ~55% do conteúdo do relatório. Consome exatamente a mesma
+    `dados_contratos_fornecedor()` do MD, para que os dois documentos não voltem a divergir.
+    """
+    ug = str(ctx.get("ug") or "")
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Contratos por fornecedor (ativos x arquivados - objeto - contratado x pago)"),
+             new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    if not ug:
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("UG nao resolvida - INDISPONIVEL.")); pdf.set_text_color(0, 0, 0); return
+
+    d = dados_contratos_fornecedor(ug, (ctx.get("nome") or ""))
+    if d.get("erro"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t(f"Secao indisponivel nesta execucao ({d['erro']}) - INDISPONIVEL."))
+        pdf.set_text_color(0, 0, 0); return
+
+    _mc(pdf, 4.5, _t(
+        f"Universo: {d['n_fornecedores']} fornecedor(es) PJ pago(s) por esta UG; "
+        f"{len(d['com_contrato'])} com contrato registrado no TCE-RJ e {len(d['sem_contrato'])} sem. "
+        "Todos aparecem abaixo - nada foi omitido por tamanho. Contrato registrado em unidade diversa "
+        "desta UG vem marcado com <>; e a carteira do fornecedor, contexto. Checagem documental, nao "
+        "acusacao: so a NF/medicao fecha valor."))
+
+    for bloco in tudo(d["com_contrato"]):
+        pdf.ln(2); pdf.set_font(pdf._fam, "B", 8)
+        _mc(pdf, 4.4, _t(f"{bloco['nome']} - CNPJ {bloco['cnpj']}"))
+        pdf.set_font(pdf._fam, "", 7)
+        _mc(pdf, 4, _t(f"Pago por esta UG: R$ {moeda(bloco['pago'])} em {bloco['n_obs']} OBs | "
+                       f"Contratos TCE-RJ: {bloco['n_contratos']} ({bloco['n_ativos']} ativo(s), "
+                       f"{bloco['n_arquivados']} arquivado(s))."))
+        _tab_header(pdf, [("Sit.", 14), ("Objeto", 78), ("Processo", 28), ("Vigencia", 26),
+                          ("Contratado", 26), ("Pago", 26)])
+        pdf.set_font(pdf._fam, "", 6.5)
+        for c in tudo(bloco["contratos"]):
+            _tab_row(pdf, [
+                (_t(c["badge"] + c["marca"]), 14, "C"),
+                (_t(campo(c["objeto"], 96)), 78, "L"),
+                (_t(campo(c["processo"], 22)), 28, "L"),
+                (_t(c["vigencia"]), 26, "C"),
+                (c["contratado"], 26, "R"),
+                (c["pago_no_contrato"], 26, "R"),
+            ], h=4.4)
+
+    if not d["com_contrato"]:
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Nenhum fornecedor desta UG tem contrato no contratos_tcerj (cobertura TCE-RJ "
+                         "parcial, ou repasses intragovernamentais sem contrato) - INDISPONIVEL nao e "
+                         "ausencia de contrato."))
+        pdf.set_text_color(0, 0, 0)
+    if d["sem_contrato"]:
+        pdf.ln(1); pdf.set_font(pdf._fam, "", 7)
+        _mc(pdf, 4, _t(f"Sem contrato no TCE-RJ ({len(d['sem_contrato'])} fornecedor(es)): "
+                       + "; ".join(f"{s['nome']} (R$ {moeda(s['pago'])})" for s in tudo(d["sem_contrato"]))
+                       + ". Pode ser repasse intragovernamental, contrato nao coletado (cobertura "
+                         "parcial) ou execucao fora de contrato - a apurar, INDISPONIVEL nao e zero."))
+    pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+    _mc(pdf, 4, _t("Vigencia ativa com pagamento, objeto divergente da finalidade da UG, ou criterio nao "
+                   "competitivo (dispensa/inexigibilidade) -> priorizar leitura do processo. Indicio, nao prova."))
+    pdf.set_text_color(0, 0, 0)
 
 
 def _secao_tce_pdf(pdf, _t, ctx: dict) -> None:
@@ -2038,7 +2149,7 @@ def _secao_tce_pdf(pdf, _t, ctx: dict) -> None:
     if itens:
         pdf.ln(1); _tab_header(pdf, [("Processo", 38), ("Ano", 12), ("Tipo", 20), ("Valor (R$)", 32), ("Resp.", 14), ("Natureza", 36)])
         pdf.set_font(pdf._fam, "", 7)
-        for it in itens[:20]:
+        for it in tudo(itens):
             resp = f"{it.get('n_resp', 1)}×" if it.get("n_resp", 1) > 1 else "1"
             _tab_row(pdf, [(_t(str(it["processo"])[:22]), 38, "L"), (_t(str(it.get("ano", "-"))), 12, "C"),
                            (_t(it["tipo"]), 20, "L"), (_t(moeda(it["valor"])), 32, "R"), (_t(resp), 14, "C"),
@@ -2073,7 +2184,7 @@ def _secao_concentracao_grupo_pdf(pdf, _t, ctx: dict) -> None:
         pdf.ln(1); _tab_header(pdf, [("Grupo (raiz)", 40), ("CNPJs", 16), ("Raízes", 16),
                                      ("Share %", 18), ("Total (R$)", 34), ("Maior CNPJ do grupo", 58)])
         pdf.set_font(pdf._fam, "", 7)
-        for g in grupos_multi[:50]:
+        for g in tudo(grupos_multi):
             _tab_row(pdf, [(_t(fmt_cnpj(g["grupo"]) if g.get("grupo") else "-"), 40, "L"),
                            (str(g["n_cnpjs"]), 16, "R"), (str(g["n_raizes"]), 16, "R"),
                            (f"{g['share']:.1f}", 18, "R"), (moeda(g["total"]), 34, "R"),
@@ -2118,7 +2229,7 @@ def _secao_conjunto_certames_pdf(pdf, _t, ctx: dict) -> None:
         pdf.set_font(pdf._fam, "", 8)
     if av.get("casos_ancora"):
         _mc(pdf, 4.5, _t("Casos-ancora: " + " | ".join(f"{c['certame']} ({c['score']:.0f}/{c['faixa']})"
-                                                       for c in av["casos_ancora"][:4])))
+                                                       for c in tudo(av["casos_ancora"]))))
 
 
 def _secao_painel_detectores_pdf(pdf, _t, ctx: dict) -> None:
@@ -2316,7 +2427,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
         pdf.cell(0, 7, _t("(1) Entidades SEM FINS LUCRATIVOS recebendo como fornecedor"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Razao social", 96), ("Natureza", 34), ("Total (R$)", 32), ("Obs.", 28)])
         pdf.set_font(pdf._fam, "", 7)
-        for r in sf[:15]:
+        for r in tudo(sf):
             obs = "ressalva" if r.get("ressalva") else "a apurar"
             _tab_row(pdf, [(_t((r.get("razao_social") or "-")[:60]), 96, "L"),
                            (_t((r.get("natureza_txt") or "-")[:20]), 34, "L"),
@@ -2341,7 +2452,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
         pdf.cell(0, 7, _t("(2) Rede/grupo - administradores compartilhados (>=2 fornecedores do orgao)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Administrador (doc)", 120), ("N fornec.", 22), ("Qualificacoes", 48)])
         pdf.set_font(pdf._fam, "", 7)
-        for r in rede[:15]:
+        for r in tudo(rede):
             nome = f"{(r.get('nome_socio') or '-')[:42]} ({r.get('doc_socio', '')})"
             _tab_row(pdf, [(_t(nome)[:74], 120, "L"), (str(r.get("n_fornecedores", "")), 22, "C"),
                            (_t((r.get("qualificacoes") or "-")[:30]), 48, "L")], h=4.6)
@@ -2358,7 +2469,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
         pdf.cell(0, 6, _t("Administradores em muitos CNPJs no Brasil (possivel veiculo de aluguel):"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Administrador (doc)", 130), ("N CNPJs (Brasil)", 40)])
         pdf.set_font(pdf._fam, "", 7)
-        for r in veic[:40]:
+        for r in tudo(veic):
             nome = f"{(r.get('nome_socio') or '-')[:46]} ({r.get('doc_socio', '')})"
             _tab_row(pdf, [(_t(nome)[:80], 130, "L"), (str(r.get("n_cnpjs_brasil", "")), 40, "C")], h=4.6)
         pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
@@ -2373,7 +2484,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
         pdf.cell(0, 7, _t("(3) Laranja/socio-unico de alto valor"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Razao social", 104), ("Total (R$)", 34), ("Unico admin.", 52)])
         pdf.set_font(pdf._fam, "", 7)
-        for r in su[:15]:
+        for r in tudo(su):
             tag = " [sem-fins]" if r.get("sem_fins") else ""
             _tab_row(pdf, [(_t((r.get("razao_social") or "-")[:48] + tag), 104, "L"),
                            (moeda(r.get("total", 0)), 34, "R"),
@@ -2467,7 +2578,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         pdf.set_font(pdf._fam, "", 8)
         tot = p["total_geral"] or 1
         from compliance_agent.entidades_gov import eh_nao_fornecedor
-        for nome, val in list(p["por_favorecido_geral"].items())[:120]:
+        for nome, val in tudo(list(p["por_favorecido_geral"].items())):
             rot = (_t(nome)[:74] + " [transf.intergov]") if eh_nao_fornecedor(nome) else _t(nome)[:86]
             _tab_row(pdf, [(rot, 130, "L"), (moeda(val), 36, "R"), (f"{val/tot*100:.1f}", 16, "R")], h=5)
 
@@ -2483,7 +2594,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
             pdf.ln(1)
             _tab_header(pdf, [("Cidade/UF", 70), ("Forn.", 18), ("OBs", 20), ("Valor (R$)", 40), ("%", 16)])
             pdf.set_font(pdf._fam, "", 8)
-            for c in geo["cidades"][:12]:
+            for c in tudo(geo["cidades"]):
                 cid = f"{c['cidade']}/{c['uf']}" if c.get("uf") else c["cidade"]
                 _tab_row(pdf, [(_t(cid)[:42], 70, "L"), (str(c["n_fornecedores"]), 18, "R"), (str(c["n_obs"]), 20, "R"),
                                (moeda(c["total_pago"]), 40, "R"), (f"{c['pct']:.1f}", 16, "R")], h=4.8)
@@ -2499,7 +2610,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
             pdf.ln(1)
             _tab_header(pdf, [("Fornecedor", 96), ("Valor unit. (R$)", 34), ("Rep.", 14), ("Total (R$)", 38)])
             pdf.set_font(pdf._fam, "", 8)
-            for g in _grupos[:12]:
+            for g in tudo(_grupos):
                 _tab_row(pdf, [(_t(g["favorecido"])[:60], 96, "L"), (moeda(g["valor"]), 34, "R"),
                                (f"{g['n']}x", 14, "R"), (moeda(g["total"]), 38, "R")], h=4.8)
 
@@ -2530,6 +2641,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_dd_pdf(pdf, _t, ctx)
         _secao_endereco_pdf(pdf, _t, ctx)
         _secao_beneficios_pdf(pdf, _t, ctx)
+        _secao_contratos_fornecedor_pdf(pdf, _t, ctx)  # §1-L: existia só no MD; o PDF perdia ~55%
         _secao_tce_pdf(pdf, _t, ctx)
         _secao_concentracao_grupo_pdf(pdf, _t, ctx)
         _secao_painel_detectores_pdf(pdf, _t, ctx)
@@ -2543,7 +2655,9 @@ def render_pdf(ctx: dict, destino: str) -> str:
             pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
             pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
-            _maiores = sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0))[:12]
+            _maiores, _nota_ob = top_declarado(
+                sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0)),
+                TOP_OB_ANO, "OBs do exercício", onde="na planilha XLSX anexa")
             _nota = f"{b['n']} OBs — Total: R$ {moeda(b['total'])}" + (
                 f"  ·  {len(_maiores)} maiores abaixo; lista completa na planilha XLSX" if b["n"] > len(_maiores) else "")
             pdf.cell(0, 6, _t(_nota), new_x=XPos.LMARGIN, new_y=YPos.NEXT); pdf.ln(1)

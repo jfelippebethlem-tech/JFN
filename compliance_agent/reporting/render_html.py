@@ -213,13 +213,15 @@ async def _pdf_da_pagina(page, destino: str) -> None:
     await page.pdf(path=destino, format="A4", print_background=True,
                            display_header_footer=True,
                            header_template="<span></span>",
+                           # sem numeração de página (diretriz do dono, 2026-07-29): o documento é
+                           # do tamanho que a verdade exigir, e contar página convida a cortar para
+                           # caber. Fica só a faixa de honestidade.
                            footer_template=(
                                "<div style='font-family:Georgia,serif;font-size:7.5px;color:#999;"
-                               "width:100%;padding:0 14mm;display:flex;justify-content:space-between;'>"
+                               "width:100%;padding:0 14mm;text-align:center;'>"
                                "<span>Controle Externo — RJ · indícios, nunca acusação</span>"
-                               "<span>pág. <span class='pageNumber'></span> de <span class='totalPages'></span></span>"
                                "</div>"),
-                           margin={"top": "14mm", "bottom": "16mm", "left": "10mm", "right": "10mm"})
+                           margin={"top": "14mm", "bottom": "12mm", "left": "10mm", "right": "10mm"})
 
 
 async def gerar_pdf(ctx: dict, nome_base: str) -> str:

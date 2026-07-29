@@ -8,6 +8,7 @@ Cada aba do painel ganha um botão "Gerar PDF" que aciona /api/intel/pdf?tipo=..
 from __future__ import annotations
 
 from compliance_agent.reporting.intel_base import moeda
+from compliance_agent.reporting.completude import tudo
 from compliance_agent.reporting.render_html import gerar_pdf
 
 
@@ -148,7 +149,7 @@ def _b_socio_oculto(d):
 
 def _b_fantasmas(d):
     ls = [f"<tr><td>{a.get('score','—')}</td><td>{_esc(a.get('razao_social') or a['cnpj'])}<br><small>{_esc(a['cnpj'])} · {_esc(a.get('origem'))}</small></td>"
-          f"<td>{_esc(', '.join(s.get('id','') for s in a.get('sinais',[])[:4]))}</td><td>{_esc(a.get('classificacao'))}</td></tr>"
+          f"<td>{_esc(', '.join(s.get('id','') for s in tudo(a.get('sinais',[]))))}</td><td>{_esc(a.get('classificacao'))}</td></tr>"
           for a in d.get("empresas", [])[:1000] if a.get("classificacao") != "sem_cadastro"]
     return ("Radar de empresas-fantasma",
             f"{d.get('total_alvo',0)} no alvo · {d.get('sem_cadastro',0)} sem cadastro",
@@ -200,7 +201,7 @@ def _b_nepotismo(d):
 
 def _b_perdedoras(d):
     ls = [f"<tr><td>{p['participou']}×</td><td>{_esc(p['nome'])}<br><small>{_esc(p['cnpj_fmt'])}</small></td>"
-          f"<td><small>{_esc(', '.join(x['nome'] for x in p.get('perde_junto_com',[])[:3]))}</small></td></tr>"
+          f"<td><small>{_esc(', '.join(x['nome'] for x in tudo(p.get('perde_junto_com',[]))))}</small></td></tr>"
           for p in d.get("perdedoras", [])[:1000]]
     return ("Perdedoras contumazes — proposta de cobertura",
             f"{d.get('n',0)} empresas que participam e nunca vencem",
@@ -223,10 +224,10 @@ def _b_conluio(d):
     cap = d.get("captura", [])
     rod = d.get("rodizio_vencedores", [])
     lc = [f"<tr><td>{int(c['share']*100)}%</td><td>{_esc(c['orgao_nome'])}</td><td>{_esc(c['nome'])}</td>"
-          f"<td>{c['certames']} certames</td></tr>" for c in cap[:100]]
+          f"<td>{c['certames']} certames</td></tr>" for c in tudo(cap)]
     lr = [f"<tr><td>{len(r.get('membros_nome',[]))}</td><td>{_esc(r['orgao_nome'])}</td>"
-          f"<td><small>{_esc(' · '.join(m['nome'] for m in r.get('membros_nome',[])[:3]))}</small></td>"
-          f"<td>{r['certames']} certames</td></tr>" for r in rod[:100]]
+          f"<td><small>{_esc(' · '.join(m['nome'] for m in tudo(r.get('membros_nome',[]))))}</small></td>"
+          f"<td>{r['certames']} certames</td></tr>" for r in tudo(rod)]
     secoes = [{"titulo": "1. Captura de órgão (1 empresa vence ≥80%)",
                "html": _tabela(["Share", "Órgão", "Vencedor", "Volume"], lc) if lc else "<p>Nenhuma.</p>"},
               {"titulo": "2. Rodízio de vencedores (revezamento)", "page_break": True,

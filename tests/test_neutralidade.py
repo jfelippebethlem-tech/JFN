@@ -21,7 +21,13 @@ def test_detecta_termos_internos():
 def test_nao_casa_substring_legitima():
     # "lex" dentro de Alexandre/Complexo/flexível NÃO pode disparar
     assert termos_proibidos("Alexandre da Silva, no Complexo do Alemão, contrato flexível") == []
-    assert termos_proibidos("ITERJ") == ["iterj"]  # mas a sigla isolada, sim
+    assert termos_proibidos("Yodalgo") == []  # nem o prefixo de um nome próprio
+
+
+def test_sigla_de_orgao_publico_nao_e_termo_interno():
+    """ITERJ (UG 133100) já esteve na lista de proibidos e travava a peça sobre o próprio auditado.
+    Ver tests/test_entregavel_integro.py."""
+    assert termos_proibidos("ITERJ") == []
 
 
 def test_texto_limpo_passa():
