@@ -726,9 +726,17 @@ manuais quando expirarem (caem no nous até lá).
 > quotista; (6) **`tools/tcu_indice_existencia`** — 521.090 acórdãos de 1993–2026 indexados SEM guardar texto;
 > **C.3 FECHADO**, nenhuma citação fabricada, e o **3.831/2012 não é do Plenário**; (7) `tools/sei_descontaminar`
 > — 210 documentos alheios saíram de 7 pastas, nada apagado (`_alheios/` + backup do manifest).
+> **SEGUNDA LEVA (mesma sessão):** **H.7** quesitos de perícia + rol de diligências a partir das
+> lacunas de `tipicidade` · **H.4** dosimetria da medida (débito exige dano COM OB; grau C não
+> sustenta sanção pessoal) · **H.6** matriz de achados em que célula vazia não existe · **G.6**
+> concentração por GRUPO — **a SECID tem HHI 0,106 por CNPJ e 0,406 por grupo, com R$ 570,85 mi
+> (62,1%) num só grupo de 9 CNPJs** · **A.3.5** `/api/eval/hermeneutica` · **G.8**
+> `/api/eval/lift`, que expôs **dois detectores ANTI-preditivos** (`corrida_dezembro` 0,59 e
+> `fornecedor_dependente` 0,48 contra base de 7,01%) e três circulares · **D.3.3** curva ABC com
+> ordenação por DANO (valor × desvio), não por desvio.
 > **PENDENTE acionável:** **282 manifests de íntegra não avaliáveis** (sem `contexto`) — não são "limpos", são
 > não observados, só recaptura muda; **A.3.5** painel de acurácia e o conserto do desenho da tarefa de 3 classes;
-> **D.3** curva ABC + `contrato_item`; **E.0.1** ampliar coleta de propostas (só 0,66% dos certames têm disputa
+> **D.3.1/D.3.2** tabela `contrato_item` e extrator de planilha (sem eles a curva ABC não tem o que ler em produção); **E.0.1** ampliar coleta de propostas (só 0,66% dos certames têm disputa
 > registrada — é o que trava o E.3.2); **I.2** CEPIM/CEAF/JUCERJA; verificação de citação **TCE-RJ** (exige CDP).
 > **Dívida herdada, não absorvida:** `test_divida_except_pass` segue vermelho por `_SANDBOX/walker_humano.py`,
 > alterado por outra sessão.
