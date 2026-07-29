@@ -26,10 +26,13 @@ O QUE ELE FAZ, e o que se recusa a fazer:
 from __future__ import annotations
 
 import re
+import logging
 import sqlite3
 from typing import Any
 
 from compliance_agent.osint.vinculos import GrafoVinculos, no_pf, no_pj
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["montar_grafo_societario", "beneficiario_final_do_cnpj", "cobertura_qsa"]
 
@@ -57,11 +60,14 @@ def _no_socio(linha: sqlite3.Row) -> tuple[str, str, bool]:
 
 
 def _fonte(linha: sqlite3.Row) -> str:
+    # `fonte_mes` só existe nas linhas que vieram do dump; consulta antiga pode não trazer a coluna.
+    # Sem ela a procedência sai com 'n/d' — declarada como desconhecida, nunca omitida: aresta sem
+    # data de referência é aresta que o leitor precisa saber que não tem data.
     mes = ""
     try:
         mes = (linha["fonte_mes"] or "").strip()
     except (IndexError, KeyError):
-        pass
+        logger.debug("linha de QSA sem coluna fonte_mes; procedência sai como n/d")
     return f"QSA/Receita Federal (dados abertos CNPJ, snapshot {mes or 'n/d'})"
 
 

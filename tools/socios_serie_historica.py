@@ -165,7 +165,9 @@ def ingerir_snapshot(data_pasta: str, *, con=None, manter_zip: bool = False) -> 
             alvo = tmp / f"Socios{i}.zip"
             try:
                 tam = _baixar(url, alvo)
-            except Exception as e:  # noqa: BLE001 — snapshot antigo pode ter outro conjunto
+            except (urllib.error.URLError, OSError, TimeoutError, ValueError) as e:
+                # snapshot antigo pode ter conjunto de arquivos diferente — seguir é honesto,
+                # e o log diz qual faltou (o total do mês fica menor e visível na meta).
                 print(f"[serie] {data_pasta} Socios{i}.zip indisponível: {str(e)[:80]}", flush=True)
                 continue
             a, b = _stream_para_snapshot(alvo, raizes, qualif, con, mes)

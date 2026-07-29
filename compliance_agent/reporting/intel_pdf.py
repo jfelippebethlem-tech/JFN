@@ -5,6 +5,7 @@ Comportamento idêntico; rede de segurança: tools/inteligencia_snapshot_check.p
 from __future__ import annotations
 
 import logging
+import sqlite3
 from pathlib import Path
 
 from fpdf.enums import XPos, YPos
@@ -477,8 +478,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     try:
         from compliance_agent import correlacao_sei
         _ex = correlacao_sei.execucao_de_fornecedor(ctx.get("cnpj", "") or "")
-    except Exception as _e:  # noqa: BLE001 — degrada honesto
-        _ex, _ex_erro = [], str(_e)[:60]
+    except (ImportError, sqlite3.Error, OSError, ValueError, KeyError, TypeError) as _e:
+        _ex, _ex_erro = [], str(_e)[:60]   # degrada honesto, sem esconder defeito de programação
     else:
         _ex_erro = ""
     _susp = [x for x in _ex if x.get("exec") in ("nao", "parcial", "indeterminado")

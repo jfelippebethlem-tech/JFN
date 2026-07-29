@@ -15,6 +15,11 @@ from __future__ import annotations
 import logging
 import sqlite3
 
+# Erros que uma rota de LEITURA do acervo pode ver de verdade: base ocupada/corrompida, esquema
+# ausente, argumento fora de forma, módulo opcional ausente. Captura genérica aqui esconderia
+# defeito de programação — a catraca de tests/test_catraca_excepts.py cobra isso, e com razão.
+_FALHAS_DE_LEITURA = (sqlite3.Error, ValueError, KeyError, TypeError, OSError, ImportError)
+
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -41,7 +46,7 @@ def api_beneficiario_final(cnpj: str, profundidade: int = 4):
 
         return JSONResponse(beneficiario_final_do_cnpj(
             cnpj, profundidade=max(1, min(int(profundidade), 8))))
-    except Exception as exc:  # noqa: BLE001 — degrada honesto
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("beneficiario_final falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -64,7 +69,7 @@ def api_parentesco(cnpj: str):
             return JSONResponse({"ok": True, **avaliar(con, raiz)})
         finally:
             con.close()
-    except Exception as exc:  # noqa: BLE001
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("parentesco falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -84,7 +89,7 @@ def api_parentesco_prevalencia():
                               "pode_acender_sozinho": v.pode_acender_sozinho,
                               "descricao": v.descricao} for k, v in EIXOS.items()}
         return JSONResponse({"ok": True, **p})
-    except Exception as exc:  # noqa: BLE001
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("prevalencia falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -107,7 +112,7 @@ def api_vinculo_na_data(cnpj: str, data: str, nome: str = "", doc: str = ""):
                 con, raiz, data, doc_socio=doc, nome=nome)})
         finally:
             con.close()
-    except Exception as exc:  # noqa: BLE001
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("vinculo_na_data falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -126,7 +131,7 @@ def api_historico_socio(nome: str = "", doc: str = ""):
         finally:
             con.close()
         return JSONResponse({"ok": True, "n": len(linhas), "vinculos": linhas})
-    except Exception as exc:  # noqa: BLE001
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("historico_socio falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -145,7 +150,7 @@ def api_trocas_societarias(cnpj: str, data: str, janela: int = 6):
                 con, raiz, data, meses_janela=max(1, min(int(janela), 36)))})
         finally:
             con.close()
-    except Exception as exc:  # noqa: BLE001
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("trocas_societarias falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -182,6 +187,6 @@ def api_serie_societaria():
                       "mensais de 2023-03 a 2026-07, sem chave e sem custo. Os caminhos oficiais da "
                       "Receita respondem 404 desde janeiro/2026."),
         })
-    except Exception as exc:  # noqa: BLE001
+    except _FALHAS_DE_LEITURA as exc:
         logger.exception("serie_societaria falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

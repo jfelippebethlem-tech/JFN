@@ -32,6 +32,14 @@ SEM_CLAUSULA_A_REESCREVER = {
     "emergencia_fabricada", "contratacao_direta_indevida", "planejamento_fachada",
     "deserto_fracassado_dirigido", "republicacao_dirigida", "homologado_acima_estimado",
     "clausula_restritiva_combinada",
+    # 2026-07-29 — os seis vicios de ADITIVO catalogados hoje (X7..X12). Todos sao de CONDUTA na
+    # execucao do contrato, nao de texto de edital: nao ha clausula a reescrever num aditivo
+    # assinado depois do fim da vigencia, numa supressao acima do limite, num aditivo sem
+    # instrucao, num objeto descaracterizado, num reequilibrio sem alea comprovada nem numa
+    # planilha com quantitativos anomalos. O que cabe a cada um e diligencia ou representacao,
+    # e isso ja esta no campo `escalada` de cada vicio.
+    "reequilibrio_indevido", "aditivo_retroativo", "supressao_abusiva",
+    "aditivo_desinstruido", "objeto_descaracterizado", "quantitativos_manipulados",
 }
 
 

@@ -146,7 +146,13 @@ def test_render_menu_curado_e_enxuto():
     # 25 em 2026-07-28: entrou "Responsáveis de um processo SEI" (/responsaveis). Teto subiu
     # depois de ler o menu inteiro — 25 capacidades distintas, nenhuma repetida nem variante
     # da outra. O teto existe contra despejo do catálogo, não contra capacidade nova.
-    assert 6 <= n_itens <= 25                          # curado (grupos + exemplos), não as ~47 prontas
+    # 28 em 2026-07-29: entraram três do eixo de VÍNCULOS — beneficiário final (sobe a cadeia
+    # societária até a pessoa física), parentesco entre sócios (hipótese medida por prevalência) e
+    # "era sócio nesta data?" (série de 19 snapshots mensais da Receita). São capacidades distintas,
+    # com pergunta própria; o teto existe contra despejo do catálogo, não contra capacidade nova. As
+    # outras três do eixo (trocas societárias, histórico de uma pessoa, estado da série) entraram SEM
+    # item de menu, de propósito: são detalhamento das três acima.
+    assert 6 <= n_itens <= 28                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota

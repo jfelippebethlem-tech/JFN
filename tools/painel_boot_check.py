@@ -49,6 +49,8 @@ def _relevante(msg: str) -> bool:
 
 
 def checar(abas: list[str], *, todas: bool = False) -> dict:
+    from playwright.sync_api import Error as PlaywrightError
+    from playwright.sync_api import TimeoutError as PlaywrightTimeout
     from playwright.sync_api import sync_playwright
 
     erros: list[str] = []
@@ -68,8 +70,10 @@ def checar(abas: list[str], *, todas: bool = False) -> dict:
                     pg.fill("input[name=senha]", senha)
                     pg.press("input[name=senha]", "Enter")
                     pg.wait_for_timeout(1200)
-                except Exception:  # noqa: BLE001 — sem login configurado, segue
-                    pass
+                except (PlaywrightError, PlaywrightTimeout) as e:
+                    # painel sem tela de senha (ou seletor mudou): segue para /painel. Silenciar
+                    # aqui esconderia uma mudança de login que faria o check medir a tela errada.
+                    print(f"[boot] login não aplicado ({str(e)[:70]}); seguindo sem sessão", flush=True)
             pg.goto(f"{_BASE}/painel", wait_until="load")
             pg.wait_for_timeout(3000)
             laudo["boot"]["pageerror"] = [e for e in erros if e.startswith("PAGEERROR") and _relevante(e)]
@@ -88,7 +92,7 @@ def checar(abas: list[str], *, todas: bool = False) -> dict:
                 try:
                     pg.evaluate("id => ir(id)", aba)
                     pg.wait_for_timeout(1500)
-                except Exception as e:  # noqa: BLE001
+                except (PlaywrightError, PlaywrightTimeout) as e:
                     info["falha_ir"] = str(e)[:200]
                 info.update(pg.evaluate(
                     """(()=>{const v=document.getElementById('view');

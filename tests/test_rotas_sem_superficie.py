@@ -84,6 +84,11 @@ def test_capacidades_de_alto_valor_estao_no_radar():
     achadas = set(sem_superficie())
     alto_valor = {"/api/dossie/completo", "/api/dossie/mestre", "/api/sancoes/detalhar"}
     ainda_ocultas = alto_valor & achadas
-    assert ainda_ocultas or not alto_valor, "nada a verificar"
-    # nao falha: registra. O valor esta em o numero aparecer no laudo do pytest -v.
-    assert len(ainda_ocultas) <= len(alto_valor)
+    # 2026-07-29: as tres foram EXPOSTAS (abas "Peças" e "Detectores"). O teste era um registrador
+    # que exigia `ainda_ocultas` nao-vazio para "ter o que verificar" — e por isso passou a falhar
+    # justamente quando a divida zerou, o que e o oposto do que ele quer proteger. Invertido: agora
+    # afirma o GANHO, e volta a falhar se uma delas for escondida de novo.
+    assert not ainda_ocultas, (
+        "capacidade de alto valor voltou a ficar sem superficie no painel: "
+        + ", ".join(sorted(ainda_ocultas))
+    )
