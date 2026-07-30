@@ -2673,6 +2673,10 @@ async function renderVinculos(){
       <button type="button" class="btn ghost" onclick="vincGrafo()">Rede de poder</button>
       <button type="button" class="btn ghost" onclick="vincFtm()">Exportar FollowTheMoney</button>
     </div>
+    <div class="btns" style="margin-top:8px">
+      <button type="button" class="btn ghost" onclick="vincConluioMunicipal()">Conluio municipal (vencedor × perdedora)</button>
+      <button type="button" class="btn ghost" onclick="vincResolucao()">Resolução nome → CNPJ</button>
+    </div>
     <div class="dim" style="margin-top:8px">Histórico de uma <b>pessoa</b> (de quais empresas foi sócia):
       <input id="vinc-pessoa" placeholder="nome do sócio…" style="margin-left:6px">
       <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincHistoricoPessoa()">Ver histórico</button>
@@ -2992,6 +2996,49 @@ async function vincHistoricoPessoa(){
         <td class="${v.status==='saiu'?'bad':''}">${esc(v.status)}${v.saiu_entre?' ('+esc(v.saiu_entre)+')':''}${v.janela_confiavel===0?' ⚠ janela com mês não observado':''}</td></tr>`;
   h+=`</tbody></table>`;
   o.innerHTML=h;
+}
+
+
+async function vincConluioMunicipal(){
+  const o=$('vinc-out'); o.innerHTML=card('<div class="dim">cruzando QSA de vencedores e perdedoras…</div>');
+  const d=await J('/api/osint/conluio_municipal?limite=400');
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.motivo||d.erro)}</div>`);return;}
+  const c=d.cobertura||{};
+  let h=sec('Conluio municipal — sócio em comum entre vencedor e perdedora');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_certames_com_achado),'Certames com achado',d.n_certames_com_achado?'var(--rose)':null,'🤝')}
+      ${kpi(fmtN(d.n_pares),'Pares vencedor × perdedora')}
+      ${kpi(fmtN(c.cruzaveis_com_qsa_dos_dois_lados),'Certames efetivamente cruzados')}
+      ${kpi((c.taxa_de_achado_pct==null?'—':c.taxa_de_achado_pct+'%'),'Taxa de achado')}</div>`;
+  h+=leitura(`O eixo devolvia zero por falta de <b>dado</b>, não de motor: eram <b>114</b> certames com
+     classificado além do 1º lugar em todo o acervo. Hoje são <b>${fmtN(c.com_vencedor_e_perdedora_resolvidos)}</b>
+     com vencedor e perdedora resolvidos, e <b>${fmtN(c.cruzaveis_com_qsa_dos_dois_lados)}</b> com QSA dos dois lados.
+     ${esc(c.nota||'')}`);
+  if((d.achados||[]).length){
+    h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por município, CNPJ ou sócio…" oninput="filtrar(this,'#cm-list .card')"></div>`;
+    h+=`<div id="cm-list" class="grid">`+d.achados.map(a=>card(
+      `<div style="font-weight:700">${esc(a.certame)}</div>
+       <div class="dim" style="margin-top:3px">vencedor <b>${esc(a.vencedor_raiz)}</b> × perdedora <b>${esc(a.perdedora_raiz)}</b>
+         · aresta ${esc(a.tipo_aresta)} (força ${a.forca_aresta})</div>
+       <div style="margin-top:4px">Sócio(s) em comum: <b>${esc((a.socios_em_comum||[]).join(' · '))}</b></div>
+       ${leitura('Veredito: <b>'+esc(a.veredito)+'</b>. '+esc(a.explicacao_inocente))}`,'hl')).join('')+`</div>`;
+  }else{
+    h+=card('<div class="note">Nenhum par com sócio em comum nos certames cruzados. Isso vale só para os cruzados — o resto é INDISPONÍVEL.</div>');
+  }
+  h+=(d.ressalvas||[]).map(r=>`<div class="note">${esc(r)}</div>`).join('');
+  o.innerHTML=h;
+}
+
+async function vincResolucao(){
+  const o=$('vinc-out'); o.innerHTML=card('<div class="dim">consultando…</div>');
+  const d=await J('/api/osint/resolucao_nome_cnpj');
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.motivo||d.erro)}</div>`);return;}
+  o.innerHTML=sec('Resolução razão social → CNPJ (catálogo nacional da Receita)')+
+    `<div class="grid g2">${kpi(fmtN(d.nomes),'Nomes no universo')}
+      ${kpi(fmtN(d.resolvidos),'Resolvidos','var(--emerald)','✅')}
+      ${kpi(fmtN(d.ambiguos),'Ambíguos (CNPJ nulo)','var(--amber)','⚖️')}
+      ${kpi(d.pct_resolvido+'%','Taxa de resolução')}</div>`+
+    leitura('Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.')+
+    `<div class="note">${esc(d.nota||'')}</div>`;
 }
 
 // ═══ DETECTORES ÓRFÃOS — segunda onda do "ligar tudo" (2026-07-29) ═══

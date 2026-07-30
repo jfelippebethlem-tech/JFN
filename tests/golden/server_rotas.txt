@@ -80,9 +80,11 @@ GET /api/lista -> api_lista
 GET /api/memoria -> api_memoria
 GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/osint/beneficiario_final -> api_beneficiario_final
+GET /api/osint/conluio_municipal -> api_conluio_municipal
 GET /api/osint/historico_socio -> api_historico_socio
 GET /api/osint/parentesco -> api_parentesco
 GET /api/osint/parentesco/prevalencia -> api_parentesco_prevalencia
+GET /api/osint/resolucao_nome_cnpj -> api_resolucao_nome_cnpj
 GET /api/osint/serie_societaria -> api_serie_societaria
 GET /api/osint/trocas_societarias -> api_trocas_societarias
 GET /api/osint/vinculo_na_data -> api_vinculo_na_data

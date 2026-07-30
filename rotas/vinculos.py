@@ -190,3 +190,48 @@ def api_serie_societaria():
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("serie_societaria falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/conluio_municipal")
+def api_conluio_municipal(limite: int = 200):
+    """E.3.2 municipal — vencedor × perdedora com sócio em comum nos certames do TCE-RJ.
+
+    O eixo devolvia zero por falta de DADO, não de motor: eram 114 certames com classificado além do
+    1º lugar em todo o acervo. A cadeia que o destravou está medida na resposta (`cobertura`), degrau
+    a degrau — e o denominador importa tanto quanto o achado: certame fora de `cruzaveis` não é
+    certame limpo, é certame não observado.
+    """
+    try:
+        from compliance_agent.osint.qsa_certame_municipal import cruzar_certames
+
+        con = _db_ro()
+        try:
+            return JSONResponse(cruzar_certames(con, limite=max(0, min(int(limite), 2000))))
+        finally:
+            con.close()
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("conluio_municipal falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/resolucao_nome_cnpj")
+def api_resolucao_nome_cnpj():
+    """Estado da resolução razão social → CNPJ pelo catálogo nacional da Receita.
+
+    É o denominador de tudo que depende de partir de um nome. Nome ambíguo fica com CNPJ NULO —
+    declarado, nunca chutado.
+    """
+    try:
+        import sys
+        from pathlib import Path as _P
+        sys.path.insert(0, str(_P(__file__).resolve().parent.parent))
+        from tools.resolver_nome_cnpj import relatorio
+
+        con = _db_ro()
+        try:
+            return JSONResponse({"ok": True, **relatorio(con)})
+        finally:
+            con.close()
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("resolucao_nome_cnpj falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
