@@ -37,7 +37,16 @@ SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__
 #       evidências não-JSON) e 3 em `rotas/sistema.py` — onde dois viraram exceção ESPECÍFICA
 #       (`OSError` no vault, `sqlite3.Error` na contagem por tabela), porque ali o silêncio
 #       fazia INDISPONÍVEL parecer contagem legítima.
-TETO_MUDOS_PRODUCAO = 153
+#
+# 2026-07-30: a catraca chegou VERMELHA em 157 (dívida de outra sessão, medida já em `ace03b90`).
+#   Absorver teto alheio em silêncio é como ele cresce — então em vez de subir para 157, curei 6:
+#   3 em `knowledge/subsuncao.py` (o módulo cuja razão de existir é impedir citação plausível —
+#   ali o `pass` fazia "súmula/acórdão/dispositivo não conferido" ficar indistinguível de
+#   "não existe", que é exatamente a falha que a auditoria de 27/07 achou na base curada) e
+#   3 em `notifications/telegram.py` (prompt do agente SEM contexto legal virava resposta pobre
+#   sem aviso; queda do groq para o openrouter era invisível; esquema com JSON inválido sumia).
+#   157 → 151, teto acompanha em 151.
+TETO_MUDOS_PRODUCAO = 151
 
 
 def _mudos(py: Path) -> list[int]:

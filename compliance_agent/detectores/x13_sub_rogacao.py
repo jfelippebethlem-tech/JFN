@@ -36,7 +36,6 @@ Régua (âncoras no CÓDIGO):
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
 
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
 

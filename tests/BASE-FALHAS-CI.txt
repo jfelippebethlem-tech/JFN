@@ -1,0 +1,17 @@
+# Falhas de AMBIENTE conhecidas no runner do GitHub Actions (ubuntu-latest).
+#
+# Irmã de BASE-FALHAS-VM2.txt, e existe pelo mesmo motivo: o critério do CI é DELTA ZERO nome a
+# nome, não verde absoluto. O runner não tem `data/compliance.db` (2,6 GB, não versionado), não tem
+# Chrome no CDP 9222, não tem as chaves de API e não tem o acervo do SEI — os testes que dependem
+# disso falham por AMBIENTE, não por código, e a maioria já se protege com skipif.
+#
+# COMO POPULAR (deliberadamente vazio até a primeira rodada real):
+#   1. deixe o CI rodar uma vez nesta branch;
+#   2. baixe o artefato `logs-dos-lotes`;
+#   3. `grep -hE '^(FAILED|ERROR)' lote*.log | sed 's/ - .*//' | sort -u >> tests/BASE-FALHAS-CI.txt`
+#   4. **leia linha por linha antes de commitar.** Toda linha que entrar aqui é uma falha que o CI
+#      passa a tolerar para sempre — absorver falha sem ler é como a dívida cresce (foi exatamente
+#      assim que o teto de `except: pass` chegou vermelho em 157 vindo de outra sessão).
+#
+# Enquanto este arquivo está vazio, o CI reprova em toda falha que não esteja na base da VM-2. Isso
+# é o comportamento CORRETO para a primeira rodada: mostra o mapa inteiro em vez de esconder.

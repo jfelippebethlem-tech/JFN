@@ -6,7 +6,10 @@
 [tool.ruff]
 target-version = "py312"
 line-length = 120
-extend-exclude = ["_SANDBOX", ".venv", "data", "build", "dist"]
+# `.agents` = skills de terceiro (higgsfield) que ninguém desta casa mantém. Medir dívida alheia
+# como se fosse nossa polui o sinal nos dois sentidos: infla hoje e some sozinha amanhã — foi a
+# mesma correção que a catraca de `except: pass` já fez ao passar a usar `git ls-files`.
+extend-exclude = ["_SANDBOX", ".venv", "data", "build", "dist", ".agents", ".github/skills"]
 
 [tool.ruff.lint]
 # E9 (syntax/runtime), F (pyflakes: import morto, nome indefinido, var não usada), W (whitespace),

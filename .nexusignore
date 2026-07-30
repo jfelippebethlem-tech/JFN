@@ -23,5 +23,13 @@
 *.zip
 *.duckdb
 *.sqlite
+*.zst
+*.webm
+*.avif
 data/
 reports/
+
+# --- Artefatos DERIVADOS de análise (indexar o índice é circular) ---
+graphify-out/
+screenshots/
+diagnostic_screenshots/

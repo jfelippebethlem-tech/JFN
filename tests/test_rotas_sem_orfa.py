@@ -62,14 +62,15 @@ def _rotas_declaradas() -> set[str]:
 
 
 def _texto_do_front() -> str:
-    partes = []
-    for f in sorted(_STATIC.glob("*.html")):
-        if ".bak" in f.name or "_arquivo" in str(f):
-            continue
-        partes.append(f.read_text(errors="ignore"))
-    for f in sorted((_STATIC / "assets").glob("*.js")):
-        partes.append(f.read_text(errors="ignore"))
-    return "\n".join(partes)
+    """Delegado a `tests/superficie.py` — leitura RECURSIVA, compartilhada com a catraca irmã.
+
+    Antes daqui saía um glob NÃO recursivo (`static/*.html` + `static/assets/*.js`). Quando o JS
+    do painel for extraído para `static/js/`, o glob antigo deixaria de ver as chamadas de rota e
+    esta catraca acusaria dezenas de órfãs de mentira. Ver o cabeçalho de `superficie.py`.
+    """
+    from tests.superficie import superficie_texto
+
+    return superficie_texto("front")
 
 
 def _base_do_path(path: str) -> str:

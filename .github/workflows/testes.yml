@@ -1,0 +1,93 @@
+name: Testes (em LOTES, critério = delta zero)
+
+# POR QUE ESTE WORKFLOW EXISTE. Havia 436 arquivos de teste / ~3.900 funções e **nenhum CI de pytest**
+# — os dois workflows existentes são de coleta de dado. A disciplina morava no hook local de
+# pre-commit, que é local-only: máquina nova, disciplina zero.
+#
+# DUAS DECISÕES QUE NÃO SÃO ÓBVIAS:
+#
+#  1. EM LOTES, não monolítico. A suíte inteira já derrubou a VM de 2 vCPU quatro vezes. Aqui o
+#     runner é do GitHub, mas o fatiamento fica igual ao local (`tools/ci_lote.py`, round-robin
+#     determinístico) para que "o lote 2" seja o MESMO conjunto nas duas máquinas — sem isso não se
+#     compara rodada com rodada.
+#
+#  2. CRITÉRIO = DELTA ZERO, não verde absoluto. Parte das falhas é de AMBIENTE (sem
+#     `data/compliance.db`, sem Chrome, sem chave de API) e não de código. Exigir 0 falhas num
+#     ambiente que não tem a base transforma o gate em alarme permanente — e alarme permanente é
+#     alarme desligado. `tools/ci_delta.py` compara NOME A NOME contra as bases conhecidas: falha
+#     nova reprova, falha conhecida é tolerada, falha que sumiu é ganho a travar.
+#
+#  3. TORCH PELO ÍNDICE CPU. `easyocr` puxa torch; o wheel padrão traz ~3,9 GB de CUDA que nenhum
+#     runner sem GPU usa. O índice CPU entra como extra — mesma decisão tomada na VM.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lotes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: Ambiente (torch pelo índice CPU)
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python \
+            --extra-index-url https://download.pytorch.org/whl/cpu \
+            -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff bloqueia — baseline do repo é ZERO)
+        run: .venv/bin/python -m ruff check .
+
+      # Os quatro lotes correm em SEQUÊNCIA e nenhum aborta o próximo (`|| true`): queremos o mapa
+      # COMPLETO de falhas para o delta, não o primeiro tropeço. Quem reprova é o passo do delta.
+      - name: Lote 1/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 1 4) 2>&1 | tee /tmp/lote1.log || true
+      - name: Lote 2/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 2 4) 2>&1 | tee /tmp/lote2.log || true
+      - name: Lote 3/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 3 4) 2>&1 | tee /tmp/lote3.log || true
+      - name: Lote 4/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 4 4) 2>&1 | tee /tmp/lote4.log || true
+
+      - name: Delta contra as falhas conhecidas
+        run: |
+          PYTHONPATH=. .venv/bin/python -m tools.ci_delta \
+            /tmp/lote1.log /tmp/lote2.log /tmp/lote3.log /tmp/lote4.log \
+            --base tests/BASE-FALHAS-VM2.txt --base tests/BASE-FALHAS-CI.txt
+
+      - name: Guardar os logs (para popular a base na primeira rodada)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-dos-lotes
+          path: /tmp/lote*.log
+          retention-days: 14

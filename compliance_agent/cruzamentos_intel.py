@@ -1486,8 +1486,8 @@ def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
         # A cura é ACRESCENTAR a prova, não apagar o sinal: quem recebeu muito e hoje está
         # baixada continua valendo conhecimento, só não é "pagamento a empresa morta".
         # `data_situacao` vive no dump da Receita (DB separado), e o lookup é por chave
-        # primária — 0 ms por CNPJ. NUNCA varrer por situacao_cadastral: sem índice, 25 s.
-        baixa: dict[str, tuple] = {}
+        # primária — 0 ms por CNPJ (é o que `_pagou_apos_baixa` faz, um CNPJ por vez).
+        # NUNCA varrer por situacao_cadastral: sem índice, 25 s.
         try:
             con.execute("ATTACH DATABASE ? AS estab",
                         (f"file:{_REPO / 'data' / 'receita_estab.db'}?mode=ro",))

@@ -75,7 +75,9 @@ def _tem_soffice():
 def _doc_antigo_bytes(paragrafos):
     """Cria um .doc BINÁRIO antigo convertendo um .docx via libreoffice (o único jeito
     de gerar .doc em teste — não há lib Python que escreva .doc)."""
-    import subprocess, tempfile, os
+    import subprocess
+    import tempfile
+    import os
     from pathlib import Path
     docx = _docx_bytes(paragrafos)
     with tempfile.TemporaryDirectory() as td:
