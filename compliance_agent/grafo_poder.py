@@ -40,6 +40,23 @@ _RELACOES_FACTUAIS = ("pago_por",)
 _REL_PARA_TIPO = {"doou": "doou_para", "servidor": "servidor_de"}
 
 
+def _TEM_COLUNA(con, tabela: str, coluna: str) -> bool:
+    try:
+        return coluna in {r[1] for r in con.execute(f"PRAGMA table_info({tabela})")}
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _COL_CPF_RESOLVIDO(con) -> str:
+    """`cpf_resolvido` se a coluna existir, senão o literal vazio.
+
+    A coluna vem do enriquecimento e falta em base sintética e em cópia antiga. Referenciá-la sem
+    checar derrubava a consulta inteira — e um grafo que não abre é pior que um grafo com a
+    graduação um degrau abaixo.
+    """
+    return "cpf_resolvido" if _TEM_COLUNA(con, "socios_fornecedor", "cpf_resolvido") else "''"
+
+
 def forca_da_relacao(rel: str) -> tuple[float | None, str | None]:
     """`(forca, tipo_calibrado)` de uma relação simples. `(None, None)` para relação factual."""
     if rel in _RELACOES_FACTUAIS:
@@ -142,19 +159,26 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
             out.append((f"ug:{ug}", "pago_por", {"label": _lbl, "total_ob": round(tot or 0, 2)}))
         if so_contrato:
             return out
-        # sócios (QSA) — força graduada pelo quanto a pessoa está identificada
+        # sócios (QSA) — força graduada pelo quanto a pessoa está identificada.
+        # `cpf_resolvido` é coluna de enriquecimento e pode não existir (base sintética, cópia
+        # antiga): sem ela a graduação cai um degrau, para `mesmo_socio_doc_parcial`, que é o
+        # honesto — e não quebra a consulta inteira.
         for nome, doc, doc_res in con.execute(
-                "SELECT socio_nome_norm, socio_doc, cpf_resolvido FROM socios_fornecedor "
-                "WHERE cnpj=? LIMIT ?", (cnpj, _FANOUT)):
+                f"SELECT socio_nome_norm, socio_doc, {_COL_CPF_RESOLVIDO(con)} "
+                f"FROM socios_fornecedor WHERE cnpj=? LIMIT ?", (cnpj, _FANOUT)):
             if nome:
                 tipo, forca, obs = calibrar_socio(doc_res or "", doc or "")
                 out.append((f"socio:{nome}", "socio",
                             {"label": nome, "doc": doc, "forca": forca,
                              "tipo_calibrado": tipo, "ressalva": obs}))
-        # co-endereço — sala (0,75) × prédio (0,05); 76% do acervo é prédio
+        # co-endereço — sala (0,75) × prédio (0,05); 76% do acervo é prédio.
+        # `endereco` (o texto com complemento) é o que distingue sala de prédio, e pode não existir
+        # em base reduzida; sem ele resta o `endereco_norm`, que já vem sem complemento — e aí a
+        # aresta cai para `mesmo_predio`, que é o resultado honesto para quem não pode ver a sala.
+        _col_end = "b.endereco" if _TEM_COLUNA(con, "endereco_fornecedor", "endereco") else "b.endereco_norm"
         for c2, end2 in con.execute(
-                "SELECT b.cnpj, b.endereco FROM endereco_fornecedor a JOIN endereco_fornecedor b "
-                "ON a.endereco_norm=b.endereco_norm AND a.cnpj<>b.cnpj WHERE a.cnpj=? LIMIT ?",
+                f"SELECT b.cnpj, {_col_end} FROM endereco_fornecedor a JOIN endereco_fornecedor b "
+                f"ON a.endereco_norm=b.endereco_norm AND a.cnpj<>b.cnpj WHERE a.cnpj=? LIMIT ?",
                 (cnpj, _FANOUT)):
             tipo, forca, obs = calibrar_endereco(end2 or "")
             out.append((f"cnpj:{_digits(c2)}", "co_endereco",
@@ -165,8 +189,9 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
         nome = val
         # outras empresas do mesmo sócio — MESMA graduação: por nome puro isto vale 0,10
         for c2, doc, doc_res in con.execute(
-                "SELECT cnpj, MAX(socio_doc), MAX(cpf_resolvido) FROM socios_fornecedor "
-                "WHERE socio_nome_norm=? GROUP BY cnpj LIMIT ?", (nome, _FANOUT)):
+                f"SELECT cnpj, MAX(socio_doc), MAX({_COL_CPF_RESOLVIDO(con)}) "
+                f"FROM socios_fornecedor WHERE socio_nome_norm=? GROUP BY cnpj LIMIT ?",
+                (nome, _FANOUT)):
             tipo, forca, obs = calibrar_socio(doc_res or "", doc or "")
             out.append((f"cnpj:{_digits(c2)}", "socio",
                         {"label": c2, "forca": forca, "tipo_calibrado": tipo, "ressalva": obs}))
