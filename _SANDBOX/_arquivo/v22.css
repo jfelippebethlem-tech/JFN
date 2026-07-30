@@ -1,0 +1,20 @@
+
+  /* ── v22 EUROSTILE — a voz de display, em escopo de folha ────────────
+     Orbitron e a alternativa livre a Eurostile Extended, familia da
+     interface do HAL 9000 — a fonte que criou o cliche de computador de
+     nave. Variavel: 11.8 KB cobrem 400-900.
+
+     Escopo so em classes FOLHA (que contem texto e nada mais). Container
+     esta proibido: a tentativa anterior pegou o selo do cabecalho, e como
+     Orbitron nao tem glifo de emoji o fallback virou reticencias. Regra:
+     rotulo e folha; container tem filho que voce nao controla.
+
+     Numero fica em IBM Plex Mono. Orbitron nao tem tabular figures, e
+     numero que treme e o indicio mais visivel de dashboard amador.      */
+  @font-face{font-family:"Orbitron";src:url(/static/assets/fonts/Orbitron-var.woff2) format("woff2");
+    font-weight:400 900;font-display:swap}
+  :root{--display:"Orbitron",var(--mono)}
+
+  .sect,.eco .k,.kpi .l,.ck-inst .lab,#portal .l1{
+    font-family:var(--display);letter-spacing:.1em}
+  nav.tabs button .tl{font-family:var(--display);letter-spacing:.02em;font-size:9px}

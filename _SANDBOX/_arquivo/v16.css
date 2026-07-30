@@ -1,0 +1,74 @@
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v16 SABRE VIVO — o cockpit responde, e responde ao DADO
+     ══════════════════════════════════════════════════════════════════════
+     A v15 deu moldura ao instrumento. Esta faz o instrumento reagir: o que
+     se move aqui está amarrado ao que o número significa, nunca a enfeite.
+     Quem mexe em severidade, atividade e foco muda o movimento junto.    */
+
+  /* ── SABRE: o número grande acende como lâmina ───────────────────────
+     Entra por scaleY a partir da base (o sabre acende de baixo), não por
+     opacity — acender é gesto, não fade.                                 */
+  .kpi .v,.ck-inst .val{position:relative}
+  .kpi .v::after,.ck-inst .val::after{
+    content:"";position:absolute;left:0;right:0;bottom:-3px;height:1.5px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--esf,var(--ion)),transparent);
+    box-shadow:0 0 8px color-mix(in oklch,var(--esf,var(--ion)) 70%,transparent);
+    transform:scaleX(0);transform-origin:left center;
+    animation:v16acende .7s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes v16acende{to{transform:scaleX(1)}}
+
+  /* ── HOLOCRON: o ícone da aba gira em 3D ao ser escolhido ────────────
+     Só o ícone da aba ATIVA, e uma volta só. É confirmação de escolha —
+     ícone girando eternamente vira enfeite e o olho para de ver.        */
+  nav.tabs button.on .ti .jico{animation:v16holo .8s cubic-bezier(.3,.7,.2,1) 1}
+  @keyframes v16holo{from{transform:rotateY(-180deg) scale(.8)}to{transform:rotateY(0) scale(1)}}
+  nav.tabs button .ti{perspective:400px}
+
+  /* ── SEVERIDADE PULSA: grave respira, leve fica quieto ───────────────
+     O ritmo carrega a informação. Quem tem sinal grave pulsa mais rápido;
+     assim a fila de apuração se ordena sozinha no canto do olho, sem o
+     auditor precisar ler número nenhum.                                  */
+  .sev-alta,.grave,td .pill.alto{animation:v16pulso 1.8s ease-in-out infinite}
+  .sev-media,.medio,td .pill.medio{animation:v16pulso 3.2s ease-in-out infinite}
+  @keyframes v16pulso{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+
+  /* ── VARREDURA DE RADAR no cabeçalho da aba ──────────────────────────
+     Um facho cruza a linha do título quando a aba entra. Diz "o sistema
+     olhou aqui agora" — e para, porque varredura eterna é ruído.        */
+  .hd::after,h2::after{
+    content:"";position:absolute;left:0;bottom:-2px;height:1px;width:100%;pointer-events:none;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf,var(--ion)) 85%,transparent),transparent);
+    transform:translateX(-100%);animation:v16varre 1.4s cubic-bezier(.3,.6,.3,1) .2s both}
+  @keyframes v16varre{to{transform:translateX(100%)}}
+
+  /* ── BOTÃO: pressiona como tecla de console ──────────────────────────
+     Afunda no eixo Z e a luz da borda acende junto. 60ms — abaixo disso o
+     olho não vê, acima parece lento numa ação repetida 200x/dia.        */
+  .btn{transform-style:preserve-3d}
+  .btn:active{transform:translateZ(-2px) scale(.97);transition-duration:60ms}
+  .btn:hover{box-shadow:0 0 0 1px color-mix(in oklch,var(--esf,var(--ion)) 40%,transparent),
+             0 0 18px -6px color-mix(in oklch,var(--esf,var(--ion)) 60%,transparent)}
+
+  /* ── LINHA DE TABELA: entra escalonada, mas com teto ─────────────────
+     stagger x indice, limitado a 480ms no total: a 20a linha entra junto
+     com a 12a. Sem teto, o auditor espera a lista inteira montar antes de
+     poder clicar — stagger vira espera, que e o oposto de premium.      */
+  tbody tr{animation:v16linha .38s cubic-bezier(.16,1,.3,1) both;
+           animation-delay:calc(min(var(--i,0) * 26ms,480ms))}
+  @keyframes v16linha{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ── AO VIVO: o ponto respira enquanto o fluxo esta aberto ───────────*/
+  .live .dot,#aovivo .dot,.badge-live::before{animation:v16vivo 1.6s ease-in-out infinite}
+  @keyframes v16vivo{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.72)}}
+
+  /* ── reduced-motion: o estado final fica legivel, o movimento sai ────
+     Nao e "sem animacao": fade e cor permanecem (a WCAG nao os considera
+     movimento). Some so o que se desloca ou pulsa sozinho.              */
+  @media (prefers-reduced-motion:reduce){
+    .kpi .v::after,.ck-inst .val::after{animation:none;transform:scaleX(1)}
+    nav.tabs button.on .ti .jico{animation:none}
+    .sev-alta,.grave,.sev-media,.medio,td .pill.alto,td .pill.medio{animation:none}
+    .hd::after,h2::after{animation:none;opacity:.5;transform:none}
+    tbody tr{animation:none}
+    .live .dot,#aovivo .dot,.badge-live::before{animation:none}}
