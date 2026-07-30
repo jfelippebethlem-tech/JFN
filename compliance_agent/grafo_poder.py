@@ -9,6 +9,19 @@ não carrega o grafo inteiro (1,1M OBs) em memória. Arestas vêm das tabelas re
   cnpj —[co_endereco]→ cnpj (endereco_fornecedor)
   pessoa —[servidor]→ ug (registros_folha)
 
+CADA ARESTA DE VÍNCULO CARREGA FORÇA (2026-07-29). Antes não carregava, e o efeito era medido:
+sócio ligado por NOME puro valia o mesmo que sócio ligado por documento, e co-endereço não separava
+sala de prédio — **76% das arestas de co-endereço do acervo são de prédio** (435 de 570), e valiam
+0,75 quando valem 0,05. Sobrepeso de 15× em três quartos das arestas.
+
+A régua é a de `osint/vinculos.TIPOS_ARESTA`, calibrada nas lições que a casa pagou (por prédio, o
+topo do acervo é um endereço com 318 CNPJs; por sala, o mesmo dado dá grupos que significam algo).
+Ela existia e não estava aqui — que é justamente onde o usuário olha o grafo.
+
+`pago_por` NÃO recebe força: pagamento é FATO (a Ordem Bancária existe), não inferência de
+proximidade. Dar-lhe força de vínculo misturaria duas coisas e inflaria o grau de qualquer
+fornecedor grande.
+
 Honestidade: vínculo é INDÍCIO de relação (presunção de legitimidade); CPF mascarado (LGPD).
 """
 from __future__ import annotations
@@ -16,8 +29,52 @@ from __future__ import annotations
 import re
 import sqlite3
 from compliance_agent.database.models import _resolver_db
+from compliance_agent.osint.vinculos import TIPOS_ARESTA, classificar_endereco
 
 _FANOUT = 12  # teto de vizinhos por nó (evita explosão em UG/sócio de alto grau)
+
+# Relações que são FATO registrado, não inferência de proximidade — não recebem força de aresta.
+_RELACOES_FACTUAIS = ("pago_por",)
+
+# Como cada relação do grafo se traduz na régua fechada de `osint/vinculos`.
+_REL_PARA_TIPO = {"doou": "doou_para", "servidor": "servidor_de"}
+
+
+def forca_da_relacao(rel: str) -> tuple[float | None, str | None]:
+    """`(forca, tipo_calibrado)` de uma relação simples. `(None, None)` para relação factual."""
+    if rel in _RELACOES_FACTUAIS:
+        return None, None
+    tipo = _REL_PARA_TIPO.get(rel, rel)
+    t = TIPOS_ARESTA.get(tipo)
+    return (t.forca, t.id) if t else (None, None)
+
+
+def calibrar_socio(doc_resolvido: str = "", doc_mascarado: str = "") -> tuple[str, float, str]:
+    """Gradua a aresta de sócio pelo QUANTO a pessoa está identificada — três graus.
+
+    O grau do meio é o que mais aparece: a Receita mascara o CPF de todo sócio, e 94,9% dos vínculos
+    do acervo (29.837 de 31.449) só têm nome + seis dígitos centrais. Tratar isso como documento
+    pleno inflaria; tratar como nome puro jogaria fora informação real.
+    """
+    if (doc_resolvido or "").strip():
+        t = TIPOS_ARESTA["mesmo_socio"]
+        return t.id, t.forca, ""
+    if (doc_mascarado or "").strip():
+        t = TIPOS_ARESTA["mesmo_socio_doc_parcial"]
+        return t.id, t.forca, t.exculpatoria
+    t = TIPOS_ARESTA["nome_igual_sem_documento"]
+    return t.id, t.forca, t.exculpatoria
+
+
+def calibrar_endereco(endereco: str, complemento: str = "") -> tuple[str, float, str]:
+    """`mesma_sala` (0,75) × `mesmo_predio` (0,05) — a diferença de 15× que faltava aqui.
+
+    Delega a `osint/vinculos.classificar_endereco`, que também trata endereço de natureza
+    compartilhada (coworking, escritório virtual, caixa postal) como prédio mesmo havendo sala.
+    """
+    tipo, obs = classificar_endereco(endereco or "", complemento or "")
+    t = TIPOS_ARESTA[tipo]
+    return t.id, t.forca, "; ".join(obs) or t.exculpatoria
 
 
 def _con() -> sqlite3.Connection:
@@ -85,26 +142,34 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
             out.append((f"ug:{ug}", "pago_por", {"label": _lbl, "total_ob": round(tot or 0, 2)}))
         if so_contrato:
             return out
-        # sócios (QSA)
-        for nome, doc in con.execute(
-                "SELECT socio_nome_norm, socio_doc FROM socios_fornecedor WHERE cnpj=? LIMIT ?",
-                (cnpj, _FANOUT)):
+        # sócios (QSA) — força graduada pelo quanto a pessoa está identificada
+        for nome, doc, doc_res in con.execute(
+                "SELECT socio_nome_norm, socio_doc, cpf_resolvido FROM socios_fornecedor "
+                "WHERE cnpj=? LIMIT ?", (cnpj, _FANOUT)):
             if nome:
-                out.append((f"socio:{nome}", "socio", {"label": nome, "doc": doc}))
-        # co-endereço
-        for c2, in con.execute(
-                "SELECT b.cnpj FROM endereco_fornecedor a JOIN endereco_fornecedor b "
+                tipo, forca, obs = calibrar_socio(doc_res or "", doc or "")
+                out.append((f"socio:{nome}", "socio",
+                            {"label": nome, "doc": doc, "forca": forca,
+                             "tipo_calibrado": tipo, "ressalva": obs}))
+        # co-endereço — sala (0,75) × prédio (0,05); 76% do acervo é prédio
+        for c2, end2 in con.execute(
+                "SELECT b.cnpj, b.endereco FROM endereco_fornecedor a JOIN endereco_fornecedor b "
                 "ON a.endereco_norm=b.endereco_norm AND a.cnpj<>b.cnpj WHERE a.cnpj=? LIMIT ?",
                 (cnpj, _FANOUT)):
-            out.append((f"cnpj:{_digits(c2)}", "co_endereco", {"label": c2}))
+            tipo, forca, obs = calibrar_endereco(end2 or "")
+            out.append((f"cnpj:{_digits(c2)}", "co_endereco",
+                        {"label": c2, "endereco": end2, "forca": forca,
+                         "tipo_calibrado": tipo, "ressalva": obs}))
 
     elif tipo == "socio":
         nome = val
-        # outras empresas do mesmo sócio
-        for c2, in con.execute(
-                "SELECT DISTINCT cnpj FROM socios_fornecedor WHERE socio_nome_norm=? LIMIT ?",
-                (nome, _FANOUT)):
-            out.append((f"cnpj:{_digits(c2)}", "socio", {"label": c2}))
+        # outras empresas do mesmo sócio — MESMA graduação: por nome puro isto vale 0,10
+        for c2, doc, doc_res in con.execute(
+                "SELECT cnpj, MAX(socio_doc), MAX(cpf_resolvido) FROM socios_fornecedor "
+                "WHERE socio_nome_norm=? GROUP BY cnpj LIMIT ?", (nome, _FANOUT)):
+            tipo, forca, obs = calibrar_socio(doc_res or "", doc or "")
+            out.append((f"cnpj:{_digits(c2)}", "socio",
+                        {"label": c2, "forca": forca, "tipo_calibrado": tipo, "ressalva": obs}))
         if so_contrato:
             return out
         # doações que esse nome fez
@@ -112,8 +177,10 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
                 "SELECT nome_candidato, MAX(partido), SUM(valor) FROM doacoes_eleitorais "
                 "WHERE UPPER(nome_doador)=? GROUP BY nome_candidato ORDER BY SUM(valor) DESC LIMIT ?",
                 (nome, _FANOUT)):
+            _f, _t = forca_da_relacao("doou")
             out.append((f"cand:{_norm_nome(cand)}", "doou",
-                        {"label": cand, "partido": partido, "valor": round(val_d or 0, 2)}))
+                        {"label": cand, "partido": partido, "valor": round(val_d or 0, 2),
+                         "forca": _f, "tipo_calibrado": _t}))
 
     elif tipo == "ug":
         ug = val
@@ -135,7 +202,9 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
                 (f"%{nome}%", _FANOUT)):
             d = _digits(doc)
             vid = f"cnpj:{d}" if len(d) == 14 else f"socio:{_norm_nome(doador)}"
-            out.append((vid, "doou", {"label": doador, "valor": round(val_d or 0, 2)}))
+            _f, _t = forca_da_relacao("doou")
+            out.append((vid, "doou", {"label": doador, "valor": round(val_d or 0, 2),
+                                      "forca": _f, "tipo_calibrado": _t}))
 
     return out
 
@@ -174,7 +243,27 @@ def vizinhanca(alvo: str, saltos: int = 2, so_contrato: bool = False) -> dict:
         return {"ok": True, "alvo": alvo, "raiz": raiz, "n_nos": len(nos),
                 "nos": list(nos.values()), "arestas": arestas,
                 "_fonte": "QSA + OB + TSE + folha + co-endereço (compliance.db)",
-                "_nota": "Vínculo = indício de relação (presunção de legitimidade); CPF mascarado (LGPD)."}
+                "_regua": {
+                    "o_que_e": ("Cada aresta de VÍNCULO traz `forca` (0-1) e `tipo_calibrado`. Força "
+                                "é o quanto aquela aresta, SOZINHA, aproxima duas entidades."),
+                    "graus": {tid: {"forca": tt.forca, "descricao": tt.descricao,
+                                    "explicacao_inocente": tt.exculpatoria}
+                              for tid, tt in TIPOS_ARESTA.items()
+                              if tid in ("mesmo_socio", "mesmo_socio_doc_parcial",
+                                         "nome_igual_sem_documento", "mesma_sala",
+                                         "mesmo_predio", "doou_para")},
+                    "pago_por": ("Sem força: pagamento é FATO registrado (a Ordem Bancária existe), "
+                                 "não inferência de proximidade."),
+                    "por_que_importa": ("76% das arestas de co-endereço do acervo são de PRÉDIO "
+                                        "(435 de 570) e valem 0,05, não 0,75 — o topo do acervo por "
+                                        "prédio é um endereço com 318 CNPJs. E só 3,8% dos vínculos "
+                                        "de sócio têm CPF resolvido; 94,9% têm nome + máscara da "
+                                        "Receita, cuja colisão medida é ~4%."),
+                },
+                "_nota": ("Vínculo = indício de relação (presunção de legitimidade); CPF mascarado "
+                          "(LGPD). Caminho FORTE vale mais que caminho curto: para afirmar vínculo "
+                          "numa peça, use `/api/osint/beneficiario_final`, que sobe a cadeia por "
+                          "documento e devolve a confiança do trajeto.")}
     finally:
         con.close()
 

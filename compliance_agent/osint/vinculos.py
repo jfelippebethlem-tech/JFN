@@ -87,6 +87,17 @@ TIPOS_ARESTA: dict[str, TipoAresta] = {
     "nome_igual_sem_documento": TipoAresta(
         "nome_igual_sem_documento", "mesmo NOME, sem documento que confirme identidade", 0.10,
         "homonímia — nome comum não identifica pessoa; exige CPF para valer"),
+    # O caso DOMINANTE em grafo societário brasileiro de fonte aberta, e que faltava aqui.
+    # A Receita mascara o CPF de todo sócio (`***261845**`), então 94,9% dos vínculos do acervo
+    # (29.837 de 31.449) têm nome + seis dígitos centrais — e nenhum dos dois extremos servia:
+    # `mesmo_socio` (0,90) pressupõe documento pleno, e `nome_igual_sem_documento` (0,10) descarta
+    # a máscara, que é informação real. A colisão medida desta combinação nesta base é de ~4%.
+    "mesmo_socio_doc_parcial": TipoAresta(
+        "mesmo_socio_doc_parcial",
+        "sócio em comum identificado por nome + CPF mascarado da Receita (seis dígitos centrais)",
+        0.70,
+        "a máscara da Receita não identifica com unicidade: a colisão medida de nome + seis dígitos "
+        "centrais nesta base é de ~4%, e homônimo com máscara igual existe"),
 }
 
 # Endereços que NÃO ligam ninguém a ninguém: coworking, caixa postal, sede de junta comercial.
