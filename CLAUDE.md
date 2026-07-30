@@ -46,10 +46,50 @@ Fonte única de capacidades: **`capabilities.yaml`** — derivados (`data/jfn_to
 - **Enxame** (`editais_direcionamento --so-rj`) **só OFF-HOURS** — escrever no compliance.db TRAVA as rotas de leitura do painel.
 - Schema/colunas · dupla numeração de UG · SIAFE-Rio 2/WAF · sweep SEI → `docs/INDEX.md` e `docs/CLAUDE-REFERENCIA-COMPLETA.md` sob demanda.
 
+<!-- O bloco abaixo é GERADO por `npx gitnexus analyze` e regravado a cada índice novo.
+     Eu havia escrito uma versão condensada aqui; o analyze acrescentou a dele por baixo e o
+     custo DOBROU no arquivo que entra em todo turno. Lição: não competir com bloco gerado —
+     `tools/gitnexus_enxugar.sh` (chamado pelo pre-commit) mantém o AGENTS.md como ponteiro. -->
+<!-- gitnexus:start -->
 # GitNexus — Code Intelligence
-Projeto indexado como **JFN** (~39k símbolos, 61k relações, 300 fluxos). Índice stale → `npx gitnexus analyze`.
-- **Antes de editar símbolo:** `gitnexus_impact({target,direction:"upstream"})` e reportar o raio; **HIGH/CRITICAL → avisar**.
-- **Antes de commitar:** `gitnexus_detect_changes()`.
-- Explorar: `gitnexus_query({query})` em vez de grep. Contexto de símbolo: `gitnexus_context({name})`.
-- **Renomear:** `gitnexus_rename` (entende o call graph), nunca find-and-replace.
-- Guias por tarefa em `.claude/skills/gitnexus/*/SKILL.md`; recursos em `gitnexus://repo/JFN/{context,clusters,processes}`.
+
+This project is indexed by GitNexus as **JFN** (40149 symbols, 60145 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/JFN/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/JFN/clusters` | All functional areas |
+| `gitnexus://repo/JFN/processes` | All execution flows |
+| `gitnexus://repo/JFN/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->
