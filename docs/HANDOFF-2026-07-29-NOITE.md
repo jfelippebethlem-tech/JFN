@@ -2,7 +2,7 @@
 
 > Continuação de `docs/HANDOFF-2026-07-29.md` (manhã). Comece por aqui.
 > Branch **`feat/painel-v15-holo`** · **`main` reconciliado e em dia** (fast-forward, sem force-push).
-> 14 commits nesta sessão. A §4-B cobre a continuação (pendências atacadas depois do primeiro fecho).
+> 24 commits nesta sessão. §4-B e §4-C cobrem as continuações (pendências atacadas após o 1º fecho).
 
 ---
 
@@ -210,6 +210,69 @@ Contrato, 1 DFD. **Não existe tipo "Ata de Sessão" na taxonomia do PNCP.** É 
 
 ---
 
+## 4-C. Segunda continuação — o que destravou os eixos que devolviam zero
+
+### 4-C.1 Resolução nome → CNPJ: era CATÁLOGO, não técnica
+
+Os perdedores do TCE-RJ vêm por **nome**, e sem CNPJ não há QSA. A primeira medição, contra os
+catálogos que a casa já tinha (75.891 nomes), deu **13,9%** de acerto com **0,3%** de ambiguidade — e
+esse par de números diz tudo: quando o nome está no catálogo, ele resolve limpo; o problema é que 86%
+dos licitantes municipais nunca venderam ao Estado. Não era caso de biblioteca de record linkage: era
+caso de catálogo maior. O dump `Empresas*.zip` (1,3 GB, o país inteiro) estava em disco desde sempre.
+Uma passada por streaming: **60,3%** (12.738 resolvidos, 2.215 ambíguos com CNPJ **NULO** declarado).
+
+### 4-C.2 E.3.2 destravado — 42 pares com sócio em comum
+
+    coleta TCE-RJ ................ 15.436 certames · 82.941 perdedores
+    resolução nome → CNPJ ........  60,3%
+    vencedor E perdedora resolvidos  5.220 certames
+    com QSA nos dois lados ........  4.074   ← universo real
+    pares com sócio em comum ......     42, em 31 certames (0,76%)
+
+**0,76% é a marca de um sinal que discrimina.** Três ressalvas viajam com o achado, e a principal veio
+de olhar um certame real (Angra dos Reis, 45 participantes): em **pregão multi-item a MESMA empresa é
+vencedora de um item e perdedora de outro**, e a fonte não publica o item — o veredito é
+`indicio_a_confirmar_no_item`, nunca fechado.
+
+### 4-C.3 SpiderFoot ganhou caller — e a recusa que o torna utilizável
+
+Estava parado porque recebe domínio e a casa não tinha o campo; passou a ter com o I.1.2. Medido
+sobre os **4.258.994 e-mails do dump inteiro**: **87,3% são de provedor livre**, só 12,7% têm domínio
+próprio. Logo, **não ter domínio próprio não é sinal de fachada** — é a norma de sete em cada oito
+empresas. Sem domínio o resultado é INDISPONÍVEL com `score=None`; footprint vazio de verdade
+(domínio existe, scan não achou nada) segue valendo 1,0.
+
+Detalhe de método: a primeira medição, por `LIMIT 400000`, deu 83,2%; a de `LIMIT 100000` deu 59,8%.
+`LIMIT` sem ordenação pega fatia contígua por rowid. **Denominador errado é pior que ausente** —
+`cobertura_dominio` passou a contar.
+
+### 4-C.4 Interposição e patrimônio saíram do CLI
+
+E com eles um defeito latente: `_socios_da_empresa` fazia `dict(row)` assumindo `sqlite3.Row`
+configurado pelo chamador — nunca atingido porque nunca teve chamador. A primeira correção setava
+`con.row_factory`, o que é **efeito colateral na conexão do chamador** e mudou o parecer do Lex.
+Trocada por montar o dict pelas colunas nomeadas.
+
+### 4-C.5 O snapshot do Lex dizia OFFLINE e dependia da rede
+
+`investigacao_dd` consultava o provider de cadastro pela internet quando `cadastral is None` — o
+único caminho do módulo que saía para fora, e sem como desligar. O golden tinha sido gravado **com**
+rede. Entrou `JFN_SEM_REDE`, e o golden foi regravado no estado offline de verdade. Golden que depende
+de conectividade é moeda, não teste.
+
+### 4-C.6 Os três cérebros aprenderam o sistema
+
+- **Vault**: `aprendizados/CATALOGO-DE-FALHAS.md` — as **11 famílias** de falha já reportadas, cada
+  uma com a **assinatura** que a denuncia e a regra que a impede. E `COMO-O-SISTEMA-FUNCIONA.md` —
+  manual único: peças, invariantes, onde vive cada dado, régua de força, o que rodar antes de dizer
+  "pronto". Ligados em `00-INDEX`, `MOC-Aprendizados` e `log.md`.
+- **GitNexus**: reindexado — **39.299 símbolos · 61.688 relações · 1.233 clusters**
+  (era 38.500/60.335/1.189).
+- **graphify**: as notas estão no vault e linkadas dos hubs, mas o **grafo não foi reconstruído** — o
+  CLI só faz `path`/`explain`/`diagnose`; o build é por subagentes via skill. Fica como próxima ação.
+
+---
+
 ## 5. PENDENTE
 
 ### 5.1 Herdado e ainda aberto (ordem de valor por esforço)
@@ -235,18 +298,20 @@ Contrato, 1 DFD. **Não existe tipo "Ata de Sessão" na taxonomia do PNCP.** É 
 
 Segue aberto:
 
-- 🔴 **Resolução de entidade (Splink)** — virou o bloqueio de MAIOR alcance. Trava o E.3.2 (perdedoras
-  do TCE-RJ vêm por nome, sem CNPJ, e sem CNPJ não há QSA), e a resolução de CPF segue em **3,8%**
-  com colisão de máscara de ~4%. É o próximo item por valor.
+- ✅ **Resolução nome → CNPJ** — 60,3% pelo catálogo nacional (§4-C.1). **Não** foi preciso Splink.
+  Segue aberto o outro lado: resolver **CPF de sócio** (mascarado, colisão ~4%) continua em 3,8%, e
+  aí sim record linkage probabilístico é o caminho.
+- 🔴 **Os 6.188 nomes não encontrados** (29,3%) — grafia divergente do registro. Aqui, sim, casamento
+  por semelhança tem o que fazer; com o cuidado de que 2.215 já são ambíguos no casamento EXATO.
 - 🔴 **Ata de sessão** — a única fonte do funil de habilitação (o TCE-RJ não distingue inabilitação de
   derrota no preço; o PNCP publica ata em 8,7% dos certames, quase toda minuta). Caminhos restantes:
   SEI (arquivo já em disco), DOERJ, portais municipais.
-- 🔴 **SpiderFoot** — segue sem caller, e agora se sabe por quê: precisava de domínio/e-mail, que só
-  passou a existir com o I.1.2. Com `correio_eletronico` disponível, o caller é curto — derivar o
-  domínio e usar o guard `elegivel(radar_score >= 50)`.
-- 🔴 **`osint/interposicao`, `osint/timeline`, `osint/patrimonio`** seguem só em CLI.
-- 🔴 **Coleta TCE-RJ incompleta** — 2024 e 2025 dentro (13.021 certames); **2026 e 2023 não rodaram**.
-  `.venv/bin/python -m compliance_agent.collectors.tcerj_licitantes --ano 2026 --db data/compliance.db`
+- ✅ **SpiderFoot** — caller feito (§4-C.3), com a recusa que impede acusar 87,3% do país.
+- ✅ **`osint/interposicao` e `osint/patrimonio`** — rota e tela (§4-C.4). `osint/timeline` segue só
+  em CLI: precisa de uma linha de eventos montada, e o caller natural é o dossiê.
+- 🔴 **graphify do vault não reconstruído** — as notas novas estão lá e linkadas dos hubs, mas o grafo
+  não as tem. O CLI só consulta; o build é por subagentes via skill.
+- ✅ **Coleta TCE-RJ** — 2024, 2025 e 2026 dentro (**15.436 certames**). 2023 devolve vazio na API.
 
 ### 5.3 Dívida que NÃO absorvi
 
