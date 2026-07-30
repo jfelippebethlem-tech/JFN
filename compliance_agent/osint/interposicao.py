@@ -108,17 +108,22 @@ def corte_multiplicidade(con: sqlite3.Connection,
 
 
 def _socios_da_empresa(con: sqlite3.Connection, cnpj: str) -> list[dict]:
-    # `dict(row)` exige `sqlite3.Row`. O módulo assumia que o chamador tinha configurado — e como
-    # nunca teve chamador em produção, o `ValueError` nunca apareceu. Configurar aqui é o certo:
-    # quem consome não deve precisar saber do detalhe de cursor para usar a função.
-    con.row_factory = sqlite3.Row
+    """QSA da empresa. Monta o dict pelas COLUNAS, sem depender do `row_factory` do chamador.
+
+    A versão original fazia `dict(row)`, o que exige `sqlite3.Row` — e o módulo assumia que quem
+    chamasse já tivesse configurado. Como nunca teve chamador em produção, o `ValueError` nunca
+    apareceu (o teste configurava). A primeira correção setava `con.row_factory` aqui, e isso é
+    pior: muda o comportamento da conexão do CHAMADOR, e o parecer do Lex mudou de fato por causa
+    disso. Nomear as colunas resolve sem efeito colateral nenhum.
+    """
     basico = re.sub(r"\D", "", cnpj or "")[:8]
     if len(basico) != 8:
         return []
+    campos = ("nome_socio", "nome_norm", "doc_socio", "qualificacao_txt",
+              "data_entrada", "faixa_etaria")
     try:
-        return [dict(r) for r in con.execute(
-            "SELECT nome_socio, nome_norm, doc_socio, qualificacao_txt, data_entrada, faixa_etaria "
-            "FROM socios_receita WHERE cnpj_basico = ?", (basico,))]
+        return [dict(zip(campos, linha)) for linha in con.execute(
+            f"SELECT {', '.join(campos)} FROM socios_receita WHERE cnpj_basico = ?", (basico,))]
     except sqlite3.OperationalError:
         return []
 

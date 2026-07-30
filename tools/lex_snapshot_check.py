@@ -32,6 +32,11 @@ GOLDEN.mkdir(parents=True, exist_ok=True)
 os.environ["JFN_DB"] = str(GOLDEN / "snapshot_vazio.db")
 
 os.environ["JFN_VEREDITO_LLM_DISABLED"] = "1"  # flag oficial (2026-07-06) — sem LLM vivo no snapshot
+# SEM REDE. Faltava: o `investigacao_dd` consultava o provider de cadastro quando `cadastral is
+# None`, e esse era o único caminho do módulo que saía para a internet. O snapshot se dizia OFFLINE
+# e, quando o provider respondia, o parecer ganhava endereço e porte e o golden divergia — um golden
+# que depende de a rede estar fora é uma moeda, não um teste.
+os.environ["JFN_SEM_REDE"] = "1"
 
 import compliance_agent.lex as lex  # noqa: E402
 

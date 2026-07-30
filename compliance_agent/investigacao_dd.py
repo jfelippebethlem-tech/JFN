@@ -120,6 +120,19 @@ def _hip(codigo, titulo, status, nivel, evidencia, fonte, base_legal, peso) -> d
             "evidencia": evidencia, "fonte": fonte, "base_legal": base_legal, "peso": peso}
 
 
+def _sem_rede() -> bool:
+    """Modo sem rede — para snapshot e teste determinístico.
+
+    Este caminho era o único do módulo que alcançava a internet, e não havia como desligá-lo. O
+    `tools/lex_snapshot_check` dizia gerar o parecer "em ambiente OFFLINE" e desligava SEI, LLM e o
+    banco de produção, mas não isto: quando o provider de cadastro respondia, o parecer ganhava
+    endereço e porte, e o golden divergia. Um golden que depende de a rede estar fora não é
+    determinístico — é uma moeda.
+    """
+    import os
+    return os.environ.get("JFN_SEM_REDE", "").strip() not in ("", "0", "false", "False")
+
+
 def _cadastro_dump(cnpj_basico: str, db_path=None) -> dict | None:
     """Capital social / porte / razão do dump da Receita (empresas_cadastro, populado por
     tools/empresas_dump_sweep). Read-only; tabela ausente → None (degrada honesto)."""
@@ -187,7 +200,7 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
 
     # cadastro best-effort se NÃO foi fornecido (cadastral is None). Um dict vazio explícito
     # significa "não tenho cadastro" e NÃO dispara rede — preserva a honestidade do INDISPONÍVEL.
-    if cadastral is None and len(cnpj) == 14:
+    if cadastral is None and len(cnpj) == 14 and not _sem_rede():
         try:
             from compliance_agent.providers import lookup
             r = lookup("registry", cnpj=cnpj)
