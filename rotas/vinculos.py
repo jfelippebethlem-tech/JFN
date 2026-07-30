@@ -235,3 +235,67 @@ def api_resolucao_nome_cnpj():
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("resolucao_nome_cnpj falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/interposicao")
+def api_interposicao(cnpj: str, data_referencia: str = ""):
+    """G.4 — perfil de laranja no QSA, calibrado por PREVALÊNCIA de cada eixo.
+
+    Foi o módulo que ensinou a lição: marcava 55% da base até alguém medir que "empresa com um só
+    sócio" é 54,9% do normal e sócio com mais de 80 anos é 1,87%. Depois da calibragem, 1,4%.
+    Existia só em CLI desde então.
+    """
+    try:
+        from compliance_agent.osint.interposicao import avaliar
+
+        raiz = "".join(ch for ch in str(cnpj) if ch.isdigit())[:8]
+        if len(raiz) < 8:
+            return JSONResponse({"ok": False, "erro": "CNPJ inválido"}, status_code=400)
+        con = _db_ro()
+        try:
+            return JSONResponse({"ok": True, **avaliar(
+                con, raiz, data_referencia=data_referencia or None)})
+        finally:
+            con.close()
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("interposicao falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/patrimonio")
+def api_patrimonio(cnpj: str = "", nome: str = ""):
+    """G.2 — capacidade declarada × recebimento público.
+
+    Sem renda conhecida o veredito é `nao_aferivel`, **nunca** "renda incompatível": a distinção
+    entre fachada e enriquecimento depende de saber o que a pessoa declara, e quase sempre não se
+    sabe.
+    """
+    try:
+        import sqlite3 as _sq
+
+        from compliance_agent.osint.patrimonio import avaliar_empresa, avaliar_pessoa
+
+        con = _db_ro()
+        con.row_factory = _sq.Row
+        try:
+            if cnpj:
+                raiz = "".join(ch for ch in str(cnpj) if ch.isdigit())[:8]
+                r = con.execute(
+                    "SELECT razao_social, capital_social FROM empresas_cadastro WHERE cnpj_basico=?",
+                    (raiz,)).fetchone()
+                pago = con.execute(
+                    "SELECT COALESCE(SUM(valor),0) FROM ordens_bancarias "
+                    "WHERE substr(REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-',''),1,8)=?",
+                    (raiz,)).fetchone()[0]
+                return JSONResponse({"ok": True, **avaliar_empresa(
+                    razao_social=(r["razao_social"] if r else "") or raiz,
+                    capital_social=(r["capital_social"] if r else None),
+                    valor_pago_ob=pago)})
+            if nome:
+                return JSONResponse({"ok": True, **avaliar_pessoa(nome=nome)})
+            return JSONResponse({"ok": False, "erro": "informe cnpj ou nome"}, status_code=400)
+        finally:
+            con.close()
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("patrimonio falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

@@ -108,6 +108,10 @@ def corte_multiplicidade(con: sqlite3.Connection,
 
 
 def _socios_da_empresa(con: sqlite3.Connection, cnpj: str) -> list[dict]:
+    # `dict(row)` exige `sqlite3.Row`. O módulo assumia que o chamador tinha configurado — e como
+    # nunca teve chamador em produção, o `ValueError` nunca apareceu. Configurar aqui é o certo:
+    # quem consome não deve precisar saber do detalhe de cursor para usar a função.
+    con.row_factory = sqlite3.Row
     basico = re.sub(r"\D", "", cnpj or "")[:8]
     if len(basico) != 8:
         return []

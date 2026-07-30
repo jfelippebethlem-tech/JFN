@@ -2676,6 +2676,8 @@ async function renderVinculos(){
     <div class="btns" style="margin-top:8px">
       <button type="button" class="btn ghost" onclick="vincConluioMunicipal()">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" onclick="vincResolucao()">Resolução nome → CNPJ</button>
+      <button type="button" class="btn ghost" onclick="vincInterposicao()">Perfil de laranja</button>
+      <button type="button" class="btn ghost" onclick="vincPatrimonio()">Capacidade × recebido</button>
     </div>
     <div class="dim" style="margin-top:8px">Histórico de uma <b>pessoa</b> (de quais empresas foi sócia):
       <input id="vinc-pessoa" placeholder="nome do sócio…" style="margin-left:6px">
@@ -3039,6 +3041,29 @@ async function vincResolucao(){
       ${kpi(d.pct_resolvido+'%','Taxa de resolução')}</div>`+
     leitura('Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.')+
     `<div class="note">${esc(d.nota||'')}</div>`;
+}
+
+
+async function vincInterposicao(){
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">medindo os eixos de interposição…</div>');
+  const d=await J('/api/osint/interposicao?cnpj='+encodeURIComponent(c));
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const socios=d.socios||d.perfis||[];
+  let h=sec('Perfil de laranja (interposição) — CNPJ raiz '+esc(c.slice(0,8)));
+  h+=leitura('Este módulo marcava <b>55%</b> da base até a prevalência de cada eixo ser medida: empresa com um só sócio é <b>54,9%</b> do normal, e sócio com mais de 80 anos é <b>1,87%</b>. Depois da calibragem, 1,4%. Eixo que acende na maioria mede a base, não o alvo.');
+  h+=card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,4000)}</pre>`);
+  o.innerHTML=h;
+}
+async function vincPatrimonio(){
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">comparando capacidade declarada e recebimento…</div>');
+  const d=await J('/api/osint/patrimonio?cnpj='+encodeURIComponent(c));
+  if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  let h=sec('Capacidade declarada × recebimento público');
+  h+=leitura('Sem renda conhecida o veredito é <b>não aferível</b>, nunca "renda incompatível" — a distinção entre fachada e enriquecimento depende de saber o que se declara, e quase sempre não se sabe.');
+  h+=card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,3000)}</pre>`);
+  o.innerHTML=h;
 }
 
 // ═══ DETECTORES ÓRFÃOS — segunda onda do "ligar tudo" (2026-07-29) ═══
