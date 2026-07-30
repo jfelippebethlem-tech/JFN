@@ -1,0 +1,2484 @@
+
+  /* ── Design system v7 "REATOR" — organismo vivo ──────────────────────────
+     Brief do dono (2026-07-19): Jarvis × lightsaber × Apple Glass. Cores vivas,
+     tudo interativo e dinâmico. Metáfora única: informação = plasma fluindo —
+     Conduíte-lâmina (SSE real) → plexus de fundo → malha de luz entre cards →
+     spotlight/beam em cada controle. Vidro líquido visionOS (highlight especular
+     + sombra + iluminação). Vida SÓ com dado/evento REAL; reduced-motion desliga
+     tudo. Tipografia: IBM Plex Sans + Mono self-hosted (exatidão forense).    */
+  @property --angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+  @property --spot{syntax:'<color>';initial-value:transparent;inherits:true}
+  @font-face{font-family:"IBM Plex Sans";src:url(/static/assets/fonts/IBMPlexSans-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+  @font-face{font-family:"IBM Plex Sans";src:url(/static/assets/fonts/IBMPlexSans-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+  @font-face{font-family:"IBM Plex Sans";src:url(/static/assets/fonts/IBMPlexSans-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
+  @font-face{font-family:"IBM Plex Sans";src:url(/static/assets/fonts/IBMPlexSans-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
+  @font-face{font-family:"IBM Plex Mono";src:url(/static/assets/fonts/IBMPlexMono-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+  @font-face{font-family:"IBM Plex Mono";src:url(/static/assets/fonts/IBMPlexMono-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+  @font-face{font-family:"IBM Plex Mono";src:url(/static/assets/fonts/IBMPlexMono-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
+  :root{
+    /* espaço profundo azul (hue ~253, chroma rico) — o fundo é céu, não cinza */
+    --bg:oklch(0.125 0.028 255); --bg2:oklch(0.15 0.03 253);
+    --card:oklch(0.19 0.032 252); --card2:oklch(0.168 0.03 252); --raise:oklch(0.235 0.036 250);
+    --bd:oklch(0.48 0.07 230 / .5); --bd2:oklch(0.4 0.055 240 / .32); --glass:oklch(0.15 0.03 252 / .74);
+    --tx:oklch(0.96 0.012 230); --tx2:oklch(0.85 0.02 230); --mut:oklch(0.71 0.03 235); --dim:oklch(0.57 0.03 240);
+    /* paleta VIVA com significado: cian holográfico=interação (Jarvis) · ouro=dinheiro ·
+       âmbar=atenção · rosa=crítico (coisas graves brilham graves) · verde=ok ·
+       azul=Estado · ouro=Prefeitura · violeta=Transversal */
+    --accent:oklch(0.85 0.135 205); --teal:oklch(0.83 0.13 195); --accent2:oklch(0.74 0.14 300);
+    --gold:oklch(0.84 0.135 85); --amber:oklch(0.8 0.15 70); --rose:oklch(0.7 0.215 15);
+    --green:oklch(0.8 0.15 155); --blue:oklch(0.75 0.13 245); --purple:oklch(0.74 0.14 300);
+    --blue-d:oklch(0.64 0.11 245); --teal-d:oklch(0.66 0.11 205); --amber-d:oklch(0.66 0.12 72); --green-d:oklch(0.64 0.12 158);
+    --violet:oklch(0.72 0.14 300); --rose-d:oklch(0.6 0.17 18);
+    --accent-ink:oklch(0.16 0.04 230); --ink:oklch(0.97 0.005 250);
+    --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --r:10px; --r2:12px;
+    /* vidro líquido: highlight especular no topo + profundidade + luz ambiente */
+    --sh:inset 0 1px 0 -0.5px oklch(1 0 0/.08), inset 0 -1px 0 -0.5px oklch(0 0 0/.2), 0 1px 2px oklch(0 0 0/.3), 0 14px 34px -24px oklch(0 0 0/.65);
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --saber:var(--teal); --esf:var(--accent)}
+  body[data-esf="estado"]{--esf:var(--blue)}
+  body[data-esf="prefeitura"]{--esf:var(--gold)}
+  body[data-esf="geral"]{--esf:var(--violet)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{background:linear-gradient(180deg,var(--bg2),var(--bg) 280px);
+    color:var(--tx);font:13.5px/1.55 var(--sans);
+    min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+    font-feature-settings:"calt","kern"}
+  .num,td,th,.kpi .v,.mini .b .v{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--mono)}
+  .wrap{max-width:1220px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative;z-index:2}
+  /* ── AMBIENTE VIVO: plexus (canvas) + auroras que respiram, SEMPRE atrás do dado ── */
+  #netbg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+  .aura{position:fixed;width:64vmax;height:64vmax;border-radius:50%;filter:blur(90px);opacity:.13;
+    pointer-events:none;z-index:0;animation:auraDrift 26s ease-in-out infinite alternate}
+  .aura.a1{top:-26vmax;left:-20vmax;background:radial-gradient(circle,var(--accent),transparent 62%)}
+  .aura.a2{bottom:-30vmax;right:-22vmax;background:radial-gradient(circle,var(--violet),transparent 62%);animation-delay:-13s}
+  @keyframes auraDrift{from{transform:translate(0,0) scale(1)}to{transform:translate(6vmax,4vmax) scale(1.12)}}
+  .view-wire{position:absolute;top:0;left:0;z-index:0;pointer-events:none}
+  @media (prefers-reduced-motion:reduce){.aura{animation:none}}
+  /* ── cockpit home ── */
+  .ck{position:relative}
+  .ck-hero{position:relative;border:1px solid var(--bd2);border-radius:var(--r2);padding:clamp(18px,3vw,30px);
+    background:linear-gradient(180deg,var(--card),var(--card2));box-shadow:var(--sh)}
+  .ck-eye{font-family:var(--mono);font-size:10.5px;letter-spacing:1.6px;color:var(--accent);text-transform:uppercase;font-weight:500}
+  .ck-big{font-family:var(--mono);font-weight:600;line-height:1.05;letter-spacing:-1px;font-size:clamp(30px,4.5vw,46px);
+    color:var(--gold);font-variant-numeric:tabular-nums;margin:8px 0 6px;
+    text-shadow:0 0 22px color-mix(in oklch,var(--gold) 38%,transparent)}
+  .ck-sub{color:var(--mut);font-size:13.5px;max-width:64ch;line-height:1.55}.ck-sub b{color:var(--tx);font-weight:600}
+  /* v28: o hero reservava 1fr para o veredito, que nasce oculto ate a API de
+     fornecedor vedado responder — e quando nao ha vedado, NUNCA responde. Metade
+     direita do primeiro card do painel ficava vazia por construcao. `:has` deixa
+     a coluna existir so quando ha o que por nela; sem veredito o texto assume uma
+     coluna com medida de leitura, em vez de uma coluna morta ao lado.          */
+  @media (min-width:820px){
+    .ck-hero{display:grid;grid-template-columns:minmax(0,1fr);gap:28px;align-items:center}
+    .ck-hero:has(.ck-ved:not([hidden])){grid-template-columns:1.5fr 1fr}
+    .ck-hero:not(:has(.ck-ved:not([hidden]))) .ck-sub{max-width:72ch}
+    .ck-hero .ck-ved{margin-top:0}}
+  .ck-ved{margin-top:14px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:10px 14px;
+    /* v28: era `border-left:2px solid` — faixa lateral colorida, o padrao que a
+       skill impeccable proibe: le como enfeite de callout, nao como estado. A
+       gravidade agora vem da borda INTEIRA mais forte e da tinta de fundo, que e
+       o mesmo sinal sem o vies de "alerta de template". */
+    border:1px solid color-mix(in oklch,var(--rose) 48%,transparent);
+    border-radius:8px;background:color-mix(in oklch,var(--rose) 7%,transparent);animation:graveGlow 3.2s ease-in-out infinite}
+  .ck-ved .n{font-family:var(--mono);font-weight:600;font-size:20px;color:var(--rose);font-variant-numeric:tabular-nums;
+    text-shadow:0 0 14px color-mix(in oklch,var(--rose) 45%,transparent)}
+  @media (prefers-reduced-motion:reduce){.ck-ved{animation:none}}
+  .ck-ved .l{font-size:12.5px;color:var(--mut);max-width:52ch;line-height:1.45}
+  .ck-grid{margin-top:14px;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(216px,1fr))}
+  .ck-inst{position:relative;border:1px solid var(--bd2);border-radius:var(--r);padding:14px 15px;cursor:pointer;
+    background:linear-gradient(165deg,var(--card),var(--card2));box-shadow:var(--sh);transition:border-color .2s,background .15s,box-shadow .25s,transform .2s}
+  .ck-inst:hover{border-color:color-mix(in oklch,var(--accent) 48%,transparent);background:var(--raise);
+    transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(-2px) translateZ(6px);
+    box-shadow:var(--sh),0 0 26px -10px color-mix(in oklch,var(--accent) 40%,transparent)}
+  @media (prefers-reduced-motion:reduce){.ck-inst:hover{transform:none}}
+  .ck-inst .k{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .ck-inst .lab{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--mut);text-transform:uppercase;font-weight:500}
+  .ck-inst .val{font-family:var(--mono);font-weight:600;font-size:26px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ck-inst .meta{margin-top:6px;font-size:12px;color:var(--mut);line-height:1.45}.ck-inst .meta b{color:var(--tx);font-weight:600}
+  .ck-inst .dot{width:7px;height:7px;border-radius:50%;position:relative;margin-top:4px}
+  .ck-inst .dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:ckblip 3.2s ease-out infinite}
+  @keyframes ckblip{0%{transform:scale(1);opacity:.6}70%{transform:scale(2.6);opacity:0}100%{opacity:0}}
+  .ck-ticker{margin:12px 0;height:30px;overflow:hidden;position:relative;border:1px solid var(--bd2);border-radius:8px;
+    background:var(--bg2);display:flex;align-items:center;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  .ck-ticker .lane{display:inline-flex;gap:36px;white-space:nowrap;padding-left:100%;font-family:var(--mono);font-size:11.5px;color:var(--mut);animation:cktick 60s linear infinite}
+  .ck-ticker .lane span b{color:var(--tx2)} .ck-ticker .lane span.a b{color:var(--rose)} .ck-ticker .lane span.g b{color:var(--gold)}
+  .ck-ticker:hover .lane{animation-play-state:paused}
+  @keyframes cktick{to{transform:translateX(-100%)}}
+  .ckteal{color:var(--teal)}.ckgold{color:var(--gold)}.ckgood{color:var(--green)}.ckamber{color:var(--amber)}.ckrose{color:var(--rose)}
+  .bgteal{background:var(--teal)}.bggood{background:var(--green)}.bgamber{background:var(--amber)}.bgrose{background:var(--rose)}.bggold{background:var(--gold)}
+  .ck-fontes{margin-top:16px}
+  .ck-flabel{font-family:var(--mono);font-size:10px;letter-spacing:1.6px;color:var(--dim);text-transform:uppercase;margin-bottom:8px;font-weight:500}
+  .ck-fgrid{display:flex;flex-wrap:wrap;gap:7px}
+  .ck-fchip{display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid var(--bd2);border-radius:7px;
+    background:var(--bg2);font-family:var(--mono);font-size:11px;color:var(--mut)}
+  .ck-fchip .fled{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .ck-fchip .fnm{color:var(--tx2)} .ck-fchip .fage{color:var(--dim)}
+  @media (prefers-reduced-motion:reduce){.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
+
+  /* ── NÚCLEO ORGÂNICO — órbitas de domínios ao redor do reator (conceito "fluxo") ── */
+  .ck-nucleo{position:relative;height:clamp(360px,46vw,540px);border:1px solid var(--bd2);border-radius:var(--r2);
+    background:radial-gradient(ellipse at 50% 55%,oklch(0.175 0.05 278) 0%,oklch(0.135 0.035 262) 55%,oklch(0.12 0.028 255) 100%);
+    box-shadow:var(--sh);overflow:hidden;margin-top:14px;isolation:isolate}
+  #nucleo-cv{position:absolute;inset:0}
+  /* indicador de SWEEP no reator: o que alimenta o sistema agora (SEI/SIAFE) */
+  .nu-sweep{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:3;
+    display:none;align-items:center;gap:8px;padding:6px 13px;border-radius:999px;font-family:var(--mono);
+    font-size:10px;letter-spacing:.6px;color:var(--gold);white-space:nowrap;
+    background:color-mix(in oklch,var(--flame) 12%,oklch(0.13 0.03 260/.72));backdrop-filter:blur(8px);
+    border:1px solid color-mix(in oklch,var(--flame) 40%,transparent);
+    box-shadow:0 0 22px -6px color-mix(in oklch,var(--flame) 55%,transparent)}
+  .nu-sweep.on{display:inline-flex;animation:sweepGlow 2.4s ease-in-out infinite}
+  .nu-sweep .dot{width:6px;height:6px;border-radius:50%;background:var(--flame-hi);flex:0 0 auto;
+    box-shadow:0 0 8px var(--flame-hi);animation:pl 1.1s infinite}
+  .nu-sweep b{color:var(--flame-hi);font-weight:600}
+  .nu-sweep small{color:var(--mut);font-size:9px}
+  @keyframes sweepGlow{0%,100%{box-shadow:0 0 22px -6px color-mix(in oklch,var(--flame) 55%,transparent)}
+    50%{box-shadow:0 0 32px -2px color-mix(in oklch,var(--flame) 78%,transparent)}}
+  @media (prefers-reduced-motion:reduce){.nu-sweep.on,.nu-sweep .dot{animation:none}}
+  .nu-legend{position:absolute;left:14px;top:10px;z-index:2;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);max-width:75%}
+  .nu-chip{position:absolute;z-index:2;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:1px;
+    appearance:none;font-family:inherit;cursor:pointer;padding:5px 10px;border-radius:8px;
+    border:1px solid color-mix(in srgb,var(--nc) 45%,transparent);
+    background:color-mix(in srgb,var(--nc) 10%,oklch(0.14 0.03 260/.7));backdrop-filter:blur(6px);
+    color:var(--tx);transition:box-shadow .2s,border-color .2s}
+  .nu-chip small{font-family:var(--mono);font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+  .nu-chip .n{font-family:var(--mono);font-weight:600;font-size:14.5px;font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb,var(--nc) 70%,white);text-shadow:0 0 10px color-mix(in srgb,var(--nc) 50%,transparent)}
+  .nu-chip:hover{box-shadow:0 0 20px -4px var(--nc);border-color:var(--nc)}
+  .nu-delta{position:absolute;top:-15px;right:-8px;font:600 10px var(--mono);font-style:normal;
+    color:var(--green);text-shadow:0 0 8px color-mix(in oklch,var(--green) 50%,transparent);animation:f .3s ease}
+  @media (max-width:600px){.ck-nucleo{height:340px}.nu-chip{padding:4px 7px}.nu-chip .n{font-size:12px}.nu-chip small{font-size:8px}}
+
+  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-bottom:1px solid var(--bd2)}
+  @media (prefers-reduced-transparency:reduce){header{background:var(--bg2);backdrop-filter:none}}
+
+  /* ── O CONDUÍTE — a assinatura. Lâmina 1px = barramento SSE; cada pulso = evento
+     REAL (OB ingerida, alerta, cláusula julgada). Cor = estado agregado.
+     É o ÚNICO elemento com luz própria em toda a interface.                    */
+  #conduit{position:relative;height:10px;margin:0;pointer-events:none}
+  .cblade{position:absolute;left:0;right:0;top:4px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--saber) 55%,white 30%) 4%,white 50%,color-mix(in oklch,var(--saber) 55%,white 30%) 96%,transparent);
+    box-shadow:0 0 6px var(--saber),0 0 16px color-mix(in oklch,var(--saber) 70%,transparent),0 0 34px color-mix(in oklch,var(--saber) 35%,transparent);
+    transform-origin:left center;animation:ignicao .45s cubic-bezier(.2,.9,.25,1.2) 1,respira 4.5s ease-in-out .5s infinite;
+    transition:background 2s linear,box-shadow 2s linear}
+  @keyframes ignicao{0%{transform:scaleX(0)}70%{transform:scaleX(1.015)}100%{transform:scaleX(1)}}
+  @keyframes respira{0%,100%{opacity:1;filter:brightness(1)}50%{opacity:.82;filter:brightness(.85)}}
+  .cpulse{position:absolute;top:3.5px;left:0;width:44px;height:3px;border-radius:3px;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--saber) 70%,white 20%),white 85%,transparent);
+    filter:drop-shadow(0 0 6px var(--saber));animation:viaja .9s linear 1 forwards}
+  .cpulse.crit{background:linear-gradient(90deg,transparent,var(--rose),white 85%,transparent);filter:drop-shadow(0 0 9px var(--rose));height:4px}
+  @keyframes viaja{from{transform:translateX(0)}to{transform:translateX(min(100vw,1220px))}}
+  .clabel{position:absolute;top:-16px;right:16px;font-family:var(--mono);font-size:10px;letter-spacing:.5px;
+    color:color-mix(in oklch,var(--saber) 80%,white 15%);opacity:0;animation:clab 2.6s ease-out 1 forwards;white-space:nowrap}
+  @keyframes clab{0%{opacity:0;transform:translateY(3px)}12%{opacity:.95;transform:none}78%{opacity:.95}100%{opacity:0}}
+
+  /* ── KYBER — arc reactor: anel externo segmentado gira, arco = carga da VM, núcleo pulsa ── */
+  #kyber{flex:0 0 auto;width:28px;height:28px;cursor:pointer;position:relative;filter:drop-shadow(0 0 5px color-mix(in oklch,var(--saber) 55%,transparent))}
+  #kyber svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+  #kyber .karc{fill:none;stroke:color-mix(in oklch,var(--saber) 85%,white 10%);stroke-width:2.4;stroke-linecap:round;
+    transition:stroke-dashoffset 1.6s ease,stroke 2s linear}
+  #kyber .ktrk{fill:none;stroke:var(--bd2);stroke-width:2.4}
+  #kyber .kseg{fill:none;stroke:color-mix(in oklch,var(--saber) 45%,transparent);stroke-width:1.2;stroke-dasharray:3 5;
+    transform-origin:15px 15px;animation:kspin 14s linear infinite;transition:stroke 2s}
+  #kyber .knuc{fill:var(--saber);transition:fill 2s;animation:knucGlow 3.4s ease-in-out infinite}
+  #kyber.sweep .kseg{animation-duration:3.5s}
+  #kyber.sweep .knuc{animation:pl 1.2s infinite}
+  #kyber:hover .karc{stroke:white}
+  @keyframes kspin{to{transform:rotate(360deg)}}
+  @keyframes knucGlow{0%,100%{opacity:1}50%{opacity:.72}}
+  @media (prefers-reduced-motion:reduce){#kyber .kseg,#kyber .knuc{animation:none}}
+
+  /* ── HOLOFEED — bandeja de eventos; única camada com blur (elevação real) ── */
+  #holofeed{position:fixed;right:16px;bottom:16px;z-index:45;width:min(330px,88vw);border-radius:var(--r2);
+    background:color-mix(in oklch,var(--bg2) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--bd);box-shadow:inset 0 1px 0 oklch(1 0 0/.05),0 22px 48px -26px rgba(0,0,0,.8);
+    transform:translateY(14px);opacity:0;pointer-events:none;transition:transform .2s cubic-bezier(.2,.7,.2,1),opacity .2s}
+  #holofeed.open{transform:none;opacity:1;pointer-events:auto}
+  @media (prefers-reduced-transparency:reduce){#holofeed{background:var(--bg2);backdrop-filter:none}}
+  #holofeed .hf-t{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd2);
+    font-family:var(--mono);font-size:10px;letter-spacing:1.6px;text-transform:uppercase;color:var(--mut)}
+  #holofeed .hf-t b{color:var(--saber);transition:color 2s}
+  #holofeed ul{list-style:none;margin:0;padding:2px 0;max-height:264px;overflow-y:auto}
+  #holofeed li{display:flex;gap:10px;align-items:baseline;padding:7px 14px;border-bottom:1px solid color-mix(in oklch,var(--bd2) 55%,transparent);
+    font-family:var(--mono);font-size:11.5px;color:var(--tx2);animation:hfin .26s cubic-bezier(.2,.7,.2,1) 1}
+  #holofeed li:last-child{border-bottom:0}
+  #holofeed li .t{color:var(--dim);flex:0 0 auto;font-size:10.5px}
+  #holofeed li .d{color:var(--evc,var(--saber));font-weight:600;flex:0 0 auto;transition:color 2s;
+    text-shadow:0 0 8px color-mix(in oklch,var(--evc,var(--saber)) 40%,transparent)}
+  #holofeed li.crit .d{color:var(--rose)}
+  #holofeed .hf-vazio{padding:16px 14px;color:var(--dim);font-size:12px;font-family:var(--mono)}
+  @keyframes hfin{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){
+    .cblade{animation:none}.cpulse,.clabel{display:none}#holofeed li{animation:none}#kyber.sweep .knuc{animation:none}}
+  .htop{display:flex;align-items:center;gap:12px;padding:12px 18px 10px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.4px}
+  .brand .lg{display:inline-flex;width:24px;height:24px;border-radius:6px;color:var(--accent-ink);
+    background:linear-gradient(135deg,color-mix(in oklch,var(--accent) 80%,white 15%),var(--accent) 55%,color-mix(in oklch,var(--accent) 70%,var(--violet) 30%));
+    box-shadow:0 0 12px -3px color-mix(in oklch,var(--accent) 55%,transparent);
+    align-items:center;justify-content:center;font:600 11px/1 var(--mono);letter-spacing:0}
+  .brand small{display:block;color:var(--dim);font-size:9.5px;font-weight:500;margin-top:2px;letter-spacing:1.4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;font-family:var(--mono)}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:500;color:var(--accent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);padding:3px 10px;border-radius:6px;background:color-mix(in oklch,var(--accent) 7%,transparent);white-space:nowrap;flex:0 0 auto;font-family:var(--mono);letter-spacing:.8px;text-transform:uppercase}
+  .live .pulse{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pl 2s infinite}
+  @keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
+  .htop .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{font-size:12px;font-weight:500;text-decoration:none;border:1px solid var(--bd2);padding:6px 12px;border-radius:7px;transition:.15s;color:var(--mut);cursor:pointer}
+  .htop a.ctrl{color:var(--rose);border-color:color-mix(in oklch,var(--rose) 28%,transparent)}
+  .htop a.help{color:var(--tx2)}
+  .htop a.sair:hover,.htop a.help:hover{color:var(--tx);border-color:var(--bd)}
+  /* esferas = segmented control sóbrio; identidade da esfera = ponto de cor 6px, nada mais */
+  /* deck 3D: as esferas vivem num plano angulado; a ativa salta para frente */
+  .spheres{display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none;perspective:900px}
+  .spheres::-webkit-scrollbar{display:none}
+  .sph{flex:1;min-width:112px;display:flex;align-items:center;justify-content:center;gap:9px;padding:9px 12px;border-radius:9px;cursor:pointer;position:relative;
+    appearance:none;font-family:inherit;text-align:left;transform:rotateX(9deg);transform-style:preserve-3d;
+    border:1px solid transparent;background:transparent;color:var(--mut);font-weight:500;font-size:13px;
+    transition:transform .28s cubic-bezier(.2,.8,.25,1.15),background .15s,border-color .15s,color .15s,box-shadow .2s}
+  .sph:hover{transform:rotateX(0deg) translateZ(10px)}
+  @media (prefers-reduced-motion:reduce){.sph,.sph:hover,.sph.on{transform:none}}
+  .sph::before{content:"";width:6px;height:6px;border-radius:2px;flex:0 0 auto;background:var(--dim);transition:.15s}
+  .sph.inicio::before{background:var(--accent)}
+  .sph.estado::before{background:var(--blue)}
+  .sph.prefeitura::before{background:var(--gold)}
+  .sph.geral::before{background:var(--purple)}
+  .sph:hover{color:var(--tx2);background:var(--card)}
+  .sph.inicio{--sphc:var(--accent)}.sph.estado{--sphc:var(--blue)}.sph.prefeitura{--sphc:var(--gold)}.sph.geral{--sphc:var(--purple)}
+  .sph:hover::before{box-shadow:0 0 10px var(--sphc,var(--dim))}
+  .sph.on{color:var(--tx);border-color:color-mix(in oklch,var(--sphc) 40%,transparent);background:var(--card);font-weight:600;
+    transform:rotateX(0deg) translateZ(14px);
+    box-shadow:var(--sh),0 0 20px -8px color-mix(in oklch,var(--sphc) 45%,transparent)}
+  .sph.on::before{box-shadow:0 0 10px var(--sphc);animation:pl 2.6s infinite}
+  @media (prefers-reduced-motion:reduce){.sph.on::before{animation:none}}
+  /* ícone SVG da esfera (substitui o ponto genérico) — na cor da esfera, glow no ativo */
+  .sph::before{display:none}
+  .sph .i{display:grid;place-items:center;flex:0 0 auto}
+  .sph .i .jico{width:18px;height:18px;color:var(--sphc,var(--dim));transition:filter .18s,color .18s}
+  .sph.on .i .jico{color:color-mix(in oklch,var(--sphc) 88%,white 12%);filter:drop-shadow(0 0 7px color-mix(in oklch,var(--sphc) 70%,transparent))}
+  .sph:hover .i .jico{filter:drop-shadow(0 0 5px color-mix(in oklch,var(--sphc) 55%,transparent))}
+  .sph .c{font-size:10.5px;color:var(--dim);font-weight:400;display:block}
+  @media (max-width:600px){
+    .sph{min-width:0;padding:8px 8px}
+    .sph .c{display:none}
+    .live{display:none}
+    .htop{gap:8px;padding:11px 14px 9px}
+    .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{padding:6px 9px;font-size:11.5px;white-space:nowrap}
+    /* 38vw datava de quando as ações dividiam a linha com a marca; hoje elas
+       quebram para a 2ª linha e sobravam ~320px vazios à direita — o subtítulo
+       era cortado ("CENTRAL DE INTELIGÊN…") sem necessidade nenhuma. */
+    .brand small{max-width:78vw}
+  }
+
+  main{flex:1;padding:18px 16px 104px}
+  /* cover = cabeçalho editorial da aba: eyebrow da esfera + título + leitura. Sem cenografia. */
+  .cover{padding:6px 2px 14px;margin-bottom:14px;border-bottom:1px solid var(--bd2);position:relative}
+  .cover::before{content:"";position:absolute;left:0;bottom:-1px;width:72px;height:2px;border-radius:2px;background:var(--accent);
+    box-shadow:0 0 10px var(--accent);animation:ignicao .4s cubic-bezier(.2,.9,.25,1.2);transform-origin:left center}
+  .cover.estado::before{background:var(--blue);box-shadow:0 0 10px var(--blue)}
+  .cover.prefeitura::before{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  .cover.geral::before{background:var(--purple);box-shadow:0 0 10px var(--purple)}
+  @media (prefers-reduced-motion:reduce){.cover::before{animation:none}}
+  .cover .t{font-size:clamp(1.35rem,2.2vw,1.6rem);font-weight:600;letter-spacing:-.015em;line-height:1.2;text-wrap:balance;
+    text-shadow:0 0 24px color-mix(in oklch,var(--esf) 22%,transparent)}
+  .cover .s{color:var(--mut);font-size:12.5px;margin-top:5px;max-width:680px;line-height:1.55}
+  /* cabeçalho elevado: selo holográfico do ícone da aba (anel de energia na cor da esfera) */
+  .cover-row{display:flex;align-items:flex-start;gap:14px}
+  .cover-tx{min-width:0;flex:1}
+  .cover-seal{flex:0 0 auto;width:48px;height:48px;display:grid;place-items:center;font-size:23px;line-height:1;border-radius:13px;
+    background:linear-gradient(160deg,color-mix(in oklch,var(--esf) 16%,var(--card)),var(--card2));
+    border:1px solid color-mix(in oklch,var(--esf) 38%,transparent);position:relative;isolation:isolate;
+    box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 8px 22px -12px color-mix(in oklch,var(--esf) 60%,transparent);
+    filter:drop-shadow(0 0 6px color-mix(in oklch,var(--esf) 30%,transparent))}
+  .cover-seal::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;z-index:-1;
+    background:conic-gradient(from var(--angle,0deg),transparent 4%,color-mix(in oklch,var(--esf) 70%,white 15%) 16%,transparent 32%,transparent 100%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+    animation:spinA 5.5s linear infinite}
+  @media (min-width:820px){.cover-seal{width:54px;height:54px;font-size:26px}}
+  /* o glifo SVG dentro do selo: tingido pela esfera, glow que respira */
+  .cover-seal .jico{width:25px;height:25px;color:color-mix(in oklch,var(--esf) 90%,white 12%);
+    animation:jicoBreath 3.2s ease-in-out infinite}
+  @media (min-width:820px){.cover-seal .jico{width:28px;height:28px}}
+  @keyframes jicoBreath{0%,100%{opacity:.9;filter:drop-shadow(0 0 5px color-mix(in oklch,var(--esf) 45%,transparent))}
+    50%{opacity:1;filter:drop-shadow(0 0 11px color-mix(in oklch,var(--esf) 85%,transparent))}}
+  @media (prefers-reduced-motion:reduce){.cover-seal::before,.cover-seal .jico{animation:none;opacity:1}.cover-seal::before{opacity:.5}}
+
+  h2.sec{margin:10px 0 12px;font-size:10.5px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px;font-family:var(--mono)}
+  /* ponto de ignição do sabre: LED aceso da cor da esfera antes de cada seção */
+  h2.sec::before{content:"";width:5px;height:5px;border-radius:50%;flex:0 0 auto;background:var(--esf);
+    box-shadow:0 0 8px var(--esf),0 0 2px oklch(1 0 0/.8);animation:secLed 3.4s ease-in-out infinite}
+  @keyframes secLed{0%,100%{opacity:1}50%{opacity:.5}}
+  @media (prefers-reduced-motion:reduce){h2.sec::before{animation:none}}
+  h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in oklch,var(--esf) 45%,transparent),var(--bd2) 55%,transparent)}
+  h2.sec .cnt{order:2;margin-left:0;color:var(--dim);font-weight:400;letter-spacing:.3px;text-transform:none;font-size:11px}
+  .lead{color:var(--mut);font-size:12.5px;margin:-4px 0 14px;max-width:720px}
+
+  .grid{display:grid;gap:10px;min-width:0}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card,.lnk,.ck-inst,.ck-hero{isolation:isolate}
+  .card{background:linear-gradient(165deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:14px 15px;min-width:0;box-shadow:var(--sh);transition:border-color .2s,box-shadow .25s,transform .2s;position:relative}
+  /* vidro líquido: ::before = luz (especular no topo + spotlight que segue o cursor) */
+  .card::before,.lnk::before,.ck-inst::before,.ck-hero::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+    background:radial-gradient(300px circle at var(--mx,50%) var(--my,-30%),var(--spot),transparent 66%),
+               linear-gradient(180deg,oklch(1 0 0/.06),transparent 36%);
+    transition:--spot .3s ease}
+  .card:hover,.lnk:hover,.ck-inst:hover{--spot:color-mix(in oklch,var(--esf) 12%,transparent)}
+  .card:hover{border-color:color-mix(in oklch,var(--esf) 48%,transparent);
+    transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+    box-shadow:var(--sh),0 0 28px -10px color-mix(in oklch,var(--esf) 38%,transparent)}
+  @media (prefers-reduced-motion:reduce){.card:hover{transform:none}}
+  /* (3) HOVER 3D DRAMÁTICO — o card ganha profundidade e o conteúdo FLUTUA acima
+     dele (parallax em Z). Precisa preserve-3d; o valor sobe mais que o rótulo. */
+  .kpi,.ck-inst{transform-style:preserve-3d}
+  .kpi .l,.kpi .v,.ck-inst .val,.ck-inst .lab{transition:transform .2s cubic-bezier(.2,.8,.25,1.05)}
+  .kpi:hover .v,.ck-inst:hover .val{transform:translateZ(26px)}
+  .kpi:hover .l,.ck-inst:hover .lab{transform:translateZ(14px)}
+  .kpi:hover .kpi-ico{transform:translateZ(34px)}
+  @media (prefers-reduced-motion:reduce){.kpi:hover .v,.kpi:hover .l,.kpi:hover .kpi-ico,.ck-inst:hover .val,.ck-inst:hover .lab{transform:none}}
+  /* (b) BORDA-BEAM — energia percorre a borda do card no hover (conic girando
+     na cor da esfera). Dois layers: conteúdo em padding-box, beam em border-box. */
+  .card:hover,.lnk:hover,.ck-inst:hover{border-color:transparent;
+    background:linear-gradient(165deg,var(--card),var(--card2)) padding-box,
+      conic-gradient(from var(--angle,0deg),color-mix(in oklch,var(--esf) 9%,transparent),
+        color-mix(in oklch,var(--esf) 80%,white 14%) 8%,color-mix(in oklch,var(--esf) 9%,transparent) 22%,
+        color-mix(in oklch,var(--esf) 9%,transparent) 100%) border-box;
+    animation:spinA 3.2s linear infinite}
+  @media (prefers-reduced-motion:reduce){.card:hover,.lnk:hover,.ck-inst:hover{animation:none;
+    border-color:color-mix(in oklch,var(--esf) 48%,transparent);background:linear-gradient(165deg,var(--card),var(--card2))}}
+  /* COISAS GRAVES BRILHAM GRAVES — severidade = luminosidade */
+  .card.hl{border-color:color-mix(in oklch,var(--rose) 48%,transparent);animation:graveGlow 3.2s ease-in-out infinite}
+  @keyframes graveGlow{0%,100%{box-shadow:var(--sh),0 0 16px -8px color-mix(in oklch,var(--rose) 42%,transparent)}
+    50%{box-shadow:var(--sh),0 0 32px -6px color-mix(in oklch,var(--rose) 62%,transparent)}}
+  @media (prefers-reduced-motion:reduce){.card.hl{animation:none;box-shadow:var(--sh),0 0 20px -8px color-mix(in oklch,var(--rose) 45%,transparent)}}
+  #view{position:relative}
+  #view .fade{position:relative;z-index:1}
+  .rise{opacity:0;animation:rise .3s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
+  /* card grave (hl) + cascata: compor as DUAS animações — o shorthand de .card.hl sozinho
+     mataria o rise e deixava o card preso em opacity:0 (o achado mais grave ficava INVISÍVEL) */
+  .card.hl.rise{animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite;animation-delay:var(--d,0ms),0ms}
+  @keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  .kpi.rise::after,.card.beat::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+    box-shadow:0 0 0 1px color-mix(in oklch,var(--accent) 0%,transparent);animation:beat 1.4s ease-out}
+  @keyframes beat{0%{box-shadow:0 0 0 1px color-mix(in oklch,var(--accent) 40%,transparent)}100%{box-shadow:0 0 0 1px transparent}}
+  /* ═══ RIQUEZA SCI-FI v8 — SÓ ADIÇÃO (nada do v7 muda): cometas, aurora da esfera,
+     boot-sweep no cover, anel holográfico nos KPIs, ping de radar no AO VIVO ═══ */
+  .cometa{position:fixed;pointer-events:none;z-index:0;width:190px;height:1px;opacity:0;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 75%,white 10%),transparent);
+    filter:drop-shadow(0 0 6px color-mix(in oklch,var(--esf) 60%,transparent))}
+  .cometa.c1{top:16%;animation:cometa1 21s linear infinite 3s}
+  .cometa.c2{top:64%;animation:cometa2 33s linear infinite 11s}
+  @keyframes cometa1{0%{transform:translateX(-220px) rotate(14deg);opacity:0}4%{opacity:.5}12%{opacity:.5}
+    18%{transform:translateX(110vw) rotate(14deg);opacity:0}100%{transform:translateX(110vw) rotate(14deg);opacity:0}}
+  @keyframes cometa2{0%{transform:translateX(110vw) rotate(-11deg);opacity:0}4%{opacity:.35}14%{opacity:.35}
+    20%{transform:translateX(-220px) rotate(-11deg);opacity:0}100%{transform:translateX(-220px) rotate(-11deg);opacity:0}}
+  #aurora{position:fixed;left:-10%;right:-10%;top:-18%;height:52vh;pointer-events:none;z-index:0;opacity:.55;
+    background:radial-gradient(46% 60% at 24% 18%,color-mix(in oklch,var(--esf) 9%,transparent),transparent 70%),
+               radial-gradient(38% 52% at 78% 8%,color-mix(in oklch,var(--esf) 6%,transparent),transparent 72%);
+    animation:auroraFlow 26s ease-in-out infinite alternate;transition:opacity 1s}
+  @keyframes auroraFlow{from{transform:translate3d(-2%,0,0) scale(1)}to{transform:translate3d(2%,3%,0) scale(1.06)}}
+  .cover::after{content:"";position:absolute;inset:0 0 -1px;pointer-events:none;
+    background:linear-gradient(105deg,transparent 42%,color-mix(in oklch,var(--esf) 20%,white 5%) 50%,transparent 58%);
+    opacity:0;animation:bootSweep .9s ease-out .05s}
+  @keyframes bootSweep{0%{opacity:.85;transform:translateX(-70%)}100%{opacity:0;transform:translateX(75%)}}
+  @property --holo{syntax:'<angle>';initial-value:0deg;inherits:false}
+  .kpi::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;
+    background:conic-gradient(from var(--holo,0deg),transparent 12%,color-mix(in oklch,var(--esf) 65%,transparent) 22%,transparent 34%,transparent 62%,color-mix(in oklch,var(--esf) 40%,transparent) 74%,transparent 86%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+    transition:opacity .3s}
+  .kpi:hover::before{opacity:1;animation:holoSpin 2.6s linear infinite}
+  @keyframes holoSpin{to{--holo:360deg}}
+  .live .pulse{position:relative}
+  .live .pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--accent);opacity:0;animation:ping 2s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.4);opacity:.7}80%{transform:scale(1.8);opacity:0}100%{transform:scale(1.8);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.cometa,#aurora{animation:none;opacity:0}.cover::after{animation:none;opacity:0}.kpi:hover::before{animation:none}.live .pulse::after{animation:none}}
+  .kpi .v.counting{color:var(--accent)}
+  @media (prefers-reduced-motion:reduce){.rise,.card.hl.rise{animation:none;opacity:1}.card.beat::after,.kpi.rise::after{animation:none}}
+  .kpi{position:relative;overflow:hidden}
+  .kpi-go{cursor:pointer}
+  .kpi-go::after{content:"›";position:absolute;top:8px;right:10px;font-size:16px;color:var(--mut);opacity:.5;transition:.15s}
+  .kpi-go:hover{border-color:color-mix(in oklch,var(--accent) 55%,transparent);transform:translateY(-1px)}
+  .kpi-go:hover::after{opacity:1;color:var(--accent);transform:translateX(2px)}
+  .kpi-go:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .kpi .l{color:var(--mut);font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;font-family:var(--mono)}
+  .kpi .v{font-size:1.35rem;font-weight:600;letter-spacing:-.3px;line-height:1.15;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
+  .kpi .gl{display:none}
+  /* ícone semântico no canto do KPI (crítico/dinheiro/ok/info), na cor do valor */
+  .kpi-ico{position:absolute;top:11px;right:12px;opacity:.5;line-height:0;transition:opacity .2s}
+  .kpi-ico .jico{width:16px;height:16px;color:currentColor;
+    filter:drop-shadow(0 0 5px color-mix(in oklch,currentColor 45%,transparent))}
+  .kpi:hover .kpi-ico{opacity:.85}
+  .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--bd2);font-size:13px}
+  .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
+  .kv .k{color:var(--mut)}.kv b{font-weight:600;color:var(--tx)}
+  .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px} .right{text-align:right}
+  .card .right{white-space:nowrap;flex:0 0 auto}
+  code{font:12px/1.4 var(--mono);color:var(--accent);background:color-mix(in oklch,var(--accent) 8%,transparent);padding:1px 6px;border-radius:5px}
+
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:2.5px 8px;border-radius:5px;white-space:nowrap;border:1px solid transparent;font-family:var(--mono)}
+  .tag.accent{background:color-mix(in oklch,var(--blue) 12%,transparent);color:var(--blue);border-color:color-mix(in oklch,var(--blue) 22%,transparent)}
+  .tag.rose{background:color-mix(in oklch,var(--rose) 11%,transparent);color:var(--rose);border-color:color-mix(in oklch,var(--rose) 22%,transparent)}
+  .tag.amber{background:color-mix(in oklch,var(--amber) 11%,transparent);color:var(--amber);border-color:color-mix(in oklch,var(--amber) 22%,transparent)}
+  .tag.purple{background:color-mix(in oklch,var(--purple) 12%,transparent);color:var(--purple);border-color:color-mix(in oklch,var(--purple) 22%,transparent)}
+  .tag.green{background:color-mix(in oklch,var(--green) 11%,transparent);color:var(--green);border-color:color-mix(in oklch,var(--green) 22%,transparent)}
+  .tag.teal{background:color-mix(in oklch,var(--teal) 11%,transparent);color:var(--teal);border-color:color-mix(in oklch,var(--teal) 22%,transparent)}
+  .sev{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:3px 8px;border-radius:5px;flex:0 0 auto;font-family:var(--mono)}
+  /* graves brilham graves: alta tem luz própria, média meia-luz, baixa nenhuma */
+  .sev.alta{background:color-mix(in oklch,var(--rose) 17%,transparent);color:var(--rose);
+    box-shadow:0 0 12px -3px color-mix(in oklch,var(--rose) 55%,transparent);text-shadow:0 0 8px color-mix(in oklch,var(--rose) 45%,transparent)}
+  .sev.media{background:color-mix(in oklch,var(--amber) 16%,transparent);color:var(--amber);box-shadow:0 0 8px -4px color-mix(in oklch,var(--amber) 40%,transparent)}
+  .sev.baixa{background:color-mix(in oklch,var(--mut) 16%,transparent);color:var(--tx2)}
+  .tag.rose{box-shadow:0 0 10px -4px color-mix(in oklch,var(--rose) 50%,transparent)}
+
+  .fresh{display:flex;flex-direction:column;gap:0}
+  .fresh .f{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);font-size:13px}
+  .fresh .f:last-child{border-bottom:0}
+  .fresh .led{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .fresh .ok{background:var(--green)}
+  .fresh .atencao{background:var(--amber)}
+  .fresh .critico{background:var(--rose);animation:pl 1.4s infinite;box-shadow:0 0 10px var(--rose)}
+  .fresh .nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fresh .idade{font-family:var(--mono);font-size:11px;color:var(--mut);white-space:nowrap}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:.8px;text-align:right;padding:0 0 8px;font-weight:500;font-family:var(--mono)}
+  thead th:first-child{text-align:left}
+  tbody td{padding:8px 0;border-bottom:1px solid var(--bd2);text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
+  tbody td:first-child{text-align:left;color:var(--tx)}
+  tbody tr:last-child td{border-bottom:0}
+  th.srt{cursor:pointer;user-select:none}th.srt:hover{color:var(--accent)}
+  .meter{display:inline-block;width:64px;height:4px;background:var(--bg2);border-radius:2px;margin-right:8px;vertical-align:2px;overflow:hidden}
+  .meter i{display:block;height:100%;background:linear-gradient(90deg,color-mix(in oklch,var(--amber) 60%,transparent),var(--amber));border-radius:2px;transition:width .6s cubic-bezier(.2,.7,.2,1)}
+  .meter.crit i{background:linear-gradient(90deg,color-mix(in oklch,var(--rose) 60%,transparent),var(--rose));box-shadow:0 0 8px color-mix(in oklch,var(--rose) 55%,transparent)}
+  td .tag{margin:1px 2px 1px 0}
+
+  .barw{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .barw .row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}
+  .barw .lab{color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .barw .track{grid-column:1/-1;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden}
+  .barw .fill{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,color-mix(in oklch,var(--esf) 55%,transparent),var(--esf));
+    box-shadow:0 0 8px -2px color-mix(in oklch,var(--esf) 50%,transparent);transition:width .7s cubic-bezier(.2,.7,.2,1)}
+
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  /* botão VIVO: sheen que varre no hover + glow da cor do papel + spring no clique */
+  .btn{flex:1;min-width:92px;border:0;border-radius:8px;padding:10px 12px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--tx);
+    transition:box-shadow .25s,filter .2s,transform .13s cubic-bezier(.2,.7,.2,1);display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;
+    position:relative;overflow:hidden;isolation:isolate}
+  .btn::before{content:"";position:absolute;inset:0;z-index:-1;
+    background:linear-gradient(110deg,transparent 32%,oklch(1 0 0/.16) 50%,transparent 68%);
+    transform:translateX(-130%);transition:transform .55s ease}
+  .btn:hover::before{transform:translateX(130%)}
+  .btn:hover{filter:brightness(1.12)}
+  .btn:active{transform:scale(.96)}
+  .btn.red{background:color-mix(in oklch,var(--rose) 72%,black)}
+  .btn.red:hover{box-shadow:0 0 18px -6px color-mix(in oklch,var(--rose) 65%,transparent)}
+  .btn.green{background:color-mix(in oklch,var(--green) 52%,black)}
+  .btn.green:hover{box-shadow:0 0 18px -6px color-mix(in oklch,var(--green) 55%,transparent)}
+  .btn.ghost{background:var(--raise);border:1px solid var(--bd2);color:var(--tx2)}
+  .btn.ghost:hover{border-color:color-mix(in oklch,var(--esf) 45%,transparent);color:var(--tx)}
+  .btn.accent{background:color-mix(in oklch,var(--accent) 16%,transparent);color:var(--accent);border:1px solid color-mix(in oklch,var(--accent) 36%,transparent)}
+  .btn.accent:hover{box-shadow:0 0 20px -6px color-mix(in oklch,var(--accent) 55%,transparent);background:color-mix(in oklch,var(--accent) 24%,transparent)}
+  @media (prefers-reduced-motion:reduce){.btn::before{display:none}}
+  .lnks{display:flex;flex-direction:column;gap:8px}
+  .lnk{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tx);background:linear-gradient(165deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:12px 14px;transition:border-color .2s,box-shadow .25s;box-shadow:var(--sh);position:relative}
+  .lnk:hover{border-color:color-mix(in oklch,var(--esf) 48%,transparent);box-shadow:var(--sh),0 0 24px -10px color-mix(in oklch,var(--esf) 35%,transparent)}
+  .lnk .ic{display:none}.lnk .ar{margin-left:auto;color:var(--dim);font-family:var(--mono);transition:transform .2s,color .2s}
+  .lnk:hover .ar{transform:translateX(4px);color:var(--esf)}
+  .lnk .t{font-weight:600}.lnk .d{color:var(--mut);font-size:12px;margin-top:1px}
+
+  input{width:100%;padding:10px 13px;border-radius:8px;border:1px solid var(--bd2);background:var(--bg2);color:var(--tx);font-size:13.5px;font-family:inherit}
+  input::placeholder{color:var(--dim)}input:focus{outline:0;border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in oklch,var(--accent) 15%,transparent),0 0 18px -6px color-mix(in oklch,var(--accent) 45%,transparent)}
+  label.fld{display:block;color:var(--mut);font-size:12px;margin:0 0 6px}
+  .search{position:relative;margin-bottom:12px}.search input{padding-left:36px;padding-right:78px}.search .mag{position:absolute;left:12px;top:10px;color:var(--dim)}
+  .search .az{position:absolute;right:6px;top:5px;font:500 11px/1 var(--mono);color:var(--accent);background:color-mix(in oklch,var(--accent) 8%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:6px;padding:7px 10px;cursor:pointer;letter-spacing:.4px;transition:.14s}
+  .search .az:hover{background:color-mix(in oklch,var(--accent) 15%,transparent)}
+  .search .az.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .ac-box{display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card2);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 24px -8px rgba(0,0,0,.5);z-index:40;max-height:280px;overflow-y:auto}
+  .ac-box.on{display:block}
+  .ac-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--bd)}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item.sel{background:color-mix(in oklch,var(--accent) 12%,transparent)}
+  .ac-item .dim{display:block;font-size:11.5px;margin-top:1px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{appearance:none;font-family:inherit;border:1px solid var(--bd2);background:transparent;color:var(--mut);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;transition:.12s}
+  .chip:hover{border-color:color-mix(in oklch,var(--esf) 50%,transparent);color:var(--tx2);background:var(--card);
+    box-shadow:0 0 12px -6px color-mix(in oklch,var(--esf) 40%,transparent)}
+  /* chip ativo: energia circulando na borda (conic girando) + glow */
+  .chip.on{color:var(--accent-ink);border:1px solid transparent;font-weight:600;
+    background:linear-gradient(var(--accent),var(--accent)) padding-box,
+      conic-gradient(from var(--angle),white 0 40deg,color-mix(in oklch,var(--accent) 55%,transparent) 40deg 360deg) border-box;
+    animation:spinA 3.2s linear infinite;box-shadow:0 0 16px -6px color-mix(in oklch,var(--accent) 60%,transparent)}
+  @keyframes spinA{to{--angle:360deg}}
+  @media (prefers-reduced-motion:reduce){.chip.on{animation:none;background:var(--accent);border-color:var(--accent)}}
+
+  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 var(--mono);color:var(--tx2);margin:0;background:var(--bg2);border:1px solid var(--bd2);border-radius:8px;padding:11px 12px;max-height:190px;overflow:auto}
+  .skel{color:var(--dim);font-size:13px;padding:24px 0;text-align:center}
+  .skel .sp{display:inline-block;width:14px;height:14px;border:2px solid var(--bd2);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .warn{display:flex;gap:10px;align-items:center;background:color-mix(in oklch,var(--amber) 8%,transparent);border:1px solid color-mix(in oklch,var(--amber) 26%,transparent);border-left:2px solid var(--amber);border-radius:8px;padding:10px 13px;color:var(--amber);font-size:13px;margin-bottom:12px}
+  .note{background:var(--bg2);border:1px dashed var(--bd2);border-radius:8px;padding:10px 12px;color:var(--mut);font-size:12px;margin-top:12px}
+  .leitura{background:color-mix(in oklch,var(--accent) 5%,transparent);border:1px solid color-mix(in oklch,var(--accent) 18%,transparent);border-left:2px solid var(--accent);border-radius:8px;padding:9px 12px;color:var(--tx2);font-size:12.5px;margin-top:9px;line-height:1.55}
+  .clk{display:inline;background:none;border:0;padding:0;margin:0;font:inherit;font-weight:600;color:inherit;text-align:left;cursor:pointer;border-bottom:1px dotted color-mix(in oklch,var(--accent) 45%,transparent);transition:.12s}
+  .clk:hover{color:var(--accent)}
+  .exp{cursor:pointer}.exp .objs{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd2)}
+  .exp.open .objs{display:block;animation:f .2s ease}
+  .obj{font-size:12.5px;color:var(--mut);padding:5px 0;border-bottom:1px solid var(--bd2)}.obj:last-child{border-bottom:0}
+  .chev{transition:.16s;display:inline-block;font-family:var(--mono)}.exp.open .chev{transform:rotate(90deg)}
+
+  /* v49: `left:0;right:0` + `max-width` + `margin:0 auto` num elemento FIXO não centraliza de forma
+     confiável em tela larga (as margens automáticas competem com left/right resolvidos). Trocado por
+     ancorar no meio e recuar metade da largura — centraliza sempre, sem depender do resolvedor. */
+  nav.tabs{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-top:1px solid var(--bd2);padding:4px 8px calc(4px + env(safe-area-inset-bottom));max-width:1180px}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs{perspective:700px}
+  nav.tabs button{flex:1 0 auto;min-width:0;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:11px 12px;font:inherit;transition:color .15s,transform .22s cubic-bezier(.2,.8,.25,1.1);border-radius:7px;position:relative;transform:rotateX(-7deg)}
+  nav.tabs button:hover,nav.tabs button.on{transform:rotateX(0deg) translateZ(6px)}
+  @media (prefers-reduced-motion:reduce){nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none}}
+  nav.tabs button{flex-direction:column;gap:4px}
+  nav.tabs button .ti{display:grid;place-items:center;height:19px}
+  nav.tabs button .ti .jico{width:18px;height:18px;color:currentColor;transition:filter .18s}
+  nav.tabs button.on .ti .jico{filter:drop-shadow(0 0 6px color-mix(in oklch,var(--esf) 75%,transparent))}
+  nav.tabs button:hover .ti .jico{filter:drop-shadow(0 0 5px color-mix(in oklch,var(--esf) 55%,transparent))}
+  nav.tabs button .tl{font-size:10px;font-weight:500;letter-spacing:.2px}
+  nav.tabs button:hover{color:var(--tx2);text-shadow:0 0 10px color-mix(in oklch,var(--esf) 40%,transparent)}
+  nav.tabs button.on{color:var(--tx)}
+  /* aba ativa = mini-sabre que acende (núcleo branco + glow da esfera) */
+  nav.tabs button.on::after{content:"";position:absolute;top:-4px;left:18%;right:18%;height:2px;border-radius:0 0 2px 2px;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 45%,white 40%),white 50%,color-mix(in oklch,var(--esf) 45%,white 40%),transparent);
+    box-shadow:0 0 8px var(--esf),0 2px 14px -2px color-mix(in oklch,var(--esf) 60%,transparent);
+    animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2)}
+  nav.tabs button.on .tl{color:var(--tx);font-weight:600}
+  @media (prefers-reduced-motion:reduce){nav.tabs button.on::after{animation:none}}
+  nav.tabs button:active{transform:scale(.96)}
+  .fade{animation:f .22s ease;position:relative}@keyframes f{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+  /* (a) MICRO-SCAN DE ATIVAÇÃO — uma lâmina de luz varre o topo do conteúdo ao
+     entrar em cada aba, na cor da esfera. Um momento (0.72s), nunca perpétuo. */
+  .fade::before{content:"";position:absolute;left:-6px;right:-6px;top:0;height:2px;z-index:4;pointer-events:none;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 82%,white 18%) 28%,color-mix(in oklch,var(--esf) 82%,white 18%) 72%,transparent);
+    box-shadow:0 0 16px color-mix(in oklch,var(--esf) 70%,transparent),0 0 3px oklch(1 0 0/.6);
+    animation:scanDown .72s cubic-bezier(.35,.1,.25,1) 1;opacity:0}
+  @keyframes scanDown{0%{opacity:.95;transform:translateY(0)}84%{opacity:.55}100%{opacity:0;transform:translateY(min(62vh,560px))}}
+  @media (prefers-reduced-motion:reduce){.fade::before{display:none}}
+
+  .ov{position:fixed;inset:0;z-index:60;background:oklch(0.08 0.01 250/.7);backdrop-filter:blur(5px);display:none;align-items:flex-end;justify-content:center}
+  .ov.on{display:flex;animation:f .2s ease}
+  .sheet{background:color-mix(in oklch,var(--bg2) 90%,transparent);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+    border:1px solid var(--bd);border-bottom:0;border-radius:14px 14px 0 0;width:100%;max-width:1180px;max-height:92dvh;overflow:auto;
+    padding:16px 17px calc(20px + env(safe-area-inset-bottom));box-shadow:inset 0 1px 0 oklch(1 0 0/.08),0 -20px 60px -30px oklch(0 0 0/.7);
+    animation:sheetUp .28s cubic-bezier(.2,.9,.25,1.15)}
+  @keyframes sheetUp{from{transform:translateY(28px);opacity:.4}to{transform:none;opacity:1}}
+  @media (prefers-reduced-transparency:reduce){.sheet{background:var(--bg2);backdrop-filter:none}}
+  @media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+  .sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--bd);margin:2px auto 14px}
+  .sheet .x{position:sticky;top:0;float:right;background:var(--raise);border:1px solid var(--bd2);color:var(--mut);border-radius:7px;padding:5px 11px;cursor:pointer;font-size:12.5px;z-index:2;font-family:inherit}
+  @media (min-width:820px){.ov{align-items:center}.sheet{border-radius:14px;border-bottom:1px solid var(--bd)}}
+  .badge-grau{font-size:24px;line-height:1}
+  .mini{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+  .mini .b{background:var(--bg2);border:1px solid var(--bd2);border-radius:8px;padding:10px 12px}
+  .mini .b .v{font-weight:600;font-size:15px;font-family:var(--mono)}.mini .b .l{color:var(--mut);font-size:11px;margin-top:2px}
+
+  @media (min-width:820px){
+    main{padding:22px 30px 110px}
+    .g2{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kpi .v{font-size:22px}.span2{grid-column:1 / -1}
+    .mini{grid-template-columns:repeat(4,1fr)}
+  }
+  .btn:active,.chip:active,.sph:active,.search .az:active,nav.tabs button:active,.htop a:active{transform:scale(.98)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .sph:focus-visible,.chip:focus-visible,nav.tabs button:focus-visible{border-radius:9px}
+  .clk:hover{border-bottom-color:var(--accent);color:var(--accent)}
+  .chip,.sph,.htop a{transition:transform .13s cubic-bezier(.2,.7,.2,1),background .15s,border-color .15s,color .15s,box-shadow .15s}
+  @media (pointer:coarse){.chip,.btn,.search .az,.htop a,nav.tabs button{min-height:44px}}
+  @media (prefers-reduced-motion:reduce){
+    .btn:active,.chip:active,.sph:active,.search .az:active,nav.tabs button:active,.htop a:active{transform:none}
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     v9 "ÍON" — SÓ ADIÇÃO (v7/v8 acima permanecem; esta camada vence por cascata)
+     Brief do dono (2026-07-22): Jarvis × Star Wars × sci-fi, AZUL + LARANJA,
+     todo controle com 3D de verdade. DOUTRINA DE COR — azul = o console
+     (estrutura, interação, a lâmina, o frio); laranja = ENERGIA (ação que
+     dispara, dinheiro, carga, calor). Severidade mantém voz própria: rosa =
+     crítico, verde = ok — graves continuam brilhando graves.
+     Tudo que se move aqui morre em prefers-reduced-motion.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{
+    /* os dois polos */
+    --ion:oklch(0.72 0.175 258); --ion-hi:oklch(0.86 0.125 250); --ion-d:oklch(0.56 0.15 261);
+    --flame:oklch(0.75 0.185 55); --flame-hi:oklch(0.86 0.145 70); --flame-d:oklch(0.60 0.16 47);
+    /* remapeamento: o painel inteiro passa a falar azul/laranja sem tocar em nenhum componente */
+    --accent:var(--ion); --teal:var(--ion-hi); --blue:var(--ion); --blue-d:var(--ion-d); --teal-d:var(--ion-d);
+    --gold:var(--flame-hi); --amber:var(--flame); --amber-d:var(--flame-d);
+    --accent2:oklch(0.70 0.16 292); --purple:oklch(0.70 0.16 292); --violet:oklch(0.70 0.16 292);
+    --accent-ink:oklch(0.15 0.045 262); --saber:var(--ion-hi);
+    /* fundo vira espaço profundo: mais azul, zero cinza morto */
+    --bg:oklch(0.113 0.032 263); --bg2:oklch(0.142 0.036 261);
+    --card:oklch(0.183 0.036 259); --card2:oklch(0.159 0.033 260); --raise:oklch(0.228 0.042 257);
+    --bd:oklch(0.50 0.08 255/.5); --bd2:oklch(0.42 0.062 258/.34); --glass:oklch(0.142 0.036 261/.76);
+    /* profundidade física: uma sombra só, usada por todo controle que salta do plano */
+    /* v28.2: o bisel era `inset 0 1px 0` + `inset 0 -1px 0` — duas LINHAS de 1px
+       por dentro da borda de 1px do cartao. Em tela de DPR fracionario (o Chrome
+       do dono roda a 1.5) a linha inset e a borda caem em subpixels diferentes e
+       o navegador pinta as duas: o cartao ganha um contorno fantasma deslocado e
+       le como dois cartoes sobrepostos — foi isso que o dono chamou de "botao
+       duplicado". Trocado por spread negativo: o bisel encolhe meio pixel para
+       dentro, entao nunca disputa a mesma fileira de pixels com a borda.       */
+    --lift:inset 0 1px 0 -0.5px oklch(1 0 0/.11), inset 0 -1px 0 -0.5px oklch(0 0 0/.34),
+           0 2px 4px -2px oklch(0 0 0/.5), 0 12px 28px -18px oklch(0 0 0/.8);
+    --persp:640px}
+  body[data-esf="estado"]{--esf:var(--ion)}
+  body[data-esf="prefeitura"]{--esf:var(--flame)}
+  body[data-esf="geral"]{--esf:var(--accent2)}
+  .sph.estado::before{background:var(--ion)}
+  .sph.prefeitura::before{background:var(--flame)}
+  .sph.geral::before{background:var(--accent2)}
+  .sph.estado{--sphc:var(--ion)}.sph.prefeitura{--sphc:var(--flame)}.sph.geral{--sphc:var(--accent2)}
+
+  /* ── CONTROLE 3D UNIVERSAL ─────────────────────────────────────────────────
+     Todo botão vive num plano com profundidade real. O JS (tilt3d) alimenta
+     --rx/--ry (inclina na direção do cursor) e --mx/--my (specular que segue o
+     dedo). Repouso = plano · hover = salta e inclina · :active = AFUNDA
+     (translateZ negativo). Feedback físico, nunca escala falsa.
+     Cards/lnk/ck-inst ficam de fora: já têm o motor de tilt do v7.          */
+  /* perspectiva vive na função transform do próprio controle (funciona mesmo
+     quando o pai não é um deck 3D). Esferas e abas continuam com perspectiva
+     no container, que é o deck herdado do v7 — não duplicar as duas.        */
+  .btn,.chip,.search .az,.htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit,.sheet .x{
+    position:relative;transform-style:preserve-3d;box-shadow:var(--lift);
+    transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(var(--tz,0px));
+    transition:transform .26s cubic-bezier(.2,.8,.25,1.05),box-shadow .26s,border-color .18s,color .18s,background .18s,filter .18s}
+  .btn:hover,.chip:hover,.search .az:hover,.htop a.sair:hover,.htop a.ctrl:hover,.htop a.help:hover,.sheet .x:hover{--tz:9px}
+  .btn:active,.chip:active,.search .az:active,.htop a:active,.sheet .x:active,.sph:active,nav.tabs button:active{
+    --tz:-4px;transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(-4px);transition-duration:.07s}
+  /* specular: a luz do ambiente batendo na face do controle, seguindo o cursor */
+  .btn::after,.chip::after,.search .az::after,.htop a.sair::after,.htop a.ctrl::after,.htop a.help::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .22s;
+    background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),oklch(1 0 0/.20),transparent 62%)}
+  .btn:hover::after,.chip:hover::after,.search .az:hover::after,.htop a:hover::after{opacity:1}
+  .btn:hover{box-shadow:var(--lift),0 0 30px -8px color-mix(in oklch,var(--flame) 60%,transparent);filter:brightness(1.07) saturate(1.06)}
+  .chip:hover,.search .az:hover{box-shadow:var(--lift),0 0 24px -10px color-mix(in oklch,var(--esf) 55%,transparent)}
+  .htop a.sair:hover,.htop a.help:hover{box-shadow:var(--lift),0 0 20px -10px color-mix(in oklch,var(--ion) 55%,transparent)}
+  .htop a.ctrl:hover{box-shadow:var(--lift),0 0 20px -10px color-mix(in oklch,var(--rose) 55%,transparent)}
+  /* botão PRIMÁRIO = ignição (laranja: é o que dispara). Secundário = íon (azul). */
+  .btn{background:linear-gradient(180deg,color-mix(in oklch,var(--flame) 92%,white 8%),color-mix(in oklch,var(--flame-d) 94%,black 8%));
+    color:oklch(0.17 0.045 50);text-shadow:0 1px 0 oklch(1 0 0/.20);font-weight:600}
+  .btn.ghost{background:linear-gradient(180deg,var(--raise),var(--card2));color:var(--tx2);border:1px solid var(--bd2);text-shadow:none}
+  .btn.ghost:hover{border-color:color-mix(in oklch,var(--ion) 55%,transparent);color:var(--tx);
+    box-shadow:var(--lift),0 0 26px -10px color-mix(in oklch,var(--ion) 55%,transparent)}
+  .btn.accent{background:linear-gradient(180deg,color-mix(in oklch,var(--ion) 28%,transparent),color-mix(in oklch,var(--ion) 13%,transparent));
+    color:var(--ion-hi);border:1px solid color-mix(in oklch,var(--ion) 48%,transparent);text-shadow:none}
+  .btn.accent:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--ion) 62%,transparent)}
+  .btn.red{background:linear-gradient(180deg,color-mix(in oklch,var(--rose) 78%,black 6%),color-mix(in oklch,var(--rose) 58%,black 26%))}
+  .btn.red:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--rose) 65%,transparent)}
+  .btn.green{background:linear-gradient(180deg,color-mix(in oklch,var(--green) 62%,black 8%),color-mix(in oklch,var(--green) 42%,black 28%))}
+  .btn.green:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--green) 60%,transparent)}
+  /* esferas e abas ganham profundidade maior (o deck 3D do v7, agora com relevo) */
+  .spheres{perspective:820px}
+  .sph{box-shadow:0 1px 0 oklch(0 0 0/.22) inset}
+  .sph.on{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--sphc) 55%,transparent)}
+  .sph:hover{transform:rotateX(0deg) translateZ(12px) rotateY(var(--ry,0deg))}
+  /* v49 — O SAMBA DOS BOTÕES, causa raiz. Aqui havia:
+       nav.tabs button:hover{... translateZ(9px) rotateY(var(--ry))}
+       nav.tabs button.on   {... translateZ(7px)}            <- DEPOIS, mesma especificidade
+     `.on` escrito após `:hover` com a mesma especificidade GANHA a cascata. Efeito: passar o mouse
+     na aba ATIVA não inclinava (perdia o rotateY), e em todas as outras inclinava. Atravessar a
+     barra dava tilt-sem-tilt-sem-tilt — o "sambando" que o dono viu. E ainda havia DOIS
+     `perspective` na mesma barra (700px na linha ~538, 760px aqui).
+     Agora: um estado de repouso, um de destaque, e `.on:hover` explicitado com especificidade maior
+     para nunca mais depender da ORDEM em que as regras aparecem. */
+  nav.tabs button.on{transform:rotateX(0deg) translateZ(7px) rotateY(var(--ry,0deg))}
+  nav.tabs button:hover{transform:rotateX(0deg) translateZ(9px) rotateY(var(--ry,0deg))}
+  nav.tabs button.on:hover{transform:rotateX(0deg) translateZ(10px) rotateY(var(--ry,0deg))}
+  /* grade holográfica atrás do header — o console tem chão */
+  header::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.5;
+    background:linear-gradient(90deg,color-mix(in oklch,var(--ion) 9%,transparent) 1px,transparent 1px) 0 0/34px 100%,
+               linear-gradient(180deg,color-mix(in oklch,var(--ion) 7%,transparent) 1px,transparent 1px) 0 0/100% 22px;
+    mask-image:linear-gradient(180deg,oklch(0 0 0/.9),transparent 88%)}
+  header{position:sticky;isolation:isolate}
+  /* marca = mini-reator: núcleo laranja num anel de íon */
+  .brand .lg{background:radial-gradient(circle at 50% 50%,var(--flame-hi) 0 22%,var(--ion) 34%,var(--ion-d) 100%);
+    box-shadow:0 0 14px -2px color-mix(in oklch,var(--ion) 65%,transparent),inset 0 0 8px oklch(0 0 0/.45);color:oklch(0.98 0 0)}
+  @media (prefers-reduced-motion:reduce){
+    .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
+    .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
+  /* TERRITÓRIO GLOBAL — o Estado do RJ atrás de TODA aba (não só o cockpit).
+     Malha real do IBGE, tingida pela cor da esfera ativa, varrida por um radar.
+     Fica no fundo, discreto: o dado sempre lê primeiro. */
+  /* NEBULOSA POR ESFERA — o "céu" temático de cada domínio (arte Flux/Pollinations),
+     troca sozinha com data-esf, faz drift lento. Faixa superior, fundida por máscara. */
+  #esfnebula{position:fixed;top:0;left:0;right:0;height:46vh;z-index:0;pointer-events:none;opacity:0;
+    background-size:cover;background-position:center 20%;mix-blend-mode:screen;
+    -webkit-mask-image:linear-gradient(180deg,#000 30%,transparent);mask-image:linear-gradient(180deg,#000 30%,transparent);
+    transition:opacity 1.1s ease;animation:nebulaDrift 60s ease-in-out infinite alternate;
+    filter:brightness(1.12) saturate(1.09);will-change:transform}
+  /* v49: `nebulaPulse` animava `filter:brightness/saturate` numa camada FIXA de 46vh com
+     `mix-blend-mode:screen`. Filtro sobre camada blendada de tela cheia = recompor o viewport
+     inteiro a cada quadro, e era um dos motores do 1-2 FPS medido. O brilho ficou ESTÁTICO no meio
+     da faixa que a animação percorria (era .92→1.32; agora 1.12 fixo), e o `nebulaDrift` continua —
+     ele anima só `transform`, que o compositor faz de graça. Movimento preservado, custo removido. */
+  body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/nebula-estado.jpg);opacity:.20}
+  body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/nebula-prefeitura.jpg);opacity:.20}
+  body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/nebula-transversal.jpg);opacity:.19}
+  body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/portal-hero.jpg);opacity:.14}
+  @keyframes nebulaDrift{from{transform:translate3d(-1.5%,0,0) scale(1.04)}to{transform:translate3d(1.5%,1.5%,0) scale(1.09)}}
+  @media (prefers-reduced-motion:reduce){#esfnebula{animation:none}}
+
+  /* ── VIDA ELEVADA (dono: tudo pulsando Jarvis/lightsaber — menus, abas, selos) ──
+     Respirações LENTAS e dessincronizadas (2.6–4s): vivo, não epilético. */
+  /* v49 — A VIDA CONTINUA, O CUSTO NÃO. Medido no navegador: o painel rodava a **1-2 FPS com a
+     página PARADA**, com 57 animações `infinite` ativas. A 1 FPS, "respiração lenta" não parece
+     viva: pisca. E as quatro respirações daqui eram justamente as caras — animavam `filter` e
+     SPREAD de `box-shadow`, que forçam repintura do elemento inteiro (com o texto dentro) a cada
+     quadro. `opacity` e `transform`, não: o compositor resolve na GPU sem repintar.
+     Então o efeito Jarvis foi PRESERVADO e trocou de veículo: cada elemento já tinha um
+     pseudo-elemento próprio (`.sph.on::after`, `nav.tabs button.on::after`, `.cover-seal::before`)
+     e é ele que pulsa agora, em opacity. O brilho antes obtido por animação virou valor ESTÁTICO no
+     meio da faixa — visualmente é o pico que se via, sem custo por quadro. */
+  .sph.on{box-shadow:var(--lift),0 0 33px -6px color-mix(in oklch,var(--sphc) 64%,transparent)}
+  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),sabreBreath 2.6s ease-in-out .3s infinite!important}
+  @keyframes sabreBreath{0%,100%{opacity:1}50%{opacity:.72}}
+  .cover-seal{transform-style:preserve-3d;box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 9px 28px -9px color-mix(in oklch,var(--esf) 72%,transparent);
+    transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
+  .live .pulse{animation:pl 1.8s infinite}
+  @media (prefers-reduced-motion:reduce){.sph.on,nav.tabs button.on,nav.tabs button.on::after,.cover-seal,.live .pulse{animation:none}}
+  /* GRID HOLOGRÁFICO GLOBAL — o "chão" tech que flui na cor da esfera, preenche o
+     vazio sem competir com o dado (opacity baixa, fundido nas beiradas). */
+  #hologrid{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.2;
+    background:linear-gradient(color-mix(in oklch,var(--esf) 62%,transparent) 1px,transparent 1px) 0 0/100% 44px,
+               linear-gradient(90deg,color-mix(in oklch,var(--esf) 62%,transparent) 1px,transparent 1px) 0 0/44px 100%,
+               radial-gradient(closest-side at 50% 46%,color-mix(in oklch,var(--esf) 10%,transparent),transparent);
+    -webkit-mask-image:radial-gradient(150% 110% at 50% 34%,#000 46%,transparent 92%);
+            mask-image:radial-gradient(150% 110% at 50% 34%,#000 46%,transparent 92%);
+    animation:gridFlow 9s linear infinite}
+  @keyframes gridFlow{to{background-position:0 44px,44px 0,0 0}}
+  @media (prefers-reduced-motion:reduce){#hologrid{animation:none;opacity:.13}}
+  #rjbg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:screen;
+    -webkit-mask-image:radial-gradient(120% 100% at 60% 42%,#000 42%,transparent 88%);
+            mask-image:radial-gradient(120% 100% at 60% 42%,#000 42%,transparent 88%)}
+  @media (prefers-reduced-motion:reduce){#rjbg{opacity:.3}}
+
+  /* ── PORTAL DE IGNIÇÃO ─────────────────────────────────────────────────────
+     Toca UMA vez por sessão, por cima do painel que já está carregando atrás.
+     Não é pedágio: cobre o 1–3s que o painel gastaria buscando dado de qualquer
+     jeito, e sai sozinho assim que o cockpit termina. Qualquer toque pula.     */
+  #portal[hidden]{display:none}
+  /* composição: o REATOR fica no centro óptico, a fala vive no terço inferior.
+     Nunca deixar texto por cima do núcleo — foi o erro da 1ª volta (o brilho
+     comia as palavras do meio e a frase virava ilegível).                   */
+  #portal{position:fixed;inset:0;z-index:100;
+    /* nebulosa fotográfica (Pollinations/Flux) escurecida sob o shader procedural */
+    background:linear-gradient(oklch(0.04 0.015 265/.34),oklch(0.035 0.014 265/.60)),
+               url(/static/assets/portal-hero.jpg) 50% 46%/cover no-repeat,
+               oklch(0.035 0.014 265);
+    display:flex;align-items:flex-end;justify-content:center;cursor:pointer;
+    transition:opacity .34s ease,filter .34s ease}
+  /* véu inferior: garante contraste do texto contra qualquer quadro da cena */
+  #portal::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56%;z-index:1;pointer-events:none;
+    background:linear-gradient(180deg,transparent,oklch(0.035 0.014 265/.62) 46%,oklch(0.035 0.014 265/.94))}
+  #portal.off{opacity:0;pointer-events:none;filter:blur(6px)}
+  /* v27: o shader desenhava um nucleo azul OPACO em cima do nucleo incandescente
+     da arte — dois nucleos disputando o mesmo pixel, e o de cima era um borrao.
+     Em `screen` o preto do shader some e so a luz soma: a maquina fotografada
+     continua visivel POR BAIXO, e o procedural volta a ser o que deve ser —
+     o que se mexe, nao o que tapa. */
+  #pcv{position:absolute;inset:0;width:100%;height:100%;display:block;
+    mix-blend-mode:screen;opacity:.62;
+    /* o shader nao desenha onde a arte JA e heroi. O nucleo procedural era um
+       disco azul saturado bem em cima do nucleo incandescente da foto: dois
+       nucleos no mesmo pixel, e ganhava o borrao. A mascara abre um furo
+       exatamente no centro do reator, entao sobra do procedural o que ele faz
+       bem — raios, particulas, o campo que se mexe — e o coracao volta a ser a
+       peca fotografada.
+
+       v49 — A "BOLA DO NADA NO MEIO", parte 1 de 3. A mascara estava em 51% 46%.
+       O nucleo do shader esta em 41% do topo, e isso e demonstravel por duas
+       fontes independentes no proprio arquivo: `vec2 pr=p-vec2(0.0,0.09)` com
+       gl_FragCoord.y crescendo para CIMA poe o miolo 9% acima do centro
+       (50%-9% = 41%), e o desenho do territorio usa `const cy=H*0.41` com o
+       comentario "nasce no nucleo do reator". Ou seja: o furo abria 5% da altura
+       ABAIXO do nucleo. Consequencia visivel — o topo do orbe laranja escapava da
+       mascara e ficava flutuando sobre o video, enquanto o furo revelava pixels de
+       video que nao tem reator nenhum.
+       A mascara foi calibrada na era da FOTO PARADA e nunca reajustada quando o
+       video entrou no v30 (532a77e0). Agora casa com o shader: 50% 41%. */
+    -webkit-mask-image:radial-gradient(circle min(27vmin,250px) at 50% 41%,
+      transparent 0 46%,rgba(0,0,0,.30) 72%,#000 100%);
+    mask-image:radial-gradient(circle min(27vmin,250px) at 50% 41%,
+      transparent 0 46%,rgba(0,0,0,.30) 72%,#000 100%)}
+  /* o território: malha REAL do RJ (IBGE) revelada pela varredura do reator */
+  #pmap{position:absolute;inset:0;width:100%;height:100%;display:block;mix-blend-mode:screen;opacity:.92}
+  #portal .pui{position:relative;z-index:2;text-align:center;pointer-events:none;
+    width:100%;max-width:860px;padding:0 24px clamp(46px,9vh,104px)}
+  #portal .pln{font-family:var(--mono);opacity:0;transform:translateY(6px);
+    animation:plnIn .8s cubic-bezier(.2,.7,.2,1) both}
+  #portal .l1{font-size:10.5px;letter-spacing:3.4px;text-transform:uppercase;color:var(--ion-hi);
+    text-shadow:0 0 18px color-mix(in oklch,var(--ion) 70%,transparent);animation-delay:.35s}
+  #portal .l2{margin-top:18px;font-size:clamp(19px,4.1vw,34px);font-weight:600;letter-spacing:-.5px;
+    color:oklch(0.97 0.01 250);text-shadow:0 0 28px oklch(0 0 0/.9);animation-delay:1.05s}
+  #portal .l3{margin-top:7px;font-size:clamp(19px,4.1vw,34px);font-weight:600;letter-spacing:-.5px;
+    color:var(--flame-hi);text-shadow:0 0 30px color-mix(in oklch,var(--flame) 55%,transparent);animation-delay:1.75s}
+  #portal .pskip{margin-top:30px;font-family:var(--mono);font-size:10px;letter-spacing:2.2px;text-transform:uppercase;
+    color:oklch(0.62 0.03 258);opacity:0;animation:plnIn .8s ease 2.5s both}
+  @keyframes plnIn{to{opacity:1;transform:none}}
+  /* handoff: o núcleo do portal encolhe até o Kyber do header — portal e painel
+     são o MESMO objeto, não duas telas. */
+  #phand{position:fixed;z-index:101;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,var(--flame-hi) 0 30%,var(--ion) 60%,transparent 72%);
+    box-shadow:0 0 40px color-mix(in oklch,var(--ion) 70%,transparent);
+    transition:transform .62s cubic-bezier(.3,.85,.25,1),opacity .62s ease}
+  @media (prefers-reduced-motion:reduce){
+    #portal .pln,#portal .pskip{animation:none;opacity:1;transform:none}
+    #portal{transition:opacity .2s}#phand{display:none}}
+
+  /* ═══════════ v10 "AGÊNCIA" — SÓ ADIÇÃO (auditoria papel-8: consistência, contraste,
+     avisos próprios, orçamento de vida). Nada do v7/v8/v9 é reescrito — a cascata vence. */
+  :root{
+    --r-s:8px; --r-m:10px; --r-l:13px;              /* escala única de raio (antes: 7/8/9/10/12/13) */
+    --sh:var(--lift);                               /* sombra canônica = a do v9 (fim das 2 linguagens) */
+    --dim-sm:oklch(0.68 0.03 240);                  /* --dim legível em texto ≤11px (contraste ≥4.5:1) */
+  }
+  .chip,.ck-fchip,nav.tabs button{border-radius:var(--r-s)}
+  .sph{border-radius:var(--r-m)}
+  thead th,.ck-flabel{color:var(--dim-sm)}
+  /* bounce proibido pelo DESIGN.md → ease-out-quart canônico, mesmos tempos */
+  .btn,.chip,.search .az,.htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit,.sheet .x{
+    transition:transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .18s,color .18s,background .18s,filter .18s}
+  nav.tabs button{transition:color .15s,transform .22s cubic-bezier(.2,.7,.2,1)}
+  /* orçamento de vida: aba oculta → TODA animação CSS pausa (canvas já pausam via RAF).
+     Zero mudança visual com a aba aberta — só CPU devolvida quando ninguém está olhando. */
+  html.rest *{animation-play-state:paused !important}
+  /* esferas roláveis: fade lateral avisa que há mais conteúdo (scrollbar é escondida) */
+  .spheres.scrollx{-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);mask-image:linear-gradient(90deg,#000 92%,transparent)}
+  /* toast + confirm da casa (substituem alert/confirm nativos) */
+  #v10toasts{position:fixed;left:50%;bottom:74px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .v10toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:var(--r-m);
+    background:color-mix(in oklch,var(--card) 88%,black);border:1px solid var(--bd2);box-shadow:var(--lift);
+    font-size:12.5px;color:var(--ink);max-width:min(460px,88vw);opacity:0;translate:0 8px;transition:opacity .2s cubic-bezier(.2,.7,.2,1),translate .2s cubic-bezier(.2,.7,.2,1)}
+  .v10toast.on{opacity:1;translate:0 0}
+  .v10toast.rose{border-color:color-mix(in oklch,var(--rose) 45%,var(--bd2))}
+  .v10toast.green{border-color:color-mix(in oklch,var(--green,#5fe0a1) 45%,var(--bd2))}
+  .v10toast .jico{width:15px;height:15px;flex:0 0 auto}
+  .v10confirm{max-width:380px;margin:0 auto;text-align:left}
+  .v10confirm p{margin:2px 0 16px;font-size:13.5px;line-height:1.5}
+  .warn .v10retry{margin-left:10px}
+  @media (prefers-reduced-motion:reduce){.v10toast{transition:none}}
+
+  /* ═══════════ v10.1 "REBUSCADO" — instrumentação sci-fi (SÓ ADIÇÃO) ═══════════
+     Brief do dono: núcleo/radar/UI "profissional, foda, super futurista". Doutrina mantida:
+     azul=console · laranja=energia · vida só com dado real · reduced-motion desliga. */
+  /* colchetes de alvo (target-lock) — o card sob o cursor é o alvo travado */
+  .card::after{content:"";position:absolute;inset:7px;border-radius:2px;pointer-events:none;
+    opacity:0;transition:opacity .22s cubic-bezier(.2,.7,.2,1);
+    --tk:color-mix(in oklch,var(--esf,var(--ion)) 80%,white 10%);
+    background:
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 top    0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 top    0/1.5px 13px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 top    0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 top    0/1.5px 13px,
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 bottom 0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 bottom 0/1.5px 13px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 bottom 0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 bottom 0/1.5px 13px}
+  .card:hover::after{opacity:.5}
+  .card.hl::after{opacity:.32}                     /* grave: mira sempre armada, discreta */
+  /* medidor de score = barra de LEDs segmentada (instrumento, não progress bar) */
+  .meter{position:relative;width:82px;height:6px;vertical-align:1px}
+  .meter::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,transparent 0 5px,var(--bg2) 5px 7px)}
+  .meter.crit{box-shadow:0 0 10px color-mix(in oklch,var(--rose) 30%,transparent)}
+  /* tabelas: linha de energia sob o cabeçalho, na cor da esfera */
+  thead tr{border-bottom:1px solid color-mix(in oklch,var(--esf,var(--ion)) 32%,transparent)}
+  /* botões: linha de energia que corre na base ao hover (carga, não decoração) */
+  .btn{background-image:linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent);
+    background-repeat:no-repeat;background-position:left bottom;background-size:0% 1.5px;
+    transition:background-size .28s cubic-bezier(.2,.7,.2,1),transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .18s,color .18s,filter .18s}
+  .btn:hover{background-size:100% 1.5px}
+  .tag.rose{box-shadow:inset 0 0 9px color-mix(in oklch,var(--rose) 16%,transparent)}
+  /* HUD do núcleo: telemetria real da vigília (só dado do barramento — nada sintético) */
+  .nu-hud{position:absolute;right:14px;bottom:12px;z-index:3;font-family:var(--mono);
+    font-size:9.5px;letter-spacing:.8px;color:var(--dim-sm);text-transform:uppercase;text-align:right}
+  .nu-hud b{color:color-mix(in oklch,var(--flame-hi,var(--gold)) 85%,white 8%);font-weight:600}
+  @media (prefers-reduced-motion:reduce){.card::after{transition:none}.btn{transition:none}}
+
+  /* ═══════════ v10.2 — FIX "card some onde eu toco" (SÓ ADIÇÃO) ═══════════
+     Causa: .card:hover (borda-beam v8) declara `animation:spinA…`, que SUBSTITUI a animação
+     de entrada `rise` — e como .rise tem `opacity:0` na base (a rise com fill:both é quem
+     segura o 1), o card cai para invisível. No desktop era um flicker ao sair do hover; no
+     CELULAR o hover é grudento após o toque → o card sumia PERMANENTEMENTE onde o dedo tocava.
+     Fix: o hover SOMA o beam à rise (fill both preservado) + trava dura de opacidade. */
+  .rise:hover{opacity:1}                          /* nenhum .rise fica invisível sob hover, nunca */
+  .card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover{
+    animation:rise .3s cubic-bezier(.2,.7,.2,1) both,spinA 3.2s linear infinite;
+    animation-delay:var(--d,0ms),0ms}
+  .card.hl.rise:hover{
+    animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite,spinA 3.2s linear infinite;
+    animation-delay:var(--d,0ms),0ms,0ms}
+  @media (prefers-reduced-motion:reduce){.card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover,.card.hl.rise:hover{animation:none;opacity:1}}
+
+  /* ═══════════ v10.3 — HOVER SÓ ONDE HOVER EXISTE (SÓ ADIÇÃO) ═══════════
+     Em touch o :hover é grudento pós-toque: v10.2 curou a invisibilidade, mas o beam
+     (spinA) e o anel holográfico do KPI ficavam PRESOS no elemento tocado. Cura de
+     raiz: em aparelho sem hover real, efeito decorativo de hover não se aplica. */
+  @media (hover:none){
+    .card:hover,.lnk:hover,.ck-inst:hover{animation:none;border-color:var(--bd2);
+      background:linear-gradient(165deg,var(--card),var(--card2))}
+    .card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover{
+      animation:rise .3s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
+    .card.hl:hover{border-color:color-mix(in oklch,var(--rose) 48%,transparent);
+      animation:graveGlow 3.2s ease-in-out infinite}
+    .card.hl.rise:hover{animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite;
+      animation-delay:var(--d,0ms),0ms}
+    .kpi:hover::before{opacity:0;animation:none}
+  }
+
+  /* ═══════════ v10.4 — MOBILE SEM VAZAMENTO HORIZONTAL (SÓ ADIÇÃO) ═══════════
+     No iPhone (390px) o span.actions do cabeçalho estourava 39px e a página inteira
+     balançava de lado. Header pode QUEBRAR LINHA no estreito; html/body clipam o
+     eixo X (conteúdo largo rola no próprio contêiner — padrão dos cards de tabela). */
+  @media (max-width:520px){
+    .htop{flex-wrap:wrap;row-gap:6px}
+    .htop .actions{flex-wrap:wrap;justify-content:flex-end}
+    /* texto longo (endereço, objeto) QUEBRA em vez de sumir no clip */
+    #view td,#view .card{overflow-wrap:anywhere}
+  }
+  html,body{overflow-x:clip}
+
+  /* ═══════════════════ CAMADA HOLOGRÁFICA (v11 "PRISMA") ═══════════════════
+     Elevação pedida pelo dono: mais futurista e holográfico, SEM regressão. Tudo aqui é ADITIVO e roda
+     em CSS/GPU — nenhuma lib, nenhum canvas novo, nada que dispute a CPU (a VM tem 2 vCPU e o shader do
+     portal já é o gasto que vale). Quatro marcas do holograma que faltavam:
+       1. VARREDURA  — a linha que percorre a projeção (assinatura visual do holograma);
+       2. ARESTA VIVA — energia circulando na borda dos elementos de comando;
+       3. FRANJA CROMÁTICA — o desalinhamento RGB de uma projeção real, só no hover e sutil;
+       4. GRADE DE PERSPECTIVA — o chão infinito que dá profundidade de cena, atrás de tudo.
+     Regra herdada: quem já brilha (grave, ouro, alerta) NÃO é dessaturado por nada disto. */
+  :root{
+    --holo-scan:oklch(0.92 0.10 205 / .055);   /* varredura: luz fria, quase imperceptível */
+    --holo-edge:oklch(0.86 0.13 250 / .55);    /* aresta: íon */
+    --holo-edge2:oklch(0.84 0.14 60 / .40);    /* aresta: chama (o segundo polo do painel) */
+    --holo-grid:oklch(0.62 0.09 245 / .09);    /* grade do chão */
+    --holo-t:14s;
+  }
+
+  /* 1 · VARREDURA — uma faixa de luz desce devagar sobre a superfície de vidro.
+     Fica no ::after (o ::before já é a luz especular/spotlight — não se toca nele). */
+  .card::after,.ck-hero::after{content:"";position:absolute;inset:0;border-radius:inherit;
+    pointer-events:none;z-index:0;opacity:0;
+    background:linear-gradient(180deg,transparent 42%,var(--holo-scan) 50%,transparent 58%);
+    background-size:100% 260%;animation:holoScan var(--holo-t) linear infinite;transition:opacity .35s}
+  .card:hover::after,.ck-hero::after{opacity:1}
+  @keyframes holoScan{from{background-position:0 -160%}to{background-position:0 160%}}
+
+  /* 2 · ARESTA VIVA — gradiente cônico girando na borda. Máscara deixa só a moldura de 1px acesa,
+     então o custo é o de um gradiente, não de uma sombra. Só onde há COMANDO (o olho segue a energia). */
+  .ck-hero,.btn.primary,.card.hl{position:relative}
+  .ck-hero::before,.btn.primary::after,.card.hl::before{--holo-a:0deg}
+  @property --holo-a{syntax:"<angle>";inherits:false;initial-value:0deg}
+  .holo-edge,.ck-hero,.card.hl{
+    background-image:conic-gradient(from var(--holo-a),transparent 0 62%,var(--holo-edge) 74%,
+                    var(--holo-edge2) 84%,transparent 92% 100%);
+    background-origin:border-box;background-clip:padding-box,border-box;
+    animation:holoSpin 9s linear infinite}
+  @keyframes holoSpin{to{--holo-a:360deg}}
+
+  /* 3 · FRANJA CROMÁTICA — o desalinhamento RGB da projeção. Dose homeopática (0.6px) e SÓ no hover:
+     em repouso o texto tem de ser perfeitamente legível (é um painel de trabalho, não uma vitrine). */
+  .card:hover .num,.ck-hero .num{text-shadow:
+      -0.6px 0 0 oklch(0.72 0.19 25 / .22), 0.6px 0 0 oklch(0.80 0.14 210 / .26), 0 0 18px var(--esf)}
+
+  /* 4 · GRADE DE PERSPECTIVA — chão infinito atrás de todo o conteúdo. `fixed` + máscara em direção ao
+     horizonte: aparece no rodapé da tela e some antes de encostar no texto. */
+  body::after{content:"";position:fixed;inset:auto 0 0 0;height:38vh;pointer-events:none;z-index:0;
+    background:
+      repeating-linear-gradient(90deg,var(--holo-grid) 0 1px,transparent 1px 84px),
+      repeating-linear-gradient(0deg,var(--holo-grid) 0 1px,transparent 1px 84px);
+    transform:perspective(320px) rotateX(66deg);transform-origin:bottom center;
+    -webkit-mask-image:linear-gradient(180deg,transparent,#000 78%);
+    mask-image:linear-gradient(180deg,transparent,#000 78%);opacity:.5}
+
+  /* ACESSIBILIDADE E CPU: quem pediu menos movimento não recebe nenhum. A grade e a aresta ficam
+     ESTÁTICAS (a estética permanece), a varredura desliga. */
+  @media (prefers-reduced-motion:reduce){
+    .card::after,.ck-hero::after{animation:none;opacity:0}
+    .holo-edge,.ck-hero,.card.hl{animation:none}
+    body::after{opacity:.35}
+  }
+  /* telas pequenas: a grade some (rouba contraste no celular) e a varredura só no toque */
+  @media (max-width:640px){body::after{display:none}}
+
+  /* ═══════════════════ v12 "HOLOMESA" — a mesa de holograma ═══════════════════
+     A cena 3D (câmera com perspectiva de verdade) precisa de espaço e de silêncio
+     em volta. Duas decisões estruturais:
+     1) a caixa cresce — mesa de holograma quer altura; achatada, a perspectiva morre;
+     2) os rótulos SAEM da cena e viram TRILHO DE CHAMADA nas laterais. Antes eles
+        flutuavam junto dos nós: sete rótulos disputavam 400px no topo, um saía
+        clipado da caixa e o projetor ficava escondido atrás de um deles (medido:
+        heart em y=60 sob o chip "alertas"). No trilho, o número fica parado e
+        legível em repouso — regra da casa: é um painel de trabalho — e a linha-guia
+        viva é que faz o vínculo com o objeto 3D. */
+  /* ── CORREÇÃO: a "aresta viva" do v11 nunca chegou a ser aresta ──────────────
+     O cônico estava no PRÓPRIO elemento com `background-clip:padding-box,border-box`
+     e UMA só camada de imagem: a segunda fatia não tem camada para recortar, então o
+     cônico foi parar no padding-box e inundou o card inteiro. Era aquela lâmina de luz
+     atravessando o herói na auditoria visual — lia como bug de render, não como design.
+     Correção em três camadas, que é o que a técnica exige:
+       1ª superfície do card recortada no padding-box (a borda não a recebe);
+       2ª o cônico recortado no border-box (só o anel de 1px);
+       3ª a hairline de base, também no border-box, aparecendo onde o cônico é
+          transparente — sem ela o card fica sem borda em 62% do perímetro.
+     Em `.card.hl` a inundação apenas SAI: a severidade dele já é a borda rosa + o
+     graveGlow, e dessaturar quem já brilha é proibido. */
+  .ck-hero,.holo-edge{
+    background-image:
+      linear-gradient(180deg,var(--card),var(--card2)),
+      conic-gradient(from var(--holo-a),transparent 0 62%,var(--holo-edge) 74%,
+                     var(--holo-edge2) 84%,transparent 92% 100%),
+      linear-gradient(var(--bd2),var(--bd2));
+    background-clip:padding-box,border-box,border-box;
+    background-origin:border-box;border-color:transparent}
+  /* O card GRAVE saía duas vezes prejudicado pela regra do v11:
+     (a) o cônico inundava a superfície dele com azul/laranja — cor que não é a dele,
+         competindo com o rosa que É o sinal de severidade;
+     (b) `animation:holoSpin` da mesma regra SOBRESCREVEU o `graveGlow` da linha 341 —
+         desde o v11 o card grave não pulsava mais a gravidade, girava um gradiente.
+     Aqui ele recupera as duas coisas: a superfície própria (idêntica à do `.card`) e o
+     pulso de gravidade. Nada de dessaturar quem já brilha — ao contrário, o rosa volta
+     a ser o único a falar. */
+  .card.hl{background-image:linear-gradient(165deg,var(--card),var(--card2));
+    animation:graveGlow 3.2s ease-in-out infinite}
+
+  /* ── CONTRASTE: `--dim` estava ABAIXO do mínimo da casa (≥4.5:1) ──────────────
+     Medido no navegador, com a cor resolvida em canvas e o fundo composto camada a
+     camada: `--dim` (L=0.57) rendia 4,22–4,47:1 nos textos de 9,5 a 12px que é onde
+     ele vive (`.hsub`, `.hfload`, `.tl`, `.dim`, `.c`). O v10 já tinha criado
+     `--dim-sm` (L=0.68) para isso, mas ele só chegou a duas regras — e adotá-lo em
+     tudo encostaria `--dim` em `--mut` (L=0.71), apagando um degrau de hierarquia.
+     L=0.60 é o menor passo que resolve: **4,78:1** no pior caso medido, com o degrau
+     para `--mut` preservado. Auditável de novo por `tools/auditar_contraste.py`. */
+  :root{--dim:oklch(0.60 0.03 240)}
+
+  /* ═══════════ v12.3 "HOLOGRAMA UNIVERSAL" — todo acionável fica vivo ═══════════
+     Brief do dono: pulso, movimento e holograma em CADA botão, de TODAS as abas.
+
+     Por que uma camada injetada e não pseudo-elemento: em `.btn` e `.chip` os dois
+     pseudos já estão ocupados desde o v7/v9 (::before = brilho que atravessa,
+     ::after = halo de foco). Sobrescrevê-los seria desfazer o que já existe — e a
+     ordem é ADICIONAR. Então cada acionável recebe um `<i class="hlx">` (injetado
+     uma vez, marcado para nunca repetir) que traz os seus PRÓPRIOS dois pseudos:
+       ::before = cantoneiras de HUD (4 cantos em L, oito gradientes, zero imagem);
+       ::after  = varredura holográfica que atravessa a peça.
+     O atraso `--hd` é dado por índice: cada botão respira num tempo diferente —
+     a mesma decisão que faz a mesa parecer viva em vez de piscar junta. */
+  /* `position:relative` SÓ em quem é estático. `.nu-chip` já é ABSOLUTO desde o v12 —
+     rebaixá-lo a relative devolveu os rótulos ao fluxo normal: os `top` inline
+     continuavam certos (373/373/408/408) e o render saía empilhado (374/403/467/496),
+     porque em relative o `top` DESLOCA a partir da posição de fluxo em vez de definir
+     a posição. Quebrou a mesa no celular e no desktop de uma vez. */
+  .btn,.chip,.tab,.lnk,.ck-inst,.htop a{position:relative}
+  .nu-chip{position:absolute}
+  .hlx{position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+    overflow:hidden;--hc:color-mix(in oklch,var(--ion-hi,#8ecbff) 78%,transparent);
+    --hs:color-mix(in oklch,var(--ion-hi,#8ecbff) 30%,transparent)}
+  /* CANTONEIRA só onde há ÁREA para ela ler como cantoneira. Numa peça de 90×36 px os
+     quatro cantos quase se encontram e o olho lê BORDA QUEBRADA — defeito, não HUD.
+     Então bracket fica nas superfícies grandes (KPI e etiqueta da mesa); botão, aba e
+     chip recebem outro gesto, logo abaixo. */
+  .ck-inst>.hlx::before,.nu-chip>.hlx::before,.lnk>.hlx::before{content:"";position:absolute;inset:4px;
+    background:
+      linear-gradient(var(--hc),var(--hc)) 0 0/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 0/1px 10px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 0/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 0/1px 10px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 100%/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 0 100%/1px 10px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 100%/10px 1px no-repeat,
+      linear-gradient(var(--hc),var(--hc)) 100% 100%/1px 10px no-repeat;
+    opacity:.18;transform:scale(1.015);
+    animation:hlxRespira 3.8s ease-in-out infinite;animation-delay:var(--hd,0s);
+    transition:opacity .18s cubic-bezier(.22,1,.36,1),transform .18s cubic-bezier(.22,1,.36,1)}
+  /* BOTÃO / ABA / CHIP / ATALHO: o gesto é um ARO que acende POR DENTRO, no ritmo
+     próprio de cada peça. Fica dentro do raio da borda, não desenha canto solto e
+     não briga com a borda que a peça já tem. */
+  .btn>.hlx::before,.chip>.hlx::before,.tab>.hlx::before,.htop a>.hlx::before{
+    content:"";position:absolute;inset:0;border-radius:inherit;opacity:1;
+    animation:hlxAro 4.2s ease-in-out infinite;animation-delay:var(--hd,0s);
+    transition:box-shadow .18s cubic-bezier(.22,1,.36,1)}
+  @keyframes hlxAro{
+    0%,100%{box-shadow:inset 0 0 0 1px transparent, inset 0 9px 16px -14px transparent}
+    50%{box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--hc) 22%,transparent),
+                   inset 0 9px 16px -11px color-mix(in oklch,var(--hc) 58%,transparent)}}
+  .btn:hover>.hlx::before,.chip:hover>.hlx::before,.tab:hover>.hlx::before,
+  .htop a:hover>.hlx::before{animation-play-state:paused;
+    box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--hc) 62%,transparent),
+               inset 0 10px 20px -10px color-mix(in oklch,var(--hc) 78%,transparent)}
+  .hlx::after{content:"";position:absolute;left:-10%;right:-10%;top:-60%;height:220%;
+    background:linear-gradient(180deg,transparent 44%,var(--hs) 50%,transparent 56%);
+    opacity:0;animation:hlxVarre 7.5s cubic-bezier(.4,0,.2,1) infinite;
+    animation-delay:var(--hd,0s)}
+  @keyframes hlxRespira{0%,100%{opacity:.13;transform:scale(1.02)}
+    50%{opacity:.30;transform:scale(1)}}
+  @keyframes hlxVarre{0%,72%{opacity:0;transform:translateY(-46%)}
+    76%{opacity:1}100%{opacity:0;transform:translateY(46%)}}
+  /* o toque acende os cantos e trava a peça — é o gesto de "alvo travado" */
+  .lnk:hover>.hlx::before,.ck-inst:hover>.hlx::before,.nu-chip:hover>.hlx::before{
+    opacity:.92;transform:scale(1);animation-play-state:paused}
+  /* quem carrega SEVERIDADE tinge as cantoneiras com a própria cor: o holograma
+     nunca contradiz o semáforo (regra da casa — cor só fala se significa algo) */
+  .btn.red>.hlx,.chip.sev-alta>.hlx,.card.hl .hlx{--hc:color-mix(in oklch,var(--rose) 82%,transparent);
+    --hs:color-mix(in oklch,var(--rose) 26%,transparent)}
+  .btn.green>.hlx{--hc:color-mix(in oklch,var(--green) 82%,transparent);
+    --hs:color-mix(in oklch,var(--green) 26%,transparent)}
+  .btn.primary>.hlx,.chip.on>.hlx{--hc:color-mix(in oklch,var(--flame-hi,var(--gold)) 84%,transparent);
+    --hs:color-mix(in oklch,var(--flame-hi,var(--gold)) 28%,transparent)}
+  .nu-chip>.hlx{--hc:color-mix(in srgb,var(--nc) 80%,transparent);
+    --hs:color-mix(in srgb,var(--nc) 26%,transparent)}
+  /* reduced-motion: a estética FICA (cantoneiras acesas), o movimento sai */
+  @media (prefers-reduced-motion:reduce){
+    .hlx::before{animation:none;opacity:.22}
+    .hlx::after{display:none}
+  }
+  /* aba oculta: o v10 já pausa animação CSS via html.rest — a camada obedece */
+  html.rest .hlx::before,html.rest .hlx::after{animation-play-state:paused}
+
+  /* o ticker cortava no meio da palavra nas duas bordas — lia como texto vazando o
+     container. Máscara de esmaecimento resolve sem tirar conteúdo nenhum. */
+  .ck-ticker{-webkit-mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);
+             mask-image:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+  /* sem animacao, o `padding-left:100%` da faixa empurrava TODO o texto para fora da
+     tela: quem pediu menos movimento ficava sem o conteudo. Agora comeca visivel e a
+     faixa rola no dedo/roda. */
+  @media (prefers-reduced-motion:reduce){
+    .ck-ticker{overflow-x:auto;overscroll-behavior-x:contain}
+    .ck-ticker .lane{padding-left:0}
+  }
+
+  .ck-nucleo{height:clamp(430px,54vw,620px)}
+  /* regime compacto: rótulos em grade sob a mesa; legenda sai (o HUD já carrega o
+     estado ao vivo e dois textos na mesma faixa colidiam no emulador a 390px). */
+  .ck-nucleo.compacto .nu-legend{display:none}
+  .ck-nucleo.compacto .nu-hud{right:auto;left:12px;top:10px;bottom:auto;text-align:left;max-width:calc(100% - 24px)}
+  .ck-nucleo.compacto .nu-chip{padding:6px 9px}
+  .ck-nucleo.compacto .nu-chip small{font-size:8.5px}
+  .ck-nucleo.compacto .nu-chip .n{font-size:13.5px}
+  /* a pílula de sweep vivia no rodapé central e cobria a legenda quando acendia
+     (visto na auditoria com o sweep SEI ativo). O topo da mesa é a faixa vazia:
+     é status, e status fica onde não disputa com explicação. */
+  .nu-sweep{top:10px;bottom:auto}
+  .ck-nucleo.compacto .nu-hud{top:8px}
+  .ck-nucleo.compacto .nu-sweep{top:auto;bottom:calc(var(--grade-h,150px) + 6px)}
+  .nu-legend{top:auto;bottom:11px;left:14px;max-width:46%;color:var(--dim-sm,var(--dim))}
+  /* v12.1 — A IDENTIFICAÇÃO VOLTA PARA JUNTO DA COISA.
+     O trilho lateral resolvia colisão, mas separava o rótulo do ponto de luz que ele
+     nomeia: o olho tinha de fazer a ligação por uma linha, e o alvo clicável deixava
+     de estar onde o dado está. Agora o rótulo é uma etiqueta compacta ancorada ao
+     próprio nó — e os três defeitos que o trilho havia curado ficam curados por
+     CÓDIGO, não por layout: empurrão radial + anti-colisão + trava dentro da caixa
+     (ver o passo 11 do desenho). */
+  /* Posicionar por `left/top` a cada quadro dispara LAYOUT em 7 elementos, 60x/s:
+     medido, levou o p90 do desenho de 2,3 ms para 8,5 ms. Ancorado em 0,0 e movido
+     só por `transform`, o navegador resolve na composição — sem layout. */
+  .nu-chip{left:0;top:0;will-change:transform;
+    width:auto;min-width:0;max-width:190px;box-sizing:border-box;
+    flex-direction:column;align-items:center;gap:1px;
+    padding:5px 10px;border-radius:var(--r-s,8px);opacity:1;
+    transform:translate(-50%,-100%);
+    transition:box-shadow .18s cubic-bezier(.22,1,.36,1),border-color .18s cubic-bezier(.22,1,.36,1),
+               background-color .18s cubic-bezier(.22,1,.36,1)}
+  .nu-chip small{font-size:9px;letter-spacing:.8px;text-align:center;line-height:1.2;white-space:nowrap}
+  .nu-chip .n{font-size:14.5px;white-space:nowrap}
+  /* em tela estreita não há espaço em volta da mesa: ali a pílula horizontal em grade
+     continua sendo a decisão certa (medido a 390px). */
+  .ck-nucleo.compacto .nu-chip{flex-direction:row;align-items:center;justify-content:space-between;
+    gap:8px;max-width:none;transform:none;padding:5px 8px;overflow:hidden}
+  /* O rótulo herdava `white-space:nowrap` do regime de CENA (lá ele é uma etiqueta
+     solta e PODE ser largo). Na grade a largura é FIXA: sem quebrar linha o conteúdo
+     transbordava e era cortado pela caixa — foi o que apareceu no celular do dono.
+     Aqui ele quebra, encolhe e nunca vaza. */
+  .ck-nucleo.compacto .nu-chip small{text-align:left;white-space:normal;min-width:0;
+    font-size:8px;letter-spacing:.4px;line-height:1.15;overflow-wrap:anywhere}
+  .ck-nucleo.compacto .nu-chip .n{font-size:13px;flex:0 0 auto}
+  /* o nó correspondente está sob o cursor (ou o próprio trilho está) → os dois acendem juntos */
+  .nu-chip.viva{border-color:var(--nc);background:color-mix(in srgb,var(--nc) 18%,oklch(0.14 0.03 260/.78));
+    box-shadow:0 0 22px -5px var(--nc)}
+  @media (max-width:900px){.nu-chip{--rail-w:150px}.nu-chip small{font-size:8.5px}.nu-chip .n{font-size:14px}}
+  /* No celular a mesa é limitada pela LARGURA (94% de ocupação a 390px, com a
+     restrição de altura sobrando 259 contra 107): esticar o card não aumenta o
+     território em um pixel, só abre uma faixa morta entre a mesa e a grade de
+     rótulos. Card menor = mesmo território, sem o vazio. */
+  @media (max-width:600px){.ck-nucleo{height:clamp(340px,96vw,440px)}}
+
+  /* ══ v13 "SABRE" ═══════════════════════════════════════════════════════════
+     Um sabre de luz NÃO é uma barra colorida com brilho: é um núcleo
+     branco-quente com o halo saturado por fora. O branco corre na ESPESSURA
+     (gradiente 180deg), não no comprimento — era exatamente isso que faltava
+     para a lâmina parar de ler como "barrinha acesa". Três camadas de bloom
+     (perto/médio/longe) põem ar aceso ao redor, como a câmera vê a lâmina. */
+  .sabre{--sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent)}
+  /* o zumbido: passos IRREGULARES. Uma senoide limpa lê como "fade" de CSS;
+     a lâmina do filme oscila fora de compasso — é o que a faz parecer viva. */
+  @keyframes sabreHum{
+    0%{filter:brightness(1)}      13%{filter:brightness(1.13)}
+    27%{filter:brightness(.965)}  41%{filter:brightness(1.19)}
+    58%{filter:brightness(1.02)}  73%{filter:brightness(1.15)}
+    86%{filter:brightness(.98)}   100%{filter:brightness(1)}}
+  /* ignição: estende do punho, passa do ponto e assenta — com um clarão que
+     decai depois, que é o excesso de luz do primeiro instante. */
+  @keyframes sabreIgnic{0%{transform:scaleX(0)}72%{transform:scaleX(1.02)}100%{transform:scaleX(1)}}
+  @keyframes sabreFlash{0%{filter:brightness(2.6) saturate(.55)}100%{filter:brightness(1)}}
+
+  /* a régua da capa da aba e o sublinhado da aba ativa passam a ser lâmina */
+  .cover::before{height:3px;border-radius:2px}
+  .cover::before,.cover.estado::before,.cover.prefeitura::before,.cover.geral::before{
+    --sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .38s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .55s ease-out,
+              sabreHum 3.1s ease-in-out .55s infinite}
+  nav.tabs button.on::after{height:3px;--sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .3s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .5s ease-out,
+              sabreHum 3.1s ease-in-out .5s infinite!important}
+  /* a esfera ativa acende a própria lâmina no pé — é onde o olho pousa
+     primeiro, e é a troca de esfera que o dono vê o dia inteiro. */
+  .sph.on::after{content:"";position:absolute;left:10%;right:10%;bottom:-1px;height:3px;
+    border-radius:2px;pointer-events:none;transform-origin:left center;
+    --sbr:var(--sphc);--sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .34s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .52s ease-out,
+              sabreHum 3.1s ease-in-out .52s infinite}
+  /* quem pede menos movimento CONTINUA com a lâmina acesa — sai o zumbido e a
+     ignição, fica a estética. Apagar o sabre seria tirar a identidade. */
+  @media (prefers-reduced-motion:reduce){
+    .cover::before,nav.tabs button.on::after,.sph.on::after{animation:none!important;filter:none}}
+
+  /* ══ celular: as esferas se SOBREPUNHAM ════════════════════════════════════
+     Raiz medida a 390px: `.sph{flex:1;min-width:0}` deixa o botão encolher
+     ABAIXO do próprio texto, e sem clipping o rótulo vaza por cima do vizinho
+     — o ícone da Prefeitura pousava em cima da palavra "Estado". Largura
+     natural (`flex:0 0 auto`) torna a sobreposição IMPOSSÍVEL; o resto do
+     ajuste é só para as quatro caberem sem precisar rolar num 390. */
+  @media (max-width:600px){
+    .spheres{gap:3px;padding:0 8px 12px}
+    .sph{flex:0 0 auto;min-width:0;white-space:nowrap;gap:5px;padding:8px 5px;font-size:11.5px}
+    .sph .i .jico{width:16px;height:16px}
+  }
+
+  /* a segunda fila saía 5+3 (esfarrapada) porque cabiam 5 colunas de 216px.
+     Colunas maiores → 4+4, e o valor grande deixa de ser espremido. */
+  .ck-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+
+  /* ══ v13 "COCKPIT" — o conteúdo das abas para de ser papel ═════════════════
+     A camada holográfica do v12.3 pegou só os ACIONÁVEIS; tabela e lista
+     ficaram mortas (a `g_radar` tem ~100 linhas completamente paradas).
+     Regra de custo, medida na v12: só PINTURA. Nada aqui toca `left/top`,
+     `width` ou `height` — `background-position`, `opacity` e `transform` de
+     composição apenas, senão são 60 layouts por segundo em 100 linhas. */
+
+  /* ── a linha ENTRA, em cascata, e depois fica quieta (`both`, sem loop) ── */
+  @keyframes linhaEntra{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+  tbody tr,.barw .row{animation:linhaEntra .34s cubic-bezier(.2,.8,.25,1) both;
+    animation-delay:calc(var(--li,0) * 26ms)}
+  /* a cascata só faz sentido no que o olho alcança na primeira olhada; da 15ª
+     linha em diante o atraso viraria espera. Sem JS: o índice é o seletor. */
+  tbody tr:nth-child(1),.barw .row:nth-child(1){--li:0}
+  tbody tr:nth-child(2),.barw .row:nth-child(2){--li:1}
+  tbody tr:nth-child(3),.barw .row:nth-child(3){--li:2}
+  tbody tr:nth-child(4),.barw .row:nth-child(4){--li:3}
+  tbody tr:nth-child(5),.barw .row:nth-child(5){--li:4}
+  tbody tr:nth-child(6),.barw .row:nth-child(6){--li:5}
+  tbody tr:nth-child(7),.barw .row:nth-child(7){--li:6}
+  tbody tr:nth-child(8),.barw .row:nth-child(8){--li:7}
+  tbody tr:nth-child(9),.barw .row:nth-child(9){--li:8}
+  tbody tr:nth-child(10),.barw .row:nth-child(10){--li:9}
+  tbody tr:nth-child(11),.barw .row:nth-child(11){--li:10}
+  tbody tr:nth-child(12),.barw .row:nth-child(12){--li:11}
+  tbody tr:nth-child(13),.barw .row:nth-child(13){--li:12}
+  tbody tr:nth-child(14),.barw .row:nth-child(14){--li:13}
+  tbody tr:nth-child(15),.barw .row:nth-child(15){--li:14}
+
+  /* ── varredura na linha sob o cursor: um facho atravessa a linha ────────── */
+  @keyframes varredura{from{background-position:180% 0}to{background-position:-80% 0}}
+  tbody tr:hover,.barw .row:hover{
+    background-image:linear-gradient(90deg,transparent 38%,
+      color-mix(in oklch,var(--esf) 13%,transparent) 50%,transparent 62%);
+    background-size:220% 100%;background-repeat:no-repeat;
+    animation:varredura 1.15s linear infinite}
+  tbody tr:hover td:first-child{color:var(--tx);text-shadow:0 0 12px color-mix(in oklch,var(--esf) 45%,transparent)}
+
+  /* ── o scan do cabeçalho foi RETIRADO de propósito ───────────────────────
+     Ele existia como `background-image` no `thead tr` — o MESMO elemento que
+     carrega o texto do cabeçalho. Mesmo sendo uma faixa de 1px no rodapé da
+     linha (`background-size:260% 1px`), pôr decoração no fundo de quem tem
+     texto torna o fundo efetivo ambíguo: `auditar_contraste.py` passou a ler
+     "Fornecedor" a 1,02:1 contra o azul do facho, quando o mínimo da casa é
+     4,5:1. Era laudo falso — o facho não fica atrás da palavra —, mas a cura
+     certa não é ensinar o auditor a ignorar: é não decorar o fundo do texto.
+     A cascata e a varredura da linha já entregam o "vivo"; este 1px não valia
+     uma métrica de acessibilidade cega. */
+
+  /* ── o medidor grave fala a mesma língua da lâmina: núcleo branco-quente ── */
+  .meter.crit i{background:linear-gradient(180deg,
+      color-mix(in oklch,var(--rose) 92%,transparent),
+      color-mix(in oklch,var(--rose) 16%,white) 42%,
+      color-mix(in oklch,var(--rose) 16%,white) 58%,
+      color-mix(in oklch,var(--rose) 92%,transparent));
+    box-shadow:0 0 6px color-mix(in oklch,var(--rose) 80%,transparent),
+               0 0 16px color-mix(in oklch,var(--rose) 42%,transparent)}
+
+  /* ── o nome do fornecedor era um alvo de 22px no dedo ────────────────────
+     `.clk` é o acionável MAIS importante da tabela — é o que abre o dossiê —, e a
+     regra de 44px do `pointer:coarse` nunca o incluiu na lista. Medido a 390px:
+     **22px** no nome de uma linha (43px em nome de duas), contra os **24px** que a
+     WCAG 2.5.8 (Target Size Minimum) exige. Não é conforto, é norma.
+     A cura não mexe em UMA linha de layout: `.clk` é `display:inline`, e em inline
+     o padding vertical **não entra na altura da caixa de linha** — só engorda a
+     área de acerto. O sublinhado pontilhado desce 3px junto, no celular apenas. */
+  @media (pointer:coarse){ .clk{padding:3px 0} }
+
+  /* ── no celular o SCORE saía da tela ─────────────────────────────────────
+     A tabela do radar tem 4 colunas e rola na horizontal dentro do card — o que
+     é correto. Só que a coluna que sai é a ÚLTIMA, e a última é o **score**: o
+     número pelo qual a tabela existe. O usuário no telefone via nome e sinais e
+     não via a nota, sem nem saber que havia mais para o lado.
+     Coluna grudada na borda direita: os sinais rolam POR BAIXO dela e o score
+     fica sempre à vista. Fundo opaco e sombra para ler como coluna suspensa —
+     sem isso o texto de baixo aparece através.
+
+     ARMADILHA QUE ME CUSTOU TRÊS RODADAS, e vale para o arquivo inteiro: uma
+     edição minha deixou um FECHA-COMENTÁRIO órfão no meio deste bloco. O
+     comentário fechou cedo, o texto seguinte virou seletor inválido e o parser
+     consumiu o "@media" de baixo como bloco de declaração dele — a regra
+     simplesmente não existia. Eu culpei o "right", depois a margem, depois o
+     "border-collapse" (que é limitação real do Chrome, mas NÃO era a causa aqui).
+     Uma consulta ao DOM vivo — getComputedStyle(td).position devolvendo "static"
+     com a media query casando — matou as três hipóteses de uma vez.
+     **Não teorize sobre CSS que não pegou: pergunte ao elemento.**
+     E NUNCA escreva os dois caracteres de fecha-comentário dentro de um
+     comentário, nem entre crases: foi exatamente assim que esta explicação
+     reproduziu o próprio bug que descreve.
+
+     Escolhas do desenho: no telefone o medidor de 64px sai (o número já diz 47) e
+     a coluna encolhe para o tamanho do número.
+
+     A fresta dos 15px: o card tem "padding:4px 15px" INLINE e o sticky ancora na
+     caixa de padding, então sobrava uma tira na borda por onde o texto dos sinais
+     aparecia. Duas curas foram tentadas e falharam, cada uma por um motivo que
+     vale guardar: margem negativa não faz nada porque **margem não se aplica a
+     display:table-cell**; e uma 2ª sombra sólida também não cobriu. A cura é não
+     ter fresta — matar o padding da direita do card. Como o padding é inline, só
+     ":has() + !important" alcança, e é o único !important que este arquivo usa. */
+  @media (max-width:600px){
+    .card:has(#radar-tbl){padding-right:0!important}
+    #radar-tbl thead th:last-child,#radar-tbl tbody td:last-child{
+      position:sticky;right:0;z-index:1;padding-left:10px;padding-right:14px;
+      background:var(--card);
+      box-shadow:-12px 0 14px -9px oklch(0 0 0/.6)}
+    #radar-tbl tbody td:last-child .meter{display:none}
+  }
+
+  /* ── o A→Z tinha saído de dentro do campo de busca ───────────────────────
+     A MESMA armadilha do v12.3 (`.nu-chip`), num elemento que passou batido:
+     o bloco do vidro líquido declara `.btn,.chip,.search .az,…{position:relative}`
+     e isso sobrescreveu o `absolute` do botão. Em `relative` o `top/right` desloca
+     a partir do FLUXO, então ele desceu para fora do campo e ficou órfão à
+     esquerda (medido: botão em x=127,y=512; campo em x=133,y=467,h=40).
+     Regra da casa, agora pela segunda vez: nunca imponha `position` a quem já
+     está posicionado. */
+  .search .az{position:absolute}
+
+  /* ── higiene de tabela: as colunas estavam ENCOSTADAS ────────────────────
+     `tbody td{padding:8px 0}` não deixa respiro lateral nenhum, então na
+     `g_radar` o número de sinais colava no medidor de score e os dois liam
+     como um borrão só ("2▮▮▮▮"). Vale para TODAS as tabelas do painel. */
+  tbody td+td,thead th+th{padding-left:14px}
+
+  /* ── a barra de abas inferior cortava no meio da palavra ────────────────
+     17 abas roláveis terminando em "Se…" sem esmaecimento lê como texto
+     vazando, não como "tem mais para o lado" — mesmo idioma já usado e
+     aprovado no ticker. Em px (não %) para não comer meia aba em tela larga. */
+  nav.tabs{-webkit-mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+           mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
+
+  /* menos movimento: a linha aparece pronta, o facho e o radar somem. */
+  @media (prefers-reduced-motion:reduce){
+    tbody tr,.barw .row,thead tr,tbody tr:hover,.barw .row:hover{animation:none!important}
+    tbody tr:hover,.barw .row:hover{background-image:none;
+      background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}
+  /* aba oculta: `html.rest *` (v10) já pausa tudo — nada a declarar aqui. */
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v15 HOLO — camada de instrumentação holográfica
+     ══════════════════════════════════════════════════════════════════════
+     O v14 (HOLOCRON) foi revertido porque cortava o canto de TUDO com
+     clip-path e o rótulo longo quebrava letra-a-letra no celular. A lição
+     não foi "holograma não serve" — foi que decoração não pode disputar
+     espaço com o texto. Aqui a decoração vive só em pseudo-elementos com
+     pointer-events:none, nunca no fluxo, e nunca por cima de texto de
+     leitura: o contraste medido pelo auditor não muda.
+
+     Tudo herda --esf (matiz da esfera), então a camada fala a mesma língua
+     de cor que o painel já falava — não é um tema paralelo.            */
+
+  /* ── colchetes de canto: o cartão vira instrumento, não retângulo ─────
+     Só nos quatro cantos e só 14px de cada lado: sugere moldura sem
+     desenhar caixa. Traçado por background-size (composited), nunca por
+     width — animar geometria de layout é o que engasga em celular.     */
+  .card::after,.kpi::after{
+    content:"";position:absolute;inset:-1px;pointer-events:none;border-radius:inherit;
+    background:
+      linear-gradient(90deg,var(--esf,var(--ion)),transparent) left top/0 1px no-repeat,
+      linear-gradient(180deg,var(--esf,var(--ion)),transparent) left top/1px 0 no-repeat,
+      linear-gradient(-90deg,var(--esf,var(--ion)),transparent) right bottom/0 1px no-repeat,
+      linear-gradient(0deg,var(--esf,var(--ion)),transparent) right bottom/1px 0 no-repeat;
+    opacity:0;transition:opacity .3s}
+  .card:hover::after,.kpi:hover::after{
+    opacity:.85;
+    background-size:15px 1px,1px 15px,15px 1px,1px 15px;
+    transition:opacity .3s,background-size .45s cubic-bezier(.2,.8,.2,1)}
+
+  /* ── varredura: um facho atravessa o cartão UMA vez ao passar o mouse ─
+     Reforça "instrumento ativo" sem loop eterno — animação infinita em 40
+     cartões é o que transforma cockpit em árvore de natal.             */
+  .card::before{
+    background-image:
+      linear-gradient(115deg,transparent 42%,
+        color-mix(in oklch,var(--esf,var(--ion)) 14%,transparent) 50%,transparent 58%),
+      var(--spot-bg,none)}
+  .card:hover::before{animation:v15sweep .9s cubic-bezier(.3,.7,.4,1) 1}
+  @keyframes v15sweep{from{background-position:-160% 0}to{background-position:260% 0}}
+
+  /* ── linha de tabela: o facho vira barra de energia na borda esquerda ─
+     Tabela é onde o auditor passa o dia; a linha sob o cursor precisa
+     dizer "estou aqui" sem repintar a linha inteira.                   */
+  tbody tr{position:relative}
+  tbody tr::after{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:2px;pointer-events:none;
+    background:linear-gradient(180deg,transparent,var(--esf,var(--ion)),transparent);
+    transform:scaleY(0);transform-origin:center;transition:transform .28s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 0 8px color-mix(in oklch,var(--esf,var(--ion)) 60%,transparent)}
+  tbody tr:hover::after{transform:scaleY(1)}
+
+  /* ── chip: respira quando está ligado ────────────────────────────────
+     Só o chip ATIVO pulsa. Pulsar todos seria ruído; pulsar o ativo é
+     confirmação de estado — o olho encontra o filtro vigente de longe. */
+  .chip.on{position:relative}
+  .chip.on::after{
+    content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;
+    border:1px solid color-mix(in oklch,var(--accent) 45%,transparent);
+    animation:v15pulse 2.6s ease-in-out infinite}
+  @keyframes v15pulse{0%,100%{opacity:.25;transform:scale(1)}50%{opacity:.75;transform:scale(1.035)}}
+
+  /* ── botão: brilho segue o cursor dentro do próprio botão ────────────
+     --bx/--by vêm do listener delegado que já existe para o spotlight.
+     Sem JS novo: reaproveita o mesmo evento, custo zero a mais.        */
+  .btn{--bx:50%;--by:50%}
+  .btn::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+    background:radial-gradient(120px circle at var(--bx) var(--by),
+      color-mix(in oklch,white 22%,transparent),transparent 60%);
+    transition:opacity .25s}
+  .btn:hover::after{opacity:1}
+
+  /* ── barra de abas: a aba ativa projeta um facho para cima ───────────
+     Marca a posição no rolo de 22 abas sem precisar de mais um rótulo. */
+  nav.tabs button.on::before{
+    content:"";position:absolute;left:50%;top:-1px;width:26px;height:2px;
+    transform:translateX(-50%);pointer-events:none;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--esf,var(--ion)),transparent);
+    box-shadow:0 0 12px color-mix(in oklch,var(--esf,var(--ion)) 80%,transparent)}
+
+  /* ── respiro do reduced-motion: estado final legível, sem movimento ──
+     Quem pediu menos movimento continua vendo a moldura e o facho da aba
+     ativa — some só o que se move sozinho.                             */
+  @media (prefers-reduced-motion:reduce){
+    .card:hover::after,.kpi:hover::after{transition:opacity .2s}
+    .card:hover::before{animation:none}
+    .chip.on::after{animation:none;opacity:.5}
+    tbody tr::after{transition:none}}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v16 SABRE VIVO — o cockpit responde, e responde ao DADO
+     ══════════════════════════════════════════════════════════════════════
+     A v15 deu moldura ao instrumento. Esta faz o instrumento reagir: o que
+     se move aqui está amarrado ao que o número significa, nunca a enfeite.
+     Quem mexe em severidade, atividade e foco muda o movimento junto.    */
+
+  /* ── SABRE: o número grande acende como lâmina ───────────────────────
+     Entra por scaleY a partir da base (o sabre acende de baixo), não por
+     opacity — acender é gesto, não fade.                                 */
+  .kpi .v,.ck-inst .val{position:relative}
+  .kpi .v::after,.ck-inst .val::after{
+    content:"";position:absolute;left:0;right:0;bottom:-3px;height:1.5px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--esf,var(--ion)),transparent);
+    box-shadow:0 0 8px color-mix(in oklch,var(--esf,var(--ion)) 70%,transparent);
+    transform:scaleX(0);transform-origin:left center;
+    animation:v16acende .7s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes v16acende{to{transform:scaleX(1)}}
+
+  /* ── HOLOCRON: o ícone da aba gira em 3D ao ser escolhido ────────────
+     Só o ícone da aba ATIVA, e uma volta só. É confirmação de escolha —
+     ícone girando eternamente vira enfeite e o olho para de ver.        */
+  nav.tabs button.on .ti .jico{animation:v16holo .46s cubic-bezier(.2,.9,.25,1.1) 1}
+  /* v27: o quadro inicial NAO pode ser menor nem espelhado. Se o aparelho
+     engasga, e nesse quadro que o icone congela — e o dono via o icone
+     encolher ao clicar. Agora a entrada vem de MAIOR e mais aceso: congelar
+     aqui le como "ligado", nunca como defeito. Sem rotateY negativo, sem
+     escala abaixo de 1, sem espelhamento em nenhum instante. */
+  /* v27: o angulo de entrada SOMA com o angulo de repouso (--ico3d ja tem -13deg).
+     Com -42 aqui o total dava -55deg e cos(55)=0.57 achatava o icone para 12.3px —
+     menor que os inativos, a mesma falha que a v16holo original tinha. Medido e
+     corrigido: -16deg soma -29deg, e scale(1.28) compensa o cosseno, entao a
+     largura no pior quadro fica ACIMA da de repouso. A regra nao tem excecao:
+     nenhum quadro pode deixar o alvo de clique menor do que ele e parado.      */
+  @keyframes v16holo{from{transform:var(--ico3d) rotateY(-16deg) scale(1.28);filter:brightness(2.1)}
+    to{transform:var(--ico3d);filter:none}}
+  nav.tabs button .ti{perspective:400px}
+
+  /* ── SEVERIDADE PULSA: grave respira, leve fica quieto ───────────────
+     O ritmo carrega a informação. Quem tem sinal grave pulsa mais rápido;
+     assim a fila de apuração se ordena sozinha no canto do olho, sem o
+     auditor precisar ler número nenhum.                                  */
+  .sev-alta,.grave,td .pill.alto{animation:v16pulso 1.8s ease-in-out infinite}
+  .sev-media,.medio,td .pill.medio{animation:v16pulso 3.2s ease-in-out infinite}
+  @keyframes v16pulso{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+
+  /* ── VARREDURA DE RADAR no cabeçalho da aba ──────────────────────────
+     Um facho cruza a linha do título quando a aba entra. Diz "o sistema
+     olhou aqui agora" — e para, porque varredura eterna é ruído.        */
+  .hd::after,h2::after{
+    content:"";position:absolute;left:0;bottom:-2px;height:1px;width:100%;pointer-events:none;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf,var(--ion)) 85%,transparent),transparent);
+    transform:translateX(-100%);animation:v16varre 1.4s cubic-bezier(.3,.6,.3,1) .2s both}
+  @keyframes v16varre{to{transform:translateX(100%)}}
+
+  /* ── BOTÃO: pressiona como tecla de console ──────────────────────────
+     Afunda no eixo Z e a luz da borda acende junto. 60ms — abaixo disso o
+     olho não vê, acima parece lento numa ação repetida 200x/dia.        */
+  .btn{transform-style:preserve-3d}
+  .btn:active{transform:translateZ(-2px) scale(.97);transition-duration:60ms}
+  .btn:hover{box-shadow:0 0 0 1px color-mix(in oklch,var(--esf,var(--ion)) 40%,transparent),
+             0 0 18px -6px color-mix(in oklch,var(--esf,var(--ion)) 60%,transparent)}
+
+  /* ── LINHA DE TABELA: entra escalonada, mas com teto ─────────────────
+     stagger x indice, limitado a 480ms no total: a 20a linha entra junto
+     com a 12a. Sem teto, o auditor espera a lista inteira montar antes de
+     poder clicar — stagger vira espera, que e o oposto de premium.      */
+  tbody tr{animation:v16linha .38s cubic-bezier(.16,1,.3,1) both;
+           animation-delay:calc(min(var(--i,0) * 26ms,480ms))}
+  @keyframes v16linha{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ── AO VIVO: o ponto respira enquanto o fluxo esta aberto ───────────*/
+  .live .dot,#aovivo .dot,.badge-live::before{animation:v16vivo 1.6s ease-in-out infinite}
+  @keyframes v16vivo{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.72)}}
+
+  /* ── reduced-motion: o estado final fica legivel, o movimento sai ────
+     Nao e "sem animacao": fade e cor permanecem (a WCAG nao os considera
+     movimento). Some so o que se desloca ou pulsa sozinho.              */
+  @media (prefers-reduced-motion:reduce){
+    .kpi .v::after,.ck-inst .val::after{animation:none;transform:scaleX(1)}
+    nav.tabs button.on .ti .jico{animation:none}
+    .sev-alta,.grave,.sev-media,.medio,td .pill.alto,td .pill.medio{animation:none}
+    .hd::after,h2::after{animation:none;opacity:.5;transform:none}
+    tbody tr{animation:none}
+    .live .dot,#aovivo .dot,.badge-live::before{animation:none}}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v17 ARC REACTOR MARK II — o núcleo vira reator
+     ══════════════════════════════════════════════════════════════════════
+     O kyber já tinha arco de progresso, trilho, segmentos girando e núcleo
+     pulsando. Faltava o que faz um reator LER como reator: contra-rotação.
+     Um anel só girando é um spinner; dois girando em sentidos opostos são
+     um mecanismo — o olho lê engrenagem, não carregamento.
+
+     E o pulso do núcleo passa a significar: `.sweep` (que o painel já liga
+     quando há coleta em campo) acelera a máquina inteira, não só um anel.  */
+
+  #kyber{transform-style:preserve-3d}
+
+  /* halo externo: a luz que o reator joga no console em volta.
+     Pseudo-elemento e não box-shadow animado — sombra animada repinta a
+     caixa toda por frame; opacity+scale numa camada pré-borrada é composite. */
+  #kyber::before{
+    content:"";position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:-1;
+    background:radial-gradient(closest-side,color-mix(in oklch,var(--saber) 55%,transparent),transparent 72%);
+    filter:blur(5px);opacity:.5;
+    animation:v17halo 3.4s ease-in-out infinite}
+  @keyframes v17halo{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.8;transform:scale(1.1)}}
+
+  /* CONTRA-ROTAÇÃO: o trilho gira ao contrário dos segmentos.
+     Períodos primos entre si (14s x 9s) para o padrão não se repetir em
+     ciclo curto — repetição visível é o que denuncia animação barata.    */
+  #kyber .ktrk{transform-origin:15px 15px;animation:v17contra 9s linear infinite;
+    stroke:color-mix(in oklch,var(--saber) 22%,var(--bd2));stroke-dasharray:1 7}
+  @keyframes v17contra{to{transform:rotate(-360deg)}}
+
+  /* o arco de progresso ganha brilho vivo na ponta */
+  #kyber .karc{filter:drop-shadow(0 0 3px color-mix(in oklch,var(--saber) 80%,transparent))}
+
+  /* núcleo: respira em escala além da opacidade — volume, não piscada */
+  #kyber .knuc{transform-origin:15px 15px;animation:v17nucleo 3.4s ease-in-out infinite}
+  @keyframes v17nucleo{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(.88)}}
+
+  /* SWEEP = coleta em campo acontecendo: a máquina inteira acelera.
+     Antes só os segmentos e o núcleo mudavam; agora o trilho e o halo
+     entram junto, então o reator inteiro "engrena" quando há trabalho.   */
+  #kyber.sweep .ktrk{animation-duration:2.2s}
+  #kyber.sweep::before{animation-duration:1.2s}
+  #kyber.sweep .knuc{animation:v17nucleo 1s ease-in-out infinite}
+  #kyber.sweep{filter:drop-shadow(0 0 9px color-mix(in oklch,var(--saber) 75%,transparent))}
+
+  /* hover: o reator se inclina em 3D na direção do cursor (Jarvis) */
+  #kyber:hover{transform:rotateX(12deg) rotateY(-12deg) scale(1.08);
+    transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+  #kyber:hover::before{opacity:.95}
+
+  /* ── o mesmo reator, em escala grande, no cockpit ─────────────────────
+     O núcleo do mapa é o MESMO objeto do header — o portal já entrega a
+     energia a ele no handoff. Contra-rotação idêntica mantém a leitura.
+
+     ⚠️ v49 — REGRA MORTA, MEDIDA. Nenhum dos dois seletores casa com coisa
+     alguma neste arquivo: `id="nucleo"` tem ZERO ocorrências e `ck-core` só
+     aparece nestas duas regras de CSS (aqui e no @media abaixo). O cockpit usa
+     `.ck-nucleo` / `#ck-nucleo` / `#nucleo-cv`.
+     Fica registrado, não removido: a casa manda mencionar código morto
+     pré-existente em vez de apagá-lo (CLAUDE.md §6.3). Está anotado aqui porque
+     é um halo circular borrado e, na caça à "bola do nada no meio", foi
+     candidato — e foi DESCARTADO por ser inerte. Quem reativar `.ck-core` um dia
+     herda um halo animado sem querer. */
+  #nucleo::before,.ck-core::before{
+    content:"";position:absolute;inset:-14%;border-radius:50%;pointer-events:none;z-index:-1;
+    background:radial-gradient(closest-side,color-mix(in oklch,var(--esf,var(--ion)) 34%,transparent),transparent 70%);
+    filter:blur(10px);animation:v17halo 4.2s ease-in-out infinite}
+
+  @media (prefers-reduced-motion:reduce){
+    #kyber::before,#kyber .ktrk,#kyber .knuc,
+    #kyber.sweep .ktrk,#kyber.sweep::before,#kyber.sweep .knuc,
+    #nucleo::before,.ck-core::before{animation:none}
+    #kyber:hover{transform:none}}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v18 GLIFO VIVO — os ícones acendem, o território respira
+     ══════════════════════════════════════════════════════════════════════
+     Os glifos Lucide já vinham tingidos pela esfera e com glow. O que faltava
+     era ELES SE DESENHAREM: um ícone que aparece pronto é um ícone; um que
+     se traça é um sistema ligando. `stroke-dasharray` + `dashoffset` é o
+     único jeito de fazer isso sem trocar o set inteiro por outro.        */
+
+  /* ── ignição do glifo: o traço se desenha quando o ícone entra ────────
+     pathLength normaliza todo caminho para 100, então o MESMO dasharray
+     vale para qualquer glifo, de qualquer tamanho — sem medir nada.     */
+  /* dasharray SO durante a ignicao: pathLength e atributo SVG e nao pode ser
+     setado por CSS, entao dasharray fixo cortava qualquer glifo com caminho
+     maior que 100 unidades. Aqui o traco fica intacto por padrao.        */
+  /* A ignicao por stroke-dasharray foi REMOVIDA: com fill-mode both o estado
+     inicial (dash 0 / gap 999) deixa o traco invisivel enquanto a animacao
+     nao roda, e o icone da aba ATIVA sumia — sobrava so o fallback textual.
+     Icone precisa estar visivel sempre; efeito que arrisca sumir com o
+     conteudo nao vale o ganho. O volume 3D e o glow, abaixo, ficam.      */
+  /* ── o glifo ganha volume: inclina em 3D e adianta no eixo Z ─────────
+     Movimento pequeno (8deg / 6px) porque ícone é alvo de clique — se ele
+     foge do cursor, vira erro de mira, não charme.                       */
+  .sph .i,nav.tabs button .ti{perspective:300px}
+  .sph .i .jico,nav.tabs button .ti .jico{transition:transform .3s cubic-bezier(.2,.8,.2,1),filter .18s,color .18s}
+  .sph:hover .i .jico,nav.tabs button:hover .ti .jico{
+    transform:rotateY(-8deg) rotateX(8deg) translateZ(6px)}
+
+  /* ── o glifo da esfera ativa respira junto com o reator ──────────────
+     Mesmo período do halo do kyber (3.4s): o painel inteiro pulsa no mesmo
+     compasso, o que é o que faz várias peças lerem como UMA máquina.    */
+  .sph.on .i .jico{animation:v18respira 3.4s ease-in-out infinite .85s}
+  @keyframes v18respira{
+    0%,100%{filter:drop-shadow(0 0 7px color-mix(in oklch,var(--sphc) 70%,transparent))}
+    50%{filter:drop-shadow(0 0 12px color-mix(in oklch,var(--sphc) 90%,transparent))}}
+
+  /* ── TERRITÓRIO: a malha do RJ pulsa como projeção holográfica ───────
+     O contorno vem do IBGE (rj-malha.js) e continua exato — só a LUZ sobre
+     ele muda. Geografia num painel de auditoria não se inventa; o que se
+     estiliza é o facho que a ilumina.                                    */
+  #rjbg{animation:v18territorio 7.5s ease-in-out infinite}
+  @keyframes v18territorio{
+    0%,100%{opacity:.42;filter:saturate(1) brightness(1)}
+    50%{opacity:.58;filter:saturate(1.25) brightness(1.18)}}
+
+  /* varredura de radar cruzando o território — devagar, é ambiente */
+  #rjbg::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 44%,
+      color-mix(in oklch,var(--esf,var(--ion)) 12%,transparent) 50%,transparent 56%);
+    animation:v18radar 9s linear infinite}
+  @keyframes v18radar{from{transform:translateX(-60%)}to{transform:translateX(60%)}}
+
+  /* ── nós do mapa: quem tem achado grave pulsa mais forte ─────────────*/
+  .nu-chip{transition:transform .3s cubic-bezier(.2,.8,.2,1),filter .3s}
+  .nu-chip:hover{transform:translateY(-2px) scale(1.04);
+    filter:drop-shadow(0 0 10px color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent))}
+
+  @media (prefers-reduced-motion:reduce){
+    .sph.on .i .jico *,.cover-seal .jico *,nav.tabs button.on .ti .jico *,
+    .sph.on .i .jico,#rjbg,#rjbg::after{animation:none}
+    .jico *{stroke-dashoffset:0}
+    .sph:hover .i .jico,nav.tabs button:hover .ti .jico,.nu-chip:hover{transform:none}}
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v19 GRAMÁTICA — a caixa vira regra, não escolha de quem digitou
+     ══════════════════════════════════════════════════════════════════════
+     O CSS já era consistente (15 uppercase, todos com tracking). A bagunça
+     estava no CONTEÚDO: o mesmo tipo de rótulo aparecia "ALERTAS", "Alertas"
+     e "alertas" conforme quem escreveu. Normalizar no CSS resolve os três de
+     uma vez e impede a próxima divergência — quem digitar errado amanhã sai
+     certo na tela.
+
+     A regra que vale para o painel inteiro:
+       · LABEL de instrumento  → CAIXA ALTA + tracking largo (é etiqueta)
+       · TÍTULO / conteúdo     → como foi escrito (é linguagem)
+       · NÚMERO                → mono tabular (já era)
+     Etiqueta de máquina é caixa alta; frase de humano não.               */
+
+  /* ── etiquetas de instrumento: uma só voz ────────────────────────────
+     +0.08em em 10-11px é o que a literatura dá como legível em caixa alta;
+     sem tracking, maiúscula pequena vira bloco cinza.                    */
+  .kpi .l,.ck-inst .lab,.eco .k,.sect,thead th,.sph .s,
+  nav.tabs button .tl,.chip,.pill,.tag{
+    text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);
+    font-variant-numeric:tabular-nums}
+
+  /* rótulo de aba na barra inferior é curto e apertado: menos tracking,
+     senão 22 abas não cabem no rolo do celular. */
+  nav.tabs button .tl{letter-spacing:.04em;font-size:9.5px}
+
+  /* ── títulos ficam como foram escritos ───────────────────────────────
+     Caixa alta em frase longa destrói a silhueta da palavra e derruba a
+     velocidade de leitura — o auditor lê estes, não escaneia.            */
+  h1,h2,h3,.hd,.tit,.eco p,p,.sub,td{text-transform:none;letter-spacing:normal}
+
+  /* ── o número é sempre mono tabular, em todo lugar ───────────────────
+     Sem tabular-nums a linha inteira treme quando o dígito muda de largura;
+     é o indício isolado mais visível de dashboard amador.                */
+  .kpi .v,.ck-inst .val,.money,.score,td,.big,.num{
+    font-variant-numeric:tabular-nums lining-nums}
+
+  /* ── títulos de seção ganham prefixo de terminal ─────────────────────
+     Marca hierarquia sem gastar mais um tamanho de fonte — a escala já tem
+     tamanhos demais para sustentar.                                      */
+  .sect::before{content:"// ";color:color-mix(in oklch,var(--esf,var(--ion)) 70%,transparent);
+    font-weight:600}
+
+  /* ── peso: hierarquia por peso, não por mais um tamanho ──────────────*/
+  .kpi .v,.ck-inst .val{font-weight:600;letter-spacing:-.01em}
+
+
+  /* ── v22 EUROSTILE — a voz de display, em escopo de folha ────────────
+     Orbitron e a alternativa livre a Eurostile Extended, familia da
+     interface do HAL 9000 — a fonte que criou o cliche de computador de
+     nave. Variavel: 11.8 KB cobrem 400-900.
+
+     Escopo so em classes FOLHA (que contem texto e nada mais). Container
+     esta proibido: a tentativa anterior pegou o selo do cabecalho, e como
+     Orbitron nao tem glifo de emoji o fallback virou reticencias. Regra:
+     rotulo e folha; container tem filho que voce nao controla.
+
+     Numero fica em IBM Plex Mono. Orbitron nao tem tabular figures, e
+     numero que treme e o indicio mais visivel de dashboard amador.      */
+  @font-face{font-family:"Orbitron";src:url(/static/assets/fonts/Orbitron-var.woff2) format("woff2");
+    font-weight:400 900;font-display:swap}
+  :root{--display:"Orbitron",var(--mono)}
+
+  .sect,.eco .k,.kpi .l,.ck-inst .lab,#portal .l1{
+    font-family:var(--display);letter-spacing:.1em}
+  nav.tabs button .tl{font-family:var(--display);letter-spacing:.02em;font-size:9px}
+
+  /* == v24 MESA - a superficie ganha corpo =================================
+     A mesa do cockpit era um gradiente radial: cor, sem materia. Agora a
+     superficie e ARTE GERADA (Firefly Image 5) - placa de vidro com aneis de
+     radar gravados, ticks de graduacao e feixes subindo por baixo. O que ela
+     NAO faz: geografia. O contorno do RJ continua vindo de rj-malha.js (IBGE),
+     desenhado pelo canvas POR CIMA - em painel de auditoria territorio nunca
+     pode ser inventado por gerador.
+     Mascara radial: a arte morre antes da borda do cartao, entao a placa nunca
+     desenha um retangulo dentro do retangulo. Blend screen sobre o gradiente
+     antigo: soma luz, nao substitui a base (o dark original fica intacto). */
+  .ck-nucleo::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:url(/static/assets/mesa-projecao.jpg) 50% 42%/cover no-repeat;
+    opacity:.5;mix-blend-mode:screen;
+    -webkit-mask-image:radial-gradient(ellipse 70% 74% at 50% 62%,#000 16%,rgba(0,0,0,.35) 70%,transparent 96%);
+    mask-image:radial-gradient(ellipse 70% 74% at 50% 62%,#000 16%,rgba(0,0,0,.35) 70%,transparent 96%)}
+  @media (prefers-reduced-transparency:reduce){.ck-nucleo::before{opacity:.24}}
+  /* No desktop o cartao tem quase a proporcao da arte, entao `cover` mostraria a
+     placa INTEIRA - e a borda reta dela cortava o territorio como um risco fora
+     de lugar. Aproximar 190% deixa so o INTERIOR da mesa no quadro: aneis,
+     ticks e feixes, sem aresta nenhuma. No celular a caixa e retrato e a
+     convergencia das arestas para o canto de baixo LE como mesa, entao la
+     `cover` fica. */
+  @media (min-width:900px){.ck-nucleo::before{background-size:190% auto;background-position:50% 45%}}
+
+
+  /* == v25 SELO USINADO ====================================================
+     Duas geracoes de folha de icones no Firefly sairam com forma PREENCHIDA e
+     espessura desigual - reprova pela regra dura do guia (traco identico no set
+     inteiro), e a 16-24px isso vira borrao. Entao a arte gerada entra onde
+     raster de fato ganha: no selo da capa, que tem 48-54px.
+     Mesmo padrao que deu certo no reator: a ARTE da o corpo (bisel usinado,
+     ranhuras, ticks), o CODIGO continua dando a vida (o glifo tingido por
+     --esf, o anel conico que varre, a respiracao). Dessaturada a 25%: metal e
+     incolor, entao o mesmo asset serve as quatro esferas sem brigar de matiz.
+     z-index -2 para ficar atras do anel conico (que ja mora no -1); o selo tem
+     isolation:isolate, entao o negativo nao escapa do cartao.               */
+  .cover-seal::after{content:"";position:absolute;inset:-3px;z-index:-2;pointer-events:none;
+    background:url(/static/assets/selo-anel.webp) center/contain no-repeat;
+    opacity:.9;mix-blend-mode:screen;filter:saturate(.25) brightness(1.1)}
+  @media (prefers-reduced-transparency:reduce){.cover-seal::after{opacity:.5}}
+
+
+  /* == v26 TRILHO — a capa da aba ganha uma barra de instrumento ===========
+     A regra do dono: onde ha texto, pode haver arte. A capa era so tipografia
+     sobre uma linha de 1px. Agora a base dela e um TRILHO usinado gerado no
+     Firefly - canal de vidro com a lamina de luz correndo dentro.
+     Cuidado que custou um recorte: o gerador escreveu numerais falsos nas duas
+     faixas de cima e de baixo da peca. Em painel de AUDITORIA numero inventado
+     e inaceitavel mesmo ilegivel - a fatia usada e so o canal de luz, entre as
+     duas faixas, e nenhum digito sobreviveu.
+     Dessaturado a 40%: metal e incolor, e quem carrega a matiz da esfera e a
+     barra de acento que ja existia (.cover::before) - decoracao nova nao rouba
+     o trabalho da antiga.
+     Mora em .cover-row::before porque os dois pseudos de .cover ja estao
+     ocupados (acento e boot-sweep). Absoluto dentro de um flex NAO vira item de
+     flex, entao a linha do cabecalho nao se mexe.                          */
+  .cover{isolation:isolate}
+  .cover-row::before{content:"";position:absolute;left:0;right:0;bottom:-11px;height:26px;
+    z-index:-1;pointer-events:none;
+    background:url(/static/assets/trilho-hud.jpg) center/100% 100% no-repeat;
+    opacity:.55;mix-blend-mode:screen;filter:saturate(.4);
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%)}
+  @media (prefers-reduced-transparency:reduce){.cover-row::before{opacity:.3}}
+
+
+  /* == v27 SINAL DE ESTADO =================================================
+     Medido com canvas: Orbitron nao tem · → ↔ ₂ º ª § ✓ ✗, e nem Plex Mono nem
+     Plex Sans tem ✗. Dingbat de estado dependia de um glifo que nao existe.
+     Agora o estado e um ponto: cor + brilho, zero dependencia de fonte.      */
+  .htop .sinal{width:7px;height:7px;border-radius:50%;display:inline-block;
+    vertical-align:middle;margin:0 1px;flex:0 0 auto}
+  .htop .sinal.ok{background:var(--green);box-shadow:0 0 7px color-mix(in oklch,var(--green) 70%,transparent)}
+  .htop .sinal.off{background:var(--rose);box-shadow:0 0 7px color-mix(in oklch,var(--rose) 70%,transparent)}
+  /* `unicode-range` faz o navegador NAO consultar o Orbitron fora do que ele
+     cobre: latino basico + acentuado. Sem isso, cada simbolo fora do subset
+     obrigava um passe de fallback silencioso a cada repintura.               */
+  @font-face{font-family:"Orbitron";src:url(/static/assets/fonts/Orbitron-var.woff2) format("woff2");
+    font-weight:400 900;font-display:swap;
+    unicode-range:U+0020-007E,U+00C0-00FF,U+0100-017F}
+
+
+  /* == v27 TATO — todo controle responde ao toque ==========================
+     O dono: "cheio de botoes estanques", "voce clica e tem que ter animacao".
+     Ele esta certo: o painel tinha hover em tudo e ACTIVE em nada. Hover nao
+     existe no celular, entao no telefone o painel inteiro era mudo ao toque.
+
+     Sao tres respostas, todas em compositor (transform/opacity), nenhuma
+     forcando layout:
+       1. afunda   — o controle cede 1px sob o dedo. E o feedback mais antigo
+                     que existe e o unico que le como "eu registrei".
+       2. onda     — um circulo de luz nasce no controle e se abre. Vive num
+                     pseudo com pointer-events:none, entao nao rouba o clique.
+       3. carimbo  — a linha de tabela e o card piscam a cor da esfera.
+     Nada aqui encolhe alvo de clique: a licao da v16holo vale para todos.    */
+  .btn,.chip,.tab,.lnk,.clk,.ck-inst,.card,nav.tabs button,.sph,.htop a{
+    -webkit-tap-highlight-color:transparent}
+  /* v49 — O AFUNDAMENTO 3D ESTAVA MORTO, e esta regra era a assassina.
+     Havia QUATRO declarações `:active{transform}` para os mesmos elementos, em quatro lugares do
+     arquivo (linhas ~479, ~560, ~660 e aqui). Como esta é a ÚLTIMA na cascata, ela ganhava — e ela
+     é a mais pobre: um empurrãozinho plano de 1px que DESCARTA o `rotateX/rotateY` do cursor e o
+     `translateZ(-4px)` que a regra da linha ~660 desenhou com cuidado ("Repouso = plano · hover =
+     salta e inclina · :active = AFUNDA"). Ou seja: o efeito de pressionar que o autor especificou
+     nunca chegou à tela, e as três regras anteriores eram decorativas.
+     Agora a vencedora carrega o efeito pretendido — afunda em Z, mantém a inclinação do cursor e
+     conserva o micro-recuo tátil. As outras três ficam onde estão (a casa manda mencionar código
+     morto pré-existente em vez de apagá-lo) e estão nomeadas aqui. */
+  .btn:active,.chip:active,.tab:active,.lnk:active,.ck-inst:active,
+  nav.tabs button:active,.sph:active,.htop a:active{
+    transform:perspective(var(--persp,900px)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))
+              translateZ(-4px) translateY(1px) scale(.99);transition-duration:.07s}
+  .clk:active{filter:brightness(1.35)}
+
+  /* a onda. `--ondaC` herda a esfera, entao a cor do toque muda de esfera. */
+  .btn,.chip,.lnk,.ck-inst,nav.tabs button,.sph{--ondaC:var(--esf,var(--ion))}
+  .btn::after,.chip::after,.lnk::after,nav.tabs button::after,.sph::after{pointer-events:none}
+  .onda{position:absolute;border-radius:50%;pointer-events:none;z-index:3;
+    background:radial-gradient(circle,color-mix(in oklch,var(--ondaC) 62%,white 20%) 0%,
+      color-mix(in oklch,var(--ondaC) 30%,transparent) 45%,transparent 70%);
+    transform:translate(-50%,-50%) scale(0);opacity:.85;
+    animation:ondaAbre .52s cubic-bezier(.2,.8,.3,1) forwards}
+  @keyframes ondaAbre{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
+
+  /* carimbo: a linha que respondeu pisca a cor da esfera e volta */
+  @keyframes carimbo{0%{background-color:color-mix(in oklch,var(--esf,var(--ion)) 26%,transparent)}
+    100%{background-color:transparent}}
+  .carimbo{animation:carimbo .6s ease-out 1}
+
+  @media (prefers-reduced-motion:reduce){
+    .btn:active,.chip:active,.tab:active,.lnk:active,.ck-inst:active,
+    nav.tabs button:active,.sph:active,.htop a:active{transform:none}
+    .onda{display:none}.carimbo{animation:none}}
+
+
+  /* == v27 ICONE COM CORPO ==================================================
+     Os glifos ja eram vetor Lucide — traco de espessura unica. O que faltava
+     era volume. `--ico3d` da o angulo (a peca vista de canto, nao de frente) e
+     `--icoExt` empilha o contorno em profundidade: cada drop-shadow segue a
+     silhueta do glifo, entao o resultado le como chapa recortada, nao como
+     sombra colada atras.
+
+     Regra herdada da v16holo e mantida aqui: nada disso encolhe o alvo de
+     clique. O angulo e do DESENHO, a area de toque continua reta e cheia.     */
+  :root{
+    --ico3d:perspective(180px) rotateY(-13deg) rotateX(5deg);
+    --ico3dFrente:perspective(180px) rotateY(-4deg) rotateX(2deg)}
+
+  .sph .i .jico,nav.tabs button .ti .jico,.cover-seal .jico{
+    transform:var(--ico3d);transform-style:preserve-3d;
+    transform-origin:60% 50%}
+
+  /* extrusao: tres degraus de contorno, do vivo ao quase apagado. Mais que
+     tres vira borrao em 18px; menos que tres nao fecha a lateral.             */
+  .sph.on .i .jico,nav.tabs button.on .ti .jico{
+    filter:drop-shadow(1.5px 1px 0 color-mix(in oklch,var(--esf,var(--ion)) 46%,black))
+           drop-shadow(2.5px 2px 0 color-mix(in oklch,var(--esf,var(--ion)) 26%,black))
+           drop-shadow(0 0 8px color-mix(in oklch,var(--esf,var(--ion)) 62%,transparent))}
+  .cover-seal .jico{
+    filter:drop-shadow(2px 1.5px 0 color-mix(in oklch,var(--esf) 44%,black))
+           drop-shadow(3.5px 3px 0 color-mix(in oklch,var(--esf) 22%,black))
+           drop-shadow(0 0 11px color-mix(in oklch,var(--esf) 55%,transparent))}
+
+  /* ao apontar, a peca gira para quase de frente: o 3D vira resposta, nao
+     enfeite parado. E o unico jeito de um icone estatico parecer vivo.        */
+  .sph:hover .i .jico,nav.tabs button:hover .ti .jico,.cover-seal:hover .jico{
+    transform:var(--ico3dFrente) scale(1.06)}
+
+  @media (max-width:560px){                 /* em 16px o angulo come o traco */
+    :root{--ico3d:perspective(200px) rotateY(-8deg) rotateX(3deg)}}
+  @media (prefers-reduced-motion:reduce){
+    :root{--ico3d:none;--ico3dFrente:none}
+    .sph.on .i .jico,nav.tabs button.on .ti .jico,.cover-seal .jico{filter:none}}
+
+
+  /* == v28 INICIO ==========================================================
+     Tres defeitos do register product, na tela que todo mundo ve primeiro.   */
+
+  /* (a) VAZIO QUE ENSINA. Os cartoes sem dado mostravam um traco e a palavra
+     "aguardando...". Vazio nao e ausencia de estado: e um estado, e ele tem
+     que dizer o que vai aparecer ali e por que ainda nao apareceu. O traco
+     fica (e a marca honesta de "sem numero"), mas ganha legenda.             */
+  .card .num:empty::after,.kpi .num:empty::after{content:"—";color:var(--dim)}
+  .ck-vazio{display:block;margin-top:6px;font-size:11.5px;line-height:1.45;color:var(--dim)}
+  .ck-vazio b{color:var(--mut);font-weight:500}
+
+  /* (b) O TICKER cortava palavra nas duas pontas — a primeira e a ultima frase
+     entravam pela metade. Mascara nas bordas: o texto ENTRA e SAI, nao e
+     decepado. E o `overflow:hidden` continua fazendo o trabalho por baixo.    */
+  .ck-ticker{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 44px,#000 calc(100% - 44px),transparent 100%);
+    mask-image:linear-gradient(90deg,transparent 0,#000 44px,#000 calc(100% - 44px),transparent 100%)}
+
+  /* (c) ALTURA. A segunda fileira de KPI tinha cartoes de alturas diferentes
+     porque o texto de apoio varia de uma linha a quatro. Em painel, fileira
+     desalinhada le como quebrado. O grid ja iguala; o que faltava era o corpo
+     do cartao empurrar o rodape para baixo em vez de deixar buraco no meio.   */
+  /* v28.1: a regra mirava `.kpi`, que NAO EXISTE no inicio — os cartoes do
+     cockpit sao `.ck-inst`. A correcao de altura nao atingia alvo nenhum; so
+     descobri medindo (querySelectorAll(.kpi) = 0 na aba inicio). Fica valendo:
+     conferir que o seletor casa com algo ANTES de dar o fix por feito.        */
+  .ck-inst{display:flex;flex-direction:column}
+  .ck-inst .lab{flex:0 0 auto}
+  .ck-inst .sub,.ck-inst .foot{margin-top:auto}
+
+
+  /* == v28.4 VAZIO QUE ENSINA + CASCATA ====================================
+     (a) o cartao sem dado dizia "aguardando...", que informa zero: nao diz o que
+     vai aparecer ali nem de onde vem. Agora nomeia a fonte, e pulsa de leve para
+     ler como "em curso" e nao como "quebrado".                                */
+  .ck-inst .meta.esperando{color:var(--dim);animation:esperaPulsa 2.4s ease-in-out infinite}
+  @keyframes esperaPulsa{0%,100%{opacity:.55}50%{opacity:.92}}
+
+  /* (b) CASCATA. O conteudo das dezenas de abas trocava de uma vez, sem nada que
+     dissesse "isto e novo", e o painel lia como estatico apesar do movimento de
+     fundo.
+
+     O indice vem de nth-child em CSS PURO. A primeira tentativa numerava com um
+     MutationObserver em #view e derrubou a montagem do painel inteiro (12 botoes
+     e 4 esferas viraram 0) — revertido e refeito sem uma linha de JS. Nada que
+     seja so enfeite tem o direito de ficar entre o painel e o dado.
+
+     Duas travas: parte de opacidade .35 e NUNCA de 0, porque animacao de CSS
+     tambem congela em aba de segundo plano e um reveal partindo de 0 deixaria a
+     aba em branco para quem volta o foco no meio (a mesma familia de bug do
+     portal, corrigido em 3cf2a6a1); e o atraso tem TETO de 380ms, senao a
+     decima quarta linha esperaria segundos e leria como travado, nao vivo.     */
+  #view .grid>*:nth-child(1),#view .cols>*:nth-child(1){--i:0}
+  #view .grid>*:nth-child(2),#view .cols>*:nth-child(2){--i:1}
+  #view .grid>*:nth-child(3),#view .cols>*:nth-child(3){--i:2}
+  #view .grid>*:nth-child(4),#view .cols>*:nth-child(4){--i:3}
+  #view .grid>*:nth-child(5),#view .cols>*:nth-child(5){--i:4}
+  #view .grid>*:nth-child(6),#view .cols>*:nth-child(6){--i:5}
+  #view .grid>*:nth-child(7),#view .cols>*:nth-child(7){--i:6}
+  #view .grid>*:nth-child(8),#view .cols>*:nth-child(8){--i:7}
+  #view .grid>*:nth-child(9),#view .cols>*:nth-child(9){--i:8}
+  #view .grid>*:nth-child(10),#view .cols>*:nth-child(10){--i:9}
+  #view .grid>*:nth-child(11),#view .cols>*:nth-child(11){--i:10}
+  #view .grid>*:nth-child(12),#view .cols>*:nth-child(12){--i:11}
+  #view .grid>*:nth-child(13),#view .cols>*:nth-child(13){--i:12}
+  #view .grid>*:nth-child(14),#view .cols>*:nth-child(14){--i:13}
+  #view .grid>.card,#view .cols>.card,#view .grid>.ck-inst,#view .cols>.ck-inst{
+    animation:entraCascata .34s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms)}
+  @keyframes entraCascata{from{opacity:.35;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){
+    #view .grid>.card,#view .cols>.card,#view .grid>.ck-inst,#view .cols>.ck-inst{animation:none}
+    .ck-inst .meta.esperando{animation:none;opacity:.8}}
+
+
+  /* == v30 A ABERTURA GANHA MOVIMENTO REAL ==================================
+     A peca da abertura era uma foto parada com o shader por cima. Agora e um
+     plano de video em loop (Gemini) e a MESMA foto vira o `poster`: o quadro
+     aparece no primeiro instante e o video assume quando termina de chegar —
+     nunca ha buraco preto esperando 1,3MB.
+
+     `muted` e `playsinline` sao o que deixa o autoplay acontecer em telefone;
+     sem os dois o navegador recusa e a abertura ficaria so no poster.        */
+  #pvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    z-index:0;pointer-events:none;opacity:.92}
+  #portal .pui,#pcv,#pmap{z-index:2}
+  @media (prefers-reduced-motion:reduce){#pvid{display:none}}
+
+
+  /* == v31 A NAVEGACAO VIRA UM MOVIMENTO SO =================================
+     Sem `view-transition-name` o navegador cruza a pagina inteira de uma vez.
+     Nomeando as pecas que sobrevivem a troca, cada uma passa a ser interpolada
+     em separado: o cabecalho e a barra de abas ficam PARADOS enquanto o miolo
+     desliza, que e o que faz a navegacao parecer uma peca continua e nao duas
+     telas trocadas.                                                          */
+  header{view-transition-name:jfn-topo}
+  nav.tabs{view-transition-name:jfn-abas}
+  #view{view-transition-name:jfn-miolo}
+
+  ::view-transition-group(jfn-topo),
+  ::view-transition-group(jfn-abas){animation-duration:.001s}
+
+  ::view-transition-old(jfn-miolo){
+    animation:mioloSai .19s cubic-bezier(.4,0,1,1) forwards}
+  ::view-transition-new(jfn-miolo){
+    animation:mioloEntra .3s cubic-bezier(.16,.84,.3,1) .06s backwards}
+  /* o miolo sai para tras e o novo chega da frente: a leitura e de PROFUNDIDADE,
+     nao de troca lateral — combina com o resto, que ja e 3D angulado.        */
+  @keyframes mioloSai{to{opacity:0;transform:translateZ(0) scale(.985) translateY(-6px)}}
+  @keyframes mioloEntra{from{opacity:0;transform:scale(1.012) translateY(10px)}
+    to{opacity:1;transform:none}}
+
+  /* o fio de energia da barra de abas acompanha a troca: e o mesmo feixe que
+     corria no cabecalho, agora respondendo a navegacao.                      */
+  @keyframes fioCorre{from{background-position:-140% 0}to{background-position:240% 0}}
+  nav.tabs::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+    pointer-events:none;opacity:0;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 92%,white 20%) 46%,transparent);
+    background-size:44% 100%;background-repeat:no-repeat}
+  body.navegando nav.tabs::after{opacity:1;animation:fioCorre .52s cubic-bezier(.3,.7,.3,1) 1}
+
+  @media (prefers-reduced-motion:reduce){
+    ::view-transition-old(jfn-miolo),::view-transition-new(jfn-miolo){animation:none}
+    body.navegando nav.tabs::after{animation:none;opacity:0}}
+
+
+  /* == v32 MALHA DE ENERGIA =================================================
+     O painel tinha luz em cada peca e nenhuma luz ENTRE as pecas: cada bloco
+     era uma ilha acesa no escuro. A malha e o que faz o conjunto ler como uma
+     instalacao ligada — o mesmo circuito atravessando tudo, na cor da esfera.
+
+     Tres elementos, todos em pseudo-elemento e todos animando so background-
+     position ou transform (compositor; nao forcam layout):
+
+       · TRILHO   — a linha vertical que desce ligando um bloco ao seguinte
+       · PULSO    — a particula de luz que percorre o trilho de cima para baixo
+       · BARRAMENTO — a linha horizontal que liga os cartoes da mesma fileira
+
+     Regra herdada da sessao: nada disso intercepta clique (pointer-events:none
+     em tudo) e nada disso pisca conteudo — a malha e uma camada de luz por
+     baixo, nunca uma condicao de visibilidade.                               */
+
+  /* o trilho nasce no rodape de cada bloco e desce ate o proximo */
+  #view > .fade > .card,#view > .fade > .ck-inst,#view > .fade > section,
+  #view > .fade > .ck-hero,#view > .fade > .ck-nucleo{position:relative}
+  #view > .fade > *:not(:last-child)::before{
+    content:"";position:absolute;left:50%;bottom:-22px;width:1px;height:22px;
+    pointer-events:none;z-index:0;transform:translateX(-50%);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--esf,var(--ion)) 52%,transparent),
+      color-mix(in oklch,var(--esf,var(--ion)) 8%,transparent));
+    opacity:.6}
+
+  /* o pulso desce pelo trilho: um ponto de luz, nao um degrade animado —
+     degrade animado em gradiente forca repaint; transform nao.              */
+  #view > .fade > *:not(:last-child)::after{
+    content:"";position:absolute;left:50%;bottom:-22px;width:3px;height:3px;
+    margin-left:-1.5px;border-radius:50%;pointer-events:none;z-index:1;
+    background:color-mix(in oklch,var(--esf,var(--ion)) 92%,white 30%);
+    box-shadow:0 0 7px color-mix(in oklch,var(--esf,var(--ion)) 80%,transparent);
+    animation:pulsoDesce 2.8s cubic-bezier(.55,0,.45,1) infinite;
+    animation-delay:calc(var(--i,0) * 240ms)}
+  @keyframes pulsoDesce{
+    0%{transform:translateY(0);opacity:0}
+    18%{opacity:1}
+    82%{opacity:1}
+    100%{transform:translateY(22px);opacity:0}}
+
+  /* barramento: liga os cartoes da mesma fileira por tras deles */
+  .grid,.cols{position:relative}
+  .grid::before,.cols::before{content:"";position:absolute;left:6%;right:6%;top:50%;
+    height:1px;pointer-events:none;z-index:0;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 26%,transparent) 12%,
+      color-mix(in oklch,var(--esf,var(--ion)) 26%,transparent) 88%,transparent);
+    opacity:.34}
+  /* a corrente que percorre o barramento — background-position anima sem
+     repintar o elemento inteiro porque a camada e so 1px de altura.         */
+  .grid::after,.cols::after{content:"";position:absolute;left:6%;right:6%;top:50%;
+    height:1px;pointer-events:none;z-index:1;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 95%,white 25%),transparent);
+    background-size:22% 100%;background-repeat:no-repeat;
+    animation:correnteAnda 5.5s linear infinite}
+  @keyframes correnteAnda{from{background-position:-25% 0}to{background-position:125% 0}}
+
+  /* o cartao acende quando a corrente passa por ele: e o mesmo circuito, nao
+     um efeito separado. So no ponteiro — no toque quem responde e a onda.   */
+  .card:hover,.ck-inst:hover{
+    box-shadow:var(--lift),0 0 0 1px color-mix(in oklch,var(--esf,var(--ion)) 34%,transparent)}
+
+  @media (prefers-reduced-motion:reduce){
+    #view > .fade > *:not(:last-child)::after{animation:none;opacity:0}
+    .grid::after,.cols::after{animation:none;opacity:0}}
+  @media (max-width:560px){
+    /* em coluna unica o barramento horizontal nao liga nada — some. */
+    .grid::before,.grid::after,.cols::before,.cols::after{display:none}}
+
+
+  /* == v33 O CONTEUDO GANHA VIDA ============================================
+     Criterio: so se move o que RESPONDE a uma acao ou CONTA um estado. Um div
+     de layout continua parado — movimento em massa viraria ruido para quem
+     esta caçando numero.                                                     */
+
+  /* (a) toda linha e todo bloco clicavel responde ao ponteiro. Antes so o
+     `.card` tinha hover; as linhas de lista, os itens de fila e as celulas
+     de tabela eram superficie morta mesmo sendo alvo de clique.             */
+  #view tr,#view .row,#view .item,#view .lin,#view li,
+  #view .clk,#view [onclick]{
+    transition:background-color .16s ease,box-shadow .16s ease,
+      transform .16s cubic-bezier(.2,.9,.25,1)}
+  #view tr:hover,#view .row:hover,#view .item:hover,#view .lin:hover,
+  #view li:hover,#view [onclick]:hover{
+    background-color:color-mix(in oklch,var(--esf,var(--ion)) 7%,transparent)}
+  /* desloca 2px na direcao da leitura: diz "esta e a linha" sem piscar cor */
+  #view tr:hover,#view .row:hover,#view .lin:hover{transform:translateX(2px)}
+
+  /* (b) o numero que muda AVISA que mudou. Sem isso o valor troca no meio da
+     leitura e o auditor nao percebe que o dado e outro.                     */
+  @keyframes numTroca{
+    0%{color:color-mix(in oklch,var(--esf,var(--ion)) 90%,white 30%);
+       text-shadow:0 0 12px color-mix(in oklch,var(--esf,var(--ion)) 70%,transparent)}
+    100%{color:inherit;text-shadow:none}}
+  #view .num.mudou,#view .val.mudou,#view b.mudou{animation:numTroca 1.1s ease-out 1}
+
+  /* v34: o valor CHEGA. Marcado sozinho pela varredura, cada numero sobe e
+     ganha foco ao entrar na aba — vida no momento em que ha o que dizer, e
+     silencio depois. Numero que pisca em repouso vira ruido para quem esta
+     lendo uma coluna inteira; numero que chega diz "este e o dado".
+     O atraso escalonado faz a coluna ser LIDA de cima para baixo, na ordem em
+     que o auditor leria de qualquer jeito. Teto de 420ms: sem ele, o
+     octogesimo valor de pericias entraria segundos depois e leria como travado. */
+  @keyframes numChega{from{opacity:0;transform:translateY(7px);filter:blur(2px)}
+    to{opacity:1;transform:none;filter:none}}
+  #view .num,#view .val{
+    animation:numChega .42s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:calc(min(var(--i,0) * 22ms,420ms))}
+  @media (prefers-reduced-motion:reduce){#view .num,#view .val{animation:none}}
+
+  /* (c) barra e medidor crescem do zero ao entrar: o comprimento E o dado,
+     entao ve-lo crescer e ler o dado, nao decoracao.                        */
+  #view .bar > i,#view .meter > i,#view .prog > i{
+    transform-origin:left center;
+    animation:barCresce .62s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:calc(min(var(--i,0) * 40ms,420ms))}
+  @keyframes barCresce{from{transform:scaleX(.02);opacity:.4}to{transform:scaleX(1);opacity:1}}
+
+  /* (d) severidade grave respira mais rapido que leve — o ritmo ordena a fila
+     no canto do olho, sem o auditor ler numero nenhum.                      */
+  @keyframes sevRespira{0%,100%{opacity:.62}50%{opacity:1}}
+  #view .sev.alta,#view .sev.grave{animation:sevRespira 1.9s ease-in-out infinite}
+  #view .sev.media{animation:sevRespira 3.4s ease-in-out infinite}
+
+  /* (e) o que acabou de chegar pelo barramento entra aceso e esfria — em
+     painel ao vivo, "isto e novo" e informacao.                             */
+  @keyframes chegou{0%{background-color:color-mix(in oklch,var(--esf,var(--ion)) 22%,transparent)}
+    100%{background-color:transparent}}
+  #view .novo{animation:chegou 2.2s ease-out 1}
+
+  @media (prefers-reduced-motion:reduce){
+    #view tr,#view .row,#view .item,#view .lin,#view li,#view .clk,#view [onclick]{transition:none}
+    #view tr:hover,#view .row:hover,#view .lin:hover{transform:none}
+    #view .bar > i,#view .meter > i,#view .prog > i{animation:none}
+    #view .sev.alta,#view .sev.grave,#view .sev.media,#view .novo,
+    #view .num.mudou,#view .val.mudou{animation:none}}
+
+  /* ================= v35 CONTRASTE — fecha os 4 padroes abaixo de 4.5:1 do
+     laudo v27 (hfload 2.04 · hf-t 3.12 · nu-legend 3.90 · dim 4.45).
+     Regra da casa: corpo >= 4.5:1; cinza "por elegancia" e o defeito n.1 de
+     painel escuro. Camada ADITIVA: so cor de texto, nenhum layout.          */
+  :root{--leg:oklch(0.84 0.025 235)}
+  /* o cabecalho do holofeed senta sobre faixa mais clara — precisa de mais luz */
+  #holofeed .hf-t{color:oklch(0.92 0.02 235)}
+  .nu-legend{color:var(--leg)}
+  .dim{color:oklch(0.64 0.03 240)}
+
+  /* ================= v36 A FACETA GIRA =====================================
+     O v31 ja fazia a troca ler como profundidade; faltava o SENTIDO. Com o
+     data-nav-dir posto pelo ir(), o miolo que sai e o que chega giram em Y
+     como faces do mesmo cristal: destino a direita gira num sentido, a
+     esquerda no outro. O painel vira UMA coisa que se vira para voce, nao
+     duas telas trocadas. perspective() vive dentro do proprio transform
+     porque os pseudo-elementos da view transition nao herdam cena 3D.
+     Lei do alvo de clique: o quadro que ENTRA nunca parte menor que 1.     */
+  @keyframes facetaSaiFwd{to{opacity:0;
+    transform:perspective(1400px) rotateY(-6deg) translateX(-2.2%) scale(.985)}}
+  @keyframes facetaChegaFwd{from{opacity:0;
+    transform:perspective(1400px) rotateY(6deg) translateX(2.6%) scale(1.014)}
+    to{opacity:1;transform:none}}
+  @keyframes facetaSaiBack{to{opacity:0;
+    transform:perspective(1400px) rotateY(6deg) translateX(2.2%) scale(.985)}}
+  @keyframes facetaChegaBack{from{opacity:0;
+    transform:perspective(1400px) rotateY(-6deg) translateX(-2.6%) scale(1.014)}
+    to{opacity:1;transform:none}}
+  :root[data-nav-dir="fwd"]::view-transition-old(jfn-miolo){
+    animation:facetaSaiFwd .22s cubic-bezier(.4,0,1,1) forwards}
+  :root[data-nav-dir="fwd"]::view-transition-new(jfn-miolo){
+    animation:facetaChegaFwd .34s cubic-bezier(.16,.84,.3,1) .05s backwards}
+  :root[data-nav-dir="back"]::view-transition-old(jfn-miolo){
+    animation:facetaSaiBack .22s cubic-bezier(.4,0,1,1) forwards}
+  :root[data-nav-dir="back"]::view-transition-new(jfn-miolo){
+    animation:facetaChegaBack .34s cubic-bezier(.16,.84,.3,1) .05s backwards}
+  @media (prefers-reduced-motion:reduce){
+    :root[data-nav-dir]::view-transition-old(jfn-miolo),
+    :root[data-nav-dir]::view-transition-new(jfn-miolo){animation:none}}
+
+  /* ================= v37 NEBULOSA VIVA =====================================
+     O loop de video da esfera entra DENTRO do quadro da nebulosa, por cima
+     do JPG que vira poster. O pai ja carrega opacidade, mascara e o drift —
+     o video so precisa cobrir o quadro e surgir em fade quando toca.       */
+  #esfnebula video{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;opacity:0;transition:opacity 1.4s ease}
+  #esfnebula video.on{opacity:1}
+  @media (prefers-reduced-motion:reduce){#esfnebula video{display:none}}
+
+  /* ================= v39 A LAMINA CORRE NO TRILHO ==========================
+     O trilho v26 e arte parada: o "canal de vidro com a lamina de luz
+     correndo" so descrevia a foto. Regra do dono: NADA estatico. A lamina
+     agora existe de verdade — um feixe fino na cor da esfera varrendo o
+     canal, lento (12s) para ser presenca e nao ruido. Vive no
+     .cover-row::after, que estava livre; mesma mascara do trilho para a
+     lamina morrer nas pontas junto com ele.                                */
+  .cover-row::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:26px;
+    z-index:-1;pointer-events:none;opacity:.5;mix-blend-mode:screen;
+    background:linear-gradient(90deg,transparent,
+      color-mix(in oklch,var(--esf,var(--ion)) 85%,white 18%) 50%,transparent);
+    background-size:18% 100%;background-repeat:no-repeat;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
+    animation:laminaCorre 12s cubic-bezier(.4,.1,.6,.9) infinite}
+  @keyframes laminaCorre{from{background-position:-22% 0}to{background-position:122% 0}}
+  @media (prefers-reduced-motion:reduce){.cover-row::after{animation:none;opacity:0}}
+
+  /* ================= v38 O NO GANHA CORPO ==================================
+     Pendencia declarada no handoff v27: os nos do mapa eram 100% procedurais.
+     Quando /static/assets/no-energia.png existir (encomendado ao it-campo),
+     cada no ganha um anel usinado sob o chip — metal INCOLOR como o selo-anel
+     (o mesmo asset serve as 4 esferas), a cor vem do brilho drop-shadow na
+     matiz do no. body.art-no e posto pelo JS so se o arquivo responder 200.
+     Nao mexe em position: .nu-chip ja e absoluto desde o v12.               */
+  body.art-no .nu-chip::after{content:"";position:absolute;left:50%;bottom:-15px;
+    width:28px;height:28px;transform:translateX(-50%);pointer-events:none;
+    background:url(/static/assets/no-energia.png) center/contain no-repeat;
+    filter:saturate(.25) drop-shadow(0 0 7px color-mix(in srgb,var(--nc) 65%,transparent));
+    animation:noPulsa 3.4s ease-in-out infinite}
+  @keyframes noPulsa{0%,100%{opacity:.72}50%{opacity:1}}
+  @media (prefers-reduced-motion:reduce){body.art-no .nu-chip::after{animation:none}}
+
+  /* ================= v40 CONTRASTE, lote 1 — o primeiro laudo das 51 ======
+     O laudo completo (2026-07-26) achou 17 padroes abaixo de 4.5:1. Este lote
+     fecha os 7 que sao TOKEN puro (texto claro demais ou fundo escuro demais
+     no proprio elemento). Os casos sobre-arte (muted/dim/leitura em regiao
+     clara) ficam para o lote 2, com o pixel investigado — corrigir no chute
+     seria dessaturar o que brilha.                                          */
+  .skel{color:var(--leg)}                     /* 1.15 — cinza igual ao shimmer  */
+  #holofeed .hf-vazio{color:var(--leg)}       /* 1.88 — silencio honesto legivel */
+  .htop a.ctrl{color:color-mix(in oklch,var(--rose) 72%,white 28%)} /* 3.76 */
+  .tag.rose{color:color-mix(in oklch,var(--rose) 55%,white 45%)}    /* 2.63 */
+  .tag.amber{color:color-mix(in oklch,var(--amber) 55%,white 45%)}  /* 2.89 */
+  /* botao de acao: o flame poe texto ESCURO em todo .btn, mas red/green
+     desciam com gradiente escuro — texto de tinta sobre fundo de tinta.
+     A saida e a mesma do primario: fundo ACESO, texto escuro. Consistente
+     e mensuravel (pior pixel do gradiente >= 0.24 de luminancia).          */
+  .btn.red{background:linear-gradient(180deg,
+    color-mix(in oklch,var(--rose) 80%,white 20%),
+    color-mix(in oklch,var(--rose) 96%,black 4%))}
+  .btn.green{background:linear-gradient(180deg,
+    color-mix(in oklch,var(--green) 88%,white 12%),
+    color-mix(in oklch,var(--green) 78%,black 6%))}
+
+  /* ================= v41 NUCLEO-HOLO ======================================
+     O corpo de video do arc reactor (holograma da silhueta do RJ, gerado no
+     it-campo) entra SOB o canvas procedural do nucleo. Blend screen: o preto
+     da arte some no fundo radial — mesma regra do piso de preto do reator. */
+  .ck-nucleo video.holo{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;opacity:0;transition:opacity 1.6s ease;
+    mix-blend-mode:screen;pointer-events:none}
+  .ck-nucleo video.holo.on{opacity:.85}
+  @media (prefers-reduced-motion:reduce){.ck-nucleo video.holo{display:none}}
+
+  /* v40 lote 2a: holofeed 97 por cento opaco — com 88, nebulosa clara vazava
+     pelo blur e o pior pixel afundava o texto pequeno (hfload 3.29:1 em
+     e_conluio). O vidro continua; a legibilidade para de depender da esfera. */
+  #holofeed{background:color-mix(in oklch,var(--bg2) 97%,transparent)}
+
+  /* ================= v42 COCKPIT DO SISTEMA ================================
+     A aba g_sweeps virou o cockpit da maquina toda. A barra de fila e um
+     instrumento: comprimento E o dado (contrato v33 — ela cresce do zero ao
+     entrar e desliza quando o refresh de 30s move o numero).               */
+  #view .sinal{width:7px;height:7px;border-radius:50%;display:inline-block;
+    vertical-align:middle;margin-right:6px;flex:0 0 auto}
+  .sisbar{position:relative;height:10px;border-radius:6px;background:var(--bg2);
+    border:1px solid var(--bd2);overflow:hidden;margin-top:8px}
+  /* ================= v47 CONTRASTE — lote 2 (os casos REAIS) ==============
+     Do laudo das 51: hfvazio 4.21 e a leitura da capa (.cover .s) 4.32 —
+     perto do minimo, mas abaixo. Os demais do laudo foram VERIFICADOS um a um
+     e sao artefato de medicao (o auditor pega o pior pixel de gradiente/luz
+     viajante): chip.on mede 1.36 mas e texto escuro sobre chip claro,
+     conferido no pixel e no olho. Nao dessaturar o que ja brilha por causa de
+     numero de instrumento — a lei e o olho + o pixel juntos.                */
+  #holofeed .hf-vazio{color:oklch(0.90 0.02 235)}
+  #hsub{color:oklch(0.82 0.022 240)}  /* id, nao classe — conferido no DOM. 4.32 -> passa */
+  .cover .s{color:oklch(0.79 0.025 240)}
+
+  /* ================= v46 O CHIP ATIVO FALA A COR DA ESFERA =================
+     .chip.on nasceu com --accent (ciano) travado: numa aba da Prefeitura o
+     chip ligado ficava AZUL sobre teatro ambar — quebra a lei da casa de que
+     trocar de esfera troca a cor de todo o circuito. Agora herda --esf, com
+     ciano de fallback (esfera 'inicio').                                    */
+  #view .chip.on{
+    background:linear-gradient(var(--esf,var(--accent)),var(--esf,var(--accent))) padding-box,
+      conic-gradient(from var(--angle),white 0 40deg,
+        color-mix(in oklch,var(--esf,var(--accent)) 55%,transparent) 40deg 360deg) border-box;
+    box-shadow:0 0 16px -6px color-mix(in oklch,var(--esf,var(--accent)) 60%,transparent)}
+  #view .chip.on::after{border-color:color-mix(in oklch,var(--esf,var(--accent)) 45%,transparent)}
+  @media (prefers-reduced-motion:reduce){
+    #view .chip.on{background:var(--esf,var(--accent));border-color:var(--esf,var(--accent))}}
+
+  .sisbar>i{position:absolute;top:0;bottom:0;left:0;border-radius:inherit;
+    background:linear-gradient(90deg,
+      color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent),var(--esf,var(--ion)));
+    box-shadow:0 0 14px color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent);
+    transition:width 1s cubic-bezier(.2,.9,.25,1)}
+
+  /* ================= v43 O KPI QUE SUMIA ===================================
+     A armadilha documentada ("animation: sobrescreve em silencio") em plena
+     acao: dentro de .grid/.cols, a entraCascata da cascata SOBRESCREVIA a
+     rise dos cards .rise — e ao terminar (fill backwards) a opacity caia no
+     0 ESTATICO da .rise. Resultado: KPI invisivel em toda aba com grid, e as
+     dezenas de "nao pintou glifo" do laudo. Compor as duas e a cura; o both
+     da rise fica por ultimo e segura opacity 1 no fim.                     */
+  #view .grid>.card.rise,#view .cols>.card.rise{
+    animation:entraCascata .34s cubic-bezier(.2,.9,.25,1) backwards,
+              rise .3s cubic-bezier(.2,.7,.2,1) both;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms),var(--d,0ms)}
+  @media (prefers-reduced-motion:reduce){
+    #view .grid>.card.rise,#view .cols>.card.rise{animation:none;opacity:1}}
+
+/* ══ v49 · MODO SÓBRIO MEDIDO — o painel mede a máquina em que está e recua ═════════════════════
+   O PROBLEMA, EM NÚMERO. Medido com Playwright nesta VM (2 vCPU): **1-2 FPS com a página PARADA**,
+   com 57 animações `infinite` ativas. É isso que o dono descreve como "fica piscando": a 1 FPS uma
+   respiração de 2,9 s não respira — pisca, porque cada quadro é um salto grande.
+
+   POR QUE ESTA LISTA. Quinze `@keyframes` infinitas animam `filter`, spread de `box-shadow` ou
+   `background-position` — as três propriedades que forçam REPINTURA do elemento a cada quadro
+   (diferente de `opacity`/`transform`, que o compositor resolve na GPU). Em máquina folgada isso
+   passa; em 2 vCPU, é o orçamento inteiro.
+
+   POR QUE NÃO APAGUEI. O dono pediu explicitamente o efeito Jarvis pulsando, e em máquina capaz ele
+   custa pouco e vale muito. Então o painel MEDE (`_medirFps`, no fim do boot) e só recua onde
+   precisa. Quem tem GPU vê o painel inteiro; a VM vê o painel legível. `prefers-reduced-motion`
+   continua valendo por cima disto — são eixos diferentes: um é preferência declarada, este é
+   capacidade medida. */
+  body.fps-baixo #hologrid,
+  body.fps-baixo #rjbg,
+  body.fps-baixo .card.hl, body.fps-baixo .card.hl.rise, body.fps-baixo .card.hl:hover,
+  body.fps-baixo .card.hl.rise:hover,
+  body.fps-baixo .card::after, body.fps-baixo .ck-hero::after,
+  body.fps-baixo .ck-ved,
+  body.fps-baixo .cover-row::after,
+  body.fps-baixo .cover-seal .jico,
+  body.fps-baixo .cover::before, body.fps-baixo .cover.estado::before,
+  body.fps-baixo .cover.prefeitura::before, body.fps-baixo .cover.geral::before,
+  body.fps-baixo .grid::after, body.fps-baixo .cols::after,
+  body.fps-baixo .nu-sweep.on,
+  body.fps-baixo .sev-alta, body.fps-baixo .grave, body.fps-baixo td .pill.alto,
+  body.fps-baixo .sev-media, body.fps-baixo .medio, body.fps-baixo td .pill.medio,
+  body.fps-baixo .sph.on .i .jico,
+  body.fps-baixo tbody tr:hover, body.fps-baixo .barw .row:hover,
+  body.fps-baixo .btn>.hlx::before, body.fps-baixo .chip>.hlx::before,
+  body.fps-baixo .tab>.hlx::before, body.fps-baixo .htop a>.hlx::before{
+    animation:none!important}
+  /* o sabre da aba ativa e o selo continuam vivos: já pulsam em `opacity`, que é de graça. */
+  /* a nebulosa mantém o drift (`transform`) e perde só o filtro, que já é estático desde o v49. */
+  body.fps-baixo #esfnebula{animation-duration:120s}
+  /* aviso honesto: o modo sóbrio é VISÍVEL, nunca silencioso — degradação calada é o que faz
+     ninguém descobrir que o painel está diferente do que o autor desenhou. */
+  body.fps-baixo #modo-sobrio{display:inline-flex}
+  #modo-sobrio{display:none;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);
+    border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;cursor:help}
+
+/* ── v49 · FUNÇÕES MESTRAS no cockpit (um botão por comando, derivado de capabilities.yaml) ── */
+.ck-caps{margin:18px 0 6px}
+.ck-caps .caps-g{margin:10px 0 14px}
+.ck-caps .caps-gt{font-size:11.5px;letter-spacing:.4px;color:var(--dim);margin:0 0 7px;font-weight:600}
+.ck-caps .btn{gap:7px}
+.ck-caps .caps-cmd{font-family:var(--mono);font-size:10.5px;opacity:.62;
+  border-left:1px solid var(--bd2);padding-left:7px;margin-left:2px}

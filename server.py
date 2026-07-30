@@ -242,6 +242,23 @@ output_dir.mkdir(exist_ok=True)
 app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
 app.mount("/output", StaticFiles(directory="output"), name="output")
 app.mount("/static/assets", StaticFiles(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
+# v49: o CSS e o JS do painel saíram de dentro do HTML (eram 178 KB + 337 KB inline, num arquivo de
+# 519 KB que ia inteiro pela rede a cada carga, sem compressão e sem cache). Servidos daqui, ganham
+# gzip (abaixo) e cache longo — o `?v=<hash>` no link é que invalida quando o conteúdo muda.
+# `StaticFiles` levanta RuntimeError no IMPORT se o diretório não existe — montar antes de a
+# extração rodar derrubava o servidor inteiro. Criar é idempotente e torna a ordem das etapas
+# irrelevante (o CSS pode sair numa sessão e o JS na seguinte).
+Path("static/css").mkdir(parents=True, exist_ok=True)
+Path("static/js").mkdir(parents=True, exist_ok=True)
+app.mount("/static/css", StaticFiles(directory="static/css"), name="css")
+app.mount("/static/js", StaticFiles(directory="static/js"), name="js")
+
+# GZIP — não havia nenhum. O painel mandava 519 KB de texto sem compressão em TODA carga; HTML, CSS
+# e JS comprimem 4-6× nesse tipo de conteúdo. `minimum_size` evita gastar CPU com resposta pequena,
+# que numa VM de 2 vCPU importa.
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402 — junto do mount que ele serve
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 # ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────

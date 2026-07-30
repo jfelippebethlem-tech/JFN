@@ -19,12 +19,28 @@ import pytest
 PAINEL = Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html"
 
 
+CSS_EXTRAIDO = Path(__file__).resolve().parents[1] / "static" / "css" / "painel.css"
+
+
 def _css() -> tuple[str, int]:
-    """Devolve o conteudo do <style> e a linha em que ele comeca (para o laudo)."""
+    """Conteudo do CSS do painel, esteja ele INLINE ou em arquivo servido.
+
+    v49: os 178 KB de CSS sairam de dentro do HTML para `static/css/painel.css`, servido com gzip e
+    cache. Este teste lia so o `<style>` — depois da extracao ele nao encontrava nada e falhava com
+    "o painel perdeu o bloco <style>", que e verdade e nao e problema. Ler as DUAS formas mantem a
+    protecao valendo durante e depois da migracao, e continua valendo se um dia o CSS voltar para
+    dentro. O que este teste protege — comentario orfao engolindo um `@media` inteiro — independe de
+    onde o CSS mora.
+    """
     fonte = PAINEL.read_text(encoding="utf-8")
     m = re.search(r"<style>(.*?)</style>", fonte, re.S)
-    assert m, "o painel perdeu o bloco <style>"
-    return m.group(1), fonte[: m.start(1)].count("\n") + 1
+    if m:
+        return m.group(1), fonte[: m.start(1)].count("\n") + 1
+    assert CSS_EXTRAIDO.exists(), (
+        "o painel nao tem <style> inline nem static/css/painel.css — o CSS sumiu de vez")
+    assert '<link rel="stylesheet" href="/static/css/painel.css' in fonte, (
+        "o CSS foi extraido mas o HTML nao o referencia — a pagina carregaria SEM estilo nenhum")
+    return CSS_EXTRAIDO.read_text(encoding="utf-8"), 1
 
 
 def test_comentarios_css_balanceados():

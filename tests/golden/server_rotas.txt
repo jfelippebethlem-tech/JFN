@@ -179,5 +179,7 @@ POST /otp -> submit_otp
 WS /output -> Mount
 WS /screenshots -> Mount
 WS /static/assets -> Mount
+WS /static/css -> Mount
+WS /static/js -> Mount
 WS /tunnel -> websocket_tunnel
 WS /ws -> websocket_chat
