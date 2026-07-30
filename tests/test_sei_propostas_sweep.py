@@ -198,3 +198,80 @@ def test_analisar_diz_que_sao_COTACOES_e_nao_propostas_de_certame(tmp_path):
     """Rótulo errado num laudo de controle externo é defeito, não detalhe."""
     r = S.analisar(_db(tmp_path))
     assert "COTAÇÕES" in r["_nota"] and "Indício ≠ acusação" in r["_nota"]
+
+
+# ── a trava de ATRIBUIÇÃO: a mais importante, e nasceu de três falsos positivos ──────────────────
+def test_documento_com_mais_colunas_que_CNPJs_nao_e_persistido(tmp_path):
+    """O caso que quase virou achado de conluio publicado.
+
+    O sweep produziu "markup uniforme de −1% em 6 itens" entre dois concorrentes. Fui à planilha: a
+    linha do item tinha QUATRO pares (unitário, total) e o texto só trazia DOIS CNPJs. As colunas
+    extras são estimado/média/contratado, e o cabeçalho com os nomes dos fornecedores costuma viver
+    numa IMAGEM que a extração não traz. O modelo escolhe duas das quatro colunas e chama de A e B —
+    a "diferença percentual constante" é a distância entre duas colunas quaisquer, não entre duas
+    propostas. Medido no acervo: **37 de 55 documentos** têm mais colunas de preço do que CNPJs.
+
+    Persistir isso envenenaria todo detector a jusante com atribuição errada.
+    """
+    proc = tmp_path / "sei_arquivo" / "080002_013339_2024" / "texto"
+    proc.mkdir(parents=True)
+    arq = proc / "026_planilha_comparativa_de_custos_1.txt"
+    # 1 item, QUATRO pares de valores, só DOIS CNPJs — a assinatura do problema
+    arq.write_text(
+        "PLANILHA COMPARATIVA\n"
+        "FORNECEDOR A - CNPJ: 04.075.374/0001-27\n"
+        "FORNECEDOR B - CNPJ: 05.197.932/0001-90\n"
+        "DESCRIÇÃO UNIDADE QUANTIDADE VALOR UNITÁRIO\n"
+        "APOIO ADM  R$ 5.020,76  R$ 40.166,08  R$ 5.203,56  R$ 41.628,48  "
+        "R$ 5.179,98  R$ 41.439,84  R$ 5.121,29  R$ 40.970,32\n", encoding="utf-8")
+    doc = {"arquivo": arq, "processo": "080002_013339_2024",
+           "cnpjs": ["04075374000127", "05197932000190"], "valores": 8}
+    g = _GerarFalso('[{"item":1,"descricao":"APOIO ADM","precos":['
+                    '{"cnpj":"04075374000127","valor_unitario":5203.56},'
+                    '{"cnpj":"05197932000190","valor_unitario":5121.29}]}]')
+    r = S.processar(doc, g, db=_db(tmp_path))
+    assert r["linhas"] == 0, "atribuição não confiável NÃO pode virar linha no banco"
+    assert "NÃO CONFIÁVEL" in r["motivo"]
+    assert "colunas de preço por item" in r["motivo"]
+
+
+def test_documento_com_colunas_batendo_com_CNPJs_PASSA(tmp_path):
+    """O contra-exemplo: 2 fornecedores, 2 pares de valores. Aí dá para dizer de quem é o preço."""
+    proc = tmp_path / "sei_arquivo" / "080002_007720_2024" / "texto"
+    proc.mkdir(parents=True)
+    arq = proc / "029_planilha_de_custos_1.txt"
+    arq.write_text(
+        "PLANILHA DE CUSTOS\n"
+        "A - CNPJ: 02.853.169/0001-10\nB - CNPJ: 28.413.325/0001-15\n"
+        "DESCRIÇÃO UNIDADE QUANTIDADE VALOR UNITÁRIO\n"
+        "Engenheiro  R$ 184,61  R$ 190,53\n", encoding="utf-8")
+    doc = {"arquivo": arq, "processo": "080002_007720_2024",
+           "cnpjs": ["02853169000110", "28413325000115"], "valores": 2}
+    g = _GerarFalso('[{"item":1,"descricao":"Engenheiro","precos":['
+                    '{"cnpj":"02853169000110","valor_unitario":184.61},'
+                    '{"cnpj":"28413325000115","valor_unitario":190.53}]}]')
+    r = S.processar(doc, g, db=_db(tmp_path))
+    assert r["linhas"] == 2, f"documento bem-formado tem de passar: {r.get('motivo')}"
+
+
+def test_vetor_identico_vira_suspeita_de_EXTRACAO_e_nao_achado(tmp_path):
+    """Preço byte-a-byte igual em 100% dos itens é coluna duplicada, não conluio.
+
+    Conluio real deixa markup; identidade exata em toda a lista é a assinatura de o modelo ter
+    mapeado dois CNPJs para a MESMA coluna.
+    """
+    db = _db(tmp_path)
+    con = sqlite3.connect(db)
+    linhas = []
+    for i in range(1, 5):
+        v = 1000.0 + i
+        linhas.append(("SEI-3/3/2026", i, "18993091000179", v, "sei_precos"))
+        linhas.append(("SEI-3/3/2026", i, "39185269000125", v, "sei_precos"))
+    con.executemany("INSERT INTO proposta_item (certame,item,fornecedor_cnpj,valor_unitario,fonte) "
+                    "VALUES (?,?,?,?,?)", linhas)
+    con.commit()
+    con.close()
+    r = S.analisar(db)
+    assert r["indicios"] == 0, "não pode sair como achado de conluio"
+    assert r["suspeitos_de_extracao"] == 1
+    assert "coluna duplicada" in r["suspeitos"][0]["motivo_suspeita"]

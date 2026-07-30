@@ -43,9 +43,22 @@ DUAS TRAVAS DE HONESTIDADE, porque atribuição errada num indício de conluio �
 MODELO: `nous stepfun:free`, por diretriz da casa (CLAUDE.md §LLM) — é a ÚNICA IA do sweep em volume.
 Grátis e sem limite; cerebras e gemini ficam fora do volume.
 
+⚠️ A TRAVA QUE MAIS IMPORTA, e o resultado que ela produziu. Rodado nos 56, o sweep gerou 349 linhas
+e QUATRO "indícios de conluio". Fui conferir cada um na planilha de origem: as linhas tinham mais
+COLUNAS DE PREÇO do que CNPJs no texto (as extras são estimado/média/contratado, e o cabeçalho com
+os nomes dos fornecedores costuma viver numa IMAGEM que a extração não traz). O modelo escolhia duas
+colunas quaisquer e as batizava de "fornecedor A" e "fornecedor B" — a "diferença percentual
+constante" era a distância entre duas colunas, não entre duas propostas.
+Medido: **37 de 55 documentos** têm mais colunas do que CNPJs. Esses NÃO são persistidos, e as linhas
+que já haviam entrado foram expurgadas: 349 → 105. Dos 4 indícios, sobrou 1 — e mesmo esse depende de
+alguém abrir o PDF original para confirmar qual coluna é de quem.
+Dado pequeno e confiável vale mais que dado grande e envenenado: atribuição errada num indício de
+conluio contamina todo detector a jusante.
+
 Uso:
     PYTHONPATH=. .venv/bin/python -m tools.sei_propostas_sweep --laudo          # só mede o alvo
     PYTHONPATH=. .venv/bin/python -m tools.sei_propostas_sweep --rodar [--limite N]
+    PYTHONPATH=. .venv/bin/python -m tools.sei_propostas_sweep --analisar       # roda o J9
 """
 from __future__ import annotations
 
@@ -271,6 +284,26 @@ def processar(doc: dict, gerar, *, db: Path) -> dict:
                 "descartados": descartados,
                 "motivo": "sem tabela comparativa utilizável (ou nenhum valor conferiu com o texto)"}
 
+    # ⚠️ TRAVA DE ATRIBUIÇÃO — a mais importante deste módulo, e ela nasceu de três falsos positivos.
+    # O sweep produziu "markup uniforme de −1%" entre dois concorrentes; fui à planilha e a linha do
+    # item tinha QUATRO pares (unitário, total) e só DOIS CNPJs no texto. As colunas extras são
+    # valor estimado, média, valor contratado — e os nomes dos fornecedores costumam viver num
+    # cabeçalho em IMAGEM, que a extração não traz. O modelo então escolhe duas das quatro colunas e
+    # chama de fornecedor A e B: a "diferença percentual constante" é a distância entre duas colunas
+    # quaisquer, não entre duas propostas.
+    # Medido no acervo: **37 de 55 documentos** têm mais colunas de preço do que CNPJs.
+    # Persistir isso envenenaria todo detector a jusante com atribuição errada — e indício de conluio
+    # com fornecedor trocado é pior que indício nenhum. Então NÃO ENTRA, e o motivo fica registrado.
+    n_itens = len({x["item"] for x in linhas})
+    pares_por_item = len(_RE_VALOR.findall(texto)) / max(n_itens, 1) / 2
+    if pares_por_item > len(doc["cnpjs"]) + 0.5:
+        return {"processo": doc["processo"], "certame": certame, "linhas": 0,
+                "fornecedores": 0, "descartados": descartados,
+                "motivo": (f"atribuição NÃO CONFIÁVEL: ~{pares_por_item:.1f} colunas de preço por "
+                           f"item contra {len(doc['cnpjs'])} CNPJ(s) no texto. As colunas extras são "
+                           "estimado/média/contratado, e o cabeçalho com os nomes costuma estar em "
+                           "imagem. Não dá para dizer qual preço é de quem.")}
+
     con = conectar(db)
     try:
         n = persistir_propostas(con, certame, linhas)
@@ -329,7 +362,10 @@ def analisar(db: Path | str = _DB, *, minimo_itens: int = 3) -> dict:
         por_certame.setdefault(certame, {}).setdefault(cnpj, []).append(
             {"descricao": f"item {item}", "valor_unitario": float(valor)})
 
-    achados, avaliados, sem_par = [], 0, 0
+    def _vetor(itens: list[dict]) -> dict[str, float]:
+        return {i["descricao"]: i["valor_unitario"] for i in itens}
+
+    achados, suspeitos, avaliados, sem_par = [], [], 0, 0
     for certame, fornecedores in sorted(por_certame.items()):
         uteis = {c: i for c, i in fornecedores.items() if len(i) >= minimo_itens}
         if len(uteis) < 2:
@@ -337,11 +373,34 @@ def analisar(db: Path | str = _DB, *, minimo_itens: int = 3) -> dict:
             continue
         avaliados += 1
         r = CP.detectar([{"fornecedor": c, "cnpj": c, "itens": i} for c, i in uteis.items()])
+        vetores = {c: _vetor(i) for c, i in uteis.items()}
         for ind in r["indicios"]:
-            achados.append({"certame": certame, "fornecedores": len(uteis), **ind})
+            va, vb = vetores.get(ind["a"], {}), vetores.get(ind["b"], {})
+            comuns = set(va) & set(vb)
+            # ⚠️ TRAVA CONTRA ARTEFATO DE EXTRAÇÃO, e ela nasceu de um falso positivo REAL.
+            # O primeiro achado deste sweep foi "3/3 itens com preço idêntico" entre dois
+            # concorrentes — parecia forte. Fui à fonte: a linha da planilha tinha QUATRO pares
+            # (unitário, total) e só TRÊS CNPJs. Uma das colunas é valor estimado/contratado, não
+            # fornecedor; o modelo distribuiu 3 CNPJs por 4 colunas e dois caíram na MESMA coluna.
+            # Vetor byte-a-byte idêntico em 100% dos itens é muito mais provável ser coluna
+            # duplicada do que conluio — conluio real costuma deixar markup, não identidade exata.
+            # Então esse caso sai dos achados e vai para um balde próprio, com o motivo.
+            identico = bool(comuns) and all(va[k] == vb[k] for k in comuns)
+            registro = {"certame": certame, "fornecedores": len(uteis), **ind}
+            if identico:
+                registro["motivo_suspeita"] = (
+                    "vetor de preços IDÊNTICO em 100% dos itens comuns — provável coluna duplicada "
+                    "na extração (planilha com mais colunas de valor do que CNPJs), não conluio. "
+                    "Conferir a planilha antes de tratar como indício.")
+                suspeitos.append(registro)
+            else:
+                achados.append(registro)
     return {"certames_com_dado": len(por_certame), "avaliados": avaliados,
             "sem_par_comparavel": sem_par, "indicios": len(achados), "achados": achados,
-            "_nota": "COTAÇÕES de dispensa (não propostas de certame). Indício ≠ acusação."}
+            "suspeitos_de_extracao": len(suspeitos), "suspeitos": suspeitos,
+            "_nota": "COTAÇÕES de dispensa (não propostas de certame). Indício ≠ acusação. "
+                     "Vetor idêntico em 100% dos itens é tratado como suspeita de EXTRAÇÃO, "
+                     "não de conluio — ver `suspeitos`."}
 
 
 def main() -> int:
