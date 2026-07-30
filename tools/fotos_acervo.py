@@ -78,7 +78,7 @@ def _phash_das_regioes(caminho: Path) -> list[int]:
     from compliance_agent.foto_medicao import _triar_e_hashear
     try:
         return _triar_e_hashear(caminho)
-    except Exception as exc:  # noqa: BLE001 — imagem ilegível é INDISPONÍVEL, não "sem foto"
+    except (OSError, ValueError) as exc:   # imagem ilegível é INDISPONÍVEL, não "sem foto"
         logger.warning("regiões ilegíveis em %s (%s) — foto fica SEM hash, e isso é diferente de "
                        "'sem coincidência'", caminho.name, exc)
         return []
@@ -97,7 +97,7 @@ def ficha(caminho: Path, processo: str) -> dict:
     try:
         with Image.open(caminho) as im:
             dados["dimensoes"] = list(im.size)
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError) as exc:   # PIL: UnidentifiedImageError herda de OSError
         dados["dimensoes"] = None
         dados["limitacao"] = f"não abriu: {str(exc)[:60]}"
     return dados
@@ -113,8 +113,10 @@ def converter_avif(origem: Path, destino: Path) -> bool:
         return False
     destino.parent.mkdir(parents=True, exist_ok=True)
     r = subprocess.run(
-        ["nice", "-n", "15", "avifenc", "-q", str(_QUALIDADE_AVIF), "-s", "6",
-         "--ignore-icc" if False else "-j", "1", str(origem), str(destino)],
+        # `-j 1`: UMA thread. Numa VM de 2 vCPU, deixar o avifenc paralelizar rouba o núcleo de
+        # tudo o mais — e esta conversão é opt-in, nunca urgente.
+        ["nice", "-n", "15", "avifenc", "-q", str(_QUALIDADE_AVIF), "-s", "6", "-j", "1",
+         str(origem), str(destino)],
         capture_output=True, text=True, timeout=300)
     if r.returncode != 0 or not destino.exists() or destino.stat().st_size == 0:
         logger.warning("avifenc falhou em %s: %s", origem.name, (r.stderr or "")[:120])

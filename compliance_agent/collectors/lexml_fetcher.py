@@ -58,7 +58,7 @@ async def buscar_lexml(termo: str, max_resultados: int = 5) -> list[dict]:
     ⚠️ MEDIDO EM 2026-07-30: o LexML está atrás do WAF do Senado e responde
     **HTTP 200 com uma página HTML de "Verificação de segurança"** — não 403, não 503. É a mesma
     assinatura que já derrubou a leitura de acórdãos do TCU nesta casa: `raise_for_status()` não
-    protege, `resp.json()` estoura, o `except Exception` devolvia `[]`, e `[]` chegava ao parecer
+    protege, `resp.json()` estoura, a captura genérica devolvia `[]`, e `[]` chegava ao parecer
     como "nenhuma jurisprudência encontrada". Silêncio virando afirmação.
 
     A função continua tentando (o WAF pode cair a qualquer momento e o custo é um GET), mas agora
@@ -103,7 +103,7 @@ async def buscar_lexml(termo: str, max_resultados: int = 5) -> list[dict]:
                 })
             ULTIMO_STATUS.update(disponivel=True, motivo=f"{len(resultados)} resultado(s)")
             return resultados
-    except Exception as exc:  # noqa: BLE001 — degrada honesto, mas NUNCA calado
+    except (httpx.HTTPError, ValueError, OSError) as exc:   # rede, JSON inválido, socket
         ULTIMO_STATUS.update(disponivel=False,
                              motivo=f"falha ao consultar o LexML: {type(exc).__name__}: {str(exc)[:80]}")
         logger.warning("LexML indisponível (%s) — resultado vira LACUNA, não zero", exc)

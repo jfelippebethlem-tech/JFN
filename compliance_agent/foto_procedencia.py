@@ -97,7 +97,7 @@ def _tabelas_quantizacao(caminho: Path) -> dict:
             tot = {k: sum(v) for k, v in q.items()}
             return {"tem": True, "tabelas": len(q), "soma": tot,
                     "assinatura": "-".join(str(tot[k]) for k in sorted(tot))}
-    except Exception as exc:  # noqa: BLE001 — imagem ilegível é INDISPONÍVEL, não achado
+    except (OSError, ValueError) as exc:   # PIL: UnidentifiedImageError herda de OSError
         logger.debug("quantização ilegível em %s: %s", caminho, exc)
         return {"tem": False, "erro": str(exc)[:60]}
 
@@ -110,7 +110,7 @@ def _dimensoes(caminho: Path, caixa=None) -> tuple[int, int] | None:
                 x0, y0, x1, y1 = caixa
                 return (abs(x1 - x0), abs(y1 - y0))
             return im.size
-    except Exception as exc:  # noqa: BLE001
+    except (OSError, ValueError) as exc:   # PIL: UnidentifiedImageError herda de OSError
         logger.debug("dimensões ilegíveis em %s: %s", caminho, exc)
         return None
 

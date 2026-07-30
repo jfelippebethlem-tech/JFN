@@ -101,6 +101,7 @@ _JS_GEOM = """() => {
 
 
 async def medir(navegacoes: int) -> dict:
+    from playwright.async_api import Error as PlaywrightError
     from playwright.async_api import async_playwright
 
     erros: list[str] = []
@@ -119,8 +120,10 @@ async def medir(navegacoes: int) -> dict:
                 await pg.fill("input[type=password]", senha, timeout=3000)
                 await pg.press("input[type=password]", "Enter")
                 await pg.wait_for_load_state("domcontentloaded")
-            except Exception:
-                pass
+            except PlaywrightError as exc:
+                # painel sem senha, ou campo ausente: seguir sem login é o comportamento certo —
+                # mas o motivo tem de aparecer, senão "não mediu" vira "mediu e estava bom".
+                print(f"[medir_boot] login pulado: {exc}", file=__import__("sys").stderr)
 
         await pg.goto(_BASE, wait_until="domcontentloaded")
         await pg.wait_for_timeout(600)          # dentro da intro de 1,96 s

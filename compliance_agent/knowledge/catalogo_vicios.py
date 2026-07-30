@@ -226,6 +226,15 @@ CATALOGO: tuple[Vicio, ...] = (
     Vicio("digitais_compartilhadas", "Digitais compartilhadas entre licitantes", "julgamento",
           "Metadados de PDF, redação ou origem de envio idênticos entre propostas 'concorrentes'.",
           detectores=("J5",), redflags_lex=("R14",), escalada="representacao", origem=("casa", "ALICE/CGU")),
+    # J9 é o vizinho de J5 e olha o CONTEÚDO, não a autoria: a planilha item a item e o texto da peça.
+    # Duas propostas "concorrentes" que são a mesma peça com os valores mexidos — razão constante em
+    # toda a lista (o caso dos 5% item a item), preços iguais, ou parágrafos LITERALMENTE idênticos.
+    Vicio("propostas_gemeas", "Propostas gêmeas (planilha derivada / texto copiado)", "julgamento",
+          "Concorrentes distintos entregam a MESMA planilha com percentual constante aplicado, ou a "
+          "mesma peça textual — trechos idênticos palavra por palavra entre propostas de empresas "
+          "diferentes. Indício de proposta-cobertura calculada a partir da do outro.",
+          detectores=("J9",), redflags_lex=("R14",), escalada="representacao",
+          origem=("casa", "OCDE", "ACFE")),
     Vicio("subcontratacao_cruzada", "Subcontratação cruzada / consórcio anômalo", "julgamento",
           "Perdedor vira subcontratado do vencedor (prêmio de conluio) ou consórcio junta quem deveria competir.",
           detectores=("J6",), escalada="diligencia", origem=("casa", "OCDE")),
