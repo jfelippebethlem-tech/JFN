@@ -579,8 +579,14 @@ def _detectores():
         "escalada": (lambda p: C.escalada_preco(db_path=p, limite=L), _b_escalada, "ALTO"),
         "aditivos": (lambda p: C.aditivos_estouro(db_path=p, limite=L), _b_aditivos, "ALTO"),
         "socio_servidor": (lambda p: C.socio_servidor(db_path=p, limite=L), _b_socio_servidor, "EXTREMO"),
-        "fornecedor_dependente": (lambda p: C.fornecedor_dependente(db_path=p, limite=L), _b_fornecedor_dependente, "MÉDIO"),
-        "corrida_dezembro": (lambda p: C.corrida_dezembro(db_path=p, limite=L), _b_corrida_dezembro, "MÉDIO"),
+        # faixa vem de `faixa_ajustada_por_lift`: os dois têm lift medido ABAIXO de 1 (0,48 e 0,59
+        # contra base de 7,01%) e por isso saem como INFORMATIVO, não como grau de risco.
+        "fornecedor_dependente": (lambda p: C.fornecedor_dependente(db_path=p, limite=L),
+                                  _b_fornecedor_dependente,
+                                  faixa_ajustada_por_lift("fornecedor_dependente", "MÉDIO")),
+        "corrida_dezembro": (lambda p: C.corrida_dezembro(db_path=p, limite=L),
+                             _b_corrida_dezembro,
+                             faixa_ajustada_por_lift("corrida_dezembro", "MÉDIO")),
         "socio_oculto": (lambda p: C.socio_oculto(db_path=p, limite=L), _b_socio_oculto, "ALTO"),
         "nepotismo": (lambda p: C.nepotismo(db_path=p, limite=L), _b_nepotismo, "ALTO"),
         "fenix": (lambda p: C.empresa_fenix(db_path=p, limite=L), _b_fenix, "ALTO"),
@@ -602,6 +608,63 @@ def _detectores():
     }
 
 
+# ── LIFT MEDIDO (G.8) — o que cada detector realmente prediz ──────────────────────────────────
+# Medido em 2026-07-29 pelo painel de lift, contra a taxa-base de 7,01% de sanção no acervo
+# (10.687 empresas, 749 sancionadas). O proxy é "foi sancionado DEPOIS do sinal" — não é a verdade
+# do achado, é o melhor gabarito disponível.
+#
+# Medir e publicar não muda comportamento sozinho: os dois detectores de lift abaixo de 1
+# continuavam registrados com faixa MÉDIO, e o PDF entregue afirmava nível de risco médio a partir
+# de um sinal que aponta para empresas MENOS sancionadas que a média. A decisão foi rebaixar a
+# INFORMATIVO, não aposentar — o padrão fático (rush de fim de exercício, fornecedor dependente de
+# um só órgão) segue juridicamente relevante; o que sai é a pretensão de graduar risco com ele.
+TAXA_BASE_SANCAO = 0.0701
+
+LIFT_MEDIDO: dict[str, float] = {
+    "escalada_preco": 2.17,          # aponta bem acima da base
+    "sobrepreco": 1.49,              # contribui para ordenar a fila
+    "corrida_dezembro": 0.59,        # ANTI-preditivo
+    "fornecedor_dependente": 0.48,   # ANTI-preditivo
+    "radar_risco": 12.98,            # CIRCULAR: usa sanção como insumo, o lift não informa
+}
+
+# Lift alto NÃO promove faixa (o teto da régua de evidência continua valendo: detector preditivo
+# produz achado mais valioso, não achado mais provado). Só rebaixa.
+_DETECTORES_CIRCULARES = ("radar_risco",)
+
+
+def faixa_ajustada_por_lift(detector: str, faixa: str) -> str:
+    """Rebaixa a faixa a INFORMATIVO quando o lift MEDIDO do detector é menor que 1.
+
+    Ausência de medição não rebaixa nem promove — não medir não é evidência de nada.
+    """
+    lift = LIFT_MEDIDO.get(detector)
+    if lift is None or detector in _DETECTORES_CIRCULARES:
+        return faixa
+    return "INFORMATIVO" if lift < 1.0 else faixa
+
+
+def nota_de_lift(detector: str) -> str:
+    """A frase que vai para o documento. Sem a taxa-base, o lift não se lê."""
+    lift = LIFT_MEDIDO.get(detector)
+    if lift is None:
+        return ""
+    base_pct = f"{TAXA_BASE_SANCAO * 100:.2f}".replace(".", ",")
+    if detector in _DETECTORES_CIRCULARES:
+        return (f"Poder preditivo medido: lift {lift} sobre a taxa-base de {base_pct}% — porém "
+                "CIRCULAR: este detector usa sanção como insumo e prevê sanção por construção. "
+                "O lift aqui não informa nada.")
+    if lift < 1.0:
+        return (f"Poder preditivo medido: lift {lift} contra a taxa-base de {base_pct}% de sanção "
+                f"no acervo. Isto é ANTI-preditivo — as empresas apontadas por este detector foram "
+                f"sancionadas MENOS que a média. O padrão fático segue relevante e a leitura vale, "
+                f"mas o sinal **não** ordena prioridade e este documento é INFORMATIVO, não uma "
+                f"graduação de risco.")
+    return (f"Poder preditivo medido: lift {lift} contra a taxa-base de {base_pct}% de sanção no "
+            f"acervo — o detector aponta acima da base. Lift alto torna o achado mais valioso para "
+            f"ordenar a fila, não mais provado.")
+
+
 async def gerar_pdf_intel(tipo: str, db_path: str | None = None) -> dict:
     """Gera o PDF Kroll do detector `tipo` e devolve {ok, path_pdf, url, n}."""
     reg = _detectores()
@@ -614,9 +677,14 @@ async def gerar_pdf_intel(tipo: str, db_path: str | None = None) -> dict:
     titulo, subtitulo, secoes, dd = builder(d)
     n = d.get("n") or d.get("n_a_epoca") or len(d.get("empresas", []) or d.get("achados", []))
     # ressalva do detector vira seção final + nota
-    if d.get("explicacao") or d.get("ressalva"):
-        secoes = secoes + [{"titulo": "Método e ressalvas",
-                            "html": f"<p>{_esc(d.get('explicacao',''))}</p><p><b>Ressalva.</b> {_esc(d.get('ressalva',''))}</p>"}]
+    _lift = nota_de_lift(tipo)
+    if d.get("explicacao") or d.get("ressalva") or _lift:
+        _html = (f"<p>{_esc(d.get('explicacao',''))}</p>"
+                 f"<p><b>Ressalva.</b> {_esc(d.get('ressalva',''))}</p>")
+        if _lift:
+            # O leitor tem de ver o NÚMERO, não só o rótulo rebaixado.
+            _html += f"<p><b>Poder preditivo (retro-auditoria).</b> {_esc(_lift)}</p>"
+        secoes = secoes + [{"titulo": "Método e ressalvas", "html": _html}]
     ctx = {
         "titulo": titulo, "subtitulo": subtitulo,
         "classificacao": "CONFIDENCIAL — USO INTERNO (controle externo · RJ)",
