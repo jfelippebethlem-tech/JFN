@@ -283,9 +283,21 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
                      if (ln.get("valor") or 0) > 0]
             _bf = benford(_vals)
             _d1 = _bf.get("primeiro_digito") or {}
-            if _bf.get("suficiente") and "NÃO CONFORM" in (_d1.get("faixa_nigrini", "") or "").upper():
-                L.append(f"Lei de Benford (1º dígito, n={_d1.get('n')}): NÃO conformidade (MAD {_d1.get('mad')}) — "
-                         "indício estatístico de fracionamento/valores fabricados a verificar nos documentos.")
+            _nao_conforme = "NÃO CONFORM" in (_d1.get("faixa_nigrini", "") or "").upper()
+            # O gate é `mad_confiavel`, NÃO `suficiente`. `suficiente` só diz que há n >= 50 — e é
+            # exatamente em n=50 que 100% das séries perfeitamente benfordianas são rotuladas "NÃO
+            # CONFORMIDADE" por ruído amostral (medido em 2026-07-29). Um parecer que afirmasse
+            # fracionamento nesse tamanho estaria certo por acidente ou errado por construção.
+            if _nao_conforme and _bf.get("mad_confiavel"):
+                L.append(f"Lei de Benford (1º dígito, n={_d1.get('n')}): NÃO conformidade "
+                         f"(MAD {_d1.get('mad')}, amostra suficiente para a faixa de Nigrini) — "
+                         "indício estatístico de fracionamento/valores fabricados a verificar nos "
+                         "documentos.")
+            elif _nao_conforme and _bf.get("suficiente"):
+                L.append(f"Lei de Benford (1º dígito, n={_d1.get('n')}): a faixa saiu 'NÃO "
+                         f"conformidade' (MAD {_d1.get('mad')}), mas o n é pequeno demais para "
+                         "essa leitura — nesse tamanho séries legítimas também são rotuladas assim. "
+                         "NÃO AFERÍVEL: não conta como indício.")
         except Exception as exc:  # noqa: BLE001
             logger.debug("parecer sem Benford: %s", exc)
         _an = ctx.get("anomalias") or _anomalias_fornecedor(ctx.get("cnpj", ""))

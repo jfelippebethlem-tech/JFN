@@ -136,9 +136,9 @@ Escala P (probabilidade) × I (impacto), 1–9 cada. Faixas: Baixo 1–9 | Médi
 
 ## 8-B. ANÁLISE ESTATÍSTICA DOS VALORES (LEI DE BENFORD)
 
-> A Lei de Benford prevê a frequência do **1º dígito** em populações de valores naturais (pagamentos). Um desvio relevante (MAD de Nigrini) é **indício** estatístico de fracionamento, valores fabricados ou direcionamento — **nunca prova**; amostras pequenas (n<50) são pouco confiáveis. Triagem, a confirmar nos documentos.
+> A Lei de Benford prevê a frequência do **1º dígito** em populações de valores naturais (pagamentos). Um desvio relevante (MAD de Nigrini) é **indício** estatístico de fracionamento, valores fabricados ou direcionamento — **nunca prova**. A faixa de conformidade de Nigrini só é **legível com amostra grande**: medido nesta base, em n≈50 *todas* as séries perfeitamente benfordianas são rotuladas 'NÃO CONFORMIDADE' por ruído amostral (n=100: 95%; n=200: 64%; n=400: 20%; n=800: 2%). Abaixo do limiar o resultado sai como **NÃO AFERÍVEL**, não como achado. Triagem, a confirmar nos documentos.
 
-**1º dígito** (n=3 OBs): **MAD de Nigrini = 0.1162** → **NÃO CONFORMIDADE**.
+**1º dígito** (n=3 OBs): **MAD de Nigrini = 0.1162** → NÃO CONFORMIDADE *(faixa não legível neste n)*.
 > ⚠️ Amostra pequena (n=3 < 50) — resultado **pouco confiável**, informativo apenas.
 
 | Dígito | Esperado (Benford) | Observado | Δ (pp) |

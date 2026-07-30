@@ -447,10 +447,22 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             vals = [ln.get("valor") or 0 for a in p["anos"] for ln in p["por_ano"][a].get("linhas", []) if (ln.get("valor") or 0) > 0]
             bf = benford(vals)
             d1 = bf["primeiro_digito"]
+            _leg = bool(d1.get("faixa_confiavel", bf.get("mad_confiavel")))
+            _conf = "CONFORM" in d1["faixa_nigrini"].upper() and "NÃO" not in d1["faixa_nigrini"].upper()
+            if not _leg:
+                # n insuficiente para LER a faixa. Antes, a única ressalva era n < 50 — e é em n=50
+                # que 100% das séries benfordianas saem "NÃO CONFORMIDADE" por ruído amostral.
+                _leitura = (f"<b>NÃO AFERÍVEL</b> neste tamanho de amostra. {esc(d1.get('faixa_nota', ''))} "
+                            "A faixa fica registrada para rastreabilidade e não constitui indício.")
+            elif _conf:
+                _leitura = "Conforme = sem sinal de fracionamento/fabricação."
+            else:
+                _leitura = "NÃO conformidade pede verificação (fracionamento/valores fabricados)."
             secoes.append({"titulo": "9. Análise estatística (Lei de Benford)",
-                           "html": f"<p class='nota'>1º dígito dos valores de OB (n={d1['n']}). MAD de Nigrini = <b>{d1['mad']}</b> "
-                                   f"→ <b>{d1['faixa_nigrini']}</b>. {'Conforme = sem sinal de fracionamento/fabricação.' if 'CONFORM' in d1['faixa_nigrini'].upper() or 'conformidade' in d1['faixa_nigrini'] else 'NÃO conformidade pede verificação (fracionamento/valores fabricados).'} "
-                                   f"{'(amostra pequena — pouco confiável)' if not bf['suficiente'] else ''}</p>"})
+                           "html": f"<p class='nota'>1º dígito dos valores de OB (n={d1['n']}). "
+                                   f"MAD de Nigrini = <b>{d1['mad']}</b> → "
+                                   f"{'<b>' + esc(d1['faixa_nigrini']) + '</b>' if _leg else esc(d1['faixa_nigrini'])}. "
+                                   f"{_leitura}</p>"})
         except Exception as exc:  # noqa: BLE001
             logger.warning("Seção 9 (Lei de Benford) omitida p/ CNPJ %s: %s", cnpj, exc)
 

@@ -786,7 +786,11 @@ def _render_benford(ctx: dict) -> str:
     add("")
     add("> A Lei de Benford prevê a frequência do **1º dígito** em populações de valores naturais (pagamentos). "
         "Um desvio relevante (MAD de Nigrini) é **indício** estatístico de fracionamento, valores fabricados ou "
-        "direcionamento — **nunca prova**; amostras pequenas (n<50) são pouco confiáveis. Triagem, a confirmar nos documentos.")
+        "direcionamento — **nunca prova**. A faixa de conformidade de Nigrini só é **legível com "
+        "amostra grande**: medido nesta base, em n≈50 *todas* as séries perfeitamente benfordianas "
+        "são rotuladas 'NÃO CONFORMIDADE' por ruído amostral (n=100: 95%; n=200: 64%; n=400: 20%; "
+        "n=800: 2%). Abaixo do limiar o resultado sai como **NÃO AFERÍVEL**, não como achado. "
+        "Triagem, a confirmar nos documentos.")
     add("")
     if not p.get("tem_dados"):
         add("_Sem Ordens Bancárias na base para este fornecedor — **INDISPONÍVEL**._")
@@ -804,9 +808,15 @@ def _render_benford(ctx: dict) -> str:
     d1 = bf.get("primeiro_digito") or {}
     faixa = d1.get("faixa_nigrini", "—")
     conforme = "CONFORM" in faixa.upper() and "NÃO" not in faixa.upper()
-    add(f"**1º dígito** (n={d1.get('n', 0)} OBs): **MAD de Nigrini = {d1.get('mad', '—')}** → **{faixa}**.")
+    _legivel = bool(d1.get("faixa_confiavel", bf.get("mad_confiavel")))
+    _rotulo = f"**{faixa}**" if _legivel else f"{faixa} *(faixa não legível neste n)*"
+    add(f"**1º dígito** (n={d1.get('n', 0)} OBs): **MAD de Nigrini = {d1.get('mad', '—')}** → {_rotulo}.")
     if not bf.get("suficiente"):
         add(f"> ⚠️ Amostra pequena (n={d1.get('n', 0)} < 50) — resultado **pouco confiável**, informativo apenas.")
+    elif not _legivel:
+        # A ressalva antes só aparecia com n < 50, que é o limiar em que o erro é de 100%.
+        add(f"> ⚠️ **NÃO AFERÍVEL.** {d1.get('faixa_nota', '')} A faixa fica registrada para "
+            "rastreabilidade, mas não constitui indício.")
     add("")
     obs = d1.get("obs") or {}
     esp = d1.get("esp") or {}
