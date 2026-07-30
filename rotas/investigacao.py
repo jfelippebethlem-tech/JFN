@@ -2228,6 +2228,25 @@ def api_pcrj_doe_canal_informal():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fontes/limites")
+def api_fontes_limites(fonte: str = ""):
+    """O que cada fonte NÃO tem, e o que já foi tentado e não funciona.
+
+    Irmã de `/api/fontes/frescor`: aquela diz se o dado está VELHO, esta diz se ele sequer EXISTE.
+    Até agora esse conhecimento vivia só em prosa de handoff — quem não leu o handoff certo retentava
+    pelo mesmo caminho bloqueado. Pior: fonte que falha calada devolve `[]`, e `[]` vira "nada
+    encontrado" no parecer, que é afirmação falsa por omissão. INDISPONÍVEL ≠ 0.
+    """
+    from compliance_agent.limites_de_fonte import limites as _limites
+    itens = _limites(fonte)
+    return JSONResponse({
+        "ok": True, "total": len(itens),
+        "bloqueios": sum(1 for x in itens if x["tipo"] == "bloqueio"),
+        "limites_de_dado": sum(1 for x in itens if x["tipo"] == "limite_de_dado"),
+        "itens": itens,
+    })
+
+
 @router.get("/api/fontes/frescor")
 def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/

@@ -36,6 +36,7 @@ GET /api/eventos/stream -> api_eventos_stream
 GET /api/fachada/revisar -> api_fachada_revisar
 GET /api/flags -> api_flags
 GET /api/fontes/frescor -> api_fontes_frescor
+GET /api/fontes/limites -> api_fontes_limites
 GET /api/grafo -> api_grafo
 GET /api/grafo/ftm -> api_grafo_ftm
 GET /api/hermes/auditor24h/status -> api_auditor24h_status

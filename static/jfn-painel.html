@@ -2988,6 +2988,24 @@ async function renderFontesExternas(){
     </div>`);
   h+=`<div id="fx-out"></div>`;
   h+=`<div class="note">Ausência de resultado numa fonte externa é <b>INDISPONÍVEL</b>, não prova de inexistência: a cobertura de cada base é parcial e declarada por ela mesma.</div>`;
+  /* v49: o que cada fonte NÃO tem deixa de viver só em prosa de handoff. Fonte que falha calada
+     devolve lista vazia, e lista vazia vira "nada encontrado" no parecer — afirmação falsa por
+     omissão. Aqui o limite é DADO, e a tabela diz se é bloqueio (contornável) ou limite da fonte. */
+  const lim=await J('/api/fontes/limites');
+  if(lim&&lim.ok&&(lim.itens||[]).length){
+    h+=sec(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
+    h+=card(`<table><thead><tr><th>Fonte</th><th>Tipo</th><th>O que acontece</th><th>Caminho alternativo</th><th>Medido</th></tr></thead><tbody>`
+      +lim.itens.map(x=>`<tr>
+          <td><b>${esc(x.fonte)}</b></td>
+          <td><span class="pill ${x.tipo==='bloqueio'?'medio':'alto'}">${x.tipo==='bloqueio'?'bloqueio':'limite da fonte'}</span></td>
+          <td>${esc(x.o_que_acontece)}</td>
+          <td class="dim">${esc(x.caminho_alternativo)}</td>
+          <td class="dim">${esc(x.medido_em)}</td></tr>`).join('')
+      +`</tbody></table>
+        <div class="note">Um <b>bloqueio</b> pode cair amanhã e vale retentar; um <b>limite da fonte</b> não —
+        a base simplesmente não tem aquele campo, e insistir é queimar sessão. Este quadro existe para
+        a peça escrever <b>LACUNA nomeada</b> em vez de "nada encontrado".</div>`);
+  }
   return h;
 }
 
