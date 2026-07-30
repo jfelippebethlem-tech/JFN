@@ -25,6 +25,7 @@ import json
 import re
 
 from compliance_agent.duckdb_util import conectar
+from compliance_agent.database.models import _resolver_db
 
 
 def _hhi(shares: list[float]) -> float:
@@ -211,49 +212,83 @@ def _metrica_grupos(totais: dict[str, float], nomes: dict[str, str], gid: dict[s
 
 
 def concentracao_por_grupo(ug: str, *, top_n: int = 200, min_share_grupo: float = 15.0) -> dict:
-    """Concentração de uma UG COLAPSADA por grupo econômico (sócio em comum) — revela concorrência FICTÍCIA:
-    muitos CNPJs que parecem concorrentes mas são UM grupo. Indício quando um grupo MULTI-CNPJ concentra fatia
-    relevante (≥ `min_share_grupo`%) apesar da aparente diversidade. Bounded aos `top_n` maiores da UG."""
-    con = conectar()
+    """Concentração de uma UG COLAPSADA por grupo econômico — DELEGA a `osint/grupo_economico`.
+
+    ESTA FUNÇÃO ERA UMA SEGUNDA IMPLEMENTAÇÃO, e era a pior das duas. Medido na SECID (UG 660100),
+    o caso emblemático da casa:
+
+                              |  osint/grupo_economico  |  esta função, antes
+      HHI por CNPJ            |         0,1062          |       0,1020
+      HHI por GRUPO           |         0,4064          |       0,3254
+      share do maior grupo    |         62,1%           |       53,27%
+
+    Subestimava a concentração em 8,8 pontos de share — e é o delta que constitui o achado. Três
+    causas, todas no código: (a) unia por `socio_nome_norm`, nome puro, que a régua da casa avalia em
+    força 0,10; (b) media sobre `ordens_bancarias`, o espelho TFE, contra a regra absoluta nº 2 do
+    projeto ("OB/pagamento → SEMPRE SIAFE direto"); (c) não tinha guarda de fan-out, de modo que um
+    sócio serial ou um homônimo podia fundir meio acervo num grupo só.
+
+    O CONTRATO DE RETORNO É PRESERVADO byte a byte — inclusive a escala 0-10000 do HHI —, porque o
+    detector J1 (peso 0,9) e a §1-H do relatório de órgão o consomem. `tests/
+    test_grupo_economico_paridade.py` trava cada campo. O que se acrescenta é `cobertura_qsa`, que a
+    antiga não tinha: fornecedor sem QSA conta como grupo de si mesmo, então **o delta é PISO**.
+
+    `top_n` deixou de ter efeito (a medição nova não amostra os maiores — usa a UG inteira) e
+    permanece na assinatura só para não quebrar chamador existente.
+    """
+    import sqlite3 as _sq
+
+    from compliance_agent import ugs as _ugs
+    from compliance_agent.osint.grupo_economico import concentracao_da_ug, montar_grupos
+
+    con = _sq.connect(f"file:{_resolver_db()}?mode=ro", uri=True)
     try:
-        rows = con.execute("""
-            SELECT regexp_replace(favorecido_cpf, '[^0-9]', '', 'g') c,
-                   ANY_VALUE(favorecido_nome) nome, SUM(valor) tot
-            FROM db.ordens_bancarias
-            WHERE ug_codigo = ? AND valor > 0 AND favorecido_cpf IS NOT NULL
-                  AND length(regexp_replace(favorecido_cpf, '[^0-9]', '', 'g')) = 14
-            GROUP BY c ORDER BY tot DESC LIMIT ?
-        """, [str(ug), top_n]).fetchall()
-        from compliance_agent.entidades_gov import eh_nao_fornecedor
-        totais: dict[str, float] = {}
-        nomes: dict[str, str] = {}
-        for c, nome, tot in rows:
-            if not c or eh_nao_fornecedor(nome or ""):
-                continue
-            totais[c] = float(tot or 0.0)
-            nomes[c] = (nome or "").strip()
-        if not totais:
-            from compliance_agent import ugs as _ugs
-            return {"ug": str(ug), "ug_nome": _ugs.nome_canonico(str(ug), fallback="") or "",
-                    "indicio": False, "n_cnpjs": 0, "n_grupos": 0, "grupos": [], "nota": _NOTA_GRUPO}
-        cs = list(totais)
-        ph = ",".join("?" * len(cs))
-        srows = con.execute(
-            f"SELECT regexp_replace(cnpj, '[^0-9]', '', 'g') c, socio_nome_norm "
-            f"FROM db.socios_fornecedor WHERE regexp_replace(cnpj, '[^0-9]', '', 'g') IN ({ph}) "
-            f"AND socio_nome_norm <> ''", cs).fetchall()
+        base = concentracao_da_ug(con, str(ug), grupos=montar_grupos(con))
     finally:
         con.close()
-    socios: dict[str, set] = {}
-    for c, s in srows:
-        socios.setdefault(c, set()).add(s)
-    gid = _uniao_por_socio(cs, socios)
-    m = _metrica_grupos(totais, nomes, gid)
-    mm = m.get("maior_grupo_multi")
-    indicio = bool(mm and mm["share"] >= min_share_grupo)
-    from compliance_agent import ugs as _ugs
-    return {"ug": str(ug), "ug_nome": _ugs.nome_canonico(str(ug), fallback="") or "",
-            "indicio": indicio, **m, "nota": _NOTA_GRUPO}
+
+    nome_ug = _ugs.nome_canonico(str(ug), fallback="") or ""
+    if base.get("estado") != "medido":
+        return {"ug": str(ug), "ug_nome": nome_ug, "indicio": False,
+                "n_cnpjs": 0, "n_grupos": 0, "n_grupos_multi": 0,
+                "hhi_cnpj": 0.0, "hhi_grupo": 0.0, "delta_hhi": 0.0, "top_grupo_share": 0.0,
+                "maior_grupo_multi": None, "grupos": [],
+                "cobertura_qsa": base.get("cobertura_qsa"),
+                "nota": base.get("motivo") or _NOTA_GRUPO}
+
+    # escala: a nova mede HHI em 0-1; esta função sempre devolveu 0-10000, e os renders assumem isso
+    def _e(v) -> float:
+        return round(float(v or 0.0) * 10000, 1)
+
+    grupos = []
+    for g in base.get("maiores_grupos") or []:
+        cnpjs = g.get("cnpjs") or []
+        grupos.append({
+            "grupo": g.get("grupo"),
+            "n_cnpjs": g.get("n_cnpj") or len(cnpjs),
+            "n_raizes": len({c[:8] for c in cnpjs}) or 1,
+            "total": g.get("valor"),
+            "share": round(float(g.get("fracao") or 0.0) * 100, 2),
+            "top_nome": (g.get("unido_por") or [""])[0],
+            "cnpjs": sorted(cnpjs),
+            "unido_por": g.get("unido_por") or [],
+        })
+    multi = [x for x in grupos if (x["n_cnpjs"] or 0) >= 2]
+    maior_multi = max(multi, key=lambda x: x["total"] or 0, default=None)
+    top_share = grupos[0]["share"] if grupos else 0.0
+    return {
+        "ug": str(ug), "ug_nome": nome_ug,
+        "indicio": bool(maior_multi and (maior_multi["share"] or 0) >= min_share_grupo),
+        "n_cnpjs": base.get("n_cnpj", 0), "n_grupos": base.get("n_grupo", 0),
+        "n_grupos_multi": len(multi),
+        "hhi_cnpj": _e(base.get("hhi_por_cnpj")), "hhi_grupo": _e(base.get("hhi_por_grupo")),
+        "delta_hhi": _e(base.get("delta_hhi")),
+        "top_grupo_share": top_share,
+        "maior_grupo_multi": maior_multi, "grupos": grupos,
+        "cobertura_qsa": base.get("cobertura_qsa"),
+        "total_pago": base.get("total_pago"),
+        "nota": _NOTA_GRUPO + " " + (base.get("ressalva") or ""),
+    }
 
 
 def cartel_com_qsa(cnpj: str, limite: int = 15, max_ubiquidade: int = 40) -> dict:
