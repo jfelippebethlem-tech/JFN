@@ -45,6 +45,7 @@ from compliance_agent.detectores.e8_deserto_dirigido import E8DesertoDirigido
 from compliance_agent.detectores.p6_direta_indevida import P6DiretaIndevida
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
+from compliance_agent.detectores.j9_propostas_gemeas import J9PropostasGemeas
 from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
 from compliance_agent.detectores.j4_supressao_propostas import J4SupressaoPropostas
 from compliance_agent.detectores.j5_digitais_compartilhadas import J5DigitaisCompartilhadas
@@ -78,6 +79,8 @@ REGISTRO: dict[str, Detector] = {
         J2PropostasCobertura(),  # fase de julgamento — propostas de cobertura (screens de preço)
         J3DescontoAnomalo(),     # fase de julgamento — desconto anômalo/irrisório recorrente
         J4SupressaoPropostas(),  # fase de julgamento — supressão de propostas/licitante único
+        J9PropostasGemeas(),     # julgamento — planilha DERIVADA e texto copiado entre concorrentes
+                                 # (motor `sei/conluio_propostas` existia desde a Onda 5 e estava ÓRFÃO)
         P3Sobrepreco(),
         CFachada(),
         J5DigitaisCompartilhadas(),  # julgamento — propostas com metadados/redação/origem compartilhados
@@ -126,6 +129,7 @@ PESOS_DETECTOR: dict[str, float] = {
     "J6": PESOS_FAMILIA["conluio"],
     "J7": PESOS_FAMILIA["conluio"],
     "J8": PESOS_FAMILIA["conluio"],
+    "J9": PESOS_FAMILIA["conluio"],
     "P3": PESOS_FAMILIA["preco"],
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
@@ -283,7 +287,7 @@ def rodar_julgamento(processo: str, *, contexto: dict | None = None, exculpatori
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7", "J8")]
+    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 

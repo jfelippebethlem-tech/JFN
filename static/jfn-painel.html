@@ -533,7 +533,10 @@
   .obj{font-size:12.5px;color:var(--mut);padding:5px 0;border-bottom:1px solid var(--bd2)}.obj:last-child{border-bottom:0}
   .chev{transition:.16s;display:inline-block;font-family:var(--mono)}.exp.open .chev{transform:rotate(90deg)}
 
-  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-top:1px solid var(--bd2);padding:4px 8px calc(4px + env(safe-area-inset-bottom));max-width:1180px;margin:0 auto}
+  /* v49: `left:0;right:0` + `max-width` + `margin:0 auto` num elemento FIXO não centraliza de forma
+     confiável em tela larga (as margens automáticas competem com left/right resolvidos). Trocado por
+     ancorar no meio e recuar metade da largura — centraliza sempre, sem depender do resolvedor. */
+  nav.tabs{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-top:1px solid var(--bd2);padding:4px 8px calc(4px + env(safe-area-inset-bottom));max-width:1180px}
   nav.tabs::-webkit-scrollbar{display:none}
   nav.tabs{perspective:700px}
   nav.tabs button{flex:1 0 auto;min-width:0;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:11px 12px;font:inherit;transition:color .15s,transform .22s cubic-bezier(.2,.8,.25,1.1);border-radius:7px;position:relative;transform:rotateX(-7deg)}
@@ -683,9 +686,18 @@
   .sph{box-shadow:0 1px 0 oklch(0 0 0/.22) inset}
   .sph.on{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--sphc) 55%,transparent)}
   .sph:hover{transform:rotateX(0deg) translateZ(12px) rotateY(var(--ry,0deg))}
-  nav.tabs{perspective:760px}
+  /* v49 — O SAMBA DOS BOTÕES, causa raiz. Aqui havia:
+       nav.tabs button:hover{... translateZ(9px) rotateY(var(--ry))}
+       nav.tabs button.on   {... translateZ(7px)}            <- DEPOIS, mesma especificidade
+     `.on` escrito após `:hover` com a mesma especificidade GANHA a cascata. Efeito: passar o mouse
+     na aba ATIVA não inclinava (perdia o rotateY), e em todas as outras inclinava. Atravessar a
+     barra dava tilt-sem-tilt-sem-tilt — o "sambando" que o dono viu. E ainda havia DOIS
+     `perspective` na mesma barra (700px na linha ~538, 760px aqui).
+     Agora: um estado de repouso, um de destaque, e `.on:hover` explicitado com especificidade maior
+     para nunca mais depender da ORDEM em que as regras aparecem. */
+  nav.tabs button.on{transform:rotateX(0deg) translateZ(7px) rotateY(var(--ry,0deg))}
   nav.tabs button:hover{transform:rotateX(0deg) translateZ(9px) rotateY(var(--ry,0deg))}
-  nav.tabs button.on{transform:rotateX(0deg) translateZ(7px)}
+  nav.tabs button.on:hover{transform:rotateX(0deg) translateZ(10px) rotateY(var(--ry,0deg))}
   /* grade holográfica atrás do header — o console tem chão */
   header::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.5;
     background:linear-gradient(90deg,color-mix(in oklch,var(--ion) 9%,transparent) 1px,transparent 1px) 0 0/34px 100%,
@@ -706,8 +718,13 @@
   #esfnebula{position:fixed;top:0;left:0;right:0;height:46vh;z-index:0;pointer-events:none;opacity:0;
     background-size:cover;background-position:center 20%;mix-blend-mode:screen;
     -webkit-mask-image:linear-gradient(180deg,#000 30%,transparent);mask-image:linear-gradient(180deg,#000 30%,transparent);
-    transition:opacity 1.1s ease;animation:nebulaDrift 60s ease-in-out infinite alternate,nebulaPulse 7.5s ease-in-out infinite}
-  @keyframes nebulaPulse{0%,100%{filter:brightness(.92) saturate(1)}50%{filter:brightness(1.32) saturate(1.18)}}
+    transition:opacity 1.1s ease;animation:nebulaDrift 60s ease-in-out infinite alternate;
+    filter:brightness(1.12) saturate(1.09);will-change:transform}
+  /* v49: `nebulaPulse` animava `filter:brightness/saturate` numa camada FIXA de 46vh com
+     `mix-blend-mode:screen`. Filtro sobre camada blendada de tela cheia = recompor o viewport
+     inteiro a cada quadro, e era um dos motores do 1-2 FPS medido. O brilho ficou ESTÁTICO no meio
+     da faixa que a animação percorria (era .92→1.32; agora 1.12 fixo), e o `nebulaDrift` continua —
+     ele anima só `transform`, que o compositor faz de graça. Movimento preservado, custo removido. */
   body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/nebula-estado.jpg);opacity:.20}
   body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/nebula-prefeitura.jpg);opacity:.20}
   body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/nebula-transversal.jpg);opacity:.19}
@@ -717,17 +734,20 @@
 
   /* ── VIDA ELEVADA (dono: tudo pulsando Jarvis/lightsaber — menus, abas, selos) ──
      Respirações LENTAS e dessincronizadas (2.6–4s): vivo, não epilético. */
-  .sph.on{animation:sphBreath 3.6s ease-in-out infinite}
-  @keyframes sphBreath{0%,100%{box-shadow:var(--lift),0 0 24px -8px color-mix(in oklch,var(--sphc) 50%,transparent)}
-    50%{box-shadow:var(--lift),0 0 42px -4px color-mix(in oklch,var(--sphc) 78%,transparent)}}
-  nav.tabs button.on{animation:tabBreath 2.9s ease-in-out infinite}
-  @keyframes tabBreath{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
+  /* v49 — A VIDA CONTINUA, O CUSTO NÃO. Medido no navegador: o painel rodava a **1-2 FPS com a
+     página PARADA**, com 57 animações `infinite` ativas. A 1 FPS, "respiração lenta" não parece
+     viva: pisca. E as quatro respirações daqui eram justamente as caras — animavam `filter` e
+     SPREAD de `box-shadow`, que forçam repintura do elemento inteiro (com o texto dentro) a cada
+     quadro. `opacity` e `transform`, não: o compositor resolve na GPU sem repintar.
+     Então o efeito Jarvis foi PRESERVADO e trocou de veículo: cada elemento já tinha um
+     pseudo-elemento próprio (`.sph.on::after`, `nav.tabs button.on::after`, `.cover-seal::before`)
+     e é ele que pulsa agora, em opacity. O brilho antes obtido por animação virou valor ESTÁTICO no
+     meio da faixa — visualmente é o pico que se via, sem custo por quadro. */
+  .sph.on{box-shadow:var(--lift),0 0 33px -6px color-mix(in oklch,var(--sphc) 64%,transparent)}
   nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),sabreBreath 2.6s ease-in-out .3s infinite!important}
-  @keyframes sabreBreath{0%,100%{opacity:1;filter:brightness(1)}50%{opacity:.74;filter:brightness(1.45)}}
-  .cover-seal{animation:sealBreath 3.9s ease-in-out infinite;transform-style:preserve-3d;
+  @keyframes sabreBreath{0%,100%{opacity:1}50%{opacity:.72}}
+  .cover-seal{transform-style:preserve-3d;box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 9px 28px -9px color-mix(in oklch,var(--esf) 72%,transparent);
     transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
-  @keyframes sealBreath{0%,100%{box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 8px 22px -12px color-mix(in oklch,var(--esf) 60%,transparent)}
-    50%{box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 10px 34px -6px color-mix(in oklch,var(--esf) 84%,transparent)}}
   .live .pulse{animation:pl 1.8s infinite}
   @media (prefers-reduced-motion:reduce){.sph.on,nav.tabs button.on,nav.tabs button.on::after,.cover-seal,.live .pulse{animation:none}}
   /* GRID HOLOGRÁFICO GLOBAL — o "chão" tech que flui na cor da esfera, preenche o
@@ -775,12 +795,24 @@
     /* o shader nao desenha onde a arte JA e heroi. O nucleo procedural era um
        disco azul saturado bem em cima do nucleo incandescente da foto: dois
        nucleos no mesmo pixel, e ganhava o borrao. A mascara abre um furo
-       exatamente no centro do reator (51% x 46%, onde o shader poe seu miolo),
-       entao sobra do procedural o que ele faz bem — raios, particulas, o campo
-       que se mexe — e o coracao volta a ser a peca fotografada. */
-    -webkit-mask-image:radial-gradient(circle min(27vmin,250px) at 51% 46%,
+       exatamente no centro do reator, entao sobra do procedural o que ele faz
+       bem — raios, particulas, o campo que se mexe — e o coracao volta a ser a
+       peca fotografada.
+
+       v49 — A "BOLA DO NADA NO MEIO", parte 1 de 3. A mascara estava em 51% 46%.
+       O nucleo do shader esta em 41% do topo, e isso e demonstravel por duas
+       fontes independentes no proprio arquivo: `vec2 pr=p-vec2(0.0,0.09)` com
+       gl_FragCoord.y crescendo para CIMA poe o miolo 9% acima do centro
+       (50%-9% = 41%), e o desenho do territorio usa `const cy=H*0.41` com o
+       comentario "nasce no nucleo do reator". Ou seja: o furo abria 5% da altura
+       ABAIXO do nucleo. Consequencia visivel — o topo do orbe laranja escapava da
+       mascara e ficava flutuando sobre o video, enquanto o furo revelava pixels de
+       video que nao tem reator nenhum.
+       A mascara foi calibrada na era da FOTO PARADA e nunca reajustada quando o
+       video entrou no v30 (532a77e0). Agora casa com o shader: 50% 41%. */
+    -webkit-mask-image:radial-gradient(circle min(27vmin,250px) at 50% 41%,
       transparent 0 46%,rgba(0,0,0,.30) 72%,#000 100%);
-    mask-image:radial-gradient(circle min(27vmin,250px) at 51% 46%,
+    mask-image:radial-gradient(circle min(27vmin,250px) at 50% 41%,
       transparent 0 46%,rgba(0,0,0,.30) 72%,#000 100%)}
   /* o território: malha REAL do RJ (IBGE) revelada pela varredura do reator */
   #pmap{position:absolute;inset:0;width:100%;height:100%;display:block;mix-blend-mode:screen;opacity:.92}
@@ -1642,7 +1674,17 @@
 
   /* ── o mesmo reator, em escala grande, no cockpit ─────────────────────
      O núcleo do mapa é o MESMO objeto do header — o portal já entrega a
-     energia a ele no handoff. Contra-rotação idêntica mantém a leitura.  */
+     energia a ele no handoff. Contra-rotação idêntica mantém a leitura.
+
+     ⚠️ v49 — REGRA MORTA, MEDIDA. Nenhum dos dois seletores casa com coisa
+     alguma neste arquivo: `id="nucleo"` tem ZERO ocorrências e `ck-core` só
+     aparece nestas duas regras de CSS (aqui e no @media abaixo). O cockpit usa
+     `.ck-nucleo` / `#ck-nucleo` / `#nucleo-cv`.
+     Fica registrado, não removido: a casa manda mencionar código morto
+     pré-existente em vez de apagá-lo (CLAUDE.md §6.3). Está anotado aqui porque
+     é um halo circular borrado e, na caça à "bola do nada no meio", foi
+     candidato — e foi DESCARTADO por ser inerte. Quem reativar `.ck-core` um dia
+     herda um halo animado sem querer. */
   #nucleo::before,.ck-core::before{
     content:"";position:absolute;inset:-14%;border-radius:50%;pointer-events:none;z-index:-1;
     background:radial-gradient(closest-side,color-mix(in oklch,var(--esf,var(--ion)) 34%,transparent),transparent 70%);
@@ -1881,9 +1923,20 @@
      Nada aqui encolhe alvo de clique: a licao da v16holo vale para todos.    */
   .btn,.chip,.tab,.lnk,.clk,.ck-inst,.card,nav.tabs button,.sph,.htop a{
     -webkit-tap-highlight-color:transparent}
+  /* v49 — O AFUNDAMENTO 3D ESTAVA MORTO, e esta regra era a assassina.
+     Havia QUATRO declarações `:active{transform}` para os mesmos elementos, em quatro lugares do
+     arquivo (linhas ~479, ~560, ~660 e aqui). Como esta é a ÚLTIMA na cascata, ela ganhava — e ela
+     é a mais pobre: um empurrãozinho plano de 1px que DESCARTA o `rotateX/rotateY` do cursor e o
+     `translateZ(-4px)` que a regra da linha ~660 desenhou com cuidado ("Repouso = plano · hover =
+     salta e inclina · :active = AFUNDA"). Ou seja: o efeito de pressionar que o autor especificou
+     nunca chegou à tela, e as três regras anteriores eram decorativas.
+     Agora a vencedora carrega o efeito pretendido — afunda em Z, mantém a inclinação do cursor e
+     conserva o micro-recuo tátil. As outras três ficam onde estão (a casa manda mencionar código
+     morto pré-existente em vez de apagá-lo) e estão nomeadas aqui. */
   .btn:active,.chip:active,.tab:active,.lnk:active,.ck-inst:active,
   nav.tabs button:active,.sph:active,.htop a:active{
-    transform:translateY(1px) scale(.995)}
+    transform:perspective(var(--persp,900px)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))
+              translateZ(-4px) translateY(1px) scale(.99);transition-duration:.07s}
   .clk:active{filter:brightness(1.35)}
 
   /* a onda. `--ondaC` herda a esfera, entao a cor do toque muda de esfera. */
@@ -2385,6 +2438,48 @@
   @media (prefers-reduced-motion:reduce){
     #view .grid>.card.rise,#view .cols>.card.rise{animation:none;opacity:1}}
 
+/* ══ v49 · MODO SÓBRIO MEDIDO — o painel mede a máquina em que está e recua ═════════════════════
+   O PROBLEMA, EM NÚMERO. Medido com Playwright nesta VM (2 vCPU): **1-2 FPS com a página PARADA**,
+   com 57 animações `infinite` ativas. É isso que o dono descreve como "fica piscando": a 1 FPS uma
+   respiração de 2,9 s não respira — pisca, porque cada quadro é um salto grande.
+
+   POR QUE ESTA LISTA. Quinze `@keyframes` infinitas animam `filter`, spread de `box-shadow` ou
+   `background-position` — as três propriedades que forçam REPINTURA do elemento a cada quadro
+   (diferente de `opacity`/`transform`, que o compositor resolve na GPU). Em máquina folgada isso
+   passa; em 2 vCPU, é o orçamento inteiro.
+
+   POR QUE NÃO APAGUEI. O dono pediu explicitamente o efeito Jarvis pulsando, e em máquina capaz ele
+   custa pouco e vale muito. Então o painel MEDE (`_medirFps`, no fim do boot) e só recua onde
+   precisa. Quem tem GPU vê o painel inteiro; a VM vê o painel legível. `prefers-reduced-motion`
+   continua valendo por cima disto — são eixos diferentes: um é preferência declarada, este é
+   capacidade medida. */
+  body.fps-baixo #hologrid,
+  body.fps-baixo #rjbg,
+  body.fps-baixo .card.hl, body.fps-baixo .card.hl.rise, body.fps-baixo .card.hl:hover,
+  body.fps-baixo .card.hl.rise:hover,
+  body.fps-baixo .card::after, body.fps-baixo .ck-hero::after,
+  body.fps-baixo .ck-ved,
+  body.fps-baixo .cover-row::after,
+  body.fps-baixo .cover-seal .jico,
+  body.fps-baixo .cover::before, body.fps-baixo .cover.estado::before,
+  body.fps-baixo .cover.prefeitura::before, body.fps-baixo .cover.geral::before,
+  body.fps-baixo .grid::after, body.fps-baixo .cols::after,
+  body.fps-baixo .nu-sweep.on,
+  body.fps-baixo .sev-alta, body.fps-baixo .grave, body.fps-baixo td .pill.alto,
+  body.fps-baixo .sev-media, body.fps-baixo .medio, body.fps-baixo td .pill.medio,
+  body.fps-baixo .sph.on .i .jico,
+  body.fps-baixo tbody tr:hover, body.fps-baixo .barw .row:hover,
+  body.fps-baixo .btn>.hlx::before, body.fps-baixo .chip>.hlx::before,
+  body.fps-baixo .tab>.hlx::before, body.fps-baixo .htop a>.hlx::before{
+    animation:none!important}
+  /* o sabre da aba ativa e o selo continuam vivos: já pulsam em `opacity`, que é de graça. */
+  /* a nebulosa mantém o drift (`transform`) e perde só o filtro, que já é estático desde o v49. */
+  body.fps-baixo #esfnebula{animation-duration:120s}
+  /* aviso honesto: o modo sóbrio é VISÍVEL, nunca silencioso — degradação calada é o que faz
+     ninguém descobrir que o painel está diferente do que o autor desenhou. */
+  body.fps-baixo #modo-sobrio{display:inline-flex}
+  #modo-sobrio{display:none;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);
+    border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;cursor:help}
 </style>
 </head>
 <body>
@@ -3337,9 +3432,24 @@ const sessaoReports=new Set();
 function montarSpheres(){
   $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
 }
+/* v49 — A BARRA DESLOCAVA A CADA NAVEGAÇÃO, e o motivo era esta função.
+   Ela reescrevia o `innerHTML` da nav INTEIRA (até 30 botões na esfera "Transversal") a cada `ir()`,
+   mesmo quando a esfera não mudou e a única diferença era QUAL botão tem a classe `.on`. Com
+   `flex:1 0 auto` dentro de `overflow-x:auto`, recriar os nós faz o navegador re-resolver a largura
+   de todos eles — e a barra se desloca sob o cursor. Trocar de aba mexia a aba que você ia clicar.
+   Agora: reconstrói só quando a ESFERA troca (aí o conjunto de botões é outro de verdade); dentro da
+   mesma esfera, só alterna a classe. Nada de layout novo, e a posição de scroll horizontal também
+   deixa de ser perdida. */
+let _tabsEsfera=null;
 function montarTabs(){
-  $('tabs').style.display=TABS[esfera].length<2?'none':'';
-  $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
+  const nav=$('tabs');
+  nav.style.display=TABS[esfera].length<2?'none':'';
+  if(_tabsEsfera!==esfera){
+    _tabsEsfera=esfera;
+    nav.innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}" data-aba="${t.id}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
+    return;
+  }
+  for(const b of nav.children)b.classList.toggle('on',b.dataset.aba===aba);
 }
 /* v36: NAO pre-atribuir `aba` aqui — o ir() ja seta aba e monta as tabs, e a
    pre-atribuicao apagava o sentido do giro na troca de esfera (_abaAntes
@@ -3443,15 +3553,32 @@ document.addEventListener('keydown',e=>{
 
 // ═══ SPOTLIGHT + TILT 3D — a luz E o plano seguem o cursor (1 listener global) ═══
 const _rmGlobal=matchMedia('(prefers-reduced-motion:reduce)').matches;
-document.addEventListener('pointermove',e=>{
-  const t=e.target.closest&&e.target.closest('.card,.lnk,.ck-inst,.ck-hero');
-  if(!t)return;const r=t.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+/* v49: coalescido por quadro e com o retângulo em cache, pela mesma razão do handler de controles
+   (ver `_I3D`, mais abaixo): `getBoundingClientRect()` por evento de mouse é leitura de layout
+   forçada, e o painel foi medido a 1-2 FPS. Os dois handlers cobrem conjuntos DISJUNTOS de
+   elementos — controles ali, cards aqui — de propósito; não são duplicados. */
+let _spotEl=null,_spotRect=null,_spotEv=null,_spotRaf=0;
+addEventListener('scroll',()=>{_spotRect=null;},{passive:true});
+addEventListener('resize',()=>{_spotRect=null;},{passive:true});
+function _spotPinta(){
+  _spotRaf=0;
+  const t=_spotEl,e=_spotEv;if(!t||!e)return;
+  if(!_spotRect)_spotRect=t.getBoundingClientRect();
+  const r=_spotRect;if(!r.width||!r.height)return;
+  const x=e.x-r.left,y=e.y-r.top;
   t.style.setProperty('--mx',x.toFixed(0)+'px');
   t.style.setProperty('--my',y.toFixed(0)+'px');
   if(!_rmGlobal&&(t.classList.contains('card')||t.classList.contains('ck-inst'))&&r.width<620){
     t.style.setProperty('--rx',((y/r.height-.5)*-6.5).toFixed(2)+'deg');   // tilt mais dramático
     t.style.setProperty('--ry',((x/r.width-.5)*8.5).toFixed(2)+'deg');
   }
+}
+document.addEventListener('pointermove',e=>{
+  const t=e.target.closest&&e.target.closest('.card,.lnk,.ck-inst,.ck-hero');
+  if(!t)return;
+  if(t!==_spotEl){_spotEl=t;_spotRect=null;}
+  _spotEv={x:e.clientX,y:e.clientY};
+  if(!_spotRaf)_spotRaf=requestAnimationFrame(_spotPinta);
 },{passive:true});
 document.addEventListener('pointerout',e=>{
   const t=e.target.closest&&e.target.closest('.card,.ck-inst');
@@ -6099,21 +6226,45 @@ const _I3D='.btn,.chip,.sph,nav.tabs button,.htop a,.search .az,.sheet .x,.nu-ch
 let _i3dEl=null;
 function _i3dClear(){if(!_i3dEl)return;const e=_i3dEl;
   ['--rx','--ry','--mx','--my'].forEach(p=>e.style.removeProperty(p));_i3dEl=null;}
+/* v49 — DOIS CUSTOS REAIS, MEDIDOS (e uma hipótese minha que o código refutou).
+   O que eu supunha: que este handler escrevia transform em 300+ controles. FALSO — ele toca UM
+   elemento por vez (`_i3dEl`), e o comentário acima já explicava isso. O custo verdadeiro é outro:
+     (a) `getBoundingClientRect()` a CADA evento de pointermove = leitura de layout forçada, dezenas
+         de vezes por segundo. Num painel medido a 1-2 FPS, é o pior lugar possível para gastar.
+         Agora o retângulo é cacheado enquanto o cursor não troca de elemento (e invalidado em
+         scroll/resize, que são as únicas coisas que o movem).
+     (b) as escritas eram síncronas ao evento. Agora são coalescidas em UM quadro por rAF: o mouse
+         pode disparar 10 eventos entre dois quadros e só o último importa — os 9 anteriores nunca
+         chegariam à tela de qualquer forma.
+   Amplitude: para `nav.tabs button` o teto caiu de 15° para 9°. Numa aba estreita de ~60px a
+   fórmula dava ±17° de rotateY, e é isso que faz a barra "sambar" quando o cursor a atravessa. */
 if(!_redMotion){
-  addEventListener('pointermove',ev=>{
-    if(ev.pointerType==='touch')return;
-    const el=ev.target&&ev.target.closest?ev.target.closest(_I3D):null;
-    if(el!==_i3dEl)_i3dClear();
-    if(!el)return;
-    _i3dEl=el;
-    const r=el.getBoundingClientRect();if(!r.width||!r.height)return;
-    const px=(ev.clientX-r.left)/r.width,py=(ev.clientY-r.top)/r.height;
+  let _i3dRect=null,_i3dEv=null,_i3dRaf=0;
+  const _i3dInvalida=()=>{_i3dRect=null;};
+  addEventListener('scroll',_i3dInvalida,{passive:true});
+  addEventListener('resize',_i3dInvalida,{passive:true});
+  const _i3dPinta=()=>{
+    _i3dRaf=0;
+    const ev=_i3dEv;if(!ev)return;
+    const el=_i3dEl;if(!el)return;
+    if(!_i3dRect){_i3dRect=el.getBoundingClientRect();}
+    const r=_i3dRect;if(!r.width||!r.height)return;
+    const px=(ev.x-r.left)/r.width,py=(ev.y-r.top)/r.height;
     el.style.setProperty('--mx',(px*100).toFixed(1)+'%');
     el.style.setProperty('--my',(py*100).toFixed(1)+'%');
     // controle estreito tomba mais que controle largo — senão a barra de abas ondula
-    const amp=Math.max(6,Math.min(15,520/Math.max(r.width,60)));
+    const teto=el.matches('nav.tabs button')?9:15;
+    const amp=Math.max(6,Math.min(teto,520/Math.max(r.width,60)));
     el.style.setProperty('--ry',((px-.5)*amp*2).toFixed(2)+'deg');
     el.style.setProperty('--rx',((py-.5)*-amp*1.35).toFixed(2)+'deg');
+  };
+  addEventListener('pointermove',ev=>{
+    if(ev.pointerType==='touch')return;
+    const el=ev.target&&ev.target.closest?ev.target.closest(_I3D):null;
+    if(el!==_i3dEl){_i3dClear();_i3dRect=null;}
+    if(!el)return;
+    _i3dEl=el;_i3dEv={x:ev.clientX,y:ev.clientY};
+    if(!_i3dRaf)_i3dRaf=requestAnimationFrame(_i3dPinta);
   },{passive:true});
   addEventListener('blur',_i3dClear);
   document.addEventListener('pointerleave',_i3dClear,{passive:true});
@@ -6322,17 +6473,34 @@ function portalStart(){
     if(morto)return;morto=true;cancelAnimationFrame(raf);
     // handoff: o núcleo encolhe até o Kyber do header — portal e painel são o
     // MESMO reator, não duas telas.
-    const k=$('kyber');
-    if(k){
+    /* v49 — A "BOLA DO NADA NO MEIO", parte 2 de 3. Este handoff era o proprio bug.
+       Uma esfera de 190px nascia no CENTRO EXATO da tela, em opacidade cheia, e devia voar ate o
+       Kyber do header. Tres defeitos somados:
+         (a) a transicao dura 620ms e o `setTimeout(...,420)` arrancava o elemento do DOM aos 420ms:
+             ela NUNCA chegava — desaparecia no meio do voo;
+         (b) o `transform` era aplicado no rAF SEGUINTE. Medido nesta VM: o painel roda a 1-2 FPS,
+             logo "o proximo quadro" pode levar meio segundo ou mais. Nesse intervalo a esfera fica
+             PARADA no meio da tela, opaca. É literalmente uma bola do nada no meio;
+         (c) no mesmo instante rodam `el.classList.add('off')` (opacity+blur na tela cheia) e um
+             reflow forcado em `.cblade` — competindo pelo mesmo quadro que faltava.
+       Agora: dois rAF encadeados garantem que o estado inicial foi para a tela antes de mudar
+       (um rAF só não garante flush de estilo), a remocao segue o `transitionend` com rede de
+       seguranca folgada, e em maquina medida como lenta o floreio é PULADO — a 1 FPS ele nao lê
+       como movimento, lê como artefato. */
+    const k=$('kyber'), lento=_redMotion||document.body.classList.contains('fps-baixo');
+    if(k&&!lento){
       const kr=k.getBoundingClientRect(),S=190;
       const h=document.createElement('div');h.id='phand';
       h.style.cssText=`width:${S}px;height:${S}px;left:${innerWidth/2-S/2}px;top:${innerHeight/2-S/2}px`;
       document.body.appendChild(h);
-      requestAnimationFrame(()=>{
+      let saiu=false;
+      const tirar=()=>{if(saiu)return;saiu=true;h.remove();};
+      h.addEventListener('transitionend',tirar,{once:true});
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
         h.style.transform=`translate(${kr.left+kr.width/2-innerWidth/2}px,`+
           `${kr.top+kr.height/2-innerHeight/2}px) scale(${(kr.width/S).toFixed(4)})`;
-        h.style.opacity='0';});
-      setTimeout(()=>h.remove(),420);
+        h.style.opacity='0';}));
+      setTimeout(tirar,900);   // > 620ms da transicao + folga p/ o quadro atrasado
     }
     el.classList.add('off');
     // a lâmina do Conduíte reacende: o portal entrega a energia ao painel
@@ -6367,6 +6535,43 @@ function portalStart(){
     if(document.visibilityState==='visible'&&performance.now()-t0>=FIM)portalFim();});
 }
 portalStart();
+
+/* ══ v49 · MEDIR A MÁQUINA E RECUAR ═════════════════════════════════════════════════════════════
+   Mede quadros por segundo com a página em repouso e, se a máquina não sustenta animação, liga
+   `body.fps-baixo` — que desliga as 15 animações infinitas que animam `filter`, spread de
+   `box-shadow` ou `background-position` (as que forçam repintura por quadro). Ver o bloco
+   "MODO SÓBRIO MEDIDO" no CSS.
+
+   POR QUE MEDIDO E NÃO ADIVINHADO. Sniff de user-agent, contagem de núcleos e `deviceMemory` erram
+   feio (esta VM tem 11 GB e 2 vCPU sem GPU; um celular tem 8 núcleos e compõe melhor). O que
+   importa é uma coisa só: esta máquina, agora, entrega quadro? Então conta quadro.
+
+   Roda DEPOIS da intro (a intro é o pico de carga e mediria o transiente, não o regime), amostra
+   1 s e não repete — medir de novo em loop seria gastar exatamente o que se quer economizar.
+   `_redMotion` continua um eixo separado: preferência declarada do usuário, não capacidade. */
+function _medirFps(){
+  if(_redMotion)return;                       // quem já pediu menos movimento não precisa da medição
+  let n=0;const t0=performance.now();
+  const passo=()=>{n++;
+    if(performance.now()-t0<1000){requestAnimationFrame(passo);return;}
+    const fps=n*1000/(performance.now()-t0);
+    window._jfnFps=Math.round(fps);
+    if(fps<24){
+      document.body.classList.add('fps-baixo');
+      /* aviso VISÍVEL: degradação calada é como ninguém descobre que o painel não é o desenhado. */
+      const alvo=document.querySelector('.htop')||document.querySelector('header');
+      if(alvo&&!$('modo-sobrio')){
+        const s=document.createElement('span');s.id='modo-sobrio';
+        s.textContent='modo sóbrio · '+Math.round(fps)+' fps';
+        s.title='Esta máquina entregou '+Math.round(fps)+' quadros por segundo com a tela parada.\n'
+               +'As animações que exigem repintura por quadro foram desligadas para o painel ficar '
+               +'legível. O dado e as funções são os mesmos.';
+        alvo.appendChild(s);}
+    }};
+  requestAnimationFrame(passo);
+}
+/* 2,6 s = fim da intro (1,96 s) + folga para o primeiro render de conteúdo assentar. */
+setTimeout(_medirFps,2600);
 
 /* ═══════════ v10 "AGÊNCIA" — avisos da casa, erro humano, orçamento de vida ═══════════ */
 // Erro de rede NUNCA chega cru ao usuário (era `TypeError: Failed to fetch` na tela).

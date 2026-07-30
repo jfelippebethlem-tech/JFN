@@ -89,6 +89,7 @@ Os módulos citados vivem em `compliance_agent/`.
   E7  Cláusula restritiva (análise finalística + ... ✅ (`detectores/e7_clausula_restritiva.py`)
   E8  Deserto/fracassado dirigido (edital inviáv ... ✅ (`detectores/e8_deserto_dirigido.py`)
   J8  Atestado de capacidade técnica cruzado (em ... ✅ (`detectores/j_atestado_cruzado.py`)
+  J9  Propostas GÊMEAS (planilha derivada/texto) ... ✅ (`detectores/j9_propostas_gemeas.py`)
   P6  Contratação direta acima do limite de disp ... ✅ (`detectores/p6_direta_indevida.py`)
 """
 from __future__ import annotations

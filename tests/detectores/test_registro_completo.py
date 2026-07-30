@@ -100,6 +100,7 @@ def test_todo_detector_do_registro_tem_arquivo_de_teste():
         "J6": "test_j6_subcontratacao_cruzada.py",
         "J7": "test_j7_inabilitacao_seletiva.py",
         "J8": "test_atestado_cruzado.py",
+        "J9": "test_j9_propostas_gemeas.py",
         "C": "test_c_fachada.py",
         "C6": "test_detector_c6.py",
         "C7": "test_c7_sancionada_contratada.py",

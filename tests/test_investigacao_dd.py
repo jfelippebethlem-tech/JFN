@@ -202,7 +202,26 @@ def test_ponte_cpf_mascarado_destrava_beneficio(monkeypatch):
     out = investigar("11222333000181",
                      cadastral={"situacao": "ATIVA", "socios": [{"nome": "JOAO DA SILVA", "doc": "***223344**"}]},
                      pagamentos={"total_pago": 600_000}, usar_rede=False, geocode=False)
-    assert vistos.get("cpf") == "11122334455"   # consultou o CPF resolvido
+    # AUTO-DIAGNÓSTICO (2026-07-30). Este teste tem histórico de passar isolado e falhar na suíte
+    # cheia em duas máquinas, e a investigação empacava porque `_wire_beneficios_pep` tinha TRÊS
+    # saídas MUDAS: dava para ver que `verificar_beneficios` não foi chamado, mas não por qual das
+    # três a execução saiu. As três agora logam o motivo E o escrevem em `cobertura`, então a
+    # mensagem abaixo nomeia a causa na PRÓXIMA vez que falhar, em qualquer máquina — em vez de
+    # devolver só "esperava X, veio None".
+    #
+    # Não reproduzi a falha nesta máquina: 261 arquivos / 3.143 testes rodando ANTES dele, em ordem
+    # alfabética, e ele passa. Motivo provável: `pytest-randomly` NÃO está instalado aqui, e a
+    # receita dos handoffs passa `-p no:randomly` — o que só faz sentido se estava. Sem ordem
+    # aleatória, o poluidor nunca roda antes. Ou seja: MASCARADO, não corrigido.
+    assert vistos.get("cpf") == "11122334455", (
+        "verificar_beneficios não foi chamado com o CPF resolvido.\n"
+        f"  cobertura[beneficio_social] = {out['cobertura'].get('beneficio_social')!r}\n"
+        f"  cobertura[pep]              = {out['cobertura'].get('pep')!r}\n"
+        f"  cpf visto                   = {vistos.get('cpf')!r}\n"
+        "Se a cobertura diz INDISPONIVEL, o motivo entre parênteses É a causa raiz "
+        "(coletor ausente / sem chave / coleta falhou). Rode com `-o log_cli=true "
+        "--log-cli-level=WARNING` para ver o traceback da terceira saída."
+    )
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-BENEFICIO")
     assert "resolvida por nome" in h["evidencia"]
     assert "via ponte nome+6díg" in out["cobertura"]["beneficio_social"]
