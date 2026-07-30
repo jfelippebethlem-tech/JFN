@@ -152,8 +152,15 @@ def coletar(tipo: str, *, ano: int | None = None, municipio: str | None = None,
         inicio += pagina
 
 
-def gravar(con: sqlite3.Connection, linhas: Iterable[dict]) -> int:
-    """Persiste em `tcerj_licitante`. Devolve quantas linhas foram escritas."""
+def gravar(con: sqlite3.Connection, linhas: Iterable[dict], *, tentativas: int = 8) -> int:
+    """Persiste em `tcerj_licitante`. Devolve quantas linhas foram escritas.
+
+    Espera o escritor concorrente sair. O `compliance.db` é compartilhado com o cron `sweep_sei.sh`,
+    que mantém transação de escrita aberta por minutos: na coleta de 2026-07-29 a gravação de 2026
+    morreu com `database is locked` **depois** de baixar 6.497 linhas de vencedor, e a lista de
+    perdedores daquele ano não entrou. Coleta que trunca por lock deixa a base parecendo completa.
+    """
+    import time
     from datetime import datetime
 
     con.executescript(DDL)
@@ -162,9 +169,23 @@ def gravar(con: sqlite3.Connection, linhas: Iterable[dict]) -> int:
               x["tipo_participacao"], x["data_homologacao"], x["modalidade"], x["objeto"],
               x["qtd_participantes"], x["valor_homologacao"], x["valor_estimado"],
               x["tipologia"], agora) for x in linhas]
-    con.executemany("INSERT OR REPLACE INTO tcerj_licitante VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    dados)
-    con.commit()
+    espera = 3.0
+    for tentativa in range(1, tentativas + 1):
+        try:
+            con.executemany(
+                "INSERT OR REPLACE INTO tcerj_licitante VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                dados)
+            con.commit()
+            break
+        except sqlite3.OperationalError as e:
+            if "locked" not in str(e).lower() and "busy" not in str(e).lower():
+                raise
+            if tentativa == tentativas:
+                raise
+            logger.warning("base ocupada (tentativa %d/%d); aguardando %.0fs",
+                        tentativa, tentativas, espera)
+            time.sleep(espera)
+            espera = min(espera * 1.8, 60.0)
     return len(dados)
 
 
