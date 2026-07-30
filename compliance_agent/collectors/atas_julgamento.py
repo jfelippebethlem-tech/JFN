@@ -121,21 +121,37 @@ async def _certames_pendentes(con, limite: int) -> list[tuple[str, str]]:
     return [(r[0], r[1]) for r in rows]
 
 
+def _anotar(tot: dict, certame: str, titulo: str, motivo: str, teto: int = 12) -> None:
+    """Guarda uma amostra dos descartes. Contador diz QUANTOS; a amostra diz O QUE consertar."""
+    if len(tot["amostra_descartes"]) < teto:
+        tot["amostra_descartes"].append({"certame": certame, "titulo": (titulo or "")[:90],
+                                         "motivo": motivo[:240]})
+
+
 async def coletar_atas_julgamento(con, limite: int = 200, com_ocr: bool = True,
                                   pausa: float = 0.3) -> dict:
     """Baixa e grava as atas de julgamento dos próximos `limite` certames competitivos pendentes.
     Só grava o documento com marcador REAL de ata no conteúdo e ≥2 CNPJs (perdedora possível)."""
     pend = await _certames_pendentes(con, limite)
-    tot = {"certames": 0, "com_arquivo_ata": 0, "atas_gravadas": 0, "por_ocr": 0, "sem_perdedora": 0}
+    # Todo descarte é CONTADO. Antes, dois `continue` saíam sem registro — download falho e
+    # "sem marcador de ata no conteúdo" —, e o resultado era `atas_gravadas: 0` sem uma linha
+    # dizendo por quê. Coleta que devolve zero sem motivo é indistinguível de coleta que não rodou.
+    tot = {"certames": 0, "sem_id_valido": 0, "sem_arquivo_no_pncp": 0, "com_arquivo_ata": 0,
+           "download_falhou": 0, "texto_vazio": 0, "sem_marcador_conteudo": 0,
+           "sem_perdedora": 0, "atas_gravadas": 0, "por_ocr": 0,
+           "amostra_descartes": []}
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         for idp, ocnpj in pend:
             tot["certames"] += 1
             pr = _parse_id_pncp(idp)
             if not pr:
+                tot["sem_id_valido"] += 1
                 continue
             cnpj, ano, seq = pr
             meta = await _get_pncp(f"/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos", {})
             arqs = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
+            if not arqs:
+                tot["sem_arquivo_no_pncp"] += 1
             gravou_algum = False
             for a in (arqs or []):
                 tit = a.get("titulo") or ""
@@ -154,13 +170,27 @@ async def coletar_atas_julgamento(con, limite: int = 200, com_ocr: bool = True,
                 except httpx.HTTPError:
                     blob = b""
                 if not blob:
+                    tot["download_falhou"] += 1
+                    _anotar(tot, idp, tit, "download falhou ou 4xx/5xx no arquivo")
                     continue
                 texto, fonte = _extrair_texto_ata(blob, com_ocr)
+                if not (texto or "").strip():
+                    tot["texto_vazio"] += 1
+                    _anotar(tot, idp, tit, f"PDF sem camada de texto e OCR não produziu nada "
+                                           f"({len(blob) // 1024} KB, com_ocr={com_ocr})")
+                    continue
                 if not _RX_ATA_CONTEUDO.search(texto):
-                    continue                       # sem marcador real → não é ata (ou OCR falhou)
+                    # NÃO é necessariamente "não é ata": pode ser ata cujo vocabulário o regex não
+                    # cobre. O trecho fica na amostra para que o padrão real seja visto, não suposto.
+                    tot["sem_marcador_conteudo"] += 1
+                    _anotar(tot, idp, tit,
+                            f"sem marcador de ata no conteúdo ({len(texto)} chars, fonte={fonte}): "
+                            + " ".join((texto or "")[:180].split()))
+                    continue
                 n_cnpj = len(set(re.sub(r"\D", "", m.group(0)) for m in _RX_CNPJ.finditer(texto)))
                 if n_cnpj < 2:
                     tot["sem_perdedora"] += 1
+                    _anotar(tot, idp, tit, f"ata legível com {n_cnpj} CNPJ — sem disputa registrável")
                     continue                       # <2 CNPJs → sem disputa registrável
                 con.execute(
                     "INSERT OR REPLACE INTO ata_documento "
