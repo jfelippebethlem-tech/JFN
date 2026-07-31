@@ -1,0 +1,206 @@
+# Sessão 2026-07-31 — Debugging sistemático do ecossistema JFN
+
+> **Método.** Protocolo de causa-raiz antes de qualquer correção: reproduzir, instrumentar a
+> fronteira, formular uma hipótese, medir. Toda correção nasceu de um teste que **falhava antes**
+> e passa depois. Nenhum número aqui é estimado — todos foram medidos nesta VM, nesta data.
+
+---
+
+## 1. Sumário executivo
+
+| # | Defeito | Antes (medido) | Depois (medido) | Arquivo |
+|---|---|---|---|---|
+| 1 | Ficha SEI truncava no teto de tokens | 3.137 tentativas, **0 sucessos** | 3/3 refichados, 0 erros | `tools/sei_ficha.py` |
+| 2 | Refichador cego ao cache comprimido | via **232 de 5.973** blobs (3,9%) | vê 6.428 | `tools/sei_refichar.py` |
+| 3 | Ingestão `sei_ficha` cega ao `.zst` | via **564 de 6.428** arquivos | vê 6.428 | `tools/sei_depurar_db.py` |
+| 4 | Ingestão completa não cabia no `timeout` | 502–587 s contra `timeout 300` | incremental por mtime | `tools/sei_depurar_db.py` |
+| 5 | RAG do Hermes descartava progresso | **28 rodadas sem avançar 1 chunk** | preservou 3.767 vetores | `tools/hermes_rag.py` |
+| 6 | Chat do Hermes devolvia JSON cru na tela | `{\n "resposta": …}` | prosa | `compliance_agent/direcionamento_cerebro.py` |
+| 7 | Frescor de fonte com idade **negativa** | `−1d` no painel | piso 0, fuso respeitado | `rotas/investigacao.py` |
+
+**Suíte:** 5.127 testes passando, 9 pulados, zero falhas (4 lotes, protocolo da casa).
+**Testes novos:** 6 arquivos, 32 casos — todos falhavam antes da respectiva correção.
+
+---
+
+## 2. A cadeia que estava quebrada (defeitos 1 → 2 → 3)
+
+Os três primeiros defeitos são **o mesmo pipeline**, quebrado em três pontos seguidos. Vale ler em
+ordem, porque corrigir só um não produziria efeito nenhum.
+
+### 2.1 O modelo nunca terminava a ficha
+
+Instrumentando a fronteira do nous no processo real `SEI-030001/109183/2024`:
+
+| teto de tokens | `finish_reason` | `completion_tokens` | resultado |
+|---|---|---|---|
+| **8.000** (vigente) | `length` | 8.000 (estourou) | `content` VAZIO, 26.407 chars de raciocínio → falha |
+| 16.000 | `stop` | 11.184 | parseia |
+| 20.000 | `stop` | 11.289 | parseia |
+| 32.000 | `stop` | 13.963 | parseia |
+
+O `stepfun` é modelo de **raciocínio**: gastava os 8.000 tokens inteiros pensando e o JSON nunca
+começava. Pagava-se 8.000 tokens por **zero** resultado, 100% das vezes.
+
+Pior que o bug: a **cegueira**. `extrair_ficha` já capturava o `_raw` da resposta, mas o log
+imprimia só `_erro[:60]` — `"JSON inválido"`, que aponta o dedo para o cache (íntegro) e esconde o
+corte. O `finish_reason` vinha na resposta e era descartado.
+
+**Correção:** teto padrão 20.000 (o mesmo já provado em `sei_propostas_sweep`) **e** erro falante
+que nomeia o corte, os tokens gastos e a variável a girar.
+
+### 2.2 e 2.3 A compressão amputou o pipeline em silêncio
+
+`data/sei_cache/` tem **6.028 blobs**, dos quais **5.795 em `.json.zst`** (compressão feita para
+caber 23 GB). Duas ferramentas continuaram usando `glob("cdp_*.json")` cru:
+
+* `sei_refichar` — enxergava **232 de 5.973** (3,9%);
+* `sei_depurar_db` — o **único** que escreve em `sei_ficha`, a tabela que o painel lê — enxergava
+  **564 de 6.428**.
+
+O módulo criado justamente para impedir isso (`compliance_agent/sei/cache_arquivo`) existia desde a
+compressão, com `glob_cache`/`ler_json`, e **nenhum dos dois o adotou**.
+
+Faltava só a **escrita** transparente: `escrever_json` (novo), que grava na mesma forma em que o
+arquivo está no disco. Sem ela, a correção óbvia (`write_text` no caminho vindo do glob) gravaria
+texto puro por cima de um `.zst` e **corromperia o blob**. Verificado em blob real copiado:
+continua `.zst`, `zstd -t` íntegro, acentos preservados, sem `.json` órfão ao lado.
+
+### 2.4 O efeito colateral que quase passou
+
+Com a cegueira corrigida, a ingestão passou a ler 6.428 blobs: **502–587 s**. O chamador
+(`tools/sweep_sei.sh`) roda a cada 30 min com **`timeout 300`**. A correção teria trocado *"não
+enxerga"* por *"é abortada no meio"* — que é pior, porque parece funcionar.
+
+**Correção:** ingestão **incremental por mtime** (rodada normal = segundos), com duas travas —
+tabela vazia ou `--tudo` forçam passada completa — e teto do chamador em 900 s para a completa.
+A marca d'água mora **fora** de `sei_cache/`, senão a manutenção a comprimiria e ela sumiria calada.
+
+---
+
+## 3. Cobertura de captura do SEI (medida)
+
+| Medida | Valor |
+|---|---|
+| Fila de captura priorizada (derivada das OBs) | 3.228 |
+| Desses, já com ficha | **3.228 (100%)** |
+| Processos varridos pelo sweep | 8.728 |
+| Blobs de processo em cache | 6.028 |
+| Blobs **com ficha utilizável** | 4.001 |
+| Blobs **sem ficha** | **2.388** |
+
+O universo priorizado está **100% capturado**. Os 2.388 sem ficha são consequência direta do
+defeito 1 (refichador com 0% de sucesso) somado ao defeito 2 (via 3,9% do acervo). Com 1 e 2
+corrigidos, o cron os processa; com 3 corrigido, o resultado chega à tabela que o painel lê.
+
+---
+
+## 4. Achados **não** corrigidos — decisão do dono
+
+### 4.1 Yoda "burro": pool de 8 chaves é configuração morta
+
+`~/.hermes/.env` define `GEMINI_API_KEYS` com **8 chaves**. `grep` em todo o `hermes-agent`:
+a variável **nunca é lida**. O código só conhece `GOOGLE_API_KEY`/`GEMINI_API_KEY` no singular
+(`plugins/model-providers/gemini/__init__.py:55`).
+
+O Yoda roda com **1 chave free tier, limite 5 req/min** — e o próprio log dele diz *"Hermes
+typically makes 3-10 API calls per user turn"*. Estoura a cota **no meio do turno**, o laço do
+agente degrada e ele responde raso: sem terminal, sem acionar o JFN, sem trazer documento.
+
+**Descartados por medição** (não são a causa):
+
+| Hipótese | Medição que a derrubou |
+|---|---|
+| Conectividade Telegram | `httpx` do Hermes: HTTP 302 em 0,7 s; `getaddrinfo` entrega IPv4 primeiro |
+| Resolução de nomes | 12/12 órgãos e 6/7 empresas por nome **parcial**; ambíguo devolve `{ambiguo, pergunta, candidatos}` corretamente |
+| Ferramenta terminal indisponível | `check_terminal_requirements` **não** está entre as desabilitadas (só GUI: preview, react, kanban, computer_use) |
+| Manifesto de capacidades defasado | `~/.hermes/jfn_tools.json` e `data/jfn_tools.json` com **md5 idêntico** |
+| `tirith` quebrado | É binário **x86-64 numa VM aarch64** (nunca executa), mas `tirith_fail_open: True` — não bloqueia. Efeito real: varredura de segurança desligada em silêncio |
+
+> **Não mexi** porque envolve custo (regra §4.1) e/ou patch em repositório de terceiro.
+
+### 4.2 Folhas de pessoal — lacunas medidas
+
+| Fonte | Linhas | CPFs distintos | Competência |
+|---|---|---|---|
+| `dprj_transparencia` | 257.354 | 5.162 | 2016-10 → **2025-10** |
+| `tjrj_anexo8` | 21.767 | **1** | 2026-05 |
+| `camara_csv` | 2.286 | **1** | **"1978" → "2026"** |
+| `gesperj_estado` | 575 | 556 | 2026-06 |
+| `pcrj_folha_pref` (PCRJ) | 12.103.391 | — | robusta |
+
+Três defeitos: **(a) ALERJ não tem fonte alguma**; **(b)** TJRJ e Câmara com **1 CPF distinto** —
+o CPF não está sendo coletado; **(c)** a coluna `competencia` mistura formatos (`2026-05`, `2026`,
+`1978`), o que quebra `MAX()` e qualquer ordenação — mesma família do defeito de data-como-texto do
+SIAFE já catalogado.
+
+### 4.3 Painel — medido com olhos humanos
+
+Captura real em desktop (1600×1000) e mobile (390×844), com console e métricas:
+
+| Medida | Desktop | Mobile |
+|---|---|---|
+| **FPS** | **1,1** | 7,2 |
+| CLS (tremor de layout) | 0,023 | 0,041 — **bom** (limite 0,1) |
+| Faixa vazia no fim | 0 px | 0 px |
+| Rolagem horizontal | não | não |
+| `pageerror` | 0 | 0 |
+| Console | **2× 404** + `GPU stall due to ReadPixels` | idem |
+
+* **"Sambando"** = os **1,1 FPS** no desktop, com `GPU stall due to ReadPixels` no console. **Não**
+  é layout pulando: o CLS está dentro do bom.
+* **"Branco embaixo quando puxa"** — não reproduzi no headless (0 px de faixa vazia). A pista forte:
+  `background` de `<html>` e `<body>` é **`rgba(0,0,0,0)` (transparente)** com
+  `overscroll-behavior: auto`. No celular, ao puxar além do fim, o navegador mostra o **branco
+  padrão** atrás do conteúdo. Bate com o sintoma.
+* **Cabeçalho sobrepõe o conteúdo no mobile** — texto de seções aparece embolado atrás da barra fixa.
+* **2 recursos dando 404** em ambas as viewports.
+* Card vermelho da capa exibe `R$ —` (travessão) aos 7 s — dado ausente, não zero.
+
+### 4.4 `/api/pncp` e `/api/sei/direcionamento` travam durante queda da fonte
+
+Na varredura das 120 rotas (às 09:34) ambas deram **timeout aos 60 s**; o PNCP estava fora (503
+`text/html` em 0,2 s). Às 09:37 a fonte voltou e responderam em 3,7 s e 5,7 s com 150 registros.
+
+O defeito é o **backoff cego**: `_consulta_retry` (`collectors/pncp.py:453`) dorme 20 s + 40 s = 60 s
+mesmo diante de um 503 instantâneo, porque `_get_consulta` engole o status e devolve `None` igual
+para timeout e para 5xx. Com `modalidade=0` (4 modalidades) chega a ~240 s.
+
+**Não corrigido:** o backoff longo é deliberado para os coletores em lote (*"o PNCP devolve timeout
+transitório sob volume"*). Mexer nele afeta sweeps que querem essa paciência. A escolha é entre dar
+um **deadline à rota** (não ao coletor) ou distinguir 5xx de timeout.
+
+### 4.5 RAG: ressalva honesta
+
+O índice foi de **4.809 vetores obsoletos e congelados** (28/07, sem chance de avançar) para **3.767
+consistentes com o corpus atual**. Os 1.042 a menos eram chunks cujo texto **não existe mais** no
+corpus — devolviam acerto para conteúdo já editado. Faltam 2.089, presos na cota Cohere (a rodada de
+hoje conseguiu embeddar **0** — cota seca). O `corpus_hash` **não** foi gravado, então o cron retoma
+sozinho. **Se a cota for teto mensal já estourado, o índice fica em 3.767 até virar o mês** — trocar
+o embedder é decisão do dono.
+
+---
+
+## 5. Verificações que passaram (nada a fazer)
+
+* **`stepfun:free` não cobra.** Catálogo do nous: `pricing {prompt: "0", completion: "0"}`. A
+  variante paga (sem `:free`) custaria US$ 0,92/M de completion e **nenhum código a referencia**.
+  Os normalizadores (`agent.py:414`, `free_llm.py:87`) **acrescentam** `:free`, nunca removem.
+* **`pericia_sweep`**: as 2.423 falhas `database is locked` do log são **históricas**; as 6 últimas
+  execuções fecharam 6.647/6.647 limpas.
+* **API**: 120 rotas varridas, 107 respondendo 200. Os 11 `400` são rotas que exigem parâmetro —
+  resposta honesta, não defeito.
+
+---
+
+## 6. Próximos passos sugeridos
+
+1. **Yoda** (§4.1) — decidir entre apontar `GEMINI_API_KEY` para chave com folga, trocar o provedor
+   do gateway (Cerebras/Groq já estão no `.env`) ou patchar o `hermes-agent` para girar o pool.
+2. **Painel** (§4.3) — pintar `background` sólido em `html, body` e `overscroll-behavior: none`;
+   caçar os 2 × 404; investigar o `ReadPixels` que derruba o desktop a 1,1 FPS; corrigir o
+   `z-index`/`padding-top` do cabeçalho no mobile.
+3. **Folhas** (§4.2) — criar coletor da ALERJ; corrigir a coleta de CPF de TJRJ e Câmara;
+   normalizar `competencia` para `AAAA-MM` com teste de formato.
+4. **PNCP** (§4.4) — dar deadline à rota.
+5. **Rodar `sei_refichar` no acervo** agora que ele funciona: 2.388 blobs esperam ficha.
