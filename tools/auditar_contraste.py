@@ -144,9 +144,13 @@ time.sleep(26)
 # painel ANTERIOR a uma correcao porque o `systemctl restart` nao chegou a valer, e
 # o laudo saiu com cara de atual. Um laudo que nao diz o que mediu e um laudo que
 # pode mentir com numero certo. Comparar `servido` com o disco antes de acreditar.
-_disco = hashlib.sha1(
-    (pathlib.Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html")
-    .read_bytes()).hexdigest()[:12]
+# v49: com o CSS e o JS fora do HTML, hashear só o HTML cobriria 3 KB de casca — a impressão
+# digital ficaria IGUAL enquanto o CSS mudava, que é exatamente a mentira-com-número-certo que este
+# bloco existe para impedir. O hash passa a cobrir as três peças servidas.
+_raiz_painel = pathlib.Path(__file__).resolve().parents[1] / "static"
+_pecas = [_raiz_painel / "jfn-painel.html", _raiz_painel / "css" / "painel.css",
+          _raiz_painel / "js" / "painel.js"]
+_disco = hashlib.sha1(b"".join(p.read_bytes() for p in _pecas if p.exists())).hexdigest()[:12]
 _servido = js("(()=>document.documentElement.outerHTML.length)()")
 _dim = js("getComputedStyle(document.documentElement).getPropertyValue('--dim').trim()")
 print(f"\npainel medido: sha1(disco)={_disco} · html servido={_servido} bytes · --dim={_dim}")

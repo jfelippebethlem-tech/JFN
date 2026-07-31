@@ -431,7 +431,10 @@ def main() -> int:
                     d["arquivo"].name[:48], len(d["cnpjs"]))
         try:
             r = processar(d, gerar, db=Path(a.db))
-        except Exception as exc:  # noqa: BLE001 — um documento ruim não derruba o sweep inteiro
+        except (OSError, ValueError, RuntimeError, sqlite3.Error) as exc:
+            # um documento ruim não pode derrubar o sweep dos 56 — mas a lista é fechada:
+            # httpx.HTTPError herda de OSError, o 401 do nous vira RuntimeError, JSON ruim é
+            # ValueError e o banco é sqlite3.Error. Bug de programação continua subindo.
             logger.warning("  falhou: %s: %s", type(exc).__name__, str(exc)[:120])
             r = {"processo": d["processo"], "linhas": 0, "erro": str(exc)[:120]}
         laudos.append(r)

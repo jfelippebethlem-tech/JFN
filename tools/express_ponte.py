@@ -68,7 +68,12 @@ def oklch_para_hex(L: float, C: float, H: float) -> str:
 def tokens_do_painel() -> dict[str, str]:
     """Lê os tokens OKLCH do painel. O ÚLTIMO valor de cada token vence — é a cascata
     (v7 → v9 → v12), a mesma regra que o navegador aplica."""
+    # v49: os tokens saíram do <style> inline para `static/css/painel.css`. Ler só o HTML passou a
+    # devolver ZERO token — e zero token aqui não estoura: gera uma paleta vazia em silêncio.
     texto = PAINEL.read_text(encoding="utf-8")
+    _css = RAIZ / "static" / "css" / "painel.css"
+    if _css.exists():
+        texto += "\n" + _css.read_text(encoding="utf-8")
     achados: dict[str, str] = {}
     for m in re.finditer(r"--([a-z0-9-]+)\s*:\s*(oklch\([^)]*\))", texto, re.I):
         achados[m.group(1)] = m.group(2)

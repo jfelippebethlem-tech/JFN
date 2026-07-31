@@ -8,9 +8,25 @@ prefers-reduced-motion. Custa milissegundos e vale na VM-2.
 
 from pathlib import Path
 
-HTML = (Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html").read_text(
-    encoding="utf-8"
-)
+# v49: o CSS (178 KB) e o JS (337 KB) sairam de dentro do HTML para `static/css/painel.css` e
+# `static/js/painel.js`, servidos com gzip e cache — o HTML ficou em ~3 KB de casca. Este arquivo
+# lia so o HTML e passou a nao achar NADA: cinco testes vermelhos de uma vez, todos pela mesma
+# causa. `HTML` agora e a superficie INTEIRA do painel (casca + CSS + JS), que e o que estes testes
+# sempre quiseram olhar. Terceiro leitor a ser reapontado, depois de `test_painel_css_integro` e
+# `tools/painel_abas` — e o unico que eu tinha DEIXADO PASSAR: quem o pegou foi a rodada completa
+# dos quatro lotes da suite, nao o lote 1 sozinho.
+_RAIZ = Path(__file__).resolve().parents[1]
+
+
+def _superficie() -> str:
+    partes = [(_RAIZ / "static" / "jfn-painel.html")]
+    for extra in (_RAIZ / "static" / "css" / "painel.css", _RAIZ / "static" / "js" / "painel.js"):
+        if extra.exists():
+            partes.append(extra)
+    return "\n".join(p.read_text(encoding="utf-8") for p in partes)
+
+
+HTML = _superficie()
 
 
 def test_faceta_tem_sentido():
