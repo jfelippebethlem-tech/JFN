@@ -107,8 +107,11 @@ def _ler_marca() -> float:
 def _gravar_marca(quando: float) -> None:
     try:
         MARCA.write_text(f"{quando:.3f}", encoding="utf-8")
-    except OSError:  # marca é otimização: não poder gravar só custa uma passada completa
-        pass
+    except OSError as exc:
+        # A marca é otimização: não gravar só custa uma passada completa. Mas calar transformaria
+        # "disco cheio / permissão" em "esta ingestão é lenta e ninguém sabe por quê".
+        print(f"[sei_depurar] marca d'água não gravada ({exc}) — a próxima passada será completa",
+              flush=True)
 
 
 def _conectar() -> sqlite3.Connection:
