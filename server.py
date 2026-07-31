@@ -171,6 +171,15 @@ async def _browser_idle_reaper():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Conexão GUARDIÃ do WAL-index. Medido em 31/07/26: em janela ociosa este processo chegava a
+    # ZERO conexões abertas, outro processo fechava por último e o SQLite desvinculava -wal/-shm;
+    # daí em diante o painel devolvia "database disk image is malformed" com o ARQUIVO íntegro,
+    # 7-14x por dia, e a cura era reiniciar o serviço (derrubando browser e login SIAFE junto).
+    from compliance_agent.database.guarda_wal import segurar as _segurar_wal
+    _ok_wal = _segurar_wal(Path(__file__).parent / "data" / "compliance.db")
+    print(f"[guarda-wal] conexão guardiã {'ATIVA' if _ok_wal else 'AUSENTE'} — "
+          f"{'-wal/-shm não serão desvinculados' if _ok_wal else 'painel volta a depender do guardião de restart'}")
+
     # Tenta login no SIAFE — falha silenciosa se fora da rede do governo
     print("\n[Servidor] Iniciando... (login SIAFE só funciona na rede do governo)")
     try:
