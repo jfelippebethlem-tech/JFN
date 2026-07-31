@@ -294,7 +294,9 @@ async def api_hermes_chat(payload: dict):
         f"Missão atual: {missao}{base_curada}\n\nPergunta do auditor: {pergunta}")
     try:
         from compliance_agent.direcionamento_cerebro import gerar_sync
-        resposta = await asyncio.to_thread(gerar_sync, prompt)
+        # `json_saida=False`: sem isso o `responseMimeType` da API vence o "nunca JSON" do prompt
+        # acima e a caixa de chat mostra `{"resposta": "…"}` cru ao auditor.
+        resposta = await asyncio.to_thread(gerar_sync, prompt, json_saida=False)
         if not (resposta or "").strip():
             return JSONResponse({"erro": "LLM indisponível no momento (cadeia gemini/cerebras vazia)"})
         return JSONResponse({"ok": True, "resposta": resposta.strip()})

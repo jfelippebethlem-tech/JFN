@@ -133,7 +133,7 @@ async def _groq_gerar(messages: list[dict]) -> str:
 ultimo_provedor: str = ""  # provedor que respondeu a ÚLTIMA chamada — proveniência real p/ quem persiste 'modelo'
 
 
-async def _gerar_default(messages: list[dict]) -> str:
+async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
     """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
     Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
     # cooldown por TIPO de erro (mesma lógica do free_llm.best_free_chat — não re-bater provedor morto)
@@ -142,7 +142,7 @@ async def _gerar_default(messages: list[dict]) -> str:
     erros = []
     if _gemini_keys() and not _em_cooldown("gemini"):
         try:
-            r = await gerar_gemini(messages)
+            r = await gerar_gemini(messages, json_saida=json_saida)
             if r and r.strip():
                 _limpar_cooldown("gemini")
                 ultimo_provedor = "gemini"
@@ -217,13 +217,13 @@ def _bg_loop():
     return _BG_LOOP
 
 
-def gerar_sync(prompt: str, sistema: str = "", timeout: float = 45.0) -> str:
+def gerar_sync(prompt: str, sistema: str = "", timeout: float = 45.0, json_saida: bool = True) -> str:
     """Chamada LLM SÍNCRONA robusta (de qualquer contexto, sync ou async) via loop dedicado persistente.
     Reusa _gerar_default (Gemini rotacionado). Em teste, injete um mock — não chame isto."""
     import asyncio
     msgs = [{"role": "system", "content": sistema or "Você é auditor de controle externo do JFN."},
             {"role": "user", "content": prompt}]
-    fut = asyncio.run_coroutine_threadsafe(_gerar_default(msgs), _bg_loop())
+    fut = asyncio.run_coroutine_threadsafe(_gerar_default(msgs, json_saida=json_saida), _bg_loop())
     return fut.result(timeout=timeout)
 
 
@@ -289,7 +289,7 @@ _GEMINI_RR = 0
 
 
 async def gerar_gemini(messages: list[dict], model: str | None = None,
-                       max_tokens: int | None = None) -> str:
+                       max_tokens: int | None = None, json_saida: bool = True) -> str:
     """Gemini robusto: ROTAÇÃO do pool de chaves (round-robin) × MODELOS em cascata (buckets de RPM
     distintos no free tier) × backoff. Adapta messages OpenAI→Gemini (system → systemInstruction)."""
     global _GEMINI_RR
@@ -306,8 +306,12 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
     sys_txt = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_txt = "\n".join(m["content"] for m in messages if m["role"] != "system")
     body: dict = {"contents": [{"role": "user", "parts": [{"text": user_txt}]}],
-                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_tokens or 4096,
-                                       "responseMimeType": "application/json"}}
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_tokens or 4096}}
+    # `responseMimeType` VENCE o prompt: com ele ligado, pedir "texto corrido (nunca JSON)" não
+    # adianta e a prosa volta embrulhada em `{"resposta": "…"}` — era o que a caixa de chat do
+    # Hermes mostrava ao auditor. Padrão segue JSON (34 consumidores a montante o parseiam).
+    if json_saida:
+        body["generationConfig"]["responseMimeType"] = "application/json"
     if sys_txt:
         body["systemInstruction"] = {"parts": [{"text": sys_txt}]}
     n = len(keys)
@@ -348,8 +352,10 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
     try:
         from compliance_agent.llm.free_llm import cerebras_available, cerebras_chat_async
         if cerebras_available():
-            return await cerebras_chat_async(
-                user_txt, system=(sys_txt + "\n\nResponda APENAS com JSON válido."), max_tokens=4096)
+            # a instrução de JSON acompanha `json_saida`: senão, com o Gemini em cota, quem pediu
+            # prosa recebia o embrulho JSON pela rede de segurança e o defeito reaparecia.
+            reforco = "\n\nResponda APENAS com JSON válido." if json_saida else ""
+            return await cerebras_chat_async(user_txt, system=(sys_txt + reforco), max_tokens=4096)
     except Exception as e:  # noqa: BLE001
         erros.append(f"cerebras:{str(e)[:24]}")
     raise RuntimeError(f"Gemini+Cerebras: {len(modelos)} modelos × {n} chaves falharam ({','.join(erros[:14])})")
