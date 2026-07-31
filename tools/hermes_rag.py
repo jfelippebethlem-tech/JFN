@@ -46,6 +46,19 @@ def _key() -> str:
     raise RuntimeError("COHERE_API_KEY ausente (~/.hermes/.env)")
 
 
+class EmbedParcial(RuntimeError):
+    """A cota acabou no meio — carrega os vetores JÁ obtidos para que o trabalho não se perca.
+
+    Sem isto o `build()` era tudo-ou-nada: a exceção subia, o `np.save` do fim nunca rodava e os
+    lotes já pagos ao Cohere iam para o lixo. O cron diário reindexava do zero, queimava a cota nos
+    mesmos lotes iniciais e morria no mesmo ponto — 28 rodadas sem avançar um chunk (medido 31/07/26).
+    """
+
+    def __init__(self, msg: str, vetores: list[list[float]]):
+        super().__init__(msg)
+        self.vetores = vetores
+
+
 def _embed(textos: list[str], input_type: str) -> list[list[float]]:
     """Cohere embed em lotes de 96. Throttle + retry no 429 (chave trial tem limite/min)."""
     import httpx
@@ -67,7 +80,9 @@ def _embed(textos: list[str], input_type: str) -> list[list[float]]:
             out.extend(r.json()["embeddings"]["float"])
             break
         else:
-            raise RuntimeError("Cohere 429 persistente — tente de novo mais tarde (limite da chave trial).")
+            raise EmbedParcial(
+                f"Cohere 429 persistente no lote {n}/{total} — {len(out)} de {len(textos)} embeddados "
+                f"(o progresso é preservado; a próxima rodada continua daqui).", out)
         if total > 1:
             time.sleep(7)  # respeita o rate-limit/min da chave trial
     return out
@@ -156,17 +171,37 @@ def build() -> None:
              if hashlib.sha256(r["texto"].encode()).hexdigest() not in cache]
     print(f"{len(arquivos)} arquivos → {len(registros)} chunks "
           f"({len(novos)} novos p/ embeddar, {len(registros) - len(novos)} do cache)…", flush=True)
-    vecs_novos = iter(_embed([r["texto"] for r in novos], "search_document")) if novos else iter(())
-    linhas = []
+    parcial = False
+    try:
+        vecs = _embed([r["texto"] for r in novos], "search_document") if novos else []
+    except EmbedParcial as exc:
+        vecs, parcial = exc.vetores, True
+        print(f"  {exc}", flush=True)
+    vecs_novos = iter(vecs)
+    # Chunk sem vetor é PULADO, não interrompe: os cacheados que vêm depois dele continuam entrando.
+    # Índice e `chunks.jsonl` precisam sair do mesmo conjunto, senão `_cache_anterior` descarta tudo.
+    linhas, gravados = [], []
     for r in registros:
         h = hashlib.sha256(r["texto"].encode()).hexdigest()
-        linhas.append(cache[h] if h in cache else np.asarray(next(vecs_novos), dtype="float32"))
+        if h in cache:
+            linhas.append(cache[h])
+        else:
+            v = next(vecs_novos, None)
+            if v is None:
+                continue
+            linhas.append(np.asarray(v, dtype="float32"))
+        gravados.append(r)
     arr = np.asarray(linhas, dtype="float32")
     arr /= (np.linalg.norm(arr, axis=1, keepdims=True) + 1e-9)  # normaliza p/ cosine = dot (idempotente p/ linhas do cache)
     np.save(EMB, arr)
     with open(CHUNKS, "w", encoding="utf-8") as f:
-        for r in registros:
+        for r in gravados:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    if parcial:
+        # NÃO gravar o hash: `build_se_mudou` precisa continuar vendo "mudou" p/ retomar o que falta.
+        print(f"PARCIAL: {arr.shape[0]} de {len(registros)} vetores gravados → {EMB} "
+              f"(faltam {len(registros) - arr.shape[0]}; a próxima rodada continua daqui)")
+        return
     HASH.write_text(corpus_hash())
     print(f"OK: {arr.shape[0]} vetores ({arr.shape[1]}d) → {EMB}")
 
