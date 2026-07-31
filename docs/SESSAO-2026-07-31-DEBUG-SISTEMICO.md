@@ -283,3 +283,73 @@ Corrigido. `_get_consulta` passa a devolver `(json|None, motivo)` com motivo em 
 `_consulta_retry` usa a espera longa (20 s/40 s) **só** para falha de rede e curta (2 s/4 s) para
 erro HTTP. A paciência dos coletores em lote — escrita de propósito para o timeout transitório sob
 volume — fica preservada.
+
+---
+
+## 8. Terceira rodada — folha, promessas, hermes update e cadeia de fallback
+
+### 8.1 A folha do Estado tinha 0,06% do que existe
+
+`registros_folha` tinha **575 linhas** do Executivo estadual contra `totalElements = 909.916` na
+competência. A API **congela a paginação na página 10.000**: dali em diante devolve HTTP 200 com a
+MESMA fatia de 50 registros. Medido: páginas 12825 · 12826 · 12840 · 12864 · 17000 com overlap
+**50/50**; páginas 2000–9000 com conteúdo distinto. Rendimento de 40 páginas em cada faixa:
+**0 novos** na congelada, **458 novos** na válida.
+
+Corrigido com `_PAGINA_MAX = 10.000` e a distinção entre "acabou a competência" (marca `completa`)
+e "bateu no teto da fonte" (**não** marca — senão congelaria em 55% para sempre).
+
+### 8.2 CPF: a intuição do dono não se confirmou, e o número diz por quê
+
+TJRJ e Câmara **não publicam CPF**, nem mascarado — está escrito nos dois coletores. Cruzar por
+NOME contra os 78.071 nomes com CPF conhecidos recupera **3,2% (764 de 24.053)**; 96,6% não têm
+correspondência alguma. Servidor de tribunal e de câmara em geral não é favorecido de OB.
+
+**Onde o CPF existe de verdade:** a API do Estado traz **CPF mascarado (middle-6)** — o insumo exato
+do `resolucao_cpf`. Destravar a coleta (§8.1) é o que abre essa porta, não cruzar nome.
+
+### 8.3 A promessa agora tem disco
+
+`/api/relatorio/orgao`, `/api/relatorio/inteligencia` e `/api/dossie` prometem *"te envio em ~1–2
+min"* e delegam a um `asyncio.create_task`. Se o processo morre, a tarefa morre com ele — sem aviso.
+Com o serviço reiniciando 7–14×/dia (§7.1), cada restart virava uma promessa quebrada.
+
+`compliance_agent/promessas.py`: a promessa é anotada ANTES de prometer, apagada quando a entrega
+termina, e o que sobrar no arquivo depois do boot é re-despachado pelo lifespan.
+
+### 8.4 `hermes update`: o que quebrou e a lição
+
+O update (97 commits, config v25→v33) fez **checkout para `origin/main`**, não merge — e **apagou as
+quatro customizações do JFN** no adaptador do Telegram, mesmo estando **commitadas**.
+
+> **Commitar não basta.** O que salvou foi ter guardado os diffs em ARQUIVO antes de rodar. Ambos
+> aplicaram limpos depois com `git apply --3way`.
+
+Marcadores a conferir sempre: `_JFN_MENU_TEXT`, `_JFN_MENU_HINTS`, `_aplicar_orcamento_de_imagem`,
+`_ORCAMENTO_IMAGEM_TURNO`.
+
+**Sobreviveu:** `config.yaml` inteiro (`force_ipv4`, `environment_hint`, modelo), `credential_pool`.
+**Melhorou:** ferramentas 31 → 37. **Prompt de sistema e índice de skills: idênticos.**
+
+### 8.5 Cadeia de fallback auditada: 6 dos 20 degraus estavam mortos
+
+Cada degrau testado com requisição real:
+
+| Morto | Motivo |
+|---|---|
+| `github-models/gpt-4o-mini` | **HTTP 410 — serviço aposentado** |
+| `nvidia/llama-3.3-70b` | ReadTimeout |
+| `openrouter/llama-3.3-70b:free` | 404 indisponível |
+| `nous/inclusionai/ring-2.6-1t:free` | 404 modelo inexistente |
+| `nous/tencent/hy3-preview:free` | 404 modelo inexistente |
+| `aion/aion-1.0-mini` | 400 modelo desconhecido |
+
+Entraram dois que respondem e estavam de fora: **huggingface/Llama-3.3-70B** (0,8s) e
+**groq/gpt-oss-120b** (0,3s). **Venice ficou fora: HTTP 402, saldo insuficiente** — é paga (§4.1).
+
+A ordem segue os critérios da casa, não força bruta: janela grande primeiro (o catálogo do JFN são
+18k tokens por requisição), **visão antes** (gemini 1M e stepfun 262k text+image+video, ambas
+verificadas no catálogo do provedor) e **Groq no fim** (o teto de 12.000 TPM é da CONTA).
+
+Cópia de referência do config versionada em `deploy/hermes-config.yaml.referencia` — o
+`~/.hermes/config.yaml` não é versionado e já foi perdido uma vez.
