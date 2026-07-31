@@ -15,3 +15,63 @@
 #
 # Enquanto este arquivo está vazio, o CI reprova em toda falha que não esteja na base da VM-2. Isso
 # é o comportamento CORRETO para a primeira rodada: mostra o mapa inteiro em vez de esconder.
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# POPULADO em 2026-07-31, run 30626748433 (a PRIMEIRA rodada real, como o cabeçalho manda).
+# 20 falhas na rodada. Cada linha abaixo foi LIDA e classificada pelo motivo no log — nenhuma
+# entrou por estar na lista. Uma das 20 NÃO entrou: era código, e foi consertada em vez de
+# absorvida (ver ao final).
+#
+# ── Banco ausente (`data/compliance.db`, 2,6 GB, não versionado) ────────────────────────────
+# Assinatura no log: "0 != 2526", "Cobertura encolheu: 0 < 1121301", "base ausente/vazia".
+tests/test_golden_numbers.py::test_golden_cobertura
+tests/test_golden_numbers.py::test_golden_iterj_ug133100
+tests/test_golden_numbers.py::test_golden_mgs_clean
+tests/test_grupo_economico_paridade.py::test_a_cobertura_de_qsa_viaja_com_o_numero
+tests/test_grupo_economico_paridade.py::test_contrato_do_j1_intacto
+tests/test_grupo_economico_paridade.py::test_j1_continua_avaliando_a_ug
+tests/test_grupo_economico_paridade.py::test_secid_traz_a_concentracao_que_a_antiga_perdia
+tests/test_penalidades_tce_view.py::test_depurar_sem_match_zero
+tests/test_dossie_teto_pratico.py::test_contexto_declarado_gigante_nao_vira_lote_gigante
+tests/test_dossie_teto_pratico.py::test_contexto_menor_que_o_teto_e_respeitado
+#
+# ── Tabela da Receita ausente ───────────────────────────────────────────────────────────────
+# Assinatura: "no such table: socios_receita".
+tests/test_osint_fonte_grafo.py::test_beneficiario_final_roda_sobre_cadeia_real
+tests/test_osint_fonte_grafo.py::test_cobertura_declara_a_ausencia_de_serie_temporal
+#
+# ── Acervo do SEI ausente ───────────────────────────────────────────────────────────────────
+tests/test_bench_documento_longo.py::test_404_sem_endpoint_marca_o_modelo_como_morto
+tests/test_bench_documento_longo.py::test_execucao_de_prova_unica_produz_nota
+tests/test_bench_documento_longo.py::test_prova_entra_no_banco_quando_o_acervo_existe
+#
+# ── Índice do TCU não construído no runner ──────────────────────────────────────────────────
+# ⚠️ LEIA ISTO: estes dois passam AQUI e falham no CI porque o gate de citações, sem índice,
+# devolve o texto INTACTO (gate_citacoes.py:70-74) e só acrescenta a nota "não conferidas".
+# É o comportamento DOCUMENTADO (linha 24 do módulo: "desliga e diz que desligou"), não um bug —
+# a checagem de impossibilidade aritmética precisa do índice para saber o teto do ano.
+# Mas o risco é real e fica registrado: **em máquina sem o índice, um acórdão inventado chega ao
+# entregável** com apenas um rodapé avisando. Esta casa já pagou por citação FABRICADA. Decisão
+# do dono: ou o índice vira pré-requisito de emissão, ou o gate ganha um teto estático
+# conservador que funcione sem acervo. Não mexi por conta própria: mudar o que é SUPRIMIDO num
+# documento jurídico é decisão de produto, não de manutenção.
+tests/test_gate_citacoes_sem_indice.py::test_com_indice_o_comportamento_nao_muda
+tests/test_render_html_gate_citacoes.py::test_citacao_impossivel_nao_sai_no_html
+#
+# ── Snapshot golden depende de banco+índice ─────────────────────────────────────────────────
+# O diff é o esperado: "Base: 1.138.236 OBs..." vira "base em construção".
+tests/test_lex_snapshot.py::test_parecer_lex_snapshot_identico
+#
+# ── `exiftool` ausente ──────────────────────────────────────────────────────────────────────
+# ⚠️ Os asserts de SEGURANÇA passaram (grau="descartado", pontuacao=0): foto sem EXIF segue não
+# acusando. Falhou só a declaração da limitação "perde EXIF" em r["limitacoes"]. Fica anotado
+# como fraqueza a corrigir: onde a ferramenta FALTA, o sistema deveria declarar MAIS limitação,
+# não menos — INDISPONÍVEL ≠ OK vale dentro do próprio detector.
+tests/test_foto_procedencia.py::test_foto_sem_exif_sozinha_nao_acusa
+#
+# ── NÃO ENTRA NA BASE: era código, e foi consertado ─────────────────────────────────────────
+# tests/test_import_nao_executa_trabalho.py::test_sei_integra_completa_...
+#   FileNotFoundError: '/home/ubuntu/.hermes/.env' — `tools/sei_integra_completa.py` lia o
+#   arquivo NO IMPORT, com caminho absoluto cravado. Passava aqui só porque o arquivo existe
+#   nesta VM. Corrigido: `Path.home()` + try/except. Absorver isto teria canonizado um bug real
+#   como "falha de ambiente" — que é exatamente o que este arquivo existe para NÃO fazer.
