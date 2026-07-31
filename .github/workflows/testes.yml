@@ -45,11 +45,24 @@ jobs:
       - name: Python 3.12
         run: uv python install 3.12
 
-      - name: Ambiente (torch pelo índice CPU)
+      # DUAS etapas de propósito. `--extra-index-url` do PyTorch vale para TODOS os pacotes, e o uv
+      # só considera o primeiro índice que contém cada nome (defesa contra dependency confusion) —
+      # então `requests` era resolvido pelo índice do PyTorch, que só publica 2.28.1, e a resolução
+      # morria em "only requests==2.28.1 is available and you require requests>=2.31.0".
+      # O uv sugere `--index-strategy unsafe-best-match`; o nome não é decorativo — passaria a
+      # aceitar qualquer versão de qualquer índice para qualquer pacote. Aqui o índice do PyTorch
+      # simplesmente não participa da resolução do resto: torch/torchvision vêm dele, sozinhos, e o
+      # segundo comando resolve tudo o mais só no PyPI (encontra torch já satisfeito e não o troca).
+      - name: Ambiente 1/2 — torch CPU-only (a VM e o runner não têm GPU)
         run: |
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python \
-            --extra-index-url https://download.pytorch.org/whl/cpu \
+            --index-url https://download.pytorch.org/whl/cpu \
+            torch torchvision
+
+      - name: Ambiente 2/2 — o resto, só do PyPI
+        run: |
+          uv pip install --python .venv/bin/python \
             -r requirements.txt -r requirements-dev.txt
 
       - name: Lint (ruff bloqueia — baseline do repo é ZERO)
