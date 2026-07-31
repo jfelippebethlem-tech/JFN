@@ -53,6 +53,46 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
         medido_em="2026-07-29",
     ),
     LimiteDeFonte(
+        fonte="Folha do Estado (GESPERJ / rj.gov.br/remuneracao)",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "A API declara **909.916 registros** na competência, mas **congela a paginação na "
+            "página 10.000**: dali em diante devolve HTTP 200 com a MESMA fatia de 50, para sempre. "
+            "Alcance real = 10.000 × 50 = **500.000 (55%)**. `size` não contorna (>50 → HTTP 400) e "
+            "não há filtro de partição: `orgao`, `orgaoId` e `vinculo` são IGNORADOS (o total não "
+            "muda) e `nome` exige o nome completo exato. **45% da folha estadual é inalcançável** "
+            "por esta porta — e o pior é que a falha se disfarça de sucesso."),
+        caminho_alternativo=(
+            "Nenhum pela API atual. Caminhos a testar: pedido LAI à SEPLAG pelo dump completo, ou "
+            "outra porta do portal que aceite recorte por órgão."),
+        medido_em="2026-07-31",
+    ),
+    LimiteDeFonte(
+        fonte="Folha do TJRJ (Anexo VIII CNJ) e Câmara Municipal do Rio",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "**Nenhuma das duas publica CPF** — nem mascarado. Medido: 21.767 linhas do TJRJ e "
+            "2.286 da Câmara, 100% sem CPF. Cruzar por NOME contra os 78.071 nomes com CPF "
+            "conhecidos recupera só **3,2% (764 de 24.053)**; 96,6% não têm correspondência alguma "
+            "e 0,2% são homônimos ambíguos. Servidor de tribunal e de câmara em geral não é "
+            "favorecido de OB, então o corpus simplesmente não os contém."),
+        caminho_alternativo=(
+            "Cruzamento por NOME com o contrato honesto de `pcrj/cruzamento` "
+            "(`indicio_nome_unico` × `homonimo_ambiguo`) — nunca CPF presumido."),
+        medido_em="2026-07-31",
+    ),
+    LimiteDeFonte(
+        fonte="Câmara Municipal do Rio — competência",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "O endpoint é uma RELAÇÃO DE SERVIDORES por `ANOINGRESSO`, não uma folha mensal: a "
+            "coluna `competencia` recebe um ANO de 4 dígitos ('1978'..'2026') onde as outras fontes "
+            "gravam AAAA-MM. Misturar os dois formatos na mesma coluna quebra `MAX()` e qualquer "
+            "ordenação — hoje só não quebra por sorte (uma string de 7 chars vence uma de 4)."),
+        caminho_alternativo="Não há folha mensal publicada pela Câmara; é outra natureza de dado.",
+        medido_em="2026-07-31",
+    ),
+    LimiteDeFonte(
         fonte="PNCP — ata de sessão",
         tipo="limite_de_dado",
         o_que_acontece=(
