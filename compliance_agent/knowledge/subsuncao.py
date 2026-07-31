@@ -222,6 +222,16 @@ def render_texto(r: dict) -> str:
     if not r.get("fonte_conferida"):
         linhas.append("_Nota: as citações NÃO foram conferidas contra o documento (fonte não "
                       "fornecida) — conferir antes de uso em peça formal._")
+    # A PREMISSA MAIOR também tem seu caso de "não conferida", e ele saía CALADO. Quando o índice
+    # do TCU não está construído, `_verificar_norma` devolve `ok=True` com `fonte="indice_ausente"`
+    # — a subsunção sai `aferivel` e o leitor não fica sabendo que o acórdão nunca foi conferido.
+    # O CI de 2026-07-31 mostrou isso em 5 testes de 4 arquivos, num runner sem o índice.
+    # Aqui só se DECLARA a lacuna (regra da casa: INDISPONÍVEL ≠ OK). Se ela deve ou não derrubar
+    # o `aferivel` é decisão de produto, e segue em aberto — mas silêncio não era opção.
+    if (r.get("norma_verificada") or {}).get("fonte") == "indice_ausente":
+        linhas.append("_Nota: a norma invocada é acórdão do TCU e o índice oficial NÃO estava "
+                      "disponível nesta máquina — a existência do acórdão não foi conferida. "
+                      "Conferir na fonte antes de uso em peça formal._")
     return "\n\n".join(linhas)
 
 
