@@ -2247,6 +2247,26 @@ def api_fontes_limites(fonte: str = ""):
     })
 
 
+def _idade_dias(ultimo, agora=None):
+    """Idade em dias inteiros de um carimbo de coleta. `None` quando não há data legível.
+
+    O `[:19]` da versão anterior DECEPAVA o fuso: quem grava em UTC (`…+00:00`) era lido como hora
+    local (UTC−3) e parecia 3 h mais novo — na virada do dia a conta ficava negativa e o painel
+    exibia `-1d`. Aqui o carimbo com fuso é respeitado, o sem fuso vale como hora da casa, e o piso
+    é 0 (INDISPONÍVEL ≠ 0: data ilegível devolve `None`, nunca "fresquinho").
+    """
+    import datetime as _d
+
+    agora = agora or _d.datetime.now().astimezone()
+    try:
+        d = _d.datetime.fromisoformat(str(ultimo).strip())
+    except (TypeError, ValueError):
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=agora.tzinfo)
+    return max(0, (agora - d).days)
+
+
 @router.get("/api/fontes/frescor")
 def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
@@ -2295,12 +2315,9 @@ def api_fontes_frescor():
                 con2.close()
         except Exception as exc:  # noqa: BLE001
             fontes.append({"fonte": "PCRJ", "ultimo": None, "detalhe": f"erro: {exc}"})
-        hoje = _dt.now()
+        hoje = _dt.now().astimezone()
         for f in fontes:
-            try:
-                idade = (hoje - _dt.fromisoformat(str(f["ultimo"])[:19])).days
-            except Exception:
-                idade = None
+            idade = _idade_dias(f["ultimo"], hoje)
             f["idade_dias"] = idade
             f["estado"] = ("ok" if idade is not None and idade <= 3 else
                            "atencao" if idade is not None and idade <= 10 else "critico")
