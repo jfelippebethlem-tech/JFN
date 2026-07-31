@@ -75,3 +75,25 @@ tests/test_foto_procedencia.py::test_foto_sem_exif_sozinha_nao_acusa
 #   arquivo NO IMPORT, com caminho absoluto cravado. Passava aqui só porque o arquivo existe
 #   nesta VM. Corrigido: `Path.home()` + try/except. Absorver isto teria canonizado um bug real
 #   como "falha de ambiente" — que é exatamente o que este arquivo existe para NÃO fazer.
+#
+# ─────────────────────────────────────────────────────────────────────────────────────────────
+# SEGUNDA rodada (run 30627229527) — 4 falhas novas, e a razão de só aparecerem agora IMPORTA.
+#
+# No run anterior o LOTE 4 morreu na COLETA ("1 error", sem sumário nenhum): o
+# `FileNotFoundError: /home/ubuntu/.hermes/.env` não derrubava um teste, derrubava um QUARTO da
+# suíte — 1.093 testes não rodaram e o delta nem soube. Falha calada de manual. Com o import
+# consertado o lote 4 correu inteiro e mostrou o que estava escondido.
+# Lição operacional: lote que não emite sumário não é lote verde, é lote que não rodou.
+#
+# ── `.env` ausente (gitignored, e é para ser mesmo) ─────────────────────────────────────────
+# Assinatura: "/bin/sh: 1: .: cannot open ./.env: No such file".
+tests/test_cron_dash_source_env.py::test_com_barra_a_linha_sobrevive
+#
+# ── Índice do TCU ausente — MESMA família já anotada acima ──────────────────────────────────
+# ⚠️ Estes três REFORÇAM o risco: sem índice, o gate não suprime nem o "9999" aritmeticamente
+# impossível, não emite rodapé de supressão, e `subsuncao` devolve `aferivel=True` para um
+# acórdão que não existe. São 5 testes em 4 arquivos apontando o mesmo ponto cego — o que torna
+# a decisão do dono (índice como pré-requisito, ou teto estático) mais urgente, não menos.
+tests/test_gate_citacoes_canal.py::test_citacao_impossivel_e_suprimida_no_canal
+tests/test_gate_citacoes_canal.py::test_rodape_de_uma_linha_quando_houve_supressao
+tests/test_subsuncao.py::test_acordao_impossivel_e_recusado
