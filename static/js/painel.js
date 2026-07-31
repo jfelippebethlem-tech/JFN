@@ -7,6 +7,12 @@ const svgIco=e=>{const g=window.JFN_ICO&&window.JFN_ICO[e];
    (nucleoStart, canvas do nucleo) o lia antes — ReferenceError de TDZ que
    matava a montagem do nucleo em toda carga. Mesmo motivo do _rjCbs. */
 var _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* v50: capacidade MEDIDA (≠ _redMotion, que é preferência declarada). `_medirFps` liga isto quando
+   a máquina não entrega quadro. O CSS do modo sóbrio usa `animation:none`, que mata @keyframes e
+   NÃO toca requestAnimationFrame — sem este flag os canvas de tela cheia (#rjbg, #netbg, este
+   último O(n²) sobre até 76 pontos) seguiam desenhando a custo cheio depois do recuo: o painel
+   media o orçamento, dizia "não cabe", e gastava igual. Mesmo topo do _redMotion pelo mesmo TDZ. */
+var _sobrio=false;
 var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes da def
 var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -2632,8 +2638,8 @@ function rjbgStart(){
     build();
   }
   function draw(t){
-    if(!mapC){raf=requestAnimationFrame(draw);return;}
-    if(document.hidden){raf=requestAnimationFrame(draw);return;}
+    if(!mapC){raf=requestAnimationFrame(draw);return;}   // ainda carregando a malha: espera (limitado)
+    if(document.hidden){if(!_sobrio)raf=requestAnimationFrame(draw);return;}
     const g=ctx;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);
     g.drawImage(mapC,0,0);
     // respiração + varredura de radar girando a partir do centro do território
@@ -2650,13 +2656,19 @@ function rjbgStart(){
         g.globalCompositeOperation='source-over';}
       g.setTransform(1,0,0,1,0,0);
     }
-    raf=requestAnimationFrame(draw);
+    /* Reagendava INCONDICIONALMENTE — redesenhava a malha inteira por quadro mesmo sob
+       reduced-motion, que só tirava a varredura de radar. No modo sóbrio o mapa fica pintado e
+       parado: mesma imagem, zero quadro. */
+    if(!_sobrio)raf=requestAnimationFrame(draw);
   }
   _rjbgTinge=()=>{if(!window.RJ_MALHA)return;if(corEsf()!==corAtual)build();};
   size();
   addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw(performance.now());},{passive:true});
+  /* uma repintura ao voltar para a aba; o `_sobrio` dentro de draw() garante que ela não reacende
+     o laço — repinta o quadro estático e para. */
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){cancelAnimationFrame(raf);draw(performance.now());}});
-  _rjCarregar(()=>{build();});
+  /* pinta assim que a malha chega: no modo sóbrio o laço já parou e ninguém mais chamaria draw(). */
+  _rjCarregar(()=>{build();draw(performance.now());});
   draw(performance.now());
 }
 function netbgStart(){
@@ -2673,9 +2685,11 @@ function netbgStart(){
       for(let j=i+1;j<pts.length;j++){const q=pts[j],qx=q.x+px*q.z,qy=q.y+py*q.z,dx=ox-qx,dy=oy-qy,dd=Math.hypot(dx,dy);
         if(dd<D){ctx.strokeStyle='rgba(90,210,255,'+((1-dd/D)*.24)+')';ctx.lineWidth=d*.55;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(qx,qy);ctx.stroke();}}
       ctx.beginPath();ctx.arc(ox,oy,p.r,0,7);ctx.fillStyle='rgba(140,228,255,'+(.38+p.z*.4)+')';ctx.fill();}
-    if(!rm)raf=requestAnimationFrame(draw);}
+    /* `_sobrio` congela a malha no último quadro (fica campo estático, ainda bonito) em vez de
+       recalcular O(n²) por quadro numa máquina que já se declarou sem orçamento. */
+    if(!rm&&!_sobrio)raf=requestAnimationFrame(draw);}
   addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw();});
-  document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);if(!document.hidden)draw();});
+  document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);if(!document.hidden&&!_sobrio)draw();});
   size();draw();
 }
 /* v10: _ckSpark/_ckSynth removidos — gerador de série sintética (Math.random) sem caller,
@@ -4094,6 +4108,7 @@ function _medirFps(){
     window._jfnFps=Math.round(fps);
     if(fps<24){
       document.body.classList.add('fps-baixo');
+      _sobrio=true;   // avisa o JS: só a classe faria o CSS recuar e os canvas seguirem a custo cheio
       /* aviso VISÍVEL: degradação calada é como ninguém descobre que o painel não é o desenhado. */
       const alvo=document.querySelector('.htop')||document.querySelector('header');
       if(alvo&&!$('modo-sobrio')){
