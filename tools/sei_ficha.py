@@ -130,8 +130,11 @@ def _carregar_env_completo():
 _MAX_TXT = int(os.environ.get("SEI_FICHA_MAX_TXT", "4500"))
 
 # Teto de tokens da RESPOSTA dos modelos de raciocínio (stepfun/cerebras): precisa caber o `reasoning`
-# (em volume) + o JSON final. 4000 era curto e cortava o JSON ("JSON inválido"); 8000 dá folga. Env-tunável.
-_MAX_TOKENS = int(os.environ.get("SEI_FICHA_MAX_TOKENS", "8000"))
+# (em volume) + o JSON final. 4000 e depois 8000 ficaram curtos: medido em SEI-030001/109183/2024 (31/07/26),
+# o teto de 8000 dava finish_reason='length' com `content` VAZIO (26k chars de raciocínio, JSON nunca começa)
+# — 100% de falha no re-fichador. Com 16k/20k/32k o modelo fecha em 11.184/11.289/13.963 tokens de completion.
+# 20000 é o mesmo teto já provado em `sei_propostas_sweep` (SWEEP_PROPOSTAS_MAX_TOKENS). Env-tunável.
+_MAX_TOKENS = int(os.environ.get("SEI_FICHA_MAX_TOKENS", "20000"))
 
 
 # Loop de aprendizado: as lições de perícia (memoria 'metodo', chave 'pericia:*') geradas pelo
@@ -239,7 +242,16 @@ async def _chamar_nous(texto: str, model: str) -> str:
         if r.status_code == 401:
             raise RuntimeError("401 token nous expirado (rode `hermes` p/ re-auth)")
         r.raise_for_status()
-        msg = (r.json().get("choices") or [{}])[0].get("message", {}) or {}
+        j = r.json()
+        esc = (j.get("choices") or [{}])[0]
+        msg = esc.get("message", {}) or {}
+        # Corte no teto com `content` vazio: o raciocínio comeu o orçamento inteiro e o JSON nunca
+        # começou. O `reasoning` truncado não salva (medido: 3/3 falhas) e vira um "JSON inválido"
+        # mudo, que culpa o cache. Falar o corte é o que permite girar o botão certo.
+        if esc.get("finish_reason") == "length" and not (msg.get("content") or "").strip():
+            gasto = ((j.get("usage") or {}).get("completion_tokens")) or _MAX_TOKENS
+            raise RuntimeError(f"corte no teto de tokens ({gasto} tokens no raciocínio, content vazio) "
+                               f"— suba SEI_FICHA_MAX_TOKENS (atual {_MAX_TOKENS})")
         # content é o normal; se vier vazio (modelo de raciocínio cortado), o JSON pode estar no reasoning.
         return msg.get("content") or msg.get("reasoning") or ""
 
