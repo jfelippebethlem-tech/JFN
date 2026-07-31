@@ -222,6 +222,26 @@ async def lifespan(app: FastAPI):
         except Exception as e:  # noqa: BLE001
             print(f"[browser] guard de idle não iniciado ({e.__class__.__name__}) — não-fatal")
 
+    # Batimento da guardiã do WAL-index: a conexão viva impede o caminho "última conexão fechou",
+    # mas NÃO impede que outro processo desvincule o `-shm` por baixo dela (no Linux isso é
+    # permitido, e conexão ociosa não segura lock). Quando o arquivo some, a guardiã fica com
+    # mapeamento morto e as conexões NOVAS deste processo passam a falhar com "malformed" — foi o
+    # que derrubou o painel às 17:42 e 19:24 de 31/07/26, já com a guardiã ativa. O ciclo troca a
+    # guardiã assim que percebe o sumiço, antes de o auditor levar um HTTP 500.
+    async def _bater_wal():
+        from compliance_agent.database.guarda_wal import bater
+        while True:
+            try:
+                await asyncio.sleep(30)
+                await asyncio.to_thread(bater)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001 — o batimento nunca pode derrubar o servidor
+                logger.warning("guarda-wal: ciclo falhou (%s) — continua", e.__class__.__name__)
+
+    if _ok_wal:
+        asyncio.create_task(_bater_wal())
+
     yield
 
     if _browser_reaper_task:
@@ -269,8 +289,24 @@ app.mount("/static/assets", StaticFiles(directory="static/assets"), name="assets
 # irrelevante (o CSS pode sair numa sessão e o JS na seguinte).
 Path("static/css").mkdir(parents=True, exist_ok=True)
 Path("static/js").mkdir(parents=True, exist_ok=True)
-app.mount("/static/css", StaticFiles(directory="static/css"), name="css")
-app.mount("/static/js", StaticFiles(directory="static/js"), name="js")
+
+class _StaticVersionado(StaticFiles):
+    """Cache imutável SÓ para quem veio com `?v=<hash>`.
+
+    O `?v=` torna a URL única por conteúdo: o arquivo pode ficar no navegador para
+    sempre, porque o link muda quando o conteúdo muda. Sem `?v=` (acesso direto,
+    ferramenta, curl) mantém-se o padrão do Starlette — etag/last-modified.
+    """
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        if b"v=" in scope.get("query_string", b""):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
+
+app.mount("/static/css", _StaticVersionado(directory="static/css"), name="css")
+app.mount("/static/js", _StaticVersionado(directory="static/js"), name="js")
 
 # GZIP — não havia nenhum. O painel mandava 519 KB de texto sem compressão em TODA carga; HTML, CSS
 # e JS comprimem 4-6× nesse tipo de conteúdo. `minimum_size` evita gastar CPU com resposta pequena,
@@ -488,22 +524,29 @@ async def logout_jfn():
     return resp
 
 
+# O bump de `?v=<hash>` no HTML não chegava a ninguém: o HTML que CARREGA esses links vinha do
+# cache do navegador (só etag/last-modified, sem Cache-Control — o Chrome então usa heurística e
+# nem revalida). Medido pelo it-campo: painel.js?v=66af4ca4 sobreviveu ao bump até um ?cb=1 na URL.
+# `no-cache` NÃO é "não guarde": é "guarde, mas revalide sempre" — o 304 continua barato.
+_HTML_REVALIDA = {"Cache-Control": "no-cache"}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Painel JFN unificado (mobile-first, dark): visão geral, alertas, SIAFE, sweeps + atalhos. Antigo hub em static/painel.html (aposentado)."""
-    return FileResponse("static/jfn-painel.html")
+    return FileResponse("static/jfn-painel.html", headers=_HTML_REVALIDA)
 
 
 @app.get("/auditoria", response_class=HTMLResponse)
 async def auditoria_ui():
     """Painel de Auditoria Financeira (KPIs, alertas, OBs, favorecidos, /relatorio + Lex)."""
-    return FileResponse("static/dashboard.html")
+    return FileResponse("static/dashboard.html", headers=_HTML_REVALIDA)
 
 
 @app.get("/painel", response_class=HTMLResponse)
 async def painel_fiscalizacao():
     """Painel de fiscalização unificado (leve, Tailwind): visão geral, auditoria/alertas, SIAFE, sweeps, cartel."""
-    return FileResponse("static/jfn-painel.html")
+    return FileResponse("static/jfn-painel.html", headers=_HTML_REVALIDA)
 
 
 @app.get("/cockpit")

@@ -100,3 +100,49 @@ def test_a_guardia_nao_segura_lock_de_escrita(banco):
         outro.close()
     finally:
         guarda_wal.soltar()
+
+
+# ── BATIMENTO (2026-07-31, 2ª rodada) ────────────────────────────────────────────────────────────
+# A guardiã PASSIVA não bastou: houve novas quedas às 17:42 e 19:24 com ela ativa, e o processo
+# ficou com descritores apontando para `-shm`/`-wal` DELETADOS enquanto o `.db` mantinha o mesmo
+# inode. Ou seja: outro processo DESVINCULA os arquivos-irmãos por baixo dela — no Linux isso é
+# permitido, e uma conexão SQLite ociosa não segura lock nenhum para impedir.
+#
+# Descartado por reprodução em laboratório: a manutenção (`wal_checkpoint(TRUNCATE)` + `VACUUM` +
+# `ANALYZE`, cada passo abrindo e fechando conexão) NÃO quebra nada com a guardiã aberta — os três
+# inodes ficaram idênticos e todas as conexões seguiram lendo. O controle sem guardiã, no mesmo
+# roteiro, terminou com `-wal` e `-shm` AUSENTES. O mecanismo original está certo; falta cobrir
+# quem desvincula com a guardiã aberta.
+#
+# Daí o batimento: se o `-shm` sumiu, uma consulta nova o recria e remapeia. É mitigação medida, não
+# cura da causa — e o teste guarda a propriedade que importa: depois do batimento, o arquivo existe.
+
+def test_batimento_recria_o_shm_que_sumiu(banco):
+    """O ponto do defeito remanescente: alguém desvincula o -shm com a guardiã aberta."""
+    guarda_wal.segurar(banco)
+    try:
+        shm = banco.parent / (banco.name + "-shm")
+        assert shm.exists(), "a guardiã deveria ter aberto o WAL-index"
+        shm.unlink()          # simula o desvinculador ainda não identificado
+
+        assert guarda_wal.bater() is True
+        assert shm.exists(), "o batimento não recriou o -shm"
+    finally:
+        guarda_wal.soltar()
+
+
+def test_batimento_sem_guardia_nao_estoura(banco):
+    """O ciclo do servidor chama isto sempre; sem guardiã tem de degradar honesto."""
+    guarda_wal.soltar()
+    assert guarda_wal.bater() is False
+
+
+def test_batimento_sobrevive_a_conexao_morta(banco):
+    """Se a conexão guardiã morreu, o batimento a REABRE em vez de ficar mudo para sempre."""
+    guarda_wal.segurar(banco)
+    try:
+        guarda_wal._CONEXAO.close()     # morta, mas ainda referenciada
+        assert guarda_wal.bater() is True
+        assert guarda_wal.vivo() is True
+    finally:
+        guarda_wal.soltar()
