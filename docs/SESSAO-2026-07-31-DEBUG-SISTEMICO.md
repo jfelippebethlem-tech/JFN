@@ -134,7 +134,7 @@ o CPF não está sendo coletado; **(c)** a coluna `competencia` mistura formatos
 `1978`), o que quebra `MAX()` e qualquer ordenação — mesma família do defeito de data-como-texto do
 SIAFE já catalogado.
 
-### 4.3 Painel — medido com olhos humanos
+### 4.3 Painel — CORRIGIDO na segunda rodada (ver §7)
 
 Captura real em desktop (1600×1000) e mobile (390×844), com console e métricas:
 
@@ -204,3 +204,82 @@ o embedder é decisão do dono.
    normalizar `competencia` para `AAAA-MM` com teste de formato.
 4. **PNCP** (§4.4) — dar deadline à rota.
 5. **Rodar `sei_refichar` no acervo** agora que ele funciona: 2.388 blobs esperam ficha.
+
+---
+
+## 7. Segunda rodada — painel e PNCP
+
+### 7.1 O que a segunda captura revelou (e que a primeira não viu)
+
+Capturando as **URLs** das requisições (a primeira passada só via o console), apareceram **seis
+HTTP 500** que eu havia lido como rotas saudáveis — porque na varredura de rotas eu as chamei sem
+parâmetro e num momento em que o banco respondia:
+
+```
+500  /api/compliance/painel      500  /api/comparador/economia
+500  /api/comparador/vedada      500  /api/comparador/dossie
+500  /api/intel/lift             500  /api/intel/fenix
+```
+
+Todas com o mesmo corpo: **`database disk image is malformed`**. O arquivo estava **íntegro**
+(`quick_check: ok`); o que estava morto era o WAL-index (`-shm`) cacheado **dentro do processo**
+`jfn.service` — causa já diagnosticada pela casa em 23/07 e vigiada por `guardiao_db_malformed.sh`.
+
+**É por isso que os cards da capa mostravam `R$ —`.** Não era dado ausente: era rota em erro.
+
+Frequência medida em `data/guardiao_db_malformed.log`: **7 a 14 vezes por dia** (4 hoje). Cada
+ocorrência = até 5 min de painel com cards em erro **mais** um restart do serviço. Registrado como
+pendência (§4.6) — a hipótese simples já foi descartada: o servidor mantém 12 descritores abertos
+para o banco, então não é "ninguém segura o arquivo".
+
+### 7.2 O modo sóbrio media a máquina, recuava — e não parava os canvas
+
+O canto do cabeçalho anunciava `modo sóbrio · 0 fps`: `_medirFps` mediu, concluiu que a máquina não
+sustenta animação e ligou `body.fps-baixo`. Só que a regra aplica `animation:none !important`, que
+mata `@keyframes` de CSS e **não toca `requestAnimationFrame`**.
+
+`#rjbg` e `#netbg` são canvas de tela cheia desenhados por JS a cada quadro. O `netbg` é **O(n²)**
+(até 76 pontos, ~2.900 cálculos e traços por quadro, DPR até 2). O `rjbg` era pior: reagendava
+**incondicionalmente**, redesenhando a malha inteira mesmo sob `prefers-reduced-motion`. O painel
+media o orçamento, dizia "não cabe", e gastava igual.
+
+Junto saiu o `backdrop-filter` (blur de fundo obriga o navegador a **ler de volta o framebuffer** —
+o `GPU stall due to ReadPixels` do console). Enumerar seletor a seletor deixou **10 elementos para
+trás** numa verificação com `getComputedStyle`; a regra passou a ser universal sob `fps-baixo`. As
+superfícies de vidro ficam **opacas** no mesmo golpe: `--glass` é 76% opaco, então tirar o blur
+sozinho faria o conteúdo de trás aparecer nítido através do cabeçalho — que era exatamente o texto
+embolado no topo da captura mobile.
+
+**Medido, renderizando de verdade (antes × depois):**
+
+| | Antes | Depois |
+|---|---|---|
+| FPS desktop | 1,1 | **5,0** |
+| FPS mobile | 7,2 | **9,6** |
+| CLS desktop | 0,023 | **0,001** |
+| Falhas de rede na carga | 11 | **4** |
+| Elementos com `backdrop-filter` em modo sóbrio | 10 | **0** |
+
+> **Ressalva:** os números de FPS vêm de Chromium headless com renderização por software em 2 vCPU.
+> Servem para comparar antes/depois **na mesma caixa**, não para prever a máquina do dono.
+
+### 7.3 Os "404" eram quase todos intencionais
+
+Correção do que este documento afirmava antes. Das 4 falhas restantes, **nenhuma é defeito**:
+
+- `no-energia.png` — sonda `HEAD` de detecção de recurso. O comentário do código é explícito:
+  *"404 hoje significa 'segue procedural', sem erro"*.
+- `portal-hero.mp4` e `nucleo-holo-rj.mp4` — "falham" porque o navegador passou a usar o `webm` e
+  abandona o `mp4`. Comportamento correto.
+
+Havia **um** 404 real: `portal-hero.webm`. O código lista o `webm` como **primeira** `<source>`
+("harness sem H.264") e o arquivo não existia — 404 garantido a cada carga, e a abertura ficava no
+JPG parado onde não há H.264. Gerado com ffmpeg (VP9, 1,0 MB), no mesmo padrão do
+`nucleo-holo-rj.webm` que já existia.
+
+### 7.4 PNCP: 60 s de sono contra quem respondeu em 0,2 s
+
+Corrigido. `_get_consulta` passa a devolver `(json|None, motivo)` com motivo em `ok`/`http`/`rede`;
+`_consulta_retry` usa a espera longa (20 s/40 s) **só** para falha de rede e curta (2 s/4 s) para
+erro HTTP. A paciência dos coletores em lote — escrita de propósito para o timeout transitório sob
+volume — fica preservada.
