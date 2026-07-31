@@ -18,7 +18,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 RAIZ = Path(__file__).resolve().parent.parent
 
+from compliance_agent import promessas as _promessas
+
 _REL_EM_CURSO: set = set()
+
+
+async def retomar_promessas() -> int:
+    """Re-despacha o que o processo anterior prometeu e não entregou. Chamado no boot.
+
+    O Yoda diz "te envio em ~1–2 min" e a geração vive num `asyncio.create_task`: se o processo
+    morre no meio, a tarefa morre com ele, sem aviso e sem retentativa. Medido em 31/07/26, o
+    serviço era reiniciado 7-14x/dia pelo guardião do WAL-index — cada restart transformava uma
+    promessa em silêncio. Aqui elas voltam à fila.
+    """
+    despacho = {
+        "orgao": lambda a, k: _gerar_e_enviar_orgao(a.get("orgao"), a.get("ug"), a.get("anos"), k),
+        "dossie": lambda a, k: _gerar_e_enviar_dossie(a.get("alvo"), k),
+        "fornecedor": lambda a, k: _gerar_e_enviar_fornecedor(a.get("cnpj"), a.get("empresa"),
+                                                              a.get("anos"), k),
+    }
+    n = 0
+    for p in _promessas.pendentes():
+        chave, fn = p.get("chave"), despacho.get(p.get("tipo"))
+        if not chave or not fn or chave in _REL_EM_CURSO:
+            _promessas.concluir(chave) if chave and not fn else None
+            continue
+        _REL_EM_CURSO.add(chave)
+        asyncio.create_task(fn(p.get("args") or {}, chave))
+        n += 1
+    return n
 
 
 _SWEEP_PAUSE_FLAGS = ("data/.pause_sweep_2", "data/.pause_sweep_1", "data/.pause_sei_sweep")
@@ -84,6 +112,7 @@ async def _gerar_e_enviar_fornecedor(cnpj, empresa, anos, key) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o relatório de {empresa or cnpj}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -102,6 +131,7 @@ async def _gerar_e_enviar_orgao(orgao, ug, anos, key) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o relatório do órgão {orgao or ug}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -144,6 +174,7 @@ async def _gerar_e_enviar_dossie(alvo, key) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê de {alvo}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -190,6 +221,7 @@ async def api_relatorio_inteligencia(payload: Optional[dict] = None):
         return JSONResponse({"ok": True, "status": "gerando",
                              "msg": "⏳ Já estou preparando esse relatório — te envio aqui em instantes."})
     _REL_EM_CURSO.add(key)
+    _promessas.registrar(key, "fornecedor", {"cnpj": cnpj, "empresa": empresa, "anos": anos})
     asyncio.create_task(_gerar_e_enviar_fornecedor(cnpj, empresa, anos, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o relatório de *{empresa or cnpj}* (PDF + planilha + parecer Lex). "
@@ -235,6 +267,7 @@ async def api_relatorio_orgao(payload: Optional[dict] = None):
         return JSONResponse({"ok": True, "status": "gerando",
                              "msg": "⏳ Já estou preparando esse relatório de órgão — te envio aqui em instantes."})
     _REL_EM_CURSO.add(key)
+    _promessas.registrar(key, "orgao", {"orgao": orgao, "ug": ug, "anos": anos})
     asyncio.create_task(_gerar_e_enviar_orgao(orgao, ug, anos, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o relatório do órgão *{orgao or ug}* (PDF + planilha + parecer Lex). "
@@ -262,6 +295,7 @@ async def api_dossie(payload: Optional[dict] = None):
         return JSONResponse({"ok": True, "status": "gerando",
                              "msg": "⏳ Já estou preparando esse dossiê — te envio aqui em instantes."})
     _REL_EM_CURSO.add(key)
+    _promessas.registrar(key, "dossie", {"alvo": alvo})
     asyncio.create_task(_gerar_e_enviar_dossie(alvo, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o Dossiê 360 de *{alvo}* (PDF). "
@@ -336,6 +370,7 @@ async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar a perícia/dossiê da PPP {slug}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -524,6 +559,7 @@ async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê mestre: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -551,6 +587,7 @@ async def _gerar_e_enviar_dossie_completo(cnpj: str, key: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro no dossiê completo de {cnpj}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 

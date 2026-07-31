@@ -180,6 +180,16 @@ async def lifespan(app: FastAPI):
     print(f"[guarda-wal] conexão guardiã {'ATIVA' if _ok_wal else 'AUSENTE'} — "
           f"{'-wal/-shm não serão desvinculados' if _ok_wal else 'painel volta a depender do guardião de restart'}")
 
+    # Promessa feita ao Mestre não pode morrer com o processo: o que o run anterior prometeu e não
+    # entregou volta à fila agora (o Yoda diz "te envio em ~1–2 min" e a geração é um create_task).
+    try:
+        from rotas.produtos import retomar_promessas
+        _n_prom = await retomar_promessas()
+        if _n_prom:
+            print(f"[promessas] {_n_prom} entrega(s) do run anterior recolocada(s) na fila")
+    except Exception as _e:  # noqa: BLE001
+        print(f"[promessas] não consegui retomar ({type(_e).__name__}: {_e}) — nada foi perdido do disco")
+
     # Tenta login no SIAFE — falha silenciosa se fora da rede do governo
     print("\n[Servidor] Iniciando... (login SIAFE só funciona na rede do governo)")
     try:
