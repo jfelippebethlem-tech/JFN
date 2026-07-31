@@ -81,6 +81,29 @@ def ler_json(caminho: Path) -> dict | list | None:
         return None
 
 
+def escrever_json(caminho: Path, obj) -> Path:
+    """Grava `obj` no cache PRESERVANDO a forma em disco (`.json` ou `.json.zst`). Devolve o alvo real.
+
+    Sem isto, quem enxerga o acervo por `glob_cache` (que devolve `.zst`) e grava com `write_text`
+    escreveria texto puro por cima do blob comprimido — corrompendo-o. Escreve em `.tmp` e só então
+    troca, para que uma falha no meio preserve o conteúdo anterior em vez de deixar blob pela metade.
+    """
+    caminho = Path(caminho)
+    alvo = localizar(caminho) or caminho
+    cru = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    tmp = alvo.with_name(alvo.name + ".tmp")
+    try:
+        if alvo.suffix == ".zst":
+            tmp.write_bytes(subprocess.run(["zstd", "-q", "-c", "-"], input=cru,
+                                           capture_output=True, check=True).stdout)
+        else:
+            tmp.write_bytes(cru)
+        tmp.replace(alvo)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return alvo
+
+
 def glob_cache(cache_dir: Path, padrao: str):
     """Itera `padrao` e `padrao + '.zst'`, recursivo, sem repetir o mesmo conteúdo lógico.
 

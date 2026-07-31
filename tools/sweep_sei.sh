@@ -65,7 +65,9 @@ $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; sa
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.
 $PRIO timeout 600  $PY -m tools.sei_refichar --max 40 >> data/sei_refichar.log 2>&1; say "sei_refichar rc=$?"
 # DEPURA as fichas do cache -> tabela sei_ficha (só info relevante, queryável/cruzável c/ OBs). Idempotente.
-$PRIO timeout 300  $PY -m tools.sei_depurar_db >> data/sei_depurar.log 2>&1; say "sei_depurar rc=$?"
+# A rodada normal é INCREMENTAL (só blob tocado desde a marca) e leva segundos. O teto folgado é para
+# a passada COMPLETA, que acontece com banco vazio/restaurado: medida em 502-587 s sobre 6.428 blobs.
+$PRIO timeout 900  $PY -m tools.sei_depurar_db >> data/sei_depurar.log 2>&1; say "sei_depurar rc=$?"
 # CONSOLIDA cada árvore de processo num dossiê TXT (data/sei_trees/) + tabela sei_arvore — o que o Lex lê.
 $PRIO timeout 400  $PY -m tools.sei_arvore_build >> data/sei_arvore.log 2>&1; say "sei_arvore rc=$?"
 # MEMÓRIA cruzada de direcionamento por fornecedor (acumula; barato, sem LLM em massa; ente público zerado).

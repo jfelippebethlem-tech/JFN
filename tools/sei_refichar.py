@@ -8,8 +8,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import glob
-import json
 import time
 from pathlib import Path
 
@@ -20,6 +18,7 @@ try:
 except Exception:
     pass
 
+from compliance_agent.sei.cache_arquivo import escrever_json, glob_cache, ler_json, nome_logico
 from tools.sei_ficha import STEPFUN, _refresh_nous_se_preciso, conteudo_real, extrair_ficha
 
 CACHE = _ROOT / "data" / "sei_cache"
@@ -44,14 +43,15 @@ async def main():
     ap.add_argument("--max", type=int, default=10_000)
     ap.add_argument("--forca", action="store_true", help="re-ficha mesmo quem já tem o campo novo")
     a = ap.parse_args()
-    arquivos = sorted(glob.glob(str(CACHE / "cdp_*.json")))
+    # `glob_cache` (não `glob.glob`) porque 5.741 dos 5.973 blobs do acervo estão em `.json.zst`:
+    # com o glob cru esta ferramenta enxergava 3,9% do que deveria refichar.
+    arquivos = glob_cache(CACHE, "cdp_*.json")
     feitos = pulados = erros = 0
     for caminho in arquivos:
         if feitos >= a.max:
             break
-        try:
-            d = json.loads(Path(caminho).read_text(encoding="utf-8"))
-        except Exception:
+        d = ler_json(caminho)
+        if not isinstance(d, dict):
             continue
         if not _precisa(d, a.forca):
             pulados += 1
@@ -64,12 +64,12 @@ async def main():
         f = await extrair_ficha(cont, STEPFUN, provider="nous")
         if f.get("_erro"):
             erros += 1
-            print(f"  ERRO {Path(caminho).name}: {f['_erro'][:60]}", flush=True)
+            print(f"  ERRO {nome_logico(caminho)}: {f['_erro'][:90]}", flush=True)
             continue
         d["ficha"] = f
         d["_ficha_modelo"] = "stepfun:free"
         d["_ficha_schema"] = CAMPO_NOVO
-        Path(caminho).write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+        escrever_json(caminho, d)  # preserva `.zst` — `write_text` corromperia o blob comprimido
         feitos += 1
         # reporta presença da perícia (o schema v2) + a situação, robusto ao tipo.
         tem_per = "perícia✓" if isinstance(f.get("pericia_contabil"), dict) else "perícia—"
