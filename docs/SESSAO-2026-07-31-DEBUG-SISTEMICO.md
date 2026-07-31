@@ -353,3 +353,30 @@ verificadas no catálogo do provedor) e **Groq no fim** (o teto de 12.000 TPM é
 
 Cópia de referência do config versionada em `deploy/hermes-config.yaml.referencia` — o
 `~/.hermes/config.yaml` não é versionado e já foi perdido uma vez.
+
+### 8.6 CORREÇÃO ao §7.1 — o `-shm` **não** está resolvido
+
+A conexão guardiã (`fcdf9949`) elimina **um** mecanismo, comprovado no flagrante: o servidor chegava
+a **zero conexões** (16:14:31) e o SQLite desvinculava os arquivos-irmãos (16:17:42). Depois do fix,
+os descritores nunca mais zeram.
+
+**Mas houve nova queda às 17:42**, com o fix já no ar desde 16:30. E o vigia flagrou:
+
+```
+19:09:28   shm=AUSENTE   fds=33   deletados=8
+```
+
+`shm` ausente **com 33 descritores abertos** e 8 apontando para arquivos já deletados. O inode do
+`-wal` mudou de 2345988 para 2346266. Ou seja: **alguém apaga/recria o `-shm` com conexões vivas**, e
+a guardiã não impede isso.
+
+**Suspeito principal:** `tools/pos_sweep_analise.py:76` faz *"VACUUM + checkpoint"* no
+`compliance.db` (chamado por `tools/siafe_supervisor.sh` depois do sweep). VACUUM reconstrói o banco
+e pode resetar o WAL-index de quem já o tem mapeado.
+
+**Próximo passo:** instrumentar `pos_sweep_analise` para registrar o inode do `-shm` antes e depois
+do VACUUM — se mudar, está achado; a cura seria serializar o VACUUM com uma janela em que o servidor
+solte as conexões, ou trocá-lo por `wal_checkpoint(PASSIVE)`.
+
+Quedas medidas hoje: 00:17 · 03:22 · 10:22 · 13:24 · **17:42**. As de 10:22 e 13:24 foram causadas
+pelas minhas próprias escritas de teste.
