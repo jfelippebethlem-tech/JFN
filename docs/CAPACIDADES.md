@@ -33,6 +33,8 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `pericia_beneficios` | jfn | cli | `tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]` | PRONTO | 'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos' |
 | `ppp_dossie` | jfn | http | `/api/ppp` | PRONTO | 'dossie/pericia da PPP X', 'a PPP do Souza Aguiar', 'concessao/parceria publico-privada da prefeitura' |
 | `ppp_triagem` | jfn | http | `/api/ppp/triagem` | PRONTO | 'triagem das PPPs', 'quais PPPs/concessoes da prefeitura tem risco', 'lista as PPPs em lote' |
+| `processo_360` | jfn | http | `/api/processo` | PRONTO | 'avalie o processo X inteiro', 'o que ha de errado no processo SEI Y', 'cada fase e despacho do processo' |
+| `processo_360_avaliar` | jfn | http | `/api/processo/avaliar` | PRONTO | quando GET /api/processo devolver 404 (ainda nao avaliado) |
 | `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | CNPJ sozinho na mensagem; nome de empresa sozinho; 'relatorio/auditoria/due diligence/dossie de <empresa>'; 'analisa a empresa X'; 'quem e o CNPJ Y' |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |

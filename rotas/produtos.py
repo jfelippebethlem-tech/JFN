@@ -784,3 +784,74 @@ def api_sei_empresa_zip(cnpj: str = ""):
                     zf.write(f, arcname=f"{slug}/{f.relative_to(pasta)}")
     return JSONResponse({"ok": True, "url": f"/reports/{zip_path.name}",
                          "n_incluidos": len(arquivados), "n_total": len(procs)})
+
+
+# ── Avaliador de Processo 360 (o processo como um todo: fases + despachos que importam) ──
+_PROCESSO_360_EM_CURSO: dict = {}
+
+
+@router.get("/api/processo")
+def api_processo(numero: str = ""):
+    """Avaliação 360 persistida de um processo SEI (processo_avaliacao). 404 honesto se ainda
+    não avaliado — dispare POST /api/processo/avaliar. `rodando` indica avaliação em curso."""
+    numero = (numero or "").strip()
+    if not numero:
+        return JSONResponse({"ok": False, "erro": "informe o número do processo SEI"}, status_code=400)
+    import re
+    import sqlite3 as _sq
+    con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+    try:
+        con.row_factory = _sq.Row
+        norm = re.sub(r"\D", "", numero)
+        row = con.execute(
+            "select * from processo_avaliacao where replace(replace(replace("
+            "numero_sei,'-',''),'/',''),'SEI','')=? or numero_sei=?", (norm, numero)).fetchone()
+    except _sq.OperationalError:
+        row = None
+    finally:
+        con.close()
+    info = _PROCESSO_360_EM_CURSO.get(norm)
+    rodando = bool(info and info["proc"].poll() is None)
+    if not row:
+        return JSONResponse({"ok": False, "rodando": rodando,
+                             "erro": "processo ainda não avaliado — POST /api/processo/avaliar"},
+                            status_code=404)
+    import json as _json
+    out = {k: row[k] for k in row.keys()}
+    for k in ("achados_json", "lacunas_json", "docs_chave_json", "acatamento_json",
+              "escalada_json", "cobertura_json"):
+        try:
+            out[k.removesuffix("_json")] = _json.loads(out.pop(k) or "null")
+        except (ValueError, KeyError):
+            pass
+    return JSONResponse({"ok": True, "rodando": rodando, "avaliacao": out})
+
+
+@router.post("/api/processo/avaliar")
+def api_processo_avaliar(payload: dict | None = None):
+    """Dispara a avaliação 360 de um processo SEI em background (subprocess; 1 pesado por vez —
+    a VM tem 2 vCPU). `com_llm` liga o juízo por documento (cadeia grátis). Acompanhe por
+    GET /api/processo. Exige o processo já ARQUIVADO (data/sei_arquivo) — senão 409 com a fila."""
+    payload = payload or {}
+    numero = str(payload.get("numero") or "").strip()
+    if not numero:
+        return JSONResponse({"ok": False, "erro": "informe {numero}"}, status_code=400)
+    if not _sei_arquivado(numero):
+        return JSONResponse({"ok": False, "erro": "processo não está no arquivo compacto — "
+                             "capturar antes (tools/sei_arquivar.py / fila sei_fila_captura)"},
+                            status_code=409)
+    import re
+    norm = re.sub(r"\D", "", numero)
+    info = _PROCESSO_360_EM_CURSO.get(norm)
+    if info and info["proc"].poll() is None:
+        return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
+    import subprocess
+    cmd = [str(RAIZ / ".venv" / "bin" / "python"), "tools/processo_360.py",
+           "--numero", numero, "--gravar"]
+    if payload.get("com_llm"):
+        cmd.append("--com-llm")
+    proc = subprocess.Popen(cmd, cwd=str(RAIZ), env=dict(os.environ, PYTHONPATH=str(RAIZ)),
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _PROCESSO_360_EM_CURSO[norm] = {"proc": proc}
+    return JSONResponse({"ok": True, "status": "iniciado",
+                         "msg": "Avaliação 360 em curso — consulte GET /api/processo?numero=…"})

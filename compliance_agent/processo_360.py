@@ -284,3 +284,52 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         except Exception as e:  # noqa: BLE001
             out["llm"] = {"status": "INDISPONIVEL", "motivo": str(e)}
     return out
+
+
+_DDL_AVALIACAO = """
+CREATE TABLE IF NOT EXISTS processo_avaliacao (
+  numero_sei TEXT PRIMARY KEY, score REAL, score100 REAL, grau TEXT, faixa TEXT,
+  achados_json TEXT, lacunas_json TEXT, docs_chave_json TEXT, acatamento_json TEXT,
+  escalada_json TEXT, cnpj_vencedor TEXT, confianca REAL, cobertura_json TEXT,
+  avaliado_em TEXT DEFAULT (datetime('now')), versao TEXT
+);
+"""
+
+
+def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
+    """Persiste a avaliação (upsert por numero_sei). Só grava status OK."""
+    if out.get("status") != "OK":
+        return False
+    own = con is None
+    con = con or sqlite3.connect(str(_DB), timeout=30)
+    try:
+        con.executescript(_DDL_AVALIACAO)
+        cob = out.get("cobertura") or {}
+        n_rod = len(cob.get("detectores_rodados") or [])
+        confianca = round(n_rod / (n_rod + len(cob.get("indisponiveis") or []) or 1), 3)
+        con.execute(
+            "insert into processo_avaliacao (numero_sei, score, score100, grau, faixa, "
+            "achados_json, lacunas_json, docs_chave_json, acatamento_json, escalada_json, "
+            "cnpj_vencedor, confianca, cobertura_json, avaliado_em, versao) "
+            "values (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?) "
+            "on conflict(numero_sei) do update set score=excluded.score, "
+            "score100=excluded.score100, grau=excluded.grau, faixa=excluded.faixa, "
+            "achados_json=excluded.achados_json, lacunas_json=excluded.lacunas_json, "
+            "docs_chave_json=excluded.docs_chave_json, acatamento_json=excluded.acatamento_json, "
+            "escalada_json=excluded.escalada_json, cnpj_vencedor=excluded.cnpj_vencedor, "
+            "confianca=excluded.confianca, cobertura_json=excluded.cobertura_json, "
+            "avaliado_em=excluded.avaliado_em, versao=excluded.versao",
+            (out["numero_sei"], out["score"], out["score100"], out["grau"]["grau"],
+             out["faixa"], json.dumps(out["achados"], ensure_ascii=False, default=str),
+             json.dumps({"processo": out["lacunas_processo"],
+                         "captura": out["lacunas_captura"]}, ensure_ascii=False, default=str),
+             json.dumps(out["docs_chave"], ensure_ascii=False, default=str),
+             json.dumps(out["acatamento"], ensure_ascii=False, default=str),
+             json.dumps(out["escalada"], ensure_ascii=False, default=str),
+             out.get("cnpj_vencedor"), confianca,
+             json.dumps(cob, ensure_ascii=False, default=str), VERSAO))
+        con.commit()
+        return True
+    finally:
+        if own:
+            con.close()
