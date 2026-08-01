@@ -716,6 +716,34 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+
+> **⏯️ 2026-08-01 — PROCESSO 360 no ar + fila do fiscal viva (23 commits; PR #9).** Comece por
+> `~/vault/aprendizados/processo-360.md` (estado, calibrações e pendências) e por
+> `data/fila_fiscal_360.md` (regravado a cada 4h pelo `tools/sweep_360.sh`).
+>
+> **O que está RODANDO sozinho:** `sweep_360.sh` no cron (20 */4) — avalia o que o `sweep_sei`
+> captura, julga o topo por documento (cadeia grátis) e regrava a fila; `ugs_foco.txt` ganhou
+> **270131** (caso Líder Táxi) e **080001** (SES/SUBEXE). Pausas: `data/.pause_360`,
+> `data/.pause_sweeps`. **Regra nova: 1 escritor no compliance.db por vez** (dois lotes
+> simultâneos travaram o banco e mataram uma varredura).
+>
+> **Números que valem (medidos, não estimados):** 2.056 processos avaliados · 413 com achado forte
+> · 404 vereditos por documento, dos quais **102 na rubrica v2 — só 5 em escala 3** (a estatística
+> "74% dos despachos" é da v1 e **não deve ser citada**: media tramitação legítima).
+>
+> **PENDÊNCIAS ORDENADAS (a próxima sessão começa aqui):**
+> 1. **Capturar** os SEIs que faltam para fechar os casos: OB pós-INAPTA do IDESI
+>    (`080002/001953·001759·002137·001820/2026`) e `SEI-070026/000705/2021` (Con-tato). Sem eles o
+>    360 responde INDISPONÍVEL — que é honesto, mas não fecha o caso.
+> 2. **Re-julgar o resto do top-50 na v2** (`--com-llm`; o cache por hash paga só o que falta) e
+>    recontar a estatística por tipo.
+> 3. **Rebuild do graphify do vault** — o `--update` foi bloqueado pelo guard de encolhimento
+>    (esquema de ID antigo); ver `~/vault/aprendizados/graphify-update-guard-encolhimento.md`. O
+>    cache dos 74 arquivos já está salvo, então `/graphify ~/vault` sai barato.
+> 4. **Leitura humana** dos processos com mais documentos escala-3 e dos 2 núcleos de cartel
+>    (`screen_convergencia_cartel.py`): HM Sul Fluminense ← HANDREIY; ALPHES ← MAPPE.
+> 5. QSA da **MAM Soluções** (5ª do grupo Caneca?) e os 5 contratos PCRJ reais (enxame off-hours).
+
 > **📋 HANDOFF 2026-07-29 → `docs/HANDOFF-2026-07-29.md`** — comece por ele: os 7 achados que
 > decidem como mexer em qualquer detector, o pendente ORDENADO por valor/esforço (o nº 1 é
 > E.0.1, porque só 0,66% dos certames têm classificado além do 1º lugar), as fontes
