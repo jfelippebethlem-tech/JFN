@@ -130,7 +130,15 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     rodados: list[str] = []
     resultados: list[ResultadoDetector] = []
 
-    # 1) fases + lacunas (ausência só pesa contra o processo sob captura íntegra)
+    # 1) fases + lacunas (ausência só pesa contra o processo sob captura íntegra E quando a
+    # NATUREZA é de contratação — processo de pagamento/repasse não carrega ETP/edital/contrato;
+    # eles vivem no processo-pai. Lição da triagem: "observação ≠ achado"; sem isto, todo
+    # processinho de OB de 3 docs saía "ALTO" por lacunas estruturalmente esperadas.)
+    try:
+        from tools.sei_triagem_pericia import natureza as _natureza
+        nat = _natureza(man, docs)
+    except Exception:  # noqa: BLE001
+        nat = "indefinido"
     fases_presentes = {d["fase"] for d in docs} - {"indefinida"}
     com_pagamento = any(d["tipo"] in ("ordem_bancaria", "programacao_desembolso") for d in docs)
     lac = fases.lacunas(fases_presentes, modalidade, com_pagamento=com_pagamento)
@@ -141,8 +149,9 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             {"falta": "captura íntegra do processo (texto no disco abaixo do mínimo)",
              "gravidade": "captura", **ev_captura}]
     for item in lacunas_processo:
-        achados.append({"origem": "fases.lacunas", "diz": item["falta"],
-                        "gravidade": item["gravidade"]})
+        if nat == "contratacao" or item["gravidade"] == "critica":
+            achados.append({"origem": "fases.lacunas", "diz": item["falta"],
+                            "gravidade": item["gravidade"]})
 
     # 2) ordem dos marcos
     cadeia = analisar_cadeia([{"titulo": d["titulo"], "tipo": d["tipo"]} for d in docs])
@@ -260,7 +269,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
 
     out = {
         "numero_sei": numero, "versao": VERSAO, "status": "OK",
-        "modalidade": modalidade, "ato_principal": ato,
+        "modalidade": modalidade, "ato_principal": ato, "natureza": nat,
         "fases": {f: len(ix) for f, ix in man["linha_do_tempo"].items() if ix},
         "docs_chave": docs_chave,
         "achados": achados,
