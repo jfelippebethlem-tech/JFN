@@ -48,12 +48,13 @@ def tipo_canonico(tipo_original: str | None, titulo: str) -> str:
     """Tipo no vocabulário canônico (o fino de `sei/fases.py`)."""
     t = (tipo_original or "").strip()
     canon = t if t in _TIPOS_FINOS else MAPA_TIPO_CANONICO.get(t)
-    # o TÍTULO desmente o tipo (doutrina da cadeia_processo): "CERTIDÃO ... PGE" classificada
-    # como parecer_juridico fabricava inversão do art. 53 — o classificador fino por título
-    # tem a última palavra quando diverge num tipo sensível.
-    if canon == "parecer":
+    # o TÍTULO desmente o tipo (doutrina da cadeia_processo): "CERTIDÕES ... PGE" virava
+    # parecer_juridico e "Nota Fiscal" virava contrato (classificador por CONTEÚDO mente em
+    # doc escaneado) — nos tipos SENSÍVEIS a marcos, o classificador fino por título tem a
+    # última palavra quando diverge.
+    if canon in ("parecer", "contrato"):
         fino = fases.classificar(titulo)[1]
-        if fino != "parecer":
+        if fino not in (canon, "outro", "vazio"):
             return fino
     if canon:
         return canon

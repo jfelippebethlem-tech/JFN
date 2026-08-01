@@ -46,9 +46,12 @@ ARQUIVO = RAIZ / "data" / "sei_arquivo"
 
 # Tipos que o arquivador já classifica. Fonte: contagem no acervo em 2026-07-25.
 _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
-# o TÍTULO desmente o tipo: "CERTIDÃO ... PGE" e "Parecer Técnico - Medição" viram
-# parecer_juridico no classificador e fabricam A1 (FP real 030001/087722/2024, 2026-08-01)
-_RX_NAO_PARECER = re.compile(r"certid[aã]o|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo", re.I)
+# o TÍTULO desmente o tipo: "CERTIDÃO/Certidões ... PGE" e "Parecer Técnico - Medição" viram
+# parecer_juridico no classificador e fabricam A1; "Nota Fiscal" e "Minuta de Termo Aditivo"
+# viram contrato (o classificador por CONTEÚDO mente em doc escaneado) — e minuta ANTES do
+# parecer é o fluxo CORRETO do art. 53. (FPs reais 030001/087722, 080002/020278, 270131/000548.)
+_RX_NAO_PARECER = re.compile(r"certid|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo", re.I)
+_RX_NAO_CONTRATO = re.compile(r"minuta|nota\s+fiscal|\bnfs?-?e?\b|e-?mail|gmail|pesquisa", re.I)
 _CONTRATO = {"contrato", "termo_contrato", "ata_registro_precos"}
 _RESPOSTA = {"despacho", "oficio", "nota_tecnica", "informacao", "manifestacao"}
 _EXECUCAO = {"medicao", "relatorio_fotografico", "atesto", "recebimento"}
@@ -173,9 +176,17 @@ def periciar(pasta: Path) -> dict | None:
     achados: list[dict] = []
     observacoes: list[dict] = []   # estrutural, NAO e contradicao — ver nota abaixo
 
+    # MARCO exige DUPLA concordância: o tipo do arquivador E o classificador por TÍTULO
+    # (sei/fases). O tipo por CONTEÚDO mente em doc escaneado — tipou "Declaração",
+    # "Justificativa", "minnuta" (typo real!) como contrato e "Checklist" como parecer
+    # (FP A1 no 270131/000548/2023). Para o achado mais forte, precisão > recall.
+    from compliance_agent.sei.fases import classificar as _cls_titulo
     pareceres = [d for d in docs if str(d.get("tipo") or "").lower() in _PARECER
-                 and not _RX_NAO_PARECER.search(str(d.get("titulo") or ""))]
-    contratos = [d for d in docs if str(d.get("tipo") or "").lower() in _CONTRATO]
+                 and not _RX_NAO_PARECER.search(str(d.get("titulo") or ""))
+                 and _cls_titulo(str(d.get("titulo") or ""))[1] == "parecer"]
+    contratos = [d for d in docs if str(d.get("tipo") or "").lower() in _CONTRATO
+                 and not _RX_NAO_CONTRATO.search(str(d.get("titulo") or ""))
+                 and _cls_titulo(str(d.get("titulo") or ""))[1] in ("contrato", "ata_rp")]
     respostas = [d for d in docs if str(d.get("tipo") or "").lower() in _RESPOSTA]
 
     # ── A1 · CONTRATO ASSINADO ANTES DO PARECER ────────────────────────────────

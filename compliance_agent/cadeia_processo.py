@@ -99,7 +99,10 @@ def momento(doc: dict) -> tuple[str, float] | tuple[None, None]:
 # e parecer técnico de medição é peça de EXECUÇÃO, não o controle prévio do art. 53 (caso real
 # 070002/006215/2024). Quando os dois discordam, vale o que está escrito.
 _RE_NAO_JURIDICO = re.compile(r"parecer\s+t[ée]cnic|parecer\s+de\s+medi[çc]|parecer\s+contabil|"
-                              r"parecer\s+de\s+engenh|laudo|certid[aã]o", re.I)
+                              r"parecer\s+de\s+engenh|laudo|certid", re.I)
+# MINUTA de contrato/aditivo antes do parecer é o fluxo CORRETO (o art. 53 analisa a minuta);
+# NF/e-mail classificados como contrato pelo conteúdo escaneado também não são o marco.
+_RE_NAO_CONTRATO = re.compile(r"minuta|nota\s+fiscal|\bnfs?-?e?\b|e-?mail|gmail", re.I)
 
 
 def _marco(doc: dict) -> str | None:
@@ -109,6 +112,8 @@ def _marco(doc: dict) -> str | None:
         tipo = tipo.replace("parecer_juridico", "parecer_tecnico")
     for nome, (pat_tipo, pat_titulo) in _MARCOS.items():
         if re.search(pat_tipo, tipo, re.I) or re.search(pat_titulo, titulo, re.I):
+            if nome in ("contrato", "aditivo") and _RE_NAO_CONTRATO.search(titulo):
+                continue
             return nome
     return None
 
