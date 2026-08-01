@@ -86,6 +86,7 @@ Os módulos citados vivem em `compliance_agent/`.
   C   Perfil do contratado (fachada/laranja) ....... ✅ (`detectores/c_fachada.py`)
   C7  Sancionada contratada (sanção vigente à ép ... ✅ (`detectores/c7_sancionada_contratada.py`)
   C8  Servidor público no QSA da contratada ......... ✅ (`detectores/c8_servidor_socio.py`)
+  C9  Pagamento majoritário por TAC/indenização ..... ✅ (`detectores/c9_tac_fornecedor.py`)
   E7  Cláusula restritiva (análise finalística + ... ✅ (`detectores/e7_clausula_restritiva.py`)
   E8  Deserto/fracassado dirigido (edital inviáv ... ✅ (`detectores/e8_deserto_dirigido.py`)
   J8  Atestado de capacidade técnica cruzado (em ... ✅ (`detectores/j_atestado_cruzado.py`)

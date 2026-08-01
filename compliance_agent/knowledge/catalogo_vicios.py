@@ -270,6 +270,15 @@ CATALOGO: tuple[Vicio, ...] = (
           detectores=("C7",),
           dispositivos=("Lei 14.133/2021 art. 156 §§4º-5º", "Lei 14.133/2021 art. 14"),
           escalada="representacao", origem=("casa", "ALICE/CGU")),
+    Vicio("pagamento_fora_contrato_tac", "Pagamento majoritário por TAC/indenização", "perfil_contratado",
+          "Fornecedor pago majoritariamente por Termo de Ajuste de Contas/indenização/reconhecimento de "
+          "dívida — regularização a posteriori sem certame, habilitação nem preço disputado; reiterada, "
+          "descaracteriza a emergência e burla o dever de licitar (vício do órgão com fornecedor "
+          "beneficiário). Detector C9 (faixas de % e valor absoluto espelham reporting/detector_tac).",
+          detectores=("C9",),
+          dispositivos=("Lei 8.666/93 art. 59 parágrafo único", "Lei 14.133/2021 art. 40"),
+          teste_objetivo="pct_tac>=50% ou (>=30% e R$100M+) sobre OBs com observação",
+          escalada="representacao", origem=("casa", "confronto 2026-08-01")),
     Vicio("vinculo_politico", "Vínculo político-financeiro do fornecedor", "perfil_contratado",
           "Doações eleitorais/PEP no QSA correlacionadas com receita pública (grafo de poder).",
           detectores=("C6",), redflags_lex=("DD/H-PEP",),

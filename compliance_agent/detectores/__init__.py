@@ -33,6 +33,7 @@ from compliance_agent.detectores.base import (
 from compliance_agent.detectores.c6_vinculo_politico import C6VinculoPolitico
 from compliance_agent.detectores.c7_sancionada_contratada import C7SancionadaContratada
 from compliance_agent.detectores.c8_servidor_socio import C8ServidorSocio
+from compliance_agent.detectores.c9_tac_fornecedor import C9TacFornecedor
 from compliance_agent.detectores.c_fachada import CFachada
 from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
@@ -102,6 +103,7 @@ REGISTRO: dict[str, Detector] = {
         C6VinculoPolitico(),   # perfil do contratado — vínculo político-financeiro (doações TSE); multiplicador
         C7SancionadaContratada(),  # perfil do contratado — sanção impeditiva vigente à época (art. 156 §§4º-5º)
         C8ServidorSocio(),     # perfil do contratado — agente público no QSA (art. 9º / vedação de gerência)
+        C9TacFornecedor(),     # perfil do contratado — pago majoritariamente por TAC/indenização (fora de contrato)
         X1CrescimentoAditivo(),  # execução — crescimento aditivo (teto art. 125)
         X2ProrrogacaoPerpetua(),  # execução — prorrogação perpétua sem teste de mercado
         X3ExecucaoFinanceira(),   # execução — execução financeira anômala (tríade SIAFE/atesto/fila)
@@ -208,7 +210,15 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
     # detectores de família `violacao_legal`/`perfil`, os de maior peso do sistema. Sem o contexto
     # necessário eles degradam para `nao_avaliavel`, que é honesto; ausência de execução não era.
     simples = [d for d in REGISTRO.values()
-               if d.familia == "preco" or d.id in ("C6", "C7", "C8")]
+               if d.familia == "preco" or d.id in ("C6", "C7", "C8", "C9")]
+    # C9 precisa da medição de TAC; preencher aqui é barato (1 SELECT read-only) e degrada
+    # honesto (DB ausente → cobertura INDISPONIVEL → nao_avaliavel). Em teste, injete ctx["tac"].
+    if "tac" not in ctx:
+        try:
+            from compliance_agent.reporting.detector_tac import tac_por_cnpj
+            ctx["tac"] = tac_por_cnpj(str(cnpj))
+        except Exception:
+            pass  # sem medição → C9 fica nao_avaliavel (nunca derruba o runner)
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
     # C (fachada) — multi-resultado por investigação
