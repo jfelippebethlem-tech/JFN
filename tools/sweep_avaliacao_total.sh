@@ -47,6 +47,7 @@ $PRIO timeout -k 60 --foreground 1200 $PY -c "
 import sqlite3
 from compliance_agent.varredura_certames import varrer_todos, init_schema
 con = sqlite3.connect('data/compliance.db', timeout=60); con.execute('PRAGMA busy_timeout=60000')
+con.row_factory = sqlite3.Row   # certames_com_resultado indexa por NOME (r['certame'])
 ach = sqlite3.connect('data/achados.db', timeout=60); init_schema(ach)
 r = varrer_todos(con, limite=60, con_achados=ach, log=print)
 print('certames:', {k: v for k, v in r.items() if k != 'por_certame'})
@@ -61,6 +62,7 @@ $PRIO timeout -k 60 --foreground 1200 $PY -c "
 import sqlite3
 from compliance_agent.varredura_orgaos import varrer_todas, init_schema
 con = sqlite3.connect('data/compliance.db', timeout=60); con.execute('PRAGMA busy_timeout=60000')
+con.row_factory = sqlite3.Row   # as consultas indexam por NOME de coluna
 ach = sqlite3.connect('data/achados.db', timeout=60); init_schema(ach)
 r = varrer_todas(con, limite_ugs=8, max_fornecedores=15, con_achados=ach, log=print)
 print('orgaos:', {k: v for k, v in r.items() if k != 'por_ug'})
