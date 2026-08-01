@@ -21,14 +21,19 @@ REPO = Path(__file__).resolve().parent.parent
 _CATCH_ALL = ("OUTRAS", "OUTROS", "CHAMAMENTO", "?")
 # ramos onde a órbita alta é ESTRUTURAL (mercado concentrado por natureza) — declarado, não escondido
 _FP_ESTRUTURAL = ("MEDICAMENTOS", "MATERIAL HOSPITALAR")
+# mediana de quórum a partir da qual cover bidding é implausível (pregão eletrônico aberto)
+_QUORUM_ALTO = 12
 
 
 def coletar(con) -> dict:
-    rows = con.execute("select processo, participante, resultado, tipologia, ente "
+    rows = con.execute("select processo, participante, resultado, tipologia, ente, qtd_participantes "
                        "from tcerj_licitante where participante <> ''").fetchall()
     d = {"stats": defaultdict(Counter), "venc_proc": defaultdict(set), "procs": defaultdict(set),
-         "ramos": defaultdict(set), "entes": defaultdict(set), "tip_part": defaultdict(Counter)}
-    for proc, part, res, tip, ente in rows:
+         "ramos": defaultdict(set), "entes": defaultdict(set), "tip_part": defaultdict(Counter),
+         "quorum": {}}
+    for proc, part, res, tip, ente, qtd in rows:
+        if qtd:
+            d["quorum"][proc] = qtd
         r = (res or "").upper()
         t = (tip or "?").upper()
         d["stats"][part][r] += 1
@@ -62,9 +67,16 @@ def contumazes(d: dict, min_part: int, min_conc: float = 0.4) -> list[dict]:
             continue
         estrutural = any(any(t.startswith(f) for f in _FP_ESTRUTURAL)
                          for t, _ in d["tip_part"][part].most_common(2))
+        # quórum: cover bidding só faz sentido econômico com POUCOS licitantes — num pregão
+        # eletrônico de dezenas/centenas, o perdedor contumaz é fornecedor pequeno perdendo e a
+        # "órbita" é artefato de o generalista vencer muito no território (refutado nos 2 núcleos
+        # de 2026-08-01: HANDREIY perdeu em quóruns 15-127; MAPPE em 30-195 e até venceu 1).
+        quoruns = sorted(q for q in (d["quorum"].get(p) for p in d["procs"][part]) if q)
+        mediana_q = quoruns[len(quoruns) // 2] if quoruns else None
         saida.append({"perdedor": part, "n": n, "vitorias": vit, "orbita": top,
                       "conc": round(100 * conc, 1), "n_entes": len(d["entes"][part]),
-                      "fp_estrutural": estrutural})
+                      "mediana_quorum": mediana_q,
+                      "fp_estrutural": estrutural or bool(mediana_q and mediana_q >= _QUORUM_ALTO)})
     return saida
 
 
