@@ -356,8 +356,9 @@ def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
     if out.get("status") != "OK":
         return False
     own = con is None
-    con = con or sqlite3.connect(str(_DB), timeout=30)
+    con = con or sqlite3.connect(str(_DB), timeout=60)
     try:
+        con.execute("PRAGMA busy_timeout=60000")
         con.executescript(_DDL_AVALIACAO)
         cob = out.get("cobertura") or {}
         n_rod = len(cob.get("detectores_rodados") or [])

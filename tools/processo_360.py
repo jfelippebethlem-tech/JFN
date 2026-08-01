@@ -68,13 +68,20 @@ def main():
         return 2
 
     for numero in alvos:
-        out = processo_360.avaliar(numero, com_llm=args.com_llm)
+        try:
+            out = processo_360.avaliar(numero, com_llm=args.com_llm)
+        except Exception as e:  # noqa: BLE001 — 1 processo ruim não derruba o lote
+            print(f"{numero}: ERRO — {e}", file=sys.stderr)
+            continue
         _imprimir(out)
         if args.json:
             print(json.dumps(out, ensure_ascii=False, indent=1, default=str))
         if args.gravar and out.get("status") == "OK":
-            processo_360.gravar(out)
-            print("   ✔ gravado em processo_avaliacao")
+            try:
+                processo_360.gravar(out)
+                print("   ✔ gravado em processo_avaliacao")
+            except Exception as e:  # noqa: BLE001
+                print(f"   gravação falhou (segue o lote): {e}", file=sys.stderr)
         if args.pdf and out.get("status") == "OK":
             from tools.vm_guard import wait_until_safe
             ok, msg = wait_until_safe()
