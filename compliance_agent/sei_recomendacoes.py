@@ -67,6 +67,35 @@ _RE_TITULO_PARECER = re.compile(
     r"\b(parecer|manifesta[çc][aã]o\s+jur[ií]dica|nota\s+t[eé]cnica|promo[çc][aã]o)\b", re.I)
 
 
+# ── suficiência do EMISSOR (lição IDESI 2026-08-01: contrato emergencial de alto valor só com
+#    DIRJUR/AUDIN internos — parecer interno NÃO supre a análise da PGE/CGE). Níveis: 3 = controle
+#    externo ao órgão (PGE/PGM/CGE/CGM/TCE); 2 = controle interno; 1 = assessoria jurídica do órgão.
+NIVEL_EMISSOR = {"PGE": 3, "PGM": 3, "CGE": 3, "CGM": 3, "TCE": 3,
+                 "CONTROLE_INTERNO": 2, "ASSESSORIA_JURIDICA": 1}
+EXIGENCIA_POR_ATO = {"contratacao_direta": 3, "contrato": 3, "aditivo": 2, "geral": 1}
+
+
+def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
+    """O parecer presente nos autos tem o EMISSOR à altura do ato? (função pura, aditiva —
+    não altera `auditar_acatamento`). `docs`: [{ref, tipo, texto}].
+
+    Vereditos: SUFICIENTE · PARECER_DE_EMISSOR_INSUFICIENTE (há parecer, mas só de nível
+    inferior ao exigido pelo ato) · SEM_PARECER_LOCALIZADO (nenhum emissor identificado —
+    leitura parcial ≠ inexistência)."""
+    emissores = sorted({e for e in (classificar_emissor(d.get("texto") or "") for d in docs or [])
+                        if e})
+    exigido = EXIGENCIA_POR_ATO.get(ato, 1)
+    max_nivel = max((NIVEL_EMISSOR.get(e, 0) for e in emissores), default=0)
+    if not emissores:
+        veredito = "SEM_PARECER_LOCALIZADO"
+    elif max_nivel < exigido:
+        veredito = "PARECER_DE_EMISSOR_INSUFICIENTE"
+    else:
+        veredito = "SUFICIENTE"
+    return {"veredito": veredito, "ato": ato, "exigido": exigido,
+            "max_nivel": max_nivel, "emissores": emissores}
+
+
 def classificar_emissor(texto: str) -> str | None:
     t = texto or ""
     for nome, pat in _EMISSORES:

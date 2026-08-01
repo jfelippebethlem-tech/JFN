@@ -1,0 +1,286 @@
+# -*- coding: utf-8 -*-
+"""Avaliador de Processo 360 — o processo COMO UM TODO: cada fase e cada despacho que importam.
+
+Costura (sem reimplementar) as peças que existiam soltas:
+  manifesto_norm (shape único + gate captura_integra) → fases.lacunas (ausência com gravidade)
+  → cadeia_processo (ordem dos marcos) → triagem pericial A1–A5 (3 baldes) → execucao_fatos +
+  rodar_execucao (X) → analisar_processo_sei (P/E/J) → rodar_fornecedor (C6–C9, CNPJ vencedor)
+  → auditar_acatamento + suficiencia_parecer (lição IDESI: parecer interno não supre PGE/CGE)
+  → **score_processo** (base.py — o agregador oficial, aqui pela 1ª vez em produção)
+  → grau_flag + escalada.recomendar + matriz S×V (verossimilhança com teto 3 sem base de pares).
+
+Honestidade estrutural: cada motor que falha vira entrada em `cobertura.indisponiveis`
+(INDISPONÍVEL ≠ 0); lacuna só pesa contra o PROCESSO sob `captura_integra` (lição dos 874 FP);
+o dict de saída é versionado (`versao: 360.1`).
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+import sqlite3
+from pathlib import Path
+
+from compliance_agent import sei_recomendacoes
+from compliance_agent.cadeia_processo import analisar_cadeia
+from compliance_agent.detectores import PESOS_DETECTOR
+from compliance_agent.detectores.base import ResultadoDetector, score_processo
+from compliance_agent.editais.escalada import recomendar
+from compliance_agent.editais.flags import grau_flag
+from compliance_agent.execucao_fatos import contexto_x1, contexto_x3
+from compliance_agent.sei import fases, manifesto_norm
+
+VERSAO = "360.1"
+_DB = Path(__file__).resolve().parents[1] / "data" / "compliance.db"
+
+# tipos canônicos que entram na auditoria de acatamento/suficiência (pareceres + decisórios)
+_TIPOS_ACATAMENTO = {"parecer", "orgao_controle", "despacho", "oficio", "homologacao",
+                     "adjudicacao", "contratacao_direta", "contrato", "aditivo"}
+# âncoras dos sinais estruturais (regras da casa, determinísticas)
+_ANCORA_GRAVIDADE = {"critica": 0.85, "alta": 0.6, "media": 0.3, "baixa": 0.3}
+_ANCORA_TRIAGEM = {"alto": 0.85, "medio": 0.6, "baixo": 0.3}
+# pesos dos sinais sintéticos do 360 (família: acatamento/suficiência = violacao_legal 1.0)
+_PESOS_360 = {"P360-fases.lacunas": 0.6, "P360-cadeia": 0.8, "P360-triagem": 0.8,
+              "P360-suficiencia_emissor": 1.0, "P360-acatamento": 1.0}
+
+
+# ── indireções finas (monkeypatch em teste; motores pesados ficam fora do orquestrador) ──
+async def _analisar_pej(numero: str, leitura: dict | None = None) -> dict:
+    from compliance_agent.detectores.coletor_edital import analisar_processo_sei
+
+    async def _ler(_n: str) -> dict:
+        return leitura or {}
+    return await analisar_processo_sei(numero, ler_fn=_ler)
+
+
+def _rodar_execucao(numero: str, contexto: dict) -> list[ResultadoDetector]:
+    from compliance_agent.detectores import rodar_execucao
+    return rodar_execucao(numero, contexto=contexto)
+
+
+def _rodar_fornecedor(cnpj: str) -> list[ResultadoDetector]:
+    from compliance_agent.detectores import rodar_fornecedor
+    return rodar_fornecedor(cnpj)
+
+
+def _cnpj_vencedor(numero: str) -> str | None:
+    """Maior favorecido do processo em `sei_arvore.fornecedores` (fallback barato e honesto)."""
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            norm = re.sub(r"\D", "", numero)
+            row = con.execute(
+                "select fornecedores from sei_arvore where replace(replace(replace("
+                "numero_sei,'-',''),'/',''),'SEI','')=? or numero_sei=?",
+                (norm, numero)).fetchone()
+        finally:
+            con.close()
+        if not row or not row[0]:
+            return None
+        forn = sorted(json.loads(row[0]), key=lambda f: -(f.get("valor") or 0))
+        return re.sub(r"\D", "", str(forn[0].get("cnpj") or "")) or None
+    except Exception:
+        return None
+
+
+def _texto_de(pasta: Path, doc: dict, teto: int = 20_000) -> str:
+    rel = doc.get("texto")
+    if rel:
+        p = pasta / rel
+        if p.exists():
+            try:
+                return p.read_text(encoding="utf-8", errors="ignore")[:teto]
+            except OSError:
+                return ""
+    return ""
+
+
+def _rd(origem: str, numero: str, score: float, detalhe: str) -> ResultadoDetector:
+    r = ResultadoDetector(detector=f"P360-{origem}", processo=numero,
+                          score=score, status="confirmado")
+    r.explicacao_inocente = detalhe[:300]
+    return r
+
+
+def _faixa(score100: float) -> str:
+    return ("EXTREMO" if score100 >= 75 else "ALTO" if score100 >= 50
+            else "MEDIO" if score100 >= 25 else "BAIXO")
+
+
+def avaliar(numero_sei: str, *, com_llm: bool = False, teto_docs_llm: int | None = None) -> dict:
+    man = manifesto_norm.carregar(numero_sei)
+    if man is None:
+        return {"numero_sei": numero_sei, "status": "INDISPONIVEL", "versao": VERSAO,
+                "motivo": ("processo não está no arquivo compacto (data/sei_arquivo) — "
+                           "capturar antes: tools/sei_arquivar.py ou fila sei_fila_captura")}
+    return avaliar_pasta(Path(man["_pasta"]), com_llm=com_llm, teto_docs_llm=teto_docs_llm)
+
+
+def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | None = None) -> dict:
+    man_cru = json.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
+    man_cru["_pasta"] = str(pasta)
+    man = manifesto_norm.normalizar(man_cru)
+    docs = man["docs"]
+    numero = str(man.get("processo") or pasta.name)
+    modalidade = str(man.get("modalidade") or "")
+    integra, ev_captura = manifesto_norm.captura_integra(man, pasta)
+
+    achados: list[dict] = []
+    indisponiveis: list[str] = []
+    rodados: list[str] = []
+    resultados: list[ResultadoDetector] = []
+
+    # 1) fases + lacunas (ausência só pesa contra o processo sob captura íntegra)
+    fases_presentes = {d["fase"] for d in docs} - {"indefinida"}
+    com_pagamento = any(d["tipo"] in ("ordem_bancaria", "programacao_desembolso") for d in docs)
+    lac = fases.lacunas(fases_presentes, modalidade, com_pagamento=com_pagamento)
+    lacunas_processo = lac if integra else []
+    lacunas_captura = [] if integra else lac
+    if not integra:
+        lacunas_captura = list(lacunas_captura) + [
+            {"falta": "captura íntegra do processo (texto no disco abaixo do mínimo)",
+             "gravidade": "captura", **ev_captura}]
+    for item in lacunas_processo:
+        achados.append({"origem": "fases.lacunas", "diz": item["falta"],
+                        "gravidade": item["gravidade"]})
+
+    # 2) ordem dos marcos
+    cadeia = analisar_cadeia([{"titulo": d["titulo"], "tipo": d["tipo"]} for d in docs])
+    for inv in cadeia.get("inversoes", []):
+        achados.append({"origem": "cadeia", "diz": inv.get("observacao", inv.get("tipo")),
+                        "gravidade": "alta", "detalhe": inv})
+
+    # 3) triagem pericial A1–A5 (gate próprio; mesmos 3 baldes)
+    try:
+        from tools.sei_triagem_pericia import periciar as _periciar
+        tri = _periciar(pasta) or {}
+        rodados.append("triagem_A1-A5")
+        for a in tri.get("achados", []):
+            achados.append({"origem": "triagem", **a})
+    except Exception as e:  # noqa: BLE001
+        indisponiveis.append(f"triagem: {e}")
+
+    # 4) execução (X) — fatos extraídos do TEXTO dos docs de contratação/execução/despesa
+    try:
+        t_contrato = "\n".join(_texto_de(pasta, d) for d in docs
+                               if d["tipo"] in ("contrato", "aditivo", "ordem_inicio"))
+        t_despesa = "\n".join(_texto_de(pasta, d) for d in docs
+                              if d["fase"] in ("despesa", "execucao"))
+        ctx_exec = {**(contexto_x1(t_contrato) if t_contrato.strip() else {}),
+                    **(contexto_x3(t_despesa) if t_despesa.strip() else {})}
+        res_exec = _rodar_execucao(numero, ctx_exec)
+        resultados.extend(res_exec)
+        rodados += sorted({r.detector for r in res_exec})
+    except Exception as e:  # noqa: BLE001
+        indisponiveis.append(f"execucao: {e}")
+
+    # 5) P/E/J sobre a leitura do ARQUIVO (nunca browser aqui)
+    try:
+        leitura = {"texto": "", "documentos": [d["titulo"] for d in docs],
+                   "conteudo_documentos": [
+                       {"doc": d["titulo"], "conteudo": _texto_de(pasta, d)}
+                       for d in docs if d.get("texto")]}
+        pej = asyncio.run(_analisar_pej(numero, leitura=leitura))
+        if pej.get("status") == "OK":
+            for rd in pej.get("resultados", []):
+                if isinstance(rd, dict):
+                    resultados.append(ResultadoDetector(
+                        detector=str(rd.get("detector") or "?"), processo=numero,
+                        score=float(rd.get("score") or 0),
+                        status=str(rd.get("status") or "nao_avaliavel")))
+                    rodados.append(str(rd.get("detector")))
+        else:
+            indisponiveis.append(f"pej: {pej.get('motivo')}")
+    except Exception as e:  # noqa: BLE001
+        indisponiveis.append(f"pej: {e}")
+
+    # 6) perfil do contratado (C) — CNPJ vencedor/maior favorecido
+    cnpj = _cnpj_vencedor(numero)
+    if cnpj:
+        try:
+            res_forn = _rodar_fornecedor(cnpj)
+            resultados.extend(res_forn)
+            rodados += sorted({r.detector for r in res_forn})
+        except Exception as e:  # noqa: BLE001
+            indisponiveis.append(f"fornecedor: {e}")
+    else:
+        indisponiveis.append("fornecedor: CNPJ vencedor não identificado (sei_arvore)")
+
+    # 7) acatamento (art. 53) + suficiência do emissor (lição IDESI)
+    docs_ac = [{"ref": d["titulo"], "tipo": d["tipo"], "texto": _texto_de(pasta, d)}
+               for d in docs if d["tipo"] in _TIPOS_ACATAMENTO][:40]
+    ac = sei_recomendacoes.auditar_acatamento(docs_ac)
+    tipos = {d["tipo"] for d in docs}
+    ato = ("contratacao_direta" if "contratacao_direta" in tipos
+           or any(k in modalidade.lower() for k in ("dispensa", "inexigibil", "emergenc"))
+           else "contrato" if "contrato" in tipos
+           else "aditivo" if "aditivo" in tipos else "geral")
+    suf = sei_recomendacoes.suficiencia_parecer(docs_ac, ato)
+    ac["suficiencia"] = suf
+    if ac.get("veredito") == "IGNORADO_INDICIO":
+        achados.append({"origem": "acatamento", "gravidade": "alta",
+                        "diz": "ressalva de parecer com sinal de não-atendimento e sem "
+                               "acolhimento/motivação posterior (art. 53 / LINDB art. 22)"})
+    if suf["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE" and integra:
+        achados.append({"origem": "suficiencia_emissor", "gravidade": "alta",
+                        "diz": (f"ato '{ato}' exige parecer de nível {suf['exigido']} "
+                                f"(PGE/CGE) e os autos só têm emissores de nível "
+                                f"{suf['max_nivel']} ({', '.join(suf['emissores']) or '—'}) "
+                                "— parecer interno não supre o controle externo")})
+
+    # 8) sinais estruturais → ResultadoDetector sintéticos + agregador OFICIAL
+    for a in achados:
+        origem = a["origem"]
+        if origem == "triagem":
+            s = _ANCORA_TRIAGEM.get(str(a.get("grau")), 0.3)
+        else:
+            s = _ANCORA_GRAVIDADE.get(str(a.get("gravidade")), 0.3)
+        resultados.append(_rd(origem, numero, s, str(a.get("diz") or "")))
+    score = score_processo(resultados, pesos={**PESOS_DETECTOR, **_PESOS_360})
+    score100 = round(score * 100, 1)
+    faixa = _faixa(score100)
+
+    # 9) grau/escalada/matriz (verossimilhança: nº de origens independentes; teto 3 sem pares)
+    origens = {r.detector.split("-")[0] if r.detector.startswith("P360") else r.detector[:1]
+               for r in resultados if r.status == "confirmado" and not r.refutada}
+    n_familias = len(origens)
+    teste_violado = any((r.valores or {}).get("teste_objetivo") == "violado" for r in resultados)
+    grau = grau_flag(origem="deterministico", score=score,
+                     teste_status="violado" if teste_violado else None,
+                     familias_convergentes=max(0, n_familias - 1))
+    sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}[faixa]
+    ver = min(3, 2 + (1 if n_familias >= 2 else 0))  # teto 3: não há base de pares por processo
+    escalada = recomendar(sev * ver, teste_objetivo_violado=teste_violado,
+                          familias_independentes=n_familias)
+
+    docs_chave = [{"i": d["i"], "titulo": d["titulo"], "tipo": d["tipo"], "fase": d["fase"]}
+                  for d in docs
+                  if d["tipo"] in ("contratacao_direta", "parecer", "homologacao", "despacho",
+                                   "aceite", "medicao", "contrato", "aditivo", "edital")][:60]
+
+    out = {
+        "numero_sei": numero, "versao": VERSAO, "status": "OK",
+        "modalidade": modalidade, "ato_principal": ato,
+        "fases": {f: len(ix) for f, ix in man["linha_do_tempo"].items() if ix},
+        "docs_chave": docs_chave,
+        "achados": achados,
+        "lacunas_processo": lacunas_processo,
+        "lacunas_captura": lacunas_captura,
+        "cadeia": {k: cadeia.get(k) for k in ("grau", "inversoes", "resumo")},
+        "acatamento": ac,
+        "cnpj_vencedor": cnpj,
+        "score": float(score), "score100": score100, "faixa": faixa, "grau": grau,
+        "matriz_sv": {"severidade": sev, "verossimilhanca": ver, "produto": sev * ver},
+        "escalada": escalada,
+        "cobertura": {"captura_integra": integra, **ev_captura,
+                      "detectores_rodados": sorted(set(rodados)),
+                      "indisponiveis": indisponiveis},
+        "llm": None,
+    }
+    if com_llm:
+        try:
+            from compliance_agent.sei.doc_juizo import julgar_docs
+            out["llm"] = julgar_docs(man, pasta, teto=teto_docs_llm)
+        except Exception as e:  # noqa: BLE001
+            out["llm"] = {"status": "INDISPONIVEL", "motivo": str(e)}
+    return out
