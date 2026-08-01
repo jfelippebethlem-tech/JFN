@@ -68,6 +68,21 @@ jobs:
       - name: Lint (ruff bloqueia — baseline do repo é ZERO)
         run: .venv/bin/python -m ruff check .
 
+      # GATE DO PROCESSO 360 (2026-08-01). Estes testes guardam as réguas que fundamentam PEÇA de
+      # controle externo — inversão do art. 53, suficiência do emissor, 3 baldes de lacuna, teto de
+      # grau do juízo por IA. Quatro famílias de falso positivo já foram mortas aqui em um só dia
+      # (certidão lida como parecer, minuta/anexo lidos como contrato, tipo por conteúdo mentindo em
+      # documento escaneado). Rodam ANTES dos lotes e BLOQUEIAM: regressão nessas regras produz
+      # acusação falsa num documento oficial, que é o pior defeito possível deste repo.
+      - name: Gate — réguas do Processo 360 (bloqueia)
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=300 \
+            tests/test_manifesto_norm.py tests/test_processo_360.py tests/test_doc_juizo.py \
+            tests/test_contratos_foro.py tests/test_detector_c9.py \
+            tests/test_sei_fases.py tests/test_cadeia_processo.py \
+            tests/test_sei_recomendacoes.py tests/test_detectores_sincronia.py \
+            -m "not slow"
+
       # Os quatro lotes correm em SEQUÊNCIA e nenhum aborta o próximo (`|| true`): queremos o mapa
       # COMPLETO de falhas para o delta, não o primeiro tropeço. Quem reprova é o passo do delta.
       - name: Lote 1/4
