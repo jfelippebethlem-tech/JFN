@@ -51,9 +51,22 @@ def _conclusao(score: int) -> str:
     return "regular"
 
 
-def _voto(conclusao: str, dims: list[str]) -> str:
+# Foro de controle externo por esfera do órgão contratante (a base pcrj_contratos
+# guarda também contratos federais — ex.: Fiocruz — e o foro errado invalida o voto).
+_FORO = {"federal": "TCU", "estadual-rj": "TCE-RJ", "municipal-rio": "TCM-RJ",
+         "municipal-outro": "TCE-RJ", "indefinido": "órgão de controle competente"}
+
+
+def foro_do_contrato(orgao_nome: str = "", orgao_cnpj: str = "") -> tuple[str, str]:
+    """(esfera, foro) do órgão contratante via classificador puro de esfera."""
+    from compliance_agent.pcrj.esfera import classificar_esfera
+    esfera = classificar_esfera(orgao_nome or "", orgao_cnpj or "")
+    return esfera, _FORO[esfera]
+
+
+def _voto(conclusao: str, dims: list[str], foro: str = _FORO["indefinido"]) -> str:
     if conclusao == "indício de irregularidade":
-        return ("Pela representação ao TCM-RJ e/ou instauração de tomada de contas, dado o(s) "
+        return (f"Pela representação ao {foro} e/ou instauração de tomada de contas, dado o(s) "
                 f"indício(s) em {', '.join(dims)}. Presunção de legitimidade; indício ≠ acusação.")
     if conclusao == "diligência":
         return ("Pela BAIXA EM DILIGÊNCIA: requisitar ao órgão a justificativa técnica e os "
@@ -95,10 +108,12 @@ def deliberar(con, dossie: dict, achados: list[dict], gerar=None) -> dict:
          "jurisprudencia": _rag(f"{d['dimensao']} {d['norma']}")}
         for d in dimensoes]
     dims = [d["dimensao"] for d in dimensoes]
+    esfera, foro = foro_do_contrato(c.get("orgao_nome") or "", c.get("orgao_cnpj") or "")
     return {
         "numero_controle_pncp": c.get("numero_controle_pncp"),
         "relatorio": relatorio, "fundamentacao": fundamentacao,
-        "conclusao": conclusao, "score": score, "voto": _voto(conclusao, dims or ["—"]),
+        "conclusao": conclusao, "score": score, "voto": _voto(conclusao, dims or ["—"], foro),
+        "esfera": esfera, "foro": foro,
         "dimensoes": dims,
         # dossiê preservado p/ as fichas ricas do parecer (aditivos/itens/sinais/pagamentos)
         "aditivos": dossie.get("aditivos", []),
