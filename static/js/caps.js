@@ -8,6 +8,8 @@ const CAPS_MESTRAS = [
  {
   "id": "relatorio_inteligencia",
   "grupo": "🏢 Auditoria & Relatórios",
+  "grupo_ic": "🏢",
+  "grupo_rot": "Auditoria & Relatórios",
   "nome": "Relatório de um fornecedor",
   "cmd": "/relatorio",
   "exemplo": "due diligence da MGS Clean",
@@ -20,6 +22,8 @@ const CAPS_MESTRAS = [
  {
   "id": "relatorio_orgao",
   "grupo": "🏢 Auditoria & Relatórios",
+  "grupo_ic": "🏢",
+  "grupo_rot": "Auditoria & Relatórios",
   "nome": "Relatório de um órgão/UG",
   "cmd": "/orgao",
   "exemplo": "quanto o ITERJ pagou e a quem em 2024",
@@ -32,6 +36,8 @@ const CAPS_MESTRAS = [
  {
   "id": "listar_ugs",
   "grupo": "🏢 Auditoria & Relatórios",
+  "grupo_ic": "🏢",
+  "grupo_rot": "Auditoria & Relatórios",
   "nome": "Catálogo de UGs/órgãos (códigos e nomes)",
   "cmd": "/ug",
   "exemplo": "/ug tribunal",
@@ -44,6 +50,8 @@ const CAPS_MESTRAS = [
  {
   "id": "dossie",
   "grupo": "🏢 Auditoria & Relatórios",
+  "grupo_ic": "🏢",
+  "grupo_rot": "Auditoria & Relatórios",
   "nome": "Dossiê 360 de um alvo",
   "cmd": "/dossie",
   "exemplo": "monte um dossiê da Extreme",
@@ -56,6 +64,8 @@ const CAPS_MESTRAS = [
  {
   "id": "pericia_beneficios",
   "grupo": "👥 Pessoal × Benefícios",
+  "grupo_ic": "👥",
+  "grupo_rot": "Pessoal × Benefícios",
   "nome": "Perícia de benefícios (Câmara/Prefeitura/sócios) — quem é nomeado",
   "cmd": "",
   "exemplo": "perícia de benefícios da prefeitura",
@@ -68,6 +78,8 @@ const CAPS_MESTRAS = [
  {
   "id": "pcrj_fantasmas",
   "grupo": "👥 Pessoal × Benefícios",
+  "grupo_ic": "👥",
+  "grupo_rot": "Pessoal × Benefícios",
   "nome": "Sinais de servidor-fantasma (Câmara/PCRJ)",
   "cmd": "",
   "exemplo": "servidores fantasma na faixa forte?",
@@ -80,6 +92,8 @@ const CAPS_MESTRAS = [
  {
   "id": "pcrj_dossie_comissionados",
   "grupo": "👥 Pessoal × Benefícios",
+  "grupo_ic": "👥",
+  "grupo_rot": "Pessoal × Benefícios",
   "nome": "Dossiê completo de comissionados/gabinetes",
   "cmd": "",
   "exemplo": "dossiê dos gabinetes da Câmara",
@@ -92,6 +106,8 @@ const CAPS_MESTRAS = [
  {
   "id": "cartel",
   "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
   "nome": "Cartel/conluio entre fornecedores",
   "cmd": "",
   "exemplo": "tem cartel nas licitações da UG 133100?",
@@ -104,6 +120,8 @@ const CAPS_MESTRAS = [
  {
   "id": "cruzamento",
   "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
   "nome": "Cruzar OB × CNPJ × SEI × sócios",
   "cmd": "/cruzamento",
   "exemplo": "cruze os dados da empresa X",
@@ -116,6 +134,8 @@ const CAPS_MESTRAS = [
  {
   "id": "conflito_doador_contrato",
   "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
   "nome": "Doador de campanha que virou fornecedor",
   "cmd": "",
   "exemplo": "quem me doou ganhou contrato?",
@@ -128,6 +148,8 @@ const CAPS_MESTRAS = [
  {
   "id": "anomalias",
   "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
   "nome": "Anomalias automáticas nos pagamentos",
   "cmd": "",
   "exemplo": "algo estranho nos pagamentos do ITERJ?",
@@ -140,6 +162,8 @@ const CAPS_MESTRAS = [
  {
   "id": "responsaveis_processo",
   "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
   "nome": "Responsáveis de um processo SEI",
   "cmd": "/responsaveis",
   "exemplo": "/responsaveis SEI-030001/004724/2026",
@@ -150,8 +174,38 @@ const CAPS_MESTRAS = [
   "descricao": "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo"
  },
  {
+  "id": "processo_360",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Avaliação 360 de um processo SEI",
+  "cmd": "/processo",
+  "exemplo": "/processo SEI-070026/000410/2021",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/processo",
+  "ordem": 26,
+  "descricao": "Avaliacao 360 do PROCESSO como um todo (fases, ordem dos marcos, pericia A1-A5, detectores P/E/J/C/X, acatamento de pareceres com suficiencia do emissor, score de convergencia)"
+ },
+ {
+  "id": "processo_360_avaliar",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Avaliar um processo SEI (360)",
+  "cmd": "",
+  "exemplo": "avaliar o processo SEI-070026/000410/2021",
+  "tipo": "http",
+  "metodo": "POST",
+  "rota": "/api/processo/avaliar",
+  "ordem": 27,
+  "descricao": "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)"
+ },
+ {
   "id": "conjunto_portfolio",
   "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
   "nome": "Ranking de órgãos por risco de certame (conjunto)",
   "cmd": "/conjunto",
   "exemplo": "ranking de órgãos por risco",
@@ -164,6 +218,8 @@ const CAPS_MESTRAS = [
  {
   "id": "emendas_pericia",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Perícia das emendas parlamentares (RJ)",
   "cmd": "",
   "exemplo": "quais emendas suspeitas?",
@@ -176,6 +232,8 @@ const CAPS_MESTRAS = [
  {
   "id": "pcrj_pericia_gastos",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Perícia dos gastos da Prefeitura do Rio",
   "cmd": "",
   "exemplo": "fracionamento na PCRJ?",
@@ -188,6 +246,8 @@ const CAPS_MESTRAS = [
  {
   "id": "editais_direcionamento",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Direcionamento em editais (cláusula a cláusula)",
   "cmd": "",
   "exemplo": "há direcionamento nos editais?",
@@ -200,6 +260,8 @@ const CAPS_MESTRAS = [
  {
   "id": "contratos_parecer",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Parecer de contratos (estilo Tribunal de Contas)",
   "cmd": "",
   "exemplo": "analise os contratos da Prefeitura",
@@ -212,6 +274,8 @@ const CAPS_MESTRAS = [
  {
   "id": "instrumento_mandato",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Minuta de requerimento / representação (.docx)",
   "cmd": "/minuta",
   "exemplo": "faça um requerimento sobre esse contrato",
@@ -224,6 +288,8 @@ const CAPS_MESTRAS = [
  {
   "id": "nucleo_pericia",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Perícia na hora (OB/CNPJ/contrato) + fantasma",
   "cmd": "/pericia",
   "exemplo": "essa empresa é fantasma?",
@@ -236,6 +302,8 @@ const CAPS_MESTRAS = [
  {
   "id": "ppp_dossie",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Dossiê pericial de PPP/concessão (Prefeitura)",
   "cmd": "/ppp",
   "exemplo": "faz a perícia da PPP do Souza Aguiar",
@@ -248,6 +316,8 @@ const CAPS_MESTRAS = [
  {
   "id": "ppp_triagem",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Triagem em lote de PPPs/concessões",
   "cmd": "/ppp-triagem",
   "exemplo": "triagem das PPPs da prefeitura",
@@ -260,6 +330,8 @@ const CAPS_MESTRAS = [
  {
   "id": "pcrj_gastos_achados",
   "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
   "nome": "Achados de gastos da Prefeitura (instantâneo)",
   "cmd": "",
   "exemplo": "quais os achados de gastos da PCRJ?",
@@ -272,6 +344,8 @@ const CAPS_MESTRAS = [
  {
   "id": "grafo_poder",
   "grupo": "🕸️ Rede & Idoneidade",
+  "grupo_ic": "🕸️",
+  "grupo_rot": "Rede & Idoneidade",
   "nome": "Rede de poder (quem liga a quem)",
   "cmd": "",
   "exemplo": "quem está ligado à empresa X",
@@ -284,6 +358,8 @@ const CAPS_MESTRAS = [
  {
   "id": "beneficiario_final",
   "grupo": "🕸️ Rede & Idoneidade",
+  "grupo_ic": "🕸️",
+  "grupo_rot": "Rede & Idoneidade",
   "nome": "Beneficiário final (sobe a cadeia societária)",
   "cmd": "/beneficiario",
   "exemplo": "quem está por trás do CNPJ X",
@@ -296,6 +372,8 @@ const CAPS_MESTRAS = [
  {
   "id": "consultar_empresa",
   "grupo": "🕸️ Rede & Idoneidade",
+  "grupo_ic": "🕸️",
+  "grupo_rot": "Rede & Idoneidade",
   "nome": "Cadastro + sócios de um CNPJ",
   "cmd": "",
   "exemplo": "dados da empresa 19.088.605/0001-04",
@@ -308,6 +386,8 @@ const CAPS_MESTRAS = [
  {
   "id": "consultar_idoneidade",
   "grupo": "🕸️ Rede & Idoneidade",
+  "grupo_ic": "🕸️",
+  "grupo_rot": "Rede & Idoneidade",
   "nome": "A empresa está sancionada? (CEIS/CNEP)",
   "cmd": "",
   "exemplo": "a empresa X está sancionada?",
@@ -320,6 +400,8 @@ const CAPS_MESTRAS = [
  {
   "id": "parentesco_qsa",
   "grupo": "🕸️ Rede & Idoneidade",
+  "grupo_ic": "🕸️",
+  "grupo_rot": "Rede & Idoneidade",
   "nome": "Parentesco entre sócios (hipótese medida)",
   "cmd": "",
   "exemplo": "os sócios do CNPJ X são parentes?",
@@ -332,6 +414,8 @@ const CAPS_MESTRAS = [
  {
   "id": "vinculo_na_data",
   "grupo": "🕸️ Rede & Idoneidade",
+  "grupo_ic": "🕸️",
+  "grupo_rot": "Rede & Idoneidade",
   "nome": "Era sócio nesta data? (série histórica)",
   "cmd": "",
   "exemplo": "o sócio X já era sócio em 2025-03-14",
@@ -344,6 +428,8 @@ const CAPS_MESTRAS = [
  {
   "id": "siafe_stats",
   "grupo": "🛰️ Coleta & Base",
+  "grupo_ic": "🛰️",
+  "grupo_rot": "Coleta & Base",
   "nome": "Status da coleta / cobertura da base",
   "cmd": "",
   "exemplo": "quantas OBs já coletamos?",

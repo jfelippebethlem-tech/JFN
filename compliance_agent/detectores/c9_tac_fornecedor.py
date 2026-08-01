@@ -25,6 +25,7 @@ Régua (âncoras no CÓDIGO; espelha `detector_tac._severidade`):
 """
 from __future__ import annotations
 
+from compliance_agent.coerencia_valores import _brl
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
 
 
@@ -60,7 +61,7 @@ class C9TacFornecedor(Detector):
             nivel = "medio"
         else:
             res.status = "descartado"
-            res.motivo_refutacao = (f"TAC {pct:.1f}% do valor (R$ {total_tac:,.2f}) abaixo do limiar — "
+            res.motivo_refutacao = (f"TAC {pct:.1f}% do valor (R$ {_brl(total_tac)}) abaixo do limiar — "
                                     "regularização pontual não é padrão")
             return res
 
@@ -71,6 +72,6 @@ class C9TacFornecedor(Detector):
         res.add_evidencia(
             "ordens_bancarias (observação TFE)",
             f"{pct:.1f}% do valor pago via TAC/indenização/reconhecimento de dívida "
-            f"(R$ {total_tac:,.2f} de R$ {float(tac.get('total') or 0):,.2f}; "
+            f"(R$ {_brl(total_tac)} de R$ {_brl(float(tac.get('total') or 0))}; "
             f"{tac.get('n_tac')}/{tac.get('n')} OB; {cobertura})")
         return res

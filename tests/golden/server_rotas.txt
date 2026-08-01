@@ -105,6 +105,7 @@ GET /api/pncp -> api_pncp
 GET /api/pncp/conluio -> api_pncp_conluio
 GET /api/poder/nomeados_candidatos -> api_nomeados_candidatos
 GET /api/ppp/triagem -> api_ppp_triagem
+GET /api/processo -> api_processo
 GET /api/radar/status -> api_radar_status
 GET /api/responsaveis -> api_responsaveis
 GET /api/restritos -> api_restritos
@@ -162,6 +163,7 @@ POST /api/hermes/trabalhar -> api_hermes_trabalhar
 POST /api/mandato/minuta -> api_mandato_minuta
 POST /api/nucleo/comando -> api_nucleo_comando
 POST /api/ppp -> api_ppp
+POST /api/processo/avaliar -> api_processo_avaliar
 POST /api/radar/ciclo -> api_radar_ciclo
 POST /api/radar/vigiar -> api_radar_vigiar
 POST /api/relatorio/inteligencia -> api_relatorio_inteligencia

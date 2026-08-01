@@ -15,6 +15,7 @@ ORQUESTRADOR (entrada do mundo real → lista de ResultadoDetector, schema fixo 
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from compliance_agent.detectores.base import (
@@ -73,6 +74,8 @@ from compliance_agent.detectores.x12_benford_quantitativos import X12BenfordQuan
 from compliance_agent.detectores.x13_sub_rogacao import X13SubRogacao
 
 # REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
+logger = logging.getLogger(__name__)
+
 REGISTRO: dict[str, Detector] = {
     d.id: d for d in (
         P4Fracionamento(),
@@ -217,8 +220,9 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
         try:
             from compliance_agent.reporting.detector_tac import tac_por_cnpj
             ctx["tac"] = tac_por_cnpj(str(cnpj))
-        except Exception:
-            pass  # sem medição → C9 fica nao_avaliavel (nunca derruba o runner)
+        except Exception as e:  # noqa: BLE001 — sem medição, C9 fica nao_avaliavel
+            logger.debug("C9 sem medição de TAC para %s (%s) — detector degrada honesto",
+                         cnpj, str(e)[:120])
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
     # C (fachada) — multi-resultado por investigação

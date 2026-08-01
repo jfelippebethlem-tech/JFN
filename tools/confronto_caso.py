@@ -70,11 +70,13 @@ def confrontar(cnpj: str, ug: str | None = None, com_lex: bool = False) -> dict:
 
 
 def _md(out: dict, nota_path: str | None) -> str:
+    from compliance_agent.coerencia_valores import _brl
+
     linhas = [f"# Confronto — {out['cnpj']} ({out['quando']})", ""]
     p = out["motores"].get("pericia")
     if isinstance(p, dict):
         linhas += [f"## Perícia (UG {p.get('ug')}) — grau {p.get('grau')} score {p.get('score')}",
-                   f"- OB: {p.get('n_obs')} · pago R$ {p.get('total_pago', 0):,.2f}"]
+                   f"- OB: {p.get('n_obs')} · pago R$ {_brl(p.get('total_pago', 0) or 0)}"]
         for a in (p.get("achados") or []):
             if isinstance(a, dict):
                 linhas.append(f"- {a.get('id') or a.get('teste')}: {str(a.get('resumo') or a.get('detalhe') or a)[:180]}")

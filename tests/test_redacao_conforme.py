@@ -38,6 +38,11 @@ SEM_CLAUSULA_A_REESCREVER = {
     # edital. O que cabe e diligencia e representacao (Art. 90 Lei 8.666/Art. 337-F CP;
     # Art. 36 Lei 12.529/2011 — CADE).
     "propostas_gemeas",
+    # 2026-08-01 — `pagamento_fora_contrato_tac` (C9) é de CONDUTA do ÓRGÃO na execução da
+    # despesa: não há cláusula de edital a reescrever quando o vício é pagar por Termo de Ajuste
+    # de Contas o que deveria ter sido contratado. O que cabe é diligência sobre a justificativa
+    # e o atesto, e representação pelo padrão (art. 59 par. único da 8.666; art. 40 da 14.133).
+    "pagamento_fora_contrato_tac",
     # 2026-07-29 — os seis vicios de ADITIVO catalogados hoje (X7..X12). Todos sao de CONDUTA na
     # execucao do contrato, nao de texto de edital: nao ha clausula a reescrever num aditivo
     # assinado depois do fim da vigencia, numa supressao acima do limite, num aditivo sem
