@@ -85,10 +85,17 @@ CREATE TABLE IF NOT EXISTS doc_veredito (
 
 
 def selecionar(docs: list[dict], teto: int | None = None) -> list[dict]:
-    """Os documentos-que-importam, na ordem de prioridade, cortados no teto."""
+    """Os documentos-que-importam, na ordem de prioridade, cortados no teto.
+
+    Rubrica exige PRECISÃO no rótulo: 'parecer' só entra se o TÍTULO confirmar (o tipo por
+    conteúdo rotulou 'Documento Trabalhista' como parecer e o veredito 'não-conclusivo'
+    contaminava a contagem de problemáticos — debug 080001/018592/2026 doc 2)."""
+    from compliance_agent.sei.fases import classificar
     teto = teto or TETO_DEFAULT
     rank = {t: n for n, t in enumerate(_PRIORIDADE)}
-    alvo = [d for d in docs if d.get("tipo") in RUBRICAS]
+    alvo = [d for d in docs if d.get("tipo") in RUBRICAS
+            and not (d.get("tipo") == "parecer"
+                     and classificar(str(d.get("titulo") or ""))[1] != "parecer")]
     alvo.sort(key=lambda d: (rank.get(d.get("tipo"), 99), d.get("i", 0)))
     return alvo[:teto]
 
