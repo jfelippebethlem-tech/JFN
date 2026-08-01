@@ -143,7 +143,10 @@ def _t01_3way(d) -> dict:
     elo3 = len(contab) - len(sem_nl)
     if sem_nl:
         ev = (f"{elo3}/{len(contab)} OBs com cadeia 3-way completa (NL→RE→PD→OB); "
-              f"{len(sem_nl)} apenas com RE↔PD (**2-way; NL INDISPONÍVEL** — SIAFE 1 não expõe). "
+              # `evidencia` é TEXTO PURO: o painel imprime a string como veio (esc()), então o
+              # `**negrito**` de markdown saía com os asteriscos literais na tela. O consumidor
+              # de `evidencia` é a UI, não um renderizador de markdown — a ênfase sai daqui.
+              f"{len(sem_nl)} apenas com RE↔PD (2-way; NL INDISPONÍVEL — SIAFE 1 não expõe). "
               f"Nenhuma OB órfã. {len(repetidos)} par(es) RE/PD em 2+ OBs (split/retroativo — cruza T07). "
               f"Integridade 3-way NÃO afirmável onde falta a liquidação.")
         return _hip("T01-3WAY", "Three-way match (NL→RE→PD→OB)", "AFASTADO", "—", ev,
