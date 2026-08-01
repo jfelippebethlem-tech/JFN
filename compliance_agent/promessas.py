@@ -21,8 +21,11 @@ boot perderia TODAS as promessas, trocando um silêncio por outro maior.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _ARQ = Path(__file__).resolve().parent.parent / "data" / "promessas_pendentes.json"
 
@@ -44,8 +47,9 @@ def _gravar(itens: list[dict]) -> None:
     finally:
         try:
             tmp.unlink(missing_ok=True)
-        except OSError:
-            pass
+        except OSError as exc:
+            # calar aqui deixaria um .tmp órfão acumulando sem ninguém saber
+            logger.debug("promessas: temporário %s não removido (%s)", tmp.name, exc)
 
 
 def registrar(chave: str, tipo: str, args: dict) -> None:

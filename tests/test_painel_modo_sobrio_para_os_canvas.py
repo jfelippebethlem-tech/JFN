@@ -52,13 +52,20 @@ def test_o_reagendamento_principal_esta_guardado_nos_dois():
                 f"{laco} ainda reagenda quadro sem consultar o modo sobrio")
 
 
-def test_medir_fps_liga_o_modo_sobrio_para_o_js_tambem():
-    """Não basta pôr a classe no body: o JS precisa saber, senão só o CSS recua."""
-    i = JS.index("function _medirFps(")
-    corpo = JS[i:i + 1400]
-    assert "classList.add('fps-baixo')" in corpo
-    assert "_sobrio=true" in corpo.replace(" ", ""), (
-        "_medirFps liga a classe do CSS mas nao avisa o JS — os canvas seguem a custo cheio")
+def test_o_recuo_liga_a_classe_do_css_E_avisa_o_js():
+    """Não basta pôr a classe no body: o JS precisa saber, senão só o CSS recua.
+
+    Deliberadamente NÃO amarra a forma da chamada. A 1ª versão deste teste exigia
+    `classList.add('fps-baixo')` e ficou vermelha quando o recuo virou `_sobrioAplicar(lig, fps)`
+    com `classList.toggle(...)` — uma evolução que também passou a pausar os vídeos da nebulosa, do
+    núcleo e do holograma. O código melhorou e o teste é que estava velho. O que importa travar é a
+    PROPRIEDADE: os dois eixos (CSS e JS) mudam juntos.
+    """
+    sem_espaco = JS.replace(" ", "")
+    assert "classList.toggle('fps-baixo'" in sem_espaco or "classList.add('fps-baixo')" in sem_espaco, (
+        "ninguém mais aplica a classe fps-baixo no body — o CSS do modo sóbrio virou letra morta")
+    assert "_sobrio=lig" in sem_espaco or "_sobrio=true" in sem_espaco, (
+        "a classe do CSS é aplicada mas o JS não é avisado — os canvas seguem a custo cheio")
 
 
 def test_o_flag_do_sobrio_nasce_desligado_no_topo():

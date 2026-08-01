@@ -83,6 +83,11 @@ try:
 except ImportError:  # degrada honesto: sem apsw a guardiã ainda segura, mas sem a bandeira
     _APSW = None
 
+# Família ESPECÍFICA de erros a capturar. O `apsw` não usa `sqlite3.Error`, então capturar só a da
+# stdlib deixaria passar; e capturar `Exception` cru é o que a catraca de dívida proíbe. `OSError`
+# entra porque `Path.exists()` pode falhar (disco/permissão) antes de qualquer SQL.
+_ERROS = (sqlite3.Error, OSError) + ((_APSW.Error,) if _APSW is not None else ())
+
 _CONEXAO = None                # apsw.Connection (ou sqlite3.Connection na degradação)
 _CAMINHO: Path | None = None   # lembrado p/ o batimento poder reabrir
 _PERSIST: bool = False         # a bandeira ficou ligada nesta guardiã?
@@ -93,8 +98,13 @@ def segurar(db_path) -> bool:
     global _CONEXAO, _CAMINHO
     if _CONEXAO is not None:
         return True
-    caminho = Path(db_path)
-    if not caminho.exists():
+    try:
+        caminho = Path(db_path)
+        existe = caminho.exists()
+    except OSError as exc:      # disco/permissão: não é motivo para derrubar quem nos chamou
+        logger.info("guarda_wal: não consegui olhar %s (%s) — segue sem guardiã", db_path, exc)
+        return False
+    if not existe:
         logger.info("guarda_wal: %s não existe — servidor sobe sem guardiã", caminho.name)
         return False
     global _PERSIST
@@ -115,7 +125,7 @@ def segurar(db_path) -> bool:
         # `SELECT 1` NÃO basta: não toca em página nenhuma, e o WAL-index só nasce quando há
         # leitura de verdade. Ler o schema força o `-shm` a existir e a ficar mapeado aqui.
         list(con.execute("SELECT count(*) FROM sqlite_master"))
-    except Exception as exc:  # noqa: BLE001 — apsw levanta sua própria familia de erros
+    except _ERROS as exc:
         logger.warning("guarda_wal: não consegui segurar %s (%s) — o painel volta a depender do "
                        "guardião de restart", caminho.name, exc)
         return False
@@ -145,7 +155,11 @@ def bater() -> bool:
     # sumiu, a guardiã está com mapeamento MORTO e tem de ser TROCADA — a nova cria o arquivo e
     # o mantém aberto, que é o estado saudável.
     shm = _CAMINHO.with_name(_CAMINHO.name + "-shm")
-    if shm.exists():
+    try:
+        if shm.exists():
+            return True
+    except OSError as exc:
+        logger.debug("guarda_wal: não consegui olhar %s (%s) — mantendo a guardiã atual", shm.name, exc)
         return True
     logger.warning("guarda_wal: %s foi DESVINCULADO por outro processo — trocando a guardiã antes "
                    "que as conexões novas deste processo comecem a falhar", shm.name)
@@ -160,8 +174,9 @@ def soltar() -> None:
     if _CONEXAO is not None:
         try:
             _CONEXAO.close()
-        except Exception:  # noqa: BLE001 — fechar é best-effort (apsw tem erros próprios)
-            pass
+        except _ERROS as exc:
+            # best-effort, mas nunca mudo: fechar falhando é sinal de descritor vazando
+            logger.debug("guarda_wal: fechar a guardiã falhou (%s) — descartando a referência", exc)
         _CONEXAO = None
 
 
@@ -172,3 +187,32 @@ def vivo() -> bool:
 def persist_wal_ligado() -> bool:
     """`True` quando a guardiã subiu com PERSIST_WAL — sem isso a proteção é só parcial."""
     return _PERSIST
+
+
+# ── SENTINELA AUTOMÁTICA (31/07/26) ──────────────────────────────────────────────────────────────
+_DB_PADRAO = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
+
+
+def instalar_automatico() -> bool:
+    """Instala a sentinela no processo atual. Chamada pelo `__init__` do pacote; nunca levanta.
+
+    A bandeira PERSIST_WAL é por CONEXÃO e consultada por quem FECHA — mas a proteção que interessa
+    é por PROCESSO. **188 arquivos** da casa abrem o banco com `sqlite3` cru (91 escrevem) e a
+    stdlib não expõe file controls; migrar tudo quebraria API (o `apsw` tem semântica própria de
+    transação). Basta então que CADA processo tenha UMA sentinela com a bandeira, viva enquanto ele
+    viver: assim nenhum processo da casa é "o último a fechar sem a bandeira", que é a condição que
+    desvincula `-wal`/`-shm` e deixa o servidor com um mapeamento morto.
+
+    Verificado antes de fiar: a sentinela aberta NÃO bloqueia `wal_checkpoint(TRUNCATE)`, `VACUUM`
+    nem `ANALYZE` no mesmo processo — era o efeito de segunda ordem que trocaria um defeito por
+    "database is locked" na manutenção.
+
+    `JFN_SENTINELA_WAL=0` desliga (escotilha para quem não queira o descritor extra).
+    """
+    import os
+    if os.environ.get("JFN_SENTINELA_WAL", "1").strip() in ("0", "false", "no"):
+        return False
+    # sem try genérico de propósito: `segurar` já captura a família específica e devolve False —
+    # e a catraca de dívida proíbe captura genérica nova. Se algo aqui levantasse, seria bug real
+    # que precisa aparecer, não ser engolido no import.
+    return segurar(_DB_PADRAO)

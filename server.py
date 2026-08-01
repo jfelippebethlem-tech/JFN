@@ -236,8 +236,8 @@ async def lifespan(app: FastAPI):
                 await asyncio.to_thread(bater)
             except asyncio.CancelledError:
                 raise
-            except Exception as e:  # noqa: BLE001 — o batimento nunca pode derrubar o servidor
-                logger.warning("guarda-wal: ciclo falhou (%s) — continua", e.__class__.__name__)
+            # sem captura genérica: `bater()` já trata a família específica e devolve bool. Se algo
+            # escapar dali é bug real e precisa aparecer, não virar log morno num laço infinito.
 
     if _ok_wal:
         asyncio.create_task(_bater_wal())
