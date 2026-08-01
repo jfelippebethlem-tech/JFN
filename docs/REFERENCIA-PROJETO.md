@@ -216,6 +216,7 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- 2026-08-01 (tarde): **Pendências do §11 fechadas.** (1) **MAM = 5ª do grupo Caneca CONFIRMADA** (dump Receita: mesmo sócio `***272477**`, +4 SCPs satélites; venceu R$ 24,9 mi em Paty do Alferes; QSA ingerido — o filtro do sweep não cobria a raiz); (2) **top-50 100% na rubrica v2** (27 processos re-julgados; base: 325 vereditos v2/44 processos, **22 escala-3 [6,8%]; despachos 8/285 [2,8%]** — 74% da v1 enterrado; pareceres 14/37 escala-3 = **template de esquiva da assessoria FSERJ**, citar como padrão institucional); (3) **os 5 SEIs (IDESI ×4 + Con-tato) são INVISÍVEIS à pesquisa** — provado com controle positivo (002886/2024=68 docs na mesma sessão); assinatura de sigilo integral → **requisição formal (dono)**; (4) graphify do vault reconstruído (1.270 nós/120 comunidades, IDs consistentes, backup pre-rebuild); (5) 3 fixes commitados (`d86ee19`).
 - 2026-08-01: **PROCESSO 360 (série E1-E5) + casos FSERJ + foro/C9.** (1) Casos reais: IDESI **R$ 1,17 mi pago PÓS-INAPTA** (linha do tempo fechada); **grupo Caneca** (4 CNPJs de 1 sócio, ≈R$ 181,8 mi da UG 294200); LEFE 81% TAC; AVIV 97% TAC + êxodo de 199/205 sócios — notas no vault. (2) `fix` foro por esfera (Fiocruz→TCU; 17 notas regravadas via `--replay-notas`) + detector **C9** (TAC% por fornecedor) + `tools/confronto_caso.py` (matriz de lacunas: "detector sem alimentação"). (3) **Avaliador de Processo 360**: `sei/manifesto_norm` (2 formatos de manifest → 1 shape; gate captura pela contagem de texto), `processo_360.avaliar` (fases+cadeia+A1-A5+X+P/E/J+C+acatamento; **`score_processo` em produção pela 1ª vez**; suficiência do EMISSOR: DIRJUR/AUDIN não supre PGE/CGE), `sei/doc_juizo` (rubrica fechada por despacho/parecer/atesto, cadeia grátis camada_triagem, trecho literal obrigatório, teto C, cache `doc_veredito`), tabela `processo_avaliacao` + PDF 7 seções + `GET/POST /api/processo*` + `/processo` no capabilities + `tools/processo_360.py`. Calibração real: processo de PAGAMENTO não leva lacuna de fase (natureza≠contratação) — 3-docs caiu de ALTO p/ monitorar; contratação real 070026/000410/2021 = 90 EXTREMO c/ A2. (4) Yoda: patch de identidade auto-cura via ExecStartPre (estava sobrescrito!); patch de pool Gemini REVERTIDO de propósito (credential_pool nativo). **Decisões:** vocabulário de tipo canônico = o fino de sei/fases; teto docs LLM = 25 (`JFN_360_TETO_DOCS`); suficiência vive em sei_recomendacoes (função pura). **Pendências novas:** capturar SEIs das OB pós-INAPTA do IDESI (080002/001953·1759·2137·1820/2026) e SEI-070026/000705/2021 (Con-tato) — fila; QSA da MAM Soluções (5ª do grupo Caneca?); rodar lote 360 nos processos FSERJ arquivados.
 - 2026-07-29: **hermenêutica + OSINT + acervos.** Screens de participação por *lift* · catraca de F1 (A.3.4) · prompt rastreável por hash da fonte (B.3.5) · perfil de laranja (G.4 — calibração real derrubou de 55% para 1,4% da base) · QSA perdedoras×vencedor (E.3.2) · detector **C8** servidor no QSA (E.3.3) · **índice de existência do TCU: 521.090 acórdãos, C.3 FECHADO — as 8 citações em limbo EXISTEM** · descontaminação de 7 pastas SEI (210 docs alheios). Ingestões: sócios RFB 44.571→59.497; acervo TCU 1993–2026 sem lacuna.
 - 2026-07-26 (noite): painel v35→v43 — faceta 3D com sentido, encaixes progressivos p/ arte viva (it-campo via Taildrop), cockpit do SISTEMA, contraste lote 1, e o v43 que curou KPIs invisíveis em toda aba com grid.
@@ -741,18 +742,22 @@ manuais quando expirarem (caem no nous até lá).
 > · 404 vereditos por documento, dos quais **102 na rubrica v2 — só 5 em escala 3** (a estatística
 > "74% dos despachos" é da v1 e **não deve ser citada**: media tramitação legítima).
 >
-> **PENDÊNCIAS ORDENADAS (a próxima sessão começa aqui):**
-> 1. **Capturar** os SEIs que faltam para fechar os casos: OB pós-INAPTA do IDESI
->    (`080002/001953·001759·002137·001820/2026`) e `SEI-070026/000705/2021` (Con-tato). Sem eles o
->    360 responde INDISPONÍVEL — que é honesto, mas não fecha o caso.
-> 2. **Re-julgar o resto do top-50 na v2** (`--com-llm`; o cache por hash paga só o que falta) e
->    recontar a estatística por tipo.
-> 3. **Rebuild do graphify do vault** — o `--update` foi bloqueado pelo guard de encolhimento
->    (esquema de ID antigo); ver `~/vault/aprendizados/graphify-update-guard-encolhimento.md`. O
->    cache dos 74 arquivos já está salvo, então `/graphify ~/vault` sai barato.
-> 4. **Leitura humana** dos processos com mais documentos escala-3 e dos 2 núcleos de cartel
->    (`screen_convergencia_cartel.py`): HM Sul Fluminense ← HANDREIY; ALPHES ← MAPPE.
-> 5. QSA da **MAM Soluções** (5ª do grupo Caneca?) e os 5 contratos PCRJ reais (enxame off-hours).
+> **PENDÊNCIAS ORDENADAS (atualizadas 2026-08-01 tarde — 1, 2, 3 e o QSA do 5 FECHADOS):**
+> 1. ~~Capturar os 5 SEIs~~ → **ESGOTADO com prova**: invisíveis à pesquisa interna (0 limpo,
+>    sem cadeado, controle positivo de 68 docs na mesma sessão) = assinatura de sigilo integral.
+>    **DEPENDE DO DONO: requisição formal** dos protocolos `080002/001953·001759·002137·001820/2026`
+>    e `SEI-070026/000705/2021`. Ver [[casos/idesi-fundacao-saude-rj]] e a memória
+>    `sei-invisivel-pesquisa-controle-positivo`.
+> 2. ~~Top-50 na v2~~ → **FEITO** (27/27 rc=0): 325 vereditos v2 em 44 processos, 22 escala-3
+>    (6,8%); despachos 2,8%; pareceres escala-3 = template de esquiva da FSERJ (padrão da casa,
+>    não vício por documento). Único sem v2: `260006/027614/2025` (0 docs de tipo julgável).
+> 3. ~~Graphify do vault~~ → **FEITO** (1.270 nós, 120 comunidades; `--update` seguro de novo).
+> 4. **Leitura humana** dos processos com mais documentos escala-3 (piores: 070026/000410/2021 com
+>    3; 080002/019011/2024 com 2) e dos 2 núcleos de cartel: HM Sul Fluminense ← HANDREIY;
+>    ALPHES ← MAPPE.
+> 5. ~~QSA MAM~~ → **CONFIRMADA 5ª do grupo Caneca** (+4 SCPs; R$ 24,9 mi Paty do Alferes —
+>    atas do certame 1672/2025 = teste seguinte). Restam os 5 contratos PCRJ reais (enxame
+>    off-hours) e o lote 360 nos FSERJ arquivados.
 
 > **📋 HANDOFF 2026-07-29 → `docs/HANDOFF-2026-07-29.md`** — comece por ele: os 7 achados que
 > decidem como mexer em qualquer detector, o pendente ORDENADO por valor/esforço (o nº 1 é
