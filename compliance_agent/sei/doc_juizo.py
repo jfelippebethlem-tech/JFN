@@ -28,7 +28,11 @@ from compliance_agent.editais.flags import grau_flag
 from compliance_agent.llm.json_resposta import parse_json_llm
 
 TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
-RUBRICA_VERSAO = "1"
+# v2 (2026-08-01): despacho de mero expediente = escala 2 (função legítima), não 3 — a v1
+# inflava "74% problemáticos" contando tramitação normal; escala 3 agora é DECISÃO sem
+# motivação ou parecer que se ESQUIVA do mérito submetido. Vereditos v1 ficam no banco
+# (UNIQUE inclui a versão) para auditoria; re-julgamento é progressivo e grátis.
+RUBRICA_VERSAO = "2"
 _DB = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
 
 _PRIORIDADE = ("contratacao_direta", "parecer", "homologacao", "adjudicacao",
@@ -44,18 +48,22 @@ RUBRICAS: dict[str, str] = {
         "3 = sem nexo — não há justificativa real, ou a 'emergência' decorre de desídia previsível "
         "(vencimento conhecido, demanda sazonal, contrato que se sabia expirar)."),
     "parecer": (
-        "Este documento é um parecer/manifestação jurídica. Classifique a CONCLUSIVIDADE: "
-        "1 = conclusivo e favorável sem ressalva substantiva; 2 = favorável COM ressalva/"
-        "condição substantiva (diga qual no trecho); 3 = contrário, não conclusivo, ou "
-        "delega a decisão sem analisar o mérito."),
+        "Este documento é um parecer/manifestação jurídica. Primeiro identifique O QUE foi "
+        "submetido ao parecerista (a consulta). Classifique: 1 = conclusivo sobre o que lhe foi "
+        "submetido (favorável OU contrário, com fundamento); 2 = favorável COM ressalva/condição "
+        "substantiva (cite-a no trecho); 3 = ESQUIVA-SE do mérito que lhe foi submetido (delega "
+        "de volta, responde outra coisa, ou 'não cabe analisar' o próprio objeto da consulta). "
+        "Se o documento não é parecer de mérito (certidão, checklist informativo), retorne null."),
     "homologacao": (
         "Este documento homologa/adjudica/ratifica. Classifique a MOTIVAÇÃO: 1 = menciona e "
         "acolhe expressamente o parecer jurídico/etapas anteriores; 2 = decide sem mencionar "
         "o parecer nem enfrentar ressalvas; 3 = decide CONTRARIANDO ressalva/parecer sem motivar."),
     "despacho": (
-        "Este é um despacho da autoridade. Classifique a MOTIVAÇÃO DECISÓRIA: 1 = decide e "
-        "motiva (enfrenta o que os autos apontam); 2 = decide sem motivar; 3 = mero "
-        "encaminhamento travestido de decisão em ato que exigia juízo."),
+        "Este é um despacho. Classifique: 1 = decide E motiva (enfrenta o que os autos "
+        "apontam); 2 = mero encaminhamento/expediente (função legítima de tramitação — NÃO é "
+        "vício); 3 = usa fórmula DECISÓRIA (autorizo/aprovo/homologo/ratifico) SEM motivação, "
+        "ou decide contrariando os autos sem enfrentá-los. Encaminhar não é decidir: só é "
+        "escala 3 se o despacho DECIDE sem motivar."),
     "aceite": (
         "Este documento atesta recebimento/execução. Classifique a ESPECIFICIDADE do atesto: "
         "1 = específico (diz O QUE foi entregue, quantidade/medição e data); 2 = genérico "
@@ -190,7 +198,15 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
         if own and c is not None:
             c.close()
 
-    problematicos = [v for v in vereditos if (v.get("escala") or 0) >= 2]
+    # semântica v2: escala 3 é sempre problema; escala 2 só é problema onde carrega mérito
+    # (ressalva de parecer, homologação que não enfrenta, justificativa frágil) — despacho 2
+    # é tramitação legítima e não entra na conta.
+    _TIPOS_ESCALA2_RELEVANTE = ("parecer", "homologacao", "adjudicacao", "contratacao_direta",
+                                "aceite", "medicao")
+    problematicos = [v for v in vereditos
+                     if (v.get("escala") or 0) >= 3
+                     or ((v.get("escala") or 0) == 2
+                         and v.get("tipo") in _TIPOS_ESCALA2_RELEVANTE)]
     return {"numero_sei": numero, "n_selecionados": len(sel), "vereditos": vereditos,
             "problematicos": len(problematicos),
             "cobertura": {"cache_hits": cache_hits, "sem_resposta": sem_resposta,
