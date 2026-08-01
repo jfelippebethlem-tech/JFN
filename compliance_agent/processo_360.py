@@ -83,6 +83,39 @@ def _cnpj_vencedor(numero: str) -> str | None:
         return None
 
 
+_RX_CNPJ = re.compile(r"\b(\d{2})\.?(\d{3})\.?(\d{3})/?(\d{4})-?(\d{2})\b")
+# raízes de entes públicos que nunca são "o contratado" (Estado do RJ, Município do Rio)
+_RAIZES_PUBLICAS = {"42498600", "42498733"}
+_P1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+_P2 = [6] + _P1
+
+
+def _cnpj_valido(c: str) -> bool:
+    if len(c) != 14 or len(set(c)) == 1:
+        return False
+    for pesos, n in ((_P1, 12), (_P2, 13)):
+        r = sum(int(c[i]) * pesos[i] for i in range(n)) % 11
+        if int(c[n]) != (0 if r < 2 else 11 - r):
+            return False
+    return True
+
+
+def _cnpj_do_texto(pasta: Path, docs: list[dict]) -> str | None:
+    """Fallback: CNPJ do contratado extraído do TEXTO dos docs de contrato/homologação
+    (mais frequente, DV válido, excluídas raízes de ente público)."""
+    from collections import Counter
+    cont: Counter = Counter()
+    alvo = [d for d in docs if d.get("tipo") in
+            ("contrato", "homologacao", "ata_rp", "contratacao_direta", "adjudicacao")][:12]
+    for d in alvo:
+        for m in _RX_CNPJ.finditer(_texto_de(pasta, d, teto=30_000)):
+            c = "".join(m.groups())
+            # 00394… = base da União (ministérios); nunca é o contratado
+            if _cnpj_valido(c) and c[:8] not in _RAIZES_PUBLICAS and not c.startswith("00394"):
+                cont[c] += 1
+    return cont.most_common(1)[0][0] if cont else None
+
+
 def _texto_de(pasta: Path, doc: dict, teto: int = 20_000) -> str:
     rel = doc.get("texto")
     if rel:
@@ -210,8 +243,8 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     except Exception as e:  # noqa: BLE001
         indisponiveis.append(f"pej: {e}")
 
-    # 6) perfil do contratado (C) — CNPJ vencedor/maior favorecido
-    cnpj = _cnpj_vencedor(numero)
+    # 6) perfil do contratado (C) — CNPJ vencedor/maior favorecido; fallback = texto dos autos
+    cnpj = _cnpj_vencedor(numero) or _cnpj_do_texto(pasta, docs)
     if cnpj:
         try:
             res_forn = _rodar_fornecedor(cnpj)
