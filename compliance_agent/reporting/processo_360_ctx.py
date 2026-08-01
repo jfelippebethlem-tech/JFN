@@ -14,6 +14,29 @@ from compliance_agent.sei import fases
 _GRAV_EMOJI = {"critica": "🔴", "alta": "🟠", "media": "🟡", "baixa": "🟢"}
 
 
+def _vereditos_persistidos(numero_sei: str) -> dict | None:
+    """Vereditos por documento já pagos (doc_veredito) — o PDF os mostra mesmo sem --com-llm."""
+    import json
+    import sqlite3
+    from pathlib import Path
+    db = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
+    if not db.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            rows = con.execute(
+                "select veredito_json from doc_veredito where numero_sei=? order by doc_i",
+                (numero_sei,)).fetchall()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    if not rows:
+        return None
+    return {"vereditos": [json.loads(r[0]) for r in rows], "fonte": "doc_veredito (cache)"}
+
+
 def _tab(linhas: list[tuple[str, str]]) -> str:
     return "<table class='ident'>" + "".join(
         f"<tr><th class='k'>{_h.escape(k)}</th><td>{v}</td></tr>" for k, v in linhas) + "</table>"
@@ -37,8 +60,16 @@ def render_processo_ctx(out: dict) -> dict:
         f"<tr><td>{_h.escape(fases.FASES.get(f, f))}</td><td>{n}</td></tr>"
         for f, n in (out.get("fases") or {}).items()) + "</table>"
     cadeia = out.get("cadeia") or {}
-    fases_html += (f"<p class='nota'>Ordem dos marcos: <b>{_h.escape(str(cadeia.get('grau', '—')))}</b> — "
-                   f"{_h.escape(str(cadeia.get('resumo') or ''))[:400]}</p>")
+    tem_a1 = any(str(a.get("codigo") or "").startswith("A1") for a in out.get("achados") or [])
+    if tem_a1:
+        # sem contradição aparente: a cadeia por data pode sair "verde" enquanto a perícia A1
+        # (por posição na árvore) aponta a inversão — o leitor vê UMA mensagem coerente
+        fases_html += ("<p class='nota'>Ordem dos marcos: <b>inversão apontada pela perícia A1</b> "
+                       "(contrato antes do parecer — ver seção III); o relógio da cadeia por data "
+                       "não a contradiz, apenas não a alcança.</p>")
+    else:
+        fases_html += (f"<p class='nota'>Ordem dos marcos: <b>{_h.escape(str(cadeia.get('grau', '—')))}</b> — "
+                       f"{_h.escape(str(cadeia.get('resumo') or ''))[:400]}</p>")
     secoes.append({"titulo": "II. Linha do tempo por fase", "html": fases_html})
 
     if out.get("achados"):
@@ -62,6 +93,8 @@ def render_processo_ctx(out: dict) -> dict:
     ]) + f"<p class='nota'>{_h.escape(str(ac.get('leitura') or ''))[:500]}</p>"})
 
     llm = out.get("llm")
+    if not (isinstance(llm, dict) and llm.get("vereditos")):
+        llm = _vereditos_persistidos(out["numero_sei"]) or llm
     if isinstance(llm, dict) and llm.get("vereditos"):
         linhas = "".join(
             f"<tr><td>{_h.escape(str(v.get('tipo')))}</td>"
@@ -99,7 +132,13 @@ def render_processo_ctx(out: dict) -> dict:
         ("Peça recomendada", _h.escape(str(esc.get("peca") or esc.get("acao") or "—"))),
     ]) + "<p class='conclusao'>Indício ≠ acusação; presume-se a legitimidade dos atos administrativos.</p>"})
 
-    return {"titulo": f"Avaliação 360 — Processo {out['numero_sei']}",
+    # cartão de capa: destaques = os achados mais graves (o template render_html espera top_flags;
+    # vazio deixava "Destaques:" órfão no PDF — teste-como-humano 2026-08-01)
+    ordem_grav = {"critica": 0, "alto": 1, "alta": 1, "media": 2, "medio": 2}
+    top_flags = [str(a.get("diz") or "")[:70] for a in sorted(
+        out.get("achados") or [], key=lambda a: ordem_grav.get(str(a.get("gravidade") or a.get("grau")), 9))][:3]
+    return {"top_flags": top_flags,
+            "titulo": f"Avaliação 360 — Processo {out['numero_sei']}",
             "subtitulo": "O processo como um todo: cada fase e cada despacho que importam · JFN",
             "metodologia": ("manifesto normalizado + fases/lacunas + cadeia de marcos + perícia A1-A5 "
                             "+ detectores P/E/J/C/X + acatamento com suficiência do emissor + "
