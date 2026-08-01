@@ -14,12 +14,22 @@ TETO DE JANELA (medido no mesmo dia): a partir da página **10.000** a API devol
 MESMA fatia de 50 registros, indefinidamente. Numa varredura global isso limita a 10.000 × 50 =
 500.000 de 909.916 (**55%**), e `size` não contorna (>50 → HTTP 400).
 
-PARTIÇÃO POR CARGO (medido 01/08/26) — é o que derruba os 55%. O que estava escrito como limite de
-FONTE era limite do PARÂMETRO testado: `orgao`, `orgaoId`, `vinculo`, `funcaoCargo`, `cargo`,
-`lotacao` e `folhaRef` são de fato ignorados (total continua 909.916), mas **`codCargo` filtra** —
-`codCargo=403` devolve 17.000 registros em 340 páginas, só daquele cargo. Como toda partição cabe
-muito abaixo das 10.000 páginas, a janela nunca é atingida. Os códigos vêm de
-``/remuneracoes/cargos`` (1.778 na competência 2026-06) e a coleta varre cargo a cargo.
+PARTIÇÃO POR CARGO (medido 01/08/26) — é o que derruba os 55%, mas NÃO leva a 100%. O que estava
+escrito como limite de FONTE era limite do PARÂMETRO testado: `orgao`, `orgaoId`, `vinculo`,
+`funcaoCargo`, `cargo`, `lotacao` e `folhaRef` são de fato ignorados (total continua 909.916), mas
+**`codCargo` filtra** — `codCargo=403` devolve 17.000 registros em 340 páginas, só daquele cargo.
+Como toda partição cabe muito abaixo das 10.000 páginas, a janela nunca é atingida. Os códigos vêm
+de ``/remuneracoes/cargos`` (1.136 únicos na competência 2026-06) e a coleta varre cargo a cargo.
+
+ALCANCE MEDIDO cargo a cargo (soma dos 1.136 `totalElements`): **681.876 de 909.916 = 74,9%**.
+Os 228.040 que faltam **não têm cargo**: são pensionistas (orgao "RIOPREVIDENCIA PENSÕES", vínculo
+PENSÃO, folhaRef "Pensionistas", `funcaoCargo: null`) e não existe balde de cargo nulo — `codCargo=0`
+devolve `totalElements: 0` e valor inválido é ignorado (volta 909.916). Eles só aparecem na listagem
+GLOBAL, e ali vale a janela de 10.000 páginas: amostra de 40 páginas uniformes (2.000 registros) deu
+19,4% sem cargo → ≈96.750 dentro da janela, ou seja **~42% dos pensionistas seriam recuperáveis** por
+uma passada global complementar (custo: 10.000 páginas). Os outros ~131 mil (14,4% do universo)
+estão fora dos dois eixos. Enquanto essa passada não existir, a folha é de QUEM TEM CARGO — dizer
+"folha do Estado" sem essa ressalva é dizer 75% chamando de 100%.
 
 Coleta RESUMÍVEL: progresso em data/folha_estado_progresso.json ({competencia, cargo, pagina,
 completa}); cada run continua do cargo e da página onde parou (teto ``paginas_por_run`` p/ caber no

@@ -59,15 +59,21 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
             "A API **congela a paginação na página 10.000**: dali em diante devolve HTTP 200 com a "
             "MESMA fatia de 50, para sempre. Numa varredura global isso limita a 500.000 dos "
             "909.916 registros da competência (55%) — e a falha se disfarça de sucesso. "
-            "**CONTORNADO em 01/08/2026**: o limite era do PARÂMETRO, não da fonte. `orgao`, "
-            "`orgaoId`, `vinculo`, `funcaoCargo`, `cargo`, `lotacao` e `folhaRef` são ignorados "
-            "(o total não muda), mas **`codCargo` filtra** — `codCargo=403` → 17.000 registros em "
-            "340 páginas. Como toda partição cabe abaixo das 10.000 páginas, o universo inteiro "
-            "fica alcançável. Permanece como limite: `size` ≤ 50 (>50 → HTTP 400) e `nome` só "
-            "com o nome completo exato."),
+            "**CONTORNADO EM PARTE em 01/08/2026**: o teto era do PARÂMETRO, não da fonte. "
+            "`orgao`, `orgaoId`, `vinculo`, `funcaoCargo`, `cargo`, `lotacao` e `folhaRef` são "
+            "ignorados (o total não muda), mas **`codCargo` filtra** — `codCargo=403` → 17.000 "
+            "registros em 340 páginas, abaixo da janela. Somando os 1.136 códigos: **681.876 de "
+            "909.916 = 74,9%**. O que sobra **não tem cargo**: são PENSIONISTAS (`funcaoCargo` "
+            "nulo, vínculo PENSÃO, RIOPREVIDÊNCIA PENSÕES) e não há balde de cargo nulo "
+            "(`codCargo=0` → total 0). Eles só existem na listagem global, onde a janela de 10.000 "
+            "páginas volta a valer: medido por amostra, ~42% deles (≈96.750) caberiam numa passada "
+            "global complementar; **~131 mil (14,4% do universo) ficam fora dos dois eixos**. "
+            "Permanece: `size` ≤ 50 (>50 → HTTP 400) e `nome` só com o nome completo exato."),
         caminho_alternativo=(
-            "Já implementado: `collectors/folha_estado.py` varre cargo a cargo com `codCargo`, "
-            "usando os 1.778 códigos de `/remuneracoes/cargos`."),
+            "Implementado para quem TEM cargo: `collectors/folha_estado.py` varre cargo a cargo "
+            "com `codCargo` (1.136 códigos de `/remuneracoes/cargos`). Para os pensionistas, falta "
+            "uma passada global complementar (páginas 0–9.999, guardando só os sem cargo) — "
+            "recupera ~42% deles; o restante exige LAI à SEPLAG/RIOPREVIDÊNCIA."),
         medido_em="2026-08-01",
     ),
     LimiteDeFonte(
