@@ -88,6 +88,10 @@ _REGRAS: list[tuple[str, str, list[str]]] = [
                                      r"\bos\b.*servico", r"autorizacao de fornecimento"]),
     ("fiscal_designacao", "contratacao", [r"designacao de fiscal", r"portaria de fiscal", r"gestor do contrato"]),
     # ── controle ───────────────────────────────────────────────────────────
+    # certidão ANTES de parecer: "CERTIDÃO DA PROCURADORIA DA DÍVIDA ATIVA - PGE" é documento
+    # de habilitação/regularidade, não parecer jurídico — já fabricou inversão do art. 53
+    # (FP real no 030001/087722/2024, calibração 2026-08-01).
+    ("certidao", "tramitacao", [r"certidao"]),
     ("parecer", "controle", [r"\bparecer\b", r"\bpge\b", r"assessoria juridica", r"assjur",
                              r"manifestacao juridica", r"nota tecnica"]),
     ("orgao_controle", "controle", [r"\btce\b", r"\bcge\b", r"\btcu\b", r"auditoria", r"diligencia",

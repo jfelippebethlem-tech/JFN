@@ -153,21 +153,28 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             achados.append({"origem": "fases.lacunas", "diz": item["falta"],
                             "gravidade": item["gravidade"]})
 
-    # 2) ordem dos marcos
+    # 2) ordem dos marcos (a inversão contrato→parecer também é a A1 da triagem: dedup por
+    # código para não contar o MESMO fato duas vezes no score de convergência)
     cadeia = analisar_cadeia([{"titulo": d["titulo"], "tipo": d["tipo"]} for d in docs])
-    for inv in cadeia.get("inversoes", []):
-        achados.append({"origem": "cadeia", "diz": inv.get("observacao", inv.get("tipo")),
-                        "gravidade": "alta", "detalhe": inv})
+    inversoes_cadeia = list(cadeia.get("inversoes", []))
 
     # 3) triagem pericial A1–A5 (gate próprio; mesmos 3 baldes)
+    codigos_triagem: set[str] = set()
     try:
         from tools.sei_triagem_pericia import periciar as _periciar
         tri = _periciar(pasta) or {}
         rodados.append("triagem_A1-A5")
         for a in tri.get("achados", []):
+            codigos_triagem.add(str(a.get("codigo") or ""))
             achados.append({"origem": "triagem", **a})
     except Exception as e:  # noqa: BLE001
         indisponiveis.append(f"triagem: {e}")
+    for inv in inversoes_cadeia:
+        if (inv.get("tipo") == "contrato_antes_do_parecer"
+                and "A1_CONTRATO_ANTES_DO_PARECER" in codigos_triagem):
+            continue  # mesmo fato já pontuado pela A1
+        achados.append({"origem": "cadeia", "diz": inv.get("observacao", inv.get("tipo")),
+                        "gravidade": "alta", "detalhe": inv})
 
     # 4) execução (X) — fatos extraídos do TEXTO dos docs de contratação/execução/despesa
     try:
@@ -230,6 +237,12 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         achados.append({"origem": "acatamento", "gravidade": "alta",
                         "diz": "ressalva de parecer com sinal de não-atendimento e sem "
                                "acolhimento/motivação posterior (art. 53 / LINDB art. 22)"})
+    if (ac.get("veredito") == "SEM_PARECER_LOCALIZADO" and integra
+            and nat == "contratacao" and "contrato" in tipos):
+        achados.append({"origem": "acatamento", "gravidade": "media",
+                        "diz": "contratação com contrato nos autos e NENHUM parecer jurídico "
+                               "localizado entre os documentos lidos (art. 53 exige análise "
+                               "prévia; captura íntegra — indício a confirmar na íntegra)"})
     if suf["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE" and integra:
         achados.append({"origem": "suficiencia_emissor", "gravidade": "alta",
                         "diz": (f"ato '{ato}' exige parecer de nível {suf['exigido']} "

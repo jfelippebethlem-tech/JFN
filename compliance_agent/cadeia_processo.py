@@ -99,7 +99,7 @@ def momento(doc: dict) -> tuple[str, float] | tuple[None, None]:
 # e parecer técnico de medição é peça de EXECUÇÃO, não o controle prévio do art. 53 (caso real
 # 070002/006215/2024). Quando os dois discordam, vale o que está escrito.
 _RE_NAO_JURIDICO = re.compile(r"parecer\s+t[ée]cnic|parecer\s+de\s+medi[çc]|parecer\s+contabil|"
-                              r"parecer\s+de\s+engenh|laudo", re.I)
+                              r"parecer\s+de\s+engenh|laudo|certid[aã]o", re.I)
 
 
 def _marco(doc: dict) -> str | None:

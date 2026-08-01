@@ -46,6 +46,9 @@ ARQUIVO = RAIZ / "data" / "sei_arquivo"
 
 # Tipos que o arquivador já classifica. Fonte: contagem no acervo em 2026-07-25.
 _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
+# o TÍTULO desmente o tipo: "CERTIDÃO ... PGE" e "Parecer Técnico - Medição" viram
+# parecer_juridico no classificador e fabricam A1 (FP real 030001/087722/2024, 2026-08-01)
+_RX_NAO_PARECER = re.compile(r"certid[aã]o|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo", re.I)
 _CONTRATO = {"contrato", "termo_contrato", "ata_registro_precos"}
 _RESPOSTA = {"despacho", "oficio", "nota_tecnica", "informacao", "manifestacao"}
 _EXECUCAO = {"medicao", "relatorio_fotografico", "atesto", "recebimento"}
@@ -170,7 +173,8 @@ def periciar(pasta: Path) -> dict | None:
     achados: list[dict] = []
     observacoes: list[dict] = []   # estrutural, NAO e contradicao — ver nota abaixo
 
-    pareceres = [d for d in docs if str(d.get("tipo") or "").lower() in _PARECER]
+    pareceres = [d for d in docs if str(d.get("tipo") or "").lower() in _PARECER
+                 and not _RX_NAO_PARECER.search(str(d.get("titulo") or ""))]
     contratos = [d for d in docs if str(d.get("tipo") or "").lower() in _CONTRATO]
     respostas = [d for d in docs if str(d.get("tipo") or "").lower() in _RESPOSTA]
 

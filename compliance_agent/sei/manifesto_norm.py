@@ -47,10 +47,16 @@ _TIPOS_FINOS = {t for t, _, _ in fases._REGRAS} | {"outro", "vazio"}
 def tipo_canonico(tipo_original: str | None, titulo: str) -> str:
     """Tipo no vocabulário canônico (o fino de `sei/fases.py`)."""
     t = (tipo_original or "").strip()
-    if t in _TIPOS_FINOS:
-        return t
-    if t in MAPA_TIPO_CANONICO:
-        return MAPA_TIPO_CANONICO[t]
+    canon = t if t in _TIPOS_FINOS else MAPA_TIPO_CANONICO.get(t)
+    # o TÍTULO desmente o tipo (doutrina da cadeia_processo): "CERTIDÃO ... PGE" classificada
+    # como parecer_juridico fabricava inversão do art. 53 — o classificador fino por título
+    # tem a última palavra quando diverge num tipo sensível.
+    if canon == "parecer":
+        fino = fases.classificar(titulo)[1]
+        if fino != "parecer":
+            return fino
+    if canon:
+        return canon
     # ambíguo (tramitacao/outros/vazio) ou desconhecido → o título decide; honesto se nada casa
     return fases.classificar(titulo)[1]
 
