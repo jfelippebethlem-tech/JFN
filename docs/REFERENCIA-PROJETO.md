@@ -721,11 +721,21 @@ manuais quando expirarem (caem no nous até lá).
 > `~/vault/aprendizados/processo-360.md` (estado, calibrações e pendências) e por
 > `data/fila_fiscal_360.md` (regravado a cada 4h pelo `tools/sweep_360.sh`).
 >
-> **O que está RODANDO sozinho:** `sweep_360.sh` no cron (20 */4) — avalia o que o `sweep_sei`
-> captura, julga o topo por documento (cadeia grátis) e regrava a fila; `ugs_foco.txt` ganhou
-> **270131** (caso Líder Táxi) e **080001** (SES/SUBEXE). Pausas: `data/.pause_360`,
-> `data/.pause_sweeps`. **Regra nova: 1 escritor no compliance.db por vez** (dois lotes
-> simultâneos travaram o banco e mataram uma varredura).
+> **O que está RODANDO sozinho (avaliação, não só coleta):**
+> - `sweep_360.sh` (cron `20 */4`) — processos: fases, cadeia, pareceres + juízo por documento no
+>   topo; regrava `data/fila_fiscal_360.md`.
+> - `sweep_avaliacao_total.sh` (cron `50 1,9,17`) — **OB** (anomalias + regras), **licitação**
+>   (certames E/J/P), **contrato/execução** (X1–X13), **órgão** (J1+C), **fornecedor** (perícia
+>   T01–T25) e os **screens de cartel** → `data/fila_cartel.md`. Checa o lock do 360 antes de rodar.
+> - `ugs_foco.txt` ganhou **270131** (caso Líder Táxi) e **080001** (SES/SUBEXE).
+> Pausas: `data/.pause_360`, `data/.pause_avaliacao`, `data/.pause_sweeps`.
+> **Regra: 1 escritor no compliance.db por vez** (dois lotes simultâneos travaram o banco e
+> mataram uma varredura no 26º processo).
+>
+> **CI:** o gate do Processo 360 bloqueia regressão nas réguas que fundamentam peça; as falhas de
+> AMBIENTE do runner (sem `compliance.db`) estão declaradas em `tests/BASE-FALHAS-CI.txt` com a
+> verificação feita na VM. **Painel/frontend tem dono próprio (outro agente) — não tocar em
+> `static/js/painel.js`, `static/css/painel.css`, `static/jfn-painel.html`, `static/assets/`.**
 >
 > **Números que valem (medidos, não estimados):** 2.056 processos avaliados · 413 com achado forte
 > · 404 vereditos por documento, dos quais **102 na rubrica v2 — só 5 em escala 3** (a estatística
