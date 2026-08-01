@@ -380,3 +380,56 @@ solte as conexões, ou trocá-lo por `wal_checkpoint(PASSIVE)`.
 
 Quedas medidas hoje: 00:17 · 03:22 · 10:22 · 13:24 · **17:42**. As de 10:22 e 13:24 foram causadas
 pelas minhas próprias escritas de teste.
+
+---
+
+## 9. Quarta rodada — `PERSIST_WAL` para a casa inteira
+
+### 9.1 A bandeira é consultada por quem FECHA
+
+Instalado `apsw 3.53.4` (wheel nativo aarch64, sem compilar). Medido, com ninguém mais segurando o
+banco:
+
+| Fechador | Resultado |
+|---|---|
+| `sqlite3` puro | `wal=AUSENTE shm=AUSENTE` |
+| `apsw` com `PERSIST_WAL` | **`wal=existe shm=existe`** |
+
+**Premissa minha que caiu na medição** — fica registrada para ninguém repetir: eu afirmava que
+*"qualquer conexão aberta impede o desvínculo"*. Vale quando o outro processo só **lê** (foi o que
+enganou o primeiro experimento). Um **escritor** que fecha por último desvincula mesmo com a
+guardiã aberta **e** com a bandeira nela.
+
+### 9.2 A alavanca: por PROCESSO, não por conexão
+
+188 arquivos da casa abrem o banco com `sqlite3` cru (91 escrevem) e a stdlib não expõe file
+controls. Migrar 91 call-sites quebraria API (o `apsw` tem semântica própria de transação).
+
+A bandeira é por conexão, mas a **proteção é por processo**: basta **uma** sentinela `apsw` com a
+bandeira, viva enquanto o processo viver. Instalada no `__init__` do pacote, **todo processo que
+toca o banco herda, com zero mudança de chamador**. Verificado num tool real: importar
+`tools.sei_depurar_db` já sobe a sentinela com `PERSIST_WAL=True`.
+
+**Efeito de segunda ordem verificado ANTES de fiar:** a sentinela aberta **não** bloqueia
+`wal_checkpoint(TRUNCATE)`, `VACUUM` nem `ANALYZE` no mesmo processo — era o risco de trocar um
+defeito por `database is locked` na manutenção. Tem teste guarda-costas.
+
+`JFN_SENTINELA_WAL=0` desliga.
+
+### 9.3 Três catracas da casa me pegaram — e as três tinham razão
+
+| Catraca | O que pegou | Remédio aplicado |
+|---|---|---|
+| `except-pass` mudo | 153 > teto 151 | os dois `pass` viraram `logger.debug` com contexto |
+| `except Exception` | 1601 > baseline 1596 (mão única) | especializei em `_ERROS = (sqlite3.Error, OSError) + (apsw.Error,)`; 2 ocorrências restantes estavam em **comentário** meu — a catraca conta a string crua |
+| modo sóbrio | vermelho | **o teste é que estava velho**: amarrava a forma da chamada (`classList.add`) em vez da propriedade |
+
+O terceiro caso merece registro: outro trabalho refatorou `_medirFps` em `_sobrioAplicar(lig, fps)`
+e **estendeu** o recuo para pausar os vídeos da nebulosa, do núcleo e do holograma (v51/v53/v55) —
+construindo em cima da minha mudança. O código melhorou; o teste é que amarrava forma em vez de
+propriedade. Agora trava o que importa: os dois eixos (CSS e JS) mudam juntos.
+
+### 9.4 Estado final
+
+**Suíte: 5.163 passando, 6 pulados, zero falhas** (4 lotes).
+Rotas da capa que devolviam 500: **todas em 200**. Quedas do painel desde a sentinela: **zero**.
