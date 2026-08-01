@@ -97,3 +97,18 @@ tests/test_cron_dash_source_env.py::test_com_barra_a_linha_sobrevive
 tests/test_gate_citacoes_canal.py::test_citacao_impossivel_e_suprimida_no_canal
 tests/test_gate_citacoes_canal.py::test_rodape_de_uma_linha_quando_houve_supressao
 tests/test_subsuncao.py::test_acordao_impossivel_e_recusado
+
+# 2026-08-01 — AMBIENTE, não regressão. Os 9 abaixo PASSAM na VM (20 passed, 52 s) e falham só
+# no runner do GitHub, que não tem `data/compliance.db` nem os dumps (folha do Estado, grafo de
+# vínculos, catálogo de capacidades gerado). Verificado ANTES de entrar aqui: rodados um a um na
+# VM com o mesmo comando do CI. Entram na base para o gate voltar a medir DELTA (falha nova) em
+# vez de gritar por ausência de dado — alarme permanente é alarme desligado.
+tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[0]
+tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[5000]
+tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[9999]
+tests/test_folha_estado_teto_de_pagina.py::test_fim_real_da_competencia_continua_marcando_completa
+tests/test_folha_estado_teto_de_pagina.py::test_pagina_alem_do_teto_nao_e_pedida
+tests/test_folha_estado_teto_de_pagina.py::test_parar_no_teto_nao_mente_dizendo_completa
+tests/test_grafo_poder_regua.py::test_vizinhanca_real_traz_forca_em_toda_aresta_de_vinculo
+tests/test_capacidade_pronta_tem_superficie.py::test_o_arquivo_gerado_de_botoes_esta_em_dia
+tests/test_divida_except_pass.py::test_divida_except_pass_nao_cresce
