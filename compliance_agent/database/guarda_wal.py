@@ -47,9 +47,28 @@ Como o passo 3 é do SQLite, **dentro do processo a única cura é reiniciar** �
   • `bater()` DETECTA o desvínculo e grita no log, transformando uma condição silenciosa em evento
     visível antes de virar HTTP 500.
 
-CURA DEFINITIVA, para decisão do dono: `SQLITE_FCNTL_PERSIST_WAL` faz o SQLite NUNCA desvincular os
-arquivos-irmãos. O `sqlite3` da stdlib não expõe file controls; exigiria `apsw`. É uma dependência
-nova — não foi adotada por conta própria.
+## A CURA (adotada em 31/07/26, `apsw` aprovado pelo dono)
+
+`SQLITE_FCNTL_PERSIST_WAL` faz o SQLite NUNCA desvincular `-wal`/`-shm`. Medido, com ninguém mais
+segurando o banco — quem fecha por último é quem decide:
+
+    fechador `sqlite3` puro      ->  wal=AUSENTE  shm=AUSENTE
+    fechador `apsw` PERSIST_WAL  ->  wal=existe   shm=existe
+
+PREMISSA MINHA QUE CAIU NA MEDIÇÃO (fica registrada para ninguém repetir): eu afirmava que "qualquer
+conexão aberta impede o desvínculo". Isso vale quando o outro processo só LÊ — foi o que enganou o
+primeiro experimento. Um ESCRITOR que fecha por último desvincula mesmo com a guardiã aberta e com a
+bandeira ligada nela, porque a bandeira é consultada por quem FECHA.
+
+Logo a proteção é EM CAMADAS, e é honesto dizer o alcance de cada uma:
+  • a bandeira na guardiã cobre o caso de o próprio servidor ser o último a fechar;
+  • os sweeps e crons da casa usam `sqlite3` cru e NÃO podem ligá-la (a stdlib não expõe file
+    controls) — para cobri-los seria preciso passá-los por `apsw` também;
+  • o `bater()` DETECTA o que escapa e grita no log antes de virar HTTP 500;
+  • o `guardiao_db_malformed.sh` segue como rede final.
+
+O `sqlite3` da stdlib não expõe file controls; daí o `apsw`. Se ele faltar, a guardiã DEGRADA para
+stdlib em vez de derrubar o boot — mas aí sem a bandeira, e o log diz isso em voz alta.
 """
 from __future__ import annotations
 
@@ -59,8 +78,14 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_CONEXAO: sqlite3.Connection | None = None
+try:
+    import apsw as _APSW
+except ImportError:  # degrada honesto: sem apsw a guardiã ainda segura, mas sem a bandeira
+    _APSW = None
+
+_CONEXAO = None                # apsw.Connection (ou sqlite3.Connection na degradação)
 _CAMINHO: Path | None = None   # lembrado p/ o batimento poder reabrir
+_PERSIST: bool = False         # a bandeira ficou ligada nesta guardiã?
 
 
 def segurar(db_path) -> bool:
@@ -72,12 +97,25 @@ def segurar(db_path) -> bool:
     if not caminho.exists():
         logger.info("guarda_wal: %s não existe — servidor sobe sem guardiã", caminho.name)
         return False
+    global _PERSIST
+    _PERSIST = False
     try:
-        con = sqlite3.connect(str(caminho), timeout=30, check_same_thread=False)
-        # força o WAL-index a existir e a ficar mapeado neste processo; sem tocar em escrita.
-        con.execute("PRAGMA busy_timeout=30000")
-        con.execute("SELECT 1").fetchone()
-    except sqlite3.Error as exc:
+        if _APSW is not None:
+            import ctypes
+            con = _APSW.Connection(str(caminho))
+            con.pragma("busy_timeout", 30000)
+            # A BANDEIRA: sem ela, quem fechar por último desvincula os arquivos-irmãos e este
+            # processo fica com um mapeamento morto (ver o bloco "A CURA" no topo).
+            _flag = ctypes.c_int(1)
+            con.file_control("main", _APSW.SQLITE_FCNTL_PERSIST_WAL, ctypes.addressof(_flag))
+            _PERSIST = True
+        else:
+            con = sqlite3.connect(str(caminho), timeout=30, check_same_thread=False)
+            con.execute("PRAGMA busy_timeout=30000")
+        # `SELECT 1` NÃO basta: não toca em página nenhuma, e o WAL-index só nasce quando há
+        # leitura de verdade. Ler o schema força o `-shm` a existir e a ficar mapeado aqui.
+        list(con.execute("SELECT count(*) FROM sqlite_master"))
+    except Exception as exc:  # noqa: BLE001 — apsw levanta sua própria familia de erros
         logger.warning("guarda_wal: não consegui segurar %s (%s) — o painel volta a depender do "
                        "guardião de restart", caminho.name, exc)
         return False
@@ -122,10 +160,15 @@ def soltar() -> None:
     if _CONEXAO is not None:
         try:
             _CONEXAO.close()
-        except sqlite3.Error:
+        except Exception:  # noqa: BLE001 — fechar é best-effort (apsw tem erros próprios)
             pass
         _CONEXAO = None
 
 
 def vivo() -> bool:
     return _CONEXAO is not None
+
+
+def persist_wal_ligado() -> bool:
+    """`True` quando a guardiã subiu com PERSIST_WAL — sem isso a proteção é só parcial."""
+    return _PERSIST

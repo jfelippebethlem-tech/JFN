@@ -62,3 +62,4 @@ starlette>=0.37.0    # uso direto em `obs_trace.py` (não só como dependência 
 urllib3>=2.0.0       # uso direto (retry/pool) nos coletores
 # oci: NÃO entra aqui de propósito — SDK pesado usado só por `tools/criar_vm_oracle2.py`
 # (provisionamento de VM, fora do caminho de análise). Instale sob demanda: pip install oci
+apsw>=3.53  # file controls do SQLite (PERSIST_WAL) — a stdlib nao expoe; ver compliance_agent/database/guarda_wal.py
