@@ -56,16 +56,19 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
         fonte="Folha do Estado (GESPERJ / rj.gov.br/remuneracao)",
         tipo="limite_de_dado",
         o_que_acontece=(
-            "A API declara **909.916 registros** na competência, mas **congela a paginação na "
-            "página 10.000**: dali em diante devolve HTTP 200 com a MESMA fatia de 50, para sempre. "
-            "Alcance real = 10.000 × 50 = **500.000 (55%)**. `size` não contorna (>50 → HTTP 400) e "
-            "não há filtro de partição: `orgao`, `orgaoId` e `vinculo` são IGNORADOS (o total não "
-            "muda) e `nome` exige o nome completo exato. **45% da folha estadual é inalcançável** "
-            "por esta porta — e o pior é que a falha se disfarça de sucesso."),
+            "A API **congela a paginação na página 10.000**: dali em diante devolve HTTP 200 com a "
+            "MESMA fatia de 50, para sempre. Numa varredura global isso limita a 500.000 dos "
+            "909.916 registros da competência (55%) — e a falha se disfarça de sucesso. "
+            "**CONTORNADO em 01/08/2026**: o limite era do PARÂMETRO, não da fonte. `orgao`, "
+            "`orgaoId`, `vinculo`, `funcaoCargo`, `cargo`, `lotacao` e `folhaRef` são ignorados "
+            "(o total não muda), mas **`codCargo` filtra** — `codCargo=403` → 17.000 registros em "
+            "340 páginas. Como toda partição cabe abaixo das 10.000 páginas, o universo inteiro "
+            "fica alcançável. Permanece como limite: `size` ≤ 50 (>50 → HTTP 400) e `nome` só "
+            "com o nome completo exato."),
         caminho_alternativo=(
-            "Nenhum pela API atual. Caminhos a testar: pedido LAI à SEPLAG pelo dump completo, ou "
-            "outra porta do portal que aceite recorte por órgão."),
-        medido_em="2026-07-31",
+            "Já implementado: `collectors/folha_estado.py` varre cargo a cargo com `codCargo`, "
+            "usando os 1.778 códigos de `/remuneracoes/cargos`."),
+        medido_em="2026-08-01",
     ),
     LimiteDeFonte(
         fonte="Folha do TJRJ (Anexo VIII CNJ) e Câmara Municipal do Rio",

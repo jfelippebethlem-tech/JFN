@@ -34,6 +34,12 @@ import pytest
 from compliance_agent.collectors import folha_estado as F
 
 
+@pytest.fixture(autouse=True)
+def lock_isolado(tmp_path, monkeypatch):
+    """Sem isolar o lock, um run de verdade em curso faz `coletar` sair por 'já em execução'."""
+    monkeypatch.setattr(F, "_LOCK", tmp_path / "folha_estado.lock")
+
+
 def test_existe_teto_de_pagina_declarado():
     """O número mágico precisa ter nome e viver no módulo, não espalhado no laço."""
     assert getattr(F, "_PAGINA_MAX", None) == 10_000
@@ -48,8 +54,10 @@ def test_pagina_alem_do_teto_nao_e_pedida(monkeypatch):
         return {"totalPages": 18_199, "remuneracoes": []}
 
     monkeypatch.setattr(F, "_get", _get_falso)
+    monkeypatch.setattr(F, "_cargos", lambda _c: [403])
     monkeypatch.setattr(F, "_carregar_progresso",
-                        lambda: {"competencia": "2026-06", "pagina": 9_998, "completa": False})
+                        lambda: {"competencia": "2026-06", "cargo": 403, "pagina": 9_998,
+                                 "completa": False})
     monkeypatch.setattr(F, "_salvar_progresso", lambda *a, **k: None)
 
     F.coletar(paginas_por_run=20, pausa=0)
@@ -62,11 +70,14 @@ def test_pagina_alem_do_teto_nao_e_pedida(monkeypatch):
 def test_parar_no_teto_nao_mente_dizendo_completa(monkeypatch):
     """`completa: true` com 55% dos dados faria o coletor nunca mais voltar nesta competência."""
     monkeypatch.setattr(F, "_get", lambda _c, p: {"totalPages": 18_199, "remuneracoes": []})
+    monkeypatch.setattr(F, "_cargos", lambda _c: [403])
     monkeypatch.setattr(F, "_carregar_progresso",
-                        lambda: {"competencia": "2026-06", "pagina": 9_998, "completa": False})
+                        lambda: {"competencia": "2026-06", "cargo": 403, "pagina": 9_998,
+                                 "completa": False})
     salvos: list[tuple] = []
     monkeypatch.setattr(F, "_salvar_progresso",
-                        lambda comp, pag, completa=False: salvos.append((comp, pag, completa)))
+                        lambda comp, pag, completa=False, cargo=None: salvos.append(
+                            (comp, pag, completa)))
 
     r = F.coletar(paginas_por_run=20, pausa=0)
 
@@ -78,11 +89,14 @@ def test_parar_no_teto_nao_mente_dizendo_completa(monkeypatch):
 def test_fim_real_da_competencia_continua_marcando_completa(monkeypatch):
     """Guarda-costas: quando totalPages cabe abaixo do teto, `completa` volta a valer."""
     monkeypatch.setattr(F, "_get", lambda _c, p: {"totalPages": 3, "remuneracoes": []})
+    monkeypatch.setattr(F, "_cargos", lambda _c: [403])
     monkeypatch.setattr(F, "_carregar_progresso",
-                        lambda: {"competencia": "2026-06", "pagina": 0, "completa": False})
+                        lambda: {"competencia": "2026-06", "cargo": 403, "pagina": 0,
+                                 "completa": False})
     salvos: list[tuple] = []
     monkeypatch.setattr(F, "_salvar_progresso",
-                        lambda comp, pag, completa=False: salvos.append((comp, pag, completa)))
+                        lambda comp, pag, completa=False, cargo=None: salvos.append(
+                            (comp, pag, completa)))
 
     r = F.coletar(paginas_por_run=20, pausa=0)
 
@@ -96,8 +110,10 @@ def test_faixa_valida_segue_sendo_percorrida(monkeypatch, pagina_inicial):
     pedidas: list[int] = []
     monkeypatch.setattr(F, "_get", lambda _c, p: (pedidas.append(p["page"]) or
                                                   {"totalPages": 18_199, "remuneracoes": []}))
+    monkeypatch.setattr(F, "_cargos", lambda _c: [403])
     monkeypatch.setattr(F, "_carregar_progresso",
-                        lambda: {"competencia": "2026-06", "pagina": pagina_inicial, "completa": False})
+                        lambda: {"competencia": "2026-06", "cargo": 403, "pagina": pagina_inicial,
+                                 "completa": False})
     monkeypatch.setattr(F, "_salvar_progresso", lambda *a, **k: None)
 
     F.coletar(paginas_por_run=3, pausa=0)

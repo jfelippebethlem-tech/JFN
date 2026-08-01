@@ -16,10 +16,11 @@ def test_cpf_middle6_invalido_vazio():
 
 def test_progresso_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setattr(FE, "_PROGRESSO", tmp_path / "prog.json")
-    FE._salvar_progresso("2026-06", 42)
+    FE._salvar_progresso("2026-06", 42, cargo=403)
     p = FE._carregar_progresso()
-    assert p == {"competencia": "2026-06", "pagina": 42, "completa": False}
-    FE._salvar_progresso("2026-06", 9641, completa=True)
+    # `cargo` entrou com a partição: sem ele a retomada volta ao 1º cargo e a varredura não fecha
+    assert p == {"competencia": "2026-06", "cargo": 403, "pagina": 42, "completa": False}
+    FE._salvar_progresso("2026-06", 9641, completa=True, cargo=403)
     assert FE._carregar_progresso()["completa"] is True
     assert not (tmp_path / "prog.json.tmp").exists()  # write atômico não deixa lixo
 
