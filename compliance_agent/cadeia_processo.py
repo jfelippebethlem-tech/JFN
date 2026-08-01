@@ -102,7 +102,7 @@ _RE_NAO_JURIDICO = re.compile(r"parecer\s+t[ée]cnic|parecer\s+de\s+medi[çc]|pa
                               r"parecer\s+de\s+engenh|laudo|certid", re.I)
 # MINUTA de contrato/aditivo antes do parecer é o fluxo CORRETO (o art. 53 analisa a minuta);
 # NF/e-mail classificados como contrato pelo conteúdo escaneado também não são o marco.
-_RE_NAO_CONTRATO = re.compile(r"minuta|nota\s+fiscal|\bnfs?-?e?\b|e-?mail|gmail", re.I)
+_RE_NAO_CONTRATO = re.compile(r"minuta|nota\s+fiscal|\bnfs?-?e?\b|e-?mail|gmail|contrato\s+social", re.I)
 
 
 def _marco(doc: dict) -> str | None:
@@ -113,6 +113,11 @@ def _marco(doc: dict) -> str | None:
     for nome, (pat_tipo, pat_titulo) in _MARCOS.items():
         if re.search(pat_tipo, tipo, re.I) or re.search(pat_titulo, titulo, re.I):
             if nome in ("contrato", "aditivo") and _RE_NAO_CONTRATO.search(titulo):
+                continue
+            # "Anexo Contrato <Empresa>" é cópia JUNTADA (habilitação/terceiro), não o ato:
+            # anexo só é marco de contrato se o título ESTRITO confirmar (Termo/Nº/Instrumento).
+            if (nome == "contrato" and re.search(r"^\s*anexo\b", titulo, re.I)
+                    and not re.search(pat_titulo, titulo, re.I)):
                 continue
             return nome
     return None

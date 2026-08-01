@@ -80,6 +80,9 @@ _REGRAS: list[tuple[str, str, list[str]]] = [
     ("contratacao_direta", "selecao", [r"dispensa de licita", r"inexigibilidade", r"ratifica",
                                        r"justificativa de (dispensa|contrata)"]),
     # ── formalização do contrato ───────────────────────────────────────────
+    # contrato SOCIAL é documento societário de habilitação, não o instrumento contratual
+    # (virava marco de contrato e fabricava inversão do art. 53 — calibração 2026-08-01)
+    ("habilitacao", "selecao", [r"contrato social"]),
     ("ata_rp", "contratacao", [r"ata de registro de preco"]),
     ("contrato", "contratacao", [r"termo de contrato", r"\bcontrato\b", r"extrato de contrato",
                                  r"publicacao .*contrato"]),
