@@ -33,6 +33,12 @@ Grava `data/sei_cache/integra_<TAG>/NNN.pdf` + `manifest.json` (títulos da árv
 > ⚠️ **Teto de texto por documento = `SEI_MAX_CHARS_DOC` (default 60000, era 20000 até
 > 2026-08-01).** O cap antigo decapitava a CONCLUSÃO de parecer longo e o juízo LLM condenava
 > documento que na verdade concluía (14 falsos escala-3). Truncado legado: lista em
+> ⚠️ **0 documentos NÃO é processo vazio.** Antes de anotar INDISPONÍVEL: (1) controle
+> positivo (mesmo método, mesma sessão, processo sabidamente bom); (2) re-teste na VM-2. A
+> espera da árvore já produziu falso INDISPONÍVEL em massa sob carga — curado em 2026-08-02
+> (`_esperar_arvore` espera os NÓS, não o frame); detalhe em
+> `~/vault/aprendizados/falso-indisponivel-corrida-da-arvore.md`.
+>
 > `data/recaptura_cap21k.json`; requeue bounded diário `tools/sei_reparar_truncados --cap
 > --aplicar --max 40` (cron 05:40) + re-arquivo automático por FRESCOR no
 > `sei_arquivar_do_cache` (cache mais novo que o manifest → re-arquiva, antigo vai p/
