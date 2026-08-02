@@ -392,7 +392,7 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
     return None
 
 
-async def _esperar_arvore(pg, voltas: int = 16) -> bool:
+async def _esperar_arvore(pg, voltas: int = 16, voltas_conteudo: int = 24) -> bool:
     """Espera ATIVA o frame da árvore de documentos (``ifrArvore``) carregar — a árvore do SEI
     aparece num iframe e o parser precisa dela presente ANTES de extrair (lição cracked 06-12:
     'A árvore abre, mas o parser pega 0 docs se extrair cedo demais'). Retorna True se a árvore
@@ -401,7 +401,20 @@ async def _esperar_arvore(pg, voltas: int = 16) -> bool:
         for fr in pg.frames:
             u = (fr.url or "").lower()
             if "arvore" in u or fr.name == "ifrArvore":
-                # achou o frame; dá um respiro p/ os <a> dos documentos pintarem
+                # O frame NASCE VAZIO e a árvore pinta depois — sob carga, segundos depois.
+                # Esperar só o frame (mais 2s fixos) fazia a extração ler 0 documentos e o
+                # processo virar FALSO INDISPONÍVEL: 5 numa recaptura em 2026-08-02, todos
+                # legíveis na re-tentativa (um devolveu 49 docs no minuto seguinte).
+                # Agora a condição é o CONTEÚDO (os nós `infraArvoreNo`), não a existência.
+                for _ in range(voltas_conteudo):
+                    try:
+                        if "infraArvoreNo" in (await fr.content()):
+                            return True
+                    except PWError as exc:
+                        logger.debug("frame da árvore ainda instável: %s", str(exc)[:60])
+                    await pg.wait_for_timeout(500)
+                # frame presente e sem nós até o teto: devolve como antes (o chamador extrai o
+                # que houver e marca `indisponivel` se vier vazio) — nunca trava.
                 await pg.wait_for_timeout(2000)
                 return True
         await pg.wait_for_timeout(1500)
