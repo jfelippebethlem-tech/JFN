@@ -36,25 +36,54 @@ import subprocess, sys
 sys.path.insert(0, ".")
 from tools.processo_360_ranking import pontuar
 import json, sqlite3
+from pathlib import Path
 con = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True)
 con.row_factory = sqlite3.Row
 # "já julgado" = julgado na rubrica VIGENTE. Fixar '2' aqui deixaria o sweep pulando processos
 # que só têm veredito de uma rubrica velha — e a v3 (2026-08-02) mudou o que conta como vício.
 # Ler a constante do módulo evita esta linha envelhecer calada de novo.
-from compliance_agent.sei.doc_juizo import RUBRICA_VERSAO
-julgados = {r[0] for r in con.execute(
-    "select distinct numero_sei from doc_veredito where rubrica_versao=?", (RUBRICA_VERSAO,))}
+from compliance_agent.sei.doc_juizo import RUBRICA_VERSAO, RUBRICAS
+from compliance_agent.sei import manifesto_norm
+# A fila raciocina por DOCUMENTO, não por processo. Com o critério antigo (distinct numero_sei),
+# um processo com um único despacho julgado ficava "pronto" para sempre — e as peças que ganharam
+# rubrica depois (autorização de despesa, TR, pesquisa de preços: 1.398 documentos no acervo)
+# nunca seriam avaliadas em nenhum dos processos já visitados.
+julgados = {}
+for sei, doc_i in con.execute(
+        "select numero_sei, doc_i from doc_veredito where rubrica_versao=?", (RUBRICA_VERSAO,)):
+    julgados.setdefault(sei, set()).add(doc_i)
 fila = []
 for r in con.execute("select * from processo_avaliacao"):
-    if r["numero_sei"] in julgados:
-        continue
     pts, _ = pontuar(json.loads(r["achados_json"] or "[]"),
                      json.loads(r["acatamento_json"] or "{}"))
     if pts >= 5:
         fila.append((pts, r["numero_sei"]))
 con.close()
 fila.sort(reverse=True)
-for _, numero in fila[:4]:
+
+def tem_pendente(numero):
+    """Sobrou documento elegível por rubrica sem veredito na versão vigente?"""
+    feitos = julgados.get(numero)
+    if feitos is None:
+        return True                      # nunca julgado
+    pasta = Path("data/sei_arquivo") / numero.replace("/", "_")
+    if not (pasta / "manifest.json").exists():
+        return False                     # sem arquivo local não há o que julgar
+    try:
+        man = manifesto_norm.normalizar(
+            {**json.loads((pasta / "manifest.json").read_text(encoding="utf-8")),
+             "_pasta": str(pasta)})
+    except Exception:
+        return False
+    return any(d.get("tipo") in RUBRICAS and d.get("i") not in feitos for d in man["docs"])
+
+alvos = []
+for _, numero in fila:
+    if tem_pendente(numero):
+        alvos.append(numero)
+    if len(alvos) >= 4:
+        break
+for numero in alvos:
     subprocess.run([".venv/bin/python", "tools/processo_360.py", "--numero", f"SEI-{numero}",
                     "--com-llm", "--gravar"], timeout=380)
 PYEOF

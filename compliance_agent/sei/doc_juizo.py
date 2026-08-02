@@ -39,8 +39,13 @@ TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
 RUBRICA_VERSAO = "3"
 _DB = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
 
+# Ordem de importância para o controle: primeiro quem DECIDE (contratação direta, parecer,
+# homologação, autorização de despesa), depois quem DEFINE o objeto e o preço, depois a execução.
+# Fora do _PRIORIDADE o documento vai para o fim da fila e o teto o corta — foi por isso que a
+# autorização de despesa precisou entrar aqui, e não só no RUBRICAS.
 _PRIORIDADE = ("contratacao_direta", "parecer", "homologacao", "adjudicacao",
-               "despacho", "aceite", "medicao")
+               "autorizacao_despesa", "despacho", "termo_referencia", "projeto_basico",
+               "pesquisa_precos", "aceite", "medicao")
 
 # escala: 1 = regular · 2 = frágil · 3 = viciado (a AUSÊNCIA do elemento pontua MAIS que a
 # versão fraca dele — regra P5 do vault). O modelo NUNCA vê número de score, só níveis nomeados.
@@ -81,9 +86,43 @@ RUBRICAS: dict[str, str] = {
         "1 = específico (diz O QUE foi entregue, quantidade/medição e data); 2 = genérico "
         "('de acordo', 'a contento', sem dizer o quê); 3 = incoerente (data anterior à "
         "medição, objeto diferente do contratado, ou quantidade divergente)."),
+    # 2026-08-02 — três tipos que carregavam decisão e não recebiam juízo NENHUM. Medido no
+    # arquivo: 29.945 documentos de 2.175 processos ficavam fora de qualquer rubrica; destes,
+    # 998 autorizações de despesa, 207 termos de referência e 193 pesquisas de preços — as três
+    # peças em que a discricionariedade de fato se exerce. Sem rubrica, o juízo por documento
+    # via só o despacho e o parecer, e o ato que AUTORIZA o gasto passava em branco.
+    "autorizacao_despesa": (
+        "Este documento AUTORIZA a despesa (ordenador de despesa). É o ato em que o gasto "
+        "público é decidido. Classifique a MOTIVAÇÃO do ato: 1 = autoriza indicando o objeto, o "
+        "valor, a dotação/disponibilidade e o fundamento (processo/parecer/etapa que o sustenta); "
+        "2 = autoriza de forma sumária, sem enfrentar os elementos dos autos, mas sem contrariá-los; "
+        "3 = autoriza CONTRARIANDO ressalva, parecer ou lacuna apontada nos autos sem motivar, ou "
+        "autoriza sem qualquer elemento que identifique objeto e valor. Autorizar é ato decisório: "
+        "o dever de motivar é do art. 50 da Lei 9.784/1999 e do art. 20 da LINDB — a motivação tem "
+        "de mostrar as consequências práticas consideradas. Se o documento é mero encaminhamento "
+        "administrativo e não autoriza nada, retorne null."),
+    "termo_referencia": (
+        "Este é um termo de referência / projeto básico — a peça que define O QUE se contrata. "
+        "Classifique a SUFICIÊNCIA da definição do objeto: 1 = objeto definido com precisão "
+        "(quantitativos, prazos, critérios de aceitação e requisitos verificáveis); 2 = definição "
+        "genérica que ainda permite executar, mas não permite medir/fiscalizar objetivamente; "
+        "3 = objeto indeterminado, ou requisito DIRECIONADOR — exigência de marca, modelo, atestado "
+        "ou característica que só um fornecedor atende, sem justificativa técnica nos autos "
+        "(art. 7º, §5º e art. 41 da Lei 14.133/2021). Descrição genérica não é vício por si: só é "
+        "3 quando impede o controle do que foi entregue ou restringe a competição."),
+    "pesquisa_precos": (
+        "Este documento é a pesquisa/mapa de preços que fundamenta o valor estimado. Classifique "
+        "a IDONEIDADE da pesquisa: 1 = múltiplas fontes de natureza distinta, identificadas e "
+        "datadas (painel de preços, contratos similares, notas fiscais, cotações com CNPJ), com "
+        "critério de escolha do valor; 2 = fontes poucas ou todas do mesmo tipo (só cotações de "
+        "fornecedores), ou sem data/identificação completa; 3 = pesquisa que não sustenta o preço "
+        "— cotações do próprio futuro contratado ou de empresas ligadas entre si, valores "
+        "idênticos/sequenciais, ou nenhuma fonte verificável (art. 23 da Lei 14.133/2021). "
+        "Cotação só com fornecedor é fragilidade (2), não vício automático."),
 }
 RUBRICAS["adjudicacao"] = RUBRICAS["homologacao"]
 RUBRICAS["medicao"] = RUBRICAS["aceite"]
+RUBRICAS["projeto_basico"] = RUBRICAS["termo_referencia"]
 
 _SISTEMA = (
     "Você audita documentos de processos administrativos (controle externo, RJ). Responda "
