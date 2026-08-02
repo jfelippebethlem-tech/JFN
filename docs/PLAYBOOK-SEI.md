@@ -289,3 +289,15 @@ sobreposição. Configuração inválida LEVANTA — cair no padrão faria as du
 - `sei_integra_fila.py --geral` agora re-enfileira processo **já arquivado que ganhou OB nova**
   (SIAFE ou TFE) depois do arquivo (`_fila_reler_por_ob`, bounded 10/rodada, valor desc) —
   OB nova = processo andou → re-ler, senão a perícia roda incompleta.
+
+## 6. Saúde do acervo (o que grita quando algo apodrece em silêncio)
+```bash
+PYTHONPATH=. .venv/bin/python -m tools.sentinela_integridade          # 4 invariantes de QUALIDADE
+PYTHONPATH=. .venv/bin/python -m tools.sei_purgar_anexo_cache --aplicar --max 20
+PYTHONPATH=. .venv/bin/python -m tools.sei_reparar_truncados --sem-texto --aplicar --max 40
+PYTHONPATH=. .venv/bin/python -m tools.sei_reparar_truncados --cap --aplicar --max 40
+```
+`pipelines_slo` responde "produziu no prazo?"; a **sentinela_integridade** responde "produziu
+CERTO?" — cache obeso (binário serializado), texto amputado no teto, processo arquivado sem
+texto, veredito sem prova. Cron `37 * * * *`, alerta só na transição ok→violado. Foi ela que
+achou 128 caches obesos e 147 capturas vazias silenciosas em 2026-08-02.
