@@ -156,3 +156,88 @@ def test_reparo_declara_captura_vazia_e_refila(tmp_path, monkeypatch):
     assert "captura_vazia" not in intacto, "processo com texto não pode ser marcado"
     feitos = _j.loads(prog.read_text())["feitos"]
     assert feitos["SEI-080002/014849/2026"]["n_docs"] == 0, "não voltou à fila"
+
+
+# ---- purga por STREAMING (arquivos que não cabem na RAM) ----
+
+def _cache_grande(tmp_path, nome="cdp_grande.json", ultimo=True):
+    """JSON no formato real do cache (indent=2), com anexo_bytes no fim ou no meio do objeto."""
+    doc_fim = {"doc": "parecer", "conteudo": "TEXTO", "via": "arvore", "anexo_bytes": "b'" + "A" * 400 + "'"}
+    doc_meio = {"doc": "outro", "anexo_bytes": "b'" + "B" * 400 + "'", "conteudo": "TEXTO2", "via": "ocr"}
+    d = {"numero": "SEI-1/2/3", "conteudo_documentos": [doc_fim if ultimo else doc_meio]}
+    p = tmp_path / nome
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    return p
+
+
+@pytest.mark.parametrize("ultimo", [True, False])
+def test_streaming_remove_anexo_e_mantem_json_valido(tmp_path, monkeypatch, ultimo):
+    """A vírgula pendente quando o campo removido era o ÚLTIMO do objeto é o caso que quebra
+    JSON — por isso os dois arranjos são testados."""
+    monkeypatch.setattr(purga, "LIMITE_STREAM_MB", 0.0)   # força o caminho de streaming
+    p = _cache_grande(tmp_path, ultimo=ultimo)
+    antes = p.stat().st_size
+    r = purga.purgar_arquivo(p, aplicar=True)
+    assert r["removidos"] == 1
+    assert p.stat().st_size < antes
+    d = json.loads(p.read_text(encoding="utf-8"))         # tem de continuar JSON válido
+    doc = d["conteudo_documentos"][0]
+    assert "anexo_bytes" not in doc
+    assert doc["conteudo"].startswith("TEXTO")
+    assert not list(tmp_path.glob("*.purga"))
+
+
+def test_streaming_nao_substitui_quando_o_resultado_seria_invalido(tmp_path, monkeypatch):
+    """Se a remoção produzir JSON quebrado, o ORIGINAL fica intacto (nunca piorar o acervo)."""
+    monkeypatch.setattr(purga, "LIMITE_STREAM_MB", 0.0)
+    p = tmp_path / "cdp_torto.json"
+    p.write_text('{\n  "conteudo_documentos": [\n    {\n      "anexo_bytes": "b\'x\'"\n', encoding="utf-8")
+    original = p.read_text(encoding="utf-8")
+    r = purga.purgar_arquivo(p, aplicar=True)
+    assert r.get("erro") and "intacto" in r["erro"]
+    assert p.read_text(encoding="utf-8") == original
+
+
+# ---- purga em TEXTO (JSON numa linha só — o formato do gravador antigo) ----
+
+@pytest.mark.parametrize("bruto,esperado_chaves", [
+    # campo no MEIO
+    ('{"a":1,"anexo_bytes":"b\'PDF\'","c":2}', {"a", "c"}),
+    # campo no FIM (vírgula anterior tem de sumir)
+    ('{"a":1,"anexo_bytes":"b\'PDF\'"}', {"a"}),
+    # campo no INÍCIO (vírgula seguinte tem de sumir)
+    ('{"anexo_bytes":"b\'PDF\'","a":1}', {"a"}),
+    # único campo do objeto
+    ('{"anexo_bytes":"b\'PDF\'"}', set()),
+    # com espaços/indentação
+    ('{\n  "a": 1,\n  "anexo_bytes": "b\'PDF\'"\n}', {"a"}),
+])
+def test_purga_texto_mantem_json_valido_em_toda_posicao(bruto, esperado_chaves):
+    limpo, n = purga.purgar_texto(bruto)
+    assert n == 1
+    d = json.loads(limpo)
+    assert set(d.keys()) == esperado_chaves
+
+
+def test_purga_texto_respeita_aspas_escapadas_no_valor():
+    """A repr de bytes contém barras e aspas — fechar a string cedo cortaria o JSON ao meio."""
+    bruto = '{"anexo_bytes":"b\'x\\\\y\\"z\'","depois":"ok"}'
+    limpo, n = purga.purgar_texto(bruto)
+    assert n == 1 and json.loads(limpo) == {"depois": "ok"}
+
+
+def test_purga_texto_sem_campo_nao_altera_nada():
+    bruto = '{"conteudo":"texto","via":"arvore"}'
+    limpo, n = purga.purgar_texto(bruto)
+    assert n == 0 and limpo == bruto
+
+
+def test_streaming_funciona_com_json_numa_linha_so(tmp_path, monkeypatch):
+    monkeypatch.setattr(purga, "LIMITE_STREAM_MB", 0.0)
+    p = tmp_path / "cdp_linha_unica.json"
+    p.write_text(json.dumps({"numero": "X", "conteudo_documentos": [
+        {"doc": "d", "conteudo": "TEXTO", "anexo_bytes": "b'" + "A" * 5000 + "'"}]}), encoding="utf-8")
+    antes = p.stat().st_size
+    r = purga.purgar_arquivo(p, aplicar=True)
+    assert r["removidos"] == 1 and p.stat().st_size < antes / 5
+    assert json.loads(p.read_text(encoding="utf-8"))["conteudo_documentos"][0]["conteudo"] == "TEXTO"
