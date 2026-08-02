@@ -21,6 +21,7 @@
  */
 import {$, esc, svgIco} from './nucleo/dom.js';
 import {fmtN, fmtD} from './nucleo/formato.js';
+import {_redMotion, _sobrio} from './capacidade/estado.js';
 
 const MARCHA = {
   vigilia: {t: 'vigília', d: 'sem coleta em curso e menos de um evento por minuto. O painel está acordado e parado.'},
@@ -155,11 +156,58 @@ export function conscienciaBatimento(p) {
   if (_aberto) { pintarVitais(); pintarRitmo(); }
 }
 
+/* ── o fundo do deck ──────────────────────────────────────────────────────────────────────────
+   A cena própria da Consciência, gerada no Gemini: filamentos de íon subindo devagar pelas duas
+   BORDAS, com o centro do quadro vazio de propósito — é lá que mora a grade de leitura, e uma
+   arte com sujeito central disputaria com o dado. As faíscas âmbar são a segunda temperatura da
+   casa.
+
+   TRÊS COISAS QUE ESTE VÍDEO FAZ DIFERENTE DA MESA, e as três vêm de ele ser sobreposição de
+   viewport inteira e não peça dentro de um cartão:
+     1. SEM degradê de borda. A mesa dissolvia no cartão; este sangra até a beirada da tela.
+     2. Só toca com o deck ABERTO. Vídeo rodando atrás de um deck fechado é custo puro numa VM de
+        2 vCPU — a mesma conta que já faz o `setInterval` só existir enquanto está aberto.
+     3. O HEAD só acontece na PRIMEIRA abertura. Quem nunca abre a Consciência nunca baixa os
+        725 KB.
+   Os dois pisos desligam, como em toda peça viva daqui: sem vídeo, fica o fundo chapado do deck,
+   que já era legível sozinho. */
+let _fundoOk;                                        // undefined = ainda não perguntei
+
+async function fundoVivo(d) {
+  let v = d.querySelector('video.cs-fundo');
+  if (_redMotion || _sobrio) { if (v) { v.classList.remove('on'); v.pause(); } return; }
+  const url = '/static/assets/consciencia-fundo.mp4';
+  if (_fundoOk === undefined) {
+    try { _fundoOk = (await fetch(url, {method: 'HEAD'})).ok; } catch (e) { _fundoOk = false; }
+  }
+  if (!_fundoOk) { if (v) v.classList.remove('on'); return; }
+  if (!v) {
+    v = document.createElement('video');
+    v.className = 'cs-fundo';
+    v.muted = true; v.loop = true; v.playsInline = true;
+    v.setAttribute('aria-hidden', 'true');
+    v.poster = '/static/assets/consciencia-fundo.jpg';
+    v.addEventListener('playing', () => v.classList.add('on'));
+    v.innerHTML = '<source src="/static/assets/consciencia-fundo.webm" type="video/webm">'
+                + '<source src="' + url + '" type="video/mp4">';
+    d.insertBefore(v, d.firstChild);
+    v.load();
+  }
+  v.play().catch(() => {});
+}
+
+/** Reavalia o fundo quando a capacidade da maquina muda. Sem isto, um FPS que cai DEPOIS do deck
+ *  aberto deixaria o video tocando — e `display:none` nao pausa video em todo navegador. */
+export function conscienciaRever() {
+  const d = $('consciencia'); if (d && _aberto) fundoVivo(d);
+}
+
 export function conscienciaAbrir() {
   const d = $('consciencia'); if (!d || _aberto) return;
   _aberto = true;
   d.hidden = false;
   requestAnimationFrame(() => d.classList.add('on'));
+  fundoVivo(d);
   pintarRitmo(); pintarFluxo(); pintarVitais(); pintarSweeps(); pintarFrescor();
   /* 15 s é o mesmo passo do polling que a mesa já usa para os sweeps — não se inventa uma
      cadência nova para a mesma pergunta. Só roda com o deck ABERTO: um deck fechado que continua
@@ -173,6 +221,7 @@ export function conscienciaFechar() {
   _aberto = false;
   clearInterval(_relogio); _relogio = 0;
   d.classList.remove('on');
+  const v = d.querySelector('video.cs-fundo'); if (v) v.pause();
   setTimeout(() => { if (!_aberto) d.hidden = true; }, 260);
 }
 

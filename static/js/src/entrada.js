@@ -25,7 +25,7 @@ import {sabreStart, hfToggle} from './barramento/sabre.js';
 /* O DECK DA CONSCIENCIA. Modulo sem efeito de topo; quem o liga e a sequencia de boot abaixo, e
    quem o alimenta sao os mesmos ganchos do barramento — uma conexao SSE so, dois ouvintes. */
 import {conscienciaLigar, conscienciaEvento, conscienciaBatimento,
-        conscienciaToggle} from './consciencia.js';
+        conscienciaToggle, conscienciaRever} from './consciencia.js';
 import {ritmoEstado} from './ritmo.js';
 
 /* CAPACIDADE. `estado.js` e uma FOLHA de proposito — nao importa nada. E o que quebra o ciclo:
@@ -37,7 +37,7 @@ import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 /* A CENA — canvas de fundo, mesa de vigilia, videos de esfera e portal. Sem efeito de topo:
    quem a liga e a sequencia de boot abaixo. */
 import {rjbgStart, netbgStart, _rjbgTinge, nucleoStart, nucleoPulse, nuSet, nuSweepPoll,
-        NU_NODES, nucleoViva, nebulaViva, holoRJ, portalStart, _rjCarregar,
+        NU_NODES, nucleoViva, nebulaViva, holoRJ, mesaViva, portalStart, _rjCarregar,
         _nuHover, _setNuHover, cenaPonteiro} from './cena/index.js';
 import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, seiBaixarZip,
         verCruzamento, fecharCertame, abrirCertame, jsq, _wire,
@@ -339,7 +339,7 @@ addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/i
 uiLigarA11y();
 uiLigarSpotlight();
 uiLigarDialogo();
-sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); });
+sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever(); });
 conscienciaLigar(ritmoEstado);
 sabreStart({
   aoEvento: ev => { nucleoPulse(ev.tipo); ritmoEvento();

@@ -1884,11 +1884,19 @@
   /* == v26 TRILHO — a capa da aba ganha uma barra de instrumento ===========
      A regra do dono: onde ha texto, pode haver arte. A capa era so tipografia
      sobre uma linha de 1px. Agora a base dela e um TRILHO usinado gerado no
-     Firefly - canal de vidro com a lamina de luz correndo dentro.
-     Cuidado que custou um recorte: o gerador escreveu numerais falsos nas duas
-     faixas de cima e de baixo da peca. Em painel de AUDITORIA numero inventado
-     e inaceitavel mesmo ilegivel - a fatia usada e so o canal de luz, entre as
-     duas faixas, e nenhum digito sobreviveu.
+     Adobe Firefly - canal de vidro com a lamina de luz correndo dentro, entre
+     duas placas rebitadas e um fio especular embaixo.
+     v58 REFEZ A PECA. A primeira tinha NUMERAIS INVENTADOS nas duas faixas: o
+     gerador escreveu digitos por conta propria, e em painel de AUDITORIA numero
+     inventado e inaceitavel mesmo ilegivel. Na epoca a peca foi salva por um
+     recorte as pressas - so o canal de luz, jogando fora as placas e o fio.
+     A peca nova nasce sem digito nenhum, porque a proibicao entrou no PROMPT
+     (`no numbers, no digits, no numerals, no tick marks, no scale, no gauge
+     markings`) em vez de virar tesoura depois. Conferida em zoom antes de
+     entrar. E ai o trilho inteiro pode ser usado - e sao as placas que dao a
+     espessura de hardware quando ele e esmagado para 26px de altura.
+     A mascara ficou SIMETRICA (6%/94%). O 82% de antes existia para esconder a
+     borda direita do recorte; sem recorte, nao ha o que esconder.
      Dessaturado a 40%: metal e incolor, e quem carrega a matiz da esfera e a
      barra de acento que ja existia (.cover::before) - decoracao nova nao rouba
      o trabalho da antiga.
@@ -1900,8 +1908,8 @@
     z-index:-1;pointer-events:none;
     background:url(/static/assets/trilho-hud.jpg) center/100% 100% no-repeat;
     opacity:.55;mix-blend-mode:screen;filter:saturate(.4);
-    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%);
-    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 82%,transparent 99%)}
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
   @media (prefers-reduced-transparency:reduce){.cover-row::before{opacity:.3}}
 
 

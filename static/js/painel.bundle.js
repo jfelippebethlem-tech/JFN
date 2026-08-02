@@ -419,6 +419,13 @@
     };
   }
 
+  // static/js/src/capacidade/estado.js
+  var _redMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var _sobrio = false;
+  function _setSobrio(v) {
+    _sobrio = !!v;
+  }
+
   // static/js/src/consciencia.js
   var MARCHA = {
     vigilia: { t: "vigília", d: "sem coleta em curso e menos de um evento por minuto. O painel está acordado e parado." },
@@ -548,12 +555,55 @@
       pintarRitmo();
     }
   }
+  var _fundoOk;
+  async function fundoVivo(d) {
+    let v = d.querySelector("video.cs-fundo");
+    if (_redMotion || _sobrio) {
+      if (v) {
+        v.classList.remove("on");
+        v.pause();
+      }
+      return;
+    }
+    const url = "/static/assets/consciencia-fundo.mp4";
+    if (_fundoOk === void 0) {
+      try {
+        _fundoOk = (await fetch(url, { method: "HEAD" })).ok;
+      } catch (e) {
+        _fundoOk = false;
+      }
+    }
+    if (!_fundoOk) {
+      if (v) v.classList.remove("on");
+      return;
+    }
+    if (!v) {
+      v = document.createElement("video");
+      v.className = "cs-fundo";
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.setAttribute("aria-hidden", "true");
+      v.poster = "/static/assets/consciencia-fundo.jpg";
+      v.addEventListener("playing", () => v.classList.add("on"));
+      v.innerHTML = '<source src="/static/assets/consciencia-fundo.webm" type="video/webm"><source src="' + url + '" type="video/mp4">';
+      d.insertBefore(v, d.firstChild);
+      v.load();
+    }
+    v.play().catch(() => {
+    });
+  }
+  function conscienciaRever() {
+    const d = $("consciencia");
+    if (d && _aberto) fundoVivo(d);
+  }
   function conscienciaAbrir() {
     const d = $("consciencia");
     if (!d || _aberto) return;
     _aberto = true;
     d.hidden = false;
     requestAnimationFrame(() => d.classList.add("on"));
+    fundoVivo(d);
     pintarRitmo();
     pintarFluxo();
     pintarVitais();
@@ -574,6 +624,8 @@
     clearInterval(_relogio);
     _relogio = 0;
     d.classList.remove("on");
+    const v = d.querySelector("video.cs-fundo");
+    if (v) v.pause();
     setTimeout(() => {
       if (!_aberto) d.hidden = true;
     }, 260);
@@ -623,13 +675,6 @@
         conscienciaToggle();
       }
     });
-  }
-
-  // static/js/src/capacidade/estado.js
-  var _redMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var _sobrio = false;
-  function _setSobrio(v) {
-    _sobrio = !!v;
   }
 
   // static/js/src/capacidade/sobrio.js
@@ -1148,10 +1193,51 @@
     v.play().catch(() => {
     });
   }
+  async function mesaViva() {
+    const box = $("ck-nucleo");
+    if (!box) return;
+    let v = box.querySelector("video.mesa");
+    if (_redMotion || _sobrio) {
+      if (v) {
+        v.classList.remove("on");
+        v.pause();
+      }
+      return;
+    }
+    const url = "/static/assets/mesa-projecao.mp4";
+    if (_nuVid.mesa === void 0) {
+      try {
+        _nuVid.mesa = (await fetch(url, { method: "HEAD" })).ok;
+      } catch (e) {
+        _nuVid.mesa = false;
+      }
+    }
+    if (!_nuVid.mesa) {
+      if (v) v.classList.remove("on");
+      return;
+    }
+    if (!v) {
+      v = document.createElement("video");
+      v.className = "mesa";
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.autoplay = true;
+      v.setAttribute("aria-hidden", "true");
+      v.poster = "/static/assets/mesa-projecao.jpg";
+      v.addEventListener("playing", () => v.classList.add("on"));
+      v.innerHTML = '<source src="/static/assets/mesa-projecao.webm" type="video/webm"><source src="' + url + '" type="video/mp4">';
+      box.insertBefore(v, box.firstChild);
+      v.load();
+    }
+    v.play().catch(() => {
+    });
+  }
   function nucleoStart() {
     const box = $("ck-nucleo"), cv = $("nucleo-cv");
     if (!box || !cv) return;
     nucleoViva();
+    mesaViva();
     const rm = _redMotion, ctx = cv.getContext("2d"), dpr = Math.min(2, devicePixelRatio || 1), N = NU_NODES.length;
     $("nu-chips").innerHTML = NU_NODES.map((n) => `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"
        onpointerenter="_nuHover='${n.id}'" onpointerleave="_nuHover=null">
@@ -5674,6 +5760,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     nebulaViva();
     nucleoViva();
     holoRJ();
+    mesaViva();
+    conscienciaRever();
   });
   conscienciaLigar(ritmoEstado);
   sabreStart({

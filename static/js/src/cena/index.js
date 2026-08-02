@@ -330,9 +330,39 @@ export async function nucleoViva(){
     v.load();}
   v.play().catch(()=>{});
 }
+/* A MESA VIVA. O piso de projecao sob o nucleo era um JPG estatico: uma foto de mesa embaixo de
+   um nucleo que respira. Agora e um loop de 6 s — ondas concentricas de luz saindo do centro,
+   emenda medida (delta 2,689 contra passo normal de 2,327 naquele trecho do clipe).
+
+   Segue LETRA POR LETRA a receita do `nucleoViva`, e isso e de proposito: sonda HEAD antes de
+   inserir (404 hoje significa 'segue com o JPG', sem erro), par de sources webm+mp4, `.on` so no
+   evento `playing` (um `play()` que resolve sem codec deixaria o veu ligado sobre video preto), e
+   a MESMA guarda de sobriedade — decodificar video por quadro e exatamente o custo que a maquina
+   em modo sobrio ja nao estava dando conta. Inventar um segundo mecanismo aqui seria criar uma
+   segunda porta de degradacao para manter. */
+export async function mesaViva(){
+  const box=$('ck-nucleo');if(!box)return;
+  let v=box.querySelector('video.mesa');
+  if(_redMotion||_sobrio){if(v){v.classList.remove('on');v.pause();}return;}
+  const url='/static/assets/mesa-projecao.mp4';
+  if(_nuVid.mesa===undefined){
+    try{_nuVid.mesa=(await fetch(url,{method:'HEAD'})).ok}
+    catch(e){_nuVid.mesa=false}}
+  if(!_nuVid.mesa){if(v)v.classList.remove('on');return;}
+  if(!v){v=document.createElement('video');v.className='mesa';
+    v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+    v.setAttribute('aria-hidden','true');
+    v.poster='/static/assets/mesa-projecao.jpg';
+    v.addEventListener('playing',()=>v.classList.add('on'));
+    v.innerHTML='<source src="/static/assets/mesa-projecao.webm" type="video/webm">'
+               +'<source src="'+url+'" type="video/mp4">';
+    box.insertBefore(v,box.firstChild);v.load();}
+  v.play().catch(()=>{});
+}
 export function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
   nucleoViva();
+  mesaViva();      // o piso vivo entra junto com o nucleo — a mesa e o nucleo sao um so objeto
   const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
   $('nu-chips').innerHTML=NU_NODES.map(n=>
     `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"

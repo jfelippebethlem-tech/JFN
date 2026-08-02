@@ -136,6 +136,31 @@
     backdrop-filter:blur(3px);
     opacity:0;transform:translateY(-14px);transition:opacity .24s ease,transform .24s cubic-bezier(.22,.61,.36,1)}
   #consciencia.on{opacity:1;transform:none}
+
+  /* ── o fundo do deck ──────────────────────────────────────────────────────────────────────
+     A cena propria da Consciencia (Gemini): filamentos de ion subindo pelas duas BORDAS, com o
+     centro do quadro vazio de proposito — e la que fica a grade de leitura.
+
+     TRES ESCOLHAS, e nenhuma e estetica:
+       `position:fixed` e nao absolute porque `#consciencia` tem `overflow:auto`: em absolute o
+       fundo rolaria junto com a grade e a beirada de baixo apareceria. (O `backdrop-filter` do
+       proprio deck ja o torna bloco-contenedor de descendentes fixos, entao o fixed fica preso
+       ao deck e nao vaza — mas a regra vale mesmo sem isso.)
+       `mix-blend-mode:screen` e nao opacidade simples porque a peca e LUZ SOBRE PRETO: em screen
+       o preto do video contribui exatamente zero e so os filamentos somam. Com alfa comum, os
+       55% de preto escureceriam o fundo do deck e o texto perderia contraste.
+       `z-index:0` no video + `z-index:1` no conteudo porque `.cs-bloco` nao tem fundo proprio:
+       sem o empilhamento explicito o video passaria POR CIMA da leitura.
+
+     A opacidade so sobe quando o `playing` dispara — antes disso nao ha o que mostrar, e um
+     poster piscando na abertura do deck e pior que fundo nenhum.                            */
+  #consciencia .cs-fundo{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
+    z-index:0;pointer-events:none;border:0;
+    mix-blend-mode:screen;opacity:0;transition:opacity .5s ease}
+  #consciencia .cs-fundo.on{opacity:.55}
+  #consciencia .cs-topo,#consciencia .cs-grade{position:relative;z-index:1}
+  @media (prefers-reduced-transparency:reduce){#consciencia .cs-fundo.on{opacity:.28}}
+
   #consciencia .cs-topo{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
   #consciencia .cs-topo h2{margin:0;font-size:clamp(18px,2.4vw,25px);letter-spacing:.01em}
   #consciencia .cs-topo .dim{max-width:62ch}
@@ -152,6 +177,23 @@
     grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
   #consciencia .cs-bloco{border:1px solid var(--bd2);border-radius:12px;padding:13px 15px;
     background:color-mix(in oklch,var(--card) 78%,transparent);min-width:0}
+
+  /* ── a coluna de leitura, quando o fundo esta vivo ────────────────────────────────────────
+     MEDIDO, nao achado. Com o video atras e a placa a 78%, o pior pixel do fundo composto da
+     RGB(141,142,133) e o texto de corpo cai para 1,01:1 — invisivel. Titulo 2,98, rotulo 1,30.
+     O dono revogou "brilho nunca sobre texto denso"; ele nao revogou a legibilidade.
+
+     A correcao NAO e abaixar a arte ate ela sumir. E dar calha: a leitura ganha largura maxima e
+     se centra, entao sobra LATERAL de verdade — e lateral e exatamente onde os filamentos foram
+     gerados para morar ("all activity near the left and right edges"). A arte passa a emoldurar
+     o instrumento em vez de atravessa-lo.
+     E a placa fica OPACA enquanto o video toca. Sem video ela volta aos 78%, porque ali a
+     translucidez mostra o painel por baixo e isso e o efeito desejado.                       */
+  #consciencia:has(video.cs-fundo.on) .cs-topo,
+  #consciencia:has(video.cs-fundo.on) .cs-grade{width:min(100%,1180px);margin-inline:auto}
+  #consciencia:has(video.cs-fundo.on) .cs-bloco{background:var(--card)}
+  #consciencia:has(video.cs-fundo.on) .cs-topo{border:1px solid var(--bd2);border-radius:12px;
+    padding:13px 15px;background:var(--card)}
   #consciencia .cs-largo{grid-column:1/-1}
   #consciencia .cs-alto{max-height:min(46vh,420px);overflow:auto}
 
@@ -242,3 +284,50 @@
   @media (prefers-reduced-motion:reduce){.ck-inst:hover::after{rotate:none;transition:none}}
   body.fps-baixo .ck-inst::after{transition:none}
   body.fps-baixo .ck-inst:hover::after{rotate:none}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v58 — A TEXTURA DA PLACA. Metal escovado gerado no Gemini, aplicado ao corpo do painel.
+
+   Ela existe para dar MATÉRIA à superfície: sem isso o fundo é uma cor chapada, e o painel inteiro
+   flutua sobre nada. Com ela há uma placa por baixo — escovação horizontal, micro-perfuração e a
+   costura de luz onde duas chapas se encontram.
+
+   DUAS DECISÕES DE DOSE, e as duas são para o texto ganhar:
+   • 6% de opacidade. A peça foi gerada quase-preta de propósito (média 23 de 255, desvio 8) e ainda
+     assim entra fraca: ela é o chão, não a paisagem. Contraste de texto não pode cair um ponto.
+   • `background-attachment: fixed` no desktop. A placa NÃO rola junto com o conteúdo — é a mesa, e
+     mesa não se move quando se vira a página. No celular vira `scroll`, porque `fixed` em iOS
+     força repintura de tela cheia a cada quadro de rolagem e o custo aparece.
+
+   512² e 13 KB. Foi gerada a 2048² e 6 MB — seis megabytes de rede para uma textura que ninguém
+   consegue ver de perto é desperdício, não fidelidade.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+  body::before{content:"";position:fixed;inset:0;z-index:-3;pointer-events:none;
+    background:url("/static/assets/textura-placa.webp") center/512px 512px repeat;
+    opacity:.06;mix-blend-mode:screen}
+  @media (max-width:820px){body::before{background-attachment:scroll;opacity:.05}}
+  /* Sem movimento e sem quadro sobrando, a placa some: ela é matéria, não informação. */
+  body.fps-baixo::before{opacity:.03}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v58 — A MESA VIVA. O piso de projeção sob o núcleo era um JPG estático: uma foto de mesa
+   embaixo de um núcleo que respira. Agora é um loop de 6 s.
+
+   Ele entra ATRÁS do vídeo do núcleo e do canvas, com a mesma máscara radial que a placa estática
+   já usava — a arte morre antes da borda do cartão, senão desenha um retângulo dentro do
+   retângulo. Opacidade menor que a do núcleo de propósito: a mesa é o chão, o núcleo é o objeto.
+
+   O JPG continua como `poster`, então a degradação é automática: sem codec, sem rede ou em modo
+   sóbrio, a tela volta a ser exatamente o que era antes.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+  .ck-nucleo video.mesa{position:absolute;inset:0;width:100%;height:100%;
+    object-fit:cover;object-position:50% 42%;z-index:0;pointer-events:none;
+    opacity:0;transition:opacity 1.1s ease;mix-blend-mode:screen;
+    -webkit-mask-image:radial-gradient(ellipse 70% 74% at 50% 62%,#000 16%,rgba(0,0,0,.35) 70%,transparent 96%);
+    mask-image:radial-gradient(ellipse 70% 74% at 50% 62%,#000 16%,rgba(0,0,0,.35) 70%,transparent 96%)}
+  .ck-nucleo video.mesa.on{opacity:.42}
+  /* Com o vídeo no ar a placa estática sai — duas mesas empilhadas somam luz e lavam o núcleo. */
+  .ck-nucleo:has(video.mesa.on)::before{opacity:0}
+  @media (prefers-reduced-motion:reduce){.ck-nucleo video.mesa{display:none}}
+  @media (prefers-reduced-transparency:reduce){.ck-nucleo video.mesa.on{opacity:.2}}
