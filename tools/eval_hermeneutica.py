@@ -156,6 +156,11 @@ def avaliar(casos: list[dict], gerar: Callable, *, limite: int | None = None) ->
 # a rede. A trava roda como job (off-hours) e o teste unitário cobre a lógica de comparação — que
 # é onde mora o erro silencioso (tolerância frouxa demais, métrica errada, direção invertida).
 BASELINE_PADRAO = "data/hermeneutica_baseline.json"
+# O card de acurácia do painel (`reporting/painel_acuracia`) lê a ÚLTIMA medição daqui — e até
+# 2026-08-02 ninguém escrevia este arquivo. O card dizia "ainda não medido neste ambiente — rode
+# eval_hermeneutica --holdout --aceitar" e o `--aceitar` só gravava o baseline: o comando sugerido
+# jamais apagaria a própria mensagem. Baseline é o PISO da catraca; última é O QUE SE MEDIU AGORA.
+ULTIMA_PADRAO = "data/hermeneutica_ultima.json"
 
 # Tolerância: variação de amostragem do modelo é real, e travar no valor exato produziria alarme
 # a cada rodada. 3 pontos de F1 macro é folga suficiente para ruído e apertada o bastante para
@@ -224,6 +229,24 @@ def resumo_para_baseline(resultado: dict) -> dict[str, Any]:
              "indisponivel", "invalido", "bate_o_baseline", "prompt_versao", "prompt_hash")}
 
 
+def gravar_ultima(resumo: dict, caminho: str = ULTIMA_PADRAO) -> str:
+    """Publica a medição recém-feita para o card do painel, com carimbo de QUANDO.
+
+    Sem a data, um número de três meses atrás apareceria como se fosse de hoje — que é o defeito
+    que o próprio `painel_acuracia` diz ser pior que o card vazio.
+    """
+    import datetime
+    import os
+    os.makedirs(os.path.dirname(caminho) or ".", exist_ok=True)
+    # A chave é `medido_em` porque é a que o card lê (`painel_acuracia.montar`). Gravar com outro
+    # nome deixaria o número aparecer sem data — o card explicitamente chama isso de pior que vazio.
+    payload = {**resumo, "medido_em": datetime.datetime.now(
+        datetime.timezone.utc).isoformat(timespec="seconds")}
+    with open(caminho, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2, default=str)
+    return caminho
+
+
 def carregar_baseline(caminho: str = BASELINE_PADRAO) -> dict | None:
     import os
     if not os.path.exists(caminho):
@@ -272,6 +295,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     r = avaliar(alvo, gerar_sync, limite=a.limite)
     resumo = {k: v for k, v in r.items() if k != "detalhes"}
     print(json.dumps(resumo, ensure_ascii=False, indent=2, default=str))
+    # Toda medição publica — não só a que vira baseline. Métrica que fica no log não disciplina
+    # ninguém, e era exatamente o que acontecia: o card nunca saía de "sem medição".
+    print(f"\núltima medição → {gravar_ultima(resumo)}")
     if a.por_vicio:
         pv = {v: {"n": m["n"], "f1_macro": round(m["f1_macro"], 3)}
               for v, m in por_vicio(r).items()}

@@ -1,0 +1,69 @@
+{
+  "n": 100,
+  "acuracia": 0.43,
+  "abstencao": 0.17,
+  "f1_macro": 0.4818117400655919,
+  "por_classe": {
+    "vicio": {
+      "precisao": 0.6666666666666666,
+      "recall": 0.5384615384615384,
+      "f1": 0.5957446808510638,
+      "n": 26
+    },
+    "licito": {
+      "precisao": 0.2857142857142857,
+      "recall": 0.75,
+      "f1": 0.4137931034482759,
+      "n": 16
+    },
+    "vicio_por_omissao": {
+      "precisao": 0.85,
+      "recall": 0.29310344827586204,
+      "f1": 0.4358974358974359,
+      "n": 58
+    }
+  },
+  "f1_por_classe": {
+    "vicio": 0.5957446808510638,
+    "licito": 0.4137931034482759,
+    "vicio_por_omissao": 0.4358974358974359
+  },
+  "matriz": {
+    "vicio": {
+      "vicio": 14,
+      "vicio_por_omissao": 1,
+      "licito": 4,
+      "indeterminado": 7
+    },
+    "licito": {
+      "licito": 12,
+      "indeterminado": 1,
+      "vicio": 1,
+      "vicio_por_omissao": 2
+    },
+    "vicio_por_omissao": {
+      "licito": 26,
+      "indeterminado": 9,
+      "vicio_por_omissao": 17,
+      "vicio": 6
+    }
+  },
+  "alucinacao_citacao": 0.01,
+  "indisponivel": 0.11,
+  "invalido": 0.0,
+  "baseline_burro": {
+    "classe": "vicio_por_omissao",
+    "acuracia": 0.58,
+    "f1_macro": 0.24472573839662445,
+    "f1_por_classe": {
+      "vicio": 0.0,
+      "licito": 0.0,
+      "vicio_por_omissao": 0.7341772151898733
+    }
+  },
+  "bate_o_baseline": true,
+  "prompt_versao": "v1",
+  "prompt_hash": "300d9347d2af",
+  "condicionados": 0.06,
+  "medido_em": "2026-08-02T22:58:26+00:00"
+}
