@@ -20,6 +20,11 @@ PAINEL = Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html"
 
 
 CSS_EXTRAIDO = Path(__file__).resolve().parents[1] / "static" / "css" / "painel.css"
+# v58: o CSS passou a ser CONCATENACAO de `static/css/src/*.css`. Este teste le a ENTRADA e
+# nao o artefato: validar a saida do build esconderia um comentario orfao escrito num estrato
+# que ainda nao foi concatenado — e comentario orfao engolindo um @media inteiro e exatamente
+# o bug de 25/07 que este arquivo existe para travar.
+CSS_SRC = Path(__file__).resolve().parents[1] / "static" / "css" / "src"
 
 
 def _css() -> tuple[str, int]:
@@ -36,6 +41,10 @@ def _css() -> tuple[str, int]:
     m = re.search(r"<style>(.*?)</style>", fonte, re.S)
     if m:
         return m.group(1), fonte[: m.start(1)].count("\n") + 1
+    if CSS_SRC.is_dir():
+        partes = sorted(CSS_SRC.glob("*.css"))
+        if partes:
+            return "".join(p.read_text(encoding="utf-8") for p in partes), 1
     assert CSS_EXTRAIDO.exists(), (
         "o painel nao tem <style> inline nem static/css/painel.css — o CSS sumiu de vez")
     assert '<link rel="stylesheet" href="/static/css/painel.css' in fonte, (

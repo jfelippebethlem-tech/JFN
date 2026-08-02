@@ -33,17 +33,25 @@ from tools import painel_efeitos_boot as boot  # noqa: E402
 SEQUENCIA = [
     "testemunha:readyState",          # a primeira instrucao; prova que o script bloqueia o parser
     "listener:hashchange",            # roteamento por URL
-    "listener:DOMContentLoaded",      # montagem inicial
-    "listener:keydown",               # atalhos e a11y do dossie
-    "listener:scroll",                # invalida o retangulo do spotlight
-    "listener:resize",                # idem
-    "listener:pointermove",           # spotlight
-    "listener:pointerout",            # spotlight
-    "iife:_ovDialogo",                # dialogo do overlay
+    # v58 · etapa 7: a sonda da arte subiu duas posicoes. Ela ficava no meio do bloco de renders
+    # que virou `abas/index.js`; quando o bloco saiu, ela veio junto para o topo da sequencia.
+    # Nao muda nada de comportamento — e um `fetch` de HEAD que so acende `body.art-no` se o PNG
+    # existir — mas muda a ORDEM, e ordem e o que este contrato vigia.
+    "fetch:/static/assets/no-energia.png",   # sonda: a arte existe? entao acende body.art-no
     "listener:pagehide",              # limpa efemeros
     "listener:pointermove",           # paralaxe do cockpit
     "iife:boot-assincrono",           # monta esferas/abas e liga os canvas de fundo
-    "fetch:/static/assets/no-energia.png",   # sonda: a arte existe? entao acende body.art-no
+    # A camada de INTERACAO saiu para `ui/index.js` na etapa 6. Os efeitos que ela tinha no
+    # topo (DOMContentLoaded da holografia, keydown de Enter/Espaco, os quatro ouvintes do
+    # spotlight e a IIFE do dialogo) viraram funcao e passaram a ser CHAMADOS daqui, na
+    # mesma ordem relativa. Efeito de topo em modulo roda na ordem do import, e a ordem do
+    # import nao e a ordem que este painel precisa.
+    "chamada:uiLigarA11y()",
+    "chamada:uiLigarSpotlight()",
+    "chamada:uiLigarDialogo()",
+    "chamada:sobrioAoMudar()",        # o que reavaliar quando o modo sobrio vira: os tres
+                                      # videos da cena. Gancho, nao import — senao a folha
+                                      # das bandeiras e a cena se importariam em circulo
     "chamada:conscienciaLigar()",     # monta o deck e liga a tecla C; ANTES do barramento,
                                       # porque e ele que recebe os eventos que o deck mostra
     "chamada:sabreStart()",           # barramento SSE

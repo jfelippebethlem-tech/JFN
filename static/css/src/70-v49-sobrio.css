@@ -1,0 +1,69 @@
+/* ══ v49 · MODO SÓBRIO MEDIDO — o painel mede a máquina em que está e recua ═════════════════════
+   O PROBLEMA, EM NÚMERO. Medido com Playwright nesta VM (2 vCPU): **1-2 FPS com a página PARADA**,
+   com 57 animações `infinite` ativas. É isso que o dono descreve como "fica piscando": a 1 FPS uma
+   respiração de 2,9 s não respira — pisca, porque cada quadro é um salto grande.
+
+   POR QUE ESTA LISTA. Quinze `@keyframes` infinitas animam `filter`, spread de `box-shadow` ou
+   `background-position` — as três propriedades que forçam REPINTURA do elemento a cada quadro
+   (diferente de `opacity`/`transform`, que o compositor resolve na GPU). Em máquina folgada isso
+   passa; em 2 vCPU, é o orçamento inteiro.
+
+   POR QUE NÃO APAGUEI. O dono pediu explicitamente o efeito Jarvis pulsando, e em máquina capaz ele
+   custa pouco e vale muito. Então o painel MEDE (`_medirFps`, no fim do boot) e só recua onde
+   precisa. Quem tem GPU vê o painel inteiro; a VM vê o painel legível. `prefers-reduced-motion`
+   continua valendo por cima disto — são eixos diferentes: um é preferência declarada, este é
+   capacidade medida. */
+  body.fps-baixo #hologrid,
+  body.fps-baixo #rjbg,
+  body.fps-baixo .card.hl, body.fps-baixo .card.hl.rise, body.fps-baixo .card.hl:hover,
+  body.fps-baixo .card.hl.rise:hover,
+  body.fps-baixo .card::after, body.fps-baixo .ck-hero::after,
+  body.fps-baixo .ck-ved,
+  body.fps-baixo .cover-row::after,
+  body.fps-baixo .cover-seal .jico,
+  body.fps-baixo .cover::before, body.fps-baixo .cover.estado::before,
+  body.fps-baixo .cover.prefeitura::before, body.fps-baixo .cover.geral::before,
+  body.fps-baixo .grid::after, body.fps-baixo .cols::after,
+  body.fps-baixo .nu-sweep.on,
+  body.fps-baixo .sev-alta, body.fps-baixo .grave, body.fps-baixo td .pill.alto,
+  body.fps-baixo .sev-media, body.fps-baixo .medio, body.fps-baixo td .pill.medio,
+  body.fps-baixo .sph.on .i .jico,
+  body.fps-baixo tbody tr:hover, body.fps-baixo .barw .row:hover,
+  body.fps-baixo .btn>.hlx::before, body.fps-baixo .chip>.hlx::before,
+  body.fps-baixo .tab>.hlx::before, body.fps-baixo .htop a>.hlx::before{
+    animation:none!important}
+  /* o sabre da aba ativa e o selo continuam vivos: já pulsam em `opacity`, que é de graça. */
+  /* a nebulosa mantém o drift (`transform`) e perde só o filtro, que já é estático desde o v49. */
+  body.fps-baixo #esfnebula{animation-duration:120s}
+  /* v50 · O BLUR DE FUNDO SAI JUNTO — e a superfície fica OPACA no mesmo golpe.
+     `backdrop-filter` obriga o navegador a LER DE VOLTA o framebuffer para borrar o que está atrás
+     (`GPU stall due to ReadPixels`, medido no console das duas viewports). São 10 declarações, e
+     elas ficam sobre canvas de tela cheia. Tirar o blur sozinho seria PIOR: `--glass` é 76% opaco,
+     então 24% do conteúdo apareceria NÍTIDO atravessando o cabeçalho — o texto embolado que
+     aparece no topo da captura mobile. Por isso as duas coisas andam juntas, como já faz a regra
+     de `prefers-reduced-transparency` logo acima. */
+  /* O blur sai de TUDO — enumerar seletor a seletor já deixou 10 elementos para trás numa
+     verificação com getComputedStyle (`.nu-chip` ×7, `.nu-sweep`, `.tabs`, `.ov`), e o ReadPixels
+     continuou. Aqui a pergunta é feita ao elemento, não à lista. */
+  body.fps-baixo *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  /* ...e as superfícies de VIDRO ficam opacas, senão o conteúdo de trás aparece nítido através
+     delas. A cortina `.ov` fica de fora de propósito: escurecer o fundo é a função dela. */
+  body.fps-baixo header, body.fps-baixo #holofeed, body.fps-baixo .card,
+  body.fps-baixo .ck-hero, body.fps-baixo .modal, body.fps-baixo .sheet,
+  body.fps-baixo .tabs, body.fps-baixo .nu-chip, body.fps-baixo .nu-sweep{
+    background:var(--bg2)}
+
+  /* v50 · CABEÇALHO OPACO NA TELA ESTREITA. Independe da medição: no celular a barra fixa cobre
+     proporcionalmente muito mais da tela (152 px de 844 = 18%), e ali o vidro translúcido deixa o
+     conteúdo rolar visível POR BAIXO do texto do cabeçalho. Vidro é enfeite; legibilidade não é. */
+  @media (max-width:820px){
+    :root{--painel-topo-opaco:1}
+    header{background:var(--bg2)!important;
+      backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  }
+  /* aviso honesto: o modo sóbrio é VISÍVEL, nunca silencioso — degradação calada é o que faz
+     ninguém descobrir que o painel está diferente do que o autor desenhou. */
+  body.fps-baixo #modo-sobrio{display:inline-flex}
+  #modo-sobrio{display:none;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);
+    border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;cursor:help}
+

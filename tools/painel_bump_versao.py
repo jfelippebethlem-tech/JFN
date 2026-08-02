@@ -37,7 +37,9 @@ _CONTROLE = _REPO / "static" / "jfn-controle.html"
 # seguinte apagaria a correção — defasagem em looping, silenciosa.
 _BUNDLE = _REPO / "static" / "js" / "painel.bundle.js"
 _MALHA_SRC = _REPO / "static" / "js" / "src" / "cena" / "malha-rj.js"
-if not _MALHA_SRC.exists():                       # antes da quebra por domínio, o portador é o entrypoint
+if not _MALHA_SRC.exists():                       # a cena ainda e um modulo so
+    _MALHA_SRC = _REPO / "static" / "js" / "src" / "cena" / "index.js"
+if not _MALHA_SRC.exists():                       # antes da quebra por dominio, era o entrypoint
     _MALHA_SRC = _REPO / "static" / "js" / "src" / "entrada.js"
 if not _MALHA_SRC.exists():                       # e antes do build, era o próprio monolito
     _MALHA_SRC = _REPO / "static" / "js" / "painel.js"

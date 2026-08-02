@@ -30,6 +30,16 @@ if ! out="$(PYTHONPATH=. "$py" -m tools.painel_build_check 2>&1)"; then
   exit 1
 fi
 
+# ── 0-A2. o CSS e concatenacao dos estratos ─────────────────────────────────────────────────────
+# `static/css/painel.css` passou a ser GERADO por `tools/painel_css_cortar.py --juntar` a partir de
+# `static/css/src/*.css`. Editar o artefato direto e a mesma classe de bug do bundle defasado: a
+# proxima concatenacao apaga a correcao, sem aviso. Bloqueia se os dois divergirem.
+if ! out="$(PYTHONPATH=. "$py" -m tools.painel_css_cortar --check 2>&1)"; then
+  echo "[pre-commit] ❌ gate do painel BLOQUEOU (CSS divergente dos estratos):" >&2
+  echo "$out" | tail -6 >&2
+  exit 1
+fi
+
 # ── 0-B. catraca de cache ────────────────────────────────────────────────────────────────────────
 # Editar o painel sem mexer no `?v=` do HTML = correção que não chega em NINGUÉM (o navegador serve
 # o cache). Bloqueia, porque o sintoma é invisível em revisão de código.

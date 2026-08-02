@@ -1,0 +1,244 @@
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v58 — O RELÓGIO. Uma propriedade só, `--bpm`, e toda a respiração da cena deriva dela.
+
+   O QUE ISTO SUBSTITUI. O painel tinha 54 animações infinitas com a duração cravada, cada uma no
+   seu ritmo. Duas consequências, e as duas doíam: custa caro (foi o que levou a VM a 1-2 FPS e
+   obrigou a inventar o modo sóbrio da v49) e não DIZ nada — a tela se mexia igual com a máquina
+   parada ou no meio de um sweep de quarenta mil páginas.
+
+   Agora o BPM é telemetria. `static/js/src/ritmo.js` põe `data-ritmo` no <body> a partir do
+   barramento real (carga medida da VM, sweep em curso, taxa de eventos do SSE), com histerese de
+   3 s para subir e 15 s para descer. Aqui só se traduz marcha em tempo.
+
+   A LINHA QUE SEPARA O QUE DERIVA DO RELÓGIO DO QUE NÃO DERIVA, e ela é de honestidade:
+   respiração deriva (o pulso do "ao vivo", o anel do kyber, o sopro das esferas e das abas, o
+   led da seção, a lâmina do conduíte, a deriva da aura e da nebulosa). Indicador de PROGRESSO
+   não deriva — `.skel .sp` e os anéis de carregamento giram sempre no mesmo tempo, porque um
+   spinner que acelera junto com o sweep passa a mentir sobre o que está esperando. Alarme de
+   severidade (`graveGlow`) também não: se ele mudasse de ritmo, "grave" passaria a significar
+   coisas diferentes em momentos diferentes.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+@property --bpm{syntax:'<time>';inherits:true;initial-value:2.6s}
+
+  /* O BPM PULA entre marchas, e NÃO é transicionado. Duas razões, a segunda medida em campo:
+     (1) "degraus nítidos" é a escolha do dono — a troca de marcha é para ser vista, não diluída;
+     (2) `transition` sobre um `<time>` que alimenta `animation-duration` interpola o valor a cada
+     quadro, e cada valor novo REINICIA a animação — sessenta reinícios por segundo durante 1,2 s,
+     em dezenas de elementos. Medido aqui em 01/08: com a transição declarada, a primeira troca de
+     marcha simplesmente não acontecia (o computado ficava preso em 2.6s); com `transition:none` o
+     valor saltava na hora. O acontecimento da troca é carregado pelo pulso do conduíte, abaixo,
+     que é uma animação de uma passada só — barata e legível. */
+  body{--bpm:2.6s}
+  body[data-ritmo="coleta"]{--bpm:1.5s}
+  body[data-ritmo="enxurrada"]{--bpm:.85s}
+
+  /* A TROCA DE MARCHA É UM ACONTECIMENTO. Um único pulso de luz atravessa o conduíte do centro
+     para as bordas quando sobe, e um recuo longo quando desce. Sai sozinho no fim. */
+  body.marcha-sobe #conduit::after,body.marcha-desce #conduit::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(90deg,transparent 0%,color-mix(in oklch,var(--esf) 70%,transparent) 50%,transparent 100%);
+    animation:marchaVaria 1.2s cubic-bezier(.22,.61,.36,1) 1}
+  body.marcha-desce #conduit::after{animation-duration:1.5s;opacity:.55}
+  @keyframes marchaVaria{
+    0%{transform:scaleX(0);opacity:0}
+    35%{transform:scaleX(1);opacity:.9}
+    100%{transform:scaleX(1);opacity:0}}
+
+  /* ── o que RESPIRA, agora derivado do relógio ────────────────────────────────────────────── */
+  .live .pulse{animation:pl calc(var(--bpm)*.77) infinite}
+  .live .pulse::after{animation:ping calc(var(--bpm)*.77) ease-out infinite}
+  .sph.on::before{animation:pl var(--bpm) infinite}
+  #kyber .knuc{animation:knucGlow calc(var(--bpm)*1.3) ease-in-out infinite}
+  #kyber.sweep .knuc{animation:pl calc(var(--bpm)*.46) infinite}
+  #kyber .kseg{animation:kspin calc(var(--bpm)*5.4) linear infinite}
+  .sec::before{animation:secLed calc(var(--bpm)*1.3) ease-in-out infinite}
+  .cover-seal .jico{animation:jicoBreath calc(var(--bpm)*1.23) ease-in-out infinite}
+  #conduit .cblade{animation:ignicao .45s cubic-bezier(.2,.9,.25,1.2) 1,
+                   respira calc(var(--bpm)*1.73) ease-in-out .5s infinite}
+  .ck-inst .dot::after{animation:ckblip calc(var(--bpm)*1.23) ease-out infinite}
+  .nu-sweep.on{animation:sweepGlow calc(var(--bpm)*.92) ease-in-out infinite}
+  .aura{animation:auraDrift calc(var(--bpm)*10) ease-in-out infinite alternate}
+  #aurora{animation:auroraFlow calc(var(--bpm)*10) ease-in-out infinite alternate}
+  #esfnebula{animation:nebulaDrift calc(var(--bpm)*23) ease-in-out infinite alternate}
+  /* `!important` porque a regra original da v55 tem `!important` — sem ele esta perde. */
+  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),
+                            sabreBreath var(--bpm) ease-in-out .3s infinite!important}
+
+  /* Os dois pisos continuam de pé, e o relógio não é exceção: sem movimento, sem marcha. */
+  @media (prefers-reduced-motion:reduce){
+    body.marcha-sobe #conduit::after,body.marcha-desce #conduit::after{animation:none;opacity:0}}
+  body.fps-baixo.marcha-sobe #conduit::after,
+  body.fps-baixo.marcha-desce #conduit::after{animation:none;opacity:0}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v58 — MOLDURA USINADA. Duas peças de instrumento desenhadas pelo ChatGPT, entrando como MASK.
+
+   POR QUE MASK E NÃO IMAGEM. Um `background-image:url(data:image/svg+xml,...)` congela a cor
+   dentro do SVG: a peça viraria um decalque de cor fixa no meio de um painel que muda de cor por
+   contexto (`--esf` troca com a esfera). Com `mask-image` o SVG vira RECORTE e a cor vem do
+   `background`, que continua sendo `var(--esf)`. A geometria é do gerador; a cor continua sendo
+   do dado.
+
+   POR QUE QUATRO PEÇAS E NÃO UMA. A primeira versão era um único SVG de 100×100 com os quatro
+   cantos dentro, esticado por `mask-size:100% 100%`. Numa capa que tem ~1.150 px de largura por
+   ~90 de altura, isso deforma o chanfro de 45° em um bico achatado — visto na tela e refeito. As
+   quatro pontas separadas, em 20 px fixos e ancoradas em cada canto, não deformam nunca, porque
+   nenhuma delas é esticada.
+
+   ONDE ELAS ENTRAM, e por que nestes dois lugares. `.card` já tem TRÊS gerações de `::after`
+   empilhadas e um `::before` — mexer ali agora é o corte estratigráfico do CSS, que é outra
+   etapa. Estes dois elementos têm pseudo livre e são os de maior visibilidade: a capa de cada
+   esfera e o título de cada seção.
+
+   O trilho SUBSTITUI o fio de gradiente que o `h2.sec::after` desenhava desde a v16. Não é
+   enfeite trocado por enfeite: um fio liso não diz nada, uma régua graduada diz "isto é um
+   instrumento" — que é a leitura que o painel inteiro está perseguindo.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+  .cover-row{position:relative}
+  .cover-row::after{content:"";position:absolute;inset:-12px -8px;pointer-events:none;
+    background:color-mix(in oklch,var(--esf) 60%,transparent);
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%221.5%2C16.5%201.5%2C5.5%205.5%2C1.5%2016.5%2C1.5%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%227.5%2C1.5%2018.5%2C1.5%2022.5%2C5.5%2022.5%2C16.5%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%2222.5%2C7.5%2022.5%2C18.5%2018.5%2C22.5%207.5%2C22.5%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%2216.5%2C22.5%205.5%2C22.5%201.5%2C18.5%201.5%2C7.5%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%221.5%2C16.5%201.5%2C5.5%205.5%2C1.5%2016.5%2C1.5%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%227.5%2C1.5%2018.5%2C1.5%2022.5%2C5.5%2022.5%2C16.5%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%2222.5%2C7.5%2022.5%2C18.5%2018.5%2C22.5%207.5%2C22.5%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22square%22%3E%3Cpolyline%20points%3D%2216.5%2C22.5%205.5%2C22.5%201.5%2C18.5%201.5%2C7.5%22%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-size:20px 20px;mask-size:20px 20px;
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    -webkit-mask-position:left top,right top,right bottom,left bottom;mask-position:left top,right top,right bottom,left bottom;
+    opacity:.65;transition:opacity .3s}
+  .cover:hover .cover-row::after{opacity:1}
+
+  h2.sec::after{height:12px;background:linear-gradient(90deg,
+      color-mix(in oklch,var(--esf) 72%,transparent),
+      color-mix(in oklch,var(--esf) 26%,transparent) 62%,transparent);
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22square%22%3E%3Cline%20x1%3D%226%22%20y1%3D%2212%22%20x2%3D%22394%22%20y2%3D%2212%22%2F%3E%3Cline%20x1%3D%2220%22%20y1%3D%2212%22%20x2%3D%2220%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%2240%22%20y1%3D%2212%22%20x2%3D%2240%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%2260%22%20y1%3D%2212%22%20x2%3D%2260%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%2280%22%20y1%3D%2212%22%20x2%3D%2280%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22100%22%20y1%3D%2212%22%20x2%3D%22100%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22120%22%20y1%3D%2212%22%20x2%3D%22120%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22140%22%20y1%3D%2212%22%20x2%3D%22140%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22160%22%20y1%3D%2212%22%20x2%3D%22160%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22180%22%20y1%3D%2212%22%20x2%3D%22180%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22200%22%20y1%3D%2212%22%20x2%3D%22200%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22220%22%20y1%3D%2212%22%20x2%3D%22220%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22240%22%20y1%3D%2212%22%20x2%3D%22240%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22260%22%20y1%3D%2212%22%20x2%3D%22260%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22280%22%20y1%3D%2212%22%20x2%3D%22280%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22300%22%20y1%3D%2212%22%20x2%3D%22300%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22320%22%20y1%3D%2212%22%20x2%3D%22320%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22340%22%20y1%3D%2212%22%20x2%3D%22340%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22360%22%20y1%3D%2212%22%20x2%3D%22360%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22380%22%20y1%3D%2212%22%20x2%3D%22380%22%20y2%3D%225%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20400%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.2%22%20stroke-linecap%3D%22square%22%3E%3Cline%20x1%3D%226%22%20y1%3D%2212%22%20x2%3D%22394%22%20y2%3D%2212%22%2F%3E%3Cline%20x1%3D%2220%22%20y1%3D%2212%22%20x2%3D%2220%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%2240%22%20y1%3D%2212%22%20x2%3D%2240%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%2260%22%20y1%3D%2212%22%20x2%3D%2260%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%2280%22%20y1%3D%2212%22%20x2%3D%2280%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22100%22%20y1%3D%2212%22%20x2%3D%22100%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22120%22%20y1%3D%2212%22%20x2%3D%22120%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22140%22%20y1%3D%2212%22%20x2%3D%22140%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22160%22%20y1%3D%2212%22%20x2%3D%22160%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22180%22%20y1%3D%2212%22%20x2%3D%22180%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22200%22%20y1%3D%2212%22%20x2%3D%22200%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22220%22%20y1%3D%2212%22%20x2%3D%22220%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22240%22%20y1%3D%2212%22%20x2%3D%22240%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22260%22%20y1%3D%2212%22%20x2%3D%22260%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22280%22%20y1%3D%2212%22%20x2%3D%22280%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22300%22%20y1%3D%2212%22%20x2%3D%22300%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22320%22%20y1%3D%2212%22%20x2%3D%22320%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22340%22%20y1%3D%2212%22%20x2%3D%22340%22%20y2%3D%225%22%2F%3E%3Cline%20x1%3D%22360%22%20y1%3D%2212%22%20x2%3D%22360%22%20y2%3D%228%22%2F%3E%3Cline%20x1%3D%22380%22%20y1%3D%2212%22%20x2%3D%22380%22%20y2%3D%225%22%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-size:200px 12px;mask-size:200px 12px;
+    -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
+    -webkit-mask-position:left center;mask-position:left center}
+
+  /* Sem máscara não há peça — degrada para o fio liso de sempre, que é o que estava lá antes. */
+  @supports not ((mask-image:url("#a")) or (-webkit-mask-image:url("#a"))){
+    .cover-row::after{display:none}
+    h2.sec::after{height:1px;-webkit-mask-image:none;mask-image:none}}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v58 — A CONSCIÊNCIA. Camada sobreposta, invocável de qualquer tela pelo kyber ou pela tecla C.
+
+   O holofeed é uma janela de dez linhas num canto: bom para o canto do olho, incapaz de responder
+   "o que está acontecendo com a máquina agora". Este deck é o órgão. Ele é o único lugar do painel
+   onde o `--bpm` fica EXPLÍCITO: nas outras telas o ritmo é sentido, aqui as três marchas estão
+   nomeadas e a batida é desenhada, para quem abrir entender em dois segundos por que o painel
+   inteiro está naquele ritmo.
+
+   Nada aqui inventa movimento: a batida usa o mesmo `--bpm` do resto, e o `--bpm` vem da
+   telemetria. Sem barramento, ela bate devagar — e isso é a informação.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+  #consciencia{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;
+    padding:clamp(14px,3vw,34px);gap:14px;overflow:auto;
+    background:color-mix(in oklch,var(--bg) 88%,black);
+    backdrop-filter:blur(3px);
+    opacity:0;transform:translateY(-14px);transition:opacity .24s ease,transform .24s cubic-bezier(.22,.61,.36,1)}
+  #consciencia.on{opacity:1;transform:none}
+  #consciencia .cs-topo{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+  #consciencia .cs-topo h2{margin:0;font-size:clamp(18px,2.4vw,25px);letter-spacing:.01em}
+  #consciencia .cs-topo .dim{max-width:62ch}
+  #consciencia .cs-fechar{margin-left:auto;flex:0 0 auto}
+  #consciencia .cs-selo{display:inline-flex;width:40px;height:40px;flex:0 0 auto;
+    align-items:center;justify-content:center;border-radius:11px;
+    border:1px solid color-mix(in oklch,var(--esf) 42%,transparent);
+    background:color-mix(in oklch,var(--esf) 10%,transparent);color:var(--esf)}
+  #consciencia .cs-selo .jico{width:23px;height:23px}
+  #consciencia h3{margin:0 0 9px;font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--mut);font-weight:600}
+
+  #consciencia .cs-grade{display:grid;gap:12px;
+    grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+  #consciencia .cs-bloco{border:1px solid var(--bd2);border-radius:12px;padding:13px 15px;
+    background:color-mix(in oklch,var(--card) 78%,transparent);min-width:0}
+  #consciencia .cs-largo{grid-column:1/-1}
+  #consciencia .cs-alto{max-height:min(46vh,420px);overflow:auto}
+
+  /* ── ritmo: as três marchas nomeadas, e a batida ─────────────────────────────────────────── */
+  #consciencia .cs-marchas{display:flex;gap:8px;flex-wrap:wrap}
+  #consciencia .cs-marcha{font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    padding:4px 11px;border-radius:999px;border:1px solid var(--bd2);color:var(--mut)}
+  #consciencia .cs-marcha.on{color:var(--esf);border-color:color-mix(in oklch,var(--esf) 55%,transparent);
+    background:color-mix(in oklch,var(--esf) 12%,transparent)}
+  #consciencia .cs-batida{margin-top:11px;height:26px;border-radius:6px;overflow:hidden;
+    background:color-mix(in oklch,var(--bd2) 45%,transparent);position:relative}
+  #consciencia .cs-batida span{position:absolute;inset:0 auto 0 0;width:18%;border-radius:6px;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 72%,transparent),transparent);
+    animation:csBatida var(--bpm) linear infinite}
+  @keyframes csBatida{from{transform:translateX(-120%)}to{transform:translateX(600%)}}
+
+  /* ── medidores: escala, não número solto ─────────────────────────────────────────────────── */
+  #consciencia .cs-medidor{display:grid;grid-template-columns:8.5em 1fr 4.5em;gap:9px;
+    align-items:center;margin:7px 0;font-size:12.5px}
+  #consciencia .cs-medidor .l{color:var(--mut)}
+  #consciencia .cs-medidor .t{height:7px;border-radius:4px;position:relative;overflow:hidden;
+    background:color-mix(in oklch,var(--bd2) 55%,transparent)}
+  #consciencia .cs-medidor .t span{position:absolute;inset:0 auto 0 0;border-radius:4px;
+    background:linear-gradient(90deg,var(--esf),color-mix(in oklch,var(--amb-no) 80%,var(--esf)));
+    transition:width .5s cubic-bezier(.22,.61,.36,1)}
+  #consciencia .cs-medidor .v{font-family:var(--mono);text-align:right}
+
+  /* ── fluxo, sweeps, frescor ──────────────────────────────────────────────────────────────── */
+  #consciencia .cs-ev{display:grid;grid-template-columns:5.6em 1fr auto;gap:9px;font-size:12.5px;
+    padding:5px 0;border-bottom:1px solid color-mix(in oklch,var(--bd2) 45%,transparent)}
+  #consciencia .cs-ev .h{font-family:var(--mono);color:var(--mut)}
+  #consciencia .cs-ev .d{font-family:var(--mono);color:var(--mut)}
+  #consciencia .cs-ev.crit .r{color:var(--rose)}
+  #consciencia .cs-sweep,#consciencia .cs-fonte{display:flex;align-items:center;gap:9px;
+    font-size:12.5px;padding:6px 0;
+    border-bottom:1px solid color-mix(in oklch,var(--bd2) 45%,transparent)}
+  #consciencia .cs-sweep .n,#consciencia .cs-fonte .n{flex:1;min-width:0;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  #consciencia .cs-sweep .e{font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--mut)}
+  #consciencia .cs-sweep.on .e{color:var(--esf)}
+  #consciencia .cs-sweep .q,#consciencia .cs-fonte .i{font-family:var(--mono);color:var(--mut)}
+  #consciencia .cs-fonte.velho .i{color:var(--amber)}
+  #consciencia .cs-fonte.crit .i{color:var(--rose)}
+  #consciencia .cs-vazio{display:flex;gap:11px;align-items:flex-start;padding:6px 0}
+  #consciencia .cs-vazio .jico{width:24px;height:24px;flex:0 0 auto;color:var(--mut)}
+
+  #kyber[role=button]{cursor:pointer}
+  #kyber:focus-visible{outline:2px solid var(--esf);outline-offset:3px;border-radius:50%}
+
+  @media (prefers-reduced-motion:reduce){
+    #consciencia{transition:none}
+    #consciencia .cs-batida span{animation:none;opacity:.5;width:100%}}
+  body.fps-baixo #consciencia .cs-batida span{animation:none;opacity:.5;width:100%}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v58 — CAMADA 2 · O CHIP VIRA INSTRUMENTO.
+
+   Os cartoes do cockpit eram rótulo + número + um ponto colorido. Um número solto não diz se é
+   muito ou pouco; um instrumento diz. Agora cada chip carrega, ATRÁS do número, o anel graduado
+   que o ChatGPT desenhou: dois arcos abertos embaixo — a abertura é onde a escala começa e
+   termina, convenção de mostrador — e doze ticks radiais.
+
+   ELE É DECORATIVO E ISSO ESTÁ DITO. O anel NÃO tem agulha e NÃO representa proporção: o painel
+   não tem, para a maioria destes chips, um teto conhecido contra o qual medir. Desenhar uma
+   agulha apontando para algum lugar seria inventar uma escala — exatamente o que a casa proíbe.
+   O que ele faz é dar ao número a MOLDURA de instrumento, e é honesto porque não afirma nada.
+   Quando um chip tiver teto medido (carga da VM tem: 2 vCPU, load 5), a agulha entra ali e só ali.
+
+   Entra como MASK e não como imagem pelo mesmo motivo da cantoneira: `background-image` com
+   data:svg congela a cor DENTRO do arquivo, e a peça deixaria de ser tingida pela esfera.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+  .ck-inst::after{content:"";position:absolute;right:10px;top:50%;translate:0 -50%;
+    width:78px;height:78px;pointer-events:none;z-index:0;
+    background:color-mix(in oklch,var(--esf) 34%,transparent);
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22butt%22%3E%3Cpath%20d%3D%22M32%20108.5A56%2056%200%201%201%2088%20108.5%22%2F%3E%3Cpath%20d%3D%22M38%2098.1A44%2044%200%201%201%2082%2098.1%22%2F%3E%3Cline%20x1%3D%2238.00%22%20y1%3D%2221.89%22%20x2%3D%2232.00%22%20y2%3D%2211.50%22%2F%3E%3Cline%20x1%3D%2248.61%22%20y1%3D%2217.50%22%20x2%3D%2245.51%22%20y2%3D%225.91%22%2F%3E%3Cline%20x1%3D%2260.00%22%20y1%3D%2216.00%22%20x2%3D%2260.00%22%20y2%3D%224.00%22%2F%3E%3Cline%20x1%3D%2271.39%22%20y1%3D%2217.50%22%20x2%3D%2274.49%22%20y2%3D%225.91%22%2F%3E%3Cline%20x1%3D%2282.00%22%20y1%3D%2221.89%22%20x2%3D%2288.00%22%20y2%3D%2211.50%22%2F%3E%3Cline%20x1%3D%2291.11%22%20y1%3D%2228.89%22%20x2%3D%2299.60%22%20y2%3D%2220.40%22%2F%3E%3Cline%20x1%3D%2298.11%22%20y1%3D%2238.00%22%20x2%3D%22108.50%22%20y2%3D%2232.00%22%2F%3E%3Cline%20x1%3D%22102.50%22%20y1%3D%2248.61%22%20x2%3D%22114.09%22%20y2%3D%2245.51%22%2F%3E%3Cline%20x1%3D%22104.00%22%20y1%3D%2260.00%22%20x2%3D%22116.00%22%20y2%3D%2260.00%22%2F%3E%3Cline%20x1%3D%22102.50%22%20y1%3D%2271.39%22%20x2%3D%22114.09%22%20y2%3D%2274.49%22%2F%3E%3Cline%20x1%3D%2298.11%22%20y1%3D%2282.00%22%20x2%3D%22108.50%22%20y2%3D%2288.00%22%2F%3E%3Cline%20x1%3D%2291.11%22%20y1%3D%2291.11%22%20x2%3D%2299.60%22%20y2%3D%2299.60%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20120%20120%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22butt%22%3E%3Cpath%20d%3D%22M32%20108.5A56%2056%200%201%201%2088%20108.5%22%2F%3E%3Cpath%20d%3D%22M38%2098.1A44%2044%200%201%201%2082%2098.1%22%2F%3E%3Cline%20x1%3D%2238.00%22%20y1%3D%2221.89%22%20x2%3D%2232.00%22%20y2%3D%2211.50%22%2F%3E%3Cline%20x1%3D%2248.61%22%20y1%3D%2217.50%22%20x2%3D%2245.51%22%20y2%3D%225.91%22%2F%3E%3Cline%20x1%3D%2260.00%22%20y1%3D%2216.00%22%20x2%3D%2260.00%22%20y2%3D%224.00%22%2F%3E%3Cline%20x1%3D%2271.39%22%20y1%3D%2217.50%22%20x2%3D%2274.49%22%20y2%3D%225.91%22%2F%3E%3Cline%20x1%3D%2282.00%22%20y1%3D%2221.89%22%20x2%3D%2288.00%22%20y2%3D%2211.50%22%2F%3E%3Cline%20x1%3D%2291.11%22%20y1%3D%2228.89%22%20x2%3D%2299.60%22%20y2%3D%2220.40%22%2F%3E%3Cline%20x1%3D%2298.11%22%20y1%3D%2238.00%22%20x2%3D%22108.50%22%20y2%3D%2232.00%22%2F%3E%3Cline%20x1%3D%22102.50%22%20y1%3D%2248.61%22%20x2%3D%22114.09%22%20y2%3D%2245.51%22%2F%3E%3Cline%20x1%3D%22104.00%22%20y1%3D%2260.00%22%20x2%3D%22116.00%22%20y2%3D%2260.00%22%2F%3E%3Cline%20x1%3D%22102.50%22%20y1%3D%2271.39%22%20x2%3D%22114.09%22%20y2%3D%2274.49%22%2F%3E%3Cline%20x1%3D%2298.11%22%20y1%3D%2282.00%22%20x2%3D%22108.50%22%20y2%3D%2288.00%22%2F%3E%3Cline%20x1%3D%2291.11%22%20y1%3D%2291.11%22%20x2%3D%2299.60%22%20y2%3D%2299.60%22%2F%3E%3C%2Fsvg%3E");
+    -webkit-mask-size:100% 100%;mask-size:100% 100%;
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    opacity:.32;transition:opacity .3s,rotate .6s cubic-bezier(.22,.61,.36,1)}
+  .ck-inst:hover::after{opacity:.6;rotate:8deg}
+  /* o conteudo do chip sobe acima do anel — instrumento e fundo, numero e leitura */
+  .ck-inst .k,.ck-inst .val,.ck-inst .meta{position:relative;z-index:1}
+  @media (max-width:620px){.ck-inst::after{width:58px;height:58px;right:6px;opacity:.24}}
+
+  /* Os dois pisos, como sempre. O anel e a unica coisa que gira aqui; parado ele continua sendo
+     a moldura, entao desligar o giro nao tira leitura nenhuma. */
+  @media (prefers-reduced-motion:reduce){.ck-inst:hover::after{rotate:none;transition:none}}
+  body.fps-baixo .ck-inst::after{transition:none}
+  body.fps-baixo .ck-inst:hover::after{rotate:none}

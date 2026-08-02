@@ -278,6 +278,9 @@ def api_eval_hermeneutica():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+_LIFT_CACHE: dict = {"t": 0.0}
+
+
 @router.get("/api/eval/lift")
 def api_eval_lift():
     """G.8 — poder preditivo MEDIDO de cada detector, contra sanção POSTERIOR ao sinal.
@@ -285,10 +288,20 @@ def api_eval_lift():
     Publicar o número é o que muda a fila: sem ele, sinal bom e sinal inútil disputam a mesma
     atenção. Lift abaixo de 1 sai como ALERTA, não escondido — aponta para empresas menos
     sancionadas que a base, e priorizar por ele desperdiça o tempo do fiscal.
+
+    Medido no painel (2026-07-31): 18,95 s por chamada, sempre — a varredura do acervo contra
+    sanção posterior é a mesma que a rota irmã `/api/intel/lift` já cacheava por 1 h. Aqui não
+    havia cache nenhum, e o custo caía inteiro na aba de Acurácia a cada abertura.
     """
+    import time as _t
     try:
         from compliance_agent.reporting import painel_lift
-        return JSONResponse(content=painel_lift.montar())
+        if _t.time() - _LIFT_CACHE.get("t", 0) < 3600 and "d" in _LIFT_CACHE:
+            return JSONResponse(content=_LIFT_CACHE["d"])
+        d = painel_lift.montar()
+        if d.get("estado") == "medido":  # estado degradado não fica preso por 1 h
+            _LIFT_CACHE.update({"t": _t.time(), "d": d})
+        return JSONResponse(content=d)
     # Estreito de propósito: `montar()` já é defensivo (arquivo ausente/corrompido vira estado
     # declarado), então aqui só restam falha de import e erro de leitura/forma.
     except (ImportError, OSError, ValueError, KeyError, TypeError) as e:

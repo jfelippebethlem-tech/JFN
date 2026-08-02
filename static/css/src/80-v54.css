@@ -1,0 +1,80 @@
+/* ══ v54 · O NÚMERO SAI INTEIRO — fim da elipse no VALOR ════════════════════════════════════════
+   Medido pelo it-campo: `.v` da JANELA OBSERVADA com clientWidth 151 para scrollWidth 221 —
+   a tela mostrava "2023-03 a …" no lugar de "2023-03 a 2026-07"; a 375px o Estado virava
+   "R$ 133,5 …". Em painel de auditoria, número cortado é número ERRADO: quem der print leva o
+   valor truncado como se fosse o dado. Rótulo pode ser elidido; VALOR nunca.
+   Três medidas juntas, nesta ordem de preferência: (1) corpo fluido — encolhe com a viewport em
+   vez de cortar; (2) quebra de linha permitida, que é o piso que garante o valor inteiro em
+   qualquer largura; (3) `overflow:visible`, para nada mais ser decepado pela caixa.
+   O clamp mantém o desktop idêntico (teto 1.35rem = os mesmos 21.6px) e só cede na tela estreita:
+   a 375px dá ~17,3px, e "R$ 133,5 bi" (11 caracteres monoespaçados) passa a caber na coluna. */
+  .kpi .v{font-size:clamp(15px,calc(0.95rem + 0.55vw),1.35rem);
+    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  .ck-inst .val{font-size:clamp(18px,calc(1.05rem + 0.7vw),26px);
+    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  /* `.kpi{overflow:hidden}` (acima) segue valendo — serve ao sheen do ::before e não corta nada
+     aqui: o cartão não tem altura fixa, então a segunda linha do valor faz a caixa CRESCER. */
+
+/* ══ v54 · O BOTÃO PRIMÁRIO VOLTA A TER FUNDO ══════════════════════════════════════════════════
+   "Beneficiário final" saía com `color: oklch(0.17 0.045 50)` — tinta escura — sobre NADA.
+   Causa: a regra do v-do-trilho (`.btn{background-image:…}`, acima) trocou o `background-image`
+   do botão pela linha de energia de 1.5px que corre na base; como o gradiente FLAME vinha de um
+   `background` shorthand (que zera `background-color`), sobrou fundo transparente com texto de
+   tinta. Só o `.btn` puro adoeceu: `.ghost/.accent/.red/.green` têm duas classes e ganham a
+   cascata do `background-image`. Cura: as duas coisas viram CAMADAS do mesmo background — a linha
+   por cima, o gradiente de ignição por baixo — em vez de uma apagar a outra. */
+  .btn{
+    background-image:
+      linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent),
+      linear-gradient(180deg,color-mix(in oklch,var(--flame) 92%,white 8%),
+                            color-mix(in oklch,var(--flame-d) 94%,black 8%));
+    background-repeat:no-repeat,no-repeat;
+    background-position:left bottom,0 0;
+    background-size:0% 1.5px,100% 100%}
+  .btn:hover{background-size:100% 1.5px,100% 100%}
+
+/* ══ v54 · CONTRASTE lote 2 — o texto pequeno que cai SOBRE A ARTE ═════════════════════════════
+   A pendência declarada no v40 ("os casos sobre-arte ficam para o lote 2, com o pixel
+   investigado"). O caso medido: o parágrafo da escala do Radar (`.dim`, 12px,
+   oklch(0.64 0.03 240), background transparent) passa por cima do litoral aceso do #rjbg — sobre
+   pixel claro o contraste cai abaixo de 4.5:1. Nos cards isso não acontece: o card já é o scrim.
+   Quem está descoberto é o `.dim` solto no miolo, filho direto do quadro da aba.
+   A cura é dar ao bloco o fundo que ele não tinha, em vez de dessaturar a arte:
+   scrim de 92% de --bg2 + o token subindo de 0.64 para 0.78 de luminância.
+   MEDIDO (composição em sRGB, pior pixel do litoral tomado como ~0.95): fundo efetivo Y≈0.0087,
+   texto oklch(0.78) Y≈0.4746 → 8,9:1. Antes, sobre o mesmo pixel, ficava em ~3,2:1. */
+  #view .fade > .dim,#view > .dim{
+    color:oklch(0.78 0.025 240);
+    background:color-mix(in oklch,var(--bg2) 92%,transparent);
+    border:1px solid var(--bd2);border-radius:9px;padding:9px 12px}
+  @media (prefers-reduced-transparency:reduce){
+    #view .fade > .dim,#view > .dim{background:var(--bg2)}}
+
+/* ══ v54 · O DOSSIÊ É UM DIÁLOGO ═══════════════════════════════════════════════════════════════
+   Com o #ov aberto a página de trás continuava rolando — duas barras de rolagem ao mesmo tempo,
+   e o dedo no celular arrastava o fundo em vez da folha. A trava fica no <body>, posta pelo
+   mesmo observador que liga o foco preso (ver `_ovDialogo` em painel.js). */
+  body.ov-aberto{overflow:hidden}
+  .sheet:focus{outline:none}
+  .sheet:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+
+/* ══ v54 · ENDEREÇO LONGO NÃO RASGA MAIS A FOLHA ═══════════════════════════════════════════════
+   Medido em dois dossiês: `.sheet` com 816px de rolagem horizontal, culpado o `.kv > b.right` do
+   endereço pedindo 587px num espaço de 481px. Duas regras se somavam: `.kv` é flex e o valor não
+   quebrava, e `.card .right{white-space:nowrap;flex:0 0 auto}` proibia tanto a quebra quanto o
+   encolhimento. Agora o valor pode quebrar e ceder largura; continua alinhado à direita. */
+  .kv{align-items:flex-start}
+  .kv > b,.kv > .right{min-width:0;flex:0 1 auto;white-space:normal;overflow-wrap:anywhere}
+  .kv > b.right,.kv > .right{text-align:right}
+
+/* ══ v54 · EVIDÊNCIA INTEIRA NO DOM, recolhida na tela ═════════════════════════════════════════
+   O achado da perícia era cortado com `slice(0,260)` e terminava no meio da palavra
+   ("…confrontar com o relatorio do o"). O texto agora entra COMPLETO e quem recolhe é o CSS:
+   4 linhas visíveis, clique (ou Enter/Espaço, via a11yfy) abre o resto. Nada de reticências
+   mentirosas — o dado está lá, inteiro, para quem copiar. */
+  .ev-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;
+    overflow:hidden;cursor:pointer}
+  .ev-clamp.aberto{display:block;-webkit-line-clamp:none;overflow:visible}
+  .ev-clamp::after{content:" ⌄";color:var(--accent);font-weight:700}
+  .ev-clamp.aberto::after{content:" ⌃"}
+
