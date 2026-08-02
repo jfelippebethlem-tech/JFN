@@ -14,7 +14,15 @@ e os de rede ficam disponíveis explicitamente:
 Marcar num lugar só evita poluir 6 arquivos com decorators e mantém o critério
 auditável. Ver docs/PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md.
 """
+import sys
+from pathlib import Path
+
 import pytest
+
+# `tests/` no sys.path para que os módulos de teste possam importar `helpers_ambiente`
+# (o "este ambiente tem os dados?" de um lugar só). Sem isto o import falha na COLETA, que é
+# pior que a falha original: derruba o arquivo inteiro.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Módulos cujos testes batem em rede (apurado por grep httpx/playwright/portais
 # + os hangs documentados no handoff 2026-06-09: PNCP/SEI/Receita).
