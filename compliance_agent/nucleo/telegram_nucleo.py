@@ -605,6 +605,10 @@ def cmd_evolucao() -> str:
                 f"{h.get('revertidos', 0)} revertidas")
             for m in h.get("mantidos", [])[:3]:
                 linhas.append(f"    ↳ `{m['parametro']}` → {m['valor_novo']}")
+            # Sem isto, um mês de rodadas estéreis (36×, 922 reverts, F1 travado em 1.0)
+            # se lê como "sistema estável". Quando não há sinal, o diário diz.
+            if h.get("saturado") or h.get("sem_caso_real"):
+                linhas.append(f"    ⚠️ _{h.get('motivo', 'sem sinal para aprender')}_")
         return "\n".join(linhas)
     except Exception as exc:  # noqa: BLE001
         return f"❌ Erro: {exc}"

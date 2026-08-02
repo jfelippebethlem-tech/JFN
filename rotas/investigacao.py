@@ -855,10 +855,17 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
             return JSONResponse(content={"ok": True, "modo": "fornecedor", "cnpj": cnpj,
                                          "n": len(contratos), "contratos": contratos,
                                          "_fonte": "PNCP API consulta (sem login)"})
-        contratacoes = await pncp.buscar_contratacoes(
+        ck = f"pncp:{uf}:{orgao}:{abertos}:{modalidade}:{dias}:{esfera}"
+        if (cache := _cache_get(ck, 3600)) is not None:
+            return JSONResponse(content=cache)
+        contratacoes, nota = await _com_teto(pncp.buscar_contratacoes(
             uf=uf, data_ini=hoje - timedelta(days=dias), data_fim=hoje,
             modalidade=(modalidade or None), abertos=abertos,
-            orgao_cnpj=(orgao or None))
+            orgao_cnpj=(orgao or None)), "PNCP")
+        if nota:  # indisponibilidade NÃO entra no cache: congelaria a aba vazia por 1 h
+            return JSONResponse(content={
+                "ok": True, "indisponivel": True, "uf": uf, "n": 0, "contratacoes": [],
+                "_fonte": "PNCP API consulta (sem login)", "_nota": nota})
         if esfera and esfera != "todas":
             # esfera OFICIAL do ente (pncp_ente + exceções de unidade) — aba estanque no painel
             import sqlite3 as _sq
@@ -873,11 +880,11 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
                 {"orgao_cnpj": x.get("orgao_cnpj"), "orgao_nome": x.get("orgao"),
                  "unidade_nome": x.get("unidade"), "municipio": x.get("municipio")},
                 oficial) == esfera]
-        return JSONResponse(content={
+        return JSONResponse(content=_cache_put(ck, {
             "ok": True, "modo": "abertos" if abertos else "publicacao",
             "uf": uf, "n": len(contratacoes), "contratacoes": contratacoes,
             "_fonte": "PNCP API consulta (sem login)",
-            "_nota": "Indício/triagem; red_flags do edital virão da Onda 2c. Proveniência: link+id_pncp."})
+            "_nota": "Indício/triagem; red_flags do edital virão da Onda 2c. Proveniência: link+id_pncp."}))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
@@ -1034,9 +1041,17 @@ async def api_sei_direcionamento(ug: str = "", objeto: str = "", uf: str = "RJ",
     try:
         from compliance_agent.sei_direcionamento import varrer_direcionamento
 
-        res = await varrer_direcionamento(uf=uf, ug=(ug or None), objeto=(objeto or None),
-                                          max_itens=max(1, min(int(max_itens), 15)))
-        return JSONResponse(content=res)
+        ck = f"seidir:{uf}:{ug}:{objeto}:{max_itens}"
+        if (cache := _cache_get(ck, 3600)) is not None:
+            return JSONResponse(content=cache)
+        res, nota = await _com_teto(
+            varrer_direcionamento(uf=uf, ug=(ug or None), objeto=(objeto or None),
+                                  max_itens=max(1, min(int(max_itens), 15))),
+            "PNCP (varredura de direcionamento)")
+        if nota:
+            return JSONResponse(content={"ok": True, "indisponivel": True, "itens": [],
+                                         "_nota": nota})
+        return JSONResponse(content=_cache_put(ck, res))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
@@ -1169,6 +1184,23 @@ async def pagina_controle():
 import time as _time
 
 _cache: dict = {}
+
+
+# Teto de espera por fonte VIVA (PNCP). Health-check de 2026-08-02: /api/pncp e
+# /api/sei/direcionamento devolviam `000` — conexão pendurada, sem resposta em 25 s. Fonte
+# externa sem teto trava a aba do painel; com teto, ela diz "não respondeu" e o usuário decide.
+_TETO_FONTE_VIVA = 20.0
+
+
+async def _com_teto(coro, rotulo: str):
+    """Aguarda `coro` até o teto. Estourou → (None, nota honesta); senão → (valor, None)."""
+    import asyncio as _aio
+    teto = _TETO_FONTE_VIVA
+    try:
+        return await _aio.wait_for(coro, timeout=teto), None
+    except (TimeoutError, _aio.TimeoutError):
+        return None, (f"{rotulo} não respondeu em {teto:.0f}s — INDISPONÍVEL, "
+                      "não é ausência de resultado. Tente de novo ou reduza o período.")
 
 
 def _cache_get(chave: str, ttl: int):
