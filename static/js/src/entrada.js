@@ -41,10 +41,10 @@ import {rjbgStart, netbgStart, _rjbgTinge, nucleoStart, nucleoPulse, nuSet, nuSw
         _nuHover, _setNuHover, cenaPonteiro} from './cena/index.js';
 import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, seiBaixarZip,
         verCruzamento, fecharCertame, abrirCertame, jsq, _wire,
-        uiLigarSpotlight, uiLigarDialogo, uiLigarA11y, vivo} from './ui/index.js';
+        uiLigarSpotlight, uiLigarDialogo, uiLigarA11y, vivo, revelacaoCenso} from './ui/index.js';
 
 /* AS TELAS — 59 renders. Ver `abas/index.js`. */
-import {SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, vincConluioMunicipal, vincConsultar, vincFtm, vincGrafo, vincHistoricoPessoa, vincInterposicao, vincNaData, vincParentesco, vincPatrimonio, vincPrevalencia, vincResolucao, vincTrocas, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau} from './abas/index.js';
+import {ligarVinculos, SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau} from './abas/index.js';
 
 async function gerarPdfIntel(tipo,el){
   const txt=el.innerHTML;el.innerHTML='<span class="sp" style="width:12px;height:12px"></span> gerando…';el.disabled=true;
@@ -339,6 +339,11 @@ addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/i
 uiLigarA11y();
 uiLigarSpotlight();
 uiLigarDialogo();
+/* v59 · o primeiro domínio delegado por `data-*`, em vez de citar 12 nomes globais em `onclick`.
+   Vem junto dos outros "ligar" e ANTES do primeiro render de propósito: o ouvinte mora no
+   `document`, então precisa existir antes de qualquer tela que use `data-vinc` ser pintada.
+   Ver o bloco `VINC_ACOES` em `abas/index.js` para a razão de ser Vínculos o primeiro. */
+ligarVinculos();
 sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever(); });
 conscienciaLigar(ritmoEstado);
 sabreStart({
@@ -576,16 +581,21 @@ function marcarValores(raiz){
    defined` — e foi exatamente o que aconteceu na primeira tentativa desta migração.
    Documentado aqui porque a razão de existir não está no arquivo que o usa. */
 window.TABS=TABS;
+/* Mesma segunda categoria: contrato de FERRAMENTA. `revelacaoCenso()` devolve o que as gramáticas
+   de revelação (v59) marcaram no último render — quantas linhas de tabela, quantos rankings,
+   quantas seções. Nenhum handler o cita; quem lê é a sonda e `test_painel_revelacao`.
+   Existe porque animação que NÃO acontece não quebra nada e não aparece em revisão de código: foi
+   assim que o `--i` do v34 atravessou versões inteiras sem numerar uma única linha de tabela,
+   enquanto o comentário afirmava que a coluna era lida de cima para baixo. O que não é medido
+   apodrece calado. */
+window.revelacaoCenso=revelacaoCenso;
 
 Object.assign(window,{
   $,_acPagPick,_acPick,_jCache,_pagMais,abrirCapMestra,abrirCertame,abrirDossie,acKeydown,acao,
   autocompletar,detRodar,fazBusca,fecharCertame,fecharDossie,filtrar,filtrarPag,fxConsultar,
   gerarPdfIntel,glossario,hfToggle,instAcionar,instUgs,ir,missaoCriar,missaoListar,missaoVer,
   conscienciaToggle,montarSpheres,montarTabs,ordenar,pecaGerar,seiArvore,seiBaixarZip,sweep,toggle,trocarEsfera,validar,
-  verCruzamento,vincConluioMunicipal,vincConsultar,vincFtm,vincGrafo,vincHistoricoPessoa,
-  vincInterposicao,vincNaData,vincParentesco,vincPatrimonio,vincPrevalencia,vincResolucao,
-  vincTrocas,
-});
+  verCruzamento,});
 
 /* Os 19 estados que o HTML não lê — ESCREVE. `onchange="_respProc=this.value;ir('e_resp')"`,
    `onclick="_compView='dossie';ir(aba)"`, `onclick="...;esfera='geral';aba='g_acoes';..."`.

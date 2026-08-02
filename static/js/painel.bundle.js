@@ -2344,6 +2344,103 @@ void main(){
     });
   }
 
+  // static/js/src/ui/revelacao.js
+  var TETO_NOS = 40;
+  var _primeiros = (lista) => [...lista].slice(0, TETO_NOS);
+  var _num = (el) => {
+    const alvo = el.querySelector(".num, .val, .v");
+    if (!alvo) return null;
+    const m = String(alvo.textContent || "").match(/-?\d[\d.\s]*(?:,\d+)?/);
+    if (!m) return null;
+    const s = m[0].replace(/\s/g, "");
+    const n = s.includes(",") ? parseFloat(s.replace(/\./g, "").replace(",", ".")) : /^-?\d{1,3}(\.\d{3})+$/.test(s) ? parseFloat(s.replace(/\./g, "")) : parseFloat(s);
+    return isFinite(n) ? n : null;
+  };
+  function _ehRanking(nos) {
+    if (nos.length < 4) return false;
+    const s = nos.map(_num);
+    if (s.some((v) => v === null)) return false;
+    let desce = true, sobe = true, degraus = 0;
+    for (let i = 1; i < s.length; i++) {
+      if (s[i] > s[i - 1]) desce = false;
+      if (s[i] < s[i - 1]) sobe = false;
+      if (s[i] !== s[i - 1]) degraus++;
+    }
+    return (desce || sobe) && degraus >= 2;
+  }
+  function _tabelas(v) {
+    let tocadas = 0;
+    v.querySelectorAll("table tbody").forEach((tb) => {
+      const trs = _primeiros(tb.rows);
+      if (trs.length < 3) return;
+      trs.forEach((tr, i) => {
+        tr.classList.add("rv-linha");
+        tr.style.setProperty("--i", i);
+      });
+      tocadas += trs.length;
+    });
+    return tocadas;
+  }
+  function _rankings(v) {
+    let n = 0;
+    v.querySelectorAll(".grid, .cols").forEach((g) => {
+      const filhos = _primeiros([...g.children].filter((el) => el.classList.contains("card") || el.classList.contains("ck-inst")));
+      if (!_ehRanking(filhos)) return;
+      g.classList.add("rv-rank");
+      filhos.forEach((el, i) => el.style.setProperty("--i", filhos.length - 1 - i));
+      n++;
+    });
+    return n;
+  }
+  function _colunasOpostas(v) {
+    const rks = [...v.querySelectorAll(".rv-rank")];
+    if (rks.length < 2) return 0;
+    rks.forEach((g, i) => {
+      g.classList.add("rv-lado");
+      g.style.setProperty("--lado", i % 2 ? "-1" : "1");
+    });
+    return rks.length;
+  }
+  function _secoes(v) {
+    const secs = _primeiros(v.querySelectorAll("h2.sec"));
+    secs.forEach((s, i) => {
+      s.classList.add("rv-sec");
+      s.style.setProperty("--i", i);
+    });
+    return secs.length;
+  }
+  function _chips(v) {
+    let n = 0;
+    v.querySelectorAll(".chips").forEach((row) => {
+      const bs = _primeiros(row.children);
+      if (bs.length < 2) return;
+      row.classList.add("rv-leque");
+      bs.forEach((b, i) => b.style.setProperty("--i", i));
+      n += bs.length;
+    });
+    return n;
+  }
+  function revelar(v, rm, sobrio) {
+    if (!v) return null;
+    if (rm || sobrio) return { desligado: true, motivo: rm ? "reduced-motion" : "fps-baixo" };
+    const censo = {
+      linhas: _tabelas(v),
+      rankings: _rankings(v),
+      secoes: _secoes(v),
+      chips: _chips(v)
+    };
+    censo.opostos = _colunasOpostas(v);
+    return censo;
+  }
+  var INTRO_ARESTA = 620;
+  var INTRO_NO = 300;
+  function _wireFase(msDesdeInicio) {
+    if (msDesdeInicio == null) return { aresta: 1, no: 1 };
+    const a = Math.min(1, Math.max(0, msDesdeInicio / INTRO_ARESTA));
+    const n = Math.min(1, Math.max(0, (msDesdeInicio - INTRO_ARESTA) / INTRO_NO));
+    return { aresta: 1 - Math.pow(1 - a, 3), no: 1 - Math.pow(1 - n, 3) };
+  }
+
   // static/js/src/ui/index.js
   function a11yfy(root) {
     (root || document).querySelectorAll("[onclick]:not(button):not(input):not([tabindex]):not(a[href])").forEach((el) => {
@@ -2436,6 +2533,7 @@ void main(){
     }, { passive: true });
   }
   var _wireRAF = 0;
+  var _censo = null;
   function vivo() {
     const v = $("view");
     if (!v) return;
@@ -2464,7 +2562,9 @@ void main(){
       box.appendChild(b);
     });
     _wire(top, rm);
+    _censo = revelar(v, rm, _sobrio);
   }
+  var revelacaoCenso = () => _censo;
   function _countUp(el) {
     const raw = (el.textContent || "").trim();
     const m = raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/);
@@ -2515,25 +2615,27 @@ void main(){
         if (!edges.some((e) => e.k === k)) edges.push({ k, a: i, b: o.j });
       });
     });
+    const t0i = rm ? null : performance.now();
     function draw(t) {
       cx.clearRect(0, 0, W, H);
-      edges.forEach((e) => {
+      const f = _wireFase(t0i == null ? null : t - t0i);
+      if (f.aresta > 0) edges.forEach((e) => {
         const A = pts[e.a], B = pts[e.b];
         cx.strokeStyle = "rgba(" + C + ",.15)";
         cx.lineWidth = 1;
         cx.beginPath();
         cx.moveTo(A.x, A.y);
-        cx.lineTo(B.x, B.y);
+        cx.lineTo(A.x + (B.x - A.x) * f.aresta, A.y + (B.y - A.y) * f.aresta);
         cx.stroke();
       });
-      pts.forEach((p) => {
-        cx.fillStyle = "rgba(" + C + ",.35)";
+      if (f.no > 0) pts.forEach((p) => {
+        cx.fillStyle = "rgba(" + C + "," + (0.35 * f.no).toFixed(3) + ")";
         cx.beginPath();
-        cx.arc(p.x, p.y, 1.6, 0, 6.283);
+        cx.arc(p.x, p.y, 1.6 * f.no, 0, 6.283);
         cx.fill();
       });
       if (!rm) {
-        edges.forEach((e, i) => {
+        if (f.aresta >= 1) edges.forEach((e, i) => {
           const A = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
           const x = A.x + (B.x - A.x) * ph, y = A.y + (B.y - A.y) * ph;
           const g = cx.createRadialGradient(x, y, 0, x, y, 8);
@@ -2891,34 +2993,34 @@ void main(){
     h += sec2("Consultar uma empresa");
     h += card(`<div class="search"><span class="mag"></span>
       <input id="vinc-cnpj" placeholder="CNPJ da empresa (com ou sem pontuação)…"
-             onkeydown="if(event.key==='Enter')vincConsultar()"></div>
+             data-vinc-enter="consultar"></div>
     <div class="btns" style="margin-top:10px">
-      <button type="button" class="btn" onclick="vincConsultar()">Beneficiário final</button>
-      <button type="button" class="btn ghost" onclick="vincParentesco()">Parentesco no QSA</button>
-      <button type="button" class="btn ghost" onclick="vincTrocas()">Trocas de quadro</button>
-      <button type="button" class="btn ghost" onclick="vincGrafo()">Rede de poder</button>
-      <button type="button" class="btn ghost" onclick="vincFtm()">Exportar FollowTheMoney</button>
+      <button type="button" class="btn" data-vinc="consultar">Beneficiário final</button>
+      <button type="button" class="btn ghost" data-vinc="parentesco">Parentesco no QSA</button>
+      <button type="button" class="btn ghost" data-vinc="trocas">Trocas de quadro</button>
+      <button type="button" class="btn ghost" data-vinc="grafo">Rede de poder</button>
+      <button type="button" class="btn ghost" data-vinc="ftm">Exportar FollowTheMoney</button>
     </div>
     <div class="btns" style="margin-top:8px">
-      <button type="button" class="btn ghost" onclick="vincConluioMunicipal()">Conluio municipal (vencedor × perdedora)</button>
-      <button type="button" class="btn ghost" onclick="vincResolucao()">Resolução nome → CNPJ</button>
-      <button type="button" class="btn ghost" onclick="vincInterposicao()">Perfil de laranja</button>
-      <button type="button" class="btn ghost" onclick="vincPatrimonio()">Capacidade × recebido</button>
+      <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
+      <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
+      <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
+      <button type="button" class="btn ghost" data-vinc="patrimonio">Capacidade × recebido</button>
     </div>
     <div class="dim" style="margin-top:8px">Histórico de uma <b>pessoa</b> (de quais empresas foi sócia):
       <input id="vinc-pessoa" placeholder="nome do sócio…" style="margin-left:6px">
-      <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincHistoricoPessoa()">Ver histórico</button>
+      <button type="button" class="btn ghost" style="margin-left:6px" data-vinc="historicoPessoa">Ver histórico</button>
     </div>
     <div class="dim" style="margin-top:8px">Para <b>"era sócio nesta data?"</b> informe também a data:
       <input id="vinc-data" type="date" style="margin-left:6px">
-      <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincNaData()">Verificar na data</button>
+      <button type="button" class="btn ghost" style="margin-left:6px" data-vinc="naData">Verificar na data</button>
     </div>`);
     h += `<div id="vinc-out"></div>`;
     h += sec2("Calibração dos eixos de parentesco");
     h += card(`<div class="dim">Nenhuma base aberta brasileira publica filiação. O que sai daqui é
       inferência, e a única forma honesta de inferir é medir a <b>prevalência de cada eixo na própria
       base</b> antes de deixá-lo pesar — um eixo que acende na maioria mede a base, não o alvo.</div>
-    <div class="btns" style="margin-top:10px"><button type="button" class="btn ghost" onclick="vincPrevalencia()">Medir na base de hoje</button></div>
+    <div class="btns" style="margin-top:10px"><button type="button" class="btn ghost" data-vinc="prevalencia">Medir na base de hoje</button></div>
     <div id="vinc-prev"></div>`);
     return h;
   }
@@ -3431,6 +3533,39 @@ void main(){
     h += leitura2('Sem renda conhecida o veredito é <b>não aferível</b>, nunca "renda incompatível" — a distinção entre fachada e enriquecimento depende de saber o que se declara, e quase sempre não se sabe.');
     h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 3e3)}</pre>`);
     o.innerHTML = h;
+  }
+  var VINC_ACOES = {
+    consultar: vincConsultar,
+    parentesco: vincParentesco,
+    trocas: vincTrocas,
+    grafo: vincGrafo,
+    ftm: vincFtm,
+    conluioMunicipal: vincConluioMunicipal,
+    resolucao: vincResolucao,
+    interposicao: vincInterposicao,
+    patrimonio: vincPatrimonio,
+    historicoPessoa: vincHistoricoPessoa,
+    naData: vincNaData,
+    prevalencia: vincPrevalencia
+  };
+  function ligarVinculos() {
+    document.addEventListener("click", (ev) => {
+      const b = ev.target.closest && ev.target.closest("[data-vinc]");
+      const f = b && VINC_ACOES[b.dataset.vinc];
+      if (f) {
+        ev.preventDefault();
+        f();
+      }
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      const i = ev.target.closest && ev.target.closest("[data-vinc-enter]");
+      const f = i && VINC_ACOES[i.dataset.vincEnter];
+      if (f) {
+        ev.preventDefault();
+        f();
+      }
+    });
   }
   var _DETS_ORFAOS = [
     {
@@ -5775,6 +5910,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   uiLigarA11y();
   uiLigarSpotlight();
   uiLigarDialogo();
+  ligarVinculos();
   sobrioAoMudar(() => {
     nebulaViva();
     nucleoViva();
@@ -5932,6 +6068,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     });
   }
   window.TABS = TABS;
+  window.revelacaoCenso = revelacaoCenso;
   Object.assign(window, {
     $,
     _acPagPick,
@@ -5971,19 +6108,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     toggle,
     trocarEsfera,
     validar,
-    verCruzamento,
-    vincConluioMunicipal,
-    vincConsultar,
-    vincFtm,
-    vincGrafo,
-    vincHistoricoPessoa,
-    vincInterposicao,
-    vincNaData,
-    vincParentesco,
-    vincPatrimonio,
-    vincPrevalencia,
-    vincResolucao,
-    vincTrocas
+    verCruzamento
   });
   (() => {
     const cx = {

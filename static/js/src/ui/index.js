@@ -17,6 +17,7 @@ import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
+import {revelar, _wireFase} from './revelacao.js';
 
 export function a11yfy(root){
   (root||document).querySelectorAll('[onclick]:not(button):not(input):not([tabindex]):not(a[href])').forEach(el=>{
@@ -120,6 +121,10 @@ export function uiLigarSpotlight(){
 
 // ═══ VIDA GLOBAL — o cockpit em toda aba (cascata · contagem · malha de luz) ═══
 let _wireRAF=0;
+/* O que a última revelação tocou. Existe para a sonda e o teste PROVAREM que a gramática entrou —
+   animação que não acontece não quebra nada e não aparece em revisão de código, que foi exatamente
+   como o `--i` do v34 passou versões inteiras sem nunca numerar uma linha de tabela. */
+let _censo=null;
 export function vivo(){
   const v=$('view'); if(!v) return;
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -139,7 +144,13 @@ export function vivo(){
   });
   // 4) malha de luz ligando os cards
   _wire(top,rm);
+  /* 5) as gramáticas de revelação (v59): tabela linha a linha, ranking crescendo da base, rankings
+     irmãos por lados opostos, seção riscando, chips em leque. Só marca classe e `--i`; nenhuma
+     leitura de geometria, nenhum trabalho por quadro. Vem por último porque a única coisa que ela
+     pode sobrescrever é o `--d`/`--i` que as etapas acima escreveram, e é isso que se quer. */
+  _censo=revelar(v,rm,_sobrio);
 }
+export const revelacaoCenso=()=>_censo;
 export function _countUp(el){
   const raw=(el.textContent||'').trim();
   const m=raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/); if(!m)return;
@@ -167,13 +178,30 @@ export function _wire(nodes,rm){
   const edges=[];
   pts.forEach((a,i)=>{const d=pts.map((b,j)=>({j,d:(a.x-b.x)**2+(a.y-b.y)**2})).filter(o=>o.j!==i).sort((p,q)=>p.d-q.d).slice(0,2);
     d.forEach(o=>{const k=i<o.j?i+'-'+o.j:o.j+'-'+i;if(!edges.some(e=>e.k===k))edges.push({k,a:i,b:o.j});});});
+  /* v59 — A MALHA É TRAÇADA, e as arestas vêm ANTES dos nós (gramática 6 de `revelacao.js`).
+     Ela nascia pronta no primeiro quadro, e grafo que nasce pronto não se lê como grafo: vira
+     textura de fundo. Traçado, ele conta a estrutura na ordem em que ela existe — primeiro o fio
+     que liga um card ao outro, depois o nó acendendo sobre o que já está ligado.
+
+     A intro NÃO é um segundo laço de animação: é o mesmo `draw` lendo duas frações do relógio que
+     ele já recebia. Custo por quadro: dois `Math.pow`. Com movimento reduzido, `t0i` fica nulo e
+     `_wireFase` devolve 1 e 1 — a malha nasce inteira, como antes.
+
+     A aresta cresce do nó A para o B em vez de aparecer com opacidade: linha que se ESTENDE diz
+     "isto liga aquilo"; linha que só surge diz "há um risco aqui". */
+  const t0i=rm?null:performance.now();
   function draw(t){
     cx.clearRect(0,0,W,H);
-    edges.forEach(e=>{const A=pts[e.a],B=pts[e.b];
+    const f=_wireFase(t0i==null?null:t-t0i);
+    if(f.aresta>0)edges.forEach(e=>{const A=pts[e.a],B=pts[e.b];
       cx.strokeStyle='rgba('+C+',.15)';cx.lineWidth=1;
-      cx.beginPath();cx.moveTo(A.x,A.y);cx.lineTo(B.x,B.y);cx.stroke();});
-    pts.forEach(p=>{cx.fillStyle='rgba('+C+',.35)';cx.beginPath();cx.arc(p.x,p.y,1.6,0,6.283);cx.fill();});
-    if(!rm){edges.forEach((e,i)=>{const A=pts[e.a],B=pts[e.b],ph=((t/1400)+i*0.16)%1;
+      cx.beginPath();cx.moveTo(A.x,A.y);
+      cx.lineTo(A.x+(B.x-A.x)*f.aresta,A.y+(B.y-A.y)*f.aresta);cx.stroke();});
+    if(f.no>0)pts.forEach(p=>{cx.fillStyle='rgba('+C+','+(.35*f.no).toFixed(3)+')';
+      cx.beginPath();cx.arc(p.x,p.y,1.6*f.no,0,6.283);cx.fill();});
+    /* O pacote só viaja depois que o fio existe inteiro. Um pulso correndo por uma aresta ainda
+       pela metade sai da linha e flutua no vazio — foi o que apareceu na primeira passada. */
+    if(!rm){if(f.aresta>=1)edges.forEach((e,i)=>{const A=pts[e.a],B=pts[e.b],ph=((t/1400)+i*0.16)%1;
       const x=A.x+(B.x-A.x)*ph,y=A.y+(B.y-A.y)*ph;
       const g=cx.createRadialGradient(x,y,0,x,y,8);g.addColorStop(0,'rgba('+C+',.8)');g.addColorStop(1,'rgba('+C+',0)');
       cx.fillStyle=g;cx.beginPath();cx.arc(x,y,8,0,6.283);cx.fill();});

@@ -49,6 +49,8 @@ SEQUENCIA = [
     "chamada:uiLigarA11y()",
     "chamada:uiLigarSpotlight()",
     "chamada:uiLigarDialogo()",
+    "chamada:ligarVinculos()",        # v59: delegacao `data-vinc` no documento — precisa existir
+                                      # antes do primeiro render que use o atributo
     "chamada:sobrioAoMudar()",        # o que reavaliar quando o modo sobrio vira: os tres
                                       # videos da cena. Gancho, nao import — senao a folha
                                       # das bandeiras e a cena se importariam em circulo
@@ -64,6 +66,8 @@ SEQUENCIA = [
     "iife:_ligarTato",                # onda de toque, delegada no documento
     "iife:_ligarObservadorDeValor",   # o numero que muda acende
     "ponte:window.TABS",              # ── daqui para baixo e a PONTE, sempre por ultimo:
+    "ponte:window.revelacaoCenso",    #    contrato de FERRAMENTA (v59), como o TABS: nenhum
+                                      #    handler o cita; quem le e a sonda e o teste da revelacao
     "ponte:Object.assign",            #    ela precisa de tudo ja declarado
     "iife:arrow",
     "ponte:defineProperty",

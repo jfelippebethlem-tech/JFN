@@ -36,7 +36,15 @@ from tools import painel_ponte_check as ponte  # noqa: E402
 # 70 desde que o kyber passou a abrir o deck da Consciencia (`conscienciaToggle`) em vez do
 # holofeed. E um nome novo no window, e ele entra com o teto subindo de propósito — o deck e
 # uma superficie nova, nao um handler que escapou.
-TETO_GLOBAIS = 70
+#
+# 70 -> 58 na v59: o PRIMEIRO domInio saiu da ponte de verdade. Os 12 `vinc*` viraram delegacao por
+# `data-vinc` no documento (ver `VINC_ACOES`/`ligarVinculos` em `abas/index.js`), e com eles saem
+# tambem 13 handlers inline (168 -> 155). Vinculos foi o primeiro porque os 12 sao handlers de ZERO
+# argumento numa aba so — a traducao para `data-*` nao perde informacao nenhuma, o que nao vale
+# para `ir('e_resp')` ou `abrirDossie(cnpj,nome)`.
+# Este numero SO DESCE. O teste falha de proposito quando ele cai sem ser atualizado aqui: teto que
+# nao acompanha o progresso para de medir progresso e vira desculpa permanente.
+TETO_GLOBAIS = 58
 
 # Os 19 que o HTML nao le, ESCREVE. `onchange="_respProc=this.value;ir('e_resp')"` e o caso tipico.
 # Para estes, `Object.assign(window, {...})` NAO serve: `window._respProc='X'` nao atualiza um

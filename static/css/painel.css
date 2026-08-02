@@ -3214,3 +3214,130 @@
   .ck-nucleo:has(video.mesa.on)::before{opacity:0}
   @media (prefers-reduced-motion:reduce){.ck-nucleo video.mesa{display:none}}
   @media (prefers-reduced-transparency:reduce){.ck-nucleo video.mesa.on{opacity:.2}}
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v59 — AS GRAMÁTICAS DE REVELAÇÃO (camada 4 do plano visual).
+
+   O motor é `static/js/src/ui/revelacao.js`, e a leitura de POR QUE cada gramática existe está no
+   cabeçalho de lá. Aqui mora só o gesto. Quem marca as classes e escreve `--i` é o JS, uma vez por
+   render — nada aqui liga sozinho.
+
+   AS TRÊS LEIS QUE TODA REGRA DESTE ESTRATO OBEDECE, e nenhuma é estética:
+
+   1. NENHUMA animação parte de `opacity:0`. Animação de CSS também congela em aba de segundo
+      plano; um reveal partindo de zero deixa a tela EM BRANCO para quem volta o foco no meio.
+      É a mesma família de bug do portal (3cf2a6a1) e do `entraCascata` do v33 — parte-se de .3.
+
+   2. Só `transform` e `opacity`. As duas propriedades que o compositor resolve sem repintar. Numa
+      VM de 2 vCPU a 19-29 FPS, animar `width`, `top` ou `filter` em quarenta linhas é o
+      congelamento, não o enfeite.
+
+   3. TETO de atraso em toda cascata: `min(var(--i)*Xms, 380ms)`. Sem teto, o quadragésimo item
+      esperaria segundos e leria como travado. O teto é o mesmo do v33 de propósito — duas
+      cascatas com tempos diferentes na mesma tela leem como defeito.
+
+   Os dois pisos ficam no fim do arquivo e desligam TUDO. Desligar não custa leitura nenhuma: a
+   ordem em que as coisas aparecem é ênfase; o dado é o mesmo, e chega igual.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+
+  /* ── 1 · A TABELA MONTA LINHA A LINHA ─────────────────────────────────────────────────────
+     A forma que mais se lê de cima para baixo era a única grande que aparecia inteira de uma vez.
+     Marcar `--i` na `<tr>` acerta três coisas com uma atribuição, porque propriedade customizada
+     HERDA: a linha entra (aqui), o número dela chega (`#view .num` do v34) e a barra dela cresce
+     (`#view .bar>i` do v33). Medido antes: nas tabelas o `--i` vinha vazio e os três atrasos eram
+     zero — as 100 barras de `g_radar` cresciam todas no mesmo quadro.
+
+     22ms de passo, e não os 26 da grade: linha de tabela é mais baixa que cartão, e o mesmo passo
+     em elementos mais próximos lê como lento. Chega no teto na 18ª linha.                     */
+  @keyframes rvLinha{from{opacity:.3;transform:translateY(6px)}to{opacity:1;transform:none}}
+  #view tr.rv-linha{
+    animation:rvLinha .32s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:min(calc(var(--i,0) * 22ms),380ms)}
+
+  /* ── 2 · O RANKING CRESCE DA BASE ─────────────────────────────────────────────────────────
+     Não há regra aqui, e é de propósito: a gramática do ranking é a ORDEM dos índices, invertida
+     pelo JS, sobre a MESMA animação `entraCascata` do v33. Gramática nova sem `@keyframes` novo é
+     gramática que não custa um byte de repintura.
+     `.rv-rank` existe só como marca — é por ela que a gramática 3 encontra os rankings irmãos, e
+     é ela que a sonda conta para provar que a detecção rodou.                                  */
+
+  /* ── 3 · RANKINGS IRMÃOS ENTRAM POR LADOS OPOSTOS ─────────────────────────────────────────
+     Dois rankings empilhados ("órgãos, do que paga MAIS ao que paga MENOS" e "fornecedores, do
+     mais caro ao mais barato") entrando iguais leem como uma lista só de trinta itens. Entrando
+     por lados opostos, o corpo entende antes do texto que são duas leituras do mesmo item.
+
+     O deslocamento é de 14px e não de 40: a gramática precisa ser SENTIDA, não assistida. Passado
+     um certo curso, o olho para de ler a lista e passa a ver a animação — e aí ela roubou a
+     atenção que devia entregar ao dado.
+
+     ⚠️ ESTA REGRA COMPÕE, NÃO SUBSTITUI — e é a armadilha do v43 ("o KPI que sumia") de volta.
+     `.rise` tem `opacity:0` no estado ESTÁTICO; quem segura o cartão visível no fim é o `both` da
+     própria `rise`. Um `animation:` que declarasse só a gramática nova apagaria a `rise` do
+     atalho, e ao terminar (`backwards` não segura o fim) o cartão cairia no zero estático e
+     SUMIRIA. Foi exatamente esse bug que deixou o achado mais grave invisível em toda aba com
+     grade. Por isso cada variante abaixo repete a cadeia inteira, com a `rise ... both` sempre por
+     último, e a `graveGlow` preservada onde o cartão é grave — cartão grave que perde o glow perde
+     informação, não enfeite.                                                                    */
+  @keyframes rvLado{from{opacity:.3;transform:translate(calc(var(--lado,1) * 14px),9px)}
+    to{opacity:1;transform:none}}
+  #view .rv-lado>.card,#view .rv-lado>.ck-inst{
+    animation:rvLado .38s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms)}
+  #view .rv-lado>.card.rise,#view .rv-lado>.ck-inst.rise{
+    animation:rvLado .38s cubic-bezier(.2,.9,.25,1) backwards,
+              rise .3s cubic-bezier(.2,.7,.2,1) both;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms),var(--d,0ms)}
+  #view .rv-lado>.card.hl.rise{
+    animation:rvLado .38s cubic-bezier(.2,.9,.25,1) backwards,
+              rise .3s cubic-bezier(.2,.7,.2,1) both,
+              graveGlow 3.2s ease-in-out infinite;
+    animation-delay:min(calc(var(--i,0) * 26ms),380ms),var(--d,0ms),0ms}
+
+  /* ── 4 · A SEÇÃO RISCA ANTES DE O CONTEÚDO CHEGAR ─────────────────────────────────────────
+     `h2.sec::after` já é um filete que atravessa a largura da seção — ele só nascia inteiro.
+     Traçado da esquerda para a direita, a seção lê como um instrumento se armando, e é o gesto
+     mais barato deste arquivo: uma escala num elemento de 1px de altura, sem repintar nada.
+
+     `transform-origin:left` é o que faz ser TRAÇADO e não ESTICADO — sem ele o filete cresce para
+     os dois lados a partir do meio, que é o gesto de uma barra de progresso, não de um risco.  */
+  @keyframes rvRisca{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  #view h2.sec.rv-sec::after{
+    transform-origin:left center;
+    animation:rvRisca .5s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:min(calc(var(--i,0) * 60ms),380ms)}
+  /* O ponto que abre a seção acende junto com o começo do risco. Ele JÁ TEM animação infinita
+     própria — `secLed`, o LED da esfera do v7 — e `animation` é atalho: declarar só a de entrada
+     APAGARIA o pulso. As duas são reescritas juntas, na ordem certa (entrada primeiro, pulso
+     depois, com o atraso do risco em ambas), e é por isso que esta regra repete `secLed`.     */
+  #view h2.sec.rv-sec::before{
+    animation:rvPonto .34s ease-out backwards,secLed 3.4s ease-in-out infinite;
+    animation-delay:min(calc(var(--i,0) * 60ms),380ms),min(calc(var(--i,0) * 60ms),380ms)}
+  @keyframes rvPonto{from{opacity:.25;transform:scale(.4)}to{opacity:1;transform:none}}
+
+  /* ── 5 · A FILEIRA DE CHIPS ABRE EM LEQUE ─────────────────────────────────────────────────
+     Os chips são as escolhas da tela — a primeira coisa que a mão procura. Abrindo da esquerda
+     para a direita eles se anunciam como controle, não como rodapé de rótulos. Passo curto
+     (30ms) porque a fileira é curta: numa fila de seis, 26ms mal se percebe e 60ms arrasta.   */
+  @keyframes rvLeque{from{opacity:.3;transform:translateY(5px) scale(.97)}
+    to{opacity:1;transform:none}}
+  #view .rv-leque>*{
+    animation:rvLeque .3s cubic-bezier(.2,.9,.25,1) backwards;
+    animation-delay:min(calc(var(--i,0) * 30ms),380ms)}
+
+  /* ── OS DOIS PISOS ────────────────────────────────────────────────────────────────────────
+     O JS já não numera nada quando qualquer um dos dois está ligado — `revelar()` sai na primeira
+     linha. Estas regras são a segunda tranca, para o caso de a preferência mudar DEPOIS de a aba
+     ter sido pintada: sem elas, um `--i` inline sobrevivente continuaria segurando um cartão
+     invisível até o atraso vencer.                                                            */
+  @media (prefers-reduced-motion:reduce){
+    #view tr.rv-linha,#view .rv-lado>.card,#view .rv-lado>.ck-inst,
+    #view .rv-lado>.card.rise,#view .rv-lado>.ck-inst.rise,#view .rv-lado>.card.hl.rise,
+    #view .rv-leque>*,#view h2.sec.rv-sec::after,#view h2.sec.rv-sec::before{
+      animation:none;opacity:1;transform:none}}
+  body.fps-baixo #view tr.rv-linha,
+  body.fps-baixo #view .rv-lado>.card,body.fps-baixo #view .rv-lado>.ck-inst,
+  body.fps-baixo #view .rv-lado>.card.rise,body.fps-baixo #view .rv-lado>.ck-inst.rise,
+  body.fps-baixo #view .rv-lado>.card.hl.rise,
+  body.fps-baixo #view .rv-leque>*,
+  body.fps-baixo #view h2.sec.rv-sec::after,body.fps-baixo #view h2.sec.rv-sec::before{
+    animation:none;opacity:1;transform:none}

@@ -93,27 +93,27 @@ export async function renderVinculos(){
   h+=sec('Consultar uma empresa');
   h+=card(`<div class="search"><span class="mag"></span>
       <input id="vinc-cnpj" placeholder="CNPJ da empresa (com ou sem pontuação)…"
-             onkeydown="if(event.key==='Enter')vincConsultar()"></div>
+             data-vinc-enter="consultar"></div>
     <div class="btns" style="margin-top:10px">
-      <button type="button" class="btn" onclick="vincConsultar()">Beneficiário final</button>
-      <button type="button" class="btn ghost" onclick="vincParentesco()">Parentesco no QSA</button>
-      <button type="button" class="btn ghost" onclick="vincTrocas()">Trocas de quadro</button>
-      <button type="button" class="btn ghost" onclick="vincGrafo()">Rede de poder</button>
-      <button type="button" class="btn ghost" onclick="vincFtm()">Exportar FollowTheMoney</button>
+      <button type="button" class="btn" data-vinc="consultar">Beneficiário final</button>
+      <button type="button" class="btn ghost" data-vinc="parentesco">Parentesco no QSA</button>
+      <button type="button" class="btn ghost" data-vinc="trocas">Trocas de quadro</button>
+      <button type="button" class="btn ghost" data-vinc="grafo">Rede de poder</button>
+      <button type="button" class="btn ghost" data-vinc="ftm">Exportar FollowTheMoney</button>
     </div>
     <div class="btns" style="margin-top:8px">
-      <button type="button" class="btn ghost" onclick="vincConluioMunicipal()">Conluio municipal (vencedor × perdedora)</button>
-      <button type="button" class="btn ghost" onclick="vincResolucao()">Resolução nome → CNPJ</button>
-      <button type="button" class="btn ghost" onclick="vincInterposicao()">Perfil de laranja</button>
-      <button type="button" class="btn ghost" onclick="vincPatrimonio()">Capacidade × recebido</button>
+      <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
+      <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
+      <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
+      <button type="button" class="btn ghost" data-vinc="patrimonio">Capacidade × recebido</button>
     </div>
     <div class="dim" style="margin-top:8px">Histórico de uma <b>pessoa</b> (de quais empresas foi sócia):
       <input id="vinc-pessoa" placeholder="nome do sócio…" style="margin-left:6px">
-      <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincHistoricoPessoa()">Ver histórico</button>
+      <button type="button" class="btn ghost" style="margin-left:6px" data-vinc="historicoPessoa">Ver histórico</button>
     </div>
     <div class="dim" style="margin-top:8px">Para <b>"era sócio nesta data?"</b> informe também a data:
       <input id="vinc-data" type="date" style="margin-left:6px">
-      <button type="button" class="btn ghost" style="margin-left:6px" onclick="vincNaData()">Verificar na data</button>
+      <button type="button" class="btn ghost" style="margin-left:6px" data-vinc="naData">Verificar na data</button>
     </div>`);
   h+=`<div id="vinc-out"></div>`;
 
@@ -121,7 +121,7 @@ export async function renderVinculos(){
   h+=card(`<div class="dim">Nenhuma base aberta brasileira publica filiação. O que sai daqui é
       inferência, e a única forma honesta de inferir é medir a <b>prevalência de cada eixo na própria
       base</b> antes de deixá-lo pesar — um eixo que acende na maioria mede a base, não o alvo.</div>
-    <div class="btns" style="margin-top:10px"><button type="button" class="btn ghost" onclick="vincPrevalencia()">Medir na base de hoje</button></div>
+    <div class="btns" style="margin-top:10px"><button type="button" class="btn ghost" data-vinc="prevalencia">Medir na base de hoje</button></div>
     <div id="vinc-prev"></div>`);
   return h;
 }
@@ -548,6 +548,54 @@ export async function vincPatrimonio(){
   h+=leitura('Sem renda conhecida o veredito é <b>não aferível</b>, nunca "renda incompatível" — a distinção entre fachada e enriquecimento depende de saber o que se declara, e quase sempre não se sabe.');
   h+=card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1)).slice(0,3000)}</pre>`);
   o.innerHTML=h;
+}
+
+/* ═══ v59 · O PRIMEIRO DOMÍNIO SAI DA PONTE ═══════════════════════════════════════════════════
+   A ponte (`Object.assign(window,{…})` no entrypoint) é um degrau, não o destino: ela existe
+   porque os ~168 handlers `onclick=` do painel só resolvem nomes no escopo GLOBAL, e o destino
+   declarado no §6.2-C é delegação por `data-*` no `#view`, feita POR DOMÍNIO.
+
+   Vínculos é o domínio certo para começar, e por três razões que se pode conferir:
+     · são 12 nomes — 17% do teto de 70, o maior bloco coeso da lista;
+     · os 12 são handlers de ZERO argumento, então o `data-*` carrega tudo o que o `onclick`
+       carregava, sem perder informação nenhuma na tradução (o que NÃO vale, por exemplo, para
+       `ir('e_resp')` ou `abrirDossie(cnpj,nome)`, que levam argumento);
+     · vivem todos numa aba só (`g_vinculos`), então o raio da mudança é uma tela.
+
+   A migração GANHA acessibilidade em vez de custar: os doze já eram `<button type=button>`, e um
+   botão de verdade é operável por teclado nativamente — deixa de depender do `a11yfy`, que existia
+   justamente para consertar `[onclick]` em elemento não-focável.
+
+   O mapa é a superfície: `data-vinc="grafo"` acha `grafo` aqui. Chave desconhecida não faz nada e
+   não lança — botão morto é ruim, mas `TypeError` no console de um painel ao vivo é pior, e a
+   completude de quem existe já é provada pelo `test_painel_ponte_completa`.  */
+export const VINC_ACOES={
+  consultar:vincConsultar, parentesco:vincParentesco, trocas:vincTrocas, grafo:vincGrafo,
+  ftm:vincFtm, conluioMunicipal:vincConluioMunicipal, resolucao:vincResolucao,
+  interposicao:vincInterposicao, patrimonio:vincPatrimonio,
+  historicoPessoa:vincHistoricoPessoa, naData:vincNaData, prevalencia:vincPrevalencia,
+};
+
+/** Liga a delegação de Vínculos. Chamada UMA vez, da sequência de boot.
+ *
+ *  Escuta no `document` e não no `#view` de propósito: `#view` tem o innerHTML trocado a cada
+ *  navegação, e um ouvinte preso a ele morreria junto com o primeiro render — ou, pior, seria
+ *  religado a cada troca de aba e acumularia um ouvinte por navegação. O documento é o único nó
+ *  que sobrevive a tudo. Um ouvinte, para sempre.  */
+export function ligarVinculos(){
+  document.addEventListener('click',ev=>{
+    const b=ev.target.closest&&ev.target.closest('[data-vinc]');
+    const f=b&&VINC_ACOES[b.dataset.vinc];
+    if(f){ev.preventDefault();f();}
+  });
+  /* O campo de CNPJ respondia ao Enter por `onkeydown` inline. Vira o mesmo mecanismo, com o
+     nome da ação no atributo — um controle a menos citando função global. */
+  document.addEventListener('keydown',ev=>{
+    if(ev.key!=='Enter')return;
+    const i=ev.target.closest&&ev.target.closest('[data-vinc-enter]');
+    const f=i&&VINC_ACOES[i.dataset.vincEnter];
+    if(f){ev.preventDefault();f();}
+  });
 }
 
 // ═══ DETECTORES ÓRFÃOS — segunda onda do "ligar tudo" (2026-07-29) ═══

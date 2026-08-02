@@ -52,7 +52,7 @@ fi
 if ! out="$("$py" -m pytest -q -p no:randomly \
       tests/test_painel_css_integro.py tests/test_painel_abas.py \
       tests/test_painel_script_classico.py tests/test_painel_ponte_completa.py \
-      tests/test_painel_ordem_de_boot.py \
+      tests/test_painel_ordem_de_boot.py tests/test_painel_revelacao.py \
       tests/test_rotas_sem_orfa.py tests/test_rotas_sem_superficie.py 2>&1)"; then
   echo "[pre-commit] ❌ gate do painel BLOQUEOU (checagem estática):" >&2
   echo "$out" | tail -25 >&2
