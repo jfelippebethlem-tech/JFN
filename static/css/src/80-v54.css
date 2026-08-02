@@ -23,6 +23,11 @@
    tinta. Só o `.btn` puro adoeceu: `.ghost/.accent/.red/.green` têm duas classes e ganham a
    cascata do `background-image`. Cura: as duas coisas viram CAMADAS do mesmo background — a linha
    por cima, o gradiente de ignição por baixo — em vez de uma apagar a outra. */
+  /* @camada: base — este bloco DEFINE o botão base; não sobrescreve ninguém. Sem a marca,
+   `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`), que hoje ganham por especificidade. O parágrafo acima conta
+   com isso: "`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata". Entre camadas a
+   especificidade não conta. Ver `tools/painel_css_inversao.py`. */
   .btn{
     background-image:
       linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent),
@@ -31,6 +36,10 @@
     background-repeat:no-repeat,no-repeat;
     background-position:left bottom,0 0;
     background-size:0% 1.5px,100% 100%}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn:hover{background-size:100% 1.5px,100% 100%}
 
 /* ══ v54 · CONTRASTE lote 2 — o texto pequeno que cai SOBRE A ARTE ═════════════════════════════

@@ -63,7 +63,12 @@ LARGURAS = [1440, 390]
 #
 # Nada disso e cascata; e estado vivo. Cascata e o que sobra.
 IGNORAR_PREFIXOS = ("animation", "transition", "--")
-IGNORAR_SELETORES = ".view-wire, .skel, .sp, video, canvas"
+#   O TICKER e os CHIPS da mesa sao alimentados pelo barramento a cada evento: o conteudo, e
+#   portanto a largura e a altura, mudam entre duas execucoes por definicao. Entraram na lista
+#   depois de serem os unicos acusados numa comparacao em que a cascata era neutra (o `.btn` ja
+#   corrigido) — eram 4 telas de 120, todas em regiao viva.
+IGNORAR_SELETORES = (".view-wire, .skel, .sp, video, canvas, "
+                     ".ck-ticker, .ck-ticker *, #nu-chips, #nu-chips *, .nu-hud, .nu-sweep")
 
 # ⚠️ AS ANIMACOES SAO CONGELADAS ANTES DE MEDIR, e isto e a diferenca entre um comparador que
 # serve e um que grita. Ignorar `animation-*` NAO basta: o que a cascata de entrada faz e MUTAR
@@ -184,7 +189,11 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
             await pg.set_viewport_size({"width": larg, "height": 900})
             for aba in abas:
                 try:
-                    await pg.evaluate(f"() => ir('{aba}')")
+                    # `__estavel` e o contador do estabilizador abaixo. ZERAR AQUI e obrigatorio:
+                    # sem isso a primeira leitura da aba nova se compara com a contagem da aba
+                    # ANTERIOR, e duas abas de tamanho parecido dao "estavel" no primeiro poll —
+                    # a foto sai antes de a tela existir.
+                    await pg.evaluate(f"() => {{ window.__estavel = -1; ir('{aba}'); }}")
                     # 1,4 s e o mesmo tempo que a sonda de revelacao usa: e o teto do atraso da
                     # cascata (380 ms) mais a duracao mais longa, com folga para a rota responder.
                     await pg.wait_for_timeout(1400)
@@ -200,6 +209,20 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                             "() => !document.querySelector('#view .counting')", timeout=4000)
                     except Exception:                       # noqa: BLE001
                         pass                                # contagem presa nao invalida a foto
+                    # E ESPERA O DOM PARAR. Aba que busca varias rotas termina de montar depois do
+                    # tempo fixo, e as duas execucoes pegam momentos diferentes: medido em
+                    # `g_acuracia`, onde uma foto tinha 55 nos a mais que a outra e as alturas dos
+                    # containers mudavam junto. Duas leituras iguais seguidas = parou.
+                    try:
+                        await pg.wait_for_function(
+                            """() => { const v = document.getElementById('view');
+                                 if (!v) return false;
+                                 const n = v.querySelectorAll('*').length;
+                                 const ok = window.__estavel === n;
+                                 window.__estavel = n; return ok; }""",
+                            timeout=6000, polling=450)
+                    except Exception:                       # noqa: BLE001
+                        pass                                # tela que nunca para nao trava a foto
                     r = await pg.evaluate(_SONDA, larg)
                 except Exception as e:                          # noqa: BLE001
                     foto[f"{aba}@{larg}"] = {"erro": str(e)[:160]}

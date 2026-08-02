@@ -2565,6 +2565,11 @@
    tinta. Só o `.btn` puro adoeceu: `.ghost/.accent/.red/.green` têm duas classes e ganham a
    cascata do `background-image`. Cura: as duas coisas viram CAMADAS do mesmo background — a linha
    por cima, o gradiente de ignição por baixo — em vez de uma apagar a outra. */
+  /* @camada: base — este bloco DEFINE o botão base; não sobrescreve ninguém. Sem a marca,
+   `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`), que hoje ganham por especificidade. O parágrafo acima conta
+   com isso: "`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata". Entre camadas a
+   especificidade não conta. Ver `tools/painel_css_inversao.py`. */
   .btn{
     background-image:
       linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent),
@@ -2573,6 +2578,10 @@
     background-repeat:no-repeat,no-repeat;
     background-position:left bottom,0 0;
     background-size:0% 1.5px,100% 100%}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn:hover{background-size:100% 1.5px,100% 100%}
 
 /* ══ v54 · CONTRASTE lote 2 — o texto pequeno que cai SOBRE A ARTE ═════════════════════════════
@@ -2690,19 +2699,35 @@
    (translateZ negativo) também é o do v9 — aqui ele só ganha o afundamento do bisel junto,
    que é o que faz o clique parecer que a peça DESCEU no encaixe.
    CONTRASTE: nenhuma cor de texto ou de fundo mudou. Só geometria e relevo. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn{--chanfro:9px;border-radius:0;
     clip-path:polygon(var(--chanfro) 0,100% 0,100% calc(100% - var(--chanfro)),
                       calc(100% - var(--chanfro)) 100%,0 100%,0 var(--chanfro));
     box-shadow:var(--lift),inset 0 1px 0 oklch(1 0 0/.22),inset 0 -1px 0 oklch(0 0 0/.30),
                inset 0 0 0 1px oklch(1 0 0/.06)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn:hover{box-shadow:var(--lift),0 0 30px -8px color-mix(in oklch,var(--flame) 60%,transparent),
                inset 0 1px 0 oklch(1 0 0/.28),inset 0 -1px 0 oklch(0 0 0/.30),
                inset 0 0 0 1px oklch(1 0 0/.09)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn:active{box-shadow:var(--lift),inset 0 2px 5px oklch(0 0 0/.42),inset 0 -1px 0 oklch(1 0 0/.10)}
   /* a aresta do chanfro precisa aparecer: um fio de luz correndo o corte inferior-direito.
      O ::before original (varredura de brilho no hover) vivia em z-index:-1 e sumia sob o
      fundo opaco do botão usinado; o fio ocupa o mesmo pseudo, e a luz que segue o ponteiro
      continua no ::after, que é quem sempre fez esse trabalho. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn::before{content:"";position:absolute;z-index:0;pointer-events:none;
     inset:auto -1px -1px auto;
     width:calc(var(--chanfro) * 1.9);height:calc(var(--chanfro) * 1.9);
@@ -2710,15 +2735,39 @@
     opacity:.9}
   /* o ghost é peça vazada: o chanfro tem que ler no CONTORNO, e clip-path corta a borda.
      Por isso a moldura dele vira `inset ring`, que o clip acompanha. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn.ghost,.btn.accent{border:0}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn.ghost{box-shadow:var(--lift),inset 0 0 0 1px var(--bd2),inset 0 1px 0 oklch(1 0 0/.07)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn.ghost:hover{box-shadow:var(--lift),0 0 26px -10px color-mix(in oklch,var(--ion) 55%,transparent),
     inset 0 0 0 1px color-mix(in oklch,var(--ion) 55%,transparent),inset 0 1px 0 oklch(1 0 0/.09)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn.accent{box-shadow:var(--lift),inset 0 0 0 1px color-mix(in oklch,var(--ion) 48%,transparent),
     inset 0 1px 0 oklch(1 0 0/.10)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn.accent:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--ion) 62%,transparent),
     inset 0 0 0 1px color-mix(in oklch,var(--ion) 70%,transparent),inset 0 1px 0 oklch(1 0 0/.12)}
   /* a esfera é o irmão maior do botão: mesmo corte, mesma família. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .sph{--chanfro:8px;border-radius:0;
     clip-path:polygon(var(--chanfro) 0,100% 0,100% calc(100% - var(--chanfro)),
                       calc(100% - var(--chanfro)) 100%,0 100%,0 var(--chanfro))}

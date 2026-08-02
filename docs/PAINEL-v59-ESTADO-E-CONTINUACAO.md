@@ -247,71 +247,75 @@ idade apurada não é fonte parada, é fonte sobre a qual não se sabe.
 
 ## 5. O QUE FALTA
 
-### 5.1 · `@layer` — TENTADO, MEDIDO, e NÃO ENTROU
+### 5.1 · `@layer` — DUAS INVESTIDAS, e a segunda parou no INSTRUMENTO
 
-**Não é pendência por falta de tempo: é reprovação no critério de aceite que o próprio plano
-definiu** ("um estrato só sai da cauda não-camadada quando o diff sair vazio"). O diff não saiu
-vazio. O que ficou pronto é o instrumento e a causa.
+**Não entrou.** E a razão da segunda tentativa é diferente da primeira, o que é um progresso.
 
-#### O que a medição corrigiu no plano
+#### 1ª investida — reprovou por um bug REAL, e ele foi corrigido
 
-São **15** `!important`, e **7 estão fora** da família de degradação — contados com contagem de
-chaves, porque `grep` acha o `@media` mais próximo **acima**, que frequentemente não é o que
-envolve a regra. Três dos sete são a mesma regra em três gerações (`nav.tabs button.on::after`,
-em `00-v7-base` duas vezes e em `95-v58`) duelando por `!important` e resolvidas hoje por **ordem
-de documento** — que é o que faz a v58 vencer e a respiração da aba derivar de `var(--bpm)`.
-Camadar ingenuamente **inverteria** esse duelo (em `!important` a camada mais baixa ganha) e
-desfaria o recurso do v58 sem um erro no console.
+96 telas, 188 elementos acusados, **100% deles `.btn`**: o botão fantasma trocava o fundo escuro
+por um âmbar de outra geração. Causa exata: o bloco do v54 que compõe o fundo do botão tem o
+próprio comentário dizendo que conta com especificidade — *"só o `.btn` puro adoeceu:
+`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata"*. Dentro de uma camada isso
+continua verdade; **entre** camadas a especificidade não conta.
 
-Daí a regra de `painel_css_camadar.py`: **toda regra com `!important` sai da camada e vai para uma
-cauda não-camadada, na ordem original.** E é **tudo ou nada**: declaração normal não-camadada vence
-qualquer declaração camadada, então não existe migração parcial com a base de fora.
+Corrigido com uma escotilha que diz, ao lado da regra, a que camada ela pertence:
 
-#### O instrumento — e as três vezes em que ele mentiu antes de servir
+```css
+/* @camada: base — este bloco DEFINE o botão base; não sobrescreve ninguém. */
+.btn{ … }
+```
 
-`painel_computado.py` compara o estilo computado de 60 abas × 2 larguras. Ele só passou a valer
-depois de três correções, e cada uma tem um número:
+E, para não descobrir uma família por vez a ~1 h por rodada de navegador,
+**`tools/painel_css_inversao.py`**: ele lista, em segundos, todo duelo cujo vencedor muda ao
+camadar. Hoje: **zero**, com 11 blocos marcados (2 no v54, 10 no v55, todos definições do botão e
+da esfera). Ele também teve de aprender três vezes:
 
-| versão | resultado com **zero** mudança de CSS | causa |
+| versão | resultado | causa |
 |---|---|---|
-| 1 | **118 de 120 telas acusadas** | dado vivo: entre duas execuções a rota devolve outros valores, um cartão vira `.hl`, um número muda de largura |
-| 2 (dado congelado) | **41 telas**, sempre 2 elementos, sempre `div.v` | `_countUp` reescreve o `textContent` por rAF — congelar animação de CSS não o alcança |
-| 3 (espera `.counting` sumir) | **1 tela**, com **0 diferença de estilo** | só nós indo e vindo no ticker do cockpit — e CSS não cria nem destrói elemento, então isso nunca é sinal de cascata |
+| 1 | 47 acusações, quase todas impossíveis | comparava por "última classe do seletor" — `.sph .i .jico` contra `.chip .jico` |
+| 2 | **zero, com o bug conhecido presente** | `_compativel` dependia da ORDEM: para `.btn.ghost` × `.btn` testava se `{btn,ghost}` cabia em `{btn}` |
+| 3 | 31, todas sem efeito | comparava PARES; um terceiro seletor já resolvia o duelo nos dois mundos |
+| 4 | 5 reais, e acha o `.btn` quando desmarcado | vencedor EFETIVO do conjunto, não duelo par a par |
 
-> **A lição que fica:** um comparador que acusa tudo não distingue nada. Antes de usar um
-> instrumento para julgar uma mudança, faça-o julgar **nenhuma mudança** — se ele não passa nesse
-> teste, o veredito dele sobre a sua mudança não vale.
+> Antes de usar um detector, faça-o achar o bug que você **sabe** que existe. A versão 2 dizia
+> "nenhuma inversão" com o `.btn` intacto na frente dela.
 
-#### O veredito, e o que falta
+#### 2ª investida — o instrumento não sustenta o veredito
 
-Com o instrumento estável, a camadagem foi aplicada e medida:
+Com as 11 marcas, a comparação viva caiu de 96 para **20 telas**, e nelas não sobrou um `.btn`
+nem um `.card`. Parecia pronto. Então rodei o **controle**: a mesma comparação, mesmo baseline,
+**sem camadagem nenhuma**.
 
 ```
-❌ 96 telas com estilo computado diferente
-   188 elementos acusados — 100% deles `.btn`
-   background-image: linear-gradient(oklch(0.228 0.042 257), oklch(0.159 0.033 260))
-                  -> linear-gradient(90deg, oklch(0.744 0.16 268.8/.93), transparent),
-                     linear-gradient(oklch(0.77 0.17 52.5), oklch(0.553 0.147 47))
+camadado   20 telas acusadas
+CONTROLE   88 telas acusadas   ← com ZERO mudança de CSS
 ```
 
-O botão troca o fundo escuro do `.btn.ghost` por um **âmbar** (`--flame`) de outra geração. `.btn`
-é declarado em 14 pontos do arquivo; camadar inverte qual deles vence.
+O controle acusa mais que o experimento. Ou seja: **o resíduo não é da camadagem, e o comparador
+ainda não é estável o bastante para certificar essa mudança.** Há pelo menos uma variável solta
+que ele não congela — a sonda `body.art-no` é assíncrona e chega antes ou depois da foto, e a
+largura de `div.v` depende do instante do `_countUp`.
 
-**Causa única, e o instrumento aponta para ela.** Quem retomar começa com um comparador que já
-provou ser estável, um baseline gravado (`data/_pausa_painel/computado-antes.json` + a fixture de
-dado ao lado) e **um alvo**: descobrir qual das 14 declarações de `.btn` passa a vencer e por quê.
-Não é uma investigação aberta — é uma pergunta com uma resposta.
+Ficaria fácil declarar vitória com o "20 contra 96". O controle é o que impede — e é por isso que
+ele foi rodado.
+
+#### O que falta, concretamente
+
+1. Congelar a última variável: `body.art-no` (esperar a sonda) e excluir a LARGURA de `.kpi .v`
+   sem perder a cor dele.
+2. Repetir o controle. Ele tem de dar **zero** antes de qualquer veredito valer.
+3. Só então aplicar e comparar.
+
+O que já está pago: a escotilha, as 11 marcas, o detector estático validado, a fixture de dado
+congelado (69 rotas) e o baseline. Quem retomar não recomeça — retoma no passo 1.
 
 ```bash
+PYTHONPATH=. .venv/bin/python -m tools.painel_css_inversao          # zero antes de aplicar
 PYTHONPATH=. .venv/bin/python -m tools.painel_computado --gravar data/computado-antes.json
-PYTHONPATH=. .venv/bin/python -m tools.painel_css_camadar --aplicar
-PYTHONPATH=. .venv/bin/python -m tools.painel_css_cortar --juntar && PYTHONPATH=. .venv/bin/python -m tools.painel_bump_versao
-PYTHONPATH=. .venv/bin/python -m tools.painel_computado --comparar data/computado-antes.json \
-    --detalhe e_adit
-#   diff vazio -> entra   ·   diff sujo -> `git checkout static/css/src`
+PYTHONPATH=. .venv/bin/python -m tools.painel_computado --comparar data/computado-antes.json
+#   ↑ ESTE É O CONTROLE: sem mudar nada, tem de dar zero. Só depois aplique o camadar.
 ```
-
-Cada varredura leva ~28 min nesta VM. Uma verificação completa (baseline + prova) é ~1 h.
 
 ### 5.2 · Baixar mais o teto da ponte (58)
 
