@@ -352,3 +352,85 @@ def test_peca_que_se_anuncia_contrato_antes_de_citar_parecer_continua_fora():
     contrato = ("CONTRATO Nº 10/2024 — TERMO DE CONTRATO. " + "Cláusulas gerais. " * 20
                 + "O ajuste seguiu o PARECER Nº 02/2017 da PGE, conforme consignado.")
     assert PC.e_parecer("outro", contrato) is False
+
+
+# ───── G1: grau verde não pode ser dado por falha de leitura (medido 2026-08-02) ─────
+# 378 processos recebiam veredito SEM_CONDICIONANTES / grau VERDE / "nada a cobrar quanto a
+# condicionantes" — e 160 desses pareceres tinham linguagem de exigência no texto. No dossiê o
+# bloco inteiro some (capitulos_dossie.py:386) e a tabela pinta verde: o leitor não distingue
+# "não havia exigência" de "não consegui ler a exigência". INDISPONÍVEL ≠ 0.
+
+def test_parecer_com_exigencia_nao_parseada_nao_sai_verde():
+    """Há linguagem de exigência e a extração não a alcançou → amarelo, não verde."""
+    # 'recomendo' + 'imprescindível' sem estrutura que a extração saiba ler
+    corpo = ("PARECER Nº 900/2024 — Procuradoria Geral do Estado. " + "Relatório. " * 40
+             + "Isto posto, recomendo cautela ao gestor quanto ao que se apontou acima, "
+               "reputando imprescindível o saneamento antes do prosseguimento do feito.")
+    r = PC.auditar_parecer_pge([{"ref": "1", "tipo": "parecer", "texto": corpo}])
+    assert r["veredito"] == "CONDICIONANTES_NAO_EXTRAIDAS"
+    assert r["grau"] == "amarelo"
+    assert "INDISPON" in r["leitura"].upper() or "não" in r["leitura"].lower()
+
+
+def test_parecer_realmente_sem_exigencia_continua_verde():
+    """O estado novo não pode engolir o verde legítimo — aprovação lisa segue verde."""
+    corpo = ("PARECER Nº 901/2024 — Procuradoria Geral do Estado. " + "Relatório. " * 40
+             + "Isto posto, opino favoravelmente à celebração do ajuste, nada mais havendo a "
+               "observar quanto aos aspectos jurídicos do feito.")
+    r = PC.auditar_parecer_pge([{"ref": "1", "tipo": "parecer", "texto": corpo}])
+    assert r["veredito"] == "SEM_CONDICIONANTES"
+    assert r["grau"] == "verde"
+
+
+# ───── G2: formas de exigência colhidas no acervo que o gatilho não reconhecia ─────
+
+def test_sugere_se_a_adaptacao_da_clausula_e_condicionante():
+    """Caso real perdido: 'sugere-se a adaptação da redação das cláusulas segunda e quarta'."""
+    corpo = ("PARECER Nº 902/2024 da Assessoria Jurídica. Isto posto, opino pelo prosseguimento e, "
+             "com o objetivo de aprimorar o texto da minuta encaminhada, sugere-se a adaptação da "
+             "redação das cláusulas segunda e quarta aos termos da Lei 14.133/2021.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert conds, "a exigência de adaptação de cláusula continua invisível"
+    assert conds[0]["tipo"] == "minuta_clausula"
+
+
+def test_mediante_o_atendimento_das_recomendacoes_e_condicionante():
+    """Fórmula clássica de ementa da PGE: aprovação condicionada às recomendações."""
+    corpo = ("PARECER Nº 903/2024 — Procuradoria Geral do Estado. POSSIBILIDADE, MEDIANTE O "
+             "ATENDIMENTO DAS RECOMENDAÇÕES FORMULADAS. " + "Relatório. " * 30
+             + "Ante o exposto, opino pela possibilidade jurídica mediante o atendimento das "
+               "recomendações formuladas, a saber: i) juntada da pesquisa de preços atualizada; "
+               "ii) comprovação da dotação orçamentária.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert len(conds) >= 2
+    assert {c["tipo"] for c in conds} >= {"pesquisa_precos", "dotacao_orcamentaria"}
+
+
+def test_faz_se_necessario_e_condicionante():
+    corpo = ("PARECER Nº 904/2024 da Assessoria Jurídica. Do exposto, opino favoravelmente, mas "
+             "faz-se necessária a juntada da certidão negativa de débitos da contratada antes da "
+             "assinatura do termo.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert conds and conds[0]["tipo"] == "regularidade_fiscal"
+
+
+def test_gatilho_novo_nao_dispara_em_transcricao_de_norma():
+    """A porta abre só para a exigência do parecerista — norma citada continua fora."""
+    corpo = ("PARECER Nº 905/2024 — PGE. Isto posto, opino favoravelmente. Registre-se que, nos "
+             "termos do art. 92 da Lei 14.133/2021, faz-se necessária a indicação do prazo de "
+             "vigência em todo contrato administrativo.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert conds == [], f"transcrição de norma virou exigência: {conds}"
+
+
+def test_dossie_nao_silencia_o_estado_novo():
+    """O bloco de condicionantes some no dossiê para SEM_PARECER/SEM_CONDICIONANTES. O estado
+    'não consegui ler' NÃO pode entrar nessa lista de silêncio: é justamente a ressalva que o
+    leitor precisa ver — 332 processos no acervo estão nele."""
+    from pathlib import Path
+    txt = Path(__file__).resolve().parents[1].joinpath(
+        "compliance_agent", "reporting", "capitulos_dossie.py").read_text(encoding="utf-8")
+    for linha in txt.splitlines():
+        if "SEM_CONDICIONANTES" in linha and "not in" in linha:
+            assert "CONDICIONANTES_NAO_EXTRAIDAS" not in linha, (
+                "o estado de leitura incompleta foi silenciado no dossiê")

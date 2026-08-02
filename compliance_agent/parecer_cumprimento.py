@@ -39,7 +39,26 @@ _RE_GATILHO = re.compile(
     r"(desde\s+que|condicionad[oa]s?\s+a|condiciona-?se|sob\s+(?:a\s+)?condi[çc][ãa]o\s+de|"
     r"observad[ao]s?\s+as\s+seguintes|com\s+as\s+seguintes\s+(?:ressalvas|recomenda[çc][õo]es|condicionantes)|"
     r"as\s+seguintes\s+(?:ressalvas|recomenda[çc][õo]es|condicionantes)|ressalvas?:|recomenda[çc][õo]es:|"
-    r"sane-?se|providencie-?se|corrija-?se)", re.I)
+    r"sane-?se|providencie-?se|corrija-?se|"
+    # 2026-08-02 — formas COLHIDAS no acervo (103 pareceres com fecho e zero condicionante). Cada
+    # uma continua submetida às três proteções que já existiam: escopo no fecho, verbo opinativo a
+    # até _JANELA_OPINATIVO e veto de transcrição de norma. Ficaram DE FORA de propósito "deverá
+    # ser" e "necessário que" soltos: genéricos demais (4 e 1 ocorrência) e frequentes dentro de
+    # citação legal — o ganho não paga o risco de falso positivo.
+    r"sugere-?se\s+(?:a|o|que)|sugiro\s+que|"
+    r"mediante\s+o?\s*atendimento\s+d|atendidas?\s+as\s+(?:recomenda|ressalv|condi)|"
+    r"observadas?\s+as\s+(?:recomenda|ressalv|cautel)|"
+    r"faz-?se\s+necess[áa]ri[ao]|"
+    r"recomend(?:o|a-?se|amos)\s+(?:que|a\s|o\s|à\s))", re.I)
+
+# Linguagem de EXIGÊNCIA em geral — não serve para extrair (não diz onde a exigência começa nem
+# onde termina), serve para saber se o parecer cobra algo. É o que separa "não havia exigência"
+# de "não consegui ler a exigência": sem essa distinção, 378 processos saíam com grau VERDE por
+# falha de leitura da casa, e 160 deles tinham cobrança no texto.
+_RE_EXIGENCIA = re.compile(
+    r"\b(recomend\w+|imprescind\w+|indispens[áa]v\w+|necess[áa]ri[ao]s?|ressalv\w+|condicion\w+|"
+    r"san(?:e|ar|ado|amento)\w*|providenci\w+|corrij\w+|suprir|dever[áa]\s+ser|dever[ãa]o\s+ser|"
+    r"exig[eê]\w*|juntad[ao]s?)\b", re.I)
 # Enumeração dos itens: (i)/(ii)/(iii)… · a)/b) · 1./2.
 # aceita "(i)" e também "i." / "a." — formato real do acervo ("notadamente: i. … ii. … iii. …").
 # O ponto sem parênteses só entra precedido de espaço/início e seguido de espaço, e a sequência ordinal
@@ -47,7 +66,11 @@ _RE_GATILHO = re.compile(
 _RE_ITEM = re.compile(
     r"[\(\[]\s*(x{0,3}i{1,3}|iv|vi{0,3}|ix|x|[a-h])\s*[\)\]]"
     r"|(?:^|\s)(\d{1,2})\s*[\)\.]\s+"
-    r"|(?:^|[\s:;])(i{1,3}|iv|vi{0,3}|ix|[a-h])\.\s+", re.I)
+    # 2026-08-02: aceita também "i)" / "a)" SEM parêntese de abertura — forma comuníssima no acervo
+    # ("a saber: i) juntada da pesquisa de preços; ii) comprovação da dotação"). Sem ela, a lista
+    # inteira virava UMA condicionante em bloco e a verificação item a item se perdia. A guarda é a
+    # mesma da variante com ponto: precedido de espaço/dois-pontos e validado por `_sequencia_valida`.
+    r"|(?:^|[\s:;])(i{1,3}|iv|vi{0,3}|ix|[a-h])[\).]\s+", re.I)
 _MAX_COND = 400   # corte do texto de uma condicionante (o trecho é literal, mas não despeja o parecer inteiro)
 _CABECALHO = 1200  # janela do topo onde um parecer se identifica (o resto do texto é fundamentação)
 _MIN_COND = 25    # anti-FP (arquivo SEI real): "(a) Engenheiro" não é condicionante, é rótulo solto
@@ -78,7 +101,10 @@ _JANELA_OPINATIVO = 400   # distância máxima entre o verbo opinativo e o gatil
 _RE_TRANSCRICAO = re.compile(
     r"(nos\s+termos\s+d[oae]s?|na\s+forma\s+d[oae]s?|conforme\s+(?:disp[õo]e|prev[êe]|estabelece)|"
     r"disp[õo]e\s+o\s+art|prev[êe]\s+o\s+art|estabelece\s+o\s+art|segundo\s+o\s+art|"
-    r"reza\s+o\s+art|de\s+acordo\s+com\s+o\s+art)[^.]{0,80}$", re.I)
+    # O ponto que separa períodos encerra a janela — mas o ponto de "art. 92" e de "14.133" não é
+    # fim de período. Sem esta exceção o veto não alcançava a forma mais comum de citação legal
+    # ("nos termos do art. 92 da Lei 14.133/2021, faz-se necessária…") e a norma virava exigência.
+    r"reza\s+o\s+art|de\s+acordo\s+com\s+o\s+art)(?:[^.]|\.(?=\s*\d)){0,80}$", re.I)
 
 # O documento É um parecer? (anti-FP medido no arquivo SEI real 2026-07-24: minutas e contratos CITAM a
 # Procuradoria — "previamente examinado pela PGE" — e viravam falsos pareceres, com cláusulas contratuais
@@ -375,12 +401,26 @@ def auditar_parecer_pge(docs: list[dict]) -> dict:
         for item in verificar_cumprimento(p["condicionantes"], posteriores):
             todas.append({**item, "parecer_ref": p["ref"], "emissor": p["emissor"]})
     if not todas:
-        return {"veredito": "SEM_CONDICIONANTES", "grau": "verde", "condicionantes": [], "n_cumpridas": 0,
-                "n_nao_cumpridas": 0, "n_nao_verificaveis": 0,
+        base = {"condicionantes": [], "n_cumpridas": 0, "n_nao_cumpridas": 0, "n_nao_verificaveis": 0,
                 "pareceres": [{k: p[k] for k in ("ref", "emissor")} for p in pareceres],
+                "ressalva": _RESSALVA, "fonte": "parecer_cumprimento (determinístico/offline)"}
+        # Verde só quando o parecer de fato não cobra nada. Se ele cobra e a extração não alcançou,
+        # o honesto é dizer que o limite é da LEITURA da casa — INDISPONÍVEL ≠ regularidade.
+        cobra = any(_RE_EXIGENCIA.search(d.get("texto") or "") for d in docs or []
+                    if e_parecer(d.get("tipo") or "", d.get("texto") or ""))
+        if cobra:
+            return {**base, "veredito": "CONDICIONANTES_NAO_EXTRAIDAS", "grau": "amarelo",
+                    "leitura": ("Há parecer jurídico/de controle nos autos e ele usa linguagem de "
+                                "EXIGÊNCIA (recomendação/ressalva/saneamento), mas a leitura automática "
+                                "não conseguiu isolar as condicionantes item a item. Isto é limite de "
+                                "LEITURA desta casa, não atestado de regularidade: INDISPONÍVEL ≠ "
+                                "cumprido e ≠ inexistente."),
+                    "acao": "ler o parecer na íntegra e listar as condicionantes à mão antes de "
+                            "concluir qualquer coisa sobre o cumprimento"}
+        return {**base, "veredito": "SEM_CONDICIONANTES", "grau": "verde",
                 "leitura": ("Há parecer jurídico/de controle nos autos e nenhuma CONDICIONANTE substantiva "
                             "(aprovação sem ressalva de cumprimento) — nada a cobrar quanto a condicionantes."),
-                "acao": "", "ressalva": _RESSALVA, "fonte": "parecer_cumprimento (determinístico/offline)"}
+                "acao": ""}
     n_ok = sum(1 for c in todas if c["status"] == "CUMPRIDA")
     n_nao = sum(1 for c in todas if c["status"] == "NAO_CUMPRIDA")
     n_nv = sum(1 for c in todas if c["status"] == "NAO_VERIFICAVEL")
