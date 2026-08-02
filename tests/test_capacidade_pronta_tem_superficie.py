@@ -103,6 +103,13 @@ def test_toda_funcao_mestra_chega_ao_painel():
 
     html = (_RAIZ / "static" / "jfn-painel.html").read_text(encoding="utf-8")
     assert "/static/js/caps.js" in html, "o painel não carrega o arquivo de funções mestras"
-    js = (_RAIZ / "static" / "js" / "painel.js").read_text(encoding="utf-8")
-    assert "CAPS_MESTRAS" in js, "o painel não consome CAPS_MESTRAS"
+    # v58 (2026-08-02): `painel.js` virou `painel.bundle.js` + `js/src/`. A garantia é a mesma —
+    # alguém no front tem de CONSUMIR `CAPS_MESTRAS`; onde esse alguém mora é decisão do dono do
+    # painel. Procura no que existir, na ordem em que o painel realmente carrega.
+    _js_dir = _RAIZ / "static" / "js"
+    fontes = [p for p in (_js_dir / "painel.bundle.js", _js_dir / "painel.js") if p.exists()]
+    fontes += sorted((_js_dir / "src").rglob("*.js")) if (_js_dir / "src").is_dir() else []
+    assert fontes, "não há JS do painel em static/js (nem bundle, nem painel.js, nem src/)"
+    assert any("CAPS_MESTRAS" in p.read_text(encoding="utf-8") for p in fontes), \
+        "nenhum JS do painel consome CAPS_MESTRAS"
     assert mestras(), "nenhuma função mestra gerada — o bloco `menu:` sumiu do YAML?"

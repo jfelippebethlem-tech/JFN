@@ -432,6 +432,12 @@
     coleta: { t: "coleta", d: "há sweep vivo ou evento chegando. O painel acelerou junto." },
     enxurrada: { t: "enxurrada", d: "muitos eventos no minuto, ou a VM sob carga. Tensão máxima." }
   };
+  var ESTADO_FONTE = {
+    ok: { c: "ok", t: "viva", d: "dentro da cadência esperada desta fonte." },
+    atencao: { c: "velho", t: "atrasada", d: "passou da cadência esperada, mas ainda não é ausência." },
+    critico: { c: "crit", t: "parada", d: "muito além da cadência — trate como fonte parada até provar o contrário." },
+    sem_medicao: { c: "mudo", t: "sem medição", d: "não há idade apurada. Isto não é zero nem atraso: é desconhecimento." }
+  };
   var _lerRitmo = () => ({ marcha: "vigilia", eventosPorMinuto: 0, load1: 0, sweep: false });
   var _fluxo = [];
   var _vitais = null;
@@ -534,10 +540,14 @@
     const ord = [...fontes].sort((a, b) => (b.idade_dias ?? -1) - (a.idade_dias ?? -1));
     alvo.innerHTML = ord.map((f) => {
       const d = f.idade_dias;
-      const cls = f.estado === "critico" ? " crit" : d != null && d > 14 ? " velho" : "";
+      const est = ESTADO_FONTE[f.estado] || (d == null ? ESTADO_FONTE.sem_medicao : d > 14 ? ESTADO_FONTE.atencao : ESTADO_FONTE.ok);
       const idade = d == null ? "sem medição" : d === 0 ? "hoje" : fmtN(d) + " d";
-      return `<div class="cs-fonte${cls}" title="${esc(f.detalhe || "")}">
-      <span class="n">${esc(f.fonte || "")}</span><span class="i">${idade}</span></div>`;
+      const dica = est.d + (f.detalhe ? " · " + f.detalhe : "");
+      return `<div class="cs-fonte ${est.c}" title="${esc(dica)}">
+      <span class="g" aria-hidden="true">${svgIco("§fonte")}</span>
+      <span class="n">${esc(f.fonte || "")}</span>
+      <span class="e">${est.t}</span>
+      <span class="i">${idade}</span></div>`;
     }).join("");
   }
   function conscienciaEvento(ev, crit) {
@@ -769,6 +779,7 @@
   }
   var _nebVid = {};
   var _nuVid = {};
+  var _nuPost = {};
   var _rjCbs = [];
   var _rjLoading = false;
   var _rjbgTinge = () => {
@@ -1186,7 +1197,15 @@
     if (v.dataset.nu !== nome) {
       v.classList.remove("on");
       v.dataset.nu = nome;
-      v.poster = "/static/assets/" + nome + ".jpg";
+      if (_nuPost[nome] === void 0) {
+        try {
+          _nuPost[nome] = (await fetch("/static/assets/" + nome + ".jpg", { method: "HEAD" })).ok;
+        } catch (e) {
+          _nuPost[nome] = false;
+        }
+      }
+      if (_nuPost[nome]) v.poster = "/static/assets/" + nome + ".jpg";
+      else v.removeAttribute("poster");
       v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
       v.load();
     }

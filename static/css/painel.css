@@ -3081,8 +3081,42 @@
     color:var(--mut)}
   #consciencia .cs-sweep.on .e{color:var(--esf)}
   #consciencia .cs-sweep .q,#consciencia .cs-fonte .i{font-family:var(--mono);color:var(--mut)}
+
+  /* ── frescor: cada fonte com o glifo, e o veredito da ROTA na cara ────────────────────────
+     A linha era nome + idade. Idade sozinha não diz nada sem a cadência: 6 dias é atraso no PNCP
+     (timer semanal) e é rotina na folha do Estado (competência mensal). Quem sabe a cadência é a
+     rota, e ela já devolve `estado` — a tela agora mostra esse veredito em vez de recalcular.
+
+     TRÊS CANAIS, de propósito redundantes: o glifo (forma), a palavra (texto) e a cor. Cor
+     sozinha reprova em daltonismo e é a razão de a palavra existir; o glifo é o que faz a lista
+     ser varrida pelo canto do olho, que é o uso real desta leitura.
+
+     O glifo é o mesmo §fonte para todas — ele diz "fonte", não diz "estado". Quem diz o estado é
+     a opacidade e a cor dele. Desenhar um glifo diferente por estado faria a lista parecer quatro
+     coisas distintas quando são a mesma coisa em quatro saúdes.                              */
+  #consciencia .cs-fonte .g{flex:0 0 auto;display:inline-flex;color:var(--mut);opacity:.55}
+  #consciencia .cs-fonte .g .jico{width:17px;height:17px}
+  #consciencia .cs-fonte .e{flex:0 0 auto;font-size:10.5px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--mut)}
+  #consciencia .cs-fonte .i{flex:0 0 auto;min-width:5.4em;text-align:right}
+
+  #consciencia .cs-fonte.ok .g{color:var(--esf);opacity:.85}
+  #consciencia .cs-fonte.velho .g,#consciencia .cs-fonte.velho .e,
   #consciencia .cs-fonte.velho .i{color:var(--amber)}
+  #consciencia .cs-fonte.velho .g{opacity:1}
+  #consciencia .cs-fonte.crit .g,#consciencia .cs-fonte.crit .e,
   #consciencia .cs-fonte.crit .i{color:var(--rose)}
+  #consciencia .cs-fonte.crit .g{opacity:1}
+  /* Sem medição: o glifo fica FANTASMA, não vermelho. Desconhecimento não é alarme — pintar de
+     crítico o que não foi apurado é inventar um achado (a mesma lei do INDISPONÍVEL ≠ 0). */
+  #consciencia .cs-fonte.mudo .g{opacity:.28}
+  #consciencia .cs-fonte.mudo .n,#consciencia .cs-fonte.mudo .e,
+  #consciencia .cs-fonte.mudo .i{color:var(--mut);font-style:italic}
+
+  /* A fonte parada PULSA — é a única linha desta tela que pede ação, e o resto do deck já se
+     move. Deriva do relógio como toda respiração da casa; os dois pisos desligam logo abaixo. */
+  #consciencia .cs-fonte.crit .g{animation:csFontePara calc(var(--bpm) * 2) ease-in-out infinite}
+  @keyframes csFontePara{0%,100%{opacity:1}50%{opacity:.34}}
   #consciencia .cs-vazio{display:flex;gap:11px;align-items:flex-start;padding:6px 0}
   #consciencia .cs-vazio .jico{width:24px;height:24px;flex:0 0 auto;color:var(--mut)}
 
@@ -3091,8 +3125,12 @@
 
   @media (prefers-reduced-motion:reduce){
     #consciencia{transition:none}
-    #consciencia .cs-batida span{animation:none;opacity:.5;width:100%}}
+    #consciencia .cs-batida span{animation:none;opacity:.5;width:100%}
+    #consciencia .cs-fonte.crit .g{animation:none;opacity:1}}
   body.fps-baixo #consciencia .cs-batida span{animation:none;opacity:.5;width:100%}
+  /* Parado o glifo continua vermelho e a palavra continua "parada" — o pulso era ênfase, não a
+     informação. Nenhuma leitura se perde com ele desligado. */
+  body.fps-baixo #consciencia .cs-fonte.crit .g{animation:none;opacity:1}
 
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════

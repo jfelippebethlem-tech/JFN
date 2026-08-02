@@ -34,6 +34,7 @@ export function cenaPonteiro(x, y) { _ckMX = x; _ckMY = y; }
 /* ══ CACHES DE SONDA ══ */
 var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes da def
 var _nuVid={};    // idem para o núcleo holográfico (um loop por esfera)
+var _nuPost={};   // e para o POSTER de cada núcleo — nem toda esfera tem .jpg (ver `nucleoViva`)
 var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -299,7 +300,8 @@ function _holoPiso(g,bmp,c,W,H,alt){
    v53: o loop deixa de ser fixo no rj — cada esfera tem o seu (ambar na prefeitura,
    violeta no transversal), no MESMO padrao da nebulosa: webm antes do mp4, poster
    .jpg por baixo, sonda HEAD uma vez por nome, reduced-motion e modo sobrio apagam.
-   Estado e Inicio seguem no nucleo-holo-rj (que nao tem .jpg — sem poster, sem erro). */
+   Estado e Inicio seguem no nucleo-holo-rj, que nao tem .jpg: o poster e sondado por HEAD e so
+   entra se existir — a versao anterior atribuia o poster sem condicao e gerava 404 no console. */
 export async function nucleoViva(){
   const box=$('ck-nucleo');if(!box)return;
   const mapa={inicio:'nucleo-holo-rj',estado:'nucleo-holo-rj',
@@ -322,7 +324,17 @@ export async function nucleoViva(){
     v.addEventListener('playing',()=>v.classList.add('on'));
     box.insertBefore(v,box.firstChild);}
   if(v.dataset.nu!==nome){v.classList.remove('on');v.dataset.nu=nome;
-    v.poster='/static/assets/'+nome+'.jpg';
+    /* O comentario acima dizia "sem poster, sem erro" e a linha abaixo dizia o contrario: o
+       poster era atribuido SEM condicao, e `nucleo-holo-rj.jpg` nao existe. Resultado medido:
+       um 404 no console em toda carga das esferas Inicio e Estado — as duas mais visitadas.
+       Poster ausente nao e falha (o veu so acende no `playing`), mas 404 recorrente ensina a
+       ignorar o console, que e onde os cinco bugs do IIFE aparecem. Sonda uma vez por nome,
+       no mesmo idioma do HEAD que a linha de cima ja usa: se um dia o .jpg for gerado, ele
+       entra sozinho. */
+    if(_nuPost[nome]===undefined){
+      try{_nuPost[nome]=(await fetch('/static/assets/'+nome+'.jpg',{method:'HEAD'})).ok}
+      catch(e){_nuPost[nome]=false}}
+    if(_nuPost[nome])v.poster='/static/assets/'+nome+'.jpg';else v.removeAttribute('poster');
     /* v41.1: par de sources — webm primeiro (Chromium sem H.264 decodifica VP9;
        o Chrome real pega qualquer um). O que faltar cai pro proximo. */
     v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'

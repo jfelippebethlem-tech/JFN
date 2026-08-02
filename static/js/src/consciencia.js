@@ -29,6 +29,24 @@ const MARCHA = {
   enxurrada: {t: 'enxurrada', d: 'muitos eventos no minuto, ou a VM sob carga. Tensão máxima.'},
 };
 
+/* ── os estados do frescor, como a ROTA os nomeia ─────────────────────────────────────────────
+   `/api/fontes/frescor` já classifica cada fonte em ok/atenção/crítico, com o critério de cada
+   uma (a folha do Estado é mensal, o PNCP é semanal — 6 dias significa coisas diferentes nas
+   duas). Até aqui a tela jogava essa classificação fora e reclassificava por idade crua, com um
+   único corte em 14 dias: o PNCP com 6 dias e estado `atencao` aparecia neutro, igual a uma
+   fonte coletada hoje. Quem decide o estado é quem conhece a cadência — a rota. Esta tabela só
+   traduz o veredito em glifo, cor e palavra.
+
+   `sem_medicao` é uma quarta linha de propósito, e não um sinônimo de crítico: fonte sem idade
+   medida não é uma fonte parada, é uma fonte sobre a qual não se sabe. Pintar de vermelho seria
+   afirmar o que não foi apurado — a mesma regra que separa INDISPONÍVEL de zero. */
+const ESTADO_FONTE = {
+  ok: {c: 'ok', t: 'viva', d: 'dentro da cadência esperada desta fonte.'},
+  atencao: {c: 'velho', t: 'atrasada', d: 'passou da cadência esperada, mas ainda não é ausência.'},
+  critico: {c: 'crit', t: 'parada', d: 'muito além da cadência — trate como fonte parada até provar o contrário.'},
+  sem_medicao: {c: 'mudo', t: 'sem medição', d: 'não há idade apurada. Isto não é zero nem atraso: é desconhecimento.'},
+};
+
 let _lerRitmo = () => ({marcha: 'vigilia', eventosPorMinuto: 0, load1: 0, sweep: false});
 let _fluxo = [];          // últimos eventos, os mais novos primeiro
 let _vitais = null;       // último batimento recebido
@@ -133,10 +151,20 @@ async function pintarFrescor() {
   const ord = [...fontes].sort((a, b) => (b.idade_dias ?? -1) - (a.idade_dias ?? -1));
   alvo.innerHTML = ord.map(f => {
     const d = f.idade_dias;
-    const cls = f.estado === 'critico' ? ' crit' : (d != null && d > 14 ? ' velho' : '');
+    /* Se a rota mudar de vocabulário, o fallback NÃO promove a crítico: sem veredito da rota, o
+       máximo que a idade crua sustenta é "atrasada". Alarme só com quem sabe a cadência. */
+    const est = ESTADO_FONTE[f.estado] || (d == null ? ESTADO_FONTE.sem_medicao
+                                                     : (d > 14 ? ESTADO_FONTE.atencao : ESTADO_FONTE.ok));
     const idade = d == null ? 'sem medição' : (d === 0 ? 'hoje' : fmtN(d) + ' d');
-    return `<div class="cs-fonte${cls}" title="${esc(f.detalhe || '')}">
-      <span class="n">${esc(f.fonte || '')}</span><span class="i">${idade}</span></div>`;
+    /* O `title` junta as duas coisas que o operador precisa junto: o que o estado SIGNIFICA e a
+       nota da própria rota (cadência do timer, qual campo foi medido). Fonte sem detalhe fica só
+       com o significado — nunca com um tooltip vazio. */
+    const dica = est.d + (f.detalhe ? ' · ' + f.detalhe : '');
+    return `<div class="cs-fonte ${est.c}" title="${esc(dica)}">
+      <span class="g" aria-hidden="true">${svgIco('§fonte')}</span>
+      <span class="n">${esc(f.fonte || '')}</span>
+      <span class="e">${est.t}</span>
+      <span class="i">${idade}</span></div>`;
   }).join('');
 }
 
