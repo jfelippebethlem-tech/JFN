@@ -1,3 +1,5 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v57 {
 /* ══ v57 · A VARREDURA QUE FALTAVA (§5) ═══════════════════════════════════════════════════════
    Sete correções medidas pelo it-campo na 4ª rodada. Cada bloco diz o número medido, porque é o
    número — não a impressão — que justifica mexer numa peça já aprovada. */
@@ -103,4 +105,4 @@
    esfera, ele deixaria de ser acento e viraria mais uma linha. */
   .jico .no{fill:var(--amb-no);stroke:none}
   :root{--amb-no:oklch(0.80 0.15 75)}
-
+}

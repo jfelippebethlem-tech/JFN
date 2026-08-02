@@ -1,3 +1,5 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v58 {
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    v58 — O RELÓGIO. Uma propriedade só, `--bpm`, e toda a respiração da cena deriva dela.
 
@@ -60,9 +62,6 @@
   .aura{animation:auraDrift calc(var(--bpm)*10) ease-in-out infinite alternate}
   #aurora{animation:auroraFlow calc(var(--bpm)*10) ease-in-out infinite alternate}
   #esfnebula{animation:nebulaDrift calc(var(--bpm)*23) ease-in-out infinite alternate}
-  /* `!important` porque a regra original da v55 tem `!important` — sem ele esta perde. */
-  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),
-                            sabreBreath var(--bpm) ease-in-out .3s infinite!important}
 
   /* Os dois pisos continuam de pé, e o relógio não é exceção: sem movimento, sem marcha. */
   @media (prefers-reduced-motion:reduce){
@@ -388,3 +387,4 @@
   .ck-nucleo:has(video.mesa.on)::before{opacity:0}
   @media (prefers-reduced-motion:reduce){.ck-nucleo video.mesa{display:none}}
   @media (prefers-reduced-transparency:reduce){.ck-nucleo video.mesa.on{opacity:.2}}
+}

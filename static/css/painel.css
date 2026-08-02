@@ -1,3 +1,6 @@
+@layer base, sobrio, mestras, v54, v55, v57, v58, v59;
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer base {
 
   /* ── Design system v7 "REATOR" — organismo vivo ──────────────────────────
      Brief do dono (2026-07-19): Jarvis × lightsaber × Apple Glass. Cores vivas,
@@ -117,7 +120,6 @@
     background:var(--bg2);font-family:var(--mono);font-size:11px;color:var(--mut)}
   .ck-fchip .fled{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
   .ck-fchip .fnm{color:var(--tx2)} .ck-fchip .fage{color:var(--dim)}
-  @media (prefers-reduced-motion:reduce){.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
 
   /* ── NÚCLEO ORGÂNICO — órbitas de domínios ao redor do reator (conceito "fluxo") ── */
   .ck-nucleo{position:relative;height:clamp(360px,46vw,540px);border:1px solid var(--bd2);border-radius:var(--r2);
@@ -713,9 +715,6 @@
   /* marca = mini-reator: núcleo laranja num anel de íon */
   .brand .lg{background:radial-gradient(circle at 50% 50%,var(--flame-hi) 0 22%,var(--ion) 34%,var(--ion-d) 100%);
     box-shadow:0 0 14px -2px color-mix(in oklch,var(--ion) 65%,transparent),inset 0 0 8px oklch(0 0 0/.45);color:oklch(0.98 0 0)}
-  @media (prefers-reduced-motion:reduce){
-    .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
-    .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
   /* TERRITÓRIO GLOBAL — o Estado do RJ atrás de TODA aba (não só o cockpit).
      Malha real do IBGE, tingida pela cor da esfera ativa, varrida por um radar.
      Fica no fundo, discreto: o dado sempre lê primeiro. */
@@ -750,7 +749,6 @@
      e é ele que pulsa agora, em opacity. O brilho antes obtido por animação virou valor ESTÁTICO no
      meio da faixa — visualmente é o pico que se via, sem custo por quadro. */
   .sph.on{box-shadow:var(--lift),0 0 33px -6px color-mix(in oklch,var(--sphc) 64%,transparent)}
-  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),sabreBreath 2.6s ease-in-out .3s infinite!important}
   @keyframes sabreBreath{0%,100%{opacity:1}50%{opacity:.72}}
   .cover-seal{transform-style:preserve-3d;box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 9px 28px -9px color-mix(in oklch,var(--esf) 72%,transparent);
     transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
@@ -859,9 +857,6 @@
   .btn,.chip,.search .az,.htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit,.sheet .x{
     transition:transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .18s,color .18s,background .18s,filter .18s}
   nav.tabs button{transition:color .15s,transform .22s cubic-bezier(.2,.7,.2,1)}
-  /* orçamento de vida: aba oculta → TODA animação CSS pausa (canvas já pausam via RAF).
-     Zero mudança visual com a aba aberta — só CPU devolvida quando ninguém está olhando. */
-  html.rest *{animation-play-state:paused !important}
   /* esferas roláveis: fade lateral avisa que há mais conteúdo (scrollbar é escondida) */
   .spheres.scrollx{-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);mask-image:linear-gradient(90deg,#000 92%,transparent)}
   /* toast + confirm da casa (substituem alert/confirm nativos) */
@@ -1271,18 +1266,6 @@
     animation:sabreIgnic .38s cubic-bezier(.2,.9,.25,1.2),
               sabreFlash .55s ease-out,
               sabreHum 3.1s ease-in-out .55s infinite}
-  nav.tabs button.on::after{height:3px;--sbr:var(--esf);
-    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
-    background:linear-gradient(180deg,
-      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
-      var(--sbr-core) 38%,var(--sbr-core) 62%,
-      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
-    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
-               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
-               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
-    animation:sabreIgnic .3s cubic-bezier(.2,.9,.25,1.2),
-              sabreFlash .5s ease-out,
-              sabreHum 3.1s ease-in-out .5s infinite!important}
   /* a esfera ativa acende a própria lâmina no pé — é onde o olho pousa
      primeiro, e é a troca de esfera que o dono vê o dia inteiro. */
   .sph.on::after{content:"";position:absolute;left:10%;right:10%;bottom:-1px;height:3px;
@@ -1298,10 +1281,6 @@
     animation:sabreIgnic .34s cubic-bezier(.2,.9,.25,1.2),
               sabreFlash .52s ease-out,
               sabreHum 3.1s ease-in-out .52s infinite}
-  /* quem pede menos movimento CONTINUA com a lâmina acesa — sai o zumbido e a
-     ignição, fica a estética. Apagar o sabre seria tirar a identidade. */
-  @media (prefers-reduced-motion:reduce){
-    .cover::before,nav.tabs button.on::after,.sph.on::after{animation:none!important;filter:none}}
 
   /* ══ celular: as esferas se SOBREPUNHAM ════════════════════════════════════
      Raiz medida a 390px: `.sph{flex:1;min-width:0}` deixa o botão encolher
@@ -1387,47 +1366,6 @@
      área de acerto. O sublinhado pontilhado desce 3px junto, no celular apenas. */
   @media (pointer:coarse){ .clk{padding:3px 0} }
 
-  /* ── no celular o SCORE saía da tela ─────────────────────────────────────
-     A tabela do radar tem 4 colunas e rola na horizontal dentro do card — o que
-     é correto. Só que a coluna que sai é a ÚLTIMA, e a última é o **score**: o
-     número pelo qual a tabela existe. O usuário no telefone via nome e sinais e
-     não via a nota, sem nem saber que havia mais para o lado.
-     Coluna grudada na borda direita: os sinais rolam POR BAIXO dela e o score
-     fica sempre à vista. Fundo opaco e sombra para ler como coluna suspensa —
-     sem isso o texto de baixo aparece através.
-
-     ARMADILHA QUE ME CUSTOU TRÊS RODADAS, e vale para o arquivo inteiro: uma
-     edição minha deixou um FECHA-COMENTÁRIO órfão no meio deste bloco. O
-     comentário fechou cedo, o texto seguinte virou seletor inválido e o parser
-     consumiu o "@media" de baixo como bloco de declaração dele — a regra
-     simplesmente não existia. Eu culpei o "right", depois a margem, depois o
-     "border-collapse" (que é limitação real do Chrome, mas NÃO era a causa aqui).
-     Uma consulta ao DOM vivo — getComputedStyle(td).position devolvendo "static"
-     com a media query casando — matou as três hipóteses de uma vez.
-     **Não teorize sobre CSS que não pegou: pergunte ao elemento.**
-     E NUNCA escreva os dois caracteres de fecha-comentário dentro de um
-     comentário, nem entre crases: foi exatamente assim que esta explicação
-     reproduziu o próprio bug que descreve.
-
-     Escolhas do desenho: no telefone o medidor de 64px sai (o número já diz 47) e
-     a coluna encolhe para o tamanho do número.
-
-     A fresta dos 15px: o card tem "padding:4px 15px" INLINE e o sticky ancora na
-     caixa de padding, então sobrava uma tira na borda por onde o texto dos sinais
-     aparecia. Duas curas foram tentadas e falharam, cada uma por um motivo que
-     vale guardar: margem negativa não faz nada porque **margem não se aplica a
-     display:table-cell**; e uma 2ª sombra sólida também não cobriu. A cura é não
-     ter fresta — matar o padding da direita do card. Como o padding é inline, só
-     ":has() + !important" alcança, e é o único !important que este arquivo usa. */
-  @media (max-width:600px){
-    .card:has(#radar-tbl){padding-right:0!important}
-    #radar-tbl thead th:last-child,#radar-tbl tbody td:last-child{
-      position:sticky;right:0;z-index:1;padding-left:10px;padding-right:14px;
-      background:var(--card);
-      box-shadow:-12px 0 14px -9px oklch(0 0 0/.6)}
-    #radar-tbl tbody td:last-child .meter{display:none}
-  }
-
   /* ── o A→Z tinha saído de dentro do campo de busca ───────────────────────
      A MESMA armadilha do v12.3 (`.nu-chip`), num elemento que passou batido:
      o bloco do vidro líquido declara `.btn,.chip,.search .az,…{position:relative}`
@@ -1450,12 +1388,6 @@
      aprovado no ticker. Em px (não %) para não comer meia aba em tela larga. */
   nav.tabs{-webkit-mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
            mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
-
-  /* menos movimento: a linha aparece pronta, o facho e o radar somem. */
-  @media (prefers-reduced-motion:reduce){
-    tbody tr,.barw .row,thead tr,tbody tr:hover,.barw .row:hover{animation:none!important}
-    tbody tr:hover,.barw .row:hover{background-image:none;
-      background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}
   /* aba oculta: `html.rest *` (v10) já pausa tudo — nada a declarar aqui. */
 
 
@@ -2458,102 +2390,11 @@
     animation-delay:min(calc(var(--i,0) * 26ms),380ms),var(--d,0ms)}
   @media (prefers-reduced-motion:reduce){
     #view .grid>.card.rise,#view .cols>.card.rise{animation:none;opacity:1}}
+}
 
-/* ══ v49 · MODO SÓBRIO MEDIDO — o painel mede a máquina em que está e recua ═════════════════════
-   O PROBLEMA, EM NÚMERO. Medido com Playwright nesta VM (2 vCPU): **1-2 FPS com a página PARADA**,
-   com 57 animações `infinite` ativas. É isso que o dono descreve como "fica piscando": a 1 FPS uma
-   respiração de 2,9 s não respira — pisca, porque cada quadro é um salto grande.
+/* reaberto — bloco(s) de estrato posterior que declararam `@camada: base` */
+@layer base {
 
-   POR QUE ESTA LISTA. Quinze `@keyframes` infinitas animam `filter`, spread de `box-shadow` ou
-   `background-position` — as três propriedades que forçam REPINTURA do elemento a cada quadro
-   (diferente de `opacity`/`transform`, que o compositor resolve na GPU). Em máquina folgada isso
-   passa; em 2 vCPU, é o orçamento inteiro.
-
-   POR QUE NÃO APAGUEI. O dono pediu explicitamente o efeito Jarvis pulsando, e em máquina capaz ele
-   custa pouco e vale muito. Então o painel MEDE (`_medirFps`, no fim do boot) e só recua onde
-   precisa. Quem tem GPU vê o painel inteiro; a VM vê o painel legível. `prefers-reduced-motion`
-   continua valendo por cima disto — são eixos diferentes: um é preferência declarada, este é
-   capacidade medida. */
-  body.fps-baixo #hologrid,
-  body.fps-baixo #rjbg,
-  body.fps-baixo .card.hl, body.fps-baixo .card.hl.rise, body.fps-baixo .card.hl:hover,
-  body.fps-baixo .card.hl.rise:hover,
-  body.fps-baixo .card::after, body.fps-baixo .ck-hero::after,
-  body.fps-baixo .ck-ved,
-  body.fps-baixo .cover-row::after,
-  body.fps-baixo .cover-seal .jico,
-  body.fps-baixo .cover::before, body.fps-baixo .cover.estado::before,
-  body.fps-baixo .cover.prefeitura::before, body.fps-baixo .cover.geral::before,
-  body.fps-baixo .grid::after, body.fps-baixo .cols::after,
-  body.fps-baixo .nu-sweep.on,
-  body.fps-baixo .sev-alta, body.fps-baixo .grave, body.fps-baixo td .pill.alto,
-  body.fps-baixo .sev-media, body.fps-baixo .medio, body.fps-baixo td .pill.medio,
-  body.fps-baixo .sph.on .i .jico,
-  body.fps-baixo tbody tr:hover, body.fps-baixo .barw .row:hover,
-  body.fps-baixo .btn>.hlx::before, body.fps-baixo .chip>.hlx::before,
-  body.fps-baixo .tab>.hlx::before, body.fps-baixo .htop a>.hlx::before{
-    animation:none!important}
-  /* o sabre da aba ativa e o selo continuam vivos: já pulsam em `opacity`, que é de graça. */
-  /* a nebulosa mantém o drift (`transform`) e perde só o filtro, que já é estático desde o v49. */
-  body.fps-baixo #esfnebula{animation-duration:120s}
-  /* v50 · O BLUR DE FUNDO SAI JUNTO — e a superfície fica OPACA no mesmo golpe.
-     `backdrop-filter` obriga o navegador a LER DE VOLTA o framebuffer para borrar o que está atrás
-     (`GPU stall due to ReadPixels`, medido no console das duas viewports). São 10 declarações, e
-     elas ficam sobre canvas de tela cheia. Tirar o blur sozinho seria PIOR: `--glass` é 76% opaco,
-     então 24% do conteúdo apareceria NÍTIDO atravessando o cabeçalho — o texto embolado que
-     aparece no topo da captura mobile. Por isso as duas coisas andam juntas, como já faz a regra
-     de `prefers-reduced-transparency` logo acima. */
-  /* O blur sai de TUDO — enumerar seletor a seletor já deixou 10 elementos para trás numa
-     verificação com getComputedStyle (`.nu-chip` ×7, `.nu-sweep`, `.tabs`, `.ov`), e o ReadPixels
-     continuou. Aqui a pergunta é feita ao elemento, não à lista. */
-  body.fps-baixo *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-  /* ...e as superfícies de VIDRO ficam opacas, senão o conteúdo de trás aparece nítido através
-     delas. A cortina `.ov` fica de fora de propósito: escurecer o fundo é a função dela. */
-  body.fps-baixo header, body.fps-baixo #holofeed, body.fps-baixo .card,
-  body.fps-baixo .ck-hero, body.fps-baixo .modal, body.fps-baixo .sheet,
-  body.fps-baixo .tabs, body.fps-baixo .nu-chip, body.fps-baixo .nu-sweep{
-    background:var(--bg2)}
-
-  /* v50 · CABEÇALHO OPACO NA TELA ESTREITA. Independe da medição: no celular a barra fixa cobre
-     proporcionalmente muito mais da tela (152 px de 844 = 18%), e ali o vidro translúcido deixa o
-     conteúdo rolar visível POR BAIXO do texto do cabeçalho. Vidro é enfeite; legibilidade não é. */
-  @media (max-width:820px){
-    :root{--painel-topo-opaco:1}
-    header{background:var(--bg2)!important;
-      backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-  }
-  /* aviso honesto: o modo sóbrio é VISÍVEL, nunca silencioso — degradação calada é o que faz
-     ninguém descobrir que o painel está diferente do que o autor desenhou. */
-  body.fps-baixo #modo-sobrio{display:inline-flex}
-  #modo-sobrio{display:none;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);
-    border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;cursor:help}
-
-/* ── v49 · FUNÇÕES MESTRAS no cockpit (um botão por comando, derivado de capabilities.yaml) ── */
-.ck-caps{margin:18px 0 6px}
-.ck-caps .caps-g{margin:10px 0 14px}
-.ck-caps .caps-gt{font-size:11.5px;letter-spacing:.4px;color:var(--dim);margin:0 0 7px;font-weight:600;display:flex;align-items:center;gap:6px}
-/* o emoji do titulo de grupo nasce em capabilities.yaml (menu.grupo); o gerador o separa
-   em grupo_ic e aqui ele vira glifo Lucide, como o resto do painel. Sem largura explicita
-   um <svg> sem width ocupa a linha inteira — todo .jico da casa e dimensionado. */
-.ck-caps .caps-gi .jico{width:14px;height:14px;color:currentColor}
-.ck-caps .btn{gap:7px;flex-wrap:wrap}   /* o chip do comando desce de linha em vez de espremer o rótulo */
-.ck-caps .caps-cmd{font-family:var(--mono);font-size:10.5px;opacity:.62;
-  border-left:1px solid var(--bd2);padding-left:7px;margin-left:2px}
-
-/* ══ v54 · O NÚMERO SAI INTEIRO — fim da elipse no VALOR ════════════════════════════════════════
-   Medido pelo it-campo: `.v` da JANELA OBSERVADA com clientWidth 151 para scrollWidth 221 —
-   a tela mostrava "2023-03 a …" no lugar de "2023-03 a 2026-07"; a 375px o Estado virava
-   "R$ 133,5 …". Em painel de auditoria, número cortado é número ERRADO: quem der print leva o
-   valor truncado como se fosse o dado. Rótulo pode ser elidido; VALOR nunca.
-   Três medidas juntas, nesta ordem de preferência: (1) corpo fluido — encolhe com a viewport em
-   vez de cortar; (2) quebra de linha permitida, que é o piso que garante o valor inteiro em
-   qualquer largura; (3) `overflow:visible`, para nada mais ser decepado pela caixa.
-   O clamp mantém o desktop idêntico (teto 1.35rem = os mesmos 21.6px) e só cede na tela estreita:
-   a 375px dá ~17,3px, e "R$ 133,5 bi" (11 caracteres monoespaçados) passa a caber na coluna. */
-  .kpi .v{font-size:clamp(15px,calc(0.95rem + 0.55vw),1.35rem);
-    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
-  .ck-inst .val{font-size:clamp(18px,calc(1.05rem + 0.7vw),26px);
-    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
   /* `.kpi{overflow:hidden}` (acima) segue valendo — serve ao sheen do ::before e não corta nada
      aqui: o cartão não tem altura fixa, então a segunda linha do valor faz a caixa CRESCER. */
 
@@ -2583,113 +2424,6 @@
    (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
    `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
   .btn:hover{background-size:100% 1.5px,100% 100%}
-
-/* ══ v54 · CONTRASTE lote 2 — o texto pequeno que cai SOBRE A ARTE ═════════════════════════════
-   A pendência declarada no v40 ("os casos sobre-arte ficam para o lote 2, com o pixel
-   investigado"). O caso medido: o parágrafo da escala do Radar (`.dim`, 12px,
-   oklch(0.64 0.03 240), background transparent) passa por cima do litoral aceso do #rjbg — sobre
-   pixel claro o contraste cai abaixo de 4.5:1. Nos cards isso não acontece: o card já é o scrim.
-   Quem está descoberto é o `.dim` solto no miolo, filho direto do quadro da aba.
-   A cura é dar ao bloco o fundo que ele não tinha, em vez de dessaturar a arte:
-   scrim de 92% de --bg2 + o token subindo de 0.64 para 0.78 de luminância.
-   MEDIDO (composição em sRGB, pior pixel do litoral tomado como ~0.95): fundo efetivo Y≈0.0087,
-   texto oklch(0.78) Y≈0.4746 → 8,9:1. Antes, sobre o mesmo pixel, ficava em ~3,2:1. */
-  #view .fade > .dim,#view > .dim{
-    color:oklch(0.78 0.025 240);
-    background:color-mix(in oklch,var(--bg2) 92%,transparent);
-    border:1px solid var(--bd2);border-radius:9px;padding:9px 12px}
-  @media (prefers-reduced-transparency:reduce){
-    #view .fade > .dim,#view > .dim{background:var(--bg2)}}
-
-/* ══ v54 · O DOSSIÊ É UM DIÁLOGO ═══════════════════════════════════════════════════════════════
-   Com o #ov aberto a página de trás continuava rolando — duas barras de rolagem ao mesmo tempo,
-   e o dedo no celular arrastava o fundo em vez da folha. A trava fica no <body>, posta pelo
-   mesmo observador que liga o foco preso (ver `_ovDialogo` em painel.js). */
-  body.ov-aberto{overflow:hidden}
-  .sheet:focus{outline:none}
-  .sheet:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
-
-/* ══ v54 · ENDEREÇO LONGO NÃO RASGA MAIS A FOLHA ═══════════════════════════════════════════════
-   Medido em dois dossiês: `.sheet` com 816px de rolagem horizontal, culpado o `.kv > b.right` do
-   endereço pedindo 587px num espaço de 481px. Duas regras se somavam: `.kv` é flex e o valor não
-   quebrava, e `.card .right{white-space:nowrap;flex:0 0 auto}` proibia tanto a quebra quanto o
-   encolhimento. Agora o valor pode quebrar e ceder largura; continua alinhado à direita. */
-  .kv{align-items:flex-start}
-  .kv > b,.kv > .right{min-width:0;flex:0 1 auto;white-space:normal;overflow-wrap:anywhere}
-  .kv > b.right,.kv > .right{text-align:right}
-
-/* ══ v54 · EVIDÊNCIA INTEIRA NO DOM, recolhida na tela ═════════════════════════════════════════
-   O achado da perícia era cortado com `slice(0,260)` e terminava no meio da palavra
-   ("…confrontar com o relatorio do o"). O texto agora entra COMPLETO e quem recolhe é o CSS:
-   4 linhas visíveis, clique (ou Enter/Espaço, via a11yfy) abre o resto. Nada de reticências
-   mentirosas — o dado está lá, inteiro, para quem copiar. */
-  .ev-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;
-    overflow:hidden;cursor:pointer}
-  .ev-clamp.aberto{display:block;-webkit-line-clamp:none;overflow:visible}
-  .ev-clamp::after{content:" ⌄";color:var(--accent);font-weight:700}
-  .ev-clamp.aberto::after{content:" ⌃"}
-
-/* ══ v55 · A MESMA SALA, VISTA DE OUTRO PONTO — viagem de câmera entre esferas ═════════════════
-   As quatro esferas liam como quatro páginas: o fundo trocava de assunto e a nebulosa dava um
-   corte seco. Agora a cena VIAJA. Tudo que se move aqui é `transform`/`opacity` (compositor,
-   custo ~zero) — nada de filter/box-shadow animado, que foi o que já derrubou o painel a 1-2 FPS.
-   `--viagem` (+1/-1) vem do JS e é o SENTIDO: a câmera desliza para o lado da esfera de destino. */
-  body.viajando #esfnebula,body.viajando #holorj{
-    animation:camViaja .72s cubic-bezier(.22,.61,.24,1) both}
-  body.viajando #rjbg{animation:camViajaFundo .72s cubic-bezier(.22,.61,.24,1) both}
-  @keyframes camViaja{
-    0%{transform:translate3d(calc(var(--viagem,1) * 5%),0,0) scale(1.06);opacity:.35}
-    100%{transform:translate3d(0,0,0) scale(1);opacity:1}}
-  @keyframes camViajaFundo{
-    0%{transform:translate3d(calc(var(--viagem,1) * 2.2%),0,0)}
-    100%{transform:none}}
-  /* a lâmina que já existe no conduíte vira o CORTE da transição: uma varredura na cor da
-     esfera nova atravessa a barra e entrega a cena do outro lado. */
-  .cwipe{position:absolute;top:0;left:0;right:0;height:10px;pointer-events:none;
-    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 85%,white 12%),transparent);
-    animation:cwipeIda .72s cubic-bezier(.22,.61,.24,1) forwards;will-change:transform,opacity}
-  .cwipe.back{animation-name:cwipeVolta}
-  @keyframes cwipeIda{0%{transform:translateX(-100%);opacity:0}
-    18%{opacity:1}100%{transform:translateX(100%);opacity:0}}
-  @keyframes cwipeVolta{0%{transform:translateX(100%);opacity:0}
-    18%{opacity:1}100%{transform:translateX(-100%);opacity:0}}
-  @media (prefers-reduced-motion:reduce){
-    body.viajando #esfnebula,body.viajando #holorj,body.viajando #rjbg{animation:none}
-    .cwipe{display:none}}
-  body.fps-baixo .cwipe{display:none}
-
-/* ══ v55 · A ASSINATURA — o holograma do Estado do RJ ══════════════════════════════════════════
-   A peça é a silhueta REAL (mesma geometria do rj-malha.js) sobre o anel arc-reactor. Ela mora na
-   coluna direita, atrás do conteúdo, e só na esfera Estado. Duas decisões de leitura:
-   1) `mix-blend-mode:screen` + preto puro nas bordas da arte = sem caixa, sem retângulo;
-   2) `body.holo-on #rjbg` recua a malha para 45% — o holograma e o #rjbg desenham a MESMA
-      geografia, e dois Estados sobrepostos viram ruído. Quem estiver na frente lê; o outro cede.
-   Opacidade teto .30 sobre o fundo escuro: o texto que passa por cima continua no contraste
-   que já tinha (a camada é `screen` num fundo quase preto e fica atrás de `.card`, opaco). */
-  #holorj{position:fixed;right:-4vw;top:8vh;width:min(46vw,560px);height:min(46vw,560px);
-    z-index:0;pointer-events:none;opacity:0;transition:opacity 1.2s ease;
-    -webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);
-            mask-image:radial-gradient(closest-side,#000 55%,transparent)}
-  body.holo-on #holorj{opacity:.30}
-  #holorj video{width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1.2s ease;
-    mix-blend-mode:screen}
-  #holorj video.on{opacity:1}
-  body.holo-on #rjbg{opacity:.45;transition:opacity 1.2s ease}
-  @media (max-width:900px){#holorj{width:64vw;height:64vw;top:auto;bottom:14vh;right:-12vw}
-    body.holo-on #holorj{opacity:.20}}
-  @media (prefers-reduced-motion:reduce){#holorj{display:none}}
-  body.fps-baixo #holorj{display:none}
-
-/* ══ v55 · O ANEL RESPONDE A EVENTO REAL ═══════════════════════════════════════════════════════
-   Um `.khit` = um evento que chegou pelo SSE. O arco (carga da VM) não é tocado por isto: quem
-   mede continua medindo. Sem barramento, o anel fica parado — silêncio honesto, não animação
-   de enfeite fingindo tráfego. */
-  #kyber .khit{position:absolute;inset:-3px;border-radius:50%;pointer-events:none;
-    border:1.5px solid var(--kc,var(--saber));opacity:0;
-    animation:khitOnda .9s cubic-bezier(.16,.84,.34,1) forwards;will-change:transform,opacity}
-  #kyber .khit.crit{border-width:2px}
-  @keyframes khitOnda{0%{transform:scale(.62);opacity:.95}100%{transform:scale(1.75);opacity:0}}
-  @media (prefers-reduced-motion:reduce){#kyber .khit{display:none}}
 
 /* ══ v55 · BOTÃO USINADO — chanfro, profundidade, especular e curso ════════════════════════════
    O .btn era retângulo arredondado chapado. Agora é peça cortada: `clip-path` tira o canto
@@ -2771,6 +2505,164 @@
   .sph{--chanfro:8px;border-radius:0;
     clip-path:polygon(var(--chanfro) 0,100% 0,100% calc(100% - var(--chanfro)),
                       calc(100% - var(--chanfro)) 100%,0 100%,0 var(--chanfro))}
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer sobrio {
+
+  /* o sabre da aba ativa e o selo continuam vivos: já pulsam em `opacity`, que é de graça. */
+  /* a nebulosa mantém o drift (`transform`) e perde só o filtro, que já é estático desde o v49. */
+  body.fps-baixo #esfnebula{animation-duration:120s}
+  /* ...e as superfícies de VIDRO ficam opacas, senão o conteúdo de trás aparece nítido através
+     delas. A cortina `.ov` fica de fora de propósito: escurecer o fundo é a função dela. */
+  body.fps-baixo header, body.fps-baixo #holofeed, body.fps-baixo .card,
+  body.fps-baixo .ck-hero, body.fps-baixo .modal, body.fps-baixo .sheet,
+  body.fps-baixo .tabs, body.fps-baixo .nu-chip, body.fps-baixo .nu-sweep{
+    background:var(--bg2)}
+  /* aviso honesto: o modo sóbrio é VISÍVEL, nunca silencioso — degradação calada é o que faz
+     ninguém descobrir que o painel está diferente do que o autor desenhou. */
+  body.fps-baixo #modo-sobrio{display:inline-flex}
+  #modo-sobrio{display:none;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);
+    border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;cursor:help}
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer mestras {
+/* ── v49 · FUNÇÕES MESTRAS no cockpit (um botão por comando, derivado de capabilities.yaml) ── */
+.ck-caps{margin:18px 0 6px}
+.ck-caps .caps-g{margin:10px 0 14px}
+.ck-caps .caps-gt{font-size:11.5px;letter-spacing:.4px;color:var(--dim);margin:0 0 7px;font-weight:600;display:flex;align-items:center;gap:6px}
+/* o emoji do titulo de grupo nasce em capabilities.yaml (menu.grupo); o gerador o separa
+   em grupo_ic e aqui ele vira glifo Lucide, como o resto do painel. Sem largura explicita
+   um <svg> sem width ocupa a linha inteira — todo .jico da casa e dimensionado. */
+.ck-caps .caps-gi .jico{width:14px;height:14px;color:currentColor}
+.ck-caps .btn{gap:7px;flex-wrap:wrap}   /* o chip do comando desce de linha em vez de espremer o rótulo */
+.ck-caps .caps-cmd{font-family:var(--mono);font-size:10.5px;opacity:.62;
+  border-left:1px solid var(--bd2);padding-left:7px;margin-left:2px}
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v54 {
+/* ══ v54 · O NÚMERO SAI INTEIRO — fim da elipse no VALOR ════════════════════════════════════════
+   Medido pelo it-campo: `.v` da JANELA OBSERVADA com clientWidth 151 para scrollWidth 221 —
+   a tela mostrava "2023-03 a …" no lugar de "2023-03 a 2026-07"; a 375px o Estado virava
+   "R$ 133,5 …". Em painel de auditoria, número cortado é número ERRADO: quem der print leva o
+   valor truncado como se fosse o dado. Rótulo pode ser elidido; VALOR nunca.
+   Três medidas juntas, nesta ordem de preferência: (1) corpo fluido — encolhe com a viewport em
+   vez de cortar; (2) quebra de linha permitida, que é o piso que garante o valor inteiro em
+   qualquer largura; (3) `overflow:visible`, para nada mais ser decepado pela caixa.
+   O clamp mantém o desktop idêntico (teto 1.35rem = os mesmos 21.6px) e só cede na tela estreita:
+   a 375px dá ~17,3px, e "R$ 133,5 bi" (11 caracteres monoespaçados) passa a caber na coluna. */
+  .kpi .v{font-size:clamp(15px,calc(0.95rem + 0.55vw),1.35rem);
+    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+  .ck-inst .val{font-size:clamp(18px,calc(1.05rem + 0.7vw),26px);
+    white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+
+/* ══ v54 · CONTRASTE lote 2 — o texto pequeno que cai SOBRE A ARTE ═════════════════════════════
+   A pendência declarada no v40 ("os casos sobre-arte ficam para o lote 2, com o pixel
+   investigado"). O caso medido: o parágrafo da escala do Radar (`.dim`, 12px,
+   oklch(0.64 0.03 240), background transparent) passa por cima do litoral aceso do #rjbg — sobre
+   pixel claro o contraste cai abaixo de 4.5:1. Nos cards isso não acontece: o card já é o scrim.
+   Quem está descoberto é o `.dim` solto no miolo, filho direto do quadro da aba.
+   A cura é dar ao bloco o fundo que ele não tinha, em vez de dessaturar a arte:
+   scrim de 92% de --bg2 + o token subindo de 0.64 para 0.78 de luminância.
+   MEDIDO (composição em sRGB, pior pixel do litoral tomado como ~0.95): fundo efetivo Y≈0.0087,
+   texto oklch(0.78) Y≈0.4746 → 8,9:1. Antes, sobre o mesmo pixel, ficava em ~3,2:1. */
+  #view .fade > .dim,#view > .dim{
+    color:oklch(0.78 0.025 240);
+    background:color-mix(in oklch,var(--bg2) 92%,transparent);
+    border:1px solid var(--bd2);border-radius:9px;padding:9px 12px}
+  @media (prefers-reduced-transparency:reduce){
+    #view .fade > .dim,#view > .dim{background:var(--bg2)}}
+
+/* ══ v54 · O DOSSIÊ É UM DIÁLOGO ═══════════════════════════════════════════════════════════════
+   Com o #ov aberto a página de trás continuava rolando — duas barras de rolagem ao mesmo tempo,
+   e o dedo no celular arrastava o fundo em vez da folha. A trava fica no <body>, posta pelo
+   mesmo observador que liga o foco preso (ver `_ovDialogo` em painel.js). */
+  body.ov-aberto{overflow:hidden}
+  .sheet:focus{outline:none}
+  .sheet:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+
+/* ══ v54 · ENDEREÇO LONGO NÃO RASGA MAIS A FOLHA ═══════════════════════════════════════════════
+   Medido em dois dossiês: `.sheet` com 816px de rolagem horizontal, culpado o `.kv > b.right` do
+   endereço pedindo 587px num espaço de 481px. Duas regras se somavam: `.kv` é flex e o valor não
+   quebrava, e `.card .right{white-space:nowrap;flex:0 0 auto}` proibia tanto a quebra quanto o
+   encolhimento. Agora o valor pode quebrar e ceder largura; continua alinhado à direita. */
+  .kv{align-items:flex-start}
+  .kv > b,.kv > .right{min-width:0;flex:0 1 auto;white-space:normal;overflow-wrap:anywhere}
+  .kv > b.right,.kv > .right{text-align:right}
+
+/* ══ v54 · EVIDÊNCIA INTEIRA NO DOM, recolhida na tela ═════════════════════════════════════════
+   O achado da perícia era cortado com `slice(0,260)` e terminava no meio da palavra
+   ("…confrontar com o relatorio do o"). O texto agora entra COMPLETO e quem recolhe é o CSS:
+   4 linhas visíveis, clique (ou Enter/Espaço, via a11yfy) abre o resto. Nada de reticências
+   mentirosas — o dado está lá, inteiro, para quem copiar. */
+  .ev-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;
+    overflow:hidden;cursor:pointer}
+  .ev-clamp.aberto{display:block;-webkit-line-clamp:none;overflow:visible}
+  .ev-clamp::after{content:" ⌄";color:var(--accent);font-weight:700}
+  .ev-clamp.aberto::after{content:" ⌃"}
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v55 {
+/* ══ v55 · A MESMA SALA, VISTA DE OUTRO PONTO — viagem de câmera entre esferas ═════════════════
+   As quatro esferas liam como quatro páginas: o fundo trocava de assunto e a nebulosa dava um
+   corte seco. Agora a cena VIAJA. Tudo que se move aqui é `transform`/`opacity` (compositor,
+   custo ~zero) — nada de filter/box-shadow animado, que foi o que já derrubou o painel a 1-2 FPS.
+   `--viagem` (+1/-1) vem do JS e é o SENTIDO: a câmera desliza para o lado da esfera de destino. */
+  body.viajando #esfnebula,body.viajando #holorj{
+    animation:camViaja .72s cubic-bezier(.22,.61,.24,1) both}
+  body.viajando #rjbg{animation:camViajaFundo .72s cubic-bezier(.22,.61,.24,1) both}
+  @keyframes camViaja{
+    0%{transform:translate3d(calc(var(--viagem,1) * 5%),0,0) scale(1.06);opacity:.35}
+    100%{transform:translate3d(0,0,0) scale(1);opacity:1}}
+  @keyframes camViajaFundo{
+    0%{transform:translate3d(calc(var(--viagem,1) * 2.2%),0,0)}
+    100%{transform:none}}
+  /* a lâmina que já existe no conduíte vira o CORTE da transição: uma varredura na cor da
+     esfera nova atravessa a barra e entrega a cena do outro lado. */
+  .cwipe{position:absolute;top:0;left:0;right:0;height:10px;pointer-events:none;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 85%,white 12%),transparent);
+    animation:cwipeIda .72s cubic-bezier(.22,.61,.24,1) forwards;will-change:transform,opacity}
+  .cwipe.back{animation-name:cwipeVolta}
+  @keyframes cwipeIda{0%{transform:translateX(-100%);opacity:0}
+    18%{opacity:1}100%{transform:translateX(100%);opacity:0}}
+  @keyframes cwipeVolta{0%{transform:translateX(100%);opacity:0}
+    18%{opacity:1}100%{transform:translateX(-100%);opacity:0}}
+  @media (prefers-reduced-motion:reduce){
+    body.viajando #esfnebula,body.viajando #holorj,body.viajando #rjbg{animation:none}
+    .cwipe{display:none}}
+  body.fps-baixo .cwipe{display:none}
+
+/* ══ v55 · A ASSINATURA — o holograma do Estado do RJ ══════════════════════════════════════════
+   A peça é a silhueta REAL (mesma geometria do rj-malha.js) sobre o anel arc-reactor. Ela mora na
+   coluna direita, atrás do conteúdo, e só na esfera Estado. Duas decisões de leitura:
+   1) `mix-blend-mode:screen` + preto puro nas bordas da arte = sem caixa, sem retângulo;
+   2) `body.holo-on #rjbg` recua a malha para 45% — o holograma e o #rjbg desenham a MESMA
+      geografia, e dois Estados sobrepostos viram ruído. Quem estiver na frente lê; o outro cede.
+   Opacidade teto .30 sobre o fundo escuro: o texto que passa por cima continua no contraste
+   que já tinha (a camada é `screen` num fundo quase preto e fica atrás de `.card`, opaco). */
+  #holorj{position:fixed;right:-4vw;top:8vh;width:min(46vw,560px);height:min(46vw,560px);
+    z-index:0;pointer-events:none;opacity:0;transition:opacity 1.2s ease;
+    -webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);
+            mask-image:radial-gradient(closest-side,#000 55%,transparent)}
+  body.holo-on #holorj{opacity:.30}
+  #holorj video{width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 1.2s ease;
+    mix-blend-mode:screen}
+  #holorj video.on{opacity:1}
+  body.holo-on #rjbg{opacity:.45;transition:opacity 1.2s ease}
+  @media (max-width:900px){#holorj{width:64vw;height:64vw;top:auto;bottom:14vh;right:-12vw}
+    body.holo-on #holorj{opacity:.20}}
+  @media (prefers-reduced-motion:reduce){#holorj{display:none}}
+  body.fps-baixo #holorj{display:none}
+
+/* ══ v55 · O ANEL RESPONDE A EVENTO REAL ═══════════════════════════════════════════════════════
+   Um `.khit` = um evento que chegou pelo SSE. O arco (carga da VM) não é tocado por isto: quem
+   mede continua medindo. Sem barramento, o anel fica parado — silêncio honesto, não animação
+   de enfeite fingindo tráfego. */
+  #kyber .khit{position:absolute;inset:-3px;border-radius:50%;pointer-events:none;
+    border:1.5px solid var(--kc,var(--saber));opacity:0;
+    animation:khitOnda .9s cubic-bezier(.16,.84,.34,1) forwards;will-change:transform,opacity}
+  #kyber .khit.crit{border-width:2px}
+  @keyframes khitOnda{0%{transform:scale(.62);opacity:.95}100%{transform:scale(1.75);opacity:0}}
+  @media (prefers-reduced-motion:reduce){#kyber .khit{display:none}}
   @media (max-width:520px){.btn{--chanfro:7px}.sph{--chanfro:6px}}
   /* o ::before do v14 varria o brilho mudando `background-position` no hover; ele agora é o fio
      do chanfro, e deslocar o fundo faria a aresta ESCORREGAR ao passar o mouse. Fixo. */
@@ -2785,7 +2677,9 @@
   .btn:focus-visible,.sph:focus-visible{outline:none;
     box-shadow:inset 0 0 0 2px var(--accent),inset 0 0 0 4px oklch(0 0 0/.55),var(--lift)}
   .sph:focus-visible{border-radius:0}
-
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v57 {
 /* ══ v57 · A VARREDURA QUE FALTAVA (§5) ═══════════════════════════════════════════════════════
    Sete correções medidas pelo it-campo na 4ª rodada. Cada bloco diz o número medido, porque é o
    número — não a impressão — que justifica mexer numa peça já aprovada. */
@@ -2891,7 +2785,9 @@
    esfera, ele deixaria de ser acento e viraria mais uma linha. */
   .jico .no{fill:var(--amb-no);stroke:none}
   :root{--amb-no:oklch(0.80 0.15 75)}
-
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v58 {
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    v58 — O RELÓGIO. Uma propriedade só, `--bpm`, e toda a respiração da cena deriva dela.
 
@@ -2954,9 +2850,6 @@
   .aura{animation:auraDrift calc(var(--bpm)*10) ease-in-out infinite alternate}
   #aurora{animation:auroraFlow calc(var(--bpm)*10) ease-in-out infinite alternate}
   #esfnebula{animation:nebulaDrift calc(var(--bpm)*23) ease-in-out infinite alternate}
-  /* `!important` porque a regra original da v55 tem `!important` — sem ele esta perde. */
-  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),
-                            sabreBreath var(--bpm) ease-in-out .3s infinite!important}
 
   /* Os dois pisos continuam de pé, e o relógio não é exceção: sem movimento, sem marcha. */
   @media (prefers-reduced-motion:reduce){
@@ -3282,6 +3175,9 @@
   .ck-nucleo:has(video.mesa.on)::before{opacity:0}
   @media (prefers-reduced-motion:reduce){.ck-nucleo video.mesa{display:none}}
   @media (prefers-reduced-transparency:reduce){.ck-nucleo video.mesa.on{opacity:.2}}
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v59 {
 
 /* ══════════════════════════════════════════════════════════════════════════════════════════════
    v59 — AS GRAMÁTICAS DE REVELAÇÃO (camada 4 do plano visual).
@@ -3476,3 +3372,137 @@
      evitado: na máquina lenta — que é exatamente onde o modo sóbrio liga — a camada não existia,
      e quem visse o painel só lá concluiria que ela nunca tinha sido feita. Desenho parado custa
      um quadro, uma vez. */
+
+}
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+/* A CAUDA NAO-CAMADADA — toda regra com `!important`, na ordem original.
+   Ler o cabecalho de tools/painel_css_camadar.py antes de tocar: a ordem destes
+   blocos E o desempate, e mexer nela inverte duelos de `!important` em silencio. */
+
+  @media (prefers-reduced-motion:reduce){.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
+  @media (prefers-reduced-motion:reduce){
+    .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
+    .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
+  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),sabreBreath 2.6s ease-in-out .3s infinite!important}
+  /* orçamento de vida: aba oculta → TODA animação CSS pausa (canvas já pausam via RAF).
+     Zero mudança visual com a aba aberta — só CPU devolvida quando ninguém está olhando. */
+  html.rest *{animation-play-state:paused !important}
+  nav.tabs button.on::after{height:3px;--sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .3s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .5s ease-out,
+              sabreHum 3.1s ease-in-out .5s infinite!important}
+  /* quem pede menos movimento CONTINUA com a lâmina acesa — sai o zumbido e a
+     ignição, fica a estética. Apagar o sabre seria tirar a identidade. */
+  @media (prefers-reduced-motion:reduce){
+    .cover::before,nav.tabs button.on::after,.sph.on::after{animation:none!important;filter:none}}
+
+  /* ── no celular o SCORE saía da tela ─────────────────────────────────────
+     A tabela do radar tem 4 colunas e rola na horizontal dentro do card — o que
+     é correto. Só que a coluna que sai é a ÚLTIMA, e a última é o **score**: o
+     número pelo qual a tabela existe. O usuário no telefone via nome e sinais e
+     não via a nota, sem nem saber que havia mais para o lado.
+     Coluna grudada na borda direita: os sinais rolam POR BAIXO dela e o score
+     fica sempre à vista. Fundo opaco e sombra para ler como coluna suspensa —
+     sem isso o texto de baixo aparece através.
+
+     ARMADILHA QUE ME CUSTOU TRÊS RODADAS, e vale para o arquivo inteiro: uma
+     edição minha deixou um FECHA-COMENTÁRIO órfão no meio deste bloco. O
+     comentário fechou cedo, o texto seguinte virou seletor inválido e o parser
+     consumiu o "@media" de baixo como bloco de declaração dele — a regra
+     simplesmente não existia. Eu culpei o "right", depois a margem, depois o
+     "border-collapse" (que é limitação real do Chrome, mas NÃO era a causa aqui).
+     Uma consulta ao DOM vivo — getComputedStyle(td).position devolvendo "static"
+     com a media query casando — matou as três hipóteses de uma vez.
+     **Não teorize sobre CSS que não pegou: pergunte ao elemento.**
+     E NUNCA escreva os dois caracteres de fecha-comentário dentro de um
+     comentário, nem entre crases: foi exatamente assim que esta explicação
+     reproduziu o próprio bug que descreve.
+
+     Escolhas do desenho: no telefone o medidor de 64px sai (o número já diz 47) e
+     a coluna encolhe para o tamanho do número.
+
+     A fresta dos 15px: o card tem "padding:4px 15px" INLINE e o sticky ancora na
+     caixa de padding, então sobrava uma tira na borda por onde o texto dos sinais
+     aparecia. Duas curas foram tentadas e falharam, cada uma por um motivo que
+     vale guardar: margem negativa não faz nada porque **margem não se aplica a
+     display:table-cell**; e uma 2ª sombra sólida também não cobriu. A cura é não
+     ter fresta — matar o padding da direita do card. Como o padding é inline, só
+     ":has() + !important" alcança, e é o único !important que este arquivo usa. */
+  @media (max-width:600px){
+    .card:has(#radar-tbl){padding-right:0!important}
+    #radar-tbl thead th:last-child,#radar-tbl tbody td:last-child{
+      position:sticky;right:0;z-index:1;padding-left:10px;padding-right:14px;
+      background:var(--card);
+      box-shadow:-12px 0 14px -9px oklch(0 0 0/.6)}
+    #radar-tbl tbody td:last-child .meter{display:none}
+  }
+
+  /* menos movimento: a linha aparece pronta, o facho e o radar somem. */
+  @media (prefers-reduced-motion:reduce){
+    tbody tr,.barw .row,thead tr,tbody tr:hover,.barw .row:hover{animation:none!important}
+    tbody tr:hover,.barw .row:hover{background-image:none;
+      background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}/* ══ v49 · MODO SÓBRIO MEDIDO — o painel mede a máquina em que está e recua ═════════════════════
+   O PROBLEMA, EM NÚMERO. Medido com Playwright nesta VM (2 vCPU): **1-2 FPS com a página PARADA**,
+   com 57 animações `infinite` ativas. É isso que o dono descreve como "fica piscando": a 1 FPS uma
+   respiração de 2,9 s não respira — pisca, porque cada quadro é um salto grande.
+
+   POR QUE ESTA LISTA. Quinze `@keyframes` infinitas animam `filter`, spread de `box-shadow` ou
+   `background-position` — as três propriedades que forçam REPINTURA do elemento a cada quadro
+   (diferente de `opacity`/`transform`, que o compositor resolve na GPU). Em máquina folgada isso
+   passa; em 2 vCPU, é o orçamento inteiro.
+
+   POR QUE NÃO APAGUEI. O dono pediu explicitamente o efeito Jarvis pulsando, e em máquina capaz ele
+   custa pouco e vale muito. Então o painel MEDE (`_medirFps`, no fim do boot) e só recua onde
+   precisa. Quem tem GPU vê o painel inteiro; a VM vê o painel legível. `prefers-reduced-motion`
+   continua valendo por cima disto — são eixos diferentes: um é preferência declarada, este é
+   capacidade medida. */
+  body.fps-baixo #hologrid,
+  body.fps-baixo #rjbg,
+  body.fps-baixo .card.hl, body.fps-baixo .card.hl.rise, body.fps-baixo .card.hl:hover,
+  body.fps-baixo .card.hl.rise:hover,
+  body.fps-baixo .card::after, body.fps-baixo .ck-hero::after,
+  body.fps-baixo .ck-ved,
+  body.fps-baixo .cover-row::after,
+  body.fps-baixo .cover-seal .jico,
+  body.fps-baixo .cover::before, body.fps-baixo .cover.estado::before,
+  body.fps-baixo .cover.prefeitura::before, body.fps-baixo .cover.geral::before,
+  body.fps-baixo .grid::after, body.fps-baixo .cols::after,
+  body.fps-baixo .nu-sweep.on,
+  body.fps-baixo .sev-alta, body.fps-baixo .grave, body.fps-baixo td .pill.alto,
+  body.fps-baixo .sev-media, body.fps-baixo .medio, body.fps-baixo td .pill.medio,
+  body.fps-baixo .sph.on .i .jico,
+  body.fps-baixo tbody tr:hover, body.fps-baixo .barw .row:hover,
+  body.fps-baixo .btn>.hlx::before, body.fps-baixo .chip>.hlx::before,
+  body.fps-baixo .tab>.hlx::before, body.fps-baixo .htop a>.hlx::before{
+    animation:none!important}
+  /* v50 · O BLUR DE FUNDO SAI JUNTO — e a superfície fica OPACA no mesmo golpe.
+     `backdrop-filter` obriga o navegador a LER DE VOLTA o framebuffer para borrar o que está atrás
+     (`GPU stall due to ReadPixels`, medido no console das duas viewports). São 10 declarações, e
+     elas ficam sobre canvas de tela cheia. Tirar o blur sozinho seria PIOR: `--glass` é 76% opaco,
+     então 24% do conteúdo apareceria NÍTIDO atravessando o cabeçalho — o texto embolado que
+     aparece no topo da captura mobile. Por isso as duas coisas andam juntas, como já faz a regra
+     de `prefers-reduced-transparency` logo acima. */
+  /* O blur sai de TUDO — enumerar seletor a seletor já deixou 10 elementos para trás numa
+     verificação com getComputedStyle (`.nu-chip` ×7, `.nu-sweep`, `.tabs`, `.ov`), e o ReadPixels
+     continuou. Aqui a pergunta é feita ao elemento, não à lista. */
+  body.fps-baixo *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+  /* v50 · CABEÇALHO OPACO NA TELA ESTREITA. Independe da medição: no celular a barra fixa cobre
+     proporcionalmente muito mais da tela (152 px de 844 = 18%), e ali o vidro translúcido deixa o
+     conteúdo rolar visível POR BAIXO do texto do cabeçalho. Vidro é enfeite; legibilidade não é. */
+  @media (max-width:820px){
+    :root{--painel-topo-opaco:1}
+    header{background:var(--bg2)!important;
+      backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  }
+  /* `!important` porque a regra original da v55 tem `!important` — sem ele esta perde. */
+  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),
+                            sabreBreath var(--bpm) ease-in-out .3s infinite!important}

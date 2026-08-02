@@ -1,3 +1,5 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v54 {
 /* ══ v54 · O NÚMERO SAI INTEIRO — fim da elipse no VALOR ════════════════════════════════════════
    Medido pelo it-campo: `.v` da JANELA OBSERVADA com clientWidth 151 para scrollWidth 221 —
    a tela mostrava "2023-03 a …" no lugar de "2023-03 a 2026-07"; a 375px o Estado virava
@@ -12,35 +14,6 @@
     white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
   .ck-inst .val{font-size:clamp(18px,calc(1.05rem + 0.7vw),26px);
     white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
-  /* `.kpi{overflow:hidden}` (acima) segue valendo — serve ao sheen do ::before e não corta nada
-     aqui: o cartão não tem altura fixa, então a segunda linha do valor faz a caixa CRESCER. */
-
-/* ══ v54 · O BOTÃO PRIMÁRIO VOLTA A TER FUNDO ══════════════════════════════════════════════════
-   "Beneficiário final" saía com `color: oklch(0.17 0.045 50)` — tinta escura — sobre NADA.
-   Causa: a regra do v-do-trilho (`.btn{background-image:…}`, acima) trocou o `background-image`
-   do botão pela linha de energia de 1.5px que corre na base; como o gradiente FLAME vinha de um
-   `background` shorthand (que zera `background-color`), sobrou fundo transparente com texto de
-   tinta. Só o `.btn` puro adoeceu: `.ghost/.accent/.red/.green` têm duas classes e ganham a
-   cascata do `background-image`. Cura: as duas coisas viram CAMADAS do mesmo background — a linha
-   por cima, o gradiente de ignição por baixo — em vez de uma apagar a outra. */
-  /* @camada: base — este bloco DEFINE o botão base; não sobrescreve ninguém. Sem a marca,
-   `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
-   (`.ghost/.accent/.red/.green`), que hoje ganham por especificidade. O parágrafo acima conta
-   com isso: "`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata". Entre camadas a
-   especificidade não conta. Ver `tools/painel_css_inversao.py`. */
-  .btn{
-    background-image:
-      linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent),
-      linear-gradient(180deg,color-mix(in oklch,var(--flame) 92%,white 8%),
-                            color-mix(in oklch,var(--flame-d) 94%,black 8%));
-    background-repeat:no-repeat,no-repeat;
-    background-position:left bottom,0 0;
-    background-size:0% 1.5px,100% 100%}
-  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
-   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
-   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
-   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
-  .btn:hover{background-size:100% 1.5px,100% 100%}
 
 /* ══ v54 · CONTRASTE lote 2 — o texto pequeno que cai SOBRE A ARTE ═════════════════════════════
    A pendência declarada no v40 ("os casos sobre-arte ficam para o lote 2, com o pixel
@@ -86,4 +59,4 @@
   .ev-clamp.aberto{display:block;-webkit-line-clamp:none;overflow:visible}
   .ev-clamp::after{content:" ⌄";color:var(--accent);font-weight:700}
   .ev-clamp.aberto::after{content:" ⌃"}
-
+}

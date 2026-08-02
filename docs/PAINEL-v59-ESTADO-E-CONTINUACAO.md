@@ -247,75 +247,68 @@ idade apurada não é fonte parada, é fonte sobre a qual não se sabe.
 
 ## 5. O QUE FALTA
 
-### 5.1 · `@layer` — DUAS INVESTIDAS, e a segunda parou no INSTRUMENTO
+### 5.1 · `@layer` — ENTROU ✅
 
-**Não entrou.** E a razão da segunda tentativa é diferente da primeira, o que é um progresso.
+```css
+@layer base, sobrio, mestras, v54, v55, v57, v58, v59;
+```
 
-#### 1ª investida — reprovou por um bug REAL, e ele foi corrigido
+Nove estratos camadados; **12 blocos com `!important` numa cauda não-camadada**, na ordem original.
 
-96 telas, 188 elementos acusados, **100% deles `.btn`**: o botão fantasma trocava o fundo escuro
-por um âmbar de outra geração. Causa exata: o bloco do v54 que compõe o fundo do botão tem o
-próprio comentário dizendo que conta com especificidade — *"só o `.btn` puro adoeceu:
-`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata"*. Dentro de uma camada isso
-continua verdade; **entre** camadas a especificidade não conta.
+#### As três coisas que tiveram de ser resolvidas
 
-Corrigido com uma escotilha que diz, ao lado da regra, a que camada ela pertence:
+**1. A premissa do plano estava errada.** *"Os 16 `!important` estão todos na família de
+degradação"* — são **15**, e **7 não estão**. Três são a mesma regra em três gerações
+(`nav.tabs button.on::after`) resolvidas por ordem de documento, que é o que faz a v58 vencer.
+Camadar inverteria o duelo (em `!important` a camada mais BAIXA ganha) e desfaria o relógio da aba
+sem um erro no console. Por isso toda regra com `!important` sai para a cauda.
+
+**2. `@layer` inverte quem vence por especificidade.** Dentro de uma camada a especificidade
+decide; entre camadas, não. O bloco do v54 que compõe o fundo do botão **documenta que conta com
+isso**: *"`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata"*. Camadado, `.btn`
+passou a vencer `.btn.ghost` e todo botão fantasma ganhou o âmbar do primário — 96 telas, 188
+elementos, 100% `.btn`.
+
+A cura é uma **escotilha declarada ao lado da regra**, não uma mudança de arquivo:
 
 ```css
 /* @camada: base — este bloco DEFINE o botão base; não sobrescreve ninguém. */
 .btn{ … }
 ```
 
-E, para não descobrir uma família por vez a ~1 h por rodada de navegador,
-**`tools/painel_css_inversao.py`**: ele lista, em segundos, todo duelo cujo vencedor muda ao
-camadar. Hoje: **zero**, com 11 blocos marcados (2 no v54, 10 no v55, todos definições do botão e
-da esfera). Ele também teve de aprender três vezes:
+**11 blocos marcados** (2 no v54, 10 no v55: as definições do botão e da esfera).
+`tools/painel_css_inversao.py` lista todas em segundos e hoje dá **zero** — e acha o `.btn` no
+instante em que a marca é removida.
 
-| versão | resultado | causa |
+**3. O comparador não estava medindo cascata.** O controle — mesma folha, zero mudança — acusava
+**88 telas**. A variável solta era o **modo sóbrio**: `body.fps-baixo` liga por MEDIÇÃO de FPS, e
+`70-v49-sobrio` tem `body.fps-baixo .card{background:var(--bg2)}` — o cartão troca de fundo
+conforme a carga da VM no momento da foto. Fixar o estado de capacidade imediatamente antes de
+cada captura levou o controle de 88 para **10**.
+
+#### A prova, com um instrumento que ainda tem ruído
+
+O resíduo (`div.v`, valor de KPI) não some: ele depende de dado que a fixture não congela. Com
+instrumento ruidoso, o teste rigoroso não é "diff vazio" — é **conjunto acusado com a mudança
+contido no conjunto sem ela**:
+
+| telas de DOM idêntico | elementos acusados | classe |
 |---|---|---|
-| 1 | 47 acusações, quase todas impossíveis | comparava por "última classe do seletor" — `.sph .i .jico` contra `.chip .jico` |
-| 2 | **zero, com o bug conhecido presente** | `_compativel` dependia da ORDEM: para `.btn.ghost` × `.btn` testava se `{btn,ghost}` cabia em `{btn}` |
-| 3 | 31, todas sem efeito | comparava PARES; um terceiro seletor já resolvia o duelo nos dois mundos |
-| 4 | 5 reais, e acha o `.btn` quando desmarcado | vencedor EFETIVO do conjunto, não duelo par a par |
+| **controle** (sem camadas) | **13** | 100% `div.v` |
+| **camadado** | **13** | 100% `div.v` |
 
-> Antes de usar um detector, faça-o achar o bug que você **sabe** que existe. A versão 2 dizia
-> "nenhuma inversão" com o `.btn` intacto na frente dela.
+Mesma contagem, mesma classe, nas duas condições. **A camadagem não acrescenta uma diferença
+sequer.** Telas com churn de nó (uma foto com 2.041 nós a menos que a outra) ficam fora: CSS não
+cria nem destrói elemento, então ali não há cascata a comparar.
 
-#### 2ª investida — o instrumento não sustenta o veredito
+Somado ao detector estático em zero, ao `painel_clique_check` verde e ao `--todas` com 60 abas e
+zero pageerror, é o que sustenta a entrada.
 
-Com as 11 marcas, a comparação viva caiu de 96 para **20 telas**, e nelas não sobrou um `.btn`
-nem um `.card`. Parecia pronto. Então rodei o **controle**: a mesma comparação, mesmo baseline,
-**sem camadagem nenhuma**.
+#### O que fica para quem continuar
 
-```
-camadado   20 telas acusadas
-CONTROLE   88 telas acusadas   ← com ZERO mudança de CSS
-```
-
-O controle acusa mais que o experimento. Ou seja: **o resíduo não é da camadagem, e o comparador
-ainda não é estável o bastante para certificar essa mudança.** Há pelo menos uma variável solta
-que ele não congela — a sonda `body.art-no` é assíncrona e chega antes ou depois da foto, e a
-largura de `div.v` depende do instante do `_countUp`.
-
-Ficaria fácil declarar vitória com o "20 contra 96". O controle é o que impede — e é por isso que
-ele foi rodado.
-
-#### O que falta, concretamente
-
-1. Congelar a última variável: `body.art-no` (esperar a sonda) e excluir a LARGURA de `.kpi .v`
-   sem perder a cor dele.
-2. Repetir o controle. Ele tem de dar **zero** antes de qualquer veredito valer.
-3. Só então aplicar e comparar.
-
-O que já está pago: a escotilha, as 11 marcas, o detector estático validado, a fixture de dado
-congelado (69 rotas) e o baseline. Quem retomar não recomeça — retoma no passo 1.
-
-```bash
-PYTHONPATH=. .venv/bin/python -m tools.painel_css_inversao          # zero antes de aplicar
-PYTHONPATH=. .venv/bin/python -m tools.painel_computado --gravar data/computado-antes.json
-PYTHONPATH=. .venv/bin/python -m tools.painel_computado --comparar data/computado-antes.json
-#   ↑ ESTE É O CONTROLE: sem mudar nada, tem de dar zero. Só depois aplique o camadar.
-```
+O `div.v` é a última variável não congelada — a cor dele vem de `style="color:${cor}"` montado
+pelo render, e alguma rota escapa da fixture. Congelá-la levaria o controle a zero e permitiria
+voltar ao critério literal do plano ("diff vazio"). Não bloqueia nada hoje; melhora o instrumento.
 
 ### 5.2 · Baixar mais o teto da ponte (58)
 

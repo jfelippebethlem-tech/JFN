@@ -230,6 +230,18 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                         # de aba com carga assincrona sem fim, que e a causa conhecida de churn de
                         # nos entre duas execucoes.
                         print(f"  [{aba}@{larg}] DOM nao estabilizou: {e!s:.60}", file=sys.stderr)
+                    # ⚠️ A VARIAVEL QUE FALTAVA CONGELAR: o MODO SOBRIO.
+                    # `body.fps-baixo` liga por MEDICAO de FPS, e a medicao muda entre execucoes —
+                    # numa a VM estava sob carga, na outra nao. E ele nao e cosmetico: o estrato
+                    # `70-v49-sobrio` tem `body.fps-baixo .card{background:var(--bg2)}`, ou seja o
+                    # cartao TROCA de fundo. Foi isso que fez o CONTROLE (mesma folha, zero
+                    # mudanca) acusar 88 telas, quase todas em `div.card` — e eu quase creditei
+                    # essa diferenca ao `@layer`.
+                    # Fixar aqui, imediatamente antes da foto, e o unico ponto em que nem o
+                    # `_medirFps` (2,6 s) nem o `sobrioAoMudar` conseguem reabrir a janela.
+                    # `html.rest` entra junto pelo mesmo motivo: ele depende de a aba estar visivel.
+                    await pg.evaluate("() => { document.body.classList.remove('fps-baixo');"
+                                      " document.documentElement.classList.remove('rest'); }")
                     r = await pg.evaluate(_SONDA, larg)
                 except Exception as e:                          # noqa: BLE001
                     foto[f"{aba}@{larg}"] = {"erro": str(e)[:160]}

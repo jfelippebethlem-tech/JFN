@@ -1,3 +1,6 @@
+@layer base, sobrio, mestras, v54, v55, v57, v58, v59;
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer base {
 
   /* ── Design system v7 "REATOR" — organismo vivo ──────────────────────────
      Brief do dono (2026-07-19): Jarvis × lightsaber × Apple Glass. Cores vivas,
@@ -117,7 +120,6 @@
     background:var(--bg2);font-family:var(--mono);font-size:11px;color:var(--mut)}
   .ck-fchip .fled{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
   .ck-fchip .fnm{color:var(--tx2)} .ck-fchip .fage{color:var(--dim)}
-  @media (prefers-reduced-motion:reduce){.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
 
   /* ── NÚCLEO ORGÂNICO — órbitas de domínios ao redor do reator (conceito "fluxo") ── */
   .ck-nucleo{position:relative;height:clamp(360px,46vw,540px);border:1px solid var(--bd2);border-radius:var(--r2);
@@ -713,9 +715,6 @@
   /* marca = mini-reator: núcleo laranja num anel de íon */
   .brand .lg{background:radial-gradient(circle at 50% 50%,var(--flame-hi) 0 22%,var(--ion) 34%,var(--ion-d) 100%);
     box-shadow:0 0 14px -2px color-mix(in oklch,var(--ion) 65%,transparent),inset 0 0 8px oklch(0 0 0/.45);color:oklch(0.98 0 0)}
-  @media (prefers-reduced-motion:reduce){
-    .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
-    .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
   /* TERRITÓRIO GLOBAL — o Estado do RJ atrás de TODA aba (não só o cockpit).
      Malha real do IBGE, tingida pela cor da esfera ativa, varrida por um radar.
      Fica no fundo, discreto: o dado sempre lê primeiro. */
@@ -750,7 +749,6 @@
      e é ele que pulsa agora, em opacity. O brilho antes obtido por animação virou valor ESTÁTICO no
      meio da faixa — visualmente é o pico que se via, sem custo por quadro. */
   .sph.on{box-shadow:var(--lift),0 0 33px -6px color-mix(in oklch,var(--sphc) 64%,transparent)}
-  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),sabreBreath 2.6s ease-in-out .3s infinite!important}
   @keyframes sabreBreath{0%,100%{opacity:1}50%{opacity:.72}}
   .cover-seal{transform-style:preserve-3d;box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 9px 28px -9px color-mix(in oklch,var(--esf) 72%,transparent);
     transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg))}
@@ -859,9 +857,6 @@
   .btn,.chip,.search .az,.htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit,.sheet .x{
     transition:transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .18s,color .18s,background .18s,filter .18s}
   nav.tabs button{transition:color .15s,transform .22s cubic-bezier(.2,.7,.2,1)}
-  /* orçamento de vida: aba oculta → TODA animação CSS pausa (canvas já pausam via RAF).
-     Zero mudança visual com a aba aberta — só CPU devolvida quando ninguém está olhando. */
-  html.rest *{animation-play-state:paused !important}
   /* esferas roláveis: fade lateral avisa que há mais conteúdo (scrollbar é escondida) */
   .spheres.scrollx{-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);mask-image:linear-gradient(90deg,#000 92%,transparent)}
   /* toast + confirm da casa (substituem alert/confirm nativos) */
@@ -1271,18 +1266,6 @@
     animation:sabreIgnic .38s cubic-bezier(.2,.9,.25,1.2),
               sabreFlash .55s ease-out,
               sabreHum 3.1s ease-in-out .55s infinite}
-  nav.tabs button.on::after{height:3px;--sbr:var(--esf);
-    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
-    background:linear-gradient(180deg,
-      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
-      var(--sbr-core) 38%,var(--sbr-core) 62%,
-      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
-    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
-               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
-               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
-    animation:sabreIgnic .3s cubic-bezier(.2,.9,.25,1.2),
-              sabreFlash .5s ease-out,
-              sabreHum 3.1s ease-in-out .5s infinite!important}
   /* a esfera ativa acende a própria lâmina no pé — é onde o olho pousa
      primeiro, e é a troca de esfera que o dono vê o dia inteiro. */
   .sph.on::after{content:"";position:absolute;left:10%;right:10%;bottom:-1px;height:3px;
@@ -1298,10 +1281,6 @@
     animation:sabreIgnic .34s cubic-bezier(.2,.9,.25,1.2),
               sabreFlash .52s ease-out,
               sabreHum 3.1s ease-in-out .52s infinite}
-  /* quem pede menos movimento CONTINUA com a lâmina acesa — sai o zumbido e a
-     ignição, fica a estética. Apagar o sabre seria tirar a identidade. */
-  @media (prefers-reduced-motion:reduce){
-    .cover::before,nav.tabs button.on::after,.sph.on::after{animation:none!important;filter:none}}
 
   /* ══ celular: as esferas se SOBREPUNHAM ════════════════════════════════════
      Raiz medida a 390px: `.sph{flex:1;min-width:0}` deixa o botão encolher
@@ -1387,47 +1366,6 @@
      área de acerto. O sublinhado pontilhado desce 3px junto, no celular apenas. */
   @media (pointer:coarse){ .clk{padding:3px 0} }
 
-  /* ── no celular o SCORE saía da tela ─────────────────────────────────────
-     A tabela do radar tem 4 colunas e rola na horizontal dentro do card — o que
-     é correto. Só que a coluna que sai é a ÚLTIMA, e a última é o **score**: o
-     número pelo qual a tabela existe. O usuário no telefone via nome e sinais e
-     não via a nota, sem nem saber que havia mais para o lado.
-     Coluna grudada na borda direita: os sinais rolam POR BAIXO dela e o score
-     fica sempre à vista. Fundo opaco e sombra para ler como coluna suspensa —
-     sem isso o texto de baixo aparece através.
-
-     ARMADILHA QUE ME CUSTOU TRÊS RODADAS, e vale para o arquivo inteiro: uma
-     edição minha deixou um FECHA-COMENTÁRIO órfão no meio deste bloco. O
-     comentário fechou cedo, o texto seguinte virou seletor inválido e o parser
-     consumiu o "@media" de baixo como bloco de declaração dele — a regra
-     simplesmente não existia. Eu culpei o "right", depois a margem, depois o
-     "border-collapse" (que é limitação real do Chrome, mas NÃO era a causa aqui).
-     Uma consulta ao DOM vivo — getComputedStyle(td).position devolvendo "static"
-     com a media query casando — matou as três hipóteses de uma vez.
-     **Não teorize sobre CSS que não pegou: pergunte ao elemento.**
-     E NUNCA escreva os dois caracteres de fecha-comentário dentro de um
-     comentário, nem entre crases: foi exatamente assim que esta explicação
-     reproduziu o próprio bug que descreve.
-
-     Escolhas do desenho: no telefone o medidor de 64px sai (o número já diz 47) e
-     a coluna encolhe para o tamanho do número.
-
-     A fresta dos 15px: o card tem "padding:4px 15px" INLINE e o sticky ancora na
-     caixa de padding, então sobrava uma tira na borda por onde o texto dos sinais
-     aparecia. Duas curas foram tentadas e falharam, cada uma por um motivo que
-     vale guardar: margem negativa não faz nada porque **margem não se aplica a
-     display:table-cell**; e uma 2ª sombra sólida também não cobriu. A cura é não
-     ter fresta — matar o padding da direita do card. Como o padding é inline, só
-     ":has() + !important" alcança, e é o único !important que este arquivo usa. */
-  @media (max-width:600px){
-    .card:has(#radar-tbl){padding-right:0!important}
-    #radar-tbl thead th:last-child,#radar-tbl tbody td:last-child{
-      position:sticky;right:0;z-index:1;padding-left:10px;padding-right:14px;
-      background:var(--card);
-      box-shadow:-12px 0 14px -9px oklch(0 0 0/.6)}
-    #radar-tbl tbody td:last-child .meter{display:none}
-  }
-
   /* ── o A→Z tinha saído de dentro do campo de busca ───────────────────────
      A MESMA armadilha do v12.3 (`.nu-chip`), num elemento que passou batido:
      o bloco do vidro líquido declara `.btn,.chip,.search .az,…{position:relative}`
@@ -1450,12 +1388,6 @@
      aprovado no ticker. Em px (não %) para não comer meia aba em tela larga. */
   nav.tabs{-webkit-mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
            mask-image:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent)}
-
-  /* menos movimento: a linha aparece pronta, o facho e o radar somem. */
-  @media (prefers-reduced-motion:reduce){
-    tbody tr,.barw .row,thead tr,tbody tr:hover,.barw .row:hover{animation:none!important}
-    tbody tr:hover,.barw .row:hover{background-image:none;
-      background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}
   /* aba oculta: `html.rest *` (v10) já pausa tudo — nada a declarar aqui. */
 
 
@@ -2458,4 +2390,119 @@
     animation-delay:min(calc(var(--i,0) * 26ms),380ms),var(--d,0ms)}
   @media (prefers-reduced-motion:reduce){
     #view .grid>.card.rise,#view .cols>.card.rise{animation:none;opacity:1}}
+}
 
+/* reaberto — bloco(s) de estrato posterior que declararam `@camada: base` */
+@layer base {
+
+  /* `.kpi{overflow:hidden}` (acima) segue valendo — serve ao sheen do ::before e não corta nada
+     aqui: o cartão não tem altura fixa, então a segunda linha do valor faz a caixa CRESCER. */
+
+/* ══ v54 · O BOTÃO PRIMÁRIO VOLTA A TER FUNDO ══════════════════════════════════════════════════
+   "Beneficiário final" saía com `color: oklch(0.17 0.045 50)` — tinta escura — sobre NADA.
+   Causa: a regra do v-do-trilho (`.btn{background-image:…}`, acima) trocou o `background-image`
+   do botão pela linha de energia de 1.5px que corre na base; como o gradiente FLAME vinha de um
+   `background` shorthand (que zera `background-color`), sobrou fundo transparente com texto de
+   tinta. Só o `.btn` puro adoeceu: `.ghost/.accent/.red/.green` têm duas classes e ganham a
+   cascata do `background-image`. Cura: as duas coisas viram CAMADAS do mesmo background — a linha
+   por cima, o gradiente de ignição por baixo — em vez de uma apagar a outra. */
+  /* @camada: base — este bloco DEFINE o botão base; não sobrescreve ninguém. Sem a marca,
+   `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`), que hoje ganham por especificidade. O parágrafo acima conta
+   com isso: "`.ghost/.accent/.red/.green` têm duas classes e ganham a cascata". Entre camadas a
+   especificidade não conta. Ver `tools/painel_css_inversao.py`. */
+  .btn{
+    background-image:
+      linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent),
+      linear-gradient(180deg,color-mix(in oklch,var(--flame) 92%,white 8%),
+                            color-mix(in oklch,var(--flame-d) 94%,black 8%));
+    background-repeat:no-repeat,no-repeat;
+    background-position:left bottom,0 0;
+    background-size:0% 1.5px,100% 100%}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn:hover{background-size:100% 1.5px,100% 100%}
+
+/* ══ v55 · BOTÃO USINADO — chanfro, profundidade, especular e curso ════════════════════════════
+   O .btn era retângulo arredondado chapado. Agora é peça cortada: `clip-path` tira o canto
+   superior-esquerdo e o inferior-direito (a angulação pedida), duas camadas de borda interna
+   dão espessura (luz em cima, sombra embaixo — a leitura de bisel), e o especular que segue o
+   ponteiro (--mx/--my) já existia no v9 e continua sendo o mesmo. O curso físico do :active
+   (translateZ negativo) também é o do v9 — aqui ele só ganha o afundamento do bisel junto,
+   que é o que faz o clique parecer que a peça DESCEU no encaixe.
+   CONTRASTE: nenhuma cor de texto ou de fundo mudou. Só geometria e relevo. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn{--chanfro:9px;border-radius:0;
+    clip-path:polygon(var(--chanfro) 0,100% 0,100% calc(100% - var(--chanfro)),
+                      calc(100% - var(--chanfro)) 100%,0 100%,0 var(--chanfro));
+    box-shadow:var(--lift),inset 0 1px 0 oklch(1 0 0/.22),inset 0 -1px 0 oklch(0 0 0/.30),
+               inset 0 0 0 1px oklch(1 0 0/.06)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn:hover{box-shadow:var(--lift),0 0 30px -8px color-mix(in oklch,var(--flame) 60%,transparent),
+               inset 0 1px 0 oklch(1 0 0/.28),inset 0 -1px 0 oklch(0 0 0/.30),
+               inset 0 0 0 1px oklch(1 0 0/.09)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn:active{box-shadow:var(--lift),inset 0 2px 5px oklch(0 0 0/.42),inset 0 -1px 0 oklch(1 0 0/.10)}
+  /* a aresta do chanfro precisa aparecer: um fio de luz correndo o corte inferior-direito.
+     O ::before original (varredura de brilho no hover) vivia em z-index:-1 e sumia sob o
+     fundo opaco do botão usinado; o fio ocupa o mesmo pseudo, e a luz que segue o ponteiro
+     continua no ::after, que é quem sempre fez esse trabalho. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn::before{content:"";position:absolute;z-index:0;pointer-events:none;
+    inset:auto -1px -1px auto;
+    width:calc(var(--chanfro) * 1.9);height:calc(var(--chanfro) * 1.9);
+    background:linear-gradient(135deg,transparent 48%,oklch(1 0 0/.32) 50%,transparent 54%);
+    opacity:.9}
+  /* o ghost é peça vazada: o chanfro tem que ler no CONTORNO, e clip-path corta a borda.
+     Por isso a moldura dele vira `inset ring`, que o clip acompanha. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn.ghost,.btn.accent{border:0}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn.ghost{box-shadow:var(--lift),inset 0 0 0 1px var(--bd2),inset 0 1px 0 oklch(1 0 0/.07)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn.ghost:hover{box-shadow:var(--lift),0 0 26px -10px color-mix(in oklch,var(--ion) 55%,transparent),
+    inset 0 0 0 1px color-mix(in oklch,var(--ion) 55%,transparent),inset 0 1px 0 oklch(1 0 0/.09)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn.accent{box-shadow:var(--lift),inset 0 0 0 1px color-mix(in oklch,var(--ion) 48%,transparent),
+    inset 0 1px 0 oklch(1 0 0/.10)}
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .btn.accent:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--ion) 62%,transparent),
+    inset 0 0 0 1px color-mix(in oklch,var(--ion) 70%,transparent),inset 0 1px 0 oklch(1 0 0/.12)}
+  /* a esfera é o irmão maior do botão: mesmo corte, mesma família. */
+  /* @camada: base — este bloco DEFINE o botão/esfera base; não sobrescreve ninguém.
+   Sem a marca, `@layer` o poria acima do `00-v7-base` e ele passaria a vencer as VARIANTES
+   (`.ghost/.accent/.red/.green`, `.on`), que hoje ganham por especificidade. Ver
+   `tools/painel_css_inversao.py`, que lista exatamente estes duelos. */
+  .sph{--chanfro:8px;border-radius:0;
+    clip-path:polygon(var(--chanfro) 0,100% 0,100% calc(100% - var(--chanfro)),
+                      calc(100% - var(--chanfro)) 100%,0 100%,0 var(--chanfro))}
+}
