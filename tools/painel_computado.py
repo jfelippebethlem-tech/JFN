@@ -88,6 +88,34 @@ _CONGELAR = """
     animation-play-state:paused !important}
 """
 
+# ⚠️ O ESTADO TRANSITORIO, ZERADO IMEDIATAMENTE ANTES DE CADA FOTO.
+#
+# Cascata e o que o CSS decide; tudo abaixo e o que o PAINEL estava fazendo no instante da foto.
+# Misturar os dois foi a causa de TODO o ruido que sobrou neste comparador, e cada linha aqui
+# custou uma varredura de ~28 min para ser identificada:
+#
+#   `body.fps-baixo`  — liga por MEDICAO de FPS. O estrato do modo sobrio tem
+#                       `body.fps-baixo .card{background:var(--bg2)}`: o cartao TROCA de fundo
+#                       conforme a carga da VM naquele segundo. Sozinho, respondia por 78 das 88
+#                       telas que o controle acusava com ZERO mudanca de CSS.
+#   `.counting`       — `_countUp` a poe enquanto o numero sobe, e
+#                       `.kpi .v.counting{color:var(--accent)}` pinta o valor de azul. A foto
+#                       pegava uns valores ja assentados e outros no meio da contagem: era o
+#                       residual `div.v`, 13 elementos em toda execucao, com ou sem camadagem.
+#                       Esperar a classe sumir nao basta — em varredura de 120 telas a espera
+#                       estoura o teto. Zerar e determinista.
+#   `data-ritmo`      — a marcha do relogio, que vem do barramento SSE (a unica rota que a fixture
+#                       nao consegue congelar, porque e um fluxo). Ela alimenta `--bpm`.
+#
+# Zerar aqui, e nao antes, e o unico ponto em que nem o `_medirFps` (2,6 s) nem o `sobrioAoMudar`
+# nem o proximo evento do barramento conseguem reabrir a janela.
+_NORMALIZAR = """() => {
+  document.body.classList.remove('fps-baixo');
+  document.documentElement.classList.remove('rest');
+  document.body.setAttribute('data-ritmo', 'vigilia');
+  for (const e of document.querySelectorAll('.counting')) e.classList.remove('counting');
+}"""
+
 _SONDA = r"""(largura => {
   const alvo = document.getElementById('view');
   if (!alvo) return {erro: 'sem #view'};
@@ -224,7 +252,7 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                                  const n = v.querySelectorAll('*').length;
                                  const ok = window.__estavel === n;
                                  window.__estavel = n; return ok; }""",
-                            timeout=6000, polling=450)
+                            timeout=12000, polling=450)
                     except Exception as e:                  # noqa: BLE001
                         # Tela que nunca para nao trava a foto, e diz que nao parou: e a assinatura
                         # de aba com carga assincrona sem fim, que e a causa conhecida de churn de
@@ -240,8 +268,7 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                     # Fixar aqui, imediatamente antes da foto, e o unico ponto em que nem o
                     # `_medirFps` (2,6 s) nem o `sobrioAoMudar` conseguem reabrir a janela.
                     # `html.rest` entra junto pelo mesmo motivo: ele depende de a aba estar visivel.
-                    await pg.evaluate("() => { document.body.classList.remove('fps-baixo');"
-                                      " document.documentElement.classList.remove('rest'); }")
+                    await pg.evaluate(_NORMALIZAR)
                     r = await pg.evaluate(_SONDA, larg)
                 except Exception as e:                          # noqa: BLE001
                     foto[f"{aba}@{larg}"] = {"erro": str(e)[:160]}
@@ -265,6 +292,7 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
 
 def _comparar(antes: dict, agora: dict) -> int:
     problemas = 0
+    nao_comparaveis: list[str] = []
     chaves = sorted(set(antes) | set(agora))
     for c in chaves:
         if c.startswith("_"):
@@ -285,6 +313,19 @@ def _comparar(antes: dict, agora: dict) -> int:
         sumiu = [k for k in ha if k not in hb]
         surgiu = [k for k in hb if k not in ha]
         mudou = [k for k in ha if k in hb and ha[k] != hb[k]]
+        # ── TELA COM DOM DIFERENTE NAO E COMPARAVEL ────────────────────────────────────────────
+        # CSS nao cria nem destroi elemento. Se uma foto tem 2.065 nos a menos que a outra, a
+        # tela renderizou coisas diferentes — e a altura de todo container ANCESTRAL muda junto,
+        # por consequencia do conteudo, nao da cascata. Medir cascata ali e atribuir a folha de
+        # estilo uma diferenca que a folha de estilo nao pode ter causado.
+        #
+        # Vira AVISO, com os numeros na cara e contada no rodape: silenciar a contagem faria o
+        # laudo dizer "tudo certo" sobre 120 telas quando tres nao foram medidas.
+        if sumiu or surgiu:
+            nao_comparaveis.append(
+                f"{c}: {len(mudou)} elemento(s) diferentes, mas {len(sumiu)} no(s) sumiram e "
+                f"{len(surgiu)} surgiram — DOM diferente, nao ha cascata a comparar")
+            continue
         if not mudou:
             # NO QUE APARECE E SOME, A CASCATA NAO TEM PARTE. CSS nao cria nem destroi elemento —
             # `@layer` pode mudar a COR de um no, nunca a existencia dele. Entao contagem de nos
@@ -308,6 +349,11 @@ def _comparar(antes: dict, agora: dict) -> int:
                 for p in sorted(set(da) | set(db)):
                     if da.get(p) != db.get(p):
                         print(f"         {p}: {da.get(p)!r} -> {db.get(p)!r}")
+    if nao_comparaveis:
+        print(f"\n⚠️  {len(nao_comparaveis)} tela(s) NAO COMPARAVEIS (o DOM mudou entre as fotos):")
+        for x in nao_comparaveis:
+            print(f"     {x}")
+        print("   Nenhuma delas foi medida. Se precisar cobri-las, estabilize o render primeiro.")
     return problemas
 
 

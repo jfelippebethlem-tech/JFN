@@ -286,29 +286,50 @@ instante em que a marca é removida.
 conforme a carga da VM no momento da foto. Fixar o estado de capacidade imediatamente antes de
 cada captura levou o controle de 88 para **10**.
 
-#### A prova, com um instrumento que ainda tem ruído
+#### A prova
 
-O resíduo (`div.v`, valor de KPI) não some: ele depende de dado que a fixture não congela. Com
-instrumento ruidoso, o teste rigoroso não é "diff vazio" — é **conjunto acusado com a mudança
-contido no conjunto sem ela**:
+**Baseline com o CSS sem camadas, comparação com o camadado:**
 
-| telas de DOM idêntico | elementos acusados | classe |
+```
+OK — estilo computado identico ao baseline em todas as telas e larguras.
+
+   114 de 120 telas medidas — ZERO diferença
+     6 não comparáveis (o DOM mudou entre as fotos), e em todas com 0 elemento diferente
+```
+
+Não há uma diferença de cascata em lugar nenhum do painel.
+
+#### As quatro variáveis que tiveram de ser congeladas para o número valer
+
+O comparador começou acusando **88 telas com ZERO mudança de CSS**. Cada correção custou uma
+varredura de ~28 min, e cada uma era uma coisa que o painel estava FAZENDO no instante da foto —
+não uma coisa que o CSS decidia:
+
+| variável | por que envenenava | efeito |
 |---|---|---|
-| **controle** (sem camadas) | **13** | 100% `div.v` |
-| **camadado** | **13** | 100% `div.v` |
+| **dado vivo** | entre duas execuções a rota devolve outros valores | fixture de 69 rotas |
+| **animação** | `opacity`/`transform` a meio caminho | folha que congela tudo |
+| **`body.fps-baixo`** | liga por MEDIÇÃO de FPS, e `.card` troca de fundo com ele | zerado antes da foto |
+| **`.counting`** | `.kpi .v.counting{color:var(--accent)}` — o KPI fica azul enquanto conta | zerado antes da foto |
+| **velocidade da fixture** | gravar faz ida-e-volta real; reproduzir é instantâneo. A foto do baseline pegava a tela **menos renderizada** | baseline capturado **com a fixture já pronta** |
 
-Mesma contagem, mesma classe, nas duas condições. **A camadagem não acrescenta uma diferença
-sequer.** Telas com churn de nó (uma foto com 2.041 nós a menos que a outra) ficam fora: CSS não
-cria nem destrói elemento, então ali não há cascata a comparar.
+A última é a mais instrutiva: ela não era uma variável do painel, era do **procedimento**. Gravar e
+medir na mesma passada compara uma tela lenta com uma tela rápida. Separar as duas coisas levou as
+telas não comparáveis de **65 para 6**.
 
-Somado ao detector estático em zero, ao `painel_clique_check` verde e ao `--todas` com 60 abas e
-zero pageerror, é o que sustenta a entrada.
+> Um comparador que acusa tudo não distingue nada. Antes de usar um instrumento para julgar uma
+> mudança, faça-o julgar **nenhuma mudança**.
 
-#### O que fica para quem continuar
+#### E uma lição sobre o outro checador
 
-O `div.v` é a última variável não congelada — a cor dele vem de `style="color:${cor}"` montado
-pelo render, e alguma rota escapa da fixture. Congelá-la levaria o controle a zero e permitiria
-voltar ao critério literal do plano ("diff vazio"). Não bloqueia nada hoje; melhora o instrumento.
+`painel_clique_check` passou a falhar com `Timeout` na esfera — sobre um controle que respondia
+perfeitamente (`force=True` trocava de contexto na hora). Causa: `locator.click()` exige o elemento
+**estável** (mesma caixa em dois quadros), e a esfera tem inclinação 3D que segue o ponteiro. Assim
+que o mouse chega, ela se mexe, e a espera nunca fecha.
+
+Trocado por `mouse.click(x, y)` — uma pessoa clica num alvo que se inclina sem dificuldade nenhuma,
+e o ponto continua pegando escudo: se algo estiver por cima, quem recebe o clique é o escudo e a
+esfera não troca. Três rodadas seguidas verdes.
 
 ### 5.2 · Baixar mais o teto da ponte (58)
 
