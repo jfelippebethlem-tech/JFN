@@ -45,6 +45,7 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 
 BASE = os.environ.get("JFN_BASE", "http://127.0.0.1:8000")
 
@@ -126,8 +127,10 @@ async def _rodar(larguras: list[int]) -> dict:
                 "() => !document.getElementById('portal')"
                 " || getComputedStyle(document.getElementById('portal')).display === 'none'",
                 timeout=12000)
-        except Exception:                                       # noqa: BLE001
-            pass
+        except Exception as e:                                  # noqa: BLE001
+            # Portal que nao sai em 12 s E um achado, nao um detalhe: ele cobre a viewport de
+            # propósito, e preso ele e o proprio escudo que este arquivo existe para pegar.
+            print(f"[clique] o portal nao saiu em 12 s: {e!s:.70}", file=sys.stderr)
         await pg.wait_for_timeout(3500)
 
         for larg in larguras:

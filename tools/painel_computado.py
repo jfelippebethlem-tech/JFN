@@ -168,7 +168,8 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                         await route.fulfill(status=r.status, body=corpo,
                                             headers={"content-type": r.headers.get(
                                                 "content-type", "application/json")})
-                    except Exception:                       # noqa: BLE001
+                    except Exception as e:                  # noqa: BLE001
+                        print(f"  [fixture] nao gravei {chave[:48]}: {e!s:.50}", file=sys.stderr)
                         await route.continue_()
                     return
                 g = respostas.get("/api/" + chave)
@@ -207,8 +208,11 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                     try:
                         await pg.wait_for_function(
                             "() => !document.querySelector('#view .counting')", timeout=4000)
-                    except Exception:                       # noqa: BLE001
-                        pass                                # contagem presa nao invalida a foto
+                    except Exception as e:                  # noqa: BLE001
+                        # Contagem presa nao invalida a foto — mas tambem nao pode sumir: se ela
+                        # ficar presa SEMPRE, o `div.v` volta a ser ruido e alguem tem de saber por
+                        # que. `pass` mudo aqui esconderia exatamente essa pista.
+                        print(f"  [{aba}@{larg}] _countUp nao assentou: {e!s:.60}", file=sys.stderr)
                     # E ESPERA O DOM PARAR. Aba que busca varias rotas termina de montar depois do
                     # tempo fixo, e as duas execucoes pegam momentos diferentes: medido em
                     # `g_acuracia`, onde uma foto tinha 55 nos a mais que a outra e as alturas dos
@@ -221,8 +225,11 @@ async def _fotografar(detalhe: set[str], fixo: Path | None = None) -> dict:
                                  const ok = window.__estavel === n;
                                  window.__estavel = n; return ok; }""",
                             timeout=6000, polling=450)
-                    except Exception:                       # noqa: BLE001
-                        pass                                # tela que nunca para nao trava a foto
+                    except Exception as e:                  # noqa: BLE001
+                        # Tela que nunca para nao trava a foto, e diz que nao parou: e a assinatura
+                        # de aba com carga assincrona sem fim, que e a causa conhecida de churn de
+                        # nos entre duas execucoes.
+                        print(f"  [{aba}@{larg}] DOM nao estabilizou: {e!s:.60}", file=sys.stderr)
                     r = await pg.evaluate(_SONDA, larg)
                 except Exception as e:                          # noqa: BLE001
                     foto[f"{aba}@{larg}"] = {"erro": str(e)[:160]}
