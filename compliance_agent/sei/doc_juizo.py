@@ -32,7 +32,11 @@ TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
 # inflava "74% problemáticos" contando tramitação normal; escala 3 agora é DECISÃO sem
 # motivação ou parecer que se ESQUIVA do mérito submetido. Vereditos v1 ficam no banco
 # (UNIQUE inclui a versão) para auditoria; re-julgamento é progressivo e grátis.
-RUBRICA_VERSAO = "2"
+# v3 (2026-08-02): RESSALVA DE COMPETÊNCIA ≠ ESQUIVA. Com o texto completo (cura do cap de 20k)
+# a v2 seguiu marcando escala 3 em pareceres que APONTAM lacuna e condicionam — citando como prova o
+# disclaimer legal ("não é função do órgão jurídico atestar vantajosidade"). Leitura pericial de
+# 14 pareceres deu 14 NÃO SUSTENTA. A v3 exige que o trecho literal prove esquiva DO OBJETO.
+RUBRICA_VERSAO = "3"
 _DB = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
 
 _PRIORIDADE = ("contratacao_direta", "parecer", "homologacao", "adjudicacao",
@@ -53,6 +57,14 @@ RUBRICAS: dict[str, str] = {
         "submetido (favorável OU contrário, com fundamento); 2 = favorável COM ressalva/condição "
         "substantiva (cite-a no trecho); 3 = ESQUIVA-SE do mérito que lhe foi submetido (delega "
         "de volta, responde outra coisa, ou 'não cabe analisar' o próprio objeto da consulta). "
+        "ATENÇÃO — RESSALVA DE COMPETÊNCIA NÃO É ESQUIVA: frases como 'não é função do órgão "
+        "jurídico atestar vantajosidade/economicidade', 'não lhe compete a conveniência e "
+        "oportunidade', 'a análise toma por base os elementos dos autos' reproduzem norma (art. "
+        "50, §1º do Decreto est. 48.816/2023; art. 31 do 46.642/2019) e DELIMITAM o escopo. Se, "
+        "APESAR delas, o documento analisa o que lhe foi submetido — aponta lacuna, exige "
+        "saneamento, conclui condicionando — a escala é 1 ou 2, nunca 3. Só marque 3 quando o "
+        "parecer se recusa a responder A PRÓPRIA CONSULTA. Julgue o corpo inteiro, não o "
+        "disclaimer: o trecho literal que você citar deve provar a esquiva do OBJETO. "
         "Se o documento não é parecer de mérito (certidão, checklist informativo), retorne null."),
     "homologacao": (
         "Este documento homologa/adjudica/ratifica. Classifique a MOTIVAÇÃO: 1 = menciona e "
