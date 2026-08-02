@@ -143,9 +143,23 @@ async def _rodar(larguras: list[int]) -> dict:
         await pg.wait_for_timeout(600)
         antes = await pg.evaluate("() => (typeof esfera !== 'undefined') ? esfera : null")
         try:
-            # `.sph:nth-child(2)` era um seletor ERRADO — `.sph` nao e o 2o filho do container.
-            # `nth(1)` conta entre os `.sph`, que e o que se quer dizer.
-            await pg.locator(".sph").nth(1).click(timeout=8000)
+            # CLIQUE DE MOUSE EM COORDENADA, e nao `locator.click()`.
+            #
+            # `locator.click()` exige que o elemento fique ESTAVEL — mesma caixa em dois quadros
+            # seguidos. A esfera tem inclinacao 3D que segue o ponteiro (`--rx/--ry`, o motor do
+            # v9): assim que o mouse chega, ela se mexe, e a espera por estabilidade nunca fecha.
+            # Resultado: `Timeout 8000ms exceeded` sobre um controle que responde perfeitamente —
+            # provado com `force=True`, que troca de esfera na hora.
+            #
+            # Uma pessoa clica num alvo que se inclina sem dificuldade nenhuma. `mouse.click(x,y)`
+            # e essa pessoa: bate no PONTO. E continua pegando escudo, que e o que importa — se
+            # algo estiver por cima, quem recebe o clique e o escudo e a esfera nao troca.
+            cx = await pg.evaluate("""() => { const s = document.querySelectorAll('.sph')[1];
+                if (!s) return null; const r = s.getBoundingClientRect();
+                return [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)]; }""")
+            if not cx:
+                raise RuntimeError("nao ha uma segunda esfera para clicar")
+            await pg.mouse.click(cx[0], cx[1])
             await pg.wait_for_timeout(2500)
             depois = await pg.evaluate("() => (typeof esfera !== 'undefined') ? esfera : null")
             fora["_gesto"] = {"ok": antes != depois, "de": antes, "para": depois}
