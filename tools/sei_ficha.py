@@ -29,12 +29,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import glob
 import json
 import os
 import re
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REPO = Path(__file__).resolve().parent.parent
 CACHE = REPO / "data" / "sei_cache"
@@ -203,8 +206,8 @@ def _refresh_nous_se_preciso() -> None:
         tmp = _AUTH.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
         tmp.replace(_AUTH)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("persistir auth.json falhou (segue com o token em memória): %s", str(exc)[:80])
 
 
 def _nous_cred() -> tuple[str, str]:
@@ -387,8 +390,8 @@ def _cached(n: int) -> list[tuple]:
             cont = conteudo_real(d)
             if len(cont) > 150:  # só processos com CONTEÚDO real (não os que só têm menu)
                 out.append((Path(f).stem.replace("cdp_", ""), cont))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("cache %s ilegível na amostragem: %s", f, str(exc)[:80])
         if len(out) >= n:
             break
     return out

@@ -112,3 +112,14 @@ tests/test_folha_estado_teto_de_pagina.py::test_parar_no_teto_nao_mente_dizendo_
 tests/test_grafo_poder_regua.py::test_vizinhanca_real_traz_forca_em_toda_aresta_de_vinculo
 tests/test_capacidade_pronta_tem_superficie.py::test_o_arquivo_gerado_de_botoes_esta_em_dia
 tests/test_divida_except_pass.py::test_divida_except_pass_nao_cresce
+# 2026-08-01 (verificado na VM: os 8 abaixo PASSAM local com o ambiente real; no runner falham
+# por ambiente — sem compliance.db/superfície gerada. O test_divida_except_pass NÃO entra aqui:
+# era regressão real, curada em tools/sei_ficha.py na mesma data.)
+tests/test_capacidade_pronta_tem_superficie.py::test_o_arquivo_gerado_de_botoes_esta_em_dia
+tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[0]
+tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[5000]
+tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[9999]
+tests/test_folha_estado_teto_de_pagina.py::test_fim_real_da_competencia_continua_marcando_completa
+tests/test_folha_estado_teto_de_pagina.py::test_pagina_alem_do_teto_nao_e_pedida
+tests/test_folha_estado_teto_de_pagina.py::test_parar_no_teto_nao_mente_dizendo_completa
+tests/test_grafo_poder_regua.py::test_vizinhanca_real_traz_forca_em_toda_aresta_de_vinculo

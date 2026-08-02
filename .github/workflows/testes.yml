@@ -32,6 +32,11 @@ concurrency:
 
 jobs:
   lotes:
+    # DEDUPE (2026-08-01): com PR aberto, cada push disparava DOIS runs (evento push + evento
+    # pull_request) e o dono recebia o dobro de e-mail de falha. O grupo de concurrency não cruza
+    # eventos (refs diferentes). PR de mesmo repo já é coberto pelo run do push — o evento
+    # pull_request só roda para fork (onde o push não dispara aqui).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
