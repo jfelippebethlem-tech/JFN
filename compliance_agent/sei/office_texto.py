@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import io
 import logging
+import os
 import shutil
 
 logger = logging.getLogger(__name__)
 
 _ZIP = b"PK\x03\x04"          # xlsx / docx (Office Open XML = zip)
 _OLE2 = b"\xd0\xcf\x11\xe0"   # xls / doc  (formato binário antigo)
-_MAX = 20000                  # teto de chars (igual ao caminho de OCR)
+# teto de chars — segue o SEI_MAX_CHARS_DOC do reader (20k cortava conclusão de parecer longo)
+_MAX = int(os.environ.get("SEI_MAX_CHARS_DOC", "60000"))
 
 
 def _erros_parse():

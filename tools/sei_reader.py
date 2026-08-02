@@ -37,6 +37,10 @@ U, P, ORG = os.environ.get("SEI_USER", "itkava"), os.environ.get("SEI_PASS", "")
 # TTL do cache de leitura (antes hardcoded 86400 em 3 pontos): processo em ebulição (sessão
 # marcada amanhã) pode pedir SEI_CACHE_TTL menor sem tocar código.
 CACHE_TTL = int(os.environ.get("SEI_CACHE_TTL", "86400"))
+# Teto de chars por DOCUMENTO (antes 20000 hardcoded em 3 vias: office/OCR/árvore). 20k cortava
+# a CONCLUSÃO de parecer longo e o juiz LLM condenava o que na verdade concluía — 14 falsos
+# escala-3 em 2026-08-01. 60k cobre ~20 páginas densas; NF/anexo típico fica muito abaixo.
+MAX_CHARS_DOC = int(os.environ.get("SEI_MAX_CHARS_DOC", "60000"))
 
 
 async def _ate(pg, cond, max_ms: int = 6000, passo: int = 250) -> bool:
@@ -665,21 +669,21 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                     off = await loop.run_in_executor(None, lambda: texto_de_office(body, ct))
                     if off and len(off.strip()) > 20:
                         return {"doc": (doc.get("texto") or "")[:80],
-                                "conteudo": off.strip()[:20000], "via": "office"}
+                                "conteudo": off.strip()[:MAX_CHARS_DOC], "via": "office"}
                     continue
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
                 if txt_ocr and len(txt_ocr.strip()) > 20:
                     # anexo_bytes preserva o PDF ORIGINAL (imagens/fotos de prova) p/ quem
                     # arquiva — só quando é PDF (imagem solta não vira .pdf direto). Chave
                     # ADITIVA: outros chamadores leem só conteudo/doc/via.
-                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:20000],
+                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:MAX_CHARS_DOC],
                             "via": "ocr", "anexo_bytes": body if tipo == "pdf" else None}
             except (PWError, RuntimeError, OSError, ValueError) as exc:
                 logger.warning("download/OCR do anexo (via árvore) %r falhou: %s", (doc.get("texto") or "")[:60], str(exc)[:80])
         return None
     # documento NATIVO (editor): texto inline já renderizado no ifrVisualizacao
     if len(txt) > 50:
-        return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt[:20000], "via": "arvore"}
+        return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt[:MAX_CHARS_DOC], "via": "arvore"}
     return None
 
 
