@@ -757,6 +757,13 @@ manuais quando expirarem (caem no nous até lá).
 > except-pass 152→150 (`07345c1`). Leitura pericial dos 22 escala-3: 18 NÃO SUSTENTA · 4 PARCIAL
 > (autorização tríplice em bloco = o padrão real; candidato a detector regex).
 >
+> **⏯️ 2026-08-02 (manhã) — ESTADO: acervo íntegro nas 2 VMs.** `sentinela_integridade` = 4/4
+> verdes na VM-1 e na VM-2. Fila de leitura humana do 360 = **8 documentos escala-3 na rubrica
+> v3** (de 197 na v1 — a v1 media tramitação normal e NUNCA deve ser citada). Rubrica v3 +
+> guard-rail determinístico: cláusula de competência não sustenta escala 3. Recaptura pós-cura
+> do cap: 29 dos 34 com texto novo; os 5 do IDESI/Con-tato são **invisíveis à pesquisa,
+> confirmado em 2ª máquina com controle positivo na mesma execução** → requisição formal (dono).
+>
 > **PENDÊNCIAS ORDENADAS (atualizadas 2026-08-01 tarde — 1, 2, 3 e o QSA do 5 FECHADOS):**
 > 1. ~~Capturar os 5 SEIs~~ → **ESGOTADO com prova**: invisíveis à pesquisa interna (0 limpo,
 >    sem cadeado, controle positivo de 68 docs na mesma sessão) = assinatura de sigilo integral.
