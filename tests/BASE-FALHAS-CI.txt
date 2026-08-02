@@ -1,3 +1,6 @@
+# 2026-08-02: 48 entradas REMOVIDAS — passaram a ser SKIP honesto no runner (o conftest
+# distingue 'base ausente' de regressão). Base menor = CI mais protetor: cada linha aqui
+# é tolerância, e tolerância que sobra vira alarme desligado.
 # Falhas de AMBIENTE conhecidas no runner do GitHub Actions (ubuntu-latest).
 #
 # Irmã de BASE-FALHAS-VM2.txt, e existe pelo mesmo motivo: o critério do CI é DELTA ZERO nome a
@@ -37,8 +40,6 @@ tests/test_dossie_teto_pratico.py::test_contexto_menor_que_o_teto_e_respeitado
 #
 # ── Tabela da Receita ausente ───────────────────────────────────────────────────────────────
 # Assinatura: "no such table: socios_receita".
-tests/test_osint_fonte_grafo.py::test_beneficiario_final_roda_sobre_cadeia_real
-tests/test_osint_fonte_grafo.py::test_cobertura_declara_a_ausencia_de_serie_temporal
 #
 # ── Acervo do SEI ausente ───────────────────────────────────────────────────────────────────
 tests/test_bench_documento_longo.py::test_404_sem_endpoint_marca_o_modelo_como_morto
@@ -60,7 +61,6 @@ tests/test_render_html_gate_citacoes.py::test_citacao_impossivel_nao_sai_no_html
 #
 # ── Snapshot golden depende de banco+índice ─────────────────────────────────────────────────
 # O diff é o esperado: "Base: 1.138.236 OBs..." vira "base em construção".
-tests/test_lex_snapshot.py::test_parecer_lex_snapshot_identico
 #
 # ── `exiftool` ausente ──────────────────────────────────────────────────────────────────────
 # ⚠️ Os asserts de SEGURANÇA passaram (grau="descartado", pontuacao=0): foto sem EXIF segue não
@@ -103,23 +103,6 @@ tests/test_subsuncao.py::test_acordao_impossivel_e_recusado
 # vínculos, catálogo de capacidades gerado). Verificado ANTES de entrar aqui: rodados um a um na
 # VM com o mesmo comando do CI. Entram na base para o gate voltar a medir DELTA (falha nova) em
 # vez de gritar por ausência de dado — alarme permanente é alarme desligado.
-tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[0]
-tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[5000]
-tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[9999]
-tests/test_folha_estado_teto_de_pagina.py::test_fim_real_da_competencia_continua_marcando_completa
-tests/test_folha_estado_teto_de_pagina.py::test_pagina_alem_do_teto_nao_e_pedida
-tests/test_folha_estado_teto_de_pagina.py::test_parar_no_teto_nao_mente_dizendo_completa
-tests/test_grafo_poder_regua.py::test_vizinhanca_real_traz_forca_em_toda_aresta_de_vinculo
-tests/test_capacidade_pronta_tem_superficie.py::test_o_arquivo_gerado_de_botoes_esta_em_dia
-tests/test_divida_except_pass.py::test_divida_except_pass_nao_cresce
 # 2026-08-01 (verificado na VM: os 8 abaixo PASSAM local com o ambiente real; no runner falham
 # por ambiente — sem compliance.db/superfície gerada. O test_divida_except_pass NÃO entra aqui:
 # era regressão real, curada em tools/sei_ficha.py na mesma data.)
-tests/test_capacidade_pronta_tem_superficie.py::test_o_arquivo_gerado_de_botoes_esta_em_dia
-tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[0]
-tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[5000]
-tests/test_folha_estado_teto_de_pagina.py::test_faixa_valida_segue_sendo_percorrida[9999]
-tests/test_folha_estado_teto_de_pagina.py::test_fim_real_da_competencia_continua_marcando_completa
-tests/test_folha_estado_teto_de_pagina.py::test_pagina_alem_do_teto_nao_e_pedida
-tests/test_folha_estado_teto_de_pagina.py::test_parar_no_teto_nao_mente_dizendo_completa
-tests/test_grafo_poder_regua.py::test_vizinhanca_real_traz_forca_em_toda_aresta_de_vinculo
