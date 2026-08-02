@@ -124,6 +124,19 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
     # arquivo antigo (re-arquivamento por cache mais novo): AFASTA, nunca apaga — escrever por
     # cima misturaria txt de duas gerações com conjuntos de docs diferentes.
     if aplicar and (destino / "manifest.json").exists():
+        # NUNCA substituir por versão com MENOS informação: arquivo vindo da ÍNTEGRA pode ter
+        # docs além do teto SEI_MAX_DOCS do cache (ex.: 070026/000410/2021, 246 docs na árvore,
+        # pareceres no doc 92/204). Se o antigo tem mais docs com texto, mantém o antigo.
+        try:
+            velho = json.loads((destino / "manifest.json").read_text())
+            docs_velho = sum(1 for x in (velho.get("docs") or []) if int(x.get("chars") or 0) > 50)
+        except (OSError, json.JSONDecodeError, ValueError):
+            docs_velho = 0
+        docs_novo = sum(1 for x in (item["dados"].get("conteudo_documentos") or [])
+                        if len(str(x.get("conteudo") or x.get("texto") or "")) > 50)
+        if docs_velho > docs_novo:
+            return {"numero": numero, "docs": 0, "chars": 0, "escritos": 0,
+                    "mantido_antigo": f"{docs_velho} docs c/ texto no arquivo × {docs_novo} no cache"}
         import shutil
         sub = ARQUIVO / "_substituido" / f"{destino.name}__{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
         sub.parent.mkdir(parents=True, exist_ok=True)
