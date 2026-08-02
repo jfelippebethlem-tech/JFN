@@ -46,8 +46,11 @@ capacidades:
   - {id: processo_360_avaliar, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/processo/avaliar, status: PRONTO,
      descricao: "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)",
      quando_usar: "quando GET /api/processo devolver 404 (ainda nao avaliado)", exemplo: "avaliar o processo SEI-070026/000410/2021",
-     args: {numero: "string (numero SEI)", com_llm: "bool opcional"}, retorno: "{ok,status,msg} (assincrono)",
-     menu: {grupo: "🔎 Investigação", nome: "Avaliar um processo SEI (360)", exemplo: "avaliar o processo SEI-070026/000410/2021", ordem: 27}}
+     args: {numero: "string (numero SEI)", com_llm: "bool opcional"}, retorno: "{ok,status,msg} (assincrono)"}
+     # SEM item de menu de propósito (2026-08-02): é o gatilho assíncrono da MESMA capacidade que já
+     # aparece como "Avaliação 360 de um processo SEI" (/processo) — quem lê o menu via a mesma coisa
+     # duas vezes, e o teto do menu curado (test_render_menu_curado_e_enxuto) caiu em 31 por causa
+     # disto. Mecanismo interno não é capacidade; a porta de entrada é uma só.
   - {id: responsaveis_processo, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/responsaveis, status: PRONTO,
      descricao: "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo. Ausencia vem como LACUNA declarada, nunca como inexistencia de responsavel.", quando_usar: "'quem e o fiscal do processo X', 'quem assinou', 'quem autorizou', 'ordenador de despesas do SEI Y', '/responsaveis'", exemplo: "/responsaveis SEI-030001/004724/2026",
      args: {processo: "string (numero SEI, com ou sem prefixo SEI-)"},

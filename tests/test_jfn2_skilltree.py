@@ -157,7 +157,13 @@ def test_render_menu_curado_e_enxuto():
     # nenhuma porta de entrada; quem a achou foi a catraca nova
     # (`test_capacidade_pronta_tem_superficie`), no primeiro uso. Capacidade distinta, com
     # pergunta própria e produto próprio — é exatamente o caso que o teto NÃO existe para barrar.
-    assert 6 <= n_itens <= 29                          # curado (grupos + exemplos), não as ~47 prontas
+    # 30 em 2026-08-02: o menu chegou a 31 e a catraca pegou — mas o excedente eram DUAS coisas
+    # diferentes. Uma era duplicata real: `processo_360_avaliar` (POST assíncrono) tinha item
+    # próprio, e o leitor via "Avaliação 360 de um processo SEI" e "Avaliar um processo SEI (360)"
+    # como se fossem capacidades distintas — mecanismo interno não é capacidade, o menu dele saiu.
+    # A outra é capacidade nova de verdade (a avaliação 360 de processo, produto de 2026-08-01),
+    # e para essa o teto sobe: ele existe contra despejo do catálogo, não contra capacidade nova.
+    assert 6 <= n_itens <= 30                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota
