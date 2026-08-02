@@ -208,8 +208,17 @@ def _grava_cache_atomico(cache_file, res: dict) -> None:
     quando o processo era morto por timeout no meio do write (o refichar flagrou 'JSON inválido'
     em caches de 06/22-jun). Fix 2026-07-10."""
     import json as _json
+    # `anexo_bytes` é o PDF ORIGINAL, útil só EM MEMÓRIA para quem arquiva na mesma execução.
+    # No disco ele passava pelo `default=str` e virava a repr `b'%PDF-...'` — lixo irrecuperável
+    # que inflava o cache em ~400×: um único processo gravou 127 MB de anexo contra 302 KB de
+    # texto (2026-08-02). Some do JSON; o objeto devolvido ao chamador segue intacto.
+    limpo = dict(res)
+    if isinstance(limpo.get("conteudo_documentos"), list):
+        limpo["conteudo_documentos"] = [
+            {k: v for k, v in d.items() if k != "anexo_bytes"} if isinstance(d, dict) else d
+            for d in limpo["conteudo_documentos"]]
     tmp = cache_file.with_name(f"{cache_file.name}.{os.getpid()}.tmp")
-    tmp.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    tmp.write_text(_json.dumps(limpo, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     tmp.replace(cache_file)
 
 
