@@ -111,14 +111,68 @@ def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
     return {"encontrados": len(alvos), "aplicado": aplicar, "quarentena": str(QUARENTENA)}
 
 
+def reparar_sem_texto(aplicar: bool = False, max_n: int = 60) -> dict:
+    """Processos ARQUIVADOS sem nenhum documento com texto — captura incompleta virada acervo.
+
+    Achados pela `sentinela_integridade` (147 em 2026-08-02, todos de `integra_*` de julho, com
+    os PDFs ausentes do disco: o manifest listava documentos, o texto nunca existiu). Para o
+    motor, isso é indistinguível de "processo sem conteúdo" — a mesma mentira por omissão do
+    cache-caixa. A cura é a da casa: **declarar** (`captura_vazia: true`, que o manifest já
+    prevê e a sentinela respeita) e devolver à fila zerando o progress. Nada é apagado.
+    """
+    from compliance_agent.sei import manifesto_norm  # noqa: F401  (garante o pacote no path)
+    arquivo = RAIZ / "data" / "sei_arquivo"
+    prog = json.loads(PROGRESS.read_text()) if PROGRESS.exists() else {"feitos": {}}
+    feitos = prog.setdefault("feitos", {})
+    alvos = []
+    for man in sorted(arquivo.glob("*/manifest.json")):
+        try:
+            m = json.loads(man.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if m.get("captura_vazia"):
+            continue
+        docs = m.get("docs") or []
+        if any(int(d.get("chars") or 0) > 50 for d in docs):
+            continue
+        alvos.append((man, m))
+        if len(alvos) >= max_n:
+            break
+    if aplicar:
+        for man, m in alvos:
+            m["captura_vazia"] = True
+            m["aviso"] = ("captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi "
+                          "extraído e os PDFs não estão no cache. NÃO interpretar como processo "
+                          "sem documentos — reprocessar (marcado em 2026-08-02).")
+            tmp = man.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(man)
+            p = man.parent.name.split("_")
+            if len(p) == 3:
+                numero = f"SEI-{p[0]}/{p[1]}/{p[2]}"
+                feitos[numero] = {"n_docs": 0, "tentativas": 0,
+                                  "em": datetime.now().isoformat(),
+                                  "reparado_sem_texto_em": datetime.now().isoformat()}
+        tmp = PROGRESS.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(prog, ensure_ascii=False))
+        tmp.replace(PROGRESS)
+    return {"encontrados": len(alvos), "aplicado": aplicar}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--aplicar", action="store_true",
                     help="move os caches truncados p/ quarentena e devolve à fila")
     ap.add_argument("--cap", action="store_true",
                     help="modo cauda-longa do cap 20k: requeue bounded da lista recaptura_cap21k.json")
-    ap.add_argument("--max", type=int, default=40, help="(com --cap) teto de processos por rodada")
+    ap.add_argument("--max", type=int, default=40, help="(com --cap/--sem-texto) teto por rodada")
+    ap.add_argument("--sem-texto", action="store_true",
+                    help="declara captura_vazia e refila os processos arquivados sem texto algum")
     args = ap.parse_args()
+    if args.sem_texto:
+        r = reparar_sem_texto(aplicar=args.aplicar, max_n=args.max)
+        print(f"arquivos sem texto: {r['encontrados']} na rodada · aplicado={r['aplicado']}")
+        return
     if args.cap:
         r = reparar_cap(aplicar=args.aplicar, max_n=args.max)
         print(f"cap21k: {r['encontrados']} cache(s) na rodada · aplicado={r['aplicado']}"
