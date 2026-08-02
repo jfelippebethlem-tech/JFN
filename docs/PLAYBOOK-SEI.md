@@ -29,6 +29,14 @@ Grava `data/sei_cache/integra_<TAG>/NNN.pdf` + `manifest.json` (títulos da árv
 ```
 
 ## 3. Leitura pontual sem íntegra (browser)  ⭐ REESCRITO 2026-07-10
+
+> ⚠️ **Teto de texto por documento = `SEI_MAX_CHARS_DOC` (default 60000, era 20000 até
+> 2026-08-01).** O cap antigo decapitava a CONCLUSÃO de parecer longo e o juízo LLM condenava
+> documento que na verdade concluía (14 falsos escala-3). Truncado legado: lista em
+> `data/recaptura_cap21k.json`; requeue bounded diário `tools/sei_reparar_truncados --cap
+> --aplicar --max 40` (cron 05:40) + re-arquivo automático por FRESCOR no
+> `sei_arquivar_do_cache` (cache mais novo que o manifest → re-arquiva, antigo vai p/
+> `_substituido/`).
 `sei_reader.ler("SEI-XX:")` — login itkava/ITERJ + abre + extrai a árvore COMPLETA e o texto.
 Sessão: `tools/sei_session.py`.
 

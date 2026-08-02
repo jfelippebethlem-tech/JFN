@@ -743,6 +743,18 @@ manuais quando expirarem (caem no nous até lá).
 > · 404 vereditos por documento, dos quais **102 na rubrica v2 — só 5 em escala 3** (a estatística
 > "74% dos despachos" é da v1 e **não deve ser citada**: media tramitação legítima).
 >
+> **⏯️ 2026-08-02 (madrugada) — CAP DE 20k CURADO + CI sem spam.** O corte de 20.000 chars/doc
+> (`sei_reader`, 3 vias) decapitava a CONCLUSÃO de parecer longo → 14 falsos escala-3. Curado:
+> `SEI_MAX_CHARS_DOC=60000` (`db3e3e0`), medição em `data/recaptura_cap21k.json` (1.660 docs no
+> cap, 375 processos). **Prioridade (34 com veredito): recaptura DIVIDIDA VM-1(18)/VM-2(16)**
+> (fatia do sweep; fix rsync+md5 na VM-2) + finalizador (rsync de volta → re-arquiva com backup
+> em `_pre_cap21k/` → re-julga sob lock → reconta). **Cauda longa (341): cron 05:40**
+> `sei_reparar_truncados --cap --aplicar --max 40` (auto-esgota) + **re-arquivo por FRESCOR** no
+> `sei_arquivar_do_cache` (cache > manifest → re-arquiva; antigo → `_substituido/`). **CI:**
+> push×pull_request deduplicado (`if` no job), 8 falhas de ambiente declaradas na base, dívida
+> except-pass 152→150 (`07345c1`). Leitura pericial dos 22 escala-3: 18 NÃO SUSTENTA · 4 PARCIAL
+> (autorização tríplice em bloco = o padrão real; candidato a detector regex).
+>
 > **PENDÊNCIAS ORDENADAS (atualizadas 2026-08-01 tarde — 1, 2, 3 e o QSA do 5 FECHADOS):**
 > 1. ~~Capturar os 5 SEIs~~ → **ESGOTADO com prova**: invisíveis à pesquisa interna (0 limpo,
 >    sem cadeado, controle positivo de 68 docs na mesma sessão) = assinatura de sigilo integral.

@@ -1,0 +1,75 @@
+# ===================== JFN — agenda diária ESCALONADA (ordem lógica, VM-safe) =====================
+# Princípio (pedido do dono): todos os sweeps rodam TODOS OS DIAS, em HORAS DIFERENTES, em ordem lógica
+# de dependência (base -> enriquecimento), nunca 2 sweeps pesados ao mesmo tempo (lição §8: a VM já caiu).
+# Cada sweep de enriquecimento roda uma SESSÃO DIÁRIA LIMITADA (SWEEP_MAX_SECONDS) e é RESUMÍVEL (continua
+# de onde parou no dia seguinte). Pausa manual: data/.pause_<sweep>_sweep.
+
+# --- BASE (dados-fonte; já existiam) ---
+0 3 * * 0 cd /home/ubuntu/JFN && /home/ubuntu/JFN/.venv/bin/python -m compliance_agent.manutencao --tudo >> /home/ubuntu/JFN/data/manutencao_cron.log 2>&1
+0 5 * * * PYTHONPATH=/home/ubuntu/JFN /home/ubuntu/JFN/.venv/bin/python -m compliance_agent.siafe_runner diario >> /home/ubuntu/JFN/data/siafe_runner_cron.log 2>&1
+40 5 * * * PYTHONPATH=/home/ubuntu/JFN /home/ubuntu/JFN/.venv/bin/python -m tools.backfill_enderecos >> /home/ubuntu/JFN/data/backfill_enderecos_cron.log 2>&1
+0 6 * * * cd /home/ubuntu/JFN && PYTHONPATH=/home/ubuntu/JFN /home/ubuntu/JFN/.venv/bin/python -m compliance_agent.collectors.folha_orquestrador >> /home/ubuntu/JFN/data/folha_orquestrador_cron.log 2>&1
+
+# --- SWEEPS DE ENRIQUECIMENTO (diários, escalonados ~2h30 cada, ordem lógica; nunca sobrepõem) ---
+# 07:00 SEI (lê os processos correlacionados às OBs ingeridas) -> 10:00 endereço (sedes dos fornecedores)
+# -> 13:00 benefícios (sócios/admin -> benefício social = laranja). Cada janela termina antes da próxima.
+
+# --- BOOT: só limpa lock de browser (a agenda diária cuida dos lançamentos) ---
+@reboot sleep 20 && rm -f /home/ubuntu/JFN/data/browser.lock 2>/dev/null
+@reboot sleep 150 && bash /home/ubuntu/JFN/tools/sweep_sei.sh >> /home/ubuntu/JFN/data/sweep_sei.log 2>&1
+# === JFN sweeps individuais (cont.25; VM 2-core/sem-swap — escalonado, 1 por vez, bounded) ===
+# SEI sweep HORÁRIO (goal 24/7 até esgotar a fila ~21,5k). SEGURO: pgrep-lock single-instance +
+# browser_lock (nunca 2 browsers, serializa c/ SIAFE) + bound por timeout + flag data/.pause_sei_sweep
+# para leitura manual. NÃO é o lane contínuo revertido no cont.25 — cada sessão é bounded e libera o browser.
+*/30 * * * * bash /home/ubuntu/JFN/tools/sweep_sei.sh
+0 10 * * * bash /home/ubuntu/JFN/tools/sweep_dados.sh
+0 16 * * * bash /home/ubuntu/JFN/tools/sweep_dados.sh
+0 23 * * * bash /home/ubuntu/JFN/tools/cruzador.sh
+0 */2 * * * /home/ubuntu/JFN/tools/sweep_sede.sh >> /home/ubuntu/JFN/data/sweep_sede.log 2>&1
+45 5 * * * /home/ubuntu/JFN/tools/refresh_favorecido_resumo.sh >> /home/ubuntu/JFN/data/refresh_favres.log 2>&1
+
+# --- Receita dump REVERSO: refresh MENSAL (dia 5, 06:00, apos publicacao da Receita) -> reconstroi socios_receita+socios_reverso+empresas_min e APAGA os ZIPs (libera ~1,9 GB) ---
+0 6 5 * * bash /home/ubuntu/JFN/tools/socios_dump_refresh.sh >> /home/ubuntu/JFN/data/socios_dump_refresh_cron.log 2>&1
+*/5 * * * * /home/ubuntu/polimonitor/scripts/run-likers-import.sh >> /home/ubuntu/polimonitor/data/likers_import_cron.log 2>&1
+0 18 * * 5 /home/ubuntu/polimonitor/scripts/run-resumo-semanal.sh >> /home/ubuntu/polimonitor/data/resumo_semanal.log 2>&1
+0 8 * * 4 /home/ubuntu/polimonitor/scripts/run-watch-leaderboard.sh >> /home/ubuntu/polimonitor/data/watch_leaderboard.log 2>&1
+50 3 * * 0 bash /home/ubuntu/JFN/tools/backup_compliance.sh >> /home/ubuntu/JFN/data/backup_compliance_cron.log 2>&1
+10 4 * * * bash /home/ubuntu/JFN/tools/manutencao_diaria.sh >> /home/ubuntu/JFN/data/manutencao_diaria_cron.log 2>&1
+50 5 * * * /home/ubuntu/JFN/.venv/bin/python tools/garantir_obs_iterj_mgs.py >> /home/ubuntu/JFN/data/garantir_obs_cron.log 2>&1
+30 6 * * * PYTHONPATH=/home/ubuntu/JFN /home/ubuntu/JFN/.venv/bin/python -m compliance_agent.pericia_sweep --min-obs 3 >> /home/ubuntu/JFN/data/pericia_sweep_cron.log 2>&1
+0 9 * * 5 /home/ubuntu/polimonitor/scripts/run-viral-semanal.sh >> /home/ubuntu/polimonitor/data/viral_semanal.log 2>&1
+# DESLIGADO 2026-06-25 (parar API Google): 17 * * * * bash /home/ubuntu/JFN/tools/sweep_fachada_sv.sh >> /home/ubuntu/JFN/data/fachada_redo_sv.log 2>&1
+40 6 * * * cd /home/ubuntu/JFN && set -a; . ./.env; set +a; .venv/bin/python -m tools.obra_fase_sei --limite 200 >> data/obra_fase.log 2>&1
+# ARQUIVO GERAL do SEI (todos os cdp bons, por valor) — passe NOTURNA bounded 2h, pausa os sweeps enquanto
+# baixa (1 browser). Resumível (pula os com texto/). Ajuste --segundos p/ mais/menos throughput.
+0 4 * * * cd /home/ubuntu/JFN && PYTHONPATH=/home/ubuntu/JFN /home/ubuntu/JFN/.venv/bin/python tools/sei_integra_fila.py --geral --segundos 7200 >> /home/ubuntu/JFN/data/sei_integra_fila.log 2>&1
+*/5 * * * * bash /home/ubuntu/JFN/tools/guardiao_failover.sh
+# Índice de posts p/ o coletor de curtidores do desktop (ver scripts/refresh-posts-index.sh)
+40 4-9 * * * /home/ubuntu/polimonitor/scripts/refresh-posts-index.sh >> /home/ubuntu/polimonitor/data/posts_index_cron.log 2>&1
+0 9 * * 1 PYTHONPATH=/home/ubuntu/JFN /home/ubuntu/JFN/.venv/bin/python -m tools.triagem_amarelos --top 15 --enviar >> /home/ubuntu/JFN/data/triagem_amarelos_cron.log 2>&1
+# SLO de frescor por etapa (config/pipelines.yaml) — alerta Telegram na transição ok->stale (debounce)
+7 * * * * cd /home/ubuntu/JFN && set -a; . ./.env; set +a; PYTHONPATH=. .venv/bin/python -m tools.pipelines_slo --alerta >> data/pipelines_slo.log 2>&1
+# RAG intradia: re-indexa só o DELTA se o corpus mudou (build incremental; chave Cohere trial provada 07-07: header x-trial — grátis, teto 1000/mês, falha 429 sem cobrar)
+7 13 * * * cd /home/ubuntu/JFN && PYTHONPATH=. .venv/bin/python tools/hermes_rag.py build --se-mudou >> data/hermes_rag_cron.log 2>&1
+# ÓRGÃO segundo-cérebro: DB → vault determinístico (antes da metacognição 06:50, que re-indexa o RAG)
+25 6 * * * cd /home/ubuntu/JFN && .venv/bin/python tools/cerebro_sync.py >> /home/ubuntu/JFN/data/cerebro_sync.log 2>&1
+10 3 * * 0 cd /home/ubuntu/JFN/graphify-out && ls -d 20[0-9][0-9]-* 2>/dev/null | head -n -3 | xargs -r rm -rf # retenção graphify: 3 snapshots
+25 3 * * * cd /home/ubuntu/vault && git add -A && git -c user.name=backup -c user.email=backup@local commit -qm "backup diário automático" 2>/dev/null; git push -q origin master 2>/dev/null # backup vault GitHub
+# Atas de julgamento PNCP → índice (matéria-prima das famílias certame_ata/conluio) — off-hours, bounded, flock
+40 1 * * * /home/ubuntu/JFN/tools/sweep_atas_julgamento.sh 400
+*/30 * * * * /home/ubuntu/JFN/tools/prewarm_painel.sh
+@reboot sleep 240 && /home/ubuntu/JFN/tools/prewarm_painel.sh
+*/5 * * * * /home/ubuntu/JFN/tools/guardiao_db_malformed.sh
+# D.O. Rio — varredura AMPLA de contratacao municipal (contrato/aditivo/dispensa/inexig/ata RP, todos orgaos); ES aberto, sem captcha nem browser
+10 2 * * * cd /home/ubuntu/JFN && PYTHONPATH=. .venv/bin/python -m compliance_agent.pcrj.doweb --contratacao --ano-min 2024 --paginas 10 >> /home/ubuntu/JFN/data/pcrj_doe_contratacao.log 2>&1
+35 2 * * * cd /home/ubuntu/JFN && PYTHONPATH=. .venv/bin/python -m tools.pcrj_sei_ingest >> /home/ubuntu/JFN/data/pcrj_sei_ingest.log 2>&1
+# GitNexus — reindexação semanal (evita índice stale; causa-raiz do índice de 20/07 parado)
+0 4 * * 0 cd /home/ubuntu/JFN && nice -n 19 ionice -c3 /home/ubuntu/.npm-global/bin/gitnexus analyze >> /home/ubuntu/JFN/data/gitnexus_refresh.log 2>&1
+# Fiscalização contínua em 3 camadas (determinística + IA grátis em rubrica fechada).
+# Parar: touch ~/JFN/data/.pause_fiscalizacao (ou .pause_llm_triagem só para a IA).
+30 */2 * * * bash /home/ubuntu/JFN/tools/sweep_fiscalizacao_247.sh
+
+# Processo 360 — avalia o que o sweep_sei captura (bounded, lock próprio, pausável por data/.pause_360)
+20 */4 * * * bash /home/ubuntu/JFN/tools/sweep_360.sh
+# Avaliação AUTÔNOMA de todas as superfícies: OB, licitação, contrato/execução, órgão, fornecedor
+50 1,9,17 * * * bash /home/ubuntu/JFN/tools/sweep_avaliacao_total.sh
