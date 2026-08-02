@@ -20,10 +20,10 @@
     const go = dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
     return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ""}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
   };
-  var sec2 = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
+  var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
   var spin = (t) => `<div class="skel"><span class="sp"></span>${t || "Carregando…"}</div>`;
   var cover = (sph, t, s, ic) => `<div class="cover ${sph}"><div class="cover-row">${ic ? `<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>` : ""}<div class="cover-tx"><h2 class="t">${t}</h2><div class="s">${s}</div></div></div></div>`;
-  var leitura2 = (t) => `<div class="leitura">${t}</div>`;
+  var leitura = (t) => `<div class="leitura">${t}</div>`;
   var semMedicao = (d, t) => card(`<div style="font-weight:700">${esc(t)}</div>
   <div class="dim" style="margin-top:6px">${esc(d && d.mensagem || "sem medição neste ambiente").replace(/`([^`]+)`/g, "<code>$1</code>")}</div>`);
   var btnPdf = (tipo) => `<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
@@ -103,10 +103,10 @@
       const c = _jCache.get(ep);
       if (c && Date.now() - c.t < 9e4) return c.d;
     }
-    const TETO = opt && opt.tetoMs || 3e4;
+    const TETO2 = opt && opt.tetoMs || 3e4;
     for (let t = 0; ; t++) {
       const ac = "AbortController" in window ? new AbortController() : null;
-      const relogio = ac ? setTimeout(() => ac.abort(), TETO) : 0;
+      const relogio = ac ? setTimeout(() => ac.abort(), TETO2) : 0;
       try {
         const r = await fetch(ep, ac ? Object.assign({}, opt, { signal: ac.signal }) : opt);
         const d = await r.json();
@@ -114,7 +114,7 @@
         return d;
       } catch (e) {
         const estourou = e && e.name === "AbortError";
-        if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO / 1e3}s` : String(e) };
+        if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO2 / 1e3}s` : String(e) };
         await new Promise((rs) => setTimeout(rs, 1200));
       } finally {
         if (relogio) clearTimeout(relogio);
@@ -770,18 +770,399 @@
     aba = v;
   }
 
-  // static/js/src/cena/index.js
+  // static/js/src/cena/malha-rj.js
+  var _rjCbs = [];
+  var _rjLoading = false;
+  function _rjCarregar(cb) {
+    if (window.RJ_MALHA) {
+      try {
+        cb();
+      } catch (_) {
+      }
+      return;
+    }
+    _rjCbs.push(cb);
+    if (_rjLoading) return;
+    _rjLoading = true;
+    const s = document.createElement("script");
+    s.src = "/static/assets/rj-malha.js?v=c6127f36";
+    s.async = true;
+    s.onload = () => {
+      const l = _rjCbs.slice();
+      _rjCbs.length = 0;
+      l.forEach((fn) => {
+        try {
+          fn();
+        } catch (e) {
+          console.warn("[rj] callback da malha falhou:", e);
+        }
+      });
+    };
+    s.onerror = () => {
+      _rjLoading = false;
+    };
+    document.head.appendChild(s);
+  }
+  function _rjBuild(M, W, H, dpr, modo) {
+    const c = document.createElement("canvas");
+    c.width = Math.round(W * dpr);
+    c.height = Math.round(H * dpr);
+    const x = c.getContext("2d");
+    x.scale(dpr, dpr);
+    const nu = modo === "nucleo";
+    const FX = nu ? 0.94 : 0.88, FY = nu ? 0.96 : 0.82;
+    const s = Math.min(W * FX / M.w, H * FY / M.h);
+    const ox = (W - M.w * s) / 2, oy = nu ? (H - M.h * s) / 2 : (H * FY - M.h * s) / 2;
+    const mk = (flat) => {
+      const p = new Path2D();
+      let X = flat[0], Y = flat[1];
+      p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
+      for (let i = 2; i < flat.length; i += 2) {
+        X += flat[i];
+        Y += flat[i + 1];
+        p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
+      }
+      p.closePath();
+      return p;
+    };
+    x.lineJoin = x.lineCap = "round";
+    x.strokeStyle = nu ? "rgba(120,170,245,0.16)" : "rgba(126,178,250,0.52)";
+    x.lineWidth = nu ? 0.55 : 0.75;
+    M.m.forEach((f) => x.stroke(mk(f)));
+    x.shadowColor = "rgba(140,196,255,0.95)";
+    x.shadowBlur = nu ? 9 : 18;
+    x.strokeStyle = nu ? "rgba(176,210,255,0.42)" : "rgba(214,234,255,1)";
+    x.lineWidth = nu ? 1.1 : 2.1;
+    M.o.forEach((f) => x.stroke(mk(f)));
+    x.shadowBlur = nu ? 14 : 30;
+    x.shadowColor = "rgba(255,150,60,0.8)";
+    x.strokeStyle = nu ? "rgba(255,190,120,0.20)" : "rgba(255,196,124,0.72)";
+    x.lineWidth = nu ? 0.7 : 1.1;
+    M.o.forEach((f) => x.stroke(mk(f)));
+    return c;
+  }
+
+  // static/js/src/cena/holomesa.js
+  var _hex2 = (a) => Math.max(0, Math.min(255, Math.round(a * 255))).toString(16).padStart(2, "0");
+  var HOLO = {
+    PL: 1.1,
+    ELEV: 0.56,
+    CAMD: 3.15,
+    SZ: 520,
+    // piso, elevação (rad), distância, resolução do bitmap
+    ESP: 0.045,
+    ARO: 1.11,
+    GIRO: -0.28,
+    // espessura da laje · aro · giro do território (rad)
+    /* ALT = teto da cena: altura do reator e do anel mais alto. Era 0.60 solto em
+       três lugares (o HT do enquadramento e os dois P(0,0.60,0) do reator), e
+       esse ar reservado acima do piso era o que fazia o TERRITÓRIO ficar numa
+       faixa fina no meio do card — o "pequeno e vazio" que o dono viu. Baixar
+       para 0.46 devolve a altura ao piso e mantém a escada de três degraus. */
+    ALT: 0.46
+  };
+  function _holoProj(x, y, z, c) {
+    const X = x * c.cy_ - z * c.sy_, Z = x * c.sy_ + z * c.cy_;
+    const Y2 = y * c.cp + Z * c.sp;
+    const Z2 = Math.max(0.42, Z * c.cp - y * c.sp + c.camd);
+    const k = c.camd / Z2;
+    return { x: c.cx + X * k * c.s, y: c.cy - Y2 * k * c.s, k, z: Z2 };
+  }
+  function _rjPlaca(M, SZ) {
+    const c = document.createElement("canvas");
+    c.width = c.height = SZ;
+    const x = c.getContext("2d");
+    const GIRO = HOLO.GIRO;
+    const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
+    const lw = M.w * cg + M.h * sg, lh = M.w * sg + M.h * cg;
+    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M.w * s) / 2, oy = (SZ - M.h * s) / 2;
+    const mk = (flat) => {
+      const p = new Path2D();
+      let X = flat[0], Y = flat[1];
+      p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
+      for (let i = 2; i < flat.length; i += 2) {
+        X += flat[i];
+        Y += flat[i + 1];
+        p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
+      }
+      p.closePath();
+      return p;
+    };
+    x.translate(SZ / 2, SZ / 2);
+    x.rotate(GIRO);
+    x.translate(-SZ / 2, -SZ / 2);
+    x.lineJoin = x.lineCap = "round";
+    x.strokeStyle = "rgba(120,170,245,0.22)";
+    x.lineWidth = 0.9;
+    M.m.forEach((f) => x.stroke(mk(f)));
+    x.shadowColor = "rgba(140,196,255,0.95)";
+    x.shadowBlur = 10;
+    x.strokeStyle = "rgba(186,218,255,0.62)";
+    x.lineWidth = 1.7;
+    M.o.forEach((f) => x.stroke(mk(f)));
+    x.shadowBlur = 16;
+    x.shadowColor = "rgba(255,150,60,0.8)";
+    x.strokeStyle = "rgba(255,190,120,0.26)";
+    x.lineWidth = 1.1;
+    M.o.forEach((f) => x.stroke(mk(f)));
+    return c;
+  }
+  function _rjContornoMundo(M) {
+    const PL = HOLO.PL, SZ = HOLO.SZ, GIRO = HOLO.GIRO;
+    const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
+    const lw = M.w * cg + M.h * sg, lh = M.w * sg + M.h * cg;
+    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M.w * s) / 2, oy = (SZ - M.h * s) / 2;
+    return M.o.map((flat) => {
+      const pts = [];
+      let X = flat[0], Y = flat[1];
+      const põe = () => {
+        const rx = ox + X / M.q * s - SZ / 2, ry = oy + Y / M.q * s - SZ / 2;
+        const sx = SZ / 2 + rx * Math.cos(GIRO) - ry * Math.sin(GIRO);
+        const sy = SZ / 2 + rx * Math.sin(GIRO) + ry * Math.cos(GIRO);
+        pts.push([sx / SZ * 2 * PL - PL, PL - sy / SZ * 2 * PL]);
+      };
+      põe();
+      for (let i = 2; i < flat.length; i += 2) {
+        X += flat[i];
+        Y += flat[i + 1];
+        põe();
+      }
+      return pts;
+    });
+  }
+  function _holoPiso(g, bmp, c, W, H, alt) {
+    const PL = HOLO.PL, SZ = bmp.width, NF = 26, dz = 2 * PL / NF, y = alt || 0;
+    g.clearRect(0, 0, W, H);
+    for (let i = 0; i < NF; i++) {
+      const zF = PL - i * dz, zN = zF - dz, sy0 = i * SZ / NF, sy1 = (i + 1) * SZ / NF, hs = sy1 - sy0;
+      const P00 = _holoProj(-PL, y, zF, c), P10 = _holoProj(PL, y, zF, c), P01 = _holoProj(-PL, y, zN, c);
+      const a = (P10.x - P00.x) / SZ, b = (P10.y - P00.y) / SZ, cc = (P01.x - P00.x) / hs, d = (P01.y - P00.y) / hs;
+      if (!isFinite(a) || !isFinite(d) || Math.abs(a * d - b * cc) < 1e-9) continue;
+      g.save();
+      g.transform(a, b, cc, d, P00.x - cc * sy0, P00.y - d * sy0);
+      g.drawImage(bmp, 0, sy0, SZ, Math.min(SZ - sy0, hs + 1), 0, sy0, SZ, Math.min(SZ - sy0, hs + 1));
+      g.restore();
+    }
+  }
+
+  // static/js/src/cena/ponteiro.js
   var _ckMX = 0.5;
   var _ckMY = 0.5;
   function cenaPonteiro(x, y) {
     _ckMX = x;
     _ckMY = y;
   }
-  var _nebVid = {};
-  var _nuVid = {};
-  var _nuPost = {};
-  var _rjCbs = [];
-  var _rjLoading = false;
+
+  // static/js/src/cena/portal.js
+  var _PORTAL_VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}";
+  var _PORTAL_FS = `precision highp float;
+uniform vec2 u_res;uniform float u_t,u_ign,u_jump;uniform vec2 u_m;
+float h21(vec2 p){p=fract(p*vec2(127.31,311.7));p+=dot(p,p+34.23);return fract(p.x*p.y);}
+float stars(vec2 p,float sc,float th){
+  vec2 q=p*sc;vec2 id=floor(q);vec2 f=fract(q)-0.5;
+  float r=h21(id+sc);
+  if(r<th)return 0.0;
+  vec2 o=(vec2(h21(id+3.7),h21(id+9.1))-0.5)*0.70;
+  return smoothstep(0.055,0.0,length(f-o))*(0.25+(r-th)/(1.0-th)*0.85);
+}
+void main(){
+  vec2 p=(gl_FragCoord.xy-0.5*u_res)/u_res.y+u_m*0.045;
+  float r=length(p);
+  /* reator sobe 9% da altura: fica no MESMO centro do território (faixa
+     superior de 82%) e sai de cima da fala, que vive no terço inferior. */
+  vec2 pr=p-vec2(0.0,0.09);
+  float rr=length(pr),a=atan(pr.y,pr.x);
+  vec3 col=vec3(0.0);
+  /* estrelas PEQUENAS e esparsas: o espaço tem que ser preto, não azul lavado.
+     Acumular ao longo do raio dá o rastro de verdade no salto.              */
+  float sf=0.0;
+  for(int i=0;i<5;i++){
+    float t=float(i)/4.0;float k=1.0-u_jump*0.55*t;
+    sf+=(stars(p*k,15.0,0.905)+stars(p*k,27.0,0.935)*0.45)*(1.0-t*0.8);
+  }
+  col+=mix(vec3(0.55,0.72,1.05),vec3(1.0,0.72,0.38),0.16+0.5*u_jump)*sf*0.7;
+  /* reator: anéis de íon + segmentos girando (compacto — o herói é o território) */
+  float ig=max(u_ign,0.0001);
+  float R=smoothstep(0.010,0.0,abs(rr-0.112*ig))*1.05
+         +smoothstep(0.0050,0.0,abs(rr-0.168*ig))*0.68
+         +smoothstep(0.0026,0.0,abs(rr-0.218*ig))*0.44;
+  R+=smoothstep(0.008,0.0,abs(rr-0.168*ig))*step(0.45,fract((a/6.28318)*26.0+u_t*0.22))*0.6;
+  col+=vec3(0.30,0.62,1.30)*R*ig;
+  /* núcleo incandescente + bloom contido */
+  col+=vec3(1.30,0.56,0.16)*exp(-rr*rr*(230.0/ig))*ig*1.15;
+  col+=vec3(1.00,0.46,0.13)*exp(-rr*8.5)*ig*0.13;
+  /* varredura do guardião */
+  col+=vec3(0.34,0.70,1.30)*pow(1.0-fract((a+3.14159)/6.28318-u_t*0.40),26.0)
+       *smoothstep(0.85,0.05,rr)*ig*0.38;
+  /* clarão do salto: quente e CONTIDO no centro (não lava o campo inteiro —
+     esse foi o erro da 1ª volta, o flash azul apagava o espaço). */
+  col+=mix(vec3(0.5,0.7,1.15),vec3(1.15,0.7,0.35),0.5)*u_jump*u_jump
+       *smoothstep(0.9,0.0,r)*0.32;
+  col*=1.0-0.82*smoothstep(0.20,1.05,r);
+  /* alpha = luminância: espaço vazio fica TRANSPARENTE (mostra a nebulosa de
+     fundo), reator/estrelas/território ficam opacos por cima. */
+  float a=clamp(max(col.r,max(col.g,col.b))*1.25+0.12,0.0,1.0);
+  gl_FragColor=vec4(col,a);
+}`;
+  function portalStart() {
+    const el = $("portal");
+    if (!el) return;
+    let pular = false;
+    try {
+      pular = sessionStorage.getItem("jfn_v9_portal") === "1" || localStorage.getItem("jfn_portal_off") === "1";
+    } catch (_) {
+    }
+    if (pular || _redMotion) {
+      el.remove();
+      return;
+    }
+    try {
+      sessionStorage.setItem("jfn_v9_portal", "1");
+    } catch (_) {
+    }
+    el.hidden = false;
+    const cv = $("pcv"), pm = $("pmap");
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    let gl = null, U = {}, raf = 0, morto = false, mapC = null, mx = 0, my = 0;
+    const t0 = performance.now(), IGN = [80, 560], JUMP = [1320, 1780], FIM = 1960;
+    try {
+      gl = cv.getContext("webgl", { antialias: false, alpha: true, premultipliedAlpha: false }) || cv.getContext("experimental-webgl");
+    } catch (_) {
+    }
+    if (gl) try {
+      const sh = (tp, src) => {
+        const s = gl.createShader(tp);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      };
+      const pr = gl.createProgram();
+      gl.attachShader(pr, sh(gl.VERTEX_SHADER, _PORTAL_VS));
+      gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, _PORTAL_FS));
+      gl.linkProgram(pr);
+      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+      gl.useProgram(pr);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(pr, "a");
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      ["u_res", "u_t", "u_ign", "u_jump", "u_m"].forEach((n) => U[n] = gl.getUniformLocation(pr, n));
+    } catch (_) {
+      gl = null;
+    }
+    const mctx = pm.getContext("2d");
+    function medir() {
+      const W = innerWidth, H = innerHeight;
+      if (gl) {
+        cv.width = Math.round(W * dpr);
+        cv.height = Math.round(H * dpr);
+        gl.viewport(0, 0, cv.width, cv.height);
+      }
+      pm.width = Math.round(W * dpr);
+      pm.height = Math.round(H * dpr);
+      mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (window.RJ_MALHA) mapC = _rjBuild(window.RJ_MALHA, W, H, dpr, "portal");
+    }
+    medir();
+    addEventListener("resize", medir, { passive: true });
+    addEventListener("pointermove", (e) => {
+      if (morto) return;
+      mx = (e.clientX / innerWidth - 0.5) * 2;
+      my = -(e.clientY / innerHeight - 0.5) * 2;
+    }, { passive: true });
+    _rjCarregar(() => {
+      if (!morto) medir();
+    });
+    function quadro(agora) {
+      if (morto) return;
+      const t = agora - t0;
+      const ign = Math.min(1, Math.max(0, (t - IGN[0]) / (IGN[1] - IGN[0])));
+      const jmp = Math.min(1, Math.max(0, (t - JUMP[0]) / (JUMP[1] - JUMP[0])));
+      if (gl) {
+        gl.uniform2f(U.u_res, cv.width, cv.height);
+        gl.uniform1f(U.u_t, t / 1e3);
+        gl.uniform1f(U.u_ign, ign * ign * (3 - 2 * ign));
+        gl.uniform1f(U.u_jump, jmp * jmp);
+        gl.uniform2f(U.u_m, mx, my);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      if (mapC) {
+        const W = innerWidth, H = innerHeight;
+        const rev = Math.min(1, Math.max(0, (t - 620) / 1650));
+        mctx.clearRect(0, 0, W, H);
+        if (rev > 0) {
+          const cx = W / 2, cy = H * 0.41;
+          const R = Math.max(1, rev * Math.hypot(W, H) * 0.66);
+          const g = mctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+          g.addColorStop(0, "rgba(255,255,255,1)");
+          g.addColorStop(0.74, "rgba(255,255,255,1)");
+          g.addColorStop(1, "rgba(255,255,255,0)");
+          mctx.globalCompositeOperation = "source-over";
+          mctx.fillStyle = g;
+          mctx.fillRect(0, 0, W, H);
+          mctx.globalCompositeOperation = "source-in";
+          mctx.globalAlpha = Math.min(1, rev * 1.6) * (1 - jmp * 0.85);
+          mctx.drawImage(mapC, 0, 0, W, H);
+          mctx.globalAlpha = 1;
+        }
+      }
+      if (t >= FIM) {
+        portalFim();
+        return;
+      }
+      raf = requestAnimationFrame(quadro);
+    }
+    raf = requestAnimationFrame(quadro);
+    function portalFim() {
+      if (morto) return;
+      morto = true;
+      cancelAnimationFrame(raf);
+      const k = $("kyber"), lento = _redMotion || document.body.classList.contains("fps-baixo");
+      if (k && !lento) {
+        const kr = k.getBoundingClientRect(), S = 190;
+        const h = document.createElement("div");
+        h.id = "phand";
+        h.style.cssText = `width:${S}px;height:${S}px;left:${innerWidth / 2 - S / 2}px;top:${innerHeight / 2 - S / 2}px`;
+        document.body.appendChild(h);
+        let saiu = false;
+        const tirar = () => {
+          if (saiu) return;
+          saiu = true;
+          h.remove();
+        };
+        h.addEventListener("transitionend", tirar, { once: true });
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          h.style.transform = `translate(${kr.left + kr.width / 2 - innerWidth / 2}px,${kr.top + kr.height / 2 - innerHeight / 2}px) scale(${(kr.width / S).toFixed(4)})`;
+          h.style.opacity = "0";
+        }));
+        setTimeout(tirar, 900);
+      }
+      el.classList.add("off");
+      const b = document.querySelector(".cblade");
+      if (b) {
+        b.style.animation = "none";
+        void b.offsetWidth;
+        b.style.animation = "ignicao .5s cubic-bezier(.2,.9,.25,1.2) 1,respira 4.5s ease-in-out .5s infinite";
+      }
+      setTimeout(() => {
+        el.remove();
+        if (gl) {
+          const x = gl.getExtension("WEBGL_lose_context");
+          if (x) x.loseContext();
+        }
+      }, 420);
+    }
+    el.addEventListener("click", portalFim);
+    addEventListener("keydown", portalFim);
+    setTimeout(portalFim, FIM + 90);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && performance.now() - t0 >= FIM) portalFim();
+    });
+  }
+
+  // static/js/src/cena/fundo.js
   var _rjbgTinge = () => {
   };
   function rjbgStart() {
@@ -963,6 +1344,11 @@
     size();
     draw();
   }
+
+  // static/js/src/cena/index.js
+  var _nebVid = {};
+  var _nuVid = {};
+  var _nuPost = {};
   var NU_NODES = [
     { id: "radar", lab: "radar de risco", tab: "g_radar", cor: "#5fd9ff", orb: 0.9, sp: 1 },
     { id: "alertas", lab: "alertas", tab: "e_alertas", cor: "#ff7a8a", orb: 0.66, sp: -0.7 },
@@ -1020,27 +1406,29 @@
       setTimeout(() => s.remove(), 4e3);
     }
   }
+  var EV_COR = {
+    alerta: "255,122,138",
+    radar: "255,122,138",
+    ob_siafe: "238,194,118",
+    ob_tfe: "238,194,118",
+    clausula: "192,150,255",
+    pericia: "95,224,161",
+    ata: "125,175,255"
+  };
+  var EV_DOMINIO = {
+    alerta: "alertas",
+    radar: "radar",
+    ob_siafe: "compras",
+    ob_tfe: "compras",
+    clausula: "dossie",
+    pericia: "fenix",
+    ata: "com"
+  };
   function nucleoPulse(tipo) {
     if (_redMotion || !$("ck-nucleo")) return;
-    const c = {
-      alerta: "255,122,138",
-      radar: "255,122,138",
-      ob_siafe: "238,194,118",
-      ob_tfe: "238,194,118",
-      clausula: "192,150,255",
-      pericia: "95,224,161",
-      ata: "125,175,255"
-    }[tipo] || "95,217,255";
+    const c = EV_COR[tipo] || "95,217,255";
     _nuPulses.push({ r: 0.14, a: 0.85, c });
-    const alvo = {
-      alerta: "alertas",
-      radar: "radar",
-      ob_siafe: "compras",
-      ob_tfe: "compras",
-      clausula: "dossie",
-      pericia: "fenix",
-      ata: "com"
-    }[tipo];
+    const alvo = EV_DOMINIO[tipo];
     if (alvo) _nuFlux.push({ id: alvo, p: 0, c });
     if (_nuFlux.length > 24) _nuFlux.splice(0, _nuFlux.length - 24);
     _nuEvTotal++;
@@ -1051,107 +1439,6 @@
   var _nuHover = null;
   function _setNuHover(v) {
     _nuHover = v;
-  }
-  var _hex2 = (a) => Math.max(0, Math.min(255, Math.round(a * 255))).toString(16).padStart(2, "0");
-  var HOLO = {
-    PL: 1.1,
-    ELEV: 0.56,
-    CAMD: 3.15,
-    SZ: 520,
-    // piso, elevação (rad), distância, resolução do bitmap
-    ESP: 0.045,
-    ARO: 1.11,
-    GIRO: -0.28,
-    // espessura da laje · aro · giro do território (rad)
-    /* ALT = teto da cena: altura do reator e do anel mais alto. Era 0.60 solto em
-       três lugares (o HT do enquadramento e os dois P(0,0.60,0) do reator), e
-       esse ar reservado acima do piso era o que fazia o TERRITÓRIO ficar numa
-       faixa fina no meio do card — o "pequeno e vazio" que o dono viu. Baixar
-       para 0.46 devolve a altura ao piso e mantém a escada de três degraus. */
-    ALT: 0.46
-  };
-  function _holoProj(x, y, z, c) {
-    const X = x * c.cy_ - z * c.sy_, Z = x * c.sy_ + z * c.cy_;
-    const Y2 = y * c.cp + Z * c.sp;
-    const Z2 = Math.max(0.42, Z * c.cp - y * c.sp + c.camd);
-    const k = c.camd / Z2;
-    return { x: c.cx + X * k * c.s, y: c.cy - Y2 * k * c.s, k, z: Z2 };
-  }
-  function _rjPlaca(M, SZ) {
-    const c = document.createElement("canvas");
-    c.width = c.height = SZ;
-    const x = c.getContext("2d");
-    const GIRO = HOLO.GIRO;
-    const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
-    const lw = M.w * cg + M.h * sg, lh = M.w * sg + M.h * cg;
-    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M.w * s) / 2, oy = (SZ - M.h * s) / 2;
-    const mk = (flat) => {
-      const p = new Path2D();
-      let X = flat[0], Y = flat[1];
-      p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
-      for (let i = 2; i < flat.length; i += 2) {
-        X += flat[i];
-        Y += flat[i + 1];
-        p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
-      }
-      p.closePath();
-      return p;
-    };
-    x.translate(SZ / 2, SZ / 2);
-    x.rotate(GIRO);
-    x.translate(-SZ / 2, -SZ / 2);
-    x.lineJoin = x.lineCap = "round";
-    x.strokeStyle = "rgba(120,170,245,0.22)";
-    x.lineWidth = 0.9;
-    M.m.forEach((f) => x.stroke(mk(f)));
-    x.shadowColor = "rgba(140,196,255,0.95)";
-    x.shadowBlur = 10;
-    x.strokeStyle = "rgba(186,218,255,0.62)";
-    x.lineWidth = 1.7;
-    M.o.forEach((f) => x.stroke(mk(f)));
-    x.shadowBlur = 16;
-    x.shadowColor = "rgba(255,150,60,0.8)";
-    x.strokeStyle = "rgba(255,190,120,0.26)";
-    x.lineWidth = 1.1;
-    M.o.forEach((f) => x.stroke(mk(f)));
-    return c;
-  }
-  function _rjContornoMundo(M) {
-    const PL = HOLO.PL, SZ = HOLO.SZ, GIRO = HOLO.GIRO;
-    const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
-    const lw = M.w * cg + M.h * sg, lh = M.w * sg + M.h * cg;
-    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M.w * s) / 2, oy = (SZ - M.h * s) / 2;
-    return M.o.map((flat) => {
-      const pts = [];
-      let X = flat[0], Y = flat[1];
-      const põe = () => {
-        const rx = ox + X / M.q * s - SZ / 2, ry = oy + Y / M.q * s - SZ / 2;
-        const sx = SZ / 2 + rx * Math.cos(GIRO) - ry * Math.sin(GIRO);
-        const sy = SZ / 2 + rx * Math.sin(GIRO) + ry * Math.cos(GIRO);
-        pts.push([sx / SZ * 2 * PL - PL, PL - sy / SZ * 2 * PL]);
-      };
-      põe();
-      for (let i = 2; i < flat.length; i += 2) {
-        X += flat[i];
-        Y += flat[i + 1];
-        põe();
-      }
-      return pts;
-    });
-  }
-  function _holoPiso(g, bmp, c, W, H, alt) {
-    const PL = HOLO.PL, SZ = bmp.width, NF = 26, dz = 2 * PL / NF, y = alt || 0;
-    g.clearRect(0, 0, W, H);
-    for (let i = 0; i < NF; i++) {
-      const zF = PL - i * dz, zN = zF - dz, sy0 = i * SZ / NF, sy1 = (i + 1) * SZ / NF, hs = sy1 - sy0;
-      const P00 = _holoProj(-PL, y, zF, c), P10 = _holoProj(PL, y, zF, c), P01 = _holoProj(-PL, y, zN, c);
-      const a = (P10.x - P00.x) / SZ, b = (P10.y - P00.y) / SZ, cc = (P01.x - P00.x) / hs, d = (P01.y - P00.y) / hs;
-      if (!isFinite(a) || !isFinite(d) || Math.abs(a * d - b * cc) < 1e-9) continue;
-      g.save();
-      g.transform(a, b, cc, d, P00.x - cc * sy0, P00.y - d * sy0);
-      g.drawImage(bmp, 0, sy0, SZ, Math.min(SZ - sy0, hs + 1), 0, sy0, SZ, Math.min(SZ - sy0, hs + 1));
-      g.restore();
-    }
   }
   async function nucleoViva() {
     const box = $("ck-nucleo");
@@ -1549,7 +1836,7 @@
       });
       if (!_compacto) {
         const _hc = P(0, HOLO.ALT, 0), _hr = 64 * _hc.k * Math.min(1.5, cam.s / 240);
-        const _cx = [{ x: _hc.x, y: _hc.y, w: _hr * 2, h: _hr * 2 }];
+        const _cx2 = [{ x: _hc.x, y: _hc.y, w: _hr * 2, h: _hr * 2 }];
         const _pOn = (() => {
           const e = $("nu-sweep");
           return !!(e && e.classList.contains("on"));
@@ -1579,7 +1866,7 @@
           if (hud && hud.offsetWidth) draw._fix.push(_caixa(hud));
         }
         draw._m = (draw._m || 0) + 1;
-        for (const c of draw._fix || []) _cx.push(c);
+        for (const c of draw._fix || []) _cx2.push(c);
         pos.slice().sort((a, b) => b.k - a.k).forEach((o) => {
           const n = o.n, el = $("nu-" + n.id);
           if (!el) return;
@@ -1596,7 +1883,7 @@
               y2 = Math.max(h + 8, Math.min(H - 8, y2));
               const cy = y2 - h / 2;
               let ov = 0;
-              for (const c of _cx) {
+              for (const c of _cx2) {
                 const px = (w + c.w) / 2 + 8 - Math.abs(x2 - c.x), py = (h + c.h) / 2 + 8 - Math.abs(cy - c.y);
                 if (px > 0 && py > 0) ov += px * py;
               }
@@ -1606,7 +1893,7 @@
             if (!melhor.ov) break;
           }
           const x = melhor.x, y = melhor.y;
-          _cx.push({ x, y: y - h / 2, w, h });
+          _cx2.push({ x, y: y - h / 2, w, h });
           const tf = "translate3d(" + Math.round(x) + "px," + Math.round(y) + "px,0) translate(-50%,-100%) scale(" + sc.toFixed(2) + ")";
           if (n._tf !== tf) {
             n._tf = tf;
@@ -2068,281 +2355,133 @@
     v.play().catch(() => {
     });
   }
-  var _PORTAL_VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}";
-  var _PORTAL_FS = `precision highp float;
-uniform vec2 u_res;uniform float u_t,u_ign,u_jump;uniform vec2 u_m;
-float h21(vec2 p){p=fract(p*vec2(127.31,311.7));p+=dot(p,p+34.23);return fract(p.x*p.y);}
-float stars(vec2 p,float sc,float th){
-  vec2 q=p*sc;vec2 id=floor(q);vec2 f=fract(q)-0.5;
-  float r=h21(id+sc);
-  if(r<th)return 0.0;
-  vec2 o=(vec2(h21(id+3.7),h21(id+9.1))-0.5)*0.70;
-  return smoothstep(0.055,0.0,length(f-o))*(0.25+(r-th)/(1.0-th)*0.85);
-}
-void main(){
-  vec2 p=(gl_FragCoord.xy-0.5*u_res)/u_res.y+u_m*0.045;
-  float r=length(p);
-  /* reator sobe 9% da altura: fica no MESMO centro do território (faixa
-     superior de 82%) e sai de cima da fala, que vive no terço inferior. */
-  vec2 pr=p-vec2(0.0,0.09);
-  float rr=length(pr),a=atan(pr.y,pr.x);
-  vec3 col=vec3(0.0);
-  /* estrelas PEQUENAS e esparsas: o espaço tem que ser preto, não azul lavado.
-     Acumular ao longo do raio dá o rastro de verdade no salto.              */
-  float sf=0.0;
-  for(int i=0;i<5;i++){
-    float t=float(i)/4.0;float k=1.0-u_jump*0.55*t;
-    sf+=(stars(p*k,15.0,0.905)+stars(p*k,27.0,0.935)*0.45)*(1.0-t*0.8);
-  }
-  col+=mix(vec3(0.55,0.72,1.05),vec3(1.0,0.72,0.38),0.16+0.5*u_jump)*sf*0.7;
-  /* reator: anéis de íon + segmentos girando (compacto — o herói é o território) */
-  float ig=max(u_ign,0.0001);
-  float R=smoothstep(0.010,0.0,abs(rr-0.112*ig))*1.05
-         +smoothstep(0.0050,0.0,abs(rr-0.168*ig))*0.68
-         +smoothstep(0.0026,0.0,abs(rr-0.218*ig))*0.44;
-  R+=smoothstep(0.008,0.0,abs(rr-0.168*ig))*step(0.45,fract((a/6.28318)*26.0+u_t*0.22))*0.6;
-  col+=vec3(0.30,0.62,1.30)*R*ig;
-  /* núcleo incandescente + bloom contido */
-  col+=vec3(1.30,0.56,0.16)*exp(-rr*rr*(230.0/ig))*ig*1.15;
-  col+=vec3(1.00,0.46,0.13)*exp(-rr*8.5)*ig*0.13;
-  /* varredura do guardião */
-  col+=vec3(0.34,0.70,1.30)*pow(1.0-fract((a+3.14159)/6.28318-u_t*0.40),26.0)
-       *smoothstep(0.85,0.05,rr)*ig*0.38;
-  /* clarão do salto: quente e CONTIDO no centro (não lava o campo inteiro —
-     esse foi o erro da 1ª volta, o flash azul apagava o espaço). */
-  col+=mix(vec3(0.5,0.7,1.15),vec3(1.15,0.7,0.35),0.5)*u_jump*u_jump
-       *smoothstep(0.9,0.0,r)*0.32;
-  col*=1.0-0.82*smoothstep(0.20,1.05,r);
-  /* alpha = luminância: espaço vazio fica TRANSPARENTE (mostra a nebulosa de
-     fundo), reator/estrelas/território ficam opacos por cima. */
-  float a=clamp(max(col.r,max(col.g,col.b))*1.25+0.12,0.0,1.0);
-  gl_FragColor=vec4(col,a);
-}`;
-  function _rjCarregar(cb) {
-    if (window.RJ_MALHA) {
-      try {
-        cb();
-      } catch (_) {
-      }
-      return;
-    }
-    _rjCbs.push(cb);
-    if (_rjLoading) return;
-    _rjLoading = true;
-    const s = document.createElement("script");
-    s.src = "/static/assets/rj-malha.js?v=c6127f36";
-    s.async = true;
-    s.onload = () => {
-      const l = _rjCbs.slice();
-      _rjCbs.length = 0;
-      l.forEach((fn) => {
-        try {
-          fn();
-        } catch (e) {
-          console.warn("[rj] callback da malha falhou:", e);
-        }
-      });
-    };
-    s.onerror = () => {
-      _rjLoading = false;
-    };
-    document.head.appendChild(s);
-  }
-  function _rjBuild(M, W, H, dpr, modo) {
-    const c = document.createElement("canvas");
-    c.width = Math.round(W * dpr);
-    c.height = Math.round(H * dpr);
-    const x = c.getContext("2d");
-    x.scale(dpr, dpr);
-    const nu = modo === "nucleo";
-    const FX = nu ? 0.94 : 0.88, FY = nu ? 0.96 : 0.82;
-    const s = Math.min(W * FX / M.w, H * FY / M.h);
-    const ox = (W - M.w * s) / 2, oy = nu ? (H - M.h * s) / 2 : (H * FY - M.h * s) / 2;
-    const mk = (flat) => {
-      const p = new Path2D();
-      let X = flat[0], Y = flat[1];
-      p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
-      for (let i = 2; i < flat.length; i += 2) {
-        X += flat[i];
-        Y += flat[i + 1];
-        p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
-      }
-      p.closePath();
-      return p;
-    };
-    x.lineJoin = x.lineCap = "round";
-    x.strokeStyle = nu ? "rgba(120,170,245,0.16)" : "rgba(126,178,250,0.52)";
-    x.lineWidth = nu ? 0.55 : 0.75;
-    M.m.forEach((f) => x.stroke(mk(f)));
-    x.shadowColor = "rgba(140,196,255,0.95)";
-    x.shadowBlur = nu ? 9 : 18;
-    x.strokeStyle = nu ? "rgba(176,210,255,0.42)" : "rgba(214,234,255,1)";
-    x.lineWidth = nu ? 1.1 : 2.1;
-    M.o.forEach((f) => x.stroke(mk(f)));
-    x.shadowBlur = nu ? 14 : 30;
-    x.shadowColor = "rgba(255,150,60,0.8)";
-    x.strokeStyle = nu ? "rgba(255,190,120,0.20)" : "rgba(255,196,124,0.72)";
-    x.lineWidth = nu ? 0.7 : 1.1;
-    M.o.forEach((f) => x.stroke(mk(f)));
-    return c;
-  }
-  function portalStart() {
-    const el = $("portal");
-    if (!el) return;
-    let pular = false;
-    try {
-      pular = sessionStorage.getItem("jfn_v9_portal") === "1" || localStorage.getItem("jfn_portal_off") === "1";
-    } catch (_) {
-    }
-    if (pular || _redMotion) {
-      el.remove();
-      return;
-    }
-    try {
-      sessionStorage.setItem("jfn_v9_portal", "1");
-    } catch (_) {
-    }
-    el.hidden = false;
-    const cv = $("pcv"), pm = $("pmap");
-    const dpr = Math.min(devicePixelRatio || 1, 1.5);
-    let gl = null, U = {}, raf = 0, morto = false, mapC = null, mx = 0, my = 0;
-    const t0 = performance.now(), IGN = [80, 560], JUMP = [1320, 1780], FIM = 1960;
-    try {
-      gl = cv.getContext("webgl", { antialias: false, alpha: true, premultipliedAlpha: false }) || cv.getContext("experimental-webgl");
-    } catch (_) {
-    }
-    if (gl) try {
-      const sh = (tp, src) => {
-        const s = gl.createShader(tp);
-        gl.shaderSource(s, src);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
-        return s;
+
+  // static/js/src/cena/energia.js
+  var _raf = 0;
+  var _pacotes = [];
+  var _linhas = [];
+  var _cv = null;
+  var _cx = null;
+  var _W = 0;
+  var _H = 0;
+  var _dpr = 1;
+  var TETO = 30;
+  var DUR = 1500;
+  function _medir() {
+    const box = $("ck-orbita"), nuc = $("ck-nucleo"), g = $("ck-grid");
+    _cv = $("ck-energia");
+    if (!box || !nuc || !g || !_cv) return false;
+    const rb = box.getBoundingClientRect();
+    if (rb.width < 1100) return false;
+    const rn = nuc.getBoundingClientRect();
+    const cx = rn.left - rb.left + rn.width / 2, cy = rn.top - rb.top + rn.height / 2;
+    _linhas = [...g.children].map((el) => {
+      const r = el.getBoundingClientRect();
+      const esq = r.left - rb.left + r.width / 2 < cx;
+      return {
+        id: (el.id || "").replace("cki-", ""),
+        // sai pela borda VOLTADA para o núcleo, não pelo centro do cartão: fio nascendo de dentro
+        // do texto atravessa o número que o cartão existe para mostrar.
+        x0: (esq ? r.right : r.left) - rb.left,
+        y0: r.top - rb.top + r.height / 2,
+        x1: cx,
+        y1: cy
       };
-      const pr = gl.createProgram();
-      gl.attachShader(pr, sh(gl.VERTEX_SHADER, _PORTAL_VS));
-      gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, _PORTAL_FS));
-      gl.linkProgram(pr);
-      if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
-      gl.useProgram(pr);
-      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-      const loc = gl.getAttribLocation(pr, "a");
-      gl.enableVertexAttribArray(loc);
-      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      ["u_res", "u_t", "u_ign", "u_jump", "u_m"].forEach((n) => U[n] = gl.getUniformLocation(pr, n));
-    } catch (_) {
-      gl = null;
-    }
-    const mctx = pm.getContext("2d");
-    function medir() {
-      const W = innerWidth, H = innerHeight;
-      if (gl) {
-        cv.width = Math.round(W * dpr);
-        cv.height = Math.round(H * dpr);
-        gl.viewport(0, 0, cv.width, cv.height);
-      }
-      pm.width = Math.round(W * dpr);
-      pm.height = Math.round(H * dpr);
-      mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (window.RJ_MALHA) mapC = _rjBuild(window.RJ_MALHA, W, H, dpr, "portal");
-    }
-    medir();
-    addEventListener("resize", medir, { passive: true });
-    addEventListener("pointermove", (e) => {
-      if (morto) return;
-      mx = (e.clientX / innerWidth - 0.5) * 2;
-      my = -(e.clientY / innerHeight - 0.5) * 2;
-    }, { passive: true });
-    _rjCarregar(() => {
-      if (!morto) medir();
     });
-    function quadro(agora) {
-      if (morto) return;
-      const t = agora - t0;
-      const ign = Math.min(1, Math.max(0, (t - IGN[0]) / (IGN[1] - IGN[0])));
-      const jmp = Math.min(1, Math.max(0, (t - JUMP[0]) / (JUMP[1] - JUMP[0])));
-      if (gl) {
-        gl.uniform2f(U.u_res, cv.width, cv.height);
-        gl.uniform1f(U.u_t, t / 1e3);
-        gl.uniform1f(U.u_ign, ign * ign * (3 - 2 * ign));
-        gl.uniform1f(U.u_jump, jmp * jmp);
-        gl.uniform2f(U.u_m, mx, my);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-      }
-      if (mapC) {
-        const W = innerWidth, H = innerHeight;
-        const rev = Math.min(1, Math.max(0, (t - 620) / 1650));
-        mctx.clearRect(0, 0, W, H);
-        if (rev > 0) {
-          const cx = W / 2, cy = H * 0.41;
-          const R = Math.max(1, rev * Math.hypot(W, H) * 0.66);
-          const g = mctx.createRadialGradient(cx, cy, 0, cx, cy, R);
-          g.addColorStop(0, "rgba(255,255,255,1)");
-          g.addColorStop(0.74, "rgba(255,255,255,1)");
-          g.addColorStop(1, "rgba(255,255,255,0)");
-          mctx.globalCompositeOperation = "source-over";
-          mctx.fillStyle = g;
-          mctx.fillRect(0, 0, W, H);
-          mctx.globalCompositeOperation = "source-in";
-          mctx.globalAlpha = Math.min(1, rev * 1.6) * (1 - jmp * 0.85);
-          mctx.drawImage(mapC, 0, 0, W, H);
-          mctx.globalAlpha = 1;
-        }
-      }
-      if (t >= FIM) {
-        portalFim();
-        return;
-      }
-      raf = requestAnimationFrame(quadro);
-    }
-    raf = requestAnimationFrame(quadro);
-    function portalFim() {
-      if (morto) return;
-      morto = true;
-      cancelAnimationFrame(raf);
-      const k = $("kyber"), lento = _redMotion || document.body.classList.contains("fps-baixo");
-      if (k && !lento) {
-        const kr = k.getBoundingClientRect(), S = 190;
-        const h = document.createElement("div");
-        h.id = "phand";
-        h.style.cssText = `width:${S}px;height:${S}px;left:${innerWidth / 2 - S / 2}px;top:${innerHeight / 2 - S / 2}px`;
-        document.body.appendChild(h);
-        let saiu = false;
-        const tirar = () => {
-          if (saiu) return;
-          saiu = true;
-          h.remove();
-        };
-        h.addEventListener("transitionend", tirar, { once: true });
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          h.style.transform = `translate(${kr.left + kr.width / 2 - innerWidth / 2}px,${kr.top + kr.height / 2 - innerHeight / 2}px) scale(${(kr.width / S).toFixed(4)})`;
-          h.style.opacity = "0";
-        }));
-        setTimeout(tirar, 900);
-      }
-      el.classList.add("off");
-      const b = document.querySelector(".cblade");
-      if (b) {
-        b.style.animation = "none";
-        void b.offsetWidth;
-        b.style.animation = "ignicao .5s cubic-bezier(.2,.9,.25,1.2) 1,respira 4.5s ease-in-out .5s infinite";
-      }
-      setTimeout(() => {
-        el.remove();
-        if (gl) {
-          const x = gl.getExtension("WEBGL_lose_context");
-          if (x) x.loseContext();
-        }
-      }, 420);
-    }
-    el.addEventListener("click", portalFim);
-    addEventListener("keydown", portalFim);
-    setTimeout(portalFim, FIM + 90);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && performance.now() - t0 >= FIM) portalFim();
-    });
+    _W = Math.round(rb.width);
+    _H = Math.round(rb.height);
+    _dpr = Math.min(2, window.devicePixelRatio || 1);
+    _cv.width = _W * _dpr;
+    _cv.height = _H * _dpr;
+    _cv.style.width = _W + "px";
+    _cv.style.height = _H + "px";
+    _cx = _cv.getContext("2d");
+    _cx.setTransform(_dpr, 0, 0, _dpr, 0, 0);
+    return _linhas.length > 0;
   }
+  var _ctrl = (L) => ({ x: L.x0 + (L.x1 - L.x0) * 0.62, y: L.y0 });
+  function _ponto(L, t) {
+    const c = _ctrl(L), u = 1 - t;
+    return {
+      x: u * u * L.x0 + 2 * u * t * c.x + t * t * L.x1,
+      y: u * u * L.y0 + 2 * u * t * c.y + t * t * L.y1
+    };
+  }
+  function _desenhar(agora) {
+    if (!_cx) return;
+    _cx.clearRect(0, 0, _W, _H);
+    for (const L of _linhas) {
+      const c = _ctrl(L);
+      _cx.strokeStyle = "rgba(150,190,225,.13)";
+      _cx.lineWidth = 1;
+      _cx.beginPath();
+      _cx.moveTo(L.x0, L.y0);
+      _cx.quadraticCurveTo(c.x, c.y, L.x1, L.y1);
+      _cx.stroke();
+    }
+    if (_redMotion) {
+      _raf = 0;
+      return;
+    }
+    _pacotes = _pacotes.filter((p) => agora - p.t0 < DUR);
+    for (const p of _pacotes) {
+      const L = _linhas[p.i];
+      if (!L) continue;
+      const t = (agora - p.t0) / DUR;
+      const q = _ponto(L, t);
+      const a = t < 0.12 ? t / 0.12 : t > 0.82 ? (1 - t) / 0.18 : 1;
+      const gr = _cx.createRadialGradient(q.x, q.y, 0, q.x, q.y, 9);
+      gr.addColorStop(0, `rgba(${p.c},${(a * 0.95).toFixed(3)})`);
+      gr.addColorStop(1, `rgba(${p.c},0)`);
+      _cx.fillStyle = gr;
+      _cx.beginPath();
+      _cx.arc(q.x, q.y, 9, 0, 6.283);
+      _cx.fill();
+    }
+    _raf = _pacotes.length ? requestAnimationFrame(_desenhar) : 0;
+  }
+  function energiaLigar() {
+    energiaParar();
+    if (_sobrio) {
+      const c = $("ck-energia");
+      if (c) c.hidden = true;
+      return;
+    }
+    if (!_medir()) {
+      const c = $("ck-energia");
+      if (c) c.hidden = true;
+      return;
+    }
+    _cv.hidden = false;
+    _desenhar(performance.now());
+  }
+  function energiaParar() {
+    if (_raf) cancelAnimationFrame(_raf);
+    _raf = 0;
+    _pacotes = [];
+    _linhas = [];
+    _cx = null;
+    _cv = null;
+  }
+  function energiaPacote(tipo) {
+    if (_redMotion || _sobrio || !_linhas.length || !_cx) return;
+    const alvo = EV_DOMINIO[tipo];
+    const i = _linhas.findIndex((L) => L.id === alvo);
+    if (i < 0) return;
+    _pacotes.push({ i, t0: performance.now(), c: EV_COR[tipo] || "95,217,255" });
+    if (_pacotes.length > TETO) _pacotes.splice(0, _pacotes.length - TETO);
+    if (!_raf) _raf = requestAnimationFrame(_desenhar);
+  }
+  function energiaRever() {
+    if (!$("ck-orbita")) return;
+    energiaLigar();
+  }
+  var energiaCenso = () => ({
+    linhas: _linhas.length,
+    pacotes: _pacotes.length,
+    laco: !!_raf,
+    ligada: !!(_cv && !_cv.hidden)
+  });
 
   // static/js/src/ui/revelacao.js
   var TETO_NOS = 40;
@@ -2943,34 +3082,448 @@ void main(){
     });
   }
 
-  // static/js/src/abas/index.js
-  var _respProc = "";
-  var _ehEmail = (s) => /@/.test(String(s || ""));
-  async function renderResponsaveis() {
-    let h = cover("estado", "Responsáveis pelo processo", "Quem responde por um processo SEI: ordenador de despesa, gestor e fiscal do contrato, com ID funcional quando o documento o traz.", "🧑‍⚖️");
-    h += `<div class="search"><span class="mag"></span><input id="resp-proc" placeholder="número SEI (ex.: SEI-070002/006145/2024)…" value="${esc(_respProc)}" onchange="_respProc=this.value;ir('e_resp')" onkeydown="if(event.key==='Enter'){_respProc=this.value;ir('e_resp')}"></div>`;
-    if (!_respProc.trim()) return h + card('<div class="muted">Informe o número do processo. A busca lê o que já foi capturado — ela responde uma pergunta, não varre o acervo.</div>');
-    let d;
-    try {
-      d = await J("/api/responsaveis?processo=" + encodeURIComponent(_respProc.trim()));
-    } catch (e) {
-      return h + card(`<div class="muted">Não foi possível consultar: ${esc(String(e && e.message || e))}</div>`);
+  // static/js/src/abas/cockpit.js
+  var _ckTimer = null;
+  function _ckCount(el, to, fmt, ms = 1e3) {
+    if (!el) return;
+    const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
+    if (rm || to == null) {
+      el.textContent = fmt(to);
+      return;
     }
-    if (!d || d.ok === false) return h + card(`<div class="muted">${esc(d && d.erro || "consulta sem resposta")}</div>`);
-    const ag = d.agentes || [];
-    h += card(`<div style="font-weight:700">${esc(d.processo || _respProc)}</div><div class="dim">${ag.length} responsável(is) identificado(s) nos documentos capturados</div>`);
-    if (!ag.length) {
-      return h + card('<div class="muted">Nenhum responsável identificado <b>nos documentos capturados</b>. Isso é lacuna de captura ou de instrução — <b>não</b> afirmação de que o processo corra sem responsável designado: o ato de designação costuma viver no processo de contratação, não no de pagamento.</div>');
+    const t0 = performance.now();
+    (function s(t) {
+      const p = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmt(to * e);
+      if (p < 1) requestAnimationFrame(s);
+      else el.textContent = fmt(to);
+    })(performance.now());
+  }
+  function blocoComandosMestres() {
+    if (typeof CAPS_MESTRAS === "undefined" || !CAPS_MESTRAS.length) return "";
+    const grupos = {};
+    for (const c of CAPS_MESTRAS) (grupos[c.grupo] = grupos[c.grupo] || []).push(c);
+    let h = `<div class="ck-caps"><div class="ck-eye">Funções mestras — ${CAPS_MESTRAS.length} comandos, um clique cada</div>`;
+    for (const g of Object.keys(grupos)) {
+      const gi = grupos[g][0] || {};
+      h += `<div class="caps-g"><div class="caps-gt">${gi.grupo_ic ? `<span class="caps-gi" aria-hidden="true">${svgIco(gi.grupo_ic)}</span> ` : ""}${esc(gi.grupo_rot || g)}</div><div class="btns" style="flex-wrap:wrap">`;
+      for (const c of grupos[g]) {
+        const dica = esc(`${c.descricao || c.nome}${c.exemplo ? "\n\nex.: " + c.exemplo : ""}${c.rota ? "\n\n" + c.metodo + " " + c.rota : ""}`);
+        h += `<button type="button" class="btn ghost" title="${dica}" onclick="abrirCapMestra('${esc(c.id)}')">${esc(c.nome)}${c.cmd ? `<span class="caps-cmd">${esc(c.cmd)}</span>` : ""}</button>`;
+      }
+      h += `</div></div>`;
     }
-    h += `<div class="grid">` + ag.map((a) => card(
-      `<div><div style="font-weight:700">${esc(a.nome || "—")}</div>
-     <div class="dim">${esc(String(a.papel || "").replace(/_/g, " "))}${a.id_funcional ? ` · ID ${esc(a.id_funcional)}` : ""}${a.cargo && !_ehEmail(a.cargo) ? ` — ${esc(a.cargo)}` : ""}</div>
-     <div class="dim" style="font-size:12px">origem: ${esc(a.origem || "—")}${a.documento ? ` · ${esc(a.documento)}` : ""}</div></div>`
-    )).join("") + `</div>`;
-    const lac = d.lacunas || [];
-    if (lac.length) h += card(`<div style="font-weight:700">Lacunas apontadas</div><ul style="margin:6px 0 0 18px">${lac.slice(0, 5).map((l) => `<li>${esc(l.descricao || l.tipo || "—")}</li>`).join("")}</ul>`);
+    h += `<div class="note">Cada botão é uma capacidade com <b>status PRONTO</b> em <code>capabilities.yaml</code>.
+      O mesmo <code>cmd</code> serve o Telegram e o painel — uma fonte, várias superfícies.</div></div>`;
     return h;
   }
+  function abrirCapMestra(id) {
+    const c = (typeof CAPS_MESTRAS !== "undefined" ? CAPS_MESTRAS : []).find((x) => x.id === id);
+    if (!c) return;
+    const linha = (r, v) => `<div style="display:flex;gap:10px;margin:6px 0"><b style="min-width:104px">${r}</b><span>${v}</span></div>`;
+    const ov = $("ov"), sh = $("sheet");
+    ov.classList.add("on");
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+    <div style="font-weight:800;font-size:17px;margin-bottom:4px">${esc(c.nome)}</div>
+    <div class="muted" style="font-size:13px;margin-bottom:14px">${esc(c.grupo)}</div>` + card((c.descricao ? `<p style="margin:0 0 10px">${esc(c.descricao)}</p>` : "") + (c.rota ? linha("Rota", `<code>${esc(c.metodo)} ${esc(c.rota)}</code>`) : "") + (c.cmd ? linha("No Telegram", `<code>${esc(c.cmd)}</code>`) : "") + (c.exemplo ? linha("Exemplo", `<code>${esc(c.exemplo)}</code>`) : "")) + `<div class="note">Nada foi disparado. Vários destes comandos geram peça pesada (PDF, planilha)
+      ou escrevem no banco — o painel mostra o caminho, o disparo é decisão sua.</div>`;
+    a11yfy(sh);
+  }
+  async function renderCockpit() {
+    const html = `<div class="ck">
+    <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
+    <div class="ck-hero">
+      <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
+      <div class="ck-big" id="ck-econ">R$ ——</div>
+      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div></div>
+      <div class="ck-ved" id="ck-vedbox" hidden><span class="n" id="ck-ved">R$ —</span>
+        <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
+    </div>
+    <!-- v59 · A ÓRBITA. A mesa de vigília era um bloco EMPILHADO entre o herói e os cartões: a
+         peça central da tela lida como mais uma faixa da página, e os oito instrumentos abaixo
+         dela pareciam uma lista sem relação com o que a mesa mostra — quando são exatamente as
+         leituras que chegam por ela.
+
+         Aqui a mesa vira o CENTRO e os instrumentos orbitam, quatro de cada lado, ligados ao
+         núcleo por linhas de energia com pacotes viajando na taxa REAL de eventos do barramento.
+
+         O "#ck-grid" continua sendo UM container com os mesmos oito filhos e o mesmo id — quem
+         distribui em volta é o CSS, com "display:contents" promovendo os cartões a itens da
+         grade da órbita. Reescrever o "ckBoot" para dois containers seria mexer no caminho que
+         monta a tela viva para resolver um problema que é de layout. Em tela estreita nada disso
+         liga: a órbita não existe abaixo de 1100px e a pilha continua a de sempre. -->
+    <div class="ck-orbita" id="ck-orbita">
+    <div class="ck-nucleo" id="ck-nucleo"><canvas id="nucleo-cv" aria-hidden="true"></canvas>
+      <div class="nu-legend">Mesa de vigília · cada feixe = um domínio · onda no piso = evento real</div>
+      <div class="nu-hud" id="nu-hud" aria-live="polite">vigília armada — aguardando o primeiro evento do barramento</div>
+      <div class="nu-sweep" id="nu-sweep" aria-live="polite"></div>
+      <div id="nu-chips"></div></div>
+    <!-- RECOMENDAÇÃO EDITORIAL PENDENTE DE DECISÃO DO DONO (rodada 5, 2026-07-31):
+         os 6 números deste ck-grid são os MESMOS já rotulados na mesa de vigília logo acima
+         (nu-chips de NU_NODES: radar, alertas, mesma sala, empresa morta, comunidades,
+         compras). O leitor lê o mesmo dado duas vezes em uma tela — e o cartão, por ser
+         maior, rouba a leitura da mesa, que é a peça que o Início existe para mostrar.
+         Sugestão do auditor: remover os KPIs e deixar a mesa (o chip já traz rótulo+número).
+         NÃO EXECUTADA — cortar conteúdo do Início é decisão do dono, não do auditor. -->
+    <div class="ck-grid" id="ck-grid"></div>
+    <canvas class="ck-energia" id="ck-energia" aria-hidden="true"></canvas>
+    </div>
+    ${blocoComandosMestres()}
+    <div class="ck-fontes" id="ck-fontes"></div></div>`;
+    return html;
+  }
+  function ckCard(id, lab, valc, dotc, href, spark) {
+    return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
+  <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
+  <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
+  </div>`;
+  }
+  function ckFill(id, { num, txt, meta } = {}) {
+    const el = $("cki-" + id);
+    if (!el) return;
+    const v = el.querySelector(".val"), m = el.querySelector(".meta");
+    if (num != null && isFinite(num)) _ckCount(v, num, (x) => fmtN(Math.round(x)));
+    else if (txt != null) v.textContent = txt;
+    if (meta != null) {
+      m.innerHTML = meta;
+      m.classList.remove("esperando");
+    }
+    nuSet(id, num != null && isFinite(num) ? Math.round(num) : txt);
+  }
+  var _ckTick = [];
+  function ckPush(items) {
+    items.forEach((x) => _ckTick.push(x));
+    const L = $("ck-lane");
+    if (L && _ckTick.length) L.innerHTML = _ckTick.concat(_ckTick).map((x) => `<span class="${x.c || ""}">${x.h}</span>`).join("");
+  }
+  function ckBoot() {
+    const g = $("ck-grid");
+    if (!g) return;
+    g.innerHTML = [
+      ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
+      ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
+      ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
+      ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro"),
+      ckCard("fenix", "Pago a empresa morta", "ckrose", "bgrose", "g_fenix"),
+      ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
+      ckCard("orgao", "Órgão que mais economiza", "ckgood", "bgteal", "e_comp"),
+      ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos")
+    ].join("");
+    a11yfy(g);
+    nucleoStart();
+    requestAnimationFrame(() => energiaLigar());
+    ckPull(true);
+    clearInterval(_ckTimer);
+    _ckTimer = setInterval(() => {
+      if (!document.hidden && aba === "i_cockpit") ckPull(false);
+    }, 3e4);
+  }
+  function ckPull(first) {
+    _ckTick = [];
+    J("/api/compliance/painel").then((d) => {
+      const a = d && d.alertas || null, el = $("nu-alertas");
+      if (!a || a.total == null) {
+        nuSet("alertas", null);
+        if (el) el.title = erroHumano(d && d.erro);
+        return;
+      }
+      nuSet("alertas", a.total);
+      if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
+    });
+    if (first) J("/api/intel/ninho_sala?limite=60").then((d) => {
+      if (!d || !d.ok) {
+        ckFill("ninho", { txt: "—", meta: erroHumano(d && d.erro) });
+        return;
+      }
+      const gs = d.grupos || [], altos = gs.filter((g) => g.grau === "alto"), nAlto = d.n_alto != null ? d.n_alto : altos.length, nTot = d.n != null ? d.n : gs.length;
+      ckFill("ninho", {
+        num: nAlto,
+        meta: `grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada` + (nTot > nAlto ? ` · outros ${fmtN(nTot - nAlto)} com menos fatores` : "") + ` — <b>${fmtRc(d.total_recebido_ob || 0)}</b> em OB no conjunto`
+      });
+      ckPush(altos.slice(0, 3).map((g) => ({ c: "a", h: `◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores || [])[1] || "")} · ${fmtRc(g.total_recebido_ob)}` })));
+    });
+    J("/api/comparador/economia").then((d) => {
+      if (!d || !d.ok) {
+        const big = $("ck-econ");
+        if (big && /—/.test(big.textContent)) {
+          big.textContent = "—";
+          if ($("ck-sub")) $("ck-sub").innerHTML = erroHumano(d && d.erro);
+        }
+        return;
+      }
+      const _eco = d.economia_homogenea != null ? d.economia_homogenea : d.economia_total;
+      const _nc = d.n_compras_homogeneas != null ? d.n_compras_homogeneas : d.n_compras_acima_mediana;
+      _ckCount($("ck-econ"), _eco, fmtRc, first ? 1300 : 900);
+      if ($("ck-sub")) $("ck-sub").innerHTML = `Se cada uma das <b>${fmtN(_nc)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item` + (d.economia_descricao_generica > 0 ? ` — contando só itens de <b>descrição consistente</b>. Há mais <b>${fmtRc(d.economia_descricao_generica)}</b> em itens de descrição genérica (ex.: "peça de veículo"), onde a mediana pode comparar produtos diferentes.` : `.`);
+      ckFill("compras", { num: _nc, meta: "acima da mediana, em itens de descrição consistente" });
+      const o = d.por_orgao && d.por_orgao[0], onm = o ? o.orgao || "" : "";
+      ckFill("orgao", { txt: o ? fmtRc(o.economia) : "—", meta: o ? `<b>${esc(onm)}</b> — potencial a recuperar` : "—" });
+      ckPush([{ c: "g", h: `✦ economia potencial <b>${fmtRc(d.economia_homogenea)}</b> em ${fmtN(d.n_compras_homogeneas)} compras` }]);
+    });
+    J("/api/comparador/vedada").then((d) => {
+      if (d && d.ok && d.economia_vedada_total) {
+        const b = $("ck-vedbox");
+        if (b) b.hidden = false;
+        _ckCount($("ck-ved"), d.economia_vedada_total, fmtRc);
+      }
+    });
+    J("/api/intel/radar?limite=6").then((d) => {
+      if (!d || !d.ok) return;
+      ckFill("radar", { num: d.n, meta: `fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico` });
+      ckPush((d.achados || []).slice(0, 5).map((a) => ({ c: "", h: `▸ RADAR ${a.score} — <b>${(a.nome || "").slice(0, 30)}</b> · ${(a.sinais || []).map((s) => rot(s.sinal)).slice(0, 2).join(", ")}` })));
+    });
+    J("/api/intel/comunidades").then((d) => {
+      if (!d || !d.ok) return;
+      ckFill("com", { num: d.n, meta: "clusters família-empresa-órgão (Louvain)" });
+    });
+    J("/api/intel/lift").then((d) => {
+      if (!d || !d.ok) return;
+      const b = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0))[0];
+      ckFill("lift", { txt: b ? b.lift + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base` : "—" });
+    });
+    J("/api/comparador/dossie").then((d) => {
+      if (!d || !d.ok) return;
+      ckFill("dossie", { num: d.n, meta: "itens pagos caro a fornecedor sancionado/fantasma" });
+      ckPush((d.achados || []).slice(0, 6).map((a) => ({ c: "a", h: `◉ ${(a.orgao || "").slice(0, 24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor || "").slice(0, 24)} (sancionada)` })));
+    });
+    J("/api/intel/fenix").then((d) => {
+      if (!d || !d.ok) return;
+      ckFill("fenix", {
+        txt: fmtRc(d.total_apos_baixa || 0),
+        meta: `<b>${fmtN(d.n_defunta_confirmada || 0)}</b> empresas receberam <b>depois</b> da baixa na Receita · outras ${fmtN((d.n_defunta || 0) - (d.n_defunta_confirmada || 0))} estão baixadas hoje mas só receberam antes`
+      });
+      if (d.n_defunta_confirmada) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} empresas DEPOIS da baixa na Receita` }]);
+    });
+    J("/api/fontes/frescor").then((d) => {
+      const box = $("ck-fontes");
+      if (!box || !d || !d.fontes) return;
+      const cor = (f) => {
+        const s = (f.estado || "").toLowerCase();
+        if (s.includes("verde") || s.includes("ok") || s.includes("fresc")) return "#5fe0a1";
+        if (s.includes("amar") || s.includes("aten") || s.includes("velh")) return "#f2b544";
+        if (s.includes("verm") || s.includes("erro") || s.includes("crit")) return "#ff7a8a";
+        return f.idade_dias == null ? "#63718f" : f.idade_dias <= 2 ? "#5fe0a1" : f.idade_dias <= 10 ? "#f2b544" : "#ff7a8a";
+      };
+      box.innerHTML = `<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">` + d.fontes.map((f) => `<div class="ck-fchip" title="${esc(f.detalhe || "")}"><span class="fled" style="background:${cor(f)}"></span>
+        <span class="fnm">${esc((f.fonte || "").replace(/·/g, "·"))}</span><span class="fage">${f.idade_dias == null ? "—" : f.idade_dias + "d"}</span></div>`).join("") + `</div>`;
+    });
+  }
+
+  // static/js/src/abas/comparador.js
+  var _compView = "catalogo";
+  var _compTermo = "";
+  var _compGrupo = null;
+  var _compCat = null;
+  var _compEsf = "todas";
+  var _compDisp = 0;
+  var _compOrd = "dispersao";
+  async function renderComparador() {
+    if (aba === "p_comp" && _compEsf === "todas") _compEsf = "prefeitura";
+    let h = cover(aba === "p_comp" ? "prefeitura" : "estado", "Comparador de preços — quem paga mais e quem paga menos", "Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.", "💰");
+    h += `<div class="chips" style="margin:6px 0 14px">
+    <button type="button" class="chip ${_compView === "catalogo" ? "on" : ""}" onclick="_compView='catalogo';_compGrupo=null;ir(aba)">🗂️ Catálogo por categoria</button>
+    <button type="button" class="chip ${_compView === "buscar" ? "on" : ""}" onclick="_compView='buscar';_compGrupo=null;ir(aba)">Buscar item</button>
+    <button type="button" class="chip ${_compView === "economia" ? "on" : ""}" onclick="_compView='economia';ir(aba)">Economia possível</button>
+    <button type="button" class="chip ${_compView === "dossie" ? "on" : ""}" onclick="_compView='dossie';ir(aba)">Caro + fornecedor suspeito</button>
+    <button type="button" class="chip ${_compView === "orgaos" ? "on" : ""}" onclick="_compView='orgaos';ir(aba)">Órgãos que gastam melhor</button>
+    <button type="button" class="chip ${_compView === "forn" ? "on" : ""}" onclick="_compView='forn';ir(aba)">Fornecedores caros/baratos</button></div>`;
+    if (_compView === "economia") return h + await _compEconomia();
+    if (_compView === "dossie") return h + await _compDossie();
+    if (_compView === "orgaos") return h + await _compOrgaos();
+    if (_compView === "forn") return h + await _compForn();
+    if (_compView === "catalogo") return h + await _compCatalogo();
+    return h + await _compBuscar();
+  }
+  var _compEsfChips = () => `<div class="chips" style="margin:0 0 10px">
+  ${["todas", "estado", "prefeitura"].map((e) => `<button type="button" class="chip ${_compEsf === e ? "on" : ""}" onclick="_compEsf='${e}';ir(aba)">${e === "todas" ? "🌐 Todas as esferas" : e === "estado" ? "🏛️ Estado" : "🏙️ Prefeitura·Rio"}</button>`).join("")}</div>`;
+  async function _compItemView(voltar) {
+    const d = await J("/api/comparador/item?esfera=" + (_compEsf === "todas" ? "" : _compEsf) + "&grupo=" + encodeURIComponent(_compGrupo.grupo) + "&unidade=" + encodeURIComponent(_compGrupo.un || ""));
+    let h = `<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
+    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    h += `<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida || "")}</span></h3>`;
+    h += `<div class="grid g2">${kpi(fmtR(d.mediana_geral), "Mediana do item", "var(--amber)", "⚖️")}${kpi(fmtN(d.n_orgaos), "Órgãos", null, "🏛️")}${kpi(fmtN(d.n_fornecedores), "Fornecedores", null, "🏢")}${kpi(fmtN(d.n_compras), "Compras", null, "🧾")}</div>`;
+    const linha = (x) => {
+      const c = x.vs_geral >= 1.5 ? "var(--rose)" : x.vs_geral <= 0.75 ? "var(--green)" : "var(--amber)";
+      return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id ? clk(x.id, x.nome) : esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`, x.vs_geral >= 1.5 ? "hl" : "");
+    };
+    h += sec("Órgãos — do que paga MAIS ao que paga MENOS") + `<div class="grid">` + d.orgaos.map(linha).join("") + `</div>`;
+    h += sec("Fornecedores — do mais caro ao mais barato") + `<div class="grid">` + d.fornecedores.slice(0, 30).map(linha).join("") + `</div>`;
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  var _montarGrupoCard = (g) => card(
+    `<div onclick='_compGrupo=${JSON.stringify({ grupo: g.grupo, un: _unOf(g) })};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida || "")}</span></div>
+    <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao >= 5 ? "var(--rose)" : "var(--amber)"}">${g.dispersao != null ? g.dispersao + "×" : "—"}</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
+    g.dispersao >= 10 ? "hl" : ""
+  );
+  async function _compCatalogo() {
+    let h = _compEsfChips();
+    if (_compGrupo) return h + await _compItemView("voltar ao catálogo");
+    const d = await J("/api/comparador/catalogo?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
+    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    const cats = d.categorias || [];
+    if (!_compCat || !cats.find((c) => c.id === _compCat)) {
+      h += `<div class="dim" style="margin:0 0 10px">${fmtN(d.n_grupos)} itens com preço comparável, por categoria — toque para abrir o submenu:</div>`;
+      h += `<div class="grid two">` + cats.map((c) => card(
+        `<div onclick="_compCat='${c.id}';ir(aba)" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="font-weight:700;font-size:14.5px">${c.icone} ${esc(c.rotulo)}</div>
+          <span class="cnt">${fmtN(c.n)}</span></div>
+        <div class="dim" style="margin-top:6px;font-size:12px">${c.grupos.slice(0, 3).map((g) => esc((g.exemplo || "").slice(0, 38))).join(" · ")}…</div></div>`
+      )).join("") + `</div>`;
+      return h + `<div class="note">${esc(d.explicacao || "")}</div>`;
+    }
+    const cat = cats.find((c) => c.id === _compCat);
+    let gs = cat.grupos.filter((g) => !_compDisp || (g.dispersao || 0) >= _compDisp);
+    if (_compOrd === "mediana") gs = [...gs].sort((a, b) => (b.mediana || 0) - (a.mediana || 0));
+    else if (_compOrd === "compras") gs = [...gs].sort((a, b) => (b.n_compras || 0) - (a.n_compras || 0));
+    h += `<div style="margin:4px 0 10px"><a onclick="_compCat=null;ir(aba)">← todas as categorias</a></div>`;
+    h += `<h3 style="margin:6px 0 10px">${cat.icone} ${esc(cat.rotulo)} <span class="cnt">${fmtN(gs.length)} de ${fmtN(cat.n)}</span></h3>`;
+    h += `<div class="chips" style="margin:0 0 4px">
+    ${[[0, "toda dispersão"], [2, "≥2× (paga o dobro)"], [5, "≥5×"], [10, "≥10× (grave)"]].map(([v, r]) => `<button type="button" class="chip ${_compDisp === v ? "on" : ""}" onclick="_compDisp=${v};ir(aba)">${r}</button>`).join("")}</div>
+  <div class="chips" style="margin:0 0 6px">
+    ${[["dispersao", "↕ por dispersão"], ["mediana", "R$ por mediana"], ["compras", "nº de compras"]].map(([v, r]) => `<button type="button" class="chip ${_compOrd === v ? "on" : ""}" onclick="_compOrd='${v}';ir(aba)">${r}</button>`).join("")}</div>`;
+    h += buscaPag("cat-list", "filtrar item dentro da categoria — busca em todos…");
+    h += listaPaginada("cat-list", gs, _montarGrupoCard, 60, (g) => (g.exemplo || "").slice(0, 60));
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  async function _compBuscar() {
+    let h = _compEsfChips();
+    h += `<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: luva, computador, café, cimento, detergente…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir(aba)}"></div>
+    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos que existem na base: <a onclick="_compTermo='luva';_compGrupo=null;ir(aba)">luva</a> · <a onclick="_compTermo='computador';_compGrupo=null;ir(aba)">computador</a> · <a onclick="_compTermo='cafe';_compGrupo=null;ir(aba)">café</a> · <a onclick="_compTermo='cimento';_compGrupo=null;ir(aba)">cimento</a> — ou navegue pelo <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a>, sem precisar adivinhar o termo.</div>`;
+    if (_compGrupo) return h + await _compItemView("voltar à busca");
+    if (!_compTermo) return h;
+    const d = await J("/api/comparador/buscar?esfera=" + (_compEsf === "todas" ? "" : _compEsf) + "&termo=" + encodeURIComponent(_compTermo));
+    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.grupos.length) {
+      h += card(`<div class="warn">Nenhum item casa TODAS as palavras de "${esc(_compTermo)}".</div>`);
+      if ((d.parecidos || []).length) {
+        h += `<div class="dim" style="margin:10px 0 8px">Mas estes itens casam PARTE do termo — talvez seja um destes:</div>`;
+        h += `<div class="grid">` + d.parecidos.map(_montarGrupoCard).join("") + `</div>`;
+      } else h += `<div class="dim" style="margin:8px 0">Dica: o <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a> lista tudo o que é comparável, por categoria.</div>`;
+      return h;
+    }
+    h += `<div class="dim" style="margin-bottom:8px">${d.n} grupo(s) — clique para ver quem paga mais/menos:</div>`;
+    h += `<div class="grid">` + d.grupos.map(_montarGrupoCard).join("") + `</div>`;
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  function _unOf(g) {
+    return "";
+  }
+  async function _compOrgaos() {
+    const d = await J("/api/comparador/orgaos?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
+    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    const linha = (x, bom) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${bom ? "var(--green)" : "var(--rose)"}">${x.razao_mediana}×</div><div class="dim">${bom ? "abaixo" : "acima"} do mercado</div></div></div>`, !bom ? "hl" : "");
+    let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+    h += sec("🟢 Gastam MELHOR (pagam abaixo do mercado)") + `<div class="grid">` + (d.melhores || []).slice(0, 20).map((x) => linha(x, true)).join("") + `</div>`;
+    h += sec("🔴 Pagam ACIMA do mercado (auditar preços)") + `<div class="grid">` + (d.piores || []).slice(0, 20).map((x) => linha(x, false)).join("") + `</div>`;
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  async function _compEconomia() {
+    const d = await J("/api/comparador/economia?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
+    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    let h = `<div style="text-align:center;margin:10px 0 18px">
+    <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
+    <div style="font-weight:800;font-size:46px;color:var(--green);line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
+    <div class="dim">se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item · ${fmtN(d.n_compras_acima_mediana)} compras acima da mediana · o número cresce conforme a base de preços do PNCP é coletada</div></div>`;
+    const bloco = (titulo, arr, campo, fn) => {
+      let s = sec(titulo) + `<div class="grid">`;
+      s += (arr || []).slice(0, 12).map((x) => card(
+        `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) acima da mediana</div></div>
+        <div class="right"><div class="num" style="font-weight:800;color:var(--green)">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`
+      )).join("");
+      return s + `</div>`;
+    };
+    h += await _blocoVedada();
+    h += bloco("🏛️ Onde a economia está — por ÓRGÃO", d.por_orgao, "orgao", (x) => esc(x.orgao || "—"));
+    h += bloco("📦 Por ITEM", d.por_item, "item", (x) => esc(x.item || "—") + (x.unidade_medida ? ` <span class="dim">/ ${esc(x.unidade_medida)}</span>` : ""));
+    h += bloco(svgIco("🏢") + " Por FORNECEDOR (quem cobrou o excedente)", d.por_fornecedor, "fornecedor", (x) => x.fornecedor_cnpj ? clk(x.fornecedor_cnpj, x.fornecedor) : esc(x.fornecedor || "—"));
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  async function _blocoVedada() {
+    const d = await J("/api/comparador/vedada?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
+    if (!d.ok || !d.economia_vedada_total) return "";
+    const ABR = { total: "inidôneas (veda todos)", ente: "impedidas no ente", orgao: "órgão" };
+    let h = `<div class="card hl" style="border-color:color-mix(in oklch,var(--rose) 45%,transparent);background:color-mix(in oklch,var(--rose) 6%,var(--card));margin:8px 0 18px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="min-width:0"><div style="font-weight:800;font-size:17px">Destes, pago a fornecedor JURIDICAMENTE VEDADO</div>
+      <div class="dim" style="margin-top:3px">Sobrepreço pago a empresa que estava <b>proibida de contratar</b> com aquele ente, <b>vigente à época</b> — o alvo mais forte. Por abrangência: ${Object.entries(d.por_abrangencia).filter(([k, v]) => v > 0).map(([k, v]) => `${ABR[k] || k} ${fmtRc(v)}`).join(" · ") || "—"}.</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:30px;color:var(--rose)">${fmtRc(d.economia_vedada_total)}</div><div class="dim">${d.n_compras} compra(s) · ${d.n_fornecedores} fornecedor(es)</div></div>
+    </div>`;
+    h += `<div class="grid" style="margin-top:10px">` + (d.por_fornecedor || []).slice(0, 8).map((f) => card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0;flex:1">${clk(f.fornecedor_cnpj, f.fornecedor || "—")} <span class="tag ${f.abrangencia === "total" ? "rose" : "amber"}">${esc(ABR[f.abrangencia] || f.abrangencia)}</span>
+      <div class="dim" style="font-size:12px">${(f.exemplos || []).slice(0, 1).map((e) => esc(e.item) + " — pagou " + fmtR(e.preco) + " vs mediana " + fmtR(e.mediana) + " @ " + esc((e.orgao || "").slice(0, 30))).join("")}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(f.economia_vedada)}</div></div></div>`
+    )).join("") + `</div></div>`;
+    return h;
+  }
+  async function _compDossie() {
+    const d = await J("/api/comparador/dossie?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
+    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    const a = d.achados || [];
+    let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Casos caro + suspeito", "var(--rose)", "🚨")}${kpi(fmtN(d.n_sancionada), "Fornecedor SANCIONADO", "var(--rose)", "⚖️")}
+      ${kpi(a.length ? a[0].vs_mediana + "×" : "—", "Pior caso (× mediana)", "var(--rose)")}${kpi(a.filter((x) => x.sinais.length >= 2).length, "Com ≥2 sinais", null, "🎯")}</div>`;
+    h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
+    h += `<div id="dossie-list" class="grid">` + a.map((x) => {
+      const ABR = { total: "toda a Adm.", ente: "ente federativo", orgao: "órgão sancionador" };
+      const tags = (x.sinais || []).map((s) => {
+        const ab = s.abrangencia ? ` (${ABR[s.abrangencia] || s.abrangencia})` : "";
+        return `<span class="tag ${s.sinal === "sancionada" ? "rose" : "amber"}">${esc(s.sinal)}${esc(ab)}</span>`;
+      }).join(" ");
+      return card(
+        `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida ? ` <span class="dim">/ ${esc(x.unidade_medida)}</span>` : ""}</div>
+      <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj, x.fornecedor || "—")} · ${esc((x.orgao || "").slice(0, 42))}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${tags}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.vs_mediana}×</div><div class="dim">${fmtR(x.preco)} vs ${fmtR(x.mediana)}</div></div></div>
+      ${leitura(`O órgão <b>${esc(x.orgao)}</b> pagou <b>${fmtR(x.preco)}</b> por "${esc(x.item)}" — <b>${x.vs_mediana}× a mediana</b> de mercado (${fmtR(x.mediana)}) — ao fornecedor <b>${esc(x.fornecedor)}</b>, que é ${esc((x.sinais || []).map((s) => rot(s.sinal)).join(", "))} por fonte INDEPENDENTE do preço. Preço fora da curva + fornecedor marcado = alvo forte para auditoria. Confirmar o termo de referência.`)}`,
+        "hl"
+      );
+    }).join("") + `</div>`;
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  async function _compForn() {
+    const d = await J("/api/comparador/fornecedores?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
+    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    const linha = (x, caro) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id ? clk(x.id, x.nome) : esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${caro ? "var(--rose)" : "var(--green)"}">${x.razao_mediana}×</div><div class="dim">${caro ? "acima" : "abaixo"} do mercado</div></div></div>`, caro ? "hl" : "");
+    let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+    h += sec("🔴 Mais CAROS (cobram acima do mercado)") + `<div class="grid">` + (d.mais_caros || []).slice(0, 20).map((x) => linha(x, true)).join("") + `</div>`;
+    h += sec("🟢 Mais BARATOS (cobram abaixo do mercado)") + `<div class="grid">` + (d.mais_baratos || []).slice(0, 20).map((x) => linha(x, false)).join("") + `</div>`;
+    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
+  }
+  function _set_compView(v) {
+    _compView = v;
+  }
+  function _set_compCat(v) {
+    _compCat = v;
+  }
+  function _set_compDisp(v) {
+    _compDisp = v;
+  }
+  function _set_compEsf(v) {
+    _compEsf = v;
+  }
+  function _set_compGrupo(v) {
+    _compGrupo = v;
+  }
+  function _set_compOrd(v) {
+    _compOrd = v;
+  }
+  function _set_compTermo(v) {
+    _compTermo = v;
+  }
+
+  // static/js/src/abas/vinculos.js
   async function renderVinculos() {
     const s = await J("/api/osint/serie_societaria");
     let h = cover(
@@ -2985,12 +3538,12 @@ void main(){
         ${kpi(esc(s.cobertura || "—"), "Janela observada", null, "🗓️")}
         ${kpi(fmtN(st.saiu || 0), "Saídas de sócio detectadas", "var(--amber)", "🚪")}
         ${kpi(fmtN(st.ativo || 0), "Vínculos vistos no último mês", null, "✅")}</div>`;
-      h += leitura2(n < 2 ? `<b>Série com ${n} snapshot(s).</b> Com menos de dois meses observados, <b>saída de sócio é inobservável</b> — a base da Receita traz data de entrada e nenhuma de saída. Toda pergunta do tipo "era sócio na data do certame?" sai como INDISPONÍVEL, nunca como afastada.` : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
+      h += leitura(n < 2 ? `<b>Série com ${n} snapshot(s).</b> Com menos de dois meses observados, <b>saída de sócio é inobservável</b> — a base da Receita traz data de entrada e nenhuma de saída. Toda pergunta do tipo "era sócio na data do certame?" sai como INDISPONÍVEL, nunca como afastada.` : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
       h += `<div class="note" style="margin-top:8px">Fonte: ${esc(s.fonte || "")}</div>`;
     } else {
       h += card(`<div class="warn">${erroHumano(s.erro)}</div>`);
     }
-    h += sec2("Consultar uma empresa");
+    h += sec("Consultar uma empresa");
     h += card(`<div class="search"><span class="mag"></span>
       <input id="vinc-cnpj" placeholder="CNPJ da empresa (com ou sem pontuação)…"
              data-vinc-enter="consultar"></div>
@@ -3016,7 +3569,7 @@ void main(){
       <button type="button" class="btn ghost" style="margin-left:6px" data-vinc="naData">Verificar na data</button>
     </div>`);
     h += `<div id="vinc-out"></div>`;
-    h += sec2("Calibração dos eixos de parentesco");
+    h += sec("Calibração dos eixos de parentesco");
     h += card(`<div class="dim">Nenhuma base aberta brasileira publica filiação. O que sai daqui é
       inferência, e a única forma honesta de inferir é medir a <b>prevalência de cada eixo na própria
       base</b> antes de deixá-lo pesar — um eixo que acende na maioria mede a base, não o alvo.</div>
@@ -3042,12 +3595,12 @@ void main(){
       return;
     }
     const cob = d.cobertura || {}, ps = d.pessoas || [];
-    let h = sec2("Beneficiário final — " + esc(d.pj || c));
+    let h = sec("Beneficiário final — " + esc(d.pj || c));
     h += `<div class="grid g2">${kpi(fmtN(d.n_pessoas), "Pessoas físicas na cadeia", ps.length ? "var(--emerald)" : "var(--amber)", "👤")}
       ${kpi(cob.pct == null ? "—" : cob.pct + "%", "Cobertura de QSA da cadeia", cob.pct >= 80 ? null : "var(--amber)", "🔍")}
       ${kpi(fmtN(d.saltos_max), "Degraus até a pessoa física")}
       ${kpi(fmtN((d.ciclos || []).length), "Participações cruzadas circulares", (d.ciclos || []).length ? "var(--rose)" : null, "🔄")}</div>`;
-    h += leitura2(esc(d.motivo || ""));
+    h += leitura(esc(d.motivo || ""));
     if (ps.length) {
       h += `<div class="grid">` + ps.map((p) => card(
         `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
@@ -3060,7 +3613,7 @@ void main(){
       )).join("") + `</div>`;
     }
     if ((d.ciclos || []).length) {
-      h += card(`<div style="font-weight:700">Participação cruzada circular</div>` + (d.ciclos || []).map((c2) => `<div class="muted" style="font-size:12.5px">${esc((c2 || []).join(" → "))}</div>`).join("") + leitura2("Empresa A sócia da B, que é sócia da A. É lícito, e é também a estrutura que mais dificulta identificar quem manda — cabe olhar o contrato social."));
+      h += card(`<div style="font-weight:700">Participação cruzada circular</div>` + (d.ciclos || []).map((c2) => `<div class="muted" style="font-size:12.5px">${esc((c2 || []).join(" → "))}</div>`).join("") + leitura("Empresa A sócia da B, que é sócia da A. É lícito, e é também a estrutura que mais dificulta identificar quem manda — cabe olhar o contrato social."));
     }
     h += `<div class="note">${esc((d.documentacao || {}).nota || "")}</div>`;
     h += `<div class="note">${esc((d.temporalidade || {}).nota || "")}</div>`;
@@ -3082,22 +3635,22 @@ void main(){
       return;
     }
     const cor = { indicio: "var(--rose)", hipotese: "var(--amber)", hipotese_fraca: null }[d.grau] || null;
-    let h = sec2("Parentesco inferido — CNPJ raiz " + esc(d.cnpj_basico));
+    let h = sec("Parentesco inferido — CNPJ raiz " + esc(d.cnpj_basico));
     h += `<div class="grid g2">${kpi(esc(d.grau || "nenhum eixo"), "Grau", cor, "👪")}
       ${kpi(fmtN(d.n_hipoteses), "Hipóteses")}
       ${kpi(d.falso_positivo_esperado_pct + "%", "Falso positivo esperado", d.falso_positivo_esperado_pct >= 10 ? "var(--amber)" : null, "📉")}
       ${kpi(fmtN(d.n_socios_pf), "Sócios PF no QSA")}</div>`;
-    h += leitura2(esc(d.leitura || ""));
+    h += leitura(esc(d.leitura || ""));
     if ((d.eixos_acionados || []).length) {
       h += `<div class="grid">` + (d.eixos_acionados || []).map((e) => card(
         `<div style="font-weight:700">${esc(e.descricao)}
          ${e.pode_acender_sozinho ? '<span class="tag">eixo forte</span>' : '<span class="tag amber">não acende sozinho</span>'}</div>
        <div class="dim" style="margin-top:4px">Prevalência na base: <b>${e.prevalencia_na_base_pct}%</b></div>
-       ${leitura2("Explicação inocente: " + esc(e.explicacao_inocente))}`
+       ${leitura("Explicação inocente: " + esc(e.explicacao_inocente))}`
       )).join("") + `</div>`;
     }
     if ((d.hipoteses || []).length) {
-      h += sec2("Pessoas", d.hipoteses.length);
+      h += sec("Pessoas", d.hipoteses.length);
       h += `<div class="grid">` + d.hipoteses.map((x) => card(
         `<div style="font-weight:700">${esc((x.pessoas || []).join("  ·  "))}</div>
        <div class="dim" style="margin-top:3px">${esc(x.onde || "")}${x.familia ? " · família " + esc(x.familia) : ""}
@@ -3127,13 +3680,13 @@ void main(){
       return;
     }
     const cor = { SIM: "var(--rose)", NAO: null, INDISPONIVEL: "var(--amber)" }[d.resposta] || null;
-    let h = sec2("Havia vínculo societário em " + esc(dt) + "?");
+    let h = sec("Havia vínculo societário em " + esc(dt) + "?");
     h += `<div class="grid g2">${kpi(esc(d.resposta), "Resposta", cor, "⚖️")}
       ${kpi(esc(d.mes_observado || "—"), "Mês efetivamente observado")}
       ${kpi(d.defasagem_meses == null ? "—" : d.defasagem_meses, "Defasagem (meses)")}
       ${kpi(fmtN((d.serie || {}).n_meses), "Meses na série")}</div>`;
-    if (d.resposta === "INDISPONIVEL") h += leitura2("<b>INDISPONÍVEL não é NÃO.</b> " + esc(d.motivo || ""));
-    else h += leitura2(esc(d.ressalva || ""));
+    if (d.resposta === "INDISPONIVEL") h += leitura("<b>INDISPONÍVEL não é NÃO.</b> " + esc(d.motivo || ""));
+    else h += leitura(esc(d.ressalva || ""));
     if ((d.socios || []).length) {
       h += `<div class="grid">` + d.socios.map((s) => card(
         `<div style="font-weight:700">${esc(s.nome)}</div>
@@ -3165,11 +3718,11 @@ void main(){
       o.innerHTML = card(`<div class="warn">${erroHumano(d.erro || d.motivo)}</div>`);
       return;
     }
-    let h = sec2("Trocas de quadro societário perto de " + esc(dt));
+    let h = sec("Trocas de quadro societário perto de " + esc(dt));
     h += `<div class="grid g2">${kpi(fmtN(d.n_entradas), "Entradas na janela", d.n_entradas ? "var(--amber)" : null, "➡️")}
       ${kpi(fmtN(d.n_saidas), "Saídas na janela", d.n_saidas ? "var(--amber)" : null, "🚪")}
       ${kpi(fmtN(d.janela_meses), "Janela (meses)")}</div>`;
-    h += leitura2(esc(d.leitura || ""));
+    h += leitura(esc(d.leitura || ""));
     const linhas = [...(d.entradas || []).map((x) => ["entrada", x]), ...(d.saidas || []).map((x) => ["saída", x])];
     if (linhas.length) {
       h += `<div class="grid">` + linhas.map(([tipo, x]) => card(
@@ -3199,6 +3752,215 @@ void main(){
     }
     h += `</tbody></table><div class="note">${esc(d.regra || "")}</div>`;
     o.innerHTML = h;
+  }
+  async function vincGrafo() {
+    const c = _vincCnpj();
+    const o = $("vinc-out");
+    if (!c) {
+      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">montando a rede…</div>');
+    const d = await J("/api/grafo?alvo=" + encodeURIComponent(c) + "&saltos=2");
+    if (d && d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const nos = d.nos || [], ar = d.arestas || [];
+    o.innerHTML = sec("Rede de poder — 2 saltos") + `<div class="grid g2">${kpi(fmtN(nos.length), "Nós")}${kpi(fmtN(ar.length), "Arestas")}
+      ${kpi(fmtN((d.comunidades || []).length), "Comunidades")}</div>` + card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
+      <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`) + leitura("A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.");
+  }
+  async function vincFtm() {
+    const c = _vincCnpj();
+    const o = $("vinc-out");
+    if (!c) {
+      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">exportando…</div>');
+    const d = await J("/api/grafo/ftm?alvo=" + encodeURIComponent(c) + "&saltos=2");
+    if (d && d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const ents = d.entidades || d.entities || [];
+    o.innerHTML = sec("FollowTheMoney") + card(
+      `<div class="dim">${fmtN(ents.length)} entidade(s) no vocabulário FtM — interopera com Aleph e Gephi sem migrar nada.</div>
+     <pre style="white-space:pre-wrap;font-size:11.5px;margin-top:8px;max-height:300px;overflow:auto">${esc(JSON.stringify(ents.slice(0, 20), null, 1))}</pre>`
+    );
+  }
+  async function vincHistoricoPessoa() {
+    const n = ($("vinc-pessoa")?.value || "").trim();
+    const o = $("vinc-out");
+    if (!n) {
+      o.innerHTML = card('<div class="warn">Informe o nome do sócio.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">consultando a série…</div>');
+    const d = await J("/api/osint/historico_socio?nome=" + encodeURIComponent(n));
+    if (!d.ok) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const vs = d.vinculos || [];
+    if (!vs.length) {
+      o.innerHTML = card(`<div class="note">Nenhum vínculo desta pessoa na série. <b>INDISPONÍVEL não é ausência</b>: a série cobre só as raízes-alvo do acervo, não o Brasil inteiro.</div>`);
+      return;
+    }
+    let h = sec("Sociedades de " + esc(n), vs.length) + `<table class="tb"><thead><tr><th>CNPJ raiz</th><th>Qualificação</th><th>Visto de</th><th>até</th><th>Situação</th></tr></thead><tbody>`;
+    for (const v of vs)
+      h += `<tr><td>${esc(v.cnpj_basico)}</td><td class="dim">${esc(v.qualificacao || "—")}</td>
+        <td>${esc(v.visto_de)}</td><td>${esc(v.visto_ate)}</td>
+        <td class="${v.status === "saiu" ? "bad" : ""}">${esc(v.status)}${v.saiu_entre ? " (" + esc(v.saiu_entre) + ")" : ""}${v.janela_confiavel === 0 ? " ⚠ janela com mês não observado" : ""}</td></tr>`;
+    h += `</tbody></table>`;
+    o.innerHTML = h;
+  }
+  async function vincConluioMunicipal() {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">cruzando QSA de vencedores e perdedoras…</div>');
+    const d = await J("/api/osint/conluio_municipal?limite=400");
+    if (!d.ok) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
+      return;
+    }
+    const c = d.cobertura || {};
+    let h = sec("Conluio municipal — sócio em comum entre vencedor e perdedora");
+    h += `<div class="grid g2">${kpi(fmtN(d.n_certames_com_achado), "Certames com achado", d.n_certames_com_achado ? "var(--rose)" : null, "🤝")}
+      ${kpi(fmtN(d.n_pares), "Pares vencedor × perdedora")}
+      ${kpi(fmtN(c.cruzaveis_com_qsa_dos_dois_lados), "Certames efetivamente cruzados")}
+      ${kpi(c.taxa_de_achado_pct == null ? "—" : c.taxa_de_achado_pct + "%", "Taxa de achado")}</div>`;
+    h += leitura(`O eixo devolvia zero por falta de <b>dado</b>, não de motor: eram <b>114</b> certames com
+     classificado além do 1º lugar em todo o acervo. Hoje são <b>${fmtN(c.com_vencedor_e_perdedora_resolvidos)}</b>
+     com vencedor e perdedora resolvidos, e <b>${fmtN(c.cruzaveis_com_qsa_dos_dois_lados)}</b> com QSA dos dois lados.
+     ${esc(c.nota || "")}`);
+    if ((d.achados || []).length) {
+      h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por município, CNPJ ou sócio…" oninput="filtrar(this,'#cm-list .card')"></div>`;
+      h += `<div id="cm-list" class="grid">` + d.achados.map((a) => card(
+        `<div style="font-weight:700">${esc(a.certame)}</div>
+       <div class="dim" style="margin-top:3px">vencedor <b>${esc(a.vencedor_raiz)}</b> × perdedora <b>${esc(a.perdedora_raiz)}</b>
+         · aresta ${esc(a.tipo_aresta)} (força ${a.forca_aresta})</div>
+       <div style="margin-top:4px">Sócio(s) em comum: <b>${esc((a.socios_em_comum || []).join(" · "))}</b></div>
+       ${leitura("Veredito: <b>" + esc(a.veredito) + "</b>. " + esc(a.explicacao_inocente))}`,
+        "hl"
+      )).join("") + `</div>`;
+    } else {
+      h += card('<div class="note">Nenhum par com sócio em comum nos certames cruzados. Isso vale só para os cruzados — o resto é INDISPONÍVEL.</div>');
+    }
+    h += (d.ressalvas || []).map((r) => `<div class="note">${esc(r)}</div>`).join("");
+    o.innerHTML = h;
+  }
+  async function vincResolucao() {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">consultando…</div>');
+    const d = await J("/api/osint/resolucao_nome_cnpj");
+    if (!d.ok) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
+      return;
+    }
+    o.innerHTML = sec("Resolução razão social → CNPJ (catálogo nacional da Receita)") + `<div class="grid g2">${kpi(fmtN(d.nomes), "Nomes no universo")}
+      ${kpi(fmtN(d.resolvidos), "Resolvidos", "var(--emerald)", "✅")}
+      ${kpi(fmtN(d.ambiguos), "Ambíguos (CNPJ nulo)", "var(--amber)", "⚖️")}
+      ${kpi(d.pct_resolvido + "%", "Taxa de resolução")}</div>` + leitura("Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.") + `<div class="note">${esc(d.nota || "")}</div>`;
+  }
+  async function vincInterposicao() {
+    const c = _vincCnpj();
+    const o = $("vinc-out");
+    if (!c) {
+      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">medindo os eixos de interposição…</div>');
+    const d = await J("/api/osint/interposicao?cnpj=" + encodeURIComponent(c));
+    if (!d.ok) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const socios = d.socios || d.perfis || [];
+    let h = sec("Perfil de laranja (interposição) — CNPJ raiz " + esc(c.slice(0, 8)));
+    h += leitura("Este módulo marcava <b>55%</b> da base até a prevalência de cada eixo ser medida: empresa com um só sócio é <b>54,9%</b> do normal, e sócio com mais de 80 anos é <b>1,87%</b>. Depois da calibragem, 1,4%. Eixo que acende na maioria mede a base, não o alvo.");
+    h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 4e3)}</pre>`);
+    o.innerHTML = h;
+  }
+  async function vincPatrimonio() {
+    const c = _vincCnpj();
+    const o = $("vinc-out");
+    if (!c) {
+      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">comparando capacidade declarada e recebimento…</div>');
+    const d = await J("/api/osint/patrimonio?cnpj=" + encodeURIComponent(c));
+    if (!d.ok) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    let h = sec("Capacidade declarada × recebimento público");
+    h += leitura('Sem renda conhecida o veredito é <b>não aferível</b>, nunca "renda incompatível" — a distinção entre fachada e enriquecimento depende de saber o que se declara, e quase sempre não se sabe.');
+    h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 3e3)}</pre>`);
+    o.innerHTML = h;
+  }
+  var VINC_ACOES = {
+    consultar: vincConsultar,
+    parentesco: vincParentesco,
+    trocas: vincTrocas,
+    grafo: vincGrafo,
+    ftm: vincFtm,
+    conluioMunicipal: vincConluioMunicipal,
+    resolucao: vincResolucao,
+    interposicao: vincInterposicao,
+    patrimonio: vincPatrimonio,
+    historicoPessoa: vincHistoricoPessoa,
+    naData: vincNaData,
+    prevalencia: vincPrevalencia
+  };
+  function ligarVinculos() {
+    document.addEventListener("click", (ev) => {
+      const b = ev.target.closest && ev.target.closest("[data-vinc]");
+      const f = b && VINC_ACOES[b.dataset.vinc];
+      if (f) {
+        ev.preventDefault();
+        f();
+      }
+    });
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter") return;
+      const i = ev.target.closest && ev.target.closest("[data-vinc-enter]");
+      const f = i && VINC_ACOES[i.dataset.vincEnter];
+      if (f) {
+        ev.preventDefault();
+        f();
+      }
+    });
+  }
+
+  // static/js/src/abas/index.js
+  var _respProc = "";
+  var _ehEmail = (s) => /@/.test(String(s || ""));
+  async function renderResponsaveis() {
+    let h = cover("estado", "Responsáveis pelo processo", "Quem responde por um processo SEI: ordenador de despesa, gestor e fiscal do contrato, com ID funcional quando o documento o traz.", "🧑‍⚖️");
+    h += `<div class="search"><span class="mag"></span><input id="resp-proc" placeholder="número SEI (ex.: SEI-070002/006145/2024)…" value="${esc(_respProc)}" onchange="_respProc=this.value;ir('e_resp')" onkeydown="if(event.key==='Enter'){_respProc=this.value;ir('e_resp')}"></div>`;
+    if (!_respProc.trim()) return h + card('<div class="muted">Informe o número do processo. A busca lê o que já foi capturado — ela responde uma pergunta, não varre o acervo.</div>');
+    let d;
+    try {
+      d = await J("/api/responsaveis?processo=" + encodeURIComponent(_respProc.trim()));
+    } catch (e) {
+      return h + card(`<div class="muted">Não foi possível consultar: ${esc(String(e && e.message || e))}</div>`);
+    }
+    if (!d || d.ok === false) return h + card(`<div class="muted">${esc(d && d.erro || "consulta sem resposta")}</div>`);
+    const ag = d.agentes || [];
+    h += card(`<div style="font-weight:700">${esc(d.processo || _respProc)}</div><div class="dim">${ag.length} responsável(is) identificado(s) nos documentos capturados</div>`);
+    if (!ag.length) {
+      return h + card('<div class="muted">Nenhum responsável identificado <b>nos documentos capturados</b>. Isso é lacuna de captura ou de instrução — <b>não</b> afirmação de que o processo corra sem responsável designado: o ato de designação costuma viver no processo de contratação, não no de pagamento.</div>');
+    }
+    h += `<div class="grid">` + ag.map((a) => card(
+      `<div><div style="font-weight:700">${esc(a.nome || "—")}</div>
+     <div class="dim">${esc(String(a.papel || "").replace(/_/g, " "))}${a.id_funcional ? ` · ID ${esc(a.id_funcional)}` : ""}${a.cargo && !_ehEmail(a.cargo) ? ` — ${esc(a.cargo)}` : ""}</div>
+     <div class="dim" style="font-size:12px">origem: ${esc(a.origem || "—")}${a.documento ? ` · ${esc(a.documento)}` : ""}</div></div>`
+    )).join("") + `</div>`;
+    const lac = d.lacunas || [];
+    if (lac.length) h += card(`<div style="font-weight:700">Lacunas apontadas</div><ul style="margin:6px 0 0 18px">${lac.slice(0, 5).map((l) => `<li>${esc(l.descricao || l.tipo || "—")}</li>`).join("")}</ul>`);
+    return h;
   }
   async function renderPecas() {
     let h = cover(
@@ -3270,7 +4032,7 @@ void main(){
     h += `<div class="note">Ausência de resultado numa fonte externa é <b>INDISPONÍVEL</b>, não prova de inexistência: a cobertura de cada base é parcial e declarada por ela mesma.</div>`;
     const lim = await J("/api/fontes/limites");
     if (lim && lim.ok && (lim.itens || []).length) {
-      h += sec2(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
+      h += sec(`Limites conhecidos das fontes — ${lim.bloqueios} bloqueio(s), ${lim.limites_de_dado} limite(s) de dado`);
       h += card(`<table><thead><tr><th>Fonte</th><th>Tipo</th><th>O que acontece</th><th>Caminho alternativo</th><th>Medido</th></tr></thead><tbody>` + lim.itens.map((x) => `<tr>
           <td><b>${esc(x.fonte)}</b></td>
           <td><span class="pill ${x.tipo === "bloqueio" ? "medio" : "alto"}">${x.tipo === "bloqueio" ? "bloqueio" : "limite da fonte"}</span></td>
@@ -3301,14 +4063,14 @@ void main(){
       const val = composto ? `<span class="dim">${Array.isArray(v2) ? fmtN(v2.length) + " item(ns)" : "objeto"} — ver bruto</span>` : v2 === null || v2 === "" ? '<span class="dim">INDISPONÍVEL</span>' : esc(String(v2));
       return `<tr><td><b>${esc(k)}</b></td><td>${val}</td></tr>`;
     });
-    o.innerHTML = sec2(esc(rota.replace("/api/", ""))) + card(
+    o.innerHTML = sec(esc(rota.replace("/api/", ""))) + card(
       (linhas.length ? `<table><thead><tr><th style="width:34%">Campo</th><th>Valor</th></tr></thead><tbody>${linhas.join("")}</tbody></table>` : `<div class="dim">A fonte respondeu sem campos — <b>INDISPONÍVEL</b>, não "nada consta".</div>`) + `<details style="margin-top:10px"><summary class="dim" style="cursor:pointer">resposta bruta (JSON)</summary>
       <pre style="white-space:pre-wrap;font-size:12px;margin:8px 0 0">${esc(JSON.stringify(d, null, 1))}</pre></details>`
     );
   }
   async function renderHubFisico() {
     const d = await J("/api/intel/hub_compartilhado?limite=150");
-    if (!d.ok) return sec2("Hub compartilhado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Hub compartilhado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || d.hubs || [];
     let h = cover(
       "geral",
@@ -3338,17 +4100,17 @@ void main(){
     );
     const he = await J("/api/eval/hermeneutica");
     if (he && he.estado && he.estado !== "medido") {
-      h += sec2("Juízo jurídico (conjunto-ouro TCU)");
+      h += sec("Juízo jurídico (conjunto-ouro TCU)");
       h += semMedicao(he, "Ainda não medido neste ambiente");
       if (he.tem_baseline === false) h += `<div class="dim">Também não há baseline aceito — a primeira medição vira o baseline.</div>`;
     } else if (he && he.ok !== false) {
-      h += sec2("Juízo jurídico (conjunto-ouro TCU)");
+      h += sec("Juízo jurídico (conjunto-ouro TCU)");
       h += `<div class="grid g2">${kpi(fmtD(he.f1_macro, 3), "F1 macro", null, "⚖️")}
         ${kpi(fmtD(he.baseline_f1, 3), "F1 do baseline burro")}
         ${kpi(he.acuracia == null ? "—" : fmtD(100 * he.acuracia, 1) + "%", "Acurácia")}
         ${kpi(he.n == null ? "—" : fmtN(he.n), "Casos rotulados")}</div>`;
       if (he.alucinacao_citacao != null)
-        h += leitura2(`Alucinação de citação: <b>${fmtD(100 * he.alucinacao_citacao, 1)}%</b>. Abstenção: ${he.abstencao == null ? "—" : fmtD(100 * he.abstencao, 0) + "%"} — abster-se é resultado honesto, não falha.`);
+        h += leitura(`Alucinação de citação: <b>${fmtD(100 * he.alucinacao_citacao, 1)}%</b>. Abstenção: ${he.abstencao == null ? "—" : fmtD(100 * he.abstencao, 0) + "%"} — abster-se é resultado honesto, não falha.`);
     } else h += card(`<div class="dim">Acurácia do juízo indisponível nesta execução${he && he.erro ? ": " + esc(he.erro) : ""}.</div>`);
     h += `<div id="acu-lift">${spin("Calculando o lift dos detectores…")}
       <div class="note">Este cálculo varre o acervo inteiro cruzando cada detector com sanção
@@ -3369,10 +4131,10 @@ void main(){
   function _acuLiftHtml(lf) {
     let h = "";
     if (lf && lf.estado && lf.estado !== "medido" && !(lf.detectores || []).length)
-      return sec2("Lift por detector") + semMedicao(lf, "Lift ainda não medido nesta base");
+      return sec("Lift por detector") + semMedicao(lf, "Lift ainda não medido nesta base");
     if (lf && lf.ok !== false) {
       const ds = lf.detectores || lf.itens || [];
-      h += sec2("Lift por detector", ds.length);
+      h += sec("Lift por detector", ds.length);
       if (lf.taxa_base != null) h += `<div class="dim">Taxa-base do acervo: <b>${fmtD(100 * lf.taxa_base, 2)}%</b>. Lift 1,0 = o detector não informa nada.</div>`;
       h += `<table class="tb" style="margin-top:10px"><thead><tr><th>Detector</th><th class="r">Lift</th><th class="r">n</th><th>Leitura</th></tr></thead><tbody>`;
       for (const d of ds) {
@@ -3386,186 +4148,6 @@ void main(){
       h += `<div class="note">Lift alto por circularidade não é mérito: se o detector usa sanção como insumo e a sanção é o alvo, ele está prevendo o passado.</div>`;
     } else h += card(`<div class="dim">Lift indisponível nesta execução${lf && lf.erro ? ": " + esc(lf.erro) : ""}.</div>`);
     return h;
-  }
-  async function vincGrafo() {
-    const c = _vincCnpj();
-    const o = $("vinc-out");
-    if (!c) {
-      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
-      return;
-    }
-    o.innerHTML = card('<div class="dim">montando a rede…</div>');
-    const d = await J("/api/grafo?alvo=" + encodeURIComponent(c) + "&saltos=2");
-    if (d && d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-      return;
-    }
-    const nos = d.nos || [], ar = d.arestas || [];
-    o.innerHTML = sec2("Rede de poder — 2 saltos") + `<div class="grid g2">${kpi(fmtN(nos.length), "Nós")}${kpi(fmtN(ar.length), "Arestas")}
-      ${kpi(fmtN((d.comunidades || []).length), "Comunidades")}</div>` + card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
-      <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`) + leitura2("A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.");
-  }
-  async function vincFtm() {
-    const c = _vincCnpj();
-    const o = $("vinc-out");
-    if (!c) {
-      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
-      return;
-    }
-    o.innerHTML = card('<div class="dim">exportando…</div>');
-    const d = await J("/api/grafo/ftm?alvo=" + encodeURIComponent(c) + "&saltos=2");
-    if (d && d.ok === false) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-      return;
-    }
-    const ents = d.entidades || d.entities || [];
-    o.innerHTML = sec2("FollowTheMoney") + card(
-      `<div class="dim">${fmtN(ents.length)} entidade(s) no vocabulário FtM — interopera com Aleph e Gephi sem migrar nada.</div>
-     <pre style="white-space:pre-wrap;font-size:11.5px;margin-top:8px;max-height:300px;overflow:auto">${esc(JSON.stringify(ents.slice(0, 20), null, 1))}</pre>`
-    );
-  }
-  async function vincHistoricoPessoa() {
-    const n = ($("vinc-pessoa")?.value || "").trim();
-    const o = $("vinc-out");
-    if (!n) {
-      o.innerHTML = card('<div class="warn">Informe o nome do sócio.</div>');
-      return;
-    }
-    o.innerHTML = card('<div class="dim">consultando a série…</div>');
-    const d = await J("/api/osint/historico_socio?nome=" + encodeURIComponent(n));
-    if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-      return;
-    }
-    const vs = d.vinculos || [];
-    if (!vs.length) {
-      o.innerHTML = card(`<div class="note">Nenhum vínculo desta pessoa na série. <b>INDISPONÍVEL não é ausência</b>: a série cobre só as raízes-alvo do acervo, não o Brasil inteiro.</div>`);
-      return;
-    }
-    let h = sec2("Sociedades de " + esc(n), vs.length) + `<table class="tb"><thead><tr><th>CNPJ raiz</th><th>Qualificação</th><th>Visto de</th><th>até</th><th>Situação</th></tr></thead><tbody>`;
-    for (const v of vs)
-      h += `<tr><td>${esc(v.cnpj_basico)}</td><td class="dim">${esc(v.qualificacao || "—")}</td>
-        <td>${esc(v.visto_de)}</td><td>${esc(v.visto_ate)}</td>
-        <td class="${v.status === "saiu" ? "bad" : ""}">${esc(v.status)}${v.saiu_entre ? " (" + esc(v.saiu_entre) + ")" : ""}${v.janela_confiavel === 0 ? " ⚠ janela com mês não observado" : ""}</td></tr>`;
-    h += `</tbody></table>`;
-    o.innerHTML = h;
-  }
-  async function vincConluioMunicipal() {
-    const o = $("vinc-out");
-    o.innerHTML = card('<div class="dim">cruzando QSA de vencedores e perdedoras…</div>');
-    const d = await J("/api/osint/conluio_municipal?limite=400");
-    if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
-      return;
-    }
-    const c = d.cobertura || {};
-    let h = sec2("Conluio municipal — sócio em comum entre vencedor e perdedora");
-    h += `<div class="grid g2">${kpi(fmtN(d.n_certames_com_achado), "Certames com achado", d.n_certames_com_achado ? "var(--rose)" : null, "🤝")}
-      ${kpi(fmtN(d.n_pares), "Pares vencedor × perdedora")}
-      ${kpi(fmtN(c.cruzaveis_com_qsa_dos_dois_lados), "Certames efetivamente cruzados")}
-      ${kpi(c.taxa_de_achado_pct == null ? "—" : c.taxa_de_achado_pct + "%", "Taxa de achado")}</div>`;
-    h += leitura2(`O eixo devolvia zero por falta de <b>dado</b>, não de motor: eram <b>114</b> certames com
-     classificado além do 1º lugar em todo o acervo. Hoje são <b>${fmtN(c.com_vencedor_e_perdedora_resolvidos)}</b>
-     com vencedor e perdedora resolvidos, e <b>${fmtN(c.cruzaveis_com_qsa_dos_dois_lados)}</b> com QSA dos dois lados.
-     ${esc(c.nota || "")}`);
-    if ((d.achados || []).length) {
-      h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por município, CNPJ ou sócio…" oninput="filtrar(this,'#cm-list .card')"></div>`;
-      h += `<div id="cm-list" class="grid">` + d.achados.map((a) => card(
-        `<div style="font-weight:700">${esc(a.certame)}</div>
-       <div class="dim" style="margin-top:3px">vencedor <b>${esc(a.vencedor_raiz)}</b> × perdedora <b>${esc(a.perdedora_raiz)}</b>
-         · aresta ${esc(a.tipo_aresta)} (força ${a.forca_aresta})</div>
-       <div style="margin-top:4px">Sócio(s) em comum: <b>${esc((a.socios_em_comum || []).join(" · "))}</b></div>
-       ${leitura2("Veredito: <b>" + esc(a.veredito) + "</b>. " + esc(a.explicacao_inocente))}`,
-        "hl"
-      )).join("") + `</div>`;
-    } else {
-      h += card('<div class="note">Nenhum par com sócio em comum nos certames cruzados. Isso vale só para os cruzados — o resto é INDISPONÍVEL.</div>');
-    }
-    h += (d.ressalvas || []).map((r) => `<div class="note">${esc(r)}</div>`).join("");
-    o.innerHTML = h;
-  }
-  async function vincResolucao() {
-    const o = $("vinc-out");
-    o.innerHTML = card('<div class="dim">consultando…</div>');
-    const d = await J("/api/osint/resolucao_nome_cnpj");
-    if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
-      return;
-    }
-    o.innerHTML = sec2("Resolução razão social → CNPJ (catálogo nacional da Receita)") + `<div class="grid g2">${kpi(fmtN(d.nomes), "Nomes no universo")}
-      ${kpi(fmtN(d.resolvidos), "Resolvidos", "var(--emerald)", "✅")}
-      ${kpi(fmtN(d.ambiguos), "Ambíguos (CNPJ nulo)", "var(--amber)", "⚖️")}
-      ${kpi(d.pct_resolvido + "%", "Taxa de resolução")}</div>` + leitura2("Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.") + `<div class="note">${esc(d.nota || "")}</div>`;
-  }
-  async function vincInterposicao() {
-    const c = _vincCnpj();
-    const o = $("vinc-out");
-    if (!c) {
-      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
-      return;
-    }
-    o.innerHTML = card('<div class="dim">medindo os eixos de interposição…</div>');
-    const d = await J("/api/osint/interposicao?cnpj=" + encodeURIComponent(c));
-    if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-      return;
-    }
-    const socios = d.socios || d.perfis || [];
-    let h = sec2("Perfil de laranja (interposição) — CNPJ raiz " + esc(c.slice(0, 8)));
-    h += leitura2("Este módulo marcava <b>55%</b> da base até a prevalência de cada eixo ser medida: empresa com um só sócio é <b>54,9%</b> do normal, e sócio com mais de 80 anos é <b>1,87%</b>. Depois da calibragem, 1,4%. Eixo que acende na maioria mede a base, não o alvo.");
-    h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 4e3)}</pre>`);
-    o.innerHTML = h;
-  }
-  async function vincPatrimonio() {
-    const c = _vincCnpj();
-    const o = $("vinc-out");
-    if (!c) {
-      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
-      return;
-    }
-    o.innerHTML = card('<div class="dim">comparando capacidade declarada e recebimento…</div>');
-    const d = await J("/api/osint/patrimonio?cnpj=" + encodeURIComponent(c));
-    if (!d.ok) {
-      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-      return;
-    }
-    let h = sec2("Capacidade declarada × recebimento público");
-    h += leitura2('Sem renda conhecida o veredito é <b>não aferível</b>, nunca "renda incompatível" — a distinção entre fachada e enriquecimento depende de saber o que se declara, e quase sempre não se sabe.');
-    h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 3e3)}</pre>`);
-    o.innerHTML = h;
-  }
-  var VINC_ACOES = {
-    consultar: vincConsultar,
-    parentesco: vincParentesco,
-    trocas: vincTrocas,
-    grafo: vincGrafo,
-    ftm: vincFtm,
-    conluioMunicipal: vincConluioMunicipal,
-    resolucao: vincResolucao,
-    interposicao: vincInterposicao,
-    patrimonio: vincPatrimonio,
-    historicoPessoa: vincHistoricoPessoa,
-    naData: vincNaData,
-    prevalencia: vincPrevalencia
-  };
-  function ligarVinculos() {
-    document.addEventListener("click", (ev) => {
-      const b = ev.target.closest && ev.target.closest("[data-vinc]");
-      const f = b && VINC_ACOES[b.dataset.vinc];
-      if (f) {
-        ev.preventDefault();
-        f();
-      }
-    });
-    document.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter") return;
-      const i = ev.target.closest && ev.target.closest("[data-vinc-enter]");
-      const f = i && VINC_ACOES[i.dataset.vincEnter];
-      if (f) {
-        ev.preventDefault();
-        f();
-      }
-    });
   }
   var _DETS_ORFAOS = [
     {
@@ -3720,7 +4302,7 @@ void main(){
       J("/api/siafe/status"),
       J("/api/radar/status")
     ]);
-    h += sec2("Frescor das fontes (SLO por pipeline)");
+    h += sec("Frescor das fontes (SLO por pipeline)");
     const ps = pp && (pp.pipelines || pp.itens) || [];
     if (ps.length) {
       h += `<table class="tb"><thead><tr><th>Pipeline</th><th>Estado</th><th class="r">Idade</th></tr></thead><tbody>`;
@@ -3731,7 +4313,7 @@ void main(){
       }
       h += `</tbody></table>`;
     } else h += card(`<div class="dim">${pp && pp.ok === false ? "Pipelines indisponíveis nesta execução" + (pp.erro ? ": " + esc(pp.erro) : "") + "." : "Nenhum pipeline registrado — a rota respondeu, a lista está vazia."}</div>`);
-    h += sec2("Agenda (timers e crons)");
+    h += sec("Agenda (timers e crons)");
     const js = ag && (ag.jobs || ag.itens || ag.agenda) || [];
     if (js.length) {
       h += `<table class="tb"><thead><tr><th>Job</th><th>Quando</th><th>Último</th></tr></thead><tbody>`;
@@ -3740,7 +4322,7 @@ void main(){
           <td class="dim">${esc(j.ultimo || j.last || "—")}</td></tr>`;
       h += `</tbody></table>`;
     } else h += card(`<div class="dim">${ag && ag.ok === false ? "Agenda indisponível nesta execução" + (ag.erro ? ": " + esc(ag.erro) : "") + "." : "Nenhum job agendado — a rota respondeu, a agenda está vazia."}</div>`);
-    h += sec2("SIAFE e radar");
+    h += sec("SIAFE e radar");
     h += `<div class="grid g2">
     ${kpi(esc(sf && (sf.estado || sf.status) || "—"), "SIAFE", null, "💵")}
     ${kpi(fmtN(sf && (sf.n_obs || sf.obs)), "OBs coletadas")}
@@ -3758,7 +4340,7 @@ void main(){
       <button type="button" class="btn ghost" onclick="instAcionar('/api/compliance/relatorio_30d','GET')">Relatório 30 dias</button>
       <button type="button" class="btn ghost" onclick="instAcionar('/api/nucleo/comando','POST')">Núcleo de perícia</button>
     </div><div id="inst-out"></div>`);
-    h += sec2("Catálogo de UGs");
+    h += sec("Catálogo de UGs");
     const us = ug && (ug.ugs || ug.itens) || [];
     if (us.length) {
       h += card(`<div class="search"><span class="mag"></span>
@@ -3766,7 +4348,7 @@ void main(){
       <div id="inst-ugs" style="margin-top:10px">` + us.map((u) => `<div class="kv"><span class="k">${esc(u.codigo || u.ug)} — ${esc(u.nome || "")}</span><b>${fmtRc(u.total || u.total_pago)}</b></div>`).join("") + `</div>
       <div class="dim" style="margin-top:6px">${fmtN(ug.n_total || us.length)} UGs no catálogo.</div>`);
     } else h += card(`<div class="dim">${ug && ug.ok === false ? "Catálogo de UGs indisponível" + (ug.erro ? ": " + esc(ug.erro) : "") + "." : "Catálogo de UGs vazio nesta base — a rota respondeu."}</div>`);
-    h += sec2("Fila do fiscal (flags e restritos)");
+    h += sec("Fila do fiscal (flags e restritos)");
     h += card(`<div class="btns">
       <button type="button" class="btn ghost" onclick="instAcionar('/api/flags','GET')">Flags de triagem</button>
       <button type="button" class="btn ghost" onclick="instAcionar('/api/restritos','GET')">Processos restritos</button>
@@ -3784,7 +4366,7 @@ void main(){
     o.innerHTML = '<div class="dim" style="margin-top:8px">acionando…</div>';
     try {
       const d = await J(rota, metodo === "POST" ? { method: "POST" } : void 0);
-      o.innerHTML = sec2(esc(rota)) + card(
+      o.innerHTML = sec(esc(rota)) + card(
         `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 4e3)}</pre>`
       );
     } catch (e) {
@@ -3818,7 +4400,7 @@ void main(){
       o.innerHTML = card('<div class="dim">Nenhuma missão na fila.</div>');
       return;
     }
-    o.innerHTML = sec2("Fila", ms.length) + `<div class="grid">` + ms.map((m) => card(
+    o.innerHTML = sec("Fila", ms.length) + `<div class="grid">` + ms.map((m) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
        <div style="min-width:0"><div style="font-weight:700">${esc(m.titulo || m.objetivo || m.id)}</div>
          <div class="dim" style="margin-top:3px">${esc(m.estado || m.status || "—")}${m.criada_em ? " · " + esc(m.criada_em) : ""}</div></div>
@@ -3852,7 +4434,7 @@ void main(){
       const idade = f.idade_dias == null ? "sem dado" : f.idade_dias === 0 ? "hoje" : f.idade_dias + "d atrás";
       return `<div class="f"><span class="led ${f.estado}"></span><span class="nome">${esc(f.fonte)}</span><span class="idade">${idade}</span></div>`;
     }).join("");
-    return sec2("Fontes & frescor") + card(`<div class="fresh">${rows}</div><div class="dim" style="margin-top:8px">≤3 dias · 🟡 ≤10 · 🔴 parada — vermelho significa coletor quebrado: investigar, não ignorar.</div>`);
+    return sec("Fontes & frescor") + card(`<div class="fresh">${rows}</div><div class="dim" style="margin-top:8px">≤3 dias · 🟡 ≤10 · 🔴 parada — vermelho significa coletor quebrado: investigar, não ignorar.</div>`);
   }
   async function renderPanoramaEstado() {
     const [st, p, cj, sc] = await Promise.all([J("/status"), J("/api/compliance/painel"), J("/api/pncp/conluio?esfera=estado"), J("/api/intel/sancionadas?limite=1")]);
@@ -3866,7 +4448,7 @@ void main(){
     ${kpi(fmtN(a.total ?? 0), "Alertas ativos", a.alta ? "var(--rose)" : "#fff", "🚨", "e_alertas")}${kpi(nc, "Conluio (estado)", "var(--purple)", "🕸️", "e_conluio")}
     ${kpi(fmtN(sc.n_a_epoca ?? "—"), "Sancionadas à época", "var(--rose)", "🚫", "e_sanc")}${kpi(fmtN(a.alta ?? 0), "🔴 Alta", "var(--rose)", null, "e_alertas")}
     ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"))}${kpi(fmtN(o.hoje ?? 0), "OBs hoje")}</div>`;
-    h += `<div style="height:16px"></div>` + sec2("Ir para") + `<div class="grid two">
+    h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
     h += `<div style="height:16px"></div>` + await frescorHtml();
@@ -3875,7 +4457,7 @@ void main(){
   }
   async function renderSancionadas(esf) {
     const d = await J("/api/intel/sancionadas?limite=1000");
-    if (!d.ok) return sec2("Sancionadas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sancionadas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     let emp = d.empresas || [];
     const carregadas = emp.length;
     if (esf === "estado") emp = emp.filter((e) => e.estado.obs > 0);
@@ -3900,14 +4482,14 @@ void main(){
       <div class="right">${grave ? '<span class="sev alta">à época</span>' : '<span class="sev baixa">fora da vigência</span>'}
       <div style="margin-top:6px" class="num"><b>${fmtRc(e.estado.valor_durante + e.pncp.valor_durante || e.estado.valor + e.pncp.valor)}</b></div>
       <div class="dim">${grave ? "durante a sanção" : "total recebido"}</div></div></div>
-      ${grave && ex ? leitura2(`Exemplo: ${ex.ob ? "OB <b>" + esc(ex.ob) + "</b> paga em " : "certame homologado em "}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`) : ""}`, grave ? "hl" : "");
+      ${grave && ex ? leitura(`Exemplo: ${ex.ob ? "OB <b>" + esc(ex.ob) + "</b> paga em " : "certame homologado em "}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`) : ""}`, grave ? "hl" : "");
     }, 80, (e) => e.nome);
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
     return h;
   }
   async function renderFracionamento() {
     const d = await J("/api/intel/fracionamento?limite=120");
-    if (!d.ok) return sec2("Fracionamento") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Fracionamento") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const g = d.grupos || [];
     let h = cover(
       "estado",
@@ -3927,7 +4509,7 @@ void main(){
       <div style="min-width:0">${clk(x.credor, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · UG ${esc(String(x.ug_emitente))} · ${esc(x.mes)}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:${cor}">${pct}%</div><div class="dim">colado no teto</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">${x.n_colado} de ${x.n} OBs em 85–100% do teto (R$ ${Number(x.teto).toLocaleString("pt-BR", { maximumFractionDigits: 0 })})</span><b>${fmtRc(x.soma)}</b></div>
-      ${leitura2(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
+      ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
         pct >= 50 ? "hl" : ""
       );
     }).join("") + `</div>`;
@@ -3936,7 +4518,7 @@ void main(){
   }
   async function renderCertames() {
     const d = await J("/api/conjunto/portfolio?min_certames=3");
-    if (!d.ok) return sec2("Certames") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Certames") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const o = d.orgaos || [];
     let h = cover(
       "estado",
@@ -3961,7 +4543,7 @@ void main(){
         ${x.violacoes_saneamento ? `<span class="tag rose">${x.violacoes_saneamento} eliminação(ões) trivial(is) sem saneamento</span>` : ""}
         ${x.hhi_concentrado ? `<span class="tag amber">vitórias concentradas (HHI ${x.hhi_vitorias})</span>` : ""}${audit}</div>
       ${ancoras ? `<div style="margin-top:6px" class="dim">casos-âncora: ${ancoras}</div>` : ""}
-      ${leitura2(`A mediana <b>${md.toFixed(0)}/100</b> sobre os <b>${fmtN(x.n_avaliados ?? x.n_certames_indexados)}</b> certames com análise real (dos ${fmtN(x.n_certames_indexados)} indexados — o resto ainda sem família analisável, INDISPONÍVEL ≠ 0) ${dv != null && dv > 10 ? `está <b>${dv.toFixed(0)} pontos acima</b> dos pares — o padrão do órgão destoa` : dv != null && dv > 0 ? "fica levemente acima dos pares" : "acompanha os pares"}.${(x.auditoria_tematica || []).length ? ` A <b>mesma cláusula restritiva reincide</b> em ${x.auditoria_tematica[0].certames} certames — caso de <b>auditoria temática</b>, não de representação avulsa.` : ""} Quanto menos certames indexados, menor a confiança — toque nos casos-âncora para ver o índice de cada um.`)}`,
+      ${leitura(`A mediana <b>${md.toFixed(0)}/100</b> sobre os <b>${fmtN(x.n_avaliados ?? x.n_certames_indexados)}</b> certames com análise real (dos ${fmtN(x.n_certames_indexados)} indexados — o resto ainda sem família analisável, INDISPONÍVEL ≠ 0) ${dv != null && dv > 10 ? `está <b>${dv.toFixed(0)} pontos acima</b> dos pares — o padrão do órgão destoa` : dv != null && dv > 0 ? "fica levemente acima dos pares" : "acompanha os pares"}.${(x.auditoria_tematica || []).length ? ` A <b>mesma cláusula restritiva reincide</b> em ${x.auditoria_tematica[0].certames} certames — caso de <b>auditoria temática</b>, não de representação avulsa.` : ""} Quanto menos certames indexados, menor a confiança — toque nos casos-âncora para ver o índice de cada um.`)}`,
         dv != null && dv > 10 || (x.auditoria_tematica || []).length ? "hl" : ""
       );
     }).join("") + `</div>`;
@@ -3979,7 +4561,7 @@ void main(){
         <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90 != null ? x.score_p90.toFixed(0) : "—"}</div></div></div>
         ${dv != null ? `<div style="margin-top:8px"><span class="tag ${dv > 10 ? "rose" : dv > 0 ? "amber" : "teal"}">${dv > 0 ? "+" : ""}${dv.toFixed(0)} vs pares</span>${x.n_alto_extremo > 0 ? ` <span class="tag rose">${x.n_alto_extremo} certame(s) de alto risco</span>` : ""}</div>` : ""}
         ${anc ? `<div style="margin-top:6px" class="dim">casos-âncora: ${anc}</div>` : ""}
-        ${leitura2(`<b>${esc(x.unidade)}</b>: mediana ${md.toFixed(0)}/100 em ${fmtN(x.n_certames)} certames${x.n_alto_extremo > 0 ? `, com <b>${x.n_alto_extremo}</b> de alto risco` : ""}. ${dv != null && dv > 10 ? "Padrão acima dos pares — prioridade de auditoria." : "Acompanha os pares."} Toque nos casos-âncora para o índice de cada certame.`)}`,
+        ${leitura(`<b>${esc(x.unidade)}</b>: mediana ${md.toFixed(0)}/100 em ${fmtN(x.n_certames)} certames${x.n_alto_extremo > 0 ? `, com <b>${x.n_alto_extremo}</b> de alto risco` : ""}. ${dv != null && dv > 10 ? "Padrão acima dos pares — prioridade de auditoria." : "Acompanha os pares."} Toque nos casos-âncora para o índice de cada certame.`)}`,
           dv != null && dv > 10 || x.n_alto_extremo > 0 ? "hl" : ""
         );
       }).join("") + `</div>`;
@@ -3989,7 +4571,7 @@ void main(){
   }
   async function renderCartelMun() {
     const d = await J("/api/intel/concentracao_municipio?limite=60");
-    if (!d.ok) return sec2("Concentração — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Concentração — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.orgaos || [];
     let h = cover(
       "prefeitura",
@@ -4011,7 +4593,7 @@ void main(){
       <div class="dim" style="margin-top:2px">top 3: ${top3}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte ? "var(--rose)" : "var(--tx2)"}">${fmtN(o.hhi)}</div><div class="dim">HHI</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">${fmtN(o.n_contratos)} contratos · ${fmtN(o.n_fornecedores)} fornecedores · ${fmtRc(o.total)} contratados</span></div>
-      ${forte ? leitura2(`No mercado municipal de <b>${esc(o.orgao)}</b>, <b>${esc(o.top_fornecedor.nome || "—")}</b> detém <b>${o.top_share}%</b> do valor contratado (HHI ${fmtN(o.hhi)}). Concentração nesse nível é screen de captura/R8 — verificar se decorre de ata de RP legítima, estatal prestadora ou de barreiras de entrada nos editais do ramo.`) : ""}`,
+      ${forte ? leitura(`No mercado municipal de <b>${esc(o.orgao)}</b>, <b>${esc(o.top_fornecedor.nome || "—")}</b> detém <b>${o.top_share}%</b> do valor contratado (HHI ${fmtN(o.hhi)}). Concentração nesse nível é screen de captura/R8 — verificar se decorre de ata de RP legítima, estatal prestadora ou de barreiras de entrada nos editais do ramo.`) : ""}`,
         forte ? "hl" : ""
       );
     }).join("") + `</div>`;
@@ -4020,7 +4602,7 @@ void main(){
   }
   async function renderSancionadasMun() {
     const d = await J("/api/intel/sancionadas_municipio?limite=300");
-    if (!d.ok) return sec2("Sancionadas — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sancionadas — Prefeitura") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const emp = d.empresas || [];
     const aepoca = emp.filter((e) => (e.contratos_durante || 0) > 0);
     let h = cover(
@@ -4046,7 +4628,7 @@ void main(){
       <div class="dim" style="margin-top:2px">sancionador: ${esc((s0.orgao || "—").slice(0, 60))}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte ? "var(--rose)" : "var(--tx2)"}">${fmtN(e.contratos_durante || 0)}/${fmtN(e.contratos || 0)}</div><div class="dim">durante/total</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">Contratado total ${fmtRc(e.valor || 0)}</span><b style="color:${forte ? "var(--rose)" : "inherit"}">${fmtRc(e.valor_durante || 0)} durante</b></div>
-      ${forte && ex ? leitura2(`Contrato <b>${esc(ex.contrato || "")}</b> (${esc(ex.data || "?")}, ${fmtRc(ex.valor || 0)}) assinado <b>dentro da vigência</b> da sanção ${esc(ex.sancao || "")} (${esc(ex.vigencia || "")}) — "${esc((ex.objeto || "").slice(0, 90))}". Vedação objetiva: matéria para representação ao TCM-RJ com pedido de apuração da habilitação.`) : ""}`,
+      ${forte && ex ? leitura(`Contrato <b>${esc(ex.contrato || "")}</b> (${esc(ex.data || "?")}, ${fmtRc(ex.valor || 0)}) assinado <b>dentro da vigência</b> da sanção ${esc(ex.sancao || "")} (${esc(ex.vigencia || "")}) — "${esc((ex.objeto || "").slice(0, 90))}". Vedação objetiva: matéria para representação ao TCM-RJ com pedido de apuração da habilitação.`) : ""}`,
         forte ? "hl" : ""
       );
     }, 100, (e) => e.nome);
@@ -4055,7 +4637,7 @@ void main(){
   }
   async function renderAditivos(esf = "estado") {
     const d = await J("/api/intel/aditivos?limite=120&esfera=" + esf);
-    if (!d.ok) return sec2("Aditivos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Aditivos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover(
       esf,
@@ -4075,7 +4657,7 @@ void main(){
       <div class="dim" style="margin-top:2px">${esc((x.objeto || "").slice(0, 90))}</div></div>
       <div class="right"><div class="num" style="font-weight:800;color:${forte ? "var(--rose)" : "var(--tx2)"}">${forte ? fmtPct(x.pct) : x.num_aditivos + "×"}</div><div class="dim">${forte ? "acréscimo" : "aditivos"}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">R$ inicial ${fmtRc(x.valor_inicial)} → global ${fmtRc(x.valor_global)}${x.acrescimo_real != null ? ` · acréscimo real ${fmtRc(x.acrescimo_real)}` : ""}</span><b>teto ${x.teto_pct}%</b></div>
-      ${leitura2(forte ? `Contrato de <b>${esc(x.fornecedor || "—")}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real != null ? "Acréscimo classificado no termo: " + fmtRc(x.acrescimo_real) + "." : "Separar reajuste do acréscimo no termo aditivo."}` : `${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor || "—")} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
+      ${leitura(forte ? `Contrato de <b>${esc(x.fornecedor || "—")}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real != null ? "Acréscimo classificado no termo: " + fmtRc(x.acrescimo_real) + "." : "Separar reajuste do acréscimo no termo aditivo."}` : `${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor || "—")} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
         forte ? "hl" : ""
       );
     }).join("") + `</div>`;
@@ -4084,7 +4666,7 @@ void main(){
   }
   async function renderSobrepreco(esf = "estado") {
     const d = await J("/api/intel/sobrepreco?limite=120&esfera=" + esf);
-    if (!d.ok) return sec2("Sobrepreço") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sobrepreço") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover(
       esf,
@@ -4106,7 +4688,7 @@ void main(){
       <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj, x.fornecedor || "—")}${x.data ? " · " + esc(x.data) : ""}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">a mediana</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${fmtN(x.amostra)})</span><b>z ${fmtN(x.z_robusto)}</b></div>
-      ${leitura2(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${fmtN(x.amostra)} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${fmtN(x.razao)}× mais caro</b> (z robusto ${fmtN(x.z_robusto)}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
+      ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${fmtN(x.amostra)} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${fmtN(x.razao)}× mais caro</b> (z robusto ${fmtN(x.z_robusto)}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
       "hl"
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -4114,7 +4696,7 @@ void main(){
   }
   async function renderEscalada(esf = "estado") {
     const d = await J("/api/intel/escalada?limite=120&esfera=" + esf);
-    if (!d.ok) return sec2("Escalada") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Escalada") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover(esf, "Escalada de preço — o mesmo fornecedor sobe o preço no tempo", "Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.", "🪜") + acoesAba("escalada");
     if (!a.length) {
@@ -4133,203 +4715,12 @@ void main(){
       <div class="dim" style="margin-top:2px">${clk(x.fornecedor_cnpj, x.fornecedor || "—")} · ${fmtN(x.n_compras)} compras em ${fmtN(x.span_dias)} dias ${mkt}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">${fmtR(x.preco_inicial)} → ${fmtR(x.preco_final)}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">série: ${serie}</span></div>
-      ${leitura2(`<b>${esc(x.fornecedor)}</b> vendeu "${esc(x.item)}" começando em <b>${fmtR(x.preco_inicial)}</b> e chegando a <b>${fmtR(x.preco_final)}</b> (<b>${fmtN(x.razao)}× mais caro</b>) em ${fmtN(x.span_dias)} dias${x.final_vs_mercado ? `, hoje <b>${fmtN(x.final_vs_mercado)}× a mediana de mercado</b> do item` : ""}. Nenhum reajuste legítimo triplica preço nessa janela — indício de preço dirigido. Confirmar especificação no termo de referência.`)}`,
+      ${leitura(`<b>${esc(x.fornecedor)}</b> vendeu "${esc(x.item)}" começando em <b>${fmtR(x.preco_inicial)}</b> e chegando a <b>${fmtR(x.preco_final)}</b> (<b>${fmtN(x.razao)}× mais caro</b>) em ${fmtN(x.span_dias)} dias${x.final_vs_mercado ? `, hoje <b>${fmtN(x.final_vs_mercado)}× a mediana de mercado</b> do item` : ""}. Nenhum reajuste legítimo triplica preço nessa janela — indício de preço dirigido. Confirmar especificação no termo de referência.`)}`,
         "hl"
       );
     }).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
     return h;
-  }
-  var _compView = "catalogo";
-  var _compTermo = "";
-  var _compGrupo = null;
-  var _compCat = null;
-  var _compEsf = "todas";
-  var _compDisp = 0;
-  var _compOrd = "dispersao";
-  async function renderComparador() {
-    if (aba === "p_comp" && _compEsf === "todas") _compEsf = "prefeitura";
-    let h = cover(aba === "p_comp" ? "prefeitura" : "estado", "Comparador de preços — quem paga mais e quem paga menos", "Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.", "💰");
-    h += `<div class="chips" style="margin:6px 0 14px">
-    <button type="button" class="chip ${_compView === "catalogo" ? "on" : ""}" onclick="_compView='catalogo';_compGrupo=null;ir(aba)">🗂️ Catálogo por categoria</button>
-    <button type="button" class="chip ${_compView === "buscar" ? "on" : ""}" onclick="_compView='buscar';_compGrupo=null;ir(aba)">Buscar item</button>
-    <button type="button" class="chip ${_compView === "economia" ? "on" : ""}" onclick="_compView='economia';ir(aba)">Economia possível</button>
-    <button type="button" class="chip ${_compView === "dossie" ? "on" : ""}" onclick="_compView='dossie';ir(aba)">Caro + fornecedor suspeito</button>
-    <button type="button" class="chip ${_compView === "orgaos" ? "on" : ""}" onclick="_compView='orgaos';ir(aba)">Órgãos que gastam melhor</button>
-    <button type="button" class="chip ${_compView === "forn" ? "on" : ""}" onclick="_compView='forn';ir(aba)">Fornecedores caros/baratos</button></div>`;
-    if (_compView === "economia") return h + await _compEconomia();
-    if (_compView === "dossie") return h + await _compDossie();
-    if (_compView === "orgaos") return h + await _compOrgaos();
-    if (_compView === "forn") return h + await _compForn();
-    if (_compView === "catalogo") return h + await _compCatalogo();
-    return h + await _compBuscar();
-  }
-  var _compEsfChips = () => `<div class="chips" style="margin:0 0 10px">
-  ${["todas", "estado", "prefeitura"].map((e) => `<button type="button" class="chip ${_compEsf === e ? "on" : ""}" onclick="_compEsf='${e}';ir(aba)">${e === "todas" ? "🌐 Todas as esferas" : e === "estado" ? "🏛️ Estado" : "🏙️ Prefeitura·Rio"}</button>`).join("")}</div>`;
-  async function _compItemView(voltar) {
-    const d = await J("/api/comparador/item?esfera=" + (_compEsf === "todas" ? "" : _compEsf) + "&grupo=" + encodeURIComponent(_compGrupo.grupo) + "&unidade=" + encodeURIComponent(_compGrupo.un || ""));
-    let h = `<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    h += `<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida || "")}</span></h3>`;
-    h += `<div class="grid g2">${kpi(fmtR(d.mediana_geral), "Mediana do item", "var(--amber)", "⚖️")}${kpi(fmtN(d.n_orgaos), "Órgãos", null, "🏛️")}${kpi(fmtN(d.n_fornecedores), "Fornecedores", null, "🏢")}${kpi(fmtN(d.n_compras), "Compras", null, "🧾")}</div>`;
-    const linha = (x) => {
-      const c = x.vs_geral >= 1.5 ? "var(--rose)" : x.vs_geral <= 0.75 ? "var(--green)" : "var(--amber)";
-      return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-      <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id ? clk(x.id, x.nome) : esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`, x.vs_geral >= 1.5 ? "hl" : "");
-    };
-    h += sec2("Órgãos — do que paga MAIS ao que paga MENOS") + `<div class="grid">` + d.orgaos.map(linha).join("") + `</div>`;
-    h += sec2("Fornecedores — do mais caro ao mais barato") + `<div class="grid">` + d.fornecedores.slice(0, 30).map(linha).join("") + `</div>`;
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
-  }
-  var _montarGrupoCard = (g) => card(
-    `<div onclick='_compGrupo=${JSON.stringify({ grupo: g.grupo, un: _unOf(g) })};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
-    <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida || "")}</span></div>
-    <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
-    <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao >= 5 ? "var(--rose)" : "var(--amber)"}">${g.dispersao != null ? g.dispersao + "×" : "—"}</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
-    g.dispersao >= 10 ? "hl" : ""
-  );
-  async function _compCatalogo() {
-    let h = _compEsfChips();
-    if (_compGrupo) return h + await _compItemView("voltar ao catálogo");
-    const d = await J("/api/comparador/catalogo?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const cats = d.categorias || [];
-    if (!_compCat || !cats.find((c) => c.id === _compCat)) {
-      h += `<div class="dim" style="margin:0 0 10px">${fmtN(d.n_grupos)} itens com preço comparável, por categoria — toque para abrir o submenu:</div>`;
-      h += `<div class="grid two">` + cats.map((c) => card(
-        `<div onclick="_compCat='${c.id}';ir(aba)" style="cursor:pointer">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <div style="font-weight:700;font-size:14.5px">${c.icone} ${esc(c.rotulo)}</div>
-          <span class="cnt">${fmtN(c.n)}</span></div>
-        <div class="dim" style="margin-top:6px;font-size:12px">${c.grupos.slice(0, 3).map((g) => esc((g.exemplo || "").slice(0, 38))).join(" · ")}…</div></div>`
-      )).join("") + `</div>`;
-      return h + `<div class="note">${esc(d.explicacao || "")}</div>`;
-    }
-    const cat = cats.find((c) => c.id === _compCat);
-    let gs = cat.grupos.filter((g) => !_compDisp || (g.dispersao || 0) >= _compDisp);
-    if (_compOrd === "mediana") gs = [...gs].sort((a, b) => (b.mediana || 0) - (a.mediana || 0));
-    else if (_compOrd === "compras") gs = [...gs].sort((a, b) => (b.n_compras || 0) - (a.n_compras || 0));
-    h += `<div style="margin:4px 0 10px"><a onclick="_compCat=null;ir(aba)">← todas as categorias</a></div>`;
-    h += `<h3 style="margin:6px 0 10px">${cat.icone} ${esc(cat.rotulo)} <span class="cnt">${fmtN(gs.length)} de ${fmtN(cat.n)}</span></h3>`;
-    h += `<div class="chips" style="margin:0 0 4px">
-    ${[[0, "toda dispersão"], [2, "≥2× (paga o dobro)"], [5, "≥5×"], [10, "≥10× (grave)"]].map(([v, r]) => `<button type="button" class="chip ${_compDisp === v ? "on" : ""}" onclick="_compDisp=${v};ir(aba)">${r}</button>`).join("")}</div>
-  <div class="chips" style="margin:0 0 6px">
-    ${[["dispersao", "↕ por dispersão"], ["mediana", "R$ por mediana"], ["compras", "nº de compras"]].map(([v, r]) => `<button type="button" class="chip ${_compOrd === v ? "on" : ""}" onclick="_compOrd='${v}';ir(aba)">${r}</button>`).join("")}</div>`;
-    h += buscaPag("cat-list", "filtrar item dentro da categoria — busca em todos…");
-    h += listaPaginada("cat-list", gs, _montarGrupoCard, 60, (g) => (g.exemplo || "").slice(0, 60));
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
-  }
-  async function _compBuscar() {
-    let h = _compEsfChips();
-    h += `<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: luva, computador, café, cimento, detergente…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir(aba)}"></div>
-    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos que existem na base: <a onclick="_compTermo='luva';_compGrupo=null;ir(aba)">luva</a> · <a onclick="_compTermo='computador';_compGrupo=null;ir(aba)">computador</a> · <a onclick="_compTermo='cafe';_compGrupo=null;ir(aba)">café</a> · <a onclick="_compTermo='cimento';_compGrupo=null;ir(aba)">cimento</a> — ou navegue pelo <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a>, sem precisar adivinhar o termo.</div>`;
-    if (_compGrupo) return h + await _compItemView("voltar à busca");
-    if (!_compTermo) return h;
-    const d = await J("/api/comparador/buscar?esfera=" + (_compEsf === "todas" ? "" : _compEsf) + "&termo=" + encodeURIComponent(_compTermo));
-    if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    if (!d.grupos.length) {
-      h += card(`<div class="warn">Nenhum item casa TODAS as palavras de "${esc(_compTermo)}".</div>`);
-      if ((d.parecidos || []).length) {
-        h += `<div class="dim" style="margin:10px 0 8px">Mas estes itens casam PARTE do termo — talvez seja um destes:</div>`;
-        h += `<div class="grid">` + d.parecidos.map(_montarGrupoCard).join("") + `</div>`;
-      } else h += `<div class="dim" style="margin:8px 0">Dica: o <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a> lista tudo o que é comparável, por categoria.</div>`;
-      return h;
-    }
-    h += `<div class="dim" style="margin-bottom:8px">${d.n} grupo(s) — clique para ver quem paga mais/menos:</div>`;
-    h += `<div class="grid">` + d.grupos.map(_montarGrupoCard).join("") + `</div>`;
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
-  }
-  function _unOf(g) {
-    return "";
-  }
-  async function _compOrgaos() {
-    const d = await J("/api/comparador/orgaos?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const linha = (x, bom) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-    <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
-    <div class="right"><div class="num" style="font-weight:800;color:${bom ? "var(--green)" : "var(--rose)"}">${x.razao_mediana}×</div><div class="dim">${bom ? "abaixo" : "acima"} do mercado</div></div></div>`, !bom ? "hl" : "");
-    let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
-    h += sec2("🟢 Gastam MELHOR (pagam abaixo do mercado)") + `<div class="grid">` + (d.melhores || []).slice(0, 20).map((x) => linha(x, true)).join("") + `</div>`;
-    h += sec2("🔴 Pagam ACIMA do mercado (auditar preços)") + `<div class="grid">` + (d.piores || []).slice(0, 20).map((x) => linha(x, false)).join("") + `</div>`;
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
-  }
-  async function _compEconomia() {
-    const d = await J("/api/comparador/economia?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    let h = `<div style="text-align:center;margin:10px 0 18px">
-    <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
-    <div style="font-weight:800;font-size:46px;color:var(--green);line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
-    <div class="dim">se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item · ${fmtN(d.n_compras_acima_mediana)} compras acima da mediana · o número cresce conforme a base de preços do PNCP é coletada</div></div>`;
-    const bloco = (titulo, arr, campo, fn) => {
-      let s = sec2(titulo) + `<div class="grid">`;
-      s += (arr || []).slice(0, 12).map((x) => card(
-        `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) acima da mediana</div></div>
-        <div class="right"><div class="num" style="font-weight:800;color:var(--green)">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`
-      )).join("");
-      return s + `</div>`;
-    };
-    h += await _blocoVedada();
-    h += bloco("🏛️ Onde a economia está — por ÓRGÃO", d.por_orgao, "orgao", (x) => esc(x.orgao || "—"));
-    h += bloco("📦 Por ITEM", d.por_item, "item", (x) => esc(x.item || "—") + (x.unidade_medida ? ` <span class="dim">/ ${esc(x.unidade_medida)}</span>` : ""));
-    h += bloco(svgIco("🏢") + " Por FORNECEDOR (quem cobrou o excedente)", d.por_fornecedor, "fornecedor", (x) => x.fornecedor_cnpj ? clk(x.fornecedor_cnpj, x.fornecedor) : esc(x.fornecedor || "—"));
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
-  }
-  async function _blocoVedada() {
-    const d = await J("/api/comparador/vedada?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok || !d.economia_vedada_total) return "";
-    const ABR = { total: "inidôneas (veda todos)", ente: "impedidas no ente", orgao: "órgão" };
-    let h = `<div class="card hl" style="border-color:color-mix(in oklch,var(--rose) 45%,transparent);background:color-mix(in oklch,var(--rose) 6%,var(--card));margin:8px 0 18px">
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
-      <div style="min-width:0"><div style="font-weight:800;font-size:17px">Destes, pago a fornecedor JURIDICAMENTE VEDADO</div>
-      <div class="dim" style="margin-top:3px">Sobrepreço pago a empresa que estava <b>proibida de contratar</b> com aquele ente, <b>vigente à época</b> — o alvo mais forte. Por abrangência: ${Object.entries(d.por_abrangencia).filter(([k, v]) => v > 0).map(([k, v]) => `${ABR[k] || k} ${fmtRc(v)}`).join(" · ") || "—"}.</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:30px;color:var(--rose)">${fmtRc(d.economia_vedada_total)}</div><div class="dim">${d.n_compras} compra(s) · ${d.n_fornecedores} fornecedor(es)</div></div>
-    </div>`;
-    h += `<div class="grid" style="margin-top:10px">` + (d.por_fornecedor || []).slice(0, 8).map((f) => card(
-      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-      <div style="min-width:0;flex:1">${clk(f.fornecedor_cnpj, f.fornecedor || "—")} <span class="tag ${f.abrangencia === "total" ? "rose" : "amber"}">${esc(ABR[f.abrangencia] || f.abrangencia)}</span>
-      <div class="dim" style="font-size:12px">${(f.exemplos || []).slice(0, 1).map((e) => esc(e.item) + " — pagou " + fmtR(e.preco) + " vs mediana " + fmtR(e.mediana) + " @ " + esc((e.orgao || "").slice(0, 30))).join("")}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(f.economia_vedada)}</div></div></div>`
-    )).join("") + `</div></div>`;
-    return h;
-  }
-  async function _compDossie() {
-    const d = await J("/api/comparador/dossie?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const a = d.achados || [];
-    let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Casos caro + suspeito", "var(--rose)", "🚨")}${kpi(fmtN(d.n_sancionada), "Fornecedor SANCIONADO", "var(--rose)", "⚖️")}
-      ${kpi(a.length ? a[0].vs_mediana + "×" : "—", "Pior caso (× mediana)", "var(--rose)")}${kpi(a.filter((x) => x.sinais.length >= 2).length, "Com ≥2 sinais", null, "🎯")}</div>`;
-    h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
-    h += `<div id="dossie-list" class="grid">` + a.map((x) => {
-      const ABR = { total: "toda a Adm.", ente: "ente federativo", orgao: "órgão sancionador" };
-      const tags = (x.sinais || []).map((s) => {
-        const ab = s.abrangencia ? ` (${ABR[s.abrangencia] || s.abrangencia})` : "";
-        return `<span class="tag ${s.sinal === "sancionada" ? "rose" : "amber"}">${esc(s.sinal)}${esc(ab)}</span>`;
-      }).join(" ");
-      return card(
-        `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida ? ` <span class="dim">/ ${esc(x.unidade_medida)}</span>` : ""}</div>
-      <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj, x.fornecedor || "—")} · ${esc((x.orgao || "").slice(0, 42))}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:4px">${tags}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.vs_mediana}×</div><div class="dim">${fmtR(x.preco)} vs ${fmtR(x.mediana)}</div></div></div>
-      ${leitura2(`O órgão <b>${esc(x.orgao)}</b> pagou <b>${fmtR(x.preco)}</b> por "${esc(x.item)}" — <b>${x.vs_mediana}× a mediana</b> de mercado (${fmtR(x.mediana)}) — ao fornecedor <b>${esc(x.fornecedor)}</b>, que é ${esc((x.sinais || []).map((s) => rot(s.sinal)).join(", "))} por fonte INDEPENDENTE do preço. Preço fora da curva + fornecedor marcado = alvo forte para auditoria. Confirmar o termo de referência.`)}`,
-        "hl"
-      );
-    }).join("") + `</div>`;
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
-  }
-  async function _compForn() {
-    const d = await J("/api/comparador/fornecedores?esfera=" + (_compEsf === "todas" ? "" : _compEsf));
-    if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const linha = (x, caro) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-    <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id ? clk(x.id, x.nome) : esc(x.nome || "—")}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
-    <div class="right"><div class="num" style="font-weight:800;color:${caro ? "var(--rose)" : "var(--green)"}">${x.razao_mediana}×</div><div class="dim">${caro ? "acima" : "abaixo"} do mercado</div></div></div>`, caro ? "hl" : "");
-    let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
-    h += sec2("🔴 Mais CAROS (cobram acima do mercado)") + `<div class="grid">` + (d.mais_caros || []).slice(0, 20).map((x) => linha(x, true)).join("") + `</div>`;
-    h += sec2("🟢 Mais BARATOS (cobram abaixo do mercado)") + `<div class="grid">` + (d.mais_baratos || []).slice(0, 20).map((x) => linha(x, false)).join("") + `</div>`;
-    return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
   }
   var _riscoView = "fantasmas";
   async function renderRiscos() {
@@ -4353,7 +4744,7 @@ void main(){
       h2 += `<div class="grid" style="margin-top:12px">` + (d2.perdedoras || []).map((p) => card(
         `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj, p.nome !== "—" ? p.nome : p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
        <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:var(--amber)">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>
-       ${(p.perde_junto_com || []).length ? leitura2("Perde junto com: " + (p.perde_junto_com || []).map((x) => `<b>${esc(x.nome !== "—" ? x.nome : x.cnpj)}</b> (${x.vezes}×)`).join(" · ") + " — o co-participante mais frequente é o beneficiário provável da cobertura.") : ""}`
+       ${(p.perde_junto_com || []).length ? leitura("Perde junto com: " + (p.perde_junto_com || []).map((x) => `<b>${esc(x.nome !== "—" ? x.nome : x.cnpj)}</b> (${x.vezes}×)`).join(" · ") + " — o co-participante mais frequente é o beneficiário provável da cobertura.") : ""}`
       )).join("") + `</div>`;
       h2 += `<div class="note">${esc(d2.ressalva || "")}</div>`;
       return h2;
@@ -4376,7 +4767,7 @@ void main(){
       <div style="min-width:0">${clk(e.cnpj, e.razao_social || e.cnpj)}<div class="dim">${esc(e.cnpj)} · no alvo por: ${rot(e.origem || "—")}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${e.score ?? "—"}</div><div class="dim">/100 ${esc(e.classificacao)}</div></div></div>
       ${(e.sinais || []).length ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${e.sinais.map((s) => `<span class="tag ${e.classificacao === "alto" ? "rose" : "amber"}" title="${esc(s.detalhe || "")}">${rot(s.id)} +${s.peso}</span>`).join("")}</div>` : ""}
-      ${(e.sinais || []).length ? leitura2(esc((e.sinais[0] || {}).detalhe || "") + ((e.sinais || []).length > 1 ? " — e mais " + (e.sinais.length - 1) + " sinal(is); toque no nome para o dossiê completo." : "")) : ""}`, e.classificacao === "alto" ? "hl" : "");
+      ${(e.sinais || []).length ? leitura(esc((e.sinais[0] || {}).detalhe || "") + ((e.sinais || []).length > 1 ? " — e mais " + (e.sinais.length - 1) + " sinal(is); toque no nome para o dossiê completo." : "")) : ""}`, e.classificacao === "alto" ? "hl" : "");
     }).join("") + `</div>`;
     h += `<div class="note">${esc(d.explicacao || "")} ${esc(d.ressalva || "")}</div>`;
     return h;
@@ -4389,7 +4780,7 @@ void main(){
     ${kpi(fmtN(cov.certames_com_resultado), "Certames do município", null, "📄", "p_contr")}${kpi(fmtN(cov.orgaos), "Órgãos compradores", null, "🏢", "p_gastos")}
     ${kpi(cap.length + rod.length, "Conluio (capturas+rodízios)", "var(--purple)", "🕸️", "p_conluio")}${kpi(fmtN(cc.n_pessoas ?? cc.n ?? "—"), "Comissionados ex-candidatos", "var(--amber)", "🎖️", "p_comis")}
     ${kpi(fmtN((bv.resumo || {}).n_alta ?? "—"), "Benefício DURANTE vínculo (certeza alta)", "var(--rose)", "🚨", "p_benef")}${kpi(fmtN((bv.resumo || {}).n_ainda ?? "—"), "Ainda recebendo", "var(--rose)", "⏰", "p_benef")}</div>`;
-    h += `<div style="height:16px"></div>` + sec2("Ir para") + `<div class="grid two">
+    h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Perícia de gastos D7–D10</div><div class="muted" style="font-size:13px">fracionamento, credor recém-aberto, sócio na folha, rede entre concorrentes</div><div class="btns"><button class="btn accent" onclick="ir('p_gastos')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Comissionados</div><div class="muted" style="font-size:13px">ex-candidatos + benefício social durante o vínculo</div><div class="btns"><button class="btn accent" onclick="ir('p_comis')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Servidor-fantasma</div><div class="muted" style="font-size:13px">8 sinais determinísticos, faixas forte/verificar/fraco</div><div class="btns"><button class="btn ghost" onclick="ir('p_fant')">Abrir</button></div>`)}
@@ -4557,7 +4948,7 @@ void main(){
       <div class="right"><span class="sev ${(x.grau || "").includes("alto") ? "alta" : "media"}">${esc(x.grau || "")}</span><div class="dim" style="margin-top:4px">${x.n_altas} flag(s) alta(s)</div></div></div>`,
       (x.grau || "").includes("alto") ? "hl" : ""
     )).join("") + `</div>`;
-    h += leitura2("PPP transfere risco de décadas para o ente público. As três flags vermelhas — garantia com receita da saúde (CF art. 167 IV), aporte público e PMI ressarcida pelo vencedor — são as que a jurisprudência trata como as mais graves.");
+    h += leitura("PPP transfere risco de décadas para o ente público. As três flags vermelhas — garantia com receita da saúde (CF art. 167 IV), aporte público e PMI ressarcida pelo vencedor — são as que a jurisprudência trata como as mais graves.");
     return h;
   }
   var _TEMA_ROTULO = { transparencia: "transparência", competicao: "competição", conluio: "conluio", fraude_cadastral: "fraude cadastral", preco: "preço", execucao: "execução", certame_ata: "sessão/ata" };
@@ -4570,7 +4961,7 @@ void main(){
       const r = await J("/api/pncp?uf=RJ&dias=45&esfera=prefeitura");
       const its2 = r.contratacoes || r.dados || r.itens || [];
       let h2 = cover("prefeitura", "Contratações recentes (PNCP ao vivo)", "Últimas licitações da PREFEITURA DO RIO publicadas no PNCP (esfera oficial do ente). Fonte pública, sem login — pode demorar: é a API nacional ao vivo.", "📄") + chips;
-      h2 += sec2("Publicadas (45 dias)", its2.length);
+      h2 += sec("Publicadas (45 dias)", its2.length);
       if (!its2.length) return h2 + card('<div class="muted">Sem contratações no período (ou API do PNCP indisponível agora — a visão "Com análise" usa a base local e sempre responde).</div>');
       h2 += buscaPag("ctr-list", "filtrar por objeto ou órgão…");
       h2 += listaPaginada("ctr-list", its2, (c) => card(`<div style="font-weight:650;font-size:13.5px">${esc(corta(c.objeto || c.objetoCompra || "—", 140))}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(corta(c.orgao || c.orgaoNome || c.unidade || "", 60))} ${c.valor || c.valorTotal ? "· " + fmtRc(c.valor || c.valorTotal) : ""}</div>`), 60);
@@ -4605,7 +4996,7 @@ void main(){
     const d = await J("/api/pncp/conluio" + (esf ? "?esfera=" + esf : ""));
     const rotulos = { estado: "órgãos estaduais", prefeitura: "Prefeitura do Rio", municipios: "demais municípios do RJ", federal: "órgãos federais no RJ", "": "todas as esferas" };
     const rot2 = rotulos[esf] ?? esf;
-    if (!d.ok) return sec2("Conluio") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Conluio") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const cov = d.cobertura || {}, cap = d.captura || [], rod = d.rodizio_vencedores || [], esfs = d.esferas || {};
     let h = cover(
       esf === "prefeitura" ? "prefeitura" : esf === "estado" ? "estado" : "geral",
@@ -4621,25 +5012,25 @@ void main(){
     if (cov.certames_sem_unidade > 0) h += `<div class="warn" style="margin-top:12px"><span>Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
     const orgHead = (x) => `<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome && x.ente_nome !== x.orgao_nome ? `<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt || "")}</div>` : ""}`;
     if (cap.length) {
-      h += `<div style="height:16px"></div>` + sec2("Captura de órgão · 1 empresa vence ≥80%", cap.length) + `<div class="grid">` + cap.map((c) => card(
+      h += `<div style="height:16px"></div>` + sec("Captura de órgão · 1 empresa vence ≥80%", cap.length) + `<div class="grid">` + cap.map((c) => card(
         `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">${orgHead(c)}<div class="muted" style="font-size:13px;margin-top:4px">quem venceu: ${clk(c.fornecedor_cnpj_fmt, c.nome)}</div><div class="dim" style="margin-top:2px">${esc(c.fornecedor_cnpj_fmt)}</div></div>
       <div class="right"><div class="num" style="font-weight:800;color:var(--rose);font-size:20px">${Math.round(c.share * 100)}%</div><div class="dim">das vitórias</div></div></div>
-      ${leitura2(`<b>${esc(c.nome)}</b> venceu ${Math.round(c.share * 100)}% dos <b>${c.certames}</b> certames deste órgão (${c.distintos || "—"} concorrentes distintos apareceram no período). Concentração ≥80% é o gatilho OCDE de <b>mercado capturado</b>: pode ser mérito ou mercado raso — o próximo passo é comparar as propostas perdedoras e o QSA dos concorrentes.`)}
+      ${leitura(`<b>${esc(c.nome)}</b> venceu ${Math.round(c.share * 100)}% dos <b>${c.certames}</b> certames deste órgão (${c.distintos || "—"} concorrentes distintos apareceram no período). Concentração ≥80% é o gatilho OCDE de <b>mercado capturado</b>: pode ser mérito ou mercado raso — o próximo passo é comparar as propostas perdedoras e o QSA dos concorrentes.`)}
       <div class="objs">${(c.objetos || []).map((o) => `<div class="obj">${esc(o)}</div>`).join("") || '<div class="dim">sem objeto</div>'}</div>
       <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`,
         "hl"
       )).join("") + `</div>`;
     }
     if (rod.length) {
-      h += `<div style="height:16px"></div>` + sec2("Rodízio de vencedores · revezamento em objeto parecido", rod.length) + `<div class="grid">` + rod.map((r) => {
+      h += `<div style="height:16px"></div>` + sec("Rodízio de vencedores · revezamento em objeto parecido", rod.length) + `<div class="grid">` + rod.map((r) => {
         const nomes = (r.membros_nome || []).map((m) => `<b>${esc(m.nome)}</b> (${m.vitorias}×)`).join(" · ");
         return card(
           `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">${orgHead(r)}<div class="muted" style="font-size:13px;margin-top:4px">${r.certames} certames · o grupo levou ${Math.round(r.cobertura_grupo * 100)}% deles</div></div>
       <span class="tag amber">${(r.membros_nome || []).length} empresas</span></div>
       ${r.coesao_objeto != null ? `<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${r.coesao_objeto >= 0.6 ? "rose" : "teal"}" title="quão parecidos são os objetos dos certames deste grupo">compras ${Math.round(r.coesao_objeto * 100)}% parecidas</span>${(r.termos_comuns || []).slice(0, 4).map((t) => `<span class="tag accent">${esc(t)}</span>`).join("")}</div>` : '<div class="dim" style="margin-top:6px">sem objeto comparável (rodízio no nível do órgão)</div>'}
-      ${leitura2(`${nomes} se revezam nas vitórias de compras ${r.coesao_objeto != null ? `<b>${Math.round(r.coesao_objeto * 100)}% parecidas</b>` : "deste órgão"}${(r.termos_comuns || []).length ? ` (em comum: ${r.termos_comuns.slice(0, 3).map(esc).join(", ")})` : ""}. Revezamento equilibrado no MESMO tipo de objeto é o padrão nº 1 de <b>combinação de propostas</b> (OCDE) — verificar QSA, endereços e quem mais participou de cada certame.`)}
+      ${leitura(`${nomes} se revezam nas vitórias de compras ${r.coesao_objeto != null ? `<b>${Math.round(r.coesao_objeto * 100)}% parecidas</b>` : "deste órgão"}${(r.termos_comuns || []).length ? ` (em comum: ${r.termos_comuns.slice(0, 3).map(esc).join(", ")})` : ""}. Revezamento equilibrado no MESMO tipo de objeto é o padrão nº 1 de <b>combinação de propostas</b> (OCDE) — verificar QSA, endereços e quem mais participou de cada certame.`)}
       <table style="margin-top:10px"><tbody>${(r.membros_nome || []).map((m) => `<tr><td>${clk(m.cnpj, m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td class="num"><b>${m.vitorias}</b> <span class="dim">vitórias</span></td></tr>`).join("")}</tbody></table>
       <div class="objs">${(r.objetos || []).map((o) => `<div class="obj">${esc(o)}</div>`).join("") || '<div class="dim">sem objeto</div>'}</div>
       <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`
@@ -4766,19 +5157,19 @@ void main(){
     const forn = r.fornecedores || [], ctr = r.contratos || [], doe = r.doerj || [], alt = r.alertas || [];
     let h = "";
     if (forn.length) {
-      h += sec2("Fornecedores", forn.length) + `<div class="grid">` + forn.slice(0, 30).map((f) => {
+      h += sec("Fornecedores", forn.length) + `<div class="grid">` + forn.slice(0, 30).map((f) => {
         const cnpj = (f.cnpj || "").replace(/\D/g, "");
         return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0">${clk(cnpj, f.nome || f.razao_social || cnpj)}<div class="dim">${esc(f.cnpj_fmt || f.cnpj || "")}</div></div>${f.total_pago != null ? `<div class="right"><b>${fmtRc(f.total_pago)}</b><div class="dim">${fmtN(f.n_obs || 0)} OBs</div></div>` : ""}</div>`);
       }).join("") + `</div>`;
     }
-    if (ctr.length) h += `<div style="height:14px"></div>` + sec2("Contratos", ctr.length) + `<div class="grid">` + ctr.slice(0, 20).map((c) => card(`<div style="font-weight:650;font-size:13.5px">${esc(c.objeto || c.descricao || "contrato").slice(0, 140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(c.fornecedor || c.contratado || "")} ${c.valor ? "· " + fmtRc(c.valor) : ""}</div>`)).join("") + `</div>`;
-    if (doe.length) h += `<div style="height:14px"></div>` + sec2("Diário Oficial", doe.length) + `<div class="grid">` + doe.slice(0, 12).map((x) => card(`<div style="font-size:13px">${esc((x.texto || x.trecho || JSON.stringify(x)).slice(0, 220))}</div>`)).join("") + `</div>`;
-    if (alt.length) h += `<div style="height:14px"></div>` + sec2("Alertas", alt.length) + `<div class="grid">` + alt.slice(0, 12).map((x) => card(`<div style="font-size:13px">${esc(x.titulo || x.tipo || JSON.stringify(x).slice(0, 180))}</div>`)).join("") + `</div>`;
+    if (ctr.length) h += `<div style="height:14px"></div>` + sec("Contratos", ctr.length) + `<div class="grid">` + ctr.slice(0, 20).map((c) => card(`<div style="font-weight:650;font-size:13.5px">${esc(c.objeto || c.descricao || "contrato").slice(0, 140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(c.fornecedor || c.contratado || "")} ${c.valor ? "· " + fmtRc(c.valor) : ""}</div>`)).join("") + `</div>`;
+    if (doe.length) h += `<div style="height:14px"></div>` + sec("Diário Oficial", doe.length) + `<div class="grid">` + doe.slice(0, 12).map((x) => card(`<div style="font-size:13px">${esc((x.texto || x.trecho || JSON.stringify(x)).slice(0, 220))}</div>`)).join("") + `</div>`;
+    if (alt.length) h += `<div style="height:14px"></div>` + sec("Alertas", alt.length) + `<div class="grid">` + alt.slice(0, 12).map((x) => card(`<div style="font-size:13px">${esc(x.titulo || x.tipo || JSON.stringify(x).slice(0, 180))}</div>`)).join("") + `</div>`;
     box.innerHTML = h || card('<div class="muted">Nada encontrado. Tente nome parcial, CNPJ ou objeto.</div>');
   }
   async function renderPoder() {
     const d = await J("/api/poder/nomeados_candidatos?limite=1000");
-    if (!d.ok) return sec2("Poder") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Poder") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const it = d.itens || [];
     let h = cover("estado", "Nomeados × candidatos (Estado)", "Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.", "🏛️") + acoesAba("nomeados");
     h += `<div class="grid g2">${kpi(it.length, "Cruzamentos", null, "🏛️")}${kpi(d.n_comissionados, "Comissionados", "var(--rose)", "🎖️")}</div>`;
@@ -4789,7 +5180,7 @@ void main(){
   }
   async function renderSocioServidor() {
     const d = await J("/api/intel/socio_servidor?limite=150");
-    if (!d.ok) return sec2("Servidor-sócio") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Servidor-sócio") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover(
       "geral",
@@ -4809,7 +5200,7 @@ void main(){
       ${(x.ugs_pagadoras || []).length && x.ugs_pagadoras[0].nome ? `<div class="dim" style="margin-top:2px">paga por: ${(x.ugs_pagadoras || []).filter((u) => u.nome).map((u) => esc(u.nome) + " (" + fmtRc(u.valor) + ")").join(" · ")}</div>` : ""}</div>
       <div class="right"><span class="tag ${x.confianca === "ALTA" ? "rose" : "accent"}">${esc(x.confianca)}</span>
       <div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div><div class="dim">recebido · ${fmtN(x.n_obs)} OBs</div></div></div>
-      ${leitura2(`<b>${esc(x.socio)}</b> é <b>${esc(x.qualificacao)}</b> da empresa <b>${esc(x.empresa)}</b> (recebeu ${fmtRc(x.total_pago)} do Estado) e consta na folha como <b>${esc(x.servidor_cargo || "servidor")}</b> ${esc(x.servidor_orgao ? "do " + x.servidor_orgao : "")}.${x.mesmo_orgao ? " <b>A empresa é paga pela PRÓPRIA repartição do servidor — impedimento direto do art. 9.</b>" : x.gerencia ? " Cargo de gerência em empresa privada é vedado ao servidor (estatuto)." : ""} ${x.confianca === "ALTA" ? "Nome e fragmento de CPF coincidem." : "Casamento por nome — confirmar CPF."}`)}`,
+      ${leitura(`<b>${esc(x.socio)}</b> é <b>${esc(x.qualificacao)}</b> da empresa <b>${esc(x.empresa)}</b> (recebeu ${fmtRc(x.total_pago)} do Estado) e consta na folha como <b>${esc(x.servidor_cargo || "servidor")}</b> ${esc(x.servidor_orgao ? "do " + x.servidor_orgao : "")}.${x.mesmo_orgao ? " <b>A empresa é paga pela PRÓPRIA repartição do servidor — impedimento direto do art. 9.</b>" : x.gerencia ? " Cargo de gerência em empresa privada é vedado ao servidor (estatuto)." : ""} ${x.confianca === "ALTA" ? "Nome e fragmento de CPF coincidem." : "Casamento por nome — confirmar CPF."}`)}`,
       x.mesmo_orgao || x.confianca === "ALTA" || x.gerencia ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -4817,7 +5208,7 @@ void main(){
   }
   async function renderCapital() {
     const d = await J("/api/intel/capital_incompativel?limite=150");
-    if (!d.ok) return sec2("Capital irrisório") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Capital irrisório") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Capital irrisório — sem lastro para o que faturou", "Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.", "🫧") + acoesAba("capital_incompativel");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Empresas", "var(--rose)", "🫧")}${kpi(a.length ? fmtN(a[0].razao) + "×" : "—", "Pior razão (recebido/capital)", "var(--rose)")}
@@ -4827,7 +5218,7 @@ void main(){
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">o capital</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">capital <b>${fmtR(x.capital)}</b></span><b>recebeu ${fmtRc(x.total_recebido)}</b></div>
-      ${leitura2(`<b>${esc(x.nome)}</b> tem capital social de apenas <b>${fmtR(x.capital)}</b> mas recebeu <b>${fmtRc(x.total_recebido)}</b> do Estado — <b>${fmtN(x.razao)}× o próprio capital</b>. Capital irrisório frente ao volume faturado é indício de subcapitalização/fachada. Confirmar o capital ATUAL (o dump é de um mês) e a capacidade econômico-financeira.`)}`,
+      ${leitura(`<b>${esc(x.nome)}</b> tem capital social de apenas <b>${fmtR(x.capital)}</b> mas recebeu <b>${fmtRc(x.total_recebido)}</b> do Estado — <b>${fmtN(x.razao)}× o próprio capital</b>. Capital irrisório frente ao volume faturado é indício de subcapitalização/fachada. Confirmar o capital ATUAL (o dump é de um mês) e a capacidade econômico-financeira.`)}`,
       x.razao >= 1e3 ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -4835,7 +5226,7 @@ void main(){
   }
   async function renderPrioridade() {
     const d = await J("/api/intel/prioridade_valor?limite=80");
-    if (!d.ok) return sec2("Prioridade por valor em risco") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Prioridade por valor em risco") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Prioridade — onde a auditoria rende mais", "Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.", "⚡") + acoesAba("prioridade_valor");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Na interseção", "var(--teal)", "⚡")}${kpi(fmtRc(d.economia_em_risco), "Economia em risco", null, "💰")}
@@ -4845,7 +5236,7 @@ void main(){
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_compras)} compra(s) acima da mediana</div>
       <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${(x.sinais || []).slice(0, 4).map((s) => `<span class="tag teal">${rot(s)}</span>`).join("")}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--teal)">${fmtRc(x.economia)}</div><div class="dim">${x.rating} score ${fmtN(x.score)}</div></div></div>
-      ${leitura2(`<b>${esc(x.nome)}</b> junta <b>sinal de risco</b> (${(x.sinais || []).map(rot).join(", ") || "—"}, score ${fmtN(x.score)}/100) com <b>${fmtRc(x.economia)}</b> de sobrepreço recuperável sobre ${fmtN(x.n_compras)} compra(s) acima da mediana de mercado. Priorizar: risco + dinheiro no mesmo fornecedor. Economia é teto teórico (mediana atingível), não valor a ressarcir.`)}`,
+      ${leitura(`<b>${esc(x.nome)}</b> junta <b>sinal de risco</b> (${(x.sinais || []).map(rot).join(", ") || "—"}, score ${fmtN(x.score)}/100) com <b>${fmtRc(x.economia)}</b> de sobrepreço recuperável sobre ${fmtN(x.n_compras)} compra(s) acima da mediana de mercado. Priorizar: risco + dinheiro no mesmo fornecedor. Economia é teto teórico (mediana atingível), não valor a ressarcir.`)}`,
       x.score >= 50 ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.escala || "")} — ${esc(d.ressalva || "")}</div>`;
@@ -4853,7 +5244,7 @@ void main(){
   }
   async function renderFornecedorDependente() {
     const d = await J("/api/intel/fornecedor_dependente?limite=150");
-    if (!d.ok) return sec2("Cativos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Cativos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", 'Fornecedor cativo — "empresa do órgão"', "Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.", "🔗") + acoesAba("fornecedor_dependente");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Fornecedores cativos", "var(--amber)", "🔗")}${kpi(fmtRc(a.reduce((s, x) => s + x.total, 0)), "Volume dependente", null, "💰")}
@@ -4863,7 +5254,7 @@ void main(){
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")} · aparece em ${x.n_ugs} órgão(s)</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${x.share >= 0.99 ? "var(--rose)" : "var(--amber)"}">${Math.round(x.share * 100)}%</div><div class="dim">de ${fmtRc(x.total)}</div></div></div>
-      ${leitura2(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
+      ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome || "")}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
       x.share >= 0.99 ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -4871,7 +5262,7 @@ void main(){
   }
   async function renderCorridaDezembro() {
     const d = await J("/api/intel/corrida_dezembro?limite=150");
-    if (!d.ok) return sec2("Dezembro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Dezembro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Corrida do empenho de dezembro", 'Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.', "📅") + acoesAba("corrida_dezembro");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Fornecedores concentrados", "var(--amber)", "📅")}${kpi(fmtRc(a.reduce((s, x) => s + x.dezembro, 0)), "Pago em dezembro", null, "💰")}
@@ -4881,7 +5272,7 @@ void main(){
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${x.share >= 0.99 ? "var(--rose)" : "var(--amber)"}">${Math.round(x.share * 100)}%</div><div class="dim">em dezembro</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">${fmtRc(x.dezembro)} em dezembro</span><b>de ${fmtRc(x.total)} no ano</b></div>
-      ${leitura2(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> do valor do ano (${fmtRc(x.total)}) só em dezembro. Concentração no fim do exercício sugere corrida do empenho — verificar se houve planejamento ou uso apressado da verba.`)}`,
+      ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share * 100)}%</b> do valor do ano (${fmtRc(x.total)}) só em dezembro. Concentração no fim do exercício sugere corrida do empenho — verificar se houve planejamento ou uso apressado da verba.`)}`,
       x.share >= 0.99 ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -4889,7 +5280,7 @@ void main(){
   }
   async function renderRadar() {
     const d = await J("/api/intel/radar?limite=150");
-    if (!d.ok) return sec2("Radar") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Radar") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Radar de risco — todos os detectores somados", "Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.", "🎯") + acoesAba("radar_risco");
     const _nVerm = Number(d.n_vermelho || 0), _maior = a.length ? Number(a[0].score) : null;
@@ -4906,7 +5297,7 @@ void main(){
   }
   async function renderConluioQSA() {
     const d = await J("/api/intel/conluio_qsa");
-    if (!d.ok) return sec2("Conluio QSA") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Conluio QSA") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.pares || [];
     const cob = d.cobertura || {};
     let h = cover("geral", "Conluio direto — vencedor × perdedora do mesmo dono", 'Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.', "🤝") + acoesAba("conluio_qsa");
@@ -4922,7 +5313,7 @@ void main(){
       <div style="font-weight:700">${clk(x.perdedora.cnpj, x.perdedora.nome)} <span class="dim">perdeu</span></div>
       <div class="muted" style="font-size:12.5px;margin-top:4px"><span class="tag ${tcls}">${esc(x.tier)}</span> sócio(s) em comum: ${socios}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_certames}</div><div class="dim">certame(s) · ${fmtRc(x.valor_vencido)}</div></div></div>
-      ${leitura2(`<b>${esc(x.vencedor.nome)}</b> venceu ${x.n_certames} certame(s) (${fmtRc(x.valor_vencido)}) em que <b>${esc(x.perdedora.nome)}</b> — ${x.tier === "MESMA_EMPRESA" ? "a PRÓPRIA empresa (outra filial)" : "empresa com sócio em comum"} — aparecia como concorrente. Disputa de fachada: o dono ganha dos dois lados. Confirmar CPF completo do sócio antes de citar.`)}`,
+      ${leitura(`<b>${esc(x.vencedor.nome)}</b> venceu ${x.n_certames} certame(s) (${fmtRc(x.valor_vencido)}) em que <b>${esc(x.perdedora.nome)}</b> — ${x.tier === "MESMA_EMPRESA" ? "a PRÓPRIA empresa (outra filial)" : "empresa com sócio em comum"} — aparecia como concorrente. Disputa de fachada: o dono ganha dos dois lados. Confirmar CPF completo do sócio antes de citar.`)}`,
         x.tier !== "MEDIA" ? "hl" : ""
       );
     }).join("") + `</div>`;
@@ -4931,7 +5322,7 @@ void main(){
   }
   async function renderComunidades() {
     const d = await J("/api/intel/comunidades");
-    if (!d.ok) return sec2("Comunidades") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Comunidades") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.comunidades || [];
     const g = d.grafo || {};
     let h = cover("geral", "Comunidades — clusters família-empresa-órgão (Louvain)", "Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.", "🧩") + acoesAba("comunidades", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">Grafo das comunidades</a>`);
@@ -4951,12 +5342,12 @@ void main(){
       <div class="muted" style="font-size:12.5px">${pes.join(" · ") || "—"} &nbsp; 🏛️ ${org.join(" · ") || "—"}</div>
       <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais || []).map((s) => `<span class="tag ${s.peso >= 20 ? "rose" : "amber"}">${esc(s.sinal)} +${s.peso}</span>`).join(" ")}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score >= 50 ? "var(--rose)" : "var(--amber)"}">${x.score}</div><div class="dim">${fmtRc(x.valor_total)}</div></div></div>
-      ${leitura2(`Cluster com <b>${x.n_empresas}</b> empresa(s) e <b>${x.n_pessoas}</b> pessoa(s) movimentando <b>${fmtRc(x.valor_total)}</b>${(x.sinais || []).length ? ", com sinais: " + esc(x.sinais.map((s) => s.sinal + (s.detalhe ? " (" + s.detalhe + ")" : "")).join("; ")) : ""}. Densidade ${x.densidade}. Mapa de onde olhar — não prova de conluio.`)}`,
+      ${leitura(`Cluster com <b>${x.n_empresas}</b> empresa(s) e <b>${x.n_pessoas}</b> pessoa(s) movimentando <b>${fmtRc(x.valor_total)}</b>${(x.sinais || []).length ? ", com sinais: " + esc(x.sinais.map((s) => s.sinal + (s.detalhe ? " (" + s.detalhe + ")" : "")).join("; ")) : ""}. Densidade ${x.densidade}. Mapa de onde olhar — não prova de conluio.`)}`,
         x.score >= 50 ? "hl" : ""
       );
     }).join("") + `</div>`;
     if (d.articuladores && d.articuladores.length) {
-      h += sec2("Articuladores (pontes entre grupos)") + `<div class="grid">` + d.articuladores.slice(0, 10).map((x) => card(
+      h += sec("Articuladores (pontes entre grupos)") + `<div class="grid">` + d.articuladores.slice(0, 10).map((x) => card(
         `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(x.label)}</b> <span class="dim">${esc(x.tipo)}</span></div>
        <div class="right"><span class="num">${x.grau}</span> <span class="dim">conexões</span></div></div>`
       )).join("") + `</div>`;
@@ -4966,7 +5357,7 @@ void main(){
   }
   async function renderRetro() {
     const d = await J("/api/intel/retro");
-    if (!d.ok) return sec2("Retro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Retro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const ps = d.por_sinal || {};
     const ex = d.exemplos || [];
     const j = d.janela || {};
@@ -4977,13 +5368,13 @@ void main(){
     h += `<div class="grid g2">${kpi(fmtN(nsin), "Sinais no ledger", "var(--amber)", "📒")}${kpi(fmtN(ncor), "Sanção DEPOIS do sinal", "var(--rose)", "⚖️")}
       ${kpi(fmtRc(pago), "Pago APÓS o alerta", "var(--rose)", "💸")}${kpi((j.sinal_mais_antigo_dias ?? "—") + "d", "Idade do sinal mais antigo", null, "📅")}</div>`;
     h += `<div class="dim" style="margin-top:8px">Janela retro de ${j.sinal_mais_antigo_dias ?? "—"} dia(s) — zeros são esperados no começo (sanção demora); a leitura fica forte com semanas de ledger.</div>`;
-    h += sec2("Por detector") + `<div class="grid">` + Object.entries(ps).map(([s, v]) => card(
+    h += sec("Por detector") + `<div class="grid">` + Object.entries(ps).map(([s, v]) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(s)}</b>
       <div class="muted" style="font-size:12.5px;margin-top:3px">${fmtN(v.n_sinais)} empresa(s) sinalizadas · ${fmtN(v.vitorias_depois)} vitória(s) PNCP depois</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${v.n_sancao_depois ? "var(--rose)" : "var(--amber)"}">${v.n_sancao_depois}</div><div class="dim">sanção depois · ${fmtRc(v.pago_depois)} pago depois</div></div></div>`
     )).join("") + `</div>`;
     if (ex.length) {
-      h += sec2("Casos (sanção posterior ou pagamento pós-alerta)") + `<div class="grid">` + ex.slice(0, 20).map((e) => card(
+      h += sec("Casos (sanção posterior ou pagamento pós-alerta)") + `<div class="grid">` + ex.slice(0, 20).map((e) => card(
         `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj, e.cnpj)}
       <div class="muted" style="font-size:12.5px">[${esc(e.sinal)}] desde ${esc(e.desde)} · ${esc(e.detalhe || "")}</div>
       ${e.sancao_depois ? `<div class="muted" style="font-size:12.5px;margin-top:2px"><span class="tag rose">sancionada em ${esc(e.sancao_depois.data_inicio)}</span> ${esc(e.sancao_depois.cadastro || "")}</div>` : ""}</div>
@@ -5004,7 +5395,7 @@ void main(){
       const col = circ ? "var(--muted)" : l >= 2 ? "var(--rose)" : l >= 1 ? "var(--amber)" : "var(--green,var(--green))";
       return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;
     };
-    let h = sec2("Validação contra o gabarito objetivo (sanções) — lift por detector");
+    let h = sec("Validação contra o gabarito objetivo (sanções) — lift por detector");
     h += `<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base * 100, 1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">circular</span> = usa sanção como input (não é corroboração independente).</div>`;
     h += `<div class="grid">` + det.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
@@ -5017,7 +5408,7 @@ void main(){
   }
   async function renderSocioOculto() {
     const d = await J("/api/intel/socio_oculto?limite=150");
-    if (!d.ok) return sec2("Sócio oculto") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Sócio oculto") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Sócio oculto — um dono, vários fornecedores", "Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.", "🫥") + acoesAba("socio_oculto");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Sócios com ≥3 empresas", "var(--amber)", "🕸️")}${kpi(fmtRc(a.reduce((s, x) => s + x.total, 0)), "Volume das empresas", null, "💰")}
@@ -5027,7 +5418,7 @@ void main(){
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.holding ? '<span class="tag purple">holding/PJ</span>' : ""}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((x.empresas || []).slice(0, 4).join(" · "))}${(x.empresas || []).length > 4 ? " …" : ""}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--amber)">${x.n_empresas}</div><div class="dim">empresas · ${fmtRc(x.total)}</div></div></div>
-      ${leitura2(`<b>${esc(x.socio)}</b> é sócio de <b>${x.n_empresas}</b> empresas que receberam do Estado (${fmtRc(x.total)} somados). Um mesmo dono em vários fornecedores permite simular concorrência entre empresas do próprio grupo — cruzar se disputam os mesmos certames/órgãos.`)}`,
+      ${leitura(`<b>${esc(x.socio)}</b> é sócio de <b>${x.n_empresas}</b> empresas que receberam do Estado (${fmtRc(x.total)} somados). Um mesmo dono em vários fornecedores permite simular concorrência entre empresas do próprio grupo — cruzar se disputam os mesmos certames/órgãos.`)}`,
       x.n_empresas >= 5 ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -5035,7 +5426,7 @@ void main(){
   }
   async function renderNepotismo() {
     const d = await J("/api/intel/nepotismo?limite=150");
-    if (!d.ok) return sec2("Nepotismo") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Nepotismo") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Nepotismo — parentes em cargo de confiança", "Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.", "👪") + acoesAba("nepotismo", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Clusters familiares", "var(--rose)", "👪")}${kpi(fmtN(d.n_com_autoridade), "Com autoridade nomeante", "var(--rose)", "⚖️")}
@@ -5048,7 +5439,7 @@ void main(){
       <div class="dim" style="margin-top:2px">${Math.round(x.concentracao * 100)}% das ${x.total_folha} pessoas desse sobrenome na folha</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
       <table style="margin-top:10px"><tbody>${(x.membros || []).map((m) => `<tr><td>${esc(m.nome)}</td><td class="dim">${esc(m.cargo || "")}${m.cpf_frag ? " · CPF …" + esc(m.cpf_frag) : ""}</td></tr>`).join("")}</tbody></table>
-      ${leitura2(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao * 100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. Sobrenome raro concentrado em cargos comissionados é o perfil de nepotismo (SV13). ${x.membros.some((m) => m.cpf_frag) ? "Fragmentos de CPF distintos confirmam pessoas diferentes." : ""} Confirmar o parentesco e a cadeia de nomeação.`)}`,
+      ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao * 100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. Sobrenome raro concentrado em cargos comissionados é o perfil de nepotismo (SV13). ${x.membros.some((m) => m.cpf_frag) ? "Fragmentos de CPF distintos confirmam pessoas diferentes." : ""} Confirmar o parentesco e a cadeia de nomeação.`)}`,
       "hl"
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -5056,7 +5447,7 @@ void main(){
   }
   async function renderFenix() {
     const d = await J("/api/intel/fenix?limite=150");
-    if (!d.ok) return sec2("Fênix") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Fênix") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     const _fenixLeitura = (x) => {
       const quem = `<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita`;
@@ -5075,7 +5466,7 @@ void main(){
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">${esc(x.cnpj)}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">${x.tipo === "defunta" ? `<span class="tag rose">${esc(x.situacao)}</span>` : '<span class="tag amber">recém-aberta</span>'} · aberta ${esc(x.data_abertura)} · 1ª OB ${esc(x.primeira_ob)}</div></div>
       <div class="right"><div class="num" style="font-weight:800">${fmtRc(x.total_recebido)}</div><div class="dim">recebido</div></div></div>
-      ${leitura2(x.tipo === "defunta" ? _fenixLeitura(x) : `<b>${esc(x.nome)}</b> foi aberta em ${esc(x.data_abertura)} e recebeu o 1º pagamento ${x.meses_ate_ob} meses depois. Empresa que nasce e já fatura com o Estado é perfil de laranja/fachada.`)}`,
+      ${leitura(x.tipo === "defunta" ? _fenixLeitura(x) : `<b>${esc(x.nome)}</b> foi aberta em ${esc(x.data_abertura)} e recebeu o 1º pagamento ${x.meses_ate_ob} meses depois. Empresa que nasce e já fatura com o Estado é perfil de laranja/fachada.`)}`,
       x.tipo === "defunta" ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -5083,7 +5474,7 @@ void main(){
   }
   async function renderPortaGiratoria() {
     const d = await J("/api/intel/porta_giratoria?limite=150");
-    if (!d.ok) return sec2("Porta giratória") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Porta giratória") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Porta giratória — ex-servidor virou fornecedor", "Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.", "🚪") + acoesAba("porta_giratoria");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Ex-servidores fornecedores", "var(--rose)", "🚪")}${kpi(fmtRc(a.reduce((s, x) => s + (x.total_pago || 0), 0)), "Volume recebido", null, "💰")}
@@ -5094,7 +5485,7 @@ void main(){
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.qualificacao)} de ${clk(x.cnpj, x.empresa)}</div>
       <div class="dim" style="margin-top:2px">ex: ${esc(x.ex_cargo || "—")} · ${esc((x.ex_orgao || "").slice(0, 34))} <span class="tag amber">${esc(x.vinculo)}</span></div></div>
       <div class="right"><span class="tag ${x.confianca === "ALTA" ? "rose" : "accent"}">${esc(x.confianca)}</span><div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div></div></div>
-      ${leitura2(`<b>${esc(x.socio)}</b> consta na folha como ex-servidor (${esc(x.vinculo)}, ${esc(x.ex_orgao || "")}) e hoje é ${esc(x.qualificacao)} de <b>${esc(x.empresa)}</b>, que recebeu ${fmtRc(x.total_pago)} do Estado. Porta giratória — confirmar as datas de saída e do contrato (quarentena).`)}`,
+      ${leitura(`<b>${esc(x.socio)}</b> consta na folha como ex-servidor (${esc(x.vinculo)}, ${esc(x.ex_orgao || "")}) e hoje é ${esc(x.qualificacao)} de <b>${esc(x.empresa)}</b>, que recebeu ${fmtRc(x.total_pago)} do Estado. Porta giratória — confirmar as datas de saída e do contrato (quarentena).`)}`,
       x.confianca === "ALTA" ? "hl" : ""
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -5102,7 +5493,7 @@ void main(){
   }
   async function renderNepotismoCruzado() {
     const d = await J("/api/intel/nepotismo_cruzado?limite=80");
-    if (!d.ok) return sec2("Nepotismo cruzado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Nepotismo cruzado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Nepotismo cruzado — troca de favores entre órgãos", "A família X manda no órgão A e coloca um parente no órgão B, enquanto a família Y manda no órgão B e coloca um parente no A. A <b>reciprocidade</b> dribla a Súmula Vinculante 13, que só proíbe nomear parente no PRÓPRIO órgão.", "🔀") + acoesAba("nepotismo_cruzado");
     h += `<div class="grid g2">${kpi(fmtN(d.n), "Pares recíprocos", "var(--rose)", "🔀")}</div>`;
@@ -5111,7 +5502,7 @@ void main(){
       `<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)}</div>
      <div class="kv" style="margin-top:8px"><span class="k">${esc((x.orgao_a || "").slice(0, 30))}</span><b>autoridade: ${esc(x.autoridade_a)}</b></div>
      <div class="kv"><span class="k">${esc((x.orgao_b || "").slice(0, 30))}</span><b>autoridade: ${esc(x.autoridade_b)}</b></div>
-     ${leitura2(`No órgão <b>${esc((x.orgao_a || "").slice(0, 26))}</b> manda um <b>${esc(x.sobrenome_a)}</b> e há um <b>${esc(x.sobrenome_b)}</b> colocado; no <b>${esc((x.orgao_b || "").slice(0, 26))}</b> é o inverso. Padrão de troca recíproca de parentes entre órgãos — confirmar parentesco e nomeações.`)}`,
+     ${leitura(`No órgão <b>${esc((x.orgao_a || "").slice(0, 26))}</b> manda um <b>${esc(x.sobrenome_a)}</b> e há um <b>${esc(x.sobrenome_b)}</b> colocado; no <b>${esc((x.orgao_b || "").slice(0, 26))}</b> é o inverso. Padrão de troca recíproca de parentes entre órgãos — confirmar parentesco e nomeações.`)}`,
       "hl"
     )).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -5119,7 +5510,7 @@ void main(){
   }
   async function renderLaranjas() {
     const d = await J("/api/laranjas");
-    if (!d.ok) return sec2("Laranjas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+    if (!d.ok) return sec("Laranjas") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const it = d.itens || [];
     let h = cover("geral", "Laranjas — sócio que recebe benefício", "Sócio de empresa que recebe do Estado e ao mesmo tempo recebe benefício social de subsistência — indício de interposição (art. 337-F CP).", "🎭");
     if (!it.length) return h + card('<div class="muted">Nenhum sócio-beneficiário confirmado. A resolução CPF×benefício é conservadora (evita homônimo). 🟢</div>') + `<div class="note">${esc(d.aviso || "")}</div>`;
@@ -5155,14 +5546,14 @@ void main(){
   async function renderAlertas() {
     const p = await J("/api/compliance/painel");
     const lst = p.lista_alertas || [];
-    if (!lst.length) return sec2("Auditoria") + card('<div class="muted">Sem alertas no momento. 🟢</div>');
+    if (!lst.length) return sec("Auditoria") + card('<div class="muted">Sem alertas no momento. 🟢</div>');
     let h = cover("estado", "Alertas de auditoria", "Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.", "🚨");
     h += card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>` + Object.values(SEV_LEGENDA).map(([ic, nome, desc]) => `<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome.toLowerCase() === "alta" ? "alta" : nome.toLowerCase() === "média" ? "media" : "baixa"}">${ic} ${nome}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(""));
     const porTipo = {};
     lst.forEach((a) => {
       (porTipo[a.tipo] = porTipo[a.tipo] || []).push(a);
     });
-    h += `<div style="height:14px"></div>` + sec2("Alertas por tipo", lst.length);
+    h += `<div style="height:14px"></div>` + sec("Alertas por tipo", lst.length);
     h += `<div class="grid">` + Object.entries(porTipo).map(([tipo, alertas]) => {
       const [ic, nome, desc] = TIPO_ALERTA[tipo] || ["🚩", tipo, ""];
       const nAlta = alertas.filter((a) => a.severidade === "alta").length, nMed = alertas.length - nAlta;
@@ -5177,9 +5568,9 @@ void main(){
   }
   async function renderSiafe() {
     const s = await J("/api/siafe/stats");
-    if (!s.ok) return sec2("SIAFE") + card('<div class="muted">SIAFE indisponível.</div>');
+    if (!s.ok) return sec("SIAFE") + card('<div class="muted">SIAFE indisponível.</div>');
     const linhas = (s.por_ano || []).filter((x) => x.valor > 0).map((x) => `<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join("");
-    let h = sec2("SIAFE · ordens bancárias") + `<div class="grid g2">${kpi(fmtN(s.total), "OBs ingeridas")}${kpi(fmtRc(s.valor_total), "Valor total")}</div><div style="height:12px"></div>` + card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+    let h = sec("SIAFE · ordens bancárias") + `<div class="grid g2">${kpi(fmtN(s.total), "OBs ingeridas")}${kpi(fmtRc(s.valor_total), "Valor total")}</div><div style="height:12px"></div>` + card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
     h += `<div style="height:16px"></div>` + await frescorHtml();
     return h;
   }
@@ -5203,8 +5594,8 @@ void main(){
     const falta = sei.fila_total != null && sei.arquivados != null ? sei.fila_total - sei.arquivados : null;
     h += card(`<div class="kv"><span class="k">Fila SEI por dinheiro — lidos × restantes</span><b><span class="num" id="sis-lidos">${fmtN(sei.arquivados)}</span> de ${fmtN(sei.fila_total)}${falta != null ? ` · faltam <span class="num" id="sis-falta">${fmtN(falta)}</span>` : ""}</b></div>
     <div class="sisbar bar" title="${sei.pct_lido == null ? "fila total indisponível" : fmtD(sei.pct_lido, 1) + "% lido"}"><i id="sis-barra" style="width:${sei.pct_lido == null ? 0 : Math.max(1.2, sei.pct_lido)}%"></i></div>
-    ${sei.pct_lido == null ? leitura2("Total da fila <b>INDISPONÍVEL</b> agora (não é zero) — a barra volta quando o compliance.db responder.") : ""}`);
-    h += `<div style="height:14px"></div>` + sec2("Sweeps de coleta", (a.sweeps || []).length);
+    ${sei.pct_lido == null ? leitura("Total da fila <b>INDISPONÍVEL</b> agora (não é zero) — a barra volta quando o compliance.db responder.") : ""}`);
+    h += `<div style="height:14px"></div>` + sec("Sweeps de coleta", (a.sweeps || []).length);
     h += card((a.sweeps || []).map((s0) => {
       const on = s0.vivo, sup = s0.supervisor;
       const est = a.pausado ? "pausado" : on ? "rodando" : sup ? "supervisionado (aguardando janela)" : "parado";
@@ -5212,13 +5603,13 @@ void main(){
       return `<div class="kv"><span class="k"><span class="sinal" style="background:${cor};box-shadow:0 0 8px ${cor}"></span> ${esc(s0.nome)}</span><b>${est} · <span class="num">${idade(s0.atividade_s)}</span></b></div>`;
     }).join("") + `<div class="btns" style="margin-top:10px"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir(aba)">↻ Atualizar</button></div>`);
     if ((a.pipelines || []).length) {
-      h += `<div style="height:14px"></div>` + sec2("Pipelines (SLO)", a.pipelines.length);
+      h += `<div style="height:14px"></div>` + sec("Pipelines (SLO)", a.pipelines.length);
       h += card(`<div style="display:flex;flex-wrap:wrap;gap:8px">` + a.pipelines.map((p0) => {
         const ok = String(p0.estado).toLowerCase().startsWith("ok");
         return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado)}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
       }).join("") + `</div>`);
     }
-    h += `<div style="height:14px"></div>` + sec2("Aprendizados — o que a leitura já produziu");
+    h += `<div style="height:14px"></div>` + sec("Aprendizados — o que a leitura já produziu");
     h += card(`<div class="kv"><span class="k">Fichas SEI montadas</span><b class="num">${fmtN(apr.fichas_sei)}</b></div>
     <div class="kv"><span class="k">Análises de direcionamento</span><b class="num">${fmtN(apr.direcionamentos)}</b></div>
     <div class="kv"><span class="k">Árvores de processo capturadas</span><b class="num">${fmtN(apr.arvores_sei)}</b></div>
@@ -5291,7 +5682,7 @@ void main(){
     return cover("geral", "Gerar relatórios & atalhos", "Relatório de fornecedor/órgão com Lex forense, dossiê 360, cruzamento e painéis.", "☑️") + card(`<label class="fld">Relatório de fornecedor (+ Lex forense)</label><div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('relatorio')">Gerar</button></div>
       <div style="height:11px"></div><label class="fld">Relatório de órgão (+ Lex)</label><div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('orgao')">Gerar</button></div>
       <div style="height:11px"></div><label class="fld">Dossiê 360</label><div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('dossie')">Gerar</button></div>
-      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`) + `<div style="height:18px"></div>` + sec2("Relatórios gerados") + repsHtml + `<div style="height:18px"></div>` + sec2("Painéis") + `<div class="lnks">
+      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`) + `<div style="height:18px"></div>` + sec("Relatórios gerados") + repsHtml + `<div style="height:18px"></div>` + sec("Painéis") + `<div class="lnks">
       <a class="lnk" href="/auditoria"><span class="ic"></span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs clássicos</div></div><span class="ar">→</span></a>
       <a class="lnk" href="/graph"><span class="ic"></span><div><div class="t">Grafo de fraude</div><div class="d">relações entre entes</div></div><span class="ar">→</span></a>
       <a class="lnk" href="/graph?fonte=familias" target="_blank"><span class="ic"></span><div><div class="t">Grafo de famílias</div><div class="d">clãs em cargos + suas empresas</div></div><span class="ar">→</span></a>
@@ -5370,222 +5761,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       fetch("/api/compliance/reports/limpar", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true });
     }
   }
-  var _ckTimer = null;
-  function _ckCount(el, to, fmt, ms = 1e3) {
-    if (!el) return;
-    const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
-    if (rm || to == null) {
-      el.textContent = fmt(to);
-      return;
-    }
-    const t0 = performance.now();
-    (function s(t) {
-      const p = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - p, 3);
-      el.textContent = fmt(to * e);
-      if (p < 1) requestAnimationFrame(s);
-      else el.textContent = fmt(to);
-    })(performance.now());
-  }
-  function blocoComandosMestres() {
-    if (typeof CAPS_MESTRAS === "undefined" || !CAPS_MESTRAS.length) return "";
-    const grupos = {};
-    for (const c of CAPS_MESTRAS) (grupos[c.grupo] = grupos[c.grupo] || []).push(c);
-    let h = `<div class="ck-caps"><div class="ck-eye">Funções mestras — ${CAPS_MESTRAS.length} comandos, um clique cada</div>`;
-    for (const g of Object.keys(grupos)) {
-      const gi = grupos[g][0] || {};
-      h += `<div class="caps-g"><div class="caps-gt">${gi.grupo_ic ? `<span class="caps-gi" aria-hidden="true">${svgIco(gi.grupo_ic)}</span> ` : ""}${esc(gi.grupo_rot || g)}</div><div class="btns" style="flex-wrap:wrap">`;
-      for (const c of grupos[g]) {
-        const dica = esc(`${c.descricao || c.nome}${c.exemplo ? "\n\nex.: " + c.exemplo : ""}${c.rota ? "\n\n" + c.metodo + " " + c.rota : ""}`);
-        h += `<button type="button" class="btn ghost" title="${dica}" onclick="abrirCapMestra('${esc(c.id)}')">${esc(c.nome)}${c.cmd ? `<span class="caps-cmd">${esc(c.cmd)}</span>` : ""}</button>`;
-      }
-      h += `</div></div>`;
-    }
-    h += `<div class="note">Cada botão é uma capacidade com <b>status PRONTO</b> em <code>capabilities.yaml</code>.
-      O mesmo <code>cmd</code> serve o Telegram e o painel — uma fonte, várias superfícies.</div></div>`;
-    return h;
-  }
-  function abrirCapMestra(id) {
-    const c = (typeof CAPS_MESTRAS !== "undefined" ? CAPS_MESTRAS : []).find((x) => x.id === id);
-    if (!c) return;
-    const linha = (r, v) => `<div style="display:flex;gap:10px;margin:6px 0"><b style="min-width:104px">${r}</b><span>${v}</span></div>`;
-    const ov = $("ov"), sh = $("sheet");
-    ov.classList.add("on");
-    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
-    <div style="font-weight:800;font-size:17px;margin-bottom:4px">${esc(c.nome)}</div>
-    <div class="muted" style="font-size:13px;margin-bottom:14px">${esc(c.grupo)}</div>` + card((c.descricao ? `<p style="margin:0 0 10px">${esc(c.descricao)}</p>` : "") + (c.rota ? linha("Rota", `<code>${esc(c.metodo)} ${esc(c.rota)}</code>`) : "") + (c.cmd ? linha("No Telegram", `<code>${esc(c.cmd)}</code>`) : "") + (c.exemplo ? linha("Exemplo", `<code>${esc(c.exemplo)}</code>`) : "")) + `<div class="note">Nada foi disparado. Vários destes comandos geram peça pesada (PDF, planilha)
-      ou escrevem no banco — o painel mostra o caminho, o disparo é decisão sua.</div>`;
-    a11yfy(sh);
-  }
-  async function renderCockpit() {
-    const html = `<div class="ck">
-    <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
-    <div class="ck-hero">
-      <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
-      <div class="ck-big" id="ck-econ">R$ ——</div>
-      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div></div>
-      <div class="ck-ved" id="ck-vedbox" hidden><span class="n" id="ck-ved">R$ —</span>
-        <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
-    </div>
-    <div class="ck-nucleo" id="ck-nucleo"><canvas id="nucleo-cv" aria-hidden="true"></canvas>
-      <div class="nu-legend">Mesa de vigília · cada feixe = um domínio · onda no piso = evento real</div>
-      <div class="nu-hud" id="nu-hud" aria-live="polite">vigília armada — aguardando o primeiro evento do barramento</div>
-      <div class="nu-sweep" id="nu-sweep" aria-live="polite"></div>
-      <div id="nu-chips"></div></div>
-    <!-- RECOMENDAÇÃO EDITORIAL PENDENTE DE DECISÃO DO DONO (rodada 5, 2026-07-31):
-         os 6 números deste ck-grid são os MESMOS já rotulados na mesa de vigília logo acima
-         (nu-chips de NU_NODES: radar, alertas, mesma sala, empresa morta, comunidades,
-         compras). O leitor lê o mesmo dado duas vezes em uma tela — e o cartão, por ser
-         maior, rouba a leitura da mesa, que é a peça que o Início existe para mostrar.
-         Sugestão do auditor: remover os KPIs e deixar a mesa (o chip já traz rótulo+número).
-         NÃO EXECUTADA — cortar conteúdo do Início é decisão do dono, não do auditor. -->
-    <div class="ck-grid" id="ck-grid"></div>
-    ${blocoComandosMestres()}
-    <div class="ck-fontes" id="ck-fontes"></div></div>`;
-    return html;
-  }
-  function ckCard(id, lab, valc, dotc, href, spark) {
-    return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
-  <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
-  <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
-  </div>`;
-  }
-  function ckFill(id, { num, txt, meta } = {}) {
-    const el = $("cki-" + id);
-    if (!el) return;
-    const v = el.querySelector(".val"), m = el.querySelector(".meta");
-    if (num != null && isFinite(num)) _ckCount(v, num, (x) => fmtN(Math.round(x)));
-    else if (txt != null) v.textContent = txt;
-    if (meta != null) {
-      m.innerHTML = meta;
-      m.classList.remove("esperando");
-    }
-    nuSet(id, num != null && isFinite(num) ? Math.round(num) : txt);
-  }
-  var _ckTick = [];
-  function ckPush(items) {
-    items.forEach((x) => _ckTick.push(x));
-    const L = $("ck-lane");
-    if (L && _ckTick.length) L.innerHTML = _ckTick.concat(_ckTick).map((x) => `<span class="${x.c || ""}">${x.h}</span>`).join("");
-  }
-  function ckBoot() {
-    const g = $("ck-grid");
-    if (!g) return;
-    g.innerHTML = [
-      ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
-      ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
-      ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
-      ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro"),
-      ckCard("fenix", "Pago a empresa morta", "ckrose", "bgrose", "g_fenix"),
-      ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
-      ckCard("orgao", "Órgão que mais economiza", "ckgood", "bgteal", "e_comp"),
-      ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos")
-    ].join("");
-    a11yfy(g);
-    nucleoStart();
-    ckPull(true);
-    clearInterval(_ckTimer);
-    _ckTimer = setInterval(() => {
-      if (!document.hidden && aba === "i_cockpit") ckPull(false);
-    }, 3e4);
-  }
-  function ckPull(first) {
-    _ckTick = [];
-    J("/api/compliance/painel").then((d) => {
-      const a = d && d.alertas || null, el = $("nu-alertas");
-      if (!a || a.total == null) {
-        nuSet("alertas", null);
-        if (el) el.title = erroHumano(d && d.erro);
-        return;
-      }
-      nuSet("alertas", a.total);
-      if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
-    });
-    if (first) J("/api/intel/ninho_sala?limite=60").then((d) => {
-      if (!d || !d.ok) {
-        ckFill("ninho", { txt: "—", meta: erroHumano(d && d.erro) });
-        return;
-      }
-      const gs = d.grupos || [], altos = gs.filter((g) => g.grau === "alto"), nAlto = d.n_alto != null ? d.n_alto : altos.length, nTot = d.n != null ? d.n : gs.length;
-      ckFill("ninho", {
-        num: nAlto,
-        meta: `grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada` + (nTot > nAlto ? ` · outros ${fmtN(nTot - nAlto)} com menos fatores` : "") + ` — <b>${fmtRc(d.total_recebido_ob || 0)}</b> em OB no conjunto`
-      });
-      ckPush(altos.slice(0, 3).map((g) => ({ c: "a", h: `◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores || [])[1] || "")} · ${fmtRc(g.total_recebido_ob)}` })));
-    });
-    J("/api/comparador/economia").then((d) => {
-      if (!d || !d.ok) {
-        const big = $("ck-econ");
-        if (big && /—/.test(big.textContent)) {
-          big.textContent = "—";
-          if ($("ck-sub")) $("ck-sub").innerHTML = erroHumano(d && d.erro);
-        }
-        return;
-      }
-      const _eco = d.economia_homogenea != null ? d.economia_homogenea : d.economia_total;
-      const _nc = d.n_compras_homogeneas != null ? d.n_compras_homogeneas : d.n_compras_acima_mediana;
-      _ckCount($("ck-econ"), _eco, fmtRc, first ? 1300 : 900);
-      if ($("ck-sub")) $("ck-sub").innerHTML = `Se cada uma das <b>${fmtN(_nc)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item` + (d.economia_descricao_generica > 0 ? ` — contando só itens de <b>descrição consistente</b>. Há mais <b>${fmtRc(d.economia_descricao_generica)}</b> em itens de descrição genérica (ex.: "peça de veículo"), onde a mediana pode comparar produtos diferentes.` : `.`);
-      ckFill("compras", { num: _nc, meta: "acima da mediana, em itens de descrição consistente" });
-      const o = d.por_orgao && d.por_orgao[0], onm = o ? o.orgao || "" : "";
-      ckFill("orgao", { txt: o ? fmtRc(o.economia) : "—", meta: o ? `<b>${esc(onm)}</b> — potencial a recuperar` : "—" });
-      ckPush([{ c: "g", h: `✦ economia potencial <b>${fmtRc(d.economia_homogenea)}</b> em ${fmtN(d.n_compras_homogeneas)} compras` }]);
-    });
-    J("/api/comparador/vedada").then((d) => {
-      if (d && d.ok && d.economia_vedada_total) {
-        const b = $("ck-vedbox");
-        if (b) b.hidden = false;
-        _ckCount($("ck-ved"), d.economia_vedada_total, fmtRc);
-      }
-    });
-    J("/api/intel/radar?limite=6").then((d) => {
-      if (!d || !d.ok) return;
-      ckFill("radar", { num: d.n, meta: `fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico` });
-      ckPush((d.achados || []).slice(0, 5).map((a) => ({ c: "", h: `▸ RADAR ${a.score} — <b>${(a.nome || "").slice(0, 30)}</b> · ${(a.sinais || []).map((s) => rot(s.sinal)).slice(0, 2).join(", ")}` })));
-    });
-    J("/api/intel/comunidades").then((d) => {
-      if (!d || !d.ok) return;
-      ckFill("com", { num: d.n, meta: "clusters família-empresa-órgão (Louvain)" });
-    });
-    J("/api/intel/lift").then((d) => {
-      if (!d || !d.ok) return;
-      const b = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0))[0];
-      ckFill("lift", { txt: b ? b.lift + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base` : "—" });
-    });
-    J("/api/comparador/dossie").then((d) => {
-      if (!d || !d.ok) return;
-      ckFill("dossie", { num: d.n, meta: "itens pagos caro a fornecedor sancionado/fantasma" });
-      ckPush((d.achados || []).slice(0, 6).map((a) => ({ c: "a", h: `◉ ${(a.orgao || "").slice(0, 24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor || "").slice(0, 24)} (sancionada)` })));
-    });
-    J("/api/intel/fenix").then((d) => {
-      if (!d || !d.ok) return;
-      ckFill("fenix", {
-        txt: fmtRc(d.total_apos_baixa || 0),
-        meta: `<b>${fmtN(d.n_defunta_confirmada || 0)}</b> empresas receberam <b>depois</b> da baixa na Receita · outras ${fmtN((d.n_defunta || 0) - (d.n_defunta_confirmada || 0))} estão baixadas hoje mas só receberam antes`
-      });
-      if (d.n_defunta_confirmada) ckPush([{ c: "a", h: `◉ <b>${fmtRc(d.total_apos_baixa)}</b> pagos a ${fmtN(d.n_defunta_confirmada)} empresas DEPOIS da baixa na Receita` }]);
-    });
-    J("/api/fontes/frescor").then((d) => {
-      const box = $("ck-fontes");
-      if (!box || !d || !d.fontes) return;
-      const cor = (f) => {
-        const s = (f.estado || "").toLowerCase();
-        if (s.includes("verde") || s.includes("ok") || s.includes("fresc")) return "#5fe0a1";
-        if (s.includes("amar") || s.includes("aten") || s.includes("velh")) return "#f2b544";
-        if (s.includes("verm") || s.includes("erro") || s.includes("crit")) return "#ff7a8a";
-        return f.idade_dias == null ? "#63718f" : f.idade_dias <= 2 ? "#5fe0a1" : f.idade_dias <= 10 ? "#f2b544" : "#ff7a8a";
-      };
-      box.innerHTML = `<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">` + d.fontes.map((f) => `<div class="ck-fchip" title="${esc(f.detalhe || "")}"><span class="fled" style="background:${cor(f)}"></span>
-        <span class="fnm">${esc((f.fonte || "").replace(/·/g, "·"))}</span><span class="fage">${f.idade_dias == null ? "—" : f.idade_dias + "d"}</span></div>`).join("") + `</div>`;
-    });
-  }
   function _set_cjEsf(v) {
     _cjEsf = v;
   }
   function _set_comisView(v) {
     _comisView = v;
-  }
-  function _set_compView(v) {
-    _compView = v;
   }
   function _set_ctrView(v) {
     _ctrView = v;
@@ -5604,24 +5784,6 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   function _set_riscoView(v) {
     _riscoView = v;
-  }
-  function _set_compCat(v) {
-    _compCat = v;
-  }
-  function _set_compDisp(v) {
-    _compDisp = v;
-  }
-  function _set_compEsf(v) {
-    _compEsf = v;
-  }
-  function _set_compGrupo(v) {
-    _compGrupo = v;
-  }
-  function _set_compOrd(v) {
-    _compOrd = v;
-  }
-  function _set_compTermo(v) {
-    _compTermo = v;
   }
   function _set_perGrau(v) {
     _perGrau = v;
@@ -5872,8 +6034,10 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       v.innerHTML = card(`<div class="warn">Falha: ${esc(e)}</div>`);
     }
     window.scrollTo(0, 0);
-    if (aba !== "i_cockpit") vivo();
-    else if (typeof ckBoot === "function") ckBoot();
+    if (aba !== "i_cockpit") {
+      energiaParar();
+      vivo();
+    } else ckBoot();
     a11yfy(document.body);
   }
   fetch("/static/assets/no-energia.png", { method: "HEAD" }).then((r) => {
@@ -5917,11 +6081,17 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     holoRJ();
     mesaViva();
     conscienciaRever();
+    energiaRever();
   });
   conscienciaLigar(ritmoEstado);
   sabreStart({
+    /* v59 · `energiaPacote` entra no MESMO gancho da onda do piso e usa a MESMA tabela de domínio:
+       um evento real, um pacote viajando do instrumento até o núcleo. Não é uma taxa imitada — é a
+       taxa, porque cada traço na tela corresponde a uma linha que entrou no banco. Barramento
+       calado = nada se move, e o laço de animação nem chega a existir. */
     aoEvento: (ev) => {
       nucleoPulse(ev.tipo);
+      energiaPacote(ev.tipo);
       ritmoEvento();
       conscienciaEvento(ev, ev.tipo === "alerta" || ev.tipo === "radar");
     },
@@ -5988,7 +6158,10 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (!s) return;
     s.classList.toggle("scrollx", s.scrollWidth > s.clientWidth + 4 && s.scrollLeft < s.scrollWidth - s.clientWidth - 4);
   }
-  addEventListener("resize", _sphMask);
+  addEventListener("resize", () => {
+    _sphMask();
+    energiaRever();
+  });
   document.addEventListener("scroll", (e) => {
     if (e.target && e.target.classList && e.target.classList.contains("spheres")) _sphMask();
   }, true);
@@ -6069,6 +6242,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   window.TABS = TABS;
   window.revelacaoCenso = revelacaoCenso;
+  window.energiaCenso = energiaCenso;
   Object.assign(window, {
     $,
     _acPagPick,

@@ -12,7 +12,11 @@
  *
  * Sem efeito de topo: quem liga isto e a sequencia de boot do entrypoint.
  */
-import {$, esc, corta, card, spin, clk, svgIco} from '../nucleo/dom.js';
+/* `sec` e `leitura` entram na v59 e a ausencia delas era um BUG VIVO desde o corte do v58:
+   `abrirDossie` e `verCruzamento` chamam as duas, e sem o import o dossie morreria com
+   `sec is not defined` no clique. Nao aparecia no `painel_boot_check` porque ele percorre
+   as 60 abas e nao abre dossie — foi `painel_modulo_livre` que achou, em 40 ms. */
+import {$, esc, corta, card, spin, clk, svgIco, sec, leitura} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
 import {_redMotion, _sobrio} from '../capacidade/estado.js';

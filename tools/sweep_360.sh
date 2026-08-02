@@ -38,8 +38,12 @@ from tools.processo_360_ranking import pontuar
 import json, sqlite3
 con = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True)
 con.row_factory = sqlite3.Row
+# "já julgado" = julgado na rubrica VIGENTE. Fixar '2' aqui deixaria o sweep pulando processos
+# que só têm veredito de uma rubrica velha — e a v3 (2026-08-02) mudou o que conta como vício.
+# Ler a constante do módulo evita esta linha envelhecer calada de novo.
+from compliance_agent.sei.doc_juizo import RUBRICA_VERSAO
 julgados = {r[0] for r in con.execute(
-    "select distinct numero_sei from doc_veredito where rubrica_versao='2'")}
+    "select distinct numero_sei from doc_veredito where rubrica_versao=?", (RUBRICA_VERSAO,))}
 fila = []
 for r in con.execute("select * from processo_avaliacao"):
     if r["numero_sei"] in julgados:

@@ -39,6 +39,7 @@ import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 import {rjbgStart, netbgStart, _rjbgTinge, nucleoStart, nucleoPulse, nuSet, nuSweepPoll,
         NU_NODES, nucleoViva, nebulaViva, holoRJ, mesaViva, portalStart, _rjCarregar,
         _nuHover, _setNuHover, cenaPonteiro} from './cena/index.js';
+import {energiaPacote, energiaRever, energiaParar, energiaCenso} from './cena/energia.js';
 import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, seiBaixarZip,
         verCruzamento, fecharCertame, abrirCertame, jsq, _wire,
         uiLigarSpotlight, uiLigarDialogo, uiLigarA11y, vivo, revelacaoCenso} from './ui/index.js';
@@ -292,8 +293,11 @@ async function ir(id){
     }else{pintar();}}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
-  if(aba!=='i_cockpit')vivo();   // cockpit tem animação própria; demais abas herdam a "vida"
-  else if(typeof ckBoot==='function')ckBoot();   // v48: monta o cockpit DEPOIS do paint
+  /* v59: sair do cockpit SOLTA o laço da órbita. Sem isto o `requestAnimationFrame` das linhas de
+     energia continuaria vivo atrás de uma aba que nem tem o canvas — o mesmo desperdício que o
+     deck da Consciência evita fechando o `setInterval` ao fechar. */
+  if(aba!=='i_cockpit'){energiaParar();vivo();}   // cockpit tem animação própria; demais herdam
+  else ckBoot();                 // v48: monta o cockpit DEPOIS do paint
   a11yfy(document.body);         // torna chips/spheres/.clk operáveis por teclado (audit a11y #1)
 }
 
@@ -344,10 +348,15 @@ uiLigarDialogo();
    `document`, então precisa existir antes de qualquer tela que use `data-vinc` ser pintada.
    Ver o bloco `VINC_ACOES` em `abas/index.js` para a razão de ser Vínculos o primeiro. */
 ligarVinculos();
-sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever(); });
+sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever();
+                      energiaRever(); });
 conscienciaLigar(ritmoEstado);
 sabreStart({
-  aoEvento: ev => { nucleoPulse(ev.tipo); ritmoEvento();
+  /* v59 · `energiaPacote` entra no MESMO gancho da onda do piso e usa a MESMA tabela de domínio:
+     um evento real, um pacote viajando do instrumento até o núcleo. Não é uma taxa imitada — é a
+     taxa, porque cada traço na tela corresponde a uma linha que entrou no banco. Barramento
+     calado = nada se move, e o laço de animação nem chega a existir. */
+  aoEvento: ev => { nucleoPulse(ev.tipo); energiaPacote(ev.tipo); ritmoEvento();
                     conscienciaEvento(ev, ev.tipo === 'alerta' || ev.tipo === 'radar'); },
   aoBatimento: ev => { ritmoTelemetria(ev.load1, ev.sweeps); conscienciaBatimento(ev); },
   podeAnimar: () => !_redMotion && !_sobrio,
@@ -451,7 +460,10 @@ document.addEventListener('visibilitychange',()=>document.documentElement.classL
 // Esferas roláveis sem scrollbar: fade lateral só quando há conteúdo escondido.
 function _sphMask(){const s=document.querySelector('.spheres');if(!s)return;
   s.classList.toggle('scrollx',s.scrollWidth>s.clientWidth+4&&s.scrollLeft<s.scrollWidth-s.clientWidth-4);}
-addEventListener('resize',_sphMask);
+/* v59: a órbita é geometria medida em pixel — redimensionar a janela move os oito instrumentos e
+   o núcleo, e os fios ficariam ligando posições que não existem mais. `energiaRever` só faz algo
+   se o `#ck-orbita` estiver na tela, então nas outras 59 abas isto custa uma busca por id. */
+addEventListener('resize',()=>{_sphMask();energiaRever();});
 document.addEventListener('scroll',e=>{if(e.target&&e.target.classList&&e.target.classList.contains('spheres'))_sphMask();},true);
 setTimeout(_sphMask,600);
 
@@ -589,6 +601,9 @@ window.TABS=TABS;
    enquanto o comentário afirmava que a coluna era lida de cima para baixo. O que não é medido
    apodrece calado. */
 window.revelacaoCenso=revelacaoCenso;
+/* Idem para a órbita do cockpit (v59): quantas linhas, quantos pacotes vivos, se o laço
+   está de pé. Contrato de ferramenta — nenhum handler o cita. */
+window.energiaCenso=energiaCenso;
 
 Object.assign(window,{
   $,_acPagPick,_acPick,_jCache,_pagMais,abrirCapMestra,abrirCertame,abrirDossie,acKeydown,acao,

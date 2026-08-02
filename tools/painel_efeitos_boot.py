@@ -40,9 +40,20 @@ _ENTRADA = _SRC / "entrada.js"
 # Linha em coluna 0 que NAO abre uma declaracao, um comentario, um fechamento, nem e continuacao
 # de literal (o shader do portal e um template de varias linhas em coluna 0 — dai `uniform`,
 # `float`, `void`, `vec` e companhia na lista de exclusao).
+#
+# `export {` entra na lista na v59, quando o corte da cena e das abas (§6.2-B) passou a usar
+# reexport para manter a porta de entrada dos chamadores. Ele NAO e efeito, com ou sem `from`: e
+# declaracao estatica, resolvida na ligacao dos modulos, e nao executa uma instrucao sequer. Sem
+# esta linha o detector acusava `cena/index.js` e `abas/index.js` de terem efeito de topo — falso
+# positivo que, se fosse aceito como verdade, empurraria o corte para uma solucao pior (reescrever
+# a lista de import de todo mundo) para resolver um problema que nao existe.
+#
+# A regra e por PREFIXO e nao pela linha inteira porque a lista de nomes reexportados quebra em
+# varias linhas; as continuacoes comecam com espaco e ja caem no `\s` da lista.
 _NAO_E_EFEITO = re.compile(
-    r"^(?:export\s+)?(?:const|let|var|function|class|async\s+function|import|//|/\*|\*|\}|\)|\]|;"
-    r"|\s|\$|`|'|\"|<|uniform|float|void|vec\d|gl_|precision|attribute|varying|if\s*\()"
+    r"^(?:export\s*\{"
+    r"|(?:export\s+)?(?:const|let|var|function|class|async\s+function|import|//|/\*|\*|\}|\)|\]|;"
+    r"|\s|\$|`|'|\"|<|uniform|float|void|vec\d|gl_|precision|attribute|varying|if\s*\())"
 )
 
 # Assinatura curta e ESTAVEL do efeito: o que ele faz, sem o corpo. E o que o teste compara —

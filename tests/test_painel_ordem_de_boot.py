@@ -1,4 +1,4 @@
-"""A sequencia de boot do painel e um CONTRATO — 26 efeitos, nesta ordem.
+"""A sequencia de boot do painel e um CONTRATO — 27 efeitos, nesta ordem.
 
 POR QUE ESTE TESTE EXISTE. O boot do painel e uma sequencia de efeitos de topo: registros de
 listener, tres IIFEs nomeadas, um `fetch` de sonda, `sabreStart()`, `portalStart()` e dois
@@ -18,8 +18,8 @@ DUAS GARANTIAS, e a segunda e a que sustenta a primeira:
    entrypoint continua sendo o unico lugar onde o boot acontece. E o invariante que torna a
    garantia 1 suficiente.
 
-Nota de desenho: os 26 efeitos NAO foram movidos para um bloco unico no fim do entrypoint. Mover
-26 efeitos de lugar e, literalmente, a operacao que reordena um boot em silencio — pagar-se-ia o
+Nota de desenho: os 27 efeitos NAO foram movidos para um bloco unico no fim do entrypoint. Mover
+27 efeitos de lugar e, literalmente, a operacao que reordena um boot em silencio — pagar-se-ia o
 risco para evitar o risco. Eles ficam onde estao e passam a ser inventariados.
 """
 import sys
@@ -68,6 +68,7 @@ SEQUENCIA = [
     "ponte:window.TABS",              # ── daqui para baixo e a PONTE, sempre por ultimo:
     "ponte:window.revelacaoCenso",    #    contrato de FERRAMENTA (v59), como o TABS: nenhum
                                       #    handler o cita; quem le e a sonda e o teste da revelacao
+    "ponte:window.energiaCenso",      #    idem, para a orbita do cockpit (v59)
     "ponte:Object.assign",            #    ela precisa de tudo ja declarado
     "iife:arrow",
     "ponte:defineProperty",

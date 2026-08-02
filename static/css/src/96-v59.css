@@ -125,3 +125,68 @@
   body.fps-baixo #view .rv-leque>*,
   body.fps-baixo #view h2.sec.rv-sec::after,body.fps-baixo #view h2.sec.rv-sec::before{
     animation:none;opacity:1;transform:none}
+
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   v59 — A ÓRBITA. O cockpit vira centro de gravidade.
+
+   A mesa de vigília era um bloco empilhado entre o herói e os oito instrumentos. Empilhada, a
+   peça central da tela lê como mais uma faixa da página, e os cartões abaixo dela leem como uma
+   lista sem relação com o que a mesa mostra — quando são exatamente as leituras que chegam POR
+   ela. Aqui a relação vira geometria: núcleo no meio, quatro instrumentos de cada lado, e um fio
+   de energia ligando cada um ao centro (`cena/energia.js`).
+
+   TRÊS DECISÕES, e nenhuma é estética:
+
+   1. `display:contents` no `#ck-grid`. Os oito cartões precisam ser ITENS da grade da órbita para
+      poderem ser colocados nas duas colunas laterais, mas o `#ck-grid` precisa continuar sendo um
+      container só, com o mesmo id e os mesmos oito filhos — é nele que o `ckBoot` escreve e é ele
+      que o `ckFill` procura. `display:contents` promove os filhos sem desmanchar o container.
+      Reescrever o `ckBoot` para dois containers seria mexer no caminho que monta a tela viva para
+      resolver um problema que é de layout.
+
+   2. A órbita SÓ EXISTE a partir de 1100px, e o corte é largura de container e não de tela. Abaixo
+      disso a pilha continua exatamente a de sempre — e não por conservadorismo: em coluna estreita
+      os cartões ficam EMBAIXO do núcleo, e um fio ligando um cartão ao que está acima dele não
+      desenha relação nenhuma, desenha um risco vertical. `cena/energia.js` faz a mesma checagem e
+      não liga o canvas; as duas metades da regra têm de concordar, senão sobra fio sem órbita.
+
+   3. O canvas fica ATRÁS de tudo (`z-index:0`) e sem eventos de ponteiro. Ele é o cabo; o número
+      é a leitura. Cabo por cima de número seria a arte disputando com o dado — o erro que a
+      medição de contraste da Consciência já pegou uma vez.
+   ══════════════════════════════════════════════════════════════════════════════════════════ */
+  .ck-orbita{position:relative}
+  .ck-energia{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;
+    border:0;display:block}
+  .ck-orbita>.ck-nucleo,.ck-orbita>.ck-grid>.ck-inst{position:relative;z-index:1}
+
+  /* Abaixo do corte: nada muda. O canvas nasce escondido pelo JS e o `display:none` aqui é a
+     segunda tranca — se o JS não rodar, não fica um retângulo vazio no meio da pilha. */
+  @media (max-width:1099px){.ck-energia{display:none}}
+
+  @media (min-width:1100px){
+    .ck-orbita{display:grid;gap:12px 20px;align-items:start;margin-top:14px;
+      grid-template-columns:minmax(190px,1fr) minmax(420px,1.5fr) minmax(190px,1fr)}
+    .ck-orbita>.ck-grid{display:contents}
+    /* o núcleo ocupa a coluna do meio e as quatro fileiras — ele é o centro, não um item */
+    .ck-orbita>.ck-nucleo{grid-column:2;grid-row:1/span 4;height:100%;min-height:clamp(430px,42vw,620px)}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(1){grid-column:1;grid-row:1}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(2){grid-column:1;grid-row:2}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(3){grid-column:1;grid-row:3}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(4){grid-column:1;grid-row:4}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(5){grid-column:3;grid-row:1}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(6){grid-column:3;grid-row:2}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(7){grid-column:3;grid-row:3}
+    .ck-orbita>.ck-grid>.ck-inst:nth-child(8){grid-column:3;grid-row:4}
+    /* O `.ck-grid` original tinha `margin-top` próprio; em `display:contents` ele não pinta nada,
+       mas o `grid-template-columns` dele continuaria declarado e confunde quem lê o computado. */
+    .ck-orbita>.ck-grid{margin-top:0}
+    /* O anel de instrumento (v58) fica grande demais na coluna estreita da órbita e encosta no
+       número. Ele é moldura; moldura que cobre a leitura deixa de ser moldura. */
+    .ck-orbita .ck-inst::after{width:62px;height:62px;right:8px;opacity:.26}
+  }
+
+  /* Modo sóbrio: a órbita continua (é LAYOUT, não animação — desfazê-la mudaria a leitura da
+     tela), mas o canvas sai. Quem já não sustenta os quadros que existiam antes desta camada não
+     vai sustentar mais um laço. */
+  body.fps-baixo .ck-energia{display:none}

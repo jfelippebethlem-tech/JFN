@@ -30,6 +30,18 @@ if ! out="$(PYTHONPATH=. "$py" -m tools.painel_build_check 2>&1)"; then
   exit 1
 fi
 
+# ── 0-A1. nenhum modulo usa simbolo da casa sem importar ────────────────────────────────────────
+# O bug numero 2 da tabela do §3 do PAINEL-v58: `X is not defined` no primeiro quadro. `esbuild`
+# empacota calado (identificador livre ele assume que e global do navegador), e ate a v59 a unica
+# rede era o `painel_boot_check` — servidor, navegador e ~20 min. Este pega em 40 ms, e ja achou
+# tres reais: `$` em `cena/fundo.js` (recem-cortado) e `sec`/`leitura` em `ui/index.js`, estes
+# dois VIVOS desde o corte do v58, num caminho que o boot_check nao percorre (abrir dossie).
+if ! out="$(PYTHONPATH=. "$py" -m tools.painel_modulo_livre 2>&1)"; then
+  echo "[pre-commit] ❌ gate do painel BLOQUEOU (simbolo livre em modulo):" >&2
+  echo "$out" | tail -12 >&2
+  exit 1
+fi
+
 # ── 0-A2. o CSS e concatenacao dos estratos ─────────────────────────────────────────────────────
 # `static/css/painel.css` passou a ser GERADO por `tools/painel_css_cortar.py --juntar` a partir de
 # `static/css/src/*.css`. Editar o artefato direto e a mesma classe de bug do bundle defasado: a

@@ -1,13 +1,27 @@
 /* A CENA — tudo que o painel desenha por quadro: os dois canvas de fundo, a mesa de vigilia com
  * projecao 3D do territorio, os videos de esfera e o portal de ignicao em WebGL.
  *
- * POR QUE UM MODULO SO, e nao os cinco do plano (fundo, mesa, malha, video, portal). No arquivo
- * original a cena esta INTERLEAVADA com o cockpit: `netbgStart` termina e o `_ckCount` comeca na
- * linha seguinte; `nucleoStart` termina e o `ckCard` comeca na seguinte. Sao quatro faixas puras
- * separadas por codigo que nao e cena. Junta-las num modulo e uma operacao textual, verificavel.
- * Subdividir exigiria resolver dezenas de referencias cruzadas (`nucleoStart` usa `_holoProj`,
- * `_rjCarregar`, `_rjBuild`, `_holoPiso`, `HOLO`) — isso e reescrita, nao mudanca de arquivo, e
- * fica para um corte proprio.
+ * O CORTE DA v59 (§6.2-B). Ate aqui era um modulo so, e a razao estava escrita: no arquivo
+ * original a cena vinha INTERLEAVADA com o cockpit, entao junta-las foi uma operacao textual e
+ * verificavel, enquanto subdividir exigiria resolver as referencias cruzadas.
+ *
+ * Elas foram resolvidas, uma de cada vez, do pedaco mais isolado para o mais preso — e o criterio
+ * de cada corte e sempre o mesmo: sai o que nao precisa saber do resto.
+ *   `cena/malha-rj.js` — o carregador e o tracador do territorio do RJ. Folha: nao importa cena
+ *                      nenhuma. Tres consumidores (fundo, mesa, portal) passam a importar dela.
+ *   `cena/portal.js`  — a cena WebGL de ignicao. So le `$`, a bandeira de movimento e a malha.
+ *   `cena/holomesa.js`— a camera 3D: projecao mundo->tela, placa do territorio, desenho do piso.
+ *                      O plano dizia que este corte era reescrita porque `nucleoStart` usa cinco
+ *                      simbolos dela. Certo sobre o sentido, errado sobre o tamanho: as cinco
+ *                      referencias andam num sentido so, e dependencia de mao unica vira `import`
+ *                      sem reescrever nada.
+ *   `cena/energia.js` — as linhas da orbita do cockpit (nasceu ja separada, na mesma versao).
+ * O que sobra aqui e o que de fato compartilha estado por quadro: os dois canvas de fundo e a
+ * mesa de vigilia com a projecao 3D.
+ *
+ * O reexport no fim do arquivo mantem a porta de entrada: `entrada.js` continua importando
+ * `portalStart` e `_rjCarregar` daqui. Mudar o corte E a lista de imports de todo mundo na mesma
+ * passada e como se perde a capacidade de dizer o que quebrou.
  *
  * TRES INVARIANTES QUE ESTE MODULO CARREGA e que nao podem se perder no proximo corte:
  *   1. Todo laco de canvas consulta `_sobrio` antes de reagendar quadro. Sem isso o painel mede o
@@ -22,114 +36,26 @@ import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J} from '../nucleo/http.js';
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
+/* A malha do Estado saiu para `cena/malha-rj.js` (v59). O `import` E o reexport lá no fim são as
+   duas metades da mesma decisão: aqui ela é USADA (fundo e mesa a pedem), e lá embaixo ela é
+   REPASSADA para que os chamadores de fora não mudem de porta. */
+import {_rjCarregar} from './malha-rj.js';
+/* A câmera 3D saiu para `cena/holomesa.js` (v59). A dependência anda num sentido só — a mesa
+   chama a câmera, a câmera nunca chama a mesa — e é por isso que o corte coube num `import`. */
+import {HOLO, _holoProj, _rjPlaca, _rjContornoMundo, _holoPiso, _hex2} from './holomesa.js';
 
-/* PARALAXE DO PONTEIRO. A posicao normalizada do mouse mora AQUI porque quem a consome e a cena
-   (o `netbg` desloca a malha com ela). O listener que a escreve continua na sequencia de boot do
-   entrypoint — efeito de topo nao mora em modulo — e chama `cenaPonteiro`. Antes desta extracao
-   as duas variaveis viviam no entrypoint e a cena as lia como global; depois do IIFE isso virou
-   `_ckMX is not defined` no primeiro quadro, pego pelo boot_check. */
-export let _ckMX = .5, _ckMY = .5;
-export function cenaPonteiro(x, y) { _ckMX = x; _ckMY = y; }
+/* A paralaxe do ponteiro virou FOLHA em `cena/ponteiro.js` (v59): o fundo a lê e este arquivo a
+   reexporta, e nenhum dos dois enxerga o outro. Ver o cabeçalho de lá para o ciclo que ela
+   quebrou — o mesmo que `capacidade/estado.js` já tinha quebrado antes. */
+export {_ckMX, _ckMY, cenaPonteiro} from './ponteiro.js';
 
 /* ══ CACHES DE SONDA ══ */
 var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes da def
 var _nuVid={};    // idem para o núcleo holográfico (um loop por esfera)
 var _nuPost={};   // e para o POSTER de cada núcleo — nem toda esfera tem .jpg (ver `nucleoViva`)
-var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-/* ══ FUNDO: RJBG E NETBG ══ */
-export let _rjbgTinge=()=>{};
-export function rjbgStart(){
-  const cv=$('rjbg');if(!cv)return;
-  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
-  const ctx=cv.getContext('2d');
-  let W,H,dpr,mapC=null,raf=0,corAtual='';
-  const corEsf=()=>getComputedStyle(document.body).getPropertyValue('--esf').trim()||'oklch(0.72 0.175 258)';
-  function build(){
-    const M=window.RJ_MALHA;if(!M)return;
-    const cor=corEsf();corAtual=cor;
-    mapC=document.createElement('canvas');mapC.width=cv.width;mapC.height=cv.height;
-    const x=mapC.getContext('2d');x.scale(dpr,dpr);
-    // território grande, empurrado à direita: "mapa na parede da sala de comando"
-    const s=Math.min(W/M.w,H/M.h)*1.04;
-    const ox=W-M.w*s*0.66, oy=(H-M.h*s)/2;
-    const mk=flat=>{const p=new Path2D();let X=flat[0],Y=flat[1];
-      p.moveTo(ox+X/M.q*s,oy+Y/M.q*s);
-      for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];p.lineTo(ox+X/M.q*s,oy+Y/M.q*s);}
-      p.closePath();return p;};
-    x.lineJoin=x.lineCap='round';
-    // divisas: teia fria na cor da esfera
-    x.strokeStyle=`color-mix(in oklch, ${cor} 34%, transparent)`;x.lineWidth=0.6;
-    M.m.forEach(f=>x.stroke(mk(f)));
-    // contorno: a fronteira sob vigília, com halo
-    x.shadowColor=cor;x.shadowBlur=12;
-    x.strokeStyle=`color-mix(in oklch, ${cor} 78%, white 12%)`;x.lineWidth=1.5;
-    M.o.forEach(f=>x.stroke(mk(f)));
-    cv._ox=ox;cv._oy=oy;cv._s=s;cv._M=M;
-  }
-  function size(){
-    dpr=Math.min(1.5,devicePixelRatio||1);W=innerWidth;H=innerHeight;
-    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
-    cv.style.width=W+'px';cv.style.height=H+'px';
-    build();
-  }
-  function draw(t){
-    if(!mapC){raf=requestAnimationFrame(draw);return;}   // ainda carregando a malha: espera (limitado)
-    if(document.hidden){if(!_sobrio)raf=requestAnimationFrame(draw);return;}
-    const g=ctx;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);
-    g.drawImage(mapC,0,0);
-    // respiração + varredura de radar girando a partir do centro do território
-    if(!rm){
-      g.setTransform(dpr,0,0,dpr,0,0);
-      const M=cv._M,s=cv._s;
-      const cx=cv._ox+M.w*s*0.42/1, cy=cv._oy+M.h*s*0.5;
-      const ang=t*0.00016, R=Math.hypot(W,H);
-      const grad=g.createConicGradient?g.createConicGradient(ang,cx,cy):null;
-      if(grad){grad.addColorStop(0,`color-mix(in oklch, ${corAtual} 22%, transparent)`);
-        grad.addColorStop(0.06,'transparent');grad.addColorStop(1,'transparent');
-        g.globalCompositeOperation='source-atop';g.fillStyle=grad;
-        g.beginPath();g.arc(cx,cy,R,0,6.283);g.fill();
-        g.globalCompositeOperation='source-over';}
-      g.setTransform(1,0,0,1,0,0);
-    }
-    /* Reagendava INCONDICIONALMENTE — redesenhava a malha inteira por quadro mesmo sob
-       reduced-motion, que só tirava a varredura de radar. No modo sóbrio o mapa fica pintado e
-       parado: mesma imagem, zero quadro. */
-    if(!_sobrio)raf=requestAnimationFrame(draw);
-  }
-  _rjbgTinge=()=>{if(!window.RJ_MALHA)return;if(corEsf()!==corAtual)build();};
-  size();
-  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw(performance.now());},{passive:true});
-  /* uma repintura ao voltar para a aba; o `_sobrio` dentro de draw() garante que ela não reacende
-     o laço — repinta o quadro estático e para. */
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden){cancelAnimationFrame(raf);draw(performance.now());}});
-  /* pinta assim que a malha chega: no modo sóbrio o laço já parou e ninguém mais chamaria draw(). */
-  _rjCarregar(()=>{build();draw(performance.now());});
-  draw(performance.now());
-}
-export function netbgStart(){
-  const cv=$('netbg');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts,raf;
-  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
-  function size(){const d=Math.min(2,devicePixelRatio);W=cv.width=innerWidth*d;H=cv.height=innerHeight*d;
-    cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';cv._d=d;
-    const n=Math.min(76,Math.floor(innerWidth/20));
-    pts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random()*.8+.2,
-      vx:(Math.random()-.5)*.11*d,vy:(Math.random()-.5)*.11*d,r:(Math.random()*1.5+.6)*d}));}
-  function draw(){const d=cv._d,D=150*d;ctx.clearRect(0,0,W,H);const px=(_ckMX-.5)*26*d,py=(_ckMY-.5)*26*d;
-    for(let i=0;i<pts.length;i++){const p=pts[i];if(!rm){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;}
-      const ox=p.x+px*p.z,oy=p.y+py*p.z;p._ox=ox;p._oy=oy;
-      for(let j=i+1;j<pts.length;j++){const q=pts[j],qx=q.x+px*q.z,qy=q.y+py*q.z,dx=ox-qx,dy=oy-qy,dd=Math.hypot(dx,dy);
-        if(dd<D){ctx.strokeStyle='rgba(90,210,255,'+((1-dd/D)*.24)+')';ctx.lineWidth=d*.55;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(qx,qy);ctx.stroke();}}
-      ctx.beginPath();ctx.arc(ox,oy,p.r,0,7);ctx.fillStyle='rgba(140,228,255,'+(.38+p.z*.4)+')';ctx.fill();}
-    /* `_sobrio` congela a malha no último quadro (fica campo estático, ainda bonito) em vez de
-       recalcular O(n²) por quadro numa máquina que já se declarou sem orçamento. */
-    if(!rm&&!_sobrio)raf=requestAnimationFrame(draw);}
-  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw();});
-  document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);if(!document.hidden&&!_sobrio)draw();});
-  size();draw();
-}
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -175,15 +101,23 @@ export function nuSet(id,val){
     const d=val-prev,s=document.createElement('em');s.className='nu-delta';
     s.textContent=(d>0?'+':'')+fmtN(d);el.appendChild(s);setTimeout(()=>s.remove(),4000);}
 }
+/* De que DOMINIO veio o evento, e de que cor ele e. As duas tabelas eram literais dentro do
+   `nucleoPulse`; passam a ser exportadas porque a orbita do cockpit (v59, `cena/energia.js`)
+   precisa exatamente das mesmas respostas — a linha de energia que acende tem de ser a do mesmo
+   dominio que a onda do piso, senao a tela conta duas histórias sobre o mesmo evento. Copiar as
+   tabelas para o modulo novo seria a quinta cicatriz de lista duplicada divergindo em silencio. */
+export const EV_COR={alerta:'255,122,138',radar:'255,122,138',ob_siafe:'238,194,118',
+  ob_tfe:'238,194,118',clausula:'192,150,255',pericia:'95,224,161',ata:'125,175,255'};
+export const EV_DOMINIO={alerta:'alertas',radar:'radar',ob_siafe:'compras',ob_tfe:'compras',
+  clausula:'dossie',pericia:'fenix',ata:'com'};
+
 export function nucleoPulse(tipo){
   if(_redMotion||!$('ck-nucleo'))return;
-  const c={alerta:'255,122,138',radar:'255,122,138',ob_siafe:'238,194,118',ob_tfe:'238,194,118',
-           clausula:'192,150,255',pericia:'95,224,161',ata:'125,175,255'}[tipo]||'95,217,255';
+  const c=EV_COR[tipo]||'95,217,255';
   _nuPulses.push({r:0.14,a:.85,c});   // v12: raio em UNIDADE DE MUNDO (onda no piso), não em pixel
   // o evento também VIAJA: sai do domínio que o produziu e entra no núcleo.
   // É o barramento ficando visível — mesma metáfora do Conduíte, em órbita.
-  const alvo={alerta:'alertas',radar:'radar',ob_siafe:'compras',ob_tfe:'compras',
-              clausula:'dossie',pericia:'fenix',ata:'com'}[tipo];
+  const alvo=EV_DOMINIO[tipo];
   if(alvo)_nuFlux.push({id:alvo,p:0,c});
   if(_nuFlux.length>24)_nuFlux.splice(0,_nuFlux.length-24);   // teto: rajada não vira enxame
   // HUD: telemetria REAL da vigília (contagem de eventos do barramento — nada sintético)
@@ -197,103 +131,6 @@ export let _nuEvTotal=0,_nuHover=null;
    `_nuHover` para o proprio getter do window e entraria em recursao infinita — foi
    exatamente o que o boot_check pegou. Quem escreve, chama esta funcao. */
 export function _setNuHover(v){_nuHover=v;}
-/* ═══════════════ v12 "HOLOMESA" — câmera 3D de verdade ═══════════════
-   O núcleo deixa de ser um círculo visto de frente e passa a ser uma MESA DE
-   HOLOGRAMA: o território do RJ é o CHÃO (perspectiva com divisão por z), os
-   domínios FLUTUAM acima dele em três altitudes, cada um ancorado ao piso por
-   um feixe vertical e uma pegada de luz. No centro, o projetor.
-
-   Por que profundidade de verdade aparece: (a) divisão por z — o que está longe
-   encolhe; (b) oclusão por ordem de pintura; (c) paralaxe — a câmera responde ao
-   cursor; (d) contato com um plano (feixe + pegada). Sem os quatro, objeto
-   flutuando lê como adesivo colado na tela — é o erro que faz 3D parecer amador.
-
-   Custo (a VM tem 2 vCPU): o piso é assado UMA vez em bitmap ortogonal e
-   deformado para a perspectiva em faixas afins; o resultado fica em cache e só
-   é refeito quando a câmera realmente se move. Em repouso, o piso custa um
-   drawImage por quadro. */
-/* alfa 0..1 -> par hexadecimal, para concatenar em '#rrggbb' sem montar rgba() */
-const _hex2=a=>Math.max(0,Math.min(255,Math.round(a*255))).toString(16).padStart(2,'0');
-const HOLO={PL:1.10, ELEV:0.56, CAMD:3.15, SZ:520,    // piso, elevação (rad), distância, resolução do bitmap
-            ESP:0.045, ARO:1.11, GIRO:-0.28,          // espessura da laje · aro · giro do território (rad)
-            /* ALT = teto da cena: altura do reator e do anel mais alto. Era 0.60 solto em
-               três lugares (o HT do enquadramento e os dois P(0,0.60,0) do reator), e
-               esse ar reservado acima do piso era o que fazia o TERRITÓRIO ficar numa
-               faixa fina no meio do card — o "pequeno e vazio" que o dono viu. Baixar
-               para 0.46 devolve a altura ao piso e mantém a escada de três degraus. */
-            ALT:0.46};
-function _holoProj(x,y,z,c){                          // mundo → tela (x direita, y altura, z profundidade)
-  const X=x*c.cy_ - z*c.sy_, Z=x*c.sy_ + z*c.cy_;     // giro em torno do eixo vertical (yaw)
-  const Y2=y*c.cp + Z*c.sp;                           // inclinação da câmera (elevação)
-  const Z2=Math.max(0.42, Z*c.cp - y*c.sp + c.camd);  // distância à câmera (nunca atrás do olho)
-  const k=c.camd/Z2;                                  // perspectiva: k=1 no centro da mesa
-  return {x:c.cx + X*k*c.s, y:c.cy - Y2*k*c.s, k, z:Z2};
-}
-/* território assado em vista ORTOGONAL de cima, num quadrado que cobre o piso
-   inteiro. É este bitmap que depois vira chão em perspectiva. */
-function _rjPlaca(M,SZ){
-  const c=document.createElement('canvas');c.width=c.height=SZ;
-  const x=c.getContext('2d');
-  /* GIRO DO TERRITÓRIO (v12.2) — o RJ é largo no eixo leste-oeste e a placa é redonda:
-     alinhado ao eixo x ele deixava vazias as duas pontas da elipse. Girado, usa a
-     DIAGONAL, que é o maior diâmetro aparente da mesa em perspectiva. E a ocupação
-     sobe de 0,92 para 0,99 porque o cálculo agora usa a caixa DEPOIS do giro. */
-  const GIRO=HOLO.GIRO;
-  const cg=Math.abs(Math.cos(GIRO)),sg=Math.abs(Math.sin(GIRO));
-  const lw=M.w*cg+M.h*sg,lh=M.w*sg+M.h*cg;
-  const s=Math.min(SZ*0.99/lw,SZ*0.99/lh),ox=(SZ-M.w*s)/2,oy=(SZ-M.h*s)/2;
-  const mk=flat=>{const p=new Path2D();let X=flat[0],Y=flat[1];
-    p.moveTo(ox+X/M.q*s,oy+Y/M.q*s);
-    for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];p.lineTo(ox+X/M.q*s,oy+Y/M.q*s);}
-    p.closePath();return p;};
-  x.translate(SZ/2,SZ/2);x.rotate(GIRO);x.translate(-SZ/2,-SZ/2);
-  x.lineJoin=x.lineCap='round';
-  x.strokeStyle='rgba(120,170,245,0.22)';x.lineWidth=0.9;      // as 92 divisas municipais
-  M.m.forEach(f=>x.stroke(mk(f)));
-  x.shadowColor='rgba(140,196,255,0.95)';x.shadowBlur=10;      // fronteira sob vigília
-  x.strokeStyle='rgba(186,218,255,0.62)';x.lineWidth=1.7;
-  M.o.forEach(f=>x.stroke(mk(f)));
-  x.shadowBlur=16;x.shadowColor='rgba(255,150,60,0.8)';        // o litoral pega o calor do reator
-  x.strokeStyle='rgba(255,190,120,0.26)';x.lineWidth=1.1;
-  M.o.forEach(f=>x.stroke(mk(f)));
-  return c;
-}
-/* deforma a placa ortogonal para o chão em perspectiva, em faixas de profundidade
-   constante. Cada faixa é fina o bastante para que a projeção seja afim dentro
-   dela — que é o que setTransform sabe fazer. Do fundo para a frente. */
-/* Contorno do RJ em coordenadas de MUNDO (calculado uma vez). São 294 pontos — projetar
-   isso por quadro é irrisório, e é o que permite dar ESPESSURA ao território: sem parede
-   lateral a malha é um decalque deitado no chão, e o olho lê desenho, não objeto. */
-function _rjContornoMundo(M){
-  const PL=HOLO.PL, SZ=HOLO.SZ, GIRO=HOLO.GIRO;
-  const cg=Math.abs(Math.cos(GIRO)), sg=Math.abs(Math.sin(GIRO));
-  const lw=M.w*cg+M.h*sg, lh=M.w*sg+M.h*cg;
-  const s=Math.min(SZ*0.99/lw,SZ*0.99/lh), ox=(SZ-M.w*s)/2, oy=(SZ-M.h*s)/2;
-  return M.o.map(flat=>{
-    const pts=[];let X=flat[0],Y=flat[1];
-    /* o MESMO giro da placa: sem ele a parede lateral da laje descola da malha */
-    const põe=()=>{const rx=ox+X/M.q*s-SZ/2, ry=oy+Y/M.q*s-SZ/2;
-      const sx=SZ/2+rx*Math.cos(GIRO)-ry*Math.sin(GIRO);
-      const sy=SZ/2+rx*Math.sin(GIRO)+ry*Math.cos(GIRO);
-      pts.push([sx/SZ*2*PL-PL, PL-sy/SZ*2*PL]);};   // inverso exato do mapeamento da placa
-    põe();
-    for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];põe();}
-    return pts;
-  });
-}
-function _holoPiso(g,bmp,c,W,H,alt){
-  const PL=HOLO.PL,SZ=bmp.width,NF=26,dz=2*PL/NF,y=alt||0;
-  g.clearRect(0,0,W,H);
-  for(let i=0;i<NF;i++){
-    const zF=PL-i*dz, zN=zF-dz, sy0=i*SZ/NF, sy1=(i+1)*SZ/NF, hs=sy1-sy0;
-    const P00=_holoProj(-PL,y,zF,c), P10=_holoProj(PL,y,zF,c), P01=_holoProj(-PL,y,zN,c);
-    const a=(P10.x-P00.x)/SZ, b=(P10.y-P00.y)/SZ, cc=(P01.x-P00.x)/hs, d=(P01.y-P00.y)/hs;
-    if(!isFinite(a)||!isFinite(d)||Math.abs(a*d-b*cc)<1e-9)continue;
-    g.save();g.transform(a,b,cc,d,P00.x-cc*sy0,P00.y-d*sy0);
-    g.drawImage(bmp,0,sy0,SZ,Math.min(SZ-sy0,hs+1),0,sy0,SZ,Math.min(SZ-sy0,hs+1));
-    g.restore();
-  }
-}
 /* v41: NUCLEO-HOLO — o arc reactor que projeta o holograma (arte do it-campo) entra
    como corpo de video SOB o canvas; o procedural (feixes, chips, dados reais) segue
    por cima. Progressivo: sem arquivo, nada muda.
@@ -1086,256 +923,12 @@ export async function holoRJ(){
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
-/* ══ PORTAL E MALHA ══ */
-const _PORTAL_VS='attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}';
-const _PORTAL_FS=`precision highp float;
-uniform vec2 u_res;uniform float u_t,u_ign,u_jump;uniform vec2 u_m;
-float h21(vec2 p){p=fract(p*vec2(127.31,311.7));p+=dot(p,p+34.23);return fract(p.x*p.y);}
-float stars(vec2 p,float sc,float th){
-  vec2 q=p*sc;vec2 id=floor(q);vec2 f=fract(q)-0.5;
-  float r=h21(id+sc);
-  if(r<th)return 0.0;
-  vec2 o=(vec2(h21(id+3.7),h21(id+9.1))-0.5)*0.70;
-  return smoothstep(0.055,0.0,length(f-o))*(0.25+(r-th)/(1.0-th)*0.85);
-}
-void main(){
-  vec2 p=(gl_FragCoord.xy-0.5*u_res)/u_res.y+u_m*0.045;
-  float r=length(p);
-  /* reator sobe 9% da altura: fica no MESMO centro do território (faixa
-     superior de 82%) e sai de cima da fala, que vive no terço inferior. */
-  vec2 pr=p-vec2(0.0,0.09);
-  float rr=length(pr),a=atan(pr.y,pr.x);
-  vec3 col=vec3(0.0);
-  /* estrelas PEQUENAS e esparsas: o espaço tem que ser preto, não azul lavado.
-     Acumular ao longo do raio dá o rastro de verdade no salto.              */
-  float sf=0.0;
-  for(int i=0;i<5;i++){
-    float t=float(i)/4.0;float k=1.0-u_jump*0.55*t;
-    sf+=(stars(p*k,15.0,0.905)+stars(p*k,27.0,0.935)*0.45)*(1.0-t*0.8);
-  }
-  col+=mix(vec3(0.55,0.72,1.05),vec3(1.0,0.72,0.38),0.16+0.5*u_jump)*sf*0.7;
-  /* reator: anéis de íon + segmentos girando (compacto — o herói é o território) */
-  float ig=max(u_ign,0.0001);
-  float R=smoothstep(0.010,0.0,abs(rr-0.112*ig))*1.05
-         +smoothstep(0.0050,0.0,abs(rr-0.168*ig))*0.68
-         +smoothstep(0.0026,0.0,abs(rr-0.218*ig))*0.44;
-  R+=smoothstep(0.008,0.0,abs(rr-0.168*ig))*step(0.45,fract((a/6.28318)*26.0+u_t*0.22))*0.6;
-  col+=vec3(0.30,0.62,1.30)*R*ig;
-  /* núcleo incandescente + bloom contido */
-  col+=vec3(1.30,0.56,0.16)*exp(-rr*rr*(230.0/ig))*ig*1.15;
-  col+=vec3(1.00,0.46,0.13)*exp(-rr*8.5)*ig*0.13;
-  /* varredura do guardião */
-  col+=vec3(0.34,0.70,1.30)*pow(1.0-fract((a+3.14159)/6.28318-u_t*0.40),26.0)
-       *smoothstep(0.85,0.05,rr)*ig*0.38;
-  /* clarão do salto: quente e CONTIDO no centro (não lava o campo inteiro —
-     esse foi o erro da 1ª volta, o flash azul apagava o espaço). */
-  col+=mix(vec3(0.5,0.7,1.15),vec3(1.15,0.7,0.35),0.5)*u_jump*u_jump
-       *smoothstep(0.9,0.0,r)*0.32;
-  col*=1.0-0.82*smoothstep(0.20,1.05,r);
-  /* alpha = luminância: espaço vazio fica TRANSPARENTE (mostra a nebulosa de
-     fundo), reator/estrelas/território ficam opacos por cima. */
-  float a=clamp(max(col.r,max(col.g,col.b))*1.25+0.12,0.0,1.0);
-  gl_FragColor=vec4(col,a);
-}`;
-
-/* desenha a malha do RJ UMA vez num canvas fora de tela; a animação depois é
-   só máscara + composite (2 operações por quadro), não re-traçado.          */
-/* carrega a malha do RJ sob demanda (21 KB) e avisa quem pediu. Um só fetch
-   serve o portal e o núcleo do cockpit.                                     */
-// _rjCbs/_rjLoading declarados no topo do script (init os usa antes desta def).
-export function _rjCarregar(cb){
-  if(window.RJ_MALHA){try{cb();}catch(_){}return;}
-  _rjCbs.push(cb);
-  if(_rjLoading)return;
-  _rjLoading=true;
-  const s=document.createElement('script');
-  s.src='/static/assets/rj-malha.js?v=c6127f36';s.async=true;
-  s.onload=()=>{const l=_rjCbs.slice();_rjCbs.length=0;
-    /* era `catch(_){}` — um catch vazio. Se o desenho da malha falhasse, a
-       falha sumia sem rastro e o mapa ficava vazio sem nada no console.  */
-    l.forEach(fn=>{try{fn();}catch(e){console.warn('[rj] callback da malha falhou:',e);}});};
-  s.onerror=()=>{_rjLoading=false;};             // sem malha o painel segue igual
-  document.head.appendChild(s);
-}
-
-/* modo 'portal' = herói em tela cheia (faixa superior de 82%).
-   modo 'nucleo' = pano de fundo discreto do cockpit: o dado lê primeiro. */
-function _rjBuild(M,W,H,dpr,modo){
-  const c=document.createElement('canvas');
-  c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
-  const x=c.getContext('2d');x.scale(dpr,dpr);
-  const nu=modo==='nucleo';
-  const FX=nu?0.94:0.88,FY=nu?0.96:0.82;
-  const s=Math.min(W*FX/M.w,H*FY/M.h);
-  const ox=(W-M.w*s)/2,oy=nu?(H-M.h*s)/2:(H*FY-M.h*s)/2;
-  const mk=flat=>{const p=new Path2D();let X=flat[0],Y=flat[1];
-    p.moveTo(ox+X/M.q*s,oy+Y/M.q*s);
-    for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];p.lineTo(ox+X/M.q*s,oy+Y/M.q*s);}
-    p.closePath();return p;};
-  // divisas municipais: a teia de 92 células que forma o estado
-  x.lineJoin=x.lineCap='round';
-  x.strokeStyle=nu?'rgba(120,170,245,0.16)':'rgba(126,178,250,0.52)';
-  x.lineWidth=nu?0.55:0.75;
-  M.m.forEach(f=>x.stroke(mk(f)));
-  // contorno do estado: a fronteira sob vigília — halo de íon
-  x.shadowColor='rgba(140,196,255,0.95)';x.shadowBlur=nu?9:18;
-  x.strokeStyle=nu?'rgba(176,210,255,0.42)':'rgba(214,234,255,1)';
-  x.lineWidth=nu?1.1:2.1;
-  M.o.forEach(f=>x.stroke(mk(f)));
-  // segundo passe quente: o litoral pega o calor do reator
-  x.shadowBlur=nu?14:30;x.shadowColor='rgba(255,150,60,0.8)';
-  x.strokeStyle=nu?'rgba(255,190,120,0.20)':'rgba(255,196,124,0.72)';
-  x.lineWidth=nu?0.7:1.1;
-  M.o.forEach(f=>x.stroke(mk(f)));
-  return c;
-}
-
-export function portalStart(){
-  const el=$('portal');if(!el)return;
-  let pular=false;
-  try{pular=sessionStorage.getItem('jfn_v9_portal')==='1'||localStorage.getItem('jfn_portal_off')==='1';}catch(_){}
-  if(pular||_redMotion){el.remove();return;}
-  try{sessionStorage.setItem('jfn_v9_portal','1');}catch(_){}
-  el.hidden=false;
-
-  const cv=$('pcv'),pm=$('pmap');
-  const dpr=Math.min(devicePixelRatio||1,1.5);   // 4K real na GPU da VM não paga o pixel
-  let gl=null,U={},raf=0,morto=false,mapC=null,mx=0,my=0;
-  const t0=performance.now(),IGN=[80,560],JUMP=[1320,1780],FIM=1960;   /* v27: era 3520+760=4,3s de espera. Medido no Chrome do dono a pagina
-      carrega em 612ms — quem segurava a tela era a propria abertura. */
-
-  try{gl=cv.getContext('webgl',{antialias:false,alpha:true,premultipliedAlpha:false})||cv.getContext('experimental-webgl');}catch(_){}
-  if(gl)try{
-    const sh=(tp,src)=>{const s=gl.createShader(tp);gl.shaderSource(s,src);gl.compileShader(s);
-      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
-    const pr=gl.createProgram();
-    gl.attachShader(pr,sh(gl.VERTEX_SHADER,_PORTAL_VS));
-    gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,_PORTAL_FS));
-    gl.linkProgram(pr);
-    if(!gl.getProgramParameter(pr,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(pr));
-    gl.useProgram(pr);
-    gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
-    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-    const loc=gl.getAttribLocation(pr,'a');
-    gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
-    ['u_res','u_t','u_ign','u_jump','u_m'].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
-  }catch(_){gl=null;}                            // shader recusado → degrada, sem erro visível
-
-  const mctx=pm.getContext('2d');
-  function medir(){
-    const W=innerWidth,H=innerHeight;
-    if(gl){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);gl.viewport(0,0,cv.width,cv.height);}
-    pm.width=Math.round(W*dpr);pm.height=Math.round(H*dpr);mctx.setTransform(dpr,0,0,dpr,0,0);
-    if(window.RJ_MALHA)mapC=_rjBuild(window.RJ_MALHA,W,H,dpr,'portal');
-  }
-  medir();
-  addEventListener('resize',medir,{passive:true});
-  addEventListener('pointermove',e=>{if(morto)return;
-    mx=(e.clientX/innerWidth-.5)*2;my=-(e.clientY/innerHeight-.5)*2;},{passive:true});
-
-  // a malha entra sob demanda: quem já viu o portal nesta sessão nunca baixa esses 21 KB
-  _rjCarregar(()=>{if(!morto)medir();});
-
-  function quadro(agora){
-    if(morto)return;
-    const t=agora-t0;
-    const ign=Math.min(1,Math.max(0,(t-IGN[0])/(IGN[1]-IGN[0])));
-    const jmp=Math.min(1,Math.max(0,(t-JUMP[0])/(JUMP[1]-JUMP[0])));
-    if(gl){
-      gl.uniform2f(U.u_res,cv.width,cv.height);
-      gl.uniform1f(U.u_t,t/1000);
-      gl.uniform1f(U.u_ign,ign*ign*(3-2*ign));    // smoothstep: ignição com inércia
-      gl.uniform1f(U.u_jump,jmp*jmp);
-      gl.uniform2f(U.u_m,mx,my);
-      gl.drawArrays(gl.TRIANGLES,0,3);
-    }
-    // território: revelado por um disco que cresce junto com a varredura
-    if(mapC){
-      const W=innerWidth,H=innerHeight;
-      const rev=Math.min(1,Math.max(0,(t-620)/1650));
-      mctx.clearRect(0,0,W,H);
-      if(rev>0){
-        const cx=W/2,cy=H*0.41;                      // nasce no núcleo do reator
-        const R=Math.max(1,rev*Math.hypot(W,H)*0.66);
-        const g=mctx.createRadialGradient(cx,cy,0,cx,cy,R);
-        g.addColorStop(0,'rgba(255,255,255,1)');
-        g.addColorStop(.74,'rgba(255,255,255,1)');
-        g.addColorStop(1,'rgba(255,255,255,0)');
-        mctx.globalCompositeOperation='source-over';
-        mctx.fillStyle=g;mctx.fillRect(0,0,W,H);
-        mctx.globalCompositeOperation='source-in';
-        mctx.globalAlpha=Math.min(1,rev*1.6)*(1-jmp*0.85);
-        mctx.drawImage(mapC,0,0,W,H);
-        mctx.globalAlpha=1;
-      }
-    }
-    if(t>=FIM){portalFim();return;}
-    raf=requestAnimationFrame(quadro);
-  }
-  raf=requestAnimationFrame(quadro);
-
-  function portalFim(){
-    if(morto)return;morto=true;cancelAnimationFrame(raf);
-    // handoff: o núcleo encolhe até o Kyber do header — portal e painel são o
-    // MESMO reator, não duas telas.
-    /* v49 — A "BOLA DO NADA NO MEIO", parte 2 de 3. Este handoff era o proprio bug.
-       Uma esfera de 190px nascia no CENTRO EXATO da tela, em opacidade cheia, e devia voar ate o
-       Kyber do header. Tres defeitos somados:
-         (a) a transicao dura 620ms e o `setTimeout(...,420)` arrancava o elemento do DOM aos 420ms:
-             ela NUNCA chegava — desaparecia no meio do voo;
-         (b) o `transform` era aplicado no rAF SEGUINTE. Medido nesta VM: o painel roda a 1-2 FPS,
-             logo "o proximo quadro" pode levar meio segundo ou mais. Nesse intervalo a esfera fica
-             PARADA no meio da tela, opaca. É literalmente uma bola do nada no meio;
-         (c) no mesmo instante rodam `el.classList.add('off')` (opacity+blur na tela cheia) e um
-             reflow forcado em `.cblade` — competindo pelo mesmo quadro que faltava.
-       Agora: dois rAF encadeados garantem que o estado inicial foi para a tela antes de mudar
-       (um rAF só não garante flush de estilo), a remocao segue o `transitionend` com rede de
-       seguranca folgada, e em maquina medida como lenta o floreio é PULADO — a 1 FPS ele nao lê
-       como movimento, lê como artefato. */
-    const k=$('kyber'), lento=_redMotion||document.body.classList.contains('fps-baixo');
-    if(k&&!lento){
-      const kr=k.getBoundingClientRect(),S=190;
-      const h=document.createElement('div');h.id='phand';
-      h.style.cssText=`width:${S}px;height:${S}px;left:${innerWidth/2-S/2}px;top:${innerHeight/2-S/2}px`;
-      document.body.appendChild(h);
-      let saiu=false;
-      const tirar=()=>{if(saiu)return;saiu=true;h.remove();};
-      h.addEventListener('transitionend',tirar,{once:true});
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        h.style.transform=`translate(${kr.left+kr.width/2-innerWidth/2}px,`+
-          `${kr.top+kr.height/2-innerHeight/2}px) scale(${(kr.width/S).toFixed(4)})`;
-        h.style.opacity='0';}));
-      setTimeout(tirar,900);   // > 620ms da transicao + folga p/ o quadro atrasado
-    }
-    el.classList.add('off');
-    // a lâmina do Conduíte reacende: o portal entrega a energia ao painel
-    const b=document.querySelector('.cblade');
-    if(b){b.style.animation='none';void b.offsetWidth;
-      b.style.animation='ignicao .5s cubic-bezier(.2,.9,.25,1.2) 1,respira 4.5s ease-in-out .5s infinite';}
-    setTimeout(()=>{el.remove();
-      if(gl){const x=gl.getExtension('WEBGL_lose_context');if(x)x.loseContext();}},420);
-  }
-  el.addEventListener('click',portalFim);
-  addEventListener('keydown',portalFim);
-
-  /* v28.3: a abertura media o tempo com performance.now() mas so AVANCAVA dentro
-     do requestAnimationFrame. O Chrome congela rAF em aba de segundo plano — quem
-     abria o painel e trocava de aba voltava e achava o portal ainda na tela (nao
-     termina), e no instante em que a aba volta ao foco o rAF dispara com `t` ja
-     muito alem de FIM: a cena corre todos os quadros de uma vez, que e o
-     "rapidas e embaralhadas" que o dono viu.
-
-     Duas travas, as duas independentes de quadro (portalFim ja e idempotente
-     pela guarda `morto`, entao chamar duas vezes nao custa nada):
-       1. um relogio de verdade fecha a abertura mesmo se nenhum quadro rodar;
-       2. ao voltar de segundo plano, se o tempo ja passou, fecha SEM correr o
-          atraso acumulado — melhor entregar o painel do que exibir a animacao
-          em avanco rapido.                                                     */
-  setTimeout(portalFim,FIM+90);
-  /* v45: as aspas destes dois literais foram comidas pelo shell no patch que
-     criou a trava (armadilha ja documentada: heredoc com aspas duplas por
-     fora). O ReferenceError matava o RESTO do bloco do portal — o segundo
-     guarda-corpo da abertura nunca existiu. */
-  document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'&&performance.now()-t0>=FIM)portalFim();});
-}
+/* ── O PORTAL E A MALHA SAÍRAM (v59, §6.2-B) ──────────────────────────────────────────────────
+   `portalStart` e a malha do Estado viraram `cena/portal.js` e `cena/malha-rj.js`. O reexport abaixo
+   existe para que NENHUM chamador mude: `entrada.js` continua importando `portalStart` e
+   `_rjCarregar` de `cena/index.js`, e o contrato da sequência de boot fica igual. Trocar o corte
+   de arquivo E a lista de imports de todo mundo na mesma passada é como se perde a capacidade de
+   dizer o que quebrou. */
+export {portalStart} from './portal.js';
+export {_rjCarregar} from './malha-rj.js';
+export {rjbgStart, netbgStart, _rjbgTinge} from './fundo.js';
