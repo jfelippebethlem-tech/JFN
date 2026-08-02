@@ -112,18 +112,31 @@ def rotular(pasta: Path) -> dict | None:
             "pareceres": aud["pareceres"]}
 
 
-def prever(pasta: Path) -> tuple[set[str], list[dict]]:
-    """O que os detectores da casa acendem no processo, traduzido em famílias."""
+# Achado da casa que aponta condicionante de parecer pendente SEM nomear a família. Ele responde
+# a pergunta de PROCESSO ("sobrou exigência sem resposta?"), não a de família ("qual exigência?").
+# Confundir as duas faria o relatório publicar "cobertura 0%" num caso em que a casa acertou o
+# processo inteiro e só não etiquetou o tipo do vício — número enganoso é pior que número nenhum.
+_RE_COND_GENERICA = re.compile(
+    r"condiciona/?recomenda|condicionante.*(?:sem\s+resposta|n[ãa]o\s+atendid)|"
+    r"parecer.*n[ãa]o\s+h[áa]\s+documento\s+posterior|ressalva\s+de\s+parecer", re.I)
+
+
+def prever(pasta: Path) -> tuple[set[str], bool, list[dict]]:
+    """O que os detectores da casa acendem: famílias nomeadas + sinal genérico de condicionante."""
     out = P360.avaliar_pasta(pasta)
     fams: set[str] = set()
+    generico = False
     nao_mapeados: list[dict] = []
     for a in out.get("achados", []):
+        alvo = " ".join(str(a.get(k) or "") for k in ("diz", "falta", "codigo", "observacao"))
+        if _RE_COND_GENERICA.search(alvo):
+            generico = True
         fam = _familia_do_achado(a)
         if fam:
             fams.add(fam)
         else:
             nao_mapeados.append({"origem": a.get("origem"), "diz": (a.get("diz") or "")[:90]})
-    return fams, nao_mapeados
+    return fams, generico, nao_mapeados
 
 
 def medir(linhas: list[dict]) -> dict:
@@ -147,8 +160,15 @@ def medir(linhas: list[dict]) -> dict:
     prec = tp / (tp + fp) if (tp + fp) else None
     cob = tp / (tp + fn) if (tp + fn) else None
     f1 = (2 * prec * cob / (prec + cob)) if (prec and cob) else 0.0
-    return {"n_processos": len(linhas), "global": {"tp": tp, "fn": fn, "fp": fp,
-                                                   "precisao": prec, "cobertura": cob, "f1": f1},
+    # Duas perguntas, dois placares. PROCESSO: "sobrou exigência do parecer sem resposta?" — a casa
+    # tem achado próprio para isso. FAMÍLIA: "qual exigência?" — é o que ela ainda não nomeia.
+    com_pos = [L for L in linhas if L["positivos"]]
+    acertou_proc = sum(1 for L in com_pos if L.get("previstos") or L.get("generico"))
+    return {"n_processos": len(linhas),
+            "processo": {"com_vicio_apontado": len(com_pos), "detectados": acertou_proc,
+                         "cobertura": (acertou_proc / len(com_pos)) if com_pos else None},
+            "global": {"tp": tp, "fn": fn, "fp": fp,
+                       "precisao": prec, "cobertura": cob, "f1": f1},
             "por_familia": por_familia}
 
 
@@ -163,9 +183,13 @@ def relatorio_md(m: dict, vocab: list[dict]) -> str:
     for f, v in sorted(m["por_familia"].items(), key=lambda kv: -(kv[1]["tp"] + kv[1]["fn"])):
         L.append(f"| {f} | {v['tp']} | {v['fn']} | {v['fp']} | {pct(v['precisao'])} | "
                  f"{pct(v['cobertura'])} | {pct(v['f1'])} | {v['indisponivel']} |")
-    g = m["global"]
-    L += ["", f"**Global:** precisão {pct(g['precisao'])} · cobertura {pct(g['cobertura'])} · "
+    g, pr = m["global"], m["processo"]
+    L += ["", f"**Por família:** precisão {pct(g['precisao'])} · cobertura {pct(g['cobertura'])} · "
               f"F1 {pct(g['f1'])} (acertos {g['tp']} · perdidos {g['fn']} · falsos alarmes {g['fp']})",
+          "", f"**Por processo** (a casa apontou que sobrou exigência sem resposta, mesmo sem nomear "
+              f"a família): {pr['detectados']} de {pr['com_vicio_apontado']} — {pct(pr['cobertura'])}. "
+              "Os dois placares medem perguntas diferentes: publicar só o de família faria a casa "
+              "parecer cega num processo que ela de fato apontou.",
           "", "> Onde o parecer é silente, não há linha: silêncio do jurista não é atestado de "
               "regularidade. INDISPONÍVEL fica fora da conta, nos dois lados."]
     if vocab:
@@ -209,12 +233,13 @@ def main() -> int:
             feitos.add(pasta.name)
             continue
         try:
-            previstos, nm = prever(pasta)
+            previstos, generico, nm = prever(pasta)
         except Exception as e:  # noqa: BLE001
             print(f"  ! detecção falhou em {pasta.name}: {e}", file=sys.stderr)
             continue
         vocab += nm
-        linhas.append({"processo": pasta.name, **rot, "previstos": sorted(previstos)})
+        linhas.append({"processo": pasta.name, **rot, "previstos": sorted(previstos),
+                       "generico": generico})
         feitos.add(pasta.name)
         print(f"  · {pasta.name}: ouro+{len(rot['positivos'])}/-{len(rot['negativos'])} "
               f"prev={len(previstos)}", flush=True)
