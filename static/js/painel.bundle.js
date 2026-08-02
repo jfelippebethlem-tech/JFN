@@ -3985,6 +3985,10 @@ void main(){
       b("/api/mandato/minuta", "Minuta .docx para assinar", "Requerimento de informação (ALERJ) ou representação ao TCE-RJ, já fundamentado.", "alvo"),
       b("/api/ppp", "Dossiê pericial de PPP/concessão", "Perícia de parceria público-privada: equilíbrio, aportes, matriz de risco.", "alvo"),
       b("/api/sei/acatamento", "Acatamento de parecer (art. 53)", "O gestor seguiu o parecer jurídico? Divergência não motivada é achado.", "processo"),
+      // 2026-08-02: até aqui, processo ainda não avaliado devolvia a mensagem "POST /api/processo/avaliar"
+      // e NÃO havia botão nenhum — o painel mandava o usuário fazer uma requisição HTTP à mão. A rota
+      // só tinha "superfície" porque duplicava o /processo no menu; tirada a duplicata, o buraco apareceu.
+      b("/api/processo/avaliar", "Avaliar um processo SEI ainda não avaliado", "Dispara a avaliação 360 em background (fases, marcos, A1-A5, acatamento, juízo por documento). Use quando a consulta disser que o processo ainda não foi avaliado.", "numero"),
       b("/api/conjunto/orgao", "Avaliação de conjunto dos certames", "Lê o órgão como conjunto, não certame a certame — §5 da metodologia.", "orgao")
     ].join("") + `</div><div id="pc-out"></div>`;
     h += `<div class="note">Toda peça passa pelo gate de neutralidade (nenhum nome interno) e pelo gate de citações (nenhum acórdão inexistente).</div>`;

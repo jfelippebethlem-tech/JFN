@@ -225,7 +225,7 @@ def main() -> int:
             continue
         try:
             rot = rotular(pasta)
-        except Exception as e:  # noqa: BLE001
+        except (OSError, ValueError, KeyError, TypeError) as e:
             print(f"  ! rótulo falhou em {pasta.name}: {e}", file=sys.stderr)
             continue
         n += 1
@@ -234,7 +234,7 @@ def main() -> int:
             continue
         try:
             previstos, generico, nm = prever(pasta)
-        except Exception as e:  # noqa: BLE001
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as e:
             print(f"  ! detecção falhou em {pasta.name}: {e}", file=sys.stderr)
             continue
         vocab += nm

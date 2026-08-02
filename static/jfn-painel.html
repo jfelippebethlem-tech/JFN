@@ -61,7 +61,7 @@
 <!-- funções mestras derivadas de capabilities.yaml (fonte única) — precisa vir ANTES de painel.js,
      que consome `CAPS_MESTRAS`. Sem type=module e sem defer, pelo mesmo motivo do painel.js:
      mudar escopo/timing é o vetor que já matou este boot três vezes. -->
-<script src="/static/js/caps.js?v=11c98bd1"></script>
+<script src="/static/js/caps.js?v=7e277a73"></script>
 <!-- v58: o fonte do painel mora em `static/js/src/` e é empacotado por esbuild com
      `--format=iife`. A SAÍDA continua sendo script CLÁSSICO — sem type, sem defer, sem async,
      na mesma posição de sempre. A modularidade é propriedade do código-fonte, não do que vai
@@ -69,6 +69,6 @@
      Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
      com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
      bate com a tag e ela diz "em dia" enquanto serve código velho). -->
-<script src="/static/js/painel.bundle.js?v=dd6b2fb1"></script>
+<script src="/static/js/painel.bundle.js?v=7c8144ac"></script>
 </body>
 </html>

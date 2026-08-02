@@ -188,20 +188,6 @@ const CAPS_MESTRAS = [
   "descricao": "Avaliacao 360 do PROCESSO como um todo (fases, ordem dos marcos, pericia A1-A5, detectores P/E/J/C/X, acatamento de pareceres com suficiencia do emissor, score de convergencia)"
  },
  {
-  "id": "processo_360_avaliar",
-  "grupo": "🔎 Investigação",
-  "grupo_ic": "🔎",
-  "grupo_rot": "Investigação",
-  "nome": "Avaliar um processo SEI (360)",
-  "cmd": "",
-  "exemplo": "avaliar o processo SEI-070026/000410/2021",
-  "tipo": "http",
-  "metodo": "POST",
-  "rota": "/api/processo/avaliar",
-  "ordem": 27,
-  "descricao": "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)"
- },
- {
   "id": "conjunto_portfolio",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",

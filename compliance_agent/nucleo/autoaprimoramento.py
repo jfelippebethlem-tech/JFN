@@ -119,7 +119,7 @@ def _casos_reais() -> int:
     from compliance_agent.nucleo.avaliacao import CASOS_EMBUTIDOS, carregar_casos
     try:
         return max(0, len(carregar_casos()) - len(CASOS_EMBUTIDOS))
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError, KeyError):
         return 0
 
 
