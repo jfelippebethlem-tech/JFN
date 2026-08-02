@@ -139,10 +139,28 @@ def test_familias_do_qsa_extrai_sobrenome(con):
 # ── prevalência sobre o acervo real ──────────────────────────────────────────
 
 def _tem_base() -> bool:
+    """A base serve para ESTE teste? Existir o arquivo não basta.
+
+    No runner do CI o `compliance.db` é CRIADO vazio por outros testes, então o guard antigo
+    (só `Path(_DB).exists()`) deixava este teste rodar contra um banco sem tabelas e quebrar com
+    `no such table: socios_receita` — falha de ambiente disfarçada de regressão. Mesmo vício que
+    a corrida da árvore do SEI (2026-08-02): **checar presença quando o que importa é conteúdo**.
+    """
+    import sqlite3
     from pathlib import Path
 
     from compliance_agent.reporting.intel_base import _DB
-    return Path(_DB).exists()
+    if not Path(_DB).exists():
+        return False
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            return bool(con.execute(
+                "select 1 from sqlite_master where type='table' and name='socios_receita'").fetchone())
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return False
 
 
 @pytest.mark.skipif(not _tem_base(), reason="compliance.db ausente nesta máquina")
