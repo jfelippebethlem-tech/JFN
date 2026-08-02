@@ -14,19 +14,30 @@ from compliance_agent.sei import fases
 _GRAV_EMOJI = {"critica": "🔴", "alta": "🟠", "media": "🟡", "baixa": "🟢"}
 
 
-def _vereditos_persistidos(numero_sei: str) -> dict | None:
-    """Vereditos por documento já pagos (doc_veredito) — o PDF os mostra mesmo sem --com-llm."""
+def _vereditos_persistidos(numero_sei: str, db=None) -> dict | None:
+    """Vereditos por documento já pagos (doc_veredito) — o PDF os mostra mesmo sem --com-llm.
+
+    UM documento, UM juízo. `doc_veredito` acumula uma linha por rubrica: em 2026-08-02, 50 dos
+    57 processos tinham veredito de 2 ou 3 rubricas (407 pares numero_sei/doc_i repetidos). Sem
+    filtro, o entregável repetia o mesmo despacho e exibia as rubricas v1/v2 — que o próprio
+    `doc_juizo` declara erradas. Fica a avaliação da rubrica MAIS NOVA (numérica: v10 > v9) e,
+    no empate, a mais recente.
+    """
     import json
     import sqlite3
     from pathlib import Path
-    db = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
+    db = Path(db) if db else Path(__file__).resolve().parents[2] / "data" / "compliance.db"
     if not db.exists():
         return None
     try:
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
         try:
             rows = con.execute(
-                "select veredito_json from doc_veredito where numero_sei=? order by doc_i",
+                "select veredito_json from doc_veredito d where numero_sei=? and d.id = ("
+                "  select x.id from doc_veredito x"
+                "   where x.numero_sei = d.numero_sei and x.doc_i = d.doc_i"
+                "   order by cast(x.rubrica_versao as integer) desc, x.avaliado_em desc, x.id desc"
+                "   limit 1) order by d.doc_i",
                 (numero_sei,)).fetchall()
         finally:
             con.close()
