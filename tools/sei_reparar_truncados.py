@@ -59,8 +59,10 @@ def reparar(aplicar: bool = False) -> dict:
         QUARENTENA.mkdir(parents=True, exist_ok=True)
         for f, numero, _ in achados:
             shutil.move(str(f), str(QUARENTENA / f.name))
-            if numero and numero in feitos:
-                # zera para o sweep reler; preserva o histórico do que houve
+            if numero:
+                # zera SEMPRE (não só se a chave existir): o `_pular` do sweep decide por
+                # `n_docs>0` no progress — afastar o cache sem zerar aqui deixa o processo
+                # marcado como lido E sem cache, que é o pior dos dois mundos (2026-08-02).
                 feitos[numero] = {"n_docs": 0, "tentativas": 0,
                                   "em": datetime.now().isoformat(),
                                   "reparado_truncado_em": datetime.now().isoformat()}
@@ -101,10 +103,9 @@ def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
         QUARENTENA.mkdir(parents=True, exist_ok=True)
         for f, numero in alvos:
             shutil.move(str(f), str(QUARENTENA / f.name))
-            if numero in feitos:
-                feitos[numero] = {"n_docs": 0, "tentativas": 0,
-                                  "em": datetime.now().isoformat(),
-                                  "reparado_cap21k_em": datetime.now().isoformat()}
+            feitos[numero] = {"n_docs": 0, "tentativas": 0,
+                              "em": datetime.now().isoformat(),
+                              "reparado_cap21k_em": datetime.now().isoformat()}
         tmp = PROGRESS.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(prog, ensure_ascii=False))
         tmp.replace(PROGRESS)
