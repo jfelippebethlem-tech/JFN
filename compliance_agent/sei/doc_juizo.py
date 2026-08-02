@@ -131,6 +131,29 @@ def _trecho_confere(trecho: str | None, texto: str) -> bool:
     return bool(t) and len(t) >= 8 and t in _norm_txt(texto)
 
 
+# Cláusulas que a NORMA impõe ao parecerista (art. 50, §1º do Dec. est. 48.816/2023; art. 31 do
+# 46.642/2019). Delimitam a competência do órgão jurídico — não são esquiva do mérito. Medido em
+# 2026-08-02: 14 de 14 pareceres marcados escala 3 por causa delas foram reprovados na leitura
+# pericial. Lista fechada e literal de propósito: guard-rail determinístico, não classificador.
+_RESSALVAS_COMPETENCIA = (
+    "a presente analise toma por base, exclusivamente, os elementos",
+    "nao e funcao do orgao juridico atestar a vantajosidade",
+    "nao e funcao do orgao juridico atestar a vantajosidade ou economicidade",
+    "nao lhe competindo, pois, eventual analise acerca da conveniencia",
+    "descabe ao orgao de assessoramento juridico adentrar no exame do merito",
+    "nao adentra questoes tecnicas",
+    "cabe alertar para as exigencias legais",
+    "sob o prisma estritamente juridico",
+    "nao compete a esta assessoria juridica a analise de aspectos tecnicos",
+)
+
+
+def ressalva_de_competencia(trecho: str | None) -> bool:
+    """O trecho citado é uma cláusula de competência (e não prova de esquiva)?"""
+    t = _norm_txt(trecho or "")
+    return any(r in t for r in _RESSALVAS_COMPETENCIA)
+
+
 _DB_PADRAO = object()  # sentinela: default abre o compliance.db; con=None desliga o cache
 
 
@@ -251,5 +274,13 @@ def _um_voto(gerar, prompt: str, texto: str) -> dict:
         return {"escala": None, "trecho_literal": None,
                 "justificativa_curta": str(v.get("justificativa_curta") or "")[:200],
                 "aviso": "trecho literal não confere com o texto — juízo descartado"}
+    if esc == 3 and ressalva_de_competencia(trecho):
+        # A IA lê, o CÓDIGO arruma: a rubrica v3 já MANDAVA não tratar ressalva de competência
+        # como esquiva, e ainda assim 3 pareceres saíram escala 3 citando o disclaimer como
+        # prova. Quando a única prova oferecida é a cláusula que a lei impõe ao parecerista,
+        # ela não sustenta "esquiva" — rebaixa para 2 (favorável com ressalva) e registra.
+        return {"escala": 2, "trecho_literal": trecho or None,
+                "justificativa_curta": str(v.get("justificativa_curta") or "")[:200],
+                "aviso": "escala 3 rebaixada: o trecho citado é ressalva de competência, não esquiva"}
     return {"escala": esc, "trecho_literal": (trecho or None) if esc is not None else None,
             "justificativa_curta": str(v.get("justificativa_curta") or "")[:200]}
