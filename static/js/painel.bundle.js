@@ -1348,7 +1348,7 @@ void main(){
   // static/js/src/cena/index.js
   var _nebVid = {};
   var _nuVid = {};
-  var _nuPost = {};
+  var NUCLEO_COM_POSTER = /* @__PURE__ */ new Set(["nucleo-holo-prefeitura", "nucleo-holo-transversal"]);
   var NU_NODES = [
     { id: "radar", lab: "radar de risco", tab: "g_radar", cor: "#5fd9ff", orb: 0.9, sp: 1 },
     { id: "alertas", lab: "alertas", tab: "e_alertas", cor: "#ff7a8a", orb: 0.66, sp: -0.7 },
@@ -1484,14 +1484,7 @@ void main(){
     if (v.dataset.nu !== nome) {
       v.classList.remove("on");
       v.dataset.nu = nome;
-      if (_nuPost[nome] === void 0) {
-        try {
-          _nuPost[nome] = (await fetch("/static/assets/" + nome + ".jpg", { method: "HEAD" })).ok;
-        } catch (e) {
-          _nuPost[nome] = false;
-        }
-      }
-      if (_nuPost[nome]) v.poster = "/static/assets/" + nome + ".jpg";
+      if (NUCLEO_COM_POSTER.has(nome)) v.poster = "/static/assets/" + nome + ".jpg";
       else v.removeAttribute("poster");
       v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
       v.load();
@@ -2357,6 +2350,12 @@ void main(){
   }
 
   // static/js/src/cena/energia.js
+  var FIO = {
+    inicio: "99,224,255",
+    estado: "125,175,255",
+    prefeitura: "235,190,105",
+    geral: "200,150,255"
+  };
   var _raf = 0;
   var _pacotes = [];
   var _linhas = [];
@@ -2409,17 +2408,26 @@ void main(){
   }
   function _desenhar(agora) {
     if (!_cx) return;
+    const parado = _redMotion || _sobrio;
     _cx.clearRect(0, 0, _W, _H);
+    const cor = FIO[esfera] || FIO.inicio;
     for (const L of _linhas) {
       const c = _ctrl(L);
-      _cx.strokeStyle = "rgba(150,190,225,.13)";
-      _cx.lineWidth = 1;
+      const g = _cx.createLinearGradient(L.x0, L.y0, L.x1, L.y1);
+      g.addColorStop(0, `rgba(${cor},.26)`);
+      g.addColorStop(1, `rgba(${cor},.10)`);
+      _cx.strokeStyle = g;
+      _cx.lineWidth = 1.1;
       _cx.beginPath();
       _cx.moveTo(L.x0, L.y0);
       _cx.quadraticCurveTo(c.x, c.y, L.x1, L.y1);
       _cx.stroke();
+      _cx.fillStyle = `rgba(${cor},.5)`;
+      _cx.beginPath();
+      _cx.arc(L.x0, L.y0, 1.7, 0, 6.283);
+      _cx.fill();
     }
-    if (_redMotion) {
+    if (parado) {
       _raf = 0;
       return;
     }
@@ -2442,11 +2450,6 @@ void main(){
   }
   function energiaLigar() {
     energiaParar();
-    if (_sobrio) {
-      const c = $("ck-energia");
-      if (c) c.hidden = true;
-      return;
-    }
     if (!_medir()) {
       const c = $("ck-energia");
       if (c) c.hidden = true;
@@ -5752,6 +5755,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     }
     out.textContent = "⏳ Ainda gerando — confira no Telegram ou em Relatórios.";
   }
+  var sessaoReports = /* @__PURE__ */ new Set();
   function limparEfemeros() {
     if (!sessaoReports.size) return;
     const body = JSON.stringify({ nomes: [...sessaoReports] });

@@ -139,7 +139,10 @@ const TABS={
 /* `esfera` e `aba` vivem em `app/estado.js` — folha que a cena tambem importa. Enquanto
    moravam aqui, o IIFE do bundle as fechava e a cena quebrava com `esfera is not defined`. */
 import {esfera, aba, setEsfera, setAba} from './app/estado.js';
-const sessaoReports=new Set();
+/* Movido para `abas/index.js` na v59 — ver a razão lá. Este comentário fica porque a linha que
+   estava aqui era um bug de verdade: `const` no entrypoint, USADA em `abas/`, e o esbuild podava
+   a declaração (nada no entrypoint a referenciava) deixando três usos órfãos no bundle. O sintoma
+   era `sessaoReports is not defined` ao gerar uma peça e a cada `pagehide`. */
 
 function montarSpheres(){
   $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');

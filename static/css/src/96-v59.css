@@ -186,7 +186,9 @@
     .ck-orbita .ck-inst::after{width:62px;height:62px;right:8px;opacity:.26}
   }
 
-  /* Modo sóbrio: a órbita continua (é LAYOUT, não animação — desfazê-la mudaria a leitura da
-     tela), mas o canvas sai. Quem já não sustenta os quadros que existiam antes desta camada não
-     vai sustentar mais um laço. */
-  body.fps-baixo .ck-energia{display:none}
+  /* Modo sóbrio: a órbita continua (é LAYOUT) E os fios continuam (são ESTRUTURA — dizem o que se
+     liga a quê). O que sai é o tráfego, e quem o corta é o JS, que simplesmente não empilha
+     pacote. A primeira versão escondia o canvas aqui, e o efeito medido foi pior que o custo
+     evitado: na máquina lenta — que é exatamente onde o modo sóbrio liga — a camada não existia,
+     e quem visse o painel só lá concluiria que ela nunca tinha sido feita. Desenho parado custa
+     um quadro, uma vez. */

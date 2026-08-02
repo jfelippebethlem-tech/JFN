@@ -2982,6 +2982,25 @@
     opacity:0;transform:translateY(-14px);transition:opacity .24s ease,transform .24s cubic-bezier(.22,.61,.36,1)}
   #consciencia.on{opacity:1;transform:none}
 
+  /* ⚠️⚠️ AS DUAS LINHAS ABAIXO SÃO O QUE FAZ O PAINEL SER CLICÁVEL. Não apague nenhuma.
+     A regra acima declara `display:flex`, e uma declaração de `display` VENCE o `[hidden]{display:none}`
+     da folha do navegador. Resultado: o `d.hidden = true` do `conscienciaLigar` não escondia nada —
+     o deck ficava permanentemente no layout, `position:fixed`, `inset:0`, `z-index:60`, invisível a
+     `opacity:0` e com `pointer-events` ligado. Um escudo de tela cheia sobre o painel inteiro.
+
+     O PAINEL FICOU INTEIRO SEM RECEBER UM CLIQUE desde que o deck entrou (v58), e nenhuma rede
+     pegou: o `painel_boot_check` navega chamando `ir()` por JavaScript e NUNCA clica, então para
+     ele estava tudo perfeito — 60 abas, zero pageerror, sobre uma tela que não respondia ao mouse.
+     Quem achou foi o dono, dizendo "não consigo clicar em nada". Ver `painel_clique_check`, que é
+     a rede que faltava.
+
+     Duas travas, de propósito: `[hidden]` corrige a causa; `:not(.on)` cobre a janela de 260ms em
+     que o deck já fechou mas ainda não recebeu o atributo de volta (o `setTimeout` do
+     `conscienciaFechar`) — nesse intervalo ele ainda era um escudo. */
+  #consciencia[hidden]{display:none}
+  #consciencia:not(.on){pointer-events:none}
+  #consciencia.on{pointer-events:auto}
+
   /* ── o fundo do deck ──────────────────────────────────────────────────────────────────────
      A cena propria da Consciencia (Gemini): filamentos de ion subindo pelas duas BORDAS, com o
      centro do quadro vazio de proposito — e la que fica a grade de leitura.
@@ -3402,7 +3421,9 @@
     .ck-orbita .ck-inst::after{width:62px;height:62px;right:8px;opacity:.26}
   }
 
-  /* Modo sóbrio: a órbita continua (é LAYOUT, não animação — desfazê-la mudaria a leitura da
-     tela), mas o canvas sai. Quem já não sustenta os quadros que existiam antes desta camada não
-     vai sustentar mais um laço. */
-  body.fps-baixo .ck-energia{display:none}
+  /* Modo sóbrio: a órbita continua (é LAYOUT) E os fios continuam (são ESTRUTURA — dizem o que se
+     liga a quê). O que sai é o tráfego, e quem o corta é o JS, que simplesmente não empilha
+     pacote. A primeira versão escondia o canvas aqui, e o efeito medido foi pior que o custo
+     evitado: na máquina lenta — que é exatamente onde o modo sóbrio liga — a camada não existia,
+     e quem visse o painel só lá concluiria que ela nunca tinha sido feita. Desenho parado custa
+     um quadro, uma vez. */

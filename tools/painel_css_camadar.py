@@ -60,6 +60,27 @@ _CAMADAS = [
 ]
 _MARCA = "/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */"
 
+# ── A ESCOTILHA `@camada:` ────────────────────────────────────────────────────────────────────
+# Um bloco pode declarar, num comentario logo acima dele, a que camada pertence:
+#
+#     /* @camada: base — <por que> */
+#     .btn{ ... }
+#
+# Ela existe porque `@layer` inverte UMA relacao que este CSS usa de proposito: dentro de uma
+# camada quem decide e a ESPECIFICIDADE, mas entre camadas a especificidade nao conta — a camada
+# mais alta vence, por menos especifica que seja.
+#
+# O caso que a criou (medido, 96 telas, 188 elementos, todos `.btn`): o bloco do v54 que compoe o
+# fundo do botao tem o proprio comentario dizendo que conta com isso — "so o `.btn` puro adoeceu:
+# `.ghost/.accent/.red/.green` tem duas classes e GANHAM a cascata". Com o v54 numa camada acima
+# do `00-v7-base`, `.btn` (uma classe) passou a vencer `.btn.ghost` (duas), e todo botao fantasma
+# do painel ganhou o fundo ambar do botao primario.
+#
+# A escotilha nao e um remendo: e a forma de dizer, no lugar certo, que aquele bloco DEFINE o
+# botao base em vez de sobrescrever alguem. A alternativa era mover a regra de arquivo — o que
+# esconderia a intencao no `git log` em vez de deixa-la ao lado da regra.
+_ESCOTILHA = re.compile(r"@camada:\s*([a-z0-9]+)")
+
 
 def _blocos(css: str) -> list[str]:
     """Fatia o CSS em blocos de topo, com contagem de chaves e comentario respeitado.
@@ -94,10 +115,23 @@ def _blocos(css: str) -> list[str]:
 
 
 def aplicar() -> int:
+    """DUAS PASSADAS, e a segunda existe por causa da escotilha.
+
+    Na primeira so se LE: cada bloco e classificado em camada, cauda ou desvio. So depois se
+    escreve. Fazer tudo numa passada parecia funcionar e nao funcionava: um bloco de `80-v54` que
+    declara `@camada: base` chega quando o arquivo do `base` ja foi gravado, e o desvio se perdia
+    em silencio — o pior tipo de defeito para uma ferramenta cuja saida ninguem le linha a linha.
+    """
     if _CAUDA.exists():
-        print("[camadar] ja aplicado — rode --desfazer antes", file=sys.stderr)
+        print("[camadar] ja aplicado — rode `git checkout static/css/src` antes", file=sys.stderr)
         return 2
+
+    arquivos: dict[str, Path] = {}
+    dentro: dict[str, list[str]] = {}
+    desviados: dict[str, list[str]] = {}
     cauda: list[str] = []
+
+    # ── passada 1: ler e classificar ────────────────────────────────────────────────────────
     for pref, nome in _CAMADAS:
         alvos = list(_SRC.glob(f"{pref}-*.css"))
         if not alvos:
@@ -107,15 +141,40 @@ def aplicar() -> int:
         if _MARCA in css:
             print(f"[camadar] {p.name} ja camadado", file=sys.stderr)
             return 2
-        dentro, fora = [], []
+        arquivos[nome] = p
+        dentro[nome] = []
         for b in _blocos(css):
             sem_com = re.sub(r"/\*.*?\*/", "", b, flags=re.S)
-            (fora if "!important" in sem_com else dentro).append(b)
-        cauda.extend(fora)
-        p.write_text(f"{_MARCA}\n@layer {nome} {{\n" + "".join(dentro) + "\n}\n",
+            if "!important" in sem_com:
+                cauda.append(b)
+                continue
+            m = _ESCOTILHA.search(b)
+            if m and m.group(1) != nome:
+                if m.group(1) not in dict(_CAMADAS).values():
+                    raise SystemExit(f"[camadar] `@camada: {m.group(1)}` em {p.name} nao e uma "
+                                     f"camada declarada — corrija o comentario ou _CAMADAS")
+                desviados.setdefault(m.group(1), []).append(b)
+                print(f"[camadar] {p.name}: bloco desviado para a camada `{m.group(1)}`")
+                continue
+            dentro[nome].append(b)
+
+    # ── passada 2: escrever ─────────────────────────────────────────────────────────────────
+    for _, nome in _CAMADAS:
+        p = arquivos.get(nome)
+        if p is None:
+            continue
+        # O desvio entra REABRINDO a camada, depois do corpo proprio: `@layer` e reabrivel e o
+        # conteudo se acumula na ordem do documento. Como o bloco desviado vinha de um estrato
+        # POSTERIOR, entrar no fim preserva a posicao relativa que ele ja tinha.
+        extra = ""
+        if nome in desviados:
+            extra = (f"\n/* reaberto — bloco(s) de estrato posterior que declararam "
+                     f"`@camada: {nome}` */\n@layer {nome} {{\n"
+                     + "".join(desviados[nome]) + "\n}\n")
+        p.write_text(f"{_MARCA}\n@layer {nome} {{\n" + "".join(dentro[nome]) + "\n}\n" + extra,
                      encoding="utf-8")
-        print(f"[camadar] {p.name}: {len(dentro)} bloco(s) na camada `{nome}`, "
-              f"{len(fora)} para a cauda")
+        print(f"[camadar] {p.name}: {len(dentro[nome])} bloco(s) na camada `{nome}`"
+              + (f" + {len(desviados[nome])} desviado(s) de fora" if nome in desviados else ""))
 
     ordem = ", ".join(n for _, n in _CAMADAS)
     cab = (f"{_MARCA}\n"
@@ -123,8 +182,7 @@ def aplicar() -> int:
            "   Ler o cabecalho de tools/painel_css_camadar.py antes de tocar: a ordem destes\n"
            "   blocos E o desempate, e mexer nela inverte duelos de `!important` em silencio. */\n")
     _CAUDA.write_text(cab + "".join(cauda), encoding="utf-8")
-    # a declaracao de ordem tem de vir ANTES de qualquer `@layer` com corpo
-    p0 = list(_SRC.glob("00-*.css"))[0]
+    p0 = arquivos[_CAMADAS[0][1]]
     p0.write_text(f"@layer {ordem};\n" + p0.read_text(encoding="utf-8"), encoding="utf-8")
     print(f"[camadar] cauda: {len(cauda)} bloco(s) em {_CAUDA.name}")
     print(f"[camadar] ordem declarada: @layer {ordem};")

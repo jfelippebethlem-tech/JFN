@@ -31,13 +31,30 @@
  * silenciosa, que é o custo que a VM não tem para dar. É a mesma conta do `setInterval` da
  * Consciência, que só corre com o deck aberto.
  *
- * Os dois pisos: `prefers-reduced-motion` deixa os fios parados (a estrutura continua sendo
- * informação — ela diz o que se liga a quê); modo sóbrio apaga o canvas inteiro, porque aí a
- * máquina já não estava dando conta do que existia antes desta camada.
+ * Os dois pisos DESLIGAM O TRÁFEGO, NÃO A ESTRUTURA. `prefers-reduced-motion` e modo sóbrio
+ * deixam os fios desenhados e parados: o fio diz O QUE SE LIGA A QUÊ, e isso é informação, não
+ * enfeite — apagá-lo faz a órbita parecer oito cartões soltos em volta de um quadro.
+ *
+ * A primeira versão apagava o canvas inteiro em modo sóbrio, e o efeito medido foi pior do que o
+ * custo que ela evitava: numa máquina lenta (que é onde o modo sóbrio liga) a camada simplesmente
+ * não existia, e quem visse o painel só lá concluiria que ela nunca foi feita. O desenho parado
+ * custa UM quadro, uma vez, sem laço nenhum — é literalmente o que já se paga por qualquer coisa
+ * que aparece na tela. O que custa é o pacote, e é o pacote que sai.
  */
 import {$} from '../nucleo/dom.js';
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {EV_COR, EV_DOMINIO} from './index.js';
+import {esfera} from '../app/estado.js';
+
+/* A COR DO FIO vem da ESFERA, e a dose foi calibrada olhando a tela.
+   A primeira versão usava um cinza-azulado fixo a 13% de alfa: medido no painel servido, a linha
+   simplesmente não se via — a órbita ficava sendo oito cartões soltos em volta de um quadro, que
+   é exatamente o que ela existe para desfazer. Fio que não se vê não liga nada.
+   Dose atual: 26% no arranque (junto ao instrumento) caindo a 10% na chegada ao núcleo. O
+   degradê tem sentido além do estético — ele diz de onde a leitura SAI: o fio é mais forte no
+   cartão, que é o dado, e se dissolve no centro, que é onde tudo converge. */
+const FIO = {inicio: '99,224,255', estado: '125,175,255',
+             prefeitura: '235,190,105', geral: '200,150,255'};
 
 let _raf = 0;
 let _pacotes = [];        // {i: índice da linha, p: 0..1, c: 'r,g,b'}
@@ -98,17 +115,29 @@ function _ponto(L, t) {
 
 function _desenhar(agora) {
   if (!_cx) return;
+  const parado = _redMotion || _sobrio;      // fios sim, tráfego não
   _cx.clearRect(0, 0, _W, _H);
+  const cor = FIO[esfera] || FIO.inicio;
   for (const L of _linhas) {
     const c = _ctrl(L);
-    _cx.strokeStyle = 'rgba(150,190,225,.13)';
-    _cx.lineWidth = 1;
+    /* Degradê ao longo do próprio fio, do instrumento para o núcleo. `createLinearGradient` custa
+       um objeto por linha e por quadro — mas este laço só roda quando há pacote vivo, e são oito
+       linhas. Fora disso o quadro é desenhado UMA vez. */
+    const g = _cx.createLinearGradient(L.x0, L.y0, L.x1, L.y1);
+    g.addColorStop(0, `rgba(${cor},.26)`);
+    g.addColorStop(1, `rgba(${cor},.10)`);
+    _cx.strokeStyle = g;
+    _cx.lineWidth = 1.1;
     _cx.beginPath();
     _cx.moveTo(L.x0, L.y0);
     _cx.quadraticCurveTo(c.x, c.y, L.x1, L.y1);
     _cx.stroke();
+    /* O ponto de partida acende de leve: é onde o fio encosta no instrumento, e sem ele a linha
+       parece nascer do nada a alguns pixels do cartão. */
+    _cx.fillStyle = `rgba(${cor},.5)`;
+    _cx.beginPath(); _cx.arc(L.x0, L.y0, 1.7, 0, 6.283); _cx.fill();
   }
-  if (_redMotion) { _raf = 0; return; }          // fios parados: a estrutura, sem o tráfego
+  if (parado) { _raf = 0; return; }             // fios parados: a estrutura, sem o tráfego
 
   _pacotes = _pacotes.filter(p => agora - p.t0 < DUR);
   for (const p of _pacotes) {
@@ -131,7 +160,6 @@ function _desenhar(agora) {
 /** Liga a órbita. Chamada do `ckBoot`, depois de o `#ck-grid` estar preenchido. */
 export function energiaLigar() {
   energiaParar();
-  if (_sobrio) { const c = $('ck-energia'); if (c) c.hidden = true; return; }
   if (!_medir()) { const c = $('ck-energia'); if (c) c.hidden = true; return; }
   _cv.hidden = false;
   _desenhar(performance.now());
@@ -153,7 +181,7 @@ export function energiaParar() {
 
 /** UM pacote por evento REAL do barramento, na linha do domínio que o produziu. */
 export function energiaPacote(tipo) {
-  if (_redMotion || _sobrio || !_linhas.length || !_cx) return;
+  if (_redMotion || _sobrio || !_linhas.length || !_cx) return;   // o TRÁFEGO é o que os pisos cortam
   const alvo = EV_DOMINIO[tipo];
   const i = _linhas.findIndex(L => L.id === alvo);
   /* Evento de domínio que não tem instrumento na órbita NÃO vira pacote em linha qualquer. Pintar

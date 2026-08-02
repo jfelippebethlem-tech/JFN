@@ -52,7 +52,9 @@ export {_ckMX, _ckMY, cenaPonteiro} from './ponteiro.js';
 /* ══ CACHES DE SONDA ══ */
 var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes da def
 var _nuVid={};    // idem para o núcleo holográfico (um loop por esfera)
-var _nuPost={};   // e para o POSTER de cada núcleo — nem toda esfera tem .jpg (ver `nucleoViva`)
+/* Quais núcleos TÊM poster no disco. Nem toda esfera tem: `nucleo-holo-rj` nunca teve .jpg.
+   Conferida contra `static/assets/` por `tests/test_painel_assets.py` — ver `nucleoViva`. */
+export const NUCLEO_COM_POSTER=new Set(['nucleo-holo-prefeitura','nucleo-holo-transversal']);
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -137,8 +139,8 @@ export function _setNuHover(v){_nuHover=v;}
    v53: o loop deixa de ser fixo no rj — cada esfera tem o seu (ambar na prefeitura,
    violeta no transversal), no MESMO padrao da nebulosa: webm antes do mp4, poster
    .jpg por baixo, sonda HEAD uma vez por nome, reduced-motion e modo sobrio apagam.
-   Estado e Inicio seguem no nucleo-holo-rj, que nao tem .jpg: o poster e sondado por HEAD e so
-   entra se existir — a versao anterior atribuia o poster sem condicao e gerava 404 no console. */
+   Estado e Inicio seguem no nucleo-holo-rj, que NAO tem .jpg: o poster so entra para os nomes de
+   `NUCLEO_COM_POSTER`, sem sondagem nenhuma — sondar por HEAD tambem produz 404. */
 export async function nucleoViva(){
   const box=$('ck-nucleo');if(!box)return;
   const mapa={inicio:'nucleo-holo-rj',estado:'nucleo-holo-rj',
@@ -161,17 +163,20 @@ export async function nucleoViva(){
     v.addEventListener('playing',()=>v.classList.add('on'));
     box.insertBefore(v,box.firstChild);}
   if(v.dataset.nu!==nome){v.classList.remove('on');v.dataset.nu=nome;
-    /* O comentario acima dizia "sem poster, sem erro" e a linha abaixo dizia o contrario: o
-       poster era atribuido SEM condicao, e `nucleo-holo-rj.jpg` nao existe. Resultado medido:
-       um 404 no console em toda carga das esferas Inicio e Estado — as duas mais visitadas.
-       Poster ausente nao e falha (o veu so acende no `playing`), mas 404 recorrente ensina a
-       ignorar o console, que e onde os cinco bugs do IIFE aparecem. Sonda uma vez por nome,
-       no mesmo idioma do HEAD que a linha de cima ja usa: se um dia o .jpg for gerado, ele
-       entra sozinho. */
-    if(_nuPost[nome]===undefined){
-      try{_nuPost[nome]=(await fetch('/static/assets/'+nome+'.jpg',{method:'HEAD'})).ok}
-      catch(e){_nuPost[nome]=false}}
-    if(_nuPost[nome])v.poster='/static/assets/'+nome+'.jpg';else v.removeAttribute('poster');
+    /* O comentario acima dizia "sem poster, sem erro" e a linha original dizia o contrario: o
+       poster era atribuido SEM condicao, e `nucleo-holo-rj.jpg` nao existe — 404 em toda carga
+       das esferas Inicio e Estado, as duas mais visitadas.
+
+       A PRIMEIRA CORRECAO NAO CORRIGIU: ela sondava o .jpg por HEAD antes de usar, e um HEAD
+       para um arquivo que nao existe e um 404 igual. Trocar GET por HEAD limpa a rede, nao o
+       console — e era o console que a correcao existia para limpar. Medido depois de commitada:
+       o 404 continuava la.
+
+       Agora a lista e EXPLICITA, e `test_painel_assets` a confronta com o disco: se alguem gerar
+       o .jpg que falta e esquecer de anotar aqui, o teste falha dizendo o nome. Lista que o teste
+       vigia nao envelhece calada, e custa zero requisicao. */
+    if(NUCLEO_COM_POSTER.has(nome))v.poster='/static/assets/'+nome+'.jpg';
+    else v.removeAttribute('poster');
     /* v41.1: par de sources — webm primeiro (Chromium sem H.264 decodifica VP9;
        o Chrome real pega qualquer um). O que faltar cai pro proximo. */
     v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'

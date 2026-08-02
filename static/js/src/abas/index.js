@@ -1609,6 +1609,11 @@ export async function pollarPdf(out,termo,t0,antes){
     if(alvo){sessaoReports.add(alvo.name);out.innerHTML='✅ pronto: '+esc(alvo.name)+`\n\n📄 <a href="${alvo.url}" target="_blank" style="color:var(--accent)">abrir PDF</a> (apaga ao sair)`;return;}}
   out.textContent='⏳ Ainda gerando — confira no Telegram ou em Relatórios.';
 }
+/* O REGISTRO DAS PEÇAS DA SESSÃO. Morava no entrypoint e era usado SÓ aqui — um símbolo livre
+   entre módulos, do tipo que o `esbuild` empacota calado. Pior: como nada no entrypoint o
+   referenciava, a poda de código morto levava a declaração e deixava os três usos, e o bundle
+   publicado tinha `sessaoReports` usado três vezes e declarado zero. Agora mora com quem usa. */
+const sessaoReports=new Set();
 export function limparEfemeros(){if(!sessaoReports.size)return;const body=JSON.stringify({nomes:[...sessaoReports]});
   try{navigator.sendBeacon('/api/compliance/reports/limpar',new Blob([body],{type:'application/json'}));}
   catch(e){fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true});}}
