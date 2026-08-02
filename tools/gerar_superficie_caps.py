@@ -33,6 +33,17 @@ _YAML = _REPO / "capabilities.yaml"
 _SAIDA = _REPO / "static" / "js" / "caps.js"
 
 
+def _ic_grupo(grupo: str) -> str:
+    """Emoji inicial do rótulo do grupo (chave do JFN_ICO no painel); '' se não houver."""
+    p = grupo.split(" ", 1)[0]
+    return p if p and not p[0].isalnum() else ""
+
+
+def _rot_grupo(grupo: str) -> str:
+    """Rótulo do grupo sem o emoji inicial."""
+    return grupo[len(_ic_grupo(grupo)):].strip() or grupo
+
+
 def mestras() -> list[dict]:
     """Capacidades PRONTAS com bloco `menu:` — as que o dono quer alcançar por botão."""
     dados = yaml.safe_load(_YAML.read_text(encoding="utf-8"))
@@ -41,9 +52,15 @@ def mestras() -> list[dict]:
         menu = c.get("menu")
         if not menu or str(c.get("status", "")).upper() != "PRONTO":
             continue
+        grupo = menu.get("grupo") or c.get("dominio") or "geral"
         saida.append({
             "id": c.get("id"),
-            "grupo": menu.get("grupo") or c.get("dominio") or "geral",
+            "grupo": grupo,
+            # o emoji vive colado no rótulo do grupo na YAML (chave de ordenação e de
+            # docs/CAPACIDADES.md). Aqui ele é SEPARADO para o painel desenhar o glifo
+            # do jfn-icones.js no lugar do emoji colorido — sem mexer na YAML.
+            "grupo_ic": _ic_grupo(grupo),
+            "grupo_rot": _rot_grupo(grupo),
             "nome": menu.get("nome") or c.get("id"),
             "cmd": menu.get("cmd") or "",
             "exemplo": menu.get("exemplo") or "",

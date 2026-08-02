@@ -1,5 +1,12 @@
 {
+  "private": true,
+  "scripts": {
+    "build:painel": "esbuild static/js/src/entrada.js --bundle --format=iife --target=es2020 --charset=utf8 --sourcemap=linked --outfile=static/js/painel.bundle.js"
+  },
   "dependencies": {
     "puppeteer": "^25.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }

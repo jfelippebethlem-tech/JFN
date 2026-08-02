@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Central de Inteligência — Controle Externo · RJ</title>
-<link rel="stylesheet" href="/static/css/painel.css?v=25e91645">
+<link rel="stylesheet" href="/static/css/painel.css?v=8562f994">
 </head>
 <body>
 <div id="portal" hidden><video id="pvid" autoplay muted loop playsinline preload="auto" aria-hidden="true"
@@ -20,6 +20,10 @@
 <div id="hologrid" aria-hidden="true"></div>
 <canvas id="rjbg" aria-hidden="true"></canvas>
 <div id="esfnebula" aria-hidden="true"></div>
+<!-- v55: assinatura holográfica do painel — a silhueta REAL do Estado do RJ projetada sobre o
+     anel arc-reactor. Só acende na esfera Estado; enquanto está no ar, o #rjbg (que desenha a
+     MESMA malha) recua, para não haver dois Estados brigando pela mesma leitura. -->
+<div id="holorj" aria-hidden="true"></div>
 <canvas id="netbg" aria-hidden="true"></canvas>
 <div class="aura a1" aria-hidden="true"></div><div class="aura a2" aria-hidden="true"></div>
 <div id="aurora" aria-hidden="true"></div>
@@ -27,10 +31,13 @@
 <div class="wrap">
   <header>
     <div class="htop">
-      <div class="brand"><span class="lg">CE</span><div>Controle Externo<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></div></div>
+      <!-- v57: a página não tinha <h1> — a hierarquia começava em h2 e o leitor de tela entrava
+           sem saber ONDE estava. A marca já É o título da página; vira h1 sem mudar um pixel
+           (o CSS mira `.brand`, não a tag). O h2 é o título da esfera, dentro do `cover`. -->
+      <div class="brand"><span class="lg">CE</span><h1>Controle Externo<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></h1></div>
       <span class="live" id="livebadge" onclick="hfToggle()" style="cursor:pointer" title="canal de eventos ao vivo — clique para o holofeed"><span class="pulse"></span><span id="livetxt">ao vivo</span></span>
       <span class="actions">
-        <span id="kyber" onclick="hfToggle()" title="Kyber core — carga da VM · clique para o holofeed">
+        <span id="kyber" onclick="conscienciaToggle()" role="button" tabindex="0" title="Consciência do sistema — carga, sweeps e o que está sendo captado agora (tecla C)">
           <svg viewBox="0 0 30 30"><circle class="kseg" cx="15" cy="15" r="14"/>
           <circle class="ktrk" cx="15" cy="15" r="11.5"/>
           <circle class="karc" id="karc" cx="15" cy="15" r="11.5" stroke-dasharray="72.3" stroke-dashoffset="72.3"/>
@@ -50,11 +57,18 @@
   <ul id="hflist"></ul><div class="hf-vazio" id="hfvazio">Silêncio honesto — sem eventos novos; a lâmina respira.</div>
 </div>
 
-<script src="/static/assets/jfn-icones.js"></script>
+<script src="/static/assets/jfn-icones.js?v=ab4d029f"></script>
 <!-- funções mestras derivadas de capabilities.yaml (fonte única) — precisa vir ANTES de painel.js,
      que consome `CAPS_MESTRAS`. Sem type=module e sem defer, pelo mesmo motivo do painel.js:
      mudar escopo/timing é o vetor que já matou este boot três vezes. -->
-<script src="/static/js/caps.js"></script>
-<script src="/static/js/painel.js?v=66af4ca4"></script>
+<script src="/static/js/caps.js?v=11c98bd1"></script>
+<!-- v58: o fonte do painel mora em `static/js/src/` e é empacotado por esbuild com
+     `--format=iife`. A SAÍDA continua sendo script CLÁSSICO — sem type, sem defer, sem async,
+     na mesma posição de sempre. A modularidade é propriedade do código-fonte, não do que vai
+     pela rede: é o que permite quebrar o monolito sem tocar no timing do boot.
+     Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
+     com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
+     bate com a tag e ela diz "em dia" enquanto serve código velho). -->
+<script src="/static/js/painel.bundle.js?v=2d336660"></script>
 </body>
 </html>

@@ -1,8 +1,34 @@
+/* TESTEMUNHA DO BOOT — precisa ser a PRIMEIRA instrução executada do painel, e não é decoração.
+   O HTML carrega este script sem `type=module` e sem `defer` de propósito: ele tem de bloquear o
+   parser e rodar ANTES do DOMContentLoaded (mudar isso é o vetor que já matou este boot três
+   vezes). Até agora essa propriedade era defendida por um COMENTÁRIO. Aqui ela vira um fato
+   observável: com script clássico bloqueante, `document.readyState` é 'loading'; com defer ou
+   module, vira 'interactive'. `painel_boot_check` afirma 'loading' e falha se alguém mexer. */
+window.__jfnBootReadyState=document.readyState;
 
-const $=id=>document.getElementById(id);
-// ícone da aba = glifo SVG sci-fi (Lucide/ISC), tingido pela esfera. Fallback: emoji.
-const svgIco=e=>{const g=window.JFN_ICO&&window.JFN_ICO[e];
-  return g?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>`:e;};
+/* O NUCLEO — primitivas puras, extraidas do monolito na etapa 3 da quebra em modulos.
+   Nada aqui toca DOM montado nem estado de navegacao; e o que ~40 dos 59 renders consomem.
+   Sao os primeiros a sair de proposito: se algo neles quebrar, quebra tudo, e e melhor
+   descobrir enquanto ainda ha pouco em jogo. */
+import {$, esc, svgIco, card, kpi, sec, spin, cover, leitura, semMedicao, btnPdf, acoesAba,
+        toggle, corta, clk} from './nucleo/dom.js';
+import {fmtN, fmtD, fmtPct, fmtR, fmtRc, ROTULOS, rot} from './nucleo/formato.js';
+import {J, _jCache, erroHumano} from './nucleo/http.js';
+import {filtrar, filtrarPag, _pagMais, _acPagPick, buscaPag, listaPaginada, ordenar,
+        _pagState} from './nucleo/lista.js';
+
+/* O RELOGIO DO PAINEL. Modulo sem efeito de topo: quem o liga sao os dois pontos do SSE abaixo —
+   o batimento (carga + sweep) e o evento. Sem barramento, ele nunca acorda e o painel respira
+   devagar, que e a leitura honesta. */
+import {ritmoTelemetria, ritmoEvento} from './ritmo.js';
+import {sabreStart, hfToggle} from './barramento/sabre.js';
+/* O DECK DA CONSCIENCIA. Modulo sem efeito de topo; quem o liga e a sequencia de boot abaixo, e
+   quem o alimenta sao os mesmos ganchos do barramento — uma conexao SSE so, dois ouvintes. */
+import {conscienciaLigar, conscienciaEvento, conscienciaBatimento,
+        conscienciaToggle} from './consciencia.js';
+import {ritmoEstado} from './ritmo.js';
+
+
 /* v45: _redMotion vive no TOPO. Estava declarado 2.800 linhas abaixo e o boot
    (nucleoStart, canvas do nucleo) o lia antes — ReferenceError de TDZ que
    matava a montagem do nucleo em toda carga. Mesmo motivo do _rjCbs. */
@@ -14,59 +40,9 @@ var _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
    media o orçamento, dizia "não cabe", e gastava igual. Mesmo topo do _redMotion pelo mesmo TDZ. */
 var _sobrio=false;
 var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes da def
+var _nuVid={};    // idem para o núcleo holográfico (um loop por esfera)
 var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmtN=n=>(n==null?'—':Number(n).toLocaleString('pt-BR'));
-/* pct assinado: o + so aparece quando e positivo — '+-8%' era bug em e_adit */
-const fmtPct=p=>(p==null?'—':(p>0?'+':'')+fmtN(p)+'%');
-const fmtR=v=>'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
-const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
-  if(a>=1e9)return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
-  if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
-  if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return fmtR(v);};
-// 1 retry (só GET) — rede/DB ocupado num instante não pode virar aba "zerada" pro usuário.
-// + cache de navegação (TTL 90s, só GET): voltar numa aba já vista abre INSTANTÂNEO sem perder
-// informação — o dado expira sozinho e re-busca. Fora do cache: SSE e os status de polling.
-const _jCache=new Map();
-async function J(ep,opt){
-  const isGet=!opt||!opt.method||opt.method==='GET';
-  const cacheavel=isGet&&!/\/stream|\/status|\/api\/eventos/.test(ep);
-  if(cacheavel){const c=_jCache.get(ep);if(c&&Date.now()-c.t<90000)return c.d;}
-  /* TETO DE ESPERA: `fetch` sem AbortController espera para SEMPRE. Uma rota lenta não
-     virava erro — virava um card parado em "—" sem explicação nenhuma, indistinguível de
-     "não há dado". Foi assim que o "ninhos de fachada" ficou mudo. Agora estoura em 30 s
-     e vira mensagem humana, que é honesto: INDISPONÍVEL ≠ 0, mas silêncio ≠ INDISPONÍVEL. */
-  const TETO=(opt&&opt.tetoMs)||30000;
-  for(let t=0;;t++){
-    const ac=('AbortController' in window)?new AbortController():null;
-    const relogio=ac?setTimeout(()=>ac.abort(),TETO):0;
-    try{const r=await fetch(ep,ac?Object.assign({},opt,{signal:ac.signal}):opt);
-      const d=await r.json();
-      if(cacheavel&&d&&d.ok!==false)_jCache.set(ep,{t:Date.now(),d});
-      return d;}
-    catch(e){
-      const estourou=e&&e.name==='AbortError';
-      if(!isGet||t>=1)return{erro:estourou?`a rota ${ep} não respondeu em ${TETO/1000}s`:String(e)};
-      await new Promise(rs=>setTimeout(rs,1200));}
-    finally{if(relogio)clearTimeout(relogio);}
-  }
-}
-const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
-// ícone semântico do KPI, deduzido da cor: crítico/dinheiro/ok/info
-const _kpiIco=cor=>{const c=String(cor||'');
-  if(/rose/.test(c))return'§alert'; if(/gold|amber/.test(c))return'§money';
-  if(/green/.test(c))return'§ok'; if(/accent|teal|blue|violet|purple/.test(c))return'§info'; return'';};
-// dest (opcional) = id de aba: torna o KPI clicável e leva à aba (ir() troca de esfera sozinho;
-// a11yfy() já torna qualquer [onclick] operável por teclado). Ex.: kpi(n,'Alertas ativos',cor,'🚨','e_alertas').
-const kpi=(v,l,cor,gl,dest)=>{const ik=_kpiIco(cor);
-  const go=dest?` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}`:'';
-  return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}${ik?`<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>`:''}</div>`;};
-const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
-const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
-const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="cover-row">${ic?`<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>`:''}<div class="cover-tx"><div class="t">${t}</div><div class="s">${s}</div></div></div></div>`;
-const leitura=t=>`<div class="leitura">${t}</div>`;
-// botão "Gerar PDF" (padrão Kroll) para qualquer aba de inteligência
-const btnPdf=tipo=>`<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">Gerar PDF</button>`;
+
 async function gerarPdfIntel(tipo,el){
   const txt=el.innerHTML;el.innerHTML='<span class="sp" style="width:12px;height:12px"></span> gerando…';el.disabled=true;
   const r=await J('/api/intel/pdf?tipo='+encodeURIComponent(tipo));
@@ -74,96 +50,14 @@ async function gerarPdfIntel(tipo,el){
   if(r.ok&&r.url){window.open(r.url,'_blank');}
   else{jfnToast('Falha ao gerar o PDF — '+(r.erro||'o servidor não respondeu. Tente de novo em instantes.'),'rose');}
 }
-// barra de ação da aba (PDF + eventuais extras), colocada logo após o cover
-const acoesAba=(tipo,extra)=>`<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra||''}</div>`;
-function toggle(el){el.classList.toggle('open');}
-function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelectorAll(sel).forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(q)?'':'none';});}
-// ═══ LISTA PAGINADA incremental — nunca trava o DOM (lote pequeno por vez) e nunca esconde
-// dado atrás de um cap fixo (o resto sempre alcançável via "carregar mais", não perdido) ═══
-let _pagState={};
-function _pagFiltrados(st){
-  if(!st.filtro)return st.itens;
-  if(!st._idx)st._idx=st.itens.map(x=>JSON.stringify(x).toLowerCase());  // índice 1×, filtra em ms
-  return st.itens.filter((_,i)=>st._idx[i].includes(st.filtro));
-}
-function _pagRenderInner(id){
-  const st=_pagState[id];if(!st)return'';
-  const itens=_pagFiltrados(st);
-  const corpo=itens.slice(0,st.mostrados).map(st.montarCard).join('');
-  const restam=itens.length-st.mostrados;
-  const nota=st.filtro?`<div class="dim" style="margin:4px 2px 8px">${fmtN(itens.length)} de ${fmtN(st.itens.length)} no filtro — buscando em <b>tudo</b>, não só no que está na tela.</div>`:'';
-  const mais=restam>0?`<div style="text-align:center;margin:14px 0"><button class="btn ghost" onclick="_pagMais('${id}')">Carregar mais (${fmtN(restam)} restante${restam===1?'':'s'} de ${fmtN(itens.length)})</button></div>`:'';
-  return `${nota}<div class="grid">${corpo}</div>${mais}`;
-}
-function _pagMais(id){
-  const st=_pagState[id];if(!st)return;
-  st.mostrados=st.mostrados+st.lote;
-  const wrap=$(id+'-wrap');if(wrap)wrap.innerHTML=_pagRenderInner(id);
-}
-// filtro paginado: varre o DATASET COMPLETO em memória (não só os cards já no DOM)
-function filtrarPag(inp,id){
-  const st=_pagState[id];if(!st){filtrar(inp,'#'+id+'-wrap .card');return;}
-  st.filtro=inp.value.trim().toLowerCase();st.mostrados=st.lote;
-  const wrap=$(id+'-wrap');if(wrap)wrap.innerHTML=_pagRenderInner(id);
-  _acPagSugerir(inp,id);
-}
-// autocomplete CONTEXTUAL da seção: sugere nomes que existem NESTA aba (dataset em memória)
-function _acPagSugerir(inp,id){
-  const st=_pagState[id],box=$(id+'-ac');if(!st||!box)return;
-  const q=st.filtro;if(!q||q.length<2||!st.campoSug){box.classList.remove('on');return;}
-  const vistos=new Set(),sug=[];
-  for(const x of st.itens){
-    const v=st.campoSug(x);if(!v)continue;
-    const lv=String(v);if(vistos.has(lv))continue;
-    if(lv.toLowerCase().includes(q)){vistos.add(lv);sug.push(lv);if(sug.length>=8)break;}
-  }
-  if(!sug.length){box.classList.remove('on');return;}
-  box.innerHTML=sug.map(s=>`<div class="ac-item" onmousedown="event.preventDefault();_acPagPick('${id}',${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(s)}</div>`).join('');
-  box.classList.add('on');
-}
-function _acPagPick(id,valor){
-  const box=$(id+'-ac');if(box)box.classList.remove('on');
-  const inp=box&&box.parentElement.querySelector('input');if(!inp)return;
-  inp.value=valor;filtrarPag(inp,id);
-}
-// barra de busca padrão das listas paginadas (filtro no dataset todo + sugestões da própria aba)
-const buscaPag=(id,ph)=>`<div class="search" style="margin-top:14px;position:relative"><span class="mag"></span><input placeholder="${ph}" oninput="filtrarPag(this,'${id}')" onblur="setTimeout(()=>{const b=$('${id}-ac');if(b)b.classList.remove('on')},150)"><div class="ac-box" id="${id}-ac"></div></div>`;
-function listaPaginada(id,itens,montarCard,lote,campoSug){
-  lote=lote||60;
-  _pagState[id]={itens,montarCard,lote,mostrados:Math.min(lote,itens.length),filtro:'',campoSug:campoSug||null};
-  return `<div id="${id}-wrap">${_pagRenderInner(id)}</div>`;
-}
-// ordena qualquer lista por NOME do fornecedor (A→Z) e volta à ordem original (por risco/valor)
-function ordenar(sel,btn){
-  const cont=document.querySelector(String(sel).split(' ')[0]); if(!cont)return;
-  const cards=[...cont.querySelectorAll(':scope > .card')]; if(!cards.length)return;
-  const chave=c=>((c.querySelector('.clk,b,strong,a')||c).textContent||'').trim().toLowerCase();
-  const az=btn.classList.toggle('on');
-  if(az){cards.forEach((c,i)=>{if(c.dataset.ord0==null)c.dataset.ord0=i;});
-         cards.sort((a,b)=>chave(a).localeCompare(chave(b),'pt'));btn.textContent='A-Z ativo';}
-  else{cards.sort((a,b)=>(+a.dataset.ord0)-(+b.dataset.ord0));btn.textContent='A-Z';}
-  cards.forEach(c=>cont.appendChild(c));
-  const cv=document.querySelector('#view .view-wire'); if(cv)cv.remove();   // posições mudaram → tira malha estática
-}
-// rótulos humanos p/ ids técnicos de sinal/detector — snake_case NUNCA chega ao usuário
-const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio societário',sancao_a_epoca:'sanção vigente à época',
-  sancao_fora_vigencia:'sanção fora da vigência',sancionada:'sancionada (CEIS/CNEP)',socio_servidor:'sócio na folha pública',
-  fantasma_alto:'perfil fantasma (alto)',fantasma_medio:'perfil fantasma (médio)',fantasma_baixo:'perfil fantasma (baixo)',
-  perdedora_contumaz:'perdedora contumaz',fenix:'empresa fênix',empresa_fenix:'empresa fênix',escalada_preco:'escalada de preço',
-  sobrepreco:'sobrepreço unitário',fracionamento:'fracionamento de despesa',capital_incompativel:'capital incompatível',
-  fornecedor_dependente:'fornecedor cativo',corrida_dezembro:'corrida de dezembro',socio_oculto:'sócio oculto',
-  hub_massa:'membro de ninho (contato/endereço)',capital_irrisorio:'capital irrisório',conluio_medio:'conluio societário (médio)',
-  nepotismo:'nepotismo',nepotismo_cruzado:'nepotismo cruzado',porta_giratoria:'porta giratória',
-  situacao_irregular:'situação irregular na Receita',endereco_compartilhado:'endereço-ninho',endereco_residencial:'endereço residencial',
-  aberta_as_vesperas:'aberta às vésperas',socio_unico_capital_baixo:'sócio único + capital baixo',cnae_incompativel:'CNAE incompatível',
-  radar_risco:'radar de risco',prioridade_valor:'prioridade por valor',grafo_familias:'grafo de famílias',aditivos:'aditivos'};
-const rot=id=>ROTULOS[id]||String(id||'').replace(/_/g,' ');
-const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<button type="button" class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</button>`:`<b>${esc(txt)}</b>`;};
 
 // ═══ ESFERAS ═══
 const SPHERES=[
   {id:'inicio',    ic:'◎', tl:'Início',        c:'command deck ao vivo'},
-  {id:'estado',    ic:'🏛️', tl:'Estado',       c:'órgãos estaduais (SIAFE + PNCP)'},
+  /* v58: a esfera Estado deixa de usar o templo grego genérico e passa a usar `§rj` — a silhueta
+     REAL do território, derivada da mesma malha IBGE que a mesa de vigília projeta. O templo
+     continua sendo de `e_poder`/`g_poder`, onde o desenho quer dizer instituição, não território. */
+  {id:'estado',    ic:'§rj', tl:'Estado',       c:'órgãos estaduais (SIAFE + PNCP)'},
   {id:'prefeitura',ic:'🏙️', tl:'Prefeitura·Rio',c:'município do Rio (PNCP + folha)'},
   {id:'geral',     ic:'🌐', tl:'Transversal',  c:'riscos, busca, poder, ferramentas'},
 ];
@@ -492,8 +386,20 @@ async function fxConsultar(rota){
   o.innerHTML=card('<div class="dim">consultando…</div>');
   const d=await J(rota+'?alvo='+encodeURIComponent(v)+'&cnpj='+encodeURIComponent(v)+'&q='+encodeURIComponent(v));
   if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  /* v58: era JSON.stringify cru num <pre> — o operador tinha de LER JSON para saber se a fonte
+     respondeu. Agora os campos escalares viram tabela (o que a fonte disse), e o JSON completo
+     fica atrás de um <details> para quem precisa do bruto. Campo composto (lista/objeto) não é
+     achatado: diz o tamanho e remete ao bruto — resumir estrutura seria inventar leitura. */
+  const linhas=Object.entries(d||{}).filter(([k])=>k!=='ok'&&k!=='erro').map(([k,v])=>{
+    const composto=v&&typeof v==='object';
+    const val=composto?`<span class="dim">${Array.isArray(v)?fmtN(v.length)+' item(ns)':'objeto'} — ver bruto</span>`
+                     :(v===null||v===''?'<span class="dim">INDISPONÍVEL</span>':esc(String(v)));
+    return `<tr><td><b>${esc(k)}</b></td><td>${val}</td></tr>`;});
   o.innerHTML=sec(esc(rota.replace('/api/','')))+card(
-    `<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d,null,1))}</pre>`);
+    (linhas.length?`<table><thead><tr><th style="width:34%">Campo</th><th>Valor</th></tr></thead><tbody>${linhas.join('')}</tbody></table>`
+                 :`<div class="dim">A fonte respondeu sem campos — <b>INDISPONÍVEL</b>, não "nada consta".</div>`)
+    +`<details style="margin-top:10px"><summary class="dim" style="cursor:pointer">resposta bruta (JSON)</summary>
+      <pre style="white-space:pre-wrap;font-size:12px;margin:8px 0 0">${esc(JSON.stringify(d,null,1))}</pre></details>`);
 }
 
 // ═══ HUB FÍSICO — uma âncora, vários CNPJs (detector novo que nasceu sem aba) ═══
@@ -520,27 +426,56 @@ async function renderHubFisico(){
 async function renderAcuracia(){
   let h=cover('geral','Acurácia — o quanto o juízo do motor acerta',
     'Publica a métrica do próprio motor: acurácia do juízo jurídico contra o conjunto-ouro de casos do TCU (F1 macro contra baseline burro) e o <b>lift</b> de cada detector — quantas vezes ele acerta acima da taxa-base. Detector com lift abaixo de 1 é <b>anti-preditivo</b>: acende mais no regular que no irregular.','🎯');
-  const [he,lf]=await Promise.all([J('/api/eval/hermeneutica'),J('/api/eval/lift')]);
-  if(he&&he.ok!==false){
+  /* DUAS ETAPAS, medido em campo (2026-07-31): hermenêutica volta em 0,031 s e o lift em 18,95 s.
+     Num Promise.all a aba inteira ficava 19 s em "Carregando…" sem dizer nada — não era aba muda,
+     era espera sem retorno visual. Agora o bloco rápido sai na hora e o lift entra no lugar dele
+     quando chegar, com esqueleto próprio e o aviso de que aquele cálculo demora. */
+  const he=await J('/api/eval/hermeneutica');
+  if(he&&he.estado&&he.estado!=='medido'){
     h+=sec('Juízo jurídico (conjunto-ouro TCU)');
-    h+=`<div class="grid g2">${kpi(he.f1_macro==null?'—':Number(he.f1_macro).toFixed(3),'F1 macro',null,'⚖️')}
-        ${kpi(he.baseline_f1==null?'—':Number(he.baseline_f1).toFixed(3),'F1 do baseline burro')}
-        ${kpi(he.acuracia==null?'—':(100*he.acuracia).toFixed(1)+'%','Acurácia')}
+    h+=semMedicao(he,'Ainda não medido neste ambiente');
+    if(he.tem_baseline===false)h+=`<div class="dim">Também não há baseline aceito — a primeira medição vira o baseline.</div>`;
+  }else if(he&&he.ok!==false){
+    h+=sec('Juízo jurídico (conjunto-ouro TCU)');
+    h+=`<div class="grid g2">${kpi(fmtD(he.f1_macro,3),'F1 macro',null,'⚖️')}
+        ${kpi(fmtD(he.baseline_f1,3),'F1 do baseline burro')}
+        ${kpi(he.acuracia==null?'—':fmtD(100*he.acuracia,1)+'%','Acurácia')}
         ${kpi(he.n==null?'—':fmtN(he.n),'Casos rotulados')}</div>`;
     if(he.alucinacao_citacao!=null)
-      h+=leitura(`Alucinação de citação: <b>${(100*he.alucinacao_citacao).toFixed(1)}%</b>. Abstenção: ${he.abstencao==null?'—':(100*he.abstencao).toFixed(0)+'%'} — abster-se é resultado honesto, não falha.`);
+      h+=leitura(`Alucinação de citação: <b>${fmtD(100*he.alucinacao_citacao,1)}%</b>. Abstenção: ${he.abstencao==null?'—':fmtD(100*he.abstencao,0)+'%'} — abster-se é resultado honesto, não falha.`);
   }else h+=card(`<div class="dim">Acurácia do juízo indisponível nesta execução${he&&he.erro?': '+esc(he.erro):''}.</div>`);
 
+  h+=`<div id="acu-lift">${spin('Calculando o lift dos detectores…')}
+      <div class="note">Este cálculo varre o acervo inteiro cruzando cada detector com sanção
+      posterior — leva perto de 20 s na primeira carga do dia e responde na hora depois disso.
+      O resto da aba já está acima; o lift entra aqui quando terminar.</div></div>`;
+  /* O innerHTML da aba só é montado DEPOIS que esta função retorna. Numa segunda visita o lift
+     vem do cache de navegação (90 s) e resolve ANTES do mount — escrever direto cairia no vazio
+     e a aba ficaria presa no esqueleto justamente no caminho rápido. Daí a espera pelo nó. */
+  J('/api/eval/lift',{tetoMs:60000}).then(lf=>{
+    const html=_acuLiftHtml(lf); let t=0;
+    const por=()=>{const el=$('acu-lift'); if(el)el.innerHTML=html; else if(t++<40)setTimeout(por,50);};
+    por();
+  });
+  return h;
+}
+
+function _acuLiftHtml(lf){
+  let h='';
+  // Mesmo caso da hermenêutica: painel_lift devolve estado='sem_medicao' + mensagem quando a
+  // retro-auditoria não fecha nesta base — vale mostrar o motivo, não uma tabela vazia.
+  if(lf&&lf.estado&&lf.estado!=='medido'&&!(lf.detectores||[]).length)
+    return sec('Lift por detector')+semMedicao(lf,'Lift ainda não medido nesta base');
   if(lf&&lf.ok!==false){
     const ds=lf.detectores||lf.itens||[];
     h+=sec('Lift por detector',ds.length);
-    if(lf.taxa_base!=null) h+=`<div class="dim">Taxa-base do acervo: <b>${(100*lf.taxa_base).toFixed(2)}%</b>. Lift 1,0 = o detector não informa nada.</div>`;
+    if(lf.taxa_base!=null) h+=`<div class="dim">Taxa-base do acervo: <b>${fmtD(100*lf.taxa_base,2)}%</b>. Lift 1,0 = o detector não informa nada.</div>`;
     h+=`<table class="tb" style="margin-top:10px"><thead><tr><th>Detector</th><th class="r">Lift</th><th class="r">n</th><th>Leitura</th></tr></thead><tbody>`;
     for(const d of ds){
       const L=Number(d.lift||0);
       const cls=L<1?'bad':(L>=3?'ok':'');
       const lei=L<1?'ANTI-preditivo — acende mais no regular':(d.circular?'lift alto porém CIRCULAR (usa sanção como insumo)':(L>=3?'discrimina bem':'informa pouco'));
-      h+=`<tr><td>${esc(d.detector||d.id)}</td><td class="r ${cls}"><b>${L.toFixed(2)}</b></td>
+      h+=`<tr><td>${esc(d.detector||d.id)}</td><td class="r ${cls}"><b>${fmtD(L,2)}</b></td>
           <td class="r dim">${fmtN(d.n)}</td><td class="dim">${esc(lei)}</td></tr>`;
     }
     h+=`</tbody></table>`;
@@ -548,7 +483,6 @@ async function renderAcuracia(){
   }else h+=card(`<div class="dim">Lift indisponível nesta execução${lf&&lf.erro?': '+esc(lf.erro):''}.</div>`);
   return h;
 }
-
 
 async function vincGrafo(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
@@ -589,7 +523,6 @@ async function vincHistoricoPessoa(){
   h+=`</tbody></table>`;
   o.innerHTML=h;
 }
-
 
 async function vincConluioMunicipal(){
   const o=$('vinc-out'); o.innerHTML=card('<div class="dim">cruzando QSA de vencedores e perdedoras…</div>');
@@ -632,7 +565,6 @@ async function vincResolucao(){
     leitura('Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.')+
     `<div class="note">${esc(d.nota||'')}</div>`;
 }
-
 
 async function vincInterposicao(){
   const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
@@ -741,7 +673,9 @@ async function renderInstrumentacao(){
           <td class="r dim">${p.idade_dias==null?'—':p.idade_dias+' d'}</td></tr>`;
     }
     h+=`</tbody></table>`;
-  }else h+=card(`<div class="dim">Pipelines indisponíveis nesta execução.</div>`);
+  /* Vazio ≠ indisponível (regra da casa, aplicada à própria tela): rota que respondeu com lista
+     vazia é informação — dizer "indisponível" nos dois casos inventa uma falha que não houve. */
+  }else h+=card(`<div class="dim">${pp&&pp.ok===false?'Pipelines indisponíveis nesta execução'+(pp.erro?': '+esc(pp.erro):'')+'.':'Nenhum pipeline registrado — a rota respondeu, a lista está vazia.'}</div>`);
 
   h+=sec('Agenda (timers e crons)');
   const js=(ag&&(ag.jobs||ag.itens||ag.agenda))||[];
@@ -751,7 +685,7 @@ async function renderInstrumentacao(){
       h+=`<tr><td>${esc(j.nome||j.id||'—')}</td><td class="dim">${esc(j.quando||j.cron||j.schedule||'—')}</td>
           <td class="dim">${esc(j.ultimo||j.last||'—')}</td></tr>`;
     h+=`</tbody></table>`;
-  }else h+=card(`<div class="dim">Agenda indisponível nesta execução.</div>`);
+  }else h+=card(`<div class="dim">${ag&&ag.ok===false?'Agenda indisponível nesta execução'+(ag.erro?': '+esc(ag.erro):'')+'.':'Nenhum job agendado — a rota respondeu, a agenda está vazia.'}</div>`);
 
   h+=sec('SIAFE e radar');
   h+=`<div class="grid g2">
@@ -780,7 +714,7 @@ async function renderInstrumentacao(){
       <div id="inst-ugs" style="margin-top:10px">`+us.map(u=>
         `<div class="kv"><span class="k">${esc(u.codigo||u.ug)} — ${esc(u.nome||'')}</span><b>${fmtRc(u.total||u.total_pago)}</b></div>`).join('')+`</div>
       <div class="dim" style="margin-top:6px">${fmtN(ug.n_total||us.length)} UGs no catálogo.</div>`);
-  }else h+=card(`<div class="dim">Catálogo de UGs indisponível.</div>`);
+  }else h+=card(`<div class="dim">${ug&&ug.ok===false?'Catálogo de UGs indisponível'+(ug.erro?': '+esc(ug.erro):'')+'.':'Catálogo de UGs vazio nesta base — a rota respondeu.'}</div>`);
 
   h+=sec('Fila do fiscal (flags e restritos)');
   h+=card(`<div class="btns">
@@ -859,14 +793,14 @@ const TABS={
     {id:'e_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaEstado},
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
     {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
-    {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
+    {id:'e_frac',    ic:'§frac',tl:'Fracion.',render:renderFracionamento},
     {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
     {id:'e_escal',   ic:'🪜',tl:'Escalada', render:renderEscalada},
     {id:'e_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'e_adit',    ic:'📑',tl:'Aditivos',render:renderAditivos},
     {id:'e_certames',ic:'🧮',tl:'Certames',render:renderCertames},
-    {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
-    {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
+    {id:'e_cartel',  ic:'§cartel',tl:'Cartel',  render:renderCartel},
+    {id:'e_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
     {id:'e_alertas', ic:'🚨',tl:'Alertas', render:renderAlertas},
     {id:'e_resp',    ic:'🧑‍⚖️',tl:'Responsáveis',render:renderResponsaveis},
@@ -880,21 +814,21 @@ const TABS={
     {id:'p_escal',   ic:'🪜',tl:'Escalada',render:()=>renderEscalada('prefeitura')},
     {id:'p_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'p_adit',    ic:'📑',tl:'Aditivos',render:()=>renderAditivos('prefeitura')},
-    {id:'p_cartel',  ic:'🔗',tl:'Concentração',render:renderCartelMun},
+    {id:'p_cartel',  ic:'§cartel',tl:'Concentração',render:renderCartelMun},
     {id:'p_comis',   ic:'🎖️',tl:'Comissionados',render:renderComissionadosPref},
     {id:'p_benef',   ic:'🍞',tl:'Benefícios',render:()=>renderBeneficiosPref('')},
-    {id:'p_fant',    ic:'👻',tl:'Fantasmas',render:renderFantasmasPref},
+    {id:'p_fant',    ic:'§fant',tl:'Fantasmas',render:renderFantasmasPref},
     {id:'p_ppp',     ic:'🏗️',tl:'PPP',     render:renderPPPPref},
-    {id:'p_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('prefeitura')},
+    {id:'p_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio('prefeitura')},
     {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
   ],
   geral:[
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
-    {id:'g_radar',   ic:'🎯',tl:'Radar',   render:renderRadar},
+    {id:'g_radar',   ic:'§radar',tl:'Radar',   render:renderRadar},
     {id:'g_prioridade',ic:'⚡',tl:'Prioridade',render:renderPrioridade},
     {id:'g_vinculos', ic:'🕸️',tl:'Vínculos', render:renderVinculos},
     {id:'g_pecas',    ic:'📜',tl:'Peças',    render:renderPecas},
-    {id:'g_fontes',   ic:'🛰️',tl:'Fontes externas',render:renderFontesExternas},
+    {id:'g_fontes',   ic:'§fonte',tl:'Fontes externas',render:renderFontesExternas},
     {id:'g_hub',      ic:'🏢',tl:'Hub físico',render:renderHubFisico},
     {id:'g_acuracia', ic:'🎯',tl:'Acurácia', render:renderAcuracia},
     {id:'g_dets',     ic:'🧪',tl:'Detectores',render:renderDetectoresOrfaos},
@@ -915,7 +849,7 @@ const TABS={
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
     {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
-    {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
+    {id:'g_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
     {id:'g_sweeps',  ic:'🛰️',tl:'Sistema', render:renderSweeps},
     {id:'g_acoes',   ic:'☑️',tl:'Ações',   render:renderAcoes},
@@ -942,15 +876,99 @@ function montarTabs(){
   if(_tabsEsfera!==esfera){
     _tabsEsfera=esfera;
     nav.innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}" data-aba="${t.id}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
+    _tabsMais();
     return;
   }
   for(const b of nav.children)b.classList.toggle('on',b.dataset.aba===aba);
+  /* v57: a aba ativa não pode ficar do lado de fora. `block:'nearest'` é o que impede
+     o scrollIntoView de mexer na página (a nav é fixa no rodapé) — só rola a própria barra. */
+  const _on=nav.querySelector('button.on');
+  if(_on)_on.scrollIntoView({block:'nearest',inline:'nearest',behavior:_redMotion?'auto':'smooth'});
+  _tabsMaisPintar();
+}
+/* ═══ v57 — A BARRA DE ABAS ESCONDIA METADE DE SI ══════════════════════════════════════════
+   Medido pelo it-campo: 15 abas, scrollWidth 1260 para clientWidth 818 — 442px fora da tela,
+   com `overflow-x:auto` e nenhuma pista. O esmaecimento do v51 (mask-image na nav) apagava a
+   borda mas não DIZIA "role"; e mouse comum não tem eixo horizontal. Agora cada ponta ganha um
+   sinal com DIREÇÃO, que só acende quando existe conteúdo daquele lado e, clicado, rola ~70%
+   da barra. São elementos reais e não pseudo pelo mesmo motivo do v56 (`.hlx`): o `::after` da
+   nav já é o fio que corre na navegação e o `::before` é do v14. Ficam DENTRO da nav de
+   propósito — `transform:translateX(-50%)` faz dela o bloco contentor de `position:fixed`,
+   então eles não rolam junto com o conteúdo. O loop de `.on` acima os ignora (sem `data-aba`). */
+function _tabsMais(){
+  const nav=$('tabs');if(!nav)return;
+  if(!nav.querySelector('.tmais')){
+    for(const lado of ['e','d']){
+      const i=document.createElement('i');
+      i.className='tmais '+lado;i.setAttribute('aria-hidden','true');
+      i.onclick=()=>nav.scrollBy({left:(lado==='d'?1:-1)*Math.round(nav.clientWidth*.7),
+                                 behavior:_redMotion?'auto':'smooth'});
+      nav.appendChild(i);
+    }
+    nav.addEventListener('scroll',_tabsMaisPintar,{passive:true});
+    addEventListener('resize',_tabsMaisPintar,{passive:true});
+  }
+  _tabsMaisPintar();
+}
+function _tabsMaisPintar(){
+  const nav=$('tabs');if(!nav)return;
+  const sobra=nav.scrollWidth-nav.clientWidth-nav.scrollLeft;
+  nav.classList.toggle('mais-e',nav.scrollLeft>4);
+  nav.classList.toggle('mais-d',sobra>4);
 }
 /* v36: NAO pre-atribuir `aba` aqui — o ir() ja seta aba e monta as tabs, e a
    pre-atribuicao apagava o sentido do giro na troca de esfera (_abaAntes
    ficava igual ao destino). */
-function trocarEsfera(id){esfera=id;montarSpheres();ir(TABS[id][0].id);}
+/* v55 — VIAGEM DE CÂMERA entre esferas. As quatro esferas eram quatro páginas: o fundo
+   TROCAVA (nebulosa some, nebulosa aparece) e a cabeça lia "recarreguei". Agora a cena
+   VIAJA: a câmera desliza no sentido da esfera de destino (fundo, malha e nebulosa
+   parallaxam em `transform`, que o compositor faz de graça — nada de repintura), e a
+   lâmina do conduíte que já existe corta a transição, tingida na cor da esfera nova.
+   Sem recarregar, sem piscar: é a mesma sala vista de outro ponto. */
+function _esfViagem(destino){
+  if(_redMotion||_sobrio)return;
+  const ord=SPHERES.map(s=>s.id),de=ord.indexOf(esfera),pa=ord.indexOf(destino);
+  if(de<0||pa<0||de===pa)return;
+  const b=document.body;
+  b.style.setProperty('--viagem',pa>de?'1':'-1');
+  b.classList.remove('viajando');void b.offsetWidth;
+  b.classList.add('viajando');
+  setTimeout(()=>b.classList.remove('viajando'),720);
+  const c=$('conduit');
+  if(c){const w=document.createElement('span');w.className='cwipe'+(pa>de?'':' back');
+    w.addEventListener('animationend',()=>w.remove());c.appendChild(w);}
+}
+function trocarEsfera(id){_esfViagem(id);esfera=id;montarSpheres();ir(TABS[id][0].id);}
 let _nav=0; // token anti-corrida
+/* ═══ v57 — A ABA PASSA A EXISTIR NA URL ══════════════════════════════════════════════════
+   O painel tinha 60+ abas e UM endereço: `location.hash` vazio, sem link para "abra ISTO",
+   e o Voltar do navegador saía do painel inteiro em vez de desfazer a última troca. Como o
+   `ir()` já sabe achar a esfera dona de qualquer id, o hash é a chave suficiente: `#g_radar`
+   abre a esfera Transversal na aba Radar. `_hashMeu` evita o eco (escrevo o hash → o
+   navegador dispara hashchange → eu reentrava em ir()). */
+let _hashMeu=false;
+function _abaValida(id){return !!id&&Object.values(TABS).some(l=>l.some(t=>t.id===id));}
+/* Endereço inexistente era FALHA MUDA: `#e_escalada` (id que não existe — o real é `e_escal`)
+   caía no cockpit, reescrevia a URL e a aba anterior ficava na tela. Quem varreu o painel por
+   hash leu a MESMA página quatro vezes achando que eram quatro abas. Endereço quebrado tem de
+   dizer que está quebrado — e dizer QUAL era o id certo, quando dá para adivinhar. */
+function _hashInvalido(id){
+  const alvos=Object.values(TABS).flat();
+  const perto=alvos.filter(t=>t.id.startsWith(id.slice(0,4))||id.startsWith(t.id)).slice(0,6);
+  const v=$('view'); if(!v)return;
+  const d=document.createElement('div');
+  d.innerHTML=card(`<div class="warn"><b>Endereço inexistente:</b> <code>#${esc(id)}</code> não é uma aba deste painel.`
+    +(perto.length?` Você quis dizer ${perto.map(t=>`<a href="#${t.id}">#${t.id}</a>`).join(' · ')}?`:'')
+    +` Abri o cockpit no lugar.</div>`);
+  v.prepend(d.firstElementChild||d);
+}
+addEventListener('hashchange',()=>{
+  if(_hashMeu){_hashMeu=false;return;}
+  const id=decodeURIComponent(location.hash.slice(1));
+  if(!id)return;
+  if(!_abaValida(id)){ir('i_cockpit').then(()=>_hashInvalido(id));return;}
+  if(id!==aba)ir(id);
+});
 async function ir(id){
   const _abaAntes=aba; // v36: quem eu era antes da troca decide o sentido do giro
   // blindagem: se o id não é da esfera atual, procura a esfera dona e troca (evita crash)
@@ -958,6 +976,7 @@ async function ir(id){
   if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){esfera=e;t=cand;montarSpheres();break;}}}
   if(!t)return;
   aba=id;montarTabs();
+  if(location.hash.slice(1)!==id){_hashMeu=true;location.hash=id;}
   /* v36: sentido da navegacao — a faceta do cristal gira PARA o lado do
      destino (aba a direita gira num sentido, a esquerda no outro). Sem
      sentido (primeira carga, mesma aba) o atributo sai e vale o v31. */
@@ -973,6 +992,8 @@ async function ir(id){
   document.body.setAttribute('data-esf',esfera);   // tinge hovers/energia com a cor da esfera
   if(typeof _rjbgTinge==='function')_rjbgTinge();   // território de fundo re-tinge na cor da esfera
   if(typeof nebulaViva==='function')nebulaViva();   // v37: liga o loop de video da esfera, se existir
+  if(typeof nucleoViva==='function')nucleoViva();   // v53: idem para o nucleo holografico da mesa
+  if(typeof holoRJ==='function')holoRJ();           // v55: assinatura holografica do Estado
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
   /* v31: a troca era um corte — spinner sai, conteudo novo entra, e cada aba
@@ -1165,17 +1186,71 @@ function glossario(){
   sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
    <div style="font-weight:800;font-size:17px;margin-bottom:4px">ⓘ Entenda os termos</div>
    <div class="muted" style="font-size:13px;margin-bottom:14px">O que cada conceito do painel significa, em linguagem simples.</div>
-   <div class="grid">`+TERMOS.map(([ic,t,d])=>card(`<div style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:20px">${ic}</span><div><div style="font-weight:700">${t}</div><div class="muted" style="font-size:13px;margin-top:3px;line-height:1.55">${d}</div></div></div>`)).join('')+`</div>`;
+   <div class="grid">`+TERMOS.map(([ic,t,d])=>card(`<div style="display:flex;gap:11px;align-items:flex-start"><span class="term-ico">${svgIco(ic)}</span><div><div style="font-weight:700">${t}</div><div class="muted" style="font-size:13px;margin-top:3px;line-height:1.55">${d}</div></div></div>`)).join('')+`</div>`;
+  a11yfy(sh);
 }
 
 // ═══ DOSSIÊ modal ═══
 function fecharDossie(){$('ov').classList.remove('on');}
+
+/* ═══ v54 — O #ov VIRA DIÁLOGO DE VERDADE ═════════════════════════════════════════
+   Medido pelo it-campo: com o dossiê aberto, Esc não fechava (`#ov` seguia com
+   class="ov on", display flex) e `document.activeElement` continuava sendo o gatilho
+   LÁ FORA — quem navega por teclado ou leitor de tela abria uma folha em que não
+   entrava. Faltavam ainda role/aria-modal e a trava de rolagem do fundo.
+   POR QUE UM OBSERVER, e não seis edições: são ~6 pontos que abrem a folha
+   (abrirDossie, glossario, certame, sei, o diálogo do 4251…) e todos fazem a MESMA
+   coisa — `ov.classList.add('on')`. Observar a classe põe o comportamento de diálogo
+   num lugar só; qualquer ponto novo que abrir a folha já nasce correto, em vez de
+   herdar o defeito. O listener de teclado é de CAPTURA para chegar antes dos
+   handlers dos componentes de dentro. */
+let _ovGatilho=null;
+const _ovFocaveis=r=>[...r.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')]
+  .filter(e=>e.offsetWidth||e.offsetHeight||e.getClientRects().length);
+function _ovTecla(e){
+  const ov=document.getElementById('ov');
+  if(!ov||!ov.classList.contains('on'))return;
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();fecharDossie();return;}
+  if(e.key!=='Tab')return;
+  const f=_ovFocaveis(ov),sh=document.getElementById('sheet');
+  if(!f.length){e.preventDefault();sh&&sh.focus();return;}
+  const pri=f[0],ult=f[f.length-1],at=document.activeElement;
+  if(!ov.contains(at)){e.preventDefault();(e.shiftKey?ult:pri).focus();}
+  else if(e.shiftKey&&at===pri){e.preventDefault();ult.focus();}
+  else if(!e.shiftKey&&at===ult){e.preventDefault();pri.focus();}
+}
+(function _ovDialogo(){
+  const ov=document.getElementById('ov');if(!ov)return;
+  ov.setAttribute('role','dialog');ov.setAttribute('aria-modal','true');
+  ov.setAttribute('aria-label','Dossiê');
+  document.addEventListener('keydown',_ovTecla,true);
+  new MutationObserver(()=>{
+    const on=ov.classList.contains('on');
+    document.body.classList.toggle('ov-aberto',on);
+    if(on){
+      if(!_ovGatilho)_ovGatilho=document.activeElement;
+      /* o miolo da folha chega depois (fetch): o foco vai para a própria folha, que é
+         o container do diálogo, e o trap segura o resto quando o conteúdo pintar. */
+      requestAnimationFrame(()=>{const sh=document.getElementById('sheet');
+        if(!sh)return;sh.setAttribute('tabindex','-1');sh.focus();});
+    }else{
+      const g=_ovGatilho;_ovGatilho=null;
+      if(g&&document.contains(g))try{g.focus()}catch(_){}
+    }
+  }).observe(ov,{attributes:true,attributeFilter:['class']});
+})();
+
+/* v54 — CORTE POR PALAVRA. `esc(t).slice(0,n)` decepava no meio ("…do relatorio do o")
+   e ainda podia partir uma entidade HTML ao meio (`&amp;` → `&am`). Corta no texto CRU,
+   na última fronteira de palavra, e só então escapa. */
+
 async function abrirDossie(cnpj,nome){
   const dig=String(cnpj||'').replace(/\D/g,'');if(dig.length!==14)return;
   const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
   sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin('Montando dossiê de '+esc(nome||dig)+'…')}`;
+  a11yfy(sh);
   const d=await J('/api/perfil?cnpj='+dig);
-  if(!d.ok){sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕</span><div class="grab"></div>`+card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){sh.innerHTML=`<span class="x" aria-label="Fechar" onclick="fecharDossie()">✕</span><div class="grab"></div>`+card(`<div class="warn">${erroHumano(d.erro)}</div>`);a11yfy(sh);return;}
   const per=d.pericia||{},ob=d.ob||{},pncp=d.pncp||{},sede=d.sede||{};
   const sv=(sede.lat&&sede.lon)?`https://www.google.com/maps?layer=c&cbll=${sede.lat},${sede.lon}`:(sede.endereco?`https://www.google.com/maps/search/${encodeURIComponent(sede.endereco+', '+(sede.municipio||''))}`:null);
   let h=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>`;
@@ -1197,7 +1272,7 @@ async function abrirDossie(cnpj,nome){
       `<div class="kv"><span class="k">Situação cadastral</span><b>${esc(est.situacao||'—')}</b></div>`+
       `<div class="kv"><span class="k">Contato declarado</span><b>${est.tem_telefone?'telefone':'—'}${est.tem_email?' · e-mail':''}${!est.tem_telefone&&!est.tem_email?'sem telefone nem e-mail':''}</b></div>`+
       (hbk.length?`<div class="kv"><span class="k">Compartilhado com</span><b class="right" style="color:var(--amber)">${hbk.map(k=>fmtN(hb[k])+' CNPJs no mesmo '+k).join(' · ')}</b></div>${leitura('Contato/endereço compartilhado por vários CNPJs é assinatura de ninho de fachada — verificar se são do mesmo grupo ou laranjas. Endereço comercial de grande porte (galeria/coworking) explica volumes altos.')}`:`<div class="dim" style="margin-top:6px">Telefone/e-mail/endereço não coincidem em massa com outros CNPJs.</div>`));}
-  if((d.achados||[]).length)h+=`<div style="height:12px"></div>`+sec('Achados da perícia',d.achados.length)+`<div class="grid">`+d.achados.map(a=>card(`<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag ${a.status==='CONFIRMADO'?'rose':a.status==='INDICIO'?'amber':a.status==='AFASTADO'?'green':'accent'}">${esc(a.status||'')}</span><div><div style="font-weight:650;font-size:13.5px">${esc(a.codigo||'')} — ${esc(a.titulo||'')}</div>${a.evidencia?`<div class="muted" style="font-size:12.5px;margin-top:3px">${esc(a.evidencia).slice(0,260)}</div>`:''}</div></div>`)).join('')+`</div>`;
+  if((d.achados||[]).length)h+=`<div style="height:12px"></div>`+sec('Achados da perícia',d.achados.length)+`<div class="grid">`+d.achados.map(a=>card(`<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag ${a.status==='CONFIRMADO'?'rose':a.status==='INDICIO'?'amber':a.status==='AFASTADO'?'green':'accent'}">${esc(a.status||'')}</span><div><div style="font-weight:650;font-size:13.5px">${esc(a.codigo||'')} — ${esc(a.titulo||'')}</div>${a.evidencia?`<div class="muted ev-clamp" style="font-size:12.5px;margin-top:3px" title="clique para ver completo" onclick="this.classList.toggle('aberto')">${esc(a.evidencia)}</div>`:''}</div></div>`)).join('')+`</div>`;
   h+=`<div style="height:14px"></div><div class="btns">
       <button class="btn accent" onclick="fecharDossie();esfera='geral';aba='g_acoes';montarSpheres();montarTabs();ir('g_acoes').then(()=>{const e=$('ac-emp');if(e)e.value='${d.cnpj}';})">Relatório + Lex</button>
       <button class="btn ghost" onclick="verCruzamento('${d.cnpj}')">Cruzamento</button>
@@ -1207,6 +1282,7 @@ async function abrirDossie(cnpj,nome){
       <div id="sei-arvore-box" style="margin-top:10px"></div>`;
   h+=`<div class="note">Dossiê do banco local — indício a verificar, presunção de legitimidade. CPF de sócio mascarado (LGPD).</div>`;
   sh.innerHTML=h;
+  a11yfy(sh);
 }
 // ═══ ÁRVORE SEI completa de uma empresa (busca + download em lote) ═══
 let _seiArvoreTimer=null;
@@ -1260,8 +1336,9 @@ async function abrirCertame(certame){
   if(!certame)return;
   const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
   sh.innerHTML=`<span class="x" onclick="fecharCertame()">✕ fechar</span><div class="grab"></div>${spin('Calculando índice de '+esc(certame)+'…')}`;
+  a11yfy(sh);
   const d=await J('/api/certame/indice?certame='+encodeURIComponent(certame));
-  if(!d.ok){sh.innerHTML=`<span class="x" onclick="fecharCertame()">✕</span><div class="grab"></div>`+card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  if(!d.ok){sh.innerHTML=`<span class="x" aria-label="Fechar" onclick="fecharCertame()">✕</span><div class="grab"></div>`+card(`<div class="warn">${erroHumano(d.erro)}</div>`);a11yfy(sh);return;}
   const ix=d.indice||{},fam=ix.familias||{},sv=ix.matriz_sv||{},drivers=ix.drivers||[];
   const cor=ix.faixa==='EXTREMO'||ix.faixa==='ALTO'?'var(--rose)':ix.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
   let h=`<span class="x" onclick="fecharCertame()">✕ fechar</span><div class="grab"></div>`;
@@ -1278,11 +1355,12 @@ async function abrirCertame(certame){
   }).join('')+`</div>`;
   if(drivers.length)h+=`<div style="height:12px"></div>`+sec('O que disparou (drivers)',drivers.length)+`<div class="grid">`+drivers.map(dr=>{
     const lbl=(_CERT_FAM[dr.familia]||['📌',dr.familia])[1];
-    return card(`<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag rose">${esc(lbl)}</span><div><div style="font-weight:650;font-size:13.5px">${esc(dr.flag||'')} — ${(dr.valor*100).toFixed(0)}%</div>${dr.evidencia?`<div class="muted" style="font-size:12.5px;margin-top:3px">${esc(dr.evidencia).slice(0,260)}</div>`:''}</div></div>`);
+    return card(`<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag rose">${esc(lbl)}</span><div><div style="font-weight:650;font-size:13.5px">${esc(dr.flag||'')} — ${(dr.valor*100).toFixed(0)}%</div>${dr.evidencia?`<div class="muted ev-clamp" style="font-size:12.5px;margin-top:3px" title="clique para ver completo" onclick="this.classList.toggle('aberto')">${esc(dr.evidencia)}</div>`:''}</div></div>`);
   }).join('')+`</div>`;
   if(d.narrativa)h+=`<div style="height:12px"></div>`+card(`<div style="font-size:13.5px;color:var(--mut);white-space:pre-wrap">${esc(d.narrativa).slice(0,1500)}</div>`);
   h+=`<div class="note">Índice de Direcionamento — indício a apurar, nunca acusação. Fonte: ${esc(d.fonte||'calculado')}${d.gerado_em?', gerado em '+esc(d.gerado_em):''}.</div>`;
   sh.innerHTML=h;
+  a11yfy(sh);
 }
 
 // ═══ FRESCOR DE FONTES (LEDs) ═══
@@ -1297,6 +1375,10 @@ async function frescorHtml(){
 
 // ═══ ESTADO ═══
 async function renderPanoramaEstado(){
+  /* Conta já feita em campo (2026-07-31) — NÃO refazer: /status 0,002 s · /api/compliance/painel
+     1,706 s (o pior) · conluio 0,626 s · sancionadas 0,016 s. Pior caso 1,7 s: quebrar em etapas
+     custaria mais cintilação (blocos aparecendo em tempos diferentes) do que ganha. Só reabrir
+     esta decisão com número novo — o gatilho é o painel passar de ~3 s. */
   const [st,p,cj,sc]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/pncp/conluio?esfera=estado'),J('/api/intel/sancionadas?limite=1')]);
   const a=p.alertas||{},o=p.obs||{};const coletaErro=/erro/i.test(p.ultima_coleta||'');
   const nc=(cj.captura||[]).length+(cj.rodizio_vencedores||[]).length;
@@ -1317,17 +1399,18 @@ async function renderPanoramaEstado(){
 
 // ═══ SANCIONADAS (Estado e Transversal) ═══
 async function renderSancionadas(esf){
-  const d=await J('/api/intel/sancionadas?limite=100');
+  const d=await J('/api/intel/sancionadas?limite=1000');   // teto da rota = 1000 > n(770): cobre a base
   if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-  let emp=d.empresas||[];
+  let emp=d.empresas||[];const carregadas=emp.length;   // ANTES do corte de esfera — é o que o filtro varre
   if(esf==='estado')emp=emp.filter(e=>e.estado.obs>0);
   const aepoca=emp.filter(e=>e.estado.obs_durante>0||e.pncp.vitorias_durante>0);
   let h=cover(esf==='estado'?'estado':'geral','Sancionadas que contratam com o poder público',
     'Empresas punidas no CEIS/CNEP (impedimento, suspensão, inidoneidade) que receberam pagamento (OB SIAFE) ou venceram licitação (PNCP). <b>À ÉPOCA</b> = o ato ocorreu DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156).','🚫')+acoesAba('sancionadas');
   h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫')}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️')}
       ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸')}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#san-list .card')"></div>`;
-  h+=`<div id="san-list" class="grid">`+emp.slice(0,80).map(e=>{
+  h+=buscaPag('san','filtrar por nome ou CNPJ…');
+  h+=`<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(80,emp.length))} de ${fmtN(emp.length)}${(d.n&&d.n>carregadas)?` carregadas — a base tem ${fmtN(d.n)}; a rota entrega no máximo 1000, então <b>o filtro NÃO cobre a base inteira</b>: se um CNPJ não aparecer aqui, use a busca por CNPJ do painel antes de concluir qualquer coisa`:' — o filtro busca em todas'}</div>`;
+  h+=listaPaginada('san',emp,e=>{
     const grave=e.estado.obs_durante>0||e.pncp.vitorias_durante>0;
     const s0=(e.sancoes||[])[0]||{};
     const ex=(e.estado.exemplos_durante||[])[0]||(e.pncp.exemplos_durante||[])[0];
@@ -1337,7 +1420,7 @@ async function renderSancionadas(esf){
       <div class="right">${grave?'<span class="sev alta">à época</span>':'<span class="sev baixa">fora da vigência</span>'}
       <div style="margin-top:6px" class="num"><b>${fmtRc(e.estado.valor_durante+e.pncp.valor_durante||e.estado.valor+e.pncp.valor)}</b></div>
       <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
-      ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');}).join('')+`</div>`;
+      ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');},80,e=>e.nome);
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -1441,15 +1524,22 @@ async function renderCartelMun(){
 
 // ═══ SANCIONADAS × PREFEITURA (contrato municipal DURANTE sanção impeditiva — TCM-RJ) ═══
 async function renderSancionadasMun(){
-  const d=await J('/api/intel/sancionadas_municipio?limite=100');
+  const d=await J('/api/intel/sancionadas_municipio?limite=300');   // n=238 → cabe inteiro; filtro em memória, não no DOM
   if(!d.ok)return sec('Sancionadas — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const emp=d.empresas||[];const aepoca=emp.filter(e=>(e.contratos_durante||0)>0);
   let h=cover('prefeitura','Sancionadas contratadas pela Prefeitura do Rio',
     'Empresas com sanção <b>impeditiva</b> (CEIS: impedimento, suspensão, inidoneidade) que assinaram contrato com o <b>Município do Rio</b>. <b>À ÉPOCA</b> = assinatura DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156 §§4º-5º). Competência: <b>TCM-RJ</b>. Órgãos federais/estaduais são excluídos do corte.','🚫')+acoesAba('sancionadas_municipio');
-  h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Sancionadas c/ contrato municipal',null,'🚫')}${kpi(fmtN(aepoca.length),'Com contrato À ÉPOCA','var(--rose)','⚠️')}
-      ${kpi(fmtRc(aepoca.reduce((s,e)=>s+(e.valor_durante||0),0)),'Contratado durante sanção','var(--rose)','💸')}${kpi(fmtN(Object.values(d.descartados_outra_esfera||{}).reduce((s,v)=>s+v,0)),'Descartados (outra esfera)',null,'🧹')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#sanm-list .card')"></div>`;
-  h+=`<div id="sanm-list" class="grid">`+emp.map(e=>{
+  /* v50 — KPI somado sobre a PÁGINA mentia: a rota entrega no máximo `limite` empresas de `d.n`,
+     e os três primeiros KPIs (inclusive um VALOR EM REAIS) eram calculados sobre a fatia recebida.
+     Agora contagem vem do total da casa (d.n / d.n_a_epoca) e o dinheiro vem do agregado do
+     servidor sobre o conjunto inteiro; se a resposta for antiga (cache sem o campo), o rótulo
+     declara explicitamente que é a soma das empresas em tela — nunca um valor mudo. */
+  const vdTotal=d.valor_durante_total;const parcial=(vdTotal==null);
+  h+=`<div class="grid g2">${kpi(fmtN(d.n??emp.length),'Sancionadas c/ contrato municipal',null,'🚫')}${kpi(fmtN(d.n_a_epoca??aepoca.length),'Com contrato À ÉPOCA','var(--rose)','⚠️')}
+      ${kpi(fmtRc(parcial?aepoca.reduce((s,e)=>s+(e.valor_durante||0),0):vdTotal),parcial?`Contratado durante sanção (soma das ${fmtN(emp.length)} em tela)`:'Contratado durante sanção','var(--rose)','💸')}${kpi(fmtN(Object.values(d.descartados_outra_esfera||{}).reduce((s,v)=>s+v,0)),'Descartados (outra esfera)',null,'🧹')}</div>`;
+  h+=buscaPag('sanm','filtrar por nome ou CNPJ…');
+  h+=`<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(100,emp.length))} de ${fmtN(d.n??emp.length)}${emp.length<(d.n??emp.length)?' — o filtro busca nas '+fmtN(emp.length)+' carregadas':' — o filtro busca em todas'}</div>`;
+  h+=listaPaginada('sanm',emp,e=>{
     const s0=(e.sancoes||[])[0]||{};const forte=(e.contratos_durante||0)>0;
     const ex=(e.exemplos_durante||[])[0];
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
@@ -1459,7 +1549,7 @@ async function renderSancionadasMun(){
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte?'var(--rose)':'var(--tx2)'}">${fmtN(e.contratos_durante||0)}/${fmtN(e.contratos||0)}</div><div class="dim">durante/total</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">Contratado total ${fmtRc(e.valor||0)}</span><b style="color:${forte?'var(--rose)':'inherit'}">${fmtRc(e.valor_durante||0)} durante</b></div>
       ${forte&&ex?leitura(`Contrato <b>${esc(ex.contrato||'')}</b> (${esc(ex.data||'?')}, ${fmtRc(ex.valor||0)}) assinado <b>dentro da vigência</b> da sanção ${esc(ex.sancao||'')} (${esc(ex.vigencia||'')}) — "${esc((ex.objeto||'').slice(0,90))}". Vedação objetiva: matéria para representação ao TCM-RJ com pedido de apuração da habilitação.`):''}`,
-    forte?'hl':'');}).join('')+`</div>`;
+    forte?'hl':'');},100,e=>e.nome);
   h+=`<div class="note">${esc(d.explicacao||'')}</div>`;
   return h;
 }
@@ -1499,16 +1589,16 @@ async function renderSobrepreco(esf='estado'){
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈')}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺')}
-      ${kpi(a.length?a[0].razao+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸')}</div>`;
+      ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
   h+=`<div id="sob-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,48))}${x.municipio?' · '+esc(x.municipio):''}</div>
       <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')}${x.data?' · '+esc(x.data):''}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.razao}×</div><div class="dim">a mediana</div></div></div>
-      <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${x.amostra})</span><b>z ${x.z_robusto}</b></div>
-      ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${x.amostra} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${x.razao}× mais caro</b> (z robusto ${x.z_robusto}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">a mediana</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${fmtN(x.amostra)})</span><b>z ${fmtN(x.z_robusto)}</b></div>
+      ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${fmtN(x.amostra)} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${fmtN(x.razao)}× mais caro</b> (z robusto ${fmtN(x.z_robusto)}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
     'hl')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
@@ -1525,18 +1615,18 @@ async function renderEscalada(esf='estado'){
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈')}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯')}
-      ${kpi(a.length?a[0].razao+'×':'—','Maior escalada','var(--rose)')}${kpi(a.length?a[0].span_dias+'d':'—','Janela do pior caso',null,'📅')}</div>`;
+      ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Maior escalada','var(--rose)')}${kpi(a.length?fmtN(a[0].span_dias)+'d':'—','Janela do pior caso',null,'📅')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item ou fornecedor…" oninput="filtrar(this,'#escal-list .card')"></div>`;
   h+=`<div id="escal-list" class="grid">`+a.map(x=>{
     const serie=(x.serie||[]).map(s=>`<span title="${esc(s.orgao||'')} ${esc(s.data)}">${fmtR(s.preco)}</span>`).join(' <span class="dim">→</span> ');
-    const mkt=x.final_vs_mercado?`<span class="tag rose">${x.final_vs_mercado}× o mercado</span>`:'';
+    const mkt=x.final_vs_mercado?`<span class="tag rose">${fmtN(x.final_vs_mercado)}× o mercado</span>`:'';
     return card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
-      <div class="dim" style="margin-top:2px">${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${x.n_compras} compras em ${x.span_dias} dias ${mkt}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.razao}×</div><div class="dim">${fmtR(x.preco_inicial)} → ${fmtR(x.preco_final)}</div></div></div>
+      <div class="dim" style="margin-top:2px">${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${fmtN(x.n_compras)} compras em ${fmtN(x.span_dias)} dias ${mkt}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">${fmtR(x.preco_inicial)} → ${fmtR(x.preco_final)}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">série: ${serie}</span></div>
-      ${leitura(`<b>${esc(x.fornecedor)}</b> vendeu "${esc(x.item)}" começando em <b>${fmtR(x.preco_inicial)}</b> e chegando a <b>${fmtR(x.preco_final)}</b> (<b>${x.razao}× mais caro</b>) em ${x.span_dias} dias${x.final_vs_mercado?`, hoje <b>${x.final_vs_mercado}× a mediana de mercado</b> do item`:''}. Nenhum reajuste legítimo triplica preço nessa janela — indício de preço dirigido. Confirmar especificação no termo de referência.`)}`,
+      ${leitura(`<b>${esc(x.fornecedor)}</b> vendeu "${esc(x.item)}" começando em <b>${fmtR(x.preco_inicial)}</b> e chegando a <b>${fmtR(x.preco_final)}</b> (<b>${fmtN(x.razao)}× mais caro</b>) em ${fmtN(x.span_dias)} dias${x.final_vs_mercado?`, hoje <b>${fmtN(x.final_vs_mercado)}× a mediana de mercado</b> do item`:''}. Nenhum reajuste legítimo triplica preço nessa janela — indício de preço dirigido. Confirmar especificação no termo de referência.`)}`,
     'hl');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
@@ -1669,7 +1759,7 @@ async function _compEconomia(){
   h+=await _blocoVedada();
   h+=bloco('🏛️ Onde a economia está — por ÓRGÃO', d.por_orgao, 'orgao', x=>esc(x.orgao||'—'));
   h+=bloco('📦 Por ITEM', d.por_item, 'item', x=>esc(x.item||'—')+(x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''));
-  h+=bloco('🏢 Por FORNECEDOR (quem cobrou o excedente)', d.por_fornecedor, 'fornecedor', x=>x.fornecedor_cnpj?clk(x.fornecedor_cnpj,x.fornecedor):esc(x.fornecedor||'—'));
+  h+=bloco(svgIco('🏢')+' Por FORNECEDOR (quem cobrou o excedente)', d.por_fornecedor, 'fornecedor', x=>x.fornecedor_cnpj?clk(x.fornecedor_cnpj,x.fornecedor):esc(x.fornecedor||'—'));
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 async function _blocoVedada(){
@@ -1768,6 +1858,8 @@ async function renderRiscos(){
 
 // ═══ PREFEITURA DO RIO ═══
 async function renderPanoramaPref(){
+  /* Medido em campo (2026-07-31): conluio 0,462 s · comissionados 0,183 s · benefícios 0,114 s.
+     Paralelo fecha em ~0,5 s — não há o que quebrar aqui. */
   const [cj,cc,bv]=await Promise.all([J('/api/pncp/conluio?esfera=prefeitura'),J('/api/pcrj/comissionados_candidatos?limite=1'),J('/api/pcrj/beneficios_vinculo')]);
   const cov=cj.cobertura||{},cap=cj.captura||[],rod=cj.rodizio_vencedores||[];
   let h=cover('prefeitura','Prefeitura do Rio de Janeiro','Licitações do MUNICÍPIO do Rio pelo PNCP (esfera oficial), folha de comissionados, candidaturas e benefícios sociais. Os demais municípios do RJ ficam em Transversal → Conluio → chip "Municípios".','🏙️');
@@ -1860,7 +1952,7 @@ async function renderGastosPref(){
   h+=`<div class="grid g2">`+dets.map(k=>{const m=_DET_ROTULO[k]||['📌',k,''];
     return kpi(fmtN(d.detectores[k]),m[1],k==='d9_socio_na_folha'?'var(--rose)':null,m[0]);}).join('')+`</div>`;
   h+=`<div class="chips" style="margin-top:12px"><button type="button" class="chip ${_gastosDet===''?'on':''}" onclick="_gastosDet='';ir('p_gastos')">Todos</button>`+
-    dets.map(k=>`<button type="button" class="chip ${_gastosDet===k?'on':''}" onclick="_gastosDet='${k}';ir('p_gastos')">${(_DET_ROTULO[k]||['📌',k])[0]} ${(_DET_ROTULO[k]||['',k])[1]}</button>`).join('')+`</div>`;
+    dets.map(k=>`<button type="button" class="chip ${_gastosDet===k?'on':''}" onclick="_gastosDet='${k}';ir('p_gastos')">${svgIco((_DET_ROTULO[k]||['📌',k])[0])} ${(_DET_ROTULO[k]||['',k])[1]}</button>`).join('')+`</div>`;
   h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por credor, órgão, objeto…" oninput="filtrar(this,'#pg-list .card')"></div>`;
   const mostrar=_gastosDet?{[_gastosDet]:(d.achados||{})[_gastosDet]||[]}:(d.achados||{});
   let cards='';
@@ -1868,8 +1960,8 @@ async function renderGastosPref(){
     const m=_DET_ROTULO[det]||['📌',det,''];
     cards+=(lista||[]).slice(0,_gastosDet?200:12).map(a=>card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
-        <div style="font-weight:700">${m[0]} ${esc((a.titulo||'').slice(0,90))}</div>
-        <div class="muted" style="font-size:12.5px;margin-top:4px">${esc((a.descricao||'').slice(0,260))}</div></div>
+        <div style="font-weight:700">${svgIco(m[0])} ${esc(corta(a.titulo,90))}</div>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">${esc(corta(a.descricao,260))}</div></div>
         <span class="sev ${a.severidade==='alta'?'alta':'media'}">${esc(a.severidade||'')}</span></div>`,
       a.severidade==='alta'?'hl':'')).join('');
   }
@@ -1895,8 +1987,8 @@ async function renderFantasmasPref(){
   const _montarF=x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome)}${x.homonimo?' <span class="tag amber" title="nome existe em ≥3 municípios — confirmar por CPF/matrícula">homônimo?</span>':''}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.gabinetes||'—').slice(0,60))} · ${esc((x.cargos_camara||'—').slice(0,40))}</div>
-      <div class="dim" style="margin-top:4px">${esc((x.sinais||'').slice(0,200))}</div></div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(corta(x.gabinetes||'—',60))} · ${esc(corta(x.cargos_camara||'—',40))}</div>
+      <div class="dim" style="margin-top:4px">${esc(corta(x.sinais,200))}</div></div>
       <div class="right"><span class="sev ${x.faixa==='forte'?'alta':'media'}">${esc(x.faixa)}</span><div class="dim" style="margin-top:4px">score ${x.score}</div></div></div>`,
     x.faixa==='forte'?'hl':'');
   h+=listaPaginada('pf-list',_itF,_montarF,60,x=>x.nome);
@@ -1932,7 +2024,7 @@ async function renderContratosPref(){
     h+=sec('Publicadas (45 dias)',its.length);
     if(!its.length)return h+card('<div class="muted">Sem contratações no período (ou API do PNCP indisponível agora — a visão "Com análise" usa a base local e sempre responde).</div>');
     h+=buscaPag('ctr-list','filtrar por objeto ou órgão…');
-    h+=listaPaginada('ctr-list',its,c=>card(`<div style="font-weight:650;font-size:13.5px">${esc((c.objeto||c.objetoCompra||'—')).slice(0,140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc((c.orgao||c.orgaoNome||c.unidade||'')).slice(0,60)} ${c.valor||c.valorTotal?'· '+fmtRc(c.valor||c.valorTotal):''}</div>`),60);
+    h+=listaPaginada('ctr-list',its,c=>card(`<div style="font-weight:650;font-size:13.5px">${esc(corta(c.objeto||c.objetoCompra||'—',140))}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(corta(c.orgao||c.orgaoNome||c.unidade||'',60))} ${c.valor||c.valorTotal?'· '+fmtRc(c.valor||c.valorTotal):''}</div>`),60);
     return h;
   }
   const d=await J('/api/certames/lista?esfera=prefeitura&limite=600');
@@ -1945,7 +2037,7 @@ async function renderContratosPref(){
     const cor=c.faixa==='EXTREMO'||c.faixa==='ALTO'?'var(--rose)':c.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
     const temas=(c.temas||[]).slice(0,4).map(t=>`<span class="tag ${t.valor>=0.6?'rose':t.valor>=0.3?'amber':'accent'}">${esc(_TEMA_ROTULO[t.familia]||t.familia)} ${(t.valor*100).toFixed(0)}%</span>`).join(' ');
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:650;font-size:13.5px">${esc((c.objeto||'—')).slice(0,140)}</div>
+      <div style="min-width:0"><div style="font-weight:650;font-size:13.5px">${esc(corta(c.objeto||'—',140))}</div>
       <div class="muted" style="font-size:12.5px;margin-top:3px">${esc(c.nc)} · ${c.ano||''}${c.valor_estimado?' · estimado '+fmtRc(c.valor_estimado):''}</div>
       ${temas?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">${temas}</div>`:''}</div>
       <div class="right" style="text-align:right">${c.analisado
@@ -2045,22 +2137,44 @@ function autocompletar(input,boxSel,onPick){
 }
 function acKeydown(ev,input,boxSel,onEnterSemSelecao){
   const box=document.querySelector(boxSel);
-  if(!box||!box.classList.contains('on')){if(ev.key==='Enter')onEnterSemSelecao();return;}
-  if(ev.key==='ArrowDown'){ev.preventDefault();_acSelIdx=Math.min(_acSelIdx+1,_acItens.length-1);_acRenderSel(box);}
-  else if(ev.key==='ArrowUp'){ev.preventDefault();_acSelIdx=Math.max(_acSelIdx-1,0);_acRenderSel(box);}
-  else if(ev.key==='Enter'){if(_acSelIdx>=0){ev.preventDefault();_acPick(_acSelIdx);}else{box.classList.remove('on');onEnterSemSelecao();}}
-  else if(ev.key==='Escape'){box.classList.remove('on');}
+  const aberta=!!(box&&box.classList.contains('on'));
+  if(ev.key==='Escape'&&aberta){box.classList.remove('on');return;}
+  if(aberta&&(ev.key==='ArrowDown'||ev.key==='ArrowUp')){
+    ev.preventDefault();
+    _acSelIdx=ev.key==='ArrowDown'?Math.min(_acSelIdx+1,_acItens.length-1):Math.max(_acSelIdx-1,0);
+    _acRenderSel(box);return;}
+  if(ev.key!=='Enter')return;
+  /* v55 — CAUSA RAIZ do "Enter não busca" (medida pelo it-campo no navegador: com a lista de
+     sugestões aberta, o keydown voltava CANCELADO e o submit do form nunca disparava).
+     O v54 consumia TODO Enter aqui para evitar busca dobrada. Consumir sem ter o que escolher
+     é engolir: com a lista aberta e NENHUMA sugestão destacada, ninguém sobrava para buscar.
+     Regra nova, uma só: só consumo o Enter quando ele tem destino — a sugestão em foco.
+     Em qualquer outro caso a lista fecha e o evento SEGUE, e quem busca é a submissão
+     implícita do <form> (caminho do próprio navegador, que nenhum handler precisa reproduzir).
+     Fora de form não há submit para herdar; aí sim chamo a busca na mão. */
+  if(aberta&&_acSelIdx>=0){ev.preventDefault();_acPick(_acSelIdx);return;}
+  if(aberta)box.classList.remove('on');
+  if(!input.closest('form')){ev.preventDefault();onEnterSemSelecao();}
 }
 // ═══ BUSCA universal ═══
 let _bq='';
 async function renderBuscar(){
   return cover('geral','Busca universal','Procure por empresa, CNPJ, órgão, contrato ou termo. Clique num resultado para o dossiê 360.','🔎')+
-    `<div class="search"><span class="mag"></span><input id="bq" placeholder="nome, CNPJ ou objeto — ex.: engenharia, limpeza, 42498733000148…" value="${esc(_bq)}"
+    /* v54: o campo passa a viver dentro de um <form>. Medido pelo it-campo: com "limpeza"
+       digitado, o Enter só chamava /api/sugestoes — /api/compliance/buscar NUNCA era
+       chamado, e só o clique no botão buscava. Campo de busca solto depende de o
+       handler de tecla sobreviver; dentro de um form, o Enter é submissão implícita
+       do navegador — funciona mesmo que algum handler acima engula o keydown.
+       O acKeydown continua responsável pela lista de sugestões (setas + Enter escolhe
+       a que está em foco) e consome o Enter, então o submit não dispara duas vezes. */
+    `<form class="busca-uni" role="search" onsubmit="event.preventDefault();fazBusca()">
+     <div class="search"><span class="mag"></span><input id="bq" name="q" autocomplete="off" placeholder="nome, CNPJ ou objeto — ex.: engenharia, limpeza, 42498733000148…" value="${esc(_bq)}"
        oninput="autocompletar(this,'#bq-ac',(it)=>{$('bq').value=it.nome;if(it.tipo==='empresa'&&it.cnpj)abrirDossie(it.cnpj,it.nome);else fazBusca();})"
        onkeydown="acKeydown(event,this,'#bq-ac',fazBusca)">
      <div id="bq-ac" class="ac-box"></div></div>
-     <div class="btns" style="margin-top:-2px"><button class="btn accent" onclick="fazBusca()">Buscar</button></div>
-     <div id="bres" style="margin-top:14px">${_bq?spin():'<div class="dim" style="text-align:center;padding:20px">Digite acima e toque em Buscar (ou escolha uma sugestão).</div>'}</div>`;
+     <div class="btns" style="margin-top:-2px"><button type="submit" class="btn accent">Buscar</button></div>
+     </form>
+     <div id="bres" style="margin-top:14px">${_bq?spin():'<div class="dim" style="text-align:center;padding:20px">Digite acima e tecle Enter (ou toque em Buscar, ou escolha uma sugestão).</div>'}</div>`;
 }
 async function fazBusca(){
   const q=($('bq')||{}).value?.trim()||'';if(!q)return;_bq=q;const box=$('bres');box.innerHTML=spin('Buscando "'+esc(q)+'"…');
@@ -2292,13 +2406,13 @@ async function _liftBloco(){
   const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,var(--green))'));
     return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;};
   let h=sec('Validação contra o gabarito objetivo (sanções) — lift por detector');
-  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${(d.taxa_base*100).toFixed(1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">circular</span> = usa sanção como input (não é corroboração independente).</div>`;
+  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${fmtD(d.taxa_base*100,1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">circular</span> = usa sanção como input (não é corroboração independente).</div>`;
   h+=`<div class="grid">`+det.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
       <div style="min-width:0;flex:1"><div style="font-weight:700">${rot(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">circular</span>':''}${x.n_pequeno?'<span class="tag amber">n<10</span>':''}</div>
-      <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${(x.taxa*100).toFixed(1)}%)</div>
+      <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${fmtD(x.taxa*100,1)}%)</div>
       ${barra(x.lift,x.circular)}</div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'var(--green)'))}">${x.lift}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'var(--green)'))}">${fmtN(x.lift)}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
   return h;
 }
 
@@ -2479,21 +2593,22 @@ async function renderSiafe(){
 async function renderSweeps(){
   // Cockpit do SISTEMA (pedido do dono 2026-07-26): sweeps, fila SEI com barra,
   // arquivo compacto, pipelines e aprendizados — vivo, atualizando em 30s.
+  /* Medido em campo (2026-07-31): sweeps/status 0,278 s · sistema/atividade 0,114 s. Nada a dividir. */
   const [d,a]=await Promise.all([J('/api/sweeps/status'),J('/api/sistema/atividade')]);
   const sei=a.sei||{},apr=a.aprendizados||{};
-  const gb=v=>v==null?'—':(v/1e9).toFixed(2)+' GB';
+  const gb=v=>v==null?'—':fmtD(v/1e9,2)+' GB';
   const idade=st=>st==null?'—':(st<90?'agora':(st<5400?Math.round(st/60)+' min atrás':Math.round(st/3600)+' h atrás'));
   const aprTotal=(apr.memoria_db||0)+(apr.fichas_sei||0)+(apr.direcionamentos||0)+(apr.vault_notas||0);
   let h=cover('geral','Sistema — a atividade de toda a máquina',
     'O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.','🛰️');
   h+=`<div class="grid g2" id="sis-live">
-    ${kpi(sei.pct_lido==null?'—':sei.pct_lido+'%','Fila SEI já lida',null,'📄')}
+    ${kpi(sei.pct_lido==null?'—':fmtD(sei.pct_lido,1)+'%','Fila SEI já lida',null,'📄')}
     ${kpi(fmtN(sei.arquivados),'Processos no arquivo compacto')}
     ${kpi(gb(sei.arquivo_bytes),'Espaço do arquivo (texto+fases+fotos)')}
     ${kpi(fmtN(aprTotal),'Aprendizados acumulados','var(--accent)','🧠')}</div>`;
   const falta=(sei.fila_total!=null&&sei.arquivados!=null)?sei.fila_total-sei.arquivados:null;
   h+=card(`<div class="kv"><span class="k">Fila SEI por dinheiro — lidos × restantes</span><b><span class="num" id="sis-lidos">${fmtN(sei.arquivados)}</span> de ${fmtN(sei.fila_total)}${falta!=null?` · faltam <span class="num" id="sis-falta">${fmtN(falta)}</span>`:''}</b></div>
-    <div class="sisbar bar" title="${sei.pct_lido==null?'fila total indisponível':sei.pct_lido+'% lido'}"><i id="sis-barra" style="width:${sei.pct_lido==null?0:Math.max(1.2,sei.pct_lido)}%"></i></div>
+    <div class="sisbar bar" title="${sei.pct_lido==null?'fila total indisponível':fmtD(sei.pct_lido,1)+'% lido'}"><i id="sis-barra" style="width:${sei.pct_lido==null?0:Math.max(1.2,sei.pct_lido)}%"></i></div>
     ${sei.pct_lido==null?leitura('Total da fila <b>INDISPONÍVEL</b> agora (não é zero) — a barra volta quando o compliance.db responder.'):''}`);
   h+=`<div style="height:14px"></div>`+sec('Sweeps de coleta',(a.sweeps||[]).length);
   h+=card((a.sweeps||[]).map(s0=>{
@@ -2712,7 +2827,8 @@ function blocoComandosMestres(){
   for(const c of CAPS_MESTRAS)(grupos[c.grupo]=grupos[c.grupo]||[]).push(c);
   let h=`<div class="ck-caps"><div class="ck-eye">Funções mestras — ${CAPS_MESTRAS.length} comandos, um clique cada</div>`;
   for(const g of Object.keys(grupos)){
-    h+=`<div class="caps-g"><div class="caps-gt">${esc(g)}</div><div class="btns" style="flex-wrap:wrap">`;
+    const gi=grupos[g][0]||{};
+    h+=`<div class="caps-g"><div class="caps-gt">${gi.grupo_ic?`<span class="caps-gi" aria-hidden="true">${svgIco(gi.grupo_ic)}</span> `:''}${esc(gi.grupo_rot||g)}</div><div class="btns" style="flex-wrap:wrap">`;
     for(const c of grupos[g]){
       const dica=esc(`${c.descricao||c.nome}${c.exemplo?'\n\nex.: '+c.exemplo:''}${c.rota?'\n\n'+c.metodo+' '+c.rota:''}`);
       h+=`<button type="button" class="btn ghost" title="${dica}" onclick="abrirCapMestra('${esc(c.id)}')">`
@@ -2742,6 +2858,7 @@ function abrirCapMestra(id){
       +(c.exemplo?linha('Exemplo',`<code>${esc(c.exemplo)}</code>`):''))
     +`<div class="note">Nada foi disparado. Vários destes comandos geram peça pesada (PDF, planilha)
       ou escrevem no banco — o painel mostra o caminho, o disparo é decisão sua.</div>`;
+  a11yfy(sh);
 }
 
 async function renderCockpit(){
@@ -2759,6 +2876,13 @@ async function renderCockpit(){
       <div class="nu-hud" id="nu-hud" aria-live="polite">vigília armada — aguardando o primeiro evento do barramento</div>
       <div class="nu-sweep" id="nu-sweep" aria-live="polite"></div>
       <div id="nu-chips"></div></div>
+    <!-- RECOMENDAÇÃO EDITORIAL PENDENTE DE DECISÃO DO DONO (rodada 5, 2026-07-31):
+         os 6 números deste ck-grid são os MESMOS já rotulados na mesa de vigília logo acima
+         (nu-chips de NU_NODES: radar, alertas, mesma sala, empresa morta, comunidades,
+         compras). O leitor lê o mesmo dado duas vezes em uma tela — e o cartão, por ser
+         maior, rouba a leitura da mesa, que é a peça que o Início existe para mostrar.
+         Sugestão do auditor: remover os KPIs e deixar a mesa (o chip já traz rótulo+número).
+         NÃO EXECUTADA — cortar conteúdo do Início é decisão do dono, não do auditor. -->
     <div class="ck-grid" id="ck-grid"></div>
     ${blocoComandosMestres()}
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
@@ -2925,28 +3049,46 @@ function _holoPiso(g,bmp,c,W,H,alt){
     g.restore();
   }
 }
+/* v41: NUCLEO-HOLO — o arc reactor que projeta o holograma (arte do it-campo) entra
+   como corpo de video SOB o canvas; o procedural (feixes, chips, dados reais) segue
+   por cima. Progressivo: sem arquivo, nada muda.
+   v53: o loop deixa de ser fixo no rj — cada esfera tem o seu (ambar na prefeitura,
+   violeta no transversal), no MESMO padrao da nebulosa: webm antes do mp4, poster
+   .jpg por baixo, sonda HEAD uma vez por nome, reduced-motion e modo sobrio apagam.
+   Estado e Inicio seguem no nucleo-holo-rj (que nao tem .jpg — sem poster, sem erro). */
+async function nucleoViva(){
+  const box=$('ck-nucleo');if(!box)return;
+  const mapa={inicio:'nucleo-holo-rj',estado:'nucleo-holo-rj',
+              prefeitura:'nucleo-holo-prefeitura',geral:'nucleo-holo-transversal'};
+  const nome=mapa[esfera]||'nucleo-holo-rj';
+  let v=box.querySelector('video.holo');
+  /* mesma regra da nebulosa: decodificar video por quadro e exatamente o custo que a
+     maquina em modo sobrio ja nao estava dando conta. */
+  if(_redMotion||_sobrio){if(v){v.classList.remove('on');v.pause();}return;}
+  const url='/static/assets/'+nome+'.mp4';
+  if(_nuVid[nome]===undefined){
+    try{_nuVid[nome]=(await fetch(url,{method:'HEAD'})).ok}
+    catch(e){_nuVid[nome]=false}}
+  if(!_nuVid[nome]){if(v)v.classList.remove('on');return;}
+  if(!v){v=document.createElement('video');v.className='holo';
+    v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+    v.setAttribute('aria-hidden','true');
+    /* .on so quando ha QUADRO de verdade — play() que resolve sem codec deixaria
+       o veu ligado sobre video preto. */
+    v.addEventListener('playing',()=>v.classList.add('on'));
+    box.insertBefore(v,box.firstChild);}
+  if(v.dataset.nu!==nome){v.classList.remove('on');v.dataset.nu=nome;
+    v.poster='/static/assets/'+nome+'.jpg';
+    /* v41.1: par de sources — webm primeiro (Chromium sem H.264 decodifica VP9;
+       o Chrome real pega qualquer um). O que faltar cai pro proximo. */
+    v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'
+               +'<source src="'+url+'" type="video/mp4">';
+    v.load();}
+  v.play().catch(()=>{});
+}
 function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
-  /* v41: NUCLEO-HOLO — o arc reactor que projeta o holograma do RJ (arte do
-     it-campo) entra como corpo de video SOB o canvas; o procedural (feixes,
-     chips, dados reais) segue por cima. Progressivo: sem arquivo, nada muda. */
-  /* matchMedia direto: nucleoStart roda no boot ANTES do const _redMotion
-     (TDZ) — referencia-lo aqui matava a funcao inteira em ReferenceError. */
-  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)
-    fetch('/static/assets/nucleo-holo-rj.mp4',{method:'HEAD'}).then(r=>{
-    if(!r.ok)return;
-    let v=box.querySelector('video.holo');
-    if(!v){v=document.createElement('video');v.className='holo';
-      v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
-      v.setAttribute('aria-hidden','true');
-      v.addEventListener('playing',()=>v.classList.add('on'));
-      /* v41.1: par de sources — webm primeiro (Chromium sem H.264 decodifica
-         VP9; o Chrome real pega qualquer um). O que faltar cai pro proximo. */
-      v.innerHTML='<source src="/static/assets/nucleo-holo-rj.webm" type="video/webm">'
-                 +'<source src="/static/assets/nucleo-holo-rj.mp4" type="video/mp4">';
-      box.insertBefore(v,box.firstChild);}
-    v.play().catch(()=>{});
-  }).catch(()=>{});
+  nucleoViva();
   const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
   $('nu-chips').innerHTML=NU_NODES.map(n=>
     `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"
@@ -2960,8 +3102,12 @@ function nucleoStart(){
   /* FASE FIXA E DISTRIBUÍDA dentro do próprio anel, com UMA velocidade para todos.
      Antes cada domínio tinha velocidade própria: eles derivavam, formavam aglomerado
      e os rótulos se empilhavam de um lado da mesa enquanto o outro ficava vazio.
-     Com fase homogênea por anel a distribuição é estável para sempre — e é ela, não
-     um algoritmo de colisão, que resolve o empilhamento na raiz. */
+     Com fase homogênea por anel a distribuição é estável para sempre.
+     v53: mas distribuir NÃO é o mesmo que separar — este comentário afirmava que a fase
+     homogênea resolvia "o empilhamento na raiz" e o it-campo mediu que não: sem detecção
+     de colisão os rótulos se cobriam do mesmo jeito, e a colisão ia e voltava conforme a
+     mesa gira. Quem separa é o passo 4b (busca em órbita contra as caixas já ocupadas);
+     esta fase só garante um ponto de partida bem espalhado. */
   [0,1,2].forEach(a=>{const nós=NU_NODES.filter(n=>n._an===a);
     nós.forEach((n,i)=>{n._fase=(i/nós.length)*2*Math.PI + a*0.7;});});
   const ESP=HOLO.ESP, ARO=HOLO.ARO;
@@ -2969,7 +3115,7 @@ function nucleoStart(){
      embaixo: `repinta()` chama `draw()` antes daquele ponto e um `let` ainda em zona
      morta temporal derrubava a mesa inteira com ReferenceError — mas SO em
      reduced-motion, que e o unico caminho em que `repinta()` desenha. */
-  let W,H,placa=null,contorno=null,piso=null,pisoG=null,pisoSujo=true,_nuVisivel=true;
+  let W,H,placa=null,contorno=null,piso=null,pisoG=null,pisoSujo=true,_nuVisivel=true,_nuPintou=false;
   const cam={cx:0,cy:0,s:1,camd:HOLO.CAMD,yaw:0,tyaw:0,elev:HOLO.ELEV,telev:HOLO.ELEV,
              cp:0,sp:0,cy_:1,sy_:0};
   window.__holoCam=cam;      // gancho de auditoria: o screenshot sozinho não diz onde a câmera está
@@ -3099,7 +3245,11 @@ function nucleoStart(){
   function draw(t){
     if(!cv.isConnected){cancelAnimationFrame(_nuRAF);_nuRAF=0;return;}
     if(!_nuVisivel){_nuRAF=0;return;}                  // fora da viewport: o observador retoma
-    if(document.hidden){_nuRAF=requestAnimationFrame(draw);return;}
+    /* v52: SÓ pula o quadro se a mesa JÁ tem um quadro na tela. Antes, aba oculta no boot
+       significava mesa em branco: os 7 `.nu-chip` existem no DOM mas ficam empilhados em
+       (0,0) até `draw` posicioná-los, e o canvas nunca recebia um traço. Um quadro custa
+       ~15 ms e é a diferença entre cockpit e tela vazia. */
+    if(document.hidden&&_nuPintou){_nuRAF=0;return;}    // o ouvinte de visibilitychange retoma
     // câmera com inércia (ease exponencial, sem mola nem bounce)
     if(Math.abs(cam.tyaw-cam.yaw)>2e-4||Math.abs(cam.telev-cam.elev)>2e-4){
       cam.yaw+=(cam.tyaw-cam.yaw)*0.075; cam.elev+=(cam.telev-cam.elev)*0.075;
@@ -3189,13 +3339,15 @@ function nucleoStart(){
          então nada pousa em cima dele. Foi o defeito que escondeu o projetor no v12. */
       const _hc=P(0,HOLO.ALT,0), _hr=64*_hc.k*Math.min(1.5,cam.s/240);
       const _cx=[{x:_hc.x,y:_hc.y,w:_hr*2,h:_hr*2}];
-      /* A PÍLULA DE SWEEP também é território ocupado quando está acesa. Ela vive no
-         topo e ao centro; um rótulo empurrado para cima cobria o "alimentando · SEI".
-         Só restringe quem de fato cruza a faixa horizontal dela — quem está na
-         lateral continua podendo subir. */
-      /* Toda leitura de geometria (offset*) entra no MESMO cache de 45 quadros. Ler
-         `offset*` depois de escrever estilo força LAYOUT SÍNCRONO: medir a pílula a
-         cada quadro levou o teto do desenho de 5,7 ms para 44,7 ms. */
+      /* A PÍLULA DE SWEEP e o HUD também são território ocupado — e agora entram como
+         CAIXAS, não como faixa. A regra anterior reservava só a faixa ACIMA da pílula
+         porque a supunha no topo; no desktop ela vive em `bottom:14px` (painel.css:128 —
+         o `top:10px` é do regime compacto). O piso `y>=h+_pB` caía então FORA da caixa e
+         empurrava o rótulo justamente para cima do "alimentando · SEI". Como caixa, vale
+         onde quer que o CSS a ponha, e o HUD (canto inferior direito) enfim é respeitado. */
+      /* Toda leitura de geometria (offsetWidth / getBoundingClientRect) entra no MESMO
+         cache de 45 quadros. Ler geometria depois de escrever estilo força LAYOUT
+         SÍNCRONO: medir a pílula a cada quadro levou o teto do desenho de 5,7 para 44,7 ms. */
       /* `classList.contains` não custa layout — então a MUDANÇA de estado da pílula
          força a remedição na hora, em vez de esperar o ciclo de 45 quadros. Nesta VM,
          a 3 fps, esperar o ciclo significava até 15 s com o rótulo em cima do sweep. */
@@ -3205,18 +3357,19 @@ function nucleoStart(){
         draw._m=0;
         NU_NODES.forEach(n=>{const e=$('nu-'+n.id);
           if(e){n._w=e.offsetWidth||96;n._h=e.offsetHeight||34;}});
+        /* pela CAIXA RENDERIZADA, não por `offsetLeft`: a pílula é centrada com
+           `left:50%` + `translateX(-50%)`, e offsetLeft ignora o transform. */
+        const rb=box.getBoundingClientRect();
+        const _caixa=e=>{const r=e.getBoundingClientRect();
+          return {x:r.left-rb.left+r.width/2, y:r.top-rb.top+r.height/2, w:r.width, h:r.height};};
+        draw._fix=[];
         const pil=$('nu-sweep');
-        if(pil&&pil.classList.contains('on')){
-          /* pela CAIXA RENDERIZADA, não por `offsetLeft`: a pílula é centrada com
-             `left:50%` + `translateX(-50%)`, e offsetLeft ignora o transform — a faixa
-             reservada saía deslocada meia largura e o rótulo cobria o sweep assim mesmo. */
-          const rb=box.getBoundingClientRect(), rp=pil.getBoundingClientRect();
-          draw._pX=[rp.left-rb.left,rp.right-rb.left];
-          draw._pB=rp.bottom-rb.top+10;
-        }else{draw._pX=null;draw._pB=0;}
+        if(pil&&pil.classList.contains('on'))draw._fix.push(_caixa(pil));
+        const hud=$('nu-hud');
+        if(hud&&hud.offsetWidth)draw._fix.push(_caixa(hud));
       }
       draw._m=(draw._m||0)+1;
-      const _pX=draw._pX, _pB=draw._pB||0;
+      for(const c of (draw._fix||[]))_cx.push(c);
       pos.slice().sort((a,b)=>b.k-a.k).forEach(o=>{
         const n=o.n,el=$('nu-'+n.id);if(!el)return;
         /* empurrão radial a partir do centro do PRÓPRIO ANEL do nó, não do centro do
@@ -3224,18 +3377,38 @@ function nucleoStart(){
            todos para CIMA e eles se empilhavam no topo. O centro do anel devolve o
            anel de rótulos em volta da órbita — que era o comportamento do v11. */
         const rc=P(0,o.h,0);
-        const dx=o.x-rc.x, dy=o.y-rc.y, d=Math.hypot(dx,dy)||1;
         const sc=Math.max(.84,Math.min(1.06,o.k));
         const w=(n._w||96)*sc, h=(n._h||34)*sc;
-        let x=o.x+dx/d*54, y=o.y+dy/d*34-18;
-        for(const c of _cx){
-          if(Math.abs(x-c.x)<(w+c.w)/2+8 && Math.abs(y-c.y)<(h+c.h)/2+8)
-            y=(y<=c.y)?c.y-(h+c.h)/2-9:c.y+(h+c.h)/2+9;
+        const a0=Math.atan2(o.y-rc.y, o.x-rc.x);
+        /* DETECÇÃO DE COLISÃO DE VERDADE. As três altitudes distribuem, mas nada IMPEDIA
+           duas caixas de ocupar o mesmo pixel — e como as posições giram, a colisão ia e
+           voltava ("radar de risco" sob "empresa morta", o HUD sob "caro + suspeito").
+           O empurrão de antes era uma passada só, em Y, e os `clamp` seguintes podiam
+           devolver a caixa para dentro de quem ela acabara de evitar.
+           Agora: o rótulo tenta o lugar canônico e, se estiver ocupado, ANDA EM ÓRBITA em
+           volta do próprio nó e sobe de raio (altura junto, pelo fator .62 do elipsóide)
+           até achar vaga. Vence a PRIMEIRA vaga livre; se nenhuma estiver, fica na de menor
+           sobreposição — nunca pior que o comportamento antigo. Reusa as caixas de `_cx`. */
+        let melhor=null;
+        for(const rad of [54,76,100,128]){
+          for(const gir of [0,.3,-.3,.62,-.62,.95,-.95,1.3,-1.3,1.7,-1.7,2.2,-2.2,Math.PI]){
+            const a=a0+gir;
+            let x=o.x+Math.cos(a)*rad, y=o.y+Math.sin(a)*rad*0.62-18;
+            x=Math.max(w/2+8,Math.min(W-w/2-8,x));      // nunca sai da caixa
+            y=Math.max(h+8,Math.min(H-8,y));
+            const cy=y-h/2;             // `y` é a BASE (translate -100%); colisão é por centro
+            let ov=0;
+            for(const c of _cx){
+              const px=(w+c.w)/2+8-Math.abs(x-c.x), py=(h+c.h)/2+8-Math.abs(cy-c.y);
+              if(px>0&&py>0)ov+=px*py;
+            }
+            if(!melhor||ov<melhor.ov)melhor={x,y,ov};
+            if(!ov)break;
+          }
+          if(!melhor.ov)break;
         }
-        x=Math.max(w/2+8,Math.min(W-w/2-8,x));      // nunca sai da caixa
-        const cruzaPilula=_pX&&(x-w/2)<_pX[1]+6&&(x+w/2)>_pX[0]-6;
-        y=Math.max(h+(cruzaPilula?_pB:8),Math.min(H-8,y));
-        _cx.push({x,y,w,h});
+        const x=melhor.x, y=melhor.y;
+        _cx.push({x,y:y-h/2,w,h});
         const tf='translate3d('+Math.round(x)+'px,'+Math.round(y)+'px,0) '
                 +'translate(-50%,-100%) scale('+sc.toFixed(2)+')';
         if(n._tf!==tf){n._tf=tf;el.style.transform=tf;}       // só escreve o que mudou
@@ -3549,9 +3722,15 @@ function nucleoStart(){
       ctx.lineWidth=viva?1.4:0.9;
       ctx.beginPath();ctx.moveTo(n._lx,n._ly);ctx.lineTo(o.x,o.y);ctx.stroke();
     });
-    if(!rm)_nuRAF=requestAnimationFrame(draw);
+    _nuPintou=true;
+    /* v52: em modo sóbrio a mesa fica no ÚLTIMO quadro — campo estático com nós, rótulos e
+       conectores. Sóbrio barateia a animação; entregar tela vazia nunca foi o combinado. */
+    _nuRAF=(rm||_sobrio||document.hidden)?0:requestAnimationFrame(draw);
   }
-  cancelAnimationFrame(_nuRAF);if(!rm)draw(performance.now());
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden||!cv.isConnected||!_nuVisivel)return;
+    cancelAnimationFrame(_nuRAF);draw(performance.now());});   // volta da aba (e saída do sóbrio)
+  cancelAnimationFrame(_nuRAF);draw(performance.now());
   // qual sweep alimenta o sistema — pinga já e a cada 15s enquanto o núcleo vive
   nuSweepPoll();clearInterval(_swInt);
   _swInt=setInterval(()=>{cv.isConnected?nuSweepPoll():clearInterval(_swInt);},15000);
@@ -3584,8 +3763,18 @@ function ckBoot(){
 }
 function ckPull(first){
   _ckTick=[];
-  J('/api/compliance/painel').then(d=>{const n=(d&&d.lista_alertas||[]).length;
-    if(n)nuSet('alertas',n);});
+  /* O chip anunciava `lista_alertas.length` — o TAMANHO DA PÁGINA (40), não a contagem
+     (7.058). Trocar uma grandeza pela outra no chip mais visível da mesa é o mesmo pecado
+     de "empenho como total pago": quem tirasse print levava 40 onde há 7.058. A manchete
+     passa a ser `alertas.total`; a página vive no title, explícita, nunca sozinha.
+     E `if(n)` engolia o zero: sem total, zero e falha eram o mesmo "—". Agora zero é zero
+     (o número) e falha é falha (o motivo no title). */
+  J('/api/compliance/painel').then(d=>{
+    const a=(d&&d.alertas)||null,el=$('nu-alertas');
+    if(!a||a.total==null){nuSet('alertas',null);if(el)el.title=erroHumano(d&&d.erro);return;}
+    nuSet('alertas',a.total);
+    if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média`
+      +` — a lista da tela mostra as ${fmtN((d.lista_alertas||[]).length)} primeiras`;});
   if(first)J('/api/intel/ninho_sala?limite=60').then(d=>{
     /* Falhar em SILÊNCIO deixava o card em "—" — indistinguível de "não há ninho".
        Silêncio ≠ INDISPONÍVEL: se a rota não respondeu, o card diz isso. */
@@ -3594,10 +3783,13 @@ function ckPull(first){
        Assembleia 10' tem 318 CNPJs e é edifício comercial. E o grau vem do ACÚMULO de
        fatores — 2+ recebendo, maioria baixada, abertura em lote, telefone comum —,
        nunca de um sinal só. Por isso o número é menor: ele agora sustenta o que diz. */
-    const gs=(d.grupos||[]),altos=gs.filter(g=>g.grau==='alto');
-    ckFill('ninho',{num:altos.length,
+    /* mesmo cuidado do chip de alertas: `grupos` vem cortado em ?limite=60 — quem conta
+       o total é a rota (`n_alto`, `n`), não o tamanho da página que chegou. */
+    const gs=(d.grupos||[]),altos=gs.filter(g=>g.grau==='alto'),
+          nAlto=(d.n_alto!=null?d.n_alto:altos.length),nTot=(d.n!=null?d.n:gs.length);
+    ckFill('ninho',{num:nAlto,
       meta:`grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada`
-           +(gs.length>altos.length?` · outros ${fmtN(gs.length-altos.length)} com menos fatores`:'')
+           +(nTot>nAlto?` · outros ${fmtN(nTot-nAlto)} com menos fatores`:'')
            +` — <b>${fmtRc(d.total_recebido_ob||0)}</b> em OB no conjunto`});
     ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores||[])[1]||'')} · ${fmtRc(g.total_recebido_ob)}`})));});
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok){
@@ -3657,7 +3849,12 @@ function ckPull(first){
         <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 }
 
-(async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();await ir('i_cockpit');marcarValores(document.getElementById('view'));
+(async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();
+  /* v57: a URL manda no boot — `#g_radar` abre direto na aba, e o Voltar volta pra cá. */
+  const _h=decodeURIComponent(location.hash.slice(1));
+  await ir(_abaValida(_h)?_h:'i_cockpit');
+  if(_h&&!_abaValida(_h))_hashInvalido(_h);
+  marcarValores(document.getElementById('view'));
   const st=await J('/status');
   if(st.exercicio){
     /* v27: estado do SIAFE era um dingbat. Medido: nenhuma das tres fontes
@@ -3692,6 +3889,11 @@ async function nebulaViva(){
               geral:'nebula-transversal',inicio:'portal-hero'};
   const nome=mapa[esfera],host=$('esfnebula');
   if(!nome||!host||_redMotion)return;
+  /* v51: modo sobrio (FPS MEDIDO < 24) tambem apaga a nebulosa viva. Decodificar video
+     de faixa inteira a cada quadro e exatamente o custo que a maquina ja nao estava
+     dando conta — some o veu, o JPG do pai reaparece por baixo e o quadro fica igual. */
+  if(_sobrio){const v0=host.querySelector('video');
+    if(v0){v0.classList.remove('on');v0.pause();}return;}
   const url='/static/assets/'+nome+'.mp4';
   if(_nebVid[nome]===undefined){
     try{_nebVid[nome]=(await fetch(url,{method:'HEAD'})).ok}
@@ -3700,70 +3902,64 @@ async function nebulaViva(){
   if(!_nebVid[nome]){if(v)v.classList.remove('on');return;}
   if(!v){v=document.createElement('video');
     v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+    v.preload='metadata';   // v51: nao puxar 1-2 MB antes de a esfera pedir
     v.setAttribute('aria-hidden','true');
     /* .on so quando ha QUADRO de verdade — play() que resolve sem codec
        (Chromium sem H.264) deixaria o veu ligado sobre video preto. */
     v.addEventListener('playing',()=>v.classList.add('on'));
     host.appendChild(v);}
   if(v.dataset.neb!==nome){v.classList.remove('on');v.dataset.neb=nome;
+    v.poster='/static/assets/'+nome+'.jpg';   // v51: mesmo quadro do JPG do pai enquanto nao toca
     /* v41.1: webm primeiro (harness sem H.264), mp4 como caminho canonico */
     v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'
                +'<source src="'+url+'" type="video/mp4">';
     v.load();}
   v.play().catch(()=>{});
 }
+/* v55 — HOLOGRAMA DO ESTADO (assinatura). Mesmo encaixe progressivo da nebulosa: sonda HEAD
+   uma vez, webm antes do mp4, .on só quando há QUADRO ('playing'), reduced-motion e modo
+   sóbrio apagam. Vive na esfera Estado e em TODA aba dela — por isso é assinatura, não enfeite
+   de uma tela. `body.holo-on` faz o #rjbg recuar: a malha do IBGE e o holograma desenham a
+   mesma geografia, e dois Estados sobrepostos viram ruído em cima do dado. */
+async function holoRJ(){
+  const host=$('holorj');if(!host)return;
+  let v=host.querySelector('video');
+  const apaga=()=>{document.body.classList.remove('holo-on');if(v){v.classList.remove('on');v.pause();}};
+  if(esfera!=='estado'||_redMotion||_sobrio){apaga();return;}
+  const url='/static/assets/holo-rj-estado.mp4';
+  if(_nebVid.holorj===undefined){
+    try{_nebVid.holorj=(await fetch(url,{method:'HEAD'})).ok}
+    catch(e){_nebVid.holorj=false}}
+  if(!_nebVid.holorj){apaga();return;}
+  if(esfera!=='estado')return;                      // esfera trocou durante o HEAD
+  if(!v){v=document.createElement('video');
+    v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;v.preload='metadata';
+    v.poster='/static/assets/holo-rj-estado.jpg';
+    v.setAttribute('aria-hidden','true');
+    v.addEventListener('playing',()=>{v.classList.add('on');document.body.classList.add('holo-on');});
+    v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'
+               +'<source src="'+url+'" type="video/mp4">';
+    host.appendChild(v);}
+  v.play().catch(()=>{});
+}
 /* v38: se o corpo do no (anel usinado) ja chegou do it-campo, liga a camada.
    Checagem unica no boot — 404 hoje significa "segue procedural", sem erro. */
 fetch('/static/assets/no-energia.png',{method:'HEAD'})
   .then(r=>{if(r.ok)document.body.classList.add('art-no')}).catch(()=>{});
-const _saberCor={ok:'var(--teal)',carga:'var(--amber)',critico:'var(--rose)'};
-let _hfN=0;
-function hfToggle(){$('holofeed').classList.toggle('open');}
-const _EV_COR={ob_siafe:'var(--gold)',ob_tfe:'var(--gold)',alerta:'var(--rose)',radar:'var(--rose)',
-  clausula:'var(--violet)',pericia:'var(--green)',ata:'var(--blue)',sei_doc:'var(--teal)'};
-function _hfAdd(ev,crit){
-  const ul=$('hflist');if(!ul)return;
-  $('hfvazio').style.display='none';
-  const li=document.createElement('li');if(crit)li.className='crit';
-  li.style.setProperty('--evc',_EV_COR[ev.tipo]||'var(--saber)');
-  li.innerHTML=`<span class="t">${esc(ev.t||'')}</span><span class="d">${ev.delta>1?'×'+fmtN(ev.delta):'◈'}</span><span>${esc(ev.rotulo||ev.tipo)}</span>`;
-  ul.prepend(li);
-  while(ul.children.length>10)ul.lastChild.remove();
-  _hfN++;
-}
-function _pulso(ev,crit){
-  if(_redMotion)return;
-  const c=$('conduit');if(!c)return;
-  const p=document.createElement('span');p.className='cpulse'+(crit?' crit':'');
-  p.addEventListener('animationend',()=>p.remove());c.appendChild(p);
-  if(ev.rotulo){const l=document.createElement('span');l.className='clabel';
-    l.textContent=(ev.delta>1?ev.delta+'× ':'')+ev.rotulo;
-    l.addEventListener('animationend',()=>l.remove());c.appendChild(l);}
-}
-function _kyber(load1,sweeps,mem){
-  const arc=$('karc');if(!arc)return;
-  const frac=Math.min(1,(load1||0)/5);          // 2 vCPU: load 5 = teto crítico do arco
-  arc.style.strokeDashoffset=(72.3*(1-frac)).toFixed(1);
-  $('kyber').classList.toggle('sweep',!!(sweeps&&(sweeps.sei||sweeps.siafe)));
-  $('hfload').textContent='load '+(load1==null?'—':load1.toFixed(2))+(mem!=null?' · ram '+mem+'%':'');
-}
-function sabreStart(){
-  if(!window.EventSource)return;               // navegador antigo: polling de sempre
-  const es=new EventSource('/api/eventos/stream');
-  es.onopen=()=>{$('livetxt').textContent='ao vivo';};
-  es.onerror=()=>{$('livetxt').textContent='reconectando…';};
-  es.onmessage=m=>{
-    let ev;try{ev=JSON.parse(m.data);}catch(_){return;}
-    if(ev.tipo==='pulse'){
-      document.documentElement.style.setProperty('--saber',_saberCor[ev.estado]||_saberCor.ok);
-      _kyber(ev.load1,ev.sweeps,ev.mem);
-      return;                                   // batimento não polui o feed nem pulsa a lâmina
-    }
-    const crit=(ev.tipo==='alerta'||ev.tipo==='radar');
-    _pulso(ev,crit);_hfAdd(ev,crit);nucleoPulse(ev.tipo);
-  };
-}
-sabreStart();
+/* O BARRAMENTO vive em `barramento/sabre.js`. Ele recebe GANCHOS em vez de importar o que
+   precisa, e isso e desenho, nao contorcao: pulsar a mesa (`nucleoPulse`) e saber se pode animar
+   sao coisas de FORA do barramento. Importa-las la criaria um ciclo com este arquivo; recebe-las
+   aqui diz a verdade — o barramento nao conhece a cena, ele avisa quem quiser ouvir.
+
+   `_hfN` foi embora no caminho: era um contador incrementado a cada linha do holofeed e lido por
+   ninguem, em nenhum lugar do repo. */
+conscienciaLigar(ritmoEstado);
+sabreStart({
+  aoEvento: ev => { nucleoPulse(ev.tipo); ritmoEvento();
+                    conscienciaEvento(ev, ev.tipo === 'alerta' || ev.tipo === 'radar'); },
+  aoBatimento: ev => { ritmoTelemetria(ev.load1, ev.sweeps); conscienciaBatimento(ev); },
+  podeAnimar: () => !_redMotion && !_sobrio,
+});
 
 /* ═══ v9 "ÍON" — 3D em todo controle + PORTAL DE IGNIÇÃO ══════════════════ */
 
@@ -3894,7 +4090,7 @@ function _rjCarregar(cb){
   if(_rjLoading)return;
   _rjLoading=true;
   const s=document.createElement('script');
-  s.src='/static/assets/rj-malha.js';s.async=true;
+  s.src='/static/assets/rj-malha.js?v=c6127f36';s.async=true;
   s.onload=()=>{const l=_rjCbs.slice();_rjCbs.length=0;
     /* era `catch(_){}` — um catch vazio. Se o desenho da malha falhasse, a
        falha sumia sem rastro e o mapa ficava vazio sem nada no console.  */
@@ -4096,29 +4292,69 @@ portalStart();
    feio (esta VM tem 11 GB e 2 vCPU sem GPU; um celular tem 8 núcleos e compõe melhor). O que
    importa é uma coisa só: esta máquina, agora, entrega quadro? Então conta quadro.
 
-   Roda DEPOIS da intro (a intro é o pico de carga e mediria o transiente, não o regime), amostra
-   1 s e não repete — medir de novo em loop seria gastar exatamente o que se quer economizar.
-   `_redMotion` continua um eixo separado: preferência declarada do usuário, não capacidade. */
+   Roda DEPOIS da intro (a intro é o pico de carga e mediria o transiente, não o regime) e amostra
+   1 s. Não fica em laço — só remede quando a aba volta do segundo plano (ver v52 abaixo).
+   `_redMotion` continua um eixo separado: preferência declarada do usuário, não capacidade.
+
+   v52 · MEDIR ABA OCULTA MEDE O NAVEGADOR, NÃO A MÁQUINA. Com `document.hidden` o Chrome congela
+   o rAF: `passo` roda UMA vez, 60 s depois, e a conta dava 1·1000/60000 ≈ 0 fps. Quem abrisse o
+   painel em aba de segundo plano (link em nova aba, restaurar sessão) caía em modo sóbrio PARA
+   SEMPRE — medido no navegador do it-campo: hidden=true, _jfnFps=0, _sobrio=true, 7 `.nu-chip` no
+   DOM e mesa em branco. Agora: não mede oculto, remede ao voltar, e o sóbrio é REVERSÍVEL. */
+function _sobrioAviso(fps){
+  /* aviso VISÍVEL: degradação calada é como ninguém descobre que o painel não é o desenhado. */
+  const alvo=document.querySelector('.htop')||document.querySelector('header');
+  if(!alvo)return;
+  const s=$('modo-sobrio')||document.createElement('span');s.id='modo-sobrio';
+  s.textContent='modo sóbrio · '+Math.round(fps)+' fps';
+  s.title='Esta máquina entregou '+Math.round(fps)+' quadros por segundo com a tela parada.\n'
+         +'As animações que exigem repintura por quadro foram desligadas para o painel ficar '
+         +'legível. O dado e as funções são os mesmos.';
+  if(!s.isConnected)alvo.appendChild(s);
+}
+function _sobrioAplicar(lig,fps){
+  if(_sobrio===lig)return;
+  _sobrio=lig;
+  document.body.classList.toggle('fps-baixo',lig);
+  if(lig)_sobrioAviso(fps);else{const s=$('modo-sobrio');if(s)s.remove();}
+  /* v51: a nebulosa viva pode já estar tocando quando a medição fecha (ela acende no boot,
+     isto roda a 2,6 s). Reentrar em nebulaViva com _sobrio ligado pausa o vídeo e devolve
+     o JPG — sem isto o modo sóbrio desligava tudo MENOS o item mais caro da tela.
+     Ao SAIR do sóbrio a mesma chamada devolve o vídeo. */
+  if(typeof nebulaViva==='function')nebulaViva();
+  if(typeof nucleoViva==='function')nucleoViva();   // v53: o nucleo e o segundo video da tela
+  if(typeof holoRJ==='function')holoRJ();           // v55: e o holograma do Estado e o terceiro
+  /* os laços dos canvas param quando `_sobrio` liga e cada um já tem seu ouvinte de
+     `visibilitychange` que cancela e repinta — reemitir o evento é o gancho que JÁ EXISTE para
+     "reavalie e volte a desenhar", em vez de espalhar uma segunda porta de retomada por canvas. */
+  document.dispatchEvent(new Event('visibilitychange'));
+}
+let _medirArmado=false;
+function _medirQuandoVisivel(){               // remede na volta da aba; um ouvinte só, não empilha
+  if(_medirArmado)return;
+  _medirArmado=true;
+  const h=()=>{if(document.hidden)return;
+    document.removeEventListener('visibilitychange',h);_medirArmado=false;
+    setTimeout(_medirFps,600);};              // folga: o 1º quadro depois da volta é o mais caro
+  document.addEventListener('visibilitychange',h);
+}
 function _medirFps(){
   if(_redMotion)return;                       // quem já pediu menos movimento não precisa da medição
+  if(document.hidden){_medirQuandoVisivel();return;}
   let n=0;const t0=performance.now();
-  const passo=()=>{n++;
-    if(performance.now()-t0<1000){requestAnimationFrame(passo);return;}
-    const fps=n*1000/(performance.now()-t0);
+  const passo=()=>{
+    if(document.hidden){_medirQuandoVisivel();return;}      // aba saiu de foco no meio: amostra morta
+    n++;
+    const dt=performance.now()-t0;
+    if(dt<1000){requestAnimationFrame(passo);return;}
+    /* janela de 1 s que levou mais de 3 s = o navegador estrangulou o rAF (aba oculta, janela
+       minimizada, economia de energia). Isso não é a máquina; não condena ninguém. */
+    if(dt>3000){_medirQuandoVisivel();return;}
+    const fps=n*1000/dt;
     window._jfnFps=Math.round(fps);
-    if(fps<24){
-      document.body.classList.add('fps-baixo');
-      _sobrio=true;   // avisa o JS: só a classe faria o CSS recuar e os canvas seguirem a custo cheio
-      /* aviso VISÍVEL: degradação calada é como ninguém descobre que o painel não é o desenhado. */
-      const alvo=document.querySelector('.htop')||document.querySelector('header');
-      if(alvo&&!$('modo-sobrio')){
-        const s=document.createElement('span');s.id='modo-sobrio';
-        s.textContent='modo sóbrio · '+Math.round(fps)+' fps';
-        s.title='Esta máquina entregou '+Math.round(fps)+' quadros por segundo com a tela parada.\n'
-               +'As animações que exigem repintura por quadro foram desligadas para o painel ficar '
-               +'legível. O dado e as funções são os mesmos.';
-        alvo.appendChild(s);}
-    }};
+    if(fps<24)_sobrioAplicar(true,fps);
+    else{_sobrioAplicar(false,fps);_medirQuandoVisivel();}  // segue vigiando: máquina piora também
+  };
   requestAnimationFrame(passo);
 }
 /* 2,6 s = fim da intro (1,96 s) + folga para o primeiro render de conteúdo assentar. */
@@ -4126,15 +4362,7 @@ setTimeout(_medirFps,2600);
 
 /* ═══════════ v10 "AGÊNCIA" — avisos da casa, erro humano, orçamento de vida ═══════════ */
 // Erro de rede NUNCA chega cru ao usuário (era `TypeError: Failed to fetch` na tela).
-function erroHumano(e){
-  const s=String(e||'');
-  let msg='Este dado não respondeu agora.';
-  if(/failed to fetch|networkerror|load failed/i.test(s))msg='Sem resposta do servidor — a VM pode estar ocupada com um sweep.';
-  else if(/timeout|timed out/i.test(s))msg='O servidor demorou demais para responder.';
-  else if(/json|unexpected token/i.test(s))msg='O servidor respondeu em formato inesperado.';
-  else if(s&&!/^indispon/i.test(s))msg=esc(s);   // mensagem de negócio vinda da API passa direto
-  return `${msg} <button class="btn ghost v10retry" onclick="_jCache.clear();ir(aba)">↻ Tentar de novo</button>`;
-}
+
 // Toast e confirm com a cara do painel (alert/confirm nativos quebravam a imersão).
 function jfnToast(msg,tipo){
   let box=$('v10toasts');if(!box){box=document.createElement('div');box.id='v10toasts';document.body.appendChild(box);}
@@ -4170,7 +4398,7 @@ setTimeout(_sphMask,600);
    junto com a aba. Delegacao sobrevive a troca.
    `pointerdown` e nao `click`: a resposta tem que sair no TOQUE, nao na
    soltura — 100ms de atraso ja le como travado.                            */
-(function(){
+(function _ligarTato(){
   const ALVO='.btn,.chip,.tab,.lnk,.ck-inst,nav.tabs button,.sph,.htop a,.kpi';
   let ultima=0;
   addEventListener('pointerdown',ev=>{
@@ -4205,7 +4433,7 @@ setTimeout(_sphMask,600);
    characterData: quando o texto de um valor troca, a classe acende por 1,1s e
    sai sozinha. NAO observa childList — foi observar mutacao de no que derrubou
    a montagem do painel numa tentativa anterior desta sessao.                */
-(function(){
+(function _ligarObservadorDeValor(){
   const v=document.getElementById('view');if(!v)return;
   if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
   new MutationObserver(ms=>{
@@ -4261,3 +4489,62 @@ function marcarValores(raiz){
     else if(/^(m[ée]dia|m[ée]dio|aten[çc][ãa]o)$/.test(t))x.classList.add('sev','media');
   });
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   PONTE DE GLOBAIS — o que os ~161 handlers inline do painel precisam achar no `window`.
+
+   POR QUE ISTO EXISTE, E POR QUE EXISTE AGORA. O painel monta atributos `on*="..."` dentro dos
+   59 renders, e o navegador avalia esse código no escopo GLOBAL. Enquanto o painel é UM script
+   clássico, isso sai de graça — e este bloco é literalmente um no-op, porque todo nome citado
+   aqui já está no escopo. No instante em que o fonte virar módulos com build (`--format=iife`),
+   tudo passa a viver dentro de uma função e cada nome precisa ser reinstalado de propósito.
+
+   Esquecer um não derruba o boot: derruba UM botão, de UMA aba, na hora em que alguém clicar.
+   Por isso a ponte nasce ANTES da migração, inerte e já sob teste — `tools/painel_ponte_check.py`
+   extrai a lista de dentro dos próprios handlers e `tests/test_painel_ponte_completa.py` falha se
+   faltar um nome ou se a superfície crescer.
+
+   A ponte NÃO é o destino. O destino é delegação por `data-*` no `#view`, feita por domínio. O
+   `TETO_GLOBAIS` do teste é o que torna esse progresso mensurável: cada domínio migrado baixa o
+   teto. Ponte sem teto vira desculpa permanente.
+   ═════════════════════════════════════════════════════════════════════════════════════════ */
+/* SEGUNDA CATEGORIA DA PONTE: contrato de FERRAMENTA, não de handler.
+
+   `TABS` não aparece em nenhum atributo `on*` — o extrator do `painel_ponte_check` (que lê os
+   handlers) nunca o veria. Mas ele é lido de dentro da página por três ferramentas da casa:
+   `painel_boot_check` (`typeof TABS === 'object'` é o sinal de boot vivo, e
+   `Object.values(TABS).flat()` é como ele descobre as 60 abas), `painel_medir_boot` e o walker.
+   Sem esta linha, o primeiro `--todas` depois do build morre com `ReferenceError: TABS is not
+   defined` — e foi exatamente o que aconteceu na primeira tentativa desta migração.
+   Documentado aqui porque a razão de existir não está no arquivo que o usa. */
+window.TABS=TABS;
+
+Object.assign(window,{
+  $,_acPagPick,_acPick,_jCache,_pagMais,abrirCapMestra,abrirCertame,abrirDossie,acKeydown,acao,
+  autocompletar,detRodar,fazBusca,fecharCertame,fecharDossie,filtrar,filtrarPag,fxConsultar,
+  gerarPdfIntel,glossario,hfToggle,instAcionar,instUgs,ir,missaoCriar,missaoListar,missaoVer,
+  conscienciaToggle,montarSpheres,montarTabs,ordenar,pecaGerar,seiArvore,seiBaixarZip,sweep,toggle,trocarEsfera,validar,
+  verCruzamento,vincConluioMunicipal,vincConsultar,vincFtm,vincGrafo,vincHistoricoPessoa,
+  vincInterposicao,vincNaData,vincParentesco,vincPatrimonio,vincPrevalencia,vincResolucao,
+  vincTrocas,
+});
+
+/* Os 19 estados que o HTML não lê — ESCREVE. `onchange="_respProc=this.value;ir('e_resp')"`,
+   `onclick="_compView='dossie';ir(aba)"`, `onclick="...;esfera='geral';aba='g_acoes';..."`.
+   Para estes, `Object.assign` NÃO serve: `window._respProc='X'` não atualiza um `let _respProc`
+   de módulo, e a falha é MUDA — o filtro simplesmente para de responder, sem um erro no console.
+   É o risco mais perigoso da migração inteira, e a única forma correta é acessor com get E set. */
+(()=>{const cx={
+  _cjEsf:     [()=>_cjEsf,     v=>{_cjEsf=v}],      _comisView: [()=>_comisView, v=>{_comisView=v}],
+  _compCat:   [()=>_compCat,   v=>{_compCat=v}],    _compDisp:  [()=>_compDisp,  v=>{_compDisp=v}],
+  _compEsf:   [()=>_compEsf,   v=>{_compEsf=v}],    _compGrupo: [()=>_compGrupo, v=>{_compGrupo=v}],
+  _compOrd:   [()=>_compOrd,   v=>{_compOrd=v}],    _compTermo: [()=>_compTermo, v=>{_compTermo=v}],
+  _compView:  [()=>_compView,  v=>{_compView=v}],   _ctrView:   [()=>_ctrView,   v=>{_ctrView=v}],
+  _fantFaixa: [()=>_fantFaixa, v=>{_fantFaixa=v}],  _gastosDet: [()=>_gastosDet, v=>{_gastosDet=v}],
+  _nuHover:   [()=>_nuHover,   v=>{_nuHover=v}],    _perGrau:   [()=>_perGrau,   v=>{_perGrau=v}],
+  _perOrdem:  [()=>_perOrdem,  v=>{_perOrdem=v}],   _respProc:  [()=>_respProc,  v=>{_respProc=v}],
+  _riscoView: [()=>_riscoView, v=>{_riscoView=v}],  aba:        [()=>aba,        v=>{aba=v}],
+  esfera:     [()=>esfera,     v=>{esfera=v}],
+};
+for(const n in cx)Object.defineProperty(window,n,{get:cx[n][0],set:cx[n][1],configurable:true});
+})();

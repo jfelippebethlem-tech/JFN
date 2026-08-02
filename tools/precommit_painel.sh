@@ -17,9 +17,32 @@ cd "$root" || exit 0
 py="$root/.venv/bin/python"
 [ -x "$py" ] || { echo "[pre-commit] venv ausente — gate do painel NÃO rodou" >&2; exit 0; }
 
+# ── 0-A. bundle em dia com o fonte ───────────────────────────────────────────────────────────────
+# Vem ANTES do bump, e é um buraco que só existe desde que o painel passou a ter build (v58).
+# Enquanto fonte e artefato eram o MESMO arquivo, "editei e não bumpei" era impossível de esconder:
+# o hash mudava. Agora existe um estado que a catraca `?v=` não enxerga — `static/js/src/` editado
+# e bundle não reconstruído: o hash do artefato bate com a tag, a catraca diz "em dia", e a
+# correção não chega a ninguém. É o mesmo defeito que o bump_versao existe para matar, um nível
+# acima. Sem Node na máquina, AVISA e passa — pelo mesmo motivo da camada 2 abaixo.
+if ! out="$(PYTHONPATH=. "$py" -m tools.painel_build_check 2>&1)"; then
+  echo "[pre-commit] ❌ gate do painel BLOQUEOU (bundle defasado):" >&2
+  echo "$out" | tail -12 >&2
+  exit 1
+fi
+
+# ── 0-B. catraca de cache ────────────────────────────────────────────────────────────────────────
+# Editar o painel sem mexer no `?v=` do HTML = correção que não chega em NINGUÉM (o navegador serve
+# o cache). Bloqueia, porque o sintoma é invisível em revisão de código.
+if ! out="$("$py" -m tools.painel_bump_versao --check 2>&1)"; then
+  echo "[pre-commit] ❌ $out" >&2
+  exit 1
+fi
+
 # ── 1. estática, sempre ──────────────────────────────────────────────────────────────────────────
 if ! out="$("$py" -m pytest -q -p no:randomly \
       tests/test_painel_css_integro.py tests/test_painel_abas.py \
+      tests/test_painel_script_classico.py tests/test_painel_ponte_completa.py \
+      tests/test_painel_ordem_de_boot.py \
       tests/test_rotas_sem_orfa.py tests/test_rotas_sem_superficie.py 2>&1)"; then
   echo "[pre-commit] ❌ gate do painel BLOQUEOU (checagem estática):" >&2
   echo "$out" | tail -25 >&2

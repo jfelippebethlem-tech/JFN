@@ -26,13 +26,33 @@ from pathlib import Path
 
 _RAIZ = Path(__file__).resolve().parents[1]
 CSS = (_RAIZ / "static" / "css" / "painel.css").read_text(encoding="utf-8")
-JS = (_RAIZ / "static" / "js" / "painel.js").read_text(encoding="utf-8")
+
+
+def _js() -> str:
+    """O fonte do painel — monolito ou modulos, o que existir.
+
+    v58: `static/js/painel.js` virou `static/js/src/**`. Le-se o FONTE, nunca o bundle: o bundle e
+    derivado, e validar o derivado esconderia o caso "editei o fonte e nao reconstrui".
+    """
+    src = _RAIZ / "static" / "js" / "src"
+    if src.is_dir():
+        return "\n".join(p.read_text(encoding="utf-8") for p in sorted(src.rglob("*.js")))
+    return (_RAIZ / "static" / "js" / "painel.js").read_text(encoding="utf-8")
+
+
+JS = _js()
 
 
 def _corpo(nome: str) -> str:
-    """Corpo da função, do `function nome(` até a próxima função de topo."""
-    i = JS.index(f"function {nome}(")
-    j = JS.find("\nfunction ", i + 1)
+    """Corpo da função, do `function nome(` até a próxima função de topo.
+
+    Aceita `export function` porque, com a quebra em modulos, e assim que estas funcoes passam a
+    ser declaradas — e um teste que so reconhece a forma antiga para de proteger em silencio.
+    """
+    i = JS.find(f"function {nome}(")
+    assert i >= 0, f"nao achei `function {nome}(` no fonte do painel"
+    j = min((k for k in (JS.find("\nfunction ", i + 1),
+                         JS.find("\nexport function ", i + 1)) if k > 0), default=-1)
     return JS[i: j if j > 0 else len(JS)]
 
 

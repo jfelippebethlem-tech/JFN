@@ -662,6 +662,46 @@ async def api_tse_download(ano: int):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
+import sqlite3 as _sqlite3
+
+try:                                            # SQLAlchemy embrulha o erro do sqlite3
+    from sqlalchemy.exc import DatabaseError as _SADatabaseError
+    _ErroDeBanco: tuple = (_sqlite3.DatabaseError, _SADatabaseError)
+except Exception:                               # pragma: no cover
+    _ErroDeBanco = (_sqlite3.DatabaseError,)
+
+_FTS_PRONTO = False
+
+
+def _buscar_fts(q: str, tabela: str) -> dict:
+    """Uma passada da busca. Separado da rota para poder ser repetido depois de um erro de banco."""
+    global _FTS_PRONTO
+    from compliance_agent.database.fts import buscar_contratos_fts, buscar_doerj_fts, buscar_alertas_fts
+
+    if not _FTS_PRONTO:
+        # `init_db()` = create_all + migrações + criação dos índices FTS. Rodava a CADA busca:
+        # dezenas de DDL por requisição contra o mesmo arquivo que os sweeps escrevem. Isso só
+        # precisa acontecer uma vez por processo.
+        from compliance_agent.database.models import init_db
+        init_db()
+        _FTS_PRONTO = True
+
+    result: dict = {}
+    if tabela in ("contratos", "todos"):
+        result["contratos"] = buscar_contratos_fts(q)
+    if tabela in ("doerj", "todos"):
+        result["doerj"] = buscar_doerj_fts(q)
+    if tabela in ("alertas", "todos"):
+        result["alertas"] = buscar_alertas_fts(q)
+    if tabela in ("fornecedores", "todos"):
+        # Favorecidos de OB (ordens_bancarias) NÃO entram no FTS acima — reusa o
+        # resolver do /relatorio (empresas+OB, LIKE + fallback sem-espaço), que
+        # casa nomes como "MGS". Sem isto, buscar fornecedor sempre vinha vazio.
+        from compliance_agent.reporting.inteligencia import buscar_candidatos
+        result["fornecedores"] = buscar_candidatos(q)
+    return result
+
+
 @router.get("/api/compliance/buscar")
 def api_compliance_buscar(q: str = "", tabela: str = "todos"):
     """
@@ -674,26 +714,26 @@ def api_compliance_buscar(q: str = "", tabela: str = "todos"):
     if not q:
         return JSONResponse(content={"error": "Parâmetro 'q' é obrigatório"}, status_code=400)
     try:
-        from compliance_agent.database.fts import buscar_contratos_fts, buscar_doerj_fts, buscar_alertas_fts
-        from compliance_agent.database.models import init_db
-
-        init_db()
-        result = {}
-        if tabela in ("contratos", "todos"):
-            result["contratos"] = buscar_contratos_fts(q)
-        if tabela in ("doerj", "todos"):
-            result["doerj"] = buscar_doerj_fts(q)
-        if tabela in ("alertas", "todos"):
-            result["alertas"] = buscar_alertas_fts(q)
-        if tabela in ("fornecedores", "todos"):
-            # Favorecidos de OB (ordens_bancarias) NÃO entram no FTS acima — reusa o
-            # resolver do /relatorio (empresas+OB, LIKE + fallback sem-espaço), que
-            # casa nomes como "MGS". Sem isto, buscar fornecedor sempre vinha vazio.
-            from compliance_agent.reporting.inteligencia import buscar_candidatos
-            result["fornecedores"] = buscar_candidatos(q)
-        return JSONResponse(content=result)
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        return JSONResponse(content=_buscar_fts(q, tabela))
+    except _ErroDeBanco:
+        # "database disk image is malformed" DENTRO do processo do servidor com o arquivo
+        # ÍNTEGRO no disco (PRAGMA quick_check=ok, processo novo busca normal): é conexão
+        # envenenada, mesma família do WAL-index sumido (fcdf9949). Todo caminho de busca
+        # abre conexão sqlite3 nova, então repetir UMA vez já descarta a conexão ruim.
+        logger.exception("busca falhou com erro de banco (q=%r, tabela=%r) — tentando de novo", q, tabela)
+        try:
+            return JSONResponse(content=_buscar_fts(q, tabela))
+        except Exception:
+            logger.exception("busca falhou de novo (q=%r, tabela=%r)", q, tabela)
+            return JSONResponse(
+                content={"error": "A busca não respondeu agora — o banco está sendo escrito por um "
+                                  "sweep. Tente de novo em alguns segundos."},
+                status_code=503)
+    except Exception:
+        # Nunca devolver str(e) ao cliente: era o traceback do SQLAlchemy (com link do
+        # sqlalche.me) estampado na tela do usuário.
+        logger.exception("busca falhou (q=%r, tabela=%r)", q, tabela)
+        return JSONResponse(content={"error": "A busca não respondeu agora."}, status_code=500)
 
 
 @router.get("/api/sugestoes")
@@ -1106,54 +1146,21 @@ def api_flags():
 
 @router.get("/controle")
 async def pagina_controle():
-    """Página de CONTROLE (dark, mobile): flags graves + processos SEI restritos. Consome /api/flags e /api/restritos."""
+    """Pagina de CONTROLE: flags graves + processos SEI restritos. Consome /api/flags e /api/restritos.
+
+    v58: o HTML saiu daqui para `static/jfn-controle.html`. Eram 60 linhas de markup e 40 de CSS
+    embutidas numa string Python — um SEGUNDO sistema de design para manter, invisivel para o
+    `painel_bump_versao`, para o `auditar_contraste` e para qualquer ferramenta que le `static/`.
+    Como arquivo, a tela passa a herdar o CSS do painel e entra no alcance das catracas.
+    """
     from fastapi.responses import HTMLResponse
-    return HTMLResponse(_CONTROLE_HTML)
-
-
-_CONTROLE_HTML = r"""<!doctype html><html lang=pt-BR><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1"><title>JFN — Controle</title>
-<style>
-:root{--bg:#0f1115;--card:#171a21;--bd:#272b34;--tx:#e6e8ec;--mut:#9aa2ad;--crit:#e5484d;--alta:#e08a2b;--med:#d9c33a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:1000px;margin:auto}
-h1{font-size:18px;margin:.2em 0}h2{font-size:15px;color:var(--mut);margin:1.4em 0 .5em;border-bottom:1px solid var(--bd);padding-bottom:4px}
-.card{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--bd);border-radius:8px;padding:10px 12px;margin:8px 0}
-.card.CRÍTICA{border-left-color:var(--crit)}.card.ALTA{border-left-color:var(--alta)}.card.MÉDIA{border-left-color:var(--med)}
-.g{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;background:#222;color:#fff}
-.g.CRÍTICA{background:var(--crit)}.g.ALTA{background:var(--alta)}.g.MÉDIA{background:var(--med);color:#111}
-.caso{font-weight:600}.tit{margin:4px 0}.meta{color:var(--mut);font-size:12.5px}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd)}
-th{color:var(--mut);font-weight:600}.pill{font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px}
-.pill.RESTRITO{background:var(--crit);color:#fff}.pill.RESTRITO\?{background:var(--alta);color:#fff}.pill.PARCIAL{background:var(--med);color:#111}
-.upd{color:var(--mut);font-size:12px;margin-top:2em}code{background:#222;padding:1px 5px;border-radius:4px}
-.voltar{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--tx);
-  background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;
-  font-weight:600;font-size:13.5px;margin-bottom:12px;transition:.15s}
-.voltar:hover{border-color:var(--mut);background:#1d212a}
-.voltar .a{font-size:16px;line-height:1}
-</style></head><body>
-<a class=voltar href="/painel" aria-label="Voltar ao painel"><span class=a>←</span> Voltar ao painel</a>
-<h1>🛡️ JFN — Controle de fiscalização</h1>
-<div class=meta>Flags vermelhos graves e processos SEI restritos. Atualiza sozinho ao longo dos sweeps.</div>
-<h2 id=hf>🚩 Flags vermelhos graves</h2><div id=flags>carregando…</div>
-<h2 id=hr>🔒 Processos SEI restritos <span class=meta id=rct></span></h2><div id=restr>carregando…</div>
-<div class=upd id=upd></div>
-<script>
-const brl=v=>{v=+v;return !v?'':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})};
-async function j(u){try{const r=await fetch(u);return await r.json()}catch(e){return{ok:false,itens:[]}}}
-(async()=>{
- const f=await j('/api/flags');
- document.getElementById('flags').innerHTML = (f.itens||[]).map(e=>`
-   <div class="card ${e.gravidade}"><span class="g ${e.gravidade}">${e.gravidade||''}</span>
-   <span class=caso> ${e.caso||''}</span><div class=tit>${e.titulo||''}</div>
-   <div class=meta>${e.valor>0?('💰 '+brl(e.valor)+' · '):''}${e.base_legal?('⚖️ '+e.base_legal):''}${e.status?(' · 📌 '+e.status):''}</div></div>`).join('') || '<div class=meta>sem flags</div>';
- const r=await j('/api/restritos');
- document.getElementById('rct').textContent = '('+(r.itens||[]).length+')';
- document.getElementById('restr').innerHTML = (r.itens||[]).length ? `<table><tr><th>Status</th><th>Processo</th><th>Unidade</th><th>Existe</th><th>Leit.</th><th>Última</th></tr>`+
-   r.itens.map(e=>`<tr><td><span class="pill ${e.status}">${e.status||''}</span></td><td><code>${e.numero||''}</code></td><td>${e.unidade||'—'}</td><td>${e.fonte_existencia||e.existe||'—'}</td><td>${e.n_leituras||0}</td><td>${e.ultima||''}</td></tr>`).join('')+`</table>` : '<div class=meta>Nenhum restrito ainda — a lista se alimenta ao longo dos sweeps.</div>';
- document.getElementById('upd').textContent = 'atualizado '+new Date().toLocaleString('pt-BR');
-})();
-</script></body></html>"""
+    from pathlib import Path as _P
+    alvo = _P(__file__).resolve().parent.parent / "static" / "jfn-controle.html"
+    if not alvo.exists():                      # INDISPONIVEL nao e 500: diz o que falta e onde
+        return HTMLResponse(
+            "<h1>Controle indisponivel</h1><p>O arquivo <code>static/jfn-controle.html</code> "
+            "nao esta neste ambiente.</p>", status_code=503)
+    return HTMLResponse(alvo.read_text(encoding="utf-8"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1472,7 +1479,8 @@ def api_intel_sancionadas(limite: int = 60):
             if not (d := _cache_get("intel:sanc", 3600)):
                 d = _cache_put("intel:sanc", sancionadas_contratadas())
         d = dict(d)
-        d["empresas"] = d.get("empresas", [])[:max(1, min(int(limite or 60), 300))]
+        # teto explícito 1000 > n atual (770): cobre a base inteira (~839 KB, leitura de cache)
+        d["empresas"] = d.get("empresas", [])[:max(1, min(int(limite or 60), 1000))]
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

@@ -90,8 +90,18 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
             continue
         numero = (d.get("numero") or "").strip()
         cd = d.get("conteudo_documentos") or []
-        if not numero or not cd or _ja_arquivado(numero):
+        if not numero or not cd:
             continue
+        if _ja_arquivado(numero):
+            # RE-arquiva quando o CACHE é mais novo que o arquivo (releitura pós-cura do cap de
+            # 20k, 2026-08-01): sem isto, o sweep relia o processo e o arquivo truncado ficava
+            # para sempre. `arquivar()` afasta o arquivo antigo p/ _substituido/ (nada se apaga).
+            man = ARQUIVO / _slug_processo(numero) / "manifest.json"
+            try:
+                if man.stat().st_mtime >= f.stat().st_mtime:
+                    continue
+            except OSError:
+                continue
         chars = sum(len(str(x.get("conteudo") or x.get("texto") or "")) for x in cd)
         q = qualidade_cache(cd)
         if q != "completo":
@@ -111,6 +121,13 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
 
     numero = item["numero"]
     destino = ARQUIVO / _slug_processo(numero)
+    # arquivo antigo (re-arquivamento por cache mais novo): AFASTA, nunca apaga — escrever por
+    # cima misturaria txt de duas gerações com conjuntos de docs diferentes.
+    if aplicar and (destino / "manifest.json").exists():
+        import shutil
+        sub = ARQUIVO / "_substituido" / f"{destino.name}__{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
+        sub.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(destino), str(sub))
     docs_manifest, titulos, escritos = [], [], 0
     for i, doc in enumerate(item["dados"].get("conteudo_documentos") or []):
         titulo = str(doc.get("doc") or doc.get("titulo") or f"documento {i}").strip()

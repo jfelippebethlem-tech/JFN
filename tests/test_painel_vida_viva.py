@@ -17,16 +17,12 @@ from pathlib import Path
 # dos quatro lotes da suite, nao o lote 1 sozinho.
 _RAIZ = Path(__file__).resolve().parents[1]
 
+# v58: quarto reapontamento deste mesmo leitor, agora que `painel.js` virou `src/` + bundle. A
+# resolucao passou a morar em `tests/superficie.fonte_do_painel()`, que le a casca + o CSS + o
+# JS-FONTE (nunca o bundle, que duplicaria o texto e quebraria as assercoes de contagem daqui).
+from tests.superficie import fonte_do_painel  # noqa: E402
 
-def _superficie() -> str:
-    partes = [(_RAIZ / "static" / "jfn-painel.html")]
-    for extra in (_RAIZ / "static" / "css" / "painel.css", _RAIZ / "static" / "js" / "painel.js"):
-        if extra.exists():
-            partes.append(extra)
-    return "\n".join(p.read_text(encoding="utf-8") for p in partes)
-
-
-HTML = _superficie()
+HTML = fonte_do_painel()
 
 
 def test_faceta_tem_sentido():

@@ -80,6 +80,20 @@ _JS_CENSO = """() => {
     orbe_no_centro: orbes,
     abas: (typeof TABS !== 'undefined') ? Object.values(TABS).flat().length : null,
     reduced: cs.getPropertyValue('--reduced') || null,
+    // --- censo de CARGA (v58) --------------------------------------------------------------
+    // Existe para a migração do painel.js para módulos com build: o risco não é o bundle não
+    // funcionar, é ele funcionar com OUTRO timing. Estes três campos são o que se compara
+    // antes/depois. Regra de leitura: TEMPO varia ±80 ms entre execuções numa VM de 2 vCPU e
+    // NÃO é sinal; o que não pode mudar é ORDEM e CONTAGEM.
+    readyStateNoBoot: window.__jfnBootReadyState ?? null,   // 'loading' = script clássico bloqueante
+    nav: (() => { const n = performance.getEntriesByType('navigation')[0];
+                  return n ? {domInteractive: Math.round(n.domInteractive),
+                              dclEnd: Math.round(n.domContentLoadedEventEnd)} : null; })(),
+    scripts: performance.getEntriesByType('resource')
+      .filter(r => r.name.includes('/static/js/') || r.name.includes('/static/assets/jfn-icones'))
+      .map(r => ({n: r.name.split('/').pop().split('?')[0],
+                  inicio: Math.round(r.startTime), fim: Math.round(r.responseEnd),
+                  bytes: r.transferSize})),
   };
 }"""
 

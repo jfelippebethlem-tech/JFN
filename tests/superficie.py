@@ -55,6 +55,34 @@ def arquivos_do_painel() -> list[Path]:
     return achados
 
 
+def fonte_do_painel() -> str:
+    """Casca + CSS + JS-FONTE do painel, concatenados — SEM o bundle.
+
+    POR QUE ISTO EXISTE. Todo teste que le "o painel inteiro" ja foi reapontado a mao uma vez por
+    mudanca de arquitetura: `test_painel_css_integro`, `tools/painel_abas`, `test_painel_vida_viva`
+    (quando o CSS e o JS sairam do HTML, na v49) e `test_painel_modo_sobrio_para_os_canvas` (quando
+    o painel.js virou `src/` + bundle, na v58). Quatro reapontamentos manuais, quatro rodadas
+    vermelhas pela MESMA causa e nenhuma delas uma regressao de produto. A partir daqui a
+    resolucao mora num lugar so.
+
+    O bundle fica de FORA de proposito, por dois motivos: ele duplicaria todo o texto do fonte
+    (quebrando qualquer assercao de CONTAGEM, do tipo `texto.count(x) == 1`), e ler o derivado
+    esconderia justamente o caso "editei o fonte e nao reconstrui".
+    """
+    partes = [PAINEL] if PAINEL.exists() else []
+    css = _STATIC / "css" / "painel.css"
+    if css.exists():
+        partes.append(css)
+    src = _STATIC / "js" / "src"
+    if src.is_dir():
+        partes += sorted(p for p in src.rglob("*.js"))
+    else:
+        mono = _STATIC / "js" / "painel.js"
+        if mono.exists():
+            partes.append(mono)
+    return "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in partes)
+
+
 def arquivos_do_front() -> list[Path]:
     """Todo o front servido, RECURSIVO — inclui `static/assets/*.js` e qualquer subpasta futura."""
     return sorted(p for p in _STATIC.rglob("*") if p.is_file() and _elegivel(p))
