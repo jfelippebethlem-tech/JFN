@@ -318,3 +318,37 @@ def test_enumeracao_romana_com_ponto_e_reconhecida():
     conds = PC.extrair_condicionantes(txt)
     assert [c["id"] for c in conds] == ["i", "ii", "iii"]
     assert conds[2]["tipo"] == "dotacao_orcamentaria"
+
+
+# ───── o gate que descartava o próprio parecer (medido no acervo, 2026-08-02) ─────
+# 506 processos do arquivo SEI têm documento de tipo canônico `parecer`; `e_parecer` só reconhecia
+# 157. Os 349 restantes eram descartados por dois motivos: (a) o tipo canônico do classificador da
+# casa não valia como prova de título, e (b) o veto anti-falso-positivo varria 3.000 caracteres e
+# barrava o parecer por citar a peça sobre a qual ele OPINA ("TERMO ADITIVO", "EDITAL DE",
+# "CONTRATO Nº"). Resultado: `auditar_parecer_pge` devolvia SEM_PARECER_LOCALIZADO — o entregável
+# afirmava que não há parecer jurídico num processo que tem um, de 20 mil caracteres.
+# Regra nova: identidade é o que o documento anuncia PRIMEIRO no cabeçalho.
+
+def test_tipo_canonico_parecer_vale_como_titulo():
+    """Se o classificador de documentos da casa já disse `parecer`, não se discute o corpo."""
+    assert PC.e_parecer("parecer", "Governo do Estado. Trata-se de termo aditivo.") is True
+    assert PC.e_parecer("parecer_juridico", "qualquer corpo") is True
+
+
+def test_parecer_sobre_aditivo_nao_e_vetado_por_falar_do_aditivo():
+    """Caso real: Parecer 462/2024/SEDEC/ASSJUR (20 mil chars) era descartado porque 'TERMO
+    ADITIVO' aparecia no cabeçalho — inevitável, o parecer OPINA sobre o aditivo."""
+    corpo = ("PARECER Nº 462/2024/SEDEC/ASSJUR. Secretaria de Estado de Defesa Civil — "
+             "Assessoria Jurídica. PROCESSO Nº SEI-270131/000548/2023. "
+             "ASSUNTO: TERMO ADITIVO de prorrogação. " + "Trata-se de análise. " * 30
+             + "ISTO POSTO, opino favoravelmente desde que seja juntada a pesquisa de preços.")
+    assert PC.e_parecer("outro", corpo) is True
+    r = PC.auditar_parecer_pge([{"ref": "1", "tipo": "outro", "texto": corpo}])
+    assert r["veredito"] != "SEM_PARECER_LOCALIZADO"
+
+
+def test_peca_que_se_anuncia_contrato_antes_de_citar_parecer_continua_fora():
+    """O veto não some: ele passa a ser POSICIONAL. Quem se anuncia contrato primeiro é contrato."""
+    contrato = ("CONTRATO Nº 10/2024 — TERMO DE CONTRATO. " + "Cláusulas gerais. " * 20
+                + "O ajuste seguiu o PARECER Nº 02/2017 da PGE, conforme consignado.")
+    assert PC.e_parecer("outro", contrato) is False

@@ -88,6 +88,9 @@ _RE_PECA_PARECER = re.compile(
     r"manifesta[çc][ãa]o\s+jur[ií]dica|nota\s+t[ée]cnica\s+jur[ií]dica|promo[çc][ãa]o\s+de\s+arquivamento|"
     r"cota\s+jur[ií]dica|encaminhe-?se\s+.{0,40}\bap[óo]s\s+o\s+parecer)\b", re.I)
 # ... e o que o documento NÃO pode ser (peças que citam a PGE mas são outra coisa)
+# Tipos que o classificador canônico de documentos do SEI já resolve como peça opinativa jurídica.
+# `parecer_tecnico` NÃO entra: parecer técnico não é análise jurídica do art. 53.
+_TIPOS_CANONICOS_PARECER = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
 _RE_NAO_PARECER = re.compile(
     r"\b(contrato\s+n[ºo°.]|termo\s+de\s+contrato|termo\s+aditivo|ata\s+de\s+registro\s+de\s+pre[çc]os|"
     r"minuta\s+de\s+contrato|edital\s+de|nota\s+de\s+empenho|ordem\s+banc[áa]ria)\b", re.I)
@@ -98,6 +101,12 @@ def e_parecer(tipo: str, texto: str) -> bool:
     contrato, ata e edital costumam citá-la. O TÍTULO manda: 'Parecer …' no tipo decide; no corpo, exige
     marca de opinião ('opino', 'parecer nº') e ausência de marca de contrato/ata/edital."""
     rot = (tipo or "")
+    # O classificador de documentos da casa já responde isto: se ele disse `parecer`, é parecer.
+    # Ignorá-lo custava caro — medido em 2026-08-02, dos 506 processos com documento de tipo
+    # canônico `parecer` só 157 passavam aqui, e o entregável afirmava "nenhum parecer entre os
+    # documentos lidos" em 349 processos que tinham um.
+    if rot.strip().lower() in _TIPOS_CANONICOS_PARECER:
+        return True
     if _RE_PECA_PARECER.search(rot):
         return True
     if _RE_NAO_PARECER.search(rot):
@@ -106,7 +115,14 @@ def e_parecer(tipo: str, texto: str) -> bool:
     # Citação a outro parecer aparece no meio do texto — e foi assim que um anexo de 38 mil caracteres
     # ("Anexo 2024PD26194", programação de desembolso) passou por peça opinativa no acervo real.
     corpo = (texto or "")[:_CABECALHO]
-    return bool(_RE_PECA_PARECER.search(corpo)) and not _RE_NAO_PARECER.search((texto or "")[:3000])
+    peca = _RE_PECA_PARECER.search(corpo)
+    if not peca:
+        return False
+    # O veto é POSICIONAL: identidade é o que o documento anuncia PRIMEIRO. Varrer 3.000 caracteres
+    # atrás de "TERMO ADITIVO"/"EDITAL DE" barrava justamente o parecer que OPINA sobre o aditivo —
+    # citar a peça analisada é o que todo parecer faz. Quem se anuncia contrato antes segue fora.
+    nao = _RE_NAO_PARECER.search(corpo)
+    return not (nao and nao.start() < peca.start())
 
 
 def _sequencia_valida(marcas: list[tuple[int, str]]) -> list[tuple[int, str]]:
