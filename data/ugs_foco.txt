@@ -21,3 +21,6 @@
 # estão na base. (3) Fundo Soberano (226300) tem acesso SIAFE mas ainda SEM OB coletada → coletar.
 # ÍNDICE AUTORITATIVO de UGs (código+nome, muda com o tempo) = data/ug_index_siafe.json (596 UGs, refresh
 # via tools/siafe_ug_index.py). O ugs.py deriva só das UGs já coletadas — INCOMPLETO por construção.
+# --- 2026-08-01: alvos do Processo 360 (casos abertos do dia; ler as árvores por valor)
+270131  # onde vive o caso Líder Táxi Aéreo (prorrogação por "boa parceria") — SEI-270131/000548/2023
+080001  # SES/SUBEXE — despachos-carimbo detectados pelo 360 (018592/2026 e vizinhos)

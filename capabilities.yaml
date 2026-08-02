@@ -38,6 +38,16 @@ capacidades:
   - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
      descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
      args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}"}
+  - {id: processo_360, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/processo, status: PRONTO,
+     descricao: "Avaliacao 360 do PROCESSO como um todo (fases, ordem dos marcos, pericia A1-A5, detectores P/E/J/C/X, acatamento de pareceres com suficiencia do emissor, score de convergencia). Lacuna de captura declarada separada de lacuna do processo.",
+     quando_usar: "'avalie o processo X inteiro', 'o que ha de errado no processo SEI Y', 'cada fase e despacho do processo'", exemplo: "/processo SEI-070026/000410/2021",
+     args: {numero: "string (numero SEI)"}, retorno: "{ok,rodando,avaliacao:{score100,faixa,grau,achados,lacunas,acatamento,escalada,cobertura}}",
+     menu: {grupo: "🔎 Investigação", nome: "Avaliação 360 de um processo SEI", exemplo: "/processo SEI-070026/000410/2021", ordem: 26, cmd: "/processo"}}
+  - {id: processo_360_avaliar, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/processo/avaliar, status: PRONTO,
+     descricao: "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)",
+     quando_usar: "quando GET /api/processo devolver 404 (ainda nao avaliado)", exemplo: "avaliar o processo SEI-070026/000410/2021",
+     args: {numero: "string (numero SEI)", com_llm: "bool opcional"}, retorno: "{ok,status,msg} (assincrono)",
+     menu: {grupo: "🔎 Investigação", nome: "Avaliar um processo SEI (360)", exemplo: "avaliar o processo SEI-070026/000410/2021", ordem: 27}}
   - {id: responsaveis_processo, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/responsaveis, status: PRONTO,
      descricao: "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo. Ausencia vem como LACUNA declarada, nunca como inexistencia de responsavel.", quando_usar: "'quem e o fiscal do processo X', 'quem assinou', 'quem autorizou', 'ordenador de despesas do SEI Y', '/responsaveis'", exemplo: "/responsaveis SEI-030001/004724/2026",
      args: {processo: "string (numero SEI, com ou sem prefixo SEI-)"},
@@ -246,7 +256,8 @@ capacidades:
      descricao: "Lei/acordao (TCE-RJ,TCU,LexML). RAG: Onda 10", quando_usar: "'qual a lei sobre...', jurisprudencia", args: {termo: obrigatorio}, retorno: "{resultados[]}"}
   - {id: instrumento_mandato, agente: lex, dominio: juridico, tipo: http, metodo: POST, rota: /api/mandato/minuta, status: PRONTO,
      descricao: "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post", quando_usar: "'faca um requerimento sobre esse contrato'",
-     args: {tipo: "requerimento|representacao|noticia_fato|post", base: "cnpj/ug/processo/id parecer"}, retorno: "{path_docx,texto}", nota: "diligencia/representacao, nunca condenacao"}
+     args: {tipo: "requerimento|representacao|noticia_fato|post", base: "cnpj/ug/processo/id parecer"}, retorno: "{path_docx,texto}", nota: "diligencia/representacao, nunca condenacao",
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Minuta de requerimento / representação (.docx)", exemplo: "faça um requerimento sobre esse contrato", ordem: 45, cmd: "/minuta"}}
   # ---- RADAR ----
   - {id: vigiar, agente: jfn, dominio: radar, tipo: http, metodo: POST, rota: /api/radar/vigiar, status: PRONTO,
      descricao: "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT)", quando_usar: "'/vigiar <cnpj|ug|nome>'", args: {alvo: obrigatorio, tipo: "cnpj|ug|nome|objeto"}, retorno: "{watchlist}"}

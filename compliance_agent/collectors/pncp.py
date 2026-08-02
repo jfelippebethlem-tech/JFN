@@ -64,17 +64,30 @@ async def _get_pncp(endpoint: str, params: dict) -> Optional[dict]:
     return None
 
 
-async def _get_consulta(endpoint: str, params: dict) -> Optional[dict]:
-    """GET na API de CONSULTA do PNCP (sem login). Retorna o JSON ou None."""
+async def _get_consulta(endpoint: str, params: dict) -> tuple[Optional[dict], str]:
+    """GET na API de CONSULTA do PNCP (sem login). Devolve `(json|None, motivo)`.
+
+    O MOTIVO existe para o retry escolher a espera. Antes esta função engolia o status e devolvia
+    `None` igual para timeout e para 5xx — e o `_consulta_retry` tratava tudo como congestionamento,
+    dormindo 60 s contra um servidor que havia respondido "não" em 0,2 s (503 medido em 31/07/26,
+    travando `/api/pncp` e `/api/sei/direcionamento` na cara do auditor).
+
+      "ok"   — 200 com JSON
+      "http" — o servidor RESPONDEU um erro (5xx/4xx): não é congestionamento nosso
+      "rede" — timeout/conexão: o caso para o qual o backoff longo foi escrito
+    """
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             r = await client.get(f"{CONSULTA_BASE}{endpoint}", params=params,
                                  headers={"User-Agent": "JFN-Compliance/2.0"})
             if r.status_code == 200:
-                return r.json()
+                return r.json(), "ok"
+            logger.warning("PNCP %s devolveu HTTP %s (None pode ser falso 'sem contrato')",
+                           endpoint, r.status_code)
+            return None, "http"
     except Exception as exc:
         logger.warning("PNCP %s indisponível (None pode ser falso 'sem contrato'): %s", endpoint, exc)
-    return None
+        return None, "rede"
 
 
 def _simplificar_contratacao(it: dict) -> dict:
@@ -145,7 +158,7 @@ async def buscar_contratacoes(
         for pagina in range(1, max_paginas + 1):
             params = {**base_params, "codigoModalidadeContratacao": mod,
                       "pagina": pagina, "tamanhoPagina": 50}
-            j = await _get_consulta(endpoint, params)
+            j, _motivo = await _get_consulta(endpoint, params)
             data = (j or {}).get("data") or []
             if not data:
                 break
@@ -451,13 +464,19 @@ CNPJ_PCRJ = "42498733000148"   # MUNICIPIO DE RIO DE JANEIRO (esfera M)
 
 
 async def _consulta_retry(endpoint: str, params: dict, tentativas: int = 3) -> Optional[dict]:
-    """_get_consulta com retry/backoff — o PNCP devolve timeout transitório sob volume."""
+    """_get_consulta com retry/backoff — o PNCP devolve timeout transitório sob volume.
+
+    A espera segue o MOTIVO da falha, não um número fixo: congestionamento (timeout/conexão) merece
+    a paciência longa para a qual este backoff foi escrito; erro HTTP não merece, porque a fonte já
+    respondeu. Insistir 60 s contra um 503 instantâneo travava a rota do painel sem ajudar ninguém —
+    se a fonte caiu, o sweep volta na próxima janela.
+    """
     for i in range(tentativas):
-        j = await _get_consulta(endpoint, params)
+        j, motivo = await _get_consulta(endpoint, params)
         if j is not None:
             return j
         if i < tentativas - 1:
-            await asyncio.sleep(20 * (i + 1))
+            await asyncio.sleep((20 if motivo == "rede" else 2) * (i + 1))
     return None
 
 

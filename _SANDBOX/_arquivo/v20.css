@@ -1,0 +1,31 @@
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v20 EUROSTILE — a voz de display vira sci-fi
+     ══════════════════════════════════════════════════════════════════════
+     Orbitron foi desenhada explicitamente como alternativa livre a Eurostile
+     Extended, que e a familia da interface do HAL 9000 em 2001 — a fonte que
+     criou o cliche "computador de nave". Variavel: 11.8 KB cobrem 400-900.
+
+     Entra SO em display e etiqueta. Nunca em corpo, nunca em tabela: familia
+     techno em frase longa derruba a velocidade de leitura, e o auditor LE o
+     texto do painel, nao escaneia. Numero continua em IBM Plex Mono, que tem
+     tabular figures — Orbitron nao tem, e numero que treme e o indicio mais
+     visivel de dashboard amador.                                          */
+  @font-face{font-family:"Orbitron";src:url(/static/assets/fonts/Orbitron-var.woff2) format("woff2");
+    font-weight:400 900;font-display:swap;font-style:normal}
+
+  :root{--display:"Orbitron",var(--mono)}
+
+  /* marca, titulo de aba e etiqueta de instrumento: a voz da maquina */
+  .brand h1,h1,h2,.sect,.eco .k,.kpi .l,.ck-inst .lab,
+  nav.tabs button .tl,.sph .t,#portal .l1,#portal .pskip{
+    font-family:var(--display)}
+
+  /* Orbitron e larga: apertar o tracking dos titulos evita que o cabecalho
+     estoure a linha no celular (foi assim que o v14 quebrou). */
+  h1,h2,.sph .t{letter-spacing:-.01em}
+  .brand h1{letter-spacing:.02em}
+
+  /* etiqueta pequena precisa do tracking largo pra nao virar bloco cinza */
+  .sect,.eco .k,.kpi .l,.ck-inst .lab{letter-spacing:.1em}
+  nav.tabs button .tl{letter-spacing:.02em;font-size:9px}

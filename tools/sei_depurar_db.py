@@ -21,11 +21,17 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import time
 from pathlib import Path
+
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
 
 REPO = Path(__file__).resolve().parents[1]
 CACHE = REPO / "data" / "sei_cache"
 DB = REPO / "data" / "compliance.db"
+# fora de `sei_cache/` de propósito: lá dentro a manutenção comprime/poda o que não está na
+# whitelist de estado vivo, e a marca sumiria calada (voltando à passada completa toda vez).
+MARCA = REPO / "data" / ".sei_depurar_watermark"
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS sei_ficha (
@@ -90,6 +96,24 @@ def nivel_risco_norm(v) -> str:
 _LISTAS = ("valores", "cnpjs", "partes", "datas", "red_flags", "documentos")
 
 
+def _ler_marca() -> float:
+    """Instante da última ingestão completa. `0.0` quando não há marca (⇒ passada completa)."""
+    try:
+        return float(MARCA.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return 0.0
+
+
+def _gravar_marca(quando: float) -> None:
+    try:
+        MARCA.write_text(f"{quando:.3f}", encoding="utf-8")
+    except OSError as exc:
+        # A marca é otimização: não gravar só custa uma passada completa. Mas calar transformaria
+        # "disco cheio / permissão" em "esta ingestão é lenta e ninguém sabe por quê".
+        print(f"[sei_depurar] marca d'água não gravada ({exc}) — a próxima passada será completa",
+              flush=True)
+
+
 def _conectar() -> sqlite3.Connection:
     con = sqlite3.connect(DB, timeout=30)
     con.execute("PRAGMA busy_timeout=30000")
@@ -113,17 +137,24 @@ def _numero(rec: dict, ficha: dict, fname: str) -> str:
     return base.replace("SEI_", "SEI-").replace("_", "/") if base.startswith("SEI") else base
 
 
-def depurar(stats_only: bool = False) -> dict:
-    arquivos = [p for p in CACHE.glob("*.json")
+def depurar(stats_only: bool = False, completo: bool = False) -> dict:
+    # `glob_cache` (não `CACHE.glob`) porque 5.795 dos 6.028 blobs estão em `.json.zst`: com o glob
+    # cru esta ingestão — a ÚNICA que alimenta `sei_ficha` — enxergava 564 dos 6.428 arquivos.
+    arquivos = [p for p in glob_cache(CACHE, "*.json")
                 if "checkpoint" not in p.name and "progress" not in p.name]
     con = _conectar()
     cur = con.cursor()
+    # INCREMENTAL por mtime: a passada completa leva 502-587 s e o `sweep_sei.sh` chama com
+    # `timeout 300` — sem isto a ingestão morreria no meio a cada 30 min. Duas travas: banco vazio
+    # ou `--tudo` forçam a passada completa (marca d'água silenciosa deixaria um banco restaurado
+    # do zero pela metade para sempre).
+    marca = _ler_marca()
+    if not completo and marca and cur.execute("SELECT COUNT(*) FROM sei_ficha").fetchone()[0]:
+        arquivos = [p for p in arquivos if p.stat().st_mtime > marca]
+    inicio = time.time()
     com_ficha = bloqueado = sem_ficha = gravados = 0
     for p in arquivos:
-        try:
-            rec = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:  # noqa: BLE001 — arquivo corrompido/parcial: pula honesto
-            continue
+        rec = ler_json(p)  # descomprime o `.zst` na leitura; `None` = ausente/ilegível, nunca `{}`
         if not isinstance(rec, dict):
             continue
         ficha = rec.get("ficha")
@@ -137,7 +168,7 @@ def depurar(stats_only: bool = False) -> dict:
         com_ficha += 1
         if stats_only:
             continue
-        numero = _numero(rec, ficha, p.name)
+        numero = _numero(rec, ficha, nome_logico(p))  # o número vem do NOME: `.json.zst` viria grudado
         if not numero:
             continue
         def _scalar(v):  # o modelo às vezes devolve lista/dict onde se espera string → coage (SQLite não binda list/dict)
@@ -177,6 +208,9 @@ def depurar(stats_only: bool = False) -> dict:
         gravados += 1
     if not stats_only:
         con.commit()
+        # a marca é o INÍCIO da passada, não o fim: blob reescrito enquanto líamos entra na próxima
+        # (relê de novo é barato; perder a escrita do refichador não é).
+        _gravar_marca(inicio)
     total_db = cur.execute("SELECT COUNT(*) FROM sei_ficha").fetchone()[0]
     con.close()
     return {"arquivos": len(arquivos), "com_ficha": com_ficha, "bloqueado": bloqueado,
@@ -186,8 +220,9 @@ def depurar(stats_only: bool = False) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stats", action="store_true", help="só conta, não grava")
+    ap.add_argument("--tudo", action="store_true", help="ignora a marca d'água e relê o acervo inteiro")
     a = ap.parse_args()
-    r = depurar(stats_only=a.stats)
+    r = depurar(stats_only=a.stats, completo=a.tudo)
     print(f"[sei_depurar] arquivos={r['arquivos']} · com_ficha={r['com_ficha']} · "
           f"bloqueado={r['bloqueado']} · sem_ficha={r['sem_ficha']} · "
           f"gravados={r['gravados']} · TOTAL no sei_ficha={r['total_no_db']}")

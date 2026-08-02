@@ -542,18 +542,26 @@ def _resolver_cpf(nome: str, doc: str) -> dict:
 
 def _wire_beneficios_pep(cnpj: str, total_pago: float, socios: list, hipoteses: list, cobertura: dict) -> None:
     """Conecta o coletor de benefícios/PEP ao motor de DD (degrada honesto: sem chave → INDISPONÍVEL)."""
+    # As três saídas abaixo eram MUDAS. Um teste passava isolado e falhava na suíte cheia em DUAS
+    # máquinas justamente aqui: `verificar_beneficios` nunca era chamado e não havia como saber por
+    # qual das três a execução tinha ido embora. Motivo registrado é o que transforma
+    # "não deu certo" em "não deu certo POR ISTO".
     try:
         from compliance_agent.collectors.beneficios_sociais import _chave
-    except Exception:
+    except Exception as exc:
+        logger.warning("beneficios/PEP: coletor ausente (%s) — cobertura fica INDISPONIVEL", exc)
         cobertura["pep"] = cobertura["beneficio_social"] = "INDISPONIVEL (coletor ausente)"
         return
     if not _chave():
+        logger.debug("beneficios/PEP: sem PORTAL_TRANSPARENCIA_KEY — cobertura fica INDISPONIVEL")
         cobertura["pep"] = "INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY)"
         cobertura["beneficio_social"] = "INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY)"
         return
     try:
         res = _run_coro(lambda: _coletar_beneficios_pep(cnpj, total_pago, socios or []))
     except Exception as e:  # noqa: BLE001
+        logger.warning("beneficios/PEP: coleta falhou (%s: %s) — cobertura fica INDISPONIVEL",
+                       type(e).__name__, e, exc_info=True)
         cobertura["pep"] = cobertura["beneficio_social"] = f"INDISPONIVEL ({str(e)[:40]})"
         return
     hipoteses.extend(res["hipoteses"])

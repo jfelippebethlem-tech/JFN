@@ -17,7 +17,12 @@ import pytest
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
-pytestmark = pytest.mark.skipif(not DB.exists(), reason="compliance.db ausente neste ambiente")
+# existir o arquivo não basta: no runner ele nasce VAZIO (criado por testes que escrevem) e o
+# teste morria com "no such table" — falha de ambiente lida como regressão (2026-08-02).
+from helpers_ambiente import base_utilizavel  # noqa: E402
+
+pytestmark = pytest.mark.skipif(not base_utilizavel(DB),
+                                reason="compliance.db ausente ou sem tabelas neste ambiente")
 
 
 def _con():

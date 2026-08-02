@@ -6,7 +6,10 @@
 [tool.ruff]
 target-version = "py312"
 line-length = 120
-extend-exclude = ["_SANDBOX", ".venv", "data", "build", "dist"]
+# `.agents` = skills de terceiro (higgsfield) que ninguém desta casa mantém. Medir dívida alheia
+# como se fosse nossa polui o sinal nos dois sentidos: infla hoje e some sozinha amanhã — foi a
+# mesma correção que a catraca de `except: pass` já fez ao passar a usar `git ls-files`.
+extend-exclude = ["_SANDBOX", ".venv", "data", "build", "dist", ".agents", ".github/skills"]
 
 [tool.ruff.lint]
 # E9 (syntax/runtime), F (pyflakes: import morto, nome indefinido, var não usada), W (whitespace),
@@ -33,7 +36,10 @@ markers = [
     "slow: testes demorados (>5s)",
 ]
 # Suíte rápida do dia a dia: `pytest -m "not network and not integration"`
-addopts = "-p no:cacheprovider --strict-markers"
+# `-p no:randomly`: o pytest-randomly está instalado para CAÇAR ordem-dependência, mas embaralhar
+# por padrão tornaria o critério de delta-zero não-determinístico. Opt-in: `-p randomly -p no:no`
+# ou `pytest -p randomly --randomly-seed=<n>`.
+addopts = "-p no:cacheprovider --strict-markers -p no:randomly"
 
 [tool.coverage.run]
 source = ["compliance_agent"]

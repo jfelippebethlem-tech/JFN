@@ -15,9 +15,12 @@ Uso principal:
 """
 
 import asyncio
+import logging
 import re
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 _HEADERS = {
     "User-Agent": (
@@ -33,10 +36,35 @@ _TIMEOUT = 20
 
 # ─── LexML — normas e jurisprudência ─────────────────────────────────────────
 
+# Estado da última consulta ao LexML: quem chama pode transformar SILÊNCIO em LACUNA DECLARADA.
+# Sem isto, "0 acórdãos" era indistinguível de "não consegui perguntar" — e a segunda coisa, num
+# parecer, é uma afirmação falsa por omissão.
+ULTIMO_STATUS: dict = {"disponivel": None, "motivo": "ainda não consultado"}
+
+_RE_WAF = re.compile(r"verifica[cç][aã]o de seguran[cç]a|senado federal|cf-browser-verification|"
+                     r"requisi[cç][aã]o rejeitada|access denied", re.I)
+
+
+def status_lexml() -> dict:
+    """Como foi a última chamada. `disponivel=False` + motivo = insumo de LACUNA no relatório."""
+    return dict(ULTIMO_STATUS)
+
+
 async def buscar_lexml(termo: str, max_resultados: int = 5) -> list[dict]:
     """
     Busca no LexML (lexml.gov.br) por normas e jurisprudência federais.
     Retorna lista de {titulo, urn, tipo, data, link}.
+
+    ⚠️ MEDIDO EM 2026-07-30: o LexML está atrás do WAF do Senado e responde
+    **HTTP 200 com uma página HTML de "Verificação de segurança"** — não 403, não 503. É a mesma
+    assinatura que já derrubou a leitura de acórdãos do TCU nesta casa: `raise_for_status()` não
+    protege, `resp.json()` estoura, a captura genérica devolvia `[]`, e `[]` chegava ao parecer
+    como "nenhuma jurisprudência encontrada". Silêncio virando afirmação.
+
+    A função continua tentando (o WAF pode cair a qualquer momento e o custo é um GET), mas agora
+    RESPONDE A PERGUNTA CERTA: `ULTIMO_STATUS` distingue "consultei e não achei" de "não consegui
+    consultar". Quem gera peça deve chamar `status_lexml()` e emitir LACUNA quando `disponivel` for
+    False. INDISPONÍVEL ≠ 0.
     """
     url = "https://www.lexml.gov.br/busca/SolrService"
     params = {
@@ -49,6 +77,18 @@ async def buscar_lexml(termo: str, max_resultados: int = 5) -> list[dict]:
         async with httpx.AsyncClient(timeout=_TIMEOUT, headers=_HEADERS) as client:
             resp = await client.get(url, params=params)
             if resp.status_code != 200:
+                ULTIMO_STATUS.update(disponivel=False,
+                                     motivo=f"LexML respondeu HTTP {resp.status_code}")
+                return []
+            # 200 NÃO significa resposta boa: o WAF devolve 200 com HTML.
+            tipo = (resp.headers.get("content-type") or "").lower()
+            if "json" not in tipo or _RE_WAF.search(resp.text[:2000]):
+                ULTIMO_STATUS.update(
+                    disponivel=False,
+                    motivo=("LexML atrás do WAF do Senado: HTTP 200 com corpo HTML de verificação de "
+                            f"segurança (content-type {tipo!r}). Não é ausência de jurisprudência — "
+                            "é impossibilidade de consultar."))
+                logger.warning("LexML bloqueado pelo WAF (200 + HTML) — resultado vira LACUNA, não zero")
                 return []
             data = resp.json()
             docs = data.get("response", {}).get("docs", [])
@@ -61,8 +101,12 @@ async def buscar_lexml(termo: str, max_resultados: int = 5) -> list[dict]:
                     "data": d.get("dataPublicacao", ""),
                     "link": f"https://www.lexml.gov.br/urn/{d.get('urn','')}",
                 })
+            ULTIMO_STATUS.update(disponivel=True, motivo=f"{len(resultados)} resultado(s)")
             return resultados
-    except Exception:
+    except (httpx.HTTPError, ValueError, OSError) as exc:   # rede, JSON inválido, socket
+        ULTIMO_STATUS.update(disponivel=False,
+                             motivo=f"falha ao consultar o LexML: {type(exc).__name__}: {str(exc)[:80]}")
+        logger.warning("LexML indisponível (%s) — resultado vira LACUNA, não zero", exc)
         return []
 
 

@@ -18,7 +18,35 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 RAIZ = Path(__file__).resolve().parent.parent
 
+from compliance_agent import promessas as _promessas
+
 _REL_EM_CURSO: set = set()
+
+
+async def retomar_promessas() -> int:
+    """Re-despacha o que o processo anterior prometeu e não entregou. Chamado no boot.
+
+    O Yoda diz "te envio em ~1–2 min" e a geração vive num `asyncio.create_task`: se o processo
+    morre no meio, a tarefa morre com ele, sem aviso e sem retentativa. Medido em 31/07/26, o
+    serviço era reiniciado 7-14x/dia pelo guardião do WAL-index — cada restart transformava uma
+    promessa em silêncio. Aqui elas voltam à fila.
+    """
+    despacho = {
+        "orgao": lambda a, k: _gerar_e_enviar_orgao(a.get("orgao"), a.get("ug"), a.get("anos"), k),
+        "dossie": lambda a, k: _gerar_e_enviar_dossie(a.get("alvo"), k),
+        "fornecedor": lambda a, k: _gerar_e_enviar_fornecedor(a.get("cnpj"), a.get("empresa"),
+                                                              a.get("anos"), k),
+    }
+    n = 0
+    for p in _promessas.pendentes():
+        chave, fn = p.get("chave"), despacho.get(p.get("tipo"))
+        if not chave or not fn or chave in _REL_EM_CURSO:
+            _promessas.concluir(chave) if chave and not fn else None
+            continue
+        _REL_EM_CURSO.add(chave)
+        asyncio.create_task(fn(p.get("args") or {}, chave))
+        n += 1
+    return n
 
 
 _SWEEP_PAUSE_FLAGS = ("data/.pause_sweep_2", "data/.pause_sweep_1", "data/.pause_sei_sweep")
@@ -84,6 +112,7 @@ async def _gerar_e_enviar_fornecedor(cnpj, empresa, anos, key) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o relatório de {empresa or cnpj}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -102,6 +131,7 @@ async def _gerar_e_enviar_orgao(orgao, ug, anos, key) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o relatório do órgão {orgao or ug}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -144,6 +174,7 @@ async def _gerar_e_enviar_dossie(alvo, key) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê de {alvo}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -190,6 +221,7 @@ async def api_relatorio_inteligencia(payload: Optional[dict] = None):
         return JSONResponse({"ok": True, "status": "gerando",
                              "msg": "⏳ Já estou preparando esse relatório — te envio aqui em instantes."})
     _REL_EM_CURSO.add(key)
+    _promessas.registrar(key, "fornecedor", {"cnpj": cnpj, "empresa": empresa, "anos": anos})
     asyncio.create_task(_gerar_e_enviar_fornecedor(cnpj, empresa, anos, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o relatório de *{empresa or cnpj}* (PDF + planilha + parecer Lex). "
@@ -235,6 +267,7 @@ async def api_relatorio_orgao(payload: Optional[dict] = None):
         return JSONResponse({"ok": True, "status": "gerando",
                              "msg": "⏳ Já estou preparando esse relatório de órgão — te envio aqui em instantes."})
     _REL_EM_CURSO.add(key)
+    _promessas.registrar(key, "orgao", {"orgao": orgao, "ug": ug, "anos": anos})
     asyncio.create_task(_gerar_e_enviar_orgao(orgao, ug, anos, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o relatório do órgão *{orgao or ug}* (PDF + planilha + parecer Lex). "
@@ -262,6 +295,7 @@ async def api_dossie(payload: Optional[dict] = None):
         return JSONResponse({"ok": True, "status": "gerando",
                              "msg": "⏳ Já estou preparando esse dossiê — te envio aqui em instantes."})
     _REL_EM_CURSO.add(key)
+    _promessas.registrar(key, "dossie", {"alvo": alvo})
     asyncio.create_task(_gerar_e_enviar_dossie(alvo, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o Dossiê 360 de *{alvo}* (PDF). "
@@ -336,6 +370,7 @@ async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar a perícia/dossiê da PPP {slug}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -524,6 +559,7 @@ async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê mestre: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -551,6 +587,7 @@ async def _gerar_e_enviar_dossie_completo(cnpj: str, key: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ Erro no dossiê completo de {cnpj}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
+        _promessas.concluir(key)
         _retomar_sweeps_se_ocioso()
 
 
@@ -747,3 +784,74 @@ def api_sei_empresa_zip(cnpj: str = ""):
                     zf.write(f, arcname=f"{slug}/{f.relative_to(pasta)}")
     return JSONResponse({"ok": True, "url": f"/reports/{zip_path.name}",
                          "n_incluidos": len(arquivados), "n_total": len(procs)})
+
+
+# ── Avaliador de Processo 360 (o processo como um todo: fases + despachos que importam) ──
+_PROCESSO_360_EM_CURSO: dict = {}
+
+
+@router.get("/api/processo")
+def api_processo(numero: str = ""):
+    """Avaliação 360 persistida de um processo SEI (processo_avaliacao). 404 honesto se ainda
+    não avaliado — dispare POST /api/processo/avaliar. `rodando` indica avaliação em curso."""
+    numero = (numero or "").strip()
+    if not numero:
+        return JSONResponse({"ok": False, "erro": "informe o número do processo SEI"}, status_code=400)
+    import re
+    import sqlite3 as _sq
+    con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+    try:
+        con.row_factory = _sq.Row
+        norm = re.sub(r"\D", "", numero)
+        row = con.execute(
+            "select * from processo_avaliacao where replace(replace(replace("
+            "numero_sei,'-',''),'/',''),'SEI','')=? or numero_sei=?", (norm, numero)).fetchone()
+    except _sq.OperationalError:
+        row = None
+    finally:
+        con.close()
+    info = _PROCESSO_360_EM_CURSO.get(norm)
+    rodando = bool(info and info["proc"].poll() is None)
+    if not row:
+        return JSONResponse({"ok": False, "rodando": rodando,
+                             "erro": "processo ainda não avaliado — POST /api/processo/avaliar"},
+                            status_code=404)
+    import json as _json
+    out = {k: row[k] for k in row.keys()}
+    for k in ("achados_json", "lacunas_json", "docs_chave_json", "acatamento_json",
+              "escalada_json", "cobertura_json"):
+        try:
+            out[k.removesuffix("_json")] = _json.loads(out.pop(k) or "null")
+        except (ValueError, KeyError):
+            pass
+    return JSONResponse({"ok": True, "rodando": rodando, "avaliacao": out})
+
+
+@router.post("/api/processo/avaliar")
+def api_processo_avaliar(payload: dict | None = None):
+    """Dispara a avaliação 360 de um processo SEI em background (subprocess; 1 pesado por vez —
+    a VM tem 2 vCPU). `com_llm` liga o juízo por documento (cadeia grátis). Acompanhe por
+    GET /api/processo. Exige o processo já ARQUIVADO (data/sei_arquivo) — senão 409 com a fila."""
+    payload = payload or {}
+    numero = str(payload.get("numero") or "").strip()
+    if not numero:
+        return JSONResponse({"ok": False, "erro": "informe {numero}"}, status_code=400)
+    if not _sei_arquivado(numero):
+        return JSONResponse({"ok": False, "erro": "processo não está no arquivo compacto — "
+                             "capturar antes (tools/sei_arquivar.py / fila sei_fila_captura)"},
+                            status_code=409)
+    import re
+    norm = re.sub(r"\D", "", numero)
+    info = _PROCESSO_360_EM_CURSO.get(norm)
+    if info and info["proc"].poll() is None:
+        return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
+    import subprocess
+    cmd = [str(RAIZ / ".venv" / "bin" / "python"), "tools/processo_360.py",
+           "--numero", numero, "--gravar"]
+    if payload.get("com_llm"):
+        cmd.append("--com-llm")
+    proc = subprocess.Popen(cmd, cwd=str(RAIZ), env=dict(os.environ, PYTHONPATH=str(RAIZ)),
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _PROCESSO_360_EM_CURSO[norm] = {"proc": proc}
+    return JSONResponse({"ok": True, "status": "iniciado",
+                         "msg": "Avaliação 360 em curso — consulte GET /api/processo?numero=…"})

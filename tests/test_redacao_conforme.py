@@ -32,6 +32,17 @@ SEM_CLAUSULA_A_REESCREVER = {
     "emergencia_fabricada", "contratacao_direta_indevida", "planejamento_fachada",
     "deserto_fracassado_dirigido", "republicacao_dirigida", "homologado_acima_estimado",
     "clausula_restritiva_combinada",
+    # 2026-07-30 — `propostas_gemeas` (J9) e de CONDUTA, como os irmaos de conluio ja aqui
+    # (propostas_cobertura, digitais_compartilhadas, cotacoes_combinadas): duas propostas que
+    # sao a mesma planilha com um percentual aplicado nao se conserta reescrevendo clausula de
+    # edital. O que cabe e diligencia e representacao (Art. 90 Lei 8.666/Art. 337-F CP;
+    # Art. 36 Lei 12.529/2011 — CADE).
+    "propostas_gemeas",
+    # 2026-08-01 — `pagamento_fora_contrato_tac` (C9) é de CONDUTA do ÓRGÃO na execução da
+    # despesa: não há cláusula de edital a reescrever quando o vício é pagar por Termo de Ajuste
+    # de Contas o que deveria ter sido contratado. O que cabe é diligência sobre a justificativa
+    # e o atesto, e representação pelo padrão (art. 59 par. único da 8.666; art. 40 da 14.133).
+    "pagamento_fora_contrato_tac",
     # 2026-07-29 — os seis vicios de ADITIVO catalogados hoje (X7..X12). Todos sao de CONDUTA na
     # execucao do contrato, nao de texto de edital: nao ha clausula a reescrever num aditivo
     # assinado depois do fim da vigencia, numa supressao acima do limite, num aditivo sem

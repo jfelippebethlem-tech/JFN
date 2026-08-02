@@ -152,3 +152,34 @@ pipelines:
     max_stale_h: 30
     grupo: enriquecimento
     nota: resumo de favorecidos 05:45 (cron)
+
+  # ---- FONTES QUE NÃO TINHAM VIGIA (acrescentadas 2026-07-30) ----
+  # Levantamento de integrações: SIAFE, PNCP, SEI e LLM tinham SLO ou contrato `disponivel()`.
+  # TCE-RJ e DataJud tinham ZERO — nem SLO, nem health check, nem entrada aqui. Fonte sem vigia é
+  # fonte que envelhece calada, e foi exatamente assim que o SIAFE ficou 10 de 30 dias sem produzir
+  # uma linha com o painel verde.
+  - nome: tcerj-aberto
+    arquivo: data/tcerj_aberto_cron.log
+    consulta: "SELECT MAX(data_contratacao) FROM contratos_tcerj"
+    max_stale_h: 720
+    grupo: base
+    pausa: data/_pausa_tcerj
+    nota: >-
+      API de dados abertos do TCE-RJ (contratos, compras diretas, penalidades). Vigia o DADO
+      (contrato mais recente), não o log — mesma lição do siafe-runner. 720h porque a base do TCE
+      publica em lote, não diariamente; alarme antes disso seria ruído.
+      LIMITE DA FONTE, catalogado em compliance_agent/limites_de_fonte.py: esta API **não tem**
+      endpoint de jurisprudência — quem procurar acórdão do TCE-RJ aqui não vai achar, e isso não é
+      defeito de coleta.
+
+  - nome: datajud-cnj
+    arquivo: data/datajud_cron.log
+    max_stale_h: 720
+    grupo: base
+    pausa: data/_pausa_datajud
+    nota: >-
+      API pública do DataJud/CNJ (182 tribunais, chave pública, sem WAF — verificado 2026-07-27).
+      LIMITE DA FONTE: os documentos trazem só METADADOS (número, classe, assunto, órgão julgador,
+      movimentos). **Não há nome de parte, CPF/CNPJ nem teor de decisão** (Portaria CNJ 160/2020),
+      então NÃO serve para "achar processo do fornecedor X pelo CNPJ" — promessa que aparece em doc
+      de terceiro e é falsa. Serve com número CNJ conhecido e para medir judicialização por órgão.

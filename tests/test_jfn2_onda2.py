@@ -84,8 +84,10 @@ def test_buscar_contratacoes_dedup_e_filtro(monkeypatch):
     from compliance_agent.collectors import pncp
 
     async def fake_get(endpoint, params):
-        # devolve sempre o mesmo item (testa dedup) numa única página
-        return {"data": [_FAKE_PNCP_ITEM], "totalPaginas": 1}
+        # devolve sempre o mesmo item (testa dedup) numa única página.
+        # `(json, motivo)`: o motivo nasceu em 31/07/26 para o retry distinguir 5xx de timeout —
+        # sem ele, um 503 instantâneo custava 60 s de sono e travava a rota do painel.
+        return {"data": [_FAKE_PNCP_ITEM], "totalPaginas": 1}, "ok"
 
     monkeypatch.setattr(pncp, "_get_consulta", fake_get)
     out = asyncio.run(pncp.buscar_contratacoes(uf="RJ", modalidade=6, max_paginas=2))

@@ -27,7 +27,8 @@ def test_score_candidatura():
 
 def _con_cluster_pequeno():
     """Cluster de 2 editais (não avaliável por peer-diff) com cláusula FORTE (marca)."""
-    import sqlite3, json
+    import sqlite3
+    import json
     from compliance_agent.editais import db as ed
     con = sqlite3.connect(":memory:")
     con.row_factory = sqlite3.Row

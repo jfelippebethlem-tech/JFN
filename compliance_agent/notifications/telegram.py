@@ -775,8 +775,8 @@ def _build_agente_system() -> str:
     try:
         from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
         base += contexto_legal_para_prompt() + "\n\n"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("prompt do agente SEM contexto legal — base_legal indisponível (%s)", exc)
     return base
 
 
@@ -835,8 +835,8 @@ async def _conversar_com_agente(pergunta: str) -> str:
         if groq_available():
             try:
                 return await groq_chat_async(prompt, system=_AGENTE_SYSTEM, smart=True)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("groq falhou no agente, caindo para openrouter: %s", exc)
         if openrouter_available():
             return await openrouter_chat_async(prompt, system=_AGENTE_SYSTEM, smart=True)
     except Exception as exc:
@@ -934,8 +934,9 @@ async def _esquemas_reply() -> str:
                 dados = {}
                 try:
                     dados = __import__("json").loads(e["valor"])
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("esquema %r sem JSON válido, usando o valor cru: %s",
+                                 e.get("chave"), exc)
                 nome = dados.get("nome") or e["chave"]
                 modus = dados.get("modus_operandi", e["valor"][:100])
                 linhas.append(f"• *{nome[:60]}*\n  _{modus[:120]}_")

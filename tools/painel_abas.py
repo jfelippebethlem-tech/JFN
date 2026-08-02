@@ -15,7 +15,18 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-PAINEL = Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html"
+_RAIZ = Path(__file__).resolve().parents[1]
+PAINEL = _RAIZ / "static" / "jfn-painel.html"
+# v49: os 337 KB de JS sairam de dentro do HTML para `static/js/painel.js` (servido com gzip e
+# cache). O `const TABS` foi junto. Procurar so no HTML passou a levantar "nao achei TABS" — que e
+# verdade e nao e problema. As duas formas sao lidas: enquanto o monolito existir, e depois dele.
+# v58: o monolito virou `static/js/src/` + bundle. `TABS` mora no fonte, e o fonte e o que um
+# humano edita — e dele que esta lista tem de sair. O bundle NAO entra: ele e derivado, e ler o
+# derivado esconderia justamente o caso "editei o fonte e nao reconstrui".
+_FONTES = (_RAIZ / "static" / "js" / "src" / "app" / "tabs.js",
+           _RAIZ / "static" / "js" / "src" / "entrada.js",
+           _RAIZ / "static" / "js" / "painel.js",
+           PAINEL)
 
 _BLOCO = re.compile(r"const TABS=\{(.*?)\n\};", re.S)
 _ESFERA = re.compile(r"^\s{2}(\w+):\[", re.M)
@@ -23,10 +34,15 @@ _ID = re.compile(r"id:'([a-z_]+)'")
 
 
 def _corpo() -> str:
-    m = _BLOCO.search(PAINEL.read_text(encoding="utf-8"))
-    if not m:
-        raise RuntimeError("nao achei `const TABS={...}` em static/jfn-painel.html")
-    return m.group(1)
+    tentadas = []
+    for f in _FONTES:
+        tentadas.append(str(f))
+        if not f.exists():
+            continue
+        m = _BLOCO.search(f.read_text(encoding="utf-8"))
+        if m:
+            return m.group(1)
+    raise RuntimeError("nao achei `const TABS={...}` em nenhuma fonte: " + ", ".join(tentadas))
 
 
 def abas_por_esfera() -> dict[str, list[str]]:

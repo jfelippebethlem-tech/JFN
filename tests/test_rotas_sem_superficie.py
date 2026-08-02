@@ -22,7 +22,12 @@ PAINEL = RAIZ / "static" / "jfn-painel.html"
 # Medido em 2026-07-25. Ao expor uma rota, ABAIXE este numero de proposito — e a
 # unica forma de o progresso aparecer. Ao criar rota nova sem tela, suba com o
 # motivo no commit.
-TETO_SEM_SUPERFICIE = 23
+#
+# 2026-07-30: 23 -> 0. A divida ja tinha sido PAGA (as oito abas novas de `cb4dc3bd` expuseram o
+# resto) e o teto ficou SOLTO em 23 sem ninguem notar — porque, ao contrario da catraca irma
+# `test_rotas_sem_orfa`, esta nao tinha teste de APERTO. Teto folgado nao avisa: ele deixa a divida
+# voltar a crescer 23 unidades em silencio. O teste de aperto entrou junto (abaixo).
+TETO_SEM_SUPERFICIE = 0
 
 # Plano de controle: existe para o Hermes/Yoda e para operacao, nao para a tela.
 _CONTROLE = re.compile(
@@ -50,8 +55,19 @@ def _usada(rota: str, painel: str) -> bool:
     return len(pai) > 6 and pai in painel
 
 
+def _texto_do_painel() -> str:
+    """O painel MAIS os arquivos que ele carrega — ver `tests/superficie.py`.
+
+    Antes lia so `static/jfn-painel.html`. Com o JS inline saindo para `static/js/`, ler so o HTML
+    faria esta catraca acusar dezenas de rotas "sem superficie" que continuam sendo chamadas.
+    """
+    from tests.superficie import superficie_texto
+
+    return superficie_texto("painel")
+
+
 def sem_superficie() -> list[str]:
-    painel = PAINEL.read_text(encoding="utf-8")
+    painel = _texto_do_painel()
     return [r for r in _rotas_api()
             if not _usada(r, painel) and not _CONTROLE.match(r)]
 
@@ -63,6 +79,56 @@ def test_o_numero_de_rotas_sem_superficie_nao_sobe():
         "Capacidade construida e nunca exposta e trabalho morto. Exponha, ou suba o "
         "teto com o motivo no commit:\n  " + "\n  ".join(sorted(achadas))
     )
+
+
+def test_teto_esta_apertado():
+    """Faltava. Foi por falta deste teste que o teto ficou em 23 com a divida em 0.
+
+    Catraca so vale nos DOIS sentidos: o teto tem de doer quando a divida sobe E acompanhar quando
+    ela cai. Teto folgado e catraca desligada com aparencia de ligada.
+    """
+    achadas = sem_superficie()
+    assert len(achadas) >= TETO_SEM_SUPERFICIE, (
+        f"so {len(achadas)} rotas sem superficie contra teto de {TETO_SEM_SUPERFICIE} — abaixe o "
+        f"teto para {len(achadas)} e trave o ganho"
+    )
+
+
+def test_a_superficie_enxerga_js_extraido(tmp_path, monkeypatch):
+    """A extracao do JS do painel (504 KB inline -> arquivo servido) NAO pode cegar esta catraca.
+
+    Este teste e o que autoriza a extracao a acontecer: monta um `static/` de mentira onde a chamada
+    da rota esta SO no `.js`, e exige que o leitor de superficie a encontre. Sem ele, o dia da
+    extracao seria o dia em que duas catracas estouram juntas e ninguem sabe se foi a extracao ou
+    uma regressao real.
+    """
+    from tests import superficie as S
+
+    falso = tmp_path / "static"
+    (falso / "js").mkdir(parents=True)
+    (falso / "jfn-painel.html").write_text("<div id=miolo></div>", encoding="utf-8")
+    (falso / "js" / "painel.js").write_text("J('/api/dossie/completo')", encoding="utf-8")
+
+    monkeypatch.setattr(S, "_STATIC", falso)
+    monkeypatch.setattr(S, "PAINEL", falso / "jfn-painel.html")
+
+    for escopo in ("painel", "front"):
+        assert "/api/dossie/completo" in S.superficie_texto(escopo), (
+            f"escopo {escopo!r} nao le o JS extraido — a catraca acusaria rotas orfas de mentira"
+        )
+
+
+def test_a_superficie_ignora_backup_e_aposentado():
+    """`.bak`, `_arquivo/` e `_antes-v*` nao sao ponto de entrada de ninguem.
+
+    Se contassem, uma rota removida do painel continuaria "coberta" pelo backup de tres versoes
+    atras — a catraca ficaria verde medindo codigo que ninguem serve.
+    """
+    from tests.superficie import arquivos_do_front
+
+    lidos = [str(p) for p in arquivos_do_front()]
+    sujos = [p for p in lidos if ".bak" in p or "_arquivo" in p or "_antes-v" in p]
+    assert not sujos, f"superficie lendo backup/aposentado: {sujos}"
 
 
 def test_a_triagem_separa_plano_de_controle():

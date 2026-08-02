@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Controle de fiscalização — Controle Externo · RJ</title>
+<!-- v58: o CONTROLE deixa de ter folha de estilo própria e passa a usar a do painel.
+     Ele era um órfão: 40 linhas de CSS embutidas dentro de `rotas/investigacao.py`, com paleta
+     própria, tipografia própria e cartões com faixa colorida na lateral. Duas coisas erradas de
+     uma vez — um segundo sistema de design para manter, e uma tela que não parecia do mesmo
+     produto. Agora herda os mesmos tokens, o mesmo relógio (`--bpm`), a mesma moldura usinada e
+     os mesmos glifos autorais. Nenhum estilo novo é declarado aqui. -->
+<link rel="stylesheet" href="/static/css/painel.css?v=a7282605">
+</head>
+<body data-esf="geral">
+<div class="aura a1" aria-hidden="true"></div><div class="aura a2" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <div class="htop">
+      <div class="brand"><span class="lg">CE</span><h1>Controle de fiscalização<small>FLAGS GRAVES · PROCESSOS RESTRITOS</small></h1></div>
+      <span class="actions"><a class="ctrl" href="/painel">← Painel</a></span>
+    </div>
+    <div id="conduit" aria-hidden="true"><span class="cblade"></span></div>
+  </header>
+
+  <main id="view">
+    <div class="cover geral">
+      <div class="cover-row">
+        <span class="cover-seal" id="selo" aria-hidden="true"></span>
+        <div class="cover-tx">
+          <h2 class="t">Controle de fiscalização</h2>
+          <div class="s">Flags vermelhos graves e processos SEI com acesso restrito. As duas listas
+            se alimentam sozinhas ao longo dos sweeps — o que aparece aqui é o que o sistema
+            conseguiu ver até agora.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="sec" id="sec-flags">Flags vermelhos graves<span class="cnt" id="cnt-flags">—</span></h2>
+    <div id="flags"><div class="skel"><span class="sp"></span>Consultando…</div></div>
+
+    <h2 class="sec" id="sec-restr">Processos SEI restritos<span class="cnt" id="cnt-restr">—</span></h2>
+    <div id="restr"><div class="skel"><span class="sp"></span>Consultando…</div></div>
+
+    <div class="dim" id="upd" style="margin:22px 0 8px"></div>
+  </main>
+</div>
+
+<script src="/static/assets/jfn-icones.js?v=ab4d029f"></script>
+<script>
+/* Este arquivo NÃO passa pelo bundle do painel de propósito: é uma tela de leitura, de 60 linhas,
+   sem roteador, sem cena e sem barramento. Puxá-la para dentro do `entrada.js` custaria 340 KB de
+   JS para mostrar duas listas. O que ela compartilha com o painel é a LINGUAGEM — os tokens, o
+   relógio, a moldura, os glifos — e isso vem do CSS e do icon-set, não do código. */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const svgIco=e=>{const g=window.JFN_ICO&&window.JFN_ICO[e];
+  return g?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>`:e;};
+const brl=v=>{v=Number(v);return !v?'':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});};
+
+/* A DIFERENÇA QUE ESTA TELA NÃO FAZIA, e é a regra mais dura da casa: INDISPONÍVEL ≠ 0.
+   O `j()` antigo engolia qualquer falha num `{ok:false, itens:[]}`, e então uma rota que
+   respondeu 500 e uma lista genuinamente vazia produziam o MESMO texto na tela: "sem flags".
+   Quem lia entendia "está tudo limpo" quando o correto era "não deu para saber". Agora o estado
+   vem separado: `vazio` é uma resposta boa com zero itens; `falhou` é ausência de resposta. */
+async function buscar(rota){
+  try{
+    const r=await fetch(rota);
+    const d=await r.json();
+    if(!r.ok||d.ok===false)return {estado:'falhou',erro:d&&d.erro,itens:[]};
+    return {estado:(d.itens&&d.itens.length)?'ok':'vazio',itens:d.itens||[],n:d.n};
+  }catch(e){return {estado:'falhou',erro:String(e),itens:[]};}
+}
+
+/* Duas frases distintas para os dois estados distintos. A do INDISPONÍVEL carrega o glifo novo e
+   diz o que a tela NÃO está afirmando — que é a parte que costuma se perder. */
+function semDado(r,oQue){
+  if(r.estado==='vazio')
+    return `<div class="card"><b>Nenhum ${oQue} até agora.</b>
+      <div class="dim" style="margin-top:6px">A consulta respondeu e veio vazia — isto é um zero
+      medido, não uma ausência de medição. A lista se alimenta ao longo dos sweeps.</div></div>`;
+  const det=r.erro?` title="${esc(String(r.erro)).slice(0,220)}"`:'';
+  return `<div class="card"${det}>
+    <span style="float:right;opacity:.75">${svgIco('§indisp')}</span>
+    <b>Não foi possível saber.</b>
+    <div class="dim" style="margin-top:6px">A consulta não respondeu.
+      <span class="dim">INDISPONÍVEL não é zero — a tela não está dizendo que não há
+      ${oQue}, e sim que não tem como saber.</span></div></div>`;
+}
+
+/* SEM FAIXA COLORIDA NA LATERAL. O desenho antigo marcava gravidade com `border-left:4px` de cor —
+   um recurso que o painel não usa em lugar nenhum e que a régua de design da casa proíbe. Aqui a
+   gravidade vem do glifo de severidade (o mesmo `§sev` das outras telas) e da tag, que é o
+   vocabulário que o auditor já lê no painel inteiro. */
+function cartaoFlag(e){
+  const g=(e.gravidade||'').toUpperCase();
+  const cls=/CRÍT|CRIT/.test(g)?'alta':/ALTA/.test(g)?'alta':/MÉD|MED/.test(g)?'media':'';
+  return `<div class="card">
+    <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+      <span style="opacity:.85">${svgIco('§sev')}</span>
+      ${g?`<span class="tag sev ${cls}">${esc(g)}</span>`:''}
+      <b>${esc(e.caso||'')}</b>
+    </div>
+    <div style="margin:6px 0 2px">${esc(e.titulo||'')}</div>
+    <div class="dim">${e.valor>0?brl(e.valor):''}${e.base_legal?(e.valor>0?' · ':'')+esc(e.base_legal):''}${e.status?' · '+esc(e.status):''}</div>
+  </div>`;
+}
+
+function tabelaRestritos(itens){
+  return `<div class="card" style="overflow-x:auto"><table>
+    <tr><th>Status</th><th>Processo</th><th>Unidade</th><th>Existe</th><th>Leituras</th><th>Última</th></tr>
+    ${itens.map(e=>`<tr>
+      <td><span class="tag">${esc(e.status||'')}</span></td>
+      <td><code>${esc(e.numero||'')}</code></td>
+      <td>${esc(e.unidade||'—')}</td>
+      <td>${esc(e.fonte_existencia||e.existe||'—')}</td>
+      <td>${Number(e.n_leituras||0).toLocaleString('pt-BR')}</td>
+      <td>${esc(e.ultima||'')}</td></tr>`).join('')}
+  </table></div>`;
+}
+
+(async()=>{
+  $('selo').innerHTML=svgIco('§sev');
+
+  const f=await buscar('/api/flags');
+  $('cnt-flags').textContent = f.estado==='ok' ? (f.n ?? f.itens.length).toLocaleString('pt-BR')
+                             : (f.estado==='vazio' ? '0' : '—');
+  $('flags').innerHTML = f.estado==='ok'
+    ? `<div class="grid">${f.itens.map(cartaoFlag).join('')}</div>`
+    : semDado(f,'flag grave');
+
+  const r=await buscar('/api/restritos');
+  $('cnt-restr').textContent = r.estado==='ok' ? r.itens.length.toLocaleString('pt-BR')
+                              : (r.estado==='vazio' ? '0' : '—');
+  $('restr').innerHTML = r.estado==='ok' ? tabelaRestritos(r.itens)
+                        : semDado(r,'processo restrito');
+
+  $('upd').textContent='Consultado em '+new Date().toLocaleString('pt-BR');
+})();
+</script>
+</body>
+</html>

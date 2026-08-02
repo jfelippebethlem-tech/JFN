@@ -1,0 +1,14 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer mestras {
+/* ── v49 · FUNÇÕES MESTRAS no cockpit (um botão por comando, derivado de capabilities.yaml) ── */
+.ck-caps{margin:18px 0 6px}
+.ck-caps .caps-g{margin:10px 0 14px}
+.ck-caps .caps-gt{font-size:11.5px;letter-spacing:.4px;color:var(--dim);margin:0 0 7px;font-weight:600;display:flex;align-items:center;gap:6px}
+/* o emoji do titulo de grupo nasce em capabilities.yaml (menu.grupo); o gerador o separa
+   em grupo_ic e aqui ele vira glifo Lucide, como o resto do painel. Sem largura explicita
+   um <svg> sem width ocupa a linha inteira — todo .jico da casa e dimensionado. */
+.ck-caps .caps-gi .jico{width:14px;height:14px;color:currentColor}
+.ck-caps .btn{gap:7px;flex-wrap:wrap}   /* o chip do comando desce de linha em vez de espremer o rótulo */
+.ck-caps .caps-cmd{font-family:var(--mono);font-size:10.5px;opacity:.62;
+  border-left:1px solid var(--bd2);padding-left:7px;margin-left:2px}
+}

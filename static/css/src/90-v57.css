@@ -1,0 +1,108 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer v57 {
+/* ══ v57 · A VARREDURA QUE FALTAVA (§5) ═══════════════════════════════════════════════════════
+   Sete correções medidas pelo it-campo na 4ª rodada. Cada bloco diz o número medido, porque é o
+   número — não a impressão — que justifica mexer numa peça já aprovada. */
+
+/* ── 1. REGRESSÃO DO v56: `overflow-wrap:anywhere` quebrava palavra no meio ──────────────────
+   O `anywhere` salvou o rótulo de ser DECEPADO, mas ele quebra na letra mesmo quando a palavra
+   caberia na linha seguinte: "Direcioname/nto em editais", "parlamentar/es", "co/ntrato". Isso
+   lê como erro de renderização, não como texto. `break-word` é a regra certa: quebra dentro da
+   palavra APENAS quando ela sozinha não cabe na caixa — que era o caso original. `hyphens:auto`
+   entra junto para que, quando precisar quebrar, saia hifenizado em português (o `lang="pt-br"`
+   do <html> é o que liga o dicionário). Aplicado na definição do `.btn` (linha ~472), não aqui,
+   porque é a MESMA declaração corrigida — regra duplicada no fim do arquivo vira divergência. */
+
+/* ── 2. O ÍCONE DO KPI INVADIA O RÓTULO ─────────────────────────────────────────────────────
+   Medido: "CONLUIO (ESTADO⚡" (o ícone comia o parêntese), "BENEFICIO DURANTE VINCULO (CERTEZA⚠
+   ALTA)", "SOCIO DE CREDOR NA⚠ FOLHA". O `.kpi-ico` é `position:absolute` no canto superior
+   direito — fora do fluxo, então o rótulo passava POR BAIXO dele. Não é caso de encolher fonte
+   nem de elidir: é falta de coluna. O rótulo passa a reservar a faixa do ícone (16px + folga),
+   e a reserva vale para TODAS as linhas dele, não só a primeira. Só onde há ícone de fato
+   (`:has`) — KPI sem ícone continua usando a caixa inteira. O mesmo vale para o "›" do KPI
+   clicável, que ocupa exatamente a mesma esquina. */
+  .kpi:has(.kpi-ico) .l,.kpi-go .l{padding-right:26px}
+
+/* ── 3. A SUB-NAVEGAÇÃO ESCONDIA METADE DE SI ───────────────────────────────────────────────
+   Medido: nav.tabs com 15 itens, scrollWidth 1260 para clientWidth 818 — 442px fora da tela,
+   `overflow-x:auto` e nenhuma pista. O esmaecimento do v51 saía SEMPRE (mesmo sem nada para o
+   lado) e não tinha direção; some, e no lugar entra um sinal condicional com seta. Vale mais
+   que o fade porque responde à pergunta certa: não "a borda está apagada" e sim "há mais PARA
+   ESTE LADO, e clicar aqui te leva". A lógica de acender está em `_tabsMaisPintar()`. */
+  nav.tabs{-webkit-mask-image:none;mask-image:none}
+  nav.tabs .tmais{position:fixed;top:0;bottom:0;width:34px;z-index:3;display:grid;place-items:center;
+    opacity:0;pointer-events:none;cursor:pointer;transition:opacity .22s}
+  /* fade suave, não tapume: a nav é vidro com `backdrop-filter`, e uma faixa opaca de `--bg`
+     na borda leria como remendo. `color-mix` com transparente mantém o desfoque aparecendo. */
+  nav.tabs .tmais.e{left:0;background:linear-gradient(90deg,color-mix(in oklch,var(--bg) 88%,transparent),transparent)}
+  nav.tabs .tmais.d{right:0;background:linear-gradient(270deg,color-mix(in oklch,var(--bg) 88%,transparent),transparent)}
+  nav.tabs.mais-e .tmais.e,nav.tabs.mais-d .tmais.d{opacity:1;pointer-events:auto}
+  /* a seta é geometria (duas bordas giradas), não glifo: não depende de fonte instalada —
+     mesma lição do v27, quando o estado do SIAFE virou dingbat ausente em três fontes. */
+  nav.tabs .tmais::after{content:"";width:7px;height:7px;border-right:1.7px solid var(--mut);
+    border-bottom:1.7px solid var(--mut);transition:border-color .18s,transform .18s}
+  nav.tabs .tmais.d::after{transform:rotate(-45deg) translate(-1px,-1px)}
+  nav.tabs .tmais.e::after{transform:rotate(135deg) translate(-1px,-1px)}
+  nav.tabs .tmais:hover::after{border-color:var(--esf,var(--ion))}
+  nav.tabs .tmais.d:hover::after{transform:rotate(-45deg) translate(1px,1px)}
+  nav.tabs .tmais.e:hover::after{transform:rotate(135deg) translate(1px,1px)}
+  @media (prefers-reduced-motion:reduce){
+    nav.tabs .tmais,nav.tabs .tmais::after{transition:none}
+    nav.tabs .tmais.d:hover::after{transform:rotate(-45deg) translate(-1px,-1px)}
+    nav.tabs .tmais.e:hover::after{transform:rotate(135deg) translate(-1px,-1px)}}
+
+/* ── 4. EMOJI COLORIDO CONVIVENDO COM O ICON-SET PRÓPRIO ────────────────────────────────────
+   O painel tem `jfn-icones.js` (Lucide monocromático, tingido pela esfera) e mesmo assim o
+   glossário saía com 🎯🔁🎭👻, os chips de filtro da Prefeitura com 📄✂📍👥❄ e um título de
+   seção com 🏢. Emoji tem cor própria, desenho de outra família e peso visual de fonte de
+   sistema: destoa da linguagem cinematográfica, e 👻 para "empresa fantasma" num painel de
+   auditoria destoa duas vezes. Os call-sites passaram a chamar `svgIco()`; aqui vai o tamanho
+   nos três contextos novos. FICAM de fora, de propósito, os 🟢🟡🔴: ali a cor É o dado (o
+   rating cromático da casa), não decoração — trocar por glifo monocromático APAGARIA a leitura. */
+  .term-ico{display:inline-flex;flex:0 0 auto;color:var(--esf,var(--ion));line-height:0}
+  .term-ico .jico{width:20px;height:20px}
+  .chip .jico{width:13px;height:13px;vertical-align:-2px;color:currentColor}
+  h2.sec .jico{width:13px;height:13px;flex:0 0 auto;color:currentColor}
+
+/* ── 5. BOTÕES "Abrir" DESALINHADOS NA MESMA LINHA ──────────────────────────────────────────
+   Medido: 406px contra 387px na mesma faixa da grade. Os cards já esticam (é `display:grid`,
+   e o padrão é `stretch`), mas o conteúdo deles é fluxo de bloco — a descrição de 3 linhas
+   empurra o botão para baixo e a de 1 linha o deixa no meio da caixa. Ficam DOIS botões iguais
+   em alturas diferentes lado a lado, e o olho lê como desalinho, não como texto de tamanhos
+   diferentes. Vira coluna flex e a barra de ações desce para o rodapé. Só onde a barra é o
+   ÚLTIMO filho (`:has(> .btns:last-child)`) — card que tem tabela ou <pre> depois do botão não
+   é afetado, e nenhum outro `.card` do painel muda de layout. */
+  #view .grid > .card:has(> .btns:last-child){display:flex;flex-direction:column}
+  #view .grid > .card > .btns:last-child{margin-top:auto}
+
+/* ── 6. SEM <h1>, E O TÍTULO DA ESFERA NÃO ERA CABEÇALHO ────────────────────────────────────
+   A árvore começava em h2 (o `sec()`), e o título grande de cada aba — a coisa mais parecida
+   com "onde estou" que a tela tem — era um <div>. Leitor de tela e o índice de cabeçalhos do
+   navegador não enxergavam nada. Agora: h1 = a marca (a página), h2 = o título da esfera/aba
+   (`.cover .t`) e h2 = as seções. Nenhum pixel muda; as duas tags entram com o estilo herdado
+   do que já havia. O `h2::after` do v16 (a varredura de radar) é neutralizado no cover, onde
+   ele desenharia um fio animado atravessando a capa inteira. */
+  .brand h1{font:inherit;margin:0;letter-spacing:inherit}
+  .cover h2.t{margin:0}
+  .cover h2.t::after{content:none}
+
+/* ── 7. O CABEÇALHO PULAVA AO TROCAR DE ABA ─────────────────────────────────────────────────
+   Abas com alturas diferentes ganham/perdem a barra de rolagem, e com ela ~15px de largura útil
+   — a página inteira dança de lado a cada navegação. `stable` reserva a calha SEMPRE: o layout
+   deixa de depender de quanto conteúdo a aba tem. */
+  html{scrollbar-gutter:stable}
+
+/* ── 8. O NÓ DE ENERGIA DOS SIGILOS AUTORAIS (v58) ──────────────────────────────────────────
+   Os glifos do painel são servidos por `svgIco()` dentro de um <svg fill="none">, e `fill` é
+   herdado: qualquer filho nasce sem preenchimento. Isso é o certo para 71 ícones de traço — e
+   apagava em silêncio o único elemento SÓLIDO dos quatro sigilos de esfera novos, o ponto de
+   energia. O sigilo aparecia inteiro e sem o nó, que é justamente o que dá a ele a leitura de
+   instrumento ligado em vez de desenho.
+
+   Uma classe só, `.no`, aplicada a esse ponto. O âmbar é fixo de propósito: o traço já é
+   tingido pela cor da esfera (`--sphc`/`--esf`), e o painel inteiro se orienta por duas
+   temperaturas — íon frio no traço, âmbar no ponto vivo. Se o nó também mudasse de cor com a
+   esfera, ele deixaria de ser acento e viraria mais uma linha. */
+  .jico .no{fill:var(--amb-no);stroke:none}
+  :root{--amb-no:oklch(0.80 0.15 75)}
+}

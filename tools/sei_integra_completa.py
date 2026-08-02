@@ -21,9 +21,15 @@ import fitz
 PROC = sys.argv[1] if len(sys.argv) > 1 else ""   # import (pytest) não traz argumento
 TAG = re.sub(r"[^0-9]", "_", PROC)
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
-ENV = Path("/home/ubuntu/.hermes/.env")
+ENV = Path.home() / ".hermes" / ".env"   # por usuário: `/home/ubuntu` cravado quebrava fora desta VM
 def _k(n):
-    m = re.search(rf"^{n}=(.+)$", ENV.read_text(), re.M); return m.group(1).strip().strip('"').strip("'") if m else ""
+    # `_k` roda no IMPORT (linha abaixo), então não pode depender de arquivo existir: o CI pegou
+    # `FileNotFoundError: /home/ubuntu/.hermes/.env` importando este módulo num runner limpo.
+    try:
+        texto = ENV.read_text()
+    except OSError:
+        return ""
+    m = re.search(rf"^{n}=(.+)$", texto, re.M); return m.group(1).strip().strip('"').strip("'") if m else ""
 TOK, CHAT = _k("TELEGRAM_BOT_TOKEN"), _k("TELEGRAM_CHAT_ID")
 
 

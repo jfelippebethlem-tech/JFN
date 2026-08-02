@@ -1,0 +1,126 @@
+name: Testes (em LOTES, critério = delta zero)
+
+# POR QUE ESTE WORKFLOW EXISTE. Havia 436 arquivos de teste / ~3.900 funções e **nenhum CI de pytest**
+# — os dois workflows existentes são de coleta de dado. A disciplina morava no hook local de
+# pre-commit, que é local-only: máquina nova, disciplina zero.
+#
+# DUAS DECISÕES QUE NÃO SÃO ÓBVIAS:
+#
+#  1. EM LOTES, não monolítico. A suíte inteira já derrubou a VM de 2 vCPU quatro vezes. Aqui o
+#     runner é do GitHub, mas o fatiamento fica igual ao local (`tools/ci_lote.py`, round-robin
+#     determinístico) para que "o lote 2" seja o MESMO conjunto nas duas máquinas — sem isso não se
+#     compara rodada com rodada.
+#
+#  2. CRITÉRIO = DELTA ZERO, não verde absoluto. Parte das falhas é de AMBIENTE (sem
+#     `data/compliance.db`, sem Chrome, sem chave de API) e não de código. Exigir 0 falhas num
+#     ambiente que não tem a base transforma o gate em alarme permanente — e alarme permanente é
+#     alarme desligado. `tools/ci_delta.py` compara NOME A NOME contra as bases conhecidas: falha
+#     nova reprova, falha conhecida é tolerada, falha que sumiu é ganho a travar.
+#
+#  3. TORCH PELO ÍNDICE CPU. `easyocr` puxa torch; o wheel padrão traz ~3,9 GB de CUDA que nenhum
+#     runner sem GPU usa. O índice CPU entra como extra — mesma decisão tomada na VM.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lotes:
+    # DEDUPE (2026-08-01): com PR aberto, cada push disparava DOIS runs (evento push + evento
+    # pull_request) e o dono recebia o dobro de e-mail de falha. O grupo de concurrency não cruza
+    # eventos (refs diferentes). PR de mesmo repo já é coberto pelo run do push — o evento
+    # pull_request só roda para fork (onde o push não dispara aqui).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      # DUAS etapas de propósito. `--extra-index-url` do PyTorch vale para TODOS os pacotes, e o uv
+      # só considera o primeiro índice que contém cada nome (defesa contra dependency confusion) —
+      # então `requests` era resolvido pelo índice do PyTorch, que só publica 2.28.1, e a resolução
+      # morria em "only requests==2.28.1 is available and you require requests>=2.31.0".
+      # O uv sugere `--index-strategy unsafe-best-match`; o nome não é decorativo — passaria a
+      # aceitar qualquer versão de qualquer índice para qualquer pacote. Aqui o índice do PyTorch
+      # simplesmente não participa da resolução do resto: torch/torchvision vêm dele, sozinhos, e o
+      # segundo comando resolve tudo o mais só no PyPI (encontra torch já satisfeito e não o troca).
+      - name: Ambiente 1/2 — torch CPU-only (a VM e o runner não têm GPU)
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python \
+            --index-url https://download.pytorch.org/whl/cpu \
+            torch torchvision
+
+      - name: Ambiente 2/2 — o resto, só do PyPI
+        run: |
+          uv pip install --python .venv/bin/python \
+            -r requirements.txt -r requirements-dev.txt
+
+      - name: Lint (ruff bloqueia — baseline do repo é ZERO)
+        run: .venv/bin/python -m ruff check .
+
+      # GATE DO PROCESSO 360 (2026-08-01). Estes testes guardam as réguas que fundamentam PEÇA de
+      # controle externo — inversão do art. 53, suficiência do emissor, 3 baldes de lacuna, teto de
+      # grau do juízo por IA. Quatro famílias de falso positivo já foram mortas aqui em um só dia
+      # (certidão lida como parecer, minuta/anexo lidos como contrato, tipo por conteúdo mentindo em
+      # documento escaneado). Rodam ANTES dos lotes e BLOQUEIAM: regressão nessas regras produz
+      # acusação falsa num documento oficial, que é o pior defeito possível deste repo.
+      - name: Gate — réguas do Processo 360 (bloqueia)
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=300 \
+            tests/test_manifesto_norm.py tests/test_processo_360.py tests/test_doc_juizo.py \
+            tests/test_contratos_foro.py tests/test_detector_c9.py \
+            tests/test_sei_fases.py tests/test_cadeia_processo.py \
+            tests/test_sei_recomendacoes.py tests/test_detectores_sincronia.py \
+            -m "not slow"
+
+      # Os quatro lotes correm em SEQUÊNCIA e nenhum aborta o próximo (`|| true`): queremos o mapa
+      # COMPLETO de falhas para o delta, não o primeiro tropeço. Quem reprova é o passo do delta.
+      - name: Lote 1/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 1 4) 2>&1 | tee /tmp/lote1.log || true
+      - name: Lote 2/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 2 4) 2>&1 | tee /tmp/lote2.log || true
+      - name: Lote 3/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 3 4) 2>&1 | tee /tmp/lote3.log || true
+      - name: Lote 4/4
+        run: |
+          .venv/bin/python -m pytest -q -rf -p no:randomly --timeout=900 \
+            -m "not network and not integration" \
+            $(PYTHONPATH=. .venv/bin/python -m tools.ci_lote 4 4) 2>&1 | tee /tmp/lote4.log || true
+
+      - name: Delta contra as falhas conhecidas
+        run: |
+          PYTHONPATH=. .venv/bin/python -m tools.ci_delta \
+            /tmp/lote1.log /tmp/lote2.log /tmp/lote3.log /tmp/lote4.log \
+            --base tests/BASE-FALHAS-VM2.txt --base tests/BASE-FALHAS-CI.txt
+
+      - name: Guardar os logs (para popular a base na primeira rodada)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-dos-lotes
+          path: /tmp/lote*.log
+          retention-days: 14

@@ -44,27 +44,34 @@ def pasta_para_numero(pasta: str) -> str:
 
 def _arquivo_cache(numero_sei: str, cache_dir: pathlib.Path) -> pathlib.Path | None:
     """Cache do processo. Tenta o nome direto e, falhando, casa por dígitos."""
+    from compliance_agent.sei.cache_arquivo import glob_cache, localizar, nome_logico
+
     cache_dir = pathlib.Path(cache_dir)
-    direto = cache_dir / f"cdp_SEI_{numero_para_pasta(numero_sei)}.json"
-    if direto.exists():
+    # `localizar`/`glob_cache` aceitam o blob comprimido (`.json.zst`). Este é o ÚNICO leitor de
+    # cache que ignora o TTL de 24h e vai atrás de blob de qualquer idade — ou seja, é exatamente
+    # ele que a compressão cegaria se a busca continuasse literal.
+    direto = localizar(cache_dir / f"cdp_SEI_{numero_para_pasta(numero_sei)}.json")
+    if direto is not None:
         return direto
     digitos = "".join(c for c in str(numero_sei or "") if c.isdigit())
     if not digitos:
         return None
-    for f in cache_dir.glob("cdp_SEI_*.json"):
-        if "".join(c for c in f.stem if c.isdigit()) == digitos:
+    for f in glob_cache(cache_dir, "cdp_SEI_*.json"):
+        base = nome_logico(f).removesuffix(".json")
+        if "".join(c for c in base if c.isdigit()) == digitos:
             return f
     return None
 
 
 def relacionados_de(numero_sei: str, cache_dir: pathlib.Path) -> list[str]:
     """Números SEI de OUTROS processos citados no cache deste. Ordem de aparição, sem repetir."""
+    from compliance_agent.sei.cache_arquivo import ler_json
+
     f = _arquivo_cache(numero_sei, cache_dir)
     if f is None:
         return []
-    try:
-        d = json.loads(f.read_text())
-    except (OSError, json.JSONDecodeError):
+    d = ler_json(f)   # descomprime `.json.zst` de forma transparente; None = ausente/ilegível
+    if d is None:
         logger.debug("cache ilegível para %s", numero_sei)
         return []
 

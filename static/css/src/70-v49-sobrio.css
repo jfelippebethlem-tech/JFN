@@ -1,0 +1,18 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+@layer sobrio {
+
+  /* o sabre da aba ativa e o selo continuam vivos: já pulsam em `opacity`, que é de graça. */
+  /* a nebulosa mantém o drift (`transform`) e perde só o filtro, que já é estático desde o v49. */
+  body.fps-baixo #esfnebula{animation-duration:120s}
+  /* ...e as superfícies de VIDRO ficam opacas, senão o conteúdo de trás aparece nítido através
+     delas. A cortina `.ov` fica de fora de propósito: escurecer o fundo é a função dela. */
+  body.fps-baixo header, body.fps-baixo #holofeed, body.fps-baixo .card,
+  body.fps-baixo .ck-hero, body.fps-baixo .modal, body.fps-baixo .sheet,
+  body.fps-baixo .tabs, body.fps-baixo .nu-chip, body.fps-baixo .nu-sweep{
+    background:var(--bg2)}
+  /* aviso honesto: o modo sóbrio é VISÍVEL, nunca silencioso — degradação calada é o que faz
+     ninguém descobrir que o painel está diferente do que o autor desenhou. */
+  body.fps-baixo #modo-sobrio{display:inline-flex}
+  #modo-sobrio{display:none;align-items:center;gap:5px;font-size:10.5px;color:var(--dim);
+    border:1px solid var(--bd2);border-radius:999px;padding:2px 8px;cursor:help}
+}

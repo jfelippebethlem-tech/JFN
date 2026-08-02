@@ -239,6 +239,9 @@ def detectar_comunidades(db_path: str | None = None, min_tamanho: int = 4, top: 
     finally:
         con.close()
     out.sort(key=lambda c: (-c["score"], -c["valor_total"]))
+    # o corte vem DEPOIS da contagem: `n` era len(out) já truncado, então o painel exibia
+    # `top` (30) como se fosse o número de comunidades detectadas — página no lugar do total.
+    n_total = len(out)
     out = out[:top]
 
     d3 = None
@@ -253,7 +256,7 @@ def detectar_comunidades(db_path: str | None = None, min_tamanho: int = 4, top: 
                          "weight": round(sub.edges[u, v].get("weight", 1.0), 2)}
                         for u, v in sub.edges]}
 
-    return {"ok": True, "comunidades": out, "n": len(out),
+    return {"ok": True, "comunidades": out, "n": n_total, "mostradas": len(out),
             "grafo": {"nos": G.number_of_nodes(), "arestas": G.number_of_edges(),
                       "comunidades_brutas": len(comm)},
             "d3": d3, "articuladores": articuladores(H, seed=seed),

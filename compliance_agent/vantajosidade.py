@@ -32,8 +32,10 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+# `homogeneidade` NÃO é importada aqui de propósito: `avaliar` já a aplica internamente
+# (economicidade.py:151), então a promessa do docstring — homogeneidade primeiro, mediana depois —
+# é cumprida por `avaliar_preco`. Importá-la de novo era só um símbolo morto.
 from compliance_agent.knowledge.economicidade import avaliar as avaliar_preco
-from compliance_agent.knowledge.economicidade import homogeneidade
 
 # Acima disto, o contrato prorrogado é caro frente ao mercado corrente. Conservador: variação de
 # 10% entre contratações do mesmo objeto é comum e não sustenta afirmação.

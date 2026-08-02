@@ -33,7 +33,13 @@ PAINEL = Path(__file__).resolve().parents[1] / "static" / "jfn-painel.html"
 # trabalho esta preservado no commit 62ffd7dc e em /tmp/painel-v14-preservado.html.
 # Estes testes NAO foram apagados: eles se re-armam sozinhos quando o registro
 # voltar ao painel. Apagar perderia o guarda-corpo junto com a feature.
-_TEM_V14 = "const ASSINATURA={" in PAINEL.read_text(encoding="utf-8")
+# v49: o JS saiu do HTML. Procurar `const ASSINATURA={` só no HTML deixaria estes testes PULADOS
+# para sempre — inclusive no dia em que o v14 voltasse, que é precisamente quando eles têm de
+# re-armar. O gatilho passa a olhar a superfície inteira (casca + JS extraído).
+_JS = PAINEL.parent / "js" / "painel.js"
+_SUPERFICIE = PAINEL.read_text(encoding="utf-8") + (
+    "\n" + _JS.read_text(encoding="utf-8") if _JS.exists() else "")
+_TEM_V14 = "const ASSINATURA={" in _SUPERFICIE
 pytestmark = pytest.mark.skipif(
     not _TEM_V14,
     reason="v14 revertido do painel (preservado em 62ffd7dc); testes re-armam quando voltar",

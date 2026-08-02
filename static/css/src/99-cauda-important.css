@@ -1,0 +1,132 @@
+/* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
+/* A CAUDA NAO-CAMADADA — toda regra com `!important`, na ordem original.
+   Ler o cabecalho de tools/painel_css_camadar.py antes de tocar: a ordem destes
+   blocos E o desempate, e mexer nela inverte duelos de `!important` em silencio. */
+
+  @media (prefers-reduced-motion:reduce){.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
+  @media (prefers-reduced-motion:reduce){
+    .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
+    .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
+  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),sabreBreath 2.6s ease-in-out .3s infinite!important}
+  /* orçamento de vida: aba oculta → TODA animação CSS pausa (canvas já pausam via RAF).
+     Zero mudança visual com a aba aberta — só CPU devolvida quando ninguém está olhando. */
+  html.rest *{animation-play-state:paused !important}
+  nav.tabs button.on::after{height:3px;--sbr:var(--esf);
+    --sbr-core:color-mix(in oklch,var(--sbr) 16%,white);
+    background:linear-gradient(180deg,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 0%,
+      var(--sbr-core) 38%,var(--sbr-core) 62%,
+      color-mix(in oklch,var(--sbr) 92%,transparent) 100%);
+    box-shadow:0 0 4px color-mix(in oklch,var(--sbr) 92%,transparent),
+               0 0 13px color-mix(in oklch,var(--sbr) 60%,transparent),
+               0 0 32px color-mix(in oklch,var(--sbr) 30%,transparent);
+    animation:sabreIgnic .3s cubic-bezier(.2,.9,.25,1.2),
+              sabreFlash .5s ease-out,
+              sabreHum 3.1s ease-in-out .5s infinite!important}
+  /* quem pede menos movimento CONTINUA com a lâmina acesa — sai o zumbido e a
+     ignição, fica a estética. Apagar o sabre seria tirar a identidade. */
+  @media (prefers-reduced-motion:reduce){
+    .cover::before,nav.tabs button.on::after,.sph.on::after{animation:none!important;filter:none}}
+
+  /* ── no celular o SCORE saía da tela ─────────────────────────────────────
+     A tabela do radar tem 4 colunas e rola na horizontal dentro do card — o que
+     é correto. Só que a coluna que sai é a ÚLTIMA, e a última é o **score**: o
+     número pelo qual a tabela existe. O usuário no telefone via nome e sinais e
+     não via a nota, sem nem saber que havia mais para o lado.
+     Coluna grudada na borda direita: os sinais rolam POR BAIXO dela e o score
+     fica sempre à vista. Fundo opaco e sombra para ler como coluna suspensa —
+     sem isso o texto de baixo aparece através.
+
+     ARMADILHA QUE ME CUSTOU TRÊS RODADAS, e vale para o arquivo inteiro: uma
+     edição minha deixou um FECHA-COMENTÁRIO órfão no meio deste bloco. O
+     comentário fechou cedo, o texto seguinte virou seletor inválido e o parser
+     consumiu o "@media" de baixo como bloco de declaração dele — a regra
+     simplesmente não existia. Eu culpei o "right", depois a margem, depois o
+     "border-collapse" (que é limitação real do Chrome, mas NÃO era a causa aqui).
+     Uma consulta ao DOM vivo — getComputedStyle(td).position devolvendo "static"
+     com a media query casando — matou as três hipóteses de uma vez.
+     **Não teorize sobre CSS que não pegou: pergunte ao elemento.**
+     E NUNCA escreva os dois caracteres de fecha-comentário dentro de um
+     comentário, nem entre crases: foi exatamente assim que esta explicação
+     reproduziu o próprio bug que descreve.
+
+     Escolhas do desenho: no telefone o medidor de 64px sai (o número já diz 47) e
+     a coluna encolhe para o tamanho do número.
+
+     A fresta dos 15px: o card tem "padding:4px 15px" INLINE e o sticky ancora na
+     caixa de padding, então sobrava uma tira na borda por onde o texto dos sinais
+     aparecia. Duas curas foram tentadas e falharam, cada uma por um motivo que
+     vale guardar: margem negativa não faz nada porque **margem não se aplica a
+     display:table-cell**; e uma 2ª sombra sólida também não cobriu. A cura é não
+     ter fresta — matar o padding da direita do card. Como o padding é inline, só
+     ":has() + !important" alcança, e é o único !important que este arquivo usa. */
+  @media (max-width:600px){
+    .card:has(#radar-tbl){padding-right:0!important}
+    #radar-tbl thead th:last-child,#radar-tbl tbody td:last-child{
+      position:sticky;right:0;z-index:1;padding-left:10px;padding-right:14px;
+      background:var(--card);
+      box-shadow:-12px 0 14px -9px oklch(0 0 0/.6)}
+    #radar-tbl tbody td:last-child .meter{display:none}
+  }
+
+  /* menos movimento: a linha aparece pronta, o facho e o radar somem. */
+  @media (prefers-reduced-motion:reduce){
+    tbody tr,.barw .row,thead tr,tbody tr:hover,.barw .row:hover{animation:none!important}
+    tbody tr:hover,.barw .row:hover{background-image:none;
+      background-color:color-mix(in oklch,var(--esf) 8%,transparent)}}/* ══ v49 · MODO SÓBRIO MEDIDO — o painel mede a máquina em que está e recua ═════════════════════
+   O PROBLEMA, EM NÚMERO. Medido com Playwright nesta VM (2 vCPU): **1-2 FPS com a página PARADA**,
+   com 57 animações `infinite` ativas. É isso que o dono descreve como "fica piscando": a 1 FPS uma
+   respiração de 2,9 s não respira — pisca, porque cada quadro é um salto grande.
+
+   POR QUE ESTA LISTA. Quinze `@keyframes` infinitas animam `filter`, spread de `box-shadow` ou
+   `background-position` — as três propriedades que forçam REPINTURA do elemento a cada quadro
+   (diferente de `opacity`/`transform`, que o compositor resolve na GPU). Em máquina folgada isso
+   passa; em 2 vCPU, é o orçamento inteiro.
+
+   POR QUE NÃO APAGUEI. O dono pediu explicitamente o efeito Jarvis pulsando, e em máquina capaz ele
+   custa pouco e vale muito. Então o painel MEDE (`_medirFps`, no fim do boot) e só recua onde
+   precisa. Quem tem GPU vê o painel inteiro; a VM vê o painel legível. `prefers-reduced-motion`
+   continua valendo por cima disto — são eixos diferentes: um é preferência declarada, este é
+   capacidade medida. */
+  body.fps-baixo #hologrid,
+  body.fps-baixo #rjbg,
+  body.fps-baixo .card.hl, body.fps-baixo .card.hl.rise, body.fps-baixo .card.hl:hover,
+  body.fps-baixo .card.hl.rise:hover,
+  body.fps-baixo .card::after, body.fps-baixo .ck-hero::after,
+  body.fps-baixo .ck-ved,
+  body.fps-baixo .cover-row::after,
+  body.fps-baixo .cover-seal .jico,
+  body.fps-baixo .cover::before, body.fps-baixo .cover.estado::before,
+  body.fps-baixo .cover.prefeitura::before, body.fps-baixo .cover.geral::before,
+  body.fps-baixo .grid::after, body.fps-baixo .cols::after,
+  body.fps-baixo .nu-sweep.on,
+  body.fps-baixo .sev-alta, body.fps-baixo .grave, body.fps-baixo td .pill.alto,
+  body.fps-baixo .sev-media, body.fps-baixo .medio, body.fps-baixo td .pill.medio,
+  body.fps-baixo .sph.on .i .jico,
+  body.fps-baixo tbody tr:hover, body.fps-baixo .barw .row:hover,
+  body.fps-baixo .btn>.hlx::before, body.fps-baixo .chip>.hlx::before,
+  body.fps-baixo .tab>.hlx::before, body.fps-baixo .htop a>.hlx::before{
+    animation:none!important}
+  /* v50 · O BLUR DE FUNDO SAI JUNTO — e a superfície fica OPACA no mesmo golpe.
+     `backdrop-filter` obriga o navegador a LER DE VOLTA o framebuffer para borrar o que está atrás
+     (`GPU stall due to ReadPixels`, medido no console das duas viewports). São 10 declarações, e
+     elas ficam sobre canvas de tela cheia. Tirar o blur sozinho seria PIOR: `--glass` é 76% opaco,
+     então 24% do conteúdo apareceria NÍTIDO atravessando o cabeçalho — o texto embolado que
+     aparece no topo da captura mobile. Por isso as duas coisas andam juntas, como já faz a regra
+     de `prefers-reduced-transparency` logo acima. */
+  /* O blur sai de TUDO — enumerar seletor a seletor já deixou 10 elementos para trás numa
+     verificação com getComputedStyle (`.nu-chip` ×7, `.nu-sweep`, `.tabs`, `.ov`), e o ReadPixels
+     continuou. Aqui a pergunta é feita ao elemento, não à lista. */
+  body.fps-baixo *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+
+  /* v50 · CABEÇALHO OPACO NA TELA ESTREITA. Independe da medição: no celular a barra fixa cobre
+     proporcionalmente muito mais da tela (152 px de 844 = 18%), e ali o vidro translúcido deixa o
+     conteúdo rolar visível POR BAIXO do texto do cabeçalho. Vidro é enfeite; legibilidade não é. */
+  @media (max-width:820px){
+    :root{--painel-topo-opaco:1}
+    header{background:var(--bg2)!important;
+      backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  }
+  /* `!important` porque a regra original da v55 tem `!important` — sem ele esta perde. */
+  nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),
+                            sabreBreath var(--bpm) ease-in-out .3s infinite!important}

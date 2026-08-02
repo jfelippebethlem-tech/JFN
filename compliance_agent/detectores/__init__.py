@@ -15,6 +15,7 @@ ORQUESTRADOR (entrada do mundo real → lista de ResultadoDetector, schema fixo 
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from compliance_agent.detectores.base import (
@@ -33,6 +34,7 @@ from compliance_agent.detectores.base import (
 from compliance_agent.detectores.c6_vinculo_politico import C6VinculoPolitico
 from compliance_agent.detectores.c7_sancionada_contratada import C7SancionadaContratada
 from compliance_agent.detectores.c8_servidor_socio import C8ServidorSocio
+from compliance_agent.detectores.c9_tac_fornecedor import C9TacFornecedor
 from compliance_agent.detectores.c_fachada import CFachada
 from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
@@ -45,6 +47,7 @@ from compliance_agent.detectores.e8_deserto_dirigido import E8DesertoDirigido
 from compliance_agent.detectores.p6_direta_indevida import P6DiretaIndevida
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
+from compliance_agent.detectores.j9_propostas_gemeas import J9PropostasGemeas
 from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
 from compliance_agent.detectores.j4_supressao_propostas import J4SupressaoPropostas
 from compliance_agent.detectores.j5_digitais_compartilhadas import J5DigitaisCompartilhadas
@@ -71,6 +74,8 @@ from compliance_agent.detectores.x12_benford_quantitativos import X12BenfordQuan
 from compliance_agent.detectores.x13_sub_rogacao import X13SubRogacao
 
 # REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
+logger = logging.getLogger(__name__)
+
 REGISTRO: dict[str, Detector] = {
     d.id: d for d in (
         P4Fracionamento(),
@@ -78,6 +83,8 @@ REGISTRO: dict[str, Detector] = {
         J2PropostasCobertura(),  # fase de julgamento — propostas de cobertura (screens de preço)
         J3DescontoAnomalo(),     # fase de julgamento — desconto anômalo/irrisório recorrente
         J4SupressaoPropostas(),  # fase de julgamento — supressão de propostas/licitante único
+        J9PropostasGemeas(),     # julgamento — planilha DERIVADA e texto copiado entre concorrentes
+                                 # (motor `sei/conluio_propostas` existia desde a Onda 5 e estava ÓRFÃO)
         P3Sobrepreco(),
         CFachada(),
         J5DigitaisCompartilhadas(),  # julgamento — propostas com metadados/redação/origem compartilhados
@@ -99,6 +106,7 @@ REGISTRO: dict[str, Detector] = {
         C6VinculoPolitico(),   # perfil do contratado — vínculo político-financeiro (doações TSE); multiplicador
         C7SancionadaContratada(),  # perfil do contratado — sanção impeditiva vigente à época (art. 156 §§4º-5º)
         C8ServidorSocio(),     # perfil do contratado — agente público no QSA (art. 9º / vedação de gerência)
+        C9TacFornecedor(),     # perfil do contratado — pago majoritariamente por TAC/indenização (fora de contrato)
         X1CrescimentoAditivo(),  # execução — crescimento aditivo (teto art. 125)
         X2ProrrogacaoPerpetua(),  # execução — prorrogação perpétua sem teste de mercado
         X3ExecucaoFinanceira(),   # execução — execução financeira anômala (tríade SIAFE/atesto/fila)
@@ -126,6 +134,7 @@ PESOS_DETECTOR: dict[str, float] = {
     "J6": PESOS_FAMILIA["conluio"],
     "J7": PESOS_FAMILIA["conluio"],
     "J8": PESOS_FAMILIA["conluio"],
+    "J9": PESOS_FAMILIA["conluio"],
     "P3": PESOS_FAMILIA["preco"],
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
@@ -204,7 +213,16 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
     # detectores de família `violacao_legal`/`perfil`, os de maior peso do sistema. Sem o contexto
     # necessário eles degradam para `nao_avaliavel`, que é honesto; ausência de execução não era.
     simples = [d for d in REGISTRO.values()
-               if d.familia == "preco" or d.id in ("C6", "C7", "C8")]
+               if d.familia == "preco" or d.id in ("C6", "C7", "C8", "C9")]
+    # C9 precisa da medição de TAC; preencher aqui é barato (1 SELECT read-only) e degrada
+    # honesto (DB ausente → cobertura INDISPONIVEL → nao_avaliavel). Em teste, injete ctx["tac"].
+    if "tac" not in ctx:
+        try:
+            from compliance_agent.reporting.detector_tac import tac_por_cnpj
+            ctx["tac"] = tac_por_cnpj(str(cnpj))
+        except Exception as e:  # noqa: BLE001 — sem medição, C9 fica nao_avaliavel
+            logger.debug("C9 sem medição de TAC para %s (%s) — detector degrada honesto",
+                         cnpj, str(e)[:120])
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
     # C (fachada) — multi-resultado por investigação
@@ -283,7 +301,7 @@ def rodar_julgamento(processo: str, *, contexto: dict | None = None, exculpatori
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7", "J8")]
+    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 

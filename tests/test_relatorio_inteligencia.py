@@ -33,7 +33,9 @@ from compliance_agent import ugs  # noqa: E402
 
 CNPJ_MGS = "19088605000104"
 _DB = _ROOT / "data" / "compliance.db"
-_tem_db = _DB.exists()
+from helpers_ambiente import base_utilizavel  # noqa: E402
+
+_tem_db = base_utilizavel(_DB)   # arquivo vazio do runner não conta (ver helpers_ambiente)
 skip_sem_db = pytest.mark.skipif(not _tem_db, reason="data/compliance.db ausente neste ambiente")
 
 

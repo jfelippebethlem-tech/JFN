@@ -216,6 +216,12 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- 2026-08-02 (tarde): **Fechamento do "100%".** (1) 🐛 **O reparo não reparava**: o requeue afastava o cache mas só zerava o progress `if numero in feitos` — 54 processos ficaram **sem cache E marcados como lidos** (o `_pular` do sweep decide pelo progress). Curado + 6 testes que travam o contrato "depois de reparar, n_docs==0" (`cc41fae`). Lição: **verificar o EFEITO, não a ação**. (2) **CI VERDE 3× seguidas**; a base de tolerância caiu de **77 para 20** linhas (o `ci_delta` acusou 48 falhas que passaram a SKIP honesto). (3) **helper único `tests/helpers_ambiente.base_utilizavel`** — os 2 guards restantes por `.exists()` passam a exigir TABELAS; `tests/` entrou no sys.path pelo conftest. (4) 147 capturas vazias declaradas e refiladas; sentinela **4/4 verde nas duas VMs**; ~9 GB liberados.
+- 2026-08-02 (manhã): **"toda hora algo quebra" → detecção estrutural.** Todas as falhas do dia passaram VERDE no `pipelines_slo` (frescor); faltava a vigia de **integridade**. Nova **`tools/sentinela_integridade`** (4 invariantes medidas no DADO: cache obeso · texto amputado no teto · arquivo sem texto · veredito sem prova), cron 37' na VM-1 e timer 47' na VM-2, alerta só na transição. **Achou na 1ª execução o que ninguém sabia:** 128 caches obesos na VM-1 e 78 na VM-2 (maior: **1.090 MB**) + **147 processos arquivados sem texto algum**. Curados com ferramenta própria e testada: `sei_purgar_anexo_cache` (scanner de TEXTO que trata JSON em linha única e conserta a vírgula em qualquer posição — **386,9 MB → 0,38 MB** num cache real; ~9 GB liberados nas duas VMs) e `sei_reparar_truncados --sem-texto` (declara `captura_vazia` e refila — 147/147). **CI:** falha por base ausente agora vira SKIP só onde a base comprovadamente não serve (o runner cria `compliance.db` VAZIA e todo teste que a tocava virava "regressão nova"); na VM com base real nada é mascarado. **41 testes novos** no total do dia.
+- 2026-08-02 (madrugada): **Cura do cap + 3 bugs de raiz + rubrica v3.** (1) **cap de 20k chars/doc curado** (`SEI_MAX_CHARS_DOC=60000`) — Parecer 943 foi de 21.149 p/ **46.705 chars**; 34 processos recapturados (VM-1 18 / VM-2 16) e re-julgados; **mas o antes/depois provou que o truncamento NÃO era a causa do falso escala-3** (o parecer completo seguiu 3) → nasceu a **rubrica v3**: ressalva de competência ≠ esquiva (`964df32`). (2) 🐛 **`anexo_bytes` no cache**: o PDF virava repr `b'%PDF…'` pelo `default=str` e inflava o cdp_*.json ~400× — **1,8 GB purgados por VM** (`92a71cc`). (3) 🐛 **falso INDISPONÍVEL por CORRIDA**: `_esperar_arvore` declarava pronta ao achar o FRAME (nasce vazio) — a mesma chamada deu 0 e 49 docs; curado p/ esperar os NÓS, com teste que reproduz (`2ad0579`); afetava TODO o sweep sob carga. (4) **CI**: dedupe push×PR funcionando (runs de PR = *skipped*), testes do painel v58/v59 acompanhados (rota /controle → `static/jfn-controle.html`; `painel.js` → bundle+src). **Regra nova: 0 docs exige controle positivo + re-teste na VM-2.**
+- 2026-08-01 (noite): **Backlog autônomo varrido.** (1) **Leitura pericial dos 22 escala-3** (3 leitores, texto integral): **18 NÃO SUSTENTA · 4 PARCIAL · 0 pleno** — FP por **truncamento da captura a ~21 KB** (a CONCLUSÃO dos pareceres ficou fora do texto julgado; bug aberto) e por disclaimer legal lido como esquiva; o que resta de real = **autorização tríplice em bloco** FSERJ/SES (candidata a detector regex) — `~/vault/aprendizados/leitura-escala3-2026-08-01.md`; (2) **os 2 núcleos R025×R048 REFUTADOS pelo quórum** (HANDREIY perdeu em pregões de 15-127 participantes; MAPPE 30-195 e venceu 1) — screen calibrado com mediana de quórum ≥12 → fp_estrutural (`fe11b72`); Construvalle×FOURTECH segue aberto; (3) Caneca: 15411/2024 era **TRÊS RIOS** (municipal), 1672/2025 teve 4 participantes/-26,9%, KSB tem 28 SCPs (SCP = norma do nicho, contra-sinal); `montar_grupos` já une as 4 raízes; (4) FSERJ arquivados: 573, só os 4 IDESI invisíveis sem 360 (por desenho). **Pendências novas: cap de ~21 KB na captura; detector de autorização tríplice.**
+- 2026-08-01 (tarde): **Pendências do §11 fechadas.** (1) **MAM = 5ª do grupo Caneca CONFIRMADA** (dump Receita: mesmo sócio `***272477**`, +4 SCPs satélites; venceu R$ 24,9 mi em Paty do Alferes; QSA ingerido — o filtro do sweep não cobria a raiz); (2) **top-50 100% na rubrica v2** (27 processos re-julgados; base: 325 vereditos v2/44 processos, **22 escala-3 [6,8%]; despachos 8/285 [2,8%]** — 74% da v1 enterrado; pareceres 14/37 escala-3 = **template de esquiva da assessoria FSERJ**, citar como padrão institucional); (3) **os 5 SEIs (IDESI ×4 + Con-tato) são INVISÍVEIS à pesquisa** — provado com controle positivo (002886/2024=68 docs na mesma sessão); assinatura de sigilo integral → **requisição formal (dono)**; (4) graphify do vault reconstruído (1.270 nós/120 comunidades, IDs consistentes, backup pre-rebuild); (5) 3 fixes commitados (`d86ee19`).
+- 2026-08-01: **PROCESSO 360 (série E1-E5) + casos FSERJ + foro/C9.** (1) Casos reais: IDESI **R$ 1,17 mi pago PÓS-INAPTA** (linha do tempo fechada); **grupo Caneca** (4 CNPJs de 1 sócio, ≈R$ 181,8 mi da UG 294200); LEFE 81% TAC; AVIV 97% TAC + êxodo de 199/205 sócios — notas no vault. (2) `fix` foro por esfera (Fiocruz→TCU; 17 notas regravadas via `--replay-notas`) + detector **C9** (TAC% por fornecedor) + `tools/confronto_caso.py` (matriz de lacunas: "detector sem alimentação"). (3) **Avaliador de Processo 360**: `sei/manifesto_norm` (2 formatos de manifest → 1 shape; gate captura pela contagem de texto), `processo_360.avaliar` (fases+cadeia+A1-A5+X+P/E/J+C+acatamento; **`score_processo` em produção pela 1ª vez**; suficiência do EMISSOR: DIRJUR/AUDIN não supre PGE/CGE), `sei/doc_juizo` (rubrica fechada por despacho/parecer/atesto, cadeia grátis camada_triagem, trecho literal obrigatório, teto C, cache `doc_veredito`), tabela `processo_avaliacao` + PDF 7 seções + `GET/POST /api/processo*` + `/processo` no capabilities + `tools/processo_360.py`. Calibração real: processo de PAGAMENTO não leva lacuna de fase (natureza≠contratação) — 3-docs caiu de ALTO p/ monitorar; contratação real 070026/000410/2021 = 90 EXTREMO c/ A2. (4) Yoda: patch de identidade auto-cura via ExecStartPre (estava sobrescrito!); patch de pool Gemini REVERTIDO de propósito (credential_pool nativo). **Decisões:** vocabulário de tipo canônico = o fino de sei/fases; teto docs LLM = 25 (`JFN_360_TETO_DOCS`); suficiência vive em sei_recomendacoes (função pura). **Pendências novas:** capturar SEIs das OB pós-INAPTA do IDESI (080002/001953·1759·2137·1820/2026) e SEI-070026/000705/2021 (Con-tato) — fila; QSA da MAM Soluções (5ª do grupo Caneca?); rodar lote 360 nos processos FSERJ arquivados.
 - 2026-07-29: **hermenêutica + OSINT + acervos.** Screens de participação por *lift* · catraca de F1 (A.3.4) · prompt rastreável por hash da fonte (B.3.5) · perfil de laranja (G.4 — calibração real derrubou de 55% para 1,4% da base) · QSA perdedoras×vencedor (E.3.2) · detector **C8** servidor no QSA (E.3.3) · **índice de existência do TCU: 521.090 acórdãos, C.3 FECHADO — as 8 citações em limbo EXISTEM** · descontaminação de 7 pastas SEI (210 docs alheios). Ingestões: sócios RFB 44.571→59.497; acervo TCU 1993–2026 sem lacuna.
 - 2026-07-26 (noite): painel v35→v43 — faceta 3D com sentido, encaixes progressivos p/ arte viva (it-campo via Taildrop), cockpit do SISTEMA, contraste lote 1, e o v43 que curou KPIs invisíveis em toda aba com grid.
 - **07-20c (pacote completo G1-G7 + síntese reflexiva):** `/api/dossie/completo`
@@ -715,6 +721,67 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+
+> **⏯️ 2026-08-01 — PROCESSO 360 no ar + fila do fiscal viva (23 commits; PR #9).** Comece por
+> `~/vault/aprendizados/processo-360.md` (estado, calibrações e pendências) e por
+> `data/fila_fiscal_360.md` (regravado a cada 4h pelo `tools/sweep_360.sh`).
+>
+> **O que está RODANDO sozinho (avaliação, não só coleta):**
+> - `sweep_360.sh` (cron `20 */4`) — processos: fases, cadeia, pareceres + juízo por documento no
+>   topo; regrava `data/fila_fiscal_360.md`.
+> - `sweep_avaliacao_total.sh` (cron `50 1,9,17`) — **OB** (anomalias + regras), **licitação**
+>   (certames E/J/P), **contrato/execução** (X1–X13), **órgão** (J1+C), **fornecedor** (perícia
+>   T01–T25) e os **screens de cartel** → `data/fila_cartel.md`. Checa o lock do 360 antes de rodar.
+> - `ugs_foco.txt` ganhou **270131** (caso Líder Táxi) e **080001** (SES/SUBEXE).
+> Pausas: `data/.pause_360`, `data/.pause_avaliacao`, `data/.pause_sweeps`.
+> **Regra: 1 escritor no compliance.db por vez** (dois lotes simultâneos travaram o banco e
+> mataram uma varredura no 26º processo).
+>
+> **CI:** o gate do Processo 360 bloqueia regressão nas réguas que fundamentam peça; as falhas de
+> AMBIENTE do runner (sem `compliance.db`) estão declaradas em `tests/BASE-FALHAS-CI.txt` com a
+> verificação feita na VM. **Painel/frontend tem dono próprio (outro agente) — não tocar em
+> `static/js/painel.js`, `static/css/painel.css`, `static/jfn-painel.html`, `static/assets/`.**
+>
+> **Números que valem (medidos, não estimados):** 2.056 processos avaliados · 413 com achado forte
+> · 404 vereditos por documento, dos quais **102 na rubrica v2 — só 5 em escala 3** (a estatística
+> "74% dos despachos" é da v1 e **não deve ser citada**: media tramitação legítima).
+>
+> **⏯️ 2026-08-02 (madrugada) — CAP DE 20k CURADO + CI sem spam.** O corte de 20.000 chars/doc
+> (`sei_reader`, 3 vias) decapitava a CONCLUSÃO de parecer longo → 14 falsos escala-3. Curado:
+> `SEI_MAX_CHARS_DOC=60000` (`db3e3e0`), medição em `data/recaptura_cap21k.json` (1.660 docs no
+> cap, 375 processos). **Prioridade (34 com veredito): recaptura DIVIDIDA VM-1(18)/VM-2(16)**
+> (fatia do sweep; fix rsync+md5 na VM-2) + finalizador (rsync de volta → re-arquiva com backup
+> em `_pre_cap21k/` → re-julga sob lock → reconta). **Cauda longa (341): cron 05:40**
+> `sei_reparar_truncados --cap --aplicar --max 40` (auto-esgota) + **re-arquivo por FRESCOR** no
+> `sei_arquivar_do_cache` (cache > manifest → re-arquiva; antigo → `_substituido/`). **CI:**
+> push×pull_request deduplicado (`if` no job), 8 falhas de ambiente declaradas na base, dívida
+> except-pass 152→150 (`07345c1`). Leitura pericial dos 22 escala-3: 18 NÃO SUSTENTA · 4 PARCIAL
+> (autorização tríplice em bloco = o padrão real; candidato a detector regex).
+>
+> **⏯️ 2026-08-02 (manhã) — ESTADO: acervo íntegro nas 2 VMs.** `sentinela_integridade` = 4/4
+> verdes na VM-1 e na VM-2. Fila de leitura humana do 360 = **8 documentos escala-3 na rubrica
+> v3** (de 197 na v1 — a v1 media tramitação normal e NUNCA deve ser citada). Rubrica v3 +
+> guard-rail determinístico: cláusula de competência não sustenta escala 3. Recaptura pós-cura
+> do cap: 29 dos 34 com texto novo; os 5 do IDESI/Con-tato são **invisíveis à pesquisa,
+> confirmado em 2ª máquina com controle positivo na mesma execução** → requisição formal (dono).
+>
+> **PENDÊNCIAS ORDENADAS (atualizadas 2026-08-01 tarde — 1, 2, 3 e o QSA do 5 FECHADOS):**
+> 1. ~~Capturar os 5 SEIs~~ → **ESGOTADO com prova**: invisíveis à pesquisa interna (0 limpo,
+>    sem cadeado, controle positivo de 68 docs na mesma sessão) = assinatura de sigilo integral.
+>    **DEPENDE DO DONO: requisição formal** dos protocolos `080002/001953·001759·002137·001820/2026`
+>    e `SEI-070026/000705/2021`. Ver [[casos/idesi-fundacao-saude-rj]] e a memória
+>    `sei-invisivel-pesquisa-controle-positivo`.
+> 2. ~~Top-50 na v2~~ → **FEITO** (27/27 rc=0): 325 vereditos v2 em 44 processos, 22 escala-3
+>    (6,8%); despachos 2,8%; pareceres escala-3 = template de esquiva da FSERJ (padrão da casa,
+>    não vício por documento). Único sem v2: `260006/027614/2025` (0 docs de tipo julgável).
+> 3. ~~Graphify do vault~~ → **FEITO** (1.270 nós, 120 comunidades; `--update` seguro de novo).
+> 4. **Leitura humana** dos processos com mais documentos escala-3 (piores: 070026/000410/2021 com
+>    3; 080002/019011/2024 com 2) e dos 2 núcleos de cartel: HM Sul Fluminense ← HANDREIY;
+>    ALPHES ← MAPPE.
+> 5. ~~QSA MAM~~ → **CONFIRMADA 5ª do grupo Caneca** (+4 SCPs; R$ 24,9 mi Paty do Alferes —
+>    atas do certame 1672/2025 = teste seguinte). Restam os 5 contratos PCRJ reais (enxame
+>    off-hours) e o lote 360 nos FSERJ arquivados.
+
 > **📋 HANDOFF 2026-07-29 → `docs/HANDOFF-2026-07-29.md`** — comece por ele: os 7 achados que
 > decidem como mexer em qualquer detector, o pendente ORDENADO por valor/esforço (o nº 1 é
 > E.0.1, porque só 0,66% dos certames têm classificado além do 1º lugar), as fontes

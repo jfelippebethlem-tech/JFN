@@ -32,8 +32,11 @@ QUEM ESCREVE O QUÊ. O LLM preenche os campos; o CÓDIGO verifica cada um e mont
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Graus de evidência de `editais/flags` (A CERTO · B FORTE · C SUSPEITO · D NÃO-AFERÍVEL ·
 # E EXCULPADO). Só A e B fundamentam peça; a subsunção herda essa régua em vez de criar outra.
@@ -77,8 +80,8 @@ def _verificar_norma(dispositivo: str) -> dict[str, Any]:
         from compliance_agent.knowledge.jurisprudencia import obter_sumula
         if obter_sumula(d):
             return {"ok": True, "fonte": "sumula", "motivo": "súmula resolvida na base curada"}
-    except Exception:  # noqa: BLE001 — base indisponível não vira norma inválida
-        pass
+    except Exception as exc:  # noqa: BLE001 — base indisponível não vira norma inválida
+        logger.debug("súmula não conferida para %r: base de jurisprudência indisponível (%s)", d, exc)
 
     # 2) acórdão — o índice oficial é quem diz se existe
     if "acórdão" in d.lower() or "acordao" in d.lower():
@@ -94,8 +97,8 @@ def _verificar_norma(dispositivo: str) -> dict[str, Any]:
                             "motivo": "índice do TCU indisponível — citação NÃO conferida"}
                 return {"ok": False, "fonte": "tcu_juris_index",
                         "motivo": f"acórdão com status {st!r} no acervo oficial"}
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("acórdão %r não conferido: índice do TCU inacessível (%s)", d, exc)
 
     # 3) dispositivo de lei na base legal curada
     try:
@@ -105,8 +108,8 @@ def _verificar_norma(dispositivo: str) -> dict[str, Any]:
             chave = f"{getattr(disp, 'lei', '')}{getattr(disp, 'artigo', '')}".lower().replace(" ", "")
             if chave and (chave in alvo or alvo in chave):
                 return {"ok": True, "fonte": "base_legal", "motivo": "dispositivo na base curada"}
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("dispositivo %r não conferido: base legal curada indisponível (%s)", d, exc)
 
     return {"ok": False, "fonte": None,
             "motivo": "dispositivo não resolve em súmula, acórdão confirmado nem base legal — "
@@ -219,6 +222,16 @@ def render_texto(r: dict) -> str:
     if not r.get("fonte_conferida"):
         linhas.append("_Nota: as citações NÃO foram conferidas contra o documento (fonte não "
                       "fornecida) — conferir antes de uso em peça formal._")
+    # A PREMISSA MAIOR também tem seu caso de "não conferida", e ele saía CALADO. Quando o índice
+    # do TCU não está construído, `_verificar_norma` devolve `ok=True` com `fonte="indice_ausente"`
+    # — a subsunção sai `aferivel` e o leitor não fica sabendo que o acórdão nunca foi conferido.
+    # O CI de 2026-07-31 mostrou isso em 5 testes de 4 arquivos, num runner sem o índice.
+    # Aqui só se DECLARA a lacuna (regra da casa: INDISPONÍVEL ≠ OK). Se ela deve ou não derrubar
+    # o `aferivel` é decisão de produto, e segue em aberto — mas silêncio não era opção.
+    if (r.get("norma_verificada") or {}).get("fonte") == "indice_ausente":
+        linhas.append("_Nota: a norma invocada é acórdão do TCU e o índice oficial NÃO estava "
+                      "disponível nesta máquina — a existência do acórdão não foi conferida. "
+                      "Conferir na fonte antes de uso em peça formal._")
     return "\n\n".join(linhas)
 
 

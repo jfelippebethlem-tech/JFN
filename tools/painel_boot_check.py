@@ -48,6 +48,21 @@ def _relevante(msg: str) -> bool:
     return not any(r in msg for r in _RUIDO)
 
 
+def _nomes_da_ponte() -> dict | None:
+    """Nomes que os handlers inline exigem, extraídos do próprio fonte por `painel_ponte_check`.
+
+    Lista escrita à mão envelhece calada; esta é derivada dos atributos `on*` de verdade. Se o
+    extrator não estiver disponível, o check segue sem esta prova em vez de morrer — mas dizendo.
+    """
+    try:
+        from tools.painel_ponte_check import coletar
+    except ImportError as exc:
+        print(f"[boot] ponte não verificada ({exc}); rode com PYTHONPATH=.", flush=True)
+        return None
+    d = coletar()
+    return {"todos": sorted(d["exigidos"]), "escritos": d["escritos"]}
+
+
 def checar(abas: list[str], *, todas: bool = False) -> dict:
     from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import TimeoutError as PlaywrightTimeout
@@ -82,6 +97,34 @@ def checar(abas: list[str], *, todas: bool = False) -> dict:
             # o sinal DEFINITIVO de boot vivo: o roteador e o catálogo de abas existem
             vivo = pg.evaluate("() => typeof ir === 'function' && typeof TABS === 'object'")
             laudo["boot"]["roteador_vivo"] = bool(vivo)
+
+            # v58 — o painel.js é carregado sem `type=module` e sem `defer` DE PROPÓSITO: precisa
+            # bloquear o parser e rodar antes do DOMContentLoaded. Trocar isso já matou o boot três
+            # vezes, e até agora a única defesa era um comentário no HTML. A primeira instrução do
+            # painel.js grava `document.readyState`; com script clássico bloqueante ele é 'loading'.
+            # Com defer ou module vira 'interactive'. Aqui isso deixa de ser comentário e vira falha.
+            laudo["boot"]["ready_state_no_boot"] = pg.evaluate(
+                "() => window.__jfnBootReadyState ?? null")
+
+            # v58 — A PONTE, medida na página viva. `painel_ponte_check` prova estaticamente que
+            # os nomes estão declarados; aqui se prova que estão de fato no `window` E que os
+            # estados escritos de dentro do HTML respondem à ESCRITA. Só `typeof` não basta:
+            # `Object.assign(window,{_compView})` faz o typeof passar e a escrita virar no-op —
+            # que é exatamente a falha muda que a migração para módulos introduz (o filtro para
+            # de responder, sem um erro sequer no console).
+            nomes = _nomes_da_ponte()
+            if nomes:
+                laudo["boot"]["ponte_ausentes"] = pg.evaluate(
+                    "ns => ns.filter(n => typeof window[n] === 'undefined')", nomes["todos"])
+                laudo["boot"]["ponte_sem_escrita"] = pg.evaluate(
+                    """ns => ns.filter(n => {
+                         const antes = window[n];
+                         const sonda = '__sonda_' + n;
+                         try { window[n] = sonda; } catch (e) { return true; }
+                         const pegou = window[n] === sonda;
+                         try { window[n] = antes; } catch (e) {}
+                         return !pegou;
+                       })""", nomes["escritos"])
             if todas:
                 abas = pg.evaluate("Object.values(TABS).flat().map(t=>t.id)")
             laudo["boot"]["n_abas"] = pg.evaluate("Object.values(TABS).flat().length")
@@ -123,6 +166,22 @@ def main(argv: list[str] | None = None) -> int:
         problemas.append(f"BOOT MORTO: {len(boot['pageerror'])} pageerror — {boot['pageerror'][:2]}")
     if not boot.get("roteador_vivo"):
         problemas.append("BOOT MORTO: `ir()` ou `TABS` não existem no escopo global")
+    rs = boot.get("ready_state_no_boot")
+    if rs is None:
+        problemas.append("TIMING: `window.__jfnBootReadyState` não existe — a primeira instrução "
+                         "do painel.js sumiu, ou o script não rodou antes do DOM ficar pronto")
+    elif rs != "loading":
+        problemas.append(f"TIMING MUDOU: readyState no boot = {rs!r}, esperado 'loading'. "
+                         "Alguém pôs `defer`/`async`/`type=module` na tag do painel — é o vetor "
+                         "que já matou este boot três vezes.")
+    if boot.get("ponte_ausentes"):
+        problemas.append(f"PONTE INCOMPLETA: {len(boot['ponte_ausentes'])} nome(s) que handler "
+                         f"inline usa não existem no window — {boot['ponte_ausentes'][:6]}. "
+                         "Cada um é um ReferenceError no clique, calado até lá.")
+    if boot.get("ponte_sem_escrita"):
+        problemas.append(f"PONTE SÓ DE LEITURA: {boot['ponte_sem_escrita']} aceitam leitura mas "
+                         "não gravam. O HTML ESCREVE nestes estados; sem setter a tela para de "
+                         "responder ao filtro sem nenhum erro no console.")
     for aba, i in laudo["abas"].items():
         if i.get("falha_ir"):
             problemas.append(f"{aba}: ir() falhou — {i['falha_ir'][:120]}")

@@ -1,0 +1,59 @@
+
+  /* ══════════════════════════════════════════════════════════════════════
+     v18 GLIFO VIVO — os ícones acendem, o território respira
+     ══════════════════════════════════════════════════════════════════════
+     Os glifos Lucide já vinham tingidos pela esfera e com glow. O que faltava
+     era ELES SE DESENHAREM: um ícone que aparece pronto é um ícone; um que
+     se traça é um sistema ligando. `stroke-dasharray` + `dashoffset` é o
+     único jeito de fazer isso sem trocar o set inteiro por outro.        */
+
+  /* ── ignição do glifo: o traço se desenha quando o ícone entra ────────
+     pathLength normaliza todo caminho para 100, então o MESMO dasharray
+     vale para qualquer glifo, de qualquer tamanho — sem medir nada.     */
+  .jico *{stroke-dasharray:100;stroke-dashoffset:0;pathLength:100}
+  .sph.on .i .jico *,.cover-seal .jico *,nav.tabs button.on .ti .jico *{
+    animation:v18traca .85s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes v18traca{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+
+  /* ── o glifo ganha volume: inclina em 3D e adianta no eixo Z ─────────
+     Movimento pequeno (8deg / 6px) porque ícone é alvo de clique — se ele
+     foge do cursor, vira erro de mira, não charme.                       */
+  .sph .i,nav.tabs button .ti{perspective:300px}
+  .sph .i .jico,nav.tabs button .ti .jico{transition:transform .3s cubic-bezier(.2,.8,.2,1),filter .18s,color .18s}
+  .sph:hover .i .jico,nav.tabs button:hover .ti .jico{
+    transform:rotateY(-8deg) rotateX(8deg) translateZ(6px)}
+
+  /* ── o glifo da esfera ativa respira junto com o reator ──────────────
+     Mesmo período do halo do kyber (3.4s): o painel inteiro pulsa no mesmo
+     compasso, o que é o que faz várias peças lerem como UMA máquina.    */
+  .sph.on .i .jico{animation:v18respira 3.4s ease-in-out infinite .85s}
+  @keyframes v18respira{
+    0%,100%{filter:drop-shadow(0 0 7px color-mix(in oklch,var(--sphc) 70%,transparent))}
+    50%{filter:drop-shadow(0 0 12px color-mix(in oklch,var(--sphc) 90%,transparent))}}
+
+  /* ── TERRITÓRIO: a malha do RJ pulsa como projeção holográfica ───────
+     O contorno vem do IBGE (rj-malha.js) e continua exato — só a LUZ sobre
+     ele muda. Geografia num painel de auditoria não se inventa; o que se
+     estiliza é o facho que a ilumina.                                    */
+  #rjbg{animation:v18territorio 7.5s ease-in-out infinite}
+  @keyframes v18territorio{
+    0%,100%{opacity:.42;filter:saturate(1) brightness(1)}
+    50%{opacity:.58;filter:saturate(1.25) brightness(1.18)}}
+
+  /* varredura de radar cruzando o território — devagar, é ambiente */
+  #rjbg::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(115deg,transparent 44%,
+      color-mix(in oklch,var(--esf,var(--ion)) 12%,transparent) 50%,transparent 56%);
+    animation:v18radar 9s linear infinite}
+  @keyframes v18radar{from{transform:translateX(-60%)}to{transform:translateX(60%)}}
+
+  /* ── nós do mapa: quem tem achado grave pulsa mais forte ─────────────*/
+  .nu-chip{transition:transform .3s cubic-bezier(.2,.8,.2,1),filter .3s}
+  .nu-chip:hover{transform:translateY(-2px) scale(1.04);
+    filter:drop-shadow(0 0 10px color-mix(in oklch,var(--esf,var(--ion)) 55%,transparent))}
+
+  @media (prefers-reduced-motion:reduce){
+    .sph.on .i .jico *,.cover-seal .jico *,nav.tabs button.on .ti .jico *,
+    .sph.on .i .jico,#rjbg,#rjbg::after{animation:none}
+    .jico *{stroke-dashoffset:0}
+    .sph:hover .i .jico,nav.tabs button:hover .ti .jico,.nu-chip:hover{transform:none}}

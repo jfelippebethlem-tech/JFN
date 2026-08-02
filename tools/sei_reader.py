@@ -37,6 +37,10 @@ U, P, ORG = os.environ.get("SEI_USER", "itkava"), os.environ.get("SEI_PASS", "")
 # TTL do cache de leitura (antes hardcoded 86400 em 3 pontos): processo em ebulição (sessão
 # marcada amanhã) pode pedir SEI_CACHE_TTL menor sem tocar código.
 CACHE_TTL = int(os.environ.get("SEI_CACHE_TTL", "86400"))
+# Teto de chars por DOCUMENTO (antes 20000 hardcoded em 3 vias: office/OCR/árvore). 20k cortava
+# a CONCLUSÃO de parecer longo e o juiz LLM condenava o que na verdade concluía — 14 falsos
+# escala-3 em 2026-08-01. 60k cobre ~20 páginas densas; NF/anexo típico fica muito abaixo.
+MAX_CHARS_DOC = int(os.environ.get("SEI_MAX_CHARS_DOC", "60000"))
 
 
 async def _ate(pg, cond, max_ms: int = 6000, passo: int = 250) -> bool:
@@ -204,8 +208,17 @@ def _grava_cache_atomico(cache_file, res: dict) -> None:
     quando o processo era morto por timeout no meio do write (o refichar flagrou 'JSON inválido'
     em caches de 06/22-jun). Fix 2026-07-10."""
     import json as _json
+    # `anexo_bytes` é o PDF ORIGINAL, útil só EM MEMÓRIA para quem arquiva na mesma execução.
+    # No disco ele passava pelo `default=str` e virava a repr `b'%PDF-...'` — lixo irrecuperável
+    # que inflava o cache em ~400×: um único processo gravou 127 MB de anexo contra 302 KB de
+    # texto (2026-08-02). Some do JSON; o objeto devolvido ao chamador segue intacto.
+    limpo = dict(res)
+    if isinstance(limpo.get("conteudo_documentos"), list):
+        limpo["conteudo_documentos"] = [
+            {k: v for k, v in d.items() if k != "anexo_bytes"} if isinstance(d, dict) else d
+            for d in limpo["conteudo_documentos"]]
     tmp = cache_file.with_name(f"{cache_file.name}.{os.getpid()}.tmp")
-    tmp.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    tmp.write_text(_json.dumps(limpo, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     tmp.replace(cache_file)
 
 
@@ -379,7 +392,7 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
     return None
 
 
-async def _esperar_arvore(pg, voltas: int = 16) -> bool:
+async def _esperar_arvore(pg, voltas: int = 16, voltas_conteudo: int = 24) -> bool:
     """Espera ATIVA o frame da árvore de documentos (``ifrArvore``) carregar — a árvore do SEI
     aparece num iframe e o parser precisa dela presente ANTES de extrair (lição cracked 06-12:
     'A árvore abre, mas o parser pega 0 docs se extrair cedo demais'). Retorna True se a árvore
@@ -388,7 +401,20 @@ async def _esperar_arvore(pg, voltas: int = 16) -> bool:
         for fr in pg.frames:
             u = (fr.url or "").lower()
             if "arvore" in u or fr.name == "ifrArvore":
-                # achou o frame; dá um respiro p/ os <a> dos documentos pintarem
+                # O frame NASCE VAZIO e a árvore pinta depois — sob carga, segundos depois.
+                # Esperar só o frame (mais 2s fixos) fazia a extração ler 0 documentos e o
+                # processo virar FALSO INDISPONÍVEL: 5 numa recaptura em 2026-08-02, todos
+                # legíveis na re-tentativa (um devolveu 49 docs no minuto seguinte).
+                # Agora a condição é o CONTEÚDO (os nós `infraArvoreNo`), não a existência.
+                for _ in range(voltas_conteudo):
+                    try:
+                        if "infraArvoreNo" in (await fr.content()):
+                            return True
+                    except PWError as exc:
+                        logger.debug("frame da árvore ainda instável: %s", str(exc)[:60])
+                    await pg.wait_for_timeout(500)
+                # frame presente e sem nós até o teto: devolve como antes (o chamador extrai o
+                # que houver e marca `indisponivel` se vier vazio) — nunca trava.
                 await pg.wait_for_timeout(2000)
                 return True
         await pg.wait_for_timeout(1500)
@@ -665,21 +691,21 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                     off = await loop.run_in_executor(None, lambda: texto_de_office(body, ct))
                     if off and len(off.strip()) > 20:
                         return {"doc": (doc.get("texto") or "")[:80],
-                                "conteudo": off.strip()[:20000], "via": "office"}
+                                "conteudo": off.strip()[:MAX_CHARS_DOC], "via": "office"}
                     continue
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
                 if txt_ocr and len(txt_ocr.strip()) > 20:
                     # anexo_bytes preserva o PDF ORIGINAL (imagens/fotos de prova) p/ quem
                     # arquiva — só quando é PDF (imagem solta não vira .pdf direto). Chave
                     # ADITIVA: outros chamadores leem só conteudo/doc/via.
-                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:20000],
+                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:MAX_CHARS_DOC],
                             "via": "ocr", "anexo_bytes": body if tipo == "pdf" else None}
             except (PWError, RuntimeError, OSError, ValueError) as exc:
                 logger.warning("download/OCR do anexo (via árvore) %r falhou: %s", (doc.get("texto") or "")[:60], str(exc)[:80])
         return None
     # documento NATIVO (editor): texto inline já renderizado no ifrVisualizacao
     if len(txt) > 50:
-        return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt[:20000], "via": "arvore"}
+        return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt[:MAX_CHARS_DOC], "via": "arvore"}
     return None
 
 

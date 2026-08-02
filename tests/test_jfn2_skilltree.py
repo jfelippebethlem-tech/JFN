@@ -152,7 +152,12 @@ def test_render_menu_curado_e_enxuto():
     # com pergunta própria; o teto existe contra despejo do catálogo, não contra capacidade nova. As
     # outras três do eixo (trocas societárias, histórico de uma pessoa, estado da série) entraram SEM
     # item de menu, de propósito: são detalhamento das três acima.
-    assert 6 <= n_itens <= 28                          # curado (grupos + exemplos), não as ~47 prontas
+    # 29 em 2026-07-30: entrou `instrumento_mandato` — a minuta de requerimento (ALERJ) /
+    # representação (TCE) em .docx, a PEÇA que o gabinete assina. Ela estava PRONTA e sem
+    # nenhuma porta de entrada; quem a achou foi a catraca nova
+    # (`test_capacidade_pronta_tem_superficie`), no primeiro uso. Capacidade distinta, com
+    # pergunta própria e produto próprio — é exatamente o caso que o teto NÃO existe para barrar.
+    assert 6 <= n_itens <= 29                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota

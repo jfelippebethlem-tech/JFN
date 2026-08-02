@@ -171,6 +171,25 @@ async def _browser_idle_reaper():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Conexão GUARDIÃ do WAL-index. Medido em 31/07/26: em janela ociosa este processo chegava a
+    # ZERO conexões abertas, outro processo fechava por último e o SQLite desvinculava -wal/-shm;
+    # daí em diante o painel devolvia "database disk image is malformed" com o ARQUIVO íntegro,
+    # 7-14x por dia, e a cura era reiniciar o serviço (derrubando browser e login SIAFE junto).
+    from compliance_agent.database.guarda_wal import segurar as _segurar_wal
+    _ok_wal = _segurar_wal(Path(__file__).parent / "data" / "compliance.db")
+    print(f"[guarda-wal] conexão guardiã {'ATIVA' if _ok_wal else 'AUSENTE'} — "
+          f"{'-wal/-shm não serão desvinculados' if _ok_wal else 'painel volta a depender do guardião de restart'}")
+
+    # Promessa feita ao Mestre não pode morrer com o processo: o que o run anterior prometeu e não
+    # entregou volta à fila agora (o Yoda diz "te envio em ~1–2 min" e a geração é um create_task).
+    try:
+        from rotas.produtos import retomar_promessas
+        _n_prom = await retomar_promessas()
+        if _n_prom:
+            print(f"[promessas] {_n_prom} entrega(s) do run anterior recolocada(s) na fila")
+    except Exception as _e:  # noqa: BLE001
+        print(f"[promessas] não consegui retomar ({type(_e).__name__}: {_e}) — nada foi perdido do disco")
+
     # Tenta login no SIAFE — falha silenciosa se fora da rede do governo
     print("\n[Servidor] Iniciando... (login SIAFE só funciona na rede do governo)")
     try:
@@ -202,6 +221,26 @@ async def lifespan(app: FastAPI):
                   f"(relança lazy; env JFN_BROWSER_IDLE_MIN, 0=off)", flush=True)
         except Exception as e:  # noqa: BLE001
             print(f"[browser] guard de idle não iniciado ({e.__class__.__name__}) — não-fatal")
+
+    # Batimento da guardiã do WAL-index: a conexão viva impede o caminho "última conexão fechou",
+    # mas NÃO impede que outro processo desvincule o `-shm` por baixo dela (no Linux isso é
+    # permitido, e conexão ociosa não segura lock). Quando o arquivo some, a guardiã fica com
+    # mapeamento morto e as conexões NOVAS deste processo passam a falhar com "malformed" — foi o
+    # que derrubou o painel às 17:42 e 19:24 de 31/07/26, já com a guardiã ativa. O ciclo troca a
+    # guardiã assim que percebe o sumiço, antes de o auditor levar um HTTP 500.
+    async def _bater_wal():
+        from compliance_agent.database.guarda_wal import bater
+        while True:
+            try:
+                await asyncio.sleep(30)
+                await asyncio.to_thread(bater)
+            except asyncio.CancelledError:
+                raise
+            # sem captura genérica: `bater()` já trata a família específica e devolve bool. Se algo
+            # escapar dali é bug real e precisa aparecer, não virar log morno num laço infinito.
+
+    if _ok_wal:
+        asyncio.create_task(_bater_wal())
 
     yield
 
@@ -242,6 +281,39 @@ output_dir.mkdir(exist_ok=True)
 app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
 app.mount("/output", StaticFiles(directory="output"), name="output")
 app.mount("/static/assets", StaticFiles(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
+# v49: o CSS e o JS do painel saíram de dentro do HTML (eram 178 KB + 337 KB inline, num arquivo de
+# 519 KB que ia inteiro pela rede a cada carga, sem compressão e sem cache). Servidos daqui, ganham
+# gzip (abaixo) e cache longo — o `?v=<hash>` no link é que invalida quando o conteúdo muda.
+# `StaticFiles` levanta RuntimeError no IMPORT se o diretório não existe — montar antes de a
+# extração rodar derrubava o servidor inteiro. Criar é idempotente e torna a ordem das etapas
+# irrelevante (o CSS pode sair numa sessão e o JS na seguinte).
+Path("static/css").mkdir(parents=True, exist_ok=True)
+Path("static/js").mkdir(parents=True, exist_ok=True)
+
+class _StaticVersionado(StaticFiles):
+    """Cache imutável SÓ para quem veio com `?v=<hash>`.
+
+    O `?v=` torna a URL única por conteúdo: o arquivo pode ficar no navegador para
+    sempre, porque o link muda quando o conteúdo muda. Sem `?v=` (acesso direto,
+    ferramenta, curl) mantém-se o padrão do Starlette — etag/last-modified.
+    """
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        if b"v=" in scope.get("query_string", b""):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
+
+app.mount("/static/css", _StaticVersionado(directory="static/css"), name="css")
+app.mount("/static/js", _StaticVersionado(directory="static/js"), name="js")
+
+# GZIP — não havia nenhum. O painel mandava 519 KB de texto sem compressão em TODA carga; HTML, CSS
+# e JS comprimem 4-6× nesse tipo de conteúdo. `minimum_size` evita gastar CPU com resposta pequena,
+# que numa VM de 2 vCPU importa.
+from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402 — junto do mount que ele serve
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 # ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────
@@ -452,22 +524,29 @@ async def logout_jfn():
     return resp
 
 
+# O bump de `?v=<hash>` no HTML não chegava a ninguém: o HTML que CARREGA esses links vinha do
+# cache do navegador (só etag/last-modified, sem Cache-Control — o Chrome então usa heurística e
+# nem revalida). Medido pelo it-campo: painel.js?v=66af4ca4 sobreviveu ao bump até um ?cb=1 na URL.
+# `no-cache` NÃO é "não guarde": é "guarde, mas revalide sempre" — o 304 continua barato.
+_HTML_REVALIDA = {"Cache-Control": "no-cache"}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     """Painel JFN unificado (mobile-first, dark): visão geral, alertas, SIAFE, sweeps + atalhos. Antigo hub em static/painel.html (aposentado)."""
-    return FileResponse("static/jfn-painel.html")
+    return FileResponse("static/jfn-painel.html", headers=_HTML_REVALIDA)
 
 
 @app.get("/auditoria", response_class=HTMLResponse)
 async def auditoria_ui():
     """Painel de Auditoria Financeira (KPIs, alertas, OBs, favorecidos, /relatorio + Lex)."""
-    return FileResponse("static/dashboard.html")
+    return FileResponse("static/dashboard.html", headers=_HTML_REVALIDA)
 
 
 @app.get("/painel", response_class=HTMLResponse)
 async def painel_fiscalizacao():
     """Painel de fiscalização unificado (leve, Tailwind): visão geral, auditoria/alertas, SIAFE, sweeps, cartel."""
-    return FileResponse("static/jfn-painel.html")
+    return FileResponse("static/jfn-painel.html", headers=_HTML_REVALIDA)
 
 
 @app.get("/cockpit")

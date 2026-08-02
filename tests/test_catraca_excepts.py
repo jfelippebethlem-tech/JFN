@@ -171,7 +171,28 @@ REPO = Path(__file__).resolve().parent.parent
 #     parte objetiva do card (mudança de natureza, item sem correspondente) permanece, e a
 #     indisponibilidade entra nas evidências.
 # X9 e X10 entraram com ZERO `except Exception`.
-BASELINE = 1595
+#
+# 2026-07-30 — 1595 → 1596. A leva do plano de 10 fases entrou com +8 e eu paguei 7 estreitando,
+# não subindo o teto. O que caiu, e como:
+#   • `foto_procedencia` (−2) e `tools/fotos_acervo` (−2): eram capturas genéricas em volta de
+#     `PIL.Image.open`. `UnidentifiedImageError` herda de `OSError`, então `(OSError, ValueError)`
+#     cobre o caso real e deixa passar o bug de programação, que é o ponto.
+#   • `collectors/lexml_fetcher` (−2): uma era a captura de rede, virou
+#     `(httpx.HTTPError, ValueError, OSError)`; a outra era **falso positivo do contador** — a
+#     string aparecia dentro do meu próprio docstring, e o contador casa texto. Reescrita a frase.
+#   • `tools/painel_medir_boot` (−1): virou `PlaywrightError`, e o ramo passou a IMPRIMIR o motivo
+#     em vez de `pass` — "não mediu" não pode virar "mediu e estava bom".
+#
+# O +1 que FICA é deliberado e não tem versão estreita honesta:
+#   • `manutencao.comprimir_caches` — o handler existe para garantir que QUALQUER falha na
+#     compressão PRESERVE o original. Estreitar aqui é criar exatamente o buraco que o handler
+#     fecha: uma exceção não prevista voltaria a apagar dado. É a propriedade de segurança do
+#     módulo, não conveniência — e ela é exercida por um teste que sabota a verificação de
+#     propósito e exige o original intacto.
+# `foto_procedencia.buscar_reversa` também é amplo pelo mesmo tipo de razão (o provedor de busca
+# reversa é um callable INJETADO por terceiro e pode levantar qualquer coisa; um bug dele não pode
+# derrubar o laudo), mas ele entrou dentro do saldo pago acima.
+BASELINE = 1596
 
 
 def _contar() -> int:
