@@ -102,13 +102,19 @@ processo de *pagamento* de lacunas de contratação) — falta estendê-la a **a
 Como está, todo processo de aditivo carrega um achado "alto" estrutural, o que infla o score e
 polui a fila do fiscal.
 
+### 2.11 — os achados 2.3, 2.6, 2.7 e 2.8 também viraram detector
+`I4_ORDINAL_INCOERENTE_COM_PRAZO` (2.3) · `I5_DECLARACAO_DE_OUTRO_CONTRATO` (2.6) ·
+`I6_QUANTITATIVO_DIVERGENTE` (2.7) · `I7_APROVADOR_NAO_ASSINOU` (2.8). Rodando sobre este
+processo, os sete reproduzem exatamente a leitura à mão — inclusive "3 aeronaves × 4" e os dois
+aprovadores nomeados que não assinaram.
+
 ## 4. O que este confronto manda mudar no sistema
 
 | # | Mudança | Efeito esperado |
 |---|---|---|
 | A | Extrair condicionantes também da **EMENTA** do parecer, não só do fecho | ataca diretamente os **332 processos** hoje em `CONDICIONANTES_NAO_EXTRAIDAS` |
 | B | `natureza` reconhecer **aditivo/prorrogação** e isentar lacuna de seleção | remove falso positivo "alto" de todo processo de aditivo |
-| C | Conferência de captura pela lista do próprio parecer | aponta, documento a documento, o que falta capturar |
+| C ✅ | `C1_DOCUMENTO_CITADO_NAO_CAPTURADO` — a lista do próprio parecer confere a nossa captura | **feito** · 370 processos (17%) e **2.134 documentos** identificados, com fila materializável em `sei_fila_captura` |
 | D ✅ | `I1_ORDINAL_DIVERGENTE` — minuta aprovada sem instrumento correspondente / ordinal repetido | **feito** · dispara em 10 processos (0,5% do acervo) |
 | E ✅ | `I2_AUTORIZACAO_ANTES_DO_PARECER` | **feito** · 15 processos (0,7%) |
 | F ✅ | `I3_ATO_SEM_ASSINATURA_DA_AUTORIDADE` (marca "MINUTA" e/ou quem decide não assinou) | **feito** · 3 processos (0,1%), com identidade conferida por CPF/Id funcional |

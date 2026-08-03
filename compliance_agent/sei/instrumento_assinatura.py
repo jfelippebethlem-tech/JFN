@@ -295,13 +295,221 @@ def ato_sem_assinatura_da_autoridade(docs: list[dict]) -> dict:
             "marcado_minuta": False, "base_da_comparacao": "nao_aplicavel"}
 
 
+
+
+# ═══════════ I4 · ordinal incoerente com o prazo total declarado ═══════════
+# Achado real: "2º TERMO ADITIVO" que dá ao contrato "prazo total de 24 meses". Contrato de 12 +
+# esta prorrogação de 12 = 24 → é o 1º aditivo. Ordinal errado desalinha a contagem de TODO
+# aditivo futuro, e o art. 57, II da Lei 8.666/93 limita as prorrogações a 60 meses.
+_RE_PRAZO_TOTAL = re.compile(
+    r"prazo\s+total\s+de\s+(\d{1,3})\s*\(", re.I)
+_RE_PRORROGA_MESES = re.compile(
+    r"prorrogad[oa]\s+(?:o\s+prazo[^.]{0,60}?)?por\s+(?:mais\s+)?(\d{1,3})\s*\(", re.I)
+
+
+def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
+    """O ordinal declarado bate com o prazo total que o próprio instrumento anuncia?"""
+    for d in docs or []:
+        if _norm(d.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
+            continue
+        texto = d.get("texto") or ""
+        if _e_minuta(d) or not _RE_INSTRUMENTO.search(texto):
+            continue
+        n = _ordinal(d)
+        mt, mp = _RE_PRAZO_TOTAL.search(texto), _RE_PRORROGA_MESES.search(texto)
+        if n is None or not mt or not mp:
+            continue
+        total, passo = int(mt.group(1)), int(mp.group(1))
+        if passo <= 0 or total % passo:
+            continue                       # períodos irregulares: não se infere ordinal
+        implicado = total // passo - 1     # contrato original + N prorrogações do mesmo tamanho
+        if implicado == n or implicado < 0:
+            continue
+        return {
+            "achado": True, "ordinal": n, "total_meses": total, "passo_meses": passo,
+            "ordinal_implicado": implicado,
+            "diz": (f"o instrumento se declara {n}º termo aditivo mas anuncia prazo total de "
+                    f"{total} meses com prorrogação de {passo} — o que corresponde ao "
+                    f"{implicado}º aditivo"),
+            "fundamento": ("art. 57, II, da Lei 8.666/93: a contagem das prorrogações é o que "
+                           "limita a vigência a 60 meses — ordinal errado desalinha o controle"),
+            "evidencia": d.get("ref", ""),
+        }
+    return {"achado": False, "ordinal": None, "total_meses": None, "ordinal_implicado": None}
+
+
+# ═══════════ I5 · declaração que atesta conformidade de OUTRO contrato ═══════════
+# Achado real: "a minuta da renovação do contrato 04/2022 segue a MINUTA-PADRÃO" num processo do
+# Contrato 16/2023 — e é nessa declaração que o parecer se apoia para dar a conformidade por
+# atendida. Documento de outro contrato usado como atestado neste.
+_RE_NUM_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
+_RE_E_DECLARACAO = re.compile(r"\bDECLARA[ÇC][ÃA]O\b|\bDeclaro\b", re.I)
+
+
+def _num(s: str) -> str:
+    return re.sub(r"\s+", "", s or "")
+
+
+def declaracao_de_outro_contrato(docs: list[dict]) -> dict:
+    """Declaração nos autos que atesta algo sobre um contrato DIFERENTE do que se discute."""
+    do_processo = None
+    for d in docs or []:
+        if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_INSTRUMENTO.search(
+                d.get("texto") or ""):
+            m = _RE_NUM_CONTRATO.search(d.get("texto") or "")
+            if m:
+                do_processo = _num(m.group(1))
+                break
+    if not do_processo:
+        return {"achado": False, "contrato_do_processo": None, "contrato_citado": None}
+    for d in docs or []:
+        texto = d.get("texto") or ""
+        if not _RE_E_DECLARACAO.search(texto[:600]):
+            continue
+        citados = {_num(m.group(1)) for m in _RE_NUM_CONTRATO.finditer(texto)}
+        if not citados or do_processo in citados:
+            continue
+        return {
+            "achado": True, "contrato_do_processo": do_processo,
+            "contrato_citado": ", ".join(sorted(citados)),
+            "diz": (f"declaração juntada aos autos atesta sobre o contrato "
+                    f"{', '.join(sorted(citados))}, e o processo discute o contrato "
+                    f"{do_processo} — documento de outro contrato usado como atestado neste"),
+            "fundamento": ("a conformidade com a minuta-padrão da PGE (Resolução Conjunta "
+                           "PGE/SEPLAG 187/2021) é atestada por declaração específica; "
+                           "declaração de outro ajuste não a supre"),
+            "evidencia": d.get("ref", ""),
+        }
+    return {"achado": False, "contrato_do_processo": do_processo, "contrato_citado": None}
+
+
+# ═══════════ I6 · quantitativo do atesto diverge do objeto ═══════════
+# Achado real: o objeto contratado são 03 aeronaves e o atesto do fiscal — requisito implícito da
+# prorrogação (Enunciado 09 da PGE/RJ) — fala em 04. O parecer transcreveu sem enfrentar.
+_RE_QTD_UNIDADE = re.compile(
+    r"(\d{1,3})\s*\(\s*[a-zà-ú]+\s*\)\s+([a-zà-ú]{4,20}s?)\b", re.I)
+# Unidade de TEMPO e de trâmite não é quantitativo do objeto. Falso positivo medido no processo
+# real: "5 (cinco) dias" no objeto × "10 (dez) dias" no atesto viraram "quantitativo divergente".
+# Guardadas JÁ na forma em que `_qtds` compara (normalizadas e sem o 's' final) — "meses" vira
+# "mese", e escrever "meses" aqui deixava o veto passar batido. Falso positivo medido no acervo.
+_UNIDADES_NAO_OBJETO = {
+    "dia", "mese", "mes", "ano", "hora", "minuto", "semana", "prazo", "parcela", "via", "copia",
+    "vez", "etapa", "fase", "item", "lote", "exercicio", "unidade", "percentual",
+}
+_RE_OBJETO = re.compile(r"do\s+objeto|CL[ÁA]USULA\s+PRIMEIRA", re.I)
+_RE_ATESTO = re.compile(
+    r"qualidade\s+da\s+presta[çc][ãa]o|presta[çc][ãa]o\s+de\s+servi[çc]o\s+compat[íi]vel|"
+    r"executad[oa]\s+pela\s+contratada|atesto|a\s+contento", re.I)
+
+
+def _qtds(texto: str) -> dict[str, int]:
+    """{unidade: quantidade} das ocorrências no padrão do SEI ('03 (três) aeronaves')."""
+    saida: dict[str, int] = {}
+    for m in _RE_QTD_UNIDADE.finditer(texto or ""):
+        uni = _norm(m.group(2)).rstrip("s")
+        if uni in _UNIDADES_NAO_OBJETO:
+            continue
+        saida.setdefault(uni, int(m.group(1)))
+    return saida
+
+
+def quantitativo_divergente(docs: list[dict]) -> dict:
+    """O atesto de boa execução fala do mesmo quantitativo que o objeto contratado?"""
+    obj: dict[str, int] = {}
+    for d in docs or []:
+        texto = d.get("texto") or ""
+        if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_OBJETO.search(texto):
+            obj = _qtds(texto)
+            if obj:
+                break
+    if not obj:
+        return {"achado": False, "objeto": None, "atesto": None}
+    for d in docs or []:
+        texto = d.get("texto") or ""
+        if not _RE_ATESTO.search(texto):
+            continue
+        for uni, q in _qtds(texto).items():
+            if uni in obj and obj[uni] != q:
+                return {
+                    "achado": True, "unidade": uni, "objeto": obj[uni], "atesto": q,
+                    "diz": (f"o objeto contratado é de {obj[uni]} {uni}(s) e o atesto de execução "
+                            f"fala em {q} — o documento que sustenta a prorrogação refere "
+                            "quantitativo diferente do contratado"),
+                    "fundamento": ("Enunciado 09 da PGE/RJ: o desempenho contratual satisfatório é "
+                                   "requisito implícito da prorrogação — atesto sobre outro "
+                                   "quantitativo não o comprova"),
+                    "evidencia": d.get("ref", ""),
+                }
+    return {"achado": False, "objeto": obj, "atesto": None}
+
+
+# ═══════════ I7 · quem o documento diz que aprovou não é quem assinou ═══════════
+# Achado real na Justificativa 74779736: nomeia "Conferido por: RAFAEL BENVINDO FREITAS" e
+# "Aprovado por: RODRIGO HINAGO", e as assinaturas eletrônicas são de Renato e Vinicius. É o I3
+# generalizado: vale para QUALQUER peça que declare quem a conferiu ou aprovou.
+# "de acordo" saiu do gatilho: no acervo real ele casou "a despesa está de acordo com a
+# LEGISLACAO ORCAMENTARIA" e transformou a norma em nome de aprovador. Ficam só os blocos que
+# declaram RESPONSABILIDADE por um ato — conferir, aprovar, autorizar.
+_RE_BLOCO_APROVACAO = re.compile(
+    r"(conferido\s+por|aprovado\s+por|autorizado\s+por|visto\s+por)\s*[:\-–]?\s*\n{0,3}\s*"
+    r"([A-ZÀ-Ú][A-ZÀ-Ú\s\.]{5,60}?)\s*(?:\n|[-–,])", re.I)
+
+
+def aprovador_nao_assinou(docs: list[dict]) -> dict:
+    """Nomes declarados como conferente/aprovador que não constam das assinaturas eletrônicas."""
+    for d in docs or []:
+        texto = d.get("texto") or ""
+        nomeados = [(m.group(1).strip(), re.sub(r"\s+", " ", m.group(2)).strip(" .,-–"))
+                    for m in _RE_BLOCO_APROVACAO.finditer(texto)]
+        # `nome_plausivel` é da casa (agentes_publicos) e já sabe recusar "meio do Processo
+        # Admi" e "este coordenador" — dois falsos positivos medidos no acervo real.
+        from compliance_agent.sei.agentes_publicos import nome_plausivel
+        nomeados = [(p, n) for p, n in nomeados
+                    if len(n.split()) >= 2 and nome_plausivel(n)]
+        if not nomeados:
+            continue
+        ass = assinaturas(texto)
+        if not ass:
+            continue     # sem rodapé não se afirma nada: pode ter sido assinado fora do SEI
+        nomes = [a["nome"] for a in ass]
+        faltam = []
+        for papel, nome in nomeados:
+            cpf_a, id_a = _identificador(nome, texto)
+            achou = False
+            for n in nomes:
+                cpf_n, id_n = _identificador(n, texto)
+                if (cpf_a and cpf_n and cpf_a == cpf_n) or (id_a and id_n and id_a == id_n) \
+                        or _mesma_pessoa(nome, n):
+                    achou = True
+                    break
+            if not achou:
+                faltam.append(f"{nome} ({papel.lower()})")
+        if not faltam:
+            continue
+        return {
+            "achado": True, "nao_assinaram": faltam, "quem_assinou": nomes,
+            "diz": (f"o documento declara {'; '.join(faltam)}, e nenhum deles consta das "
+                    f"assinaturas eletrônicas (assinaram: {', '.join(nomes)})"),
+            "fundamento": ("art. 28 e 29 do Decreto est. 48.209/2022: no SEI a assinatura "
+                           "eletrônica é a prova do ato — nome no corpo sem assinatura não "
+                           "atesta conferência nem aprovação"),
+            "evidencia": d.get("ref", ""),
+        }
+    return {"achado": False, "nao_assinaram": [], "quem_assinou": []}
+
+
 # ───────────────────────────── saída no formato do 360 ─────────────────────────────
 
 _GRAVIDADE = {
     "I1_ORDINAL_DIVERGENTE": "alta",
     "I2_AUTORIZACAO_ANTES_DO_PARECER": "alta",
     "I3_ATO_SEM_ASSINATURA_DA_AUTORIDADE": "critica",
+    "I4_ORDINAL_INCOERENTE_COM_PRAZO": "media",
+    "I5_DECLARACAO_DE_OUTRO_CONTRATO": "alta",
+    "I6_QUANTITATIVO_DIVERGENTE": "alta",
+    "I7_APROVADOR_NAO_ASSINOU": "media",
 }
+CODIGOS = tuple(_GRAVIDADE)
 
 
 def avaliar(docs: list[dict]) -> list[dict]:
@@ -309,7 +517,11 @@ def avaliar(docs: list[dict]) -> list[dict]:
     saida: list[dict] = []
     for codigo, fn in (("I1_ORDINAL_DIVERGENTE", ordinal_divergente),
                        ("I2_AUTORIZACAO_ANTES_DO_PARECER", autorizacao_antes_do_parecer),
-                       ("I3_ATO_SEM_ASSINATURA_DA_AUTORIDADE", ato_sem_assinatura_da_autoridade)):
+                       ("I3_ATO_SEM_ASSINATURA_DA_AUTORIDADE", ato_sem_assinatura_da_autoridade),
+                       ("I4_ORDINAL_INCOERENTE_COM_PRAZO", ordinal_incoerente_com_prazo),
+                       ("I5_DECLARACAO_DE_OUTRO_CONTRATO", declaracao_de_outro_contrato),
+                       ("I6_QUANTITATIVO_DIVERGENTE", quantitativo_divergente),
+                       ("I7_APROVADOR_NAO_ASSINOU", aprovador_nao_assinou)):
         try:
             r = fn(docs)
         except (AttributeError, TypeError, ValueError, re.error):

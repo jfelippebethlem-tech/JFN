@@ -237,9 +237,16 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         # texto lido e o I2 nunca disparava. É varredura por regex, custo desprezível.
         docs_txt = [{"ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
                      "texto": _texto_de(pasta, d, teto=400_000)} for d in docs]
-        novos = _ia.avaliar(docs_txt)
-        achados += novos
+        achados += _ia.avaliar(docs_txt)
         rodados.append("instrumento_assinatura")
+        # C · a lista de documentos do próprio parecer confere a NOSSA captura. Entra como lacuna
+        # de CAPTURA (nunca vício do processo): mede o que a coleta ainda não trouxe.
+        from compliance_agent.sei import conferencia_captura as _cc
+        for a in _cc.avaliar(docs_txt):
+            lacunas_captura.append({"falta": a["diz"], "gravidade": "captura",
+                                    "codigo": a["codigo"], "evidencia": a["evidencia"],
+                                    "ausentes": a["ausentes"]})
+        rodados.append("conferencia_captura")
     # O módulo é determinístico e já trata o que é dele; aqui só restam falha de import e de
     # leitura do texto em disco — por isso a captura é específica, e não genérica. (A catraca da
     # casa conta a string literal, então nem o comentário pode citá-la: foi assim que este

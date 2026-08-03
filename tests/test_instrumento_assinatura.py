@@ -323,3 +323,176 @@ def test_cpf_nunca_sai_inteiro_na_saida():
              [("Renato de Melo Cardoso", "Oficial", "16/05/2024", "16:04")])
     saida = " ".join(str(v) for v in IA.ato_sem_assinatura_da_autoridade([d]).values())
     assert "022.318.157-96" not in saida and "111.222.333-44" not in saida
+
+
+# ═════ os quatro achados restantes da leitura do original (seção 2 do confronto) ═════
+
+# ── 2.3 · ordinal incoerente com o prazo total que o próprio instrumento declara ──
+
+def test_ordinal_incoerente_com_o_prazo_total():
+    """Achado real: '2º TERMO ADITIVO' que dá ao contrato 'prazo total de 24 meses'. Contrato de
+    12 + esta prorrogação de 12 = 24 → é o 1º aditivo. O ordinal errado desalinha a contagem para
+    todo aditivo futuro, e o art. 57, II da Lei 8.666/93 limita as prorrogações a 60 meses."""
+    d = _doc("Termo Aditivo 75769317", "aditivo",
+             "2º TERMO ADITIVO AO CONTRATO Nº 16/2023, QUE ENTRE SI CELEBRAM. "
+             "CLÁUSULA SEGUNDA (Da Prorrogação do Prazo): fica prorrogado o prazo de vigência do "
+             "contrato por 12 (doze) meses, dando-se ao contrato o prazo total de 24 (vinte e "
+             "quatro) meses.",
+             [("Rachel Lopes da Silva", "Ordenadora", "03/06/2024", "14:00")])
+    r = IA.ordinal_incoerente_com_prazo([d])
+    assert r["achado"] is True and r["ordinal"] == 2 and r["total_meses"] == 24
+    assert r["ordinal_implicado"] == 1
+
+
+def test_ordinal_coerente_nao_e_achado():
+    d = _doc("TA", "aditivo",
+             "2º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. CLÁUSULA SEGUNDA: prorrogado por 12 meses, "
+             "dando-se ao contrato o prazo total de 36 (trinta e seis) meses.", [])
+    assert IA.ordinal_incoerente_com_prazo([d])["achado"] is False
+
+
+def test_sem_prazo_total_declarado_nao_se_afirma_nada():
+    d = _doc("TA", "aditivo", "2º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. Prorrogação de 12 meses.", [])
+    assert IA.ordinal_incoerente_com_prazo([d])["achado"] is False
+
+
+# ── 2.6 · declaração que atesta conformidade de OUTRO contrato ──
+
+def test_declaracao_cita_contrato_de_outro_processo():
+    """Achado real: 'a minuta da renovação do contrato 04/2022 segue a MINUTA-PADRÃO' num processo
+    do Contrato 16/2023 — e é nessa declaração que o parecer se apoia."""
+    docs = [
+        _doc("Termo Aditivo", "aditivo",
+             "1º TERMO ADITIVO AO CONTRATO Nº 16/2023, QUE ENTRE SI CELEBRAM. CLÁUSULA PRIMEIRA.",
+             [("Ordenador", "Ordenador", "01/06/2024", "10:00")]),
+        _doc("Declaração segue minuta padrão", "contrato",
+             "DECLARAÇÃO. Declaro para devidos fins que a minuta da renovação do contrato 04/2022 "
+             "segue a MINUTA-PADRÃO DE TERMO ADITIVO, de acordo com a RESOLUÇÃO PGE Nº 3887/2016.",
+             [("Oficial", "Oficial", "16/05/2024", "16:00")]),
+    ]
+    r = IA.declaracao_de_outro_contrato(docs)
+    assert r["achado"] is True
+    assert r["contrato_do_processo"] == "16/2023" and "04/2022" in r["contrato_citado"]
+
+
+def test_declaracao_do_contrato_certo_nao_e_achado():
+    docs = [
+        _doc("Termo Aditivo", "aditivo",
+             "1º TERMO ADITIVO AO CONTRATO Nº 16/2023, QUE ENTRE SI CELEBRAM. CLÁUSULA PRIMEIRA.", []),
+        _doc("Declaração", "contrato",
+             "DECLARAÇÃO. Declaro que a minuta da renovação do contrato 16/2023 segue a "
+             "MINUTA-PADRÃO de termo aditivo.", []),
+    ]
+    assert IA.declaracao_de_outro_contrato(docs)["achado"] is False
+
+
+# ── 2.7 · quantitativo do atesto diverge do objeto contratado ──
+
+def test_quantitativo_do_atesto_diverge_do_objeto():
+    """Achado real: o objeto são 03 aeronaves e o atesto do fiscal fala em 04."""
+    docs = [
+        _doc("Termo Aditivo", "aditivo",
+             "1º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. CLÁUSULA PRIMEIRA (Do Objeto): prestação "
+             "de serviços de guarda e reboque (hangaragem) para 03 (três) aeronaves operadas pelo "
+             "GOA/CBMERJ.", []),
+        _doc("Ofício - NA 99", "oficio",
+             "Com relação à qualidade da prestação do serviço executado pela Contratada: a empresa "
+             "apresenta prestação de serviço de guarda e reboque (hangaragem) para 04 (quatro) "
+             "aeronaves operadas pelo GOA/CBMERJ, seguindo o Termo de Referência.", []),
+    ]
+    r = IA.quantitativo_divergente(docs)
+    assert r["achado"] is True
+    assert r["objeto"] == 3 and r["atesto"] == 4
+
+
+def test_quantitativo_igual_nao_e_achado():
+    docs = [
+        _doc("TA", "aditivo", "1º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. CLÁUSULA PRIMEIRA (Do "
+                              "Objeto): hangaragem para 03 (três) aeronaves.", []),
+        _doc("Ofício", "oficio", "A contratada presta o serviço de hangaragem para 03 (três) "
+                                 "aeronaves, a contento.", []),
+    ]
+    assert IA.quantitativo_divergente(docs)["achado"] is False
+
+
+# ── 2.8 · quem o documento diz que aprovou não é quem assinou ──
+
+def test_aprovador_nomeado_que_nao_assinou():
+    """Achado real na Justificativa 74779736: nomeia 'Conferido por: RAFAEL BENVINDO FREITAS' e
+    'Aprovado por: RODRIGO HINAGO', e quem assinou foram Renato e Vinicius."""
+    d = _doc("Justificativa 74779736", "contrato",
+             "JUSTIFICATIVA. Trata o presente processo de aditivo.\n\n"
+             "Elaborado por:\nRENATO DE MELO CARDOSO - Cap BM\n\n"
+             "Conferido por:\nRAFAEL BENVINDO FREITAS – Ten Cel BM\n\n"
+             "Aprovado por:\nRODRIGO HINAGO - Cel BM",
+             [("Renato de Melo Cardoso", "Oficial Administrativo", "16/05/2024", "16:06"),
+              ("Vinicius Moncores Lopes", "Oficial Administrativo", "17/05/2024", "09:24")])
+    r = IA.aprovador_nao_assinou([d])
+    assert r["achado"] is True
+    faltam = " ".join(r["nao_assinaram"]).upper()
+    assert "RAFAEL" in faltam and "RODRIGO" in faltam
+
+
+def test_aprovador_que_assinou_nao_e_achado():
+    d = _doc("Justificativa", "contrato",
+             "JUSTIFICATIVA.\n\nAprovado por:\nRODRIGO HINAGO - Cel BM",
+             [("Rodrigo Hinago", "Coronel", "16/05/2024", "16:06")])
+    assert IA.aprovador_nao_assinou([d])["achado"] is False
+
+
+def test_documento_sem_bloco_de_aprovacao_fica_fora():
+    d = _doc("Nota", "nota_fiscal", "Nota fiscal de serviços.",
+             [("Alguém", "Cargo", "01/01/2024", "10:00")])
+    assert IA.aprovador_nao_assinou([d])["achado"] is False
+
+
+# ── integração: os SETE no formato de achado ──
+
+def test_avaliar_reune_os_sete_codigos_possiveis():
+    assert set(IA.CODIGOS) == {
+        "I1_ORDINAL_DIVERGENTE", "I2_AUTORIZACAO_ANTES_DO_PARECER",
+        "I3_ATO_SEM_ASSINATURA_DA_AUTORIDADE", "I4_ORDINAL_INCOERENTE_COM_PRAZO",
+        "I5_DECLARACAO_DE_OUTRO_CONTRATO", "I6_QUANTITATIVO_DIVERGENTE",
+        "I7_APROVADOR_NAO_ASSINOU"}
+
+
+def test_I6_ignora_unidade_de_TEMPO():
+    """Falso positivo medido no processo real: '5 (cinco) dias' no objeto × '10 (dez) dias' no
+    atesto viraram 'quantitativo divergente'. Prazo não é quantitativo do objeto."""
+    docs = [
+        _doc("TA", "aditivo", "1º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. CLÁUSULA PRIMEIRA (Do "
+                              "Objeto): serviço a ser prestado em 5 (cinco) dias úteis.", []),
+        _doc("Ofício", "oficio", "A contratada executou o serviço; atesto que o prazo foi de "
+                                 "10 (dez) dias.", []),
+    ]
+    assert IA.quantitativo_divergente(docs)["achado"] is False
+
+
+def test_I7_nao_confunde_de_acordo_com_bloco_de_aprovacao():
+    """Falso positivo medido: 'de acordo com a legislação orçamentária' virou nome de aprovador."""
+    d = _doc("Declaração", "autorizacao_despesa",
+             "DECLARO que a despesa está de acordo com a LEGISLACAO ORCAMENTARIA vigente e com o "
+             "Artigo 16 da Lei Complementar nº 101.",
+             [("Renato de Melo Cardoso", "Oficial", "16/05/2024", "16:04")])
+    assert IA.aprovador_nao_assinou([d])["achado"] is False
+
+
+def test_I6_ignora_meses_no_plural():
+    """Falso positivo medido: 'objeto contratado é de 12 mese(s)' — 'meses' escapava do veto
+    porque o normalizador tira só o 's' final ('meses' → 'mese')."""
+    docs = [
+        _doc("TA", "aditivo", "1º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. CLÁUSULA PRIMEIRA (Do "
+                              "Objeto): vigência de 12 (doze) meses.", []),
+        _doc("Ofício", "oficio", "Atesto a execução; o serviço correu por 6 (seis) meses.", []),
+    ]
+    assert IA.quantitativo_divergente(docs)["achado"] is False
+
+
+def test_I7_exige_NOME_de_gente_no_bloco_de_aprovacao():
+    """Falsos positivos medidos: 'meio do Processo Admi (autorizado por)' e 'este coordenador
+    (conferido por)'. A casa já tem `agentes_publicos.nome_plausivel` — é dele o julgamento."""
+    d = _doc("Despacho", "despacho",
+             "DESPACHO. Autorizado por meio do Processo Administrativo nº 123.\n"
+             "Conferido por este coordenador, na forma regimental.",
+             [("Fulano de Tal", "Oficial", "01/01/2024", "10:00")])
+    assert IA.aprovador_nao_assinou([d])["achado"] is False
