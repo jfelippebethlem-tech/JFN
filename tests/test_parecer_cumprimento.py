@@ -434,3 +434,45 @@ def test_dossie_nao_silencia_o_estado_novo():
         if "SEM_CONDICIONANTES" in linha and "not in" in linha:
             assert "CONDICIONANTES_NAO_EXTRAIDAS" not in linha, (
                 "o estado de leitura incompleta foi silenciado no dossiê")
+
+
+# ───── H4: "sem parecer" era três coisas diferentes (medido 2026-08-03) ─────
+# 117 processos com documento de tipo canônico `parecer` recebiam SEM_PARECER_LOCALIZADO —
+# "nenhum parecer de PGE/PGM/CGE/jurídico entre os documentos LIDOS". Separando as causas:
+#   14  o parecer ESTÁ nos autos, com 48-60 chars de texto (só o cabeçalho foi capturado);
+#   42  certidão tipada como `parecer_juridico` pelo classificador (o gate acerta ao recusar);
+#   61  parecer real de Secretaria cujo corpo não nomeia PGE/CGE/assessoria.
+# Só a primeira é afirmação falsa sobre os autos — e é a que ganha estado próprio. A terceira
+# ganha uma porta estreita: cabeçalho que ANUNCIA "PARECER Nº" basta, com emissor declarado
+# NAO_IDENTIFICADO (recupera 20 pareceres reais e admite 3 certidões, medido no acervo).
+
+def test_parecer_sem_texto_capturado_nao_e_ausencia_de_parecer():
+    docs = [{"ref": "Parecer 181 (94130757)", "tipo": "parecer", "texto": "[Parecer 181] (tipo: parecer)"}]
+    r = PC.auditar_parecer_pge(docs)
+    assert r["veredito"] == "PARECER_SEM_TEXTO_CAPTURADO"
+    assert r["grau"] == "amarelo"
+    assert "captur" in r["acao"].lower()
+
+
+def test_processo_realmente_sem_parecer_continua_dizendo_isso():
+    docs = [{"ref": "NF 1", "tipo": "nota_fiscal", "texto": "Nota fiscal de serviços prestados."}]
+    assert PC.auditar_parecer_pge(docs)["veredito"] == "SEM_PARECER_LOCALIZADO"
+
+
+def test_parecer_de_secretaria_sem_orgao_nomeado_e_analisado_com_emissor_declarado():
+    """Parecer real que não escreve 'PGE' nem 'Assessoria Jurídica' no corpo. Não se inventa o
+    emissor: declara-se NAO_IDENTIFICADO."""
+    corpo = ("PARECER Nº 111/2025. Governo do Estado do Rio de Janeiro. Secretaria de Estado de "
+             "Educação. " + "Trata-se de análise da contratação. " * 20
+             + "Isto posto, opino favoravelmente desde que seja juntada a pesquisa de preços.")
+    r = PC.auditar_parecer_pge([{"ref": "Parecer 111", "tipo": "parecer", "texto": corpo}])
+    assert r["veredito"] not in ("SEM_PARECER_LOCALIZADO", "PARECER_SEM_TEXTO_CAPTURADO")
+    assert r["pareceres"][0]["emissor"] == "NAO_IDENTIFICADO"
+
+
+def test_certidao_tipada_como_parecer_continua_fora():
+    """O classificador erra o tipo em 42 processos; o gate não pode herdar o erro."""
+    cert = ("Certidão Negativa de Débitos em Dívida Ativa. MINISTÉRIO DA FAZENDA. "
+            + "Certificamos que não constam débitos. " * 20)
+    r = PC.auditar_parecer_pge([{"ref": "Certidões", "tipo": "parecer", "texto": cert}])
+    assert r["veredito"] in ("SEM_PARECER_LOCALIZADO", "PARECER_SEM_TEXTO_CAPTURADO")

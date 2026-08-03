@@ -117,6 +117,9 @@ _RE_PECA_PARECER = re.compile(
 # Tipos que o classificador canônico de documentos do SEI já resolve como peça opinativa jurídica.
 # `parecer_tecnico` NÃO entra: parecer técnico não é análise jurídica do art. 53.
 _TIPOS_CANONICOS_PARECER = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
+# Abaixo disto o documento não tem corpo: no acervo, os mudos vinham com 48-60 caracteres — o
+# cabeçalho "[Parecer 181 (94130757)] (fase: controle · tipo: parecer)" e nada mais.
+_MIN_TEXTO_PARECER = 200
 _RE_NAO_PARECER = re.compile(
     r"\b(contrato\s+n[ºo°.]|termo\s+de\s+contrato|termo\s+aditivo|ata\s+de\s+registro\s+de\s+pre[çc]os|"
     r"minuta\s+de\s+contrato|edital\s+de|nota\s+de\s+empenho|ordem\s+banc[áa]ria)\b", re.I)
@@ -370,6 +373,13 @@ def _pareceres_com_condicionantes(docs: list[dict]) -> list[dict]:
         emissor = classificar_emissor(texto) or classificar_emissor(tipo)
         # DOIS gates: (1) órgão de controle/jurídico E (2) o doc É peça opinativa — citar a PGE num
         # contrato não faz dele parecer (falso positivo medido no arquivo SEI real).
+        # 2026-08-03: o gate de emissor sozinho descartava 61 pareceres REAIS de Secretaria cujo
+        # corpo não escreve "PGE"/"Assessoria Jurídica". Porta estreita: cabeçalho que ANUNCIA
+        # "PARECER Nº" basta — e o emissor sai DECLARADO como não identificado, nunca inventado.
+        # Medido no acervo: recupera 20 pareceres reais e admite 3 certidões (que não têm
+        # condicionante a extrair). A certidão comum segue fora: o cabeçalho dela diz "Certidão".
+        if not emissor and _RE_PECA_PARECER.search((texto or "")[:_CABECALHO]):
+            emissor = "NAO_IDENTIFICADO"
         if not emissor or not e_parecer(tipo, texto):
             continue
         achados.append({"i": i, "ref": d.get("ref"), "tipo": tipo, "emissor": emissor,
@@ -388,6 +398,24 @@ def auditar_parecer_pge(docs: list[dict]) -> dict:
     """
     pareceres = _pareceres_com_condicionantes(docs)
     if not pareceres:
+        # ANTES de afirmar ausência: o parecer pode estar nos autos com o texto não capturado.
+        # Medido em 2026-08-03: 14 processos tinham documento de tipo `parecer` com 48-60
+        # caracteres — só o cabeçalho. Dizer "não há parecer" nesse caso é afirmação sobre os
+        # AUTOS quando o defeito é da nossa coleta. INDISPONÍVEL ≠ inexistente.
+        mudos = [d for d in docs or []
+                 if (d.get("tipo") or "").strip().lower() in _TIPOS_CANONICOS_PARECER
+                 and len((d.get("texto") or "").strip()) < _MIN_TEXTO_PARECER]
+        if mudos:
+            return {"veredito": "PARECER_SEM_TEXTO_CAPTURADO", "grau": "amarelo",
+                    "condicionantes": [], "n_cumpridas": 0, "n_nao_cumpridas": 0,
+                    "n_nao_verificaveis": 0,
+                    "pareceres": [{"ref": d.get("ref"), "emissor": "INDISPONIVEL"} for d in mudos],
+                    "leitura": (f"Há {len(mudos)} documento(s) de parecer nos autos cujo TEXTO não "
+                                "foi capturado (só o cabeçalho veio). Não se pode dizer nem que o "
+                                "controle prévio foi cumprido nem que foi contornado: é lacuna de "
+                                "CAPTURA, não do processo."),
+                    "acao": "recapturar o(s) documento(s) de parecer e reavaliar",
+                    "ressalva": _RESSALVA, "fonte": "parecer_cumprimento (determinístico/offline)"}
         return {"veredito": "SEM_PARECER_LOCALIZADO", "grau": "nao_aplicavel", "condicionantes": [],
                 "n_cumpridas": 0, "n_nao_cumpridas": 0, "n_nao_verificaveis": 0, "pareceres": [],
                 "leitura": ("Nenhum parecer de PGE/PGM/CGE/CGM/jurídico entre os documentos LIDOS. O art. 53 "
