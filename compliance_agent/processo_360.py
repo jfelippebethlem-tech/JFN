@@ -225,6 +225,28 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     except Exception as e:  # noqa: BLE001
         indisponiveis.append(f"execucao: {e}")
 
+    # 4b) instrumento × assinatura — três achados que moram no TEXTO e não nos títulos, nascidos
+    #     da leitura integral do SEI-270131/000548/2023 confrontada com o veredito da casa:
+    #     minuta aprovada que não corresponde ao instrumento assinado (e ordinal repetido),
+    #     autorização de despesa anterior ao parecer, e ato do ordenador sem a assinatura de quem
+    #     ele nomeia como decisor. Determinístico e offline — lê o texto já em disco.
+    try:
+        from compliance_agent.sei import instrumento_assinatura as _ia
+        # teto ALTO de propósito: o rodapé de assinatura mora no FIM do documento, e o Parecer 462
+        # tem 54.900 caracteres — com o teto padrão de 20.000 a data da assinatura ficava fora do
+        # texto lido e o I2 nunca disparava. É varredura por regex, custo desprezível.
+        docs_txt = [{"ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
+                     "texto": _texto_de(pasta, d, teto=400_000)} for d in docs]
+        novos = _ia.avaliar(docs_txt)
+        achados += novos
+        rodados.append("instrumento_assinatura")
+    # O módulo é determinístico e já trata o que é dele; aqui só restam falha de import e de
+    # leitura do texto em disco — por isso a captura é específica, e não genérica. (A catraca da
+    # casa conta a string literal, então nem o comentário pode citá-la: foi assim que este
+    # arquivo subiu 1 na contagem sem ter ganhado nenhum handler novo.)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        indisponiveis.append(f"instrumento_assinatura: {e}")
+
     # 5) P/E/J sobre a leitura do ARQUIVO (nunca browser aqui)
     try:
         leitura = {"texto": "", "documentos": [d["titulo"] for d in docs],

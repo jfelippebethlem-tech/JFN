@@ -109,9 +109,17 @@ polui a fila do fiscal.
 | A | Extrair condicionantes também da **EMENTA** do parecer, não só do fecho | ataca diretamente os **332 processos** hoje em `CONDICIONANTES_NAO_EXTRAIDAS` |
 | B | `natureza` reconhecer **aditivo/prorrogação** e isentar lacuna de seleção | remove falso positivo "alto" de todo processo de aditivo |
 | C | Conferência de captura pela lista do próprio parecer | aponta, documento a documento, o que falta capturar |
-| D | Detector: instrumento assinado com **ordinal divergente** da minuta aprovada / dois instrumentos com o mesmo ordinal | achado novo, hoje invisível |
-| E | Detector: **autorização do ordenador anterior ao parecer** | irmão do A1 (contrato antes do parecer), hoje não coberto |
-| F | Detector: ato decisório marcado "MINUTA" e/ou **sem assinatura da autoridade** que ele nomeia | achado novo, hoje invisível |
+| D ✅ | `I1_ORDINAL_DIVERGENTE` — minuta aprovada sem instrumento correspondente / ordinal repetido | **feito** · dispara em 10 processos (0,5% do acervo) |
+| E ✅ | `I2_AUTORIZACAO_ANTES_DO_PARECER` | **feito** · 15 processos (0,7%) |
+| F ✅ | `I3_ATO_SEM_ASSINATURA_DA_AUTORIDADE` (marca "MINUTA" e/ou quem decide não assinou) | **feito** · 3 processos (0,1%), com identidade conferida por CPF/Id funcional |
+
+**Implementados em `compliance_agent/sei/instrumento_assinatura.py` (2026-08-03).** Os três
+disparam neste processo exatamente com os achados desta leitura. A dúvida "é a mesma pessoa?" é
+resolvida por **identificador, não por semelhança de nome** (pedido do dono): CPF primeiro, Id
+funcional depois, nome só como último recurso — e o veredito declara em que base concluiu. No
+acervo, 77 dos 90 atos analisados foram resolvidos por identificador (50 Id funcional + 27 CPF).
+Isso derrubou 5 falsos positivos em que o corpo do ato grafava o nome com erro de digitação
+("ALINE DE OLIVEIRA NASCXIMENTO" × "Aline de Oliveira Nascimento" — a mesma pessoa).
 
 ---
 *Leitura feita em 2026-08-03 sobre o acervo `data/sei_arquivo/270131_000548_2023`. Todos os
