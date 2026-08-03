@@ -1,56 +1,40 @@
 {
   "n": 100,
-  "acuracia": 0.43,
-  "abstencao": 0.17,
-  "f1_macro": 0.4818117400655919,
+  "acuracia": 0.39,
+  "abstencao": 0.34,
+  "f1_macro": 0.44825234441602724,
   "por_classe": {
-    "vicio": {
-      "precisao": 0.6666666666666666,
-      "recall": 0.5384615384615384,
-      "f1": 0.5957446808510638,
-      "n": 26
+    "irregular": {
+      "precisao": 0.9354838709677419,
+      "recall": 0.34523809523809523,
+      "f1": 0.5043478260869565,
+      "n": 84
     },
     "licito": {
       "precisao": 0.2857142857142857,
-      "recall": 0.75,
-      "f1": 0.4137931034482759,
+      "recall": 0.625,
+      "f1": 0.392156862745098,
       "n": 16
-    },
-    "vicio_por_omissao": {
-      "precisao": 0.85,
-      "recall": 0.29310344827586204,
-      "f1": 0.4358974358974359,
-      "n": 58
     }
   },
   "f1_por_classe": {
-    "vicio": 0.5957446808510638,
-    "licito": 0.4137931034482759,
-    "vicio_por_omissao": 0.4358974358974359
+    "irregular": 0.5043478260869565,
+    "licito": 0.392156862745098
   },
   "matriz": {
-    "vicio": {
-      "vicio": 14,
-      "vicio_por_omissao": 1,
-      "licito": 4,
-      "indeterminado": 7
+    "irregular": {
+      "indeterminado": 59,
+      "licito": 25
     },
     "licito": {
-      "licito": 12,
-      "indeterminado": 1,
-      "vicio": 1,
-      "vicio_por_omissao": 2
-    },
-    "vicio_por_omissao": {
-      "licito": 26,
-      "indeterminado": 9,
-      "vicio_por_omissao": 17,
-      "vicio": 6
+      "indeterminado": 6,
+      "licito": 10
     }
   },
-  "alucinacao_citacao": 0.01,
-  "indisponivel": 0.11,
-  "invalido": 0.0,
+  "modo": "2classes",
+  "alucinacao_citacao": 0.03,
+  "indisponivel": 0.04,
+  "invalido": 0.02,
   "baseline_burro": {
     "classe": "vicio_por_omissao",
     "acuracia": 0.58,
@@ -62,10 +46,19 @@
     }
   },
   "bate_o_baseline": true,
+  "baseline_deontico": {
+    "regra": "tem verbo de dever → irregular",
+    "acuracia": 0.85,
+    "f1_macro": 0.7778106947118946,
+    "f1_por_classe": {
+      "irregular": 0.9044585987261147,
+      "licito": 0.6511627906976744
+    }
+  },
+  "bate_o_deontico": false,
+  "veredito_da_medicao": "O MOTOR NÃO SUPERA um classificador de uma linha que responde 'irregular' sempre que houver verbo de dever — o número não sustenta uso do veredito para decidir",
   "prompt_versao": "v1",
   "prompt_hash": "300d9347d2af",
   "condicionados": 0.06,
-  "modo": "3classes",
-  "ressalva_regua": "medido em 3 classes sobre enunciado MUTILADO pelo apagamento do verbo de dever (corrigido em 2026-08-03); a remedição em 2 classes está pendente de provedor de LLM",
-  "medido_em": "2026-08-03T00:45:17+00:00"
+  "medido_em": "2026-08-03T01:30:10+00:00"
 }
