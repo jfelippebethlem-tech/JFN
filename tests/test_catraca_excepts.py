@@ -206,10 +206,13 @@ REPO = Path(__file__).resolve().parent.parent
 #   · o resto — idioma-padrão das rotas (catch-and-return no JSON) e leitura de arquivo.
 # PAGAS neste mesmo commit as duas ÚNICAS realmente engolidoras (1625→1623): `_cnpj_vencedor`
 # (`except: return None` sobre leitura de SQLite/JSON) e o loop de manifests do `--lote`.
-# 2026-08-03: +1 (1623→1624) — `sei_sweep.run_recaptura`, fronteira de BROWSER: é o mesmo idioma
-# do `run_pais` logo acima (um processo ruim não pode derrubar o lote, e o erro é logado com tipo
-# e mensagem). Estreitar aqui trocaria dívida contada por sessão de SEI perdida no meio do slot.
-BASELINE = 1624
+# 2026-08-03: +2 (1623→1625) — DUAS fronteiras de BROWSER na recaptura, mesmo idioma do `run_pais`
+# (um processo ruim não pode derrubar o lote; o erro sai logado com tipo e mensagem):
+#   • `sweep_recaptura_integral.reler` e • `sei_sweep.run_recaptura`.
+# Estreitar aqui trocaria dívida CONTADA por sessão de SEI perdida no meio do slot — e a sessão é
+# única por IP. Contei uma só na primeira passada: a do commit anterior escapou da conferência
+# porque eu comparava contra HEAD~1, que já a continha.
+BASELINE = 1625
 
 
 def _contar() -> int:
