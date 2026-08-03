@@ -59,7 +59,7 @@ def main():
         for mf in base.glob("*/manifest.json"):
             try:
                 man = json.loads(mf.read_text(encoding="utf-8"))
-            except Exception:
+            except (OSError, ValueError):   # manifest ilegível/corrompido: não entra no lote
                 continue
             tam.append((len(man.get("docs") or []), str(man.get("processo") or mf.parent.name)))
         alvos = [p for _, p in sorted(tam, reverse=True)[:args.lote]]

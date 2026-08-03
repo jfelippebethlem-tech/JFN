@@ -63,3 +63,11 @@ def test_a_publicacao_nao_apaga_a_medicao_boa_anterior(tmp_path):
     EH.gravar_ultima({"n": 100, "f1_macro": 0.0, "indisponivel": 1.0}, str(alvo))
     import json as _j
     assert _j.loads(alvo.read_text(encoding="utf-8"))["f1_macro"] == 0.48
+
+
+def test_amostra_pequena_nao_vira_o_numero_do_painel(tmp_path):
+    """Uma sondagem de 6 casos publicou-se no card em 2026-08-03, durante a depuração. Amostra
+    de teste não é medição: o card fala do motor para quem lê o relatório."""
+    alvo = tmp_path / "ultima.json"
+    assert EH.gravar_ultima({"n": 6, "f1_macro": 0.53, "indisponivel": 0.0}, str(alvo)) is None
+    assert EH.gravar_ultima({"n": 100, "f1_macro": 0.53, "indisponivel": 0.0}, str(alvo))

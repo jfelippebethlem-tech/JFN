@@ -79,7 +79,7 @@ def _cnpj_vencedor(numero: str) -> str | None:
             return None
         forn = sorted(json.loads(row[0]), key=lambda f: -(f.get("valor") or 0))
         return re.sub(r"\D", "", str(forn[0].get("cnpj") or "")) or None
-    except Exception:
+    except (sqlite3.Error, json.JSONDecodeError, ValueError, KeyError, TypeError, IndexError):
         return None
 
 

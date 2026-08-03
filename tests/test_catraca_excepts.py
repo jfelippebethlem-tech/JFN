@@ -192,7 +192,21 @@ REPO = Path(__file__).resolve().parent.parent
 # `foto_procedencia.buscar_reversa` também é amplo pelo mesmo tipo de razão (o provedor de busca
 # reversa é um callable INJETADO por terceiro e pode levantar qualquer coisa; um bug dele não pode
 # derrubar o laudo), mas ele entrou dentro do saldo pago acima.
-BASELINE = 1596
+# 2026-08-03: +27 (1596→1623), dívida acumulada ENTRE 00c10627 e 6dd2b91d — a catraca estava
+# vermelha desde antes da série de loops de qualidade, e ninguém a documentou entrada a entrada
+# como manda o costume acima. Auditadas uma a uma agora:
+#   · `processo_360` (5) — catch POR DETECTOR que grava em `indisponiveis`: é o próprio mecanismo
+#     de honestidade do 360 (rodar detector arbitrário tem espaço de exceção enorme). Amplo certo.
+#   · `tools/processo_360` (2) + `sentinela_integridade` (2) — "1 processo ruim não derruba o lote"
+#     e "a sentinela nunca derruba o cron"; ambos imprimem/registram o erro, nenhum é mudo.
+#   · `painel_computado` (4) + `painel_clique_check` (2) — fronteira de Playwright/CDP.
+#   · `confronto_caso` (4) — cada motor devolve `INDISPONIVEL: {e}` no lugar do resultado; é a
+#     matriz de lacunas, o erro É o dado.
+#   · `doc_juizo` (2) — fronteira de LLM, devolve `{"escala": None, "aviso": ...}` declarado.
+#   · o resto — idioma-padrão das rotas (catch-and-return no JSON) e leitura de arquivo.
+# PAGAS neste mesmo commit as duas ÚNICAS realmente engolidoras (1625→1623): `_cnpj_vencedor`
+# (`except: return None` sobre leitura de SQLite/JSON) e o loop de manifests do `--lote`.
+BASELINE = 1623
 
 
 def _contar() -> int:

@@ -269,6 +269,9 @@ def resumo_para_baseline(resultado: dict) -> dict[str, Any]:
 # Gemini e Cerebras fora do ar devolveu indisponivel=100% e o card passou a exibir "F1 0,0 ·
 # insuficiente" — a mentira que o próprio `painel_acuracia` diz não aceitar. INDISPONÍVEL ≠ 0.
 TETO_INDISPONIVEL = 0.30
+# Sondagem de depuração não é medição. Uma corrida de 6 casos foi parar no card durante o próprio
+# debug de 2026-08-03 — o card fala do motor para quem lê o relatório, não do que se testou à mão.
+MIN_AMOSTRA_PUBLICAVEL = 30
 
 
 def gravar_ultima(resumo: dict, caminho: str = ULTIMA_PADRAO) -> str | None:
@@ -281,6 +284,11 @@ def gravar_ultima(resumo: dict, caminho: str = ULTIMA_PADRAO) -> str | None:
     """
     import datetime
     import os
+    n = int(resumo.get("n") or 0)
+    if n < MIN_AMOSTRA_PUBLICAVEL:
+        print(f"[eval] NÃO publicado: amostra de {n} casos (mínimo {MIN_AMOSTRA_PUBLICAVEL}) — "
+              "sondagem de depuração não vira o número do painel.")
+        return None
     indisp = float(resumo.get("indisponivel") or 0.0)
     if indisp > TETO_INDISPONIVEL:
         print(f"[eval] NÃO publicado: {indisp:.0%} das respostas ficaram INDISPONÍVEIS "
