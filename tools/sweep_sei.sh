@@ -41,7 +41,14 @@ say "início (best-effort baixa prio, bounded)"
 # --foreground: o SIGTERM do bound vai SÓ para o Python (que para limpo entre processos). Sem ele o
 # `timeout` sinaliza o GRUPO e mata o Chromium junto → TargetClosedError com a leitura em voo perdida.
 # -k 120: repõe a garantia (SIGKILL se o Python travar).
-$PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
+# TETO DE DOCUMENTOS POR PROCESSO (2026-08-03, pedido do dono: "tudo o mais completo e sem
+# limitação de páginas"). Medido antes de mexer: dos 314 processos com cache, a árvore tem 19.583
+# documentos e só 9.136 tinham texto lido — 10.447 fechados, com 179 processos parando EXATAMENTE
+# em 40, que era o default do `sei_reader`. Sobe para 120. O custo é real e está declarado: o
+# tempo por processo cresce, então cada slot cobre MENOS processos — mas o slot é o mesmo, o cron
+# repete, e o que se ganha é profundidade onde antes havia corte cego. Ajustável por ambiente.
+export SEI_MAX_DOCS=${SEI_MAX_DOCS:-120}
+$PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
 # Mesma sessão única itkava (sequencial, DEPOIS do sweep geral); bounded; resumível.
 if [ -f data/ugs_foco.txt ]; then

@@ -186,8 +186,15 @@ def main(argv=None) -> int:
     ap.add_argument("--aplicar", action="store_true")
     ap.add_argument("--max", type=int, default=0, help="limita quantos processos arquivar (0 = todos)")
     ap.add_argument("--min-chars", type=int, default=MIN_CHARS)
+    # `--so`: arquivar UM processo. A passada de recaptura (`sweep_recaptura_integral`) relê um
+    # processo por vez com o teto levantado e precisa materializar SÓ ele — varrer o acervo
+    # inteiro a cada processo relido custaria minutos por iteração numa VM de 2 vCPU.
+    ap.add_argument("--so", default="", help="arquivar apenas este processo (número SEI)")
     a = ap.parse_args(argv)
     alvos = candidatos(a.min_chars)
+    if a.so:
+        alvo_norm = re.sub(r"\D", "", a.so)
+        alvos = [x for x in alvos if re.sub(r"\D", "", x["numero"]) == alvo_norm]
     if a.max:
         alvos = alvos[:a.max]
     total_chars = sum(x["chars"] for x in alvos)
