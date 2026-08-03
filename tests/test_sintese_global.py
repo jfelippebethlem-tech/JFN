@@ -60,7 +60,8 @@ def test_confronto_acha_documento_de_contrato_alheio():
 
 def test_confronto_acha_quem_controla_e_decide():
     fs = S.fichas([
-        _doc(1, "Parecer", "parecer", "controle", "Opino.", "Carlos Lima", "01/03/2024"),
+        _doc(1, "Parecer Jurídico 5 - PGE", "parecer", "controle", "Opino.", "Carlos Lima",
+             "01/03/2024"),
         _doc(2, "Contrato", "contrato", "contratacao", "Ajuste.", "Carlos Lima", "05/03/2024"),
     ])
     c = [x for x in S.contradicoes(fs) if x["codigo"] == "G3_MESMA_PESSOA_CONTROLA_E_DECIDE"]
@@ -117,3 +118,32 @@ def test_zero_a_esquerda_nao_faz_do_mesmo_contrato_dois():
         _doc(3, "Decl", "contrato", "contratacao", "conforme o contrato 016/2023 desta pasta."),
     ])
     assert not [c for c in S.contradicoes(fs) if c["codigo"] == "G2_CONTRATO_ALHEIO_NO_DOCUMENTO"]
+
+
+# ───── G3 estreitado: controle JURÍDICO × ato DECISÓRIO (medido 2026-08-03) ─────
+# 73 casos e 25 pessoas acusadas. Amostrando o mais frequente (35×): o servidor assinava um
+# "Parecer de Análise para Emissão DL" (fase controle) e um "Despacho de Formalização de
+# Liquidação de Despesa" (fase despesa). Nenhum dos dois é o que o achado diz: o primeiro não é o
+# controle prévio do art. 53, e o segundo não é ato discricionário — é o mesmo servidor tocando o
+# expediente. Acusar perda de independência aí é imputar quebra a quem cumpriu rotina.
+
+def test_G3_nao_acusa_parecer_de_rotina_com_liquidacao():
+    fs = S.fichas([
+        _doc(1, "Parecer de Análise para Emissão DL 84035046", "parecer", "controle",
+             "Análise para emissão.", "Raphael Caserta", "01/03/2024"),
+        _doc(2, "Despacho de Formalização de Liquidação de Despesa 84", "nota_liquidacao",
+             "despesa", "Formalizo a liquidação.", "Raphael Caserta", "05/03/2024"),
+    ])
+    assert not [c for c in S.contradicoes(fs)
+                if c["codigo"] == "G3_MESMA_PESSOA_CONTROLA_E_DECIDE"]
+
+
+def test_G3_acusa_parecer_JURIDICO_com_ato_que_DECIDE():
+    fs = S.fichas([
+        _doc(1, "Parecer Jurídico 12 (PGE)", "parecer", "controle",
+             "PARECER Nº 12. Procuradoria Geral do Estado. Opino.", "Carlos Lima", "01/03/2024"),
+        _doc(2, "Ato do Ordenador de Despesas", "autorizacao_despesa", "despesa",
+             "ATO DO ORDENADOR DE DESPESAS. AUTORIZO.", "Carlos Lima", "05/03/2024"),
+    ])
+    c = [x for x in S.contradicoes(fs) if x["codigo"] == "G3_MESMA_PESSOA_CONTROLA_E_DECIDE"]
+    assert c and "Carlos Lima" in c[0]["diz"]

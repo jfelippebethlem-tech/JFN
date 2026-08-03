@@ -38,6 +38,16 @@ _RE_VALOR = re.compile(r"R\$\s*([\d\.]{1,15},\d{2})")
 _RE_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
 _RE_DATA = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 
+# Controle prévio (art. 53 da Lei 14.133 / art. 38 da 8.666): parecer JURÍDICO ou de controle —
+# não o "parecer de análise" que integra o expediente de pagamento.
+_TIPOS_CONTROLE_PREVIO = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
+_RE_CONTROLE_JURIDICO = re.compile(
+    r"jur[íi]dic|\bPGE\b|\bPGM\b|procuradoria|assessoria\s+jur|assjur|\bCGE\b|"
+    r"controladoria|auditoria|controle\s+interno", re.I)
+# Atos que DECIDEM — autorizam, homologam, contratam. Liquidação e desembolso são expediente.
+_TIPOS_DECISORIOS = {"autorizacao_despesa", "homologacao", "adjudicacao", "contrato", "aditivo",
+                     "contratacao_direta", "ata_rp"}
+
 ORDEM_FASES = ("planejamento", "selecao", "contratacao", "execucao", "despesa",
                "controle", "tramitacao", "indefinida")
 
@@ -173,10 +183,16 @@ def contradicoes(fs: list[dict]) -> list[dict]:
                             f"discute o {principal}"),
                     "evidencia": f["ref"][:90]})
 
-    # 3) quem assina em fases que não deveriam ser da mesma pessoa (controle × decisão)
-    de_controle = {n for f in fs if f["fase"] == "controle" for n in f["assinantes"]}
-    de_decisao = {n for f in fs if f["fase"] in ("contratacao", "despesa")
-                  for n in f["assinantes"]}
+    # 3) quem exerce o CONTROLE PRÉVIO e também DECIDE. Estreitado em 2026-08-03 depois de
+    #    amostrar o acervo: com "fase controle × fase despesa" o achado disparava 73 vezes, e o
+    #    caso mais frequente (35×) era o mesmo servidor assinando "Parecer de Análise para Emissão
+    #    DL" e "Despacho de Formalização de Liquidação" — nenhum dos dois é o que o achado diz.
+    #    Controle prévio é o parecer JURÍDICO/de controle do art. 53; decisão é o ato que autoriza,
+    #    homologa ou contrata. Expediente de liquidação não é nem um nem outro.
+    de_controle = {n for f in fs
+                   if f["tipo"] in _TIPOS_CONTROLE_PREVIO and _RE_CONTROLE_JURIDICO.search(f["ref"])
+                   for n in f["assinantes"]}
+    de_decisao = {n for f in fs if f["tipo"] in _TIPOS_DECISORIOS for n in f["assinantes"]}
     for nome in sorted(de_controle & de_decisao):
         achados.append({
             "codigo": "G3_MESMA_PESSOA_CONTROLA_E_DECIDE",
