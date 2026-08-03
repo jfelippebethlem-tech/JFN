@@ -185,3 +185,85 @@ def test_G3_nao_confunde_CHECKLIST_com_parecer():
     ])
     assert not [c for c in S.contradicoes(fs)
                 if c["codigo"] == "G3_MESMA_PESSOA_CONTROLA_E_DECIDE"]
+
+
+# ═══ G1 e G2 REFEITOS: a pergunta certa, não a grosseira (2026-08-03) ═══
+# A validação caso a caso derrubou as versões antigas — mas o sinal existia, estava mal perguntado.
+# G1 virou "pagou ANTES de contratar", que é defeito de verdade; G2 virou "documento de OUTRO
+# processo dentro da pasta", reusando a doutrina do `sei/documentos_alheios`.
+
+def test_G1_pagamento_ANTES_do_contrato_e_achado():
+    fs = S.fichas([
+        _doc(1, "Contrato 5/2024", "contrato", "contratacao",
+             "CONTRATO Nº 5/2024, QUE ENTRE SI CELEBRAM.", "Ana", "01/09/2024"),
+        _doc(2, "OB 2024OB1", "ordem_bancaria", "despesa", "Ordem Bancária.", "Bruno",
+             "01/07/2024"),
+    ])
+    c = [x for x in S.contradicoes(fs) if x["codigo"] == "G1_PAGAMENTO_ANTES_DO_CONTRATO"]
+    assert c and "01/07/2024" in c[0]["diz"] and "01/09/2024" in c[0]["diz"]
+
+
+def test_G1_pagamento_DEPOIS_do_contrato_e_o_fluxo_normal():
+    fs = S.fichas([
+        _doc(1, "Contrato", "contrato", "contratacao", "CONTRATO Nº 5/2024, QUE ENTRE SI CELEBRAM.",
+             "Ana", "01/07/2024"),
+        _doc(2, "OB", "ordem_bancaria", "despesa", "Ordem Bancária.", "Bruno", "01/09/2024"),
+    ])
+    assert not [x for x in S.contradicoes(fs) if x["codigo"] == "G1_PAGAMENTO_ANTES_DO_CONTRATO"]
+
+
+def test_G1_execucao_e_despesa_sobrepostas_NAO_sao_achado():
+    """O que derrubou a versão antiga: paga-se ENQUANTO se executa."""
+    fs = S.fichas([
+        _doc(1, "Medição", "medicao", "execucao", "x", "Ana", "01/09/2024"),
+        _doc(2, "OB", "ordem_bancaria", "despesa", "x", "Bruno", "01/07/2024"),
+    ])
+    assert not [x for x in S.contradicoes(fs) if x["codigo"].startswith("G1")]
+
+
+def test_G2_documento_de_OUTRO_processo_na_pasta():
+    fs = S.fichas([
+        _doc(1, "Despacho", "despacho", "tramitacao",
+             "[Despacho] corpo. Referência: Processo nº SEI-070002/001289/2022"),
+        _doc(2, "Ofício alheio", "oficio", "tramitacao",
+             "[Ofício] corpo. Referência: Processo nº SEI-030001/999999/2020"),
+        _doc(3, "Parecer", "parecer", "controle",
+             "[Parecer] corpo. Referência: Processo nº SEI-070002/001289/2022"),
+    ])
+    c = [x for x in S.contradicoes(fs) if x["codigo"] == "G2_DOCUMENTO_DE_OUTRO_PROCESSO"]
+    assert c and "030001/999999/2020" in c[0]["diz"]
+
+
+def test_G2_pasta_limpa_nao_gera_achado():
+    fs = S.fichas([
+        _doc(1, "A", "despacho", "tramitacao", "[A] c. Referência: Processo nº SEI-070002/001289/2022"),
+        _doc(2, "B", "despacho", "tramitacao", "[B] c. Referência: Processo nº SEI-070002/001289/2022"),
+    ])
+    assert not [x for x in S.contradicoes(fs) if x["codigo"] == "G2_DOCUMENTO_DE_OUTRO_PROCESSO"]
+
+
+def test_G1_EMPENHO_antes_do_contrato_NAO_e_pagamento():
+    """Regra absoluta da casa: Empenho ≠ Liquidação ≠ OB — só a Ordem Bancária é 'pago'. Reservar
+    dotação ANTES de assinar é o fluxo correto; acusar isso seria inverter a doutrina."""
+    fs = S.fichas([
+        _doc(1, "Contrato", "contrato", "contratacao", "CONTRATO Nº 5/2024, QUE ENTRE SI CELEBRAM.",
+             "Ana", "01/09/2024"),
+        _doc(2, "NE 2024NE1", "nota_empenho", "despesa", "Nota de Empenho.", "Bruno", "01/07/2024"),
+        _doc(3, "NL 2024NL1", "nota_liquidacao", "despesa", "Nota de Liquidação.", "Bruno",
+             "15/07/2024"),
+    ])
+    assert not [x for x in S.contradicoes(fs) if x["codigo"] == "G1_PAGAMENTO_ANTES_DO_CONTRATO"]
+
+
+def test_G2_usa_o_numero_REAL_do_processo_nao_a_frequencia():
+    """Bug medido: com o dono adivinhado por frequência, o achado chegou a listar o PRÓPRIO
+    processo (030001/004933/2026) como alheio. O número está no manifesto — não se adivinha."""
+    fs = S.fichas([
+        _doc(1, "A", "despacho", "tramitacao",
+             "[A] corpo. Referência: Processo nº SEI-030001/004933/2026"),
+        _doc(2, "B", "despacho", "tramitacao",
+             "[B] corpo. Referência: Processo nº SEI-030001/005382/2026"),
+    ])
+    c = [x for x in S.contradicoes(fs, numero="030001/004933/2026")
+         if x["codigo"] == "G2_DOCUMENTO_DE_OUTRO_PROCESSO"]
+    assert c and "005382" in c[0]["evidencia"] and "004933" not in c[0]["evidencia"], c

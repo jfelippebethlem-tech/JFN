@@ -127,3 +127,33 @@ def test_numero_com_zero_a_esquerda_nao_e_documento_do_sei():
            "Ofício (73055430); consta o valor 00159075 na planilha. II. FUNDAMENTAÇÃO")
     r = C.conferir([{"ref": "P", "tipo": "parecer", "texto": txt}])
     assert r["ausentes"] == ["73055430"]
+
+
+# ───── validação caso a caso (2026-08-03): três falsos positivos medidos ─────
+
+def test_numero_de_TELEFONE_nao_e_documento():
+    """Medido: 'Telefone: 23809230' entrava na fila de captura. O rodapé do SEI traz o telefone
+    da unidade, e ele tem 8 dígitos como um número de documento."""
+    txt = ("PARECER Nº 1. PROCESSO Nº SEI-030001/004949/2026. I. RELATÓRIO. Instruem: Ofício "
+           "(98967395). Rua Joaquim Palhares, 40, Rio de Janeiro/RJ. Telefone: 23809230 - "
+           "www.rj.gov.br. II. FUNDAMENTAÇÃO")
+    r = C.conferir([{"ref": "P", "tipo": "parecer", "texto": txt}])
+    assert r["ausentes"] == ["98967395"], r["ausentes"]
+
+
+def test_documento_capturado_conta_mesmo_que_o_ID_nao_esteja_no_TITULO():
+    """Medido: o parecer cita 'Relatório de Fiscalização (121178482)' e o documento ESTÁ na pasta,
+    mas com título sem o número. Cobrar a recaptura dele manda o sweep buscar o que já temos."""
+    txt = ("PARECER Nº 2. PROCESSO Nº SEI-030001/111011/2025. I. RELATÓRIO. Considerando o "
+           "Relatório de Fiscalização (121178482). II. FUNDAMENTAÇÃO")
+    docs = [{"ref": "P", "tipo": "parecer", "texto": txt},
+            {"ref": "Relatório de Fiscalização", "tipo": "outro",
+             "texto": "[Relatório de Fiscalização (121178482)] conteúdo."}]
+    assert C.conferir(docs)["ausentes"] == []
+
+
+def test_o_que_falta_DE_VERDADE_continua_sendo_cobrado():
+    txt = ("PARECER Nº 3. PROCESSO Nº SEI-X/1/2026. I. RELATÓRIO. Instruem: Habilitação "
+           "(74889283); Planilha (74889284). II. FUNDAMENTAÇÃO")
+    r = C.conferir([{"ref": "P", "tipo": "parecer", "texto": txt}])
+    assert set(r["ausentes"]) == {"74889283", "74889284"}

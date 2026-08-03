@@ -36,6 +36,9 @@ _RE_NUM_PROCESSO = re.compile(r"\b(\d{6}\s*/\s*\d{6}\s*/\s*\d{4})\b")
 # Medido no acervo: "…nos autos administrativos SEI-030029/005620/2023 sob index 51726816" — o
 # documento existe, mas em processo alheio; cobrá-lo mandaria o sweep ao lugar errado.
 _JANELA_PROCESSO = 140
+# O rodapé do SEI traz o TELEFONE da unidade, que tem 8 dígitos como um número de documento —
+# medido: "Telefone: 23809230" ia para a fila de captura. Mesma coisa para CEP e CNPJ soltos.
+_RE_NAO_E_DOC = re.compile(r"(telefone|fone|tel\.?|cep|cnpj|fax)\s*:?\s*$", re.I)
 
 
 def numero_do_processo(texto: str) -> str | None:
@@ -52,6 +55,9 @@ def _ids(texto: str, proprio: str | None = None) -> set[str]:
     """IDs de documento no texto. Com `proprio`, descarta o que a frase atribui a OUTRO processo."""
     saida: set[str] = set()
     for m in _RE_ID_SEI.finditer(texto or ""):
+        antes_curto = (texto or "")[max(0, m.start() - 18):m.start()]
+        if _RE_NAO_E_DOC.search(antes_curto.rstrip()):
+            continue                      # telefone/CEP/CNPJ do rodapé, não documento
         if proprio:
             janela = (texto or "")[max(0, m.start() - _JANELA_PROCESSO):m.start()]
             # a citação a outro processo vale só até o fim da ORAÇÃO: no acervo, "…SEI-030029/
@@ -65,6 +71,18 @@ def _ids(texto: str, proprio: str | None = None) -> set[str]:
                 continue                  # a frase fala de documento de processo alheio
         saida.add(m.group(1))
     return saida
+
+
+def _cabecalho_do_arquivo(texto: str) -> str:
+    """A linha '[Título (ID)] (tipo: X)' que o arquivo compacto grava no topo de cada documento.
+
+    É a única parte do texto que identifica O PRÓPRIO documento. Medido: o parecer cita
+    'Relatório de Fiscalização (121178482)' e o documento ESTÁ na pasta com título sem número —
+    sem ler o cabeçalho, a conferência mandava recapturar o que já temos. E varrer o texto inteiro
+    faria o parecer "capturar" tudo o que ele mesmo lista, zerando a conferência.
+    """
+    linha = (texto or "").lstrip().split("\n", 1)[0]
+    return linha if linha.startswith("[") else ""
 
 
 def _relatorio(texto: str) -> str:
@@ -88,9 +106,13 @@ def conferir(docs: list[dict]) -> dict:
         return {"achado": False, "indisponivel": True, "ausentes": [], "n_citados": 0,
                 "motivo": "o parecer não enumera os documentos dos autos"}
     # o que TEMOS: o número aparece no título do documento capturado (padrão do SEI-RJ)
+    # O que TEMOS: o número aparece no título E no cabeçalho do texto capturado. Medido: o parecer
+    # cita "Relatório de Fiscalização (121178482)", o documento ESTÁ na pasta e o título dele não
+    # traz o número — cobrar a recaptura mandaria o sweep buscar o que já temos.
     nossos: set[str] = set()
     for d in docs or []:
         nossos |= _ids(str(d.get("ref") or ""))
+        nossos |= _ids(_cabecalho_do_arquivo(d.get("texto") or ""))
     ausentes = sorted(citados - nossos)
     if not ausentes:
         return {"achado": False, "indisponivel": False, "ausentes": [],

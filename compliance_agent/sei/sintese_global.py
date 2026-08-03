@@ -37,6 +37,13 @@ from compliance_agent.sei.instrumento_assinatura import assinaturas
 _RE_VALOR = re.compile(r"R\$\s*([\d\.]{1,15},\d{2})")
 _RE_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
 _RE_DATA = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
+# Referência de processo que o SEI grava no rodapé/cabeçalho de cada peça.
+# ÂNCORA LITERAL do rodapé do SEI ("Referência: Processo nº SEI-…"): é ali que a peça declara a
+# QUAL processo ela pertence. Sem a âncora, qualquer menção no corpo — "encaminhe-se ao processo
+# X", citação ao processo-pai, apensado — virava documento alheio, e o achado disparava em 45% do
+# acervo. Medido em 2026-08-03.
+_RE_REF_PROCESSO = re.compile(
+    r"refer[êe]ncia\s*:?\s*processo\s*n?[ºo°.]?\s*SEI-?\s*(\d{6}\s*/\s*\d{6}\s*/\s*\d{4})", re.I)
 
 # Controle prévio (art. 53 da Lei 14.133 / art. 38 da 8.666): parecer JURÍDICO ou de controle —
 # não o "parecer de análise" que integra o expediente de pagamento.
@@ -119,6 +126,8 @@ def fichas(docs: list[dict], vereditos: dict[int, dict] | None = None) -> list[d
             # a comparação é que normaliza o zero à esquerda, em `contradicoes`.
             "contratos_citados": sorted({re.sub(r"\s+", "", m.group(1))
                                          for m in _RE_CONTRATO.finditer(texto)}),
+            # cabeçalho + rodapé: é onde o SEI declara a que processo a peça pertence
+            "ref_cabecalho": (texto[:400] + " " + texto[-600:]),
             "escala": v.get("escala"),
             "juizo": (v.get("justificativa_curta") or "")[:200],
         })
@@ -156,7 +165,7 @@ def por_fase(fs: list[dict]) -> dict[str, dict]:
     return saida
 
 
-def contradicoes(fs: list[dict]) -> list[dict]:
+def contradicoes(fs: list[dict], numero: str = "") -> list[dict]:
     """CONFRONTO: o que só aparece olhando o conjunto. Cada item cita os documentos envolvidos."""
     achados: list[dict] = []
 
@@ -178,8 +187,46 @@ def contradicoes(fs: list[dict]) -> list[dict]:
     #   atesta conformidade de outro ajuste — já é o `I5_DECLARACAO_DE_OUTRO_CONTRATO`, que apura
     #   o instrumento pela fórmula de celebração e dispara 2 vezes no acervo, não 305.
     #
-    # Detector que não sobrevive à conferência sai: alarme que o fiscal aprende a ignorar é pior
-    # que alarme nenhum, porque some junto com ele o que era verdadeiro.
+    # Detector que não sobrevive à conferência sai — mas o SINAL existia; era a pergunta que
+    # estava grosseira. Os dois voltam abaixo, feitos direito.
+
+    # G1' · pagou ANTES de contratar. Não é "as fases se sobrepõem" (paga-se enquanto se executa):
+    # é despesa com data anterior ao instrumento que a autoriza, que é defeito de verdade.
+    contratos = [f for f in fs if f["tipo"] in ("contrato", "aditivo", "ata_rp") and f["data"]]
+    # SÓ a Ordem Bancária é "pago" (regra absoluta da casa: empenho ≠ liquidação ≠ OB). Reservar
+    # dotação e liquidar ANTES de assinar pode ser fluxo correto; PAGAR antes, não.
+    pagamentos = [f for f in fs if f["tipo"] == "ordem_bancaria" and f["data"]]
+    if contratos and pagamentos:
+        primeiro_contrato = min(contratos, key=lambda f: _cmp(f["data"]))
+        for pg in pagamentos:
+            if _cmp(pg["data"]) < _cmp(primeiro_contrato["data"]):
+                achados.append({
+                    "codigo": "G1_PAGAMENTO_ANTES_DO_CONTRATO",
+                    "diz": (f"há peça de despesa de {pg['data']} e o instrumento contratual mais "
+                            f"antigo dos autos é de {primeiro_contrato['data']} — pagamento "
+                            "anterior ao ajuste que o autoriza"),
+                    "evidencia": f"{pg['ref'][:70]} × {primeiro_contrato['ref'][:70]}"})
+                break
+
+    # G2' · documento de OUTRO processo dentro da pasta. Não é "citou outro contrato" (rotina em
+    # publicação e ata): é a peça declarar, no próprio cabeçalho, referência a processo alheio —
+    # a mesma doutrina do `sei/documentos_alheios`, que já achou 210 docs alheios em 7 pastas.
+    refs = [(f, _RE_REF_PROCESSO.search(f.get("ref_cabecalho") or "")) for f in fs]
+    numeros = [re.sub(r"\s+", "", m.group(1)) for _, m in refs if m]
+    # O dono é o número do PROCESSO, que o manifesto já traz — adivinhá-lo por frequência fez o
+    # achado listar o próprio processo (030001/004933/2026) como alheio. Só se recorre à
+    # frequência quando o número não veio.
+    dono = re.sub(r"\s+", "", numero) if numero else (
+        max(set(numeros), key=numeros.count) if numeros else "")
+    if numeros and dono:
+        alheios = {re.sub(r"\s+", "", m.group(1)) for _, m in refs
+                   if m and re.sub(r"\s+", "", m.group(1)) != dono}
+        if alheios:
+            achados.append({
+                "codigo": "G2_DOCUMENTO_DE_OUTRO_PROCESSO",
+                "diz": (f"a pasta contém documento que se declara de outro processo: "
+                        f"{', '.join(sorted(alheios)[:4])} — o processo destes autos é {dono}"),
+                "evidencia": ", ".join(sorted(alheios)[:6])})
 
     # 3) quem exerce o CONTROLE PRÉVIO e também DECIDE. Estreitado em 2026-08-03 depois de
     #    amostrar o acervo: com "fase controle × fase despesa" o achado disparava 73 vezes, e o
@@ -202,10 +249,10 @@ def contradicoes(fs: list[dict]) -> list[dict]:
     return achados
 
 
-def sintetizar(fs: list[dict], *, lacunas_captura: int = 0, gerar=None) -> dict:
+def sintetizar(fs: list[dict], *, lacunas_captura: int = 0, numero: str = "", gerar=None) -> dict:
     """Veredito do CONJUNTO. Determinístico sempre; `gerar` (LLM) acrescenta a leitura em prosa."""
     fases = por_fase(fs)
-    contr = contradicoes(fs)
+    contr = contradicoes(fs, numero=numero)
     julgados = sum(r["julgados"] for r in fases.values())
     viciados = sum(r["viciados"] for r in fases.values())
     chars = sum(f["chars"] for f in fs)

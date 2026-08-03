@@ -430,7 +430,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             [{"i": d.get("i"), "ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
               "fase": d.get("fase", ""), "texto": _texto_de(pasta, d)} for d in docs],
             _vereditos_por_doc(numero))
-        sintese = _sg.sintetizar(_fichas, lacunas_captura=len(lacunas_captura))
+        sintese = _sg.sintetizar(_fichas, lacunas_captura=len(lacunas_captura), numero=numero)
     except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError) as e:
         sintese = {"indisponivel": True, "motivo": str(e)[:140]}
         indisponiveis.append(f"sintese_global: {e}")
