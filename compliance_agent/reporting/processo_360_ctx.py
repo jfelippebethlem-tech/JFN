@@ -83,6 +83,38 @@ def render_processo_ctx(out: dict) -> dict:
                        f"{_h.escape(str(cadeia.get('resumo') or ''))[:400]}</p>")
     secoes.append({"titulo": "II. Linha do tempo por fase", "html": fases_html})
 
+    # LEITURA DE CONJUNTO — a narrativa do processo inteiro. A lista de achados responde "o que há
+    # de errado"; isto responde "o que este processo mostra": a ordem dos atos, quem assina cada
+    # etapa, onde os documentos se contradizem. Sem ela, quem lê o PDF reconstrói tudo de cabeça.
+    sint = out.get("sintese") or {}
+    if sint:
+        if sint.get("indisponivel"):
+            secoes.append({"titulo": "II-B. Leitura de conjunto",
+                           "html": ("<p class='nota'>Leitura de conjunto <b>INDISPONÍVEL</b>"
+                                    + (f": {_h.escape(str(sint.get('motivo'))[:200])}"
+                                       if sint.get("motivo") else "")
+                                    + " — indisponível não é ausência de irregularidade.</p>")})
+        else:
+            linhas_f = "".join(
+                f"<tr><td>{_h.escape(fases.FASES.get(f, f))}</td><td>{r.get('n_docs', 0)}</td>"
+                f"<td>{_h.escape(str(r.get('de') or '—'))} → {_h.escape(str(r.get('ate') or '—'))}</td>"
+                f"<td>{r.get('viciados', 0) or '—'}</td>"
+                f"<td>{_h.escape(', '.join((r.get('assinantes') or [])[:3]) or '—')}</td></tr>"
+                for f, r in (sint.get("fases") or {}).items())
+            contr = "".join(
+                f"<li><b>{_h.escape(str(c.get('codigo')))}</b> — {_h.escape(str(c.get('diz')))}"
+                f"<br><span class='dim'>{_h.escape(str(c.get('evidencia') or ''))}</span></li>"
+                for c in (sint.get("contradicoes") or []))
+            secoes.append({"titulo": "II-B. Leitura de conjunto do processo", "html": (
+                f"<p>{_h.escape(str(sint.get('leitura') or ''))}</p>"
+                + ("<table><tr><th>Fase</th><th>Docs</th><th>Período</th><th>Viciados</th>"
+                   f"<th>Assinantes</th></tr>{linhas_f}</table>" if linhas_f else "")
+                + (f"<p class='nota'><b>Contradições entre documentos "
+                   f"({len(sint.get('contradicoes') or [])})</b></p><ul>{contr}</ul>" if contr
+                   else "<p class='nota'>Nenhuma contradição entre documentos pela leitura do "
+                        "conjunto.</p>")
+                + (f"<p>{_h.escape(str(sint.get('prosa')))}</p>" if sint.get("prosa") else ""))})
+
     if out.get("achados"):
         linhas = "".join(
             f"<tr><td>{_GRAV_EMOJI.get(str(a.get('gravidade')), '·')} "
