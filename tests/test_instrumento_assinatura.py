@@ -496,3 +496,36 @@ def test_I7_exige_NOME_de_gente_no_bloco_de_aprovacao():
              "Conferido por este coordenador, na forma regimental.",
              [("Fulano de Tal", "Oficial", "01/01/2024", "10:00")])
     assert IA.aprovador_nao_assinou([d])["achado"] is False
+
+
+# ───── validação caso a caso dos I1..I7 no acervo (2026-08-03) ─────
+
+def test_I3_documento_intitulado_MINUTA_e_rascunho_nao_ato():
+    """Falso positivo medido (270003/001666/2024): 'Anexo MINUTA AUTORIZAÇÃO DE DESPESAS' — o
+    documento se declara MINUTA no título. Rascunho não é assinado pela autoridade por definição;
+    acusar isso é cobrar assinatura de quem ainda não decidiu. O achado real (270131/000548/2023) é
+    outro: documento que NÃO se intitula minuta e funciona como o ato, trazendo a marca interna."""
+    d = _doc("Anexo MINUTA AUTORIZAÇÃO DE DESPESAS (79611222)", "autorizacao_despesa",
+             "ATO DO ORDENADOR DE DESPESAS. Este Ordenador de Despesas, GUSTAVO SOARES, AUTORIZA.",
+             [("Rafael Ribeiro", "Oficial", "01/03/2024", "10:00")])
+    assert IA.ato_sem_assinatura_da_autoridade([d])["achado"] is False
+
+
+def test_I3_ato_que_NAO_se_intitula_minuta_continua_sendo_achado():
+    d = _doc("Declaração Autorizo (74780114)", "autorizacao_despesa",
+             "ATO DO ORDENADOR DE DESPESAS\n* MINUTA DE DOCUMENTO\n"
+             "Este Ordenador de Despesas, RACHEL LOPES DA SILVA, DECIDE, AUTORIZAR.",
+             [("Renato de Melo Cardoso", "Oficial", "16/05/2024", "16:04")])
+    assert IA.ato_sem_assinatura_da_autoridade([d])["achado"] is True
+
+
+def test_I4_declara_a_hipotese_que_o_inocenta():
+    """Aditivo anterior que NÃO prorrogou prazo (aditivo de valor, por exemplo) explica o ordinal
+    sem vício. O achado tem de dizer isso — indício não pode se apresentar como certeza."""
+    d = _doc("Termo Aditivo", "aditivo",
+             "2º TERMO ADITIVO, QUE ENTRE SI CELEBRAM. CLÁUSULA SEGUNDA: fica prorrogado por "
+             "12 (doze) meses, dando-se ao contrato o prazo total de 24 (vinte e quatro) meses.",
+             [("Ordenador", "Ordenador", "01/06/2024", "10:00")])
+    r = IA.ordinal_incoerente_com_prazo([d])
+    assert r["achado"] is True
+    assert "valor" in r["diz"].lower() or "não prorrog" in r["diz"].lower()

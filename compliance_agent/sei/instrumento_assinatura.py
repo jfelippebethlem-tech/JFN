@@ -237,6 +237,12 @@ def ato_sem_assinatura_da_autoridade(docs: list[dict]) -> dict:
         texto = d.get("texto") or ""
         if tipo not in _TIPOS_AUTORIZACAO and not _RE_CABECALHO_ATO.search(texto[:1500]):
             continue
+        # documento que se INTITULA minuta é rascunho: não se cobra dele a assinatura da
+        # autoridade, porque ela ainda não decidiu. Falso positivo medido em 270003/001666/2024
+        # ("Anexo MINUTA AUTORIZAÇÃO DE DESPESAS"). O achado real é o oposto: peça que NÃO se
+        # intitula minuta e funciona como o ato, trazendo a marca interna no corpo.
+        if _RE_E_MINUTA.search(str(d.get("ref") or "")):
+            continue
         m = _RE_AUTORIDADE.search(texto)
         if not m:
             continue
@@ -330,7 +336,9 @@ def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
             "ordinal_implicado": implicado,
             "diz": (f"o instrumento se declara {n}º termo aditivo mas anuncia prazo total de "
                     f"{total} meses com prorrogação de {passo} — o que corresponde ao "
-                    f"{implicado}º aditivo"),
+                    f"{implicado}º aditivo — salvo se houver aditivo anterior que NÃO prorrogou "
+                    "prazo (aditivo de valor, por exemplo), hipótese que explica o ordinal sem "
+                    "vício e precisa ser conferida nos autos"),
             "fundamento": ("art. 57, II, da Lei 8.666/93: a contagem das prorrogações é o que "
                            "limita a vigência a 60 meses — ordinal errado desalinha o controle"),
             "evidencia": d.get("ref", ""),
