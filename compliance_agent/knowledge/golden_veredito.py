@@ -22,12 +22,50 @@ o relatório não possa citar o corpus sem citar o que ficou de fora.
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 from typing import Any
 
 from compliance_agent.knowledge.corpus_veredito import cobertura, iterar_casos
 
 ROTULOS_VALIDOS = ("vicio", "licito", "vicio_por_omissao")
+
+# ── medição de DUAS classes (2026-08-02) ──────────────────────────────────────────────────────
+# `vicio_por_omissao` é propriedade da FORMA da frase, não da conduta: verbo de dever em 774 dos
+# 776 casos da classe (100%), contra 36% de `vicio` e 24% de `licito`. Apagar o verbo torna a
+# classe impossível (foi o que aconteceu: 26 dos 58 casos do holdout lidos como `licito`);
+# deixá-lo torna a classe trivial. Nos dois casos mede-se gramática, não hermenêutica. A pergunta
+# bem posta — e a que a fila do fiscal faz — é binária: isso é irregular ou não?
+ROTULOS_BINARIOS = ("irregular", "licito")
+_BINARIO = {"vicio": "irregular", "vicio_por_omissao": "irregular", "licito": "licito"}
+
+# O papagaio que o motor precisa bater: "tem verbo de dever → irregular". Ele materializa o
+# vazamento acima; sem publicá-lo ao lado, duas classes pareceriam avanço podendo ser só o atalho.
+_RE_DEONTICO = re.compile(
+    r"\b(dev[ea]m?|dever[áa]o?|obrigat[óo]ri\w*|imprescind\w*|necess[áa]ri\w*|"
+    r"cabe\s+[àa]\s+administra|compete\s+[àa])", re.I)
+
+
+def binarizar(rotulo: str) -> str:
+    """vicio/vicio_por_omissao → irregular · licito → licito · abstenção fica como está.
+
+    A abstenção NÃO pode virar 'lícito': ela é métrica própria da casa (um motor que diz "não
+    sei" é melhor que um que chuta, e some se for contado como resposta).
+    """
+    return _BINARIO.get(rotulo, rotulo)
+
+
+def baseline_deontico(casos: list[dict]) -> dict[str, Any]:
+    """Classificador burro de uma linha, medido em duas classes. Todo resultado tem de bater ISTO."""
+    if not casos:
+        return {"acuracia": 0.0, "f1_macro": 0.0, "f1_por_classe": {},
+                "regra": "tem verbo de dever → irregular"}
+    pares = [(binarizar(c["rotulo"]),
+              "irregular" if _RE_DEONTICO.search(c.get("trecho_ancora") or "") else "licito")
+             for c in casos]
+    r = metricas(pares, rotulos=ROTULOS_BINARIOS)
+    return {"regra": "tem verbo de dever → irregular", "acuracia": r["acuracia"],
+            "f1_macro": r["f1_macro"], "f1_por_classe": r["f1_por_classe"]}
 FRACAO_HOLDOUT = 0.30
 
 
@@ -87,18 +125,19 @@ def matriz_confusao(pares: list[tuple[str, str]]) -> dict[str, dict[str, int]]:
     return m
 
 
-def metricas(pares: list[tuple[str, str]]) -> dict[str, Any]:
+def metricas(pares: list[tuple[str, str]], rotulos: tuple[str, ...] | None = None) -> dict[str, Any]:
     """Precisão, recall e F1 POR CLASSE, mais acurácia e abstenção.
 
     Acurácia sozinha é enganosa aqui (ver o baseline). A abstenção entra como métrica de primeira
     classe: um motor honesto que diz "não sei" em 30% dos casos é melhor, em controle externo, que
     um que chuta — e a acurácia bruta puniria o primeiro.
     """
+    rotulos = rotulos or ROTULOS_VALIDOS
     total = len(pares) or 1
     acertos = sum(1 for e, p in pares if e == p)
-    abstencoes = sum(1 for _, p in pares if p not in ROTULOS_VALIDOS)
+    abstencoes = sum(1 for _, p in pares if p not in rotulos)
     por_classe: dict[str, dict[str, float]] = {}
-    for classe in ROTULOS_VALIDOS:
+    for classe in rotulos:
         vp = sum(1 for e, p in pares if e == classe and p == classe)
         fp = sum(1 for e, p in pares if e != classe and p == classe)
         fn = sum(1 for e, p in pares if e == classe and p != classe)
@@ -107,7 +146,7 @@ def metricas(pares: list[tuple[str, str]]) -> dict[str, Any]:
         f1 = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
         por_classe[classe] = {"precisao": prec, "recall": rec, "f1": f1,
                               "n": sum(1 for e, _ in pares if e == classe)}
-    macro = sum(v["f1"] for v in por_classe.values()) / len(ROTULOS_VALIDOS)
+    macro = sum(v["f1"] for v in por_classe.values()) / len(rotulos)
     return {"n": len(pares), "acuracia": acertos / total, "abstencao": abstencoes / total,
             "f1_macro": macro, "por_classe": por_classe,
             "f1_por_classe": {k: v["f1"] for k, v in por_classe.items()},

@@ -34,3 +34,32 @@ def test_gravar_ultima_produz_o_que_o_card_precisa(tmp_path):
     card = PA.montar(caminho_ultima=str(alvo), caminho_baseline=str(alvo))
     assert card["estado"] != "sem_medicao"
     assert card["f1_macro"] == 0.48
+
+
+# ───── queda de provedor NÃO é qualidade zero (2026-08-03) ─────
+# O loop 2 fez toda medição publicar no card. Na primeira execução seguinte, Gemini e Cerebras
+# falharam em 100% dos casos e o card passou a exibir "F1 0,0 · insuficiente" — o próprio
+# `painel_acuracia` chama isso de mentira ("um card com '—' tratado como 0% é mentira").
+# INDISPONÍVEL ≠ 0: medição que não mediu não se publica.
+
+def test_medicao_com_provedor_fora_do_ar_nao_e_publicada(tmp_path):
+    alvo = tmp_path / "ultima.json"
+    r = EH.gravar_ultima({"n": 100, "f1_macro": 0.0, "acuracia": 0.0,
+                          "indisponivel": 1.0, "abstencao": 1.0}, str(alvo))
+    assert r is None, "publicou uma queda de provedor como se fosse desempenho do motor"
+    assert not alvo.exists()
+
+
+def test_medicao_com_indisponibilidade_parcial_tolerada_e_publicada(tmp_path):
+    alvo = tmp_path / "ultima.json"
+    assert EH.gravar_ultima({"n": 100, "f1_macro": 0.5, "acuracia": 0.5,
+                             "indisponivel": 0.08, "abstencao": 0.2}, str(alvo)) is not None
+
+
+def test_a_publicacao_nao_apaga_a_medicao_boa_anterior(tmp_path):
+    """Falha de provedor não pode derrubar o último número válido — o card ficaria pior que antes."""
+    alvo = tmp_path / "ultima.json"
+    EH.gravar_ultima({"n": 100, "f1_macro": 0.48, "indisponivel": 0.11}, str(alvo))
+    EH.gravar_ultima({"n": 100, "f1_macro": 0.0, "indisponivel": 1.0}, str(alvo))
+    import json as _j
+    assert _j.loads(alvo.read_text(encoding="utf-8"))["f1_macro"] == 0.48

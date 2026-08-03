@@ -65,5 +65,7 @@
   "prompt_versao": "v1",
   "prompt_hash": "300d9347d2af",
   "condicionados": 0.06,
-  "medido_em": "2026-08-02T22:58:26+00:00"
+  "modo": "3classes",
+  "ressalva_regua": "medido em 3 classes sobre enunciado MUTILADO pelo apagamento do verbo de dever (corrigido em 2026-08-03); a remedição em 2 classes está pendente de provedor de LLM",
+  "medido_em": "2026-08-03T00:45:17+00:00"
 }
