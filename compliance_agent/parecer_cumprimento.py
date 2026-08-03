@@ -238,6 +238,32 @@ def _limpa(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip())[:_MAX_COND]
 
 
+# REMISSÃO a recomendações de parecer anterior, POR NÚMERO. Caso real medido em 2026-08-03, obra
+# de R$ 129.595.387,83: "a instrução processual necessita de aperfeiçoamento … no que tange às
+# recomendações 3, 4, 5, 10, 13, 19, 21" — sete exigências que o extrator devolvia como zero,
+# porque a peça não abre lista nova: ela remete à lista da peça anterior. Exige o verbo de
+# cobrança perto ("aperfeiçoamento", "não atendida", "pendente"…) para não casar remissão a
+# artigo de lei.
+_RE_REMISSAO_RECOM = re.compile(
+    r"(aperfei[çc]oamento|n[ãa]o\s+(?:foram|foi)\s+(?:atendid|cumprid)|pendent|remanesc|"
+    r"reitera|persist)[^.]{0,220}?recomenda[çc][õo]es\s+((?:\d{1,2}\s*(?:,|e|;)\s*){1,20}\d{1,2})",
+    re.I)
+
+
+def _da_remissao(texto: str) -> list[dict]:
+    m = _RE_REMISSAO_RECOM.search(texto or "")
+    if not m:
+        return []
+    numeros = [n for n in re.findall(r"\d{1,2}", m.group(2))]
+    if len(numeros) < 2:
+        return []
+    trecho = _limpa(m.group(0))
+    return [{"id": n, "tipo": "outra",
+             "texto": (f"recomendação {n} do parecer ANTERIOR, remetida como não aperfeiçoada — "
+                       "o texto da exigência está na peça anterior, não nesta"),
+             "trecho": trecho} for n in numeros]
+
+
 def extrair_condicionantes(texto_parecer: str) -> list[dict]:
     """Condicionantes (o que o parecer EXIGE para o feito prosseguir), item a item.
 
@@ -245,6 +271,10 @@ def extrair_condicionantes(texto_parecer: str) -> list[dict]:
     HONESTO: nada de inventar — parecer sem gatilho de condicionalidade devolve []; boilerplate de
     checklist/certidão (que casa 'recomenda-se' mas não é ressalva substantiva) é descartado."""
     txt = texto_parecer or ""
+    # remissão por número vence: quando a peça diz QUAIS recomendações seguem pendentes, é essa a
+    # lista de exigências — e ela não aparece como enumeração nova em lugar nenhum do texto.
+    if (remetidas := _da_remissao(txt)):
+        return remetidas
     # a exigência deste parecer está no FECHO; o que vem antes é relatório e fundamentação (onde moram as
     # citações a outros pareceres). Só se recua para o texto inteiro quando não há fecho identificável.
     mc = None

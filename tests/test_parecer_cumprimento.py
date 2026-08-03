@@ -518,3 +518,40 @@ def test_ementa_sem_exigencia_nao_inventa_condicionante():
              "JURÍDICA DO PROSSEGUIMENTO DO FEITO. I. RELATÓRIO. " + "Texto. " * 50
              + "III. CONCLUSÃO. Opino favoravelmente, sem ressalvas.")
     assert PC.extrair_condicionantes(limpo) == []
+
+
+# ───── remissão a recomendações POR NÚMERO (medido 2026-08-03) ─────
+# Caso real, obra de R$ 129.595.387,83 (SEI-070002/001289/2022, macrodrenagem do Jacarezinho): a
+# Coordenadoria do Sistema Jurídico da PGE conclui que "a instrução processual necessita de
+# aperfeiçoamento para possibilitar a continuidade do feito, pelos motivos que passo a expor no
+# que tange às recomendações 3, 4, 5, 10, 13, 19, 21" — contradizendo o parecer do INEA, que
+# declarara as recomendações cumpridas. São SETE condicionantes remetidas por número, e o
+# extrator devolvia zero: a exigência não vem em lista nova, vem por remissão à lista anterior.
+
+_REMISSAO = (
+    "Promoção PGE/PG15/COO-CSJ Nº 55. Procuradoria Geral do Estado. PROCESSO Nº "
+    "SEI-070002/001289/2022. I. RELATÓRIO. Trata-se de análise de proposta de contratação. "
+    + "Relato. " * 30
+    + "Vênia devida, me parece que a instrução processual necessita de aperfeiçoamento para "
+      "possibilitar a continuidade do feito, pelos motivos que passo a expor no que tange às "
+      "recomendações 3, 4, 5, 10, 13, 19, 21.")
+
+
+def test_recomendacoes_referidas_por_numero_viram_condicionantes():
+    conds = PC.extrair_condicionantes(_REMISSAO)
+    assert len(conds) == 7, f"esperava as 7 recomendações remetidas, vieram {len(conds)}: {conds}"
+    assert {c["id"] for c in conds} == {"3", "4", "5", "10", "13", "19", "21"}
+
+
+def test_a_remissao_declara_que_o_conteudo_esta_no_parecer_ANTERIOR():
+    """Honestidade: aqui só se sabe o NÚMERO. O texto da exigência mora na peça anterior, e o
+    veredito não pode fingir que o leu."""
+    c = PC.extrair_condicionantes(_REMISSAO)[0]
+    assert "anterior" in c["texto"].lower() or "remiss" in c["texto"].lower()
+
+
+def test_numero_solto_no_texto_nao_vira_condicionante():
+    """'nos termos do art. 3, 4 e 5' não é remissão a recomendação."""
+    txt = ("PARECER Nº 7. PGE. I. RELATÓRIO. Texto. II. FUNDAMENTAÇÃO. Opino favoravelmente nos "
+           "termos dos arts. 3, 4 e 5 da Lei 14.133/2021, sem ressalvas.")
+    assert PC.extrair_condicionantes(txt) == []
