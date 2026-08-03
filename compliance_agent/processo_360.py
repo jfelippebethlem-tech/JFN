@@ -63,6 +63,39 @@ def _rodar_fornecedor(cnpj: str) -> list[ResultadoDetector]:
     return rodar_fornecedor(cnpj)
 
 
+def achados_de_fornecedor(resultados) -> list[dict]:
+    """Detectores de perfil do CONTRATADO que pontuam viram achado VISÍVEL.
+
+    Medido em 2026-08-03: 14 processos ficaram EXTREMO com ZERO achados porque C9 (score 1,0) e
+    C3/C5 (0,85) entravam no `score_processo` sem aparecer em lugar nenhum. O fiscal abria o topo
+    da fila e não via nada escrito — e o processo cujos nove achados eu confirmei lendo os autos
+    ficava ABAIXO de processos com um achado só. O que não aparece no entregável não existe.
+
+    O achado declara que é do FORNECEDOR: confundir perfil da empresa com vício do processo seria
+    imputar ao gestor o que é característica de quem ele contratou.
+    """
+    saida = []
+    for r in resultados or []:
+        if r.status != "confirmado" or r.refutada:
+            continue
+        s = float(r.score or 0)
+        grav = "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media"
+        # `explicacao_inocente` é o CONTRA-argumento do detector, não o achado. Usá-la como texto
+        # principal fazia o item ler "FALSO POSITIVO a descartar" no lugar da acusação — o oposto
+        # do que se quer dizer. Ela entra em campo próprio, rotulada, como a doutrina da casa pede.
+        inocente = (r.explicacao_inocente or "").strip()
+        saida.append({
+            "origem": "fornecedor", "codigo": r.detector, "gravidade": grav,
+            "diz": (f"perfil do fornecedor contratado: detector {r.detector} confirmado "
+                    f"(intensidade {s:.2f})"),
+            "explicacao_inocente": inocente,
+            "evidencia": "; ".join(str(e)[:120] for e in (r.evidencia or [])[:2]),
+            "ressalva": ("Indício sobre a EMPRESA contratada, não sobre a conduta do gestor "
+                         "neste processo."),
+        })
+    return saida
+
+
 def _cnpj_vencedor(numero: str) -> str | None:
     """Maior favorecido do processo em `sei_arvore.fornecedores` (fallback barato e honesto)."""
     try:
@@ -300,6 +333,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         try:
             res_forn = _rodar_fornecedor(cnpj)
             resultados.extend(res_forn)
+            achados += achados_de_fornecedor(res_forn)
             rodados += sorted({r.detector for r in res_forn})
         except Exception as e:  # noqa: BLE001
             indisponiveis.append(f"fornecedor: {e}")
@@ -337,6 +371,10 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     # 8) sinais estruturais → ResultadoDetector sintéticos + agregador OFICIAL
     for a in achados:
         origem = a["origem"]
+        # o achado de FORNECEDOR já veio do próprio detector, que JÁ está em `resultados`:
+        # convertê-lo em sinal sintético o contaria duas vezes e inflaria o score do processo.
+        if origem == "fornecedor":
+            continue
         if origem == "triagem":
             s = _ANCORA_TRIAGEM.get(str(a.get("grau")), 0.3)
         else:
