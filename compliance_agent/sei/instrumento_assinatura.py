@@ -38,7 +38,20 @@ _RE_ASSINATURA = re.compile(
     r"(\d{2}/\d{2}/\d{4})(?:,\s*[àa]s\s*(\d{2}:\d{2}))?", re.I)
 
 _RE_ORDINAL_ADITIVO = re.compile(r"(\d{1,2})\s*[ºo°]\s*TERMO\s+ADITIVO", re.I)
+# O SEI-RJ grafa o ordinal por EXTENSO com a mesma frequência ("SEGUNDO TERMO ADITIVO AO CONTRATO
+# INEA 36/2023"): sem isto o 2º aditivo do 070002/006145/2024 caía no ordinal de outra passagem do
+# texto e o processo era acusado de ter dois instrumentos com o mesmo ordinal (2026-08-03).
+_EXTENSO = ("primeiro", "segundo", "terceiro", "quarto", "quinto", "sexto", "setimo", "sétimo",
+            "oitavo", "nono", "decimo", "décimo")
+_RE_ORDINAL_EXTENSO = re.compile(
+    r"\b(" + "|".join(_EXTENSO) + r")\s+TERMO\s+ADITIVO", re.I)
+_VALOR_EXTENSO = {"primeiro": 1, "segundo": 2, "terceiro": 3, "quarto": 4, "quinto": 5,
+                  "sexto": 6, "setimo": 7, "oitavo": 8, "nono": 9, "decimo": 10}
 _RE_E_MINUTA = re.compile(r"\bminuta\b", re.I)
+# PUBLICAÇÃO no D.O. é EXTRATO do instrumento, não o instrumento; APOSTILAMENTO é registro
+# unilateral, não termo aditivo. Ambos entravam como "instrumento assinado" e produziam ordinal
+# duplicado — medido em 420001/004224/2024, /004223/2024, /003578/2025 e /004635/2025 (2026-08-03).
+_RE_NAO_E_INSTRUMENTO = re.compile(r"publica[çc][ãa]o|extrato|apostilamento", re.I)
 # O documento É o instrumento, ou só CITA o aditivo? A justificativa ("Trata o presente processo
 # de formalização do 1º Termo Aditivo…") e o parecer citam o ordinal e eram contados como
 # instrumento assinado — falso positivo medido no acervo real em 2026-08-03. Instrumento traz a
@@ -57,6 +70,70 @@ _RE_CABECALHO_ATO = re.compile(
 _RE_AUTORIDADE = re.compile(
     r"Est[ea]\s+Ordenador[a]?\s+de\s+Despesas?\s*,\s*([A-ZÀ-Ú][A-ZÀ-Ú\s\.]{5,60}?)\s*,", re.I)
 _TIPOS_PARECER = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
+
+# ─── o que é, de fato, o CONTROLE PRÉVIO do art. 53 · doutrina única da casa ───
+# O tipo `parecer_juridico` do manifesto não basta: 66% dos pareceres do acervo foram tipados pelo
+# CONTEÚDO, e o classificador aceita qualquer documento que MENCIONE "parecer". Lendo os 15
+# disparos do I2 em 2026-08-03, o "parecer" era Checklist (2×), Declaração de Conformidade com a
+# minuta-padrão da PGE (3×, assinada por quem redigiu a minuta — não é controle externo à unidade),
+# Ato de Designação de Servidor, Correspondência Interna sobre troca de marca, e "Parecer de
+# Análise para Emissão DL" (revisão de rotina do coordenador de qualidade — o mesmo falso positivo
+# que já derrubou 71 disparos do G3). Aqui a peça precisa SE ANUNCIAR como manifestação jurídica.
+# `sintese_global` importa estas duas: a doutrina mora num lugar só.
+_RE_NAO_E_PARECER = re.compile(
+    r"checklist|check-?list|lista\s+de\s+verifica|declara[çc][ãa]o\s+de\s+conformidade|"
+    r"anexo\s+[úu]nico|resolu[çc][ãa]o\s+conjunta", re.I)
+_RE_CONTROLE_JURIDICO = re.compile(
+    r"jur[íi]dic|\bPGE\b|\bPGM\b|procuradoria|assessoria\s+jur|assjur|\bCGE\b|"
+    r"controladoria|auditoria|controle\s+interno|opino|opina-se|parecer\s+n[ºo°]", re.I)
+_CABECALHO_CHARS = 1500
+# O arquivo compacto grava, na 1ª linha do .txt, "[título] (fase: … · tipo: parecer_juridico)".
+# Isso põe a palavra `juridico` DENTRO do texto e faz o documento provar a si mesmo: o "Parecer de
+# Análise para Emissão DL" (Diretoria Administrativa Financeira, "Procedida a Revisão do
+# processo") passava no teste de manifestação jurídica pela própria etiqueta que se queria
+# conferir. Medido em 080002/006705/2024 (2026-08-03).
+_RE_CABECALHO_DO_ARQUIVO = re.compile(r"\A\[[^\]]{0,200}\]\s*(\([^)]{0,120}\))?\s*", re.M)
+
+
+def _sem_etiqueta(texto: str) -> str:
+    """Texto do documento sem a etiqueta que o ARQUIVO prepõe — só o que o SEI serviu."""
+    return _RE_CABECALHO_DO_ARQUIVO.sub("", texto or "", count=2)
+
+
+def e_controle_juridico(ref: str, texto: str) -> bool:
+    """A peça é manifestação de controle prévio (art. 53), ou só fala de uma?
+
+    Decide pelo que o documento declara de si — título e cabeçalho —, nunca pelo tipo herdado do
+    manifesto. Formulário de conformidade e declaração da própria unidade não exercem controle.
+    """
+    alvo = f"{ref or ''}\n{_sem_etiqueta(texto)[:_CABECALHO_CHARS]}"
+    if _RE_NAO_E_PARECER.search(alvo):
+        return False
+    return bool(_RE_CONTROLE_JURIDICO.search(alvo))
+
+
+# O ato de autorização é aquele em que a autoridade DIZ que autoriza. O título mente nos dois
+# sentidos: "Despacho de Solicitação de Reserva Orçamentária" do INEA traz "AUTORIZO a despesa"
+# (é o ato), e "Despacho de Solicitação de Análise da NAD" traz "Encaminho o presente processo
+# para confecção de NAD" (é pedido de providência, não decisão). Medido em 2026-08-03.
+_RE_VERBO_AUTORIZA = re.compile(
+    r"\bAUTORIZO\b|\bAPROVO\b|\bRATIFICO\b|\bHOMOLOGO\b|\bADJUDICO\b|"
+    r"\bAUTORIZA-SE\b|\bfica\s+autorizad[ao]\b|DECIDE\s*,?\s*AUTORIZAR|"
+    r"ORDENADOR[A]?\s+DE\s+DESPESAS?\.?\s*\n?\s*AUTORIZAR", re.I)
+
+
+# RÓTULO de campo do formulário não é decisão. A Nota de Autorização de Despesa traz impresso
+# "39 - APROVO E AUTORIZO ORDENADOR / AUTORIDADE DELEGADA" como cabeçalho do campo — presente em
+# toda NAD, assinada ou não. Ler isso como o ato fazia a NAD do setor de orçamento virar a
+# autorização do ordenador (080002/006705/2024 e mais quatro, 2026-08-03).
+_RE_ROTULO_FORMULARIO = re.compile(
+    r"\d{1,2}\s*[-–]\s*APROVO\s+E\s+AUTORIZO[^\n]{0,80}", re.I)
+
+
+def e_ato_de_autorizacao(texto: str) -> bool:
+    """A peça DECIDE autorizar a despesa (verbo em 1ª pessoa), ou apenas pede/informa?"""
+    return bool(_RE_VERBO_AUTORIZA.search(
+        _RE_ROTULO_FORMULARIO.sub(" ", _sem_etiqueta(texto))))
 
 
 def _norm(s: str) -> str:
@@ -134,9 +211,35 @@ def _primeira_data(doc: dict) -> str | None:
     return ass[0]["data"] if ass else None
 
 
+_JANELA_ANCORA = 600   # o ordinal abre a fórmula: "3º TERMO ADITIVO … QUE ENTRE SI CELEBRAM"
+
+
 def _ordinal(doc: dict) -> int | None:
-    m = _RE_ORDINAL_ADITIVO.search(doc.get("texto") or "")
-    return int(m.group(1)) if m else None
+    """O ordinal DO PRÓPRIO instrumento — o que abre a fórmula de celebração.
+
+    Pegar a primeira ocorrência no texto inteiro lia o ordinal errado: um aditivo que menciona os
+    anteriores ("… alterado pelo 1º TERMO ADITIVO") saía com o ordinal do que ele cita. Medido no
+    acervo em 2026-08-03: dos 10 disparos do I1, 7 vinham daí. Aqui o ordinal é o ÚLTIMO que
+    aparece na janela imediatamente anterior à fórmula ("QUE ENTRE SI CELEBRAM"), que é onde o
+    instrumento se nomeia; sem fórmula, cai na primeira ocorrência (comportamento antigo).
+    """
+    texto = doc.get("texto") or ""
+    anc = _RE_INSTRUMENTO.search(texto)
+    if anc:
+        janela = texto[max(0, anc.start() - _JANELA_ANCORA):anc.start()]
+        achados = [(m.end(), int(m.group(1))) for m in _RE_ORDINAL_ADITIVO.finditer(janela)]
+        achados += [(m.end(), _VALOR_EXTENSO[_norm(m.group(1))])
+                    for m in _RE_ORDINAL_EXTENSO.finditer(janela)]
+        # Com fórmula de celebração e SEM ordinal antes dela, o documento é o contrato original —
+        # não se procura ordinal no resto do corpo. O Contrato 36/2023 do INEA cita "PRIMEIRO
+        # TERMO ADITIVO" numa cláusula e saía como se fosse o 1º aditivo, colidindo com o aditivo
+        # verdadeiro (070002/006145/2024, 2026-08-03).
+        return max(achados)[1] if achados else None
+    m = _RE_ORDINAL_ADITIVO.search(texto)
+    if m:
+        return int(m.group(1))
+    m = _RE_ORDINAL_EXTENSO.search(texto)
+    return _VALOR_EXTENSO[_norm(m.group(1))] if m else None
 
 
 def _e_minuta(doc: dict) -> bool:
@@ -147,9 +250,42 @@ def _e_minuta(doc: dict) -> bool:
 
 # ───────────────────────────── I1 · ordinal divergente ─────────────────────────────
 
+def _minuta_foi_atropelada(n: int, minutas: list[tuple], assinados: list[tuple]) -> bool:
+    """A minuta do ordinal `n` foi ATROPELADA — examinou-se uma peça e celebrou-se outra?
+
+    Nem toda minuta sem instrumento correspondente é vício. Lendo os disparos no acervo
+    (2026-08-03) apareceram três situações que o achado tratava como uma só:
+
+      • **atropelada** — a minuta é do 1º e, dezoito dias depois, assina-se o 2º
+        (270131/000548/2023). É o achado: aprovou-se uma peça e celebrou-se outra.
+      • **superada** — minuta do 2º em 06/06, minuta do 3º em 11/06, assina-se o 3º em 20/06
+        (270131/000564/2023). A correção veio ANTES da assinatura: é o controle funcionando.
+      • **pendente** — a minuta é a peça mais recente dos autos e nada foi assinado depois
+        (070002/012954/2022). Processo em curso não é processo viciado.
+
+    Sem data legível dos dois lados, a ordem da árvore do SEI (cronológica) decide.
+    """
+    pos = {id(d): i for i, (_, d) in enumerate(minutas + assinados)}
+
+    def quando(d: dict) -> tuple:
+        dt = _primeira_data(d)
+        return (0, _data(dt).toordinal()) if dt and _data(dt) else (1, pos[id(d)])
+
+    alvo = min((quando(d) for m, d in minutas if m == n), default=None)
+    if alvo is None:
+        return False
+    posteriores = [(n2, quando(d)) for n2, d in assinados if quando(d) > alvo]
+    if not posteriores:
+        return False                       # pendente: nada foi celebrado depois da minuta
+    for n2, q2 in posteriores:             # superada: a minuta certa foi examinada antes de assinar
+        if any(m == n2 and alvo < quando(d) <= q2 for m, d in minutas):
+            return False
+    return True
+
+
 def ordinal_divergente(docs: list[dict]) -> dict:
     """A minuta aprovada corresponde a algum instrumento assinado? Há ordinal repetido?"""
-    minutas, assinados = [], []
+    minutas, assinados, sem_rodape = [], [], []
     for d in docs or []:
         n = _ordinal(d)
         if n is None:
@@ -158,16 +294,41 @@ def ordinal_divergente(docs: list[dict]) -> dict:
             continue                      # parecer/justificativa citam o ordinal, não o celebram
         if not _RE_INSTRUMENTO.search(d.get("texto") or ""):
             continue                      # sem fórmula de celebração não é o instrumento
-        (minutas if _e_minuta(d) else assinados).append((n, d))
+        if _RE_NAO_E_INSTRUMENTO.search(str(d.get("ref") or "")):
+            continue                      # extrato publicado / apostilamento não é o termo
+        if _e_minuta(d):
+            minutas.append((n, d))
+        elif assinaturas(d.get("texto") or ""):
+            assinados.append((n, d))
+        else:
+            # sem rodapé de assinatura eletrônica não se AFIRMA que o instrumento foi assinado:
+            # pode ter sido assinado fora do SEI, e ausência de rodapé não prova ausência de ato.
+            sem_rodape.append((n, d))
     ordinais_min = sorted({n for n, _ in minutas})
     ordinais_ass = sorted({n for n, _ in assinados})
-    # ordinal que aparece em MAIS DE UM instrumento assinado
-    vistos: dict[int, int] = {}
-    for n, _ in assinados:
-        vistos[n] = vistos.get(n, 0) + 1
-    duplicados = sorted(n for n, k in vistos.items() if k > 1)
+    # ordinal que aparece em MAIS DE UM instrumento assinado, DESCONTADA a mesma peça anexada
+    # duas vezes: em 270003/000382/2025 o 1º aditivo está na pasta como "Anexo SEI_…" e como
+    # "Anexo …_eDO" (com a publicação), com as MESMAS três assinaturas nas mesmas datas. Cópia do
+    # mesmo instrumento não é segundo instrumento.
+    vistos: dict[int, list[frozenset]] = {}
+    for n, d in assinados:
+        firmas = frozenset((_norm(a["nome"]), a["data"]) for a in assinaturas(d.get("texto") or ""))
+        vistos.setdefault(n, []).append(firmas)
+    duplicados = sorted(n for n, fs in vistos.items() if len({f for f in fs}) > 1)
+    # Hipótese inocente a declarar: reemissão do MESMO termo para colher assinatura que faltava —
+    # o conjunto de assinantes de uma cópia contém estritamente o da outra.
+    reemissao = {n for n in duplicados
+                 if any(a < b for a in ({_n for _n, _ in f} for f in vistos[n])
+                        for b in ({_n for _n, _ in f} for f in vistos[n]))}
 
-    orfas = [n for n in ordinais_min if n not in ordinais_ass] if ordinais_ass else []
+    # A minuta só é ÓRFÃ se o instrumento correspondente não estiver nos autos. Um termo que está
+    # na pasta mas sem rodapé de assinatura (assinado fora do SEI, ou capturado sem o fim do
+    # texto) não é ausência: afirmar orfandade aí acusa por lacuna de captura. Medido em
+    # 070002/001289/2022 — o 2º aditivo estava lá, sem rodapé (2026-08-03).
+    ordinais_sem_rodape = {n for n, _ in sem_rodape}
+    orfas = [n for n in ordinais_min
+             if n not in ordinais_ass and n not in ordinais_sem_rodape] if ordinais_ass else []
+    orfas = [n for n in orfas if _minuta_foi_atropelada(n, minutas, assinados)]
     if not duplicados and not orfas:
         return {"achado": False, "ordinal_minuta": ordinais_min[0] if ordinais_min else None,
                 "ordinais_assinados": ordinais_ass, "duplicados": []}
@@ -178,7 +339,10 @@ def ordinal_divergente(docs: list[dict]) -> dict:
                       f"{', '.join(f'{n}º' for n in ordinais_ass)})")
     if duplicados:
         partes.append("há mais de um instrumento assinado com o mesmo ordinal ("
-                      + ", ".join(f"{n}º" for n in duplicados) + ")")
+                      + ", ".join(f"{n}º" for n in duplicados) + ")"
+                      + (" — salvo reemissão do mesmo termo para colher assinatura faltante, "
+                         "hipótese que os assinantes de uma das cópias sugerem e precisa ser "
+                         "conferida nos autos" if reemissao else ""))
     ev = next((d for n, d in assinados if n in duplicados or n in ordinais_ass), None)
     return {
         "achado": True, "ordinal_minuta": ordinais_min[0] if ordinais_min else None,
@@ -196,17 +360,34 @@ def ordinal_divergente(docs: list[dict]) -> dict:
 def autorizacao_antes_do_parecer(docs: list[dict]) -> dict:
     """O ordenador autorizou a despesa antes da manifestação jurídica que a condiciona?"""
     aut = par = None
+    pareceres_sem_data: list[str] = []
     for d in docs or []:
         tipo = _norm(d.get("tipo") or "")
         texto = d.get("texto") or ""
-        if tipo in _TIPOS_AUTORIZACAO or _RE_CABECALHO_ATO.search(texto[:1500]):
+        e_aut = tipo in _TIPOS_AUTORIZACAO or _RE_CABECALHO_ATO.search(texto[:_CABECALHO_CHARS])
+        if e_aut and e_ato_de_autorizacao(texto):
             dt = _primeira_data(d)
             if dt and (aut is None or _data(dt) < _data(aut[0])):
                 aut = (dt, d)
-        elif tipo in _TIPOS_PARECER:
+        elif not e_aut and tipo in _TIPOS_PARECER and e_controle_juridico(d.get("ref") or "", texto):
             dt = _primeira_data(d)
-            if dt and (par is None or _data(dt) < _data(par[0])):
+            if not dt:
+                pareceres_sem_data.append(str(d.get("ref") or ""))
+            elif par is None or _data(dt) < _data(par[0]):
                 par = (dt, d)
+    # PARECER SEM DATA LEGÍVEL ⇒ não se compara. A comparação é "a autorização veio antes do
+    # PRIMEIRO parecer"; se há parecer cuja data não se lê, o primeiro pode ser justamente ele, e
+    # o achado estaria afirmando inversão sobre um universo incompleto. Medido em 2026-08-03:
+    # 6 dos 13 disparos eram disto — e a causa é a mesma dos 1.969 documentos que o arquivo guarda
+    # cortados em 20.000 caracteres, porque o rodapé de assinatura mora no FIM da peça.
+    if pareceres_sem_data:
+        return {"achado": False, "indisponivel": True,
+                "motivo": ("há parecer sem data de assinatura legível nos autos ("
+                           + "; ".join(p[:60] for p in pareceres_sem_data[:3])
+                           + ") — não se afirma inversão sem saber quando o primeiro foi assinado"),
+                "data_autorizacao": aut[0] if aut else None,
+                "data_parecer": par[0] if par else None,
+                "pareceres_sem_data": pareceres_sem_data}
     if not aut or not par:
         return {"achado": False, "indisponivel": True,
                 "motivo": ("sem data de assinatura na autorização e/ou no parecer — não se afirma "

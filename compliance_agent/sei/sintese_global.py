@@ -32,7 +32,8 @@ import re
 from collections import defaultdict
 from datetime import date
 
-from compliance_agent.sei.instrumento_assinatura import assinaturas
+from compliance_agent.sei.instrumento_assinatura import (
+    _RE_CONTROLE_JURIDICO, _RE_NAO_E_PARECER, assinaturas)
 
 _RE_VALOR = re.compile(r"R\$\s*([\d\.]{1,15},\d{2})")
 _RE_CONTRATO = re.compile(r"contrato\s*(?:n?[ºo°.]?\s*)?(\d{1,4}\s*/\s*\d{4})", re.I)
@@ -51,12 +52,8 @@ _TIPOS_CONTROLE_PREVIO = {"parecer", "parecer_juridico", "manifestacao_juridica"
 # Formulário de conformidade NÃO é peça opinativa: quem preenche checklist não exerce o controle
 # prévio. Falso positivo medido (080002/004433/2026): "Checklist Consolidado PGE" passava porque
 # tem 'PGE' no título. Mesma doutrina do `_RE_BOILERPLATE` do parecer_cumprimento.
-_RE_NAO_E_PARECER = re.compile(
-    r"checklist|check-?list|lista\s+de\s+verifica|declara[çc][ãa]o\s+de\s+conformidade|"
-    r"anexo\s+[úu]nico|resolu[çc][ãa]o\s+conjunta", re.I)
-_RE_CONTROLE_JURIDICO = re.compile(
-    r"jur[íi]dic|\bPGE\b|\bPGM\b|procuradoria|assessoria\s+jur|assjur|\bCGE\b|"
-    r"controladoria|auditoria|controle\s+interno", re.I)
+# Os dois padrões vivem em `instrumento_assinatura` (importados acima): o I2 precisava da MESMA
+# doutrina e duas cópias divergiriam — foi o que já aconteceu com o teto de dispensa.
 # Atos que DECIDEM — autorizam, homologam, contratam. Liquidação e desembolso são expediente.
 _TIPOS_DECISORIOS = {"autorizacao_despesa", "homologacao", "adjudicacao", "contrato", "aditivo",
                      "contratacao_direta", "ata_rp"}

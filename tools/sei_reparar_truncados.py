@@ -99,17 +99,29 @@ def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
                 break
         if len(alvos) >= max_n:
             break
+    sumidos = 0
     if aplicar and alvos:
         QUARENTENA.mkdir(parents=True, exist_ok=True)
         for f, numero in alvos:
-            shutil.move(str(f), str(QUARENTENA / f.name))
+            try:
+                shutil.move(str(f), str(QUARENTENA / f.name))
+            except FileNotFoundError:
+                # O cache existia na varredura e sumiu antes do move: o compactador troca
+                # `.json` por `.json.zst` (e o reindex recria o bruto) enquanto isto roda. A
+                # exceção subia e MATAVA a rodada depois de já ter afastado os caches
+                # anteriores — e o progresso, escrito só no fim, nunca era gravado: os
+                # processos ficavam sem cache E marcados como lidos, que é exatamente o que o
+                # comentário de `reparar()` adverte. Medido no cron de 05:40 (2026-08-03).
+                sumidos += 1
+                continue
             feitos[numero] = {"n_docs": 0, "tentativas": 0,
                               "em": datetime.now().isoformat(),
                               "reparado_cap21k_em": datetime.now().isoformat()}
         tmp = PROGRESS.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(prog, ensure_ascii=False))
         tmp.replace(PROGRESS)
-    return {"encontrados": len(alvos), "aplicado": aplicar, "quarentena": str(QUARENTENA)}
+    return {"encontrados": len(alvos), "aplicado": aplicar, "sumidos_no_move": sumidos,
+            "quarentena": str(QUARENTENA)}
 
 
 def reparar_sem_texto(aplicar: bool = False, max_n: int = 60) -> dict:
@@ -177,6 +189,8 @@ def main() -> None:
     if args.cap:
         r = reparar_cap(aplicar=args.aplicar, max_n=args.max)
         print(f"cap21k: {r['encontrados']} cache(s) na rodada · aplicado={r['aplicado']}"
+              + (f" · {r['sumidos_no_move']} sumiram antes do move"
+                 if r.get("sumidos_no_move") else "")
               + (f" · {r.get('erro')}" if r.get("erro") else ""))
         return
     r = reparar(aplicar=args.aplicar)

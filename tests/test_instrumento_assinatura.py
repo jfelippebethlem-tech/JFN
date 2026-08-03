@@ -529,3 +529,171 @@ def test_I4_declara_a_hipotese_que_o_inocenta():
     r = IA.ordinal_incoerente_com_prazo([d])
     assert r["achado"] is True
     assert "valor" in r["diz"].lower() or "não prorrog" in r["diz"].lower()
+
+
+# ═══════════ Validação caso a caso dos disparos de I1 e I2 (2026-08-03) ═══════════
+# Pendência declarada no handoff anterior: I1 e I2 eram os únicos códigos AMOSTRADOS, não abertos
+# documento a documento. Abertos agora, sobre os 25 disparos do acervo real. I1 caiu de 10 para 3
+# e I2 de 15 para 1 — e o caso que deu origem aos dois (270131/000548/2023) sobreviveu inteiro.
+# Cada teste abaixo é um falso positivo LIDO no acervo, não uma hipótese.
+
+def test_I1_ordinal_vem_da_formula_do_proprio_instrumento():
+    """O Contrato 36/2023 do INEA cita "PRIMEIRO TERMO ADITIVO" numa cláusula e era contado como
+    o 1º aditivo, colidindo com o aditivo verdadeiro (070002/006145/2024)."""
+    contrato = _doc("Contrato 36/2023 - INEA", "contrato",
+                    "CONTRATO N.º 36/2023 DE PRESTAÇÃO DE SERVIÇOS QUE ENTRE SI CELEBRAM o "
+                    "Estado e a empresa. CLÁUSULA DÉCIMA: o PRIMEIRO TERMO ADITIVO poderá "
+                    "prorrogar a vigência.", [("Ana", "Presidente", "01/03/2023", "10:00")])
+    aditivo = _doc("Termo Aditivo 45/2024", "aditivo",
+                   "PRIMEIRO TERMO ADITIVO AO CONTRATO INEA 36/2023, QUE ENTRE SI CELEBRAM O "
+                   "INSTITUTO e a empresa.", [("Ana", "Presidente", "01/03/2024", "10:00")])
+    r = IA.ordinal_divergente([contrato, aditivo])
+    assert r["achado"] is False and r["duplicados"] == []
+
+
+def test_I1_le_o_ordinal_por_extenso():
+    """O SEI-RJ grafa "SEGUNDO TERMO ADITIVO" tanto quanto "2º" — sem extenso o aditivo caía no
+    ordinal de outra passagem do texto."""
+    d = _doc("Termo Aditivo 63/2024", "aditivo",
+             "SEGUNDO TERMO ADITIVO AO CONTRATO INEA 36/2023, QUE ENTRE SI CELEBRAM.",
+             [("Ana", "Presidente", "01/06/2024", "10:00")])
+    assert IA._ordinal(d) == 2
+
+
+@pytest.mark.parametrize("titulo", ["Publicação do 1º TA ao Contrato nº 016/2021",
+                                    "Termo de Apostilamento", "Extrato do 1º Termo Aditivo"])
+def test_I1_publicacao_e_apostilamento_nao_sao_o_instrumento(titulo):
+    """O extrato publicado no D.O. e o apostilamento entravam como instrumento assinado e
+    produziam ordinal duplicado (420001/004224/2024 e mais três)."""
+    real = _doc("Termo Aditivo - 1º TA", "aditivo",
+                "1º TERMO ADITIVO AO CONTRATO Nº 016/2021, QUE ENTRE SI CELEBRAM.",
+                [("Ana", "Diretora", "01/06/2024", "10:00")])
+    extrato = _doc(titulo, "contrato",
+                   "1º TERMO ADITIVO AO CONTRATO Nº 016/2021 QUE ENTRE SI CELEBRAM. "
+                   "CLÁUSULA PRIMEIRA DO OBJETO.", [("Ana", "Diretora", "02/06/2024", "10:00")])
+    assert IA.ordinal_divergente([real, extrato])["achado"] is False
+
+
+def test_I1_minuta_mais_recente_que_todo_assinado_e_processo_EM_CURSO():
+    """Minuta do 2º aditivo depois do 1º assinado é instrução em andamento, não peça atropelada
+    (070002/012954/2022)."""
+    assinado = _doc("Termo Aditivo 90186554", "aditivo",
+                    "1º TERMO ADITIVO AO CONTRATO Nº 5/2022, QUE ENTRE SI CELEBRAM.",
+                    [("Adib", "Presidente", "27/12/2024", "10:00")])
+    minuta = _doc("Minuta de Termo Aditivo (98441299)", "aditivo",
+                  "MINUTA. 2º TERMO ADITIVO AO CONTRATO Nº 5/2022, QUE ENTRE SI CELEBRAM.",
+                  [("Renato", "Oficial", "01/03/2025", "10:00")])
+    assert IA.ordinal_divergente([assinado, minuta])["achado"] is False
+
+
+def test_I1_minuta_corrigida_ANTES_da_assinatura_e_o_controle_funcionando():
+    """Minuta do 2º em 06/06, minuta do 3º em 11/06, assina-se o 3º em 20/06: a correção veio
+    antes da celebração (270131/000564/2023). Acusar aí é punir o processo que se corrigiu."""
+    m2 = _doc("Minuta de Termo Aditivo 76079615", "aditivo",
+              "MINUTA. 2º TERMO ADITIVO AO CONTRATO Nº 9/2023, QUE ENTRE SI CELEBRAM.",
+              [("Renato", "Oficial", "06/06/2024", "10:00")])
+    m3 = _doc("Minuta de Termo Aditivo 76516642", "aditivo",
+              "MINUTA. 3º TERMO ADITIVO AO CONTRATO Nº 9/2023, QUE ENTRE SI CELEBRAM.",
+              [("Renato", "Oficial", "11/06/2024", "10:00")])
+    ass = _doc("Termo Aditivo 77050539", "aditivo",
+               "3º TERMO ADITIVO AO CONTRATO Nº 9/2023, QUE ENTRE SI CELEBRAM.",
+               [("Pedro", "Ordenador", "20/06/2024", "10:00")])
+    assert IA.ordinal_divergente([m2, m3, ass])["achado"] is False
+
+
+def test_I1_minuta_atropelada_continua_sendo_achado():
+    """O caso que deu origem ao detector: minuta do 1º em 16/05, instrumento do 2º em 03/06, sem
+    nenhuma minuta do 2º pelo meio (270131/000548/2023)."""
+    m = _doc("Minuta de Termo Aditivo ao Contrato 74778400", "aditivo",
+             "MINUTA. 1º TERMO ADITIVO AO CONTRATO Nº 16/2023, QUE ENTRE SI CELEBRAM.",
+             [("Renato", "Oficial", "16/05/2024", "10:00")])
+    a = _doc("Termo Aditivo 75769317", "aditivo",
+             "2º TERMO ADITIVO AO CONTRATO Nº 16/2023, QUE ENTRE SI CELEBRAM.",
+             [("Rachel", "Ordenadora", "03/06/2024", "10:00")])
+    assert IA.ordinal_divergente([m, a])["achado"] is True
+
+
+def test_I1_mesma_peca_anexada_duas_vezes_nao_sao_dois_instrumentos():
+    """O 1º aditivo está na pasta como "Anexo SEI_…" e como "Anexo …_eDO", com as MESMAS
+    assinaturas nas mesmas datas (270003/000382/2025)."""
+    firmas = [("Luiz", "Secretário", "22/06/2023", "10:00"),
+              ("Chrizantho", "Diretor", "23/06/2023", "11:00")]
+    a = _doc("Anexo SEI_54299221_Termo_Aditivo", "aditivo",
+             "1º TERMO ADITIVO AO CONTRATO N° 89/2022, QUE ENTRE SI CELEBRAM.", firmas)
+    b = _doc("Anexo termo_aditivo_contrato_89.2022eDO", "aditivo",
+             "1º TERMO ADITIVO AO CONTRATO N° 89/2022, QUE ENTRE SI CELEBRAM.", firmas)
+    assert IA.ordinal_divergente([a, b])["achado"] is False
+
+
+def test_I1_duplicata_com_assinante_a_mais_declara_a_hipotese_de_reemissao():
+    """Duas cópias do 3º TA, a segunda com um assinante a mais: pode ser reemissão para colher
+    assinatura faltante, e o achado tem de dizer isso (270003/000382/2025)."""
+    a = _doc("Termo Aditivo 102859182", "aditivo",
+             "3º TERMO ADITIVO AO CONTRATO N° 89/2022, QUE ENTRE SI CELEBRAM.",
+             [("Luciano", "Diretor", "20/06/2025", "10:00")])
+    b = _doc("Termo Aditivo 102996985", "aditivo",
+             "3º TERMO ADITIVO AO CONTRATO N° 89/2022, QUE ENTRE SI CELEBRAM.",
+             [("Luiz", "Secretário", "23/06/2025", "10:00"),
+              ("Luciano", "Diretor", "23/06/2025", "11:00")])
+    r = IA.ordinal_divergente([a, b])
+    assert r["achado"] is True and "reemiss" in r["diz"]
+
+
+@pytest.mark.parametrize("titulo,corpo", [
+    ("Checklist 44733775", "CHECKLIST: PRORROGAÇÃO CONTRATUAL. Itens verificados."),
+    ("Anexo Único - Resolução PGE/SEPLAG nº 187/2021",
+     "DECLARAÇÃO DE CONFORMIDADE. DECLARO A CONFORMIDADE da minuta de edital com a "
+     "minuta-padrão estabelecida pela Procuradoria Geral do Estado."),
+    ("Ato de Designação de Servidor 53213796",
+     "ATO DE DESIGNAÇÃO DE SERVIDOR. Designo a servidora para elaborar a minuta de edital."),
+    ("Correspondência Interna - NA 1232",
+     "CI Nº1232. Assunto: solicitação de troca de marca. A comissão possui parecer favorável."),
+])
+def test_I2_peca_que_nao_e_manifestacao_juridica_nao_serve_de_marco(titulo, corpo):
+    """Quatro dos quinze disparos do I2 comparavam a autorização com peça que não é o controle
+    prévio do art. 53 — checklist, declaração de conformidade da própria unidade, ato de
+    designação e correspondência interna. Mesma doutrina que já derrubou 71 disparos do G3."""
+    aut = _doc("Declaração do Ordenador de Despesas", "autorizacao_despesa",
+               "DECLARAÇÃO DO ORDENADOR DE DESPESA. I - AUTORIZO a reserva orçamentária.",
+               [("Rachel", "Ordenadora", "16/05/2024", "10:00")])
+    falso = _doc(titulo, "parecer_juridico", corpo, [("Bruno", "Chefe", "22/05/2024", "10:00")])
+    assert IA.autorizacao_antes_do_parecer([aut, falso])["achado"] is False
+
+
+def test_I2_etiqueta_do_arquivo_nao_prova_que_o_documento_e_parecer():
+    """O arquivo compacto prepõe "[título] (fase: … · tipo: parecer_juridico)" ao .txt. A palavra
+    `juridico` entrava no texto e o documento provava a si mesmo — o "Parecer de Análise para
+    Emissão DL" da Diretoria Administrativa Financeira passava por isso (080002/006705/2024)."""
+    assert IA.e_controle_juridico(
+        "Parecer de Análise para Emissão DL 83167512",
+        "[Parecer de Análise para Emissão DL] (fase: controle · tipo: parecer_juridico)\n\n"
+        "Fundação Saúde. Diretoria Administrativa Financeira.\n"
+        "Procedida a Revisão do processo referente a indenização de serviços prestados.") is False
+
+
+def test_I2_rotulo_de_campo_do_formulario_da_NAD_nao_e_o_ato():
+    """Toda Nota de Autorização de Despesa traz impresso "39 - APROVO E AUTORIZO ORDENADOR /
+    AUTORIDADE DELEGADA" como cabeçalho de campo. Cinco disparos vinham de ler o rótulo do
+    formulário como a decisão do ordenador (080002/006705/2024 e outros quatro)."""
+    nad = ("Apresentamos a dotação orçamentária solicitada conforme detalhamento da conta "
+           "contábil 622110101.\n37 - MATRÍCULA\t38 - DATA\n"
+           "39 - APROVO E AUTORIZO ORDENADOR / AUTORIDADE DELEGADA\t40 - ATO DE DELEGAÇÃO\n")
+    assert IA.e_ato_de_autorizacao(nad) is False
+    assert IA.e_ato_de_autorizacao("DECLARO: I - AUTORIZO a reserva orçamentária.") is True
+
+
+def test_I2_parecer_sem_data_legivel_torna_a_comparacao_indisponivel():
+    """A comparação é com o PRIMEIRO parecer. Havendo parecer cuja data não se lê — o rodapé de
+    assinatura mora no fim, e 1.969 documentos do arquivo estão cortados em 20.000 caracteres —,
+    o primeiro pode ser justamente ele. INDISPONÍVEL ≠ irregular."""
+    aut = _doc("Declaração do Ordenador", "autorizacao_despesa",
+               "ATO DO ORDENADOR DE DESPESAS. AUTORIZO a despesa.",
+               [("Rachel", "Ordenadora", "15/03/2024", "10:00")])
+    sem_data = _doc("Parecer 104 (67843319)", "parecer_juridico",
+                    "PARECER Nº 104. Assessoria Jurídica. Opino pelo prosseguimento.")
+    com_data = _doc("Parecer 639", "parecer_juridico",
+                    "PARECER Nº 639. Assessoria Jurídica. Opino.",
+                    [("Marcello", "Procurador", "28/08/2024", "10:00")])
+    r = IA.autorizacao_antes_do_parecer([aut, sem_data, com_data])
+    assert r["achado"] is False and r["indisponivel"] is True
+    assert "Parecer 104" in r["motivo"]
