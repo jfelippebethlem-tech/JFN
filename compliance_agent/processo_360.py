@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import sqlite3
 from pathlib import Path
@@ -149,7 +150,16 @@ def _cnpj_do_texto(pasta: Path, docs: list[dict]) -> str | None:
     return cont.most_common(1)[0][0] if cont else None
 
 
-def _texto_de(pasta: Path, doc: dict, teto: int = 20_000) -> str:
+# LER TUDO é o ponto do projeto (diretriz do dono, 2026-08-03). O corte de 20.000 caracteres
+# alimentava o acatamento, a execução e a triagem: o Parecer 462 tem 54.900 e a CONCLUSÃO — onde o
+# parecerista impõe as condicionantes — ficava fora. Conclusão de parecer mora no fim.
+# A separação que importa: regex sobre disco não tem custo por token; LLM tem, e janela finita.
+TETO_CHARS_DETERMINISTICO = int(os.environ.get("JFN_360_TETO_CHARS", "400000"))
+TETO_CHARS_LLM = int(os.environ.get("JFN_360_TETO_CHARS_LLM", "20000"))
+
+
+def _texto_de(pasta: Path, doc: dict, teto: int | None = None) -> str:
+    teto = TETO_CHARS_DETERMINISTICO if teto is None else teto
     rel = doc.get("texto")
     if rel:
         p = pasta / rel
@@ -311,7 +321,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     try:
         leitura = {"texto": "", "documentos": [d["titulo"] for d in docs],
                    "conteudo_documentos": [
-                       {"doc": d["titulo"], "conteudo": _texto_de(pasta, d)}
+                       {"doc": d["titulo"], "conteudo": _texto_de(pasta, d, TETO_CHARS_LLM)}
                        for d in docs if d.get("texto")]}
         pej = asyncio.run(_analisar_pej(numero, leitura=leitura))
         if pej.get("status") == "OK":
