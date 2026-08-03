@@ -41,6 +41,12 @@ _RE_DATA = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 # Controle prévio (art. 53 da Lei 14.133 / art. 38 da 8.666): parecer JURÍDICO ou de controle —
 # não o "parecer de análise" que integra o expediente de pagamento.
 _TIPOS_CONTROLE_PREVIO = {"parecer", "parecer_juridico", "manifestacao_juridica", "cota_juridica"}
+# Formulário de conformidade NÃO é peça opinativa: quem preenche checklist não exerce o controle
+# prévio. Falso positivo medido (080002/004433/2026): "Checklist Consolidado PGE" passava porque
+# tem 'PGE' no título. Mesma doutrina do `_RE_BOILERPLATE` do parecer_cumprimento.
+_RE_NAO_E_PARECER = re.compile(
+    r"checklist|check-?list|lista\s+de\s+verifica|declara[çc][ãa]o\s+de\s+conformidade|"
+    r"anexo\s+[úu]nico|resolu[çc][ãa]o\s+conjunta", re.I)
 _RE_CONTROLE_JURIDICO = re.compile(
     r"jur[íi]dic|\bPGE\b|\bPGM\b|procuradoria|assessoria\s+jur|assjur|\bCGE\b|"
     r"controladoria|auditoria|controle\s+interno", re.I)
@@ -190,7 +196,9 @@ def contradicoes(fs: list[dict]) -> list[dict]:
     #    Controle prévio é o parecer JURÍDICO/de controle do art. 53; decisão é o ato que autoriza,
     #    homologa ou contrata. Expediente de liquidação não é nem um nem outro.
     de_controle = {n for f in fs
-                   if f["tipo"] in _TIPOS_CONTROLE_PREVIO and _RE_CONTROLE_JURIDICO.search(f["ref"])
+                   if f["tipo"] in _TIPOS_CONTROLE_PREVIO
+                   and _RE_CONTROLE_JURIDICO.search(f["ref"])
+                   and not _RE_NAO_E_PARECER.search(f["ref"])
                    for n in f["assinantes"]}
     de_decisao = {n for f in fs if f["tipo"] in _TIPOS_DECISORIOS for n in f["assinantes"]}
     for nome in sorted(de_controle & de_decisao):

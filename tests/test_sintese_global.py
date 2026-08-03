@@ -147,3 +147,17 @@ def test_G3_acusa_parecer_JURIDICO_com_ato_que_DECIDE():
     ])
     c = [x for x in S.contradicoes(fs) if x["codigo"] == "G3_MESMA_PESSOA_CONTROLA_E_DECIDE"]
     assert c and "Carlos Lima" in c[0]["diz"]
+
+
+def test_G3_nao_confunde_CHECKLIST_com_parecer():
+    """Segundo falso positivo do G3, medido no acervo (080002/004433/2026): 'Checklist Consolidado
+    PGE' é tipado `parecer` e traz 'PGE' no título, mas checklist é formulário de conformidade —
+    quem o preenche não exerce o controle prévio do art. 53."""
+    fs = S.fichas([
+        _doc(1, "Checklist Checklist Consolidado PGE (126279494)", "parecer", "controle",
+             "Itens verificados.", "Bernard Mothe", "01/03/2026"),
+        _doc(2, "Nota de Autorização de Despesa - NAD 1519", "autorizacao_despesa", "despesa",
+             "AUTORIZO.", "Bernard Mothe", "05/03/2026"),
+    ])
+    assert not [c for c in S.contradicoes(fs)
+                if c["codigo"] == "G3_MESMA_PESSOA_CONTROLA_E_DECIDE"]
