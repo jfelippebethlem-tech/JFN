@@ -160,34 +160,26 @@ def contradicoes(fs: list[dict]) -> list[dict]:
     """CONFRONTO: o que só aparece olhando o conjunto. Cada item cita os documentos envolvidos."""
     achados: list[dict] = []
 
-    # 1) fase que TERMINA depois do início da seguinte — a ordem dos atos é o esqueleto do controle
-    fases_com_data = {}
-    for fase, r in por_fase(fs).items():
-        if r["de"] and r["ate"]:
-            fases_com_data[fase] = (r["de"], r["ate"])
-    seq = [f for f in ORDEM_FASES if f in fases_com_data and f not in ("tramitacao", "indefinida")]
-    for a, b in zip(seq, seq[1:]):
-        fim_a, ini_b = fases_com_data[a][1], fases_com_data[b][0]
-        if _cmp(fim_a) > _cmp(ini_b):
-            achados.append({
-                "codigo": "G1_FASES_SOBREPOSTAS",
-                "diz": (f"a fase de {a} só termina em {fim_a}, depois de {b} começar em {ini_b} — "
-                        "as etapas do processo se sobrepõem no tempo"),
-                "evidencia": f"{a}: até {fim_a} · {b}: desde {ini_b}"})
-
-    # 2) o MESMO documento citando contrato diferente do que o processo discute
-    todos = [_num_contrato(c) for f in fs for c in f["contratos_citados"]]
-    if todos:
-        principal = max(set(todos), key=todos.count)
-        for f in fs:
-            chaves = {_num_contrato(c) for c in f["contratos_citados"]}
-            alheios = [c for c in f["contratos_citados"] if _num_contrato(c) != principal]
-            if alheios and principal not in chaves:
-                achados.append({
-                    "codigo": "G2_CONTRATO_ALHEIO_NO_DOCUMENTO",
-                    "diz": (f"o documento cita o contrato {', '.join(alheios)} enquanto o processo "
-                            f"discute o {principal}"),
-                    "evidencia": f["ref"][:90]})
+    # G1 (sobreposição de fases) e G2 (documento citando outro contrato) foram REMOVIDOS em
+    # 2026-08-03, depois de validá-los caso a caso no acervo — a mesma conferência que já tinha
+    # derrubado o G3 de 73 para 2. O que a leitura mostrou:
+    #
+    #   G1, 202 ocorrências: os pares mais frequentes eram `despesa × controle` (94×),
+    #   `execucao × despesa` (31×) e `contratacao × despesa` (25×). Nenhum é defeito — paga-se
+    #   ENQUANTO se executa, e o controle atravessa o processo inteiro. A inversão que importa
+    #   (contrato antes do parecer) já é apurada pelo `cadeia_processo.analisar_cadeia` e pelo
+    #   `I2_AUTORIZACAO_ANTES_DO_PARECER`, ambos por MARCO, não por intervalo de fase.
+    #
+    #   G2, 305 ocorrências: o "contrato do processo" saía de uma heurística de frequência sobre
+    #   todo o texto, e o número exibido era a CHAVE NORMALIZADA — num caso o achado dizia "cita o
+    #   contrato 010/2024 enquanto o processo discute o 1/2024" sendo que o documento ERA o
+    #   "Contrato Nº 010/2024". Citar outro contrato é normal em publicação de DOERJ, ata de
+    #   registro e ato de inexigibilidade. O caso REAL que originou a ideia — declaração que
+    #   atesta conformidade de outro ajuste — já é o `I5_DECLARACAO_DE_OUTRO_CONTRATO`, que apura
+    #   o instrumento pela fórmula de celebração e dispara 2 vezes no acervo, não 305.
+    #
+    # Detector que não sobrevive à conferência sai: alarme que o fiscal aprende a ignorar é pior
+    # que alarme nenhum, porque some junto com ele o que era verdadeiro.
 
     # 3) quem exerce o CONTROLE PRÉVIO e também DECIDE. Estreitado em 2026-08-03 depois de
     #    amostrar o acervo: com "fase controle × fase despesa" o achado disparava 73 vezes, e o

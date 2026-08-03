@@ -38,7 +38,31 @@ def test_reducao_por_fase_monta_o_esqueleto():
     assert r["contratacao"]["de"] == "01/04/2024" and r["contratacao"]["ate"] == "01/05/2024"
 
 
-def test_confronto_acha_fase_que_termina_depois_da_seguinte():
+def test_G1_REMOVIDO_sobreposicao_de_fases_nao_e_defeito():
+    """Validado caso a caso no acervo (2026-08-03): 202 ocorrências, e os pares mais frequentes
+    eram `despesa × controle` (94×), `execucao × despesa` (31×) e `contratacao × despesa` (25×).
+    Paga-se ENQUANTO se executa; o controle atravessa o processo. A inversão que importa já é
+    apurada por MARCO (cadeia_processo e I2_AUTORIZACAO_ANTES_DO_PARECER)."""
+    fs = S.fichas([
+        _doc(1, "Contrato", "contrato", "contratacao", "x", "Ana", "01/09/2024"),
+        _doc(2, "OB", "ordem_bancaria", "despesa", "x", "Ana", "01/07/2024"),
+    ])
+    assert not [c for c in S.contradicoes(fs) if c["codigo"] == "G1_FASES_SOBREPOSTAS"]
+
+
+def test_G2_REMOVIDO_citar_outro_contrato_nao_e_defeito():
+    """305 ocorrências e o achado chegou a dizer 'cita o contrato 010/2024 enquanto o processo
+    discute o 1/2024' — sendo que o documento ERA o 'Contrato Nº 010/2024'. O caso real (declaração
+    que atesta conformidade de OUTRO ajuste) é o I5_DECLARACAO_DE_OUTRO_CONTRATO, com 2 disparos."""
+    fs = S.fichas([
+        _doc(1, "Contrato Nº 010/2024", "contrato", "contratacao", "CONTRATO Nº 010/2024."),
+        _doc(2, "Publicação DOERJ", "anexo", "contratacao", "extrato do contrato 37/2024."),
+    ])
+    assert not [c for c in S.contradicoes(fs)
+                if c["codigo"] in ("G1_FASES_SOBREPOSTAS", "G2_CONTRATO_ALHEIO_NO_DOCUMENTO")]
+
+
+def _removido_test_confronto_acha_fase_que_termina_depois_da_seguinte():
     fs = S.fichas([
         _doc(1, "ETP", "etp", "planejamento", "x", "Ana", "01/06/2024"),
         _doc(2, "ETP2", "etp", "planejamento", "x", "Ana", "01/09/2024"),
@@ -48,7 +72,7 @@ def test_confronto_acha_fase_que_termina_depois_da_seguinte():
     assert "G1_FASES_SOBREPOSTAS" in cods
 
 
-def test_confronto_acha_documento_de_contrato_alheio():
+def _removido_test_confronto_acha_documento_de_contrato_alheio():
     fs = S.fichas([
         _doc(1, "TA", "aditivo", "contratacao", "1º TERMO ADITIVO AO CONTRATO Nº 16/2023."),
         _doc(2, "TA2", "aditivo", "contratacao", "CONTRATO Nº 16/2023 prorrogado."),
@@ -109,7 +133,7 @@ def test_data_ordena_por_ANO_e_nao_por_dia():
     assert r["de"] == "04/09/2024" and r["ate"] == "08/12/2025", r
 
 
-def test_zero_a_esquerda_nao_faz_do_mesmo_contrato_dois():
+def _removido_test_zero_a_esquerda_nao_faz_do_mesmo_contrato_dois():
     """Falso positivo medido ao ligar a síntese ao 360: '016/2023' e '16/2023' são o MESMO
     contrato, e a contradição saía dizendo que o documento falava de contrato alheio."""
     fs = S.fichas([
