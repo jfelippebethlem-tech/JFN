@@ -61,6 +61,16 @@ def _data(txt: str) -> date | None:
     return None
 
 
+def _num_contrato(s: str) -> str:
+    """'016/2023' e '16/2023' são o MESMO contrato — o zero à esquerda é estilo de redação.
+
+    Falso positivo medido ao ligar a síntese ao 360: a contradição G2 acusava documento de
+    contrato alheio comparando as duas grafias do mesmo ajuste.
+    """
+    n, _, ano = re.sub(r"\s+", "", s or "").partition("/")
+    return f"{n.lstrip('0') or '0'}/{ano}"
+
+
 def _cmp(dstr: str) -> tuple:
     """Chave de ordenação de 'dd/mm/aaaa' — ANO primeiro. Usada na redução e no confronto."""
     try:
@@ -89,6 +99,8 @@ def fichas(docs: list[dict], vereditos: dict[int, dict] | None = None) -> list[d
             "data": (ass[0]["data"] if ass else None),
             "assinantes": [a["nome"] for a in ass],
             "valor": _valor(texto),
+            # guarda como ESTÁ ESCRITO no documento (o entregável cita o número tal qual);
+            # a comparação é que normaliza o zero à esquerda, em `contradicoes`.
             "contratos_citados": sorted({re.sub(r"\s+", "", m.group(1))
                                          for m in _RE_CONTRATO.finditer(texto)}),
             "escala": v.get("escala"),
@@ -148,12 +160,13 @@ def contradicoes(fs: list[dict]) -> list[dict]:
                 "evidencia": f"{a}: até {fim_a} · {b}: desde {ini_b}"})
 
     # 2) o MESMO documento citando contrato diferente do que o processo discute
-    todos = [c for f in fs for c in f["contratos_citados"]]
+    todos = [_num_contrato(c) for f in fs for c in f["contratos_citados"]]
     if todos:
         principal = max(set(todos), key=todos.count)
         for f in fs:
-            alheios = [c for c in f["contratos_citados"] if c != principal]
-            if alheios and principal not in f["contratos_citados"]:
+            chaves = {_num_contrato(c) for c in f["contratos_citados"]}
+            alheios = [c for c in f["contratos_citados"] if _num_contrato(c) != principal]
+            if alheios and principal not in chaves:
                 achados.append({
                     "codigo": "G2_CONTRATO_ALHEIO_NO_DOCUMENTO",
                     "diz": (f"o documento cita o contrato {', '.join(alheios)} enquanto o processo "

@@ -3991,8 +3991,52 @@ void main(){
       b("/api/processo/avaliar", "Avaliar um processo SEI ainda não avaliado", "Dispara a avaliação 360 em background (fases, marcos, A1-A5, acatamento, juízo por documento). Use quando a consulta disser que o processo ainda não foi avaliado.", "numero"),
       b("/api/conjunto/orgao", "Avaliação de conjunto dos certames", "Lê o órgão como conjunto, não certame a certame — §5 da metodologia.", "orgao")
     ].join("") + `</div><div id="pc-out"></div>`;
+    h += sec("Leitura de conjunto de um processo SEI");
+    h += card(`<div class="dim">O esqueleto do processo fase a fase, as contradições entre documentos
+      e a leitura do todo — sobre TODOS os documentos capturados, sem corte de páginas.</div>
+    <div class="btns" style="margin-top:10px">
+      <input id="sg-num" class="inp" placeholder="SEI-070002/001289/2022" style="min-width:260px">
+      <button type="button" class="btn" onclick="sinteseProcesso()">Ler o conjunto</button>
+    </div><div id="sg-out"></div>`);
     h += `<div class="note">Toda peça passa pelo gate de neutralidade (nenhum nome interno) e pelo gate de citações (nenhum acórdão inexistente).</div>`;
     return h;
+  }
+  async function sinteseProcesso() {
+    const v = ($("sg-num")?.value || "").trim();
+    const o = $("sg-out");
+    if (!v) {
+      o.innerHTML = card('<div class="warn">Informe o número do processo.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">lendo o conjunto…</div>');
+    try {
+      const d = await J("/api/processo?numero=" + encodeURIComponent(v));
+      if (d && d.rodando) {
+        o.innerHTML = card('<div class="dim">avaliação em curso — tente em instantes.</div>');
+        return;
+      }
+      const a = d && (d.avaliacao || d) || {};
+      const s = a.sintese;
+      if (!s || s.indisponivel) {
+        o.innerHTML = card(`<div class="warn">Síntese INDISPONÍVEL para este processo${s && s.motivo ? ": " + esc(s.motivo) : ""} — indisponível não é ausência de irregularidade.</div>`);
+        return;
+      }
+      const fases = Object.entries(s.fases || {}).map(([f, r]) => `<tr><td>${esc(f)}</td><td class="r">${r.n_docs}</td>
+       <td>${r.de ? esc(r.de) + " → " + esc(r.ate) : '<span class="dim">sem data</span>'}</td>
+       <td class="r">${r.viciados ? '<b class="bad">' + r.viciados + "</b>" : "—"}</td>
+       <td class="dim">${(r.assinantes || []).slice(0, 3).map(esc).join(", ") || "—"}</td></tr>`).join("");
+      const contr = (s.contradicoes || []).map((c) => `<li><b>${esc(c.codigo)}</b> — ${esc(c.diz)}<br><span class="dim">${esc(c.evidencia || "")}</span></li>`).join("");
+      o.innerHTML = card(
+        `<div style="font-weight:700">${esc(v)}</div>
+       <div style="margin:8px 0">${esc(s.leitura || "")}</div>
+       <table class="tb"><thead><tr><th>Fase</th><th class="r">Docs</th><th>Período</th>
+         <th class="r">Viciados</th><th>Assinantes</th></tr></thead><tbody>${fases}</tbody></table>
+       ${contr ? `<div style="margin-top:10px;font-weight:700">Contradições entre documentos (${s.contradicoes.length})</div><ul>${contr}</ul>` : '<div class="dim" style="margin-top:8px">Nenhuma contradição entre documentos pela leitura do conjunto.</div>'}
+       ${s.prosa ? `<div style="margin-top:10px">${esc(s.prosa)}</div>` : ""}`
+      );
+    } catch (e) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
+    }
   }
   async function pecaGerar(rota, campo) {
     const v = ($("pc-alvo")?.value || "").trim();
@@ -6301,6 +6345,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     montarTabs,
     ordenar,
     pecaGerar,
+    sinteseProcesso,
     seiArvore,
     seiBaixarZip,
     sweep,

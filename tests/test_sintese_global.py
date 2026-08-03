@@ -106,3 +106,14 @@ def test_data_ordena_por_ANO_e_nao_por_dia():
     ])
     r = S.por_fase(fs)["despesa"]
     assert r["de"] == "04/09/2024" and r["ate"] == "08/12/2025", r
+
+
+def test_zero_a_esquerda_nao_faz_do_mesmo_contrato_dois():
+    """Falso positivo medido ao ligar a síntese ao 360: '016/2023' e '16/2023' são o MESMO
+    contrato, e a contradição saía dizendo que o documento falava de contrato alheio."""
+    fs = S.fichas([
+        _doc(1, "TA", "aditivo", "contratacao", "1º TERMO ADITIVO AO CONTRATO Nº 16/2023."),
+        _doc(2, "TA2", "aditivo", "contratacao", "CONTRATO Nº 16/2023 prorrogado."),
+        _doc(3, "Decl", "contrato", "contratacao", "conforme o contrato 016/2023 desta pasta."),
+    ])
+    assert not [c for c in S.contradicoes(fs) if c["codigo"] == "G2_CONTRATO_ALHEIO_NO_DOCUMENTO"]

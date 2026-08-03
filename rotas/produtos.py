@@ -818,8 +818,11 @@ def api_processo(numero: str = ""):
                             status_code=404)
     import json as _json
     out = {k: row[k] for k in row.keys()}
+    # `sintese_json` é a leitura de CONJUNTO do processo (fases, contradições entre documentos, o
+    # todo). Sem ela na lista, a coluna existia no banco e não chegava ao painel — módulo com
+    # caller e sem consumidor é a mesma falha de sempre, um passo adiante.
     for k in ("achados_json", "lacunas_json", "docs_chave_json", "acatamento_json",
-              "escalada_json", "cobertura_json"):
+              "escalada_json", "cobertura_json", "sintese_json"):
         try:
             out[k.removesuffix("_json")] = _json.loads(out.pop(k) or "null")
         except (ValueError, KeyError):

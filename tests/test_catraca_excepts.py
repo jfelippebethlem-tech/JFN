@@ -212,7 +212,10 @@ REPO = Path(__file__).resolve().parent.parent
 # Estreitar aqui trocaria dívida CONTADA por sessão de SEI perdida no meio do slot — e a sessão é
 # única por IP. Contei uma só na primeira passada: a do commit anterior escapou da conferência
 # porque eu comparava contra HEAD~1, que já a continha.
-BASELINE = 1625
+# 2026-08-03: +1 (1625->1626) — `sintese_global._prosa`, fronteira de LLM: a leitura em prosa
+# é opcional e o provedor pode falhar de qualquer forma; o catch devolve a indisponibilidade
+# DECLARADA e a síntese determinística fica de pé inteira, com os mesmos fatos.
+BASELINE = 1626
 
 
 def _contar() -> int:

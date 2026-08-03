@@ -64,6 +64,23 @@ def _rodar_fornecedor(cnpj: str) -> list[ResultadoDetector]:
     return rodar_fornecedor(cnpj)
 
 
+def _vereditos_por_doc(numero: str) -> dict:
+    """Juízo por documento já pago (doc_veredito) na rubrica vigente — entra na ficha de cada doc."""
+    try:
+        from compliance_agent.sei.doc_juizo import RUBRICA_VERSAO
+        if not _DB.exists():
+            return {}
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            return {int(i): json.loads(v) for i, v in con.execute(
+                "select doc_i, veredito_json from doc_veredito where numero_sei=? "
+                "and rubrica_versao=?", (numero, RUBRICA_VERSAO))}
+        finally:
+            con.close()
+    except (sqlite3.Error, ValueError, TypeError, ImportError):
+        return {}
+
+
 def achados_de_fornecedor(resultados) -> list[dict]:
     """Detectores de perfil do CONTRATADO que pontuam viram achado VISÍVEL.
 
@@ -403,6 +420,20 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                      teste_status="violado" if teste_violado else None,
                      familias_convergentes=max(0, n_familias - 1))
     grau = grau_com_captura(grau, integra=integra)
+
+    # SÍNTESE GLOBAL: o olhar de conjunto sobre TODOS os documentos (map-reduce sobre as fichas,
+    # nunca sobre o texto cru). É o que responde "o que este processo mostra" — a lista de achados
+    # responde "o que há de errado", que é outra pergunta.
+    try:
+        from compliance_agent.sei import sintese_global as _sg
+        _fichas = _sg.fichas(
+            [{"i": d.get("i"), "ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
+              "fase": d.get("fase", ""), "texto": _texto_de(pasta, d)} for d in docs],
+            _vereditos_por_doc(numero))
+        sintese = _sg.sintetizar(_fichas, lacunas_captura=len(lacunas_captura))
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        sintese = {"indisponivel": True, "motivo": str(e)[:140]}
+        indisponiveis.append(f"sintese_global: {e}")
     # NAO_AVALIAVEL entra como a severidade MÍNIMA da matriz: sem leitura não se afirma gravidade,
     # e deixar a chave de fora quebrava a avaliação inteira do processo (KeyError).
     sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}.get(faixa, 1)
@@ -427,6 +458,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         "acatamento": ac,
         "cnpj_vencedor": cnpj,
         "score": float(score), "score100": score100, "faixa": faixa, "grau": grau,
+        "sintese": sintese,
         "matriz_sv": {"severidade": sev, "verossimilhanca": ver, "produto": sev * ver},
         "escalada": escalada,
         "cobertura": {"captura_integra": integra, **ev_captura,
@@ -448,6 +480,7 @@ CREATE TABLE IF NOT EXISTS processo_avaliacao (
   numero_sei TEXT PRIMARY KEY, score REAL, score100 REAL, grau TEXT, faixa TEXT,
   achados_json TEXT, lacunas_json TEXT, docs_chave_json TEXT, acatamento_json TEXT,
   escalada_json TEXT, cnpj_vencedor TEXT, confianca REAL, cobertura_json TEXT,
+  sintese_json TEXT,
   avaliado_em TEXT DEFAULT (datetime('now')), versao TEXT
 );
 """
@@ -468,14 +501,15 @@ def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
         con.execute(
             "insert into processo_avaliacao (numero_sei, score, score100, grau, faixa, "
             "achados_json, lacunas_json, docs_chave_json, acatamento_json, escalada_json, "
-            "cnpj_vencedor, confianca, cobertura_json, avaliado_em, versao) "
-            "values (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?) "
+            "cnpj_vencedor, confianca, cobertura_json, sintese_json, avaliado_em, versao) "
+            "values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?) "
             "on conflict(numero_sei) do update set score=excluded.score, "
             "score100=excluded.score100, grau=excluded.grau, faixa=excluded.faixa, "
             "achados_json=excluded.achados_json, lacunas_json=excluded.lacunas_json, "
             "docs_chave_json=excluded.docs_chave_json, acatamento_json=excluded.acatamento_json, "
             "escalada_json=excluded.escalada_json, cnpj_vencedor=excluded.cnpj_vencedor, "
             "confianca=excluded.confianca, cobertura_json=excluded.cobertura_json, "
+            "sintese_json=excluded.sintese_json, "
             "avaliado_em=excluded.avaliado_em, versao=excluded.versao",
             (out["numero_sei"], out["score"], out["score100"], out["grau"]["grau"],
              out["faixa"], json.dumps(out["achados"], ensure_ascii=False, default=str),
@@ -485,7 +519,8 @@ def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
              json.dumps(out["acatamento"], ensure_ascii=False, default=str),
              json.dumps(out["escalada"], ensure_ascii=False, default=str),
              out.get("cnpj_vencedor"), confianca,
-             json.dumps(cob, ensure_ascii=False, default=str), VERSAO))
+             json.dumps(cob, ensure_ascii=False, default=str),
+             json.dumps(out.get("sintese") or {}, ensure_ascii=False, default=str), VERSAO))
         con.commit()
         return True
     finally:
