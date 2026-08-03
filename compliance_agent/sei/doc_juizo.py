@@ -149,14 +149,24 @@ def selecionar(docs: list[dict], teto: int | None = None) -> list[dict]:
     Rubrica exige PRECISÃO no rótulo: 'parecer' só entra se o TÍTULO confirmar (o tipo por
     conteúdo rotulou 'Documento Trabalhista' como parecer e o veredito 'não-conclusivo'
     contaminava a contagem de problemáticos — debug 080001/018592/2026 doc 2)."""
+    # `teto=0` (ou JFN_360_TETO_DOCS=0) = SEM teto: julga todo documento elegível. O teto de 25
+    # era proteção de custo de LLM; a cadeia usada é a GRÁTIS, então ele só escondia processo
+    # grande — 39 de 2.082 processos tinham juízo. O limite real é o tempo do slot, não a contagem.
+    teto = TETO_DEFAULT if teto is None else teto
+    if teto <= 0:
+        return alvo_ordenado(docs)
+    return alvo_ordenado(docs)[:teto]
+
+
+def alvo_ordenado(docs: list[dict]) -> list[dict]:
+    """Documentos elegíveis por rubrica, na ordem de importância para o controle (sem corte)."""
     from compliance_agent.sei.fases import classificar
-    teto = teto or TETO_DEFAULT
     rank = {t: n for n, t in enumerate(_PRIORIDADE)}
     alvo = [d for d in docs if d.get("tipo") in RUBRICAS
             and not (d.get("tipo") == "parecer"
                      and classificar(str(d.get("titulo") or ""))[1] != "parecer")]
     alvo.sort(key=lambda d: (rank.get(d.get("tipo"), 99), d.get("i", 0)))
-    return alvo[:teto]
+    return alvo
 
 
 def _norm_txt(s: str) -> str:
@@ -208,11 +218,23 @@ def _conn(con):
 
 def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                 gerar=None, con=_DB_PADRAO) -> dict:
-    """Julga os docs-chave do processo. `gerar(prompt, sistema)->str` injetável (teste);
-    default = cadeia grátis da camada_triagem. `con` sqlite injetável; default compliance.db."""
+    """Julga os docs-chave do processo. `gerar(prompt, sistema)->str` injetável (teste).
+
+    Default = **gemini + cerebras** (`direcionamento_cerebro.gerar_sync`), por ordem expressa do
+    dono em 2026-08-03: "use nossas melhores IAs para esse serviço". Isso SUSPENDE, para o juízo
+    documental, a regra de isolamento do CLAUDE.md que reservava o volume à cadeia grátis — e
+    tem custo: a Gemini é paga (§4.1), então cobertura do acervo passa a consumir cota. Quem
+    quiser o comportamento antigo injeta `gerar=camada_triagem.gerar_triagem()`, e
+    `JFN_JUIZO_CADEIA=gratis` faz o mesmo por ambiente, sem editar código.
+    """
+    cadeia = "injetada"
     if gerar is None:
-        from compliance_agent.llm.camada_triagem import gerar_triagem
-        gerar = gerar_triagem()
+        if os.environ.get("JFN_JUIZO_CADEIA", "").strip().lower() == "gratis":
+            from compliance_agent.llm.camada_triagem import gerar_triagem
+            gerar, cadeia = gerar_triagem(), "cadeia_gratis"
+        else:
+            from compliance_agent.direcionamento_cerebro import gerar_sync
+            gerar, cadeia = gerar_sync, "gemini+cerebras"
     numero = str(man.get("processo") or pasta.name)
     docs = [d for d in (man.get("docs") or []) if isinstance(d, dict)]
     sel = selecionar(docs, teto=teto)
@@ -264,7 +286,7 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                           "tipo_canonico, hash_texto, rubrica_versao, modelo, escala, "
                           "trecho_literal, veredito_json, grau) values (?,?,?,?,?,?,?,?,?,?)",
                           (numero, d.get("i"), d.get("tipo"), h, RUBRICA_VERSAO,
-                           "cadeia_gratis", v.get("escala"), v.get("trecho_literal"),
+                           cadeia, v.get("escala"), v.get("trecho_literal"),
                            json.dumps(v, ensure_ascii=False, default=str),
                            v["grau"]["grau"]))
                 c.commit()

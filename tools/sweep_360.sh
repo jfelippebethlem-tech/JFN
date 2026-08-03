@@ -29,9 +29,14 @@ PRIO="nice -n 19 ionice -c3"
 $PRIO timeout -k 60 --foreground 1200 $PY tools/processo_360.py --lote 120 --gravar \
   >> data/sweep_360_lote.out 2>&1; say "360 lote rc=$?"
 
-# 2) juízo por documento no topo da fila (rubrica fechada; cadeia grátis com teto diário próprio).
-#    Poucos por slot: qualidade > volume, e o cache por hash torna a repetição barata.
-$PRIO timeout -k 60 --foreground 1500 $PY - <<'PYEOF' >> data/sweep_360_llm.out 2>&1
+# 2) juízo por documento — sobre o ACERVO INTEIRO, ordenado por risco (pedido do dono 2026-08-03:
+#    "todas as perícias, 24/7, sem limitação"). Antes: fila só com pontuação >=5, 4 processos por
+#    slot e teto de 25 documentos por processo — 39 de 2.082 processos julgados. Nada disso era
+#    limite de máquina; a cadeia de LLM é a GRÁTIS. O que limita de verdade continua de pé: a
+#    janela de tempo, o lock de escritor único e o nice/ionice.
+export JFN_360_TETO_DOCS=0        # 0 = sem teto de documentos por processo
+JUIZO_SEGUNDOS=${JUIZO_SEGUNDOS:-2400}
+$PRIO timeout -k 60 --foreground $((JUIZO_SEGUNDOS + 120)) $PY - <<'PYEOF' >> data/sweep_360_llm.out 2>&1
 import subprocess, sys
 sys.path.insert(0, ".")
 from tools.processo_360_ranking import pontuar
@@ -52,12 +57,13 @@ julgados = {}
 for sei, doc_i in con.execute(
         "select numero_sei, doc_i from doc_veredito where rubrica_versao=?", (RUBRICA_VERSAO,)):
     julgados.setdefault(sei, set()).add(doc_i)
+# TODO o acervo entra na fila; a pontuação só decide a ORDEM (o mais grave primeiro). Cortar em
+# >=5 deixava 1.686 processos sem juízo documental nenhum, para sempre.
 fila = []
 for r in con.execute("select * from processo_avaliacao"):
     pts, _ = pontuar(json.loads(r["achados_json"] or "[]"),
                      json.loads(r["acatamento_json"] or "{}"))
-    if pts >= 5:
-        fila.append((pts, r["numero_sei"]))
+    fila.append((pts, r["numero_sei"]))
 con.close()
 fila.sort(reverse=True)
 
@@ -77,15 +83,26 @@ def tem_pendente(numero):
         return False
     return any(d.get("tipo") in RUBRICAS and d.get("i") not in feitos for d in man["docs"])
 
-alvos = []
+# O slot para por TEMPO, não por contagem: enquanto sobrar janela, segue julgando. Assim o
+# acervo é coberto em passes sucessivos do cron, do mais grave para o menos, sem teto fixo.
+import os, time
+DEADLINE = time.monotonic() + float(os.environ.get("JUIZO_SEGUNDOS", "2400"))
+feitos = 0
 for _, numero in fila:
-    if tem_pendente(numero):
-        alvos.append(numero)
-    if len(alvos) >= 4:
+    if time.monotonic() >= DEADLINE:
+        print(f"[juizo] janela esgotada — {feitos} processo(s) neste slot", flush=True)
         break
-for numero in alvos:
-    subprocess.run([".venv/bin/python", "tools/processo_360.py", "--numero", f"SEI-{numero}",
-                    "--com-llm", "--gravar"], timeout=380)
+    if not tem_pendente(numero):
+        continue
+    restante = max(60, int(DEADLINE - time.monotonic()))
+    try:
+        subprocess.run([".venv/bin/python", "tools/processo_360.py", "--numero", f"SEI-{numero}",
+                        "--com-llm", "--gravar"], timeout=min(600, restante))
+        feitos += 1
+    except subprocess.TimeoutExpired:
+        print(f"[juizo] {numero}: estourou o tempo do processo — segue o lote", flush=True)
+else:
+    print(f"[juizo] fila varrida — {feitos} processo(s) neste slot", flush=True)
 PYEOF
 say "360 juizo rc=$?"
 
