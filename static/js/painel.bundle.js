@@ -4301,14 +4301,31 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
       J("/api/ugs?limite=15"),
       J("/api/siafe/status"),
-      J("/api/radar/status")
+      J("/api/radar/status"),
+      J("/api/pericia/cobertura")
     ]);
+    h += sec("Perícia documental — cobertura do acervo (24/7)");
+    if (cb && cb.indisponivel === false) {
+      const pct = cb.pct == null ? "—" : cb.pct + "%";
+      const cadeias = Object.entries(cb.por_cadeia || {}).map(([k, v]) => `${esc(k)}: ${v}`).join(" · ") || "—";
+      const esc3 = (cb.por_escala || {})["3"] || 0, esc2 = (cb.por_escala || {})["2"] || 0, esc1 = (cb.por_escala || {})["1"] || 0, escN = (cb.por_escala || {})["null"] || 0;
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Processos com juízo</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_com_juizo} <span class="dim" style="font-size:.9rem">de ${cb.processos_avaliados} (${pct})</span></div></div>
+        <div><div class="dim">Documentos julgados</div><div style="font-size:1.5rem;font-weight:700">${cb.documentos_julgados}</div></div>
+        <div><div class="dim">Pendentes</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_pendentes}</div></div>
+      </div>
+      <div style="margin-top:8px">Escala do juízo: <b>${esc3}</b> viciado · <b>${esc2}</b> frágil · <b>${esc1}</b> regular · <span class="dim">${escN} não classificável</span></div>
+      <div class="dim" style="margin-top:4px">Julgado por: ${cadeias} · rubrica v${esc(cb.rubrica)} · último juízo ${esc(cb.ultimo_juizo || "—")}</div>
+      <div class="dim" style="margin-top:6px">${esc(cb._nota || "")}</div>`);
+    } else {
+      h += card(`<div class="warn">Cobertura da perícia INDISPONÍVEL${cb && cb.motivo ? ": " + esc(cb.motivo) : ""} — indisponível não é zero.</div>`);
+    }
     h += sec("Frescor das fontes (SLO por pipeline)");
     const ps = pp && (pp.pipelines || pp.itens) || [];
     if (ps.length) {

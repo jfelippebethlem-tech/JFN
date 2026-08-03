@@ -143,6 +143,21 @@ def api_route(q: str = ""):
         return JSONResponse({"ok": False, "erro": str(e)[:120]}, status_code=500)
 
 
+@router.get("/api/pericia/cobertura")
+def api_pericia_cobertura():
+    """Quanto do acervo já recebeu JUÍZO documento a documento — e por qual cadeia de LLM.
+
+    Pedido do dono (2026-08-03): as perícias rodando 24/7 e visíveis no painel. O primeiro
+    requisito de 'rodando' é poder ver quanto já rodou: o número (39 de 2.082 quando isto foi
+    escrito) só existia para quem abrisse o SQLite.
+    """
+    try:
+        from compliance_agent.reporting import cobertura_pericia
+        return JSONResponse(content=cobertura_pericia.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/sweeps/status")
 def api_sweeps_status():
     """Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).
