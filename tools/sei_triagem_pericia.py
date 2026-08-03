@@ -105,9 +105,22 @@ _RX_CONTRATO_FORTE = re.compile(
     r"|ata de registro de pre[çc]o", re.I)
 
 
+# Processo cujo OBJETO é aditar/prorrogar um contrato existente. Precisa vir antes do teste de
+# contratação: "termo aditivo" também casa `_RX_CONTRATO_FORTE`, e aí o processo era lido como
+# contratação nova e cobrado pela fase de seleção que ele nunca teria.
+_RX_ADITIVO = re.compile(
+    r"termo aditivo|1[ºo°]\s*termo aditivo|prorroga[çc][ãa]o|aditamento|repactua[çc][ãa]o", re.I)
+_RX_SELECAO_PROPRIA = re.compile(
+    r"\bedital\b|ata da sess[ãa]o|mapa de lances|termo de julgamento|homologa[çc][ãa]o|"
+    r"ato de dispensa|ratifica[çc][ãa]o", re.I)
+
+
 def natureza(man: dict, docs: list[dict]) -> str:
-    """contratacao | repasse | indefinido. Nunca chuta: sem sinal, fica indefinido."""
+    """contratacao | aditivo | repasse | indefinido. Nunca chuta: sem sinal, fica indefinido."""
     txt = " | ".join(str(d.get("titulo") or "") for d in docs)
+    # aditivo/prorrogação SEM peça de seleção própria: a seleção está no processo de origem
+    if _RX_ADITIVO.search(txt) and not _RX_SELECAO_PROPRIA.search(txt):
+        return "aditivo"
     # 1) sinais inequivocos decidem sozinhos, na ordem: contrato forte vence OB externa
     #    (obra paga por OB externa continua sendo contratacao).
     if _RX_CONTRATO_FORTE.search(txt):

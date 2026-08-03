@@ -155,19 +155,32 @@ _CHECKLIST = {
 _MODALIDADES_DIRETAS = ("dispensa", "inexigibilidade", "adesao", "credenciamento")
 
 
+# Fases que NÃO se cobram de um processo de aditivo/prorrogação: elas ocorreram no processo que
+# originou o contrato. Achado ao ler o SEI-270131/000548/2023 na íntegra (2026-08-03): o sistema
+# lançava "Seleção (edital, julgamento, homologação)" com gravidade ALTA num processo de
+# prorrogação — o mesmo erro que a casa já tinha corrigido para processo de PAGAMENTO. Sem isto,
+# todo aditivo nasce com um achado alto estrutural e a fila do fiscal enche de ruído.
+_FASES_DO_PROCESSO_DE_ORIGEM = ("selecao",)
+
+
 def lacunas(fases_presentes: set[str], modalidade: str = "",
-            com_pagamento: bool = False) -> list[dict]:
+            com_pagamento: bool = False, natureza: str = "") -> list[dict]:
     """
     O que FALTA nos autos dado o que já se vê neles. Cada lacuna:
     {"falta": ..., "gravidade": baixa|media|alta|critica}.
 
     A crítica clássica: há pagamento (despesa) mas não há NENHUMA evidência de
     execução física — serviço pago sem prova de entrega.
+
+    `natureza="aditivo"` isenta apenas a SELEÇÃO (que vive no processo de origem); tudo o mais —
+    planejamento, formalização, evidência de execução — continua sendo cobrado.
     """
     m = _norm(modalidade)
     chave = "dispensa" if any(k in m for k in _MODALIDADES_DIRETAS) else "licitacao"
     saida = []
     for fase, rotulo, grav in _CHECKLIST[chave]:
+        if natureza == "aditivo" and fase in _FASES_DO_PROCESSO_DE_ORIGEM:
+            continue
         if fase not in fases_presentes:
             saida.append({"falta": rotulo, "gravidade": grav})
     if com_pagamento and "execucao" not in fases_presentes:

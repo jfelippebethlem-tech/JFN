@@ -174,7 +174,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         nat = "indefinido"
     fases_presentes = {d["fase"] for d in docs} - {"indefinida"}
     com_pagamento = any(d["tipo"] in ("ordem_bancaria", "programacao_desembolso") for d in docs)
-    lac = fases.lacunas(fases_presentes, modalidade, com_pagamento=com_pagamento)
+    lac = fases.lacunas(fases_presentes, modalidade, com_pagamento=com_pagamento, natureza=nat)
     lacunas_processo = lac if integra else []
     lacunas_captura = [] if integra else lac
     if not integra:
@@ -182,7 +182,9 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             {"falta": "captura íntegra do processo (texto no disco abaixo do mínimo)",
              "gravidade": "captura", **ev_captura}]
     for item in lacunas_processo:
-        if nat == "contratacao" or item["gravidade"] == "critica":
+        # `aditivo` é espécie de contratação para efeito de cobrança (só a seleção sai, e já saiu
+        # em `fases.lacunas`) — sem isto o aditivo perderia também as lacunas que lhe cabem.
+        if nat in ("contratacao", "aditivo") or item["gravidade"] == "critica":
             achados.append({"origem": "fases.lacunas", "diz": item["falta"],
                             "gravidade": item["gravidade"]})
 

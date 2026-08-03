@@ -476,3 +476,45 @@ def test_certidao_tipada_como_parecer_continua_fora():
             + "Certificamos que não constam débitos. " * 20)
     r = PC.auditar_parecer_pge([{"ref": "Certidões", "tipo": "parecer", "texto": cert}])
     assert r["veredito"] in ("SEM_PARECER_LOCALIZADO", "PARECER_SEM_TEXTO_CAPTURADO")
+
+
+# ───── A EMENTA também impõe condicionantes (leitura do original, 2026-08-03) ─────
+# Confronto do SEI-270131/000548/2023 lido na íntegra: o Parecer 462/2024/SEDEC/ASSJUR enumera
+# QUATRO exigências na EMENTA (o cabeçalho em caixa alta que abre a peça) — pesquisa de mercado,
+# decisão da autoridade sobre vantajosidade, reforço da instrução para supressão e juntada da
+# habilitação. O extrator lia só o FECHO e devolveu UMA, tipada como minuta_clausula. É a mesma
+# causa dos 332 processos em CONDICIONANTES_NAO_EXTRAIDAS: nesta casa a ementa é onde o
+# parecerista resume o que exige.
+
+_EMENTA_REAL = (
+    "PARECER Nº 462/2024/SEDEC/ASSJUR. Assessoria Jurídica. "
+    "1º TERMO ADITIVO AO CONTRATO Nº 16/2023 - PRORROGAÇÃO DE PRAZO DE VIGÊNCIA CONTRATUAL, SEM "
+    "APLICAÇÃO DE REAJUSTE - ART. 57, INCISO II, DA LEI Nº 8.666/93 - ENUNCIADOS NºS 09 E 29 DA "
+    "PGE - NECESSIDADE DE COMPLEMENTAÇÃO DA INSTRUÇÃO PROCESSUAL: (I) MANIFESTAÇÃO DO SETOR "
+    "RESPONSÁVEL PELA PESQUISA DE MERCADO, A RESPEITO DOS NOVOS DOCUMENTOS JUNTADOS; (II) DECISÃO "
+    "PELA AUTORIDADE MÁXIMA ACERCA DA VANTAJOSIDADE NA PRORROGAÇÃO; (III) SE ACATADA A SUGESTÃO DE "
+    "REDUÇÃO DE 25%, DEVERÁ HAVER O REFORÇO DA INSTRUÇÃO PROCESSUAL PARA A ALTERAÇÃO CONTRATUAL "
+    "(SUPRESSÃO); (IV) NECESSIDADE DA JUNTADA DA DOCUMENTAÇÃO DE HABILITAÇÃO - VIABILIDADE DO "
+    "PROSSEGUIMENTO DO FEITO CONDICIONADA, DESDE QUE SANADAS AS RESSALVAS APONTADAS. "
+    "I. RELATÓRIO. Trata-se de processo administrativo. " + "Fundamentação diversa. " * 40
+    + "III. CONCLUSÃO. Diante do exposto, esta ASSJUR manifesta-se pela necessidade de reforço da "
+      "instrução processual, conforme apontamentos trazidos no parecer.")
+
+
+def test_condicionantes_da_ementa_sao_extraidas():
+    conds = PC.extrair_condicionantes(_EMENTA_REAL)
+    assert len(conds) >= 4, f"a ementa impõe 4 exigências e saíram {len(conds)}: {conds}"
+
+
+def test_as_quatro_familias_da_ementa_sao_reconhecidas():
+    tipos = {c["tipo"] for c in PC.extrair_condicionantes(_EMENTA_REAL)}
+    assert "pesquisa_precos" in tipos
+    assert "regularidade_fiscal" in tipos, "a juntada da HABILITAÇÃO não foi tipada"
+
+
+def test_ementa_sem_exigencia_nao_inventa_condicionante():
+    """Ementa que só descreve o objeto e aprova não pode virar exigência."""
+    limpo = ("PARECER Nº 100/2025. PGE. PRORROGAÇÃO CONTRATUAL - ART. 57, II - VIABILIDADE "
+             "JURÍDICA DO PROSSEGUIMENTO DO FEITO. I. RELATÓRIO. " + "Texto. " * 50
+             + "III. CONCLUSÃO. Opino favoravelmente, sem ressalvas.")
+    assert PC.extrair_condicionantes(limpo) == []

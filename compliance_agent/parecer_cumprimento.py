@@ -79,6 +79,20 @@ _MIN_COND = 25    # anti-FP (arquivo SEI real): "(a) Engenheiro" não é condici
 # primeiro gatilho de condicionalidade aparecia lá atrás, na FUNDAMENTAÇÃO, dentro de uma citação a outro
 # parecer ("celebrado desde que seguidas as condições … do Parecer nº 02/2017") — e essa citação virava
 # "a condicionante". Havendo fecho, a leitura começa nele; sem fecho, o parecer inteiro vale (curtos).
+# EMENTA — o cabeçalho em caixa alta com que o parecerista abre a peça e RESUME o que exige.
+# Achado ao ler o SEI-270131/000548/2023 na íntegra (2026-08-03): o Parecer 462/2024/SEDEC/ASSJUR
+# enumera QUATRO exigências ali — "NECESSIDADE DE COMPLEMENTAÇÃO DA INSTRUÇÃO PROCESSUAL: (I) …
+# (II) … (III) … (IV) …" — e o extrator, que só lia o fecho, devolvia uma. É a mesma causa dos 332
+# processos em CONDICIONANTES_NAO_EXTRAIDAS.
+_RE_EMENTA_EXIGE = re.compile(
+    r"(necessidade\s+de\s+complementa[çc][ãa]o|necessidade\s+d[ae]\s+junta|"
+    r"complementa[çc][ãa]o\s+da\s+instru[çc][ãa]o|refor[çc]o\s+da\s+instru[çc][ãa]o|"
+    r"prosseguimento\s+d[oe]\s+feito\s+condicionad|viabilidade\s+condicionad|"
+    r"desde\s+que\s+sanad)", re.I)
+# fim da ementa: onde começa o relatório/fundamentação da peça
+_RE_FIM_EMENTA = re.compile(r"(I\s*[.\-–]\s*RELAT[ÓO]RIO|RELAT[ÓO]RIO\s*[:.]|"
+                            r"Exm[oa]\.?\s+Sr|Ilm[oa]\.?\s+Sr)", re.I)
+
 _RE_CONCLUSAO = re.compile(
     r"(isto\s+posto|ante\s+o\s+exposto|diante\s+d[oe]\s+exposto|pelo\s+exposto|face\s+ao\s+exposto|"
     r"em\s+face\s+do\s+exposto|conclus[ãa]o\s*[:.\-]|concluo|posto\s+isso|do\s+exposto|ex\s+positis|"
@@ -181,17 +195,21 @@ def _sequencia_valida(marcas: list[tuple[int, str]]) -> list[tuple[int, str]]:
 
 # TIPO da condicionante — ordem IMPORTA (a 1ª que casar vence: da mais específica para a mais genérica).
 _TIPOS: tuple[tuple[str, str], ...] = (
-    ("pesquisa_precos", r"pesquisa\s+de\s+pre[çc]os|mapa\s+de\s+pre[çc]os|cota[çc][õo]es|or[çc]amento\s+estimado|"
-                        r"pesquisa\s+mercadol[óo]gica"),
+    # 2026-08-03: termos colhidos ao ler o Parecer 462/2024 na íntegra — as 4 exigências da ementa
+    # saíam todas como 'outra' porque o vocabulário não conhecia "pesquisa de MERCADO",
+    # "habilitação", "vantajosidade" nem "supressão/alteração contratual".
+    ("pesquisa_precos", r"pesquisa\s+de\s+pre[çc]os|pesquisa\s+de\s+mercado|mapa\s+de\s+pre[çc]os|"
+                        r"cota[çc][õo]es|or[çc]amento\s+estimado|pesquisa\s+mercadol[óo]gica"),
     ("dotacao_orcamentaria", r"dota[çc][ãa]o|adequa[çc][ãa]o\s+or[çc]ament|disponibilidade\s+or[çc]ament|"
                              r"reserva\s+or[çc]ament|programa\s+de\s+trabalho|LDO|LOA"),
-    ("regularidade_fiscal", r"certid[ãa]o|regularidade\s+(?:fiscal|trabalhista)|CND\b|SICAF|FGTS|INSS"),
+    ("regularidade_fiscal", r"certid[ãa]o|regularidade\s+(?:fiscal|trabalhista)|CND\b|SICAF|FGTS|INSS|"
+                            r"documenta[çc][ãa]o\s+de\s+habilita[çc][ãa]o|habilita[çc][ãa]o"),
     ("garantia_contratual", r"garantia\s+(?:contratual|de\s+execu[çc][ãa]o)|seguro-?garantia|cau[çc][ãa]o"),
     ("designacao_fiscal", r"fiscal\s+do\s+contrato|gestor\s+do\s+contrato|designa[çc][ãa]o\s+de\s+fiscal"),
     ("publicidade", r"publica[çc][ãa]o|di[áa]rio\s+oficial|divulga[çc][ãa]o\s+no\s+PNCP|extrato"),
-    ("minuta_clausula", r"cl[áa]usula|minuta"),
+    ("minuta_clausula", r"cl[áa]usula|minuta|altera[çc][ãa]o\s+contratual|supress[ãa]o"),
     ("estudo_justificativa", r"justificativa|motiva[çc][ãa]o|estudo\s+t[ée]cnico|ETP\b|termo\s+de\s+refer[êe]ncia|"
-                             r"projeto\s+b[áa]sico"),
+                             r"projeto\s+b[áa]sico|vantajosidade|economicidade"),
     ("prazo_vigencia", r"vig[êe]ncia|prazo\s+contratual|cronograma"),
 )
 
@@ -233,14 +251,38 @@ def extrair_condicionantes(texto_parecer: str) -> list[dict]:
     for mc in _RE_CONCLUSAO.finditer(txt):
         pass                       # a ÚLTIMA ocorrência é o fecho de verdade (as outras são anúncios)
     escopo = txt[mc.start():] if mc else txt
+    # A EMENTA é escopo legítimo e PRIORITÁRIO quando anuncia complementação da instrução: ali as
+    # exigências vêm enumeradas e limpas, antes de qualquer citação a norma ou a outro parecer.
+    fim = _RE_FIM_EMENTA.search(txt[:6000])
+    ementa = txt[:fim.start()] if fim else ""
+    if ementa and _RE_EMENTA_EXIGE.search(ementa):
+        da_ementa = _condicionantes_do_escopo(ementa, exige_opinativo=False)
+        if len(da_ementa) >= 2:
+            return da_ementa
+    return _condicionantes_do_escopo(escopo, exige_opinativo=True, tem_fecho=bool(mc))
+
+
+def _condicionantes_do_escopo(escopo: str, *, exige_opinativo: bool = True,
+                              tem_fecho: bool = False) -> list[dict]:
+    """Itens de exigência dentro de um escopo já delimitado (fecho ou ementa).
+
+    `exige_opinativo=False` na EMENTA: ali o parecerista não repete "opino" — o próprio anúncio de
+    "NECESSIDADE DE COMPLEMENTAÇÃO DA INSTRUÇÃO" já é a marca de que o que vem a seguir é exigência.
+    """
+    m = None
+    if not exige_opinativo:
+        # Na EMENTA a âncora é o ANÚNCIO ("NECESSIDADE DE COMPLEMENTAÇÃO DA INSTRUÇÃO PROCESSUAL:"),
+        # e não o primeiro gatilho: o gatilho que aparece ali é o "desde que sanadas as ressalvas"
+        # do fecho da ementa, que vem DEPOIS da lista e faria a leitura começar no lugar errado —
+        # foi exatamente assim que as 4 exigências do Parecer 462 viraram uma só.
+        m = _RE_EMENTA_EXIGE.search(escopo)
     # entre todos os gatilhos do escopo, vale o que o PARECERISTA impõe: precedido de verbo opinativo por
     # perto e NÃO precedido de marca de transcrição de norma.
-    m = None
-    for cand in _RE_GATILHO.finditer(escopo):
+    for cand in ([] if m else _RE_GATILHO.finditer(escopo)):
         antes = escopo[max(0, cand.start() - _JANELA_OPINATIVO):cand.start()]
         if _RE_TRANSCRICAO.search(antes.rstrip()):
             continue                      # o que vem a seguir é a norma citada, não a exigência
-        if _RE_OPINATIVO.search(antes) or (mc and cand.start() < 200):
+        if (not exige_opinativo) or _RE_OPINATIVO.search(antes) or (tem_fecho and cand.start() < 200):
             m = cand
             break
     if not m:
