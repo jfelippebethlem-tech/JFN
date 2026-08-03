@@ -134,6 +134,37 @@ def classificar(titulo: str) -> tuple[str, str]:
     return ("indefinida", "outro")
 
 
+# tipo canônico → fase, derivado das MESMAS regras que classificam por título (uma fonte só).
+_FASE_POR_TIPO = {tipo: fase for tipo, fase, _ in _REGRAS}
+
+
+def fase_do_tipo(tipo: str) -> str:
+    """Fase que corresponde a um tipo canônico de documento. Desconhecido → 'indefinida'."""
+    return _FASE_POR_TIPO.get((tipo or "").strip().lower(), "indefinida")
+
+
+def classificar_com_tipo(titulo: str, tipo: str = "") -> tuple[str, str]:
+    """(fase, tipo) usando o título e, se ele nada disser, o TIPO já resolvido pelo manifesto.
+
+    Achado em 2026-08-03 (SEI-080007/001365/2024): um Termo de Referência de 20.000 caracteres
+    com 11 anexos ficou em fase `indefinida` porque o título era "Formulário de solicitação de
+    material ou serviço" — e o sistema acusou "falta Planejamento" num processo que o tem. O
+    classificador de documentos já havia acertado (`tipo: termo_referencia`); a fase é que não
+    aproveitava o que a casa já sabia.
+
+    A ordem não muda a doutrina: o TÍTULO manda quando diz algo (é ele que desmente o
+    classificador por conteúdo, que já rotulou certidão como parecer e nota fiscal como
+    contrato). O tipo só entra quando o título é mudo.
+    """
+    fase, tipo_titulo = classificar(titulo)
+    if fase != "indefinida":
+        return (fase, tipo_titulo)
+    do_tipo = fase_do_tipo(tipo)
+    if do_tipo != "indefinida":
+        return (do_tipo, (tipo or "").strip().lower())
+    return (fase, tipo_titulo)
+
+
 def linha_do_tempo(titulos: list[str]) -> dict[str, list[str]]:
     """Agrupa os títulos (na ordem dos autos) por fase — o esqueleto do processo."""
     tl: dict[str, list[str]] = {f: [] for f in FASES}
@@ -167,6 +198,10 @@ _FASES_DO_PROCESSO_DE_ORIGEM = ("selecao",)
 # CI diz "encontra respaldo no processo administrativo SEI-080001/004018/2023". A evidência de
 # execução CONTINUA sendo cobrada: pagar sem prova de entrega é o achado que mais importa.
 _FASES_DO_PROCESSO_PAI = ("planejamento", "selecao", "contratacao")
+# Compra CANCELADA: seleção e formalização não ocorreram porque a contratação foi desfeita. O
+# planejamento continua sendo cobrado (ele antecede o cancelamento e é onde mora a motivação), e a
+# evidência de execução também — cancelar e ainda assim pagar é o oposto de inocente.
+_FASES_QUE_O_CANCELAMENTO_DISPENSA = ("selecao", "contratacao")
 
 
 def lacunas(fases_presentes: set[str], modalidade: str = "",
@@ -188,6 +223,8 @@ def lacunas(fases_presentes: set[str], modalidade: str = "",
         if natureza == "aditivo" and fase in _FASES_DO_PROCESSO_DE_ORIGEM:
             continue
         if natureza == "pagamento" and fase in _FASES_DO_PROCESSO_PAI:
+            continue
+        if natureza == "cancelado" and fase in _FASES_QUE_O_CANCELAMENTO_DISPENSA:
             continue
         if fase not in fases_presentes:
             saida.append({"falta": rotulo, "gravidade": grav})

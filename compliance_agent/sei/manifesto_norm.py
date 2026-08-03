@@ -96,7 +96,10 @@ def normalizar(manifest: dict) -> dict:
         d["tipo_original"] = d.get("tipo")
         d["tipo"] = tipo_canonico(d.get("tipo"), titulo)
         if not d.get("fase"):
-            d["fase"] = fases.classificar(titulo)[0]
+            # usa o TIPO já resolvido quando o título é mudo: um Termo de Referência intitulado
+            # "Formulário de solicitação de material ou serviço" ficava em fase `indefinida` e o
+            # processo era acusado de não ter planejamento (SEI-080007/001365/2024, 2026-08-03).
+            d["fase"] = fases.classificar_com_tipo(titulo, d.get("tipo") or "")[0]
     man["docs"] = docs
 
     # linha do tempo canônica: dict[fase, list[i]] reconstruída dos docs normalizados

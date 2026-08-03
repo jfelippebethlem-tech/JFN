@@ -99,3 +99,41 @@ def test_contratacao_de_verdade_nao_vira_pagamento():
     docs = _docs("Edital de Pregão Eletrônico 10/2024", "Termo de Referência",
                  "Contrato nº 15/2024", "Nota de Empenho - NE 2024NE001")
     assert natureza({"processo": "Y"}, docs) == "contratacao"
+
+
+# ───── processo CANCELADO/ENCERRADO sem contratação (medido 2026-08-03) ─────
+# Leitura do SEI-080007/001365/2024: os autos trazem "Processo Cancelado com Sucesso" (anexo do
+# SIGA) e um Termo de Encerramento. A contratação emergencial NUNCA se consumou — e mesmo assim o
+# sistema cobrou seleção e contrato formalizado, com gravidade até ALTA, e deu score 78,9.
+# Cobrar as fases seguintes de um processo que foi cancelado é imputar vício ao que não aconteceu.
+
+def _cancelado():
+    return _docs("Correspondência Interna - NI 307/2024 (67135525)",
+                 "Formulário de solicitação de material ou serviço 67136232",
+                 "Anexo CANCELAMENTO SIGA (110511580)",
+                 "Termo de Encerramento de Processo 114171140",
+                 "Despacho de Encaminhamento de Processo 114169371")
+
+
+def test_processo_cancelado_e_reconhecido():
+    assert natureza({"processo": "080007/001365/2024"}, _cancelado()) == "cancelado"
+
+
+def test_cancelado_nao_cobra_selecao_nem_contrato():
+    faltas = {f["falta"] for f in fases.lacunas({"planejamento"}, "", com_pagamento=False,
+                                                natureza="cancelado")}
+    assert not any(("Sele" in f or "Contrato" in f or "dispensa" in f) for f in faltas), faltas
+
+
+def test_cancelado_COM_pagamento_continua_sendo_achado():
+    """Cancelar e ainda assim pagar é o oposto de inocente — a evidência de execução fica."""
+    faltas = {f["falta"] for f in fases.lacunas({"planejamento", "despesa"}, "",
+                                                com_pagamento=True, natureza="cancelado")}
+    assert any("execu" in f.lower() for f in faltas)
+
+
+def test_encerramento_sozinho_nao_faz_cancelado():
+    """Todo processo termina com encerramento; só o CANCELAMENTO expresso muda a natureza."""
+    docs = _docs("Edital de Pregão 10/2024", "Contrato nº 15/2024",
+                 "Termo de Encerramento de Processo 999")
+    assert natureza({"processo": "Z"}, docs) == "contratacao"

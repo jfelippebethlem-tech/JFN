@@ -112,6 +112,12 @@ _RX_ADITIVO = re.compile(
     r"termo aditivo|1[ºo°]\s*termo aditivo|prorroga[çc][ãa]o|aditamento|repactua[çc][ãa]o", re.I)
 # Cadeia da despesa: os três marcos que definem um processo financeiro. Empenho ≠ liquidação ≠ OB
 # (regra da casa) — aqui basta a PRESENÇA da cadeia para saber que o processo é de pagamento.
+# CANCELAMENTO expresso da compra. Medido em 2026-08-03 (SEI-080007/001365/2024): os autos trazem
+# "Processo Cancelado com Sucesso" do SIGA e o sistema seguiu cobrando seleção e contrato de uma
+# contratação que nunca se consumou. Encerramento SOZINHO não basta — todo processo termina com um.
+_RX_CANCELAMENTO = re.compile(
+    r"cancelamento\s+siga|processo\s+cancelado|cancelamento\s+d[ao]\s+(?:processo|compra|"
+    r"licita[çc][ãa]o)|desist[êe]ncia\s+d[ao]\s+processo|revoga[çc][ãa]o\s+d[ao]\s+licita", re.I)
 _RX_PAGAMENTO = re.compile(
     r"ordem\s+banc[áa]ria|\b20\d{2}OB\d|nota\s+de\s+liquida|\b20\d{2}NL\d|"
     r"programa[çc][ãa]o\s+de\s+desembolso|\b20\d{2}PD\d", re.I)
@@ -135,6 +141,10 @@ def natureza(man: dict, docs: list[dict]) -> str:
     if _RX_PAGAMENTO.search(txt) and not _RX_SELECAO_PROPRIA.search(txt) \
             and not _RX_CONTRATO_FORTE.search(txt):
         return "pagamento"
+    # compra CANCELADA sem instrumento assinado: as fases seguintes não existem porque a
+    # contratação não se consumou — cobrá-las é imputar vício ao que não aconteceu.
+    if _RX_CANCELAMENTO.search(txt) and not _RX_CONTRATO_FORTE.search(txt):
+        return "cancelado"
     # 1) sinais inequivocos decidem sozinhos, na ordem: contrato forte vence OB externa
     #    (obra paga por OB externa continua sendo contratacao).
     if _RX_CONTRATO_FORTE.search(txt):
