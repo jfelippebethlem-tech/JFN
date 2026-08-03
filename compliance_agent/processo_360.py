@@ -135,6 +135,26 @@ def _rd(origem: str, numero: str, score: float, detalhe: str) -> ResultadoDetect
     return r
 
 
+def faixa_com_captura(score100: float, *, integra: bool) -> str:
+    """Faixa de risco só se emite sobre processo LIDO. Sem captura íntegra: NAO_AVALIAVEL.
+
+    Medido em 2026-08-03: 199 processos do acervo têm ZERO caractere capturado e 25 deles
+    carregavam score >= 70 — um estava gravado como 89,0 EXTREMO. Faixa é afirmação sobre o
+    processo; sobre o que não se leu, a única afirmação honesta é que não se leu.
+    """
+    return _faixa(score100) if integra else "NAO_AVALIAVEL"
+
+
+def grau_com_captura(grau: dict, *, integra: bool) -> dict:
+    """O grau (🟡 FLAG SUSPEITO etc.) também é afirmação — não se emite sem captura íntegra."""
+    if integra:
+        return grau
+    return {"grau": "-", "rotulo": "NÃO AVALIÁVEL", "emoji": "⚪",
+            "pode_fundamentar_peca": False,
+            "motivo": ("captura do processo abaixo do mínimo utilizável — não se afirma risco "
+                       "sobre o que não foi lido (INDISPONÍVEL ≠ irregular)")}
+
+
 def _faixa(score100: float) -> str:
     return ("EXTREMO" if score100 >= 75 else "ALTO" if score100 >= 50
             else "MEDIO" if score100 >= 25 else "BAIXO")
@@ -324,7 +344,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         resultados.append(_rd(origem, numero, s, str(a.get("diz") or "")))
     score = score_processo(resultados, pesos={**PESOS_DETECTOR, **_PESOS_360})
     score100 = round(score * 100, 1)
-    faixa = _faixa(score100)
+    faixa = faixa_com_captura(score100, integra=integra)
 
     # 9) grau/escalada/matriz (verossimilhança: nº de origens independentes; teto 3 sem pares)
     origens = {r.detector.split("-")[0] if r.detector.startswith("P360") else r.detector[:1]
@@ -334,7 +354,10 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     grau = grau_flag(origem="deterministico", score=score,
                      teste_status="violado" if teste_violado else None,
                      familias_convergentes=max(0, n_familias - 1))
-    sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}[faixa]
+    grau = grau_com_captura(grau, integra=integra)
+    # NAO_AVALIAVEL entra como a severidade MÍNIMA da matriz: sem leitura não se afirma gravidade,
+    # e deixar a chave de fora quebrava a avaliação inteira do processo (KeyError).
+    sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}.get(faixa, 1)
     ver = min(3, 2 + (1 if n_familias >= 2 else 0))  # teto 3: não há base de pares por processo
     escalada = recomendar(sev * ver, teste_objetivo_violado=teste_violado,
                           familias_independentes=n_familias)
