@@ -25,6 +25,19 @@ trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
 PRIO="nice -n 19 ionice -c3"
 
+# 1 PESADO POR VEZ (regra absoluta da casa — a VM tem 2 vCPU e já caiu 4×). O slot do juízo passou
+# de 4 processos para até 40 min de trabalho contínuo; sem esta guarda ele passaria a disputar CPU
+# com o sweep SEI (Chromium + tesseract) que roda de 30 em 30 minutos. Mesmo critério do
+# sweep_sei.sh: adia em vez de brigar — o cron repete, nada se perde.
+if pgrep -f 'tools\.sei_swee[p]' >/dev/null; then
+  say "sweep SEI em curso — adio o juízo (1 pesado por vez)"; JUIZO_SEGUNDOS=0
+fi
+L=$(awk '{print int($1)}' /proc/loadavg)
+if [ "${JUIZO_SEGUNDOS:-2400}" != "0" ] && [ "$L" -ge 4 ]; then
+  say "load $L alto — encurto o slot do juízo"; JUIZO_SEGUNDOS=300
+fi
+export JUIZO_SEGUNDOS
+
 # 1) avaliação determinística dos processos ainda não avaliados (ou desatualizados)
 $PRIO timeout -k 60 --foreground 1200 $PY tools/processo_360.py --lote 120 --gravar \
   >> data/sweep_360_lote.out 2>&1; say "360 lote rc=$?"
@@ -36,6 +49,8 @@ $PRIO timeout -k 60 --foreground 1200 $PY tools/processo_360.py --lote 120 --gra
 #    janela de tempo, o lock de escritor único e o nice/ionice.
 export JFN_360_TETO_DOCS=0        # 0 = sem teto de documentos por processo
 JUIZO_SEGUNDOS=${JUIZO_SEGUNDOS:-2400}
+[ "$JUIZO_SEGUNDOS" = "0" ] && { say "juízo adiado neste slot"; JUIZO_PULAR=1; }
+if [ -z "${JUIZO_PULAR:-}" ]; then
 $PRIO timeout -k 60 --foreground $((JUIZO_SEGUNDOS + 120)) $PY - <<'PYEOF' >> data/sweep_360_llm.out 2>&1
 import subprocess, sys
 sys.path.insert(0, ".")
@@ -105,6 +120,7 @@ else:
     print(f"[juizo] fila varrida — {feitos} processo(s) neste slot", flush=True)
 PYEOF
 say "360 juizo rc=$?"
+fi
 
 # 3) fila do fiscal regravada (top do ranking por QUALIDADE do achado, não pelo score cru)
 $PRIO timeout 120 $PY tools/processo_360_ranking.py --top 40 --md > data/fila_fiscal_360.md 2>>"$LOG"

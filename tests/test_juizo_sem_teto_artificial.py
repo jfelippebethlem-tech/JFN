@@ -65,3 +65,11 @@ def test_cadeia_gratis_continua_alcancavel_por_ambiente(monkeypatch):
     from pathlib import Path as _P
     src = _P(J.__file__).read_text(encoding="utf-8")
     assert "JFN_JUIZO_CADEIA" in src and "gemini+cerebras" in src
+
+
+def test_slot_longo_cede_a_vez_ao_sweep_sei():
+    """1 pesado por vez: o slot passou de 4 processos para até 40 min e passaria a disputar CPU
+    com o sweep SEI (Chromium + tesseract), que roda de 30 em 30 min. A VM tem 2 vCPU e já caiu 4×."""
+    txt = SWEEP.read_text(encoding="utf-8")
+    assert "tools\\.sei_swee[p]" in txt, "o slot não verifica se o sweep SEI está em curso"
+    assert "/proc/loadavg" in txt, "o slot não olha o load antes de trabalhar a janela inteira"
