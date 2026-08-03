@@ -161,6 +161,12 @@ _MODALIDADES_DIRETAS = ("dispensa", "inexigibilidade", "adesao", "credenciamento
 # prorrogação — o mesmo erro que a casa já tinha corrigido para processo de PAGAMENTO. Sem isto,
 # todo aditivo nasce com um achado alto estrutural e a fila do fiscal enche de ruído.
 _FASES_DO_PROCESSO_DE_ORIGEM = ("selecao",)
+# Processo FINANCEIRO não carrega nenhuma das fases de contratação: planejamento, seleção e
+# formalização vivem no processo-pai — que os próprios autos costumam nomear. Medido em
+# 2026-08-03 (SEI-080001/018592/2026): três lacunas cobradas, uma delas ALTA, num processo cuja
+# CI diz "encontra respaldo no processo administrativo SEI-080001/004018/2023". A evidência de
+# execução CONTINUA sendo cobrada: pagar sem prova de entrega é o achado que mais importa.
+_FASES_DO_PROCESSO_PAI = ("planejamento", "selecao", "contratacao")
 
 
 def lacunas(fases_presentes: set[str], modalidade: str = "",
@@ -180,6 +186,8 @@ def lacunas(fases_presentes: set[str], modalidade: str = "",
     saida = []
     for fase, rotulo, grav in _CHECKLIST[chave]:
         if natureza == "aditivo" and fase in _FASES_DO_PROCESSO_DE_ORIGEM:
+            continue
+        if natureza == "pagamento" and fase in _FASES_DO_PROCESSO_PAI:
             continue
         if fase not in fases_presentes:
             saida.append({"falta": rotulo, "gravidade": grav})

@@ -675,6 +675,93 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     _log(f"[pais] FIM: {n_ok} pais com docs ({n_doc_total} docs), {n_zero} sem. Progresso em {PROG.name}.")
 
 
+
+
+async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
+                        ate: int = 0) -> None:
+    """RELÊ processos cujo cache prova que há documento na árvore SEM texto — login ÚNICO.
+
+    Por que aqui e não num script à parte, e isto foi MEDIDO em 2026-08-03: uma passada
+    independente pagava o login + carga de árvore a cada processo — **556 segundos para um
+    processo de 5 documentos**. O custo não é do teto de documentos, é da entrada. Aqui a sessão
+    é uma só para o lote inteiro, exatamente como o `run_pais` já fazia.
+
+    O que se ganha: dos 314 processos com cache, a árvore tem 19.583 documentos e só 9.136 tinham
+    texto lido — 10.447 fechados, porque o `SEI_MAX_DOCS` do leitor era 40 e 179 processos
+    paravam exatamente lá.
+
+    Ordem: do MENOR buraco para o MAIOR. Medido: o processo gigante (956 documentos) estoura o
+    slot, mata o browser e não entrega nada — e enquanto ele falha, nenhum outro anda.
+    """
+    from compliance_agent.envfile import carregar_env
+    carregar_env()
+    from compliance_agent.recursos import browser_lock_async, aguardar_load_async
+    from compliance_agent.collectors.sei_cdp import _proxy_do_env
+    from tools.sei_reader import login, ler_processo, _ler_cracked, _montar_resultado_cracked
+    from playwright.async_api import async_playwright
+
+    os.environ["SEI_MAX_DOCS"] = str(teto)
+    from tools.sweep_recaptura_integral import fila as _fila_recap
+    fila = _fila_recap()
+    if ate:
+        fila = [x for x in fila if x["faltam"] <= ate]
+    prog = _carregar_prog()
+    feitos = prog.get("recaptura_feitos") or {}
+    fila = [x for x in fila if x["numero"] not in feitos][:max_n]
+    if not fila:
+        _log("[recap] nada pendente (fila de recaptura vazia ou já percorrida).")
+        return
+    _log(f"[recap] {len(fila)} processos a reler com SEI_MAX_DOCS={teto}; login único itkava…")
+
+    await aguardar_load_async(max_por_core=1.5, espera_max=120)
+    proxy = _proxy_do_env()
+    ganho = 0
+    try:
+        async with browser_lock_async(espera_max=600), async_playwright() as pw:
+            b = await pw.chromium.launch(headless=True,
+                                         args=["--no-sandbox", "--ignore-certificate-errors"],
+                                         **({"proxy": proxy} if proxy else {}))
+            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR")
+            pg = await ctx.new_page()
+            try:
+                if not await login(pg, tentativas=tentativas_login):
+                    _log("[recap] ABORTADO: login itkava não venceu o WAF agora.")
+                    return
+                _log("[recap] login OK — relendo…")
+                for i, x in enumerate(fila, 1):
+                    if _PARAR or PAUSE.exists():
+                        _log("[recap] encerrando LIMPO entre processos.")
+                        break
+                    proc, antes = x["numero"], x["lido"]
+                    try:
+                        r = await ler_processo(pg, proc, usar_cache=False)
+                        nd = len(r.get("conteudo_documentos") or [])
+                        if not nd:
+                            dump = await _ler_cracked(pg, proc)
+                            if dump.get("documentos"):
+                                r = await _montar_resultado_cracked(pg, proc, dump,
+                                                                    usar_cache=False)
+                                nd = len(r.get("conteudo_documentos") or [])
+                    except Exception as e:  # noqa: BLE001
+                        _log(f"  [recap {i}/{len(fila)}] {proc} ERRO {type(e).__name__}: "
+                             f"{str(e)[:60]}")
+                        if _browser_morto(e):
+                            _log("  [recap] browser caiu — encerrando a sessão LIMPO.")
+                            break
+                        continue
+                    feitos[proc] = {"antes": antes, "depois": nd,
+                                    "em": datetime.now().isoformat(timespec="seconds")}
+                    prog["recaptura_feitos"] = feitos
+                    _salvar_prog(prog)
+                    ganho += max(0, nd - antes)
+                    _log(f"  [recap {i}/{len(fila)}] {proc}: {antes} → {nd} docs com texto")
+            finally:
+                await ctx.close()
+                await b.close()
+    finally:
+        _log(f"[recap] fim do slot — +{ganho} documentos com texto nesta sessão.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=30)
@@ -689,6 +776,11 @@ def main():
     ap.add_argument("--seguir-pais", action="store_true",
                     help="MODO PAI: detecta no cache os processos-pai de CONTRATAÇÃO referenciados pelos "
                          "dockets (execução/pagamento) e os lê — recupera a substância dos 'vazios'.")
+    ap.add_argument("--recaptura", action="store_true",
+                    help="relê processos com documento na árvore sem texto (login único)")
+    ap.add_argument("--recap-teto", type=int, default=120, help="SEI_MAX_DOCS na recaptura")
+    ap.add_argument("--recap-ate", type=int, default=0,
+                    help="só processos com lacuna <= N (o gigante não cabe num slot)")
     ap.add_argument("--pais-so-alta", action="store_true",
                     help="(com --seguir-pais) só os pais de ALTA confiança (conteúdo+keyword), ignora leads de relacionados")
     a = ap.parse_args()
@@ -700,7 +792,9 @@ def main():
     # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
     # KeyboardInterrupt/SystemExit (BaseException) propagam normal; qualquer Exception vira log + saída limpa.
     try:
-        if a.seguir_pais:
+        if a.recaptura:
+            asyncio.run(run_recaptura(a.max, teto=a.recap_teto, ate=a.recap_ate))
+        elif a.seguir_pais:
             asyncio.run(run_pais(a.max, fazer_ficha=not a.sem_ficha, so_alta=a.pais_so_alta, cnpj=a.cnpj))
         else:
             asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,

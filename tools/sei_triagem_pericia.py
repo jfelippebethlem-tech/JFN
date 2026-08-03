@@ -110,17 +110,31 @@ _RX_CONTRATO_FORTE = re.compile(
 # contratação nova e cobrado pela fase de seleção que ele nunca teria.
 _RX_ADITIVO = re.compile(
     r"termo aditivo|1[ºo°]\s*termo aditivo|prorroga[çc][ãa]o|aditamento|repactua[çc][ãa]o", re.I)
+# Cadeia da despesa: os três marcos que definem um processo financeiro. Empenho ≠ liquidação ≠ OB
+# (regra da casa) — aqui basta a PRESENÇA da cadeia para saber que o processo é de pagamento.
+_RX_PAGAMENTO = re.compile(
+    r"ordem\s+banc[áa]ria|\b20\d{2}OB\d|nota\s+de\s+liquida|\b20\d{2}NL\d|"
+    r"programa[çc][ãa]o\s+de\s+desembolso|\b20\d{2}PD\d", re.I)
 _RX_SELECAO_PROPRIA = re.compile(
     r"\bedital\b|ata da sess[ãa]o|mapa de lances|termo de julgamento|homologa[çc][ãa]o|"
     r"ato de dispensa|ratifica[çc][ãa]o", re.I)
 
 
 def natureza(man: dict, docs: list[dict]) -> str:
-    """contratacao | aditivo | repasse | indefinido. Nunca chuta: sem sinal, fica indefinido."""
+    """contratacao | aditivo | pagamento | repasse | indefinido. Sem sinal, fica indefinido."""
     txt = " | ".join(str(d.get("titulo") or "") for d in docs)
     # aditivo/prorrogação SEM peça de seleção própria: a seleção está no processo de origem
     if _RX_ADITIVO.search(txt) and not _RX_SELECAO_PROPRIA.search(txt):
         return "aditivo"
+    # PROCESSO FINANCEIRO: empenho→liquidação→OB, sem peça de contratação própria. Medido em
+    # 2026-08-03 no SEI-080001/018592/2026, que diz nos próprios autos onde a contratação mora
+    # ("o presente processo financeiro encontra respaldo no processo administrativo
+    # SEI-080001/004018/2023, vinculado ao Contrato n.º 051/2023") e ainda assim recebeu cobrança
+    # de planejamento, seleção e contrato — porque UMA menção isolada a "licitação" num título
+    # vencia a contagem e o classificava como contratação.
+    if _RX_PAGAMENTO.search(txt) and not _RX_SELECAO_PROPRIA.search(txt) \
+            and not _RX_CONTRATO_FORTE.search(txt):
+        return "pagamento"
     # 1) sinais inequivocos decidem sozinhos, na ordem: contrato forte vence OB externa
     #    (obra paga por OB externa continua sendo contratacao).
     if _RX_CONTRATO_FORTE.search(txt):
