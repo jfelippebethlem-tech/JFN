@@ -123,3 +123,53 @@ def test_a_isencao_NAO_alcanca_a_evidencia_de_execucao():
     faltas = " ".join(str(x.get("falta")) for x in lac)
     assert "Evidência de execução" in faltas
     assert "Planejamento" not in faltas and "Seleção" not in faltas
+
+
+# ───────── ausência de FÓRMULA não é ausência de RESPOSTA (2026-08-04) ─────────
+
+def _proc_com_parecer_e_resposta(tmp_path, texto_resposta):
+    (tmp_path / "texto").mkdir(exist_ok=True)
+    docs = []
+    pecas = [
+        ("Parecer 625/2024 (81625942)", "parecer",
+         "PARECER Nº 625/2024/SES/ASSJUR\nAssunto: contratação.\n"
+         "recomenda-se a instauração de sindicância antes da contratação, desde que apurada a "
+         "responsabilidade, conforme o parágrafo 31 deste parecer."),
+        ("Despacho de Encaminhamento de Processo 81797000", "despacho", texto_resposta),
+    ]
+    for i, (titulo, tipo, corpo) in enumerate(pecas):
+        nome = f"{i:03d}_doc.txt"
+        (tmp_path / "texto" / nome).write_text(f"[{titulo}] (tipo: {tipo})\n\n{corpo}",
+                                               encoding="utf-8")
+        docs.append({"i": i, "titulo": titulo, "tipo": tipo, "texto": f"texto/{nome}"})
+    import json as _j
+    (tmp_path / "manifest.json").write_text(_j.dumps({"docs": docs}), encoding="utf-8")
+    return tmp_path
+
+
+def test_resposta_que_CITA_o_parecer_derruba_a_afirmacao_de_ausencia(tmp_path):
+    """Medido em 2026-08-04 nos 27 disparos do A3: **18 tinham documento posterior citando o
+    IDENTIFICADOR do parecer**, e o que está escrito ali é resposta de verdade — "quanto ao
+    apontamento contido no parágrafo 31 do Parecer nº 625/2024 (81625942), cumpre esclarecer que
+    a competente sindicância foi instaurada". Dizer "nenhum documento registra acatamento" ali é
+    afirmar uma ausência que não existe."""
+    p = _proc_com_parecer_e_resposta(
+        tmp_path,
+        "Preliminarmente, quanto ao apontamento contido no parágrafo 31 do Parecer nº 625/2024 "
+        "(81625942), cumpre esclarecer que a competente sindicância foi instaurada no bojo do "
+        "processo SEI-080001/013232/2024.")
+    r = T.periciar(p)
+    a3 = [x for x in (r.get("achados") or []) if str(x.get("codigo", "")).startswith("A3")]
+    assert a3, "o achado não some — citar não é acatar"
+    assert a3[0]["grau"] == "baixo"
+    assert "REPORTA" in a3[0]["diz"]
+    assert "81625942" in a3[0]["apoio"]
+
+
+def test_sem_mencao_ao_parecer_a_afirmacao_de_ausencia_permanece(tmp_path):
+    p = _proc_com_parecer_e_resposta(
+        tmp_path, "Encaminho os autos à Coordenação para emissão de nota de empenho.")
+    r = T.periciar(p)
+    a3 = [x for x in (r.get("achados") or []) if str(x.get("codigo", "")).startswith("A3")]
+    assert a3 and a3[0]["grau"] == "medio"
+    assert "nenhum registra acatamento" in a3[0]["diz"]

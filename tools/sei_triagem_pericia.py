@@ -54,6 +54,9 @@ _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
 # parecer_juridico no classificador e fabricam A1; "Nota Fiscal" e "Minuta de Termo Aditivo"
 # viram contrato (o classificador por CONTEÚDO mente em doc escaneado) — e minuta ANTES do
 # parecer é o fluxo CORRETO do art. 53. (FPs reais 030001/087722, 080002/020278, 270131/000548.)
+_RE_ID_DOC = re.compile(r"(\d{6,})")
+"""Identificador SEI da peça — o último grupo de 6+ dígitos do título."""
+
 _RX_NOTA_TECNICA = re.compile(r"(?i)\bnota\s+t[ée]cnica\b(?!\s+jur)")
 """Nota técnica PURA (a jurídica segue valendo) — peça de fiscalização, não análise prévia."""
 
@@ -389,12 +392,32 @@ def periciar(pasta: Path) -> dict | None:
                 "apoio": f"parecer na posição {pos}, {len(docs)} documentos no total",
             })
         elif not acatou:
+            # AUSÊNCIA DE FÓRMULA NÃO É AUSÊNCIA DE RESPOSTA. `_RX_ACATA` procura o modo expresso
+            # de acolher; quando ele não aparece, dizer "nenhum documento registra acatamento" é
+            # afirmar uma ausência que muitas vezes não existe. Medido em 2026-08-04 nos 27
+            # disparos: **18 tinham documento posterior citando o IDENTIFICADOR do parecer**, e o
+            # que está escrito ali é resposta de verdade — "Em atendimento ao disposto no Despacho
+            # PROMOÇÃO Nº 05/2024 (77129895), emitimos a Declaração, ratificando o interesse desta
+            # Pasta"; "quanto ao apontamento contido no parágrafo 31 do Parecer nº 625/2024
+            # (81625942), cumpre esclarecer que a competente sindicância foi instaurada".
+            #
+            # Citar o parecer não é o mesmo que ACATÁ-LO (há despacho que só encaminha os autos
+            # depois dele), então o achado não some: ele passa a dizer o que se sabe — há resposta
+            # que se reporta ao parecer, o acolhimento não está em fórmula expressa — e cai de
+            # grau, porque a peça que decide já está nos autos para o fiscal ler.
+            ids_par = _RE_ID_DOC.findall(str(pa.get("titulo") or ""))
+            responde = bool(ids_par) and any(
+                ids_par[-1] in (_texto_do_doc(pasta, d) or "") for d in posteriores)
             (observacoes if nat == "repasse" else achados).append({
                 "codigo": ("A3_REPASSE_PARECER_SEM_ACATAMENTO" if nat == "repasse"
                            else "A3_PARECER_COM_RESSALVA_SEM_ACATAMENTO_EXPRESSO"),
-                "grau": "baixo" if nat == "repasse" else "medio",
-                "diz": "há documentos posteriores, mas nenhum registra acatamento do parecer",
-                "apoio": f"parecer na posição {pos} · {len(posteriores)} documento(s) posterior(es)",
+                "grau": "baixo" if (nat == "repasse" or responde) else "medio",
+                "diz": ("há documento posterior que se REPORTA ao parecer, mas o acolhimento não "
+                        "está em fórmula expressa — conferir o teor da resposta"
+                        if responde else
+                        "há documentos posteriores, mas nenhum registra acatamento do parecer"),
+                "apoio": (f"parecer na posição {pos} · {len(posteriores)} documento(s) posterior(es)"
+                          + (f" · um deles cita o identificador {ids_par[-1]}" if responde else "")),
             })
         break  # um achado por processo basta para a fila; o resto é da perícia
 
