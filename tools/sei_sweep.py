@@ -328,6 +328,33 @@ def _ja_lido_ok(proc: str) -> bool:
     return False
 
 
+def _arquivo_incompleto(proc: str) -> bool:
+    """A captura arquivada deste processo está ABAIXO do mínimo que a casa exige para chamá-la
+    íntegra (60% dos documentos com texto)?
+
+    O critério é o MESMO do `manifesto_norm.captura_integra` de propósito: um processo que o
+    motor recusa avaliar por captura insuficiente é, por definição, um processo a recapturar —
+    não faria sentido a leitura e a avaliação usarem réguas diferentes. Medido em 2026-08-04:
+    94 processos com ZERO teor, 86 abaixo do mínimo e 54 com manifesto sem docs; 234 no total,
+    contra 1.941 íntegros que seguem pulados. O sweep faz ~288/dia, então o passivo cabe num dia.
+
+    Só devolve True quando há pasta: processo nunca arquivado não é captura incompleta, é
+    não-capturado, e esse caminho já é tratado pela ausência no progresso.
+    """
+    tag = re.sub(r"_+", "_", re.sub(r"\D", "_", re.sub(r"^SEI-?", "", proc or ""))).strip("_")
+    pasta = REPO / "data" / "sei_arquivo" / tag
+    mf = pasta / "manifest.json"
+    if not mf.exists():
+        return False
+    try:
+        from compliance_agent.sei import manifesto_norm
+        man = json.loads(mf.read_text(encoding="utf-8"))
+        man["_pasta"] = str(pasta)
+        return not manifesto_norm.captura_integra(man, pasta)[0]
+    except (ImportError, OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def _salvar_cadeia_no_cache(proc: str, cadeia: list):
     """Anexa a cadeia (relacionados lidos) ao cache cdp_*.json do processo — o Lex passa a ver a árvore."""
     cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
@@ -426,6 +453,14 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # completa). Vem depois do cooloff (não martela na mesma janela) e do sem_acesso. Auto-limita: ao
         # re-ler, 'em' vira agora() > data da OB → não re-dispara.
         if f and f.get("n_docs", 0) and _ob_desatualizada(ob_recente.get(p, ""), f.get("em", "")):
+            return False
+        # ARQUIVO SEM TEOR MANDA MAIS QUE O PROGRESSO. Medido em 2026-08-04: **120 processos**
+        # estavam marcados `n_docs>0` no progresso e não tinham UM documento com texto no acervo
+        # — o sweep os pulava para sempre. E a ferramenta que os devolveria à fila
+        # (`sei_reparar_truncados --sem-texto`) pula quem já tem `captura_vazia`, de modo que
+        # DECLARAR a captura vazia virou isenção permanente de nova tentativa. Declarar é honesto;
+        # desistir não era o combinado. Mesma doutrina do `captura_integra`: o disco decide.
+        if f and f.get("n_docs", 0) > 0 and _arquivo_incompleto(p):
             return False
         # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
         return bool(f and (f.get("n_docs", 0) > 0 or f.get("tentativas", 1) >= 3))
