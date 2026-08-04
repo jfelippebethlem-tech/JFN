@@ -367,9 +367,10 @@ export async function detRodar(id){
 export async function renderInstrumentacao(){
   let h=cover('geral','Instrumentação — o estado da máquina, sem abrir terminal',
     'Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.','🔧');
-  const [ag,pp,mm,ug,sf,rd,cb]=await Promise.all([
+  const [ag,pp,mm,ug,sf,rd,cb,rt]=await Promise.all([
     J('/api/agenda'),J('/api/pipelines'),J('/api/memoria'),J('/api/ugs?limite=15'),
-    J('/api/siafe/status'),J('/api/radar/status'),J('/api/pericia/cobertura')]);
+    J('/api/siafe/status'),J('/api/radar/status'),J('/api/pericia/cobertura'),
+    J('/api/ob/retiradas')]);
 
   // COBERTURA DA PERÍCIA DOCUMENTAL — o número que só existia dentro do SQLite. Sem ele, o painel
   // mostra achados e fila do fiscal sem dizer que a maior parte do acervo nunca foi periciada
@@ -390,6 +391,34 @@ export async function renderInstrumentacao(){
       <div class="dim" style="margin-top:6px">${esc(cb._nota||'')}</div>`);
   }else{
     h+=card(`<div class="warn">Cobertura da perícia INDISPONÍVEL${cb&&cb.motivo?': '+esc(cb.motivo):''} — indisponível não é zero.</div>`);
+  }
+
+  // OBs DESPUBLICADAS — a base é reconstruída por exercício a cada coleta do TFE, e até
+  // 2026-08-04 isso era silencioso: 140 OBs somando R$ 30.001.367,60 sumiram sem aviso e só
+  // apareceram dois dias depois, porque um golden de números quebrou. Ordem bancária é a prova de
+  // pagamento; sair do portal é fato sobre a prova, e fato sobre a prova mora no painel.
+  h+=sec('Ordens bancárias despublicadas pela fonte');
+  if(rt && rt.indisponivel===false){
+    const anos=(rt.por_exercicio||[]).map(e=>`${esc(e.exercicio)}: ${e.n}`).join(' · ')||'—';
+    h+=card(`<div class="grid g3">
+        <div><div class="dim">OBs retiradas</div><div style="font-size:1.5rem;font-weight:700">${rt.n}</div></div>
+        <div><div class="dim">Valor que saiu do portal</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(rt.valor)}</div></div>
+        <div><div class="dim">Favorecidos distintos</div><div style="font-size:1.5rem;font-weight:700">${rt.favorecidos_distintos}</div></div>
+      </div>
+      <div style="margin-top:8px">Por exercício: ${anos}</div>
+      <div class="dim" style="margin-top:4px">Última retirada detectada: ${esc(rt.ultima_retirada||'—')}</div>
+      <div class="dim" style="margin-top:6px">${esc(rt.ressalva||'')}</div>`);
+    const mm2=(rt.maiores||[]).slice(0,8);
+    if(mm2.length){
+      h+=`<table class="tb"><thead><tr><th>OB</th><th>Órgão</th><th>Favorecido</th><th class="r">Valor</th></tr></thead><tbody>`;
+      for(const o of mm2)
+        h+=`<tr><td class="dim">${esc(o.numero_ob)}</td><td>${esc(o.ug_nome||'—')}</td>
+            <td>${esc(o.favorecido_nome||'—')}</td><td class="r">${fmtR(o.valor)}</td></tr>`;
+      h+=`</tbody></table>`;
+    }
+  }else{
+    /* Vazio ≠ indisponível: tabela ainda não criada é "não medido", não "nada foi retirado". */
+    h+=card(`<div class="dim">Retiradas de OB ${rt&&rt.motivo?esc(rt.motivo):'indisponíveis nesta execução'} — indisponível não é zero.</div>`);
   }
 
   h+=sec('Frescor das fontes (SLO por pipeline)');

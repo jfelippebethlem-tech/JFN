@@ -225,10 +225,44 @@ arquivos; agora declara 100 com 98 e é íntegro de verdade. `260007/004617/2024
 - **`--update-rotas`** estava documentado e não existia. A saída era apagar o golden à mão — que o
   regenera com o que estiver lá, inclusive uma rota perdida num refactor.
 
-> ⚠️ **Achado em aberto, registrado no próprio teste:** a janela histórica do ITERJ caiu uma linha
-> (−R$ 138.093,99). Há quatro OBs idênticas da LOCTECH em 2023 e nenhuma duplicata hoje —
-> assinatura de deduplicação. "Consistente com" não é "provado": se cair de novo sem ingestão, é
-> em `tests/test_golden_numbers.py` que a investigação recomeça.
+### 6-D. As duas pendências, fechadas em 2026-08-04
+
+**O ITERJ não foi deduplicação — foi a FONTE, e a hipótese que registrei estava errada.** Baixando
+o backup off-box de 02/08: a linha é a `2023OB00455` (13/07/2023, LOCTECH), OB **única**; em 02/08
+a base tinha exatamente as 2526 congeladas, e a perda veio depois. Na base inteira, **140 OBs de
+sete exercícios, R$ 30.001.367,60**, estavam no backup e não estão hoje — e **nenhuma** aparece no
+zip do TFE baixado em 03/08 06:00. O `jfn-tfe-ob.service` apagou o exercício, reinseriu, e seguiu
+a fonte fielmente, em silêncio.
+
+> O defeito não é apagar; é apagar sem dizer. `ingest()` passou a ler o zip ANTES do `DELETE`
+> (depois dele a evidência já não existe) e a registrar em **`ob_retirada`** o que a fonte deixou
+> de publicar. Pagamento publicado no portal e depois **despublicado** é fato de interesse
+> fiscalizatório — sumia junto com a linha. As 140 foram gravadas a partir do backup, antes que a
+> rotação do B2 (3 cópias) levasse a única prova embora.
+>
+> Dispersão: nenhum favorecido com mais de uma OB no topo. A maior é R$ 9,68 mi (Riocard, 2022),
+> seguida de R$ 6,25 mi (Fundo Municipal de Saúde de Barra Mansa, 2021) e R$ 4,19 mi (Ipalerj,
+> 2022). Perfil de correção na fonte, não de remoção dirigida — mas agora **a próxima aparece na
+> hora**, e não dois dias depois por um golden que quebrou.
+
+**Dois defeitos vivos apareceram no caminho.** O cron das 05:50 — chamado `garantir_obs_iterj_mgs`,
+feito para garantir exatamente essas OBs — falhava **todo dia** com `no such file`: a linha não
+tinha `cd` e resolvia `tools/...` a partir do `$HOME`. E era vermelho por construção: exigia 55 OBs
+quando o cache que ele usa cobre 2022/2023 e soma 28 — os outros 22 vêm de anos que ele não toca.
+Guarda que sempre falha ensina a ignorar guarda; o alvo agora é lido do próprio cache.
+
+**Os 5.106 órfãos sem teor: varrer todos estaria errado.** Medindo antes de agir, **2.832 carregam
+na etiqueta o título de um documento que o manifesto NÃO conhece** — "Termo de Referência
+(129952102)", "Despacho Autorizo de Despesas". Jogá-los fora apagaria a prova de que essas peças
+existem na árvore do SEI. Tratamento duplo, decidido pela etiqueta: título desconhecido vira
+documento **declarado com `chars=0`** (não se inventa teor — declara-se que existe e não foi
+capturado), título já conhecido vai para `_orfaos_residuo/` (2.274, quarentena, nunca apagado).
+
+| | antes | depois |
+|---|---:|---:|
+| órfãos com teor | 338 | **0** |
+| órfãos sem teor | 5.106 | **0** |
+| fila de recaptura (documentos declarados sem teor) | 5.217 | **8.049** — honestamente maior |
 
 ## 7. Próximos passos, em ordem
 

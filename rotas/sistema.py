@@ -158,6 +158,22 @@ def api_pericia_cobertura():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/ob/retiradas")
+def api_ob_retiradas():
+    """OBs que o portal da transparência publicou e depois DESPUBLICOU.
+
+    A base é reconstruída por exercício a cada coleta do TFE — corretamente, e até 2026-08-04 em
+    SILÊNCIO: 140 OBs somando R$ 30.001.367,60 sumiram sem aviso, e só apareceram dois dias
+    depois porque um golden de números quebrou. Ordem bancária é a prova de pagamento; sair do
+    portal é fato sobre a prova, e agora é visível no dia em que acontece.
+    """
+    try:
+        from compliance_agent.reporting import ob_retiradas
+        return JSONResponse(content=ob_retiradas.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/sweeps/status")
 def api_sweeps_status():
     """Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).

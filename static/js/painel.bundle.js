@@ -4345,14 +4345,15 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd, cb] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb, rt] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
       J("/api/ugs?limite=15"),
       J("/api/siafe/status"),
       J("/api/radar/status"),
-      J("/api/pericia/cobertura")
+      J("/api/pericia/cobertura"),
+      J("/api/ob/retiradas")
     ]);
     h += sec("Perícia documental — cobertura do acervo (24/7)");
     if (cb && cb.indisponivel === false) {
@@ -4369,6 +4370,28 @@ void main(){
       <div class="dim" style="margin-top:6px">${esc(cb._nota || "")}</div>`);
     } else {
       h += card(`<div class="warn">Cobertura da perícia INDISPONÍVEL${cb && cb.motivo ? ": " + esc(cb.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Ordens bancárias despublicadas pela fonte");
+    if (rt && rt.indisponivel === false) {
+      const anos = (rt.por_exercicio || []).map((e) => `${esc(e.exercicio)}: ${e.n}`).join(" · ") || "—";
+      h += card(`<div class="grid g3">
+        <div><div class="dim">OBs retiradas</div><div style="font-size:1.5rem;font-weight:700">${rt.n}</div></div>
+        <div><div class="dim">Valor que saiu do portal</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(rt.valor)}</div></div>
+        <div><div class="dim">Favorecidos distintos</div><div style="font-size:1.5rem;font-weight:700">${rt.favorecidos_distintos}</div></div>
+      </div>
+      <div style="margin-top:8px">Por exercício: ${anos}</div>
+      <div class="dim" style="margin-top:4px">Última retirada detectada: ${esc(rt.ultima_retirada || "—")}</div>
+      <div class="dim" style="margin-top:6px">${esc(rt.ressalva || "")}</div>`);
+      const mm2 = (rt.maiores || []).slice(0, 8);
+      if (mm2.length) {
+        h += `<table class="tb"><thead><tr><th>OB</th><th>Órgão</th><th>Favorecido</th><th class="r">Valor</th></tr></thead><tbody>`;
+        for (const o of mm2)
+          h += `<tr><td class="dim">${esc(o.numero_ob)}</td><td>${esc(o.ug_nome || "—")}</td>
+            <td>${esc(o.favorecido_nome || "—")}</td><td class="r">${fmtR(o.valor)}</td></tr>`;
+        h += `</tbody></table>`;
+      }
+    } else {
+      h += card(`<div class="dim">Retiradas de OB ${rt && rt.motivo ? esc(rt.motivo) : "indisponíveis nesta execução"} — indisponível não é zero.</div>`);
     }
     h += sec("Frescor das fontes (SLO por pipeline)");
     const ps = pp && (pp.pipelines || pp.itens) || [];
