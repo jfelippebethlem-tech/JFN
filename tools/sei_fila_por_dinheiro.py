@@ -31,8 +31,43 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
-from compliance_agent.sei import acervo_texto
-from compliance_agent.reporting.intel_base import moeda
+
+# antes dos imports do pacote: este arquivo também é chamado como script solto
+# (`python tools/sei_fila_por_dinheiro.py`), e não só como `-m tools.…`
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from compliance_agent.reporting.intel_base import moeda  # noqa: E402
+from compliance_agent.sei import acervo_texto  # noqa: E402
+
+# FOLHA, PREVIDÊNCIA E ENCARGO não são contratação — e é do credor que se sabe. Medido na fonte
+# SIAFE em 2026-08-04: 66 dos 200 maiores processos por valor pago são RIOPREV/INATIVOS, PLANO DE
+# BENEFÍCIOS RJPREV, folha de inativos do TJ, FUNDO DE EQUALIZAÇÃO — R$ 5,73 bi, 51% do dinheiro
+# do topo. Não há achado de licitação a extrair de folha de pagamento.
+_RE_FOLHA_ENCARGO = re.compile(
+    r"rioprev|rjprev|\binativo|pensionista|folha\s+de\s+pagamento|plano\s+de\s+benef|"
+    r"previd[êe]nc|fundo\s+de\s+equaliza|encargos\s+gerais|precat[óo]ri|"
+    r"senten[çc]a\s+judicial|\bfgts\b|\binss\b|\bpasep\b|\bpis\b|"
+    r"imposto\s+de\s+renda|contribui[çc][ãa]o\s+(?:previd|social)", re.I)
+
+
+# Raízes de CNPJ que NUNCA são o contratado: 00394460 é a base da União (ministérios) — pagamento
+# à Fazenda é tributo/repasse, não contratação. A casa já registra essa raiz em
+# `processo_360._cnpj_do_texto`. Medido em 2026-08-04: "MINISTÉRIO DA FAZENDA" ocupava 4 das 10
+# primeiras posições da fila de coleta, com CNPJ 00394460010880.
+_RAIZES_NAO_CONTRATADO = {"00394460", "42498600", "42498733"}
+
+
+def e_folha_ou_encargo(credor: str | None, cnpj: str | None = None) -> bool:
+    """O pagamento é folha/previdência/encargo/tributo — fora do alvo da fiscalização?
+
+    Decide pelo NOME e, quando há, pela RAIZ do CNPJ, que é mais confiável: nome de credor varia
+    de grafia, raiz não.
+    """
+    raiz = re.sub(r"\D", "", cnpj or "")[:8]
+    if raiz and raiz in _RAIZES_NAO_CONTRATADO:
+        return True
+    return bool(_RE_FOLHA_ENCARGO.search(credor or ""))
+
 
 RAIZ = Path(__file__).resolve().parent.parent
 DB = RAIZ / "data" / "compliance.db"
@@ -79,17 +114,31 @@ def levantar(fornecedor: str | None = None) -> dict:
         # Somar tudo infla o universo em R$ 4,4 bi (26%). E a mesma familia de erro
         # do "empenho apresentado como pago", so que um passo adiante: aqui e OB
         # CANCELADA apresentada como paga.
-        sql = ("SELECT processo AS numero_sei, ROUND(SUM(valor),2) v, "
-               "       MAX(nome_credor) nome, "
-               "       MAX(REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')) cnpj, "
-               "       COUNT(*) n "
-               "FROM ob_orcamentaria_siafe "
-               "WHERE processo LIKE 'SEI-%/%/20%' AND status = 'Contabilizado'")
+        # O CREDOR DOMINANTE, não o alfabeticamente maior. `MAX(nome_credor)` escolhia um nome
+        # qualquer do processo: em SEI-350005/012517/2025 devolvia "MINISTÉRIO DA FAZENDA"
+        # (1 OB, R$ 16 mil) quando 97% do valor foi para "FOLHA DE PAGAMENTOS" (7 OBs,
+        # R$ 158,3 mi) — e com isso a fila mandava o coletor a uma folha de pagamento achando
+        # que era contratação. A natureza do processo é dada por ONDE O DINHEIRO FOI.
+        # (2026-08-04)
+        sql = ("WITH por_credor AS ("
+               "  SELECT processo, credor, nome_credor, SUM(valor) vc, COUNT(*) nc"
+               "  FROM ob_orcamentaria_siafe"
+               "  WHERE processo LIKE 'SEI-%/%/20%' AND status = 'Contabilizado'"
+               "  GROUP BY processo, credor"
+               "), dominante AS ("
+               "  SELECT processo, nome_credor, credor, MAX(vc) FROM por_credor GROUP BY processo"
+               ") "
+               "SELECT p.processo AS numero_sei, ROUND(SUM(p.vc),2) v, "
+               "       MAX(d.nome_credor) nome, "
+               "       MAX(REPLACE(REPLACE(REPLACE(d.credor,'.',''),'/',''),'-','')) cnpj, "
+               "       SUM(p.nc) n "
+               "FROM por_credor p JOIN dominante d ON d.processo = p.processo "
+               "WHERE 1=1")
         params: list = []
         if fornecedor:
-            sql += " AND REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','') = ?"
+            sql += " AND REPLACE(REPLACE(REPLACE(p.credor,'.',''),'/',''),'-','') = ?"
             params.append(re.sub(r"\D", "", fornecedor))
-        sql += " GROUP BY processo ORDER BY v DESC"
+        sql += " GROUP BY p.processo ORDER BY v DESC"
         linhas = con.execute(sql, params).fetchall()
     finally:
         con.close()
@@ -98,7 +147,10 @@ def levantar(fornecedor: str | None = None) -> dict:
     for numero, valor, nome, cnpj, n_ob in linhas:
         item = {"sei": numero, "score": float(valor or 0), "valor_ob": float(valor or 0),
                 "forn": (nome or "").strip(), "cnpj": cnpj, "n_ob": n_ob,
-                "tipo": "DINHEIRO", "flags": ["FILA_POR_VALOR_PAGO"]}
+                "tipo": "DINHEIRO", "flags": ["FILA_POR_VALOR_PAGO"],
+                "folha": e_folha_ou_encargo(nome, cnpj)}
+        if item["folha"]:
+            item["flags"].append("FOLHA_OU_ENCARGO")
         if _ja_arquivado(numero):
             arquivados.append(item)
         elif _slug(numero) in cdps or f"SEI_{_slug(numero)}" in cdps:
@@ -124,9 +176,22 @@ def levantar(fornecedor: str | None = None) -> dict:
         mal = set()
     recapturar = [i for i in lidos if i["sei"] in mal]
 
+    # CONTRATAÇÃO PRIMEIRO. O coletor é o recurso mais escasso da casa — sessão única do SEI,
+    # WAF, um browser por vez — e ordenar só por valor mandava metade do esforço para folha de
+    # inativos: medido em 2026-08-04 na fonte SIAFE, **66 dos 200 maiores processos são folha,
+    # previdência ou encargo, somando R$ 5,73 bi contra R$ 5,42 bi de contratação (51%)**. Ler a
+    # folha de pagamento do RIOPREV não produz achado de contratação; é outro universo, com
+    # pipeline próprio nesta casa. Eles NÃO somem — ficam em lista separada, porque
+    # "fora do alvo" não é "irrelevante" e a decisão de olhar continua sendo do fiscal.
+    fila_contratacao = [i for i in faltam if not i["folha"]]
+    fila_folha = [i for i in faltam if i["folha"]]
     return {"total": len(linhas), "arquivados": arquivados, "lidos_nao_arquivados": lidos,
             "nunca_tocados": faltam, "recapturar": recapturar,
+            "nunca_tocados_contratacao": fila_contratacao,
+            "nunca_tocados_folha": fila_folha,
             "dinheiro_nunca_tocado": round(sum(i["valor_ob"] for i in faltam), 2),
+            "dinheiro_contratacao": round(sum(i["valor_ob"] for i in fila_contratacao), 2),
+            "dinheiro_folha": round(sum(i["valor_ob"] for i in fila_folha), 2),
             "dinheiro_recapturar": round(sum(i["valor_ob"] for i in recapturar), 2)}
 
 
@@ -152,10 +217,18 @@ def main(argv=None) -> int:
         print("        não do fiscal. INDISPONÍVEL ≠ irregular.")
         for i in r["recapturar"][:5]:
             print(f"        R$ {i['valor_ob']:>13,.2f}  {i['sei']:28s} {i['forn'][:32]}")
-    fila = (r["nunca_tocados"] + r["lidos_nao_arquivados"])[:a.top]
-    print(f"\ntop {min(10, len(fila))} da fila proposta (por valor pago):")
+    # CONTRATAÇÃO primeiro; folha/encargo entra depois, declarada — não some.
+    lidos_contr = [i for i in r["lidos_nao_arquivados"] if not i.get("folha")]
+    lidos_folha = [i for i in r["lidos_nao_arquivados"] if i.get("folha")]
+    fila = (r["nunca_tocados_contratacao"] + lidos_contr
+            + r["nunca_tocados_folha"] + lidos_folha)[:a.top]
+    print(f"\n  fora do alvo (folha/previdência/encargo): "
+          f"{len(r['nunca_tocados_folha']):,} processos · "
+          f"R$ {moeda(r['dinheiro_folha'])} — vão para o FIM da fila, não somem")
+    print(f"\ntop {min(10, len(fila))} da fila proposta (CONTRATAÇÃO primeiro, por valor pago):")
     for i in fila[:10]:
-        print(f"  R$ {i['valor_ob']:>14,.2f}  {i['sei']:28s} {i['forn'][:36]}")
+        marca = " [folha]" if i.get("folha") else ""
+        print(f"  R$ {i['valor_ob']:>14,.2f}  {i['sei']:28s} {i['forn'][:32]}{marca}")
     if a.gravar:
         SAIDA.write_text(json.dumps(fila, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"\ngravado: {SAIDA} ({len(fila)} processos) — consumir com tools/sei_integra_fila.py "
