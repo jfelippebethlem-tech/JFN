@@ -57,7 +57,15 @@ _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
 _RX_NOTA_TECNICA = re.compile(r"(?i)\bnota\s+t[ée]cnica\b(?!\s+jur)")
 """Nota técnica PURA (a jurídica segue valendo) — peça de fiscalização, não análise prévia."""
 
-_RX_NAO_PARECER = re.compile(r"certid|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo", re.I)
+# `minuta` entra no veto: minuta revisada pela assessoria é o INSUMO do controle, não a
+# manifestação dele — e suas cláusulas condicionais ("desde que devidamente justificado", "caso os
+# recursos não sejam totalmente executados") casam com o padrão de ressalva. Medido em 2026-08-04
+# no SEI-080001/037511/2024: o A3 se ancorava no "Anexo Minuta Revisada Assjur" e cobrava
+# acatamento de uma cláusula de minuta, quando a sequência posterior (nova minuta → Resolução →
+# publicação) é o controle FUNCIONANDO. Mesma doutrina que o I1/I2 já aplica desde 2026-08-03:
+# correção antes da assinatura não é vício.
+_RX_NAO_PARECER = re.compile(
+    r"certid|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo|minuta", re.I)
 # O que NÃO é o instrumento, mesmo tipado `contrato`. "Registro siafe encerramento contrato" é o
 # REGISTRO do encerramento; "Publicação/Extrato" é o extrato no D.O.; "Termo de apostilamento" é
 # registro unilateral. Medido em 2026-08-04: o A1 do 070026/000410/2021 dizia "contrato antes do
