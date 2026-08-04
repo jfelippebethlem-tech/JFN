@@ -81,10 +81,40 @@ def _num(s: str) -> float:
     return float(s.replace(".", "").replace(",", "."))
 
 
+# QUEM DECLARA O VALOR, E COM QUE FORÇA. O padrão antigo era um só e pegava a PRIMEIRA ocorrência
+# num monte de dezenas de documentos — no SEI-070002/001289/2022 colheu "VALOR DO CONTRATO:
+# R$ 46.866,00" de uma *Publicação Errata 01* e o X1 anunciou acréscimo de 10.024%. O contrato é
+# de R$ 105.988.095,41, declarado dezesseis vezes nos autos com fórmulas que o padrão não
+# alcançava: "O valor total do presente Contrato é de", "com valor inicial contratual de" e o
+# par "Valor Original / Valor Total" das telas do SIAFE.
+#
+# Ordem = FORÇA DA DECLARAÇÃO, não posição no texto. A cláusula do contrato e a justificativa do
+# aditivo dizem o valor do contrato; um "VALOR DO CONTRATO:" solto numa errata de edital diz o
+# valor de um item. Dentro da mesma força, vence o mais repetido — e aí a frequência é legítima,
+# porque compara declarações do MESMO tipo (a lição do G2 foi não adivinhar entre coisas
+# diferentes). (2026-08-04)
+_PADROES_VALOR_INICIAL = (
+    re.compile(r"valor\s+(?:total\s+)?(?:inicial\s+)?contratual\s*(?:de|:)?\s*R\$\s*([\d.]+,\d{2})", re.I),
+    re.compile(r"valor\s+total\s+do\s+presente\s+contrato\s*(?:é\s*)?(?:de|:)?\s*R\$\s*([\d.]+,\d{2})", re.I),
+    re.compile(r"valor\s+original\s*[\s\S]{0,40}?R\$\s*([\d.]+,\d{2})", re.I),
+    re.compile(r"valor\s+(?:inicial|global\s+inicial)\s*(?:de|:)?\s*R\$\s*([\d.]+,\d{2})", re.I),
+    _RE_VALOR_INICIAL,          # o mais fraco: "valor do contrato" solto (pegou a errata)
+)
+
+
 def extrair_valor_inicial(texto: str) -> float | None:
-    """Valor inicial do contrato (a base do teto do art. 125). Ausente → None."""
-    m = _RE_VALOR_INICIAL.search(texto or "")
-    return _num(m.group(1)) if m else None
+    """Valor inicial do contrato (a base do teto do art. 125). Ausente → None.
+
+    Escolhe pela FORÇA da declaração (ver `_PADROES_VALOR_INICIAL`) e, dentro da mesma força,
+    pelo valor mais repetido nos autos.
+    """
+    from collections import Counter
+    for rx in _PADROES_VALOR_INICIAL:
+        achados = Counter(_num(m.group(1)) for m in rx.finditer(texto or ""))
+        if achados:
+            # mais repetido; empate desfeito pelo maior (o valor do contrato, não o de um item)
+            return max(achados.items(), key=lambda kv: (kv[1], kv[0]))[0]
+    return None
 
 
 def base_contraditada(texto: str, base: float | None, acrescimos: float) -> float | None:

@@ -147,3 +147,31 @@ def test_data_ao_lado_do_termo_continua_valendo():
     perto = "Atesto do recebimento em 30/09/2025. Ordem bancária 2025OB000001 paga em 10/10/2025."
     p = extrair_pagamentos(perto)
     assert p and p[0]["data_atesto"] == "2025-09-30" and p[0]["data_pagamento"] == "2025-10-10"
+
+
+# ═══ de onde sai o VALOR INICIAL: força da declaração, não posição (2026-08-04) ═══
+
+def test_clausula_do_contrato_vence_valor_solto_de_errata():
+    """Medido no SEI-070002/001289/2022: o padrão antigo pegava a PRIMEIRA ocorrência num monte
+    de dezenas de documentos e colheu "VALOR DO CONTRATO: R$ 46.866,00" de uma *Publicação
+    Errata 01*; o X1 anunciou acréscimo de 10.024%. O contrato é de R$ 105.988.095,41, declarado
+    dezesseis vezes com fórmulas que o padrão não alcançava."""
+    from compliance_agent.execucao_fatos import extrair_valor_inicial
+    texto = ("Publicação Errata 01 ... VALOR DO CONTRATO: R$ 46.866,00 ... "
+             "CLÁUSULA SEGUNDA: DO VALOR DO CONTRATO. O valor total do presente Contrato é de "
+             "R$ 105.988.095,41 ... com valor inicial contratual de R$ 105.988.095,41")
+    assert extrair_valor_inicial(texto) == 105_988_095.41
+
+
+def test_dentro_da_mesma_forca_vence_o_mais_repetido():
+    """Comparar declarações do MESMO tipo é legítimo — a lição do G2 foi não adivinhar entre
+    coisas diferentes, e aqui todas são a mesma fórmula."""
+    from compliance_agent.execucao_fatos import extrair_valor_inicial
+    texto = ("valor inicial contratual de R$ 1.000.000,00. valor inicial contratual de "
+             "R$ 9.999.999,99. valor inicial contratual de R$ 1.000.000,00")
+    assert extrair_valor_inicial(texto) == 1_000_000.00
+
+
+def test_sem_nenhuma_declaracao_devolve_None():
+    from compliance_agent.execucao_fatos import extrair_valor_inicial
+    assert extrair_valor_inicial("processo sem valor declarado") is None
