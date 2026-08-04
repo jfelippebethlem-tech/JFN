@@ -158,6 +158,24 @@ def api_pericia_cobertura():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/siafe/truncamento")
+def api_siafe_truncamento():
+    """A fonte CANÔNICA de pagamento está truncada — e nada avisava.
+
+    A tela de OB Orçamentária do SIAFE-Rio 2 devolve no máximo 1.000 registros por consulta, e uma
+    coleta feita só com `--por-ug` numa UG grande para exatamente nesse número, em silêncio.
+    Medido em 2026-08-04: **23 pares (UG, ano) de 642** param em 1.000, enquanto outros chegam a
+    6.836; nesses 23 o SIAFE conhece R$ 8,46 bi contra R$ 19,26 bi no espelho TFE. Toda soma por
+    UG e toda medida de cobertura saem desse dado — o limite da nossa própria coleta tem de ser
+    visível como qualquer outro INDISPONÍVEL.
+    """
+    try:
+        from compliance_agent.reporting import cobertura_siafe
+        return JSONResponse(content=cobertura_siafe.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/captura/cobertura")
 def api_captura_cobertura():
     """Quanto do que foi PAGO o motor consegue ler — o número que limita todos os outros.

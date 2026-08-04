@@ -4345,7 +4345,7 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd, cb, rt, cc] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb, rt, cc, tr] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
@@ -4354,7 +4354,8 @@ void main(){
       J("/api/radar/status"),
       J("/api/pericia/cobertura"),
       J("/api/ob/retiradas"),
-      J("/api/captura/cobertura")
+      J("/api/captura/cobertura"),
+      J("/api/siafe/truncamento")
     ]);
     h += sec("Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar");
     if (cc && cc.indisponivel === false) {
@@ -4369,6 +4370,21 @@ void main(){
       <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
     } else {
       h += card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc && cc.motivo ? ": " + esc(cc.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Truncamento do SIAFE — o teto de 1.000 da nossa própria coleta");
+    if (tr && tr.indisponivel === false && tr.pares_truncados) {
+      const linhas = (tr.truncados || []).slice(0, 8).map((t) => `<div class="kv"><span class="k">UG ${esc(t.ug)} · exercício ${esc(t.exercicio)}</span><b>${fmtN(t.obs_faltando_ao_menos)} OBs a menos</b></div>`).join("");
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Pares (UG, ano) travados no teto</div><div style="font-size:1.5rem;font-weight:700">${tr.pares_truncados} <span class="dim" style="font-size:.9rem">de ${tr.pares_avaliados}</span></div></div>
+        <div><div class="dim">OBs faltando ao menos</div><div style="font-size:1.5rem;font-weight:700">${fmtN(tr.obs_faltando_ao_menos)}</div></div>
+        <div><div class="dim">Nesses pares: SIAFE × espelho</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(tr.valor_siafe_nos_truncados)} <span class="dim" style="font-size:.9rem">× ${fmtRc(tr.valor_espelho_nos_truncados)}</span></div></div>
+      </div>
+      <div style="margin-top:8px">${linhas}</div>
+      <div class="dim" style="margin-top:6px">${esc(tr.nota || "")}</div>`, "hl");
+    } else if (tr && tr.indisponivel === false) {
+      h += card(`<div>Nenhum par (UG, ano) parado no teto de ${tr.teto_consulta} — a coleta do SIAFE não aparenta truncamento.</div>`);
+    } else {
+      h += card(`<div class="warn">Truncamento do SIAFE INDISPONÍVEL${tr && tr.motivo ? ": " + esc(tr.motivo) : ""} — indisponível não é zero.</div>`);
     }
     h += sec("Perícia documental — cobertura do acervo (24/7)");
     if (cb && cb.indisponivel === false) {
