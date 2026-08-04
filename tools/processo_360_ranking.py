@@ -30,7 +30,15 @@ def pontuar(achados: list[dict], acatamento: dict) -> tuple[int, list[str]]:
         if cod == "A1_CONTRATO_ANTES_DO_PARECER" or a.get("origem") == "cadeia" and "parecer" in diz:
             pts += 5; motivos.append("contrato ANTES do parecer (art. 53)")
         elif grav == "critica":
-            pts += 5; motivos.append("pagamento sem evidência de execução")
+            # O RÓTULO TEM DE SER O ACHADO. Este ramo escrevia "pagamento sem evidência de
+            # execução" para QUALQUER achado crítico. Medido em 2026-08-04, depois de as famílias
+            # X, C e P/E/J passarem a produzir achados visíveis: **24 no acervo seriam rotulados
+            # errado** — um C9 de perfil de fornecedor, um X7 de dupla correção e um I3 de ato sem
+            # assinatura, todos impressos como pagamento sem execução. O fiscal lê esta coluna e
+            # abriria diligência pelo motivo errado.
+            pts += 5
+            motivos.append("pagamento sem evidência de execução"
+                           if "Evidência de execução" in diz else (diz[:70] or cod or "achado crítico"))
         elif a.get("origem") == "suficiencia_emissor":
             pts += 4; motivos.append("parecer de emissor insuficiente")
         elif cod.startswith("A2"):
