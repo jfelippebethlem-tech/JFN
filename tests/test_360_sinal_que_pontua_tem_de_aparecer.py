@@ -130,3 +130,39 @@ def test_detector_de_EDITAL_confirmado_vira_achado():
                               ressalva="x")[0]
     assert a["origem"] == "edital" and a["codigo"] == "E7"
     assert "atestado" in a["diz"] and a["gravidade"] == "alta"
+
+
+# ───────── a prova do fornecedor chegava TRUNCADA ao painel (2026-08-04) ─────────
+
+def _rd_ev(det, score, trecho, fonte="Receita Federal (cadastro CNPJ)"):
+    r = _rd(det, score)
+    r.evidencia = [{"fonte": fonte, "trecho": trecho}]
+    return r
+
+
+_TRECHO = ("Situação cadastral 'INAPTA' na Receita Federal. Pagamento/contratação a empresa com "
+           "cadastro irregular exige verificação da vigência na DATA do ato.")
+
+
+def test_a_prova_do_fornecedor_e_o_trecho_nao_o_repr_do_dicionario():
+    """`str(e)[:120]` serializava `{'fonte': ..., 'trecho': ...}` inteiro e cortava nos 120
+    caracteres: sobrava a chave `fonte` e meia frase da prova. Medido no SEI-080002/019028/2024,
+    o achado C3/C5 de um fornecedor com R$ 92,37 mi pagos chegava ao painel escrito
+    "...na Receita Federal. Pagamento/contra" — truncado no meio da palavra."""
+    a = P.achados_de_fornecedor([_rd_ev("C3/C5", 0.85, _TRECHO)])[0]
+    assert "'fonte'" not in a["evidencia"] and "{" not in a["evidencia"]
+    assert a["evidencia"] == _TRECHO[:220]
+
+
+def test_o_diz_do_fornecedor_carrega_a_prova_quando_ela_existe():
+    """"C9 confirmado (intensidade 1.00)" sozinho é score sem explicação — exatamente o que a
+    família C foi corrigida para não ser."""
+    a = P.achados_de_fornecedor([_rd_ev("C9", 1.0, "39,6% do valor pago via TAC/indenização")])[0]
+    assert "TAC" in a["diz"]
+
+
+def test_sem_evidencia_o_achado_continua_aparecendo():
+    """Regra de 2026-08-03 preservada: o que PONTUA aparece. Sem prova literal ele entra sem o
+    complemento, nunca desaparece da fila."""
+    a = P.achados_de_fornecedor([_rd("C9", 1.0)])[0]
+    assert a["diz"] and a["evidencia"] == ""

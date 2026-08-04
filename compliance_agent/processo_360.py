@@ -102,12 +102,22 @@ def achados_de_fornecedor(resultados) -> list[dict]:
         # principal fazia o item ler "FALSO POSITIVO a descartar" no lugar da acusação — o oposto
         # do que se quer dizer. Ela entra em campo próprio, rotulada, como a doutrina da casa pede.
         inocente = (r.explicacao_inocente or "").strip()
+        # A PROVA É O `trecho`, não o repr do dicionário. `str(e)[:120]` serializava
+        # `{'fonte': ..., 'trecho': ...}` inteiro e cortava nos 120 caracteres — sobrava a chave
+        # `fonte` e meia frase da prova. Medido no SEI-080002/019028/2024 (2026-08-04), o achado
+        # C3/C5 de R$ 92,37 mi chegava ao painel escrito "Situação cadastral 'INAPTA' na Receita
+        # Federal. Pagamento/contra" — truncado no meio da palavra. Mesma extração das outras três
+        # famílias (`achados_de_detector`), inclusive o teto de 220.
+        trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
+                   for e in (r.evidencia or [])[:2]]
         saida.append({
             "origem": "fornecedor", "codigo": r.detector, "gravidade": grav,
+            # o `diz` carrega a prova quando ela existe: "C9 confirmado (intensidade 1.00)" sozinho
+            # é score sem explicação, que é o que a família C foi corrigida para não ser.
             "diz": (f"perfil do fornecedor contratado: detector {r.detector} confirmado "
-                    f"(intensidade {s:.2f})"),
+                    f"(intensidade {s:.2f})" + (f" — {trechos[0]}" if trechos else "")),
             "explicacao_inocente": inocente,
-            "evidencia": "; ".join(str(e)[:120] for e in (r.evidencia or [])[:2]),
+            "evidencia": "; ".join(trechos),
             "ressalva": ("Indício sobre a EMPRESA contratada, não sobre a conduta do gestor "
                          "neste processo."),
         })
