@@ -733,6 +733,26 @@ manuais quando expirarem (caem no nous até lá).
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
 
+> **⏯️ 2026-08-04 (noite) — PENDÊNCIA CONCRETA: o acervo precisa de UMA passada de reavaliação.**
+> A correção de natureza (`indefinido` → `pagamento` por TIPO de documento, commit da noite) mudou
+> a régua de 497 processos, e a passada não terminou: a VM estava com o OCR do sweep e a regra da
+> casa é adiar com load ≥ 4, nunca paralelizar. O código está commitado e testado; o que está
+> velho é só o GRAVADO em `processo_avaliacao` e a `data/fila_fiscal_360.md` derivada dela.
+>
+> Rodar quando o load ceder (leva ~15 min, cede sozinha entre lotes):
+> `nice -n15 .venv/bin/python /tmp/.../reavaliar_acervo.py` — ou simplesmente esperar o
+> `sweep_360.sh` (cron `20 */4`), que reavalia o que captura.
+>
+> Esperado depois dela: menos "Planejamento/Seleção/Contrato ausentes" (em amostra de 120 a
+> acusação caiu de 70 para 44) e nenhuma mudança na cobrança de **evidência de execução**, que a
+> isenção não alcança de propósito.
+>
+> **Também refilados à mão e aguardando o sweep:** `SEI-030001/111011/2025` (contrato cortado em
+> 20.000, onde ficam assinatura e data — decide o achado "contrato ANTES do parecer") e
+> `SEI-080001/036964/2025` (parecer cortado; a ressalva sobre a Deliberação CIB 1.237/2025 não
+> referendada está confirmada e é achado verdadeiro).
+
+
 > **⏯️ 2026-08-01 — PROCESSO 360 no ar + fila do fiscal viva (23 commits; PR #9).** Comece por
 > `~/vault/aprendizados/processo-360.md` (estado, calibrações e pendências) e por
 > `data/fila_fiscal_360.md` (regravado a cada 4h pelo `tools/sweep_360.sh`).
