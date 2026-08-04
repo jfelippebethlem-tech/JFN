@@ -39,8 +39,19 @@ _RE_RECOMENDA = re.compile(
     r"\b(recomenda|recomenda[çc][aã]o|ressalva|determina|determina[çc][aã]o|gloss?a|apontamento|"
     r"exige|condiciona|dever[aá]\s+ser\s+(?:sanad|suprid|corrigid)|sane-?se|suprir|impugna|n[aã]o\s+recomenda|"
     r"opina\s+pelo?\s+n[aã]o|abst[eê]m-se|com\s+ressalvas?)\b", re.I)
+# `reiter` SOZINHO era ruído puro. Medido em 2026-08-04 sobre os 755 pareceres do acervo: dos 73
+# documentos com sinal de "não atendida", **49 (67%) tinham como ÚNICO gatilho "reitera-se"** — o
+# conectivo retórico de qualquer texto jurídico ("que, reitera-se, caso existente deverá ser
+# comprovada nos autos"). A intenção do padrão era outra e continua valendo: o parecer que
+# **reitera uma RECOMENDAÇÃO** está dizendo que ela não foi atendida. Então o verbo passa a exigir
+# objeto de linguagem de CONTROLE — e não basta "reiterada a solicitação de cotação", que é
+# reenvio de pedido de preço. Na varredura de hoje a forma estreita casa ZERO documentos: os 49
+# eram todos falsos, e o que sobra é a regra correta esperando o caso verdadeiro.
 _RE_NAO_ATENDIDA = re.compile(
-    r"\b(n[aã]o\s+(?:foi\s+)?atendid|n[aã]o\s+(?:foi\s+)?sanad|reiter|permanec\w+\s+a\s+(?:pend|ressalv|recomend|falh)|"
+    r"\b(n[aã]o\s+(?:foi\s+)?atendid|n[aã]o\s+(?:foi\s+)?sanad|"
+    r"reiter\w*(?:-se)?\s+(?:a|o|as|os)?\s*"
+    r"(?:recomenda|ressalva|determina|pend[êe]ncia|apontamento|exig[êe]ncia)|"
+    r"permanec\w+\s+a\s+(?:pend|ressalv|recomend|falh)|"
     r"persist\w+\s+a\s+(?:pend|irregular|falh)|descumpr|sem\s+manifesta[çc][aã]o|deixou\s+de\s+(?:atender|cumprir|sanar)|"
     r"n[aã]o\s+(?:foi\s+)?observ\w+\s+(?:o|a)\s+(?:parecer|recomenda|determina)|contrari\w+\s+(?:o|ao)\s+parecer|"
     r"pend[eê]ncia\s+n[aã]o\s+(?:sanad|atendid)|ressalva\s+n[aã]o\s+(?:sanad|atendid))", re.I)

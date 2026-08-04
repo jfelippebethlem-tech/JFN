@@ -117,3 +117,37 @@ def test_a_ementa_nao_decide_o_emissor():
     esse corte, a janela de cabeçalho não resolveria nada."""
     texto = "Secretaria X\nControle Interno\nPARECER 9\nEmenta: aplica-se o enunciado da PGE-RJ."
     assert S.classificar_emissor(texto) == "CONTROLE_INTERNO"
+
+
+# ───────── "reitera-se" sozinho é conectivo, não descumprimento (2026-08-04) ─────────
+
+def test_reitera_se_retorico_nao_e_sinal_de_nao_atendida():
+    """Medido nos 755 pareceres do acervo: dos 73 documentos com sinal de "não atendida",
+    **49 (67%) tinham como ÚNICO gatilho "reitera-se"** — o conectivo de qualquer texto jurídico.
+    Exemplo real, do Parecer 2848/2024 FS/DIRJUR que autoriza um TAC de R$ 6,5 mi."""
+    texto = ("Desta feita, entende-se que, caso ausente a má-fé do particular (que, reitera-se, "
+             "caso existente deverá ser comprovada nos autos), poderá ocorrer a indenização.")
+    assert not S._RE_NAO_ATENDIDA.search(texto)
+
+
+def test_reiterar_uma_RECOMENDACAO_continua_sendo_sinal():
+    """A intenção do padrão era esta e continua valendo: o parecer que reitera um apontamento
+    está dizendo que ele não foi atendido."""
+    for texto in ("reitera-se a recomendação de juntada do parecer",
+                  "reitera a ressalva do parecer anterior",
+                  "reitero a determinação desta Corte",
+                  "reiteramos as recomendações não cumpridas"):
+        assert S._RE_NAO_ATENDIDA.search(texto), texto
+
+
+def test_reiterar_pedido_de_cotacao_nao_e_controle():
+    """"Reiterada a solicitação de cotação" é reenvio de pedido de preço — não há apontamento
+    nenhum sendo repetido."""
+    assert not S._RE_NAO_ATENDIDA.search(
+        "o primeiro e-mail foi enviado em 20/02/2024, sendo reiterada a solicitação em 27/02/2024")
+
+
+def test_os_outros_gatilhos_seguem_valendo():
+    for texto in ("a ressalva não foi atendida", "houve descumprimento do parecer",
+                  "permanece a pendência apontada", "a recomendação não foi sanada"):
+        assert S._RE_NAO_ATENDIDA.search(texto), texto
