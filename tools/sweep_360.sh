@@ -29,11 +29,26 @@ PRIO="nice -n 19 ionice -c3"
 # de 4 processos para até 40 min de trabalho contínuo; sem esta guarda ele passaria a disputar CPU
 # com o sweep SEI (Chromium + tesseract) que roda de 30 em 30 minutos. Mesmo critério do
 # sweep_sei.sh: adia em vez de brigar — o cron repete, nada se perde.
-if pgrep -f 'tools\.sei_swee[p]' >/dev/null; then
-  say "sweep SEI em curso — adio o juízo (1 pesado por vez)"; JUIZO_SEGUNDOS=0
-fi
+# INANIÇÃO MEDIDA (2026-08-04). A guarda por PRESENÇA vetava o juízo sempre: o sweep SEI roda
+# `*/30` e o log mostra atividade do minuto 00 ao 59 em todas as horas — não existe janela ociosa.
+# Resultado: o juízo rodou em 02/08 e 03/08 e nunca mais; 39 processos de 1.940 periciáveis (2%),
+# e a causa não era custo, era agendamento. Regra que sempre adia o mesmo job não é prioridade, é
+# inanição.
+#
+# O critério certo é a CARGA, não a presença — e o próprio comentário abaixo já dizia por quê: a
+# cadeia do juízo é a GRÁTIS, ele lê texto de disco e ESPERA HTTP; quem come os 2 vCPU é o
+# Chromium + tesseract do sweep. Com a VM folgada os dois convivem; com a VM apertada o juízo
+# encolhe e, no aperto de verdade, sai da frente. O limite duro da casa (load >= 4 = adiar) fica
+# intacto.
 L=$(awk '{print int($1)}' /proc/loadavg)
-if [ "${JUIZO_SEGUNDOS:-2400}" != "0" ] && [ "$L" -ge 4 ]; then
+if pgrep -f 'tools\.sei_swee[p]' >/dev/null; then
+  if [ "$L" -ge 4 ]; then
+    say "sweep SEI em curso e load $L — adio o juízo (1 pesado por vez)"; JUIZO_SEGUNDOS=0
+  else
+    say "sweep SEI em curso mas load $L folgado — slot curto p/ o juízo (não disputa CPU)"
+    JUIZO_SEGUNDOS=600
+  fi
+elif [ "$L" -ge 4 ]; then
   say "load $L alto — encurto o slot do juízo"; JUIZO_SEGUNDOS=300
 fi
 export JUIZO_SEGUNDOS
