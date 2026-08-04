@@ -50,6 +50,7 @@ def test_sem_data_ou_com_data_ilegivel_NAO_expira():
 # ---------------------------------------------------------------- acesso restrito confirmado
 
 def _registro(tmp_path, monkeypatch, entrada):
+    S._registro_restritos.cache_clear()  # o registro é lido 1× por execução do sweep; aqui, por teste
     (tmp_path / "data").mkdir(parents=True, exist_ok=True)
     (tmp_path / "data" / "sei_restritos.json").write_text(
         json.dumps({"1500010115732021": entrada}), encoding="utf-8")
@@ -83,5 +84,6 @@ def test_RESTRITO_interrogacao_volta_a_fila(tmp_path, monkeypatch):
 
 
 def test_sem_registro_nao_se_nega_leitura_a_ninguem(tmp_path, monkeypatch):
+    S._registro_restritos.cache_clear()
     monkeypatch.setattr(S, "REPO", tmp_path)
     assert S._restrito_confirmado("SEI-150001/011573/2021") is False

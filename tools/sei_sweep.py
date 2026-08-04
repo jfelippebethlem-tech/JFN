@@ -25,6 +25,7 @@ import logging
 import os
 import re
 import signal
+from functools import lru_cache
 import sqlite3
 import time
 from datetime import datetime
@@ -348,6 +349,20 @@ def _tentativa_expirou(em: str | None) -> bool:
 _DIAS_RECONFERIR_RESTRITO = int(os.environ.get("SEI_SWEEP_DIAS_RESTRITO", "90"))
 
 
+@lru_cache(maxsize=1)
+def _registro_restritos() -> dict:
+    """O controle de restritos, lido UMA vez por execução do sweep.
+
+    São 419 KB: reparsear por processo custava 4,5 ms, ~9,5 s por passada e ~95 s por ciclo do
+    cron numa VM de 2 vCPU. A fila é montada inteira antes do laço de leitura, e quem escreve no
+    registro é o `sei_restritos.registrar`, depois — dentro de uma execução o arquivo não muda.
+    """
+    try:
+        return json.loads((REPO / "data" / "sei_restritos.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
 def _restrito_confirmado(proc: str) -> bool:
     """O registro de controle diz que este processo é de ACESSO RESTRITO, e a marca ainda é recente?
 
@@ -364,8 +379,7 @@ def _restrito_confirmado(proc: str) -> bool:
     que esta mesma função foi escrita para corrigir.
     """
     try:
-        reg = json.loads((REPO / "data" / "sei_restritos.json").read_text(encoding="utf-8"))
-        e = reg.get(re.sub(r"\D", "", proc or ""))
+        e = _registro_restritos().get(re.sub(r"\D", "", proc or ""))
         if not isinstance(e, dict) or e.get("status") != "RESTRITO":
             return False
         visto = datetime.fromisoformat(str(e.get("ultima") or "").replace(" ", "T"))
