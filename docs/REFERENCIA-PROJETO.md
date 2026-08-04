@@ -739,9 +739,18 @@ manuais quando expirarem (caem no nous até lá).
 > casa é adiar com load ≥ 4, nunca paralelizar. O código está commitado e testado; o que está
 > velho é só o GRAVADO em `processo_avaliacao` e a `data/fila_fiscal_360.md` derivada dela.
 >
-> Rodar quando o load ceder (leva ~15 min, cede sozinha entre lotes):
-> `nice -n15 .venv/bin/python /tmp/.../reavaliar_acervo.py` — ou simplesmente esperar o
-> `sweep_360.sh` (cron `20 */4`), que reavalia o que captura.
+> **Rodar a PIPELINE** (não repetir comandos ad-hoc — foi assim que duas medições saíram erradas
+> em 2026-08-04):
+>
+> ```
+> python -m tools.pos_correcao            # fotografa, reavalia, regrava a fila e mostra o DIFF
+> python -m tools.pos_correcao --so-medir # só a fotografia de agora, não escreve nada
+> ```
+>
+> Ela é passe único, cede a VM entre lotes de 25 e **não começa com load ≥ 4**. Não roda a suíte:
+> isso continua sendo `tools/ci_lote.py`, em lotes, por decisão de quem está no teclado. O mesmo
+> retrato aparece no painel em **Instrumentação → Estado do motor** (`/api/motor/fotografia`), que
+> usa a MESMA função — painel e diff não divergem.
 >
 > Esperado depois dela: menos "Planejamento/Seleção/Contrato ausentes" (em amostra de 120 a
 > acusação caiu de 70 para 44) e nenhuma mudança na cobrança de **evidência de execução**, que a
