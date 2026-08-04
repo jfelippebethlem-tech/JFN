@@ -157,3 +157,47 @@ def test_o_que_falta_DE_VERDADE_continua_sendo_cobrado():
            "(74889283); Planilha (74889284). II. FUNDAMENTAÇÃO")
     r = C.conferir([{"ref": "P", "tipo": "parecer", "texto": txt}])
     assert set(r["ausentes"]) == {"74889283", "74889284"}
+
+
+# ───────── presente e ILEGÍVEL não é documento capturado (2026-08-04) ─────────
+
+def test_documento_presente_sem_teor_conta_como_NAO_capturado():
+    """Medido em 2026-08-04: **72 documentos em 16 processos** são citados pelo parecer, estão
+    declarados no manifesto e têm ZERO caractere de teor — e contavam como nossos, porque a
+    conferência casava IDENTIFICADOR, não texto. Mesma família do `captura_integra` ("contar
+    ARQUIVO não é contar TEXTO"), sobrevivendo aqui. Entre eles, num pagamento de R$ 6,5 mi por
+    Termo de Ajuste de Contas, o próprio TAC — o documento que decide.
+    """
+    docs = [
+        {"ref": "Doc A (74779798)", "tipo": "outro", "texto": ""},          # presente, ilegível
+        {"ref": "Doc B (74889283)", "tipo": "outro", "texto": "teor real e suficiente do doc B"},
+        {"ref": "Doc C (74889284)", "tipo": "outro", "texto": "teor real e suficiente do doc C"},
+        {"ref": "Parecer 462", "tipo": "parecer", "texto": _PARECER},
+    ]
+    r = C.conferir(docs)
+    assert "74779798" in r["sem_teor"], "documento sem uma letra passava por capturado"
+    assert "74779798" not in r["fora_da_pasta"], "está na pasta — o remédio é reextrair, não recapturar"
+    assert "sem teor" in r["diz"].lower() or "SEM UM CARACTERE" in r["diz"]
+
+
+def test_os_dois_remedios_saem_separados():
+    """Recapturar o que falta e reextrair o que está presente e vazio são ações diferentes; juntar
+    as duas mandaria o sweep buscar o que já está no disco."""
+    docs = [
+        {"ref": "Doc A (74779798)", "tipo": "outro", "texto": ""},
+        {"ref": "Doc B (74889283)", "tipo": "outro", "texto": "teor real e suficiente do doc B"},
+        {"ref": "Parecer 462", "tipo": "parecer", "texto": _PARECER},
+    ]
+    r = C.conferir(docs)
+    assert set(r["sem_teor"]).isdisjoint(set(r["fora_da_pasta"]))
+    assert sorted(r["sem_teor"] + r["fora_da_pasta"]) == r["ausentes"]
+    assert "reextrair" in r["acao"]
+
+
+def test_chamador_que_nao_entrega_texto_nao_acusa_ninguem():
+    """Ausência do CAMPO não é documento vazio. Há chamador que passa só metadado: concluir
+    'ilegível' ali acusaria a captura inteira por algo que ninguém mediu."""
+    docs = [{"ref": f"Doc ({i})", "tipo": "outro", "texto": ""} for i in
+            ("74779798", "74889283", "74889284")]
+    r = C.conferir(docs + [{"ref": "Parecer 462", "tipo": "parecer", "texto": _PARECER}])
+    assert r["sem_teor"] == [], "sem texto entregue, não se afere legibilidade de nada"

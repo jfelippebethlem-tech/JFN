@@ -110,6 +110,24 @@ def conferir(docs: list[dict]) -> dict:
     # cita "Relatório de Fiscalização (121178482)", o documento ESTÁ na pasta e o título dele não
     # traz o número — cobrar a recaptura mandaria o sweep buscar o que já temos.
     nossos: set[str] = set()
+    # PRESENTE E ILEGÍVEL NÃO É TER. Medido em 2026-08-04: **72 documentos em 16 processos** são
+    # citados pelo parecer, estão declarados no manifesto e têm ZERO caractere de teor — e
+    # contavam como nossos, porque a conferência casava IDENTIFICADOR, não texto. É a mesma
+    # família que o `captura_integra` corrigiu em 2026-08-03 ("contar ARQUIVO não é contar
+    # TEXTO"), sobrevivendo aqui. Entre eles, num pagamento de R$ 6,5 mi por Termo de Ajuste de
+    # Contas, o próprio TAC — o documento que decide.
+    # Os dois casos entram no achado SEPARADOS: o remédio de um é recapturar o documento; o do
+    # outro é reextrair o texto de um documento que já está na pasta.
+    sem_texto: set[str] = set()
+    # AUSÊNCIA DO CAMPO NÃO É DOCUMENTO VAZIO. Esta é uma função pura sobre `docs`, e há chamador
+    # que passa só metadado — para ele, `texto` vem vazio em TODOS os documentos e concluir
+    # "ilegível" acusaria a captura inteira por algo que ninguém mediu. Só se afere legibilidade
+    # quando o conjunto mostra que o chamador ENTREGA texto: ao menos um documento comum (não o
+    # próprio parecer, que é a régua) traz teor. Processo em que absolutamente nenhum documento
+    # tem teor já é pego pelo `captura_integra`, por outro caminho.
+    _refs_parecer = {id(x) for x in pareceres}
+    entrega_texto = any((d.get("texto") or "").strip()
+                        for d in (docs or []) if id(d) not in _refs_parecer)
     for d in docs or []:
         nossos |= _ids(str(d.get("ref") or ""))
         # A etiqueta do arquivo vem EXPLÍCITA em `d["etiqueta"]` desde 2026-08-03: o texto passou
@@ -119,19 +137,35 @@ def conferir(docs: list[dict]) -> dict:
         # O fallback lê do próprio texto para quem ainda passa o bruto.
         nossos |= _ids(str(d.get("etiqueta") or "")
                        or _cabecalho_do_arquivo(d.get("texto") or ""))
+        if entrega_texto and not (d.get("texto") or "").strip():
+            sem_texto |= _ids(str(d.get("ref") or "")) | _ids(str(d.get("etiqueta") or ""))
+    # o que está na pasta sem teor deixa de contar como capturado
+    nossos -= sem_texto
     ausentes = sorted(citados - nossos)
+    ilegiveis = sorted(citados & sem_texto)
+    fora = [x for x in ausentes if x not in set(ilegiveis)]
     if not ausentes:
         return {"achado": False, "indisponivel": False, "ausentes": [],
                 "n_citados": len(citados)}
+    partes = []
+    if fora:
+        partes.append(f"{len(fora)} não estão na pasta ({', '.join(fora[:6])}"
+                      f"{'…' if len(fora) > 6 else ''})")
+    if ilegiveis:
+        partes.append(f"{len(ilegiveis)} estão na pasta SEM UM CARACTERE de teor "
+                      f"({', '.join(ilegiveis[:6])}{'…' if len(ilegiveis) > 6 else ''}) — "
+                      "documento presente e ilegível não é documento capturado")
     return {
         "achado": True, "indisponivel": False, "ausentes": ausentes,
+        "fora_da_pasta": fora, "sem_teor": ilegiveis,
         "n_citados": len(citados), "gravidade": "captura",
         "diz": (f"o parecer jurídico lista {len(citados)} documentos nos autos e "
-                f"{len(ausentes)} não estão na nossa captura ({', '.join(ausentes[:8])}"
-                f"{'…' if len(ausentes) > 8 else ''}). Lacuna da COLETA, não do processo: o que "
-                "depender desses documentos fica INDISPONÍVEL, nunca descumprido."),
+                f"{len(ausentes)} não chegaram legíveis na nossa captura: " + "; ".join(partes) +
+                ". Lacuna da COLETA, não do processo: o que depender desses documentos fica "
+                "INDISPONÍVEL, nunca descumprido."),
         "evidencia": ", ".join(ausentes[:12]),
-        "acao": "capturar os documentos listados e reavaliar o processo",
+        "acao": ("recapturar os que faltam na pasta e reextrair o texto dos que estão presentes "
+                 "sem teor; depois reavaliar o processo"),
     }
 
 
