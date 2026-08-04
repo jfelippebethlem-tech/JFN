@@ -60,8 +60,8 @@ def test_achado_de_fornecedor_nao_e_contado_duas_vezes_no_score():
     """O detector já está em `resultados`; virar sinal sintético também inflaria o score."""
     from pathlib import Path as _P
     src = _P(P.__file__).read_text(encoding="utf-8")
-    assert 'if origem == "fornecedor":\n            continue' in src, (
-        "o achado de fornecedor voltou a ser convertido em sinal sintético")
+    assert 'if origem in ("fornecedor", "execucao"):\n            continue' in src, (
+        "achado de fornecedor/execução voltou a ser convertido em sinal sintético")
 
 
 def test_explicacao_inocente_nao_vira_o_texto_do_achado():
@@ -70,3 +70,31 @@ def test_explicacao_inocente_nao_vira_o_texto_do_achado():
     a = P.achados_de_fornecedor([_rd("C3/C5", 0.85, "FALSO POSITIVO a descartar (spread normal)")])[0]
     assert "FALSO POSITIVO" not in a["diz"]
     assert a["explicacao_inocente"] == "FALSO POSITIVO a descartar (spread normal)"
+
+
+# ───────── a mesma falha, aberta na família de EXECUÇÃO até 2026-08-04 ─────────
+
+def test_detector_de_execucao_confirmado_vira_achado():
+    """Medido nos 120 processos de maior risco: X3 confirmado em 29, X7 em 14, X1 em 4 e X9 em 3
+    — todos pontuando no score e nenhum aparecendo. Um deles (070002/013553/2024) estava em
+    EXTREMO com score 80 e ZERO achados."""
+    r = _rd("X3", 0.9)
+    r.evidencia = [{"trecho": "pagamento de R$ 1,2 mi sem medição correspondente nos autos"}]
+    a = P.achados_de_execucao([r])[0]
+    assert a["origem"] == "execucao" and a["codigo"] == "X3"
+    assert "medição" in a["diz"], "o TRECHO literal entra no achado — é ele que sustenta a peça"
+    assert a["gravidade"] == "critica"
+
+
+def test_execucao_nao_confirmada_ou_refutada_nao_vira_achado():
+    r1 = _rd("X9", 1.0); r1.status = "nao_avaliavel"
+    r2 = _rd("X9", 1.0); r2.refutada = True
+    assert P.achados_de_execucao([r1]) == [] and P.achados_de_execucao([r2]) == []
+
+
+def test_achado_de_execucao_fala_do_PROCESSO_e_nao_da_empresa():
+    """Execução do contrato é conduta do gestor — ao contrário do perfil do fornecedor, que é
+    característica de quem ele contratou."""
+    a = P.achados_de_execucao([_rd("X1", 0.8)])[0]
+    assert "execu" in a["diz"].lower()
+    assert "empresa" not in a["ressalva"].lower()

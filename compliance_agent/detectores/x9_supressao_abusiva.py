@@ -100,6 +100,26 @@ class X9SupressaoAbusiva(Detector):
         # O 50% da reforma é SÓ do acréscimo; a supressão fica nos 25% em qualquer objeto.
         teto = teto_supressao(contexto.get("tipo_objeto"))
         pct = supressao / valor_inicial
+        # INVARIANTE FÍSICO: não se suprime mais do que existe. Passar de 100% não é contrato
+        # esvaziado — é LEITURA quebrada, quase sempre um `valor_inicial` colhido do documento
+        # errado. Medido no SEI-070002/013553/2024 (2026-08-04): supressão de R$ 1.153.949,75
+        # sobre um "valor inicial" de R$ 71.974,32 = **1603% suprimidos**, e o detector devolvia
+        # `critico` com score 1,0 — o processo ia a EXTREMO (score 80) por um número impossível.
+        # A saída honesta é nao_avaliavel dizendo o que não fecha, nunca um achado crítico: a
+        # regra da casa é que ausência e erro de leitura não viram acusação.
+        if pct > 1.0:
+            res.status = "nao_avaliavel"
+            res.score = 0.0
+            res.valores = {"tem_valor_inicial": True, "valor_inicial": round(valor_inicial, 2),
+                           "supressao": round(supressao, 2), "pct_supressao": round(pct, 4),
+                           "leitura_incoerente": True, "n_aditivos": comp["n"]}
+            res.motivo_refutacao = (
+                f"nao_avaliavel: a supressão apurada (R$ {moeda(supressao)}) excede o próprio "
+                f"valor inicial (R$ {moeda(valor_inicial)}) — {pct:.0%} do contrato. Não se "
+                "suprime mais do que existe: o que está errado é a extração de um dos dois "
+                "números, não o contrato. Conferir o valor inicial nos autos antes de afirmar "
+                "qualquer coisa sobre supressão.")
+            return res
         valores = {
             "tem_valor_inicial": True, "valor_inicial": round(valor_inicial, 2),
             "supressao": round(supressao, 2), "pct_supressao": round(pct, 4),

@@ -114,6 +114,43 @@ def achados_de_fornecedor(resultados) -> list[dict]:
     return saida
 
 
+def achados_de_execucao(resultados) -> list[dict]:
+    """Detectores da FASE DE EXECUÇÃO (X) que pontuam viram achado VISÍVEL.
+
+    A mesma falha que `achados_de_fornecedor` corrigiu para a família C ficou aberta aqui, e é
+    pior: os X medem o que aconteceu com o CONTRATO — aditivo que engorda, execução financeira
+    anômala, reequilíbrio indevido, supressão que esvazia o objeto. Medido em 2026-08-04 nos 120
+    processos de maior risco: **X3 confirmado em 29, X7 em 14, X1 em 4, X9 em 3**, todos
+    pontuando no `score_processo` e nenhum aparecendo em lugar nenhum. Um deles (070002/013553/
+    2024) estava em EXTREMO com score 80 e ZERO achados — o fiscal abria o topo da fila e não
+    havia nada escrito.
+
+    Ao contrário do fornecedor, aqui o achado É sobre este processo: a execução do contrato é
+    conduta do gestor, não característica de quem ele contratou. Por isso não leva a ressalva de
+    "indício sobre a empresa" — leva a ressalva de sempre, que indício não é acusação.
+    """
+    saida = []
+    for r in resultados or []:
+        if r.status != "confirmado" or r.refutada:
+            continue
+        s = float(r.score or 0)
+        # A evidência do detector já traz o TRECHO literal com os números; é ela que sustenta o
+        # achado perante o tribunal, e é ela que o fiscal precisa ler — não a paráfrase.
+        trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
+                   for e in (r.evidencia or [])[:2]]
+        saida.append({
+            "origem": "execucao", "codigo": r.detector,
+            "gravidade": "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media",
+            "diz": (f"execução do contrato: {r.detector} confirmado (intensidade {s:.2f})"
+                    + (f" — {trechos[0]}" if trechos else "")),
+            "explicacao_inocente": (r.explicacao_inocente or "").strip(),
+            "evidencia": "; ".join(trechos),
+            "ressalva": ("Indício a verificar nos autos, não acusação: o detector lê o texto dos "
+                         "termos e pode ter colhido número de documento diverso."),
+        })
+    return saida
+
+
 def _cnpj_vencedor(numero: str) -> str | None:
     """Maior favorecido do processo em `sei_arvore.fornecedores` (fallback barato e honesto)."""
     try:
@@ -301,6 +338,9 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                     **(contexto_x3(t_despesa) if t_despesa.strip() else {})}
         res_exec = _rodar_execucao(numero, ctx_exec)
         resultados.extend(res_exec)
+        # PONTUAR SEM APARECER é a falha que já custou 14 processos EXTREMO sem achado nenhum na
+        # família C. Aqui ela seguia aberta para a família X — ver `achados_de_execucao`.
+        achados += achados_de_execucao(res_exec)
         rodados += sorted({r.detector for r in res_exec})
     except Exception as e:  # noqa: BLE001
         indisponiveis.append(f"execucao: {e}")
@@ -403,9 +443,9 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     # 8) sinais estruturais → ResultadoDetector sintéticos + agregador OFICIAL
     for a in achados:
         origem = a["origem"]
-        # o achado de FORNECEDOR já veio do próprio detector, que JÁ está em `resultados`:
-        # convertê-lo em sinal sintético o contaria duas vezes e inflaria o score do processo.
-        if origem == "fornecedor":
+        # o achado de FORNECEDOR e o de EXECUÇÃO já vieram do próprio detector, que JÁ está em
+        # `resultados`: convertê-los em sinal sintético os contaria duas vezes e inflaria o score.
+        if origem in ("fornecedor", "execucao"):
             continue
         if origem == "triagem":
             s = _ANCORA_TRIAGEM.get(str(a.get("grau")), 0.3)

@@ -64,10 +64,47 @@ def _sentencas(texto: str) -> list[str]:
     return [t.strip() for t in re.split(r"(?<=[.;])\s+", texto or "") if t.strip()]
 
 
+_RE_QUALQUER_VALOR = re.compile(r"R\$\s*([\d.]{1,18},\d{2})")
+
+
+def _num(s: str) -> float:
+    return float(s.replace(".", "").replace(",", "."))
+
+
 def extrair_valor_inicial(texto: str) -> float | None:
     """Valor inicial do contrato (a base do teto do art. 125). Ausente → None."""
     m = _RE_VALOR_INICIAL.search(texto or "")
-    return float(m.group(1).replace(".", "").replace(",", ".")) if m else None
+    return _num(m.group(1)) if m else None
+
+
+def base_contraditada(texto: str, base: float | None, acrescimos: float) -> float | None:
+    """Existe, NO MESMO texto, um valor de contrato que desmente a base extraída?
+
+    Por que existe (medido em 2026-08-04). `extrair_valor_inicial` devolve a PRIMEIRA ocorrência
+    do padrão num monte de dezenas de documentos concatenados, sem noção de qual deles é o
+    contrato. No SEI-070002/001289/2022 ela colheu **R$ 46.866,00 de uma "Publicação Errata 01"**
+    e o X1 anunciou acréscimo de **10.024%**; o contrato é o 38/2023, de R$ 105.988.095,41,
+    declarado seis vezes nos autos, e o aditivo de R$ 4.697.858,84 é **4,4%** — dentro do teto.
+    Não havia achado nenhum, e o processo liderava a fila de risco.
+
+    A refutação NÃO é um limiar arbitrário: é o próprio processo dizendo outro número. Se algum
+    valor declarado no texto torna o acréscimo compatível com o teto legal, a base extraída está
+    contradita pelos autos e o X1 não pode afirmar estouro sobre ela. Devolve o candidato que
+    desmente (o menor que basta), ou None quando nada no texto contradiz.
+
+    Nota de método: a casa já se queimou "adivinhando o dono por frequência" no G2. Aqui não se
+    adivinha — declara-se contradição e o detector devolve `nao_avaliavel`, que é o honesto
+    quando duas leituras do mesmo processo não fecham.
+    """
+    if not base or base <= 0 or acrescimos <= 0:
+        return None
+    if acrescimos / base <= 1.0:           # dentro do plausível: nada a contraditar
+        return None
+    candidatos = sorted({_num(m) for m in _RE_QUALQUER_VALOR.findall(texto or "")})
+    for v in candidatos:
+        if v > base and acrescimos / v <= 0.25:
+            return v
+    return None
 
 
 def _natureza(frase: str) -> str:
@@ -107,7 +144,11 @@ def contexto_x1(texto: str, *, tipo_objeto: str | None = None) -> dict:
     (é ele que define o teto de 25% ou 50% — a decisão é do X1, o insumo é daqui)."""
     tipo = tipo_objeto or ("reforma" if _RE_REFORMA.search(texto or "") else None)
     return {"valor_inicial": extrair_valor_inicial(texto), "aditivos": extrair_aditivos(texto),
-            "tipo_objeto": tipo, "fonte": "execucao_fatos (extração do texto do processo)"}
+            "tipo_objeto": tipo, "fonte": "execucao_fatos (extração do texto do processo)",
+            # o TEXTO vai junto para o detector poder conferir a própria base contra os autos
+            # (ver `base_contraditada`) — a base sai da 1ª ocorrência num monte de documentos e
+            # já foi colhida de uma errata, produzindo "acréscimo de 10.024%".
+            "_texto_fonte": texto or ""}
 
 
 # ───────────────────────────── X3: tríade da despesa × atesto ─────────────────────────────
