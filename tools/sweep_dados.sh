@@ -27,6 +27,13 @@ if [ -f data/.pause_fachada_sweep ]; then say "fachada pausada — pulei"; else 
 # Pausa: data/.pause_fachada_streetview_sweep. (Os flags antigos .pause_fachada_visual_sweep/.pause_fachada_b2_sync
 # ficam só como freio dos sweeps Mapillary aposentados, que saíram do caminho ativo.)
 if [ -f data/.pause_fachada_streetview_sweep ]; then say "fachada street view pausada — pulei"; else $PRIO timeout 1500 $PY -m tools.fachada_streetview_sweep --status INDICIO --limite 0 --max-min 22 --pausa 1.0 >> data/fachada_streetview.log 2>&1; say "fachada street view rc=$?"; fi
+# REPARO DE DOCUMENTOS SEM TEOR a partir do PDF já guardado em cache — de graça (não toca o SEI,
+# não gasta sessão). A ferramenta existia desde 2026-07-24 com a docstring "por isso esta
+# ferramenta roda primeiro" e NUNCA teve caller nem cron. Roda no modo por IDENTIFICADOR (o dono
+# é o PDF que exibe o id do título, não o de índice igual) e só grava com prova — o casamento
+# posicional está desalinhado e escreveria o teor de uma peça sob o título de outra.
+# Pausa: data/.pause_reparar_vazios.
+if [ -f data/.pause_reparar_vazios ]; then say "reparar vazios pausado — pulei"; else $PRIO timeout 900 $PY -m tools.sei_reparar_vazios --por-identificador --aplicar >> data/reparar_vazios.log 2>&1; say "reparar vazios rc=$?"; fi
 # RANKING DE TAC POR UNIDADE — pagamento fora de contrato regular, com régua COMPARATIVA (a
 # mediana das 56 unidades acima de R$ 300 mi é 0,3%; a Fundação Saúde está em 27,0%). Uma passada
 # sobre 1,16 milhão de OBs aplicando a regex canônica do `detector_tac` (não se reescreve a
