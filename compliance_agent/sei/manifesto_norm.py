@@ -129,9 +129,17 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
     n_com_texto = acervo_texto.docs_com_conteudo(pasta) if txt.exists() else 0
     minimo = max(1, int(len(docs) * 0.6))
     ok = bool(docs) and n_com_texto >= minimo
-    if manifest.get("captura_vazia") or manifest.get("captura_completa") is False:
+    veto = bool(manifest.get("captura_vazia") or manifest.get("captura_completa") is False)
+    # BANDEIRA DESMENTIDA PELO DISCO é dado velho, não veto. Medido em 2026-08-04: **17
+    # processos** carregavam `captura_vazia=True` ou `captura_completa=False` tendo 100% dos
+    # documentos com teor — 155 de 155, 136 de 136, 247 de 247. A marca foi posta por uma
+    # captura que falhou, uma captura POSTERIOR deu certo, e ninguém a limpou; o efeito era
+    # NAO_AVALIAVEL perpétuo, ou seja, a casa se recusando a afirmar sobre processo que leu
+    # inteiro. A própria docstring aqui sempre disse que o texto no disco decide.
+    # O veto segue valendo quando o disco NÃO desmente — é o caso dos outros 149.
+    veto_obsoleto = veto and ok
+    if veto and not veto_obsoleto:
         ok = False
     return ok, {"n_docs": len(docs), "n_txt": n_txt, "n_com_texto": n_com_texto,
-                "minimo": minimo,
-                "veto_manifest": bool(manifest.get("captura_vazia")
-                                      or manifest.get("captura_completa") is False)}
+                "minimo": minimo, "veto_manifest": veto,
+                "veto_obsoleto": veto_obsoleto}

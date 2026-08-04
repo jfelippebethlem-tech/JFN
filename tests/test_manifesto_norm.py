@@ -101,10 +101,12 @@ def test_captura_integra_por_texto(tmp_path):
             encoding="utf-8")
     ok, ev = mn.captura_integra(man, pasta)
     assert ok is True and ev["n_txt"] == 3 and ev["n_com_texto"] == 3
-    # captura_vazia declarada no manifest veta, mesmo com txt no disco
+    # `captura_vazia` DESMENTIDA pelo disco é dado velho, não veto (2026-08-04): com os três
+    # documentos íntegros acima, a bandeira não silencia. O veto que o disco CONFIRMA continua
+    # valendo — é o caso coberto por `test_veto_que_o_disco_CONFIRMA_continua_vetando`.
     man2 = dict(man, captura_vazia=True)
-    ok, _ = mn.captura_integra(man2, pasta)
-    assert ok is False
+    ok, ev2 = mn.captura_integra(man2, pasta)
+    assert ok is True and ev2["veto_obsoleto"] is True
 
 
 def test_captura_integra_nao_conta_arquivo_que_so_tem_a_ETIQUETA(tmp_path):
@@ -148,3 +150,31 @@ def test_acervo_real_nunca_levanta():
     assert total > 2000
     # meta do plano: fase preenchida (≠ "") em ≥95% dos documentos após normalização
     assert docs_total and com_fase / docs_total >= 0.95
+
+
+def test_veto_do_manifesto_desmentido_pelo_disco_e_dado_velho(tmp_path):
+    """Medido em 2026-08-04: **17 processos** carregavam `captura_vazia=True` ou
+    `captura_completa=False` tendo 100% dos documentos com teor — 155 de 155, 247 de 247. A marca
+    foi posta por uma captura que falhou, uma captura POSTERIOR deu certo e ninguém a limpou; o
+    efeito era NAO_AVALIAVEL perpétuo — a casa se recusando a afirmar sobre processo que leu
+    inteiro. A docstring desta função sempre disse que o texto no disco decide.
+    """
+    man = mn.normalizar(copy.deepcopy(MAN_B))
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    for i in range(3):
+        (pasta / "texto" / f"{i:03d}_x_{i}.txt").write_text(
+            "Governo do Estado do Rio de Janeiro. Documento com teor de verdade.",
+            encoding="utf-8")
+    ok, ev = mn.captura_integra(dict(man, captura_vazia=True), pasta)
+    assert ok is True and ev["veto_obsoleto"] is True
+
+
+def test_veto_que_o_disco_CONFIRMA_continua_vetando(tmp_path):
+    """O veto segue valendo quando o disco não o desmente — é o caso dos outros 149 processos."""
+    man = mn.normalizar(copy.deepcopy(MAN_B))
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    (pasta / "texto" / "000_x.txt").write_text("[X] (tipo: despacho)\n\n", encoding="utf-8")
+    ok, ev = mn.captura_integra(dict(man, captura_vazia=True), pasta)
+    assert ok is False and ev["veto_obsoleto"] is False
