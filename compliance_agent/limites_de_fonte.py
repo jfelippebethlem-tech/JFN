@@ -31,6 +31,25 @@ class LimiteDeFonte:
 # Ordem: os que mais enganam primeiro (falham com aparência de sucesso).
 LIMITES: tuple[LimiteDeFonte, ...] = (
     LimiteDeFonte(
+        fonte="SIAFE-Rio 2 — tela de OB Orçamentária (a NOSSA fonte canônica de pagamento)",
+        tipo="bloqueio",
+        o_que_acontece=(
+            "A consulta devolve no máximo **1.000 registros**. Uma varredura feita só com "
+            "`--por-ug` numa UG grande para exatamente nesse número, sem erro e sem aviso: a "
+            "tabela fica truncada e toda soma por UG mente para baixo. Medido em 2026-08-04, "
+            "**23 pares (UG, ano) de 642** estavam parados em 1.000 — R$ 8,46 bi no SIAFE contra "
+            "R$ 19,26 bi no espelho TFE nesses mesmos pares (137.654 OBs a menos). Apareceu ao "
+            "perseguir um fornecedor da UG 294200 (Fundação Saúde) que o espelho mostrava com "
+            "5,5× mais pagamento que a fonte canônica."),
+        caminho_alternativo=(
+            "`siafe_ob_orcamentaria` já fura o teto por três caminhos: `chkRemoveLimit` (checkbox "
+            "da tela), `--por-numero` (prefixo do Número, com subdivisão) e `--por-ug X "
+            "--ug-grande` (UG + prefixo). Quem está truncado, e o comando de cada um, sai em "
+            "`reporting.cobertura_siafe.medir()` e em `/api/siafe/truncamento`. Rodar só na "
+            "máquina autorizada (`host_siafe.exigir_autorizacao`), uma sessão por IP."),
+        medido_em="2026-08-04",
+    ),
+    LimiteDeFonte(
         fonte="LexML (lexml.gov.br)",
         tipo="bloqueio",
         o_que_acontece=(

@@ -115,6 +115,72 @@ def _teto_do_porte(porte: str) -> tuple[str, float] | None:
 
 # ───────────────────────── motor ─────────────────────────
 
+def _situacao_com_data(cnpj: str, db_path=None) -> tuple[str, dt.date | None]:
+    """Situação cadastral E A DATA em que ela passou a valer, da base PRIMÁRIA da Receita.
+
+    `receita_estab.db` (dump oficial, indexado por CNPJ — 0 ms por consulta) tem `data_situacao`;
+    a tabela `empresas` da compliance.db guarda só o retrato de hoje. Sem a data não há como
+    aplicar o teste que a própria casa exige — a vigência **na data do ato**. Base ausente →
+    ("", None), e aí a hipótese declara o limite em vez de afirmar.
+    """
+    import sqlite3
+    from pathlib import Path as _Path
+    base = _Path(db_path or "data/receita_estab.db")
+    if not base.exists():
+        return "", None
+    try:
+        con = sqlite3.connect(f"file:{base}?mode=ro", uri=True, timeout=10)
+        try:
+            r = con.execute("SELECT situacao_cadastral, data_situacao FROM estabelecimentos "
+                            "WHERE cnpj=?", (_digitos(cnpj),)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return "", None
+    if not r:
+        return "", None
+    bruta = str(r[1] or "")
+    if len(bruta) != 8 or not bruta.isdigit() or bruta == "00000000":
+        return str(r[0] or ""), None
+    try:
+        return str(r[0] or ""), dt.date(int(bruta[:4]), int(bruta[4:6]), int(bruta[6:]))
+    except ValueError:
+        return str(r[0] or ""), None
+
+
+def _ultimo_pagamento_ob(cnpj: str, db_path=None) -> dt.date | None:
+    """Data da ÚLTIMA OB paga (SIAFE, Contabilizado) ao CNPJ — OB é pagamento, empenho não.
+
+    O chamador só entrega `primeira_data`, e a primeira data não decide nada: para saber se a
+    empresa recebeu DEPOIS de ficar irregular é preciso a última. Consulta direta para o teste
+    não depender de quem chama. `data_emissao` do SIAFE é TEXTO DD/MM/AAAA — ordenar cru
+    ordenaria por DIA, então a comparação é feita sobre AAAAMMDD remontado.
+    """
+    import sqlite3
+    from pathlib import Path as _Path
+    base = _Path(db_path or "data/compliance.db")
+    if not base.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{base}?mode=ro", uri=True, timeout=10)
+        try:
+            r = con.execute(
+                "SELECT MAX(substr(data_emissao,7,4)||substr(data_emissao,4,2)||"
+                "       substr(data_emissao,1,2)) FROM ob_orcamentaria_siafe "
+                "WHERE credor=? AND status='Contabilizado'", (_digitos(cnpj),)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return None
+    s = str((r or [None])[0] or "")
+    if len(s) != 8 or not s.isdigit():
+        return None
+    try:
+        return dt.date(int(s[:4]), int(s[4:6]), int(s[6:]))
+    except ValueError:
+        return None
+
+
 def _hip(codigo, titulo, status, nivel, evidencia, fonte, base_legal, peso) -> dict:
     return {"codigo": codigo, "titulo": titulo, "status": status, "nivel": nivel,
             "evidencia": evidencia, "fonte": fonte, "base_legal": base_legal, "peso": peso}
@@ -390,11 +456,46 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
     if sit:
         irregular = any(t in sit for t in ("BAIXAD", "INAPT", "SUSPENS", "NULA"))
         if irregular:
-            hipoteses.append(_hip(
-                "H-SITUACAO", "Situação cadastral irregular na Receita", "CONFIRMADO", "ALTO",
-                f"Situação cadastral '{cad.get('situacao')}' na Receita Federal. Pagamento/contratação de "
-                "empresa não-ativa é vedado e pode indicar fachada ou descontrole do contratante.",
-                "Receita Federal (cadastro CNPJ)", "Lei 14.133/21 art. 14; Lei 8.666/93 art. 87", 20))
+            # O TESTE É A VIGÊNCIA NA DATA DO ATO, e ele não era feito. A hipótese saía CONFIRMADO
+            # com peso 20 dizendo "pagamento a empresa não-ativa é vedado" a partir do retrato de
+            # HOJE. Medido em 2026-08-04 sobre a base inteira: dos 75 CNPJs hoje irregulares que
+            # receberam do Estado, **59 (78,7%) tiveram TODO o pagamento ANTES** da data da
+            # irregularidade — a empresa estava regular quando foi paga. É a família do caso
+            # Fênix ("R$ 4 bi a empresa morta" que era ~218× demais): confundir o estado de hoje
+            # com o estado à época.
+            _, quando = _situacao_com_data(cnpj)
+            ultima = _ultimo_pagamento_ob(cnpj)
+            if quando and ultima and ultima < quando:
+                hipoteses.append(_hip(
+                    "H-SITUACAO", "Situação cadastral irregular na Receita (HOJE)", "INDICIO", "BAIXO",
+                    f"Situação cadastral '{cad.get('situacao')}' na Receita Federal desde "
+                    f"{quando:%d/%m/%Y} — POSTERIOR ao último pagamento conhecido "
+                    f"({ultima:%d/%m/%Y}). Na data dos atos a empresa não estava irregular: isto "
+                    "diz respeito à situação ATUAL do contratado, não à legalidade do que foi "
+                    "pago. Serve para contratação futura e para a cobrança de eventual passivo.",
+                    "Receita Federal (dump de estabelecimentos, com data da situação)",
+                    "Lei 14.133/21 art. 14 (aferido na data do ato)", 3))
+            elif quando:
+                hipoteses.append(_hip(
+                    "H-SITUACAO", "Situação cadastral irregular na Receita", "CONFIRMADO", "ALTO",
+                    f"Situação cadastral '{cad.get('situacao')}' na Receita Federal desde "
+                    f"{quando:%d/%m/%Y}"
+                    + (f", e há pagamento posterior a essa data (último em {ultima:%d/%m/%Y})"
+                       if ultima else "")
+                    + ". Pagamento/contratação de empresa não-ativa é vedado e pode indicar "
+                      "fachada ou descontrole do contratante.",
+                    "Receita Federal (dump de estabelecimentos, com data da situação)",
+                    "Lei 14.133/21 art. 14; Lei 8.666/93 art. 87", 20))
+            else:
+                hipoteses.append(_hip(
+                    "H-SITUACAO", "Situação cadastral irregular na Receita (data não apurada)",
+                    "INDICIO", "MEDIO",
+                    f"Situação cadastral '{cad.get('situacao')}' na Receita Federal. **A data em "
+                    "que essa situação passou a valer não foi apurada**, e sem ela não se afere a "
+                    "vigência na data do ato — a irregularidade pode ser posterior aos pagamentos. "
+                    "Obter a data na fonte antes de qualquer juízo sobre a legalidade do pago.",
+                    "Receita Federal (cadastro CNPJ, sem data da situação)",
+                    "Lei 14.133/21 art. 14 (aferido na data do ato)", 6))
         cobertura["situacao_cadastral"] = "verificado"
     else:
         cobertura["situacao_cadastral"] = "INDISPONIVEL"
