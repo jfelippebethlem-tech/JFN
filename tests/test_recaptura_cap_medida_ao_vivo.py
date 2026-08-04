@@ -91,3 +91,36 @@ def test_alvo_DIRIGIDO_atende_processo_que_a_ordenacao_deixaria_no_fim(tmp_path,
     feitos = json.loads(prog.read_text())["feitos"]
     assert feitos["SEI-030001/111011/2025"]["n_docs"] == 0
     assert "080002_000009_2025" not in str(feitos), "o dirigido não pode arrastar os outros"
+
+
+def test_a_gravacao_do_progresso_faz_MERGE_e_nao_apaga_o_sweep(tmp_path, monkeypatch):
+    """O padrão anterior era read-modify-write com MINUTOS entre a leitura e a escrita: a rodada
+    lia o progresso, varria o acervo inteiro (a medição do cap leva 1 a 2 minutos) e só então
+    gravava o dicionário que tinha em mãos. O sweep escreve no MESMO arquivo o tempo todo — cada
+    processo lido é uma entrada nova —, e tudo o que ele gravou nesse intervalo era APAGADO.
+
+    O dano real: apagar a prova de que um processo já fora capturado faz o sweep lê-lo de novo,
+    gastando a capacidade que está em anos de atraso.
+    """
+    prog = tmp_path / "prog.json"
+    prog.write_text(json.dumps({"feitos": {"SEI-000000/000001/2020": {"n_docs": 7}}}),
+                    encoding="utf-8")
+    monkeypatch.setattr(R, "PROGRESS", prog)
+    # o "sweep" escreve DEPOIS que a rodada leu o arquivo
+    prog.write_text(json.dumps({"feitos": {
+        "SEI-000000/000001/2020": {"n_docs": 7},
+        "SEI-000000/000002/2020": {"n_docs": 12},   # entrada nova, do sweep
+    }}), encoding="utf-8")
+    R._gravar_progresso({"SEI-000000/000003/2020": {"n_docs": 0, "tentativas": 0}})
+    feitos = json.loads(prog.read_text())["feitos"]
+    assert feitos["SEI-000000/000002/2020"]["n_docs"] == 12, "apagou o que o sweep gravou"
+    assert feitos["SEI-000000/000003/2020"]["n_docs"] == 0
+    assert feitos["SEI-000000/000001/2020"]["n_docs"] == 7
+
+
+def test_progresso_ilegivel_nao_derruba_a_rodada(tmp_path, monkeypatch):
+    prog = tmp_path / "prog.json"
+    prog.write_text("{ isto não é json", encoding="utf-8")
+    monkeypatch.setattr(R, "PROGRESS", prog)
+    R._gravar_progresso({"SEI-000000/000004/2020": {"n_docs": 0}})
+    assert json.loads(prog.read_text())["feitos"]["SEI-000000/000004/2020"]["n_docs"] == 0
