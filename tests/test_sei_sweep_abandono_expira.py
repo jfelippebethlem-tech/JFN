@@ -87,3 +87,53 @@ def test_sem_registro_nao_se_nega_leitura_a_ninguem(tmp_path, monkeypatch):
     S._registro_restritos.cache_clear()
     monkeypatch.setattr(S, "REPO", tmp_path)
     assert S._restrito_confirmado("SEI-150001/011573/2021") is False
+
+
+# ---------------------------------------------------------------- cota da retentativa
+
+def _montar(novos, velhos, max_n):
+    """Réplica da montagem do lote em `sei_sweep.run` — cota de 1/3, intercalada."""
+    teto = max(1, max_n // 3)
+    usar = velhos[:teto]
+    fila, iv, inv = [], iter(usar), iter(novos)
+    while len(fila) < max_n:
+        bloco = [next(inv, None) for _ in range(2)] + [next(iv, None)]
+        bloco = [x for x in bloco if x]
+        if not bloco:
+            break
+        fila.extend(bloco)
+    if len(fila) < max_n:
+        ja = set(fila)
+        fila.extend(x for x in velhos if x not in ja)
+    return fila[:max_n]
+
+
+def test_retentativa_nao_toma_mais_de_um_terco_do_lote():
+    """Devolver os 1.977 abandonados foi certo, mas medido nas primeiras horas: **22 das 31
+    leituras (71%)** eram deles e TODAS deram 0 documento — eles se concentram nas unidades de
+    alta restrição. A retentativa se paga (duas leituras classificam e tiram o processo da fila
+    por 90 dias), mas não pode consumir a capacidade de quem nunca foi tocado."""
+    fila = _montar([f"N{i}" for i in range(20)], [f"R{i}" for i in range(50)], 12)
+    assert len(fila) == 12
+    assert sum(1 for x in fila if x.startswith("R")) == 4
+
+
+def test_retentativa_e_INTERCALADA_nunca_no_fim():
+    """O lote é cortado por `timeout`: pôr a retentativa no fim faria o corte comê-la sempre —
+    trocaria uma inanição por outra."""
+    fila = _montar([f"N{i}" for i in range(20)], [f"R{i}" for i in range(50)], 12)
+    primeira = next(i for i, x in enumerate(fila) if x.startswith("R"))
+    assert primeira <= 2, f"primeira retentativa só na posição {primeira}"
+
+
+def test_sem_novos_o_lote_se_COMPLETA_com_retentativa():
+    """A cota limita CONCORRÊNCIA, não trabalho. A primeira versão desta montagem devolvia 4 de 12
+    vagas quando não havia processo novo — desperdiçava 8 slots do cron por causa de um teto que
+    só existe para não atropelar quem nunca foi lido."""
+    fila = _montar([], [f"R{i}" for i in range(50)], 12)
+    assert len(fila) == 12 and all(x.startswith("R") for x in fila)
+
+
+def test_sem_retentativa_o_lote_e_todo_de_novos():
+    fila = _montar([f"N{i}" for i in range(20)], [], 12)
+    assert fila == [f"N{i}" for i in range(12)]

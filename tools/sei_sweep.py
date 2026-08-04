@@ -541,7 +541,39 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
             return _restrito_confirmado(p)
         return bool(f and f.get("n_docs", 0) > 0)
 
-    fila = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)][:max_n]
+    # COTA PARA A RETENTATIVA. Devolver os 1.977 abandonados à fila foi certo — mas medido nas
+    # primeiras horas: **22 das 31 leituras (71%)** eram deles, e TODAS deram 0 documento, porque
+    # se concentram nas unidades de alta restrição (080001/080002/040014). A retentativa se paga
+    # (duas leituras classificam o processo como RESTRITO e o tiram da fila por 90 dias), mas não
+    # pode consumir a capacidade de quem nunca foi tocado. Um terço do lote, no máximo; a ordem
+    # por valor é preservada dentro de cada grupo.
+    candidatos = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)]
+    def _e_retentativa(proc: str) -> bool:
+        f = prog["feitos"].get(proc) or {}
+        return bool(f.get("tentativas", 0) >= 3 and f.get("n_docs", 0) == 0)
+    novos = [c for c in candidatos if not _e_retentativa(c[0])]
+    velhos = [c for c in candidatos if _e_retentativa(c[0])]
+    teto_velhos = max(1, max_n // 3)
+    usar_velhos = velhos[:teto_velhos]
+    # INTERCALADO, não concatenado: o lote é cortado por `timeout`, e pôr a retentativa no fim
+    # faria o corte comê-la sempre — trocaria uma inanição por outra. Uma retentativa a cada três
+    # posições mantém a cota e garante que ela seja de fato lida.
+    fila, iv, inv = [], iter(usar_velhos), iter(novos)
+    while len(fila) < max_n:
+        bloco = [next(inv, None) for _ in range(2)] + [next(iv, None)]
+        bloco = [x for x in bloco if x]
+        if not bloco:
+            break
+        fila.extend(bloco)
+    # A cota limita CONCORRÊNCIA, não trabalho: se não há mais nada a ler, o lote se completa com
+    # retentativa em vez de devolver vagas vazias ao cron.
+    if len(fila) < max_n:
+        ja = set(fila)
+        fila.extend(x for x in velhos if x not in ja)
+    fila = fila[:max_n]
+    if usar_velhos:
+        _log(f"fila: {len(novos)} nunca lidos + {len(usar_velhos)} de {len(velhos)} "
+             f"retentativas (cota de 1/3, intercaladas)")
     if not fila:
         _log("nada novo na fila (tudo já lido/cacheado).")
         return
