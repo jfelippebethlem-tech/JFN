@@ -95,6 +95,26 @@ def test_execucao_nao_confirmada_ou_refutada_nao_vira_achado():
 def test_achado_de_execucao_fala_do_PROCESSO_e_nao_da_empresa():
     """Execução do contrato é conduta do gestor — ao contrário do perfil do fornecedor, que é
     característica de quem ele contratou."""
-    a = P.achados_de_execucao([_rd("X1", 0.8)])[0]
+    r = _rd("X1", 0.8)
+    r.evidencia = [{"trecho": "acréscimos somam 40% do valor inicial"}]
+    a = P.achados_de_execucao([r])[0]
     assert "execu" in a["diz"].lower()
     assert "empresa" not in a["ressalva"].lower()
+
+
+def test_achado_de_execucao_SEM_prova_literal_nao_entra():
+    """Ligar a família X me fez quebrar a regra do `instrumento_assinatura`: o X3 confirma com
+    `evidencia` VAZIA e o item saía escrito "X3 confirmado (intensidade 0.60)" e mais nada —
+    o score sem explicação de novo, de roupa nova."""
+    r = _rd("X3", 0.6)
+    r.evidencia = []
+    r.motivo_refutacao = ""
+    assert P.achados_de_execucao([r]) == []
+
+
+def test_sem_trecho_vale_a_razao_que_o_detector_registrou():
+    r = _rd("X3", 0.6)
+    r.evidencia = []
+    r.motivo_refutacao = "tríade comprimida: ciclo mínimo de 2 dia(s)"
+    a = P.achados_de_execucao([r])[0]
+    assert "ciclo mínimo de 2" in a["diz"] and a["evidencia"]

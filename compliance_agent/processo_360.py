@@ -138,13 +138,21 @@ def achados_de_execucao(resultados) -> list[dict]:
         # achado perante o tribunal, e é ela que o fiscal precisa ler — não a paráfrase.
         trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
                    for e in (r.evidencia or [])[:2]]
+        # SEM PROVA LITERAL, NÃO ENTRA — a regra do `instrumento_assinatura`, que eu quebrei ao
+        # ligar esta família: o X3 confirma com `evidencia` VAZIA e o item saía escrito
+        # "X3 confirmado (intensidade 0.60)" e mais nada. Isso é o score sem explicação outra
+        # vez, de roupa nova. Quando não há trecho, vale a razão que o detector registrou; sem
+        # nenhum dos dois o achado não é afirmável e fica de fora. (2026-08-04)
+        razao = (r.motivo_refutacao or "").strip()
+        if not trechos and not razao:
+            continue
         saida.append({
             "origem": "execucao", "codigo": r.detector,
             "gravidade": "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media",
             "diz": (f"execução do contrato: {r.detector} confirmado (intensidade {s:.2f})"
-                    + (f" — {trechos[0]}" if trechos else "")),
+                    + f" — {trechos[0] if trechos else razao[:220]}"),
             "explicacao_inocente": (r.explicacao_inocente or "").strip(),
-            "evidencia": "; ".join(trechos),
+            "evidencia": "; ".join(trechos) or razao[:220],
             "ressalva": ("Indício a verificar nos autos, não acusação: o detector lê o texto dos "
                          "termos e pode ter colhido número de documento diverso."),
         })

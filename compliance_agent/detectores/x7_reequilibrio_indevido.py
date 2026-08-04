@@ -204,7 +204,21 @@ class X7ReequilibrioIndevido(Detector):
         if valor_inicial and valor_inicial > 0:
             pct = soma / valor_inicial
             valores["pct_recomposicao"] = round(pct, 4)
-            if pct > teto:
+            # A BASE VEM DA MESMA EXTRAÇÃO QUE JÁ MENTIU NO X1. Medido em 2026-08-04: nos
+            # processos da UG 070002 a base saía com ~R$ 50 mil enquanto os autos declaram
+            # R$ 55-87 MILHÕES, e o T4 anunciava "recomposições somam 4.671%" e "29.879%".
+            # Percentual de quatro dígitos não é contrato crescendo por recomposição: é base
+            # errada. Quando o próprio processo declara outro valor que desmente a base, o T4
+            # não afirma magnitude — a mesma doutrina do `base_contraditada` no X1.
+            from compliance_agent.execucao_fatos import base_contraditada
+            outra = base_contraditada(str(contexto.get("_texto_fonte") or ""), valor_inicial, soma)
+            if outra:
+                valores["base_contraditada_por"] = round(outra, 2)
+                lacunas.append(
+                    f"T4 (magnitude) NÃO aferido: a base extraída (R$ {moeda(valor_inicial)}) "
+                    f"daria {pct:.0%}, e os próprios autos declaram R$ {moeda(outra)} — duas "
+                    "leituras do mesmo processo não fecham; conferir o valor inicial")
+            elif pct > teto:
                 achados.append(("forte",
                                 f"MAGNITUDE: recomposições somam {pct:.1%} do valor inicial "
                                 f"(R$ {moeda(soma)} sobre R$ {moeda(valor_inicial)}), acima do "

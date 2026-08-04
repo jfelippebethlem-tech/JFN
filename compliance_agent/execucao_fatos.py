@@ -64,6 +64,16 @@ def _sentencas(texto: str) -> list[str]:
     return [t.strip() for t in re.split(r"(?<=[.;])\s+", texto or "") if t.strip()]
 
 
+# A DATA TEM DE ESTAR PERTO DO TERMO. `_sentencas` corta em ponto-e-vírgula, e num PDF de nota
+# fiscal ou de detalhamento do SIAFE isso devolve blocos de página inteira: medido em 2026-08-04,
+# as "frases" que davam a data do atesto tinham 780 e 506 caracteres e nenhuma data no formato
+# dd/mm/aaaa — a data saía de outro canto do bloco, sem relação provada com a palavra "atesto",
+# e o X3 anunciava "pago ANTES do atesto" com atesto 20 meses no futuro. A janela é o idioma que
+# a casa já usa em `instrumento_assinatura._identificador` (160 chars): o dado que qualifica um
+# termo mora ao lado dele, não em qualquer lugar da página.
+_JANELA_MARCO = 160
+
+
 _RE_QUALQUER_VALOR = re.compile(r"R\$\s*([\d.]{1,18},\d{2})")
 
 
@@ -104,6 +114,12 @@ def base_contraditada(texto: str, base: float | None, acrescimos: float) -> floa
     for v in candidatos:
         if v > base and acrescimos / v <= 0.25:
             return v
+    # Segunda forma da contradição, medida em 070002/004135/2025: o "acréscimo" (R$ 103,9 mi)
+    # é MAIOR que o maior valor declarado em todo o processo (R$ 87,1 mi). Nada nos autos é
+    # grande o bastante para ser o contrato que cresceu tanto — o que se somou não são aditivos
+    # de um mesmo contrato. Devolve o maior declarado, que é o que desmente a base.
+    if candidatos and acrescimos > candidatos[-1] > base:
+        return candidatos[-1]
     return None
 
 
@@ -160,11 +176,23 @@ _ETAPAS = (
 )
 
 
-def _data_da_etapa(texto: str, padrao: str, codigo: str | None) -> str | None:
-    """Data da 1ª sentença que fala da etapa. Casa pelo termo OU pelo código do SIAFE (2024OB000789)."""
+def _data_da_etapa(texto: str, padrao: str, codigo: str | None,
+                   *, exigir_codigo: bool = False) -> str | None:
+    """Data da 1ª sentença que fala da etapa. Casa pelo termo OU pelo código do SIAFE (2024OB000789).
+
+    `exigir_codigo` existe para o PAGAMENTO, e sai direto da regra-mãe da casa: só a Ordem
+    Bancária é pagamento. Medido em 2026-08-04 nos 80 processos de maior risco: apenas **3**
+    tinham o código de uma OB; **9** tinham só as palavras "ordem bancária" perdidas num bloco de
+    OCR de nota fiscal ou de "Detalhamento de Empenho" — e era dessa data que o X3 dizia "pago
+    ANTES do atesto", chamando de pagamento o que era EMPENHO. O código `2024OB000789` é o único
+    marco que identifica uma OB sem ambiguidade; sem ele não se afirma que houve pagamento.
+    """
     for frase in _sentencas(texto):
-        if re.search(padrao, frase, re.I) or (codigo and re.search(codigo, frase, re.I)):
-            d = _data_iso(frase)
+        casou = (re.search(codigo, frase, re.I) if (exigir_codigo and codigo)
+                 else (re.search(padrao, frase, re.I) or (codigo and re.search(codigo, frase, re.I))))
+        if casou:
+            d = _data_iso(frase[max(0, casou.start() - _JANELA_MARCO):
+                                casou.end() + _JANELA_MARCO])
             if d:
                 return d
     return None
@@ -176,7 +204,8 @@ def extrair_pagamentos(texto: str) -> list[dict]:
     §2: `data_pagamento` só existe se houver ORDEM BANCÁRIA — empenho/liquidação não são pagamento.
     Devolve uma entrada por processo (o texto de um processo de pagamento traz um ciclo); vazio se não há
     nenhuma etapa identificável."""
-    reg = {nome: _data_da_etapa(texto, pat, cod) for nome, pat, cod in _ETAPAS}
+    reg = {nome: _data_da_etapa(texto, pat, cod, exigir_codigo=(nome == "data_pagamento"))
+           for nome, pat, cod in _ETAPAS}
     if not any(reg.values()):
         return []
     reg["valor"] = valor_br(texto or "")
