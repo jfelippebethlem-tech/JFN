@@ -114,6 +114,35 @@ def achados_de_fornecedor(resultados) -> list[dict]:
     return saida
 
 
+def achados_de_detector(resultados, *, origem: str, rotulo: str, ressalva: str) -> list[dict]:
+    """Resultado CONFIRMADO de detector vira achado VISÍVEL, com a prova literal.
+
+    Forma única para as famílias que pontuam no `score_processo`. A regra é uma só e já custou
+    três correções separadas (C em 2026-08-03, X e P/E/J em 2026-08-04): **o que entra no score
+    entra na lista de achados**, senão a fila mostra processo vazio no topo.
+    """
+    saida = []
+    for r in resultados or []:
+        if r.status != "confirmado" or r.refutada:
+            continue
+        s = float(r.score or 0)
+        trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
+                   for e in (r.evidencia or [])[:2]]
+        razao = (r.motivo_refutacao or "").strip()
+        if not trechos and not razao:
+            continue                      # sem prova literal, não entra
+        saida.append({
+            "origem": origem, "codigo": r.detector,
+            "gravidade": "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media",
+            "diz": (f"{rotulo}: {r.detector} confirmado (intensidade {s:.2f})"
+                    + f" — {trechos[0] if trechos else razao[:220]}"),
+            "explicacao_inocente": (r.explicacao_inocente or "").strip(),
+            "evidencia": "; ".join(trechos) or razao[:220],
+            "ressalva": ressalva,
+        })
+    return saida
+
+
 def achados_de_execucao(resultados) -> list[dict]:
     """Detectores da FASE DE EXECUÇÃO (X) que pontuam viram achado VISÍVEL.
 
@@ -129,34 +158,10 @@ def achados_de_execucao(resultados) -> list[dict]:
     conduta do gestor, não característica de quem ele contratou. Por isso não leva a ressalva de
     "indício sobre a empresa" — leva a ressalva de sempre, que indício não é acusação.
     """
-    saida = []
-    for r in resultados or []:
-        if r.status != "confirmado" or r.refutada:
-            continue
-        s = float(r.score or 0)
-        # A evidência do detector já traz o TRECHO literal com os números; é ela que sustenta o
-        # achado perante o tribunal, e é ela que o fiscal precisa ler — não a paráfrase.
-        trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
-                   for e in (r.evidencia or [])[:2]]
-        # SEM PROVA LITERAL, NÃO ENTRA — a regra do `instrumento_assinatura`, que eu quebrei ao
-        # ligar esta família: o X3 confirma com `evidencia` VAZIA e o item saía escrito
-        # "X3 confirmado (intensidade 0.60)" e mais nada. Isso é o score sem explicação outra
-        # vez, de roupa nova. Quando não há trecho, vale a razão que o detector registrou; sem
-        # nenhum dos dois o achado não é afirmável e fica de fora. (2026-08-04)
-        razao = (r.motivo_refutacao or "").strip()
-        if not trechos and not razao:
-            continue
-        saida.append({
-            "origem": "execucao", "codigo": r.detector,
-            "gravidade": "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media",
-            "diz": (f"execução do contrato: {r.detector} confirmado (intensidade {s:.2f})"
-                    + f" — {trechos[0] if trechos else razao[:220]}"),
-            "explicacao_inocente": (r.explicacao_inocente or "").strip(),
-            "evidencia": "; ".join(trechos) or razao[:220],
-            "ressalva": ("Indício a verificar nos autos, não acusação: o detector lê o texto dos "
-                         "termos e pode ter colhido número de documento diverso."),
-        })
-    return saida
+    return achados_de_detector(
+        resultados, origem="execucao", rotulo="execução do contrato",
+        ressalva=("Indício a verificar nos autos, não acusação: o detector lê o texto dos "
+                  "termos e pode ter colhido número de documento diverso."))
 
 
 def _cnpj_vencedor(numero: str) -> str | None:
@@ -395,13 +400,28 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                        for d in docs if d.get("texto")]}
         pej = asyncio.run(_analisar_pej(numero, leitura=leitura))
         if pej.get("status") == "OK":
+            res_pej: list[ResultadoDetector] = []
             for rd in pej.get("resultados", []):
                 if isinstance(rd, dict):
-                    resultados.append(ResultadoDetector(
+                    # A prova ia embora na conversão: `evidencia` e `explicacao_inocente` eram
+                    # descartadas, e o resultado nunca virava achado. Terceira vez que a mesma
+                    # falha aparece (C, X e agora P/E/J) — 4 processos ficaram EXTREMO/ALTO com
+                    # ZERO achados por E1 e E7 pontuando invisíveis. (2026-08-04)
+                    r = ResultadoDetector(
                         detector=str(rd.get("detector") or "?"), processo=numero,
                         score=float(rd.get("score") or 0),
-                        status=str(rd.get("status") or "nao_avaliavel")))
+                        status=str(rd.get("status") or "nao_avaliavel"))
+                    r.evidencia = list(rd.get("evidencia") or [])
+                    r.explicacao_inocente = str(rd.get("explicacao_inocente") or "")
+                    r.motivo_refutacao = str(rd.get("motivo_refutacao") or "")
+                    r.refutada = bool(rd.get("refutada"))
+                    res_pej.append(r)
+                    resultados.append(r)
                     rodados.append(str(rd.get("detector")))
+            achados += achados_de_detector(
+                res_pej, origem="edital", rotulo="planejamento/edital/julgamento",
+                ressalva=("Indício a verificar nos autos, não acusação: o detector lê o texto do "
+                          "edital e das peças de julgamento."))
         else:
             indisponiveis.append(f"pej: {pej.get('motivo')}")
     except Exception as e:  # noqa: BLE001
@@ -453,7 +473,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         origem = a["origem"]
         # o achado de FORNECEDOR e o de EXECUÇÃO já vieram do próprio detector, que JÁ está em
         # `resultados`: convertê-los em sinal sintético os contaria duas vezes e inflaria o score.
-        if origem in ("fornecedor", "execucao"):
+        if origem in ("fornecedor", "execucao", "edital"):
             continue
         if origem == "triagem":
             s = _ANCORA_TRIAGEM.get(str(a.get("grau")), 0.3)

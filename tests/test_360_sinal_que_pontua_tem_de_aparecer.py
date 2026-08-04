@@ -60,8 +60,8 @@ def test_achado_de_fornecedor_nao_e_contado_duas_vezes_no_score():
     """O detector já está em `resultados`; virar sinal sintético também inflaria o score."""
     from pathlib import Path as _P
     src = _P(P.__file__).read_text(encoding="utf-8")
-    assert 'if origem in ("fornecedor", "execucao"):\n            continue' in src, (
-        "achado de fornecedor/execução voltou a ser convertido em sinal sintético")
+    assert 'if origem in ("fornecedor", "execucao", "edital"):\n            continue' in src, (
+        "achado de detector voltou a ser convertido em sinal sintético (dupla contagem)")
 
 
 def test_explicacao_inocente_nao_vira_o_texto_do_achado():
@@ -118,3 +118,15 @@ def test_sem_trecho_vale_a_razao_que_o_detector_registrou():
     r.motivo_refutacao = "tríade comprimida: ciclo mínimo de 2 dia(s)"
     a = P.achados_de_execucao([r])[0]
     assert "ciclo mínimo de 2" in a["diz"] and a["evidencia"]
+
+
+def test_detector_de_EDITAL_confirmado_vira_achado():
+    """Terceira vez que a mesma falha aparece: depois de C (2026-08-03) e X (2026-08-04), a
+    família P/E/J também pontuava invisível — 4 processos ficaram EXTREMO/ALTO com ZERO achados
+    por E1 e E7. E a conversão descartava `evidencia` e `explicacao_inocente` no caminho."""
+    r = _rd("E7", 0.85)
+    r.evidencia = [{"trecho": "exigência de atestado com quantitativo superior ao licitado"}]
+    a = P.achados_de_detector([r], origem="edital", rotulo="planejamento/edital/julgamento",
+                              ressalva="x")[0]
+    assert a["origem"] == "edital" and a["codigo"] == "E7"
+    assert "atestado" in a["diz"] and a["gravidade"] == "alta"
