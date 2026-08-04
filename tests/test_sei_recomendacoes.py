@@ -75,3 +75,45 @@ def test_atendimento_ao_DESPACHO_nao_e_acolhimento_do_parecer():
     from compliance_agent.sei_recomendacoes import _RE_ACOLHIMENTO
     assert not _RE_ACOLHIMENTO.search(
         "Em atendimento ao despacho (89639282), encaminhamos o p.p. com a classificação")
+
+
+# ───────── quem EMITE está no cabeçalho, não numa citação do corpo (2026-08-04) ─────────
+
+_PARECER_DIRJUR = """Governo do Estado do Rio de Janeiro
+Fundação Saúde
+Diretoria Jurídica
+PARECER Nº 2848/2024 FS/DIRJUR
+PROCESSO Nº SEI-080002/020895/2024
+DATA: Rio de Janeiro, 17 de setembro de 2024
+INTERESSADO: Fundação Saúde do Estado do Rio de Janeiro
+Assunto: Análise de Minuta de Termo de Ajuste de Contas. Incidência do Enunciado nº 08 da PGE-RJ.
+Indenização pelos serviços prestados. Recomendações."""
+
+
+def test_parecer_do_juridico_do_proprio_orgao_nao_e_da_PGE():
+    """A regra casava qualquer menção no texto inteiro, e um parecer que apenas CITA a PGE virava
+    parecer DA PGE. Medido em 2026-08-04 nos 755 pareceres do acervo: **67 dos 210 rotulados PGE
+    (32%)** são da diretoria/assessoria jurídica do próprio órgão. Como PGE vale nível 3 (controle
+    EXTERNO) e o jurídico próprio vale 1, a casa creditava a si mesma o controle externo — a mesma
+    confusão que a correção do art. 53 desfez em 2026-08-03.
+    """
+    assert S.classificar_emissor(_PARECER_DIRJUR) == "ASSESSORIA_JURIDICA"
+
+
+def test_parecer_da_PGE_de_verdade_continua_PGE():
+    texto = ("Governo do Estado do Rio de Janeiro\nProcuradoria Geral do Estado\n"
+             "PARECER PGE Nº 12/2024\nAssunto: minuta de contrato.")
+    assert S.classificar_emissor(texto) == "PGE"
+
+
+def test_sem_bloco_institucional_o_corpo_ainda_vale():
+    """Parecer cujo timbre não foi capturado (OCR) não pode virar 'emissor desconhecido' —
+    INDISPONÍVEL de captura não é ausência de emissor."""
+    assert S.classificar_emissor("segue manifestação da Procuradoria Geral do Estado nos autos") == "PGE"
+
+
+def test_a_ementa_nao_decide_o_emissor():
+    """"Assunto:"/"Ementa:" abre a parte que descreve o MÉRITO e cita normas de outros órgãos; sem
+    esse corte, a janela de cabeçalho não resolveria nada."""
+    texto = "Secretaria X\nControle Interno\nPARECER 9\nEmenta: aplica-se o enunciado da PGE-RJ."
+    assert S.classificar_emissor(texto) == "CONTROLE_INTERNO"

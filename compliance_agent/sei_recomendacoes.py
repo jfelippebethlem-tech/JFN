@@ -25,7 +25,11 @@ _EMISSORES = [
     ("PGE", r"\b(procuradoria\s+geral|PGE|procurador(?:ia)?\s+do\s+estado)\b"),
     ("CGE", r"\b(controladoria\s+geral|CGE|auditoria\s+geral\s+do\s+estado|AGE)\b"),
     ("CONTROLE_INTERNO", r"\b(controle\s+interno|auditoria\s+interna|unidade\s+de\s+controle)\b"),
-    ("ASSESSORIA_JURIDICA", r"\b(assessoria\s+jur[ií]dica|consultoria\s+jur[ií]dica|parecer\s+jur[ií]dico|ASJUR|nota\s+t[eé]cnica\s+jur[ií]dica)\b"),
+    # `diretoria jurídica`/DIRJUR entram aqui, e não em PGE: é o órgão de assessoramento jurídico
+    # da PRÓPRIA Administração de que fala o art. 53 — o mesmo eixo que a casa separou em
+    # 2026-08-03 ao corrigir a `suficiencia_emissor`.
+    ("ASSESSORIA_JURIDICA", r"\b(assessoria\s+jur[ií]dica|consultoria\s+jur[ií]dica|diretoria\s+jur[ií]dica|"
+                            r"parecer\s+jur[ií]dico|ASJUR|DIRJUR|nota\s+t[eé]cnica\s+jur[ií]dica)\b"),
     ("TCE", r"\b(tribunal\s+de\s+contas|TCE-?RJ|corte\s+de\s+contas)\b"),
     # esfera MUNICIPAL (PCRJ): procuradoria e controladoria do Município
     ("PGM", r"\b(procuradoria\s+geral\s+do\s+munic[ií]pio|PGM)\b"),
@@ -153,11 +157,35 @@ def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
             "max_nivel": max_nivel, "emissores": emissores}
 
 
+_CABECALHO_EMISSOR = 700
+"""Janela do cabeçalho onde o documento DIZ quem o emite (órgão, unidade, número do parecer)."""
+
+
 def classificar_emissor(texto: str) -> str | None:
+    """Quem EMITE o parecer — decidido pelo cabeçalho, não por citação no corpo.
+
+    A regra casava qualquer menção no texto inteiro, e um parecer que apenas CITA a PGE virava
+    parecer DA PGE. Medido em 2026-08-04 sobre os 755 pareceres do acervo: dos 210 rotulados PGE,
+    **74 (35%) têm no cabeçalho a diretoria/assessoria jurídica do próprio órgão** — "Governo do
+    Estado do Rio de Janeiro / Fundação Saúde / Diretoria Jurídica / PARECER Nº 2848/2024
+    FS/DIRJUR", cuja ementa cita o Enunciado nº 08 da PGE-RJ. Como `NIVEL_EMISSOR['PGE'] = 3`
+    (controle EXTERNO ao órgão) e o jurídico próprio é nível menor, um parecer da própria casa era
+    creditado como controle externo — exatamente a confusão que a correção do art. 53 desfez em
+    2026-08-03.
+
+    O cabeçalho decide; o corpo só é consultado quando o cabeçalho não identifica ninguém (parecer
+    cujo timbre não foi capturado). Mesmo idioma do veto posicional já adotado neste módulo.
+    """
     t = texto or ""
-    for nome, pat in _EMISSORES:
-        if re.search(pat, t, re.I):
-            return nome
+    # O bloco INSTITUCIONAL termina onde começa a ementa: "Assunto:"/"Ementa:" abre a parte que
+    # descreve o MÉRITO e cita normas e enunciados de outros órgãos. Sem esse corte a janela do
+    # cabeçalho não resolve nada — a ementa do Parecer 2848 cita o Enunciado nº 08 da PGE-RJ na
+    # terceira linha, e o documento voltava a ser "da PGE".
+    cabecalho = re.split(r"(?im)^\s*(?:assunto|ementa)\s*:", t[:_CABECALHO_EMISSOR])[0]
+    for alvo in (cabecalho, t):
+        for nome, pat in _EMISSORES:
+            if re.search(pat, alvo, re.I):
+                return nome
     return None
 
 
