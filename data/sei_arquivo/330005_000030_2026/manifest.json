@@ -343,6 +343,83 @@
    "chars": 590,
    "ocr": false,
    "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "doc",
+   "fase": "contratacao",
+   "tipo": "contrato",
+   "texto": "texto/000_doc.txt",
+   "chars": 3723,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
+  },
+  {
+   "i": 35,
+   "titulo": "doc",
+   "fase": "indefinida",
+   "tipo": "outros",
+   "texto": "texto/001_doc.txt",
+   "chars": 1500,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
+  },
+  {
+   "i": 36,
+   "titulo": "doc",
+   "fase": "indefinida",
+   "tipo": "tramitacao",
+   "texto": "texto/002_doc.txt",
+   "chars": 696,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
+  },
+  {
+   "i": 37,
+   "titulo": "doc",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_doc.txt",
+   "chars": 2822,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
+  },
+  {
+   "i": 38,
+   "titulo": "doc",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/004_doc.txt",
+   "chars": 27996,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
+  },
+  {
+   "i": 39,
+   "titulo": "doc",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/005_doc.txt",
+   "chars": 6017,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
+  },
+  {
+   "i": 40,
+   "titulo": "doc",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/006_doc.txt",
+   "chars": 29947,
+   "ocr": false,
+   "fotos": [],
+   "reconciliado": true
   }
  ],
  "linha_do_tempo": {
@@ -369,5 +446,7 @@
    "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 0,
+ "reconciliado_em": "2026-08-04T01:45:45+00:00",
+ "reconciliacao": "7 documento(s) com teor estavam no disco e fora do índice (recaptura cujo manifesto não foi reescrito); título lido da etiqueta do próprio arquivo"
 }
