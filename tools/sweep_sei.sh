@@ -25,6 +25,24 @@ say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 export JFN_SWEEP_FATIA="${JFN_SWEEP_FATIA:-0/2}"
 
 if pgrep -f 'tools\.sei_swee[p]' >/dev/null; then say "já rodando — pula"; exit 0; fi
+# TRAVA DE CICLO. O guard acima só enxerga `tools.sei_sweep`; quando o ciclo anterior está num
+# estágio POSTERIOR (sei_cpf, refichar, depurar), o pgrep não vê nada, o novo ciclo entra e trava
+# 600s no browser_lock até morrer. Medido em 2026-08-04: **406 ocorrências** de "não adquiriu em
+# 600s" no log, 4 a 10 por dia — 10 minutos de sweep perdidos em cada uma, com a fila em anos de
+# atraso. O cabeçalho deste arquivo sempre disse "roda SOZINHO"; faltava a trava do ciclo inteiro.
+# PID em arquivo, não flock: um `flock` em fd é HERDADO pelos filhos, e um chromium órfão que
+# sobreviva a um SIGKILL do Python seguraria o lock para sempre — o sweep pararia calado, que é
+# pior que a contenção. Aqui, PID morto (ou reciclado por outro comando) simplesmente libera.
+PIDF=data/.sweep_sei.pid
+if [ -f "$PIDF" ]; then
+  ANT=$(cat "$PIDF" 2>/dev/null | tr -dc '0-9')
+  if [ -n "$ANT" ] && kill -0 "$ANT" 2>/dev/null && \
+     tr '\0' ' ' < "/proc/$ANT/cmdline" 2>/dev/null | grep -q 'sweep_sei'; then
+    say "ciclo anterior (pid $ANT) ainda rodando — pula"; exit 0
+  fi
+fi
+echo $$ > "$PIDF"
+trap 'rm -f "$PIDF"' EXIT
 # backstop VM-safe: se a VM já está muito carregada, adia (o cron repete no próximo slot)
 L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — adia"; exit 0; }
 
