@@ -34,6 +34,13 @@ if [ -f data/.pause_fachada_streetview_sweep ]; then say "fachada street view pa
 # posicional está desalinhado e escreveria o teor de uma peça sob o título de outra.
 # Pausa: data/.pause_reparar_vazios.
 if [ -f data/.pause_reparar_vazios ]; then say "reparar vazios pausado — pulei"; else $PRIO timeout 900 $PY -m tools.sei_reparar_vazios --por-identificador --aplicar >> data/reparar_vazios.log 2>&1; say "reparar vazios rc=$?"; fi
+# RECAPTURA DO CAP DE 20k — devolve à fila os processos cujo texto foi cortado em 20.000
+# caracteres por documento (a assinatura e a data moram no FIM da peça). O alvo é MEDIDO a cada
+# rodada, não lido de lista curada. Estava solto no crontab (`40 5 * * *`), e linha solta é o que
+# ninguém audita: foi assim que a MESMA linha ficou duplicada, refilando 80 processos por dia com
+# duas escritas concorrentes no progresso do sweep. Aqui herda a guarda de carga e a flag de pausa.
+# Pausa: data/.pause_recaptura_cap.
+if [ -f data/.pause_recaptura_cap ]; then say "recaptura cap pausada — pulei"; else $PRIO timeout 900 $PY -m tools.sei_reparar_truncados --cap --aplicar --max 40 >> data/reparar_cap21k.log 2>&1; say "recaptura cap rc=$?"; fi
 # RANKING DE TAC POR UNIDADE — pagamento fora de contrato regular, com régua COMPARATIVA (a
 # mediana das 56 unidades acima de R$ 300 mi é 0,3%; a Fundação Saúde está em 27,0%). Uma passada
 # sobre 1,16 milhão de OBs aplicando a regex canônica do `detector_tac` (não se reescreve a
