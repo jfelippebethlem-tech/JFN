@@ -201,3 +201,33 @@ def test_anexo_qualquer_que_mencione_a_PGE_no_corpo_fica_de_fora():
            "texto": "Declaro para os devidos fins, conforme orientação da Procuradoria Geral do "
                     "Estado, que a empresa recomenda a análise dos documentos."}
     assert S.e_manifestacao_de_controle(doc) is False
+
+
+def test_suficiencia_nao_aceita_MENCAO_a_PGE_como_parecer_da_PGE():
+    """Medido em 2026-08-04: sem o portão de identidade, um contrato, uma certidão de FGTS ou uma
+    tela do portal de contratação que MENCIONE a PGE fazia o processo passar por "tem parecer da
+    PGE" (nível 3, controle externo). Nos 2.174 processos do acervo, **391 mudam de veredito** —
+    e a amostra dos documentos barrados não tem um parecer sequer."""
+    docs = [{"ref": "Contrato Nº 01/2025", "tipo": "contrato", "texto": _CLAUSULA_CONTRATUAL}]
+    r = S.suficiencia_parecer(docs, "contratacao_direta")
+    assert r["veredito"] == "SEM_PARECER_LOCALIZADO"
+    assert r["emissores"] == []
+
+
+def test_suficiencia_com_parecer_de_verdade_da_PGE():
+    docs = [{"ref": "Parecer PGE 12", "tipo": "parecer",
+             "texto": "Governo do Estado\nProcuradoria Geral do Estado\nPARECER 12\n"
+                      "Assunto: dispensa.\nrecomenda-se a instrução."}]
+    r = S.suficiencia_parecer(docs, "contratacao_direta")
+    assert r["veredito"] == "SUFICIENTE" and "PGE" in r["emissores"]
+
+
+def test_suficiencia_so_com_juridico_proprio_e_INSUFICIENTE_na_dispensa():
+    """O art. 53 entrega a análise ao jurídico do próprio órgão; a exigência de nível 3 é da
+    contratação DIRETA, e aí o parecer da casa não basta sozinho."""
+    docs = [{"ref": "Parecer 2848", "tipo": "parecer",
+             "texto": "Fundação Saúde\nDiretoria Jurídica\nPARECER 2848\n"
+                      "Assunto: TAC.\nrecomenda-se a juntada."}]
+    r = S.suficiencia_parecer(docs, "contratacao_direta")
+    assert r["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE"
+    assert S.suficiencia_parecer(docs, "contrato")["veredito"] == "SUFICIENTE"

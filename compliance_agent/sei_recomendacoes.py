@@ -154,7 +154,14 @@ def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
     inferior ao exigido pelo ato) · SEM_PARECER_LOCALIZADO (nenhum emissor identificado —
     leitura parcial ≠ inexistência)."""
     docs = _limpos(docs)
-    emissores = sorted({e for e in (classificar_emissor(d.get("texto") or "") for d in docs or [])
+    # SÓ MANIFESTAÇÃO DE CONTROLE CONTA. Medido em 2026-08-04: sem este portão, um contrato, uma
+    # certidão de FGTS ou uma tela do portal de contratação que MENCIONE a PGE fazia o processo
+    # passar por "tem parecer da PGE" (nível 3, controle externo). Nos 2.174 processos do acervo,
+    # **391 mudam de veredito** quando o portão entra — e a amostra dos documentos barrados não
+    # tem um parecer sequer: certidão de regularidade do FGTS, extrato de Termo de Ajuste de
+    # Contas, telas do portal, empenho, nota de liquidação, ata de registro de preços.
+    emissores = sorted({e for e in (classificar_emissor(d.get("texto") or "")
+                                    for d in (docs or []) if e_manifestacao_de_controle(d))
                         if e})
     exigido = EXIGENCIA_POR_ATO.get(ato, 1)
     max_nivel = max((NIVEL_EMISSOR.get(e, 0) for e in emissores), default=0)
@@ -299,10 +306,8 @@ def auditar_acatamento(docs: list[dict]) -> dict:
     pareceres = [p for p in candidatos
                  if p["sinal_nao_atendida"]
                  or any(not _RE_BOILERPLATE.search(t) for t in p["trechos_recomendacao"])]
-    tem_doc_parecer = any(
-        _RE_TITULO_PARECER.search(f"{d.get('tipo') or ''} {d.get('ref') or ''}")
-        or classificar_emissor(d.get("texto") or "")
-        for d in docs or [])
+    # mesma régua da suficiência: identidade do documento, nunca menção no corpo
+    tem_doc_parecer = any(e_manifestacao_de_controle(d) for d in docs or [])
     despachos = []
     for i, d in enumerate(docs or []):
         texto = d.get("texto") or ""
