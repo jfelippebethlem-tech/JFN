@@ -55,8 +55,21 @@ _REGRAS: list[tuple[str, str, list[str]]] = [
     ("relatorio_fotografico", "execucao", [r"relatorio fotogra", r"registro fotogra"]),
     ("medicao", "execucao", [r"medicao", r"boletim de medi", r"\bmedi(cao|coes)\b"]),
     ("fiscalizacao", "execucao", [r"relatorio de fiscaliza", r"fiscalizacao", r"diario de obra"]),
+    # O ATO DE ATESTAR, nas formas que o SEI-RJ realmente usa. Medido em 2026-08-04: dos processos
+    # acusados de "sem evidência de execução APESAR DE HAVER PAGAMENTO" — acusação de gravidade
+    # CRÍTICA, 353 nos EXTREMO+ALTO —, ~10% tinham o atesto nos autos e não eram vistos:
+    #     "Nota Fiscal - NF - Invoice - ATESTADA"      → caía em despesa/nota_fiscal
+    #     "Despacho ATESTAÇÃO"                          → caía em tramitacao/despacho
+    #     "ATESTADO DE RECEBIMENTO de Materiais"        → caía em indefinida/outro
+    #     "Anexo NOTA FISCAL, ATESTO e RELAÇÃO…"        → caía em despesa/nota_fiscal
+    # `atestad[oa]` sozinho NÃO entra: "atestado de capacidade/idoneidade/regularidade" é
+    # CERTIDÃO de habilitação, não prova de entrega — e confundir os dois inverteria o erro.
     ("aceite", "execucao", [r"atestado de realiza", r"atestado de execu", r"termo de recebimento",
-                            r"recebimento (provisorio|definitivo)", r"\batesto\b"]),
+                            r"recebimento (provisorio|definitivo)", r"\batesto\b",
+                            r"atesta(cao|da|do)\b(?!\s+(?:de\s+)?(capacidade|idoneidade|"
+                            r"regularidade|locacao|permiss|comparecimento|retorno|saude|medic|"
+                            r"tecnic|obito|antecedent))",
+                            r"atestado de recebimento", r"nota fiscal[^|]{0,40}atestad"]),
     ("aditivo", "execucao", [r"termo aditivo", r"aditivo", r"apostilamento", r"repactuacao",
                              r"reajuste", r"prorrogacao"]),
     ("penalidade", "execucao", [r"glosa", r"penalidade", r"notificacao ao contratado", r"multa contratual"]),
