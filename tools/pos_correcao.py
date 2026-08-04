@@ -90,8 +90,32 @@ def _diff(antes: dict, depois: dict, chave: str) -> list[str]:
     return linhas
 
 
-def reavaliar(limite: int | None = None) -> dict:
-    """Reavalia e regrava TODOS os processos já avaliados. Passe único, cedendo a VM."""
+ESTADO = RAIZ / "data" / ".pos_correcao_estado.json"
+"""Quem já foi reavaliado NESTA rodada. Some quando a rodada termina inteira."""
+
+
+def _estado_ler() -> set[str]:
+    try:
+        return set(json.loads(ESTADO.read_text(encoding="utf-8")).get("feitos") or [])
+    except (OSError, ValueError):
+        return set()
+
+
+def _estado_gravar(feitos: set[str]) -> None:
+    tmp = ESTADO.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"feitos": sorted(feitos)}, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(ESTADO)
+
+
+def reavaliar(limite: int | None = None, retomar: bool = True) -> dict:
+    """Reavalia e regrava TODOS os processos já avaliados. Passe único, cedendo a VM.
+
+    RETOMÁVEL. Em 2026-08-04 duas passadas foram interrompidas no meio (uma por carga alta, outra
+    porque o código mudara durante a execução) e **todo o trabalho já feito foi perdido** — 375 e
+    100 processos reavaliados do zero na vez seguinte. O estado é gravado a cada lote de 25 e
+    apagado quando a rodada termina inteira, então retomar é o padrão e recomeçar é a exceção
+    (`--do-zero`).
+    """
     sys.path.insert(0, str(RAIZ))
     from compliance_agent import processo_360 as P
 
@@ -103,6 +127,12 @@ def reavaliar(limite: int | None = None) -> dict:
         con.close()
     if limite:
         alvos = alvos[:limite]
+    feitos = _estado_ler() if retomar else set()
+    if feitos:
+        antes_n = len(alvos)
+        alvos = [a for a in alvos if a not in feitos]
+        print(f"[pos-correcao] retomando: {antes_n - len(alvos)} já reavaliados numa rodada "
+              f"anterior, {len(alvos)} restantes", flush=True)
     print(f"[pos-correcao] {len(alvos)} processos a reavaliar", flush=True)
     ok = erro = 0
     t0 = time.time()
@@ -112,6 +142,7 @@ def reavaliar(limite: int | None = None) -> dict:
             while _carga() >= LIMIAR_CARGA and esperas < ESPERAS_MAX:
                 time.sleep(PAUSA)
                 esperas += 1
+            _estado_gravar(feitos)
             print(f"[pos-correcao] {i}/{len(alvos)} · ok={ok} erro={erro} · "
                   f"load={_carga():.2f} · {time.time() - t0:.0f}s", flush=True)
         try:
@@ -121,12 +152,14 @@ def reavaliar(limite: int | None = None) -> dict:
                 ok += 1
             else:
                 erro += 1
+            feitos.add(num)
         except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error) as e:
             # um processo ruim não derruba o passe — mas ele APARECE, porque script que engole
             # exceção foi exatamente o que me deu número errado nesta mesma sessão.
             erro += 1
             if erro <= 5:
                 print(f"[pos-correcao] ERRO {num}: {type(e).__name__}: {str(e)[:90]}", flush=True)
+    ESTADO.unlink(missing_ok=True)      # rodada inteira concluída: o estado deixa de existir
     print(f"[pos-correcao] reavaliação: ok={ok} erro={erro} · {time.time() - t0:.0f}s", flush=True)
     return {"ok": ok, "erro": erro, "segundos": round(time.time() - t0)}
 
@@ -153,6 +186,8 @@ def main(argv=None) -> int:
     ap.add_argument("--so-medir", action="store_true", help="só a fotografia de agora")
     ap.add_argument("--sem-fila", action="store_true", help="não regrava a fila do fiscal")
     ap.add_argument("--limite", type=int, default=0, help="reavalia só os N de maior score")
+    ap.add_argument("--do-zero", action="store_true",
+                    help="ignora o estado de uma rodada interrompida e recomeça do início")
     a = ap.parse_args(argv)
 
     antes = fotografia()
@@ -166,7 +201,7 @@ def main(argv=None) -> int:
               "carregado é somar trabalho.")
         return 1
 
-    reavaliar(a.limite or None)
+    reavaliar(a.limite or None, retomar=not a.do_zero)
     fila_ok = False if a.sem_fila else regravar_fila()
     depois = fotografia()
 

@@ -85,3 +85,25 @@ def test_nao_existe_laco_infinito_na_ferramenta():
     src = Path(PC.__file__).read_text(encoding="utf-8")
     codigo = [ln.split("#", 1)[0] for ln in src.splitlines()]
     assert not [ln for ln in codigo if "while True" in ln]
+
+
+def test_a_rodada_e_RETOMAVEL(tmp_path, monkeypatch):
+    """Em 2026-08-04 duas passadas foram interrompidas no meio (uma por carga alta, outra porque o
+    código mudara durante a execução) e TODO o trabalho já feito foi perdido — 375 e 100 processos
+    reavaliados do zero na vez seguinte. É o retrabalho que esta ferramenta existe para acabar."""
+    estado = tmp_path / "estado.json"
+    monkeypatch.setattr(PC, "ESTADO", estado)
+    PC._estado_gravar({"SEI-000000/000001/2025", "SEI-000000/000002/2025"})
+    assert PC._estado_ler() == {"SEI-000000/000001/2025", "SEI-000000/000002/2025"}
+
+
+def test_estado_ilegivel_nao_impede_a_rodada(tmp_path, monkeypatch):
+    estado = tmp_path / "estado.json"
+    estado.write_text("{ nao é json", encoding="utf-8")
+    monkeypatch.setattr(PC, "ESTADO", estado)
+    assert PC._estado_ler() == set()
+
+
+def test_sem_estado_a_rodada_comeca_do_zero(tmp_path, monkeypatch):
+    monkeypatch.setattr(PC, "ESTADO", tmp_path / "nao_existe.json")
+    assert PC._estado_ler() == set()
