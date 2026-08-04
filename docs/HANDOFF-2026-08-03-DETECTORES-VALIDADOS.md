@@ -55,8 +55,8 @@ regressão em `tests/test_instrumento_assinatura.py`.
    "Parecer de Análise para Emissão DL" (Fundação Saúde, Diretoria Administrativa Financeira,
    corpo inteiro: *"Procedida a Revisão do processo"*) passava no teste de manifestação jurídica
    pela própria etiqueta que se queria conferir. **O documento provava a si mesmo.**
-   → ⚠️ **A etiqueta contamina qualquer regex que leia esses `.txt`.** Foi neutralizada dentro de
-   `instrumento_assinatura`; os demais leitores do acervo NÃO foram auditados.
+   → ⚠️ **A etiqueta contamina qualquer regex que leia esses `.txt`.** Os 14 leitores do acervo
+   foram auditados na sequência — é o §6, e o que ele achou foi maior que o falso positivo.
 2. **Rótulo de campo de formulário lido como decisão.** Toda Nota de Autorização de Despesa traz
    impresso `39 - APROVO E AUTORIZO ORDENADOR / AUTORIDADE DELEGADA` como cabeçalho de campo —
    presente na NAD assinada e na não assinada. A NAD do setor de orçamento ("Apresentamos a
@@ -158,12 +158,85 @@ de "o que é controle prévio do art. 53" passou a ter uma implementação só, 
 `instrumento_assinatura`, importada pela `sintese_global` (havia duas cópias prestes a divergir —
 foi assim que o teto de dispensa ganhou uma terceira cópia divergente).
 
-## 6. Próximos passos, em ordem
+**Porta única do texto do acervo** — `compliance_agent/sei/acervo_texto` (§6). 14 leitores
+passaram a receber o que o SEI serviu, sem o rótulo que nós escrevemos. 1.393 documentos e
+11,6 MB voltaram a existir para o motor. Suíte em 4 lotes: **5.544 verdes, 0 falhas.**
 
-1. **Auditar quem mais lê os `.txt` do acervo com regex** — a etiqueta `(fase: … · tipo: …)` está
-   dentro do texto de TODO documento arquivado (§2-A.1). Foi neutralizada em um módulo só.
-2. **Regenerar `data/recaptura_cap21k.json`** excluindo o já reparado (§3): a lista conhece 375
-   processos e existem 426.
+## 6. A auditoria dos leitores — feita, e o que ela achou
+
+O próximo passo nº 1 desta lista virou uma sessão inteira. Método: rodar **todo padrão compilado**
+dos 14 módulos que leem o acervo contra as **6.000 etiquetas reais** — medir, não deduzir.
+
+**A etiqueta tem duas partes, e só uma envenena.** O `[título]` é do SEI; o `(fase: … · tipo: …)`
+é palpite NOSSO. Dos 32 padrões que casavam com a etiqueta, 26 casavam pelo título (legítimo, e
+vários deles de propósito) e **6 casavam pelo parêntese** — o documento provando a si mesmo.
+
+**Porta única** — `compliance_agent/sei/acervo_texto`. `ler()` devolve o que o SEI serviu (padrão
+correto: ninguém precisa lembrar); `etiqueta()` devolve o rótulo a quem legitimamente o quer — a
+`conferencia_captura`, e só ela, que agora o recebe explícito em vez de por resíduo dentro do
+texto. Prova de ponta a ponta: **0 de 4.370** textos entregues ainda trazem etiqueta.
+> Sutileza que custou uma medição: **nem todo `[` no começo é etiqueta.** Documento real começa
+> com colchete (`[RECEBEMOS DE PROMEFARMA…` de nota fiscal) e título real tem colchete DENTRO
+> (`[Anexo 7 - …-[SES_RJ] (80815818)]`). A âncora é o parêntese, que só nós escrevemos.
+
+**O dano maior não era o falso positivo, era a JANELA.** A etiqueta tem mediana de 71 caracteres,
+p90 de 119 e **máximo medido de 478**: quem lia `texto[:200]` perdia 36,5% da janela para o
+próprio rótulo, e o pior caso apaga uma janela de 400 inteira. Atingia `sei_recomendacoes`
+(art. 53, janela de 200), `doc_juizo` (6.000 e ainda mandava a NOSSA classificação para a IA que
+julga o documento), `capitulos_dossie` (a citação no entregável começava pelo rótulo interno).
+
+### 6-A. Três defeitos que a auditoria descobriu de raspão
+
+1. **Contar ARQUIVO não é contar TEXTO.** 10.323 dos 43.963 `.txt` do acervo (23,5%) trazem só a
+   etiqueta. O `captura_integra` — o portão que decide se um processo recebe faixa de risco —
+   contava arquivos, e 7 processos passavam por íntegros com quase metade dos textos vazios. A
+   docstring já dizia "texto no disco decide"; não era o texto que decidia.
+2. **O manifesto é o índice.** 6.286 `.txt` em 121 processos não eram reivindicados por nenhuma
+   entrada — sobra de captura anterior. Quem varria `texto/*.txt` lia DUAS capturas do mesmo
+   processo. Ressalva que custou uma correção no meio do caminho: índice com `docs: []` é índice
+   QUEBRADO, não vazio — confiar nele apagaria 20 documentos reais em silêncio.
+3. **Recaptura cujo manifesto não foi reescrito** (novo `tools/sei_reconciliar_orfaos`): 338
+   documentos, 3,0 MB, no disco e fora do índice em 6 processos. O título vem da ETIQUETA do
+   próprio arquivo — casar por índice do nome colaria o teor de um documento no título de outro.
+   E a entrada superada só sai da contagem com **prova de título**: sem isso, 519 das 626 entradas
+   de um processo virariam "superadas" quando só 88 têm substituta, e "não capturado" viraria
+   "superado" — apagando a fila de recaptura.
+
+### 6-B. Reparo aplicado (o que estava construído e nunca fora rodado)
+
+| | antes | depois |
+|---|---:|---:|
+| manifestos zerados (`docs: []` com texto no disco) | 33 | **0** |
+| documentos invisíveis ao motor | 1.393 | **0** |
+| órfãos COM teor | 338 | **0** |
+| capturas ÍNTEGRAS pelo critério de CONTEÚDO | — | 1.996/2.175 |
+
+`080001/001711/2026` declarava 97 documentos com 2 de teor e passava por ÍNTEGRO pela contagem de
+arquivos; agora declara 100 com 98 e é íntegro de verdade. `260007/004617/2024` passou a dizer
+33% e foi para a fila de recaptura, que é o que ele é.
+
+### 6-C. Três catracas que tinham parado de guardar (anteriores a esta sessão)
+
+- O normalizador do snapshot do **Lex** fixava `(aprendida da base JFN)`, o texto passou a dizer
+  `(aprendida da base histórica)` e ele deixou de casar **em silêncio** — o golden voltou a
+  comparar o número vivo e quebrou quando o SIAFE ingeriu 21.069 OBs.
+- **`intel_base`** era o único ponto do relatório que ignorava `JFN_DB`: o snapshot
+  "determinístico" ia à base viva.
+- **`--update-rotas`** estava documentado e não existia. A saída era apagar o golden à mão — que o
+  regenera com o que estiver lá, inclusive uma rota perdida num refactor.
+
+> ⚠️ **Achado em aberto, registrado no próprio teste:** a janela histórica do ITERJ caiu uma linha
+> (−R$ 138.093,99). Há quatro OBs idênticas da LOCTECH em 2023 e nenhuma duplicata hoje —
+> assinatura de deduplicação. "Consistente com" não é "provado": se cair de novo sem ingestão, é
+> em `tests/test_golden_numbers.py` que a investigação recomeça.
+
+## 7. Próximos passos, em ordem
+
+1. **Regenerar `data/recaptura_cap21k.json`** excluindo o já reparado (§3): a lista conhece 375
+   processos e existem 426. Com o critério de conteúdo, a fila real é de **5.217 documentos
+   declarados sem teor** (13,5% do acervo).
+2. **5.106 arquivos órfãos sem teor** seguem em disco — já fora de toda leitura (o índice manda),
+   mas ocupam espaço e confundem quem inspeciona a pasta à mão. Quarentena é trabalho de faxina.
 3. **Recaptura**: `sei_sweep --recaptura` (login único) está pronto, e o teto subiu para 120 no
    `sweep_sei`. Falta drenar: **10.447 documentos** sem texto em 155 processos, e a última
    tentativa parou em `login itkava não venceu o WAF agora` — repetir pelo cron.
