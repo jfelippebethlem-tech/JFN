@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -143,14 +144,115 @@ def reconciliar(dir_proc: Path, aplicar: bool) -> dict | None:
             "superados": len(superados)}
 
 
+
+
+# ─────────────── órfão SEM teor: declarar o que se sabe, varrer o resíduo ───────────────
+
+QUARENTENA = ARQUIVO / "_orfaos_residuo"
+
+
+def tratar_vazios(dir_proc: Path, aplicar: bool) -> dict | None:
+    """Órfão sem teor não é documento — mas pode ser a única prova de que o documento EXISTE.
+
+    Medido em 2026-08-04: 5.106 arquivos órfãos sem teor em 86 processos (0,4 MB, 53-150 bytes,
+    todos de julho/2026 — sobra de um esquema de nome anterior). Varrer todos seria o caminho
+    óbvio e estaria errado: **2.832 deles carregam, na etiqueta, o título de um documento que o
+    manifesto NÃO conhece** ("Termo de Referência (129952102)", "Despacho Autorizo de Despesas").
+    Jogá-los fora apagaria a prova de que essas peças existem na árvore do SEI — é ler ausência
+    como fato, ao contrário.
+
+    Então o tratamento é duplo, e a etiqueta decide qual:
+      · título DESCONHECIDO do manifesto → entra como documento DECLARADO com `chars=0`. Não se
+        inventa teor: declara-se que a peça existe e não foi capturada, que é o que alimenta a
+        fila de recaptura. INDISPONÍVEL ≠ 0.
+      · título JÁ CONHECIDO → resíduo puro. Vai para `_orfaos_residuo/<processo>/`, quarentena,
+        nunca apagado.
+    """
+    mpath = dir_proc / "manifest.json"
+    if not mpath.exists():
+        return None
+    try:
+        man = json.loads(mpath.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+    vazios = [f for f in acervo_texto.orfaos(dir_proc) if not acervo_texto.tem_conteudo(f)]
+    if not vazios:
+        return None
+
+    docs = [d for d in (man.get("docs") or []) if isinstance(d, dict)]
+    conhecidos = {_norm(str(d.get("titulo") or ""))
+                  for d in docs + (man.get("docs_superados") or []) if isinstance(d, dict)}
+    usados = set()
+    for d in docs:
+        try:
+            usados.add(int(str(d.get("i"))))
+        except (TypeError, ValueError):
+            continue
+    proximo = (max(usados) + 1) if usados else 0
+
+    declarados, residuo = [], []
+    for f in vazios:
+        titulo = _titulo_do_arquivo(f)
+        if _norm(titulo) in conhecidos:
+            residuo.append(f)
+            continue
+        conhecidos.add(_norm(titulo))
+        tipo = classificar_doc(titulo, "")
+        declarados.append({"i": proximo, "titulo": titulo,
+                           "fase": classificar_com_tipo(titulo, tipo)[0], "tipo": tipo,
+                           "texto": f"texto/{f.name}", "chars": 0, "ocr": False, "fotos": [],
+                           "declarado_sem_teor": True})
+        proximo += 1
+
+    if aplicar:
+        if declarados:
+            novo_man = dict(man)
+            novo_man["docs"] = docs + declarados
+            novo_man["declarado_sem_teor_em"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            novo_man["declaracao"] = (
+                f"{len(declarados)} documento(s) que a árvore do SEI tem e a captura não trouxe — "
+                "estavam fora do índice, com título lido da etiqueta do próprio arquivo. "
+                "chars=0 é declaração de INDISPONÍVEL, não de vazio.")
+            tmp = mpath.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(novo_man, ensure_ascii=False, indent=1), encoding="utf-8")
+            tmp.replace(mpath)
+        if residuo:
+            destino = QUARENTENA / dir_proc.name
+            destino.mkdir(parents=True, exist_ok=True)
+            for f in residuo:
+                alvo = destino / f.name
+                if alvo.exists():
+                    alvo = destino / f"{f.stem}__{f.stat().st_mtime_ns}{f.suffix}"
+                shutil.move(str(f), str(alvo))
+    return {"processo": dir_proc.name, "declarados": len(declarados), "residuo": len(residuo)}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--aplicar", action="store_true", help="grava (sem isso, só relata)")
     ap.add_argument("--processo", help="uma pasta específica (ex.: 080001_001711_2026)")
+    ap.add_argument("--vazios", action="store_true",
+                    help="trata os órfãos SEM teor: declara os de título desconhecido, "
+                         "manda o resíduo para quarentena")
     a = ap.parse_args()
     alvos = ([ARQUIVO / a.processo] if a.processo
              else sorted(p for p in ARQUIVO.iterdir()
                          if p.is_dir() and not p.name.startswith("_")))
+    if a.vazios:
+        n = decl = res = 0
+        for d in alvos:
+            r = tratar_vazios(d, a.aplicar)
+            if not r or not (r["declarados"] or r["residuo"]):
+                continue
+            n += 1
+            decl += r["declarados"]
+            res += r["residuo"]
+            print(f"  {r['processo']}: {r['declarados']} declarado(s) sem teor · "
+                  f"{r['residuo']} p/ quarentena")
+        verbo = "tratados" if a.aplicar else "tratáveis (use --aplicar)"
+        print(f"\n{n} processos {verbo} · {decl} documentos DECLARADOS (existem e não foram "
+              f"capturados) · {res} arquivos de resíduo p/ quarentena")
+        return 0
     n = docs = chars = 0
     for d in alvos:
         r = reconciliar(d, a.aplicar)

@@ -141,3 +141,69 @@ def test_entrada_vazia_em_processo_SEM_recaptura_permanece(tmp_path):
     assert R.reconciliar(p, aplicar=True) is None
     man = json.loads((p / "manifest.json").read_text())
     assert len(man["docs"]) == 1 and "docs_superados" not in man
+
+
+# ───────── órfão SEM teor: declarar o que se sabe, varrer só o resíduo ─────────
+
+def test_orfao_vazio_com_titulo_DESCONHECIDO_vira_documento_declarado(tmp_path):
+    """5.106 órfãos sem teor no acervo, e **2.832 carregam na etiqueta o título de um documento
+    que o manifesto não conhece** ("Termo de Referência (129952102)"). Varrer todos apagaria a
+    prova de que essas peças existem na árvore do SEI — ler ausência como fato, ao contrário."""
+    p = _processo(
+        tmp_path,
+        [("000_a.txt", "[Despacho 1 (11)] (tipo: despacho)\n\nTeor real, acima do piso da casa.")],
+        [("001_tr.txt", "[Termo de Referência (129952102)] (fase: planejamento · tipo: tr)\n\n")])
+    r = R.tratar_vazios(p, aplicar=True)
+    assert r == {"processo": p.name, "declarados": 1, "residuo": 0}
+    man = json.loads((p / "manifest.json").read_text())
+    novo = man["docs"][-1]
+    assert novo["titulo"] == "Termo de Referência (129952102)"
+    assert novo["chars"] == 0 and novo["declarado_sem_teor"] is True, \
+        "chars=0 é declaração de INDISPONÍVEL — não se inventa teor"
+    assert (p / "texto" / "001_tr.txt").exists(), "o arquivo fica onde está"
+
+
+def test_orfao_vazio_com_titulo_JA_CONHECIDO_e_residuo_e_vai_p_quarentena(tmp_path, monkeypatch):
+    monkeypatch.setattr(R, "QUARENTENA", tmp_path.parent / "_q")
+    p = _processo(
+        tmp_path,
+        [("000_a.txt", "[Despacho de Encaminhamento 11] (tipo: despacho)\n\n"
+                       "Teor real, acima do piso de 40 caracteres da casa.")],
+        [("001_sobra.txt", "[Despacho de Encaminhamento 11] (tipo: despacho)\n\n")])
+    man = json.loads((tmp_path / "manifest.json").read_text())
+    man["docs"][0]["titulo"] = "Despacho de Encaminhamento 11"
+    (tmp_path / "manifest.json").write_text(json.dumps(man), encoding="utf-8")
+
+    r = R.tratar_vazios(p, aplicar=True)
+    assert r["declarados"] == 0 and r["residuo"] == 1
+    assert not (p / "texto" / "001_sobra.txt").exists()
+    assert (R.QUARENTENA / p.name / "001_sobra.txt").exists(), "quarentena, nunca apagar"
+    assert len(json.loads((p / "manifest.json").read_text())["docs"]) == 1
+
+
+def test_dois_orfaos_vazios_do_MESMO_titulo_declaram_um_so(tmp_path, monkeypatch):
+    """O segundo já é conhecido pelo primeiro — senão o índice ganharia a mesma peça duas vezes."""
+    monkeypatch.setattr(R, "QUARENTENA", tmp_path.parent / "_q2")
+    p = _processo(
+        tmp_path,
+        [("000_a.txt", "[A (1)] (tipo: despacho)\n\nTeor real, acima do piso de 40 caracteres.")],
+        [("001_x.txt", "[Ofício - NA 72 (77144454)] (tipo: oficio)\n\n"),
+         ("002_x.txt", "[Ofício - NA 72 (77144454)] (tipo: oficio)\n\n")])
+    r = R.tratar_vazios(p, aplicar=True)
+    assert r["declarados"] == 1 and r["residuo"] == 1
+
+
+def test_sem_aplicar_nada_muda_no_tratamento_de_vazios(tmp_path):
+    p = _processo(
+        tmp_path,
+        [("000_a.txt", "[A (1)] (tipo: despacho)\n\nTeor real, acima do piso de 40 caracteres.")],
+        [("001_tr.txt", "[Termo de Referência (99)] (tipo: tr)\n\n")])
+    antes = (p / "manifest.json").read_text()
+    assert R.tratar_vazios(p, aplicar=False)["declarados"] == 1
+    assert (p / "manifest.json").read_text() == antes
+    assert (p / "texto" / "001_tr.txt").exists()
+
+
+def test_processo_sem_orfao_vazio_nao_e_tocado(tmp_path):
+    p = _processo(tmp_path, [("000_a.txt", "[A (1)] (tipo: despacho)\n\nTeor real e suficiente.")], [])
+    assert R.tratar_vazios(p, aplicar=True) is None

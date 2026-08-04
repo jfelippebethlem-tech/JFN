@@ -58,14 +58,17 @@ GOLDEN = {
     # pagas em 2026-07-01, e o número de fornecedores distintos NÃO mudou (197) — assinatura
     # de coleta incremental, não de reprocessamento que reescreve histórico.
     # 2026-08-03: 2526 → 2572 (+46 OBs de 02/07 a 31/07/2026, coleta incremental) e 197 → 198
-    # fornecedores (um novo). ⚠️ MAS a auditoria achou um movimento que NÃO é ingestão: a janela
-    # histórica (até 01/07/2026) caiu de 2526 para **2525** linhas, −R$ 138.093,99. Não há
-    # evidência de perda de OB única: sobram QUATRO OBs de exatamente R$ 138.093,99 da LOCTECH em
-    # 2023 (pagamento recorrente mensal), cada uma com `numero_ob` próprio, e hoje o ITERJ não tem
-    # nenhuma duplicata por `numero_ob`. A assinatura é de DEDUPLICAÇÃO de uma linha repetida —
-    # a chave canônica da casa é numero_ob+ug+exercício. Registrado aqui porque a guarda serviu
-    # exatamente para isto, e porque "consistente com dedup" não é "provado": se o número cair de
-    # novo sem ingestão, é aqui que a investigação recomeça.
+    # fornecedores. A janela histórica (até 01/07/2026) caiu de 2526 para 2525, −R$ 138.093,99, e
+    # eu registrei aqui a hipótese de DEDUPLICAÇÃO. **Estava errada** — corrigido em 2026-08-04
+    # com o backup off-box de 02/08: a linha que sumiu é a `2023OB00455` (13/07/2023, LOCTECH,
+    # R$ 138.093,99), OB ÚNICA e distinta das outras quatro de mesmo valor. Não foi dedup: foi a
+    # FONTE. Comparando a base inteira com o backup, **140 OBs de sete exercícios, somando
+    # R$ 30.001.367,60, deixaram de ser publicadas pelo TFE-RJ**, e nenhuma delas está no zip
+    # baixado em 03/08 06:00 — o `jfn-tfe-ob.service` apaga o exercício e reinsere, fielmente e em
+    # silêncio. Elas ficam preservadas em `ob_retirada` (ver `collectors/tfe_ob`), porque
+    # pagamento publicado e depois DESPUBLICADO é fato de interesse fiscalizatório.
+    # A lição de método: esta guarda funcionou — foi ela que puxou o fio. O que falhou foi eu ter
+    # fechado a hipótese sem a prova que o backup dava.
     "iterj_ug": {"ug": "133100", "obs": 2572, "total": 298259935.31, "fornecedores": 198},
     "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
