@@ -52,3 +52,26 @@ def test_leitura_vazia_honesta():
     r = S.analisar([DOC_NEUTRO], usar_llm=False)
     assert r["n_candidatos"] == 0
     assert "INDISPONÍVEL" in r["leitura"]
+
+
+# ═══ ATENDER a ressalva é acolhê-la — e o objeto decide (2026-08-04) ═══
+
+def test_atendimento_ao_PARECER_e_acolhimento():
+    """Medido nos 90 processos de maior risco: 6 de 65 respondiam o parecer ponto a ponto e eram
+    acusados de "nenhum documento registra acatamento". Acusar de silêncio quem respondeu é
+    acusação sobre servidor nomeado."""
+    from compliance_agent.sei_recomendacoes import _RE_ACOLHIMENTO
+    for texto in [
+        "encaminho o presente expediente em atendimento ao Parecer Nº 130/2022, que condicionou",
+        "Recomendação atendida através do documento de Oficialização de Demanda",
+        "Em atendimento ao parecer jurídico 82243420, aduz-se o seguinte: Quanto ao item 1",
+    ]:
+        assert _RE_ACOLHIMENTO.search(texto), texto
+
+
+def test_atendimento_ao_DESPACHO_nao_e_acolhimento_do_parecer():
+    """"Em atendimento ao despacho (89639282), encaminhamos o p.p." é encaminhamento de rotina —
+    aceitar "atendida" solto transformaria tramitação em acatamento do controle prévio."""
+    from compliance_agent.sei_recomendacoes import _RE_ACOLHIMENTO
+    assert not _RE_ACOLHIMENTO.search(
+        "Em atendimento ao despacho (89639282), encaminhamos o p.p. com a classificação")

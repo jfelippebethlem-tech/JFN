@@ -55,7 +55,15 @@ _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
 # viram contrato (o classificador por CONTEÚDO mente em doc escaneado) — e minuta ANTES do
 # parecer é o fluxo CORRETO do art. 53. (FPs reais 030001/087722, 080002/020278, 270131/000548.)
 _RX_NAO_PARECER = re.compile(r"certid|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo", re.I)
-_RX_NAO_CONTRATO = re.compile(r"minuta|nota\s+fiscal|\bnfs?-?e?\b|e-?mail|gmail|pesquisa", re.I)
+# O que NÃO é o instrumento, mesmo tipado `contrato`. "Registro siafe encerramento contrato" é o
+# REGISTRO do encerramento; "Publicação/Extrato" é o extrato no D.O.; "Termo de apostilamento" é
+# registro unilateral. Medido em 2026-08-04: o A1 do 070026/000410/2021 dizia "contrato antes do
+# parecer" tendo como "contrato" um registro de ENCERRAMENTO na posição 5. Mesma doutrina do
+# `sei/instrumento_assinatura._RE_NAO_E_INSTRUMENTO`, que já derrubou 4 falsos do I1.
+_RX_NAO_CONTRATO = re.compile(
+    r"minuta|nota\s+fiscal|\bnfs?-?e?\b|e-?mail|gmail|pesquisa"
+    r"|registro\s+siafe|encerramento|publica[çc][ãa]o|extrato|apostilamento"
+    r"|consulta\s+ao|termo\s+de\s+cancelamento", re.I)
 _CONTRATO = {"contrato", "termo_contrato", "ata_registro_precos"}
 _RESPOSTA = {"despacho", "oficio", "nota_tecnica", "informacao", "manifestacao"}
 _EXECUCAO = {"medicao", "relatorio_fotografico", "atesto", "recebimento"}
@@ -165,9 +173,23 @@ def natureza(man: dict, docs: list[dict]) -> str:
     return "indefinido"
 
 
+# ATENDER a ressalva é acatá-la — e o OBJETO é que decide. Medido em 2026-08-04 nos 90 processos
+# de maior risco: **6 de 65** respondiam o parecer ponto a ponto e eram acusados de "nenhum
+# documento registra acatamento":
+#     "em atendimento ao Parecer Nº 130/2022/INEA/GERCON (32744974), que condicionou…"
+#     "Recomendação atendida através do documento de Oficialização de Demanda…"
+#     "Em atendimento ao parecer jurídico 82243420, aduz-se: Quanto ao item 1, informa-se que…"
+# O padrão é ESTREITO de propósito: "em atendimento ao DESPACHO" é encaminhamento de rotina e
+# NÃO entra — foi por isso que "atendida" solto ficou de fora. Acusar de silêncio quem respondeu
+# é acusação sobre servidor nomeado.
 _RX_ACATA = re.compile(
     r"\bacat(a|o|ando|ada)\b|\bem aten[çc][ãa]o ao parecer\b|\bcumprida[s]? as\b"
-    r"|\bsanad[ao]s?\b|\bretific(a|ado|ação)\b", re.I)
+    r"|\bsanad[ao]s?\b|\bretific(a|ado|ação)\b"
+    r"|em\s+atendimento\s+(?:ao|à|aos|às)\s+"
+    r"(?:parecer|cota|manifesta[çc][ãa]o|recomenda|ressalva|condicionante|exig[êe]ncia)"
+    r"|atendid[ao]s?\s+(?:a|as|o|os)?\s*"
+    r"(?:recomenda|ressalva|condicionante|exig[êe]ncia|parecer)"
+    r"|(?:recomenda[çc][ãa]o|ressalva|condicionante|exig[êe]ncia)[^.]{0,60}\batendid", re.I)
 _RX_RESSALVA = re.compile(
     r"\bcom ressalva|\bcondicionad[oa]\b|\bdesde que\b|\brecomend(a|o|ando)\b"
     r"|\bnecess[áa]rio (que|se)\b|\bdeve[rm]? ser (sanad|corrigid|providenci)", re.I)
@@ -212,6 +234,17 @@ def periciar(pasta: Path) -> dict | None:
         man = json.loads(mf.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
+    # VOCABULÁRIO. O manifesto CRU traz o tipo GROSSO do arquivador (`tramitacao`, `outros`) e as
+    # regras daqui falam o vocabulário FINO/canônico (`despacho`, `oficio`, `nota_tecnica`…). Sem
+    # normalizar, `_RESPOSTA` não encontrava NENHUM despacho — e o A2 anunciava "não há documento
+    # posterior que responda" num processo com **174 despachos** (070002/012954/2022, medido em
+    # 2026-08-04). Era o achado mais frequente da faixa EXTREMO: 80 dos 150 processos de maior
+    # risco. `manifesto_norm.normalizar` existe exatamente para isto — dois formatos, um shape.
+    try:
+        from compliance_agent.sei import manifesto_norm as _mn
+        man = _mn.normalizar({**man, "_pasta": str(pasta)})
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass                     # sem normalização, segue com o cru: pior, não quebrado
 
     docs = _docs(man)
     tipos = Counter(str(d.get("tipo") or "").lower() for d in docs)

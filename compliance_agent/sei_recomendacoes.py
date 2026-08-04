@@ -44,9 +44,18 @@ _RE_NAO_ATENDIDA = re.compile(
 
 # ── eixo de ACATAMENTO (art. 53 Lei 14.133: parecer jurídico prévio obrigatório; a autoridade só
 #    pode divergir MOTIVADAMENTE — LINDB art. 22). Sinais no despacho da autoridade:
+# ATENDER a ressalva é acolhê-la, e o OBJETO decide: "em atendimento ao PARECER" responde o
+# controle prévio; "em atendimento ao DESPACHO" é encaminhamento de rotina e fica fora. Mesma
+# lacuna de recall medida na triagem em 2026-08-04 — 6 de 65 processos respondiam o parecer ponto
+# a ponto e eram lidos como silêncio administrativo.
 _RE_ACOLHIMENTO = re.compile(
     r"\b(acolho|acato|adoto|aprovo\s+(?:o|nos\s+termos\s+do)\s+parecer|nos\s+termos\s+do\s+parecer|"
-    r"conforme\s+(?:o\s+)?parecer|em\s+conson[âa]ncia\s+com\s+o\s+parecer|acolhimento\s+(?:integral|do\s+parecer))\b", re.I)
+    r"conforme\s+(?:o\s+)?parecer|em\s+conson[âa]ncia\s+com\s+o\s+parecer|acolhimento\s+(?:integral|do\s+parecer))\b"
+    r"|em\s+atendimento\s+(?:ao|à|aos|às)\s+"
+    r"(?:parecer|cota|manifesta[çc][ãa]o|recomenda|ressalva|condicionante|exig[êe]ncia)"
+    r"|atendid[ao]s?\s+(?:a|as|o|os)?\s*"
+    r"(?:recomenda|ressalva|condicionante|exig[êe]ncia|parecer)"
+    r"|(?:recomenda[çc][ãa]o|ressalva|condicionante|exig[êe]ncia)[^.]{0,60}\batendid", re.I)
 _RE_REJEICAO_MOTIVADA = re.compile(
     r"\b(deixo\s+de\s+acolher|n[aã]o\s+acolho|divirjo\s+do\s+parecer|em\s+que\s+pese\s+o\s+parecer|"
     r"n[aã]o\s+obstante\s+o\s+parecer|afasto\s+a\s+(?:ressalva|recomenda[çc][aã]o)|"
