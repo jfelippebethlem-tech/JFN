@@ -77,3 +77,49 @@ def test_parecer_de_verdade_nao_e_vetado_pelo_titulo():
     for titulo in ("Parecer 2848 (83434921)", "Parecer Jurídico PGE 12",
                    "Manifestação Jurídica 7 (11111111)"):
         assert not T._RX_NAO_PARECER.search(titulo), titulo
+
+
+# ───────── quando o título não diz nada, o TIPO diz (2026-08-04) ─────────
+
+def _docs(tipos):
+    return [{"i": i, "titulo": str(80000000 + i), "tipo": t} for i, t in enumerate(tipos)]
+
+
+def test_processo_so_de_empenho_e_liquidacao_e_PAGAMENTO():
+    """Medido em 2026-08-04: **1.129 dos 2.174 processos (52%) ficavam `indefinido`**, e o
+    `fases.lacunas` dá ao indefinido o checklist COMPLETO de contratação — o caso menos conhecido
+    recebendo o tratamento mais severo. Numa amostra, 65 de 67 indefinidos eram acusados de
+    "Planejamento ausente"; abrindo-os, são processos de empenho→liquidação. A causa: parte dos
+    manifestos perdeu os TÍTULOS e guarda só o identificador ("86655470 | 84392504 | …"), então as
+    regras por título não têm o que ler — mas o `tipo` canônico está lá."""
+    docs = _docs(["nota_empenho"] * 6 + ["nota_liquidacao"] * 2)
+    assert T.natureza({}, docs) == "pagamento"
+
+
+def test_uma_peca_de_contratacao_basta_para_NAO_isentar():
+    """A isenção é estreita: qualquer contrato, edital, ata ou TR nos autos derruba a regra."""
+    docs = _docs(["nota_empenho"] * 6 + ["nota_liquidacao"] * 2 + ["contrato"])
+    assert T.natureza({}, docs) != "pagamento"
+
+
+def test_menos_de_metade_de_despesa_continua_indefinido():
+    """Conservador: sem maioria de despesa, a casa não afirma a natureza."""
+    docs = _docs(["outro"] * 3 + ["nota_liquidacao"])
+    assert T.natureza({}, docs) == "indefinido"
+
+
+def test_titulo_com_contrato_FORTE_vence_a_regra_de_tipo():
+    """O sinal forte do título decide antes — a regra de tipo só entra onde o título é mudo."""
+    docs = [{"i": 0, "titulo": "Contrato nº 32/2025", "tipo": "nota_empenho"},
+            {"i": 1, "titulo": "Nota de Empenho", "tipo": "nota_empenho"}]
+    assert T.natureza({}, docs) == "contratacao"
+
+
+def test_a_isencao_NAO_alcanca_a_evidencia_de_execucao():
+    """O que a natureza `pagamento` dispensa é planejamento, seleção e formalização. Pagar sem
+    prova de entrega continua sendo cobrado — é o achado que mais importa."""
+    from compliance_agent.sei import fases
+    lac = fases.lacunas({"despesa"}, "", com_pagamento=True, natureza="pagamento")
+    faltas = " ".join(str(x.get("falta")) for x in lac)
+    assert "Evidência de execução" in faltas
+    assert "Planejamento" not in faltas and "Seleção" not in faltas

@@ -149,6 +149,14 @@ _RX_SELECAO_PROPRIA = re.compile(
     r"ato de dispensa|ratifica[çc][ãa]o", re.I)
 
 
+_TIPOS_DE_DESPESA = frozenset({
+    "nota_empenho", "nota_liquidacao", "ordem_bancaria", "programacao_desembolso",
+    "autorizacao_despesa"})
+_TIPOS_DE_CONTRATACAO = frozenset({
+    "contrato", "ata_rp", "edital", "proposta", "homologacao", "termo_referencia", "etp",
+    "ordem_inicio"})
+
+
 def natureza(man: dict, docs: list[dict]) -> str:
     """contratacao | aditivo | pagamento | repasse | indefinido. Sem sinal, fica indefinido."""
     txt = " | ".join(str(d.get("titulo") or "") for d in docs)
@@ -174,6 +182,23 @@ def natureza(man: dict, docs: list[dict]) -> str:
         return "contratacao"
     if _RX_OB_EXTERNA.search(txt):
         return "repasse"
+
+    # QUANDO O TÍTULO NÃO DIZ NADA, O TIPO DIZ. Medido em 2026-08-04: **1.129 dos 2.174 processos
+    # (52%) ficavam `indefinido`**, e o `fases.lacunas` dá ao indefinido o checklist COMPLETO de
+    # contratação — é o caso menos conhecido recebendo o tratamento mais severo. Numa amostra, 65
+    # de 67 indefinidos eram acusados de "Planejamento ausente"; abrindo-os, são processos de
+    # empenho→liquidação. A causa: parte dos manifestos perdeu os TÍTULOS e guarda só o
+    # identificador ("86655470 | 84392504 | …"), então as regras acima não têm o que ler — mas o
+    # `tipo` canônico está lá, preenchido pelo `manifesto_norm`.
+    #
+    # A regra é conservadora e a isenção é estreita: só vale sem NENHUMA peça de contratação nos
+    # autos e com metade dos documentos sendo despesa; e o que ela dispensa é planejamento,
+    # seleção e formalização — a cobrança de **evidência de execução continua**, que é o achado
+    # que mais importa (pagar sem prova de entrega).
+    tipos = [str(d.get("tipo") or "") for d in docs]
+    if tipos and not any(x in _TIPOS_DE_CONTRATACAO for x in tipos):
+        if sum(1 for x in tipos if x in _TIPOS_DE_DESPESA) / len(tipos) >= 0.5:
+            return "pagamento"
     # 2) sem sinal forte, decide a contagem
     r = len(_RX_REPASSE.findall(txt))
     c = len(_RX_CONTRATACAO.findall(txt))
