@@ -505,6 +505,29 @@ _RE_PRORROGA_MESES = re.compile(
     r"prorrogad[oa]\s+(?:o\s+prazo[^.]{0,60}?)?por\s+(?:mais\s+)?(\d{1,3})\s*\(", re.I)
 
 
+_RE_OBJETO_DO_ADITIVO = re.compile(r"(?i)\bOBJETO\s+A\s+([^,\n]{0,90})")
+_RE_PRORROGA_OBJETO = re.compile(r"(?i)prorroga")
+
+
+def _ha_aditivo_sem_prorrogacao(docs: list[dict], atual: dict) -> bool:
+    """Existe, nos MESMOS autos, outro aditivo cujo objeto não é prorrogar prazo?
+
+    O termo aditivo declara o próprio objeto logo no cabeçalho — "OBJETO A PRORROGAÇÃO DO PRAZO
+    CONTRATUAL", "OBJETO A ALTERAÇÃO QUANTITATIVA E QUALITATIVA DO OBJETO". Quando há um de
+    alteração/valor, a contagem de PRORROGAÇÕES anda mais devagar que a de aditivos, e o ordinal
+    "incoerente" passa a ser o esperado.
+    """
+    for outro in docs or []:
+        if outro is atual:
+            continue
+        if _norm(outro.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
+            continue
+        m = _RE_OBJETO_DO_ADITIVO.search(outro.get("texto") or "")
+        if m and not _RE_PRORROGA_OBJETO.search(m.group(1)):
+            return True
+    return False
+
+
 def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
     """O ordinal declarado bate com o prazo total que o próprio instrumento anuncia?"""
     docs = _limpos(docs)
@@ -523,6 +546,15 @@ def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
             continue                       # períodos irregulares: não se infere ordinal
         implicado = total // passo - 1     # contrato original + N prorrogações do mesmo tamanho
         if implicado == n or implicado < 0:
+            continue
+        # A HIPÓTESE INOCENTE ESTÁ NOS AUTOS — e o detector a nomeava sem conferir. Aditivo que
+        # só altera objeto ou valor NÃO avança a contagem de prorrogações, então o 2º aditivo
+        # pode legitimamente trazer o prazo do 1º. Medido em 2026-08-04: **14 dos 23 disparos
+        # (61%)** têm no MESMO processo um aditivo cujo objeto se anuncia "ALTERAÇÃO
+        # QUANTITATIVA E QUALITATIVA DO OBJETO" — e o instrumento acusado é a PRIMEIRA
+        # prorrogação. Exemplo: SEI-070002/006145/2024, TA 45/2024 (alteração) e TA 63/2024
+        # (prorrogação), com o 63 acusado de "2º aditivo com prazo de 1º".
+        if _ha_aditivo_sem_prorrogacao(docs, d):
             continue
         return {
             "achado": True, "ordinal": n, "total_meses": total, "passo_meses": passo,
