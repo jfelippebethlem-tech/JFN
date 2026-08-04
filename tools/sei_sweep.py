@@ -328,6 +328,23 @@ def _ja_lido_ok(proc: str) -> bool:
     return False
 
 
+_DIAS_PARA_NOVA_CHANCE = int(os.environ.get("SEI_SWEEP_DIAS_RETENTAR", "14"))
+
+
+def _tentativa_expirou(em: str | None) -> bool:
+    """Faz mais de `_DIAS_PARA_NOVA_CHANCE` que a última tentativa falhou?
+
+    Sem data registrada NÃO expira: na dúvida, mantém o comportamento antigo — a guarda existe
+    para não martelar, e afrouxá-la por ausência de dado seria o oposto do que a casa faz.
+    """
+    if not em:
+        return False
+    try:
+        return (datetime.now() - datetime.fromisoformat(str(em))).days >= _DIAS_PARA_NOVA_CHANCE
+    except (TypeError, ValueError):
+        return False
+
+
 def _arquivo_incompleto(proc: str) -> bool:
     """A captura arquivada deste processo está ABAIXO do mínimo que a casa exige para chamá-la
     íntegra (60% dos documentos com texto)?
@@ -462,8 +479,20 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # desistir não era o combinado. Mesma doutrina do `captura_integra`: o disco decide.
         if f and f.get("n_docs", 0) > 0 and _arquivo_incompleto(p):
             return False
-        # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
-        return bool(f and (f.get("n_docs", 0) > 0 or f.get("tentativas", 1) >= 3))
+        # DESISTIR NÃO PODE SER PARA SEMPRE. A regra de 3 tentativas existe para não martelar
+        # processo vazio ou restrito — mas a própria docstring do `_ja_lido_ok` diz que "a
+        # abertura do SEI é flaky". Medido em 2026-08-04: **2.760 processos abandonados**, e as
+        # unidades deles são as MESMAS onde milhares foram lidos com sucesso (UG 080002: 826
+        # abandonados contra 1.284 lidos) — não é falta de acesso, é falha intermitente. Entre os
+        # abandonados estão o SEI-150001/011573/2021 (R$ 210 mi, o primeiro da fila por dinheiro)
+        # e o SEI-080001/005089/2022 (I.D.E.A.S, R$ 135 mi): a fila propõe justamente o que o
+        # sweep desistiu.
+        # 2.131 dos 2.760 foram abandonados há MAIS DE 14 DIAS, sob episódios de WAF/sessão que
+        # já passaram. A tentativa expira: depois da janela, o processo ganha nova chance. Não é
+        # martelar — é reconhecer que a condição mudou.
+        if f and f.get("n_docs", 0) == 0 and f.get("tentativas", 0) >= 3:
+            return not _tentativa_expirou(f.get("em"))
+        return bool(f and f.get("n_docs", 0) > 0)
 
     fila = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)][:max_n]
     if not fila:
