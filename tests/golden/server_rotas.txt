@@ -121,6 +121,7 @@ GET /api/sei/empresa/status -> api_sei_empresa_status
 GET /api/sei/empresa/zip -> api_sei_empresa_zip
 GET /api/siafe/stats -> api_siafe_stats
 GET /api/siafe/status -> api_siafe_status
+GET /api/siafe/truncamento -> api_siafe_truncamento
 GET /api/sistema/atividade -> api_sistema_atividade
 GET /api/skill -> api_skill
 GET /api/skills -> api_skills
