@@ -112,22 +112,28 @@ def _restricao_por_unidade(caminho: Path, base: Path) -> dict[str, Any]:
         return fora
 
     nomes: dict[str, str] = {}
+    valores: dict[str, float] = {}
     try:
         con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
         try:
             melhor: dict[str, tuple[int, str]] = {}
-            for pre, nome, n in con.execute(
-                    "SELECT substr(numero_sei, 5, 6), ug_nome, COUNT(*) FROM ordens_bancarias "
+            for pre, nome, n, v in con.execute(
+                    "SELECT substr(numero_sei, 5, 6), ug_nome, COUNT(*), "
+                    "       COALESCE(SUM(valor), 0) FROM ordens_bancarias "
                     "WHERE numero_sei LIKE 'SEI-%' GROUP BY 1, 2"):
-                if not pre or not nome:
+                if not pre:
                     continue
-                if int(n or 0) > melhor.get(str(pre), (0, ""))[0]:
+                # o VALOR é por prefixo, somando todos os rótulos de UG que apareçam nele
+                valores[str(pre)] = valores.get(str(pre), 0.0) + float(v or 0)
+                if nome and int(n or 0) > melhor.get(str(pre), (0, ""))[0]:
                     melhor[str(pre)] = (int(n), str(nome))
             nomes = {k: v[1] for k, v in melhor.items()}
         finally:
             con.close()
     except sqlite3.Error:
-        nomes = {}
+        # a mesma consulta traz nome e valor: perdendo-a, perdem-se os dois. Zerar `valores`
+        # explicitamente evita ordenar por um rateio pela metade.
+        nomes, valores = {}, {}
 
     por: dict[str, dict[str, int]] = {}
     total = restritos = 0
@@ -142,15 +148,27 @@ def _restricao_por_unidade(caminho: Path, base: Path) -> dict[str, Any]:
         if st in ("RESTRITO", "RESTRITO?"):
             d["restritos"] += 1
             restritos += 1
+    # PERCENTUAL SEM DINHEIRO ENGANA. Medido em 2026-08-04: a unidade que lidera a restrição
+    # (040014, 93%) tem 40 processos somando R$ 0,9 mi, enquanto a Fundação Saúde, com 50%,
+    # responde por R$ 10,41 bi. Ordenar por percentual poria a primeira no topo do cartão como se
+    # fosse o maior ponto cego — e ela é o menor. Ordena-se pelo VALOR barrado.
     unidades = [
         {"ug": ug, "nome": nomes.get(ug, ""), "lidos": d["lidos"], "restritos": d["restritos"],
-         "pct": round(100 * d["restritos"] / d["lidos"], 0)}
+         "pct": round(100 * d["restritos"] / d["lidos"], 0),
+         "valor_pago": round(valores.get(ug, 0.0), 2),
+         "valor_sob_restricao": round(valores.get(ug, 0.0) * d["restritos"] / d["lidos"], 2)}
         for ug, d in por.items() if d["lidos"] >= 20 and d["restritos"]
     ]
-    unidades.sort(key=lambda u: (u["pct"], u["restritos"]), reverse=True)
+    unidades.sort(key=lambda u: u["valor_sob_restricao"], reverse=True)
     return {"disponivel": True, "processos_tentados": total, "restritos": restritos,
             "pct": round(100 * restritos / total, 1) if total else None,
-            "por_unidade": unidades[:8]}
+            "por_unidade": unidades[:8],
+            "nota_valor": ("`valor_sob_restricao` é RATEIO PROPORCIONAL: o valor pago da unidade "
+                           "multiplicado pela fração de processos classificados como restritos. "
+                           "Supõe que o processo barrado vale a média da unidade, o que não se "
+                           "sabe — serve para ordenar o ponto cego por relevância, nunca para "
+                           "ser citado como quantia."),
+            }
 
 
 def medir(*, db: str | Path | None = None, acervo: Path | None = None) -> dict[str, Any]:

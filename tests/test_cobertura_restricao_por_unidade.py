@@ -29,11 +29,11 @@ def _ambiente(tmp_path, registro, com_ob=True):
     (tmp_path / "data" / "sei_restritos.json").write_text(json.dumps(registro), encoding="utf-8")
     db = tmp_path / "data" / "c.db"
     con = sqlite3.connect(db)
-    con.execute("CREATE TABLE ordens_bancarias (numero_sei TEXT, ug_nome TEXT)")
+    con.execute("CREATE TABLE ordens_bancarias (numero_sei TEXT, ug_nome TEXT, valor REAL)")
     con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, status TEXT)")
     if com_ob:
-        con.executemany("INSERT INTO ordens_bancarias VALUES (?,?)",
-                        [("SEI-040014/000001/2024", "FUNDO UNICO DE PREVIDENCIA")] * 3)
+        con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?)",
+                        [("SEI-040014/000001/2024", "FUNDO UNICO DE PREVIDENCIA", 1_000.0)] * 3)
     con.commit(); con.close()
     return db, acervo
 
@@ -55,6 +55,9 @@ def test_a_restricao_e_medida_e_nomeada_por_unidade(tmp_path):
     u = r["por_unidade"][0]
     assert u["ug"] == "040014" and u["pct"] == 93
     assert "PREVIDENCIA" in u["nome"], "unidade sem nome não serve para pedir acesso"
+    # rateio proporcional: 52 de 56 restritos sobre R$ 3.000,00 pagos
+    assert u["valor_pago"] == 3_000.0
+    assert round(u["valor_sob_restricao"]) == round(3_000.0 * 52 / 56)
 
 
 def test_RESTRITO_interrogacao_conta_como_fora_de_alcance(tmp_path):
@@ -86,3 +89,36 @@ def test_sem_tabela_de_ob_ainda_mede_sem_o_nome(tmp_path):
     db, acervo = _ambiente(tmp_path, _registro(30, 5), com_ob=False)
     r = C.medir(db=db, acervo=acervo)["restricao"]
     assert r["restritos"] == 30 and r["por_unidade"][0]["nome"] == ""
+
+
+def test_ordena_pela_RELEVANCIA_do_ponto_cego_nao_pelo_percentual():
+    """Percentual sem dinheiro engana. Medido em 2026-08-04: a unidade que liderava por percentual
+    (040014, 93% restrito) tem 40 processos somando R$ 0,9 mi, enquanto a Fundação Saúde, com 50%,
+    responde por R$ 10,41 bi. Ordenar por percentual poria a menor no topo do cartão como se fosse
+    o maior ponto cego."""
+    import sqlite3 as _s
+    import tempfile
+    from pathlib import Path as _P
+    tmp = _P(tempfile.mkdtemp())
+    (tmp / "data").mkdir()
+    acervo = tmp / "data" / "sei_arquivo"; acervo.mkdir()
+    reg = {}
+    for i in range(52):
+        reg[f"a{i}"] = {"prefixo": "040014", "status": "RESTRITO"}
+    for i in range(4):
+        reg[f"b{i}"] = {"prefixo": "040014", "status": "OK"}
+    for i in range(130):
+        reg[f"c{i}"] = {"prefixo": "080002", "status": "RESTRITO"}
+    for i in range(131):
+        reg[f"d{i}"] = {"prefixo": "080002", "status": "OK"}
+    (tmp / "data" / "sei_restritos.json").write_text(json.dumps(reg), encoding="utf-8")
+    db = tmp / "data" / "c.db"
+    con = _s.connect(db)
+    con.execute("CREATE TABLE ordens_bancarias (numero_sei TEXT, ug_nome TEXT, valor REAL)")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, status TEXT)")
+    con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-040014/1/2024','PREVIDENCIA',900_000.0)")
+    con.execute("INSERT INTO ordens_bancarias VALUES ('SEI-080002/1/2024','FUNDACAO SAUDE',1_781_000_000.0)")
+    con.commit(); con.close()
+    u = C.medir(db=db, acervo=acervo)["restricao"]["por_unidade"]
+    assert u[0]["ug"] == "080002", f"topo veio {u[0]['ug']} (percentual, não relevância)"
+    assert u[0]["pct"] < u[1]["pct"], "o topo tem percentual MENOR — é o valor que manda"

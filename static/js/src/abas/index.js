@@ -394,10 +394,14 @@ export async function renderInstrumentacao(){
            de <b>nível de acesso restrito</b> — a árvore não abriu em duas leituras de processo que
            existe no cadastro, nem pelo caminho <i>cracked</i>. Não é ausência de irregularidade e
            não é falta de permissão da nossa conta (ostensivos das mesmas unidades abrem normal):
-           é sigilo do processo, a confirmar por amostra com o leitor canônico.</div>
+           é sigilo do processo, a confirmar por amostra com o leitor canônico.
+           <span class="dim">Ordenado pela relevância do ponto cego (rateio proporcional do valor
+           pago da unidade), não pelo percentual: 93% de uma unidade que pagou R$ 0,9 mi não é o
+           maior ponto cego.</span></div>
          <div style="margin-top:6px">`+(rx.por_unidade||[]).map(u=>
            `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome||'')}</span>`+
-           `<b>${u.pct.toFixed(0)}% restrito</b> <span class="dim">(${u.restritos} de ${u.lidos})</span></div>`
+           `<b>${u.pct.toFixed(0)}% restrito</b> <span class="dim">(${u.restritos} de ${u.lidos} · `+
+           `unidade pagou ${fmtRc(u.valor_pago)})</span></div>`
          ).join('')+`</div>`
       : '';
     h+=card(`<div class="grid g3">
