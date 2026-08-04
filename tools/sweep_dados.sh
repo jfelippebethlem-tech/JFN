@@ -27,4 +27,10 @@ if [ -f data/.pause_fachada_sweep ]; then say "fachada pausada — pulei"; else 
 # Pausa: data/.pause_fachada_streetview_sweep. (Os flags antigos .pause_fachada_visual_sweep/.pause_fachada_b2_sync
 # ficam só como freio dos sweeps Mapillary aposentados, que saíram do caminho ativo.)
 if [ -f data/.pause_fachada_streetview_sweep ]; then say "fachada street view pausada — pulei"; else $PRIO timeout 1500 $PY -m tools.fachada_streetview_sweep --status INDICIO --limite 0 --max-min 22 --pausa 1.0 >> data/fachada_streetview.log 2>&1; say "fachada street view rc=$?"; fi
+# RANKING DE TAC POR UNIDADE — pagamento fora de contrato regular, com régua COMPARATIVA (a
+# mediana das 56 unidades acima de R$ 300 mi é 0,3%; a Fundação Saúde está em 27,0%). Uma passada
+# sobre 1,16 milhão de OBs aplicando a regex canônica do `detector_tac` (não se reescreve a
+# definição em SQL) e grava JSON — a rota /api/tac/ranking só LÊ o arquivo, para o cálculo nunca
+# cair dentro do request. Pausa: data/.pause_tac_ranking.
+if [ -f data/.pause_tac_ranking ]; then say "tac ranking pausado — pulei"; else $PRIO timeout 600 $PY tools/tac_ranking_ugs.py >> data/tac_ranking.log 2>&1; say "tac ranking rc=$?"; fi
 say "fim"
