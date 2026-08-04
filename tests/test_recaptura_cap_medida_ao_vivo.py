@@ -67,3 +67,27 @@ def test_texto_curto_nao_e_confundido_com_corte(tmp_path, monkeypatch):
 def test_acervo_ausente_nao_levanta(tmp_path, monkeypatch):
     monkeypatch.setattr(R, "RAIZ", tmp_path)
     assert R.tags_no_cap() == []
+
+
+def test_alvo_DIRIGIDO_atende_processo_que_a_ordenacao_deixaria_no_fim(tmp_path, monkeypatch):
+    """Processo com UM documento cortado fica no fim da ordenação por perda e nunca entraria numa
+    rodada bounded. Foi o caso do SEI-030001/111011/2025, segundo da fila do fiscal, cujo contrato
+    para em 20.000 exatamente onde ficam a assinatura e a data. Refilar à mão (mover cache + zerar
+    progresso) é a mesma operação com risco de errar."""
+    _acervo(tmp_path, monkeypatch, {
+        "030001_111011_2025": [20_000],
+        "080002_000009_2025": [20_000, 20_000, 20_000],
+    })
+    cache = tmp_path / "data" / "sei_cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "cdp_SEI_030001_111011_2025.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(R, "CACHE", cache)
+    monkeypatch.setattr(R, "QUARENTENA", cache / "_truncados")
+    prog = tmp_path / "prog.json"
+    prog.write_text(json.dumps({"feitos": {}}), encoding="utf-8")
+    monkeypatch.setattr(R, "PROGRESS", prog)
+    r = R.reparar_cap(aplicar=True, max_n=40, tags=["030001_111011_2025"])
+    assert r["encontrados"] == 1
+    feitos = json.loads(prog.read_text())["feitos"]
+    assert feitos["SEI-030001/111011/2025"]["n_docs"] == 0
+    assert "080002_000009_2025" not in str(feitos), "o dirigido não pode arrastar os outros"

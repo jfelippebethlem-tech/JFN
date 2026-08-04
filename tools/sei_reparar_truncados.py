@@ -107,7 +107,7 @@ def tags_no_cap() -> list[str]:
     return [tag for tag, _ in sorted(contagem.items(), key=lambda kv: kv[1], reverse=True)]
 
 
-def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
+def reparar_cap(aplicar: bool = False, max_n: int = 40, tags: list[str] | None = None) -> dict:
     """Devolve à fila (bounded) os processos TRUNCADOS PELO CAP de 20k chars/doc (curado
     2026-08-01, SEI_MAX_CHARS_DOC=60000). Lista vem de data/recaptura_cap21k.json (gerada na
     medição: 1.660 docs no cap em 375 processos). Mesma mecânica da quarentena: cache afastado
@@ -122,7 +122,12 @@ def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
     # A medição em tempo de execução se autocorrige e dispensa a lista de "prioridade": um
     # processo já recapturado com o cap novo (60k) simplesmente não tem mais documento parado em
     # 20.000, então sai sozinho do conjunto — não há cache fresco a afastar por engano.
-    tags = tags_no_cap()
+    # `tags` explícito atende o alvo DIRIGIDO: um processo com um único documento cortado fica no
+    # fim da ordenação por perda e nunca entraria numa rodada bounded — foi o caso do
+    # SEI-030001/111011/2025, segundo da fila do fiscal, cujo contrato para em 20.000 exatamente
+    # onde ficam a assinatura e a data. Refilar à mão (mover cache + zerar progresso) é a mesma
+    # operação com risco de errar; aqui ela é a rotina testada.
+    tags = list(tags) if tags else tags_no_cap()
     prog = json.loads(PROGRESS.read_text()) if PROGRESS.exists() else {"feitos": {}}
     feitos = prog.setdefault("feitos", {})
     alvos = []
@@ -213,6 +218,8 @@ def main() -> None:
     ap.add_argument("--cap", action="store_true",
                     help="modo cauda-longa do cap 20k: requeue bounded da lista recaptura_cap21k.json")
     ap.add_argument("--max", type=int, default=40, help="(com --cap/--sem-texto) teto por rodada")
+    ap.add_argument("--processo", action="append", default=[],
+                    help="(com --cap) refila SÓ estes processos, por tag (ex.: 030001_111011_2025)")
     ap.add_argument("--sem-texto", action="store_true",
                     help="declara captura_vazia e refila os processos arquivados sem texto algum")
     args = ap.parse_args()
@@ -221,7 +228,7 @@ def main() -> None:
         print(f"arquivos sem texto: {r['encontrados']} na rodada · aplicado={r['aplicado']}")
         return
     if args.cap:
-        r = reparar_cap(aplicar=args.aplicar, max_n=args.max)
+        r = reparar_cap(aplicar=args.aplicar, max_n=args.max, tags=args.processo or None)
         print(f"cap21k: {r['encontrados']} cache(s) na rodada · aplicado={r['aplicado']}"
               + (f" · {r['sumidos_no_move']} sumiram antes do move"
                  if r.get("sumidos_no_move") else "")
