@@ -1,6 +1,9 @@
 # 📑 Índice de `docs/` — catálogo enxuto
 
 > **Hub do projeto = [REFERENCIA-PROJETO.md](REFERENCIA-PROJETO.md)** (estado vivo, roadmap, lições, retomada).
+> **Para OPERAR (comando a comando, sem julgamento) = [RUNBOOK.md](RUNBOOK.md)** — o que rodar,
+> em que ordem, o resultado esperado e quando PARAR e perguntar. Feito para IA fraca, operador
+> apressado ou ninguém (o cron).
 > Conhecimento jurídico/orçamentário completo = [CLAUDE-REFERENCIA-COMPLETA.md](CLAUDE-REFERENCIA-COMPLETA.md).
 > Os demais são **referência por tema** (consultar sob demanda). Sessões/handoffs datados → [`historico/`](historico/).
 > Regra de leveza: **não ler tudo** — abrir só o doc do tema em questão.
@@ -10,6 +13,7 @@
 ## 🎯 Canônicos (começar aqui)
 | Doc | Para quê |
 |---|---|
+| [RUNBOOK.md](RUNBOOK.md) | **Operação passo a passo**: mexi num detector → `pos_correcao`; testes em lotes; o que cada sweep garante; rodar sem IA; quando parar e perguntar. |
 | [REFERENCIA-PROJETO.md](REFERENCIA-PROJETO.md) | Estado vivo + roadmap + lições + retomada (1 linha/sessão no §10). |
 | [ARQUITETURA-AGENTICA.md](ARQUITETURA-AGENTICA.md) | **Organograma do sistema agêntico em 1 página** (Yoda→API→metabolismo→aprendizado + fontes únicas + guard-rails). |
 | [CLAUDE-REFERENCIA-COMPLETA.md](CLAUDE-REFERENCIA-COMPLETA.md) | Jurídico/orçamentário completo (modalidades, ilícitos, CEIS/CNEP, P×I, SIAFE, UGs). |

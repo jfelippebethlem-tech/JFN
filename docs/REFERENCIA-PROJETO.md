@@ -733,6 +733,10 @@ manuais quando expirarem (caem no nous até lá).
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
 
+> **Antes de operar qualquer coisa, leia `docs/RUNBOOK.md`** — comando a comando, com o
+> resultado esperado de cada passo e a lista do que exige parar e perguntar. Ele existe para o
+> sistema sair certo mesmo operado por IA fraca, ou por ninguém.
+
 > **⏯️ 2026-08-04 (noite) — PENDÊNCIA CONCRETA: o acervo precisa de UMA passada de reavaliação.**
 > A correção de natureza (`indefinido` → `pagamento` por TIPO de documento, commit da noite) mudou
 > a régua de 497 processos, e a passada não terminou: a VM estava com o OCR do sweep e a regra da
