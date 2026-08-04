@@ -151,3 +151,53 @@ def test_os_outros_gatilhos_seguem_valendo():
     for texto in ("a ressalva não foi atendida", "houve descumprimento do parecer",
                   "permanece a pendência apontada", "a recomendação não foi sanada"):
         assert S._RE_NAO_ATENDIDA.search(texto), texto
+
+
+# ───────── citar um órgão de controle não faz do documento uma manifestação dele ─────────
+
+_CLAUSULA_CONTRATUAL = (
+    "CONTRATO Nº 01/2025 que entre si celebram o Estado do Rio de Janeiro e a empresa X. "
+    "6.12.2 O CONTRATANTE poderá adotar os atos necessários para garantir o recebimento de seus "
+    "créditos, na forma recomendada pela Procuradoria Geral do Estado. "
+    "6.12.3 Persistindo a irregularidade, o CONTRATANTE deverá adotar as medidas necessárias à "
+    "rescisão, em caso de descumprimento de obrigações pela CONTRATADA.")
+
+
+def test_contrato_que_cita_a_PGE_nao_entra_como_parecer():
+    """Medido em 2026-08-04: dos **99 documentos** com sinal de "não atendida" no acervo, só 19
+    eram parecer — 20 eram CONTRATO e o resto anexo, termo de referência, recurso, ETP. Cláusula
+    contratual padrão ("Persistindo a irregularidade, o CONTRATANTE deverá adotar as medidas")
+    virava prova de recomendação ignorada e subia na fila do fiscal. Depois do portão: 99 -> 20,
+    com os 19 pareceres verdadeiros preservados."""
+    doc = {"ref": "Contrato Nº 01/2025", "tipo": "contrato", "texto": _CLAUSULA_CONTRATUAL}
+    assert S.e_manifestacao_de_controle(doc) is False
+    assert S.detectar([doc]) == []
+
+
+def test_parecer_de_verdade_continua_entrando():
+    doc = {"ref": "Parecer 2848", "tipo": "parecer",
+           "texto": "Fundação Saúde\nDiretoria Jurídica\nPARECER Nº 2848\nrecomenda-se a juntada."}
+    assert S.e_manifestacao_de_controle(doc) is True
+    assert len(S.detectar([doc])) == 1
+
+
+def test_nota_tecnica_sem_tipo_canonico_entra_pelo_TITULO():
+    """Documento cujo `tipo` o classificador não resolveu, mas cujo título o anuncia."""
+    doc = {"ref": "Nota Técnica 12 da Assessoria", "tipo": "outro",
+           "texto": "Assessoria Jurídica\nNOTA TÉCNICA 12\nrecomenda-se a revisão da minuta."}
+    assert S.e_manifestacao_de_controle(doc) is True
+
+
+def test_documento_cujo_CABECALHO_nomeia_orgao_de_controle_entra():
+    """Sem título revelador, o bloco institucional ainda identifica a manifestação."""
+    doc = {"ref": "Documento 55", "tipo": "outro",
+           "texto": "Governo do Estado\nControladoria Geral do Estado\nOfício 9\n"
+                    "Assunto: auditoria.\nrecomenda-se sanar a falha apontada."}
+    assert S.e_manifestacao_de_controle(doc) is True
+
+
+def test_anexo_qualquer_que_mencione_a_PGE_no_corpo_fica_de_fora():
+    doc = {"ref": "Anexo Declarações", "tipo": "anexo",
+           "texto": "Declaro para os devidos fins, conforme orientação da Procuradoria Geral do "
+                    "Estado, que a empresa recomenda a análise dos documentos."}
+    assert S.e_manifestacao_de_controle(doc) is False

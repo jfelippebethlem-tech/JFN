@@ -172,6 +172,53 @@ _CABECALHO_EMISSOR = 700
 """Janela do cabeçalho onde o documento DIZ quem o emite (órgão, unidade, número do parecer)."""
 
 
+_LINHA_DE_CORPO = 120
+"""Acima disto a linha é texto corrido, não linha de cabeçalho."""
+
+
+def _bloco_institucional(texto: str) -> str:
+    """O trecho onde o documento DIZ quem o emite — o timbre, não o corpo.
+
+    Cabeçalho de documento oficial é feito de LINHAS CURTAS ("Governo do Estado do Rio de
+    Janeiro", "Fundação Saúde", "Diretoria Jurídica", "PARECER Nº 2848/2024 FS/DIRJUR"). Texto
+    corrido começa numa linha longa — o contrato abre com "CONTRATO Nº 01/2025 que entre si
+    celebram o Estado do Rio de Janeiro e ...". Cortar só por número de caracteres deixaria passar
+    documento curto que cita um órgão de controle na primeira frase; cortar na primeira linha de
+    corpo resolve os dois casos com a mesma régua.
+
+    Termina também em "Assunto:"/"Ementa:", que é onde começa o mérito e as citações de normas e
+    enunciados de OUTROS órgãos.
+    """
+    bruto = re.split(r"(?im)^\s*(?:assunto|ementa)\s*:", (texto or "")[:_CABECALHO_EMISSOR])[0]
+    linhas = []
+    for ln in bruto.splitlines():
+        if len(ln.strip()) > _LINHA_DE_CORPO:
+            break
+        linhas.append(ln)
+    return "\n".join(linhas)
+
+
+def e_manifestacao_de_controle(doc: dict) -> bool:
+    """O documento É uma manifestação de controle/jurídica — ou apenas MENCIONA uma?
+
+    `detectar` aceitava qualquer documento cujo texto produzisse um emissor, e um CONTRATO que cita
+    a Procuradoria Geral do Estado numa cláusula entrava como se fosse parecer dela. Medido em
+    2026-08-04 no acervo: dos **99 documentos** com sinal de "não atendida", **só 19 eram parecer**
+    — 20 eram contrato, e o resto anexo, termo de referência, recurso, ETP. E as cláusulas
+    contratuais padrão ("Persistindo a irregularidade, o CONTRATANTE deverá adotar as medidas...")
+    viravam prova de recomendação ignorada, alimentando a fila do fiscal.
+
+    Duas provas aceitas, ambas sobre a IDENTIDADE do documento e nunca sobre o corpo: o título/tipo
+    o anuncia (`parecer`, `manifestação jurídica`, `nota técnica`, `promoção`), ou o **bloco
+    institucional** do cabeçalho nomeia um órgão de controle/jurídico.
+    """
+    rotulo = f"{doc.get('tipo') or ''} {doc.get('ref') or ''}"
+    if _RE_TITULO_PARECER.search(rotulo):
+        return True
+    cab = _bloco_institucional(doc.get("texto") or "")
+    return any(re.search(pat, cab, re.I) for _, pat in _EMISSORES)
+
+
 def classificar_emissor(texto: str) -> str | None:
     """Quem EMITE o parecer — decidido pelo cabeçalho, não por citação no corpo.
 
@@ -192,8 +239,7 @@ def classificar_emissor(texto: str) -> str | None:
     # descreve o MÉRITO e cita normas e enunciados de outros órgãos. Sem esse corte a janela do
     # cabeçalho não resolve nada — a ementa do Parecer 2848 cita o Enunciado nº 08 da PGE-RJ na
     # terceira linha, e o documento voltava a ser "da PGE".
-    cabecalho = re.split(r"(?im)^\s*(?:assunto|ementa)\s*:", t[:_CABECALHO_EMISSOR])[0]
-    for alvo in (cabecalho, t):
+    for alvo in (_bloco_institucional(t), t):
         for nome, pat in _EMISSORES:
             if re.search(pat, alvo, re.I):
                 return nome
@@ -219,6 +265,9 @@ def detectar(docs: list[dict]) -> list[dict]:
         texto = d.get("texto") or ""
         emissor = classificar_emissor(texto) or classificar_emissor(d.get("tipo") or "")
         if not emissor:
+            continue
+        # citar um órgão de controle não faz do documento uma manifestação dele
+        if not e_manifestacao_de_controle(d):
             continue
         if not _RE_RECOMENDA.search(texto):
             continue
