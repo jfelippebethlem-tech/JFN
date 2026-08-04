@@ -5,7 +5,7 @@ Costura (sem reimplementar) as peças que existiam soltas:
   manifesto_norm (shape único + gate captura_integra) → fases.lacunas (ausência com gravidade)
   → cadeia_processo (ordem dos marcos) → triagem pericial A1–A5 (3 baldes) → execucao_fatos +
   rodar_execucao (X) → analisar_processo_sei (P/E/J) → rodar_fornecedor (C6–C9, CNPJ vencedor)
-  → auditar_acatamento + suficiencia_parecer (lição IDESI: parecer interno não supre PGE/CGE)
+  → auditar_acatamento + suficiencia_parecer (escalada de emissor na CONTRATAÇÃO DIRETA)
   → **score_processo** (base.py — o agregador oficial, aqui pela 1ª vez em produção)
   → grau_flag + escalada.recomendar + matriz S×V (verossimilhança com teto 3 sem base de pares).
 
@@ -466,7 +466,11 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                         "diz": (f"ato '{ato}' exige parecer de nível {suf['exigido']} "
                                 f"(PGE/CGE) e os autos só têm emissores de nível "
                                 f"{suf['max_nivel']} ({', '.join(suf['emissores']) or '—'}) "
-                                "— parecer interno não supre o controle externo")})
+                                "— a análise do art. 53 é do órgão de assessoramento jurídico "
+                                "da Administração; a manifestação da PGE-RJ é exigida nas "
+                                "hipóteses das normas estaduais e pode ter sido dispensada por "
+                                "declaração de conformidade com a minuta-padrão, que se confere "
+                                "nos autos")})
 
     # 8) sinais estruturais → ResultadoDetector sintéticos + agregador OFICIAL
     for a in achados:

@@ -92,12 +92,29 @@ _RE_TITULO_PARECER = re.compile(
     r"\b(parecer|manifesta[çc][aã]o\s+jur[ií]dica|nota\s+t[eé]cnica|promo[çc][aã]o)\b", re.I)
 
 
-# ── suficiência do EMISSOR (lição IDESI 2026-08-01: contrato emergencial de alto valor só com
-#    DIRJUR/AUDIN internos — parecer interno NÃO supre a análise da PGE/CGE). Níveis: 3 = controle
-#    externo ao órgão (PGE/PGM/CGE/CGM/TCE); 2 = controle interno; 1 = assessoria jurídica do órgão.
+# ── suficiência do EMISSOR. Níveis: 3 = controle externo ao órgão (PGE/PGM/CGE/CGM/TCE);
+#    2 = controle interno; 1 = assessoria jurídica do órgão.
+#
+# CORREÇÃO JURÍDICA (2026-08-04). A tabela exigia nível 3 para TODO `contrato` e disparava 37
+# vezes dizendo "parecer interno não supre o controle externo". Isso afirma um vício que a lei
+# não cria: o art. 53 da Lei 14.133/2021 manda o processo ao **órgão de assessoramento jurídico
+# da própria Administração**, que realiza o controle prévio de legalidade — a assessoria jurídica
+# do órgão (nível 1) CUMPRE o art. 53.
+#
+# A manifestação individual da PGE-RJ é exigida nas hipóteses das normas estaduais, e o próprio
+# acervo mostra o mecanismo que a DISPENSA: a "DECLARAÇÃO DE CONFORMIDADE … com as minutas-padrão
+# estabelecidas pela Procuradoria Geral do Estado" (Resoluções PGE 2.599/2.838/3.055), que
+# aparece nos autos exatamente para isso. Amostrando 25 dos 37 acusados, NENHUM parecer invoca
+# minuta-padrão ou enunciado da PGE — ou seja, não há no texto o que sustente a exigência.
+#
+# A lição IDESI (2026-08-01) segue INTACTA, mas era o que dizia: **contratação direta** de alto
+# valor com parecer só de DIRJUR/AUDIN internos. Dispensa e inexigibilidade afastam a competição
+# e por isso carregam controle mais estrito — ali o nível 3 fica. O excesso era estender o padrão
+# da contratação direta ao contrato ORDINÁRIO e ao aditivo, que o art. 53 entrega à assessoria
+# jurídica do órgão.
 NIVEL_EMISSOR = {"PGE": 3, "PGM": 3, "CGE": 3, "CGM": 3, "TCE": 3,
                  "CONTROLE_INTERNO": 2, "ASSESSORIA_JURIDICA": 1}
-EXIGENCIA_POR_ATO = {"contratacao_direta": 3, "contrato": 3, "aditivo": 2, "geral": 1}
+EXIGENCIA_POR_ATO = {"contratacao_direta": 3, "contrato": 1, "aditivo": 1, "geral": 1}
 
 
 def _limpos(docs: list[dict] | None) -> list[dict]:
