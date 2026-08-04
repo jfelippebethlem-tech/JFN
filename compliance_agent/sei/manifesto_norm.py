@@ -22,7 +22,7 @@ import json
 import re
 from pathlib import Path
 
-from compliance_agent.sei import fases
+from compliance_agent.sei import acervo_texto, fases
 
 _BASE = Path(__file__).resolve().parents[2] / "data" / "sei_arquivo"
 
@@ -121,10 +121,17 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
     pasta = Path(pasta or manifest.get("_pasta") or "")
     txt = pasta / "texto"
     n_txt = len(list(txt.glob("*"))) if txt.exists() else 0
+    # CONTAR ARQUIVO NÃO É CONTAR TEXTO. 10.332 dos 45.161 arquivos do acervo (22,9%) trazem só a
+    # etiqueta `[título] (fase: … · tipo: …)` que nós mesmos escrevemos — zero conteúdo. Contando
+    # arquivos, 7 processos passavam por ÍNTEGROS com quase metade dos textos vazios e recebiam
+    # faixa de risco sobre o que não se leu; a docstring já dizia "texto no disco decide", e não
+    # era o texto que decidia. Medido em 2026-08-03.
+    n_com_texto = acervo_texto.docs_com_conteudo(pasta) if txt.exists() else 0
     minimo = max(1, int(len(docs) * 0.6))
-    ok = bool(docs) and n_txt >= minimo
+    ok = bool(docs) and n_com_texto >= minimo
     if manifest.get("captura_vazia") or manifest.get("captura_completa") is False:
         ok = False
-    return ok, {"n_docs": len(docs), "n_txt": n_txt, "minimo": minimo,
+    return ok, {"n_docs": len(docs), "n_txt": n_txt, "n_com_texto": n_com_texto,
+                "minimo": minimo,
                 "veto_manifest": bool(manifest.get("captura_vazia")
                                       or manifest.get("captura_completa") is False)}

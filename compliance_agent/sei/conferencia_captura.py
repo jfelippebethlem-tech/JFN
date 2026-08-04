@@ -112,7 +112,13 @@ def conferir(docs: list[dict]) -> dict:
     nossos: set[str] = set()
     for d in docs or []:
         nossos |= _ids(str(d.get("ref") or ""))
-        nossos |= _ids(_cabecalho_do_arquivo(d.get("texto") or ""))
+        # A etiqueta do arquivo vem EXPLÍCITA em `d["etiqueta"]` desde 2026-08-03: o texto passou
+        # a chegar limpo dela (ver `sei/acervo_texto`) porque punha a nossa classificação dentro
+        # do documento. Aqui ela continua sendo prova legítima — quando o manifesto foi
+        # reconstruído do nome do arquivo, o título perde o número e só a etiqueta ainda o tem.
+        # O fallback lê do próprio texto para quem ainda passa o bruto.
+        nossos |= _ids(str(d.get("etiqueta") or "")
+                       or _cabecalho_do_arquivo(d.get("texto") or ""))
     ausentes = sorted(citados - nossos)
     if not ausentes:
         return {"achado": False, "indisponivel": False, "ausentes": [],

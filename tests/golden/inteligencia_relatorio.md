@@ -9,8 +9,6 @@
 
 ---
 
-> _Cobertura da base: 1.138.236 OBs · 77% com CNPJ (PJ) · OB mais recente: 2026-07-01. OB = pagamento definitivo (SIAFE/TFE-RJ); afirmações limitadas a esta cobertura._
-
 ## SUMÁRIO EXECUTIVO
 
 SNAPSHOT ENGENHARIA E SERVICOS LTDA (CNPJ 11.222.333/0001-81) Pagamentos (OBs) — 2023: R$ 120.000,00, 2025: R$ 4.200.000,00. Total pago no período: R$ 4.320.000,00 em 4 OBs, 2 órgãos. Concentração (HHI): 0.51 (alto; maior órgão = None%). Rating de risco corporativo: MÉDIO (score 42/100).

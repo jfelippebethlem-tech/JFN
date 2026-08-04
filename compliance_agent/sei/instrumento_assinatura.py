@@ -32,6 +32,8 @@ import re
 import unicodedata
 from datetime import date
 
+from compliance_agent.sei import acervo_texto
+
 # Rodapé de assinatura eletrônica do SEI-RJ, literal e estável desde o Decreto 48.209/2022.
 _RE_ASSINATURA = re.compile(
     r"assinado\s+eletronicamente\s+por\s+([^,]{3,80}?)\s*,([^,]{0,60}),\s*em\s+"
@@ -87,17 +89,23 @@ _RE_CONTROLE_JURIDICO = re.compile(
     r"jur[íi]dic|\bPGE\b|\bPGM\b|procuradoria|assessoria\s+jur|assjur|\bCGE\b|"
     r"controladoria|auditoria|controle\s+interno|opino|opina-se|parecer\s+n[ºo°]", re.I)
 _CABECALHO_CHARS = 1500
-# O arquivo compacto grava, na 1ª linha do .txt, "[título] (fase: … · tipo: parecer_juridico)".
-# Isso põe a palavra `juridico` DENTRO do texto e faz o documento provar a si mesmo: o "Parecer de
-# Análise para Emissão DL" (Diretoria Administrativa Financeira, "Procedida a Revisão do
-# processo") passava no teste de manifestação jurídica pela própria etiqueta que se queria
-# conferir. Medido em 080002/006705/2024 (2026-08-03).
-_RE_CABECALHO_DO_ARQUIVO = re.compile(r"\A\[[^\]]{0,200}\]\s*(\([^)]{0,120}\))?\s*", re.M)
+# Desde 2026-08-03 o texto chega SEM a etiqueta do arquivo (`processo_360._texto_de` já a remove
+# pela porta única `sei/acervo_texto`), porque ela punha a nossa classificação dentro do documento
+# e o fazia provar a si mesmo. A limpeza segue aqui como cinto de segurança: este módulo também é
+# chamado com texto bruto por ferramenta de linha de comando e por teste. É idempotente.
+_sem_etiqueta = acervo_texto.sem_etiqueta
 
 
-def _sem_etiqueta(texto: str) -> str:
-    """Texto do documento sem a etiqueta que o ARQUIVO prepõe — só o que o SEI serviu."""
-    return _RE_CABECALHO_DO_ARQUIVO.sub("", texto or "", count=2)
+def _limpos(docs: list[dict] | None) -> list[dict]:
+    """Documentos com o texto livre da etiqueta do arquivo — normalizado UMA vez, na entrada.
+
+    Limpar em cada janela (`texto[:400]`, `[:1500]`, `[:2000]`…) seria repetir seis vezes a
+    chance de esquecer — que é exatamente como o defeito nasceu. É idempotente: texto que já
+    chegou limpo pela porta única (`processo_360._texto_de`) passa sem mudança.
+    """
+    return [{**d, "texto": acervo_texto.sem_etiqueta(d.get("texto") or "",
+                                                     str(d.get("ref") or ""))}
+            for d in docs or [] if isinstance(d, dict)]
 
 
 def e_controle_juridico(ref: str, texto: str) -> bool:
@@ -285,6 +293,7 @@ def _minuta_foi_atropelada(n: int, minutas: list[tuple], assinados: list[tuple])
 
 def ordinal_divergente(docs: list[dict]) -> dict:
     """A minuta aprovada corresponde a algum instrumento assinado? Há ordinal repetido?"""
+    docs = _limpos(docs)
     minutas, assinados, sem_rodape = [], [], []
     for d in docs or []:
         n = _ordinal(d)
@@ -359,6 +368,7 @@ def ordinal_divergente(docs: list[dict]) -> dict:
 
 def autorizacao_antes_do_parecer(docs: list[dict]) -> dict:
     """O ordenador autorizou a despesa antes da manifestação jurídica que a condiciona?"""
+    docs = _limpos(docs)
     aut = par = None
     pareceres_sem_data: list[str] = []
     for d in docs or []:
@@ -413,6 +423,7 @@ def autorizacao_antes_do_parecer(docs: list[dict]) -> dict:
 
 def ato_sem_assinatura_da_autoridade(docs: list[dict]) -> dict:
     """O ato que autoriza a despesa foi assinado pela autoridade que ele nomeia como decisora?"""
+    docs = _limpos(docs)
     for d in docs or []:
         tipo = _norm(d.get("tipo") or "")
         texto = d.get("texto") or ""
@@ -496,6 +507,7 @@ _RE_PRORROGA_MESES = re.compile(
 
 def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
     """O ordinal declarado bate com o prazo total que o próprio instrumento anuncia?"""
+    docs = _limpos(docs)
     for d in docs or []:
         if _norm(d.get("tipo") or "") not in _TIPOS_INSTRUMENTO:
             continue
@@ -541,6 +553,7 @@ def _num(s: str) -> str:
 
 def declaracao_de_outro_contrato(docs: list[dict]) -> dict:
     """Declaração nos autos que atesta algo sobre um contrato DIFERENTE do que se discute."""
+    docs = _limpos(docs)
     do_processo = None
     for d in docs or []:
         if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_INSTRUMENTO.search(
@@ -604,6 +617,7 @@ def _qtds(texto: str) -> dict[str, int]:
 
 def quantitativo_divergente(docs: list[dict]) -> dict:
     """O atesto de boa execução fala do mesmo quantitativo que o objeto contratado?"""
+    docs = _limpos(docs)
     obj: dict[str, int] = {}
     for d in docs or []:
         texto = d.get("texto") or ""
@@ -646,6 +660,7 @@ _RE_BLOCO_APROVACAO = re.compile(
 
 def aprovador_nao_assinou(docs: list[dict]) -> dict:
     """Nomes declarados como conferente/aprovador que não constam das assinaturas eletrônicas."""
+    docs = _limpos(docs)
     for d in docs or []:
         texto = d.get("texto") or ""
         nomeados = [(m.group(1).strip(), re.sub(r"\s+", " ", m.group(2)).strip(" .,-–"))

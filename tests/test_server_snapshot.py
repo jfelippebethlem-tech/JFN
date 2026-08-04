@@ -45,8 +45,12 @@ def _inventario() -> str:
     return "\n".join(sorted(linhas)) + "\n"
 
 
-def test_inventario_de_rotas_identico_ao_golden():
+def test_inventario_de_rotas_identico_ao_golden(request):
     atual = _inventario()
+    if request.config.getoption("--update-rotas"):
+        GOLDEN.parent.mkdir(parents=True, exist_ok=True)
+        GOLDEN.write_text(atual, encoding="utf-8")
+        return
     if not GOLDEN.exists():
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)
         GOLDEN.write_text(atual, encoding="utf-8")

@@ -99,6 +99,7 @@ GET /api/pcrj/doe_concentracao -> api_pcrj_doe_concentracao
 GET /api/pcrj/fantasmas -> api_pcrj_fantasmas
 GET /api/pcrj/gastos_achados -> api_pcrj_gastos_achados
 GET /api/perfil -> api_perfil
+GET /api/pericia/cobertura -> api_pericia_cobertura
 GET /api/pericias -> api_pericias
 GET /api/pipelines -> api_pipelines
 GET /api/pncp -> api_pncp

@@ -38,11 +38,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(RAIZ))
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
+
+from compliance_agent.sei import acervo_texto  # noqa: E402
 
 # Tipos que o arquivador já classifica. Fonte: contagem no acervo em 2026-07-25.
 _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
@@ -191,7 +195,9 @@ def _texto_do_doc(pasta: Path, doc: dict) -> str:
     ident = m.group(1) or m.group(2)
     for p in (pasta / "texto").glob(f"*{ident}*"):
         try:
-            return p.read_text(encoding="utf-8", errors="ignore")[:20000]
+            # sem a etiqueta, e o teto conta o DOCUMENTO (ver `sei/acervo_texto`)
+            return acervo_texto.sem_etiqueta(
+                p.read_text(encoding="utf-8", errors="ignore"), alvo)[:20000]
         except OSError:
             return ""
     return ""

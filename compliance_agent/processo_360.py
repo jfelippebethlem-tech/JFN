@@ -29,7 +29,7 @@ from compliance_agent.detectores.base import ResultadoDetector, score_processo
 from compliance_agent.editais.escalada import recomendar
 from compliance_agent.editais.flags import grau_flag
 from compliance_agent.execucao_fatos import contexto_x1, contexto_x3
-from compliance_agent.sei import fases, manifesto_norm
+from compliance_agent.sei import acervo_texto, fases, manifesto_norm
 
 VERSAO = "360.1"
 _DB = Path(__file__).resolve().parents[1] / "data" / "compliance.db"
@@ -176,16 +176,16 @@ TETO_CHARS_LLM = int(os.environ.get("JFN_360_TETO_CHARS_LLM", "20000"))
 
 
 def _texto_de(pasta: Path, doc: dict, teto: int | None = None) -> str:
-    teto = TETO_CHARS_DETERMINISTICO if teto is None else teto
-    rel = doc.get("texto")
-    if rel:
-        p = pasta / rel
-        if p.exists():
-            try:
-                return p.read_text(encoding="utf-8", errors="ignore")[:teto]
-            except OSError:
-                return ""
-    return ""
+    """O texto que o SEI serviu para este documento — sem a etiqueta que o ARQUIVO escreveu.
+
+    A etiqueta (`[título] (fase: … · tipo: …)`) punha a NOSSA classificação dentro do texto: o
+    detector que perguntava "isto é manifestação jurídica?" recebia de volta o próprio rótulo, e
+    o teto de leitura era gasto com ele (mediana 71 chars, máximo medido 478 — 36,5% de uma
+    janela de 200). Quem precisa do rótulo pede `acervo_texto.etiqueta()` explicitamente; é o
+    caso da `conferencia_captura`, e só dele. Ver `compliance_agent/sei/acervo_texto.py`.
+    """
+    return acervo_texto.ler(pasta, doc,
+                            TETO_CHARS_DETERMINISTICO if teto is None else teto)
 
 
 def _rd(origem: str, numero: str, score: float, detalhe: str) -> ResultadoDetector:
@@ -315,8 +315,13 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         # teto ALTO de propósito: o rodapé de assinatura mora no FIM do documento, e o Parecer 462
         # tem 54.900 caracteres — com o teto padrão de 20.000 a data da assinatura ficava fora do
         # texto lido e o I2 nunca disparava. É varredura por regex, custo desprezível.
+        # `etiqueta` vai junto e SEPARADA: o texto chega limpo do rótulo do arquivo (que fazia o
+        # documento provar a si mesmo), e a `conferencia_captura` — a única que legitimamente
+        # precisa do rótulo, para achar o número do documento quando o manifesto foi reconstruído
+        # do nome do arquivo — o recebe explicitamente, sem depender de resíduo dentro do texto.
         docs_txt = [{"ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
-                     "texto": _texto_de(pasta, d, teto=400_000)} for d in docs]
+                     "texto": _texto_de(pasta, d, teto=400_000),
+                     "etiqueta": acervo_texto.etiqueta_de(pasta, d)} for d in docs]
         achados += _ia.avaliar(docs_txt)
         rodados.append("instrumento_assinatura")
         # C · a lista de documentos do próprio parecer confere a NOSSA captura. Entra como lacuna

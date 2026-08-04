@@ -707,7 +707,10 @@ def _sei_arquivado(numero_sei: str) -> bool:
     if not m:
         return False
     d = RAIZ / "data" / "sei_arquivo" / f"{m.group(1)}_{m.group(2)}_{m.group(3)}"
-    return d.is_dir() and (d / "texto").is_dir() and any((d / "texto").glob("*.txt"))
+    # existir .txt nunca provou captura: 23,5% dos arquivos do acervo trazem só a etiqueta
+    # que nós escrevemos (2026-08-03 — ver `compliance_agent/sei/acervo_texto`).
+    from compliance_agent.sei import acervo_texto
+    return d.is_dir() and acervo_texto.docs_com_conteudo(d) > 0
 
 
 @router.post("/api/sei/empresa/iniciar")

@@ -25,6 +25,7 @@ import unicodedata
 from pathlib import Path
 
 from compliance_agent.editais.flags import grau_flag
+from compliance_agent.sei import acervo_texto
 from compliance_agent.llm.json_resposta import parse_json_llm
 
 TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
@@ -247,10 +248,11 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
     sem_resposta = cache_hits = 0
     try:
         for d in sel:
-            texto = ""
-            rel = d.get("texto")
-            if rel and (pasta / rel).exists():
-                texto = (pasta / rel).read_text(encoding="utf-8", errors="ignore")[:6000]
+            # Pela porta única: sem a etiqueta do arquivo. Ela mandava a NOSSA classificação
+            # (`tipo: parecer_juridico`) dentro do documento que a IA vai julgar — a rubrica já é
+            # escolhida por esse mesmo tipo, então o modelo via o palpite da casa antes de opinar,
+            # e o rótulo ainda comia até 478 dos 6.000 caracteres do orçamento. (2026-08-03)
+            texto = acervo_texto.ler(pasta, d, 6000)
             if not texto.strip():
                 vereditos.append({"i": d.get("i"), "tipo": d.get("tipo"), "escala": None,
                                   "aviso": "sem texto capturado (INDISPONÍVEL ≠ 0)"})

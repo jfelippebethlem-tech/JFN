@@ -45,7 +45,11 @@ def _norm(col: str) -> str:
 # dono). MGS (1127) e ITERJ (2457) permanecem intactos: a perda foi 100% lixo de teste.
 _TEST_OB = "2026OB99001"  # OB sintética de poluição (test_offline antigo) — não é dado real.
 GOLDEN = {
-    "mgs_clean": {"cnpj": "19088605000104", "obs": 1173, "total": 143257999.30},
+    # 2026-08-03: 1173 → 1239 (+66 OBs, +R$ 8.683.519,17). Auditado ANTES de revisar: as 66 são
+    # todas de 02/07 a 31/07/2026, distribuídas dia a dia — assinatura de coleta incremental do
+    # cron do SIAFE, não de reprocessamento. Prova de que nada do histórico se mexeu: a janela
+    # até 01/07/2026 continua EXATAMENTE (1173, R$ 143.257.999,30), o valor congelado anterior.
+    "mgs_clean": {"cnpj": "19088605000104", "obs": 1239, "total": 151941518.47},
     # 2026-07-20: total revisado DE PROPÓSITO 295.179.659,72 → 295.301.277,60 (+121.617,88).
     # Mesmas 2.524 OBs e 197 fornecedores — o sweep SIAFE atualizou VALORES de OBs in place
     # (correção da fonte). Drift auditado antes da revisão (contagem e fornecedores intactos).
@@ -53,7 +57,16 @@ GOLDEN = {
     # se atualiza sozinho não é golden: as duas OBs novas são da EFATA COMERCIO & SERVIÇOS,
     # pagas em 2026-07-01, e o número de fornecedores distintos NÃO mudou (197) — assinatura
     # de coleta incremental, não de reprocessamento que reescreve histórico.
-    "iterj_ug": {"ug": "133100", "obs": 2526, "total": 295441534.02, "fornecedores": 197},
+    # 2026-08-03: 2526 → 2572 (+46 OBs de 02/07 a 31/07/2026, coleta incremental) e 197 → 198
+    # fornecedores (um novo). ⚠️ MAS a auditoria achou um movimento que NÃO é ingestão: a janela
+    # histórica (até 01/07/2026) caiu de 2526 para **2525** linhas, −R$ 138.093,99. Não há
+    # evidência de perda de OB única: sobram QUATRO OBs de exatamente R$ 138.093,99 da LOCTECH em
+    # 2023 (pagamento recorrente mensal), cada uma com `numero_ob` próprio, e hoje o ITERJ não tem
+    # nenhuma duplicata por `numero_ob`. A assinatura é de DEDUPLICAÇÃO de uma linha repetida —
+    # a chave canônica da casa é numero_ob+ug+exercício. Registrado aqui porque a guarda serviu
+    # exatamente para isto, e porque "consistente com dedup" não é "provado": se o número cair de
+    # novo sem ingestão, é aqui que a investigação recomeça.
+    "iterj_ug": {"ug": "133100", "obs": 2572, "total": 298259935.31, "fornecedores": 198},
     "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
 

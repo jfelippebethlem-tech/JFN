@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import re
 
+from compliance_agent.sei import acervo_texto
+
 # órgãos de controle/jurídico cujo parecer/despacho carrega recomendação/ressalva
 _EMISSORES = [
     ("PGE", r"\b(procuradoria\s+geral|PGE|procurador(?:ia)?\s+do\s+estado)\b"),
@@ -75,6 +77,20 @@ NIVEL_EMISSOR = {"PGE": 3, "PGM": 3, "CGE": 3, "CGM": 3, "TCE": 3,
 EXIGENCIA_POR_ATO = {"contratacao_direta": 3, "contrato": 3, "aditivo": 2, "geral": 1}
 
 
+def _limpos(docs: list[dict] | None) -> list[dict]:
+    """Documentos com o texto livre da ETIQUETA que o arquivo compacto prepõe ao `.txt`.
+
+    A porta única (`processo_360._texto_de` → `sei/acervo_texto`) já entrega limpo; isto é cinto
+    de segurança para quem monta a lista por conta própria — `lex_analise_conteudo`,
+    `backfill_dossie_mestre` e as ferramentas de linha de comando. É idempotente. O motivo está
+    em `sei/acervo_texto`: a etiqueta punha a NOSSA classificação dentro do documento e comia até
+    478 caracteres de janelas que aqui têm 200. (2026-08-03)
+    """
+    return [{**d, "texto": acervo_texto.sem_etiqueta(d.get("texto") or "",
+                                                     str(d.get("ref") or ""))}
+            for d in docs or [] if isinstance(d, dict)]
+
+
 def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
     """O parecer presente nos autos tem o EMISSOR à altura do ato? (função pura, aditiva —
     não altera `auditar_acatamento`). `docs`: [{ref, tipo, texto}].
@@ -82,6 +98,7 @@ def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
     Vereditos: SUFICIENTE · PARECER_DE_EMISSOR_INSUFICIENTE (há parecer, mas só de nível
     inferior ao exigido pelo ato) · SEM_PARECER_LOCALIZADO (nenhum emissor identificado —
     leitura parcial ≠ inexistência)."""
+    docs = _limpos(docs)
     emissores = sorted({e for e in (classificar_emissor(d.get("texto") or "") for d in docs or [])
                         if e})
     exigido = EXIGENCIA_POR_ATO.get(ato, 1)
@@ -117,6 +134,7 @@ def _trechos(texto: str, rgx: re.Pattern, n: int = 2, janela: int = 140) -> list
 def detectar(docs: list[dict]) -> list[dict]:
     """Camada determinística. docs: [{ref, tipo, texto}]. Retorna candidatos: doc de controle/jurídico com
     linguagem de recomendação (e, se houver, sinais explícitos de não-atendimento)."""
+    docs = _limpos(docs)
     achados = []
     for d in docs or []:
         texto = d.get("texto") or ""
@@ -146,6 +164,7 @@ def auditar_acatamento(docs: list[dict]) -> dict:
     manifesta) · SEM_PARECER_LOCALIZADO (nenhum doc de emissor jurídico/controle entre os LIDOS —
     art. 53 exige parecer prévio, mas cobertura de leitura ≠ inexistência: indício a confirmar).
     """
+    docs = _limpos(docs)
     candidatos = detectar(docs)
     # ressalva SUBSTANTIVA = ao menos um trecho de recomendação fora do boilerplate, OU sinal de
     # não-atendimento (teste real 2026-07-20: checklist/certidão da PGE inflava falso IGNORADO)
@@ -229,6 +248,7 @@ def avaliar_pensante(texto: str, timeout: float = 60.0) -> dict:
 
 def analisar(docs: list[dict], usar_llm: bool = True, max_llm: int = 4) -> dict:
     """Orquestra: detecta candidatos (determinístico) e, opcionalmente, avalia os mais relevantes com o nous."""
+    docs = _limpos(docs)
     candidatos = detectar(docs)
     if usar_llm:
         # prioriza os com sinal explícito de não-atendimento

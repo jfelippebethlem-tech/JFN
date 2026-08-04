@@ -31,6 +31,7 @@ import re
 import sqlite3
 import sys
 from pathlib import Path
+from compliance_agent.sei import acervo_texto
 from compliance_agent.reporting.intel_base import moeda
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -49,8 +50,9 @@ def _ja_arquivado(numero: str) -> bool:
     d = ARQUIVO / _slug(numero)
     if not (d / "manifest.json").exists():
         return False
-    td = d / "texto"
-    return td.is_dir() and any(f.stat().st_size > 200 for f in td.glob("*.txt"))
+    # `st_size > 200` media o arquivo, e a etiqueta que nós prepomos tem mediana 71 e máximo
+    # medido de 478 caracteres — um arquivo só-rótulo podia passar por documento capturado.
+    return acervo_texto.docs_com_conteudo(d) > 0
 
 
 def levantar(fornecedor: str | None = None) -> dict:

@@ -29,6 +29,7 @@ import logging
 import re
 
 from compliance_agent.direcionamento_cerebro import _com_fusao, _parse_json
+from compliance_agent.sei import acervo_texto
 from compliance_agent.sei_recomendacoes import _RE_BOILERPLATE, classificar_emissor
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,20 @@ _MIN_TEXTO_PARECER = 200
 _RE_NAO_PARECER = re.compile(
     r"\b(contrato\s+n[ºo°.]|termo\s+de\s+contrato|termo\s+aditivo|ata\s+de\s+registro\s+de\s+pre[çc]os|"
     r"minuta\s+de\s+contrato|edital\s+de|nota\s+de\s+empenho|ordem\s+banc[áa]ria)\b", re.I)
+
+
+def _limpos(docs: list[dict] | None) -> list[dict]:
+    """Documentos com o texto livre da ETIQUETA que o arquivo compacto prepõe ao `.txt`.
+
+    A porta única (`processo_360._texto_de` → `sei/acervo_texto`) já entrega limpo; isto é cinto
+    de segurança para quem monta a lista por conta própria — `lex_analise_conteudo`,
+    `backfill_dossie_mestre` e as ferramentas de linha de comando. É idempotente. O motivo está
+    em `sei/acervo_texto`: a etiqueta punha a NOSSA classificação dentro do documento e comia até
+    478 caracteres de janelas que aqui têm 200. (2026-08-03)
+    """
+    return [{**d, "texto": acervo_texto.sem_etiqueta(d.get("texto") or "",
+                                                     str(d.get("ref") or ""))}
+            for d in docs or [] if isinstance(d, dict)]
 
 
 def e_parecer(tipo: str, texto: str) -> bool:
@@ -395,6 +410,7 @@ def verificar_cumprimento(condicionantes: list[dict], docs_posteriores: list[dic
     processo AVANÇOU com ato decisório — homologação/contrato) · NAO_VERIFICAVEL (nenhuma prova e nenhum
     ato decisório posterior lido — pode ser cobertura de leitura; INDISPONÍVEL ≠ descumprido).
     """
+    docs_posteriores = _limpos(docs_posteriores)
     avancou = any(_RE_DECISORIO.search(f"{d.get('tipo') or ''} {d.get('texto') or ''}")
                   for d in docs_posteriores or [])
     out = []
@@ -468,6 +484,7 @@ def auditar_parecer_pge(docs: list[dict]) -> dict:
     Vereditos: SEM_PARECER_LOCALIZADO · SEM_CONDICIONANTES · CUMPRIDO_INTEGRAL · CUMPRIDO_PARCIAL ·
     DESCUMPRIDO_INDICIO · COBERTURA_INSUFICIENTE. Grau: verde/amarelo/vermelho/nao_aplicavel.
     """
+    docs = _limpos(docs)
     pareceres = _pareceres_com_condicionantes(docs)
     if not pareceres:
         # ANTES de afirmar ausência: o parecer pode estar nos autos com o texto não capturado.

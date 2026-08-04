@@ -96,13 +96,33 @@ def test_captura_integra_por_texto(tmp_path):
     ok, ev = mn.captura_integra(man, pasta)
     assert ok is False and ev["n_txt"] == 0            # sem texto → captura NÃO íntegra
     for i in range(3):
-        (pasta / "texto" / f"{i:03d}_x_{i}.txt").write_text("x", encoding="utf-8")
+        (pasta / "texto" / f"{i:03d}_x_{i}.txt").write_text(
+            "Governo do Estado do Rio de Janeiro. Documento com teor de verdade.",
+            encoding="utf-8")
     ok, ev = mn.captura_integra(man, pasta)
-    assert ok is True and ev["n_txt"] == 3
+    assert ok is True and ev["n_txt"] == 3 and ev["n_com_texto"] == 3
     # captura_vazia declarada no manifest veta, mesmo com txt no disco
     man2 = dict(man, captura_vazia=True)
     ok, _ = mn.captura_integra(man2, pasta)
     assert ok is False
+
+
+def test_captura_integra_nao_conta_arquivo_que_so_tem_a_ETIQUETA(tmp_path):
+    """A docstring sempre disse "texto no disco decide" — e quem decidia era a CONTAGEM DE
+    ARQUIVOS. Medido em 2026-08-03: 10.332 dos 45.161 arquivos do acervo (22,9%) trazem apenas a
+    etiqueta `[título] (fase: … · tipo: …)` que nós mesmos escrevemos, e 7 processos passavam por
+    íntegros com quase metade dos textos vazios — recebendo faixa de risco sobre o que não se leu.
+    """
+    man = mn.normalizar(copy.deepcopy(MAN_B))
+    pasta = tmp_path / "p"
+    (pasta / "texto").mkdir(parents=True)
+    for i in range(3):
+        (pasta / "texto" / f"{i:03d}_x_{i}.txt").write_text(
+            f"[Despacho de Encaminhamento {i}] (fase: tramitacao · tipo: despacho)\n\n",
+            encoding="utf-8")
+    ok, ev = mn.captura_integra(man, pasta)
+    assert ok is False, "arquivo com só a etiqueta não é documento lido"
+    assert ev["n_txt"] == 3 and ev["n_com_texto"] == 0
 
 
 @pytest.mark.slow
