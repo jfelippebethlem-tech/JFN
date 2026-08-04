@@ -129,6 +129,7 @@ GET /api/skills/validate -> api_skills_validate
 GET /api/sobrepreco -> api_sobrepreco
 GET /api/sugestoes -> api_sugestoes
 GET /api/sweeps/status -> api_sweeps_status
+GET /api/tac/ranking -> api_tac_ranking
 GET /api/trace/{correlation_id} -> _get_trace
 GET /api/tunnel/status -> api_tunnel_status
 GET /api/ugs -> api_ugs

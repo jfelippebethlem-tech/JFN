@@ -158,6 +158,33 @@ def api_pericia_cobertura():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/tac/ranking")
+def api_tac_ranking():
+    """Quem paga FORA de contrato regular, e quanto fora da curva está.
+
+    `detector_tac.tac_por_ug` sempre respondeu por UMA unidade, dentro do `/orgao` — e um
+    percentual sozinho não sustenta afirmação nenhuma. Medido em 2026-08-04 pela primeira vez de
+    forma comparativa: entre as 56 unidades que movimentaram mais de R$ 300 mi, a **mediana é
+    0,3%** e a FUNDAÇÃO SAÚDE está em **27,0% (R$ 2,81 bi de R$ 10,41 bi)** — noventa vezes a
+    mediana. E não é "a saúde sendo assim": o FUNDO ESTADUAL DA SAÚDE, três vezes maior, paga
+    2,8%.
+
+    Lê o JSON gerado por `tools/tac_ranking_ugs.py`: a definição de TAC é a regex canônica do
+    `detector_tac`, aplicada em UMA passada sobre 1,16 milhão de OBs — cálculo que nunca pode
+    acontecer dentro do request.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+    alvo = _Path(__file__).resolve().parent.parent / "data" / "tac_ranking_ugs.json"
+    try:
+        return JSONResponse(content=_json.loads(alvo.read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return JSONResponse(content={
+            "ok": True, "indisponivel": True,
+            "motivo": ("ranking ainda não gerado — rodar `python tools/tac_ranking_ugs.py` "
+                       "(uma passada sobre as OBs; fora do horário de pico)")})
+
+
 @router.get("/api/siafe/truncamento")
 def api_siafe_truncamento():
     """A fonte CANÔNICA de pagamento está truncada — e nada avisava.

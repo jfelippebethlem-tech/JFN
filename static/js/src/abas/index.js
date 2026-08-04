@@ -367,10 +367,11 @@ export async function detRodar(id){
 export async function renderInstrumentacao(){
   let h=cover('geral','Instrumentação — o estado da máquina, sem abrir terminal',
     'Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.','🔧');
-  const [ag,pp,mm,ug,sf,rd,cb,rt,cc,tr]=await Promise.all([
+  const [ag,pp,mm,ug,sf,rd,cb,rt,cc,tr,tk]=await Promise.all([
     J('/api/agenda'),J('/api/pipelines'),J('/api/memoria'),J('/api/ugs?limite=15'),
     J('/api/siafe/status'),J('/api/radar/status'),J('/api/pericia/cobertura'),
-    J('/api/ob/retiradas'),J('/api/captura/cobertura'),J('/api/siafe/truncamento')]);
+    J('/api/ob/retiradas'),J('/api/captura/cobertura'),J('/api/siafe/truncamento'),
+    J('/api/tac/ranking')]);
 
   // COBERTURA DA PERÍCIA DOCUMENTAL — o número que só existia dentro do SQLite. Sem ele, o painel
   // mostra achados e fila do fiscal sem dizer que a maior parte do acervo nunca foi periciada
@@ -416,6 +417,25 @@ export async function renderInstrumentacao(){
   // Orçamentária devolve no máximo 1.000 registros por consulta; uma varredura feita só com
   // --por-ug numa UG grande para exatamente nesse número, calada. Enquanto isso não é medido, o
   // universo pago do cartão acima e toda soma por UG mentem para baixo sem avisar.
+  // TAC POR UNIDADE — pagamento FORA de contrato regular. Um percentual sozinho não diz nada; a
+  // régua é COMPARATIVA. Com 56 unidades medidas, a mediana é 0,3% e a Fundação Saúde está em 27%.
+  h+=sec('Pagamento fora de contrato regular (TAC/indenização) — por unidade');
+  if(tk && tk.indisponivel===false && (tk.unidades||[]).length){
+    const us=tk.unidades.slice(0,8), topo=us[0];
+    h+=card(`<div class="grid g3">
+        <div><div class="dim">Mediana entre ${fmtN(tk.unidades.length)} unidades</div><div style="font-size:1.5rem;font-weight:700">${tk.mediana_pct}%</div></div>
+        <div><div class="dim">Mais alta: ${esc(topo.ug)}</div><div style="font-size:1.5rem;font-weight:700">${topo.pct}%</div></div>
+        <div><div class="dim">Valor via TAC nessa unidade</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(topo.total_tac)}</div></div>
+      </div>
+      <div style="margin-top:8px">`+us.map(u=>
+        `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome||'')}</span>`+
+        `<b>${u.pct}%</b> <span class="dim">${fmtRc(u.total_tac)} de ${fmtRc(u.total)}</span></div>`
+      ).join('')+`</div>
+      <div class="dim" style="margin-top:6px">${esc(tk.nota||'')}</div>`, topo.pct>=25?'hl':'');
+  }else{
+    h+=card(`<div class="warn">Ranking de TAC INDISPONÍVEL${tk&&tk.motivo?': '+esc(tk.motivo):''} — indisponível não é zero.</div>`);
+  }
+
   h+=sec('Truncamento do SIAFE — o teto de 1.000 da nossa própria coleta');
   if(tr && tr.indisponivel===false && tr.pares_truncados){
     const linhas=(tr.truncados||[]).slice(0,8).map(t=>

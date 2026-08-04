@@ -4345,7 +4345,7 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd, cb, rt, cc, tr] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb, rt, cc, tr, tk] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
@@ -4355,7 +4355,8 @@ void main(){
       J("/api/pericia/cobertura"),
       J("/api/ob/retiradas"),
       J("/api/captura/cobertura"),
-      J("/api/siafe/truncamento")
+      J("/api/siafe/truncamento"),
+      J("/api/tac/ranking")
     ]);
     h += sec("Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar");
     if (cc && cc.indisponivel === false) {
@@ -4381,6 +4382,21 @@ void main(){
       <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
     } else {
       h += card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc && cc.motivo ? ": " + esc(cc.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Pagamento fora de contrato regular (TAC/indenização) — por unidade");
+    if (tk && tk.indisponivel === false && (tk.unidades || []).length) {
+      const us2 = tk.unidades.slice(0, 8), topo = us2[0];
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Mediana entre ${fmtN(tk.unidades.length)} unidades</div><div style="font-size:1.5rem;font-weight:700">${tk.mediana_pct}%</div></div>
+        <div><div class="dim">Mais alta: ${esc(topo.ug)}</div><div style="font-size:1.5rem;font-weight:700">${topo.pct}%</div></div>
+        <div><div class="dim">Valor via TAC nessa unidade</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(topo.total_tac)}</div></div>
+      </div>
+      <div style="margin-top:8px">` + us2.map(
+        (u) => `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome || "")}</span><b>${u.pct}%</b> <span class="dim">${fmtRc(u.total_tac)} de ${fmtRc(u.total)}</span></div>`
+      ).join("") + `</div>
+      <div class="dim" style="margin-top:6px">${esc(tk.nota || "")}</div>`, topo.pct >= 25 ? "hl" : "");
+    } else {
+      h += card(`<div class="warn">Ranking de TAC INDISPONÍVEL${tk && tk.motivo ? ": " + esc(tk.motivo) : ""} — indisponível não é zero.</div>`);
     }
     h += sec("Truncamento do SIAFE — o teto de 1.000 da nossa própria coleta");
     if (tr && tr.indisponivel === false && tr.pares_truncados) {
