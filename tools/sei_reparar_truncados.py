@@ -74,6 +74,39 @@ def reparar(aplicar: bool = False) -> dict:
             "aplicado": aplicar, "quarentena": str(QUARENTENA)}
 
 
+_JANELA_CAP = (19_800, 20_005)
+"""Faixa de caracteres que denuncia o corte no cap de 20.000 do `sei_reader` (mesmo critério da
+medição de 2026-08-01, mantido para comparar rodada com rodada)."""
+
+
+def tags_no_cap() -> list[str]:
+    """Processos com ao menos um documento parado na janela do cap — medidos AGORA, no acervo.
+
+    Ordena pelo número de documentos cortados: quem perdeu mais texto volta primeiro.
+    """
+    from compliance_agent.sei import acervo_texto, manifesto_norm
+    base = RAIZ / "data" / "sei_arquivo"
+    if not base.is_dir():
+        return []
+    contagem: dict[str, int] = {}
+    for pasta in sorted(base.iterdir()):
+        mf = pasta / "manifest.json"
+        if not pasta.is_dir() or not mf.exists():
+            continue
+        try:
+            man = manifesto_norm.normalizar(json.loads(mf.read_text(encoding="utf-8")))
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        n = 0
+        for d in man.get("docs") or []:
+            tam = len(acervo_texto.ler(pasta, d) or "")
+            if _JANELA_CAP[0] <= tam <= _JANELA_CAP[1]:
+                n += 1
+        if n:
+            contagem[pasta.name] = n
+    return [tag for tag, _ in sorted(contagem.items(), key=lambda kv: kv[1], reverse=True)]
+
+
 def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
     """Devolve à fila (bounded) os processos TRUNCADOS PELO CAP de 20k chars/doc (curado
     2026-08-01, SEI_MAX_CHARS_DOC=60000). Lista vem de data/recaptura_cap21k.json (gerada na
@@ -81,14 +114,15 @@ def reparar_cap(aplicar: bool = False, max_n: int = 40) -> dict:
     + progress zerado → o sweep relê no ritmo normal; com o cache fresco, o
     sei_arquivar_do_cache re-arquiva sozinho (candidatura por frescor, mesma data). Rodar aos
     poucos (--max) para não esvaziar a fila de leitura nova."""
-    lista = RAIZ / "data" / "recaptura_cap21k.json"
-    if not lista.exists():
-        return {"encontrados": 0, "aplicado": aplicar, "erro": "data/recaptura_cap21k.json ausente"}
-    dados = json.loads(lista.read_text())
-    # a "prioridade" (34 com veredito LLM) foi recapturada DIRETO em 2026-08-01/02 — requeuear
-    # aqui afastaria cache FRESCO. Este modo cuida só da cauda longa.
-    pri = set(dados.get("prioridade") or [])
-    tags = [t for t in (dados.get("processos") or []) if t not in pri]
+    # A LISTA ERA ESTÁTICA PARA UM ALVO QUE SE MOVE. `data/recaptura_cap21k.json` foi curada uma
+    # vez (2026-08-01, 375 processos) e nunca mais regerada; medido em 2026-08-04, o acervo tem
+    # **2.025 documentos no cap em 446 processos** — a lista cobre 343, ignora **103 novos** e
+    # ainda traz 32 já resolvidos. Processo capturado depois da curadoria nunca voltaria à fila.
+    #
+    # A medição em tempo de execução se autocorrige e dispensa a lista de "prioridade": um
+    # processo já recapturado com o cap novo (60k) simplesmente não tem mais documento parado em
+    # 20.000, então sai sozinho do conjunto — não há cache fresco a afastar por engano.
+    tags = tags_no_cap()
     prog = json.loads(PROGRESS.read_text()) if PROGRESS.exists() else {"feitos": {}}
     feitos = prog.setdefault("feitos", {})
     alvos = []
