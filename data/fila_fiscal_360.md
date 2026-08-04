@@ -36,7 +36,7 @@
 | 34 | 260007/019647/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
 | 35 | 260007/009439/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
 | 36 | 260007/009259/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
-| 37 | 270003/004494/2025 | 7 | C/EXTREMO | pagamento sem evidência de execução |
-| 38 | 080002/009870/2026 | 7 | C/EXTREMO | pagamento sem evidência de execução |
-| 39 | 080002/017980/2024 | 7 | C/ALTO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (int |
-| 40 | 080002/015808/2024 | 7 | C/ALTO | O documento de pagamento aparece nos autos ANTES do de liqui; pagamento sem evidência de execução |
+| 37 | 080002/017980/2024 | 7 | C/ALTO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (int |
+| 38 | 080002/015808/2024 | 7 | C/ALTO | O documento de pagamento aparece nos autos ANTES do de liqui; pagamento sem evidência de execução |
+| 39 | 080002/017482/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
+| 40 | 080002/021050/2024 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
