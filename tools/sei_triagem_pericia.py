@@ -195,6 +195,23 @@ _RX_RESSALVA = re.compile(
     r"|\bnecess[áa]rio (que|se)\b|\bdeve[rm]? ser (sanad|corrigid|providenci)", re.I)
 
 
+_JANELA_FORMA = 160
+
+
+def _e_forma(texto: str, m) -> bool:
+    """O que acendeu a ressalva é TEXTO DE FÔRMA (checklist, citação literal, doutrina, certidão)?
+
+    Medido em 2026-08-04: das 31 passagens distintas que acendiam "parecer com ressalva" nos 150
+    processos de maior risco, 7 se repetiam IGUAIS e cobriam 39 processos — item de checklist da
+    PGE, citação literal do art. 149, doutrina e rodapé de certidão. Repetição idêntica entre
+    processos diferentes é a prova objetiva de que aquilo não é opinião sobre ESTE processo.
+    O catálogo mora em `sei_recomendacoes._RE_BOILERPLATE`, para não haver duas cópias.
+    """
+    from compliance_agent.sei_recomendacoes import _RE_BOILERPLATE
+    janela = texto[max(0, m.start() - _JANELA_FORMA):m.end() + _JANELA_FORMA]
+    return bool(_RE_BOILERPLATE.search(janela))
+
+
 def _docs(man: dict) -> list[dict]:
     return [d for d in (man.get("docs") or []) if isinstance(d, dict)]
 
@@ -285,7 +302,8 @@ def periciar(pasta: Path) -> dict | None:
         txt = _texto_do_doc(pasta, pa)
         if not txt:
             continue
-        if not _RX_RESSALVA.search(txt):
+        m_res = _RX_RESSALVA.search(txt)
+        if not m_res or _e_forma(txt, m_res):
             continue
         pos = _ordem(pa)
         posteriores = [d for d in respostas if _ordem(d) > pos]

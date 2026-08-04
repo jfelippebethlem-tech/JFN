@@ -69,10 +69,24 @@ _RE_DECISORIO_FORTE = re.compile(
     r"\b(homologo|homologa[çc][aã]o|adjudico|adjudica[çc][aã]o|autorizo|ratifico|aprovo\s+a\s+"
     r"(?:contrata[çc][aã]o|dispensa|inexigibilidade)|decis[aã]o\s+(?:final|da\s+autoridade))\b", re.I)
 # boilerplate de parecer/certidão que casa _RE_RECOMENDA mas NÃO é ressalva substantiva (teste real):
+# TEXTO DE FÔRMA — o que se repete igual em processo nenhum é ressalva DESTE processo. Medido em
+# 2026-08-04 nos 150 de maior risco: das 31 passagens distintas que acendiam "parecer com
+# ressalva", **7 se repetiam e cobriam 39 processos**:
+#     13× o item de um CHECKLIST da PGE ("(item 5 do enunciado n.º 08 da PGE) *recomenda-se que a
+#         fiscalização acoste descritivo…") — formulário, não opinião sobre este processo;
+#     12× a CITAÇÃO LITERAL da lei ("ao prever no art. 149 da Lei 14.133/21 a seguinte expressão:
+#         'desde que não lhe seja imputável'") — a condição é do legislador, não do parecerista;
+#      5× DOUTRINA no corpo do parecer ("desde que complementar à lei ou outro ato legislativo");
+#      3× o rodapé de uma CERTIDÃO ("a aceitação desta certidão está condicionada à verificação").
+# É a mesma família do falso positivo que já derrubou 71 disparos do G3 e 14 do I2: documento de
+# fôrma lido como manifestação. Repetição idêntica entre processos é a prova objetiva.
 _RE_BOILERPLATE = re.compile(
     r"aplica[çc][aã]o\s+do\s+checklist|checklist\s+correspondente|condiciona-?se\s+[àa]\s+verifica[çc][aã]o|"
     r"verifica[çc][aã]o\s+de\s+(?:sua\s+)?autenticidade|recomenda-?se\s+a\s+leitura|"
-    r"observ[âa]ncia\s+ao\s+princ[ií]pio\s+da\s+prud[êe]ncia", re.I)
+    r"observ[âa]ncia\s+ao\s+princ[ií]pio\s+da\s+prud[êe]ncia"
+    r"|enunciado\s+n\.?\s*[ºo°]?\s*\d+\s+da\s+pge|item\s+\d+\s+do\s+enunciado"
+    r"|a\s+seguinte\s+express[ãa]o\s*:|desde\s+que\s+complementar\s+[àa]\s+lei"
+    r"|aceita[çc][ãa]o\s+desta\s+certid[ãa]o", re.I)
 # doc que É parecer pelo TÍTULO (mesmo favorável, sem ressalva) — p/ separar "sem parecer" de "parecer regular"
 _RE_TITULO_PARECER = re.compile(
     r"\b(parecer|manifesta[çc][aã]o\s+jur[ií]dica|nota\s+t[eé]cnica|promo[çc][aã]o)\b", re.I)
