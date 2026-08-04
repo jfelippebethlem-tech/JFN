@@ -75,6 +75,76 @@ def _estado_do_acervo(base: Path) -> dict[str, int]:
     return fora
 
 
+def _restricao_por_unidade(caminho: Path, base: Path) -> dict[str, Any]:
+    """Quanto do que a casa TENTOU ler está fora do alcance por nível de acesso — e onde.
+
+    "Nunca tocado" e "tentado e barrado" são cegueiras diferentes, e só a segunda é um limite
+    INSTITUCIONAL: o processo existe, o itkava tem login, e mesmo assim a árvore não abre. O
+    registro de controle (`sei_restritos.json`, alimentado a cada leitura do sweep) confirma
+    RESTRITO só com duas leituras 0-doc de processo que EXISTE no cadastro.
+
+    Medido em 2026-08-04, e a restrição é da UNIDADE, não do processo:
+
+        040014 Fundo Único de Previdência ....  93% restrito  (52 de 56 tentados)
+        260006/080001/260007 Fundo Est. Saúde .  31%–58%
+        080002 Fundação Saúde ................  50%  (130 de 261)
+        270131 / 270003 / 270006 .............  1%–3%
+
+    Metade da Saúde está fora de alcance, e a Fundação Saúde é justamente a entidade que paga 27%
+    de tudo por TAC/indenização. Isso não é achado contra ninguém — é o tamanho do que a casa NÃO
+    pode afirmar, e é o tipo de limite que se resolve por pedido formal de acesso, não por código.
+    """
+    fora: dict[str, Any] = {"disponivel": False}
+    reg_path = base.parent / "sei_restritos.json"
+    try:
+        reg = json.loads(reg_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return fora
+    if not isinstance(reg, dict) or not reg:
+        return fora
+
+    nomes: dict[str, str] = {}
+    try:
+        con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+        try:
+            melhor: dict[str, tuple[int, str]] = {}
+            for pre, nome, n in con.execute(
+                    "SELECT substr(numero_sei, 5, 6), ug_nome, COUNT(*) FROM ordens_bancarias "
+                    "WHERE numero_sei LIKE 'SEI-%' GROUP BY 1, 2"):
+                if not pre or not nome:
+                    continue
+                if int(n or 0) > melhor.get(str(pre), (0, ""))[0]:
+                    melhor[str(pre)] = (int(n), str(nome))
+            nomes = {k: v[1] for k, v in melhor.items()}
+        finally:
+            con.close()
+    except sqlite3.Error:
+        nomes = {}
+
+    por: dict[str, dict[str, int]] = {}
+    total = restritos = 0
+    for e in reg.values():
+        if not isinstance(e, dict):
+            continue
+        st = str(e.get("status") or "")
+        pre = str(e.get("prefixo") or "?")
+        d = por.setdefault(pre, {"lidos": 0, "restritos": 0})
+        d["lidos"] += 1
+        total += 1
+        if st in ("RESTRITO", "RESTRITO?"):
+            d["restritos"] += 1
+            restritos += 1
+    unidades = [
+        {"ug": ug, "nome": nomes.get(ug, ""), "lidos": d["lidos"], "restritos": d["restritos"],
+         "pct": round(100 * d["restritos"] / d["lidos"], 0)}
+        for ug, d in por.items() if d["lidos"] >= 20 and d["restritos"]
+    ]
+    unidades.sort(key=lambda u: (u["pct"], u["restritos"]), reverse=True)
+    return {"disponivel": True, "processos_tentados": total, "restritos": restritos,
+            "pct": round(100 * restritos / total, 1) if total else None,
+            "por_unidade": unidades[:8]}
+
+
 def medir(*, db: str | Path | None = None, acervo: Path | None = None) -> dict[str, Any]:
     """Cobertura de captura: o que o motor lê, o que não lê, e quanto dinheiro há de cada lado."""
     caminho = Path(db or os.environ.get("JFN_DB") or _DB)
@@ -88,7 +158,12 @@ def medir(*, db: str | Path | None = None, acervo: Path | None = None) -> dict[s
         tem = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' "
                           "AND name='ob_orcamentaria_siafe'").fetchone()
         if not tem:
+            # A porta fechada é fato independente da fonte de pagamento: sem o SIAFE não se diz
+            # QUANTO dinheiro está fora do alcance, mas continua-se dizendo QUANTOS processos a
+            # casa tentou ler e não conseguiu. Esconder o limite de acesso por falta de outra
+            # tabela seria calar duas coisas por causa de uma.
             return {"ok": True, "indisponivel": True, "acervo": estado,
+                    "restricao": _restricao_por_unidade(caminho, base),
                     "motivo": ("`ob_orcamentaria_siafe` ausente — sem a fonte canônica de "
                                "pagamento não se afirma quanto do dinheiro está fora do alcance")}
         # universo: processos SEI com OB paga (Contabilizado); o resto é empenho/cancelado
@@ -103,6 +178,7 @@ def medir(*, db: str | Path | None = None, acervo: Path | None = None) -> dict[s
     return {
         "ok": True, "indisponivel": False,
         "acervo": estado,
+        "restricao": _restricao_por_unidade(caminho, base),
         "arquivados": arquivados,
         "processos_com_ob_paga": universo,
         "nunca_tocados": max(0, (universo or 0) - arquivados),

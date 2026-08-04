@@ -4360,6 +4360,13 @@ void main(){
     h += sec("Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar");
     if (cc && cc.indisponivel === false) {
       const a = cc.acervo || {};
+      const rx = cc.restricao || {};
+      const rest = rx.disponivel ? `<div style="margin-top:8px">Dos <b>${fmtN(rx.processos_tentados)}</b> processos que o sweep
+           TENTOU ler, <b>${fmtN(rx.restritos)}</b> (${rx.pct}%) estão fora de alcance por nível de
+           acesso — não é ausência de irregularidade, é porta fechada:</div>
+         <div style="margin-top:6px">` + (rx.por_unidade || []).map(
+        (u) => `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome || "")}</span><b>${u.pct.toFixed(0)}% restrito</b> <span class="dim">(${u.restritos} de ${u.lidos})</span></div>`
+      ).join("") + `</div>` : "";
       h += card(`<div class="grid g3">
         <div><div class="dim">Processos legíveis</div><div style="font-size:1.5rem;font-weight:700">${a.integro} <span class="dim" style="font-size:.9rem">de ${cc.processos_com_ob_paga} com OB paga (${cc.pct_utilizavel}%)</span></div></div>
         <div><div class="dim">Nunca tocados</div><div style="font-size:1.5rem;font-weight:700">${cc.nunca_tocados}</div></div>
@@ -4367,6 +4374,7 @@ void main(){
       </div>
       <div style="margin-top:8px">Arquivados: <b>${a.integro}</b> íntegros · <b>${a.parcial}</b> parciais ·
         <b>${a.sem_teor}</b> sem teor · <b>${a.sem_docs}</b> sem índice — os três últimos voltam à fila do sweep</div>
+      ${rest}
       <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
     } else {
       h += card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc && cc.motivo ? ": " + esc(cc.motivo) : ""} — indisponível não é zero.</div>`);
