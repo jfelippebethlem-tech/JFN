@@ -367,14 +367,33 @@ export async function detRodar(id){
 export async function renderInstrumentacao(){
   let h=cover('geral','Instrumentação — o estado da máquina, sem abrir terminal',
     'Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.','🔧');
-  const [ag,pp,mm,ug,sf,rd,cb,rt]=await Promise.all([
+  const [ag,pp,mm,ug,sf,rd,cb,rt,cc]=await Promise.all([
     J('/api/agenda'),J('/api/pipelines'),J('/api/memoria'),J('/api/ugs?limite=15'),
     J('/api/siafe/status'),J('/api/radar/status'),J('/api/pericia/cobertura'),
-    J('/api/ob/retiradas')]);
+    J('/api/ob/retiradas'),J('/api/captura/cobertura')]);
 
   // COBERTURA DA PERÍCIA DOCUMENTAL — o número que só existia dentro do SQLite. Sem ele, o painel
   // mostra achados e fila do fiscal sem dizer que a maior parte do acervo nunca foi periciada
   // documento a documento; processo sem juízo NÃO é processo regular, é processo não periciado.
+  // COBERTURA DE CAPTURA — o número que limita todos os outros e não existia no painel. Mostrar
+  // 51 processos EXTREMO sem dizer que eles saem de 1.941 lidos, num universo de 40 mil pagos,
+  // deixa a impressão contrária à verdade. Sobre o que não se leu a casa não afirma NADA — não é
+  // ausência de irregularidade, é ausência de leitura.
+  h+=sec('Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar');
+  if(cc && cc.indisponivel===false){
+    const a=cc.acervo||{};
+    h+=card(`<div class="grid g3">
+        <div><div class="dim">Processos legíveis</div><div style="font-size:1.5rem;font-weight:700">${a.integro} <span class="dim" style="font-size:.9rem">de ${cc.processos_com_ob_paga} com OB paga (${cc.pct_utilizavel}%)</span></div></div>
+        <div><div class="dim">Nunca tocados</div><div style="font-size:1.5rem;font-weight:700">${cc.nunca_tocados}</div></div>
+        <div><div class="dim">Universo pago</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(cc.valor_pago_universo)}</div></div>
+      </div>
+      <div style="margin-top:8px">Arquivados: <b>${a.integro}</b> íntegros · <b>${a.parcial}</b> parciais ·
+        <b>${a.sem_teor}</b> sem teor · <b>${a.sem_docs}</b> sem índice — os três últimos voltam à fila do sweep</div>
+      <div class="dim" style="margin-top:6px">${esc(cc.nota||'')}</div>`);
+  }else{
+    h+=card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc&&cc.motivo?': '+esc(cc.motivo):''} — indisponível não é zero.</div>`);
+  }
+
   h+=sec('Perícia documental — cobertura do acervo (24/7)');
   if(cb && cb.indisponivel===false){
     const pct=cb.pct==null?'—':cb.pct+'%';

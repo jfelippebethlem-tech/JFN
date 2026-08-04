@@ -2,6 +2,7 @@ DELETE /api/hermes/missao -> api_hermes_limpar_missao
 GET / -> index
 GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
+GET /api/captura/cobertura -> api_captura_cobertura
 GET /api/cartel -> api_cartel
 GET /api/certame/indice -> api_certame_indice
 GET /api/certames/lista -> api_certames_lista

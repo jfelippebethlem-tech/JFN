@@ -4345,7 +4345,7 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd, cb, rt] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb, rt, cc] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
@@ -4353,8 +4353,23 @@ void main(){
       J("/api/siafe/status"),
       J("/api/radar/status"),
       J("/api/pericia/cobertura"),
-      J("/api/ob/retiradas")
+      J("/api/ob/retiradas"),
+      J("/api/captura/cobertura")
     ]);
+    h += sec("Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar");
+    if (cc && cc.indisponivel === false) {
+      const a = cc.acervo || {};
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Processos legíveis</div><div style="font-size:1.5rem;font-weight:700">${a.integro} <span class="dim" style="font-size:.9rem">de ${cc.processos_com_ob_paga} com OB paga (${cc.pct_utilizavel}%)</span></div></div>
+        <div><div class="dim">Nunca tocados</div><div style="font-size:1.5rem;font-weight:700">${cc.nunca_tocados}</div></div>
+        <div><div class="dim">Universo pago</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(cc.valor_pago_universo)}</div></div>
+      </div>
+      <div style="margin-top:8px">Arquivados: <b>${a.integro}</b> íntegros · <b>${a.parcial}</b> parciais ·
+        <b>${a.sem_teor}</b> sem teor · <b>${a.sem_docs}</b> sem índice — os três últimos voltam à fila do sweep</div>
+      <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
+    } else {
+      h += card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc && cc.motivo ? ": " + esc(cc.motivo) : ""} — indisponível não é zero.</div>`);
+    }
     h += sec("Perícia documental — cobertura do acervo (24/7)");
     if (cb && cb.indisponivel === false) {
       const pct = cb.pct == null ? "—" : cb.pct + "%";

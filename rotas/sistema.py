@@ -158,6 +158,22 @@ def api_pericia_cobertura():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/captura/cobertura")
+def api_captura_cobertura():
+    """Quanto do que foi PAGO o motor consegue ler — o número que limita todos os outros.
+
+    O painel mostrava achados, fila do fiscal e cobertura da perícia sem dizer sobre que fração
+    do dinheiro a casa consegue afirmar alguma coisa. Medido em 2026-08-04: **1.941 processos
+    íntegros de 40.482 com OB paga (4,8%)**, num universo de R$ 18,06 bi. Ponto cego medido é
+    melhor que ponto cego calado.
+    """
+    try:
+        from compliance_agent.reporting import cobertura_captura
+        return JSONResponse(content=cobertura_captura.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/ob/retiradas")
 def api_ob_retiradas():
     """OBs que o portal da transparência publicou e depois DESPUBLICOU.
