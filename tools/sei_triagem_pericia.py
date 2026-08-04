@@ -54,6 +54,9 @@ _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
 # parecer_juridico no classificador e fabricam A1; "Nota Fiscal" e "Minuta de Termo Aditivo"
 # viram contrato (o classificador por CONTEÚDO mente em doc escaneado) — e minuta ANTES do
 # parecer é o fluxo CORRETO do art. 53. (FPs reais 030001/087722, 080002/020278, 270131/000548.)
+_RX_NOTA_TECNICA = re.compile(r"(?i)\bnota\s+t[ée]cnica\b(?!\s+jur)")
+"""Nota técnica PURA (a jurídica segue valendo) — peça de fiscalização, não análise prévia."""
+
 _RX_NAO_PARECER = re.compile(r"certid|parecer\s+t[ée]cnic|parecer\s+de\s+medi|laudo", re.I)
 # O que NÃO é o instrumento, mesmo tipado `contrato`. "Registro siafe encerramento contrato" é o
 # REGISTRO do encerramento; "Publicação/Extrato" é o extrato no D.O.; "Termo de apostilamento" é
@@ -226,8 +229,25 @@ def _ordem(d: dict) -> int:
 
 
 def _texto_do_doc(pasta: Path, doc: dict) -> str:
-    """Texto capturado do documento, se houver. Vazio nunca vira conclusão."""
+    """Texto capturado do documento, se houver. Vazio nunca vira conclusão.
+
+    O CAMINHO VEM DO MANIFESTO, não de um glob pelo identificador no nome do arquivo. A versão
+    anterior procurava `texto/*<id>*` — e o nome do arquivo é o título SANITIZADO e CORTADO, de
+    modo que em título longo o identificador simplesmente não está no nome. Medido em 2026-08-04
+    sobre o acervo: **5.722 dos 33.584 documentos com teor (17%) eram lidos como VAZIOS**, e com
+    eles **56,5 milhões de caracteres** ficavam invisíveis para o A1, o A2 e a auditoria de
+    acatamento — os três detectores que decidem sobre o art. 53. Um deles era o
+    "Despacho de Encaminhamento de Processo PARECER DE FAVORABILIDADE (121198855)", 3.144
+    caracteres que o glob não achava porque o nome do arquivo termina antes do número.
+
+    `acervo_texto.ler` é a porta única da casa: usa o `texto` declarado no manifesto, devolve sem
+    a etiqueta e com o teto por documento. O fallback pelo glob fica para o manifesto sem o campo.
+    """
     alvo = str(doc.get("titulo") or "")
+    if doc.get("texto"):
+        lido = acervo_texto.ler(pasta, doc, teto=20000)
+        if (lido or "").strip():
+            return lido
     m = re.search(r"\((\d{6,})\)|\b(\d{8,})\b", alvo)
     if not m:
         return ""
@@ -285,6 +305,26 @@ def periciar(pasta: Path) -> dict | None:
     # ── A1 · CONTRATO ASSINADO ANTES DO PARECER ────────────────────────────────
     # O jurídico opinou depois de o contrato já existir. É o achado mais forte que
     # a árvore sozinha sustenta: não depende de ler o texto, só da ORDEM.
+    # DUAS GUARDAS, medidas em 2026-08-04 sobre os 10 disparos do acervo (10 → 4):
+    #
+    # (1) NOTA TÉCNICA não é o parecer do art. 53. Cinco disparos se ancoravam numa — e a de
+    #     SEI-510001/001309/2025 é da "Subsecretaria de Gestão e Fiscalização de Obras", assinada
+    #     "na qualidade de Fiscais do Contrato": é nota de FISCALIZAÇÃO, posterior por natureza ao
+    #     contrato que fiscaliza. Acusar art. 53 com ela é acusar o normal. "Nota técnica
+    #     JURÍDICA" continua valendo — a exclusão é só da técnica pura.
+    # (2) Parecer SEM TEXTO não ancora nada. Um disparo saía de um documento com ZERO caractere,
+    #     tipado parecer só pelo título. É a doutrina que o A2 logo abaixo já aplica ("sem texto do
+    #     parecer não há achado: vira lacuna, nunca conclusão por ausência") e que faltava aqui.
+    #
+    # O que os 10 tinham em comum e o refinamento remove: contrato PRÉ-EXISTENTE juntado como
+    # anexo a processo posterior ("Anexo 16 - CONTRATO 020.2025", "Anexo Contrato nº 004/2020"),
+    # com uma peça técnica depois. Ordem na árvore não é ordem de formalização quando a peça
+    # anterior nem é do processo.
+    # `d["texto"]` no manifesto é o CAMINHO do arquivo, não o teor — testá-lo seria um no-op
+    # (foi o que eu escrevi primeiro). O teor se lê com `_texto_do_doc`, que já é a porta daqui.
+    pareceres = [d for d in pareceres
+                 if not _RX_NOTA_TECNICA.search(str(d.get("titulo") or ""))
+                 and (_texto_do_doc(pasta, d) or "").strip()]
     if pareceres and contratos:
         p0, c0 = min(map(_ordem, pareceres)), min(map(_ordem, contratos))
         if c0 < p0:
