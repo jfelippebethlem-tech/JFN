@@ -40,7 +40,7 @@ CACHE = RAIZ / "data" / "sei_cache"
 MIN_CHARS = 80          # abaixo disso o arquivo só tem o cabeçalho gerado, não conteúdo
 
 
-def candidatos(min_kb: int = 20) -> list[dict]:
+def candidatos(min_kb: int = 20, por_identificador: bool = False) -> list[dict]:
     """Documentos sem texto cujo PDF em cache é substancial — os que valem reprocessar."""
     achados: list[dict] = []
     for pdir in sorted(ARQUIVO.iterdir()):
@@ -73,10 +73,16 @@ def candidatos(min_kb: int = 20) -> list[dict]:
                 pdf = cdir / f"{int(d.get('i')):03d}.pdf"
             except (TypeError, ValueError):
                 continue
-            if pdf.exists() and pdf.stat().st_size > min_kb * 1024:
+            # No modo por IDENTIFICADOR o arquivo posicional é irrelevante — o dono é achado pelo
+            # id impresso no cabeçalho. Exigir que `<i>.pdf` exista e seja grande descartava, de
+            # saída, documento cujo PDF está no diretório sob OUTRO número: era o gargalo que
+            # limitava a busca a 24 candidatos com 7.682 documentos vazios no acervo.
+            existe = pdf.exists() and pdf.stat().st_size > min_kb * 1024
+            if existe or por_identificador:
                 achados.append({"processo": pdir.name, "i": d.get("i"), "tipo": d.get("tipo"),
                                 "titulo": d.get("titulo"), "pdf": pdf, "txt": falq,
-                                "manifest": man, "kb": pdf.stat().st_size / 1024})
+                                "manifest": man,
+                                "kb": pdf.stat().st_size / 1024 if existe else 0.0})
     return achados
 
 
@@ -119,60 +125,54 @@ def pertence(titulo: str, texto: str) -> bool | None:
     return ids[-1] in texto
 
 
-def indexar_por_identificador(cdir: Path) -> dict[str, Path]:
-    """Mapa `identificador SEI → PDF` construído lendo a PRIMEIRA PÁGINA de cada PDF da íntegra.
+def topos_da_integra(cdir: Path) -> dict[Path, str]:
+    """Topo da primeira página de cada PDF da íntegra — onde o SEI imprime o cabeçalho da peça.
 
-    Substitui a suposição posicional por evidência. O SEI imprime o identificador da peça no
-    cabeçalho, então a primeira página basta e é barata: só o texto NATIVO é lido aqui (nada de
-    OCR nesta fase), porque o objetivo é achar o dono do arquivo, não extrair o conteúdo — e um
-    PDF escaneado continuará sem dono até que alguém o processe.
-
-    Duas ambiguidades invalidam o vínculo, e as duas MORDERAM na primeira versão desta função:
-
-    * **um PDF anunciando vários ids** — um despacho cita no corpo o identificador das peças que
-      encaminha, e virava "dono" de todas elas: dois documentos diferentes resolviam para o MESMO
-      arquivo (medido: i=41 "parecer" e i=44 "nota de liquidação" com 51 KB e 8.031 caracteres
-      idênticos). Por isso o id é procurado só no TOPO da primeira página, onde o SEI imprime o
-      cabeçalho da própria peça, e um topo com mais de um id é descartado inteiro;
-    * **dois PDFs anunciando o mesmo id** — preferir o primeiro seria escolher ao acaso qual prova
-      entra no dossiê.
+    Só texto NATIVO: o objetivo é achar o dono do arquivo, não extrair conteúdo, e OCR aqui
+    custaria horas. PDF escaneado fica sem topo legível e, portanto, sem dono — limite declarado.
     """
     import pymupdf
-    mapa: dict[str, Path] = {}
-    colidiram: set[str] = set()
+    saida: dict[Path, str] = {}
     for pdf in sorted(cdir.glob("*.pdf")):
         try:
             with pymupdf.open(pdf) as doc:
-                cabeca = (doc[0].get_text() if doc.page_count else "")[:_TOPO_DA_PAGINA]
+                saida[pdf] = (doc[0].get_text() if doc.page_count else "")[:_TOPO_DA_PAGINA]
         except Exception:  # noqa: BLE001 — PDF corrompido não impede o resto do diretório
             continue
-        ids = set(_RE_ID_TITULO.findall(cabeca or ""))
-        if len(ids) != 1:
-            continue                      # topo mudo ou ambíguo não identifica dono
-        ident = ids.pop()
-        if ident in mapa and mapa[ident] != pdf:
-            colidiram.add(ident)
-        mapa[ident] = pdf
-    for ident in colidiram:
-        mapa.pop(ident, None)
-    return mapa
+    return saida
+
+
+def dono_do_documento(identificador: str, topos: dict[Path, str]) -> Path | None:
+    """O PDF cujo cabeçalho anuncia ESTE identificador — exatamente um, ou nenhum.
+
+    A direção importa. A primeira versão montava o mapa ao contrário (extraía "o id" do cabeçalho
+    de cada PDF e o tomava como dono), e o cabeçalho tem outros números de seis dígitos: a Ordem
+    Bancária traz o código da UG ("404340 - HUPE", "296100"), e o resultado foi **zero donos em
+    7.669 candidatos** — todo topo parecia ambíguo. O identificador autoritativo é o do TÍTULO, que
+    o manifesto guarda; aqui só se pergunta quem o exibe.
+
+    Dois PDFs exibindo o mesmo identificador invalidam os dois: escolher o primeiro seria decidir
+    ao acaso qual prova entra no dossiê.
+    """
+    achados = [pdf for pdf, topo in topos.items() if identificador in (topo or "")]
+    return achados[0] if len(achados) == 1 else None
 
 
 def realinhar(alvos: list[dict]) -> tuple[list[dict], int]:
     """Troca o PDF posicional pelo PDF que ANUNCIA o identificador do documento.
 
-    Devolve (alvos com o pdf corrigido, quantos ficaram sem dono). O alvo sem id no título ou sem
-    PDF correspondente é descartado — sem dono não há reparo honesto, e a `pertence` recusaria
+    Devolve (alvos com o pdf corrigido, quantos ficaram sem dono). Alvo sem id no título ou sem
+    dono no diretório é descartado — sem dono não há reparo honesto, e a `pertence` recusaria
     depois de qualquer forma.
     """
-    por_dir: dict[Path, dict[str, Path]] = {}
+    por_dir: dict[Path, dict[Path, str]] = {}
     saida, sem_dono = [], 0
     for a in alvos:
         cdir = a["pdf"].parent
         if cdir not in por_dir:
-            por_dir[cdir] = indexar_por_identificador(cdir)
+            por_dir[cdir] = topos_da_integra(cdir)
         ids = _RE_ID_TITULO.findall(str(a.get("titulo") or ""))
-        alvo_pdf = por_dir[cdir].get(ids[-1]) if ids else None
+        alvo_pdf = dono_do_documento(ids[-1], por_dir[cdir]) if ids else None
         if not alvo_pdf:
             sem_dono += 1
             continue
@@ -236,7 +236,7 @@ def main(argv=None) -> int:
     ap.add_argument("--por-identificador", action="store_true",
                     help="acha o PDF pelo id SEI impresso no cabeçalho, em vez do índice do arquivo")
     a = ap.parse_args(argv)
-    alvos = candidatos(a.min_kb)
+    alvos = candidatos(a.min_kb, por_identificador=a.por_identificador)
     print(f"documentos sem texto com PDF ≥ {a.min_kb}KB no cache: {len(alvos)}")
     if not alvos:
         print("nada a reparar — os vazios restantes não têm PDF utilizável em disco (exigem recaptura).")

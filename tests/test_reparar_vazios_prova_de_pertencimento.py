@@ -93,26 +93,36 @@ def _pdf_com_texto(caminho, texto):
     doc.close()
 
 
-def test_pdf_que_CITA_varios_ids_no_topo_nao_vira_dono_de_nenhum(tmp_path):
-    """Primeira versão desta função caiu nisto: um despacho cita no cabeçalho o identificador das
-    peças que encaminha e virava dono de todas — dois documentos diferentes resolviam para o MESMO
-    arquivo (medido: i=41 'parecer' e i=44 'nota de liquidação' com 51 KB e 8.031 caracteres
-    idênticos)."""
-    _pdf_com_texto(tmp_path / "000.pdf", "Despacho encaminha 83371931 e tambem 83371603")
-    assert R.indexar_por_identificador(tmp_path) == {}
-
-
-def test_pdf_com_UM_id_no_topo_vira_dono(tmp_path):
+def test_o_dono_e_quem_EXIBE_o_id_do_titulo(tmp_path):
     _pdf_com_texto(tmp_path / "007.pdf", "Parecer 2848 (83434921) Fundacao Saude")
-    mapa = R.indexar_por_identificador(tmp_path)
-    assert mapa == {"83434921": tmp_path / "007.pdf"}
+    topos = R.topos_da_integra(tmp_path)
+    assert R.dono_do_documento("83434921", topos) == tmp_path / "007.pdf"
 
 
-def test_dois_pdfs_com_o_MESMO_id_invalidam_os_dois(tmp_path):
+def test_a_direcao_da_busca_importa_o_cabecalho_tem_outros_numeros(tmp_path):
+    """A primeira versão montava o mapa ao contrário — extraía "o id" do cabeçalho de cada PDF e o
+    tomava como dono. O cabeçalho tem outros números de seis dígitos: a Ordem Bancária traz o
+    código da UG ("404340 - HUPE", "296100"), e o resultado foi **zero donos em 7.669 candidatos**,
+    porque todo topo parecia ambíguo. O identificador autoritativo é o do TÍTULO."""
+    _pdf_com_texto(tmp_path / "000.pdf", "Ordem Bancaria UG Emitente 404340 HUPE 296100 (83434921)")
+    topos = R.topos_da_integra(tmp_path)
+    assert R.dono_do_documento("83434921", topos) == tmp_path / "000.pdf"
+    assert R.dono_do_documento("99999999", topos) is None
+
+
+def test_dois_pdfs_exibindo_o_MESMO_id_invalidam_os_dois(tmp_path):
     """Preferir o primeiro seria escolher ao acaso qual prova entra no dossiê."""
     _pdf_com_texto(tmp_path / "001.pdf", "Documento (83434921) versao A")
     _pdf_com_texto(tmp_path / "002.pdf", "Documento (83434921) versao B")
-    assert R.indexar_por_identificador(tmp_path) == {}
+    assert R.dono_do_documento("83434921", R.topos_da_integra(tmp_path)) is None
+
+
+def test_pdf_escaneado_fica_sem_dono_limite_declarado(tmp_path):
+    """Topo sem texto nativo não identifica ninguém — e OCR nesta fase custaria horas para achar
+    o dono, não para extrair o conteúdo."""
+    import pymupdf
+    doc = pymupdf.open(); doc.new_page(); doc.save(tmp_path / "003.pdf"); doc.close()
+    assert R.dono_do_documento("83434921", R.topos_da_integra(tmp_path)) is None
 
 
 def test_realinhar_troca_o_pdf_posicional_pelo_dono_de_verdade(tmp_path):
