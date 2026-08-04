@@ -80,6 +80,7 @@ GET /api/leaks -> api_leaks
 GET /api/links -> api_links
 GET /api/lista -> api_lista
 GET /api/memoria -> api_memoria
+GET /api/motor/fotografia -> api_motor_fotografia
 GET /api/ob/retiradas -> api_ob_retiradas
 GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/osint/beneficiario_final -> api_beneficiario_final

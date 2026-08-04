@@ -4345,7 +4345,7 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd, cb, rt, cc, tr, tk] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb, rt, cc, tr, tk, mo] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
@@ -4356,7 +4356,8 @@ void main(){
       J("/api/ob/retiradas"),
       J("/api/captura/cobertura"),
       J("/api/siafe/truncamento"),
-      J("/api/tac/ranking")
+      J("/api/tac/ranking"),
+      J("/api/motor/fotografia")
     ]);
     h += sec("Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar");
     if (cc && cc.indisponivel === false) {
@@ -4386,6 +4387,20 @@ void main(){
       <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
     } else {
       h += card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc && cc.motivo ? ": " + esc(cc.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Estado do motor — achados por código no acervo");
+    if (mo && mo.codigos) {
+      const cod = Object.entries(mo.codigos).filter(([k]) => k !== "—").sort((a, b) => b[1] - a[1]).slice(0, 14);
+      const org = Object.entries(mo.origens || {}).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Códigos distintos</div><div style="font-size:1.5rem;font-weight:700">${fmtN(cod.length)}</div></div>
+        <div><div class="dim">Achados no acervo</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.codigos).reduce((s, x) => s + x, 0))}</div></div>
+        <div><div class="dim">Processos avaliados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.faixas || {}).reduce((s, x) => s + x, 0))}</div></div>
+      </div>
+      <div style="margin-top:8px">` + cod.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><b>${fmtN(v)}</b></div>`).join("") + `</div>
+      <div class="dim" style="margin-top:6px">Por origem: ` + org.map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>`);
+    } else {
+      h += card(`<div class="warn">Estado do motor INDISPONÍVEL${mo && mo.erro ? ": " + esc(mo.erro) : ""} — indisponível não é zero.</div>`);
     }
     h += sec("Pagamento fora de contrato regular (TAC/indenização) — por unidade");
     if (tk && tk.indisponivel === false && (tk.unidades || []).length) {

@@ -158,6 +158,22 @@ def api_pericia_cobertura():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/motor/fotografia")
+def api_motor_fotografia():
+    """O estado do MOTOR: faixas, achados por código e por origem, motivos no topo da fila.
+
+    Estes números só existiam via SQL na mão, e cada correção de detector exigia medi-los de novo
+    — foi assim que duas medições saíram erradas em 2026-08-04 (uma engolindo exceção, outra
+    comparando chave de 19 caracteres com chaves de 20). É a mesma função que a pipeline
+    `tools/pos_correcao` usa para o antes/depois, então o painel e o diff nunca divergem.
+    """
+    try:
+        from tools.pos_correcao import fotografia
+        return JSONResponse(content=fotografia())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/tac/ranking")
 def api_tac_ranking():
     """Quem paga FORA de contrato regular, e quanto fora da curva está.

@@ -367,11 +367,11 @@ export async function detRodar(id){
 export async function renderInstrumentacao(){
   let h=cover('geral','Instrumentação — o estado da máquina, sem abrir terminal',
     'Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.','🔧');
-  const [ag,pp,mm,ug,sf,rd,cb,rt,cc,tr,tk]=await Promise.all([
+  const [ag,pp,mm,ug,sf,rd,cb,rt,cc,tr,tk,mo]=await Promise.all([
     J('/api/agenda'),J('/api/pipelines'),J('/api/memoria'),J('/api/ugs?limite=15'),
     J('/api/siafe/status'),J('/api/radar/status'),J('/api/pericia/cobertura'),
     J('/api/ob/retiradas'),J('/api/captura/cobertura'),J('/api/siafe/truncamento'),
-    J('/api/tac/ranking')]);
+    J('/api/tac/ranking'),J('/api/motor/fotografia')]);
 
   // COBERTURA DA PERÍCIA DOCUMENTAL — o número que só existia dentro do SQLite. Sem ele, o painel
   // mostra achados e fila do fiscal sem dizer que a maior parte do acervo nunca foi periciada
@@ -424,6 +424,26 @@ export async function renderInstrumentacao(){
   // universo pago do cartão acima e toda soma por UG mentem para baixo sem avisar.
   // TAC POR UNIDADE — pagamento FORA de contrato regular. Um percentual sozinho não diz nada; a
   // régua é COMPARATIVA. Com 56 unidades medidas, a mediana é 0,3% e a Fundação Saúde está em 27%.
+  // ESTADO DO MOTOR — quantos achados de cada código o acervo tem AGORA. Sem isto, medir o efeito
+  // de uma correção de detector exigia SQL na mão, e duas dessas medições saíram erradas num dia.
+  // É a mesma função que a pipeline `tools/pos_correcao` usa no antes/depois: painel e diff não
+  // divergem.
+  h+=sec('Estado do motor — achados por código no acervo');
+  if(mo && mo.codigos){
+    const cod=Object.entries(mo.codigos).filter(([k])=>k!=='—').sort((a,b)=>b[1]-a[1]).slice(0,14);
+    const org=Object.entries(mo.origens||{}).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    h+=card(`<div class="grid g3">
+        <div><div class="dim">Códigos distintos</div><div style="font-size:1.5rem;font-weight:700">${fmtN(cod.length)}</div></div>
+        <div><div class="dim">Achados no acervo</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.codigos).reduce((s,x)=>s+x,0))}</div></div>
+        <div><div class="dim">Processos avaliados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.faixas||{}).reduce((s,x)=>s+x,0))}</div></div>
+      </div>
+      <div style="margin-top:8px">`+cod.map(([k,v])=>
+        `<div class="kv"><span class="k">${esc(k)}</span><b>${fmtN(v)}</b></div>`).join('')+`</div>
+      <div class="dim" style="margin-top:6px">Por origem: `+org.map(([k,v])=>`${esc(k)} ${fmtN(v)}`).join(' · ')+`</div>`);
+  }else{
+    h+=card(`<div class="warn">Estado do motor INDISPONÍVEL${mo&&mo.erro?': '+esc(mo.erro):''} — indisponível não é zero.</div>`);
+  }
+
   h+=sec('Pagamento fora de contrato regular (TAC/indenização) — por unidade');
   if(tk && tk.indisponivel===false && (tk.unidades||[]).length){
     const us=tk.unidades.slice(0,8), topo=us[0];
