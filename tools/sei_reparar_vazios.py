@@ -138,8 +138,8 @@ def topos_da_integra(cdir: Path) -> dict[Path, str]:
         try:
             with pymupdf.open(pdf) as doc:
                 saida[pdf] = (doc[0].get_text() if doc.page_count else "")[:_TOPO_DA_PAGINA]
-        except Exception:  # noqa: BLE001 — PDF corrompido não impede o resto do diretório
-            continue
+        except (pymupdf.FileDataError, pymupdf.EmptyFileError, OSError, ValueError, RuntimeError):
+            continue                      # PDF corrompido não impede o resto do diretório
     return saida
 
 
