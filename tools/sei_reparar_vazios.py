@@ -98,6 +98,13 @@ def pertence(titulo: str, texto: str) -> bool | None:
     órfãos já documentou, e pior que deixar o documento vazio: vazio é lacuna declarada, trocado
     é prova falsa.
 
+    UMA CAUSA CONHECIDA do desalinhamento: a reconciliação de órfãos INSERE entradas no manifesto
+    (`tools/sei_reconciliar_orfaos`), e a numeração dos PDFs da íntegra é a da captura original —
+    o SEI-080002/018240/2024 tem 67 documentos no manifesto para 65 PDFs, com marcas
+    `reconciliado`, e os erros aparecem nos índices ALTOS, depois do ponto de inserção. Enquanto o
+    mapeamento não for reconstruído por identificador, a prova abaixo é o que separa reparo de
+    corrupção.
+
     A prova aceita é o identificador SEI que o próprio título carrega entre parênteses aparecendo
     no texto extraído (o SEI o imprime no cabeçalho de cada peça). Sem id no título, ou sem texto
     para conferir, o resultado é **indeterminado** — e indeterminado não se grava.
