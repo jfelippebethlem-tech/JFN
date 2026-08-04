@@ -160,7 +160,14 @@ def _restricao_por_unidade(caminho: Path, base: Path) -> dict[str, Any]:
         for ug, d in por.items() if d["lidos"] >= 20 and d["restritos"]
     ]
     unidades.sort(key=lambda u: u["valor_sob_restricao"], reverse=True)
+    # A JANELA IMPORTA. O registro de controle começou em 2026-07-14; o progresso do sweep conhece
+    # 9.112 processos tentados no total. Dizer "dos processos que o sweep tentou ler" sobre 1.268
+    # sugeriria que essa é a experiência inteira da casa — não é, é a parte com veredito
+    # registrado. O campo declara o começo da janela para que o cartão possa dizê-lo.
+    desde = min((str(e.get("primeira") or "") for e in reg.values()
+                 if isinstance(e, dict) and e.get("primeira")), default="")
     return {"disponivel": True, "processos_tentados": total, "restritos": restritos,
+            "desde": desde[:10],
             "pct": round(100 * restritos / total, 1) if total else None,
             "por_unidade": unidades[:8],
             "nota_valor": ("`valor_sob_restricao` é RATEIO PROPORCIONAL: o valor pago da unidade "

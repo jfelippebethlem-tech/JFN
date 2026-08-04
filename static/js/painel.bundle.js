@@ -4362,8 +4362,9 @@ void main(){
     if (cc && cc.indisponivel === false) {
       const a = cc.acervo || {};
       const rx = cc.restricao || {};
-      const rest = rx.disponivel ? `<div style="margin-top:8px">Dos <b>${fmtN(rx.processos_tentados)}</b> processos que o sweep
-           TENTOU ler, <b>${fmtN(rx.restritos)}</b> (${rx.pct}%) o registro de controle classifica como
+      const rest = rx.disponivel ? `<div style="margin-top:8px">Dos <b>${fmtN(rx.processos_tentados)}</b> processos com veredito
+           de leitura registrado${rx.desde ? " (desde " + esc(rx.desde) + ")" : ""},
+           <b>${fmtN(rx.restritos)}</b> (${rx.pct}%) o registro de controle classifica como
            de <b>nível de acesso restrito</b> — a árvore não abriu em duas leituras de processo que
            existe no cadastro, nem pelo caminho <i>cracked</i>. Não é ausência de irregularidade e
            não é falta de permissão da nossa conta (ostensivos das mesmas unidades abrem normal):
