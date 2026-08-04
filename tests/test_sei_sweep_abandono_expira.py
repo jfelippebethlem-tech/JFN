@@ -15,6 +15,7 @@ passaram. A tentativa expira. É a mesma família da isenção permanente já co
 (`captura_vazia` e o arquivo sem teor): declarar a falha é honesto, transformá-la em exclusão
 definitiva não era o combinado.
 """
+import json
 from datetime import datetime, timedelta
 
 import tools.sei_sweep as S
@@ -44,3 +45,43 @@ def test_sem_data_ou_com_data_ilegivel_NAO_expira():
     devolve o acervo inteiro à fila."""
     for ruim in (None, "", "ontem", 12345, "2026-13-45"):
         assert S._tentativa_expirou(ruim) is False, ruim
+
+
+# ---------------------------------------------------------------- acesso restrito confirmado
+
+def _registro(tmp_path, monkeypatch, entrada):
+    (tmp_path / "data").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "data" / "sei_restritos.json").write_text(
+        json.dumps({"1500010115732021": entrada}), encoding="utf-8")
+    monkeypatch.setattr(S, "REPO", tmp_path)
+    return "SEI-150001/011573/2021"
+
+
+def test_restrito_confirmado_e_recente_NAO_volta_a_fila(tmp_path, monkeypatch):
+    """311 dos 2.760 abandonados estão como RESTRITO (duas leituras 0-doc de processo que EXISTE
+    no cadastro). Retentá-los gasta ~100s cada em acesso negado documentado — INDISPONÍVEL de
+    verdade, e o sweep rende mais nos 2.262 sobre os quais não há evidência nenhuma."""
+    proc = _registro(tmp_path, monkeypatch,
+                     {"status": "RESTRITO", "restrito_score": 2, "ultima": _ha(10)[:19].replace("T", " ")})
+    assert S._restrito_confirmado(proc) is True
+
+
+def test_marca_de_restrito_TAMBEM_expira(tmp_path, monkeypatch):
+    """Nível de acesso muda e o acesso do itkava é ampliado. Trocar uma isenção permanente por
+    outra seria repetir exatamente o defeito que este arquivo corrige."""
+    proc = _registro(tmp_path, monkeypatch,
+                     {"status": "RESTRITO", "restrito_score": 2,
+                      "ultima": _ha(S._DIAS_RECONFERIR_RESTRITO + 5)[:19].replace("T", " ")})
+    assert S._restrito_confirmado(proc) is False
+
+
+def test_RESTRITO_interrogacao_volta_a_fila(tmp_path, monkeypatch):
+    """Uma leitura só não confirma nada — é justamente a segunda que confirma ou desmente."""
+    proc = _registro(tmp_path, monkeypatch,
+                     {"status": "RESTRITO?", "restrito_score": 1, "ultima": _ha(1)[:19].replace("T", " ")})
+    assert S._restrito_confirmado(proc) is False
+
+
+def test_sem_registro_nao_se_nega_leitura_a_ninguem(tmp_path, monkeypatch):
+    monkeypatch.setattr(S, "REPO", tmp_path)
+    assert S._restrito_confirmado("SEI-150001/011573/2021") is False

@@ -345,6 +345,35 @@ def _tentativa_expirou(em: str | None) -> bool:
         return False
 
 
+_DIAS_RECONFERIR_RESTRITO = int(os.environ.get("SEI_SWEEP_DIAS_RESTRITO", "90"))
+
+
+def _restrito_confirmado(proc: str) -> bool:
+    """O registro de controle diz que este processo é de ACESSO RESTRITO, e a marca ainda é recente?
+
+    Dos 2.760 abandonados, 311 estão como RESTRITO (score>=2: duas leituras 0-doc de um processo
+    que EXISTE no cadastro) e 69 como RESTRITO?. Retentá-los é gastar ~100s cada em acesso negado
+    documentado — INDISPONÍVEL de verdade, não falha intermitente. O sweep rende mais nos 2.262
+    que são anteriores ao registro (2026-07-14) e sobre os quais não há evidência nenhuma.
+
+    Só o RESTRITO **confirmado** (score>=2) segura; `RESTRITO?` com uma leitura só volta à fila —
+    é precisamente a segunda leitura que confirma ou desmente a marca.
+
+    E a marca também EXPIRA, em janela mais larga: nível de acesso muda, processo é desclassificado,
+    o acesso do itkava é ampliado. Trocar uma isenção permanente por outra seria repetir o defeito
+    que esta mesma função foi escrita para corrigir.
+    """
+    try:
+        reg = json.loads((REPO / "data" / "sei_restritos.json").read_text(encoding="utf-8"))
+        e = reg.get(re.sub(r"\D", "", proc or ""))
+        if not isinstance(e, dict) or e.get("status") != "RESTRITO":
+            return False
+        visto = datetime.fromisoformat(str(e.get("ultima") or "").replace(" ", "T"))
+        return (datetime.now() - visto).days < _DIAS_RECONFERIR_RESTRITO
+    except (OSError, ValueError, TypeError, AttributeError):
+        return False  # sem registro legível não se nega leitura a ninguém
+
+
 def _arquivo_incompleto(proc: str) -> bool:
     """A captura arquivada deste processo está ABAIXO do mínimo que a casa exige para chamá-la
     íntegra (60% dos documentos com texto)?
@@ -491,7 +520,11 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # já passaram. A tentativa expira: depois da janela, o processo ganha nova chance. Não é
         # martelar — é reconhecer que a condição mudou.
         if f and f.get("n_docs", 0) == 0 and f.get("tentativas", 0) >= 3:
-            return not _tentativa_expirou(f.get("em"))
+            if not _tentativa_expirou(f.get("em")):
+                return True
+            # expirou: volta à fila, SALVO acesso restrito confirmado e ainda recente — esse é
+            # INDISPONÍVEL documentado, não falha intermitente (e a marca também expira, em 90d).
+            return _restrito_confirmado(p)
         return bool(f and f.get("n_docs", 0) > 0)
 
     fila = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)][:max_n]
