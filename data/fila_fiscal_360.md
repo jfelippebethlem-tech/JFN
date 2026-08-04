@@ -2,15 +2,15 @@
 |---|---|---|---|---|
 | 1 | 270131/000548/2023 | 16 | C/EXTREMO | a autorização de despesa foi assinada em 16/05/2024 e o pare; a minuta examinada é do 1º termo aditivo e nenhum instrument; declaração juntada aos autos atesta  |
 | 2 | 030001/111011/2025 | 12 | C/EXTREMO | Seleção (edital, julgamento, homologação); contrato ANTES do parecer (art. 53); pagamento sem evidência de execução |
-| 3 | 080001/037511/2024 | 12 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 4 | 080001/002911/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 5 | 080001/025757/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 6 | 080001/010509/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 7 | 080001/003695/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 8 | 080001/001714/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 9 | 080001/001711/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 10 | 080001/007721/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
-| 11 | 080001/000490/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 3 | 080001/002911/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 4 | 080001/025757/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 5 | 080001/010509/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 6 | 080001/003695/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 7 | 080001/001714/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 8 | 080001/001711/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 9 | 080001/007721/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 10 | 080001/000490/2026 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
+| 11 | 080001/037511/2024 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
 | 12 | 080001/037513/2024 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
 | 13 | 270099/000714/2022 | 10 | B/EXTREMO | a minuta examinada é do 1º termo aditivo e nenhum instrument; perfil do fornecedor contratado: detector C9 confirmado (intensidade 1; planejamento/edital/julgam |
 | 14 | 080002/009942/2026 | 10 | B/EXTREMO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (intensidade 1 |
