@@ -90,9 +90,17 @@ def _restricao_por_unidade(caminho: Path, base: Path) -> dict[str, Any]:
         080002 Fundação Saúde ................  50%  (130 de 261)
         270131 / 270003 / 270006 .............  1%–3%
 
-    Metade da Saúde está fora de alcance, e a Fundação Saúde é justamente a entidade que paga 27%
-    de tudo por TAC/indenização. Isso não é achado contra ninguém — é o tamanho do que a casa NÃO
-    pode afirmar, e é o tipo de limite que se resolve por pedido formal de acesso, não por código.
+    Metade da Saúde está assim classificada, e a Fundação Saúde é justamente a entidade que paga
+    27% de tudo por TAC/indenização. Isso não é achado contra ninguém — é o tamanho do que a casa
+    NÃO pode afirmar hoje.
+
+    ATRIBUIÇÃO HONESTA, e a casa tem regra sobre isto: **nunca culpar acesso**. O número acima é a
+    classificação do REGISTRO DE CONTROLE (`sei_restritos`), que marca RESTRITO quando a árvore não
+    abre em duas leituras de um processo que existe no cadastro — inclusive depois de o sweep
+    tentar o caminho *cracked*. É evidência consistente de nível de acesso restrito do PROCESSO
+    (sigilo), não de falta de permissão da nossa conta: processos ostensivos das MESMAS unidades
+    abrem normalmente, e é isso que faz o percentual variar de 1% a 93% entre unidades. Confirmar
+    por amostra com o leitor canônico (`tools/sei_consultar`) antes de qualquer afirmação externa.
     """
     fora: dict[str, Any] = {"disponivel": False}
     reg_path = base.parent / "sei_restritos.json"

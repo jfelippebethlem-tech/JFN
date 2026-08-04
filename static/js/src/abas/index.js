@@ -389,8 +389,11 @@ export async function renderInstrumentacao(){
     const rx=cc.restricao||{};
     const rest = rx.disponivel
       ? `<div style="margin-top:8px">Dos <b>${fmtN(rx.processos_tentados)}</b> processos que o sweep
-           TENTOU ler, <b>${fmtN(rx.restritos)}</b> (${rx.pct}%) estão fora de alcance por nível de
-           acesso — não é ausência de irregularidade, é porta fechada:</div>
+           TENTOU ler, <b>${fmtN(rx.restritos)}</b> (${rx.pct}%) o registro de controle classifica como
+           de <b>nível de acesso restrito</b> — a árvore não abriu em duas leituras de processo que
+           existe no cadastro, nem pelo caminho <i>cracked</i>. Não é ausência de irregularidade e
+           não é falta de permissão da nossa conta (ostensivos das mesmas unidades abrem normal):
+           é sigilo do processo, a confirmar por amostra com o leitor canônico.</div>
          <div style="margin-top:6px">`+(rx.por_unidade||[]).map(u=>
            `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome||'')}</span>`+
            `<b>${u.pct.toFixed(0)}% restrito</b> <span class="dim">(${u.restritos} de ${u.lidos})</span></div>`
