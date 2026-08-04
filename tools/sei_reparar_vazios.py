@@ -27,8 +27,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from compliance_agent.sei import acervo_texto  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parent.parent
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
@@ -57,10 +61,13 @@ def candidatos(min_kb: int = 20) -> list[dict]:
             falq = pdir / rel
             if not falq.exists():
                 continue
-            try:
-                if len(falq.read_text(errors="replace").strip()) >= MIN_CHARS:
-                    continue
-            except OSError:
+            # A ETIQUETA CONTAVA COMO CONTEÚDO. `len(arquivo)` inclui a linha
+            # `[título] (fase: … · tipo: …)` que nós mesmos prependemos, e ela sozinha passa dos
+            # 80 caracteres — de modo que TODO arquivo só-rótulo era lido como "já tem texto" e a
+            # ferramenta relatava "nada a reparar" com 7.682 documentos vazios no acervo. É a
+            # família 12 do catálogo (metadado dentro do dado) sobrevivendo aqui, e a casa já tem
+            # a porta única que resolve: `acervo_texto.tem_conteudo` mede o teor SEM a etiqueta.
+            if acervo_texto.tem_conteudo(falq, minimo=MIN_CHARS):
                 continue
             try:
                 pdf = cdir / f"{int(d.get('i')):03d}.pdf"
@@ -73,11 +80,39 @@ def candidatos(min_kb: int = 20) -> list[dict]:
     return achados
 
 
+_RE_ID_TITULO = re.compile(r"(\d{6,})")
+"""O identificador SEI é o ÚLTIMO grupo de 6+ dígitos do título — com ou sem parênteses.
+Exigir parênteses deixava indeterminado o que era conferível: "Despacho de Encaminhamento de
+Processo 83371025" traz o id solto, e o SEI o imprime igualmente no cabeçalho da peça."""
+
+
+def pertence(titulo: str, texto: str) -> bool | None:
+    """O texto extraído é DESTE documento? True / False / None (indeterminado).
+
+    O casamento `integra_<proc>/<i:03d}.pdf` ↔ documento `i` do manifesto **não vale**. Medido em
+    2026-08-04, entre os 24 candidatos ao reparo, 7 permitiam conferência e **6 traziam o PDF
+    ERRADO**: "Nota de Autorização de Despesa - NAD 3378" devolvia o texto de um "Despacho de
+    Encaminhamento", "Anexo 2024PD26195 - IRRF" devolvia um e-mail, e o mesmo arquivo de 18 MB
+    aparecia em dois processos sob índices e títulos diferentes (md5 idêntico). Escrever isso
+    colaria o teor de um documento no TÍTULO de outro — a mesma armadilha que a reconciliação de
+    órfãos já documentou, e pior que deixar o documento vazio: vazio é lacuna declarada, trocado
+    é prova falsa.
+
+    A prova aceita é o identificador SEI que o próprio título carrega entre parênteses aparecendo
+    no texto extraído (o SEI o imprime no cabeçalho de cada peça). Sem id no título, ou sem texto
+    para conferir, o resultado é **indeterminado** — e indeterminado não se grava.
+    """
+    ids = _RE_ID_TITULO.findall(str(titulo or ""))
+    if not ids or not (texto or "").strip():
+        return None
+    return ids[-1] in texto
+
+
 def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
     """Extrai o texto do PDF (nativo ou OCR, via `ocr_documento`) e grava. Honesto: se a extração vier
     vazia, NÃO escreve nada e conta como irrecuperável — o documento continua declarado sem texto."""
     from compliance_agent.sei.ocr_docs import ocr_documento
-    recuperados = irrecuperaveis = 0
+    recuperados = irrecuperaveis = nao_conferidos = 0
     chars_total = 0
     por_manifest: dict[Path, dict] = {}
     for a in alvos:
@@ -89,6 +124,15 @@ def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
             continue
         if len(texto) < MIN_CHARS:
             irrecuperaveis += 1
+            continue
+        # PROVA DE PERTENCIMENTO antes de escrever (ver `pertence`)
+        veredito = pertence(a.get("titulo"), texto)
+        if veredito is not True:
+            nao_conferidos += 1
+            print(f"  ✗ {a['processo']} i={a['i']:>3} {str(a['titulo'])[:44]:44s} — "
+                  + ("PDF é de OUTRO documento" if veredito is False
+                     else "não dá para conferir a que documento pertence")
+                  + "; NÃO gravado")
             continue
         recuperados += 1
         chars_total += len(texto)
@@ -108,6 +152,7 @@ def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
     for man, m in por_manifest.items():
         man.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
     return {"alvos": len(alvos), "recuperados": recuperados, "irrecuperaveis": irrecuperaveis,
+            "nao_conferidos": nao_conferidos,
             "chars_recuperados": chars_total, "aplicado": aplicar,
             "manifests_atualizados": len(por_manifest)}
 
@@ -124,6 +169,7 @@ def main(argv=None) -> int:
         return 0
     r = reparar(alvos, aplicar=a.aplicar)
     print(f"\nrecuperados: {r['recuperados']} · irrecuperáveis: {r['irrecuperaveis']} · "
+          f"não conferidos (PDF de outro documento ou sem prova): {r['nao_conferidos']} · "
           f"{r['chars_recuperados']:,} caracteres" + ("" if a.aplicar else "  (SIMULAÇÃO — use --aplicar)"))
     return 0
 
