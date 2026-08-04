@@ -401,12 +401,13 @@ export async function renderInstrumentacao(){
     const esc3=(cb.por_escala||{})['3']||0, esc2=(cb.por_escala||{})['2']||0,
           esc1=(cb.por_escala||{})['1']||0, escN=(cb.por_escala||{})['null']||0;
     h+=card(`<div class="grid g3">
-        <div><div class="dim">Processos com juízo</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_com_juizo} <span class="dim" style="font-size:.9rem">de ${cb.processos_avaliados} (${pct})</span></div></div>
+        <div><div class="dim">Processos com juízo</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_com_juizo} <span class="dim" style="font-size:.9rem">de ${cb.processos_periciaveis==null?cb.processos_avaliados:cb.processos_periciaveis} periciáveis (${pct})</span></div></div>
         <div><div class="dim">Documentos julgados</div><div style="font-size:1.5rem;font-weight:700">${cb.documentos_julgados}</div></div>
         <div><div class="dim">Pendentes</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_pendentes}</div></div>
       </div>
       <div style="margin-top:8px">Escala do juízo: <b>${esc3}</b> viciado · <b>${esc2}</b> frágil · <b>${esc1}</b> regular · <span class="dim">${escN} não classificável</span></div>
       <div class="dim" style="margin-top:4px">Julgado por: ${cadeias} · rubrica v${esc(cb.rubrica)} · último juízo ${esc(cb.ultimo_juizo||'—')}</div>
+      ${cb.processos_sem_captura?`<div class="dim" style="margin-top:4px">+ ${cb.processos_sem_captura} processos fora desta conta: não têm captura utilizável, e essa é outra fila (ver o cartão acima).</div>`:''}
       <div class="dim" style="margin-top:6px">${esc(cb._nota||'')}</div>`);
   }else{
     h+=card(`<div class="warn">Cobertura da perícia INDISPONÍVEL${cb&&cb.motivo?': '+esc(cb.motivo):''} — indisponível não é zero.</div>`);

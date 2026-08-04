@@ -37,6 +37,21 @@ def medir(*, db: str | Path | None = None, rubrica: str | None = None) -> dict[s
         return {"indisponivel": True, "motivo": str(e)[:120], "rubrica": rubrica, "pct": None}
     try:
         avaliados = con.execute("select count(*) from processo_avaliacao").fetchone()[0]
+        # DENOMINADOR: só o que é PERICIÁVEL. Processo cuja captura não dá para avaliar
+        # (`NAO_AVALIAVEL`) não está pendente de PERÍCIA, está pendente de CAPTURA — e são duas
+        # filas diferentes, com donos diferentes. Somá-las mostrava 2.174 pendentes quando 234
+        # deles não têm texto para julgar; a fila da captura tem cartão próprio desde
+        # 2026-08-04 (`reporting/cobertura_captura`). Misturar as duas faz o número da perícia
+        # parecer pior do que é e some com a razão real do atraso.
+        # Degrada para o total quando a coluna não existe (esquema antigo/teste): perder a
+        # separação das duas filas é aceitável; perder a MEDIÇÃO INTEIRA por uma coluna, não.
+        try:
+            periciaveis = con.execute(
+                "select count(*) from processo_avaliacao "
+                "where faixa is null or faixa != 'NAO_AVALIAVEL'").fetchone()[0]
+        except sqlite3.Error:
+            periciaveis = avaliados
+        sem_captura = max(0, avaliados - periciaveis)
         com_juizo = con.execute(
             "select count(distinct numero_sei) from doc_veredito where rubrica_versao=?",
             (rubrica,)).fetchone()[0]
@@ -57,12 +72,14 @@ def medir(*, db: str | Path | None = None, rubrica: str | None = None) -> dict[s
         con.close()
     return {
         "indisponivel": False, "rubrica": rubrica,
-        "processos_avaliados": avaliados, "processos_com_juizo": com_juizo,
-        "processos_pendentes": max(0, avaliados - com_juizo),
+        "processos_avaliados": avaliados, "processos_periciaveis": periciaveis,
+        "processos_sem_captura": sem_captura, "processos_com_juizo": com_juizo,
+        "processos_pendentes": max(0, periciaveis - com_juizo),
         "documentos_julgados": docs,
-        "pct": round(100.0 * com_juizo / avaliados, 1) if avaliados else None,
+        "pct": round(100.0 * com_juizo / periciaveis, 1) if periciaveis else None,
         "por_cadeia": por_cadeia, "por_escala": por_escala, "ultimo_juizo": ultimo,
-        "_nota": ("Cobertura da perícia documento a documento na rubrica vigente. Processo sem "
-                  "juízo NÃO é processo regular: é processo ainda não periciado — "
-                  "INDISPONÍVEL ≠ 0."),
+        "_nota": ("Cobertura da perícia documento a documento na rubrica vigente, sobre os "
+                  "processos PERICIÁVEIS. Processo sem juízo NÃO é processo regular: é processo "
+                  "ainda não periciado — INDISPONÍVEL ≠ 0. Os sem captura utilizável estão numa "
+                  "fila diferente, com dono diferente (ver /api/captura/cobertura)."),
     }

@@ -63,3 +63,51 @@ def test_base_ausente_devolve_indisponivel_e_nao_zero(tmp_path):
     r = C.medir(db=tmp_path / "nao_existe.db", rubrica="3")
     assert r["indisponivel"] is True
     assert r.get("pct") is None, "0% afirmaria cobertura nula onde não houve medição"
+
+
+def test_denominador_e_o_PERICIAVEL_nao_o_total(tmp_path):
+    """Processo cuja captura não dá para avaliar não está pendente de PERÍCIA, está pendente de
+    CAPTURA — duas filas, donos diferentes. Somá-las mostrava 2.174 pendentes quando 234 deles
+    não têm texto para julgar, fazendo o número da perícia parecer pior do que é e sumindo com a
+    razão real do atraso. A fila da captura tem cartão próprio (`/api/captura/cobertura`).
+    """
+    import sqlite3
+    from compliance_agent.reporting import cobertura_pericia as CP
+    db = tmp_path / "c.db"
+    con = sqlite3.connect(db)
+    con.executescript("""
+        create table processo_avaliacao (numero_sei text primary key, score100 real, faixa text);
+        create table doc_veredito (id integer primary key autoincrement, numero_sei text,
+          doc_i integer, rubrica_versao text, modelo text, escala integer, avaliado_em text);
+    """)
+    con.executemany("insert into processo_avaliacao values (?,?,?)",
+                    [(f"P{i}", 10.0, "ALTO") for i in range(8)]
+                    + [(f"N{i}", 0.0, "NAO_AVALIAVEL") for i in range(2)])
+    con.execute("insert into doc_veredito(numero_sei, doc_i, rubrica_versao, modelo, escala,"
+                " avaliado_em) values ('P0',0,'3','x',1,'2026-01-01')")
+    con.commit(); con.close()
+
+    r = CP.medir(db=db, rubrica="3")
+    assert r["processos_avaliados"] == 10
+    assert r["processos_periciaveis"] == 8 and r["processos_sem_captura"] == 2
+    assert r["processos_pendentes"] == 7, "pendente é sobre o periciável, não sobre o total"
+    assert r["pct"] == 12.5, "1 de 8 periciáveis — não 1 de 10"
+
+
+def test_esquema_sem_a_coluna_faixa_nao_derruba_a_medicao():
+    """Perder a separação das duas filas é aceitável; perder a MEDIÇÃO por uma coluna, não."""
+    import sqlite3
+    from compliance_agent.reporting import cobertura_pericia as CP
+    import pathlib
+    import tempfile
+    d = pathlib.Path(tempfile.mkdtemp()) / "v.db"
+    con = sqlite3.connect(d)
+    con.executescript("""
+        create table processo_avaliacao (numero_sei text primary key, score100 real);
+        create table doc_veredito (id integer primary key autoincrement, numero_sei text,
+          doc_i integer, rubrica_versao text, modelo text, escala integer, avaliado_em text);
+    """)
+    con.execute("insert into processo_avaliacao values ('P0', 1.0)")
+    con.commit(); con.close()
+    r = CP.medir(db=d, rubrica="3")
+    assert r["indisponivel"] is False and r["processos_periciaveis"] == 1
