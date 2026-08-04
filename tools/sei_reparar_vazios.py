@@ -26,6 +26,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import json
 import re
 import sys
@@ -220,7 +221,9 @@ def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
             if str(d.get("i")) == str(a["i"]):
                 d["chars"] = str(len(texto))
                 d["ocr"] = "True"
-                d["reparado_em"] = "2026-07-24"
+                # data REAL do reparo: a constante fixa datava de julho um reparo feito hoje, e
+                # `reparado_em` só serve para responder "quando isto foi recuperado".
+                d["reparado_em"] = _dt.date.today().isoformat()
     for man, m in por_manifest.items():
         man.write_text(json.dumps(m, ensure_ascii=False), encoding="utf-8")
     return {"alvos": len(alvos), "recuperados": recuperados, "irrecuperaveis": irrecuperaveis,
