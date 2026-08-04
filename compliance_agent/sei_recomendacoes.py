@@ -101,7 +101,15 @@ _RE_BOILERPLATE = re.compile(
     r"observ[âa]ncia\s+ao\s+princ[ií]pio\s+da\s+prud[êe]ncia"
     r"|enunciado\s+n\.?\s*[ºo°]?\s*\d+\s+da\s+pge|item\s+\d+\s+do\s+enunciado"
     r"|a\s+seguinte\s+express[ãa]o\s*:|desde\s+que\s+complementar\s+[àa]\s+lei"
-    r"|aceita[çc][ãa]o\s+desta\s+certid[ãa]o", re.I)
+    r"|aceita[çc][ãa]o\s+desta\s+certid[ãa]o"
+    # O AVISO DE NÃO-VINCULAÇÃO é a assinatura do parecer, não uma ressalva dele: "esta
+    # manifestação, embora de emissão obrigatória, NÃO POSSUI CARÁTER VINCULANTE para o gestor,
+    # que poderá dela discordar, DESDE QUE apresente as razões de fato e de direito". O "desde
+    # que" é o que casa o padrão de ressalva — e a frase aparece em praticamente todo parecer.
+    # Medido em 2026-08-04: **4 dos 15** disparos de A3 que ainda afirmavam ausência de resposta
+    # se ancoravam nela, com o MESMO texto em três órgãos diferentes.
+    r"|n[ãa]o\s+(?:possui|tem)\s+car[áa]ter\s+vinculante|car[áa]ter\s+meramente\s+opinativo"
+    r"|n[ãa]o\s+vincula\s+o\s+gestor", re.I)
 # doc que É parecer pelo TÍTULO (mesmo favorável, sem ressalva) — p/ separar "sem parecer" de "parecer regular"
 _RE_TITULO_PARECER = re.compile(
     r"\b(parecer|manifesta[çc][aã]o\s+jur[ií]dica|nota\s+t[eé]cnica|promo[çc][aã]o)\b", re.I)

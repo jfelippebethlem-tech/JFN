@@ -231,3 +231,23 @@ def test_suficiencia_so_com_juridico_proprio_e_INSUFICIENTE_na_dispensa():
     r = S.suficiencia_parecer(docs, "contratacao_direta")
     assert r["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE"
     assert S.suficiencia_parecer(docs, "contrato")["veredito"] == "SUFICIENTE"
+
+
+def test_aviso_de_nao_vinculacao_e_BOILERPLATE_nao_ressalva():
+    """"Esta manifestação, embora de emissão obrigatória, NÃO POSSUI CARÁTER VINCULANTE para o
+    gestor, que poderá dela discordar, DESDE QUE apresente as razões de fato e de direito" — o
+    "desde que" casa o padrão de ressalva, e a frase é a assinatura do parecer, não uma exigência
+    dele. Medido em 2026-08-04: 4 dos 15 disparos de A3 que ainda afirmavam ausência de resposta
+    se ancoravam nela, com o MESMO texto em três órgãos diferentes."""
+    for texto in ("esta manifestação não possui caráter vinculante para o gestor, que poderá dela "
+                  "discordar, desde que apresente as razões de fato e de direito",
+                  "parecer de caráter meramente opinativo",
+                  "a manifestação não vincula o gestor"):
+        assert S._RE_BOILERPLATE.search(texto), texto
+
+
+def test_ressalva_de_verdade_nao_vira_boilerplate():
+    """"VIABILIDADE DO PROSSEGUIMENTO DO FEITO, DESDE QUE SANADAS PREVIAMENTE AS RESSALVAS
+    APONTADAS" é aprovação condicionada — tem de continuar valendo."""
+    assert not S._RE_BOILERPLATE.search(
+        "viabilidade do prosseguimento do feito, desde que sanadas previamente as ressalvas apontadas")
