@@ -19,6 +19,49 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 REPO = Path(__file__).resolve().parent.parent
 
 
+def _lote_por_rodizio(n: int) -> list[str]:
+    """Quem entra no lote: primeiro o NUNCA avaliado, depois o mais DESATUALIZADO.
+
+    Antes o lote era "os N maiores por número de documentos" — e isso significa **os mesmos 120
+    processos a cada 4 horas**, para sempre. O resto do acervo nunca era reavaliado, então uma
+    correção de detector só alcançava o topo da lista: em 2026-08-04 isso me obrigou a rodar
+    passadas manuais sobre os 2.174 processos CINCO vezes num dia, porque o cron não convergia
+    sozinho.
+
+    Com rodízio por `avaliado_em`, o acervo inteiro se atualiza em poucos dias (120 a cada 4h =
+    720/dia) e a correção de detector chega em todo lugar sem ninguém empurrar. A prioridade do
+    que nunca foi avaliado continua intacta — captura nova entra na frente.
+    """
+    import sqlite3
+    base = REPO / "data" / "sei_arquivo"
+    do_disco: list[str] = []
+    for mf in base.glob("*/manifest.json"):
+        try:
+            man = json.loads(mf.read_text(encoding="utf-8"))
+        except (OSError, ValueError):   # manifest ilegível/corrompido: não entra no lote
+            continue
+        do_disco.append(str(man.get("processo") or mf.parent.name))
+
+    db = REPO / "data" / "compliance.db"
+    avaliados: dict[str, str] = {}
+    if db.exists():
+        try:
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            try:
+                for num, quando in con.execute(
+                        "SELECT numero_sei, COALESCE(avaliado_em, '') FROM processo_avaliacao"):
+                    avaliados[str(num)] = str(quando)
+                    avaliados[f"SEI-{num}"] = str(quando)
+            finally:
+                con.close()
+        except sqlite3.Error:
+            avaliados = {}
+
+    novos = [p for p in do_disco if p not in avaliados]
+    velhos = sorted((p for p in do_disco if p in avaliados), key=lambda p: avaliados[p])
+    return (novos + velhos)[:n]
+
+
 def _imprimir(out: dict) -> None:
     if out.get("status") != "OK":
         print(f"{out.get('numero_sei')}: INDISPONÍVEL — {out.get('motivo')}")
@@ -54,15 +97,7 @@ def main():
     if args.numero:
         alvos = [args.numero]
     elif args.lote:
-        base = REPO / "data" / "sei_arquivo"
-        tam = []
-        for mf in base.glob("*/manifest.json"):
-            try:
-                man = json.loads(mf.read_text(encoding="utf-8"))
-            except (OSError, ValueError):   # manifest ilegível/corrompido: não entra no lote
-                continue
-            tam.append((len(man.get("docs") or []), str(man.get("processo") or mf.parent.name)))
-        alvos = [p for _, p in sorted(tam, reverse=True)[:args.lote]]
+        alvos = _lote_por_rodizio(args.lote)
     else:
         print("informe --numero ou --lote N", file=sys.stderr)
         return 2
