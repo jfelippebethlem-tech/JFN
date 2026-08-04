@@ -79,3 +79,59 @@ def test_o_gravador_so_escreve_o_que_prova(tmp_path, monkeypatch):
                     "manifest": man, "kb": 10.0}], aplicar=True)
     assert r["recuperados"] == 0 and r["nao_conferidos"] == 1
     assert txt.read_text(encoding="utf-8") == antes, "gravou o teor de outro documento"
+
+
+# ───────── realinhamento por identificador: as duas ambiguidades ─────────
+
+def _pdf_com_texto(caminho, texto):
+    """PDF de uma página com o texto dado (pymupdf grava; o teste lê pelo mesmo caminho)."""
+    import pymupdf
+    doc = pymupdf.open()
+    pagina = doc.new_page()
+    pagina.insert_text((40, 60), texto, fontsize=9)
+    doc.save(caminho)
+    doc.close()
+
+
+def test_pdf_que_CITA_varios_ids_no_topo_nao_vira_dono_de_nenhum(tmp_path):
+    """Primeira versão desta função caiu nisto: um despacho cita no cabeçalho o identificador das
+    peças que encaminha e virava dono de todas — dois documentos diferentes resolviam para o MESMO
+    arquivo (medido: i=41 'parecer' e i=44 'nota de liquidação' com 51 KB e 8.031 caracteres
+    idênticos)."""
+    _pdf_com_texto(tmp_path / "000.pdf", "Despacho encaminha 83371931 e tambem 83371603")
+    assert R.indexar_por_identificador(tmp_path) == {}
+
+
+def test_pdf_com_UM_id_no_topo_vira_dono(tmp_path):
+    _pdf_com_texto(tmp_path / "007.pdf", "Parecer 2848 (83434921) Fundacao Saude")
+    mapa = R.indexar_por_identificador(tmp_path)
+    assert mapa == {"83434921": tmp_path / "007.pdf"}
+
+
+def test_dois_pdfs_com_o_MESMO_id_invalidam_os_dois(tmp_path):
+    """Preferir o primeiro seria escolher ao acaso qual prova entra no dossiê."""
+    _pdf_com_texto(tmp_path / "001.pdf", "Documento (83434921) versao A")
+    _pdf_com_texto(tmp_path / "002.pdf", "Documento (83434921) versao B")
+    assert R.indexar_por_identificador(tmp_path) == {}
+
+
+def test_realinhar_troca_o_pdf_posicional_pelo_dono_de_verdade(tmp_path):
+    _pdf_com_texto(tmp_path / "000.pdf", "Peca alheia (11111111)")
+    _pdf_com_texto(tmp_path / "009.pdf", "Termo de Ajuste (83406122) Fundacao Saude")
+    alvo = {"processo": "p", "i": 0, "tipo": "outro",
+            "titulo": "Termo de Ajuste de Contas (83406122)",
+            "pdf": tmp_path / "000.pdf", "txt": tmp_path / "t.txt",
+            "manifest": tmp_path / "m.json", "kb": 1.0}
+    saida, sem_dono = R.realinhar([alvo])
+    assert sem_dono == 0
+    assert saida[0]["pdf"] == tmp_path / "009.pdf"
+
+
+def test_alvo_sem_dono_no_diretorio_e_descartado(tmp_path):
+    """Sem dono não há reparo honesto — e a `pertence` recusaria depois de qualquer forma."""
+    _pdf_com_texto(tmp_path / "000.pdf", "Peca alheia (11111111)")
+    alvo = {"processo": "p", "i": 0, "tipo": "outro", "titulo": "Documento (99999999)",
+            "pdf": tmp_path / "000.pdf", "txt": tmp_path / "t.txt",
+            "manifest": tmp_path / "m.json", "kb": 1.0}
+    saida, sem_dono = R.realinhar([alvo])
+    assert saida == [] and sem_dono == 1

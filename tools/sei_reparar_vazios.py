@@ -80,6 +80,10 @@ def candidatos(min_kb: int = 20) -> list[dict]:
     return achados
 
 
+_TOPO_DA_PAGINA = 300
+"""Onde o SEI imprime o cabeçalho da própria peça. Abaixo disso começa o corpo, que CITA os
+identificadores de outras peças."""
+
 _RE_ID_TITULO = re.compile(r"(\d{6,})")
 """O identificador SEI é o ÚLTIMO grupo de 6+ dígitos do título — com ou sem parênteses.
 Exigir parênteses deixava indeterminado o que era conferível: "Despacho de Encaminhamento de
@@ -113,6 +117,67 @@ def pertence(titulo: str, texto: str) -> bool | None:
     if not ids or not (texto or "").strip():
         return None
     return ids[-1] in texto
+
+
+def indexar_por_identificador(cdir: Path) -> dict[str, Path]:
+    """Mapa `identificador SEI → PDF` construído lendo a PRIMEIRA PÁGINA de cada PDF da íntegra.
+
+    Substitui a suposição posicional por evidência. O SEI imprime o identificador da peça no
+    cabeçalho, então a primeira página basta e é barata: só o texto NATIVO é lido aqui (nada de
+    OCR nesta fase), porque o objetivo é achar o dono do arquivo, não extrair o conteúdo — e um
+    PDF escaneado continuará sem dono até que alguém o processe.
+
+    Duas ambiguidades invalidam o vínculo, e as duas MORDERAM na primeira versão desta função:
+
+    * **um PDF anunciando vários ids** — um despacho cita no corpo o identificador das peças que
+      encaminha, e virava "dono" de todas elas: dois documentos diferentes resolviam para o MESMO
+      arquivo (medido: i=41 "parecer" e i=44 "nota de liquidação" com 51 KB e 8.031 caracteres
+      idênticos). Por isso o id é procurado só no TOPO da primeira página, onde o SEI imprime o
+      cabeçalho da própria peça, e um topo com mais de um id é descartado inteiro;
+    * **dois PDFs anunciando o mesmo id** — preferir o primeiro seria escolher ao acaso qual prova
+      entra no dossiê.
+    """
+    import pymupdf
+    mapa: dict[str, Path] = {}
+    colidiram: set[str] = set()
+    for pdf in sorted(cdir.glob("*.pdf")):
+        try:
+            with pymupdf.open(pdf) as doc:
+                cabeca = (doc[0].get_text() if doc.page_count else "")[:_TOPO_DA_PAGINA]
+        except Exception:  # noqa: BLE001 — PDF corrompido não impede o resto do diretório
+            continue
+        ids = set(_RE_ID_TITULO.findall(cabeca or ""))
+        if len(ids) != 1:
+            continue                      # topo mudo ou ambíguo não identifica dono
+        ident = ids.pop()
+        if ident in mapa and mapa[ident] != pdf:
+            colidiram.add(ident)
+        mapa[ident] = pdf
+    for ident in colidiram:
+        mapa.pop(ident, None)
+    return mapa
+
+
+def realinhar(alvos: list[dict]) -> tuple[list[dict], int]:
+    """Troca o PDF posicional pelo PDF que ANUNCIA o identificador do documento.
+
+    Devolve (alvos com o pdf corrigido, quantos ficaram sem dono). O alvo sem id no título ou sem
+    PDF correspondente é descartado — sem dono não há reparo honesto, e a `pertence` recusaria
+    depois de qualquer forma.
+    """
+    por_dir: dict[Path, dict[str, Path]] = {}
+    saida, sem_dono = [], 0
+    for a in alvos:
+        cdir = a["pdf"].parent
+        if cdir not in por_dir:
+            por_dir[cdir] = indexar_por_identificador(cdir)
+        ids = _RE_ID_TITULO.findall(str(a.get("titulo") or ""))
+        alvo_pdf = por_dir[cdir].get(ids[-1]) if ids else None
+        if not alvo_pdf:
+            sem_dono += 1
+            continue
+        saida.append({**a, "pdf": alvo_pdf, "kb": alvo_pdf.stat().st_size / 1024})
+    return saida, sem_dono
 
 
 def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
@@ -168,12 +233,17 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--aplicar", action="store_true", help="grava o texto recuperado (default: só relata)")
     ap.add_argument("--min-kb", type=int, default=20, help="tamanho mínimo do PDF em cache (default 20)")
+    ap.add_argument("--por-identificador", action="store_true",
+                    help="acha o PDF pelo id SEI impresso no cabeçalho, em vez do índice do arquivo")
     a = ap.parse_args(argv)
     alvos = candidatos(a.min_kb)
     print(f"documentos sem texto com PDF ≥ {a.min_kb}KB no cache: {len(alvos)}")
     if not alvos:
         print("nada a reparar — os vazios restantes não têm PDF utilizável em disco (exigem recaptura).")
         return 0
+    if a.por_identificador:
+        alvos, sem_dono = realinhar(alvos)
+        print(f"realinhados por identificador: {len(alvos)} · sem dono no diretório: {sem_dono}")
     r = reparar(alvos, aplicar=a.aplicar)
     print(f"\nrecuperados: {r['recuperados']} · irrecuperáveis: {r['irrecuperaveis']} · "
           f"não conferidos (PDF de outro documento ou sem prova): {r['nao_conferidos']} · "
