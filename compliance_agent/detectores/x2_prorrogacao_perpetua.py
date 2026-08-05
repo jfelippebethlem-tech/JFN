@@ -40,6 +40,9 @@ from compliance_agent.detectores.base import (
 # ───────────────────────────── Limiares objetivos (CÓDIGO, nunca prompt) ─────────────────────────────
 _ANOS_FORTE = 5.0      # > 5 anos no mesmo objeto sem relicitar → forte
 _ANOS_CRITICO = 10.0   # > 10 anos → crítico
+_ANOS_IMPLAUSIVEL = 15.0
+"""Acima disto não há hipótese legal que sustente: é erro de data na fonte, não contrato eterno.
+Número impossível é leitura quebrada, não achado (família 13 do catálogo de falhas)."""
 _PRORROGACOES_FORTE = 3  # ≥ 3 prorrogações sem nova licitação → forte
 
 # Rubrica fechada da qualidade da pesquisa de vantajosidade por renovação (spec X2). LLM-opcional; degrada honesto.
@@ -173,6 +176,26 @@ class X2ProrrogacaoPerpetua(Detector):
         # ── REGRAS OBJETIVAS (código, nunca prompt) ──
         score = 0.0
         razoes: list[str] = []
+
+        # INVARIANTE DE PLAUSIBILIDADE. Prazo além de qualquer hipótese legal não é violação
+        # maior — é DADO ERRADO. Medido em 2026-08-04, no primeiro processo em que este detector
+        # conseguiu avaliar depois de ligarem a vigência: SEI-260007/009935/2024, "AQUISIÇÃO DO
+        # MEDICAMENTO CIPROFLOXACINO" por R$ 58.608,00, com `vig_inicio` de 08/06/2002 no registro
+        # do TCE-RJ — **23,01 anos** para uma compra pontual de remédio. O detector devolvia
+        # `critico` 1,0 e levava o processo a EXTREMO.
+        # A lei admite 5 anos, e 10 nas hipóteses excepcionais; acima de `_ANOS_IMPLAUSIVEL` não há
+        # hipótese que sustente, então a saída honesta é nao_avaliavel dizendo o que não fecha —
+        # mesma doutrina do X9 ("não se suprime mais do que existe").
+        if anos is not None and anos > _ANOS_IMPLAUSIVEL:
+            res.status = "nao_avaliavel"
+            res.score = 0.0
+            res.valores = {**valores, "anos": anos, "prazo_implausivel": True}
+            res.motivo_refutacao = (
+                f"nao_avaliavel: vigência apurada de {anos:.1f} anos excede qualquer hipótese "
+                f"legal (a lei admite 5, e 10 nas excepcionais) — acima de "
+                f"{_ANOS_IMPLAUSIVEL:g} anos o que está errado é a DATA, não o contrato. "
+                "Conferir `vig_inicio` na fonte antes de afirmar prorrogação perpétua.")
+            return res
 
         if anos is not None:
             if anos > _ANOS_CRITICO:
