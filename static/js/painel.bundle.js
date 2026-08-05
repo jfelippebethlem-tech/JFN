@@ -4382,7 +4382,11 @@ void main(){
         <div><div class="dim">Universo pago</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(cc.valor_pago_universo)}</div></div>
       </div>
       <div style="margin-top:8px">Arquivados: <b>${a.integro}</b> íntegros · <b>${a.parcial}</b> parciais ·
-        <b>${a.sem_teor}</b> sem teor · <b>${a.sem_docs}</b> sem índice — os três últimos voltam à fila do sweep</div>
+        <b>${a.sem_teor}</b> sem teor · <b>${a.sem_docs}</b> sem índice` + // TETO DE COLETA: o painel dizia 1.941 íntegros enquanto o motor recusava 176 deles —
+      // arquivos vindos do CACHE do sweep parados em EXATAMENTE 40 documentos. O cache do
+      // SEI-170002/000732/2022 registra árvore de 783 contra 40 lidos: é corte, não processo
+      // completo. Some no balde de "íntegro" seria repetir no painel o erro que o gate cometia.
+      (a.teto_de_coleta ? ` · <b>${a.teto_de_coleta}</b> no <b>teto de coleta</b> (parados em 40 documentos)` : "") + ` — todos estes voltam à fila do sweep</div>
       ${rest}
       <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
     } else {

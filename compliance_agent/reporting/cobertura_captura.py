@@ -42,7 +42,7 @@ def _estado_do_acervo(base: Path) -> dict[str, int]:
     """
     from compliance_agent.sei import acervo_texto
 
-    fora = {"integro": 0, "parcial": 0, "sem_teor": 0, "sem_docs": 0}
+    fora = {"integro": 0, "parcial": 0, "sem_teor": 0, "sem_docs": 0, "teto_de_coleta": 0}
     if not base.is_dir():
         return fora
     for p in base.iterdir():
@@ -61,6 +61,16 @@ def _estado_do_acervo(base: Path) -> dict[str, int]:
             continue
         # mesmo critério do `manifesto_norm.captura_integra` — 60% dos declarados com teor —
         # mas sem reabrir o manifesto: os caminhos já estão em mãos.
+        # TETO DE COLETA: o painel dizia 1.941 íntegros enquanto o motor recusava 176 deles.
+        # Arquivo montado do CACHE do sweep parado em EXATAMENTE 40 documentos é corte, não
+        # processo completo — medido em 2026-08-05: dos 1.902 arquivos vindos do cache, 176 param
+        # em 40 e ZERO passa disso; o cache do SEI-170002/000732/2022 registra árvore de 783
+        # documentos contra 40 lidos. É a mesma régua de `manifesto_norm.captura_integra`, e a
+        # razão de estar duplicada aqui é a de sempre neste arquivo: uma leitura por processo, ou
+        # a aba inteira do painel deixa de renderizar.
+        if len(docs) == 40 and "CACHE do sweep" in str(man.get("aviso") or ""):
+            fora["teto_de_coleta"] += 1
+            continue
         com = sum(1 for d in docs
                   if d.get("texto") and acervo_texto.tem_conteudo(p / str(d["texto"])))
         if com == 0:
