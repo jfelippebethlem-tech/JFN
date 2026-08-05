@@ -107,3 +107,43 @@ def test_estado_ilegivel_nao_impede_a_rodada(tmp_path, monkeypatch):
 def test_sem_estado_a_rodada_comeca_do_zero(tmp_path, monkeypatch):
     monkeypatch.setattr(PC, "ESTADO", tmp_path / "nao_existe.json")
     assert PC._estado_ler() == set()
+
+
+def test_uma_instancia_por_vez(tmp_path, monkeypatch, capsys):
+    """Aconteceu em 2026-08-04: rodei uma segunda instância enquanto a primeira ainda processava,
+    as duas leram e escreveram o MESMO estado, e a segunda saiu na hora dizendo "0 restantes"
+    porque o estado da primeira já cobria o alvo dela. Nenhum dado se perdeu, mas o alvo que eu
+    queria reavaliar NÃO foi reavaliado — e eu só descobri conferindo o banco."""
+    import os
+
+    trava = tmp_path / "trava.pid"
+    trava.write_text(str(os.getpid()), encoding="utf-8")   # o próprio processo do teste
+    monkeypatch.setattr(PC, "TRAVA", trava)
+    assert PC._outra_instancia_viva() is None or PC._outra_instancia_viva() == os.getpid()
+
+
+def test_pid_morto_nao_trava_a_ferramenta(tmp_path, monkeypatch):
+    trava = tmp_path / "trava.pid"
+    trava.write_text("999999", encoding="utf-8")
+    monkeypatch.setattr(PC, "TRAVA", trava)
+    assert PC._outra_instancia_viva() is None
+
+
+def test_pid_de_OUTRO_comando_nao_trava(tmp_path, monkeypatch):
+    """PID vivo mas de processo que não é a ferramenta: o cmdline desmente o arquivo."""
+    import subprocess
+    p = subprocess.Popen(["sleep", "20"])
+    try:
+        trava = tmp_path / "trava.pid"
+        trava.write_text(str(p.pid), encoding="utf-8")
+        monkeypatch.setattr(PC, "TRAVA", trava)
+        assert PC._outra_instancia_viva() is None
+    finally:
+        p.kill()
+
+
+def test_trava_ilegivel_nao_impede_a_rodada(tmp_path, monkeypatch):
+    trava = tmp_path / "trava.pid"
+    trava.write_text("nao é pid", encoding="utf-8")
+    monkeypatch.setattr(PC, "TRAVA", trava)
+    assert PC._outra_instancia_viva() is None

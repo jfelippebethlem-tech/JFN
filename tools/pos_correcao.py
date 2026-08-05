@@ -94,6 +94,33 @@ ESTADO = RAIZ / "data" / ".pos_correcao_estado.json"
 """Quem já foi reavaliado NESTA rodada. Some quando a rodada termina inteira."""
 
 
+TRAVA = RAIZ / "data" / ".pos_correcao.pid"
+"""Uma instância por vez: duas compartilhando o mesmo estado se atropelam."""
+
+
+def _outra_instancia_viva() -> int | None:
+    """PID de outra rodada em curso, ou None.
+
+    Aconteceu comigo em 2026-08-04: rodei uma segunda instância enquanto a primeira ainda
+    processava, as duas leram e escreveram o MESMO `.pos_correcao_estado.json`, e a segunda saiu
+    na hora dizendo "0 restantes" porque o estado da primeira já cobria o alvo dela. Nenhum dado
+    se perdeu, mas o alvo que eu queria reavaliar não foi reavaliado — e eu só descobri conferindo
+    o banco.
+
+    PID em arquivo, não `flock`: descritor herdado por filho sobrevivente travaria a ferramenta
+    para sempre, que é pior. PID morto ou reciclado por outro comando libera sozinho.
+    """
+    try:
+        pid = int(TRAVA.read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    try:
+        cmd = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode(errors="ignore")
+    except OSError:
+        return None
+    return pid if "pos_correcao" in cmd else None
+
+
 def _estado_ler() -> set[str]:
     try:
         return set(json.loads(ESTADO.read_text(encoding="utf-8")).get("feitos") or [])
@@ -190,6 +217,11 @@ def main(argv=None) -> int:
                     help="ignora o estado de uma rodada interrompida e recomeça do início")
     a = ap.parse_args(argv)
 
+    viva = _outra_instancia_viva()
+    if viva:
+        print(f"[pos-correcao] já há uma rodada em curso (pid {viva}) — duas instâncias "
+              "compartilhariam o mesmo estado e uma atropelaria a outra. Espere ela terminar.")
+        return 1
     antes = fotografia()
     if a.so_medir:
         print(json.dumps(antes, ensure_ascii=False, indent=1))
@@ -201,7 +233,11 @@ def main(argv=None) -> int:
               "carregado é somar trabalho.")
         return 1
 
-    reavaliar(a.limite or None, retomar=not a.do_zero)
+    TRAVA.write_text(str(os.getpid()), encoding="utf-8")
+    try:
+        reavaliar(a.limite or None, retomar=not a.do_zero)
+    finally:
+        TRAVA.unlink(missing_ok=True)
     fila_ok = False if a.sem_fila else regravar_fila()
     depois = fotografia()
 
