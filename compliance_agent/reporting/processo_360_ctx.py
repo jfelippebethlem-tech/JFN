@@ -160,8 +160,22 @@ def render_processo_ctx(out: dict) -> dict:
     if lc:
         hon += ("<p><b>Lacunas de CAPTURA</b> (trabalho NOSSO — não capturado ≠ inexistente):</p><ul>"
                 + "".join(f"<li>{_h.escape(str(x.get('falta')))}</li>" for x in lc) + "</ul>")
+    # DETECTOR SEM CONDIÇÃO DE AVALIAR É INDISPONIBILIDADE, e a seção existe para dizer isso. Até
+    # 2026-08-04 aqui saía "indisponíveis: nenhum" num processo em que 30 das 43 réguas não tinham
+    # dado para rodar — porque `indisponiveis` só listava MOTOR QUEBRADO. Quem lê o dossiê
+    # concluía que tudo fora aferido.
+    na = cob.get("nao_avaliaveis") or []
+    if na:
+        itens = "".join(
+            f"<li><b>{_h.escape(str(x.get('detector')))}</b> — {_h.escape(str(x.get('motivo')))}</li>"
+            for x in na[:12])
+        hon += (f"<p><b>Réguas SEM CONDIÇÃO DE AVALIAR</b> ({len(na)} de "
+                f"{len(cob.get('detectores_rodados') or [])} rodadas) — não é ausência de "
+                f"irregularidade, é ausência de dado:</p><ul>{itens}</ul>"
+                + (f"<p class='nota'>… e mais {len(na) - 12}.</p>" if len(na) > 12 else ""))
     hon += (f"<p class='nota'>Cobertura: captura íntegra = <b>{cob.get('captura_integra')}</b> · "
-            f"{len(cob.get('detectores_rodados') or [])} régua(s) rodada(s) · indisponíveis: "
+            f"{len(cob.get('detectores_rodados') or [])} régua(s) rodada(s) · "
+            f"{len(na)} sem condição de avaliar · motores com falha: "
             f"{_h.escape('; '.join(cob.get('indisponiveis') or []) or 'nenhum')[:400]}. "
             "INDISPONÍVEL ≠ 0.</p>")
     secoes.append({"titulo": "VI. Honestidade da cobertura (lacunas e indisponibilidades)", "html": hon})

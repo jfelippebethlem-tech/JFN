@@ -548,9 +548,21 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         "sintese": sintese,
         "matriz_sv": {"severidade": sev, "verossimilhanca": ver, "produto": sev * ver},
         "escalada": escalada,
+        # DETECTOR QUE NÃO PÔDE AVALIAR TAMBÉM É INDISPONIBILIDADE. `indisponiveis` só registrava
+        # MOTOR QUEBRADO (exceção), então um processo em que 33 dos 43 detectores devolveram
+        # `nao_avaliavel` por falta de dado saía com "indisponíveis: nenhum" — e a seção
+        # "Honestidade da cobertura" do dossiê lia isso como "nada ficou de fora". Medido em
+        # 2026-08-04 no SEI-070002/001289/2022: 43 detectores rodados, 0 indisponíveis
+        # declarados, 33 sem condição de avaliar. É a regra da casa (INDISPONÍVEL ≠ 0) falhando
+        # no relatório da própria casa.
         "cobertura": {"captura_integra": integra, **ev_captura,
                       "detectores_rodados": sorted(set(rodados)),
-                      "indisponiveis": indisponiveis},
+                      "indisponiveis": indisponiveis,
+                      "nao_avaliaveis": [
+                          {"detector": r.detector,
+                           "motivo": (r.motivo_refutacao or "")[:180]}
+                          for r in resultados if r.status == "nao_avaliavel"],
+                      },
         "llm": None,
     }
     if com_llm:
