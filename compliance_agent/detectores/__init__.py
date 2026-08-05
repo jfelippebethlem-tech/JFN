@@ -231,7 +231,8 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
         try:
             from compliance_agent.reporting.detector_tac import tac_da_unidade_do_cnpj
             ctx["tac_unidade"] = tac_da_unidade_do_cnpj(str(cnpj))
-        except Exception as e:  # noqa: BLE001 — sem base, C9 segue com o limiar absoluto
+        except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+            # sem base, o C9 segue com o limiar absoluto (comportamento anterior)
             logger.debug("C9 sem base de unidade para %s (%s)", cnpj, str(e)[:120])
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
