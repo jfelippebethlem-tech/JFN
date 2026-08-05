@@ -173,3 +173,50 @@ def test_sem_mencao_ao_parecer_a_afirmacao_de_ausencia_permanece(tmp_path):
     a3 = [x for x in (r.get("achados") or []) if str(x.get("codigo", "")).startswith("A3")]
     assert a3 and a3[0]["grau"] == "medio"
     assert "nenhum registra acatamento" in a3[0]["diz"]
+
+
+def _junta(pasta, titulo, tipo, corpo):
+    """Acrescenta uma peça ao fim do processo montado por `_proc_com_parecer_e_resposta`."""
+    import json as _j
+    man = _j.loads((pasta / "manifest.json").read_text(encoding="utf-8"))
+    i = len(man["docs"])
+    nome = f"{i:03d}_doc.txt"
+    (pasta / "texto" / nome).write_text(f"[{titulo}] (tipo: {tipo})\n\n{corpo}", encoding="utf-8")
+    man["docs"].append({"i": i, "titulo": titulo, "tipo": tipo, "texto": f"texto/{nome}"})
+    (pasta / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    return pasta
+
+
+def test_ato_que_DECIDE_conta_como_resposta_mesmo_fora_do_tipo(tmp_path):
+    """O ato que decide não é do tipo "resposta" — e é ele que responde ao parecer. Medido em
+    2026-08-05 nos 11 disparos "nenhum registra acatamento": o SEI-070002/013107/2024 traz o
+    "Ato de Reconhecimento de Dívida 86639308" enumerando os procedimentos e citando o parecer
+    pelo identificador. O classificador o tipa `parecer`, então ele ficava fora de `_RESPOSTA` e
+    o achado afirmava uma ausência que os autos desmentem."""
+    p = _proc_com_parecer_e_resposta(
+        tmp_path, "Encaminho os autos à Coordenação para emissão de nota de empenho.")
+    _junta(p, "Ato de Reconhecimento de Dívida 86639308", "parecer",
+           "Em atenção ao disposto no artigo 14 do Decreto Estadual nº 41.880/2009 foram "
+           "realizados os seguintes procedimentos: (I) Parecer jurídico exarado pela "
+           "Procuradoria (81625942) com a conclusão de não ocorrência de prescrição.")
+    r = T.periciar(p)
+    a3 = [x for x in (r.get("achados") or []) if str(x.get("codigo", "")).startswith("A3")]
+    assert a3, "o achado não some — citar não é acatar"
+    assert a3[0]["grau"] == "baixo"
+    assert "REPORTA" in a3[0]["diz"]
+
+
+def test_ato_que_decide_sem_citar_o_parecer_nao_derruba_nada(tmp_path):
+    """Controle negativo, medido no mesmo dia: o SEI-080001/036964/2025 também tem ato decisório
+    posterior, não cita o parecer, e segue `medio` — e é o caso VERDADEIRO (a Deliberação CIB
+    nº 1.237/2025 nunca foi referendada). É a conjunção título-de-ato **e** citação que segura a
+    regra; alargar `_RESPOSTA` por tipo importaria ruído puro."""
+    p = _proc_com_parecer_e_resposta(
+        tmp_path, "Encaminho os autos à Coordenação para emissão de nota de empenho.")
+    _junta(p, "Termo de Ratificação 99887766", "parecer",
+           "Ratifico a dispensa de licitação para a contratação em tela, nos termos do "
+           "artigo 75 da Lei nº 14.133/2021.")
+    r = T.periciar(p)
+    a3 = [x for x in (r.get("achados") or []) if str(x.get("codigo", "")).startswith("A3")]
+    assert a3 and a3[0]["grau"] == "medio"
+    assert "nenhum registra acatamento" in a3[0]["diz"]

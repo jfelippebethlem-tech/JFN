@@ -49,14 +49,20 @@ def _carga() -> float:
 
 
 def fotografia(db: Path | None = None) -> dict:
-    """O estado que interessa comparar: faixas, achados por origem/código e motivos da fila."""
+    """O estado que interessa comparar: faixas, achados por origem/código/grau e motivos da fila."""
     caminho = Path(db or os.environ.get("JFN_DB") or DB)
     faixas: Counter = Counter()
     codigos: Counter = Counter()
     origens: Counter = Counter()
+    # GRAU também entra no retrato. Em 2026-08-05 corrigi o A3 (o "Ato de Reconhecimento de
+    # Dívida" que responde ao parecer ficava fora do conjunto de respostas), um processo caiu de
+    # `medio` para `baixo` — e o diff imprimiu "sem mudança" nas três linhas, porque o CÓDIGO do
+    # achado é o mesmo. Correção que só muda severidade era invisível para o próprio instrumento.
+    graus: Counter = Counter()
     # COBERTURA REAL DAS RÉGUAS: quantas conseguem avaliar e quantas ficam sem dado. Medido em
-    # 2026-08-04, o motor afere a mediana de 17 das 43 réguas por processo — e esse era o número
-    # mais silencioso do sistema, porque `indisponiveis` só registrava motor QUEBRADO.
+    # 2026-08-04, o motor afere a MEDIANA DE 5 das 43 réguas por processo (17 é um processo rico,
+    # não o típico) — e esse era o número mais silencioso do sistema, porque `indisponiveis` só
+    # registrava motor QUEBRADO.
     aferidas: list[int] = []
     sem_dado: list[int] = []
     ilegiveis = 0
@@ -74,6 +80,7 @@ def fotografia(db: Path | None = None) -> dict:
                         if isinstance(a, dict):
                             codigos[str(a.get("codigo") or "—")] += 1
                             origens[str(a.get("origem") or "—")] += 1
+                            graus[f"{a.get('codigo') or '—'} · {a.get('grau') or '—'}"] += 1
                 except ValueError:
                     # achados ilegíveis não podem virar "zero achados" em silêncio: o processo
                     # apareceria como limpo. Conta-se, e o número entra na fotografia.
@@ -104,7 +111,7 @@ def fotografia(db: Path | None = None) -> dict:
                   "sem_dado_mediana": int(_st.median(sem_dado)),
                   "sem_dado_max": max(sem_dado)}
     return {"faixas": dict(faixas), "codigos": dict(codigos), "origens": dict(origens),
-            "motivos_da_fila": dict(motivos), "reguas": reguas,
+            "graus": dict(graus), "motivos_da_fila": dict(motivos), "reguas": reguas,
             "achados_ilegiveis": ilegiveis}
 
 
@@ -271,6 +278,7 @@ def main(argv=None) -> int:
 
     print("\n=== O QUE MUDOU ===")
     for chave, rotulo in (("faixas", "faixas de risco"), ("codigos", "achados por código"),
+                          ("graus", "achados por código e grau"),
                           ("origens", "achados por origem"),
                           ("motivos_da_fila", "motivos no top 40 da fila")):
         linhas = _diff(antes, depois, chave)

@@ -80,6 +80,20 @@ _RX_NAO_CONTRATO = re.compile(
     r"|consulta\s+ao|termo\s+de\s+cancelamento", re.I)
 _CONTRATO = {"contrato", "termo_contrato", "ata_registro_precos"}
 _RESPOSTA = {"despacho", "oficio", "nota_tecnica", "informacao", "manifestacao"}
+# O ATO QUE DECIDE não é do tipo "resposta" — e é ele que responde ao parecer. Medido em
+# 2026-08-05 nos 11 disparos "nenhum registra acatamento": o SEI-070002/013107/2024 tem o
+# "Ato de Reconhecimento de Dívida 86639308" enumerando ponto a ponto os procedimentos e
+# citando o parecer pelo identificador ("(I) Parecer jurídico exarado pela Procuradoria do
+# INEA (85972668) com a conclusão de não ocorrência de prescrição"). O classificador o tipa
+# `parecer`, então ele ficava fora de `_RESPOSTA` e o achado afirmava uma ausência que os
+# autos desmentem. Casar por TÍTULO, e só valer quando o ato CITA o parecer — a conjunção é o
+# que segura: alargar `_RESPOSTA` por tipo importaria ruído puro (anexo de planilha, recibo
+# SIGFIS, "impugnação não acatada" em edital). Controle negativo: o SEI-080001/036964/2025
+# também tem ato decisório posterior, não cita o parecer, e segue `medio` — que é o caso
+# verdadeiro (a Deliberação CIB 1.237/2025 nunca foi referendada).
+_RX_ATO_DECISORIO = re.compile(
+    r"^\s*(?:ato\s+de\s+reconhecimento\s+de\s+d[ií]vida|termo\s+de\s+ratifica"
+    r"|ratifica[çc][ãa]o|homologa[çc][ãa]o|autoriza[çc][ãa]o\b|decis[ãa]o\b)", re.I)
 _EXECUCAO = {"medicao", "relatorio_fotografico", "atesto", "recebimento"}
 _PESQUISA = {"pesquisa_preco", "mapa_precos", "cotacao", "orcamento"}
 
@@ -406,8 +420,11 @@ def periciar(pasta: Path) -> dict | None:
             # que se reporta ao parecer, o acolhimento não está em fórmula expressa — e cai de
             # grau, porque a peça que decide já está nos autos para o fiscal ler.
             ids_par = _RE_ID_DOC.findall(str(pa.get("titulo") or ""))
+            decisorios = [d for d in docs if _ordem(d) > pos
+                          and _RX_ATO_DECISORIO.search(str(d.get("titulo") or ""))]
             responde = bool(ids_par) and any(
-                ids_par[-1] in (_texto_do_doc(pasta, d) or "") for d in posteriores)
+                ids_par[-1] in (_texto_do_doc(pasta, d) or "")
+                for d in (posteriores + decisorios))
             (observacoes if nat == "repasse" else achados).append({
                 "codigo": ("A3_REPASSE_PARECER_SEM_ACATAMENTO" if nat == "repasse"
                            else "A3_PARECER_COM_RESSALVA_SEM_ACATAMENTO_EXPRESSO"),
