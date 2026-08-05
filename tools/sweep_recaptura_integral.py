@@ -50,6 +50,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
+ARQUIVO = Path(__file__).resolve().parents[1] / "data" / "sei_arquivo"
 CACHE = RAIZ / "data" / "sei_cache"
 PROGRESSO = RAIZ / "data" / "recaptura_integral_progresso.json"
 
@@ -79,6 +80,37 @@ def fila() -> list[dict]:
         if arv > lido:
             saida.append({"numero": d.get("numero") or Path(f).stem[4:],
                           "arvore": arv, "lido": lido, "faltam": arv - lido})
+    # O ARQUIVO TAMBÉM É FONTE DE PENDÊNCIA, e não era consultado. Esta fila só olhava o CACHE
+    # (`cdp_*.json`), então um processo cujo arquivo ficou truncado mas cujo cache foi podado, ou
+    # nunca existiu, não tinha rota nenhuma de volta. Medido em 2026-08-05, depois que
+    # `manifesto_norm.captura_integra` passou a reconhecer o teto de coleta de 40 documentos:
+    # dos **176 arquivos parados exatamente em 40**, 137 voltam pela fila do `sweep_sei` (estão no
+    # universo de OB do SIAFE) e 57 por esta fila (o cache sabe que a árvore é maior) — união de
+    # 150. Os outros **26 eram órfãos**: nenhuma fila os oferecia, e ficariam truncados para
+    # sempre enquanto o motor os tratava como não-avaliáveis.
+    #
+    # A régua é a MESMA do motor e do `sei_sweep._arquivo_incompleto`, de propósito: o que a
+    # avaliação recusa por captura insuficiente é, por definição, o que a leitura precisa refazer.
+    ja = {re.sub(r"\D", "", str(x["numero"])) for x in saida}
+    from compliance_agent.sei import manifesto_norm as _mn
+    for pasta in sorted(ARQUIVO.glob("*")):
+        mf = pasta / "manifest.json"
+        if not pasta.is_dir() or not mf.exists():
+            continue
+        try:
+            man = json.loads(mf.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        numero = str(man.get("processo") or pasta.name)
+        if re.sub(r"\D", "", numero) in ja:
+            continue
+        ok, ev = _mn.captura_integra(man, pasta)
+        if ok:
+            continue
+        n_docs = int(ev.get("n_docs") or 0)
+        saida.append({"numero": numero, "arvore": n_docs, "lido": n_docs,
+                      "faltam": 0 if ev.get("teto_de_coleta") else max(0, n_docs - int(ev.get("n_com_texto") or 0)),
+                      "origem": "arquivo_nao_integro"})
     saida.sort(key=lambda x: x["faltam"])
     return saida
 

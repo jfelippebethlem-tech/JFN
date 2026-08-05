@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import io
+import sqlite3
 import zipfile
 from datetime import datetime, timezone
 
@@ -74,7 +75,7 @@ def _nomes_servidores(con, *, com_prefeitura: bool = True) -> set[str]:
         try:
             alvos |= {r[0] for r in con.execute(
                 "SELECT DISTINCT nome_norm FROM pcrj_folha_pref WHERE nome_norm<>''")}
-        except Exception as exc:  # noqa: BLE001 — base sem a folha ainda: segue só com a Câmara
+        except sqlite3.Error as exc:   # base sem a tabela da folha ainda: segue só com a Câmara
             print(f"  [alvos] folha da Prefeitura indisponível ({str(exc)[:70]})", flush=True)
     return alvos
 
