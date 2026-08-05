@@ -4397,7 +4397,12 @@ void main(){
         <div><div class="dim">Achados no acervo</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.codigos).reduce((s, x) => s + x, 0))}</div></div>
         <div><div class="dim">Processos avaliados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.faixas || {}).reduce((s, x) => s + x, 0))}</div></div>
       </div>
-      <div style="margin-top:8px">` + cod.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><b>${fmtN(v)}</b></div>`).join("") + `</div>
+      <div style="margin-top:8px">` + cod.map(([k, v]) => {
+        const sev = Object.entries(mo.graus || {}).filter(([g]) => g.startsWith(k + " · ")).map(([g, n]) => [g.split(" · ")[1], n]).sort((a, b) => b[1] - a[1]);
+        const ACENTO = { critica: "crítica", media: "média", alta: "alta", baixa: "baixa", medio: "médio", baixo: "baixo" };
+        const det = sev.length > 1 ? ` <span class="dim">(${sev.map(([s, n]) => fmtN(n) + " " + esc(ACENTO[s] || s)).join(" · ")})</span>` : "";
+        return `<div class="kv"><span class="k">${esc(k)}${det}</span><b>${fmtN(v)}</b></div>`;
+      }).join("") + `</div>
       <div class="dim" style="margin-top:6px">Por origem: ` + org.map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>` + // COBERTURA DAS RÉGUAS — o número mais silencioso do sistema até 2026-08-04: `indisponiveis`
       // só registrava motor QUEBRADO, então o dossiê dizia "indisponíveis: nenhum" num processo em
       // que 30 das 43 réguas não tinham dado. A mediana real é 5 réguas aferidas por processo.

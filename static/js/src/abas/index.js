@@ -437,8 +437,18 @@ export async function renderInstrumentacao(){
         <div><div class="dim">Achados no acervo</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.codigos).reduce((s,x)=>s+x,0))}</div></div>
         <div><div class="dim">Processos avaliados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.faixas||{}).reduce((s,x)=>s+x,0))}</div></div>
       </div>
-      <div style="margin-top:8px">`+cod.map(([k,v])=>
-        `<div class="kv"><span class="k">${esc(k)}</span><b>${fmtN(v)}</b></div>`).join('')+`</div>
+      <div style="margin-top:8px">`+cod.map(([k,v])=>{
+        // SEVERIDADE ao lado do código. Sem ela o painel dizia "F_EXECUCAO_SEM_EVIDENCIA 319" e o
+        // leitor não via que 68 desses trazem, nos autos, documento que DECLARA a entrega — a
+        // diferença entre abrir diligência por pagamento sem prova e abrir a peça para conferir o
+        // teor. Mesma cegueira que o diff da pós-correção tinha antes de contar por código E grau.
+        const sev=Object.entries(mo.graus||{}).filter(([g])=>g.startsWith(k+' · '))
+          .map(([g,n])=>[g.split(' · ')[1],n]).sort((a,b)=>b[1]-a[1]);
+        // o dado guarda `critica`/`media` sem acento (é chave, não texto); o painel é entregável.
+        const ACENTO={critica:'crítica',media:'média',alta:'alta',baixa:'baixa',medio:'médio',baixo:'baixo'};
+        const det=sev.length>1?` <span class="dim">(${sev.map(([s,n])=>fmtN(n)+' '+esc(ACENTO[s]||s)).join(' · ')})</span>`:'';
+        return `<div class="kv"><span class="k">${esc(k)}${det}</span><b>${fmtN(v)}</b></div>`;
+      }).join('')+`</div>
       <div class="dim" style="margin-top:6px">Por origem: `+org.map(([k,v])=>`${esc(k)} ${fmtN(v)}`).join(' · ')+`</div>`+
       // COBERTURA DAS RÉGUAS — o número mais silencioso do sistema até 2026-08-04: `indisponiveis`
       // só registrava motor QUEBRADO, então o dossiê dizia "indisponíveis: nenhum" num processo em
