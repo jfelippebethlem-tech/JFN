@@ -561,9 +561,10 @@ def ordinal_incoerente_com_prazo(docs: list[dict]) -> dict:
             "ordinal_implicado": implicado,
             "diz": (f"o instrumento se declara {n}º termo aditivo mas anuncia prazo total de "
                     f"{total} meses com prorrogação de {passo} — o que corresponde ao "
-                    f"{implicado}º aditivo — salvo se houver aditivo anterior que NÃO prorrogou "
-                    "prazo (aditivo de valor, por exemplo), hipótese que explica o ordinal sem "
-                    "vício e precisa ser conferida nos autos"),
+                    f"{implicado}º aditivo. A hipótese inocente — um aditivo anterior que NÃO "
+                    "prorrogou prazo, de valor ou de objeto — FOI CONFERIDA nos autos e não se "
+                    "confirmou: nenhum outro aditivo deste processo se anuncia como alteração "
+                    "sem prorrogação"),
             "fundamento": ("art. 57, II, da Lei 8.666/93: a contagem das prorrogações é o que "
                            "limita a vigência a 60 meses — ordinal errado desalinha o controle"),
             "evidencia": d.get("ref", ""),
