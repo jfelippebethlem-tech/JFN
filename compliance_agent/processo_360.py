@@ -99,6 +99,22 @@ def _declaracao_de_entrega(pasta, docs: list[dict]) -> dict | None:
     return None
 
 
+# ── instrumento hábil que SUBSTITUI o termo de contrato ───────────────────────
+# Art. 95, §1º da Lei 14.133/2021 (e art. 62 da Lei 8.666/93, para fatos até 2023): o instrumento
+# de contrato **pode ser substituído** por carta-contrato, **nota de empenho de despesa**,
+# autorização de compra ou ordem de execução de serviço nas hipóteses ali definidas. Medido em
+# 2026-08-05: dos 21 processos acusados de "Formalização do contrato" ausente, **9 têm Nota de
+# Empenho nos autos e nenhum termo de contrato** — dizer "falta formalização" ali é cobrar a forma
+# que a lei dispensa. O achado NÃO some (a substituição só vale nas hipóteses legais, e é isso que
+# o fiscal confere), mas passa a dizer o que se vê e cai de grau.
+def _instrumento_habil(docs: list[dict]) -> str | None:
+    """Título da peça que a lei admite no lugar do termo de contrato. `None` se não houver."""
+    for d in docs or []:
+        if str(d.get("tipo") or "") == "nota_empenho" or str(d.get("fase") or "") == "nota_empenho":
+            return str(d.get("titulo") or "nota de empenho")
+    return None
+
+
 def _contrato_registrado(numero_sei: str) -> dict:
     """Vigência e valor do contrato como REGISTRADOS no TCE-RJ, ligados pelo número do processo.
 
@@ -503,6 +519,16 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             # O achado NÃO some — a peça própria de execução (medição/atesto formal) continua
             # faltando, e é ela que o art. 63 da Lei 4.320 pede para liquidar. Ele passa a dizer o
             # que se sabe, aponta ONDE está a declaração, e cai de grau.
+            if item.get("fase") == "contratacao":
+                ne = _instrumento_habil(docs)
+                if ne:
+                    ach["gravidade"] = "baixa"
+                    ach["diz"] = ("sem termo de contrato, mas há nota de empenho nos autos — o "
+                                  "art. 95, §1º da Lei 14.133/2021 (art. 62 da Lei 8.666/93 para "
+                                  "fatos até 2023) admite a substituição NAS HIPÓTESES LEGAIS; "
+                                  "conferir o enquadramento antes de tratar como falta de "
+                                  "formalização")
+                    ach["apoio"] = ne
             if item.get("fase") == "execucao_sem_evidencia":
                 decl = _declaracao_de_entrega(pasta, docs)
                 if decl:
