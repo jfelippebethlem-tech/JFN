@@ -54,11 +54,19 @@ def fotografia(db: Path | None = None) -> dict:
     faixas: Counter = Counter()
     codigos: Counter = Counter()
     origens: Counter = Counter()
+    # COBERTURA REAL DAS RÉGUAS: quantas conseguem avaliar e quantas ficam sem dado. Medido em
+    # 2026-08-04, o motor afere a mediana de 17 das 43 réguas por processo — e esse era o número
+    # mais silencioso do sistema, porque `indisponiveis` só registrava motor QUEBRADO.
+    aferidas: list[int] = []
+    sem_dado: list[int] = []
     if caminho.exists():
         con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
         try:
-            for faixa, aj in con.execute(
-                    "SELECT faixa, achados_json FROM processo_avaliacao"):
+            # base antiga pode não ter `cobertura_json`: mede-se o que dá, sem quebrar a rodada
+            colunas = {r[1] for r in con.execute("PRAGMA table_info(processo_avaliacao)")}
+            campo = "cobertura_json" if "cobertura_json" in colunas else "NULL"
+            for faixa, aj, cj in con.execute(
+                    f"SELECT faixa, achados_json, {campo} FROM processo_avaliacao"):
                 faixas[str(faixa)] += 1
                 try:
                     for a in json.loads(aj or "[]"):
@@ -66,7 +74,16 @@ def fotografia(db: Path | None = None) -> dict:
                             codigos[str(a.get("codigo") or "—")] += 1
                             origens[str(a.get("origem") or "—")] += 1
                 except ValueError:
+                    pass
+                try:
+                    cob = json.loads(cj or "{}")
+                except ValueError:
                     continue
+                na = cob.get("nao_avaliaveis")
+                rod = cob.get("detectores_rodados") or []
+                if na is not None and rod:
+                    sem_dado.append(len(na))
+                    aferidas.append(max(0, len(rod) - len(na)))
         finally:
             con.close()
     motivos: Counter = Counter()
@@ -76,8 +93,15 @@ def fotografia(db: Path | None = None) -> dict:
                 p = parte.strip()
                 if p and not p.startswith("-"):
                     motivos[p[:48]] += 1
+    import statistics as _st
+    reguas = {}
+    if aferidas:
+        reguas = {"processos_medidos": len(aferidas),
+                  "aferidas_mediana": int(_st.median(aferidas)),
+                  "sem_dado_mediana": int(_st.median(sem_dado)),
+                  "sem_dado_max": max(sem_dado)}
     return {"faixas": dict(faixas), "codigos": dict(codigos), "origens": dict(origens),
-            "motivos_da_fila": dict(motivos)}
+            "motivos_da_fila": dict(motivos), "reguas": reguas}
 
 
 def _diff(antes: dict, depois: dict, chave: str) -> list[str]:

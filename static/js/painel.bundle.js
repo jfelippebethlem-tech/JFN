@@ -4398,7 +4398,15 @@ void main(){
         <div><div class="dim">Processos avaliados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.faixas || {}).reduce((s, x) => s + x, 0))}</div></div>
       </div>
       <div style="margin-top:8px">` + cod.map(([k, v]) => `<div class="kv"><span class="k">${esc(k)}</span><b>${fmtN(v)}</b></div>`).join("") + `</div>
-      <div class="dim" style="margin-top:6px">Por origem: ` + org.map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>`);
+      <div class="dim" style="margin-top:6px">Por origem: ` + org.map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>` + // COBERTURA DAS RÉGUAS — o número mais silencioso do sistema até 2026-08-04: `indisponiveis`
+      // só registrava motor QUEBRADO, então o dossiê dizia "indisponíveis: nenhum" num processo em
+      // que 30 das 43 réguas não tinham dado. A mediana real é 5 réguas aferidas por processo.
+      (mo.reguas && mo.reguas.processos_medidos ? `<div style="margin-top:10px" class="kv">
+        <span class="k">Réguas que conseguem AFERIR o processo (mediana)</span><b>${mo.reguas.aferidas_mediana}</b></div>
+      <div class="kv"><span class="k">Réguas SEM DADO para avaliar (mediana · máximo)</span>
+        <b>${mo.reguas.sem_dado_mediana} · ${mo.reguas.sem_dado_max}</b></div>
+      <div class="dim" style="margin-top:4px">Não é ausência de irregularidade: é ausência de dado.
+        Cada dossiê lista quais réguas ficaram de fora e por quê.</div>` : ""));
     } else {
       h += card(`<div class="warn">Estado do motor INDISPONÍVEL${mo && mo.erro ? ": " + esc(mo.erro) : ""} — indisponível não é zero.</div>`);
     }

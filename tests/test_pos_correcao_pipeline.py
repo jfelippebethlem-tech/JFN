@@ -147,3 +147,34 @@ def test_trava_ilegivel_nao_impede_a_rodada(tmp_path, monkeypatch):
     trava.write_text("nao é pid", encoding="utf-8")
     monkeypatch.setattr(PC, "TRAVA", trava)
     assert PC._outra_instancia_viva() is None
+
+
+def test_fotografia_mede_a_COBERTURA_das_reguas(tmp_path):
+    """O número mais silencioso do sistema até 2026-08-04: `indisponiveis` só registrava motor
+    QUEBRADO, então o dossiê dizia "indisponíveis: nenhum" num processo em que 30 das 43 réguas não
+    tinham dado. Medido no acervo: a mediana é de **5 réguas que conseguem aferir** e 26 sem dado
+    (máximo 41)."""
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE processo_avaliacao (numero_sei TEXT, faixa TEXT, score100 REAL, "
+                "achados_json TEXT, cobertura_json TEXT)")
+    cob = json.dumps({"detectores_rodados": ["A", "B", "C", "D"],
+                      "nao_avaliaveis": [{"detector": "C", "motivo": "sem dado"},
+                                         {"detector": "D", "motivo": "sem dado"}]})
+    con.execute("INSERT INTO processo_avaliacao VALUES ('SEI-1','ALTO',10.0,'[]',?)", (cob,))
+    con.commit(); con.close()
+    r = PC.fotografia(db=p)["reguas"]
+    assert r["processos_medidos"] == 1
+    assert r["aferidas_mediana"] == 2 and r["sem_dado_mediana"] == 2 and r["sem_dado_max"] == 2
+
+
+def test_base_SEM_a_coluna_de_cobertura_nao_derruba_a_rodada(tmp_path):
+    """Base antiga mede o que dá, sem quebrar — a ferramenta roda em qualquer máquina."""
+    p = tmp_path / "velha.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE processo_avaliacao (numero_sei TEXT, faixa TEXT, score100 REAL, "
+                "achados_json TEXT)")
+    con.execute("INSERT INTO processo_avaliacao VALUES ('SEI-1','ALTO',10.0,'[]')")
+    con.commit(); con.close()
+    f = PC.fotografia(db=p)
+    assert f["faixas"] == {"ALTO": 1} and f["reguas"] == {}
