@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 
 # Regex (pedido do dono): casa os instrumentos de regularização fora de contrato regular no texto livre da OB.
@@ -148,6 +149,37 @@ def tac_por_cnpj(cnpj: str, *, db_path=None) -> dict:
 
 # ───────────────────────── por UG (o sistêmico) ─────────────────────────
 
+@lru_cache(maxsize=4)
+def _mapa_cnpj_ug(caminho: str) -> dict:
+    """Mapa `CNPJ → UG onde ele mais recebeu`, montado numa VARREDURA ÚNICA.
+
+    `replace(replace(replace(favorecido_cpf,…)))` não usa índice: cada consulta por CNPJ lê 1,16
+    milhão de OBs e custa **8,45 segundos**. Medido em 2026-08-04, na mesma sessão em que esta
+    consulta foi introduzida: a reavaliação do acervo caiu de 0,8 s para 3,3 s por processo, e um
+    cache por CNPJ não resolveria — com ~1.000 fornecedores distintos, seriam horas só nas
+    primeiras chamadas.
+
+    Uma passada monta tudo. O dicionário é pequeno (um par por CNPJ) e vale por execução.
+    """
+    mapa: dict[str, tuple[float, str]] = {}
+    try:
+        con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+        try:
+            for cpf, ug, v in con.execute(
+                    "SELECT replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-',''), "
+                    "       ug_codigo, SUM(valor) FROM ordens_bancarias GROUP BY 1, 2"):
+                if not cpf or not ug:
+                    continue
+                valor = float(v or 0)
+                if valor > mapa.get(str(cpf), (0.0, ""))[0]:
+                    mapa[str(cpf)] = (valor, str(ug))
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return {}
+    return {k: v[1] for k, v in mapa.items()}
+
+
 def tac_da_unidade_do_cnpj(cnpj: str, *, db_path=None) -> dict:
     """Taxa de TAC da UNIDADE onde este fornecedor mais recebeu — a base de comparação.
 
@@ -170,20 +202,9 @@ def tac_da_unidade_do_cnpj(cnpj: str, *, db_path=None) -> dict:
     caminho = _resolver_db(db_path)
     if not caminho.exists():
         return {}
-    try:
-        con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
-        try:
-            linha = con.execute(
-                "SELECT ug_codigo, SUM(valor) v FROM ordens_bancarias "
-                "WHERE replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')=? "
-                "GROUP BY ug_codigo ORDER BY v DESC LIMIT 1", (d,)).fetchone()
-        finally:
-            con.close()
-    except sqlite3.Error:
+    ug = _mapa_cnpj_ug(str(caminho)).get(d, "")
+    if not ug:
         return {}
-    if not linha or not linha[0]:
-        return {}
-    ug = str(linha[0])
 
     pronto = _root() / "data" / "tac_ranking_ugs.json"
     try:

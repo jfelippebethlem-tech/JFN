@@ -59,3 +59,37 @@ def test_abaixo_do_limiar_continua_descartado():
     tac = {**_TAC, "pct": 5.0, "total_tac": 5e7}
     r = _avaliar(tac=tac, tac_unidade=_UNIDADE)
     assert r.status == "descartado"
+
+
+# ───────── a base da unidade não pode custar caro (regressão medida e curada) ─────────
+
+def test_o_mapa_cnpj_ug_e_montado_numa_passada_so(tmp_path):
+    """`replace(replace(replace(favorecido_cpf,…)))` não usa índice: cada consulta por CNPJ lê
+    1,16 milhão de OBs e custa **8,45 segundos**. Medido em 2026-08-04, na mesma sessão em que a
+    consulta foi introduzida: a reavaliação do acervo caiu de 0,8 s para 3,3 s por processo. Cache
+    por CNPJ não resolveria — com ~1.000 fornecedores distintos seriam horas só nas primeiras
+    chamadas. Uma passada monta tudo."""
+    import sqlite3 as _s
+
+    from compliance_agent.reporting import detector_tac as DT
+
+    db = tmp_path / "c.db"
+    con = _s.connect(db)
+    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, valor REAL, "
+                "observacao TEXT)")
+    con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?)", [
+        ("28.470.707/0001-80", "294200", 900.0, ""),
+        ("28.470.707/0001-80", "080002", 100.0, ""),   # UG minoritária: não pode vencer
+        ("11.111.111/0001-11", "133100", 50.0, ""),
+    ])
+    con.commit(); con.close()
+    DT._mapa_cnpj_ug.cache_clear()
+    mapa = DT._mapa_cnpj_ug(str(db))
+    assert mapa["28470707000180"] == "294200", "a UG dominante é a de MAIOR valor"
+    assert mapa["11111111000111"] == "133100"
+
+
+def test_base_ausente_devolve_vazio_sem_levantar(tmp_path):
+    from compliance_agent.reporting import detector_tac as DT
+    DT._mapa_cnpj_ug.cache_clear()
+    assert DT._mapa_cnpj_ug(str(tmp_path / "nao_existe.db")) == {}
