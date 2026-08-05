@@ -1,6 +1,6 @@
 | # | Processo | Pontos | Grau | Motivos |
 |---|---|---|---|---|
-| 1 | 270131/000548/2023 | 16 | C/EXTREMO | a autorização de despesa foi assinada em 16/05/2024 e o pare; a minuta examinada é do 1º termo aditivo e nenhum instrument; declaração juntada aos autos atesta  |
+| 1 | 270131/000548/2023 | 15 | C/EXTREMO | a autorização de despesa foi assinada em 16/05/2024 e o pare; a minuta examinada é do 1º termo aditivo e nenhum instrument; declaração juntada aos autos atesta  |
 | 2 | 030001/111011/2025 | 12 | C/EXTREMO | Seleção (edital, julgamento, homologação); contrato ANTES do parecer (art. 53); pagamento sem evidência de execução |
 | 3 | 080001/002911/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
 | 4 | 080001/025757/2025 | 11 | C/EXTREMO | pagamento sem evidência de execução; parecer IGNORADO pela autoridade; ressalva de parecer com sinal de não-atendimento e sem acolh |
@@ -16,13 +16,13 @@
 | 14 | 080002/009942/2026 | 10 | B/EXTREMO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (intensidade 1 |
 | 15 | 080002/015833/2024 | 10 | B/EXTREMO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (intensidade 1 |
 | 16 | 070002/001289/2022 | 9 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; planejamento/edital/julgamento: E1 confirmado (intensidade 0; planejamento/edital/julgam |
-| 17 | 420001/004224/2024 | 9 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; o objeto contratado é de 30 veiculo(s) e o atesto de execuçã |
-| 18 | 420001/004223/2024 | 9 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; o objeto contratado é de 30 veiculo(s) e o atesto de execuçã |
-| 19 | 070002/013107/2024 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); contrato ANTES do parecer (art. 53) |
-| 20 | 030002/002115/2026 | 9 | C/EXTREMO | pagamento sem evidência de execução |
-| 21 | 030002/002804/2026 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
-| 22 | 030002/000517/2026 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
-| 23 | 030002/000307/2025 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
+| 17 | 070002/013107/2024 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); contrato ANTES do parecer (art. 53) |
+| 18 | 030002/002115/2026 | 9 | C/EXTREMO | pagamento sem evidência de execução |
+| 19 | 030002/002804/2026 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
+| 20 | 030002/000517/2026 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
+| 21 | 030002/000307/2025 | 9 | C/EXTREMO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
+| 22 | 420001/004224/2024 | 8 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; o objeto contratado é de 30 veiculo(s) e o atesto de execuçã |
+| 23 | 420001/004223/2024 | 8 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; o objeto contratado é de 30 veiculo(s) e o atesto de execuçã |
 | 24 | 330005/001090/2024 | 8 | C/ALTO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
 | 25 | 080002/019028/2024 | 7 | C/EXTREMO | perfil do fornecedor contratado: detector C3/C5 confirmado (; perfil do fornecedor contratado: detector C9 confirmado (intensidade 1 |
 | 26 | 080002/013324/2024 | 7 | -/NAO_AVALIAVEL | perfil do fornecedor contratado: detector C3/C5 confirmado (; perfil do fornecedor contratado: detector C9 confirmado (intensidade 1 |
