@@ -576,7 +576,30 @@ def montar_ctx_de_sei(leitura: dict, *, usar_llm: bool = False, gerar: Callable[
 
     # exigências de habilitação (E1) — SÓ dos docs de edital/planejamento (mesma guarda das cláusulas:
     # "patrimônio líquido" de um balanço não é exigência de habilitação)
-    linhas_edital = _linhas_com_contexto(_fontes_de_edital(leitura))
+    fontes_edital = _fontes_de_edital(leitura)
+    # O TEXTO DO EDITAL NÃO CHEGAVA AOS DETECTORES, só as linhas dele. Duas consequências medidas
+    # em 2026-08-05 no SEI-070002/001289/2022 (o processo de maior score do acervo, 90,2):
+    #  · o E7 tem `_trecho_completo`, que realoca a cláusula no edital e alarga a janela até a
+    #    fronteira de frase — mas ele só funciona com `tr_texto` no contexto. Sem ele, a evidência
+    #    chegava ao fiscal cortada no meio: "9.3.2 Prova de possuir no seu quadro permanente, na
+    #    data da Concorrência, profissional ou" — e o que decide o caso vem DEPOIS ("a comprovação
+    #    ... deverá ser feita através de cópia de sua ficha de registro de EMPREGADO", que é a
+    #    exigência de vínculo na data da licitação).
+    #  · o P1 devolvia `nao_avaliavel` com o motivo "sem TR e sem lista de requisitos no contexto".
+    # A fonte é a MESMA já calibrada para o E1 (`_fontes_de_edital`), que veta documento do
+    # licitante — a guarda que impediu o contrato social da CONSTRUTORA BRASFORM de virar
+    # "exigência de capital social".
+    # CHAVE PRÓPRIA, e não `tr_texto`. Eu escrevi `tr_texto` primeiro e a reavaliação devolveu
+    # **175 achados P1 do nada, 44 deles críticos** — todos falsos, e a prova estava na evidência
+    # que eles mesmos imprimiam: "QUANTIDADE RECEBIDA: 50.150 UNID. MARCA: N/C" (termo de
+    # recebimento, e N/C é "não consta"), "LOTE FABRICAÇÃO | VALIDADE | Marca | RECEBIDA" (cabeçalho
+    # de tabela de entrega), "solicitações de troca de marca/prorrogação do prazo" (e-mail de
+    # execução). `_fontes_de_edital` aceita documento pelo CONTEÚDO — o que é certo para localizar
+    # uma cláusula num processo de 498 peças, e errado como "descrição do item", que é o que o P1
+    # entende por `tr_texto`. O P1 volta a dizer `nao_avaliavel`, que é honesto.
+    if fontes_edital:
+        ctx["edital_texto"] = "\n\n".join(f["texto"] for f in fontes_edital)
+    linhas_edital = _linhas_com_contexto(fontes_edital)
     exig = _extrair_exigencias(linhas_edital, valor_estimado)
     if exig:
         ctx["exigencias_habilitacao"] = exig

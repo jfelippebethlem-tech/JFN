@@ -245,8 +245,9 @@ class E7ClausulaRestritiva(Detector):
             marcadas.append({**c, "_nivel": nivel})
             razoes.append(f"[{tipo}/{nivel}] {motivo}")
             res.add_evidencia(fonte=f"cláusula do edital ({tipo})",
-                              trecho=_trecho_completo(str(c.get("texto") or ""),
-                                                      contexto.get("tr_texto")))
+                              trecho=_trecho_completo(
+                                  str(c.get("texto") or ""),
+                                  contexto.get("edital_texto") or contexto.get("tr_texto")))
             if tipo_fund not in fundamentacao:
                 fund = fundamentar_clausula(tipo_fund)
                 if fund:
