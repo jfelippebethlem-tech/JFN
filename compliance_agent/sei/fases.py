@@ -221,7 +221,11 @@ def lacunas(fases_presentes: set[str], modalidade: str = "",
             com_pagamento: bool = False, natureza: str = "") -> list[dict]:
     """
     O que FALTA nos autos dado o que já se vê neles. Cada lacuna:
-    {"falta": ..., "gravidade": baixa|media|alta|critica}.
+    {"falta": ..., "gravidade": baixa|media|alta|critica, "fase": <chave estável>}.
+
+    A `fase` existe para dar CÓDIGO ao achado lá em cima. Sem ela, 473 dos 667 achados do acervo
+    chegavam ao painel e ao diff da pós-correção como "—": 80% do volume num balde só, e nenhuma
+    correção dentro dessa família era visível para o instrumento que mede correções.
 
     A crítica clássica: há pagamento (despesa) mas não há NENHUMA evidência de
     execução física — serviço pago sem prova de entrega.
@@ -240,9 +244,9 @@ def lacunas(fases_presentes: set[str], modalidade: str = "",
         if natureza == "cancelado" and fase in _FASES_QUE_O_CANCELAMENTO_DISPENSA:
             continue
         if fase not in fases_presentes:
-            saida.append({"falta": rotulo, "gravidade": grav})
+            saida.append({"falta": rotulo, "gravidade": grav, "fase": fase})
     if com_pagamento and "execucao" not in fases_presentes:
         saida.append({"falta": "Evidência de execução (medição/atesto/relatório "
                                "fotográfico) apesar de haver pagamento",
-                      "gravidade": "critica"})
+                      "gravidade": "critica", "fase": "execucao_sem_evidencia"})
     return saida

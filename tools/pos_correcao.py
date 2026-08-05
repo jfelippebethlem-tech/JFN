@@ -80,7 +80,11 @@ def fotografia(db: Path | None = None) -> dict:
                         if isinstance(a, dict):
                             codigos[str(a.get("codigo") or "—")] += 1
                             origens[str(a.get("origem") or "—")] += 1
-                            graus[f"{a.get('codigo') or '—'} · {a.get('grau') or '—'}"] += 1
+                            # as famílias legadas dizem `gravidade`; as novas, `grau`. Ler só
+                            # um dos dois pinta 80% do acervo de "—" — que era exatamente o
+                            # buraco que este contador nasceu para fechar.
+                            sev = a.get("grau") or a.get("gravidade") or "—"
+                            graus[f"{a.get('codigo') or '—'} · {sev}"] += 1
                 except ValueError:
                     # achados ilegíveis não podem virar "zero achados" em silêncio: o processo
                     # apareceria como limpo. Conta-se, e o número entra na fotografia.

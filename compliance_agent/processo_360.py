@@ -376,7 +376,14 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         # `aditivo` é espécie de contratação para efeito de cobrança (só a seleção sai, e já saiu
         # em `fases.lacunas`) — sem isto o aditivo perderia também as lacunas que lhe cabem.
         if nat in ("contratacao", "aditivo") or item["gravidade"] == "critica":
+            # CÓDIGO em todo achado. Medido em 2026-08-05: 532 dos 667 achados do acervo (80%)
+            # chegavam sem `codigo` e o painel os empilhava num único balde "—". O diff da
+            # pós-correção herdava a cegueira: mudança dentro de `fases.lacunas`, `cadeia`,
+            # `acatamento` ou `suficiencia_emissor` era invisível para o instrumento que existe
+            # para medir mudança. Prefixo próprio por família — nunca "A1"/"A2", que o ranking
+            # usa para decidir peso (`processo_360_ranking.pontuar`).
             achados.append({"origem": "fases.lacunas", "diz": item["falta"],
+                            "codigo": f"F_{str(item.get('fase') or 'lacuna').upper()}",
                             "gravidade": item["gravidade"]})
 
     # 2) ordem dos marcos (a inversão contrato→parecer também é a A1 da triagem: dedup por
@@ -400,6 +407,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                 and "A1_CONTRATO_ANTES_DO_PARECER" in codigos_triagem):
             continue  # mesmo fato já pontuado pela A1
         achados.append({"origem": "cadeia", "diz": inv.get("observacao", inv.get("tipo")),
+                        "codigo": f"CD_{str(inv.get('tipo') or 'inversao').upper()}",
                         "gravidade": "alta", "detalhe": inv})
 
     # 4) execução (X) — fatos extraídos do TEXTO dos docs de contratação/execução/despesa
@@ -515,16 +523,19 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     ac["suficiencia"] = suf
     if ac.get("veredito") == "IGNORADO_INDICIO":
         achados.append({"origem": "acatamento", "gravidade": "alta",
+                        "codigo": "AC_RESSALVA_SEM_ACOLHIMENTO",
                         "diz": "ressalva de parecer com sinal de não-atendimento e sem "
                                "acolhimento/motivação posterior (art. 53 / LINDB art. 22)"})
     if (ac.get("veredito") == "SEM_PARECER_LOCALIZADO" and integra
             and nat == "contratacao" and "contrato" in tipos):
         achados.append({"origem": "acatamento", "gravidade": "media",
+                        "codigo": "AC_SEM_PARECER_LOCALIZADO",
                         "diz": "contratação com contrato nos autos e NENHUM parecer jurídico "
                                "localizado entre os documentos lidos (art. 53 exige análise "
                                "prévia; captura íntegra — indício a confirmar na íntegra)"})
     if suf["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE" and integra:
         achados.append({"origem": "suficiencia_emissor", "gravidade": "alta",
+                        "codigo": "SE_EMISSOR_INSUFICIENTE",
                         "diz": (f"ato '{ato}' exige parecer de nível {suf['exigido']} "
                                 f"(PGE/CGE) e os autos só têm emissores de nível "
                                 f"{suf['max_nivel']} ({', '.join(suf['emissores']) or '—'}) "

@@ -251,3 +251,34 @@ def test_ressalva_de_verdade_nao_vira_boilerplate():
     APONTADAS" é aprovação condicionada — tem de continuar valendo."""
     assert not S._RE_BOILERPLATE.search(
         "viabilidade do prosseguimento do feito, desde que sanadas previamente as ressalvas apontadas")
+
+
+# ── a NORMA não é o FATO (2026-08-05) ─────────────────────────────────────────
+
+PARECER_PRAXE_PGE = {"ref": "DOC-20", "tipo": "Parecer", "texto":
+    "PROCURADORIA GERAL DO ESTADO. Parecer nº 512. Recomenda-se a observância do Decreto nº "
+    "31.896/02. Registre-se que os valores não aplicados deverão ser ressarcidos ao Fundo "
+    "Estadual de Saúde (art. 18), e que o descumprimento das normas nele previstas deve ser "
+    "apurado conforme a legislação de regência."}
+
+PARECER_DESCUMPRIMENTO_AFIRMADO = {"ref": "DOC-21", "tipo": "Parecer", "texto":
+    "PROCURADORIA GERAL DO ESTADO. Parecer nº 513. Recomenda-se a suspensão do pagamento. "
+    "Verifica-se que a unidade descumpriu a recomendação exarada no parecer anterior."}
+
+
+def test_frase_de_praxe_que_so_DESCREVE_a_norma_nao_acende_nao_atendida():
+    """`descumpr` cru casava a NORMA, não o FATO. Medido em 2026-08-05: as 18 ocorrências de
+    `sinal_nao_atendida` do acervo inteiro — 12 processos, 100% delas — vinham desta mesma frase
+    de praxe da PGE, que diz "se houver descumprimento, apura-se". Dela saíam os 10 vereditos
+    IGNORADO_INDICIO, que valem +4 pontos e ocupavam SETE das nove primeiras posições da fila do
+    fiscal."""
+    a = S.detectar([PARECER_PRAXE_PGE])
+    assert len(a) == 1, "o documento continua sendo manifestação da PGE com recomendação"
+    assert a[0]["sinal_nao_atendida"] is False
+    assert a[0]["status"] == "RECOMENDACAO_A_CONFERIR"
+
+
+def test_descumprimento_AFIRMADO_continua_acendendo():
+    a = S.detectar([PARECER_DESCUMPRIMENTO_AFIRMADO])
+    assert len(a) == 1 and a[0]["sinal_nao_atendida"] is True
+    assert a[0]["status"] == "INDICIO_NAO_ATENDIDA"

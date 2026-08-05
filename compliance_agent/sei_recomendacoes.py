@@ -52,7 +52,20 @@ _RE_NAO_ATENDIDA = re.compile(
     r"reiter\w*(?:-se)?\s+(?:a|o|as|os)?\s*"
     r"(?:recomenda|ressalva|determina|pend[êe]ncia|apontamento|exig[êe]ncia)|"
     r"permanec\w+\s+a\s+(?:pend|ressalv|recomend|falh)|"
-    r"persist\w+\s+a\s+(?:pend|irregular|falh)|descumpr|sem\s+manifesta[çc][aã]o|deixou\s+de\s+(?:atender|cumprir|sanar)|"
+    r"persist\w+\s+a\s+(?:pend|irregular|falh)|"
+    # `descumpr` cru casava a NORMA, não o FATO. Medido em 2026-08-05: as 18 ocorrências de
+    # `sinal_nao_atendida` do acervo inteiro — 12 processos, 100% delas — vinham da MESMA frase de
+    # praxe da PGE, que só descreve a regra em abstrato: "…deverão ser ressarcidos ao Fundo
+    # Estadual de Saúde (art. 18), e que o DESCUMPRIMENTO das normas nele previstas deve ser
+    # apurado conforme a legislação…". Isso é "se houver descumprimento, apura-se" — hipótese
+    # normativa, não afirmação de que algo foi descumprido. E custava caro: os 10 vereditos
+    # IGNORADO_INDICIO do acervo saíam daí, valem +4 pontos cada, e ocupavam SETE das nove
+    # primeiras posições da fila do fiscal. Agora exige forma que AFIRMA o fato.
+    r"descumpri(?:u|ram|d[oa]s?)\b|"
+    r"(?:houve|h[áa]|constatad[oa]|verificad[oa]|em|ante\s+o)\s+descumprimento\b|"
+    r"descumprimento\s+d[ao]s?\s+"
+    r"(?:parecer|recomenda|ressalva|determina|condicionante|exig[êe]ncia)|"
+    r"sem\s+manifesta[çc][aã]o|deixou\s+de\s+(?:atender|cumprir|sanar)|"
     r"n[aã]o\s+(?:foi\s+)?observ\w+\s+(?:o|a)\s+(?:parecer|recomenda|determina)|contrari\w+\s+(?:o|ao)\s+parecer|"
     r"pend[eê]ncia\s+n[aã]o\s+(?:sanad|atendid)|ressalva\s+n[aã]o\s+(?:sanad|atendid))", re.I)
 
