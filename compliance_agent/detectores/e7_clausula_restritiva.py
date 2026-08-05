@@ -33,6 +33,8 @@ nunca inventa número. Cada cláusula confirmada cita súmula/dispositivo; itens
 carregam o aviso (o relatório o exibe)."""
 from __future__ import annotations
 
+import re
+
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
@@ -153,6 +155,36 @@ _TESTES_FINALISTICOS: dict[str, tuple] = {
 _NIVEIS_MARCA = {"medio", "forte", "critico"}  # níveis que contam como cláusula restritiva marcada
 
 
+def _trecho_completo(clausula: str, edital: str | None, largura: int = 320) -> str:
+    """A cláusula com o contexto ao redor, recortada do EDITAL — não o fragmento do banco.
+
+    A tabela `edital_clausula` guarda o trecho já cortado na ingestão (mediana de 91 caracteres,
+    e `trecho_fonte` traz o mesmo), então a evidência chegava ao fiscal partida no meio da frase:
+    "9.3.2 Prova de possuir no seu quadro permanente, na data da Concorrência, profissional ou" —
+    e com meia cláusula não se decide nada. Medido em 2026-08-04 nos 13 disparos do acervo.
+
+    O texto integral do edital JÁ ESTÁ no contexto (`tr_texto`), então basta relocalizar a
+    cláusula nele e alargar a janela até a fronteira de frase mais próxima. Sem o edital no
+    contexto, devolve o que havia — nunca menos.
+    """
+    base = (clausula or "").strip()
+    if not base:
+        return ""
+    if not edital:
+        return base[:largura]
+    pos = edital.lower().find(base[:60].lower())
+    if pos < 0:
+        return base[:largura]
+    ini = max(0, pos - largura // 3)
+    fim = min(len(edital), pos + len(base) + largura)
+    seg = re.sub(r"\s+", " ", edital[ini:fim]).strip()
+    # termina em fronteira de frase, para não entregar palavra pela metade
+    corte = seg.rfind(". ")
+    if corte > largura // 2:
+        seg = seg[:corte + 1]
+    return seg
+
+
 class E7ClausulaRestritiva(Detector):
     """Detector E7 — análise finalística cláusula-a-cláusula + efeito combinado (art. 9º/art. 5º, Lei 14.133/2021).
 
@@ -212,7 +244,9 @@ class E7ClausulaRestritiva(Detector):
             score = max(score, ancora(nivel))
             marcadas.append({**c, "_nivel": nivel})
             razoes.append(f"[{tipo}/{nivel}] {motivo}")
-            res.add_evidencia(fonte=f"cláusula do edital ({tipo})", trecho=str(c.get("texto") or "")[:160])
+            res.add_evidencia(fonte=f"cláusula do edital ({tipo})",
+                              trecho=_trecho_completo(str(c.get("texto") or ""),
+                                                      contexto.get("tr_texto")))
             if tipo_fund not in fundamentacao:
                 fund = fundamentar_clausula(tipo_fund)
                 if fund:
