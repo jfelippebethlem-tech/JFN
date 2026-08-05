@@ -129,7 +129,25 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
     n_com_texto = acervo_texto.docs_com_conteudo(pasta) if txt.exists() else 0
     minimo = max(1, int(len(docs) * 0.6))
     ok = bool(docs) and n_com_texto >= minimo
-    veto = bool(manifest.get("captura_vazia") or manifest.get("captura_completa") is False)
+    # TETO DE COLETA: 40 documentos exatos, e nada acima. Medido em 2026-08-05 sobre o acervo
+    # inteiro — dos **1.902 arquivos montados a partir do CACHE do sweep, 176 param em exatamente
+    # 40 documentos e ZERO passa de 40** (31 em 39, 11 em 38, e depois o muro). Nos 274 montados
+    # por outro caminho não há muro nenhum: 2 em 40, 1 em 41, 1 em 42, 1 em 43. É a assinatura de
+    # contagem redonda que a casa já conhece — o corte `documentos[:40]` que existia no sweep e
+    # hoje não existe mais no código, mas continua CONGELADO nesses arquivos.
+    #
+    # Este gate mede densidade de TEXTO: 40 de 40 documentos com teor = "li tudo o que capturei".
+    # Só que a pergunta é outra — "capturei tudo?" — e sobre esses 176 a resposta é não. Eles
+    # sustentavam **134 acusações de AUSÊNCIA** (63 de pagamento sem evidência de execução, 25 de
+    # planejamento, 22 de formalização, 12 de seleção, 12 de art. 53) e **14 dos 28 processos
+    # EXTREMO do acervo**. Ausência afirmada sobre captura truncada é a família 20 do catálogo.
+    #
+    # `tools/sei_sweep._arquivo_incompleto` usa esta MESMA função, então marcá-los aqui os devolve
+    # à fila de recaptura — não é só deixar de acusar, é ir buscar o que falta.
+    do_cache = "CACHE do sweep" in str(manifest.get("aviso") or "")
+    teto_de_coleta = do_cache and len(docs) == 40
+    veto = bool(manifest.get("captura_vazia") or manifest.get("captura_completa") is False
+                or teto_de_coleta)
     # BANDEIRA DESMENTIDA PELO DISCO é dado velho, não veto. Medido em 2026-08-04: **17
     # processos** carregavam `captura_vazia=True` ou `captura_completa=False` tendo 100% dos
     # documentos com teor — 155 de 155, 136 de 136, 247 de 247. A marca foi posta por uma
@@ -137,9 +155,11 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
     # NAO_AVALIAVEL perpétuo, ou seja, a casa se recusando a afirmar sobre processo que leu
     # inteiro. A própria docstring aqui sempre disse que o texto no disco decide.
     # O veto segue valendo quando o disco NÃO desmente — é o caso dos outros 149.
-    veto_obsoleto = veto and ok
+    # o teto de coleta NÃO é bandeira velha: o disco confirma os 40 textos justamente porque os 40
+    # são tudo o que se capturou. Só a bandeira do manifesto pode ser desmentida pelo disco.
+    veto_obsoleto = veto and ok and not teto_de_coleta
     if veto and not veto_obsoleto:
         ok = False
     return ok, {"n_docs": len(docs), "n_txt": n_txt, "n_com_texto": n_com_texto,
                 "minimo": minimo, "veto_manifest": veto,
-                "veto_obsoleto": veto_obsoleto}
+                "veto_obsoleto": veto_obsoleto, "teto_de_coleta": teto_de_coleta}
