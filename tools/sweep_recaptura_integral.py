@@ -171,11 +171,23 @@ def main() -> int:
     ap.add_argument("--listar", action="store_true", help="só mostra a fila e sai")
     ap.add_argument("--ate", type=int, default=0,
                     help="só processos com lacuna <= N (0 = todos). O gigante não cabe num slot")
+    # ALVO NOMEADO. A fila é ordenada por lacuna crescente e `--max` corta do começo, então não
+    # havia como pedir UM processo específico. Precisei disto em 2026-08-05 para o
+    # SEI-270131/000548/2023, que é o nº 1 da fila do fiscal (7 achados, entre eles o I3 crítico
+    # do ato do ordenador sem assinatura de quem decide) e está truncado: árvore de 65, 40 lidos.
+    # Recapturar o processo mais importante da fila não deveria depender de ele ser o menor.
+    ap.add_argument("--processo", default="", help="recaptura SÓ este processo (número SEI)")
     ap.add_argument("--gigantes", action="store_true",
                     help="inverte a ordem: ataca os maiores pelo caminho resiliente em lotes")
     a = ap.parse_args()
 
     f = fila()
+    if a.processo:
+        alvo = re.sub(r"\D", "", a.processo)
+        f = [x for x in f if re.sub(r"\D", "", str(x["numero"])) == alvo]
+        if not f:
+            print(f"[recap] {a.processo} não está na fila (captura já íntegra ou sem pendência).")
+            return 0
     if a.ate:
         f = [x for x in f if x["faltam"] <= a.ate]
     if a.gigantes:
