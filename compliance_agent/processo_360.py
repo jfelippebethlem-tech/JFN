@@ -54,6 +54,57 @@ async def _analisar_pej(numero: str, leitura: dict | None = None) -> dict:
     return await analisar_processo_sei(numero, ler_fn=_ler)
 
 
+def _contrato_registrado(numero_sei: str) -> dict:
+    """Vigência e valor do contrato como REGISTRADOS no TCE-RJ, ligados pelo número do processo.
+
+    Fio que faltava. Medido em 2026-08-04 sobre os 2.174 processos avaliados: **a vigência do
+    contrato estava ausente em TODOS eles**, e com isso o X2 (teto de 60 meses, art. 57) e o X8
+    (termo aditivo retroativo) nunca avaliaram nada — dois achados sérios desligados por um campo.
+    O dado existia o tempo todo em `contratos_tcerj`, que o `varredura_execucao_ctx` já usa no
+    caminho do TCE; só não chegava ao caminho do SEI. São **195 processos** com contrato
+    registrado.
+
+    `valor_inicial` só é preenchido quando a extração do TEXTO não achou nada: o valor declarado
+    nos autos foi calibrado em 2026-08-04 por FORÇA DA DECLARAÇÃO, e sobrescrevê-lo em silêncio
+    desfaria essa calibração. Divergência entre os dois é assunto de outro achado, não de um
+    preenchimento mudo.
+
+    ⚠️ **NÃO preencher `vigencia_fim` com este dado.** O X8 (termo retroativo) pede a vigência
+    ORIGINAL do contrato, e `contratos_tcerj` guarda um único par de datas, sem distinguir a
+    original da já prorrogada — para contrato com aditivo, `vig_fim` é provavelmente a ATUAL.
+    Alimentar o X8 com ela faria o detector medir retroatividade contra a baseline errada, que é
+    pior do que não medir. Ele segue `nao_avaliavel`, e isso agora aparece na cobertura do dossiê.
+    """
+    import sqlite3 as _sq
+
+    db = _DB
+    chave = re.sub(r"\D", "", str(numero_sei or ""))
+    if not chave or not db.exists():
+        return {}
+    try:
+        con = _sq.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            row = con.execute(
+                "SELECT vig_inicio, vig_fim, valor_contrato FROM contratos_tcerj "
+                "WHERE sei_norm = ? LIMIT 1", (chave,)).fetchone()
+        finally:
+            con.close()
+    except _sq.Error:
+        return {}
+    if not row:
+        return {}
+    fora: dict = {}
+    if row[0]:
+        fora["vigencia_inicio"] = str(row[0])
+    if row[1]:
+        fora["vigencia_fim_atual"] = str(row[1])
+    if row[2]:
+        fora["valor_contrato_registrado"] = float(row[2])
+    if fora:
+        fora["fonte_contrato_registrado"] = "contratos_tcerj (ligado por sei_norm)"
+    return fora
+
+
 def _rodar_execucao(numero: str, contexto: dict) -> list[ResultadoDetector]:
     from compliance_agent.detectores import rodar_execucao
     return rodar_execucao(numero, contexto=contexto)
@@ -358,7 +409,8 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         t_despesa = "\n".join(_texto_de(pasta, d) for d in docs
                               if d["fase"] in ("despesa", "execucao"))
         ctx_exec = {**(contexto_x1(t_contrato) if t_contrato.strip() else {}),
-                    **(contexto_x3(t_despesa) if t_despesa.strip() else {})}
+                    **(contexto_x3(t_despesa) if t_despesa.strip() else {}),
+                    **_contrato_registrado(numero)}
         res_exec = _rodar_execucao(numero, ctx_exec)
         resultados.extend(res_exec)
         # PONTUAR SEM APARECER é a falha que já custou 14 processos EXTREMO sem achado nenhum na
