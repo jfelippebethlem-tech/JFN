@@ -226,8 +226,15 @@ def achados_de_fornecedor(resultados) -> list[dict]:
             "origem": "fornecedor", "codigo": r.detector, "gravidade": grav,
             # o `diz` carrega a prova quando ela existe: "C9 confirmado (intensidade 1.00)" sozinho
             # é score sem explicação, que é o que a família C foi corrigida para não ser.
+            # O DINHEIRO ENTRA NO TÍTULO DO ACHADO. O `diz` é o que o fiscal lê na fila; o
+            # `evidencia` só se abre no dossiê. Medido em 2026-08-05 nas 9 C9 críticas: o `diz`
+            # trazia só o múltiplo ("3.2× a norma local") enquanto a segunda razão, invisível ali,
+            # dizia o que importa — "86.9% do valor pago via TAC/indenização (R$ 52.829.081,39 de
+            # R$ 60.772.657,25; 15/32 OB)". Múltiplo sem base ordena mal a fila: 3,2× de uma
+            # unidade pequena não é o mesmo problema que 3,2× de R$ 52,8 milhões.
             "diz": (f"perfil do fornecedor contratado: detector {r.detector} confirmado "
-                    f"(intensidade {s:.2f})" + (f" — {trechos[0]}" if trechos else "")),
+                    f"(intensidade {s:.2f})"
+                    + "".join(f" — {x}" for x in trechos[:2])),
             "explicacao_inocente": inocente,
             "evidencia": "; ".join(trechos),
             "ressalva": ("Indício sobre a EMPRESA contratada, não sobre a conduta do gestor "
