@@ -85,6 +85,19 @@ fi
 # de validar o conserto com o chamador antigo). O guard de OOM no topo deste arquivo garante que,
 # se algo escapar, quem morre é o sweep — nunca a sessão do dono.
 $PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
+# RECAPTURA INTEGRAL — o modo existia e NINGUEM o chamava. `sei_sweep --recaptura` esta escrito
+# desde 2026-08-03 e nenhum agendamento o acionava: a fila de 540 processos com documento sem texto
+# lido nao tinha quem a drenasse (familia 8 do catalogo — construido, testado, nunca rodado).
+# Entrou aqui, e NAO num cron proprio, porque a sessao itkava e unica: duas capturas simultaneas e o
+# SEI expulsa a duplicada. Sequencial, DEPOIS do sweep normal, com orcamento apertado — o custo por
+# processo e do login + carga da arvore (~9 min medidos), nao do numero de documentos.
+# Pausa: data/.pause_recaptura_integral.
+if [ -f data/.pause_recaptura_integral ]; then
+  say "recaptura integral pausada — pulei"
+else
+  $PRIO timeout -k 120 --foreground 700 $PY -m tools.sei_sweep --recaptura --max 2 \
+    >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_recaptura rc=$?"
+fi
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.

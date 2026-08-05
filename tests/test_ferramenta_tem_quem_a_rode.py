@@ -34,6 +34,15 @@ PRECISAM_DE_ROTINA = {
         "ingestão de OB",
     "tools.sei_cpf_sweep":
         "enriquecimento de CPF a partir dos processos capturados",
+    # Terceira mordida da mesma família, em 2026-08-05: `sei_sweep --recaptura` existia desde
+    # 2026-08-03 e NENHUM agendamento o acionava. A fila de 540 processos com documento sem texto
+    # lido não tinha quem a drenasse — e nela estava o nº 1 da fila do fiscal
+    # (SEI-270131/000548/2023: árvore de 65, 40 lidos). Recapturado à mão, ele saiu de
+    # NAO_AVALIAVEL para EXTREMO 94,9, o mais alto do acervo. O modo entrou no `sweep_sei.sh`,
+    # sequencial e depois do sweep normal, porque a sessão itkava é única.
+    "tools.sei_sweep --recaptura":
+        "drena a fila de recaptura integral (documento na árvore sem texto lido); sem ela, todo "
+        "processo truncado fica truncado para sempre",
 }
 
 
