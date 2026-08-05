@@ -22,21 +22,21 @@
 | 20 | 420001/004224/2024 | 8 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; o objeto contratado é de 30 veiculo(s) e o atesto de execuçã |
 | 21 | 420001/004223/2024 | 8 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 1.00) — DUPLA CORREÇÃ; o objeto contratado é de 30 veiculo(s) e o atesto de execuçã |
 | 22 | 330005/001090/2024 | 8 | C/ALTO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
-| 23 | 070002/015404/2022 | 7 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 0.60) — REI; planejamento/edital/julgamento: E1 confirmado (intensidade 0; planejamento/edital/julgamento: E7 c |
-| 24 | 270099/000714/2022 | 7 | B/EXTREMO | a minuta examinada é do 1º termo aditivo e nenhum instrument; perfil do fornecedor contratado: detector C9 confirmado (int; planejamento/edital/julgamento: E7 c |
-| 25 | 260007/019647/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
-| 26 | 260007/009439/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
-| 27 | 260007/009259/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
-| 28 | 080002/015808/2024 | 7 | C/ALTO | O documento de pagamento aparece nos autos ANTES do de liqui; pagamento sem evidência de execução |
-| 29 | 080002/015833/2024 | 7 | C/ALTO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (int |
-| 30 | 080002/017482/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
-| 31 | 080002/021050/2024 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
-| 32 | 260006/027608/2024 | 7 | C/ALTO | O documento de pagamento aparece nos autos ANTES do de liqui; pagamento sem evidência de execução |
-| 33 | 150016/155077/2024 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
-| 34 | 150016/119084/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
-| 35 | 030001/047738/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
-| 36 | 080002/012445/2026 | 7 | C/ALTO | pagamento sem evidência de execução |
-| 37 | 080002/012450/2026 | 7 | C/ALTO | pagamento sem evidência de execução |
-| 38 | 270003/004494/2025 | 7 | C/ALTO | pagamento sem evidência de execução |
-| 39 | 420001/002738/2024 | 7 | C/ALTO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
-| 40 | 070002/012954/2022 | 6 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 0.60) — REI; planejamento/edital/julgamento: E1 confirmado (intensidade 0; planejamento/edital/julgamento: E7 c |
+| 23 | 270099/000714/2022 | 7 | B/EXTREMO | a minuta examinada é do 1º termo aditivo e nenhum instrument; perfil do fornecedor contratado: detector C9 confirmado (int; planejamento/edital/julgamento: E7 c |
+| 24 | 260007/019647/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
+| 25 | 260007/009439/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
+| 26 | 260007/009259/2024 | 7 | C/EXTREMO | execução do contrato: X3 confirmado (intensidade 0.85) — pag; pagamento sem evidência de execução |
+| 27 | 080002/015808/2024 | 7 | C/ALTO | O documento de pagamento aparece nos autos ANTES do de liqui; pagamento sem evidência de execução |
+| 28 | 080002/015833/2024 | 7 | C/ALTO | pagamento sem evidência de execução; perfil do fornecedor contratado: detector C9 confirmado (int |
+| 29 | 080002/017482/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
+| 30 | 080002/021050/2024 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
+| 31 | 260006/027608/2024 | 7 | C/ALTO | O documento de pagamento aparece nos autos ANTES do de liqui; pagamento sem evidência de execução |
+| 32 | 150016/155077/2024 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
+| 33 | 150016/119084/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
+| 34 | 030001/047738/2026 | 7 | C/ALTO | O documento de liquidacao aparece nos autos ANTES do de empe; pagamento sem evidência de execução |
+| 35 | 080002/012445/2026 | 7 | C/ALTO | pagamento sem evidência de execução |
+| 36 | 080002/012450/2026 | 7 | C/ALTO | pagamento sem evidência de execução |
+| 37 | 270003/004494/2025 | 7 | C/ALTO | pagamento sem evidência de execução |
+| 38 | 420001/002738/2024 | 7 | C/ALTO | Seleção (edital, julgamento, homologação); pagamento sem evidência de execução |
+| 39 | 070002/012954/2022 | 6 | B/EXTREMO | execução do contrato: X7 confirmado (intensidade 0.60) — REI; planejamento/edital/julgamento: E1 confirmado (intensidade 0; planejamento/edital/julgamento: E7 c |
+| 40 | 270006/005570/2024 | 6 | C/EXTREMO | contrato ANTES do parecer (art. 53) |
