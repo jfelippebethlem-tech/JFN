@@ -65,6 +65,20 @@ class C9TacFornecedor(Detector):
                                     "regularização pontual não é padrão")
             return res
 
+        # PREVALÊNCIA DECIDE O EIXO. O limiar é absoluto, e numa unidade que paga 27% do total por
+        # TAC um fornecedor com 29,8% é a NORMA, não a exceção. Medido em 2026-08-04: 24 dos 41
+        # disparos do acervo estavam a menos de 2× a taxa da própria unidade, nove deles a 1,1×.
+        # O achado não some — ele passa a apontar para quem de direito: a docstring deste detector
+        # sempre disse que o vício é do ÓRGÃO, com o fornecedor como beneficiário.
+        base = contexto.get("tac_unidade") or {}
+        pct_unidade = base.get("pct")
+        na_norma = (isinstance(pct_unidade, (int, float)) and pct_unidade > 0
+                    and pct < 2 * float(pct_unidade))
+        if na_norma:
+            nivel = "medio" if nivel == "critico" else "fraco"
+            res.valores["pct_da_unidade"] = pct_unidade
+            res.valores["razao_sobre_a_unidade"] = round(pct / float(pct_unidade), 2)
+            res.valores["padrao_e_do_orgao"] = True
         res.score = ancora(nivel)
         res.status = "confirmado"
         res.explicacao_inocente = ("passivo legítimo de serviço prestado sem cobertura contratual por "
@@ -73,5 +87,13 @@ class C9TacFornecedor(Detector):
             "ordens_bancarias (observação TFE)",
             f"{pct:.1f}% do valor pago via TAC/indenização/reconhecimento de dívida "
             f"(R$ {_brl(total_tac)} de R$ {_brl(float(tac.get('total') or 0))}; "
-            f"{tac.get('n_tac')}/{tac.get('n')} OB; {cobertura})")
+            f"{tac.get('n_tac')}/{tac.get('n')} OB; {cobertura})"
+            + (f". A UNIDADE onde ele mais recebeu ({base.get('ug_nome') or base.get('ug')}) paga "
+               f"{pct_unidade:.1f}% por essa via: o fornecedor está a "
+               f"{pct / float(pct_unidade):.1f}× a norma local, então o padrão é do ÓRGÃO e o "
+               f"contratado é beneficiário — investigar a prática da unidade, não só a empresa"
+               if na_norma else
+               (f". A unidade onde ele mais recebeu paga {pct_unidade:.1f}% por essa via — o "
+                f"fornecedor está a {pct / float(pct_unidade):.1f}× a norma local"
+                if isinstance(pct_unidade, (int, float)) and pct_unidade else "")))
         return res

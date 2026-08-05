@@ -148,6 +148,58 @@ def tac_por_cnpj(cnpj: str, *, db_path=None) -> dict:
 
 # ───────────────────────── por UG (o sistêmico) ─────────────────────────
 
+def tac_da_unidade_do_cnpj(cnpj: str, *, db_path=None) -> dict:
+    """Taxa de TAC da UNIDADE onde este fornecedor mais recebeu — a base de comparação.
+
+    POR QUE ISTO EXISTE. O C9 dispara com limiar ABSOLUTO (30% do valor via TAC). Medido em
+    2026-08-04: **24 dos 41 disparos do acervo** eram de fornecedores a menos de 2× a taxa da
+    própria unidade, e nove deles marcavam **29,8% numa unidade que paga 27,0%** — 1,1×, ou seja,
+    indistinguível da norma local. Acusar o contratado ali é apontar para o lado errado: a
+    docstring do próprio C9 diz que o vício é do ÓRGÃO, com o fornecedor como beneficiário.
+
+    A leitura barata: o ranking por unidade já é calculado pelo cron
+    (`tools/tac_ranking_ugs.py` → `data/tac_ranking_ugs.json`), então aqui é um dicionário. Sem o
+    arquivo, calcula na hora — e sem dado nenhum devolve `{}`, que o detector trata como
+    "sem base de comparação" e mantém o comportamento antigo.
+    """
+    import json
+
+    d = _digitos(cnpj)
+    if len(d) < 14:
+        return {}
+    caminho = _resolver_db(db_path)
+    if not caminho.exists():
+        return {}
+    try:
+        con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+        try:
+            linha = con.execute(
+                "SELECT ug_codigo, SUM(valor) v FROM ordens_bancarias "
+                "WHERE replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')=? "
+                "GROUP BY ug_codigo ORDER BY v DESC LIMIT 1", (d,)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return {}
+    if not linha or not linha[0]:
+        return {}
+    ug = str(linha[0])
+
+    pronto = _root() / "data" / "tac_ranking_ugs.json"
+    try:
+        for u in json.loads(pronto.read_text(encoding="utf-8")).get("unidades") or []:
+            if str(u.get("ug")) == ug:
+                return {"ug": ug, "ug_nome": u.get("nome") or "", "pct": u.get("pct"),
+                        "fonte": "ranking pré-calculado"}
+    except (OSError, ValueError):
+        pass
+    medida = tac_por_ug(ug, db_path=db_path)
+    if not medida or not medida.get("n"):
+        return {}
+    return {"ug": ug, "ug_nome": medida.get("ug_nome") or "", "pct": medida.get("pct"),
+            "fonte": "medido na hora"}
+
+
 def tac_por_ug(ug_codigo: str, *, db_path=None) -> dict:
     """% do valor pago por UMA UG pagadora via TAC/indenização (o sinal sistêmico: FSERJ/294200).
 
