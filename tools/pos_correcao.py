@@ -59,6 +59,7 @@ def fotografia(db: Path | None = None) -> dict:
     # mais silencioso do sistema, porque `indisponiveis` só registrava motor QUEBRADO.
     aferidas: list[int] = []
     sem_dado: list[int] = []
+    ilegiveis = 0
     if caminho.exists():
         con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
         try:
@@ -74,7 +75,9 @@ def fotografia(db: Path | None = None) -> dict:
                             codigos[str(a.get("codigo") or "—")] += 1
                             origens[str(a.get("origem") or "—")] += 1
                 except ValueError:
-                    pass
+                    # achados ilegíveis não podem virar "zero achados" em silêncio: o processo
+                    # apareceria como limpo. Conta-se, e o número entra na fotografia.
+                    ilegiveis += 1
                 try:
                     cob = json.loads(cj or "{}")
                 except ValueError:
@@ -101,7 +104,8 @@ def fotografia(db: Path | None = None) -> dict:
                   "sem_dado_mediana": int(_st.median(sem_dado)),
                   "sem_dado_max": max(sem_dado)}
     return {"faixas": dict(faixas), "codigos": dict(codigos), "origens": dict(origens),
-            "motivos_da_fila": dict(motivos), "reguas": reguas}
+            "motivos_da_fila": dict(motivos), "reguas": reguas,
+            "achados_ilegiveis": ilegiveis}
 
 
 def _diff(antes: dict, depois: dict, chave: str) -> list[str]:
