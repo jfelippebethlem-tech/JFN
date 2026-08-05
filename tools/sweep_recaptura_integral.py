@@ -37,6 +37,7 @@ de tempo por processo e por slot. O cron repete; nada se perde entre as passadas
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import asyncio
 import glob
 import json
@@ -108,8 +109,14 @@ def fila() -> list[dict]:
         if ok:
             continue
         n_docs = int(ev.get("n_docs") or 0)
+        # `faltam` = 0 no teto de coleta NÃO significa "nada falta" — significa que o arquivo
+        # sozinho não sabe o tamanho da árvore (quem sabe é o cache, e estes não o têm). O zero
+        # serve à ordenação (teto primeiro, que é o que se quer), mas mentiria no total impresso:
+        # o SEI-270131/000548/2023 marcava 40/40 e faltavam 25. Por isso a incerteza é declarada.
+        teto = bool(ev.get("teto_de_coleta"))
         saida.append({"numero": numero, "arvore": n_docs, "lido": n_docs,
-                      "faltam": 0 if ev.get("teto_de_coleta") else max(0, n_docs - int(ev.get("n_com_texto") or 0)),
+                      "faltam": 0 if teto else max(0, n_docs - int(ev.get("n_com_texto") or 0)),
+                      "faltam_desconhecido": teto,
                       "origem": "arquivo_nao_integro"})
     saida.sort(key=lambda x: x["faltam"])
     return saida
@@ -124,9 +131,34 @@ def _feitos() -> dict:
     return {}
 
 
+# DESISTIR NÃO PODE SER PARA SEMPRE — a mesma doutrina que o `sei_sweep` já aplica às tentativas
+# do sweep principal (lá a tentativa expira em 14 dias). Aqui não expirava: bastava UMA passada sem
+# ganho para o processo sair da fila em definitivo. Medido em 2026-08-05, o registro tinha 5
+# entradas e **4 com `lido_antes == lido_depois`** — nenhum ganho, e três delas paradas em 40/40,
+# ou seja, exatamente os casos de teto de coleta que mais precisam voltar. As tentativas com +0
+# são conhecidas e documentadas neste arquivo (browser morto, login que não venceu o WAF, processo
+# gigante que estoura o slot): marcar fracasso como "feito" transforma condição transitória em
+# exclusão permanente.
+_DIAS_NOVA_CHANCE = 7
+
+
+def _sem_ganho_expirou(reg: dict) -> bool:
+    if int(reg.get("lido_depois") or 0) > int(reg.get("lido_antes") or 0):
+        return False                       # ganhou: não precisa voltar
+    em = str(reg.get("em") or "")
+    if not em:
+        return True                        # registro antigo, sem data: dá nova chance
+    try:
+        quando = datetime.fromisoformat(em)
+    except ValueError:
+        return True
+    return (datetime.now() - quando).days >= _DIAS_NOVA_CHANCE
+
+
 def _marcar(numero: str, antes: int, depois: int) -> None:
     d = _feitos()
-    d[numero] = {"lido_antes": antes, "lido_depois": depois}
+    d[numero] = {"lido_antes": antes, "lido_depois": depois,
+                 "em": datetime.now().isoformat(timespec="seconds")}
     PROGRESSO.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
@@ -193,7 +225,10 @@ def main() -> int:
     if a.gigantes:
         f = list(reversed(f))
     total = sum(x["faltam"] for x in f)
-    print(f"fila: {len(f)} processos · {total} documentos sem texto lido")
+    incerto = sum(1 for x in f if x.get("faltam_desconhecido"))
+    print(f"fila: {len(f)} processos · {total} documentos sem texto lido"
+          + (f" · {incerto} com lacuna DESCONHECIDA (teto de coleta: o arquivo parou em 40 e só a "
+             f"árvore dirá quantos faltam)" if incerto else ""))
     if a.listar:
         for x in f[:25]:
             print(f"  faltam {x['faltam']:4d} de {x['arvore']:4d} (lidos {x['lido']:3d})  "
@@ -206,7 +241,8 @@ def main() -> int:
     for x in f:
         if (time.time() - t0) > a.segundos or (a.max and n >= a.max):
             break
-        if x["numero"] in feitos:
+        reg = feitos.get(x["numero"])
+        if reg and not _sem_ganho_expirou(reg):
             continue
         restante = int(a.segundos - (time.time() - t0))
         antes = x["lido"]
