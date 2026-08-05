@@ -31,6 +31,24 @@ AS TRÊS SEPARAÇÕES QUE MUDAM O SENTIDO DO NÚMERO
      compatibilidade de horários**, percebe as vantagens do cargo e o subsídio; não havendo,
      afasta-se. Estar na folha não prova irregularidade em nenhum dos dois — prova que há o que
      conferir: houve afastamento formal? qual remuneração foi optada? houve acúmulo de subsídio?
+
+O QUE JÁ FOI CONFERIDO NOS TRÊS COM MANDATO VIGENTE (2025-2028), em 2026-08-05
+  A remuneração NÃO cai quando o mandato começa — os três seguem em folha `NORMAL`, com valor
+  igual ou maior:
+      Prefeito de São Pedro da Aldeia (Guarda Municipal)  2024: R$ 4.314,91  →  2025-26: R$ 4.647,21
+      Vice-prefeita de Barra Mansa (Guarda Municipal)     2024: R$ 4.571,19  →  2025-26: R$ 4.658,75
+      Prefeito de Quissamã (Comlurb)                      2024: R$ 2.848,60  →  2025-26: R$ 3.033,56
+  Isso não fecha o caso em nenhum sentido: o art. 38, II FACULTA ao afastado optar pela
+  remuneração do cargo efetivo, então receber não é, por si, irregular. O que a folha não diz é se
+  houve **afastamento** — ela registra pagamento, não frequência.
+
+  A busca nominal no Diário Oficial do Município (`doweb.coletar_termo`, 2024+) **não** trouxe ato
+  de afastamento/licença/cessão para nenhum dos três. **Isso não é prova de que não houve**: a
+  coleta pega 2 páginas por termo e o texto vem em nível de página, cheio de listas — é a mesma
+  disciplina da família 22 do catálogo (o gate mede o que se capturou, não o que existe).
+
+  Próximo passo, e é documental: ficha funcional, ato de afastamento e folha de frequência dos
+  três — por requisição, não por OSINT.
 """
 from __future__ import annotations
 
