@@ -647,27 +647,54 @@ def _qtds(texto: str) -> dict[str, int]:
     return saida
 
 
+def _qtds_distintas(texto: str) -> dict[str, set]:
+    """{unidade: TODAS as quantidades distintas} — o que `_qtds` esconde ao ficar com a primeira.
+
+    Instrumento e atesto costumam citar VÁRIOS quantitativos (lotes, itens, fases): num processo
+    de veículos medido em 2026-08-04, os autos traziam 3, 4, 5, 10, 12, 19, 30, 40, 50 e 100
+    veículos — além de "2019 VEICULO", que é data. Comparar a PRIMEIRA ocorrência de cada lado é
+    sorteio, e foi o que produziu "o objeto é de 30 veículos e o atesto fala em 3".
+    """
+    saida: dict[str, set] = {}
+    for m in _RE_QTD_UNIDADE.finditer(texto or ""):
+        uni = _norm(m.group(2)).rstrip("s")
+        if uni in _UNIDADES_NAO_OBJETO:
+            continue
+        saida.setdefault(uni, set()).add(int(m.group(1)))
+    return saida
+
+
 def quantitativo_divergente(docs: list[dict]) -> dict:
-    """O atesto de boa execução fala do mesmo quantitativo que o objeto contratado?"""
+    """O atesto de boa execução fala do mesmo quantitativo que o objeto contratado?
+
+    SÓ COM QUANTITATIVO INEQUÍVOCO. A divergência só sustenta achado quando cada lado declara UM
+    único quantitativo para a unidade: documento que cita vários (lotes, itens, fases) não permite
+    dizer qual é "o" contratado, e comparar a primeira ocorrência de cada lado é sorteio.
+    """
     docs = _limpos(docs)
-    obj: dict[str, int] = {}
+    obj: dict[str, set] = {}
     for d in docs or []:
         texto = d.get("texto") or ""
         if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_OBJETO.search(texto):
-            obj = _qtds(texto)
+            obj = _qtds_distintas(texto)
             if obj:
                 break
+    obj = {u: q for u, q in obj.items() if len(q) == 1}
     if not obj:
         return {"achado": False, "objeto": None, "atesto": None}
     for d in docs or []:
         texto = d.get("texto") or ""
         if not _RE_ATESTO.search(texto):
             continue
-        for uni, q in _qtds(texto).items():
-            if uni in obj and obj[uni] != q:
+        for uni, qs in _qtds_distintas(texto).items():
+            if len(qs) != 1:
+                continue                      # atesto com vários quantitativos não decide nada
+            q = next(iter(qs))
+            if uni in obj and next(iter(obj[uni])) != q:
                 return {
-                    "achado": True, "unidade": uni, "objeto": obj[uni], "atesto": q,
-                    "diz": (f"o objeto contratado é de {obj[uni]} {uni}(s) e o atesto de execução "
+                    "achado": True, "unidade": uni, "objeto": next(iter(obj[uni])), "atesto": q,
+                    "diz": (f"o objeto contratado é de {next(iter(obj[uni]))} {uni}(s) e o atesto "
+                            f"de execução "
                             f"fala em {q} — o documento que sustenta a prorrogação refere "
                             "quantitativo diferente do contratado"),
                     "fundamento": ("Enunciado 09 da PGE/RJ: o desempenho contratual satisfatório é "
@@ -675,7 +702,7 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
                                    "quantitativo não o comprova"),
                     "evidencia": d.get("ref", ""),
                 }
-    return {"achado": False, "objeto": obj, "atesto": None}
+    return {"achado": False, "objeto": {u: next(iter(q)) for u, q in obj.items()}, "atesto": None}
 
 
 # ═══════════ I7 · quem o documento diz que aprovou não é quem assinou ═══════════
