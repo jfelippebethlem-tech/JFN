@@ -182,7 +182,25 @@ def extrair_aditivos(texto: str) -> list[dict]:
         out.append({"data": _data_iso(frase), "tipo": nat, "valor": valor,
                     "percentual_citado": float(perc.group(1).replace(",", ".")) if perc else None,
                     "justificativa": frase, "trecho": frase[:400]})
-    return out
+    # O MESMO EVENTO, CONTADO DUAS VEZES. O texto que chega aqui é a CONCATENAÇÃO dos documentos
+    # de contrato/aditivo do processo, e a mesma frase costuma aparecer em mais de um deles —
+    # o despacho que relata o aditivo, a publicação que o extrata, o parecer que o cita. Medido em
+    # 2026-08-05 no SEI-070002/001289/2022, o processo de MAIOR score do acervo (90,2): das 6
+    # "recomposições" que sustentavam o X7 crítico, duas eram a MESMA frase — "Em 19/12/2025, foi
+    # celebrado o 1º Termo Aditivo ao contrato, que promoveu o reequilíbrio econômico-financeiro"
+    # — repetida em dois documentos. Contar o mesmo fato duas vezes infla a reiteração e pode
+    # inventar a "dupla correção" do X7, que é justamente ver mais de uma recomposição no mesmo
+    # exercício. A chave é (data, tipo, frase normalizada): eventos distintos com a mesma data
+    # continuam distintos, porque a frase difere.
+    vistos: set[tuple] = set()
+    unicos: list[dict] = []
+    for a in out:
+        chave = (a["data"], a["tipo"], " ".join(str(a["justificativa"]).split())[:200])
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        unicos.append(a)
+    return unicos
 
 
 def contexto_x1(texto: str, *, tipo_objeto: str | None = None) -> dict:
