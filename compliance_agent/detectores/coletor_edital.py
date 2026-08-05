@@ -161,6 +161,12 @@ _RX_EDITAL_CONTEUDO = re.compile(
     re.IGNORECASE)
 
 
+_TIPOS_DO_LICITANTE = ("habilitacao",)
+"""Documentos que a EMPRESA entrega — contrato social, certidões, atestados. Eles declaram fatos
+sobre o licitante; quem exige é o edital. `proposta` fica de fora desta lista de propósito: ela é
+peça do certame e alimenta outras regras."""
+
+
 def _fontes_de_edital(leitura: dict) -> list[dict]:
     """Fontes de texto que são EDITAL ou PLANEJAMENTO (TR/ETP/DFD/pesquisa de preços). Um doc entra se o TÍTULO
     classifica como edital/planejamento (via `sei.fases.classificar`) OU se o CONTEÚDO tem marcador forte de
@@ -174,6 +180,15 @@ def _fontes_de_edital(leitura: dict) -> list[dict]:
         if not conteudo:
             continue
         fase, tipo = classificar(doc)
+        # TÍTULO QUE IDENTIFICA O DOCUMENTO DO LICITANTE VETA A PORTA DO CONTEÚDO. A porta do
+        # conteúdo existe porque no SEI o título costuma ser só o número do documento — mas quando
+        # ele DIZ o que é, a classificação positiva vale mais que a heurística. Medido em
+        # 2026-08-04: o "Documento HABILITAÇÃO - CONSTRUTORA BRASFORM" entrou como fonte de edital
+        # (o arquivo tem 22 mil caracteres e cita o edital em algum ponto), e sua CLÁUSULA NONA —
+        # governança interna da empresa, registrada na Junta Comercial — virou "exigência de
+        # capital social de 75%". O edital EXIGE; o contrato social do licitante DECLARA.
+        if tipo in _TIPOS_DO_LICITANTE:
+            continue
         por_titulo = (fase == "selecao" and tipo in ("edital", "proposta")) or fase == "planejamento"
         if por_titulo or _RX_EDITAL_CONTEUDO.search(conteudo):
             marca = f"{fase}/{tipo}" if por_titulo else "conteúdo=edital/TR"

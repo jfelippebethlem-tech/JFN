@@ -29,6 +29,8 @@ razões objetivas → `nao_avaliavel` (campo ausente ≠ 0); nunca inventa núme
 """
 from __future__ import annotations
 
+import re
+
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
@@ -41,6 +43,11 @@ from compliance_agent.reporting.intel_base import moeda
 # tipos de exigência que disparam razões objetivas (chaves canônicas)
 _TIPO_ATESTADO = ("atestado", "capacidade_tecnica", "qualificacao_tecnica")
 _TIPO_CAPITAL = ("capital_social", "patrimonio_liquido", "capital", "patrimonio")
+_RE_LINGUAGEM_DE_EXIGENCIA = re.compile(
+    r"(?i)dever[áa]|deve\s|exig|comprova[çc]|comprovar|apresentar|m[íi]nim|"
+    r"igual\s+ou\s+superior|n[ãa]o\s+inferior|condi[çc][ãa]o\s+para")
+"""O edital OBRIGA ("deverá comprovar", "mínimo de", "não inferior a"); o contrato social do
+licitante apenas DECLARA ("o capital social é de"). Sem verbo de obrigação, não é exigência."""
 
 _MIN_ANALOGOS = 3  # baseline "sob medida" exige n≥3 análogos — com 1-2 o baseline não sustenta juízo
 
@@ -158,7 +165,18 @@ class E1Barreira(Detector):
                                           trecho=f"{texto[:80]} — exige {qexig} de {quant_lic} licitado ({razao:.0%})")
 
             # 2) capital social / PL vs 10% do valor estimado (art. 69 §3º — teto legal)
-            if valor_estimado and (tipo in _TIPO_CAPITAL or any(t in texto.lower() for t in ("capital social", "patrimônio líquido", "patrimonio liquido"))):
+            # EXIGÊNCIA é OBRIGAÇÃO; documento societário é FATO. Medido em 2026-08-04 nos 6
+            # disparos do acervo: a evidência vinha de contrato social e ata de assembleia do
+            # LICITANTE — "O CAPITAL SOCIAL é de R$ 16.000.000,00", "Aumentar o capital social de
+            # R$ 6.000.000,00" —, ingeridos junto com o edital. Comparados ao valor estimado,
+            # produziam "exige 1066,7% do estimado", que é uma empresa grande concorrendo, não uma
+            # barreira. O edital DIZ "deverá comprovar", "mínimo de", "não inferior a"; o contrato
+            # social DIZ "é de". Um verbo de obrigação separa os dois.
+            if (valor_estimado
+                    and (tipo in _TIPO_CAPITAL
+                         or any(t in texto.lower() for t in ("capital social", "patrimônio líquido",
+                                                             "patrimonio liquido")))
+                    and _RE_LINGUAGEM_DE_EXIGENCIA.search(texto)):
                 vexig = _num(e.get("valor"))
                 if vexig and valor_estimado > 0:
                     pct = vexig / valor_estimado
