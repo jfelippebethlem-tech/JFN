@@ -93,3 +93,23 @@ def test_base_ausente_devolve_vazio_sem_levantar(tmp_path):
     from compliance_agent.reporting import detector_tac as DT
     DT._mapa_cnpj_ug.cache_clear()
     assert DT._mapa_cnpj_ug(str(tmp_path / "nao_existe.db")) == {}
+
+
+def test_a_comparacao_com_a_unidade_CHEGA_ao_achado():
+    """Ela é o que muda o eixo, e emendada no fim da primeira frase morria no corte de 220
+    caracteres do `achados_de_fornecedor` — o mesmo defeito de truncamento corrigido nesta casa na
+    mesma sessão, um nível adiante. Verificado no dado: nenhum dos 42 achados gravados exibia a
+    frase, embora o rebaixamento de grau já tivesse acontecido."""
+    from compliance_agent import processo_360 as P
+
+    r = _avaliar(tac=_TAC, tac_unidade=_UNIDADE)
+    achado = P.achados_de_fornecedor([r])[0]
+    assert "ÓRGÃO" in achado["evidencia"], "a leitura corrigida não chegou ao fiscal"
+    assert "27.0%" in achado["evidencia"]
+
+
+def test_sem_base_da_unidade_a_evidencia_segue_com_o_numero_do_fornecedor():
+    from compliance_agent import processo_360 as P
+
+    achado = P.achados_de_fornecedor([_avaliar(tac=_TAC)])[0]
+    assert "29.8%" in achado["evidencia"] and "ÓRGÃO" not in achado["evidencia"]

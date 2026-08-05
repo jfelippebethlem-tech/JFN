@@ -83,17 +83,23 @@ class C9TacFornecedor(Detector):
         res.status = "confirmado"
         res.explicacao_inocente = ("passivo legítimo de serviço prestado sem cobertura contratual por "
                                    "falha administrativa do órgão — verificar atesto e justificativa no SEI")
+        # A COMPARAÇÃO COM A UNIDADE VAI EM EVIDÊNCIA PRÓPRIA. Ela é o que muda o eixo do
+        # achado, e emendada no fim da primeira frase morria no corte de 220 caracteres do
+        # `achados_de_fornecedor` — o mesmo defeito de truncamento corrigido nesta casa hoje de
+        # manhã, um nível adiante. Verificado no dado: nenhum dos 42 achados gravados exibia a
+        # frase, embora o rebaixamento de grau já tivesse acontecido.
+        if isinstance(pct_unidade, (int, float)) and pct_unidade:
+            razao = pct / float(pct_unidade)
+            res.add_evidencia(
+                "tac_ranking_ugs (taxa da unidade)",
+                (f"a unidade onde mais recebeu ({base.get('ug_nome') or base.get('ug')}) paga "
+                 f"{pct_unidade:.1f}% por essa via — o fornecedor está a {razao:.1f}× a norma "
+                 + ("local: o padrão é do ÓRGÃO e o contratado é beneficiário; investigar a "
+                    "prática da unidade, não só a empresa" if na_norma
+                    else "local, acima do que a unidade pratica")))
         res.add_evidencia(
             "ordens_bancarias (observação TFE)",
             f"{pct:.1f}% do valor pago via TAC/indenização/reconhecimento de dívida "
             f"(R$ {_brl(total_tac)} de R$ {_brl(float(tac.get('total') or 0))}; "
-            f"{tac.get('n_tac')}/{tac.get('n')} OB; {cobertura})"
-            + (f". A UNIDADE onde ele mais recebeu ({base.get('ug_nome') or base.get('ug')}) paga "
-               f"{pct_unidade:.1f}% por essa via: o fornecedor está a "
-               f"{pct / float(pct_unidade):.1f}× a norma local, então o padrão é do ÓRGÃO e o "
-               f"contratado é beneficiário — investigar a prática da unidade, não só a empresa"
-               if na_norma else
-               (f". A unidade onde ele mais recebeu paga {pct_unidade:.1f}% por essa via — o "
-                f"fornecedor está a {pct / float(pct_unidade):.1f}× a norma local"
-                if isinstance(pct_unidade, (int, float)) and pct_unidade else "")))
+            f"{tac.get('n_tac')}/{tac.get('n')} OB; {cobertura})")
         return res
