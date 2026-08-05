@@ -54,6 +54,50 @@ async def _analisar_pej(numero: str, leitura: dict | None = None) -> dict:
     return await analisar_processo_sei(numero, ler_fn=_ler)
 
 
+# ── declaração de entrega no TEXTO (art. 63 Lei 4.320) ────────────────────────
+# O que aqui se procura é a AFIRMAÇÃO de que o objeto chegou — não o atesto do ATO financeiro
+# ("ATESTO e CERTIFICO a regularidade da liquidação da despesa"), que é o servidor certificando o
+# próprio expediente e apareceu em 93% de uma amostra de 60. Casar os dois como se fossem o mesmo
+# esvaziaria o maior achado do acervo com prova que não é prova.
+_RX_ENTREGA_AFIRMADA = re.compile(
+    r"atest\w+\s+(?:o\s+)?recebimento|"
+    r"atest\w+\s+(?:a|o)\s+(?:entrega|execu[çc][ãa]o|presta[çc][ãa]o\s+d[eo]s?\s+servi|"
+    r"realiza[çc][ãa]o\s+d[eo])|"
+    r"(?:servi[çc]os?|materia\w*|bens|produtos?|objeto|equipamentos?)\s+(?:foram|foi)\s+"
+    r"(?:efetivamente\s+)?(?:prestad|entregu|executad|recebid|fornecid)|"
+    r"recebemos?\s+(?:definitivamente|provisoriamente)", re.I)
+
+# O MODO VERBAL decide (família 19 do catálogo). Estes vizinhos denunciam norma, pergunta,
+# hipótese ou doutrina — nenhum afirma que a entrega ocorreu. Todos foram medidos no acervo:
+# "reconhecendo que o serviço foi prestado" é texto de checklist e do Parecer 1994 sobre TAC (19
+# ocorrências); "deve ser informado se o serviço foi prestado adequadamente" é a PGE PERGUNTANDO,
+# e vinha logo antes de "a despeito da ausência de..." (11 ocorrências).
+_RX_ENTREGA_NAO_AFIRMADA = re.compile(
+    r"regularidade\s+d[ao]\s+(?:liquida|despesa)|"
+    r"deve\s+ser\s+informado\s+se|a\s+despeito\s+da\s+aus[êe]ncia|"
+    r"dever[áa]\s+(?:ser\s+)?atest|deve\s+(?:ser\s+)?atest|"
+    r"reconhecendo\s+que\s+(?:o|um\s+determinado)\s+servi[çc]o|"
+    r"caso\s+(?:o|os|a|as)\s|se\s+o\s+servi[çc]o|"
+    r"na\s+hip[óo]tese|dever[áa]\s+ser\s+comprovad", re.I)
+
+
+def _declaracao_de_entrega(pasta, docs: list[dict]) -> dict | None:
+    """Primeiro documento cujo TEXTO afirma que o objeto foi entregue. `None` se nenhum afirma."""
+    for d in docs or []:
+        try:
+            texto = _texto_de(pasta, d) or ""
+        except OSError:
+            continue
+        m = _RX_ENTREGA_AFIRMADA.search(texto)
+        if not m:
+            continue
+        janela = re.sub(r"\s+", " ", texto[max(0, m.start() - 130):m.end() + 130]).strip()
+        if _RX_ENTREGA_NAO_AFIRMADA.search(janela):
+            continue
+        return {"ref": str(d.get("titulo") or d.get("i") or "documento"), "trecho": janela[:220]}
+    return None
+
+
 def _contrato_registrado(numero_sei: str) -> dict:
     """Vigência e valor do contrato como REGISTRADOS no TCE-RJ, ligados pelo número do processo.
 
@@ -382,9 +426,30 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             # `acatamento` ou `suficiencia_emissor` era invisível para o instrumento que existe
             # para medir mudança. Prefixo próprio por família — nunca "A1"/"A2", que o ranking
             # usa para decidir peso (`processo_360_ranking.pontuar`).
-            achados.append({"origem": "fases.lacunas", "diz": item["falta"],
-                            "codigo": f"F_{str(item.get('fase') or 'lacuna').upper()}",
-                            "gravidade": item["gravidade"]})
+            ach = {"origem": "fases.lacunas", "diz": item["falta"],
+                   "codigo": f"F_{str(item.get('fase') or 'lacuna').upper()}",
+                   "gravidade": item["gravidade"]}
+            # A PROVA DE ENTREGA MORA NO TEXTO, NÃO NO TÍTULO. `fases.classificar` decide a fase
+            # pelo título, e o título destes documentos não anuncia execução nenhuma: "Ofício - NI
+            # 196/2024", "Correspondência Interna - NA 163", "Anexo ANS". Medido em 2026-08-05
+            # sobre os 319 processos com este achado — o maior do acervo, quase metade do total —
+            # **69 (21,6%) trazem no TEXTO a afirmação de que o objeto foi entregue**, e o caso
+            # mais eloquente é a própria PGE lendo os autos: "na Nota Fiscal nº 894 (101360976),
+            # ASSINADA POR DOIS SERVIDORES, em conformidade com a exigência do art. 90, §3º, da
+            # Lei Estadual nº 287/79, que confirma que o serviço foi prestado a contento".
+            # Afirmar "nenhuma evidência" ali é afirmar ausência que os autos desmentem.
+            # O achado NÃO some — a peça própria de execução (medição/atesto formal) continua
+            # faltando, e é ela que o art. 63 da Lei 4.320 pede para liquidar. Ele passa a dizer o
+            # que se sabe, aponta ONDE está a declaração, e cai de grau.
+            if item.get("fase") == "execucao_sem_evidencia":
+                decl = _declaracao_de_entrega(pasta, docs)
+                if decl:
+                    ach["gravidade"] = "media"
+                    ach["diz"] = ("sem peça própria de execução (medição/atesto formal), mas há "
+                                  "documento nos autos que DECLARA a entrega — conferir o teor "
+                                  "antes de tratar como pagamento sem prova (art. 63 Lei 4.320)")
+                    ach["apoio"] = f"{decl['ref']} · «{decl['trecho']}»"
+            achados.append(ach)
 
     # 2) ordem dos marcos (a inversão contrato→parecer também é a A1 da triagem: dedup por
     # código para não contar o MESMO fato duas vezes no score de convergência)
