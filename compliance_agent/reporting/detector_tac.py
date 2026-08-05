@@ -20,12 +20,15 @@ from __future__ import annotations
 
 import os
 import re
+import logging
 import sqlite3
 from functools import lru_cache
 from pathlib import Path
 
 # Regex (pedido do dono): casa os instrumentos de regularização fora de contrato regular no texto livre da OB.
 # "RECONHEC...DIVIDA" tolera "RECONHECIMENTO DE DÍVIDA" (a frase natural) — janela de até 12 chars.
+logger = logging.getLogger(__name__)
+
 _RX_TAC = re.compile(r"AJUSTE DE CONTAS|INDENIZ|RECONHEC.{0,12}D[IÍ]VIDA", re.IGNORECASE)
 
 # Faixas de severidade por % do valor pago via TAC/indenização (sobre o universo COM observação preenchida).
@@ -212,8 +215,10 @@ def tac_da_unidade_do_cnpj(cnpj: str, *, db_path=None) -> dict:
             if str(u.get("ug")) == ug:
                 return {"ug": ug, "ug_nome": u.get("nome") or "", "pct": u.get("pct"),
                         "fonte": "ranking pré-calculado"}
-    except (OSError, ValueError):
-        pass
+    except (OSError, ValueError) as e:
+        # ranking pré-calculado ausente ou ilegível NÃO é ausência de base: mede-se na hora, mais
+        # caro. Calar aqui esconderia que o cron do `tac_ranking_ugs` parou de rodar.
+        logger.debug("ranking de TAC por unidade indisponível (%s) — medindo na hora", str(e)[:80])
     medida = tac_por_ug(ug, db_path=db_path)
     if not medida or not medida.get("n"):
         return {}
