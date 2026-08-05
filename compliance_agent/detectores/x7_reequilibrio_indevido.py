@@ -38,6 +38,8 @@ sweep SEI em que 59% eram queixa de captura, não vício.
 """
 from __future__ import annotations
 
+import re
+
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
@@ -49,6 +51,11 @@ from compliance_agent.reporting.intel_base import moeda
 
 # ── parâmetros objetivos (CÓDIGO, nunca no prompt — spec §1.3) ────────────────────────────────
 _REVISOES_REITERADAS = 3      # 3+ revisões no mesmo contrato: padrão, não evento extraordinário
+_RE_ALEA_EXTRAORDINARIA = re.compile(
+    r"(?i)reequil[íi]brio|revis[ãa]o\s+de\s+pre[çc]|[áa]lea\s+extraordin|"
+    r"fato\s+do\s+pr[íi]ncipe|imprevis[íi]")
+"""Marca da recomposição EXTRAORDINÁRIA (art. 124). Reajuste, repactuação e correção monetária são
+ORDINÁRIOS — previstos em contrato — e não entram na contagem de reiteração."""
 _JANELA_DUPLA_DIAS = 365      # reequilíbrio e reajuste no mesmo período anual = dupla correção
 
 _RUBRICA_ALEA = {
@@ -229,9 +236,24 @@ class X7ReequilibrioIndevido(Detector):
             lacunas.append("valor_inicial ausente — T4 (magnitude) não aferido")
 
         # ── T5 · REITERAÇÃO ────────────────────────────────────────────────────────────────────
-        if len(recomposicoes) >= _REVISOES_REITERADAS:
+        # SÓ A EXTRAORDINÁRIA CONTA. O extrator de fatos agrupa reajuste, repactuação, correção
+        # monetária, revisão e reequilíbrio sob o mesmo tipo `reajuste` — mas o texto deste achado
+        # invoca "álea EXTRAORDINÁRIA", e reajuste anual por índice é ORDINÁRIO e previsto em
+        # contrato: um contrato de cinco anos tem quatro reajustes sem nada de errado. Contar os
+        # dois juntos é erro de categoria jurídica, e erro jurídico também é falso positivo.
+        #
+        # Medido em 2026-08-04 nos 20 disparos do acervo: **18 não tinham NENHUMA recomposição
+        # extraordinária** — e as "recomposições" contadas incluíam endereço e cabeçalho de
+        # documento ("Francisco Matarazzo, nº 1.350, 17º andar" foi contado como uma delas),
+        # porque a extração casa a frase que menciona a palavra. Exigir a marca da álea
+        # extraordinária filtra as duas coisas de uma vez.
+        extraordinarias = [a for a in recomposicoes
+                           if _RE_ALEA_EXTRAORDINARIA.search(str(a.get("justificativa") or "")
+                                                             + " " + str(a.get("trecho") or ""))]
+        if len(extraordinarias) >= _REVISOES_REITERADAS:
             achados.append(("medio",
-                            f"REITERAÇÃO: {len(recomposicoes)} recomposições no mesmo contrato — "
+                            f"REITERAÇÃO: {len(extraordinarias)} revisões por álea extraordinária "
+                            f"no mesmo contrato (de {len(recomposicoes)} recomposições ao todo) — "
                             f"álea EXTRAORDINÁRIA é, por definição, excepcional; a repetição "
                             f"sugere que o desequilíbrio é estrutural (erro de planejamento) e "
                             f"não superveniente"))
