@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 
 from compliance_agent import sei_recomendacoes
@@ -290,8 +291,36 @@ def _cnpj_vencedor(numero: str) -> str | None:
 
 
 _RX_CNPJ = re.compile(r"\b(\d{2})\.?(\d{3})\.?(\d{3})/?(\d{4})-?(\d{2})\b")
-# raízes de entes públicos que nunca são "o contratado" (Estado do RJ, Município do Rio)
+# raízes de entes públicos que nunca são "o contratado" (Estado do RJ, Município do Rio).
+# Lista curta de propósito: o teste que vale é a NATUREZA JURÍDICA, logo abaixo — uma lista de
+# raízes nunca acompanha a realidade (o ITERJ, 40173726, não estava aqui e por isso passou).
 _RAIZES_PUBLICAS = {"42498600", "42498733"}
+
+
+@lru_cache(maxsize=4096)
+def _e_ente_publico(cnpj: str) -> bool:
+    """Natureza jurídica 1xx (Administração Pública, tabela CONCLA) — o ente nunca é o contratado.
+
+    Medido em 2026-08-05 no SEI-330020/000762/2021: o fallback por texto devolvia
+    **40.173.726/0001-40, que é o próprio ITERJ** — o documento diz, com todas as letras,
+    "INSTITUTO DE TERRAS E CARTOGRAFIA DO ESTADO DO RIO DE JANEIRO - ITERJ, CNPJ:
+    40.173.726/0001-40 doravante denominada CONTRATANTE", enquanto a contratada é a "MGS CLEAN
+    SOLUÇÕES E SERVIÇOS LTDA, CNPJ 19.088.605/0001-04". Com o órgão no lugar do fornecedor, toda
+    a família C (perfil, fachada, sócio servidor, TAC) passaria a examinar o próprio contratante.
+    """
+    base = re.sub(r"\D", "", str(cnpj or ""))[:8]
+    if not base or not _DB.exists():
+        return False
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            row = con.execute("SELECT natureza_cod FROM empresas_cadastro "
+                              "WHERE cnpj_basico = ? LIMIT 1", (base,)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return False
+    return bool(row) and str(row[0] or "").startswith("1")
 _P1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 _P2 = [6] + _P1
 
@@ -306,20 +335,53 @@ def _cnpj_valido(c: str) -> bool:
     return True
 
 
+# "doravante denominado CONTRATANTE" identifica o ÓRGÃO; a exigência de que CONTRATADA não
+# apareça na mesma janela evita virar o jogo em cabeçalho que cita os dois lados de enfiada.
+_RX_E_CONTRATANTE = re.compile(r"\bCONTRATANTE\b", re.I)
+_RX_E_CONTRATADA = re.compile(r"\bCONTRATAD[AO]S?\b", re.I)
+
+
 def _cnpj_do_texto(pasta: Path, docs: list[dict]) -> str | None:
     """Fallback: CNPJ do contratado extraído do TEXTO dos docs de contrato/homologação
     (mais frequente, DV válido, excluídas raízes de ente público)."""
     from collections import Counter
     cont: Counter = Counter()
+    # SEM TETO POSICIONAL, pela mesma razão do acatamento: no SEI-330020/000762/2021 os 12
+    # primeiros davam EMPATE (1 × 1) entre o órgão e a contratada, desempatado pela ordem de
+    # inserção — e o órgão ganhava. Lendo os 25, a contratada aparece 4 vezes contra 2. São 7
+    # processos no acervo com mais de 12 peças de contrato: o teto não pagava o seu preço.
     alvo = [d for d in docs if d.get("tipo") in
-            ("contrato", "homologacao", "ata_rp", "contratacao_direta", "adjudicacao")][:12]
+            ("contrato", "homologacao", "ata_rp", "contratacao_direta", "adjudicacao")]
+    # O DOCUMENTO SE DECLARA. O contrato diz, com todas as letras, quem é quem — "inscrita no CNPJ
+    # sob o nº 40.015.416/0001-06, doravante denominado CONTRATANTE" — e é a única fonte que não
+    # depende de cadastro externo. Foi o que pegou a SEGOV (4 processos) e a SECID: nenhuma das
+    # duas está em `empresas_cadastro`, então o teste de natureza jurídica passava batido, e elas
+    # figuravam como VENCEDORAS das próprias contratações. Medido em 2026-08-05 no acervo inteiro:
+    # 303 processos não mudam, 6 mudam — e nos que mudam o novo CNPJ é o que o texto chama de
+    # CONTRATADA (PRIME CONSULTORIA no lugar da SEGOV; CONSÓRCIO PAVIMENTAÇÃO BAIRRO SÃO GONÇALO
+    # no lugar da SECID).
+    # O papel é do CNPJ, não da ocorrência: uma vez que o instrumento declara "40.015.416/0001-06,
+    # doravante denominado CONTRATANTE", TODA menção àquele número é o mesmo órgão — inclusive as
+    # do cabeçalho de cada página, que não repetem a palavra. Vetar ocorrência a ocorrência deixa
+    # o contratante ganhar por repetição, e foi o próprio teste desta regra que mostrou isso.
+    contratantes: set[str] = set()
     for d in alvo:
-        for m in _RX_CNPJ.finditer(_texto_de(pasta, d, teto=30_000)):
+        texto = _texto_de(pasta, d, teto=30_000)
+        for m in _RX_CNPJ.finditer(texto):
             c = "".join(m.groups())
             # 00394… = base da União (ministérios); nunca é o contratado
-            if _cnpj_valido(c) and c[:8] not in _RAIZES_PUBLICAS and not c.startswith("00394"):
-                cont[c] += 1
-    return cont.most_common(1)[0][0] if cont else None
+            if not (_cnpj_valido(c) and c[:8] not in _RAIZES_PUBLICAS
+                    and not c.startswith("00394") and not _e_ente_publico(c)):
+                continue
+            cont[c] += 1
+            janela = texto[m.end():m.end() + 130]
+            if _RX_E_CONTRATANTE.search(janela) and not _RX_E_CONTRATADA.search(janela):
+                contratantes.add(c)
+    # nunca PERDER a identificação: se sobrou ninguém, vale a contagem crua — dizer "não
+    # identifiquei" quando há um CNPJ nos autos é trocar um erro por outro.
+    limpo = Counter({c: n for c, n in cont.items() if c not in contratantes})
+    fonte = limpo or cont
+    return fonte.most_common(1)[0][0] if fonte else None
 
 
 # LER TUDO é o ponto do projeto (diretriz do dono, 2026-08-03). O corte de 20.000 caracteres
@@ -576,8 +638,16 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         indisponiveis.append("fornecedor: CNPJ vencedor não identificado (sei_arvore)")
 
     # 7) acatamento (art. 53) + suficiência do emissor (lição IDESI)
+    # SEM TETO POSICIONAL. Havia um `[:40]` aqui, e ele fabricava acusação de AUSÊNCIA — que é
+    # justamente o que um corte por posição não pode decidir. Medido em 2026-08-05: 26 processos
+    # perdiam documentos no corte (1.165 despachos e 54 pareceres ao todo), e rodando os 26 com e
+    # sem teto **2 vereditos mudavam, os dois retratando acusação**:
+    #   · SEI-070002/015404/2022  SEM_PARECER_LOCALIZADO → ACOLHIDO  (o parecer estava no 41º+)
+    #   · SEI-070026/000410/2021  SILENTE                → ACOLHIDO
+    # O custo de ler tudo é 1.508 documentos a mais no acervo inteiro (+16,9%), diluídos em 26
+    # processos. Barato demais para pagar com acusação falsa de "nenhum parecer nos autos".
     docs_ac = [{"ref": d["titulo"], "tipo": d["tipo"], "texto": _texto_de(pasta, d)}
-               for d in docs if d["tipo"] in _TIPOS_ACATAMENTO][:40]
+               for d in docs if d["tipo"] in _TIPOS_ACATAMENTO]
     ac = sei_recomendacoes.auditar_acatamento(docs_ac)
     tipos = {d["tipo"] for d in docs}
     ato = ("contratacao_direta" if "contratacao_direta" in tipos

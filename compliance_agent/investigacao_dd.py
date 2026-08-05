@@ -453,8 +453,9 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
 
     # H-SITUACAO — situação cadastral irregular (CONFIRMADO, sinal forte)
     sit = _norm(cad.get("situacao") or "")
+    _TERMOS_IRREGULARES = ("BAIXAD", "INAPT", "SUSPENS", "NULA")
     if sit:
-        irregular = any(t in sit for t in ("BAIXAD", "INAPT", "SUSPENS", "NULA"))
+        irregular = any(t in sit for t in _TERMOS_IRREGULARES)
         if irregular:
             # O TESTE É A VIGÊNCIA NA DATA DO ATO, e ele não era feito. A hipótese saía CONFIRMADO
             # com peso 20 dizendo "pagamento a empresa não-ativa é vedado" a partir do retrato de
@@ -463,9 +464,28 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
             # irregularidade — a empresa estava regular quando foi paga. É a família do caso
             # Fênix ("R$ 4 bi a empresa morta" que era ~218× demais): confundir o estado de hoje
             # com o estado à época.
-            _, quando = _situacao_com_data(cnpj)
+            sit_rfb, quando = _situacao_com_data(cnpj)
             ultima = _ultimo_pagamento_ob(cnpj)
-            if quando and ultima and ultima < quando:
+            # AS DUAS FONTES DISCORDAM — e a acusação não pode ignorar isso. `cad["situacao"]` vem
+            # do cadastro enriquecido; `_situacao_com_data` vem do dump oficial da RFB. Medido em
+            # 2026-08-05: dos 374 CNPJs que o cadastro chama de irregulares, **118 (31,5%) estão
+            # ATIVOS no dump**. Pior, a data era usada assim mesmo: a Cruz Vermelha Brasileira
+            # (07.345.851/0001-15) saía CONFIRMADO/ALTO peso 20 dizendo "Situação cadastral
+            # 'Inapta' na Receita Federal DESDE 31/03/2005" — e 31/03/2005 é a data em que o dump
+            # registra a situação **ATIVA**. O achado citava como fonte o próprio dump que o
+            # desmente, e afirmava um fato falso com a data de outro estado cadastral.
+            if sit_rfb and not any(x in _norm(sit_rfb) for x in _TERMOS_IRREGULARES):
+                hipoteses.append(_hip(
+                    "H-SITUACAO", "Situação cadastral: fontes DIVERGEM", "INDICIO", "BAIXO",
+                    f"O cadastro enriquecido registra '{cad.get('situacao')}', mas o dump oficial "
+                    f"da Receita Federal registra '{sit_rfb}'"
+                    + (f" desde {quando:%d/%m/%Y}" if quando else "")
+                    + ". Sem concordância entre as fontes não se afirma irregularidade: a "
+                      "divergência pode ser defasagem de qualquer um dos lados. **Conferir na "
+                      "fonte (consulta CNPJ na RFB) antes de qualquer juízo.**",
+                    "Receita Federal (dump) × cadastro enriquecido — em conflito",
+                    "Lei 14.133/21 art. 14 (aferido na data do ato)", 4))
+            elif quando and ultima and ultima < quando:
                 hipoteses.append(_hip(
                     "H-SITUACAO", "Situação cadastral irregular na Receita (HOJE)", "INDICIO", "BAIXO",
                     f"Situação cadastral '{cad.get('situacao')}' na Receita Federal desde "

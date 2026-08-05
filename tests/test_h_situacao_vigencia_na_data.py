@@ -77,3 +77,36 @@ def test_a_base_primaria_responde_com_data(tmp_path):
         pytest.skip("receita_estab.db ausente")
     sit, quando = I._situacao_com_data("28470707000180")
     assert sit == "INAPTA" and quando == dt.date(2026, 1, 28)
+
+
+# ── as duas fontes DISCORDAM (2026-08-05) ────────────────────────────────────
+
+def test_fontes_divergentes_nao_afirmam_irregularidade(monkeypatch):
+    """`cad["situacao"]` vem do cadastro enriquecido; `_situacao_com_data`, do dump oficial da RFB.
+    Medido em 2026-08-05: dos **374 CNPJs que o cadastro chama de irregulares, 118 (31,5%) estão
+    ATIVOS no dump**. E a data era usada assim mesmo — a Cruz Vermelha Brasileira
+    (07.345.851/0001-15) saía CONFIRMADO/ALTO peso 20 dizendo "Situação cadastral 'Inapta' na
+    Receita Federal DESDE 31/03/2005", quando 31/03/2005 é a data em que o dump registra a
+    situação **ATIVA**. O achado citava como fonte o dump que o desmente e afirmava um fato falso
+    com a data de outro estado cadastral."""
+    h = _hip_situacao(monkeypatch, quando=dt.date(2005, 3, 31), ultima=None, situacao="Inapta")
+    # o dump, aqui, diz ATIVA — é o que o monkeypatch de `_situacao_com_data` precisa devolver
+    monkeypatch.setattr(I, "_situacao_com_data", lambda c, db_path=None: ("ATIVA", dt.date(2005, 3, 31)))
+    r = I.investigar("11222333000181", cadastral={"situacao": "Inapta"},
+                     usar_rede=False, usar_beneficios=False)
+    h = next(h for h in r["hipoteses"] if h["codigo"] == "H-SITUACAO")
+    assert h["status"] == "INDICIO" and h["nivel"] == "BAIXO"
+    assert h["peso"] < 20
+    assert "DIVERGEM" in h["titulo"]
+    assert "ATIVA" in h["evidencia"] and "Inapta" in h["evidencia"]
+    assert "vedado" not in h["evidencia"], "não se acusa ato vedado com fontes em conflito"
+
+
+def test_as_duas_fontes_de_acordo_seguem_confirmando(monkeypatch):
+    """O controle negativo: quando o dump CONFIRMA a irregularidade, nada muda."""
+    monkeypatch.setattr(I, "_situacao_com_data", lambda c, db_path=None: ("INAPTA", dt.date(2026, 1, 28)))
+    monkeypatch.setattr(I, "_ultimo_pagamento_ob", lambda c, db_path=None: dt.date(2026, 3, 23))
+    r = I.investigar("11222333000181", cadastral={"situacao": "INAPTA"},
+                     usar_rede=False, usar_beneficios=False)
+    h = next(h for h in r["hipoteses"] if h["codigo"] == "H-SITUACAO")
+    assert h["status"] == "CONFIRMADO" and h["peso"] == 20
