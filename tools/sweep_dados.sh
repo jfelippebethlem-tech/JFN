@@ -60,6 +60,12 @@ if [ -f data/.pause_sentinela ]; then say "sentinela pausada — pulei"; else $P
 # achei" não é "nunca olhei". ~1,9 s por credor sobre 5.615: por isso vai em fatias.
 # Pausa: data/.pause_grafo_persistir.
 if [ -f data/.pause_grafo_persistir ]; then say "grafo persistir pausado — pulei"; else $PRIO timeout 900 $PY -m tools.grafo_persistir --limite 300 >> data/grafo_persistir.log 2>&1; say "grafo persistir rc=$?"; fi
+# AGENTE PÚBLICO NO QUADRO SOCIETÁRIO DO PAÍS — uma passada de streaming sobre as 27,6 milhões de
+# linhas do cadastro nacional de sócios (`socios_full.csv.zst`), semeada pelas 251 mil pessoas das
+# folhas que conhecemos. Precisa de rotina porque as DUAS pontas mudam: a folha a cada competência
+# e o dump da Receita todo mês. ~206 s, streaming puro, nada em memória.
+# Pausa: data/.pause_agente_reverso.
+if [ -f data/.pause_agente_reverso ]; then say "agente reverso pausado — pulei"; else $PRIO timeout 900 $PY -m tools.agente_publico_reverso >> data/agente_publico_reverso.log 2>&1; say "agente reverso rc=$?"; fi
 # A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
 # `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
 # 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os

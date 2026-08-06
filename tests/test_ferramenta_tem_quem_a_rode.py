@@ -51,6 +51,10 @@ PRECISAM_DE_ROTINA = {
     "tools.grafo_persistir":
         "persiste o grafo de vínculos dos credores do SIAFE em fatias; sem rotina, as 5.615 "
         "empresas nunca terminam de ser percorridas e o grafo nunca sobrevive à execução",
+    "tools.agente_publico_reverso":
+        "cruza as folhas que conhecemos com o cadastro nacional de sócios; as DUAS pontas mudam — "
+        "a folha a cada competência e o dump da Receita todo mês — e sem rotina o índice envelhece "
+        "sem que ninguém perceba",
     "tools.sei_sweep --recaptura":
         "drena a fila de recaptura integral (documento na árvore sem texto lido); sem ela, todo "
         "processo truncado fica truncado para sempre",
