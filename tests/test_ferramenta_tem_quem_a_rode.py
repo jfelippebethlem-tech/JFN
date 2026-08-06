@@ -51,6 +51,10 @@ PRECISAM_DE_ROTINA = {
     "tools.grafo_persistir":
         "persiste o grafo de vínculos dos credores do SIAFE em fatias; sem rotina, as 5.615 "
         "empresas nunca terminam de ser percorridas e o grafo nunca sobrevive à execução",
+    "tools.empresas_rj_build":
+        "razão social e natureza jurídica das 5,86 mi de raízes com estabelecimento; o dump da "
+        "Receita é mensal e os ZIPs são apagados ao fim do refresh — fora dele, a tabela envelhece "
+        "sem fonte para se refazer",
     "tools.agente_publico_reverso":
         "cruza as folhas que conhecemos com o cadastro nacional de sócios; as DUAS pontas mudam — "
         "a folha a cada competência e o dump da Receita todo mês — e sem rotina o índice envelhece "
