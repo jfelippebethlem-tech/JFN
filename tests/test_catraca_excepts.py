@@ -228,8 +228,13 @@ def _contar() -> int:
     arquivos = git.stdout.splitlines()
     total = 0
     for rel in arquivos:
-        if rel.startswith("massare") or rel == "tests/test_catraca_excepts.py":
-            continue  # massare tem catraca própria; este arquivo cita a string 4× (auto-referência)
+        # AUTO-REFERÊNCIA. O contador procura a string literal, então TODO teste que fala sobre
+        # esta catraca a infla ao citá-la em prosa. Já valia para este arquivo (4 citações); em
+        # 2026-08-06 nasceu `tests/test_catraca_nao_pode_ser_tolerada.py`, que explica no docstring
+        # por que a catraca estava em base de toleradas — e o +1 apareceu como se fosse código novo.
+        # A exclusão é por PREFIXO e vale só para `tests/`: código de produção nunca escapa.
+        if rel.startswith("massare") or rel.startswith("tests/test_catraca_"):
+            continue  # massare tem catraca própria; testes sobre a catraca citam a string em prosa
         try:
             total += (REPO / rel).read_text(encoding="utf-8", errors="ignore").count("except Exception")
         except OSError:

@@ -47,4 +47,15 @@ if [ -f data/.pause_recaptura_cap ]; then say "recaptura cap pausada — pulei";
 # definição em SQL) e grava JSON — a rota /api/tac/ranking só LÊ o arquivo, para o cálculo nunca
 # cair dentro do request. Pausa: data/.pause_tac_ranking.
 if [ -f data/.pause_tac_ranking ]; then say "tac ranking pausado — pulei"; else $PRIO timeout 600 $PY tools/tac_ranking_ugs.py >> data/tac_ranking.log 2>&1; say "tac ranking rc=$?"; fi
+# SENTINELA DE INTEGRIDADE — vigia a QUALIDADE do que os pipelines produzem (texto cortado em 20k,
+# `anexo_bytes` serializado, leitura devolvendo 0 documentos por corrida), não o prazo, que é do
+# `pipelines_slo`. Existia, era testada e NÃO ESTAVA EM LUGAR NENHUM: nem cron, nem sweep, nem
+# rota — a família 8 do catálogo pela quarta vez. Barata (só lê), e por isso roda toda passada.
+# Pausa: data/.pause_sentinela.
+if [ -f data/.pause_sentinela ]; then say "sentinela pausada — pulei"; else $PRIO timeout 300 $PY -m tools.sentinela_integridade --alerta >> data/sentinela_integridade.log 2>&1; say "sentinela rc=$?"; fi
+# A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
+# `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
+# 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os
+# fingerprints em `data/autoauditoria/` provam que roda (03, 04, 05 e 06/08). Duplicar tarefa
+# pesada em VM de 2 vCPU é o oposto do conserto.
 say "fim"

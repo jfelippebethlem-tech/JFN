@@ -40,15 +40,35 @@ PRECISAM_DE_ROTINA = {
     # (SEI-270131/000548/2023: árvore de 65, 40 lidos). Recapturado à mão, ele saiu de
     # NAO_AVALIAVEL para EXTREMO 94,9, o mais alto do acervo. O modo entrou no `sweep_sei.sh`,
     # sequencial e depois do sweep normal, porque a sessão itkava é única.
+    # Quarta mordida (2026-08-06): a ferramenta que vigia a QUALIDADE do que os pipelines
+    # produzem estava fora de qualquer agendamento. Quem vigia o vigia?
+    "tools.sentinela_integridade":
+        "vigia a QUALIDADE do que os pipelines produzem (texto cortado, anexo serializado, "
+        "leitura devolvendo 0 docs); sem rotina, o defeito só aparece quando alguém tropeça nele",
     "tools.sei_sweep --recaptura":
         "drena a fila de recaptura integral (documento na árvore sem texto lido); sem ela, todo "
         "processo truncado fica truncado para sempre",
 }
 
 
+# AGENDAMENTO NÃO É SÓ `*.sh`. Em 2026-08-06 eu quase dupliquei a `tools.autoauditoria` no
+# `sweep_dados.sh` por ter conferido crontab e scripts — e não os DROP-INS DO SYSTEMD. Ela já
+# rodava diariamente às 07:10 pelo `ExecStartPost` de
+# `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf`, com os fingerprints de
+# 03, 04, 05 e 06/08 em `data/autoauditoria/` como prova. Duplicar tarefa pesada em VM de 2 vCPU é
+# o oposto do conserto. A busca passou a cobrir as três superfícies.
+_SYSTEMD = Path.home() / ".config" / "systemd" / "user"
+
+
 def _scripts_de_sweep() -> str:
-    return "\n".join(p.read_text(encoding="utf-8", errors="ignore")
-                     for p in sorted((RAIZ / "tools").glob("*.sh")))
+    partes = [p.read_text(encoding="utf-8", errors="ignore")
+              for p in sorted((RAIZ / "tools").glob("*.sh"))]
+    if _SYSTEMD.is_dir():
+        partes += [p.read_text(encoding="utf-8", errors="ignore")
+                   for p in sorted(_SYSTEMD.rglob("*.service"))]
+        partes += [p.read_text(encoding="utf-8", errors="ignore")
+                   for p in sorted(_SYSTEMD.rglob("*.conf"))]
+    return "\n".join(partes)
 
 
 @pytest.mark.parametrize("modulo,motivo", sorted(PRECISAM_DE_ROTINA.items()))

@@ -119,9 +119,21 @@ def _teste_atestado_identico(c: dict, ve: float | None) -> tuple[str | None, str
 
 
 def _teste_indices(c: dict, ve: float | None) -> tuple[str | None, str]:
+    # DIZER O QUE FOI CONFERIDO. `justificativa_autos` é calculado sobre a MESMA LINHA da cláusula
+    # (`coletor_edital`), e a Súmula TCU 289 exige a justificativa no PROCESSO — que na prática
+    # mora no estudo técnico, no termo de referência ou num despacho, nunca dentro da frase que
+    # fixa o índice. Escrever "sem justificativa nos autos" afirma uma ausência que ninguém
+    # verificou nos autos.
+    #
+    # Medido em 2026-08-05 no SEI-270099/000714/2022: procurar palavra de justificativa perto de
+    # "índice" no edital inteiro devolve VERDADEIRO — e o trecho é uma "NOTA 3.1" sobre GARANTIA,
+    # onde o que casou foi "em razão da celebração de Termo Aditivo". Alargar a janela inventaria
+    # a exculpação, que é o erro simétrico. Então a régua não muda; muda o que ela DECLARA.
     if c.get("justificativa_autos"):
-        return "ausente", "índice contábil com justificativa nos autos"
-    return "medio", "índice contábil sem justificativa nos autos / parâmetro de mercado (Súmula TCU 289)"
+        return "ausente", "índice contábil justificado na própria cláusula"
+    return "medio", ("índice contábil sem justificativa NA PRÓPRIA CLÁUSULA — a Súmula TCU 289 "
+                     "exige justificativa no processo, que costuma viver no estudo técnico ou no "
+                     "termo de referência: conferir lá antes de concluir")
 
 
 def _teste_amostra(c: dict, ve: float | None) -> tuple[str | None, str]:
