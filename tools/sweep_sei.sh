@@ -91,11 +91,18 @@ $PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max
 # Entrou aqui, e NAO num cron proprio, porque a sessao itkava e unica: duas capturas simultaneas e o
 # SEI expulsa a duplicada. Sequencial, DEPOIS do sweep normal, com orcamento apertado — o custo por
 # processo e do login + carga da arvore (~9 min medidos), nao do numero de documentos.
+# ORÇAMENTO, MEDIDO — não chutado. O ciclo deste script leva ~3h de ponta a ponta (marcas "fim" do
+# log em 2026-08-05: 03:36 · 07:01 · 10:02 · 12:41 · 15:32 · 18:30), porque o laço de foco percorre
+# 16 UGs com teto de 700 s cada e o cron de 30 min só encontra "já rodando — pula". A recaptura,
+# que vem depois, roda portanto ~1 vez a cada 3 horas — e cada processo custa ~9 min (o custo é do
+# login + carga da árvore, não do número de documentos), então 700 s não cabiam nem um. Com 1500 s
+# cabem dois, que é o `--max`. Cadência real: ~16 processos/dia sobre uma fila de 537 — semanas,
+# não horas. Está escrito aqui para ninguém esperar o que o relógio não dá.
 # Pausa: data/.pause_recaptura_integral.
 if [ -f data/.pause_recaptura_integral ]; then
   say "recaptura integral pausada — pulei"
 else
-  $PRIO timeout -k 120 --foreground 700 $PY -m tools.sei_sweep --recaptura --max 2 \
+  $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --recaptura --max 2 \
     >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_recaptura rc=$?"
 fi
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
