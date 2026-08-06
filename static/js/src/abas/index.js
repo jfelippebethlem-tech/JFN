@@ -222,9 +222,17 @@ export async function renderHubFisico(){
   const a=d.achados||d.hubs||[];
   let h=cover('geral','Hub físico — uma âncora, vários fornecedores',
     'Endereço, telefone ou e-mail <b>idêntico</b> em empresas distintas que vendem ao Estado. A lição já paga: <b>mesma sala</b> significa muito, <b>mesmo prédio</b> quase nada — o topo do acervo por prédio é um endereço com 318 CNPJs. Só a âncora com complemento (sala/andar) pesa.','🏢')+acoesAba('hub_compartilhado');
-  h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs','var(--amber)','🏢')}
+  /* `Hubs` e `Com complemento` contam o mesmo `a` desta tela. `CNPJs envolvidos` é uma SOMA de
+     campos, não uma contagem de linhas — abrir uma gaveta com os hubs ali faria o clique mostrar
+     menos linhas do que o número promete, que é o defeito que esta casa já cometeu duas vezes. */
+  const _linHub=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')}</div><div class="dim">${esc(x.tipo||'')}${x.complemento?' · '+esc(x.complemento):''}</div></div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.n_cnpjs||x.n||0)}</div><div class="dim">CNPJs</div></div></div>`);
+  registrarDrill('hubTodos',{titulo:'Hubs — âncora compartilhada por empresas distintas',itens:a,render:_linHub,
+    nota:'Mesma SALA pesa; mesmo PRÉDIO quase nada — o topo do acervo por prédio tem 318 CNPJs.'});
+  registrarDrill('hubComComplemento',{titulo:'Hubs com complemento (sala/andar) — os que pesam',
+    itens:a.filter(x=>(x.tipo||'').includes('sala')||x.complemento),render:_linHub});
+  h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs','var(--amber)','🏢',{drill:'hubTodos'})}
       ${kpi(fmtN(a.reduce((s,x)=>s+(x.n_cnpjs||x.n||0),0)),'CNPJs envolvidos')}
-      ${kpi(fmtN(a.filter(x=>(x.tipo||'').includes('sala')||x.complemento).length),'Com complemento (sala/andar)','var(--rose)','🚪')}</div>`;
+      ${kpi(fmtN(a.filter(x=>(x.tipo||'').includes('sala')||x.complemento).length),'Com complemento (sala/andar)','var(--rose)','🚪',{drill:'hubComComplemento'})}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por âncora ou empresa…" oninput="filtrar(this,'#hub-list .card')"></div>`;
   h+=`<div id="hub-list" class="grid">`+a.map(x=>card(
     `<div style="font-weight:700">${esc(x.ancora||x.endereco||x.valor||'—')} <span class="tag">${esc(x.tipo||'endereço')}</span></div>
@@ -718,7 +726,15 @@ export async function renderSancionadas(esf){
   const aepoca=emp.filter(e=>e.estado.obs_durante>0||e.pncp.vitorias_durante>0);
   let h=cover(esf==='estado'?'estado':'geral','Sancionadas que contratam com o poder público',
     'Empresas punidas no CEIS/CNEP (impedimento, suspensão, inidoneidade) que receberam pagamento (OB SIAFE) ou venceram licitação (PNCP). <b>À ÉPOCA</b> = o ato ocorreu DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156).','🚫')+acoesAba('sancionadas');
-  h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫')}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️')}
+  /* As duas primeiras métricas contam `emp` e `aepoca`, que são os MESMOS arrays desta tela — o
+     drill mostra exatamente o que o número conta. As duas últimas somam valor e vitórias: soma não
+     é contagem de linhas, e por isso não ganham gaveta. */
+  const _linSanc=e=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj,e.razao_social||e.cnpj)}<div class="dim">${esc(e.cnpj)}</div></div><div class="right"><div class="dim">OB ${fmtN(e.estado.obs)} · à época ${fmtN(e.estado.obs_durante)}</div><div class="dim">PNCP ${fmtN(e.pncp.vitorias)} · à época ${fmtN(e.pncp.vitorias_durante)}</div></div></div>`);
+  registrarDrill('sancComContrato',{titulo:'Sancionadas com contrato ou pagamento',itens:emp,render:_linSanc,
+    nota:'Sanção vigente não é o mesmo que ato à época — a coluna "à época" é a que sustenta a vedação do art. 156.'});
+  registrarDrill('sancAEpoca',{titulo:'Ato praticado À ÉPOCA da sanção',itens:aepoca,render:_linSanc,
+    nota:'O ato ocorreu DENTRO da vigência da punição (Lei 14.133, art. 156).'});
+  h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫',{drill:'sancComContrato'})}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️',{drill:'sancAEpoca'})}
       ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸')}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
   h+=buscaPag('san','filtrar por nome ou CNPJ…');
   h+=`<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(80,emp.length))} de ${fmtN(emp.length)}${(d.n&&d.n>carregadas)?` carregadas — a base tem ${fmtN(d.n)}; a rota entrega no máximo 1000, então <b>o filtro NÃO cobre a base inteira</b>: se um CNPJ não aparecer aqui, use a busca por CNPJ do painel antes de concluir qualquer coisa`:' — o filtro busca em todas'}</div>`;

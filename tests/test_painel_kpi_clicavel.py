@@ -24,10 +24,18 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 ABAS = RAIZ / "static" / "js" / "src" / "abas"
 
-# Teto da dívida: quantas chamadas de kpi() ainda NÃO levam a lugar nenhum.
-# 2026-08-06: 198 → 193 (cartão de agente público) → 190 (Riscos: fachada alto/médio e perdedoras).
+# O TETO MEDE O QUE PODE SER CONSERTADO, e essa distinção foi medida antes de ser escrita.
+#
+# São 198 chamadas de `kpi()`. Delas, **139 leem um ESCALAR** do payload — mediana do item, F1
+# macro, percentual de concentração, "SIAFE ok/off". Número que não é contagem de linhas NÃO TEM
+# gaveta possível, e exigir uma seria pedir mentira. Um teto sobre as 180 mudas nunca chegaria a
+# zero e viraria ruído que ninguém lê.
+#
+# O teto cobre as que CONTAM UM ARRAY que o próprio painel já tem em mão — essas podem ganhar
+# caminho hoje, sem tocar rota, e sem risco de o clique contradizer o número.
+# 2026-08-06: 49 convertíveis → 41 (agente público + Riscos) → 37 (sancionadas e hub físico).
 # SÓ PODE DESCER. Toda conversão passa pelo `tools/painel_drill_check`, que CLICA e confere.
-TETO_KPI_SEM_CAMINHO = 190
+TETO_KPI_CONVERTIVEL_SEM_CAMINHO = 37
 
 _RX_KPI = re.compile(r"\bkpi\(")
 
@@ -52,25 +60,61 @@ def _chamadas() -> list[tuple[str, str]]:
     return out
 
 
+def _tem_5o_argumento(chamada: str) -> bool:
+    """`kpi(v, l, cor, glifo, DESTINO)` — o 5º argumento é o caminho, seja aba ou `{drill}`.
+
+    A primeira versão desta catraca procurava a string `drill:` e contava como MUDO todo KPI que
+    já navegava para outra aba (`kpi(..., 'e_alertas')`), porque `kpi-go` é gerado em tempo de
+    execução e não aparece na chamada. Contar errado a própria dívida é o mesmo defeito que a
+    catraca existe para impedir — aqui a contagem passou a ser por VÍRGULAS DE TOPO.
+    """
+    corpo = chamada[chamada.index("(") + 1:-1]
+    nivel, virgulas = 0, 0
+    for ch in corpo:
+        if ch in "([{":
+            nivel += 1
+        elif ch in ")]}":
+            nivel -= 1
+        elif ch == "," and nivel == 0:
+            virgulas += 1
+    return virgulas >= 4
+
+
 def _sem_caminho(chamadas) -> list[tuple[str, str]]:
-    return [(a, c) for a, c in chamadas if "drill:" not in c and "kpi-go" not in c]
+    return [(a, c) for a, c in chamadas if not _tem_5o_argumento(c)]
 
 
-def test_divida_de_kpi_sem_caminho_nao_cresce():
+def _convertiveis(chamadas) -> list[tuple[str, str]]:
+    """Mudas que contam um ARRAY local — o painel já tem as linhas, é só registrá-las."""
+    return [(a, c) for a, c in _sem_caminho(chamadas) if ".length" in c]
+
+
+def test_divida_de_kpi_convertivel_nao_cresce():
     chamadas = _chamadas()
     assert len(chamadas) > 100, "o recorte das chamadas quebrou — reveja o parser antes do teto"
-    mudos = _sem_caminho(chamadas)
-    assert len(mudos) <= TETO_KPI_SEM_CAMINHO, (
-        f"KPIs sem caminho para o dado subiram para {len(mudos)} (teto {TETO_KPI_SEM_CAMINHO}). "
-        "Toda métrica nova nasce clicável: passe `{drill:'nomeDaFatia'}` no 5º argumento de kpi() "
-        "e registre a fatia NO SERVIDOR, nunca filtrando só a página carregada.")
+    conv = _convertiveis(chamadas)
+    assert len(conv) <= TETO_KPI_CONVERTIVEL_SEM_CAMINHO, (
+        f"KPIs que contam um array e não levam a ele subiram para {len(conv)} "
+        f"(teto {TETO_KPI_CONVERTIVEL_SEM_CAMINHO}). Toda métrica nova que conta linhas nasce "
+        "clicável: `registrarDrill(nome,{titulo,itens,render})` e `{drill:nome}` no 5º argumento — "
+        "com `itens` no MESMO universo que o número, nunca a página.")
 
 
 def test_teto_esta_apertado():
     """Teto folgado deixa a dívida voltar a crescer em silêncio — já aconteceu nesta casa."""
-    mudos = _sem_caminho(_chamadas())
-    assert TETO_KPI_SEM_CAMINHO - len(mudos) <= 3, (
-        f"teto {TETO_KPI_SEM_CAMINHO} está folgado: hoje são {len(mudos)}. Baixe o teto.")
+    conv = _convertiveis(_chamadas())
+    assert TETO_KPI_CONVERTIVEL_SEM_CAMINHO - len(conv) <= 3, (
+        f"teto {TETO_KPI_CONVERTIVEL_SEM_CAMINHO} está folgado: hoje são {len(conv)}. Baixe o teto.")
+
+
+def test_escalar_nao_e_cobrado_como_divida():
+    """Controle: `kpi(fmtD(he.f1_macro,3),'F1 macro')` não conta linhas e não deve entrar no teto.
+
+    Sem esta separação o teto nunca chegaria a zero e o número viraria ruído — e catraca que
+    ninguém lê é catraca que não protege.
+    """
+    falsos = [c for _a, c in _convertiveis(_chamadas()) if ".length" not in c]
+    assert not falsos, f"escalar contado como convertível: {falsos[:2]}"
 
 
 def test_fatia_e_aplicada_na_fila_inteira_no_servidor():
