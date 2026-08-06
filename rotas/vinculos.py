@@ -330,7 +330,7 @@ def api_patrimonio(cnpj: str = "", nome: str = ""):
 
 
 @router.get("/api/osint/agente_publico")
-def api_agente_publico(so_comissionados: int = 0, limite: int = 60):
+def api_agente_publico(so_comissionados: int = 0, limite: int = 60, filtro: str = ""):
     """Fila de agente público × entidade que recebeu dinheiro público.
 
     A fila nasceu em linha de comando e ficou lá — o mesmo "construído, testado, nunca rodado" que
@@ -354,6 +354,20 @@ def api_agente_publico(so_comissionados: int = 0, limite: int = 60):
         itens = corpo.get("itens") or []
         if so_comissionados:
             itens = [x for x in itens if x.get("comissionado")]
+        # O FILTRO É APLICADO NA FILA INTEIRA, NUNCA NA PÁGINA. Filtrar depois do corte fazia o
+        # clique contradizer o próprio KPI: o cartão dizia 68 comissionados e a fatia mostrava 55,
+        # porque só os 60 primeiros tinham chegado ao navegador. Métrica que não bate com o que o
+        # clique mostra é pior do que métrica sem clique.
+        _FATIAS = {
+            "apComissionados": lambda x: x.get("comissionado"),
+            "apTerceiroSetor": lambda x: x.get("terceiro_setor"),
+            "apExplicados": lambda x: bool(x.get("explicacao_institucional")),
+            "apNovos": lambda x: bool(x.get("novo")),
+            "apConflito": lambda x: bool(x.get("orgao_pagador_e_o_proprio")),
+        }
+        fn = _FATIAS.get(filtro)
+        if fn:
+            itens = [x for x in itens if fn(x)]
         return JSONResponse({
             "ok": True,
             "gerado_em": corpo.get("gerado_em"),
@@ -363,6 +377,8 @@ def api_agente_publico(so_comissionados: int = 0, limite: int = 60):
             "com_explicacao_institucional": corpo.get("com_explicacao_institucional"),
             "novos": corpo.get("novos", 0),
             "fila_md": corpo.get("fila_md"),
+            "filtro": filtro or "apTodos",
+            "total_fatia": len(itens),
             "itens": itens[:max(1, min(int(limite), 500))],
             "ressalva": (
                 "INDÍCIO, nunca prova. O casamento é por NOME NORMALIZADO: a folha não traz CPF "

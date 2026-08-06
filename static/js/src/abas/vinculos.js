@@ -152,22 +152,33 @@ export async function vincContato(){
   o.innerHTML=h;
 }
 
-export async function vincAgentePublico(){
+export async function vincAgentePublico(filtro){
   // AGENTE PÚBLICO NO QUADRO SOCIETÁRIO. Não pede CNPJ: a pergunta é sobre a FILA inteira — 251 mil
   // nomes das folhas do Estado e da ALERJ cruzados com o QSA nacional (27,6 mi de linhas). O que
   // chega aqui já passou por três cortes: entidade que recebeu dinheiro público, nome com um único
   // CPF mascarado no índice, e explicação institucional DECLARADA (não escondida) ao lado do par.
   const o=$('vinc-out');
   o.innerHTML=card('<div class="dim">cruzando as folhas com o quadro societário do país…</div>');
-  const d=await J('/api/osint/agente_publico?limite=60');
+  const d=await J('/api/osint/agente_publico?limite=250&filtro='+encodeURIComponent(filtro||'apTodos'));
   if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  // CADA KPI TEM UM CAMINHO PARA O DADO. `filtro` é o nome da fatia que o número representa —
+  // clicar em "68 comissionados" mostra os 68, não outra tela com outro número.
+  const FILTROS={
+    apTodos:'todos os pares', apComissionados:'agentes comissionados',
+    apTerceiroSetor:'entidades de terceiro setor',
+    apExplicados:'pares com explicação do programa',
+    apNovos:'novos desde a última rodada', apConflito:'pagos pelo próprio órgão',
+  };
+  const sel={t:FILTROS[filtro]||FILTROS.apTodos};
+  // A FATIA VEM DO SERVIDOR, já aplicada à fila inteira — filtrar aqui só a página carregada fazia
+  // o clique contradizer o KPI (68 viravam 55, 201 viravam 22, 1 novo virava 0).
   const it=d.itens||[];
-  let h=sec('Agente público no quadro societário');
-  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares agente × entidade','var(--amber)','🏛️')}
-      ${kpi(fmtN(d.comissionados),'Agentes COMISSIONADOS',d.comissionados?'var(--red)':null,'★')}
-      ${kpi(fmtN(d.terceiro_setor),'Em ONG / associação / fundação')}
-      ${kpi(fmtN(d.com_explicacao_institucional),'Com explicação do PROGRAMA','var(--dim)','📗')}
-      ${kpi(fmtN(d.novos||0),'NOVOS desde a última rodada',(d.novos||0)?'var(--red)':null,'🆕')}</div>`;
+  let h=sec('Agente público no quadro societário'+(filtro&&filtro!=='apTodos'?' · '+sel.t:''));
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares agente × entidade','var(--amber)','🏛️',{drill:'apTodos'})}
+      ${kpi(fmtN(d.comissionados),'Agentes COMISSIONADOS',d.comissionados?'var(--red)':null,'★',{drill:'apComissionados'})}
+      ${kpi(fmtN(d.terceiro_setor),'Em ONG / associação / fundação',null,null,{drill:'apTerceiroSetor'})}
+      ${kpi(fmtN(d.com_explicacao_institucional),'Com explicação do PROGRAMA','var(--dim)','📗',{drill:'apExplicados'})}
+      ${kpi(fmtN(d.novos||0),'NOVOS desde a última rodada',(d.novos||0)?'var(--red)':null,'🆕',{drill:'apNovos'})}</div>`;
   h+=leitura(esc(d.ressalva||''));
   h+=`<div class="grid">`+it.map(x=>{
     const v=Object.entries(x.valor_por_fonte||{}).map(([k,n])=>`${esc(k)} ${fmtRc(n)}`).join(' · ');
@@ -191,7 +202,10 @@ export async function vincAgentePublico(){
        </div>`,
       (!x.explicacao_institucional && (x.orgao_pagador_e_o_proprio || x.comissionado)) ? 'hl' : '');
   }).join('')+`</div>`;
-  if(d.total>it.length) h+=`<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos — os de maior valor.</div>`;
+  if(!it.length) h+=card(`<div class="dim">Nenhum par nesta fatia.</div>`);
+  h+=`<div class="note">${fmtN(it.length)} exibidos de ${fmtN(d.total_fatia)} nesta fatia`
+     +`${filtro&&filtro!=='apTodos'?' ('+esc(sel.t)+')':''} · ${fmtN(d.total)} na fila inteira.`
+     +` Clique em qualquer métrica acima para trocar a fatia.</div>`;
   h+=`<div class="note">Fontes: ${esc(d.fontes||'')}</div>`;
   o.innerHTML=h;
 }
@@ -424,6 +438,13 @@ export async function vincPatrimonio(){
    O mapa é a superfície: `data-vinc="grafo"` acha `grafo` aqui. Chave desconhecida não faz nada e
    não lança — botão morto é ruim, mas `TypeError` no console de um painel ao vivo é pior, e a
    completude de quem existe já é provada pelo `test_painel_ponte_completa`.  */
+/* Uma ação por KPI: o nome no `data-drill` É o nome do filtro. Sem tabela paralela para
+   dessincronizar — se o KPI cita uma fatia que não existe, o render cai no conjunto inteiro em vez
+   de lançar, porque botão que não faz nada é ruim e `TypeError` em painel ao vivo é pior. */
+export const DRILL_ACOES=Object.fromEntries(
+  ['apTodos','apComissionados','apTerceiroSetor','apExplicados','apNovos']
+    .map(k=>[k,()=>vincAgentePublico(k)]));
+
 export const VINC_ACOES={
   consultar:vincConsultar, parentesco:vincParentesco, contato:vincContato,
   agentePublico:vincAgentePublico,
@@ -443,7 +464,10 @@ export function ligarVinculos(){
   document.addEventListener('click',ev=>{
     const b=ev.target.closest&&ev.target.closest('[data-vinc]');
     const f=b&&VINC_ACOES[b.dataset.vinc];
-    if(f){ev.preventDefault();f();}
+    if(f){ev.preventDefault();f();return;}
+    const k=ev.target.closest&&ev.target.closest('[data-drill]');
+    const g=k&&DRILL_ACOES[k.dataset.drill];
+    if(g){ev.preventDefault();g();}
   });
   /* O campo de CNPJ respondia ao Enter por `onkeydown` inline. Vira o mesmo mecanismo, com o
      nome da ação no atributo — um controle a menos citando função global. */

@@ -17,7 +17,8 @@
   };
   var kpi = (v, l, cor, gl, dest) => {
     const ik = _kpiIco(cor);
-    const go = dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
+    const drill = dest && typeof dest === "object" && dest.drill;
+    const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
     return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ""}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
   };
   var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
@@ -3664,21 +3665,30 @@ void main(){
     h += `<div class="note">${esc(cob.nota || "")}</div>`;
     o.innerHTML = h;
   }
-  async function vincAgentePublico() {
+  async function vincAgentePublico(filtro) {
     const o = $("vinc-out");
     o.innerHTML = card('<div class="dim">cruzando as folhas com o quadro societário do país…</div>');
-    const d = await J("/api/osint/agente_publico?limite=60");
+    const d = await J("/api/osint/agente_publico?limite=250&filtro=" + encodeURIComponent(filtro || "apTodos"));
     if (d.erro || d.ok === false) {
       o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
       return;
     }
+    const FILTROS = {
+      apTodos: "todos os pares",
+      apComissionados: "agentes comissionados",
+      apTerceiroSetor: "entidades de terceiro setor",
+      apExplicados: "pares com explicação do programa",
+      apNovos: "novos desde a última rodada",
+      apConflito: "pagos pelo próprio órgão"
+    };
+    const sel = { t: FILTROS[filtro] || FILTROS.apTodos };
     const it = d.itens || [];
-    let h = sec("Agente público no quadro societário");
-    h += `<div class="grid g2">${kpi(fmtN(d.total), "Pares agente × entidade", "var(--amber)", "🏛️")}
-      ${kpi(fmtN(d.comissionados), "Agentes COMISSIONADOS", d.comissionados ? "var(--red)" : null, "★")}
-      ${kpi(fmtN(d.terceiro_setor), "Em ONG / associação / fundação")}
-      ${kpi(fmtN(d.com_explicacao_institucional), "Com explicação do PROGRAMA", "var(--dim)", "📗")}
-      ${kpi(fmtN(d.novos || 0), "NOVOS desde a última rodada", d.novos || 0 ? "var(--red)" : null, "🆕")}</div>`;
+    let h = sec("Agente público no quadro societário" + (filtro && filtro !== "apTodos" ? " · " + sel.t : ""));
+    h += `<div class="grid g2">${kpi(fmtN(d.total), "Pares agente × entidade", "var(--amber)", "🏛️", { drill: "apTodos" })}
+      ${kpi(fmtN(d.comissionados), "Agentes COMISSIONADOS", d.comissionados ? "var(--red)" : null, "★", { drill: "apComissionados" })}
+      ${kpi(fmtN(d.terceiro_setor), "Em ONG / associação / fundação", null, null, { drill: "apTerceiroSetor" })}
+      ${kpi(fmtN(d.com_explicacao_institucional), "Com explicação do PROGRAMA", "var(--dim)", "📗", { drill: "apExplicados" })}
+      ${kpi(fmtN(d.novos || 0), "NOVOS desde a última rodada", d.novos || 0 ? "var(--red)" : null, "🆕", { drill: "apNovos" })}</div>`;
     h += leitura(esc(d.ressalva || ""));
     h += `<div class="grid">` + it.map((x) => {
       const v = Object.entries(x.valor_por_fonte || {}).map(([k, n]) => `${esc(k)} ${fmtRc(n)}`).join(" · ");
@@ -3699,7 +3709,8 @@ void main(){
         !x.explicacao_institucional && (x.orgao_pagador_e_o_proprio || x.comissionado) ? "hl" : ""
       );
     }).join("") + `</div>`;
-    if (d.total > it.length) h += `<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos — os de maior valor.</div>`;
+    if (!it.length) h += card(`<div class="dim">Nenhum par nesta fatia.</div>`);
+    h += `<div class="note">${fmtN(it.length)} exibidos de ${fmtN(d.total_fatia)} nesta fatia${filtro && filtro !== "apTodos" ? " (" + esc(sel.t) + ")" : ""} · ${fmtN(d.total)} na fila inteira. Clique em qualquer métrica acima para trocar a fatia.</div>`;
     h += `<div class="note">Fontes: ${esc(d.fontes || "")}</div>`;
     o.innerHTML = h;
   }
@@ -3982,6 +3993,9 @@ void main(){
     h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 3e3)}</pre>`);
     o.innerHTML = h;
   }
+  var DRILL_ACOES = Object.fromEntries(
+    ["apTodos", "apComissionados", "apTerceiroSetor", "apExplicados", "apNovos"].map((k) => [k, () => vincAgentePublico(k)])
+  );
   var VINC_ACOES = {
     consultar: vincConsultar,
     parentesco: vincParentesco,
@@ -4005,6 +4019,13 @@ void main(){
       if (f) {
         ev.preventDefault();
         f();
+        return;
+      }
+      const k = ev.target.closest && ev.target.closest("[data-drill]");
+      const g = k && DRILL_ACOES[k.dataset.drill];
+      if (g) {
+        ev.preventDefault();
+        g();
       }
     });
     document.addEventListener("keydown", (ev) => {
