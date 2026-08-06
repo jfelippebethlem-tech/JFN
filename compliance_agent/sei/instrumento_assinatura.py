@@ -632,9 +632,30 @@ _UNIDADES_NAO_OBJETO = {
     "vez", "etapa", "fase", "item", "lote", "exercicio", "unidade", "percentual",
 }
 _RE_OBJETO = re.compile(r"do\s+objeto|CL[ÁA]USULA\s+PRIMEIRA", re.I)
+# "atesto" SOLTO não é atesto. A palavra aparece na cláusula de pagamento de todo termo de
+# referência — "o pagamento será mensal, mediante atesto a ser realizado por agentes da Comissão
+# Fiscalizadora" —, que é a PREVISÃO de que haverá atesto, não um atesto de execução. Medido em
+# 2026-08-05 nos SEI-420001/004224/2024 e /004223/2024 (nºs 6 e 7 da fila do fiscal): o I6 acusava
+# "objeto contratado é de 30 veículos e o atesto fala em 3", e o "3" saía do TR — da distribuição
+# interna do próprio objeto, "21 (vinte e um) veículos para as Operações Presente; e 03 (três)
+# para a Operação Barreira Fiscal" —, com o gatilho vindo da cláusula de pagamento. Total contra
+# parcela, num documento que não atesta nada.
+#
+# Mesma doutrina do `_RX_ENTREGA_AFIRMADA` (art. 63 da Lei 4.320) e da família 19 do catálogo: o
+# modo verbal decide. Exigir a forma que AFIRMA o atesto, não a que o prevê.
 _RE_ATESTO = re.compile(
     r"qualidade\s+da\s+presta[çc][ãa]o|presta[çc][ãa]o\s+de\s+servi[çc]o\s+compat[íi]vel|"
-    r"executad[oa]\s+pela\s+contratada|atesto|a\s+contento", re.I)
+    r"executad[oa]\s+pela\s+contratada|a\s+contento|"
+    # O QUE SEPARA O ATO DA PREVISÃO É O INFINITIVO. "atesto **a boa execução**" é o ato;
+    # "atesto **a ser** realizado" é a cláusula que promete um atesto futuro. A primeira versão
+    # desta correção recusava o artigo inteiro e derrubou junto a fórmula verdadeira ("ATESTO a
+    # boa execução dos serviços"), que estava num teste desde 2026-08-04 — o teste pegou.
+    # Complementos que denunciam o SUBSTANTIVO ("o atesto DA nota fiscal", "o atesto SERÁ feito")
+    # ficam de fora sozinhos, por não estarem na lista.
+    r"\batesto\s+(?!a\s+ser(?:em)?\b)(?:que|a|o|os|as)\b|"
+    r"\batesto,\s*para\s+os\s+devidos\s+fins|"
+    r"\batestamos\b|\batesta-se\b|\batestad[oa]\s+(?:que|pel[ao])|"
+    r"declaro\s+para\s+os\s+devidos\s+fins", re.I)
 
 
 def _qtds(texto: str) -> dict[str, int]:
@@ -685,6 +706,17 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
         return {"achado": False, "objeto": None, "atesto": None}
     for d in docs or []:
         texto = d.get("texto") or ""
+        # O ATESTO NÃO PODE SER O PRÓPRIO INSTRUMENTO. Todo contrato traz, na cláusula de
+        # pagamento, a fórmula "considera-se adimplemento o cumprimento da prestação com a entrega
+        # do objeto, devidamente ATESTADO PELO(S) AGENTE(S) COMPETENTE(S)" — que é a regra do que
+        # o atesto será, não um atesto. Com o instrumento dos dois lados, o detector comparava o
+        # TOTAL contratado com uma SUB-ALOCAÇÃO do mesmo contrato: medido em 2026-08-05 no
+        # SEI-420001/004224/2024, "30 (trinta) veículos tipo van" contra "03 (três) VEÍCULOS TIPO
+        # VAN" da Operação Barreira Fiscal — a distribuição interna dos mesmos 30.
+        # Atesto de execução é peça POSTERIOR e DE OUTRO documento; exigir isso é mais sólido do
+        # que continuar afinando a regex do gatilho.
+        if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO:
+            continue
         if not _RE_ATESTO.search(texto):
             continue
         for uni, qs in _qtds_distintas(texto).items():
