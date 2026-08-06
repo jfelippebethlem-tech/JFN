@@ -166,7 +166,8 @@ export async function vincAgentePublico(){
   h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares agente × entidade','var(--amber)','🏛️')}
       ${kpi(fmtN(d.comissionados),'Agentes COMISSIONADOS',d.comissionados?'var(--red)':null,'★')}
       ${kpi(fmtN(d.terceiro_setor),'Em ONG / associação / fundação')}
-      ${kpi(fmtN(d.com_explicacao_institucional),'Com explicação do PROGRAMA','var(--dim)','📗')}</div>`;
+      ${kpi(fmtN(d.com_explicacao_institucional),'Com explicação do PROGRAMA','var(--dim)','📗')}
+      ${kpi(fmtN(d.novos||0),'NOVOS desde a última rodada',(d.novos||0)?'var(--red)':null,'🆕')}</div>`;
   h+=leitura(esc(d.ressalva||''));
   h+=`<div class="grid">`+it.map(x=>{
     const v=Object.entries(x.valor_por_fonte||{}).map(([k,n])=>`${esc(k)} ${fmtRc(n)}`).join(' · ');
@@ -179,7 +180,7 @@ export async function vincAgentePublico(){
     return card(
       `<div style="display:flex;justify-content:space-between;gap:10px">
          <div style="min-width:0">
-           <div style="font-weight:700">${x.comissionado?'★ ':''}${esc(x.agente)}</div>
+           <div style="font-weight:700">${x.novo?'🆕 ':''}${x.comissionado?'★ ':''}${esc(x.agente)}</div>
            <div class="muted" style="font-size:12.5px">${esc(x.cargo||'')} · ${esc(x.orgao||'')}</div>
            <div style="font-size:13px;margin-top:4px">${esc(x.entidade)}${x.terceiro_setor?' <span class="dim">[3º setor]</span>':''}</div>
            <div class="dim" style="font-size:12px;margin-top:3px">${v||'sem desembolso — só contrato'}</div>

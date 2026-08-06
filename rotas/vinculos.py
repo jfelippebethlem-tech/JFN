@@ -361,6 +361,8 @@ def api_agente_publico(so_comissionados: int = 0, limite: int = 60):
             "comissionados": corpo.get("comissionados"),
             "terceiro_setor": corpo.get("terceiro_setor"),
             "com_explicacao_institucional": corpo.get("com_explicacao_institucional"),
+            "novos": corpo.get("novos", 0),
+            "fila_md": corpo.get("fila_md"),
             "itens": itens[:max(1, min(int(limite), 500))],
             "ressalva": (
                 "INDÍCIO, nunca prova. O casamento é por NOME NORMALIZADO: a folha não traz CPF "

@@ -427,6 +427,116 @@ def resumo(db: str = "") -> dict:
 _FILA_JSON = _REPO / "data" / "agente_publico_fila.json"
 
 
+_FILA_MD = _REPO / "data" / "osint_fila_agente.md"
+_SQL_VISTO = """
+CREATE TABLE IF NOT EXISTS agente_publico_visto (
+    chave     TEXT PRIMARY KEY,
+    visto_em  TEXT NOT NULL
+)"""
+
+
+def marcar_novidades(itens: list[dict], db: str = "") -> int:
+    """Marca `novo=True` no que nunca apareceu antes e devolve quantos são.
+
+    A FILA SE REGENERA TODO DIA E NINGUÉM ERA AVISADO. Um par que surge às 3 da manhã — porque a
+    folha ganhou competência nova ou o dump da Receita mudou — ficava indistinguível dos 538 que já
+    estavam lá; só apareceria se alguém relesse a lista inteira. É exatamente a pergunta que a
+    persistência do grafo foi construída para responder: *o que mudou desde a última vez?*
+
+    A chave é (nome do agente + raiz da entidade), não a posição na lista: reordenar a fila não
+    pode inventar novidade.
+    """
+    from compliance_agent.reporting.intel_base import _DB
+
+    con = sqlite3.connect(db or _DB, timeout=60)
+    con.execute(_SQL_VISTO)
+    ja = {r[0] for r in con.execute("SELECT chave FROM agente_publico_visto")}
+    hoje = time.strftime("%Y-%m-%d")
+    novos = 0
+    for x in itens:
+        chave = f"{x['agente']}|{x['cnpj_basico']}"
+        x["novo"] = chave not in ja
+        if x["novo"]:
+            novos += 1
+            con.execute("INSERT OR REPLACE INTO agente_publico_visto VALUES (?,?)", (chave, hoje))
+        # PRIMEIRA RODADA NÃO É NOVIDADE. Com a tabela vazia, os 538 seriam "novos" e o aviso
+        # nasceria gritando — o fiscal aprenderia a ignorá-lo na primeira vez que o visse.
+    if not ja:
+        for x in itens:
+            x["novo"] = False
+        novos = 0
+    con.commit()
+    con.close()
+    return novos
+
+
+def escrever_fila_md(itens: list[dict], novos: int, caminho: Path = _FILA_MD) -> str:
+    """A fila em markdown, no mesmo idioma de `data/fila_fiscal_360.md` — um arquivo para abrir.
+
+    Ordem já é a da gravidade; aqui só se declara, na cabeça do arquivo, o que o leitor precisa
+    saber ANTES do primeiro nome: que isto é indício por casamento de NOME, que servidor pode ser
+    sócio, e o que fecha a questão.
+    """
+    trabalho = [x for x in itens if not x["explicacao_institucional"]]
+    conflito = [x for x in trabalho if x["orgao_pagador_e_o_proprio"]]
+    linhas = [
+        "# Fila OSINT — agente público no quadro societário",
+        "",
+        f"Gerada em {time.strftime('%Y-%m-%d %H:%M')} · **{len(itens)}** pares · "
+        f"**{len(trabalho)}** sem explicação institucional · **{len(conflito)}** com o pagamento "
+        f"vindo do PRÓPRIO órgão do agente · **{novos}** novos desde a última rodada.",
+        "",
+        "> **Indício, nunca prova.** O casamento é por NOME NORMALIZADO: a folha não traz CPF "
+        "utilizável e a Receita entrega o CPF do sócio mascarado. Nomes com mais de um CPF no "
+        "índice já foram excluídos, mas os que ficam podem ser homônimos sem que a base o mostre. "
+        "**Servidor pode ser sócio** — o que se afirma é que há o que conferir: ficha funcional com "
+        "CPF, QSA integral na JUCERJA, e se a sociedade antecede ou sucede a posse.",
+        "",
+    ]
+    # NOVIDADE NÃO PODE CAIR NO CORTE. A seção 2 mostra 80 pares; um par novo que caia fora dela
+    # ficaria invisível — e um aviso que não avisa é pior que nenhum. Verificado ao vivo: o primeiro
+    # novo simulado (ADILSON DE SOUZA DUBOIS) não aparecia em lugar nenhum do arquivo. Todo novo
+    # entra AQUI, inteiro, antes de qualquer corte.
+    if novos:
+        linhas += [f"## 0. NOVOS desde a última rodada ({novos})", "",
+                   "| Agente | Cargo | Órgão | Entidade | Situação |", "|---|---|---|---|---|"]
+        for x in [y for y in itens if y.get("novo")]:
+            sit = (x["orgao_pagador_e_o_proprio"] and "⚠ pago pelo próprio órgão") or \
+                  x["explicacao_institucional"] or ("comissionado" if x["comissionado"] else "—")
+            linhas.append(f"| {x['agente']} | {x['cargo']} | {x['orgao']} | {x['entidade']} "
+                          f"| {sit} |")
+        linhas.append("")
+    linhas += [
+        "## 1. Pagamento vindo do próprio órgão do agente (art. 9º, III da Lei 8.429/1992)",
+        "",
+        "| # | Agente | Cargo | Órgão | Entidade | Quem pagou | Valor |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for i, x in enumerate(conflito, 1):
+        v = " · ".join(f"{k} {n:,.2f}".replace(",", "@").replace(".", ",").replace("@", ".")
+                       for k, n in x["valor_por_fonte"].items()) or "só contrato"
+        linhas.append(f"| {i}{' 🆕' if x.get('novo') else ''} | {x['agente']} | {x['cargo']} | "
+                      f"{x['orgao']} | {x['entidade']} | {x['orgao_pagador_e_o_proprio']} | {v} |")
+    linhas += ["", "## 2. Demais pares sem explicação institucional, por valor", "",
+               "| # | Agente | Cargo | Órgão | Entidade | 3ºsetor | Valor | Sócios |",
+               "|---|---|---|---|---|---|---|---|"]
+    for i, x in enumerate([y for y in trabalho if not y["orgao_pagador_e_o_proprio"]][:80], 1):
+        v = " · ".join(f"{k} {n:,.2f}".replace(",", "@").replace(".", ",").replace("@", ".")
+                       for k, n in x["valor_por_fonte"].items()) or "só contrato"
+        linhas.append(f"| {i}{' 🆕' if x.get('novo') else ''} | {x['agente']} | {x['cargo']} | "
+                      f"{x['orgao']} | {x['entidade']} | {'sim' if x['terceiro_setor'] else ''} | "
+                      f"{v} | {x['servidores_no_qsa']} de {x.get('socios_no_qsa', 0)} |")
+    linhas += ["", f"## 3. Com explicação institucional declarada "
+                   f"({sum(1 for x in itens if x['explicacao_institucional'])})", "",
+               "Associação de apoio à escola, fundação de apoio universitária, associação de "
+               "classe, cooperativa e ente público/estatal — o servidor na direção é o DESENHO do "
+               "programa, não o achado. Ficam fora da fila de trabalho e contados aqui para que "
+               "ninguém os confunda com ausência de verificação.", ""]
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    caminho.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    return str(caminho)
+
+
 def contar_qsa(raizes: set[str], zst: Path = _ZST) -> dict[str, int]:
     """Tamanho REAL do QSA de cada raiz — o denominador sem o qual a contagem engana.
 
@@ -467,6 +577,8 @@ def gravar_fila(caminho: Path = _FILA_JSON) -> dict:
     qsa = contar_qsa({x["cnpj_basico"] for x in itens})
     for x in itens:
         x["socios_no_qsa"] = qsa.get(x["cnpj_basico"], 0)
+    novos = marcar_novidades(itens)
+    md = escrever_fila_md(itens, novos)
     caminho.parent.mkdir(parents=True, exist_ok=True)
     corpo = {
         "gerado_em": time.strftime("%Y-%m-%d %H:%M"),
@@ -474,6 +586,8 @@ def gravar_fila(caminho: Path = _FILA_JSON) -> dict:
         "comissionados": sum(1 for x in itens if x["comissionado"]),
         "terceiro_setor": sum(1 for x in itens if x["terceiro_setor"]),
         "com_explicacao_institucional": sum(1 for x in itens if x["explicacao_institucional"]),
+        "novos": novos,
+        "fila_md": md,
         "itens": itens,
     }
     caminho.write_text(json.dumps(corpo, ensure_ascii=False), encoding="utf-8")

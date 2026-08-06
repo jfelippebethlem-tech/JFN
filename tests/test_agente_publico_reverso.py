@@ -227,3 +227,66 @@ def test_contagem_de_servidores_no_qsa_nao_ordena_a_fila():
     assert "servidores_no_qsa" not in chave, (
         "a contagem de servidores voltou a ordenar a fila — ela mede tamanho de empresa")
     assert "orgao_pagador_e_o_proprio" in chave, "o eixo quase-objetivo saiu da ordem"
+
+
+def _itens(n, novo_no_fim=False):
+    out = []
+    for i in range(n):
+        out.append({
+            "agente": f"AGENTE {i:03d} DE TESTE", "cargo": "ASSESSOR", "orgao": "SEC X",
+            "origem": "folha_estado", "comissionado": False, "cnpj_basico": f"{i:08d}",
+            "entidade": f"EMPRESA {i:03d} LTDA", "terceiro_setor": False,
+            "valor_por_fonte": {"siafe_ob": float(n - i)}, "valor_recebido": float(n - i),
+            "fontes": ["siafe_ob"], "explicacao_institucional": "",
+            "servidores_no_qsa": 1, "socios_no_qsa": 2, "orgao_pagador_e_o_proprio": "",
+            "diligencia": "…", "novo": False,
+        })
+    if novo_no_fim:
+        out[-1]["novo"] = True
+    return out
+
+
+def test_primeira_rodada_nao_grita_novidade(tmp_path, monkeypatch):
+    """Com a tabela vazia, os 538 pares seriam "novos" e o aviso nasceria gritando.
+
+    Um aviso que grita na estreia ensina o fiscal a ignorá-lo — e aí ele não avisa mais nunca.
+    """
+    from tools import agente_publico_reverso as M
+
+    db = tmp_path / "c.db"
+    itens = _itens(5)
+    assert M.marcar_novidades(itens, db=str(db)) == 0
+    assert all(x["novo"] is False for x in itens)
+
+    # segunda rodada: um par que não estava lá É novidade
+    novos_itens = _itens(6)
+    assert M.marcar_novidades(novos_itens, db=str(db)) == 1
+    assert [x["agente"] for x in novos_itens if x["novo"]] == ["AGENTE 005 DE TESTE"]
+
+
+def test_novidade_nao_cai_no_corte_da_lista(tmp_path):
+    """A seção 2 mostra 80 pares. Um novo que caia fora dela ficaria INVISÍVEL no arquivo.
+
+    Foi o que aconteceu ao vivo na primeira versão: o par novo simulado não aparecia em lugar
+    nenhum do markdown. Um aviso que não avisa é pior que nenhum aviso — todo novo entra na seção
+    0, inteiro, antes de qualquer corte.
+    """
+    from tools import agente_publico_reverso as M
+
+    itens = _itens(200, novo_no_fim=True)     # o novo é o de MENOR valor: cai fora dos 80
+    destino = tmp_path / "fila.md"
+    M.escrever_fila_md(itens, novos=1, caminho=destino)
+    texto = destino.read_text(encoding="utf-8")
+
+    assert "## 0. NOVOS desde a última rodada (1)" in texto
+    assert "AGENTE 199 DE TESTE" in texto, "o par novo sumiu no corte da lista"
+
+
+def test_reordenar_a_fila_nao_inventa_novidade(tmp_path):
+    """A chave é (agente, raiz) — não a posição. Reordenar não pode virar 538 novidades."""
+    from tools import agente_publico_reverso as M
+
+    db = tmp_path / "c.db"
+    M.marcar_novidades(_itens(5), db=str(db))
+    invertidos = list(reversed(_itens(5)))
+    assert M.marcar_novidades(invertidos, db=str(db)) == 0
