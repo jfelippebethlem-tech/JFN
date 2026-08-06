@@ -124,3 +124,52 @@ def test_contrato_nao_desaparece_da_fila_por_nao_ter_valor():
     valor, _ = dinheiro_publico(con)
     con.close()
     assert "44444444" in valor
+
+
+@pytest.mark.parametrize("nat,esperado", [
+    ("2011", "ente_publico_ou_estatal"),   # empresa pública
+    ("2038", "ente_publico_ou_estatal"),   # sociedade de economia mista
+    ("1244", "ente_publico_ou_estatal"),   # administração pública / autarquia
+    ("2054", ""),                          # S/A FECHADA é privada — vetar aqui seria vetar demais
+    ("2062", ""),                          # LTDA
+    ("3999", ""),                          # associação privada
+])
+def test_ente_publico_nao_tem_socio_tem_dirigente(nat, esperado):
+    """O primeiro item da fila no painel era a RIOSAÚDE com dois Capitães BM no "quadro societário".
+
+    Empresa pública não tem sócio: tem diretoria indicada pelo governo, como manda a lei das
+    estatais. O corte é por NATUREZA JURÍDICA e para em 2038 — `2054` é S/A fechada e pegaria
+    CONDOR S/A INDÚSTRIA QUÍMICA e CABERJ INTEGRAL SAÚDE, que são privadas. Medido: 15 dos 538.
+    """
+    assert explicacao_institucional("QUALQUER RAZAO SOCIAL S/A", nat) == esperado
+
+
+def test_par_explicado_nao_lidera_a_fila():
+    """Quem abre a tela lê o PRIMEIRO item como o mais grave — e ele era a RIOSAÚDE.
+
+    Ordenar só por valor punha no topo o par que a própria ferramenta já explicava (empresa
+    pública, dirigente nomeado), à frente de todo caso que de fato precisa de diligência. A fila é
+    de TRABALHO: explicado por último, comissionado primeiro, valor só desempata.
+    """
+    from tools import agente_publico_reverso as M
+
+    linhas = [
+        # (nome_norm, nome, raiz, cargo, orgao, comissionado, origem)
+        ("A A A", "A A A", "11111111", "DIRETOR", "X", 0, "folha_estado"),   # estatal, R$ 9 bi
+        ("B B B", "B B B", "22222222", "ASSESSOR", "Y", 1, "folha_estado"),  # comissionado, R$ 10
+        ("C C C", "C C C", "33333333", "TECNICO", "Z", 0, "folha_estado"),   # simples, R$ 1.000
+    ]
+    razao = {"11111111": ("ESTATAL S/A", "2011"), "22222222": ("PRIVADA LTDA", "2062"),
+             "33333333": ("OUTRA LTDA", "2062")}
+    pago = {"11111111": {"siafe_ob": 9e9}, "22222222": {"siafe_ob": 10.0},
+            "33333333": {"siafe_ob": 1000.0}}
+
+    ordem = sorted(
+        [{"agente": n, "comissionado": bool(c),
+          "valor_recebido": sum(pago[r].values()),
+          "explicacao_institucional": M.explicacao_institucional(*razao[r])}
+         for _, n, r, _cg, _o, c, _og in linhas],
+        key=lambda x: (bool(x["explicacao_institucional"]), not x["comissionado"],
+                       -x["valor_recebido"]))
+    assert [x["agente"] for x in ordem] == ["B B B", "C C C", "A A A"], (
+        "o par já explicado não pode encabeçar uma fila de trabalho")

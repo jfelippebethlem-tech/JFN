@@ -83,6 +83,7 @@ GET /api/memoria -> api_memoria
 GET /api/motor/fotografia -> api_motor_fotografia
 GET /api/ob/retiradas -> api_ob_retiradas
 GET /api/orgao/cidades -> api_orgao_cidades
+GET /api/osint/agente_publico -> api_agente_publico
 GET /api/osint/beneficiario_final -> api_beneficiario_final
 GET /api/osint/conluio_municipal -> api_conluio_municipal
 GET /api/osint/contato_compartilhado -> api_contato_compartilhado

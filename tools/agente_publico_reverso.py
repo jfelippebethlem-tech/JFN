@@ -175,8 +175,24 @@ _INSTITUCIONAL = {
 }
 
 
-def explicacao_institucional(razao_social: str) -> str:
+# ENTE PÚBLICO NÃO TEM SÓCIO — TEM DIRIGENTE NOMEADO. O primeiro item da fila renderizada no
+# painel era `EMPRESA PUBLICA DE SAUDE DO RIO DE JANEIRO S/A - RIOSAÚDE` com dois Capitães BM no
+# "quadro societário": é a diretoria da estatal, indicada pelo governo, exatamente como manda a lei
+# das estatais. Servidor na direção de empresa pública é o desenho, não o achado.
+#
+# O corte é por NATUREZA JURÍDICA, não por nome: `1xxx` (administração pública direta, autarquia,
+# fundação), `2011` (empresa pública) e `2038` (sociedade de economia mista). E PARA AÍ: `2054` é
+# S/A fechada e pegaria CONDOR S/A INDÚSTRIA QUÍMICA e CABERJ INTEGRAL SAÚDE, que são privadas —
+# vetar demais é tão ruim quanto vetar de menos. Medido: 15 dos 538 pares.
+def e_estatal(natureza_cod: str) -> bool:
+    n = str(natureza_cod or "")
+    return n.startswith("1") or n in ("2011", "2038")
+
+
+def explicacao_institucional(razao_social: str, natureza_cod: str = "") -> str:
     """Nome da explicação inocente conhecida, ou vazio. Vazio NÃO significa que não haja uma."""
+    if e_estatal(natureza_cod):
+        return "ente_publico_ou_estatal"
     for nome, rx in _INSTITUCIONAL.items():
         if rx.search(str(razao_social or "")):
             return nome
@@ -306,7 +322,7 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
             "valor_por_fonte": pago[raiz],
             "valor_recebido": sum(pago[raiz].values()),
             "fontes": sorted(set(fontes.get(raiz, []))),
-            "explicacao_institucional": explicacao_institucional(rz),
+            "explicacao_institucional": explicacao_institucional(rz, nat),
             "servidores_no_qsa": quantos.get(raiz, 1),
             "diligencia": ("confirmar identidade por CPF na ficha funcional e no QSA integral da "
                            "JUCERJA; verificar se a sociedade é anterior ou posterior à posse, e "
@@ -314,7 +330,13 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
         })
     if so_comissionados:
         out = [x for x in out if x["comissionado"]]
-    return sorted(out, key=lambda x: -x["valor_recebido"])
+    # A ORDEM É A DA FILA DE TRABALHO, não a do dinheiro. Ordenar só por valor punha a RIOSAÚDE
+    # (empresa pública, dirigente nomeado) no topo, à frente de todo par que de fato precisa de
+    # diligência — e quem abre a tela lê o primeiro item como o mais grave. Par COM explicação
+    # institucional vai para o fim; comissionado vem antes; empate, o maior valor.
+    return sorted(out, key=lambda x: (bool(x["explicacao_institucional"]),
+                                      not x["comissionado"],
+                                      -x["valor_recebido"]))
 
 
 def resumo(db: str = "") -> dict:
@@ -337,6 +359,32 @@ def resumo(db: str = "") -> dict:
             "pares_pessoa_entidade_que_recebeu_do_estado": din}
 
 
+_FILA_JSON = _REPO / "data" / "agente_publico_fila.json"
+
+
+def gravar_fila(caminho: Path = _FILA_JSON) -> dict:
+    """Materializa a fila em JSON — o CÁLCULO NÃO PODE CAIR DENTRO DO REQUEST.
+
+    Medido: a rota levava 22,3 s porque `fila()` remonta o dicionário de 5,86 milhões de razões
+    sociais a cada chamada. É a mesma regra que já governa `/api/tac/ranking`, que só LÊ o arquivo
+    que o sweep escreveu. Painel que espera 22 s é painel que o usuário conclui estar quebrado.
+    """
+    import json
+
+    itens = fila()
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    corpo = {
+        "gerado_em": time.strftime("%Y-%m-%d %H:%M"),
+        "total": len(itens),
+        "comissionados": sum(1 for x in itens if x["comissionado"]),
+        "terceiro_setor": sum(1 for x in itens if x["terceiro_setor"]),
+        "com_explicacao_institucional": sum(1 for x in itens if x["explicacao_institucional"]),
+        "itens": itens,
+    }
+    caminho.write_text(json.dumps(corpo, ensure_ascii=False), encoding="utf-8")
+    return {k: v for k, v in corpo.items() if k != "itens"}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--so-resumo", action="store_true", help="não reconstrói, só mede")
@@ -345,6 +393,9 @@ def main() -> None:
     a = ap.parse_args()
     if not a.so_resumo and not a.fila:
         for k, v in construir().items():
+            print(f"{k:34s} {v}")
+    if not a.so_resumo:
+        for k, v in gravar_fila().items():
             print(f"{k:34s} {v}")
     if a.fila:
         f = fila(so_comissionados=a.so_comissionados)

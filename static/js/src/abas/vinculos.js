@@ -56,6 +56,7 @@ export async function renderVinculos(){
       <button type="button" class="btn ghost" data-vinc="ftm">Exportar FollowTheMoney</button>
     </div>
     <div class="btns" style="margin-top:8px">
+      <button type="button" class="btn ghost" data-vinc="agentePublico">Agente público no QSA (fila)</button>
       <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
       <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
@@ -148,6 +149,45 @@ export async function vincContato(){
   }
   h+=`<div class="note">Descartados: `+Object.entries(desc).map(([k,v])=>`${esc(k)} ${fmtN(v)}`).join(' · ')+`</div>`;
   h+=`<div class="note">${esc(cob.nota||'')}</div>`;
+  o.innerHTML=h;
+}
+
+export async function vincAgentePublico(){
+  // AGENTE PÚBLICO NO QUADRO SOCIETÁRIO. Não pede CNPJ: a pergunta é sobre a FILA inteira — 251 mil
+  // nomes das folhas do Estado e da ALERJ cruzados com o QSA nacional (27,6 mi de linhas). O que
+  // chega aqui já passou por três cortes: entidade que recebeu dinheiro público, nome com um único
+  // CPF mascarado no índice, e explicação institucional DECLARADA (não escondida) ao lado do par.
+  const o=$('vinc-out');
+  o.innerHTML=card('<div class="dim">cruzando as folhas com o quadro societário do país…</div>');
+  const d=await J('/api/osint/agente_publico?limite=60');
+  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const it=d.itens||[];
+  let h=sec('Agente público no quadro societário');
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares agente × entidade','var(--amber)','🏛️')}
+      ${kpi(fmtN(d.comissionados),'Agentes COMISSIONADOS',d.comissionados?'var(--red)':null,'★')}
+      ${kpi(fmtN(d.terceiro_setor),'Em ONG / associação / fundação')}
+      ${kpi(fmtN(d.com_explicacao_institucional),'Com explicação do PROGRAMA','var(--dim)','📗')}</div>`;
+  h+=leitura(esc(d.ressalva||''));
+  h+=`<div class="grid">`+it.map(x=>{
+    const v=Object.entries(x.valor_por_fonte||{}).map(([k,n])=>`${esc(k)} ${fmtRc(n)}`).join(' · ');
+    const ex=x.explicacao_institucional
+      ? `<div class="dim" style="font-size:12px;margin-top:3px">desenho do programa: <b>${esc(x.explicacao_institucional)}</b></div>` : '';
+    return card(
+      `<div style="display:flex;justify-content:space-between;gap:10px">
+         <div style="min-width:0">
+           <div style="font-weight:700">${x.comissionado?'★ ':''}${esc(x.agente)}</div>
+           <div class="muted" style="font-size:12.5px">${esc(x.cargo||'')} · ${esc(x.orgao||'')}</div>
+           <div style="font-size:13px;margin-top:4px">${esc(x.entidade)}${x.terceiro_setor?' <span class="dim">[3º setor]</span>':''}</div>
+           <div class="dim" style="font-size:12px;margin-top:3px">${v||'sem desembolso — só contrato'}</div>
+           ${ex}
+         </div>
+         <div class="right"><div class="dim" style="font-size:12px">${(x.fontes||[]).map(esc).join('<br>')}</div>
+           <div class="dim" style="font-size:12px;margin-top:4px">${fmtN(x.servidores_no_qsa)} servidor(es) no QSA</div></div>
+       </div>`,
+      (x.comissionado && !x.explicacao_institucional) ? 'hl' : '');
+  }).join('')+`</div>`;
+  if(d.total>it.length) h+=`<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos — os de maior valor.</div>`;
+  h+=`<div class="note">Fontes: ${esc(d.fontes||'')}</div>`;
   o.innerHTML=h;
 }
 
@@ -381,6 +421,7 @@ export async function vincPatrimonio(){
    completude de quem existe já é provada pelo `test_painel_ponte_completa`.  */
 export const VINC_ACOES={
   consultar:vincConsultar, parentesco:vincParentesco, contato:vincContato,
+  agentePublico:vincAgentePublico,
   trocas:vincTrocas, grafo:vincGrafo,
   ftm:vincFtm, conluioMunicipal:vincConluioMunicipal, resolucao:vincResolucao,
   interposicao:vincInterposicao, patrimonio:vincPatrimonio,

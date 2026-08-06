@@ -327,3 +327,51 @@ def api_patrimonio(cnpj: str = "", nome: str = ""):
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("patrimonio falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/agente_publico")
+def api_agente_publico(so_comissionados: int = 0, limite: int = 60):
+    """Fila de agente público × entidade que recebeu dinheiro público.
+
+    A fila nasceu em linha de comando e ficou lá — o mesmo "construído, testado, nunca rodado" que
+    esta casa já corrigiu seis vezes. Aqui ela ganha superfície, com as ressalvas coladas ao dado:
+    o casamento é por NOME (a folha não traz CPF utilizável e o dump traz o CPF mascarado), a
+    explicação institucional vai declarada ao lado do par, e o valor vem SEPARADO POR FONTE porque
+    OB estadual, despesa municipal e emenda federal não são a mesma coisa.
+    """
+    try:
+        import json
+
+        from tools.agente_publico_reverso import _FILA_JSON
+
+        # SÓ LÊ O ARQUIVO. Calcular aqui custava 22,3 s por request — a fila remonta o dicionário de
+        # 5,86 milhões de razões sociais. Quem escreve é o sweep, como já faz `/api/tac/ranking`.
+        if not _FILA_JSON.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "fila ainda não materializada — rode `python -m tools.agente_publico_reverso` "
+                "(o sweep diário a regenera)")}, status_code=503)
+        corpo = json.loads(_FILA_JSON.read_text(encoding="utf-8"))
+        itens = corpo.get("itens") or []
+        if so_comissionados:
+            itens = [x for x in itens if x.get("comissionado")]
+        return JSONResponse({
+            "ok": True,
+            "gerado_em": corpo.get("gerado_em"),
+            "total": corpo.get("total"),
+            "comissionados": corpo.get("comissionados"),
+            "terceiro_setor": corpo.get("terceiro_setor"),
+            "com_explicacao_institucional": corpo.get("com_explicacao_institucional"),
+            "itens": itens[:max(1, min(int(limite), 500))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. O casamento é por NOME NORMALIZADO: a folha não traz CPF "
+                "utilizável e a Receita entrega o CPF do sócio mascarado. Nomes com mais de um CPF "
+                "no índice já foram excluídos, mas os que ficam podem ser homônimos sem que a base "
+                "o mostre. Servidor PODE ser sócio — o que se afirma aqui é que há o que conferir."),
+            "fontes": (
+                "socios_full.csv.zst (QSA nacional, 27,6 mi de linhas) × folhas do Estado e da "
+                "ALERJ; dinheiro por OB do SIAFE, despesa paga do município (2019-2023), emenda "
+                "federal na fase de pagamento e contrato municipal (procedência, não valor)"),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("agente_publico falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
