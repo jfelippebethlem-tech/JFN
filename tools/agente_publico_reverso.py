@@ -48,6 +48,7 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _ZST = _REPO / "data" / "receita_dump" / "socios_full.csv.zst"
+_ESTAB = _REPO / "data" / "receita_estab.db"
 _MIN_TERMOS = 3           # "JOSE SILVA" casa com meio estado; três termos é o mínimo defensável
 
 _SQL = """
@@ -182,20 +183,79 @@ def explicacao_institucional(razao_social: str) -> str:
     return ""
 
 
-def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
-    """Pares agente × entidade paga pelo Estado, do maior valor para o menor, já filtrados.
+# AS QUATRO TORNEIRAS, e por que uma só não bastava. A fila nasceu olhando apenas o SIAFE estadual
+# e por isso enxergava 296 pares e 18 comissionados. O caso que motivou o módulo — assessor de
+# gabinete no quadro de instituto que recebe EMENDA PARLAMENTAR — não passa por OB estadual: entra
+# por emenda federal e por contrato municipal. Medido em 2026-08-06: `pcrj_contratos` acrescenta
+# 127 pares novos (27 comissionados) e `emenda_favorecidos` outros 35 (8 comissionados, 18 deles em
+# terceiro setor). Fila unificada: **458 pares, 53 comissionados, 186 em terceiro setor**.
+#
+# TODAS SÃO FASE DE PAGAMENTO, sem exceção: OB `Contabilizado` no SIAFE, `pago` (não `empenhado`)
+# na despesa municipal e `fase='Pagamento'` na emenda. Empenho ≠ liquidação ≠ pagamento, e a única
+# das quatro que NÃO é pagamento é `pcrj_contratos` — contrato assinado é obrigação, não desembolso,
+# e por isso ele entra rotulado como tal, nunca somado a dinheiro.
+_TORNEIRAS = (
+    # `credor` INTEIRO, não `substr(...,1,8)`: quem reduz à raiz é o normalizador abaixo, e a
+    # consulta que já entregava 8 dígitos era descartada por ele em silêncio — a fonte SIAFE
+    # inteira sumia da fila sem erro nenhum. Um teste de mesa pegou; a fila não teria acusado.
+    ("siafe_ob", "SELECT credor, SUM(valor) FROM ob_orcamentaria_siafe "
+                 "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1", True),
+    ("pcrj_despesa", "SELECT credor_documento, SUM(pago) FROM pcrj_despesa "
+                     "WHERE pago > 0 GROUP BY 1", True),
+    ("emenda_favorecidos", "SELECT documento_favorecido, SUM(valor) FROM emenda_favorecidos "
+                           "WHERE fase='Pagamento' GROUP BY 1", True),
+    ("pcrj_contratos", "SELECT fornecedor_documento, SUM(COALESCE(valor_global, valor_inicial)) "
+                       "FROM pcrj_contratos GROUP BY 1", False),
+)
 
-    Três cortes, todos objetivos: a entidade tem OB CONTABILIZADA no SIAFE (dinheiro que saiu, não
-    empenho); o nome do agente tem UM único CPF mascarado no índice (homônimo comprovado sai — os
-    que ficam podem ser homônimos sem que a base o mostre); e a explicação institucional conhecida
-    vai marcada, nunca escondida.
+
+def dinheiro_publico(con: sqlite3.Connection) -> tuple[dict[str, dict], dict[str, list[str]]]:
+    """`({raiz: {fonte: valor}}, {raiz: [fontes]})` — POR FONTE, nunca somado às cegas.
+
+    Somar um total único esconderia que as fontes não são a mesma coisa. `siafe_ob` é Ordem
+    Bancária do sistema do Estado; `pcrj_despesa` é o campo `pago` do arquivo de empenhos do portal
+    do município (conferido: diverge de `empenhado` em 8.404 das 78.595 linhas e, onde diverge,
+    acompanha o liquidado — é pagamento, não cópia do empenho), e cobre só **2019 a 2023**;
+    `emenda_favorecidos` traz a OB federal no próprio campo de referência. Quem lê precisa saber
+    qual torneira produziu o número antes de citá-lo.
+    """
+    valor: dict[str, dict] = {}
+    de_onde: dict[str, list[str]] = {}
+    for nome, sql, e_pagamento in _TORNEIRAS:
+        try:
+            linhas = con.execute(sql).fetchall()
+        except sqlite3.Error:
+            continue
+        for doc, v in linhas:
+            d = re.sub(r"\D", "", str(doc or ""))
+            if len(d) != 14:
+                continue
+            r = d[:8]
+            de_onde.setdefault(r, []).append(nome)
+            d_r = valor.setdefault(r, {})
+            if e_pagamento:
+                d_r[nome] = d_r.get(nome, 0.0) + float(v or 0.0)
+    return valor, de_onde
+
+
+def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
+    """Pares agente × entidade que recebeu dinheiro público, do maior valor para o menor.
+
+    Três cortes, todos objetivos: a entidade aparece em ao menos uma das quatro torneiras (SIAFE,
+    despesa municipal paga, emenda na fase de PAGAMENTO, contrato municipal — este último entra na
+    procedência e nunca no valor); o nome do agente tem UM único CPF mascarado no índice (homônimo
+    comprovado sai — os que ficam podem ser homônimos sem que a base o mostre); e a explicação
+    institucional conhecida vai marcada, nunca escondida. `fontes` diz de onde veio cada par.
     """
     from compliance_agent.reporting.intel_base import _DB
 
     con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True)
-    pago = {r[0]: r[1] for r in con.execute(
-        "SELECT substr(credor,1,8), SUM(valor) FROM ob_orcamentaria_siafe "
-        "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1")}
+    pago, fontes = dinheiro_publico(con)
+    # A RAZÃO SOCIAL VEM DA BASE MAIS LARGA PRIMEIRO. `empresas_min`/`empresas_cadastro` são as
+    # tabelas curadas dos nossos fornecedores (141.560 e 36.192 raízes) e reconheciam 3.861
+    # entidades de terceiro setor; `receita_estab.empresas` tem 5.859.921 raízes e 158.728 do
+    # terceiro setor. Entidade sem razão social não é entidade sem nome — é entidade que a tabela
+    # estreita não alcançava, e era assim que um par ficava sem poder ser classificado.
     razao: dict[str, tuple[str, str]] = {}
     for tab in ("empresas_min", "empresas_cadastro"):
         try:
@@ -203,6 +263,24 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
                 razao[r[0]] = (str(r[1] or ""), str(r[2] or ""))
         except sqlite3.Error:
             continue
+    # SEM `except: pass` AQUI. Se a base larga existe, ela tem de ser legível — engolir o erro faria
+    # a fila voltar silenciosamente à cobertura estreita e ninguém saberia por quê. Ausência do
+    # arquivo é lacuna conhecida e degrada; erro de leitura é defeito e sobe.
+    # PERGUNTAR ANTES, EM VEZ DE ENGOLIR DEPOIS. A tentação era `try/except: pass` — e um except
+    # mudo aqui faria a fila voltar à cobertura estreita em silêncio, sem que ninguém soubesse por
+    # quê. A catraca de dívida muda pegou exatamente isso. `sqlite_master` responde a pergunta certa
+    # (a tabela já foi construída?) e qualquer OUTRO erro de leitura sobe, como deve.
+    if _ESTAB.exists():
+        est = sqlite3.connect(f"file:{_ESTAB}?mode=ro", uri=True)
+        try:
+            tem = est.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas'"
+                              ).fetchone()
+            if tem:
+                for r in est.execute(
+                        "SELECT cnpj_basico, razao_social, natureza_cod FROM empresas"):
+                    razao[r[0]] = (str(r[1] or ""), str(r[2] or ""))
+        finally:
+            est.close()
     ndocs = dict(con.execute("SELECT nome_norm, COUNT(DISTINCT doc_socio) "
                              "FROM agente_publico_societario GROUP BY 1"))
     linhas = list(con.execute(
@@ -224,7 +302,10 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
             "agente": nome, "cargo": cargo, "orgao": orgao, "origem": origem,
             "comissionado": bool(com), "cnpj_basico": raiz,
             "entidade": rz or f"(raiz {raiz} — razão social não capturada)",
-            "terceiro_setor": nat.startswith("3"), "valor_recebido": pago[raiz],
+            "terceiro_setor": nat.startswith("3"),
+            "valor_por_fonte": pago[raiz],
+            "valor_recebido": sum(pago[raiz].values()),
+            "fontes": sorted(set(fontes.get(raiz, []))),
             "explicacao_institucional": explicacao_institucional(rz),
             "servidores_no_qsa": quantos.get(raiz, 1),
             "diligencia": ("confirmar identidade por CPF na ficha funcional e no QSA integral da "
