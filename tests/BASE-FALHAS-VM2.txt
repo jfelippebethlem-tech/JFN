@@ -4,8 +4,12 @@
 #   ./tools/testar_na_vm2.sh > /tmp/s.log
 #   grep '^FAILED' /tmp/s.log | sed 's/ - .*//' | sort > /tmp/agora.txt
 #   comm -13 <(grep -v '^#' tests/BASE-FALHAS-VM2.txt) /tmp/agora.txt   # vazio = sem regressao
-FAILED tests/test_catraca_excepts.py::test_baseline_atualizada_quando_melhora
-FAILED tests/test_catraca_excepts.py::test_except_exception_nao_cresce
+# 2026-08-06: as CATRACAS saíram desta base. Elas passam em qualquer ambiente — são grep/AST
+# sobre o código, não dependem de banco, browser nem chave. Estavam aqui como dívida velha, e o
+# CI unia esta base à dele: um commit que subisse `except Exception` de 1626 para 1700 falhava o
+# teste e virava "falha conhecida, tolerada". Catraca em base de tolerância é catraca desligada.
+# (`test_lex_snapshot` e `test_inteligencia_snapshot` saíram pelo mesmo motivo — rodam sobre
+# `tests/golden/snapshot_vazio.db`, versionado.)
 FAILED tests/test_cron_systemctl_user.py::test_helper_faz_systemctl_user_funcionar_sob_cron
 FAILED tests/test_cron_systemctl_user.py::test_todo_script_de_cron_que_reinicia_servico_carrega_o_guard
 FAILED tests/test_golden_numbers.py::test_golden_cobertura
@@ -16,7 +20,6 @@ FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.auditor
 FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.auditoria.sei_auditor]
 FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.auditoria.tfe_fornecedor]
 FAILED tests/test_imports_smoke.py::test_modulo_importa[compliance_agent.sei_driver]
-FAILED tests/test_inteligencia_snapshot.py::test_relatorio_inteligencia_snapshot_identico
 FAILED tests/test_jfn2_onda0.py::test_capabilities_valido
 FAILED tests/test_jfn2_onda10.py::test_capability_mandato_pronto
 FAILED tests/test_jfn2_onda11.py::test_capability_memoria_pronto
@@ -36,7 +39,6 @@ FAILED tests/test_jfn2_skilltree.py::test_render_menu_curado_e_enxuto
 FAILED tests/test_jfn2_skilltree.py::test_rotas_http_skilltree
 FAILED tests/test_jfn2_skilltree.py::test_tool_specs_ignora_ondas
 FAILED tests/test_jfn2_skilltree.py::test_validate_reusa_validador_unico
-FAILED tests/test_lex_snapshot.py::test_parecer_lex_snapshot_identico
 FAILED tests/test_penalidades_tce_view.py::test_auto_match_secretaria_e_acronimo
 FAILED tests/test_penalidades_tce_view.py::test_dedup_solidaria_nao_infla_erario
 FAILED tests/test_penalidades_tce_view.py::test_depurar_sem_match_zero

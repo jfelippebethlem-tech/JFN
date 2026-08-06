@@ -113,9 +113,19 @@ jobs:
 
       - name: Delta contra as falhas conhecidas
         run: |
+          # SÓ A BASE DO CI. Unir a base da VM-2 aqui importava as falhas de ambiente de OUTRA
+          # máquina para dentro da tolerância do runner — e junto vinham as CATRACAS. Verificado
+          # em 2026-08-06: `tests/BASE-FALHAS-VM2.txt` lista
+          # `test_catraca_excepts::test_except_exception_nao_cresce`, de modo que um commit que
+          # subisse `except Exception` de 1626 para 1700 falhava o teste e o `ci_delta` o
+          # classificava como "falha conhecida, tolerada". A catraca existia e não impedia nada.
+          # O mesmo valia para `test_lex_snapshot` e `test_inteligencia_snapshot` — que rodam
+          # sobre `tests/golden/snapshot_vazio.db`, versionado, e portanto NÃO dependem do
+          # `compliance.db` que falta no runner. Os três passam com verde medido.
+          # Cada base serve ao seu ambiente: a da VM-2 para rodadas na VM-2, esta para o runner.
           PYTHONPATH=. .venv/bin/python -m tools.ci_delta \
             /tmp/lote1.log /tmp/lote2.log /tmp/lote3.log /tmp/lote4.log \
-            --base tests/BASE-FALHAS-VM2.txt --base tests/BASE-FALHAS-CI.txt
+            --base tests/BASE-FALHAS-CI.txt
 
       - name: Guardar os logs (para popular a base na primeira rodada)
         if: always()
