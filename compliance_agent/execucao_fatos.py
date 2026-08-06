@@ -18,6 +18,8 @@ HONESTIDADE: dado ausente → `None`/`[]` (nunca 0 — INDISPONÍVEL ≠ zero); 
 """
 from __future__ import annotations
 
+from datetime import date
+
 import re
 
 _RE_VALOR = re.compile(r"R\$\s*([\d.]+,\d{2})")
@@ -254,6 +256,18 @@ def extrair_pagamentos(texto: str) -> list[dict]:
     nenhuma etapa identificável."""
     reg = {nome: _data_da_etapa(texto, pat, cod, exigir_codigo=(nome == "data_pagamento"))
            for nome, pat, cod in _ETAPAS}
+    # ATESTO NÃO TEM DATA NO FUTURO. Ele certifica o que JÁ foi entregue; data posterior a hoje é,
+    # por definição, outra coisa — validade de certidão, fim de vigência, cronograma. Medido em
+    # 2026-08-05 nos 3 achados X3 do acervo, todos "pago ANTES do atesto": as datas de atesto eram
+    # **2025-09-30, 2026-03-31 e 2026-09-30** — 14, 20 e 21 meses DEPOIS do pagamento, e a última
+    # ainda no futuro em relação a hoje. Todas em fim de trimestre, que é a assinatura de validade
+    # de CND, não de atesto.
+    #
+    # A janela de 160 caracteres (`_JANELA_MARCO`, 2026-08-04) reduziu esse erro mas não o
+    # eliminou: dentro da janela ainda cabe a data errada. Esta guarda é de outra natureza e não
+    # depende de distância no texto — é o calendário que decide.
+    if reg.get("data_atesto") and reg["data_atesto"] > date.today().isoformat():
+        reg["data_atesto"] = None
     if not any(reg.values()):
         return []
     reg["valor"] = valor_br(texto or "")
@@ -261,11 +275,53 @@ def extrair_pagamentos(texto: str) -> list[dict]:
     return [reg]
 
 
+# A ATESTAÇÃO, AFIRMADA. O carimbo de praxe na nota fiscal — "ATESTAMOS QUE O MATERIAL FOI
+# RECEBIDO EM CONDIÇÕES SATISFATÓRIAS" — é o atesto de verdade, e quase nunca traz data própria.
+# Por isso a existência do atesto e a DATA dele são perguntas separadas: a segunda pode ser
+# `nao_avaliavel` sem que a primeira o seja.
+_RE_ATESTACAO_AFIRMADA = re.compile(
+    r"atest(?:o|amos|a-se)\s+(?!a\s+ser)|atestad[oa]\s+(?:que|pel[ao])|"
+    r"recebemos?\s+(?:definitiv|provisori)|termo\s+de\s+recebimento|"
+    r"(?:material|servi[çc]os?|bens|objeto)\s+(?:foi|foram)\s+"
+    r"(?:recebid|prestad|executad|entregu)|"
+    # AS FÓRMULAS QUE A ADMINISTRAÇÃO USA DE VERDADE, e que a primeira versão perdia. Medido em
+    # 2026-08-06 lendo os autos dos 118 disparos: o atesto de compra de material é o carimbo do
+    # almoxarifado na própria nota — "Recebi, a contento, o(s) material(is) constante(s) desta
+    # Nota Fiscal. Assinatura e Carimbo" — e o canhoto do DANFE, "Recebemos de <fornecedor> os
+    # produtos/serviços constantes da Nota Fiscal". Acusar de "pagou sem atestar" quem tem canhoto
+    # assinado é acusar o normal.
+    r"receb(?:i|emos|ido)[,\s]+a\s+contento|"
+    r"recebemos?\s+de\s+.{0,60}?\s+os\s+produtos", re.I)
+
+# O RODAPÉ DO SEI NÃO É ATESTAÇÃO. "A autenticidade deste documento pode ser CONFERIDA no site
+# sei.rj.gov.br" aparece em TODO documento assinado eletronicamente — é a prova da assinatura, não
+# do recebimento. Não entra no vocabulário acima de propósito; fica aqui declarado para que a
+# próxima ampliação não o inclua por engano.
+_RUIDO_CONHECIDO = "autenticidade deste documento pode ser conferida"
+
+
 def contexto_x3(texto: str) -> dict:
-    """Contexto pronto para `X3ExecucaoFinanceira` + o cruzamento direto que o dono pediu (pagamento
-    ANTES do atesto). Sem OB ou sem atesto → False, nunca True por presunção."""
+    """Contexto do `X3ExecucaoFinanceira` + o cruzamento que o dono pediu (pagamento ANTES do
+    atesto) + a pergunta que faltava: **houve atestação?**
+
+    `pagamento_anterior_ao_atesto` continua exigindo as DUAS datas — sem elas, `False`, nunca
+    `True` por presunção.
+
+    `atestacao_ausente` é a resposta à observação do dono em 2026-08-06: *"pagar algo sem
+    atestação ou antes dela (antecipação de pagamento não pode) são irregularidades graves sim"*.
+    Ele tem razão e a lei é dura — a antecipação é **vedada** (art. 5º da Lei 14.133/2021 e art. 38
+    do Decreto 93.872/86) e a liquidação prévia é condição do pagamento (arts. 62 e 63 da Lei
+    4.320/1964). Só que o motor ficava MUDO nesse caso: sem data de atesto ele devolvia `False` e
+    nada mais, de modo que "paguei e não atestei" — a hipótese mais grave — não gerava sinal algum.
+    Agora o fato é declarado; quem decide se ele pesa contra o processo é o gate de captura, como
+    manda a casa (ausência sobre leitura parcial não é ausência).
+    """
     pgs = extrair_pagamentos(texto)
     antes = any(p.get("data_pagamento") and p.get("data_atesto")
                 and p["data_pagamento"] < p["data_atesto"] for p in pgs)
+    tem_ob = any(p.get("data_pagamento") for p in pgs)
+    tem_atestacao = bool(_RE_ATESTACAO_AFIRMADA.search(texto or ""))
     return {"pagamentos": pgs, "pagamento_anterior_ao_atesto": antes,
+            "atestacao_ausente": bool(tem_ob and not tem_atestacao),
+            "tem_atestacao": tem_atestacao, "tem_ordem_bancaria": tem_ob,
             "fonte": "execucao_fatos (extração do texto do processo)"}

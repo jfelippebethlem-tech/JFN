@@ -579,6 +579,33 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         ctx_exec = {**(contexto_x1(t_contrato) if t_contrato.strip() else {}),
                     **(contexto_x3(t_despesa) if t_despesa.strip() else {}),
                     **_contrato_registrado(numero)}
+        # PAGOU E NÃO ATESTOU. Observação do dono em 2026-08-06: *"pagar algo sem atestação ou
+        # antes dela (antecipação de pagamento não pode) são irregularidades graves sim"* — e a lei
+        # é dura: a antecipação é VEDADA (art. 5º da Lei 14.133/2021; art. 38 do Decreto
+        # 93.872/86) e a liquidação prévia é condição do pagamento (arts. 62 e 63 da Lei 4.320).
+        # O motor ficava MUDO justamente na hipótese mais grave: sem data de atesto, o X3 devolvia
+        # `False` e nada mais.
+        #
+        # Só pesa contra o PROCESSO sob captura íntegra — ausência sobre leitura parcial não é
+        # ausência (é a mesma regra do `AC_SEM_PARECER_LOCALIZADO`, e a razão de a família 22
+        # existir). Sem OB nos autos não se afirma nada: empenho e liquidação não são pagamento.
+        if ctx_exec.get("atestacao_ausente") and integra:
+            achados.append({
+                "origem": "execucao", "codigo": "X_PAGAMENTO_SEM_ATESTACAO", "gravidade": "alta",
+                "diz": ("há Ordem Bancária nos autos e NÃO SE LOCALIZA o comprovante de "
+                        "entrega/atesto — o art. 63 da Lei 4.320/1964 manda que a liquidação "
+                        "tenha por base o contrato, a nota de empenho e os COMPROVANTES DA "
+                        "ENTREGA; sem eles a liquidação não se demonstra, e a antecipação de "
+                        "pagamento é vedada (art. 5º da Lei 14.133/2021; art. 38 do Decreto "
+                        "93.872/86)"),
+                # O ENUNCIADO SAIU DA LEITURA DOS AUTOS, não da primeira redação. Medido em
+                # 2026-08-06 nos 109 disparos: **108 TÊM Nota de Liquidação** formalizada e 94 não
+                # têm sequer a nota fiscal arquivada. Ou seja, não é "pagou sem ato nenhum" — é
+                # liquidação formalizada sem a peça que a lei manda usar como base. E o achado diz
+                # "não se localiza NOS AUTOS", que é o que se verificou: o comprovante pode existir
+                # em papel no almoxarifado e não ter sido juntado ao processo eletrônico.
+                "apoio": "captura íntegra do processo · comprovante a exigir do ordenador",
+            })
         res_exec = _rodar_execucao(numero, ctx_exec)
         resultados.extend(res_exec)
         # PONTUAR SEM APARECER é a falha que já custou 14 processos EXTREMO sem achado nenhum na
