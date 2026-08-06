@@ -3649,11 +3649,17 @@ void main(){
       return;
     }
     const cob = d.cobertura || {}, ps = d.pessoas || [];
+    registrarDrill("bfCiclos", {
+      titulo: "Participações cruzadas circulares",
+      itens: d.ciclos || [],
+      render: (ci) => card(`<div>${(Array.isArray(ci) ? ci : [ci]).map((x) => esc(String(x))).join(" → ")}</div>`),
+      nota: "Ciclo é indício de estrutura que dificulta identificar o beneficiário — não prova."
+    });
     let h = sec("Beneficiário final — " + esc(d.pj || c));
     h += `<div class="grid g2">${kpi(fmtN(d.n_pessoas), "Pessoas físicas na cadeia", ps.length ? "var(--emerald)" : "var(--amber)", "👤")}
       ${kpi(cob.pct == null ? "—" : cob.pct + "%", "Cobertura de QSA da cadeia", cob.pct >= 80 ? null : "var(--amber)", "🔍")}
       ${kpi(fmtN(d.saltos_max), "Degraus até a pessoa física")}
-      ${kpi(fmtN((d.ciclos || []).length), "Participações cruzadas circulares", (d.ciclos || []).length ? "var(--rose)" : null, "🔄")}</div>`;
+      ${kpi(fmtN((d.ciclos || []).length), "Participações cruzadas circulares", (d.ciclos || []).length ? "var(--rose)" : null, "🔄", { drill: "bfCiclos" })}</div>`;
     h += leitura(esc(d.motivo || ""));
     if (ps.length) {
       h += `<div class="grid">` + ps.map((p) => card(
@@ -3690,7 +3696,13 @@ void main(){
     }
     const ar = d.arestas || [], cob = d.cobertura || {}, desc = d.descartados || {};
     let h = sec("Contato compartilhado — " + esc(c));
-    h += `<div class="grid g2">${kpi(fmtN(ar.length), "Empresas ligadas por contato", ar.length ? "var(--amber)" : null, "📞")}
+    registrarDrill("contatoArestas", {
+      titulo: "Empresas ligadas por telefone ou e-mail",
+      itens: ar,
+      render: (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.para)}</div><div class="dim">${esc(x.detalhe || "")} · ${esc(x.tipo)}</div><div class="dim">${esc(x.explicacao_inocente || "")}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((x.forca || 0) * 100)}%</div></div></div>`),
+      nota: "Contato dividido é indício de mesma administração, não prova."
+    });
+    h += `<div class="grid g2">${kpi(fmtN(ar.length), "Empresas ligadas por contato", ar.length ? "var(--amber)" : null, "📞", { drill: "contatoArestas" })}
       ${kpi(fmtN(cob.com_telefone), "Alvos com telefone publicado")}
       ${kpi(fmtN(cob.com_email), "Alvos com e-mail publicado")}
       ${kpi(fmtN(Object.values(desc).reduce((s, x) => s + x, 0)), "Contatos DESCARTADOS por guarda", "var(--dim)", "🚫")}</div>`;
@@ -3908,8 +3920,24 @@ void main(){
       return;
     }
     const nos = d.nos || [], ar = d.arestas || [];
-    o.innerHTML = sec("Rede de poder — 2 saltos") + `<div class="grid g2">${kpi(fmtN(nos.length), "Nós")}${kpi(fmtN(ar.length), "Arestas")}
-      ${kpi(fmtN((d.comunidades || []).length), "Comunidades")}</div>` + card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
+    registrarDrill("grafoNos", {
+      titulo: "Nós da rede (2 saltos)",
+      itens: nos,
+      render: (n) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(n.rotulo || n.id || "—")}</div><div class="dim">${esc(n.tipo || "")}</div></div></div>`)
+    });
+    registrarDrill("grafoArestas", {
+      titulo: "Arestas da rede",
+      itens: ar,
+      render: (x) => card(`<div><b>${esc(x.de || x.origem || "—")}</b> → <b>${esc(x.para || x.destino || "—")}</b><div class="dim">${esc(x.tipo || "")}${x.fonte ? " · " + esc(x.fonte) : ""}</div></div>`),
+      nota: "Aresta por NOME sem documento vale pouco (homonímia)."
+    });
+    registrarDrill("grafoComunidades", {
+      titulo: "Comunidades detectadas",
+      itens: d.comunidades || [],
+      render: (cm) => card(`<div><b>${esc(cm.rotulo || cm.id || "comunidade")}</b><div class="dim">${fmtN((cm.membros || []).length || cm.n || 0)} membro(s)</div></div>`)
+    });
+    o.innerHTML = sec("Rede de poder — 2 saltos") + `<div class="grid g2">${kpi(fmtN(nos.length), "Nós", null, null, { drill: "grafoNos" })}${kpi(fmtN(ar.length), "Arestas", null, null, { drill: "grafoArestas" })}
+      ${kpi(fmtN((d.comunidades || []).length), "Comunidades", null, null, { drill: "grafoComunidades" })}</div>` + card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
       <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`) + leitura("A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.");
   }
   async function vincFtm() {
@@ -5378,7 +5406,18 @@ void main(){
       const chip = (id, tl) => `<button type="button" class="chip ${_cjEsf === id ? "on" : ""}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id] != null ? ` <span class="dim">${fmtN(esfs[id])}</span>` : ""}</button>`;
       h += `<div class="chips">${chip("", "🌐 Todas")}${chip("estado", "🏛️ Estado")}${chip("prefeitura", "🏙️ Pref. Rio")}${chip("municipios", "🏘️ Municípios")}${chip("federal", "🏦 Federais")}</div>`;
     }
-    h += `<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado), "Certames analisados", null, "📄")}${kpi(fmtN(cov.orgaos), "Órgãos compradores", null, "🏢")}${kpi(cap.length, "Capturas", "var(--rose)", "🎯")}${kpi(rod.length, "Rodízios", "var(--amber)", "🔁")}</div>`;
+    registrarDrill("conluioCapturas", {
+      titulo: "Captura de órgão — 1 empresa vence ≥80%",
+      itens: cap,
+      render: (c) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(c.orgao_nome || "—")}</div><div class="dim">${esc(c.vencedor_nome || c.vencedor_cnpj || "")}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((c.share || 0) * 100)}%</div><div class="dim">${fmtN(c.itens || c.n || 0)} itens</div></div></div>`),
+      nota: "Vencedor homologado por item (PNCP). Concentração alta pede explicação, não a substitui."
+    });
+    registrarDrill("conluioRodizios", {
+      titulo: "Rodízio — 2-3 empresas se revezam",
+      itens: rod,
+      render: (r) => card(`<div><div style="font-weight:700">${esc(r.orgao_nome || "—")}</div><div class="dim">${(r.empresas || []).map((e) => esc(e.nome || e.cnpj || "")).join(" · ")}</div></div>`)
+    });
+    h += `<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado), "Certames analisados", null, "📄")}${kpi(fmtN(cov.orgaos), "Órgãos compradores", null, "🏢")}${kpi(cap.length, "Capturas", "var(--rose)", "🎯", { drill: "conluioCapturas" })}${kpi(rod.length, "Rodízios", "var(--amber)", "🔁", { drill: "conluioRodizios" })}</div>`;
     if (cov.certames_sem_unidade > 0) h += `<div class="warn" style="margin-top:12px"><span>Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
     const orgHead = (x) => `<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome && x.ente_nome !== x.orgao_nome ? `<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt || "")}</div>` : ""}`;
     if (cap.length) {
@@ -5542,7 +5581,15 @@ void main(){
     if (!d.ok) return sec("Poder") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const it = d.itens || [];
     let h = cover("estado", "Nomeados × candidatos (Estado)", "Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.", "🏛️") + acoesAba("nomeados");
-    h += `<div class="grid g2">${kpi(it.length, "Cruzamentos", null, "🏛️")}${kpi(d.n_comissionados, "Comissionados", "var(--rose)", "🎖️")}</div>`;
+    const _linPoder = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="dim">${esc(x.orgao || "—")} · ${esc(x.cargo_folha || "—")}</div><div class="dim">disputou ${esc(x.cargo_disputado || "—")} · ${esc(x.partido || "—")} · ${esc(x.ano || "—")}</div></div>${x.comissionado ? '<span class="tag rose">comissão</span>' : '<span class="tag accent">efetivo</span>'}</div>`);
+    registrarDrill("poderCruzamentos", {
+      titulo: "Servidor que também foi candidato",
+      itens: it,
+      render: _linPoder,
+      nota: "Cruzamento por NOME — verificar homônimo antes de qualquer juízo."
+    });
+    registrarDrill("poderComissionados", { titulo: "Cruzamentos em cargo COMISSIONADO", itens: it.filter((x) => x.comissionado), render: _linPoder });
+    h += `<div class="grid g2">${kpi(it.length, "Cruzamentos", null, "🏛️", { drill: "poderCruzamentos" })}${kpi(fmtN(it.filter((x) => x.comissionado).length), "Comissionados", "var(--rose)", "🎖️", { drill: "poderComissionados" })}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
     h += `<div id="pod-list" class="grid">` + it.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao || "—")} · ${esc(x.cargo_folha || "—")}</div></div>${x.comissionado ? '<span class="tag rose">comissão</span>' : '<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado || "—")} · ${esc(x.partido || "—")} · ${esc(x.ano || "—")}</b></div>`)).join("") + `</div>`;
     h += `<div class="note">${esc(d.aviso || "")}</div>`;

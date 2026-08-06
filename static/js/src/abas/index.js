@@ -1230,7 +1230,14 @@ export async function renderConluio(esf){
     const chip=(id,tl)=>`<button type="button" class="chip ${(_cjEsf===id)?'on':''}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id]!=null?` <span class="dim">${fmtN(esfs[id])}</span>`:''}</button>`;
     h+=`<div class="chips">${chip('','🌐 Todas')}${chip('estado','🏛️ Estado')}${chip('prefeitura','🏙️ Pref. Rio')}${chip('municipios','🏘️ Municípios')}${chip('federal','🏦 Federais')}</div>`;
   }
-  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
+  /* `cap` e `rod` são os mesmos arrays que a tela desenha abaixo. `certames_com_resultado` e
+     `orgaos` vêm da cobertura do servidor e não têm linhas aqui — ficam sem gaveta. */
+  registrarDrill('conluioCapturas',{titulo:'Captura de órgão — 1 empresa vence ≥80%',itens:cap,
+    render:c=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(c.orgao_nome||'—')}</div><div class="dim">${esc(c.vencedor_nome||c.vencedor_cnpj||'')}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((c.share||0)*100)}%</div><div class="dim">${fmtN(c.itens||c.n||0)} itens</div></div></div>`),
+    nota:'Vencedor homologado por item (PNCP). Concentração alta pede explicação, não a substitui.'});
+  registrarDrill('conluioRodizios',{titulo:'Rodízio — 2-3 empresas se revezam',itens:rod,
+    render:r=>card(`<div><div style="font-weight:700">${esc(r.orgao_nome||'—')}</div><div class="dim">${(r.empresas||[]).map(e=>esc(e.nome||e.cnpj||'')).join(' · ')}</div></div>`)});
+  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯',{drill:'conluioCapturas'})}${kpi(rod.length,'Rodízios','var(--amber)','🔁',{drill:'conluioRodizios'})}</div>`;
   if(cov.certames_sem_unidade>0)h+=`<div class="warn" style="margin-top:12px"><span>Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
   const orgHead=x=>`<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome&&x.ente_nome!==x.orgao_nome?`<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt||'')}</div>`:''}`;
   if(cap.length){h+=`<div style="height:16px"></div>`+sec('Captura de órgão · 1 empresa vence ≥80%',cap.length)+`<div class="grid">`+cap.map(c=>card(
@@ -1357,7 +1364,11 @@ export async function renderPoder(){
   if(!d.ok)return sec('Poder')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const it=d.itens||[];
   let h=cover('estado','Nomeados × candidatos (Estado)','Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.','🏛️')+acoesAba('nomeados');
-  h+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️')}${kpi(d.n_comissionados,'Comissionados','var(--rose)','🎖️')}</div>`;
+  const _linPoder=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="dim">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div><div class="dim">disputou ${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div>`);
+  registrarDrill('poderCruzamentos',{titulo:'Servidor que também foi candidato',itens:it,render:_linPoder,
+    nota:'Cruzamento por NOME — verificar homônimo antes de qualquer juízo.'});
+  registrarDrill('poderComissionados',{titulo:'Cruzamentos em cargo COMISSIONADO',itens:it.filter(x=>x.comissionado),render:_linPoder});
+  h+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️',{drill:'poderCruzamentos'})}${kpi(fmtN(it.filter(x=>x.comissionado).length),'Comissionados','var(--rose)','🎖️',{drill:'poderComissionados'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
   h+=`<div id="pod-list" class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;

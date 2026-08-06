@@ -18,6 +18,7 @@
  * Sem efeito de topo.
  */
 import {$, esc, svgIco, card, kpi, sec, cover, leitura, corta, clk} from '../nucleo/dom.js';
+import {registrarDrill} from '../nucleo/drill.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano} from '../nucleo/http.js';
 import {abrirDossie} from '../ui/index.js';
@@ -89,11 +90,16 @@ export async function vincConsultar(){
   const d=await J('/api/osint/beneficiario_final?cnpj='+encodeURIComponent(c));
   if(d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
   const cob=d.cobertura||{}, ps=d.pessoas||[];
+  /* Participação cruzada circular é ACHADO — o módulo a trata como estrutura que dificulta
+     identificar quem está por trás. Um número desses sem caminho para as cadeias é inútil. */
+  registrarDrill('bfCiclos',{titulo:'Participações cruzadas circulares',itens:(d.ciclos||[]),
+    render:ci=>card(`<div>${(Array.isArray(ci)?ci:[ci]).map(x=>esc(String(x))).join(' → ')}</div>`),
+    nota:'Ciclo é indício de estrutura que dificulta identificar o beneficiário — não prova.'});
   let h=sec('Beneficiário final — '+esc(d.pj||c));
   h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas),'Pessoas físicas na cadeia',ps.length?'var(--emerald)':'var(--amber)','👤')}
       ${kpi((cob.pct==null?'—':cob.pct+'%'),'Cobertura de QSA da cadeia',cob.pct>=80?null:'var(--amber)','🔍')}
       ${kpi(fmtN(d.saltos_max),'Degraus até a pessoa física')}
-      ${kpi(fmtN((d.ciclos||[]).length),'Participações cruzadas circulares',(d.ciclos||[]).length?'var(--rose)':null,'🔄')}</div>`;
+      ${kpi(fmtN((d.ciclos||[]).length),'Participações cruzadas circulares',(d.ciclos||[]).length?'var(--rose)':null,'🔄',{drill:'bfCiclos'})}</div>`;
   h+=leitura(esc(d.motivo||''));
   if(ps.length){
     h+=`<div class="grid">`+ps.map(p=>card(
@@ -129,7 +135,10 @@ export async function vincContato(){
   if(d.erro){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
   const ar=d.arestas||[], cob=d.cobertura||{}, desc=d.descartados||{};
   let h=sec('Contato compartilhado — '+esc(c));
-  h+=`<div class="grid g2">${kpi(fmtN(ar.length),'Empresas ligadas por contato',ar.length?'var(--amber)':null,'📞')}
+  registrarDrill('contatoArestas',{titulo:'Empresas ligadas por telefone ou e-mail',itens:ar,
+    render:x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.para)}</div><div class="dim">${esc(x.detalhe||'')} · ${esc(x.tipo)}</div><div class="dim">${esc(x.explicacao_inocente||'')}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((x.forca||0)*100)}%</div></div></div>`),
+    nota:'Contato dividido é indício de mesma administração, não prova.'});
+  h+=`<div class="grid g2">${kpi(fmtN(ar.length),'Empresas ligadas por contato',ar.length?'var(--amber)':null,'📞',{drill:'contatoArestas'})}
       ${kpi(fmtN(cob.com_telefone),'Alvos com telefone publicado')}
       ${kpi(fmtN(cob.com_email),'Alvos com e-mail publicado')}
       ${kpi(fmtN(Object.values(desc).reduce((s,x)=>s+x,0)),'Contatos DESCARTADOS por guarda','var(--dim)','🚫')}</div>`;
@@ -321,9 +330,17 @@ export async function vincGrafo(){
   const d=await J('/api/grafo?alvo='+encodeURIComponent(c)+'&saltos=2');
   if(d&&d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
   const nos=d.nos||[], ar=d.arestas||[];
+  /* Os três números SÃO os três arrays desta resposta — mesmo universo, sem página no meio. */
+  registrarDrill('grafoNos',{titulo:'Nós da rede (2 saltos)',itens:nos,
+    render:n=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(n.rotulo||n.id||'—')}</div><div class="dim">${esc(n.tipo||'')}</div></div></div>`)});
+  registrarDrill('grafoArestas',{titulo:'Arestas da rede',itens:ar,
+    render:x=>card(`<div><b>${esc(x.de||x.origem||'—')}</b> → <b>${esc(x.para||x.destino||'—')}</b><div class="dim">${esc(x.tipo||'')}${x.fonte?' · '+esc(x.fonte):''}</div></div>`),
+    nota:'Aresta por NOME sem documento vale pouco (homonímia).'});
+  registrarDrill('grafoComunidades',{titulo:'Comunidades detectadas',itens:(d.comunidades||[]),
+    render:cm=>card(`<div><b>${esc(cm.rotulo||cm.id||'comunidade')}</b><div class="dim">${fmtN((cm.membros||[]).length||cm.n||0)} membro(s)</div></div>`)});
   o.innerHTML=sec('Rede de poder — 2 saltos')+
-    `<div class="grid g2">${kpi(fmtN(nos.length),'Nós')}${kpi(fmtN(ar.length),'Arestas')}
-      ${kpi(fmtN((d.comunidades||[]).length),'Comunidades')}</div>`+
+    `<div class="grid g2">${kpi(fmtN(nos.length),'Nós',null,null,{drill:'grafoNos'})}${kpi(fmtN(ar.length),'Arestas',null,null,{drill:'grafoArestas'})}
+      ${kpi(fmtN((d.comunidades||[]).length),'Comunidades',null,null,{drill:'grafoComunidades'})}</div>`+
     card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
       <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`)+
     leitura('A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.');

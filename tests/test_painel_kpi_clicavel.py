@@ -33,9 +33,11 @@ ABAS = RAIZ / "static" / "js" / "src" / "abas"
 #
 # O teto cobre as que CONTAM UM ARRAY que o próprio painel já tem em mão — essas podem ganhar
 # caminho hoje, sem tocar rota, e sem risco de o clique contradizer o número.
-# 2026-08-06: 49 convertíveis → 41 (agente público + Riscos) → 37 (sancionadas e hub físico).
+# 2026-08-06: 19 convertíveis de verdade (a medição por `.length` na chamada inteira contava
+# falso: `kpi(a.length ? fmtN(a[0].hhi) : "—")` exibe um MÁXIMO). 19 → 11 depois de Vínculos
+# (grafo, ciclos, contato), conluio e poder.
 # SÓ PODE DESCER. Toda conversão passa pelo `tools/painel_drill_check`, que CLICA e confere.
-TETO_KPI_CONVERTIVEL_SEM_CAMINHO = 37
+TETO_KPI_CONVERTIVEL_SEM_CAMINHO = 11
 
 _RX_KPI = re.compile(r"\bkpi\(")
 
@@ -84,9 +86,34 @@ def _sem_caminho(chamadas) -> list[tuple[str, str]]:
     return [(a, c) for a, c in chamadas if not _tem_5o_argumento(c)]
 
 
+def _valor_exibido(chamada: str) -> str:
+    """O 1º argumento de `kpi()` — o que o usuário LÊ. É ele que decide se há gaveta possível."""
+    corpo = chamada[chamada.index("(") + 1:-1]
+    nivel = 0
+    for i, ch in enumerate(corpo):
+        if ch in "([{":
+            nivel += 1
+        elif ch in ")]}":
+            nivel -= 1
+        elif ch == "," and nivel == 0:
+            return corpo[:i]
+    return corpo
+
+
 def _convertiveis(chamadas) -> list[tuple[str, str]]:
-    """Mudas que contam um ARRAY local — o painel já tem as linhas, é só registrá-las."""
-    return [(a, c) for a, c in _sem_caminho(chamadas) if ".length" in c]
+    """Mudas cujo NÚMERO EXIBIDO é uma contagem de linhas que o painel já tem em mão.
+
+    A primeira versão pedia só `.length` na chamada inteira e engolia falso convertível: em
+    `kpi(a.length ? fmtN(a[0].hhi) : '—', 'Maior HHI')` o que se lê é um MÁXIMO, não uma contagem —
+    o `.length` está só na guarda do ternário. Gaveta ali mostraria N linhas para um número que não
+    é N. É a mesma família dos dois enganos de hoje (68 vs 55, 647 vs 0), agora na medição.
+    """
+    out = []
+    for a, c in _sem_caminho(chamadas):
+        v = _valor_exibido(c)
+        if ".length" in v and "?" not in v:
+            out.append((a, c))
+    return out
 
 
 def test_divida_de_kpi_convertivel_nao_cresce():
