@@ -53,6 +53,13 @@ if [ -f data/.pause_tac_ranking ]; then say "tac ranking pausado — pulei"; els
 # rota — a família 8 do catálogo pela quarta vez. Barata (só lê), e por isso roda toda passada.
 # Pausa: data/.pause_sentinela.
 if [ -f data/.pause_sentinela ]; then say "sentinela pausada — pulei"; else $PRIO timeout 300 $PY -m tools.sentinela_integridade --alerta >> data/sentinela_integridade.log 2>&1; say "sentinela rc=$?"; fi
+# GRAFO DE VÍNCULOS DOS CREDORES — `pessoas` e `relacionamentos` estavam desenhadas no schema e
+# com ZERO linhas: `salvar_grafo` existia, era testada e não tinha caller. O universo vem do SIAFE
+# (`status='Contabilizado'`, OB anulada não é pagamento), do maior valor pago para o menor, e a
+# retomada é por FATO — o CNPJ processado é gravado mesmo com zero arestas, porque "olhei e não
+# achei" não é "nunca olhei". ~1,9 s por credor sobre 5.615: por isso vai em fatias.
+# Pausa: data/.pause_grafo_persistir.
+if [ -f data/.pause_grafo_persistir ]; then say "grafo persistir pausado — pulei"; else $PRIO timeout 900 $PY -m tools.grafo_persistir --limite 300 >> data/grafo_persistir.log 2>&1; say "grafo persistir rc=$?"; fi
 # A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
 # `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
 # 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os

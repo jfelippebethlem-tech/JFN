@@ -45,6 +45,12 @@ PRECISAM_DE_ROTINA = {
     "tools.sentinela_integridade":
         "vigia a QUALIDADE do que os pipelines produzem (texto cortado, anexo serializado, "
         "leitura devolvendo 0 docs); sem rotina, o defeito só aparece quando alguém tropeça nele",
+    # Quinta mordida (2026-08-06): `osint/persistencia.salvar_grafo` estava escrita e testada, e as
+    # tabelas `pessoas`/`relacionamentos` a ZERO — sem caller, o grafo se desfazia a cada execução.
+    # Precisa de rotina porque o universo tem 5.615 credores e a passada é em fatia.
+    "tools.grafo_persistir":
+        "persiste o grafo de vínculos dos credores do SIAFE em fatias; sem rotina, as 5.615 "
+        "empresas nunca terminam de ser percorridas e o grafo nunca sobrevive à execução",
     "tools.sei_sweep --recaptura":
         "drena a fila de recaptura integral (documento na árvore sem texto lido); sem ela, todo "
         "processo truncado fica truncado para sempre",

@@ -47,14 +47,21 @@ def _raiz(cnpj: Any) -> str:
 def _no_socio(linha: sqlite3.Row) -> tuple[str, str, bool]:
     """`(chave_do_no, rótulo, é_pj)` para uma linha de QSA.
 
-    Sócio PJ (`ident='1'`) traz o CNPJ íntegro — é o degrau que permite subir a cadeia.
+    Sócio PJ (`ident='1'`) traz o CNPJ íntegro — é o degrau que permite subir a cadeia. A CHAVE,
+    porém, É A RAIZ, e isso não é detalhe: o alvo de cada nível entra como `no_pj(raiz)`, de modo
+    que o sócio PJ chaveado pelos 14 dígitos virava um SEGUNDO nó da mesma empresa e a cadeia se
+    partia exatamente no degrau que este código existe para subir. Medido em 2026-08-06 sobre os
+    400 maiores credores do SIAFE: dos 17 com cadeia de duas ou mais empresas, **17** tinham o nó
+    partido — o beneficiário final parava no primeiro salto em todos eles. Filial não é outra
+    empresa, e a régua de contato compartilhado já seguia essa mesma identidade.
+
     Sócio PF (`ident='2'`) traz só a máscara; a chave leva os seis dígitos centrais para não
     fundir homônimos, e o rótulo fica limpo para a peça.
     """
     nome = (linha["nome_socio"] or "").strip()
     doc = (linha["doc_socio"] or "").strip()
     if str(linha["ident"]) == "1":
-        return no_pj(doc, nome), nome, True
+        return no_pj(_raiz(doc) or doc, nome), nome, True
     meio = _RE_DIG.sub("", doc)[:6]
     return no_pf("", f"{nome}|{meio}"), nome, False
 
