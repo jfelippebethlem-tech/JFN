@@ -13,6 +13,7 @@
  */
 import {$, esc, svgIco, card, kpi, sec, cover, spin, leitura, semMedicao, btnPdf, acoesAba,
         toggle, corta, clk} from '../nucleo/dom.js';
+import {limparDrill, registrarDrill} from '../nucleo/drill.js';
 import {fmtN, fmtD, fmtPct, fmtR, fmtRc, ROTULOS, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
 import {filtrar, filtrarPag, _pagMais, _acPagPick, buscaPag, listaPaginada, ordenar,
@@ -957,7 +958,11 @@ export async function renderRiscos(){
       'Empresa que compete "sempre" e nunca vence é o perfil clássico de <b>proposta de cobertura</b> (OCDE bid rigging): existe para dar aparência de disputa e legitimar o vencedor combinado. Quanto mais vezes perde junto do MESMO vencedor, mais forte o indício.','🎭')+chips+acoesAba('perdedoras');
     if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const cov=d.cobertura_extracao||{};
-    h+=`<div class="grid g2">${kpi(fmtN(d.n),'Perdedoras contumazes','var(--amber)','🎭')}${kpi(fmtN(cov.atas_entrada),'Atas no corpus',null,'📄')}${kpi(fmtN(cov.atas_avaliaveis),'Atas avaliáveis',null,'✅')}${kpi(fmtN(cov.certames_no_grafo),'Certames no grafo',null,'🕸️')}</div>`;
+    registrarDrill('perdedorasContumazes',{titulo:'Perdedoras contumazes — participam e nunca vencem',
+      itens:(d.perdedoras||[]),
+      render:p=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj,p.nome!=='—'?p.nome:p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt||'')}</div></div><div class="right"><div class="num" style="font-weight:800">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>`),
+      nota:'Perder sempre é indício de proposta de cobertura, não prova.'});
+    h+=`<div class="grid g2">${kpi(fmtN(d.n),'Perdedoras contumazes','var(--amber)','🎭',{drill:'perdedorasContumazes'})}${kpi(fmtN(cov.atas_entrada),'Atas no corpus',null,'📄')}${kpi(fmtN(cov.atas_avaliaveis),'Atas avaliáveis',null,'✅')}${kpi(fmtN(cov.certames_no_grafo),'Certames no grafo',null,'🕸️')}</div>`;
     if((cov.atas_avaliaveis||0)<50)h+=`<div class="warn" style="margin-top:12px">Cobertura ainda pequena: só ${fmtN(cov.atas_avaliaveis)} de ${fmtN(cov.atas_entrada)} atas têm participantes+resultado extraíveis. O PNCP publica apenas o vencedor; os perdedores vêm do texto das atas — a extração é conservadora de propósito (zero falso-positivo) e cresce com o corpus.</div>`;
     h+=`<div class="grid" style="margin-top:12px">`+(d.perdedoras||[]).map(p=>card(
       `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj,p.nome!=='—'?p.nome:p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
@@ -972,8 +977,19 @@ export async function renderRiscos(){
     'Score 0-100 por <b>8 sinais objetivos</b> (situação irregular na Receita, capital incompatível com o que recebe, endereço-ninho, endereço residencial, aberta às vésperas do 1º contrato, sócio único + capital baixo, CNAE incompatível, sanção). Aplicado ao conjunto-alvo: vencedoras de captura/rodízio, perdedoras contumazes, sancionadas e top favorecidos.','👻')+chips+acoesAba('fantasmas');
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const emp=(d.empresas||[]).filter(e=>e.classificacao!=='sem_cadastro');
-  h+=`<div class="grid g2">${kpi(fmtN(d.total_alvo),'Empresas no alvo',null,'🎯')}${kpi(fmtN(emp.filter(e=>e.classificacao==='alto').length),'Risco ALTO','var(--rose)','🔴')}
-      ${kpi(fmtN(emp.filter(e=>e.classificacao==='medio').length),'Risco médio','var(--amber)','🟡')}${kpi(fmtN(d.sem_cadastro),'Sem cadastro ainda','var(--dim)','⏳')}</div>`;
+  /* CADA MÉTRICA REGISTRA O CONJUNTO QUE ELA CONTA — mesmo universo, sempre: `alto` e `medio` saem
+     do mesmo `emp` que alimenta os números, e "sem cadastro" sai da lista bruta. "Empresas no alvo"
+     é um total do SERVIDOR e por isso NÃO ganha drill: registrar `emp` ali faria o clique mostrar
+     menos linhas do que o número promete — foi exatamente esse o defeito da primeira versão. */
+  const _lin=e=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj,e.razao_social||e.cnpj)}<div class="dim">${esc(e.cnpj)} · ${rot(e.origem||'—')}</div></div><div class="right"><div class="num" style="font-weight:800">${e.score??'—'}</div><div class="dim">/100 ${esc(e.classificacao||'')}</div></div></div>`);
+  registrarDrill('fantasmaAlto',{titulo:'Empresas com risco ALTO de fachada',itens:emp.filter(e=>e.classificacao==='alto'),render:_lin,nota:'Score 0-100 por 8 sinais objetivos; indício de fachada, não prova.'});
+  registrarDrill('fantasmaMedio',{titulo:'Empresas com risco médio',itens:emp.filter(e=>e.classificacao==='medio'),render:_lin});
+  /* `sem_cadastro` NÃO GANHA DRILL, e a razão é a regra da casa: o número (647) é um total do
+     SERVIDOR e a página traz 60 empresas — a gaveta mostrava ZERO linhas para um KPI de 647.
+     Verificado ao vivo. Enquanto a rota não servir essas linhas, a métrica fica sem caminho: KPI
+     sem clique é honesto, gaveta que mostra 0 para 647 é mentira. */
+  h+=`<div class="grid g2">${kpi(fmtN(d.total_alvo),'Empresas no alvo',null,'🎯')}${kpi(fmtN(emp.filter(e=>e.classificacao==='alto').length),'Risco ALTO','var(--rose)','🔴',{drill:'fantasmaAlto'})}
+      ${kpi(fmtN(emp.filter(e=>e.classificacao==='medio').length),'Risco médio','var(--amber)','🟡',{drill:'fantasmaMedio'})}${kpi(fmtN(d.sem_cadastro),'Sem cadastro ainda','var(--dim)','⏳')}</div>`;
   if(d.sem_cadastro>0)h+=`<div class="warn" style="margin-top:12px"><b>${fmtN(d.sem_cadastro)}</b> empresas do alvo ainda sem cadastro da Receita na base (fila de enriquecimento). "Sem cadastro" NÃO significa regular — significa não-avaliada.</div>`;
   h+=`<div class="grid" style="margin-top:12px">`+emp.slice(0,50).map(e=>{
     const cor=e.classificacao==='alto'?'var(--rose)':e.classificacao==='medio'?'var(--amber)':'var(--green)';

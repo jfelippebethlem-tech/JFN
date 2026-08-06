@@ -95,6 +95,54 @@
   };
   var rot = (id) => ROTULOS[id] || String(id || "").replace(/_/g, " ");
 
+  // static/js/src/nucleo/drill.js
+  var _REG = /* @__PURE__ */ new Map();
+  function registrarDrill(nome, { titulo, itens, render, nota }) {
+    if (!nome) return;
+    _REG.set(nome, { titulo: titulo || nome, itens: itens || [], render, nota: nota || "" });
+  }
+  function abrirDrill(nome) {
+    const d = _REG.get(nome);
+    const alvo = $("drill-out") || $("view");
+    if (!d || !alvo) return;
+    const linhas = d.itens || [];
+    let h = `<div id="drill-box" class="drill-box">`;
+    h += `<button type="button" class="btn ghost" data-drill-fechar="1" style="float:right">Fechar</button>`;
+    h += sec(d.titulo, linhas.length);
+    h += linhas.length ? `<div class="grid">${linhas.map((x) => {
+      try {
+        return d.render ? d.render(x) : card(esc(JSON.stringify(x)).slice(0, 300));
+      } catch (e) {
+        return card(`<div class="warn">linha ilegível: ${esc(String(e))}</div>`);
+      }
+    }).join("")}</div>` : card('<div class="dim">Nenhuma linha nesta métrica.</div>');
+    h += `<div class="note">${fmtN(linhas.length)} linha(s) — este número tem de bater com a métrica
+        que você clicou. ${esc(d.nota || "")}</div></div>`;
+    const box = $("drill-box");
+    if (box) box.remove();
+    alvo.insertAdjacentHTML("afterbegin", h);
+    const novo = $("drill-box");
+    if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: "start" });
+  }
+  function ligarDrill() {
+    document.addEventListener("click", (ev) => {
+      if (!ev.target.closest) return;
+      if (ev.target.closest("[data-drill-fechar]")) {
+        const b = $("drill-box");
+        if (b) {
+          ev.preventDefault();
+          b.remove();
+        }
+        return;
+      }
+      const k = ev.target.closest("[data-drill]");
+      if (k && _REG.has(k.dataset.drill)) {
+        ev.preventDefault();
+        abrirDrill(k.dataset.drill);
+      }
+    });
+  }
+
   // static/js/src/nucleo/http.js
   var _jCache = /* @__PURE__ */ new Map();
   async function J(ep, opt) {
@@ -5027,7 +5075,13 @@ void main(){
       ) + chips + acoesAba("perdedoras");
       if (!d2.ok) return h2 + card(`<div class="warn">${erroHumano(d2.erro)}</div>`);
       const cov = d2.cobertura_extracao || {};
-      h2 += `<div class="grid g2">${kpi(fmtN(d2.n), "Perdedoras contumazes", "var(--amber)", "🎭")}${kpi(fmtN(cov.atas_entrada), "Atas no corpus", null, "📄")}${kpi(fmtN(cov.atas_avaliaveis), "Atas avaliáveis", null, "✅")}${kpi(fmtN(cov.certames_no_grafo), "Certames no grafo", null, "🕸️")}</div>`;
+      registrarDrill("perdedorasContumazes", {
+        titulo: "Perdedoras contumazes — participam e nunca vencem",
+        itens: d2.perdedoras || [],
+        render: (p) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj, p.nome !== "—" ? p.nome : p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt || "")}</div></div><div class="right"><div class="num" style="font-weight:800">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>`),
+        nota: "Perder sempre é indício de proposta de cobertura, não prova."
+      });
+      h2 += `<div class="grid g2">${kpi(fmtN(d2.n), "Perdedoras contumazes", "var(--amber)", "🎭", { drill: "perdedorasContumazes" })}${kpi(fmtN(cov.atas_entrada), "Atas no corpus", null, "📄")}${kpi(fmtN(cov.atas_avaliaveis), "Atas avaliáveis", null, "✅")}${kpi(fmtN(cov.certames_no_grafo), "Certames no grafo", null, "🕸️")}</div>`;
       if ((cov.atas_avaliaveis || 0) < 50) h2 += `<div class="warn" style="margin-top:12px">Cobertura ainda pequena: só ${fmtN(cov.atas_avaliaveis)} de ${fmtN(cov.atas_entrada)} atas têm participantes+resultado extraíveis. O PNCP publica apenas o vencedor; os perdedores vêm do texto das atas — a extração é conservadora de propósito (zero falso-positivo) e cresce com o corpus.</div>`;
       h2 += `<div class="grid" style="margin-top:12px">` + (d2.perdedoras || []).map((p) => card(
         `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj, p.nome !== "—" ? p.nome : p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
@@ -5046,8 +5100,11 @@ void main(){
     ) + chips + acoesAba("fantasmas");
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const emp = (d.empresas || []).filter((e) => e.classificacao !== "sem_cadastro");
-    h += `<div class="grid g2">${kpi(fmtN(d.total_alvo), "Empresas no alvo", null, "🎯")}${kpi(fmtN(emp.filter((e) => e.classificacao === "alto").length), "Risco ALTO", "var(--rose)", "🔴")}
-      ${kpi(fmtN(emp.filter((e) => e.classificacao === "medio").length), "Risco médio", "var(--amber)", "🟡")}${kpi(fmtN(d.sem_cadastro), "Sem cadastro ainda", "var(--dim)", "⏳")}</div>`;
+    const _lin = (e) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj, e.razao_social || e.cnpj)}<div class="dim">${esc(e.cnpj)} · ${rot(e.origem || "—")}</div></div><div class="right"><div class="num" style="font-weight:800">${e.score ?? "—"}</div><div class="dim">/100 ${esc(e.classificacao || "")}</div></div></div>`);
+    registrarDrill("fantasmaAlto", { titulo: "Empresas com risco ALTO de fachada", itens: emp.filter((e) => e.classificacao === "alto"), render: _lin, nota: "Score 0-100 por 8 sinais objetivos; indício de fachada, não prova." });
+    registrarDrill("fantasmaMedio", { titulo: "Empresas com risco médio", itens: emp.filter((e) => e.classificacao === "medio"), render: _lin });
+    h += `<div class="grid g2">${kpi(fmtN(d.total_alvo), "Empresas no alvo", null, "🎯")}${kpi(fmtN(emp.filter((e) => e.classificacao === "alto").length), "Risco ALTO", "var(--rose)", "🔴", { drill: "fantasmaAlto" })}
+      ${kpi(fmtN(emp.filter((e) => e.classificacao === "medio").length), "Risco médio", "var(--amber)", "🟡", { drill: "fantasmaMedio" })}${kpi(fmtN(d.sem_cadastro), "Sem cadastro ainda", "var(--dim)", "⏳")}</div>`;
     if (d.sem_cadastro > 0) h += `<div class="warn" style="margin-top:12px"><b>${fmtN(d.sem_cadastro)}</b> empresas do alvo ainda sem cadastro da Receita na base (fila de enriquecimento). "Sem cadastro" NÃO significa regular — significa não-avaliada.</div>`;
     h += `<div class="grid" style="margin-top:12px">` + emp.slice(0, 50).map((e) => {
       const cor = e.classificacao === "alto" ? "var(--rose)" : e.classificacao === "medio" ? "var(--amber)" : "var(--green)";
@@ -6364,6 +6421,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   uiLigarSpotlight();
   uiLigarDialogo();
   ligarVinculos();
+  ligarDrill();
   sobrioAoMudar(() => {
     nebulaViva();
     nucleoViva();

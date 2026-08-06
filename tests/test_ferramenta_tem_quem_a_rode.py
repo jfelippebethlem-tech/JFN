@@ -51,6 +51,12 @@ PRECISAM_DE_ROTINA = {
     "tools.grafo_persistir":
         "persiste o grafo de vínculos dos credores do SIAFE em fatias; sem rotina, as 5.615 "
         "empresas nunca terminam de ser percorridas e o grafo nunca sobrevive à execução",
+    # Sexta mordida da familia 8 seria esta: o verificador que CLICA em cada metrica do painel e
+    # confere com a gaveta. Sem rotina, a divergencia so aparece quando alguem tropeca nela — e ela
+    # ja apareceu duas vezes no mesmo dia (68 vs 55 e 647 vs 0).
+    "tools.painel_drill_check":
+        "clica cada metrica clicavel do painel e compara com as linhas da gaveta; sem rotina, "
+        "metrica que mente volta em silencio a cada mudanca de rota ou de limite de pagina",
     "tools.empresas_rj_build":
         "razão social e natureza jurídica das 5,86 mi de raízes com estabelecimento; o dump da "
         "Receita é mensal e os ZIPs são apagados ao fim do refresh — fora dele, a tabela envelhece "

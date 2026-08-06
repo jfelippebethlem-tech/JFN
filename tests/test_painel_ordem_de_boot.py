@@ -50,6 +50,10 @@ SEQUENCIA = [
     "chamada:uiLigarSpotlight()",
     "chamada:uiLigarDialogo()",
     "chamada:ligarVinculos()",        # v59: delegacao `data-vinc` no documento — precisa existir
+    # 2026-08-06: delegacao das METRICAS CLICAVEIS. Colada no `ligarVinculos` de proposito — as
+    # duas prendem UM ouvinte no `document`, que sobrevive a troca de `innerHTML` do `#view`, e
+    # nenhuma delas toca a tela. Verificado com `pageerror` limpo na pagina viva.
+    "chamada:ligarDrill()",
                                       # antes do primeiro render que use o atributo
     "chamada:sobrioAoMudar()",        # o que reavaliar quando o modo sobrio vira: os tres
                                       # videos da cena. Gancho, nao import — senao a folha

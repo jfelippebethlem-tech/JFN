@@ -66,6 +66,12 @@ if [ -f data/.pause_grafo_persistir ]; then say "grafo persistir pausado — pul
 # e o dump da Receita todo mês. ~206 s, streaming puro, nada em memória.
 # Pausa: data/.pause_agente_reverso.
 if [ -f data/.pause_agente_reverso ]; then say "agente reverso pausado — pulei"; else $PRIO timeout 900 $PY -m tools.agente_publico_reverso >> data/agente_publico_reverso.log 2>&1; say "agente reverso rc=$?"; fi
+# METRICA QUE MENTE — o verificador CLICA em cada KPI clicavel do painel e confere o numero contra
+# as linhas que a gaveta abre. Nenhum teste unitario pega isso: o JS esta certo, a rota esta certa,
+# e o erro nasce da COMBINACAO (numero contando o universo, lista contendo a pagina). Ja aconteceu
+# duas vezes no mesmo dia: 68 comissionados virando 55, e 647 sem-cadastro virando 0.
+# Pausa: data/.pause_drill_check.
+if [ -f data/.pause_drill_check ]; then say "drill check pausado — pulei"; else $PRIO timeout 600 $PY -m tools.painel_drill_check >> data/painel_drill_check.log 2>&1; say "drill check rc=$?"; fi
 # A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
 # `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
 # 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os

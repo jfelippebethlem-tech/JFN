@@ -12,6 +12,7 @@ window.__jfnBootReadyState=document.readyState;
    descobrir enquanto ainda ha pouco em jogo. */
 import {$, esc, svgIco, card, kpi, sec, spin, cover, leitura, semMedicao, btnPdf, acoesAba,
         toggle, corta, clk} from './nucleo/dom.js';
+import {ligarDrill} from './nucleo/drill.js';
 import {fmtN, fmtD, fmtPct, fmtR, fmtRc, ROTULOS, rot} from './nucleo/formato.js';
 import {J, _jCache, erroHumano} from './nucleo/http.js';
 import {filtrar, filtrarPag, _pagMais, _acPagPick, buscaPag, listaPaginada, ordenar,
@@ -351,6 +352,8 @@ uiLigarDialogo();
    `document`, então precisa existir antes de qualquer tela que use `data-vinc` ser pintada.
    Ver o bloco `VINC_ACOES` em `abas/index.js` para a razão de ser Vínculos o primeiro. */
 ligarVinculos();
+/* Um ouvinte para TODAS as métricas clicáveis do painel — ver nucleo/drill.js. */
+ligarDrill();
 sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever();
                       energiaRever(); });
 conscienciaLigar(ritmoEstado);

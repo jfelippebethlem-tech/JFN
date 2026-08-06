@@ -25,8 +25,9 @@ RAIZ = Path(__file__).resolve().parent.parent
 ABAS = RAIZ / "static" / "js" / "src" / "abas"
 
 # Teto da dívida: quantas chamadas de kpi() ainda NÃO levam a lugar nenhum.
-# 2026-08-06: 198 → 193 (os 5 do cartão de agente público). SÓ PODE DESCER.
-TETO_KPI_SEM_CAMINHO = 193
+# 2026-08-06: 198 → 193 (cartão de agente público) → 190 (Riscos: fachada alto/médio e perdedoras).
+# SÓ PODE DESCER. Toda conversão passa pelo `tools/painel_drill_check`, que CLICA e confere.
+TETO_KPI_SEM_CAMINHO = 190
 
 _RX_KPI = re.compile(r"\bkpi\(")
 
