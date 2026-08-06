@@ -3693,7 +3693,7 @@ void main(){
            ${cf}${ex}
          </div>
          <div class="right"><div class="dim" style="font-size:12px">${(x.fontes || []).map(esc).join("<br>")}</div>
-           <div class="dim" style="font-size:12px;margin-top:4px">${fmtN(x.servidores_no_qsa)} servidor(es) no QSA</div></div>
+           <div class="dim" style="font-size:12px;margin-top:4px">${fmtN(x.servidores_no_qsa)} de ${fmtN(x.socios_no_qsa)} sócios</div></div>
        </div>`,
         !x.explicacao_institucional && (x.orgao_pagador_e_o_proprio || x.comissionado) ? "hl" : ""
       );

@@ -206,3 +206,24 @@ def test_conflito_nao_inventa_pagador_quando_nao_ha():
 
     assert conflito_de_orgao("SECRETARIA DE ESTADO DE SAUDE", set()) == ""
     assert conflito_de_orgao("", {"Secretaria de Estado de Saúde"}) == ""
+
+
+def test_contagem_de_servidores_no_qsa_nao_ordena_a_fila():
+    """MEDIDO E REMOVIDO: "10 servidores no QSA" parecia o sinal mais forte e era o mais enganoso.
+
+    A MEDVIVA tem **125 sócios** — os 10 servidores são 8%; a B&B MED tem 203 e os 7 são 3%. A
+    contagem crua ordena por TAMANHO DA EMPRESA, não por concentração, e é o mesmo defeito dos dois
+    detectores anti-preditivos que esta casa já removeu. A fração tampouco salva: exigindo ≥5
+    sócios e maioria de servidores sobram 5 entidades, das quais 4 já têm explicação institucional.
+
+    O eixo fica EXIBIDO com o denominador ao lado — quem lê julga — e não decide mais a ordem.
+    """
+    import inspect
+
+    from tools import agente_publico_reverso as M
+
+    corpo = inspect.getsource(M.fila)
+    chave = corpo[corpo.index("return sorted("):]
+    assert "servidores_no_qsa" not in chave, (
+        "a contagem de servidores voltou a ordenar a fila — ela mede tamanho de empresa")
+    assert "orgao_pagador_e_o_proprio" in chave, "o eixo quase-objetivo saiu da ordem"

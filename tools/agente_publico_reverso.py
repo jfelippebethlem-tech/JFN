@@ -395,9 +395,11 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
     # A ORDEM É A DA GRAVIDADE, e o primeiro critério é o único quase-objetivo: a unidade que pagou
     # é a unidade onde o agente serve. Depois vem o QSA tomado por servidores (o QSA da MEDVIVA é
     # inteiro de servidores: 10 de 10), e só então o cargo comissionado e o valor.
+    # `servidores_no_qsa` NÃO entra na ordem: medido, ele ordena por tamanho da empresa (MEDVIVA,
+    # 10 de 125 sócios) e não por concentração. Sobram o conflito de órgão, que é quase-objetivo, o
+    # cargo comissionado e o valor como desempate.
     return sorted(out, key=lambda x: (bool(x["explicacao_institucional"]),
                                       not x["orgao_pagador_e_o_proprio"],
-                                      -x["servidores_no_qsa"],
                                       not x["comissionado"],
                                       -x["valor_recebido"]))
 
@@ -425,6 +427,33 @@ def resumo(db: str = "") -> dict:
 _FILA_JSON = _REPO / "data" / "agente_publico_fila.json"
 
 
+def contar_qsa(raizes: set[str], zst: Path = _ZST) -> dict[str, int]:
+    """Tamanho REAL do QSA de cada raiz — o denominador sem o qual a contagem engana.
+
+    "10 servidores no QSA" parecia o sinal mais forte da fila e era o mais enganoso: a MEDVIVA tem
+    **125 sócios**, e 10 servidores são 8%; a B&B MED tem 203 e 7 servidores são 3%. A contagem
+    crua ordenava por TAMANHO DA EMPRESA, não por concentração — o mesmo defeito dos dois
+    detectores anti-preditivos que esta casa já removeu.
+
+    E a fração também não salva: exigindo denominador defensável (≥5 sócios e maioria de
+    servidores) sobram 5 entidades, das quais 4 já têm explicação institucional (duas estatais e
+    duas associações de apoio à escola). O eixo NÃO discrimina, em nenhuma das duas formas — por
+    isso ele não ordena mais nada. Fica exibido, com o denominador ao lado, para quem lê julgar.
+    """
+    total: dict[str, int] = {}
+    proc = subprocess.Popen(["zstd", "-dcq", str(zst)], stdout=subprocess.PIPE,
+                            preexec_fn=lambda: os.nice(10))
+    try:
+        for bruto in proc.stdout:
+            raiz = bruto[1:9].decode("ascii", "replace")
+            if raiz in raizes:
+                total[raiz] = total.get(raiz, 0) + 1
+    finally:
+        proc.stdout.close()
+        proc.wait()
+    return total
+
+
 def gravar_fila(caminho: Path = _FILA_JSON) -> dict:
     """Materializa a fila em JSON — o CÁLCULO NÃO PODE CAIR DENTRO DO REQUEST.
 
@@ -435,6 +464,9 @@ def gravar_fila(caminho: Path = _FILA_JSON) -> dict:
     import json
 
     itens = fila()
+    qsa = contar_qsa({x["cnpj_basico"] for x in itens})
+    for x in itens:
+        x["socios_no_qsa"] = qsa.get(x["cnpj_basico"], 0)
     caminho.parent.mkdir(parents=True, exist_ok=True)
     corpo = {
         "gerado_em": time.strftime("%Y-%m-%d %H:%M"),
