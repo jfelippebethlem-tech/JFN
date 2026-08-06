@@ -104,6 +104,28 @@ def _tipo_email(n_empresas: int, email: str) -> tuple[str, str] | None:
     return ("mesmo_email", "")
 
 
+def _por_raiz(cnpjs: list[str]) -> list[str]:
+    """Um representante por RAIZ, matriz primeiro. Filial não é outra empresa.
+
+    O filtro `substr(cnpj,1,8)<>?` já tirava as filiais do PRÓPRIO alvo, mas as do DESTINO
+    contavam uma a uma — e isso errava dos dois lados. Medido em 2026-08-06 sobre os 120 CNPJs
+    vencedores do acervo: das 252 arestas, **65 eram 21 pares de raiz repetidos por filial** — a
+    APPA SERVIÇOS TEMPORÁRIOS e a OBJETIVA SERVIÇOS TERCEIRIZADOS dividem o telefone 1147593220 e
+    apareciam 3× porque a OBJETIVA tem 3 filiais com o mesmo número. A aresta é UMA.
+
+    E o erro simétrico é pior: um telefone compartilhado com 6 filiais de UMA empresa media
+    fan-out 7 e era **descartado** como contato de prestador, quando é exatamente o vínculo que
+    se procura. Contar por raiz corrige a inflação e recupera o falso negativo.
+    """
+    vistas: dict[str, str] = {}
+    for c in cnpjs:
+        raiz = c[:8]
+        atual = vistas.get(raiz)
+        if atual is None or (c[8:12] == "0001" and atual[8:12] != "0001"):
+            vistas[raiz] = c
+    return list(vistas.values())
+
+
 def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = "") -> dict:
     """Arestas de telefone e e-mail entre os CNPJs pedidos e QUALQUER empresa do país.
 
@@ -135,10 +157,15 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
 
         for ln in linhas:
             alvo = ln["cnpj"]
+            # MESMO NÚMERO NOS DOIS CAMPOS. Empresa que cadastra o telefone em `telefone1` e
+            # `telefone2` gerava a aresta DUAS vezes — foi o único par ainda repetido depois da
+            # agregação por raiz (11389387 × 11412771, telefone 2227851280).
+            ja_vistos: set[str] = set()
             for campo in ("telefone1", "telefone2"):
                 tel = normalizar_telefone(ln[campo])
-                if not tel:
+                if not tel or tel in ja_vistos:
                     continue
+                ja_vistos.add(tel)
                 if not telefone_valido(tel):
                     out["descartados"]["telefone_invalido"] += 1
                     continue
@@ -151,6 +178,7 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
                 pares = [r[0] for r in con.execute(
                     "SELECT cnpj FROM estabelecimentos WHERE telefone1=? AND substr(cnpj,1,8)<>?",
                     (ln[campo], alvo[:8])).fetchall()]
+                pares = _por_raiz(pares)
                 if not pares:
                     continue
                 if len(pares) + 1 > TETO_FANOUT:
@@ -172,6 +200,7 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
             pares = [r[0] for r in con.execute(
                 "SELECT cnpj FROM estabelecimentos WHERE lower(correio_eletronico)=? "
                 "AND substr(cnpj,1,8)<>?", (email, alvo[:8])).fetchall()]
+            pares = _por_raiz(pares)
             if not pares:
                 continue
             classificado = _tipo_email(len(pares) + 1, email)

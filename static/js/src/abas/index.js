@@ -1887,7 +1887,7 @@ export {renderComparador, _compEsfChips, _compItemView, _montarGrupoCard, _compC
    Era o corte difícil: o domínio vivia em DUAS faixas separadas por quatro blocos alheios. O
    interleavamento é obstáculo para recortar texto, não para cortar por domínio — as duas faixas
    só se referenciavam por nome, e nome não tem endereço. Ver o cabeçalho de lá. */
-export {renderVinculos, _vincCnpj, vincConsultar, vincParentesco, vincNaData, vincTrocas,
+export {renderVinculos, _vincCnpj, vincConsultar, vincParentesco, vincContato, vincNaData, vincTrocas,
         vincPrevalencia, vincGrafo, vincFtm, vincHistoricoPessoa, vincConluioMunicipal,
         vincResolucao, vincInterposicao, vincPatrimonio, VINC_ACOES,
         ligarVinculos} from './vinculos.js';

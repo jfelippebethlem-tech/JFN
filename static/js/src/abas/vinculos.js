@@ -50,6 +50,7 @@ export async function renderVinculos(){
     <div class="btns" style="margin-top:10px">
       <button type="button" class="btn" data-vinc="consultar">Beneficiário final</button>
       <button type="button" class="btn ghost" data-vinc="parentesco">Parentesco no QSA</button>
+      <button type="button" class="btn ghost" data-vinc="contato">Contato compartilhado</button>
       <button type="button" class="btn ghost" data-vinc="trocas">Trocas de quadro</button>
       <button type="button" class="btn ghost" data-vinc="grafo">Rede de poder</button>
       <button type="button" class="btn ghost" data-vinc="ftm">Exportar FollowTheMoney</button>
@@ -112,6 +113,41 @@ export async function vincConsultar(){
   h+=`<div class="note">${esc((d.temporalidade||{}).nota||'')}</div>`;
   h+=`<div class="note">${esc(cob.nota||'')}</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  o.innerHTML=h;
+}
+
+export async function vincContato(){
+  // TELEFONE E E-MAIL COMPARTILHADOS — as arestas mais fortes da régua depois de `mesma_sala`
+  // (0,70 e 0,80), sobre 6.171.766 estabelecimentos da Receita que estavam indexados e SEM UM
+  // ÚNICO CONSUMIDOR. Duas empresas de raízes diferentes que dividem central telefônica é o sinal
+  // clássico de mesma mão por trás: na primeira amostra real, APPA SERVIÇOS TEMPORÁRIOS e
+  // OBJETIVA SERVIÇOS TERCEIRIZADOS, ambas de terceirização, no 1147593220.
+  const c=_vincCnpj(); const o=$('vinc-out'); if(!c){o.innerHTML=card('<div class="warn">Informe um CNPJ.</div>');return;}
+  o.innerHTML=card('<div class="dim">cruzando telefone e e-mail em 6,17 milhões de estabelecimentos…</div>');
+  const d=await J('/api/osint/contato_compartilhado?cnpj='+encodeURIComponent(c));
+  if(d.erro){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const ar=d.arestas||[], cob=d.cobertura||{}, desc=d.descartados||{};
+  let h=sec('Contato compartilhado — '+esc(c));
+  h+=`<div class="grid g2">${kpi(fmtN(ar.length),'Empresas ligadas por contato',ar.length?'var(--amber)':null,'📞')}
+      ${kpi(fmtN(cob.com_telefone),'Alvos com telefone publicado')}
+      ${kpi(fmtN(cob.com_email),'Alvos com e-mail publicado')}
+      ${kpi(fmtN(Object.values(desc).reduce((s,x)=>s+x,0)),'Contatos DESCARTADOS por guarda','var(--dim)','🚫')}</div>`;
+  h+=leitura('Contato dividido é indício de mesma administração, não prova: escritório contábil, central de atendimento e grupo econômico legítimo produzem o mesmo sinal. Por isso o e-mail de contabilidade cai para <b>mesmo_contador</b> (0,30) e o que passa do teto de fan-out sai fora — o corte é medido, e o que fica de fora está contado abaixo.');
+  if(ar.length){
+    h+=`<div class="grid">`+ar.slice(0,40).map(a=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px">
+         <div style="min-width:0"><div style="font-weight:700">${esc(a.para)}</div>
+           <div class="muted" style="font-size:12.5px">${esc(a.detalhe||'')} · ${esc(a.tipo)}</div>
+           <div class="dim" style="font-size:12px;margin-top:3px">${esc(a.explicacao_inocente||'')}</div></div>
+         <div class="right"><div class="num" style="font-weight:800;font-size:20px">${(a.forca*100).toFixed(0)}%</div>
+           <div class="dim">força · ${fmtN(a.n_no_grupo)} no grupo</div></div></div>`,
+      a.forca>=0.7?'hl':'')).join('')+`</div>`;
+    if(ar.length>40) h+=`<div class="note">40 de ${fmtN(ar.length)} exibidas.</div>`;
+  } else {
+    h+=card('<div class="dim">Nenhuma empresa dividindo contato dentro dos tetos medidos. Ausência de aresta não é ausência de vínculo — é ausência <b>por esta via</b>.</div>');
+  }
+  h+=`<div class="note">Descartados: `+Object.entries(desc).map(([k,v])=>`${esc(k)} ${fmtN(v)}`).join(' · ')+`</div>`;
+  h+=`<div class="note">${esc(cob.nota||'')}</div>`;
   o.innerHTML=h;
 }
 
@@ -344,7 +380,8 @@ export async function vincPatrimonio(){
    não lança — botão morto é ruim, mas `TypeError` no console de um painel ao vivo é pior, e a
    completude de quem existe já é provada pelo `test_painel_ponte_completa`.  */
 export const VINC_ACOES={
-  consultar:vincConsultar, parentesco:vincParentesco, trocas:vincTrocas, grafo:vincGrafo,
+  consultar:vincConsultar, parentesco:vincParentesco, contato:vincContato,
+  trocas:vincTrocas, grafo:vincGrafo,
   ftm:vincFtm, conluioMunicipal:vincConluioMunicipal, resolucao:vincResolucao,
   interposicao:vincInterposicao, patrimonio:vincPatrimonio,
   historicoPessoa:vincHistoricoPessoa, naData:vincNaData, prevalencia:vincPrevalencia,

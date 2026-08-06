@@ -33,6 +33,34 @@ def _db_ro() -> sqlite3.Connection:
     return sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
 
 
+@router.get("/api/osint/contato_compartilhado")
+def api_contato_compartilhado(cnpj: str, extras: str = ""):
+    """Telefone e e-mail compartilhados — as arestas mais fortes da régua depois de `mesma_sala`.
+
+    ESTAVA TUDO PRONTO E PARADO. `data/receita_estab.db` guarda **6.171.766 estabelecimentos** com
+    telefone (83,9%) e e-mail (69,0%), indexados; `osint/contato_compartilhado` implementa
+    `mesmo_telefone` (0,70) e `mesmo_email` (0,80) com os guardas todos medidos — telefone-lixo (o
+    `00` liga 129.152 empresas), fan-out (43 telefones ligam mais de mil) e e-mail de contabilidade
+    (`abertura@maismei.com.br`, 17.665 clientes, que vira `mesmo_contador` a 0,30). Faltava
+    consumidor: o docstring do módulo dizia, literalmente, *"dado ingerido, indexado, e sem um
+    único consumidor"*.
+
+    O que a primeira amostra real mostrou (120 CNPJs vencedores do acervo, 2026-08-06): **APPA
+    SERVIÇOS TEMPORÁRIOS** e **OBJETIVA SERVIÇOS TERCEIRIZADOS** — raízes de CNPJ diferentes, duas
+    empresas de terceirização que atendem o poder público — dividem o telefone 1147593220.
+
+    `extras`: outros CNPJs separados por vírgula, para pedir o conjunto de uma vez.
+    """
+    try:
+        from compliance_agent.osint.contato_compartilhado import vinculos_por_contato
+
+        alvos = [c.strip() for c in (cnpj + "," + extras).split(",") if c.strip()]
+        return JSONResponse(vinculos_por_contato(alvos))
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("contato_compartilhado falhou")
+        return JSONResponse({"erro": str(exc)[:200], "arestas": []}, status_code=200)
+
+
 @router.get("/api/osint/beneficiario_final")
 def api_beneficiario_final(cnpj: str, profundidade: int = 4):
     """G.3 — sobe a cadeia societária de uma PJ até as pessoas físicas.
