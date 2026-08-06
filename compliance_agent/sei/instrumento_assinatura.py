@@ -686,6 +686,15 @@ def _qtds_distintas(texto: str) -> dict[str, set]:
     return saida
 
 
+# peça de HABILITAÇÃO que se anuncia no título — atestado de capacidade técnica, acervo do CREA,
+# declaração de experiência: nada disso atesta a execução DESTE contrato.
+# O SEPARADOR TRAI. O título real é `Atestado _de_Capacidade_Tecnica (64158627)` — com
+# UNDERSCORE e sem acento, porque veio do nome do arquivo. Exigir espaço entre as palavras deixou
+# o veto passar batido na primeira tentativa, e o achado sobreviveu com o mesmo documento da UFC.
+_RE_ATESTADO_DO_LICITANTE = re.compile(
+    r"capacidade[\s_\-]*t[ée]cnica|acervo[\s_\-]*t[ée]cnico|\bCAT\b|habilita[çc][ãa]o", re.I)
+
+
 def quantitativo_divergente(docs: list[dict]) -> dict:
     """O atesto de boa execução fala do mesmo quantitativo que o objeto contratado?
 
@@ -695,11 +704,13 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
     """
     docs = _limpos(docs)
     obj: dict[str, set] = {}
+    ref_obj = ""
     for d in docs or []:
         texto = d.get("texto") or ""
         if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO and _RE_OBJETO.search(texto):
             obj = _qtds_distintas(texto)
             if obj:
+                ref_obj = str(d.get("ref") or "")
                 break
     obj = {u: q for u, q in obj.items() if len(q) == 1}
     if not obj:
@@ -717,6 +728,14 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
         # que continuar afinando a regex do gatilho.
         if _norm(d.get("tipo") or "") in _TIPOS_INSTRUMENTO:
             continue
+        # ATESTADO DE CAPACIDADE TÉCNICA É DO LICITANTE, E DE OUTRO CONTRATO. Ele prova a
+        # experiência PASSADA da empresa perante TERCEIROS — no SEI-270356/000192/2023 o
+        # documento é da **Universidade Federal do Ceará** — e por isso o quantitativo que traz
+        # não fala deste ajuste. Comparar "13 servidores" deste contrato com "6" de um atestado
+        # da UFC é confrontar dois contratos diferentes. Mesma doutrina do
+        # `coletor_edital._TIPOS_DO_LICITANTE`: o órgão EXIGE, o licitante DECLARA.
+        if _RE_ATESTADO_DO_LICITANTE.search(str(d.get("ref") or "")):
+            continue
         if not _RE_ATESTO.search(texto):
             continue
         for uni, qs in _qtds_distintas(texto).items():
@@ -733,7 +752,15 @@ def quantitativo_divergente(docs: list[dict]) -> dict:
                     "fundamento": ("Enunciado 09 da PGE/RJ: o desempenho contratual satisfatório é "
                                    "requisito implícito da prorrogação — atesto sobre outro "
                                    "quantitativo não o comprova"),
-                    "evidencia": d.get("ref", ""),
+                    # OS DOIS LADOS, NOMEADOS. A evidência trazia só o documento do atesto, e o
+                    # fiscal tinha de procurar sozinho qual instrumento declarou o outro número.
+                    # No SEI-270131/000548/2023 a comparação é entre o "Termo Aditivo 76563176"
+                    # (03 aeronaves) e peças que falam em 04 — e os autos ainda trazem o Despacho
+                    # Saneador levantando exatamente isso ("o contrato prevê a prestação de
+                    # serviço para 4 (quatro) aeronaves"), além do Parecer 462 discutindo a
+                    # "REDUÇÃO EM 25% (1 AERONAVE)". Citar os dois lados leva o fiscal ao
+                    # confronto em vez de à busca.
+                    "evidencia": "; ".join(x for x in (ref_obj, str(d.get("ref") or "")) if x),
                 }
     return {"achado": False, "objeto": {u: next(iter(q)) for u, q in obj.items()}, "atesto": None}
 

@@ -77,3 +77,38 @@ def test_atesto_em_documento_SEPARADO_continua_valendo():
              "texto": "ATESTO a boa execução dos serviços referentes a 3 (três) veículos."}]
     r = IA.quantitativo_divergente(docs)
     assert r["achado"] is True and r["objeto"] == 30 and r["atesto"] == 3
+
+
+# ── atestado de capacidade técnica é do LICITANTE, e de outro contrato ────────
+
+def test_atestado_de_capacidade_tecnica_nao_atesta_este_contrato():
+    """Ele prova a experiência PASSADA da empresa perante TERCEIROS. No SEI-270356/000192/2023 o
+    documento é da **Universidade Federal do Ceará** — comparar "13 servidores" deste ajuste com
+    "6" de um atestado da UFC é confrontar dois contratos diferentes.
+
+    Mesma doutrina do `coletor_edital._TIPOS_DO_LICITANTE`: o órgão EXIGE, o licitante DECLARA.
+    """
+    from compliance_agent.sei import instrumento_assinatura as IA
+
+    docs = [{"ref": "Minuta de Contrato 64156223", "tipo": "contrato",
+             "texto": "CLÁUSULA PRIMEIRA — DO OBJETO. Contratação de 13 (treze) servidores."},
+            # o título REAL, com underscore e sem acento (veio do nome do arquivo): exigir
+            # espaço entre as palavras deixou o veto passar batido na primeira tentativa
+            {"ref": "Atestado _de_Capacidade_Tecnica (64158627)", "tipo": "outro",
+             "texto": "UNIVERSIDADE FEDERAL DO CEARÁ. Declaramos, para os devidos fins, a "
+                      "prestação de serviços com 6 (seis) servidores."}]
+    assert IA.quantitativo_divergente(docs)["achado"] is False
+
+
+def test_os_dois_lados_da_comparacao_sao_nomeados():
+    """A evidência trazia só o documento do atesto, e o fiscal tinha de procurar sozinho qual
+    instrumento declarou o outro número."""
+    from compliance_agent.sei import instrumento_assinatura as IA
+
+    docs = [{"ref": "Termo Aditivo 76563176", "tipo": "aditivo",
+             "texto": "CLÁUSULA PRIMEIRA — DO OBJETO. hangaragem para 03 (três) aeronaves."},
+            {"ref": "Ofício - NA 99 (74449745)", "tipo": "oficio",
+             "texto": "ATESTO a boa execução para 04 (quatro) aeronaves operadas pelo GOA."}]
+    r = IA.quantitativo_divergente(docs)
+    assert r["achado"] is True
+    assert "Termo Aditivo 76563176" in r["evidencia"] and "NA 99" in r["evidencia"]
