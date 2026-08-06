@@ -595,7 +595,10 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
-                    _log("ABORTADO: login itkava não venceu o WAF agora (tente mais tarde).")
+                    _log(f"ABORTADO: login itkava não completou em {tentativas_login} tentativas. "
+                         "NÃO se atribui a WAF nem a bloqueio de acesso (o acesso é liberado): "
+                         "a causa já observada é sessão anterior deixada aberta por "
+                         "encerramento abrupto do slot anterior.")
                     return
                 _log("login OK — varrendo…")
                 for i, (proc, nob, tot) in enumerate(fila, 1):
@@ -694,7 +697,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
 
 
 async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = True,
-                   so_alta: bool = False, cnpj: str | None = None):
+                   so_alta: bool = False, cnpj: str | None = None, orcamento_s: int = 700):
     """MODO 'SEGUIR PAIS' (recupera a substância dos dockets vazios/execução): detecta no cache os
     PROCESSOS-PAI de CONTRATAÇÃO referenciados (regex SEI + janela de palavra-chave de contratação, com
     denylist de boilerplate do menu lateral) que AINDA NÃO estão no cache, e os LÊ na mesma sessão única
@@ -748,9 +751,27 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
-                    _log("[pais] ABORTADO: login itkava não venceu o WAF agora."); return
+                    _log("[pais] ABORTADO: login itkava não completou em "
+                         f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio "
+                         "de acesso (o acesso é liberado): a causa já observada é sessão "
+                         "anterior deixada aberta por encerramento abrupto do slot."); return
                 _log("[pais] login OK — lendo os pais…")
+                # ORÇAMENTO DE TEMPO — O SLOT MORRIA DE SIGKILL EM **TODAS** AS EXECUÇÕES. Medido em
+                # 2026-08-06: `sei_pais rc=137` nas dez últimas rodadas, desde 05/08 pelo menos, e
+                # nenhuma linha `[pais] FIM` no log. O `timeout -k 120 --foreground 900` manda
+                # SIGTERM aos 900 s, mas `_PARAR` só é consultado ENTRE processos — e uma leitura de
+                # pai tem mediana de 121 s, p90 de 137 s e máximo medido de **502 s**. O SIGKILL
+                # sempre vencia, o browser nunca fechava, e a sessão itkava ficava pendurada: os
+                # dois slots seguintes falhavam no login e o código culpava o WAF, que é justamente
+                # a explicação que esta casa proíbe. Aqui o laço para SOZINHO, com margem para uma
+                # leitura de p90 e para fechar o browser.
+                t_inicio = time.time()
                 for i, p in enumerate(fila, 1):
+                    gasto = time.time() - t_inicio
+                    if orcamento_s and gasto > orcamento_s:
+                        _log(f"[pais] ORÇAMENTO de {orcamento_s}s esgotado em {gasto:.0f}s — parei "
+                             f"em {i-1}/{len(fila)}, sessão fechada LIMPA. O cron retoma.")
+                        break
                     if _PARAR:
                         _log("[pais] SIGTERM/timeout — encerrando LIMPO entre processos."); break
                     if PAUSE.exists():
@@ -868,7 +889,10 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
-                    _log("[recap] ABORTADO: login itkava não venceu o WAF agora.")
+                    _log("[recap] ABORTADO: login itkava não completou em "
+                         f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio "
+                         "de acesso (o acesso é liberado): a causa já observada é sessão "
+                         "anterior deixada aberta por encerramento abrupto do slot.")
                     return
                 _log("[recap] login OK — relendo…")
                 for i, x in enumerate(fila, 1):
