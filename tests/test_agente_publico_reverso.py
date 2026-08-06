@@ -173,3 +173,36 @@ def test_par_explicado_nao_lidera_a_fila():
                        -x["valor_recebido"]))
     assert [x["agente"] for x in ordem] == ["B B B", "C C C", "A A A"], (
         "o par já explicado não pode encabeçar uma fila de trabalho")
+
+
+@pytest.mark.parametrize("orgao_agente,pagador,casa", [
+    # o fundo da corporação É a corporação — duas palavras distintivas em comum
+    ("SECRETARIA DE ESTADO DE POLICIA MILITAR", "Fundo Especial da Polícia Militar", True),
+    ("FUNDAÇÃO PARA INFÂNCIA E ADOLESCÊNCIA", "Fundação para a Infância e Adolescência", True),
+    ("FUNDAÇÃO DEPARTAMENTO DE ESTRADAS DE RODAGEM",
+     "Fund Dep Estradas de Rodagem do Estado do RJ", True),
+    # CONTROLE NEGATIVO: duas secretarias diferentes não podem casar pelo vocabulário comum
+    ("SECRETARIA DE ESTADO DE SAUDE", "Secretaria de Estado de Educação", False),
+    ("SECRETARIA DE ESTADO DE EDUCACAO", "Fundação Saúde do Estado do Rio de Janeiro", False),
+    ("SECRETARIA DE ESTADO DE POLICIA MILITAR", "Secretaria de Estado de Defesa Civil", False),
+])
+def test_conflito_so_acende_quando_o_pagador_e_o_proprio_orgao(orgao_agente, pagador, casa):
+    """O discriminador que separa o comum do grave — e o risco dele é acender para todo mundo.
+
+    Médico servidor sócio de PJ médica que vende ao Estado é frequente (25,9% dos pares sem
+    explicação são PJ médica). O que não tem explicação banal é o servidor ser sócio de empresa que
+    a SUA PRÓPRIA unidade paga: art. 9º, III da Lei 8.429/1992 e o impedimento do art. 20 da Lei
+    9.784/1999. Sem tirar `SECRETARIA`, `ESTADO` e `FUNDAÇÃO` do cotejo, duas unidades quaisquer
+    casariam por essas palavras e o eixo acusaria a folha inteira — por isso os controles negativos
+    valem tanto quanto os positivos. Medido: 7 pares em 538.
+    """
+    from tools.agente_publico_reverso import conflito_de_orgao
+
+    assert bool(conflito_de_orgao(orgao_agente, {pagador})) is casa
+
+
+def test_conflito_nao_inventa_pagador_quando_nao_ha():
+    from tools.agente_publico_reverso import conflito_de_orgao
+
+    assert conflito_de_orgao("SECRETARIA DE ESTADO DE SAUDE", set()) == ""
+    assert conflito_de_orgao("", {"Secretaria de Estado de Saúde"}) == ""

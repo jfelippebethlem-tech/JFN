@@ -3682,6 +3682,7 @@ void main(){
     h += `<div class="grid">` + it.map((x) => {
       const v = Object.entries(x.valor_por_fonte || {}).map(([k, n]) => `${esc(k)} ${fmtRc(n)}`).join(" · ");
       const ex = x.explicacao_institucional ? `<div class="dim" style="font-size:12px;margin-top:3px">desenho do programa: <b>${esc(x.explicacao_institucional)}</b></div>` : "";
+      const cf = x.orgao_pagador_e_o_proprio ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ pago pelo PRÓPRIO ÓRGÃO do agente: ${esc(x.orgao_pagador_e_o_proprio)}</div>` : "";
       return card(
         `<div style="display:flex;justify-content:space-between;gap:10px">
          <div style="min-width:0">
@@ -3689,12 +3690,12 @@ void main(){
            <div class="muted" style="font-size:12.5px">${esc(x.cargo || "")} · ${esc(x.orgao || "")}</div>
            <div style="font-size:13px;margin-top:4px">${esc(x.entidade)}${x.terceiro_setor ? ' <span class="dim">[3º setor]</span>' : ""}</div>
            <div class="dim" style="font-size:12px;margin-top:3px">${v || "sem desembolso — só contrato"}</div>
-           ${ex}
+           ${cf}${ex}
          </div>
          <div class="right"><div class="dim" style="font-size:12px">${(x.fontes || []).map(esc).join("<br>")}</div>
            <div class="dim" style="font-size:12px;margin-top:4px">${fmtN(x.servidores_no_qsa)} servidor(es) no QSA</div></div>
        </div>`,
-        x.comissionado && !x.explicacao_institucional ? "hl" : ""
+        !x.explicacao_institucional && (x.orgao_pagador_e_o_proprio || x.comissionado) ? "hl" : ""
       );
     }).join("") + `</div>`;
     if (d.total > it.length) h += `<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos — os de maior valor.</div>`;

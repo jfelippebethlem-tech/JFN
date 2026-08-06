@@ -254,6 +254,62 @@ def dinheiro_publico(con: sqlite3.Connection) -> tuple[dict[str, dict], dict[str
     return valor, de_onde
 
 
+# QUEM PAGOU É O PRÓPRIO ÓRGÃO DO AGENTE? É o discriminador que separa o comum do grave. Médico
+# servidor sócio de PJ médica que vende ao Estado é frequente e tem explicação banal — 25,9% dos
+# pares sem explicação são PJ médica. O que não tem explicação banal é o servidor ser sócio de
+# empresa que a SUA PRÓPRIA unidade paga: art. 9º, III da Lei 8.429/1992 e o dever de impedimento
+# do art. 20 da Lei 9.784/1999.
+#
+# Medido em 2026-08-06 sobre os 413 pares sem explicação: **5**. Poucos, e é isso que os torna
+# úteis — dois engenheiros da Fundação DER sócios de construtoras que o DER paga, um Major PM sócio
+# de casa de saúde paga pelo Fundo Especial da PM, um 3º Sargento PM sócio de oficina paga pela
+# SEPM, e uma especialista em educação sócia de entidade paga pela Fundação onde ela serve.
+_PARADAS_ORGAO = frozenset({
+    "DE", "DO", "DA", "DOS", "DAS", "E", "ESTADO", "SECRETARIA", "MUNICIPAL", "RIO", "JANEIRO",
+    "GERAL", "COORDENADORIA", "SUBSECRETARIA", "FUNDACAO", "EMPRESA",
+})
+
+
+def _nucleo_orgao(nome: str) -> frozenset:
+    """As palavras que DISTINGUEM o órgão, sem o vocabulário administrativo que todos compartilham.
+
+    Sem tirar `SECRETARIA`, `ESTADO` e `FUNDAÇÃO`, dois órgãos quaisquer casariam por essas
+    palavras e o eixo acusaria a folha inteira. Exigir DUAS palavras distintivas em comum é o que
+    faz `SECRETARIA DE ESTADO DE POLICIA MILITAR` casar com `Fundo Especial da Polícia Militar` —
+    que é, de fato, o fundo da própria corporação — sem casar com qualquer outra secretaria.
+    """
+    return frozenset(p for p in norm(nome).split()
+                     if p not in _PARADAS_ORGAO and len(p) > 3)
+
+
+def pagadores_por_raiz(con: sqlite3.Connection) -> dict[str, set[str]]:
+    """Nome da unidade que pagou cada raiz, nas duas fontes que NOMEIAM o pagador."""
+    out: dict[str, set[str]] = {}
+    ug_nome = dict(con.execute("SELECT DISTINCT ug_codigo, ug_nome FROM ordens_bancarias "
+                               "WHERE ug_nome IS NOT NULL"))
+    for raiz, ug in con.execute(
+            "SELECT substr(credor,1,8), ug_emitente FROM ob_orcamentaria_siafe "
+            "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1,2"):
+        out.setdefault(raiz, set()).add(ug_nome.get(str(ug or ""), str(ug or "")))
+    for doc, org in con.execute(
+            "SELECT credor_documento, orgao FROM pcrj_despesa WHERE pago > 0 GROUP BY 1,2"):
+        d = re.sub(r"\D", "", str(doc or ""))
+        if len(d) == 14:
+            out.setdefault(d[:8], set()).add(str(org or ""))
+    return out
+
+
+def conflito_de_orgao(orgao_do_agente: str, pagadores: set[str]) -> str:
+    """Nome da unidade pagadora que É o órgão do agente, ou vazio."""
+    ka = _nucleo_orgao(orgao_do_agente)
+    if not ka:
+        return ""
+    for p in pagadores or ():
+        if len(ka & _nucleo_orgao(p)) >= 2:
+            return p
+    return ""
+
+
 def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
     """Pares agente × entidade que recebeu dinheiro público, do maior valor para o menor.
 
@@ -297,6 +353,7 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
                     razao[r[0]] = (str(r[1] or ""), str(r[2] or ""))
         finally:
             est.close()
+    pagadores = pagadores_por_raiz(con)
     ndocs = dict(con.execute("SELECT nome_norm, COUNT(DISTINCT doc_socio) "
                              "FROM agente_publico_societario GROUP BY 1"))
     linhas = list(con.execute(
@@ -324,6 +381,7 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
             "fontes": sorted(set(fontes.get(raiz, []))),
             "explicacao_institucional": explicacao_institucional(rz, nat),
             "servidores_no_qsa": quantos.get(raiz, 1),
+            "orgao_pagador_e_o_proprio": conflito_de_orgao(orgao, pagadores.get(raiz, set())),
             "diligencia": ("confirmar identidade por CPF na ficha funcional e no QSA integral da "
                            "JUCERJA; verificar se a sociedade é anterior ou posterior à posse, e "
                            "se o órgão do agente é o contratante"),
@@ -334,7 +392,12 @@ def fila(db: str = "", *, so_comissionados: bool = False) -> list[dict]:
     # (empresa pública, dirigente nomeado) no topo, à frente de todo par que de fato precisa de
     # diligência — e quem abre a tela lê o primeiro item como o mais grave. Par COM explicação
     # institucional vai para o fim; comissionado vem antes; empate, o maior valor.
+    # A ORDEM É A DA GRAVIDADE, e o primeiro critério é o único quase-objetivo: a unidade que pagou
+    # é a unidade onde o agente serve. Depois vem o QSA tomado por servidores (o QSA da MEDVIVA é
+    # inteiro de servidores: 10 de 10), e só então o cargo comissionado e o valor.
     return sorted(out, key=lambda x: (bool(x["explicacao_institucional"]),
+                                      not x["orgao_pagador_e_o_proprio"],
+                                      -x["servidores_no_qsa"],
                                       not x["comissionado"],
                                       -x["valor_recebido"]))
 
