@@ -27,7 +27,8 @@ import sys
 
 # As abas que hoje têm métrica clicável. Lista explícita de propósito: varrer todas as abas do
 # painel a cada rodada custa minutos numa VM de 2 vCPU, e o que interessa é o que foi convertido.
-ABAS = ("g_vinculos", "g_riscos", "e_sanc", "g_hub", "e_poder", "e_conluio")
+ABAS = ("g_vinculos", "g_riscos", "e_sanc", "g_hub", "e_poder", "e_conluio",
+        "p_comis", "e_adit", "e_escal", "g_prioridade")
 
 # Ação que precisa ser disparada antes de as métricas existirem (aba que só monta sob clique).
 PREPARO = {"g_vinculos": '[data-vinc="agentePublico"]'}

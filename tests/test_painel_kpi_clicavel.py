@@ -37,7 +37,7 @@ ABAS = RAIZ / "static" / "js" / "src" / "abas"
 # falso: `kpi(a.length ? fmtN(a[0].hhi) : "—")` exibe um MÁXIMO). 19 → 11 depois de Vínculos
 # (grafo, ciclos, contato), conluio e poder.
 # SÓ PODE DESCER. Toda conversão passa pelo `tools/painel_drill_check`, que CLICA e confere.
-TETO_KPI_CONVERTIVEL_SEM_CAMINHO = 11
+TETO_KPI_CONVERTIVEL_SEM_CAMINHO = 0
 
 _RX_KPI = re.compile(r"\bkpi\(")
 
@@ -156,3 +156,24 @@ def test_fatia_e_aplicada_na_fila_inteira_no_servidor():
     js = (ABAS / "vinculos.js").read_text(encoding="utf-8")
     assert "filtro=" in js, "o painel voltou a não pedir a fatia ao servidor"
     assert "total_fatia" in js, "a nota de rodapé precisa citar o total DA FATIA, não o da página"
+
+
+def test_registro_de_drill_nao_pode_estar_dentro_de_template_literal():
+    """NOVE das dez conversões nasceram mortas — e nenhum teste unitário veria.
+
+    O bloco de KPIs mora dentro de uma template string de várias linhas. Inserir
+    `registrarDrill(...)` na linha anterior ao KPI parecia seguro e fez a chamada virar **texto na
+    página**: o KPI ganhou `data-drill`, o clique não fazia nada, e o JavaScript continuava válido.
+    Foi o `tools/painel_drill_check` — clicando de verdade — que acusou: KPI 9, gaveta None.
+
+    Aqui a regra é literal e um contador de crases decide, sem julgamento.
+    """
+    for f in sorted(ABAS.glob("*.js")):
+        texto = f.read_text(encoding="utf-8")
+        for ln in texto.split("\n"):
+            if "registrarDrill(" not in ln:
+                continue
+            pos = texto.index(ln)
+            assert texto.count("`", 0, pos) % 2 == 0, (
+                f"{f.name}: `registrarDrill` dentro de template literal — vira texto na página e "
+                f"o clique não faz nada:\n  {ln.strip()[:100]}")

@@ -22,6 +22,30 @@ import { fmtN } from './formato.js';
 
 const _REG = new Map();
 
+/* RENDERIZADOR PADRÃO — `JSON.stringify` cortado em 300 caracteres era ilegível e fazia a gaveta
+   parecer defeito. A maioria das métricas do painel conta objetos com o mesmo desenho: um nome, um
+   documento e dois ou três números. Isto os mostra sem que cada conversão precise escrever HTML —
+   e quem quiser um cartão melhor passa `render`. */
+const _NOMES = ['razao_social', 'nome', 'nome_socio', 'orgao_nome', 'entidade', 'ancora',
+                'descricao', 'objeto', 'chave', 'sobrenome', 'item'];
+const _DOCS = ['cnpj', 'cnpj_fmt', 'cnpj_basico', 'documento', 'cpf', 'processo', 'numero'];
+
+export function linhaGenerica(x) {
+  if (x == null || typeof x !== 'object') return card(esc(String(x)));
+  const tit = _NOMES.map(k => x[k]).find(v => v != null && v !== '') ?? '—';
+  const doc = _DOCS.map(k => x[k]).find(v => v != null && v !== '');
+  const nums = Object.entries(x)
+    .filter(([k, v]) => typeof v === 'number' && !_DOCS.includes(k))
+    .slice(0, 3)
+    .map(([k, v]) => `${esc(k)} <b>${fmtN(v)}</b>`)
+    .join(' · ');
+  return card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><div style="font-weight:700">${esc(String(tit))}</div>
+      ${doc ? `<div class="dim">${esc(String(doc))}</div>` : ''}</div>
+      ${nums ? `<div class="right dim" style="font-size:12.5px">${nums}</div>` : ''}</div>`);
+}
+
+
 /** Registra o conjunto por trás de uma métrica. `render(item)` devolve o HTML de UMA linha. */
 export function registrarDrill(nome, { titulo, itens, render, nota }) {
   if (!nome) return;
@@ -44,7 +68,7 @@ export function abrirDrill(nome) {
   h += sec(d.titulo, linhas.length);
   h += linhas.length
     ? `<div class="grid">${linhas.map(x => {
-        try { return d.render ? d.render(x) : card(esc(JSON.stringify(x)).slice(0, 300)); }
+        try { return d.render ? d.render(x) : linhaGenerica(x); }
         catch (e) { return card(`<div class="warn">linha ilegível: ${esc(String(e))}</div>`); }
       }).join('')}</div>`
     : card('<div class="dim">Nenhuma linha nesta métrica.</div>');

@@ -20,6 +20,7 @@
  * Sem efeito de topo.
  */
 import {$, esc, svgIco, card, kpi, sec, cover, leitura, corta, clk} from '../nucleo/dom.js';
+import {registrarDrill} from '../nucleo/drill.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano} from '../nucleo/http.js';
 import {buscaPag, listaPaginada} from '../nucleo/lista.js';
@@ -177,8 +178,9 @@ export async function _compDossie(){
   if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+  registrarDrill('compDoisSinais',{titulo:'Casos com dois ou mais sinais',itens:a.filter(x=>x.sinais.length>=2),nota:'Sinal isolado explica-se; dois pedem verificação.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Casos caro + suspeito','var(--rose)','🚨')}${kpi(fmtN(d.n_sancionada),'Fornecedor SANCIONADO','var(--rose)','⚖️')}
-      ${kpi(a.length?a[0].vs_mediana+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(a.filter(x=>x.sinais.length>=2).length,'Com ≥2 sinais',null,'🎯')}</div>`;
+      ${kpi(a.length?a[0].vs_mediana+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(a.filter(x=>x.sinais.length>=2).length,'Com ≥2 sinais',null,'🎯',{drill:'compDoisSinais'})}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
   h+=`<div id="dossie-list" class="grid">`+a.map(x=>{
     const ABR={total:'toda a Adm.',ente:'ente federativo',orgao:'órgão sancionador'};

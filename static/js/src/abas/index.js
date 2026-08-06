@@ -942,7 +942,8 @@ export async function renderEscalada(esf='estado'){
     h+=`<div class="warn" style="margin-top:12px">Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈')}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯')}
+  registrarDrill('aditAcimaMercado',{titulo:'Aditivos cujo preço final também supera o mercado',itens:a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2),nota:'Acréscimo dentro do limite legal ainda pode chegar a preço fora do mercado.'});
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈')}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯',{drill:'aditAcimaMercado'})}
       ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Maior escalada','var(--rose)')}${kpi(a.length?fmtN(a[0].span_dias)+'d':'—','Janela do pior caso',null,'📅')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item ou fornecedor…" oninput="filtrar(this,'#escal-list .card')"></div>`;
   h+=`<div id="escal-list" class="grid">`+a.map(x=>{
@@ -1050,7 +1051,14 @@ export async function renderComissionadosPref(){
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const it=d.comissionados||[];  // agora 1 item por PESSOA, com postos[] e candidaturas[]
   const nCidades=new Set(it.flatMap(x=>(x.candidaturas||[]).map(c=>c.cidade)).filter(Boolean)).size;
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️')}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️')}</div>`;
+  /* Conferido na rota viva antes de ligar: `n_pessoas` do servidor e o tamanho da lista são os
+     mesmos 341 — o teto de 1000 não corta nada hoje. Se um dia cortar, o `painel_drill_check`
+     acusa na rodada seguinte, que é o ponto de ele existir. `Cidades de candidatura` conta um
+     Set de strings, não linhas de uma lista, e por isso fica sem gaveta. */
+  registrarDrill('comissCandidatos',{titulo:'Comissionados da Prefeitura que foram candidatos',itens:it,
+    render:x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome||'—')}</div><div class="dim">${fmtN((x.postos||[]).length)} posto(s) · ${fmtN((x.candidaturas||[]).length)} candidatura(s)</div><div class="dim">${(x.candidaturas||[]).slice(0,3).map(c=>esc(`${c.cargo||''} ${c.ano||''} ${c.cidade||''}`)).join(' · ')}</div></div></div>`),
+    nota:'Cruzamento por NOME com o TSE — indício; cargo de confiança não é, por si, irregularidade.'});
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️',{drill:'comissCandidatos'})}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️')}</div>`;
   h+=buscaPag('cc-list','filtrar por nome, cargo, órgão, cidade — busca em TODAS as pessoas…');
   if(d.truncado)h+=`<div class="note" style="margin-top:8px">Base tem mais pessoas do que o teto do servidor (1000) — caso raro; avise se precisar de mais.</div>`;
   const _montarCC=x=>{
@@ -1402,8 +1410,9 @@ export async function renderCapital(){
   if(!d.ok)return sec('Capital irrisório')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Capital irrisório — sem lastro para o que faturou','Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.','🫧')+acoesAba('capital_incompativel');
+  registrarDrill('capitalIrrisorio',{titulo:'Empresas com capital social de até R$ 1.000',itens:a.filter(x=>x.capital<=1000),nota:'Capital irrisório frente ao recebido é indício de fachada, não prova.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas','var(--rose)','🫧')}${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior razão (recebido/capital)','var(--rose)')}
-      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume recebido',null,'💰')}${kpi(a.filter(x=>x.capital<=1000).length,'Capital ≤ R$1k','var(--amber)','⚠️')}</div>`;
+      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume recebido',null,'💰')}${kpi(a.filter(x=>x.capital<=1000).length,'Capital ≤ R$1k','var(--amber)','⚠️',{drill:'capitalIrrisorio'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#cap-list .card')"></div>`;
   h+=`<div id="cap-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
@@ -1419,8 +1428,9 @@ export async function renderPrioridade(){
   if(!d.ok)return sec('Prioridade por valor em risco')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Prioridade — onde a auditoria rende mais','Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.','⚡')+acoesAba('prioridade_valor');
+  registrarDrill('sinalMedioMais',{titulo:'Com sinal médio ou alto (score ≥ 25)',itens:a.filter(x=>x.score>=25),nota:''});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Na interseção','var(--teal)','⚡')}${kpi(fmtRc(d.economia_em_risco),'Economia em risco',null,'💰')}
-      ${kpi(a.filter(x=>x.score>=25).length,'Sinal médio+ (🟡🔴)','var(--amber)')}${kpi(a.length?fmtRc(a[0].economia):'—','Maior isolado','var(--rose)')}</div>`;
+      ${kpi(a.filter(x=>x.score>=25).length,'Sinal médio+ (🟡🔴)','var(--amber)',null,{drill:'sinalMedioMais'})}${kpi(a.length?fmtRc(a[0].economia):'—','Maior isolado','var(--rose)')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#pri-list .card')"></div>`;
   h+=`<div id="pri-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_compras)} compra(s) acima da mediana</div>
@@ -1436,8 +1446,9 @@ export async function renderFornecedorDependente(){
   if(!d.ok)return sec('Cativos')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Fornecedor cativo — "empresa do órgão"','Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.','🔗')+acoesAba('fornecedor_dependente');
+  registrarDrill('dep100Orgao',{titulo:'Fornecedores que faturam ~100% com um único órgão',itens:a.filter(x=>x.share>=0.99),nota:'Dependência total de um comprador é indício de captura — cabe verificar o objeto.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores cativos','var(--amber)','🔗')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume dependente',null,'💰')}
-      ${kpi(a.filter(x=>x.share>=0.99).length,'100% de 1 órgão','var(--rose)','🎯')}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior dependência')}</div>`;
+      ${kpi(a.filter(x=>x.share>=0.99).length,'100% de 1 órgão','var(--rose)','🎯',{drill:'dep100Orgao'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior dependência')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
   h+=`<div id="dep-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
@@ -1454,8 +1465,9 @@ export async function renderCorridaDezembro(){
   if(!d.ok)return sec('Dezembro')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Corrida do empenho de dezembro','Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.','📅')+acoesAba('corrida_dezembro');
+  registrarDrill('dez100',{titulo:'Fornecedores com ~100% do faturamento em dezembro',itens:a.filter(x=>x.share>=0.99),nota:'Concentração no fim do exercício pede exame do empenho e da entrega.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores concentrados','var(--amber)','📅')}${kpi(fmtRc(a.reduce((s,x)=>s+x.dezembro,0)),'Pago em dezembro',null,'💰')}
-      ${kpi(a.filter(x=>x.share>=0.99).length,'100% em dezembro','var(--rose)','🎯')}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior concentração')}</div>`;
+      ${kpi(a.filter(x=>x.share>=0.99).length,'100% em dezembro','var(--rose)','🎯',{drill:'dez100'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior concentração')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#dez-list .card')"></div>`;
   h+=`<div id="dez-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
@@ -1477,8 +1489,9 @@ export async function renderRadar(){
   // graves brilham graves" (se tudo grita, nada grita). A cor segue o número contra
   // o limiar que a própria escala declara; abaixo dele, neutro e sem ícone.
   const _nVerm=Number(d.n_vermelho||0), _maior=a.length?Number(a[0].score):null;
+  registrarDrill('tresSinais',{titulo:'Com três ou mais sinais acumulados',itens:a.filter(x=>x.n_sinais>=3),nota:''});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null)}${kpi(fmtN(_nVerm),'Score ≥50 (crítico)',_nVerm>0?'var(--rose)':null)}
-      ${kpi(_maior!=null?_maior:'—','Maior score',_maior!=null&&_maior>=50?'var(--rose)':null)}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null)}</div>`;
+      ${kpi(_maior!=null?_maior:'—','Maior score',_maior!=null&&_maior>=50?'var(--rose)':null)}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,null,{drill:'tresSinais'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-tbl tbody tr')"></div>`;
   h+=`<div class="card" style="padding:4px 15px;overflow-x:auto"><table id="radar-tbl"><thead><tr><th>Fornecedor</th><th style="text-align:left">Sinais que dispararam</th><th class="right">Nº</th><th class="right">Score</th></tr></thead><tbody>`+
@@ -1595,8 +1608,9 @@ export async function renderSocioOculto(){
   if(!d.ok)return sec('Sócio oculto')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Sócio oculto — um dono, vários fornecedores','Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.','🫥')+acoesAba('socio_oculto');
+  registrarDrill('holdings',{titulo:'Casos em que o sócio é PJ (holding)',itens:a.filter(x=>x.holding),nota:'Sócio PJ é o degrau que permite subir a cadeia até a pessoa física.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Sócios com ≥3 empresas','var(--amber)','🕸️')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume das empresas',null,'💰')}
-      ${kpi(a.length?a[0].n_empresas:'—','Mais empresas (1 sócio)','var(--rose)')}${kpi(a.filter(x=>x.holding).length,'Holdings/PJ',null,'🏢')}</div>`;
+      ${kpi(a.length?a[0].n_empresas:'—','Mais empresas (1 sócio)','var(--rose)')}${kpi(a.filter(x=>x.holding).length,'Holdings/PJ',null,'🏢',{drill:'holdings'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por sócio ou empresa…" oninput="filtrar(this,'#ocult-list .card')"></div>`;
   h+=`<div id="ocult-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.holding?'<span class="tag purple">holding/PJ</span>':''}</div>
@@ -1613,8 +1627,9 @@ export async function renderNepotismo(){
   if(!d.ok)return sec('Nepotismo')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Nepotismo — parentes em cargo de confiança','Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.','👪')+acoesAba('nepotismo',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
+  registrarDrill('sobrenome100',{titulo:'Grupos em que o sobrenome cobre 100% do quadro',itens:a.filter(x=>x.concentracao>=1),nota:'Sobrenome compartilhado NÃO é sinal sozinho: 16,9% das empresas com 2+ sócios PF o têm.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Clusters familiares','var(--rose)','👪')}${kpi(fmtN(d.n_com_autoridade),'Com autoridade nomeante','var(--rose)','⚖️')}
-      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯')}${kpi(a.length?a[0].n_membros:'—','Maior cluster')}</div>`;
+      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯',{drill:'sobrenome100'})}${kpi(a.length?a[0].n_membros:'—','Maior cluster')}</div>`;
   h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Cobertura cresce com novas folhas.</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
   h+=`<div id="nep-list" class="grid">`+a.map(x=>card(
@@ -1673,8 +1688,9 @@ export async function renderPortaGiratoria(){
   if(!d.ok)return sec('Porta giratória')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Porta giratória — ex-servidor virou fornecedor','Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.','🚪')+acoesAba('porta_giratoria');
+  registrarDrill('confiancaAlta',{titulo:'Cruzamentos com confiança ALTA (casados por CPF)',itens:a.filter(x=>x.confianca==='ALTA'),nota:'Confiança ALTA = documento, não nome. É a única faixa que dispensa checar homônimo.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Ex-servidores fornecedores','var(--rose)','🚪')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_pago||0),0)),'Volume recebido',null,'💰')}
-      ${kpi(fmtN(a.filter(x=>x.confianca==='ALTA').length),'Confiança ALTA (CPF)','var(--amber)','🔎')}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮')}</div>`;
+      ${kpi(fmtN(a.filter(x=>x.confianca==='ALTA').length),'Confiança ALTA (CPF)','var(--amber)','🔎',{drill:'confiancaAlta'})}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, empresa ou órgão…" oninput="filtrar(this,'#porta-list .card')"></div>`;
   h+=`<div id="porta-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)}</div>
