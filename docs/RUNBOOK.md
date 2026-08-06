@@ -72,9 +72,21 @@ O que cada um garante, sem ninguém empurrar:
 
 | Sweep | Faz | Por que importa |
 |---|---|---|
-| `sweep_sei.sh` | captura processos do SEI | é o gargalo: a fila está em anos de atraso |
+| `sweep_sei.sh` | captura processos do SEI **e drena a fila de recaptura** | é o gargalo: a fila está em anos de atraso |
 | `sweep_dados.sh` | repara documento vazio pelo PDF em cache, recaptura o cortado em 20k, recalcula o ranking de TAC | tudo isso já ficou pronto e sem caller — hoje tem catraca (`test_ferramenta_tem_quem_a_rode`) |
 | `sweep_360.sh` | avalia em **rodízio** (nunca avaliado primeiro, depois o mais desatualizado) e regrava a fila do fiscal | é o que faz o acervo CONVERGIR sozinho depois de uma correção |
+
+> **A cadência real do `sweep_sei.sh` é de ~3 HORAS por ciclo, não de 30 minutos.** O cron dispara a
+> cada 30 min, mas encontra `já rodando — pula` quase sempre. Medido em 2026-08-05 pelas marcas
+> `fim` do log: 03:36 · 07:01 · 10:02 · 12:41 · 15:32 · 18:30. A causa é o laço de foco — 16 UGs a
+> ~11 min cada, e ele é produtivo (traz 2 a 6 processos novos por UG, ~2 min por processo), não é
+> desperdício. Consequência prática: a **recaptura integral**, que roda no fim do ciclo com
+> `--max 2`, drena ~16 processos/dia sobre uma fila de 537 — **semanas, não horas**. Quem esperar
+> outra coisa vai concluir que está quebrado quando está apenas lento.
+>
+> O sinal de que a recaptura funcionou não é o `rc=0` no log — sairia igual se nada tivesse
+> acontecido. É `recaptura_feitos` deixar de estar vazio em
+> `data/sei_cache/sei_sweep_progress.json`.
 
 ---
 
