@@ -469,3 +469,42 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("elos_ocultos falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/cocontato_certame")
+def api_cocontato_certame(limite: int = 60, so_sem_explicacao: int = 0):
+    """Dois participantes do MESMO certame atendendo pelo mesmo telefone ou e-mail."""
+    try:
+        import json
+
+        from tools.cocontato_certame import SAIDA
+
+        if not SAIDA.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "levantamento ainda não materializado — rode "
+                "`python -m tools.cocontato_certame` (o sweep diário o regenera)")},
+                status_code=503)
+        corpo = json.loads(SAIDA.read_text(encoding="utf-8"))
+        pares = corpo.get("pares") or []
+        if so_sem_explicacao:
+            pares = [p for p in pares
+                     if not p.get("contato_de_servico") and not p.get("mesmo_grupo_aparente")]
+        return JSONResponse({
+            "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "certames_com_disputa": corpo.get("certames_com_disputa"),
+            "cnpjs_participantes": corpo.get("cnpjs_participantes"),
+            "total": len(corpo.get("pares") or []),
+            "sem_explicacao": corpo.get("sem_explicacao"),
+            "contato_de_servico": corpo.get("contato_de_servico"),
+            "mesmo_grupo_aparente": corpo.get("mesmo_grupo_aparente"),
+            "total_fatia": len(pares),
+            "itens": pares[:max(1, min(int(limite), 300))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. Telefone e e-mail vêm do cadastro da Receita e podem estar "
+                "desatualizados ou ser de escritório contábil. O que se afirma é que dois "
+                "participantes do MESMO certame atendem pelo mesmo contato — cabe verificar as "
+                "propostas, os sócios e se houve disputa real (art. 337-F do Código Penal)."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("cocontato_certame falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

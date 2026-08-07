@@ -80,6 +80,10 @@ if [ -f data/.pause_osint_processos ]; then say "osint x processos pausado — p
 # ou e-mail. Roda DEPOIS do grafo_persistir, que e quem alimenta as arestas de contato.
 # Pausa: data/.pause_elos_ocultos.
 if [ -f data/.pause_elos_ocultos ]; then say "elos ocultos pausado — pulei"; else $PRIO timeout 600 $PY -m tools.elos_ocultos >> data/elos_ocultos.log 2>&1; say "elos ocultos rc=$?"; fi
+# CO-CONTATO EM CERTAME — dois participantes do MESMO certame atendendo pelo mesmo telefone ou
+# e-mail. 40 s por passada sobre 4.517 certames e 5.624 CNPJs; a rota so LE o JSON.
+# Pausa: data/.pause_cocontato.
+if [ -f data/.pause_cocontato ]; then say "cocontato pausado — pulei"; else $PRIO timeout 600 $PY -m tools.cocontato_certame >> data/cocontato_certame.log 2>&1; say "cocontato rc=$?"; fi
 # A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
 # `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
 # 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os

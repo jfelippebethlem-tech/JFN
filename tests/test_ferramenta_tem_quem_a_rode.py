@@ -66,6 +66,9 @@ PRECISAM_DE_ROTINA = {
     "tools/colher_vm2.sh":
         "traz para a VM-1 o que a VM-2 capturou; sem rotina, uma maquina gasta 34 min de CPU por "
         "rodada e o resultado fica parado no disco dela",
+    "tools.cocontato_certame":
+        "levanta pares do MESMO certame que dividem contato; depende do PNCP e do cadastro da "
+        "Receita, que mudam, e sem rotina o achado congela na data em que foi rodado",
     "tools.elos_ocultos":
         "levanta empresas que dividem contato e ambas recebem do Estado; depende do grafo, que "
         "cresce a cada fatia de credores, e sem rotina o levantamento congela",

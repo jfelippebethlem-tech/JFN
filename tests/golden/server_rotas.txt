@@ -85,6 +85,7 @@ GET /api/ob/retiradas -> api_ob_retiradas
 GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/osint/agente_publico -> api_agente_publico
 GET /api/osint/beneficiario_final -> api_beneficiario_final
+GET /api/osint/cocontato_certame -> api_cocontato_certame
 GET /api/osint/conluio_municipal -> api_conluio_municipal
 GET /api/osint/contato_compartilhado -> api_contato_compartilhado
 GET /api/osint/elos_ocultos -> api_elos_ocultos

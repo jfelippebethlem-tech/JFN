@@ -60,6 +60,7 @@ export async function renderVinculos(){
       <button type="button" class="btn ghost" data-vinc="agentePublico">Agente público no QSA (fila)</button>
       <button type="button" class="btn ghost" data-vinc="osintProcessos">OSINT × processos lidos</button>
       <button type="button" class="btn ghost" data-vinc="elosOcultos">Elos ocultos (contato × dinheiro)</button>
+      <button type="button" class="btn ghost" data-vinc="cocontato">Mesmo certame, mesmo contato</button>
       <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
       <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
@@ -160,6 +161,41 @@ export async function vincContato(){
   }
   h+=`<div class="note">Descartados: `+Object.entries(desc).map(([k,v])=>`${esc(k)} ${fmtN(v)}`).join(' · ')+`</div>`;
   h+=`<div class="note">${esc(cob.nota||'')}</div>`;
+  o.innerHTML=h;
+}
+
+export async function vincCocontato(){
+  // O TESTE CLÁSSICO DE BID RIGGING, e aqui não há hipótese sobre "empresas ligadas": é o MESMO
+  // certame, com os dois nomes na mesma ata. Quem disputa não deveria atender pelo mesmo contato.
+  const o=$('vinc-out');
+  o.innerHTML=card('<div class="dim">cruzando participantes de 4.517 certames com 6,17 milhões de estabelecimentos…</div>');
+  const d=await J('/api/osint/cocontato_certame?limite=120');
+  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const it=d.itens||[];
+  let h=sec('Mesmo certame, mesmo contato');
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares no mesmo certame','var(--amber)','⚖️',{drill:'ccTodos'})}
+      ${kpi(fmtN(d.sem_explicacao),'SEM explicação',(d.sem_explicacao||0)?'var(--red)':null,'🚨',{drill:'ccSemExpl'})}
+      ${kpi(fmtN(d.contato_de_servico),'Contato de serviço','var(--dim)','📗',{drill:'ccServico'})}
+      ${kpi(fmtN(d.certames_com_disputa),'Certames com 2+ fornecedores')}</div>`;
+  h+=leitura(esc(d.ressalva||''));
+  const _lin=x=>card(`<div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome_a)}</div>
+      <div style="font-weight:700">${esc(x.nome_b)}</div>
+      <div style="margin-top:5px;font-size:12.5px">${esc(x.via)} · <b>${esc(x.tipo)}</b></div>
+      <div class="dim" style="font-size:12px;margin-top:3px">certame ${esc(x.certame)} · ${esc(x.orgao||'')}</div>
+      <div class="dim" style="font-size:12px">${esc((x.objeto||'').slice(0,140))}</div>
+      ${x.contato_de_servico?'<div class="dim" style="font-size:12px;margin-top:3px">contato de serviço (contabilidade/central) — não liga as empresas entre si</div>':''}
+      ${x.mesmo_grupo_aparente?`<div class="dim" style="font-size:12px;margin-top:3px">mesmo grupo aparente (<b>${esc(x.marca)}</b>) — grupo é lícito; disputar o mesmo certame fingindo concorrência não é</div>`:''}
+    </div>`, (!x.contato_de_servico&&!x.mesmo_grupo_aparente)?'hl':'');
+  registrarDrill('ccTodos',{titulo:'Pares do mesmo certame que dividem contato',itens:it,render:_lin});
+  registrarDrill('ccSemExpl',{titulo:'Sem explicação — disputa com contato compartilhado',
+    itens:it.filter(x=>!x.contato_de_servico&&!x.mesmo_grupo_aparente),render:_lin,
+    nota:'Art. 337-F do Código Penal e Lei 12.529/2011 — cabe verificar as propostas e os sócios.'});
+  registrarDrill('ccServico',{titulo:'Explicados por contato de serviço',
+    itens:it.filter(x=>x.contato_de_servico),render:_lin,
+    nota:'Escritório de contabilidade ou central de atendimento não liga as empresas entre si.'});
+  h+=`<div class="grid">`+it.map(_lin).join('')+`</div>`;
+  h+=`<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos · ${fmtN(d.cnpjs_participantes)} CNPJs cruzados · gerado em ${esc(d.gerado_em||'—')}.</div>`;
   o.innerHTML=h;
 }
 
@@ -541,7 +577,7 @@ export const DRILL_ACOES=Object.fromEntries(
 export const VINC_ACOES={
   consultar:vincConsultar, parentesco:vincParentesco, contato:vincContato,
   agentePublico:vincAgentePublico, osintProcessos:vincOsintProcessos,
-  elosOcultos:vincElosOcultos,
+  elosOcultos:vincElosOcultos, cocontato:vincCocontato,
   trocas:vincTrocas, grafo:vincGrafo,
   ftm:vincFtm, conluioMunicipal:vincConluioMunicipal, resolucao:vincResolucao,
   interposicao:vincInterposicao, patrimonio:vincPatrimonio,
