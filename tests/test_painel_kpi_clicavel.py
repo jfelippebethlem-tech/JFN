@@ -108,12 +108,41 @@ def _convertiveis(chamadas) -> list[tuple[str, str]]:
     o `.length` está só na guarda do ternário. Gaveta ali mostraria N linhas para um número que não
     é N. É a mesma família dos dois enganos de hoje (68 vs 55, 647 vs 0), agora na medição.
     """
+    contadas = _contagens_em_variavel()
     out = []
     for a, c in _sem_caminho(chamadas):
         v = _valor_exibido(c)
         if ".length" in v and "?" not in v:
             out.append((a, c))
+            continue
+        # CONTAGEM GUARDADA EM VARIÁVEL. `const alta = g.filter(...).length` e depois
+        # `kpi(fmtN(alta), ...)` é a MESMA coisa que contar inline — e a primeira versão desta
+        # catraca não via nenhuma delas, deixando quatro métricas de fora do alvo sem que ninguém
+        # soubesse. Medir errado a própria dívida é o defeito que a catraca existe para impedir.
+        for nome in contadas.get(a, ()):
+            if re.search(rf"\b{re.escape(nome)}\b", v):
+                out.append((a, c))
+                break
     return out
+
+
+_RX_CONTAGEM = re.compile(r"\b(?:const|let|var)\s+(\w+)\s*=\s*[\w.]+\.filter\(.*?\)\.length")
+
+
+def _contagens_em_variavel() -> dict[str, set[str]]:
+    """Variáveis que guardam `algo.filter(...).length`, por arquivo."""
+    fora: dict[str, set[str]] = {}
+    for f in sorted(ABAS.glob("*.js")):
+        texto = f.read_text(encoding="utf-8")
+        nomes = set(_RX_CONTAGEM.findall(texto))
+        # `const a=x.filter().length, b=y.filter().length` — a segunda não casa o prefixo
+        for ln in texto.split("\n"):
+            for parte in ln.split(","):
+                m = re.search(r"(\w+)\s*=\s*[\w.]+\.filter\(.*\)\.length", parte)
+                if m:
+                    nomes.add(m.group(1))
+        fora[f.name] = nomes
+    return fora
 
 
 def test_divida_de_kpi_convertivel_nao_cresce():

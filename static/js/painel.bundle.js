@@ -4912,7 +4912,8 @@ void main(){
       "✂️"
     ) + acoesAba("fracionamento");
     const alta = g.filter((x) => x.concentracao >= 0.5).length;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Grupos sinalizados", "var(--amber)", "✂️")}${kpi(fmtN(alta), "Concentração ≥50%", "var(--rose)", "🎯")}
+    registrarDrill("fracConc50", { titulo: "Grupos com concentração ≥ 50% num único favorecido", itens: g.filter((x) => x.concentracao >= 0.5), nota: "Fracionamento é indício de divisão da compra para escapar da licitação — o objeto decide." });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Grupos sinalizados", "var(--amber)", "✂️")}${kpi(fmtN(alta), "Concentração ≥50%", "var(--rose)", "🎯", { drill: "fracConc50" })}
       ${kpi(fmtRc(g.reduce((s, x) => s + x.soma, 0)), "Soma dos grupos exibidos", null, "💰")}${kpi(g.length ? Math.round(Math.max(...g.map((x) => x.concentracao)) * 100) + "%" : "—", "Pior concentração", "var(--rose)")}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
     h += `<div id="frac-list" class="grid">` + g.map((x) => {
@@ -4941,8 +4942,10 @@ void main(){
       "🧮"
     ) + acoesAba("certames");
     const piores = o.filter((x) => (x.desvio_vs_pares || 0) > 10).length, aud = o.filter((x) => x.auditoria_tematica && x.auditoria_tematica.length).length;
+    registrarDrill("orgAcimaPares", { titulo: "Órgãos acima dos pares em mais de 10 pontos", itens: o.filter((x) => (x.desvio_vs_pares || 0) > 10), nota: "A régua é COMPARATIVA: o desvio mede este órgão contra os semelhantes, não contra zero." });
+    registrarDrill("orgAuditoriaTematica", { titulo: "Órgãos com gatilho de auditoria temática", itens: o.filter((x) => x.auditoria_tematica && x.auditoria_tematica.length) });
     h += `<div class="grid g2">${kpi(fmtN(d.n_orgaos), "Órgãos avaliados (≥3 certames)", null, "🏢")}${kpi(d.mediana_pares != null ? d.mediana_pares.toFixed(0) : "—", "Mediana dos pares", null, "📏")}
-      ${kpi(fmtN(piores), "Acima dos pares (+10)", "var(--amber)", "📈")}${kpi(fmtN(aud), "Com gatilho de auditoria temática", "var(--rose)", "🎯")}</div>`;
+      ${kpi(fmtN(piores), "Acima dos pares (+10)", "var(--amber)", "📈", { drill: "orgAcimaPares" })}${kpi(fmtN(aud), "Com gatilho de auditoria temática", "var(--rose)", "🎯", { drill: "orgAuditoriaTematica" })}</div>`;
     h += `<div class="grid" style="margin-top:14px">` + o.map((x) => {
       const md = x.score_mediana != null ? x.score_mediana : 0, dv = x.desvio_vs_pares;
       const cor = md >= 50 ? "var(--rose)" : md >= 25 ? "var(--amber)" : "var(--tx2)";
@@ -5781,7 +5784,8 @@ void main(){
     const g = d.grafo || {};
     let h = cover("geral", "Comunidades — clusters família-empresa-órgão (Louvain)", "Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.", "🧩") + acoesAba("comunidades", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">Grafo das comunidades</a>`);
     const _nCrit = a.filter((x) => x.score >= 50).length;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Comunidades relevantes", "var(--amber)", "🧩")}${kpi(fmtN(_nCrit), "Score ≥50 (🔴)", _nCrit > 0 ? "var(--rose)" : null, _nCrit > 0 ? "🚨" : "")}
+    registrarDrill("comunidadesCriticas", { titulo: "Comunidades com score ≥ 50", itens: a.filter((x) => x.score >= 50), nota: "Zero comunidade crítica NÃO é alarme — a cor e o glifo já foram fixos aqui uma vez." });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Comunidades relevantes", "var(--amber)", "🧩")}${kpi(fmtN(_nCrit), "Score ≥50 (🔴)", _nCrit > 0 ? "var(--rose)" : null, _nCrit > 0 ? "🚨" : "", { drill: "comunidadesCriticas" })}
       ${kpi(fmtN(g.nos || 0), "Nós no grafo", null, "🕸️")}${kpi(fmtN(g.arestas || 0), "Arestas", null, "🔗")}</div>`;
     h += `<div class="dim" style="margin-top:8px">${esc(d.escala || "").replace(/\b([a-z]+_[a-z_]+)\b/g, (m) => rot(m))}</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;

@@ -28,7 +28,8 @@ import sys
 # As abas que hoje têm métrica clicável. Lista explícita de propósito: varrer todas as abas do
 # painel a cada rodada custa minutos numa VM de 2 vCPU, e o que interessa é o que foi convertido.
 ABAS = ("g_vinculos", "g_riscos", "e_sanc", "g_hub", "e_poder", "e_conluio",
-        "p_comis", "e_adit", "e_escal", "g_prioridade")
+        "p_comis", "e_adit", "e_escal", "g_prioridade", "e_frac", "e_certames", "g_comun",
+        "g_laranjas", "p_benef", "g_nepo")
 
 # Ação que precisa ser disparada antes de as métricas existirem (aba que só monta sob clique).
 PREPARO = {"g_vinculos": '[data-vinc="agentePublico"]'}
@@ -41,6 +42,33 @@ def _num(txt: str) -> int | None:
         return None
     d = re.sub(r"\D", "", t)
     return int(d) if d else None
+
+
+def _abrir_e_contar(pg, nome: str, estaveis: int = 2, tentativas: int = 12) -> int | None:
+    """Clica e conta as linhas — só depois de o número parar de mudar.
+
+    A gaveta genérica conta cartões; a fatia da fila de agente público reescreve a própria lista e
+    declara o total no rodapé. Contar durante a montagem produz número menor e acusa divergência
+    que não existe.
+    """
+    pg.click(f'[data-drill="{nome}"]')
+    anterior, iguais = None, 0
+    for _ in range(tentativas):
+        pg.wait_for_timeout(700)
+        atual = pg.evaluate(
+            "() => {const b=document.getElementById('drill-box');"
+            " if (b) return b.querySelectorAll('.grid > .card').length;"
+            " const n=document.body.innerText.match"
+            "(/(\\d[\\d.]*) exibidos de (\\d[\\d.]*) nesta fatia/);"
+            " return n ? parseInt(n[2].replace(/\\D/g,''),10) : null;}")
+        if atual == anterior:
+            iguais += 1
+            if iguais >= estaveis:
+                return atual
+        else:
+            iguais = 0
+        anterior = atual
+    return anterior
 
 
 def checar(abas=ABAS, espera_ms: int = 9000) -> dict:
@@ -83,17 +111,17 @@ def checar(abas=ABAS, espera_ms: int = 9000) -> dict:
                     "return k && k.querySelector('.v') ? k.querySelector('.v').innerText : null;}",
                     nome)
                 esperado = _num(valor or "")
-                pg.click(f'[data-drill="{nome}"]')
-                pg.wait_for_timeout(2500)
-                # a gaveta genérica conta linhas; a fatia da fila reescreve a própria lista
-                visto = pg.evaluate(
-                    "() => {const b=document.getElementById('drill-box');"
-                    " if (b) return b.querySelectorAll('.grid > .card').length;"
-                    " const n=document.body.innerText.match"
-                    "(/(\\d[\\d.]*) exibidos de (\\d[\\d.]*) nesta fatia/);"
-                    " return n ? parseInt(n[2].replace(/\\D/g,''),10) : null;}")
+                visto = _abrir_e_contar(pg, nome)
                 if esperado is None:
                     continue
+                if visto != esperado:
+                    # SEGUNDA LEITURA ANTES DE ACUSAR. Uma medição pegou 336 contra 341 e não se
+                    # reproduziu: a página ainda estava montando quando o contador leu. Verificador
+                    # que dá falso alarme é verificador que ninguém lê — e aí ele deixa de proteger.
+                    pg.evaluate("() => {const b=document.getElementById('drill-box');"
+                                " if (b) b.remove();}")
+                    pg.wait_for_timeout(1500)
+                    visto = _abrir_e_contar(pg, nome)
                 if visto != esperado:
                     achados.append({"aba": aba, "metrica": nome,
                                     "kpi": esperado, "gaveta": visto})
