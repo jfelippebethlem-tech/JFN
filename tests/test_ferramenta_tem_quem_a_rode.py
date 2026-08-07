@@ -60,6 +60,9 @@ PRECISAM_DE_ROTINA = {
     "tools.fila_recaptura_por_parecer":
         "transforma a lacuna de captura provada pelo PARECER em fila de recaptura; sem rotina a "
         "conferencia vira relatorio e o motor segue afirmando ausencia que e nossa",
+    "tools.colher_vm2_grafo":
+        "traz o grafo de vinculos que a VM-2 monta na fatia 1/2; sem rotina a segunda maquina "
+        "gasta CPU para ninguem, que ja aconteceu por dias com o sweep SEI",
     "tools.colher_vm2_arvore":
         "traz da VM-2 o DENOMINADOR da captura (`sei_arvore.n_docs`); sem ele nao se sabe se um "
         "processo lido esta completo, e ler o parcial como completo ja sustentou 14 EXTREMO",

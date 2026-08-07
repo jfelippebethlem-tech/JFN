@@ -55,4 +55,10 @@ PYEOF
 # na primeira colheita, 44 não tinham árvore aqui; com ela, ZERO se revelou parcial.
 say "trazendo as árvores que faltam…"
 PYTHONPATH="$REPO" timeout 600 "$PY" -m tools.colher_vm2_arvore --aplicar >> "$LOG" 2>&1
+# O GRAFO TAMBÉM ATRAVESSA. A VM-2 percorre a fatia 1/2 dos credores do SIAFE; sem esta colheita o
+# trabalho fica parado no disco dela — o mesmo defeito que custou dias no sweep SEI. O `id` de
+# `pessoas` é local e NÃO é copiado: cada ponta é resolvida por documento (ou nome, quando não há
+# documento) e a aresta entra por `salvar_grafo`, que já aplica a direção canônica e a dedução.
+say "trazendo o grafo de vínculos da VM-2…"
+PYTHONPATH="$REPO" timeout 900 "$PY" -m tools.colher_vm2_grafo --aplicar >> "$LOG" 2>&1
 say "fim (rc=$?) — arquivo local: $(ls "$REPO/data/sei_arquivo" | wc -l) processos"
