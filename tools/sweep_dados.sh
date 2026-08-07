@@ -88,6 +88,10 @@ if [ -f data/.pause_cocontato ]; then say "cocontato pausado — pulei"; else $P
 # folha municipal tem matricula E nome. Le da VM-2 por ssh; falha vira lista vazia.
 # Pausa: data/.pause_assin_pcrj.
 if [ -f data/.pause_assin_pcrj ]; then say "assinaturas pcrj pausado — pulei"; else $PRIO timeout 600 $PY -m tools.pcrj_assinaturas_x_folha >> data/pcrj_assinaturas.log 2>&1; say "assinaturas pcrj rc=$?"; fi
+# SIGNATARIO x QSA — o signatario do despacho municipal e socio de quem a Prefeitura paga? Roda
+# DEPOIS de `pcrj_assinaturas_x_folha`, que e quem identifica a matricula.
+# Pausa: data/.pause_signatario_qsa.
+if [ -f data/.pause_signatario_qsa ]; then say "signatario x qsa pausado — pulei"; else $PRIO timeout 900 $PY -m tools.pcrj_signatario_x_qsa >> data/pcrj_signatario_qsa.log 2>&1; say "signatario x qsa rc=$?"; fi
 # A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
 # `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
 # 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os

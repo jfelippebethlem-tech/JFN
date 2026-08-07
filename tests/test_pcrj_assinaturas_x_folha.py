@@ -75,3 +75,27 @@ def test_sem_a_folha_declara_a_lacuna(tmp_path):
 
     r = identificar([{"matricula": "123"}], pcrj=tmp_path / "nao_existe.db")
     assert r["identificadas"] == 0 and "erro" in r
+
+
+def test_estar_no_qsa_nao_e_sinal_e_a_ressalva_diz_isso():
+    """33% dos signatários identificados aparecem no QSA nacional; no índice do Estado são 28%.
+
+    Servidor pode ser sócio — a NORMA não acusa ninguém. O sinal é a empresa receber do MESMO
+    poder público cujo ato ele assina. Um produto que apresentasse "16 de 48 no QSA" como achado
+    estaria medindo a base, e é o defeito que esta casa mais corrigiu.
+    """
+    from tools.pcrj_signatario_x_qsa import levantar
+
+    r = levantar()
+    assert "NÃO é sinal" in r.get("ressalva", ""), "a ressalva de prevalência sumiu"
+    assert "NÃO OBSERVADO NESTA AMOSTRA" in r.get("ressalva", ""), (
+        "zero precisa ser declarado como não-observado, nunca como inexistente")
+    assert r.get("com_empresa_paga_pela_prefeitura", 0) <= r.get("vinculos_societarios", 0)
+
+
+def test_nome_curto_nao_entra_no_cruzamento():
+    """"JOSE SILVA" casa com meio município — três termos é o mínimo defensável, o mesmo corte da
+    fila de agente público."""
+    from tools.pcrj_signatario_x_qsa import _MIN_TERMOS
+
+    assert _MIN_TERMOS >= 3
