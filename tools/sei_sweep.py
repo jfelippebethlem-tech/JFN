@@ -212,17 +212,25 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     ).fetchall()
     sinal = _raizes_com_sinal_osint()
     credores = _credores_por_processo(con) if sinal else {}
+    provados = _fila_com_lacuna_provada(con)
     con.close()
     legiveis = _unidades_legiveis()
-    # ORDEM: unidade que rende documentos primeiro; dentro dela, o que a INTELIGÊNCIA já marcou;
-    # e só então o valor. Valor não é risco — é o tamanho do risco quando ele existe.
+    # ORDEM: unidade que rende documentos primeiro; depois o que o PARECER PROVA que falta (não há
+    # hipótese aqui — o documento existe e nós não o temos); depois o que a inteligência marcou; e
+    # só então o valor. Valor não é risco: é o tamanho do risco quando ele existe.
+    def _norm_proc(x):
+        return re.sub(r"\D", "", str(x))
+
+    provados_norm = {_norm_proc(x) for x in provados}
     rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
+                             0 if _norm_proc(r[0]) in provados_norm else 1,
                              0 if (credores.get(r[0]) or set()) & sinal else 1,
                              -(r[2] or 0)))
-    if sinal:
-        n_pri = sum(1 for r in rows if (credores.get(r[0]) or set()) & sinal)
-        _log(f"fila: {n_pri} processos com sinal OSINT no credor entram na frente "
-             f"(de {len(rows)}); ordem = unidade legível > sinal > valor")
+    n_prov = sum(1 for r in rows if _norm_proc(r[0]) in provados_norm)
+    n_pri = sum(1 for r in rows if (credores.get(r[0]) or set()) & sinal) if sinal else 0
+    if n_prov or n_pri:
+        _log(f"fila: {n_prov} com lacuna PROVADA pelo parecer e {n_pri} com sinal OSINT no credor "
+             f"entram na frente (de {len(rows)}); ordem = legível > lacuna provada > sinal > valor")
     # FATIA da máquina: com duas capturando, cada uma fica com metade determinística do
     # universo. Sem isto as duas começam pelo mesmo processo (mesma fila, mesma ordem) e
     # gastam o dobro de browser para entregar a mesma coisa. Ver `na_minha_fatia`.
@@ -232,6 +240,24 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         rows = [r for r in rows if na_minha_fatia(r[0], indice, total)]
         _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
     return rows
+
+
+def _fila_com_lacuna_provada(con) -> set[str]:
+    """Processos que o PRÓPRIO PARECER prova estarem incompletos na nossa captura.
+
+    `sei_fila_captura` era escrita por `fila_recaptura_por_parecer` e **lida por ninguém** — só um
+    relatório a consultava. Os 380 processos gravados em 2026-08-07, com a lista dos documentos que
+    o parecer cita e a nossa pasta não tem, nunca voltavam para captura: a fila era um beco.
+
+    Isto é a prioridade MAIS ALTA da fila, acima do sinal OSINT, e a razão é simples: aqui não há
+    hipótese. O documento existe (o parecer o cita), nós não o temos, e a falta já rebaixou cinco
+    acusações de "pagamento sem prova de entrega" para INDISPONÍVEL. Recapturar converte uma
+    ressalva em resposta.
+    """
+    try:
+        return {str(r[0]) for r in con.execute("SELECT numero_sei FROM sei_fila_captura")}
+    except sqlite3.Error:
+        return set()
 
 
 def _raizes_com_sinal_osint() -> set[str]:

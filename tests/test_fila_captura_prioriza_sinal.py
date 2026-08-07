@@ -84,3 +84,38 @@ def test_le_a_fila_curada_e_ignora_o_que_tem_explicacao(tmp_path, monkeypatch):
 @pytest.mark.skipif(True, reason="mede o acervo real; roda à mão quando se quer o número")
 def test_quantos_processos_ganham_prioridade_hoje():
     pass
+
+
+def test_lacuna_PROVADA_pelo_parecer_vem_antes_do_sinal_osint():
+    """`sei_fila_captura` era escrita e lida por NINGUÉM — a fila era um beco.
+
+    Os 380 processos gravados em 2026-08-07 trazem a lista dos documentos que o parecer cita e a
+    nossa pasta não tem. Aqui não há hipótese: o documento existe, nós não o temos, e a falta já
+    rebaixou cinco acusações de "pagamento sem prova de entrega" para INDISPONÍVEL. Recapturar
+    converte uma ressalva em resposta — por isso vem antes do sinal OSINT, que é indício.
+    """
+    from tools.sei_sweep import _unidade
+
+    provado = ("SEI-080001/000001/2024", 1, 1_000.0)
+    com_sinal = ("SEI-080001/000002/2024", 9, 9_000_000.0)
+    legiveis = {_unidade(provado[0]), _unidade(com_sinal[0])}
+    provados = {"".join(c for c in provado[0] if c.isdigit())}
+
+    ordem = sorted([com_sinal, provado],
+                   key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
+                                  0 if "".join(c for c in r[0] if c.isdigit()) in provados else 1,
+                                  0 if r[0] == com_sinal[0] else 1,
+                                  -(r[2] or 0)))
+    assert ordem[0][0] == provado[0], (
+        "prova documental ficou atrás de indício — e de um valor 9.000× maior")
+
+
+def test_a_fila_de_lacuna_provada_degrada_em_silencio():
+    """Tabela ausente não pode derrubar a captura."""
+    import sqlite3
+
+    from tools.sei_sweep import _fila_com_lacuna_provada
+
+    con = sqlite3.connect(":memory:")
+    assert _fila_com_lacuna_provada(con) == set()
+    con.close()
