@@ -52,6 +52,25 @@ export function registrarDrill(nome, { titulo, itens, render, nota }) {
   _REG.set(nome, { titulo: titulo || nome, itens: itens || [], render, nota: nota || '' });
 }
 
+
+/** Registra o drill SÓ SE a lista em mão for o universo inteiro; senão devolve `null`.
+ *
+ * O caso mais comum do painel: o KPI mostra um total do SERVIDOR (`d.n`) e a tela tem uma PÁGINA
+ * (`?limite=80`). Ligar a gaveta ali produz a mentira que esta casa já cometeu três vezes — 68
+ * virando 55, 201 virando 22, 647 virando 0. Mas quando o `limite` não corta nada, a lista É o
+ * universo e a gaveta é honesta.
+ *
+ * Em vez de decidir isso na escrita — quando não se sabe quantos virão —, decide-se em tempo de
+ * execução, a cada carga: `total === itens.length` liga; diferente, o KPI fica mudo e o número
+ * continua verdadeiro. Nenhuma métrica precisa escolher entre mentir e não ter caminho.
+ */
+export function drillSeCompleto(nome, total, itens, cfg) {
+  const lista = itens || [];
+  if (total == null || Number(total) !== lista.length) return null;
+  registrarDrill(nome, { ...(cfg || {}), itens: lista });
+  return { drill: nome };
+}
+
 /** Limpa o registro da aba anterior — conjunto velho reaparecendo em tela nova é pior que nenhum. */
 export function limparDrill() { _REG.clear(); }
 
