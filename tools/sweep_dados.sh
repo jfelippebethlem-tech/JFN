@@ -72,6 +72,10 @@ if [ -f data/.pause_agente_reverso ]; then say "agente reverso pausado — pulei
 # duas vezes no mesmo dia: 68 comissionados virando 55, e 647 sem-cadastro virando 0.
 # Pausa: data/.pause_drill_check.
 if [ -f data/.pause_drill_check ]; then say "drill check pausado — pulei"; else $PRIO timeout 600 $PY -m tools.painel_drill_check >> data/painel_drill_check.log 2>&1; say "drill check rc=$?"; fi
+# OSINT x PROCESSOS — o sinal sobre a empresa so vira achado quando aponta para AUTOS concretos.
+# Roda DEPOIS do agente_publico_reverso, porque le a fila curada que ele grava.
+# Pausa: data/.pause_osint_processos.
+if [ -f data/.pause_osint_processos ]; then say "osint x processos pausado — pulei"; else $PRIO timeout 600 $PY -m tools.osint_x_processos >> data/osint_x_processos.log 2>&1; say "osint x processos rc=$?"; fi
 # A AUTOAUDITORIA **NÃO** ENTRA AQUI. Ela já roda diariamente às 07:10, no `ExecStartPost` de
 # `~/.config/systemd/user/jfn-intel-cache.service.d/autoauditoria.conf` — e eu quase a duplicei em
 # 2026-08-06 por ter conferido só o crontab e os `*.sh`, sem olhar os drop-ins do systemd. Os

@@ -300,8 +300,26 @@ def pagadores_por_raiz(con: sqlite3.Connection) -> dict[str, set[str]]:
 
 
 def conflito_de_orgao(orgao_do_agente: str, pagadores: set[str]) -> str:
-    """Nome da unidade pagadora que É o órgão do agente, ou vazio."""
+    """Nome da unidade pagadora que É o órgão do agente, ou vazio.
+
+    A REGRA DE IDENTIDADE VEM ANTES DA DE SEMELHANÇA, e a falta dela fazia o eixo perder o caso
+    mais óbvio de todos: `FUNDAÇÃO SAÚDE DO ESTADO DO RIO DE JANEIRO` comparada COM ELA MESMA não
+    casava, porque o núcleo distintivo — depois de tirar FUNDAÇÃO, ESTADO, RIO e JANEIRO — é só
+    `{SAUDE}`, uma palavra, e o cotejo por semelhança exige duas. Descoberto ao ligar os processos:
+    cinco autos de indenização por serviços médicos correndo NA PRÓPRIA Fundação Saúde, com três
+    Diretores-Gerais dela no quadro societário da contratada, e o eixo mudo.
+
+    Nome idêntico é o mesmo órgão, ponto. A exigência de duas palavras continua valendo para os
+    nomes DIFERENTES, que é onde ela existe para evitar que duas secretarias quaisquer casem pelo
+    vocabulário administrativo comum.
+    """
+    alvo = norm(orgao_do_agente)
+    if not alvo:
+        return ""
     ka = _nucleo_orgao(orgao_do_agente)
+    for p in pagadores or ():
+        if norm(p) == alvo:
+            return p
     if not ka:
         return ""
     for p in pagadores or ():

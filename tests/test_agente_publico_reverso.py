@@ -290,3 +290,23 @@ def test_reordenar_a_fila_nao_inventa_novidade(tmp_path):
     M.marcar_novidades(_itens(5), db=str(db))
     invertidos = list(reversed(_itens(5)))
     assert M.marcar_novidades(invertidos, db=str(db)) == 0
+
+
+def test_o_mesmo_orgao_comparado_consigo_mesmo_sempre_casa():
+    """O eixo perdia o caso mais óbvio: a unidade idêntica a si mesma.
+
+    `FUNDAÇÃO SAÚDE DO ESTADO DO RIO DE JANEIRO` contra ELA MESMA não casava, porque o núcleo
+    distintivo — sem FUNDAÇÃO, ESTADO, RIO e JANEIRO — é só `{SAUDE}`, uma palavra, e o cotejo por
+    semelhança exige duas. Descoberto ao ligar os processos: cinco autos de indenização por
+    serviços médicos correndo NA PRÓPRIA Fundação Saúde, com três Diretores-Gerais dela no quadro
+    societário da contratada, e o eixo mudo.
+    """
+    from tools.agente_publico_reverso import conflito_de_orgao
+
+    for nome in ("FUNDAÇÃO SAÚDE DO ESTADO DO RIO DE JANEIRO",
+                 "SECRETARIA DE ESTADO DE SAÚDE",
+                 "IMPRENSA OFICIAL DO ESTADO DO RIO DE JANEIRO"):
+        assert conflito_de_orgao(nome, {nome}) == nome, f"{nome} não casou consigo mesma"
+    # e a exigência de duas palavras continua valendo para nomes DIFERENTES
+    assert conflito_de_orgao("SECRETARIA DE ESTADO DE SAÚDE",
+                             {"Secretaria de Estado de Educação"}) == ""

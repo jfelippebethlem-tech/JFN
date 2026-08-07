@@ -3663,6 +3663,7 @@ void main(){
     </div>
     <div class="btns" style="margin-top:8px">
       <button type="button" class="btn ghost" data-vinc="agentePublico">Agente público no QSA (fila)</button>
+      <button type="button" class="btn ghost" data-vinc="osintProcessos">OSINT × processos lidos</button>
       <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
       <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
@@ -3777,6 +3778,47 @@ void main(){
     }
     h += `<div class="note">Descartados: ` + Object.entries(desc).map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>`;
     h += `<div class="note">${esc(cob.nota || "")}</div>`;
+    o.innerHTML = h;
+  }
+  async function vincOsintProcessos(soConflito) {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">cruzando a fila de agente público com as fichas de processo…</div>');
+    const d = await J("/api/osint/processos?limite=120" + (soConflito ? "&so_conflito=1" : ""));
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    const nConf = (d.itens || []).filter((x) => (x.agentes || []).some((a) => a.conflito_pelo_processo || a.conflito_de_orgao)).length;
+    let h = sec("OSINT × processos lidos");
+    h += `<div class="grid g2">${kpi(fmtN(d.total), "Processos com sinal", "var(--amber)", "⚖️", { drill: "opTodos" })}
+      ${kpi(fmtN(d.processos_com_cnpj), "Fichas com CNPJ")}
+      ${kpi(fmtN(nConf), "Autos no PRÓPRIO órgão do agente", nConf ? "var(--red)" : null, "⚠️", { drill: "opConflito" })}</div>`;
+    h += leitura(esc(d.ressalva || ""));
+    const _lin = (x) => {
+      const g = (x.agentes || [])[0] || {};
+      const conf = g.conflito_pelo_processo || g.conflito_de_orgao;
+      return card(
+        `<div style="display:flex;justify-content:space-between;gap:10px">
+       <div style="min-width:0"><div style="font-weight:700">${esc(x.processo)}</div>
+         <div class="dim">${esc(x.orgao_do_processo || "órgão não resolvido")}</div>
+         <div style="font-size:13px;margin-top:4px">${esc(g.nome || "—")} · ${esc(g.cargo || "")} <span class="dim">(${esc(g.orgao || "")})</span></div>
+         <div class="dim" style="font-size:12.5px">${esc(g.entidade || "")}</div>
+         ${conf ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ os AUTOS correm no próprio órgão do agente: ${esc(conf)}</div>` : ""}
+         ${(x.sem_qsa_capturado || []).length ? `<div class="dim" style="font-size:12px;margin-top:3px">${fmtN(x.sem_qsa_capturado.length)} CNPJ(s) sem QSA capturado — LACUNA, não limpeza</div>` : ""}
+       </div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.peso)}</div><div class="dim">peso</div></div></div>`,
+        conf ? "hl" : ""
+      );
+    };
+    registrarDrill("opTodos", { titulo: "Processos com sinal OSINT na empresa", itens: it, render: _lin });
+    registrarDrill("opConflito", {
+      titulo: "Autos que correm no próprio órgão do agente",
+      itens: it.filter((x) => (x.agentes || []).some((a) => a.conflito_pelo_processo || a.conflito_de_orgao)),
+      render: _lin,
+      nota: "Art. 9º, III da Lei 8.429/1992 e dever de impedimento do art. 20 da Lei 9.784/1999."
+    });
+    h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
+    h += `<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos · gerado em ${esc(d.gerado_em || "—")}.</div>`;
     o.innerHTML = h;
   }
   async function vincAgentePublico(filtro) {
@@ -4131,6 +4173,7 @@ void main(){
     parentesco: vincParentesco,
     contato: vincContato,
     agentePublico: vincAgentePublico,
+    osintProcessos: vincOsintProcessos,
     trocas: vincTrocas,
     grafo: vincGrafo,
     ftm: vincFtm,

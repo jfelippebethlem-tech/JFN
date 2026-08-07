@@ -92,6 +92,7 @@ GET /api/osint/interposicao -> api_interposicao
 GET /api/osint/parentesco -> api_parentesco
 GET /api/osint/parentesco/prevalencia -> api_parentesco_prevalencia
 GET /api/osint/patrimonio -> api_patrimonio
+GET /api/osint/processos -> api_osint_processos
 GET /api/osint/resolucao_nome_cnpj -> api_resolucao_nome_cnpj
 GET /api/osint/serie_societaria -> api_serie_societaria
 GET /api/osint/trocas_societarias -> api_trocas_societarias

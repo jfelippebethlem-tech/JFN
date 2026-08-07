@@ -393,3 +393,43 @@ def api_agente_publico(so_comissionados: int = 0, limite: int = 60, filtro: str 
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("agente_publico falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/processos")
+def api_osint_processos(limite: int = 80, so_conflito: int = 0):
+    """Processos já lidos cuja empresa tem sinal OSINT — a correlação que faltava.
+
+    Inteligência sobre empresa não fiscaliza nada sozinha: quem fiscaliza abre AUTOS. Aqui a fila
+    de agente público (já sem homônimo comprovado e sem o que é desenho de programa) encontra as
+    fichas de processo que citam aquele CNPJ.
+    """
+    try:
+        import json
+
+        from tools.osint_x_processos import _SAIDA_JSON
+
+        if not _SAIDA_JSON.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "correlação ainda não materializada — rode `python -m tools.osint_x_processos` "
+                "(o sweep diário a regenera)")}, status_code=503)
+        corpo = json.loads(_SAIDA_JSON.read_text(encoding="utf-8"))
+        itens = corpo.get("achados") or []
+        if so_conflito:
+            itens = [x for x in itens
+                     if any(a.get("conflito_pelo_processo") or a.get("conflito_de_orgao")
+                            for a in x.get("agentes") or [])]
+        return JSONResponse({
+            "ok": True,
+            "gerado_em": corpo.get("gerado_em"),
+            "processos_com_cnpj": corpo.get("processos_com_cnpj"),
+            "total": corpo.get("com_achado"),
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 500))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. A ponte processo→empresa vem do CNPJ citado na FICHA; a "
+                "ponte empresa→pessoa vem do casamento por NOME com as folhas. Ausência de QSA "
+                "capturado é LACUNA de captura, não limpeza."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("osint_processos falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
