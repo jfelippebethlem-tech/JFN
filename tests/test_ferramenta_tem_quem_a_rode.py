@@ -66,6 +66,9 @@ PRECISAM_DE_ROTINA = {
     "tools/colher_vm2.sh":
         "traz para a VM-1 o que a VM-2 capturou; sem rotina, uma maquina gasta 34 min de CPU por "
         "rodada e o resultado fica parado no disco dela",
+    "tools.pcrj_assinaturas_x_folha":
+        "identifica quem assinou cada despacho da Prefeitura pela matricula publicada no SEI; a "
+        "captura na VM-2 cresce a cada rodada e sem rotina a identificacao congela",
     "tools.cocontato_certame":
         "levanta pares do MESMO certame que dividem contato; depende do PNCP e do cadastro da "
         "Receita, que mudam, e sem rotina o achado congela na data em que foi rodado",
