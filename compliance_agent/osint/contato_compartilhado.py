@@ -87,8 +87,20 @@ def dominio_de(email: Any) -> str:
 
 
 def _de_servico(email: Any) -> bool:
-    dom = dominio_de(email)
-    return bool(dom) and any(s in dom for s in DOMINIOS_DE_SERVICO)
+    """Contato de prestador de serviço — e a PARTE LOCAL conta tanto quanto o domínio.
+
+    A regra olhava só o domínio, e contador com Gmail ou Outlook põe o nome na parte local:
+    `burgarellicontabilidade@outlook.com` uniu LUGOM e AVANTTE num mesmo certame como se fosse elo
+    societário. Medido na base de 6,17 milhões de estabelecimentos: **126.537 e-mails trazem
+    "contabil" na parte local com domínio livre**, contra 76.078 no domínio — a regra enxergava um
+    terço do problema.
+    """
+    e = str(email or "").strip().lower()
+    if not e or "@" not in e:
+        return False
+    local, dom = e.rsplit("@", 1)
+    return any(s in dom for s in DOMINIOS_DE_SERVICO) or any(
+        s in local for s in DOMINIOS_DE_SERVICO if "." not in s)
 
 
 def _tipo_email(n_empresas: int, email: str) -> tuple[str, str] | None:

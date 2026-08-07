@@ -246,3 +246,30 @@ def test_estrutura_juridica_explica_o_contato_dividido(na, nb, tem):
     from compliance_agent.osint.contato_compartilhado import explicacao_estrutural
 
     assert bool(explicacao_estrutural(na, nb)) is tem
+
+
+@pytest.mark.parametrize("email,servico", [
+    # o caso que escapou: contador com domínio livre e o nome na PARTE LOCAL
+    ("burgarellicontabilidade@outlook.com", True),
+    ("144consultoriacontabil@gmail.com", True),
+    ("escritoriomartins@gmail.com", True),
+    ("assessoriafiscal@hotmail.com", True),
+    # domínio de serviço continua valendo
+    ("abertura@maismei.com.br", True),
+    ("contato@contabilidadexyz.com.br", True),
+    # e-mail comum da própria empresa NÃO é de serviço
+    ("fiscal@medmax.com.br", False),
+    ("compras@empresa.com.br", False),
+    ("financeiro@biosys.com.br", False),
+])
+def test_contato_de_servico_olha_a_parte_local_tambem(email, servico):
+    """A regra via um terço do problema.
+
+    `burgarellicontabilidade@outlook.com` uniu LUGOM SOLUÇÕES e AVANTTE num mesmo certame como se
+    fosse elo societário — e é escritório de contabilidade com domínio livre. Medido na base de
+    6,17 milhões de estabelecimentos: **126.537 e-mails trazem "contabil" na parte local com
+    domínio livre**, contra 76.078 no domínio.
+    """
+    from compliance_agent.osint.contato_compartilhado import _de_servico
+
+    assert _de_servico(email) is servico
