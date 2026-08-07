@@ -145,7 +145,20 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
     # `tools/sei_sweep._arquivo_incompleto` usa esta MESMA função, então marcá-los aqui os devolve
     # à fila de recaptura — não é só deixar de acusar, é ir buscar o que falta.
     do_cache = "CACHE do sweep" in str(manifest.get("aviso") or "")
-    teto_de_coleta = do_cache and len(docs) == 40
+    # O FATO ACIMA DA HEURÍSTICA. Contar 40 é reconhecer a assinatura do corte, não medi-lo — e a
+    # heurística erra nos dois sentidos. Medido em 2026-08-07 sobre os 198 arquivos parados em 40:
+    # **171 estão de fato truncados** (o maior tem 40 de 956 documentos) e **21 têm árvore de
+    # exatamente 40**, ou seja, estão COMPLETOS e vinham sendo excluídos da análise por causa do
+    # número redondo. Os outros 6 não têm cache legível.
+    #
+    # Quem arquiva sabe o tamanho da árvore: está em `documentos` no próprio cache que ele lê.
+    # `docs_na_arvore` grava esse fato no manifesto, e aqui ele MANDA quando existe — a heurística
+    # do 40 fica só para os manifestos legados, que não têm o campo.
+    na_arvore = manifest.get("docs_na_arvore")
+    if isinstance(na_arvore, int) and na_arvore > 0:
+        teto_de_coleta = len(docs) < na_arvore
+    else:
+        teto_de_coleta = do_cache and len(docs) == 40
     veto = bool(manifest.get("captura_vazia") or manifest.get("captura_completa") is False
                 or teto_de_coleta)
     # BANDEIRA DESMENTIDA PELO DISCO é dado velho, não veto. Medido em 2026-08-04: **17
@@ -162,4 +175,9 @@ def captura_integra(manifest: dict, pasta: Path | str | None = None) -> tuple[bo
         ok = False
     return ok, {"n_docs": len(docs), "n_txt": n_txt, "n_com_texto": n_com_texto,
                 "minimo": minimo, "veto_manifest": veto,
-                "veto_obsoleto": veto_obsoleto, "teto_de_coleta": teto_de_coleta}
+                "veto_obsoleto": veto_obsoleto, "teto_de_coleta": teto_de_coleta,
+                # o TAMANHO DO BURACO viaja com o veredito: "40 de 956" é outra conversa que
+                # "40 de 40", e quem lê a cobertura precisa dessa diferença para priorizar.
+                "docs_na_arvore": na_arvore if isinstance(na_arvore, int) else None,
+                "faltam_capturar": (max(0, na_arvore - len(docs))
+                                    if isinstance(na_arvore, int) and na_arvore > 0 else None)}

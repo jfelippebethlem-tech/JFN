@@ -34,6 +34,8 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json
+
 RAIZ = Path(__file__).resolve().parent.parent
 CACHE = RAIZ / "data" / "sei_cache"
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
@@ -83,10 +85,16 @@ def _ja_arquivado(numero: str) -> bool:
 def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
     """Caches com texto suficiente e ainda não arquivados, do maior conteúdo para o menor."""
     out = []
-    for f in CACHE.glob("cdp_*.json"):
+    # `glob_cache`/`ler_json`, NÃO `Path.glob` + `read_text`: 5.660 dos 6.195 blobs do acervo
+    # estão em `.json.zst`, e com o glob cru este arquivador enxergava **535 (8,6%)**. O resto do
+    # cache — texto já pago, já lido do SEI — simplesmente não tinha caminho para virar arquivo
+    # consultável. É a terceira ferramenta desta casa cega à compressão; as duas primeiras estão
+    # no catálogo, e uma delas era a ÚNICA que gravava `sei_ficha`.
+    for f in glob_cache(CACHE, "cdp_*.json"):
+        f = Path(f)
         try:
-            d = json.loads(f.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+            d = ler_json(f)
+        except (json.JSONDecodeError, OSError, ValueError):
             continue
         numero = (d.get("numero") or "").strip()
         cd = d.get("conteudo_documentos") or []
@@ -108,7 +116,11 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
             continue          # amostra truncada NÃO vira arquivo (veredito sobre migalha é pior que nada)
         if chars >= min_chars:
             out.append({"numero": numero, "cache": f, "dados": d, "n_docs": len(cd), "chars": chars,
-                        "qualidade": q})
+                        "qualidade": q,
+                        # O TAMANHO DA ÁRVORE É UM FATO QUE ESTE ARQUIVO JÁ TINHA EM MÃOS e jogava
+                        # fora. Sem ele o manifesto saía com `lacunas: []` sobre 40 de 956
+                        # documentos, e o motor lia ausência de prova como ausência do fato.
+                        "na_arvore": len(d.get("documentos") or [])})
     out.sort(key=lambda e: -e["chars"])
     return out
 
@@ -166,7 +178,17 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
         # deixa explícito que veio do cache: não tem fotos nem anexos binários, ao contrário da íntegra
         "origem": f"cache CDP ({item['cache'].name}) — texto já lido pelo sweep, arquivado sem browser",
         "modalidade": "", "docs": docs_manifest,
-        "linha_do_tempo": linha_do_tempo(titulos), "lacunas": [],
+        "linha_do_tempo": linha_do_tempo(titulos),
+        "docs_na_arvore": item.get("na_arvore") or len(docs_manifest),
+        "lacunas": ([] if (item.get("na_arvore") or 0) <= len(docs_manifest) else
+                    [{"tipo": "captura_truncada",
+                      "detalhe": (f"a árvore do processo tem {item['na_arvore']} documentos e o "
+                                  f"cache trouxe {len(docs_manifest)} — faltam "
+                                  f"{item['na_arvore'] - len(docs_manifest)}"),
+                      "faltam": item["na_arvore"] - len(docs_manifest),
+                      "consequencia": ("ausência de documento NESTE arquivo é lacuna de CAPTURA, "
+                                       "não do processo — nenhuma acusação de ausência pode se "
+                                       "apoiar nele até a recaptura")}]),
         "fotos_total": 0,
         "aviso": ("arquivo montado a partir do CACHE do sweep: contém o TEXTO dos documentos, não os "
                   "anexos binários nem as fotos de medição — para esses, capturar a íntegra"),
@@ -181,6 +203,73 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
     return {"numero": numero, "docs": len(docs_manifest), "chars": item["chars"], "escritos": escritos}
 
 
+def retro_arvore(aplicar: bool = False) -> dict:
+    """Grava `docs_na_arvore` nos manifestos JÁ ESCRITOS, lendo o tamanho da árvore no cache.
+
+    SEM ISTO O CONSERTO NÃO ALCANÇA O ACERVO. Os 2.216 arquivos existentes foram montados por uma
+    versão que jogava fora o tamanho da árvore, e o gate de captura íntegra continuaria decidindo
+    por heurística — o número redondo 40 — sobre todos eles. Medido em 2026-08-07: dos 198 parados
+    em 40, **171 estão de fato truncados** (o pior tem 40 de 956) e **21 têm árvore de exatamente
+    40**, isto é, estão completos e vinham sendo excluídos da análise à toa.
+
+    Idempotente e conservador: só escreve onde o campo falta E o cache traz a árvore. Manifesto
+    sem cache correspondente fica como está — inventar o número seria pior que não tê-lo.
+    """
+    idx = {}
+    for c in glob_cache(CACHE, "cdp_*.json"):
+        nome = Path(c).name.replace(".zst", "").replace(".json", "")[4:]
+        idx[re.sub(r"\D", "", nome)] = c
+
+    r = {"manifestos": 0, "ja_tinham": 0, "sem_cache": 0, "gravados": 0,
+         "truncados": 0, "completos_liberados": 0}
+    for pasta in sorted(ARQUIVO.iterdir()):
+        man = pasta / "manifest.json"
+        if not man.is_file():
+            continue
+        r["manifestos"] += 1
+        try:
+            j = json.loads(man.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if isinstance(j.get("docs_na_arvore"), int):
+            r["ja_tinham"] += 1
+            continue
+        c = idx.get(re.sub(r"\D", "", pasta.name))
+        if not c:
+            r["sem_cache"] += 1
+            continue
+        try:
+            d = ler_json(c)
+        except (json.JSONDecodeError, OSError, ValueError):
+            r["sem_cache"] += 1
+            continue
+        arv = len(d.get("documentos") or [])
+        if arv <= 0:
+            r["sem_cache"] += 1
+            continue
+        n = len(j.get("docs") or [])
+        j["docs_na_arvore"] = arv
+        if arv > n:
+            r["truncados"] += 1
+            faltam = arv - n
+            lac = [x for x in (j.get("lacunas") or []) if x.get("tipo") != "captura_truncada"]
+            lac.append({"tipo": "captura_truncada",
+                        "detalhe": (f"a árvore do processo tem {arv} documentos e o arquivo tem "
+                                    f"{n} — faltam {faltam}"),
+                        "faltam": faltam,
+                        "consequencia": ("ausência de documento NESTE arquivo é lacuna de CAPTURA, "
+                                         "não do processo — nenhuma acusação de ausência pode se "
+                                         "apoiar nele até a recaptura")})
+            j["lacunas"] = lac
+        elif n == 40:
+            # árvore de exatamente 40: o arquivo está COMPLETO e a heurística o punia
+            r["completos_liberados"] += 1
+        if aplicar:
+            man.write_text(json.dumps(j, ensure_ascii=False), encoding="utf-8")
+        r["gravados"] += 1
+    return r
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--aplicar", action="store_true")
@@ -190,7 +279,16 @@ def main(argv=None) -> int:
     # processo por vez com o teto levantado e precisa materializar SÓ ele — varrer o acervo
     # inteiro a cada processo relido custaria minutos por iteração numa VM de 2 vCPU.
     ap.add_argument("--so", default="", help="arquivar apenas este processo (número SEI)")
+    ap.add_argument("--retro-arvore", action="store_true",
+                    help="grava docs_na_arvore nos manifestos já escritos (não arquiva nada novo)")
     a = ap.parse_args(argv)
+    if a.retro_arvore:
+        r = retro_arvore(aplicar=a.aplicar)
+        for k, v in r.items():
+            print(f"{k:22s} {v:,}")
+        if not a.aplicar:
+            print("\n(SIMULAÇÃO — use --aplicar)")
+        return 0
     alvos = candidatos(a.min_chars)
     if a.so:
         alvo_norm = re.sub(r"\D", "", a.so)
