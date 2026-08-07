@@ -55,7 +55,7 @@ export async function _compItemView(voltar){
   let h=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
-  h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️',{sobre:'Mediana do preço unitário do MESMO item, entre todos os compradores públicos com compra registrada. Mediana e não média porque uma compra atípica desloca a média e não desloca a mediana. <b>Item diferente não compara</b>: 60% da \'economia\' de uma medição anterior desta casa vinha de comparar produtos que só tinham a descrição parecida.'})}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
   const linha=x=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'var(--green)':'var(--amber)');
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
       <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
