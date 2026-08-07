@@ -57,6 +57,9 @@ PRECISAM_DE_ROTINA = {
     "tools.painel_drill_check":
         "clica cada metrica clicavel do painel e compara com as linhas da gaveta; sem rotina, "
         "metrica que mente volta em silencio a cada mudanca de rota ou de limite de pagina",
+    "tools.colher_vm2_arvore":
+        "traz da VM-2 o DENOMINADOR da captura (`sei_arvore.n_docs`); sem ele nao se sabe se um "
+        "processo lido esta completo, e ler o parcial como completo ja sustentou 14 EXTREMO",
     "tools/colher_vm2.sh":
         "traz para a VM-1 o que a VM-2 capturou; sem rotina, uma maquina gasta 34 min de CPU por "
         "rodada e o resultado fica parado no disco dela",

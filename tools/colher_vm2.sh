@@ -49,4 +49,10 @@ M.CACHE = Path("data/sei_cache_vm2")
 sys.argv = ["colher_vm2", "--aplicar"]
 M.main()
 PYEOF
+# A ÁRVORE VEM JUNTO, e não é detalhe de sincronização: `sei_arvore.n_docs` é quantos documentos o
+# processo TEM, e o arquivo diz quantos foram LIDOS. Sem o primeiro número, "16 lidos" é
+# indistinguível de "processo de 16 lido inteiro" — família 22 do catálogo. Medido: dos 63 trazidos
+# na primeira colheita, 44 não tinham árvore aqui; com ela, ZERO se revelou parcial.
+say "trazendo as árvores que faltam…"
+PYTHONPATH="$REPO" timeout 600 "$PY" -m tools.colher_vm2_arvore --aplicar >> "$LOG" 2>&1
 say "fim (rc=$?) — arquivo local: $(ls "$REPO/data/sei_arquivo" | wc -l) processos"
