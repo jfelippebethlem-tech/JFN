@@ -59,6 +59,7 @@ export async function renderVinculos(){
     <div class="btns" style="margin-top:8px">
       <button type="button" class="btn ghost" data-vinc="agentePublico">Agente público no QSA (fila)</button>
       <button type="button" class="btn ghost" data-vinc="osintProcessos">OSINT × processos lidos</button>
+      <button type="button" class="btn ghost" data-vinc="elosOcultos">Elos ocultos (contato × dinheiro)</button>
       <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
       <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
@@ -159,6 +160,42 @@ export async function vincContato(){
   }
   h+=`<div class="note">Descartados: `+Object.entries(desc).map(([k,v])=>`${esc(k)} ${fmtN(v)}`).join(' · ')+`</div>`;
   h+=`<div class="note">${esc(cob.nota||'')}</div>`;
+  o.innerHTML=h;
+}
+
+export async function vincElosOcultos(soSemExplicacao){
+  // A PERGUNTA QUE O GRAFO EXISTE PARA RESPONDER: duas empresas que disputam o mesmo dinheiro
+  // público atendem pelo mesmo telefone ou e-mail? Ou são o mesmo grupo — e a disputa entre elas é
+  // aparente — ou há uma mão comum que ninguém declarou.
+  const o=$('vinc-out');
+  o.innerHTML=card('<div class="dim">cruzando contato compartilhado com quem recebeu do Estado…</div>');
+  const d=await J('/api/osint/elos_ocultos?limite=120'+(soSemExplicacao?'&so_sem_explicacao=1':''));
+  if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
+  const it=d.itens||[];
+  let h=sec('Elos ocultos — contato compartilhado × dinheiro público');
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares com os DOIS lados pagos','var(--amber)','🔗',{drill:'eoTodos'})}
+      ${kpi(fmtN(d.sem_explicacao),'SEM explicação aparente',(d.sem_explicacao||0)?'var(--red)':null,'🚨',{drill:'eoSemExpl'})}
+      ${kpi(fmtN(d.mesmo_grupo_aparente),'Mesmo grupo aparente','var(--dim)','🏢',{drill:'eoGrupo'})}
+      ${kpi(fmtN(d.estruturais),'Estruturais (fora da fila)','var(--dim)','📗')}</div>`;
+  h+=leitura(esc(d.ressalva||''));
+  const _lin=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${esc(x.a)}</div>
+        <div class="dim">${esc(x.cnpj_a)} · ${fmtRc(x.pago_a)}</div>
+        <div style="font-weight:700;margin-top:5px">${esc(x.b)}</div>
+        <div class="dim">${esc(x.cnpj_b)} · ${fmtRc(x.pago_b)}</div>
+        <div style="margin-top:5px;font-size:12.5px">${esc(x.detalhe||x.tipo)}</div>
+        ${x.mesmo_grupo_aparente?`<div class="dim" style="font-size:12px;margin-top:3px">mesmo grupo aparente (<b>${esc(x.marca)}</b>) — grupo econômico é lícito; disputar o mesmo certame fingindo concorrência não é</div>`:''}
+      </div>
+      <div class="right"><div class="num" style="font-weight:800">${fmtRc(x.peso)}</div><div class="dim">somados</div></div></div>`,
+    x.mesmo_grupo_aparente?'':'hl');
+  registrarDrill('eoTodos',{titulo:'Pares com os dois lados pagos pelo Estado',itens:it,render:_lin});
+  registrarDrill('eoSemExpl',{titulo:'Sem explicação aparente',itens:it.filter(x=>!x.mesmo_grupo_aparente),render:_lin,
+    nota:'Nomes distintos, sem forma jurídica que os una, mesmo contato, ambos pagos pelo poder público.'});
+  registrarDrill('eoGrupo',{titulo:'Mesmo grupo aparente',itens:it.filter(x=>x.mesmo_grupo_aparente),render:_lin,
+    nota:'Grupo econômico é LÍCITO — art. 337-F do CP alcança a disputa fingida, não a existência do grupo.'});
+  h+=`<div class="grid">`+it.map(_lin).join('')+`</div>`;
+  h+=`<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos · ${fmtN(d.arestas_de_contato)} arestas de contato no grafo, ${fmtN(d.estruturais)} explicadas pela forma jurídica · gerado em ${esc(d.gerado_em||'—')}.</div>`;
   o.innerHTML=h;
 }
 
@@ -504,6 +541,7 @@ export const DRILL_ACOES=Object.fromEntries(
 export const VINC_ACOES={
   consultar:vincConsultar, parentesco:vincParentesco, contato:vincContato,
   agentePublico:vincAgentePublico, osintProcessos:vincOsintProcessos,
+  elosOcultos:vincElosOcultos,
   trocas:vincTrocas, grafo:vincGrafo,
   ftm:vincFtm, conluioMunicipal:vincConluioMunicipal, resolucao:vincResolucao,
   interposicao:vincInterposicao, patrimonio:vincPatrimonio,

@@ -433,3 +433,39 @@ def api_osint_processos(limite: int = 80, so_conflito: int = 0):
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("osint_processos falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/elos_ocultos")
+def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
+    """Empresas que dividem contato E ambas recebem do Estado — o elo que ninguém declarou."""
+    try:
+        import json
+
+        from tools.elos_ocultos import _SAIDA
+
+        if not _SAIDA.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "levantamento ainda não materializado — rode `python -m tools.elos_ocultos` "
+                "(o sweep diário o regenera)")}, status_code=503)
+        corpo = json.loads(_SAIDA.read_text(encoding="utf-8"))
+        itens = corpo.get("itens") or []
+        if so_sem_explicacao:
+            itens = [x for x in itens if not x.get("mesmo_grupo_aparente")]
+        return JSONResponse({
+            "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "arestas_de_contato": corpo.get("arestas_de_contato"),
+            "estruturais": corpo.get("estruturais"),
+            "total": corpo.get("os_dois_lados_pagos"),
+            "mesmo_grupo_aparente": corpo.get("mesmo_grupo_aparente"),
+            "sem_explicacao": corpo.get("sem_explicacao"),
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 300))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. Telefone e e-mail vêm do cadastro da Receita e podem ser de "
+                "escritório de contabilidade, central de atendimento ou grupo econômico legítimo. "
+                "Grupo econômico é LÍCITO — o que ele não pode é disputar o mesmo certame fingindo "
+                "concorrência (art. 337-F do Código Penal; Lei 12.529/2011)."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("elos_ocultos falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

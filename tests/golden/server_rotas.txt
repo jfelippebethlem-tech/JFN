@@ -87,6 +87,7 @@ GET /api/osint/agente_publico -> api_agente_publico
 GET /api/osint/beneficiario_final -> api_beneficiario_final
 GET /api/osint/conluio_municipal -> api_conluio_municipal
 GET /api/osint/contato_compartilhado -> api_contato_compartilhado
+GET /api/osint/elos_ocultos -> api_elos_ocultos
 GET /api/osint/historico_socio -> api_historico_socio
 GET /api/osint/interposicao -> api_interposicao
 GET /api/osint/parentesco -> api_parentesco

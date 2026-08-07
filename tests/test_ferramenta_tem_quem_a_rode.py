@@ -66,6 +66,9 @@ PRECISAM_DE_ROTINA = {
     "tools/colher_vm2.sh":
         "traz para a VM-1 o que a VM-2 capturou; sem rotina, uma maquina gasta 34 min de CPU por "
         "rodada e o resultado fica parado no disco dela",
+    "tools.elos_ocultos":
+        "levanta empresas que dividem contato e ambas recebem do Estado; depende do grafo, que "
+        "cresce a cada fatia de credores, e sem rotina o levantamento congela",
     "tools.osint_x_processos":
         "liga a fila de agente publico aos processos ja lidos; as DUAS pontas mudam (fichas novas "
         "a cada sweep SEI, fila nova a cada dump da Receita) e sem rotina a correlacao envelhece",
