@@ -539,6 +539,11 @@ def api_pcrj_assinaturas(limite: int = 80, so_identificadas: int = 0):
             qsa = {"no_qsa_nacional": q.get("no_qsa_nacional"),
                    "vinculos_societarios": q.get("vinculos_societarios"),
                    "com_empresa_paga_pela_prefeitura": q.get("com_empresa_paga_pela_prefeitura"),
+                   # AS LINHAS, não só o número: este é o KPI mais grave da aba — o signatário do
+                   # despacho é sócio de quem a Prefeitura paga. Servir a contagem sem o que a
+                   # sustenta obriga o leitor a acreditar em mim.
+                   "qsa_itens": q.get("itens") or [],
+                   "signatarios_no_qsa": q.get("no_qsa_nacional"),
                    "ressalva_qsa": q.get("ressalva")}
         return JSONResponse({
             "ok": True, "gerado_em": corpo.get("gerado_em"),

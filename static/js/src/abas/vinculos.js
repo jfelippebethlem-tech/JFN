@@ -18,7 +18,7 @@
  * Sem efeito de topo.
  */
 import {$, esc, svgIco, card, kpi, sec, cover, leitura, corta, clk} from '../nucleo/dom.js';
-import {registrarDrill} from '../nucleo/drill.js';
+import {registrarDrill, drillSeCompleto} from '../nucleo/drill.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano} from '../nucleo/http.js';
 import {abrirDossie} from '../ui/index.js';
@@ -32,10 +32,14 @@ export async function renderVinculos(){
   // Estado da série: é o denominador. Sem ele, o leitor supõe que o vínculo é atual.
   if(s.ok){
     const n=s.n_snapshots||0, st=s.vinculos_por_status||{};
-    h+=`<div class="grid g2">${kpi(fmtN(n),'Snapshots mensais na série',n>=2?'var(--emerald)':'var(--rose)','📅')}
-        ${kpi(esc(s.cobertura||'—'),'Janela observada',null,'🗓️')}
-        ${kpi(fmtN(st.saiu||0),'Saídas de sócio detectadas','var(--amber)','🚪')}
-        ${kpi(fmtN(st.ativo||0),'Vínculos vistos no último mês',null,'✅')}</div>`;
+    h+=`<div class="grid g2">${kpi(fmtN(n),'Snapshots mensais na série',n>=2?'var(--emerald)':'var(--rose)','📅',
+          {sobre:'Quantos meses da base de sócios da Receita foram efetivamente ingeridos. É o DENOMINADOR de tudo nesta aba: a Receita publica data de entrada e <b>nenhuma data de saída</b>, então saída de sócio só existe como diferença entre dois snapshots. Com menos de dois, ela é inobservável — e a resposta correta é INDISPONÍVEL, nunca NÃO.'})}
+        ${kpi(esc(s.cobertura||'—'),'Janela observada',null,'🗓️',
+          {sobre:'O primeiro e o último mês ingeridos. Fora desta janela nada foi observado: um sócio ausente num mês que não entrou na série <b>não saiu</b> — o mês é que não existe aqui.'})}
+        ${kpi(fmtN(st.saiu||0),'Saídas de sócio detectadas','var(--amber)','🚪',
+          {sobre:'Vínculos presentes num snapshot e ausentes no seguinte. A precisão máxima é de <b>um mês</b>, porque é esse o passo da série — a data exata da alteração contratual só a JUCERJA tem.'})}
+        ${kpi(fmtN(st.ativo||0),'Vínculos vistos no último mês',null,'✅',
+          {sobre:'Vínculos presentes no snapshot mais recente. "Ativo" aqui significa <b>visto por último</b>, não juridicamente vigente hoje: entre a extração da Receita e agora pode ter havido alteração não publicada.'})}</div>`;
     h+=leitura(n<2
       ? `<b>Série com ${n} snapshot(s).</b> Com menos de dois meses observados, <b>saída de sócio é inobservável</b> — a base da Receita traz data de entrada e nenhuma de saída. Toda pergunta do tipo "era sócio na data do certame?" sai como INDISPONÍVEL, nunca como afastada.`
       : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
@@ -100,9 +104,15 @@ export async function vincConsultar(){
     render:ci=>card(`<div>${(Array.isArray(ci)?ci:[ci]).map(x=>esc(String(x))).join(' → ')}</div>`),
     nota:'Ciclo é indício de estrutura que dificulta identificar o beneficiário — não prova.'});
   let h=sec('Beneficiário final — '+esc(d.pj||c));
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas),'Pessoas físicas na cadeia',ps.length?'var(--emerald)':'var(--amber)','👤')}
-      ${kpi((cob.pct==null?'—':cob.pct+'%'),'Cobertura de QSA da cadeia',cob.pct>=80?null:'var(--amber)','🔍')}
-      ${kpi(fmtN(d.saltos_max),'Degraus até a pessoa física')}
+  registrarDrill('bfPessoas',{titulo:'Pessoas físicas ao fim da cadeia',itens:ps,
+    render:x=>card(`<div style="font-weight:700">${esc(x.nome||x)}</div>
+      <div class="dim">${esc(x.qualificacao||x.doc||'')}</div>`),
+    nota:'CPF de sócio sai mascarado por dever legal (LGPD) — a identificação plena é do órgão de controle, não do painel.'});
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas),'Pessoas físicas na cadeia',ps.length?'var(--emerald)':'var(--amber)','👤',{drill:'bfPessoas'})}
+      ${kpi((cob.pct==null?'—':cob.pct+'%'),'Cobertura de QSA da cadeia',cob.pct>=80?null:'var(--amber)','🔍',
+        {sobre:'Que fração das PJ da cadeia teve o quadro societário efetivamente lido. Cobertura baixa <b>não</b> significa cadeia curta: significa que degraus ficaram por abrir, e o beneficiário final pode estar atrás de um deles. Por isso o número aparece ao lado da resposta, e não escondido.'})}
+      ${kpi(fmtN(d.saltos_max),'Degraus até a pessoa física',null,null,
+        {sobre:'Quantas PJ foram atravessadas até chegar a uma pessoa natural. Cadeia longa é <b>lícita</b> e comum em grupo econômico; ela só pesa combinada com outros sinais — sozinha, mede estrutura societária, não irregularidade.'})}
       ${kpi(fmtN((d.ciclos||[]).length),'Participações cruzadas circulares',(d.ciclos||[]).length?'var(--rose)':null,'🔄',{drill:'bfCiclos'})}</div>`;
   h+=leitura(esc(d.motivo||''));
   if(ps.length){
@@ -142,10 +152,20 @@ export async function vincContato(){
   registrarDrill('contatoArestas',{titulo:'Empresas ligadas por telefone ou e-mail',itens:ar,
     render:x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.para)}</div><div class="dim">${esc(x.detalhe||'')} · ${esc(x.tipo)}</div><div class="dim">${esc(x.explicacao_inocente||'')}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((x.forca||0)*100)}%</div></div></div>`),
     nota:'Contato dividido é indício de mesma administração, não prova.'});
+  /* O QUE FICOU DE FORA É TÃO AUDITÁVEL QUANTO O QUE ENTROU. Cada guarda que descarta contato é
+     uma decisão minha sobre o que não vira sinal — telefone-lixo, fan-out acima do teto, e-mail de
+     contabilidade. Sem esta gaveta, o leitor teria de confiar que o corte foi honesto. */
+  registrarDrill('contatoDesc',{titulo:'Contatos descartados, por guarda',
+    itens:Object.entries(desc).map(([g,n])=>({guarda:g,n})),
+    render:x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="font-weight:700">${esc(x.guarda)}</div><div class="num">${fmtN(x.n)}</div></div>`),
+    nota:'Guarda que descarta contato existe porque contato repetido nem sempre é mesma mão: central de atendimento, escritório contábil e provedor de e-mail produzem o mesmo padrão.'});
   h+=`<div class="grid g2">${kpi(fmtN(ar.length),'Empresas ligadas por contato',ar.length?'var(--amber)':null,'📞',{drill:'contatoArestas'})}
-      ${kpi(fmtN(cob.com_telefone),'Alvos com telefone publicado')}
-      ${kpi(fmtN(cob.com_email),'Alvos com e-mail publicado')}
-      ${kpi(fmtN(Object.values(desc).reduce((s,x)=>s+x,0)),'Contatos DESCARTADOS por guarda','var(--dim)','🚫')}</div>`;
+      ${kpi(fmtN(cob.com_telefone),'Alvos com telefone publicado',null,null,
+        {sobre:'Dos estabelecimentos consultados, quantos publicam telefone na base da Receita — <b>83,9%</b> dos 6.171.766 no acervo. Quem não publica não pode ser ligado por este eixo: ausência de aresta aqui é lacuna de cadastro, não prova de independência.'})}
+      ${kpi(fmtN(cob.com_email),'Alvos com e-mail publicado',null,null,
+        {sobre:'Idem para e-mail — <b>69,0%</b> da base. O eixo de e-mail é o mais forte da régua depois de mesma sala (0,80), justamente porque endereço eletrônico é escolhido, não herdado do imóvel.'})}
+      ${kpi(fmtN(Object.values(desc).reduce((s,x)=>s+x,0)),'Contatos DESCARTADOS por guarda','var(--dim)','🚫',{drill:'contatoDesc'})}</div>`;
   h+=leitura('Contato dividido é indício de mesma administração, não prova: escritório contábil, central de atendimento e grupo econômico legítimo produzem o mesmo sinal. Por isso o e-mail de contabilidade cai para <b>mesmo_contador</b> (0,30) e o que passa do teto de fan-out sai fora — o corte é medido, e o que fica de fora está contado abaixo.');
   if(ar.length){
     h+=`<div class="grid">`+ar.slice(0,40).map(a=>card(
@@ -174,13 +194,42 @@ export async function vincAssinaturasPcrj(){
   const d=await J('/api/pcrj/assinaturas?limite=150');
   if(d.erro||d.ok===false){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
   const it=d.itens||[];
+  /* UNIDADE: o KPI conta MATRÍCULAS, a gaveta contava ASSINATURAS — 51 contra 110, e 18 contra 38.
+     Nenhum dos dois números estava errado; eles medem coisas diferentes, e a mesma pessoa assina
+     vários despachos. Um KPI que abre uma lista com o dobro de linhas faz o leitor desconfiar do
+     número certo. A gaveta passa a agrupar por matrícula, que é o que o rótulo promete, e cada
+     linha diz quantas assinaturas aquela matrícula responde. */
+  const _porMatricula=lista=>{
+    const m=new Map();
+    for(const x of lista){
+      const k=x.matricula_num||x.matricula||'—';
+      if(!m.has(k)) m.set(k,{...x,n_assinaturas:0,processos:new Set()});
+      const v=m.get(k); v.n_assinaturas++; if(x.numero) v.processos.add(x.numero);
+    }
+    return [...m.values()];
+  };
+  const _linMat=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${x.identificada?esc(x.nome):'matrícula '+esc(x.matricula_num||x.matricula)}</div>
+        ${x.identificada?`<div class="dim">${esc(x.orgao||'')}${x.unidade_folha?' · '+esc(x.unidade_folha):''}</div>`:'<div class="dim">sem par na folha — requisitado de outro ente, empresa pública ou vínculo anterior a 12/2020</div>'}
+        <div class="dim" style="font-size:12.5px;margin-top:4px">matrícula ${esc(x.matricula_num||x.matricula||'—')} · ${fmtN(x.processos.size)} processo(s)</div>
+      </div>
+      <div class="right"><div class="num" style="font-weight:800">${fmtN(x.n_assinaturas)}</div>
+        <div class="dim">assinatura(s)</div></div></div>`);
+  /* E MESMO AGRUPADO POR MATRÍCULA A CONTA NÃO FECHA SOZINHA: o KPI conta o ACERVO (51), a página
+     servida tem 150 das 165 assinaturas e revela 46 matrículas. Nenhum dos dois mente — mas juntos
+     mentiriam. `drillSeCompleto` só liga a gaveta quando o que está em mão É o universo; do
+     contrário o KPI cai para a procedência, e ninguém precisa escolher entre mentir e não ter
+     caminho. Quando o sweep completar a captura e a página couber, a gaveta liga sozinha. */
+  const _mIdent=_porMatricula(it.filter(x=>x.identificada&&!x.ambigua));
+  const _mSemPar=_porMatricula(it.filter(x=>!x.identificada));
+  const _dIdent=drillSeCompleto('apIdent',d.identificadas,_mIdent,{
+    titulo:'Matrículas identificadas na folha',render:_linMat,
+    nota:'Uma linha por MATRÍCULA, não por assinatura — a mesma pessoa assina vários despachos, e é a matrícula que o KPI conta.'});
+  const _dSemPar=drillSeCompleto('apSemPar',d.nao_identificadas,_mSemPar,{
+    titulo:'Sem par na folha municipal',render:_linMat,
+    nota:'NÃO significa inexistente: requisitado de outro ente, empresa pública com registro próprio, ou vínculo encerrado antes de 12/2020.'});
   let h=sec('Quem assinou — despachos da Prefeitura');
-  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Assinaturas capturadas','var(--amber)','✍️',{drill:'apAll'})}
-      ${kpi(fmtN(d.identificadas),'Matrículas identificadas','var(--emerald)','🪪',{drill:'apIdent'})}
-      ${kpi(fmtN(d.nao_identificadas),'Sem par na folha','var(--dim)','❔',{drill:'apSemPar'})}
-      ${kpi(fmtN(d.com_empresa_paga_pela_prefeitura??'—'),'Sócio de quem a Prefeitura paga',(d.com_empresa_paga_pela_prefeitura||0)?'var(--red)':null,'🚨')}</div>`;
-  h+=leitura(esc(d.ressalva||''));
-  if(d.ressalva_qsa) h+=leitura(esc(d.ressalva_qsa));
   const _lin=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
       <div style="min-width:0">
         <div style="font-weight:700">${x.identificada?esc(x.nome):'matrícula '+esc(x.matricula_num||x.matricula)}</div>
@@ -189,10 +238,31 @@ export async function vincAssinaturasPcrj(){
         <div class="dim" style="font-size:12px">${esc(x.quando||'')} · ${esc(x.unidade||'')}</div>
         ${x.ambigua?'<div class="dim" style="font-size:12px;color:var(--amber)">matrícula com MAIS DE UM nome na folha — ambígua, não identificada</div>':''}
       </div></div>`, x.identificada&&!x.ambigua?'':'');
-  registrarDrill('apAll',{titulo:'Assinaturas capturadas',itens:it,render:_lin});
-  registrarDrill('apIdent',{titulo:'Matrículas identificadas na folha',itens:it.filter(x=>x.identificada&&!x.ambigua),render:_lin});
-  registrarDrill('apSemPar',{titulo:'Sem par na folha municipal',itens:it.filter(x=>!x.identificada),render:_lin,
-    nota:'NÃO significa inexistente: requisitado de outro ente, empresa pública com registro próprio, ou vínculo encerrado antes de 12/2020.'});
+  /* MEDIDO EM 07/08/2026: KPI 165, gaveta 150 — a rota serve no máximo `limite` itens e o total
+     conta o acervo inteiro. `drillSeCompleto` só liga a gaveta quando a lista É o universo; do
+     contrário o KPI cai para a procedência, que diz o número e por que a lista não cabe. */
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Assinaturas capturadas','var(--amber)','✍️',
+        drillSeCompleto('apAll',d.total,it,{titulo:'Assinaturas capturadas',render:_lin})
+        ||{sobre:'Assinaturas de despacho capturadas na Lista de Andamentos do SEI da Prefeitura. A tela recebe uma PÁGINA da lista (parâmetro <b>limite</b>), não o acervo — por isso a gaveta fica desligada aqui: um número que abre uma lista menor é pior que um número sem caminho. Os recortes por identificação, ao lado, cabem inteiros e continuam clicáveis.'})}
+      ${kpi(fmtN(d.identificadas),'Matrículas identificadas','var(--emerald)','🪪',
+        _dIdent||{sobre:`Matrículas que casaram com nome na folha municipal, contadas sobre o ACERVO. A tela recebe uma página das assinaturas, e nela aparecem ${fmtN(_mIdent.length)} das ${fmtN(d.identificadas)} — por isso a gaveta fica desligada: abrir uma lista menor que o número faria desconfiar do número certo. <b>Formato não é identidade</b>: a folha guarda a matrícula com 7 dígitos e zero à esquerda, o SEI com 8; comparadas como texto davam 0 de 69, como número dão 51.`})}
+      ${kpi(fmtN(d.nao_identificadas),'Sem par na folha','var(--dim)','❔',
+        _dSemPar||{sobre:`Matrículas sem par na folha municipal — ${fmtN(_mSemPar.length)} visíveis na página servida, ${fmtN(d.nao_identificadas)} no acervo. <b>Não são erro nem ausência</b>: podem ser servidor requisitado de outro ente, empresa pública com registro próprio, ou vínculo encerrado antes de 12/2020, que é a primeira competência da folha.`})}
+      ${kpi(fmtN(d.com_empresa_paga_pela_prefeitura??'—'),'Sócio de quem a Prefeitura paga',(d.com_empresa_paga_pela_prefeitura||0)?'var(--red)':null,'🚨',{drill:'apQsa'})}</div>`;
+  h+=leitura(esc(d.ressalva||''));
+  if(d.ressalva_qsa) h+=leitura(esc(d.ressalva_qsa));
+
+  /* ZERO AQUI É "NÃO OBSERVADO NESTA AMOSTRA", nunca "não existe" — e a gaveta precisa dizer isso,
+     porque um zero clicável que abre vazio é lido como afastamento da hipótese. */
+  registrarDrill('apQsa',{titulo:'Signatário sócio de empresa paga pela Prefeitura',
+    itens:(d.qsa_itens||[]),
+    render:x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.signatario||'')}</div>
+        <div class="dim">${esc(x.orgao||'')} · processo ${esc(x.processo||'—')}</div>
+        <div style="margin-top:4px">${esc(x.empresa||'')} <span class="dim">(${esc(x.qualificacao||'')})</span></div>
+      </div><div class="right"><div class="num" style="font-weight:800">${fmtRc(x.pago_pela_prefeitura)}</div>
+        <div class="dim">pago pela Prefeitura</div></div></div>`,'hl'),
+    nota:'Estar no QSA de alguma empresa NÃO é sinal: 33% dos signatários identificados aparecem no cadastro nacional. O sinal é a empresa receber do MESMO poder público cujo ato ele assina. Lista vazia = não observado nesta amostra.'});
   if((d.top_signatarios||[]).length){
     h+=sec('Quem mais assina')+`<div class="grid g2">`+(d.top_signatarios||[]).slice(0,8).map(
       ([nome,n])=>card(`<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0;font-weight:700">${esc(nome)}</div><div class="right"><b>${fmtN(n)}</b></div></div>`)).join('')+`</div>`;
@@ -214,7 +284,8 @@ export async function vincCocontato(){
   h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares no mesmo certame','var(--amber)','⚖️',{drill:'ccTodos'})}
       ${kpi(fmtN(d.sem_explicacao),'SEM explicação',(d.sem_explicacao||0)?'var(--red)':null,'🚨',{drill:'ccSemExpl'})}
       ${kpi(fmtN(d.contato_de_servico),'Contato de serviço','var(--dim)','📗',{drill:'ccServico'})}
-      ${kpi(fmtN(d.certames_com_disputa),'Certames com 2+ fornecedores')}</div>`;
+      ${kpi(fmtN(d.certames_com_disputa),'Certames com 2+ fornecedores',null,null,
+        {sobre:'O DENOMINADOR do teste. Certame com um único participante não pode ter disputa fingida — não há com quem fingir. Só estes entram na conta, e é contra este número que a taxa de achado deve ser lida.'})}</div>`;
   h+=leitura(esc(d.ressalva||''));
   const _lin=x=>card(`<div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome_a)}</div>
@@ -251,7 +322,8 @@ export async function vincElosOcultos(soSemExplicacao){
   h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pares com os DOIS lados pagos','var(--amber)','🔗',{drill:'eoTodos'})}
       ${kpi(fmtN(d.sem_explicacao),'SEM explicação aparente',(d.sem_explicacao||0)?'var(--red)':null,'🚨',{drill:'eoSemExpl'})}
       ${kpi(fmtN(d.mesmo_grupo_aparente),'Mesmo grupo aparente','var(--dim)','🏢',{drill:'eoGrupo'})}
-      ${kpi(fmtN(d.estruturais),'Estruturais (fora da fila)','var(--dim)','📗')}</div>`;
+      ${kpi(fmtN(d.estruturais),'Estruturais (fora da fila)','var(--dim)','📗',
+        {sobre:'Pares cujo contato compartilhado é explicado pela própria forma jurídica — filial e matriz, empresa e seu sindicato patronal, entidades do mesmo grupo declarado. Saem da fila do fiscal de propósito: acusar o que a lei organiza assim é ruído que faz o leitor desconfiar do resto.'})}</div>`;
   h+=leitura(esc(d.ressalva||''));
   const _lin=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
       <div style="min-width:0">
@@ -286,10 +358,6 @@ export async function vincOsintProcessos(soConflito){
   const it=d.itens||[];
   const nConf=(d.itens||[]).filter(x=>(x.agentes||[]).some(a=>a.conflito_pelo_processo||a.conflito_de_orgao)).length;
   let h=sec('OSINT × processos lidos');
-  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Processos com sinal','var(--amber)','⚖️',{drill:'opTodos'})}
-      ${kpi(fmtN(d.processos_com_cnpj),'Fichas com CNPJ')}
-      ${kpi(fmtN(nConf),'Autos no PRÓPRIO órgão do agente',nConf?'var(--red)':null,'⚠️',{drill:'opConflito'})}</div>`;
-  h+=leitura(esc(d.ressalva||''));
   const _lin=x=>{
     const g=(x.agentes||[])[0]||{};
     const conf=g.conflito_pelo_processo||g.conflito_de_orgao;
@@ -303,7 +371,14 @@ export async function vincOsintProcessos(soConflito){
        </div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.peso)}</div><div class="dim">peso</div></div></div>`,
       conf?'hl':'');
   };
-  registrarDrill('opTodos',{titulo:'Processos com sinal OSINT na empresa',itens:it,render:_lin});
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Processos com sinal','var(--amber)','⚖️',
+        drillSeCompleto('opTodos',d.total,it,{titulo:'Processos com sinal OSINT',render:_lin})
+        ||{sobre:'Processos cuja ficha cita CNPJ que aparece na fila de agente público. Medido em 07/08/2026: <b>294</b> no acervo, e a tela recebe os primeiros <b>120</b> — por isso a gaveta fica desligada neste KPI. O recorte grave ao lado (autos no próprio órgão do agente) cabe inteiro e abre.'})}
+      ${kpi(fmtN(d.processos_com_cnpj),'Fichas com CNPJ',null,null,
+        {sobre:'Quantas fichas de processo têm ao menos um CNPJ extraído — é o universo que pode ser cruzado com a fila de agente público. Processo sem CNPJ na ficha não foi afastado: ele simplesmente <b>não pôde ser testado</b>, e essa diferença é o que separa lacuna de achado.'})}
+      ${kpi(fmtN(nConf),'Autos no PRÓPRIO órgão do agente',nConf?'var(--red)':null,'⚠️',{drill:'opConflito'})}</div>`;
+  h+=leitura(esc(d.ressalva||''));
+
   registrarDrill('opConflito',{titulo:'Autos que correm no próprio órgão do agente',
     itens:it.filter(x=>(x.agentes||[]).some(a=>a.conflito_pelo_processo||a.conflito_de_orgao)),render:_lin,
     nota:'Art. 9º, III da Lei 8.429/1992 e dever de impedimento do art. 20 da Lei 9.784/1999.'});
@@ -377,10 +452,14 @@ export async function vincParentesco(){
   if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
   const cor={indicio:'var(--rose)',hipotese:'var(--amber)',hipotese_fraca:null}[d.grau]||null;
   let h=sec('Parentesco inferido — CNPJ raiz '+esc(d.cnpj_basico));
-  h+=`<div class="grid g2">${kpi(esc(d.grau||'nenhum eixo'),'Grau',cor,'👪')}
-      ${kpi(fmtN(d.n_hipoteses),'Hipóteses')}
-      ${kpi(d.falso_positivo_esperado_pct+'%','Falso positivo esperado',d.falso_positivo_esperado_pct>=10?'var(--amber)':null,'📉')}
-      ${kpi(fmtN(d.n_socios_pf),'Sócios PF no QSA')}</div>`;
+  h+=`<div class="grid g2">${kpi(esc(d.grau||'nenhum eixo'),'Grau',cor,'👪',
+        {sobre:'A força do que os eixos sustentam: <b>hipótese fraca</b>, <b>hipótese</b> ou <b>indício</b>. Nenhum grau aqui é prova — no Brasil não há base aberta de filiação, e parentesco só se prova por certidão de registro civil. O que existe é inferência calibrada.'})}
+      ${kpi(fmtN(d.n_hipoteses),'Hipóteses',null,null,
+        {sobre:'Quantos pares de sócios acionaram ao menos um eixo. Número alto em empresa grande é esperado: quanto mais sócios, mais pares — por isso o grau depende do eixo acionado, não da quantidade.'})}
+      ${kpi(d.falso_positivo_esperado_pct+'%','Falso positivo esperado',d.falso_positivo_esperado_pct>=10?'var(--amber)':null,'📉',
+        {sobre:'Medido na PRÓPRIA BASE antes de deixar o eixo pesar: um eixo que acende na maioria das empresas mede a base, não o alvo. Foi assim que sobrenome compartilhado deixou de acender sozinho — no Brasil ele casa com meio país.'})}
+      ${kpi(fmtN(d.n_socios_pf),'Sócios PF no QSA',null,null,
+        {sobre:'Pessoas naturais no quadro societário declarado. É o universo dos pares testados: com um sócio só, nenhum eixo de parentesco pode acionar, e a resposta correta é ausência de teste, não ausência de parentesco.'})}</div>`;
   h+=leitura(esc(d.leitura||''));
   if((d.eixos_acionados||[]).length){
     h+=`<div class="grid">`+(d.eixos_acionados||[]).map(e=>card(
@@ -414,10 +493,14 @@ export async function vincNaData(){
   if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro)}</div>`);return;}
   const cor={SIM:'var(--rose)',NAO:null,INDISPONIVEL:'var(--amber)'}[d.resposta]||null;
   let h=sec('Havia vínculo societário em '+esc(dt)+'?');
-  h+=`<div class="grid g2">${kpi(esc(d.resposta),'Resposta',cor,'⚖️')}
-      ${kpi(esc(d.mes_observado||'—'),'Mês efetivamente observado')}
-      ${kpi(d.defasagem_meses==null?'—':d.defasagem_meses,'Defasagem (meses)')}
-      ${kpi(fmtN((d.serie||{}).n_meses),'Meses na série')}</div>`;
+  h+=`<div class="grid g2">${kpi(esc(d.resposta),'Resposta',cor,'⚖️',
+        {sobre:'SIM, NÃO ou INDISPONÍVEL. <b>INDISPONÍVEL não é NÃO</b>: significa que o mês da data pedida não foi observado na série, e responder NÃO ali seria afirmar uma ausência que o dado não sustenta.'})}
+      ${kpi(esc(d.mes_observado||'—'),'Mês efetivamente observado',null,null,
+        {sobre:'O snapshot realmente usado para responder — quase nunca é o mês exato da pergunta, porque a série tem passo mensal. É este mês, não a data pedida, que a resposta descreve.'})}
+      ${kpi(d.defasagem_meses==null?'—':d.defasagem_meses,'Defasagem (meses)',null,null,
+        {sobre:'Distância entre a data perguntada e o snapshot usado. Defasagem grande enfraquece a resposta: quanto mais longe, mais espaço houve para alteração contratual não observada entre os dois pontos.'})}
+      ${kpi(fmtN((d.serie||{}).n_meses),'Meses na série',null,null,
+        {sobre:'Tamanho da série disponível para esta consulta. Com um único mês, toda pergunta sobre data anterior sai INDISPONÍVEL por construção.'})}</div>`;
   if(d.resposta==='INDISPONIVEL') h+=leitura('<b>INDISPONÍVEL não é NÃO.</b> '+esc(d.motivo||''));
   else h+=leitura(esc(d.ressalva||''));
   if((d.socios||[]).length){
@@ -442,9 +525,18 @@ export async function vincTrocas(){
   const d=await J(`/api/osint/trocas_societarias?cnpj=${encodeURIComponent(c)}&data=${encodeURIComponent(dt)}`);
   if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.erro||d.motivo)}</div>`);return;}
   let h=sec('Trocas de quadro societário perto de '+esc(dt));
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_entradas),'Entradas na janela',d.n_entradas?'var(--amber)':null,'➡️')}
-      ${kpi(fmtN(d.n_saidas),'Saídas na janela',d.n_saidas?'var(--amber)':null,'🚪')}
-      ${kpi(fmtN(d.janela_meses),'Janela (meses)')}</div>`;
+  const _troca=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.nome||'')}</div>
+      <div class="dim">${esc(x.qualificacao||'')}</div></div>
+      <div class="right"><div class="dim">${esc(x.mes||x.data||'')}</div></div></div>`);
+  registrarDrill('trEntradas',{titulo:'Entradas de sócio na janela',itens:(d.entradas||[]),render:_troca,
+    nota:'A data é do SNAPSHOT em que o sócio apareceu, com precisão de um mês — não da alteração contratual.'});
+  registrarDrill('trSaidas',{titulo:'Saídas de sócio na janela',itens:(d.saidas||[]),render:_troca,
+    nota:'Saída é inferida por AUSÊNCIA entre dois snapshots. Mês não ingerido não produz saída — produz lacuna.'});
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_entradas),'Entradas na janela',d.n_entradas?'var(--amber)':null,'➡️',{drill:'trEntradas'})}
+      ${kpi(fmtN(d.n_saidas),'Saídas na janela',d.n_saidas?'var(--amber)':null,'🚪',{drill:'trSaidas'})}
+      ${kpi(fmtN(d.janela_meses),'Janela (meses)',null,null,
+        {sobre:'Quantos meses ao redor da data de referência foram varridos. Janela larga acha mais trocas e diz menos sobre proximidade com o ato; janela estreita diz mais e acha menos. O número está aqui para o leitor calibrar a leitura.'})}</div>`;
   h+=leitura(esc(d.leitura||''));
   const linhas=[...(d.entradas||[]).map(x=>['entrada',x]),...(d.saidas||[]).map(x=>['saída',x])];
   if(linhas.length){
@@ -529,10 +621,25 @@ export async function vincConluioMunicipal(){
   if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.motivo||d.erro)}</div>`);return;}
   const c=d.cobertura||{};
   let h=sec('Conluio municipal — sócio em comum entre vencedor e perdedora');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_certames_com_achado),'Certames com achado',d.n_certames_com_achado?'var(--rose)':null,'🤝')}
-      ${kpi(fmtN(d.n_pares),'Pares vencedor × perdedora')}
-      ${kpi(fmtN(c.cruzaveis_com_qsa_dos_dois_lados),'Certames efetivamente cruzados')}
-      ${kpi((c.taxa_de_achado_pct==null?'—':c.taxa_de_achado_pct+'%'),'Taxa de achado')}</div>`;
+  /* CADA LINHA DE `achados` É UM PAR, NÃO UM CERTAME — 42 pares para 31 certames na medição de
+     07/08/2026, porque um certame com dois classificados problemáticos gera dois pares. A gaveta
+     estava pendurada no KPI de CERTAMES: 31 no número, 42 na lista. Defeito meu, da mesma família
+     que a casa já corrigiu três vezes (68→55, 201→22, 647→0). Vai para o KPI que ela conta. */
+  const _cmLin=a=>card(`<div style="font-weight:700">${esc(a.certame)}</div>
+      <div class="dim" style="margin-top:3px">vencedor <b>${esc(a.vencedor_raiz)}</b> × perdedora <b>${esc(a.perdedora_raiz)}</b></div>
+      <div style="margin-top:4px">Sócio(s) em comum: <b>${esc((a.socios_em_comum||[]).join(' · '))}</b></div>
+      <div class="dim" style="margin-top:3px">${esc(a.veredito||'')}</div>`,'hl');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_certames_com_achado),'Certames com achado',d.n_certames_com_achado?'var(--rose)':null,'🤝',
+        {sobre:'Certames DISTINTOS em que ao menos um par vencedor × perdedora divide sócio — 31 certames para 42 pares em 07/08/2026. Não é o mesmo número que o de pares: um certame com dois classificados problemáticos conta UMA vez aqui e DUAS ali. As linhas estão na gaveta do KPI ao lado, que é o que elas contam.'})}
+      ${kpi(fmtN(d.n_pares),'Pares vencedor × perdedora',null,null,
+        drillSeCompleto('cmAchados',d.n_pares,(d.achados||[]),{
+          titulo:'Pares vencedor × perdedora com sócio em comum', render:_cmLin,
+          nota:'Sócio em comum entre quem venceu e quem perdeu o MESMO certame é o teste clássico de concorrência fingida (art. 337-F do CP). Grupo econômico declarado é lícito; disputar contra si mesmo não é.'})
+        ||{sobre:'Quantos pares foram efetivamente testados. Um certame com quatro classificados gera três pares contra o vencedor — por isso este número é maior que o de certames, e não deve ser lido como quantidade de irregularidades. A gaveta só liga quando a lista em mão é o universo inteiro; cortada, o KPI prefere não ter caminho a ter um caminho que mente.'})}
+      ${kpi(fmtN(c.cruzaveis_com_qsa_dos_dois_lados),'Certames efetivamente cruzados',null,null,
+        {sobre:'O DENOMINADOR honesto: só entram os certames em que o QSA dos DOIS lados foi resolvido. O eixo devolvia zero por falta de dado, não de motor — havia 114 certames com classificado além do 1º lugar em todo o acervo. O que está fora daqui é INDISPONÍVEL, não afastado.'})}
+      ${kpi((c.taxa_de_achado_pct==null?'—':c.taxa_de_achado_pct+'%'),'Taxa de achado',null,null,
+        {sobre:'Achados sobre certames efetivamente cruzados — nunca sobre o acervo inteiro, que daria um percentual falsamente tranquilizador. Taxa alta neste eixo pede desconfiança do próprio motor antes de acusar: 7 famílias de detector já caíram por leitura defeituosa, nenhuma por limiar.'})}</div>`;
   h+=leitura(`O eixo devolvia zero por falta de <b>dado</b>, não de motor: eram <b>114</b> certames com
      classificado além do 1º lugar em todo o acervo. Hoje são <b>${fmtN(c.com_vencedor_e_perdedora_resolvidos)}</b>
      com vencedor e perdedora resolvidos, e <b>${fmtN(c.cruzaveis_com_qsa_dos_dois_lados)}</b> com QSA dos dois lados.
@@ -557,10 +664,14 @@ export async function vincResolucao(){
   const d=await J('/api/osint/resolucao_nome_cnpj');
   if(!d.ok){o.innerHTML=card(`<div class="warn">${erroHumano(d.motivo||d.erro)}</div>`);return;}
   o.innerHTML=sec('Resolução razão social → CNPJ (catálogo nacional da Receita)')+
-    `<div class="grid g2">${kpi(fmtN(d.nomes),'Nomes no universo')}
-      ${kpi(fmtN(d.resolvidos),'Resolvidos','var(--emerald)','✅')}
-      ${kpi(fmtN(d.ambiguos),'Ambíguos (CNPJ nulo)','var(--amber)','⚖️')}
-      ${kpi(d.pct_resolvido+'%','Taxa de resolução')}</div>`+
+    `<div class="grid g2">${kpi(fmtN(d.nomes),'Nomes no universo',null,null,
+        {sobre:'Razões sociais que aparecem em atas e editais sem CNPJ ao lado — o problema que esta rotina existe para resolver. Nome sem documento não cruza com nada: não vira QSA, não vira sanção, não vira pagamento.'})}
+      ${kpi(fmtN(d.resolvidos),'Resolvidos','var(--emerald)','✅',
+        {sobre:'Nomes que casaram com um ÚNICO CNPJ no catálogo nacional da Receita. Casamento múltiplo não conta como resolvido — eleger um entre vários seria inventar identidade.'})}
+      ${kpi(fmtN(d.ambiguos),'Ambíguos (CNPJ nulo)','var(--amber)','⚖️',
+        {sobre:'Nomes que casaram com mais de um CNPJ, ou com nenhum. Ficam declarados em vez de sumir: são exatamente os alvos que uma diligência humana (JUCERJA, ata original) ainda pode fechar.'})}
+      ${kpi(d.pct_resolvido+'%','Taxa de resolução',null,null,
+        {sobre:'Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. A técnica de comparação nunca foi o problema — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.'})}</div>`+
     leitura('Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.')+
     `<div class="note">${esc(d.nota||'')}</div>`;
 }

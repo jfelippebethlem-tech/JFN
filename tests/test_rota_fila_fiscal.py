@@ -29,7 +29,16 @@ _RX_PROC = re.compile(r"^\d{6}/\d{6}/\d{4}$")
 
 @pytest.fixture(scope="module")
 def cli():
-    return TestClient(app)
+    """O cliente entra em CONTEXTO de propósito — sem isso o `startup` não roda.
+
+    Medido em 07/08/2026: `TestClient(app)` sem `with` devolvia 404 no espelho da VM-2 e 200 aqui,
+    para a mesma rota e o mesmo código. A diferença não era ambiente nem rota sumida: parte do
+    roteamento é montada no ciclo de vida da aplicação, e sem abri-lo o teste media a aplicação
+    pela metade. Um 404 assim seria lido como "a rota desapareceu" — a pior forma de falso alarme,
+    porque manda procurar defeito onde não há.
+    """
+    with TestClient(app) as c:
+        yield c
 
 
 def _fila(cli, **q):

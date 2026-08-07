@@ -206,3 +206,59 @@ def test_registro_de_drill_nao_pode_estar_dentro_de_template_literal():
             assert texto.count("`", 0, pos) % 2 == 0, (
                 f"{f.name}: `registrarDrill` dentro de template literal — vira texto na página e "
                 f"o clique não faz nada:\n  {ln.strip()[:100]}")
+
+
+def test_todo_nome_de_gaveta_citado_por_kpi_existe():
+    """`{drill:'X'}` sem `X` registrado em lugar nenhum é KPI que finge ter caminho.
+
+    O KPI ganha `data-drill`, cursor de botão e `role="button"` — e o clique não faz nada. É a
+    mesma família das nove conversões que nasceram mortas, só que por outro caminho: ali a chamada
+    virava texto, aqui ela simplesmente não existe.
+
+    Três formas de registro contam, porque as três acabam ligando o clique a alguma coisa:
+    `registrarDrill('X'`, `drillSeCompleto('X'` (que só liga quando a lista é o universo) e a
+    entrada em `DRILL_ACOES`, usada quando clicar deve REFAZER a busca no servidor com um filtro —
+    foi assim que os KPIs de agente público deixaram de mentir, filtrando na fonte em vez de na
+    tela.
+    """
+    citados: dict[str, list[str]] = {}
+    registrados: set[str] = set()
+    for f in sorted(ABAS.glob("*.js")):
+        texto = f.read_text(encoding="utf-8")
+        for m in re.finditer(r"\{\s*drill\s*:\s*'([A-Za-z0-9_]+)'", texto):
+            citados.setdefault(m.group(1), []).append(f.name)
+        for m in re.finditer(r"(?:registrarDrill|drillSeCompleto)\(\s*'([A-Za-z0-9_]+)'", texto):
+            registrados.add(m.group(1))
+        # DRILL_ACOES = Object.fromEntries(['a','b',...].map(...))
+        for bloco in re.findall(r"DRILL_ACOES\s*=.*?\]", texto, re.S):
+            registrados.update(re.findall(r"'([A-Za-z0-9_]+)'", bloco))
+
+    orfaos = {k: v for k, v in citados.items() if k not in registrados}
+    assert not orfaos, (
+        "KPI cita gaveta que ninguém registra — o clique não faz nada:\n" +
+        "\n".join(f"  • {k} (em {', '.join(sorted(set(v)))})" for k, v in sorted(orfaos.items())))
+
+
+def test_kpi_com_lista_cortada_usa_a_guarda_de_completude():
+    """Gaveta menor que o KPI faz o leitor desconfiar do número CERTO.
+
+    Medido em 07/08/2026 na aba de vínculos: `Assinaturas capturadas` marcava 165 e abria 150,
+    porque a rota serve uma página (`?limite=`) enquanto o total conta o acervo. `Processos com
+    sinal` marcava 294 e abria 120. `Matrículas identificadas` marcava 51 e abria 110 — ali nem era
+    corte, era UNIDADE: o KPI conta matrículas, a lista contava assinaturas.
+
+    Onde a tela pede uma página, o registro tem de passar por `drillSeCompleto`, que compara em
+    tempo de execução e desliga a gaveta quando a lista não é o universo. Este teste vigia a
+    correlação mais simples que existe entre as duas coisas: quem chama a rota com `limite=` não
+    pode registrar gaveta crua para o KPI que mostra o total do servidor.
+    """
+    alvo = ABAS / "vinculos.js"
+    texto = alvo.read_text(encoding="utf-8")
+    for nome in ("apAll", "opTodos", "apIdent", "apSemPar", "cmAchados"):
+        assert f"registrarDrill('{nome}'" not in texto, (
+            f"{nome} voltou a registrar gaveta CRUA: o KPI correspondente mostra o total do "
+            f"servidor e a tela tem só uma página. Use `drillSeCompleto`, que desliga a gaveta "
+            f"quando a lista em mão não é o universo — e deixa o número continuar verdadeiro.")
+        assert f"drillSeCompleto('{nome}'" in texto, (
+            f"{nome} sumiu — se a métrica foi retirada, retire o nome desta lista com o motivo "
+            f"escrito; se foi renomeada, atualize aqui.")

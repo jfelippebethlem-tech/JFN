@@ -41,6 +41,19 @@ SAIDA = _REPO / "data" / "pcrj_signatario_x_qsa.json"
 
 _MIN_TERMOS = 3     # "JOSE SILVA" casa com meio município
 
+# A RESSALVA VIAJA COM O RESULTADO EM TODOS OS CAMINHOS, inclusive no degradado.
+# Medido em 07/08/2026 no espelho da VM-2, onde `data/pcrj_assinaturas.json` ainda não existe: o
+# retorno antecipado devolvia `{"erro": ..., "itens": []}` SEM a ressalva — e é exatamente no
+# caminho sem dado que ela mais importa, porque é ali que um zero aparece. Zero sem ressalva é
+# lido como "não há signatário sócio de quem a Prefeitura paga"; com ela, é lido como
+# "não observado nesta amostra", que é o que o dado autoriza dizer.
+_RESSALVA = (
+    "Estar no QSA de alguma empresa NÃO é sinal: 33% dos signatários identificados aparecem no "
+    "cadastro nacional, e a medição do índice de agente público do Estado dá 28% — servidor pode "
+    "ser sócio. O sinal é a empresa receber do MESMO poder público cujo ato ele assina. Zero aqui "
+    "significa NÃO OBSERVADO NESTA AMOSTRA (165 assinaturas, ~10 processos), nunca inexistente: a "
+    "captura da árvore começou em 07/08/2026 e cresce a cada rodada do sweep.")
+
 
 def _norm(s) -> str:
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
@@ -66,7 +79,8 @@ def levantar() -> dict:
     alvo = signatarios()
     if not alvo or not _ZST.exists():
         return {"signatarios": len(alvo), "erro": "sem signatários ou sem cadastro nacional",
-                "itens": []}
+                "no_qsa_nacional": 0, "vinculos_societarios": 0,
+                "com_empresa_paga_pela_prefeitura": 0, "itens": [], "ressalva": _RESSALVA}
 
     proc = subprocess.Popen(["zstd", "-dcq", str(_ZST)], stdout=subprocess.PIPE,
                             preexec_fn=lambda: os.nice(10))
@@ -138,13 +152,7 @@ def levantar() -> dict:
         "vinculos_societarios": len(vinculos),
         "com_empresa_paga_pela_prefeitura": len(itens),
         "itens": itens,
-        "ressalva": (
-            "Estar no QSA de alguma empresa NÃO é sinal: 33% dos signatários identificados "
-            "aparecem no cadastro nacional, e a medição do índice de agente público do Estado dá "
-            "28% — servidor pode ser sócio. O sinal é a empresa receber do MESMO poder público "
-            "cujo ato ele assina. Zero aqui significa NÃO OBSERVADO NESTA AMOSTRA (165 assinaturas, "
-            "~10 processos), nunca inexistente: a captura da árvore começou em 07/08/2026 e cresce "
-            "a cada rodada do sweep."),
+        "ressalva": _RESSALVA,
     }
 
 

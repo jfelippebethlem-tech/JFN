@@ -803,7 +803,8 @@ export async function renderSancionadas(esf){
   registrarDrill('sancAEpoca',{titulo:'Ato praticado À ÉPOCA da sanção',itens:aepoca,render:_linSanc,
     nota:'O ato ocorreu DENTRO da vigência da punição (Lei 14.133, art. 156).'});
   h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫',{drill:'sancComContrato'})}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️',{drill:'sancAEpoca'})}
-      ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸')}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
+      ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸',
+        {sobre:'Ordens bancárias emitidas <b>enquanto</b> a sanção estava vigente — não o histórico da empresa. A fonte é a OB do SIAFE, que é pagamento efetivo: empenho é reserva e pode ser cancelado, liquidação é reconhecimento da dívida. Só a OB significa que o dinheiro saiu.'})}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
   h+=buscaPag('san','filtrar por nome ou CNPJ…');
   h+=`<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(80,emp.length))} de ${fmtN(emp.length)}${(d.n&&d.n>carregadas)?` carregadas — a base tem ${fmtN(d.n)}; a rota entrega no máximo 1000, então <b>o filtro NÃO cobre a base inteira</b>: se um CNPJ não aparecer aqui, use a busca por CNPJ do painel antes de concluir qualquer coisa`:' — o filtro busca em todas'}</div>`;
   h+=listaPaginada('san',emp,e=>{
@@ -1160,9 +1161,15 @@ export async function renderBeneficiosPref(chips){
   h+=`<div class="note" style="margin:10px 0 4px"><b>Como ler:</b> <span class="sev alta" style="padding:1px 7px">identidade confirmada</span> = há UM só servidor com esse nome na folha e o fragmento de CPF bate (é mesmo esta pessoa). <span class="sev media" style="padding:1px 7px">conferir homônimo</span> = nome comum, confirmar o CPF antes de usar. Isso é sobre <b>QUEM é a pessoa</b> — separado de <span class="tag rose">ainda recebe</span>, que diz que o benefício <b>continua ativo</b> hoje.</div>`;
   // total do servidor: só ganha gaveta se a página trouxer o universo
   h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas identificadas','var(--amber)','👥',drillSeCompleto('pessoasIdentificadas',d.n_casos,(d.casos||d.itens||[]),{titulo:'Pessoas identificadas',nota:'Identificação por nome — confirmar homônimo antes de qualquer juízo.'}))}${kpi(fmtN(r.n_alta),'Identidade confirmada (nome único + CPF)','var(--rose)','🪪')}
-      ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Benefício ainda ativo','var(--rose)','⏰')}
-      ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
-      ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
+      ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️',
+        {sobre:'Do universo identificado, quantos ocupam cargo de <b>livre nomeação</b>. É o recorte que importa: cargo comissionado tem remuneração conhecida e nomeação discricionária, o que torna a acumulação com benefício assistencial verificável — e a nomeação, atribuível.'})}${kpi(fmtN(r.n_ainda),'Benefício ainda ativo','var(--rose)','⏰',
+        {sobre:'Casos em que o benefício aparece na competência MAIS RECENTE da base, não apenas em algum mês passado. A distinção é o que separa situação corrente de sobreposição já encerrada — e só a primeira comporta providência.'})}
+      ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞',
+        {sobre:'Benefício com critério de <b>renda familiar</b>. A sobreposição com remuneração pública é indício de renda não declarada ao cadastro — não de fraude provada: composição familiar muda, e a atualização cadastral tem prazo próprio.'})}${kpi(fmtN(r.n_bpc),'BPC',null,'♿',
+        {sobre:'Benefício de Prestação Continuada — critério de <b>deficiência ou idade</b> somado à renda per capita. Ser servidor não veda o BPC por si; o que pesa é a renda do grupo familiar. Por isso este número fica separado do Bolsa Família em vez de somado.'})}
+      ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅',
+        {sobre:'A janela de competências efetivamente ingerida. Fora dela nada foi observado — e benefício ausente num mês que não entrou na base <b>não cessou</b>: o mês é que não existe aqui.'})}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️',
+        {sobre:'O mês mais recente disponível. É contra ele que "ainda ativo" é medido; se a base estiver defasada, o número de ativos descreve o passado dessa data, não o presente.'})}</div>`;
   h+=buscaPag('bv-list','filtrar por nome, órgão, cargo, partido — busca em TODOS os casos…');
   const _montarBV=x=>{
     const idOk=x.certeza==='ALTA';
@@ -1224,7 +1231,10 @@ export async function renderFantasmasPref(){
     'Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.','👻')+acoesAba('fantasmas_pcrj');
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const fx=d.faixas||{};
-  h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴')}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡')}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢')}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴',
+        {sobre:'Servidores da folha municipal com o conjunto MAIS FORTE de sinais de vínculo apenas formal. Faixa é ordem de diligência, não conclusão: nenhum caso aqui afirma que a pessoa não trabalha — afirma que o cruzamento não achou o que deveria achar se ela trabalhasse.'})}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡',
+        {sobre:'Sinais presentes mas insuficientes para separar de explicação inocente — licença, cessão, lotação em unidade que não publica frequência. Existe para não empurrar dúvida para dentro da faixa forte.'})}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢',
+        {sobre:'Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são.'})}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
   h+=`<div class="chips" style="margin-top:12px">`+['','forte','verificar','fraco'].map(f=>
     `<button type="button" class="chip ${_fantFaixa===f?'on':''}" onclick="_fantFaixa='${f}';ir('p_fant')">${f||'Todas as faixas'}</button>`).join('')+`</div>`;
   h+=buscaPag('pf-list','filtrar por nome ou gabinete — busca em TODOS os servidores…');
@@ -1246,7 +1256,10 @@ export async function renderPPPPref(){
     'Lente determinística sobre editais/anexos de PPP da CCPAR: garantia com receita de saúde, aporte público, PMI-captura, prazo, valor vs RCL. O dossiê pericial completo (perícia mestre, íntegras normativas) sai por /ppp no Yoda.','🏗️');
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const r=d.resumo||{};
-  h+=`<div class="grid g2">${kpi(fmtN(r.projetos),'Projetos triados',null,'🏗️')}${kpi(fmtN(r.alto),'Grau ALTO','var(--rose)','🔴')}${kpi(fmtN(r.medio),'Grau médio','var(--amber)','🟡')}${kpi(fmtN(r.cobertura_doe_ppp),'Matérias D.O. PPP',null,'📰')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(r.projetos),'Projetos triados',null,'🏗️',
+        {sobre:'Parcerias público-privadas e concessões municipais submetidas à triagem. É o denominador: PPP fora desta contagem não foi avaliada, e não avaliar não é aprovar.'})}${kpi(fmtN(r.alto),'Grau ALTO','var(--rose)','🔴',
+        {sobre:'Projetos com o conjunto mais forte de sinais — desequilíbrio na matriz de risco, aporte público desproporcional, prazo ou reajuste fora do padrão. Grau é ordem de exame; a perícia de PPP é que conclui.'})}${kpi(fmtN(r.medio),'Grau médio','var(--amber)','🟡',
+        {sobre:'Sinais presentes e insuficientes para separar de arranjo contratual legítimo. Fica visível para não empurrar dúvida para dentro do grau alto — faixa que absorve incerteza deixa de significar alguma coisa.'})}${kpi(fmtN(r.cobertura_doe_ppp),'Matérias D.O. PPP',null,'📰')}</div>`;
   h+=`<div class="grid" style="margin-top:14px">`+(d.itens||[]).map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome)}</div>
@@ -1320,7 +1333,9 @@ export async function renderConluio(esf){
     nota:'Vencedor homologado por item (PNCP). Concentração alta pede explicação, não a substitui.'});
   registrarDrill('conluioRodizios',{titulo:'Rodízio — 2-3 empresas se revezam',itens:rod,
     render:r=>card(`<div><div style="font-weight:700">${esc(r.orgao_nome||'—')}</div><div class="dim">${(r.empresas||[]).map(e=>esc(e.nome||e.cnpj||'')).join(' · ')}</div></div>`)});
-  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯',{drill:'conluioCapturas'})}${kpi(rod.length,'Rodízios','var(--amber)','🔁',{drill:'conluioRodizios'})}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄',
+        {sobre:'O DENOMINADOR desta tela: certames com resultado publicado, que são os únicos em que se pode saber quem ganhou e quem perdeu. Certame fora daqui não foi afastado — não pôde ser examinado, e confundir as duas coisas transforma lacuna em conclusão.'})}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢',
+        {sobre:'Quantos órgãos aparecem como compradores no conjunto examinado. Serve para ler a concentração do achado: espalhado por muitos órgãos sugere padrão de mercado; concentrado em um, sugere padrão daquele comprador.'})}${kpi(cap.length,'Capturas','var(--rose)','🎯',{drill:'conluioCapturas'})}${kpi(rod.length,'Rodízios','var(--amber)','🔁',{drill:'conluioRodizios'})}</div>`;
   if(cov.certames_sem_unidade>0)h+=`<div class="warn" style="margin-top:12px"><span>Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
   const orgHead=x=>`<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome&&x.ente_nome!==x.orgao_nome?`<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt||'')}</div>`:''}`;
   if(cap.length){h+=`<div style="height:16px"></div>`+sec('Captura de órgão · 1 empresa vence ≥80%',cap.length)+`<div class="grid">`+cap.map(c=>card(
@@ -1462,8 +1477,12 @@ export async function renderSocioServidor(){
   const a=d.achados||[];
   let h=cover('geral','Servidor público sócio de fornecedor do Estado',
     'Servidor que aparece nas folhas coletadas e também é sócio de empresa que recebeu do Estado. Servidor <b>administrador/diretor</b> de empresa privada viola a vedação estatutária de gerência; se a empresa contrata com o órgão dele, há impedimento (Lei 14.133 art. 9). <b>Confiança ALTA</b> = nome e fragmento de CPF batem; <b>MÉDIA</b> = só o nome.','🕴️')+acoesAba('socio_servidor');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Servidores sócios','var(--rose)','🕴️')}${kpi(fmtN(d.n_gerencia),'Com gerência (vedada)','var(--rose)','⚖️')}
-      ${kpi(fmtN(d.n_art9||0),'Art. 9 (mesmo órgão)','var(--rose)','🎯')}${kpi(fmtN(d.n_alta),'Confiança ALTA (CPF)','var(--amber)','🔎')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Servidores sócios','var(--rose)','🕴️',
+        {sobre:'Pessoas que aparecem ao mesmo tempo na folha do Estado e no quadro societário de empresa paga pelo Estado. <b>Estar aqui não é irregularidade</b>: servidor pode ser sócio, e a medição na própria base dá 28%. O que pesa são os recortes ao lado.'})}${kpi(fmtN(d.n_gerencia),'Com gerência (vedada)','var(--rose)','⚖️',
+        {sobre:'Sócio com qualificação de <b>administrador, diretor ou gerente</b> — o estatuto do servidor veda o exercício de gerência em empresa privada (art. 117, X da Lei 8.112/1990 e correspondentes estaduais). Aqui a qualificação vem do QSA da Receita, declarada pela própria empresa.'})}
+      ${kpi(fmtN(d.n_art9||0),'Art. 9 (mesmo órgão)','var(--rose)','🎯',
+        {sobre:'O recorte MAIS GRAVE desta tela: a empresa é paga pela <b>própria repartição</b> onde o sócio serve. É o impedimento direto do art. 9º, III da Lei 8.429/1992 — auferir vantagem de contrato de órgão em que atua. Os demais casos exigem investigar; este já nasce com o vínculo entre o dinheiro e a decisão.'})}${kpi(fmtN(d.n_alta),'Confiança ALTA (CPF)','var(--amber)','🔎',
+        {sobre:'Casamento em que <b>nome e fragmento de CPF</b> coincidem, não só o nome. O resto é casamento por nome, que carrega homônimo — por isso a confiança viaja junto do achado, e nenhum caso sobe a relatório sem confirmação do CPF completo pelo órgão de controle.'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Homônimos descartados por CPF: ${fmtN(d.homonimos_descartados)}. Art. 9 = empresa paga pela própria repartição do servidor (impedimento direto).</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por servidor, empresa, órgão ou cargo…" oninput="filtrar(this,'#ss-list .card')"></div>`;
   h+=`<div id="ss-list" class="grid">`+a.map(x=>card(
@@ -1486,7 +1505,9 @@ export async function renderCapital(){
   const a=d.achados||[];
   let h=cover('geral','Capital irrisório — sem lastro para o que faturou','Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.','🫧')+acoesAba('capital_incompativel');
   registrarDrill('capitalIrrisorio',{titulo:'Empresas com capital social de até R$ 1.000',itens:a.filter(x=>x.capital<=1000),nota:'Capital irrisório frente ao recebido é indício de fachada, não prova.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas','var(--rose)','🫧')}${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior razão (recebido/capital)','var(--rose)')}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas','var(--rose)','🫧',
+        {sobre:'Empresas cujo <b>capital social declarado</b> é pequeno diante do que receberam do Estado. Capital baixo é lícito e comum — mede o que a empresa declarou à Junta, não a capacidade real, que também vem de faturamento e crédito. O sinal serve para perguntar se havia estrutura para executar, não para afirmar que não havia.'})}${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior razão (recebido/capital)','var(--rose)',null,
+        {sobre:'O extremo da lista: quantas vezes o recebido supera o capital declarado. Razão altíssima com capital de R$ 1.000 é o perfil clássico de empresa aberta para o contrato — mas também aparece em prestadora de serviço que não precisa de imobilizado. Por isso é ordem de diligência, não conclusão.'})}
       ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume recebido',null,'💰')}${kpi(a.filter(x=>x.capital<=1000).length,'Capital ≤ R$1k','var(--amber)','⚠️',{drill:'capitalIrrisorio'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#cap-list .card')"></div>`;
   h+=`<div id="cap-list" class="grid">`+a.map(x=>card(
@@ -1505,7 +1526,8 @@ export async function renderPrioridade(){
   let h=cover('geral','Prioridade — onde a auditoria rende mais','Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.','⚡')+acoesAba('prioridade_valor');
   registrarDrill('sinalMedioMais',{titulo:'Com sinal médio ou alto (score ≥ 25)',itens:a.filter(x=>x.score>=25),nota:''});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Na interseção','var(--teal)','⚡',drillSeCompleto('prioridadeTodos',d.n,a,{titulo:'Risco × dinheiro — a interseção',nota:'Risco alto sem dinheiro pode esperar; dinheiro sem sinal pode ser variação legítima. A fila é o cruzamento dos dois.'}))}${kpi(fmtRc(d.economia_em_risco),'Economia em risco',null,'💰')}
-      ${kpi(a.filter(x=>x.score>=25).length,'Sinal médio+ (🟡🔴)','var(--amber)',null,{drill:'sinalMedioMais'})}${kpi(a.length?fmtRc(a[0].economia):'—','Maior isolado','var(--rose)')}</div>`;
+      ${kpi(a.filter(x=>x.score>=25).length,'Sinal médio+ (🟡🔴)','var(--amber)',null,{drill:'sinalMedioMais'})}${kpi(a.length?fmtRc(a[0].economia):'—','Maior isolado','var(--rose)',null,
+        {sobre:'O maior valor único da interseção risco × dinheiro. É <b>economia potencial estimada</b>, não dano apurado: nasce de comparação de preço, e comparação só vale entre produtos equivalentes — 60% de uma estimativa anterior desta casa comparava itens diferentes sob descrição genérica.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#pri-list .card')"></div>`;
   h+=`<div id="pri-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_compras)} compra(s) acima da mediana</div>
@@ -1522,7 +1544,9 @@ export async function renderFornecedorDependente(){
   const a=d.achados||[];
   let h=cover('geral','Fornecedor cativo — "empresa do órgão"','Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.','🔗')+acoesAba('fornecedor_dependente');
   registrarDrill('dep100Orgao',{titulo:'Fornecedores que faturam ~100% com um único órgão',itens:a.filter(x=>x.share>=0.99),nota:'Dependência total de um comprador é indício de captura — cabe verificar o objeto.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores cativos','var(--amber)','🔗')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume dependente',null,'💰')}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores cativos','var(--amber)','🔗',
+        {sobre:'Empresas cuja receita pública vem quase toda de <b>um único órgão</b>. Dependência não é irregularidade — pode ser especialização legítima. O que ela mede é a assimetria: fornecedor que só vive daquele comprador tem pouco incentivo para contestar, e o comprador ganha poder que não está em contrato nenhum.'})}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume dependente',null,'💰',
+        {sobre:'Soma recebida pelos fornecedores <b>desta página</b>, não do acervo. Volume não é dano: dimensiona o que está sob concentração, e nada aqui afirma pagamento indevido.'})}
       ${kpi(a.filter(x=>x.share>=0.99).length,'100% de 1 órgão','var(--rose)','🎯',{drill:'dep100Orgao'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior dependência')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
   h+=`<div id="dep-list" class="grid">`+a.map(x=>card(
@@ -1541,7 +1565,9 @@ export async function renderCorridaDezembro(){
   const a=d.achados||[];
   let h=cover('geral','Corrida do empenho de dezembro','Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.','📅')+acoesAba('corrida_dezembro');
   registrarDrill('dez100',{titulo:'Fornecedores com ~100% do faturamento em dezembro',itens:a.filter(x=>x.share>=0.99),nota:'Concentração no fim do exercício pede exame do empenho e da entrega.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores concentrados','var(--amber)','📅')}${kpi(fmtRc(a.reduce((s,x)=>s+x.dezembro,0)),'Pago em dezembro',null,'💰')}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores concentrados','var(--amber)','📅',
+        {sobre:'Fornecedores com parcela desproporcional do ano recebida em <b>dezembro</b>. O padrão tem explicação inocente forte — encerramento do exercício financeiro empurra liquidação e pagamento para o fim do ano. O que o sinal pede é olhar se houve entrega correspondente, não presumir que não houve.'})}${kpi(fmtRc(a.reduce((s,x)=>s+x.dezembro,0)),'Pago em dezembro',null,'💰',
+        {sobre:'Ordens bancárias emitidas em dezembro para os fornecedores desta página. Fonte: OB do SIAFE — pagamento efetivo. Empenho concentrado em dezembro é rotina orçamentária; <b>pagamento</b> concentrado é que levanta a pergunta sobre a data da entrega.'})}
       ${kpi(a.filter(x=>x.share>=0.99).length,'100% em dezembro','var(--rose)','🎯',{drill:'dez100'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior concentração')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#dez-list .card')"></div>`;
   h+=`<div id="dez-list" class="grid">`+a.map(x=>card(
@@ -1565,7 +1591,9 @@ export async function renderRadar(){
   // o limiar que a própria escala declara; abaixo dele, neutro e sem ícone.
   const _nVerm=Number(d.n_vermelho||0), _maior=a.length?Number(a[0].score):null;
   registrarDrill('tresSinais',{titulo:'Com três ou mais sinais acumulados',itens:a.filter(x=>x.n_sinais>=3),nota:''});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null)}${kpi(fmtN(_nVerm),'Score ≥50 (crítico)',_nVerm>0?'var(--rose)':null)}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null,null,
+        {sobre:'Fornecedores com ao menos um indício acionado no conjunto de detectores. Ter sinal é comum e não classifica ninguém: o que ordena a fila é o <b>score</b>, e mesmo ele é indício interno da casa, jamais juízo sobre a empresa.'})}${kpi(fmtN(_nVerm),'Score ≥50 (crítico)',_nVerm>0?'var(--rose)':null,null,
+        {sobre:'Corte de 50 na escala interna. O número que ele produz depende dos detectores ligados no dia — quando sete famílias foram corrigidas por leitura defeituosa, esta faixa caiu sozinha. Score é da CASA, não da empresa: mede quanto material há para examinar.'})}
       ${kpi(_maior!=null?_maior:'—','Maior score',_maior!=null&&_maior>=50?'var(--rose)':null)}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,null,{drill:'tresSinais'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-tbl tbody tr')"></div>`;
@@ -1584,8 +1612,12 @@ export async function renderConluioQSA(){
   if(!d.ok)return sec('Conluio QSA')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.pares||[];const cob=d.cobertura||{};
   let h=cover('geral','Conluio direto — vencedor × perdedora do mesmo dono','Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.','🤝')+acoesAba('conluio_qsa');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares vencedor×perdedora','var(--rose)','🤝')}${kpi(fmtN(d.n_forte||0),'Fortes (QSA/matriz-filial)','var(--rose)','🚨')}
-      ${kpi(fmtN(cob.certames_com_perdedora||0),'Certames com perdedora conhecida',null,'⚖️')}${kpi(fmtN(cob.pares_sem_qsa||0),'Pares sem QSA local (INDISPONÍVEL ≠ 0)','var(--amber)','❓')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares vencedor×perdedora','var(--rose)','🤝',
+        {sobre:'Pares em que quem venceu e quem perdeu o mesmo certame têm sócio em comum — ou são a mesma empresa em filiais diferentes. É o teste clássico de <b>concorrência fingida</b> (art. 337-F do Código Penal). Grupo econômico é lícito; disputar contra si mesmo não é.'})}${kpi(fmtN(d.n_forte||0),'Fortes (QSA/matriz-filial)','var(--rose)','🚨',
+        {sobre:'O recorte em que o vínculo é <b>documental</b>, não inferido: mesma raiz de CNPJ (matriz e filial) ou sócio comum no QSA da Receita. Os demais pares dependem de casamento por nome e pedem confirmação de CPF antes de qualquer citação.'})}
+      ${kpi(fmtN(cob.certames_com_perdedora||0),'Certames com perdedora conhecida',null,'⚖️',
+        {sobre:'O DENOMINADOR: só entra certame cuja ata registra quem perdeu. A maioria das atas publica apenas o vencedor — e sem a perdedora não há par a testar. Este número diz o tamanho real do que pôde ser examinado.'})}${kpi(fmtN(cob.pares_sem_qsa||0),'Pares sem QSA local (INDISPONÍVEL ≠ 0)','var(--amber)','❓',
+        {sobre:'Pares que existiam e <b>não puderam ser testados</b> por falta de quadro societário na base local. Não foram afastados — ficam contados aqui exatamente para não serem lidos como ausência de conluio. Cada QSA que a coleta traz reduz este número e pode aumentar o de achados.'})}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por empresa ou sócio…" oninput="filtrar(this,'#cq-list .card')"></div>`;
   h+=`<div id="cq-list" class="grid">`+a.map(x=>{
     const socios=(x.socios_comuns||[]).map(s=>esc(s.nome)).slice(0,3).join(', ')||'matriz × filial (mesmo CNPJ-raiz)';
@@ -1611,7 +1643,9 @@ export async function renderComunidades(){
   const _nCrit=a.filter(x=>x.score>=50).length;
   registrarDrill('comunidadesCriticas',{titulo:'Comunidades com score ≥ 50',itens:a.filter(x=>x.score>=50),nota:'Zero comunidade crítica NÃO é alarme — a cor e o glifo já foram fixos aqui uma vez.'});
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩',drillSeCompleto('comunidadesTodas',d.n,a,{titulo:'Comunidades detectadas no grafo',nota:'Comunidade é agrupamento por densidade de vínculo — indício de grupo, não prova de grupo econômico.'}))}${kpi(fmtN(_nCrit),'Score ≥50 (🔴)',_nCrit>0?'var(--rose)':null,_nCrit>0?'🚨':'',{drill:'comunidadesCriticas'})}
-      ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️')}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗')}</div>`;
+      ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️',
+        {sobre:'Pessoas e empresas persistidas no grafo de vínculos. O grafo cresce a cada varredura — comunidade que não aparece hoje pode aparecer amanhã, e por isso ausência aqui nunca é afastamento.'})}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗',
+        {sobre:'Ligações gravadas entre esses nós, cada uma com tipo, força e fonte. Tipos simétricos (mesmo telefone, mesmo e-mail) são gravados em <b>direção canônica</b> para não contar a mesma ligação duas vezes.'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;
   h+=`<div id="com-list" class="grid">`+a.map(x=>{
@@ -1643,8 +1677,12 @@ export async function renderRetro(){
   const ncor=Object.values(ps).reduce((s,x)=>s+x.n_sancao_depois,0);
   const pago=Object.values(ps).reduce((s,x)=>s+x.pago_depois,0);
   let h=cover('geral','Retro-auditoria — o que aconteceu DEPOIS do alerta','Para cada detector, o <b>ledger de sinais</b> guarda a data do 1º alerta por empresa (nunca regravada). Aqui medimos o que veio depois: <b>sanção federal posterior</b> (corroboração independente do detector) e <b>R$ que o Estado continuou pagando após o alerta</b> — o custo da inação. A janela cresce todo dia com o timer.','🔮')+acoesAba('retro');
-  h+=`<div class="grid g2">${kpi(fmtN(nsin),'Sinais no ledger','var(--amber)','📒')}${kpi(fmtN(ncor),'Sanção DEPOIS do sinal','var(--rose)','⚖️')}
-      ${kpi(fmtRc(pago),'Pago APÓS o alerta','var(--rose)','💸')}${kpi((j.sinal_mais_antigo_dias??'—')+'d','Idade do sinal mais antigo',null,'📅')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(nsin),'Sinais no ledger','var(--amber)','📒',
+        {sobre:'Sinais que o motor registrou com <b>data</b>, para poder ser cobrado depois. Sem esse registro não há retroteste possível: detector que só olha o presente nunca descobre se acertou.'})}${kpi(fmtN(ncor),'Sanção DEPOIS do sinal','var(--rose)','⚖️',
+        {sobre:'Casos em que o motor apontou a empresa ANTES de ela ser sancionada por outro órgão. É a única medida honesta de <b>poder preditivo</b> desta casa — e foi medindo assim que dois detectores se revelaram anti-preditivos e saíram da régua.'})}
+      ${kpi(fmtRc(pago),'Pago APÓS o alerta','var(--rose)','💸',
+        {sobre:'Dinheiro que continuou saindo depois de o sinal existir. Não afirma que o pagamento era indevido — afirma que houve <b>tempo e informação</b> para olhar antes, que é exatamente o que o controle externo cobra.'})}${kpi((j.sinal_mais_antigo_dias??'—')+'d','Idade do sinal mais antigo',null,'📅',
+        {sobre:'Há quantos dias o registro mais antigo espera confirmação. Ledger novo não pode ser lido como "detector sem acerto": sem tempo decorrido, a ausência de confirmação mede a idade do ledger, não a qualidade do sinal.'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">Janela retro de ${j.sinal_mais_antigo_dias??'—'} dia(s) — zeros são esperados no começo (sanção demora); a leitura fica forte com semanas de ledger.</div>`;
   h+=sec('Por detector')+`<div class="grid">`+Object.entries(ps).map(([s,v])=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(s)}</b>
@@ -1685,8 +1723,11 @@ export async function renderSocioOculto(){
   const a=d.achados||[];
   let h=cover('geral','Sócio oculto — um dono, vários fornecedores','Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.','🫥')+acoesAba('socio_oculto');
   registrarDrill('holdings',{titulo:'Casos em que o sócio é PJ (holding)',itens:a.filter(x=>x.holding),nota:'Sócio PJ é o degrau que permite subir a cadeia até a pessoa física.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Sócios com ≥3 empresas','var(--amber)','🕸️')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume das empresas',null,'💰')}
-      ${kpi(a.length?a[0].n_empresas:'—','Mais empresas (1 sócio)','var(--rose)')}${kpi(a.filter(x=>x.holding).length,'Holdings/PJ',null,'🏢',{drill:'holdings'})}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Sócios com ≥3 empresas','var(--amber)','🕸️',
+        {sobre:'Pessoas no quadro societário de <b>três ou mais</b> empresas que receberam do Estado. Ter várias empresas é lícito e comum; o que este número faz é apontar onde vale cruzar se elas <b>disputam os mesmos certames</b> — porque aí o mesmo dono estaria dos dois lados da mesa.'})}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume das empresas',null,'💰',
+        {sobre:'Soma do que TODAS as empresas destes sócios receberam — <b>exibidas nesta página</b>, não o acervo. É volume sob um mesmo dono, não dano: nada aqui afirma que o pagamento foi indevido.'})}
+      ${kpi(a.length?a[0].n_empresas:'—','Mais empresas (1 sócio)','var(--rose)',null,
+        {sobre:'O caso extremo da lista: quantas empresas pagas pelo Estado o sócio mais ramificado detém. Número alto pode ser grupo econômico declarado — a pergunta que ele levanta é se essas empresas se encontram no mesmo certame.'})}${kpi(a.filter(x=>x.holding).length,'Holdings/PJ',null,'🏢',{drill:'holdings'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por sócio ou empresa…" oninput="filtrar(this,'#ocult-list .card')"></div>`;
   h+=`<div id="ocult-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.holding?'<span class="tag purple">holding/PJ</span>':''}</div>
@@ -1704,8 +1745,11 @@ export async function renderNepotismo(){
   const a=d.achados||[];
   let h=cover('geral','Nepotismo — parentes em cargo de confiança','Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.','👪')+acoesAba('nepotismo',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
   registrarDrill('sobrenome100',{titulo:'Grupos em que o sobrenome cobre 100% do quadro',itens:a.filter(x=>x.concentracao>=1),nota:'Sobrenome compartilhado NÃO é sinal sozinho: 16,9% das empresas com 2+ sócios PF o têm.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Clusters familiares','var(--rose)','👪')}${kpi(fmtN(d.n_com_autoridade),'Com autoridade nomeante','var(--rose)','⚖️')}
-      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯',{drill:'sobrenome100'})}${kpi(a.length?a[0].n_membros:'—','Maior cluster')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Clusters familiares','var(--rose)','👪',
+        {sobre:'Grupos de pessoas com o <b>mesmo sobrenome</b> em cargo de confiança no mesmo órgão. Sobrenome não prova parentesco e no Brasil não há base aberta de filiação — o que sustenta o sinal é a <b>prevalência</b>: o eixo só acende quando o sobrenome é raro na folha e está concentrado ali.'})}${kpi(fmtN(d.n_com_autoridade),'Com autoridade nomeante','var(--rose)','⚖️',
+        {sobre:'Clusters em que um dos membros ocupa cargo com <b>poder de nomear</b>. É o que separa coincidência de cadeia: a Súmula Vinculante 13 alcança a nomeação feita por quem tem a competência, não a simples presença de parentes na mesma repartição.'})}
+      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯',{drill:'sobrenome100'})}${kpi(a.length?a[0].n_membros:'—','Maior cluster',null,null,
+        {sobre:'Quantas pessoas tem o maior grupo da lista. Número alto com sobrenome comum é ruído de base; com sobrenome raro, é o caso a abrir primeiro — por isso a concentração aparece em cada linha, e não só o tamanho.'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Cobertura cresce com novas folhas.</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
   h+=`<div id="nep-list" class="grid">`+a.map(x=>card(
@@ -1745,8 +1789,12 @@ export async function renderFenix(){
   let h=cover('geral','Empresa fênix — morta que recebe, ou nascida para faturar','Empresa <b>BAIXADA/INAPTA</b> na Receita que mesmo assim recebeu do Estado (pagamento a empresa morta), ou <b>aberta poucos meses antes</b> do primeiro pagamento (nasceu já para faturar — perfil de laranja).','🦅')+acoesAba('fenix');
   // o KPI vermelho é o CONFIRMADO (recebeu depois da baixa); "baixada hoje" fica neutro,
   // porque estar baixada hoje e ter recebido antes disso não é indício de nada.
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas fênix','var(--rose)','🦅')}${kpi(fmtN(d.n_defunta_confirmada||0),'Recebeu DEPOIS da baixa',(d.n_defunta_confirmada?'var(--rose)':null),'💀')}
-      ${kpi(fmtRc(d.total_apos_baixa||0),'Pago após a baixa',(d.total_apos_baixa?'var(--rose)':null),'💰')}${kpi(fmtN(d.n_defunta||0),'Baixada hoje (recebeu antes)',null,'🗓️')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas fênix','var(--rose)','🦅',
+        {sobre:'Empresas com baixa no cadastro da Receita que aparecem no fluxo de pagamento do Estado. O rótulo sozinho não acusa nada — o que separa achado de ruído é a <b>ordem das datas</b>, e ela está nos dois KPIs seguintes.'})}${kpi(fmtN(d.n_defunta_confirmada||0),'Recebeu DEPOIS da baixa',(d.n_defunta_confirmada?'var(--rose)':null),'💀',
+        {sobre:'O ACHADO de verdade: ordem bancária emitida em data POSTERIOR à baixa. Uma versão anterior desta tela somava tudo que empresa hoje baixada já recebeu — e anunciava bilhões que eram pagamentos regulares feitos quando a empresa estava viva; o erro foi de ~218×. Situação cadastral vale <b>na data do ato</b>, nunca hoje.'})}
+      ${kpi(fmtRc(d.total_apos_baixa||0),'Pago após a baixa',(d.total_apos_baixa?'var(--rose)':null),'💰',
+        {sobre:'Soma das OB emitidas depois da baixa — só destas, não do histórico da empresa. Fonte: <b>SIAFE</b>, ordem bancária, que é o único registro de pagamento efetivo; empenho e liquidação não entram porque empenho pode ser cancelado.'})}${kpi(fmtN(d.n_defunta||0),'Baixada hoje (recebeu antes)',null,'🗓️',
+        {sobre:'Empresas hoje baixadas cujos pagamentos são TODOS anteriores à baixa. Ficam listadas e fora do achado de propósito: encerrar atividade depois de cumprir contrato é o curso normal das coisas, e contá-las como irregularidade é o erro que esta tela já cometeu.'})}</div>`;
   h+=`<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
   h+=`<div id="fenix-list" class="grid">`+a.map(x=>card(
@@ -1765,8 +1813,11 @@ export async function renderPortaGiratoria(){
   const a=d.achados||[];
   let h=cover('geral','Porta giratória — ex-servidor virou fornecedor','Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.','🚪')+acoesAba('porta_giratoria');
   registrarDrill('confiancaAlta',{titulo:'Cruzamentos com confiança ALTA (casados por CPF)',itens:a.filter(x=>x.confianca==='ALTA'),nota:'Confiança ALTA = documento, não nome. É a única faixa que dispensa checar homônimo.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Ex-servidores fornecedores','var(--rose)','🚪')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_pago||0),0)),'Volume recebido',null,'💰')}
-      ${kpi(fmtN(a.filter(x=>x.confianca==='ALTA').length),'Confiança ALTA (CPF)','var(--amber)','🔎',{drill:'confiancaAlta'})}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Ex-servidores fornecedores','var(--rose)','🚪',
+        {sobre:'Pessoas que constam na folha como <b>ex-servidores</b> e hoje figuram no quadro societário de empresa paga pelo Estado. Não é irregularidade por si: o que a lei restringe é a <b>quarentena</b> — contratar com o órgão de onde se saiu, dentro do prazo de impedimento. Por isso cada caso pede as duas datas.'})}${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_pago||0),0)),'Volume recebido',null,'💰',
+        {sobre:'Soma paga às empresas <b>desta página</b>. Volume não é dano: mede o tamanho do que precisa ser olhado, não o prejuízo — este só existe se o contrato tiver vício próprio.'})}
+      ${kpi(fmtN(a.filter(x=>x.confianca==='ALTA').length),'Confiança ALTA (CPF)','var(--amber)','🔎',{drill:'confiancaAlta'})}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮',
+        {sobre:'Casos que o motor RECUSOU por não distinguir a pessoa — nome igual sem fragmento de CPF que confirme. Ficam contados de propósito: o que se joga fora é tão auditável quanto o que fica, e um detector que não mostra o próprio descarte pede fé em vez de conferência.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, empresa ou órgão…" oninput="filtrar(this,'#porta-list .card')"></div>`;
   h+=`<div id="porta-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)}</div>
@@ -1784,7 +1835,8 @@ export async function renderNepotismoCruzado(){
   if(!d.ok)return sec('Nepotismo cruzado')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Nepotismo cruzado — troca de favores entre órgãos','A família X manda no órgão A e coloca um parente no órgão B, enquanto a família Y manda no órgão B e coloca um parente no A. A <b>reciprocidade</b> dribla a Súmula Vinculante 13, que só proíbe nomear parente no PRÓPRIO órgão.','🔀')+acoesAba('nepotismo_cruzado');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares recíprocos','var(--rose)','🔀')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares recíprocos','var(--rose)','🔀',
+        {sobre:'Pares de órgãos em que o padrão se INVERTE: num deles manda um sobrenome e está colocado o outro; no segundo, o contrário. É o desenho do <b>nepotismo cruzado</b> — a troca que a Súmula Vinculante 13 alcança justamente por burlar a vedação direta. Continua valendo que sobrenome não é parentesco: o par indica onde perguntar, não o que concluir.'})}</div>`;
   if(!a.length)return h+card('<div class="muted">Nenhum par recíproco com o padrão rigoroso nas folhas atuais. Cresce com mais folhas. 🟢</div>')+`<div class="note">${esc(d.ressalva||'')}</div>`;
   h+=`<div class="grid" style="margin-top:14px">`+a.map(x=>card(
     `<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)}</div>
@@ -1867,8 +1919,10 @@ export async function renderSweeps(){
   let h=cover('geral','Sistema — a atividade de toda a máquina',
     'O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.','🛰️');
   h+=`<div class="grid g2" id="sis-live">
-    ${kpi(sei.pct_lido==null?'—':fmtD(sei.pct_lido,1)+'%','Fila SEI já lida',null,'📄')}
-    ${kpi(fmtN(sei.arquivados),'Processos no arquivo compacto')}
+    ${kpi(sei.pct_lido==null?'—':fmtD(sei.pct_lido,1)+'%','Fila SEI já lida',null,'📄',
+      {sobre:'Fração da fila de processos já capturada e arquivada. É a medida de <b>cobertura</b> de tudo que depende de leitura de autos: com fila incompleta, a ausência de achado num processo não lido não significa processo regular — significa processo não visto.'})}
+    ${kpi(fmtN(sei.arquivados),'Processos no arquivo compacto',null,null,
+      {sobre:'Processos com texto, fases e fotos gravados em disco. O arquivo é o caminho principal de leitura — browser e IA só entram quando ele não tem a peça, porque reler o SEI a cada pergunta é lento e derruba a sessão única por IP.'})}
     ${kpi(gb(sei.arquivo_bytes),'Espaço do arquivo (texto+fases+fotos)')}
     ${kpi(fmtN(aprTotal),'Aprendizados acumulados','var(--accent)','🧠')}</div>`;
   const falta=(sei.fila_total!=null&&sei.arquivados!=null)?sei.fila_total-sei.arquivados:null;
