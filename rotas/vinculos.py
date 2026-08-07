@@ -508,3 +508,49 @@ def api_cocontato_certame(limite: int = 60, so_sem_explicacao: int = 0):
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("cocontato_certame falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/assinaturas")
+def api_pcrj_assinaturas(limite: int = 80, so_identificadas: int = 0):
+    """Quem assinou cada despacho da Prefeitura — matrícula publicada pelo SEI × folha municipal.
+
+    Identificação por CADASTRO, não por nome: a matrícula vem do próprio órgão. É a ponte que faz
+    a pergunta da fila de agente público valer também para o município.
+    """
+    try:
+        import json
+
+        from tools.pcrj_assinaturas_x_folha import SAIDA
+        from tools.pcrj_signatario_x_qsa import SAIDA as SAIDA_QSA
+
+        if not SAIDA.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "identificação ainda não materializada — rode "
+                "`python -m tools.pcrj_assinaturas_x_folha` (o sweep diário a regenera)")},
+                status_code=503)
+        corpo = json.loads(SAIDA.read_text(encoding="utf-8"))
+        itens = corpo.get("itens") or []
+        if so_identificadas:
+            itens = [x for x in itens if x.get("identificada")]
+        qsa = {}
+        if SAIDA_QSA.exists():
+            q = json.loads(SAIDA_QSA.read_text(encoding="utf-8"))
+            qsa = {"no_qsa_nacional": q.get("no_qsa_nacional"),
+                   "vinculos_societarios": q.get("vinculos_societarios"),
+                   "com_empresa_paga_pela_prefeitura": q.get("com_empresa_paga_pela_prefeitura"),
+                   "ressalva_qsa": q.get("ressalva")}
+        return JSONResponse({
+            "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "total": corpo.get("assinaturas"),
+            "matriculas": corpo.get("matriculas"),
+            "identificadas": corpo.get("identificadas"),
+            "ambiguas": corpo.get("ambiguas"),
+            "nao_identificadas": corpo.get("nao_identificadas"),
+            "top_signatarios": corpo.get("top_signatarios") or [],
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 500))],
+            "ressalva": corpo.get("ressalva"), **qsa,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("pcrj_assinaturas falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

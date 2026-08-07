@@ -3666,6 +3666,7 @@ void main(){
       <button type="button" class="btn ghost" data-vinc="osintProcessos">OSINT × processos lidos</button>
       <button type="button" class="btn ghost" data-vinc="elosOcultos">Elos ocultos (contato × dinheiro)</button>
       <button type="button" class="btn ghost" data-vinc="cocontato">Mesmo certame, mesmo contato</button>
+      <button type="button" class="btn ghost" data-vinc="assinaturasPcrj">Quem assinou (Prefeitura)</button>
       <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
       <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
@@ -3782,6 +3783,47 @@ void main(){
     h += `<div class="note">${esc(cob.nota || "")}</div>`;
     o.innerHTML = h;
   }
+  async function vincAssinaturasPcrj() {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">casando matrículas do SEI com a folha da Prefeitura…</div>');
+    const d = await J("/api/pcrj/assinaturas?limite=150");
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    let h = sec("Quem assinou — despachos da Prefeitura");
+    h += `<div class="grid g2">${kpi(fmtN(d.total), "Assinaturas capturadas", "var(--amber)", "✍️", { drill: "apAll" })}
+      ${kpi(fmtN(d.identificadas), "Matrículas identificadas", "var(--emerald)", "🪪", { drill: "apIdent" })}
+      ${kpi(fmtN(d.nao_identificadas), "Sem par na folha", "var(--dim)", "❔", { drill: "apSemPar" })}
+      ${kpi(fmtN(d.com_empresa_paga_pela_prefeitura ?? "—"), "Sócio de quem a Prefeitura paga", d.com_empresa_paga_pela_prefeitura || 0 ? "var(--red)" : null, "🚨")}</div>`;
+    h += leitura(esc(d.ressalva || ""));
+    if (d.ressalva_qsa) h += leitura(esc(d.ressalva_qsa));
+    const _lin = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${x.identificada ? esc(x.nome) : "matrícula " + esc(x.matricula_num || x.matricula)}</div>
+        ${x.identificada ? `<div class="dim">${esc(x.orgao || "")}${x.unidade_folha ? " · " + esc(x.unidade_folha) : ""}</div>` : '<div class="dim">sem par na folha — requisitado de outro ente, empresa pública ou vínculo anterior a 12/2020</div>'}
+        <div style="font-size:12.5px;margin-top:4px">${esc(x.tipo || "")} ${esc(x.documento || "")} · processo ${esc(x.numero || "")}</div>
+        <div class="dim" style="font-size:12px">${esc(x.quando || "")} · ${esc(x.unidade || "")}</div>
+        ${x.ambigua ? '<div class="dim" style="font-size:12px;color:var(--amber)">matrícula com MAIS DE UM nome na folha — ambígua, não identificada</div>' : ""}
+      </div></div>`, x.identificada && !x.ambigua ? "" : "");
+    registrarDrill("apAll", { titulo: "Assinaturas capturadas", itens: it, render: _lin });
+    registrarDrill("apIdent", { titulo: "Matrículas identificadas na folha", itens: it.filter((x) => x.identificada && !x.ambigua), render: _lin });
+    registrarDrill("apSemPar", {
+      titulo: "Sem par na folha municipal",
+      itens: it.filter((x) => !x.identificada),
+      render: _lin,
+      nota: "NÃO significa inexistente: requisitado de outro ente, empresa pública com registro próprio, ou vínculo encerrado antes de 12/2020."
+    });
+    if ((d.top_signatarios || []).length) {
+      h += sec("Quem mais assina") + `<div class="grid g2">` + (d.top_signatarios || []).slice(0, 8).map(
+        ([nome, n]) => card(`<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0;font-weight:700">${esc(nome)}</div><div class="right"><b>${fmtN(n)}</b></div></div>`)
+      ).join("") + `</div>`;
+    }
+    h += `<div class="grid" style="margin-top:12px">` + it.slice(0, 60).map(_lin).join("") + `</div>`;
+    h += `<div class="note">${fmtN(Math.min(60, it.length))} de ${fmtN(d.total)} exibidas · gerado em ${esc(d.gerado_em || "—")}.</div>`;
+    o.innerHTML = h;
+  }
   async function vincCocontato() {
     const o = $("vinc-out");
     o.innerHTML = card('<div class="dim">cruzando participantes de 4.517 certames com 6,17 milhões de estabelecimentos…</div>');
@@ -3802,6 +3844,7 @@ void main(){
       <div style="font-weight:700">${esc(x.nome_b)}</div>
       <div style="margin-top:5px;font-size:12.5px">${esc(x.via)} · <b>${esc(x.tipo)}</b></div>
       <div class="dim" style="font-size:12px;margin-top:3px">certame ${esc(x.certame)} · ${esc(x.orgao || "")}</div>
+      <div class="dim" style="font-size:12px">foro: <b>${esc(x.corte || "—")}</b>${x.esfera ? ` (${esc(x.esfera)})` : ""}</div>
       <div class="dim" style="font-size:12px">${esc((x.objeto || "").slice(0, 140))}</div>
       ${x.contato_de_servico ? '<div class="dim" style="font-size:12px;margin-top:3px">contato de serviço (contabilidade/central) — não liga as empresas entre si</div>' : ""}
       ${x.mesmo_grupo_aparente ? `<div class="dim" style="font-size:12px;margin-top:3px">mesmo grupo aparente (<b>${esc(x.marca)}</b>) — grupo é lícito; disputar o mesmo certame fingindo concorrência não é</div>` : ""}
@@ -4264,6 +4307,7 @@ void main(){
     osintProcessos: vincOsintProcessos,
     elosOcultos: vincElosOcultos,
     cocontato: vincCocontato,
+    assinaturasPcrj: vincAssinaturasPcrj,
     trocas: vincTrocas,
     grafo: vincGrafo,
     ftm: vincFtm,

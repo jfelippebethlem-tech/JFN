@@ -85,16 +85,19 @@ def levantar() -> dict:
         proc.stdout.close()
         proc.wait()
 
+    # PERGUNTAR ANTES EM VEZ DE ENGOLIR DEPOIS: a catraca de dívida muda pegou aqui um
+    # `except: pass` meu. Tabela ausente é lacuna conhecida e degrada; erro de leitura sobe.
     con = sqlite3.connect(f"file:{_REPO / 'data' / 'compliance.db'}?mode=ro", uri=True)
     pago: dict[str, float] = {}
     try:
-        for doc, v in con.execute("SELECT credor_documento, SUM(pago) FROM pcrj_despesa "
-                                  "WHERE pago > 0 GROUP BY 1"):
-            d = re.sub(r"\D", "", str(doc or ""))
-            if len(d) == 14:
-                pago[d[:8]] = pago.get(d[:8], 0.0) + float(v or 0)
-    except sqlite3.Error:
-        pass
+        tem = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pcrj_despesa'"
+                          ).fetchone()
+        if tem:
+            for doc, v in con.execute("SELECT credor_documento, SUM(pago) FROM pcrj_despesa "
+                                      "WHERE pago > 0 GROUP BY 1"):
+                d = re.sub(r"\D", "", str(doc or ""))
+                if len(d) == 14:
+                    pago[d[:8]] = pago.get(d[:8], 0.0) + float(v or 0)
     finally:
         con.close()
 

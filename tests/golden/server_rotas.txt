@@ -100,6 +100,7 @@ GET /api/osint/serie_societaria -> api_serie_societaria
 GET /api/osint/trocas_societarias -> api_trocas_societarias
 GET /api/osint/vinculo_na_data -> api_vinculo_na_data
 GET /api/ownership -> api_ownership
+GET /api/pcrj/assinaturas -> api_pcrj_assinaturas
 GET /api/pcrj/beneficios_vinculo -> api_pcrj_beneficios_vinculo
 GET /api/pcrj/comissionados_candidatos -> api_pcrj_comissionados_candidatos
 GET /api/pcrj/doe_canal_informal -> api_pcrj_doe_canal_informal
