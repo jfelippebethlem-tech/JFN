@@ -642,6 +642,30 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                                     "codigo": a["codigo"], "evidencia": a["evidencia"],
                                     "ausentes": a["ausentes"]})
         rodados.append("conferencia_captura")
+        # A LACUNA DE CAPTURA REBAIXA A CRÍTICA — e a ordem em que isso é sabido é o que estava
+        # errado. `F_EXECUCAO_SEM_EVIDENCIA` ("pagamento sem prova de entrega") é a acusação mais
+        # dura do motor, e nascia acima, ANTES de a conferência do parecer dizer quais documentos
+        # citados nos autos não chegaram à nossa pasta. Se um deles falta, ele PODE SER o próprio
+        # atesto — e afirmar ausência de prova quando a ausência é NOSSA é exatamente o erro que
+        # esta casa mais corrigiu (INDISPONÍVEL ≠ descumprido).
+        #
+        # Medido em 2026-08-07 nos 63 processos colhidos da VM-2: 10 tinham a crítica e **4 delas
+        # conviviam com documento citado e não capturado**. O achado não some — muda de grau e
+        # passa a dizer o que falta conferir, com o número do documento ausente ao lado.
+        _sem_captura = sorted({d for lc in lacunas_captura for d in (lc.get("ausentes") or [])})
+        if _sem_captura:
+            for _a in achados:
+                if _a.get("codigo") == "F_EXECUCAO_SEM_EVIDENCIA" and _a.get("gravidade") == "critica":
+                    _a["gravidade"] = "media"
+                    _a["diz"] = (
+                        "há pagamento e NENHUMA evidência de execução entre os documentos que "
+                        "conseguimos ler — mas o próprio parecer dos autos cita documento(s) que a "
+                        "nossa captura não trouxe (" + ", ".join(_sem_captura[:4]) +
+                        "), e um deles pode ser o atesto. INDISPONÍVEL, não descumprido: exigir a "
+                        "peça faltante antes de tratar como pagamento sem prova (art. 63 da Lei "
+                        "4.320/1964)")
+                    _a["apoio"] = ("documento(s) citado(s) no parecer e ausente(s) da captura: "
+                                   + ", ".join(_sem_captura))
     # O módulo é determinístico e já trata o que é dele; aqui só restam falha de import e de
     # leitura do texto em disco — por isso a captura é específica, e não genérica. (A catraca da
     # casa conta a string literal, então nem o comentário pode citá-la: foi assim que este
