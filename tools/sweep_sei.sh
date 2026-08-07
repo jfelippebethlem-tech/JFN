@@ -105,6 +105,13 @@ else
   $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --recaptura --max 2 \
     >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_recaptura rc=$?"
 fi
+# FILA DE RECAPTURA POR PROVA DO PARECER — a conferencia que compara a lista de documentos do
+# parecer com a nossa pasta existia, era testada, tinha sido MEDIDA em 03/08 (370 processos) e nao
+# tinha UM UNICO CALLER: virava relatorio no PDF do 360 e morria ali. Sem ela a lacuna de captura
+# nao vira trabalho, e o motor segue afirmando ausencia que e NOSSA (foi o que rebaixou 5 criticas
+# de "pagamento sem prova" para INDISPONIVEL em 07/08). Barata: so le o acervo ja arquivado.
+# Pausa: data/.pause_fila_parecer.
+if [ -f data/.pause_fila_parecer ]; then say "fila por parecer pausada — pulei"; else $PRIO timeout 900 $PY -m tools.fila_recaptura_por_parecer --gravar >> data/fila_recaptura_parecer.log 2>&1; say "fila por parecer rc=$?"; fi
 # COLHEITA DA VM-2 — duas maquinas capturando, uma analisando, e nenhuma ponte entre elas. Medido
 # em 2026-08-07: a VM-2 tinha 111 processos com documentos e a VM-1 nunca vira 61 deles. Barato
 # (rsync + arquivamento sem browser) e por isso roda toda passada.
