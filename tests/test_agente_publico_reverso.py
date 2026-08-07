@@ -310,3 +310,66 @@ def test_o_mesmo_orgao_comparado_consigo_mesmo_sempre_casa():
     # e a exigência de duas palavras continua valendo para nomes DIFERENTES
     assert conflito_de_orgao("SECRETARIA DE ESTADO DE SAÚDE",
                              {"Secretaria de Estado de Educação"}) == ""
+
+
+@pytest.mark.parametrize("razao,nat,esperado", [
+    # a sigla das Associações de Apoio à Escola — 107 no cadastro, e o veto por extenso não as via
+    ("AAE DO INSTITUTO DE EDUCACAO THIAGO COSTA", "3999", "apoio_a_escola"),
+    ("A A E C E JOAO PAULO II", "3999", "apoio_a_escola"),
+    ("AAE - FAETERJ TRES RIOS - RJ", "3999", "apoio_a_escola"),
+    # A ARMADILHA: também começa com AAE e é LTDA. Vetar pela sigla sozinha tiraria da fila
+    # quem devia estar nela.
+    ("AAE ACCESS ACCOUTING EVOLUTION ASSESSORIA CONTABIL LTDA", "2062", ""),
+    ("AAE COMERCIO DE ALIMENTOS LTDA", "2062", ""),
+])
+def test_sigla_de_apoio_a_escola_so_vale_com_a_natureza_junto(razao, nat, esperado):
+    """Uma AAE encabeçou a fila de processos com peso 940 — falso positivo puro.
+
+    O veto conhecia `ASSOCIAÇÃO DE APOIO À ESCOLA` por extenso e não a sigla. Mas a sigla sozinha
+    também pega empresa comum: o discriminador objetivo é a NATUREZA JURÍDICA de associação (3xxx).
+    """
+    from tools.agente_publico_reverso import explicacao_institucional
+
+    assert explicacao_institucional(razao, nat) == esperado
+
+
+@pytest.mark.parametrize("razao", [
+    "ASSOCIACAO DE APOIO A ESCOLA MUNICIPAL X",
+    "ASSOCIACAO DE APOIO DO COLEGIO ESTADUAL PROFESSOR Y",
+    "ASSOCIACAO DE APOIO AO CIEP 179",
+    "ASSOCIACAO DE APOIO A CRECHE COMUNITARIA Z",
+    "ASSOCIACAO DE APOIO AO CENTRO EDUCACIONAL W",
+    "ASSOCIACAO DE APOIO DA ESC EST DR K",
+])
+def test_apoio_a_unidade_escolar_em_todas_as_formas_do_cadastro(razao):
+    """Levantado NO CADASTRO, não imaginado.
+
+    Das 3.464 associações (natureza 3xxx) com "APOIO" no nome, o complemento é ESCOLA (2.017),
+    CRECHE (113), CENTRO (91), ESC. (80), COLÉGIO (77) e CIEP (59). A primeira versão do veto só
+    conhecia "APOIO À ESCOLA" e deixou passar "APOIO DO COLÉGIO ESTADUAL", que encabeçou a fila de
+    processos com peso 931. O dirigente dessas entidades é, por desenho do programa, um professor
+    da própria unidade — acusá-lo é acusar o desenho.
+    """
+    from tools.agente_publico_reverso import explicacao_institucional
+
+    assert explicacao_institucional(razao, "3999") == "apoio_a_escola"
+
+
+@pytest.mark.parametrize("razao,nat,esperado", [
+    ("ASSOCIACAO DE APOIO DO CE MARCILIO DIAS", "3999", "apoio_a_escola"),
+    ("ASSOCIACAO DE APOIO DO C.E. VARZEA DA ALEGRIA", "3999", "apoio_a_escola"),
+    ("ASSOCIACAO DE APOIO DO C.E.JOAQUIM DE ALMEIDA FLORES", "3999", "apoio_a_escola"),
+    ("AAE - ETE - TRES RIOS", "3999", "apoio_a_escola"),
+    # sem a natureza de associação a sigla NÃO explica nada
+    ("APOIO DO CE COMERCIO LTDA", "2062", ""),
+])
+def test_siglas_de_unidade_escolar_conferidas_no_cadastro(razao, nat, esperado):
+    """`APOIO DO CE` é Colégio Estadual abreviado — e o veto por extenso não o via.
+
+    Cada forma foi CONFERIDA na base antes de entrar na regex, não imaginada: `C.E.`, `I.E.`,
+    `E.M.`, `ETE`, `FAETERJ`. A trava de natureza 3xxx continua sendo o que separa a associação
+    escolar da empresa homônima.
+    """
+    from tools.agente_publico_reverso import explicacao_institucional
+
+    assert explicacao_institucional(razao, nat) == esperado

@@ -57,14 +57,52 @@ def _cnpjs_da_ficha(bruto: str) -> list[str]:
     return fora
 
 
-def processos_com_cnpj(con: sqlite3.Connection) -> dict[str, list[str]]:
+def processos_com_cnpj(con: sqlite3.Connection) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """CNPJs de cada processo, pela ficha e — quando ela nada extraiu — pelo PAGAMENTO.
+
+    Medido em 2026-08-06: das 4.430 fichas, **2.155 têm `cnpjs` vazio** — metade do acervo lido sem
+    a parte contratada identificada. Não é defeito de leitura do campo (2.136 são literalmente
+    `[]`): é extração que não encontrou o número no texto.
+
+    Mas o processo aparece nas ORDENS BANCÁRIAS, e a OB nomeia o credor. Dessas 2.155, **1.102**
+    (51%) se recuperam por aí: 1.091 pelo campo `processo` do SIAFE e 1.052 pelo `numero_sei` do
+    espelho TFE. Deixar de usar essa fonte é jogar fora metade da correlação — e ler a ausência de
+    CNPJ na ficha como ausência de contratado seria o mesmo erro que esta casa já corrigiu em
+    outras camadas.
+
+    A PROCEDÊNCIA VAI JUNTO (`ficha` ou `pagamento`): quem lê precisa saber se o CNPJ veio do texto
+    dos autos ou de quem recebeu o dinheiro — são coisas diferentes e sustentam afirmações
+    diferentes.
+    """
     fora: dict[str, list[str]] = {}
+    origem: dict[str, str] = {}
     for numero, cj in con.execute(
             "SELECT numero_sei, cnpjs FROM sei_ficha WHERE cnpjs IS NOT NULL AND cnpjs <> ''"):
         lista = _cnpjs_da_ficha(cj)
         if lista:
             fora[numero] = sorted(set(lista))
-    return fora
+            origem[numero] = "ficha"
+
+    faltam = [n for n, in con.execute("SELECT numero_sei FROM sei_ficha") if n not in fora]
+    if not faltam:
+        return fora, origem
+    ph = ",".join("?" * len(faltam))
+    achado: dict[str, set[str]] = {}
+    for sql in (f"SELECT numero_sei, favorecido_cpf FROM ordens_bancarias "
+                f"WHERE numero_sei IN ({ph})",
+                f"SELECT processo, credor FROM ob_orcamentaria_siafe WHERE processo IN ({ph})"):
+        try:
+            linhas = con.execute(sql, tuple(faltam)).fetchall()
+        except sqlite3.Error:
+            continue
+        for numero, doc in linhas:
+            d = re.sub(r"\D", "", str(doc or ""))
+            if len(d) == 14:
+                achado.setdefault(str(numero), set()).add(d)
+    for numero, cnpjs in achado.items():
+        fora[numero] = sorted(cnpjs)
+        origem[numero] = "pagamento"
+    return fora, origem
 
 
 def orgao_do_processo(con: sqlite3.Connection) -> dict[str, str]:
@@ -91,7 +129,7 @@ def correlacionar(db: str = "") -> dict:
     from tools.agente_publico_reverso import _FILA_JSON
 
     con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True)
-    procs = processos_com_cnpj(con)
+    procs, origem_cnpj = processos_com_cnpj(con)
     raizes = {c[:8] for L in procs.values() for c in L}
 
     # A FILA CURADA, não a tabela crua: ela já descartou homônimo comprovado e já vetou o que é
@@ -109,19 +147,21 @@ def correlacionar(db: str = "") -> dict:
         tuple(raizes))} if raizes else set()
 
     nat: dict[str, str] = {}
+    razao: dict[str, str] = {}
     if _ESTAB.exists() and raizes:
         est = sqlite3.connect(f"file:{_ESTAB}?mode=ro", uri=True)
         try:
             if est.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas'"
                            ).fetchone():
                 for r in est.execute(
-                        f"SELECT cnpj_basico, natureza_cod FROM empresas WHERE cnpj_basico IN ({ph})",
-                        tuple(raizes)):
+                        f"SELECT cnpj_basico, natureza_cod, razao_social FROM empresas "
+                        f"WHERE cnpj_basico IN ({ph})", tuple(raizes)):
                     nat[r[0]] = str(r[1] or "")
+                    razao[r[0]] = str(r[2] or "")
         finally:
             est.close()
 
-    from tools.agente_publico_reverso import conflito_de_orgao
+    from tools.agente_publico_reverso import conflito_de_orgao, explicacao_institucional
 
     ug_por_proc = orgao_do_processo(con)
     achados = []
@@ -130,7 +170,12 @@ def correlacionar(db: str = "") -> dict:
         for c in lista:
             r = c[:8]
             agentes += por_raiz.get(r, [])
-            if nat.get(r, "").startswith("3"):
+            # TERCEIRO SETOR **SEM EXPLICAÇÃO CONHECIDA**. Um processo que paga centenas de
+            # Associações de Apoio à Escola citava cada uma delas e subia ao topo com peso 821 —
+            # e todas são o DESENHO do programa, não achado. Contar entidade já explicada é
+            # transformar a rotina do Estado em fila de suspeita.
+            if nat.get(r, "").startswith("3") and not explicacao_institucional(
+                    razao.get(r, ""), nat.get(r, "")):
                 terceiro.append(c)
             if r not in com_qsa:
                 sem_qsa.append(c)
@@ -145,6 +190,7 @@ def correlacionar(db: str = "") -> dict:
         achados.append({
             "processo": numero,
             "cnpjs": lista,
+            "origem_cnpj": origem_cnpj.get(numero, "ficha"),
             "orgao_do_processo": ug,
             "agentes": [{"nome": a["agente"], "cargo": a["cargo"], "orgao": a["orgao"],
                          "comissionado": a["comissionado"], "entidade": a["entidade"],
@@ -158,7 +204,10 @@ def correlacionar(db: str = "") -> dict:
         })
     con.close()
     achados.sort(key=lambda x: -x["peso"])
-    return {"processos_com_cnpj": len(procs), "empresas": len({c for L in procs.values() for c in L}),
+    return {"processos_com_cnpj": len(procs),
+            "pela_ficha": sum(1 for v in origem_cnpj.values() if v == "ficha"),
+            "pelo_pagamento": sum(1 for v in origem_cnpj.values() if v == "pagamento"),
+            "empresas": len({c for L in procs.values() for c in L}),
             "com_achado": len(achados), "achados": achados}
 
 

@@ -165,7 +165,14 @@ def construir(db: str = "") -> dict:
 # definição) e cooperativa. Vetar isso não é benevolência: é a diferença entre uma fila de trabalho
 # e uma lista que acusa um terço do magistério de improbidade.
 _INSTITUCIONAL = {
-    "apoio_a_escola": re.compile(r"APOIO\s+[AÀ]\s+ESCOLA|APOIO\s+ESCOLA|CIEP|CAIC", re.I),
+    # LEVANTADO NO CADASTRO, não imaginado: das 3.464 associações (3xxx) com "APOIO" no nome, o
+    # complemento é ESCOLA (2.017), CRECHE (113), CENTRO (91), ESC. (80), COLÉGIO (77) e CIEP (59).
+    # A primeira versão só conhecia "APOIO À ESCOLA" e deixou passar "APOIO DO COLÉGIO ESTADUAL",
+    # que encabeçou a fila de processos com peso 931 — falso positivo puro, porque o dirigente de
+    # associação de apoio à unidade escolar é, por desenho do programa, um professor daquela unidade.
+    "apoio_a_escola": re.compile(
+        r"APOIO\s+(?:[AÀ]O?S?|D[AEO]S?)?\s*(?:ESCOLA|ESC\b|COL[ÉE]GIO|CIEP|CAIC|CRECHE|"
+        r"CENTRO\s+(?:EDUC|DE\s+EDUC)|INSTITUTO\s+DE\s+EDUCA)|\bCIEP\b|\bCAIC\b", re.I),
     "fundacao_de_apoio_universitaria": re.compile(
         r"FUNDA[CÇ][AÃ]O.*(APOIO|PESQUISA|ENSINO|DESENVOLVIMENTO|UNIVERSIT)", re.I),
     "associacao_de_classe": re.compile(
@@ -189,12 +196,29 @@ def e_estatal(natureza_cod: str) -> bool:
     return n.startswith("1") or n in ("2011", "2038")
 
 
+# A ABREVIAÇÃO SÓ VALE COM A NATUREZA JUNTO. `AAE` é como as Associações de Apoio à Escola
+# aparecem no cadastro (107 delas), e o veto por extenso não as via — uma delas encabeçou a fila de
+# processos com peso 940. Mas `AAE ACCESS ACCOUTING EVOLUTION ASSESSORIA CONTABIL LTDA` também
+# começa com AAE e é natureza 2062: empresa comum. Vetar pela sigla sozinha tiraria da fila quem
+# devia estar nela. A sigla só explica quando vem com natureza de associação/fundação (3xxx).
+# As siglas das unidades escolares como o cadastro as escreve, TODAS conferidas na base: `AAE` no
+# começo (107 ocorrências), e `C.E.`/`CE`, `I.E.`, `E.M.` depois de "APOIO D_". Nenhuma delas vale
+# sozinha — a trava de natureza 3xxx é o que separa a associação escolar da empresa homônima.
+_SIGLAS_ESCOLA = re.compile(
+    r"^\s*A\.?\s?A\.?\s?E\b"
+    r"|APOIO\s+(?:[AÀ]O?S?|D[AEO]S?)\s*(?:C\.?\s?E\.?|I\.?\s?E\.?|E\.?\s?M\.?|E\.?T\.?E\.?|"
+    r"FAETERJ)\b", re.I)
+
+
 def explicacao_institucional(razao_social: str, natureza_cod: str = "") -> str:
     """Nome da explicação inocente conhecida, ou vazio. Vazio NÃO significa que não haja uma."""
     if e_estatal(natureza_cod):
         return "ente_publico_ou_estatal"
+    rz = str(razao_social or "")
+    if _SIGLAS_ESCOLA.search(rz) and str(natureza_cod or "").startswith("3"):
+        return "apoio_a_escola"
     for nome, rx in _INSTITUCIONAL.items():
-        if rx.search(str(razao_social or "")):
+        if rx.search(rz):
             return nome
     return ""
 
