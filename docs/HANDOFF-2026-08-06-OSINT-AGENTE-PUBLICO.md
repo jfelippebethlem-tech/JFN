@@ -143,3 +143,78 @@ O reverso dos cinco trouxe o que a matéria não tinha: **WAGNER COELHO DE ASEVE
 3. **Bloco C do plano** — mover sweeps de OSINT com browser para a VM-2.
 4. **Órfãos restantes** — `osint/timeline`, `osint/qsa_certame`, `enrich/exif`: ligar ou apagar.
 5. **`MEMORY.md` em 23,1 KB** (limite 24,4) — compactar exige apagar memórias: decisão do dono.
+
+---
+
+# PARTE II — O painel: da métrica muda à métrica que leva ao dado
+
+> Sete commits depois da Parte I. O pedido do dono foi direto: *"tá tudo sambando, solto quando
+> puxa"* — e a medição deu razão a ele de forma exata.
+
+## 8. O estado inicial, medido
+
+O painel tem **198 chamadas de `kpi()`**. O helper sempre teve um 5º parâmetro para o destino, e
+**nenhuma das 198 o passava**. Quem lia "68 comissionados" não tinha como ver os 68.
+
+## 9. As três vezes em que a métrica mentiu — família 26 do catálogo
+
+| Métrica | KPI dizia | O clique mostrava | Por quê |
+|---|---:|---:|---|
+| Agentes comissionados | 68 | **55** | número da fila inteira, filtro sobre a página |
+| Em terceiro setor | 201 | **22** | idem |
+| Sem cadastro ainda | 647 | **0** | total do servidor, página com 60 |
+
+**Nenhum teste unitário pega isso**: o JS está certo, a rota está certa, e o erro nasce da
+combinação. As duas primeiras foram corrigidas movendo a fatia para o servidor. A terceira **não
+tem conserto sem trabalho de rota** — e a decisão foi **tirar o clique**, com o motivo escrito no
+código. *KPI sem clique é honesto; gaveta que mostra 0 para 647 é mentira.*
+
+## 10. O verificador que clica
+
+`tools/painel_drill_check` abre o painel de verdade, navega por **13 abas**, clica em cada
+`[data-drill]`, lê o KPI e conta as linhas da gaveta. Divergência é falha; `pageerror` também.
+Hoje: **22 métricas clicadas, zero divergências**. Está no sweep diário.
+
+Ele já se corrigiu uma vez: acusou 336 contra 341 e a divergência **não se reproduziu** — o
+contador leu durante a montagem. Agora só conta depois de o número parar de mudar, e relê antes de
+acusar. *Verificador que dá falso alarme é verificador que ninguém lê.*
+
+## 11. Nove conversões nasceram mortas — família 27
+
+Inserir `registrarDrill(...)` na linha anterior ao KPI fez a chamada cair **dentro de uma template
+string**: virou texto na página. O KPI ganhou o atributo, o build passou, o clique não fazia nada.
+Quem acusou foi o verificador: *KPI 9, gaveta None*. Catraca nova conta crases.
+
+**Build verde não prova que executou** — é a prima do "construído, testado, nunca rodado", agora na
+camada da tela.
+
+## 12. A catraca mediu errado a própria dívida — três vezes
+
+1. contava como mudo o KPI que **já navegava** (`kpi-go` nasce em runtime, não aparece na chamada);
+2. contava como convertível o que exibia um **máximo** (`a.length ? fmtN(a[0].hhi) : '—'`);
+3. não via **contagem guardada em variável** (`const alta = g.filter(...).length`).
+
+Uma catraca que mede errado protege o que não existe.
+
+## 13. Onde parou
+
+| | |
+|---|---:|
+| KPIs no painel | 198 |
+| **Convertíveis sem caminho** | **0** |
+| Com caminho | 46 |
+| Sem gaveta **por serem escalares** | 152 |
+
+Os 152 leem mediana, F1 macro, percentual, "SIAFE ok/off" — número que não conta linhas **não tem
+gaveta possível**, e um teste de controle impede que sejam cobrados como dívida.
+
+**Quatro métricas ficaram deliberadamente sem caminho**, cada uma com o motivo no código: "sem
+cadastro (647)", "CNPJs envolvidos", "certames analisados" e "cidades de candidatura".
+
+## 14. Aberto no painel
+
+1. Os **74 totais do servidor** que têm linhas do outro lado da rota — cada um exige `?filtro=` como
+   o de agente público. É trabalho de rota, um endpoint por vez.
+2. Cobertura do verificador: 13 das ~40 abas. As demais só entram quando tiverem métrica clicável.
+3. Métricas escalares (mediana, F1) pedem outra afordância — **procedência**, não gaveta: de onde
+   veio o número e como se recalcula.
