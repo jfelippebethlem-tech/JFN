@@ -55,7 +55,10 @@ export async function _compItemView(voltar){
   let h=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
-  h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️',{sobre:'Mediana do preço unitário do MESMO item, entre todos os compradores públicos com compra registrada. Mediana e não média porque uma compra atípica desloca a média e não desloca a mediana. <b>Item diferente não compara</b>: 60% da \'economia\' de uma medição anterior desta casa vinha de comparar produtos que só tinham a descrição parecida.'})}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️',{sobre:'Mediana do preço unitário do MESMO item, entre todos os compradores públicos com compra registrada. Mediana e não média porque uma compra atípica desloca a média e não desloca a mediana. <b>Item diferente não compara</b>: 60% da \'economia\' de uma medição anterior desta casa vinha de comparar produtos que só tinham a descrição parecida.'})}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️',
+        {sobre:'Quantos compradores públicos distintos têm compra registrada deste item. É o que dá sustentação à mediana: mediana calculada sobre poucos órgãos descreve aqueles órgãos, não o mercado.'})}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢',
+        {sobre:'Quantos fornecedores distintos venderam este item. Número baixo pode significar mercado concentrado — e nesse caso preço acima da mediana diz menos sobre sobrepreço e mais sobre falta de concorrência.'})}${kpi(fmtN(d.n_compras),'Compras',null,'🧾',
+        {sobre:'Registros de compra que entraram no cálculo. É o tamanho da amostra: com poucas compras, a mediana é frágil e a razão "× mediana" precisa ser lida com essa reserva.'})}</div>`;
   const linha=x=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'var(--green)':'var(--amber)');
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
       <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
@@ -180,8 +183,11 @@ export async function _compDossie(){
   let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
   registrarDrill('compDoisSinais',{titulo:'Casos com dois ou mais sinais',itens:a.filter(x=>x.sinais.length>=2),nota:'Sinal isolado explica-se; dois pedem verificação.'});
   // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Casos caro + suspeito','var(--rose)','🚨',drillSeCompleto('compCaroSuspeito',d.n,a,{titulo:'Casos caros E com sinal',nota:'Preço acima da mediana E sinal aceso no mesmo fornecedor — o cruzamento é a fila que rende.'}))}${kpi(fmtN(d.n_sancionada),'Fornecedor SANCIONADO','var(--rose)','⚖️')}
-      ${kpi(a.length?a[0].vs_mediana+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(a.filter(x=>x.sinais.length>=2).length,'Com ≥2 sinais',null,'🎯',{drill:'compDoisSinais'})}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Casos caro + suspeito','var(--rose)','🚨',drillSeCompleto('compCaroSuspeito',d.n,a,{titulo:'Casos caros E com sinal',nota:'Preço acima da mediana E sinal aceso no mesmo fornecedor — o cruzamento é a fila que rende.'})
+        ||{sobre:'Casos em que o preço está acima da mediana E há sinal aceso no mesmo fornecedor. O cruzamento é a fila que rende; nenhum dos dois lados sozinho basta. A gaveta está desligada porque a tela recebe uma página.'})}${kpi(fmtN(d.n_sancionada),'Fornecedor SANCIONADO','var(--rose)','⚖️',
+        {sobre:'Casos em que o fornecedor caro também tem registro de sanção. A abrangência importa e viaja em cada linha: sanção de um órgão não alcança toda a Administração, e sanção posterior à compra não a contamina.'})}
+      ${kpi(a.length?a[0].vs_mediana+'×':'—','Pior caso (× mediana)','var(--rose)',null,
+        {sobre:'O maior múltiplo da mediana entre os casos caro + suspeito. Só vale entre produtos equivalentes: 60% da "economia" de uma medição anterior desta casa vinha de comparar itens diferentes sob descrição parecida.'})}${kpi(a.filter(x=>x.sinais.length>=2).length,'Com ≥2 sinais',null,'🎯',{drill:'compDoisSinais'})}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
   h+=`<div id="dossie-list" class="grid">`+a.map(x=>{
     const ABR={total:'toda a Adm.',ente:'ente federativo',orgao:'órgão sancionador'};

@@ -262,3 +262,77 @@ def test_kpi_com_lista_cortada_usa_a_guarda_de_completude():
         assert f"drillSeCompleto('{nome}'" in texto, (
             f"{nome} sumiu — se a métrica foi retirada, retire o nome desta lista com o motivo "
             f"escrito; se foi renomeada, atualize aqui.")
+
+
+TETO_KPI_SEM_PROCEDENCIA = 0
+
+
+def test_nenhum_kpi_fica_sem_procedencia():
+    """Um número no painel tem de dizer de onde veio — em 07/08/2026 a dívida chegou a ZERO.
+
+    A medição inicial era de 215 KPIs com 127 SEM CAMINHO NENHUM: clicar não fazia nada e o número
+    pedia fé. O teto anterior desta casa cobrava só os CONVERTÍVEIS (os que contam uma lista já em
+    mão), e com razão — exigir gaveta de quem mede uma relação seria pedir mentira. Mas isso deixou
+    de fora a maioria, que não precisava de lista e sim de PROCEDÊNCIA: o que mede, de que fonte
+    sai, o que não autoriza concluir.
+
+    Agora que a dívida é zero, o teto fecha a porta. Métrica nova nasce com uma das três formas:
+    `{drill}` quando conta um conjunto que a tela tem inteiro, `drillSeCompleto` quando a rota
+    pagina, `{sobre}` quando mede uma relação. A quarta forma — nenhuma delas — deixa de existir.
+    """
+    mudas = []
+    for arquivo, chamada in _sem_caminho(_chamadas()):
+        mudas.append(f"{arquivo}: {chamada[:90]}")
+    assert len(mudas) <= TETO_KPI_SEM_PROCEDENCIA, (
+        f"{len(mudas)} KPI(s) voltaram a não dizer de onde vêm (teto "
+        f"{TETO_KPI_SEM_PROCEDENCIA}):\n" + "\n".join(f"  • {m}" for m in mudas[:12]) +
+        "\n\nEscolha a forma pelo que a métrica MEDE: conjunto → `{drill:'nome'}` com "
+        "`registrarDrill`; conjunto que a rota pagina → `drillSeCompleto(nome,total,itens,cfg)`; "
+        "relação (taxa, cobertura, defasagem, grau) → `{sobre:'o que mede, de que fonte, o que "
+        "não autoriza concluir'}`.")
+
+
+def test_drill_se_completo_sempre_tem_caminho_de_reserva():
+    """A guarda de completude devolve `null` — e `null` no 5º argumento é KPI MUDO.
+
+    Este furo não aparecia na leitura do código: `kpi(n, 'X', cor, glifo, drillSeCompleto(...))`
+    tem cinco argumentos e passa em qualquer contagem estática. Só que `drillSeCompleto` devolve
+    `null` quando a lista em mão não é o universo — e aí, em tempo de execução, o KPI perde o
+    caminho justamente nas telas em que a rota pagina, que são as mais volumosas.
+
+    Medido em 07/08/2026 na varredura das 60 abas: a fonte acusava zero mudos e a PÁGINA mostrava
+    três — `Estouram o teto legal`, `Mercados analisados` e `Comunidades relevantes`. A lição é a
+    de sempre nesta casa: medir o efeito, não a ação.
+
+    Toda chamada tem de trazer `||{sobre:...}`: quando a gaveta não pode abrir sem mentir, o
+    leitor ao menos recebe a procedência — o que a métrica mede e por que a lista não cabe.
+    """
+    sem_reserva = []
+    for f in sorted(ABAS.glob("*.js")):
+        texto = f.read_text(encoding="utf-8")
+        for m in re.finditer(r"drillSeCompleto\(\s*'([A-Za-z0-9_]+)'", texto):
+            j, prof, q = m.start() + len("drillSeCompleto"), 0, None
+            while j < len(texto):
+                c = texto[j]
+                if q:
+                    if c == q and texto[j - 1] != "\\":
+                        q = None
+                elif c in "\"'`":
+                    q = c
+                elif c == "(":
+                    prof += 1
+                elif c == ")":
+                    prof -= 1
+                    if prof == 0:
+                        break
+                j += 1
+            resto = texto[j + 1:j + 40].lstrip()
+            # a forma `const _d = drillSeCompleto(...)` é legítima: a reserva vem no uso do `_d`
+            trecho = texto[max(0, m.start() - 40):m.start()]
+            if re.search(r"(?:const|let|var)\s+\w+\s*=\s*$", trecho):
+                continue
+            if not resto.startswith("||"):
+                sem_reserva.append(f"{f.name}: {m.group(1)}")
+    assert not sem_reserva, (
+        "`drillSeCompleto` sem `||{sobre:...}` — o KPI fica MUDO quando a lista vem cortada:\n" +
+        "\n".join(f"  • {s}" for s in sem_reserva))

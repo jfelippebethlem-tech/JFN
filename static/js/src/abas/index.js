@@ -299,7 +299,8 @@ export async function renderHubFisico(){
   registrarDrill('hubComComplemento',{titulo:'Hubs com complemento (sala/andar) — os que pesam',
     itens:a.filter(x=>(x.tipo||'').includes('sala')||x.complemento),render:_linHub});
   h+=`<div class="grid g2">${kpi(fmtN(a.length),'Hubs','var(--amber)','🏢',{drill:'hubTodos'})}
-      ${kpi(fmtN(a.reduce((s,x)=>s+(x.n_cnpjs||x.n||0),0)),'CNPJs envolvidos')}
+      ${kpi(fmtN(a.reduce((s,x)=>s+(x.n_cnpjs||x.n||0),0)),'CNPJs envolvidos',null,null,
+        {sobre:'Soma de CNPJs distintos nos agrupamentos exibidos. A mesma empresa pode aparecer em mais de um grupo — o número mede alcance do padrão, não quantidade de empresas suspeitas.'})}
       ${kpi(fmtN(a.filter(x=>(x.tipo||'').includes('sala')||x.complemento).length),'Com complemento (sala/andar)','var(--rose)','🚪',{drill:'hubComComplemento'})}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por âncora ou empresa…" oninput="filtrar(this,'#hub-list .card')"></div>`;
   h+=`<div id="hub-list" class="grid">`+a.map(x=>card(
@@ -654,10 +655,14 @@ export async function renderInstrumentacao(){
 
   h+=sec('SIAFE e radar');
   h+=`<div class="grid g2">
-    ${kpi(esc((sf&&(sf.estado||sf.status))||'—'),'SIAFE',null,'💵')}
-    ${kpi(fmtN(sf&&(sf.n_obs||sf.obs)),'OBs coletadas')}
-    ${kpi(esc((rd&&(rd.estado||rd.status))||'—'),'Radar',null,'🎯')}
-    ${kpi(fmtN(mm&&(mm.n||mm.total||mm.aprendizados)),'Itens na memória','var(--accent)','🧠')}</div>`;
+    ${kpi(esc((sf&&(sf.estado||sf.status))||'—'),'SIAFE',null,'💵',
+      {sobre:'Estado da coleta no SIAFE — a fonte canônica de pagamento. Coleta parada significa números <b>congelados na última data</b>, não ausência de pagamento novo: é a diferença entre o mundo e o que a casa viu do mundo.'})}
+    ${kpi(fmtN(sf&&(sf.n_obs||sf.obs)),'OBs coletadas',null,null,
+      {sobre:'Ordens bancárias ingeridas — pagamento EFETIVO. Empenho é reserva orçamentária e pode ser cancelado; liquidação é o reconhecimento da dívida. Só a OB significa que o dinheiro saiu, e é por isso que só ela conta como "pago" nesta casa.'})}
+    ${kpi(esc((rd&&(rd.estado||rd.status))||'—'),'Radar',null,'🎯',
+      {sobre:'Estado do varredor que reavalia os fornecedores. Parado, as faixas de risco continuam mostrando a última avaliação — número velho com cara de atual é a forma mais silenciosa de errar.'})}
+    ${kpi(fmtN(mm&&(mm.n||mm.total||mm.aprendizados)),'Itens na memória','var(--accent)','🧠',
+      {sobre:'Aprendizados registrados no acervo de metacognição — o que a casa já descobriu sobre os próprios erros. É o que impede um defeito corrigido de voltar por esquecimento; cada família de falha do catálogo nasceu de um caso concreto.'})}</div>`;
   h+=card(`<div class="btns" style="flex-wrap:wrap">
       <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/status','GET')">Status SIAFE</button>
       <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/atualizar','POST')">Atualizar SIAFE</button>
@@ -804,7 +809,8 @@ export async function renderSancionadas(esf){
     nota:'O ato ocorreu DENTRO da vigência da punição (Lei 14.133, art. 156).'});
   h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫',{drill:'sancComContrato'})}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️',{drill:'sancAEpoca'})}
       ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸',
-        {sobre:'Ordens bancárias emitidas <b>enquanto</b> a sanção estava vigente — não o histórico da empresa. A fonte é a OB do SIAFE, que é pagamento efetivo: empenho é reserva e pode ser cancelado, liquidação é reconhecimento da dívida. Só a OB significa que o dinheiro saiu.'})}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
+        {sobre:'Ordens bancárias emitidas <b>enquanto</b> a sanção estava vigente — não o histórico da empresa. A fonte é a OB do SIAFE, que é pagamento efetivo: empenho é reserva e pode ser cancelado, liquidação é reconhecimento da dívida. Só a OB significa que o dinheiro saiu.'})}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆',
+        {sobre:'Certames vencidos <b>enquanto</b> a sanção vigorava, segundo o PNCP. Vencer não é receber: o valor efetivamente pago está no KPI ao lado, e vem da OB do SIAFE.'})}</div>`;
   h+=buscaPag('san','filtrar por nome ou CNPJ…');
   h+=`<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(80,emp.length))} de ${fmtN(emp.length)}${(d.n&&d.n>carregadas)?` carregadas — a base tem ${fmtN(d.n)}; a rota entrega no máximo 1000, então <b>o filtro NÃO cobre a base inteira</b>: se um CNPJ não aparecer aqui, use a busca por CNPJ do painel antes de concluir qualquer coisa`:' — o filtro busca em todas'}</div>`;
   h+=listaPaginada('san',emp,e=>{
@@ -831,8 +837,11 @@ export async function renderFracionamento(){
     'Mesmo favorecido, mesma unidade gestora e mesmo mês, com várias Ordens Bancárias <b>coladas no teto de dispensa</b> de licitação. É o padrão de dividir a compra para caber embaixo do limite e não licitar (Lei 14.133, art. 75 §1º). Quanto maior a <b>concentração</b> (% de OBs coladas no teto), mais deliberado o indício.','✂️')+acoesAba('fracionamento');
   const alta=g.filter(x=>x.concentracao>=0.5).length;
   registrarDrill('fracConc50',{titulo:'Grupos com concentração ≥ 50% num único favorecido',itens:g.filter(x=>x.concentracao>=0.5),nota:'Fracionamento é indício de divisão da compra para escapar da licitação — o objeto decide.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Grupos sinalizados','var(--amber)','✂️',drillSeCompleto('fracGrupos',d.n,g,{titulo:'Grupos com indício de fracionamento',nota:'Mesmo favorecido, mesma UG e mesmo mês, com OBs coladas no teto de dispensa. O objeto decide se houve divisão indevida.'}))}${kpi(fmtN(alta),'Concentração ≥50%','var(--rose)','🎯',{drill:'fracConc50'})}
-      ${kpi(fmtRc(g.reduce((s,x)=>s+x.soma,0)),'Soma dos grupos exibidos',null,'💰')}${kpi(g.length?Math.round(Math.max(...g.map(x=>x.concentracao))*100)+'%':'—','Pior concentração','var(--rose)')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Grupos sinalizados','var(--amber)','✂️',drillSeCompleto('fracGrupos',d.n,g,{titulo:'Grupos com indício de fracionamento',nota:'Mesmo favorecido, mesma UG e mesmo mês, com OBs coladas no teto de dispensa. O objeto decide se houve divisão indevida.'})
+        ||{sobre:'Grupos com indício de fracionamento — mesmo favorecido, mesma UG, mesmo mês, com pagamentos colados no teto de dispensa. A tela recebe uma página e por isso a gaveta está desligada aqui. Este eixo já esteve <b>26× inflado</b> nesta casa (59.209 caindo para 2.225): o número só vale com a régua de agrupamento à vista.'})}${kpi(fmtN(alta),'Concentração ≥50%','var(--rose)','🎯',{drill:'fracConc50'})}
+      ${kpi(fmtRc(g.reduce((s,x)=>s+x.soma,0)),'Soma dos grupos exibidos',null,'💰',
+        {sobre:'Soma dos grupos EM TELA, não do acervo — o rótulo diz isso de propósito. Fracionamento já esteve 26× inflado nesta casa (59.209 caindo para 2.225) por contar o que não devia; somar só o exibido é o que impede o número de crescer sem lastro.'})}${kpi(g.length?Math.round(Math.max(...g.map(x=>x.concentracao))*100)+'%':'—','Pior concentração','var(--rose)',null,
+        {sobre:'O grupo com maior parcela num único favorecido. Concentração alta pode ser mercado de um fornecedor só; o que ela indica é onde perguntar por pesquisa de preço, não onde concluir.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
   h+=`<div id="frac-list" class="grid">`+g.map(x=>{
     const pct=Math.round(x.concentracao*100);
@@ -857,7 +866,8 @@ export async function renderCertames(){
   const piores=o.filter(x=>(x.desvio_vs_pares||0)>10).length, aud=o.filter(x=>x.auditoria_tematica&&x.auditoria_tematica.length).length;
   registrarDrill('orgAcimaPares',{titulo:'Órgãos acima dos pares em mais de 10 pontos',itens:o.filter(x=>(x.desvio_vs_pares||0)>10),nota:'A régua é COMPARATIVA: o desvio mede este órgão contra os semelhantes, não contra zero.'});
   registrarDrill('orgAuditoriaTematica',{titulo:'Órgãos com gatilho de auditoria temática',itens:o.filter(x=>x.auditoria_tematica&&x.auditoria_tematica.length)});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_orgaos),'Órgãos avaliados (≥3 certames)',null,'🏢',drillSeCompleto('orgaosAvaliados',d.n_orgaos,o,{titulo:'Órgãos avaliados (≥3 certames indexados)',nota:'Órgão com menos de 3 certames fica fora: régua comparativa exige base para comparar.'}))}${kpi(d.mediana_pares!=null?d.mediana_pares.toFixed(0):'—','Mediana dos pares',null,'📏',{sobre:'Mediana do Índice de Direcionamento entre órgãos COMPARÁVEIS (≥3 certames indexados). A régua desta casa é comparativa de propósito: 40 pontos não significa nada sozinho — significa alguma coisa contra os 22 dos semelhantes. Órgão sem par suficiente fica sem desvio, e isso é dito, não preenchido com zero.'})}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_orgaos),'Órgãos avaliados (≥3 certames)',null,'🏢',drillSeCompleto('orgaosAvaliados',d.n_orgaos,o,{titulo:'Órgãos avaliados (≥3 certames indexados)',nota:'Órgão com menos de 3 certames fica fora: régua comparativa exige base para comparar.'})
+        ||{sobre:'Órgãos com pelo menos três certames — abaixo disso não há série para falar de padrão, e qualquer concentração seria ruído de amostra pequena. A gaveta está desligada porque a tela recebe uma página do total.'})}${kpi(d.mediana_pares!=null?d.mediana_pares.toFixed(0):'—','Mediana dos pares',null,'📏',{sobre:'Mediana do Índice de Direcionamento entre órgãos COMPARÁVEIS (≥3 certames indexados). A régua desta casa é comparativa de propósito: 40 pontos não significa nada sozinho — significa alguma coisa contra os 22 dos semelhantes. Órgão sem par suficiente fica sem desvio, e isso é dito, não preenchido com zero.'})}
       ${kpi(fmtN(piores),'Acima dos pares (+10)','var(--amber)','📈',{drill:'orgAcimaPares'})}${kpi(fmtN(aud),'Com gatilho de auditoria temática','var(--rose)','🎯',{drill:'orgAuditoriaTematica'})}</div>`;
   h+=`<div class="grid" style="margin-top:14px">`+o.map(x=>{
     const md=x.score_mediana!=null?x.score_mediana:0, dv=x.desvio_vs_pares;
@@ -904,7 +914,8 @@ export async function renderCartelMun(){
   let h=cover('prefeitura','Concentração de fornecedor por mercado municipal',
     'Para cada <b>ramo de objeto</b> (limpeza, TI, veículos…), quem domina os contratos do Município do Rio: <b>top-share</b> (≥60% forte · ≥40% médio — régua R8) e <b>HHI</b> (>2.500 = mercado altamente concentrado, referência CADE). <b>Base = valor CONTRATADO</b> do PNCP — a PCRJ não publica pagamento por credor 2024+; concentração de contrato é screen de captura, não medida de execução.','🔗');
   // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Mercados analisados',null,'🧺',drillSeCompleto('mercadosAnalisados',d.n,a,{titulo:'Mercados analisados',nota:''}))}${kpi(fmtN(d.n_criticos||0),'Concentrados (share ≥40%)','var(--rose)','🚨',{sobre:'Quantos fornecedores concentram 40% ou mais do que o órgão pagou. O corte de 40% é a régua desta casa, não da lei: serve para separar o que merece leitura do que é a distribuição normal de um mercado pequeno.'})}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Mercados analisados',null,'🧺',drillSeCompleto('mercadosAnalisados',d.n,a,{titulo:'Mercados analisados',nota:''})
+        ||{sobre:'Mercados (agrupamentos de item comparável) submetidos ao teste de concentração. É o DENOMINADOR: mercado fora desta conta não foi considerado competitivo — não foi examinado. A gaveta está desligada porque a tela recebe uma página do total.'})}${kpi(fmtN(d.n_criticos||0),'Concentrados (share ≥40%)','var(--rose)','🚨',{sobre:'Quantos fornecedores concentram 40% ou mais do que o órgão pagou. O corte de 40% é a régua desta casa, não da lei: serve para separar o que merece leitura do que é a distribuição normal de um mercado pequeno.'})}
       ${kpi(a.length?fmtN(a[0].hhi):'—','Maior HHI','var(--rose)',null,{sobre:'Índice Herfindahl-Hirschman do maior caso: soma dos quadrados das participações de mercado. Acima de 2.500 o mercado é considerado <b>altamente concentrado</b> pelo padrão do CADE. Concentração alta não é ilícito — é a condição em que combinação se torna fácil, e por isso pede exame do objeto e do número de participantes.'})}${kpi(a.length?a[0].top_share+'%':'—','Maior top-share','var(--rose)',null,{sobre:'Fatia do maior fornecedor no órgão. Complementa o HHI: um mercado pode ter HHI moderado e ainda assim um único fornecedor dominante. <b>Não prova captura</b> — objeto muito específico e mercado pequeno produzem o mesmo número.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por ramo ou fornecedor…" oninput="filtrar(this,'#cmun-list .card')"></div>`;
   h+=`<div id="cmun-list" class="grid">`+a.map(o=>{
@@ -936,8 +947,12 @@ export async function renderSancionadasMun(){
      servidor sobre o conjunto inteiro; se a resposta for antiga (cache sem o campo), o rótulo
      declara explicitamente que é a soma das empresas em tela — nunca um valor mudo. */
   const vdTotal=d.valor_durante_total;const parcial=(vdTotal==null);
-  h+=`<div class="grid g2">${kpi(fmtN(d.n??emp.length),'Sancionadas c/ contrato municipal',null,'🚫')}${kpi(fmtN(d.n_a_epoca??aepoca.length),'Com contrato À ÉPOCA','var(--rose)','⚠️')}
-      ${kpi(fmtRc(parcial?aepoca.reduce((s,e)=>s+(e.valor_durante||0),0):vdTotal),parcial?`Contratado durante sanção (soma das ${fmtN(emp.length)} em tela)`:'Contratado durante sanção','var(--rose)','💸')}${kpi(fmtN(Object.values(d.descartados_outra_esfera||{}).reduce((s,v)=>s+v,0)),'Descartados (outra esfera)',null,'🧹')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n??emp.length),'Sancionadas c/ contrato municipal',null,'🚫',
+        {sobre:'Empresas com registro de sanção que aparecem em contrato do município. <b>Estar aqui não é achado</b>: a sanção pode ser posterior ao contrato, ou de outro ente, ou já cumprida. O recorte que decide é o de ao lado.'})}${kpi(fmtN(d.n_a_epoca??aepoca.length),'Com contrato À ÉPOCA','var(--rose)','⚠️',
+        {sobre:'O ACHADO: contrato ou pagamento <b>dentro da vigência</b> da sanção. Situação vale na data do ato, não hoje — a medição desta casa mostrou que 78,7% das acusações de "empresa não-ativa" eram anacrônicas, e é esse erro que este recorte existe para não repetir.'})}
+      ${kpi(fmtRc(parcial?aepoca.reduce((s,e)=>s+(e.valor_durante||0),0):vdTotal),parcial?`Contratado durante sanção (soma das ${fmtN(emp.length)} em tela)`:'Contratado durante sanção','var(--rose)','💸',
+        {sobre:'Valor contratado enquanto a sanção vigorava. O rótulo muda quando a lista vem cortada — ali a soma é <b>das empresas em tela</b>, não do acervo, e dizer isso no próprio rótulo é o que impede o número de ser lido como total.'})}${kpi(fmtN(Object.values(d.descartados_outra_esfera||{}).reduce((s,v)=>s+v,0)),'Descartados (outra esfera)',null,'🧹',
+        {sobre:'Casos recusados por serem de OUTRA esfera de governo — sanção estadual não alcança contrato municipal e vice-versa. Ficam contados porque esfera trocada já produziu acusação errada aqui, e o descarte precisa ser auditável.'})}</div>`;
   h+=buscaPag('sanm','filtrar por nome ou CNPJ…');
   h+=`<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(100,emp.length))} de ${fmtN(d.n??emp.length)}${emp.length<(d.n??emp.length)?' — o filtro busca nas '+fmtN(emp.length)+' carregadas':' — o filtro busca em todas'}</div>`;
   h+=listaPaginada('sanm',emp,e=>{
@@ -962,8 +977,11 @@ export async function renderAditivos(esf='estado'){
   let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
   // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨',drillSeCompleto('aditEstouraTeto',d.n_estoura_teto,a.filter(x=>x.estoura_teto),{titulo:'Aditivos que estouram o teto legal',nota:'Art. 125 da Lei 14.133: 25% para obras e serviços, 50% para reforma de edifício.'}))}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑')}
-      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄',{sobre:'Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado.'})}${kpi(a.length?fmtPct(a[0].pct):'—','Pior acréscimo','var(--rose)')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨',drillSeCompleto('aditEstouraTeto',d.n_estoura_teto,a.filter(x=>x.estoura_teto),{titulo:'Aditivos que estouram o teto legal',nota:'Art. 125 da Lei 14.133: 25% para obras e serviços, 50% para reforma de edifício.'})
+        ||{sobre:'Aditivos que ultrapassam o limite do art. 125 da Lei 14.133 (25%, ou 50% em reforma de edifício). Estourar o teto não é automaticamente ilícito: a lei admite hipóteses excepcionais que o próprio processo tem de justificar. A gaveta está desligada porque a lista vem paginada.'})}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑',
+        {sobre:'Contratos com três ou mais termos aditivos. Aditar é lícito e às vezes necessário; a sequência longa é que levanta a pergunta sobre o planejamento original do objeto.'})}
+      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄',{sobre:'Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado.'})}${kpi(a.length?fmtPct(a[0].pct):'—','Pior acréscimo','var(--rose)',null,
+        {sobre:'O maior percentual de acréscimo da lista. O teto do art. 125 da Lei 14.133 é de 25% (50% em reforma de edifício) — acima disso, o aditivo exige justificativa que o próprio processo tem de trazer.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
   h+=`<div id="adt-list" class="grid">`+a.map(x=>{
     const forte=x.estoura_teto;
@@ -991,8 +1009,12 @@ export async function renderSobrepreco(esf='estado'){
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
   // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈',drillSeCompleto('itensSobrepreco',d.n,a,{titulo:'Itens com indício de sobrepreço',nota:'Comparação com a mediana de mercado do MESMO item — produto diferente não compara.'}))}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺')}
-      ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈',drillSeCompleto('itensSobrepreco',d.n,a,{titulo:'Itens com indício de sobrepreço',nota:'Comparação com a mediana de mercado do MESMO item — produto diferente não compara.'})
+        ||{sobre:'Itens com preço unitário acima da mediana do MESMO item entre compradores públicos. Comparação só vale entre produtos equivalentes — 60% da \'economia\' de uma medição anterior desta casa vinha de comparar coisas diferentes sob descrição parecida. A gaveta está desligada porque a tela recebe uma página.'})}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺',
+        {sobre:'Grupos de itens que puderam ser comparados entre si. É o DENOMINADOR: item sem par comparável não é caro nem barato — é INDISPONÍVEL, e sair dessa contagem não significa aprovação.'})}
+      ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior caso (× mediana)','var(--rose)',null,
+        {sobre:'Quantas vezes o item mais caro supera a mediana do MESMO item. Comparação só vale entre produtos equivalentes: 60% de uma estimativa anterior desta casa comparava coisas diferentes sob descrição genérica.'})}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸',
+        {sobre:'Diferença unitária entre o preço praticado e a mediana. É estimativa de sobrepreço, não dano apurado — sobrepreço se confirma com pesquisa de mercado da época e especificação completa do item.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
   h+=`<div id="sob-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
@@ -1018,7 +1040,8 @@ export async function renderEscalada(esf='estado'){
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
   registrarDrill('aditAcimaMercado',{titulo:'Aditivos cujo preço final também supera o mercado',itens:a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2),nota:'Acréscimo dentro do limite legal ainda pode chegar a preço fora do mercado.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈',drillSeCompleto('escaladasTodas',d.n,a,{titulo:'Escaladas de preço detectadas',nota:'Escalada compara o mesmo item ao longo do tempo no mesmo comprador — variação legítima existe e o objeto decide.'}))}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯',{drill:'aditAcimaMercado'})}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈',drillSeCompleto('escaladasTodas',d.n,a,{titulo:'Escaladas de preço detectadas',nota:'Escalada compara o mesmo item ao longo do tempo no mesmo comprador — variação legítima existe e o objeto decide.'})
+        ||{sobre:'Contratos cujo valor cresce em degraus sucessivos. Escalada tem explicações inocentes fortes — reequilíbrio econômico-financeiro e reajuste contratual respondem por boa parte. A gaveta está desligada porque a lista vem paginada.'})}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯',{drill:'aditAcimaMercado'})}
       ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Maior escalada','var(--rose)',null,{sobre:'O EXTREMO da cauda, não o típico: quantas vezes o preço do mesmo item cresceu no mesmo comprador, no pior caso observado. Serve para dizer até onde a cauda vai. Reajuste contratual, mudança de especificação e variação cambial produzem escalada legítima — o objeto decide.'})}${kpi(a.length?fmtN(a[0].span_dias)+'d':'—','Janela do pior caso',null,'📅',{sobre:'Em quantos dias a maior escalada aconteceu. Uma alta de 3× em 30 dias e a mesma alta em 3 anos são fatos diferentes: a janela é o que separa reajuste de salto.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item ou fornecedor…" oninput="filtrar(this,'#escal-list .card')"></div>`;
   h+=`<div id="escal-list" class="grid">`+a.map(x=>{
@@ -1054,7 +1077,8 @@ export async function renderRiscos(){
       itens:(d.perdedoras||[]),
       render:p=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj,p.nome!=='—'?p.nome:p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt||'')}</div></div><div class="right"><div class="num" style="font-weight:800">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>`),
       nota:'Perder sempre é indício de proposta de cobertura, não prova.'});
-    h+=`<div class="grid g2">${kpi(fmtN(d.n),'Perdedoras contumazes','var(--amber)','🎭',{drill:'perdedorasContumazes'})}${kpi(fmtN(cov.atas_entrada),'Atas no corpus',null,'📄',{sobre:'Quantas atas de sessão entraram no corpus. É o DENOMINADOR: sem ele, \'12 perdedoras contumazes\' pode ser 12 em 12 ou 12 em 12 mil. O PNCP publica só o vencedor — os perdedores vêm do TEXTO das atas, e a extração é conservadora de propósito.'})}${kpi(fmtN(cov.atas_avaliaveis),'Atas avaliáveis',null,'✅',{sobre:'Das atas no corpus, quantas têm participantes E resultado extraíveis. A diferença para o total não é falha do órgão: é ata que não traz a lista de quem disputou. <b>Cobertura pequena não é ausência de conluio</b> — é ausência de observação.'})}${kpi(fmtN(cov.certames_no_grafo),'Certames no grafo',null,'🕸️')}</div>`;
+    h+=`<div class="grid g2">${kpi(fmtN(d.n),'Perdedoras contumazes','var(--amber)','🎭',{drill:'perdedorasContumazes'})}${kpi(fmtN(cov.atas_entrada),'Atas no corpus',null,'📄',{sobre:'Quantas atas de sessão entraram no corpus. É o DENOMINADOR: sem ele, \'12 perdedoras contumazes\' pode ser 12 em 12 ou 12 em 12 mil. O PNCP publica só o vencedor — os perdedores vêm do TEXTO das atas, e a extração é conservadora de propósito.'})}${kpi(fmtN(cov.atas_avaliaveis),'Atas avaliáveis',null,'✅',{sobre:'Das atas no corpus, quantas têm participantes E resultado extraíveis. A diferença para o total não é falha do órgão: é ata que não traz a lista de quem disputou. <b>Cobertura pequena não é ausência de conluio</b> — é ausência de observação.'})}${kpi(fmtN(cov.certames_no_grafo),'Certames no grafo',null,'🕸️',
+        {sobre:'Certames que entraram na rede de participantes. Fora dela não há como testar rodízio nem captura — o certame não foi absolvido, ficou sem exame.'})}</div>`;
     if((cov.atas_avaliaveis||0)<50)h+=`<div class="warn" style="margin-top:12px">Cobertura ainda pequena: só ${fmtN(cov.atas_avaliaveis)} de ${fmtN(cov.atas_entrada)} atas têm participantes+resultado extraíveis. O PNCP publica apenas o vencedor; os perdedores vêm do texto das atas — a extração é conservadora de propósito (zero falso-positivo) e cresce com o corpus.</div>`;
     h+=`<div class="grid" style="margin-top:12px">`+(d.perdedoras||[]).map(p=>card(
       `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj,p.nome!=='—'?p.nome:p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
@@ -1081,7 +1105,8 @@ export async function renderRiscos(){
      Verificado ao vivo. Enquanto a rota não servir essas linhas, a métrica fica sem caminho: KPI
      sem clique é honesto, gaveta que mostra 0 para 647 é mentira. */
   h+=`<div class="grid g2">${kpi(fmtN(d.total_alvo),'Empresas no alvo',null,'🎯',{sobre:'Conjunto submetido ao radar de fachada: vencedoras de captura ou rodízio, perdedoras contumazes, sancionadas e maiores favorecidos. <b>Não é o universo de fornecedores</b> — é onde faz sentido gastar verificação. Empresa fora do alvo não foi considerada regular.'})}${kpi(fmtN(emp.filter(e=>e.classificacao==='alto').length),'Risco ALTO','var(--rose)','🔴',{drill:'fantasmaAlto'})}
-      ${kpi(fmtN(emp.filter(e=>e.classificacao==='medio').length),'Risco médio','var(--amber)','🟡',{drill:'fantasmaMedio'})}${kpi(fmtN(d.sem_cadastro),'Sem cadastro ainda','var(--dim)','⏳')}</div>`;
+      ${kpi(fmtN(emp.filter(e=>e.classificacao==='medio').length),'Risco médio','var(--amber)','🟡',{drill:'fantasmaMedio'})}${kpi(fmtN(d.sem_cadastro),'Sem cadastro ainda','var(--dim)','⏳',
+        {sobre:'Empresas do alvo cujo cadastro ainda não foi coletado. É fila de trabalho, não achado: enquanto está aqui, nenhuma conclusão sobre fachada pode ser tirada.'})}</div>`;
   if(d.sem_cadastro>0)h+=`<div class="warn" style="margin-top:12px"><b>${fmtN(d.sem_cadastro)}</b> empresas do alvo ainda sem cadastro da Receita na base (fila de enriquecimento). "Sem cadastro" NÃO significa regular — significa não-avaliada.</div>`;
   h+=`<div class="grid" style="margin-top:12px">`+emp.slice(0,50).map(e=>{
     const cor=e.classificacao==='alto'?'var(--rose)':e.classificacao==='medio'?'var(--amber)':'var(--green)';
@@ -1133,7 +1158,8 @@ export async function renderComissionadosPref(){
   registrarDrill('comissCandidatos',{titulo:'Comissionados da Prefeitura que foram candidatos',itens:it,
     render:x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome||'—')}</div><div class="dim">${fmtN((x.postos||[]).length)} posto(s) · ${fmtN((x.candidaturas||[]).length)} candidatura(s)</div><div class="dim">${(x.candidaturas||[]).slice(0,3).map(c=>esc(`${c.cargo||''} ${c.ano||''} ${c.cidade||''}`)).join(' · ')}</div></div></div>`),
     nota:'Cruzamento por NOME com o TSE — indício; cargo de confiança não é, por si, irregularidade.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️',{drill:'comissCandidatos'})}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️',{drill:'comissCandidatos'})}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️',
+        {sobre:'Municípios em que os nomes da folha aparecem como candidatos. Candidatar-se é direito político e não é irregularidade alguma — o cruzamento serve para ver coincidência entre nomeação e vínculo partidário, que é outra pergunta.'})}</div>`;
   h+=buscaPag('cc-list','filtrar por nome, cargo, órgão, cidade — busca em TODAS as pessoas…');
   if(d.truncado)h+=`<div class="note" style="margin-top:8px">Base tem mais pessoas do que o teto do servidor (1000) — caso raro; avise se precisar de mais.</div>`;
   const _montarCC=x=>{
@@ -1160,7 +1186,9 @@ export async function renderBeneficiosPref(chips){
   // legenda dos dois eixos que confundiam: IDENTIDADE (quem é a pessoa) × BENEFÍCIO (o que recebeu)
   h+=`<div class="note" style="margin:10px 0 4px"><b>Como ler:</b> <span class="sev alta" style="padding:1px 7px">identidade confirmada</span> = há UM só servidor com esse nome na folha e o fragmento de CPF bate (é mesmo esta pessoa). <span class="sev media" style="padding:1px 7px">conferir homônimo</span> = nome comum, confirmar o CPF antes de usar. Isso é sobre <b>QUEM é a pessoa</b> — separado de <span class="tag rose">ainda recebe</span>, que diz que o benefício <b>continua ativo</b> hoje.</div>`;
   // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas identificadas','var(--amber)','👥',drillSeCompleto('pessoasIdentificadas',d.n_casos,(d.casos||d.itens||[]),{titulo:'Pessoas identificadas',nota:'Identificação por nome — confirmar homônimo antes de qualquer juízo.'}))}${kpi(fmtN(r.n_alta),'Identidade confirmada (nome único + CPF)','var(--rose)','🪪')}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas identificadas','var(--amber)','👥',drillSeCompleto('pessoasIdentificadas',d.n_casos,(d.casos||d.itens||[]),{titulo:'Pessoas identificadas',nota:'Identificação por nome — confirmar homônimo antes de qualquer juízo.'})
+        ||{sobre:'Pessoas cujo nome na folha municipal casou com o cadastro de benefício. Identificação por nome carrega homônimo — o recorte com CPF conferido está no KPI ao lado, e é ele que sustenta qualquer afirmação individual. A gaveta está desligada porque a lista vem paginada.'})}${kpi(fmtN(r.n_alta),'Identidade confirmada (nome único + CPF)','var(--rose)','🪪',
+        {sobre:'Casos em que o nome é único na base E o fragmento de CPF confere. Sem os dois, o cruzamento é indício de identidade, não identidade — e nenhum caso sobe a produto sem essa distinção declarada.'})}
       ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️',
         {sobre:'Do universo identificado, quantos ocupam cargo de <b>livre nomeação</b>. É o recorte que importa: cargo comissionado tem remuneração conhecida e nomeação discricionária, o que torna a acumulação com benefício assistencial verificável — e a nomeação, atribuível.'})}${kpi(fmtN(r.n_ainda),'Benefício ainda ativo','var(--rose)','⏰',
         {sobre:'Casos em que o benefício aparece na competência MAIS RECENTE da base, não apenas em algum mês passado. A distinção é o que separa situação corrente de sobreposição já encerrada — e só a primeira comporta providência.'})}
@@ -1201,8 +1229,12 @@ export async function renderGastosPref(){
     'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️')+acoesAba('gastos_pcrj');
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)} — rode tools/pcrj_pericia_gastos.py</div>`);
   const dets=Object.keys(d.detectores||{});
+  /* A PROCEDÊNCIA JÁ EXISTIA E NÃO CHEGAVA À TELA: `_DET_ROTULO` guarda, no terceiro campo, o que
+     cada detector mede e a base normativa — e o KPI só usava o ícone e o rótulo. Escrever texto
+     novo aqui seria duplicar (e um dia divergir) o que a tabela já diz; o certo é ligar o que há. */
   h+=`<div class="grid g2">`+dets.map(k=>{const m=_DET_ROTULO[k]||['📌',k,''];
-    return kpi(fmtN(d.detectores[k]),m[1],k==='d9_socio_na_folha'?'var(--rose)':null,m[0]);}).join('')+`</div>`;
+    return kpi(fmtN(d.detectores[k]),m[1],k==='d9_socio_na_folha'?'var(--rose)':null,m[0],
+      m[2]?{sobre:esc(m[2])+' — a contagem é de INDÍCIOS a examinar, nunca de irregularidades apuradas.'}:null);}).join('')+`</div>`;
   h+=`<div class="chips" style="margin-top:12px"><button type="button" class="chip ${_gastosDet===''?'on':''}" onclick="_gastosDet='';ir('p_gastos')">Todos</button>`+
     dets.map(k=>`<button type="button" class="chip ${_gastosDet===k?'on':''}" onclick="_gastosDet='${k}';ir('p_gastos')">${svgIco((_DET_ROTULO[k]||['📌',k])[0])} ${(_DET_ROTULO[k]||['',k])[1]}</button>`).join('')+`</div>`;
   h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por credor, órgão, objeto…" oninput="filtrar(this,'#pg-list .card')"></div>`;
@@ -1234,7 +1266,8 @@ export async function renderFantasmasPref(){
   h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴',
         {sobre:'Servidores da folha municipal com o conjunto MAIS FORTE de sinais de vínculo apenas formal. Faixa é ordem de diligência, não conclusão: nenhum caso aqui afirma que a pessoa não trabalha — afirma que o cruzamento não achou o que deveria achar se ela trabalhasse.'})}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡',
         {sobre:'Sinais presentes mas insuficientes para separar de explicação inocente — licença, cessão, lotação em unidade que não publica frequência. Existe para não empurrar dúvida para dentro da faixa forte.'})}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢',
-        {sobre:'Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são.'})}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
+        {sobre:'Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são.'})}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️',
+        {sobre:'Data da última execução do detector. Número velho com cara de atual é a forma mais silenciosa de errar; por isso a data fica ao lado das faixas, não escondida no rodapé.'})}</div>`;
   h+=`<div class="chips" style="margin-top:12px">`+['','forte','verificar','fraco'].map(f=>
     `<button type="button" class="chip ${_fantFaixa===f?'on':''}" onclick="_fantFaixa='${f}';ir('p_fant')">${f||'Todas as faixas'}</button>`).join('')+`</div>`;
   h+=buscaPag('pf-list','filtrar por nome ou gabinete — busca em TODOS os servidores…');
@@ -1259,7 +1292,8 @@ export async function renderPPPPref(){
   h+=`<div class="grid g2">${kpi(fmtN(r.projetos),'Projetos triados',null,'🏗️',
         {sobre:'Parcerias público-privadas e concessões municipais submetidas à triagem. É o denominador: PPP fora desta contagem não foi avaliada, e não avaliar não é aprovar.'})}${kpi(fmtN(r.alto),'Grau ALTO','var(--rose)','🔴',
         {sobre:'Projetos com o conjunto mais forte de sinais — desequilíbrio na matriz de risco, aporte público desproporcional, prazo ou reajuste fora do padrão. Grau é ordem de exame; a perícia de PPP é que conclui.'})}${kpi(fmtN(r.medio),'Grau médio','var(--amber)','🟡',
-        {sobre:'Sinais presentes e insuficientes para separar de arranjo contratual legítimo. Fica visível para não empurrar dúvida para dentro do grau alto — faixa que absorve incerteza deixa de significar alguma coisa.'})}${kpi(fmtN(r.cobertura_doe_ppp),'Matérias D.O. PPP',null,'📰')}</div>`;
+        {sobre:'Sinais presentes e insuficientes para separar de arranjo contratual legítimo. Fica visível para não empurrar dúvida para dentro do grau alto — faixa que absorve incerteza deixa de significar alguma coisa.'})}${kpi(fmtN(r.cobertura_doe_ppp),'Matérias D.O. PPP',null,'📰',
+        {sobre:'Publicações do Diário Oficial sobre PPP que alimentaram a triagem. Cobertura baixa significa triagem parcial — projeto que não teve matéria capturada não foi avaliado.'})}</div>`;
   h+=`<div class="grid" style="margin-top:14px">`+(d.itens||[]).map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome)}</div>
@@ -1289,7 +1323,9 @@ export async function renderContratosPref(){
   let h=cover('prefeitura','Contratações do município — cada uma com a sua análise','Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.','📄')+chips+acoesAba('contratos_analise');
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const its=d.itens||[],rs=d.resumo||{};
-  h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄')}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮')}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄',
+        {sobre:'Certames municipais capturados. É o denominador de tudo nesta aba: certame fora da base não foi considerado regular — não foi visto.'})}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮',
+        {sobre:'Quantos já passaram pelo motor de índice. A diferença para o total é <b>fila de trabalho</b>, não achado nem ausência dele — e ela encolhe a cada rodada do sweep.'})}</div>`;
   h+=buscaPag('ctr-list','filtrar por objeto ou nº de controle — busca em TODOS os certames…');
   const _montarCtr=c=>{
     const cor=c.faixa==='EXTREMO'||c.faixa==='ALTO'?'var(--rose)':c.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
@@ -1508,7 +1544,8 @@ export async function renderCapital(){
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas','var(--rose)','🫧',
         {sobre:'Empresas cujo <b>capital social declarado</b> é pequeno diante do que receberam do Estado. Capital baixo é lícito e comum — mede o que a empresa declarou à Junta, não a capacidade real, que também vem de faturamento e crédito. O sinal serve para perguntar se havia estrutura para executar, não para afirmar que não havia.'})}${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior razão (recebido/capital)','var(--rose)',null,
         {sobre:'O extremo da lista: quantas vezes o recebido supera o capital declarado. Razão altíssima com capital de R$ 1.000 é o perfil clássico de empresa aberta para o contrato — mas também aparece em prestadora de serviço que não precisa de imobilizado. Por isso é ordem de diligência, não conclusão.'})}
-      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume recebido',null,'💰')}${kpi(a.filter(x=>x.capital<=1000).length,'Capital ≤ R$1k','var(--amber)','⚠️',{drill:'capitalIrrisorio'})}</div>`;
+      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume recebido',null,'💰',
+        {sobre:'Soma paga às empresas desta página. Volume dimensiona o que está sob exame; não afirma nada sobre a regularidade do pagamento.'})}${kpi(a.filter(x=>x.capital<=1000).length,'Capital ≤ R$1k','var(--amber)','⚠️',{drill:'capitalIrrisorio'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#cap-list .card')"></div>`;
   h+=`<div id="cap-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
@@ -1525,7 +1562,9 @@ export async function renderPrioridade(){
   const a=d.achados||[];
   let h=cover('geral','Prioridade — onde a auditoria rende mais','Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.','⚡')+acoesAba('prioridade_valor');
   registrarDrill('sinalMedioMais',{titulo:'Com sinal médio ou alto (score ≥ 25)',itens:a.filter(x=>x.score>=25),nota:''});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Na interseção','var(--teal)','⚡',drillSeCompleto('prioridadeTodos',d.n,a,{titulo:'Risco × dinheiro — a interseção',nota:'Risco alto sem dinheiro pode esperar; dinheiro sem sinal pode ser variação legítima. A fila é o cruzamento dos dois.'}))}${kpi(fmtRc(d.economia_em_risco),'Economia em risco',null,'💰')}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Na interseção','var(--teal)','⚡',drillSeCompleto('prioridadeTodos',d.n,a,{titulo:'Risco × dinheiro — a interseção',nota:'Risco alto sem dinheiro pode esperar; dinheiro sem sinal pode ser variação legítima. A fila é o cruzamento dos dois.'})
+        ||{sobre:'A interseção entre risco e dinheiro: risco alto sem valor pode esperar, valor alto sem sinal pode ser só volume. A gaveta está desligada porque a tela recebe uma página do total do servidor.'})}${kpi(fmtRc(d.economia_em_risco),'Economia em risco',null,'💰',
+        {sobre:'Soma da economia potencial estimada na interseção risco × dinheiro. É estimativa de comparação de preço, não dano apurado — e depende de os itens comparados serem realmente equivalentes.'})}
       ${kpi(a.filter(x=>x.score>=25).length,'Sinal médio+ (🟡🔴)','var(--amber)',null,{drill:'sinalMedioMais'})}${kpi(a.length?fmtRc(a[0].economia):'—','Maior isolado','var(--rose)',null,
         {sobre:'O maior valor único da interseção risco × dinheiro. É <b>economia potencial estimada</b>, não dano apurado: nasce de comparação de preço, e comparação só vale entre produtos equivalentes — 60% de uma estimativa anterior desta casa comparava itens diferentes sob descrição genérica.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#pri-list .card')"></div>`;
@@ -1547,7 +1586,8 @@ export async function renderFornecedorDependente(){
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores cativos','var(--amber)','🔗',
         {sobre:'Empresas cuja receita pública vem quase toda de <b>um único órgão</b>. Dependência não é irregularidade — pode ser especialização legítima. O que ela mede é a assimetria: fornecedor que só vive daquele comprador tem pouco incentivo para contestar, e o comprador ganha poder que não está em contrato nenhum.'})}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume dependente',null,'💰',
         {sobre:'Soma recebida pelos fornecedores <b>desta página</b>, não do acervo. Volume não é dano: dimensiona o que está sob concentração, e nada aqui afirma pagamento indevido.'})}
-      ${kpi(a.filter(x=>x.share>=0.99).length,'100% de 1 órgão','var(--rose)','🎯',{drill:'dep100Orgao'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior dependência')}</div>`;
+      ${kpi(a.filter(x=>x.share>=0.99).length,'100% de 1 órgão','var(--rose)','🎯',{drill:'dep100Orgao'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior dependência',null,null,
+        {sobre:'A maior fração da receita pública de um fornecedor vinda de um só órgão. Dependência não é irregularidade: mede assimetria de poder na relação, que é o que pode explicar preço sem contestação.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
   h+=`<div id="dep-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
@@ -1568,7 +1608,8 @@ export async function renderCorridaDezembro(){
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores concentrados','var(--amber)','📅',
         {sobre:'Fornecedores com parcela desproporcional do ano recebida em <b>dezembro</b>. O padrão tem explicação inocente forte — encerramento do exercício financeiro empurra liquidação e pagamento para o fim do ano. O que o sinal pede é olhar se houve entrega correspondente, não presumir que não houve.'})}${kpi(fmtRc(a.reduce((s,x)=>s+x.dezembro,0)),'Pago em dezembro',null,'💰',
         {sobre:'Ordens bancárias emitidas em dezembro para os fornecedores desta página. Fonte: OB do SIAFE — pagamento efetivo. Empenho concentrado em dezembro é rotina orçamentária; <b>pagamento</b> concentrado é que levanta a pergunta sobre a data da entrega.'})}
-      ${kpi(a.filter(x=>x.share>=0.99).length,'100% em dezembro','var(--rose)','🎯',{drill:'dez100'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior concentração')}</div>`;
+      ${kpi(a.filter(x=>x.share>=0.99).length,'100% em dezembro','var(--rose)','🎯',{drill:'dez100'})}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior concentração',null,null,
+        {sobre:'A maior parcela do ano paga em dezembro a um único fornecedor. Encerramento de exercício explica boa parte do padrão; o que resta a perguntar é a data da entrega.'})}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#dez-list .card')"></div>`;
   h+=`<div id="dez-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
@@ -1594,7 +1635,8 @@ export async function renderRadar(){
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null,null,
         {sobre:'Fornecedores com ao menos um indício acionado no conjunto de detectores. Ter sinal é comum e não classifica ninguém: o que ordena a fila é o <b>score</b>, e mesmo ele é indício interno da casa, jamais juízo sobre a empresa.'})}${kpi(fmtN(_nVerm),'Score ≥50 (crítico)',_nVerm>0?'var(--rose)':null,null,
         {sobre:'Corte de 50 na escala interna. O número que ele produz depende dos detectores ligados no dia — quando sete famílias foram corrigidas por leitura defeituosa, esta faixa caiu sozinha. Score é da CASA, não da empresa: mede quanto material há para examinar.'})}
-      ${kpi(_maior!=null?_maior:'—','Maior score',_maior!=null&&_maior>=50?'var(--rose)':null)}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,null,{drill:'tresSinais'})}</div>`;
+      ${kpi(_maior!=null?_maior:'—','Maior score',_maior!=null&&_maior>=50?'var(--rose)':null,null,
+        {sobre:'O maior valor da escala interna de risco. Score é da CASA, não da empresa: mede quanto material há para examinar, e muda quando os detectores mudam.'})}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,null,{drill:'tresSinais'})}</div>`;
   h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-tbl tbody tr')"></div>`;
   h+=`<div class="card" style="padding:4px 15px;overflow-x:auto"><table id="radar-tbl"><thead><tr><th>Fornecedor</th><th style="text-align:left">Sinais que dispararam</th><th class="right">Nº</th><th class="right">Score</th></tr></thead><tbody>`+
@@ -1642,7 +1684,8 @@ export async function renderComunidades(){
   // mesmo conserto do radar: zero cluster crítico não é alarme (cor e 🚨 eram fixos)
   const _nCrit=a.filter(x=>x.score>=50).length;
   registrarDrill('comunidadesCriticas',{titulo:'Comunidades com score ≥ 50',itens:a.filter(x=>x.score>=50),nota:'Zero comunidade crítica NÃO é alarme — a cor e o glifo já foram fixos aqui uma vez.'});
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩',drillSeCompleto('comunidadesTodas',d.n,a,{titulo:'Comunidades detectadas no grafo',nota:'Comunidade é agrupamento por densidade de vínculo — indício de grupo, não prova de grupo econômico.'}))}${kpi(fmtN(_nCrit),'Score ≥50 (🔴)',_nCrit>0?'var(--rose)':null,_nCrit>0?'🚨':'',{drill:'comunidadesCriticas'})}
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩',drillSeCompleto('comunidadesTodas',d.n,a,{titulo:'Comunidades detectadas no grafo',nota:'Comunidade é agrupamento por densidade de vínculo — indício de grupo, não prova de grupo econômico.'})
+        ||{sobre:'Agrupamentos por densidade de vínculo no grafo. Comunidade é indício de <b>grupo</b>, não de conluio — família, holding e sócios recorrentes produzem o mesmo desenho. A gaveta está desligada porque a lista vem paginada.'})}${kpi(fmtN(_nCrit),'Score ≥50 (🔴)',_nCrit>0?'var(--rose)':null,_nCrit>0?'🚨':'',{drill:'comunidadesCriticas'})}
       ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️',
         {sobre:'Pessoas e empresas persistidas no grafo de vínculos. O grafo cresce a cada varredura — comunidade que não aparece hoje pode aparecer amanhã, e por isso ausência aqui nunca é afastamento.'})}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗',
         {sobre:'Ligações gravadas entre esses nós, cada uma com tipo, força e fonte. Tipos simétricos (mesmo telefone, mesmo e-mail) são gravados em <b>direção canônica</b> para não contar a mesma ligação duas vezes.'})}</div>`;
@@ -1903,7 +1946,9 @@ export async function renderAlertas(){
 export async function renderSiafe(){
   const s=await J('/api/siafe/stats');if(!s.ok)return sec('SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
   const linhas=(s.por_ano||[]).filter(x=>x.valor>0).map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
-  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div><div style="height:12px"></div>`+card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas',null,null,
+        {sobre:'Ordens bancárias no acervo — pagamento EFETIVO. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida. Só a OB significa que o dinheiro saiu.'})}${kpi(fmtRc(s.valor_total),'Valor total',null,null,
+        {sobre:'Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia.'})}</div><div style="height:12px"></div>`+card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
   h+=`<div style="height:16px"></div>`+await frescorHtml();
   return h;
 }
@@ -1923,8 +1968,10 @@ export async function renderSweeps(){
       {sobre:'Fração da fila de processos já capturada e arquivada. É a medida de <b>cobertura</b> de tudo que depende de leitura de autos: com fila incompleta, a ausência de achado num processo não lido não significa processo regular — significa processo não visto.'})}
     ${kpi(fmtN(sei.arquivados),'Processos no arquivo compacto',null,null,
       {sobre:'Processos com texto, fases e fotos gravados em disco. O arquivo é o caminho principal de leitura — browser e IA só entram quando ele não tem a peça, porque reler o SEI a cada pergunta é lento e derruba a sessão única por IP.'})}
-    ${kpi(gb(sei.arquivo_bytes),'Espaço do arquivo (texto+fases+fotos)')}
-    ${kpi(fmtN(aprTotal),'Aprendizados acumulados','var(--accent)','🧠')}</div>`;
+    ${kpi(gb(sei.arquivo_bytes),'Espaço do arquivo (texto+fases+fotos)',null,null,
+        {sobre:'Disco ocupado pelo arquivo compacto de processos. Importa porque o arquivo é o caminho principal de leitura — quando ele cresce sem controle, a poda passa a ser o que decide o que a casa consegue reler.'})}
+    ${kpi(fmtN(aprTotal),'Aprendizados acumulados','var(--accent)','🧠',
+        {sobre:'Lições registradas pelo motor de metacognição. É o que impede um defeito corrigido de voltar por esquecimento — cada família do catálogo de falhas nasceu de um caso concreto.'})}</div>`;
   const falta=(sei.fila_total!=null&&sei.arquivados!=null)?sei.fila_total-sei.arquivados:null;
   h+=card(`<div class="kv"><span class="k">Fila SEI por dinheiro — lidos × restantes</span><b><span class="num" id="sis-lidos">${fmtN(sei.arquivados)}</span> de ${fmtN(sei.fila_total)}${falta!=null?` · faltam <span class="num" id="sis-falta">${fmtN(falta)}</span>`:''}</b></div>
     <div class="sisbar bar" title="${sei.pct_lido==null?'fila total indisponível':fmtD(sei.pct_lido,1)+'% lido'}"><i id="sis-barra" style="width:${sei.pct_lido==null?0:Math.max(1.2,sei.pct_lido)}%"></i></div>
