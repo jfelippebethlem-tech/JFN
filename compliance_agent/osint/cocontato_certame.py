@@ -21,6 +21,13 @@ TRÊS GUARDAS, todas medidas, e nenhuma delas esconde o par — elas o CLASSIFIC
 
 O que sobra sem nenhuma explicação é o mais forte que este acervo produz: `SANETAM COMÉRCIO DE
 TUBOS` × `HIDROTAM COMÉRCIO DE TUBOS` no mesmo telefone, disputando o mesmo item.
+
+O SEGUNDO EIXO NÃO EXISTE POR AQUI, e ficou medido para ninguém tentar de novo. A confirmação
+clássica de conluio é a PROPOSTA DE COBERTURA — o perdedor com preço pouco acima do vencedor. Sobre
+os 28 pares sem explicação: apenas **6 itens** têm os dois participantes com classificação
+registrada, e **nenhum** traz os dois preços. É a limitação que `limites_de_fonte` já documenta —
+*o PNCP expõe o VENCEDOR*; a proposta do perdedor está nos AUTOS do SEI, não na API. Portanto o
+preço de cobertura se afere lendo o processo, e o caminho é a fila de captura, não este detector.
 """
 from __future__ import annotations
 
