@@ -29,7 +29,7 @@ import sys
 # painel a cada rodada custa minutos numa VM de 2 vCPU, e o que interessa é o que foi convertido.
 ABAS = ("g_vinculos", "g_riscos", "e_sanc", "g_hub", "e_poder", "e_conluio",
         "p_comis", "e_adit", "e_escal", "g_prioridade", "e_frac", "e_certames", "g_comun",
-        "g_laranjas", "p_benef", "g_nepo")
+        "g_laranjas", "p_benef", "g_nepo", "e_comp", "e_sobre", "e_adit", "g_radar")
 
 # Ação que precisa ser disparada antes de as métricas existirem (aba que só monta sob clique).
 PREPARO = {"g_vinculos": '[data-vinc="agentePublico"]'}

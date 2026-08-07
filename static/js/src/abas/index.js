@@ -834,7 +834,8 @@ export async function renderCartelMun(){
   const a=d.orgaos||[];
   let h=cover('prefeitura','Concentração de fornecedor por mercado municipal',
     'Para cada <b>ramo de objeto</b> (limpeza, TI, veículos…), quem domina os contratos do Município do Rio: <b>top-share</b> (≥60% forte · ≥40% médio — régua R8) e <b>HHI</b> (>2.500 = mercado altamente concentrado, referência CADE). <b>Base = valor CONTRATADO</b> do PNCP — a PCRJ não publica pagamento por credor 2024+; concentração de contrato é screen de captura, não medida de execução.','🔗');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Mercados analisados',null,'🧺')}${kpi(fmtN(d.n_criticos||0),'Concentrados (share ≥40%)','var(--rose)','🚨')}
+  // total do servidor: só ganha gaveta se a página trouxer o universo
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Mercados analisados',null,'🧺',drillSeCompleto('mercadosAnalisados',d.n,a,{titulo:'Mercados analisados',nota:''}))}${kpi(fmtN(d.n_criticos||0),'Concentrados (share ≥40%)','var(--rose)','🚨')}
       ${kpi(a.length?fmtN(a[0].hhi):'—','Maior HHI','var(--rose)')}${kpi(a.length?a[0].top_share+'%':'—','Maior top-share','var(--rose)')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por ramo ou fornecedor…" oninput="filtrar(this,'#cmun-list .card')"></div>`;
   h+=`<div id="cmun-list" class="grid">`+a.map(o=>{
@@ -891,7 +892,8 @@ export async function renderAditivos(esf='estado'){
   const a=d.achados||[];
   let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨')}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑')}
+  // total do servidor: só ganha gaveta se a página trouxer o universo
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨',drillSeCompleto('aditEstouraTeto',d.n_estoura_teto,a.filter(x=>x.estoura_teto),{titulo:'Aditivos que estouram o teto legal',nota:'Art. 125 da Lei 14.133: 25% para obras e serviços, 50% para reforma de edifício.'}))}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑')}
       ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄')}${kpi(a.length?fmtPct(a[0].pct):'—','Pior acréscimo','var(--rose)')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
   h+=`<div id="adt-list" class="grid">`+a.map(x=>{
@@ -919,7 +921,8 @@ export async function renderSobrepreco(esf='estado'){
     h+=`<div class="warn" style="margin-top:12px">Base de preços unitários em formação: ${fmtN(d.itens_com_preco)} itens com preço, ${fmtN(d.grupos_comparaveis)} grupos comparáveis (≥5 compras do mesmo item). O backfill do PNCP popula o preço unitário item a item; a aba acende conforme a cobertura cresce.</div>`;
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈')}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺')}
+  // total do servidor: só ganha gaveta se a página trouxer o universo
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈',drillSeCompleto('itensSobrepreco',d.n,a,{titulo:'Itens com indício de sobrepreço',nota:'Comparação com a mediana de mercado do MESMO item — produto diferente não compara.'}))}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺')}
       ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
   h+=`<div id="sob-list" class="grid">`+a.map(x=>card(
@@ -1087,7 +1090,8 @@ export async function renderBeneficiosPref(chips){
   const r=d.resumo||{};
   // legenda dos dois eixos que confundiam: IDENTIDADE (quem é a pessoa) × BENEFÍCIO (o que recebeu)
   h+=`<div class="note" style="margin:10px 0 4px"><b>Como ler:</b> <span class="sev alta" style="padding:1px 7px">identidade confirmada</span> = há UM só servidor com esse nome na folha e o fragmento de CPF bate (é mesmo esta pessoa). <span class="sev media" style="padding:1px 7px">conferir homônimo</span> = nome comum, confirmar o CPF antes de usar. Isso é sobre <b>QUEM é a pessoa</b> — separado de <span class="tag rose">ainda recebe</span>, que diz que o benefício <b>continua ativo</b> hoje.</div>`;
-  h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas identificadas','var(--amber)','👥')}${kpi(fmtN(r.n_alta),'Identidade confirmada (nome único + CPF)','var(--rose)','🪪')}
+  // total do servidor: só ganha gaveta se a página trouxer o universo
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas identificadas','var(--amber)','👥',drillSeCompleto('pessoasIdentificadas',d.n_casos,(d.casos||d.itens||[]),{titulo:'Pessoas identificadas',nota:'Identificação por nome — confirmar homônimo antes de qualquer juízo.'}))}${kpi(fmtN(r.n_alta),'Identidade confirmada (nome único + CPF)','var(--rose)','🪪')}
       ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Benefício ainda ativo','var(--rose)','⏰')}
       ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
       ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
