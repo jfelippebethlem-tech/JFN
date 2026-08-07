@@ -210,9 +210,19 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         f"WHERE {where_siafe} GROUP BY processo ORDER BY tot DESC",
         tuple(args),
     ).fetchall()
+    sinal = _raizes_com_sinal_osint()
+    credores = _credores_por_processo(con) if sinal else {}
     con.close()
     legiveis = _unidades_legiveis()
-    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1, -(r[2] or 0)))
+    # ORDEM: unidade que rende documentos primeiro; dentro dela, o que a INTELIGÊNCIA já marcou;
+    # e só então o valor. Valor não é risco — é o tamanho do risco quando ele existe.
+    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
+                             0 if (credores.get(r[0]) or set()) & sinal else 1,
+                             -(r[2] or 0)))
+    if sinal:
+        n_pri = sum(1 for r in rows if (credores.get(r[0]) or set()) & sinal)
+        _log(f"fila: {n_pri} processos com sinal OSINT no credor entram na frente "
+             f"(de {len(rows)}); ordem = unidade legível > sinal > valor")
     # FATIA da máquina: com duas capturando, cada uma fica com metade determinística do
     # universo. Sem isto as duas começam pelo mesmo processo (mesma fila, mesma ordem) e
     # gastam o dobro de browser para entregar a mesma coisa. Ver `na_minha_fatia`.
@@ -222,6 +232,43 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         rows = [r for r in rows if na_minha_fatia(r[0], indice, total)]
         _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
     return rows
+
+
+def _raizes_com_sinal_osint() -> set[str]:
+    """Raízes de CNPJ que a fila curada de agente público já marcou — a inteligência que temos.
+
+    POR QUE A CAPTURA PRECISA DISSO. O universo do SIAFE tem 45.634 processos e a casa capturou
+    2.182 (4,8%); a ~16 processos por dia, ler tudo levaria SETE ANOS. A fila já ordenava por
+    VALOR, e valor não é risco: um pagamento grande e limpo entra antes de um pequeno com agente
+    público no quadro societário da contratada.
+
+    Medido em 2026-08-06: dos 44.072 processos ainda não capturados, **632** têm credor na fila
+    curada de `agente_publico_reverso` (307 raízes, já sem homônimo comprovado e sem o que é
+    desenho de programa). São 1,4% do universo — quarenta dias de captura em vez de sete anos.
+
+    Degrada em silêncio de propósito: sem o arquivo, devolve vazio e a ordem volta a ser a antiga.
+    Prioridade que quebra a captura seria pior que prioridade nenhuma.
+    """
+    alvo = Path(__file__).resolve().parent.parent / "data" / "agente_publico_fila.json"
+    if not alvo.exists():
+        return set()
+    try:
+        corpo = json.loads(alvo.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {x["cnpj_basico"] for x in corpo.get("itens", [])
+            if not x.get("explicacao_institucional")}
+
+
+def _credores_por_processo(con) -> dict[str, set[str]]:
+    """Raiz do credor de cada processo, pelas OBs do SIAFE."""
+    fora: dict[str, set[str]] = {}
+    for proc, doc in con.execute(
+            "SELECT processo, credor FROM ob_orcamentaria_siafe WHERE processo IS NOT NULL"):
+        d = re.sub(r"\D", "", str(doc or ""))
+        if len(d) == 14:
+            fora.setdefault(str(proc), set()).add(d[:8])
+    return fora
 
 
 def _arvores_encerradas() -> set[str]:
@@ -731,8 +778,17 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
         pais = [p for p in pais if p["origem"] in seus] or pais  # se nada casar, não trava: usa todos
     prog = _carregar_prog()
     feitos = prog.get("pais_feitos") or {}
-    fila = [p for p in pais if _norm(p["pai"]) not in {_norm(k) for k in feitos
-            if (feitos[k].get("n_docs", 0) or 0) > 0}][:max_n]
+    # TETO DE TENTATIVAS — SEM ELE A FILA NUNCA ANDA. A regra antiga excluía apenas quem tinha
+    # devolvido documento; quem devolvia ZERO voltava para sempre. Medido na VM-2 em 2026-08-07:
+    # os MESMOS CINCO processos relidos a cada 30 minutos, 110-136 s cada, **34 minutos de CPU por
+    # rodada**, durante dias, enquanto os outros 120 detectados nunca chegavam a ser oferecidos.
+    # Zero documentos é resultado legítimo (processo restrito, árvore que não abre) e repeti-lo
+    # indefinidamente é a definição de trabalho inútil. O sweep normal já tinha o skip após três
+    # tentativas exatamente por isto; aqui faltava.
+    _TETO_TENTATIVAS = 3
+    _chega = {_norm(k) for k, v in feitos.items()
+              if (v.get("n_docs", 0) or 0) > 0 or (v.get("tentativas", 1) or 1) >= _TETO_TENTATIVAS}
+    fila = [p for p in pais if _norm(p["pai"]) not in _chega][:max_n]
     if not fila:
         _log("[pais] nada novo (todos os pais detectados já lidos/cacheados).")
         return
@@ -814,8 +870,10 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                             ficha_info = await _ficha_e_storage(proc)
                         except Exception:  # noqa: BLE001
                             ficha_info = None
+                    _antes = (feitos.get(proc) or {}).get("tentativas", 0) or 0
                     feitos[proc] = {"n_docs": nd, "via": p["fonte"], "conf": p["confianca"],
-                                    "origem": p["origem"], "em": datetime.now().isoformat(timespec="seconds")}
+                                    "origem": p["origem"], "tentativas": _antes + 1,
+                                    "em": datetime.now().isoformat(timespec="seconds")}
                     prog["pais_feitos"] = feitos
                     _salvar_prog(prog)
                     if nd:

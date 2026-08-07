@@ -105,6 +105,11 @@ else
   $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --recaptura --max 2 \
     >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_recaptura rc=$?"
 fi
+# COLHEITA DA VM-2 — duas maquinas capturando, uma analisando, e nenhuma ponte entre elas. Medido
+# em 2026-08-07: a VM-2 tinha 111 processos com documentos e a VM-1 nunca vira 61 deles. Barato
+# (rsync + arquivamento sem browser) e por isso roda toda passada.
+# Pausa: data/.pause_colher_vm2.
+if [ -f data/.pause_colher_vm2 ]; then say "colheita vm2 pausada — pulei"; else $PRIO timeout 1200 bash "$REPO/tools/colher_vm2.sh" >> data/colher_vm2.log 2>&1; say "colher vm2 rc=$?"; fi
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.
