@@ -50,11 +50,15 @@ SEQUENCIA = [
     "chamada:uiLigarSpotlight()",
     "chamada:uiLigarDialogo()",
     "chamada:ligarVinculos()",        # v59: delegacao `data-vinc` no documento — precisa existir
+                                      # antes do primeiro render que use o atributo
+    # 2026-08-07: delegacao da FILA DO FISCAL (`data-fila`). Mesma familia das duas vizinhas: um
+    # ouvinte no `document`, nada de nome novo no `window`. Entrou aqui porque a primeira versao
+    # custava dois globais e a catraca de globais reprovou em 61 contra teto 59.
+    "chamada:ligarFila()",
     # 2026-08-06: delegacao das METRICAS CLICAVEIS. Colada no `ligarVinculos` de proposito — as
     # duas prendem UM ouvinte no `document`, que sobrevive a troca de `innerHTML` do `#view`, e
     # nenhuma delas toca a tela. Verificado com `pageerror` limpo na pagina viva.
     "chamada:ligarDrill()",
-                                      # antes do primeiro render que use o atributo
     "chamada:sobrioAoMudar()",        # o que reavaliar quando o modo sobrio vira: os tres
                                       # videos da cena. Gancho, nao import — senao a folha
                                       # das bandeiras e a cena se importariam em circulo

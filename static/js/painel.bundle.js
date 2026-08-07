@@ -4400,6 +4400,14 @@ void main(){
       b("/api/processo/avaliar", "Avaliar um processo SEI ainda não avaliado", "Dispara a avaliação 360 em background (fases, marcos, A1-A5, acatamento, juízo por documento). Use quando a consulta disser que o processo ainda não foi avaliado.", "numero"),
       b("/api/conjunto/orgao", "Avaliação de conjunto dos certames", "Lê o órgão como conjunto, não certame a certame — §5 da metodologia.", "orgao")
     ].join("") + `</div><div id="pc-out"></div>`;
+    h += sec("Fila do fiscal — por onde começar");
+    h += card(`<div class="dim">Ordenada por <b>qualidade do achado</b>, não por score cru: o score de
+      convergência satura no topo em processo grande, e ali tudo parece igual. Vício <b>lido nos
+      autos</b> pesa mais que indício sobre a empresa.</div>
+    <div class="btns" style="margin-top:10px">
+      <button type="button" class="btn" data-fila="todos">Ver a fila</button>
+      <button type="button" class="btn ghost" data-fila="osint">Só os com sinal OSINT</button>
+    </div><div id="ff-out"></div>`);
     h += sec("Leitura de conjunto de um processo SEI");
     h += card(`<div class="dim">O esqueleto do processo fase a fase, as contradições entre documentos
       e a leitura do todo — sobre TODOS os documentos capturados, sem corte de páginas.</div>
@@ -4409,6 +4417,66 @@ void main(){
     </div><div id="sg-out"></div>`);
     h += `<div class="note">Toda peça passa pelo gate de neutralidade (nenhum nome interno) e pelo gate de citações (nenhum acórdão inexistente).</div>`;
     return h;
+  }
+  async function filaFiscal(soOsint) {
+    const o = $("ff-out");
+    o.innerHTML = card('<div class="dim">recalculando a fila sobre o acervo de hoje…</div>');
+    const d = await J("/api/fiscal/fila?limite=60" + (soOsint ? "&so_osint=1" : ""));
+    if (!d || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    if (!it.length) {
+      o.innerHTML = card(soOsint ? '<div class="dim">Nenhum processo da fila tem sinal OSINT hoje. <b>Não observado nesta rodada</b> não é ausência de vínculo — o grafo cresce a cada varredura.</div>' : '<div class="warn">Fila vazia — o ranking não devolveu processo algum.</div>');
+      return;
+    }
+    const cor = (g) => /EXTREMO/.test(g || "") ? "var(--red)" : /ALTO/.test(g || "") ? "var(--amber)" : null;
+    let h = `<div class="grid g2" style="margin-top:12px">
+      ${kpi(fmtN(d.total), "Processos na fila", "var(--amber)", "📋", { drill: "ffTodos" })}
+      ${kpi(fmtN(d.com_osint), "Com sinal OSINT", d.com_osint || 0 ? "var(--red)" : null, "🕸️", { drill: "ffOsint" })}</div>`;
+    h += leitura(esc(d.regua || ""));
+    const _lin = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${x.posicao}. ${esc(x.processo)}</div>
+        <div class="dim">${esc(x.grau)}</div>
+        <div style="font-size:12.5px;margin-top:4px">${esc(x.motivos || "")}</div>
+      </div>
+      <div class="right">
+        <div class="num" style="font-weight:800;color:${cor(x.grau) || "inherit"}">${x.pontos}</div>
+        <div class="dim">pontos</div>
+        <button type="button" class="btn ghost" style="margin-top:6px"
+                data-fila-abrir="${esc(x.processo)}">Abrir</button>
+      </div></div>`, x.osint ? "hl" : "");
+    registrarDrill("ffTodos", { titulo: "Fila do fiscal", itens: it, render: _lin });
+    registrarDrill("ffOsint", {
+      titulo: "Processos com sinal OSINT",
+      itens: it.filter((x) => x.osint),
+      render: _lin,
+      nota: "Sinal OSINT NUNCA supera vício lido nos autos: conflito de órgão vale 3, achado de pagamento sem execução vale 5."
+    });
+    h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
+    h += `<div class="note">${esc(d.resumo || "")} · a fila é recalculada a cada consulta, sobre o acervo do momento.</div>`;
+    o.innerHTML = h;
+  }
+  function ligarFila() {
+    document.addEventListener("click", (ev) => {
+      if (!ev.target.closest) return;
+      const b = ev.target.closest("[data-fila]");
+      if (b) {
+        ev.preventDefault();
+        filaFiscal(b.dataset.fila === "osint" ? 1 : 0);
+        return;
+      }
+      const a = ev.target.closest("[data-fila-abrir]");
+      if (!a) return;
+      ev.preventDefault();
+      const i = $("sg-num");
+      if (!i) return;
+      i.value = a.getAttribute("data-fila-abrir");
+      i.scrollIntoView({ behavior: "smooth", block: "center" });
+      sinteseProcesso();
+    });
   }
   async function sinteseProcesso() {
     const v = ($("sg-num")?.value || "").trim();
@@ -6743,6 +6811,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   uiLigarSpotlight();
   uiLigarDialogo();
   ligarVinculos();
+  ligarFila();
   ligarDrill();
   sobrioAoMudar(() => {
     nebulaViva();

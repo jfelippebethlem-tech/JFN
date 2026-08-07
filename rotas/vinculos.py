@@ -13,6 +13,7 @@ anexa — quando a data pedida está fora da série de snapshots.
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 
 # Erros que uma rota de LEITURA do acervo pode ver de verdade: base ocupada/corrompida, esquema
@@ -553,4 +554,51 @@ def api_pcrj_assinaturas(limite: int = 80, so_identificadas: int = 0):
         })
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("pcrj_assinaturas falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/fila")
+def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
+    """A FILA DO FISCAL — a ordem em que os autos devem ser abertos.
+
+    Ela existia só como markdown em disco: quem quisesse a prioridade da casa tinha de abrir um
+    arquivo. Aqui ela chega ao painel com a régua declarada — pontos por QUALIDADE do achado, não
+    por score cru, porque o score satura no topo em processo grande.
+    """
+    try:
+        import subprocess
+        from pathlib import Path
+
+        raiz = Path(__file__).resolve().parent.parent
+        r = subprocess.run(
+            [str(raiz / ".venv" / "bin" / "python"),
+             str(raiz / "tools" / "processo_360_ranking.py"), "--top", str(max(1, min(limite, 300)))],
+            capture_output=True, text=True, timeout=300, cwd=str(raiz), check=False)
+        if r.returncode != 0:
+            return JSONResponse({"ok": False, "erro": "ranking não pôde ser calculado"},
+                                status_code=503)
+        itens, resumo = [], ""
+        for linha in r.stdout.splitlines():
+            m = re.match(r"\s*(\d+)\.\s*\[\s*(\d+) pts\]\s+(\S+)\s+\(([^)]+)\)\s+—\s*(.*)",
+                         linha)
+            if m:
+                itens.append({"posicao": int(m.group(1)), "pontos": int(m.group(2)),
+                              "processo": m.group(3), "grau": m.group(4),
+                              "motivos": m.group(5).strip(),
+                              "osint": "OSINT:" in m.group(5)})
+            elif "processos avaliados" in linha:
+                resumo = linha.strip()
+        if so_osint:
+            itens = [x for x in itens if x["osint"]]
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "com_osint": sum(1 for x in itens if x["osint"]),
+            "resumo": resumo, "itens": itens,
+            "regua": ("Pontos por QUALIDADE do achado, não por score cru — o score de convergência "
+                      "satura no topo em processo grande. Vício LIDO NOS AUTOS pesa mais que "
+                      "indício sobre a empresa: pagamento sem execução vale 5; o sinal OSINT mais "
+                      "forte (autos no próprio órgão do agente) vale 3."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("fiscal_fila falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
