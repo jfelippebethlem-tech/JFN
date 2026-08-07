@@ -82,6 +82,23 @@ export function abrirDrill(nome) {
   if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: 'start' });
 }
 
+
+/** Abre a PROCEDÊNCIA de uma métrica que não tem linhas: o que mede, de onde vem, como se refaz. */
+export function abrirSobre(titulo, texto) {
+  const alvo = $('drill-out') || $('view');
+  if (!alvo) return;
+  const box = $('drill-box');
+  if (box) box.remove();
+  alvo.insertAdjacentHTML('afterbegin',
+    `<div id="drill-box" class="drill-box">
+       <button type="button" class="btn ghost" data-drill-fechar="1" style="float:right">Fechar</button>
+       ${sec(titulo)}${card(`<div style="line-height:1.55">${texto}</div>`)}
+       <div class="note">Esta métrica não tem lista por trás — ela mede uma relação, não um conjunto
+       de itens. O que se pode conferir é a procedência acima.</div></div>`);
+  const novo = $('drill-box');
+  if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: 'start' });
+}
+
 /** Delegação única, no `document`: sobrevive à troca de `innerHTML` do `#view`. */
 export function ligarDrill() {
   document.addEventListener('click', ev => {
@@ -90,6 +107,8 @@ export function ligarDrill() {
       const b = $('drill-box'); if (b) { ev.preventDefault(); b.remove(); }
       return;
     }
+    const s = ev.target.closest('[data-sobre]');
+    if (s) { ev.preventDefault(); abrirSobre(s.dataset.sobreTit || 'A métrica', s.dataset.sobre); return; }
     const k = ev.target.closest('[data-drill]');
     if (k && _REG.has(k.dataset.drill)) { ev.preventDefault(); abrirDrill(k.dataset.drill); }
   });

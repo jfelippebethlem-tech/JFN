@@ -43,9 +43,16 @@ const _kpiIco = cor => {
 export const kpi = (v, l, cor, gl, dest) => {
   const ik = _kpiIco(cor);
   const drill = dest && typeof dest === 'object' && dest.drill;
+  /* TERCEIRA FORMA: `{sobre:'texto'}`. Nem toda métrica tem linhas — mediana, F1, percentual de
+     concentração e "SIAFE ok/off" contam relação, não itens, e exigir gaveta seria pedir mentira.
+     O que falta a essas não é a lista: é a PROCEDÊNCIA — o que o número mede, de que fonte sai e
+     como se recalcula. Clicar abre isso na mesma gaveta. */
+  const sobre = dest && typeof dest === 'object' && dest.sobre;
   const go = drill
     ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}`
-    : (dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : '');
+    : (sobre
+      ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}`
+      : (dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : ''));
   return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ''}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ''}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ''}</div>`;
 };
 

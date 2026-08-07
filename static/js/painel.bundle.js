@@ -18,7 +18,8 @@
   var kpi = (v, l, cor, gl, dest) => {
     const ik = _kpiIco(cor);
     const drill = dest && typeof dest === "object" && dest.drill;
-    const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
+    const sobre = dest && typeof dest === "object" && dest.sobre;
+    const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : sobre ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
     return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ""}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
   };
   var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
@@ -148,6 +149,22 @@
     const novo = $("drill-box");
     if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: "start" });
   }
+  function abrirSobre(titulo, texto) {
+    const alvo = $("drill-out") || $("view");
+    if (!alvo) return;
+    const box = $("drill-box");
+    if (box) box.remove();
+    alvo.insertAdjacentHTML(
+      "afterbegin",
+      `<div id="drill-box" class="drill-box">
+       <button type="button" class="btn ghost" data-drill-fechar="1" style="float:right">Fechar</button>
+       ${sec(titulo)}${card(`<div style="line-height:1.55">${texto}</div>`)}
+       <div class="note">Esta métrica não tem lista por trás — ela mede uma relação, não um conjunto
+       de itens. O que se pode conferir é a procedência acima.</div></div>`
+    );
+    const novo = $("drill-box");
+    if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: "start" });
+  }
   function ligarDrill() {
     document.addEventListener("click", (ev) => {
       if (!ev.target.closest) return;
@@ -157,6 +174,12 @@
           ev.preventDefault();
           b.remove();
         }
+        return;
+      }
+      const s = ev.target.closest("[data-sobre]");
+      if (s) {
+        ev.preventDefault();
+        abrirSobre(s.dataset.sobreTit || "A métrica", s.dataset.sobre);
         return;
       }
       const k = ev.target.closest("[data-drill]");
@@ -4371,10 +4394,10 @@ void main(){
       if (he.tem_baseline === false) h += `<div class="dim">Também não há baseline aceito — a primeira medição vira o baseline.</div>`;
     } else if (he && he.ok !== false) {
       h += sec("Juízo jurídico (conjunto-ouro TCU)");
-      h += `<div class="grid g2">${kpi(fmtD(he.f1_macro, 3), "F1 macro", null, "⚖️")}
-        ${kpi(fmtD(he.baseline_f1, 3), "F1 do baseline burro")}
+      h += `<div class="grid g2">${kpi(fmtD(he.f1_macro, 3), "F1 macro", null, "⚖️", { sobre: "Média harmônica de precisão e recall, calculada por CLASSE e depois promediada (macro) — cada classe pesa igual, mesmo as raras. É a régua honesta quando as classes são desbalanceadas: acertar só a classe comum não infla o número. Fonte: casos ROTULADOS À MÃO em <code>eval_groundtruth</code>. Recalcula com <code>python -m tools.eval_hermeneutica</code>." })}
+        ${kpi(fmtD(he.baseline_f1, 3), "F1 do baseline burro", null, null, { sobre: "O que um chute sem inteligência alcançaria (classe majoritária sempre). Existe para responder a única pergunta que importa sobre um F1: <b>ele é melhor que nada?</b> Modelo acima do baseline por pouco não sustenta decisão. Mesma fonte e mesmo comando do F1 macro." })}
         ${kpi(he.acuracia == null ? "—" : fmtD(100 * he.acuracia, 1) + "%", "Acurácia")}
-        ${kpi(he.n == null ? "—" : fmtN(he.n), "Casos rotulados")}</div>`;
+        ${kpi(he.n == null ? "—" : fmtN(he.n), "Casos rotulados", null, null, { sobre: "Quantos casos foram rotulados À MÃO para servir de gabarito. É o DENOMINADOR de todas as métricas desta aba: um F1 excelente sobre poucas dezenas de casos diz pouco. Sem rótulo não há medição — e é por isso que este número aparece ao lado dos outros, não escondido." })}</div>`;
       if (he.alucinacao_citacao != null)
         h += leitura(`Alucinação de citação: <b>${fmtD(100 * he.alucinacao_citacao, 1)}%</b>. Abstenção: ${he.abstencao == null ? "—" : fmtD(100 * he.abstencao, 0) + "%"} — abster-se é resultado honesto, não falha.`);
     } else h += card(`<div class="dim">Acurácia do juízo indisponível nesta execução${he && he.erro ? ": " + esc(he.erro) : ""}.</div>`);
@@ -4845,10 +4868,10 @@ void main(){
     let h = cover("estado", "Estado do Rio de Janeiro", "Ordens Bancárias do SIAFE, concentração de fornecedores, sancionadas, perícias e conluio — somente órgãos ESTADUAIS (esfera oficial do PNCP; federais e municípios ficam em Transversal).", "🏛️");
     if (coletaErro) h += `<div class="warn">Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
     h += `<div class="grid g2">
-    ${kpi(fmtN(o.total), "Ordens Bancárias", null, "💳")}${kpi(fmtRc(o.valor_total), "Valor fiscalizado", null, "💰")}
+    ${kpi(fmtN(o.total), "Ordens Bancárias", null, "💳", "e_siafe")}${kpi(fmtRc(o.valor_total), "Valor fiscalizado", null, "💰", "e_siafe")}
     ${kpi(fmtN(a.total ?? 0), "Alertas ativos", a.alta ? "var(--rose)" : "#fff", "🚨", "e_alertas")}${kpi(nc, "Conluio (estado)", "var(--purple)", "🕸️", "e_conluio")}
     ${kpi(fmtN(sc.n_a_epoca ?? "—"), "Sancionadas à época", "var(--rose)", "🚫", "e_sanc")}${kpi(fmtN(a.alta ?? 0), "🔴 Alta", "var(--rose)", null, "e_alertas")}
-    ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"))}${kpi(fmtN(o.hoje ?? 0), "OBs hoje")}</div>`;
+    ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"), null, null, "e_siafe")}${kpi(fmtN(o.hoje ?? 0), "OBs hoje", null, null, "e_siafe")}</div>`;
     h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
@@ -4944,7 +4967,7 @@ void main(){
     const piores = o.filter((x) => (x.desvio_vs_pares || 0) > 10).length, aud = o.filter((x) => x.auditoria_tematica && x.auditoria_tematica.length).length;
     registrarDrill("orgAcimaPares", { titulo: "Órgãos acima dos pares em mais de 10 pontos", itens: o.filter((x) => (x.desvio_vs_pares || 0) > 10), nota: "A régua é COMPARATIVA: o desvio mede este órgão contra os semelhantes, não contra zero." });
     registrarDrill("orgAuditoriaTematica", { titulo: "Órgãos com gatilho de auditoria temática", itens: o.filter((x) => x.auditoria_tematica && x.auditoria_tematica.length) });
-    h += `<div class="grid g2">${kpi(fmtN(d.n_orgaos), "Órgãos avaliados (≥3 certames)", null, "🏢")}${kpi(d.mediana_pares != null ? d.mediana_pares.toFixed(0) : "—", "Mediana dos pares", null, "📏")}
+    h += `<div class="grid g2">${kpi(fmtN(d.n_orgaos), "Órgãos avaliados (≥3 certames)", null, "🏢")}${kpi(d.mediana_pares != null ? d.mediana_pares.toFixed(0) : "—", "Mediana dos pares", null, "📏", { sobre: "Mediana do Índice de Direcionamento entre órgãos COMPARÁVEIS (≥3 certames indexados). A régua desta casa é comparativa de propósito: 40 pontos não significa nada sozinho — significa alguma coisa contra os 22 dos semelhantes. Órgão sem par suficiente fica sem desvio, e isso é dito, não preenchido com zero." })}
       ${kpi(fmtN(piores), "Acima dos pares (+10)", "var(--amber)", "📈", { drill: "orgAcimaPares" })}${kpi(fmtN(aud), "Com gatilho de auditoria temática", "var(--rose)", "🎯", { drill: "orgAuditoriaTematica" })}</div>`;
     h += `<div class="grid" style="margin-top:14px">` + o.map((x) => {
       const md = x.score_mediana != null ? x.score_mediana : 0, dv = x.desvio_vs_pares;
