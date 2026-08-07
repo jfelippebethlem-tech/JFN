@@ -119,3 +119,32 @@ def test_a_fila_de_lacuna_provada_degrada_em_silencio():
     con = sqlite3.connect(":memory:")
     assert _fila_com_lacuna_provada(con) == set()
     con.close()
+
+
+def test_grafo_divide_o_universo_entre_as_maquinas(monkeypatch):
+    """Duas máquinas na mesma fila DUPLICAM, não somam.
+
+    Medido em 2026-08-07: a VM-2 rodou o grafo e percorreu os MESMOS 400 credores que a VM-1 já
+    tinha feito — as duas atacam o topo da mesma ordem por valor, e `grafo_persistido` é local a
+    cada máquina. A fatia é por RESTO DO CNPJ (estável entre rodadas), não por posição na lista.
+    """
+    import sqlite3
+
+    from tools import grafo_persistir as G
+
+    con = sqlite3.connect(":memory:")
+    con.executescript(
+        "CREATE TABLE ob_orcamentaria_siafe (credor TEXT, status TEXT, valor REAL);"
+        + "".join(f"INSERT INTO ob_orcamentaria_siafe VALUES ('{i:014d}','Contabilizado',{100 - i});"
+                  for i in range(1, 11)))
+
+    monkeypatch.setenv("JFN_SWEEP_FATIA", "0/2")
+    a = {c for c, _ in G.universo(con, 10)}
+    monkeypatch.setenv("JFN_SWEEP_FATIA", "1/2")
+    b = {c for c, _ in G.universo(con, 10)}
+    assert a and b, "alguma fatia saiu vazia"
+    assert not (a & b), f"as duas máquinas pegariam os mesmos credores: {sorted(a & b)[:3]}"
+    monkeypatch.delenv("JFN_SWEEP_FATIA")
+    inteiro = {c for c, _ in G.universo(con, 10)}
+    assert a | b == inteiro, "a soma das fatias tem de ser o universo"
+    con.close()

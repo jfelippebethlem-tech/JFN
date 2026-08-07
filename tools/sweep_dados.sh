@@ -59,7 +59,7 @@ if [ -f data/.pause_sentinela ]; then say "sentinela pausada — pulei"; else $P
 # retomada é por FATO — o CNPJ processado é gravado mesmo com zero arestas, porque "olhei e não
 # achei" não é "nunca olhei". ~1,9 s por credor sobre 5.615: por isso vai em fatias.
 # Pausa: data/.pause_grafo_persistir.
-if [ -f data/.pause_grafo_persistir ]; then say "grafo persistir pausado — pulei"; else $PRIO timeout 900 $PY -m tools.grafo_persistir --limite 300 >> data/grafo_persistir.log 2>&1; say "grafo persistir rc=$?"; fi
+if [ -f data/.pause_grafo_persistir ]; then say "grafo persistir pausado — pulei"; else JFN_SWEEP_FATIA=0/2 $PRIO timeout 900 $PY -m tools.grafo_persistir --limite 300 >> data/grafo_persistir.log 2>&1; say "grafo persistir rc=$?"; fi
 # AGENTE PÚBLICO NO QUADRO SOCIETÁRIO DO PAÍS — uma passada de streaming sobre as 27,6 milhões de
 # linhas do cadastro nacional de sócios (`socios_full.csv.zst`), semeada pelas 251 mil pessoas das
 # folhas que conhecemos. Precisa de rotina porque as DUAS pontas mudam: a folha a cada competência

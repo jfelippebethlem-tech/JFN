@@ -50,14 +50,42 @@ CREATE TABLE IF NOT EXISTS grafo_persistido (
 )"""
 
 
+def _fatia() -> tuple[int, int]:
+    """`JFN_SWEEP_FATIA=1/2` → `(1, 2)`. Sem a variável, máquina única `(0, 1)`.
+
+    DUAS MÁQUINAS NA MESMA FILA DUPLICAM, NÃO SOMAM. Medido em 2026-08-07: a VM-2 rodou o grafo e
+    percorreu **os mesmos 400 credores** que a VM-1 já tinha feito — as duas atacam o topo da mesma
+    ordem por valor, e `grafo_persistido` é local a cada máquina. Sem fatia, a segunda gasta CPU
+    para refazer o que existe. É a mesma divisão que o sweep SEI já usava, aplicada onde faltava.
+    """
+    import os
+
+    bruto = (os.environ.get("JFN_SWEEP_FATIA") or "").strip()
+    if not bruto:
+        return 0, 1
+    try:
+        i, n = (int(x) for x in bruto.split("/", 1))
+    except ValueError:
+        return 0, 1
+    return (i, n) if 0 <= i < n else (0, 1)
+
+
 def universo(con: sqlite3.Connection, limite: int) -> list[tuple[str, float]]:
-    """Credores PJ ainda não processados, do maior valor pago para o menor (SIAFE, contabilizado)."""
+    """Credores PJ ainda não processados, do maior valor pago para o menor (SIAFE, contabilizado).
+
+    A fatia da máquina é aplicada por RESTO DO CNPJ, não por posição na lista: assim as duas
+    metades são estáveis entre rodadas e não dependem de quem chegou primeiro.
+    """
     con.execute(_CRIA_MARCA)
-    return [(r[0], float(r[1] or 0.0)) for r in con.execute(
+    indice, total = _fatia()
+    linhas = [(r[0], float(r[1] or 0.0)) for r in con.execute(
         "SELECT credor, SUM(valor) v FROM ob_orcamentaria_siafe "
         "WHERE status='Contabilizado' AND length(credor)=14 "
         "  AND credor NOT IN (SELECT cnpj FROM grafo_persistido) "
-        "GROUP BY 1 ORDER BY v DESC LIMIT ?", (limite,)).fetchall()]
+        "GROUP BY 1 ORDER BY v DESC LIMIT ?", (limite * max(total, 1),)).fetchall()]
+    if total > 1:
+        linhas = [x for x in linhas if int(x[0]) % total == indice]
+    return linhas[:limite]
 
 
 def _naturezas(raizes: set[str]) -> dict[str, str]:
