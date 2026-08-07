@@ -241,6 +241,34 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
     return out
 
 
+
+# ESTRUTURA NÃO É ELO OCULTO. Ao percorrer 850 credores, as empresas mais ligadas por contato eram
+# CONSÓRCIOS — e consórcio divide telefone e e-mail com as consorciadas POR DESENHO: a lei o define
+# como reunião de empresas para um empreendimento, sem personalidade própria. O mesmo vale para a
+# SCP (o sócio ostensivo é quem aparece) e para o fundo público (que não é empresa).
+#
+# Medido em 2026-08-07 sobre 761 arestas de contato: 69 (9,1%) citam "CONSORCIO" no nome, e entre
+# os nós há 59 de natureza 2151 (consórcio), 53 de 2127 (SCP) e 79 de 1333 (fundo público).
+#
+# O corte é pela NATUREZA JURÍDICA, nunca pelo nome — "CONSTRUTORA METROPOLITANA S.A. SCP ACADEMIA
+# DE BOMBEIROS" traz as duas palavras e é o que ela for pelo código, não pelo rótulo.
+_NATUREZA_ESTRUTURAL = {
+    "2151": "consórcio de sociedades — divide contato com as consorciadas por desenho",
+    "2127": "sociedade em conta de participação — quem aparece é o sócio ostensivo",
+    "2143": "cooperativa — o contato costuma ser o da central",
+}
+
+
+def explicacao_estrutural(natureza_a: str, natureza_b: str) -> str:
+    """Por que estas duas dividirem contato pode ser a forma jurídica, não a mão por trás."""
+    for n in (str(natureza_a or ""), str(natureza_b or "")):
+        if n.startswith("1"):
+            return "ente público ou fundo — não é empresa; o contato é o da unidade"
+        if n in _NATUREZA_ESTRUTURAL:
+            return _NATUREZA_ESTRUTURAL[n]
+    return ""
+
+
 def cobertura(db_estab: str = "") -> dict:
     """Quanto do dump traz contato — o denominador que impede ler silêncio como ausência."""
     caminho = db_estab or str(_ESTAB)

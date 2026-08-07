@@ -31,8 +31,12 @@ import argparse
 import collections
 import sqlite3
 import time
+from pathlib import Path
 
-from compliance_agent.osint.contato_compartilhado import vinculos_por_contato
+from compliance_agent.osint.contato_compartilhado import (
+    explicacao_estrutural,
+    vinculos_por_contato,
+)
 from compliance_agent.osint.fonte_grafo import _razao_social, montar_grafo_societario
 from compliance_agent.osint.persistencia import salvar_grafo
 from compliance_agent.osint.vinculos import no_pj
@@ -56,6 +60,24 @@ def universo(con: sqlite3.Connection, limite: int) -> list[tuple[str, float]]:
         "GROUP BY 1 ORDER BY v DESC LIMIT ?", (limite,)).fetchall()]
 
 
+def _naturezas(raizes: set[str]) -> dict[str, str]:
+    """Natureza jurídica das raízes, da base de estabelecimentos. Ausente devolve vazio."""
+    caminho = Path(__file__).resolve().parent.parent / "data" / "receita_estab.db"
+    if not caminho.exists() or not raizes:
+        return {}
+    con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+    try:
+        if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='empresas'"
+                           ).fetchone():
+            return {}
+        ph = ",".join("?" * len(raizes))
+        return {r[0]: str(r[1] or "") for r in con.execute(
+            f"SELECT cnpj_basico, natureza_cod FROM empresas WHERE cnpj_basico IN ({ph})",
+            tuple(raizes))}
+    finally:
+        con.close()
+
+
 def grafo_do_credor(con_ro: sqlite3.Connection, cnpj: str):
     """Grafo societário do credor mais as arestas de contato compartilhado.
 
@@ -64,6 +86,11 @@ def grafo_do_credor(con_ro: sqlite3.Connection, cnpj: str):
     """
     grafo, diag = montar_grafo_societario(con_ro, cnpj, profundidade=4)
     contato = vinculos_por_contato([cnpj])
+    # A EXPLICAÇÃO ESTRUTURAL VIAJA COM A ARESTA. Percorrendo 850 credores, as empresas mais
+    # ligadas por contato eram CONSÓRCIOS — que dividem telefone e e-mail com as consorciadas por
+    # desenho da lei. Sem isto, a lista de "elos ocultos" é encabeçada por forma jurídica.
+    _nat = _naturezas({a["de"][:8] for a in contato["arestas"]}
+                      | {a["para"][:8] for a in contato["arestas"]} | {cnpj[:8]})
     for a in contato["arestas"]:
         # OS DOIS SUBGRAFOS PRECISAM SE TOCAR. O societário chaveia por RAIZ (8 dígitos) e o
         # contato devolve o CNPJ inteiro: ligados como vinham, a MESMA empresa virava dois nós —
@@ -73,9 +100,12 @@ def grafo_do_credor(con_ro: sqlite3.Connection, cnpj: str):
         de, para = no_pj(a["de"][:8]), no_pj(a["para"][:8])
         grafo.rotular(de, _razao_social(con_ro, a["de"][:8]))
         grafo.rotular(para, _razao_social(con_ro, a["para"][:8]))
+        _estrutural = explicacao_estrutural(_nat.get(a["de"][:8], ""),
+                                            _nat.get(a["para"][:8], ""))
         grafo.ligar(de, para, a["tipo"], fonte=a["fonte"],
-                    detalhe=f"{a['detalhe']} · {a['de']} × {a['para']}",
-                    observacoes=[a["explicacao_inocente"]])
+                    detalhe=f"{a['detalhe']} · {a['de']} × {a['para']}"
+                            + (f" · ESTRUTURAL: {_estrutural}" if _estrutural else ""),
+                    observacoes=[x for x in (a["explicacao_inocente"], _estrutural) if x])
     return grafo, diag, contato
 
 

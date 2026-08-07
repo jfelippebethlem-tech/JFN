@@ -222,3 +222,27 @@ def test_mesmo_numero_nos_dois_campos_nao_duplica(tmp_path):
                               ("11412771000102", "2227851280", "", "")])
     ar = vinculos_por_contato(["11389387000136"], db_estab=db)["arestas"]
     assert len(ar) == 1, f"o mesmo número em dois campos virou duas arestas: {ar}"
+
+
+@pytest.mark.parametrize("na,nb,tem", [
+    ("2151", "2062", True),   # consórcio × LTDA
+    ("2062", "2127", True),   # LTDA × SCP
+    ("1333", "2062", True),   # fundo público × LTDA
+    ("2143", "2062", True),   # cooperativa × LTDA
+    ("2062", "2062", False),  # duas LTDAs — aí o contato dividido pede explicação
+    ("2054", "2062", False),  # S/A fechada × LTDA
+])
+def test_estrutura_juridica_explica_o_contato_dividido(na, nb, tem):
+    """Ao percorrer 850 credores, as empresas mais ligadas por contato eram CONSÓRCIOS.
+
+    Consórcio divide telefone e e-mail com as consorciadas POR DESENHO — a lei o define como
+    reunião de empresas sem personalidade própria. Idem SCP (aparece o sócio ostensivo) e fundo
+    público (que não é empresa). Medido sobre 761 arestas: 9,1% citam "CONSORCIO" no nome, e entre
+    os nós há 59 de natureza 2151, 53 de 2127 e 79 de 1333.
+
+    O corte é pela NATUREZA JURÍDICA e nunca pelo nome: `CONSTRUTORA METROPOLITANA S.A. SCP
+    ACADEMIA DE BOMBEIROS` traz as duas palavras e é o que o código disser.
+    """
+    from compliance_agent.osint.contato_compartilhado import explicacao_estrutural
+
+    assert bool(explicacao_estrutural(na, nb)) is tem
