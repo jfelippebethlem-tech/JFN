@@ -52,6 +52,53 @@ def pontuar(achados: list[dict], acatamento: dict) -> tuple[int, list[str]]:
     return pts, motivos
 
 
+
+def sinal_osint() -> dict[str, dict]:
+    """Processos cuja EMPRESA já tem sinal OSINT — a inteligência entra na régua do fiscal.
+
+    A fila ordenava só por achado de DETECTOR, e a casa passou a sessão inteira construindo
+    inteligência sobre as empresas — agente público no quadro societário, autos correndo no
+    próprio órgão do agente, participante de certame dividindo contato com o concorrente — sem que
+    nada disso mudasse a ordem em que os autos são abertos. Correlacionar é isto: o que se sabe da
+    empresa muda o que se lê primeiro.
+
+    A PONTUAÇÃO É MODESTA DE PROPÓSITO, e o motivo é a régua da casa. Achado de detector é vício
+    LIDO NOS AUTOS; sinal OSINT é indício SOBRE A EMPRESA, casado por nome ou por contato. Deixar
+    o indício empurrar o vício para baixo inverteria a hierarquia da prova:
+      · autos no PRÓPRIO órgão do agente ..... 3  (art. 9º, III da Lei 8.429 — quase-objetivo)
+      · agente público comissionado no QSA ... 2
+      · agente público no QSA ................ 1
+
+    Ausência do arquivo não derruba nada: sem os JSONs, devolve vazio e a ordem volta a ser a
+    anterior. Prioridade que quebra a fila seria pior que prioridade nenhuma.
+    """
+    fora: dict[str, dict] = {}
+    alvo = REPO / "data" / "osint_x_processos.json"
+    if not alvo.exists():
+        return fora
+    try:
+        corpo = json.loads(alvo.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return fora
+    for x in corpo.get("achados", []):
+        agentes = x.get("agentes") or []
+        if not agentes:
+            continue
+        conflito = any(a.get("conflito_pelo_processo") or a.get("conflito_de_orgao")
+                       for a in agentes)
+        comissionado = any(a.get("comissionado") for a in agentes)
+        pts = 3 if conflito else (2 if comissionado else 1)
+        g = agentes[0]
+        fora[str(x.get("processo") or "")] = {
+            "pontos": pts,
+            "motivo": ("OSINT: autos no PRÓPRIO órgão do agente — " if conflito else
+                       ("OSINT: agente público COMISSIONADO no quadro societário — "
+                        if comissionado else "OSINT: agente público no quadro societário — "))
+                      + f"{g.get('nome', '')} ({g.get('cargo', '')}) · {g.get('entidade', '')}",
+        }
+    return fora
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--top", type=int, default=20)
@@ -63,11 +110,19 @@ def main():
     rows = con.execute("select * from processo_avaliacao").fetchall()
     con.close()
 
+    osint = sinal_osint()
     ranking = []
     for r in rows:
         achados = json.loads(r["achados_json"] or "[]")
         ac = json.loads(r["acatamento_json"] or "{}")
         pts, motivos = pontuar(achados, ac)
+        # O NÚMERO SEI vem com prefixo em algumas fontes e sem em outras — casa pelos dígitos.
+        chave = "".join(c for c in str(r["numero_sei"]) if c.isdigit())
+        for k, v in osint.items():
+            if "".join(c for c in k if c.isdigit()) == chave:
+                pts += v["pontos"]
+                motivos.append(v["motivo"])
+                break
         ranking.append({"processo": r["numero_sei"], "pontos": pts, "score100": r["score100"],
                         "grau": r["grau"], "faixa": r["faixa"], "cnpj": r["cnpj_vencedor"],
                         "motivos": sorted(set(motivos)), "avaliado_em": r["avaliado_em"]})
@@ -84,6 +139,20 @@ def main():
         for i, r in enumerate(top, 1):
             print(f"{i:3d}. [{r['pontos']:2d} pts] {r['processo']} ({r['grau']}/{r['faixa']}) — "
                   f"{'; '.join(r['motivos'])[:140]}")
+    # SEÇÃO PRÓPRIA PARA O SINAL OSINT, e a razão é a hierarquia da prova. O indício sobre a
+    # empresa pontua pouco de propósito (no máximo 3, contra 5 do vício lido nos autos), então um
+    # processo SÓ com sinal OSINT nunca alcança o topo — e ficaria invisível. Invisível não serve:
+    # o que se sabe da empresa precisa chegar a quem abre os autos, sem atropelar o que está neles.
+    fora_do_topo = [r for r in ranking[args.top:] if any("OSINT:" in m for m in r["motivos"])]
+    if fora_do_topo and args.md:
+        print(f"\n### Com sinal OSINT, fora do top {args.top} "
+              f"({len(fora_do_topo)} processo(s))\n")
+        print("| Processo | Pontos | Grau | Sinal |")
+        print("|---|---|---|---|")
+        for r in fora_do_topo[:25]:
+            sinal = next((m for m in r["motivos"] if "OSINT:" in m), "")
+            print(f"| {r['processo']} | {r['pontos']} | {r['grau']}/{r['faixa']} | {sinal} |")
+
     print(f"\n{len(rows)} processos avaliados · {sum(1 for x in ranking if x['pontos'] >= 5)} "
           f"com achado forte (≥5 pts)", file=sys.stderr)
     return 0
