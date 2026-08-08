@@ -18,7 +18,7 @@ trap 'rm -f data/.pause_sei_sweep; say "flag de pausa removida"' EXIT
 
 .venv/bin/python - <<'PY' >> "$LOG" 2>&1
 from datetime import datetime
-from tools.sweep_recaptura_integral import reler, arquivar
+from tools.sweep_recaptura_integral import _lido_agora, arquivar, reler
 
 def say(msg):
     print(f"[{datetime.now():%F %T}] {msg}", flush=True)
@@ -28,8 +28,15 @@ PROCS = ["SEI-080002/014914/2024", "SEI-080002/011699/2024", "SEI-080002/019714/
 for p in PROCS:
     say(f"lendo {p} (canônico, teto 200)…")
     try:
+        antes = _lido_agora(p)
         n = reler(p, 200, 1500)
-        say(f"processo {p} rc=0 lidos={n}")
+        # GANHO ZERO NÃO É SUCESSO. Medido 2026-08-08: o browser_lock estava com o bombeiros,
+        # SR.ler esperou 600 s, desistiu LIMPO e o runner logou rc=0 lidos=8 (a contagem VELHA).
+        # "Sem erro" que não produziu nada tem de gritar — senão o lote inteiro queima em silêncio.
+        if n <= antes:
+            say(f"processo {p} rc=1 SEM GANHO ({antes} → {n}) — browser ocupado? lock alheio?")
+            continue
+        say(f"processo {p} rc=0 lidos={n} (antes {antes})")
     except Exception as e:  # noqa: BLE001 — um processo ruim não derruba o lote
         say(f"processo {p} rc=1 erro={str(e)[:120]}")
         continue
