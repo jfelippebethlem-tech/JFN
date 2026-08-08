@@ -37,6 +37,7 @@ import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
+from compliance_agent.contratos.parecer import foro_do_contrato
 from compliance_agent.osint.contato_compartilhado import _de_servico
 
 __all__ = ["levantar", "TETO_USO_CONTATO"]
@@ -151,6 +152,11 @@ def levantar(con: sqlite3.Connection, estab: Path = _ESTAB) -> dict:
                     continue
                 ma, mb = _marca(razao.get(a[:8], nome.get(a, ""))), \
                     _marca(razao.get(b[:8], nome.get(b, "")))
+                # O FORO VAI COM O ACHADO. Dos 28 pares sem explicação, **16 são de órgão FEDERAL**
+                # (11 da FIOCRUZ, mais Ministério da Saúde, Marinha, Exército e Aeronáutica) — vão
+                # ao TCU, não ao TCE-RJ. Esta casa já mandou 12 notas ao tribunal errado por não
+                # classificar o foro; achado no foro errado é achado que não anda.
+                esfera, corte = foro_do_contrato(orgao.get(cert, ""), "")
                 pares.append({
                     "certame": cert, "orgao": orgao.get(cert, ""), "objeto": objeto.get(cert, ""),
                     "cnpj_a": a, "nome_a": nome.get(a, ""),
@@ -158,6 +164,7 @@ def levantar(con: sqlite3.Connection, estab: Path = _ESTAB) -> dict:
                     "via": via, "tipo": "mesmo_contador" if servico else tipo,
                     "contato_de_servico": servico,
                     "mesmo_grupo_aparente": bool(ma and ma == mb), "marca": ma if ma == mb else "",
+                    "esfera": esfera, "corte": corte,
                 })
     pares.sort(key=lambda x: (x["contato_de_servico"], x["mesmo_grupo_aparente"]))
     return {
@@ -168,4 +175,6 @@ def levantar(con: sqlite3.Connection, estab: Path = _ESTAB) -> dict:
                               if not p["contato_de_servico"] and not p["mesmo_grupo_aparente"]),
         "contato_de_servico": sum(1 for p in pares if p["contato_de_servico"]),
         "mesmo_grupo_aparente": sum(1 for p in pares if p["mesmo_grupo_aparente"]),
+        "por_corte": {c: sum(1 for p in pares if p["corte"] == c)
+                      for c in sorted({p["corte"] for p in pares})},
     }

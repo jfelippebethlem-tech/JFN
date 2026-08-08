@@ -104,3 +104,22 @@ def test_sem_base_de_contato_devolve_vazio_e_diz_por_que(cenario, tmp_path):
     con, _ = cenario
     r = levantar(con, estab=tmp_path / "nao_existe.db")
     assert r["pares"] == [] and "erro" in r
+
+
+def test_o_foro_viaja_com_o_achado(cenario):
+    """Dos 28 pares sem explicação, **16 são de órgão FEDERAL** — 11 da FIOCRUZ, mais Ministério da
+    Saúde, Marinha, Exército e Aeronáutica. Vão ao TCU, não ao TCE-RJ.
+
+    Esta casa já mandou 12 notas ao tribunal errado por não classificar o foro. Achado no foro
+    errado é achado que não anda — por isso a esfera e a corte competente saem junto com o par, e
+    não como passo posterior que alguém precisa lembrar de dar.
+    """
+    from compliance_agent.osint.cocontato_certame import levantar
+
+    con, est = cenario
+    r = levantar(con, estab=est)
+    assert r["pares"], "sem par não há o que classificar"
+    for p in r["pares"]:
+        assert "esfera" in p and "corte" in p, "o par saiu sem foro"
+        assert p["corte"], "corte competente vazio — o achado não teria para onde ir"
+    assert "por_corte" in r and sum(r["por_corte"].values()) == len(r["pares"])
