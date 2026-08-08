@@ -108,7 +108,7 @@ $PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max
 if [ -f data/.pause_recaptura_integral ]; then
   say "recaptura integral pausada — pulei"
 else
-  $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --recaptura --max 2 \
+  $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --recaptura --max 5 \
     >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_recaptura rc=$?"
 fi
 # FILA DE RECAPTURA POR PROVA DO PARECER — a conferencia que compara a lista de documentos do

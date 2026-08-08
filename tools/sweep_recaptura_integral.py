@@ -190,7 +190,14 @@ _DIAS_NOVA_CHANCE = 7
 
 
 def _sem_ganho_expirou(reg: dict) -> bool:
-    if int(reg.get("lido_depois") or 0) > int(reg.get("lido_antes") or 0):
+    """Aceita os DOIS formatos de registro: o desta ferramenta (`lido_antes`/`lido_depois`) e o
+    do `run_recaptura` do sei_sweep (`antes`/`depois`) — são dois armazéns de progresso, e a
+    doutrina tem de valer nos dois. Até 2026-08-08 ela só valia aqui, no caminho que NINGUÉM
+    agenda: o cron roda `run_recaptura`, que filtrava `not in feitos` sem expiração — toda
+    releitura sem ganho (browser instável, doc restrito hoje) virava exclusão perpétua."""
+    antes = int(reg.get("lido_antes", reg.get("antes")) or 0)
+    depois = int(reg.get("lido_depois", reg.get("depois")) or 0)
+    if depois > antes:
         return False                       # ganhou: não precisa voltar
     em = str(reg.get("em") or "")
     if not em:

@@ -997,7 +997,13 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
         fila = [x for x in fila if x["faltam"] <= ate]
     prog = _carregar_prog()
     feitos = prog.get("recaptura_feitos") or {}
-    fila = [x for x in fila if x["numero"] not in feitos][:max_n]
+    # DESISTIR NÃO É PARA SEMPRE — a mesma doutrina do sweep principal (tentativa expira) e do
+    # caminho resiliente. `not in feitos` cru transformava UMA releitura sem ganho em exclusão
+    # perpétua: com a recaptura viva, os casos "4 → 4" (doc que falhou hoje, restrição transitória)
+    # sumiriam da fila para sempre. Quem GANHOU fica fora; quem não ganhou volta depois de 7 dias.
+    from tools.sweep_recaptura_integral import _sem_ganho_expirou
+    fila = [x for x in fila
+            if x["numero"] not in feitos or _sem_ganho_expirou(feitos[x["numero"]])][:max_n]
     if not fila:
         _log("[recap] nada pendente (fila de recaptura vazia ou já percorrida).")
         return

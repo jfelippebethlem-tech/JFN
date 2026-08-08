@@ -21,6 +21,8 @@ Duas regras, e as duas nasceram de medição:
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from tools import sweep_recaptura_integral as R
@@ -82,9 +84,18 @@ def test_o_buraco_real_substitui_o_marcador_quando_conhecido():
         "a fila voltou a ignorar o tamanho da árvore que o manifesto agora declara")
 
 
-@pytest.mark.parametrize("faltam,esperado", [(0, True), (5, False)])
-def test_fila_real_nao_poe_desconhecido_na_frente(faltam, esperado):
-    """Controle sobre a fila DE VERDADE: nenhum item de tamanho desconhecido antes de um medido."""
+@pytest.mark.skipif(not os.environ.get("JFN_TESTES_LENTOS"),
+                    reason="varre ~6.000 blobs comprimidos (minutos) — rode com JFN_TESTES_LENTOS=1")
+def test_fila_real_nao_poe_desconhecido_na_frente():
+    """Controle sobre a fila DE VERDADE: nenhum item de tamanho desconhecido antes de um medido.
+
+    OPT-IN DESDE 2026-08-08, e o motivo é custo que eu mesmo criei: quando a fila deixou de ser
+    cega ao `.zst`, `R.fila()` passou a descomprimir ~6.000 blobs — minutos por chamada. A
+    primeira versão deste teste ainda usava um `parametrize` de dois casos cujos parâmetros NEM
+    ERAM LIDOS no corpo: a fila real era varrida DUAS vezes por rodada, e o lote 3 da suíte
+    inchou de 5 para 18 minutos sem ninguém entender por quê. A regra de ordenação continua
+    coberta pelos testes de unidade acima; este confere o acervo real quando alguém pedir.
+    """
     itens = R.fila()
     if not itens:
         pytest.skip("acervo vazio neste ambiente")
@@ -95,3 +106,39 @@ def test_fila_real_nao_poe_desconhecido_na_frente(faltam, esperado):
     if primeiro_medido is None or primeiro_incerto is None:
         pytest.skip("fila sem os dois tipos neste ambiente")
     assert primeiro_medido < primeiro_incerto
+
+
+def test_sem_ganho_expira_nos_dois_formatos_de_registro():
+    """Dois armazéns de progresso, uma doutrina — e ela só valia no caminho que ninguém agenda.
+
+    `run_recaptura` (o que o cron roda) grava `{"antes","depois","em"}`; esta ferramenta grava
+    `{"lido_antes","lido_depois","em"}`. Até 2026-08-08 a expiração de 7 dias só entendia o
+    segundo formato e só era chamada no primeiro caminho... de ninguém: o filtro vivo era
+    `not in feitos` cru, e toda releitura sem ganho virava exclusão perpétua.
+    """
+    from datetime import datetime, timedelta
+
+    ontem = (datetime.now() - timedelta(days=1)).isoformat(timespec="seconds")
+    ha_10_dias = (datetime.now() - timedelta(days=10)).isoformat(timespec="seconds")
+
+    # formato do run_recaptura (o vivo)
+    assert not R._sem_ganho_expirou({"antes": 4, "depois": 6, "em": ha_10_dias}), \
+        "quem GANHOU não volta — releitura repetida de sucesso queima slot"
+    assert not R._sem_ganho_expirou({"antes": 4, "depois": 4, "em": ontem}), \
+        "sem ganho de ontem ainda não expira"
+    assert R._sem_ganho_expirou({"antes": 4, "depois": 4, "em": ha_10_dias}), \
+        "sem ganho há 10 dias tem de voltar à fila"
+    # formato desta ferramenta
+    assert R._sem_ganho_expirou({"lido_antes": 40, "lido_depois": 40, "em": ha_10_dias})
+
+
+def test_o_caminho_vivo_usa_a_expiracao():
+    """O filtro do `run_recaptura` não pode voltar ao `not in feitos` cru."""
+    import inspect
+
+    from tools import sei_sweep
+
+    fonte = inspect.getsource(sei_sweep.run_recaptura)
+    assert "_sem_ganho_expirou" in fonte, (
+        "o caminho que o cron roda deixou de expirar releitura sem ganho — exclusão perpétua "
+        "de volta")
