@@ -12,9 +12,11 @@ export PYTHONPATH=.
 LOG=data/ler_medviva.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
+# NÃO auto-remover a pausa no EXIT: se este script é morto entre processos, o cron das :00/:30
+# entra no vão e toma a sessão itkava única (medido 2026-08-08: foi o que aconteceu). A flag é
+# retirada À MÃO ao confirmar que as 6 leituras fecharam. Idempotente: já existe.
 touch data/.pause_sei_sweep
-say "início (canônico reler→arquivar) — sweep pausado"
-trap 'rm -f data/.pause_sei_sweep; say "flag de pausa removida"' EXIT
+say "início (canônico reler→arquivar) — sweep pausado (pausa NÃO é auto-removida)"
 
 .venv/bin/python - <<'PY' >> "$LOG" 2>&1
 from datetime import datetime
@@ -26,9 +28,15 @@ def say(msg):
 PROCS = ["SEI-080002/014914/2024", "SEI-080002/011699/2024", "SEI-080002/019714/2024",
          "SEI-080002/020069/2024", "SEI-080002/018759/2025", "SEI-080002/017280/2024"]
 for p in PROCS:
+    # IDEMPOTENTE: pula o que já foi lido em passada anterior (o 014914 fechou com 67 docs antes
+    # de o cron interromper o lote). Reler sem ganho dispararia o guard SEM GANHO à toa.
+    ja = _lido_agora(p)
+    if ja >= 40:
+        say(f"processo {p} já lido ({ja} docs) — pulando")
+        continue
     say(f"lendo {p} (canônico, teto 200)…")
     try:
-        antes = _lido_agora(p)
+        antes = ja
         n = reler(p, 200, 1500)
         # GANHO ZERO NÃO É SUCESSO. Medido 2026-08-08: o browser_lock estava com o bombeiros,
         # SR.ler esperou 600 s, desistiu LIMPO e o runner logou rc=0 lidos=8 (a contagem VELHA).
