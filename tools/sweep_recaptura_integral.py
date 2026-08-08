@@ -217,13 +217,13 @@ def _marcar(numero: str, antes: int, depois: int) -> None:
 
 
 def _lido_agora(numero: str) -> int:
-    f = CACHE / f"cdp_{_tag(numero)}.json"
-    if not f.exists():
+    # `ler_json`, NÃO `read_text` cru: ~91% dos blobs estão em `.json.zst`. Com o caminho cru,
+    # blob comprimido lia como 0 → `_marcar(antes, 0)` gravava "sem ganho" FALSO e o processo
+    # expirava da fila apesar do ganho real. Quinta ferramenta da casa cega à compressão.
+    d = ler_json(CACHE / f"cdp_{_tag(numero)}.json")
+    if not isinstance(d, dict):
         return 0
-    try:
-        return len(json.loads(f.read_text(encoding="utf-8")).get("conteudo_documentos") or [])
-    except (OSError, ValueError):
-        return 0
+    return len(d.get("conteudo_documentos") or [])
 
 
 def reler(numero: str, teto: int, timeout_s: int) -> int:
