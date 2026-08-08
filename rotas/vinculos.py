@@ -452,8 +452,32 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
         itens = corpo.get("itens") or []
         if so_sem_explicacao:
             itens = [x for x in itens if not x.get("mesmo_grupo_aparente")]
+        # O DENOMINADOR DO GRAFO VIAJA COM OS ELOS. Medido em 2026-08-08: o grafo tinha percorrido
+        # 1.558 dos 16.651 credores com OB (9,4%) e a tela dizia "39 elos" sem dizer sobre QUANTO
+        # do universo — quem lê pensa que o resto foi afastado, quando não foi visto. É a mesma
+        # família do gate que media o que LI e não o que EXISTE. Consulta barata (2 COUNTs com
+        # índice); se falhar, o dado segue sem a cobertura — nunca derruba a rota.
+        cobertura_grafo = None
+        try:
+            import sqlite3 as _sq3
+
+            from compliance_agent.reporting.intel_base import _DB as _db_path
+
+            _con = _sq3.connect(f"file:{_db_path}?mode=ro", uri=True)
+            try:
+                _perc = _con.execute("SELECT COUNT(*) FROM grafo_persistido").fetchone()[0]
+                _uni = _con.execute(
+                    "SELECT COUNT(DISTINCT substr(replace(replace(replace(credor,'.',''),"
+                    "'/',''),'-',''),1,8)) FROM ob_orcamentaria_siafe").fetchone()[0]
+                cobertura_grafo = {"percorridos": _perc, "universo": _uni,
+                                   "pct": round(_perc * 100.0 / _uni, 1) if _uni else None}
+            finally:
+                _con.close()
+        except _sq3.Error:
+            logger.debug("cobertura do grafo indisponível — sigo sem ela")
         return JSONResponse({
             "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "cobertura_grafo": cobertura_grafo,
             "arestas_de_contato": corpo.get("arestas_de_contato"),
             "estruturais": corpo.get("estruturais"),
             "total": corpo.get("os_dois_lados_pagos"),

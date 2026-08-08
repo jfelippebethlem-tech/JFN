@@ -324,6 +324,13 @@ export async function vincElosOcultos(soSemExplicacao){
       ${kpi(fmtN(d.mesmo_grupo_aparente),'Mesmo grupo aparente','var(--dim)','🏢',{drill:'eoGrupo'})}
       ${kpi(fmtN(d.estruturais),'Estruturais (fora da fila)','var(--dim)','📗',
         {sobre:'Pares cujo contato compartilhado é explicado pela própria forma jurídica — filial e matriz, empresa e seu sindicato patronal, entidades do mesmo grupo declarado. Saem da fila do fiscal de propósito: acusar o que a lei organiza assim é ruído que faz o leitor desconfiar do resto.'})}</div>`;
+  /* O DENOMINADOR DO GRAFO É PARTE DO ACHADO. Sem ele, "39 elos" lê-se como o resultado de varrer
+     o universo — e o grafo percorreu 9,4% dos credores quando esta linha nasceu. O que está fora
+     não foi afastado: não foi visto, e a diferença é a mesma que separa lacuna de achado. */
+  if(d.cobertura_grafo&&d.cobertura_grafo.universo){
+    const cg=d.cobertura_grafo;
+    h+=leitura(`O grafo societário percorreu <b>${fmtN(cg.percorridos)}</b> de <b>${fmtN(cg.universo)}</b> credores com Ordem Bancária (<b>${cg.pct}%</b>). Os elos abaixo existem SÓ dentro desse recorte — credor ainda não percorrido não foi afastado, não foi visto. A cobertura cresce a cada varredura, nas duas máquinas.`);
+  }
   h+=leitura(esc(d.ressalva||''));
   const _lin=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px">
       <div style="min-width:0">

@@ -93,3 +93,23 @@ def test_fila_vazia_nao_e_erro(cli):
     d = _fila(cli, so_osint=1)
     assert d["ok"] is True
     assert isinstance(d["itens"], list)
+
+
+def test_elos_ocultos_declara_a_cobertura_do_grafo(cli):
+    """O denominador viaja com os elos — 39 pares sobre 9,4% do universo não é 39 sobre tudo.
+
+    Medido em 2026-08-08: o grafo tinha percorrido 1.558 dos 16.651 credores com OB e a tela dizia
+    "39 elos" sem dizer sobre quanto. Credor não percorrido não foi afastado — não foi visto, e é
+    a mesma família do gate que media o que LI em vez do que EXISTE.
+    """
+    r = cli.get("/api/osint/elos_ocultos", params={"limite": 1})
+    if r.status_code == 503:
+        pytest.skip("levantamento de elos não materializado neste ambiente")
+    d = r.json()
+    if not d.get("ok"):
+        pytest.skip(f"elos indisponíveis: {d.get('erro', '?')[:60]}")
+    cg = d.get("cobertura_grafo")
+    if cg is None:
+        pytest.skip("cobertura indisponível (banco parcial) — a rota degrada sem ela, não mente")
+    assert cg["universo"] >= cg["percorridos"] >= 0
+    assert cg["pct"] is None or 0 <= cg["pct"] <= 100

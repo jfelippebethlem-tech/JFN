@@ -4036,6 +4036,10 @@ void main(){
       "📗",
       { sobre: "Pares cujo contato compartilhado é explicado pela própria forma jurídica — filial e matriz, empresa e seu sindicato patronal, entidades do mesmo grupo declarado. Saem da fila do fiscal de propósito: acusar o que a lei organiza assim é ruído que faz o leitor desconfiar do resto." }
     )}</div>`;
+    if (d.cobertura_grafo && d.cobertura_grafo.universo) {
+      const cg = d.cobertura_grafo;
+      h += leitura(`O grafo societário percorreu <b>${fmtN(cg.percorridos)}</b> de <b>${fmtN(cg.universo)}</b> credores com Ordem Bancária (<b>${cg.pct}%</b>). Os elos abaixo existem SÓ dentro desse recorte — credor ainda não percorrido não foi afastado, não foi visto. A cobertura cresce a cada varredura, nas duas máquinas.`);
+    }
     h += leitura(esc(d.ressalva || ""));
     const _lin = (x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px">
