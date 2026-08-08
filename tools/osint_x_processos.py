@@ -253,8 +253,14 @@ def escrever(r: dict) -> tuple[str, str]:
                      else ("⚠ pago pelo próprio órgão" if g["conflito_de_orgao"]
                            else ("★ comissionado" if g["comissionado"]
                                  else "agente público no QSA")))
+            # Quando o conflito veio de um SEGUNDO vínculo (multivínculo), dizer QUAL — senão a
+            # linha mostra "TEN-CEL PM · POLÍCIA MILITAR" com sinal "autos no próprio órgão" e o
+            # fiscal não vê que o órgão dos autos é o do OUTRO vínculo (FSERJ).
+            orgao_txt = g["cargo"] + " · " + g["orgao"]
+            if g.get("orgao_conflito"):
+                orgao_txt += f" (autos no 2º vínculo: {g['orgao_conflito']})"
             L.append(f"| {i} | {a['processo']} | {sinal} | {g['nome']} | "
-                     f"{g['cargo']} · {g['orgao']} | {g['entidade']} |")
+                     f"{orgao_txt} | {g['entidade']} |")
         else:
             L.append(f"| {i} | {a['processo']} | terceiro setor | — | — | "
                      f"{', '.join(a['terceiro_setor'])} |")
