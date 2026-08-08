@@ -74,13 +74,19 @@ say "início (best-effort baixa prio, bounded)"
 export SEI_MAX_DOCS=${SEI_MAX_DOCS:-120}
 $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
-# ORÇAMENTO TOTAL + RODÍZIO (2026-08-08). São 16 UGs × até 700 s = ~3 h no pior caso, e o laço
-# vinha ANTES de recaptura/colher/fim: medido, nenhum ciclo desde 06/08 chegou ao `say "fim"`
-# porque o foco engolia o ciclo inteiro e o próximo cron o superava. Isso é INANIÇÃO dos passos
-# finais — a mesma família que o juízo do sweep_360 já sofreu. Duas guardas: (a) o foco cede
-# depois de FOCO_ORCAMENTO_S no total, deixando os passos seguintes rodarem; (b) um cursor gira o
-# ponto de partida a cada ciclo, então as UGs que ficaram de fora hoje entram primeiro amanhã —
-# todas cobertas ao longo de poucos ciclos, nenhuma faminta.
+# CAUSA-RAIZ (2026-08-08): o laço antigo era `while read -r ugcod ... < data/ugs_foco.txt`, e o
+# arquivo era o STDIN do laço. Cada UG roda `timeout --foreground python -m tools.sei_sweep`, e o
+# `--foreground` faz o filho HERDAR esse stdin; o Chromium/Playwright do sei_sweep reposiciona o
+# offset do descritor, e o `read` seguinte relê o arquivo DO TOPO — LOOP INFINITO. Medido ao vivo:
+# um ciclo rodou 3h20 fazendo três passadas das mesmas 16 UGs, sem NUNCA chegar a recaptura/colher/
+# `say "fim"`, e o guard `já rodando — pula` mantinha os ciclos novos (com o conserto) fora do ar.
+# Precisou de `kill` por PID para destravar. A ausência de `fim` desde 06/08 era isto.
+#
+# CONSERTO: `mapfile` lê o arquivo para um ARRAY antes do laço, e o `for` itera o array — o stdin
+# do filho deixa de ter qualquer efeito sobre a iteração. De brinde, duas guardas que faltavam:
+# (a) ORÇAMENTO TOTAL (FOCO_ORCAMENTO_S): o foco cede e deixa recaptura/colher/fim rodarem, contra
+# a inanição — os 16×700 s cabiam em ~3 h e sufocavam a cauda mesmo sem o loop infinito; (b) CURSOR
+# de rodízio: cada ciclo começa onde o anterior parou, então nenhuma UG fica faminta.
 FOCO_ORCAMENTO_S=${FOCO_ORCAMENTO_S:-2400}
 if [ -f data/ugs_foco.txt ]; then
   mapfile -t _UGS < <(grep -vE '^\s*#|^\s*$' data/ugs_foco.txt | awk '{print $1}')

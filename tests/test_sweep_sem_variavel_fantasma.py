@@ -113,3 +113,19 @@ def test_foco_tem_orcamento_e_rodizio():
     m = re.search(r"FOCO_ORCAMENTO_S=\$\{FOCO_ORCAMENTO_S:-(\d+)\}", sh)
     assert m and int(m.group(1)) <= 3600, (
         "orçamento do foco alto demais: precisa deixar tempo folgado para recaptura, colher e fim")
+
+
+def test_foco_nao_le_o_arquivo_como_stdin_do_laco():
+    """O laço de foco NÃO pode usar `< data/ugs_foco.txt` — é o loop infinito por stdin corrompido.
+
+    Causa-raiz medida em 2026-08-08: `while read ugcod ... < data/ugs_foco.txt` faz o arquivo ser o
+    stdin do laço; cada UG roda `timeout --foreground python -m tools.sei_sweep`, o `--foreground`
+    faz o filho herdar esse stdin, e o Chromium do sei_sweep reposiciona o offset do descritor — o
+    `read` seguinte relê o arquivo do topo, para sempre. Um ciclo rodou 3h20 em três passadas das
+    mesmas 16 UGs sem chegar a `fim`. O conserto lê para um array com `mapfile` antes do laço.
+    """
+    sh = (RAIZ / "tools" / "sweep_sei.sh").read_text(encoding="utf-8")
+    assert "mapfile -t _UGS" in sh, "o foco deixou de ler as UGs para um array — risco do loop de stdin"
+    assert "done < data/ugs_foco.txt" not in sh, (
+        "o laço de foco voltou a usar o arquivo como stdin — um filho que mexa no offset do "
+        "descritor faz o `read` reler do topo e o ciclo nunca termina")
