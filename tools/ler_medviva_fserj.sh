@@ -1,33 +1,43 @@
 #!/bin/bash
-# Leitura DIRIGIDA dos autos do caso FSERJ (dirigentes sócios de contratadas — vault:
-# casos/fserj-dirigentes-socios-de-contratadas). Os 5 processos MEDVIVA têm só captura rasa
-# (CDP, excerto de 400 chars); para achar QUEM ATESTA/AUTORIZA é preciso o teor integral.
-# Roda com o sweep PAUSADO (sessão itkava é única — duas capturas e o SEI expulsa a duplicada).
+# Leitura DIRIGIDA dos autos do caso FSERJ (vault: casos/fserj-dirigentes-socios-de-contratadas)
+# pelo CAMINHO CANÔNICO: `sweep_recaptura_integral.reler` → SR.ler(usar_cache=False) → cache
+# canônico → `arquivar` (sei_arquivar_do_cache). A 1ª versão usava sei_processo_integral, que só
+# materializa PDF + checkpoint (apagado no fim) — a ficha, o 360 e o arquivo ficavam CEGOS ao que
+# foi lido (família "reparar e verificar o EFEITO, não a ação").
+# Roda com o sweep PAUSADO (sessão itkava é única).
 set -u
 cd /home/ubuntu/JFN || exit 1
 [ -f .env ] && { set -a; . ./.env; set +a; }
 export PYTHONPATH=.
-PY=.venv/bin/python
 LOG=data/ler_medviva.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
 touch data/.pause_sei_sweep
-say "início — sweep pausado"
+say "início (canônico reler→arquivar) — sweep pausado"
 trap 'rm -f data/.pause_sei_sweep; say "flag de pausa removida"' EXIT
 
-for P in "080002/014914/2024" "080002/011699/2024" "080002/019714/2024" \
-         "080002/020069/2024" "080002/018759/2025" "080002/017280/2024"; do
-  TAG=$(echo "$P" | tr '/' '_')
-  say "lendo $P (integral, resiliente)…"
-  SEI_MAX_DOCS=200 timeout -k 120 --foreground 1800 \
-    $PY tools/sei_processo_integral.py "$P" "data/proc_integra/SEI_${TAG}.pdf" \
-    >> "$LOG" 2>&1
-  say "processo $P rc=$?"
-done
-# materializa no arquivo compacto pelo caminho canônico (nunca reimplementar)
-for P in "SEI-080002/014914/2024" "SEI-080002/011699/2024" "SEI-080002/019714/2024" \
-         "SEI-080002/020069/2024" "SEI-080002/018759/2025" "SEI-080002/017280/2024"; do
-  timeout 600 $PY -m tools.sei_arquivar_do_cache --aplicar --max 1 --so "$P" >> "$LOG" 2>&1
-  say "arquivar $P rc=$?"
-done
+.venv/bin/python - <<'PY' >> "$LOG" 2>&1
+from datetime import datetime
+from tools.sweep_recaptura_integral import reler, arquivar
+
+def say(msg):
+    print(f"[{datetime.now():%F %T}] {msg}", flush=True)
+
+PROCS = ["SEI-080002/014914/2024", "SEI-080002/011699/2024", "SEI-080002/019714/2024",
+         "SEI-080002/020069/2024", "SEI-080002/018759/2025", "SEI-080002/017280/2024"]
+for p in PROCS:
+    say(f"lendo {p} (canônico, teto 200)…")
+    try:
+        n = reler(p, 200, 1500)
+        say(f"processo {p} rc=0 lidos={n}")
+    except Exception as e:  # noqa: BLE001 — um processo ruim não derruba o lote
+        say(f"processo {p} rc=1 erro={str(e)[:120]}")
+        continue
+    try:
+        arquivar(p)
+        say(f"arquivar {p} rc=0")
+    except Exception as e:  # noqa: BLE001
+        say(f"arquivar {p} rc=1 erro={str(e)[:120]}")
+say("fim")
+PY
 say "fim"
