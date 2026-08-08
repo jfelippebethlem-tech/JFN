@@ -120,7 +120,10 @@ if [ -f data/.pause_colher_vm2 ]; then say "colheita vm2 pausada — pulei"; els
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.
-$PRIO timeout 600  $PY -m tools.sei_refichar --max 40 >> data/sei_refichar.log 2>&1; say "sei_refichar rc=$?"
+# ORÇAMENTO INTERNO (07/08/2026): antes o `timeout 600` matava a ferramenta e o log registrava
+# `rc=124` em 86% das execuções — alarme permanente, que é alarme desligado. Com `--orcamento-s`
+# ela para sozinha e sai 0; o `timeout` fica como rede de segurança, com folga.
+$PRIO timeout 700  $PY -m tools.sei_refichar --max 40 --orcamento-s 540 >> data/sei_refichar.log 2>&1; say "sei_refichar rc=$?"
 # DEPURA as fichas do cache -> tabela sei_ficha (só info relevante, queryável/cruzável c/ OBs). Idempotente.
 # A rodada normal é INCREMENTAL (só blob tocado desde a marca) e leva segundos. O teto folgado é para
 # a passada COMPLETA, que acontece com banco vazio/restaurado: medida em 502-587 s sobre 6.428 blobs.

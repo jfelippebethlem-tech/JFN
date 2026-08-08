@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import sys
 import signal
 from functools import lru_cache
 import sqlite3
@@ -90,6 +91,17 @@ def _browser_morto(exc: BaseException) -> bool:
 # Pior que o defeito era a forma dele: o passo RODAVA, escrevia no log e não entregava nada — a
 # aparência de funcionamento. Três cópias de uma configuração é convite para a quarta divergir, por
 # isso a montagem passa a ser uma só. Quem precisar mudar o UA muda aqui, para os três.
+class FalhaDeclarada(Exception):
+    """Falha JÁ diagnosticada e logada — o que falta é o código de saída dizer o mesmo.
+
+    TIPO PRÓPRIO, e não `RuntimeError`, porque `RuntimeError` é o que um crash genérico levanta:
+    a catraca `test_main_engole_excecao_de_run` simula justamente "write EPIPE — browser morreu no
+    meio" com um `RuntimeError`, e usá-lo como sinal misturaria as duas coisas — um crash de
+    verdade sairia com a mensagem de falha esperada, sem o aviso de "erro não previsto" que manda
+    alguém olhar. Ela pegou isso na primeira tentativa desta mudança.
+    """
+
+
 _UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 
@@ -1015,7 +1027,12 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
                          "contexto do navegador sem User-Agent de desktop (corrigido em 07/08) e "
                          "outra sessão SEI aberta pela mesma máquina — o SEI aceita uma por IP, "
                          "então conferir se o sweep principal ou o [pais] ainda estão no slot.")
-                    return
+                    # O CÓDIGO DE SAÍDA PRECISA CONTAR A VERDADE. Até 07/08/2026 este `return`
+                    # devolvia 0, e o sweep registrava `sei_recaptura rc=0` — 16 vezes seguidas,
+                    # para 16 slots que não recuperaram um único documento. A auditoria dos 32
+                    # passos agendados desta casa foi feita POR rc, e este passou por saudável.
+                    # Passo que não faz o que existe para fazer não pode reportar sucesso.
+                    raise FalhaDeclarada("recaptura: login itkava não completou")
                 _log("[recap] login OK — relendo…")
                 for i, x in enumerate(fila, 1):
                     if _PARAR or PAUSE.exists():
@@ -1088,9 +1105,19 @@ def main():
         else:
             asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
                             fazer_ficha=not a.sem_ficha, cnpj=a.cnpj, diario=a.diario))
+    except FalhaDeclarada as e:
+        # Falha JÁ LOGADA com diagnóstico acima — o que faltava era o código de saída dizer o
+        # mesmo. O sweep continua sem crashar (regra do dono: o sweep NUNCA crasha), mas o cron e
+        # a auditoria por rc passam a enxergar o que o log já dizia.
+        _log(f"saída com falha: {e}")
+        return 1
     except Exception as e:  # noqa: BLE001
         _log(f"ABORTADO por erro não previsto ({type(e).__name__}: {str(e)[:120]}) — saída limpa, sem crash. Cron repete.")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    # `sys.exit(main())`, não `main()`: sem isto o valor de retorno é descartado e todo passo sai
+    # com 0, que foi exatamente como 16 abortos de recaptura passaram por saudáveis na auditoria.
+    sys.exit(main())
