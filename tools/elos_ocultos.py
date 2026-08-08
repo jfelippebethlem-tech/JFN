@@ -31,10 +31,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sqlite3
 import time
-import unicodedata
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -43,74 +41,17 @@ _SAIDA = _REPO / "data" / "elos_ocultos.json"
 _SAIDA_MD = _REPO / "data" / "elos_ocultos.md"
 
 # Palavras que não distinguem grupo nenhum — sem tirá-las, "COMERCIO" casaria meia base.
-_GENERICAS = frozenset({
-    "COMERCIO", "SERVICOS", "SERVICO", "INDUSTRIA", "DISTRIBUIDORA", "EMPREENDIMENTOS",
-    "CONSTRUTORA", "ENGENHARIA", "PARTICIPACOES", "SOLUCOES", "SOLUCAO", "TECNOLOGIA",
-    "ASSOCIACAO", "INSTITUTO", "CENTRO", "CLINICA", "MEDICOS", "MEDICA", "LABORATORIO",
-    "APOIO", "ESCOLA", "ESCOLAR", "UNIDADES", "UNIDADE", "GESTAO", "ADMINISTRACAO",
-    "GERAIS", "GERAL", "INTEGRADA", "INTEGRADAS", "INTEGRADO", "INTEGRADOS",
-    "TERCEIRIZADOS", "TERCEIRIZADA", "TECNICOS", "TECNICA", "ESPECIALIZADA",
-    "TRANSPORTES", "LTDA", "EIRELI", "SOCIEDADE", "GRUPO", "BRASIL", "RIO", "NACIONAL",
-    # BOILERPLATE JURÍDICO — nunca é marca. Medido em 2026-08-08: "OI S.A. - EM RECUPERAÇÃO
-    # JUDICIAL" virava marca "RECUPERACAO" (porque "OI", de 2 letras, era pulado), e o par
-    # OI S.A. × OI MÓVEL caía no bucket "sem explicação" como se fosse elo oculto. Situação
-    # jurídica não distingue empresa: duas falidas quaisquer não são o mesmo grupo.
-    "RECUPERACAO", "JUDICIAL", "EXTRAJUDICIAL", "LIQUIDACAO", "FALENCIA", "FALIDA", "MASSA",
-    "EPP", "ME", "SA", "CIA", "COMPANHIA", "EMPRESA", "COMERCIAL", "PRODUTOS", "MATERIAIS",
-    # preposições/artigos curtos: sem eles, "EM" (de "EM RECUPERAÇÃO") entrava nos tokens e
-    # quebrava a comparação por prefixo — "OI EM" ≠ "OI MOVEL EM".
-    "EM", "NA", "NO", "DA", "DE", "DO", "AS", "OS", "DAS", "DOS", "COM", "PARA", "POR",
-})
 
-
-def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
-    return re.sub(r"[^A-Za-z ]", " ", s).upper()
 
 
 import re as _re
+
+from compliance_agent.osint.marca_grupo import mesmo_grupo
+
 _RX_EMAIL = _re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 
 
-def _marca(razao: str) -> str:
-    """Primeira palavra distintiva da razão social — a 'marca' aparente.
 
-    `OI S.A. - EM RECUPERAÇÃO JUDICIAL` e `OI MÓVEL S.A.` compartilham `OI`; `TAPEVAS SOLUÇÕES` e
-    `TAPEVAS SOLUÇÃO` compartilham `TAPEVAS`. Palavra genérica não vale: sem essa lista, `COMERCIO`
-    uniria meia base num grupo econômico imaginário.
-    """
-    for p in _norm(razao).split():
-        if len(p) >= 3 and p not in _GENERICAS:
-            return p
-    return ""
-
-
-def _tokens_marca(razao: str) -> list[str]:
-    """Tokens distintivos (sem genéricas nem boilerplate), na ordem — para comparar por prefixo."""
-    return [p for p in _norm(razao).split() if len(p) >= 2 and p not in _GENERICAS]
-
-
-def _mesmo_grupo(razao_a: str, razao_b: str) -> str:
-    """Marca comum aparente, ou vazio. Duas vias, ambas conservadoras:
-
-    1. MESMA MARCA: a primeira palavra distintiva (≥3) coincide — o caso comum.
-    2. PREFIXO DE TOKENS: os tokens distintivos de uma são prefixo dos da outra e o primeiro token
-       coincide — pega matriz/subsidiária cujo nome curto é estendido ("OI" ⊂ "OI MÓVEL",
-       "LIGHT" ⊂ "LIGHT SERVIÇOS"). Sem isto, marca de 2 letras (pulada pelo limiar ≥3) some.
-
-    O prefixo exige o PRIMEIRO token igual de propósito: "SERVIÇOS X" e "SERVIÇOS Y" não viram grupo
-    porque SERVIÇOS é genérica e cai fora dos tokens; mas "ALFA" e "ALFA BETA" viram, e é o que se
-    quer. Conservador porque marcar grupo à toa ESCONDE um elo real da fila do fiscal.
-    """
-    ma, mb = _marca(razao_a), _marca(razao_b)
-    if ma and ma == mb:
-        return ma
-    ta, tb = _tokens_marca(razao_a), _tokens_marca(razao_b)
-    if ta and tb and ta[0] == tb[0]:
-        curto, longo = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
-        if longo[: len(curto)] == curto:
-            return curto[0]
-    return ""
 
 
 def levantar(db: str = "") -> dict:
@@ -168,7 +109,7 @@ def levantar(db: str = "") -> dict:
         if chave in vistos:
             continue
         vistos.add(chave)
-        grupo = _mesmo_grupo(razao.get(ca, na), razao.get(cb, nb))
+        grupo = mesmo_grupo(razao.get(ca, na), razao.get(cb, nb))
         itens.append({
             "a": razao.get(ca, na), "cnpj_a": ca, "pago_a": pago.get(ca, 0.0),
             "b": razao.get(cb, nb), "cnpj_b": cb, "pago_b": pago.get(cb, 0.0),

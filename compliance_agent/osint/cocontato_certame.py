@@ -33,12 +33,12 @@ from __future__ import annotations
 
 import re
 import sqlite3
-import unicodedata
 from collections import defaultdict
 from pathlib import Path
 
 from compliance_agent.contratos.parecer import foro_do_contrato
 from compliance_agent.osint.contato_compartilhado import _de_servico
+from compliance_agent.osint.marca_grupo import mesmo_grupo
 
 __all__ = ["levantar", "TETO_USO_CONTATO"]
 
@@ -49,22 +49,8 @@ _ESTAB = Path(__file__).resolve().parents[2] / "data" / "receita_estab.db"
 # uniria todos os clientes dela num cartel imaginário.
 TETO_USO_CONTATO = 5
 
-_GENERICAS = frozenset({
-    "COMERCIO", "COMERCIAL", "SERVICOS", "SERVICO", "INDUSTRIA", "DISTRIBUIDORA", "SOLUCOES",
-    "LTDA", "EIRELI", "IMPORTACAO", "EXPORTACAO", "PRODUTOS", "EQUIPAMENTOS", "MATERIAIS",
-})
 
 
-def _norm(s: str) -> str:
-    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
-    return re.sub(r"[^A-Za-z ]", " ", s).upper()
-
-
-def _marca(razao: str) -> str:
-    for p in _norm(razao).split():
-        if len(p) >= 4 and p not in _GENERICAS:
-            return p
-    return ""
 
 
 def levantar(con: sqlite3.Connection, estab: Path = _ESTAB) -> dict:
@@ -150,8 +136,8 @@ def levantar(con: sqlite3.Connection, estab: Path = _ESTAB) -> dict:
                         servico = uso_tel[comum[0]] > TETO_USO_CONTATO
                 if not via:
                     continue
-                ma, mb = _marca(razao.get(a[:8], nome.get(a, ""))), \
-                    _marca(razao.get(b[:8], nome.get(b, "")))
+                grupo = mesmo_grupo(razao.get(a[:8], nome.get(a, "")),
+                                    razao.get(b[:8], nome.get(b, "")))
                 # O FORO VAI COM O ACHADO. Dos 28 pares sem explicação, **16 são de órgão FEDERAL**
                 # (11 da FIOCRUZ, mais Ministério da Saúde, Marinha, Exército e Aeronáutica) — vão
                 # ao TCU, não ao TCE-RJ. Esta casa já mandou 12 notas ao tribunal errado por não
@@ -163,7 +149,7 @@ def levantar(con: sqlite3.Connection, estab: Path = _ESTAB) -> dict:
                     "cnpj_b": b, "nome_b": nome.get(b, ""),
                     "via": via, "tipo": "mesmo_contador" if servico else tipo,
                     "contato_de_servico": servico,
-                    "mesmo_grupo_aparente": bool(ma and ma == mb), "marca": ma if ma == mb else "",
+                    "mesmo_grupo_aparente": bool(grupo), "marca": grupo,
                     "esfera": esfera, "corte": corte,
                 })
     pares.sort(key=lambda x: (x["contato_de_servico"], x["mesmo_grupo_aparente"]))

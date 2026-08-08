@@ -21,7 +21,9 @@ from __future__ import annotations
 
 import pytest
 
-from tools.elos_ocultos import _mesmo_grupo
+# módulo CANÔNICO — a mesma lógica alimenta elos_ocultos E cocontato_certame; testá-la aqui
+# cobre os dois consumidores de uma vez.
+from compliance_agent.osint.marca_grupo import mesmo_grupo as _mesmo_grupo
 
 
 @pytest.mark.parametrize("a,b,e_grupo", [
@@ -46,7 +48,7 @@ def test_mesmo_grupo_pega_o_obvio_sem_agrupar_o_alheio(a, b, e_grupo):
 
 def test_boilerplate_juridico_nunca_e_marca():
     """Duas empresas quaisquer em recuperação judicial não são o mesmo grupo pela situação."""
-    from tools.elos_ocultos import _marca
+    from compliance_agent.osint.marca_grupo import marca as _marca
     assert _marca("XYZ COMERCIO - EM RECUPERACAO JUDICIAL") != "RECUPERACAO"
     assert _marca("ABC INDUSTRIA - MASSA FALIDA") not in ("MASSA", "FALIDA")
     # e o par de falidas SEM marca comum não vira grupo
