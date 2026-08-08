@@ -55,15 +55,53 @@ def medir() -> dict:
             "_processos_avaliados": sum(f["faixas"].values())}
 
 
+# DERIVA ORGÂNICA ≠ REGRESSÃO DE DETECTOR — e a fronteira mudou em 2026-08-08. Enquanto a
+# recaptura esteve morta (47 slots, 47 abortos), o acervo era parado e QUALQUER variação era
+# suspeita: a comparação exata funcionava. Com a recaptura viva, o acervo evolui a cada slot —
+# processos saem de NAO_AVALIAVEL quando seus documentos chegam, e cada um traz os achados do que
+# agora se lê. Exigir igualdade exata faria a catraca reprovar TODA rodada, e a regravação diária
+# viraria carimbo — alarme permanente é alarme desligado, que foi exatamente como o aborto da
+# recaptura ficou invisível por quatro dias.
+#
+# O que esta catraca EXISTE para pegar (e continua pegando sem tolerância):
+#   · código·grau que SOME (família zerada — detector desligado ou quebrado);
+#   · código·grau que NASCE (família nova — detector novo ou mudado);
+#   · salto de família (o "40 → 400" que motivou o baseline).
+# O que passa a ser tolerado (impresso, nunca escondido): variação pequena de família existente —
+# a assinatura do acervo crescendo, não do motor mudando.
+_TOLERANCIA_ABS = 5      # até 5 itens de variação numa família existente é deriva de coleta
+_TOLERANCIA_REL = 0.25   # ou 25% da base, o que for MAIOR — família grande pode derivar mais
+
+
+def _organico(va: int, vb: int) -> bool:
+    """Variação compatível com o acervo crescendo — nunca com família nascendo ou morrendo."""
+    if va == 0 or vb == 0:
+        return False
+    return abs(vb - va) <= max(_TOLERANCIA_ABS, int(va * _TOLERANCIA_REL))
+
+
 def comparar(base: dict, agora: dict) -> list[str]:
-    """Linhas do diff, vazio quando idênticos. Compara faixas e código·grau."""
+    """Linhas que ALARMAM (vazio = saudável). Deriva orgânica sai em `comparar_tudo`, não aqui."""
+    fora: list[str] = []
+    for chave in ("faixas", "graus"):
+        a, b = base.get(chave) or {}, agora.get(chave) or {}
+        for k in sorted(set(a) | set(b)):
+            va, vb = int(a.get(k, 0)), int(b.get(k, 0))
+            if va != vb and not _organico(va, vb):
+                fora.append(f"{chave}: {k:52s} {va:6d} → {vb:6d}  ({vb - va:+d})")
+    return fora
+
+
+def comparar_tudo(base: dict, agora: dict) -> list[str]:
+    """TODAS as variações, incluindo as toleradas — para o diff impresso não esconder nada."""
     fora: list[str] = []
     for chave in ("faixas", "graus"):
         a, b = base.get(chave) or {}, agora.get(chave) or {}
         for k in sorted(set(a) | set(b)):
             va, vb = int(a.get(k, 0)), int(b.get(k, 0))
             if va != vb:
-                fora.append(f"{chave}: {k:52s} {va:6d} → {vb:6d}  ({vb - va:+d})")
+                marca = "" if not _organico(va, vb) else "   (deriva orgânica — tolerada)"
+                fora.append(f"{chave}: {k:52s} {va:6d} → {vb:6d}  ({vb - va:+d}){marca}")
     return fora
 
 
@@ -90,7 +128,7 @@ def main() -> int:
     if a.gravar:
         gravar(agora, date.today().isoformat())
         print(f"baseline regravado em {ALVO}")
-        for x in linhas:
+        for x in comparar_tudo(base, agora):
             print("  " + x)
         return 0
     if not linhas:

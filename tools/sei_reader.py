@@ -204,22 +204,54 @@ async def _extrair_de_todos_frames(pg) -> dict:
 
 
 def _grava_cache_atomico(cache_file, res: dict) -> None:
-    """Grava o cdp_*.json ATÔMICO (tmp+rename por PID). write_text direto deixava JSON RASGADO
-    quando o processo era morto por timeout no meio do write (o refichar flagrou 'JSON inválido'
-    em caches de 06/22-jun). Fix 2026-07-10."""
-    import json as _json
+    """Grava o cdp_*.json ATÔMICO e SEM PERDER o que o cache anterior já tinha de texto.
+
+    Atômico desde 2026-07-10 (tmp+rename por PID): write_text direto deixava JSON RASGADO quando o
+    processo era morto por timeout no meio do write.
+
+    FUSÃO desde 2026-08-08, e ela nasceu de um caso real: a recaptura releu o
+    SEI-030001/005866/2026 com o teto levantado e a sessão trouxe 100 documentos com texto — o
+    cache anterior tinha 101. A gravação sobrescrevia, e o documento que só a leitura antiga tinha
+    (um doc pode falhar individualmente nesta sessão e ter vindo na anterior) era APAGADO por uma
+    rotina que existe para SOMAR. A guarda de leitura truncada não pega isso: ela só veta quando o
+    browser morre. Regra: o que a leitura nova traz MANDA (conteúdo mais fresco vence); o que só o
+    cache antigo tem é RESGATADO, identificado pelo campo `doc` (título + número SEI). Texto pago
+    não se perde numa releitura pior.
+
+    E a escrita passa por `escrever_json`, que PRESERVA a forma em disco: 5.660 dos 6.195 blobs
+    estão em `.json.zst`, e o gravador antigo escrevia sempre `.json` — deixando dois blobs do
+    mesmo processo, um novo e um velho comprimido, que é exatamente a dupla contagem que a fila de
+    recaptura teve de deduplicar.
+    """
+    from compliance_agent.sei.cache_arquivo import escrever_json as _ej, ler_json as _lj
+
     # `anexo_bytes` é o PDF ORIGINAL, útil só EM MEMÓRIA para quem arquiva na mesma execução.
     # No disco ele passava pelo `default=str` e virava a repr `b'%PDF-...'` — lixo irrecuperável
     # que inflava o cache em ~400×: um único processo gravou 127 MB de anexo contra 302 KB de
     # texto (2026-08-02). Some do JSON; o objeto devolvido ao chamador segue intacto.
     limpo = dict(res)
+    # no TOPO também: o gravador antigo serializava bytes via `default=str` e virava lixo;
+    # `escrever_json` é estrito e explodiria. Bytes nunca vão ao disco, em nenhum nível.
+    limpo = {k: v for k, v in limpo.items() if not isinstance(v, (bytes, bytearray))}
     if isinstance(limpo.get("conteudo_documentos"), list):
         limpo["conteudo_documentos"] = [
             {k: v for k, v in d.items() if k != "anexo_bytes"} if isinstance(d, dict) else d
             for d in limpo["conteudo_documentos"]]
-    tmp = cache_file.with_name(f"{cache_file.name}.{os.getpid()}.tmp")
-    tmp.write_text(_json.dumps(limpo, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    tmp.replace(cache_file)
+    antigo = _lj(cache_file)
+    if isinstance(antigo, dict) and isinstance(limpo.get("conteudo_documentos"), list):
+        novos = limpo["conteudo_documentos"]
+        vistos = {str(d.get("doc")) for d in novos if isinstance(d, dict)}
+        resgatados = [d for d in (antigo.get("conteudo_documentos") or [])
+                      if isinstance(d, dict) and d.get("conteudo")
+                      and str(d.get("doc")) not in vistos]
+        if resgatados:
+            limpo["conteudo_documentos"] = novos + resgatados
+            # o CHAMADOR também precisa ver a união — a recaptura conta o ganho pelo retorno,
+            # e um resgate invisível ao contador viraria "releitura sem ganho" no progresso.
+            res["conteudo_documentos"] = list(res.get("conteudo_documentos") or []) + resgatados
+            logger.info("cache %s: %d doc(s) do cache anterior resgatado(s) na fusão",
+                        Path(cache_file).name, len(resgatados))
+    _ej(cache_file, limpo)
 
 
 def _dec_sei(body: bytes) -> str:

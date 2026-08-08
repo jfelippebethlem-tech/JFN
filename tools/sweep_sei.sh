@@ -12,6 +12,12 @@ cd /home/ubuntu/JFN || exit 1
 [ -f .env ] && { set -a; . ./.env; set +a; }
 export PYTHONPATH=.
 PY=.venv/bin/python
+# REPO existe porque a linha do colher_vm2 o usava SEM defini-lo — e com `set -u` o shell morre
+# ali mesmo. Medido em 2026-08-08: NENHUM `say "fim"` no log desde que o bloco entrou (06/08
+# 21:58), e todo passo depois da linha do colher (cpf, refichar, depurar, árvore, direc, lex)
+# ficou um dia e meio sem rodar, calado. `set -u` protege — mas só grita no stderr do cron, que
+# ninguém lê; o sentinela de "fim" é o que se pode auditar.
+REPO=/home/ubuntu/JFN
 LOG=data/sweep_sei.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
