@@ -73,11 +73,23 @@ PYTHONPATH="$REPO" timeout 900 "$PY" -m tools.colher_vm2_grafo --aplicar >> "$LO
 # A recaptura não precisa do arquivo local: precisa do NÚMERO, e lê tudo do SEI. São 156 KB de
 # JSON. Falha aqui não derruba a colheita — o cron repete.
 say "levando a fila de recaptura para a VM-2 (para ela dividir a carga)…"
-PYTHONPATH="$REPO" timeout 300 "$PY" -c \
-  "from tools.sweep_recaptura_integral import exportar_compartilhada as e; print(e())" \
-  >> "$LOG" 2>&1 \
-  && timeout 180 rsync -az --timeout=60 "$REPO/data/fila_recaptura_compartilhada.json" \
-       vm2:~/JFN/data/ >> "$LOG" 2>&1 \
-  && say "fila exportada e entregue" || say "não consegui entregar a fila (segue o baile)"
+# O CUSTO FOI MEDIDO ANTES DO TETO: a exportação varre ~6.000 blobs comprimidos e leva ~7 min —
+# o `timeout 300` original a matava TODA passada, e a primeira execução real registrou "não
+# consegui entregar" com a colheita inteira saudável. E não precisa ser fresca a cada passada:
+# quem consome (a recaptura da VM-2) filtra pelo próprio progresso o que já fez, então uma fila
+# de até 6 h serve igual. Regenera só quando envelhece; ENTREGA sempre (156 KB, barato).
+FILA_RECAP="$REPO/data/fila_recaptura_compartilhada.json"
+if [ -z "$(find "$FILA_RECAP" -mmin -360 2>/dev/null)" ]; then
+  PYTHONPATH="$REPO" timeout 600 "$PY" -c \
+    "from tools.sweep_recaptura_integral import exportar_compartilhada as e; print(e())" \
+    >> "$LOG" 2>&1 || say "exportação da fila estourou o teto — entrego a anterior"
+fi
+if [ -f "$FILA_RECAP" ]; then
+  timeout 180 rsync -az --timeout=60 "$FILA_RECAP" vm2:~/JFN/data/ >> "$LOG" 2>&1 \
+    && say "fila entregue ($(stat -c%s "$FILA_RECAP") bytes, gerada $(date -r "$FILA_RECAP" '+%H:%M'))" \
+    || say "não consegui entregar a fila (segue o baile)"
+else
+  say "sem fila para entregar — a exportação nunca completou nesta máquina"
+fi
 
 say "fim (rc=$?) — arquivo local: $(ls "$REPO/data/sei_arquivo" | wc -l) processos"
