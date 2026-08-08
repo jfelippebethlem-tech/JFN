@@ -99,7 +99,12 @@ if [ -f data/ugs_foco.txt ]; then
         say "foco: orçamento de ${FOCO_ORCAMENTO_S}s esgotado após $_feitas UG(s) — cedendo aos passos finais"; break
       fi
       ugcod=${_UGS[$(( (_CUR + _i) % _N ))]}
-      $PRIO timeout -k 120 --foreground 700 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
+      # TETO DO SLOT ≥ CUSTO DE UM PROCESSO. Medido em 2026-08-08: com SEI_MAX_DOCS=120 um
+      # processo grande custa ~750 s de leitura + ~130 s de fila/login. Com teto de 700 s as UGs
+      # de processo grande (180100, 210700, 294200…) morriam rc=137 NO MEIO do 1º processo, toda
+      # passada, perdendo a leitura em voo — rodavam sempre e nunca produziam. 1500 s cabe 1
+      # grande ou 2 médios; o ORÇAMENTO total acima segue limitando o foco inteiro.
+      $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
       _feitas=$((_feitas+1))
     done
     echo $(( (_CUR + _feitas) % _N )) > data/.foco_cursor   # onde o próximo ciclo começa
