@@ -73,22 +73,31 @@ def identificar(assinaturas: list[dict], pcrj: Path = _PCRJ) -> dict:
     con = sqlite3.connect(f"file:{pcrj}?mode=ro", uri=True)
     quem: dict[str, dict] = {}
     try:
-        for m in mats:
-            try:
-                n = int(m)
-            except ValueError:
-                continue
-            r = con.execute(
-                "SELECT nome, orgao, sigla_ua, tipo_folha, MAX(competencia), MIN(competencia) "
-                "FROM pcrj_folha_pref WHERE CAST(matricula AS INTEGER) = ? "
-                "GROUP BY nome ORDER BY COUNT(*) DESC LIMIT 2", (n,)).fetchall()
-            if not r:
-                continue
-            # DUAS PESSOAS NA MESMA MATRÍCULA é homônimo de cadastro, não identificação:
-            # a matrícula fica marcada como ambígua em vez de eleger a mais frequente.
-            quem[m] = {"nome": r[0][0], "orgao": r[0][1], "unidade": r[0][2],
-                       "tipo_folha": r[0][3], "ate": r[0][4], "desde": r[0][5],
-                       "ambigua": len(r) > 1}
+        # UMA VARREDURA PARA TODAS, não uma por matrícula. `CAST(matricula AS INTEGER)` impede
+        # índice, então cada consulta era uma varredura COMPLETA das 12,1 milhões de linhas —
+        # medida: 42 s. Com 69 matrículas, ~48 min contra um teto de 600 s: o passo do sweep
+        # registrou rc=124 na única execução da vida e nunca materializou o JSON. Uma varredura
+        # única com `IN` custa os mesmos 42 s UMA vez, e o agrupamento vira Python.
+        numeros = sorted({int(m) for m in mats if m.isdigit()})
+        if numeros:
+            ph = ",".join("?" * len(numeros))
+            bruto: dict[int, dict[str, dict]] = {}
+            for n, nome, orgao_, ua, tf, ate, desde, freq in con.execute(
+                    f"SELECT CAST(matricula AS INTEGER), nome, orgao, sigla_ua, tipo_folha, "
+                    f"MAX(competencia), MIN(competencia), COUNT(*) FROM pcrj_folha_pref "
+                    f"WHERE CAST(matricula AS INTEGER) IN ({ph}) "
+                    f"GROUP BY 1, nome", numeros):
+                bruto.setdefault(int(n), {})[nome] = {
+                    "nome": nome, "orgao": orgao_, "unidade": ua, "tipo_folha": tf,
+                    "ate": ate, "desde": desde, "_freq": freq}
+            for m in mats:
+                if not m.isdigit() or int(m) not in bruto:
+                    continue
+                nomes = sorted(bruto[int(m)].values(), key=lambda x: -x["_freq"])
+                # DUAS PESSOAS NA MESMA MATRÍCULA é homônimo de cadastro, não identificação:
+                # a matrícula fica marcada como ambígua em vez de eleger a mais frequente.
+                quem[m] = {k: v for k, v in nomes[0].items() if k != "_freq"}
+                quem[m]["ambigua"] = len(nomes) > 1
     finally:
         con.close()
 

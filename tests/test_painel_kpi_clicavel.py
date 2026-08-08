@@ -336,3 +336,18 @@ def test_drill_se_completo_sempre_tem_caminho_de_reserva():
     assert not sem_reserva, (
         "`drillSeCompleto` sem `||{sobre:...}` — o KPI fica MUDO quando a lista vem cortada:\n" +
         "\n".join(f"  • {s}" for s in sem_reserva))
+
+
+def test_gaveta_tem_teto_de_renderizacao():
+    """Gaveta de 12.640 linhas NÃO ABRE — e o KPI parecia clicável.
+
+    Medido em campo (2026-08-08) pela sondagem ressuscitada: `pessoasIdentificadas` registrava a
+    gaveta completa — honesta no número — e o clique travava a página montando 12,6 mil cards; a
+    sondagem via "gaveta mostra None". Gaveta é instrumento de CONFERÊNCIA, não de exportação:
+    acima do teto, `drillSeCompleto` devolve null e o KPI cai para a procedência, que explica o
+    universo. O número continua verdadeiro; muda o veículo.
+    """
+    drill = (RAIZ / "static" / "js" / "src" / "nucleo" / "drill.js").read_text(encoding="utf-8")
+    assert "TETO_LINHAS_GAVETA" in drill, "o teto de renderização da gaveta sumiu"
+    assert "lista.length > TETO_LINHAS_GAVETA" in drill, (
+        "a guarda de completude deixou de aplicar o teto — KPI gigante volta a fingir que abre")

@@ -67,9 +67,20 @@ export function registrarDrill(nome, { titulo, itens, render, nota }) {
 export function drillSeCompleto(nome, total, itens, cfg) {
   const lista = itens || [];
   if (total == null || Number(total) !== lista.length) return null;
+  /* TETO DE RENDERIZAÇÃO, medido em campo (2026-08-08): o KPI de 12.640 pessoas registrava a
+     gaveta completa — honesta no número — e o clique NÃO ABRIA: montar 12,6 mil cards num
+     innerHTML só trava a página, e a sondagem via "gaveta mostra None". Gaveta é instrumento de
+     CONFERÊNCIA, não de exportação: acima do teto o KPI cai para a procedência (`sobre`), que
+     explica o universo — e quem precisa da lista inteira usa a rota/planilha. O número continua
+     verdadeiro; o que muda é o veículo. */
+  if (lista.length > TETO_LINHAS_GAVETA) return null;
   registrarDrill(nome, { ...(cfg || {}), itens: lista });
   return { drill: nome };
 }
+
+/* 800 cards renderizam em ~1-2 s na VM e num notebook comum; 12.640 travam. O valor é exportado
+   para o teste de contrato poder citá-lo. */
+export const TETO_LINHAS_GAVETA = 800;
 
 /** Limpa o registro da aba anterior — conjunto velho reaparecendo em tela nova é pior que nenhum. */
 export function limparDrill() { _REG.clear(); }

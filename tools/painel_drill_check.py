@@ -51,7 +51,21 @@ def _abrir_e_contar(pg, nome: str, estaveis: int = 2, tentativas: int = 12) -> i
     declara o total no rodapé. Contar durante a montagem produz número menor e acusa divergência
     que não existe.
     """
-    pg.click(f'[data-drill="{nome}"]')
+    # CLIQUE COM TETO PRÓPRIO E FALHA LOCAL. O clique padrão espera 30 s e LEVANTA — e um único
+    # elemento coberto por overlay (ou re-renderizado no meio) derrubava a sondagem INTEIRA com
+    # rc=1: foi a única execução da vida deste passo no sweep, e o painel ficou sem vigia sem
+    # ninguém saber. Elemento que não aceita clique é ACHADO da sondagem, não morte dela.
+    from playwright.sync_api import Error as _PWError
+
+    try:
+        # `force=True` PULA a espera de "estabilidade" do Playwright — e isso é deliberado. Seis
+        # KPIs (e_poder, e_conluio, p_comis, g_vinculos) têm animação CSS contínua no card; o
+        # critério de estabilidade (caixa imóvel entre frames) nunca fecha e o clique estoura o
+        # teto SEM o elemento estar inacessível — humano clica normal, animação não bloqueia
+        # ponteiro. A sondagem mede o HANDLER (gaveta abre? número bate?), não a física do clique.
+        pg.click(f'[data-drill="{nome}"]', timeout=8000, force=True)
+    except _PWError as e:
+        return {"_erro_clique": f"{type(e).__name__}: {str(e)[:100]}"}
     anterior, iguais = None, 0
     for _ in range(tentativas):
         pg.wait_for_timeout(700)
@@ -99,7 +113,13 @@ def checar(abas=ABAS, espera_ms: int = 9000) -> dict:
             pg.wait_for_timeout(3000)
             prep = PREPARO.get(aba)
             if prep and pg.query_selector(prep):
-                pg.click(prep)
+                from playwright.sync_api import Error as _PWError
+
+                try:
+                    pg.click(prep, timeout=8000, force=True)
+                except _PWError as e:
+                    erros.append(f"preparo de {aba} não clicável: {type(e).__name__}")
+                    continue
                 pg.wait_for_timeout(espera_ms)
             nomes = pg.evaluate(
                 "() => Array.from(document.querySelectorAll('[data-drill]'))"
@@ -112,6 +132,10 @@ def checar(abas=ABAS, espera_ms: int = 9000) -> dict:
                     nome)
                 esperado = _num(valor or "")
                 visto = _abrir_e_contar(pg, nome)
+                if isinstance(visto, dict):
+                    achados.append({"aba": aba, "metrica": nome, "kpi": valor,
+                                    "gaveta": None, "erro": visto["_erro_clique"]})
+                    continue
                 if esperado is None:
                     continue
                 if visto != esperado:
@@ -138,7 +162,8 @@ def main() -> int:
     r = checar(tuple(a.aba) if a.aba else ABAS)
     print(f"métricas clicadas: {r['metricas_clicadas']}")
     for d in r["divergencias"]:
-        print(f"  ✗ {d['aba']}/{d['metrica']}: KPI diz {d['kpi']}, a gaveta mostra {d['gaveta']}")
+        extra = f" — {d['erro']}" if d.get("erro") else ""
+        print(f"  ✗ {d['aba']}/{d['metrica']}: KPI diz {d['kpi']}, a gaveta mostra {d['gaveta']}{extra}")
     for e in r["erros_de_pagina"]:
         print(f"  ✗ {e[:140]}")
     ok = not r["divergencias"] and not r["erros_de_pagina"]

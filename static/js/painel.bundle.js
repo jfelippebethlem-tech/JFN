@@ -129,9 +129,11 @@
   function drillSeCompleto(nome, total, itens, cfg) {
     const lista = itens || [];
     if (total == null || Number(total) !== lista.length) return null;
+    if (lista.length > TETO_LINHAS_GAVETA) return null;
     registrarDrill(nome, { ...cfg || {}, itens: lista });
     return { drill: nome };
   }
+  var TETO_LINHAS_GAVETA = 800;
   function abrirDrill(nome) {
     const d = _REG.get(nome);
     const alvo = $("drill-out") || $("view");
