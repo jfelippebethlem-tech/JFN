@@ -91,3 +91,32 @@ def test_email_de_servico_e_reconferido_na_leitura():
     desc2 = "e-mail flavios496@hotmail.com · 09175434000105 × 21116118000311"
     m2 = _RX_EMAIL.search(desc2)
     assert m2 and not _de_servico(m2.group(0))
+
+
+def test_grupo_declarado_no_qsa(tmp_path):
+    """VALID × CONTIPLAN dividiam 2 diretores no QSA e a RIOPAR é SÓCIA da MAIS MOBI — vínculo
+    PÚBLICO que o cotejo de marca não vê. Elo oculto é o NÃO declarado (medido 2026-08-08)."""
+    import sqlite3
+
+    from tools.elos_ocultos import grupo_declarado_no_qsa
+
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE socios_receita (cnpj_basico TEXT, nome_socio TEXT, doc_socio TEXT)")
+    con.executemany("INSERT INTO socios_receita VALUES (?,?,?)", [
+        ("33113309", "ILSON ROQUE BRESSAN", "***111*"),
+        ("33113309", "OLAVO REGAL MAIA MENDES VAZ", "***222*"),
+        ("66605734", "ILSON ROQUE BRESSAN", "***111*"),
+        ("16727386", "ARMANDO GALHARDO", "***333*"),
+        ("57929012", "RIOPAR PARTICIPACOES S.A.", "16727386000100"),
+        ("99999999", "FULANO QUALQUER", "***444*"),
+    ])
+    # sócio PF em comum (nome+doc)
+    assert "BRESSAN" in grupo_declarado_no_qsa(con, "33113309", "66605734")
+    # uma empresa é sócia da outra (PJ no QSA) — casa pelo NOME da razão social
+    assert "sócia" in grupo_declarado_no_qsa(
+        con, "16727386", "57929012", "RIOPAR PARTICIPACOES S.A.", "MAIS MOBI SERVICOS LTDA")
+    # sem vínculo declarado → segue elo
+    assert grupo_declarado_no_qsa(con, "33113309", "99999999") == ""
+    # homônimo com DOC diferente NÃO agrupa
+    con.execute("INSERT INTO socios_receita VALUES ('99999999','ILSON ROQUE BRESSAN','***555*')")
+    assert grupo_declarado_no_qsa(con, "33113309", "99999999") == ""

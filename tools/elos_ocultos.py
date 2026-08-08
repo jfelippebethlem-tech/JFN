@@ -54,6 +54,35 @@ _RX_EMAIL = _re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 
 
 
+def grupo_declarado_no_qsa(con: sqlite3.Connection, raiz_a: str, raiz_b: str,
+                           razao_a: str = "", razao_b: str = "") -> str:
+    """Vínculo PÚBLICO entre as duas raízes no QSA da Receita — sócio em comum (nome+doc) ou uma
+    empresa sócia da outra. Elo OCULTO é o vínculo não declarado; sócio em comum é declarado.
+
+    Medido em 2026-08-08: os dois "elos reais" do topo da fila eram grupo declarado — VALID ×
+    CONTIPLAN dividem DOIS diretores no QSA (Bressan, Olavo Vaz) e a RIOPAR é SÓCIA da MAIS MOBI.
+    O cotejo de marca não os via (nomes nada parecidos); o QSA via. Devolve o rótulo do vínculo
+    ('' = nenhum declarado).
+    """
+    sa = {(r[0] or "", r[1] or "") for r in con.execute(
+        "SELECT nome_socio, doc_socio FROM socios_receita WHERE cnpj_basico=?", (raiz_a,))}
+    if not sa:
+        return ""
+    sb = {(r[0] or "", r[1] or "") for r in con.execute(
+        "SELECT nome_socio, doc_socio FROM socios_receita WHERE cnpj_basico=?", (raiz_b,))}
+    if not sb:
+        return ""
+    comum = sorted(n for n, _ in sa & sb)
+    nomes_a, nomes_b = {n for n, _ in sa}, {n for n, _ in sb}
+    cruzado = []
+    if razao_b and razao_b.strip().upper() in {n.strip().upper() for n in nomes_a}:
+        cruzado.append(f"{razao_b} é sócia")
+    if razao_a and razao_a.strip().upper() in {n.strip().upper() for n in nomes_b}:
+        cruzado.append(f"{razao_a} é sócia")
+    partes = comum + cruzado
+    return ("QSA: " + "; ".join(partes))[:120] if partes else ""
+
+
 def levantar(db: str = "") -> dict:
     from compliance_agent.osint.contato_compartilhado import explicacao_estrutural
     from compliance_agent.reporting.intel_base import _DB
@@ -119,6 +148,19 @@ def levantar(db: str = "") -> dict:
             "marca": grupo,
             "peso": (pago.get(ca, 0.0) + pago.get(cb, 0.0)),
         })
+    # GRUPO DECLARADO NO QSA — o vínculo público que o cotejo de MARCA não vê (ver docstring de
+    # `grupo_declarado_no_qsa`). Só consulta os pares que sobraram sem explicação (~dezenas).
+    con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True)
+    try:
+        for x in itens:
+            if x["mesmo_grupo_aparente"]:
+                continue
+            rot = grupo_declarado_no_qsa(con, x["cnpj_a"], x["cnpj_b"], x["a"], x["b"])
+            if rot:
+                x["mesmo_grupo_aparente"] = True
+                x["marca"] = rot
+    finally:
+        con.close()
     itens.sort(key=lambda x: -x["peso"])
     return {"arestas_de_contato": total, "estruturais": estrutural,
             "contador_compartilhado_reclassificado": servico,
