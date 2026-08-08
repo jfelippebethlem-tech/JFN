@@ -161,7 +161,17 @@ def correlacionar(db: str = "") -> dict:
         finally:
             est.close()
 
-    from tools.agente_publico_reverso import conflito_de_orgao, explicacao_institucional
+    from tools.agente_publico_reverso import conflito_de_orgao, explicacao_institucional, norm
+
+    # TODOS os vínculos da pessoa, não só o que a fila curada elegeu. Medido em 2026-08-08:
+    # PAULO MARTINS SOARES é TEN-CEL PM (vínculo que a semente escolheu, "cargo mais forte") E
+    # médico CLT da FSERJ — e os 12 autos da LIFECARE (R$ 20,6 mi) correm NA FSERJ. Com um vínculo
+    # só, o conflito pelo processo ficava apagado e o achado entrava na fila com peso 1 em vez
+    # de 3. A folha inteira cabe num dict (DISTINCT nome × órgão).
+    orgaos_por_nome: dict[str, set] = {}
+    for _n, _o in con.execute("SELECT DISTINCT nome, orgao_nome FROM registros_folha"):
+        if _o:
+            orgaos_por_nome.setdefault(norm(_n), set()).add(str(_o))
 
     ug_por_proc = orgao_do_processo(con)
     achados = []
@@ -182,9 +192,18 @@ def correlacionar(db: str = "") -> dict:
         if not agentes and not terceiro:
             continue
         ug = ug_por_proc.get(numero, "")
-        # CONFLITO PELO PROCESSO: o agente serve na unidade que conduz ESTES autos.
+        # CONFLITO PELO PROCESSO: o agente serve na unidade que conduz ESTES autos — testado
+        # contra TODOS os vínculos da pessoa na folha, não só o que a fila elegeu.
         for a in agentes:
-            a["_conflito_processo"] = conflito_de_orgao(a["orgao"], {ug}) if ug else ""
+            a["_conflito_processo"], a["_orgao_conflito"] = "", ""
+            if ug:
+                for _org in sorted(orgaos_por_nome.get(norm(a["agente"]), {a["orgao"]})):
+                    _c = conflito_de_orgao(_org, {ug})
+                    if _c:
+                        a["_conflito_processo"] = _c
+                        if _org != a["orgao"]:
+                            a["_orgao_conflito"] = _org
+                        break
         conflito = [a for a in agentes
                     if a["orgao_pagador_e_o_proprio"] or a["_conflito_processo"]]
         achados.append({
@@ -195,7 +214,8 @@ def correlacionar(db: str = "") -> dict:
             "agentes": [{"nome": a["agente"], "cargo": a["cargo"], "orgao": a["orgao"],
                          "comissionado": a["comissionado"], "entidade": a["entidade"],
                          "conflito_de_orgao": a["orgao_pagador_e_o_proprio"],
-                         "conflito_pelo_processo": a.get("_conflito_processo", "")}
+                         "conflito_pelo_processo": a.get("_conflito_processo", ""),
+                         "orgao_conflito": a.get("_orgao_conflito", "")}
                         for a in agentes],
             "terceiro_setor": terceiro,
             "sem_qsa_capturado": sem_qsa,
