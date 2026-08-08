@@ -80,6 +80,25 @@ def _browser_morto(exc: BaseException) -> bool:
     return any(s in msg for s in _SINAIS_BROWSER_MORTO)
 
 
+# ── O CONTEXTO DO NAVEGADOR É UM SÓ, e isso não é preferência de estilo ───────────────────────
+# Medido em 2026-08-07: dos três caminhos que fazem login no SEI aqui, dois montavam o contexto com
+# `user_agent` de desktop e o terceiro — a RECAPTURA — não. Resultado no log: **16 slots de
+# recaptura, 16 abortos, ZERO documento recuperado**, sempre com a mesma mensagem de "login não
+# completou em 20 tentativas". A mensagem levantava a hipótese de sessão anterior deixada aberta;
+# ninguém a conferiu, e a diferença real era o navegador se apresentando como HeadlessChrome.
+#
+# Pior que o defeito era a forma dele: o passo RODAVA, escrevia no log e não entregava nada — a
+# aparência de funcionamento. Três cópias de uma configuração é convite para a quarta divergir, por
+# isso a montagem passa a ser uma só. Quem precisar mudar o UA muda aqui, para os três.
+_UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+               "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+
+
+async def _contexto_sei(b):
+    """O contexto que o SEI aceita — mesmo UA para os três caminhos de login."""
+    return await b.new_context(ignore_https_errors=True, locale="pt-BR", user_agent=_UA_DESKTOP)
+
+
 def na_minha_fatia(processo: str, indice: int, total: int) -> bool:
     """Este processo pertence à fatia `indice` de `total`? Determinístico e sem coordenação.
 
@@ -662,9 +681,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
             b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
-            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
@@ -827,9 +844,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
             b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
-            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
@@ -984,14 +999,22 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
             b = await pw.chromium.launch(headless=True,
                                          args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
-            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR")
+            ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
+                    # A MENSAGEM NÃO PODE ELEGER UMA CAUSA QUE NINGUÉM CONFERIU. Até 07/08/2026
+                    # ela afirmava "sessão anterior deixada aberta" como causa OBSERVADA — e a
+                    # causa real era outra, estrutural: este caminho montava o navegador sem
+                    # User-Agent de desktop, ao contrário dos outros dois. Foram 47 slots
+                    # abortados nas duas máquinas enquanto o log apontava para o lugar errado.
+                    # Causa afirmada sem verificação faz o leitor procurar onde não está.
                     _log("[recap] ABORTADO: login itkava não completou em "
-                         f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio "
-                         "de acesso (o acesso é liberado): a causa já observada é sessão "
-                         "anterior deixada aberta por encerramento abrupto do slot.")
+                         f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio de "
+                         "acesso (o acesso é liberado). Causas JÁ VERIFICADAS neste caminho: "
+                         "contexto do navegador sem User-Agent de desktop (corrigido em 07/08) e "
+                         "outra sessão SEI aberta pela mesma máquina — o SEI aceita uma por IP, "
+                         "então conferir se o sweep principal ou o [pais] ainda estão no slot.")
                     return
                 _log("[recap] login OK — relendo…")
                 for i, x in enumerate(fila, 1):
