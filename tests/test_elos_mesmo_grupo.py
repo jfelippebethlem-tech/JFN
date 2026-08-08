@@ -33,6 +33,12 @@ from compliance_agent.osint.marca_grupo import mesmo_grupo as _mesmo_grupo
     # mesma marca distintiva, sufixo diferente
     ("EXTREME DIGITAL CONSULTORIA E RENOVACAO", "EXTREME DIGITAL SERVICES SOCIEDADE", True),
     ("TAPEVAS SOLUCOES INTEGRADAS LTDA", "TAPEVAS SOLUCAO INTEGRADA LTDA", True),
+    # marca COMPOSTA de sigla + genérica ("CS BRASIL") — medido em 2026-08-08: o par dividia
+    # e-mail e caía em "sem explicação" porque "CS" (2 letras) não vira marca e "BRASIL" é genérica
+    ("CS BRASIL FROTAS S.A.",
+     "CS BRASIL TRANSPORTES DE PASSAGEIROS E SERVICOS AMBIENTAIS LTDA.", True),
+    # sigla igual mas SEGUNDO token diferente não é grupo — iniciais coincidem à toa
+    ("JS COMERCIO DE ALIMENTOS LTDA", "JS CONSTRUTORA LTDA", False),
     # NÃO são grupo: nomes distintos que só dividem palavra genérica
     ("AMIL ASSISTENCIA MEDICA", "COI CLINICAS ONCOLOGICAS", False),
     ("SERVICOS ALFA LTDA", "SERVICOS BETA LTDA", False),
