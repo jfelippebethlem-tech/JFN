@@ -152,7 +152,63 @@ def inv_veredito_sem_prova() -> dict:
     }
 
 
-INVARIANTES = (inv_cache_obeso, inv_corte_no_teto, inv_arquivo_vazio, inv_veredito_sem_prova)
+def inv_ciclo_chega_ao_fim() -> dict:
+    """Ciclo de sweep que nunca imprime o próprio `fim` morreu NO MEIO — e morreu calado.
+
+    O caso que criou esta invariante (2026-08-08): um passo de `sweep_sei.sh` usava `$REPO` sem
+    definir a variável; com `set -u` o shell morre na expansão, o erro vai ao stderr do cron que
+    ninguém lê, e TODO passo depois da linha — cpf, refichar, depurar, árvore, direcionamento,
+    lex — ficou um dia e meio sem rodar. `rc` não existe para mentir: o processo simplesmente
+    acaba. O único rastro auditável era a AUSÊNCIA do `say "fim"` no log, e ninguém olhava.
+
+    A régua: dos últimos ciclos INICIADOS há mais de 6 h (folga para ciclo legítimo em curso, que
+    ainda vai terminar), TODOS os N mais recentes sem `fim` = violado. Um ciclo isolado pode
+    morrer por reboot ou kill de OOM; TRÊS seguidos é estrutural.
+    """
+    import re as _re
+
+    logs = {"sweep_sei": RAIZ / "data" / "sweep_sei.log",
+            "sweep_dados": RAIZ / "data" / "sweep_dados.log",
+            "sweep_360": RAIZ / "data" / "sweep_360.log"}
+    mortos = []
+    for nome, lg in logs.items():
+        if not lg.exists():
+            continue
+        # só o rabo do log — a sentinela é barata de propósito
+        linhas = lg.read_text(encoding="utf-8", errors="replace").splitlines()[-400:]
+        ciclos = []          # [(inicio_ts, chegou_ao_fim)]
+        atual = None
+        for ln in linhas:
+            m = _re.match(r"\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] (?:\[[^]]+\] )?(.*)", ln)
+            if not m:
+                continue
+            ts, resto = m.group(1), m.group(2)
+            if resto.startswith("início"):
+                if atual is not None:
+                    ciclos.append(atual)
+                atual = [ts, False]
+            elif resto.startswith("fim") and atual is not None:
+                atual[1] = True
+        if atual is not None:
+            ciclos.append(atual)
+        # ciclos velhos o bastante para já deverem ter terminado
+        corte = time.time() - 6 * 3600
+        velhos = [c for c in ciclos
+                  if time.mktime(time.strptime(c[0], "%Y-%m-%d %H:%M:%S")) < corte]
+        ult = velhos[-3:]
+        if len(ult) >= 3 and not any(fim for _, fim in ult):
+            mortos.append(f"{nome}: 3 ciclos iniciados (último {ult[-1][0]}) sem chegar ao fim")
+    return {
+        "invariante": "ciclo_chega_ao_fim",
+        "descricao": "sweep que inicia e nunca imprime o próprio fim (morte silenciosa no meio)",
+        "medida": len(mortos), "limite": 0,
+        "estado": "violado" if mortos else "ok",
+        "evidencia": mortos,
+    }
+
+
+INVARIANTES = (inv_cache_obeso, inv_corte_no_teto, inv_arquivo_vazio, inv_veredito_sem_prova,
+               inv_ciclo_chega_ao_fim)
 
 
 def checar() -> list[dict]:
