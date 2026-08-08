@@ -139,10 +139,19 @@ def levantar(db: str = "") -> dict:
             continue
         vistos.add(chave)
         grupo = mesmo_grupo(razao.get(ca, na), razao.get(cb, nb))
+        # PISTA, não veredito: o DOMÍNIO do e-mail compartilhado viaja com o item. AMIL × COI
+        # dividem @uhgbrasil.com.br (holding UnitedHealth) e ABBOTT × ST JUDE são o mesmo grupo
+        # global sem QSA brasileiro em comum — o humano decide; rebaixar às cegas esconderia
+        # elo real (handoff 2026-08-08 §5).
+        dominio = ""
+        if tipo == "mesmo_email":
+            m = _RX_EMAIL.search(desc or "")
+            if m and "@" in m.group(0):
+                dominio = m.group(0).split("@", 1)[1].lower().rstrip(".")
         itens.append({
             "a": razao.get(ca, na), "cnpj_a": ca, "pago_a": pago.get(ca, 0.0),
             "b": razao.get(cb, nb), "cnpj_b": cb, "pago_b": pago.get(cb, 0.0),
-            "tipo": tipo, "detalhe": desc or "",
+            "tipo": tipo, "detalhe": desc or "", "dominio_email": dominio,
             "natureza_a": nat.get(ca, ""), "natureza_b": nat.get(cb, ""),
             "mesmo_grupo_aparente": bool(grupo),
             "marca": grupo,
