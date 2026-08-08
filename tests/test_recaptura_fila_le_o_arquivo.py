@@ -49,6 +49,11 @@ def acervo(tmp_path, monkeypatch):
     cache.mkdir()
     monkeypatch.setattr(R, "ARQUIVO", arq)
     monkeypatch.setattr(R, "CACHE", cache)
+    # A FILA COMPARTILHADA É ESTADO REAL, e sem isolá-la o acervo sintético desta fixture ficava
+    # somado aos 3.617 processos da fila de verdade — os três testes daqui viraram vermelhos no
+    # instante em que o arquivo passou a existir (2026-08-07). Um acervo de teste que enxerga o
+    # acervo de produção não testa nada: mede o disco da máquina.
+    monkeypatch.setattr(R, "COMPARTILHADA", tmp_path / "fila_compartilhada_inexistente.json")
     return arq
 
 
@@ -69,4 +74,41 @@ def test_arquivo_integro_nao_entra(acervo):
 def test_arquivo_de_outra_origem_com_40_docs_nao_entra(acervo):
     """Sem o aviso do cache, 40 é só um número."""
     _arquivo(acervo, "270003_000222_2025", 40, aviso=None)
+    assert R.fila() == []
+
+
+def test_fila_da_outra_maquina_entra_e_nao_duplica(acervo, tmp_path, monkeypatch):
+    """A ponte entre as duas máquinas: a fila da outra soma, sem repetir o que já se tem.
+
+    POR QUE A PONTE EXISTE. Esta fila nasce do acervo LOCAL, e os acervos das duas máquinas mal se
+    tocam — medido em 2026-08-07: 1.515 processos pendentes na VM-1, 96 na VM-2, apenas 45 em
+    comum. A fatia (`JFN_SWEEP_FATIA`) só divide trabalho quando as duas veem o MESMO universo;
+    sem a fila atravessar, aplicá-la faria cada máquina trabalhar menos sem que a segunda ajudasse
+    no atraso da primeira. A recaptura não precisa do arquivo local: precisa do NÚMERO, e lê tudo
+    do SEI.
+    """
+    _arquivo(acervo, "270003_004494_2025", 40, _AVISO_CACHE)
+    outra = tmp_path / "compartilhada.json"
+    outra.write_text(json.dumps({"itens": [
+        # o mesmo processo que já está aqui — não pode entrar duas vezes e gastar dois slots
+        {"numero": "270003/004494/2025", "arvore": 90, "lido": 40, "faltam": 50},
+        {"numero": "SEI-080002/000999/2024", "arvore": 12, "lido": 10, "faltam": 2},
+    ]}), encoding="utf-8")
+    monkeypatch.setattr(R, "COMPARTILHADA", outra)
+
+    fila = R.fila()
+    numeros = [x["numero"] for x in fila]
+    assert len(numeros) == len(set(numeros)), "processo repetido consome dois slots pelo mesmo trabalho"
+    assert "SEI-080002/000999/2024" in numeros, "a fila da outra máquina não atravessou"
+    vindos = [x for x in fila if x.get("origem") == "fila_da_outra_maquina"]
+    assert len(vindos) == 1, "só o que ESTA máquina não tem deve vir de fora"
+
+
+def test_fila_compartilhada_ausente_nao_quebra(acervo, tmp_path, monkeypatch):
+    """Arquivo ausente, ilegível ou vazio é silêncio — nunca erro que derruba a recaptura."""
+    monkeypatch.setattr(R, "COMPARTILHADA", tmp_path / "nao_existe.json")
+    assert R.fila() == []
+    quebrado = tmp_path / "quebrado.json"
+    quebrado.write_text("{isso não é json", encoding="utf-8")
+    monkeypatch.setattr(R, "COMPARTILHADA", quebrado)
     assert R.fila() == []

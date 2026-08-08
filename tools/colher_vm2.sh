@@ -61,4 +61,23 @@ PYTHONPATH="$REPO" timeout 600 "$PY" -m tools.colher_vm2_arvore --aplicar >> "$L
 # documento) e a aresta entra por `salvar_grafo`, que já aplica a direção canônica e a dedução.
 say "trazendo o grafo de vínculos da VM-2…"
 PYTHONPATH="$REPO" timeout 900 "$PY" -m tools.colher_vm2_grafo --aplicar >> "$LOG" 2>&1
+# ── A FILA DE RECAPTURA ATRAVESSA NO SENTIDO CONTRÁRIO ────────────────────────────────────────
+# Tudo acima TRAZ da VM-2. Este passo LEVA — e é a única escrita que este script faz lá, com a
+# razão declarada: o dono pediu que a segunda máquina dividisse a carga, e sem isto ela não tem
+# como. A fila de recaptura nasce do acervo LOCAL de cada máquina, e os acervos mal se tocam:
+# medido em 2026-08-07, a VM-1 tem 1.515 processos pendentes, a VM-2 tem 96, e só 45 são os
+# mesmos. Sem a fila atravessar, a fatia (`JFN_SWEEP_FATIA`) apenas faria cada uma trabalhar
+# menos. Com ela, as duas dividem a MESMA união e a vazão dobra — 2 processos a cada 3 horas
+# viram 4, sobre uma fila que hoje leva meses.
+#
+# A recaptura não precisa do arquivo local: precisa do NÚMERO, e lê tudo do SEI. São 156 KB de
+# JSON. Falha aqui não derruba a colheita — o cron repete.
+say "levando a fila de recaptura para a VM-2 (para ela dividir a carga)…"
+PYTHONPATH="$REPO" timeout 300 "$PY" -c \
+  "from tools.sweep_recaptura_integral import exportar_compartilhada as e; print(e())" \
+  >> "$LOG" 2>&1 \
+  && timeout 180 rsync -az --timeout=60 "$REPO/data/fila_recaptura_compartilhada.json" \
+       vm2:~/JFN/data/ >> "$LOG" 2>&1 \
+  && say "fila exportada e entregue" || say "não consegui entregar a fila (segue o baile)"
+
 say "fim (rc=$?) — arquivo local: $(ls "$REPO/data/sei_arquivo" | wc -l) processos"

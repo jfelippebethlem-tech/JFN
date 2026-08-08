@@ -39,7 +39,6 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 import asyncio
-import glob
 import json
 import os
 import re
@@ -47,6 +46,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
@@ -71,16 +72,32 @@ def fila() -> list[dict]:
     que lê em lotes com checkpoint e relança o browser), via `--gigantes`.
     """
     saida = []
-    for f in glob.glob(str(CACHE / "cdp_*.json")):
+    # `glob_cache`/`ler_json`, NÃO `glob.glob` + `read_text`: 5.660 dos 6.195 blobs do acervo estão
+    # comprimidos, e é justamente o cache que sabe o TAMANHO DA ÁRVORE. Com o glob cru, esta fila
+    # — a que existe para achar captura truncada — enxergava 8,6% da evidência de truncamento.
+    # Quarta ferramenta da casa cega à compressão; as três anteriores estão no catálogo.
+    por_numero: dict[str, dict] = {}
+    for f in glob_cache(CACHE, "cdp_*.json"):
         try:
-            d = json.loads(Path(f).read_text(encoding="utf-8"))
+            d = ler_json(f)
         except (OSError, ValueError):
             continue
         arv = len(d.get("documentos") or [])
         lido = len(d.get("conteudo_documentos") or [])
-        if arv > lido:
-            saida.append({"numero": d.get("numero") or Path(f).stem[4:],
-                          "arvore": arv, "lido": lido, "faltam": arv - lido})
+        if arv <= lido:
+            continue
+        numero = str(d.get("numero") or Path(f).name.replace(".zst", "").replace(".json", "")[4:])
+        # O MESMO PROCESSO PODE TER DOIS BLOBS — `cdp_270003_001598_2024` e
+        # `cdp_SEI_270003_001598_2024` coexistem no acervo, de duas convenções de nome. Sem
+        # deduplicar, o processo entra duas vezes e consome DOIS dos poucos slots da recaptura
+        # para o mesmo trabalho. Fica o blob que leu MENOS: é o que mais precisa voltar, e reler
+        # cobre o outro de qualquer forma.
+        chave = re.sub(r"\D", "", numero)
+        atual = por_numero.get(chave)
+        if atual is None or lido < atual["lido"]:
+            por_numero[chave] = {"numero": numero, "arvore": arv, "lido": lido,
+                                 "faltam": arv - lido}
+    saida.extend(por_numero.values())
     # O ARQUIVO TAMBÉM É FONTE DE PENDÊNCIA, e não era consultado. Esta fila só olhava o CACHE
     # (`cdp_*.json`), então um processo cujo arquivo ficou truncado mas cujo cache foi podado, ou
     # nunca existiu, não tinha rota nenhuma de volta. Medido em 2026-08-05, depois que
@@ -109,16 +126,46 @@ def fila() -> list[dict]:
         if ok:
             continue
         n_docs = int(ev.get("n_docs") or 0)
-        # `faltam` = 0 no teto de coleta NÃO significa "nada falta" — significa que o arquivo
-        # sozinho não sabe o tamanho da árvore (quem sabe é o cache, e estes não o têm). O zero
-        # serve à ordenação (teto primeiro, que é o que se quer), mas mentiria no total impresso:
-        # o SEI-270131/000548/2023 marcava 40/40 e faltavam 25. Por isso a incerteza é declarada.
+        # O ZERO ERA IGNORÂNCIA DECLARADA, e deixou de ser preciso. Até 2026-08-07 o arquivo
+        # sozinho não sabia o tamanho da árvore — quem sabia era o cache —, então o teto de coleta
+        # entrava com `faltam: 0` e a incerteza ficava marcada em `faltam_desconhecido`. O zero
+        # servia à ordenação (teto primeiro), mas era um marcador, não uma medida.
+        #
+        # Agora o manifesto traz `docs_na_arvore` e o gate devolve `faltam_capturar`. Usar o número
+        # real muda o que a recaptura FAZ com os poucos slots que tem: com o zero, esta fila
+        # ordenava por empate e o primeiro da vez podia ser um processo a 5 documentos do fim ou
+        # um a 667 — indiferentemente. Medido hoje: o topo da fila trazia 39/55 e 40/45 marcados
+        # como "faltam 0", enquanto processos quase completos esperavam atrás.
         teto = bool(ev.get("teto_de_coleta"))
-        saida.append({"numero": numero, "arvore": n_docs, "lido": n_docs,
-                      "faltam": 0 if teto else max(0, n_docs - int(ev.get("n_com_texto") or 0)),
-                      "faltam_desconhecido": teto,
+        faltam_reais = ev.get("faltam_capturar")
+        if isinstance(faltam_reais, int) and faltam_reais > 0:
+            faltam, incerto = faltam_reais, False
+        else:
+            faltam = 0 if teto else max(0, n_docs - int(ev.get("n_com_texto") or 0))
+            # ARQUIVO VAZIO tem tamanho DESCONHECIDO, não zero. `n_docs == 0` produzia
+            # `faltam = 0 - 0 = 0`, literalmente verdadeiro e completamente inútil: 26 pastas sem
+            # um único documento encabeçavam a fila como se fossem quase-completas. Não se sabe se
+            # ali há 3 documentos ou 900 — e o slot da recaptura é de dois processos a cada três
+            # horas, então essa diferença decide a passada.
+            incerto = teto or n_docs == 0
+        arvore = ev.get("docs_na_arvore") or n_docs
+        saida.append({"numero": numero, "arvore": arvore, "lido": n_docs,
+                      "faltam": faltam,
+                      "faltam_desconhecido": incerto,
                       "origem": "arquivo_nao_integro"})
-    saida.sort(key=lambda x: x["faltam"])
+    # A fila da OUTRA máquina entra aqui, e só o que esta não tem — o que ela já conhece vale
+    # mais, porque veio da medição do próprio acervo.
+    ja_todos = {re.sub(r"\D", "", str(x["numero"])) for x in saida}
+    for x in _compartilhada():
+        if re.sub(r"\D", "", x["numero"]) not in ja_todos:
+            saida.append(x)
+
+    # ORDEM: buraco MEDIDO primeiro, do menor para o maior; tamanho desconhecido depois.
+    # `faltam=0` com tamanho desconhecido não é "quase pronto" — é ignorância, e tratá-la como
+    # zero põe na frente da fila justamente o que pode ser um gigante de 900 documentos, que
+    # estoura o slot e não entrega nada (medido: o de 956 fez isso e travou a passada inteira).
+    # Com o buraco medido, cada slot drena os quase completos, que é onde ele rende.
+    saida.sort(key=lambda x: (bool(x.get("faltam_desconhecido")), x["faltam"]))
     return saida
 
 
@@ -259,3 +306,50 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+# ── FILA COMPARTILHADA ENTRE AS DUAS MÁQUINAS (2026-08-07) ────────────────────────────────────
+# A fatia (`JFN_SWEEP_FATIA`) divide o trabalho quando as duas máquinas VEEM o mesmo universo. Aqui
+# elas não veem: esta fila nasce do acervo LOCAL, e o acervo de cada máquina é o que ela mesma
+# capturou. Medido hoje: fila da VM-1 com 1.515 processos, da VM-2 com 96, e **apenas 45 em comum**
+# — aplicar a fatia sem mais nada só faria cada uma trabalhar menos, sem que a segunda ajudasse no
+# atraso da primeira.
+#
+# A recaptura não precisa do arquivo local para funcionar: ela precisa do NÚMERO do processo, e lê
+# tudo do SEI. Então basta a fila atravessar. A VM-1 grava o arquivo abaixo e o empurra junto da
+# colheita (`tools/colher_vm2.sh`, que já tem o canal aberto); a VM-2 o encontra e o soma ao que
+# tem. Com a união nas duas pontas, a fatia passa a dividir de verdade — e as duas somadas dobram
+# a vazão sem coordenação nenhuma, que é o único jeito que funciona em duas máquinas separadas.
+COMPARTILHADA = RAIZ / "data" / "fila_recaptura_compartilhada.json"
+
+
+def _compartilhada() -> list[dict]:
+    """A fila que a outra máquina exportou. Ausente ou ilegível ⇒ lista vazia, nunca erro."""
+    if not COMPARTILHADA.exists():
+        return []
+    try:
+        d = json.loads(COMPARTILHADA.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    itens = d.get("itens") if isinstance(d, dict) else d
+    fora = []
+    for x in itens or []:
+        if not isinstance(x, dict) or not x.get("numero"):
+            continue
+        fora.append({"numero": str(x["numero"]),
+                     "arvore": int(x.get("arvore") or 0), "lido": int(x.get("lido") or 0),
+                     "faltam": int(x.get("faltam") or 0),
+                     "faltam_desconhecido": bool(x.get("faltam_desconhecido")),
+                     "origem": "fila_da_outra_maquina"})
+    return fora
+
+
+def exportar_compartilhada(destino: Path | None = None) -> dict:
+    """Grava a fila desta máquina para a outra consumir. Só os campos que atravessam."""
+    itens = [{"numero": x["numero"], "arvore": x.get("arvore"), "lido": x.get("lido"),
+              "faltam": x.get("faltam"), "faltam_desconhecido": x.get("faltam_desconhecido")}
+             for x in fila()]
+    alvo = Path(destino or COMPARTILHADA)
+    alvo.write_text(json.dumps({"gerado_em": time.strftime("%Y-%m-%d %H:%M"), "itens": itens},
+                               ensure_ascii=False), encoding="utf-8")
+    return {"itens": len(itens), "arquivo": str(alvo)}
+

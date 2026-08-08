@@ -1,13 +1,13 @@
 {
  "_leia_isto": "Baseline do MOTOR, não do banco. Um detector que salte de 40 para 400 achados — ou caia para 0 — subia em silêncio: `pos_correcao.fotografia()` produzia exatamente este número e nada dele era versionado. Regravar SÓ com mudança deliberada, e o commit tem de dizer POR QUE cada linha mudou (foi assim que I6 caiu 6→2 e CD_ caiu 24→10 em 2026-08-05/06, cada passo com leitura dos autos). Comando: python -m tools.baseline_achados --gravar",
  "_medido_em": "2026-08-07",
- "_processos_avaliados": 2215,
+ "_processos_avaliados": 2216,
  "faixas": {
   "ALTO": 214,
   "BAIXO": 586,
   "EXTREMO": 6,
   "MEDIO": 22,
-  "NAO_AVALIAVEL": 1387
+  "NAO_AVALIAVEL": 1388
  },
  "graus": {
   "A1_CONTRATO_ANTES_DO_PARECER · alto": 4,

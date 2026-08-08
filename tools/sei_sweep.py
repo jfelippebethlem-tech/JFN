@@ -951,6 +951,21 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
     os.environ["SEI_MAX_DOCS"] = str(teto)
     from tools.sweep_recaptura_integral import fila as _fila_recap
     fila = _fila_recap()
+    # A FATIA VALE AQUI TAMBÉM. O sweep principal já divide o universo entre as duas máquinas
+    # (`JFN_SWEEP_FATIA=1/2`), mas a recaptura não dividia nada: as duas percorriam a MESMA fila,
+    # na mesma ordem, e a segunda máquina gastaria seus slots refazendo o que a primeira acabara de
+    # fazer. É o defeito que já custou trabalho duplicado no grafo societário — 400 credores
+    # percorridos duas vezes — e que aqui custaria mais, porque o slot da recaptura é o recurso
+    # mais escasso da casa: 2 processos a cada 3 horas sobre uma fila de 1.516.
+    #
+    # A divisão é determinística e sem coordenação: cada máquina fica com metade dos números, e as
+    # duas somadas dobram a vazão sem que uma precise saber da outra. Não fere "1 sessão SEI por
+    # IP" — são IPs distintos, cada um com sua sessão.
+    indice, total = fatia_desta_maquina()
+    if total > 1:
+        antes = len(fila)
+        fila = [x for x in fila if na_minha_fatia(str(x["numero"]), indice, total)]
+        _log(f"[recap] fatia {indice}/{total}: {len(fila)} de {antes} processos são desta máquina")
     if ate:
         fila = [x for x in fila if x["faltam"] <= ate]
     prog = _carregar_prog()
