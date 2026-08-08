@@ -74,12 +74,30 @@ say "início (best-effort baixa prio, bounded)"
 export SEI_MAX_DOCS=${SEI_MAX_DOCS:-120}
 $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
-# Mesma sessão única itkava (sequencial, DEPOIS do sweep geral); bounded; resumível.
+# ORÇAMENTO TOTAL + RODÍZIO (2026-08-08). São 16 UGs × até 700 s = ~3 h no pior caso, e o laço
+# vinha ANTES de recaptura/colher/fim: medido, nenhum ciclo desde 06/08 chegou ao `say "fim"`
+# porque o foco engolia o ciclo inteiro e o próximo cron o superava. Isso é INANIÇÃO dos passos
+# finais — a mesma família que o juízo do sweep_360 já sofreu. Duas guardas: (a) o foco cede
+# depois de FOCO_ORCAMENTO_S no total, deixando os passos seguintes rodarem; (b) um cursor gira o
+# ponto de partida a cada ciclo, então as UGs que ficaram de fora hoje entram primeiro amanhã —
+# todas cobertas ao longo de poucos ciclos, nenhuma faminta.
+FOCO_ORCAMENTO_S=${FOCO_ORCAMENTO_S:-2400}
 if [ -f data/ugs_foco.txt ]; then
-  while read -r ugcod _resto; do
-    case "$ugcod" in ''|\#*) continue;; esac
-    $PRIO timeout -k 120 --foreground 700 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
-  done < data/ugs_foco.txt
+  mapfile -t _UGS < <(grep -vE '^\s*#|^\s*$' data/ugs_foco.txt | awk '{print $1}')
+  _N=${#_UGS[@]}
+  if [ "$_N" -gt 0 ]; then
+    _CUR=$(cat data/.foco_cursor 2>/dev/null || echo 0); case "$_CUR" in ''|*[!0-9]*) _CUR=0;; esac
+    _t0=$SECONDS; _feitas=0
+    for _i in $(seq 0 $((_N-1))); do
+      if [ $((SECONDS - _t0)) -ge "$FOCO_ORCAMENTO_S" ]; then
+        say "foco: orçamento de ${FOCO_ORCAMENTO_S}s esgotado após $_feitas UG(s) — cedendo aos passos finais"; break
+      fi
+      ugcod=${_UGS[$(( (_CUR + _i) % _N ))]}
+      $PRIO timeout -k 120 --foreground 700 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
+      _feitas=$((_feitas+1))
+    done
+    echo $(( (_CUR + _feitas) % _N )) > data/.foco_cursor   # onde o próximo ciclo começa
+  fi
 fi
 # SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
 # execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;

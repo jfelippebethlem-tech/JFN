@@ -92,3 +92,24 @@ def test_a_catraca_pega_o_caso_real():
     assert "REPO" in _fantasmas(quebrado)
     consertado = "set -u\nREPO=/home/ubuntu/JFN\n" + quebrado.split("\n", 1)[1]
     assert "REPO" not in _fantasmas(consertado)
+
+
+def test_foco_tem_orcamento_e_rodizio():
+    """O laço de foco não pode engolir o ciclo e matar de fome recaptura/colher/fim.
+
+    Medido em 2026-08-08: 16 UGs × até 700 s = ~3 h, e o laço vinha ANTES dos passos finais —
+    nenhum ciclo desde 06/08 chegou ao `say "fim"` porque o foco comia tudo e o próximo cron o
+    superava. Inanição, a mesma família do juízo do sweep_360. Duas guardas: orçamento total
+    (o foco cede) e cursor de rodízio (as UGs de fora hoje entram primeiro amanhã).
+    """
+    sh = (RAIZ / "tools" / "sweep_sei.sh").read_text(encoding="utf-8")
+    assert "FOCO_ORCAMENTO_S" in sh, "o laço de foco voltou a ser ilimitado — inanição dos passos finais"
+    assert "orçamento de ${FOCO_ORCAMENTO_S}s esgotado" in sh, "o foco não cede no orçamento"
+    assert ".foco_cursor" in sh, "o rodízio sumiu — as mesmas UGs iniciais seriam varridas sempre"
+    # o cursor tem de AVANÇAR pelo número de UGs feitas, senão não gira
+    assert "(_CUR + _feitas) % _N" in sh, "o cursor não avança pelas UGs efetivamente feitas"
+    # e o orçamento tem de ser MENOR que o intervalo típico do cron (~3 h = 10800 s), com folga
+    import re
+    m = re.search(r"FOCO_ORCAMENTO_S=\$\{FOCO_ORCAMENTO_S:-(\d+)\}", sh)
+    assert m and int(m.group(1)) <= 3600, (
+        "orçamento do foco alto demais: precisa deixar tempo folgado para recaptura, colher e fim")
