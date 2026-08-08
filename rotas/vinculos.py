@@ -599,9 +599,14 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
         from pathlib import Path
 
         raiz = Path(__file__).resolve().parent.parent
+        # so_osint usa `--osint` (TODOS os itens com sinal, em qualquer posição), não `--top`:
+        # o sinal OSINT pontua pouco e cai para o fundo, então filtrar dentro do top-N dizia "0"
+        # quando os itens estavam logo abaixo da janela. Corte de janela não pode virar "não há".
+        _args = (["--osint"] if so_osint
+                 else ["--top", str(max(1, min(limite, 300)))])
         r = subprocess.run(
             [str(raiz / ".venv" / "bin" / "python"),
-             str(raiz / "tools" / "processo_360_ranking.py"), "--top", str(max(1, min(limite, 300)))],
+             str(raiz / "tools" / "processo_360_ranking.py"), *_args],
             capture_output=True, text=True, timeout=300, cwd=str(raiz), check=False)
         if r.returncode != 0:
             return JSONResponse({"ok": False, "erro": "ranking não pôde ser calculado"},
@@ -618,6 +623,9 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
             elif "processos avaliados" in linha:
                 resumo = linha.strip()
         if so_osint:
+            # com --osint todo item já tem sinal; o filtro fica como cinto de segurança e NÃO
+            # aplica `limite` — a lista de OSINT é curta (dezenas) e cortá-la reintroduziria o
+            # zero-por-janela que este modo existe para eliminar.
             itens = [x for x in itens if x["osint"]]
         return JSONResponse({
             "ok": True, "total": len(itens),

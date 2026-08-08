@@ -113,3 +113,24 @@ def test_elos_ocultos_declara_a_cobertura_do_grafo(cli):
         pytest.skip("cobertura indisponível (banco parcial) — a rota degrada sem ela, não mente")
     assert cg["universo"] >= cg["percorridos"] >= 0
     assert cg["pct"] is None or 0 <= cg["pct"] <= 100
+
+
+def test_so_osint_nao_depende_da_janela_de_limite(cli):
+    """O sinal OSINT pontua pouco e cai para o fundo da fila — filtrar dentro do top-N mentia.
+
+    Medido em 2026-08-08: `so_osint=1&limite=5` devolvia 0 e `so_osint=1&limite=60` devolvia 2,
+    enquanto o acervo tinha 13 processos com sinal OSINT (posições até #309). Zero por corte de
+    janela lê-se como "não há sinal OSINT" — o oposto da verdade. O modo `--osint` do ranking
+    lista todos, em qualquer posição, e o filtro deixou de depender de `limite`.
+    """
+    pequeno = cli.get("/api/fiscal/fila", params={"so_osint": 1, "limite": 5})
+    grande = cli.get("/api/fiscal/fila", params={"so_osint": 1, "limite": 300})
+    if pequeno.status_code == 503 or grande.status_code == 503:
+        pytest.skip("ranking indisponível neste ambiente")
+    dp, dg = pequeno.json(), grande.json()
+    if not dp.get("ok"):
+        pytest.skip("fila indisponível neste ambiente")
+    assert dp["total"] == dg["total"], (
+        f"o filtro OSINT ainda depende da janela: limite=5 deu {dp['total']}, "
+        f"limite=300 deu {dg['total']} — corte de janela virou 'não há'")
+    assert all(x["osint"] for x in dp["itens"]), "veio item sem sinal OSINT no modo só-OSINT"

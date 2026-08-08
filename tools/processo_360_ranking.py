@@ -103,6 +103,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--top", type=int, default=20)
     ap.add_argument("--md", action="store_true")
+    # `--osint`: lista TODOS os processos com sinal OSINT, em QUALQUER posição do ranking, no
+    # formato plano. Existe porque o sinal OSINT pontua pouco (≤3) e cai para o fundo da fila — o
+    # filtro "só OSINT" do painel, limitado ao top-N, dizia "0" quando os itens estavam logo abaixo
+    # da janela. Zero por corte de janela lê-se como "não há", e a casa não deixa o corte mentir.
+    ap.add_argument("--osint", action="store_true",
+                    help="lista todos os processos com sinal OSINT, fora ou dentro do top")
     args = ap.parse_args()
 
     con = sqlite3.connect(f"file:{REPO / 'data' / 'compliance.db'}?mode=ro", uri=True)
@@ -127,6 +133,18 @@ def main():
                         "grau": r["grau"], "faixa": r["faixa"], "cnpj": r["cnpj_vencedor"],
                         "motivos": sorted(set(motivos)), "avaliado_em": r["avaliado_em"]})
     ranking.sort(key=lambda x: (-x["pontos"], -(x["score100"] or 0)))
+
+    if args.osint:
+        # ordem: os que JÁ estão no topo por vício próprio primeiro (têm as duas coisas), depois
+        # os que só o OSINT trouxe — a posição real no ranking é preservada no número impresso.
+        osint_todos = [(i, r) for i, r in enumerate(ranking, 1)
+                       if any("OSINT:" in m for m in r["motivos"])]
+        for pos, r in osint_todos:
+            print(f"{pos:3d}. [{r['pontos']:2d} pts] {r['processo']} ({r['grau']}/{r['faixa']}) — "
+                  f"{'; '.join(r['motivos'])[:140]}")
+        print(f"\n{len(rows)} processos avaliados · {len(osint_todos)} com sinal OSINT",
+              file=sys.stderr)
+        return 0
 
     top = ranking[: args.top]
     if args.md:
