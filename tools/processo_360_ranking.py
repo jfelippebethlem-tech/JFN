@@ -89,12 +89,22 @@ def sinal_osint() -> dict[str, dict]:
         comissionado = any(a.get("comissionado") for a in agentes)
         pts = 3 if conflito else (2 if comissionado else 1)
         g = agentes[0]
+        # COTISTA NÃO É DONO — 1 ponto a menos (nunca abaixo de 1). Medido em 2026-08-09: a
+        # MEDVIVA tem 125 sócios, 109 entrados no MESMO dia, 1 administrador; o agente é um
+        # cotista entre eles. É sociedade de médicos (pejotização de equipe), o desenho da AVIV.
+        # Não zera: servidor do órgão contratante no QSA segue sendo impedimento (art. 9º/14 da
+        # Lei 14.133) — só não vale o mesmo que sócio de empresa de dois.
+        ns = g.get("socios_no_qsa")
+        cotista = isinstance(ns, int) and ns > 20
+        if cotista:
+            pts = max(1, pts - 1)
         fora[str(x.get("processo") or "")] = {
             "pontos": pts,
             "motivo": ("OSINT: autos no PRÓPRIO órgão do agente — " if conflito else
                        ("OSINT: agente público COMISSIONADO no quadro societário — "
                         if comissionado else "OSINT: agente público no quadro societário — "))
-                      + f"{g.get('nome', '')} ({g.get('cargo', '')}) · {g.get('entidade', '')}",
+                      + f"{g.get('nome', '')} ({g.get('cargo', '')}) · {g.get('entidade', '')}"
+                      + (f" [COTISTA: {ns} sócios no QSA]" if cotista else ""),
         }
     return fora
 

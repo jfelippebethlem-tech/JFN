@@ -211,8 +211,16 @@ def correlacionar(db: str = "") -> dict:
             "cnpjs": lista,
             "origem_cnpj": origem_cnpj.get(numero, "ficha"),
             "orgao_do_processo": ug,
+            # PREVALÊNCIA VIAJA COM O ACHADO. A fila curada já MEDE `socios_no_qsa`, e a
+            # correlação descartava o campo — foi assim que "servidor no QSA da contratada"
+            # chegou ao relatório sem dizer que a MEDVIVA tem 125 sócios e 109 entraram no MESMO
+            # dia (sociedade de médicos-cotistas, o desenho da AVIV). Ser 1 de 125 cotistas não é
+            # ser dono do fornecedor; sem o denominador, o leitor supõe que é. Mesma família de
+            # `parentesco-prevalencia-decide-o-eixo`.
             "agentes": [{"nome": a["agente"], "cargo": a["cargo"], "orgao": a["orgao"],
                          "comissionado": a["comissionado"], "entidade": a["entidade"],
+                         "socios_no_qsa": a.get("socios_no_qsa"),
+                         "servidores_no_qsa": a.get("servidores_no_qsa"),
                          "conflito_de_orgao": a["orgao_pagador_e_o_proprio"],
                          "conflito_pelo_processo": a.get("_conflito_processo", ""),
                          "orgao_conflito": a.get("_orgao_conflito", "")}
@@ -259,6 +267,10 @@ def escrever(r: dict) -> tuple[str, str]:
             orgao_txt = g["cargo"] + " · " + g["orgao"]
             if g.get("orgao_conflito"):
                 orgao_txt += f" (autos no 2º vínculo: {g['orgao_conflito']})"
+            # o denominador do QSA na própria linha — ver comentário em `correlacionar`
+            ns = g.get("socios_no_qsa")
+            if isinstance(ns, int) and ns > 20:
+                orgao_txt += f" ⚠ COTISTA: {ns} sócios no QSA (sociedade de profissionais)"
             L.append(f"| {i} | {a['processo']} | {sinal} | {g['nome']} | "
                      f"{orgao_txt} | {g['entidade']} |")
         else:
