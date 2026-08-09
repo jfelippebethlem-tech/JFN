@@ -184,6 +184,10 @@ pipelines:
     max_stale_h: 720
     grupo: base
     pausa: data/_pausa_datajud
+    # SOB DEMANDA: consulta por número CNJ conhecido, não coleta em lote — não tem tabela no
+    # banco e nunca teve log. Vigiar frescor aqui produzia ⚠️ permanente (medido 2026-08-09),
+    # e alarme que nunca apaga é alarme que ninguém lê.
+    sob_demanda: true
     nota: >-
       API pública do DataJud/CNJ (182 tribunais, chave pública, sem WAF — verificado 2026-07-27).
       LIMITE DA FONTE: os documentos trazem só METADADOS (número, classe, assunto, órgão julgador,
