@@ -139,10 +139,16 @@ def medir(*, db: str | Path | None = None) -> dict[str, Any]:
                     "motivo": "`ob_orcamentaria_siafe` ausente — sem a fonte canônica não se afere "
                               "o truncamento dela"}
         # data_emissao do SIAFE é TEXTO DD/MM/AAAA: o ano são os 4 últimos, nunca os 4 primeiros.
-        pares = con.execute(
-            "SELECT ug_emitente, substr(data_emissao, 7, 4) ano, COUNT(*) n, "
-            "       ROUND(COALESCE(SUM(valor), 0), 2) v "
-            "FROM ob_orcamentaria_siafe GROUP BY 1, 2").fetchall()
+        try:
+            pares = con.execute(
+                "SELECT ug_emitente, substr(data_emissao, 7, 4) ano, COUNT(*) n, "
+                "       ROUND(COALESCE(SUM(valor), 0), 2) v "
+                "FROM ob_orcamentaria_siafe GROUP BY 1, 2").fetchall()
+        except sqlite3.OperationalError as exc:
+            # esquema diferente do esperado é INDISPONÍVEL declarado, não exceção: quem chama isto
+            # (o aviso de piso do vault, o painel) não pode quebrar por causa de uma base parcial.
+            return {"ok": True, "indisponivel": True,
+                    "motivo": f"`ob_orcamentaria_siafe` com esquema inesperado ({exc})"}
         espelho: dict[tuple[str, str], tuple[int, float]] = {}
         if "ordens_bancarias" in tem:
             for ug, ano, n, v in con.execute(
