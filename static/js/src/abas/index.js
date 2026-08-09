@@ -232,19 +232,30 @@ async function concentracaoPorGrupo() {
   alvo.innerHTML = sec("Concentração por GRUPO econômico — o que a medição por CNPJ não mostra")
     + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">pago em 2025</th>
       <th class="right">HHI CNPJ</th><th class="right">HHI grupo</th>
-      <th class="right">maior grupo</th><th>o que sustenta o grupo</th></tr></thead><tbody>`
+      <th class="right">maior grupo</th><th>o que sustenta o grupo</th>
+      <th>base</th></tr></thead><tbody>`
       + d.itens.map((x) => {
         const g = x.maior_grupo || {}, c = g.cimento || {};
         const [txt, cor2] = rot[c.tipo] || ["QSA indisponível", "inherit"];
+        // A COBERTURA É POR LINHA. O ranking mistura UG com base completa e UG com 100% da amostra
+        // ausente da fonte canônica — comparar as frações sem isso é comparar o que não se compara.
+        const cb = x.cobertura || {};
+        const base = cb.estado === "parcial"
+          ? `<span style="color:var(--red)">parcial · ${cb.pct_ausente}% ausente</span>`
+          : (cb.estado === "coberto" ? '<span class="dim">coberta</span>'
+             : `<span class="dim">${esc(cb.estado || "—")}</span>`);
         return `<tr><td>${esc(x.nome_ug || ("UG " + x.ug))} <span class="dim">${esc(x.ug)}</span></td>
           <td class="right">${fmtRc(x.total_pago)}</td>
           <td class="right dim">${x.hhi_por_cnpj.toFixed(4)}</td>
           <td class="right" style="font-weight:800;color:${x.hhi_por_grupo >= 0.25 ? "var(--red)" : "inherit"}">${x.hhi_por_grupo.toFixed(4)}</td>
           <td class="right">${((g.fracao || 0) * 100).toFixed(1)}% <span class="dim">${fmtN(g.n_cnpj || 0)} CNPJs</span></td>
-          <td style="color:${cor2}">${esc(txt)}${c.pontes ? ` <span class="dim">${c.pontes_que_administram}/${c.pontes} pontes</span>` : ""}</td></tr>`;
+          <td style="color:${cor2}">${esc(txt)}${c.pontes ? ` <span class="dim">${c.pontes_que_administram}/${c.pontes} pontes</span>` : ""}</td>
+          <td style="font-size:12px">${base}</td></tr>`;
       }).join("")
       + `</tbody></table>`)
-    + leitura(esc(d.ressalva || ""));
+    + leitura("<b>A coluna 'base' não é detalhe técnico.</b> Onde a fonte canônica está parcial, o "
+      + "valor pago é PISO e a fração do maior grupo só se sustenta se o que falta for aleatório — "
+      + "ela pode estar enviesada nos dois sentidos. " + esc(d.ressalva || ""));
   o.appendChild(alvo);
 }
 
