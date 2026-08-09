@@ -439,7 +439,20 @@ async def _navegar(pg) -> dict:
     await pg.evaluate(r"""()=>{const a=[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução');if(a)a.click();}""")
     await pg.wait_for_timeout(1800)
     await _shot(pg, "1_execucao")
-    await pg.evaluate(r"""()=>{const a=document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor')||[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução Financeira');if(a)a.click();}""")
+    # TEXTO PRIMEIRO, id como último recurso. O id `pt1:pt_np3:1:...` é o ÍNDICE do item no menu
+    # do SIAFE 2; no SIAFE 1 o mesmo id existe e aponta para OUTRO item (lá "Execução" é o índice
+    # 3), então o clique cego levava a sessão para fora do sistema e caía na página de bloqueio da
+    # SEFAZ — que parece bloqueio de IP e não é: `curl` no login do www5 devolve a página normal, e
+    # o print pós-login mostra o SIAFE-Rio aberto no exercício certo. Índice de menu não é
+    # identidade; o rótulo é.
+    await pg.evaluate(r"""()=>{
+        const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+        const a = [...document.querySelectorAll('a.xyo')]
+                    .find(e => norm(e.innerText) === 'execução financeira'
+                            || norm(e.innerText) === 'execucao financeira')
+                  || document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor');
+        if (a) a.click();
+    }""")
     await pg.wait_for_timeout(2200)
     await _shot(pg, "2_execfinanceira")
     itens = await pg.evaluate(r"""()=>[...document.querySelectorAll('a')].map(e=>(e.innerText||'').trim()).filter(t=>t.length>2&&t.length<60)""")
@@ -966,7 +979,13 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                     continue
                 await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2200)
                 vistos, linhas = set(), []
-                await _colher(pg, maxn, vistos, linhas, None)
+                # `_colher` DEVOLVE o cabeçalho ao vivo — e é ele que diz em que coluna está o
+                # número da OB. Este caminho passava `_COLS_SIAFE` (os nomes internos), que
+                # `_LABEL2COL` não reconhece: a ingestão caía no mapa POSICIONAL e, no SIAFE 1
+                # (19 colunas contra 23), tudo deslocava. Medido em 2026-08-09: as fatias entravam
+                # com `numero_ob` VAZIO, colapsavam todas na mesma chave primária e sobrava UMA
+                # linha por fatia — 100 OBs colhidas viravam 1 gravada, calada.
+                header = await _colher(pg, maxn, vistos, linhas, None)
                 n = len(linhas)
                 if _fatia_capou(n, pref, exercicio):   # platô medido + limite de profundidade
                     capped.add(pref); _save_ckpt()
@@ -974,7 +993,7 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                     print(f"  {ug} {exercicio} pref {pref}: {n} (CAP) → subdividindo", flush=True)
                 else:
                     if linhas:                          # ingere fatia COMPLETA
-                        tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+                        tot += ingerir(exercicio, header, linhas).get("ingeridas", 0)
                     done.add(pref); _save_ckpt(); por_prefixo[pref] = n
                     print(f"  {ug} {exercicio} pref {pref}: {n} OBs ✓", flush=True)
             return {"ok": True, "exercicio": exercicio, "ug": ug, "ingeridas": tot,
@@ -1011,7 +1030,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             if not estouro:
                 vistos, linhas = set(), []
                 await _colher(pg, maxn, vistos, linhas, None)
-                ing = ingerir(exercicio, _COLS_SIAFE, linhas) if linhas else {"ingeridas": 0}
+                ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
                 return {"ok": True, "data": data, "estouro": False, "colhidas": len(linhas),
                         "ingeridas": ing.get("ingeridas")}
             # ESTOURO: >1000 no dia → subdivide por Número (linha 1)
@@ -1028,12 +1047,12 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
                 pref = work.pop(0)
                 await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2000)
                 vistos, linhas = set(), []
-                await _colher(pg, maxn, vistos, linhas, None)
+                header = await _colher(pg, maxn, vistos, linhas, None)   # cabeçalho VIVO, ver acima
                 n = len(linhas)
                 if _fatia_capou(n, pref, exercicio):
                     work[:0] = [f"{pref}{d}" for d in range(10)]
                 elif linhas:
-                    tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+                    tot += ingerir(exercicio, header, linhas).get("ingeridas", 0)
             return {"ok": True, "data": data, "estouro": True, "ingeridas": tot,
                     "detalhe": f">1000 OBs no dia {data} — coletado completo por subdivisão de Número"}
         finally:
