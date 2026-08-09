@@ -147,6 +147,22 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
         medido_em="2026-07-29",
     ),
     LimiteDeFonte(
+        fonte="PNCP — consulta de contratos por FORNECEDOR",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "A consulta `/contratos` **ignora silenciosamente** o parâmetro `cnpjFornecedor`: "
+            "medido em 2026-08-09, pedindo o CNPJ 00801512000157 a API devolveu contrato de "
+            "`niFornecedor` 45769285000168, sem erro. Não dá para perguntar 'quais contratos esta "
+            "empresa tem no PNCP' — e, portanto, **não dá para afirmar que ela não tem nenhum**. "
+            "Um detector da casa criava alerta de severidade ALTA ('pagamento sem amparo "
+            "contratual', art. 94) exatamente a partir dessa ausência; nunca chegou a rodar."),
+        caminho_alternativo=(
+            "Varrer por ÓRGÃO (`cnpjOrgao`, que funciona) e filtrar por `niFornecedor` do lado do "
+            "cliente — é o que `buscar_contratos_fornecedor` passou a fazer, devolvendo AMOSTRA da "
+            "janela, nunca a lista completa. Ausência continua sendo INDISPONÍVEL, não zero."),
+        medido_em="2026-08-09",
+    ),
+    LimiteDeFonte(
         fonte="TCE-RJ — valor_homologacao dos licitantes",
         tipo="limite_de_dado",
         o_que_acontece=(

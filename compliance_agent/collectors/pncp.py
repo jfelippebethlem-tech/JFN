@@ -21,7 +21,6 @@ from typing import Optional
 import logging
 
 import httpx
-from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -334,6 +333,10 @@ async def buscar_contratos_fornecedor(
     if len(cnpj) != 14:
         return []
 
+    # A API IGNORA `cnpjFornecedor` — medido em 2026-08-09 contra a fonte: pedindo o CNPJ
+    # 00801512000157 ela devolveu contrato de `niFornecedor` 45769285000168. O parâmetro não
+    # filtra e não dá erro. Por isso o filtro é aplicado AQUI, sobre o que voltou, e o resultado
+    # é uma AMOSTRA da janela — não a lista completa do fornecedor.
     params = {
         "cnpjFornecedor": cnpj,
         "dataInicial": data_inicial.strftime("%Y%m%d"),
@@ -344,7 +347,9 @@ async def buscar_contratos_fornecedor(
     result = await _get_pncp("/contratos", params)
     if not result:
         return []
-    return result.get("data", []) or (result if isinstance(result, list) else [])
+    linhas = result.get("data", []) or (result if isinstance(result, list) else [])
+    return [c for c in linhas
+            if re.sub(r"\D", "", str(c.get("niFornecedor") or "")) == cnpj]
 
 
 async def buscar_licitacoes_orgao(
@@ -374,7 +379,7 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
 
     Lei 14.133/21 art. 94: contratos devem ser publicados no PNCP.
     """
-    from compliance_agent.database.models import OrdemBancaria, Alerta
+    from compliance_agent.database.models import OrdemBancaria
 
     target_date = target_date or date.today()
     MINIMO = 30_000.0
@@ -404,33 +409,16 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
         await asyncio.sleep(0.3)
 
         if not contratos:
-            # Sem contrato publicado no PNCP para este CNPJ
-            titulo = f"OB sem contrato no PNCP — {ob.favorecido_nome or cnpj}"[:300]
-            existe = session.query(Alerta).filter_by(titulo=titulo).first()
-            if not existe:
-                alerta = Alerta(
-                    tipo="pncp_sem_contrato",
-                    severidade="alta",
-                    titulo=titulo,
-                    descricao=(
-                        f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}) paga a "
-                        f"'{ob.favorecido_nome}' (CNPJ {cnpj}) em {target_date}. "
-                        f"Nenhum contrato encontrado no PNCP para este fornecedor "
-                        f"nos últimos {JANELA_DIAS} dias. Pagamento sem amparo contratual "
-                        f"publicado — possível irregularidade à luz da Lei 14.133/21 art. 94."
-                    ),
-                    evidencias=str({
-                        "numero_ob": ob.numero_ob,
-                        "cnpj": cnpj,
-                        "favorecido": ob.favorecido_nome,
-                        "valor": ob.valor,
-                        "pncp_contratos_encontrados": 0,
-                    }),
-                    data_referencia=target_date,
-                    ordem_bancaria_id=ob.id,
-                )
-                session.add(alerta)
-                alertas.append({"ob": ob.numero_ob, "cnpj": cnpj, "valor": ob.valor})
+            # NÃO se afirma ausência com esta fonte. A consulta do PNCP ignora o filtro por
+            # fornecedor (medido em 2026-08-09), então "nenhum contrato encontrado" aqui significa
+            # "não achei nesta janela e nesta página", não "não existe contrato". Um alerta de
+            # severidade ALTA dizendo "pagamento sem amparo contratual" construído sobre isso seria
+            # acusação a partir de lacuna — o oposto da regra INDISPONÍVEL ≠ 0.
+            # O detector nunca chegou a rodar (0 alertas no acervo); fica desligado até haver fonte
+            # que sustente a afirmação (consulta por fornecedor ou varredura completa por órgão).
+            logger.info("pncp_sem_contrato NÃO emitido p/ %s: a fonte não permite afirmar ausência",
+                        cnpj)
+            continue
 
     session.commit()
     return alertas
