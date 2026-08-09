@@ -4038,6 +4038,9 @@ void main(){
       "📗",
       { sobre: "Pares cujo contato compartilhado é explicado pela própria forma jurídica — filial e matriz, empresa e seu sindicato patronal, entidades do mesmo grupo declarado. Saem da fila do fiscal de propósito: acusar o que a lei organiza assim é ruído que faz o leitor desconfiar do resto." }
     )}</div>`;
+    if (d.peso_e_piso && d.peso_e_piso.ug_ano_no_teto_de_coleta) {
+      h += leitura(`<b>Os valores abaixo são PISO.</b> A coleta do SIAFE tem teto por unidade e ano, e <b>${fmtN(d.peso_e_piso.ug_ano_no_teto_de_coleta)}</b> pares (UG, ano) ainda estão parados em contagem redonda — sintoma de coleta interrompida, não de órgão sem despesa. Onde o espelho conhece 50× mais que a fonte canônica, o valor dele vem declarado no item.`);
+    }
     if (d.cobertura_grafo && d.cobertura_grafo.universo) {
       const cg = d.cobertura_grafo;
       h += leitura(`O grafo societário percorreu <b>${fmtN(cg.percorridos)}</b> de <b>${fmtN(cg.universo)}</b> credores com Ordem Bancária (<b>${cg.pct}%</b>). Os elos abaixo existem SÓ dentro desse recorte — credor ainda não percorrido não foi afastado, não foi visto. A cobertura cresce a cada varredura, nas duas máquinas.`);
@@ -4151,7 +4154,13 @@ void main(){
       ${kpi(fmtN(d.novos || 0), "NOVOS desde a última rodada", d.novos || 0 ? "var(--red)" : null, "🆕", { drill: "apNovos" })}</div>`;
     h += leitura(esc(d.ressalva || ""));
     h += `<div class="grid">` + it.map((x) => {
-      const v = Object.entries(x.valor_por_fonte || {}).map(([k, n]) => `${esc(k)} ${fmtRc(n)}`).join(" · ");
+      const _FONTE = {
+        siafe_ob: "OB do Estado (SIAFE)",
+        pcrj_despesa: "pago pela Prefeitura do Rio",
+        pcrj_contratos: "contratos da Prefeitura (valor global, não pagamento)",
+        emenda_favorecidos: "emendas parlamentares"
+      };
+      const v = Object.entries(x.valor_por_fonte || {}).map(([k, n]) => `${esc(_FONTE[k] || k)} ${fmtRc(n)}`).join(" · ");
       const ex = x.explicacao_institucional ? `<div class="dim" style="font-size:12px;margin-top:3px">desenho do programa: <b>${esc(x.explicacao_institucional)}</b></div>` : "";
       const cf = x.orgao_pagador_e_o_proprio ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ pago pelo PRÓPRIO ÓRGÃO do agente: ${esc(x.orgao_pagador_e_o_proprio)}</div>` : "";
       return card(
@@ -5382,9 +5391,11 @@ void main(){
     if (ps.length) {
       h += `<table class="tb"><thead><tr><th>Pipeline</th><th>Estado</th><th class="r">Idade</th></tr></thead><tbody>`;
       for (const p of ps) {
-        const ok = String(p.estado || "").toLowerCase().startsWith("ok");
-        h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ok ? "ok" : "bad"}">${esc(p.estado || "—")}</td>
-          <td class="r dim">${p.idade_dias == null ? "—" : p.idade_dias + " d"}</td></tr>`;
+        const st = String(p.estado || p.status || "").toLowerCase();
+        const ruim = st === "stale" || st === "ausente" || st && !/^(ok|pausado|sob_demanda)/.test(st);
+        const idade = p.idade_dias != null ? p.idade_dias + " d" : p.idade_h != null ? p.idade_h + " h" : "—";
+        h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ruim ? "bad" : "ok"}">${esc(p.estado || p.status || "—")}</td>
+          <td class="r dim">${idade}</td></tr>`;
       }
       h += `</tbody></table>`;
     } else h += card(`<div class="dim">${pp && pp.ok === false ? "Pipelines indisponíveis nesta execução" + (pp.erro ? ": " + esc(pp.erro) : "") + "." : "Nenhum pipeline registrado — a rota respondeu, a lista está vazia."}</div>`);
@@ -7268,8 +7279,9 @@ void main(){
     if ((a.pipelines || []).length) {
       h += `<div style="height:14px"></div>` + sec("Pipelines (SLO)", a.pipelines.length);
       h += card(`<div style="display:flex;flex-wrap:wrap;gap:8px">` + a.pipelines.map((p0) => {
-        const ok = String(p0.estado).toLowerCase().startsWith("ok");
-        return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado)}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
+        const st = String(p0.estado || p0.status || "").toLowerCase();
+        const ok = /^(ok|pausado|sob_demanda)/.test(st);
+        return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado || p0.status || "")}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
       }).join("") + `</div>`);
     }
     h += `<div style="height:14px"></div>` + sec("Aprendizados — o que a leitura já produziu");

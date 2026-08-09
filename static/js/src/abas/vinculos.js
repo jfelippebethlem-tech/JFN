@@ -327,6 +327,13 @@ export async function vincElosOcultos(soSemExplicacao){
   /* O DENOMINADOR DO GRAFO É PARTE DO ACHADO. Sem ele, "39 elos" lê-se como o resultado de varrer
      o universo — e o grafo percorreu 9,4% dos credores quando esta linha nasceu. O que está fora
      não foi afastado: não foi visto, e a diferença é a mesma que separa lacuna de achado. */
+  /* O PESO É PISO — e o leitor precisa saber ANTES de julgar o número. Medido em 2026-08-09: a
+     coleta do SIAFE tinha 22 pares (UG, ano) parados em contagem redonda, e o par que encabeçava
+     a fila com R$ 423,2 mi aparecia com R$ 40,7 mi enquanto a fonte canônica só tinha 1 das 13
+     OBs de um dos lados. */
+  if(d.peso_e_piso&&d.peso_e_piso.ug_ano_no_teto_de_coleta){
+    h+=leitura(`<b>Os valores abaixo são PISO.</b> A coleta do SIAFE tem teto por unidade e ano, e <b>${fmtN(d.peso_e_piso.ug_ano_no_teto_de_coleta)}</b> pares (UG, ano) ainda estão parados em contagem redonda — sintoma de coleta interrompida, não de órgão sem despesa. Onde o espelho conhece 50× mais que a fonte canônica, o valor dele vem declarado no item.`);
+  }
   if(d.cobertura_grafo&&d.cobertura_grafo.universo){
     const cg=d.cobertura_grafo;
     h+=leitura(`O grafo societário percorreu <b>${fmtN(cg.percorridos)}</b> de <b>${fmtN(cg.universo)}</b> credores com Ordem Bancária (<b>${cg.pct}%</b>). Os elos abaixo existem SÓ dentro desse recorte — credor ainda não percorrido não foi afastado, não foi visto. A cobertura cresce a cada varredura, nas duas máquinas.`);
@@ -423,7 +430,15 @@ export async function vincAgentePublico(filtro){
       ${kpi(fmtN(d.novos||0),'NOVOS desde a última rodada',(d.novos||0)?'var(--red)':null,'🆕',{drill:'apNovos'})}</div>`;
   h+=leitura(esc(d.ressalva||''));
   h+=`<div class="grid">`+it.map(x=>{
-    const v=Object.entries(x.valor_por_fonte||{}).map(([k,n])=>`${esc(k)} ${fmtRc(n)}`).join(' · ');
+    // O NOME DA FONTE DIZ DE QUEM É O DINHEIRO. Os rótulos crus ("pcrj_despesa") escondem que
+    // R$ 2,6 bi de um item podem ser MUNICIPAIS enquanto o agente serve a um órgão ESTADUAL — e o
+    // leitor apressado soma tudo como se fosse do Estado (medido 2026-08-09, caso VIVA RIO:
+    // R$ 8,2 mi no SIAFE estadual contra R$ 2,60 bi pagos pela Prefeitura).
+    const _FONTE={siafe_ob:'OB do Estado (SIAFE)', pcrj_despesa:'pago pela Prefeitura do Rio',
+      pcrj_contratos:'contratos da Prefeitura (valor global, não pagamento)',
+      emenda_favorecidos:'emendas parlamentares'};
+    const v=Object.entries(x.valor_por_fonte||{})
+      .map(([k,n])=>`${esc(_FONTE[k]||k)} ${fmtRc(n)}`).join(' · ');
     const ex=x.explicacao_institucional
       ? `<div class="dim" style="font-size:12px;margin-top:3px">desenho do programa: <b>${esc(x.explicacao_institucional)}</b></div>` : '';
     // CONFLITO DE ÓRGÃO: a unidade que pagou é a unidade onde o agente serve. É o único eixo
