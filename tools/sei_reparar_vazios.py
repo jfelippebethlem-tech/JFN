@@ -219,8 +219,11 @@ def reparar(alvos: list[dict], aplicar: bool = False) -> dict:
         m = por_manifest.setdefault(a["manifest"], json.loads(a["manifest"].read_text()))
         for d in m.get("docs") or []:
             if str(d.get("i")) == str(a["i"]):
-                d["chars"] = str(len(texto))
-                d["ocr"] = "True"
+                # NÚMERO, não texto: gravar `str` aqui matou o drenador `sei_integra_fila --geral`
+                # de 24/07 a 09/08 (`'>=' not supported between str and int`), com 1.972 manifests
+                # já contaminados. Quem lê agora coage, mas o produtor não pode reincidir.
+                d["chars"] = len(texto)
+                d["ocr"] = True
                 # data REAL do reparo: a constante fixa datava de julho um reparo feito hoje, e
                 # `reparado_em` só serve para responder "quando isto foi recuperado".
                 d["reparado_em"] = _dt.date.today().isoformat()

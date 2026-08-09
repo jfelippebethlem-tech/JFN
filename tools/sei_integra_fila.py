@@ -88,6 +88,21 @@ def _esperar_browser_livre(espera_max: int = 300) -> None:
 CORTE_ESCRITOR = "2026-07-23"
 
 
+def _chars(d: dict) -> int:
+    """Tamanho do teor de um documento — TOLERANDO `chars` gravado como texto.
+
+    `sei_reparar_vazios` gravava `str(len(texto))` e contaminou **1.972 manifests**. A comparação
+    crua (`chars >= 40`) estourava `TypeError: '>=' not supported between str and int` e derrubava
+    o drenador `--geral` INTEIRO antes de baixar qualquer processo — seis rodadas mortas entre
+    24/07 e 09/08, todas caladas no log do cron. O produtor foi corrigido; isto cobre o passado.
+    """
+    v = d.get("chars")
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _arquivado_ok(dir_arq: Path) -> bool:
     """True só se o arquivo tem CONTEÚDO real (>=1 texto/*.txt). Um STUB (manifest.json docs=0 de
     download que falhou) NÃO conta — senão a fila pula pra sempre e o processo nunca é baixado
@@ -112,7 +127,7 @@ def _arquivado_ok(dir_arq: Path) -> bool:
     entradas = [d for d in docs if isinstance(d, dict)]
     if len(entradas) != len(docs):
         return True                     # manifesto fora do formato: não julgo o teor
-    if any((d.get("chars") or 0) >= 40 for d in entradas):
+    if any(_chars(d) >= 40 for d in entradas):
         # tem teor — MAS re-captura se a captura está INCOMPLETA:
         # (a) menos docs que a árvore (total_arvore) → captura parou no meio (timeout) e
         #     centenas de docs nunca foram tentados (260007/004617 = 215 de 646!);
@@ -183,6 +198,41 @@ def _fila_geral() -> list[dict]:
             continue
         out.append({"sei": num, "score": valores.get(num, 0)})
     out.sort(key=lambda e: -(e.get("score") or 0))
+    return out
+
+
+def _fila_inscrita(limite: int = 40) -> list[str]:
+    """Processos INSCRITOS à mão em `sei_fila_captura` — a fila que ninguém drenava.
+
+    A tabela existe desde `fila_recaptura_por_parecer` / `sei_inventario_captura` e acumulou 3.632
+    processos; medido em 2026-08-09, o único leitor era o relatório de requisição. `_fila_geral`
+    varre o cache CDP, ou seja, só enxerga o que o sweep JÁ capturou — um processo inscrito e sem
+    cache não era buscado por ninguém, e inscrever nele era registrar intenção, não agendar
+    trabalho. `_baixar_e_arquivar` funciona por NÚMERO e não precisa de cache: basta ligar.
+
+    Vem depois dos não-arquivados na ordem de prioridade e é limitado — a inscrição é manual e
+    intencional, mas 3.632 alvos não podem monopolizar a janela do drenador.
+    """
+    if not DB.exists():
+        return []
+    import sqlite3
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    try:
+        con.execute("PRAGMA busy_timeout=15000")
+        linhas = con.execute(
+            "SELECT numero_sei FROM sei_fila_captura WHERE COALESCE(numero_sei,'') <> '' "
+            "ORDER BY COALESCE(total_pago,0) DESC, numero_sei LIMIT ?", (int(limite) * 4,)).fetchall()
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    out: list[str] = []
+    for (num,) in linhas:
+        proc = _proc_limpo(num)
+        if proc and not _arquivado_ok(ARQUIVO / proc.replace("/", "_")):
+            out.append(num)
+        if len(out) >= limite:
+            break
     return out
 
 
@@ -325,9 +375,13 @@ def main() -> int:
         _log(f"fonte=EMPRESA {args.empresa}: {len(candidatos)} processo(s) (busca_viva={args.busca_viva})")
     elif args.geral:
         novos = [c["sei"] for c in _fila_geral()]
+        inscritos = _fila_inscrita()          # inscrição manual: alvo escolhido por quem investiga
         reler = _fila_reler_por_ob()          # frescor: OB nova em processo já arquivado → re-ler
-        candidatos = novos + reler
-        _log(f"fonte=GERAL: {len(novos)} não arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
+        # inscritos primeiro: são alvos escolhidos a dedo, não varredura. O `dict.fromkeys` tira
+        # repetido preservando a ordem — um inscrito pode também ter cache CDP.
+        candidatos = list(dict.fromkeys(inscritos + novos + reler))
+        _log(f"fonte=GERAL: {len(inscritos)} inscritos em sei_fila_captura + {len(novos)} não "
+             f"arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
     else:
         fila_path = Path(args.fila)
         if not fila_path.exists():
