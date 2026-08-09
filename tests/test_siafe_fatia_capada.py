@@ -128,9 +128,15 @@ def test_blocos_de_js_sao_raw_strings():
 
     from compliance_agent import siafe_ob_orcamentaria as M
 
+    # os escapes que o Python COME numa string não-raw e que aparecem em regex de JS:
+    # \b (backspace), \a (bell), \f (form feed), \v (vertical tab). `\n`/`\t` ficam de fora
+    # porque são legítimos em código-fonte formatado.
+    perigosos = {"\b": chr(8), "\a": chr(7), "\f": chr(12), "\v": chr(11)}
     fonte = inspect.getsource(M)
-    assert chr(8) not in fonte, (
-        "há BACKSPACE literal no módulo: alguma string de JS não é raw e teve `\\b` convertido")
+    achados = [nome for nome, ch in perigosos.items() if ch in fonte]
+    assert not achados, (
+        f"escape do Python comido dentro de string de JS ({achados}): use r\"\"\" no bloco")
     for fn in (M._set_valor, M._navegar, M._esperar_linha_filtro):
         src = inspect.getsource(fn)
-        assert chr(8) not in src, f"{fn.__name__} tem escape do Python dentro do JS"
+        assert not any(ch in src for ch in perigosos.values()), (
+            f"{fn.__name__} tem escape do Python dentro do JS")
