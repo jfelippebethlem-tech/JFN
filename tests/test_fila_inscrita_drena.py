@@ -100,3 +100,35 @@ def test_produtor_do_reparo_grava_numero():
     fonte = inspect.getsource(R)
     assert 'd["chars"] = str(len(texto))' not in fonte, (
         "voltou a gravar chars como texto — foi isso que matou o drenador por 16 dias")
+
+
+def test_recusa_por_carga_e_ADIADO_nao_erro(monkeypatch):
+    """O preflight de carga saía com código 0 sem capturar; o `sei_arquivar` seguinte falhava por
+    falta de material e a fila registrava **"erro"** — o mesmo rótulo de uma captura quebrada.
+    Quem lesse o log diagnosticava problema no processo quando o que houve foi a VM ocupada
+    (visto em 2026-08-09: `030001/008372/2024: erro`, e o motivo real era `load1=2.50 > 1.7`).
+    """
+    import subprocess
+    chamadas = []
+
+    class _R:
+        def __init__(self, rc): self.returncode = rc
+
+    def _fake(cmd, **kw):
+        chamadas.append(cmd)
+        return _R(75)                      # EX_TEMPFAIL: preflight recusou por carga
+
+    monkeypatch.setattr(subprocess, "run", _fake)
+    assert F._baixar_e_arquivar("030001/008372/2024", {}) == "adiado"
+    assert len(chamadas) == 1, "recusado por carga não deve nem tentar arquivar"
+
+
+def test_tres_adiamentos_seguidos_encerram_a_rodada(monkeypatch):
+    """Com a VM ocupada o preflight recusa TODOS — desfilar a fila inteira gasta a janela sem
+    baixar nada. A fila fica intacta e a próxima passada retoma do mesmo lugar."""
+    monkeypatch.setattr(F, "_baixar_e_arquivar", lambda p, e: "adiado")
+    monkeypatch.setattr(F.time, "sleep", lambda *_: None)
+    vistos = []
+    n = F._rodar_fila(["a", "b", "c", "d", "e"], {}, None, lambda m: vistos.append(m))
+    assert n == 3, f"devia parar no terceiro adiamento, tentou {n}"
+    assert any("três adiamentos" in v for v in vistos), "o encerramento tem de sair declarado"

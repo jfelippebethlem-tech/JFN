@@ -314,7 +314,7 @@ def _fila_empresa(cnpj: str, busca_viva: bool = False) -> list[str]:
 
 
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
-    """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'erro'.
+    """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'adiado' | 'erro'.
 
     O timeout de 900s NUNCA propaga: um processo grande (646 docs > 15min) estourava
     o subprocess.run e crashava a fila inteira (finally removia as pausas e encerrava).
@@ -325,6 +325,10 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
         rc = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
                             cwd=RAIZ, env=env, timeout=900,
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        if rc == 75:
+            # o preflight de carga recusou: o alvo continua na fila e a próxima passada retoma.
+            # Registrar como "erro" fazia parecer defeito do processo — era a VM ocupada.
+            return "adiado"
         rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                              cwd=RAIZ, env=env, timeout=900,
                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
@@ -338,7 +342,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
 def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
     """Processa os alvos sequencialmente até o deadline. Um timeout/erro num processo
     não derruba os demais. Retorna quantos foram tentados."""
-    feitos = 0
+    feitos, adiados_seguidos = 0, 0
     for proc in alvos:
         if deadline and time.time() > deadline:
             log(f"orçamento esgotado — encerrando limpo ({feitos} feitos)")
@@ -347,6 +351,13 @@ def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
         status = _baixar_e_arquivar(proc, env)
         log(f"  {proc}: {status}")
         feitos += 1
+        # Se a VM está ocupada, o preflight recusa TODOS — desfilar a fila inteira colhendo
+        # "adiado" gasta a janela sem baixar nada. Três seguidos = a carga não vai ceder nesta
+        # rodada; a fila fica intacta e a próxima passada retoma do mesmo lugar.
+        adiados_seguidos = adiados_seguidos + 1 if status == "adiado" else 0
+        if adiados_seguidos >= 3:
+            log(f"três adiamentos seguidos por carga — encerrando a rodada ({feitos} tentados)")
+            break
         time.sleep(5)
     return feitos
 

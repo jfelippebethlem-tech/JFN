@@ -62,7 +62,13 @@ async def main():
     print("PREFLIGHT:", ok, m, flush=True)
     if not ok:
         ok, m = G.wait_until_safe(150)
-        if not ok: return
+        if not ok:
+            # ADIADO, não falhado. Saía com código 0 sem capturar nada; o `sei_arquivar` seguinte
+            # então falhava por falta de material e a fila registrava "erro" — o mesmo rótulo de
+            # uma captura que realmente quebrou. Quem lesse o log diagnosticava problema no
+            # processo quando o que houve foi a VM ocupada. 75 = EX_TEMPFAIL.
+            print("ADIADO por carga:", m, flush=True)
+            return 75
     outdir = Path(f"data/sei_cache/integra_{TAG}"); outdir.mkdir(parents=True, exist_ok=True)
     async with async_playwright() as pw:
         b = await pw.chromium.launch(headless=True, args=G.guarded_launch_args())
@@ -192,4 +198,4 @@ async def main():
     G.cleanup_orphans()
 
 if __name__ == "__main__":   # importar este módulo NÃO pode disparar o trabalho
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()) or 0)
