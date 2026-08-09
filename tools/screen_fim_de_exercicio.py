@@ -26,10 +26,12 @@ eram fundos municipais de saúde — ruído que faria o fiscal desconfiar do res
 from __future__ import annotations
 
 import argparse
+import logging
 import sqlite3
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
+_log = logging.getLogger(__name__)
 MESES_FIM = ("11", "12")
 
 
@@ -46,8 +48,11 @@ def _cadastro() -> tuple[dict, dict]:
                     "SELECT cnpj_basico, natureza_cod, razao_social FROM empresas"):
                 nat[raiz] = str(natureza or "")
                 razao[raiz] = str(rs or "")
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        # Cadastro ilegível = veto de ente público desligado, e aí o topo da lista volta a ser
+        # fundo municipal. Silenciar isso faria a tela mentir sem avisar.
+        _log.warning("cadastro da Receita ilegível (%s) — o veto por natureza jurídica NÃO será "
+                     "aplicado nesta rodada", exc)
     finally:
         con.close()
     return nat, razao
@@ -88,8 +93,10 @@ def medir(min_valor: float = 5_000_000, min_obs: int = 5, pct: float = 80.0,
 
 
 def markdown(itens: list[dict], pct: float, min_valor: float) -> str:
+    from compliance_agent.reporting.intel_base import moeda   # padrão BR: 1.234.567,89
+
     L = ["# Concentração de pagamento em novembro e dezembro", "",
-         f"> Credores PRIVADOS com ≥ R$ {min_valor:,.0f} num exercício e ≥ {pct:.0f}% do valor pago "
+         f"> Credores PRIVADOS com ≥ R$ {moeda(min_valor)} num exercício e ≥ {pct:.0f}% do valor pago "
          "nos dois últimos meses. **Indício, não acusação**: dezembro concentra execução por desenho "
          "orçamentário. O que o padrão sinaliza é ONDE olhar a prova de entrega — é na janela do "
          "fim do exercício que a liquidação costuma afrouxar.", "",
@@ -99,7 +106,7 @@ def markdown(itens: list[dict], pct: float, min_valor: float) -> str:
          "| Ano | Credor | Total no ano | % em nov–dez | OBs |", "|---|---|---:|---:|---:|"]
     for x in itens:
         L.append(f"| {x['exercicio']} | {x['nome'][:44]} ({x['raiz']}) | "
-                 f"R$ {x['total']:,.2f} | {x['pct']:.1f}% | {x['obs']} |")
+                 f"R$ {moeda(x['total'])} | {x['pct']:.1f}% | {x['obs']} |")
     return "\n".join(L) + "\n"
 
 

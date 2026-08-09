@@ -699,6 +699,32 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/coparticipacao_relacionados")
+def api_coparticipacao_relacionados(min_certames: int = 2, limite: int = 20):
+    """Empresas do mesmo comando disputando o MESMO certame — competição simulada (E.3.2).
+
+    Cruza os 82.941 licitantes municipais do TCE-RJ com o quadro societário, atravessando a ponte
+    `nome_cnpj_resolvido` que o coletor construiu e **nenhum módulo usava**. O elo precisa estar
+    VIGENTE na data do certame: sem esse filtro os dois maiores pares eram anacronismos — o
+    administrador comum entrou na segunda empresa no ano seguinte ao certame.
+
+    Coparticipar não é vedado (a Lei 14.133 pune fraudar o caráter competitivo, art. 90). O indício
+    é a repetição; o julgamento é dos autos. Cobertura de 68,5% dos licitantes: lista é piso.
+    """
+    try:
+        from tools.screen_coparticipacao_relacionados import RESSALVA, medir
+
+        itens = medir(min_certames=max(1, int(min_certames)))
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "itens": itens[:max(1, min(int(limite), 200))],
+            "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("coparticipacao_relacionados falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/fim_de_exercicio")
 def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite: int = 25):
     """Credores privados cujo ano inteiro cabe em novembro e dezembro — a janela frouxa.

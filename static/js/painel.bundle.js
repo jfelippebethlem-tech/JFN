@@ -4778,6 +4778,33 @@ void main(){
     taxaPorUnidade();
     fimDeExercicio();
     concentracaoPorGrupo();
+    coparticipacaoRelacionados();
+  }
+
+  // AS DUAS DO MESMO COMANDO NA MESMA DISPUTA. Cruza os 82.941 licitantes municipais do TCE-RJ com
+  // o quadro societário — a travessia que o resolver_nome_cnpj foi escrito para permitir e que
+  // nenhum módulo fazia. O elo tem de estar VIGENTE na data: sem esse filtro os dois maiores pares
+  // eram anacronismos (o administrador comum entrou no ano seguinte ao certame).
+  async function coparticipacaoRelacionados() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/coparticipacao_relacionados?limite=12");
+    if (!d || d.ok === false || !(d.itens || []).length) return;
+    const alvo = document.createElement("div");
+    alvo.innerHTML = sec(`Relacionadas no mesmo certame (${fmtN(d.total)} pares)`)
+      + card(`<table class="tb"><thead><tr><th class="right">certames</th><th class="right">mun.</th>
+        <th>empresa A</th><th>empresa B</th><th>elo vigente</th>
+        <th class="right">homologado</th></tr></thead><tbody>`
+        + d.itens.map((x) => `<tr>
+            <td class="right" style="font-weight:800;color:${x.certames >= 4 ? "var(--red)" : x.certames >= 3 ? "var(--amber)" : "inherit"}">${x.certames}</td>
+            <td class="right dim">${x.municipios}</td>
+            <td>${esc(x.nome_a.slice(0, 30))} <span class="dim">${esc(x.cnpj_a)}</span></td>
+            <td>${esc(x.nome_b.slice(0, 30))} <span class="dim">${esc(x.cnpj_b)}</span></td>
+            <td class="dim">${esc((x.elos || []).join("; ").slice(0, 44))}</td>
+            <td class="right">${fmtRc(x.valor)}</td></tr>`).join("")
+        + `</tbody></table>`)
+      + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
   }
 
   // O QUE O CNPJ ESCONDE. Um órgão pode contratar dez empresas e pagar quase tudo a um só dono: o

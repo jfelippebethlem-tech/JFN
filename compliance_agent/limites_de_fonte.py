@@ -147,6 +147,22 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
         medido_em="2026-07-29",
     ),
     LimiteDeFonte(
+        fonte="TCE-RJ — valor_homologacao dos licitantes",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "O campo `valor_homologacao` de `tcerj_licitante` carrega outliers impossíveis: o "
+            "máximo é **R$ 990 bilhões**, e uma compra de gaze em Macaé traz R$ 2,21 bi "
+            "homologados contra R$ 2,95 mi estimados (750×). Medido em 2026-08-09: **1,10% das "
+            "125.060 linhas** com os dois campos passam de 10× o estimado e carregam **87,4% da "
+            "soma** (R$ 2,43 tri brutos → R$ 306 bi podados). Somar o campo cru publica número "
+            "~8× inflado; calcular desconto com ele dá −75.000%."),
+        caminho_alternativo=(
+            "Usar `MAX_HOMOLOGADO_SOBRE_ESTIMADO` de `collectors/tcerj_licitantes` — acima do "
+            "múltiplo o valor é INDISPONÍVEL, nunca zero nem número impossível. O certame "
+            "continua contando; só o valor sai."),
+        medido_em="2026-08-09",
+    ),
+    LimiteDeFonte(
         fonte="TCE-RJ — jurisprudência",
         tipo="limite_de_dado",
         o_que_acontece=(
