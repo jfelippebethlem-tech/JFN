@@ -50,11 +50,26 @@ def gravar(con, achados: list[dict], cobertura: dict[str, str], *,
     for a in achados:
         tipo = f"{prefixo}_{a['detector']}"
         ev = json.dumps(a["evidencias"], ensure_ascii=False, default=str)
-        ex = con.execute("select id from alertas where tipo=? and titulo=?",
-                         (tipo, a["titulo"])).fetchone()
-        if ex:
+        # Ordena preferindo quem tem TRIAGEM: se houver cópias, a que fica é a decidida pelo
+        # fiscal. As demais são colapsadas — dedup que só ATUALIZA a primeira deixa as cópias
+        # antigas vivas para sempre (medido: 73 pares (tipo, título) com até 7 cópias cada,
+        # sobreviventes de gravações anteriores ao dedup).
+        ids = [r[0] for r in con.execute(
+            "select id from alertas where tipo=? and titulo=? "
+            "order by case when coalesce(status,'novo') <> 'novo' then 0 else 1 end, id",
+            (tipo, a["titulo"]))]
+        if ids:
             con.execute("update alertas set severidade=?, descricao=?, evidencias=? where id=?",
-                        (severidade(a["risco"]), a["descricao"], ev, ex[0]))
+                        (severidade(a["risco"]), a["descricao"], ev, ids[0]))
+            # Cópias sem triagem saem. Cópias TRIADAS só saem se a decisão for a MESMA da que
+            # fica — aí colapsar é sem perda. Decisões DIVERGENTES para o mesmo achado ficam todas:
+            # o conflito é informação, e resolvê-lo é de quem fiscaliza, não do gravador.
+            # Medido: os 21 alertas "triados" do acervo eram 7 decisões triplicadas.
+            mantido = con.execute("select coalesce(status,'novo') from alertas where id=?",
+                                  (ids[0],)).fetchone()[0]
+            for extra in ids[1:]:
+                con.execute("delete from alertas where id=? and coalesce(status,'novo') in "
+                            "('novo', ?)", (extra, mantido))
         else:
             con.execute(
                 "insert into alertas (tipo, severidade, titulo, descricao, evidencias, status) "

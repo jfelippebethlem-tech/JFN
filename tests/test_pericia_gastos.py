@@ -330,3 +330,65 @@ def test_d7_severidade_considera_o_EXCESSO_nao_so_a_contagem(con_semeado):
     assert rente["risco"] < folgado["risco"], "o excesso tem de separar dois achados de igual contagem"
     assert rente["risco"] <= 7, "rente ao teto não pode ocupar a faixa ALTA"
     assert folgado["risco"] >= 8
+
+
+def test_copias_antigas_do_MESMO_titulo_sao_colapsadas(con_semeado):
+    """Dedup que só ATUALIZA a primeira deixa as cópias antigas vivas para sempre.
+
+    Medido em 2026-08-09: 73 pares (tipo, título) com até 7 cópias cada, sobreviventes de
+    gravações anteriores ao dedup. A cópia com TRIAGEM nunca é colapsada.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("Z1", "11222333000181", "ALFA"), ("Z2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    titulo = [a["titulo"] for a in pericia_gastos.d10_rede_concorrentes(con)][0]
+    for status in ("novo", "novo", "confirmado"):
+        con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values ('pcrj_d10_rede_concorrentes','media',?,'cópia antiga','{}',?)""",
+                    (titulo, status))
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    linhas = con.execute("select status from alertas where tipo='pcrj_d10_rede_concorrentes' "
+                         "and titulo=?", (titulo,)).fetchall()
+    # a que fica é a TRIADA — ela é preferida na ordenação e recebe a atualização no lugar,
+    # de modo que a decisão do fiscal sobrevive E não há cópia duplicada ao lado dela
+    assert len(linhas) == 1, f"as cópias sem triagem deviam ser colapsadas, veio {len(linhas)}"
+    assert linhas[0][0] == "confirmado", "a cópia com triagem foi destruída"
+
+
+def test_triagem_IGUAL_colapsa_e_triagem_DIVERGENTE_fica(con_semeado):
+    """Cópias com a MESMA decisão são redundância; com decisões DIFERENTES são conflito.
+
+    Medido em 2026-08-09: os 21 alertas "triados" do acervo eram **7 decisões triplicadas**.
+    Colapsar cópias de mesma decisão é sem perda; resolver decisões divergentes é de quem
+    fiscaliza, não do gravador — por isso elas ficam todas.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("W1", "11222333000181", "ALFA"), ("W2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    titulo = [a["titulo"] for a in pericia_gastos.d10_rede_concorrentes(con)][0]
+    for status in ("descartado", "descartado", "descartado"):
+        con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values ('pcrj_d10_rede_concorrentes','media',?,'cópia','{}',?)""",
+                    (titulo, status))
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    iguais = con.execute("select count(*) from alertas where titulo=?", (titulo,)).fetchone()[0]
+    assert iguais == 1, f"três 'descartado' idênticos deviam virar um, veio {iguais}"
+
+    con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                   values ('pcrj_d10_rede_concorrentes','media',?,'outra leitura','{}','confirmado')""",
+                (titulo,))
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    st = sorted(r[0] for r in con.execute("select status from alertas where titulo=?", (titulo,)))
+    assert st == ["confirmado", "descartado"], f"decisões divergentes têm de ficar, veio {st}"
