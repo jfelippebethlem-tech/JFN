@@ -4042,6 +4042,13 @@ void main(){
       const cg = d.cobertura_grafo;
       h += leitura(`O grafo societário percorreu <b>${fmtN(cg.percorridos)}</b> de <b>${fmtN(cg.universo)}</b> credores com Ordem Bancária (<b>${cg.pct}%</b>). Os elos abaixo existem SÓ dentro desse recorte — credor ainda não percorrido não foi afastado, não foi visto. A cobertura cresce a cada varredura, nas duas máquinas.`);
     }
+    // O PESO É PISO — e o leitor precisa saber ANTES de julgar o número. Medido em 2026-08-09:
+    // a coleta do SIAFE tinha 22 pares (UG, ano) parados em contagem redonda, e o par que hoje
+    // encabeça a fila com R$ 423,2 mi aparecia com R$ 40,7 mi enquanto a fonte canônica só tinha
+    // 1 das 13 OBs de um dos lados.
+    if (d.peso_e_piso && d.peso_e_piso.ug_ano_no_teto_de_coleta) {
+      h += leitura(`<b>Os valores abaixo são PISO.</b> A coleta do SIAFE tem teto por unidade e ano, e <b>${fmtN(d.peso_e_piso.ug_ano_no_teto_de_coleta)}</b> pares (UG, ano) ainda estão parados em contagem redonda — sintoma de coleta interrompida, não de órgão sem despesa. Onde o espelho conhece 50× mais que a fonte canônica, o valor dele vem declarado no item.`);
+    }
     h += leitura(esc(d.ressalva || ""));
     const _lin = (x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px">

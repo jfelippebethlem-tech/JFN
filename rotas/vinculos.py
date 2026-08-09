@@ -478,6 +478,13 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
         return JSONResponse({
             "ok": True, "gerado_em": corpo.get("gerado_em"),
             "cobertura_grafo": cobertura_grafo,
+            # O PESO É PISO, e isso tem de chegar à tela junto com o número. A ferramenta já
+            # calculava `peso_e_piso` (quantos pares UG/ano estão parados em contagem redonda, o
+            # sintoma do teto de coleta) e a rota descartava o campo — o fiscal via "R$ 4,3 mi"
+            # sem saber que a fonte canônica só tinha 1 das 13 OBs daquele credor. Medido em
+            # 2026-08-09, quando a recoleta levou o par PHOTONLUX × EVOLUÇÃO de R$ 40,7 mi para
+            # R$ 423,2 mi e ele virou o primeiro da fila.
+            "peso_e_piso": corpo.get("peso_e_piso"),
             "arestas_de_contato": corpo.get("arestas_de_contato"),
             "estruturais": corpo.get("estruturais"),
             "total": corpo.get("os_dois_lados_pagos"),
