@@ -49,6 +49,16 @@ for par in "${PARES[@]}"; do
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
   L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — paro por aqui"; break; }
   ANTES=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO\").fetchone()[0])")
+  # CHECKPOINT DE COLETA QUEBRADA NÃO VALE. Os arquivos `uggrande_*.json` de junho marcam fatias
+  # como feitas, mas foram escritos quando a ingestão usava o cabeçalho errado (as linhas entravam
+  # com a chave vazia e sobrava UMA por fatia) e quando a PK apagava a OB de outra unidade. Se a
+  # contagem da UG ainda está redonda, o "feito" do checkpoint é desmentido pelo próprio banco —
+  # medido em 2026-08-09 na UG 243200/2023, que respondeu "nada a fazer" com 1.000 linhas.
+  CK="data/sei_cache/uggrande_${UG}_${ANO}.json"
+  if [ -f "$CK" ]; then
+    mv -f "$CK" "$CK.desmentido_pelo_banco"
+    say "checkpoint de $UG/$ANO afastado: dizia 'feito' com a contagem ainda redonda ($ANTES)"
+  fi
   if [ "$ANO" -le 2023 ]; then export JFN_SIAFE_LOGIN_URL="$LOGIN1"; else unset JFN_SIAFE_LOGIN_URL; fi
   say "drenando UG $UG ano $ANO (SIAFE $([ "$ANO" -le 2023 ] && echo 1 || echo 2)) — $ANTES linhas"
   timeout -k 120 3300 nice -n 10 $PY -m compliance_agent.siafe_ob_orcamentaria \
