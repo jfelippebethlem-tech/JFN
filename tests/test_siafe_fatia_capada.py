@@ -84,3 +84,31 @@ def test_seletor_do_playwright_nao_vaza_para_o_navegador():
     assert ":visible" in M._F_VAL_SEL, "premissa mudou: o seletor não usa mais o pseudo do Playwright"
     assert "replace(/:visible" in fonte, (
         "o seletor com `:visible` volta a ir cru para o navegador — DOMException a cada filtro")
+
+
+def test_nenhum_evaluate_leva_pseudo_do_playwright_para_o_navegador():
+    """Varredura do pacote: `:visible` (e afins) só valem no locator do Playwright.
+
+    `siafe_contratos.py` usa `:visible` do jeito certo — dentro de `pg.locator(...)`. O vazamento
+    aconteceu em UM lugar: um seletor montado para o locator foi reaproveitado dentro de
+    `pg.evaluate`, onde vira `DOMException` e mata o passo em silêncio (o log traz a exceção, mas o
+    fluxo segue como se o filtro tivesse sido aplicado). Esta catraca varre `compliance_agent/`
+    inteiro para a terceira cópia não nascer.
+    """
+    import pathlib
+    import re
+
+    raiz = pathlib.Path(__file__).resolve().parent.parent
+    pseudos = (":visible", ":has-text(", ":text(")
+    suspeitos = []
+    for arq in (raiz / "compliance_agent").rglob("*.py"):
+        txt = arq.read_text(encoding="utf-8", errors="replace")
+        for m in re.finditer(r"\.evaluate\(", txt):
+            trecho = txt[m.end():m.end() + 900]
+            fim = trecho.find(")\n")
+            corpo = trecho[: fim if fim > 0 else 900]
+            if any(p in corpo for p in pseudos) and "replace(/:visible" not in corpo:
+                suspeitos.append(f"{arq.relative_to(raiz)}: {corpo.strip()[:70]}")
+    assert not suspeitos, (
+        "pseudo-seletor do Playwright dentro de evaluate (vira DOMException no navegador): "
+        + " | ".join(suspeitos))
