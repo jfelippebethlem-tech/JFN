@@ -100,6 +100,12 @@ for par in "${PARES[@]}"; do
     say "UG $UG $ANO: SEM GANHO ($ANTES → $DEPOIS, rc=$rc) — ver $SAIDA"
   fi
   feitos=$((feitos+1))
+  # RESPIRO ENTRE PARES. A sessão do SIAFE é única por IP e o servidor demora a soltá-la: medido em
+  # 2026-08-09, a UG 404340 deu SEM GANHO duas vezes seguidas e o log DELA (por par, justamente
+  # para isso) mostrou o login falhando 3× em `Page.fill` — o campo de usuário nem aparecia, que é
+  # a cara de sessão anterior ainda aberta. É MITIGAÇÃO, não certeza: se voltar a acontecer, o log
+  # do par mostra de novo e aí se investiga o lado do servidor.
+  [ "$feitos" -lt "$MAX" ] && sleep 45
 done
 # O AVISO DO VAULT SE MANTÉM SOZINHO. As notas de caso avisam que seus valores de SIAFE são PISO
 # e listam quais (UG, ano) faltam — lista que ENVELHECE a cada par drenado. Aviso desatualizado é
