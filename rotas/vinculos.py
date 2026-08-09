@@ -649,7 +649,7 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
 
 
 @router.get("/api/fiscal/concentracao_por_grupo")
-def api_concentracao_por_grupo(ug: str, ano: str = ""):
+def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
     """Concentração de uma unidade gestora COLAPSADA por grupo econômico — o que o CNPJ esconde.
 
     O módulo `osint/grupo_economico` mede isto desde sempre e **nenhuma rota o expunha**: para ver
@@ -661,16 +661,37 @@ def api_concentracao_por_grupo(ug: str, ano: str = ""):
     concentração que a medição por CNPJ não mostra, e o que ela pede é diligência sobre os
     certames — não imputação. A cobertura de QSA vem declarada: fornecedor sem QSA na base conta
     como grupo de si mesmo, então o share do maior grupo é **piso, nunca teto**.
+
+    Cada grupo vem com `cimento`, que diz o que o SUSTENTA — sem isso dois grupos de tamanhos
+    parecidos leem-se iguais quando não são. Medido no mesmo dia: Cidades tem 2 das 5 pontes
+    ADMINISTRANDO duas empresas (comando comum); a FSERJ tem 1 em 28, e as outras 27 são sócias de
+    sociedades médicas com dezenas de cotistas — ser cotista de duas clínicas é a profissão, não
+    estrutura de grupo. `tipo` distingue `comando_comum`, `coparticipacao_com_excecao` e
+    `coparticipacao`; QSA ausente sai `indisponivel`, jamais "não há comando".
     """
     try:
-        from compliance_agent.osint.grupo_economico import concentracao_da_ug
+        from compliance_agent.osint.grupo_economico import _RESSALVA, concentracao_da_ug, ranking
 
         ug = "".join(ch for ch in str(ug) if ch.isdigit())[:6]
-        if len(ug) < 6:
+        if ug and len(ug) < 6:
             return JSONResponse({"ok": False, "erro": "UG inválida"}, status_code=400)
         con = _db_ro()
         try:
-            return JSONResponse({"ok": True, **concentracao_da_ug(con, ug, ano=ano or None)})
+            if ug:
+                return JSONResponse({"ok": True, **concentracao_da_ug(con, ug, ano=ano or None)})
+            # Sem UG: o ranking ordena pelo DELTA — o quanto agrupar mudou a leitura —, não pelo
+            # HHI absoluto. UG dominada por um fornecedor único já aparece na medida por CNPJ e
+            # não é o que esta tela existe para achar.
+            from compliance_agent.ugs import nome_canonico   # caminho único p/ nome de unidade
+
+            itens = ranking(con, ano=ano or None, limite=max(1, min(int(limite), 40)))
+            return JSONResponse({"ok": True, "ano": ano or None, "itens": [{
+                "ug": x["ug"], "nome_ug": nome_canonico(str(x["ug"])) or f"UG {x['ug']}",
+                "total_pago": x["total_pago"], "n_cnpj": x["n_cnpj"],
+                "hhi_por_cnpj": x["hhi_por_cnpj"], "hhi_por_grupo": x["hhi_por_grupo"],
+                "delta_hhi": x["delta_hhi"], "concentrado_por_grupo": x.get("concentrado_por_grupo"),
+                "maior_grupo": (x["maiores_grupos"] or [{}])[0],
+            } for x in itens], "total": len(itens), "ressalva": _RESSALVA})
         finally:
             con.close()
     except _FALHAS_DE_LEITURA as exc:

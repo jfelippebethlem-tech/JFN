@@ -4777,6 +4777,41 @@ void main(){
     o.innerHTML = h;
     taxaPorUnidade();
     fimDeExercicio();
+    concentracaoPorGrupo();
+  }
+
+  // O QUE O CNPJ ESCONDE. Um órgão pode contratar dez empresas e pagar quase tudo a um só dono: o
+  // HHI da UG 660100 em 2025 é 0,1022 por CNPJ ("desconcentrado") e 0,3671 por GRUPO, com 7 CNPJs
+  // somando 57,5%. Ordena pelo DELTA, não pelo HHI — UG dominada por fornecedor único já aparecia
+  // na medida por CNPJ e não é o que esta tela procura.
+  // O `cimento` é obrigatório na leitura: 2 de 5 pontes ADMINISTRANDO duas empresas (Cidades) não
+  // é a mesma coisa que 1 em 28 numa teia de sociedades médicas de cotistas (FSERJ, 10,3%).
+  async function concentracaoPorGrupo() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/concentracao_por_grupo?ano=2025&limite=10");
+    if (!d || d.ok === false || !(d.itens || []).length) return;
+    const rot = { comando_comum: ["comando comum", "var(--red)"],
+                  coparticipacao_com_excecao: ["coparticipação (1 exceção)", "var(--amber)"],
+                  coparticipacao: ["coparticipação", "inherit"] };
+    const alvo = document.createElement("div");
+    alvo.innerHTML = sec("Concentração por GRUPO econômico — o que a medição por CNPJ não mostra")
+      + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">pago em 2025</th>
+        <th class="right">HHI CNPJ</th><th class="right">HHI grupo</th>
+        <th class="right">maior grupo</th><th>o que sustenta o grupo</th></tr></thead><tbody>`
+        + d.itens.map((x) => {
+          const g = x.maior_grupo || {}, c = g.cimento || {};
+          const [txt, cor2] = rot[c.tipo] || ["QSA indisponível", "inherit"];
+          return `<tr><td>${esc(x.nome_ug || ("UG " + x.ug))} <span class="dim">${esc(x.ug)}</span></td>
+            <td class="right">${fmtRc(x.total_pago)}</td>
+            <td class="right dim">${x.hhi_por_cnpj.toFixed(4)}</td>
+            <td class="right" style="font-weight:800;color:${x.hhi_por_grupo >= 0.25 ? "var(--red)" : "inherit"}">${x.hhi_por_grupo.toFixed(4)}</td>
+            <td class="right">${((g.fracao || 0) * 100).toFixed(1)}% <span class="dim">${fmtN(g.n_cnpj || 0)} CNPJs</span></td>
+            <td style="color:${cor2}">${esc(txt)}${c.pontes ? ` <span class="dim">${c.pontes_que_administram}/${c.pontes} pontes</span>` : ""}</td></tr>`;
+        }).join("")
+        + `</tbody></table>`)
+      + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
   }
 
   // A JANELA EM QUE A LIQUIDAÇÃO AFROUXA. Dezembro é quando o empenho precisa ser consumido, e é
