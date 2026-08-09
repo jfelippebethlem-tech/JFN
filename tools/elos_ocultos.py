@@ -163,6 +163,15 @@ def levantar(db: str = "") -> dict:
     pago = {r[0]: r[1] for r in con.execute(
         "SELECT substr(credor,1,8), SUM(valor) FROM ob_orcamentaria_siafe "
         "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY 1")}
+    # O PESO PODE ESTAR SUBESTIMADO, E ISSO TEM DE APARECER. A coleta do SIAFE tem teto por
+    # (UG, ano) — 23 pares estão parados em 1.000 OBs exatos, e o espelho TFE conhece 137.654 OBs
+    # que a fonte canônica não tem (medido 2026-08-09). Efeito real: PHOTONLUX entrou na fila com
+    # R$ 4,3 mi de SIAFE enquanto o espelho registra R$ 370,1 mi da Educação em 12 OBs de 2023.
+    # O `pago` (ordenação) SEGUE sendo SIAFE — regra da casa, e o espelho soma OB cancelada —, mas
+    # a divergência viaja declarada com o item para o fiscal não ler R$ 4 mi onde há R$ 370 mi.
+    espelho = {r[0]: r[1] for r in con.execute(
+        "SELECT substr(replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-',''),1,8) AS raiz,"
+        " SUM(valor) FROM ordens_bancarias GROUP BY 1")}
 
     linhas = list(con.execute(
         "SELECT a.nome, a.cpf, b.nome, b.cpf, r.tipo, r.descricao FROM relacionamentos r "
@@ -211,6 +220,14 @@ def levantar(db: str = "") -> dict:
             "a": razao.get(ca, na), "cnpj_a": ca, "pago_a": pago.get(ca, 0.0),
             "b": razao.get(cb, nb), "cnpj_b": cb, "pago_b": pago.get(cb, 0.0),
             "tipo": tipo, "detalhe": desc or "", "dominio_email": dominio,
+            # DIVERGÊNCIA EXTREMA, declarada por lado. O limiar é 50× e foi CALIBRADO, não
+            # escolhido: a 2× acendem 140 de 162 lados — sinal que acende em quase tudo não
+            # informa nada (lição `taxa-alta-defeito-de-leitura`). A 50× sobram 16, e são os casos
+            # em que a fonte canônica enxerga menos de 2% do que o espelho registra — como a
+            # PHOTONLUX, com R$ 4,3 mi no SIAFE e R$ 370,1 mi no espelho. Nunca substitui `pago_*`
+            # (o espelho soma OB cancelada); serve para o fiscal não ler piso como total.
+            "espelho_a": (espelho.get(ca) if (espelho.get(ca) or 0) > 50 * max(pago.get(ca) or 0, 1) else None),
+            "espelho_b": (espelho.get(cb) if (espelho.get(cb) or 0) > 50 * max(pago.get(cb) or 0, 1) else None),
             "natureza_a": nat.get(ca, ""), "natureza_b": nat.get(cb, ""),
             "mesmo_grupo_aparente": bool(grupo),
             "marca": grupo,
@@ -241,7 +258,29 @@ def levantar(db: str = "") -> dict:
         elif v:
             x["veredito_humano"] = v
     itens.sort(key=lambda x: -x["peso"])
+    # O DENOMINADOR DO VALOR VIAJA COM A FILA, como já viaja o do grafo. O `peso` é OB SIAFE
+    # (fonte canônica), e a coleta do SIAFE tem teto por (UG, ano): pares parados em contagem
+    # redonda significam coleta interrompida, não órgão sem despesa. Medido 2026-08-09: 23 pares
+    # travados e 137.654 OBs que o espelho conhece a mais. Sem esta linha, R$ 4,3 mi de PISO é
+    # lido como total onde o espelho registra R$ 370,1 mi.
+    con2 = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True)
+    try:
+        travados = con2.execute(
+            "SELECT COUNT(*) FROM (SELECT ug_emitente, exercicio, COUNT(*) n "
+            "FROM ob_orcamentaria_siafe GROUP BY 1,2 HAVING n IN (1000,2000,3000,5000))"
+        ).fetchone()[0]
+    except sqlite3.Error:
+        travados = None
+    finally:
+        con2.close()
     return {"arestas_de_contato": total, "estruturais": estrutural,
+            "peso_e_piso": {
+                "fonte": "OB SIAFE (canônica)",
+                "ug_ano_no_teto_de_coleta": travados,
+                "aviso": ("o peso é PISO: a coleta do SIAFE tem teto por (UG, ano) e "
+                          f"{travados} pares estão parados em contagem redonda; onde o espelho "
+                          "TFE conhece 50× mais, o valor dele vem declarado em espelho_a/b"),
+            },
             "contador_compartilhado_reclassificado": servico,
             "pedem_explicacao": total - estrutural,
             "os_dois_lados_pagos": len(itens),
