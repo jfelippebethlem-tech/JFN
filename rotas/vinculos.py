@@ -648,6 +648,34 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/fim_de_exercicio")
+def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite: int = 25):
+    """Credores privados cujo ano inteiro cabe em novembro e dezembro — a janela frouxa.
+
+    Dezembro é quando o empenho precisa ser consumido, e é onde a prova de entrega costuma faltar:
+    a NRTT recebeu R$ 25,4 mi em SETE ordens bancárias num único 28/12/2023, e a EVOLUÇÃO teve 30
+    OBs num único 22/12. **Indício, não acusação** — concentração é onde OLHAR a liquidação.
+
+    Ente público (repasse a fundo municipal) e desenho de programa saem por veto: sem isso o topo
+    da lista era ruído institucional, e lista com topo ruim ensina o fiscal a largar a lista.
+    """
+    try:
+        from tools.screen_fim_de_exercicio import medir
+
+        itens = medir(min_valor=min_valor, pct=pct)
+        return JSONResponse({
+            "ok": True, "total": len(itens), "itens": itens[:max(1, min(int(limite), 200))],
+            "criterio": {"min_valor": min_valor, "pct_no_fim": pct, "meses": ["11", "12"]},
+            "ressalva": (
+                "Só OB **Contabilizada** (cancelada não é pagamento). Entes públicos e desenho de "
+                "programa vetados. Concentrar pagamento em dezembro é legal e comum — o que este "
+                "screen faz é dizer ONDE conferir medição, atesto e recebimento definitivo."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("fim_de_exercicio falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/taxa_por_unidade")
 def api_taxa_por_unidade(termo: str = "execu"):
     """A TAXA da lacuna por unidade — o achado que só existe no conjunto, não no processo.

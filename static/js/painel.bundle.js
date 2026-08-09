@@ -4776,6 +4776,30 @@ void main(){
     h += `<div class="note">${esc(d.resumo || "")} · a fila é recalculada a cada consulta, sobre o acervo do momento.</div>`;
     o.innerHTML = h;
     taxaPorUnidade();
+    fimDeExercicio();
+  }
+
+  // A JANELA EM QUE A LIQUIDAÇÃO AFROUXA. Dezembro é quando o empenho precisa ser consumido, e é
+  // onde a prova de entrega costuma faltar: a NRTT recebeu R$ 25,4 mi em SETE OBs num único 28/12,
+  // e a EVOLUÇÃO teve 30 OBs num 22/12. Concentrar pagamento em dezembro é legal — o que a tela diz
+  // é ONDE conferir medição, atesto e recebimento definitivo.
+  async function fimDeExercicio() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/fim_de_exercicio?limite=15");
+    if (!d || d.ok === false || !(d.itens || []).length) return;
+    const alvo = document.createElement("div");
+    alvo.innerHTML = sec(`Ano inteiro pago em nov–dez (${fmtN(d.total)} credores privados)`)
+      + card(`<table class="tb"><thead><tr><th>Ano</th><th>Credor</th><th class="right">total no ano</th>
+        <th class="right">% em nov–dez</th><th class="right">OBs</th></tr></thead><tbody>`
+        + d.itens.map((x) => `<tr><td>${esc(String(x.exercicio))}</td>
+            <td>${esc(x.nome.slice(0, 46))} <span class="dim">${esc(x.raiz)}</span></td>
+            <td class="right">${fmtRc(x.total)}</td>
+            <td class="right" style="font-weight:800;color:${x.pct >= 95 ? "var(--red)" : "var(--amber)"}">${x.pct}%</td>
+            <td class="right dim">${fmtN(x.obs)}</td></tr>`).join("")
+        + `</tbody></table>`)
+      + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
   }
 
   // O PADRÃO NÃO CABE NA FILA. A fila mostra processo a processo; o achado que se leva ao TCE-RJ
