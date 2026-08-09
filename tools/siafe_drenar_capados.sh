@@ -29,6 +29,21 @@ say(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
 [ -f data/.pause_siafe_drenar ] && { say "pausado (.pause_siafe_drenar)"; exit 0; }
 
+# INSTÂNCIA ÚNICA. A sessão do SIAFE é uma por IP: dois drenadores derrubam a sessão um do outro e
+# o log fica ilegível (medido em 2026-08-09, quando lancei o segundo sem ver que o primeiro ainda
+# corria — os dois apareceram intercalados no mesmo arquivo). PID em arquivo, não flock: um flock
+# em fd é herdado pelo filho, e um chromium órfão seguraria a trava para sempre.
+PIDF=data/.siafe_drenar.pid
+if [ -f "$PIDF" ]; then
+  ANT=$(tr -dc '0-9' < "$PIDF")
+  if [ -n "$ANT" ] && kill -0 "$ANT" 2>/dev/null && \
+     tr '\0' ' ' < "/proc/$ANT/cmdline" 2>/dev/null | grep -q 'siafe_drenar'; then
+    say "já rodando (pid $ANT) — saio sem tocar no SIAFE"; exit 0
+  fi
+fi
+echo $$ > "$PIDF"
+trap 'rm -f "$PIDF"' EXIT
+
 # a lista sai do DADO, não de um arquivo: contagem redonda é o próprio sintoma
 mapfile -t PARES < <($PY - <<'PYEOF'
 import sqlite3
