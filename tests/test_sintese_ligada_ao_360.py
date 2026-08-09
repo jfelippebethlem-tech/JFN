@@ -8,13 +8,24 @@ sabe lê-la.
 """
 import json
 import sqlite3
+from pathlib import Path
+
+import pytest
 
 from compliance_agent import processo_360 as P
 
+# O processo real usado como corpo de prova NÃO é versionado (o arquivo SEI mora em data/, fora do
+# git). No runner do CI a pasta não existe e o teste estourava FileNotFoundError, entrando como
+# regressão nova — quando o que falta é a fonte. Ausência de dado é pulo declarado, não falha.
+PASTA = Path("data/sei_arquivo/270131_000548_2023")
+_sem_corpo_de_prova = pytest.mark.skipif(
+    not (PASTA / "manifest.json").exists(),
+    reason=f"{PASTA} ausente (arquivo SEI não é versionado) — sem corpo de prova não há medida")
 
+
+@_sem_corpo_de_prova
 def test_avaliar_devolve_a_sintese():
-    from pathlib import Path
-    out = P.avaliar_pasta(Path("data/sei_arquivo/270131_000548_2023"))
+    out = P.avaliar_pasta(PASTA)
     s = out.get("sintese")
     assert s, "o 360 não produziu síntese — o módulo continua sem caller"
     assert s["n_docs"] > 0 and s["chars"] > 0
@@ -22,10 +33,10 @@ def test_avaliar_devolve_a_sintese():
     assert isinstance(s.get("contradicoes"), list)
 
 
+@_sem_corpo_de_prova
 def test_a_sintese_conta_a_lacuna_de_captura_do_proprio_processo():
     """A leitura parcial precisa vir do que o 360 mediu, não de um número solto."""
-    from pathlib import Path
-    out = P.avaliar_pasta(Path("data/sei_arquivo/270131_000548_2023"))
+    out = P.avaliar_pasta(PASTA)
     if out.get("lacunas_captura"):
         assert "PARCIAL" in out["sintese"]["leitura"]
 

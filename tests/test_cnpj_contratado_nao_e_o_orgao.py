@@ -73,6 +73,24 @@ def test_sem_ninguem_sobrando_o_motor_nao_perde_a_identificacao(tmp_path):
     ("19088605000104", False),   # MGS CLEAN SOLUCOES E SERVICOS LTDA, natureza 2062
 ])
 def test_natureza_juridica_publica_e_reconhecida(cnpj, esperado):
+    """O que este teste precisa é do CADASTRO, não do arquivo do banco.
+
+    A guarda antiga só perguntava se `compliance.db` existe — e no runner do CI o arquivo existe
+    (outro teste o cria) com `empresas_cadastro` VAZIA. Resultado: `_e_ente_publico` devolvia False
+    por ausência de dado e o teste reprovava como se o detector estivesse quebrado, entrando na CI
+    como regressão nova. Ausência de fonte é PULO declarado, nunca falha (INDISPONÍVEL ≠ 0).
+    """
+    import sqlite3
     if not P._DB.exists():
         pytest.skip("compliance.db ausente")
+    try:
+        con = sqlite3.connect(f"file:{P._DB}?mode=ro", uri=True)
+        try:
+            n = con.execute("SELECT COUNT(*) FROM empresas_cadastro").fetchone()[0]
+        finally:
+            con.close()
+    except sqlite3.Error:
+        n = 0
+    if not n:
+        pytest.skip("empresas_cadastro vazia/ausente — sem natureza jurídica não há o que medir")
     assert P._e_ente_publico(cnpj) is esperado
