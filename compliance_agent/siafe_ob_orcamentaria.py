@@ -136,7 +136,12 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
     import time as _t
     if not linhas:
         return {"ok": True, "ingeridas": 0, "exercicio": exercicio}
-    con = sqlite3.connect(str(_DB))
+    # TIMEOUT NA ESCRITA, como o resto da casa faz. O banco tem vários escritores (sweeps do
+    # SEI, avaliação 360, cruzamentos) e o padrão do sqlite é esperar só 5 s: medido em
+    # 2026-08-09, a recoleta do SIAFE morreu com `database is locked` DEPOIS de 18 fatias, e
+    # cada fatia custa minutos de browser. Esperar o outro escritor é sempre mais barato que
+    # refazer a coleta.
+    con = sqlite3.connect(str(_DB), timeout=120)
     try:
         con.execute(
             "CREATE TABLE IF NOT EXISTS ob_orcamentaria_siafe ("
