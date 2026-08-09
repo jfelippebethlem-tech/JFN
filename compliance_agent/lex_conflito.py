@@ -153,7 +153,17 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
                          "ausência de medida não é ausência de conflito."}
     con = sqlite3.connect(str(_DB))
     try:
-        n_doacoes = con.execute("SELECT COUNT(*) FROM doacoes_eleitorais").fetchone()[0]
+        try:
+            n_doacoes = con.execute("SELECT COUNT(*) FROM doacoes_eleitorais").fetchone()[0]
+        except sqlite3.OperationalError as exc:
+            # Banco presente mas SEM a tabela é a mesma situação de tabela vazia — e virava HTTP
+            # 500 (visto no runner do CI, onde outro teste cria o compliance.db sem o schema do
+            # TSE). Erro de execução e ausência de fonte são coisas diferentes para quem consome.
+            return {"ok": False, "indisponivel": True, "rede": [],
+                    "erro": f"tabela doacoes_eleitorais ausente ({exc})",
+                    "_fonte": "TSE Dados Abertos",
+                    "_nota": "INDISPONÍVEL: a base do TSE não foi coletada nesta máquina — rodar "
+                             "compliance_agent.collectors.tse baixar_doacoes_ano."}
         if n_doacoes == 0:
             return {"ok": True, "rede": [], "_fonte": "TSE Dados Abertos",
                     "_nota": "INDISPONÍVEL: base doacoes_eleitorais vazia — rodar coletor TSE "

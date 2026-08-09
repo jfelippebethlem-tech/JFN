@@ -179,3 +179,22 @@ def test_api_pncp_id_analise(monkeypatch):
     assert any(rf["rf"] == "R7" for rf in j["red_flags"])
     # docs não vazam o texto bruto (só metadados)
     assert all("texto" not in d for d in j["docs"])
+
+
+def test_conflito_sem_a_TABELA_e_indisponivel_nao_500(tmp_path, monkeypatch):
+    """Banco presente SEM a tabela do TSE virava HTTP 500 na rota.
+
+    Visto no runner do CI, onde outro teste cria o `compliance.db` sem o schema do TSE: a consulta
+    estourava `OperationalError`, a rota devolvia 500 e o smoke acusava regressão. Erro de execução
+    e ausência de fonte são coisas diferentes para quem consome — a segunda é INDISPONÍVEL
+    declarado, com o caminho para resolver.
+    """
+    import sqlite3
+    import compliance_agent.lex_conflito as L
+    db = tmp_path / "compliance.db"
+    sqlite3.connect(db).close()
+    monkeypatch.setattr(L, "_resolver_db", lambda: db)
+    r = L.conflito()
+    assert r["indisponivel"] is True and r["ok"] is False
+    assert "doacoes_eleitorais" in r["erro"]
+    assert "TSE" in r["_fonte"] and "INDISPONÍVEL" in r["_nota"]
