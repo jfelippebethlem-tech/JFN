@@ -82,6 +82,47 @@ def _money_br(s) -> float:
         return 0.0
 
 
+def _migrar_chave(con) -> int:
+    """Troca a PK velha (`numero_ob`) pela real (`numero_ob, ug_emitente, exercicio`).
+
+    O número da OB só é único DENTRO da unidade: no espelho, 133.295 de 198.894 números (67%)
+    aparecem em mais de uma UG — `2024OB00284` está em 72. Com a chave velha, cada coleta apagava
+    a linha homônima de outra unidade, em silêncio, na fonte canônica de PAGAMENTO. Rastro medido
+    em 2026-08-09: o `siafe_sweep_full` registrou "180100 2023: 10046 ing | ok=True" em 19 fatias
+    e a tabela guardava 1.000 linhas de numeração contígua — uma consulta capada, não 19 fatias.
+
+    A migração NÃO recupera o que já se perdeu (o dado foi sobrescrito; só a recoleta traz de
+    volta) — ela impede que a próxima coleta apague de novo. Roda uma vez: se a PK já é a certa,
+    devolve 0 sem tocar em nada.
+    """
+    linha = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='ob_orcamentaria_siafe'"
+    ).fetchone()
+    if not linha or "PRIMARY KEY (numero_ob, ug_emitente, exercicio)" in (linha[0] or ""):
+        return 0
+    cols = [r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")]
+    lista = ", ".join(cols)
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        con.execute(
+            "CREATE TABLE ob_orcamentaria_siafe__novo ("
+            + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c != "valor")
+            + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
+            "PRIMARY KEY (numero_ob, ug_emitente, exercicio))")
+        con.execute(f"INSERT OR REPLACE INTO ob_orcamentaria_siafe__novo ({lista}) "
+                    f"SELECT {lista} FROM ob_orcamentaria_siafe")
+        n = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe__novo").fetchone()[0]
+        con.execute("DROP TABLE ob_orcamentaria_siafe")
+        con.execute("ALTER TABLE ob_orcamentaria_siafe__novo RENAME TO ob_orcamentaria_siafe")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ug ON ob_orcamentaria_siafe(ug_emitente)")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
+        con.commit()
+        return n
+    except Exception:
+        con.rollback()
+        raise
+
+
 def ingerir(exercicio: int, header: list, linhas: list) -> dict:
     """
     Ingere as OBs da OB Orçamentária na `compliance.db`, tabela `ob_orcamentaria_siafe`.
@@ -98,8 +139,9 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
             "CREATE TABLE IF NOT EXISTS ob_orcamentaria_siafe ("
             + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c not in ("valor",))
             + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
-            "PRIMARY KEY (numero_ob))"
+            "PRIMARY KEY (numero_ob, ug_emitente, exercicio))"
         )
+        _migrar_chave(con)
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ug ON ob_orcamentaria_siafe(ug_emitente)")
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
         agora = _t.strftime("%Y-%m-%d %H:%M:%S", _t.gmtime())
