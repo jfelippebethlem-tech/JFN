@@ -874,6 +874,29 @@ async def _filtrar_ug(pg, ug_codigo) -> dict:
 
 
 # linha 1 do filtro (a tabela já vem com 2 linhas: 0 e 1) — p/ combinar UG (linha 0) + Número (linha 1)
+async def _login_e_navegar(pg, exercicio: int, tentativas: int = 3) -> dict:
+    """Login + navegação até a grade, com RETRY — o prólogo do SIAFE 1 é intermitente.
+
+    Medido em 2026-08-09, na mesma UG e no mesmo dia: uma passada logou e navegou e coletou seis
+    fatias; a seguinte devolveu `etapa: nav` sem sair do lugar. O ADF redireciona no meio do
+    `evaluate` (`Execution context was destroyed`), o workspace às vezes demora a montar, e
+    qualquer um dos dois derruba a passada INTEIRA — depois de já ter pago o login, que leva
+    minutos. Repetir o prólogo é barato perto de perder a coleta.
+    """
+    from playwright.async_api import Error as PWError   # import local: o módulo faz assim
+
+    ultimo: dict = {}
+    for tentativa in range(max(1, tentativas)):
+        try:
+            ultimo = await _login(pg, exercicio)
+            if ultimo.get("ok") and (await _navegar(pg)).get("ok"):
+                return {"ok": True, "tentativas": tentativa + 1}
+        except PWError as exc:
+            ultimo = {"ok": False, "erro": f"{type(exc).__name__}: {str(exc)[:90]}"}
+        await pg.wait_for_timeout(4000)
+    return {"ok": False, "etapa": "login_nav", "tentativas": tentativas, "ultimo": ultimo}
+
+
 async def _esperar_linha_filtro(pg, idx: int, adf, espera_s: int = 45) -> bool:
     """Espera a linha `idx` do filtro EXISTIR — ela nasce sozinha quando a anterior é preenchida.
 
@@ -988,10 +1011,9 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
     async with async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
-            if not (await _login(pg, exercicio)).get("ok"):
-                return {"ok": False, "etapa": "login"}
-            if not (await _navegar(pg)).get("ok"):
-                return {"ok": False, "etapa": "nav"}
+            pronto = await _login_e_navegar(pg, exercicio)   # retry: o prólogo é intermitente
+            if not pronto.get("ok"):
+                return {"ok": False, **pronto}
             adf = AdfSync(pg); await adf.boot()
             if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
                 await _click_real(pg, _F_DISC); await adf.wait()
@@ -1085,10 +1107,9 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
     async with async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
-            if not (await _login(pg, exercicio)).get("ok"):
-                return {"ok": False, "etapa": "login"}
-            if not (await _navegar(pg)).get("ok"):
-                return {"ok": False, "etapa": "nav"}
+            pronto = await _login_e_navegar(pg, exercicio)   # retry: o prólogo é intermitente
+            if not pronto.get("ok"):
+                return {"ok": False, **pronto}
             adf = AdfSync(pg); await adf.boot()
             if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
                 await _click_real(pg, _F_DISC); await adf.wait()
