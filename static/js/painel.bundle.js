@@ -4093,7 +4093,8 @@ void main(){
          <div class="dim">${esc(x.orgao_do_processo || "órgão não resolvido")}</div>
          <div style="font-size:13px;margin-top:4px">${esc(g.nome || "—")} · ${esc(g.cargo || "")} <span class="dim">(${esc(g.orgao || "")})</span></div>
          <div class="dim" style="font-size:12.5px">${esc(g.entidade || "")}</div>
-         ${conf ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ os AUTOS correm no próprio órgão do agente: ${esc(conf)}</div>` : ""}
+         ${conf ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ os AUTOS correm no próprio órgão do agente: ${esc(conf)}${g.orgao_conflito ? ` <span class="dim" style="font-weight:400">(pelo 2º vínculo na folha)</span>` : ""}</div>` : ""}
+         ${g.socios_no_qsa > 20 ? `<div style="margin-top:4px;font-size:12px;color:var(--amber)">⚖ COTISTA: ${fmtN(g.socios_no_qsa)} sócios no QSA — sociedade de profissionais, não propriedade do fornecedor</div>` : ""}
          ${(x.sem_qsa_capturado || []).length ? `<div class="dim" style="font-size:12px;margin-top:3px">${fmtN(x.sem_qsa_capturado.length)} CNPJ(s) sem QSA capturado — LACUNA, não limpeza</div>` : ""}
        </div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.peso)}</div><div class="dim">peso</div></div></div>`,
         conf ? "hl" : ""
