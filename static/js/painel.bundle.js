@@ -4771,6 +4771,7 @@ void main(){
     concentracaoPorGrupo();
     coparticipacaoRelacionados();
     recuperacaoJudicial();
+    aditivoPrecoce();
   }
   async function taxaPorUnidade() {
     const o = $("ff-out");
@@ -7463,6 +7464,37 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   function _set_perGrau(v) {
     _perGrau = v;
+  }
+  async function aditivoPrecoce() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/aditivo_precoce?dias=90&limite=12");
+    if (!d || d.ok === false) return;
+    const c = d.cobertura || {};
+    const alvo = document.createElement("div");
+    let h = sec(`Aditivo de valor nos primeiros ${d.dias} dias (${fmtN(d.total)})`);
+    if ((d.itens || []).length) {
+      h += card(`<table class="tb"><thead><tr><th class="right">dias</th><th>órgão</th><th>fornecedor</th>
+      <th class="right">inicial</th><th class="right">acréscimo</th><th class="right">%</th>
+      <th>art. 125</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+        <td class="right" style="font-weight:800;color:${x.dias <= 30 ? "var(--red)" : "var(--amber)"}">${x.dias}</td>
+        <td>${esc((x.orgao || "").slice(0, 26))}</td><td>${esc((x.fornecedor || "").slice(0, 28))}</td>
+        <td class="right dim">${fmtRc(x.valor_inicial)}</td>
+        <td class="right" style="font-weight:700">${fmtRc(x.acrescimo)}</td>
+        <td class="right">${x.pct == null ? "—" : x.pct + "%"}</td>
+        <td style="color:${x.acima_do_teto ? "var(--red)" : "inherit"}">${x.acima_do_teto ? "acima do teto de " + x.teto_pct + "%" : "dentro"}</td></tr>`).join("") + `</tbody></table>`);
+    } else {
+      h += card(`<div class="dim">Nenhum acréscimo de valor nos primeiros ${d.dias} dias <b>na fatia já
+      medida</b> — e a fatia é o que importa ler junto: ausência aqui não é ausência no acervo.</div>`);
+    }
+    if (c.estado === "medido") {
+      h += leitura(`Cobertura: <b>${fmtN(c.avaliaveis)}</b> de <b>${fmtN(c.termos)}</b> termos aditivos
+      são avaliáveis (<b>${c.pct}%</b>) — só entram os que têm a data do TERMO e a do CONTRATO. A data
+      do termo passou a ser guardada em 09/08/2026; os coletados antes disso estão sendo recoletados.`);
+    }
+    h += leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
   }
 
   // static/js/src/entrada.js

@@ -93,3 +93,30 @@ def test_insert_do_coletor_casa_com_o_schema(tmp_path):
     con.commit()
     assert con.execute("SELECT data_assinatura FROM contrato_aditivo").fetchone()[0] == "2025-09-02"
     con.close()
+
+
+def test_recoleta_PREENCHE_a_data_em_termo_ja_gravado(tmp_path):
+    """`INSERT OR IGNORE` nunca preencheria o passado: 1.729 termos já gravados sem data.
+
+    O upsert só COMPLETA (COALESCE) — fonte que omite o campo não apaga o que já se sabe.
+    """
+    import sqlite3
+    from compliance_agent.contratos.db import init_schema
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(p)
+    init_schema(con)
+    sql = ("INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo, objeto,"
+           " data_assinatura, tipo_termo, processo) VALUES (?,?,?,?,?,?)"
+           " ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET"
+           "  data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),"
+           "  tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),"
+           "  processo=COALESCE(excluded.processo, processo)")
+    con.execute(sql, ("X-2-1/2025", 1, "acréscimo", None, None, None))     # como está hoje
+    con.execute(sql, ("X-2-1/2025", 1, "acréscimo", "2025-09-02", "Termo de Aditamento", "SEI-1"))
+    con.execute(sql, ("X-2-1/2025", 1, "acréscimo", None, None, None))     # fonte omissa depois
+    r = con.execute("SELECT data_assinatura, tipo_termo, processo, COUNT(*) FROM contrato_aditivo"
+                    ).fetchone()
+    assert r[3] == 1, "o upsert não pode duplicar o termo"
+    assert r[0] == "2025-09-02", "a recoleta tem de PREENCHER o que faltava"
+    assert r[1] == "Termo de Aditamento" and r[2] == "SEI-1"
+    con.close()

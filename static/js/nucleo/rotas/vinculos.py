@@ -452,39 +452,8 @@ def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
         itens = corpo.get("itens") or []
         if so_sem_explicacao:
             itens = [x for x in itens if not x.get("mesmo_grupo_aparente")]
-        # O DENOMINADOR DO GRAFO VIAJA COM OS ELOS. Medido em 2026-08-08: o grafo tinha percorrido
-        # 1.558 dos 16.651 credores com OB (9,4%) e a tela dizia "39 elos" sem dizer sobre QUANTO
-        # do universo — quem lê pensa que o resto foi afastado, quando não foi visto. É a mesma
-        # família do gate que media o que LI e não o que EXISTE. Consulta barata (2 COUNTs com
-        # índice); se falhar, o dado segue sem a cobertura — nunca derruba a rota.
-        cobertura_grafo = None
-        try:
-            import sqlite3 as _sq3
-
-            from compliance_agent.reporting.intel_base import _DB as _db_path
-
-            _con = _sq3.connect(f"file:{_db_path}?mode=ro", uri=True)
-            try:
-                _perc = _con.execute("SELECT COUNT(*) FROM grafo_persistido").fetchone()[0]
-                _uni = _con.execute(
-                    "SELECT COUNT(DISTINCT substr(replace(replace(replace(credor,'.',''),"
-                    "'/',''),'-',''),1,8)) FROM ob_orcamentaria_siafe").fetchone()[0]
-                cobertura_grafo = {"percorridos": _perc, "universo": _uni,
-                                   "pct": round(_perc * 100.0 / _uni, 1) if _uni else None}
-            finally:
-                _con.close()
-        except _sq3.Error:
-            logger.debug("cobertura do grafo indisponível — sigo sem ela")
         return JSONResponse({
             "ok": True, "gerado_em": corpo.get("gerado_em"),
-            "cobertura_grafo": cobertura_grafo,
-            # O PESO É PISO, e isso tem de chegar à tela junto com o número. A ferramenta já
-            # calculava `peso_e_piso` (quantos pares UG/ano estão parados em contagem redonda, o
-            # sintoma do teto de coleta) e a rota descartava o campo — o fiscal via "R$ 4,3 mi"
-            # sem saber que a fonte canônica só tinha 1 das 13 OBs daquele credor. Medido em
-            # 2026-08-09, quando a recoleta levou o par PHOTONLUX × EVOLUÇÃO de R$ 40,7 mi para
-            # R$ 423,2 mi e ele virou o primeiro da fila.
-            "peso_e_piso": corpo.get("peso_e_piso"),
             "arestas_de_contato": corpo.get("arestas_de_contato"),
             "estruturais": corpo.get("estruturais"),
             "total": corpo.get("os_dois_lados_pagos"),
@@ -606,14 +575,9 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
         from pathlib import Path
 
         raiz = Path(__file__).resolve().parent.parent
-        # so_osint usa `--osint` (TODOS os itens com sinal, em qualquer posição), não `--top`:
-        # o sinal OSINT pontua pouco e cai para o fundo, então filtrar dentro do top-N dizia "0"
-        # quando os itens estavam logo abaixo da janela. Corte de janela não pode virar "não há".
-        _args = (["--osint"] if so_osint
-                 else ["--top", str(max(1, min(limite, 300)))])
         r = subprocess.run(
             [str(raiz / ".venv" / "bin" / "python"),
-             str(raiz / "tools" / "processo_360_ranking.py"), *_args],
+             str(raiz / "tools" / "processo_360_ranking.py"), "--top", str(max(1, min(limite, 300)))],
             capture_output=True, text=True, timeout=300, cwd=str(raiz), check=False)
         if r.returncode != 0:
             return JSONResponse({"ok": False, "erro": "ranking não pôde ser calculado"},
@@ -630,9 +594,6 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
             elif "processos avaliados" in linha:
                 resumo = linha.strip()
         if so_osint:
-            # com --osint todo item já tem sinal; o filtro fica como cinto de segurança e NÃO
-            # aplica `limite` — a lista de OSINT é curta (dezenas) e cortá-la reintroduziria o
-            # zero-por-janela que este modo existe para eliminar.
             itens = [x for x in itens if x["osint"]]
         return JSONResponse({
             "ok": True, "total": len(itens),
@@ -645,196 +606,4 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
         })
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("fiscal_fila falhou")
-        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
-
-
-@router.get("/api/fiscal/concentracao_por_grupo")
-def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
-    """Concentração de uma unidade gestora COLAPSADA por grupo econômico — o que o CNPJ esconde.
-
-    O módulo `osint/grupo_economico` mede isto desde sempre e **nenhuma rota o expunha**: para ver
-    o número era preciso abrir o Python. Medido na UG 660100 (Cidades) em 2025, já com o SIAFE
-    recoletado: **HHI por CNPJ 0,1022 → por GRUPO 0,3671**, com **7 CNPJs somando 57,5%** — de
-    "mercado desconcentrado" para "altamente concentrado" só por agrupar quem tem sócio em comum.
-
-    Grupo econômico NÃO é ilícito (holding, franquia, sócio investidor são lícitos). O achado é a
-    concentração que a medição por CNPJ não mostra, e o que ela pede é diligência sobre os
-    certames — não imputação. A cobertura de QSA vem declarada: fornecedor sem QSA na base conta
-    como grupo de si mesmo, então o share do maior grupo é **piso, nunca teto**.
-
-    Cada grupo vem com `cimento`, que diz o que o SUSTENTA — sem isso dois grupos de tamanhos
-    parecidos leem-se iguais quando não são. Medido no mesmo dia: Cidades tem 2 das 5 pontes
-    ADMINISTRANDO duas empresas (comando comum); a FSERJ tem 1 em 28, e as outras 27 são sócias de
-    sociedades médicas com dezenas de cotistas — ser cotista de duas clínicas é a profissão, não
-    estrutura de grupo. `tipo` distingue `comando_comum`, `coparticipacao_com_excecao` e
-    `coparticipacao`; QSA ausente sai `indisponivel`, jamais "não há comando".
-    """
-    try:
-        from compliance_agent.osint.grupo_economico import _RESSALVA, concentracao_da_ug, ranking
-
-        ug = "".join(ch for ch in str(ug) if ch.isdigit())[:6]
-        if ug and len(ug) < 6:
-            return JSONResponse({"ok": False, "erro": "UG inválida"}, status_code=400)
-        con = _db_ro()
-        try:
-            if ug:
-                return JSONResponse({"ok": True, **concentracao_da_ug(con, ug, ano=ano or None)})
-            # Sem UG: o ranking ordena pelo DELTA — o quanto agrupar mudou a leitura —, não pelo
-            # HHI absoluto. UG dominada por um fornecedor único já aparece na medida por CNPJ e
-            # não é o que esta tela existe para achar.
-            from compliance_agent.ugs import nome_canonico   # caminho único p/ nome de unidade
-
-            itens = ranking(con, ano=ano or None, limite=max(1, min(int(limite), 40)))
-            return JSONResponse({"ok": True, "ano": ano or None, "itens": [{
-                "ug": x["ug"], "nome_ug": nome_canonico(str(x["ug"])) or f"UG {x['ug']}",
-                "total_pago": x["total_pago"], "n_cnpj": x["n_cnpj"],
-                "hhi_por_cnpj": x["hhi_por_cnpj"], "hhi_por_grupo": x["hhi_por_grupo"],
-                "delta_hhi": x["delta_hhi"], "concentrado_por_grupo": x.get("concentrado_por_grupo"),
-                "maior_grupo": (x["maiores_grupos"] or [{}])[0],
-            } for x in itens], "total": len(itens), "ressalva": _RESSALVA})
-        finally:
-            con.close()
-    except _FALHAS_DE_LEITURA as exc:
-        logger.exception("concentracao_por_grupo falhou")
-        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
-
-
-@router.get("/api/fiscal/aditivo_precoce")
-def api_aditivo_precoce(dias: int = 90, min_acrescimo: float = 50_000.0, limite: int = 20):
-    """Acréscimo de VALOR logo após a assinatura — o sinal que a CGE usou na SECID.
-
-    Um acréscimo de 45,4% dezessete dias depois de assinar enfraquece a tese de recomposição
-    (desequilíbrio superveniente não se forma em duas semanas) e sugere valor de certame
-    subestimado. Só termo de natureza VALOR entra — prorrogação, reajuste e reequilíbrio ficam
-    fora pela régua do art. 125.
-
-    A COBERTURA vem junto e não é detalhe: a data do termo só passou a ser guardada em 09/08/2026,
-    e enquanto a recoleta não termina esta tela mede uma fatia. "0 achados" sem cobertura declarada
-    leria-se como "nada a apurar".
-    """
-    try:
-        from tools.screen_aditivo_precoce import RESSALVA, cobertura, medir
-
-        itens = medir(dias=max(1, int(dias)), min_acrescimo=float(min_acrescimo))
-        return JSONResponse({
-            "ok": True, "total": len(itens), "dias": int(dias),
-            "itens": itens[:max(1, min(int(limite), 200))],
-            "cobertura": cobertura(), "ressalva": RESSALVA,
-        })
-    except _FALHAS_DE_LEITURA as exc:
-        logger.exception("aditivo_precoce falhou")
-        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
-
-
-@router.get("/api/fiscal/recuperacao_judicial")
-def api_recuperacao_judicial(min_valor: float = 100_000.0, limite: int = 20):
-    """Quem o Estado paga estando em recuperação judicial — inclusive DENTRO de consórcio.
-
-    A casa já usara este sinal uma vez, à mão, num dossiê; nunca virou varredura. O caso da SECID
-    mostrou o custo: seis consórcios da UG 660100 carregam a MESMA empresa em recuperação judicial
-    no quadro societário, R$ 415,5 mi pagos — invisíveis a qualquer busca pelo nome do credor.
-
-    Participar **não é vedado** (exige plano homologado e viabilidade demonstrada): a lista diz
-    ONDE conferir a habilitação econômico-financeira. O rótulo vem do NOME na Receita — quem não
-    atualizou não aparece (piso) — e não tem data, então recuperação encerrada pode deixar marca.
-    """
-    try:
-        from tools.screen_recuperacao_judicial import RESSALVA, medir
-
-        itens = medir(min_valor=float(min_valor))
-        return JSONResponse({
-            "ok": True, "total": len(itens),
-            "soma": round(sum(x["total"] for x in itens), 2),
-            "itens": itens[:max(1, min(int(limite), 200))], "ressalva": RESSALVA,
-        })
-    except _FALHAS_DE_LEITURA as exc:
-        logger.exception("recuperacao_judicial falhou")
-        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
-
-
-@router.get("/api/fiscal/coparticipacao_relacionados")
-def api_coparticipacao_relacionados(min_certames: int = 2, limite: int = 20):
-    """Empresas do mesmo comando disputando o MESMO certame — competição simulada (E.3.2).
-
-    Cruza os 82.941 licitantes municipais do TCE-RJ com o quadro societário, atravessando a ponte
-    `nome_cnpj_resolvido` que o coletor construiu e **nenhum módulo usava**. O elo precisa estar
-    VIGENTE na data do certame: sem esse filtro os dois maiores pares eram anacronismos — o
-    administrador comum entrou na segunda empresa no ano seguinte ao certame.
-
-    Coparticipar não é vedado (a Lei 14.133 pune fraudar o caráter competitivo, art. 90). O indício
-    é a repetição; o julgamento é dos autos. Cobertura de 68,5% dos licitantes: lista é piso.
-    """
-    try:
-        from tools.screen_coparticipacao_relacionados import RESSALVA, medir
-
-        itens = medir(min_certames=max(1, int(min_certames)))
-        return JSONResponse({
-            "ok": True, "total": len(itens),
-            "itens": itens[:max(1, min(int(limite), 200))],
-            "ressalva": RESSALVA,
-        })
-    except _FALHAS_DE_LEITURA as exc:
-        logger.exception("coparticipacao_relacionados falhou")
-        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
-
-
-@router.get("/api/fiscal/fim_de_exercicio")
-def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite: int = 25):
-    """Credores privados cujo ano inteiro cabe em novembro e dezembro — a janela frouxa.
-
-    Dezembro é quando o empenho precisa ser consumido, e é onde a prova de entrega costuma faltar:
-    a NRTT recebeu R$ 25,4 mi em SETE ordens bancárias num único 28/12/2023, e a EVOLUÇÃO teve 30
-    OBs num único 22/12. **Indício, não acusação** — concentração é onde OLHAR a liquidação.
-
-    Ente público (repasse a fundo municipal) e desenho de programa saem por veto: sem isso o topo
-    da lista era ruído institucional, e lista com topo ruim ensina o fiscal a largar a lista.
-    """
-    try:
-        from tools.screen_fim_de_exercicio import medir
-
-        itens = medir(min_valor=min_valor, pct=pct)
-        return JSONResponse({
-            "ok": True, "total": len(itens), "itens": itens[:max(1, min(int(limite), 200))],
-            "criterio": {"min_valor": min_valor, "pct_no_fim": pct, "meses": ["11", "12"]},
-            "ressalva": (
-                "Só OB **Contabilizada** (cancelada não é pagamento). Entes públicos e desenho de "
-                "programa vetados. Concentrar pagamento em dezembro é legal e comum — o que este "
-                "screen faz é dizer ONDE conferir medição, atesto e recebimento definitivo."),
-        })
-    except _FALHAS_DE_LEITURA as exc:
-        logger.exception("fim_de_exercicio falhou")
-        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
-
-
-@router.get("/api/fiscal/taxa_por_unidade")
-def api_taxa_por_unidade(termo: str = "execu"):
-    """A TAXA da lacuna por unidade — o achado que só existe no conjunto, não no processo.
-
-    A fila mostra processo a processo; nenhuma tela mostrava o PADRÃO. Medido em 2026-08-09:
-    "pagamento sem evidência de execução" está em 45,8% dos processos avaliados do Fundo Estadual
-    da Saúde (260007) e em **0% dos 44 do Fundo do Corpo de Bombeiros** — e o contraste SOBE quando
-    se controla pela profundidade de leitura (66% × 0% na faixa de 10 a 19 documentos), o que
-    afasta a hipótese de que seja artefato do nosso gate. É o tipo de achado que se leva ao TCE-RJ
-    pela taxa, não pelo processo isolado.
-
-    Consulta barata (uma varredura de `processo_avaliacao`, ~2 mil linhas), sem browser e sem LLM.
-    """
-    try:
-        from tools.taxa_lacuna_por_unidade import MIN_N, medir
-
-        dados = medir(termo)
-        linhas = [{"unidade": u, **v,
-                   "taxa": round(v["com"] * 100 / v["n"], 1) if v["n"] else None}
-                  for u, v in dados.items() if v["n"] >= MIN_N]
-        linhas.sort(key=lambda x: (-(x["taxa"] or 0), -x["n"]))
-        return JSONResponse({
-            "ok": True, "termo": termo, "unidades": len(linhas), "itens": linhas,
-            "ressalva": (
-                "Denominador = processos AVALIÁVEIS; NAO_AVALIAVEL fica de fora porque captura "
-                "insuficiente não é conclusão sobre a unidade (INDISPONÍVEL ≠ 0). A taxa só é "
-                f"publicada com n ≥ {MIN_N}. As faixas são por documentos LIDOS: é o que limita a "
-                "busca por prova, e é o confundidor que a comparação bruta esconderia."),
-        })
-    except _FALHAS_DE_LEITURA as exc:
-        logger.exception("taxa_por_unidade falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

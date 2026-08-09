@@ -35,6 +35,7 @@ GET /api/eval/hermeneutica -> api_eval_hermeneutica
 GET /api/eval/lift -> api_eval_lift
 GET /api/eventos/stream -> api_eventos_stream
 GET /api/fachada/revisar -> api_fachada_revisar
+GET /api/fiscal/aditivo_precoce -> api_aditivo_precoce
 GET /api/fiscal/concentracao_por_grupo -> api_concentracao_por_grupo
 GET /api/fiscal/coparticipacao_relacionados -> api_coparticipacao_relacionados
 GET /api/fiscal/fila -> api_fiscal_fila

@@ -615,13 +615,17 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
     termos = await termos_contrato(cnpj, ano, seq)
     for row in termos:
         con.execute(
-            """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+            """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                  numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
                  vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal,
                  data_assinatura, tipo_termo, processo)
                VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
                  :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,
-                 :fundamento_legal,:data_assinatura,:tipo_termo,:processo)""",
+                 :fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
             {**row, "ncp": numero_controle_pncp})
     con.commit()
     return len(termos)
@@ -730,11 +734,21 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
         vg_max = None
         for row in termos:
             con.execute(
-                """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                # MESMO conjunto de colunas do outro gravador (coletar_aditivos): este INSERT é a
+                # segunda cópia, e foi ela que quase ficou para trás quando as três colunas novas
+                # (data_assinatura, tipo_termo, processo) entraram — o defeito clássico de dois
+                # escritores para a mesma tabela.
+                """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                      numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste,
+                     fundamento_legal, data_assinatura, tipo_termo, processo)
                    VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,
+                     :qualif_reajuste,:fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
                 {**row, "ncp": ncp})
             if row.get("valor_acrescido"):
                 acresc += row["valor_acrescido"]
