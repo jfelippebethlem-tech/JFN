@@ -45,6 +45,80 @@ TETO_CONSULTA = 1000
 para exatamente nele foi truncado — ver docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §5."""
 
 
+# Quantos números de OB conferir por par. Amostra, não censo: o objetivo é DETECTAR ausência
+# sistemática, e para isso 300 bastam — o censo custaria uma consulta por OB do acervo inteiro.
+AMOSTRA_POR_PAR = 300
+# Fração da amostra ausente a partir da qual o par é declarado PARCIAL. Medido em 2026-08-09 no
+# IDESI/2025: 93% das OBs do espelho não existiam na fonte canônica. Ruído normal entre as duas
+# fontes fica muito abaixo disto (há OBs exclusivas dos dois lados).
+PISO_AUSENCIA = 0.30
+
+
+def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]) -> list[dict]:
+    """Coleta INTERROMPIDA não para num número redondo — e por isso escapa do detector do teto.
+
+    Medido em 2026-08-09: a UG 294200 no exercício de 2025 tem 3.007 linhas (nada de redondo) e,
+    ainda assim, **227 das 245 OBs que o espelho conhece para um único credor (93%) não existem na
+    fonte canônica**. A causa apareceu no log do dreno no mesmo dia: passadas que terminam em
+    `rc=124` (timeout) gravam o que deu tempo e param — deixando uma contagem arbitrária que o
+    teste de "parou em 1.000" nunca vê.
+
+    O teste aqui é por IDENTIDADE, não por volume: pega uma amostra de números de OB que o espelho
+    registra para o par e pergunta se cada um existe no SIAFE. Comparar totais não serviria — os
+    dois universos não são idênticos e há par com mais valor no SIAFE que no espelho, como a nota
+    deste módulo já dizia.
+    """
+    con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+    try:
+        if not con.execute("SELECT name FROM sqlite_master WHERE type='table' "
+                           "AND name='ordens_bancarias'").fetchone():
+            return []
+        pares = con.execute(
+            "SELECT ug_codigo, substr(data_emissao, 1, 4) ano, COUNT(*) FROM ordens_bancarias "
+            "WHERE ug_codigo IS NOT NULL AND numero_ob IS NOT NULL "
+            "GROUP BY 1, 2 HAVING COUNT(*) >= 50").fetchall()
+        fora = []
+        for ug, ano, n_esp in pares:
+            chave = (str(ug), str(ano))
+            if chave in ja_truncados:
+                continue                   # o detector do teto já pegou este
+            amostra = [r[0] for r in con.execute(
+                "SELECT numero_ob FROM ordens_bancarias WHERE ug_codigo = ? "
+                "AND substr(data_emissao, 1, 4) = ? AND numero_ob IS NOT NULL LIMIT ?",
+                (ug, ano, AMOSTRA_POR_PAR))]
+            if not amostra:
+                continue
+            marcas = ",".join("?" * len(amostra))
+            achados = {r[0] for r in con.execute(
+                f"SELECT numero_ob FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
+                f"AND numero_ob IN ({marcas})", (str(ug), *amostra))}
+            ausentes = len(amostra) - len(achados)
+            if ausentes / len(amostra) < PISO_AUSENCIA:
+                continue
+            # "nunca coletado" e "coletado pela metade" são lacunas diferentes: a primeira é uma
+            # UG/ano que a varredura ainda não visitou, a segunda é coleta que MORREU no meio e
+            # parece pronta. Rotular tudo de "parcial" esconderia a segunda, que é a perigosa.
+            n_siafe = con.execute(
+                "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
+                "AND substr(data_emissao, 7, 4) = ?", (str(ug), str(ano))).fetchone()[0]
+            fora.append({
+                "ug": str(ug), "exercicio": str(ano),
+                "estado": "nunca_coletado" if n_siafe == 0 else "parcial",
+                "obs_siafe": n_siafe,
+                "amostra": len(amostra), "ausentes": ausentes,
+                "pct_ausente": round(100.0 * ausentes / len(amostra), 1),
+                "obs_espelho_tfe": n_esp,
+                "recoletar": (f"python -m compliance_agent.siafe_ob_orcamentaria --por-ug {ug} "
+                              f"--exercicio {ano} --ug-grande"),
+            })
+        fora.sort(key=lambda d: -d["ausentes"])
+        return fora
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+
+
 def medir(*, db: str | Path | None = None) -> dict[str, Any]:
     """Pares (UG, exercício) cujo total de OBs no SIAFE parou no teto de consulta.
 
@@ -92,6 +166,8 @@ def medir(*, db: str | Path | None = None) -> dict[str, Any]:
                           f"--exercicio {ano} --ug-grande"),
         })
     truncados.sort(key=lambda t: t["obs_faltando_ao_menos"], reverse=True)
+    parciais = _parciais_por_numero_de_ob(caminho, {(str(u), str(a)) for u, a, _, _ in pares
+                                                    if _ == TETO_CONSULTA})
 
     return {
         "ok": True, "indisponivel": False,
@@ -102,6 +178,10 @@ def medir(*, db: str | Path | None = None) -> dict[str, Any]:
         "valor_siafe_nos_truncados": round(sum(t["valor_siafe"] for t in truncados), 2),
         "valor_espelho_nos_truncados": round(sum(t["valor_espelho_tfe"] for t in truncados), 2),
         "truncados": truncados,
+        # SEGUNDO detector: coleta interrompida NÃO para num número redondo. Ver `_parciais…`.
+        "pares_parciais": len(parciais),
+        "obs_ausentes_por_numero": sum(p["ausentes"] for p in parciais),
+        "parciais": parciais,
         "nota": ("O que prova o truncamento é a contagem parar em exatamente "
                  f"{TETO_CONSULTA}, não a diferença para o espelho TFE — os dois universos não são "
                  "idênticos e há pares com mais valor no SIAFE que no espelho. A diferença serve "
