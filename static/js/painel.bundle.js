@@ -4159,7 +4159,17 @@ void main(){
       ${kpi(fmtN(d.novos || 0), "NOVOS desde a última rodada", d.novos || 0 ? "var(--red)" : null, "🆕", { drill: "apNovos" })}</div>`;
     h += leitura(esc(d.ressalva || ""));
     h += `<div class="grid">` + it.map((x) => {
-      const v = Object.entries(x.valor_por_fonte || {}).map(([k, n]) => `${esc(k)} ${fmtRc(n)}`).join(" · ");
+      // O NOME DA FONTE DIZ DE QUEM É O DINHEIRO. Os rótulos crus ("pcrj_despesa") escondem que
+      // R$ 2,6 bi de um item podem ser MUNICIPAIS enquanto o agente serve a um órgão ESTADUAL —
+      // e o leitor apressado soma tudo como se fosse do Estado (medido 2026-08-09, caso VIVA RIO:
+      // R$ 8,2 mi no SIAFE estadual contra R$ 2,60 bi pagos pela Prefeitura).
+      const _FONTE = {
+        siafe_ob: "OB do Estado (SIAFE)", pcrj_despesa: "pago pela Prefeitura do Rio",
+        pcrj_contratos: "contratos da Prefeitura (valor global, não pagamento)",
+        emenda_favorecidos: "emendas parlamentares",
+      };
+      const v = Object.entries(x.valor_por_fonte || {})
+        .map(([k, n]) => `${esc(_FONTE[k] || k)} ${fmtRc(n)}`).join(" · ");
       const ex = x.explicacao_institucional ? `<div class="dim" style="font-size:12px;margin-top:3px">desenho do programa: <b>${esc(x.explicacao_institucional)}</b></div>` : "";
       const cf = x.orgao_pagador_e_o_proprio ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ pago pelo PRÓPRIO ÓRGÃO do agente: ${esc(x.orgao_pagador_e_o_proprio)}</div>` : "";
       return card(
