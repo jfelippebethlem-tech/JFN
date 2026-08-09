@@ -117,9 +117,16 @@ pipelines:
   # ---- PCRJ (Prefeitura do Rio — coletas que alimentam a esfera do painel) ----
   - nome: pcrj-fisc-refresh
     arquivo: data/fisc_coletar_tudo.log
+    consulta: "SELECT MAX(coletado_em) FROM emendas"
     max_stale_h: 192
     grupo: pcrj
-    nota: refresh semanal seg 05:40 (timer jfn-fisc-refresh) — emendas + ContasRio + PNCP municipal
+    nota: >-
+      refresh semanal seg 00:30 (timer jfn-fisc-refresh) — emendas + ContasRio + PNCP municipal.
+      Vigia o DADO, não o log: medido em 2026-08-09, o SLO acusava 710h de atraso enquanto o
+      serviço rodava toda semana e saía 0. O `ExecStart` do unit NÃO redireciona a saída para
+      `data/fisc_coletar_tudo.log` (vai para o journal), então o arquivo estava congelado em
+      10/07 — alarme falso, que é alarme desligado. `emendas.coletado_em` marcava 03/08 03:36,
+      exatamente a execução do timer.
 
   - nome: pcrj-comissionados
     arquivo: data/pcrj_comiss_mensal.log
