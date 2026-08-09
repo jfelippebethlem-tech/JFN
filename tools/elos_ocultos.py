@@ -50,6 +50,65 @@ from compliance_agent.osint.marca_grupo import mesmo_grupo
 
 _RX_EMAIL = _re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
 
+_SQL_VEREDITO = """
+CREATE TABLE IF NOT EXISTS elo_veredito (
+  raiz_a      TEXT NOT NULL,
+  raiz_b      TEXT NOT NULL,
+  veredito    TEXT NOT NULL,      -- 'mesmo_grupo' | 'servico_compartilhado' | 'elo_real'
+  motivo      TEXT NOT NULL,      -- por que, em uma frase
+  fonte       TEXT NOT NULL,      -- de onde veio a prova (documento, URL, quem decidiu)
+  decidido_em TEXT NOT NULL,
+  PRIMARY KEY (raiz_a, raiz_b))
+"""
+
+
+def _chave_par(a: str, b: str) -> tuple[str, str]:
+    """Par ordenado das RAÍZES — a mesma dupla em qualquer ordem tem uma chave só."""
+    ra, rb = _re.sub(r"\D", "", a or "")[:8], _re.sub(r"\D", "", b or "")[:8]
+    return (ra, rb) if ra <= rb else (rb, ra)
+
+
+def vereditos(db: str = "") -> dict[tuple[str, str], dict]:
+    """Pares já explicados por PROVA externa — a guarda estrutural contra achado que reaparece.
+
+    POR QUE EXISTE. `AMIL × COI` divide o e-mail jurídico `@uhgbrasil.com.br` e encabeçava a fila
+    com R$ 216,5 mi. Nem a marca nem o QSA brasileiro as unem — a COI pertence à Amil, e a Amil é
+    controlada pela UnitedHealthCare International IV S.à r.l. via Polar II FIP, o que só está no
+    demonstrativo financeiro. Sem um lugar para GRAVAR essa prova, o par voltaria ao topo a cada
+    passada, e a alternativa preguiçosa (rebaixar todo domínio corporativo) esconderia elo real.
+    Aqui o veredito é dado UMA vez, com fonte, e vale para sempre — como `fachada_veredito` faz
+    com a fachada. Nada some da lista: o par continua visível, com o motivo escrito.
+    """
+    from compliance_agent.reporting.intel_base import _DB
+
+    con = sqlite3.connect(db or _DB, timeout=30)
+    try:
+        con.execute(_SQL_VEREDITO)
+        con.commit()
+        return {(r[0], r[1]): {"veredito": r[2], "motivo": r[3], "fonte": r[4]}
+                for r in con.execute(
+                    "SELECT raiz_a, raiz_b, veredito, motivo, fonte FROM elo_veredito")}
+    except sqlite3.Error:
+        return {}
+    finally:
+        con.close()
+
+
+def decidir(cnpj_a: str, cnpj_b: str, veredito: str, motivo: str, fonte: str,
+            db: str = "") -> None:
+    """Grava o veredito de um par. Idempotente (REPLACE) — reavaliar é corrigir, não duplicar."""
+    from compliance_agent.reporting.intel_base import _DB
+
+    ra, rb = _chave_par(cnpj_a, cnpj_b)
+    con = sqlite3.connect(db or _DB, timeout=30)
+    try:
+        con.execute(_SQL_VEREDITO)
+        con.execute("INSERT OR REPLACE INTO elo_veredito VALUES (?,?,?,?,?,?)",
+                    (ra, rb, veredito, motivo, fonte, time.strftime("%Y-%m-%d %H:%M:%S")))
+        con.commit()
+    finally:
+        con.close()
+
 
 
 
@@ -170,6 +229,17 @@ def levantar(db: str = "") -> dict:
                 x["marca"] = rot
     finally:
         con.close()
+    # VEREDITO JÁ DADO, com prova externa — o par sai da fila de trabalho mas CONTINUA na lista,
+    # com motivo e fonte à vista (ver `vereditos`). Só 'elo_real' mantém o par em aberto: quando
+    # a apuração CONFIRMA o elo, ele não pode sumir junto com os explicados.
+    dec = vereditos(db)
+    for x in itens:
+        v = dec.get(_chave_par(x["cnpj_a"], x["cnpj_b"]))
+        if v and v["veredito"] != "elo_real":
+            x["mesmo_grupo_aparente"] = True
+            x["marca"] = f"{v['veredito']}: {v['motivo']} [fonte: {v['fonte']}]"[:200]
+        elif v:
+            x["veredito_humano"] = v
     itens.sort(key=lambda x: -x["peso"])
     return {"arestas_de_contato": total, "estruturais": estrutural,
             "contador_compartilhado_reclassificado": servico,
