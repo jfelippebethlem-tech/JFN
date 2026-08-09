@@ -913,8 +913,22 @@ _F_VAL1_SEL = '[id*="table_rtfFilter:1"] input[type="text"]:visible'
 
 async def _set_valor(pg, sel, valor):
     """Seta o campo de valor do filtro, LIMPANDO de forma confiável antes (Ctrl+A/Delete falha no
-    campo ADF e concatena lixo → 0 resultados na 2ª iteração). Verifica que ficou só o valor novo."""
+    campo ADF e concatena lixo → 0 resultados na 2ª iteração). Verifica que ficou só o valor novo.
+
+    ESPERA O CAMPO EXISTIR antes de clicar. O ADF re-renderiza a linha do filtro a cada PPR, e no
+    meio de um laço de prefixos o input some por instantes: medido em 2026-08-09, a coleta da UG
+    180100/2023 morria em `Locator.click: Timeout 30000ms` **depois de 6 fatias já colhidas** —
+    perdendo a passada inteira por uma janela de re-render. Esperar é barato; recomeçar não é.
+    """
+    from playwright.async_api import Error as PWError
+
     v = pg.locator(sel).last
+    try:
+        await v.wait_for(state="visible", timeout=30000)
+    except PWError:
+        await pg.wait_for_timeout(2500)          # deixa o PPR terminar e tenta uma segunda vez
+        v = pg.locator(sel).last
+        await v.wait_for(state="visible", timeout=30000)
     await v.click()
     await v.fill("")                       # limpeza confiável (síncrona)
     await pg.wait_for_timeout(150)
