@@ -54,7 +54,16 @@ _FRACAO_AMOSTRA = 0.8                  # ≥80% dos docs no corte ⇒ é amostra
 
 def qualidade_cache(conteudo_documentos: list) -> str:
     """'completo' | 'amostra' | 'misto' — só 'completo' pode virar arquivo consultável."""
-    tam = [len(str(x.get("conteudo") or x.get("texto") or "")) for x in (conteudo_documentos or [])]
+    # EXCERTO DE STORAGE FORA DA CONTA. `_trimado` marca documento JÁ LIDO cujo texto cru virou
+    # excerto de 400 chars depois que a ficha foi extraída (tools/sei_sweep.py) — é política de
+    # armazenamento, não captura rasa. Medido 2026-08-09: num processo RELIDO por inteiro a fusão
+    # de cache preserva os excertos antigos, e 8 deles ao lado de 34 leituras íntegras davam
+    # 9/42 = 21% na faixa do corte ⇒ "misto" ⇒ arquivador RECUSAVA o processo mais bem lido do
+    # lote. Sem eles: 1/34 = 3% ⇒ "completo". Se SÓ houver excertos, não há leitura a arquivar e
+    # o caminho de baixo devolve "amostra" como antes.
+    lidos = [x for x in (conteudo_documentos or [])
+             if not (isinstance(x, dict) and x.get("_trimado"))]
+    tam = [len(str(x.get("conteudo") or x.get("texto") or "")) for x in lidos]
     if not tam:
         return "amostra"
     frac = sum(1 for t in tam if _CORTE_MIN <= t <= _CORTE_MAX) / len(tam)
