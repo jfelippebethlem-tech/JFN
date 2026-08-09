@@ -40,3 +40,47 @@ def test_profundidade_maxima_para_de_subdividir():
     """Prefixo já longo não subdivide para sempre — o SIAFE tem 8 dígitos depois de 'OB'."""
     fundo = "2023OB" + "1" * 8
     assert not _fatia_capou(1000, fundo, 2023), "subdivisão infinita: o prefixo já esgotou"
+
+
+def test_espera_a_segunda_linha_do_filtro_antes_de_usar():
+    """A linha 1 do filtro NASCE SOZINHA — usar antes da hora dá Timeout que parece falta de tela.
+
+    Inventário do painel medido em 2026-08-09: os únicos controles são "Ocultar este painel",
+    "Limpar" e o botão de excluir de cada linha. **Não há botão de adicionar linha** — o ADF
+    acrescenta a seguinte por PPR quando a de cima fica completa. Ir direto para
+    `table_rtfFilter:1` estourava em `Locator.click: Timeout 30000ms`, e o erro se lia como "o
+    SIAFE 1 não tem segunda linha"; era corrida — a MESMA coleta já tinha funcionado e subdividido
+    prefixos numa passada anterior. Sem essa linha não há subdivisão, e sem subdivisão o teto de
+    1.000 nunca é furado.
+    """
+    import inspect
+
+    from compliance_agent import siafe_ob_orcamentaria as M
+
+    assert callable(M._esperar_linha_filtro)
+    for fn in (M.coletar_por_ug_grande, M.coletar_por_data):
+        fonte = inspect.getsource(fn)
+        i_espera = fonte.find("_esperar_linha_filtro")
+        i_uso = fonte.find("_F_PROP1")
+        assert i_espera > 0, f"{fn.__name__} usa a linha 1 sem esperar que ela exista"
+        assert i_espera < i_uso, f"{fn.__name__} espera DEPOIS de usar — não adianta"
+
+
+def test_seletor_do_playwright_nao_vaza_para_o_navegador():
+    """`:visible` é do Playwright, não é CSS — no `querySelectorAll` ele lança DOMException.
+
+    Medido em 2026-08-09: o commit do valor do filtro (o evento que faz o SIAFE 1 APLICAR o
+    filtro e criar a linha seguinte) lançava
+    `DOMException: '...:visible' is not a valid selector` em toda chamada. O log já dizia isso —
+    e a coleta parecia apenas "intermitente". Os seletores de valor são `_F_VAL_SEL`/`_F_VAL1_SEL`,
+    escritos com `:visible` porque servem TAMBÉM ao locator do Playwright; quem os leva para
+    dentro do navegador tem de limpar o sufixo (a visibilidade é filtrada em JS logo depois).
+    """
+    import inspect
+
+    from compliance_agent import siafe_ob_orcamentaria as M
+
+    fonte = inspect.getsource(M._set_valor)
+    assert ":visible" in M._F_VAL_SEL, "premissa mudou: o seletor não usa mais o pseudo do Playwright"
+    assert "replace(/:visible" in fonte, (
+        "o seletor com `:visible` volta a ir cru para o navegador — DOMException a cada filtro")

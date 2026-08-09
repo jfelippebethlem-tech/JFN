@@ -874,6 +874,38 @@ async def _filtrar_ug(pg, ug_codigo) -> dict:
 
 
 # linha 1 do filtro (a tabela já vem com 2 linhas: 0 e 1) — p/ combinar UG (linha 0) + Número (linha 1)
+async def _esperar_linha_filtro(pg, idx: int, adf, espera_s: int = 45) -> bool:
+    """Espera a linha `idx` do filtro EXISTIR — ela nasce sozinha quando a anterior é preenchida.
+
+    Não há botão de "adicionar linha": o inventário do painel (medido 2026-08-09) traz só
+    "Ocultar este painel", "Limpar" e o botão de excluir de cada linha. O ADF acrescenta a linha
+    seguinte por PPR, depois que a de cima tem propriedade, operador e valor. Quem seguia direto
+    para a linha 1 estourava em `Locator.click: Timeout 30000ms ... table_rtfFilter:1` — e o erro
+    parecia "a tela do SIAFE 1 não tem segunda linha", quando era corrida: numa passada anterior a
+    mesma coleta funcionou e chegou a subdividir prefixos.
+
+    Espera a PRESENÇA (não o conteúdo), cutucando com um blur a cada tentativa — é o blur que
+    dispara o PPR quando o valor foi digitado e o campo não perdeu o foco.
+    """
+    from playwright.async_api import Error as PWError   # import local: o módulo faz assim
+
+    alvo = f'[id*="table_rtfFilter:{idx}:"]'
+    for tentativa in range(max(1, espera_s // 3)):
+        if await pg.locator(alvo).count() > 0:
+            return True
+        if tentativa % 2 == 1:                      # cutuca: blur → PPR do ADF
+            try:
+                await pg.keyboard.press("Tab")
+            except PWError as exc:
+                logger.debug("blur para acordar o PPR falhou: %s", str(exc)[:80])
+        await pg.wait_for_timeout(3000)
+        try:
+            await adf.wait()
+        except PWError as exc:
+            logger.debug("adf.wait durante a espera da linha %s: %s", idx, str(exc)[:80])
+    return await pg.locator(alvo).count() > 0
+
+
 _F_PROP1 = "pt1:tblOBOrcamentaria:table_rtfFilter:1:cbx_col_sel_rtfFilter::content"
 _F_OP1 = "pt1:tblOBOrcamentaria:table_rtfFilter:1:cbx_op_sel_rtfFilter::content"
 _F_VAL1_SEL = '[id*="table_rtfFilter:1"] input[type="text"]:visible'
@@ -896,8 +928,14 @@ async def _set_valor(pg, sel, valor):
     # COMMIT do valor: dispara o valueChange via o CLIENTE ADF (FUNCIONA no SIAFE 1 — campo sem autoSubmit —
     # e no SIAFE 2). Sem isso, no SIAFE 1 o filtro não aplica. Tab fica como reforço (SIAFE 2).
     try:
+        # `:visible` é seletor do PLAYWRIGHT, não CSS — dentro de `querySelectorAll` do navegador
+        # ele lança `DOMException: is not a valid selector` e o commit NUNCA acontece. Medido em
+        # 2026-08-09: o log trazia a exceção a cada valor de filtro, e sem o commit o SIAFE 1 não
+        # aplica o filtro nem cria a linha seguinte — daí a coleta parecer intermitente. A
+        # visibilidade já é filtrada em JS logo abaixo, então basta remover o sufixo.
         await pg.evaluate(
-            """(args)=>{const [sel,val]=args;
+            """(args)=>{const [sel0,val]=args;
+               const sel = sel0.replace(/:visible\b/g, '');
                const els=[...document.querySelectorAll(sel)].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});
                const el=els[els.length-1]; if(!el)return;
                const id=el.id.replace(/::content$/,'');
@@ -947,7 +985,13 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             await _typeahead(pg, _F_PROP, "UG Emi"); await adf.wait()
             await _typeahead(pg, _F_OP, "começa com"); await adf.wait()  # vale SIAFE 1 e 2 (UG=6 dígitos)
             await _set_valor(pg, _F_VAL_SEL, ug); await adf.wait()
-            # linha 1 = Número começa com (prop/op uma vez; valor por prefixo)
+            # linha 1 = Número começa com (prop/op uma vez; valor por prefixo). ELA NASCE SOZINHA
+            # depois que a linha 0 fica completa — esperar a PRESENÇA antes de usar (ver
+            # `_esperar_linha_filtro`); ir direto estourava em Timeout e parecia falta de tela.
+            if not await _esperar_linha_filtro(pg, 1, adf):
+                return {"ok": False, "etapa": "filtro_linha1",
+                        "erro": ("a 2ª linha do filtro não apareceu depois da 1ª completa; sem ela "
+                                 "não há subdivisão por prefixo e o teto de 1.000 não é furado")}
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
             await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
             # worklist com SUBDIVISÃO automática + CHECKPOINT por prefixo (RESUMÍVEL: se cair no meio de uma
@@ -1048,7 +1092,12 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
                 ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
                 return {"ok": True, "data": data, "estouro": False, "colhidas": len(linhas),
                         "ingeridas": ing.get("ingeridas")}
-            # ESTOURO: >1000 no dia → subdivide por Número (linha 1)
+            # ESTOURO: >1000 no dia → subdivide por Número (linha 1). A linha nasce sozinha
+            # depois da 1ª completa — esperar a PRESENÇA, como na coleta por UG grande.
+            if not await _esperar_linha_filtro(pg, 1, adf):
+                return {"ok": False, "data": data, "etapa": "filtro_linha1",
+                        "erro": "a 2ª linha do filtro não apareceu; sem ela o dia estourado não "
+                                "pode ser subdividido"}
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
             await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
             try:
