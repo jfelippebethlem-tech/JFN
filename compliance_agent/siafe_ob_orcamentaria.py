@@ -1132,7 +1132,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             # coleta direta (sem subdividir) se < cap
             if not estouro:
                 vistos, linhas = set(), []
-                await _colher(pg, maxn, vistos, linhas, None)
+                header = await _colher(pg, maxn, vistos, linhas, None)   # cabeçalho VIVO
                 ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
                 return {"ok": True, "data": data, "estouro": False, "colhidas": len(linhas),
                         "ingeridas": ing.get("ingeridas")}
