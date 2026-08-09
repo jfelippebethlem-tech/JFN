@@ -584,6 +584,12 @@ def _parse_termo(t: dict) -> dict:
         "qualif_vigencia": t.get("qualificacaoVigencia"),
         "qualif_reajuste": t.get("qualificacaoReajuste"),
         "fundamento_legal": t.get("fundamentoLegal"),
+        # a fonte entrega, e a casa jogava fora: sem `dataAssinatura` não se mede aditivo precoce
+        # (o sinal da CGE no caso SECID), sem `tipoTermoContratoNome` a natureza vem só do objeto,
+        # e sem `processo` não há ponte para os autos.
+        "data_assinatura": t.get("dataAssinatura"),
+        "tipo_termo": t.get("tipoTermoContratoNome"),
+        "processo": t.get("processo"),
     }
 
 
@@ -611,9 +617,11 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
         con.execute(
             """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                  numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal,
+                 data_assinatura, tipo_termo, processo)
                VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,
+                 :fundamento_legal,:data_assinatura,:tipo_termo,:processo)""",
             {**row, "ncp": numero_controle_pncp})
     con.commit()
     return len(termos)
