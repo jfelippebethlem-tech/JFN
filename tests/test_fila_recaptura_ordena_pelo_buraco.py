@@ -56,13 +56,25 @@ def test_tamanho_desconhecido_vai_para_o_fim():
 
 
 def test_a_ferramenta_usa_essa_ordem():
-    """Prova de que a regra acima é a da ferramenta, não uma reescrita do teste."""
-    fonte = R.__file__
-    with open(fonte, encoding="utf-8") as f:
-        texto = f.read()
-    assert 'key=lambda x: (bool(x.get("faltam_desconhecido")), x["faltam"])' in texto, (
-        "a ordenação da fila mudou sem que este teste mudasse junto — se foi deliberado, reescreva "
-        "a regra aqui com o motivo")
+    """Prova de que a regra acima é a da ferramenta, não uma reescrita do teste.
+
+    MUDOU EM 2026-08-09, deliberadamente: a ordenação saiu de um `sort(key=...)` embutido em
+    `fila()` para a função `ordenar()`, testável sozinha, porque ganhou uma camada nova — quem
+    está a poucos documentos de um VEREDITO alto passa na frente (33 processos estavam em
+    NAO_AVALIAVEL só por captura incompleta e já pontuavam ≥60; um, a UM documento de fechar
+    80/100, esperava na posição 314 de 3.625). O que este teste garante continua igual: a regra
+    vive na FERRAMENTA, e o comportamento é conferido chamando-a, não relendo o texto do arquivo.
+    """
+    fila_bruta = [
+        {"numero": "SEI-000003/000003/2024", "faltam": 0, "faltam_desconhecido": True},
+        {"numero": "SEI-000002/000002/2024", "faltam": 9},
+        {"numero": "SEI-000001/000001/2024", "faltam": 2},
+    ]
+    assert [x["faltam"] for x in R.ordenar(fila_bruta)] == [2, 9, 0], (
+        "a ordenação da fila mudou sem que este teste mudasse junto — se foi deliberado, "
+        "reescreva a regra aqui com o motivo")
+    assert "def ordenar(" in open(R.__file__, encoding="utf-8").read(), (
+        "a ordenação voltou a ficar embutida em `fila()` e deixou de ser testável sozinha")
 
 
 def test_arquivo_vazio_e_declarado_desconhecido():

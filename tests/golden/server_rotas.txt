@@ -36,6 +36,7 @@ GET /api/eval/lift -> api_eval_lift
 GET /api/eventos/stream -> api_eventos_stream
 GET /api/fachada/revisar -> api_fachada_revisar
 GET /api/fiscal/fila -> api_fiscal_fila
+GET /api/fiscal/taxa_por_unidade -> api_taxa_por_unidade
 GET /api/flags -> api_flags
 GET /api/fontes/frescor -> api_fontes_frescor
 GET /api/fontes/limites -> api_fontes_limites

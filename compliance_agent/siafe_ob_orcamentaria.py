@@ -95,6 +95,7 @@ def _migrar_chave(con) -> int:
     volta) — ela impede que a próxima coleta apague de novo. Roda uma vez: se a PK já é a certa,
     devolve 0 sem tocar em nada.
     """
+    import sqlite3            # o módulo importa sqlite3 dentro das funções que o usam
     linha = con.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='ob_orcamentaria_siafe'"
     ).fetchone()
@@ -118,7 +119,9 @@ def _migrar_chave(con) -> int:
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
         con.commit()
         return n
-    except Exception:
+    except sqlite3.Error:
+        # tudo aqui é SQLite (CREATE/INSERT/DROP/ALTER); desfaz e RELANÇA — migração que falha
+        # pela metade deixaria a tabela num estado que ninguém sabe ler.
         con.rollback()
         raise
 
