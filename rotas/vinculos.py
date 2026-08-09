@@ -699,6 +699,32 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/recuperacao_judicial")
+def api_recuperacao_judicial(min_valor: float = 100_000.0, limite: int = 20):
+    """Quem o Estado paga estando em recuperação judicial — inclusive DENTRO de consórcio.
+
+    A casa já usara este sinal uma vez, à mão, num dossiê; nunca virou varredura. O caso da SECID
+    mostrou o custo: seis consórcios da UG 660100 carregam a MESMA empresa em recuperação judicial
+    no quadro societário, R$ 415,5 mi pagos — invisíveis a qualquer busca pelo nome do credor.
+
+    Participar **não é vedado** (exige plano homologado e viabilidade demonstrada): a lista diz
+    ONDE conferir a habilitação econômico-financeira. O rótulo vem do NOME na Receita — quem não
+    atualizou não aparece (piso) — e não tem data, então recuperação encerrada pode deixar marca.
+    """
+    try:
+        from tools.screen_recuperacao_judicial import RESSALVA, medir
+
+        itens = medir(min_valor=float(min_valor))
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "soma": round(sum(x["total"] for x in itens), 2),
+            "itens": itens[:max(1, min(int(limite), 200))], "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("recuperacao_judicial falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/coparticipacao_relacionados")
 def api_coparticipacao_relacionados(min_certames: int = 2, limite: int = 20):
     """Empresas do mesmo comando disputando o MESMO certame — competição simulada (E.3.2).

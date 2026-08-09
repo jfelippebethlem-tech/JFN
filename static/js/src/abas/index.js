@@ -155,6 +155,148 @@ export async function filaFiscal(soOsint){
   h+=`<div class="grid">`+it.map(_lin).join('')+`</div>`;
   h+=`<div class="note">${esc(d.resumo||'')} · a fila é recalculada a cada consulta, sobre o acervo do momento.</div>`;
   o.innerHTML=h;
+  // Os cinco painéis de PADRÃO que acompanham a fila: a fila mostra processo a processo, e o que
+  // se leva ao TCE-RJ é a taxa, a janela, a concentração por grupo, a coparticipação de
+  // relacionadas e a exposição a empresa em recuperação judicial.
+  taxaPorUnidade();
+  fimDeExercicio();
+  concentracaoPorGrupo();
+  coparticipacaoRelacionados();
+  recuperacaoJudicial();
+}
+
+// O PADRÃO NÃO CABE NA FILA. A fila mostra processo a processo; o achado que se leva ao TCE-RJ
+// é a TAXA da unidade — 45,8% do Fundo Estadual da Saúde contra 0% dos 44 do Fundo dos
+// Bombeiros, e o contraste SOBE quando se controla pela profundidade de leitura (66% × 0% na
+// faixa de 10 a 19 documentos), o que afasta a hipótese de artefato do gate.
+async function taxaPorUnidade() {
+  const o = $("ff-out");
+  if (!o) return;
+  const d = await J("/api/fiscal/taxa_por_unidade");
+  if (!d || d.ok === false || !(d.itens || []).length) return;
+  const alvo = document.createElement("div");
+  const fx = (v, k) => { const f = (v.faixas || {})[k] || [0, 0]; return f[0] ? `${f[1]}/${f[0]}` : "—"; };
+  alvo.innerHTML = sec("O padrão por unidade — pagamento sem prova de execução")
+    + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">avaliados</th>
+      <th class="right">com a lacuna</th><th class="right">taxa</th><th class="right">1-9 docs</th>
+      <th class="right">10-19</th><th class="right">20-49</th></tr></thead><tbody>`
+      + d.itens.map((x) => `<tr><td>${esc(x.unidade)}</td><td class="right">${fmtN(x.n)}</td>
+          <td class="right">${fmtN(x.com)}</td>
+          <td class="right" style="font-weight:800;color:${x.taxa >= 25 ? "var(--red)" : x.taxa >= 10 ? "var(--amber)" : "inherit"}">${x.taxa}%</td>
+          <td class="right dim">${fx(x, "1-9")}</td><td class="right dim">${fx(x, "10-19")}</td>
+          <td class="right dim">${fx(x, "20-49")}</td></tr>`).join("")
+      + `</tbody></table>`)
+    + leitura(esc(d.ressalva || ""));
+  o.appendChild(alvo);
+}
+
+// A JANELA EM QUE A LIQUIDAÇÃO AFROUXA. Dezembro é quando o empenho precisa ser consumido, e é
+// onde a prova de entrega costuma faltar: a NRTT recebeu R$ 25,4 mi em SETE OBs num único 28/12,
+// e a EVOLUÇÃO teve 30 OBs num 22/12. Concentrar pagamento em dezembro é legal — o que a tela diz
+// é ONDE conferir medição, atesto e recebimento definitivo.
+async function fimDeExercicio() {
+  const o = $("ff-out");
+  if (!o) return;
+  const d = await J("/api/fiscal/fim_de_exercicio?limite=15");
+  if (!d || d.ok === false || !(d.itens || []).length) return;
+  const alvo = document.createElement("div");
+  alvo.innerHTML = sec(`Ano inteiro pago em nov–dez (${fmtN(d.total)} credores privados)`)
+    + card(`<table class="tb"><thead><tr><th>Ano</th><th>Credor</th><th class="right">total no ano</th>
+      <th class="right">% em nov–dez</th><th class="right">OBs</th></tr></thead><tbody>`
+      + d.itens.map((x) => `<tr><td>${esc(String(x.exercicio))}</td>
+          <td>${esc(x.nome.slice(0, 46))} <span class="dim">${esc(x.raiz)}</span></td>
+          <td class="right">${fmtRc(x.total)}</td>
+          <td class="right" style="font-weight:800;color:${x.pct >= 95 ? "var(--red)" : "var(--amber)"}">${x.pct}%</td>
+          <td class="right dim">${fmtN(x.obs)}</td></tr>`).join("")
+      + `</tbody></table>`)
+    + leitura(esc(d.ressalva || ""));
+  o.appendChild(alvo);
+}
+
+// O QUE O CNPJ ESCONDE. Um órgão pode contratar dez empresas e pagar quase tudo a um só dono: o
+// HHI da UG 660100 em 2025 é 0,1022 por CNPJ ("desconcentrado") e 0,3671 por GRUPO, com 7 CNPJs
+// somando 57,5%. Ordena pelo DELTA, não pelo HHI — UG dominada por fornecedor único já aparecia
+// na medida por CNPJ e não é o que esta tela procura.
+// O `cimento` é obrigatório na leitura: 2 de 5 pontes ADMINISTRANDO duas empresas (Cidades) não
+// é a mesma coisa que 1 em 28 numa teia de sociedades médicas de cotistas (FSERJ, 10,3%).
+async function concentracaoPorGrupo() {
+  const o = $("ff-out");
+  if (!o) return;
+  const d = await J("/api/fiscal/concentracao_por_grupo?ano=2025&limite=10");
+  if (!d || d.ok === false || !(d.itens || []).length) return;
+  const rot = { comando_comum: ["comando comum", "var(--red)"],
+                coparticipacao_com_excecao: ["coparticipação (1 exceção)", "var(--amber)"],
+                coparticipacao: ["coparticipação", "inherit"] };
+  const alvo = document.createElement("div");
+  alvo.innerHTML = sec("Concentração por GRUPO econômico — o que a medição por CNPJ não mostra")
+    + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">pago em 2025</th>
+      <th class="right">HHI CNPJ</th><th class="right">HHI grupo</th>
+      <th class="right">maior grupo</th><th>o que sustenta o grupo</th></tr></thead><tbody>`
+      + d.itens.map((x) => {
+        const g = x.maior_grupo || {}, c = g.cimento || {};
+        const [txt, cor2] = rot[c.tipo] || ["QSA indisponível", "inherit"];
+        return `<tr><td>${esc(x.nome_ug || ("UG " + x.ug))} <span class="dim">${esc(x.ug)}</span></td>
+          <td class="right">${fmtRc(x.total_pago)}</td>
+          <td class="right dim">${x.hhi_por_cnpj.toFixed(4)}</td>
+          <td class="right" style="font-weight:800;color:${x.hhi_por_grupo >= 0.25 ? "var(--red)" : "inherit"}">${x.hhi_por_grupo.toFixed(4)}</td>
+          <td class="right">${((g.fracao || 0) * 100).toFixed(1)}% <span class="dim">${fmtN(g.n_cnpj || 0)} CNPJs</span></td>
+          <td style="color:${cor2}">${esc(txt)}${c.pontes ? ` <span class="dim">${c.pontes_que_administram}/${c.pontes} pontes</span>` : ""}</td></tr>`;
+      }).join("")
+      + `</tbody></table>`)
+    + leitura(esc(d.ressalva || ""));
+  o.appendChild(alvo);
+}
+
+// AS DUAS DO MESMO COMANDO NA MESMA DISPUTA. Cruza os 82.941 licitantes municipais do TCE-RJ com
+// o quadro societário — a travessia que o resolver_nome_cnpj foi escrito para permitir e que
+// nenhum módulo fazia. O elo tem de estar VIGENTE na data: sem esse filtro os dois maiores pares
+// eram anacronismos (o administrador comum entrou no ano seguinte ao certame).
+async function coparticipacaoRelacionados() {
+  const o = $("ff-out");
+  if (!o) return;
+  const d = await J("/api/fiscal/coparticipacao_relacionados?limite=12");
+  if (!d || d.ok === false || !(d.itens || []).length) return;
+  const alvo = document.createElement("div");
+  alvo.innerHTML = sec(`Relacionadas no mesmo certame (${fmtN(d.total)} pares)`)
+    + card(`<table class="tb"><thead><tr><th class="right">certames</th><th class="right">mun.</th>
+      <th>empresa A</th><th>empresa B</th><th>elo vigente</th>
+      <th class="right">homologado</th></tr></thead><tbody>`
+      + d.itens.map((x) => `<tr>
+          <td class="right" style="font-weight:800;color:${x.certames >= 4 ? "var(--red)" : x.certames >= 3 ? "var(--amber)" : "inherit"}">${x.certames}</td>
+          <td class="right dim">${x.municipios}</td>
+          <td>${esc(x.nome_a.slice(0, 30))} <span class="dim">${esc(x.cnpj_a)}</span></td>
+          <td>${esc(x.nome_b.slice(0, 30))} <span class="dim">${esc(x.cnpj_b)}</span></td>
+          <td class="dim">${esc((x.elos || []).join("; ").slice(0, 44))}</td>
+          <td class="right">${fmtRc(x.valor)}</td></tr>`).join("")
+      + `</tbody></table>`)
+    + leitura(esc(d.ressalva || ""));
+  o.appendChild(alvo);
+}
+
+// A EMPRESA EM CRISE ENTRA PELO CONSÓRCIO. Seis consórcios da UG 660100 carregam a MESMA empresa
+// em recuperação judicial no quadro societário — R$ 415,5 mi pagos, invisíveis a qualquer busca
+// pelo nome do credor. Participar NÃO é vedado (exige plano homologado e viabilidade
+// demonstrada): a tela diz onde conferir a habilitação econômico-financeira.
+async function recuperacaoJudicial() {
+  const o = $("ff-out");
+  if (!o) return;
+  const d = await J("/api/fiscal/recuperacao_judicial?limite=12");
+  if (!d || d.ok === false || !(d.itens || []).length) return;
+  const alvo = document.createElement("div");
+  alvo.innerHTML = sec(`Pagos em recuperação judicial — ${fmtN(d.total)} credores, ${fmtRc(d.soma)}`)
+    + card(`<table class="tb"><thead><tr><th>Credor</th><th class="right">UGs</th><th>anos</th>
+      <th>como aparece</th><th class="right">pago (OB)</th><th class="right">OBs</th></tr></thead><tbody>`
+      + d.itens.map((x) => `<tr>
+          <td>${esc(x.nome.slice(0, 42))} <span class="dim">${esc(x.raiz)}</span></td>
+          <td class="right dim">${x.n_ug}</td><td class="dim">${esc(x.anos)}</td>
+          <td style="color:${x.via === "credor" ? "inherit" : "var(--amber)"}">${esc(x.via)}${
+            (x.membros_em_recuperacao || []).length
+              ? ` <span class="dim">${esc(x.membros_em_recuperacao[0].slice(0, 30))}</span>` : ""}</td>
+          <td class="right" style="font-weight:700">${fmtRc(x.total)}</td>
+          <td class="right dim">${fmtN(x.obs)}</td></tr>`).join("")
+      + `</tbody></table>`)
+    + leitura(esc(d.ressalva || ""));
+  o.appendChild(alvo);
 }
 
 /* Delegação única para a fila — nenhum nome novo no `window`. A catraca de globais do painel
