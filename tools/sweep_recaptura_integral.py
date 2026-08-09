@@ -160,13 +160,65 @@ def fila() -> list[dict]:
         if re.sub(r"\D", "", x["numero"]) not in ja_todos:
             saida.append(x)
 
-    # ORDEM: buraco MEDIDO primeiro, do menor para o maior; tamanho desconhecido depois.
-    # `faltam=0` com tamanho desconhecido não é "quase pronto" — é ignorância, e tratá-la como
-    # zero põe na frente da fila justamente o que pode ser um gigante de 900 documentos, que
-    # estoura o slot e não entrega nada (medido: o de 956 fez isso e travou a passada inteira).
-    # Com o buraco medido, cada slot drena os quase completos, que é onde ele rende.
-    saida.sort(key=lambda x: (bool(x.get("faltam_desconhecido")), x["faltam"]))
-    return saida
+    return ordenar(saida)
+
+
+# Buraco que ainda cabe num slot de leitura. O gigante de 956 documentos estourou o slot e não
+# entregou nada (medido em 07/08), então nada acima disto fura fila por mais alto que seja o score.
+_TETO_SLOT = 40
+_SCORE_QUASE = 60.0
+
+
+def _quase_veredito() -> dict[str, float]:
+    """Processos SEM veredito cujo score já é alto — ler mais alguns documentos DECIDE o caso.
+
+    Medido em 2026-08-09: 33 processos estão em `NAO_AVALIAVEL` só por captura incompleta e já
+    pontuam ≥60 com o pouco lido (um chega a 90,2). Eles não precisam de mais fila: precisam de
+    mais LEITURA. Degrada em silêncio — sem a tabela, devolve vazio e a ordem volta a ser a antiga.
+    """
+    import sqlite3
+
+    try:
+        from compliance_agent.reporting.intel_base import _DB
+    except ImportError:
+        return {}
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return {}
+    try:
+        return {re.sub(r"\D", "", str(n)): float(s) for n, s in con.execute(
+            "SELECT numero_sei, score100 FROM processo_avaliacao "
+            "WHERE faixa='NAO_AVALIAVEL' AND score100 >= ?", (_SCORE_QUASE,))}
+    except sqlite3.Error:
+        return {}
+    finally:
+        con.close()
+
+
+def ordenar(fila_bruta: list[dict]) -> list[dict]:
+    """ORDEM: quem está a poucos documentos de um VEREDITO alto primeiro; depois buraco medido,
+    do menor para o maior; tamanho desconhecido por último.
+
+    `faltam=0` com tamanho desconhecido não é "quase pronto" — é ignorância, e tratá-la como zero
+    põe na frente justamente o que pode ser um gigante de 900 documentos, que estoura o slot e não
+    entrega nada. Com o buraco medido, cada slot drena os quase completos, que é onde ele rende.
+
+    A camada de cima (2026-08-09) é a única exceção, e é conservadora: só fura fila quem já tem
+    score alto SEM veredito **e** cujo buraco cabe num slot. Antes disso, um processo a UM
+    documento de fechar 80/100 esperava na posição 314 de 3.625, e a maioria dos 33 casos entre
+    1.575 e 2.729 — meses de espera por leitura quase pronta.
+    """
+    quase = _quase_veredito()
+
+    def _chave(x: dict) -> tuple:
+        desconhecido = bool(x.get("faltam_desconhecido"))
+        faltam = x.get("faltam") or 0
+        perto = (not desconhecido and 0 < faltam <= _TETO_SLOT
+                 and re.sub(r"\D", "", str(x.get("numero"))) in quase)
+        return (0 if perto else 1, desconhecido, faltam)
+
+    return sorted(fila_bruta, key=_chave)
 
 
 def _feitos() -> dict:
