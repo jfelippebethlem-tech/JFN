@@ -64,3 +64,39 @@ def test_nunca_coletado_e_rotulado_a_parte(tmp_path):
     r = C.medir(db=str(p))
     assert r["parciais"][0]["estado"] == "nunca_coletado"
     assert r["parciais"][0]["obs_siafe"] == 0
+
+
+def test_estado_do_par_e_barato_e_honesto(tmp_path):
+    """`medir()` amostra ~800 pares e não cabe num pedido HTTP; a rota precisa da versão de UM par.
+
+    Foi o que faltou quando a concentração da UG 660100 saiu com 57,5% sem avisar que **65% da
+    amostra daquele ano não está na fonte canônica**. Fração só vale o que valer a base.
+    """
+    import sqlite3
+    from compliance_agent.reporting import cobertura_siafe as C
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT,"
+                " data_emissao TEXT, valor REAL)")
+    con.execute("CREATE TABLE ordens_bancarias (numero_ob TEXT, ug_codigo TEXT,"
+                " data_emissao TEXT, valor REAL)")
+    for i in range(100):
+        con.execute("INSERT INTO ordens_bancarias VALUES (?,?,?,?)",
+                    (f"2025OB{i:05d}", "660100", "2025-06-01", 10.0))
+        if i < 20:
+            con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)",
+                        (f"2025OB{i:05d}", "660100", "01/06/2025", 10.0))
+    for i in range(40):                                   # par COBERTO
+        con.execute("INSERT INTO ordens_bancarias VALUES (?,?,?,?)",
+                    (f"2024OB{i:05d}", "660100", "2024-06-01", 10.0))
+        con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)",
+                    (f"2024OB{i:05d}", "660100", "01/06/2024", 10.0))
+    con.commit()
+    con.close()
+
+    r = C.estado_do_par("660100", "2025", db=str(p))
+    assert r["estado"] == "parcial" and r["pct_ausente"] == 80.0 and r["obs_siafe"] == 20
+    assert C.estado_do_par("660100", "2024", db=str(p))["estado"] == "coberto"
+    # sem espelho não se afirma NADA sobre cobertura — nem completa, nem incompleta
+    assert C.estado_do_par("660100", "2019", db=str(p))["estado"] == "sem_referencia"
+    assert C.estado_do_par("999999", "2025", db=str(p))["estado"] == "sem_referencia"

@@ -63,6 +63,13 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
     `rc=124` (timeout) gravam o que deu tempo e param — deixando uma contagem arbitrária que o
     teste de "parou em 1.000" nunca vê.
 
+    A COMPARAÇÃO POR NÚMERO FOI VERIFICADA antes de virar medida — os dois lados usam o mesmo
+    formato (`AAAAOBnnnnn`) e as faixas se sobrepõem. Conferido em 2026-08-09 comparando os
+    conjuntos INTEIROS de três pares: 294200/2022 tem **99% de interseção** (coleta completa,
+    drenada no mesmo dia), 660100/2025 tem 48% e 266500/2025 tem **1%** — com 235 linhas no SIAFE
+    contra 5.021 no espelho. A dúvida inicial veio de amostrar sem `ORDER BY` e cair no topo da
+    faixa nos dois lados; o conjunto inteiro desfaz.
+
     O teste aqui é por IDENTIDADE, não por volume: pega uma amostra de números de OB que o espelho
     registra para o par e pergunta se cada um existe no SIAFE. Comparar totais não serviria — os
     dois universos não são idênticos e há par com mais valor no SIAFE que no espelho, como a nota
@@ -117,6 +124,48 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
         return []
     finally:
         con.close()
+
+
+def estado_do_par(ug: str, ano: str, *, db: str | Path | None = None) -> dict[str, Any]:
+    """Cobertura de UM par (UG, exercício) — a versão barata, para usar dentro de rota.
+
+    `medir()` amostra ~800 pares e não cabe num pedido HTTP. Aqui o teste é o mesmo (identidade de
+    número de OB contra o espelho), só que num par. Serve para o produto DIZER que o número que
+    está mostrando saiu de base incompleta — foi o que faltou quando a concentração da UG 660100
+    foi publicada com 57,5% sem avisar que 65% da amostra daquele ano não está na fonte canônica.
+    """
+    caminho = Path(db or os.environ.get("JFN_DB") or _DB)
+    if not caminho.exists():
+        return {"estado": "indisponivel", "motivo": "compliance.db ausente"}
+    con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+    try:
+        amostra = [r[0] for r in con.execute(
+            "SELECT numero_ob FROM ordens_bancarias WHERE ug_codigo = ? "
+            "AND substr(data_emissao, 1, 4) = ? AND numero_ob IS NOT NULL LIMIT ?",
+            (str(ug), str(ano), AMOSTRA_POR_PAR))]
+        n_siafe = con.execute(
+            "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
+            "AND substr(data_emissao, 7, 4) = ?", (str(ug), str(ano))).fetchone()[0]
+        if not amostra:
+            # sem espelho para comparar não se afirma completude — nem incompletude
+            return {"estado": "sem_referencia", "obs_siafe": n_siafe}
+        marcas = ",".join("?" * len(amostra))
+        achados = con.execute(
+            f"SELECT COUNT(DISTINCT numero_ob) FROM ob_orcamentaria_siafe "
+            f"WHERE ug_emitente = ? AND numero_ob IN ({marcas})",
+            (str(ug), *amostra)).fetchone()[0]
+    except sqlite3.Error as exc:
+        return {"estado": "indisponivel", "motivo": str(exc)}
+    finally:
+        con.close()
+    ausentes = len(amostra) - achados
+    pct = 100.0 * ausentes / len(amostra)
+    return {
+        "estado": ("nunca_coletado" if n_siafe == 0 else
+                   "parcial" if pct >= PISO_AUSENCIA * 100 else "coberto"),
+        "obs_siafe": n_siafe, "amostra": len(amostra), "ausentes": ausentes,
+        "pct_ausente": round(pct, 1),
+    }
 
 
 def medir(*, db: str | Path | None = None) -> dict[str, Any]:

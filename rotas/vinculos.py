@@ -678,15 +678,26 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
         con = _db_ro()
         try:
             if ug:
-                return JSONResponse({"ok": True, **concentracao_da_ug(con, ug, ano=ano or None)})
+                from compliance_agent.reporting.cobertura_siafe import estado_do_par
+
+                dados = concentracao_da_ug(con, ug, ano=ano or None)
+                # A fração só vale o que valer a base. Publicar 57,5% sem dizer que 65% da amostra
+                # daquele ano NÃO está na fonte canônica é o tipo de número que envelhece mal.
+                if ano:
+                    dados["cobertura"] = estado_do_par(ug, ano)
+                return JSONResponse({"ok": True, **dados})
             # Sem UG: o ranking ordena pelo DELTA — o quanto agrupar mudou a leitura —, não pelo
             # HHI absoluto. UG dominada por um fornecedor único já aparece na medida por CNPJ e
             # não é o que esta tela existe para achar.
+            from compliance_agent.reporting.cobertura_siafe import estado_do_par
             from compliance_agent.ugs import nome_canonico   # caminho único p/ nome de unidade
 
             itens = ranking(con, ano=ano or None, limite=max(1, min(int(limite), 40)))
+            # cobertura POR LINHA: cada UG tem a sua, e o ranking mistura base completa com base
+            # 65% ausente. Sem a coluna, o leitor compara frações que não são comparáveis.
             return JSONResponse({"ok": True, "ano": ano or None, "itens": [{
                 "ug": x["ug"], "nome_ug": nome_canonico(str(x["ug"])) or f"UG {x['ug']}",
+                "cobertura": estado_do_par(str(x["ug"]), str(ano)) if ano else None,
                 "total_pago": x["total_pago"], "n_cnpj": x["n_cnpj"],
                 "hhi_por_cnpj": x["hhi_por_cnpj"], "hhi_por_grupo": x["hhi_por_grupo"],
                 "delta_hhi": x["delta_hhi"], "concentrado_por_grupo": x.get("concentrado_por_grupo"),
