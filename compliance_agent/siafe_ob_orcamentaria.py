@@ -1208,7 +1208,17 @@ def main():
     a = ap.parse_args()
     if a.por_ug:
         fn = coletar_por_ug_grande if a.ug_grande else coletar_por_ug
-        res = asyncio.run(fn(a.exercicio, a.por_ug.strip()))
+        # `--prefixos` já era aceito por `coletar_por_ug_grande` e o CLI o descartava: quem
+        # precisava recolher UMA faixa (ex.: o mês em que uma OB específica foi emitida) tinha de
+        # varrer a UG inteira, horas de browser para minutos de trabalho. Só vale no modo grande —
+        # sem subdivisão não há prefixo que aplicar.
+        pref_ug = [x.strip() for x in a.prefixos.split(",") if x.strip()] or None
+        if pref_ug and not a.ug_grande:
+            print(json.dumps({"ok": False, "erro": "--prefixos exige --ug-grande (é o modo que "
+                                                   "subdivide por prefixo de número)"},
+                             ensure_ascii=False)); return
+        res = asyncio.run(fn(a.exercicio, a.por_ug.strip(), prefixos=pref_ug)
+                          if a.ug_grande else fn(a.exercicio, a.por_ug.strip()))
         print(json.dumps(res, ensure_ascii=False, indent=1)); return
     if a.por_numero:
         pref = [p.strip() for p in a.prefixos.split(",") if p.strip()] or None
