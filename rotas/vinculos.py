@@ -648,6 +648,36 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/concentracao_por_grupo")
+def api_concentracao_por_grupo(ug: str, ano: str = ""):
+    """Concentração de uma unidade gestora COLAPSADA por grupo econômico — o que o CNPJ esconde.
+
+    O módulo `osint/grupo_economico` mede isto desde sempre e **nenhuma rota o expunha**: para ver
+    o número era preciso abrir o Python. Medido na UG 660100 (Cidades) em 2025, já com o SIAFE
+    recoletado: **HHI por CNPJ 0,1022 → por GRUPO 0,3671**, com **7 CNPJs somando 57,5%** — de
+    "mercado desconcentrado" para "altamente concentrado" só por agrupar quem tem sócio em comum.
+
+    Grupo econômico NÃO é ilícito (holding, franquia, sócio investidor são lícitos). O achado é a
+    concentração que a medição por CNPJ não mostra, e o que ela pede é diligência sobre os
+    certames — não imputação. A cobertura de QSA vem declarada: fornecedor sem QSA na base conta
+    como grupo de si mesmo, então o share do maior grupo é **piso, nunca teto**.
+    """
+    try:
+        from compliance_agent.osint.grupo_economico import concentracao_da_ug
+
+        ug = "".join(ch for ch in str(ug) if ch.isdigit())[:6]
+        if len(ug) < 6:
+            return JSONResponse({"ok": False, "erro": "UG inválida"}, status_code=400)
+        con = _db_ro()
+        try:
+            return JSONResponse({"ok": True, **concentracao_da_ug(con, ug, ano=ano or None)})
+        finally:
+            con.close()
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("concentracao_por_grupo falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/fim_de_exercicio")
 def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite: int = 25):
     """Credores privados cujo ano inteiro cabe em novembro e dezembro — a janela frouxa.
