@@ -40,7 +40,8 @@
 ## 🏛️ SIAFE-Rio
 | Doc | Para quê |
 |---|---|
-| [SIAFE-ARQUITETURA.md](SIAFE-ARQUITETURA.md) · [SIAFE-NAVEGACAO.md](SIAFE-NAVEGACAO.md) · [SIAFE-RIO2-GUIA-AUTOMACAO.md](SIAFE-RIO2-GUIA-AUTOMACAO.md) | Arquitetura, navegação e automação do SIAFE. |
+| [**PLAYBOOK-SIAFE-NAVEGACAO.md**](PLAYBOOK-SIAFE-NAVEGACAO.md) | **Comece aqui p/ operar coleta SIAFE** — SIAFE 1 × 2, armadilhas medidas, como conferir pelo banco. Escrito para quem tem pouco contexto. |
+| [SIAFE-ARQUITETURA.md](SIAFE-ARQUITETURA.md) · [SIAFE-NAVEGACAO.md](SIAFE-NAVEGACAO.md) · [SIAFE-RIO2-GUIA-AUTOMACAO.md](SIAFE-RIO2-GUIA-AUTOMACAO.md) | Arquitetura, seletores (SIAFE 2) e automação do SIAFE. |
 | [PESQUISA-SIAFE-ADF-PPR.md](PESQUISA-SIAFE-ADF-PPR.md) | Pesquisa ADF/PPR. |
 
 ## ⚖️ Jurídico (Lex)
