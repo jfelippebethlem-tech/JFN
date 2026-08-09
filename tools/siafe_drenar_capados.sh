@@ -101,4 +101,11 @@ for par in "${PARES[@]}"; do
   fi
   feitos=$((feitos+1))
 done
+# O AVISO DO VAULT SE MANTÉM SOZINHO. As notas de caso avisam que seus valores de SIAFE são PISO
+# e listam quais (UG, ano) faltam — lista que ENVELHECE a cada par drenado. Aviso desatualizado é
+# ruído, e ruído ensina o leitor a pular o bloco de alerta. Reescreve depois de cada passada, e a
+# ferramenta RETIRA o aviso da nota cujas unidades já foram todas drenadas.
+if [ "$feitos" -gt 0 ]; then
+  $PY -m tools.vault_aviso_piso_siafe --aplicar >> "$LOG" 2>&1 || say "aviso do vault falhou (segue)"
+fi
 say "fim ($feitos par(es) nesta passada)"
