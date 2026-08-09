@@ -44,17 +44,21 @@ fi
 echo $$ > "$PIDF"
 trap 'rm -f "$PIDF"' EXIT
 
-# a lista sai do DADO, não de um arquivo: contagem redonda é o próprio sintoma
-mapfile -t PARES < <($PY - <<'PYEOF'
-import sqlite3
-con = sqlite3.connect("data/compliance.db")
-for ug, ano in con.execute(
-        "SELECT ug_emitente, exercicio FROM ob_orcamentaria_siafe GROUP BY 1,2 "
-        "HAVING COUNT(*) IN (1000,2000,3000,5000) ORDER BY exercicio DESC, ug_emitente"):
+# A LISTA SAI DO MEDIDOR, não de um teste de contagem redonda. Contagem redonda é a assinatura do
+# TETO de consulta; coleta que morre em timeout (rc=124) para em número qualquer e ficava invisível
+# — medido em 2026-08-09: 7 pares redondos contra 557 parciais. Ordem por EXPOSIÇÃO (o que mais
+# falta primeiro), não por ano, porque quem fiscaliza começa pelo que pesa.
+mapfile -t PARES < <(PYTHONPATH=. $PY - <<'PYEOF'
+from compliance_agent.reporting.cobertura_siafe import medir
+r = medir()
+itens = [(t["obs_faltando_ao_menos"], t["ug"], t["exercicio"]) for t in r.get("truncados", [])]
+itens += [(p["ausentes"] * 100, p["ug"], p["exercicio"])          # amostra: pondera p/ comparar
+          for p in r.get("parciais", []) if p.get("estado") == "parcial"]
+for _, ug, ano in sorted(itens, reverse=True):
     print(f"{ug} {ano}")
 PYEOF
 )
-say "pares em contagem redonda: ${#PARES[@]}"
+say "pares com coleta incompleta (teto + interrompida): ${#PARES[@]}"
 [ "$MAX" = "0" ] && { printf '   %s\n' "${PARES[@]}"; exit 0; }
 
 feitos=0
@@ -68,10 +72,20 @@ for par in "${PARES[@]}"; do
   # drenado enquanto os outros rodavam, ele já não está mais redondo — reprocessá-lo gasta uma
   # janela de browser à toa. Medido 2026-08-09: a 263100/2023 voltou à fila com 3.938 linhas, e a
   # mensagem ainda dizia "contagem redonda", o que era falso.
-  case "$ANTES" in
-    1000|2000|3000|5000) ;;
-    *) say "UG $UG $ANO: já não está redonda ($ANTES linhas) — pulo"; continue ;;
-  esac
+  # A lista envelhece dentro da própria passada: um par drenado enquanto os outros rodavam já não
+  # precisa de browser. O teste agora é "ainda incompleto?" (amostra de números de OB contra o
+  # espelho), não "ainda redondo" — que só valia para o teto.
+  AINDA=$(PYTHONPATH=. $PY - "$UG" "$ANO" <<'PYEOF'
+import sys
+from compliance_agent.reporting.cobertura_siafe import medir
+ug, ano = sys.argv[1], str(sys.argv[2])
+r = medir()
+alvo = {(t["ug"], t["exercicio"]) for t in r.get("truncados", [])}
+alvo |= {(p["ug"], p["exercicio"]) for p in r.get("parciais", []) if p.get("estado") == "parcial"}
+print("sim" if (ug, ano) in alvo else "nao")
+PYEOF
+)
+  [ "$AINDA" = "sim" ] || { say "UG $UG $ANO: coleta já completa ($ANTES linhas) — pulo"; continue; }
   # CHECKPOINT DE COLETA QUEBRADA NÃO VALE. Os arquivos `uggrande_*.json` de junho marcam fatias
   # como feitas, mas foram escritos quando a ingestão usava o cabeçalho errado (as linhas entravam
   # com a chave vazia e sobrava UMA por fatia) e quando a PK apagava a OB de outra unidade. Se a
