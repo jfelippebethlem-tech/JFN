@@ -55,3 +55,30 @@ def test_primeiro_passo_ja_era_por_rotulo():
     corpo = fonte[fonte.find('"""', fonte.find('"""') + 3):]
     trecho = corpo[:corpo.lower().find("execução financeira")]
     assert re.search(r"===\s*'Execução'", trecho), "o primeiro passo deixou de casar por rótulo"
+
+
+def test_todo_caminho_de_menu_prefere_rotulo():
+    """Varredura: nenhum módulo pode clicar no id de POSIÇÃO antes de tentar o rótulo.
+
+    O defeito foi achado em `siafe_ob_orcamentaria._navegar` e existia IGUAL em
+    `coletar_obs_sessao._ir_obs` — copiar-e-colar espalha a armadilha. Esta catraca varre o pacote
+    inteiro: onde o id `pt1:pt_np3:<n>:` aparecer, o casamento por texto tem de vir antes.
+    """
+    import pathlib
+
+    raiz = pathlib.Path(__file__).resolve().parent.parent
+    faltando = []
+    for arq in (raiz / "compliance_agent").rglob("*.py"):
+        txt = arq.read_text(encoding="utf-8", errors="replace")
+        if "pt_np3:" not in txt:
+            continue
+        for bloco in txt.split("await pg.evaluate")[1:]:
+            trecho = bloco[:900]
+            if "pt_np3:" not in trecho:
+                continue
+            pos_id = trecho.find("pt_np3:")
+            pos_txt = min([p for p in (trecho.find("innerText"), trecho.find("norm(")) if p >= 0]
+                          or [10**6])
+            if pos_txt > pos_id:
+                faltando.append(f"{arq.relative_to(raiz)} (id antes do rótulo)")
+    assert not faltando, "clique por índice de menu sem rótulo antes: " + "; ".join(faltando)
