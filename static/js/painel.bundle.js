@@ -5312,11 +5312,18 @@ void main(){
     h += sec("Frescor das fontes (SLO por pipeline)");
     const ps = pp && (pp.pipelines || pp.itens) || [];
     if (ps.length) {
+      // A rota /api/pipelines devolve `status` (+ idade_h); /api/sistema/atividade devolve
+      // `estado`. A tela lia só `estado`, então na aba Instrumentação TODA linha aparecia como
+      // "—" e pintada de ruim — inclusive com o SLO 100% verde. Aceita os dois, e `pausado`/
+      // `sob_demanda` não são falha: são estado declarado da fonte.
       h += `<table class="tb"><thead><tr><th>Pipeline</th><th>Estado</th><th class="r">Idade</th></tr></thead><tbody>`;
       for (const p of ps) {
-        const ok = String(p.estado || "").toLowerCase().startsWith("ok");
-        h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ok ? "ok" : "bad"}">${esc(p.estado || "—")}</td>
-          <td class="r dim">${p.idade_dias == null ? "—" : p.idade_dias + " d"}</td></tr>`;
+        const st = String(p.estado || p.status || "").toLowerCase();
+        const ruim = st === "stale" || st === "ausente" || (st && !/^(ok|pausado|sob_demanda)/.test(st));
+        const idade = p.idade_dias != null ? p.idade_dias + " d"
+          : (p.idade_h != null ? p.idade_h + " h" : "—");
+        h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ruim ? "bad" : "ok"}">${esc(p.estado || p.status || "—")}</td>
+          <td class="r dim">${idade}</td></tr>`;
       }
       h += `</tbody></table>`;
     } else h += card(`<div class="dim">${pp && pp.ok === false ? "Pipelines indisponíveis nesta execução" + (pp.erro ? ": " + esc(pp.erro) : "") + "." : "Nenhum pipeline registrado — a rota respondeu, a lista está vazia."}</div>`);
@@ -7200,8 +7207,9 @@ void main(){
     if ((a.pipelines || []).length) {
       h += `<div style="height:14px"></div>` + sec("Pipelines (SLO)", a.pipelines.length);
       h += card(`<div style="display:flex;flex-wrap:wrap;gap:8px">` + a.pipelines.map((p0) => {
-        const ok = String(p0.estado).toLowerCase().startsWith("ok");
-        return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado)}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
+        const st = String(p0.estado || p0.status || "").toLowerCase();
+        const ok = /^(ok|pausado|sob_demanda)/.test(st);   // estado declarado ≠ falha
+        return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado || p0.status || "")}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
       }).join("") + `</div>`);
     }
     h += `<div style="height:14px"></div>` + sec("Aprendizados — o que a leitura já produziu");
