@@ -143,7 +143,14 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
     """
     _DB = _resolver_db()
     if not _DB.exists():
-        return {"ok": False, "erro": "compliance.db ausente"}
+        # O módulo já declarava INDISPONÍVEL quando a tabela está VAZIA (logo abaixo), mas devolvia
+        # um `ok=False` seco quando o BANCO falta — duas formas para a mesma situação, e a segunda
+        # sem fonte nem ressalva. Quem consome não distinguia "não há conflito" de "não há base".
+        return {"ok": False, "indisponivel": True, "rede": [],
+                "erro": "compliance.db ausente",
+                "_fonte": "TSE Dados Abertos",
+                "_nota": "INDISPONÍVEL: base local ausente nesta máquina — nada foi medido, e "
+                         "ausência de medida não é ausência de conflito."}
     con = sqlite3.connect(str(_DB))
     try:
         n_doacoes = con.execute("SELECT COUNT(*) FROM doacoes_eleitorais").fetchone()[0]

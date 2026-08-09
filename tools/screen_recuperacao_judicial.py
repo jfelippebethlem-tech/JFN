@@ -129,8 +129,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
             alvo.write_text(texto, encoding="utf-8")
             print(f"gravado: {alvo}")
     else:
+        from compliance_agent.reporting.intel_base import moeda   # padrão BR
         soma = sum(x["total"] for x in itens)
-        print(f"{len(itens)} credor(es) · R$ {soma:,.2f} pagos:")
+        print(f"{len(itens)} credor(es) · R$ {moeda(soma)} pagos:")
         for x in itens:
             print(f"   {x['raiz']} {x['nome'][:38]:38} R$ {x['total']:>14,.2f} "
                   f"({x['obs']:3d} OBs, {x['n_ug']} UG) via {x['via']}")

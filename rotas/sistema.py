@@ -352,8 +352,16 @@ def api_ugs(filtro: Optional[str] = None, limite: int = 50):
         from compliance_agent.reporting.inteligencia_orgao import listar_ugs
         limite = max(1, min(int(limite or 50), 151))
         dados = listar_ugs(filtro=filtro, limite=limite)
-        return JSONResponse({"ok": dados.get("ok", True), "texto": dados.get("texto", ""),
-                             "ugs": dados.get("ugs", []), "n": dados.get("n", 0), "n_total": dados.get("n_total", 0)})
+        # `ok=False` SEM motivo é falha muda: o chamador recebia `erro=None` e não sabia se a base
+        # sumiu ou se o catálogo está vazio. O `texto` do módulo já diz ("Base local
+        # indisponível.") — basta não descartá-lo. INDISPONÍVEL tem de vir dito.
+        ok = bool(dados.get("ok", True))
+        corpo = {"ok": ok, "texto": dados.get("texto", ""), "ugs": dados.get("ugs", []),
+                 "n": dados.get("n", 0), "n_total": dados.get("n_total", 0)}
+        if not ok:
+            corpo["erro"] = dados.get("texto") or "catálogo de UGs indisponível"
+            corpo["indisponivel"] = True     # ausência de FONTE, não erro de execução
+        return JSONResponse(corpo)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 

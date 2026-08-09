@@ -73,4 +73,11 @@ def test_smoke_gets_deterministicos():
             assert r.status_code == 200, f"{rota} → {r.status_code}"
             corpo = r.json()
             if isinstance(corpo, dict) and "ok" in corpo:
+                # `ok=False` por AUSÊNCIA DE FONTE não é regressão de rota — é a base local que não
+                # existe naquela máquina (o runner do CI não tem `compliance.db`). O que a rota tem
+                # de fazer é DIZER isso: `indisponivel=True` com motivo. Sem essa distinção, o
+                # smoke reprovava por falta de dado e o alarme virava ruído.
+                if corpo.get("indisponivel"):
+                    assert corpo.get("erro"), f"{rota} → indisponível SEM motivo declarado"
+                    continue
                 assert corpo["ok"] is True, f"{rota} → ok={corpo.get('ok')} erro={str(corpo.get('erro'))[:120]}"

@@ -2,9 +2,12 @@
 """Schema do enxame de contratos no compliance.db (aditivo)."""
 from __future__ import annotations
 
+import logging
 import sqlite3
 
 from compliance_agent.emendas.db import conectar
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["conectar", "init_schema", "DDL"]
 
@@ -43,6 +46,8 @@ def init_schema(con: sqlite3.Connection) -> None:
     for col in ("data_assinatura TEXT", "tipo_termo TEXT", "processo TEXT"):
         try:
             con.execute(f"ALTER TABLE contrato_aditivo ADD COLUMN {col}")
-        except sqlite3.OperationalError:
-            pass  # coluna já existe
+        except sqlite3.OperationalError as exc:
+            # coluna já existe é o caso NORMAL da segunda execução — mas silêncio aqui esconderia
+            # também um erro real de schema, e a catraca de except-pass da casa existe por isso.
+            logger.debug("migração de contrato_aditivo: %s (%s)", col, exc)
     con.commit()

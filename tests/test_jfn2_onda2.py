@@ -21,6 +21,12 @@ def test_api_conflito_responde_e_honesto():
     r = c.get("/api/conflito", params={"limite": 5})
     assert r.status_code == 200
     j = r.json()
+    # Base ausente (o runner do CI não tem `compliance.db`) não é regressão de rota: o contrato é
+    # DECLARAR a indisponibilidade, com fonte e ressalva — que é o que se confere abaixo.
+    if j.get("indisponivel"):
+        assert j.get("erro") and "TSE" in j.get("_fonte", "")
+        assert "INDISPONÍVEL" in j.get("_nota", "")
+        return
     assert j.get("ok") is True
     assert isinstance(j.get("rede"), list)
     # honestidade: sempre cita fonte e a ressalva de indício

@@ -8,7 +8,6 @@ separados (empenhado ≠ liquidado ≠ pago). Match por NOME = indício fraco
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
 
@@ -277,11 +276,11 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
             cobertura[nome] = f"ERRO (INDISPONÍVEL ≠ 0): {e}"
     achados.sort(key=lambda a: -a["risco"])
     if gravar_alertas:
-        for a in achados:
-            con.execute(
-                """insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
-                   values (?,?,?,?,?, 'novo')""",
-                (f"emendas_{a['detector']}", _sev(a["risco"]), a["titulo"],
-                 a["descricao"], json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
-        con.commit()
+        # Antes: INSERT cru a cada corrida, sem dedup e sem poda — 81,3% das 2.322 linhas de
+        # alerta de emendas eram cópias de reexecução (a mesma ONG sancionada 60 vezes). A
+        # persistência agora é a mesma dos dois lados, com as três regras num lugar só.
+        from compliance_agent.alertas_persistencia import gravar as _gravar
+        poda = _gravar(con, achados, cobertura, prefixo="emendas",
+                       detectores=_DETECTORES, severidade=_sev)
+        return {"achados": achados, "cobertura": cobertura, "poda": poda}
     return {"achados": achados, "cobertura": cobertura}
