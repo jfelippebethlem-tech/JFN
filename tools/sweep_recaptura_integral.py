@@ -279,17 +279,30 @@ def _lido_agora(numero: str) -> int:
 
 
 def reler(numero: str, teto: int, timeout_s: int) -> int:
-    """Relê o processo com o teto levantado. Devolve quantos documentos ficaram com texto."""
+    """Relê o processo com o teto levantado. Devolve quantos documentos ficaram com texto.
+
+    O NÚMERO SOZINHO É AMBÍGUO e isso já me confundiu (2026-08-09): um processo COMPLETO devolve
+    "67 → 67" tanto quando a leitura correu bem quanto quando ela falhou e o cache velho ficou de
+    pé. Quem usa isto como CONTROLE — "o SEI está respondendo?" — precisa distinguir. Por isso a
+    função publica `reler.ultimo_erro`: `None` quando a leitura terminou sem exceção, ou o texto
+    do erro. Mesmo padrão de `varrer.lidas` em `agente_publico_reverso`.
+    """
     from tools import sei_reader as SR
     os.environ["SEI_MAX_DOCS"] = str(teto)
+    reler.ultimo_erro = None
     try:
         asyncio.run(asyncio.wait_for(SR.ler(numero, usar_cache=False), timeout=timeout_s))
     except (TimeoutError, asyncio.TimeoutError):
+        reler.ultimo_erro = f"timeout de {timeout_s}s"
         print(f"  ! {numero}: estourou {timeout_s}s — o que leu até aqui fica no cache",
               file=sys.stderr)
     except Exception as e:  # noqa: BLE001 — fronteira de browser: um processo ruim não para o lote
+        reler.ultimo_erro = f"{type(e).__name__}: {str(e)[:120]}"
         print(f"  ! {numero}: {str(e)[:140]}", file=sys.stderr)
     return _lido_agora(numero)
+
+
+reler.ultimo_erro = None
 
 
 def arquivar(numero: str) -> None:

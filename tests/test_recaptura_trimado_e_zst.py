@@ -54,3 +54,22 @@ def test_fila_nao_trata_trimado_como_buraco(tmp_path, monkeypatch):
     assert all(x["numero"] != "SEI-080002/011699/2024" for x in SRI.fila()), (
         "processo com storage trimado (já lido e fichado) voltou para a fila — 1.686 de "
         "retrabalho; ver docstring")
+
+
+def test_reler_publica_se_a_leitura_falhou():
+    """O número devolvido é AMBÍGUO — quem usa `reler` como controle precisa saber se houve erro.
+
+    Medido em 2026-08-09: usei um processo já completo como CONTROLE POSITIVO ("o SEI está
+    respondendo?") e recebi "67 → 67". Esse número aparece tanto quando a leitura correu bem (nada
+    novo a ler) quanto quando ela falhou e o cache velho ficou de pé — ou seja, o controle não
+    controlava nada. `reler.ultimo_erro` é `None` só quando a leitura terminou sem exceção.
+    """
+    import inspect
+
+    import tools.sweep_recaptura_integral as SRI
+
+    assert hasattr(SRI.reler, "ultimo_erro"), "reler deixou de publicar o resultado da leitura"
+    fonte = inspect.getsource(SRI.reler)
+    assert "reler.ultimo_erro = None" in fonte, "o erro anterior não é limpo a cada chamada"
+    assert fonte.count("ultimo_erro") >= 3, (
+        "algum caminho de exceção deixou de registrar o erro — volta a ambiguidade")
