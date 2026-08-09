@@ -4758,6 +4758,32 @@ void main(){
     h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
     h += `<div class="note">${esc(d.resumo || "")} · a fila é recalculada a cada consulta, sobre o acervo do momento.</div>`;
     o.innerHTML = h;
+    taxaPorUnidade();
+  }
+
+  // O PADRÃO NÃO CABE NA FILA. A fila mostra processo a processo; o achado que se leva ao TCE-RJ
+  // é a TAXA da unidade — 45,8% do Fundo Estadual da Saúde contra 0% dos 44 do Fundo dos
+  // Bombeiros, e o contraste SOBE quando se controla pela profundidade de leitura (66% × 0% na
+  // faixa de 10 a 19 documentos), o que afasta a hipótese de artefato do gate.
+  async function taxaPorUnidade() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/taxa_por_unidade");
+    if (!d || d.ok === false || !(d.itens || []).length) return;
+    const alvo = document.createElement("div");
+    const fx = (v, k) => { const f = (v.faixas || {})[k] || [0, 0]; return f[0] ? `${f[1]}/${f[0]}` : "—"; };
+    alvo.innerHTML = sec("O padrão por unidade — pagamento sem prova de execução")
+      + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">avaliados</th>
+        <th class="right">com a lacuna</th><th class="right">taxa</th><th class="right">1-9 docs</th>
+        <th class="right">10-19</th><th class="right">20-49</th></tr></thead><tbody>`
+        + d.itens.map((x) => `<tr><td>${esc(x.unidade)}</td><td class="right">${fmtN(x.n)}</td>
+            <td class="right">${fmtN(x.com)}</td>
+            <td class="right" style="font-weight:800;color:${x.taxa >= 25 ? "var(--red)" : x.taxa >= 10 ? "var(--amber)" : "inherit"}">${x.taxa}%</td>
+            <td class="right dim">${fx(x, "1-9")}</td><td class="right dim">${fx(x, "10-19")}</td>
+            <td class="right dim">${fx(x, "20-49")}</td></tr>`).join("")
+        + `</tbody></table>`)
+      + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
   }
   function ligarFila() {
     document.addEventListener("click", (ev) => {

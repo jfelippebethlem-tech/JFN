@@ -639,3 +639,37 @@ def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("fiscal_fila falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/taxa_por_unidade")
+def api_taxa_por_unidade(termo: str = "execu"):
+    """A TAXA da lacuna por unidade — o achado que só existe no conjunto, não no processo.
+
+    A fila mostra processo a processo; nenhuma tela mostrava o PADRÃO. Medido em 2026-08-09:
+    "pagamento sem evidência de execução" está em 45,8% dos processos avaliados do Fundo Estadual
+    da Saúde (260007) e em **0% dos 44 do Fundo do Corpo de Bombeiros** — e o contraste SOBE quando
+    se controla pela profundidade de leitura (66% × 0% na faixa de 10 a 19 documentos), o que
+    afasta a hipótese de que seja artefato do nosso gate. É o tipo de achado que se leva ao TCE-RJ
+    pela taxa, não pelo processo isolado.
+
+    Consulta barata (uma varredura de `processo_avaliacao`, ~2 mil linhas), sem browser e sem LLM.
+    """
+    try:
+        from tools.taxa_lacuna_por_unidade import MIN_N, medir
+
+        dados = medir(termo)
+        linhas = [{"unidade": u, **v,
+                   "taxa": round(v["com"] * 100 / v["n"], 1) if v["n"] else None}
+                  for u, v in dados.items() if v["n"] >= MIN_N]
+        linhas.sort(key=lambda x: (-(x["taxa"] or 0), -x["n"]))
+        return JSONResponse({
+            "ok": True, "termo": termo, "unidades": len(linhas), "itens": linhas,
+            "ressalva": (
+                "Denominador = processos AVALIÁVEIS; NAO_AVALIAVEL fica de fora porque captura "
+                "insuficiente não é conclusão sobre a unidade (INDISPONÍVEL ≠ 0). A taxa só é "
+                f"publicada com n ≥ {MIN_N}. As faixas são por documentos LIDOS: é o que limita a "
+                "busca por prova, e é o confundidor que a comparação bruta esconderia."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("taxa_por_unidade falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
