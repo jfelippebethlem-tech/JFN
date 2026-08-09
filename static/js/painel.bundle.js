@@ -5333,8 +5333,21 @@ void main(){
     } else {
       h += card(`<div class="warn">Ranking de TAC INDISPONÍVEL${tk && tk.motivo ? ": " + esc(tk.motivo) : ""} — indisponível não é zero.</div>`);
     }
-    h += sec("Truncamento do SIAFE — o teto de 1.000 da nossa própria coleta");
-    if (tr && tr.indisponivel === false && tr.pares_truncados) {
+    h += sec("Cobertura da fonte canônica — o que o SIAFE ainda não tem");
+    if (tr && tr.indisponivel === false && (tr.pares_parciais || tr.pares_nunca_coletados)) {
+      const pp2 = (tr.parciais || []).filter((x) => x.estado === "parcial").slice(0, 8).map((t) => `<div class="kv"><span class="k">UG ${esc(t.ug)} · exercício ${esc(t.exercicio)}</span><b>${t.pct_ausente}% da amostra ausente</b> <span class="dim">${fmtN(t.obs_siafe)} linhas no SIAFE · espelho tem ${fmtN(t.obs_espelho_tfe)}</span></div>`).join("");
+      const nunca = (tr.parciais || []).filter((x) => x.estado === "nunca_coletado").length;
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Pares com coleta INTERROMPIDA</div><div style="font-size:1.5rem;font-weight:700;color:var(--red)">${fmtN((tr.parciais || []).filter((x) => x.estado === "parcial").length)}</div></div>
+        <div><div class="dim">Pares NUNCA coletados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(nunca)}</div></div>
+        <div><div class="dim">Parados no teto de ${tr.teto_consulta}</div><div style="font-size:1.5rem;font-weight:700">${fmtN(tr.pares_truncados)} <span class="dim" style="font-size:.9rem">de ${fmtN(tr.pares_avaliados)}</span></div></div>
+      </div>
+      <div style="margin-top:8px">${pp2}</div>
+      <div class="dim" style="margin-top:6px">A contagem redonda é a assinatura do <b>teto de consulta</b>; passada que morre em
+        timeout grava o que deu tempo e para num número qualquer, <b>com cara de concluída</b> — e é
+        por isso que o segundo detector, que compara NÚMEROS de OB com o espelho, acha muito mais.
+        <b>Todo total tirado do SIAFE é PISO enquanto estes pares existirem.</b></div>`, "hl");
+    } else if (tr && tr.indisponivel === false && tr.pares_truncados) {
       const linhas = (tr.truncados || []).slice(0, 8).map((t) => `<div class="kv"><span class="k">UG ${esc(t.ug)} · exercício ${esc(t.exercicio)}</span><b>${fmtN(t.obs_faltando_ao_menos)} OBs a menos</b></div>`).join("");
       h += card(`<div class="grid g3">
         <div><div class="dim">Pares (UG, ano) travados no teto</div><div style="font-size:1.5rem;font-weight:700">${tr.pares_truncados} <span class="dim" style="font-size:.9rem">de ${tr.pares_avaliados}</span></div></div>
