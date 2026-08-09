@@ -64,6 +64,14 @@ for par in "${PARES[@]}"; do
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
   L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — paro por aqui"; break; }
   ANTES=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO\").fetchone()[0])")
+  # A LISTA ENVELHECE DENTRO DA PRÓPRIA PASSADA. Ela é tirada uma vez no início; se um par foi
+  # drenado enquanto os outros rodavam, ele já não está mais redondo — reprocessá-lo gasta uma
+  # janela de browser à toa. Medido 2026-08-09: a 263100/2023 voltou à fila com 3.938 linhas, e a
+  # mensagem ainda dizia "contagem redonda", o que era falso.
+  case "$ANTES" in
+    1000|2000|3000|5000) ;;
+    *) say "UG $UG $ANO: já não está redonda ($ANTES linhas) — pulo"; continue ;;
+  esac
   # CHECKPOINT DE COLETA QUEBRADA NÃO VALE. Os arquivos `uggrande_*.json` de junho marcam fatias
   # como feitas, mas foram escritos quando a ingestão usava o cabeçalho errado (as linhas entravam
   # com a chave vazia e sobrava UMA por fatia) e quando a PK apagava a OB de outra unidade. Se a
