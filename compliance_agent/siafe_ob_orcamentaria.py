@@ -996,6 +996,18 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                         tot += ingerir(exercicio, header, linhas).get("ingeridas", 0)
                     done.add(pref); _save_ckpt(); por_prefixo[pref] = n
                     print(f"  {ug} {exercicio} pref {pref}: {n} OBs ✓", flush=True)
+            # ZERO FATIA NÃO É SUCESSO — e este `ok:true` já me enganou. Quando todos os
+            # prefixos estão no checkpoint `done` de uma execução anterior, o laço não consulta
+            # nada e a função devolvia `ok:true, fatias:0, ingeridas:0`, que o operador lê como
+            # "coletei e não havia nada". São coisas diferentes: "nada a fazer porque já foi" tem
+            # de dizer isso, com o caminho do checkpoint, para quem quiser refazer saber onde
+            # mexer. (Medido 2026-08-09 refazendo a UG 180100/2023.)
+            if not por_prefixo:
+                return {"ok": True, "nada_a_fazer": True, "exercicio": exercicio, "ug": ug,
+                        "ingeridas": 0, "fatias": 0, "por_prefixo": {},
+                        "motivo": (f"todos os {len(prefixos)} prefixos já constam como feitos no "
+                                   f"checkpoint {ckp}; apague o arquivo (ou remova as fatias que "
+                                   "quiser refazer da lista `done`) para recoletar")}
             return {"ok": True, "exercicio": exercicio, "ug": ug, "ingeridas": tot,
                     "fatias": len(por_prefixo), "por_prefixo": por_prefixo}
         finally:

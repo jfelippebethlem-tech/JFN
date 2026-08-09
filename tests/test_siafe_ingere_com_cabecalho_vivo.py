@@ -66,3 +66,17 @@ def test_caminhos_de_subdivisao_usam_o_cabecalho_vivo():
             f"{fn.__name__} voltou a ingerir com nomes internos no lugar do cabeçalho da tela")
         assert "header = await _colher" in fonte, (
             f"{fn.__name__} descartou o cabeçalho que `_colher` devolve")
+
+
+def test_zero_fatia_declara_nada_a_fazer():
+    """`ok:true` com 0 fatias não pode passar por "coletei e não havia nada".
+
+    Medido 2026-08-09: com todos os prefixos no checkpoint `done` de junho, a coleta devolvia
+    `{"ok": true, "fatias": 0, "ingeridas": 0}` — indistinguível de uma UG sem OB nenhuma. Perdi
+    uma execução inteira lendo isso como resultado. Agora o retorno diz `nada_a_fazer` e aponta o
+    arquivo de checkpoint que precisa ser mexido para refazer.
+    """
+    fonte = inspect.getsource(M.coletar_por_ug_grande)
+    assert "nada_a_fazer" in fonte, "voltou a devolver ok:true mudo quando não consulta nada"
+    assert "checkpoint" in fonte and "ckp" in fonte, (
+        "o retorno não diz ONDE mexer para refazer — sem isso o operador não tem próximo passo")
