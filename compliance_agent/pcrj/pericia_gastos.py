@@ -245,7 +245,10 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
             continue
         achados.append(_achado(
             "d9_socio_na_folha", 5,
-            f"Sócio de credor na folha — {r['nome_socio']}",
+            # o CREDOR entra no título: o mesmo sócio em três credores distintos são três achados,
+            # e com título só do nome eles colapsavam num só (dedup do gravador + poda por título)
+            f"Sócio de credor na folha — {r['nome_socio']} × "
+            f"{(r['credor_nome'] or r['credor_documento'])[:44]}",
             f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
             f"(CNPJ {r['credor_documento']}, R$ {_brl(r['pago'])} pagos pela PCRJ), tem "
             f"HOMÔNIMO na folha municipal (lotação {hit.get('orgao') or 'n/d'}). Match "
@@ -500,7 +503,7 @@ def _podar_superados(con, achados: list[dict], cobertura: dict[str, str]) -> str
     tipos_do_detector = {
         nome: {t for t in list(vivos) + _tipos_gravados(con) if t.startswith(f"pcrj_{nome}_")}
         for nome in _DETECTORES}
-    apagados, poupados = 0, []
+    apagados, poupados, triados = 0, [], []
     for nome in _DETECTORES:
         if not str(cobertura.get(nome, "")).startswith("ok"):
             continue                       # erro no detector: não julga o que não mediu
@@ -512,10 +515,23 @@ def _podar_superados(con, achados: list[dict], cobertura: dict[str, str]) -> str
                     poupados.append(f"{tipo}({n[0]})")
                 continue                   # zerou: pode ser fonte ausente — poupa e declara
             marcas = ",".join("?" * len(titulos))
-            cur = con.execute(f"delete from alertas where tipo=? and titulo not in ({marcas})",
-                              (tipo, *sorted(titulos)))
+            # NUNCA apagar alerta com TRIAGEM. `status` guarda a decisão de quem fiscaliza —
+            # 'confirmado' e 'descartado' são trabalho humano, e o detector não tem autoridade
+            # para desfazê-lo. Medido em 2026-08-09: os 21 alertas triados do acervo são todos
+            # `pcrj_d7_fracionamento`, a mesma família que a poda varre; sobreviveram por sorte
+            # (o título do d7 não mudou nesta rodada) e a recalibração do d7 os teria destruído.
+            cur = con.execute(
+                f"delete from alertas where tipo=? and titulo not in ({marcas}) "
+                "and coalesce(status,'novo') = 'novo'", (tipo, *sorted(titulos)))
             apagados += cur.rowcount or 0
+            n_triado = con.execute(
+                f"select count(*) from alertas where tipo=? and titulo not in ({marcas}) "
+                "and coalesce(status,'novo') <> 'novo'", (tipo, *sorted(titulos))).fetchone()[0]
+            if n_triado:
+                triados.append(f"{tipo}({n_triado})")
     aviso = f"{apagados} alerta(s) superado(s) retirado(s)"
+    if triados:
+        aviso += f"; PRESERVADOS por terem triagem humana: {', '.join(triados)}"
     if poupados:
         aviso += (f"; POUPADOS por zerarem nesta corrida (INDISPONÍVEL ≠ 0): {', '.join(poupados)}")
     logger.info("poda de alertas: %s", aviso)

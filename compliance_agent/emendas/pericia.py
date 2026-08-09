@@ -55,7 +55,9 @@ def d1_pix_impedida(con) -> list[dict]:
         risco = 7 if rejeitado else 6
         achados.append(_achado(
             "d1_pix_impedida", risco,
-            f"Emenda PIX impedida — {r['nome_beneficiario']}",
+            # o PLANO no título: um beneficiário com 36 planos impedidos são 36 achados, e sem
+            # o id eles colapsavam num só (a dedup do gravador e a poda decidem por título)
+            f"Emenda PIX impedida — {r['nome_beneficiario']} (plano {r['id_plano']}/{r['ano']})",
             f"Indício de transferência especial (art. 166-A CF) sem execução regular: "
             f"plano de ação {r['id_plano']} ({r['ano']}) do beneficiário "
             f"{r['nome_beneficiario']} (CNPJ {r['cnpj_beneficiario']}) está na situação "
@@ -116,7 +118,8 @@ def d3_favorecido_sancionado(con) -> list[dict]:
         risco = 9 if exato else 7
         achados.append(_achado(
             "d3_favorecido_sancionado", risco,
-            f"Favorecido sancionado — {r['nome_favorecido']}",
+            # a EMENDA no título: o mesmo favorecido sancionado em 60 emendas são 60 achados
+            f"Favorecido sancionado — {r['nome_favorecido']} (emenda {r['codigo_emenda']})",
             f"Indício grave: o favorecido {r['nome_favorecido']} "
             f"(doc. {r['documento_favorecido']}) da emenda {r['codigo_emenda']} consta no "
             f"{r['cadastro']} ({r['categoria'] or 'sanção'}, órgão {r['orgao'] or 'n/d'})"

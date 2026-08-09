@@ -270,3 +270,37 @@ def test_poda_nao_apaga_detector_que_zerou(con_semeado):
     r = pericia_gastos.rodar_todas(con, gravar_alertas=True)   # sem contratos: d10 devolve 0
     assert con.execute("select count(*) from alertas where titulo like '%ANTIGO%'").fetchone()[0] == 1
     assert "POUPADOS" in r["cobertura"]["poda"], "o poupamento tem de sair declarado, não calado"
+
+
+def test_poda_nunca_apaga_alerta_com_triagem_humana(con_semeado):
+    """`status` guarda a decisão de quem fiscaliza — o detector não pode desfazê-la.
+
+    Medido em 2026-08-09: os 21 alertas triados do acervo (15 descartados, 6 confirmados) são
+    TODOS `pcrj_d7_fracionamento`, a mesma família que a poda varre. Sobreviveram por sorte — o
+    título do d7 não mudou naquela rodada — e a recalibração do d7 os teria destruído em silêncio.
+
+    O teste roda sobre o d10 porque a poda só age em detector que PRODUZIU achado; com o d7 zerado
+    nesta base semeada o tipo seria poupado inteiro e o teste não provaria nada.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("Q1", "11222333000181", "ALFA"), ("Q2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    for titulo, status in (("Rede societária — CONFIRMADO PELO FISCAL", "confirmado"),
+                           ("Rede societária — DESCARTADO PELO FISCAL", "descartado"),
+                           ("Rede societária — SO VISTO", "novo")):
+        con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values ('pcrj_d10_rede_concorrentes','media',?,'versão anterior','{}',?)""",
+                    (titulo, status))
+    r = pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    vivos = {t for (t,) in con.execute(
+        "select titulo from alertas where tipo='pcrj_d10_rede_concorrentes'")}
+    assert "Rede societária — CONFIRMADO PELO FISCAL" in vivos, "poda destruiu decisão do fiscal"
+    assert "Rede societária — DESCARTADO PELO FISCAL" in vivos, "poda destruiu decisão do fiscal"
+    assert "Rede societária — SO VISTO" not in vivos, "alerta sem triagem e superado deve sair"
+    assert "PRESERVADOS" in r["cobertura"]["poda"], "a preservação tem de sair declarada"
