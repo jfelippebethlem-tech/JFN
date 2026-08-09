@@ -6,9 +6,7 @@ Mesmo contrato dos detectores de emendas: risco 0–10 explícito, fonte citada,
 """
 from __future__ import annotations
 
-import json
 import logging
-import sqlite3
 import re as _re_reforma
 from datetime import date, datetime
 
@@ -131,7 +129,15 @@ def d7_fracionamento(con, teto: float | None = None,
         if soma <= teto_janela:
             continue        # fatias que nem somadas passam do teto não indicam fuga
         r0 = melhor[0][1]
-        risco = min(9, 5 + min(4, len(melhor) - minimo + 1))
+        # A severidade vinha SÓ da contagem: cinco contratações somando 1,05× o teto pesavam igual
+        # a cinco somando 3×. Medido em 2026-08-09 nos 698 alertas com teto legível — mediana
+        # 1,70×, p75 2,41×, máximo 16,56× (143 contratações) — o excesso separa bem e a contagem
+        # sozinha não. Agora o quanto passou do teto também conta, e o caso RENTE ao teto não
+        # ocupa a faixa ALTA: passar 4% do limite é fato jurídico, mas não é a fila do fiscal.
+        excesso = soma / teto_janela if teto_janela else 1.0
+        risco = min(9, 5 + min(4, len(melhor) - minimo + 1) + (1 if excesso >= 2 else 0))
+        if excesso < 1.2:
+            risco = min(risco, 7)          # 7 = média; nada é escondido, só reordenado
         achados.append(_achado(
             "d7_fracionamento", risco,
             f"Fracionamento — {r0['fornecedor_nome'] or forn} × {r0['orgao_nome'] or orgao}",
@@ -451,88 +457,11 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
             cobertura[nome] = f"ERRO (INDISPONÍVEL ≠ 0): {e}"
     achados.sort(key=lambda a: -a["risco"])
     if gravar_alertas:
-        for a in achados:
-            # dedup por (tipo, titulo): re-rodar a perícia ATUALIZA o alerta em vez de duplicar
-            # (antes cada corrida empilhava cópias; o painel dedupava na leitura, o DB inchava)
-            ex = con.execute("select id from alertas where tipo=? and titulo=?",
-                             (f"pcrj_{a['detector']}", a["titulo"])).fetchone()
-            if ex:
-                con.execute("update alertas set severidade=?, descricao=?, evidencias=? where id=?",
-                            (_sev(a["risco"]), a["descricao"],
-                             json.dumps(a["evidencias"], ensure_ascii=False, default=str), ex[0]))
-            else:
-                con.execute(
-                    """insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
-                       values (?,?,?,?,?, 'novo')""",
-                    (f"pcrj_{a['detector']}", _sev(a["risco"]), a["titulo"], a["descricao"],
-                     json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
-        cobertura["poda"] = _podar_superados(con, achados, cobertura)
-        con.commit()
+        # Persistência ÚNICA (dedup + poda + as três regras) em `alertas_persistencia`: havia dois
+        # gravadores e só este estava correto — o das emendas inseria cru e nunca removia nada,
+        # e 81,3% das linhas de alerta de emendas eram cópias de reexecução.
+        from compliance_agent.alertas_persistencia import gravar as _gravar
+        poda = _gravar(con, achados, cobertura, prefixo="pcrj",
+                       detectores=_DETECTORES, severidade=_sev)
+        return {"achados": achados, "cobertura": cobertura, "poda": poda}
     return {"achados": achados, "cobertura": cobertura}
-
-
-def _tipos_gravados(con) -> list[str]:
-    """Tipos `pcrj_*` já presentes na tabela — inclui os que o detector deixou de produzir."""
-    try:
-        return [r[0] for r in con.execute(
-            "select distinct tipo from alertas where tipo like 'pcrj_%'")]
-    except sqlite3.Error:                  # tabela ausente não é erro de perícia
-        logger.warning("tabela de alertas indisponível — poda não roda nesta corrida")
-        return []
-
-
-def _podar_superados(con, achados: list[dict], cobertura: dict[str, str]) -> str:
-    """Retira alertas que o detector NÃO produz mais — consertar o detector não limpa o painel.
-
-    O gravador só inseria e atualizava. Quando o `d10` ganhou o corte de vigência (2026-08-09), os
-    **54 alertas anacrônicos já gravados continuaram no painel**, afirmando rede societária que o
-    próprio detector deixara de afirmar. É a lição de `reparar-e-verificar-o-efeito-nao-a-acao`:
-    a correção do produtor não alcança o que já foi publicado.
-
-    Poda CONSERVADORA, por causa de `INDISPONÍVEL ≠ 0`: só mexe em detector que rodou sem erro **e
-    devolveu pelo menos um achado**. Detector que zerou pode ter zerado porque a fonte sumiu, e
-    apagar tudo nesse caso transformaria uma falha de coleta em "nada a apurar" — o pior estrago
-    possível num painel de fiscalização. Quando isso acontece, fica registrado na cobertura.
-    """
-    # A chave de `_DETECTORES` é curta ("d10"); o `tipo` gravado usa o nome longo do achado
-    # ("pcrj_d10_rede_concorrentes"). Montar o tipo a partir da chave não casa com nada e a poda
-    # vira silenciosa — o `tipo` tem de vir do próprio achado, e o prefixo da chave é a ponte.
-    vivos: dict[str, set[str]] = {}
-    for a in achados:
-        vivos.setdefault(f"pcrj_{a['detector']}", set()).add(a["titulo"])
-    tipos_do_detector = {
-        nome: {t for t in list(vivos) + _tipos_gravados(con) if t.startswith(f"pcrj_{nome}_")}
-        for nome in _DETECTORES}
-    apagados, poupados, triados = 0, [], []
-    for nome in _DETECTORES:
-        if not str(cobertura.get(nome, "")).startswith("ok"):
-            continue                       # erro no detector: não julga o que não mediu
-        for tipo in sorted(tipos_do_detector[nome]):
-            titulos = vivos.get(tipo)
-            if not titulos:
-                n = con.execute("select count(*) from alertas where tipo=?", (tipo,)).fetchone()
-                if n and n[0]:
-                    poupados.append(f"{tipo}({n[0]})")
-                continue                   # zerou: pode ser fonte ausente — poupa e declara
-            marcas = ",".join("?" * len(titulos))
-            # NUNCA apagar alerta com TRIAGEM. `status` guarda a decisão de quem fiscaliza —
-            # 'confirmado' e 'descartado' são trabalho humano, e o detector não tem autoridade
-            # para desfazê-lo. Medido em 2026-08-09: os 21 alertas triados do acervo são todos
-            # `pcrj_d7_fracionamento`, a mesma família que a poda varre; sobreviveram por sorte
-            # (o título do d7 não mudou nesta rodada) e a recalibração do d7 os teria destruído.
-            cur = con.execute(
-                f"delete from alertas where tipo=? and titulo not in ({marcas}) "
-                "and coalesce(status,'novo') = 'novo'", (tipo, *sorted(titulos)))
-            apagados += cur.rowcount or 0
-            n_triado = con.execute(
-                f"select count(*) from alertas where tipo=? and titulo not in ({marcas}) "
-                "and coalesce(status,'novo') <> 'novo'", (tipo, *sorted(titulos))).fetchone()[0]
-            if n_triado:
-                triados.append(f"{tipo}({n_triado})")
-    aviso = f"{apagados} alerta(s) superado(s) retirado(s)"
-    if triados:
-        aviso += f"; PRESERVADOS por terem triagem humana: {', '.join(triados)}"
-    if poupados:
-        aviso += (f"; POUPADOS por zerarem nesta corrida (INDISPONÍVEL ≠ 0): {', '.join(poupados)}")
-    logger.info("poda de alertas: %s", aviso)
-    return aviso

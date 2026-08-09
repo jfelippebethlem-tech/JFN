@@ -269,7 +269,7 @@ def test_poda_nao_apaga_detector_que_zerou(con_semeado):
                            'de quando a fonte existia','{}','novo')""")
     r = pericia_gastos.rodar_todas(con, gravar_alertas=True)   # sem contratos: d10 devolve 0
     assert con.execute("select count(*) from alertas where titulo like '%ANTIGO%'").fetchone()[0] == 1
-    assert "POUPADOS" in r["cobertura"]["poda"], "o poupamento tem de sair declarado, não calado"
+    assert "POUPADOS" in r["poda"], "o poupamento tem de sair declarado, não calado"
 
 
 def test_poda_nunca_apaga_alerta_com_triagem_humana(con_semeado):
@@ -303,4 +303,30 @@ def test_poda_nunca_apaga_alerta_com_triagem_humana(con_semeado):
     assert "Rede societária — CONFIRMADO PELO FISCAL" in vivos, "poda destruiu decisão do fiscal"
     assert "Rede societária — DESCARTADO PELO FISCAL" in vivos, "poda destruiu decisão do fiscal"
     assert "Rede societária — SO VISTO" not in vivos, "alerta sem triagem e superado deve sair"
-    assert "PRESERVADOS" in r["cobertura"]["poda"], "a preservação tem de sair declarada"
+    assert "PRESERVADOS" in r["poda"], "a preservação tem de sair declarada"
+
+
+def test_d7_severidade_considera_o_EXCESSO_nao_so_a_contagem(con_semeado):
+    """Cinco fatias a 1,05× do teto não é a mesma coisa que cinco a 3× — e pesavam igual.
+
+    Medido em 2026-08-09 nos 698 alertas com teto legível: mediana 1,70×, p75 2,41×, máximo
+    16,56×. A contagem sozinha não separava; o excesso separa. Nada é escondido — o caso rente ao
+    teto continua saindo, só não ocupa a faixa ALTA da fila.
+    """
+    con = con_semeado
+    teto = pericia_gastos.teto_dispensa(2025)
+
+    def semear(doc, valor, n):
+        for i in range(n):
+            con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                           orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                           data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                           ?,?)""", (f"{doc}-{i}", doc, f"F{doc}", valor, f"2025-03-{i+1:02d}"))
+
+    semear("11111111000191", teto * 0.21, 5)      # 5 fatias → soma ≈ 1,05× o teto
+    semear("22222222000122", teto * 0.60, 5)      # 5 fatias → soma ≈ 3,00× o teto
+    por = {a["evidencias"]["fornecedor"]: a for a in pericia_gastos.d7_fracionamento(con)}
+    rente, folgado = por["11111111000191"], por["22222222000122"]
+    assert rente["risco"] < folgado["risco"], "o excesso tem de separar dois achados de igual contagem"
+    assert rente["risco"] <= 7, "rente ao teto não pode ocupar a faixa ALTA"
+    assert folgado["risco"] >= 8
