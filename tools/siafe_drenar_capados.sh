@@ -76,15 +76,20 @@ for par in "${PARES[@]}"; do
   fi
   if [ "$ANO" -le 2023 ]; then export JFN_SIAFE_LOGIN_URL="$LOGIN1"; else unset JFN_SIAFE_LOGIN_URL; fi
   say "drenando UG $UG ano $ANO (SIAFE $([ "$ANO" -le 2023 ] && echo 1 || echo 2)) — $ANTES linhas"
+  # LOG POR PAR. Com todos os pares escrevendo no mesmo arquivo não dá para saber de QUAL coleta
+  # veio um erro — e foi exatamente o que me custou três medições erradas em 2026-08-09, quando um
+  # processo antigo (código de antes de um conserto) seguia escrevendo ao lado do novo. Saída sem
+  # procedência é dado sem valor.
+  SAIDA="data/siafe_drenar_${UG}_${ANO}.log"
   timeout -k 120 3300 nice -n 10 $PY -m compliance_agent.siafe_ob_orcamentaria \
-      --exercicio "$ANO" --por-ug "$UG" --ug-grande --ingerir >> data/siafe_drenar_saida.log 2>&1
+      --exercicio "$ANO" --por-ug "$UG" --ug-grande --ingerir > "$SAIDA" 2>&1
   rc=$?
   DEPOIS=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO\").fetchone()[0])")
   # O EFEITO, não a ação: rc=0 com ganho zero já enganou nesta casa mais de uma vez.
   if [ "$DEPOIS" -gt "$ANTES" ]; then
     say "UG $UG $ANO: $ANTES → $DEPOIS linhas (rc=$rc)"
   else
-    say "UG $UG $ANO: SEM GANHO ($ANTES → $DEPOIS, rc=$rc) — ver data/siafe_drenar_saida.log"
+    say "UG $UG $ANO: SEM GANHO ($ANTES → $DEPOIS, rc=$rc) — ver $SAIDA"
   fi
   feitos=$((feitos+1))
 done
