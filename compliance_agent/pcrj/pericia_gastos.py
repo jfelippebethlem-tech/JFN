@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sqlite3
 import re as _re_reforma
 from datetime import date, datetime
 
@@ -472,7 +473,7 @@ def _tipos_gravados(con) -> list[str]:
     try:
         return [r[0] for r in con.execute(
             "select distinct tipo from alertas where tipo like 'pcrj_%'")]
-    except Exception:                      # noqa: BLE001 — tabela ausente não é erro de perícia
+    except sqlite3.Error:                  # tabela ausente não é erro de perícia
         logger.warning("tabela de alertas indisponível — poda não roda nesta corrida")
         return []
 
