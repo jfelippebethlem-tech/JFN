@@ -179,7 +179,10 @@ async def coletar_ug(ug: str, exercicio: int | None = None) -> dict:
         return {"ok": False, "erro": "lock", "lock": lock_status()}
     try:
         r = await M.coletar_por_ug(ano, ug)
-        if r.get("ok") and r.get("colhidas", 0) >= 990:
+        # PLATÔ MEDIDO, não teto nominal: em 5.893 fatias coletadas, NENHUMA chegou a 990 e 76
+        # pararam em 989/984 — a colheita satura antes do limite do SIAFE. Com o limiar antigo
+        # este caminho nunca subdividia (ver `_fatia_capou`, corrigido nos outros três pontos).
+        if r.get("ok") and r.get("colhidas", 0) >= M._FATIA_CAPOU:
             r = await M.coletar_por_ug_grande(ano, ug)
         return r
     finally:
