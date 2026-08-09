@@ -209,3 +209,64 @@ def test_d12_guard_cep_popular(con_semeado):
     for i in range(6):  # +6 empresas quaisquer no mesmo CEP = popular
         con.execute("insert into empresas (cnpj, cep) values (?, '20000-000')", (f"9988877700010{i}",))
     assert pericia_gastos.d12_coendereco_concorrentes(con) == []
+
+
+def test_d10_nao_acusa_rede_que_ainda_nao_existia(con_semeado):
+    """O QSA é retrato de HOJE; o contrato é de ontem. Sem corte de vigência o detector acusava
+    rede societária inexistente à época — medido em 2026-08-09, **54 dos 649 alertas (8,3%)**,
+    inclusive ROMA×MEDKA em 2024, cujo administrador comum só entrou em março de 2026.
+    Mesma família de `situacao-cadastral-vigencia-na-data`.
+
+    Vínculo SEM data não é descartado: ausência de dado não vira prova de nada.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("T1", "11222333000181", "ALFA"), ("T2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2024,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2024-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','TARDIO','TARDIO','***777666**','20130101'),
+                                        ('44555666','TARDIO','TARDIO','***777666**','20260326')""")
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','SEM DATA','SEM DATA','***555444**',''),
+                                        ('44555666','SEM DATA','SEM DATA','***555444**','')""")
+    nomes = {a["titulo"] for a in pericia_gastos.d10_rede_concorrentes(con)}
+    assert not any("TARDIO" in t for t in nomes), (
+        "sócio que entrou em 2026 não descreve rede de 2024")
+    assert any("SEM DATA" in t for t in nomes), (
+        "vínculo sem data não pode ser descartado — ausência de dado não é prova")
+
+
+def test_poda_retira_alerta_que_o_detector_nao_produz_mais(con_semeado):
+    """Consertar o detector não limpa o painel: os 54 alertas anacrônicos do d10 continuaram
+    afirmando o que o detector já não afirmava. A poda tira o superado."""
+    con = con_semeado
+    con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                   values ('pcrj_d10_rede_concorrentes','media','Rede societária — FANTASMA',
+                           'alerta de uma versão anterior do detector','{}','novo')""")
+    for pncp, forn, nome in (("P1", "11222333000181", "ALFA"), ("P2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    restantes = [r[0] for r in con.execute(
+        "select titulo from alertas where tipo='pcrj_d10_rede_concorrentes'")]
+    assert not any("FANTASMA" in t for t in restantes), "alerta superado ficou no painel"
+    assert any("VIVO" in t for t in restantes), "o alerta que o detector ainda produz sumiu"
+
+
+def test_poda_nao_apaga_detector_que_zerou(con_semeado):
+    """INDISPONÍVEL ≠ 0: detector que zerou pode ter zerado porque a FONTE sumiu. Apagar aí
+    transformaria falha de coleta em 'nada a apurar' — o pior estrago num painel de fiscalização."""
+    con = con_semeado
+    con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                   values ('pcrj_d10_rede_concorrentes','media','Rede societária — ANTIGO',
+                           'de quando a fonte existia','{}','novo')""")
+    r = pericia_gastos.rodar_todas(con, gravar_alertas=True)   # sem contratos: d10 devolve 0
+    assert con.execute("select count(*) from alertas where titulo like '%ANTIGO%'").fetchone()[0] == 1
+    assert "POUPADOS" in r["cobertura"]["poda"], "o poupamento tem de sair declarado, não calado"

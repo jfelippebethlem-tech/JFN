@@ -270,6 +270,14 @@ def d10_rede_concorrentes(con) -> list[dict]:
         join socios_receita s
           on length(c.fornecedor_documento) = 14
          and s.cnpj_basico = substr(c.fornecedor_documento, 1, 8)
+        -- O vínculo tem de existir NA ÉPOCA do contrato. O QSA é um retrato de hoje, e sem este
+        -- corte o detector acusava rede societária que ainda não existia: medido em 2026-08-09,
+        -- 54 dos 649 alertas (8,3%) apoiavam-se em sócio que entrou na empresa DEPOIS do ano do
+        -- contrato — inclusive o par ROMA×MEDKA em 2024, cujo administrador comum só chegou em
+        -- março de 2026. Mesma lição de `situacao-cadastral-vigencia-na-data`. O teto é o fim do
+        -- ano (a tabela só tem o ano), o que é generoso de propósito: na dúvida, mantém o alerta.
+         and (length(coalesce(s.data_entrada,'')) <> 8
+              or s.data_entrada <= cast(c.ano as text) || '1231')
         group by c.orgao_cnpj, c.ano, s.nome_norm,
                  case when s.doc_socio != '' then s.doc_socio else s.nome_norm end
         having count(distinct substr(c.fornecedor_documento, 1, 8)) >= 2""").fetchall()
@@ -277,7 +285,12 @@ def d10_rede_concorrentes(con) -> list[dict]:
         forte = bool(r["doc_socio"])
         achados.append(_achado(
             "d10_rede_concorrentes", 7 if forte else 5,
-            f"Rede societária — {r['nome_socio']} em ≥2 fornecedores do mesmo órgão",
+            # O título é a IDENTIDADE do achado: é por ele que o gravador dedupa e a poda decide o
+            # que morreu. Sem órgão e ano, catorze achados distintos do mesmo sócio colapsavam num
+            # título só — a dedup nunca os separou e a poda não conseguia retirar o anacrônico de
+            # 2024 sem levar junto o legítimo de 2026.
+            f"Rede societária — {r['nome_socio']} em ≥2 fornecedores de "
+            f"{(r['orgao_nome'] or r['orgao_cnpj'])[:40]} ({r['ano']})",
             f"Indício de rede entre fornecedores: {r['nome_socio']} figura no QSA de "
             f"fornecedores distintos ({r['nomes']}) contratados pelo mesmo órgão "
             f"({r['orgao_nome'] or r['orgao_cnpj']}) em {r['ano']} — padrão compatível com "
@@ -449,5 +462,60 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
                        values (?,?,?,?,?, 'novo')""",
                     (f"pcrj_{a['detector']}", _sev(a["risco"]), a["titulo"], a["descricao"],
                      json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
+        cobertura["poda"] = _podar_superados(con, achados, cobertura)
         con.commit()
     return {"achados": achados, "cobertura": cobertura}
+
+
+def _tipos_gravados(con) -> list[str]:
+    """Tipos `pcrj_*` já presentes na tabela — inclui os que o detector deixou de produzir."""
+    try:
+        return [r[0] for r in con.execute(
+            "select distinct tipo from alertas where tipo like 'pcrj_%'")]
+    except Exception:                      # noqa: BLE001 — tabela ausente não é erro de perícia
+        logger.warning("tabela de alertas indisponível — poda não roda nesta corrida")
+        return []
+
+
+def _podar_superados(con, achados: list[dict], cobertura: dict[str, str]) -> str:
+    """Retira alertas que o detector NÃO produz mais — consertar o detector não limpa o painel.
+
+    O gravador só inseria e atualizava. Quando o `d10` ganhou o corte de vigência (2026-08-09), os
+    **54 alertas anacrônicos já gravados continuaram no painel**, afirmando rede societária que o
+    próprio detector deixara de afirmar. É a lição de `reparar-e-verificar-o-efeito-nao-a-acao`:
+    a correção do produtor não alcança o que já foi publicado.
+
+    Poda CONSERVADORA, por causa de `INDISPONÍVEL ≠ 0`: só mexe em detector que rodou sem erro **e
+    devolveu pelo menos um achado**. Detector que zerou pode ter zerado porque a fonte sumiu, e
+    apagar tudo nesse caso transformaria uma falha de coleta em "nada a apurar" — o pior estrago
+    possível num painel de fiscalização. Quando isso acontece, fica registrado na cobertura.
+    """
+    # A chave de `_DETECTORES` é curta ("d10"); o `tipo` gravado usa o nome longo do achado
+    # ("pcrj_d10_rede_concorrentes"). Montar o tipo a partir da chave não casa com nada e a poda
+    # vira silenciosa — o `tipo` tem de vir do próprio achado, e o prefixo da chave é a ponte.
+    vivos: dict[str, set[str]] = {}
+    for a in achados:
+        vivos.setdefault(f"pcrj_{a['detector']}", set()).add(a["titulo"])
+    tipos_do_detector = {
+        nome: {t for t in list(vivos) + _tipos_gravados(con) if t.startswith(f"pcrj_{nome}_")}
+        for nome in _DETECTORES}
+    apagados, poupados = 0, []
+    for nome in _DETECTORES:
+        if not str(cobertura.get(nome, "")).startswith("ok"):
+            continue                       # erro no detector: não julga o que não mediu
+        for tipo in sorted(tipos_do_detector[nome]):
+            titulos = vivos.get(tipo)
+            if not titulos:
+                n = con.execute("select count(*) from alertas where tipo=?", (tipo,)).fetchone()
+                if n and n[0]:
+                    poupados.append(f"{tipo}({n[0]})")
+                continue                   # zerou: pode ser fonte ausente — poupa e declara
+            marcas = ",".join("?" * len(titulos))
+            cur = con.execute(f"delete from alertas where tipo=? and titulo not in ({marcas})",
+                              (tipo, *sorted(titulos)))
+            apagados += cur.rowcount or 0
+    aviso = f"{apagados} alerta(s) superado(s) retirado(s)"
+    if poupados:
+        aviso += (f"; POUPADOS por zerarem nesta corrida (INDISPONÍVEL ≠ 0): {', '.join(poupados)}")
+    logger.info("poda de alertas: %s", aviso)
+    return aviso
