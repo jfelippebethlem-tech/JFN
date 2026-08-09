@@ -52,9 +52,17 @@ mapfile -t PARES < <(PYTHONPATH=. $PY - <<'PYEOF'
 from compliance_agent.reporting.cobertura_siafe import medir
 r = medir()
 itens = [(t["obs_faltando_ao_menos"], t["ug"], t["exercicio"]) for t in r.get("truncados", [])]
-itens += [(p["ausentes"] * 100, p["ug"], p["exercicio"])          # amostra: pondera p/ comparar
+# A amostra é de 300: pares totalmente ausentes empatam todos em 300 e a ordem vira arbitrária.
+# O que ordena é quanto FALTA de verdade — as OBs que o espelho conhece e a fonte canônica não.
+itens += [(max(0, p["obs_espelho_tfe"] - p["obs_siafe"]), p["ug"], p["exercicio"])
           for p in r.get("parciais", []) if p.get("estado") == "parcial"]
+# um par pode estar nas DUAS listas (parou no teto E a amostra acusa ausência) — dedup, senão a
+# passada gasta duas janelas de browser no mesmo alvo
+visto = set()
 for _, ug, ano in sorted(itens, reverse=True):
+    if (ug, ano) in visto:
+        continue
+    visto.add((ug, ano))
     print(f"{ug} {ano}")
 PYEOF
 )
