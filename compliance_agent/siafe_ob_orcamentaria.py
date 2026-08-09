@@ -895,6 +895,21 @@ async def _set_valor(pg, sel, valor):
     await pg.keyboard.press("Tab")
 
 
+# PLATÔ MEDIDO DA COLHEITA, não o teto teórico do SIAFE. Em 5.893 fatias já coletadas, NENHUMA
+# chegou a 990 (o limiar antigo) e 76 pararam exatamente em 989 ou 984: a tabela é virtualizada e o
+# scroller satura antes do teto nominal de 1.000. Com o guard em 990, 124 fatias truncadas entraram
+# no banco como se fossem o universo. Errar para o lado de subdividir custa consulta; errar para o
+# outro custa dado que ninguém sabe que falta.
+_FATIA_CAPOU = 980
+_PROF_MAX_PREFIXO = 7
+
+
+def _fatia_capou(n: int, prefixo: str, exercicio: int) -> bool:
+    """A fatia bateu no platô da colheita E ainda cabe subdividir? (ver `_FATIA_CAPOU`)"""
+    profundidade = len(prefixo) - len(str(exercicio)) - 2   # tira "{ano}OB"
+    return n >= _FATIA_CAPOU and profundidade < _PROF_MAX_PREFIXO
+
+
 async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, prefixos=None, maxn=20000) -> dict:
     """UG GRANDE (>1000/ano): combina UG Emitente (linha 0) + Número 'começa com' <prefixo> (linha 1),
     iterando prefixos {ano}OB0..9 (sub-divide se uma fatia ainda bater ~1000). Fura o teto p/ UGs grandes."""
@@ -953,8 +968,7 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                 vistos, linhas = set(), []
                 await _colher(pg, maxn, vistos, linhas, None)
                 n = len(linhas)
-                capou = n >= 990
-                if capou and len(pref) - len(str(exercicio)) - 2 < 7:   # subdivide (limite de profundidade)
+                if _fatia_capou(n, pref, exercicio):   # platô medido + limite de profundidade
                     capped.add(pref); _save_ckpt()
                     work[:0] = [f"{pref}{d}" for d in range(10)]
                     print(f"  {ug} {exercicio} pref {pref}: {n} (CAP) → subdividindo", flush=True)
@@ -992,7 +1006,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             datasel = '[id*="table_rtfFilter:0"] input[id*="in_date"]:visible, [id*="table_rtfFilter:0"] input[type="text"]:visible'
             await _set_valor(pg, datasel, data); await adf.wait(); await pg.wait_for_timeout(2500)
             n0 = await _contar_linhas(pg)
-            estouro = n0 >= 990
+            estouro = n0 >= _FATIA_CAPOU   # platô MEDIDO da colheita (ver _fatia_capou)
             # coleta direta (sem subdividir) se < cap
             if not estouro:
                 vistos, linhas = set(), []
@@ -1016,7 +1030,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
                 vistos, linhas = set(), []
                 await _colher(pg, maxn, vistos, linhas, None)
                 n = len(linhas)
-                if n >= 990 and len(pref) - len(str(exercicio)) - 2 < 7:
+                if _fatia_capou(n, pref, exercicio):
                     work[:0] = [f"{pref}{d}" for d in range(10)]
                 elif linhas:
                     tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
