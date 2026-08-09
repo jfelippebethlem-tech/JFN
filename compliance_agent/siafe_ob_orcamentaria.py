@@ -975,8 +975,12 @@ async def _set_valor(pg, sel, valor):
         # 2026-08-09: o log trazia a exceção a cada valor de filtro, e sem o commit o SIAFE 1 não
         # aplica o filtro nem cria a linha seguinte — daí a coleta parecer intermitente. A
         # visibilidade já é filtrada em JS logo abaixo, então basta remover o sufixo.
+        # `r"""` OBRIGATÓRIO: sem o prefixo raw, o Python converte `\b` em BACKSPACE antes de o
+        # JS ver a regex — ela vira `/:visible\x08/` e não casa com nada. O conserto do seletor
+        # ficou inerte por isso, e o log seguiu acusando DOMException a cada valor. O resto do
+        # arquivo já usa `r"""` nos blocos de JS exatamente por esta razão.
         await pg.evaluate(
-            """(args)=>{const [sel0,val]=args;
+            r"""(args)=>{const [sel0,val]=args;
                const sel = sel0.replace(/:visible\b/g, '');
                const els=[...document.querySelectorAll(sel)].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});
                const el=els[els.length-1]; if(!el)return;

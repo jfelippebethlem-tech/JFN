@@ -112,3 +112,25 @@ def test_nenhum_evaluate_leva_pseudo_do_playwright_para_o_navegador():
     assert not suspeitos, (
         "pseudo-seletor do Playwright dentro de evaluate (vira DOMException no navegador): "
         + " | ".join(suspeitos))
+
+
+def test_blocos_de_js_sao_raw_strings():
+    """`\\b`, `\\d`, `\\s` numa string NÃO-raw viram escapes do Python antes de o JS ver.
+
+    Medido em 2026-08-09: o conserto que remove `:visible` do seletor ficou INERTE por três
+    execuções porque a regex `/:visible\\b/g` estava numa `\"\"\"…\"\"\"` comum — o Python trocou `\\b`
+    por BACKSPACE (`\\x08`) e a expressão deixou de casar. O log continuou acusando
+    `DOMException: is not a valid selector` e eu li como "o conserto não pegou".
+
+    Regra: todo bloco de JavaScript passado a `pg.evaluate` usa `r\"\"\"`.
+    """
+    import inspect
+
+    from compliance_agent import siafe_ob_orcamentaria as M
+
+    fonte = inspect.getsource(M)
+    assert chr(8) not in fonte, (
+        "há BACKSPACE literal no módulo: alguma string de JS não é raw e teve `\\b` convertido")
+    for fn in (M._set_valor, M._navegar, M._esperar_linha_filtro):
+        src = inspect.getsource(fn)
+        assert chr(8) not in src, f"{fn.__name__} tem escape do Python dentro do JS"
