@@ -819,7 +819,14 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
 
 
 async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = True,
-                   so_alta: bool = False, cnpj: str | None = None, orcamento_s: int = 700):
+                   so_alta: bool = False, cnpj: str | None = None,
+                   # A FOLGA TEM DE CABER A LEITURA, não o contrário. O shell chama este caminho sob
+                   # `timeout -k 120 --foreground 900`: com orçamento de 700s sobravam 200s até o
+                   # TERM e 320s até o KILL, mas a leitura leva 123s na mediana e **249s no p90**
+                   # (máx. medido 2768s) — o orçamento era menor que o caso ruim típico, e o ciclo
+                   # morria de SIGKILL (visto em 2026-08-10 às 10:08, `sei_pais rc=137`). Com 600s
+                   # a folga vai a 300s até o TERM e 420s até o KILL, acima do p90.
+                   orcamento_s: int = int(os.environ.get("SEI_PAIS_ORCAMENTO_S", "600"))):
     """MODO 'SEGUIR PAIS' (recupera a substância dos dockets vazios/execução): detecta no cache os
     PROCESSOS-PAI de CONTRATAÇÃO referenciados (regex SEI + janela de palavra-chave de contratação, com
     denylist de boilerplate do menu lateral) que AINDA NÃO estão no cache, e os LÊ na mesma sessão única
