@@ -149,23 +149,39 @@ fi
 PEDIDOS=data/sei_busca_pedidos.txt
 if [ -f "$PEDIDOS" ]; then
   mkdir -p data/sei_buscas
+  # A sessao itkava ja e nossa aqui e a busca e UMA navegacao — o vm_guard de 1.7 foi calibrado
+  # para sweep de browser. Sem o override, o proprio sweep (que mantem load ~1.75) barra a busca:
+  # medido em 2026-08-10 10:35, controle e alvo voltaram {"ok":false,"vm_guard":"load1=1.75"}.
+  export VM_GUARD_MAX_LOAD=${VM_GUARD_MAX_LOAD:-4.0}
   CTRL=$($PRIO timeout 500 $PY tools/sei_busca_mgs.py "MGS CLEAN" 2>/dev/null \
-         | $PY -c "import json,sys;print(json.load(sys.stdin).get('n_total','?'))" 2>/dev/null)
-  say "busca dirigida — controle positivo 'MGS CLEAN': n_total=${CTRL:-erro}"
-  if [ "${CTRL:-0}" = "0" ] || [ -z "${CTRL:-}" ]; then
-    say "busca dirigida ABORTADA: controle positivo nao retornou — qualquer zero seria inconclusivo"
-  else
-    _n=0
+         | $PY -c "import json,sys;print(json.load(sys.stdin).get('n_total',''))" 2>/dev/null)
+  say "busca dirigida — controle positivo 'MGS CLEAN': n_total=${CTRL:-<sem resposta>}"
+  # INTEIRO POSITIVO ou aborta. A versao anterior testava so "0" e vazio, e o "?" que eu mesmo
+  # usava como fallback de parse passou como se fosse resposta — a guarda existia e nao guardou.
+  case "${CTRL:-}" in
+    ''|0|*[!0-9]*)
+      say "busca dirigida ABORTADA: controle positivo nao devolveu contagem valida ('${CTRL:-vazio}') — qualquer zero do alvo seria inconclusivo" ;;
+    *)
+    _n=0; _medidas=0
     while IFS= read -r termo; do
       [ -z "$termo" ] && continue
       case "$termo" in \#*) continue ;; esac
       _n=$((_n+1)); [ "$_n" -gt 3 ] && { say "busca dirigida: teto de 3 termos por ciclo"; break; }
       slug=$(printf '%s' "$termo" | tr -cs 'A-Za-z0-9' '_' | cut -c1-40)
       $PRIO timeout 500 $PY tools/sei_busca_mgs.py "$termo" > "data/sei_buscas/$slug.json" 2>/dev/null
-      say "busca dirigida '$termo' rc=$? -> data/sei_buscas/$slug.json"
+      _rc=$?
+      _ok=$($PY -c "import json,sys;d=json.load(open(sys.argv[1]));print(1 if d.get('ok') is not False else 0)" "data/sei_buscas/$slug.json" 2>/dev/null || echo 0)
+      [ "${_ok:-0}" = "1" ] && _medidas=$((_medidas+1))
+      say "busca dirigida '$termo' rc=$_rc mediu=${_ok:-0} -> data/sei_buscas/$slug.json"
     done < "$PEDIDOS"
-    mv "$PEDIDOS" "$PEDIDOS.feito"   # pedido CONSUMIDO: nao repete todo ciclo
-  fi
+    # CONSOME so se ALGUMA busca produziu resultado utilizavel. Consumir sem medir apaga o pedido
+    # e deixa a lacuna invisivel — foi o que aconteceu no ciclo das 10:35.
+    if [ "$_medidas" -gt 0 ]; then
+      mv "$PEDIDOS" "$PEDIDOS.feito"
+    else
+      say "busca dirigida: nenhum termo mediu — pedido PRESERVADO para o proximo ciclo"
+    fi ;;
+  esac
 fi
 
 # FILA DE RECAPTURA POR PROVA DO PARECER — a conferencia que compara a lista de documentos do
