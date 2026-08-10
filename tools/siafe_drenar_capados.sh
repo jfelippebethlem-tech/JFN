@@ -95,6 +95,10 @@ _peso = (lambda n: n) if os.environ.get("PRIORIZAR_NUNCA") else (lambda n: -n)
 itens += [(_peso(p["obs_espelho_tfe"]) + (10**9 if os.environ.get("PRIORIZAR_NUNCA") else 0),
            p["ug"], p["exercicio"])
           for p in r.get("parciais", []) if p.get("estado") == "nunca_coletado"]
+# DESLOCADOS no topo, sempre: são poucos (8 pares) e cada um esconde valor real que a casa hoje
+# soma como R$ 0,00. Peso alto e fixo — não competem por exposição, competem por gravidade.
+itens += [(2 * 10**9 + p["obs_siafe"], p["ug"], p["exercicio"])
+          for p in r.get("parciais", []) if p.get("estado") == "deslocado"]
 # um par pode estar nas DUAS listas (parou no teto E a amostra acusa ausência) — dedup, senão a
 # passada gasta duas janelas de browser no mesmo alvo
 visto = set()
@@ -133,8 +137,11 @@ alvo = {(t["ug"], t["exercicio"]) for t in r.get("truncados", [])}
 # linhas)", que diz o contrário do que zero significa. Foi o que anulou a cota anti-inanição:
 # medido em 2026-08-10 12:52, a passada de cota levou os nunca coletados à cabeça da fila e esta
 # guarda pulou TODOS, um a um, terminando com "0 par(es) nesta passada".
+# DESLOCADO entra junto: a linha existe e é inutilizável (valor em `nome_credor`), então o par
+# precisa de RECOLETA tanto quanto o nunca coletado. Sem isto o dreno passaria batido justamente
+# nos 12.073 registros que escondem R$ 3,41 bi.
 alvo |= {(p["ug"], p["exercicio"]) for p in r.get("parciais", [])
-         if p.get("estado") in ("parcial", "nunca_coletado")}
+         if p.get("estado") in ("parcial", "nunca_coletado", "deslocado")}
 print("sim" if (ug, ano) in alvo else "nao")
 PYEOF
 )

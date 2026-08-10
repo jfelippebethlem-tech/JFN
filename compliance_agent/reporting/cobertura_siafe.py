@@ -89,6 +89,28 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
             chave = (str(ug), str(ano))
             if chave in ja_truncados:
                 continue                   # o detector do teto já pegou este
+            # DESLOCAMENTO VEM ANTES DO CORTE DE COBERTURA. `numero_ob` é a 1ª coluna e foi gravado
+            # certo mesmo na coleta torta, então a amostra de números CASA e o par passa por
+            # "coberto" — foi assim que 5 dos 8 pares corrompidos escaparam da primeira versão
+            # desta guarda. A pergunta "o dado presta?" é independente de "o dado está lá?".
+            n_desloc = con.execute(
+                "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
+                "AND substr(data_emissao, 7, 4) = ? "
+                "AND nome_credor GLOB '*[0-9],[0-9][0-9]' AND nome_credor NOT GLOB '*[A-Za-z]*'",
+                (str(ug), str(ano))).fetchone()[0]
+            n_no_par = con.execute(
+                "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
+                "AND substr(data_emissao, 7, 4) = ?", (str(ug), str(ano))).fetchone()[0]
+            if n_no_par and n_desloc >= n_no_par * 0.9:
+                fora.append({
+                    "ug": str(ug), "exercicio": str(ano), "estado": "deslocado",
+                    "obs_siafe": n_no_par, "obs_deslocadas": n_desloc,
+                    "amostra": 0, "ausentes": n_no_par,
+                    "pct_ausente": 100.0, "obs_espelho_tfe": n_esp,
+                    "recoletar": (f"python -m compliance_agent.siafe_ob_orcamentaria --por-ug {ug} "
+                                  f"--exercicio {ano} --ug-grande"),
+                })
+                continue
             amostra = [r[0] for r in con.execute(
                 "SELECT numero_ob FROM ordens_bancarias WHERE ug_codigo = ? "
                 "AND substr(data_emissao, 1, 4) = ? AND numero_ob IS NOT NULL LIMIT ?",
@@ -115,6 +137,26 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
                 "amostra": len(amostra), "ausentes": ausentes,
                 "pct_ausente": round(100.0 * ausentes / len(amostra), 1),
                 "obs_espelho_tfe": n_esp,
+                "recoletar": (f"python -m compliance_agent.siafe_ob_orcamentaria --por-ug {ug} "
+                              f"--exercicio {ano} --ug-grande"),
+            })
+        # VARREDURA PRÓPRIA DO DESLOCAMENTO. O laço acima só enxerga pares que o ESPELHO conhece
+        # (com 50+ OBs). O espelho não tem 010100 em 2016-2018, então três pares corrompidos ficavam
+        # invisíveis — e são justamente os mais antigos, onde ninguém vai olhar. Dado ruim que só o
+        # SIAFE tem precisa de uma varredura que parta do SIAFE.
+        ja = {(f["ug"], f["exercicio"]) for f in fora}
+        for ug, ano, n_desloc, n_par in con.execute(
+                "SELECT ug_emitente, substr(data_emissao, 7, 4) ano, "
+                "SUM(CASE WHEN nome_credor GLOB '*[0-9],[0-9][0-9]' "
+                "         AND nome_credor NOT GLOB '*[A-Za-z]*' THEN 1 ELSE 0 END), COUNT(*) "
+                "FROM ob_orcamentaria_siafe GROUP BY 1, 2"):
+            if not n_par or (n_desloc or 0) < n_par * 0.9 or (str(ug), str(ano)) in ja:
+                continue
+            fora.append({
+                "ug": str(ug), "exercicio": str(ano), "estado": "deslocado",
+                "obs_siafe": n_par, "obs_deslocadas": n_desloc,
+                "amostra": 0, "ausentes": n_par, "pct_ausente": 100.0,
+                "obs_espelho_tfe": 0, "so_no_siafe": True,
                 "recoletar": (f"python -m compliance_agent.siafe_ob_orcamentaria --por-ug {ug} "
                               f"--exercicio {ano} --ug-grande"),
             })
