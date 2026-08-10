@@ -758,7 +758,8 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
                 "hhi_por_cnpj": x["hhi_por_cnpj"], "hhi_por_grupo": x["hhi_por_grupo"],
                 "delta_hhi": x["delta_hhi"], "concentrado_por_grupo": x.get("concentrado_por_grupo"),
                 "maior_grupo": (x["maiores_grupos"] or [{}])[0],
-            } for x in itens], "total": len(itens), "ressalva": _RESSALVA})
+            } for x in itens], "total": len(itens),
+                "fonte": _fonte("ob_orcamentaria_siafe", "socios_receita"), "ressalva": _RESSALVA})
         finally:
             con.close()
     except _FALHAS_DE_LEITURA as exc:
@@ -848,6 +849,7 @@ def api_nucleo_cartel(min_part: int = 8, min_ramos: int = 4, limite: int = 12):
                       | {"orbitantes": n["orbitantes"][:4]} for n in r["nucleos"][:lim]],
             # o viajante é sinal por si: participa em muitos municípios e nunca vence
             "viajantes": r["viajantes"][:lim],
+            "fonte": _fonte("tcerj_licitante"),
             "ressalva": RESSALVA,
         })
     except _FALHAS_DE_LEITURA as exc:
@@ -927,6 +929,7 @@ def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite
         itens = _cache(f"fim_exerc:{min_valor}:{pct}", lambda: medir(min_valor=min_valor, pct=pct))
         return JSONResponse({
             "ok": True, "total": len(itens), "itens": itens[:max(1, min(int(limite), 200))],
+            "fonte": _fonte("ob_orcamentaria_siafe"),
             "criterio": {"min_valor": min_valor, "pct_no_fim": pct, "meses": ["11", "12"]},
             "ressalva": (
                 "Só OB **Contabilizada** (cancelada não é pagamento). Entes públicos e desenho de "
@@ -961,6 +964,7 @@ def api_taxa_por_unidade(termo: str = "execu"):
         linhas.sort(key=lambda x: (-(x["taxa"] or 0), -x["n"]))
         return JSONResponse({
             "ok": True, "termo": termo, "unidades": len(linhas), "itens": linhas,
+            "fonte": _fonte("processo_avaliacao"),
             "ressalva": (
                 "Denominador = processos AVALIÁVEIS; NAO_AVALIAVEL fica de fora porque captura "
                 "insuficiente não é conclusão sobre a unidade (INDISPONÍVEL ≠ 0). A taxa só é "

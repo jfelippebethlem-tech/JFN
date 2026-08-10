@@ -19,6 +19,22 @@
 #   bash tools/siafe_drenar_capados.sh 0          # só lista
 set -u
 cd /home/ubuntu/JFN || exit 1
+
+# BLINDAGEM CONTRA EDIÇÃO EM VOO. O bash lê o script por OFFSET de byte, então editar o arquivo
+# enquanto uma instância roda faz o processo vivo retomar no lugar errado — e ele morre com um erro
+# de sintaxe numa linha que está correta no disco. Já custou uma passada inteira duas vezes
+# (2026-08-09 e de novo em 2026-08-10, linha 143, num run que já havia drenado 296100/2025). É a
+# família 37 do catálogo, e conhecê-la não impediu a repetição: por isso a guarda é mecânica.
+# Rodamos de uma CÓPIA, apagada logo em seguida — o fd fica aberto, o inode sobrevive, e nenhuma
+# edição posterior do original alcança esta execução.
+if [ -z "${DRENO_SNAPSHOT:-}" ]; then
+  SNAP=$(mktemp /tmp/siafe_drenar.XXXXXX.sh) || exit 1
+  cat "$0" > "$SNAP" || { rm -f "$SNAP"; exit 1; }
+  export DRENO_SNAPSHOT=1
+  exec bash "$SNAP" "$@"
+fi
+[ -n "${SNAP:-}" ] || SNAP="$0"
+case "$SNAP" in /tmp/siafe_drenar.*) rm -f "$SNAP" ;; esac
 [ -f .env ] && { set -a; . ./.env; set +a; }
 export PYTHONPATH=.
 PY=.venv/bin/python
@@ -50,7 +66,10 @@ trap 'rm -f "$PIDF"' EXIT
 # da fila em meses — a prioridade correta virava fome permanente. A cada 4ª passada eles vêm antes.
 VEZF=data/.siafe_dreno_vez
 VEZ=$(( $(cat "$VEZF" 2>/dev/null | tr -dc '0-9' | tail -c 9) + 1 ))
-echo "$VEZ" > "$VEZF"
+# MAX=0 é ENSAIO (só imprime a fila). Gravar o contador ali CONSOME a passada de cota sem drenar
+# nada — foi o que aconteceu no primeiro teste desta guarda. O ensaio mostra o que a próxima
+# passada faria; quem gasta a vez é quem trabalha.
+[ "$MAX" = "0" ] || echo "$VEZ" > "$VEZF"
 if [ $(( VEZ % 4 )) -eq 0 ]; then export PRIORIZAR_NUNCA=1; say "passada $VEZ — cota dos nunca coletados"; fi
 
 # A LISTA SAI DO MEDIDOR, não de um teste de contagem redonda. Contagem redonda é a assinatura do

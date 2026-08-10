@@ -4789,8 +4789,13 @@ void main(){
     const o = $("ff-out");
     if (!o) return;
     const d = await J("/api/fiscal/taxa_por_unidade");
-    if (!d || d.ok === false || !(d.itens || []).length) return;
+    if (!d || d.ok === false) return;
     const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Taxa da lacuna por unidade") + vazioDeclarado(d, "unidade com processos avaliados suficientes para publicar taxa");
+      o.appendChild(alvo);
+      return;
+    }
     const fx = (v, k) => {
       const f = (v.faixas || {})[k] || [0, 0];
       return f[0] ? `${f[1]}/${f[0]}` : "—";
@@ -4808,8 +4813,13 @@ void main(){
     const o = $("ff-out");
     if (!o) return;
     const d = await J("/api/fiscal/fim_de_exercicio?limite=15");
-    if (!d || d.ok === false || !(d.itens || []).length) return;
+    if (!d || d.ok === false) return;
     const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Ano inteiro pago em nov–dez") + vazioDeclarado(d, "credor privado com o ano concentrado no fim do exercício");
+      o.appendChild(alvo);
+      return;
+    }
     alvo.innerHTML = sec(`Ano inteiro pago em nov–dez (${fmtN(d.total)} credores privados)`) + card(`<table class="tb"><thead><tr><th>Ano</th><th>Credor</th><th class="right">total no ano</th>
       <th class="right">% em nov–dez</th><th class="right">OBs</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td>${esc(String(x.exercicio))}</td>
           <td>${esc(x.nome.slice(0, 46))} <span class="dim">${esc(x.raiz)}</span></td>
@@ -4822,7 +4832,13 @@ void main(){
     const o = $("ff-out");
     if (!o) return;
     const d = await J("/api/fiscal/concentracao_por_grupo?ano=2025&limite=10");
-    if (!d || d.ok === false || !(d.itens || []).length) return;
+    if (!d || d.ok === false) return;
+    if (!(d.itens || []).length) {
+      const vazio = document.createElement("div");
+      vazio.innerHTML = sec("Concentração por grupo econômico") + vazioDeclarado(d, "unidade gestora concentrada por grupo em 2025");
+      o.appendChild(vazio);
+      return;
+    }
     const rot2 = {
       comando_comum: ["comando comum", "var(--red)"],
       coparticipacao_com_excecao: ["coparticipação (1 exceção)", "var(--amber)"],
@@ -7574,6 +7590,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         <td class="right">${x.n_ramos}</td><td class="right">${fmtN(x.vitorias)}</td>
         <td class="right dim">${x.n_entes}</td>
         <td style="font-size:12px">${(x.orbitantes || []).map((o0) => `${esc((o0.perdedor || "").slice(0, 26))} <span class="dim">${o0.n}p/${o0.vitorias}v · órbita ${o0.conc}%</span>`).join("<br>")}</td></tr>`).join("") + `</tbody></table>`);
+    } else if ((d.fonte || {}).ok === false) {
+      h += vazioDeclarado(d, "núcleo de arranjo");
     } else {
       h += card('<div class="dim">Nenhum núcleo com os pisos atuais — o que não é ausência de arranjo, é ausência de INTERSEÇÃO entre os dois screens.</div>');
     }
