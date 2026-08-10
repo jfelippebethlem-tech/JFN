@@ -117,7 +117,20 @@ for par in "${PARES[@]}"; do
   [ "$feitos" -ge "$MAX" ] && break
   set -- $par; UG=$1; ANO=$2
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
-  L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — paro por aqui"; break; }
+  # GUARDA DA CASA, DOIS CRITÉRIOS. A versão anterior era `load >= 4` à mão, e medido em
+  # 2026-08-10 ela barrou **10 de 10** passadas do cron — a maioria drenou ZERO pares, porque a
+  # linha de base da máquina fica em 3-5 com o sweep SEI rodando. Guarda que sempre fecha não
+  # protege, só impede o trabalho: a fila tem 805 pares e ia levar meses.
+  # O modo de crash desta VM é MEMÓRIA (2 Chromium + DuckDB, 4 vezes), não carga — e o
+  # `vm_guard.preflight` já checa os dois. O dreno é UM browser, ligado à rede: teto de carga em 6
+  # (o guard usa 1.7 para o sweep, que é outro perfil) e o piso de memória do próprio guard.
+  OK_VM=$(VM_GUARD_MAX_LOAD=${DRENO_MAX_LOAD:-6.0} PYTHONPATH=. $PY -c "
+from tools.vm_guard import preflight
+ok, motivo = preflight()
+print(('ok|' if ok else 'nao|') + motivo)" 2>/dev/null || echo "ok|guarda indisponível — sigo")
+  case "$OK_VM" in
+    nao\|*) say "VM saturada (${OK_VM#nao|}) — paro por aqui"; break ;;
+  esac
   ANTES=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO\").fetchone()[0])")
   # quantas linhas deste par estão DESLOCADAS antes de mexer — é a régua do reparo (ver abaixo)
   DESLOCADAS_ANTES=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO AND nome_credor GLOB '*[0-9],[0-9][0-9]' AND nome_credor NOT GLOB '*[A-Za-z]*'\").fetchone()[0])")
