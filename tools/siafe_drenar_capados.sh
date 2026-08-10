@@ -119,6 +119,8 @@ for par in "${PARES[@]}"; do
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
   L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — paro por aqui"; break; }
   ANTES=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO\").fetchone()[0])")
+  # quantas linhas deste par estão DESLOCADAS antes de mexer — é a régua do reparo (ver abaixo)
+  DESLOCADAS_ANTES=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO AND nome_credor GLOB '*[0-9],[0-9][0-9]' AND nome_credor NOT GLOB '*[A-Za-z]*'\").fetchone()[0])")
   # A LISTA ENVELHECE DENTRO DA PRÓPRIA PASSADA. Ela é tirada uma vez no início; se um par foi
   # drenado enquanto os outros rodavam, ele já não está mais redondo — reprocessá-lo gasta uma
   # janela de browser à toa. Medido 2026-08-09: a 263100/2023 voltou à fila com 3.938 linhas, e a
@@ -173,8 +175,15 @@ PYEOF
       --exercicio "$ANO" --por-ug "$UG" --ug-grande --ingerir > "$SAIDA" 2>&1
   rc=$?
   DEPOIS=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO\").fetchone()[0])")
-  # O EFEITO, não a ação: rc=0 com ganho zero já enganou nesta casa mais de uma vez.
-  if [ "$DEPOIS" -gt "$ANTES" ]; then
+  # GANHO NÃO É SÓ CONTAGEM. Par DESLOCADO se cura por SUBSTITUIÇÃO (a PK é
+  # (numero_ob, ug_emitente, exercicio) com INSERT OR REPLACE), então a contagem fica igual e o
+  # teste de crescimento dizia "SEM GANHO" para uma passada que consertou tudo — medido em
+  # 2026-08-10 na 010100/2016, que saiu de 2.544 linhas tortas e R$ 0,00 para 2.544 linhas certas e
+  # R$ 666.741.527,24. Para reparo, o efeito é QUALIDADE, não quantidade.
+  TORTAS=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO AND nome_credor GLOB '*[0-9],[0-9][0-9]' AND nome_credor NOT GLOB '*[A-Za-z]*'\").fetchone()[0])")
+  if [ "${TORTAS:-0}" = "0" ] && [ "${DESLOCADAS_ANTES:-0}" -gt 0 ]; then
+    say "UG $UG $ANO: REPARADO — ${DESLOCADAS_ANTES} linha(s) deslocada(s) → 0 (contagem segue $DEPOIS, rc=$rc)"
+  elif [ "$DEPOIS" -gt "$ANTES" ]; then
     say "UG $UG $ANO: $ANTES → $DEPOIS linhas (rc=$rc)"
   else
     say "UG $UG $ANO: SEM GANHO ($ANTES → $DEPOIS, rc=$rc) — ver $SAIDA"
