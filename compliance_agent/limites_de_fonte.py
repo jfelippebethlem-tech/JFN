@@ -31,6 +31,29 @@ class LimiteDeFonte:
 # Ordem: os que mais enganam primeiro (falham com aparência de sucesso).
 LIMITES: tuple[LimiteDeFonte, ...] = (
     LimiteDeFonte(
+        fonte="PNCP — termos aditivos (`contrato_aditivo`), os campos que decidem o art. 125",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "A linha do termo aditivo VEM, e por isso parece dado. O que decide a legalidade do "
+            "acréscimo, não: medido em 2026-08-10 sobre 1.770 termos, **82,8% trazem "
+            "`valorAcrescido` zero ou nulo** e **1.045 (59%) repetem no `objetoTermoContrato` o "
+            "objeto do CONTRATO**, não o do termo — e é do objeto que a régua única "
+            "(`limites_aditivo.classificar_natureza`) tira a natureza. Some-se a cobertura: dos "
+            "6.761 contratos que o próprio PNCP declara TER aditivo, só **1.165 (17,2%)** têm o "
+            "termo granular coletado. O efeito prático é que a casa consegue AFIRMAR estouro do "
+            "teto em **3 contratos de 64.746** — o resto é `valor_global − valor_inicial`, que "
+            "mistura reajuste e prorrogação e por isso é indício, nunca conclusão. Na Secretaria "
+            "das Cidades (o caso da CGE), os 28 termos coletados têm valor zero e natureza "
+            "indeterminada em 28/28: sobre aditivo dali não há o que afirmar pelo PNCP."),
+        caminho_alternativo=(
+            "Para afirmar percentual de acréscimo, o termo aditivo ASSINADO nos autos (SEI) é a "
+            "única fonte — `tools/sei_consultar.py`. `tipo_termo` (do `tipoTermoContratoNome`) "
+            "serve como veto grosso: Apostilamento (art. 136) e Rescisão nunca consomem o teto do "
+            "art. 125. E `data_assinatura` habilita o aditivo precoce "
+            "(`tools/screen_aditivo_precoce.py`), que não depende do valor."),
+        medido_em="2026-08-10",
+    ),
+    LimiteDeFonte(
         fonte="SIAFE-Rio 2 — tela de OB Orçamentária (a NOSSA fonte canônica de pagamento)",
         tipo="bloqueio",
         o_que_acontece=(
