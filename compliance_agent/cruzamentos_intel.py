@@ -642,6 +642,16 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
     — 25% p/ compras/serviços/obras, 50% p/ reforma). Usa pcrj_contratos (valor_inicial × valor_global)
     e cruza com contrato_aditivo p/ separar ACRÉSCIMO real de reajuste (qualif_acrescimo). Também
     marca CHANGE ORDERS EM SÉRIE (≥3 aditivos — red-flag OCDE/Banco Mundial), mesmo sem estouro de valor."""
+    # PARÂMETRO PRIMEIRO, banco depois. Rótulo fora do vocabulário não pode virar lista vazia:
+    # "estadual" (em vez de "estado") devolvia ZERO achados sobre uma base com 260 — o filtro mentia
+    # com cara de resposta. E validar antes de abrir conexão faz a recusa valer também sobre base
+    # vazia, que é justamente onde o zero engana mais.
+    if esfera and esfera != "todas":
+        from compliance_agent.collectors.pncp_resultados import ESFERAS as _ESFERAS
+        if esfera not in _ESFERAS:
+            return {"ok": False, "achados": [], "n": 0,
+                    "erro": (f"esfera '{esfera}' não existe — use uma de {list(_ESFERAS)} ou "
+                             "'todas'. Lista vazia aqui seria NÃO MEDIDO, não 'nada a apurar'.")}
     con = _ro(db_path)
     try:
         # acréscimos reais (não reajuste) por contrato, do contrato_aditivo (fonte granular)
