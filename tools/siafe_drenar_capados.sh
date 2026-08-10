@@ -44,11 +44,12 @@ fi
 echo $$ > "$PIDF"
 trap 'rm -f "$PIDF"' EXIT
 
-# COTA CONTRA INANIÇÃO. Com MAX=1 por passada e 551 parciais na frente, os 257 pares NUNCA
-# COLETADOS (61.355 OBs que o espelho conhece e a fonte canônica não tem) jamais alcançariam a
-# cabeça da fila: a prioridade correta virava fome permanente. A cada 4ª passada eles vêm primeiro.
+# COTA CONTRA INANIÇÃO. O cron pede MAX=5, mas a guarda de carga corta o laço no meio: medido no
+# log de 09-10/08, cada passada drena 1 ou 2 pares. Com 551 parciais na frente, os 257 pares NUNCA
+# COLETADOS (61.355 OBs que o espelho conhece e a fonte canônica não tem) não alcançariam a cabeça
+# da fila em meses — a prioridade correta virava fome permanente. A cada 4ª passada eles vêm antes.
 VEZF=data/.siafe_dreno_vez
-VEZ=$(( ( $(tr -dc '0-9' < "$VEZF" 2>/dev/null || echo 0) + 0 ) + 1 ))
+VEZ=$(( $(cat "$VEZF" 2>/dev/null | tr -dc '0-9' | tail -c 9) + 1 ))
 echo "$VEZ" > "$VEZF"
 if [ $(( VEZ % 4 )) -eq 0 ]; then export PRIORIZAR_NUNCA=1; say "passada $VEZ — cota dos nunca coletados"; fi
 
