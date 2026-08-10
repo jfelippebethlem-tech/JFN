@@ -228,9 +228,18 @@ def _folha_padrao() -> dict[str, dict]:
 def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[dict]:
     """QSA dos credores PCRJ × folha municipal por nome normalizado.
     Sem CPF em nenhuma das pontas → SEMPRE indício (homônimo possível)."""
+    # O VÍNCULO TEM DE SER VIGENTE NO EXERCÍCIO. Sócio que entrou no quadro depois da despesa não
+    # descreve a despesa — é a mesma lição do E.3.2 (`screen_coparticipacao_relacionados`), onde o
+    # filtro de `data_entrada` derrubou os dois maiores pares da lista. Medido em 2026-08-10 sobre
+    # 209.559 pares (despesa, sócio): **84.365 (40,3%) têm o sócio entrando DEPOIS** do exercício,
+    # com vão de até 7 anos. `min(data_entrada)` contra `max(exercicio)`: basta ter sido sócio em
+    # ALGUM exercício em que o credor recebeu — critério conservador, que não derruba o indício por
+    # detalhe de data, mas separa quem não podia estar lá.
     rows = con.execute("""
-        select distinct s.nome_norm, s.nome_socio, s.cnpj_basico,
-               d.credor_nome, d.credor_documento, sum(d.pago) as pago
+        select s.nome_norm, s.nome_socio, s.cnpj_basico,
+               d.credor_nome, d.credor_documento, sum(d.pago) as pago,
+               max(cast(d.exercicio as integer)) as ultimo_exercicio,
+               min(substr(coalesce(s.data_entrada,''), 1, 4)) as entrada_ano
         from pcrj_despesa d
         join socios_receita s
           on length(d.credor_documento) = 14
@@ -249,13 +258,17 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
         hit = folha_norm.get(r["nome_norm"])
         if not hit:
             continue
+        ent, ult = str(r["entrada_ano"] or ""), r["ultimo_exercicio"]
+        posterior = bool(ent.isdigit() and ult and int(ent) > int(ult))
         achados.append(_achado(
-            "d9_socio_na_folha", 5,
+            "d9_socio_na_folha", 3 if posterior else 5,
             # o CREDOR entra no título: o mesmo sócio em três credores distintos são três achados,
             # e com título só do nome eles colapsavam num só (dedup do gravador + poda por título)
-            f"Sócio de credor na folha — {r['nome_socio']} × "
-            f"{(r['credor_nome'] or r['credor_documento'])[:44]}",
-            f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
+            ("Sócio POSTERIOR de credor na folha — " if posterior else "Sócio de credor na folha — ")
+            + f"{r['nome_socio']} × {(r['credor_nome'] or r['credor_documento'])[:44]}",
+            (f"NÃO descreve a despesa: o vínculo societário começou em {ent}, depois do último "
+             f"exercício com pagamento ({ult}). " if posterior else "")
+            + f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
             f"(CNPJ {r['credor_documento']}, R$ {_brl(r['pago'])} pagos pela PCRJ), tem "
             f"HOMÔNIMO na folha municipal (lotação {hit.get('orgao') or 'n/d'}). Match "
             f"somente por nome normalizado — homônimo é possível; confirmar CPF/matrícula "
@@ -263,7 +276,8 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
             f"folha PCRJ via contracheque)",
             {"subtipo": "socio_folha", "socio": r["nome_socio"],
              "credor": r["credor_documento"], "lotacao": hit.get("orgao"),
-             "match_tipo": "NOME"}))
+             "match_tipo": "NOME", "entrada_socio_ano": ent or None,
+             "ultimo_exercicio": ult, "vinculo_posterior": posterior}))
     return achados
 
 
