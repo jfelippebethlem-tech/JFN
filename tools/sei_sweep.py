@@ -794,7 +794,12 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     except Exception as e:  # noqa: BLE001 — CRASH-PROOF: morte de browser/pipe/lock vira saída LIMPA (cron repete)
         _log(f"sessão de browser caiu ({type(e).__name__}: {str(e)[:80]}) — encerrando LIMPO, sem crash. Cron repete.")
         return
-    _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem (fora de escopo/vazio). "
+    # "fora de escopo/vazio" era uma CAUSA AFIRMADA que ninguém mediu. Medido em 2026-08-10 sobre os
+    # 3.775 processos zerados do progresso: só 930 têm motivo registrado (378 RESTRITO, 352
+    # NAO_LOCALIZADO, 200 RESTRITO?); 2.794 não têm motivo nenhum, e 51 estão marcados OK no
+    # `sei_restritos` e ainda assim vieram vazios. Zero sem causa é NÃO SEI, não "não havia".
+    _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem documento — CAUSA NÃO MEDIDA "
+         f"(restrito, inexistente ou falha de leitura; ver data/sei_restritos.json). "
          f"Progresso em {PROG.name}.")
 
 
