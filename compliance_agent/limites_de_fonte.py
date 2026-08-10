@@ -31,6 +31,27 @@ class LimiteDeFonte:
 # Ordem: os que mais enganam primeiro (falham com aparência de sucesso).
 LIMITES: tuple[LimiteDeFonte, ...] = (
     LimiteDeFonte(
+        fonte="SIAFE-Rio — OBs que a tela NÃO devolve mais (resíduo de coleta antiga)",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "Recoletar um par (UG, exercício) **substitui** o que a tela devolve hoje — e só isso. "
+            "Linhas gravadas numa coleta anterior cujos números a consulta não retorna mais ficam "
+            "no banco para sempre, com o conteúdo que tinham. Medido em 2026-08-10 ao reparar o "
+            "deslocamento de colunas da UG 010100: no prefixo `2017OB02` o banco tem **639** linhas "
+            "e a tela devolveu **628** — as 11 restantes seguiram deslocadas depois de uma recoleta "
+            "bem-sucedida. Não é falha do reparo: é a fonte que mudou entre junho e agosto "
+            "(anulação, expurgo ou filtro diferente). O efeito é um resíduo pequeno e PERMANENTE de "
+            "linhas cujo `nome_credor` é um número — invisível em somas (o `valor` delas é 0,00), "
+            "mas poluente em qualquer listagem por credor."),
+        caminho_alternativo=(
+            "Contar o resíduo em vez de esperar zero: a invariante `colunas_deslocadas` da "
+            "`sentinela_integridade` usa piso de 1% justamente por isso. Apagar as linhas é decisão "
+            "do dono — elas são comprovadamente erradas E não confirmáveis na fonte, mas apagar "
+            "dado de pagamento não é chamada de quem repara. Enquanto não se decide, quem lista "
+            "credor deve filtrar `nome_credor GLOB '*[0-9],[0-9][0-9]'`."),
+        medido_em="2026-08-10",
+    ),
+    LimiteDeFonte(
         fonte="PNCP — termos aditivos (`contrato_aditivo`), os campos que decidem o art. 125",
         tipo="limite_de_dado",
         o_que_acontece=(
