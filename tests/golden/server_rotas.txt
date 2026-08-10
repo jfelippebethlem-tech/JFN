@@ -44,6 +44,7 @@ GET /api/fiscal/fim_de_exercicio -> api_fim_de_exercicio
 GET /api/fiscal/nucleo_cartel -> api_nucleo_cartel
 GET /api/fiscal/recuperacao_judicial -> api_recuperacao_judicial
 GET /api/fiscal/taxa_por_unidade -> api_taxa_por_unidade
+GET /api/fiscal/zeros_sem_causa -> api_zeros_sem_causa
 GET /api/flags -> api_flags
 GET /api/fontes/frescor -> api_fontes_frescor
 GET /api/fontes/limites -> api_fontes_limites

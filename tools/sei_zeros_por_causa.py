@@ -160,13 +160,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     print(f"  voltaram com ZERO documento: {r['zeros']:,} ({r['pct_zeros']}%)".replace(",", "."))
     for k, v in r["por_causa"].items():
         print(f"     {v:6}  {k}")
-    print(f"  soma de OB dos zeros SEM causa: R$ {r['valor_ob_sem_causa']:,.2f}"
-          .replace(",", "#").replace(".", ",").replace("#", "."))
+    from compliance_agent.reporting.intel_base import moeda
+    print(f"  soma de OB dos zeros SEM causa: R$ {moeda(r['valor_ob_sem_causa'])}")
     if a.fila:
         print(f"\nfila a diligenciar (maior exposição primeiro), {a.fila} de {r['sem_causa']}:")
         for x in r["fila"][: a.fila]:
-            print(f"   {x['processo']:28} R$ {x['valor_ob']:>16,.2f}"
-                  .replace(",", "#").replace(".", ",").replace("#", "."))
+            print(f"   {x['processo']:28} R$ {moeda(x['valor_ob']):>18}")
     print(f"\n{r['ressalva']}")
     return 0
 

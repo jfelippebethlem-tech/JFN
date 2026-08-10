@@ -93,11 +93,18 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
             # certo mesmo na coleta torta, então a amostra de números CASA e o par passa por
             # "coberto" — foi assim que 5 dos 8 pares corrompidos escaparam da primeira versão
             # desta guarda. A pergunta "o dado presta?" é independente de "o dado está lá?".
-            n_desloc = con.execute(
-                "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
-                "AND substr(data_emissao, 7, 4) = ? "
-                "AND nome_credor GLOB '*[0-9],[0-9][0-9]' AND nome_credor NOT GLOB '*[A-Za-z]*'",
-                (str(ug), str(ano))).fetchone()[0]
+            # SCHEMA PARCIAL DEGRADA, não derruba: base sem `nome_credor` (fixtures antigas, e
+            # qualquer instalação anterior à coluna) não permite julgar deslocamento — e não poder
+            # julgar não é o mesmo que julgar limpo. Segue para as outras checagens.
+            try:
+                n_desloc = con.execute(
+                    "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
+                    "AND substr(data_emissao, 7, 4) = ? "
+                    "AND nome_credor GLOB '*[0-9],[0-9][0-9]' "
+                    "AND nome_credor NOT GLOB '*[A-Za-z]*'",
+                    (str(ug), str(ano))).fetchone()[0]
+            except sqlite3.OperationalError:
+                n_desloc = 0
             n_no_par = con.execute(
                 "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
                 "AND substr(data_emissao, 7, 4) = ?", (str(ug), str(ano))).fetchone()[0]
@@ -145,11 +152,15 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
         # invisíveis — e são justamente os mais antigos, onde ninguém vai olhar. Dado ruim que só o
         # SIAFE tem precisa de uma varredura que parta do SIAFE.
         ja = {(f["ug"], f["exercicio"]) for f in fora}
-        for ug, ano, n_desloc, n_par in con.execute(
+        try:
+            varredura = con.execute(
                 "SELECT ug_emitente, substr(data_emissao, 7, 4) ano, "
                 "SUM(CASE WHEN nome_credor GLOB '*[0-9],[0-9][0-9]' "
                 "         AND nome_credor NOT GLOB '*[A-Za-z]*' THEN 1 ELSE 0 END), COUNT(*) "
-                "FROM ob_orcamentaria_siafe GROUP BY 1, 2"):
+                "FROM ob_orcamentaria_siafe GROUP BY 1, 2").fetchall()
+        except sqlite3.OperationalError:
+            varredura = []            # sem a coluna, não há como medir deslocamento
+        for ug, ano, n_desloc, n_par in varredura:
             if not n_par or (n_desloc or 0) < n_par * 0.9 or (str(ug), str(ano)) in ja:
                 continue
             fora.append({

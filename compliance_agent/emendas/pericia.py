@@ -182,19 +182,25 @@ def d3_favorecido_sancionado(con) -> list[dict]:
                   "posterior": "Favorecido sancionado APÓS a emenda",
                   "encerrada": "Favorecido com sanção encerrada antes da emenda",
                   "indeterminada": "Favorecido sancionado (vigência não apurada)"}[vigencia]
-        explica = {
-            "vigente": ("Indício grave: a sanção já estava VIGENTE no ano da emenda"),
-            "posterior": (f"NÃO é acusação: a sanção só começou em {ini}, "
-                          f"{ini - (ano_e or ini)} ano(s) DEPOIS da emenda de {ano_e}. Serve de "
-                          "contexto sobre o favorecido, não de irregularidade na emenda"),
-            "encerrada": (f"NÃO é acusação: a sanção terminou em {fim}, antes da emenda de {ano_e}"),
-            "nao_impeditiva": (f"A sanção estava vigente, mas é '{r['categoria']}' — categoria que "
-                               "NÃO veda contratar (multa e publicação extraordinária são "
-                               "penalidades, não impedimento). Não sustenta acusação de "
-                               "contratação irregular"),
-            "indeterminada": ("Vigência não apurada — falta o ano da emenda ou a data da sanção; "
-                              "INDISPONÍVEL, não confirmação"),
-        }[vigencia]
+        # SEM DICIONÁRIO LITERAL AQUI. Um `{...}[vigencia]` avalia TODOS os ramos antes de escolher,
+        # e o ramo "posterior" faz aritmética com as datas: numa sanção sem `data_inicio` isso
+        # estoura com TypeError e derruba o detector inteiro. Foi o que um teste da casa pegou —
+        # as minhas fixtures tinham data em todas as linhas e não alcançavam o caso.
+        if vigencia == "vigente":
+            explica = "Indício grave: a sanção já estava VIGENTE no ano da emenda"
+        elif vigencia == "posterior":
+            explica = (f"NÃO é acusação: a sanção só começou em {ini}, {ini - ano_e} ano(s) DEPOIS "
+                       f"da emenda de {ano_e}. Serve de contexto sobre o favorecido, não de "
+                       "irregularidade na emenda")
+        elif vigencia == "encerrada":
+            explica = f"NÃO é acusação: a sanção terminou em {fim}, antes da emenda de {ano_e}"
+        elif vigencia == "nao_impeditiva":
+            explica = (f"A sanção estava vigente, mas é '{r['categoria']}' — categoria que NÃO veda "
+                       "contratar (multa e publicação extraordinária são penalidades, não "
+                       "impedimento). Não sustenta acusação de contratação irregular")
+        else:
+            explica = ("Vigência não apurada — falta o ano da emenda ou a data da sanção; "
+                       "INDISPONÍVEL, não confirmação")
         achados.append(_achado(
             "d3_favorecido_sancionado", risco,
             # a EMENDA no título: o mesmo favorecido sancionado em 60 emendas são 60 achados
