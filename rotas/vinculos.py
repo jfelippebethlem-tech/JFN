@@ -49,6 +49,40 @@ def _cache(chave: str, calcular, ttl: int = _TTL_PADRAO):
     return val
 
 
+def _fonte(*tabelas: str) -> dict:
+    """As tabelas de origem existem e têm linha? — para a rota distinguir MEDI E NÃO ACHEI de
+    NÃO TENHO A FONTE.
+
+    As telas de padrão devolvem `[]` nos dois casos, e a rota transformava isso em "0 achados" —
+    que é a afirmação mais perigosa que um painel de fiscalização pode fazer. Aqui a resposta passa
+    a carregar o estado da fonte, e o card sabe dizer "nenhum achado NA FATIA MEDIDA" em vez de
+    sugerir que não há o que apurar.
+    """
+    estado: dict[str, object] = {"ok": True, "tabelas": {}}
+    try:
+        con = _db_ro()
+        try:
+            existentes = {r[0] for r in con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            for t in tabelas:
+                if t not in existentes:
+                    estado["tabelas"][t] = "ausente"
+                    estado["ok"] = False
+                    continue
+                n = con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]  # noqa: S608 — nome interno
+                estado["tabelas"][t] = n
+                if not n:
+                    estado["ok"] = False
+        finally:
+            con.close()
+    except sqlite3.Error as exc:
+        return {"ok": False, "erro": str(exc), "tabelas": {}}
+    if not estado["ok"]:
+        estado["nota"] = ("Alguma fonte deste screen está AUSENTE ou VAZIA — uma lista vazia aqui "
+                          "significa 'não medi', não 'nada a apurar'.")
+    return estado
+
+
 def _db_ro() -> sqlite3.Connection:
     from compliance_agent.reporting.intel_base import _DB
     return sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
@@ -753,7 +787,8 @@ def api_aditivo_precoce(dias: int = 90, min_acrescimo: float = 50_000.0, limite:
         return JSONResponse({
             "ok": True, "total": len(itens), "dias": int(dias),
             "itens": itens[:max(1, min(int(limite), 200))],
-            "cobertura": cobertura(), "ressalva": RESSALVA,
+            "cobertura": cobertura(),
+            "fonte": _fonte("contrato_aditivo", "pcrj_contratos"), "ressalva": RESSALVA,
         })
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("aditivo_precoce falhou")
@@ -781,7 +816,8 @@ def api_consorcio_veiculo(min_consorcios: int = 2, min_valor: float = 1_000_000.
                        lambda: medir(min_consorcios=mc, min_valor=mv))
         return JSONResponse({
             "ok": True, "total": len(itens),
-            "itens": itens[:max(1, min(int(limite), 100))], "ressalva": RESSALVA,
+            "itens": itens[:max(1, min(int(limite), 100))],
+            "fonte": _fonte("ob_orcamentaria_siafe", "socios_receita"), "ressalva": RESSALVA,
         })
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("consorcio_veiculo falhou")
@@ -838,7 +874,8 @@ def api_recuperacao_judicial(min_valor: float = 100_000.0, limite: int = 20):
         return JSONResponse({
             "ok": True, "total": len(itens),
             "soma": round(sum(x["total"] for x in itens), 2),
-            "itens": itens[:max(1, min(int(limite), 200))], "ressalva": RESSALVA,
+            "itens": itens[:max(1, min(int(limite), 200))],
+            "fonte": _fonte("ob_orcamentaria_siafe", "socios_receita"), "ressalva": RESSALVA,
         })
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("recuperacao_judicial falhou")
@@ -865,6 +902,7 @@ def api_coparticipacao_relacionados(min_certames: int = 2, limite: int = 20):
         return JSONResponse({
             "ok": True, "total": len(itens),
             "itens": itens[:max(1, min(int(limite), 200))],
+            "fonte": _fonte("tcerj_licitante", "nome_cnpj_resolvido", "socios_receita"),
             "ressalva": RESSALVA,
         })
     except _FALHAS_DE_LEITURA as exc:

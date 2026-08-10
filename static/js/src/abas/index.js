@@ -268,12 +268,33 @@ async function concentracaoPorGrupo() {
 // o quadro societário — a travessia que o resolver_nome_cnpj foi escrito para permitir e que
 // nenhum módulo fazia. O elo tem de estar VIGENTE na data: sem esse filtro os dois maiores pares
 // eram anacronismos (o administrador comum entrou no ano seguinte ao certame).
+/* VAZIO DECLARADO. Um card que não renderiza não produz erro nenhum — foi assim que dois dos seis
+   painéis de padrão sumiram do ar sem uma linha no console (família 38 do catálogo). E lista vazia
+   tem DUAS causas opostas: medi e não achei, ou não tenho a fonte. Calar as duas na mesma tela em
+   branco é a afirmação mais perigosa que um painel de fiscalização pode fazer. */
+function vazioDeclarado(d, oQue){
+  const f=d.fonte||{}; const t=f.tabelas||{};
+  if(f.ok===false){
+    const falta=Object.entries(t).filter(([,v])=>v==='ausente'||v===0).map(([k])=>k).join(', ');
+    return card(`<div class="dim"><b>Não medido</b> — ${esc(oQue)}: fonte indisponível${
+      falta?' ('+esc(falta)+')':''}${f.erro?': '+esc(f.erro):''}. Lista vazia aqui significa
+      <b>não medi</b>, nunca "nada a apurar".</div>`);
+  }
+  return card(`<div class="dim">Nenhum caso de ${esc(oQue)} <b>na fatia já medida</b> — a base foi
+    varrida e respondeu. Ausência aqui é resultado, não silêncio; a fatia é que limita.</div>`);
+}
+
 async function coparticipacaoRelacionados() {
   const o = $("ff-out");
   if (!o) return;
   const d = await J("/api/fiscal/coparticipacao_relacionados?limite=12");
-  if (!d || d.ok === false || !(d.itens || []).length) return;
+  if (!d || d.ok === false) return;
   const alvo = document.createElement("div");
+  if (!(d.itens || []).length) {
+    alvo.innerHTML = sec("Relacionadas no mesmo certame")
+      + vazioDeclarado(d, "empresas relacionadas disputando o mesmo certame");
+    o.appendChild(alvo); return;
+  }
   alvo.innerHTML = sec(`Relacionadas no mesmo certame (${fmtN(d.total)} pares)`)
     + card(`<table class="tb"><thead><tr><th class="right">certames</th><th class="right">mun.</th>
       <th>empresa A</th><th>empresa B</th><th>elo vigente</th>
@@ -298,8 +319,13 @@ async function recuperacaoJudicial() {
   const o = $("ff-out");
   if (!o) return;
   const d = await J("/api/fiscal/recuperacao_judicial?limite=12");
-  if (!d || d.ok === false || !(d.itens || []).length) return;
+  if (!d || d.ok === false) return;
   const alvo = document.createElement("div");
+  if (!(d.itens || []).length) {
+    alvo.innerHTML = sec("Pagos em recuperação judicial")
+      + vazioDeclarado(d, "credor pago com recuperação judicial no quadro");
+    o.appendChild(alvo); return;
+  }
   alvo.innerHTML = sec(`Pagos em recuperação judicial — ${fmtN(d.total)} credores, ${fmtRc(d.soma)}`)
     + card(`<table class="tb"><thead><tr><th>Credor</th><th class="right">UGs</th><th>anos</th>
       <th>como aparece</th><th class="right">pago (OB)</th><th class="right">OBs</th></tr></thead><tbody>`
@@ -2355,6 +2381,8 @@ async function aditivoPrecoce(){
         <td class="right">${x.pct==null?'—':x.pct+'%'}</td>
         <td style="color:${x.acima_do_teto?'var(--red)':'inherit'}">${x.acima_do_teto?'acima do teto de '+x.teto_pct+'%':'dentro'}</td></tr>`).join('')
       +`</tbody></table>`);
+  } else if((d.fonte||{}).ok===false){
+    h+=vazioDeclarado(d,`acréscimo de valor nos primeiros ${d.dias} dias`);
   } else {
     h+=card(`<div class="dim">Nenhum acréscimo de valor nos primeiros ${d.dias} dias <b>na fatia já
       medida</b> — e a fatia é o que importa ler junto: ausência aqui não é ausência no acervo.</div>`);
@@ -2410,8 +2438,13 @@ async function nucleoCartel(){
 async function consorcioVeiculo(){
   const o=$('ff-out'); if(!o) return;
   const d=await J('/api/fiscal/consorcio_veiculo?limite=10');
-  if(!d||d.ok===false||!(d.itens||[]).length) return;
+  if(!d||d.ok===false) return;
   const alvo=document.createElement('div');
+  if(!(d.itens||[]).length){
+    alvo.innerHTML=sec('Um consórcio por certame')
+      +vazioDeclarado(d,'administrador com mais de um consórcio pago');
+    o.appendChild(alvo); return;
+  }
   alvo.innerHTML=sec(`Um consórcio por certame — administrador com vários veículos (${fmtN(d.total)})`)
     +card(`<table class="tb"><thead><tr><th>Administrador</th><th class="right">consórcios</th>
       <th class="right">nos veículos</th><th class="right">+ diretas</th>
