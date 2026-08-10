@@ -2433,6 +2433,37 @@ async function aditivoPrecoce(){
 // díspares é o normal de distribuidora regional — isolados, os dois screens têm falso positivo
 // estrutural. A interseção (vencedor generalista CERCADO de perdedores contumazes) é o que merece
 // a fila. Esta lógica vivia dentro de um main() e por isso nenhuma tela a mostrava.
+// ZERO DOCUMENTO NÃO É PROCESSO VAZIO. O sweep encerrava cada ciclo chamando os zerados de "fora de
+// escopo/vazio" — causa afirmada que ninguém mediu. Enquanto ela é desconhecida, o processo segue
+// ABERTO: nenhuma conclusão de ausência pode se apoiar nele, e R$ 3,77 bi em OB estão atrás disso.
+async function zerosSemCausa(){
+  const o=$('ff-out'); if(!o) return;
+  const d=await J('/api/fiscal/zeros_sem_causa?limite=12');
+  if(!d||d.ok===false) return;
+  const alvo=document.createElement('div');
+  let h=sec(`Processos lidos que voltaram VAZIOS — causa não medida (${fmtN(d.total)})`);
+  if(!(d.itens||[]).length){
+    h+=card('<div class="dim">Nenhum processo zerado sem causa — todo zero do acervo tem motivo registrado.</div>');
+    alvo.innerHTML=h; o.appendChild(alvo); return;
+  }
+  h+=`<div class="grid g2">${kpi(fmtRc(d.valor_ob_sem_causa),'OB atrás dos vazios','var(--rose)','💸',
+      {sobre:'Soma das ordens bancárias <b>contabilizadas</b> dos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar.'})}${
+      kpi(fmtN(d.zeros),'Zerados no total',null,'📄',
+      {sobre:'De '+fmtN(d.processos_com_registro)+' processos com registro de leitura. A maioria tem causa conhecida (restrito, inexistente, ou já capturado por outro caminho); o card mostra os que não têm.'})}</div>`;
+  h+=card(`<table class="tb"><thead><tr><th>causa</th><th class="right">processos</th></tr></thead><tbody>`
+    +Object.entries(d.por_causa||{}).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="right">${fmtN(v)}</td></tr>`).join('')
+    +`</tbody></table>`);
+  if((d.contradicao||[]).length){
+    h+=card(`<div><b>${fmtN(d.contradicao.length)} em contradição</b> — o registro diz que a leitura foi OK
+      e mesmo assim não veio documento nem há arquivo. Se dá para ler, o zero é falha nossa:
+      <span class="dim">${d.contradicao.map(p=>esc(p)).join(' · ')}</span></div>`);
+  }
+  h+=card(`<table class="tb"><thead><tr><th>processo</th><th class="right">OB paga</th></tr></thead><tbody>`
+    +d.itens.map(x=>`<tr><td>${esc(x.processo)}</td><td class="right">${fmtRc(x.valor_ob)}</td></tr>`).join('')
+    +`</tbody></table>`)+leitura(esc(d.ressalva||''));
+  alvo.innerHTML=h; o.appendChild(alvo);
+}
+
 async function nucleoCartel(){
   const o=$('ff-out'); if(!o) return;
   const d=await J('/api/fiscal/nucleo_cartel?limite=10');
