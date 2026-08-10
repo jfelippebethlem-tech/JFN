@@ -33,9 +33,10 @@ _CACHE_DIR = _REPO / "data" / "cache"
 logger = logging.getLogger(__name__)
 
 # mesma régua do nucleo/adaptador_db._tem_sancao_vigente: só sanção IMPEDITIVA conta
-_SQL_IMPEDITIVA = ("(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%suspens%' "
-                   "OR lower(categoria) LIKE '%inid%' OR lower(categoria) LIKE '%proib%' "
-                   "OR lower(categoria) LIKE '%declara%')")
+# a régua do que VEDA contratar mora em `sancao_impeditiva` — multa e publicação extraordinária
+# são penalidades reais que NÃO impedem contratação, e a distinção estava replicada em SQL aqui e
+# no `nucleo/adaptador_db`. Cópias idênticas hoje; este import existe para que continuem idênticas.
+from compliance_agent.sancao_impeditiva import SQL_IMPEDITIVA as _SQL_IMPEDITIVA
 
 # OB SIAFE guarda data DD/MM/AAAA (string) — converter p/ ISO na consulta
 _OB_ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"

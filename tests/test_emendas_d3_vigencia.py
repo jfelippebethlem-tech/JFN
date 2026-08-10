@@ -85,3 +85,22 @@ def test_match_por_raiz_de_cnpj_rebaixa(con):
     _sancao(con, doc="11111111000111", ini="2023-01-01", fim="2033-01-01")
     a = _um(con)
     assert a["evidencias"]["match_exato"] is False and a["risco"] == 7
+
+
+def test_sancao_vigente_mas_NAO_impeditiva_nao_acusa(con):
+    """Multa do CNEP e publicação extraordinária são penalidades reais que NÃO vedam contratar.
+    Medido: 10 dos 60 vigentes (16,7%) eram desses, saindo com o mesmo risco 9 dos impedimentos."""
+    _favorecido(con, "E2024")
+    con.execute("insert into sancoes_federais values ('CNEP','11111111000111','ALFA LTDA','Multa',"
+                "'2023-01-01','2033-01-01','CGU')")
+    a = _um(con)
+    assert a["evidencias"]["vigencia_na_emenda"] == "nao_impeditiva"
+    assert a["risco"] == 4
+    assert "NÃO veda contratar" in a["descricao"]
+
+
+def test_publicacao_extraordinaria_tambem_nao_impede(con):
+    _favorecido(con, "E2024")
+    con.execute("insert into sancoes_federais values ('CNEP','11111111000111','ALFA LTDA',"
+                "'Publicação extraordinária da decisão condenatória','2023-01-01','2033-01-01','CGU')")
+    assert _um(con)["evidencias"]["vigencia_na_emenda"] == "nao_impeditiva"

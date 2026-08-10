@@ -124,6 +124,8 @@ def d3_favorecido_sancionado(con) -> list[dict]:
     # ~600 milhões de comparações por corrida, numa máquina de 2 vCPU. Dois dicionários (por
     # documento e por raiz de CNPJ) fazem o mesmo em segundos, e o resultado é idêntico porque a
     # regra de casamento é exatamente essa: documento igual, ou raiz igual quando os dois são CNPJ.
+    from compliance_agent.sancao_impeditiva import e_impeditiva as _impeditiva
+
     achados = []
     por_doc: dict[str, list] = {}
     por_raiz: dict[str, list] = {}
@@ -167,7 +169,16 @@ def d3_favorecido_sancionado(con) -> list[dict]:
         else:
             vigencia, risco = "vigente", (9 if exato else 7)
 
+        # VIGENTE não basta: a sanção precisa VEDAR CONTRATAR. Multa do CNEP e publicação
+        # extraordinária da decisão condenatória (Lei 12.846, art. 6º) são penalidades reais que
+        # não impedem contratação. Medido em 2026-08-10: 10 dos 60 vigentes (16,7%) eram desses —
+        # saíam com o mesmo risco 9 dos impedimentos e das inidoneidades. Régua única em
+        # `sancao_impeditiva`, a mesma do `nucleo/adaptador_db` e do `cruzamentos_intel`.
+        if vigencia == "vigente" and not _impeditiva(r["categoria"]):
+            vigencia, risco = "nao_impeditiva", 4
+
         rotulo = {"vigente": "Favorecido sancionado",
+                  "nao_impeditiva": "Favorecido com sanção NÃO impeditiva vigente",
                   "posterior": "Favorecido sancionado APÓS a emenda",
                   "encerrada": "Favorecido com sanção encerrada antes da emenda",
                   "indeterminada": "Favorecido sancionado (vigência não apurada)"}[vigencia]
@@ -177,6 +188,10 @@ def d3_favorecido_sancionado(con) -> list[dict]:
                           f"{ini - (ano_e or ini)} ano(s) DEPOIS da emenda de {ano_e}. Serve de "
                           "contexto sobre o favorecido, não de irregularidade na emenda"),
             "encerrada": (f"NÃO é acusação: a sanção terminou em {fim}, antes da emenda de {ano_e}"),
+            "nao_impeditiva": (f"A sanção estava vigente, mas é '{r['categoria']}' — categoria que "
+                               "NÃO veda contratar (multa e publicação extraordinária são "
+                               "penalidades, não impedimento). Não sustenta acusação de "
+                               "contratação irregular"),
             "indeterminada": ("Vigência não apurada — falta o ano da emenda ou a data da sanção; "
                               "INDISPONÍVEL, não confirmação"),
         }[vigencia]
