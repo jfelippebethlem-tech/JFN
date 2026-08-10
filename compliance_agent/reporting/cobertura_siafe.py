@@ -224,9 +224,23 @@ def medir(*, db: str | Path | None = None) -> dict[str, Any]:
     parciais = _parciais_por_numero_de_ob(caminho, {(str(u), str(a)) for u, a, _, _ in pares
                                                     if _ == TETO_CONSULTA})
 
+    # O NÚMERO DE MANCHETE. Contar pares diz quantas frentes faltam; esta razão diz o TAMANHO do
+    # que falta, e é ela que o leitor precisa ver antes de usar qualquer total do SIAFE.
+    con2 = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+    try:
+        n_siafe = con2.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
+        n_esp = con2.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0] if \
+            "ordens_bancarias" in tem else 0
+    except sqlite3.Error:
+        n_siafe = n_esp = 0
+    finally:
+        con2.close()
+
     return {
         "ok": True, "indisponivel": False,
         "teto_consulta": TETO_CONSULTA,
+        "obs_siafe_total": n_siafe, "obs_espelho_total": n_esp,
+        "pct_do_espelho": round(100.0 * n_siafe / n_esp, 1) if n_esp else None,
         "pares_avaliados": len(pares),
         "pares_truncados": len(truncados),
         "obs_faltando_ao_menos": sum(t["obs_faltando_ao_menos"] for t in truncados),

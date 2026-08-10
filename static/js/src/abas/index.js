@@ -735,6 +735,9 @@ export async function renderInstrumentacao(){
       `<b>${t.pct_ausente}% da amostra ausente</b> <span class="dim">${fmtN(t.obs_siafe)} linhas no SIAFE · espelho tem ${fmtN(t.obs_espelho_tfe)}</span></div>`).join('');
     const nunca=(tr.parciais||[]).filter(x=>x.estado==='nunca_coletado').length;
     h+=card(`<div class="grid g3">
+        <div><div class="dim">A fonte canônica tem, do que o espelho conhece</div>
+          <div style="font-size:1.5rem;font-weight:700;color:${(tr.pct_do_espelho||0)<80?'var(--red)':'inherit'}">${tr.pct_do_espelho==null?'—':tr.pct_do_espelho+'%'}
+          <span class="dim" style="font-size:.9rem">${fmtN(tr.obs_siafe_total||0)} de ${fmtN(tr.obs_espelho_total||0)} OBs</span></div></div>
         <div><div class="dim">Pares com coleta INTERROMPIDA</div><div style="font-size:1.5rem;font-weight:700;color:var(--red)">${fmtN((tr.parciais||[]).filter(x=>x.estado==='parcial').length)}</div></div>
         <div><div class="dim">Pares NUNCA coletados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(nunca)}</div></div>
         <div><div class="dim">Parados no teto de ${tr.teto_consulta}</div><div style="font-size:1.5rem;font-weight:700">${fmtN(tr.pares_truncados)} <span class="dim" style="font-size:.9rem">de ${fmtN(tr.pares_avaliados)}</span></div></div>
