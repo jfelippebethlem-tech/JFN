@@ -66,10 +66,11 @@ trap 'rm -f "$PIDF"' EXIT
 # da fila em meses — a prioridade correta virava fome permanente. A cada 4ª passada eles vêm antes.
 VEZF=data/.siafe_dreno_vez
 VEZ=$(( $(cat "$VEZF" 2>/dev/null | tr -dc '0-9' | tail -c 9) + 1 ))
-# MAX=0 é ENSAIO (só imprime a fila). Gravar o contador ali CONSOME a passada de cota sem drenar
-# nada — foi o que aconteceu no primeiro teste desta guarda. O ensaio mostra o que a próxima
-# passada faria; quem gasta a vez é quem trabalha.
-[ "$MAX" = "0" ] || echo "$VEZ" > "$VEZF"
+# QUEM GASTA A VEZ É QUEM TRABALHA. O contador NÃO é gravado aqui: é gravado no fim, e só se a
+# passada tiver drenado ao menos um par. Duas vezes já queimei a cota sem drenar nada — no ensaio
+# (MAX=0, que só lista) e na passada das 08:50 de 2026-08-10, que viu load 6 e parou logo após
+# montar a fila. Se a carga estiver alta justamente nas passadas de cota, os nunca coletados voltam
+# à inanição que esta guarda existe para impedir — e ninguém percebe, porque o contador anda.
 if [ $(( VEZ % 4 )) -eq 0 ]; then export PRIORIZAR_NUNCA=1; say "passada $VEZ — cota dos nunca coletados"; fi
 
 # A LISTA SAI DO MEDIDOR, não de um teste de contagem redonda. Contagem redonda é a assinatura do
@@ -178,5 +179,11 @@ done
 # ferramenta RETIRA o aviso da nota cujas unidades já foram todas drenadas.
 if [ "$feitos" -gt 0 ]; then
   $PY -m tools.vault_aviso_piso_siafe --aplicar >> "$LOG" 2>&1 || say "aviso do vault falhou (segue)"
+fi
+# a vez só é consumida por passada que trabalhou (ver a nota do contador, acima)
+if [ "$feitos" -gt 0 ]; then
+  echo "$VEZ" > "$VEZF"
+else
+  say "vez $VEZ NÃO consumida (0 pares drenados) — a próxima passada repete esta prioridade"
 fi
 say "fim ($feitos par(es) nesta passada)"
