@@ -93,3 +93,13 @@ def test_um_centavo_acima_do_teto_E_estouro(db):
     d = aditivos_estouro(db_path=db)
     k5 = next(a for a in d["achados"] if a["contrato"] == "K5")
     assert k5["estoura_teto"] is True
+
+
+def test_declara_que_a_base_e_o_inicial_CRU(db):
+    """O art. 125 mede sobre o "valor inicial ATUALIZADO"; esta varredura roda sobre todo o PNCP,
+    onde não há índice. Sem declarar a base, um percentual rente ao teto acusa ilegalidade que pode
+    não existir — foi o que quase aconteceu com o VR Benefícios (nosso 26,4% × "25%" declarado no
+    próprio termo, sobre base atualizada)."""
+    a = aditivos_estouro(db_path=db)["achados"][0]
+    assert "atualizado" in a["base_do_percentual"]
+    assert "valor_inicial" in a["base_do_percentual"]

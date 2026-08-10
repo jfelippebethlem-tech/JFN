@@ -727,6 +727,15 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                 "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
                 "valor_inicial": vi, "valor_global": vg, "acrescimo": round(vg - vi, 2),
                 "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": int(teto * 100),
+                # O art. 125 mede sobre o "valor inicial ATUALIZADO", e aqui a base é o inicial CRU:
+                # a varredura roda sobre todo o PNCP, onde não há índice nem data-base para corrigir.
+                # O efeito é superestimar. Medido em 2026-08-10 no caso VR Benefícios: o termo declara
+                # "acréscimo de 25%" e R$ 20.000 é exatamente 25% de R$ 80.000 — a unidade usou o
+                # valor atualizado, e o nosso 26,4% acusava estouro num aditivo LÍCITO. Quem tem o
+                # índice é o `x1_crescimento_aditivo` (recebe `indice_atualizacao` do contexto dos
+                # autos); aqui a base sai DECLARADA para ninguém ler o percentual como definitivo.
+                "base_do_percentual": "valor_inicial (NÃO atualizado — o art. 125 mede sobre o "
+                                      "atualizado; percentual rente ao teto pode ser lícito)",
                 "estoura_teto": estouro,
                 "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
                 "acrescimo_confirmado": bool(confirmado),
