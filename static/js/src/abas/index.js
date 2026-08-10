@@ -165,7 +165,7 @@ export async function filaFiscal(soOsint){
   (async () => {
     for (const f of [taxaPorUnidade, fimDeExercicio, concentracaoPorGrupo,
                      coparticipacaoRelacionados, recuperacaoJudicial, aditivoPrecoce,
-                     nucleoCartel]) {
+                     nucleoCartel, consorcioVeiculo]) {
       try { await f(); } catch (e) { console.warn('painel de padrão falhou:', e); }
     }
   })();
@@ -2401,4 +2401,28 @@ async function nucleoCartel(){
   }
   h+=leitura(esc(d.ressalva||''));
   alvo.innerHTML=h; o.appendChild(alvo);
+}
+
+// UM VEÍCULO POR CERTAME. A concentração por grupo diz QUANTO um grupo leva numa unidade; o quadro
+// societário diz COMO a diversidade de CNPJs se forma — consórcios constituídos um a um, com as
+// mesmas empresas dentro e o mesmo administrador. E o alcance atravessa unidades, que o recorte
+// por UG não mostra. Consórcio é lícito (art. 15); o que se lê aqui é a REPETIÇÃO.
+async function consorcioVeiculo(){
+  const o=$('ff-out'); if(!o) return;
+  const d=await J('/api/fiscal/consorcio_veiculo?limite=10');
+  if(!d||d.ok===false||!(d.itens||[]).length) return;
+  const alvo=document.createElement('div');
+  alvo.innerHTML=sec(`Um consórcio por certame — administrador com vários veículos (${fmtN(d.total)})`)
+    +card(`<table class="tb"><thead><tr><th>Administrador</th><th class="right">consórcios</th>
+      <th class="right">pago (OB)</th><th class="right">UGs</th>
+      <th>núcleo presente em TODOS</th></tr></thead><tbody>`
+      +d.itens.map(x=>`<tr>
+        <td>${esc((x.administrador||'').slice(0,34))}</td>
+        <td class="right" style="font-weight:800;color:${x.n_consorcios>=4?'var(--red)':(x.n_consorcios>=3?'var(--amber)':'inherit')}">${x.n_consorcios}</td>
+        <td class="right">${fmtRc(x.total)}</td>
+        <td class="right dim">${x.n_ugs}</td>
+        <td style="font-size:12px">${(x.nucleo_comum||[]).map(n=>esc(n.slice(0,30))).join('<br>')||'<span class="dim">—</span>'}</td></tr>`).join('')
+      +`</tbody></table>`)
+    +leitura(esc(d.ressalva||''));
+  o.appendChild(alvo);
 }

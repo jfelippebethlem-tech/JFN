@@ -760,6 +760,34 @@ def api_aditivo_precoce(dias: int = 90, min_acrescimo: float = 50_000.0, limite:
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/consorcio_veiculo")
+def api_consorcio_veiculo(min_consorcios: int = 2, min_valor: float = 1_000_000.0,
+                          limite: int = 15):
+    """Um CONSÓRCIO por certame — o mesmo núcleo em veículos diferentes.
+
+    A concentração por grupo diz QUANTO um grupo leva numa unidade; não diz COMO a diversidade de
+    CNPJs se forma. O quadro societário diz: consórcios constituídos um por certame, com as mesmas
+    empresas dentro e o mesmo administrador. E o alcance atravessa unidades — o que o recorte por
+    UG, sozinho, não mostra.
+
+    Consórcio é lícito (art. 15 da Lei 14.133) e administrar vários também. O que se mede é a
+    REPETIÇÃO do veículo, com o núcleo comum ao lado para o leitor julgar.
+    """
+    try:
+        from tools.screen_consorcio_veiculo import RESSALVA, medir
+
+        mc, mv = max(1, int(min_consorcios)), float(min_valor)
+        itens = _cache(f"consorcio_veic:{mc}:{mv}",
+                       lambda: medir(min_consorcios=mc, min_valor=mv))
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "itens": itens[:max(1, min(int(limite), 100))], "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("consorcio_veiculo falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/nucleo_cartel")
 def api_nucleo_cartel(min_part: int = 8, min_ramos: int = 4, limite: int = 12):
     """Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — a interseção, não cada screen.

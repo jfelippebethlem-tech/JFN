@@ -32,6 +32,7 @@ ESPERADOS = (
     "pagos em recuperação judicial",
     "aditivo de valor nos primeiros",
     "núcleo de arranjo",
+    "um consórcio por certame",
 )
 
 
