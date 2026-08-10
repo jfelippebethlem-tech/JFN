@@ -21,12 +21,15 @@ daquela unidade seria alarme genérico — e alarme genérico ninguém lê.
 from __future__ import annotations
 
 import argparse
+import logging
 import re
 import sqlite3
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 CASOS = Path.home() / "vault" / "casos"
+logger = logging.getLogger(__name__)
+
 MARCA = "<!-- piso-siafe -->"
 _FIM = re.compile(rf"{re.escape(MARCA)}\n(?:>.*\n)+\n?", re.M)
 CONTAGENS_DE_TETO = (1000, 2000, 3000, 5000)
@@ -66,8 +69,11 @@ def travados(db: str = "") -> dict[str, list[int]]:
             anos = fora.setdefault(str(p["ug"]), [])
             if int(p["exercicio"]) not in anos:
                 anos.append(int(p["exercicio"]))
-    except (KeyError, TypeError, ValueError, sqlite3.Error):
-        pass                               # sem o medidor, fica o critério antigo (nunca zero)
+    except (KeyError, TypeError, ValueError, sqlite3.Error) as exc:
+        # sem o medidor fica o critério antigo (contagem redonda) — o aviso sai MENOR do que
+        # deveria, e quem lê a nota precisa poder descobrir por quê.
+        logger.warning("cobertura_siafe indisponível — só os pares de contagem redonda entram "
+                       "no aviso de piso (%s)", exc)
     return {u: sorted(a) for u, a in fora.items()}
 
 
