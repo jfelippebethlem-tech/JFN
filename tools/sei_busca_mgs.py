@@ -128,21 +128,51 @@ async def main():
                 if len(achados) == antes:  # não cresceu → fim
                     break
             pagamentos = {n: t for n, t in achados.items() if re.search(r"pagament", t, re.I)}
-            print(json.dumps({"ok": True, "termo": TERMO, "modo": ("interessado" if INTERESSADO else "fulltext"),
+            _saida = {"ok": True, "termo": TERMO, "modo": ("interessado" if INTERESSADO else "fulltext"),
                               "considerar_docs": DOCS, "setup": setup, "interessado_dbg": inter_dbg,
                               "diag_submit": diag, "n_registros": reg, "n_total": len(achados),
                               "n_pagamentos": len(pagamentos),
                               "pagamentos": dict(sorted(pagamentos.items())),
-                              "todos": dict(sorted(achados.items()))},
-                             ensure_ascii=False, indent=1))
+                              "todos": dict(sorted(achados.items()))}
+            _registrar({k: v for k, v in _saida.items() if k != "todos"}
+                       | {"n_todos": len(achados)})
+            print(json.dumps(_saida, ensure_ascii=False, indent=1))
         finally:
             await b.close()
+
+
+def _registrar(payload: dict) -> None:
+    """Grava SEMPRE o resultado em disco, inclusive a recusa do guard.
+
+    Quem chama esta ferramenta pelo sweep lê o `n_total` do stdout e descarta o resto. Quando o
+    CONTROLE POSITIVO não retorna, o ciclo aborta corretamente — mas sem nada em disco não há como
+    saber POR QUÊ (guard? sessão tomada? seletor?). Medido em 2026-08-10 às 18:52: a busca abortou
+    dizendo "controle positivo não devolveu contagem válida" e o motivo se perdeu com o stdout.
+    """
+    import datetime
+    import pathlib
+    import re as _re
+    try:
+        base = pathlib.Path("/home/ubuntu/JFN/data/sei_buscas")
+        base.mkdir(parents=True, exist_ok=True)
+        slug = _re.sub(r"[^A-Za-z0-9]+", "_", TERMO)[:40] or "termo"
+        payload = dict(payload)
+        payload["quando"] = datetime.datetime.now().isoformat(timespec="seconds")
+        (base / f"_ultimo_{slug}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
+    except OSError as exc:
+        # registro é diagnóstico e nunca derruba a busca — mas falhar CALADO aqui seria o mesmo
+        # defeito que este registro existe para consertar
+        print(json.dumps({"aviso": f"não consegui gravar o diagnóstico: {exc}"}, ensure_ascii=False),
+              file=sys.stderr)
 
 
 if __name__ == "__main__":
     ok, motivo = preflight()
     if not ok:
-        print(json.dumps({"ok": False, "vm_guard": motivo})); sys.exit(1)
+        recusa = {"ok": False, "vm_guard": motivo}
+        _registrar(recusa)
+        print(json.dumps(recusa)); sys.exit(1)
     cleanup_orphans()
     try:
         asyncio.run(main())
