@@ -5913,6 +5913,8 @@ void main(){
       <div class="dim" style="margin-top:2px">${esc((x.objeto || "").slice(0, 90))}</div></div>
       <div class="right"><div class="num" style="font-weight:800;color:${forte ? "var(--rose)" : "var(--tx2)"}">${forte ? fmtPct(x.pct) : x.num_aditivos + "×"}</div><div class="dim">${forte ? "acréscimo" : "aditivos"}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">R$ inicial ${fmtRc(x.valor_inicial)} → global ${fmtRc(x.valor_global)}${x.acrescimo_real != null ? ` · acréscimo real ${fmtRc(x.acrescimo_real)}` : ""}</span><b>teto ${x.teto_pct}%</b></div>
+      ${forte ? `<div class="dim" style="font-size:12px;margin-top:4px">${x.acrescimo_confirmado ? "✓ acréscimo <b>confirmado no termo</b> (natureza classificada como valor)" : "⚠ percentual por <b>valor global − inicial</b>, que inclui reajuste e prorrogação — indício, não conclusão"}
+        · base do %: valor inicial <b>não atualizado</b> (o art. 125 mede sobre o atualizado; rente ao teto pode ser lícito)</div>` : ""}
       ${leitura(forte ? `Contrato de <b>${esc(x.fornecedor || "—")}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real != null ? "Acréscimo classificado no termo: " + fmtRc(x.acrescimo_real) + "." : "Separar reajuste do acréscimo no termo aditivo."}` : `${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor || "—")} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
         forte ? "hl" : ""
       );
