@@ -128,11 +128,18 @@ from compliance_agent.reporting.cobertura_siafe import medir
 ug, ano = sys.argv[1], str(sys.argv[2])
 r = medir()
 alvo = {(t["ug"], t["exercicio"]) for t in r.get("truncados", [])}
-alvo |= {(p["ug"], p["exercicio"]) for p in r.get("parciais", []) if p.get("estado") == "parcial"}
+# NUNCA COLETADO TAMBÉM É INCOMPLETO — e este filtro o excluía. O par com ZERO linhas no SIAFE
+# falhava o teste "ainda incompleto?" e era descartado com a mensagem "coleta já completa (0
+# linhas)", que diz o contrário do que zero significa. Foi o que anulou a cota anti-inanição:
+# medido em 2026-08-10 12:52, a passada de cota levou os nunca coletados à cabeça da fila e esta
+# guarda pulou TODOS, um a um, terminando com "0 par(es) nesta passada".
+alvo |= {(p["ug"], p["exercicio"]) for p in r.get("parciais", [])
+         if p.get("estado") in ("parcial", "nunca_coletado")}
 print("sim" if (ug, ano) in alvo else "nao")
 PYEOF
 )
-  [ "$AINDA" = "sim" ] || { say "UG $UG $ANO: coleta já completa ($ANTES linhas) — pulo"; continue; }
+  # a mensagem nomeia o número: "já completa (0 linhas)" era autocontraditória e escondeu o defeito
+  [ "$AINDA" = "sim" ] || { say "UG $UG $ANO: nada a drenar ($ANTES linhas no SIAFE, o medidor não a lista como incompleta) — pulo"; continue; }
   # CHECKPOINT DE COLETA QUEBRADA NÃO VALE. Os arquivos `uggrande_*.json` de junho marcam fatias
   # como feitas, mas foram escritos quando a ingestão usava o cabeçalho errado (as linhas entravam
   # com a chave vazia e sobrava UMA por fatia) e quando a PK apagava a OB de outra unidade. Se a
