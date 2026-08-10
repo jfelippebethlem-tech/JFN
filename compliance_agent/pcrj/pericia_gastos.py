@@ -430,6 +430,16 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
         g = grupos.setdefault((r["cep"], docs), {"anos": set(), "r": r})
         g["anos"].add(r["ano"])
     achados = []
+    # O CEP É O DE HOJE. A tabela `empresas` guarda o cadastro ATUAL (com `updated_at`) e não tem
+    # histórico de endereço: não há como saber onde a empresa estava no ano do contrato. Isso não
+    # invalida o indício — mudança de sede é menos comum que sanção nova —, mas afirmar
+    # "compartilhavam endereço quando concorreram" seria afirmar o que a fonte não diz. A data da
+    # foto viaja com o achado, como já fazem o dossiê (sanção) e o d3 (vigência).
+    try:
+        foto = con.execute("SELECT MAX(updated_at) FROM empresas").fetchone()[0]
+    except Exception:  # noqa: BLE001 — sem a coluna, o achado sai sem a data (e diz que saiu)
+        foto = None
+    quando_foto = str(foto)[:10] if foto else "data não registrada"
     for (cep, docs), g in grupos.items():
         n_no_cep = con.execute("SELECT COUNT(*) FROM empresas WHERE cep=?", (cep,)).fetchone()[0]
         if n_no_cep > cep_popular:
@@ -447,9 +457,13 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
             + ". Empresas concorrentes no mesmo endereço é red flag da lista OCDE 2025 de "
             "combinação de propostas (bid rigging). CEP cobre trecho de logradouro (não um "
             "imóvel) — corroborar com QSA, telefone/e-mail de cadastro e participação nos "
-            "mesmos certames. (fontes: PNCP + cadastro local RFB)",
+            "mesmos certames. ATENÇÃO À DATA: o CEP é o do cadastro ATUAL (foto de "
+            f"{quando_foto}); a base não guarda histórico de endereço, então co-localização NA "
+            "ÉPOCA do certame não está estabelecida — é o que se pede conferir. "
+            "(fontes: PNCP + cadastro local RFB)",
             {"subtipo": "coendereco", "cep": cep, "fornecedores": list(docs), "anos": sorted(g["anos"]),
-             "n_empresas_no_cep_base": n_no_cep}))
+             "n_empresas_no_cep_base": n_no_cep,
+             "cep_e_de": quando_foto, "coendereco_na_epoca": "nao_apurado"}))
     return achados
 
 

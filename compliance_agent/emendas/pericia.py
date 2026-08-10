@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 
 from .camara import norm_nome
 
@@ -272,8 +273,31 @@ def d4_favorecido_fantasma(con, avaliar_cnpj=None, valor_minimo: float = D4_VALO
 
 # ── D5 — retroalimentação eleitoral (doador ∈ QSA do favorecido) ────────────
 def d5_retroalimentacao_eleitoral(con) -> list[dict]:
+    """Doador de campanha do AUTOR da emenda que é sócio do FAVORECIDO dela.
+
+    COBERTURA, e ela é pequena: a ponte é o NOME do candidato contra o nome normalizado do autor
+    da emenda. Medido em 2026-08-10: **8 dos 130 autores (6,2%)** casam com algum candidato nas
+    542.244 doações da base. Um "0 achados" aqui fala sobre 6% dos autores, não sobre o Estado — e
+    até hoje saía como `ok: 0 achado(s)`, indistinguível de "varri tudo e está limpo".
+
+    A cobertura passa a viajar com o resultado (atributo `cobertura` da própria função, lido pelo
+    orquestrador), porque detector quase cego que se declara `ok` é a mesma família do zero sem
+    causa.
+    """
     con.create_function("jfn_norm", 1, norm_nome)
     achados = []
+    try:
+        autores = con.execute("select count(distinct autor_norm) from emendas").fetchone()[0]
+        casam = con.execute(
+            "select count(*) from (select distinct jfn_norm(nome_candidato) n "
+            "                      from doacoes_eleitorais) x "
+            "join (select distinct autor_norm a from emendas) y on x.n = y.a").fetchone()[0]
+        d5_retroalimentacao_eleitoral.cobertura = (
+            f"{casam} de {autores} autor(es) de emenda casam com candidato na base de doações "
+            f"({100.0 * casam / autores:.1f}%) — o resto é INDISPONÍVEL, não limpo"
+            if autores else "sem emendas na base")
+    except sqlite3.Error as exc:
+        d5_retroalimentacao_eleitoral.cobertura = f"cobertura não medida: {exc}"
     rows = con.execute("""
         select e.codigo, e.autor_raw, e.autor_norm,
                f.documento_favorecido, f.nome_favorecido,
@@ -359,7 +383,10 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
     for nome, fn in _DETECTORES.items():
         try:
             res = fn(con)
-            cobertura[nome] = f"ok: {len(res)} achado(s)"
+            # detector que sabe da própria cegueira anexa `cobertura`; sem isso, `ok: 0 achado(s)`
+            # é indistinguível de "varri tudo e está limpo" (ver d5, que enxerga 6,2% dos autores)
+            extra = getattr(fn, "cobertura", "")
+            cobertura[nome] = f"ok: {len(res)} achado(s)" + (f" — {extra}" if extra else "")
             achados.extend(res)
         except Exception as e:
             logger.exception("detector %s falhou", nome)
