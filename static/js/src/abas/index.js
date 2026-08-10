@@ -776,15 +776,28 @@ export async function renderInstrumentacao(){
       `<div class="kv"><span class="k">UG ${esc(t.ug)} · exercício ${esc(t.exercicio)}</span>`+
       `<b>${t.pct_ausente}% da amostra ausente</b> <span class="dim">${fmtN(t.obs_siafe)} linhas no SIAFE · espelho tem ${fmtN(t.obs_espelho_tfe)}</span></div>`).join('');
     const nunca=(tr.parciais||[]).filter(x=>x.estado==='nunca_coletado').length;
+    /* TERCEIRO ESTADO: coletado e INUTILIZÁVEL. A coleta de junho do SIAFE 1 gravou por posição
+       (19 colunas lá, 23 no SIAFE 2): o valor foi parar em `nome_credor` e `valor` ficou 0,00.
+       12.073 linhas da UG 010100, 2016-2023, escondendo R$ 3,41 bi — e o par passava por COBERTO,
+       porque `numero_ob` é a 1ª coluna e foi gravado certo. É o pior dos três: não parece lacuna. */
+    const desl=(tr.parciais||[]).filter(x=>x.estado==='deslocado');
     h+=card(`<div class="grid g3">
         <div><div class="dim">A fonte canônica tem, do que o espelho conhece</div>
           <div style="font-size:1.5rem;font-weight:700;color:${(tr.pct_do_espelho||0)<80?'var(--red)':'inherit'}">${tr.pct_do_espelho==null?'—':tr.pct_do_espelho+'%'}
           <span class="dim" style="font-size:.9rem">${fmtN(tr.obs_siafe_total||0)} de ${fmtN(tr.obs_espelho_total||0)} OBs</span></div></div>
         <div><div class="dim">Pares com coleta INTERROMPIDA</div><div style="font-size:1.5rem;font-weight:700;color:var(--red)">${fmtN((tr.parciais||[]).filter(x=>x.estado==='parcial').length)}</div></div>
         <div><div class="dim">Pares NUNCA coletados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(nunca)}</div></div>
+        <div><div class="dim">Pares com colunas DESLOCADAS</div><div style="font-size:1.5rem;font-weight:700;color:${desl.length?'var(--red)':'inherit'}">${fmtN(desl.length)}
+          <span class="dim" style="font-size:.9rem">${fmtN(desl.reduce((s0,x)=>s0+(x.obs_deslocadas||0),0))} linhas</span></div></div>
         <div><div class="dim">Parados no teto de ${tr.teto_consulta}</div><div style="font-size:1.5rem;font-weight:700">${fmtN(tr.pares_truncados)} <span class="dim" style="font-size:.9rem">de ${fmtN(tr.pares_avaliados)}</span></div></div>
       </div>
       <div style="margin-top:8px">${pp}</div>
+      ${desl.length?`<div class="warn" style="margin-top:8px"><b>Coletado, porém INUTILIZÁVEL</b> —
+        ${fmtN(desl.length)} par(es) com os campos deslocados: o valor está gravado no campo do nome
+        do credor e <b>a coluna de valor lê R$ 0,00</b>. Soma por esses exercícios devolve zero, e
+        cruzamento por credor devolve número onde deveria vir nome. Não é lacuna de coleta — é
+        coleta que passou por completa. ${desl.map(x=>esc(x.ug+'/'+x.exercicio)).join(' · ')}.
+        A cura é RECOLETAR (o parser já foi corrigido); esses pares estão no topo da fila do dreno.</div>`:''}
       <div class="dim" style="margin-top:6px">A contagem redonda é a assinatura do <b>teto de consulta</b>; passada que morre em
         timeout grava o que deu tempo e para num número qualquer, <b>com cara de concluída</b> — e é
         por isso que o segundo detector, que compara NÚMEROS de OB com o espelho, acha muito mais.
