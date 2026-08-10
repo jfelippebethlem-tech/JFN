@@ -329,6 +329,12 @@ def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> li
     from compliance_agent.limites_aditivo import acrescimo_computavel, ato_normativo
 
     # pré-filtro largo pelo MENOR teto possível: nada que possa estourar é descartado no SQL.
+    # LACUNA LATENTE, medida e declarada: o filtro exige que o GLOBAL tenha crescido, e o art. 125
+    # computa acréscimos e supressões SEPARADAMENTE (não se compensam). Um contrato que acresce 40%
+    # e suprime 20% cresce 20% no global e escaparia daqui. Medido em 2026-08-10 sobre todo o
+    # acervo: **zero** casos — a coleta granular é rala demais (82,8% dos termos sem valor) para
+    # produzir a situação. Fica escrito para ninguém confundir "não acontece" com "está coberto":
+    # quando o PNCP passar a publicar valor, isto vira falso negativo real.
     rows = con.execute("""
         select numero_controle_pncp, ano, orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
