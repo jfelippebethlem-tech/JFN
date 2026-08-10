@@ -113,3 +113,16 @@ def test_cobertura_sem_tabela_nao_mente(tmp_path):
     p = tmp_path / "vazio.db"
     sqlite3.connect(p).close()
     assert S.cobertura(db=str(p))["estado"] == "sem_dado"
+
+
+def test_cobertura_declara_o_gargalo_que_LIMITA_nao_o_confortavel(db):
+    """A tela mede "aditivo DE VALOR precoce". Declarar só a cobertura de DATA (95,1% no acervo)
+    fazia "1 achado" parecer conclusão sobre o Estado inteiro, quando 82,8% dos termos não trazem
+    valor nenhum — a folga publicada era a da restrição que não manda (medido 2026-08-10, a
+    cobertura real é 15,3%)."""
+    c = S.cobertura(db=db)
+    assert c["estado"] == "medido"
+    assert c["avaliaveis"] <= c["com_as_duas_datas"], (
+        "avaliáveis não pode passar de quem tem as duas datas — o valor é restrição ADICIONAL")
+    assert c["pct"] <= c["pct_so_datas"]
+    assert "valor_acrescido" in c["gargalo"]

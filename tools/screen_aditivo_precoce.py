@@ -109,9 +109,14 @@ def medir(db: str = "", dias: int = DIAS_PRECOCE,
 def cobertura(db: str = "") -> dict[str, Any]:
     """Quantos termos a casa consegue AVALIAR — sem isto, "0 achados" lê-se como "nada a apurar".
 
-    O sinal depende de duas datas (contrato e termo) e a do termo só passou a ser guardada em
-    2026-08-09; os termos coletados antes disso precisam ser recoletados um a um. Enquanto a
-    recoleta não termina, a tela mede uma fatia — e a fatia tem de sair dita.
+    DUAS restrições, e a que limita NÃO é a que eu declarava. A primeira é a data: o sinal depende de
+    duas (contrato e termo), e a do termo só passou a ser guardada em 2026-08-09. Essa está em 95,1%.
+
+    A segunda é o VALOR, e é ela que manda: o achado é "aditivo **de valor** nos primeiros N dias", e
+    medido em 2026-08-10 **82,8% dos termos trazem `valorAcrescido` zero ou nulo** (o PNCP publica a
+    linha do termo, não o que ela move — ver `limites_de_fonte`). Declarar só a cobertura de data faz
+    "1 achado" parecer conclusão sobre o Estado inteiro quando é conclusão sobre um sexto dele.
+    Publicar a folga errada é pior que não publicar folga nenhuma.
     """
     from compliance_agent.reporting.intel_base import _DB
     con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=60)
@@ -123,12 +128,24 @@ def cobertura(db: str = "") -> dict[str, Any]:
                           "ON c.numero_controle_pncp = a.numero_controle_pncp "
                           "WHERE a.data_assinatura IS NOT NULL "
                           "AND c.data_assinatura IS NOT NULL").fetchone()[0]
+        # o gargalo REAL: sem valor não há "aditivo de valor", por mais datas que existam
+        com_valor = con.execute("SELECT COUNT(*) FROM contrato_aditivo a JOIN pcrj_contratos c "
+                                "ON c.numero_controle_pncp = a.numero_controle_pncp "
+                                "WHERE a.data_assinatura IS NOT NULL "
+                                "AND c.data_assinatura IS NOT NULL "
+                                "AND COALESCE(a.valor_acrescido,0) > 0").fetchone()[0]
     except sqlite3.OperationalError:
         return {"estado": "sem_dado"}
     finally:
         con.close()
-    return {"estado": "medido", "termos": tot, "com_data_do_termo": com, "avaliaveis": par,
-            "pct": round(100.0 * par / tot, 1) if tot else 0.0}
+    return {"estado": "medido", "termos": tot, "com_data_do_termo": com,
+            "com_as_duas_datas": par,
+            # `avaliaveis` e `pct` passam a significar o que a tela realmente consegue avaliar: com
+            # data E com valor. Antes diziam 95,1% (só data) e faziam a folga parecer confortável.
+            "avaliaveis": com_valor,
+            "pct": round(100.0 * com_valor / tot, 1) if tot else 0.0,
+            "pct_so_datas": round(100.0 * par / tot, 1) if tot else 0.0,
+            "gargalo": "valor_acrescido ausente ou zero em 82,8% dos termos (limite do PNCP)"}
 
 
 RESSALVA = (
@@ -174,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
         cob = cobertura()
         if cob.get("estado") == "medido":
             print(f"cobertura: {cob['avaliaveis']} de {cob['termos']} termos avaliáveis "
-                  f"({cob['pct']}%) — só quem tem a data do termo E a do contrato")
+                  f"({cob['pct']}%) — com as duas datas E com valor")
         print(f"{len(itens)} aditivo(s) de VALOR nos primeiros {a.dias} dias:")
         for x in itens:
             pct = "—" if x["pct"] is None else f"{x['pct']:5.1f}%"
