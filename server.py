@@ -232,11 +232,13 @@ async def lifespan(app: FastAPI):
                 await anyio.to_thread.run_sync(fn)   # fora do event loop: não trava as rotas
                 await asyncio.sleep(1)
             print("[warmup] telas de padrão aquecidas (fila do fiscal abre instantânea)")
-        except Exception as exc:  # noqa: BLE001 — aquecimento é conforto, nunca requisito
+        except (ImportError, OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
+            # aquecimento é conforto, nunca requisito — mas o motivo tem de sair, senão a tela
+            # lenta na primeira visita vira mistério
             print(f"[warmup] telas de padrão não aquecidas (não-fatal): {exc.__class__.__name__}")
     try:
         asyncio.create_task(_warmup_padroes())
-    except Exception as exc:
+    except RuntimeError as exc:              # sem event loop rodando — só isso pode falhar aqui
         logger.debug("warmup das telas de padrão não agendado: %s", exc)
 
     # Guard de idle: encerra o Chromium ocioso após N min (§6, evita o leak de browser 24h numa VM sem swap).
