@@ -29,6 +29,26 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# CACHE DAS TELAS DE PADRÃO. Elas varrem o acervo inteiro (a de coparticipação cruza 82.941
+# licitantes com o QSA) e a API é single-process: uma rota pesada SÍNCRONA bloqueia o event loop e
+# põe todas as outras na fila. Medido em 2026-08-09: com os seis cards da fila do fiscal pedindo ao
+# mesmo tempo, o `fim_de_exercicio` não respondeu em 300 s — não por ser lento, mas por estar
+# esperando a vez. O acervo muda por coleta, não por requisição; TTL de 1 h como nas rotas pesadas
+# de `investigacao`.
+_CACHE: dict[str, tuple[float, object]] = {}
+_TTL_PADRAO = 3600
+
+
+def _cache(chave: str, calcular, ttl: int = _TTL_PADRAO):
+    import time as _t
+    v = _CACHE.get(chave)
+    if v and (_t.time() - v[0]) < ttl:
+        return v[1]
+    val = calcular()
+    _CACHE[chave] = (_t.time(), val)
+    return val
+
+
 def _db_ro() -> sqlite3.Connection:
     from compliance_agent.reporting.intel_base import _DB
     return sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
@@ -692,7 +712,9 @@ def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
             from compliance_agent.reporting.cobertura_siafe import estado_do_par
             from compliance_agent.ugs import nome_canonico   # caminho único p/ nome de unidade
 
-            itens = ranking(con, ano=ano or None, limite=max(1, min(int(limite), 40)))
+            lim = max(1, min(int(limite), 40))
+            itens = _cache(f"conc_grupo:{ano}:{lim}",
+                           lambda: ranking(con, ano=ano or None, limite=lim))
             # cobertura POR LINHA: cada UG tem a sua, e o ranking mistura base completa com base
             # 65% ausente. Sem a coluna, o leitor compara frações que não são comparáveis.
             return JSONResponse({"ok": True, "ano": ano or None, "itens": [{
@@ -726,7 +748,8 @@ def api_aditivo_precoce(dias: int = 90, min_acrescimo: float = 50_000.0, limite:
     try:
         from tools.screen_aditivo_precoce import RESSALVA, cobertura, medir
 
-        itens = medir(dias=max(1, int(dias)), min_acrescimo=float(min_acrescimo))
+        itens = _cache(f"adit_prec:{dias}:{min_acrescimo}",
+                       lambda: medir(dias=max(1, int(dias)), min_acrescimo=float(min_acrescimo)))
         return JSONResponse({
             "ok": True, "total": len(itens), "dias": int(dias),
             "itens": itens[:max(1, min(int(limite), 200))],
@@ -752,7 +775,7 @@ def api_recuperacao_judicial(min_valor: float = 100_000.0, limite: int = 20):
     try:
         from tools.screen_recuperacao_judicial import RESSALVA, medir
 
-        itens = medir(min_valor=float(min_valor))
+        itens = _cache(f"recjud:{min_valor}", lambda: medir(min_valor=float(min_valor)))
         return JSONResponse({
             "ok": True, "total": len(itens),
             "soma": round(sum(x["total"] for x in itens), 2),
@@ -778,7 +801,8 @@ def api_coparticipacao_relacionados(min_certames: int = 2, limite: int = 20):
     try:
         from tools.screen_coparticipacao_relacionados import RESSALVA, medir
 
-        itens = medir(min_certames=max(1, int(min_certames)))
+        mc = max(1, int(min_certames))
+        itens = _cache(f"coparticipa:{mc}", lambda: medir(min_certames=mc))
         return JSONResponse({
             "ok": True, "total": len(itens),
             "itens": itens[:max(1, min(int(limite), 200))],
@@ -803,7 +827,7 @@ def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite
     try:
         from tools.screen_fim_de_exercicio import medir
 
-        itens = medir(min_valor=min_valor, pct=pct)
+        itens = _cache(f"fim_exerc:{min_valor}:{pct}", lambda: medir(min_valor=min_valor, pct=pct))
         return JSONResponse({
             "ok": True, "total": len(itens), "itens": itens[:max(1, min(int(limite), 200))],
             "criterio": {"min_valor": min_valor, "pct_no_fim": pct, "meses": ["11", "12"]},

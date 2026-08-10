@@ -37,6 +37,7 @@ import argparse
 import collections
 import itertools
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -46,7 +47,15 @@ _REPO = Path(__file__).resolve().parent.parent
 MAX_EMPRESAS_POR_ELO = 20
 
 
+@lru_cache(maxsize=None)
 def _norm(s: str) -> str:
+    """Normaliza o nome do licitante — MEMOIZADO.
+
+    A tabela tem 126.251 linhas para **25.361 participantes distintos**: normalizar por linha faz
+    cinco vezes o trabalho necessário, e a normalização (unicode + regex) é o gargalo desta tela.
+    Medido em 2026-08-09: a rota levava 171 s na primeira chamada e a API é single-process — uma
+    rota pesada síncrona põe todas as outras na fila.
+    """
     from tools.resolver_nome_cnpj import normalizar
     return normalizar(s)
 
@@ -110,15 +119,30 @@ def medir(db: str = "", min_certames: int = 2) -> list[dict[str, Any]]:
         con.close()
 
     prevalencia = {doc: len(onde) for doc, onde in vinc.items()}
+    # ÍNDICE INVERTIDO: raiz -> [(doc, data_entrada)]. A primeira versão varria TODOS os documentos
+    # para cada certame — 14 mil certames × dezenas de milhares de sócios = centenas de milhões de
+    # iterações, e a rota levava 171 s (memoizar a normalização não moveu; o laço é que era o
+    # gargalo). Aqui só se olham os sócios das empresas QUE ESTÃO no certame.
+    docs_por_raiz: dict[str, list[tuple[str, str]]] = collections.defaultdict(list)
+    for doc, onde in vinc.items():
+        if prevalencia[doc] > MAX_EMPRESAS_POR_ELO:
+            continue                             # administrador profissional / colisão de máscara
+        for rz, entrada in onde.items():
+            docs_por_raiz[rz].append((doc, entrada))
+
     certames: dict[tuple, set] = collections.defaultdict(set)
     elos: dict[tuple, set] = collections.defaultdict(set)
     for k, cs in por.items():
         dt = quando[k]
-        for doc, onde in vinc.items():
-            if prevalencia[doc] > MAX_EMPRESAS_POR_ELO:
+        por_doc: dict[str, list[str]] = collections.defaultdict(list)
+        for c in cs:
+            for doc, entrada in docs_por_raiz.get(c, ()):
+                if entrada <= dt:                # vínculo VIGENTE na data do certame
+                    por_doc[doc].append(c)
+        for doc, membros in por_doc.items():
+            if len(membros) < 2:
                 continue
-            juntos = sorted(c for c in cs if c in onde and onde[c] <= dt)
-            for a, b in itertools.combinations(juntos, 2):
+            for a, b in itertools.combinations(sorted(membros), 2):
                 certames[(a, b)].add(k)          # SET: dois elos no mesmo certame contam UMA vez
                 elos[(a, b)].add(nome_doc.get(doc, doc))
 
