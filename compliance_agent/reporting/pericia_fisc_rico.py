@@ -41,10 +41,20 @@ _DET_META: dict[str, dict] = {
     },
     "d3_favorecido_sancionado": {
         "rotulo": "D3 · Favorecido sancionado (CEIS/CNEP)",
-        "detecta": "Beneficiário de emenda inscrito em cadastro de sanção federal (impedimento de contratar).",
+        # O rótulo antigo dizia "inscrito em cadastro de sanção federal (impedimento de contratar)"
+        # e o quadro de evidência não trazia a VIGÊNCIA — o entregável seguia afirmando o que o
+        # detector deixou de afirmar em 2026-08-10. Medido: dos 756 casamentos, 696 são de sanção
+        # POSTERIOR à emenda e 10 de categoria que NÃO veda contratar; só 50 estavam vigentes e
+        # impeditivas. Sem o campo na peça, o leitor não distingue os dois.
+        "detecta": ("Beneficiário de emenda inscrito em cadastro de sanção federal. Só acusa quando "
+                    "a sanção estava VIGENTE no ano da emenda E é de categoria que veda contratar "
+                    "(multa e publicação extraordinária não vedam) — os demais casos saem como "
+                    "contexto, com a vigência declarada."),
         "irregularidade": "empresa_sancionada",
         "dispositivos": ["Lei 14.133/2021 art. 14 e art. 156", "Lei 12.846/2013 (CNEP)"],
         "evid": [("cadastro", "Cadastro de sanção", "s"), ("doc", "Favorecido (doc.)", "doc"),
+                 ("vigencia_na_emenda", "Vigência na data da emenda", "s"),
+                 ("sancao_inicio", "Início da sanção", "s"), ("sancao_fim", "Fim da sanção", "s"),
                  ("match_exato", "Correspondência exata (CPF/CNPJ)", "bool")],
     },
     "d4_favorecido_fantasma": {
@@ -74,10 +84,16 @@ _DET_META: dict[str, dict] = {
     },
     "d9_socio_na_folha": {
         "rotulo": "D9 · Sócio de credor na folha do município",
-        "detecta": "Sócio de empresa contratada com vínculo (ou homônimo) na folha de pessoal municipal.",
+        # o vínculo POSTERIOR não descreve a despesa (40,3% dos pares medidos em 2026-08-10)
+        "detecta": ("Sócio de empresa contratada com vínculo (ou homônimo) na folha de pessoal "
+                    "municipal. O achado distingue o sócio que já estava no quadro no exercício da "
+                    "despesa daquele que entrou DEPOIS — este último não a descreve."),
         "irregularidade": "conflito_interesse",
         "dispositivos": ["Lei 14.133/2021 art. 9º", "Lei 8.429/92 art. 11", "Súmula Vinculante 13"],
         "evid": [("socio", "Sócio", "s"), ("credor", "Credor (CNPJ)", "doc"),
+                 ("vinculo_posterior", "Sócio entrou DEPOIS da despesa", "bool"),
+                 ("entrada_socio_ano", "Ano de entrada no quadro", "s"),
+                 ("ultimo_exercicio", "Último exercício com pagamento", "s"),
                  ("lotacao", "Lotação na folha", "s"), ("match_tipo", "Tipo de correspondência", "s")],
     },
     "d8_credor_recem_aberto": {
@@ -98,10 +114,15 @@ _DET_META: dict[str, dict] = {
     },
     "d12_coendereco_concorrentes": {
         "rotulo": "D12 · Co-endereço entre fornecedores do mesmo órgão",
-        "detecta": "Fornecedores concorrentes contratados pelo mesmo órgão compartilhando o mesmo CEP (red flag OCDE 2025 de bid rigging).",
+        # o CEP é o do cadastro ATUAL: a base não tem histórico de endereço
+        "detecta": ("Fornecedores concorrentes contratados pelo mesmo órgão compartilhando o mesmo "
+                    "CEP (red flag OCDE 2025 de bid rigging). O CEP é o do cadastro ATUAL — "
+                    "co-localização NA ÉPOCA do certame não está estabelecida."),
         "irregularidade": "conluio",
         "dispositivos": ["Lei 14.133/2021 art. 9º", "Lei 12.529/2011 art. 36 §3º I"],
         "evid": [("cep", "CEP compartilhado", "s"), ("fornecedores", "Fornecedores (CNPJs)", "lista"),
+                 ("cep_e_de", "Cadastro consultado em", "s"),
+                 ("coendereco_na_epoca", "Co-endereço na época do certame", "s"),
                  ("n_empresas_no_cep_base", "Empresas no CEP (base)", "s")],
     },
     "d11_aditivo_estourado": {
