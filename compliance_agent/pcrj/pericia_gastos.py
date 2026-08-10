@@ -135,7 +135,18 @@ def d7_fracionamento(con, teto: float | None = None,
         # sozinha não. Agora o quanto passou do teto também conta, e o caso RENTE ao teto não
         # ocupa a faixa ALTA: passar 4% do limite é fato jurídico, mas não é a fila do fiscal.
         excesso = soma / teto_janela if teto_janela else 1.0
-        risco = min(9, 5 + min(4, len(melhor) - minimo + 1) + (1 if excesso >= 2 else 0))
+        # O EXCESSO MANDA, a contagem acompanha. A fórmula anterior dava até +4 pela CONTAGEM de
+        # contratos e só +1 pelo excesso: com mediana de 8 contratos o termo saturava e **451 dos
+        # 451** alertas saíam com severidade alta, do rente ao teto ao 21×. Fila de uma coisa só
+        # não é fila — é lista. Medido em 2026-08-10: soma mediana R$ 142.086,45 sobre teto de
+        # R$ 65.492,11 (2,2×), com 186 alertas a menos de 2× e 32 acima de 5×.
+        # Quem decide a gravidade é o quanto se passou do LIMITE LEGAL; a contagem de contratos
+        # corrobora o desenho do fracionamento, mas 20 compras de R$ 3 mil não são mais graves que
+        # 4 de R$ 60 mil.
+        risco = 5
+        risco += 3 if excesso >= 5 else 2 if excesso >= 3 else 1 if excesso >= 1.5 else 0
+        risco += 2 if len(melhor) >= 12 else 1 if len(melhor) >= 6 else 0
+        risco = min(9, risco)
         if excesso < 1.2:
             risco = min(risco, 7)          # 7 = média; nada é escondido, só reordenado
         achados.append(_achado(
