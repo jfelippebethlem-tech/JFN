@@ -61,9 +61,35 @@ def api_siafe_stats():
             con.close()
         from datetime import date as _date
         coletou_hoje = bool(ultima and str(ultima)[:10] == _date.today().isoformat())
+        # QUANTO DISSO É O UNIVERSO. Publicar "R$ X coletados" sem a razão faz o número parecer o
+        # gasto do Estado; medido em 2026-08-09, a fonte canônica tinha 23,6% das OBs que o espelho
+        # conhece, e a coleta sobe a cada drenagem. O detalhe por par sai em
+        # `reporting.cobertura_siafe.medir()` (parciais + nunca coletados).
+        # A RAZÃO É BARATA; o INVENTÁRIO POR PAR não é. Chamar `medir()` aqui levou a rota de
+        # instantânea para **59 s** e a aba do painel passou a cair no "SIAFE indisponível" — o
+        # próprio conserto quebrou a tela que ele queria melhorar. Duas contagens bastam para o
+        # número de manchete; o detalhe por par continua em /api/siafe/truncamento, que é a tela
+        # feita para esperar.
+        cob = {}
+        try:
+            con2 = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            try:
+                n_esp = con2.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0]
+            finally:
+                con2.close()
+            if n_esp:
+                cob = {"pct_do_espelho": round(100.0 * tot[0] / n_esp, 1),
+                       "obs_espelho_total": n_esp,
+                       "nota": ("A fonte canônica é a que tem status e campos ricos, mas está "
+                                "parcialmente coletada — todo total daqui é PISO. O espelho TFE é "
+                                "mais completo em contagem e não publica status. Pares incompletos "
+                                "em /api/siafe/truncamento.")}
+        except sqlite3.Error as _e:
+            logger.warning("cobertura do SIAFE indisponível nesta resposta: %s", _e)
         return JSONResponse({"ok": True, "total": tot[0], "valor_total": round(tot[1] or 0, 2),
                              "por_ano": por_ano, "com_processo": com_processo,
                              "ultima_atualizacao": ultima, "coletou_hoje": coletou_hoje,
+                             "cobertura": cob,
                              "fonte": "SIAFE-Rio 2 / OB Orçamentária (23 colunas: NL, PD, Processo, Credor...)"})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

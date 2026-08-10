@@ -7252,7 +7252,15 @@ void main(){
       null,
       null,
       { sobre: "Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia." }
-    )}</div><div style="height:12px"></div>` + card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+    )}</div><div style="height:12px"></div>`;
+    const cb0 = s.cobertura || {};
+    if (cb0.pct_do_espelho != null) {
+      h += leitura(`Este total é <b>o que a casa já coletou</b>, não o gasto do Estado: a fonte canônica
+      tem <b>${cb0.pct_do_espelho}%</b> das OBs que o espelho conhece
+      (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total || 0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
+      a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
+    }
+    h += card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
     h += `<div style="height:16px"></div>` + await frescorHtml();
     return h;
   }

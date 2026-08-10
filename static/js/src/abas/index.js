@@ -2134,7 +2134,19 @@ export async function renderSiafe(){
   const linhas=(s.por_ano||[]).filter(x=>x.valor>0).map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
   let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas',null,null,
         {sobre:'Ordens bancárias no acervo — pagamento EFETIVO. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida. Só a OB significa que o dinheiro saiu.'})}${kpi(fmtRc(s.valor_total),'Valor total',null,null,
-        {sobre:'Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia.'})}</div><div style="height:12px"></div>`+card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+        {sobre:'Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia.'})}</div><div style="height:12px"></div>`;
+  /* QUANTIFICAR A LACUNA, não só avisar dela. O tooltip dizia "exercício não coletado não entra";
+     o leitor precisa do TAMANHO: medido em 2026-08-09, a fonte canônica tinha 23,6% das OBs que o
+     espelho conhece, e o número sobe a cada drenagem. Sem isto, R$ 86 bi lê-se como o gasto do
+     Estado. */
+  const cb0=s.cobertura||{};
+  if(cb0.pct_do_espelho!=null){
+    h+=leitura(`Este total é <b>o que a casa já coletou</b>, não o gasto do Estado: a fonte canônica
+      tem <b>${cb0.pct_do_espelho}%</b> das OBs que o espelho conhece
+      (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total||0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
+      a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
+  }
+  h+=card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
   h+=`<div style="height:16px"></div>`+await frescorHtml();
   return h;
 }
