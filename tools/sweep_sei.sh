@@ -140,6 +140,34 @@ else
   $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --recaptura --max 5 \
     >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_recaptura rc=$?"
 fi
+# BUSCA DIRIGIDA POR TEXTO — DENTRO do ciclo, porque a sessão itkava é ÚNICA. Rodar
+# `sei_busca_mgs.py` por fora disputa a sessão e devolve ZERO com cara de "não achei": aconteceu em
+# 2026-08-10, quando o CONTROLE POSITIVO ("MGS CLEAN", que sabidamente retorna) voltou 0 durante o
+# ciclo e eu quase registrei "a busca quebrou". Aqui a sessão já é nossa e o browser acabou de ser
+# usado. OPT-IN: sem `data/sei_busca_pedidos.txt` nada acontece — o sweep segue idêntico.
+# O CONTROLE POSITIVO roda SEMPRE junto: sem ele, zero não é resposta, é ausência de resposta.
+PEDIDOS=data/sei_busca_pedidos.txt
+if [ -f "$PEDIDOS" ]; then
+  mkdir -p data/sei_buscas
+  CTRL=$($PRIO timeout 500 $PY tools/sei_busca_mgs.py "MGS CLEAN" 2>/dev/null \
+         | $PY -c "import json,sys;print(json.load(sys.stdin).get('n_total','?'))" 2>/dev/null)
+  say "busca dirigida — controle positivo 'MGS CLEAN': n_total=${CTRL:-erro}"
+  if [ "${CTRL:-0}" = "0" ] || [ -z "${CTRL:-}" ]; then
+    say "busca dirigida ABORTADA: controle positivo nao retornou — qualquer zero seria inconclusivo"
+  else
+    _n=0
+    while IFS= read -r termo; do
+      [ -z "$termo" ] && continue
+      case "$termo" in \#*) continue ;; esac
+      _n=$((_n+1)); [ "$_n" -gt 3 ] && { say "busca dirigida: teto de 3 termos por ciclo"; break; }
+      slug=$(printf '%s' "$termo" | tr -cs 'A-Za-z0-9' '_' | cut -c1-40)
+      $PRIO timeout 500 $PY tools/sei_busca_mgs.py "$termo" > "data/sei_buscas/$slug.json" 2>/dev/null
+      say "busca dirigida '$termo' rc=$? -> data/sei_buscas/$slug.json"
+    done < "$PEDIDOS"
+    mv "$PEDIDOS" "$PEDIDOS.feito"   # pedido CONSUMIDO: nao repete todo ciclo
+  fi
+fi
+
 # FILA DE RECAPTURA POR PROVA DO PARECER — a conferencia que compara a lista de documentos do
 # parecer com a nossa pasta existia, era testada, tinha sido MEDIDA em 03/08 (370 processos) e nao
 # tinha UM UNICO CALLER: virava relatorio no PDF do 360 e morria ali. Sem ela a lacuna de captura
