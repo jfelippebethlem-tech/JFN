@@ -126,3 +126,20 @@ def test_consorcio_nao_conta_como_empresa_direta(db):
     r = {x["administrador"]: x for x in S.medir(db=db)}
     nomes = {d["nome"] for d in r["FILIPE VIEIRA"]["empresas_diretas"]}
     assert not any(n.startswith("CONSORCIO") for n in nomes)
+
+
+def test_consorciado_SEM_a_palavra_no_nome_tambem_entra(db):
+    """O nome sozinho erra: medido no acervo, um consórcio real (OMG Empreendimentos, R$ 430.678)
+    tem "Sociedade Consorciada" no QSA e NÃO traz a palavra no nome do credor. Um em 37 é pouco,
+    mas o defeito é afirmar "todos" sem medir."""
+    con = sqlite3.connect(db)
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES "
+                "('59526366000159','OMG EMPREENDIMENTOS',40000000.0,'Contabilizado','660100')")
+    con.execute("INSERT INTO socios_receita VALUES ('59526366','FILIPE VIEIRA','Administrador')")
+    con.execute("INSERT INTO socios_receita VALUES ('59526366','F P VIEIRA','Sociedade Consorciada')")
+    con.execute("INSERT INTO socios_receita VALUES ('59526366','R C VIEIRA','Sociedade Consorciada')")
+    con.commit(); con.close()
+    r = {x["administrador"]: x for x in S.medir(db=db)}
+    veiculos = {v["nome"] for v in r["FILIPE VIEIRA"]["veiculos"]}
+    assert "OMG EMPREENDIMENTOS" in veiculos, "consorciado sem a palavra no nome ficou de fora"
+    assert r["FILIPE VIEIRA"]["n_consorcios"] == 4

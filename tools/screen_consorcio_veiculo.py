@@ -36,9 +36,12 @@ from typing import Any
 _REPO = Path(__file__).resolve().parent.parent
 MIN_CONSORCIOS = 2
 MIN_VALOR = 1_000_000.0
-# Como o nome do consórcio se apresenta na OB. Não é heurística frágil: no acervo, todo credor
-# consorciado traz a palavra no nome empresarial (é exigência de registro).
+# DOIS sinais, porque o nome sozinho erra. A primeira versão filtrava só pelo nome do credor e o
+# docstring afirmava que nenhum escaparia — medido depois, escapava **um**: a OMG EMPREENDIMENTOS
+# (R$ 430.678,73) tem "Sociedade Consorciada" no QSA e não traz a palavra no nome. Um em 37 é
+# pouco, mas afirmar "todos" sem medir é o defeito, não o tamanho do erro.
 PREFIXOS = ("CONSORCIO%", "CONSÓRCIO%")
+QUALIF_CONSORCIADA = "%onsorciad%"
 
 
 def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
@@ -52,6 +55,13 @@ def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
             consorcios = {r[0]: r[1] for r in con.execute(
                 f"SELECT substr(credor,1,8), MIN(nome_credor) FROM ob_orcamentaria_siafe "
                 f"WHERE {ors} GROUP BY 1", [p.upper() for p in PREFIXOS])}
+            # …e quem o QSA declara consorciado, mesmo sem a palavra no nome
+            for rz, nome in con.execute(
+                    "SELECT substr(o.credor,1,8), MIN(o.nome_credor) FROM ob_orcamentaria_siafe o "
+                    "WHERE substr(o.credor,1,8) IN (SELECT DISTINCT cnpj_basico FROM socios_receita "
+                    "                               WHERE qualificacao_txt LIKE ?) "
+                    "GROUP BY 1", (QUALIF_CONSORCIADA,)):
+                consorcios.setdefault(rz, nome)
         except sqlite3.OperationalError:
             return []
         if not consorcios:
