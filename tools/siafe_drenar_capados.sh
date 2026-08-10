@@ -181,8 +181,13 @@ PYEOF
   # 2026-08-10 na 010100/2016, que saiu de 2.544 linhas tortas e R$ 0,00 para 2.544 linhas certas e
   # R$ 666.741.527,24. Para reparo, o efeito é QUALIDADE, não quantidade.
   TORTAS=$($PY -c "import sqlite3;print(sqlite3.connect('data/compliance.db').execute(\"SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente='$UG' AND exercicio=$ANO AND nome_credor GLOB '*[0-9],[0-9][0-9]' AND nome_credor NOT GLOB '*[A-Za-z]*'\").fetchone()[0])")
-  if [ "${TORTAS:-0}" = "0" ] && [ "${DESLOCADAS_ANTES:-0}" -gt 0 ]; then
-    say "UG $UG $ANO: REPARADO — ${DESLOCADAS_ANTES} linha(s) deslocada(s) → 0 (contagem segue $DEPOIS, rc=$rc)"
+  # REPARO É GRADIENTE, não interruptor. A 1ª versão exigia TORTAS = 0 e a 010100/2020 — que foi de
+  # 2.260 linhas deslocadas para 22, fazendo aparecer R$ 739.925.353,31 — saiu como "SEM GANHO".
+  # Resíduo é esperado: recoleta substitui o que a tela devolve HOJE, e OB que a fonte não mostra
+  # mais fica torta para sempre (ver `limites_de_fonte`). O que conta é ter DIMINUÍDO.
+  if [ "${DESLOCADAS_ANTES:-0}" -gt 0 ] && [ "${TORTAS:-0}" -lt "${DESLOCADAS_ANTES:-0}" ]; then
+    if [ "${TORTAS:-0}" = "0" ]; then _resto=""; else _resto=" (restam ${TORTAS} irreparáveis: a tela não devolve mais esses números)"; fi
+    say "UG $UG $ANO: REPARADO — ${DESLOCADAS_ANTES} linha(s) deslocada(s) → ${TORTAS}${_resto} (contagem segue $DEPOIS, rc=$rc)"
   elif [ "$DEPOIS" -gt "$ANTES" ]; then
     say "UG $UG $ANO: $ANTES → $DEPOIS linhas (rc=$rc)"
   else
