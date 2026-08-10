@@ -56,6 +56,12 @@ itens = [(t["obs_faltando_ao_menos"], t["ug"], t["exercicio"]) for t in r.get("t
 # O que ordena é quanto FALTA de verdade — as OBs que o espelho conhece e a fonte canônica não.
 itens += [(max(0, p["obs_espelho_tfe"] - p["obs_siafe"]), p["ug"], p["exercicio"])
           for p in r.get("parciais", []) if p.get("estado") == "parcial"]
+# NUNCA COLETADOS entram por último (peso negativo): sao lacuna real — testado em 2026-08-09 na
+# UG 246300/2024 (Fundo Estadual de Recursos Hidricos), que estava com ZERO linhas e rendeu 376 OBs
+# e R$ 80,4 mi, ficando `coberto`. Mas vem depois dos parciais, que escondem dado em unidade sobre
+# a qual a casa JA publica numero.
+itens += [(-p["obs_espelho_tfe"], p["ug"], p["exercicio"])
+          for p in r.get("parciais", []) if p.get("estado") == "nunca_coletado"]
 # um par pode estar nas DUAS listas (parou no teto E a amostra acusa ausência) — dedup, senão a
 # passada gasta duas janelas de browser no mesmo alvo
 visto = set()
