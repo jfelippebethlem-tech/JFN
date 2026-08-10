@@ -703,7 +703,22 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                          "encerramento abrupto do slot anterior.")
                     return
                 _log("login OK — varrendo…")
+                # NÃO COMEÇAR O QUE NÃO DÁ PARA TERMINAR. O `timeout -k 120 --foreground 1500` do
+                # sweep manda TERM aos 1500s e KILL 120s depois; `_PARAR` só é lido ENTRE processos,
+                # e uma leitura leva 123s na mediana mas 249s no p90 (máx. medido: 2768s). Quando o
+                # TERM cai no meio de uma leitura longa, a carência estoura e vem o SIGKILL — que
+                # mata o ciclo inteiro antes dos passos finais e apaga a linha de "fim" do log.
+                # Medido em 2026-08-10: **725 ocorrências de rc=137** no histórico do sweep.
+                # Aqui a parada é ANTES de abrir o próximo processo, e o ciclo termina inteiro.
+                t_ciclo = time.time()
+                orcamento_s = int(os.environ.get("SEI_ORCAMENTO_S", "1200") or 0)
                 for i, (proc, nob, tot) in enumerate(fila, 1):
+                    gasto = time.time() - t_ciclo
+                    if orcamento_s and gasto > orcamento_s:
+                        _log(f"ORÇAMENTO de {orcamento_s}s esgotado em {gasto:.0f}s após {i - 1} "
+                             f"processo(s) — paro ANTES de abrir o próximo, para o ciclo chegar "
+                             f"aos passos finais em vez de morrer no SIGKILL.")
+                        break
                     if _PARAR:
                         _log("SIGTERM/timeout — encerrando LIMPO entre processos (browser fecha no finally, sem EPIPE)."); break
                     if PAUSE.exists():
