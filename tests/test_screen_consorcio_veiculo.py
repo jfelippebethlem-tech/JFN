@@ -104,3 +104,25 @@ def test_base_sem_as_tabelas_devolve_vazio(tmp_path):
 def test_ressalva_diz_que_consorcio_e_licito():
     assert "LÍCITA" in S.RESSALVA and "art. 15" in S.RESSALVA
     assert "APARENTE" in S.RESSALVA
+
+
+def test_exposicao_direta_entra_no_total(db):
+    """Ler só os consórcios subestima o comando: o 2º da lista real tem R$ 243,5 mi em empresas
+    que administra FORA de consórcio, contra R$ 107 mi dentro deles."""
+    con = sqlite3.connect(db)
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES "
+                "('99999999000199','LAND SERVICOS LTDA',60000000.0,'Contabilizado','404400')")
+    con.execute("INSERT INTO socios_receita VALUES ('99999999','FILIPE VIEIRA','Administrador')")
+    con.commit(); con.close()
+    r = {x["administrador"]: x for x in S.medir(db=db)}
+    fv = r["FILIPE VIEIRA"]
+    assert fv["total"] == pytest.approx(155_000_000.0), "o total dos VEÍCULOS não muda"
+    assert fv["total_com_diretas"] == pytest.approx(215_000_000.0)
+    assert fv["empresas_diretas"][0]["nome"] == "LAND SERVICOS LTDA"
+
+
+def test_consorcio_nao_conta_como_empresa_direta(db):
+    """O veículo já está no total dos consórcios — contá-lo de novo dobraria o valor."""
+    r = {x["administrador"]: x for x in S.medir(db=db)}
+    nomes = {d["nome"] for d in r["FILIPE VIEIRA"]["empresas_diretas"]}
+    assert not any(n.startswith("CONSORCIO") for n in nomes)

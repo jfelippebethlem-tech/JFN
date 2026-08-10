@@ -71,6 +71,35 @@ def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
         except sqlite3.OperationalError:
             return []
 
+        # EMPRESAS DIRETAS do mesmo administrador — o consórcio é o veículo, mas a exposição da
+        # pessoa inclui o que ela administra fora dele: quem lidera a lista administra seis
+        # consórcios E uma prestadora com 719 OBs.
+        # SÓ as pessoas que já administram consórcio entram na consulta. Varrer todo o QSA de
+        # administradores para depois filtrar levou esta função de segundos para mais de dez
+        # minutos — duas vezes. O universo de interesse é minúsculo; a base, não.
+        diretas: dict[str, list[dict]] = collections.defaultdict(list)
+        interessados = sorted(p for p, r in adm.items() if p and len(r) >= min_consorcios)
+        if interessados:
+            try:
+                mp = ",".join("?" * len(interessados))
+                for pessoa, rz in con.execute(
+                        f"SELECT nome_socio, cnpj_basico FROM socios_receita "
+                        f"WHERE nome_socio IN ({mp}) "
+                        f"AND (qualificacao_txt LIKE '%dministrador%' "
+                        f"     OR qualificacao_txt LIKE '%residente%')", interessados):
+                    if rz in consorcios:
+                        continue
+                    r = con.execute(
+                        "SELECT MIN(nome_credor), COALESCE(SUM(valor),0), COUNT(*) "
+                        "FROM ob_orcamentaria_siafe WHERE substr(credor,1,8)=? "
+                        "AND status='Contabilizado'", (rz,)).fetchone()
+                    if r and (r[1] or 0) > 0:
+                        diretas[str(pessoa).strip()].append(
+                            {"cnpj": rz, "nome": r[0] or "", "pago": round(float(r[1]), 2),
+                             "obs": int(r[2] or 0)})
+            except sqlite3.OperationalError:
+                diretas = collections.defaultdict(list)
+
         pago: dict[str, tuple] = {}
         for rz in consorcios:
             r = con.execute(
@@ -98,9 +127,12 @@ def medir(db: str = "", min_consorcios: int = MIN_CONSORCIOS,
         # o NÚCLEO: empresas presentes em TODOS os veículos — é o que revela "um por certame"
         conjuntos = [set(v["membros"]) for v in veiculos if v["membros"]]
         nucleo = sorted(set.intersection(*conjuntos)) if conjuntos else []
+        dir_ = sorted(diretas.get(pessoa, []), key=lambda d: -d["pago"])[:5]
         fora.append({
             "administrador": pessoa, "n_consorcios": len(rzs), "total": round(total, 2),
             "n_ugs": len(ugs), "ugs": ugs, "nucleo_comum": nucleo, "veiculos": veiculos,
+            "empresas_diretas": dir_,
+            "total_com_diretas": round(total + sum(d["pago"] for d in dir_), 2),
         })
     fora.sort(key=lambda d: (-d["n_consorcios"], -d["total"]))
     return fora
