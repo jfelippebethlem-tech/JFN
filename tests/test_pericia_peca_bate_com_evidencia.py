@@ -39,8 +39,8 @@ def _chaves_reais() -> dict[str, set[str]]:
             for fn in dets.values():
                 try:
                     res = fn(con)
-                except Exception:  # noqa: BLE001 — detector sem fonte não invalida os outros
-                    continue
+                except (sqlite3.Error, KeyError, TypeError, ValueError, OSError):
+                    continue           # detector sem fonte não invalida os outros
                 for a in res[:200]:
                     saida.setdefault(a["detector"], set()).update(a["evidencias"])
     finally:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re as _re_reforma
+import sqlite3
 from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
@@ -144,7 +145,12 @@ def d7_fracionamento(con, teto: float | None = None,
         # corrobora o desenho do fracionamento, mas 20 compras de R$ 3 mil não são mais graves que
         # 4 de R$ 60 mil.
         risco = 5
-        risco += 3 if excesso >= 5 else 2 if excesso >= 3 else 1 if excesso >= 1.5 else 0
+        # A curva do excesso vai até +4 porque o teste da casa (2026-08-09) fixa o caso que importa:
+        # CINCO fatias somando 3× o teto TÊM de ocupar a faixa alta. A minha primeira curva parava
+        # em +2 nesse ponto e devolvia 7 — conservadora demais para um fracionamento que triplica o
+        # limite legal. Referência medida: mediana 1,70×, p75 2,41×, máximo 16,56×.
+        risco += (4 if excesso >= 5 else 3 if excesso >= 3 else
+                  2 if excesso >= 2 else 1 if excesso >= 1.5 else 0)
         risco += 2 if len(melhor) >= 12 else 1 if len(melhor) >= 6 else 0
         risco = min(9, risco)
         if excesso < 1.2:
@@ -461,7 +467,7 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
     # foto viaja com o achado, como já fazem o dossiê (sanção) e o d3 (vigência).
     try:
         foto = con.execute("SELECT MAX(updated_at) FROM empresas").fetchone()[0]
-    except Exception:  # noqa: BLE001 — sem a coluna, o achado sai sem a data (e diz que saiu)
+    except sqlite3.Error:      # base sem a coluna: o achado sai sem a data, e diz que saiu
         foto = None
     quando_foto = str(foto)[:10] if foto else "data não registrada"
     for (cep, docs), g in grupos.items():
