@@ -709,7 +709,13 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             # efeito era falso NEGATIVO: obra nova com 30% de acréscimo passava calada.
             obj = _norm_nome(r["objeto"])
             teto = _teto_acrescimo("reforma" if re.search(r"REFORMA", obj) else None)
-            estouro = pct >= teto
+            # ATÉ 25% é LÍCITO (art. 125: "os acréscimos ... até 25%"). No teto exato o contrato
+            # está DENTRO da lei, e `pct >= teto` acusava ilegalidade onde não havia: medido em
+            # 2026-08-10, QUATRO dos sete estouros com acréscimo granular confirmado estavam em
+            # 25,000000% — mais da metade do que a casa podia afirmar era falso. A tolerância
+            # existe porque `acrescimo/vi` em ponto flutuante devolve 0,25000000000000006 para um
+            # aditivo exatamente no teto; sem ela o `>` não resolveria nada.
+            estouro = pct > teto + 1e-9
             serie = nad >= 3
             if not (estouro or serie):
                 continue
@@ -721,7 +727,7 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                 "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
                 "valor_inicial": vi, "valor_global": vg, "acrescimo": round(vg - vi, 2),
                 "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": int(teto * 100),
-                "estoura_teto": pct >= teto,
+                "estoura_teto": estouro,
                 "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
                 "acrescimo_confirmado": bool(confirmado),
                 "lacunas_aditivo": lacunas_ad.get(r["cc"], []),

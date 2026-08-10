@@ -31,6 +31,10 @@ def db(tmp_path):
         ("K2", "BETA", "22222222000122", "SMS", "SMS", "serviço de manutenção", 100000.0, 140000.0, 1, "2025-12-31"),
         # K3: sem contrato_aditivo → vg−vi=+50% vira indício NÃO confirmado (rebaixado, não removido)
         ("K3", "GAMA", "33333333000133", "SME", "SME", "fornecimento de merenda", 100000.0, 150000.0, 1, "2025-12-31"),
+        # K4: acréscimo real de EXATAMENTE 25% — o art. 125 permite acréscimo ATÉ 25%; no teto é
+        # LÍCITO. Medido no acervo em 2026-08-10: quatro dos sete estouros com acréscimo granular
+        # confirmado estavam em 25,000000% e eram acusação de ilegalidade onde não havia.
+        ("K4", "DELTA", "44444444000144", "MPRJ", "MPRJ", "mudanças e transportes", 100000.0, 125000.0, 1, "2025-12-31"),
     ])
     # O discriminador é o OBJETO, não o `qualif_acrescimo`. A versão anterior deste fixture
     # usava `qualif='2'` para dizer "isto é reajuste" — convenção que não existe na base real,
@@ -41,6 +45,7 @@ def db(tmp_path):
         ("K1", "1", 10000.0, "acréscimo quantitativo de itens"),
         ("K1", "1", 30000.0, "reajuste contratual pelo IPCA"),
         ("K2", "1", 30000.0, "acréscimo de quantitativo do contrato"),
+        ("K4", "1", 25000.0, "acréscimo de quantitativo do contrato"),
     ])
     con.commit()
     con.close()
@@ -66,3 +71,25 @@ def test_sem_acrescimo_real_marca_nao_confirmado_e_rebaixa(db):
     # ordenação: K2 (confirmado, 30%) vem ANTES de K3 (não confirmado, 50%)
     ordem = [a["contrato"] for a in d["achados"]]
     assert ordem.index("K2") < ordem.index("K3")
+
+
+def test_no_teto_exato_NAO_e_estouro(db):
+    """Art. 125: os acréscimos são admitidos ATÉ 25%. Exatamente no teto o contrato está DENTRO
+    da lei — `pct >= teto` acusava ilegalidade onde não havia."""
+    d = aditivos_estouro(db_path=db)
+    k4 = [a for a in d["achados"] if a["contrato"] == "K4"]
+    assert not k4 or k4[0]["estoura_teto"] is False, (
+        "acréscimo de exatamente 25% é lícito — não pode ser marcado como estouro do art. 125")
+
+
+def test_um_centavo_acima_do_teto_E_estouro(db):
+    """O corte tem de continuar cortando: a correção não pode virar falso NEGATIVO."""
+    import sqlite3 as _sq
+    con = _sq.connect(db)
+    con.execute("INSERT INTO pcrj_contratos VALUES "
+                "('K5','EPSILON','55555555000155','MPRJ','MPRJ','serviço',100000.0,125001.0,1,'2025-12-31')")
+    con.execute("INSERT INTO contrato_aditivo VALUES ('K5','1',25001.0,'acréscimo de quantitativo')")
+    con.commit(); con.close()
+    d = aditivos_estouro(db_path=db)
+    k5 = next(a for a in d["achados"] if a["contrato"] == "K5")
+    assert k5["estoura_teto"] is True
