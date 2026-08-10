@@ -44,6 +44,14 @@ fi
 echo $$ > "$PIDF"
 trap 'rm -f "$PIDF"' EXIT
 
+# COTA CONTRA INANIÇÃO. Com MAX=1 por passada e 551 parciais na frente, os 257 pares NUNCA
+# COLETADOS (61.355 OBs que o espelho conhece e a fonte canônica não tem) jamais alcançariam a
+# cabeça da fila: a prioridade correta virava fome permanente. A cada 4ª passada eles vêm primeiro.
+VEZF=data/.siafe_dreno_vez
+VEZ=$(( ( $(tr -dc '0-9' < "$VEZF" 2>/dev/null || echo 0) + 0 ) + 1 ))
+echo "$VEZ" > "$VEZF"
+if [ $(( VEZ % 4 )) -eq 0 ]; then export PRIORIZAR_NUNCA=1; say "passada $VEZ — cota dos nunca coletados"; fi
+
 # A LISTA SAI DO MEDIDOR, não de um teste de contagem redonda. Contagem redonda é a assinatura do
 # TETO de consulta; coleta que morre em timeout (rc=124) para em número qualquer e ficava invisível
 # — medido em 2026-08-09: 7 pares redondos contra 557 parciais. Ordem por EXPOSIÇÃO (o que mais
@@ -60,7 +68,11 @@ itens += [(max(0, p["obs_espelho_tfe"] - p["obs_siafe"]), p["ug"], p["exercicio"
 # UG 246300/2024 (Fundo Estadual de Recursos Hidricos), que estava com ZERO linhas e rendeu 376 OBs
 # e R$ 80,4 mi, ficando `coberto`. Mas vem depois dos parciais, que escondem dado em unidade sobre
 # a qual a casa JA publica numero.
-itens += [(-p["obs_espelho_tfe"], p["ug"], p["exercicio"])
+# ...salvo na passada de cota, em que o peso vira positivo e eles encabeçam a lista.
+import os
+_peso = (lambda n: n) if os.environ.get("PRIORIZAR_NUNCA") else (lambda n: -n)
+itens += [(_peso(p["obs_espelho_tfe"]) + (10**9 if os.environ.get("PRIORIZAR_NUNCA") else 0),
+           p["ug"], p["exercicio"])
           for p in r.get("parciais", []) if p.get("estado") == "nunca_coletado"]
 # um par pode estar nas DUAS listas (parou no teto E a amostra acusa ausência) — dedup, senão a
 # passada gasta duas janelas de browser no mesmo alvo
