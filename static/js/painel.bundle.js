@@ -4775,7 +4775,8 @@ void main(){
         recuperacaoJudicial,
         aditivoPrecoce,
         nucleoCartel,
-        consorcioVeiculo
+        consorcioVeiculo,
+        zerosSemCausa
       ]) {
         try {
           await f();

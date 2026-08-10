@@ -75,3 +75,19 @@ def test_contradicao_e_so_quem_esta_OK_e_sem_arquivo(tmp_path):
 def test_progresso_ilegivel_declara_indisponivel(tmp_path):
     r = Z.medir(prog=tmp_path / "nao_existe.json", reg=tmp_path / "x.json", db=tmp_path / "x.db")
     assert r["ok"] is False and r["estado"] == "indisponivel"
+
+
+def test_as_causas_somam_o_total(tmp_path):
+    """Contador que não fecha com a lista é a mesma mentira do painel que mostrava 51 contradições
+    ao lado de uma lista com 4. A soma das causas TEM de dar o número de zeros."""
+    prog, reg = _monta(
+        tmp_path,
+        {f"SEI-{i}/{i}/2024": {"n_docs": 0} for i in range(1, 7)},
+        {"112024": {"status": "RESTRITO"}, "222024": {"status": "OK"}, "332024": {"status": "OK"}},
+        arquivos=["SEI-3/3/2024", "SEI-4/4/2024"],
+    )
+    r = Z.medir(prog=prog, reg=reg, db=tmp_path / "x.db")
+    assert sum(r["por_causa"].values()) == r["zeros"] == 6
+    assert r["por_causa"]["OK (contradição)"] == len(r["contradicao_ok_mas_vazio"]) == 1
+    # SEI-3 (OK, com arquivo) e SEI-4 (sem causa, com arquivo) caem na mesma cesta
+    assert r["por_causa"]["zero no progresso, mas COM arquivo (outro caminho)"] == 2

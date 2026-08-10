@@ -113,8 +113,15 @@ def medir(prog: Path | None = None, reg: Path | None = None,
     ja_no_arquivo = [p for p in sem_causa if _tem_arquivo(p)]
     sem_causa = [p for p in sem_causa if p not in set(ja_no_arquivo)]
     contradicao = [p for p in contradicao if not _tem_arquivo(p)]
+    # Os contadores TÊM de refletir o mundo DEPOIS do filtro de arquivo, senão a tabela do painel
+    # mostra 51 contradições ao lado de uma lista com 4 — foi o que a rota exibiu na estreia.
+    # Quem tem arquivo sai da sua categoria de origem e entra na de "já capturado por outro caminho",
+    # venha ele de "sem causa" ou de "OK (contradição)".
+    contradicao_com_arquivo = por_causa.get("OK (contradição)", 0) - len(contradicao)
     por_causa["sem causa registrada"] = len(sem_causa)
-    por_causa["zero no progresso, mas COM arquivo (outro caminho)"] = len(ja_no_arquivo)
+    por_causa["OK (contradição)"] = len(contradicao)
+    por_causa["zero no progresso, mas COM arquivo (outro caminho)"] = (
+        len(ja_no_arquivo) + contradicao_com_arquivo)
     ordenar = sorted(sem_causa, key=lambda p: -valor.get(p, 0.0))
     return {
         "ok": True, "estado": "medido",

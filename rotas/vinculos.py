@@ -825,6 +825,35 @@ def api_consorcio_veiculo(min_consorcios: int = 2, min_valor: float = 1_000_000.
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/zeros_sem_causa")
+def api_zeros_sem_causa(limite: int = 25):
+    """Processo lido pelo sweep que voltou com ZERO documento — e a causa NÃO está medida.
+
+    O sweep encerrava cada ciclo dizendo `N sem (fora de escopo/vazio)`, afirmando uma causa que
+    ninguém apurou. "Não há documento" fecha o processo para a análise; "não consegui ler" o mantém
+    aberto. Enquanto a causa é desconhecida, nenhuma conclusão de ausência pode se apoiar nele — e
+    é por isso que este número precisa estar no painel, e não só num log.
+    """
+    try:
+        from tools.sei_zeros_por_causa import medir
+
+        r = _cache("zeros_sem_causa", medir)
+        if not r.get("ok"):
+            return JSONResponse({"ok": False, "erro": r.get("erro", "indisponível")})
+        return JSONResponse({
+            "ok": True, "total": r["sem_causa"], "zeros": r["zeros"],
+            "processos_com_registro": r["processos_com_registro"],
+            "por_causa": r["por_causa"],
+            "contradicao": r["contradicao_ok_mas_vazio"],
+            "valor_ob_sem_causa": r["valor_ob_sem_causa"],
+            "itens": r["fila"][:max(1, min(int(limite), 200))],
+            "ressalva": r["ressalva"],
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("zeros_sem_causa falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/nucleo_cartel")
 def api_nucleo_cartel(min_part: int = 8, min_ramos: int = 4, limite: int = 12):
     """Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — a interseção, não cada screen.

@@ -33,6 +33,10 @@ ESPERADOS = (
     "aditivo de valor nos primeiros",
     "núcleo de arranjo",
     "um consórcio por certame",
+    # o nono: processos que a casa LEU e voltaram vazios, com a causa não medida. Entra no gate
+    # porque é o card mais fácil de sumir em silêncio — ele depende de dois arquivos de estado
+    # (progresso do sweep e registro de restritos) que podem simplesmente não existir.
+    "voltaram vazios",
 )
 
 

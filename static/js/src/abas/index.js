@@ -165,7 +165,7 @@ export async function filaFiscal(soOsint){
   (async () => {
     for (const f of [taxaPorUnidade, fimDeExercicio, concentracaoPorGrupo,
                      coparticipacaoRelacionados, recuperacaoJudicial, aditivoPrecoce,
-                     nucleoCartel, consorcioVeiculo]) {
+                     nucleoCartel, consorcioVeiculo, zerosSemCausa]) {
       try { await f(); } catch (e) { console.warn('painel de padrão falhou:', e); }
     }
   })();
