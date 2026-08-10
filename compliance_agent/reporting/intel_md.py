@@ -849,7 +849,8 @@ def render_md(ctx: dict) -> str:
     add("")
     add(f"**CNPJ:** {ctx['cnpj_fmt']}  |  **Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)")
     add("**Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)")
-    add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (SIAFE/TFE) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
+    add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (espelho TFE-RJ; o SIAFE distingue "
+        f"status mas está parcialmente coletado) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
     add("")
     add("---")
     add("")
@@ -958,9 +959,21 @@ def render_md(ctx: dict) -> str:
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
-    add("> Fonte: SIAFE/TFE-RJ (Ordem Bancária = dado **definitivo de pagamento**). Por exercício, as **maiores "
-        "OBs** (materiais); a **lista completa** de cada pagamento está na **planilha XLSX** deste relatório. "
-        "OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam ao total).")
+    # A FONTE DESTES NÚMEROS É O ESPELHO, e ele tem um viés conhecido — dizer "SIAFE/TFE" como se
+    # fosse uma coisa só escondia os dois lados. Medido em 2026-08-09: o espelho traz 1.159.305 OBs
+    # contra 244.949 da fonte canônica (que está 21,1% coletada), mas NÃO carrega o status — não dá
+    # para excluir OB cancelada por lá. No universo em que dá para medir (o SIAFE), 9,7% do valor
+    # não é "Contabilizado" (Excluído 8,1% · Anulado 1,5% · Não contabilizado 0,2%).
+    add("> **Fonte: espelho TFE-RJ** (Ordem Bancária = dado definitivo de pagamento). Por exercício, "
+        "as **maiores OBs** (materiais); a **lista completa** está na **planilha XLSX** deste "
+        "relatório. OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam).")
+    add("")
+    add("> ⚠️ **O que este total inclui e o que ele não distingue.** O espelho é hoje a fonte mais "
+        "COMPLETA (1,16 milhão de OBs contra 245 mil já coletadas do SIAFE), mas **não publica o "
+        "status da OB** — cancelamento e anulação entram somados. No universo em que dá para "
+        "medir, **9,7% do valor não é OB contabilizada**. O SIAFE distingue status e traz processo, "
+        "NL e competência, mas a coleta dele está incompleta (`reporting.cobertura_siafe`). Para "
+        "peça que dependa do valor exato de um credor, conferir no SIAFE o que ele já tem.")
     add("")
     add(f"> {_NOTA_CARDINALIDADE}")
     card = ctx.get("cardinalidade") or {}
