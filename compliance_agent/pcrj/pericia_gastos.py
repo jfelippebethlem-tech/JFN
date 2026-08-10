@@ -318,22 +318,35 @@ def d10_rede_concorrentes(con) -> list[dict]:
         having count(distinct substr(c.fornecedor_documento, 1, 8)) >= 2""").fetchall()
     for r in rows:
         forte = bool(r["doc_socio"])
+        # RAIZ ≠ ESTABELECIMENTO. O `having` conta raízes (grupos econômicos), mas a evidência
+        # listava CNPJs de 14 dígitos — com filiais. Medido em 2026-08-10: um achado exibia
+        # "30 fornecedores" para uma pessoa que está em DUAS raízes; eram 30 estabelecimentos de 2
+        # grupos. Quem lê entende 30 empresas concorrentes, que é impressão falsa e muito mais
+        # grave que o fato. A gravidade mora na RAIZ; o estabelecimento só diz por onde o contrato
+        # entrou.
+        cnpjs = [c for c in (r["fornecedores"] or "").split(",") if c]
+        raizes = sorted({c[:8] for c in cnpjs})
         achados.append(_achado(
             "d10_rede_concorrentes", 7 if forte else 5,
             # O título é a IDENTIDADE do achado: é por ele que o gravador dedupa e a poda decide o
             # que morreu. Sem órgão e ano, catorze achados distintos do mesmo sócio colapsavam num
             # título só — a dedup nunca os separou e a poda não conseguia retirar o anacrônico de
             # 2024 sem levar junto o legítimo de 2026.
-            f"Rede societária — {r['nome_socio']} em ≥2 fornecedores de "
+            f"Rede societária — {r['nome_socio']} em {len(raizes)} fornecedores de "
             f"{(r['orgao_nome'] or r['orgao_cnpj'])[:40]} ({r['ano']})",
             f"Indício de rede entre fornecedores: {r['nome_socio']} figura no QSA de "
-            f"fornecedores distintos ({r['nomes']}) contratados pelo mesmo órgão "
+            f"{len(raizes)} grupo(s) econômico(s) distinto(s)"
+            + (f" — {len(cnpjs)} estabelecimentos, contando filiais" if len(cnpjs) > len(raizes)
+               else "")
+            + f" ({r['nomes']}) contratados pelo mesmo órgão "
             f"({r['orgao_nome'] or r['orgao_cnpj']}) em {r['ano']} — padrão compatível com "
             f"concorrência fictícia (checar se disputaram os mesmos certames)."
             + ("" if forte else " Match por NOME normalizado — homônimo possível.")
             + " (fontes: PNCP + QSA Receita local)",
             {"subtipo": "rede_socios", "socio": r["nome_socio"], "ano": r["ano"],
-             "fornecedores": (r["fornecedores"] or "").split(","),
+             "n_grupos": len(raizes), "grupos": raizes,
+             "n_estabelecimentos": len(cnpjs),
+             "fornecedores": cnpjs,
              "match_tipo": "CPF" if forte else "NOME"}))
     return achados
 
