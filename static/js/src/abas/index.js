@@ -158,12 +158,17 @@ export async function filaFiscal(soOsint){
   // Os cinco painéis de PADRÃO que acompanham a fila: a fila mostra processo a processo, e o que
   // se leva ao TCE-RJ é a taxa, a janela, a concentração por grupo, a coparticipação de
   // relacionadas e a exposição a empresa em recuperação judicial.
-  taxaPorUnidade();
-  fimDeExercicio();
-  concentracaoPorGrupo();
-  coparticipacaoRelacionados();
-  recuperacaoJudicial();
-  aditivoPrecoce();
+  // EM SEQUÊNCIA, não em paralelo. A API é single-process: sete fetches simultâneos não são
+  // atendidos ao mesmo tempo, viram fila — e na primeira visita (cache frio, 2 vCPU) o último da
+  // fila demorava tanto que o card parecia não existir. Em sequência cada painel aparece assim que
+  // fica pronto, na ordem em que o fiscal lê.
+  (async () => {
+    for (const f of [taxaPorUnidade, fimDeExercicio, concentracaoPorGrupo,
+                     coparticipacaoRelacionados, recuperacaoJudicial, aditivoPrecoce,
+                     nucleoCartel]) {
+      try { await f(); } catch (e) { console.warn('painel de padrão falhou:', e); }
+    }
+  })();
 }
 
 // O PADRÃO NÃO CABE NA FILA. A fila mostra processo a processo; o achado que se leva ao TCE-RJ
@@ -2343,6 +2348,41 @@ async function aditivoPrecoce(){
     h+=leitura(`Cobertura: <b>${fmtN(c.avaliaveis)}</b> de <b>${fmtN(c.termos)}</b> termos aditivos
       são avaliáveis (<b>${c.pct}%</b>) — só entram os que têm a data do TERMO e a do CONTRATO. A data
       do termo passou a ser guardada em 09/08/2026; os coletados antes disso estão sendo recoletados.`);
+  }
+  h+=leitura(esc(d.ressalva||''));
+  alvo.innerHTML=h; o.appendChild(alvo);
+}
+
+// O NÚCLEO, NÃO CADA SCREEN. Perder muito é o normal de quem disputa muito, e vencer em ramos
+// díspares é o normal de distribuidora regional — isolados, os dois screens têm falso positivo
+// estrutural. A interseção (vencedor generalista CERCADO de perdedores contumazes) é o que merece
+// a fila. Esta lógica vivia dentro de um main() e por isso nenhuma tela a mostrava.
+async function nucleoCartel(){
+  const o=$('ff-out'); if(!o) return;
+  const d=await J('/api/fiscal/nucleo_cartel?limite=10');
+  if(!d||d.ok===false) return;
+  const alvo=document.createElement('div');
+  let h=sec(`Núcleo de arranjo — generalista orbitado (${fmtN(d.total)} de ${fmtN(d.n_contumazes)} contumazes)`);
+  if((d.itens||[]).length){
+    h+=card(`<table class="tb"><thead><tr><th>Vencedor generalista</th><th class="right">ramos</th>
+      <th class="right">vitórias</th><th class="right">municípios</th>
+      <th>perdedores contumazes na órbita</th></tr></thead><tbody>`
+      +d.itens.map(x=>`<tr>
+        <td>${esc((x.vencedor||'').slice(0,38))}${x.so_estrutural?' <span class="dim">(FP estrutural provável)</span>':''}</td>
+        <td class="right">${x.n_ramos}</td><td class="right">${fmtN(x.vitorias)}</td>
+        <td class="right dim">${x.n_entes}</td>
+        <td style="font-size:12px">${(x.orbitantes||[]).map(o0=>
+          `${esc((o0.perdedor||'').slice(0,26))} <span class="dim">${o0.n}p/${o0.vitorias}v · órbita ${o0.conc}%</span>`).join('<br>')}</td></tr>`).join('')
+      +`</tbody></table>`);
+  } else {
+    h+=card('<div class="dim">Nenhum núcleo com os pisos atuais — o que não é ausência de arranjo, é ausência de INTERSEÇÃO entre os dois screens.</div>');
+  }
+  if((d.viajantes||[]).length){
+    h+=card(`<div class="dim" style="margin-bottom:6px"><b>Licitante-viajante</b> — contumaz em três ou mais
+      municípios: o custo de participar sem expectativa de ganhar é o sinal.</div>`
+      +(d.viajantes||[]).slice(0,6).map(v=>
+        `<div class="kv"><span class="k">${esc((v.perdedor||'').slice(0,42))}</span><b>${v.n_entes} municípios</b>
+         <span class="dim">${v.n} part / ${v.vitorias} vit</span></div>`).join(''));
   }
   h+=leitura(esc(d.ressalva||''));
   alvo.innerHTML=h; o.appendChild(alvo);

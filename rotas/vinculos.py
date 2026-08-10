@@ -760,6 +760,37 @@ def api_aditivo_precoce(dias: int = 90, min_acrescimo: float = 50_000.0, limite:
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/nucleo_cartel")
+def api_nucleo_cartel(min_part: int = 8, min_ramos: int = 4, limite: int = 12):
+    """Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — a interseção, não cada screen.
+
+    Os dois screens que isto cruza (R025 perdedor contumaz, R048 fornecedor generalista) eram,
+    medido em 2026-08-09, **os únicos dois módulos de screen do projeto sem um chamador fora de si
+    mesmos**: a lógica que os une vivia dentro de um `main()` e nenhuma rota conseguia consumi-la.
+
+    Isolado, cada um tem falso positivo estrutural (farma orbita farma; distribuidora regional é
+    generalista por natureza). A interseção é o que merece a fila. Fonte municipal (`tcerj_licitante`).
+    """
+    try:
+        from tools.screen_convergencia_cartel import RESSALVA, nucleos
+
+        r = _cache(f"nucleo_cartel:{min_part}:{min_ramos}",
+                   lambda: nucleos(min_part=int(min_part), min_ramos=int(min_ramos)))
+        lim = max(1, min(int(limite), 60))
+        return JSONResponse({
+            "ok": True, "total": len(r["nucleos"]),
+            "n_contumazes": len(r["contumazes"]),
+            "itens": [{k: v for k, v in n.items() if k != "orbitantes"}
+                      | {"orbitantes": n["orbitantes"][:4]} for n in r["nucleos"][:lim]],
+            # o viajante é sinal por si: participa em muitos municípios e nunca vence
+            "viajantes": r["viajantes"][:lim],
+            "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("nucleo_cartel falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/recuperacao_judicial")
 def api_recuperacao_judicial(min_valor: float = 100_000.0, limite: int = 20):
     """Quem o Estado paga estando em recuperação judicial — inclusive DENTRO de consórcio.
