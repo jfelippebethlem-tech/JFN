@@ -86,4 +86,18 @@ if ! out="$(PYTHONPATH=. nice -n 10 "$py" -m tools.painel_boot_check 2>&1)"; the
   echo "$out" | tail -25 >&2
   exit 1
 fi
+
+# ── 3. os cards que nascem de um CLIQUE ──────────────────────────────────────────────────────────
+# O boot_check percorre abas e falha em `pageerror`; os seis painéis de padrão da fila do fiscal só
+# são montados quando alguém aperta "Ver a fila", e card que não renderiza NÃO produz erro — some
+# em silêncio. Medido em 2026-08-09: dois dos seis não chegavam à tela e a causa era uma rota de
+# 171 s bloqueando o event loop. Só roda quando a aba do fiscal ou as rotas dela foram tocadas.
+if git diff --cached --name-only --diff-filter=ACM \
+   | grep -qE '^(static/js/src/abas/index\.js|rotas/vinculos\.py|tools/screen_)'; then
+  if ! out="$(PYTHONPATH=. nice -n 10 "$py" -m tools.painel_fila_check 2>&1)"; then
+    echo "[pre-commit] ❌ gate do painel BLOQUEOU (card da fila não chegou à tela):" >&2
+    echo "$out" | tail -20 >&2
+    exit 1
+  fi
+fi
 exit 0
