@@ -6,8 +6,9 @@ POR QUE EXISTE. O sweep dizia, ciclo após ciclo, `N sem (fora de escopo/vazio)`
 CAUSA — o processo não tinha o que ler — e ninguém a mediu. Medido em 2026-08-10: dos **3.775**
 processos zerados no progresso, apenas **930** têm motivo registrado no `sei_restritos.json`
 (378 RESTRITO · 352 NAO_LOCALIZADO · 200 RESTRITO?). Os outros **2.794 não têm motivo nenhum** — e
-**51 estão marcados OK** no registro e ainda assim vieram vazios, o que é contradição direta: se o
-cadastro diz que dá para ler, um zero ali é falha NOSSA.
+**4 estão marcados OK** no registro, sem arquivo e ainda assim vazios — contradição direta: se o
+cadastro diz que dá para ler, um zero ali é falha NOSSA. (Eram 51 antes de descontar os que já
+tinham arquivo por outro caminho; a contradição real é a que sobra depois desse desconto.)
 
 A distinção não é acadêmica. "Não há documento" fecha o processo para a análise; "não consegui ler"
 o mantém aberto e vira fila de trabalho. Tratar os dois igual é a mesma família de erro que fez a
