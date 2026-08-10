@@ -101,8 +101,11 @@ _DET_META: dict[str, dict] = {
         "detecta": "Empresa constituída há menos de 180 dias já contratada/paga pela Prefeitura.",
         "irregularidade": "empresa_laranja",
         "dispositivos": ["Lei 14.133/2021 arts. 66-69 (habilitação)", "Lei 8.429/92 art. 10"],
+        # a chave é `total`, não `valor`: o campo declarado errado renderizava SEMPRE vazio, e o
+        # valor recebido é justamente o que dá tamanho ao achado de credor recém-aberto. Pego por
+        # uma conferência de contrato entre a peça e a evidência dos detectores (teste abaixo).
         "evid": [("cnpj", "Credor (CNPJ)", "doc"), ("idade_dias", "Idade na 1ª contratação", "s"),
-                 ("valor", "Valor recebido", "moeda")],
+                 ("total", "Valor recebido", "moeda")],
     },
     "d10_rede_concorrentes": {
         "rotulo": "D10 · Rede societária entre fornecedores do mesmo órgão",
@@ -127,10 +130,23 @@ _DET_META: dict[str, dict] = {
     },
     "d11_aditivo_estourado": {
         "rotulo": "D11 · Acréscimo contratual acima do limite legal",
-        "detecta": "Aditivo que eleva o valor do contrato além dos 25%/50% do art. 125.",
+        # O percentual sozinho nao basta: ele pode vir do TERMO (natureza classificada como valor)
+        # ou de `valor_global − valor_inicial`, que mistura reajuste, prorrogação e reequilíbrio.
+        # Sem `acrescimo_confirmado` na peça, o leitor não distingue afirmação de indício — e sem
+        # `teto_pct` não sabe se o caso é de 25% ou de 50% (reforma). O art. 125 admite acréscimos
+        # ATÉ o teto: no teto exato o contrato está DENTRO da lei.
+        "detecta": ("Aditivo que eleva o valor do contrato além do teto do art. 125 (25% em regra, "
+                    "50% só para reforma de edifício ou equipamento). O percentual é calculado "
+                    "sobre o valor inicial NÃO atualizado — a norma mede sobre o atualizado, então "
+                    "caso rente ao teto pode ser lícito. Acréscimo apurado no termo aditivo é "
+                    "afirmação; diferença de valor global é indício."),
         "irregularidade": "superfaturamento",
         "dispositivos": ["Lei 14.133/2021 art. 125", "Lei 8.666/93 art. 65 §1º"],
-        "evid": [("controle", "Contrato (controle PNCP)", "s"), ("pct_acrescimo", "Acréscimo", "pct_direto"),
+        "evid": [("controle", "Contrato (controle PNCP)", "s"),
+                 ("pct_acrescimo", "Acréscimo", "pct_direto"),
+                 ("teto_pct", "Teto aplicável (%)", "s"),
+                 ("acrescimo_confirmado", "Apurado no termo aditivo", "bool"),
+                 ("lacunas_aditivo", "Lacunas declaradas do termo", "lista"),
                  ("subtipo", "Subtipo", "s")],
     },
 }
