@@ -52,6 +52,14 @@ def _tipo_do_aditivo(ad: sqlite3.Row) -> tuple[str, str]:
         qualif_reajuste=ad["qualif_reajuste"], prazo_aditado_dias=ad["prazo_aditado_dias"])
 
 
+def _campo(linha, nome: str):
+    """Lê uma coluna que pode não existir no schema local — base parcial degrada, não quebra."""
+    try:
+        return linha[nome] or None
+    except (IndexError, KeyError):
+        return None
+
+
 def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[str, Any]:
     """Contexto de execução de um contrato, no formato que X1 e X2 consomem.
 
@@ -117,6 +125,13 @@ def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[
 
         aditivos.append({
             "numero_termo": ad["numero_termo"] or str(ad["sequencial_termo"] or ""),
+            # A DATA DE ASSINATURA do termo — o que o X8 (aditivo retroativo) precisa e que o
+            # cabeçalho de `varredura_execucao` dizia não existir. Existia a partir de 2026-08-09,
+            # quando o coletor do PNCP passou a guardar `dataAssinatura`: 1.684 dos 1.770 termos
+            # (95,1%) a têm. O comentário que a declarava ausente caducou e ninguém releu — por
+            # isso o detector seguia fora da varredura.
+            "data_assinatura": _campo(ad, "data_assinatura"),
+            "vigencia_fim": ad["vigencia_fim"] or None,
             "tipo": tipo, "valor": valor, "origem_tipo": origem,
             "descricao_objeto": ad["objeto"] or "",
             "justificativa": ad["objeto"] or "",
@@ -145,6 +160,9 @@ def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[
     ctx["prorrogacoes"] = prorrogacoes
     ctx["n_aditivos"] = len(aditivos)
     ctx["vigencia_fim_atual"] = vigencia_fim
+    # X8 compara a assinatura do termo com a vigência ORIGINAL do contrato (a que valia antes das
+    # prorrogações); `vigencia_fim_atual` já veio estendida pelos termos de prazo e não serve.
+    ctx["vigencia_fim"] = row["vigencia_fim"] or None
     if not aditivos and (row["num_aditivos"] or 0) > 0:
         # O contrato declara ter aditivos que não foram coletados: isso é lacuna de CAPTURA, e
         # precisa aparecer como tal — senão "sem achado" se confunde com "sem aditivo".
