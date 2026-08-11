@@ -825,6 +825,67 @@ def api_consorcio_veiculo(min_consorcios: int = 2, min_valor: float = 1_000_000.
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/detectores")
+def api_detectores(limite: int = 25):
+    """Os achados do framework de detectores — que nenhuma tela lia.
+
+    `data/achados.db` guarda o que as três varreduras produzem (órgão/fornecedor, certame,
+    execução): 10.630 avaliações e **543 confirmados por 13 detectores**. Medido em 2026-08-11:
+    NENHUMA rota, relatório ou card tocava esse banco. O framework inteiro — 41 detectores, a spec
+    V2 — rodava, gravava e ninguém lia. Um achado que não chega ao fiscal não é achado.
+
+    A resposta separa CONFIRMADO de NÃO AVALIÁVEL de propósito: o segundo é a medida da cobertura,
+    e some quando se conta só o primeiro.
+    """
+    import sqlite3 as _sq
+    tabelas = (("achado_detector", "ug"), ("achado_certame", "certame"),
+               ("achado_execucao", "contrato"))
+    try:
+        con = _sq.connect("file:data/achados.db?mode=ro", uri=True, timeout=30)
+        con.row_factory = _sq.Row
+    except _sq.Error as exc:
+        return JSONResponse({"ok": False, "erro": f"banco de achados indisponível: {exc}"})
+    try:
+        por_det: dict[str, dict] = {}
+        itens: list[dict] = []
+        for tab, chave in tabelas:
+            try:
+                linhas = con.execute(
+                    f"SELECT detector, status, score, {chave} AS alvo, motivo, gerado_em "  # noqa: S608
+                    f"FROM {tab}").fetchall()
+            except _sq.Error:
+                continue                       # tabela ausente = varredura nunca rodou, não zero
+            for r in linhas:
+                d = por_det.setdefault(str(r["detector"]), {
+                    "detector": str(r["detector"]), "confirmado": 0, "descartado": 0,
+                    "nao_avaliavel": 0, "escopo": tab.replace("achado_", "")})
+                d[str(r["status"] or "descartado")] = d.get(str(r["status"] or "descartado"), 0) + 1
+                if r["status"] == "confirmado":
+                    itens.append({"detector": str(r["detector"]), "escopo": d["escopo"],
+                                  "alvo": str(r["alvo"] or ""), "score": r["score"],
+                                  "motivo": str(r["motivo"] or "")[:200],
+                                  "quando": str(r["gerado_em"] or "")[:19]})
+    finally:
+        con.close()
+
+    ordem = sorted(por_det.values(), key=lambda d: -d["confirmado"])
+    itens.sort(key=lambda x: -(x["score"] or 0))
+    return JSONResponse({
+        "ok": True,
+        "confirmados": sum(d["confirmado"] for d in ordem),
+        "avaliacoes": sum(d["confirmado"] + d["descartado"] + d["nao_avaliavel"] for d in ordem),
+        "nao_avaliaveis": sum(d["nao_avaliavel"] for d in ordem),
+        "detectores": ordem,
+        "itens": itens[:max(1, min(int(limite), 200))],
+        "fonte": {"ok": True, "banco": "data/achados.db"},
+        "ressalva": (
+            "CONFIRMADO é indício apurado pela régua do detector, não acusação — cada um traz "
+            "explicação inocente e motivo de refutação no próprio registro. NÃO AVALIÁVEL não é "
+            "'limpo': é a fatia que a base não alimenta, e conta-la junto com os descartados "
+            "esconderia a cobertura real."),
+    })
+
+
 @router.get("/api/fiscal/zeros_sem_causa")
 def api_zeros_sem_causa(limite: int = 25):
     """Processo lido pelo sweep que voltou com ZERO documento — e a causa NÃO está medida.

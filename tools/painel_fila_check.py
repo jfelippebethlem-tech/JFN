@@ -37,6 +37,8 @@ ESPERADOS = (
     # porque é o card mais fácil de sumir em silêncio — ele depende de dois arquivos de estado
     # (progresso do sweep e registro de restritos) que podem simplesmente não existir.
     "voltaram vazios",
+    # o décimo: o framework de detectores, que gravava em data/achados.db sem nenhum leitor
+    "framework de detectores",
 )
 
 

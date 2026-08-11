@@ -4776,7 +4776,8 @@ void main(){
         aditivoPrecoce,
         nucleoCartel,
         consorcioVeiculo,
-        zerosSemCausa
+        zerosSemCausa,
+        detectoresFramework
       ]) {
         try {
           await f();
@@ -7582,6 +7583,47 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       h += leitura(`Cobertura: <b>${fmtN(c.avaliaveis)}</b> de <b>${fmtN(c.termos)}</b> termos aditivos
       são avaliáveis (<b>${c.pct}%</b>) — só entram os que têm a data do TERMO e a do CONTRATO. A data
       do termo passou a ser guardada em 09/08/2026; os coletados antes disso estão sendo recoletados.`);
+    }
+    h += leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function detectoresFramework() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/detectores?limite=12");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Framework de detectores — ${fmtN(d.confirmados)} confirmados de ${fmtN(d.avaliacoes)} avaliações`);
+    if (!(d.detectores || []).length) {
+      h += card('<div class="dim">Nenhuma varredura gravou achado ainda — as três rodam por linha de comando e gravam em data/achados.db.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.confirmados),
+      "Indícios confirmados",
+      "var(--rose)",
+      "🎯",
+      { sobre: "Achados que passaram a régua do detector. <b>Indício apurado, não acusação</b>: cada registro carrega explicação inocente e motivo de refutação." }
+    )}${kpi(
+      fmtN(d.nao_avaliaveis),
+      "Não avaliáveis",
+      null,
+      "⬜",
+      { sobre: "A fatia que a base não alimenta. Contá-la junto com os descartados esconderia a cobertura real — por isso ela aparece separada." }
+    )}</div>`;
+    h += card(`<table class="tb"><thead><tr><th>detector</th><th>escopo</th><th class="right">confirmados</th>
+    <th class="right">descartados</th><th class="right">não avaliáveis</th></tr></thead><tbody>` + d.detectores.filter((x) => x.confirmado > 0).map((x) => `<tr>
+      <td><b>${esc(x.detector)}</b></td><td class="dim">${esc(x.escopo)}</td>
+      <td class="right" style="font-weight:800;color:${x.confirmado >= 30 ? "var(--rose)" : "inherit"}">${fmtN(x.confirmado)}</td>
+      <td class="right dim">${fmtN(x.descartado || 0)}</td>
+      <td class="right dim">${fmtN(x.nao_avaliavel || 0)}</td></tr>`).join("") + `</tbody></table>`);
+    if ((d.itens || []).length) {
+      h += card(`<table class="tb"><thead><tr><th>detector</th><th>alvo</th><th>motivo</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td><b>${esc(x.detector)}</b></td>
+        <td class="dim" style="font-size:12px">${esc(String(x.alvo).slice(0, 34))}</td>
+        <td style="font-size:12px">${esc(String(x.motivo).slice(0, 110))}</td></tr>`).join("") + `</tbody></table>`);
     }
     h += leitura(esc(d.ressalva || ""));
     alvo.innerHTML = h;
