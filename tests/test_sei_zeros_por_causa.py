@@ -77,6 +77,70 @@ def test_progresso_ilegivel_declara_indisponivel(tmp_path):
     assert r["ok"] is False and r["estado"] == "indisponivel"
 
 
+def test_caixa_e_leitura_que_FALHOU_nao_processo_vazio(tmp_path):
+    """`rel > 15` com 0 documento é a CAIXA de entrada do SEI (~40 itens), não o processo.
+
+    O próprio `sei_sweep` decide por esse limiar (`len(relacionados) > 15` → retenta, depois cai no
+    método CRACKED). Quer dizer: quando essa entrada foi gravada, a casa JÁ sabia que a leitura
+    falhou — e mesmo assim o zero saía como "sem causa registrada". Medido no acervo em 2026-08-11:
+    **1.057 dos 3.206** sem causa são CAIXA. Chamar isso de causa desconhecida é jogar fora
+    evidência que está no próprio arquivo de progresso."""
+    prog, reg = _monta(
+        tmp_path,
+        {"SEI-1/1/2024": {"n_docs": 0, "rel": 40, "arvore_docs": 0, "tentativas": 3},
+         "SEI-2/2/2024": {"n_docs": 0, "rel": 0, "arvore_docs": 0, "tentativas": 3}},
+        {},
+    )
+    r = Z.medir(prog=prog, reg=reg, db=tmp_path / "x.db")
+    assert r["por_causa"]["CAIXA (leitura falhou)"] == 1
+    assert r["por_causa"]["sem causa registrada"] == 1
+    # A CAIXA é falha NOSSA: o processo continua na fila de diligência, com a causa declarada.
+    assert [x["processo"] for x in r["fila"]] == ["SEI-1/1/2024"] or any(
+        x["processo"] == "SEI-1/1/2024" for x in r["fila"])
+    assert sum(r["por_causa"].values()) == r["zeros"] == 2
+
+
+def test_caixa_com_arquivo_nao_conta_duas_vezes(tmp_path):
+    """Quem já chegou por outro caminho sai de QUALQUER cesta de origem — inclusive da CAIXA."""
+    prog, reg = _monta(
+        tmp_path,
+        {"SEI-1/1/2024": {"n_docs": 0, "rel": 40}, "SEI-2/2/2024": {"n_docs": 0, "rel": 40}},
+        {}, arquivos=["SEI-2/2/2024"],
+    )
+    r = Z.medir(prog=prog, reg=reg, db=tmp_path / "x.db")
+    assert r["por_causa"]["CAIXA (leitura falhou)"] == 1
+    assert r["por_causa"]["zero no progresso, mas COM arquivo (outro caminho)"] == 1
+    assert sum(r["por_causa"].values()) == r["zeros"] == 2
+
+
+def test_registro_manda_mais_que_o_progresso(tmp_path):
+    """RESTRITO confirmado explica o zero mesmo que a leitura tenha caído na caixa: o registro é
+    apuração; `rel` é sintoma. Sem essa ordem, a CAIXA roubaria os restritos já apurados."""
+    prog, reg = _monta(tmp_path, {"SEI-1/1/2024": {"n_docs": 0, "rel": 40}},
+                       {"112024": {"status": "RESTRITO"}})
+    r = Z.medir(prog=prog, reg=reg, db=tmp_path / "x.db")
+    assert r["por_causa"]["RESTRITO"] == 1
+    assert "CAIXA (leitura falhou)" not in r["por_causa"]
+
+
+def test_esgotou_tentativas_e_atributo_do_item_nao_causa(tmp_path):
+    """3+ tentativas com 0 documento NÃO diz se o processo é vazio ou se falhamos — diz só que o
+    sweep desistiu. Vira ATRIBUTO na fila (quem já foi martelado 3× precisa de outro caminho, não
+    de uma 4ª tentativa igual), nunca uma causa a mais na tabela."""
+    prog, reg = _monta(
+        tmp_path,
+        {"SEI-1/1/2024": {"n_docs": 0, "rel": 0, "tentativas": 3},
+         "SEI-2/2/2024": {"n_docs": 0, "rel": 0, "tentativas": 1}},
+        {},
+    )
+    r = Z.medir(prog=prog, reg=reg, db=tmp_path / "x.db")
+    assert r["por_causa"]["sem causa registrada"] == 2
+    assert "esgotou tentativas" not in r["por_causa"]
+    por = {x["processo"]: x for x in r["fila"]}
+    assert por["SEI-1/1/2024"]["esgotou_tentativas"] is True
+    assert por["SEI-2/2/2024"]["esgotou_tentativas"] is False
+
+
 def test_as_causas_somam_o_total(tmp_path):
     """Contador que não fecha com a lista é a mesma mentira do painel que mostrava 51 contradições
     ao lado de uma lista com 4. A soma das causas TEM de dar o número de zeros."""

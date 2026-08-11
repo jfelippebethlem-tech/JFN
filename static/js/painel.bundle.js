@@ -7639,33 +7639,43 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     const d = await J("/api/fiscal/zeros_sem_causa?limite=12");
     if (!d || d.ok === false) return;
     const alvo = document.createElement("div");
-    let h = sec(`Processos lidos que voltaram VAZIOS — causa não medida (${fmtN(d.total)})`);
+    let h = sec(`Processos lidos que voltaram VAZIOS — fila de diligência (${fmtN(d.fila_total || d.total)})`);
     if (!(d.itens || []).length) {
       h += card('<div class="dim">Nenhum processo zerado sem causa — todo zero do acervo tem motivo registrado.</div>');
       alvo.innerHTML = h;
       o.appendChild(alvo);
       return;
     }
-    h += `<div class="grid g2">${kpi(
-      fmtRc(d.valor_ob_sem_causa),
-      "OB atrás dos vazios",
+    h += `<div class="grid g3">${kpi(
+      fmtRc(d.valor_ob_fila != null ? d.valor_ob_fila : d.valor_ob_sem_causa),
+      "OB atrás da fila",
       "var(--rose)",
       "💸",
       { sobre: "Soma das ordens bancárias <b>contabilizadas</b> dos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar." }
     )}${kpi(
-      fmtN(d.zeros),
-      "Zerados no total",
+      fmtN(d.total),
+      "Sem causa nenhuma",
       null,
-      "📄",
-      { sobre: "De " + fmtN(d.processos_com_registro) + " processos com registro de leitura. A maioria tem causa conhecida (restrito, inexistente, ou já capturado por outro caminho); o card mostra os que não têm." }
+      "❓",
+      { sobre: "Zero documento e nenhum motivo — nem no registro de restritos, nem no progresso do sweep. É o balde de ignorância propriamente dito." }
+    )}${kpi(
+      fmtN(d.caixa_leitura_falhou || 0),
+      "CAIXA: a leitura FALHOU",
+      "var(--amber)",
+      "🚫",
+      { sobre: "O SEI devolveu a <b>caixa de entrada</b> (mais de 15 relacionados) em vez do processo — pela própria regra do sweep, isso é leitura falha, não processo vazio. A causa estava gravada no progresso o tempo todo; até 2026-08-11 esses casos eram contados como “sem causa”." }
     )}</div>`;
+    h += card(`<div class="dim">De ${fmtN(d.zeros)} zerados em ${fmtN(d.processos_com_registro)} processos com registro de leitura.</div>`);
     h += card(`<table class="tb"><thead><tr><th>causa</th><th class="right">processos</th></tr></thead><tbody>` + Object.entries(d.por_causa || {}).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="right">${fmtN(v)}</td></tr>`).join("") + `</tbody></table>`);
     if ((d.contradicao || []).length) {
       h += card(`<div><b>${fmtN(d.contradicao.length)} em contradição</b> — o registro diz que a leitura foi OK
       e mesmo assim não veio documento nem há arquivo. Se dá para ler, o zero é falha nossa:
       <span class="dim">${d.contradicao.map((p) => esc(p)).join(" · ")}</span></div>`);
     }
-    h += card(`<table class="tb"><thead><tr><th>processo</th><th class="right">OB paga</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td>${esc(x.processo)}</td><td class="right">${fmtRc(x.valor_ob)}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    h += card(`<table class="tb"><thead><tr><th>processo</th><th class="right">OB paga</th><th>causa</th>
+    <th class="right">tentativas</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td>${esc(x.processo)}</td><td class="right">${fmtRc(x.valor_ob)}</td>
+      <td class="dim">${esc(x.causa || "—")}</td>
+      <td class="right">${x.esgotou_tentativas ? `<b title="o sweep desistiu: repetir a mesma leitura não muda o resultado — precisa de outro caminho (CRACKED, VM-2, pedido formal)">${fmtN(x.tentativas || 0)} ⛔</b>` : `<span class="dim">${fmtN(x.tentativas || 0)}</span>`}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
     alvo.innerHTML = h;
     o.appendChild(alvo);
   }

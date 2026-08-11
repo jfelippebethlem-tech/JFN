@@ -14,9 +14,16 @@ A distinção não é acadêmica. "Não há documento" fecha o processo para a a
 o mantém aberto e vira fila de trabalho. Tratar os dois igual é a mesma família de erro que fez a
 casa publicar ausência de prova que era ausência de CAPTURA.
 
+A EVIDÊNCIA JÁ ESTAVA NO ARQUIVO (2026-08-11). "Sem causa registrada" era grande demais porque só
+o `sei_restritos.json` era consultado. O PRÓPRIO progresso do sweep guarda `rel` — e `rel > 15` com
+zero documento é, pela regra do `sei_sweep`, a CAIXA de entrada do SEI, isto é, a LEITURA FALHOU.
+São **1.050** processos: um terço do balde de ignorância tinha a causa gravada em casa. Também
+guarda `tentativas`: 3+ significa que o sweep DESISTIU — atributo do item (precisa de outro
+caminho, não de uma 4ª tentativa igual), nunca uma causa a mais na tabela.
+
 O QUE ESTE SCRIPT NÃO FAZ. Não abre o SEI. Ele cruza o que já está no disco — o progresso do sweep
-e o registro de restritos — e devolve a fila dos zeros SEM causa, ordenada por exposição (valor de
-OB do processo, quando conhecido). Quem resolve a causa é a leitura dirigida, com browser.
+e o registro de restritos — e devolve a fila de diligência (sem causa + CAIXA), ordenada por
+exposição (valor de OB do processo, quando conhecido). Quem resolve a causa é a leitura dirigida.
 
     python -m tools.sei_zeros_por_causa
     python -m tools.sei_zeros_por_causa --fila 40      # os 40 primeiros a diligenciar
@@ -45,6 +52,14 @@ EXPLICAM = {"RESTRITO", "NAO_LOCALIZADO"}
 # osmose. A mesma disciplina do `indício ≠ acusação`, aplicada à nossa própria coleta.
 SUSPEITA = {"RESTRITO?"}
 
+# A CAIXA. O `sei_sweep` decide pelo mesmo limiar: `len(relacionados) > 15` com 0 documento é a
+# caixa de entrada/desktop do SEI (~40 itens), não o processo — e é por isso que ele retenta e
+# depois cai no método CRACKED. Ou seja: no instante em que a entrada foi gravada, a casa JÁ sabia
+# que a LEITURA falhou. Mesmo assim o zero saía como "sem causa registrada" (1.057 dos 3.206 no
+# acervo de 2026-08-11). Evidência que está no próprio arquivo não pode ser contada como ignorância.
+_REL_CAIXA = 15
+CAIXA = "CAIXA (leitura falhou)"
+
 
 def _norm(proc: str) -> str:
     return re.sub(r"\D", "", proc or "")
@@ -65,10 +80,14 @@ def medir(prog: Path | None = None, reg: Path | None = None,
              if not (v or {}).get("n_docs") and not (v or {}).get("arvore_docs")]
     por_causa: collections.Counter = collections.Counter()
     sem_causa: list[str] = []
+    caixa: list[str] = []
     contradicao: list[str] = []
     for p in zeros:
         e = registro.get(_norm(p)) or {}
         st = str(e.get("status") or "")
+        # O REGISTRO MANDA MAIS QUE O PROGRESSO: `RESTRITO` é apuração; `rel` é sintoma. Invertida,
+        # a ordem faria a CAIXA roubar os restritos já confirmados e inflar a fila de diligência com
+        # o que já está fechado por falta de ACESSO.
         if st in EXPLICAM:
             por_causa[st] += 1
         elif st in SUSPEITA:
@@ -76,6 +95,9 @@ def medir(prog: Path | None = None, reg: Path | None = None,
         elif st == "OK":
             por_causa["OK (contradição)"] += 1
             contradicao.append(p)
+        elif ((feitos.get(p) or {}).get("rel") or 0) > _REL_CAIXA:
+            por_causa[CAIXA] += 1
+            caixa.append(p)
         else:
             por_causa["sem causa registrada"] += 1
             sem_causa.append(p)
@@ -85,7 +107,7 @@ def medir(prog: Path | None = None, reg: Path | None = None,
     try:
         con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=60)
         try:
-            alvo = set(sem_causa) | set(contradicao)
+            alvo = set(sem_causa) | set(contradicao) | set(caixa)
             # A ponte processo→OB é `ob_orcamentaria_siafe.processo`, que é a MESMA que o sweep usa
             # para montar a fila. Minha primeira versão usou `ordens_bancarias.numero_sei`: o campo
             # está preenchido em **10** processos no acervo inteiro, então a ordenação por exposição
@@ -111,28 +133,50 @@ def medir(prog: Path | None = None, reg: Path | None = None,
         return (_ARQ / proc.replace("SEI-", "").replace("/", "_")).exists()
 
     ja_no_arquivo = [p for p in sem_causa if _tem_arquivo(p)]
+    caixa_com_arquivo = [p for p in caixa if _tem_arquivo(p)]
     sem_causa = [p for p in sem_causa if p not in set(ja_no_arquivo)]
+    caixa = [p for p in caixa if p not in set(caixa_com_arquivo)]
     contradicao = [p for p in contradicao if not _tem_arquivo(p)]
     # Os contadores TÊM de refletir o mundo DEPOIS do filtro de arquivo, senão a tabela do painel
     # mostra 51 contradições ao lado de uma lista com 4 — foi o que a rota exibiu na estreia.
     # Quem tem arquivo sai da sua categoria de origem e entra na de "já capturado por outro caminho",
-    # venha ele de "sem causa" ou de "OK (contradição)".
+    # venha ele de "sem causa", da CAIXA ou de "OK (contradição)".
     contradicao_com_arquivo = por_causa.get("OK (contradição)", 0) - len(contradicao)
     por_causa["sem causa registrada"] = len(sem_causa)
+    por_causa[CAIXA] = len(caixa)
     por_causa["OK (contradição)"] = len(contradicao)
     por_causa["zero no progresso, mas COM arquivo (outro caminho)"] = (
-        len(ja_no_arquivo) + contradicao_com_arquivo)
-    ordenar = sorted(sem_causa, key=lambda p: -valor.get(p, 0.0))
+        len(ja_no_arquivo) + len(caixa_com_arquivo) + contradicao_com_arquivo)
+    por_causa = collections.Counter({k: v for k, v in por_causa.items() if v})
+
+    # A FILA É O TRABALHO ABERTO, não a cesta "sem causa". A CAIXA tem causa conhecida e mesmo assim
+    # exige diligência — o processo continua ILEGÍVEL. Cada item declara a sua causa para que a
+    # priorização não confunda "não sei por quê" com "sei, e falhamos".
+    def _item(p: str, causa: str) -> dict[str, Any]:
+        f = feitos.get(p) or {}
+        return {"processo": p, "valor_ob": round(valor.get(p, 0.0), 2), "causa": causa,
+                # 3+ tentativas com 0 documento não diz vazio nem falha — diz que o sweep DESISTIU.
+                # Repetir a mesma leitura é gastar browser; esses precisam de outro caminho
+                # (CRACKED, VM-2, pedido formal). É atributo do item, nunca uma causa a mais.
+                "esgotou_tentativas": bool((f.get("tentativas") or 0) >= 3),
+                "tentativas": int(f.get("tentativas") or 0),
+                "lido_em": f.get("em") or ""}
+
+    itens = ([_item(p, "sem causa registrada") for p in sem_causa]
+             + [_item(p, CAIXA) for p in caixa])
+    itens.sort(key=lambda x: -x["valor_ob"])
     return {
         "ok": True, "estado": "medido",
         "processos_com_registro": len(feitos), "zeros": len(zeros),
         "pct_zeros": round(100.0 * len(zeros) / len(feitos), 1) if feitos else 0.0,
         "por_causa": dict(por_causa.most_common()),
         "sem_causa": len(sem_causa),
+        "caixa_leitura_falhou": len(caixa),
         "ja_no_arquivo_por_outro_caminho": len(ja_no_arquivo),
         "contradicao_ok_mas_vazio": contradicao,
-        "fila": [{"processo": p, "valor_ob": round(valor.get(p, 0.0), 2)} for p in ordenar],
+        "fila": itens,
         "valor_ob_sem_causa": round(sum(valor.get(p, 0.0) for p in sem_causa), 2),
+        "valor_ob_fila": round(sum(x["valor_ob"] for x in itens), 2),
         "ressalva": (
             "Zero documento NÃO é 'processo vazio': é 'não trouxe nada', e a causa só está medida "
             "para uma fração. Enquanto a causa não é conhecida, o processo segue ABERTO para a "
@@ -163,9 +207,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     from compliance_agent.reporting.intel_base import moeda
     print(f"  soma de OB dos zeros SEM causa: R$ {moeda(r['valor_ob_sem_causa'])}")
     if a.fila:
-        print(f"\nfila a diligenciar (maior exposição primeiro), {a.fila} de {r['sem_causa']}:")
+        print(f"\nfila a diligenciar (maior exposição primeiro), {a.fila} de {len(r['fila'])} "
+              f"({r['sem_causa']} sem causa + {r['caixa_leitura_falhou']} CAIXA) — "
+              f"R$ {moeda(r['valor_ob_fila'])} em OB:")
         for x in r["fila"][: a.fila]:
-            print(f"   {x['processo']:28} R$ {moeda(x['valor_ob']):>18}")
+            marca = " ⛔3+" if x["esgotou_tentativas"] else "    "
+            print(f"   {x['processo']:28} R$ {moeda(x['valor_ob']):>18}{marca}  {x['causa']}")
     print(f"\n{r['ressalva']}")
     return 0
 

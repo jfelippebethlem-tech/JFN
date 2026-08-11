@@ -917,8 +917,13 @@ def api_zeros_sem_causa(limite: int = 25):
             "ok": True, "total": r["sem_causa"], "zeros": r["zeros"],
             "processos_com_registro": r["processos_com_registro"],
             "por_causa": r["por_causa"],
+            # CAIXA é causa CONHECIDA e mesmo assim trabalho ABERTO: o processo segue ilegível.
+            # Sai do balde de ignorância, continua na fila — com a causa declarada no item.
+            "caixa_leitura_falhou": r["caixa_leitura_falhou"],
+            "fila_total": len(r["fila"]),
             "contradicao": r["contradicao_ok_mas_vazio"],
             "valor_ob_sem_causa": r["valor_ob_sem_causa"],
+            "valor_ob_fila": r["valor_ob_fila"],
             "itens": r["fila"][:max(1, min(int(limite), 200))],
             "ressalva": r["ressalva"],
         })
