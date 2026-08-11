@@ -244,6 +244,7 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     sinal = _raizes_com_sinal_osint()
     credores = _credores_por_processo(con) if sinal else {}
     provados = _fila_com_lacuna_provada(con)
+    folha = _processos_de_folha(con)
     con.close()
     legiveis = _unidades_legiveis()
     # ORDEM: unidade que rende documentos primeiro; depois o que o PARECER PROVA que falta (não há
@@ -256,12 +257,20 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
                              0 if _norm_proc(r[0]) in provados_norm else 1,
                              0 if (credores.get(r[0]) or set()) & sinal else 1,
+                             # FOLHA/PREVIDÊNCIA por último dentro do estrato: 82% do top-50 por
+                             # valor era folha, e o browser é o recurso mais escasso da casa.
+                             1 if r[0] in folha else 0,
                              -(r[2] or 0)))
     n_prov = sum(1 for r in rows if _norm_proc(r[0]) in provados_norm)
     n_pri = sum(1 for r in rows if (credores.get(r[0]) or set()) & sinal) if sinal else 0
+    n_folha = sum(1 for r in rows if r[0] in folha)
     if n_prov or n_pri:
         _log(f"fila: {n_prov} com lacuna PROVADA pelo parecer e {n_pri} com sinal OSINT no credor "
-             f"entram na frente (de {len(rows)}); ordem = legível > lacuna provada > sinal > valor")
+             f"entram na frente (de {len(rows)}); ordem = legível > lacuna provada > sinal > "
+             f"fornecedor antes de folha > valor")
+    if n_folha:
+        _log(f"fila: {n_folha} processos são de FOLHA/PREVIDÊNCIA (credor genérico) e foram "
+             f"rebaixados dentro do próprio estrato — rebaixados, não excluídos.")
     # FATIA da máquina: com duas capturando, cada uma fica com metade determinística do
     # universo. Sem isto as duas começam pelo mesmo processo (mesma fila, mesma ordem) e
     # gastam o dobro de browser para entregar a mesma coisa. Ver `na_minha_fatia`.
@@ -315,6 +324,54 @@ def _raizes_com_sinal_osint() -> set[str]:
         return set()
     return {x["cnpj_basico"] for x in corpo.get("itens", [])
             if not x.get("explicacao_institucional")}
+
+
+def _processos_de_folha(con) -> set[str]:
+    """Processos cujo dinheiro é FOLHA/PREVIDÊNCIA, não pagamento a fornecedor.
+
+    A fila termina em `-valor`, e a casa já escreveu que "valor não é risco". O que faltava era
+    notar o que o valor bruto de fato ranqueia. Quem encabeça é `CG0004700` (**FOLHA DE
+    PAGAMENTOS**), `123400`/`123499` (RIOPREV e plano previdenciário) e `CG0006026`
+    (RIOPREV/INATIVOS) — credor GENÉRICO, que não tem CNPJ nem CPF.
+
+    MEDIDO NA FILA REAL, por estrato (2026-08-11) — e a medição corrige a primeira versão desta
+    nota, que citava o ranking por valor PURO (82% do top-50) e teria exagerado o efeito:
+
+        estrato                                    processos   folha no seu top-50
+        legível + lacuna provada                       2.346          0
+        legível + sinal OSINT no credor                2.346         22
+        legível, sem sinal (o estrato de trabalho)    77.748         30
+        não legível, sem sinal                        38.423         48
+
+    Ou seja: na cabeça de HOJE não muda nada — os estratos de lacuna provada e OSINT ocupam as
+    primeiras vagas e são de fornecedor. O desperdício está no estrato onde o sweep passa a vida,
+    e no estrato do próprio sinal OSINT, onde 22 das 50 primeiras vagas iam para a folha.
+
+    O sweep lê ~16 processos por dia com browser. Mandar as primeiras vagas para a folha é gastar
+    o recurso mais escasso da casa no que os detectores de licitação e contrato nem examinam.
+
+    REBAIXAR, NÃO EXCLUIR, e dentro do mesmo estrato: folha tem irregularidade própria (a casa já
+    faz perícia de benefício×vínculo) e segue alcançável. O que não pode é ela chegar na frente do
+    fornecedor por um critério que não mede risco.
+
+    O corte é por PESO do dinheiro (>50% em credor genérico), não por presença: consignação ao lado
+    do pagamento não descaracteriza o processo do fornecedor. Sem OB conhecida, NÃO é folha — na
+    dúvida o processo segue como fornecedor, porque rebaixar por ausência de dado esconderia
+    trabalho.
+    """
+    peso: dict[str, list[float]] = {}
+    try:
+        cur = con.execute("SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
+                          "WHERE COALESCE(processo,'') <> '' GROUP BY 1, 2")
+    except sqlite3.Error:
+        return set()
+    for proc, cred, v in cur:
+        d = re.sub(r"\D", "", str(cred or ""))
+        a = peso.setdefault(str(proc), [0.0, 0.0])
+        a[1] += float(v or 0)
+        if len(d) in (11, 14):  # CPF ou CNPJ = fornecedor (PF contratada também é fornecedor)
+            a[0] += float(v or 0)
+    return {p for p, (forn, tot) in peso.items() if tot > 0 and forn / tot < 0.5}
 
 
 def _credores_por_processo(con) -> dict[str, set[str]]:
