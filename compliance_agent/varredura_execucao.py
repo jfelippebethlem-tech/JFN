@@ -27,9 +27,16 @@ O QUE FICA DE FORA, e por quê — a mesma regra de `varredura_certames`:
     1.138.236 OBs, mas a ponte contrato↔OB não existe: `contrato_aditivo.numero_controle_pncp` é
     chave de CONTRATO ("-2-") e `pncp_resultado.certame` é chave de COMPRA ("-1-"), com zero
     casamentos hoje.
+    SEGUNDA PONTE TESTADA E REPROVADA (2026-08-11): desde 2026-08-09 o coletor guarda
+    `contrato_aditivo.processo`, e a OB tem `processo` — parecia a ponte que faltava. Não é: dos
+    1.030 processos de aditivo contra 99.994 de OB, só **13 casam**. Os formatos são de entes
+    diferentes e não se falam ("E-20/001.001945/2024", "303576-5/2025", "2026-06041596"). Ligar X3
+    sobre isso daria `nao_avaliavel` em 99% dos contratos, que é o que esta lista existe para
+    evitar. Medido para ninguém refazer a conta.
   · X4 (carona) pede itens e quantitativos da ata de registro de preços.
   · X5 (jogo de planilha) pede a planilha orçamentária item a item — não há tabela de itens de
-    contrato na base.
+    contrato na base. Reconferido em 2026-08-11: a única tabela de item é `proposta_item`, que é
+    de PROPOSTA de certame, não de execução contratual.
   · X6 (entrega fantasma) pede atestos e medições.
   · X8 (aditivo retroativo) ENTROU em 2026-08-11. O bloqueio era real quando foi escrito —
     `contrato_aditivo` guardava só `vigencia_fim` e `coletado_em` — e CADUCOU em 2026-08-09, quando
