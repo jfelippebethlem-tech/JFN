@@ -135,7 +135,15 @@ def montar_contexto(con: sqlite3.Connection, numero_controle_pncp: str) -> dict[
             "tipo": tipo, "valor": valor, "origem_tipo": origem,
             "descricao_objeto": ad["objeto"] or "",
             "justificativa": ad["objeto"] or "",
-            "data": (ad["vigencia_fim"] or None) if tipo == "prazo" else None,
+            # `data` É A DATA DO ATO, não a nova vigência. Ela guardava `vigencia_fim` para termos
+            # de prazo, e isso virou defeito no dia em que o X8 entrou (2026-08-11): ele usa
+            # `data_assinatura or data` como data da assinatura, então TODA prorrogação — cuja nova
+            # vigência é, por definição, posterior ao fim da antiga — aparecia como termo assinado
+            # fora do prazo. Pego ao conferir à mão um contrato de R$ 199 mi cujos três termos têm
+            # `data_assinatura` NULA e mesmo assim saíam confirmados.
+            # Ninguém mais dependia do valor antigo: o X1 lê `data` só de termos de VALOR (onde já
+            # era None) e o X2 usa a lista `prorrogacoes`, que segue intacta.
+            "data": _campo(ad, "data_assinatura"),
             "prazo_aditado_dias": ad["prazo_aditado_dias"] or 0,
             "fundamento_legal": ad["fundamento_legal"] or "",
         })

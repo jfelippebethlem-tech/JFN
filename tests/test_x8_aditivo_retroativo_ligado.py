@@ -85,3 +85,23 @@ def test_x8_nao_acusa_termo_assinado_DENTRO_da_vigencia(con):
     from compliance_agent.detectores import REGISTRO
     r = REGISTRO["X8"].avaliar(dict(montar_contexto(con, "CC1")))
     assert r.status != "confirmado"
+
+
+def test_sem_data_de_assinatura_e_NAO_AVALIAVEL_nao_confirmado(con):
+    """O falso positivo que eu criei ao ligar o X8, e que só apareceu na conferência à mão.
+
+    O contexto guardava em `data` a NOVA vigência do termo de prazo, e o X8 usa
+    `data_assinatura or data`. Como a nova vigência é, por definição, posterior ao fim da antiga,
+    TODA prorrogação saía como assinada fora do prazo. Pego num contrato de R$ 199 mi da Prefeitura
+    do Rio cujos três termos têm `data_assinatura` NULA e mesmo assim vinham confirmados: 48
+    confirmados viraram 36 depois do conserto.
+    """
+    con.execute("""insert into contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                   numero_termo, objeto, vigencia_fim, prazo_aditado_dias)
+                   values ('CC1',1,'02/2026','Prorrogação do prazo por 12 meses','2027-01-26',365)""")
+    con.commit()
+    from compliance_agent.detectores import REGISTRO
+    ctx = montar_contexto(con, "CC1")
+    assert ctx["aditivos"][0]["data"] is None, "`data` é a data do ATO, não a nova vigência"
+    r = REGISTRO["X8"].avaliar(dict(ctx))
+    assert r.status == "nao_avaliavel", "sem data de assinatura não se afirma retroatividade"
