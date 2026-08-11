@@ -838,6 +838,8 @@ def api_detectores(limite: int = 25):
     e some quando se conta só o primeiro.
     """
     import sqlite3 as _sq
+    from pathlib import Path as _Path
+
     tabelas = (("achado_detector", "ug"), ("achado_certame", "certame"),
                ("achado_execucao", "contrato"))
     try:
@@ -848,6 +850,11 @@ def api_detectores(limite: int = 25):
     try:
         por_det: dict[str, dict] = {}
         itens: list[dict] = []
+        # FRESCOR POR ESCOPO. Desde 2026-08-11 16:30 as varreduras de órgão e de certame estão
+        # DELEGADAS À VM-2 (`data/.varredura_na_vm2`), então este banco congela para elas enquanto
+        # a colheita não voltar. Servir a contagem sem a data faria dado parado passar por atual —
+        # é a mesma regra dos carimbos de alerta (`created_at`/`visto_em`).
+        frescor: dict[str, str] = {}
         for tab, chave in tabelas:
             try:
                 linhas = con.execute(
@@ -856,6 +863,9 @@ def api_detectores(limite: int = 25):
             except _sq.Error:
                 continue                       # tabela ausente = varredura nunca rodou, não zero
             for r in linhas:
+                q = str(r["gerado_em"] or "")[:19]
+                if q:
+                    frescor[tab] = max(frescor.get(tab, ""), q)
                 d = por_det.setdefault(str(r["detector"]), {
                     "detector": str(r["detector"]), "confirmado": 0, "descartado": 0,
                     "nao_avaliavel": 0, "escopo": tab.replace("achado_", "")})
@@ -877,7 +887,9 @@ def api_detectores(limite: int = 25):
         "nao_avaliaveis": sum(d["nao_avaliavel"] for d in ordem),
         "detectores": ordem,
         "itens": itens[:max(1, min(int(limite), 200))],
-        "fonte": {"ok": True, "banco": "data/achados.db"},
+        "fonte": {"ok": True, "banco": "data/achados.db",
+                  "medido_em": {k.replace("achado_", ""): v for k, v in frescor.items()},
+                  "delegado_vm2": _Path("data/.varredura_na_vm2").exists()},
         "ressalva": (
             "CONFIRMADO é indício apurado pela régua do detector, não acusação — cada um traz "
             "explicação inocente e motivo de refutação no próprio registro. NÃO AVALIÁVEL não é "

@@ -2469,6 +2469,16 @@ async function detectoresFramework(){
         <td style="font-size:12px">${esc(String(x.motivo).slice(0,110))}</td></tr>`).join('')
       +`</tbody></table>`);
   }
+  /* FRESCOR POR ESCOPO. Desde 11/08 16:30 as varreduras de órgão e certame estão DELEGADAS À VM-2,
+     e este banco congela para elas até a colheita voltar. Contagem sem data faz dado parado passar
+     por atual — mesma regra dos carimbos de alerta. */
+  const f=(d.fonte||{}).medido_em||{};
+  if(Object.keys(f).length){
+    h+=`<div class="dim" style="margin-top:6px">Medido em: `
+      +Object.entries(f).map(([k,v])=>`<b>${esc(k)}</b> ${esc(String(v).replace('T',' ').slice(0,16))}`).join(' · ')
+      +((d.fonte||{}).delegado_vm2?' — <b>órgão e certame estão delegados à VM-2</b>; enquanto a colheita não voltar, esses dois números não avançam.':'')
+      +`</div>`;
+  }
   h+=leitura(esc(d.ressalva||''));
   alvo.innerHTML=h; o.appendChild(alvo);
 }
