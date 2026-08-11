@@ -2493,8 +2493,9 @@ async function zerosSemCausa(){
     h+=card('<div class="dim">Nenhum processo zerado sem causa — todo zero do acervo tem motivo registrado.</div>');
     alvo.innerHTML=h; o.appendChild(alvo); return;
   }
-  h+=`<div class="grid g3">${kpi(fmtRc(d.valor_ob_fila!=null?d.valor_ob_fila:d.valor_ob_sem_causa),'OB atrás da fila','var(--rose)','💸',
-      {sobre:'Soma das ordens bancárias <b>contabilizadas</b> dos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar.'})}${
+  h+=`<div class="grid g3">${kpi(fmtRc(d.valor_ob_fornecedor!=null?d.valor_ob_fornecedor:d.valor_ob_sem_causa),'OB a FORNECEDOR atrás da fila','var(--rose)','💸',
+      {sobre:'Soma das ordens bancárias <b>contabilizadas</b> a CNPJ/CPF nos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar.'
+        +(d.valor_ob_folha?' Fora desta conta ficam <b>'+fmtRc(d.valor_ob_folha)+'</b> de folha de pagamento e previdência (credor genérico: FOLHA DE PAGAMENTOS, RIOPREV), que nenhum detector de licitação examina — publicá-los junto superestimaria a exposição fiscalizável.':'')})}${
       kpi(fmtN(d.total),'Sem causa nenhuma',null,'❓',
       {sobre:'Zero documento e nenhum motivo — nem no registro de restritos, nem no progresso do sweep. É o balde de ignorância propriamente dito.'})}${
       kpi(fmtN(d.caixa_leitura_falhou||0),'CAIXA: a leitura FALHOU','var(--amber)','🚫',
@@ -2508,9 +2509,10 @@ async function zerosSemCausa(){
       e mesmo assim não veio documento nem há arquivo. Se dá para ler, o zero é falha nossa:
       <span class="dim">${d.contradicao.map(p=>esc(p)).join(' · ')}</span></div>`);
   }
-  h+=card(`<table class="tb"><thead><tr><th>processo</th><th class="right">OB paga</th><th>causa</th>
+  h+=card(`<table class="tb"><thead><tr><th>processo</th><th class="right">OB a fornecedor</th><th>causa</th>
     <th class="right">tentativas</th></tr></thead><tbody>`
-    +d.itens.map(x=>`<tr><td>${esc(x.processo)}</td><td class="right">${fmtRc(x.valor_ob)}</td>
+    +d.itens.map(x=>`<tr><td>${esc(x.processo)}${x.eh_folha?' <span class="dim">(folha/previdência)</span>':''}</td>
+      <td class="right">${fmtRc(x.valor_ob_fornecedor!=null?x.valor_ob_fornecedor:x.valor_ob)}</td>
       <td class="dim">${esc(x.causa||'—')}</td>
       <td class="right">${x.esgotou_tentativas
         ? `<b title="o sweep desistiu: repetir a mesma leitura não muda o resultado — precisa de outro caminho (CRACKED, VM-2, pedido formal)">${fmtN(x.tentativas||0)} ⛔</b>`

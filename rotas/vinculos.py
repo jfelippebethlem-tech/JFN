@@ -924,6 +924,11 @@ def api_zeros_sem_causa(limite: int = 25):
             "contradicao": r["contradicao_ok_mas_vazio"],
             "valor_ob_sem_causa": r["valor_ob_sem_causa"],
             "valor_ob_fila": r["valor_ob_fila"],
+            # A exposição precisa dizer DE QUE é feita: 62% do total é folha/previdência, que
+            # nenhum detector de licitação examina. Publicar o bruto como exposição fiscalizável
+            # é a família dos quatro números de manchete já corrigidos.
+            "valor_ob_fornecedor": r["valor_ob_fornecedor"],
+            "valor_ob_folha": r["valor_ob_folha"],
             "itens": r["fila"][:max(1, min(int(limite), 200))],
             "ressalva": r["ressalva"],
         })

@@ -60,6 +60,14 @@ SUSPEITA = {"RESTRITO?"}
 _REL_CAIXA = 15
 CAIXA = "CAIXA (leitura falhou)"
 
+# Régua única da casa para "isto é pagamento a fornecedor?" — a MESMA que a fila do `sei_sweep`
+# usa para rebaixar folha. Duas cópias do mesmo critério divergem: o teto do art. 125 chegou a
+# cinco, com valores diferentes, dentro de detectores de risco alto.
+from compliance_agent.credor_generico import (  # noqa: E402
+    LIMIAR_FORNECEDOR as _LIMIAR_FORNECEDOR,
+    eh_fornecedor as _eh_fornecedor,
+)
+
 
 def _norm(proc: str) -> str:
     return re.sub(r"\D", "", proc or "")
@@ -104,6 +112,7 @@ def medir(prog: Path | None = None, reg: Path | None = None,
 
     # EXPOSIÇÃO: o zero de um processo com R$ 80 mi pago pesa diferente do zero de um com R$ 4 mil.
     valor: dict[str, float] = {}
+    forn: dict[str, float] = {}
     try:
         con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=60)
         try:
@@ -112,15 +121,23 @@ def medir(prog: Path | None = None, reg: Path | None = None,
             # para montar a fila. Minha primeira versão usou `ordens_bancarias.numero_sei`: o campo
             # está preenchido em **10** processos no acervo inteiro, então a ordenação por exposição
             # saía toda zerada — publicar essa fila seria oferecer uma prioridade que não prioriza.
-            for num, v in con.execute(
-                    "SELECT processo, COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe "
-                    "WHERE COALESCE(processo,'') <> '' AND status='Contabilizado' GROUP BY 1"):
+            # E A EXPOSIÇÃO TAMBÉM PRECISA DIZER DE QUE ELA É FEITA. Medido em 2026-08-11: dos
+            # R$ 9,90 bi desta fila, R$ 6,17 bi (62%) são FOLHA e previdência (`CG0004700`,
+            # `123400`, `CG0006026`) e só R$ 3,73 bi é pagamento a CNPJ/CPF. Publicar o total como
+            # exposição fiscalizável superestima — é a família dos quatro números de manchete já
+            # corrigidos. A régua é a da casa (`credor_generico`), a mesma que a fila do sweep usa.
+            for num, cred, v in con.execute(
+                    "SELECT processo, credor, COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe "
+                    "WHERE COALESCE(processo,'') <> '' AND status='Contabilizado' GROUP BY 1, 2"):
                 if num in alvo:
-                    valor[num] = float(v or 0)
+                    val = float(v or 0)
+                    valor[num] = valor.get(num, 0.0) + val
+                    if _eh_fornecedor(cred):
+                        forn[num] = forn.get(num, 0.0) + val
         finally:
             con.close()
     except sqlite3.Error:
-        valor = {}
+        valor, forn = {}, {}
 
     # O PROGRESSO NÃO É A ÚLTIMA PALAVRA. Um processo pode constar "0 docs" no progresso do sweep e
     # ainda assim ter pasta no arquivo — chegou por outro caminho (colheita da VM-2, recaptura
@@ -154,7 +171,12 @@ def medir(prog: Path | None = None, reg: Path | None = None,
     # priorização não confunda "não sei por quê" com "sei, e falhamos".
     def _item(p: str, causa: str) -> dict[str, Any]:
         f = feitos.get(p) or {}
-        return {"processo": p, "valor_ob": round(valor.get(p, 0.0), 2), "causa": causa,
+        tot, fo = valor.get(p, 0.0), forn.get(p, 0.0)
+        return {"processo": p, "valor_ob": round(tot, 2), "causa": causa,
+                "valor_ob_fornecedor": round(fo, 2),
+                # Sem OB conhecida NÃO é folha: na dúvida o processo segue como trabalho de
+                # fornecedor, porque rebaixar por ausência de dado esconderia trabalho.
+                "eh_folha": bool(tot > 0 and fo / tot < _LIMIAR_FORNECEDOR),
                 # 3+ tentativas com 0 documento não diz vazio nem falha — diz que o sweep DESISTIU.
                 # Repetir a mesma leitura é gastar browser; esses precisam de outro caminho
                 # (CRACKED, VM-2, pedido formal). É atributo do item, nunca uma causa a mais.
@@ -164,7 +186,9 @@ def medir(prog: Path | None = None, reg: Path | None = None,
 
     itens = ([_item(p, "sem causa registrada") for p in sem_causa]
              + [_item(p, CAIXA) for p in caixa])
-    itens.sort(key=lambda x: -x["valor_ob"])
+    # ORDENA PELO QUE A FISCALIZAÇÃO PERSEGUE. Por valor bruto, o topo da fila era folha e
+    # previdência — pagamento grande, legítimo, e que nenhum detector de licitação examina.
+    itens.sort(key=lambda x: (-x["valor_ob_fornecedor"], -x["valor_ob"]))
     return {
         "ok": True, "estado": "medido",
         "processos_com_registro": len(feitos), "zeros": len(zeros),
@@ -177,6 +201,8 @@ def medir(prog: Path | None = None, reg: Path | None = None,
         "fila": itens,
         "valor_ob_sem_causa": round(sum(valor.get(p, 0.0) for p in sem_causa), 2),
         "valor_ob_fila": round(sum(x["valor_ob"] for x in itens), 2),
+        "valor_ob_fornecedor": round(sum(x["valor_ob_fornecedor"] for x in itens), 2),
+        "valor_ob_folha": round(sum(x["valor_ob"] - x["valor_ob_fornecedor"] for x in itens), 2),
         "ressalva": (
             "Zero documento NÃO é 'processo vazio': é 'não trouxe nada', e a causa só está medida "
             "para uma fração. Enquanto a causa não é conhecida, o processo segue ABERTO para a "
@@ -206,13 +232,18 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
         print(f"     {v:6}  {k}")
     from compliance_agent.reporting.intel_base import moeda
     print(f"  soma de OB dos zeros SEM causa: R$ {moeda(r['valor_ob_sem_causa'])}")
+    pct = (100.0 * r["valor_ob_fornecedor"] / r["valor_ob_fila"]) if r["valor_ob_fila"] else 0.0
+    print(f"  da fila inteira (R$ {moeda(r['valor_ob_fila'])}): "
+          f"R$ {moeda(r['valor_ob_fornecedor'])} é pagamento a FORNECEDOR ({pct:.1f}%) e "
+          f"R$ {moeda(r['valor_ob_folha'])} é folha/previdência")
     if a.fila:
-        print(f"\nfila a diligenciar (maior exposição primeiro), {a.fila} de {len(r['fila'])} "
-              f"({r['sem_causa']} sem causa + {r['caixa_leitura_falhou']} CAIXA) — "
-              f"R$ {moeda(r['valor_ob_fila'])} em OB:")
+        print(f"\nfila a diligenciar (maior exposição a FORNECEDOR primeiro), {a.fila} de "
+              f"{len(r['fila'])} ({r['sem_causa']} sem causa + {r['caixa_leitura_falhou']} CAIXA):")
         for x in r["fila"][: a.fila]:
             marca = " ⛔3+" if x["esgotou_tentativas"] else "    "
-            print(f"   {x['processo']:28} R$ {moeda(x['valor_ob']):>18}{marca}  {x['causa']}")
+            folha = " [folha]" if x["eh_folha"] else ""
+            print(f"   {x['processo']:28} R$ {moeda(x['valor_ob_fornecedor']):>18}{marca}  "
+                  f"{x['causa']}{folha}")
     print(f"\n{r['ressalva']}")
     return 0
 

@@ -354,24 +354,13 @@ def _processos_de_folha(con) -> set[str]:
     faz perícia de benefício×vínculo) e segue alcançável. O que não pode é ela chegar na frente do
     fornecedor por um critério que não mede risco.
 
-    O corte é por PESO do dinheiro (>50% em credor genérico), não por presença: consignação ao lado
-    do pagamento não descaracteriza o processo do fornecedor. Sem OB conhecida, NÃO é folha — na
-    dúvida o processo segue como fornecedor, porque rebaixar por ausência de dado esconderia
-    trabalho.
+    A RÉGUA MORA EM `compliance_agent/credor_generico`, não aqui: o painel publica a mesma
+    separação (quanto da exposição é fornecedor, quanto é folha) e duas cópias do mesmo critério
+    divergem — foi o que aconteceu com o teto do art. 125, que chegou a cinco cópias com valores
+    diferentes dentro de detectores de risco alto.
     """
-    peso: dict[str, list[float]] = {}
-    try:
-        cur = con.execute("SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
-                          "WHERE COALESCE(processo,'') <> '' GROUP BY 1, 2")
-    except sqlite3.Error:
-        return set()
-    for proc, cred, v in cur:
-        d = re.sub(r"\D", "", str(cred or ""))
-        a = peso.setdefault(str(proc), [0.0, 0.0])
-        a[1] += float(v or 0)
-        if len(d) in (11, 14):  # CPF ou CNPJ = fornecedor (PF contratada também é fornecedor)
-            a[0] += float(v or 0)
-    return {p for p, (forn, tot) in peso.items() if tot > 0 and forn / tot < 0.5}
+    from compliance_agent.credor_generico import processos_de_folha
+    return processos_de_folha(con)
 
 
 def _credores_por_processo(con) -> dict[str, set[str]]:

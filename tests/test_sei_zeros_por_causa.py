@@ -72,6 +72,46 @@ def test_contradicao_e_so_quem_esta_OK_e_sem_arquivo(tmp_path):
     assert r["contradicao_ok_mas_vazio"] == ["SEI-5/5/2024"]
 
 
+def _db_com_ob(tmp_path, linhas):
+    """linhas: (processo, credor, valor) — a ponte processo→OB é `ob_orcamentaria_siafe.processo`."""
+    import sqlite3
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, credor TEXT, valor REAL,"
+                " status TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,'Contabilizado')", linhas)
+    con.commit(); con.close()
+    return p
+
+
+def test_exposicao_separa_FORNECEDOR_de_folha(tmp_path):
+    """R$ 9,90 bi "atrás dos processos ilegíveis" eram R$ 3,73 bi de pagamento a CNPJ/CPF e
+    R$ 6,17 bi (62%) de FOLHA e previdência (`CG0004700`, `123400`, `CG0006026`). Publicar o total
+    como exposição fiscalizável superestima — a mesma família dos quatro números de manchete já
+    corrigidos. A fila ordena pelo que a fiscalização pode perseguir: o valor de FORNECEDOR."""
+    prog, reg = _monta(tmp_path, {"SEI-1/1/2024": {"n_docs": 0}, "SEI-2/2/2024": {"n_docs": 0}}, {})
+    db = _db_com_ob(tmp_path, [
+        ("SEI-1/1/2024", "CG0004700", 900.0),        # folha: grande e não fiscalizável aqui
+        ("SEI-2/2/2024", "12345678000199", 100.0),   # fornecedor: pequeno e é o que interessa
+    ])
+    r = Z.medir(prog=prog, reg=reg, db=db)
+    assert r["valor_ob_fila"] == 1000.0
+    assert r["valor_ob_fornecedor"] == 100.0
+    assert r["valor_ob_folha"] == 900.0
+    # ordem pelo que a fiscalização persegue, não pelo tamanho do pagamento
+    assert [x["processo"] for x in r["fila"]] == ["SEI-2/2/2024", "SEI-1/1/2024"]
+    assert r["fila"][0]["valor_ob_fornecedor"] == 100.0
+    assert r["fila"][1]["eh_folha"] is True
+
+
+def test_sem_OB_conhecida_o_processo_NAO_vira_folha(tmp_path):
+    """Ausência de dado não rebaixa: o processo sem OB segue como trabalho de fornecedor."""
+    prog, reg = _monta(tmp_path, {"SEI-9/9/2024": {"n_docs": 0}}, {})
+    r = Z.medir(prog=prog, reg=reg, db=_db_com_ob(tmp_path, []))
+    assert r["fila"][0]["eh_folha"] is False
+    assert r["valor_ob_folha"] == 0.0
+
+
 def test_progresso_ilegivel_declara_indisponivel(tmp_path):
     r = Z.medir(prog=tmp_path / "nao_existe.json", reg=tmp_path / "x.json", db=tmp_path / "x.db")
     assert r["ok"] is False and r["estado"] == "indisponivel"
