@@ -137,9 +137,13 @@ async def main():
             # ela existe tanto com resultado quanto sem. Medido em 2026-08-12: a busca por
             # "AGILE CORP" voltou `nao_parseei` com este bloco em espera fixa, enquanto "LIMPEZA"
             # passou; a diferença era o tempo do Solr, não a existência do termo.
+            from playwright.async_api import TimeoutError as _PWTimeout
             try:
                 await pg.wait_for_selector(".pesquisaBarra, table.pesquisaResultado", timeout=60000)
-            except Exception:  # noqa: BLE001 — a falta da barra vira `nao_parseei`, que NÃO é zero
+            except _PWTimeout:
+                # a falta da barra vira `nao_parseei` adiante, que NÃO é zero. Captura ESPECÍFICA:
+                # Captura genérica aqui esconderia sessão caída e erro de seletor no mesmo
+                # balde — e a catraca da casa conta TEXTO, então nem citá-la por extenso.
                 await pg.wait_for_timeout(3000)
             laudo = parse_resultado(await pg.content())
             # UMA SEGUNDA CHANCE, e só uma: `nao_parseei` costuma ser tela que ainda não pintou.
@@ -159,8 +163,13 @@ async def main():
                     (_d / f"_naoparseei_{_slug}.html").write_text(await pg.content(), encoding="utf-8")
                     (_d / f"_naoparseei_{_slug}.url").write_text(
                         f"{pg.url}\nframes={[f.url[:120] for f in pg.frames]}", encoding="utf-8")
-                except OSError:
-                    pass
+                except OSError as _exc:
+                    # NUNCA MUDO. A catraca da casa pegou este `pass` no meu próprio push, e com
+                    # razão: gravar o diagnóstico é o que salva o próximo passo — falhar em gravar
+                    # e não dizer transforma a instrumentação em nada.
+                    print(json.dumps(
+                        {"aviso": f"não consegui gravar a página do nao_parseei: {_exc}"},
+                        ensure_ascii=False), file=sys.stderr)
             reg = laudo["total"]
             # pares tipo↔número, percorrendo TODAS as páginas
             achados: dict[str, str] = {}
