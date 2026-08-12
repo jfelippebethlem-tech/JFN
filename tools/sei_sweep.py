@@ -565,6 +565,40 @@ def _arquivo_incompleto(proc: str) -> bool:
         return False
 
 
+def _arquivo_integro(proc: str) -> str | None:
+    """Data da captura arquivada, quando ela é ÍNTEGRA pela régua da casa; `None` caso contrário.
+
+    A METADE QUE FALTAVA. `_arquivo_incompleto` devolve à fila quem tem captura insuficiente — o
+    disco mandando mais que o progresso. Faltava o sentido oposto: captura COMPLETA tira da fila,
+    mesmo que o progresso diga zero. Progresso e acervo são preenchidos por caminhos diferentes (o
+    sweep grava o primeiro; a colheita da VM-2, a recaptura integral e o `sei_arquivar` gravam o
+    segundo), e eles divergem.
+
+    Medido em 2026-08-11: de 2.315 pastas no acervo, **321** têm entrada no progresso dizendo ZERO
+    documento e **118** dessas são íntegras — processos completos que continuavam elegíveis para
+    releitura, alguns com 3 a 5 tentativas já gastas. Foi assim que o processo de R$ 88,0 mi do
+    caso AGILE/SEEDUC ficou dado como "nunca lido" com 407 documentos no disco desde 09/08.
+
+    Devolve a DATA, e não um booleano, porque quem chama precisa dela: processo que ANDOU (OB mais
+    nova que a captura) volta a ser lido. Sem essa exceção, o conserto trocaria releitura inútil
+    por cegueira a fato novo.
+    """
+    tag = re.sub(r"_+", "_", re.sub(r"\D", "_", re.sub(r"^SEI-?", "", proc or ""))).strip("_")
+    pasta = REPO / "data" / "sei_arquivo" / tag
+    mf = pasta / "manifest.json"
+    if not mf.exists():
+        return None
+    try:
+        from compliance_agent.sei import manifesto_norm
+        man = json.loads(mf.read_text(encoding="utf-8"))
+        man["_pasta"] = str(pasta)
+        if not manifesto_norm.captura_integra(man, pasta)[0]:
+            return None
+        return str(man.get("gerado_em") or "") or None
+    except (ImportError, OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def _salvar_cadeia_no_cache(proc: str, cadeia: list):
     """Anexa a cadeia (relacionados lidos) ao cache cdp_*.json do processo — o Lex passa a ver a árvore."""
     cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
@@ -672,6 +706,15 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # desistir não era o combinado. Mesma doutrina do `captura_integra`: o disco decide.
         if f and f.get("n_docs", 0) > 0 and _arquivo_incompleto(p):
             return False
+        # E A METADE SIMÉTRICA: captura ÍNTEGRA no acervo TIRA da fila, mesmo com o progresso
+        # dizendo zero. Progresso e acervo são preenchidos por caminhos diferentes e divergem —
+        # medido em 2026-08-11: 118 processos completos continuavam elegíveis para releitura,
+        # alguns com 3 a 5 tentativas gastas. O disco decide nos dois sentidos.
+        # A exceção fica de pé: se há OB mais nova que a captura, o processo ANDOU e volta a ser
+        # lido — trocar releitura inútil por cegueira a fato novo não seria conserto.
+        _integro_em = _arquivo_integro(p)
+        if _integro_em and not _ob_desatualizada(ob_recente.get(p, ""), _integro_em):
+            return True
         # DESISTIR NÃO PODE SER PARA SEMPRE. A regra de 3 tentativas existe para não martelar
         # processo vazio ou restrito — mas a própria docstring do `_ja_lido_ok` diz que "a
         # abertura do SEI é flaky". Medido em 2026-08-04: **2.760 processos abandonados**, e as
