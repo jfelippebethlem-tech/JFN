@@ -50,6 +50,37 @@ def _moeda(v: float) -> str:
     return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+# ── CONTROLE NEGATIVO DA FAIXA MÉDIA (2026-08-12) ───────────────────────────────────────────────
+# A faixa `MÉDIA` casa por NOME sem confirmar o fragmento de CPF, e a própria lista prova que ela é
+# ruído: restringindo aos fornecedores com contrato da Prefeitura do Rio, dos 125 casamentos com
+# Bolsa Família/Auxílio Brasil apenas **3 são ALTA** — e entre os 122 restantes aparecem INFRAERO,
+# Banco Bradesco, Concremat, Elevadores Atlas Schindler e Microsens S.A. Diretor de banco e de
+# estatal não recebe Bolsa Família.
+#
+# O relatório já dizia que MÉDIA é "CPF não confirmado". Faltava o NÚMERO: sem medir quanto da
+# faixa é implausível, "não confirmado" é lido como "provavelmente sim".
+#
+# A régua é DELIBERADAMENTE conservadora — S.A., banco, estatal e multinacional listada. Não
+# pretende achar todo falso positivo; pretende provar que existem tantos que a faixa não é fila de
+# trabalho. E não pode engolir o sinal: MEI, EPP e entidade sem fins lucrativos ficam de fora do
+# filtro, porque é exatamente ali que o achado real mora.
+_IMPLAUSIVEL = re.compile(
+    r"\bS[/.]?A\b|\bS\.A\.|SOCIEDADE AN[ÔO]NIMA|\bBANCO\b|BRADESCO|ITA[ÚU]|SANTANDER"
+    r"|EMPRESA BRASILEIRA DE|PETROBRAS|INFRAERO|CORREIOS|CAIXA ECON"
+    r"|SCHINDLER|JANSSEN|AGILENT|SIEMENS|PHILIPS|GE HEALTHCARE|JOHNSON|ROCHE|PFIZER"
+    r"|MICROSOFT|ORACLE|IBM\b|SAP\b|CONCREMAT|MESSER|WHITE MARTINS|LINDE\b",
+    re.IGNORECASE)
+
+
+def empresa_implausivel(nome: str | None) -> bool:
+    """A empresa é grande/estatal a ponto de tornar implausível um sócio em renda mínima?
+
+    Serve para MEDIR o ruído da faixa MÉDIA, nunca para descartar achado: quem é ALTA (nome +
+    fragmento de CPF) segue valendo qualquer que seja a empresa.
+    """
+    return bool(_IMPLAUSIVEL.search(str(nome or "")))
+
+
 def analisar() -> dict:
     b = _db.sqlite3.connect(f"file:{BENEF_DB}?mode=ro", uri=True)
     b.row_factory = _db.sqlite3.Row
@@ -152,7 +183,18 @@ def analisar() -> dict:
                     "sem OB estadual na base (fornecedor municipal/federal ou fora da cobertura)")
         grupos.append({"titulo": titulo, "contexto": contexto, "regs": regs})
 
+    _med = [x for x in unicos if x["certeza"] == "MÉDIA"]
+    _fp = [x for x in _med if empresa_implausivel(x.get("empresa"))]
     return {
+        "controle_negativo": {
+            "n_media": len(_med), "n_implausivel": len(_fp),
+            "pct": round(100.0 * len(_fp) / len(_med), 1) if _med else 0.0,
+            "amostra": [f'{x["socio"]} — {x["empresa"]}' for x in _fp[:8]],
+            "leitura": ("MÉDIA casa por NOME sem confirmar o fragmento de CPF. Estes são "
+                        "casamentos em sociedade anônima, banco, estatal ou multinacional — "
+                        "implausíveis por construção, e por isso servem de CONTROLE NEGATIVO da "
+                        "faixa. A régua é conservadora: o número é PISO do ruído, não o total."),
+        },
         "competencias": comps, "anos": anos, "ultima": ultima,
         "registros": unicos, "grupos": grupos,
         "n_alta": sum(1 for x in unicos if x["certeza"] == "ALTA"),
@@ -196,6 +238,7 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
     <div class="kpi"><div class="n">{{ total }}</div><div class="l">sócios de fornecedores com benefício (Rio)</div></div>
     <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (nome + CPF batem)</div></div>
     <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">certeza MÉDIA (CPF não confirmado)</div></div>
+    <div class="kpi"><div class="n">{{ cn.pct }}%</div><div class="l">da faixa MÉDIA é implausível (controle negativo)</div></div>
     <div class="kpi"><div class="n">{{ n_ainda }}</div><div class="l">ainda recebendo em {{ ultima }}</div></div>
     <div class="kpi"><div class="n">{{ n_empresas }}</div><div class="l">empresas fornecedoras envolvidas</div></div>
   </div>
@@ -263,6 +306,7 @@ def render(dados: dict) -> str:
         data=datetime.now().strftime("%d/%m/%Y"), periodo=periodo,
         ultima=_comp_legivel(dados["ultima"]) if dados["ultima"] else "—",
         anos=dados["anos"], total=len(dados["registros"]),
+        cn=dados.get("controle_negativo", {"pct": 0, "n_implausivel": 0, "leitura": ""}),
         n_alta=dados["n_alta"], n_media=dados["n_media"], n_ainda=dados["n_ainda"],
         n_empresas=dados["n_empresas"], grupos=dados["grupos"],
     )
