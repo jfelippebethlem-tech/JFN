@@ -131,8 +131,36 @@ async def main():
                 await pg.wait_for_load_state("networkidle", timeout=25000)
             except Exception:
                 pass
-            await pg.wait_for_timeout(3000)
+            # ESPERAR PELA PRESENÇA, NÃO PELO RELÓGIO. A lição já é da casa (o falso INDISPONÍVEL
+            # em massa da árvore do SEI saiu exatamente disto): `networkidle` + `sleep(3)` é aposta,
+            # e sob carga a aposta perde. A barra de resultado é a PROVA de que a tela chegou —
+            # ela existe tanto com resultado quanto sem. Medido em 2026-08-12: a busca por
+            # "AGILE CORP" voltou `nao_parseei` com este bloco em espera fixa, enquanto "LIMPEZA"
+            # passou; a diferença era o tempo do Solr, não a existência do termo.
+            try:
+                await pg.wait_for_selector(".pesquisaBarra, table.pesquisaResultado", timeout=60000)
+            except Exception:  # noqa: BLE001 — a falta da barra vira `nao_parseei`, que NÃO é zero
+                await pg.wait_for_timeout(3000)
             laudo = parse_resultado(await pg.content())
+            # UMA SEGUNDA CHANCE, e só uma: `nao_parseei` costuma ser tela que ainda não pintou.
+            # Insistir mais que isto viraria martelo — e zero inconclusivo já tem estado próprio.
+            if laudo["estado"] == "nao_parseei":
+                await pg.wait_for_timeout(8000)
+                laudo = parse_resultado(await pg.content())
+            if laudo["estado"] == "nao_parseei":
+                # GRAVA A PÁGINA QUE NÃO FOI LIDA. Sem isto, `nao_parseei` é honesto e inútil: diz
+                # que não deu, não diz o quê. O diagnóstico à mão via a tela normalmente enquanto a
+                # ferramenta não — e sem o HTML dela o próximo passo vira adivinhação.
+                try:
+                    import pathlib as _pl
+                    _d = _pl.Path("/home/ubuntu/JFN/data/sei_buscas")
+                    _d.mkdir(parents=True, exist_ok=True)
+                    _slug = re.sub(r"[^A-Za-z0-9]+", "_", TERMO)[:40] or "termo"
+                    (_d / f"_naoparseei_{_slug}.html").write_text(await pg.content(), encoding="utf-8")
+                    (_d / f"_naoparseei_{_slug}.url").write_text(
+                        f"{pg.url}\nframes={[f.url[:120] for f in pg.frames]}", encoding="utf-8")
+                except OSError:
+                    pass
             reg = laudo["total"]
             # pares tipo↔número, percorrendo TODAS as páginas
             achados: dict[str, str] = {}
