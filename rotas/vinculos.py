@@ -938,6 +938,45 @@ def api_zeros_sem_causa(limite: int = 25):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/emergencia_recorrente")
+def api_emergencia_recorrente(minimo: int = 5, limite: int = 14):
+    """Emergência RECORRENTE — o art. 75, VIII exige imprevisibilidade, e ela não se repete.
+
+    O SCREEN EXISTIA E ERA MUDO. `sweep_emergencia_recorrente` roda a régua sobre as 20.113
+    contratações diretas do espelho do TCE-RJ e **nenhuma rota, card ou cron o consumia** — só
+    saía se alguém digitasse o comando. Medido em 2026-08-11: 27 grupos, R$ 3,47 bi. É a mesma
+    família do `data/achados.db`, que produzia 543 confirmados sem um leitor.
+
+    A régua foi corrigida no mesmo dia, em dois sentidos opostos: enxergava só o texto do OBJETO
+    (891 dispensas do art. 75, VIII, R$ 2,60 bi, tinham objeto "PEITO DE FRANGO") e contava LINHA
+    onde o fenômeno é PROCESSO (inflação de 2,30× no acervo).
+    """
+    try:
+        from compliance_agent.fracionamento_emergencia import RESSALVA, agrupar_emergencias
+        from tools.sweep_emergencia_recorrente import carregar
+
+        def _medir():
+            con = _db_ro()
+            try:
+                return agrupar_emergencias(carregar(con), minimo=max(2, min(int(minimo), 50)))
+            finally:
+                con.close()
+
+        grupos = _cache(f"emergencia_recorrente:{minimo}", _medir)
+        lim = max(1, min(int(limite), 60))
+        return JSONResponse({
+            "ok": True, "total": len(grupos),
+            "valor_total": round(sum(g["total"] for g in grupos), 2),
+            "minimo": int(minimo),
+            "itens": grupos[:lim],
+            "fonte": _fonte("compras_diretas_tcerj"),
+            "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:   # já inclui sqlite3.Error
+        logger.exception("emergencia_recorrente falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/nucleo_cartel")
 def api_nucleo_cartel(min_part: int = 8, min_ramos: int = 4, limite: int = 12):
     """Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — a interseção, não cada screen.

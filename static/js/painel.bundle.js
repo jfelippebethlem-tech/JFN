@@ -4776,6 +4776,7 @@ void main(){
         aditivoPrecoce,
         nucleoCartel,
         consorcioVeiculo,
+        emergenciaRecorrente,
         zerosSemCausa,
         detectoresFramework
       ]) {
@@ -7630,6 +7631,46 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       h += `<div class="dim" style="margin-top:6px">Medido em: ` + Object.entries(f).map(([k, v]) => `<b>${esc(k)}</b> ${esc(String(v).replace("T", " ").slice(0, 16))}`).join(" · ") + ((d.fonte || {}).delegado_vm2 ? " — <b>órgão e certame estão delegados à VM-2</b>; enquanto a colheita não voltar, esses dois números não avançam." : "") + `</div>`;
     }
     h += leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function emergenciaRecorrente() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/emergencia_recorrente?limite=14");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Emergência recorrente — unidade × exercício com ${d.minimo}+ dispensas (${fmtN(d.total)})`);
+    if (!(d.itens || []).length) {
+      h += card('<div class="dim">Nenhum grupo na fatia medida — o que não significa que não haja emergência recorrente fora dela.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g2">${kpi(
+      fmtRc(d.valor_total),
+      "Somado nos grupos",
+      "var(--amber)",
+      "🚨",
+      { sobre: "Dispensa emergencial é legal e às vezes indispensável. O indício é a <b>recorrência</b>: imprevisibilidade não se repete todo exercício. Uma linha por PROCESSO — a tabela do TCE-RJ tem uma linha por item e repete o total do processo em cada uma, o que inflava a soma em 2,3×." }
+    )}${kpi(
+      fmtN(d.total),
+      "Grupos",
+      null,
+      "🏛️",
+      { sobre: "Unidade × exercício. A régua reconhece a emergência pelo <b>enquadramento legal</b> (art. 75, VIII da Lei 14.133/2021 e art. 24, IV da Lei 8.666/93), não só pela palavra no objeto — 891 dispensas emergenciais diziam “PEITO DE FRANGO” e ficavam invisíveis." }
+    )}</div>`;
+    h += card(`<table class="tb"><thead><tr><th>unidade</th><th class="right">exerc.</th>
+    <th class="right">dispensas</th><th class="right">valor</th><th>dominante</th>
+    <th class="right">concentr.</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+      <td>${esc(String(x.unidade || "").slice(0, 40))}</td>
+      <td class="right dim">${esc(String(x.exercicio || ""))}</td>
+      <td class="right">${fmtN(x.n)}</td>
+      <td class="right">${fmtRc(x.total)}</td>
+      <td style="font-size:12px">${esc(String(x.fornecedor_dominante || "").slice(0, 30))}
+        <span class="dim">(${fmtN(x.n_fornecedores)} forn.)</span></td>
+      <td class="right">${x.concentracao_dominante >= 0.8 ? "<b>" : ""}${(100 * (x.concentracao_dominante || 0)).toFixed(0)}%${x.concentracao_dominante >= 0.8 ? "</b>" : ""}</td>
+    </tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
     alvo.innerHTML = h;
     o.appendChild(alvo);
   }

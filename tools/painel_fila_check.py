@@ -33,6 +33,9 @@ ESPERADOS = (
     "aditivo de valor nos primeiros",
     "núcleo de arranjo",
     "um consórcio por certame",
+    # o décimo-primeiro: emergência recorrente — o screen existia e era MUDO (nenhuma rota, card
+    # ou cron o consumia). Entra no gate porque card recém-ligado é o que mais silencia.
+    "emergência recorrente",
     # o nono: processos que a casa LEU e voltaram vazios, com a causa não medida. Entra no gate
     # porque é o card mais fácil de sumir em silêncio — ele depende de dois arquivos de estado
     # (progresso do sweep e registro de restritos) que podem simplesmente não existir.
@@ -40,6 +43,17 @@ ESPERADOS = (
     # o décimo: o framework de detectores, que gravava em data/achados.db sem nenhum leitor
     "framework de detectores",
 )
+
+
+def eh_stream_permanente(url: str) -> bool:
+    """Conexão que fica aberta de propósito (SSE/websocket) — não é requisição "em voo".
+
+    `/api/eventos/stream` vive enquanto a página viver. Contá-la como pendente faria o veredito
+    responder NÃO MEDI para sempre, e um gate que nunca bloqueia é pior que gate nenhum: dá a
+    impressão de cobertura. Apareceu no primeiro laudo real depois do conserto de três valores.
+    """
+    u = str(url or "")
+    return "/stream" in u or "/sse" in u or "/ws" in u
 
 
 def veredito(faltando: list[str], pageerror: list[str], em_voo: list[str]) -> dict:
@@ -56,6 +70,7 @@ def veredito(faltando: list[str], pageerror: list[str], em_voo: list[str]) -> di
 
     `pageerror` é exceção: é defeito de código, não lentidão, e bloqueia sempre.
     """
+    em_voo = [u for u in (em_voo or []) if not eh_stream_permanente(u)]
     if pageerror:
         return {"estado": "falhou", "bloqueia": True, "faltando": faltando,
                 "em_voo": em_voo, "motivo": "pageerror no console — defeito de código"}

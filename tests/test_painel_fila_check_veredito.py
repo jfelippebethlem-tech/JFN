@@ -54,3 +54,23 @@ def test_o_laudo_diz_QUAIS_estao_em_voo_nao_quantos():
     v = veredito(faltando=["a", "b"], pageerror=[], em_voo=["/api/fiscal/consorcio"])
     assert v["em_voo"] == ["/api/fiscal/consorcio"]
     assert v["faltando"] == ["a", "b"]
+
+
+def test_stream_permanente_NAO_conta_como_requisicao_em_voo():
+    """`/api/eventos/stream` é SSE: fica aberto a vida toda da página.
+
+    Contá-lo como "em voo" faria o gate responder NÃO MEDI para SEMPRE — um gate que nunca bloqueia
+    é pior que gate nenhum, porque dá a impressão de cobertura. Apareceu no primeiro laudo real
+    depois do conserto de três valores, em 2026-08-11: `em_voo: ["/api/eventos/stream"]` com os 11
+    painéis na tela.
+    """
+    from tools.painel_fila_check import eh_stream_permanente
+
+    assert eh_stream_permanente("/api/eventos/stream") is True
+    assert eh_stream_permanente("/api/fiscal/emergencia_recorrente?limite=14") is False
+
+
+def test_faltando_com_APENAS_stream_aberto_BLOQUEIA():
+    v = veredito(faltando=["emergência recorrente"], pageerror=[],
+                 em_voo=["/api/eventos/stream"])
+    assert v["estado"] == "falhou" and v["bloqueia"] is True
