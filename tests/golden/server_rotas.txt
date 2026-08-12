@@ -39,6 +39,8 @@ GET /api/fiscal/aditivo_precoce -> api_aditivo_precoce
 GET /api/fiscal/concentracao_por_grupo -> api_concentracao_por_grupo
 GET /api/fiscal/consorcio_veiculo -> api_consorcio_veiculo
 GET /api/fiscal/coparticipacao_relacionados -> api_coparticipacao_relacionados
+GET /api/fiscal/detectores -> api_detectores
+GET /api/fiscal/emergencia_recorrente -> api_emergencia_recorrente
 GET /api/fiscal/fila -> api_fiscal_fila
 GET /api/fiscal/fim_de_exercicio -> api_fim_de_exercicio
 GET /api/fiscal/nucleo_cartel -> api_nucleo_cartel
