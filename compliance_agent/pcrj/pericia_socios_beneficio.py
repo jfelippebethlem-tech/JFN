@@ -81,6 +81,30 @@ def empresa_implausivel(nome: str | None) -> bool:
     return bool(_IMPLAUSIVEL.search(str(nome or "")))
 
 
+def classificar_casamento(frag_socio: str, frags_ben: set) -> tuple[str, str]:
+    """(estado, fragmento) do casamento sócio × beneficiário homônimo.
+
+    TRÊS ESTADOS, porque o antigo par ALTA/MÉDIA misturava coisas opostas — e o caro era o segundo:
+
+    · **ALTA** — o fragmento do QSA está entre os do beneficiário: praticamente a mesma pessoa.
+    · **DESCARTADO** — o fragmento EXISTE dos dois lados e DISCORDA. Isso é prova de que são
+      pessoas diferentes, e mesmo assim saía como "MÉDIA" no relatório: 25 casos, todos em
+      Associações de Apoio à Escola, apresentados como indício.
+    · **SEM_FRAGMENTO** — não há o que comparar. Medido na base do Rio: **BPC, Auxílio Emergencial
+      e Gás do Povo não trazem fragmento em NENHUMA linha** (0,0%), enquanto Bolsa Família traz em
+      77,3% e Auxílio Brasil em 84,7%. Casamento nesses três é por NOME, e nome brasileiro comum
+      casa com muita gente — era o que enchia a lista com diretores de Bradesco, INFRAERO e Atlas
+      Schindler. Inverificável por construção NÃO é indício fraco: é ausência de verificação.
+    """
+    fb = set(frags_ben or ())
+    if frag_socio and frag_socio in fb:
+        return "ALTA", frag_socio
+    reais = {f for f in fb if f and f != "?"}
+    if not frag_socio or not reais:
+        return "SEM_FRAGMENTO", (next(iter(fb)) if len(fb) == 1 else "?")
+    return "DESCARTADO", ""
+
+
 def analisar() -> dict:
     b = _db.sqlite3.connect(f"file:{BENEF_DB}?mode=ro", uri=True)
     b.row_factory = _db.sqlite3.Row
@@ -140,13 +164,11 @@ def analisar() -> dict:
         frag_socio = _frag6(s["socio_doc"])
         frags_ben = frags_por_nome[nn]
         # casamento por fragmento: se o fragmento do sócio está entre os do beneficiário homônimo
-        if frag_socio and frag_socio in frags_ben:
-            frag, certeza = frag_socio, "ALTA"          # nome + CPF batem: mesma pessoa
-        elif len(frags_ben) == 1:
-            frag = next(iter(frags_ben))
-            certeza = "MÉDIA" if frag_socio else "MÉDIA"  # 1 beneficiário só, mas sem confirmar CPF
-        else:
-            continue                       # vários beneficiários homônimos e nenhum casa o CPF → fora
+        certeza, frag = classificar_casamento(frag_socio, frags_ben)
+        if certeza == "DESCARTADO":
+            continue                       # fragmentos discordam, ou vários homônimos e nenhum casa
+        if (nn, frag) not in ben:
+            continue                       # sem registro do beneficiário para esse fragmento
         e = ben[(nn, frag)]
         progs = []
         for prog, pr in sorted(e["prog"].items(), key=lambda kv: kv[1]["cmin"]):
@@ -183,7 +205,7 @@ def analisar() -> dict:
                     "sem OB estadual na base (fornecedor municipal/federal ou fora da cobertura)")
         grupos.append({"titulo": titulo, "contexto": contexto, "regs": regs})
 
-    _med = [x for x in unicos if x["certeza"] == "MÉDIA"]
+    _med = [x for x in unicos if x["certeza"] != "ALTA"]
     _fp = [x for x in _med if empresa_implausivel(x.get("empresa"))]
     return {
         "controle_negativo": {
@@ -198,7 +220,8 @@ def analisar() -> dict:
         "competencias": comps, "anos": anos, "ultima": ultima,
         "registros": unicos, "grupos": grupos,
         "n_alta": sum(1 for x in unicos if x["certeza"] == "ALTA"),
-        "n_media": sum(1 for x in unicos if x["certeza"] == "MÉDIA"),
+        "n_media": sum(1 for x in unicos if x["certeza"] == "SEM_FRAGMENTO"),
+        "n_sem_fragmento": sum(1 for x in unicos if x["certeza"] == "SEM_FRAGMENTO"),
         "n_ainda": sum(1 for x in unicos if x["ainda_recebe"]),
         "n_empresas": len(grupos),
     }
@@ -237,15 +260,19 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   <div class="kpis">
     <div class="kpi"><div class="n">{{ total }}</div><div class="l">sócios de fornecedores com benefício (Rio)</div></div>
     <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (nome + CPF batem)</div></div>
-    <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">certeza MÉDIA (CPF não confirmado)</div></div>
-    <div class="kpi"><div class="n">{{ cn.pct }}%</div><div class="l">da faixa MÉDIA é implausível (controle negativo)</div></div>
+    <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">SEM FRAGMENTO — casamento só por nome, inverificável</div></div>
+    <div class="kpi"><div class="n">{{ cn.pct }}%</div><div class="l">dos sem-fragmento é implausível (controle negativo)</div></div>
     <div class="kpi"><div class="n">{{ n_ainda }}</div><div class="l">ainda recebendo em {{ ultima }}</div></div>
     <div class="kpi"><div class="n">{{ n_empresas }}</div><div class="l">empresas fornecedoras envolvidas</div></div>
   </div>
 
   <h2>1. Sócios de empresas fornecedoras recebendo benefício assistencial — por empresa</h2>
   <p class="nota">Certeza ALTA = o fragmento de CPF do sócio (QSA) coincide com o do beneficiário
-  homônimo — praticamente a mesma pessoa. MÉDIA = há um único beneficiário com o nome, mas sem
+  homônimo — praticamente a mesma pessoa. SEM FRAGMENTO = a fonte não expõe o fragmento nesse
+  registro (BPC, Auxílio Emergencial e Gás do Povo não o expõem em NENHUMA linha; Bolsa Família o
+  traz em 77,3% e Auxílio Brasil em 84,7%), então o casamento é só por nome — inverificável por
+  construção, e NÃO é indício fraco: é ausência de verificação. Fragmento que DISCORDA sai da
+  lista, porque prova pessoa diferente. Antes
   confirmar o CPF. Colunas de ano contam meses com benefício; "Programas" traz a trajetória. O
   subtítulo de cada empresa traz quanto ela <b>recebeu do Estado</b> (soma das OBs contabilizadas
   do SIAFE) — a dimensão do sinal: quanto maior o faturamento público, mais incompatível o
