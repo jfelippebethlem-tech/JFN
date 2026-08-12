@@ -24,7 +24,13 @@ cd /home/ubuntu/JFN || exit 0
 PY=.venv/bin/python
 [ -x "$PY" ] || { echo "[pre-push] venv ausente — não medi"; exit 0; }
 
-CATRACAS="tests/test_catraca_excepts.py tests/test_moeda_padrao_brasileiro.py"
+# O inventário de rotas ENTROU em 2026-08-11, e estava prometido no cabeçalho desde o primeiro dia
+# sem estar na lista. O preço: liguei `/api/fiscal/emergencia_recorrente`, o portão aprovou o push
+# e o CI ficou vermelho em `test_inventario_de_rotas_identico_ao_golden` — o e-mail ao dono que
+# este portão existe para evitar. E o critério de casamento NÃO alcança esse caso: ele casa por
+# nome de arquivo e por quem IMPORTA o módulo tocado, e `test_server_snapshot` não importa
+# `rotas/vinculos`. Rota nova é onde o import não chega; por isso é transversal. Custo: 6,6 s.
+CATRACAS="tests/test_catraca_excepts.py tests/test_moeda_padrao_brasileiro.py tests/test_server_snapshot.py"
 
 alvos() {
   # arquivos .py que este push leva (contra o upstream; sem upstream, contra o último commit)
