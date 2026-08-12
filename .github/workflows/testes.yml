@@ -23,6 +23,21 @@ name: Testes (em LOTES, critério = delta zero)
 on:
   push:
     branches: ["**"]
+    # RUÍDO DE E-MAIL É PROBLEMA DE ENGENHARIA (2026-08-12). O dono recebeu centenas de avisos: em
+    # 10/08 foram 60 runs num dia, em 09/08 outros 41. Cada push da branch de trabalho dispara a
+    # suíte inteira (~5 min), e quem tem a notificação do GitHub em "all workflow runs" recebe um
+    # e-mail por run — falhando ou não.
+    #
+    # Push que só mexe em documentação não pode custar um run. O `paths-ignore` do GitHub só pula
+    # quando TODOS os arquivos do push casam, então commit misto (código + docs) continua rodando —
+    # é a garantia de que isto corta ruído sem abrir buraco.
+    #
+    # Conferido antes de escrever: nenhum teste LÊ `docs/` — as quatro ocorrências em `tests/` são
+    # menções em docstring (`test_jfn2_skilltree`, `conftest`, `test_golden_numbers`) e a rota
+    # `/docs` do FastAPI em `test_rotas_sem_orfa`, que não é caminho de arquivo.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
   workflow_dispatch:
 
