@@ -12,12 +12,60 @@ from tools.vm_guard import preflight, cleanup_orphans
 
 import re
 TERMO = next((a for a in sys.argv[1:] if not a.startswith("--")), "MGS CLEAN")
-DOCS = "--docs" in sys.argv
+# LIGADO POR PADRÃO: o índice de texto livre do SEI é sobre DOCUMENTOS. Desmarcado, ele varre só
+# metadado de processo e devolve zero para QUALQUER termo — foi o que manteve o #10 aberto.
+# `--sem-docs` mantém o comportamento antigo, para quem quiser exatamente isso.
+DOCS = "--sem-docs" not in sys.argv
 ORGAO = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--orgao=")), "")  # regex p/ texto da opção
 DE = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--de=")), "")       # dd/mm/aaaa
 ATE = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--ate=")), "")
 LISTAORGAOS = "--listorgaos" in sys.argv
 INTERESSADO = "--interessado" in sys.argv  # busca ESTRUTURADA por Contato/Interessado (não full-text)
+
+
+# ── o que a tela devolve, medido ao vivo em 2026-08-11 ──────────────────────────────────────────
+# O #10 do handoff ficou um dia aberto porque três coisas se somaram, e nenhuma era "seletor mudou":
+#
+# 1. O ÍNDICE DO SEI É SOBRE DOCUMENTOS. Com `Considerar Documentos` desmarcado — o padrão desta
+#    ferramenta — a busca por texto livre varre só metadado de processo e devolve ZERO para
+#    qualquer coisa, inclusive o controle positivo. Marcada, "LIMPEZA" devolve 213.563.
+# 2. A CONTAGEM TEM OUTRO FORMATO. O parser procurava `Lista de Processos ... (N registros)`; a
+#    tela devolve `<div class="pesquisaBarraD">Exibindo 1 - 10 de 213.563</div>`.
+# 3. "Nenhum resultado encontrado" É TEMPLATE ESCONDIDO — vem no HTML mesmo com 213.563 achados.
+#    Lê-lo como veredito é publicar ausência que não existe.
+_RE_EXIBINDO = re.compile(
+    r"Exibindo\s*([\d.]+)\s*-\s*([\d.]+)\s*de\s*([\d.]+)", re.IGNORECASE)
+_RE_PROTOCOLO = re.compile(
+    r'<a[^>]*class="protocoloNormal"[^>]*title="([^"]*)"[^>]*>\s*(SEI-\d{6}/\d{6}/\d{4})\s*</a>',
+    re.IGNORECASE)
+
+
+def _num(s: str) -> int:
+    return int(re.sub(r"\D", "", s or "0") or 0)
+
+
+def parse_resultado(html: str) -> dict:
+    """Lê a tela de resultado. Distingue ZERO LEGÍTIMO de NÃO CONSEGUI LER — as duas respostas
+    saíam iguais (`n_total: 0`, `n_registros: null`), e é por isso que o #10 ficou sem causa.
+
+    Estados:
+        com_resultado  a barra de contagem existe e é > 0
+        sem_resultado  a barra existe e é 0, ou a página traz a barra vazia — zero apurado
+        nao_parseei    não achei a barra: pode ser sessão caída, WAF, layout novo. NUNCA é zero.
+    """
+    h = html or ""
+    m = _RE_EXIBINDO.search(h)
+    procs: dict[str, str] = {}
+    for titulo, num in _RE_PROTOCOLO.findall(h):
+        procs.setdefault(num, (titulo or "").strip()[:120])
+    if m:
+        total = _num(m.group(3))
+        return {"estado": "com_resultado" if total else "sem_resultado", "total": total,
+                "exibindo": (_num(m.group(1)), _num(m.group(2))), "processos": procs}
+    if 'class="pesquisaBarra"' in h:
+        # a barra existe e não traz contagem: a tela do SEI a omite quando não há nada
+        return {"estado": "sem_resultado", "total": 0, "exibindo": (0, 0), "processos": procs}
+    return {"estado": "nao_parseei", "total": None, "exibindo": None, "processos": procs}
 
 
 async def main():
@@ -84,9 +132,8 @@ async def main():
             except Exception:
                 pass
             await pg.wait_for_timeout(3000)
-            txt0 = await pg.inner_text("body")
-            reg = (re.search(r"Lista de Processos[^\d]*\((\d+)\s+registro", txt0, re.I)
-                   or re.search(r"\((\d+)\s+registro", txt0, re.I) or [None, None])[1]
+            laudo = parse_resultado(await pg.content())
+            reg = laudo["total"]
             # pares tipo↔número, percorrendo TODAS as páginas
             achados: dict[str, str] = {}
 
@@ -128,7 +175,11 @@ async def main():
                 if len(achados) == antes:  # não cresceu → fim
                     break
             pagamentos = {n: t for n, t in achados.items() if re.search(r"pagament", t, re.I)}
+            # o que a página DIZ, ao lado do que nós colhemos: se `estado` é `nao_parseei`, um
+            # `n_total: 0` não é zero — é leitura falha, e quem consome tem de saber a diferença.
+            achados.update({k: v for k, v in laudo["processos"].items() if k not in achados})
             _saida = {"ok": True, "termo": TERMO, "modo": ("interessado" if INTERESSADO else "fulltext"),
+                      "estado": laudo["estado"], "exibindo": laudo["exibindo"],
                               "considerar_docs": DOCS, "setup": setup, "interessado_dbg": inter_dbg,
                               "diag_submit": diag, "n_registros": reg, "n_total": len(achados),
                               "n_pagamentos": len(pagamentos),
