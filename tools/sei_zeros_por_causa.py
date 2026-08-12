@@ -65,7 +65,7 @@ CAIXA = "CAIXA (leitura falhou)"
 # cinco, com valores diferentes, dentro de detectores de risco alto.
 from compliance_agent.credor_generico import (  # noqa: E402
     LIMIAR_FORNECEDOR as _LIMIAR_FORNECEDOR,
-    eh_fornecedor as _eh_fornecedor,
+    classificar_por_processo as _classificar,
 )
 
 
@@ -113,6 +113,7 @@ def medir(prog: Path | None = None, reg: Path | None = None,
     # EXPOSIÇÃO: o zero de um processo com R$ 80 mi pago pesa diferente do zero de um com R$ 4 mil.
     valor: dict[str, float] = {}
     forn: dict[str, float] = {}
+    publico: dict[str, float] = {}
     try:
         con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=60)
         try:
@@ -126,18 +127,17 @@ def medir(prog: Path | None = None, reg: Path | None = None,
             # `123400`, `CG0006026`) e só R$ 3,73 bi é pagamento a CNPJ/CPF. Publicar o total como
             # exposição fiscalizável superestima — é a família dos quatro números de manchete já
             # corrigidos. A régua é a da casa (`credor_generico`), a mesma que a fila do sweep usa.
-            for num, cred, v in con.execute(
-                    "SELECT processo, credor, COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe "
-                    "WHERE COALESCE(processo,'') <> '' AND status='Contabilizado' GROUP BY 1, 2"):
+            # `Contabilizado` é obrigatório aqui porque este número vai para o PAINEL: a casa já
+            # somou OB cancelada numa fila do fiscal.
+            for num, c in _classificar(con, status="Contabilizado").items():
                 if num in alvo:
-                    val = float(v or 0)
-                    valor[num] = valor.get(num, 0.0) + val
-                    if _eh_fornecedor(cred):
-                        forn[num] = forn.get(num, 0.0) + val
+                    valor[num] = c["total"]
+                    forn[num] = c["fornecedor"]
+                    publico[num] = c["publico"]
         finally:
             con.close()
     except sqlite3.Error:
-        valor, forn = {}, {}
+        valor, forn, publico = {}, {}, {}
 
     # O PROGRESSO NÃO É A ÚLTIMA PALAVRA. Um processo pode constar "0 docs" no progresso do sweep e
     # ainda assim ter pasta no arquivo — chegou por outro caminho (colheita da VM-2, recaptura
@@ -174,6 +174,9 @@ def medir(prog: Path | None = None, reg: Path | None = None,
         tot, fo = valor.get(p, 0.0), forn.get(p, 0.0)
         return {"processo": p, "valor_ob": round(tot, 2), "causa": causa,
                 "valor_ob_fornecedor": round(fo, 2),
+                # Repasse a ente público (fundo municipal de saúde, Ministério da Fazenda) tem
+                # CNPJ e passava como fornecedor: R$ 601 mi da fila. Não é contratação.
+                "valor_ob_publico": round(publico.get(p, 0.0), 2),
                 # Sem OB conhecida NÃO é folha: na dúvida o processo segue como trabalho de
                 # fornecedor, porque rebaixar por ausência de dado esconderia trabalho.
                 "eh_folha": bool(tot > 0 and fo / tot < _LIMIAR_FORNECEDOR),
@@ -202,7 +205,9 @@ def medir(prog: Path | None = None, reg: Path | None = None,
         "valor_ob_sem_causa": round(sum(valor.get(p, 0.0) for p in sem_causa), 2),
         "valor_ob_fila": round(sum(x["valor_ob"] for x in itens), 2),
         "valor_ob_fornecedor": round(sum(x["valor_ob_fornecedor"] for x in itens), 2),
-        "valor_ob_folha": round(sum(x["valor_ob"] - x["valor_ob_fornecedor"] for x in itens), 2),
+        "valor_ob_publico": round(sum(x["valor_ob_publico"] for x in itens), 2),
+        "valor_ob_folha": round(sum(x["valor_ob"] - x["valor_ob_fornecedor"]
+                                    - x["valor_ob_publico"] for x in itens), 2),
         "ressalva": (
             "Zero documento NÃO é 'processo vazio': é 'não trouxe nada', e a causa só está medida "
             "para uma fração. Enquanto a causa não é conhecida, o processo segue ABERTO para a "
@@ -234,7 +239,8 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     print(f"  soma de OB dos zeros SEM causa: R$ {moeda(r['valor_ob_sem_causa'])}")
     pct = (100.0 * r["valor_ob_fornecedor"] / r["valor_ob_fila"]) if r["valor_ob_fila"] else 0.0
     print(f"  da fila inteira (R$ {moeda(r['valor_ob_fila'])}): "
-          f"R$ {moeda(r['valor_ob_fornecedor'])} é pagamento a FORNECEDOR ({pct:.1f}%) e "
+          f"R$ {moeda(r['valor_ob_fornecedor'])} é pagamento a FORNECEDOR ({pct:.1f}%), "
+          f"R$ {moeda(r['valor_ob_publico'])} é repasse a ente público e "
           f"R$ {moeda(r['valor_ob_folha'])} é folha/previdência")
     if a.fila:
         print(f"\nfila a diligenciar (maior exposição a FORNECEDOR primeiro), {a.fila} de "

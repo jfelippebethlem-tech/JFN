@@ -7651,7 +7651,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       "OB a FORNECEDOR atrás da fila",
       "var(--rose)",
       "💸",
-      { sobre: "Soma das ordens bancárias <b>contabilizadas</b> a CNPJ/CPF nos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar." + (d.valor_ob_folha ? " Fora desta conta ficam <b>" + fmtRc(d.valor_ob_folha) + "</b> de folha de pagamento e previdência (credor genérico: FOLHA DE PAGAMENTOS, RIOPREV), que nenhum detector de licitação examina — publicá-los junto superestimaria a exposição fiscalizável." : "") }
+      { sobre: "Soma das ordens bancárias <b>contabilizadas</b> a CNPJ/CPF nos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar." + (d.valor_ob_folha ? " Fora desta conta ficam <b>" + fmtRc(d.valor_ob_folha) + "</b> de folha de pagamento e previdência (credor genérico: FOLHA DE PAGAMENTOS, RIOPREV)" : "") + (d.valor_ob_publico ? " e <b>" + fmtRc(d.valor_ob_publico) + "</b> de repasse a ente público (fundo municipal de saúde, Ministério da Fazenda), que tem CNPJ mas não é contratação" : "") + (d.valor_ob_folha || d.valor_ob_publico ? " — publicá-los junto superestimaria a exposição fiscalizável." : "") }
     )}${kpi(
       fmtN(d.total),
       "Sem causa nenhuma",

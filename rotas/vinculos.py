@@ -928,6 +928,7 @@ def api_zeros_sem_causa(limite: int = 25):
             # nenhum detector de licitação examina. Publicar o bruto como exposição fiscalizável
             # é a família dos quatro números de manchete já corrigidos.
             "valor_ob_fornecedor": r["valor_ob_fornecedor"],
+            "valor_ob_publico": r["valor_ob_publico"],
             "valor_ob_folha": r["valor_ob_folha"],
             "itens": r["fila"][:max(1, min(int(limite), 200))],
             "ressalva": r["ressalva"],

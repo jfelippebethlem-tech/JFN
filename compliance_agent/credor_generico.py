@@ -43,6 +43,67 @@ def eh_fornecedor(credor: str | None) -> bool:
     return len(re.sub(r"\D", "", str(credor or ""))) in (11, 14)
 
 
+def _cnpjs_publicos(con: sqlite3.Connection) -> set[str]:
+    """Raízes de CNPJ com natureza jurídica `1xx` — administração pública.
+
+    O ÓRGÃO TAMBÉM OCUPA O CAMPO `credor`, e este é o caso que o teste de documento deixa passar,
+    porque ele TEM CNPJ. Medido na fila de processos ilegíveis (2026-08-11): R$ 601 mi do que
+    parecia fornecedor era FUNDO MUNICIPAL DE SAÚDE (RJ, São Gonçalo, Volta Redonda, Bom Jesus do
+    Itabapoana) e MINISTÉRIO DA FAZENDA — repasse e tributo, não contratação.
+
+    É a mesma família do vício já catalogado em que ITERJ, SEGOV e SECID figuravam como
+    "vencedoras" das próprias contratações. E vale a mesma ressalva registrada lá: nem todo órgão
+    está em `empresas_cadastro`. Por isso a ausência de cadastro NÃO rebaixa — é lacuna nossa, não
+    prova de natureza.
+    """
+    try:
+        return {str(r[0]) for r in con.execute(
+            "SELECT cnpj_basico FROM empresas_cadastro WHERE natureza_cod LIKE '1%'")}
+    except sqlite3.Error:
+        return set()
+
+
+def classificar_por_processo(con: sqlite3.Connection,
+                             status: str | None = None) -> dict[str, dict[str, float]]:
+    """`{processo: {fornecedor, publico, generico, total}}` — uma varredura só da tabela de OB.
+
+    Três populações dividem o campo `credor`, e só a primeira é contratação:
+
+        fornecedor   CNPJ/CPF privado — I.D.E.A.S, INSTITUTO D'OR, AGILE CORP
+        publico      CNPJ de natureza 1xx — fundo municipal de saúde, Ministério da Fazenda
+        generico     rubrica sem documento — FOLHA DE PAGAMENTOS, RIOPREV
+
+    `status` filtra a OB (use `"Contabilizado"` para somar só o que foi de fato pago). Quem PUBLICA
+    número tem de passá-lo: a casa já somou OB CANCELADA numa fila do fiscal. Quem só PRIORIZA pode
+    deixar em branco — para ordenar, a OB cancelada não muda quem é fornecedor.
+    """
+    publicos = _cnpjs_publicos(con)
+    fora: dict[str, dict[str, float]] = {}
+    sql = ("SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
+           "WHERE COALESCE(processo,'') <> ''")
+    args: tuple = ()
+    if status:
+        sql += " AND status = ?"
+        args = (status,)
+    try:
+        cur = con.execute(sql + " GROUP BY 1, 2", args)
+    except sqlite3.Error:
+        return {}
+    for proc, cred, v in cur:
+        d = re.sub(r"\D", "", str(cred or ""))
+        val = float(v or 0)
+        a = fora.setdefault(str(proc), {"fornecedor": 0.0, "publico": 0.0, "generico": 0.0,
+                                        "total": 0.0})
+        a["total"] += val
+        if len(d) not in (11, 14):
+            a["generico"] += val
+        elif len(d) == 14 and d[:8] in publicos:
+            a["publico"] += val
+        else:
+            a["fornecedor"] += val
+    return fora
+
+
 def peso_por_processo(con: sqlite3.Connection) -> dict[str, tuple[float, float]]:
     """`{processo: (valor em fornecedor, valor total)}` — uma varredura só da tabela de OB.
 
@@ -50,22 +111,12 @@ def peso_por_processo(con: sqlite3.Connection) -> dict[str, tuple[float, float]]
     para rebaixar, e o painel publica os valores separados. Calcular duas vezes seria a segunda
     cópia que este módulo existe para evitar.
     """
-    peso: dict[str, list[float]] = {}
-    try:
-        cur = con.execute("SELECT processo, credor, SUM(valor) FROM ob_orcamentaria_siafe "
-                          "WHERE COALESCE(processo,'') <> '' GROUP BY 1, 2")
-    except sqlite3.Error:
-        return {}
-    for proc, cred, v in cur:
-        a = peso.setdefault(str(proc), [0.0, 0.0])
-        val = float(v or 0)
-        a[1] += val
-        if eh_fornecedor(cred):
-            a[0] += val
-    return {p: (f, t) for p, (f, t) in peso.items()}
+    return {p: (c["fornecedor"], c["total"]) for p, c in classificar_por_processo(con).items()}
 
 
 def processos_de_folha(con: sqlite3.Connection) -> set[str]:
-    """Processos cujo dinheiro é majoritariamente folha/previdência (credor genérico)."""
+    """Processos cujo dinheiro NÃO é majoritariamente contratação — folha, previdência ou repasse
+    a ente público. O nome é histórico (a folha foi o caso que abriu a questão); o critério é
+    "menos da metade do dinheiro foi para fornecedor"."""
     return {p for p, (forn, tot) in peso_por_processo(con).items()
             if tot > 0 and forn / tot < LIMIAR_FORNECEDOR}
