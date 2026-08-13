@@ -108,6 +108,9 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     return out
 
 
+_JANELA = 40_000   # onde a resposta ainda vem completa e em ~2 s (ver `extrair_interpretativo`)
+
+
 # ── LEITURA INTERPRETATIVA ──────────────────────────────────────────────────────────────────────
 # O CONJUNTO DE CAMPOS TEM DE CASAR COM O TIPO DE PROCESSO. Medido nos 23 primeiros: **29 das 56
 # divergências eram `nenhum_dos_dois`** — nem regra nem IA acharam, porque a maioria do acervo é
@@ -143,7 +146,24 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
         from compliance_agent.llm.camada_triagem import gerar_triagem
         gerar = gerar_triagem()
     campos = "\n".join(f'- "{k}": {v}' for k, v in {**_FATOS, **_JUIZO}.items())
-    bruto = gerar(f"PROCESSO {proc}:\n\n{texto}\n\nResponda em JSON:\n{campos}", _SISTEMA) or ""
+    # LER EM JANELAS, NÃO DE UMA GOLADA. A latência não cresce com o texto: ela DESABA num
+    # precipício. Medido no provedor: 40.000 chars → 1,6 s com JSON completo (170 chars de
+    # resposta); 120.000 → **452 s**, e a resposta encolhe para 25 chars. Acima de ~100k o modelo
+    # degrada e devolve quase nada, então mandar o processo inteiro é mais lento E pior — pagava-se
+    # 9 minutos por uma resposta amputada.
+    #
+    # A janela cobre o mesmo texto em pedaços digeríveis e para na primeira que responder o
+    # essencial: documento administrativo repete o cabeçalho, e o contrato/dispositivo costuma
+    # estar no começo. As demais só entram se faltou campo.
+    bruto = ""
+    for ini in range(0, max(len(texto), 1), _JANELA):
+        pedaco = texto[ini:ini + _JANELA]
+        if len(pedaco) < 200 and ini:
+            break
+        bruto = gerar(f"PROCESSO {proc} (trecho {ini // _JANELA + 1}):\n\n{pedaco}"
+                      f"\n\nResponda em JSON:\n{campos}", _SISTEMA) or ""
+        if bruto and sum(f'"{k}"' in bruto for k in _FATOS) >= 3:
+            break
     if not bruto:
         return {"estado": "indisponivel", "motivo": "IA sem cota — NÃO mediu (≠ nada a apontar)"}
     # UM PROCESSO RUIM NÃO DERRUBA O LOTE. Um modelo `:free` devolveu JSON com vírgula faltando e o
