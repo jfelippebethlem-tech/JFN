@@ -58,8 +58,23 @@ _PADROES: dict[str, str] = {
     # A âncora que separa os dois casos é a LEI citada por perto: dispositivo de contratação vem
     # sempre com ela ("art. 75, VIII, da Lei nº 14.133/2021"). Sem lei ao redor, é cláusula
     # contratual, não fundamento — e não entra.
-    "dispositivo": (r"[Aa]rt\.?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"
-                    r"[^\n]{0,40}?(?:Lei|LEI|Constitui[çc])"),
+    # ARTIGO CITADO ≠ ARTIGO QUE FUNDAMENTA. Medido em 58 leituras: 30 discordâncias no
+    # dispositivo, e ao abrir os casos os dois leitores citavam artigos DIFERENTES E AMBOS REAIS —
+    # a regra devolvia `art. 90` (rotina de liquidação da Lei 287/79), `art. 124`, `art. 27`,
+    # enquanto a IA achava o enquadramento da contratação (art. 75 VIII da 14.133, art. 37 XXI da
+    # CF). Documento administrativo cita dezenas de artigos; a frequência elege o mais rotineiro.
+    #
+    # A MARCA CERTA VEIO DO PRÓPRIO DOCUMENTO, não do meu palpite. Tentei primeiro exigir fórmula
+    # de prosa ("com fulcro em", "nos termos do") e o resultado foi ZERO achado — estreitar no
+    # escuro é tão ruim quanto não estreitar. Fui ler o texto: o enquadramento vem num CAMPO
+    # ESTRUTURADO, `Enquadramento Legal: Lei n 14.133/2021, Art. 75, VIII`. Rótulo de formulário é
+    # âncora melhor que retórica de despacho. As fórmulas de prosa ficam como segunda via.
+    "dispositivo": (r"(?:[Ee]nquadramento\s+[Ll]egal|com\s+fulcro|nos\s+termos|com\s+fundamento|"
+                    # `[\s\S]` e não `[^\n]`: o rótulo e o artigo ficam em LINHAS diferentes
+                    # (`Enquadramento Legal:\nLei n 14.133/2021, Art. 75, VIII`), e proibir a quebra
+                    # de linha zerava justamente o caso mais limpo — o do formulário.
+                    r"amparo\s+legal)[\s\S]{0,70}?"
+                    r"[Aa]rt(?:igo|\.)?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"),
     "processos_citados": r"\b(\d{6}/\d{6}(?:\.\d)?/\d{4})\b",
     "cnpjs": r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\b",
     "valores": r"R\$\s?([\d.]{4,18},\d{2})",
@@ -284,9 +299,11 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
         # A OB PREPONDERA sobre o regex para dinheiro e favorecido — é a fonte canônica da casa.
         det["cnpjs"] = {"valor": pago["maior_favorecido"], "ocorrencias": pago["n_obs"],
                         "fonte": "ordem bancária", "alternativas": []}
-        det["valores"] = {"valor": f"{pago['total']:,.2f}".replace(",", "§").replace(".", ",")
-                          .replace("§", "."), "ocorrencias": pago["n_obs"],
-                          "fonte": "ordem bancária", "alternativas": []}
+        # O `valor` NÃO entra por aqui, e isto é conserto de um erro meu da rodada anterior: eu pus
+        # o TOTAL PAGO no lado da regra enquanto a IA segue perguntada pelo MAIOR VALOR NO TEXTO.
+        # São perguntas diferentes, então a discordância era garantida por construção — 32 das 58
+        # linhas. O total pago não se perdeu: vive no bloco `pagamento`, onde é fato declarado em
+        # vez de briga fabricada.
     acordo, discordancia, ausencia = {}, {}, {}
     _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
     for campo in _FATOS:
