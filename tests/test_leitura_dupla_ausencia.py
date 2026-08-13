@@ -38,3 +38,19 @@ def test_discordancia_de_verdade_CONTINUA_na_fila(monkeypatch):
     """A guarda não pode ter esvaziado a fila: quando a IA acha e a regra não, aquilo é sinal."""
     r = _laudo(monkeypatch, "Contrato nº 443/2025 firmado.", {"pregao": "12/2024"})
     assert "pregao" in r["discordancia"] and r["discordancia"]["pregao"]["estado"] == "so_ia"
+
+
+def test_SEM_CONTRATO_do_siafe_e_NAO_CONSTA_da_ia_sao_a_mesma_resposta(monkeypatch):
+    """`00000000 - SEM CONTRATO` é o SIAFE declarando que não há instrumento; `NAO_CONSTA` é a IA
+    dizendo que não achou. Os dois afirmam ausência de contrato — e isso entrava na fila humana
+    como "a regra achou algo que a IA perdeu", que é o oposto do que aconteceu."""
+    r = _laudo(monkeypatch, "Contrato: 00000000 - SEM CONTRATO. Segue para pagamento.",
+               {"contrato": "NAO_CONSTA"})
+    assert "contrato" not in r["discordancia"]
+    assert r["ausencia_concorde"]["contrato"]["estado"] == "ausencia_declarada"
+
+
+def test_contrato_de_verdade_que_a_ia_perdeu_CONTINUA_na_fila(monkeypatch):
+    """A guarda vale só para a ausência declarada: número real que a IA não viu é sinal, não ruído."""
+    r = _laudo(monkeypatch, "Contrato nº 443/2025 firmado com a empresa.", {"contrato": "NAO_CONSTA"})
+    assert r["discordancia"]["contrato"]["estado"] == "so_regra"

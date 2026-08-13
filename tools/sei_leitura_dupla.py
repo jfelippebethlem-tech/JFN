@@ -320,7 +320,12 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
             _mascara or (not re.search(r"\d", str(v_ia))
                          and "SEM CONTRATO" not in str(v_ia).upper()))
         if not n_ia or _sem_digito or n_ia in ("NONE", "NULL", "NA") or "NAOCONSTA" in n_ia:
-            estado = "so_regra" if n_det else "nenhum_dos_dois"
+            # "SEM CONTRATO" E "NAO_CONSTA" SÃO A MESMA RESPOSTA. O primeiro é o literal do SIAFE
+            # (`00000000 - SEM CONTRATO`, o sistema declarando que não há instrumento); o segundo é
+            # a IA dizendo que não achou. Os dois afirmam ausência de contrato — e eu contava como
+            # "a regra achou algo que a IA perdeu", jogando na fila humana uma concordância.
+            estado = ("ausencia_declarada" if campo == "contrato" and "SEMCONTRATO" in n_det
+                      else "so_regra" if n_det else "nenhum_dos_dois")
         elif not n_det:
             estado = "so_ia"
         elif campo == "favorecido" and pago.get("tem_ob") and \
@@ -341,7 +346,8 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
         # é o terceiro estado — o mesmo veredito de três valores que o painel já usa (OK/FALHOU/NÃO
         # MEDI): declarar que não há o que comparar em vez de fingir um dos dois extremos.
         destino = (acordo if estado == "acordo"
-                   else ausencia if estado == "nenhum_dos_dois" else discordancia)
+                   else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada")
+                   else discordancia)
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
             "ocorrencias_regra": det.get(campo, {}).get("ocorrencias", 0)}
