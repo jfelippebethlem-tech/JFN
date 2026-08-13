@@ -192,6 +192,34 @@ def _norm(v) -> str:
     return re.sub(r"[^0-9A-Za-z]", "", t).upper()
 
 
+def _dispositivo(v: str) -> tuple:
+    """(lei, artigo, inciso) — dispositivo legal não se compara por texto, se compara por peça."""
+    t = str(v or "")
+    lei = m.group(1).replace(".", "") if (m := re.search(r"(?:Lei|LEI)[^\d]{0,12}(\d[\d.]{2,9})", t)) else ""
+    art = m.group(1) if (m := re.search(r"[Aa]rt(?:igo|\.)?\s*(\d{1,3})", t)) else ""
+    inc = m.group(1).upper() if (m := re.search(
+        r"[Aa]rt(?:igo|\.)?\s*\d{1,3}\s*[º°]?\s*,?\s*(?:inciso\s*)?\b([IVXLC]{1,6})\b", t)) else ""
+    return (lei, art, inc)
+
+
+def _mesmo_dispositivo(a: str, b: str) -> bool:
+    """MESMA RESPOSTA ESCRITA DIFERENTE NÃO É BRIGA. `art. 75, VIII` e
+    `Lei nº 14.133/2021, Art. 75º, VIII` são o mesmo dispositivo — e caíam como discordância porque
+    o `º` vira `O` na normalização e quebra a comparação por substring. Eram **19 das 23 brigas**.
+
+    A comparação certa é por peça. A LEI entra na conta quando os dois a citam: art. 75 da 14.133 e
+    art. 75 da 8.666 são dispositivos diferentes, e tratá-los como iguais seria pior que o defeito
+    original. Quando só um lado cita a lei, comparam-se artigo e inciso — o que o texto deu.
+    """
+    la, aa, ia_ = _dispositivo(a)
+    lb, ab, ib = _dispositivo(b)
+    if not aa or not ab or aa != ab:
+        return False
+    if la and lb and la != lb:
+        return False
+    return not (ia_ and ib) or ia_ == ib
+
+
 def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
     """Lê pelos dois caminhos e devolve o laudo com a FILA DE DISCORDÂNCIA."""
     texto = texto_do_processo(proc, max_chars=max_chars)
@@ -219,6 +247,8 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
             estado = "so_regra" if n_det else "nenhum_dos_dois"
         elif not n_det:
             estado = "so_ia"
+        elif campo == "dispositivo" and _mesmo_dispositivo(v_det, v_ia):
+            estado = "acordo"
         elif n_det in n_ia or n_ia in n_det:
             estado = "acordo"
         else:
