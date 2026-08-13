@@ -29,7 +29,10 @@ import argparse
 import json
 import re
 import sqlite3
+import sys
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import datetime
 from pathlib import Path
 
@@ -150,6 +153,8 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     return out
 
 
+_EXEC = ThreadPoolExecutor(max_workers=4)   # chamadas estouradas ficam órfãs aqui
+_LIMITE_S = 150   # teto por janela; acima disso o lote anda sem ela (ver `extrair_interpretativo`)
 _JANELA = 40_000   # onde a resposta ainda vem completa e em ~2 s (ver `extrair_interpretativo`)
 
 
@@ -204,13 +209,32 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     # A janela cobre o mesmo texto em pedaços digeríveis e para na primeira que responder o
     # essencial: documento administrativo repete o cabeçalho, e o contrato/dispositivo costuma
     # estar no começo. As demais só entram se faltou campo.
+    # UM PROCESSO LENTO NÃO PODE TRAVAR O LOTE. Medido: o mesmo caminho de código levou 2,4 s num
+    # processo e passou de 600 s em outro — a variância é POR PROCESSO (o modelo gera resposta longa
+    # para autos complexos), não por provedor nem por tamanho de prompt, hipóteses que já testei e
+    # refutei. `best_free_chat` não aceita timeout e a chamada bloqueia, então o limite tem de vir
+    # daqui: a doutrina da casa "um processo ruim não derruba o lote" vale para o TEMPO também.
+    #
+    # Janela estourada vira janela sem resposta — segue para a próxima, e o que já foi colhido
+    # continua valendo (é a mesma lógica da salvação de resposta cortada).
+    def _com_limite(prompt: str) -> str:
+        # SEM `with`: o `__exit__` do executor faz `shutdown(wait=True)` e ESPERA a thread lenta —
+        # o teto virava enfeite (medido: limite de 3 s e o processo levou 60 s mesmo assim). O
+        # executor é de módulo e a chamada estourada fica órfã de propósito; ela termina sozinha
+        # pelos timeouts de HTTP da cadeia, e ninguém mais espera por ela.
+        try:
+            return _EXEC.submit(gerar, prompt, _SISTEMA).result(timeout=_LIMITE_S) or ""
+        except FuturesTimeout:
+            print(f"  ⏱️  {proc}: janela passou de {_LIMITE_S}s — sigo sem ela", file=sys.stderr)
+            return ""
+
     bruto = ""
     for ini in range(0, max(len(texto), 1), _JANELA):
         pedaco = texto[ini:ini + _JANELA]
         if len(pedaco) < 200 and ini:
             break
-        bruto = gerar(f"PROCESSO {proc} (trecho {ini // _JANELA + 1}):\n\n{pedaco}"
-                      f"\n\nResponda em JSON:\n{campos}", _SISTEMA) or ""
+        bruto = _com_limite(f"PROCESSO {proc} (trecho {ini // _JANELA + 1}):\n\n{pedaco}"
+                            f"\n\nResponda em JSON:\n{campos}")
         if bruto and sum(f'"{k}"' in bruto for k in _FATOS) >= 3:
             break
     if not bruto:
