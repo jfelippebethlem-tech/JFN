@@ -303,24 +303,17 @@ def pagamento_do_processo(proc: str) -> dict:
             "favorecidos": {re.sub(r"\D", "", c) for c, _ in porc}}
 
 
-def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
-    """Lê pelos dois caminhos e devolve o laudo com a FILA DE DISCORDÂNCIA."""
-    texto = texto_do_processo(proc, max_chars=max_chars)
-    if not texto:
-        return {"ok": False, "processo": proc, "erro": "processo não está no acervo"}
-    _m = re.search(r"/(\d{4})$", proc)
-    det = extrair_deterministico(texto, ano_proc=int(_m.group(1)) if _m else 0)
-    ia = extrair_interpretativo(texto, proc, gerar=gerar)
-    pago = pagamento_do_processo(proc)
-    if pago.get("tem_ob"):
-        # A OB PREPONDERA sobre o regex para dinheiro e favorecido — é a fonte canônica da casa.
-        det["cnpjs"] = {"valor": pago["maior_favorecido"], "ocorrencias": pago["n_obs"],
-                        "fonte": "ordem bancária", "alternativas": []}
-        # O `valor` NÃO entra por aqui, e isto é conserto de um erro meu da rodada anterior: eu pus
-        # o TOTAL PAGO no lado da regra enquanto a IA segue perguntada pelo MAIOR VALOR NO TEXTO.
-        # São perguntas diferentes, então a discordância era garantida por construção — 32 das 58
-        # linhas. O total pago não se perdeu: vive no bloco `pagamento`, onde é fato declarado em
-        # vez de briga fabricada.
+def comparar(det: dict, ia: dict, pago: dict) -> dict:
+    """Só a COMPARAÇÃO das duas leituras — sem ler nada, sem chamar IA.
+
+    Existe separada porque as RÉGUAS MUDAM E AS LEITURAS NÃO. Cada conserto do comparador (ausência
+    concorde, dispositivo por pertinência, `SEM CONTRATO` = `NAO_CONSTA`) só valia para os processos
+    lidos DEPOIS dele: a tabela virava um mosaico de réguas, e somar linhas medidas com réguas
+    diferentes é somar o que não se soma.
+
+    As duas leituras já estão gravadas. Recomparar custa ZERO chamada de IA — só reprocessa o que
+    está no banco. Ver `--recomparar`.
+    """
     acordo, discordancia, ausencia = {}, {}, {}
     _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
     for campo in _FATOS:
@@ -380,6 +373,29 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
             "ocorrencias_regra": det.get(campo, {}).get("ocorrencias", 0)}
+    return {"acordo": acordo, "discordancia": discordancia, "ausencia_concorde": ausencia}
+
+
+def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
+    """Lê pelos dois caminhos e devolve o laudo com a FILA DE DISCORDÂNCIA."""
+    texto = texto_do_processo(proc, max_chars=max_chars)
+    if not texto:
+        return {"ok": False, "processo": proc, "erro": "processo não está no acervo"}
+    _m = re.search(r"/(\d{4})$", proc)
+    det = extrair_deterministico(texto, ano_proc=int(_m.group(1)) if _m else 0)
+    ia = extrair_interpretativo(texto, proc, gerar=gerar)
+    pago = pagamento_do_processo(proc)
+    if pago.get("tem_ob"):
+        # A OB PREPONDERA sobre o regex para dinheiro e favorecido — é a fonte canônica da casa.
+        det["cnpjs"] = {"valor": pago["maior_favorecido"], "ocorrencias": pago["n_obs"],
+                        "fonte": "ordem bancária", "alternativas": []}
+        # O `valor` NÃO entra por aqui, e isto é conserto de um erro meu da rodada anterior: eu pus
+        # o TOTAL PAGO no lado da regra enquanto a IA segue perguntada pelo MAIOR VALOR NO TEXTO.
+        # São perguntas diferentes, então a discordância era garantida por construção — 32 das 58
+        # linhas. O total pago não se perdeu: vive no bloco `pagamento`, onde é fato declarado em
+        # vez de briga fabricada.
+    r = comparar(det, ia, pago)
+    acordo, discordancia, ausencia = r["acordo"], r["discordancia"], r["ausencia_concorde"]
     return {"ok": True, "processo": proc, "chars": len(texto), "truncado": len(texto) >= max_chars,
             "deterministico": det, "ia": ia, "pagamento": pago,
             "acordo": acordo, "discordancia": discordancia,
@@ -421,6 +437,37 @@ def _gravar(con: sqlite3.Connection, laudo: dict) -> None:
     con.commit()
 
 
+def _recomparar(con: sqlite3.Connection) -> int:
+    """Reaplica a régua de HOJE ao que já foi lido — zero chamada de IA.
+
+    As réguas mudam e as leituras não. Sem isto, cada conserto do comparador só valia para os
+    processos lidos depois dele e a tabela virava um mosaico: 125 linhas medidas por réguas
+    diferentes, somadas no mesmo KPI do painel.
+    """
+    linhas = con.execute("SELECT numero_sei, deterministico, ia FROM sei_leitura_dupla").fetchall()
+    mudou = igual = 0
+    for proc, detj, iaj in linhas:
+        try:
+            det, ia = json.loads(detj or "{}"), json.loads(iaj or "{}")
+        except ValueError:
+            continue                      # linha ilegível não derruba a varredura
+        r = comparar(det, ia, pagamento_do_processo(proc))
+        antes = con.execute("SELECT n_acordo, n_discordancia FROM sei_leitura_dupla "
+                            "WHERE numero_sei=?", (proc,)).fetchone()
+        n_ac, n_di, n_au = (len(r["acordo"]), len(r["discordancia"]), len(r["ausencia_concorde"]))
+        if antes and (antes[0], antes[1]) == (n_ac, n_di):
+            igual += 1
+        else:
+            mudou += 1
+        con.execute("UPDATE sei_leitura_dupla SET n_acordo=?, n_discordancia=?, n_ausencia=?, "
+                    "discordancia=?, ausencia_concorde=?, regua=? WHERE numero_sei=?",
+                    (n_ac, n_di, n_au, json.dumps(r["discordancia"], ensure_ascii=False),
+                     json.dumps(r["ausencia_concorde"], ensure_ascii=False), REGUA, proc))
+    con.commit()
+    print(f"recomparados {len(linhas)}: {mudou} mudaram de veredito, {igual} já estavam na régua de hoje")
+    return 0
+
+
 def _pendentes(con: sqlite3.Connection, n: int) -> list[str]:
     """Processos do acervo ainda sem leitura dupla — os maiores primeiro (mais texto, mais fato)."""
     # LEITURA QUE FALHOU NÃO É LEITURA FEITA. Quem caiu em `nao_parseei` ficou gravado na tabela e,
@@ -459,11 +506,15 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     # CPU: com um lote só, a VM fica em load 1,5 e o acervo de 2.357 levaria ~4 dias. Dois lotes
     # simultâneos, porém, chamariam `_pendentes` e receberiam A MESMA lista — trabalho e chamada de
     # IA em dobro pelo mesmo processo. A fatia `i/n` reparte a fila de forma determinística.
+    ap.add_argument("--recomparar", action="store_true",
+                    help="recompara o que já foi lido, com a régua de hoje — sem chamar IA")
     ap.add_argument("--fatia", help="i/n — lê só a fatia i de n (ex.: 0/2 e 1/2 em paralelo)")
     a = ap.parse_args(argv)
     con = sqlite3.connect(str(_DB), timeout=120)
     con.execute("PRAGMA busy_timeout=60000")
     try:
+        if a.recomparar:
+            return _recomparar(con)
         if a.processo:
             alvos = [a.processo]
         elif a.fatia:
