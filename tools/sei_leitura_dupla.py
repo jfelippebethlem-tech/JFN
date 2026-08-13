@@ -87,6 +87,11 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
             out[campo] = {"valor": "", "ocorrencias": 0, "alternativas": []}
             continue
         ordenada = c.most_common()
+        if campo == "valores":
+            # Para dinheiro a frequência é a pergunta errada: o valor que importa é o MAIOR
+            # (o total do empenho), e o repetido costuma ser a parcela ou o centavo do rodapé.
+            ordenada = sorted(c.items(),
+                              key=lambda kv: -float(kv[0].replace(".", "").replace(",", ".")))
         if campo in ("contrato", "pregao") and ano_proc:
             # FREQUÊNCIA SOZINHA ESCOLHE O CONTRATO ERRADO. Medido no `030001/075841/2024`: a regra
             # devolvia `08/2018` — um contrato ANTIGO citado no histórico — enquanto o instrumento
@@ -104,10 +109,20 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
 
 
 # ── LEITURA INTERPRETATIVA ──────────────────────────────────────────────────────────────────────
+# O CONJUNTO DE CAMPOS TEM DE CASAR COM O TIPO DE PROCESSO. Medido nos 23 primeiros: **29 das 56
+# divergências eram `nenhum_dos_dois`** — nem regra nem IA acharam, porque a maioria do acervo é
+# processo de PAGAMENTO e ANULAÇÃO DE EMPENHO, que não tem pregão nem contrato próprio. Perguntar
+# só por contrato e pregão enche a fila de campos que aquele processo nunca teve, e isso não é
+# divergência: é pergunta errada.
+#
+# `valor` e `favorecido` existem em praticamente todo processo de despesa, e são justamente o que
+# a fiscalização persegue — quem recebeu e quanto.
 _FATOS = {
     "contrato": "número do contrato que ampara os pagamentos",
     "dispositivo": "dispositivo legal do enquadramento (artigo e inciso)",
     "pregao": "número do pregão/licitação citado, se houver",
+    "valor": "o MAIOR valor em reais que aparece no processo",
+    "favorecido": "o CNPJ do favorecido/credor do pagamento",
 }
 _JUIZO = {
     "o_que_e": "em uma frase, o que este processo faz",
@@ -168,8 +183,9 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
     det = extrair_deterministico(texto, ano_proc=int(_m.group(1)) if _m else 0)
     ia = extrair_interpretativo(texto, proc, gerar=gerar)
     acordo, discordancia = {}, {}
+    _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
     for campo in _FATOS:
-        v_det = det.get(campo, {}).get("valor", "")
+        v_det = det.get(_DE_PARA.get(campo, campo), {}).get("valor", "")
         v_ia = (ia.get("fatos") or {}).get(campo, "")
         n_det, n_ia = _norm(v_det), _norm(v_ia)
         # CAMPO NUMÉRICO EXIGE NÚMERO. A IA respondeu "Pregão Eletrônico" — a modalidade, não o
