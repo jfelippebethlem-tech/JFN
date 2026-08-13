@@ -182,7 +182,7 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
     _m = re.search(r"/(\d{4})$", proc)
     det = extrair_deterministico(texto, ano_proc=int(_m.group(1)) if _m else 0)
     ia = extrair_interpretativo(texto, proc, gerar=gerar)
-    acordo, discordancia = {}, {}
+    acordo, discordancia, ausencia = {}, {}, {}
     _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
     for campo in _FATOS:
         v_det = det.get(_DE_PARA.get(campo, campo), {}).get("valor", "")
@@ -205,13 +205,26 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
             estado = "acordo"
         else:
             estado = "discordam"
-        (acordo if estado == "acordo" else discordancia)[campo] = {
+        # OS DOIS DIZEREM "NÃO EXISTE" NÃO É DIVERGÊNCIA. Medido em 31 processos: das 77 linhas na
+        # fila, **61 eram a IA respondendo `NAO_CONSTA` com a regra vazia** — a MESMA resposta, posta
+        # na fila de leitura humana como se os leitores brigassem. Isso inflava a divergência e
+        # afogava o sinal de verdade, que são as 16 linhas onde alguém achou algo.
+        #
+        # Mas também não é acordo: acordo é os dois acharem o MESMO valor. Concordar sobre ausência
+        # é o terceiro estado — o mesmo veredito de três valores que o painel já usa (OK/FALHOU/NÃO
+        # MEDI): declarar que não há o que comparar em vez de fingir um dos dois extremos.
+        destino = (acordo if estado == "acordo"
+                   else ausencia if estado == "nenhum_dos_dois" else discordancia)
+        destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
             "ocorrencias_regra": det.get(campo, {}).get("ocorrencias", 0)}
     return {"ok": True, "processo": proc, "chars": len(texto), "truncado": len(texto) >= max_chars,
             "deterministico": det, "ia": ia, "acordo": acordo, "discordancia": discordancia,
+            "ausencia_concorde": ausencia,
             "n_acordo": len(acordo), "n_discordancia": len(discordancia),
-            "ressalva": ("Acordo entre regra e IA é fato duplamente confirmado; discordância é fila "
+            "n_ausencia": len(ausencia),
+            "ressalva": ("Acordo entre regra e IA é fato duplamente confirmado; ausência concorde é "
+                         "campo que o processo não tem (não é briga entre leitores); discordância é fila "
                          "de leitura humana, não veredito. O campo `interpretacao` é OPINIÃO a "
                          "conferir e nunca vira achado sozinho.")}
 
@@ -275,7 +288,8 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
                 print(f"  ⚠️  {proc}: {r.get('erro')}"); continue
             est = r["ia"].get("estado")
             tot["processos"] += 1; tot["acordo"] += r["n_acordo"]
-            tot["discordancia"] += r["n_discordancia"]; tot[f"ia:{est}"] += 1
+            tot["discordancia"] += r["n_discordancia"]; tot["ausencia"] += r["n_ausencia"]
+            tot[f"ia:{est}"] += 1
             print(f"\n{proc} · {r['chars']:,} chars".replace(",", ".")
                   + (" (TRUNCADO)" if r["truncado"] else "") + f" · IA: {est}")
             for campo, d in {**r["acordo"], **r["discordancia"]}.items():
