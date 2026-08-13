@@ -152,8 +152,12 @@ def _db_fusao(tmp_path):
         CREATE TABLE socios_fornecedor (cnpj TEXT, socio_nome TEXT, socio_doc TEXT,
                                         socio_servidor INTEGER, cpf_pos3a9 TEXT);
     """)
-    # CPF real 11122334455: QSA mostra pos4-9=223344; folha mostra pos3-8=122334
-    con.execute("INSERT INTO registros_folha VALUES('JOAO DA SILVA','XX122334XXX')")
+    # CORRIGIDO EM 2026-08-12 COM CONTROLE POSITIVO. A fixture antiga supunha que a folha expõe as
+    # posições 3-8 (`XX122334XXX` para o CPF 11122334455), premissa que estava na docstring de
+    # `folha_middle`. Confrontando os 117 sócios cujo CPF COMPLETO já estava resolvido e cujo nome
+    # consta na folha: 94 batem em **4-9**, 3 em 3-8 (coincidência) e 20 são homônimos reais. A
+    # folha expõe a MESMA janela do QSA — logo a fixture agora repete os mesmos seis dígitos.
+    con.execute("INSERT INTO registros_folha VALUES('JOAO DA SILVA','XX223344XXX')")
     con.execute("INSERT INTO registros_folha VALUES('MARIA SOUZA','XX999888XXX')")  # nome bate, dígito não
     con.commit(); con.close()
     return p
@@ -164,8 +168,10 @@ def test_fusao_folha_qsa_servidor_consistente(tmp_path):
     idx = carregar_indice_folha(_db_fusao(tmp_path))
     r = fusao_folha_qsa("JOAO DA SILVA", "***223344**", idx)
     assert r["servidor"] is True
-    assert r["conhecidos_3a9"] == "1223344"   # pos3 (folha) + pos4-9 (QSA)
-    assert r["n_candidatos"] == 100
+    assert r["conhecidos_3a9"] == "223344"    # a mesma janela dos dois lados: 6 dígitos, não 7
+    # NÃO estreita: mesma janela não acrescenta dígito, e prometer 100 candidatos seria mentir
+    # sobre o esforço que falta. Ver o commit da correção e `test_fusao_folha_qsa.py`.
+    assert r["n_candidatos"] == 1000
 
 
 def test_fusao_folha_qsa_homonimo_rejeita(tmp_path):
