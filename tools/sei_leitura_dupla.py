@@ -90,7 +90,15 @@ _PADROES: dict[str, str] = {
                     r"[Aa]rt(?:igo|\.)?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"),
     "processos_citados": r"\b(\d{6}/\d{6}(?:\.\d)?/\d{4})\b",
     "cnpjs": r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\b",
-    "valores": r"R\$\s?([\d.]{4,18},\d{2})",
+    # O `R$` E O NÚMERO PODEM ESTAR EM COLUNAS DIFERENTES. Medido no `080002/010108/2024`: a IA
+    # achava R$ 5.078.755,43 e o maior da regra era R$ 4.518,12 — porque a tabela escreve
+    # `R$                            E 5.078.755,43`, e `R\$\s?` não atravessa o espaçamento nem a
+    # letra da coluna. Perder cinco milhões por causa de um layout de tabela é caro demais.
+    #
+    # O formato brasileiro de milhar identifica dinheiro sozinho: `\d{1,3}(\.\d{3})+,\d{2}` casa
+    # 5.078.755,43 e 4.518,12 e não casa data, número de processo nem código. Fica como segunda via
+    # do `R$`, que continua sendo o sinal mais forte quando existe.
+    "valores": r"(?:R\$\s?([\d.]{4,18},\d{2})|\b(\d{1,3}(?:\.\d{3})+,\d{2})\b)",
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
     "pregao": r"[Pp]reg[ãa]o[^\n]{0,24}n[º°o.]{0,3}\s*(\d{1,4}/20\d{2})",
 }
@@ -105,6 +113,8 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     out: dict = {}
     for campo, pad in _PADROES.items():
         achados = re.findall(pad, texto or "")
+        if campo == "valores" and achados and isinstance(achados[0], tuple):
+            achados = [a or b for a, b in achados]
         if campo == "contrato":
             achados = [a or b for a, b in achados] if achados and isinstance(achados[0], tuple) else achados
             achados = ["SEM CONTRATO" if "SEM CONTRATO" in str(x).upper() else x for x in achados]
@@ -303,6 +313,15 @@ def pagamento_do_processo(proc: str) -> dict:
             "favorecidos": {re.sub(r"\D", "", c) for c, _ in porc}}
 
 
+def _na_lista(v_ia, campo_det: dict) -> bool:
+    """O valor da IA está entre os candidatos que a regra colheu?"""
+    alvo = _norm(v_ia)
+    if not alvo:
+        return False
+    return any(_norm(x) == alvo for x in
+               [campo_det.get("valor", "")] + [a["valor"] for a in campo_det.get("alternativas", [])])
+
+
 def comparar(det: dict, ia: dict, pago: dict) -> dict:
     """Só a COMPARAÇÃO das duas leituras — sem ler nada, sem chamar IA.
 
@@ -349,6 +368,16 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
         elif campo == "favorecido" and pago.get("tem_ob") and \
                 re.sub(r"\D", "", str(v_ia)) in pago["favorecidos"]:
             estado = "acordo"     # acertou UM dos que de fato receberam — basta
+        elif campo == "valor" and _na_lista(v_ia, det.get("valores", {})):
+            # ARITMÉTICA DECIDE, NÃO O HUMANO. Era a maior categoria da fila (72 linhas). O padrão:
+            # o valor da IA estava entre os candidatos da REGRA, só não era o maior — os dois leram
+            # os mesmos números e discordaram do RANQUE. Só que "qual é o maior" tem resposta
+            # objetiva: se ambos viram R$ 6.644.000,00 e R$ 6.615.200,00, não há o que um humano
+            # decida. Fila é para dúvida, não para conferir conta.
+            #
+            # Quando o valor da IA NÃO está na lista, aí sim ficaram: leram números diferentes, e
+            # isso é ou régua cega ou invenção do modelo — as duas merecem o olho.
+            estado = "ia_errou_o_maior"
         elif campo == "dispositivo" and (
                 _mesmo_dispositivo(v_det, v_ia)
                 # PERTINÊNCIA, NÃO IDENTIDADE — a mesma lição que resolveu o `favorecido`. Um
@@ -377,7 +406,7 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
         # MEDI): declarar que não há o que comparar em vez de fingir um dos dois extremos.
         destino = (acordo if estado == "acordo"
                    else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada",
-                                               "so_fonte_canonica")
+                                               "so_fonte_canonica", "ia_errou_o_maior")
                    else discordancia)
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
@@ -454,12 +483,21 @@ def _recomparar(con: sqlite3.Connection) -> int:
     diferentes, somadas no mesmo KPI do painel.
     """
     linhas = con.execute("SELECT numero_sei, deterministico, ia FROM sei_leitura_dupla").fetchall()
-    mudou = igual = 0
+    mudou = igual = reext = 0
     for proc, detj, iaj in linhas:
         try:
             det, ia = json.loads(detj or "{}"), json.loads(iaj or "{}")
         except ValueError:
             continue                      # linha ilegível não derruba a varredura
+        # REEXTRAIR TAMBÉM SAI DE GRAÇA. Só a leitura INTERPRETATIVA custa chamada de IA; a
+        # determinística é regex sobre o texto que já está no acervo. Sem isto, conserto de
+        # EXTRATOR (como o `R$` separado do número por coluna de tabela, que escondia R$ 5,07 mi)
+        # só valeria para o que ainda não foi lido — e o acervo voltaria a ser um mosaico, agora de
+        # extratores em vez de réguas.
+        if (texto := texto_do_processo(proc, max_chars=150_000)):
+            _m = re.search(r"/(\d{4})$", proc)
+            det = extrair_deterministico(texto, ano_proc=int(_m.group(1)) if _m else 0)
+            reext += 1
         r = comparar(det, ia, pagamento_do_processo(proc))
         antes = con.execute("SELECT n_acordo, n_discordancia FROM sei_leitura_dupla "
                             "WHERE numero_sei=?", (proc,)).fetchone()
@@ -469,11 +507,14 @@ def _recomparar(con: sqlite3.Connection) -> int:
         else:
             mudou += 1
         con.execute("UPDATE sei_leitura_dupla SET n_acordo=?, n_discordancia=?, n_ausencia=?, "
-                    "discordancia=?, ausencia_concorde=?, regua=? WHERE numero_sei=?",
+                    "discordancia=?, ausencia_concorde=?, regua=?, deterministico=? "
+                    "WHERE numero_sei=?",
                     (n_ac, n_di, n_au, json.dumps(r["discordancia"], ensure_ascii=False),
-                     json.dumps(r["ausencia_concorde"], ensure_ascii=False), REGUA, proc))
+                     json.dumps(r["ausencia_concorde"], ensure_ascii=False), REGUA,
+                     json.dumps(det, ensure_ascii=False), proc))
     con.commit()
-    print(f"recomparados {len(linhas)}: {mudou} mudaram de veredito, {igual} já estavam na régua de hoje")
+    print(f"recomparados {len(linhas)}: {mudou} mudaram de veredito, {igual} já estavam na régua "
+          f"de hoje · {reext} tiveram a extração determinística refeita (custo zero de IA)")
     return 0
 
 
