@@ -938,6 +938,66 @@ def api_zeros_sem_causa(limite: int = 25):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/fiscal/leitura_dupla")
+def api_leitura_dupla(limite: int = 20):
+    """Onde a REGRA e a IA discordam ao ler o mesmo processo — a fila de leitura humana.
+
+    Cada processo do acervo é lido duas vezes: por regex (barata, reproduzível, não inventa, mas só
+    acha o previsto) e por IA gratuita (generaliza, mas varia e pode inventar). Onde as duas
+    concordam, o fato está duplamente confirmado e ninguém precisa ler. **A fila é a
+    discordância** — ali ou a régua é estreita ou a IA inventou, e é o único lugar onde o tempo de
+    um humano rende.
+
+    O card existe porque a tabela nasceu MUDA: `sei_leitura_dupla` já gravava e nenhuma rota a
+    consumia — a mesma família do `achados.db`, que produzia 543 confirmados sem um leitor.
+    """
+    try:
+        import json as _j
+
+        def _medir():
+            con = _db_ro()
+            try:
+                linhas = con.execute(
+                    "SELECT numero_sei, n_acordo, n_discordancia, discordancia, ia, truncado "
+                    "FROM sei_leitura_dupla ORDER BY n_discordancia DESC, numero_sei").fetchall()
+            finally:
+                con.close()
+            itens, por_estado = [], {}
+            for sei, na, nd, disc, ia, trunc in linhas:
+                d = _j.loads(disc or "{}")
+                for _campo, v in d.items():
+                    e = str(v.get("estado") or "?")
+                    por_estado[e] = por_estado.get(e, 0) + 1
+                iad = _j.loads(ia or "{}")
+                itens.append({
+                    "processo": sei, "acordo": na, "discordancia": nd,
+                    "truncado": bool(trunc), "estado_ia": iad.get("estado"),
+                    "o_que_e": (iad.get("interpretacao") or {}).get("o_que_e", ""),
+                    "campos": {k: {"regra": v.get("regra"), "ia": v.get("ia"),
+                                   "estado": v.get("estado")} for k, v in d.items()},
+                })
+            return {"itens": itens, "por_estado": por_estado}
+
+        r = _cache("leitura_dupla", _medir)
+        lim = max(1, min(int(limite), 100))
+        return JSONResponse({
+            "ok": True, "total": len(r["itens"]),
+            "acordos": sum(x["acordo"] for x in r["itens"]),
+            "discordancias": sum(x["discordancia"] for x in r["itens"]),
+            "por_estado": r["por_estado"],
+            "itens": r["itens"][:lim],
+            "fonte": _fonte("sei_leitura_dupla"),
+            "ressalva": (
+                "Acordo entre regra e IA é fato duplamente confirmado; DISCORDÂNCIA é fila de "
+                "leitura humana, não veredito — pode ser régua estreita nossa ou invenção do "
+                "modelo. O resumo em linguagem natural é OPINIÃO da IA a conferir e nunca vira "
+                "achado sozinho. Processo TRUNCADO foi lido em parte: omissão ali não é ausência."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("leitura_dupla falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fiscal/emergencia_recorrente")
 def api_emergencia_recorrente(minimo: int = 5, limite: int = 14):
     """Emergência RECORRENTE — o art. 75, VIII exige imprevisibilidade, e ela não se repete.

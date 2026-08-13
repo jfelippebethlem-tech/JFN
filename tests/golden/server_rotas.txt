@@ -43,6 +43,7 @@ GET /api/fiscal/detectores -> api_detectores
 GET /api/fiscal/emergencia_recorrente -> api_emergencia_recorrente
 GET /api/fiscal/fila -> api_fiscal_fila
 GET /api/fiscal/fim_de_exercicio -> api_fim_de_exercicio
+GET /api/fiscal/leitura_dupla -> api_leitura_dupla
 GET /api/fiscal/nucleo_cartel -> api_nucleo_cartel
 GET /api/fiscal/recuperacao_judicial -> api_recuperacao_judicial
 GET /api/fiscal/taxa_por_unidade -> api_taxa_por_unidade

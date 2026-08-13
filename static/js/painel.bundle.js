@@ -4777,6 +4777,7 @@ void main(){
         nucleoCartel,
         consorcioVeiculo,
         emergenciaRecorrente,
+        leituraDupla,
         zerosSemCausa,
         detectoresFramework
       ]) {
@@ -7670,6 +7671,50 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       <td style="font-size:12px">${esc(String(x.fornecedor_dominante || "").slice(0, 30))}
         <span class="dim">(${fmtN(x.n_fornecedores)} forn.)</span></td>
       <td class="right">${x.concentracao_dominante >= 0.8 ? "<b>" : ""}${(100 * (x.concentracao_dominante || 0)).toFixed(0)}%${x.concentracao_dominante >= 0.8 ? "</b>" : ""}</td>
+    </tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function leituraDupla() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/leitura_dupla?limite=14");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Leitura dupla — onde a regra e a IA discordam (${fmtN(d.total)} processos)`);
+    if (!(d.itens || []).length) {
+      h += card('<div class="dim">Nenhum processo lido pelos dois caminhos ainda — rode <code>tools.sei_leitura_dupla</code>.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g3">${kpi(
+      fmtN(d.acordos),
+      "Fatos em ACORDO",
+      "var(--green)",
+      "🤝",
+      { sobre: "Regra e IA leram o mesmo valor: fato duplamente confirmado, ninguém precisa reler." }
+    )}${kpi(
+      fmtN(d.discordancias),
+      "DISCORDÂNCIAS — a fila",
+      "var(--amber)",
+      "⚖️",
+      { sobre: "Onde os dois leitores divergem. Não é veredito: é o único lugar em que o tempo de um humano rende, porque ali ou a nossa régua é estreita ou o modelo inventou." }
+    )}${kpi(
+      fmtN(d.total),
+      "Processos lidos 2×",
+      null,
+      "📖",
+      { sobre: "Cada um lido por regex e por IA gratuita. Processo marcado como truncado foi lido em parte — omissão ali não é ausência." }
+    )}</div>`;
+    const est = d.por_estado || {};
+    h += card(`<div class="dim">por tipo de divergência: ` + Object.entries(est).map(([k, v]) => `<b>${esc(k)}</b> ${fmtN(v)}`).join(" · ") + `</div>`);
+    h += card(`<table class="tb"><thead><tr><th>processo</th><th class="right">acordo</th>
+    <th class="right">divergência</th><th>o que a IA entendeu</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+      <td>${esc(x.processo)}${x.truncado ? ' <span class="dim">(truncado)</span>' : ""}</td>
+      <td class="right">${fmtN(x.acordo)}</td>
+      <td class="right">${x.discordancia > 2 ? "<b>" : ""}${fmtN(x.discordancia)}${x.discordancia > 2 ? "</b>" : ""}</td>
+      <td style="font-size:12px">${esc(String(x.o_que_e || "—").slice(0, 120))}</td>
     </tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
     alvo.innerHTML = h;
     o.appendChild(alvo);

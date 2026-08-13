@@ -33,6 +33,9 @@ ESPERADOS = (
     "aditivo de valor nos primeiros",
     "núcleo de arranjo",
     "um consórcio por certame",
+    # o décimo-segundo: leitura dupla (regra × IA) — card recém-ligado, e tabela que
+    # nasceu MUDA (gravava sem nenhum leitor).
+    "onde a regra e a ia discordam",
     # o décimo-primeiro: emergência recorrente — o screen existia e era MUDO (nenhuma rota, card
     # ou cron o consumia). Entra no gate porque card recém-ligado é o que mais silencia.
     "emergência recorrente",
