@@ -45,7 +45,10 @@ _ARQ = _REPO / "data" / "sei_arquivo"
 # citação de outro processo. Frequência é o desempate honesto — e o módulo guarda quantas vezes,
 # para quem quiser conferir.
 _PADROES: dict[str, str] = {
-    "contrato": r"[Cc]ontrato[^\n]{0,24}n[º°o.]{0,3}\s*(\d{1,4}/20\d{2})",
+    # `00000000 - SEM CONTRATO` é o texto LITERAL do SIAFE para despesa sem instrumento, e é fato
+    # fiscal, não ruído: apareceu em 4 dos 15 primeiros processos lidos, e a regra não via nenhum —
+    # quem via era a IA. Pagamento sem contrato é justamente o que se quer enxergar.
+    "contrato": r"[Cc]ontrato[^\n]{0,24}n[º°o.]{0,3}\s*(\d{1,4}/20\d{2})|(0{6,8}\s*-\s*SEM CONTRATO)",
     # O DISPOSITIVO QUE INTERESSA VEM COLADO À LEI. Duas correções medidas na amostra de 2026-08-13,
     # em direções opostas:
     #   · estreita demais — exigia algarismo romano e calava diante de "art. 37, caput" e de
@@ -74,6 +77,9 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     out: dict = {}
     for campo, pad in _PADROES.items():
         achados = re.findall(pad, texto or "")
+        if campo == "contrato":
+            achados = [a or b for a, b in achados] if achados and isinstance(achados[0], tuple) else achados
+            achados = ["SEM CONTRATO" if "SEM CONTRATO" in str(x).upper() else x for x in achados]
         if campo == "dispositivo":
             achados = [f"art. {a}, {b}".rstrip(", ") for a, b in achados]
         c = Counter(str(x) for x in achados if str(x).strip())
@@ -166,7 +172,16 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
         v_det = det.get(campo, {}).get("valor", "")
         v_ia = (ia.get("fatos") or {}).get(campo, "")
         n_det, n_ia = _norm(v_det), _norm(v_ia)
-        if not n_ia or n_ia in ("NONE", "NULL", "NA") or "NAOCONSTA" in n_ia:
+        # CAMPO NUMÉRICO EXIGE NÚMERO. A IA respondeu "Pregão Eletrônico" — a modalidade, não o
+        # número — e isso entrava como se fosse achado que a regra perdeu. Sem dígito e sem o token
+        # de ausência do SIAFE, não é resposta para `contrato`/`pregao`.
+        # E MÁSCARA NÃO É NÚMERO: a IA devolveu "0XX/2023" — placeholder do próprio documento —
+        # e com dígito ele passaria como resposta.
+        _mascara = bool(re.search(r"[Xx]{2,}", str(v_ia)))
+        _sem_digito = campo in ("contrato", "pregao") and (
+            _mascara or (not re.search(r"\d", str(v_ia))
+                         and "SEM CONTRATO" not in str(v_ia).upper()))
+        if not n_ia or _sem_digito or n_ia in ("NONE", "NULL", "NA") or "NAOCONSTA" in n_ia:
             estado = "so_regra" if n_det else "nenhum_dos_dois"
         elif not n_det:
             estado = "so_ia"
