@@ -163,6 +163,24 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     except ValueError:
         d = {}
     if not isinstance(d, dict) or not d:
+        # RESPOSTA CORTADA NÃO É RESPOSTA PERDIDA. Medido em 37 processos: **9 (24%) caíam em
+        # `nao_parseei` — e ao abrir o bruto, o modelo tinha respondido CERTO.** O JSON começa
+        # correto e é cortado no meio porque `chama_atencao` (lista de objetos) estoura o limite de
+        # saída antes de fechar a chave. Eu descartava contrato, dispositivo e pregão já
+        # preenchidos por causa de um `}` que faltou.
+        #
+        # A salvação é conservadora: só aceita par `"campo": "valor"` com a aspa de fechamento
+        # PRESENTE — sem ela o valor pode estar cortado no meio, e meio valor é pior que nenhum.
+        # Vira `ok_parcial`, não `ok`: quem lê o laudo tem de saber que veio de resposta truncada.
+        salvos = {}
+        for k in {**_FATOS, **_JUIZO}:
+            if m := re.search(r'"%s"\s*:\s*"((?:[^"\\]|\\.)*)"' % re.escape(k), bruto):
+                salvos[k] = m.group(1)
+        if salvos:
+            return {"estado": "ok_parcial",
+                    "fatos": {k: salvos.get(k, "") for k in _FATOS},
+                    "interpretacao": {k: salvos.get(k, "") for k in _JUIZO},
+                    "salvos_de_resposta_cortada": sorted(salvos)}
         return {"estado": "nao_parseei", "bruto": bruto[:300]}
     return {"estado": "ok", "fatos": {k: d.get(k, "") for k in _FATOS},
             "interpretacao": {k: d.get(k, "") for k in _JUIZO}}
@@ -260,8 +278,14 @@ def _gravar(con: sqlite3.Connection, laudo: dict) -> None:
 
 def _pendentes(con: sqlite3.Connection, n: int) -> list[str]:
     """Processos do acervo ainda sem leitura dupla — os maiores primeiro (mais texto, mais fato)."""
+    # LEITURA QUE FALHOU NÃO É LEITURA FEITA. Quem caiu em `nao_parseei` ficou gravado na tabela e,
+    # por estar lá, nunca mais voltaria à fila — 9 processos (24%) sumiriam do acervo em silêncio,
+    # justamente os que a salvação de resposta cortada agora recupera. `indisponivel` (IA sem cota)
+    # entra pelo mesmo motivo: não medimos, e não medir não é nada a apontar.
     try:
-        lidos = {r[0] for r in con.execute("SELECT numero_sei FROM sei_leitura_dupla")}
+        lidos = {r[0] for r in con.execute(
+            "SELECT numero_sei FROM sei_leitura_dupla "
+            "WHERE ia NOT LIKE '%\"nao_parseei\"%' AND ia NOT LIKE '%\"indisponivel\"%'")}
     except sqlite3.Error:
         lidos = set()
     cands = []
