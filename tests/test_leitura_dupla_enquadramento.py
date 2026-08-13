@@ -50,3 +50,26 @@ def test_artigo_de_rotina_sem_marca_de_fundamento_NAO_entra():
     """`art. 90 da Lei 287/79` aparece em quase todo processo de pagamento — citar não é fundamentar."""
     d = extrair_deterministico("Segue para liquidação na forma do art. 90 da Lei 287/1979.\n")
     assert not d["dispositivo"]["valor"]
+
+
+def test_casa_o_rotulo_com_letras_espacadas_da_extracao_de_pdf():
+    """`F U N D A M E N TA Ç Ã O :` é como a extração de PDF do Diário devolve maiúsculas. Nenhum
+    regex de palavra inteira casa com isso — e era justamente onde a IA achava `art. 75, VIII`
+    (dispensa emergencial) e a regra não colhia nada."""
+    d = extrair_deterministico("F U N D A M E N TA Ç Ã O : Art. 75, inciso VIII da Lei nº 14.133\n")
+    assert d["dispositivo"]["valor"] == "art. 75, VIII"
+
+
+def test_casa_o_rotulo_Emb_Legal():
+    """`Emb. Legal` (embasamento legal) é outro rótulo de formulário do empenho."""
+    d = extrair_deterministico("Mod. Licitação 05 - Dispensa de Licitação "
+                               "Emb. Legal Lei n 14.133/2021, Art. 75, VIII Origem 1\n")
+    assert d["dispositivo"]["valor"] == "art. 75, VIII"
+
+
+def test_o_dispositivo_guarda_MAIS_candidatos_que_os_demais_campos():
+    """Para o dispositivo a lista de candidatos É a resposta — o despacho fundamenta em vários, e
+    cortar em 4 jogava fora justamente o que a IA tinha achado."""
+    texto = "".join(f"nos termos do art. {n}, da Lei 14.133/2021.\n" for n in range(1, 15))
+    d = extrair_deterministico(texto)["dispositivo"]
+    assert len(d["alternativas"]) > 4

@@ -38,6 +38,11 @@ from tools.sei_confronto_llm import texto_do_processo
 _REPO = Path(__file__).resolve().parent.parent
 _DB = _REPO / "data" / "compliance.db"
 _ARQ = _REPO / "data" / "sei_arquivo"
+def _esp(p: str) -> str:
+    """`fundamenta` → casa também `F U N D A M E N TA` (maiúscula espaçada da extração de PDF)."""
+    return r"\s*".join(f"[{c}{c.upper()}]" for c in p)
+
+
 
 # ── LEITURA DETERMINÍSTICA ──────────────────────────────────────────────────────────────────────
 # Cada padrão devolve o valor MAIS FREQUENTE no processo, não o primeiro: documento administrativo
@@ -69,7 +74,15 @@ _PADROES: dict[str, str] = {
     # escuro é tão ruim quanto não estreitar. Fui ler o texto: o enquadramento vem num CAMPO
     # ESTRUTURADO, `Enquadramento Legal: Lei n 14.133/2021, Art. 75, VIII`. Rótulo de formulário é
     # âncora melhor que retórica de despacho. As fórmulas de prosa ficam como segunda via.
-    "dispositivo": (r"(?:[Ee]nquadramento\s+[Ll]egal|com\s+fulcro|nos\s+termos|com\s+fundamento|"
+    # DUAS ÂNCORAS QUE SÓ O TEXTO ENSINOU. Lendo os processos em que a IA achava `art. 75, VIII`
+    # (dispensa emergencial — o achado que mais importa) e a regra não colhia nada:
+    #   · `Emb. Legal Lei n 14.133/2021, Art. 75, VIII` — outro rótulo de formulário (embasamento);
+    #   · `F U N D A M E N TA Ç Ã O : Art. 75, inciso VIII` — a extração de PDF do Diário devolve
+    #     maiúsculas COM LETRAS ESPAÇADAS, e nenhum regex de palavra inteira casa com isso.
+    # `_esp()` monta a alternativa tolerante ao espaçamento, para não perder o caso justamente onde
+    # ele é mais caro.
+    "dispositivo": (r"(?:[Ee]nquadramento\s+[Ll]egal|[Ee]mb(?:asamento)?\.?\s+[Ll]egal|"
+                    + _esp("fundamenta") + r"|com\s+fulcro|nos\s+termos|com\s+fundamento|"
                     # `[\s\S]` e não `[^\n]`: o rótulo e o artigo ficam em LINHAS diferentes
                     # (`Enquadramento Legal:\nLei n 14.133/2021, Art. 75, VIII`), e proibir a quebra
                     # de linha zerava justamente o caso mais limpo — o do formulário.
@@ -119,7 +132,11 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
                 ordenada = recentes + [x for x in ordenada if x not in recentes]
         (v, n), *resto = ordenada
         out[campo] = {"valor": v, "ocorrencias": n,
-                      "alternativas": [{"valor": a, "ocorrencias": b} for a, b in resto[:4]]}
+                      # O CORTE ESCONDE FUNDAMENTO LEGÍTIMO. Para o dispositivo a lista de
+                      # candidatos É a resposta (o processo fundamenta em vários), então cortar em 4
+                      # jogava fora justamente o que a IA tinha achado.
+                      "alternativas": [{"valor": a, "ocorrencias": b}
+                                       for a, b in resto[:12 if campo == "dispositivo" else 4]]}
     return out
 
 
@@ -331,7 +348,19 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
         elif campo == "favorecido" and pago.get("tem_ob") and \
                 re.sub(r"\D", "", str(v_ia)) in pago["favorecidos"]:
             estado = "acordo"     # acertou UM dos que de fato receberam — basta
-        elif campo == "dispositivo" and _mesmo_dispositivo(v_det, v_ia):
+        elif campo == "dispositivo" and (
+                _mesmo_dispositivo(v_det, v_ia)
+                # PERTINÊNCIA, NÃO IDENTIDADE — a mesma lição que resolveu o `favorecido`. Um
+                # despacho fundamenta em VÁRIOS dispositivos (o procedimental e o substantivo), e
+                # exigir que os dois leitores elejam o mesmo produz briga onde há concordância: a
+                # regra dizia `art. 28` (o decreto de execução), a IA dizia `art. 37, XXI` da CF, e
+                # ambos estavam escritos no processo. Medido: com identidade, 1 acordo em 30.
+                #
+                # Conferido nos candidatos que a REGRA colheu — se o artigo da IA está entre eles,
+                # os dois leram o mesmo documento e escolheram ênfases diferentes, o que não é
+                # divergência de leitura. Fora da lista, aí sim é briga.
+                or any(_mesmo_dispositivo(a["valor"], v_ia)
+                       for a in det.get("dispositivo", {}).get("alternativas", []))):
             estado = "acordo"
         elif n_det in n_ia or n_ia in n_det:
             estado = "acordo"
