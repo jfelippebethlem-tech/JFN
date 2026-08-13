@@ -220,6 +220,37 @@ def _mesmo_dispositivo(a: str, b: str) -> bool:
     return not (ia_ and ib) or ia_ == ib
 
 
+def pagamento_do_processo(proc: str) -> dict:
+    """O que o processo PAGOU, pela Ordem Bancária — não pelo que o texto diz.
+
+    MEDIDO, e é por isso que este bloco existe: extrair o favorecido do texto por regex acerta **36%**
+    (13 de 36 processos com OB vinculada, conferido contra `ordens_bancarias`). A variante por
+    vizinhança ganha um caso — 39%, ruído. E o TETO de qualquer régua de texto é **58%**: em 42% dos
+    processos o CNPJ de quem recebeu não está escrito ali. Não é régua estreita, é fonte errada.
+
+    A regra nº 2 da casa já dizia onde está a verdade: **OB = pagamento**. Com a junção por
+    `numero_sei` consertada (era 0,2% do acervo, agora 62%), a fonte canônica ficou alcançável.
+
+    O confronto muda de natureza para melhor: em vez de duas leituras do mesmo texto, passa a ser o
+    que o processo DIZ contra o que foi PAGO — que é a pergunta da fiscalização.
+    """
+    from compliance_agent.correlacao_sei import obs_por_processo
+    obs = obs_por_processo(proc)
+    if not obs:
+        return {"tem_ob": False}
+    porc: Counter = Counter()
+    for o in obs:
+        porc[(str(o.get("favorecido_cpf") or ""), str(o.get("favorecido_nome") or ""))] += o.get("valor") or 0
+    (cpf, nome), val = max(porc.items(), key=lambda kv: kv[1])
+    return {"tem_ob": True, "n_obs": len(obs), "total": sum(o.get("valor") or 0 for o in obs),
+            "maior_favorecido": cpf, "maior_favorecido_nome": nome, "maior_valor": val,
+            "n_favorecidos": len(porc),
+            # O CONJUNTO, não só o maior. Um processo do acervo paga 1.199 favorecidos (repasse do
+            # PNAE às escolas): ali "o favorecido" não tem resposta única, e cobrar da IA o MAIOR
+            # fabricaria briga onde ela acertou um dos legítimos. A conferência certa é pertinência.
+            "favorecidos": {re.sub(r"\D", "", c) for c, _ in porc}}
+
+
 def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
     """Lê pelos dois caminhos e devolve o laudo com a FILA DE DISCORDÂNCIA."""
     texto = texto_do_processo(proc, max_chars=max_chars)
@@ -228,6 +259,14 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
     _m = re.search(r"/(\d{4})$", proc)
     det = extrair_deterministico(texto, ano_proc=int(_m.group(1)) if _m else 0)
     ia = extrair_interpretativo(texto, proc, gerar=gerar)
+    pago = pagamento_do_processo(proc)
+    if pago.get("tem_ob"):
+        # A OB PREPONDERA sobre o regex para dinheiro e favorecido — é a fonte canônica da casa.
+        det["cnpjs"] = {"valor": pago["maior_favorecido"], "ocorrencias": pago["n_obs"],
+                        "fonte": "ordem bancária", "alternativas": []}
+        det["valores"] = {"valor": f"{pago['total']:,.2f}".replace(",", "§").replace(".", ",")
+                          .replace("§", "."), "ocorrencias": pago["n_obs"],
+                          "fonte": "ordem bancária", "alternativas": []}
     acordo, discordancia, ausencia = {}, {}, {}
     _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
     for campo in _FATOS:
@@ -247,6 +286,9 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
             estado = "so_regra" if n_det else "nenhum_dos_dois"
         elif not n_det:
             estado = "so_ia"
+        elif campo == "favorecido" and pago.get("tem_ob") and \
+                re.sub(r"\D", "", str(v_ia)) in pago["favorecidos"]:
+            estado = "acordo"     # acertou UM dos que de fato receberam — basta
         elif campo == "dispositivo" and _mesmo_dispositivo(v_det, v_ia):
             estado = "acordo"
         elif n_det in n_ia or n_ia in n_det:
@@ -267,7 +309,8 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
             "regra": v_det, "ia": v_ia, "estado": estado,
             "ocorrencias_regra": det.get(campo, {}).get("ocorrencias", 0)}
     return {"ok": True, "processo": proc, "chars": len(texto), "truncado": len(texto) >= max_chars,
-            "deterministico": det, "ia": ia, "acordo": acordo, "discordancia": discordancia,
+            "deterministico": det, "ia": ia, "pagamento": pago,
+            "acordo": acordo, "discordancia": discordancia,
             "ausencia_concorde": ausencia,
             "n_acordo": len(acordo), "n_discordancia": len(discordancia),
             "n_ausencia": len(ausencia),
