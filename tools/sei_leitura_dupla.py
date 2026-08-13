@@ -185,6 +185,13 @@ _SISTEMA = (
 
 def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     if gerar is None:
+        # O SWEEP DO SEI É DO NOUS, E A REGRA DA CASA TEM MOTIVO MEDIDO. Rodei o loop inteiro com
+        # `FREE_LLM_PREFER=openrouter` por escolha minha, contra o que o CLAUDE.md manda para
+        # VOLUME de SEI. Medido no mesmo processo e no mesmo prompt: **nous 45,7 s × openrouter
+        # 536,2 s — 12× mais lento** —, e ainda com resposta mais pobre (567 contra 2.114 chars) e
+        # embrulhada em cerca ```json. Pagava-se 12× por uma leitura pior.
+        import os
+        os.environ.setdefault("FREE_LLM_PREFER", "nous")
         from compliance_agent.llm.camada_triagem import gerar_triagem
         gerar = gerar_triagem()
     campos = "\n".join(f'- "{k}": {v}' for k, v in {**_FATOS, **_JUIZO}.items())
