@@ -43,6 +43,14 @@ PERGUNTAS = {
     "objeto": "Qual o OBJETO contratado, em até 8 palavras?",
     "valor_empenho": "Qual o valor do empenho registrado neste processo?",
     "cnpj_favorecido_nf": "Em favor de qual CNPJ as notas fiscais devem ser emitidas?",
+    "processo_licitacao": "Qual o número do processo SEI da LICITAÇÃO do mesmo objeto, citado como "
+                          "o que encerraria esta contratação?",
+    "pregao_anterior": "Qual o número do pregão eletrônico do contrato ANTERIOR que deixou de "
+                       "cobrir o serviço?",
+    "vigencia_inicio": "Qual a data de INÍCIO da vigência do contrato?",
+    "vigencia_fim": "Qual a data de FIM da vigência do contrato?",
+    "escolas_sem_cobertura": "Quantas unidades escolares estão sem cobertura contratual, segundo o "
+                             "documento de oficialização da demanda?",
 }
 
 _SISTEMA = (
@@ -175,13 +183,55 @@ def _gabaritos() -> dict:
         return {}
 
 
+def amostra(gabaritos: dict, *, max_chars: int = 60_000) -> dict:
+    """Roda o confronto em TODOS os gabaritos e agrega — a taxa por CAMPO é o que decide o volume.
+
+    A agregação por campo importa mais que a média: um modelo que acerta 90% mas erra sempre o
+    MESMO campo não serve para aquele campo, e a média esconde isso. Foi assim que a casa descobriu
+    que a régua do fracionamento saturava — 451 de 451 alertas em "alta".
+    """
+    laudos, por_campo = [], {}
+    for proc, gab in gabaritos.items():
+        r = confrontar(proc, gab, max_chars=max_chars)
+        laudos.append(r)
+        if not r.get("ok"):
+            continue
+        for campo, d in r["campos"].items():
+            e = por_campo.setdefault(campo, {"ACERTOU": 0, "ERROU": 0, "OMITIU": 0})
+            e[d["estado"]] += 1
+    ok = [x for x in laudos if x.get("ok")]
+    tot = sum(x["acertou"] + x["errou"] + x["omitiu"] for x in ok)
+    return {
+        "processos": len(laudos), "medidos": len(ok),
+        "acertou": sum(x["acertou"] for x in ok),
+        "errou": sum(x["errou"] for x in ok),
+        "omitiu": sum(x["omitiu"] for x in ok),
+        "campos": tot, "por_campo": por_campo, "laudos": laudos,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap = argparse.ArgumentParser()
+    ap.add_argument("--amostra", action="store_true", help="roda todos os gabaritos e agrega")
     ap.add_argument("--processo")
     ap.add_argument("--listar-gabaritos", action="store_true")
     ap.add_argument("--max-chars", type=int, default=120_000)
     a = ap.parse_args(argv)
     gabs = _gabaritos()
+    if a.amostra:
+        r = amostra(gabs, max_chars=a.max_chars)
+        print(f"amostra: {r['medidos']}/{r['processos']} processos medidos · {r['campos']} campos")
+        print(f"  ✅ {r['acertou']}   ❌ {r['errou']}   ➖ {r['omitiu']}")
+        if r["campos"]:
+            print(f"  taxa de acerto: {100*r['acertou']/r['campos']:.1f}% · "
+                  f"invenção: {100*r['errou']/r['campos']:.1f}%")
+        print("\n  por campo (o que a média esconde):")
+        for campo, e in sorted(r["por_campo"].items()):
+            print(f"    {campo:24} ✅{e['ACERTOU']} ❌{e['ERROU']} ➖{e['OMITIU']}")
+        for lau in r["laudos"]:
+            if not lau.get("ok"):
+                print(f"  INDISPONÍVEL {lau.get('processo','?')}: {lau.get('erro')}")
+        return 0
     if a.listar_gabaritos or not a.processo:
         print(f"gabaritos conferidos à mão: {len(gabs)}")
         for k, v in gabs.items():
