@@ -335,6 +335,14 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
             # a IA dizendo que não achou. Os dois afirmam ausência de contrato — e eu contava como
             # "a regra achou algo que a IA perdeu", jogando na fila humana uma concordância.
             estado = ("ausencia_declarada" if campo == "contrato" and "SEMCONTRATO" in n_det
+                      # SILÊNCIO DO TEXTO NÃO É BRIGA QUANDO A FONTE JÁ RESOLVEU. Em 46 casos — a
+                      # maior categoria da fila — o lado da "regra" era a ORDEM BANCÁRIA, que na
+                      # regra nº 2 da casa é a verdade sobre quem recebeu, e a IA apenas não achou
+                      # o CNPJ escrito no processo (muitos não o escrevem). Mandar isso para a fila
+                      # de leitura humana é pedir que alguém confira o que já está confirmado pela
+                      # fonte canônica: o que o texto cala, a OB já disse.
+                      else "so_fonte_canonica" if (campo == "favorecido" and n_det
+                                                   and pago.get("tem_ob"))
                       else "so_regra" if n_det else "nenhum_dos_dois")
         elif not n_det:
             estado = "so_ia"
@@ -368,7 +376,8 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
         # é o terceiro estado — o mesmo veredito de três valores que o painel já usa (OK/FALHOU/NÃO
         # MEDI): declarar que não há o que comparar em vez de fingir um dos dois extremos.
         destino = (acordo if estado == "acordo"
-                   else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada")
+                   else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada",
+                                               "so_fonte_canonica")
                    else discordancia)
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
