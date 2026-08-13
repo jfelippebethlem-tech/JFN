@@ -310,11 +310,24 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap.add_argument("--amostra", type=int, default=0, help="N processos ainda não lidos")
     ap.add_argument("--gravar", action="store_true")
     ap.add_argument("--max-chars", type=int, default=250_000)
+    # FATIA PARA RODAR EM PARALELO SEM DUPLICAR. A leitura é presa a REDE (chamada de IA), não a
+    # CPU: com um lote só, a VM fica em load 1,5 e o acervo de 2.357 levaria ~4 dias. Dois lotes
+    # simultâneos, porém, chamariam `_pendentes` e receberiam A MESMA lista — trabalho e chamada de
+    # IA em dobro pelo mesmo processo. A fatia `i/n` reparte a fila de forma determinística.
+    ap.add_argument("--fatia", help="i/n — lê só a fatia i de n (ex.: 0/2 e 1/2 em paralelo)")
     a = ap.parse_args(argv)
     con = sqlite3.connect(str(_DB), timeout=120)
     con.execute("PRAGMA busy_timeout=60000")
     try:
-        alvos = [a.processo] if a.processo else _pendentes(con, a.amostra or 3)
+        if a.processo:
+            alvos = [a.processo]
+        elif a.fatia:
+            i, n = (int(x) for x in a.fatia.split("/"))
+            if not 0 <= i < n:
+                raise SystemExit(f"--fatia {a.fatia}: i tem de estar em [0, n)")
+            alvos = _pendentes(con, (a.amostra or 3) * n)[i::n]
+        else:
+            alvos = _pendentes(con, a.amostra or 3)
         tot = Counter()
         for proc in alvos:
             try:
