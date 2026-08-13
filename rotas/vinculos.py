@@ -957,13 +957,24 @@ def api_leitura_dupla(limite: int = 20):
         def _medir():
             con = _db_ro()
             try:
+                # A RÉGUA MUDOU NO MEIO. As primeiras 31 linhas contavam "os dois dizem que não
+                # existe" como divergência (61 das 77 da fila eram isso). Somar essas com as novas
+                # seria misturar duas medidas em silêncio — por isso a rota DECLARA quantas vieram
+                # da régua velha em vez de fingir que é tudo igual. A coluna pode ainda não existir
+                # (o gravador a cria); ausência dela é o caso "tudo régua velha".
+                _cols = {r[1] for r in con.execute("PRAGMA table_info(sei_leitura_dupla)")}
+                _regua = "regua" if "regua" in _cols else "NULL AS regua"
+                _naus = "n_ausencia" if "n_ausencia" in _cols else "NULL AS n_ausencia"
                 linhas = con.execute(
-                    "SELECT numero_sei, n_acordo, n_discordancia, discordancia, ia, truncado "
+                    f"SELECT numero_sei, n_acordo, n_discordancia, discordancia, ia, truncado, "
+                    f"{_regua}, {_naus} "
                     "FROM sei_leitura_dupla ORDER BY n_discordancia DESC, numero_sei").fetchall()
             finally:
                 con.close()
-            itens, por_estado = [], {}
-            for sei, na, nd, disc, ia, trunc in linhas:
+            itens, por_estado, regua_velha = [], {}, 0
+            for sei, na, nd, disc, ia, trunc, regua, naus in linhas:
+                if not regua:
+                    regua_velha += 1
                 d = _j.loads(disc or "{}")
                 for _campo, v in d.items():
                     e = str(v.get("estado") or "?")
@@ -971,12 +982,13 @@ def api_leitura_dupla(limite: int = 20):
                 iad = _j.loads(ia or "{}")
                 itens.append({
                     "processo": sei, "acordo": na, "discordancia": nd,
+                    "ausencia": naus, "regua": regua,
                     "truncado": bool(trunc), "estado_ia": iad.get("estado"),
                     "o_que_e": (iad.get("interpretacao") or {}).get("o_que_e", ""),
                     "campos": {k: {"regra": v.get("regra"), "ia": v.get("ia"),
                                    "estado": v.get("estado")} for k, v in d.items()},
                 })
-            return {"itens": itens, "por_estado": por_estado}
+            return {"itens": itens, "por_estado": por_estado, "regua_velha": regua_velha}
 
         r = _cache("leitura_dupla", _medir)
         lim = max(1, min(int(limite), 100))
@@ -984,6 +996,8 @@ def api_leitura_dupla(limite: int = 20):
             "ok": True, "total": len(r["itens"]),
             "acordos": sum(x["acordo"] for x in r["itens"]),
             "discordancias": sum(x["discordancia"] for x in r["itens"]),
+            "ausencias_concordes": sum(x["ausencia"] or 0 for x in r["itens"]),
+            "medidos_com_regua_antiga": r["regua_velha"],
             "por_estado": r["por_estado"],
             "itens": r["itens"][:lim],
             "fonte": _fonte("sei_leitura_dupla"),
@@ -991,7 +1005,11 @@ def api_leitura_dupla(limite: int = 20):
                 "Acordo entre regra e IA é fato duplamente confirmado; DISCORDÂNCIA é fila de "
                 "leitura humana, não veredito — pode ser régua estreita nossa ou invenção do "
                 "modelo. O resumo em linguagem natural é OPINIÃO da IA a conferir e nunca vira "
-                "achado sozinho. Processo TRUNCADO foi lido em parte: omissão ali não é ausência."),
+                "achado sozinho. Processo TRUNCADO foi lido em parte: omissão ali não é ausência. "
+                "AUSÊNCIA CONCORDE é campo que o processo não tem — os dois leitores dizendo o "
+                "mesmo, não briga. `medidos_com_regua_antiga` são leituras anteriores a "
+                "2026-08-13 que contavam ausência como divergência: a divergência delas está "
+                "INFLADA e não é comparável com as novas."),
         })
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("leitura_dupla falhou")

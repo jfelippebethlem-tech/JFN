@@ -229,17 +229,32 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
                          "conferir e nunca vira achado sozinho.")}
 
 
+# CARIMBO DA RÉGUA. As primeiras 31 linhas foram medidas contando "os dois dizem que não existe"
+# como DIVERGÊNCIA — 61 das 77 linhas da fila eram isso. A régua mudou; as linhas antigas não. Somar
+# as duas no painel seria misturar medidas silenciosamente, que é o vício de mentir por omissão.
+# O carimbo deixa a rota DECLARAR quantas vieram da régua velha em vez de fingir que é tudo igual.
+REGUA = "2026-08-13/ausencia-concorde"
+
+
 def _gravar(con: sqlite3.Connection, laudo: dict) -> None:
     con.execute("""CREATE TABLE IF NOT EXISTS sei_leitura_dupla (
         numero_sei TEXT PRIMARY KEY, chars INTEGER, truncado INTEGER,
         n_acordo INTEGER, n_discordancia INTEGER, deterministico TEXT, ia TEXT,
         discordancia TEXT, lido_em TEXT)""")
-    con.execute("INSERT OR REPLACE INTO sei_leitura_dupla VALUES (?,?,?,?,?,?,?,?,?)",
+    existentes = {r[1] for r in con.execute("PRAGMA table_info(sei_leitura_dupla)")}
+    for col, tipo in (("n_ausencia", "INTEGER"), ("ausencia_concorde", "TEXT"), ("regua", "TEXT")):
+        if col not in existentes:
+            con.execute(f"ALTER TABLE sei_leitura_dupla ADD COLUMN {col} {tipo}")
+    con.execute("""INSERT OR REPLACE INTO sei_leitura_dupla
+        (numero_sei, chars, truncado, n_acordo, n_discordancia, deterministico, ia,
+         discordancia, lido_em, n_ausencia, ausencia_concorde, regua)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (laudo["processo"], laudo["chars"], int(laudo["truncado"]), laudo["n_acordo"],
                  laudo["n_discordancia"], json.dumps(laudo["deterministico"], ensure_ascii=False),
                  json.dumps(laudo["ia"], ensure_ascii=False),
                  json.dumps(laudo["discordancia"], ensure_ascii=False),
-                 datetime.now().isoformat(timespec="seconds")))
+                 datetime.now().isoformat(timespec="seconds"), laudo["n_ausencia"],
+                 json.dumps(laudo["ausencia_concorde"], ensure_ascii=False), REGUA))
     con.commit()
 
 
