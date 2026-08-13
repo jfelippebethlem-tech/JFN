@@ -323,6 +323,9 @@
      coluna só e ninguém percebeu, porque `.grid` sozinho não quebra, só empilha.
      Definido em 2026-08-11 com o mesmo par mobile→desktop do `.g2`. */
   .g3{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* .g4 nasce junto com o TERCEIRO estado da leitura dupla (acordo / ausência concorde /
+     divergência): três KPIs não cabiam mais a régua. Mesmo par mobile→desktop do `.g3`. */
+  .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .card,.lnk,.ck-inst,.ck-hero{isolation:isolate}
   .card{background:linear-gradient(165deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:14px 15px;min-width:0;box-shadow:var(--sh);transition:border-color .2s,box-shadow .25s,transform .2s;position:relative}
   /* vidro líquido: ::before = luz (especular no topo + spotlight que segue o cursor) */
@@ -601,6 +604,7 @@
     main{padding:22px 30px 110px}
     .g2{grid-template-columns:repeat(4,minmax(0,1fr))}
     .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
     .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
     .kpi .v{font-size:22px}.span2{grid-column:1 / -1}
     .mini{grid-template-columns:repeat(4,1fr)}

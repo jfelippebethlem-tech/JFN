@@ -2529,8 +2529,10 @@ async function leituraDupla(){
     h+=card('<div class="dim">Nenhum processo lido pelos dois caminhos ainda — rode <code>tools.sei_leitura_dupla</code>.</div>');
     alvo.innerHTML=h; o.appendChild(alvo); return;
   }
-  h+=`<div class="grid g3">${kpi(fmtN(d.acordos),'Fatos em ACORDO','var(--green)','🤝',
+  h+=`<div class="grid g4">${kpi(fmtN(d.acordos),'Fatos em ACORDO','var(--green)','🤝',
       {sobre:'Regra e IA leram o mesmo valor: fato duplamente confirmado, ninguém precisa reler.'})}${
+      kpi(fmtN(d.ausencias_concordes||0),'AUSÊNCIA concorde',null,'➖',
+      {sobre:'Os dois leitores dizem que o campo NÃO EXISTE naquele processo — a mesma resposta, não uma briga. Ficava na fila humana e afogava o sinal: em 31 processos, 61 das 77 linhas eram isto.'})}${
       kpi(fmtN(d.discordancias),'DISCORDÂNCIAS — a fila','var(--amber)','⚖️',
       {sobre:'Onde os dois leitores divergem. Não é veredito: é o único lugar em que o tempo de um humano rende, porque ali ou a nossa régua é estreita ou o modelo inventou.'})}${
       kpi(fmtN(d.total),'Processos lidos 2×',null,'📖',
@@ -2538,6 +2540,10 @@ async function leituraDupla(){
   const est=d.por_estado||{};
   h+=card(`<div class="dim">por tipo de divergência: `
     +Object.entries(est).map(([k,v])=>`<b>${esc(k)}</b> ${fmtN(v)}`).join(' · ')+`</div>`);
+  /* A RÉGUA MUDOU NO MEIO DA MEDIÇÃO, e somar as duas em silêncio seria mentir por omissão:
+     as leituras anteriores a 2026-08-13 contavam "os dois dizem que não existe" como
+     DIVERGÊNCIA, então a fila delas está inflada e não é comparável com as novas. */
+  if(d.medidos_com_regua_antiga>0) h+=card(`<div class="dim">⚠️ <b>${fmtN(d.medidos_com_regua_antiga)}</b> de ${fmtN(d.total)} processos foram medidos com a RÉGUA ANTIGA, que contava ausência concorde como divergência — a fila deles está inflada e não é comparável com as leituras novas.</div>`);
   h+=card(`<table class="tb"><thead><tr><th>processo</th><th class="right">acordo</th>
     <th class="right">divergência</th><th>o que a IA entendeu</th></tr></thead><tbody>`
     +d.itens.map(x=>`<tr>
