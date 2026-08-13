@@ -46,10 +46,17 @@ _ARQ = _REPO / "data" / "sei_arquivo"
 # para quem quiser conferir.
 _PADROES: dict[str, str] = {
     "contrato": r"[Cc]ontrato[^\n]{0,24}n[º°o.]{0,3}\s*(\d{1,4}/20\d{2})",
-    # `caput` e `§` também são dispositivo. A regra antiga exigia algarismo romano e ficava MUDA
-    # diante de "art. 37, caput, da Constituição" — que a IA achou e ela não, na amostra de
-    # 2026-08-13. Régua estreita não erra: ela cala, e calar parece "não há".
-    "dispositivo": r"[Aa]rt\.?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]+|caput|§\s*\d+)",
+    # O DISPOSITIVO QUE INTERESSA VEM COLADO À LEI. Duas correções medidas na amostra de 2026-08-13,
+    # em direções opostas:
+    #   · estreita demais — exigia algarismo romano e calava diante de "art. 37, caput" e de
+    #     "art. 74" solto, que a IA achou e ela não;
+    #   · larga demais — ao aceitar `§`, passou a devolver "art. 5, § 2" (boilerplate de cláusula)
+    #     num processo cujo dispositivo real é o art. 74 da Lei 14.133.
+    # A âncora que separa os dois casos é a LEI citada por perto: dispositivo de contratação vem
+    # sempre com ela ("art. 75, VIII, da Lei nº 14.133/2021"). Sem lei ao redor, é cláusula
+    # contratual, não fundamento — e não entra.
+    "dispositivo": (r"[Aa]rt\.?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"
+                    r"[^\n]{0,40}?(?:Lei|LEI|Constitui[çc])"),
     "processos_citados": r"\b(\d{6}/\d{6}(?:\.\d)?/\d{4})\b",
     "cnpjs": r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\b",
     "valores": r"R\$\s?([\d.]{4,18},\d{2})",
@@ -68,7 +75,7 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     for campo, pad in _PADROES.items():
         achados = re.findall(pad, texto or "")
         if campo == "dispositivo":
-            achados = [f"art. {a}, {b}" for a, b in achados]
+            achados = [f"art. {a}, {b}".rstrip(", ") for a, b in achados]
         c = Counter(str(x) for x in achados if str(x).strip())
         if not c:
             out[campo] = {"valor": "", "ocorrencias": 0, "alternativas": []}
@@ -118,12 +125,22 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     bruto = gerar(f"PROCESSO {proc}:\n\n{texto}\n\nResponda em JSON:\n{campos}", _SISTEMA) or ""
     if not bruto:
         return {"estado": "indisponivel", "motivo": "IA sem cota — NÃO mediu (≠ nada a apontar)"}
+    # UM PROCESSO RUIM NÃO DERRUBA O LOTE. Um modelo `:free` devolveu JSON com vírgula faltando e o
+    # `json.loads` estourou no meio da amostra, matando os cinco processos seguintes. A doutrina já
+    # é da casa (o sweep do SEI a aplica); faltava aqui. Resposta impossível de ler vira
+    # `nao_parseei`, que é um ESTADO — e estado se conta, exceção derruba.
+    d = {}
     try:
         from compliance_agent.llm.json_resposta import extrair_json
         d = extrair_json(bruto) or {}
     except ImportError:
         m = re.search(r"\{.*\}", bruto, re.S)
-        d = json.loads(m.group(0)) if m else {}
+        try:
+            d = json.loads(m.group(0)) if m else {}
+        except ValueError:
+            d = {}
+    except ValueError:
+        d = {}
     if not isinstance(d, dict) or not d:
         return {"estado": "nao_parseei", "bruto": bruto[:300]}
     return {"estado": "ok", "fatos": {k: d.get(k, "") for k in _FATOS},
@@ -217,7 +234,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
         alvos = [a.processo] if a.processo else _pendentes(con, a.amostra or 3)
         tot = Counter()
         for proc in alvos:
-            r = confrontar(proc, max_chars=a.max_chars)
+            try:
+                r = confrontar(proc, max_chars=a.max_chars)
+            except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
+                print(f"  ⚠️  {proc}: {type(exc).__name__}: {str(exc)[:70]} — segue o lote")
+                tot["erro"] += 1
+                continue
             if not r.get("ok"):
                 print(f"  ⚠️  {proc}: {r.get('erro')}"); continue
             est = r["ia"].get("estado")
