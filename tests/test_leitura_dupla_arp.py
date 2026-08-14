@@ -73,3 +73,20 @@ def test_ano_POSTERIOR_ao_processo_continua_valendo():
     processo ANTECEDE o contrato que ele cria. Filtrar isso trocaria 3 lixos por 22 acertos."""
     d = extrair_deterministico("Contrato nº 02/2023 firmado nos autos.\n", ano_proc=2022)
     assert d["contrato"]["valor"] == "02/2023"
+
+
+def test_CONTRATO_em_caixa_alta_e_sem_espaco_apos_o_marcador():
+    """Terceira vez com a mesma causa: `CONTRATO Nº3/2026` não casava com `[Cc]ontrato`, que exige o
+    resto minúsculo. O mesmo defeito já havia custado o pregão (`PREGÃO ELETRÔNICO`) e a ata
+    (`ATA DE REGISTRO DE PREÇOS`) — publicação e extrato escrevem em MAIÚSCULAS, e era justamente a
+    forma mais comum que a régua não via. Os três padrões passaram a usar grupo insensível a caixa.
+    """
+    d = extrair_deterministico("Diretoria Geral de Saúde CONTRATO Nº3/2026 CONTRATAÇÃO\n")
+    assert d["contrato"]["valor"] == "3/2026"
+
+
+def test_as_tres_grafias_de_contrato_seguem_valendo():
+    for texto, esperado in (("Contrato nº 443/2025 firmado.\n", "443/2025"),
+                            ("INSTRUMENTO: Contrato n° 182/2024.\n", "182/2024"),
+                            ("Contrato 00000000 - SEM CONTRATO\n", "SEM CONTRATO")):
+        assert extrair_deterministico(texto)["contrato"]["valor"] == esperado

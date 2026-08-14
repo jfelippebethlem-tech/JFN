@@ -55,7 +55,12 @@ _PADROES: dict[str, str] = {
     # `00000000 - SEM CONTRATO` é o texto LITERAL do SIAFE para despesa sem instrumento, e é fato
     # fiscal, não ruído: apareceu em 4 dos 15 primeiros processos lidos, e a regra não via nenhum —
     # quem via era a IA. Pagamento sem contrato é justamente o que se quer enxergar.
-    "contrato": r"[Cc]ontrato[^\n]{0,24}n[º°o.]{0,3}\s*(\d{1,4}/20\d{2})|(0{6,8}\s*-\s*SEM CONTRATO)",
+    # CAIXA ALTA, PELA TERCEIRA VEZ. `CONTRATO Nº3/2026` não casava com `[Cc]ontrato`, que exige o
+    # resto minúsculo — o MESMO defeito já corrigido no pregão (`PREGÃO ELETRÔNICO`) e na ata
+    # (`ATA DE REGISTRO DE PREÇOS`). Publicação e extrato escrevem em maiúsculas, e era justamente
+    # a forma mais comum que a régua não via. Padronizo com `(?i:...)` nos três.
+    "contrato": (r"(?i:contrato)[^\n]{0,24}(?i:n)[º°o.]{0,3}\s*(\d{1,4}/20\d{2})"
+                 r"|(0{6,8}\s*-\s*SEM CONTRATO)"),
     # O DISPOSITIVO QUE INTERESSA VEM COLADO À LEI. Duas correções medidas na amostra de 2026-08-13,
     # em direções opostas:
     #   · estreita demais — exigia algarismo romano e calava diante de "art. 37, caput" e de
