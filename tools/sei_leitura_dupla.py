@@ -198,7 +198,22 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
             # A JANELA PRECISA OLHAR PARA OS DOIS LADOS. O rodapé de assinatura vem ANTES do
             # artigo; a norma tributária vem DEPOIS (`Art. 2º-A da Instrução Normativa RFB nº
             # 1234`). Olhar só para trás deixava a citação fiscal entrar limpa.
-            achados = [f"art. {m.group(1)}, {m.group(2)}".rstrip(", ")
+            # ARTIGO EM ALGARISMO ROMANO. O formulário do SIAFE escreve `Emb. Legal Artigo II,
+            # Lei Federal nº 10.520/2002` — o art. 2º da lei do pregão, com o NÚMERO em romano.
+            # A régua exigia arábico e perdia o campo inteiro. São 6 processos em 444 (1,4%), e não
+            # é ruído: é campo de formulário, então reaparece conforme a cobertura cresce.
+            #
+            # A guarda contra confundir com INCISO é o `(?!...\d)`: em `art. 75, VIII` o romano vem
+            # DEPOIS de um arábico e é inciso; aqui não há arábico algum.
+            _ROMANO = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8,
+                       "IX": 9, "X": 10}
+            achados = [f"art. {_ROMANO[m.group(1).upper()]}"
+                       for m in re.finditer(
+                           r"(?i:emb(?:asamento)?\.?\s+legal|enquadramento\s+legal|"
+                           r"com\s+fundamento|na\s+forma\s+d)[\s\S]{0,50}?"
+                           r"(?i:art)(?:igo)?\.?\s+([IVXLC]{1,5})\b(?!\s*[.,]?\s*\d)", texto or "")
+                       if m.group(1).upper() in _ROMANO]
+            achados += [f"art. {m.group(1)}, {m.group(2)}".rstrip(", ")
                        for m in re.finditer(pad, texto or "")
                        if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])
                        and not _FISCAL.search((texto or "")[m.start():m.end() + 40])]

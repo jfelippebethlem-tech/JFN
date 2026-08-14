@@ -165,3 +165,21 @@ def test_a_pergunta_recusa_princípio_geral_como_fundamento():
     assert "NOS AUTOS" in pergunta, "sem exigir o que está escrito, a IA generaliza"
     assert "art. 37" in pergunta and "NÃO responda" in pergunta, (
         "o princípio constitucional precisa ser recusado por NOME — foi o erro mais frequente")
+
+
+def test_artigo_em_ALGARISMO_ROMANO():
+    """O formulário do SIAFE escreve `Emb. Legal Artigo II, Lei Federal nº 10.520/2002` — o art. 2º
+    da lei do pregão, com o NÚMERO em romano. A régua exigia arábico e perdia o campo inteiro.
+
+    São 6 processos em 444 (1,4%), e não é ruído: é campo de formulário, então reaparece conforme a
+    cobertura cresce.
+    """
+    d = extrair_deterministico("Emb. Legal Artigo II, Lei Federal nº 10.520/2002\n")
+    assert d["dispositivo"]["valor"] == "art. 2"
+
+
+def test_o_romano_do_INCISO_nao_vira_numero_do_artigo():
+    """Em `art. 75, VIII` o romano vem DEPOIS de um arábico e é inciso — confundir os dois
+    transformaria a dispensa emergencial em `art. 8`."""
+    d = extrair_deterministico("Enquadramento Legal: Lei 14.133/2021, Art. 75, VIII\n")
+    assert d["dispositivo"]["valor"] == "art. 75, VIII"
