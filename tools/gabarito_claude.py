@@ -218,6 +218,35 @@ def preencher_favorecido_pela_ob(procs: list[str]) -> int:
     return n
 
 
+_COD_SIAFE = re.compile(r"^\s*(\d{2})(\d{6})\b")      # `21000251`, `21000251 - CONTRATO DE GESTÃO`
+
+
+def outro_sistema_de_identificacao(alvo: str, valor: str) -> bool:
+    """A resposta designa o instrumento no código do SIAFE, não na forma `NNN/AAAA` do documento.
+
+    MEDIDO em 2026-08-14: 31 dos 71 "erros" da LLM em `contrato` não têm a forma `NNN/AAAA`. Abrindo
+    os documentos, as DUAS formas convivem no mesmo processo:
+        `21000251` ↔ `CONTRATO DE GESTÃO Nº 002/2021`
+        `22002069` ↔ `Contrato Nº 043/2022`
+        `25039141` ↔ `CONTRATO SEEDUC nº 02/2025`
+    e o prefixo de dois dígitos é o ano, batendo nos três. É o mesmo formato do literal que a casa já
+    reconhece em `00000000 - SEM CONTRATO`. A LLM não leu outro contrato: leu o mesmo, no sistema de
+    identificação do SIAFE.
+
+    POR QUE "NÃO MEDI" E NÃO "ACERTOU". Procurei a tabela que ligasse os dois códigos e **não existe
+    no banco** — nenhuma coluna guarda `21000251`. A sequência (`000251`) não deriva do número do
+    documento (`002`), então não há aritmética que prove a identidade; só o ano bate. Com evidência
+    forte e prova ausente, a casa declara em vez de forçar: o campo sai da conta da IA, como já
+    acontece com `nao_perguntado`. Contar como acerto seria premiar o que não provei; contar como
+    erro seria punir quem respondeu certo noutro sistema — e foi o que o placar vinha fazendo.
+    """
+    m = _COD_SIAFE.match(str(valor or ""))
+    if not m:
+        return False
+    ano_alvo = re.search(r"/\s*(\d{2})?(\d{2})\s*$", str(alvo or ""))
+    return bool(ano_alvo and m.group(1) == ano_alvo.group(2))
+
+
 def placar() -> dict:
     """Quanto a LLM grátis e a régua acertam CONTRA a leitura do Claude, campo a campo."""
     gab = carregar()
@@ -256,6 +285,11 @@ def placar() -> dict:
             # boa: quem não foi perguntada foi a IA, não ela.
             ia_perguntada = campo in fatos_ia
             v_ia = ia.get(campo, "")
+            # RESPOSTA NOUTRO SISTEMA DE IDENTIFICAÇÃO não é resposta errada — ver a função.
+            if ia_perguntada and outro_sistema_de_identificacao(alvo, v_ia):
+                ia_perguntada = False
+                r.setdefault("outro_sistema", {})
+                r["outro_sistema"][campo] = r["outro_sistema"].get(campo, 0) + 1
             v_re = (det.get(de_para.get(campo, campo)) or {}).get("valor", "")
             # entrada automática NÃO pontua a régua: os candidatos vieram dela, e ela concordaria
             # consigo mesma. Pontua só a LLM, que não participou da conferência.
