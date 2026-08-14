@@ -160,6 +160,57 @@ def auto_conferir(proc: str) -> dict | None:
     return r
 
 
+def favorecido_pela_ob(proc: str) -> str | None:
+    """Quem o processo PAGOU, pela Ordem Bancária — gabarito de `favorecido` sem gastar IA.
+
+    A linha do `auto_conferir` já dizia "favorecido vem da OB, não do texto" e deixava `?`. Esta é a
+    outra metade: a regra nº 2 da casa (OB = pagamento = verdade) dá uma TERCEIRA fonte, independente
+    dos dois leitores, e por isso — ao contrário da conferência automática — ela pontua os DOIS sem
+    circularidade nenhuma.
+
+    MEDIDO em 2026-08-14, nos 32 casos de discordância com OB vinculada: a régua bate com a OB em 13,
+    a LLM em 4. Isso INVERTE o que o placar dizia (LLM 100% × régua 75%), que vinha de um gabarito de
+    quatro casos — amostra pequena demais para sustentar a conclusão oposta.
+
+    DUAS RECUSAS, e é o que impede a fonte canônica de virar gabarito errado:
+      · **repasse fundo-a-fundo** — em 9 dos 32 a OB pagou a Fundo/Prefeitura, e ali quem RECEBE não
+        é quem foi CONTRATADO. Cobrar do leitor o CNPJ do fundo seria exigir a resposta errada;
+      · **vários favorecidos** — processo que pagou a mais de um não tem resposta única, e escolher
+        o maior seria inventar critério que o documento não tem.
+    """
+    from tools.sei_leitura_dupla import pagamento_do_processo
+
+    pg = pagamento_do_processo(proc)
+    if not pg.get("tem_ob") or pg.get("n_favorecidos") != 1:
+        return None
+    nome = str(pg.get("maior_favorecido_nome") or "")
+    if re.search(r"fundo|prefeitura|municip|secretaria|estado\s+d", nome, re.I):
+        return None                      # repasse, não contratação — ver docstring
+    cnpj = re.sub(r"\D", "", str(pg.get("maior_favorecido") or ""))
+    return cnpj if len(cnpj) == 14 else None
+
+
+def preencher_favorecido_pela_ob(procs: list[str]) -> int:
+    """Grava o favorecido da OB nos processos onde ela decide. Devolve quantos preencheu."""
+    d = carregar()
+    n = 0
+    for proc in procs:
+        cnpj = favorecido_pela_ob(proc)
+        if not cnpj:
+            continue
+        entrada = dict(d.get(proc) or {k: NAO_CONFERI for k in CAMPOS})
+        if entrada.get("favorecido") == cnpj and entrada.get("fonte_favorecido") == "ob":
+            continue
+        entrada["favorecido"] = cnpj
+        entrada["fonte_favorecido"] = "ob"        # independente dos dois leitores: pontua ambos
+        entrada.setdefault("fonte", "ob")
+        d[proc] = entrada
+        n += 1
+    if n:
+        _GAB.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    return n
+
+
 def placar() -> dict:
     """Quanto a LLM grátis e a régua acertam CONTRA a leitura do Claude, campo a campo."""
     gab = carregar()
@@ -201,7 +252,14 @@ def placar() -> dict:
             v_re = (det.get(de_para.get(campo, campo)) or {}).get("valor", "")
             # entrada automática NÃO pontua a régua: os candidatos vieram dela, e ela concordaria
             # consigo mesma. Pontua só a LLM, que não participou da conferência.
-            pares = ((("ia", v_ia),) if ia_perguntada else ()) if automatico else (
+            #
+            # A CIRCULARIDADE É POR CAMPO, NÃO POR PROCESSO. `favorecido` vindo da OB é terceira
+            # fonte — não saiu de nenhum dos dois leitores — e por isso pontua os DOIS mesmo numa
+            # entrada automática. Tratar o processo inteiro como circular apagaria justamente a
+            # única medida independente que existe no confronto.
+            circular = automatico and not (
+                campo == "favorecido" and esperado.get("fonte_favorecido") == "ob")
+            pares = ((("ia", v_ia),) if ia_perguntada else ()) if circular else (
                 ((("ia", v_ia),) if ia_perguntada else ()) + (("regra", v_re),))
             for quem, valor in pares:
                 b = r[quem].setdefault(campo, {"acerto": 0, "erro": 0})
@@ -215,7 +273,17 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap.add_argument("--campos", help='JSON: {"contrato":"85/2022","arp":"NAO_CONSTA",...}')
     ap.add_argument("--placar", action="store_true")
     ap.add_argument("--conferir", help="lista os instrumentos que o processo INTEIRO menciona")
+    ap.add_argument("--favorecido-ob", action="store_true",
+                    help="preenche `favorecido` pela OB (fonte canônica) em todo processo lido")
     a = ap.parse_args(argv)
+    if a.favorecido_ob:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=60)
+        try:
+            procs = [r[0] for r in con.execute("SELECT numero_sei FROM sei_leitura_dupla")]
+        finally:
+            con.close()
+        print(f"favorecido preenchido pela OB: {preencher_favorecido_pela_ob(procs)} de {len(procs)}")
+        return 0
     if a.conferir:
         for campo, v in conferir(a.conferir).items():
             print(f"  {campo:9}: {v if v else 'NENHUM no documento inteiro'}")
