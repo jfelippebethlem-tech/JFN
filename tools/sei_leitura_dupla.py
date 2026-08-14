@@ -107,6 +107,18 @@ _PADROES: dict[str, str] = {
     # 5.078.755,43 e 4.518,12 e não casa data, número de processo nem código. Fica como segunda via
     # do `R$`, que continua sendo o sinal mais forte quando existe.
     "valores": r"(?:R\$\s?([\d.]{4,18},\d{2})|\b(\d{1,3}(?:\.\d{3})+,\d{2})\b)",
+    # A ATA DE REGISTRO DE PREÇOS ERA INSTRUMENTO INVISÍVEL. Achado ao ler os processos EU MESMO e
+    # confrontar com a leitura da LLM grátis: ela responde `contrato: NAO_CONSTA` e está tecnicamente
+    # certa — não há contrato —, só que o instrumento existe e é uma ARP. Medido no acervo: **75 de
+    # 362 processos (21%) citam uma**, e nenhum dos dois leitores era perguntado sobre ela.
+    #
+    # Importa para a fiscalização porque "consumo de ata" é uma das rotas clássicas para adquirir
+    # sem certame próprio — inclusive carona em ata de outro órgão. Campo que não se pergunta é
+    # campo que não aparece, e o que não aparece não se fiscaliza.
+    # `(?i:...)` pelo mesmo motivo do pregão: a publicação escreve `ATA DE REGISTRO DE PREÇOS N.º`
+    # em caixa alta. O acervo não tinha revelado isso — foi o teste unitário que pegou.
+    "arp": (r"(?i:ata\s+de\s+registro\s+de\s+pre[çc]os)[^\n]{0,20}"
+            r"(?i:n)[º°o.]{0,3}\s*(\d{1,4}/\d{2,4})"),
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
     # `PREGÃO ELETRÔNICO N.º PE 008/23` — duas coisas que a régua não previa e que o texto ensinou:
     # a sigla `PE` ENTRE o "nº" e o número, e o ano de DOIS dígitos. A régua exigia dígito logo
@@ -200,6 +212,7 @@ _FATOS = {
     "pregao": "número do pregão/licitação citado, se houver",
     "valor": "o MAIOR valor em reais que aparece no processo",
     "favorecido": "o CNPJ do favorecido/credor do pagamento",
+    "arp": "número da Ata de Registro de Preços consumida, se houver (formato NNN/AAAA)",
 }
 _JUIZO = {
     "o_que_e": "em uma frase, o que este processo faz",
@@ -491,6 +504,7 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
     """
     acordo, discordancia, ausencia = {}, {}, {}
     _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
+    # `arp` casa direto: mesmo nome na pergunta e no padrão.
     for campo in _FATOS:
         v_det = det.get(_DE_PARA.get(campo, campo), {}).get("valor", "")
         v_ia = (ia.get("fatos") or {}).get(campo, "")
