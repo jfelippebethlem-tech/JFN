@@ -80,18 +80,25 @@ def conferir(proc: str, max_chars: int = 150_000) -> dict:
     escrever qualquer `NAO_CONSTA`.
     """
     from tools.sei_confronto_llm import texto_do_processo
-    from tools.sei_leitura_dupla import _PADROES
+    from tools.sei_leitura_dupla import extrair_deterministico
     texto = texto_do_processo(proc, max_chars=max_chars) or ""
+    if not texto:
+        return {}
+    # USA O EXTRATOR, NÃO O PADRÃO CRU. A primeira versão rodava `_PADROES` direto e exibia o que a
+    # régua DESCARTA: `com fundamento nos art. 28º` — o rodapé da assinatura eletrônica — aparecia
+    # em quase todo processo, já filtrado no extrator. Ferramenta de REFERÊNCIA que mostra ruído
+    # descartado induz ao erro quem monta o gabarito, e o gabarito é o que julga todos os leitores.
+    #
+    # `dispositivo` entra porque é o campo MENOS medido (18 de 71) e o mais disputado
+    # (LLM 77% × régua 33%): sem conferir, a medida do campo mais controverso fica a mais rasa.
+    m = re.search(r"/(\d{4})$", proc)
+    det = extrair_deterministico(texto, ano_proc=int(m.group(1)) if m else 0)
+    de_para = {"favorecido": "cnpjs", "valor": "valores"}
     achados: dict = {}
-    for campo in ("contrato", "arp", "pregao", "tac"):
-        vistos: list = []
-        for m in re.finditer(_PADROES[campo], texto):
-            trecho = re.sub(r"\s+", " ", m.group(0))[:70]
-            if trecho not in vistos:
-                vistos.append(trecho)
-            if len(vistos) >= 4:
-                break
-        achados[campo] = vistos
+    for campo in ("contrato", "arp", "pregao", "tac", "dispositivo"):
+        d = det.get(de_para.get(campo, campo)) or {}
+        vals = ([d["valor"]] if d.get("valor") else []) + [a["valor"] for a in d.get("alternativas", [])]
+        achados[campo] = vals[:6]
     return achados
 
 
