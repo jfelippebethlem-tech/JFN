@@ -31,8 +31,7 @@ import re
 import sqlite3
 import sys
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeout
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -153,7 +152,6 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     return out
 
 
-_EXEC = ThreadPoolExecutor(max_workers=4)   # chamadas estouradas ficam órfãs aqui
 _LIMITE_S = 150   # teto por janela; acima disso o lote anda sem ela (ver `extrair_interpretativo`)
 _JANELA = 40_000   # onde a resposta ainda vem completa e em ~2 s (ver `extrair_interpretativo`)
 
@@ -218,15 +216,34 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     # Janela estourada vira janela sem resposta — segue para a próxima, e o que já foi colhido
     # continua valendo (é a mesma lógica da salvação de resposta cortada).
     def _com_limite(prompt: str) -> str:
-        # SEM `with`: o `__exit__` do executor faz `shutdown(wait=True)` e ESPERA a thread lenta —
-        # o teto virava enfeite (medido: limite de 3 s e o processo levou 60 s mesmo assim). O
-        # executor é de módulo e a chamada estourada fica órfã de propósito; ela termina sozinha
-        # pelos timeouts de HTTP da cadeia, e ninguém mais espera por ela.
-        try:
-            return _EXEC.submit(gerar, prompt, _SISTEMA).result(timeout=_LIMITE_S) or ""
-        except FuturesTimeout:
+        # THREAD DESCARTÁVEL, NÃO POOL. Duas armadilhas, ambas medidas:
+        #
+        # 1. Com `with ThreadPoolExecutor(...)`, o `__exit__` faz `shutdown(wait=True)` e ESPERA a
+        #    thread lenta: com limite de 3 s o processo levou 60 s, o teto era enfeite.
+        # 2. Com pool de módulo (4 trabalhadores), as chamadas ABANDONADAS ocupam os trabalhadores.
+        #    A partir da quarta, tudo entra em fila — e o tempo de FILA conta no teto, criando
+        #    estouro em cascata. Medido: 10 janelas estouradas para 2 processos lidos.
+        #
+        # Uma thread nova por chamada, `daemon=True`: a abandonada não segura trabalhador nenhum
+        # nem impede o processo de encerrar, e morre sozinha pelos timeouts de HTTP da cadeia.
+        caixa: dict = {}
+
+        def _correr():
+            try:
+                caixa["r"] = gerar(prompt, _SISTEMA) or ""
+            except (RuntimeError, OSError, ValueError) as exc:
+                # A cadeia grátis levanta RuntimeError quando todos os provedores caem; rede e
+                # parse cobrem o resto. Guardar o motivo em vez de engolir: leitura sem resposta
+                # tem de dizer POR QUE, senão vira o mesmo silêncio que o `nao_parseei` mascarava.
+                caixa["erro"] = f"{type(exc).__name__}: {exc}"
+
+        t = threading.Thread(target=_correr, daemon=True)
+        t.start()
+        t.join(_LIMITE_S)
+        if t.is_alive():
             print(f"  ⏱️  {proc}: janela passou de {_LIMITE_S}s — sigo sem ela", file=sys.stderr)
             return ""
+        return caixa.get("r", "")
 
     bruto = ""
     for ini in range(0, max(len(texto), 1), _JANELA):

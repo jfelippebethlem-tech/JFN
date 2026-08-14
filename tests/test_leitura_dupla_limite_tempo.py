@@ -42,3 +42,23 @@ def test_o_que_ja_foi_colhido_sobrevive_ao_estouro(monkeypatch):
 
     r = M.extrair_interpretativo("x" * (M._JANELA * 3), "p/teste/2024", gerar=gerar)
     assert r["estado"] == "ok" and r["fatos"]["contrato"] == "443/2025"
+
+
+def test_chamadas_abandonadas_nao_congestionam_as_seguintes(monkeypatch):
+    """A segunda armadilha, e ela nasceu do conserto da primeira.
+
+    Com pool de módulo (4 trabalhadores), as chamadas ABANDONADAS ocupam os trabalhadores. A partir
+    da quarta, tudo entra em fila — e o tempo de FILA conta no teto, criando estouro em cascata.
+    Medido no acervo: **10 janelas estouradas para 2 processos lidos**, com uma leitura saindo
+    `indisponivel` sem que o modelo tivesse falhado.
+
+    Thread descartável por chamada resolve: a abandonada não segura trabalhador nenhum.
+    """
+    monkeypatch.setattr(M, "_LIMITE_S", 2)
+    t0 = time.time()
+    for _ in range(6):
+        M.extrair_interpretativo("x" * 30_000, "p/teste/2024",
+                                 gerar=lambda p, s: (time.sleep(20), "{}")[1])
+    gasto = time.time() - t0
+    assert gasto < 20, (
+        f"6 chamadas com teto de 2 s levaram {gasto:.0f}s — as abandonadas estão congestionando")
