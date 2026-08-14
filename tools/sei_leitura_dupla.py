@@ -63,7 +63,7 @@ _PADROES: dict[str, str] = {
     # o perde (`CONTRATOº 001/2023`) —, a janela GULOSA passou a comer parte do número:
     # `Contrato nº 443/2025` devolvia `3/2025`. Com `n` obrigatório isso não acontecia, porque a
     # letra ancorava a posição. Mesma armadilha da janela do ARP, duas rodadas atrás.
-    "contrato": (r"(?i:contrato)[^\n]{0,24}?(?:(?i:n))?[º°o.]{0,3}\s*(\d{1,4}/20\d{2})"
+    "contrato": (r"(?i:contrato)[^\n]{0,24}?(?:(?i:n)[º°o.]{0,3}|[º°]{1,2})\s*(\d{1,4}/20\d{2})"
                  r"|(0{6,8}\s*-\s*SEM CONTRATO)"),
     # O DISPOSITIVO QUE INTERESSA VEM COLADO À LEI. Duas correções medidas na amostra de 2026-08-13,
     # em direções opostas:
@@ -146,13 +146,13 @@ _PADROES: dict[str, str] = {
     # cobertura contratual. Sem número, os TACs eram contáveis só pelo texto do `o_que_e`; com
     # número, viram instrumento rastreável como qualquer outro.
     "tac": (r"(?i:termo\s+de\s+ajuste\s+de\s+contas)[^\n]{0,20}?"
-            r"(?:(?i:n))?[º°o.]{0,3}\s*(\d{1,5}/\d{2,4})"),
+            r"(?:(?i:n)[º°o.]{0,3}|[º°]{1,2})\s*(\d{1,5}/\d{2,4})"),
     "sem_embasamento": r"(?i:emb(?:asamento)?\.?\s+legal\s+n[ãa]o\s+sujeito)",
     # SINGULAR TAMBÉM. `ATA de Registro de Preço nº 001/2018` e `Ata de Registro de Preço nº
     # 29/2022` — o documento escreve dos dois jeitos, e exigir o plural virava ausência. Achado pelo
     # PLACAR: a régua "errava" dois casos do gabarito, e ao abrir eram grafias que ela não cobria.
     "arp": (r"(?:(?i:ata\s+de\s+registro\s+de\s+pre[çc]os?)|\bARP\b)[^\n]{0,20}?"
-            r"(?:(?i:n))?[º°o.]{0,3}\s*(\d{1,4}/\d{2,4})"),
+            r"(?:(?i:n)[º°o.]{0,3}|[º°]{1,2})\s*(\d{1,4}/\d{2,4})"),
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
     # `PREGÃO ELETRÔNICO N.º PE 008/23` — duas coisas que a régua não previa e que o texto ensinou:
     # a sigla `PE` ENTRE o "nº" e o número, e o ano de DOIS dígitos. A régua exigia dígito logo
@@ -166,7 +166,7 @@ _PADROES: dict[str, str] = {
     # `PERP 02/2020` — Pregão Eletrônico para Registro de Preços, sigla de QUATRO letras. A régua
     # aceitava 2 ou 3 (`PE`, `SRP`) e perdia o certame inteiro. E o `nº` nem sempre vem: aqui é
     # `EDITAL DE PREGÃO ELETRÔNICO PERP 02/2020`, com a sigla direto depois do nome da modalidade.
-    "pregao": (r"(?:(?i:preg[ãa]o)[^\n]{0,30}?(?:(?:(?i:n))?[º°o.]{0,3}\s*)?(?:[A-Z]{2,4}\s*)?|"
+    "pregao": (r"(?:(?i:preg[ãa]o)[^\n]{0,30}?(?:(?:(?i:n)[º°o.]{0,3}|[º°]{1,2})\s*)?(?:[A-Z]{2,4}\s*)?|"
                # O `n` CONTINUA OBRIGATÓRIO neste ramo, e o teste provou o porquê: com ele
                # opcional, `Fornecedor sediado em Recife/PE 2023/2024` virava certame. Aqui a sigla
                # `PE` sozinha não distingue Pregão Eletrônico de Pernambuco — só o `nº` distingue.

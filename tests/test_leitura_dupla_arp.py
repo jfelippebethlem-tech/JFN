@@ -122,3 +122,19 @@ def test_tornar_o_n_opcional_NAO_pode_comer_o_numero():
                             ("INSTRUMENTO: Contrato n° 182/2024.\n", "182/2024"),
                             ("CONTRATO Nº3/2026 CONTRATAÇÃO\n", "3/2026")):
         assert extrair_deterministico(texto)["contrato"]["valor"] == esperado
+
+
+def test_DATA_no_formato_MM_AAAA_nao_vira_numero_de_instrumento():
+    """O defeito que o PLACAR pegou, e que teste nenhum tinha previsto.
+
+    Ao tolerar o `n` perdido (`CONTRATOº 001/2023`), deixei o marcador INTEIRAMENTE opcional — e
+    `Contrato assinado em 04/2024` passou a virar contrato. A régua caiu de 92% para 82% no placar,
+    com valores novos como `04/2024`, `01/2025` e `094/2024` aparecendo do nada.
+
+    O marcador pode PERDER O `n`, mas não pode SUMIR: exige-se `n` seguido de ordinal opcional, ou
+    ordinal sozinho. Com o conserto feito direito, `arp` foi de 97% para **100%**.
+    """
+    assert not extrair_deterministico(
+        "Contrato assinado em 04/2024 pela parte contratante\n")["contrato"]["valor"]
+    assert not extrair_deterministico(
+        "Ata de Registro de Preços vigente desde 03/2021\n")["arp"]["valor"]
