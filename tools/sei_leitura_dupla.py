@@ -520,6 +520,39 @@ def pagamento_do_processo(proc: str) -> dict:
             "favorecidos": {re.sub(r"\D", "", c) for c, _ in porc}}
 
 
+def _valor_num(v):
+    """`R$ 1.038.330,00`, `1038330.00` e `233014.52` → float. `None` quando não é número."""
+    t = re.sub(r"[^\d,.]", "", str(v or ""))
+    if not t:
+        return None
+    t = t.replace(".", "").replace(",", ".") if "," in t else t.replace(",", "")
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
+def _ob_arbitra(v_regra, v_ia, pago: dict) -> bool:
+    """A Ordem Bancária dá razão à IA, e por larga margem?
+
+    MEDIDO nas 116 discordâncias de valor: nas 81 arbitráveis, a OB corrobora a **IA em 76 e a régua
+    em 2**. A causa é estrutural e apareceu ao ler o texto: a régua responde "o maior número do
+    documento", e processo de despesa carrega QUADRO ORÇAMENTÁRIO inteiro. No `080002/020895/2024`
+    ela devolvia R$ 174.084.499,56 — o `TOTAL` de uma tabela de orçamento —, enquanto a IA dizia
+    R$ 6.615.200,00 e a OB do processo somava R$ 6.535.472,00.
+
+    Com árbitro canônico não há o que um humano decida: a regra nº 2 da casa diz que OB é a verdade
+    sobre o que se pagou. Exijo margem LARGA (o dobro de proximidade) para não arbitrar empate.
+    """
+    if not pago.get("tem_ob") or not pago.get("total"):
+        return False
+    ob = pago["total"]
+    a, b = _valor_num(v_regra), _valor_num(v_ia)
+    if a is None or b is None:
+        return False
+    return abs(b - ob) < abs(a - ob) * 0.5
+
+
 def _na_lista(v_ia, campo_det: dict) -> bool:
     """O valor da IA está entre os candidatos que a regra colheu? Compara SÓ DÍGITOS.
 
@@ -605,6 +638,8 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
         elif campo == "favorecido" and pago.get("tem_ob") and \
                 re.sub(r"\D", "", str(v_ia)) in pago["favorecidos"]:
             estado = "acordo"     # acertou UM dos que de fato receberam — basta
+        elif campo == "valor" and _ob_arbitra(v_det, v_ia, pago):
+            estado = "ia_corroborada_pela_ob"
         elif campo == "valor" and _na_lista(v_ia, det.get("valores", {})):
             # ARITMÉTICA DECIDE, NÃO O HUMANO. Era a maior categoria da fila (72 linhas). O padrão:
             # o valor da IA estava entre os candidatos da REGRA, só não era o maior — os dois leram
@@ -643,7 +678,8 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
         # MEDI): declarar que não há o que comparar em vez de fingir um dos dois extremos.
         destino = (acordo if estado == "acordo"
                    else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada",
-                                               "so_fonte_canonica", "ia_errou_o_maior")
+                                               "so_fonte_canonica", "ia_errou_o_maior",
+                                               "ia_corroborada_pela_ob", "nao_perguntado")
                    else discordancia)
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,

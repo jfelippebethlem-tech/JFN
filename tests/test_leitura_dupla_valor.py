@@ -69,3 +69,39 @@ def test_a_lista_de_valores_guarda_mais_que_quatro_candidatos():
     from tools.sei_leitura_dupla import extrair_deterministico
     texto = "".join(f"R$ {n}.000.000,00\n" for n in range(1, 15))
     assert len(extrair_deterministico(texto)["valores"]["alternativas"]) > 4
+
+
+def test_a_ordem_bancaria_arbitra_quando_a_regua_pega_TOTAL_DE_ORCAMENTO():
+    """A régua responde "o maior número do documento", e processo de despesa carrega QUADRO
+    ORÇAMENTÁRIO inteiro. No `080002/020895/2024` ela devolvia R$ 174.084.499,56 — o `TOTAL` de uma
+    tabela de orçamento — enquanto a IA dizia R$ 6.615.200,00 e a OB do processo somava
+    R$ 6.535.472,00.
+
+    Medido nas 116 discordâncias de valor: nas 81 arbitráveis, a OB corrobora **a IA em 76 e a régua
+    em 2**. Com árbitro canônico (regra nº 2 da casa: OB é a verdade sobre o que se pagou) não há o
+    que um humano decida.
+    """
+    from tools.sei_leitura_dupla import comparar
+    det = {"valores": {"valor": "174.084.499,56", "alternativas": []}}
+    ia = {"estado": "ok", "fatos": {"valor": "6.615.200,00"}}
+    r = comparar(det, ia, {"tem_ob": True, "total": 6_535_472.00, "favorecidos": set()})
+    assert "valor" not in r["discordancia"]
+    assert r["ausencia_concorde"]["valor"]["estado"] == "ia_corroborada_pela_ob"
+
+
+def test_sem_margem_LARGA_a_OB_nao_arbitra():
+    """Exigir o dobro de proximidade evita arbitrar empate: quando os dois estão perto do pago, a
+    divergência é real e merece o olho humano."""
+    from tools.sei_leitura_dupla import comparar
+    det = {"valores": {"valor": "6.500.000,00", "alternativas": []}}
+    ia = {"estado": "ok", "fatos": {"valor": "6.600.000,00"}}
+    r = comparar(det, ia, {"tem_ob": True, "total": 6_535_472.00, "favorecidos": set()})
+    assert r["discordancia"]["valor"]["estado"] == "discordam"
+
+
+def test_sem_OB_nao_ha_arbitro():
+    from tools.sei_leitura_dupla import comparar
+    det = {"valores": {"valor": "174.084.499,56", "alternativas": []}}
+    ia = {"estado": "ok", "fatos": {"valor": "6.615.200,00"}}
+    r = comparar(det, ia, {"tem_ob": False})
+    assert r["discordancia"]["valor"]["estado"] == "discordam"
