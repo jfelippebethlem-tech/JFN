@@ -188,24 +188,62 @@ _SISTEMA = (
 
 def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     if gerar is None:
-        # CADEIA CURTA, PORQUE A CASCATA É QUE ERA LENTA. Duas correções minhas moram aqui:
+        # O `nous` EXISTE — só não é um "provedor" do free_llm. Está em `tools/sei_ficha.py`
+        # (`_nous_cred` + `STEPFUN`), chamado direto por HTTP. Foi por isso que meu
+        # `FREE_LLM_PREFER=nous` não significava nada: eu procurava um nome de provedor onde havia
+        # uma função dedicada. A regra da casa estava certa e implementada; quem não a leu fui eu.
         #
-        # 1. Cheguei a fixar `FREE_LLM_PREFER=nous` citando a regra da casa para volume de SEI —
-        #    mas **`nous` não existe** em `_get_provider_order`. A preferência caía calada na ordem
-        #    padrão, então a medição que eu apresentei como "nous 12× mais rápido que openrouter"
-        #    comparava, na verdade, CEREBRAS contra openrouter. O número estava certo; a atribuição,
-        #    errada. Config que não existe não avisa — foi o mesmo defeito do antigo "qwen".
-        # 2. Medido em 4 h de sweep: com o cerebras em 429 (cota do dia, 50 vezes), cada leitura
-        #    percorria os DOZE provedores somando o timeout de todos — 437 chamadas, 54 sucessos
-        #    (12%), 7,5 h de espera acumulada. Não era o modelo: era a cascata.
-        #
-        # Lista curta, escolhida pelo que de fato respondeu nessas 4 h (zai 15/32, cohere 9/9,
-        # cerebras 9/59 quando a cota permite). Gemini fica no fim, alcançável mas raro — decisão
-        # do dono de mantê-lo disponível, com a ressalva da regra 4.1 (chave com billing).
-        import os
-        os.environ.setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")
-        from compliance_agent.llm.camada_triagem import gerar_triagem
-        gerar = gerar_triagem()
+        # É ele que o sweep canônico usa, e o comentário de lá diz o porquê: "SÓ o nous
+        # stepfun:free (100% grátis/sem limite — diretriz do dono: gemini FORA do sweep)". Sem
+        # limite é justamente o que a cascata não tinha: o cerebras estourou 429 cinquenta vezes e
+        # cada leitura passou a percorrer doze provedores.
+        gerar = _gerar_nous() or _gerar_cadeia_curta()
+    return _interpretar(texto, proc, gerar)
+
+
+def _gerar_nous():
+    """A IA do volume de SEI. Devolve `None` (sem token) para o chamador cair na cadeia curta."""
+    try:
+        from tools.sei_ficha import STEPFUN, _nous_cred
+        tok, base = _nous_cred()
+    except (ImportError, OSError, ValueError, RuntimeError) as exc:
+        print(f"  ⚠️  nous indisponível ({type(exc).__name__}) — caio na cadeia curta", file=sys.stderr)
+        return None
+    if not tok:
+        return None
+
+    def gerar(prompt: str, sistema: str) -> str:
+        import httpx
+        # `max_tokens` alto de propósito: stepfun é modelo de RACIOCÍNIO e gasta tokens no campo
+        # `reasoning` ANTES do `content`. Teto baixo devolve content vazio com finish_reason
+        # 'length', que chega aqui como "JSON inválido" — a mesma lição que o sei_ficha já pagou.
+        r = httpx.post(f"{base}/chat/completions", timeout=200,
+                       headers={"Authorization": f"Bearer {tok}"},
+                       json={"model": STEPFUN, "temperature": 0.1, "max_tokens": 8000, "top_p": 0.9,
+                             "messages": [{"role": "system", "content": sistema},
+                                          {"role": "user", "content": prompt}]})
+        r.raise_for_status()
+        return ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+
+    return gerar
+
+
+def _gerar_cadeia_curta():
+    """Rede de segurança quando o nous não tem token — CADEIA CURTA, porque a cascata é que era lenta.
+
+    Medido em 4 h de sweep: com o cerebras em 429 (cota do dia, 50 vezes), cada leitura percorria os
+    DOZE provedores somando o timeout de todos — 437 chamadas, 54 sucessos (12%), 7,5 h de espera
+    acumulada. A lista curta foi escolhida pelo que de fato respondeu nessas 4 h (zai 15/32,
+    cohere 9/9, cerebras 9/59 quando a cota permite). Gemini fica no fim, alcançável mas raro.
+    """
+    import os
+    os.environ.setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")
+    from compliance_agent.llm.camada_triagem import gerar_triagem
+    return gerar_triagem()
+
+
+def _interpretar(texto: str, proc: str, gerar) -> dict:
+    """As janelas, a salvação de resposta cortada e o teto de tempo — dado um leitor já escolhido."""
     campos = "\n".join(f'- "{k}": {v}' for k, v in {**_FATOS, **_JUIZO}.items())
     # LER EM JANELAS, NÃO DE UMA GOLADA. A latência não cresce com o texto: ela DESABA num
     # precipício. Medido no provedor: 40.000 chars → 1,6 s com JSON completo (170 chars de
