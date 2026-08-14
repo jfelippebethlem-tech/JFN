@@ -167,7 +167,12 @@ _PADROES: dict[str, str] = {
     # aceitava 2 ou 3 (`PE`, `SRP`) e perdia o certame inteiro. E o `nº` nem sempre vem: aqui é
     # `EDITAL DE PREGÃO ELETRÔNICO PERP 02/2020`, com a sigla direto depois do nome da modalidade.
     "pregao": (r"(?:(?i:preg[ãa]o)[^\n]{0,30}?(?:(?:(?i:n))?[º°o.]{0,3}\s*)?(?:[A-Z]{2,4}\s*)?|"
-               r"\bPE\s*(?:(?i:n))?[º°o.]{0,3}\s*)"
+               # O `n` CONTINUA OBRIGATÓRIO neste ramo, e o teste provou o porquê: com ele
+               # opcional, `Fornecedor sediado em Recife/PE 2023/2024` virava certame. Aqui a sigla
+               # `PE` sozinha não distingue Pregão Eletrônico de Pernambuco — só o `nº` distingue.
+               # A tolerância ao `n` perdido vale onde há o NOME do instrumento antes (contrato,
+               # ata), não onde a âncora é só uma sigla de duas letras.
+               r"\bPE\s*(?i:n)[º°o.]{0,3}\s*)"
                r"(\d{1,4}/(?:20)?\d{2})"),
 }
 
