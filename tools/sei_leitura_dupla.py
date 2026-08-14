@@ -188,13 +188,22 @@ _SISTEMA = (
 
 def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     if gerar is None:
-        # O SWEEP DO SEI É DO NOUS, E A REGRA DA CASA TEM MOTIVO MEDIDO. Rodei o loop inteiro com
-        # `FREE_LLM_PREFER=openrouter` por escolha minha, contra o que o CLAUDE.md manda para
-        # VOLUME de SEI. Medido no mesmo processo e no mesmo prompt: **nous 45,7 s × openrouter
-        # 536,2 s — 12× mais lento** —, e ainda com resposta mais pobre (567 contra 2.114 chars) e
-        # embrulhada em cerca ```json. Pagava-se 12× por uma leitura pior.
+        # CADEIA CURTA, PORQUE A CASCATA É QUE ERA LENTA. Duas correções minhas moram aqui:
+        #
+        # 1. Cheguei a fixar `FREE_LLM_PREFER=nous` citando a regra da casa para volume de SEI —
+        #    mas **`nous` não existe** em `_get_provider_order`. A preferência caía calada na ordem
+        #    padrão, então a medição que eu apresentei como "nous 12× mais rápido que openrouter"
+        #    comparava, na verdade, CEREBRAS contra openrouter. O número estava certo; a atribuição,
+        #    errada. Config que não existe não avisa — foi o mesmo defeito do antigo "qwen".
+        # 2. Medido em 4 h de sweep: com o cerebras em 429 (cota do dia, 50 vezes), cada leitura
+        #    percorria os DOZE provedores somando o timeout de todos — 437 chamadas, 54 sucessos
+        #    (12%), 7,5 h de espera acumulada. Não era o modelo: era a cascata.
+        #
+        # Lista curta, escolhida pelo que de fato respondeu nessas 4 h (zai 15/32, cohere 9/9,
+        # cerebras 9/59 quando a cota permite). Gemini fica no fim, alcançável mas raro — decisão
+        # do dono de mantê-lo disponível, com a ressalva da regra 4.1 (chave com billing).
         import os
-        os.environ.setdefault("FREE_LLM_PREFER", "nous")
+        os.environ.setdefault("FREE_LLM_ONLY", "cerebras,zai,cohere,gemini")
         from compliance_agent.llm.camada_triagem import gerar_triagem
         gerar = gerar_triagem()
     campos = "\n".join(f'- "{k}": {v}' for k, v in {**_FATOS, **_JUIZO}.items())
@@ -623,6 +632,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
         else:
             alvos = _pendentes(con, a.amostra or 3)
         tot = Counter()
+        seco = 0            # leituras seguidas sem resposta (ver a pausa por cota, abaixo)
         for proc in alvos:
             try:
                 r = confrontar(proc, max_chars=a.max_chars)
@@ -633,6 +643,16 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
             if not r.get("ok"):
                 print(f"  ⚠️  {proc}: {r.get('erro')}"); continue
             est = r["ia"].get("estado")
+            # PAUSA LONGA EM VEZ DE MOER A SECO. Quando a cadeia inteira está fora (cota do dia
+            # estourada), insistir custa minutos por leitura e não produz nada — 12% de sucesso em
+            # 437 chamadas. Três leituras seguidas sem resposta é sinal de cota, não de processo
+            # ruim: o lote para e o loop retoma mais tarde, quando a cota renovar.
+            seco = seco + 1 if est in ("indisponivel", "nao_parseei") else 0
+            if seco >= 3:
+                print("\n⏸️  três leituras seguidas sem resposta — a cadeia grátis está fora. "
+                      "Parando o lote para retomar quando a cota renovar.")
+                tot["parou_por_cota"] = 1
+                break
             tot["processos"] += 1; tot["acordo"] += r["n_acordo"]
             tot["discordancia"] += r["n_discordancia"]; tot["ausencia"] += r["n_ausencia"]
             tot[f"ia:{est}"] += 1
