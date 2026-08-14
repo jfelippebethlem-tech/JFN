@@ -177,6 +177,13 @@ def favorecido_pela_ob(proc: str) -> str | None:
         é quem foi CONTRATADO. Cobrar do leitor o CNPJ do fundo seria exigir a resposta errada;
       · **vários favorecidos** — processo que pagou a mais de um não tem resposta única, e escolher
         o maior seria inventar critério que o documento não tem.
+
+    RESSALVA DE FONTE, medida e declarada: `obs_por_processo` lê o ESPELHO TFE, não o SIAFE. A regra
+    da casa manda usar SIAFE para o CAMPO — mas o espelho é quem tem cobertura (o SIAFE guarda ~21%
+    das OBs dele). Medida a concordância entre os dois sobre A QUAL PROCESSO cada OB pertence, com a
+    chave completa `(numero_ob, exercicio, ug)`: **94% concordam, 5% divergem** (10.037 OBs). Este
+    gabarito herda esse 5% de risco de atribuição — o que é aceitável para MEDIR leitor, e não seria
+    para acusar. Achado que dependa de uma OB isolada tem de ser reconferido no SIAFE antes de sair.
     """
     from tools.sei_leitura_dupla import pagamento_do_processo
 
