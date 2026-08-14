@@ -103,3 +103,26 @@ def test_o_plural_de_artigo_nao_pode_quebrar_o_casamento():
     fundamento inteiro de processos de pagamento."""
     d = extrair_deterministico("na forma dos artigos 90, 91 e 92 da Lei 287/1979\n")
     assert d["dispositivo"]["valor"] == "art. 90"
+
+
+def test_o_rodape_da_assinatura_eletronica_NAO_e_o_fundamento_do_processo():
+    """O falso positivo mais caro do campo, e a IA estava certa ao calar.
+
+    `art. 28` era o campeão em dezenas de leituras. O texto é o carimbo que o SEI põe em TODO
+    documento assinado: `Documento assinado eletronicamente por X, conforme horário oficial de
+    Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209`. É o embasamento da
+    ASSINATURA, não da despesa — e, como a régua desempata por frequência, quanto MAIS documentos o
+    processo tem, mais "fundamentado" no decreto de assinatura ele parecia.
+    """
+    rodape = ("Documento assinado eletronicamente por Fulano, Coordenador, em 09/10/2024, conforme "
+              "horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209.\n")
+    assert not extrair_deterministico(rodape)["dispositivo"]["valor"]
+
+
+def test_o_fundamento_de_verdade_sobrevive_ao_lado_do_rodape():
+    """A guarda não pode cegar a leitura: o mesmo documento tem rodapé E fundamento."""
+    texto = ("Autorizo a liquidação na forma dos artigos 90, 91 e 92 da Lei 287/1979.\n"
+             "Documento assinado eletronicamente por Fulano, conforme horário oficial de Brasília, "
+             "com fundamento nos art. 28º e 29º do Decreto nº 48.209.\n")
+    d = extrair_deterministico(texto)["dispositivo"]
+    assert d["valor"] == "art. 90"

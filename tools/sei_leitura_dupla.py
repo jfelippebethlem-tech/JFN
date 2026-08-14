@@ -127,7 +127,17 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
             achados = [a or b for a, b in achados] if achados and isinstance(achados[0], tuple) else achados
             achados = ["SEM CONTRATO" if "SEM CONTRATO" in str(x).upper() else x for x in achados]
         if campo == "dispositivo":
-            achados = [f"art. {a}, {b}".rstrip(", ") for a, b in achados]
+            # O RODAPÉ DA ASSINATURA ELETRÔNICA NÃO É O FUNDAMENTO DO PROCESSO. Medido: `art. 28`
+            # era o campeão em dezenas de leituras, com a IA calando — e ela estava certa. O texto
+            # é `Documento assinado eletronicamente por X ... com fundamento nos art. 28º e 29º do
+            # Decreto nº 48.209`, o embasamento da ASSINATURA, que o SEI carimba em TODO documento
+            # assinado. Como a régua desempata por frequência, o carimbo vence sempre: quanto mais
+            # documentos o processo tem, mais "fundamentado" no decreto de assinatura ele parece.
+            _RODAPE = re.compile(r"assinado\s+eletronicamente|hor[áa]rio\s+oficial\s+de\s+Bras[íi]lia|"
+                                 r"autenticidade\s+deste\s+documento", re.I)
+            achados = [f"art. {m.group(1)}, {m.group(2)}".rstrip(", ")
+                       for m in re.finditer(pad, texto or "")
+                       if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])]
         c = Counter(str(x) for x in achados if str(x).strip())
         if not c:
             out[campo] = {"valor": "", "ocorrencias": 0, "alternativas": []}
