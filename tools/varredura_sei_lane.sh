@@ -29,8 +29,16 @@ flock -n 9 || exit 0                              # já tem um DISPARO DESTE LAN
 # A busca por padrão na linha de comando de TODOS os processos casaria com o PRÓPRIO script (o
 # comando dele contém o nome do módulo) — armadilha que já mordeu nesta casa. Por isso a checagem
 # é restrita ao interpretador, via `ps -C python`, que não inclui shells.
-if ps -C python -o args= 2>/dev/null | grep -q "sei_leitura_dupla"; then
-  exit 0
+# POR FATIA, NÃO "QUALQUER LEITOR". A guarda original saía se ENCONTRASSE QUALQUER leitura viva, e
+# isso quebrou quando passei a rodar 4 fatias: elas morrem no timeout em momentos diferentes, e UM
+# sobrevivente bloqueava o religamento dos outros TRÊS. Medido em 2026-08-14: 1 fatia viva, vazão
+# caída de 300/h para 150/h, sem nenhum erro no log — a varredura sangrava em silêncio.
+#
+# Um leitor NÃO fatiado (lançado à mão) ainda bloqueia tudo, que é a colisão que a guarda original
+# existia para evitar.
+vivas=$(ps -C python -o args= 2>/dev/null | grep -c "sei_leitura_dupla")
+if [ "$vivas" -gt 0 ] && ! ps -C python -o args= 2>/dev/null | grep "sei_leitura_dupla" | grep -q -- "--fatia"; then
+  exit 0                                          # leitor não fatiado no ar: não somar
 fi
 
 # TETO DE CARGA — E POR QUE ELE NÃO É 4 NESTE LANE. A regra da casa (1 pesado por vez em 2 vCPU)
@@ -70,9 +78,24 @@ set -a; . .env 2>/dev/null; set +a
 # Continua sem violar "1 pesado por vez": cada leitor fica em ~0,1% de CPU, esperando rede.
 # Se a memória apertar (a VM é COMPARTILHADA e outra sessão roda Chromium), voltar para 0/2 1/2.
 for fatia in 0/4 1/4 2/4 3/4; do
+  # só a fatia que NÃO está no ar — assim um sobrevivente não impede o religamento das outras,
+  # e nenhuma fatia ganha um segundo leitor gastando IA em dobro no mesmo processo.
+  if ps -C python -o args= 2>/dev/null | grep -q -- "--fatia $fatia"; then
+    continue
+  fi
+  # `9>&-` FECHA O DESCRITOR DO FLOCK PARA A FATIA. Sem isso ela HERDA o fd 9 e continua segurando o
+  # lock depois que o lane sai — o `fuser` mostrava `bash`, `timeout` E `python` no mesmo arquivo.
+  # Efeito medido: mesmo encerrando o lane preso, o disparo seguinte não conseguia a chave e saía em
+  # silêncio; a varredura ficou com UMA fatia e ninguém percebeu, porque nada disso vira erro.
   timeout 3000 nice -n 10 ionice -c3 .venv/bin/python -u -m tools.sei_leitura_dupla \
-      --amostra 200 --gravar --max-chars 150000 --fatia "$fatia" >> data/varredura_sei.log 2>&1 &
+      --amostra 200 --gravar --max-chars 150000 --fatia "$fatia" >> data/varredura_sei.log 2>&1 9>&- &
 done
-wait
+
+# SEM `wait` — E ISSO É O CONSERTO, não descuido. Com `wait`, o lane ficava vivo os 50 minutos
+# inteiros e o `flock` ficava com ELE: quando três fatias morriam e uma sobrevivia, o próprio lane
+# preso no `wait` segurava a chave de que precisaria para religar as outras três. Ficou 1 fatia no
+# ar e a vazão caiu de 300/h para 150/h SEM UM ÚNICO ERRO NO LOG.
+# Saindo agora, o lock é liberado e o disparo seguinte (cron, 10 min) completa o que faltar. As
+# fatias seguem sob `timeout`, então continuam com fim garantido — nada aqui vira processo eterno.
 
 echo "$(date -Is) disparo encerrado (saída $?)" >> data/varredura_sei.log
