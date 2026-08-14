@@ -54,3 +54,28 @@ def test_contrato_de_verdade_que_a_ia_perdeu_CONTINUA_na_fila(monkeypatch):
     """A guarda vale só para a ausência declarada: número real que a IA não viu é sinal, não ruído."""
     r = _laudo(monkeypatch, "Contrato nº 443/2025 firmado com a empresa.", {"contrato": "NAO_CONSTA"})
     assert r["discordancia"]["contrato"]["estado"] == "so_regra"
+
+
+def test_Emb_Legal_nao_sujeito_e_ausencia_DECLARADA_de_fundamento(monkeypatch):
+    """O SIAFE declara quando a despesa NÃO tem embasamento legal.
+
+    `Emb. Legal não sujeito`, ao lado de `Mod. Licitação 07 - Não Aplicável`, é o caso de anulação
+    de empenho: o sistema AFIRMANDO que não há, não dado faltante. Mesma família do
+    `00000000 - SEM CONTRATO` — os dois leitores calando é concordância com a declaração, não
+    lacuna de leitura, e por isso sai da fila humana.
+    """
+    r = _laudo(monkeypatch,
+               "Mod. Licitação 07 - Não Aplicável Emb. Legal não sujeito Origem 1\n",
+               {"dispositivo": "NAO_CONSTA"})
+    assert "dispositivo" not in r["discordancia"]
+    assert r["ausencia_concorde"]["dispositivo"]["estado"] == "ausencia_declarada"
+
+
+def test_declaracao_NAO_apaga_fundamento_que_existe_noutro_ponto(monkeypatch):
+    """A guarda vale só quando ninguém achou nada. Se o processo declara "não sujeito" no empenho
+    MAS cita o fundamento noutro documento, o fundamento prevalece — foi o que aconteceu em dois
+    processos reais, onde EU afirmei ausência lendo o trecho e a régua achou `art. 90` no todo."""
+    r = _laudo(monkeypatch,
+               "Emb. Legal não sujeito.\nAutorizo na forma do art. 90 da Lei 287/1979.\n",
+               {"dispositivo": "art. 90"})
+    assert "dispositivo" in r["acordo"]

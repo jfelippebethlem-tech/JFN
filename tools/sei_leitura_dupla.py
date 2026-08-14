@@ -124,6 +124,12 @@ _PADROES: dict[str, str] = {
     # devolvia **026/2023** — a regex pulava o número da própria ata e casava o do pregão seguinte.
     # No documento inteiro a frequência mascarava o erro; só o caso isolado, escrito à mão no teste,
     # expôs. Mais uma vez: acervo grande esconde defeito que o exemplo mínimo denuncia.
+    # O SIAFE DECLARA quando a despesa NÃO tem embasamento legal: `Emb. Legal não sujeito`, ao lado
+    # de `Mod. Licitação 07 - Não Aplicável`. É o caso de anulação de empenho, e é ausência
+    # DECLARADA — o sistema afirmando que não há, não dado faltante. Mesma família do
+    # `00000000 - SEM CONTRATO`, e merece o mesmo tratamento: sai da fila humana em vez de virar
+    # "a regra não achou". Achado lendo os processos à mão.
+    "sem_embasamento": r"(?i:emb(?:asamento)?\.?\s+legal\s+n[ãa]o\s+sujeito)",
     "arp": (r"(?:(?i:ata\s+de\s+registro\s+de\s+pre[çc]os)|\bARP\b)[^\n]{0,20}?"
             r"(?i:n)[º°o.]{0,3}\s*(\d{1,4}/\d{2,4})"),
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
@@ -553,7 +559,14 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
             # (`00000000 - SEM CONTRATO`, o sistema declarando que não há instrumento); o segundo é
             # a IA dizendo que não achou. Os dois afirmam ausência de contrato — e eu contava como
             # "a regra achou algo que a IA perdeu", jogando na fila humana uma concordância.
+            # ORDEM IMPORTA, e o teste provou: este ramo captura TODO caso em que a IA calou, então
+            # uma verificação posta num `elif` mais abaixo nunca roda. O `Emb. Legal não sujeito`
+            # tinha de entrar AQUI — recomparar 409 leituras com zero mudanças foi o sinal de que o
+            # ramo estava morto.
             estado = ("ausencia_declarada" if campo == "contrato" and "SEMCONTRATO" in n_det
+                      else "ausencia_declarada"
+                      if (campo == "dispositivo" and not n_det
+                          and det.get("sem_embasamento", {}).get("ocorrencias"))
                       # SILÊNCIO DO TEXTO NÃO É BRIGA QUANDO A FONTE JÁ RESOLVEU. Em 46 casos — a
                       # maior categoria da fila — o lado da "regra" era a ORDEM BANCÁRIA, que na
                       # regra nº 2 da casa é a verdade sobre quem recebeu, e a IA apenas não achou
