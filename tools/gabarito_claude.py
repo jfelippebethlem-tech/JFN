@@ -182,15 +182,27 @@ def placar() -> dict:
         r["conferidos"] += 1 if automatico else 0
         det = json.loads(linha[1] or "{}")
         ia = (json.loads(linha[2] or "{}").get("fatos") or {})
+        fatos_ia = ia if isinstance(ia, dict) else {}
         for campo in CAMPOS:
             alvo = esperado.get(campo, "")
             if str(alvo).strip() == NAO_CONFERI:
                 continue                      # não conferi: não conta a favor nem contra ninguém
+            # CAMPO QUE A IA NUNCA FOI PERGUNTADA NÃO CONTA CONTRA ELA. `arp` e `tac` entraram no
+            # formulário no meio da sessão: as leituras anteriores não têm a chave, e o placar as
+            # penalizava como se ela tivesse calado. Medido: **19 dos 20 "erros" em `arp` eram
+            # isso** — a fila já tratava o caso (`nao_perguntado`), o placar não.
+            #
+            # A marca é a CHAVE FALTANDO: o extrator preenche todo campo perguntado, mesmo vazio.
+            # Pula SÓ a pontuação da IA — a régua respondeu e continua sendo medida. Pular o campo
+            # inteiro (primeira tentativa) derrubou o denominador dela de 43 para 7 e apagou medida
+            # boa: quem não foi perguntada foi a IA, não ela.
+            ia_perguntada = campo in fatos_ia
             v_ia = ia.get(campo, "")
             v_re = (det.get(de_para.get(campo, campo)) or {}).get("valor", "")
             # entrada automática NÃO pontua a régua: os candidatos vieram dela, e ela concordaria
             # consigo mesma. Pontua só a LLM, que não participou da conferência.
-            pares = (("ia", v_ia),) if automatico else (("ia", v_ia), ("regra", v_re))
+            pares = ((("ia", v_ia),) if ia_perguntada else ()) if automatico else (
+                ((("ia", v_ia),) if ia_perguntada else ()) + (("regra", v_re),))
             for quem, valor in pares:
                 b = r[quem].setdefault(campo, {"acerto": 0, "erro": 0})
                 b["acerto" if concorda(alvo, valor) else "erro"] += 1

@@ -123,3 +123,22 @@ def test_a_correcao_nao_transforma_numero_em_ausencia():
     """A guarda não pode virar indulgência: número presente contra ausência continua divergindo."""
     assert not concorda("NAO_CONSTA", "443/2025")
     assert not concorda("443/2025", "417/2023")
+
+
+def test_campo_nao_perguntado_nao_conta_contra_a_IA_mas_a_REGUA_segue_medida():
+    """`arp` e `tac` entraram no formulário no meio da sessão: as leituras anteriores não têm a
+    chave, e o placar as penalizava como se a IA tivesse calado. **19 dos 20 "erros" em `arp` eram
+    isso** — a fila já tratava o caso (`nao_perguntado`), o placar não.
+
+    E a primeira correção exagerou: pular o campo INTEIRO derrubou o denominador da régua de 43 para
+    7, apagando medida boa. Quem não foi perguntada foi a IA; a régua respondeu e continua medida.
+    """
+    import inspect
+
+    from tools.gabarito_claude import placar
+    fonte = inspect.getsource(placar)
+    assert "ia_perguntada = campo in fatos_ia" in fonte
+    assert 'if ia_perguntada else ()' in fonte, "a régua tem de continuar pontuando"
+    p = placar()
+    assert p["regra"]["arp"]["acerto"] + p["regra"]["arp"]["erro"] > 20, (
+        "a régua perdeu denominador — o pulo era só para a IA")
