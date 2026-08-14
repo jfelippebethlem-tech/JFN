@@ -59,3 +59,22 @@ def test_a_posicao_vem_do_TRECHO_CASADO_e_nao_da_string_nua():
     ia = {"estado": "ok", "chars_vistos": 40_000, "fatos": {"pregao": "NAO_CONSTA"}}
     r = comparar(det, ia, {"tem_ob": False}, texto)
     assert r["ausencia_concorde"]["pregao"]["estado"] == "fora_da_janela_da_ia"
+
+
+def test_o_dispositivo_tambem_pode_estar_alem_da_janela():
+    """Deixei `dispositivo` e `valor` fora da guarda na primeira versão, sem motivo — e o dado
+    desmentiu: num caso real o fundamento estava no caractere 110.032 com a IA tendo lido 80.000.
+    Todo campo LIDO DO TEXTO entra."""
+    det = {"dispositivo": {"valor": "art. 90", "alternativas": [], "pos": 110_032}}
+    ia = {"estado": "ok", "chars_vistos": 80_000, "fatos": {"dispositivo": "NAO_CONSTA"}}
+    r = comparar(det, ia, {"tem_ob": False}, "x")
+    assert r["ausencia_concorde"]["dispositivo"]["estado"] == "fora_da_janela_da_ia"
+
+
+def test_favorecido_fica_FORA_da_guarda_de_janela():
+    """Ali a régua lê da Ordem Bancária, não do texto — posição no documento não significa nada."""
+    det = {"cnpjs": {"valor": "00.801.512/0001-57", "alternativas": [], "pos": 999_999,
+                     "fonte": "ordem bancária"}}
+    ia = {"estado": "ok", "chars_vistos": 40_000, "fatos": {"favorecido": "NAO_CONSTA"}}
+    r = comparar(det, ia, {"tem_ob": True, "total": 1.0, "favorecidos": {"00801512000157"}}, "x")
+    assert r["ausencia_concorde"]["favorecido"]["estado"] != "fora_da_janela_da_ia"

@@ -693,8 +693,13 @@ def comparar(det: dict, ia: dict, pago: dict, texto: str = "") -> dict:
             _vistos = ia.get("chars_vistos") or 0
             _pos = det.get(_DE_PARA.get(campo, campo), {}).get("pos", -1)
             estado = ("fora_da_janela_da_ia"
-                      if (campo in ("contrato", "pregao", "arp", "tac") and n_det and _vistos
-                          and _pos >= _vistos)
+                      # TODO CAMPO LIDO DO TEXTO, não só os instrumentos. Deixei `dispositivo` e
+                      # `valor` de fora na primeira versão sem motivo, e o dado desmentiu: num caso
+                      # real o fundamento estava no caractere 110.032 com a IA tendo lido 80.000.
+                      # `favorecido` fica fora de propósito — ali a régua lê da Ordem Bancária, não
+                      # do texto, e posição não significa nada.
+                      if (campo in ("contrato", "pregao", "arp", "tac", "dispositivo", "valor")
+                          and n_det and _vistos and _pos >= _vistos)
                       else "ausencia_declarada" if campo == "contrato" and "SEMCONTRATO" in n_det
                       else "ausencia_declarada"
                       if (campo == "dispositivo" and not n_det
