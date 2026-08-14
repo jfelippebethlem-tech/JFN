@@ -17,7 +17,7 @@
 set -u
 cd /home/ubuntu/JFN || exit 1
 
-FIM=$(( $(date +%s) + 7200 ))          # desiste após 2 h em vez de virar processo eterno
+FIM=$(( $(date +%s) + 14400 ))         # desiste após 4 h em vez de virar processo eterno
 
 while [ "$(date +%s)" -lt "$FIM" ]; do
   # `ps -C python` não enxerga shells, então este script não casa consigo mesmo — a armadilha do
@@ -37,6 +37,10 @@ while [ "$(date +%s)" -lt "$FIM" ]; do
     exec timeout 2400 nice -n 10 .venv/bin/python -m tools.sei_sweep \
         --cnpj 50917361000175 --max 8 --sem-ficha
   fi
-  sleep 60
+  # 20 s, NÃO 60. A janela livre é estreita: o sweep de bombeiros da sessão vizinha roda por cron e
+  # reaparece, e a única janela que peguei (17:17) durou pouco. Checar de minuto em minuto pode
+  # atravessar a janela inteira sem vê-la. O custo de olhar é um `ps` — desprezível ao lado de
+  # perder a vez e esperar mais uma hora.
+  sleep 20
 done
 echo "$(date -Is) desisti após 2 h — navegador nunca ficou livre (alheios=$alheios carga=$carga)"
