@@ -124,6 +124,32 @@ def gravar(proc: str, respostas: dict, fonte: str = "claude") -> dict:
     return d
 
 
+def auto_conferir(proc: str) -> dict | None:
+    """Preenche o gabarito onde o julgamento não acrescenta nada: UM candidato só.
+
+    Quando o documento traz um único número de instrumento, "qual é" não é juízo, é leitura — e a
+    minha leitura à mão erra MAIS que a régua nesse caso (cinco `NAO_CONSTA` falsos). Automatizar
+    aqui amplia a cobertura do confronto sem inventar referência.
+
+    CIRCULARIDADE DECLARADA: como os candidatos vêm da régua, uma entrada assim NÃO mede a régua —
+    ela concorda consigo mesma por construção. Mede a LLM, que não participou da conferência. Por
+    isso a entrada é marcada `fonte="conferido"`, e o placar separa as duas populações.
+
+    Campo com VÁRIOS candidatos volta `?`: ali a pergunta não tem resposta única, e escolher seria
+    inventar. Campo sem nenhum volta `NAO_CONSTA` — a régua varreu o documento inteiro.
+    """
+    achados = conferir(proc)
+    if not achados:
+        return None
+    r = {}
+    for campo in ("contrato", "pregao", "arp"):
+        vals = achados.get(campo) or []
+        r[campo] = vals[0] if len(vals) == 1 else (NAO_CONFERI if vals else "NAO_CONSTA")
+    r["dispositivo"] = NAO_CONFERI      # juízo, não leitura — nunca automatizar
+    r["favorecido"] = NAO_CONFERI       # vem da OB, não do texto
+    return r
+
+
 def placar() -> dict:
     """Quanto a LLM grátis e a régua acertam CONTRA a leitura do Claude, campo a campo."""
     gab = carregar()
@@ -135,13 +161,15 @@ def placar() -> dict:
             "SELECT numero_sei, deterministico, ia FROM sei_leitura_dupla")}
     finally:
         con.close()
-    r = {"processos": 0, "ia": {}, "regra": {}}
+    r = {"processos": 0, "ia": {}, "regra": {}, "conferidos": 0}
     de_para = {"favorecido": "cnpjs", "arp": "arp"}
     for proc, esperado in gab.items():
         linha = linhas.get(proc)
         if not linha:
             continue
+        automatico = esperado.get("fonte") == "conferido"
         r["processos"] += 1
+        r["conferidos"] += 1 if automatico else 0
         det = json.loads(linha[1] or "{}")
         ia = (json.loads(linha[2] or "{}").get("fatos") or {})
         for campo in CAMPOS:
@@ -150,7 +178,10 @@ def placar() -> dict:
                 continue                      # não conferi: não conta a favor nem contra ninguém
             v_ia = ia.get(campo, "")
             v_re = (det.get(de_para.get(campo, campo)) or {}).get("valor", "")
-            for quem, valor in (("ia", v_ia), ("regra", v_re)):
+            # entrada automática NÃO pontua a régua: os candidatos vieram dela, e ela concordaria
+            # consigo mesma. Pontua só a LLM, que não participou da conferência.
+            pares = (("ia", v_ia),) if automatico else (("ia", v_ia), ("regra", v_re))
+            for quem, valor in pares:
                 b = r[quem].setdefault(campo, {"acerto": 0, "erro": 0})
                 b["acerto" if concorda(alvo, valor) else "erro"] += 1
     return {"ok": True, **r}

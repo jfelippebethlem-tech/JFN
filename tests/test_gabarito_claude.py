@@ -69,3 +69,38 @@ def test_conferir_existe_e_cobre_os_quatro_instrumentos():
     for campo in ("contrato", "arp", "pregao", "tac"):
         assert f'"{campo}"' in fonte, f"{campo} ficou fora da conferência"
     assert "texto_do_processo" in fonte, "a conferência tem de ler o documento, não um recorte"
+
+
+def test_entrada_automatica_NAO_pontua_a_regua():
+    """Circularidade declarada: os candidatos da conferência vêm da RÉGUA, então uma entrada
+    automática a faria concordar consigo mesma. Ela pontua só a LLM, que não participou.
+
+    Sem essa separação, ampliar a cobertura do confronto inflaria o número da régua de graça — que
+    é o oposto de medir."""
+    import inspect
+
+    from tools.gabarito_claude import placar
+    fonte = inspect.getsource(placar)
+    assert 'esperado.get("fonte") == "conferido"' in fonte
+    assert '(("ia", v_ia),) if automatico' in fonte, (
+        "entrada conferida automaticamente não pode pontuar a régua")
+
+
+def test_auto_conferir_recusa_julgar_o_que_e_juizo():
+    """`dispositivo` (escolher entre fundamentos) e `favorecido` (vem da OB, não do texto) nunca
+    são preenchidos automaticamente — ali a leitura não basta."""
+    import inspect
+
+    from tools.gabarito_claude import NAO_CONFERI, auto_conferir
+    fonte = inspect.getsource(auto_conferir)
+    assert 'r["dispositivo"] = NAO_CONFERI' in fonte
+    assert 'r["favorecido"] = NAO_CONFERI' in fonte
+    assert NAO_CONFERI == "?"
+
+
+def test_varios_candidatos_viram_NAO_CONFERI_em_vez_de_escolha():
+    """Metade do acervo cita mais de um contrato. Escolher um seria inventar referência."""
+    import inspect
+
+    from tools.gabarito_claude import auto_conferir
+    assert "len(vals) == 1" in inspect.getsource(auto_conferir)
