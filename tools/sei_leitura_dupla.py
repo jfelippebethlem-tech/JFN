@@ -217,6 +217,23 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
                        for m in re.finditer(pad, texto or "")
                        if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])
                        and not _FISCAL.search((texto or "")[m.start():m.end() + 40])]
+        if campo in ("contrato", "pregao", "arp", "tac"):
+            # ANO IMPLAUSÍVEL É LIXO DE EXTRAÇÃO, e lixo que VENCE o campo: `arp=36/0045` e
+            # `pregao=091/2073` eram o valor TOPO nos processos onde apareceram, corrompendo a
+            # leitura inteira daquele processo. São 3 em ~524 (0,6%) — pouco, mas o descarte não
+            # tem contrapartida: nenhum instrumento real tem ano 0045 ou 2073.
+            #
+            # NÃO filtro ano POSTERIOR ao processo, e isso foi medido antes de decidir: 22 casos
+            # (4%) têm instrumento de ano seguinte, e é legítimo — o processo ANTECEDE o contrato
+            # que ele cria. Descartá-los seria trocar 3 lixos por 22 acertos.
+            def _ano_ok(v: str) -> bool:
+                m = re.search(r"/(\d{2,4})$", str(v))
+                if not m:
+                    return True
+                a = int(m.group(1))
+                return 1990 <= (2000 + a if len(m.group(1)) == 2 else a) <= 2028
+
+            achados = [x for x in achados if _ano_ok(x)]
         c = Counter(str(x) for x in achados if str(x).strip())
         if not c:
             out[campo] = {"valor": "", "ocorrencias": 0, "alternativas": []}

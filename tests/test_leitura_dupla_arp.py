@@ -59,3 +59,17 @@ def test_a_sigla_PE_sozinha_e_pregao_eletronico():
 def test_PE_sem_o_numero_marcador_NAO_vira_certame():
     """Sem exigir o `nº` colado, a sigla de estado (PE de Pernambuco) viraria pregão."""
     assert not extrair_deterministico("Fornecedor sediado em Recife/PE 2023/2024.\n")["pregao"]["valor"]
+
+
+def test_ano_implausivel_e_descartado():
+    """`arp=36/0045` e `pregao=091/2073` eram o valor TOPO nos processos onde apareciam,
+    corrompendo a leitura inteira daquele processo. Nenhum instrumento real tem ano 0045 ou 2073."""
+    assert not extrair_deterministico("Ata de Registro de Preços nº 36/0045\n")["arp"]["valor"]
+    assert not extrair_deterministico("Pregão Eletrônico nº 091/2073\n")["pregao"]["valor"]
+
+
+def test_ano_POSTERIOR_ao_processo_continua_valendo():
+    """Medido antes de decidir: 22 casos (4%) têm instrumento de ano seguinte, e é LEGÍTIMO — o
+    processo ANTECEDE o contrato que ele cria. Filtrar isso trocaria 3 lixos por 22 acertos."""
+    d = extrair_deterministico("Contrato nº 02/2023 firmado nos autos.\n", ano_proc=2022)
+    assert d["contrato"]["valor"] == "02/2023"
