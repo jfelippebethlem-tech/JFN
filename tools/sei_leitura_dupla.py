@@ -230,6 +230,15 @@ def extrair_interpretativo(texto: str, proc: str, *, gerar=None) -> dict:
     return _interpretar(texto, proc, gerar)
 
 
+def _registrar_trace(provedor: str, ok: bool, ms: int, erro: str = "") -> None:
+    """Alimenta o `llm_trace.db` da casa também pelo caminho do nous — degrada em silêncio."""
+    try:
+        from compliance_agent.llm.free_llm import _trace
+        _trace(provedor, ok, ms, erro)
+    except (ImportError, OSError, RuntimeError) as exc:
+        print(f"  ⚠️  trace indisponível ({type(exc).__name__})", file=sys.stderr)
+
+
 def _gerar_nous():
     """A IA do volume de SEI. Devolve `None` (sem token) para o chamador cair na cadeia curta."""
     try:
@@ -242,7 +251,16 @@ def _gerar_nous():
         return None
 
     def gerar(prompt: str, sistema: str) -> str:
+        import time
+
         import httpx
+        # REGISTRAR NO TRACE DA CASA. Ao trocar o sweep para o nous eu criei um buraco de
+        # observabilidade sem perceber: o nous é chamado por HTTP direto, não passa por
+        # `best_free_chat`, e por isso sumiu do `data/llm_trace.db`. Foi exatamente esse trace que
+        # me deixou diagnosticar a cascata de doze provedores (437 chamadas, 12% de sucesso) —
+        # perder a medição do caminho PRINCIPAL seria trocar o diagnóstico pela sorte.
+        _ini = time.monotonic()
+        _erro = ""
         # `max_tokens` alto de propósito: stepfun é modelo de RACIOCÍNIO e gasta tokens no campo
         # `reasoning` ANTES do `content`. Teto baixo devolve content vazio com finish_reason
         # 'length', que chega aqui como "JSON inválido" — a mesma lição que o sei_ficha já pagou.
@@ -251,8 +269,14 @@ def _gerar_nous():
                        json={"model": STEPFUN, "temperature": 0.1, "max_tokens": 8000, "top_p": 0.9,
                              "messages": [{"role": "system", "content": sistema},
                                           {"role": "user", "content": prompt}]})
-        r.raise_for_status()
-        return ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        try:
+            r.raise_for_status()
+            saida = ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        except (httpx.HTTPError, ValueError, KeyError) as exc:
+            _erro = f"{type(exc).__name__}: {exc}"[:120]
+            saida = ""
+        _registrar_trace("nous", bool(saida), int((time.monotonic() - _ini) * 1000), _erro)
+        return saida
 
     return gerar
 
