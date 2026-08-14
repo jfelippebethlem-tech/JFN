@@ -938,6 +938,25 @@ def api_zeros_sem_causa(limite: int = 25):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+def _falta(v) -> list:
+    """A lista de documentos ausentes, venha ela como lista ou como frase corrida NUMERADA.
+
+    O primeiro agregado saiu com `1`, `2`, `3` no topo: quando a leitura devolve
+    `"1. Cópia do Contrato 2. Folha de Medição"`, quebrar em `". "` produz os NÚMEROS como se
+    fossem documentos. Quebrar NO enumerador (e não depois dele) resolve, e a poda final descarta
+    o que sobrar curto demais para ser nome de documento.
+    """
+    if isinstance(v, list):
+        itens = [str(x) for x in v]
+    else:
+        t = str(v or "").strip()
+        if not t or t in ("[]", "None"):
+            return []
+        itens = re.split(r";|\n|(?:^|\s)\d{1,2}[.)]\s+", t)
+    limpos = [re.sub(r"^\W*\d{0,2}[.)]?\s*", "", i).strip(" .;-")[:120] for i in itens]
+    return [i for i in limpos if len(i) > 8][:8]
+
+
 @router.get("/api/fiscal/leitura_dupla")
 def api_leitura_dupla(limite: int = 20):
     """Onde a REGRA e a IA discordam ao ler o mesmo processo — a fila de leitura humana.
@@ -974,6 +993,7 @@ def api_leitura_dupla(limite: int = 20):
             finally:
                 con.close()
             itens, por_estado, regua_velha, fora = [], {}, 0, {}
+            faltam: dict = {}
             for sei, na, nd, disc, ia, trunc, regua, naus, aus in linhas:
                 if not regua:
                     regua_velha += 1
@@ -990,16 +1010,28 @@ def api_leitura_dupla(limite: int = 20):
                     _e = str(_v.get("estado") or "?")
                     fora[_e] = fora.get(_e, 0) + 1
                 iad = _j.loads(ia or "{}")
+                for _d in _falta((iad.get("interpretacao") or {}).get("o_que_falta")):
+                    _k = _d.lower().strip(" .;-")[:60]
+                    faltam[_k] = faltam.get(_k, 0) + 1
                 itens.append({
                     "processo": sei, "acordo": na, "discordancia": nd,
                     "ausencia": naus, "regua": regua,
                     "truncado": bool(trunc), "estado_ia": iad.get("estado"),
                     "o_que_e": (iad.get("interpretacao") or {}).get("o_que_e", ""),
+                    # O QUE FALTA NOS AUTOS — 354 dos 397 processos lidos trazem essa lista, e
+                    # NENHUMA rota a consumia. É a família "achado sem leitor" que a casa já
+                    # documentou: o dado existia, custou chamada de IA e morria no banco.
+                    #
+                    # O valor é alto porque boa parte vem do CHECKLIST DO PRÓPRIO PROCESSO — o
+                    # órgão declarando que Cópia do Contrato, Folha de Medição e Relatório dos
+                    # Fiscais não estão nos autos. Documento que prova execução faltando num
+                    # processo de pagamento é a mesma lacuna que sustenta o caso dos TACs da FSERJ.
+                    "o_que_falta": _falta((iad.get("interpretacao") or {}).get("o_que_falta")),
                     "campos": {k: {"regra": v.get("regra"), "ia": v.get("ia"),
                                    "estado": v.get("estado")} for k, v in d.items()},
                 })
             return {"itens": itens, "por_estado": por_estado, "regua_velha": regua_velha,
-                    "fora_da_fila": fora}
+                    "fora_da_fila": fora, "faltam": faltam}
 
         r = _cache("leitura_dupla", _medir)
         lim = max(1, min(int(limite), 100))
@@ -1010,6 +1042,9 @@ def api_leitura_dupla(limite: int = 20):
             "ausencias_concordes": sum(x["ausencia"] or 0 for x in r["itens"]),
             "medidos_com_regua_antiga": r["regua_velha"],
             "fora_da_fila_por_motivo": r["fora_da_fila"],
+            "documentos_que_mais_faltam": sorted(
+                r["faltam"].items(), key=lambda kv: -kv[1])[:12],
+            "processos_com_lacuna": sum(1 for x in r["itens"] if x.get("o_que_falta")),
             "por_estado": r["por_estado"],
             "itens": r["itens"][:lim],
             "fonte": _fonte("sei_leitura_dupla"),

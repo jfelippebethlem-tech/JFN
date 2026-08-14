@@ -7724,12 +7724,14 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     };
     if (Object.keys(_fora).length) h += card(`<div class="dim">fora da fila, por motivo: ` + Object.entries(_fora).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<b>${fmtN(v)}</b> ${esc(_nome[k] || k)}`).join(" · ") + `</div>`);
     if (d.medidos_com_regua_antiga > 0) h += card(`<div class="dim">⚠️ <b>${fmtN(d.medidos_com_regua_antiga)}</b> de ${fmtN(d.total)} processos foram medidos com a RÉGUA ANTIGA, que contava ausência concorde como divergência — a fila deles está inflada e não é comparável com as leituras novas.</div>`);
+    const _fal = d.documentos_que_mais_faltam || [];
+    if (_fal.length) h += card(`<div><b>${fmtN(d.processos_com_lacuna || 0)}</b> processos declaram documento AUSENTE nos autos<div class="dim" style="margin-top:6px">` + _fal.slice(0, 6).map(([doc, n]) => `<b>${fmtN(n)}×</b> ${esc(String(doc).slice(0, 70))}`).join("<br>") + `</div></div>`);
     h += card(`<table class="tb"><thead><tr><th>processo</th><th class="right">acordo</th>
     <th class="right">divergência</th><th>o que a IA entendeu</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
       <td>${esc(x.processo)}${x.truncado ? ' <span class="dim">(truncado)</span>' : ""}</td>
       <td class="right">${fmtN(x.acordo)}</td>
       <td class="right">${x.discordancia > 2 ? "<b>" : ""}${fmtN(x.discordancia)}${x.discordancia > 2 ? "</b>" : ""}</td>
-      <td style="font-size:12px">${esc(String(x.o_que_e || "—").slice(0, 120))}</td>
+      <td style="font-size:12px">${esc(String(x.o_que_e || "—").slice(0, 120))}${(x.o_que_falta || []).length ? `<div style="color:var(--amber);margin-top:3px">falta nos autos: ${esc((x.o_que_falta || []).slice(0, 3).join(" · ").slice(0, 150))}</div>` : ""}</td>
     </tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
     alvo.innerHTML = h;
     o.appendChild(alvo);
