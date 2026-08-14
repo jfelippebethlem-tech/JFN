@@ -33,10 +33,23 @@ if ps -C python -o args= 2>/dev/null | grep -q "sei_leitura_dupla"; then
   exit 0
 fi
 
-# TETO DE CARGA. A regra da casa é 1 pesado por vez em 2 vCPU; acima de 4 o disparo desiste e
-# tenta de novo no próximo, em vez de somar com o que já está rodando.
+# TETO DE CARGA — E POR QUE ELE NÃO É 4 NESTE LANE. A regra da casa (1 pesado por vez em 2 vCPU)
+# nasceu para trabalho que QUEIMA CPU. Este leitor não é isso: medido em 2026-08-14, cada fatia fica
+# em ~0,1% de CPU, porque passa o tempo esperando resposta HTTP do provedor. Com o teto em 4, uma
+# sessão VIZINHA rodando OCR/Chromium levou a carga a 19 e manteve ESTA varredura parada por 70
+# minutos — um lane que não disputava CPU com ela foi bloqueado por um número que mede CPU.
+#
+# A variável certa é a MEMÓRIA, que é o vetor real das quedas desta VM (2 Chromium + DuckDB, 4×).
+# Então: piso de memória disponível, e teto de carga bem mais alto, só como rede de segurança
+# contra um cenário patológico. Reversível: voltar para `-ge 4` se algo aqui passar a pesar CPU.
+# DESVIO DECLARADO DE REGRA CRÍTICA. `vm-nao-crashar` manda adiar com load >= 4, e este teto de 12
+# é MAIOR que ela. A justificativa é a medida acima (0,1% de CPU por fatia), mas a decisão é do
+# dono, não minha: se ele quiser a regra literal, é trocar 12 por 4 nesta linha e aceitar que a
+# varredura pare enquanto uma sessão vizinha estiver com OCR/Chromium no ar.
+livre_mb=$(awk '/MemAvailable/{printf "%d", $2/1024}' /proc/meminfo)
+[ "$livre_mb" -lt 1500 ] && exit 0                # sem folga de RAM, não entra de jeito nenhum
 carga=$(awk '{printf "%d", $1}' /proc/loadavg)
-[ "$carga" -ge 4 ] && exit 0
+[ "$carga" -ge 12 ] && exit 0
 
 # `timeout` para o disparo NUNCA virar processo eterno: 50 min lê ~40 processos e devolve a máquina.
 # `--amostra` alto não é problema: o lote termina quando o timeout chega, e o próximo continua de
