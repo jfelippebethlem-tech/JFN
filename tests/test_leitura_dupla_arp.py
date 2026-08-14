@@ -101,3 +101,24 @@ def test_Ata_de_Registro_de_PRECO_no_singular():
                             ("Ata de Registro de Preço nº 29/2022, para aquisição\n", "29/2022"),
                             ("conforme Ata de Registro de Preços Nº 007/2026\n", "007/2026")):
         assert extrair_deterministico(texto)["arp"]["valor"] == esperado
+
+
+def test_o_n_do_marcador_pode_ter_sumido_na_extracao():
+    """`Registro de Preço º 001/2018` e `CONTRATOº 001/2023` — o `n` do `nº` some na extração de
+    PDF. São 2 processos em 513 (0,4%), medido antes de mexer: pouco, mas cada perda custa o campo
+    inteiro daquele processo, e o `º` colado ao nome do instrumento é sinal inequívoco.
+    """
+    assert extrair_deterministico(
+        "ATA de Registro de Preço º 001/2018\n")["arp"]["valor"] == "001/2018"
+    assert extrair_deterministico(
+        "CONTRATOº 001/2023 firmado\n")["contrato"]["valor"] == "001/2023"
+
+
+def test_tornar_o_n_opcional_NAO_pode_comer_o_numero():
+    """Com o `n` opcional, a janela GULOSA passou a comer parte do número: `Contrato nº 443/2025`
+    devolvia `3/2025`. Com `n` obrigatório a letra ancorava a posição — ao removê-la, a janela
+    precisou virar preguiçosa. Mesma armadilha da janela do ARP."""
+    for texto, esperado in (("Contrato nº 443/2025\n", "443/2025"),
+                            ("INSTRUMENTO: Contrato n° 182/2024.\n", "182/2024"),
+                            ("CONTRATO Nº3/2026 CONTRATAÇÃO\n", "3/2026")):
+        assert extrair_deterministico(texto)["contrato"]["valor"] == esperado
