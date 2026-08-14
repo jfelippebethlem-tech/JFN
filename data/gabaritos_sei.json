@@ -1,20 +1,84 @@
 {
- "350010/025576/2026": {
-  "instrumento": "443/2025",
-  "processo_origem": "350010/027689/2025",
-  "dispositivo": "Lei 14.133/2021, Art. 75, VIII",
-  "data_contratacao": "12/08/2025",
-  "objeto": "limpeza e conservacao hospitalar",
-  "valor_empenho": "508.873,17",
-  "cnpj_favorecido_nf": "32.690.668/0001-02"
- },
- "030001/075841/2024": {
-  "instrumento": "31/2024",
-  "dispositivo": "Lei 14.133/2021, Art. 75, VIII",
-  "processo_licitacao": "030029/006362/2022",
-  "pregao_anterior": "007/2017",
-  "vigencia_inicio": "13/11/2024",
-  "vigencia_fim": "12/11/2025",
-  "escolas_sem_cobertura": "559"
- }
+  "350010/025576/2026": {
+    "instrumento": "443/2025",
+    "processo_origem": "350010/027689/2025",
+    "dispositivo": "Lei 14.133/2021, Art. 75, VIII",
+    "data_contratacao": "12/08/2025",
+    "objeto": "limpeza e conservacao hospitalar",
+    "valor_empenho": "508.873,17",
+    "cnpj_favorecido_nf": "32.690.668/0001-02"
+  },
+  "030001/075841/2024": {
+    "instrumento": "31/2024",
+    "dispositivo": "Lei 14.133/2021, Art. 75, VIII",
+    "processo_licitacao": "030029/006362/2022",
+    "pregao_anterior": "007/2017",
+    "vigencia_inicio": "13/11/2024",
+    "vigencia_fim": "12/11/2025",
+    "escolas_sem_cobertura": "559"
+  },
+  "270006/012228/2026": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "007/2026",
+    "dispositivo": "NAO_CONSTA",
+    "favorecido": "10.679.936/0001-44",
+    "fonte": "claude"
+  },
+  "080002/007663/2024": {
+    "contrato": "182/2024",
+    "pregao": "026/2023",
+    "arp": "025/2024",
+    "dispositivo": "NAO_CONSTA",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "270006/017424/2026": {
+    "contrato": "85/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "NAO_CONSTA",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "490001/001412/2024": {
+    "contrato": "032/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "007/2022",
+    "dispositivo": "NAO_CONSTA",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "080001/000755/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "art. 90",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "420001/002058/2025": {
+    "contrato": "006/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "art. 90",
+    "favorecido": "07.340.993/0001-90",
+    "fonte": "claude"
+  },
+  "080001/034292/2024": {
+    "contrato": "043/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "art. 90",
+    "favorecido": "12.117.414/0001-84",
+    "fonte": "claude"
+  },
+  "080002/014253/2024": {
+    "contrato": "039/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "NAO_CONSTA",
+    "favorecido": "?",
+    "fonte": "claude"
+  }
 }

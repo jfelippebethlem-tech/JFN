@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+"""O placar da terceira leitura — e as duas armadilhas que ele já expôs.
+
+A leitura dupla extrai sinal da DIVERGÊNCIA entre regra e LLM grátis, e divergência só enxerga campo
+que alguém perguntou. Os dois maiores achados de leitura desta sessão vieram de fora dela: a Ata de
+Registro de Preços (21% do acervo, ninguém perguntava) e a regra tributária da planilha de retenção,
+que fundamenta RETENÇÃO com a mesma fórmula do fundamento da despesa. Nos dois casos os leitores
+CONCORDAVAM e o laudo saía completo e errado por omissão.
+
+**Armadilha 1 — ausência não é erro.** `NAO_CONSTA`, vazio e `SEM CONTRATO` afirmam a mesma coisa.
+Tratar isso como divergência foi o defeito que afogou 61 das 77 primeiras linhas da fila.
+
+**Armadilha 2 — "não conferi" ≠ "não existe".** O primeiro placar deu 33% à régua no `favorecido`
+porque eu marcara `NAO_CONSTA` em processos onde simplesmente não fui atrás do CNPJ. Gabarito que
+afirma ausência onde o leitor apenas não olhou pune quem acertou: com o `?`, a régua sobe para 75%
+e a LLM para 100%.
+"""
+from __future__ import annotations
+
+from tools.gabarito_claude import NAO_CONFERI, concorda, placar
+
+
+def test_ausencia_casa_com_ausencia():
+    for a, b in (("NAO_CONSTA", ""), ("SEM CONTRATO", "NAO_CONSTA"), ("", "N/A")):
+        assert concorda(a, b)
+
+
+def test_grafia_diferente_do_mesmo_numero_casa():
+    assert concorda("PE 008/23", "008/23")
+    assert concorda("R$ 1.038.330,00", "1038330.00")
+
+
+def test_numero_diferente_NAO_casa():
+    assert not concorda("182/2024", "417/2023")
+    assert not concorda("NAO_CONSTA", "025/2024")
+
+
+def test_nao_conferi_sai_do_placar():
+    """Sem isto, o campo que eu não olhei conta como erro de quem leu o documento inteiro."""
+    p = placar()
+    assert p["ok"]
+    marcados = sum(1 for c in ("favorecido",) if c in p["regra"])
+    assert marcados == 0 or p["regra"]["favorecido"]["acerto"] + p["regra"]["favorecido"]["erro"] < p["processos"]
+
+
+def test_o_gabarito_acumula_entre_rodadas():
+    """Sem acumular, cada confronto morre na rodada em que aconteceu e vira anedota."""
+    p = placar()
+    assert p["processos"] >= 8, f"gabarito encolheu para {p['processos']} processos"
+
+
+def test_o_marcador_de_nao_conferido_e_explicito():
+    assert NAO_CONFERI == "?"
