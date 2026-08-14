@@ -152,11 +152,30 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
             # Decreto nº 48.209`, o embasamento da ASSINATURA, que o SEI carimba em TODO documento
             # assinado. Como a régua desempata por frequência, o carimbo vence sempre: quanto mais
             # documentos o processo tem, mais "fundamentado" no decreto de assinatura ele parece.
+            # Duas famílias de citação que NÃO fundamentam a despesa, ambas achadas lendo o
+            # processo à mão e confrontando com a LLM grátis:
+            #   · o RODAPÉ da assinatura eletrônica (art. 28/29 do Decreto 48.209), em todo doc;
+            #   · a REGRA TRIBUTÁRIA da planilha de retenção — `FUNDAMENTAÇÃO LEGAL: Art. 2º-A da
+            #     Instrução Normativa RFB nº 1234`. É fundamento de RETENÇÃO DE IMPOSTO, não da
+            #     despesa, e usa a mesma fórmula ("FUNDAMENTAÇÃO LEGAL"), então entrava limpa.
+            # Medido no `420001/002058/2025`: a régua elegia `art. 289` e colhia `art. 2`, enquanto
+            # o fundamento real (art. 90 da Lei 287/79, que a IA acertou) nem aparecia na lista.
+            # DUAS FAMÍLIAS, DUAS JANELAS — a posição no texto é diferente e misturá-las custou um
+            # falso negativo: com janela única de 90 chars à frente, `art. 90 da Lei 287/79` seguido
+            # do rodapé era excluído junto.
+            #   · RODAPÉ da assinatura: vem ANTES do artigo → olhar 180 chars atrás.
+            #   · NORMA TRIBUTÁRIA (`Art. 2º-A da Instrução Normativa RFB`): o marcador vem logo
+            #     DEPOIS do artigo, colado → olhar 40 chars à frente, e só isso.
             _RODAPE = re.compile(r"assinado\s+eletronicamente|hor[áa]rio\s+oficial\s+de\s+Bras[íi]lia|"
                                  r"autenticidade\s+deste\s+documento", re.I)
+            _FISCAL = re.compile(r"instru[çc][ãa]o\s+normativa|\bRFB\b", re.I)
+            # A JANELA PRECISA OLHAR PARA OS DOIS LADOS. O rodapé de assinatura vem ANTES do
+            # artigo; a norma tributária vem DEPOIS (`Art. 2º-A da Instrução Normativa RFB nº
+            # 1234`). Olhar só para trás deixava a citação fiscal entrar limpa.
             achados = [f"art. {m.group(1)}, {m.group(2)}".rstrip(", ")
                        for m in re.finditer(pad, texto or "")
-                       if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])]
+                       if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])
+                       and not _FISCAL.search((texto or "")[m.start():m.end() + 40])]
         c = Counter(str(x) for x in achados if str(x).strip())
         if not c:
             out[campo] = {"valor": "", "ocorrencias": 0, "alternativas": []}

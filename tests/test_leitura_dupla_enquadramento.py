@@ -126,3 +126,25 @@ def test_o_fundamento_de_verdade_sobrevive_ao_lado_do_rodape():
              "com fundamento nos art. 28º e 29º do Decreto nº 48.209.\n")
     d = extrair_deterministico(texto)["dispositivo"]
     assert d["valor"] == "art. 90"
+
+
+def test_a_regra_TRIBUTARIA_da_planilha_de_retencao_nao_e_fundamento_da_despesa():
+    """Achado lendo o processo à mão e confrontando com a LLM grátis.
+
+    A planilha de retenção traz `FUNDAMENTAÇÃO LEGAL: Art. 2º-A da Instrução Normativa RFB nº 1234`
+    — fundamento de RETENÇÃO DE IMPOSTO, com a MESMA fórmula do fundamento da despesa. No
+    `420001/002058/2025` a régua elegia `art. 289` e colhia `art. 2`, enquanto o fundamento real
+    (art. 90 da Lei 287/79, que a IA acertou) nem entrava na lista.
+    """
+    tributaria = ("PLANILHA PARA CÁLCULO DE RETENÇÕES SOBRE PRESTAÇÃO DE SERVIÇOS\n"
+                  "FUNDAMENTAÇÃO LEGAL: Art. 2º-A da Instrução Normativa RFB nº 1234, de 2012.\n")
+    assert not extrair_deterministico(tributaria)["dispositivo"]["valor"]
+
+
+def test_a_janela_de_exclusao_olha_para_OS_DOIS_LADOS():
+    """O rodapé de assinatura vem ANTES do artigo; a norma tributária vem DEPOIS. Olhar só para
+    trás — como a primeira versão fazia — deixava a citação fiscal entrar limpa."""
+    d = extrair_deterministico(
+        "Autorizo na forma do art. 90 da Lei 287/1979.\n"
+        "FUNDAMENTAÇÃO LEGAL: Art. 2º-A da Instrução Normativa RFB nº 1234.\n")["dispositivo"]
+    assert d["valor"] == "art. 90"
