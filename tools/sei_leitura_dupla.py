@@ -151,7 +151,10 @@ _PADROES: dict[str, str] = {
     # `PE Nº 026/2023` — a sigla do Pregão Eletrônico aparece SOZINHA no extrato, sem a palavra
     # "Pregão" por perto, e o certame escapava. Exigir o `nº` logo depois do `PE` é o que impede
     # que a sigla de estado ("PE" de Pernambuco) ou qualquer par de maiúsculas vire certame.
-    "pregao": (r"(?:(?i:preg[ãa]o)[^\n]{0,30}?(?i:n)[º°o.]{0,3}\s*(?:[A-Z]{2,3}\s*)?|"
+    # `PERP 02/2020` — Pregão Eletrônico para Registro de Preços, sigla de QUATRO letras. A régua
+    # aceitava 2 ou 3 (`PE`, `SRP`) e perdia o certame inteiro. E o `nº` nem sempre vem: aqui é
+    # `EDITAL DE PREGÃO ELETRÔNICO PERP 02/2020`, com a sigla direto depois do nome da modalidade.
+    "pregao": (r"(?:(?i:preg[ãa]o)[^\n]{0,30}?(?:(?i:n)[º°o.]{0,3}\s*)?(?:[A-Z]{2,4}\s*)?|"
                r"\bPE\s*(?i:n)[º°o.]{0,3}\s*)"
                r"(\d{1,4}/(?:20)?\d{2})"),
 }

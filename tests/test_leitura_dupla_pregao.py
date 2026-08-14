@@ -38,3 +38,20 @@ def test_acha_o_certame_nas_grafias_que_o_documento_usa(texto, esperado):
 def test_ano_curto_sem_a_palavra_pregao_NAO_entra():
     """Sem a âncora, `008/23` casaria com fração, item de tabela ou numeração qualquer."""
     assert not extrair_deterministico("Item 008/23 da planilha de custos.\n")["pregao"]["valor"]
+
+
+def test_sigla_de_QUATRO_letras_e_sem_o_marcador_de_numero():
+    """`EDITAL DE PREGÃO ELETRÔNICO PERP 02/2020` — Pregão Eletrônico para Registro de Preços.
+
+    Dois detalhes de uma vez: a sigla tem QUATRO letras (a régua aceitava 2 ou 3, `PE` e `SRP`) e o
+    `nº` NÃO aparece — a sigla vem direto depois do nome da modalidade. Cada um sozinho já custava o
+    certame inteiro.
+    """
+    assert extrair_deterministico(
+        "EDITAL DE PREGÃO ELETRÔNICO PERP 02/2020\n")["pregao"]["valor"] == "02/2020"
+
+
+def test_afrouxar_o_marcador_nao_pode_criar_falso_positivo():
+    """Tornar o `nº` opcional aumenta o alcance — e o teste de fronteira continua valendo: sem a
+    palavra "Pregão" por perto, número solto não vira certame."""
+    assert not extrair_deterministico("Item 008/23 da planilha de custos.\n")["pregao"]["valor"]
