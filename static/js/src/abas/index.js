@@ -2544,8 +2544,15 @@ async function leituraDupla(){
      comparador passou a resolver por aritmética e por fonte canônica — número certo com rótulo
      errado é o mesmo vício de somar o que não se soma. */
   const _fora=d.fora_da_fila_por_motivo||{};
+  /* CADA ESTADO PRECISA DE NOME, e a rota já devolve SETE. Chave crua na tela é o mesmo vício de
+     rótulo que agrega o que não se agrega — só que pior, porque não diz nada. Três destes medem o
+     DESENHO, não o acervo, e o texto diz isso: campo criado depois, pergunta sem resposta única, e
+     texto que a IA nem chegou a ler. */
   const _nome={nenhum_dos_dois:'nenhum dos dois achou',ausencia_declarada:'o documento declara que NÃO HÁ',
                ia_errou_o_maior:'ranque de valor — aritmética decide',so_fonte_canonica:'a Ordem Bancária já resolveu',
+               ia_corroborada_pela_ob:'a Ordem Bancária confirma a IA',
+               varios_instrumentos:'o processo cita VÁRIOS — a pergunta não tem resposta única',
+               fora_da_janela_da_ia:'⚠️ o valor está além do texto que a IA leu',
                nao_perguntado:'⚠️ campo criado DEPOIS da leitura — a IA não foi perguntada'};
   if(Object.keys(_fora).length) h+=card(`<div class="dim">fora da fila, por motivo: `
     +Object.entries(_fora).sort((a,b)=>b[1]-a[1])

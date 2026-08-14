@@ -42,3 +42,18 @@ def test_fragmento_curto_demais_nao_entra():
 def test_vazio_e_ausente_devolvem_lista_vazia():
     for v in (None, "", "[]", "None", []):
         assert _falta(v) == []
+
+
+def test_todo_estado_do_balde_tem_NOME_no_painel():
+    """Chave crua na tela não diz nada — e a rota já devolve SETE motivos distintos.
+
+    Três deles medem o DESENHO e não o acervo (campo criado depois da leitura, pergunta sem resposta
+    única, texto além da janela da IA), e por isso o nome precisa explicar, não rotular.
+    """
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "static" / "js" / "src" / "abas"
+          / "index.js").read_text(encoding="utf-8")
+    for estado in ("nenhum_dos_dois", "ausencia_declarada", "ia_errou_o_maior", "so_fonte_canonica",
+                   "ia_corroborada_pela_ob", "varios_instrumentos", "fora_da_janela_da_ia",
+                   "nao_perguntado"):
+        assert f"{estado}:" in js, f"estado sem nome na tela: {estado}"

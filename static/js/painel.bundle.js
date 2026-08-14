@@ -7721,6 +7721,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       ausencia_declarada: "o documento declara que NÃO HÁ",
       ia_errou_o_maior: "ranque de valor — aritmética decide",
       so_fonte_canonica: "a Ordem Bancária já resolveu",
+      ia_corroborada_pela_ob: "a Ordem Bancária confirma a IA",
+      varios_instrumentos: "o processo cita VÁRIOS — a pergunta não tem resposta única",
+      fora_da_janela_da_ia: "⚠️ o valor está além do texto que a IA leu",
       nao_perguntado: "⚠️ campo criado DEPOIS da leitura — a IA não foi perguntada"
     };
     if (Object.keys(_fora).length) h += card(`<div class="dim">fora da fila, por motivo: ` + Object.entries(_fora).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<b>${fmtN(v)}</b> ${esc(_nome[k] || k)}`).join(" · ") + `</div>`);
