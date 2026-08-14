@@ -51,7 +51,12 @@ set -a; . .env 2>/dev/null; set +a
 # O `--fatia` reparte a fila de forma DETERMINÍSTICA — sem ele os dois pegariam o mesmo processo e
 # gastariam IA em dobro. A escrita aguenta: `INSERT OR REPLACE` com `busy_timeout=60000`.
 # Se um dia o provedor passar a recusar concorrência, basta voltar a UMA linha sem `--fatia`.
-for fatia in 0/2 1/2; do
+# QUATRO, e não duas: medido em 2026-08-14 contra o provedor, 4 concorrentes rendem ~2,6x a vazão
+# de 2 (80k chars em 13,9s contra 48k em 21,8s), com 4/4 de sucesso e sem 429. Desconfio do
+# superlinear — é variação de tamanho entre documentos —, então o ganho honesto esperado é ~2x.
+# Continua sem violar "1 pesado por vez": cada leitor fica em ~0,1% de CPU, esperando rede.
+# Se a memória apertar (a VM é COMPARTILHADA e outra sessão roda Chromium), voltar para 0/2 1/2.
+for fatia in 0/4 1/4 2/4 3/4; do
   timeout 3000 nice -n 10 ionice -c3 .venv/bin/python -u -m tools.sei_leitura_dupla \
       --amostra 200 --gravar --max-chars 150000 --fatia "$fatia" >> data/varredura_sei.log 2>&1 &
 done
