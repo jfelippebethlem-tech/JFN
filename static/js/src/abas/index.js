@@ -2531,8 +2531,8 @@ async function leituraDupla(){
   }
   h+=`<div class="grid g4">${kpi(fmtN(d.acordos),'Fatos em ACORDO','var(--green)','🤝',
       {sobre:'Regra e IA leram o mesmo valor: fato duplamente confirmado, ninguém precisa reler.'})}${
-      kpi(fmtN(d.ausencias_concordes||0),'AUSÊNCIA concorde',null,'➖',
-      {sobre:'Os dois leitores dizem que o campo NÃO EXISTE naquele processo — a mesma resposta, não uma briga. Ficava na fila humana e afogava o sinal: em 31 processos, 61 das 77 linhas eram isto.'})}${
+      kpi(fmtN(d.ausencias_concordes||0),'RESOLVIDOS sem humano',null,'✔️',
+      {sobre:'Fatos que saíram da fila porque não há o que um humano decida — por QUATRO motivos distintos, e o card mostra a quebra abaixo em vez de escondê-los sob um rótulo só: os dois leitores dizem que o campo não existe; o documento DECLARA que não há (SEM CONTRATO); o ranque de valor é decidido por aritmética (ambos viram os mesmos números); ou a Ordem Bancária já resolveu quem recebeu.'})}${
       kpi(fmtN(d.discordancias),'DISCORDÂNCIAS — a fila','var(--amber)','⚖️',
       {sobre:'Onde os dois leitores divergem. Não é veredito: é o único lugar em que o tempo de um humano rende, porque ali ou a nossa régua é estreita ou o modelo inventou.'})}${
       kpi(fmtN(d.total),'Processos lidos 2×',null,'📖',
@@ -2540,6 +2540,15 @@ async function leituraDupla(){
   const est=d.por_estado||{};
   h+=card(`<div class="dim">por tipo de divergência: `
     +Object.entries(est).map(([k,v])=>`<b>${esc(k)}</b> ${fmtN(v)}`).join(' · ')+`</div>`);
+  /* O QUE SAIU DA FILA, E POR QUÊ. Chamar tudo de "ausência" deixou de ser verdade quando o
+     comparador passou a resolver por aritmética e por fonte canônica — número certo com rótulo
+     errado é o mesmo vício de somar o que não se soma. */
+  const _fora=d.fora_da_fila_por_motivo||{};
+  const _nome={nenhum_dos_dois:'nenhum dos dois achou',ausencia_declarada:'o documento declara que NÃO HÁ',
+               ia_errou_o_maior:'ranque de valor — aritmética decide',so_fonte_canonica:'a Ordem Bancária já resolveu'};
+  if(Object.keys(_fora).length) h+=card(`<div class="dim">fora da fila, por motivo: `
+    +Object.entries(_fora).sort((a,b)=>b[1]-a[1])
+      .map(([k,v])=>`<b>${fmtN(v)}</b> ${esc(_nome[k]||k)}`).join(' · ')+`</div>`);
   /* A RÉGUA MUDOU NO MEIO DA MEDIÇÃO, e somar as duas em silêncio seria mentir por omissão:
      as leituras anteriores a 2026-08-13 contavam "os dois dizem que não existe" como
      DIVERGÊNCIA, então a fila delas está inflada e não é comparável com as novas. */

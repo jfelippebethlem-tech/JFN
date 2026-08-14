@@ -965,20 +965,30 @@ def api_leitura_dupla(limite: int = 20):
                 _cols = {r[1] for r in con.execute("PRAGMA table_info(sei_leitura_dupla)")}
                 _regua = "regua" if "regua" in _cols else "NULL AS regua"
                 _naus = "n_ausencia" if "n_ausencia" in _cols else "NULL AS n_ausencia"
+                _aus = ("ausencia_concorde" if "ausencia_concorde" in _cols
+                        else "NULL AS ausencia_concorde")
                 linhas = con.execute(
                     f"SELECT numero_sei, n_acordo, n_discordancia, discordancia, ia, truncado, "
-                    f"{_regua}, {_naus} "
+                    f"{_regua}, {_naus}, {_aus} "
                     "FROM sei_leitura_dupla ORDER BY n_discordancia DESC, numero_sei").fetchall()
             finally:
                 con.close()
-            itens, por_estado, regua_velha = [], {}, 0
-            for sei, na, nd, disc, ia, trunc, regua, naus in linhas:
+            itens, por_estado, regua_velha, fora = [], {}, 0, {}
+            for sei, na, nd, disc, ia, trunc, regua, naus, aus in linhas:
                 if not regua:
                     regua_velha += 1
                 d = _j.loads(disc or "{}")
                 for _campo, v in d.items():
                     e = str(v.get("estado") or "?")
                     por_estado[e] = por_estado.get(e, 0) + 1
+                # O BALDE "FORA DA FILA" TEM QUATRO MOTIVOS DIFERENTES, e chamá-lo de "ausência"
+                # deixou de ser verdade: dos 404 atuais, 238 são ausência (os dois leitores dizem
+                # que o campo não existe, ou o documento DECLARA que não há), 121 são ranque de
+                # valor decidido por aritmética e 45 são fato já resolvido pela Ordem Bancária.
+                # O card mostra a quebra em vez de um rótulo que não descreve o número.
+                for _c, _v in _j.loads(aus or "{}").items():
+                    _e = str(_v.get("estado") or "?")
+                    fora[_e] = fora.get(_e, 0) + 1
                 iad = _j.loads(ia or "{}")
                 itens.append({
                     "processo": sei, "acordo": na, "discordancia": nd,
@@ -988,7 +998,8 @@ def api_leitura_dupla(limite: int = 20):
                     "campos": {k: {"regra": v.get("regra"), "ia": v.get("ia"),
                                    "estado": v.get("estado")} for k, v in d.items()},
                 })
-            return {"itens": itens, "por_estado": por_estado, "regua_velha": regua_velha}
+            return {"itens": itens, "por_estado": por_estado, "regua_velha": regua_velha,
+                    "fora_da_fila": fora}
 
         r = _cache("leitura_dupla", _medir)
         lim = max(1, min(int(limite), 100))
@@ -998,6 +1009,7 @@ def api_leitura_dupla(limite: int = 20):
             "discordancias": sum(x["discordancia"] for x in r["itens"]),
             "ausencias_concordes": sum(x["ausencia"] or 0 for x in r["itens"]),
             "medidos_com_regua_antiga": r["regua_velha"],
+            "fora_da_fila_por_motivo": r["fora_da_fila"],
             "por_estado": r["por_estado"],
             "itens": r["itens"][:lim],
             "fonte": _fonte("sei_leitura_dupla"),
