@@ -43,3 +43,29 @@ def test_numero_que_a_regra_nao_viu_CONTINUA_na_fila():
     """Fora da lista os dois leram números diferentes — ou a régua é cega, ou o modelo inventou."""
     r = _laudo("2.710.247,50", ["3.710.247,50", "610.222,30"])
     assert r["discordancia"]["valor"]["estado"] == "discordam"
+
+
+def test_o_cifrao_nao_pode_impedir_o_encontro():
+    """`_norm` preserva letras, então `R$ 4.100.955,10` virava `R410095510` e nunca casava com o
+    `410095510` da regra — mesmo com o valor ESTANDO na lista. Dinheiro se compara por dígito: o
+    cifrão, o ponto de milhar e a vírgula decimal são grafia, não conteúdo.
+
+    O leitor do volume devolve ora `R$ 4.100.955,10`, ora `233014.52` (padrão americano): as duas
+    grafias têm de encontrar o mesmo número.
+    """
+    r = _laudo("R$ 4.100.955,10", ["414.507.934,94", "4.100.955,10"])
+    assert r["ausencia_concorde"]["valor"]["estado"] == "ia_errou_o_maior"
+
+
+def test_grafia_americana_tambem_encontra():
+    r = _laudo("4100955.10", ["414.507.934,94", "4.100.955,10"])
+    assert "valor" not in r["discordancia"]
+
+
+def test_a_lista_de_valores_guarda_mais_que_quatro_candidatos():
+    """Um processo de despesa traz dezenas de cifras, e a que a IA elege costuma ser real — só não
+    está entre as quatro maiores. Cortar em 4 mandava para a fila humana o que a aritmética resolve.
+    """
+    from tools.sei_leitura_dupla import extrair_deterministico
+    texto = "".join(f"R$ {n}.000.000,00\n" for n in range(1, 15))
+    assert len(extrair_deterministico(texto)["valores"]["alternativas"]) > 4

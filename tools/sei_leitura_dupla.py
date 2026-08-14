@@ -147,8 +147,14 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
                       # O CORTE ESCONDE FUNDAMENTO LEGÍTIMO. Para o dispositivo a lista de
                       # candidatos É a resposta (o processo fundamenta em vários), então cortar em 4
                       # jogava fora justamente o que a IA tinha achado.
+                      # O CORTE ESCONDE CANDIDATO LEGÍTIMO — duas vezes a mesma lição. No
+                      # dispositivo, porque o despacho fundamenta em vários; no VALOR, porque um
+                      # processo de despesa traz dezenas de cifras e a que a IA elegeu costuma ser
+                      # real, só não estava entre as quatro maiores. Guardar mais candidatos não
+                      # custa nada (é JSON já gravado) e é o que permite conferir por pertinência.
                       "alternativas": [{"valor": a, "ocorrencias": b}
-                                       for a, b in resto[:12 if campo == "dispositivo" else 4]]}
+                                       for a, b in resto[:12 if campo in ("dispositivo", "valores")
+                                                         else 4]]}
     return out
 
 
@@ -409,11 +415,19 @@ def pagamento_do_processo(proc: str) -> dict:
 
 
 def _na_lista(v_ia, campo_det: dict) -> bool:
-    """O valor da IA está entre os candidatos que a regra colheu?"""
-    alvo = _norm(v_ia)
+    """O valor da IA está entre os candidatos que a regra colheu? Compara SÓ DÍGITOS.
+
+    `_norm` preserva letras, então `R$ 4.100.955,10` virava `R410095510` e nunca casava com o
+    `410095510` da regra — mesmo com o valor estando na lista. Dinheiro se compara por dígito: o
+    cifrão, o ponto de milhar e a vírgula decimal são grafia, não conteúdo. Medido: o leitor novo
+    devolve ora `R$ 4.100.955,10`, ora `233014.52` (padrão americano), e as duas grafias têm de
+    encontrar o mesmo número.
+    """
+    so_digitos = lambda x: re.sub(r"\D", "", str(x or ""))   # noqa: E731
+    alvo = so_digitos(v_ia)
     if not alvo:
         return False
-    return any(_norm(x) == alvo for x in
+    return any(so_digitos(x) == alvo for x in
                [campo_det.get("valor", "")] + [a["valor"] for a in campo_det.get("alternativas", [])])
 
 
