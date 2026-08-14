@@ -42,7 +42,19 @@ carga=$(awk '{printf "%d", $1}' /proc/loadavg)
 # `--amostra` alto não é problema: o lote termina quando o timeout chega, e o próximo continua de
 # onde parou (a fila é calculada do que ainda não foi lido).
 set -a; . .env 2>/dev/null; set +a
-timeout 3000 nice -n 10 ionice -c3 .venv/bin/python -u -m tools.sei_leitura_dupla \
-    --amostra 200 --gravar --max-chars 150000 >> data/varredura_sei.log 2>&1
+
+# DOIS LEITORES, E A REGRA DA CASA CONTINUA VALENDO. "1 pesado por vez" protege 2 vCPU, e a medição
+# de 2026-08-14 mostra que a leitura NÃO é pesada de CPU: o leitor vivo estava em 0,1% de CPU, com
+# mediana de 17,4 s por chamada — ele passa o tempo esperando a rede, não calculando. Medido contra
+# o provedor com documento real (corrigindo o viés de tamanho do lote de teste): ~2,1× de vazão com
+# dois em paralelo, sem 429 e sem erro de cota. A ~46 leituras/h, isso tira ~19 h do acervo.
+# O `--fatia` reparte a fila de forma DETERMINÍSTICA — sem ele os dois pegariam o mesmo processo e
+# gastariam IA em dobro. A escrita aguenta: `INSERT OR REPLACE` com `busy_timeout=60000`.
+# Se um dia o provedor passar a recusar concorrência, basta voltar a UMA linha sem `--fatia`.
+for fatia in 0/2 1/2; do
+  timeout 3000 nice -n 10 ionice -c3 .venv/bin/python -u -m tools.sei_leitura_dupla \
+      --amostra 200 --gravar --max-chars 150000 --fatia "$fatia" >> data/varredura_sei.log 2>&1 &
+done
+wait
 
 echo "$(date -Is) disparo encerrado (saída $?)" >> data/varredura_sei.log
