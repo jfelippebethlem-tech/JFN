@@ -266,7 +266,18 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
             if recentes:
                 ordenada = recentes + [x for x in ordenada if x not in recentes]
         (v, n), *resto = ordenada
-        out[campo] = {"valor": v, "ocorrencias": n,
+        # POSIÇÃO EM QUE A RÉGUA CASOU, e não `texto.find(valor)`. A busca pela string nua acha
+        # ocorrência coincidente (um `02/2023` dentro de um número de processo, por exemplo) e
+        # mente sobre onde o instrumento aparece — foi assim que a guarda de janela nasceu morta,
+        # medindo 0% onde a amostra manual dava 68%. É a MESMA armadilha que já me enganou ao
+        # inspecionar contexto: procurar o trecho casado, nunca o valor solto.
+        pos = -1
+        for _m in re.finditer(pad, texto or ""):
+            _cand = _m.group(0)
+            if str(v) in _cand or (_m.groups() and str(v) in " ".join(g or "" for g in _m.groups())):
+                pos = _m.start()
+                break
+        out[campo] = {"valor": v, "ocorrencias": n, "pos": pos,
                       # O CORTE ESCONDE FUNDAMENTO LEGÍTIMO. Para o dispositivo a lista de
                       # candidatos É a resposta (o processo fundamenta em vários), então cortar em 4
                       # jogava fora justamente o que a IA tinha achado.
@@ -680,7 +691,7 @@ def comparar(det: dict, ia: dict, pago: dict, texto: str = "") -> dict:
             # assimetria é do desenho: a IA para na primeira janela que responde, a régua varre
             # 150k. Chamar isso de "a IA perdeu" é medir o leitor pela minha decisão de custo.
             _vistos = ia.get("chars_vistos") or 0
-            _pos = texto.find(str(v_det)) if (texto and v_det) else -1
+            _pos = det.get(_DE_PARA.get(campo, campo), {}).get("pos", -1)
             estado = ("fora_da_janela_da_ia"
                       if (campo in ("contrato", "pregao", "arp", "tac") and n_det and _vistos
                           and _pos >= _vistos)
