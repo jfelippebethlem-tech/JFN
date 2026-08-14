@@ -51,3 +51,21 @@ def test_o_gabarito_acumula_entre_rodadas():
 
 def test_o_marcador_de_nao_conferido_e_explicito():
     assert NAO_CONFERI == "?"
+
+
+def test_conferir_existe_e_cobre_os_quatro_instrumentos():
+    """A conferência por documento INTEIRO nasceu de um viés medido: eu montava o gabarito lendo
+    TRECHOS e, em cinco casos, escrevi `NAO_CONSTA` onde o documento tinha o instrumento — sempre na
+    mesma direção, sempre subestimando o leitor bom.
+
+    Gabarito enviesado para a ausência leva a "consertar" régua que está certa, que é o erro mais
+    caro possível numa ferramenta de fiscalização. Por isso a conferência virou comando, em vez de
+    depender de eu lembrar de fazê-la.
+    """
+    import inspect
+
+    from tools.gabarito_claude import conferir
+    fonte = inspect.getsource(conferir)
+    for campo in ("contrato", "arp", "pregao", "tac"):
+        assert f'"{campo}"' in fonte, f"{campo} ficou fora da conferência"
+    assert "texto_do_processo" in fonte, "a conferência tem de ler o documento, não um recorte"

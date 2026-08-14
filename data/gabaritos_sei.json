@@ -383,5 +383,37 @@
     "dispositivo": "?",
     "favorecido": "?",
     "fonte": "claude"
+  },
+  "080001/000582/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "080002/016118/2026": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "004/2023",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "270006/017879/2026": {
+    "contrato": "89/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "claude"
+  },
+  "270131/000548/2023": {
+    "contrato": "16/2023",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "claude"
   }
 }

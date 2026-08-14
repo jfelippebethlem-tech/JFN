@@ -68,6 +68,33 @@ def concorda(a, b) -> bool:
     return da == db or da in db or db in da
 
 
+def conferir(proc: str, max_chars: int = 150_000) -> dict:
+    """Todos os instrumentos que o documento INTEIRO menciona, por tipo.
+
+    NASCEU DE UM VIÉS MEDIDO. Eu montava o gabarito lendo TRECHOS, e em CINCO casos escrevi
+    `NAO_CONSTA` onde o documento tinha o instrumento — sempre na mesma direção, sempre subestimando
+    o leitor bom. Um gabarito enviesado para a ausência levaria a "consertar" régua que está certa,
+    que é o erro mais caro possível numa ferramenta de fiscalização.
+
+    A busca por documento inteiro elimina o viés e é mais rápida que ler recorte. Usar ANTES de
+    escrever qualquer `NAO_CONSTA`.
+    """
+    from tools.sei_confronto_llm import texto_do_processo
+    from tools.sei_leitura_dupla import _PADROES
+    texto = texto_do_processo(proc, max_chars=max_chars) or ""
+    achados: dict = {}
+    for campo in ("contrato", "arp", "pregao", "tac"):
+        vistos: list = []
+        for m in re.finditer(_PADROES[campo], texto):
+            trecho = re.sub(r"\s+", " ", m.group(0))[:70]
+            if trecho not in vistos:
+                vistos.append(trecho)
+            if len(vistos) >= 4:
+                break
+        achados[campo] = vistos
+    return achados
+
+
 def carregar() -> dict:
     if not _GAB.exists():
         return {}
@@ -127,7 +154,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap.add_argument("--gravar", help="processo a registrar (com --campos)")
     ap.add_argument("--campos", help='JSON: {"contrato":"85/2022","arp":"NAO_CONSTA",...}')
     ap.add_argument("--placar", action="store_true")
+    ap.add_argument("--conferir", help="lista os instrumentos que o processo INTEIRO menciona")
     a = ap.parse_args(argv)
+    if a.conferir:
+        for campo, v in conferir(a.conferir).items():
+            print(f"  {campo:9}: {v if v else 'NENHUM no documento inteiro'}")
+        return 0
     if a.gravar and a.campos:
         d = gravar(a.gravar, json.loads(a.campos))
         print(f"gabarito: {len(d)} processos lidos pelo Claude")
