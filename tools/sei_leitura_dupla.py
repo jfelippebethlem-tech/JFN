@@ -702,6 +702,20 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
             # Quando o valor da IA NÃO está na lista, aí sim ficaram: leram números diferentes, e
             # isso é ou régua cega ou invenção do modelo — as duas merecem o olho.
             estado = "ia_errou_o_maior"
+        elif (campo in ("contrato", "pregao", "arp")
+              and _na_lista(v_ia, det.get(_DE_PARA.get(campo, campo), {}))
+              and len({a["valor"] for a in
+                       det.get(_DE_PARA.get(campo, campo), {}).get("alternativas", [])}) >= 1):
+            # A PERGUNTA NÃO TEM RESPOSTA ÚNICA EM METADE DO ACERVO. Medido em 467 leituras:
+            # **49% dos processos citam mais de um contrato distinto**, 29% mais de um pregão, 16%
+            # mais de uma ata. Um processo trazia quatro atas, quatro pregões e um TAC — é compêndio
+            # de extratos, não um instrumento só.
+            #
+            # Quando os dois leitores escolhem do MESMO conjunto, não discordam sobre o documento:
+            # respondem uma pergunta mal posta. Mandar isso para a fila humana é pedir que alguém
+            # decida qual dos quatro contratos "é" o contrato — decisão que o próprio processo não
+            # tomou. Mesmo tratamento dado ao favorecido de 1.199 recebedores.
+            estado = "varios_instrumentos"
         elif campo == "dispositivo" and (
                 _mesmo_dispositivo(v_det, v_ia)
                 # PERTINÊNCIA, NÃO IDENTIDADE — a mesma lição que resolveu o `favorecido`. Um
@@ -731,7 +745,8 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
         destino = (acordo if estado == "acordo"
                    else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada",
                                                "so_fonte_canonica", "ia_errou_o_maior",
-                                               "ia_corroborada_pela_ob", "nao_perguntado")
+                                               "ia_corroborada_pela_ob", "nao_perguntado",
+                                               "varios_instrumentos")
                    else discordancia)
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
