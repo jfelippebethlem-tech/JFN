@@ -129,6 +129,15 @@ _PADROES: dict[str, str] = {
     # DECLARADA — o sistema afirmando que não há, não dado faltante. Mesma família do
     # `00000000 - SEM CONTRATO`, e merece o mesmo tratamento: sai da fila humana em vez de virar
     # "a regra não achou". Achado lendo os processos à mão.
+    # O TERMO DE AJUSTE DE CONTAS TEM NÚMERO PRÓPRIO, e é o TERCEIRO tipo de instrumento do acervo
+    # (depois de contrato e ata). Achado lendo o `080002/019603/2024`, que traz DOIS num só processo:
+    # `INSTRUMENTO: Termo de Ajuste de Contas nº 1750/2024` e `nº 1907/2024`.
+    #
+    # Importa porque o TAC é o instrumento do caso 🔴 da FSERJ — indeniza serviço prestado SEM
+    # cobertura contratual. Sem número, os TACs eram contáveis só pelo texto do `o_que_e`; com
+    # número, viram instrumento rastreável como qualquer outro.
+    "tac": (r"(?i:termo\s+de\s+ajuste\s+de\s+contas)[^\n]{0,20}?"
+            r"(?i:n)[º°o.]{0,3}\s*(\d{1,5}/\d{2,4})"),
     "sem_embasamento": r"(?i:emb(?:asamento)?\.?\s+legal\s+n[ãa]o\s+sujeito)",
     "arp": (r"(?:(?i:ata\s+de\s+registro\s+de\s+pre[çc]os)|\bARP\b)[^\n]{0,20}?"
             r"(?i:n)[º°o.]{0,3}\s*(\d{1,4}/\d{2,4})"),
@@ -249,6 +258,7 @@ _FATOS = {
     "valor": "o MAIOR valor em reais que aparece no processo",
     "favorecido": "o CNPJ do favorecido/credor do pagamento",
     "arp": "número da Ata de Registro de Preços consumida, se houver (formato NNN/AAAA)",
+    "tac": "número do Termo de Ajuste de Contas, se houver (formato NNNN/AAAA)",
 }
 _JUIZO = {
     "o_que_e": "em uma frase, o que este processo faz",
