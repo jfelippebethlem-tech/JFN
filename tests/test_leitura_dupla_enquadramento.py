@@ -46,9 +46,18 @@ def test_o_rotulo_e_o_artigo_podem_estar_em_linhas_diferentes():
     assert d["dispositivo"]["valor"] == "art. 75, VIII"
 
 
-def test_artigo_de_rotina_sem_marca_de_fundamento_NAO_entra():
-    """`art. 90 da Lei 287/79` aparece em quase todo processo de pagamento — citar não é fundamentar."""
-    d = extrair_deterministico("Segue para liquidação na forma do art. 90 da Lei 287/1979.\n")
+def test_artigo_sem_NENHUMA_marca_de_fundamento_NAO_entra():
+    """Citar não é fundamentar — mas eu tinha errado ONDE fica a fronteira.
+
+    A versão anterior deste teste afirmava que `na forma do art. 90 da Lei 287/79` era "rotina, não
+    fundamento", e exigia que a regra o IGNORASSE. Medido depois, com outro leitor: o art. 90 da Lei
+    287/1979 **é** a autoridade estadual de liquidação e pagamento, e é o fundamento correto de um
+    processo de despesa. A IA acertava e a minha régua é que estava recusando o acerto.
+
+    A fronteira certa é a FÓRMULA: menção solta não entra; menção introduzida por fórmula de
+    autoridade entra.
+    """
+    d = extrair_deterministico("O art. 90 trata da liquidação, como se sabe.\n")
     assert not d["dispositivo"]["valor"]
 
 
@@ -73,3 +82,24 @@ def test_o_dispositivo_guarda_MAIS_candidatos_que_os_demais_campos():
     texto = "".join(f"nos termos do art. {n}, da Lei 14.133/2021.\n" for n in range(1, 15))
     d = extrair_deterministico(texto)["dispositivo"]
     assert len(d["alternativas"]) > 4
+
+
+def test_as_formulas_de_autoridade_mais_comuns_da_redacao_administrativa():
+    """Terceira rodada de âncoras, e de novo vieram do TEXTO, não do palpite.
+
+    Com o leitor novo, a IA passou a citar `arts. 90, 91, 92 da Lei 287/1979` — a autoridade
+    estadual de liquidação e pagamento, que é o fundamento CORRETO de processo de despesa — e a
+    regra não os colhia. Faltavam as três fórmulas mais comuns do despacho brasileiro.
+    """
+    for trecho in ("na forma dos artigos 90, 91, e 92 da Lei Estadual 287/1979",
+                   "em conformidade com o que estabelece os art. 90 a 92 da Lei nº 287/1979",
+                   "preenchidos os requisitos dispostos nos Artigos 90, 91, 92 da Lei nº 287"):
+        assert extrair_deterministico(trecho + "\n")["dispositivo"]["valor"].startswith("art. 90"), (
+            f"fórmula não reconhecida: {trecho[:40]!r}")
+
+
+def test_o_plural_de_artigo_nao_pode_quebrar_o_casamento():
+    """`artigoS 90` falhava porque o padrão só aceitava `artigo` e `art.` — um `s` custava o
+    fundamento inteiro de processos de pagamento."""
+    d = extrair_deterministico("na forma dos artigos 90, 91 e 92 da Lei 287/1979\n")
+    assert d["dispositivo"]["valor"] == "art. 90"

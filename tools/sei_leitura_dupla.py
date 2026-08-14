@@ -83,13 +83,19 @@ _PADROES: dict[str, str] = {
     #     maiúsculas COM LETRAS ESPAÇADAS, e nenhum regex de palavra inteira casa com isso.
     # `_esp()` monta a alternativa tolerante ao espaçamento, para não perder o caso justamente onde
     # ele é mais caro.
+    # TERCEIRA RODADA DE ÂNCORAS, e de novo vieram do texto e não do palpite. Com o leitor novo, a
+    # IA passou a citar `arts. 90, 91, 92 da Lei 287/1979` — a autoridade estadual de liquidação e
+    # pagamento, que é o fundamento CORRETO de processo de despesa — e a regra não os colhia. As
+    # fórmulas que faltavam são as mais comuns da redação administrativa brasileira:
+    # `na forma dos artigos`, `em conformidade com o que estabelece`, `requisitos dispostos nos`.
     "dispositivo": (r"(?:[Ee]nquadramento\s+[Ll]egal|[Ee]mb(?:asamento)?\.?\s+[Ll]egal|"
                     + _esp("fundamenta") + r"|com\s+fulcro|nos\s+termos|com\s+fundamento|"
+                    r"na\s+forma\s+d|em\s+conformidade\s+com|dispost[oa]s?\s+n|"
                     # `[\s\S]` e não `[^\n]`: o rótulo e o artigo ficam em LINHAS diferentes
                     # (`Enquadramento Legal:\nLei n 14.133/2021, Art. 75, VIII`), e proibir a quebra
                     # de linha zerava justamente o caso mais limpo — o do formulário.
                     r"amparo\s+legal)[\s\S]{0,70}?"
-                    r"[Aa]rt(?:igo|\.)?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"),
+                    r"[Aa]rt(?:igos?|\.)?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"),
     "processos_citados": r"\b(\d{6}/\d{6}(?:\.\d)?/\d{4})\b",
     "cnpjs": r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\b",
     # O `R$` E O NÚMERO PODEM ESTAR EM COLUNAS DIFERENTES. Medido no `080002/010108/2024`: a IA
@@ -359,9 +365,9 @@ def _dispositivo(v: str) -> tuple:
     """(lei, artigo, inciso) — dispositivo legal não se compara por texto, se compara por peça."""
     t = str(v or "")
     lei = m.group(1).replace(".", "") if (m := re.search(r"(?:Lei|LEI)[^\d]{0,12}(\d[\d.]{2,9})", t)) else ""
-    art = m.group(1) if (m := re.search(r"[Aa]rt(?:igo|\.)?\s*(\d{1,3})", t)) else ""
+    art = m.group(1) if (m := re.search(r"[Aa]rt(?:igos?|\.)?\s*(\d{1,3})", t)) else ""
     inc = m.group(1).upper() if (m := re.search(
-        r"[Aa]rt(?:igo|\.)?\s*\d{1,3}\s*[º°]?\s*,?\s*(?:inciso\s*)?\b([IVXLC]{1,6})\b", t)) else ""
+        r"[Aa]rt(?:igos?|\.)?\s*\d{1,3}\s*[º°]?\s*,?\s*(?:inciso\s*)?\b([IVXLC]{1,6})\b", t)) else ""
     return (lei, art, inc)
 
 
