@@ -108,7 +108,14 @@ _PADROES: dict[str, str] = {
     # do `R$`, que continua sendo o sinal mais forte quando existe.
     "valores": r"(?:R\$\s?([\d.]{4,18},\d{2})|\b(\d{1,3}(?:\.\d{3})+,\d{2})\b)",
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
-    "pregao": r"[Pp]reg[ãa]o[^\n]{0,24}n[º°o.]{0,3}\s*(\d{1,4}/20\d{2})",
+    # `PREGÃO ELETRÔNICO N.º PE 008/23` — duas coisas que a régua não previa e que o texto ensinou:
+    # a sigla `PE` ENTRE o "nº" e o número, e o ano de DOIS dígitos. A régua exigia dígito logo
+    # depois do "nº" e ano de quatro, então perdia o certame inteiro. O ano curto só é aceito com a
+    # palavra "Pregão" perto (a janela de 30 chars), senão `008/23` casaria com qualquer fração.
+    # `(?i:...)` porque o documento escreve `PREGÃO ELETRÔNICO N.º` em CAIXA ALTA e o `[Pp]reg[ãa]o`
+    # só admitia o resto minúsculo — a régua perdia justamente a forma mais comum em publicação.
+    "pregao": (r"(?i:preg[ãa]o)[^\n]{0,30}?(?i:n)[º°o.]{0,3}\s*(?:[A-Z]{2,3}\s*)?"
+               r"(\d{1,4}/(?:20)?\d{2})"),
 }
 
 
