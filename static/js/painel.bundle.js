@@ -7696,10 +7696,10 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { sobre: "Regra e IA leram o mesmo valor: fato duplamente confirmado, ninguém precisa reler." }
     )}${kpi(
       fmtN(d.ausencias_concordes || 0),
-      "RESOLVIDOS sem humano",
+      "FORA da fila humana",
       null,
       "✔️",
-      { sobre: "Fatos que saíram da fila porque não há o que um humano decida — por QUATRO motivos distintos, e o card mostra a quebra abaixo em vez de escondê-los sob um rótulo só: os dois leitores dizem que o campo não existe; o documento DECLARA que não há (SEM CONTRATO); o ranque de valor é decidido por aritmética (ambos viram os mesmos números); ou a Ordem Bancária já resolveu quem recebeu." }
+      { sobre: 'Fatos que não estão na fila, por motivos DIFERENTES — e a quebra abaixo importa porque nem todos são "resolvido". Resolvidos: os dois leitores dizem que o campo não existe; o documento DECLARA que não há; o ranque de valor é decidido por aritmética; a Ordem Bancária já resolveu quem recebeu. NÃO resolvido: `nao_perguntado` — a leitura é anterior ao campo (arp, tac, valor e favorecido entraram depois), então a IA nunca foi perguntada. Isso é falta de MEDIDA, não concordância, e some quando o processo for relido.' }
     )}${kpi(
       fmtN(d.discordancias),
       "DISCORDÂNCIAS — a fila",
@@ -7720,7 +7720,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       nenhum_dos_dois: "nenhum dos dois achou",
       ausencia_declarada: "o documento declara que NÃO HÁ",
       ia_errou_o_maior: "ranque de valor — aritmética decide",
-      so_fonte_canonica: "a Ordem Bancária já resolveu"
+      so_fonte_canonica: "a Ordem Bancária já resolveu",
+      nao_perguntado: "⚠️ campo criado DEPOIS da leitura — a IA não foi perguntada"
     };
     if (Object.keys(_fora).length) h += card(`<div class="dim">fora da fila, por motivo: ` + Object.entries(_fora).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<b>${fmtN(v)}</b> ${esc(_nome[k] || k)}`).join(" · ") + `</div>`);
     if (d.medidos_com_regua_antiga > 0) h += card(`<div class="dim">⚠️ <b>${fmtN(d.medidos_com_regua_antiga)}</b> de ${fmtN(d.total)} processos foram medidos com a RÉGUA ANTIGA, que contava ausência concorde como divergência — a fila deles está inflada e não é comparável com as leituras novas.</div>`);

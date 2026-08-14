@@ -551,9 +551,23 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
     acordo, discordancia, ausencia = {}, {}, {}
     _DE_PARA = {"valor": "valores", "favorecido": "cnpjs"}   # o nome da pergunta ≠ o do padrão
     # `arp` casa direto: mesmo nome na pergunta e no padrão.
+    fatos_ia = ia.get("fatos") or {}
     for campo in _FATOS:
+        # CAMPO QUE A IA NUNCA FOI PERGUNTADA NÃO É CAMPO QUE ELA PERDEU. Ao acrescentar `arp` e
+        # `tac` ao formulário, as leituras ANTIGAS passaram a exibir tudo que a régua achava como
+        # `so_regra` — 196 linhas de fila que não são divergência nenhuma, só ausência de pergunta.
+        #
+        # A marca é a CHAVE FALTANDO: o extrator preenche todo campo perguntado (mesmo vazio), então
+        # chave ausente significa "esta leitura é anterior ao campo". O `--recomparar` não conserta
+        # isso — ele reaplica a régua, não refaz a pergunta —, e por isso o estado tem de dizer a
+        # verdade em vez de fingir divergência.
+        if ia.get("estado") in ("ok", "ok_parcial") and campo not in fatos_ia:
+            ausencia[campo] = {"regra": det.get(_DE_PARA.get(campo, campo), {}).get("valor", ""),
+                               "ia": "", "estado": "nao_perguntado",
+                               "ocorrencias_regra": 0}
+            continue
         v_det = det.get(_DE_PARA.get(campo, campo), {}).get("valor", "")
-        v_ia = (ia.get("fatos") or {}).get(campo, "")
+        v_ia = fatos_ia.get(campo, "")
         n_det, n_ia = _norm(v_det), _norm(v_ia)
         # CAMPO NUMÉRICO EXIGE NÚMERO. A IA respondeu "Pregão Eletrônico" — a modalidade, não o
         # número — e isso entrava como se fosse achado que a regra perdeu. Sem dígito e sem o token

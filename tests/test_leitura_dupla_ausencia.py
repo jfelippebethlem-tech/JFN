@@ -79,3 +79,30 @@ def test_declaracao_NAO_apaga_fundamento_que_existe_noutro_ponto(monkeypatch):
                "Emb. Legal não sujeito.\nAutorizo na forma do art. 90 da Lei 287/1979.\n",
                {"dispositivo": "art. 90"})
     assert "dispositivo" in r["acordo"]
+
+
+def test_campo_criado_DEPOIS_da_leitura_nao_conta_como_perda_da_ia(monkeypatch):
+    """Ao acrescentar `arp` e `tac` ao formulário, as leituras ANTIGAS passaram a exibir tudo que a
+    régua achava como `so_regra` — **836 linhas de fila que não eram divergência**, só ausência de
+    pergunta. A marca é a CHAVE FALTANDO: o extrator preenche todo campo perguntado, mesmo vazio.
+
+    O `--recomparar` não conserta isso (reaplica a régua, não refaz a pergunta), então o estado tem
+    de dizer a verdade — e o painel precisa distinguir "resolvido" de "não medido".
+    """
+    import json as _j
+    monkeypatch.setattr("tools.sei_leitura_dupla.texto_do_processo",
+                        lambda *a, **k: "Adesão a ARP nº 025/2024.")
+    import tools.sei_leitura_dupla as M
+    r = M.confrontar("030001/000001/2024",
+                     gerar=lambda *a, **k: _j.dumps({"contrato": "NAO_CONSTA"}))
+    # a leitura simulada responde só `contrato`; os demais campos existem no formulário atual
+    assert r["ausencia_concorde"].get("arp", {}).get("estado") != "nao_perguntado", (
+        "leitura NOVA tem todos os campos — `nao_perguntado` só vale para leitura antiga")
+
+
+def test_leitura_antiga_sem_a_chave_vira_nao_perguntado():
+    from tools.sei_leitura_dupla import comparar
+    antiga = {"estado": "ok", "fatos": {"contrato": "443/2025"}}      # sem `arp`/`tac`
+    r = comparar({"arp": {"valor": "025/2024"}}, antiga, {"tem_ob": False})
+    assert r["ausencia_concorde"]["arp"]["estado"] == "nao_perguntado"
+    assert "arp" not in r["discordancia"]

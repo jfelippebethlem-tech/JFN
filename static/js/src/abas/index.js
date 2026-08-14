@@ -2531,8 +2531,8 @@ async function leituraDupla(){
   }
   h+=`<div class="grid g4">${kpi(fmtN(d.acordos),'Fatos em ACORDO','var(--green)','🤝',
       {sobre:'Regra e IA leram o mesmo valor: fato duplamente confirmado, ninguém precisa reler.'})}${
-      kpi(fmtN(d.ausencias_concordes||0),'RESOLVIDOS sem humano',null,'✔️',
-      {sobre:'Fatos que saíram da fila porque não há o que um humano decida — por QUATRO motivos distintos, e o card mostra a quebra abaixo em vez de escondê-los sob um rótulo só: os dois leitores dizem que o campo não existe; o documento DECLARA que não há (SEM CONTRATO); o ranque de valor é decidido por aritmética (ambos viram os mesmos números); ou a Ordem Bancária já resolveu quem recebeu.'})}${
+      kpi(fmtN(d.ausencias_concordes||0),'FORA da fila humana',null,'✔️',
+      {sobre:'Fatos que não estão na fila, por motivos DIFERENTES — e a quebra abaixo importa porque nem todos são "resolvido". Resolvidos: os dois leitores dizem que o campo não existe; o documento DECLARA que não há; o ranque de valor é decidido por aritmética; a Ordem Bancária já resolveu quem recebeu. NÃO resolvido: `nao_perguntado` — a leitura é anterior ao campo (arp, tac, valor e favorecido entraram depois), então a IA nunca foi perguntada. Isso é falta de MEDIDA, não concordância, e some quando o processo for relido.'})}${
       kpi(fmtN(d.discordancias),'DISCORDÂNCIAS — a fila','var(--amber)','⚖️',
       {sobre:'Onde os dois leitores divergem. Não é veredito: é o único lugar em que o tempo de um humano rende, porque ali ou a nossa régua é estreita ou o modelo inventou.'})}${
       kpi(fmtN(d.total),'Processos lidos 2×',null,'📖',
@@ -2545,7 +2545,8 @@ async function leituraDupla(){
      errado é o mesmo vício de somar o que não se soma. */
   const _fora=d.fora_da_fila_por_motivo||{};
   const _nome={nenhum_dos_dois:'nenhum dos dois achou',ausencia_declarada:'o documento declara que NÃO HÁ',
-               ia_errou_o_maior:'ranque de valor — aritmética decide',so_fonte_canonica:'a Ordem Bancária já resolveu'};
+               ia_errou_o_maior:'ranque de valor — aritmética decide',so_fonte_canonica:'a Ordem Bancária já resolveu',
+               nao_perguntado:'⚠️ campo criado DEPOIS da leitura — a IA não foi perguntada'};
   if(Object.keys(_fora).length) h+=card(`<div class="dim">fora da fila, por motivo: `
     +Object.entries(_fora).sort((a,b)=>b[1]-a[1])
       .map(([k,v])=>`<b>${fmtN(v)}</b> ${esc(_nome[k]||k)}`).join(' · ')+`</div>`);
