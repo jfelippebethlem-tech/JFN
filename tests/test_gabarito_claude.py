@@ -82,7 +82,7 @@ def test_entrada_automatica_NAO_pontua_a_regua():
     from tools.gabarito_claude import placar
     fonte = inspect.getsource(placar)
     assert 'esperado.get("fonte") == "conferido"' in fonte
-    assert '(("ia", v_ia),) if automatico' in fonte, (
+    assert "if automatico else" in fonte, (
         "entrada conferida automaticamente não pode pontuar a régua")
 
 
