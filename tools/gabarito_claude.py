@@ -50,8 +50,18 @@ NAO_CONFERI = "?"
 
 
 def _ausente(v) -> bool:
-    return _so_digitos(v) == "" or str(v).strip().upper() in {
-        "NAO_CONSTA", "NÃO_CONSTA", "N/A", "NONE", "NULL", "", "SEM CONTRATO"}
+    """Afirma que não há? `00000000 - SEM CONTRATO` afirma, e tem dígitos.
+
+    A versão anterior exigia a string EXATA e por isso não reconhecia o literal do SIAFE — que
+    começa com `00000000` e portanto passava por `_so_digitos`. Efeito medido: 15 dos 26 "erros" da
+    LLM em `contrato` eram ela dizendo `00000000 - SEM CONTRATO` contra um gabarito `NAO_CONSTA`.
+    A mesma coisa, contada como divergência — exatamente o defeito que abriu esta sessão, agora
+    dentro da ferramenta que julga os outros.
+    """
+    t = str(v).strip().upper()
+    if "SEM CONTRATO" in t or "NAO_CONSTA" in t or "NÃO CONSTA" in t:
+        return True
+    return _so_digitos(v) == "" or t in {"NÃO_CONSTA", "N/A", "NONE", "NULL", ""}
 
 
 def concorda(a, b) -> bool:

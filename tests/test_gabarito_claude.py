@@ -104,3 +104,22 @@ def test_varios_candidatos_viram_NAO_CONFERI_em_vez_de_escolha():
 
     from tools.gabarito_claude import auto_conferir
     assert "len(vals) == 1" in inspect.getsource(auto_conferir)
+
+
+def test_o_literal_do_SIAFE_afirma_ausencia_e_tem_digitos():
+    """`00000000 - SEM CONTRATO` afirma que NÃO HÁ, e passava por "presente" porque tem dígitos.
+
+    Medido: 15 dos 26 "erros" da LLM em `contrato` eram ela dizendo o literal do SIAFE contra um
+    gabarito `NAO_CONSTA`. A mesma resposta, contada como divergência — **exatamente o defeito que
+    abriu esta sessão (ausência concorde na fila), agora dentro da ferramenta que julga os outros
+    dois leitores.** O placar da LLM subiu de 69% para 81% só com o conserto.
+    """
+    assert concorda("NAO_CONSTA", "00000000 - SEM CONTRATO")
+    assert concorda("SEM CONTRATO", "NAO_CONSTA")
+    assert concorda("00000000 - SEM CONTRATO", "")
+
+
+def test_a_correcao_nao_transforma_numero_em_ausencia():
+    """A guarda não pode virar indulgência: número presente contra ausência continua divergindo."""
+    assert not concorda("NAO_CONSTA", "443/2025")
+    assert not concorda("443/2025", "417/2023")
