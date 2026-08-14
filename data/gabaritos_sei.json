@@ -12056,5 +12056,947 @@
     "dispositivo": "?",
     "favorecido": "?",
     "fonte": "conferido"
+  },
+  "030001/000029/2026": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "030001/006332/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "16104867000127",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "040002/002227/2026": {
+    "contrato": "017/2024",
+    "pregao": "008/2023",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "070002/012962/2026": {
+    "contrato": "79/2010",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "070002/018453/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "080001/010293/2026": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "32410037002047",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080001/017578/2025": {
+    "contrato": "015/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "07340993000190",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/011180/2024": {
+    "contrato": "?",
+    "pregao": "271/2022",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "31418513000140",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/013051/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "28470707000180",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/013332/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "28470707000180",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/014277/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "01579387000145",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/014588/2024": {
+    "contrato": "480/2023",
+    "pregao": "290/2022",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "22449467000156",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/016420/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "28470707000180",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/017859/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "60746948000112",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019025/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "28470707000180",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019028/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "28470707000180",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019730/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "31418513000140",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019889/2024": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "27926166000190",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/025494/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "01579387000145",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/028945/2025": {
+    "contrato": "01/2019",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "21214056000119",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/029500/2025": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "0008/2025",
+    "arp": "135/2025",
+    "dispositivo": "?",
+    "favorecido": "51420822000162",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "260006/056341/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "020/25",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/003394/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/006863/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/009324/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "130/2025",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/010213/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "36325157000134",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "260007/012128/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/014194/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "01229958000111",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "260007/014799/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/015082/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "12409711000101",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "260007/015336/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/015569/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018546/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018624/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "80/2024",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018653/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018858/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018970/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000235/2026": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "115/2024",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000912/2026": {
+    "contrato": "117/2024",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270006/012718/2025": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270006/028470/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "0009/2025",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270007/014589/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "120/2023",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270042/000255/2023": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270057/002000/2020": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270114/000643/2022": {
+    "contrato": "83/2019",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270131/000162/2021": {
+    "contrato": "?",
+    "pregao": "068/2019",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270131/000289/2023": {
+    "contrato": "03/2022",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "330005/000352/2026": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/003795/2024": {
+    "contrato": "?",
+    "pregao": "02/2020",
+    "arp": "010/2021",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/005552/2026": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/005637/2025": {
+    "contrato": "?",
+    "pregao": "02/2020",
+    "arp": "010/2021",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/005741/2025": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "490001/000447/2025": {
+    "contrato": "008/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "18786435000179",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "490001/001023/2025": {
+    "contrato": "001/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "18796728000137",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "490001/001454/2024": {
+    "contrato": "033/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "18796728000137",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "490001/001547/2025": {
+    "contrato": "011/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "29150998000192",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "490001/001570/2025": {
+    "contrato": "001/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "18796728000137",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "510001/001294/2025": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "030001/005183/2025": {
+    "contrato": "24/2023",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "030001/007719/2024": {
+    "contrato": "21/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "030001/011369/2026": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "155/2023",
+    "dispositivo": "?",
+    "favorecido": "03746938000143",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "030001/069062/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "00755855000122",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "030001/121908/2025": {
+    "contrato": "42/2025",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "070002/018292/2023": {
+    "contrato": "01/2019",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "35795210000106",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080001/008290/2025": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "080001/020870/2026": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "33734922000181",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/005843/2026": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "09493758000183",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/012229/2026": {
+    "contrato": "?",
+    "pregao": "01/2022",
+    "arp": "003/2023",
+    "dispositivo": "?",
+    "favorecido": "03372304000178",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/014403/2024": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "47548583000153",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/014710/2026": {
+    "contrato": "?",
+    "pregao": "01/2022",
+    "arp": "005/2023",
+    "dispositivo": "?",
+    "favorecido": "02060306000169",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/016081/2024": {
+    "contrato": "407/2022",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "27544276000197",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/017184/2026": {
+    "contrato": "?",
+    "pregao": "01/2022",
+    "arp": "003/2023",
+    "dispositivo": "?",
+    "favorecido": "03372304000178",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019151/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "31418513000140",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019229/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "09493758000183",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/019968/2024": {
+    "contrato": "480/2023",
+    "pregao": "290/2022",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "22449467000156",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/021465/2025": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "19107585000171",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/026911/2025": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "17700763000148",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080002/029189/2025": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "21116118000230",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "150001/003123/2024": {
+    "contrato": "?",
+    "pregao": "02/2020",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "27595780000116",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "260006/054622/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/011787/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "20739464000121",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "260007/012159/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/013176/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/013497/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018287/2024": {
+    "contrato": "SEM CONTRATO",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "260007/018609/2024": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000030/2025": {
+    "contrato": "?",
+    "pregao": "012/22",
+    "arp": "249/2023",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000164/2025": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000182/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "088/2023",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000208/2025": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/000281/2025": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "029/2025",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/002186/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/003787/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "088/2023",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/003901/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "05/2023",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270006/001798/2024": {
+    "contrato": "206/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "40494483000142",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "270006/010024/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270006/011059/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "029/2025",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270084/000464/2022": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270121/000211/2023": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270121/000304/2023": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270121/000416/2023": {
+    "contrato": "?",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270121/000447/2023": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270128/000122/2022": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270131/000120/2022": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "26/2022",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270131/000243/2023": {
+    "contrato": "?",
+    "pregao": "01/2022",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270131/000303/2023": {
+    "contrato": "133/2022",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270131/000354/2022": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "021/2023",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/003070/2024": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "19952299000102",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "420001/003694/2024": {
+    "contrato": "016/2021",
+    "pregao": "02/2020",
+    "arp": "011/2021",
+    "dispositivo": "?",
+    "favorecido": "27595780000116",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "420001/004197/2024": {
+    "contrato": "055/2021",
+    "pregao": "02/2020",
+    "arp": "010/2021",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/005576/2025": {
+    "contrato": "008/2024",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "420001/005999/2025": {
+    "contrato": "?",
+    "pregao": "?",
+    "arp": "?",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
   }
 }
