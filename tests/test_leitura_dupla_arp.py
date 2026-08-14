@@ -39,3 +39,23 @@ def test_a_ata_tambem_e_PERGUNTADA_a_ia():
 def test_contrato_de_verdade_nao_vira_ata():
     d = extrair_deterministico("Contrato nº 443/2025 firmado entre as partes.\n")
     assert not d["arp"]["valor"] and d["contrato"]["valor"] == "443/2025"
+
+
+def test_a_SIGLA_ARP_tambem_e_o_instrumento():
+    """`Adesão a ARP nº 025/2024` é como o EXTRATO CONTRATUAL escreve. Exigir a expressão por
+    extenso perdia justamente a forma abreviada — que é a usada onde o instrumento APARECE (extrato
+    de adesão), não onde ele é explicado."""
+    d = extrair_deterministico("INSTRUMENTO: Contrato n° 182/2024. Adesão a ARP nº 025/2024 PE Nº 026/2023\n")
+    assert d["arp"]["valor"] == "025/2024"
+    assert d["contrato"]["valor"] == "182/2024"
+
+
+def test_a_sigla_PE_sozinha_e_pregao_eletronico():
+    """`PE Nº 026/2023` aparece sem a palavra "Pregão" por perto e o certame escapava."""
+    d = extrair_deterministico("Adesão a ARP nº 025/2024 PE Nº 026/2023 - SES do Maranhão\n")
+    assert d["pregao"]["valor"] == "026/2023"
+
+
+def test_PE_sem_o_numero_marcador_NAO_vira_certame():
+    """Sem exigir o `nº` colado, a sigla de estado (PE de Pernambuco) viraria pregão."""
+    assert not extrair_deterministico("Fornecedor sediado em Recife/PE 2023/2024.\n")["pregao"]["valor"]

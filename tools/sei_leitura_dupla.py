@@ -117,7 +117,14 @@ _PADROES: dict[str, str] = {
     # campo que não aparece, e o que não aparece não se fiscaliza.
     # `(?i:...)` pelo mesmo motivo do pregão: a publicação escreve `ATA DE REGISTRO DE PREÇOS N.º`
     # em caixa alta. O acervo não tinha revelado isso — foi o teste unitário que pegou.
-    "arp": (r"(?i:ata\s+de\s+registro\s+de\s+pre[çc]os)[^\n]{0,20}"
+    # A SIGLA TAMBÉM É O INSTRUMENTO. `Adesão a ARP nº 025/2024` é como o extrato contratual
+    # escreve — e exigir a expressão por extenso perdia justamente a forma abreviada, que é a usada
+    # onde o instrumento aparece de fato (extrato de adesão), não onde ele é explicado.
+    # JANELA PREGUIÇOSA (`{0,20}?`). Com `{0,20}` guloso, `Adesão a ARP nº 025/2024 PE Nº 026/2023`
+    # devolvia **026/2023** — a regex pulava o número da própria ata e casava o do pregão seguinte.
+    # No documento inteiro a frequência mascarava o erro; só o caso isolado, escrito à mão no teste,
+    # expôs. Mais uma vez: acervo grande esconde defeito que o exemplo mínimo denuncia.
+    "arp": (r"(?:(?i:ata\s+de\s+registro\s+de\s+pre[çc]os)|\bARP\b)[^\n]{0,20}?"
             r"(?i:n)[º°o.]{0,3}\s*(\d{1,4}/\d{2,4})"),
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
     # `PREGÃO ELETRÔNICO N.º PE 008/23` — duas coisas que a régua não previa e que o texto ensinou:
@@ -126,7 +133,11 @@ _PADROES: dict[str, str] = {
     # palavra "Pregão" perto (a janela de 30 chars), senão `008/23` casaria com qualquer fração.
     # `(?i:...)` porque o documento escreve `PREGÃO ELETRÔNICO N.º` em CAIXA ALTA e o `[Pp]reg[ãa]o`
     # só admitia o resto minúsculo — a régua perdia justamente a forma mais comum em publicação.
-    "pregao": (r"(?i:preg[ãa]o)[^\n]{0,30}?(?i:n)[º°o.]{0,3}\s*(?:[A-Z]{2,3}\s*)?"
+    # `PE Nº 026/2023` — a sigla do Pregão Eletrônico aparece SOZINHA no extrato, sem a palavra
+    # "Pregão" por perto, e o certame escapava. Exigir o `nº` logo depois do `PE` é o que impede
+    # que a sigla de estado ("PE" de Pernambuco) ou qualquer par de maiúsculas vire certame.
+    "pregao": (r"(?:(?i:preg[ãa]o)[^\n]{0,30}?(?i:n)[º°o.]{0,3}\s*(?:[A-Z]{2,3}\s*)?|"
+               r"\bPE\s*(?i:n)[º°o.]{0,3}\s*)"
                r"(\d{1,4}/(?:20)?\d{2})"),
 }
 
