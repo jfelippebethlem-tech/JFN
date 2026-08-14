@@ -253,7 +253,16 @@ _JANELA = 40_000   # onde a resposta ainda vem completa e em ~2 s (ver `extrair_
 # a fiscalização persegue — quem recebeu e quanto.
 _FATOS = {
     "contrato": "número do contrato que ampara os pagamentos",
-    "dispositivo": "dispositivo legal do enquadramento (artigo e inciso)",
+    # PRINCÍPIO GERAL NÃO É FUNDAMENTO DO PROCESSO. Medido nas 126 discordâncias do campo: a IA
+    # respondia `art. 37, caput` ou `art. 37, XXI` da Constituição — correto e inútil, porque é o
+    # princípio que ampara TODA contratação pública — enquanto o documento citava `art. 90 da Lei
+    # 287/79` (autoridade de liquidação) ou `art. 75, VIII da 14.133` (dispensa emergencial).
+    # A pergunta passa a exigir o dispositivo ESCRITO nos autos, e a recusar a generalização.
+    "dispositivo": ("dispositivo legal citado NOS AUTOS para esta despesa (artigo e inciso, com a "
+                    "lei). NÃO responda princípio geral como art. 37 da Constituição: quero o "
+                    "dispositivo específico que o documento invoca — enquadramento da contratação "
+                    "(ex.: art. 75, VIII da Lei 14.133) ou autoridade de liquidação/pagamento "
+                    "(ex.: art. 90 da Lei 287/1979). Se o documento não citar nenhum, NAO_CONSTA"),
     "pregao": "número do pregão/licitação citado, se houver",
     "valor": "o MAIOR valor em reais que aparece no processo",
     "favorecido": "o CNPJ do favorecido/credor do pagamento",

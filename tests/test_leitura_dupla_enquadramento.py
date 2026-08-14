@@ -148,3 +148,20 @@ def test_a_janela_de_exclusao_olha_para_OS_DOIS_LADOS():
         "Autorizo na forma do art. 90 da Lei 287/1979.\n"
         "FUNDAMENTAÇÃO LEGAL: Art. 2º-A da Instrução Normativa RFB nº 1234.\n")["dispositivo"]
     assert d["valor"] == "art. 90"
+
+
+def test_a_pergunta_recusa_princípio_geral_como_fundamento():
+    """Medido nas 126 discordâncias do campo: a IA respondia `art. 37, caput` ou `art. 37, XXI` da
+    Constituição — correto e INÚTIL, porque é o princípio que ampara toda contratação pública —
+    enquanto o documento citava `art. 90 da Lei 287/79` ou `art. 75, VIII da 14.133`.
+
+    Conferido depois do ajuste: no `080001/010509/2025` a resposta passou de `art. 37, XXI da
+    Constituição` para `arts. 90 a 92 da Lei nº 287/1979`, que é o que os autos invocam.
+
+    A guarda é sobre a PERGUNTA porque foi ali que estava o defeito — a régua já lia certo.
+    """
+    from tools.sei_leitura_dupla import _FATOS
+    pergunta = _FATOS["dispositivo"]
+    assert "NOS AUTOS" in pergunta, "sem exigir o que está escrito, a IA generaliza"
+    assert "art. 37" in pergunta and "NÃO responda" in pergunta, (
+        "o princípio constitucional precisa ser recusado por NOME — foi o erro mais frequente")
