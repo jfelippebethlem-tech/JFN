@@ -144,7 +144,10 @@ _PADROES: dict[str, str] = {
     "tac": (r"(?i:termo\s+de\s+ajuste\s+de\s+contas)[^\n]{0,20}?"
             r"(?i:n)[º°o.]{0,3}\s*(\d{1,5}/\d{2,4})"),
     "sem_embasamento": r"(?i:emb(?:asamento)?\.?\s+legal\s+n[ãa]o\s+sujeito)",
-    "arp": (r"(?:(?i:ata\s+de\s+registro\s+de\s+pre[çc]os)|\bARP\b)[^\n]{0,20}?"
+    # SINGULAR TAMBÉM. `ATA de Registro de Preço nº 001/2018` e `Ata de Registro de Preço nº
+    # 29/2022` — o documento escreve dos dois jeitos, e exigir o plural virava ausência. Achado pelo
+    # PLACAR: a régua "errava" dois casos do gabarito, e ao abrir eram grafias que ela não cobria.
+    "arp": (r"(?:(?i:ata\s+de\s+registro\s+de\s+pre[çc]os?)|\bARP\b)[^\n]{0,20}?"
             r"(?i:n)[º°o.]{0,3}\s*(\d{1,4}/\d{2,4})"),
     "datas": r"\b(\d{2}/\d{2}/20\d{2})\b",
     # `PREGÃO ELETRÔNICO N.º PE 008/23` — duas coisas que a régua não previa e que o texto ensinou:

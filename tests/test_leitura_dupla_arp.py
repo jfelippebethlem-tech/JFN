@@ -90,3 +90,14 @@ def test_as_tres_grafias_de_contrato_seguem_valendo():
                             ("INSTRUMENTO: Contrato n° 182/2024.\n", "182/2024"),
                             ("Contrato 00000000 - SEM CONTRATO\n", "SEM CONTRATO")):
         assert extrair_deterministico(texto)["contrato"]["valor"] == esperado
+
+
+def test_Ata_de_Registro_de_PRECO_no_singular():
+    """O documento escreve dos dois jeitos: `ATA de Registro de Preço nº 001/2018` e
+    `Ata de Registro de Preços Nº 007/2026`. Exigir o plural virava ausência — e foi o PLACAR que
+    denunciou, porque a régua "errava" dois casos do gabarito e ao abrir eram grafias não cobertas.
+    """
+    for texto, esperado in (("ATA de Registro de Preço nº 001/2018 do AGETOP\n", "001/2018"),
+                            ("Ata de Registro de Preço nº 29/2022, para aquisição\n", "29/2022"),
+                            ("conforme Ata de Registro de Preços Nº 007/2026\n", "007/2026")):
+        assert extrair_deterministico(texto)["arp"]["valor"] == esperado
