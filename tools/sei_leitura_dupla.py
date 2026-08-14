@@ -457,12 +457,14 @@ def _interpretar(texto: str, proc: str, gerar) -> dict:
         return caixa.get("r", "")
 
     bruto = ""
+    vistos = 0          # quanto texto a IA REALMENTE leu (ver `fora_da_janela_da_ia`)
     for ini in range(0, max(len(texto), 1), _JANELA):
         pedaco = texto[ini:ini + _JANELA]
         if len(pedaco) < 200 and ini:
             break
         bruto = _com_limite(f"PROCESSO {proc} (trecho {ini // _JANELA + 1}):\n\n{pedaco}"
                             f"\n\nResponda em JSON:\n{campos}")
+        vistos = ini + len(pedaco)
         if bruto and sum(f'"{k}"' in bruto for k in _FATOS) >= 3:
             break
     if not bruto:
@@ -498,12 +500,13 @@ def _interpretar(texto: str, proc: str, gerar) -> dict:
             if m := re.search(r'"%s"\s*:\s*"((?:[^"\\]|\\.)*)"' % re.escape(k), bruto):
                 salvos[k] = m.group(1)
         if salvos:
-            return {"estado": "ok_parcial",
+            return {"estado": "ok_parcial", "chars_vistos": vistos,
                     "fatos": {k: salvos.get(k, "") for k in _FATOS},
                     "interpretacao": {k: salvos.get(k, "") for k in _JUIZO},
                     "salvos_de_resposta_cortada": sorted(salvos)}
         return {"estado": "nao_parseei", "bruto": bruto[:300]}
-    return {"estado": "ok", "fatos": {k: d.get(k, "") for k in _FATOS},
+    return {"estado": "ok", "chars_vistos": vistos,
+            "fatos": {k: d.get(k, "") for k in _FATOS},
             "interpretacao": {k: d.get(k, "") for k in _JUIZO}}
 
 
@@ -622,7 +625,7 @@ def _na_lista(v_ia, campo_det: dict) -> bool:
                [campo_det.get("valor", "")] + [a["valor"] for a in campo_det.get("alternativas", [])])
 
 
-def comparar(det: dict, ia: dict, pago: dict) -> dict:
+def comparar(det: dict, ia: dict, pago: dict, texto: str = "") -> dict:
     """Só a COMPARAÇÃO das duas leituras — sem ler nada, sem chamar IA.
 
     Existe separada porque as RÉGUAS MUDAM E AS LEITURAS NÃO. Cada conserto do comparador (ausência
@@ -672,7 +675,16 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
             # uma verificação posta num `elif` mais abaixo nunca roda. O `Emb. Legal não sujeito`
             # tinha de entrar AQUI — recomparar 409 leituras com zero mudanças foi o sinal de que o
             # ramo estava morto.
-            estado = ("ausencia_declarada" if campo == "contrato" and "SEMCONTRATO" in n_det
+            # A IA NÃO PODE PERDER O QUE NÃO LEU. Medido em 60 casos de `pregao so_regra`: **41
+            # (68%) tinham o valor ALÉM dos 40k que a IA lê** — um deles no caractere 129.161. A
+            # assimetria é do desenho: a IA para na primeira janela que responde, a régua varre
+            # 150k. Chamar isso de "a IA perdeu" é medir o leitor pela minha decisão de custo.
+            _vistos = ia.get("chars_vistos") or 0
+            _pos = texto.find(str(v_det)) if (texto and v_det) else -1
+            estado = ("fora_da_janela_da_ia"
+                      if (campo in ("contrato", "pregao", "arp", "tac") and n_det and _vistos
+                          and _pos >= _vistos)
+                      else "ausencia_declarada" if campo == "contrato" and "SEMCONTRATO" in n_det
                       else "ausencia_declarada"
                       if (campo == "dispositivo" and not n_det
                           and det.get("sem_embasamento", {}).get("ocorrencias"))
@@ -746,7 +758,7 @@ def comparar(det: dict, ia: dict, pago: dict) -> dict:
                    else ausencia if estado in ("nenhum_dos_dois", "ausencia_declarada",
                                                "so_fonte_canonica", "ia_errou_o_maior",
                                                "ia_corroborada_pela_ob", "nao_perguntado",
-                                               "varios_instrumentos")
+                                               "varios_instrumentos", "fora_da_janela_da_ia")
                    else discordancia)
         destino[campo] = {
             "regra": v_det, "ia": v_ia, "estado": estado,
@@ -772,7 +784,7 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
         # São perguntas diferentes, então a discordância era garantida por construção — 32 das 58
         # linhas. O total pago não se perdeu: vive no bloco `pagamento`, onde é fato declarado em
         # vez de briga fabricada.
-    r = comparar(det, ia, pago)
+    r = comparar(det, ia, pago, texto)
     acordo, discordancia, ausencia = r["acordo"], r["discordancia"], r["ausencia_concorde"]
     return {"ok": True, "processo": proc, "chars": len(texto), "truncado": len(texto) >= max_chars,
             "deterministico": det, "ia": ia, "pagamento": pago,
