@@ -17573,5 +17573,38 @@
     "favorecido": "04676236000101",
     "fonte": "conferido",
     "fonte_favorecido": "ob"
+  },
+  "080001/010291/2026": {
+    "contrato": "016/2021",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "53221255004995",
+    "fonte": "conferido",
+    "fonte_favorecido": "ob"
+  },
+  "080001/016892/2021": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "270003/005267/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "30/2025",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
+  },
+  "330003/001387/2025": {
+    "contrato": "NAO_CONSTA",
+    "pregao": "NAO_CONSTA",
+    "arp": "NAO_CONSTA",
+    "dispositivo": "?",
+    "favorecido": "?",
+    "fonte": "conferido"
   }
 }
