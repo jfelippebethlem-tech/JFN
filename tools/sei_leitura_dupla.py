@@ -727,6 +727,18 @@ def comparar(det: dict, ia: dict, pago: dict, texto: str = "") -> dict:
         elif campo == "favorecido" and pago.get("tem_ob") and \
                 re.sub(r"\D", "", str(v_ia)) in pago["favorecidos"]:
             estado = "acordo"     # acertou UM dos que de fato receberam — basta
+        elif campo == "favorecido" and str(
+                (det.get("cnpjs") or {}).get("fonte") or "").startswith("ordem"):
+            # NÃO É DISCORDÂNCIA DE LEITURA — É TEXTO CONTRA PAGAMENTO. Quando o processo tem OB, a
+            # régua NÃO lê o texto: copia o favorecido da Ordem Bancária. Então o par que aparecia
+            # como "os dois leitores discordam" era, na verdade, "o texto nomeia X e a OB pagou Y".
+            # Medido no acervo completo: 294 dos 634 `discordam` de favorecido (46%) eram isto.
+            #
+            # E o sinal é MELHOR do que o rótulo antigo sugeria: quem o processo nomeia não ser quem
+            # recebeu é pergunta de controle externo (cessão, subcontratação, ou erro de atribuição),
+            # não briga entre dois leitores. Mandar isso para a fila como "discordância" pedia que o
+            # fiscal arbitrasse uma disputa que não existe; nomeá-lo devolve a pergunta certa.
+            estado = "texto_nomeia_outro_que_a_ob"
         elif campo == "valor" and _ob_arbitra(v_det, v_ia, pago):
             estado = "ia_corroborada_pela_ob"
         elif campo == "valor" and _na_lista(v_ia, det.get("valores", {})):
