@@ -719,14 +719,26 @@ def comparar(det: dict, ia: dict, pago: dict, texto: str = "") -> dict:
                       # o CNPJ escrito no processo (muitos não o escrevem). Mandar isso para a fila
                       # de leitura humana é pedir que alguém confira o que já está confirmado pela
                       # fonte canônica: o que o texto cala, a OB já disse.
-                      else "so_fonte_canonica" if (campo == "favorecido" and n_det
+                      # lê de `favorecido_ob`, não de `cnpjs`: a OB passou a viver em campo separado
+                      # para não contaminar a medição do leitor (ver `confrontar`). O estado
+                      # continua valendo — o que o texto cala, a OB já disse —, e agora ele vale
+                      # mesmo quando o texto NÃO traz CNPJ nenhum, que é justamente o caso comum.
+                      else "so_fonte_canonica" if (campo == "favorecido"
                                                    and pago.get("tem_ob"))
                       else "so_regra" if n_det else "nenhum_dos_dois")
-        elif not n_det:
-            estado = "so_ia"
+        # A OB ARBITRA A RESPOSTA DA IA — E ISSO VEM ANTES DE `so_ia`. Ordem consertada quando a OB
+        # saiu de `cnpjs` para `favorecido_ob`: com o texto silencioso, `n_det` fica vazio e o ramo
+        # `not n_det` capturava tudo como "só a IA falou", jogando fora a arbitragem. Mas a OB SABE
+        # quem recebeu, mesmo que o texto cale — e usá-la para julgar a IA não contamina medida
+        # nenhuma, porque ela julga a IA, não é a resposta da RÉGUA. Foi a distinção que faltava:
+        # a OB como ÁRBITRO é legítima; a OB como resposta da régua era circular.
         elif campo == "favorecido" and pago.get("tem_ob") and \
                 re.sub(r"\D", "", str(v_ia)) in pago["favorecidos"]:
             estado = "acordo"     # acertou UM dos que de fato receberam — basta
+        elif campo == "favorecido" and pago.get("tem_ob"):
+            estado = "discordam"  # a OB diz quem recebeu, e não foi quem a IA apontou
+        elif not n_det:
+            estado = "so_ia"
         elif campo == "valor" and _ob_arbitra(v_det, v_ia, pago):
             estado = "ia_corroborada_pela_ob"
         elif campo == "valor" and _na_lista(v_ia, det.get("valores", {})):
@@ -802,8 +814,17 @@ def confrontar(proc: str, *, max_chars: int = 250_000, gerar=None) -> dict:
     pago = pagamento_do_processo(proc)
     if pago.get("tem_ob"):
         # A OB PREPONDERA sobre o regex para dinheiro e favorecido — é a fonte canônica da casa.
-        det["cnpjs"] = {"valor": pago["maior_favorecido"], "ocorrencias": pago["n_obs"],
-                        "fonte": "ordem bancária", "alternativas": []}
+        #
+        # MAS EM CAMPO SEPARADO, e isto é conserto de uma CIRCULARIDADE que me enganou por semanas.
+        # Enquanto o valor da OB SOBRESCREVIA `cnpjs`, o placar comparava o favorecido da régua com
+        # um gabarito que vem da MESMA OB: 75% das comparações eram a OB contra ela mesma, e eu
+        # publicava "régua 93% × LLM 70%". Com a régua lendo o TEXTO, o número inverte para
+        # **LLM 64% × régua 47%** — a LLM grátis lê o favorecido MELHOR que o regex, em todas as
+        # unidades com amostra.
+        # O dado da OB não se perde: fica em `favorecido_ob`, onde é fato declarado e continua
+        # servindo ao comparador (`so_fonte_canonica`) sem contaminar a medição do leitor.
+        det["favorecido_ob"] = {"valor": pago["maior_favorecido"], "ocorrencias": pago["n_obs"],
+                                "fonte": "ordem bancária", "alternativas": []}
         # O `valor` NÃO entra por aqui, e isto é conserto de um erro meu da rodada anterior: eu pus
         # o TOTAL PAGO no lado da regra enquanto a IA segue perguntada pelo MAIOR VALOR NO TEXTO.
         # São perguntas diferentes, então a discordância era garantida por construção — 32 das 58
