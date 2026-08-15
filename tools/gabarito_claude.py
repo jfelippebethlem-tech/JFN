@@ -247,6 +247,55 @@ def outro_sistema_de_identificacao(alvo: str, valor: str) -> bool:
     return bool(ano_alvo and m.group(1) == ano_alvo.group(2))
 
 
+def placar_por_unidade(campo: str = "favorecido", minimo: int = 30) -> list:
+    """O mesmo placar, quebrado por UNIDADE — porque o agregado se move com a FILA, não com o leitor.
+
+    MEDIDO três vezes, sempre a mesma armadilha: o número agregado caiu 8 pontos em `favorecido` e eu
+    quase tratei como regressão do leitor. Quebrando por recência, a LLM tinha ido de 76% para **34%**
+    enquanto a RÉGUA fazia 184/184 no mesmo lote — e a causa era composição: o lote recente era 34%
+    da UG 260007 contra 13% no anterior, e 8% da 330003, que era ZERO. A fila entrou em unidades
+    quase ausentes até então.
+
+    Antes disso a régua "subiu" de 36% para 86% (o gabarito da OB só cobre processo de UM favorecido
+    não-fundo, que é o fácil), e caiu 14-19 pontos quando entraram os 372 processos recuperados do
+    cache. Nas TRÊS vezes o leitor não tinha mudado.
+
+    Por isso esta função existe: "a LLM faz 70% em favorecido" é frase sem sentido sem dizer sobre
+    QUAL população. `minimo` corta unidades com amostra pequena demais para significar coisa alguma.
+    """
+    gab = carregar()
+    if not gab:
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=60)
+    try:
+        linhas = {r[0]: (r[1], r[2]) for r in con.execute(
+            "SELECT numero_sei, deterministico, ia FROM sei_leitura_dupla")}
+    finally:
+        con.close()
+    de_para = {"favorecido": "cnpjs", "arp": "arp"}
+    por_ug: dict = {}
+    for proc, esperado in gab.items():
+        linha = linhas.get(proc)
+        if not linha:
+            continue
+        alvo = str(esperado.get(campo, "")).strip()
+        if not alvo or alvo == NAO_CONFERI:
+            continue
+        ug = proc[:6]
+        d = por_ug.setdefault(ug, {"ia_ok": 0, "ia_n": 0, "re_ok": 0, "re_n": 0})
+        det = json.loads(linha[0] or "{}")
+        ia = (json.loads(linha[1] or "{}").get("fatos") or {})
+        if campo in ia:
+            d["ia_n"] += 1
+            d["ia_ok"] += 1 if concorda(alvo, ia.get(campo, "")) else 0
+        v_re = (det.get(de_para.get(campo, campo)) or {}).get("valor", "")
+        d["re_n"] += 1
+        d["re_ok"] += 1 if concorda(alvo, v_re) else 0
+    saida = [(ug, v) for ug, v in por_ug.items() if v["re_n"] >= minimo]
+    saida.sort(key=lambda x: -x[1]["re_n"])
+    return saida
+
+
 def placar() -> dict:
     """Quanto a LLM grátis e a régua acertam CONTRA a leitura do Claude, campo a campo."""
     gab = carregar()
@@ -313,10 +362,25 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap.add_argument("--gravar", help="processo a registrar (com --campos)")
     ap.add_argument("--campos", help='JSON: {"contrato":"85/2022","arp":"NAO_CONSTA",...}')
     ap.add_argument("--placar", action="store_true")
+    ap.add_argument("--por-unidade", metavar="CAMPO", nargs="?", const="favorecido",
+                    help="placar quebrado por UG (o agregado se move com a fila, não com o leitor)")
     ap.add_argument("--conferir", help="lista os instrumentos que o processo INTEIRO menciona")
     ap.add_argument("--favorecido-ob", action="store_true",
                     help="preenche `favorecido` pela OB (fonte canônica) em todo processo lido")
     a = ap.parse_args(argv)
+    if a.por_unidade:
+        campo = a.por_unidade
+        linhas = placar_por_unidade(campo)
+        if not linhas:
+            print(f"sem unidade com amostra suficiente para `{campo}`", file=sys.stderr)
+            return 1
+        print(f"placar de `{campo}` POR UNIDADE (amostra >= 30)\n")
+        print(f"{'UG':8}{'LLM grátis':>16}{'régua':>16}")
+        for ug, v in linhas:
+            ia = f"{v['ia_ok']}/{v['ia_n']} ({100*v['ia_ok']//max(v['ia_n'],1)}%)"
+            re_ = f"{v['re_ok']}/{v['re_n']} ({100*v['re_ok']//max(v['re_n'],1)}%)"
+            print(f"{ug:8}{ia:>16}{re_:>16}")
+        return 0
     if a.favorecido_ob:
         con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=60)
         try:
