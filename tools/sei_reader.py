@@ -501,10 +501,20 @@ async def _ler_cracked(pg, proc: str) -> dict:
     e nunca inventa. Retorna o mesmo formato de dump de ``_extrair_de_todos_frames`` + ``via``/``url``."""
     proto = re.sub(r"(?i)^sei[-\s]*", "", (proc or "").strip())  # SEM prefixo 'SEI-'
     # 1) abre a Pesquisa interna (clique REAL preserva a sessão)
-    await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
+    # O CLIQUE PRECISA DIZER SE ACHOU O LINK. Ele era `void`: quando o `<a>` de Pesquisa não estava
+    # no DOM, nada acontecia e o erro saía como "campo de pesquisa não apareceu" — que aponta para o
+    # CAMPO, não para o link que nunca foi clicado. Medido em 2026-08-15: o cracked falha assim em
+    # TODOS os processos testados, e o `080002/023009/2024` só é lido porque o fallback
+    # `arvore_do_fonte` o alcança (mesma unidade do login). Como o cracked é o ÚNICO caminho para
+    # processo de OUTRA unidade, e é chamado pelo `sei_sweep` em três pontos, a falha silenciosa
+    # tira do alcance uma classe inteira do acervo sem que nada acuse.
+    achou_link = await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e){e.click();return true}return false}""")
     await _ate(pg, lambda: _tem_campo_protocolo(pg), 5000)
     if not await _tem_campo_protocolo(pg):
-        return {"documentos": [], "relacionados": [], "via": "cracked", "erro_cracked": "campo de pesquisa não apareceu"}
+        return {"documentos": [], "relacionados": [], "via": "cracked",
+                "erro_cracked": ("campo de pesquisa não apareceu"
+                                 if achou_link else
+                                 "link 'Pesquisa' NÃO ESTÁ no DOM (o clique nunca aconteceu)")}
     # 2) protocolo SEM prefixo
     try:
         await pg.fill('#txtProtocoloPesquisa', proto)

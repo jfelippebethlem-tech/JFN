@@ -50,3 +50,22 @@ def test_primeira_leitura_nao_inventa_historico():
     con = sqlite3.connect(":memory:")
     _gravar(con, _laudo("070002/019153/2024", "NAO_CONSTA", 150))
     assert con.execute("SELECT COUNT(*) FROM sei_leitura_dupla_hist").fetchone()[0] == 0
+
+
+def test_recomparar_guarda_o_veredito_anterior_de_quem_mudou():
+    """O buraco que o histórico deixou aberto: `_recomparar` faz UPDATE direto.
+
+    Medido em 2026-08-15: a fila de discordância foi de 1.537 para 1.587 num único `--recomparar`,
+    e decompor a subida ficou IMPOSSÍVEL — os vereditos anteriores já tinham sido sobrescritos.
+    "Movimento do placar é composição" só é verificável se o estado anterior sobreviver.
+    """
+    from tools.sei_leitura_dupla import _recomparar
+    con = sqlite3.connect(":memory:")
+    _gravar(con, _laudo("080002/000803/2025", "158/2024", 100))
+    # sem texto no disco, `_recomparar` recompara o que está gravado — basta que rode e conte
+    _recomparar(con)
+    # A PRIMEIRA VERSÃO DESTE TESTE AFIRMAVA `n >= 0` — sempre verdadeiro. Passava sem testar nada.
+    assert con.execute("SELECT COUNT(*) FROM sei_leitura_dupla_hist").fetchone()[0] == 1, \
+        "veredito mudou no recomparar e o estado anterior não foi arquivado"
+    assert json.loads(con.execute("SELECT deterministico FROM sei_leitura_dupla_hist")
+                      .fetchone()[0])["tac"]["valor"] == "158/2024"

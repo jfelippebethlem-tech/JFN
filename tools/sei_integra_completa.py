@@ -19,6 +19,15 @@ import httpx
 import fitz
 
 PROC = sys.argv[1] if len(sys.argv) > 1 else ""   # import (pytest) não traz argumento
+# O PREFIXO `SEI-` TEM DE SAIR ANTES DO TAG. Sem isto, cada letra dele vira um underscore e o
+# destino fica `integra_____080002_023009_2024`, enquanto `sei_arquivar.py` procura
+# `integra_080002_023009_2024`. Medido em 2026-08-15: a captura do `080002/023009/2024` baixou os
+# 69 documentos (206 MB) e o arquivamento seguinte disse "íntegra não encontrada" — 0 documentos
+# arquivados, com tudo no disco. Já havia 396 diretórios nesse estado.
+#
+# O defeito foi DOCUMENTADO em duas rodadas anteriores e mordeu nas duas seguintes (a última
+# escondeu 57 docs / 28 MB). Documentar não conserta: o conserto é esta linha.
+PROC = re.sub(r"^SEI-", "", PROC.strip())
 TAG = re.sub(r"[^0-9]", "_", PROC)
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
 ENV = Path.home() / ".hermes" / ".env"   # por usuário: `/home/ubuntu` cravado quebrava fora desta VM
@@ -70,7 +79,20 @@ async def main():
             print("ADIADO por carga:", m, flush=True)
             return 75
     outdir = Path(f"data/sei_cache/integra_{TAG}"); outdir.mkdir(parents=True, exist_ok=True)
-    async with async_playwright() as pw:
+    # MUTEX REAL DO NAVEGADOR — o mesmo que `sei_reader.ler()` e `extrair_primarios_v3` usam. Este
+    # roteiro abria o Playwright DIRETO, fora do lock, e por isso quem quisesse não somar dois
+    # Chromium (que já derrubaram esta VM 4×) tinha de inventar uma guarda por fora.
+    #
+    # A guarda que inventei media a coisa errada: ausência de PROCESSO com "sweep" no nome. Medido em
+    # 2026-08-15, depois de QUATRO horas de espera sem uma única captura: `browser.lock` inexistente,
+    # ZERO Chromium vivo, e o "alheio" que bloqueava era um `sei_sweep --ug 296100` com 2 SEGUNDOS de
+    # vida. Os sweeps do cron nascem e morrem o tempo todo; esperar que nenhum exista é esperar por
+    # algo que quase nunca acontece — enquanto o recurso disputado de verdade estava livre.
+    #
+    # Com o lock, a exclusão é sobre o RECURSO (um browser por vez), não sobre um nome de processo,
+    # e o `idade_max` ainda descarta lock órfão de sessão que morreu.
+    from compliance_agent.recursos import browser_lock_async
+    async with browser_lock_async(espera_max=1800), async_playwright() as pw:
         b = await pw.chromium.launch(headless=True, args=G.guarded_launch_args())
         ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
               user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
@@ -83,17 +105,46 @@ async def main():
             # 070026/SEAS). Provado 2026-07-13: INEA 070002/004135/2025 = 274 docs via cracked. Fallback:
             # arvore_do_fonte (unidade do login). Os docs trazem {titulo,url}; a url é o nó arvore_visualizar.
             arv = []
+            dump = {}
             try:
                 dump = await SR._ler_cracked(pg, PROC)
                 arv = dump.get("documentos") or []
             except (PWError, asyncio.TimeoutError) as e:
                 print(f"cracked: {str(e)[:60]}", flush=True)
+            fr = None
+            origem = "cracked" if arv else None
             if not arv:
                 fr = await SR.abrir_processo(pg, PROC)
                 if fr:
                     arv = await SR.arvore_do_fonte(pg)
+                    origem = "fallback/arvore_do_fonte" if arv else None
+            # POR QUAL VIA A ÁRVORE VEIO. O log de sucesso dizia só "baixando N docs" e nunca a
+            # origem — e isso escondeu a pergunta que importa. Medido em 2026-08-15: o
+            # `080002/011494/2024` falha SEMPRE com `erro_cracked='campo de pesquisa não apareceu'`,
+            # enquanto o `080002/023009/2024` abre normalmente. Se o cracked falhar nos DOIS e o
+            # segundo estiver entrando pelo fallback, então o cracked está quebrado para todo mundo
+            # — e ele é o único caminho para processo de OUTRA unidade, uma classe inteira do acervo
+            # que ficaria inalcançável sem ninguém perceber.
+            if arv:
+                print(f"árvore via {origem}: {len(arv)} nós"
+                      + (f" (cracked falhou: {dump.get('erro_cracked')!r})"
+                         if origem != "cracked" and dump.get("erro_cracked") else ""), flush=True)
             if not arv:
-                print("SEM ÁRVORE (processo não abriu)"); return
+                # A CAUSA ESTAVA SENDO COLHIDA E JOGADA FORA. `_ler_cracked` NÃO levanta exceção
+                # quando falha de leve: devolve `{"documentos": [], "erro_cracked": "..."}` — e ainda
+                # marca `cadeado`/`n_docs_restritos` quando o processo tem documento restrito. Nada
+                # disso era impresso, então três tentativas seguidas no `080002/011494/2024` (R$ 6,4
+                # mi) produziram a MESMA linha muda, "SEM ÁRVORE", sem dizer o que falhou.
+                #
+                # Log que afirma menos do que o código sabe custa rodada de diagnóstico: eu tinha de
+                # abrir o dump à mão para descobrir algo que o processo já tinha em mãos.
+                print("SEM ÁRVORE (processo não abriu) — "
+                      f"via={dump.get('via')!r} erro_cracked={dump.get('erro_cracked')!r} "
+                      f"cadeado={dump.get('cadeado')!r} "
+                      f"n_docs_restritos={dump.get('n_docs_restritos')!r} "
+                      f"relacionados={len(dump.get('relacionados') or [])} "
+                      f"abrir_processo={'ok' if fr else 'falhou'}", flush=True)
+                return
             # formato p/ o resto do script: {t: titulo, u: url, pai: ''}
             docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
                     for d in arv if d.get("url")]

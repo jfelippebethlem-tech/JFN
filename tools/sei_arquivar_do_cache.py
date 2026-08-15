@@ -156,6 +156,16 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
         docs_novo = sum(1 for x in (item["dados"].get("conteudo_documentos") or [])
                         if len(str(x.get("conteudo") or x.get("texto") or "")) > 50)
         if docs_velho > docs_novo:
+            # SAIR DO LAÇO SEM APAGAR NADA. A decisão de manter o antigo é certa, mas ela não mexia
+            # no manifesto — e a fila é montada por "cache mais novo que o manifesto". Resultado
+            # medido em 2026-08-15: o `070002/019153/2024` reaparecia em TODO disparo do lane
+            # (a cada 20 min), era recontado como "arquivado" e nada era escrito; o manifesto seguia
+            # com a data da véspera. Tocar o `mtime` encerra a repetição e não perde informação: o
+            # conteúdo do arquivo continua exatamente o mesmo.
+            try:
+                (destino / "manifest.json").touch()
+            except OSError:
+                pass
             return {"numero": numero, "docs": 0, "chars": 0, "escritos": 0,
                     "mantido_antigo": f"{docs_velho} docs c/ texto no arquivo × {docs_novo} no cache"}
         import shutil
@@ -308,14 +318,27 @@ def main(argv=None) -> int:
     print(f"processos no cache com texto e sem arquivo: {len(alvos):,} — {total_chars:,} caracteres")
     if not alvos:
         return 0
-    feitos = 0
+    feitos = mantidos = 0
+    chars_escritos = 0
     for x in alvos:
         r = arquivar(x, aplicar=a.aplicar)
         feitos += 1
+        if r.get("mantido_antigo"):
+            mantidos += 1
+        else:
+            chars_escritos += r.get("chars") or 0
         if feitos <= 5 or feitos % 500 == 0:
-            print(f"  {feitos:5d}. {r['numero']:28s} {r['docs']:3d} docs  {r['chars']:>9,} chars")
-    print(f"\n{'arquivados' if a.aplicar else 'arquivaria'}: {feitos:,} processos · "
-          f"{total_chars:,} caracteres" + ("" if a.aplicar else "  (SIMULAÇÃO — use --aplicar)"))
+            print(f"  {feitos:5d}. {r['numero']:28s} {r['docs']:3d} docs  {r['chars']:>9,} chars"
+                  + (f"  [mantido: {r['mantido_antigo']}]" if r.get("mantido_antigo") else ""))
+    # CONTAR O QUE FOI ESCRITO, NÃO O QUE ENTROU NA FILA. O total saía de `alvos` — o ESPERADO — e
+    # somava também os processos em que nada foi escrito. O `070002/019153/2024` era relatado como
+    # "arquivados: 1 processos · 185.203 caracteres" em todo disparo, com zero bytes gravados.
+    # Prometer entrega que não houve é o vício de ler o `200` como prova de entrega.
+    print(f"\n{'arquivados' if a.aplicar else 'arquivaria'}: {feitos - mantidos:,} processos · "
+          f"{chars_escritos:,} caracteres"
+          + (f" · {mantidos:,} mantidos (arquivo existente é mais completo que o cache)"
+             if mantidos else "")
+          + ("" if a.aplicar else "  (SIMULAÇÃO — use --aplicar)"))
     return 0
 
 

@@ -43,3 +43,31 @@ def test_valor_FORA_do_conjunto_continua_na_fila():
     r = comparar(_det("36/2023", "04/2020"),
                  {"estado": "ok", "fatos": {"contrato": "99/1999"}}, {"tem_ob": False})
     assert r["discordancia"]["contrato"]["estado"] == "discordam"
+
+
+def test_vencedor_empatado_nao_vai_para_a_fila_humana():
+    """A régua não elegeu: desempatou.
+
+    Medido no `080002/000803/2025` (AMC): TAC `1840/2024` com UMA ocorrência e cinco alternativas
+    com uma cada. O vencedor era de OUTRA empresa (ANDRÔMEDA, processo `016649/2024`), colhido de um
+    extrato do D.O. que publica 27 Termos de Ajuste de Contas de uma vez. Pôr isso na fila humana é
+    pedir que alguém arbitre uma briga que o texto não tem.
+    """
+    det = {"tac": {"valor": "1840/2024", "ocorrencias": 1,
+                   "alternativas": [{"valor": "1941/2024", "ocorrencias": 1},
+                                    {"valor": "2494/2024", "ocorrencias": 1}]}}
+    r = comparar(det, {"estado": "ok", "fatos": {"tac": "158/2024"}}, {"tem_ob": False})
+    assert "tac" not in r["discordancia"]
+    assert r["ausencia_concorde"]["tac"]["estado"] == "varios_instrumentos"
+
+
+def test_vencedor_folgado_continua_valendo():
+    """Onde há vencedor de verdade, a divergência CONTINUA sendo divergência.
+
+    O `080002/020895/2024` repete o TAC `2000/2024` oito vezes: aí a régua elegeu, e discordar dela
+    é briga legítima. Sem este teste, a regra do empate viraria uma anistia geral.
+    """
+    det = {"tac": {"valor": "2000/2024", "ocorrencias": 8,
+                   "alternativas": [{"valor": "1549/2024", "ocorrencias": 2}]}}
+    r = comparar(det, {"estado": "ok", "fatos": {"tac": "999/2024"}}, {"tem_ob": False})
+    assert r["discordancia"]["tac"]["estado"] == "discordam"

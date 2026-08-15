@@ -628,6 +628,27 @@ def _ob_arbitra(v_regra, v_ia, pago: dict) -> bool:
     return abs(b - ob) < abs(a - ob) * 0.5
 
 
+def _empate_no_topo(campo_det: dict) -> bool:
+    """A régua ELEGEU ou apenas DESEMPATOU?
+
+    O extrator escolhe o candidato mais frequente. Quando a alternativa aparece tantas vezes quanto
+    a vencedora, esse "mais frequente" não existe: o vencedor saiu da ordem de varredura, que é
+    arbitrária. Medido no acervo: em `pregao`, 34,9% dos vencedores estão empatados e 58,3% vencem
+    com UMA ocorrência; em `tac`, 27,4% e 43,2%.
+    """
+    if not isinstance(campo_det, dict) or not campo_det.get("valor"):
+        return False
+    n = campo_det.get("ocorrencias") or 0
+    alts = campo_det.get("alternativas") or []
+    if not n or not alts:
+        return False
+    topo_alt = max((a.get("ocorrencias") or 0) for a in alts)
+    # SEM CONTAGEM NÃO HÁ EMPATE. Quando o campo não traz `ocorrencias`, "não sei quantas vezes"
+    # não é "apareceram o mesmo tanto" — e tratar ausência de dado como empate anistiava
+    # divergência legítima. Um teste que já existia pegou isto na primeira execução.
+    return topo_alt > 0 and topo_alt >= n
+
+
 def _na_lista(v_ia, campo_det: dict) -> bool:
     """O valor da IA está entre os candidatos que a regra colheu? Compara SÓ DÍGITOS.
 
@@ -781,6 +802,23 @@ def comparar(det: dict, ia: dict, pago: dict, texto: str = "") -> dict:
             estado = "acordo"
         elif n_det in n_ia or n_ia in n_det:
             estado = "acordo"
+        elif campo in ("contrato", "pregao", "arp", "tac") and _empate_no_topo(
+                det.get(_DE_PARA.get(campo, campo), {})):
+            # A RÉGUA NÃO ELEGEU — DESEMPATOU. Quando a alternativa tem tantas ocorrências quanto a
+            # vencedora, o "valor" da régua saiu de desempate arbitrário, não de medida, e pôr isso
+            # na fila humana é pedir que alguém arbitre uma briga que o texto não tem.
+            #
+            # Medido em 2026-08-15 no `080002/000803/2025`: TAC `1840/2024` com UMA ocorrência e
+            # cinco alternativas com uma cada — empate quíntuplo. Pior, o vencedor era de OUTRA
+            # empresa (ANDRÔMEDA, processo `016649/2024`), colhido de um extrato do D.O. que publica
+            # 27 Termos de Ajuste de Contas de uma vez.
+            #
+            # ESCOPO DELIBERADAMENTE ESTREITO. No acervo, 566 das 1.537 linhas de `discordam` (36,8%)
+            # têm vencedor empatado, mas 245 são `valor` e 144 `dispositivo` — perguntas de natureza
+            # diferente, que merecem estudo próprio antes de mudar. Aqui só entram os INSTRUMENTOS
+            # (77 linhas), onde a pluralidade já é doutrina medida: 49% dos processos citam mais de
+            # um contrato distinto.
+            estado = "varios_instrumentos"
         else:
             estado = "discordam"
         # OS DOIS DIZEREM "NÃO EXISTE" NÃO É DIVERGÊNCIA. Medido em 31 processos: das 77 linhas na
@@ -919,6 +957,23 @@ def _recomparar(con: sqlite3.Connection) -> int:
             igual += 1
         else:
             mudou += 1
+            # HISTÓRICO TAMBÉM AQUI — E SÓ DE QUEM MUDOU. O histórico nasceu em `_gravar` e deixou
+            # descoberto justamente o caminho que mexe em 2.603 linhas de uma vez: `_recomparar` faz
+            # UPDATE direto. Medido em 2026-08-15: a fila de discordância foi de 1.537 para 1.587
+            # num recomparar, e DECOMPOR essa subida ficou impossível — os vereditos anteriores já
+            # tinham sido sobrescritos. "Movimento do placar é composição" só é verificável se o
+            # estado anterior sobreviver.
+            #
+            # Guardar as 2.603 a cada passada incharia a tabela sem informação: quem não mudou não
+            # tem o que contar. As que mudaram são exatamente as que interessam.
+            con.execute("""CREATE TABLE IF NOT EXISTS sei_leitura_dupla_hist (
+                numero_sei TEXT, chars INTEGER, truncado INTEGER, deterministico TEXT, ia TEXT,
+                lido_em TEXT, arquivado_em TEXT)""")
+            con.execute("""INSERT INTO sei_leitura_dupla_hist
+                (numero_sei, chars, truncado, deterministico, ia, lido_em, arquivado_em)
+                SELECT numero_sei, chars, truncado, deterministico, ia, lido_em, ?
+                  FROM sei_leitura_dupla WHERE numero_sei = ?""",
+                        (datetime.now().isoformat(timespec="seconds"), proc))
         con.execute("UPDATE sei_leitura_dupla SET n_acordo=?, n_discordancia=?, n_ausencia=?, "
                     "discordancia=?, ausencia_concorde=?, regua=?, deterministico=? "
                     "WHERE numero_sei=?",
