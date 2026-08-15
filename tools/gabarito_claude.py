@@ -288,9 +288,12 @@ def placar_por_unidade(campo: str = "favorecido", minimo: int = 30) -> list:
         if campo in ia:
             d["ia_n"] += 1
             d["ia_ok"] += 1 if concorda(alvo, ia.get(campo, "")) else 0
-        v_re = (det.get(de_para.get(campo, campo)) or {}).get("valor", "")
-        d["re_n"] += 1
-        d["re_ok"] += 1 if concorda(alvo, v_re) else 0
+        # a régua só pontua quando LEU O TEXTO — em `favorecido` ela copia da Ordem Bancária quando o
+        # processo tem OB, e o gabarito vem da MESMA fonte: comparar isso é a OB contra a OB.
+        cn = det.get(de_para.get(campo, campo)) or {}
+        if not (campo == "favorecido" and str(cn.get("fonte") or "").startswith("ordem")):
+            d["re_n"] += 1
+            d["re_ok"] += 1 if concorda(alvo, cn.get("valor", "")) else 0
     saida = [(ug, v) for ug, v in por_ug.items() if v["re_n"] >= minimo]
     saida.sort(key=lambda x: -x[1]["re_n"])
     return saida
@@ -347,8 +350,19 @@ def placar() -> dict:
             # fonte — não saiu de nenhum dos dois leitores — e por isso pontua os DOIS mesmo numa
             # entrada automática. Tratar o processo inteiro como circular apagaria justamente a
             # única medida independente que existe no confronto.
-            circular = automatico and not (
-                campo == "favorecido" and esperado.get("fonte_favorecido") == "ob")
+            # CIRCULARIDADE QUE ME ESCAPOU POR DEZENAS DE RODADAS. Em `favorecido`, a régua NÃO lê o
+            # texto quando o processo tem OB: `sei_leitura_dupla` preenche `det["cnpjs"]` a partir da
+            # Ordem Bancária (`fonte: "ordem bancária"`), que é EXATAMENTE a fonte do gabarito. Eu
+            # estava comparando a OB com a OB e chamando isso de acerto da régua.
+            # MEDIDO: 838 de 1.104 comparações (75%) vinham da OB — todas "certas" por construção. Nas
+            # 266 em que a régua de fato leu o TEXTO, ela acerta 72%, contra 70% da LLM: empate, e não
+            # os 93% × 70% que eu vinha publicando. A conferência de contenção da rodada 105 não pegou
+            # isso porque a igualdade era exata — a marca era o campo `fonte`, não o valor.
+            _re_da_ob = (campo == "favorecido"
+                         and str((det.get("cnpjs") or {}).get("fonte") or "").startswith("ordem"))
+            circular = (automatico or _re_da_ob) and not (
+                campo == "favorecido" and esperado.get("fonte_favorecido") == "ob"
+                and not _re_da_ob)
             pares = ((("ia", v_ia),) if ia_perguntada else ()) if circular else (
                 ((("ia", v_ia),) if ia_perguntada else ()) + (("regra", v_re),))
             for quem, valor in pares:
