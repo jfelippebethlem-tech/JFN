@@ -860,6 +860,21 @@ def _gravar(con: sqlite3.Connection, laudo: dict) -> None:
     for col, tipo in (("n_ausencia", "INTEGER"), ("ausencia_concorde", "TEXT"), ("regua", "TEXT")):
         if col not in existentes:
             con.execute(f"ALTER TABLE sei_leitura_dupla ADD COLUMN {col} {tipo}")
+    # HISTÓRICO ANTES DE SOBRESCREVER. `INSERT OR REPLACE` apagava a leitura anterior, e com ela a
+    # única forma de saber que um campo MUDOU de valor entre duas leituras do mesmo processo.
+    # Medido em 2026-08-15 no `080002/000803/2025`: completar o arquivo de 33 para 40 documentos fez
+    # a régua trocar o TAC de `158/2024` (correto, do despacho) por `1840/2024` — que é de OUTRA
+    # empresa, num extrato do D.O. que publica 27 TACs de uma vez. Arquivo MAIOR, leitura PIOR, e
+    # nada disso vira erro: a cobertura segue 100% e o campo segue preenchido. Sem histórico, a
+    # troca só aparece se alguém tiver guardado o "antes" à mão antes de reler.
+    con.execute("""CREATE TABLE IF NOT EXISTS sei_leitura_dupla_hist (
+        numero_sei TEXT, chars INTEGER, truncado INTEGER, deterministico TEXT, ia TEXT,
+        lido_em TEXT, arquivado_em TEXT)""")
+    con.execute("""INSERT INTO sei_leitura_dupla_hist
+        (numero_sei, chars, truncado, deterministico, ia, lido_em, arquivado_em)
+        SELECT numero_sei, chars, truncado, deterministico, ia, lido_em, ?
+          FROM sei_leitura_dupla WHERE numero_sei = ?""",
+                (datetime.now().isoformat(timespec="seconds"), laudo["processo"]))
     con.execute("""INSERT OR REPLACE INTO sei_leitura_dupla
         (numero_sei, chars, truncado, n_acordo, n_discordancia, deterministico, ia,
          discordancia, lido_em, n_ausencia, ausencia_concorde, regua)
