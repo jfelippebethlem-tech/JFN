@@ -30,7 +30,7 @@ espera_navegador() {
     local alheios carga
     alheios=$(ps -C python -o args= 2>/dev/null | grep -E 'sweep|recaptura|integra' | grep -vc leitura_dupla)
     carga=$(awk '{printf "%d", $1}' /proc/loadavg)
-    [ "$alheios" -eq 0 ] && [ "$carga" -lt 4 ] && return 0
+    [ "$alheios" -eq 0 ] && [ "$carga" -lt 2 ] && return 0
     sleep 20
   done
   return 1
@@ -47,9 +47,13 @@ for p in "${PROCESSOS[@]}"; do
     continue
   fi
   echo "$(date -Is) === $p : baixando íntegra ==="
-  timeout 1800 nice -n 10 .venv/bin/python tools/sei_integra_completa.py "$p" || echo "  íntegra falhou"
+  # TETO DE 90 MIN, NÃO 30. Medido no `000803/2025`: a íntegra baixa ~1 documento por minuto (OCR
+  # incluso) e o processo tem 71 — precisa de ~70 min. Com `timeout 1800` ele morreu em 30 min
+  # exatos, com 34 dos 71 PDFs (185 MB) no disco. O log dizia só "íntegra falhou", e a coincidência
+  # do relógio (21:20:36 -> 21:50:36) foi o que denunciou que o assassino era o MEU teto, não o SEI.
+  timeout 5400 nice -n 10 .venv/bin/python tools/sei_integra_completa.py "$p" || echo "  íntegra falhou"
   echo "$(date -Is) === $p : arquivando ==="
-  timeout 900 nice -n 10 .venv/bin/python tools/sei_arquivar.py "$p" || echo "  arquivar falhou"
+  timeout 5400 nice -n 10 .venv/bin/python tools/sei_arquivar.py "${p#SEI-}" || echo "  arquivar falhou"
   n=$(ls "data/sei_arquivo/${slug}/texto" 2>/dev/null | wc -l)
   echo "$(date -Is) $p -> $n documentos no arquivo"
   if [ "$n" -gt 0 ]; then
