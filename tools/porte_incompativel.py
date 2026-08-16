@@ -43,7 +43,15 @@ import argparse
 import collections
 import re
 import sqlite3
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # padrão dos `tools/` da casa
+
+# O FORMATADOR DA CASA, não um `_brl` local: número em real se escreve 1.234,56, e o gate tem
+# catraca para isso (`test_moeda_padrao_brasileiro`) — que pegou este módulo com `{:,.2f}`
+# americano antes do push. Mais uma cópia local do formatador seria a cópia divergente de sempre.
+from compliance_agent.reporting.intel_base import moeda
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -124,12 +132,12 @@ def main() -> int:
     linhas = incompativeis(con, min_razao=a.min_razao, ug=a.ug)
     total = sum(x["pago"] for x in linhas)
     print(f"CNPJ×ano com pagamento acima do teto legal do porte: {len(linhas):,}")
-    print(f"soma paga (apenas OB Contabilizado): R$ {total:,.2f}")
+    print(f"soma paga (apenas OB Contabilizado): R$ {moeda(total)}")
     print("\nINDÍCIO, NÃO PROVA: porte desatualizado na Receita produz o mesmo sinal. "
           "A concentração por unidade é o que separa um caso do outro.\n")
     print(f"{'razão':>7}  {'pago no ano':>17}  {'capital':>13}  {'UG':>7} {'conc':>5}  empresa (ano)")
     for x in linhas[:a.limite]:
-        print(f"{x['razao_teto']:6.0f}x  R$ {x['pago']:14,.2f}  R$ {x['capital_social']:10,.0f}  "
+        print(f"{x['razao_teto']:6.0f}x  R$ {moeda(x['pago']):>17}  R$ {moeda(x['capital_social']):>14}  "
               f"{x['ug_principal']:>7} {100*x['concentracao_ug']:4.0f}%  "
               f"{x['razao_social'][:34]} ({x['ano']})")
     return 0
