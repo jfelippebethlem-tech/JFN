@@ -105,6 +105,20 @@ _PADROES: dict[str, str] = {
                     # de linha zerava justamente o caso mais limpo — o do formulário.
                     r"amparo\s+legal)[\s\S]{0,70}?"
                     r"[Aa]rt(?:igos?|\.)?\s*(\d{1,3})\s*[º°]?\s*,?\s*(?:inciso\s*)?([IVXLC]*|caput)"),
+    # A NORMA, EM CAMPO PRÓPRIO — porque `dispositivo` devolve `art. N` e mais nada. Medido em
+    # 2026-08-15: dos 1.799 processos com `dispositivo` extraído, **100%** trazem só o artigo, sem
+    # a lei. A LLM, do outro lado, nomeia a norma em 425 das 465 linhas de `discordam` (91,4%).
+    # `art. 82` da Lei 14.133 e `art. 82` da Lei 287/79 são coisas distintas, e a régua não sabia
+    # qual — daí a 2ª maior categoria de divergência do sistema ser ESTRUTURAL, não erro de leitura.
+    #
+    # Campo NOVO em vez de mudar o formato de `dispositivo`: o comparador itera sobre `_FATOS`, não
+    # sobre `_PADROES`, então isto é aditivo — não toca `_mesmo_dispositivo`, o placar nem o
+    # `--recomparar`. Trocar `art. 90` por `Lei 287/79, art. 90` mexeria nos três de uma vez.
+    "norma": (r"(?:[Ee]nquadramento\s+[Ll]egal|[Ee]mb(?:asamento)?\.?\s+[Ll]egal|[Ff]undamenta\w*|"
+              r"com\s+fulcro|nos\s+termos|com\s+fundamento|na\s+forma\s+d|em\s+conformidade\s+com|"
+              r"dispost[oa]s?\s+n|amparo\s+legal)[\s\S]{0,90}?"
+              r"((?:Lei|LEI|Decreto|DECRETO|Lei\s+Complementar)\s*(?:Federal\s*|Estadual\s*)?"
+              r"n?[º°.]?\s*[\d][\d\.]{2,}\s*(?:/\s*\d{2,4})?)"),
     "processos_citados": r"\b(\d{6}/\d{6}(?:\.\d)?/\d{4})\b",
     "cnpjs": r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\b",
     # O `R$` E O NÚMERO PODEM ESTAR EM COLUNAS DIFERENTES. Medido no `080002/010108/2024`: a IA
@@ -183,6 +197,13 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
     `alternativas` existe porque um processo cita outros: mostrar só o vencedor esconderia que
     havia dois candidatos próximos — e é justamente aí que a leitura humana decide.
     """
+    # FORA DO LOOP, E DE PROPÓSITO. Estas duas defesas nasceram dentro do bloco do `dispositivo` e
+    # passaram a ser usadas também pelo `norma`. Deixá-las lá criaria dependência da ORDEM do dict
+    # (`norma` antes de `dispositivo` = NameError), e duplicá-las criaria a cópia divergente que já
+    # custou caro a esta casa no teto de dispensa. Uma definição, dois usuários.
+    _RODAPE = re.compile(r"assinado\s+eletronicamente|hor[áa]rio\s+oficial\s+de\s+Bras[íi]lia|"
+                         r"autenticidade\s+deste\s+documento", re.I)
+    _FISCAL = re.compile(r"instru[çc][ãa]o\s+normativa|\bRFB\b", re.I)
     out: dict = {}
     for campo, pad in _PADROES.items():
         achados = re.findall(pad, texto or "")
@@ -212,9 +233,6 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
             #   · RODAPÉ da assinatura: vem ANTES do artigo → olhar 180 chars atrás.
             #   · NORMA TRIBUTÁRIA (`Art. 2º-A da Instrução Normativa RFB`): o marcador vem logo
             #     DEPOIS do artigo, colado → olhar 40 chars à frente, e só isso.
-            _RODAPE = re.compile(r"assinado\s+eletronicamente|hor[áa]rio\s+oficial\s+de\s+Bras[íi]lia|"
-                                 r"autenticidade\s+deste\s+documento", re.I)
-            _FISCAL = re.compile(r"instru[çc][ãa]o\s+normativa|\bRFB\b", re.I)
             # A JANELA PRECISA OLHAR PARA OS DOIS LADOS. O rodapé de assinatura vem ANTES do
             # artigo; a norma tributária vem DEPOIS (`Art. 2º-A da Instrução Normativa RFB nº
             # 1234`). Olhar só para trás deixava a citação fiscal entrar limpa.
@@ -237,6 +255,16 @@ def extrair_deterministico(texto: str, ano_proc: int = 0) -> dict:
                        for m in re.finditer(pad, texto or "")
                        if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])
                        and not _FISCAL.search((texto or "")[m.start():m.end() + 40])]
+        if campo == "norma":
+            # A MESMA DEFESA DO `dispositivo`, E POR MEDIÇÃO. Sem ela, `Decreto nº 48.209` — o
+            # rodapé "Documento assinado eletronicamente ... com fundamento nos art. 28º e 29º do
+            # Decreto nº 48.209" — respondia por **239 das 347** normas colhidas numa amostra de
+            # 387 processos (69%). Com a defesa, some do topo e sobra o que fundamenta a despesa:
+            # Lei 287/79 (89), Lei 14.133/2021 (52), Lei 8.666 (27), Lei 10.520/2002 (6).
+            # A cobertura cai de 89,7% para 62,3%, e essa queda É o sinal de que o lixo saiu.
+            achados = [m.group(1) for m in re.finditer(pad, texto or "")
+                       if not _RODAPE.search((texto or "")[max(0, m.start() - 180):m.start()])
+                       and not _FISCAL.search((texto or "")[max(0, m.start() - 120):m.end() + 120])]
         if campo in ("contrato", "pregao", "arp", "tac"):
             # ANO IMPLAUSÍVEL É LIXO DE EXTRAÇÃO, e lixo que VENCE o campo: `arp=36/0045` e
             # `pregao=091/2073` eram o valor TOPO nos processos onde apareceram, corrompendo a
