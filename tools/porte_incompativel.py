@@ -5,9 +5,18 @@
 PEDIDO DO DONO (2026-08-15): "ver compatibilidade dos contratos com o número de empregados das
 empresas; contrato alto e empresa sem funcionário registrado é empresa de fachada".
 
-**Número de empregados NÃO EXISTE nesta base.** O coletor `compliance_agent/collectors/caged.py`
-está escrito mas nunca alimentou tabela alguma — não há `caged`, `rais` nem `vinculos` no
-`compliance.db`. Dizer "sem funcionário registrado" com o que existe aqui seria inventar.
+**NÚMERO DE EMPREGADOS POR CNPJ NÃO É DADO PÚBLICO NO BRASIL** — e isto não é limitação desta base,
+é da fonte. RAIS identificada e eSocial são protegidos por sigilo; o Novo CAGED público não traz
+CNPJ; os dados abertos de CNPJ da Receita trazem porte, capital, natureza e QSA — não empregados.
+(`collectors/caged.py` existe, mas é sobre ACUMULAÇÃO DE CARGO PÚBLICO, não quadro de empresa.)
+
+O que se pode medir com dado oficial, e que responde à mesma pergunta por dois eixos independentes:
+
+  1. **PORTE** — faixa de RECEITA BRUTA com teto em lei (abaixo);
+  2. **ESTRUTURA SOCIETÁRIA** — nº de sócios no QSA da Receita e natureza jurídica.
+
+Uma empresa de UM sócio que recebe R$ 28 milhões num ano de um único órgão não é uma afirmação sobre
+folha de pagamento: é o retrato do que a empresa DECLARA ser.
 
 O que existe é MELHOR para esta pergunta, e é oficial: o **porte** da Receita, presente em
 `empresas_cadastro` para 36.192 empresas (100% preenchido). Porte não é opinião — é faixa de
@@ -55,6 +64,12 @@ from compliance_agent.reporting.intel_base import moeda
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
+# Códigos da tabela de natureza jurídica da Receita (só os que aparecem no acervo).
+NATUREZA = {
+    "2062": "Soc. Ltda", "2135": "Empresário Individual", "2240": "Soc. Simples Ltda",
+    "2305": "EIRELI", "2054": "S.A. Fechada", "3999": "Associação", "2143": "Cooperativa",
+}
+
 # LC 123/2006, art. 3º, I e II. FONTE ÚNICA — não duplicar noutro detector.
 TETO_ANUAL = {
     "Microempresa": 360_000.00,
@@ -71,8 +86,15 @@ def _ano(data_emissao: str) -> str:
 def incompativeis(con: sqlite3.Connection, min_razao: float = 1.0,
                   ug: str = "") -> list[dict]:
     """CNPJ×ano em que o pago supera o teto legal do porte declarado, do mais gritante ao menos."""
-    porte = {str(b).zfill(8): (p, cap, rs) for b, p, cap, rs in con.execute(
-        "SELECT cnpj_basico, porte_txt, capital_social, razao_social FROM empresas_cadastro")}
+    porte = {str(b).zfill(8): (p, cap, rs, str(nat)) for b, p, cap, rs, nat in con.execute(
+        "SELECT cnpj_basico, porte_txt, capital_social, razao_social, natureza_cod "
+        "FROM empresas_cadastro")}
+    # QSA da Receita: quantos sócios a empresa DECLARA. Não é quadro de pessoal — é estrutura.
+    socios: dict = collections.Counter()
+    for (v,) in con.execute("SELECT cnpj_basico FROM socios_receita"):
+        d = re.sub(r"\D", "", str(v))
+        if len(d) >= 8:
+            socios[d[:8]] += 1
 
     sql = ("SELECT credor, data_emissao, valor, ug_emitente FROM ob_orcamentaria_siafe "
            "WHERE credor IS NOT NULL AND status='Contabilizado'")
@@ -99,7 +121,7 @@ def incompativeis(con: sqlite3.Connection, min_razao: float = 1.0,
         info = porte.get(basico)
         if not info:
             continue
-        porte_txt, capital, razao = info
+        porte_txt, capital, razao, natureza = info
         teto = TETO_ANUAL.get(porte_txt)
         if not teto or total <= teto:
             continue
@@ -113,6 +135,8 @@ def incompativeis(con: sqlite3.Connection, min_razao: float = 1.0,
             "capital_social": capital or 0.0, "ano": ano, "pago": total,
             "teto": teto, "razao_teto": razao_teto,
             "ug_principal": principal,
+            "socios": socios.get(basico, 0),
+            "natureza": NATUREZA.get(natureza, natureza),
             # concentração: quanto do que a empresa recebeu do Estado vem de UMA unidade
             "concentracao_ug": (valor_principal / sum(por_ug.values())) if sum(por_ug.values()) else 0.0,
         })
@@ -135,11 +159,14 @@ def main() -> int:
     print(f"soma paga (apenas OB Contabilizado): R$ {moeda(total)}")
     print("\nINDÍCIO, NÃO PROVA: porte desatualizado na Receita produz o mesmo sinal. "
           "A concentração por unidade é o que separa um caso do outro.\n")
-    print(f"{'razão':>7}  {'pago no ano':>17}  {'capital':>13}  {'UG':>7} {'conc':>5}  empresa (ano)")
+    magros = [x for x in linhas if x["socios"] <= 2]
+    print(f"com DOIS SÓCIOS OU MENOS: {len(magros):,} de {len(linhas):,} "
+          f"· R$ {moeda(sum(x['pago'] for x in magros))}\n")
+    print(f"{'razão':>6} {'pago no ano':>17} {'sócios':>6} {'natureza':<22} {'UG':>7} {'conc':>5}  empresa (ano)")
     for x in linhas[:a.limite]:
-        print(f"{x['razao_teto']:6.0f}x  R$ {moeda(x['pago']):>17}  R$ {moeda(x['capital_social']):>14}  "
-              f"{x['ug_principal']:>7} {100*x['concentracao_ug']:4.0f}%  "
-              f"{x['razao_social'][:34]} ({x['ano']})")
+        print(f"{x['razao_teto']:5.0f}x R$ {moeda(x['pago']):>15} {x['socios']:6d} "
+              f"{x['natureza']:<22} {x['ug_principal']:>7} {100*x['concentracao_ug']:4.0f}%  "
+              f"{x['razao_social'][:30]} ({x['ano']})")
     return 0
 
 
