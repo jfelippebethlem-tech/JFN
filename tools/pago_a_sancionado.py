@@ -118,15 +118,89 @@ def pagos_durante_sancao(con: sqlite3.Connection, restringe_apenas: bool = True,
     return saida
 
 
+def sucessao_societaria(con: sqlite3.Connection, so_administrador: bool = True) -> list[dict]:
+    """Empresa NÃO sancionada que recebe do Estado e tem sócio vindo de empresa SANCIONADA.
+
+    O padrão é clássico: empresa punida é substituída por outra, com a mesma gente. O que impede
+    isso de virar acusação barata é a PREVALÊNCIA — sinal que marca meio acervo não discrimina nada
+    (nesta casa, "um só sócio" foi descartado por atingir 54,9%).
+
+    Medido em 2026-08-17 sobre as 9.269 empresas que recebem do Estado e têm QSA conhecido:
+      · sócio comum em qualquer qualificação ....... 315 (3,4%)
+      · ADMINISTRADOR na sancionada E na nova ...... 158 (1,7%)
+
+    3,4% já discrimina; 1,7% é o corte forte, e é o padrão da função. Sócio minoritário de grande
+    grupo entra no primeiro e sai no segundo — que é exatamente a diferença entre coincidência de
+    participação e continuidade de comando.
+    """
+    ADM = re.compile(r"administrador", re.I)
+    sanc_b = set()
+    for doc, cat in con.execute("SELECT cpf_cnpj, categoria FROM sancoes_federais"):
+        d = re.sub(r"\D", "", str(doc))
+        if len(d) == 14 and RESTRINGE.search(str(cat or "")):
+            sanc_b.add(d[:8])
+
+    de_sancionada: dict = {}
+    for b, doc, nome, qual in con.execute(
+            "SELECT cnpj_basico, doc_socio, nome_socio, qualificacao_txt FROM socios_receita"):
+        if not doc or str(b).zfill(8) not in sanc_b:
+            continue
+        if so_administrador and not ADM.search(str(qual or "")):
+            continue
+        de_sancionada.setdefault(str(doc), (nome, str(b).zfill(8)))
+
+    alvo: dict = collections.defaultdict(list)
+    for b, doc, nome, qual in con.execute(
+            "SELECT cnpj_basico, doc_socio, nome_socio, qualificacao_txt FROM socios_receita"):
+        bb = str(b).zfill(8)
+        if bb in sanc_b or str(doc) not in de_sancionada:
+            continue
+        if so_administrador and not ADM.search(str(qual or "")):
+            continue
+        alvo[bb].append((nome, str(doc), de_sancionada[str(doc)][1]))
+    if not alvo:
+        return []
+
+    pago: dict = collections.defaultdict(float)
+    obs: dict = collections.Counter()
+    for credor, valor in con.execute(
+            "SELECT credor, valor FROM ob_orcamentaria_siafe WHERE status='Contabilizado'"):
+        d = re.sub(r"\D", "", str(credor))
+        if len(d) >= 8 and d[:8] in alvo:
+            pago[d[:8]] += (valor or 0)
+            obs[d[:8]] += 1
+    nomes = {str(b).zfill(8): rs for b, rs in
+             con.execute("SELECT cnpj_basico, razao_social FROM empresas_cadastro")}
+    saida = [{"cnpj_basico": b, "razao_social": nomes.get(b, "?"), "pago": v, "obs": obs[b],
+              "socios": alvo[b][:3]} for b, v in pago.items()]
+    saida.sort(key=lambda x: -x["pago"])
+    return saida
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tudo", action="store_true",
                     help="inclui multa e publicação — que NÃO restringem contratar (conferência)")
     ap.add_argument("--grau", choices=sorted(GRAUS), default="")
     ap.add_argument("--limite", type=int, default=25)
+    ap.add_argument("--sucessao", action="store_true",
+                    help="lente 2: empresa NÃO sancionada com sócio vindo de sancionada")
+    ap.add_argument("--amplo", action="store_true",
+                    help="com --sucessao: aceita qualquer qualificação (3,4%%) em vez de só administrador (1,7%%)")
     a = ap.parse_args()
 
     con = sqlite3.connect(DB)
+    if a.sucessao:
+        linhas = sucessao_societaria(con, so_administrador=not a.amplo)
+        corte = "qualquer qualificação (prevalência 3,4%)" if a.amplo else "ADMINISTRADOR em ambas (prevalência 1,7%)"
+        print(f"empresas NÃO sancionadas que recebem do Estado, com sócio vindo de SANCIONADA")
+        print(f"  corte: {corte}")
+        print(f"  {len(linhas)} empresas · R$ {moeda(sum(x['pago'] for x in linhas))}\n")
+        print(f"{'pago':>18} {'OBs':>5}  empresa · sócio em comum")
+        for x in linhas[:a.limite]:
+            s0 = x["socios"][0] if x["socios"] else ("?", "", "")
+            print(f"R$ {moeda(x['pago']):>15} {x['obs']:5d}  {x['razao_social'][:30]:30} · {s0[0][:26]}")
+        return 0
     linhas = pagos_durante_sancao(con, restringe_apenas=not a.tudo, grau=a.grau)
     total = sum(x["pago"] for x in linhas)
     escopo = ("TODAS as sanções (inclui multa, que NÃO impede contratar)" if a.tudo
