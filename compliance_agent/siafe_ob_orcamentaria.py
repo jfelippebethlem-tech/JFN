@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import sys
+import sqlite3
 import time
 from pathlib import Path
 
@@ -376,7 +377,11 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
                     codigo = cod
                     siafe_coord.set_mfa(cod)      # grava para quem só olha o flag
                     break
-        except Exception as exc:                  # captura passiva é best-effort
+        except (sqlite3.Error, OSError, ImportError, ValueError) as exc:
+            # ESPECÍFICO, não `Exception`: a catraca `test_except_exception_nao_cresce` reprovou o
+            # genérico (1627 > 1626) e tem razão — aqui as falhas possíveis são o state.db do Yoda
+            # ilegível/ausente (sqlite3/OSError), o módulo não instalado (ImportError) ou timestamp
+            # corrompido (ValueError). Qualquer outra coisa é bug e DEVE subir.
             print(f"   [mfa] captura passiva falhou ({exc}); resta o flag", flush=True)
         if codigo:
             break
