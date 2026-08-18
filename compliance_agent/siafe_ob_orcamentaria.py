@@ -345,19 +345,45 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
     pedido_ts = time.time()
     siafe_coord.notificar(
         "🔐 JFN — SIAFE-2 agora exige código MFA (mudança da SEFAZ em 13/07).\n\n"
-        "Um código de 6 dígitos acabou de ser enviado ao seu e-mail da ALERJ.\n"
-        "Responda aqui: *siafe codigo NNNNNN*\n\n"
+        "Um código acabou de ser enviado ao seu e-mail da ALERJ.\n"
+        "Responda aqui com o código — sozinho ou como *siafe codigo XXXX*.\n\n"
         "Vou marcar 'dispensar por 30 dias' — só pedirei de novo no mês que vem.")
     print("   [mfa] aguardando código do Mestre via Telegram...", flush=True)
     codigo = ""
+    # DUAS PORTAS, PORQUE UMA DELAS NUNCA EXISTIU. `siafe_coord.get_mfa()` lê um flag que o Yoda
+    # deveria gravar ao receber "siafe codigo XXXX" — mas NÃO HÁ handler que chame `set_mfa`: o
+    # único chamador é o CLI (`siafe_coord.py:144`). Ou seja, a mensagem instruía o dono a responder
+    # um comando que ninguém escutava, e a sessão ficava presa até o timeout.
+    #
+    # Medido em 2026-08-18: sessão parada 35 min pedindo o código, com o dono respondendo o formato
+    # certo. Destravou só quando gravei o flag à mão.
+    #
+    # A segunda porta JÁ FUNCIONAVA e é usada pelo `siafe_session.py`: captura PASSIVA do state.db
+    # do Yoda, sem handler nenhum. `extrair_codigo` aceita alfanumérico misto (o SIAFE manda
+    # "wmNY6bkR", não 6 dígitos). Reaproveitar é melhor que remendar o Hermes — que o update
+    # sobrescreve (ver `hermes-update-destroi-patches-locais`).
+    from compliance_agent.mfa_telegram import extrair_codigo, mensagens_novas_telegram
+    visto = pedido_ts - 60
     while time.time() - pedido_ts < timeout_s:
         codigo = siafe_coord.get_mfa(depois_de=pedido_ts - 60)
+        if codigo:
+            break
+        try:
+            for ts, texto in mensagens_novas_telegram(visto):
+                visto = max(visto, ts)
+                cod = extrair_codigo(texto)
+                if cod:
+                    codigo = cod
+                    siafe_coord.set_mfa(cod)      # grava para quem só olha o flag
+                    break
+        except Exception as exc:                  # captura passiva é best-effort
+            print(f"   [mfa] captura passiva falhou ({exc}); resta o flag", flush=True)
         if codigo:
             break
         await asyncio.sleep(10)
     if not codigo:
         return {"ok": False, "erro": "mfa_sem_codigo",
-                "detail": f"Mestre não enviou o código MFA em {timeout_s//60}min (responder 'siafe codigo NNNNNN')."}
+                "detail": f"Mestre não enviou o código MFA em {timeout_s//60}min (basta responder o código no Telegram)."}
     print("   [mfa] código recebido — preenchendo", flush=True)
     # IDs EXATOS do diálogo MFA (build 4.168.13). O form de login (usuário/senha) CONTINUA no DOM
     # atrás do popup — um seletor genérico digitava o código no campo Senha e a validação falhava.
