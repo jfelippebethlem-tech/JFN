@@ -48,10 +48,19 @@ REPASSE = re.compile(
     r"defensoria|universidade\s+do\s+estado|uerj|fundo\s+[úu]nico", re.I)
 
 
+# Naturezas que NÃO contratam por licitação: OSS e associações operam por CONTRATO DE GESTÃO, em
+# que concentrar 100% numa unidade é o DESENHO do instituto, não captura do fornecedor. Achado no
+# caso IDEAS (2026-08-21): a lente o trouxe como 1º colocado com R$ 4,12 bi e 100% da UG 296100 —
+# número correto, leitura errada. `estrutura_magra` já filtrava 3999; a dependência não.
+NAO_EMPRESARIAL = {"3999", "2143", "3069", "3255", "3131"}
+
+
 def dependencia(con: sqlite3.Connection, min_pago: float = 1_000_000.0,
                 min_conc: float = 0.95, min_fatia: float = 0.05,
                 com_repasse: bool = False) -> list[dict]:
     """Fornecedores presos a uma unidade que também depende deles."""
+    natureza = {str(b).zfill(8): str(n) for b, n in
+                con.execute("SELECT cnpj_basico, natureza_cod FROM empresas_cadastro")}
     forn: dict = collections.defaultdict(collections.Counter)
     ug_total: dict = collections.Counter()
     nomes: dict = {}
@@ -73,7 +82,8 @@ def dependencia(con: sqlite3.Connection, min_pago: float = 1_000_000.0,
         if total < min_pago:
             continue
         nome = nomes.get(d, "?")
-        if not com_repasse and REPASSE.search(nome):
+        if not com_repasse and (REPASSE.search(nome)
+                                or natureza.get(d[:8]) in NAO_EMPRESARIAL):
             continue
         ug, v = ugs.most_common(1)[0]
         conc = v / total
