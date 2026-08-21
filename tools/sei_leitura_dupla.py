@@ -653,6 +653,18 @@ def _ob_arbitra(v_regra, v_ia, pago: dict) -> bool:
     a, b = _valor_num(v_regra), _valor_num(v_ia)
     if a is None or b is None:
         return False
+    # PERTO, NÃO APENAS MAIS PERTO. A versão anterior exigia só que a IA vencesse a régua na
+    # distância até a OB — e "vencer" não é "acertar". Medido em 2026-08-21: das 913 linhas com este
+    # selo, **215 (23,5%)** tinham a IA a mais de 3× (ou menos de 1/3) da OB; o pior caso dava
+    # `ia_corroborada_pela_ob` a R$ 96.139.630,32 contra uma OB de R$ 1.471.290,59 — 65× de
+    # distância, com selo de CONFIRMAÇÃO.
+    #
+    # O estado se chama "corroborada pela OB": corroborar exige proximidade ABSOLUTA. Quando a IA
+    # também está longe, ninguém acertou — e o caso é da fila humana, não de arquivamento silencioso.
+    # Foi assim que o `080002/017280/2024` ganhou etiqueta de R$ 13.032.755,52 (valor anual de OUTRO
+    # lote, de OUTRO processo, colhido de publicação coletiva do D.O.) sobre uma OB de R$ 585.651,42.
+    if ob <= 0 or not (ob / 3 <= b <= ob * 3):
+        return False
     return abs(b - ob) < abs(a - ob) * 0.5
 
 

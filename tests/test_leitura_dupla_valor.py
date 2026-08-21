@@ -105,3 +105,18 @@ def test_sem_OB_nao_ha_arbitro():
     ia = {"estado": "ok", "fatos": {"valor": "6.615.200,00"}}
     r = comparar(det, ia, {"tem_ob": False})
     assert r["discordancia"]["valor"]["estado"] == "discordam"
+
+
+def test_ob_nao_corrobora_ia_que_tambem_esta_longe():
+    """"Corroborada pela OB" exige proximidade ABSOLUTA, não vitória relativa sobre a régua.
+
+    Medido em 2026-08-21: das 913 linhas com o selo, 215 (23,5%) tinham a IA a mais de 3x da OB. O
+    pior caso dava CONFIRMAÇÃO a R$ 96.139.630,32 contra uma OB de R$ 1.471.290,59 — 65x. A IA
+    ganhava da régua e levava o selo estando absurdamente longe do que se pagou.
+    """
+    from tools.sei_leitura_dupla import _ob_arbitra
+    pago = {"tem_ob": True, "total": 585_651.42}
+    # a IA (13 mi) vence a régua (80 mi) na distância, mas está 22x da OB: NÃO corrobora
+    assert _ob_arbitra("80.048.971,76", "13.032.755,52", pago) is False
+    # dentro do fator 3 e mais perto que a régua: corrobora
+    assert _ob_arbitra("80.048.971,76", "590.000,00", pago) is True
