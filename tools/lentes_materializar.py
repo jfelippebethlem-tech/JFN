@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""Materializa as lentes de detecção num JSON para o painel ler — sem cálculo na rota.
+
+**Por que materializar.** As lentes varrem a `ob_orcamentaria_siafe` inteira: 2 a 15 s cada,
+~26 s somadas. Rota que calcula na hora trava o painel sob carga, e a casa já tem o padrão
+(`digest_estado.json`, `pipelines_slo_estado.json`): cron grava, rota lê.
+
+**Por que existir.** As sete lentes construídas em 08/2026 eram CLI-only — nenhuma tinha caller.
+É o padrão "construído, testado, nunca rodado" (7º caso da casa). Este arquivo é o caller.
+
+Cada bloco carrega a ressalva da própria lente; nenhuma delas acusa — todas ORDENAM fila.
+
+Uso:
+    .venv/bin/python tools/lentes_materializar.py            # grava data/lentes_estado.json
+    .venv/bin/python tools/lentes_materializar.py --limite 5 # amostra, para conferência
+"""
+from __future__ import annotations
+
+import argparse
+import datetime
+import json
+import sqlite3
+import sys
+import time
+from pathlib import Path
+
+RAIZ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ))
+sys.path.insert(0, str(RAIZ / "tools"))
+
+DB = RAIZ / "data" / "compliance.db"
+SAIDA = RAIZ / "data" / "lentes_estado.json"
+
+
+def _seguro(nome: str, fn, *a, **kw) -> dict:
+    """Roda uma lente. Falha vira INDISPONÍVEL declarado — nunca lista vazia silenciosa."""
+    t0 = time.time()
+    try:
+        return {"ok": True, "itens": fn(*a, **kw), "segundos": round(time.time() - t0, 1)}
+    except Exception as exc:  # noqa: BLE001  — uma lente quebrada não pode derrubar as outras
+        return {"ok": False, "erro": f"{type(exc).__name__}: {exc}", "itens": None,
+                "segundos": round(time.time() - t0, 1)}
+
+
+def materializar(limite: int = 50) -> dict:
+    from convergencia import convergir
+    from dependencia_mutua import dependencia
+    from pago_a_sancionado import pagos_durante_sancao
+    from porte_incompativel import incompativeis
+
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    lentes = {
+        "convergencia": _seguro("convergencia", convergir, con),
+        "dependencia_mutua": _seguro("dependencia_mutua", dependencia, con),
+        "pago_a_sancionado": _seguro("pago_a_sancionado", pagos_durante_sancao, con),
+        "porte_incompativel": _seguro("porte_incompativel", incompativeis, con),
+    }
+    con.close()
+
+    for nome, bloco in lentes.items():
+        itens = bloco.pop("itens")
+        bloco["n"] = len(itens) if itens is not None else None  # None = INDISPONÍVEL, não zero
+        bloco["topo"] = itens[:limite] if itens else []
+    return {"gerado_em": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "limite": limite, "lentes": lentes,
+            "aviso": "Indícios para apuração interna — cada lente ORDENA fila, nenhuma acusa."}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--limite", type=int, default=50, help="itens gravados por lente")
+    a = ap.parse_args()
+    estado = materializar(a.limite)
+    # as lentes de sanção devolvem `datetime.date` (vigência); vira ISO aqui, no serializador,
+    # para não mexer no formato de retorno de código já testado e usado pelo CLI.
+    SAIDA.write_text(json.dumps(estado, ensure_ascii=False, indent=1,
+                                default=lambda o: o.isoformat()
+                                if isinstance(o, (datetime.date, datetime.datetime)) else str(o)),
+                     encoding="utf-8")
+    for nome, b in estado["lentes"].items():
+        n = b["n"] if b["n"] is not None else "INDISPONÍVEL"
+        print(f"  {nome:22s} {str(n):>12}  {b['segundos']:5.1f}s"
+              f"{'' if b['ok'] else '  ← ' + b['erro'][:60]}")
+    print(f"\n{SAIDA.relative_to(RAIZ)} ({SAIDA.stat().st_size:,} bytes)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

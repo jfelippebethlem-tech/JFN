@@ -4,6 +4,7 @@ Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from pathlib import Path
@@ -2365,3 +2366,31 @@ def api_fontes_frescor():
         return JSONResponse(_cache_put("fontes:frescor", out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/lentes")
+def api_lentes(lente: Optional[str] = None, top: int = 20):
+    """Lentes de detecção materializadas: convergência, dependência mútua, sanção, porte.
+
+    Lê `data/lentes_estado.json` (gravado por `tools/lentes_materializar.py`) — NÃO calcula na
+    rota: as quatro lentes varrem a OB inteira e somam ~31 s, o que travaria o painel.
+
+    Honestidade: cada lente ORDENA fila de apuração, nenhuma acusa. Lente que falhou na
+    materialização volta com `n: null` (INDISPONÍVEL), nunca com zero.
+    Filtros: `?lente=convergencia&top=20`."""
+    caminho = RAIZ / "data" / "lentes_estado.json"
+    try:
+        estado = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return JSONResponse({"ok": False, "erro": f"lentes não materializadas: {exc}",
+                             "dica": "rode tools/lentes_materializar.py"}, status_code=503)
+    top = max(1, min(int(top or 20), 200))
+    lentes = estado.get("lentes", {})
+    if lente:
+        if lente not in lentes:
+            return JSONResponse({"ok": False, "erro": f"lente desconhecida: {lente}",
+                                 "disponiveis": sorted(lentes)}, status_code=404)
+        lentes = {lente: lentes[lente]}
+    saida = {k: {**v, "topo": (v.get("topo") or [])[:top]} for k, v in lentes.items()}
+    return JSONResponse({"ok": True, "gerado_em": estado.get("gerado_em"), "lentes": saida,
+                         "aviso": estado.get("aviso")})

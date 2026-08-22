@@ -35,6 +35,11 @@ capacidades:
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
      args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}",
      menu: {grupo: "🔎 Investigação", nome: "Anomalias automáticas nos pagamentos", exemplo: "algo estranho nos pagamentos do ITERJ?", ordem: 24}}
+  - {id: lentes_cruzadas, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lentes, status: PRONTO,
+     descricao: "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao. Le JSON materializado (tools/lentes_materializar.py, cron 04:17) — as 4 lentes somam ~31s e nao rodam na rota.",
+     quando_usar: "priorizar fila de apuracao; 'quais empresas acendem em mais de um detector'",
+     args: {lente: opcional, top: opcional}, retorno: "{ok,gerado_em,lentes:{nome:{ok,n,segundos,topo[]}}}",
+     menu: {grupo: "🔎 Investigação", nome: "Lentes cruzadas (empresa em 2+ detectores)", exemplo: "quais empresas acendem em mais de uma lente?", ordem: 25}}
   - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
      descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
      args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}"}

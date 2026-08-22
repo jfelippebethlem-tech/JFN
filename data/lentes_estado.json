@@ -1,0 +1,2458 @@
+{
+ "gerado_em": "2026-08-22T11:37:40-0300",
+ "limite": 50,
+ "lentes": {
+  "convergencia": {
+   "ok": true,
+   "segundos": 37.4,
+   "n": 1427,
+   "topo": [
+    {
+     "cnpj_basico": "10981677",
+     "razao_social": "SISTEMATECH DESENVOLVIMENTO DE SOFTWARE LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 12028929.459999992,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Declaração de Inid",
+      "100% de 1 UG / 7% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "10190061",
+     "razao_social": "TUISE GESTAO INTEGRADA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 701346438.5400009,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 7% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "14625837",
+     "razao_social": "ECO RIO COMERCIO E SERVICOS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 636330262.3399979,
+     "porques": [
+      "1 sócio(s)",
+      "97% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "06982873",
+     "razao_social": "EUREKA - SOLUCOES PEDAGOGICAS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 550264708.3,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 9% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "03314057",
+     "razao_social": "ENGE PRAT ENGENHARIA E SERVICOS LTDA.",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 475571820.53000003,
+     "porques": [
+      "2 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "09239320",
+     "razao_social": "QUALYBEM FOOD & SERVICE S/A",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 403979440.3700002,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 22% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "09175434",
+     "razao_social": "PHOTONLUX DISTRIBUIDORA DE MATERIAIS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 385799673.52000004,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "11804114",
+     "razao_social": "CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 340231043.3699999,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "32026488",
+     "razao_social": "MKS SOLUCOES COMERCIAIS E DISTRIBUIDORA DE MATERIAIS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 334936783.78,
+     "porques": [
+      "1 sócio(s)",
+      "98% de 1 UG / 5% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "61704482",
+     "razao_social": "AGENCIA NACIONAL DE PROPAGANDA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "SANCAO"
+     ],
+     "n_dim": 2,
+     "pago": 239486756.08000025,
+     "porques": [
+      "sócio de sancionada",
+      "100% de 1 UG / 20% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "05351320",
+     "razao_social": "SD ENGENHARIA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 239058512.63000003,
+     "porques": [
+      "2 sócio(s)",
+      "98% de 1 UG / 11% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "05769219",
+     "razao_social": "CONQUISTA SERVICO E TERCEIRIZACAO DE MAO DE OBRA LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 198218110.9099999,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "10893674",
+     "razao_social": "DIMPI GESTAO EM SAUDE LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 181262048.57999998,
+     "porques": [
+      "2 sócio(s)",
+      "sócio de sancionada"
+     ]
+    },
+    {
+     "cnpj_basico": "76535764",
+     "razao_social": "OI S.A. - EM RECUPERACAO JUDICIAL",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 177858037.10999966,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Suspensão",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "20040269",
+     "razao_social": "BUZZLINE SERVICOS, ENTRETENIMENTO E PRODUCAO LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 158298327.41999993,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 37% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "29001559",
+     "razao_social": "D A S ENGENHARIA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 156868001.0000001,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "01936069",
+     "razao_social": "DIGISYSTEM SERVICOS ESPECIALIZADOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 152022818.10999995,
+     "porques": [
+      "2 sócio(s)",
+      "sócio de sancionada"
+     ]
+    },
+    {
+     "cnpj_basico": "05428409",
+     "razao_social": "PROPEG COMUNICACAO S/A",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 146387677.61999992,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 20% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "18776916",
+     "razao_social": "LAND SERVICOS E ENGENHARIA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 128255090.59000015,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "04956954",
+     "razao_social": "E 3 - COMUNICACAO INTEGRADA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 113106859.0400003,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 14% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "10571692",
+     "razao_social": "COLI TRANSPORTES E SERVICOS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 108342934.53999999,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 8% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "40170029",
+     "razao_social": "SEGIL VIGILANCIA E SEGURANCA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 106745961.58,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 9% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "12978986",
+     "razao_social": "T & S LOCACAO DE MAO DE OBRA EM GERAL LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 101803538.53999996,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "36813448",
+     "razao_social": "MDL SOUZA COMERCIO LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 74170550.03,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "1 sócio(s)",
+      "100% de 1 UG / 14% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "10526336",
+     "razao_social": "STATLED BRASIL CONSTRUTORA E PARTICIPACOES S.A.",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 70913296.42,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "05805527",
+     "razao_social": "EMSIMEM MANUTENCAO E CONSERVACAO LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 61212989.009999946,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "00482840",
+     "razao_social": "LIDERANCA LIMPEZA E CONSERVACAO LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 59231794.989999905,
+     "porques": [
+      "2 sócio(s)",
+      "sócio de sancionada"
+     ]
+    },
+    {
+     "cnpj_basico": "17298685",
+     "razao_social": "B7 EMPREENDIMENTOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 58702562.85000001,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "07844436",
+     "razao_social": "CABERJ INTEGRAL SAUDE S.A.",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 57940287.019999996,
+     "porques": [
+      "2 sócio(s)",
+      "95% de 1 UG / 37% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "09060537",
+     "razao_social": "LAPA TERCEIRIZACOES E PLANEJAMENTO LTDA - EM RECUPERACAO JUDICIAL",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 53717638.620000035,
+     "porques": [
+      "2 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "30431915",
+     "razao_social": "VERONA SERVICOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 48256150.379999995,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "00482487",
+     "razao_social": "COSTA VERDE DIESEL LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 44655896.690000005,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "10581285",
+     "razao_social": "WS SERVICOS TERCEIRIZADOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 42497476.96,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "04635778",
+     "razao_social": "FERTHYMAR EMPREENDIMENTOS E PARTICIPACOES LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 40831362.41,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 17% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "08081559",
+     "razao_social": "WF SERVICOS ESPECIAIS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 39302887.310000025,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "19308719",
+     "razao_social": "S & B DISTRIBUIDORA E IMPORTADORA DE MEDICAMENTOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 38343561.44,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "30364285",
+     "razao_social": "LABORATORIO DE ANALISES CLINICAS SAO JOSE LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 33141746.769999992,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "2 sócio(s)"
+     ]
+    },
+    {
+     "cnpj_basico": "16991823",
+     "razao_social": "HSOL INCENTIVE PERFORMANCE S.A.",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 32194291.6,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 7% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "59394375",
+     "razao_social": "XPTO INC TECNOLOGIA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 30347836.01,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 7% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "16930136",
+     "razao_social": "HAWK SEGURANCA E VIGILANCIA LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 28369382.40000008,
+     "porques": [
+      "2 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "34691187",
+     "razao_social": "FARAO PARTICIPACOES E EMPREENDIMENTOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 27993195.279999997,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "2 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "01611866",
+     "razao_social": "P J REFEICOES COLETIVAS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 27258534.309999995,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 7% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "20419850",
+     "razao_social": "K8.COM ENGENHARIA E SERVICOS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 26261869.019999992,
+     "porques": [
+      "1 sócio(s)",
+      "97% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "31761603",
+     "razao_social": "STEM SOLUCOES E INTEGRACOES EDUCACIONAIS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 25662000.0,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "03655231",
+     "razao_social": "BS TECNOLOGIA E SERVICOS LTDA EM RECUPERACAO JUDICIAL",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 24982408.770000003,
+     "porques": [
+      "2 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "18546232",
+     "razao_social": "MANUTEC MONTAGEM E EMPREENDIMENTOS LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 21625328.28999999,
+     "porques": [
+      "2 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "09526734",
+     "razao_social": "VEEK TECNOLOGIA S.A.",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 20220479.76,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 6% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "33780199",
+     "razao_social": "KRATUS TECNOLOGIA COMERCIO E SERVICOS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 17411014.71000002,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "07704429",
+     "razao_social": "CODEX REMOTE CIENCIAS ESPACIAIS E IMAGENS DIGITAIS LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 17207004.7,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "100% de 1 UG / 8% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "14647297",
+     "razao_social": "PLURAL SERVICOS TECNICO LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 16115542.410000002,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    }
+   ]
+  },
+  "dependencia_mutua": {
+   "ok": true,
+   "segundos": 6.8,
+   "n": 63,
+   "topo": [
+    {
+     "cnpj": "09127934000163",
+     "nome": "Riocard Tecnologia Da Informacao Sa",
+     "ug": "316100",
+     "pago_ug": 35800000.0,
+     "pago_total": 35800000.0,
+     "concentracao": 1.0,
+     "fatia_ug": 0.9937783661508292,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "28060424000160",
+     "nome": "Procuradoria Geral Do Estado",
+     "ug": "370301",
+     "pago_ug": 3383025.3699999973,
+     "pago_total": 3383025.3699999973,
+     "concentracao": 1.0,
+     "fatia_ug": 0.8519400814258224,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "25320876000146",
+     "nome": "MCE INTERMEDIAÇÕES E NEGÓCIOS LTDA",
+     "ug": "203100",
+     "pago_ug": 110289037.35000001,
+     "pago_total": 110289037.35000001,
+     "concentracao": 1.0,
+     "fatia_ug": 0.8057913085120426,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "64191286000112",
+     "nome": "FUNDESTAP FUNDO DE INVESTIMENTO EM DIREITOS CREDITÓRIOS",
+     "ug": "317100",
+     "pago_ug": 101247254.42,
+     "pago_total": 101247254.42,
+     "concentracao": 1.0,
+     "fatia_ug": 0.5594163238138175,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "58750870000168",
+     "nome": "BARCAS RIO",
+     "ug": "310100",
+     "pago_ug": 15534831.3,
+     "pago_total": 15534831.3,
+     "concentracao": 1.0,
+     "fatia_ug": 0.5534213440999126,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "21602870000100",
+     "nome": "CONSORCIO RJ CIDADAO",
+     "ug": "140100",
+     "pago_ug": 707772332.1000006,
+     "pago_total": 707772332.1000006,
+     "concentracao": 1.0,
+     "fatia_ug": 0.5388106598070683,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "60625829000101",
+     "nome": "Construtora Passarelli Ltda.",
+     "ug": "240200",
+     "pago_ug": 134084215.96999997,
+     "pago_total": 134084215.96999997,
+     "concentracao": 1.0,
+     "fatia_ug": 0.5165412591115255,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "50466541000188",
+     "nome": "METTA INDUSTRIA EM SOLUCOES AMBIENTAIS LTDA",
+     "ug": "640100",
+     "pago_ug": 1412723.05,
+     "pago_total": 1412723.05,
+     "concentracao": 1.0,
+     "fatia_ug": 0.4353573591697239,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "20040269000109",
+     "nome": "BUZZLINE SERV, ENTRETENIMENTO E PRODUÇAO EIRELI-ME",
+     "ug": "430100",
+     "pago_ug": 157971127.41999993,
+     "pago_total": 158298327.41999993,
+     "concentracao": 0.9979330166949151,
+     "fatia_ug": 0.37436695013273447,
+     "n_ugs": 2
+    },
+    {
+     "cnpj": "07844436000106",
+     "nome": "Caberj Integral Saude S.a.",
+     "ug": "053100",
+     "pago_ug": 55083056.239999995,
+     "pago_total": 57940287.019999996,
+     "concentracao": 0.9506866305475198,
+     "fatia_ug": 0.3735878532770332,
+     "n_ugs": 2
+    },
+    {
+     "cnpj": "24867242000145",
+     "nome": "CONTROL 361 TECNOLOGIA E SERVIÇOS LTDA",
+     "ug": "600100",
+     "pago_ug": 1148161.3599999999,
+     "pago_total": 1148161.3599999999,
+     "concentracao": 1.0,
+     "fatia_ug": 0.3491513513574496,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "09239320000173",
+     "nome": "QUALYBEM FOOD & SERVICE S/A",
+     "ug": "250100",
+     "pago_ug": 403979440.3700002,
+     "pago_total": 403979440.3700002,
+     "concentracao": 1.0,
+     "fatia_ug": 0.22493501971344163,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "61704482000317",
+     "nome": "AGÊNCIA NACIONAL DE PROPAGANDA LTDA",
+     "ug": "390200",
+     "pago_ug": 149599545.27000004,
+     "pago_total": 149599545.27000004,
+     "concentracao": 1.0,
+     "fatia_ug": 0.2007044232699006,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "05428409000712",
+     "nome": "PROPEG COMUNICAÇÃO S/A",
+     "ug": "390200",
+     "pago_ug": 146387677.61999992,
+     "pago_total": 146387677.61999992,
+     "concentracao": 1.0,
+     "fatia_ug": 0.19639534570453052,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "04635778000128",
+     "nome": "Ferthymar Empreend. E Participacoes Ltda",
+     "ug": "404500",
+     "pago_ug": 40831362.41,
+     "pago_total": 40831362.41,
+     "concentracao": 1.0,
+     "fatia_ug": 0.171319697304002,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "13569390000167",
+     "nome": "CDEL CIA DISTRIBUIDORA E EDITORA DE LIVROS LTDA",
+     "ug": "570100",
+     "pago_ug": 75461957.42,
+     "pago_total": 75461957.42,
+     "concentracao": 1.0,
+     "fatia_ug": 0.17089031773509034,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "29309127000179",
+     "nome": "Amil - Assist Medica Internacional S.a",
+     "ug": "036100",
+     "pago_ug": 843892231.7499999,
+     "pago_total": 843892231.7499999,
+     "concentracao": 1.0,
+     "fatia_ug": 0.14652143239136806,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "57118929000307",
+     "nome": "NOVA S.A.",
+     "ug": "390200",
+     "pago_ug": 107881469.78000008,
+     "pago_total": 107881469.78000008,
+     "concentracao": 1.0,
+     "fatia_ug": 0.14473498655778447,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "36813448000171",
+     "nome": "MDL SOUZA COMÉRCIO EIRELI",
+     "ug": "297100",
+     "pago_ug": 74170550.03,
+     "pago_total": 74170550.03,
+     "concentracao": 1.0,
+     "fatia_ug": 0.14344300824569953,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "04956954000204",
+     "nome": "E 3 - COMUNICAÇÃO INTEGRADA LTDA",
+     "ug": "390200",
+     "pago_ug": 102908104.96000004,
+     "pago_total": 102908104.96000004,
+     "concentracao": 1.0,
+     "fatia_ug": 0.13806266468603418,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "17310993000109",
+     "nome": "Consorcio Sondotecnica Cobrape-ch2m (scc)",
+     "ug": "240200",
+     "pago_ug": 35789026.86,
+     "pago_total": 35789026.86,
+     "concentracao": 1.0,
+     "fatia_ug": 0.1378723726943131,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "28176998000441",
+     "nome": "Rio De Janeiro Sec.de Estado Da Defesa Civil",
+     "ug": "166100",
+     "pago_ug": 302037284.61000025,
+     "pago_total": 302105292.32000023,
+     "concentracao": 0.9997748873928103,
+     "fatia_ug": 0.13520769551178966,
+     "n_ugs": 5
+    },
+    {
+     "cnpj": "10770313000182",
+     "nome": "Fsb Estrategia Em Comunicacao Ltda",
+     "ug": "390200",
+     "pago_ug": 97189276.15999985,
+     "pago_total": 97189276.15999985,
+     "concentracao": 1.0,
+     "fatia_ug": 0.13039022000037837,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "02102125000158",
+     "nome": "CASSAROTTI FOODS - SERVICOS DE REFEICOES COLETIVAS E EVENTOS LTDA",
+     "ug": "250100",
+     "pago_ug": 191043131.32,
+     "pago_total": 191043131.32,
+     "concentracao": 1.0,
+     "fatia_ug": 0.10637246903016645,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "05351320000100",
+     "nome": "Souza Dutra Engenharia Ltda - Epp",
+     "ug": "045200",
+     "pago_ug": 233558367.40000007,
+     "pago_total": 239058512.63000005,
+     "concentracao": 0.9769924728072211,
+     "fatia_ug": 0.10560460046817478,
+     "n_ugs": 2
+    },
+    {
+     "cnpj": "40170029000136",
+     "nome": "SEGIL VIGILANCIA E SEGURANCA LTDA",
+     "ug": "100100",
+     "pago_ug": 106745961.58,
+     "pago_total": 106745961.58,
+     "concentracao": 1.0,
+     "fatia_ug": 0.09256143312422738,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "11495418000133",
+     "nome": "Fundo Mun.de Assist.social De Duque De Caxias",
+     "ug": "326100",
+     "pago_ug": 36194302.25,
+     "pago_total": 36194302.25,
+     "concentracao": 1.0,
+     "fatia_ug": 0.08889708665920464,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "73442360000389",
+     "nome": "TELTEX TECNOLOGIA S.A.- EM RECUPERAÇÃO JUDICIAL",
+     "ug": "123425",
+     "pago_ug": 11769722.639999999,
+     "pago_total": 11769722.639999999,
+     "concentracao": 1.0,
+     "fatia_ug": 0.08740033644195663,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "06982873000123",
+     "nome": "EUREKA - SOLUÇÕES PEDAGÓGICAS LTDA",
+     "ug": "180100",
+     "pago_ug": 550264708.3,
+     "pago_total": 550264708.3,
+     "concentracao": 1.0,
+     "fatia_ug": 0.08720507514885498,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "63873012000140",
+     "nome": "LACA ENGENHARIA LTDA",
+     "ug": "106100",
+     "pago_ug": 10285500.940000001,
+     "pago_total": 10285500.940000001,
+     "concentracao": 1.0,
+     "fatia_ug": 0.08647851810861452,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "05805527000107",
+     "nome": "Emsimem Manutencao E Conservacao Ltda",
+     "ug": "137200",
+     "pago_ug": 60750341.60999997,
+     "pago_total": 61212989.00999997,
+     "concentracao": 0.9924420060597855,
+     "fatia_ug": 0.08309029180782497,
+     "n_ugs": 2
+    },
+    {
+     "cnpj": "10571692000181",
+     "nome": "COLI TRANSPORTES E SERVICOS LTDA-ME",
+     "ug": "197100",
+     "pago_ug": 108342934.53999999,
+     "pago_total": 108342934.53999999,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07654865285029781,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "07704429000109",
+     "nome": "Codex Remote Cienc.esp.e Imag.digitais Ltda",
+     "ug": "124100",
+     "pago_ug": 17207004.7,
+     "pago_total": 17207004.7,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07522157732714274,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "10886180000104",
+     "nome": "Atsnet Informatica E Desenvol.de Sistema Ltda",
+     "ug": "223200",
+     "pago_ug": 12046854.830000002,
+     "pago_total": 12046854.830000002,
+     "concentracao": 1.0,
+     "fatia_ug": 0.0738144537120001,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "10981677000101",
+     "nome": "Sistematech Desenvolvimento de Software Eireli Me",
+     "ug": "223200",
+     "pago_ug": 12028929.459999992,
+     "pago_total": 12028929.459999992,
+     "concentracao": 1.0,
+     "fatia_ug": 0.0737046199493452,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "16991823000166",
+     "nome": "HSOL INCENTIVE PERFORMANCE S.A",
+     "ug": "570100",
+     "pago_ug": 32194291.6,
+     "pago_total": 32194291.6,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07290683821199175,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "36366620000196",
+     "nome": "NRTT - SOLUÇÕES E SERVIÇOS LTDA",
+     "ug": "261100",
+     "pago_ug": 181829985.34000003,
+     "pago_total": 186811285.65000004,
+     "concentracao": 0.9733351210947035,
+     "fatia_ug": 0.07161648776229883,
+     "n_ugs": 3
+    },
+    {
+     "cnpj": "01611866000100",
+     "nome": "PJ REFEIÇÕES COLETIVAS LTDA",
+     "ug": "490100",
+     "pago_ug": 27258534.309999995,
+     "pago_total": 27258534.309999995,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07043483616575456,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "03723329000179",
+     "nome": "Progr. Das Nacoes Unidas P/o Desenvolvimento",
+     "ug": "240100",
+     "pago_ug": 6000000.0,
+     "pago_total": 6000000.0,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07010736600044257,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "59394375000126",
+     "nome": "XPTO INC TECNOLOGIA LTDA",
+     "ug": "570100",
+     "pago_ug": 30347836.01,
+     "pago_total": 30347836.01,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06872537521729868,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "09070101000103",
+     "nome": "SPACECOMM MONITORAMENTO S/A",
+     "ug": "250100",
+     "pago_ug": 121189774.56999998,
+     "pago_total": 121189774.56999998,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06747824668256268,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "55114414000133",
+     "nome": "Consorcio Pavimentação Sacramento",
+     "ug": "660100",
+     "pago_ug": 58957867.339999996,
+     "pago_total": 58957867.339999996,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06629740577583264,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "10190061000112",
+     "nome": "Tuise Representacao Comercial Ltda",
+     "ug": "294200",
+     "pago_ug": 701346438.5400009,
+     "pago_total": 701346438.5400009,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06576207256047821,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "09175434000105",
+     "nome": "PHOTONLUX DISTRIBUIDORA DE MATERIAIS LTDA",
+     "ug": "180100",
+     "pago_ug": 385799673.52000004,
+     "pago_total": 385799673.52000004,
+     "concentracao": 1.0,
+     "fatia_ug": 0.061140918205812037,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "09526734000183",
+     "nome": "VEEK TECNOLOGIA S.A.",
+     "ug": "404600",
+     "pago_ug": 20220479.76,
+     "pago_total": 20220479.76,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06112615220485928,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "39818737000151",
+     "nome": "Horto Central Marataizes Ltda",
+     "ug": "404500",
+     "pago_ug": 14412239.290000005,
+     "pago_total": 14427481.590000005,
+     "concentracao": 0.9989435231710456,
+     "fatia_ug": 0.06047068544621815,
+     "n_ugs": 2
+    },
+    {
+     "cnpj": "29001559000118",
+     "nome": "Das Engenharia Ltda",
+     "ug": "243200",
+     "pago_ug": 156868001.0000001,
+     "pago_total": 156868001.0000001,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06028924524838512,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "31761603000130",
+     "nome": "STEM SOLUCOES E INTEGRACOES EDUCACIONAIS LTDA",
+     "ug": "570100",
+     "pago_ug": 25662000.0,
+     "pago_total": 25662000.0,
+     "concentracao": 1.0,
+     "fatia_ug": 0.05811388259265602,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "14625837000130",
+     "nome": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
+     "ug": "294200",
+     "pago_ug": 618391046.459998,
+     "pago_total": 636330262.339998,
+     "concentracao": 0.9718083251077333,
+     "fatia_ug": 0.0579837219287926,
+     "n_ugs": 7
+    },
+    {
+     "cnpj": "18776916000101",
+     "nome": "LAND SERVIÇOS E ENGENHARIA LTDA",
+     "ug": "404400",
+     "pago_ug": 128255090.59000015,
+     "pago_total": 128255090.59000015,
+     "concentracao": 1.0,
+     "fatia_ug": 0.05782255526167941,
+     "n_ugs": 1
+    }
+   ]
+  },
+  "pago_a_sancionado": {
+   "ok": true,
+   "segundos": 5.3,
+   "n": 213,
+   "topo": [
+    {
+     "cnpj": "24006302000488",
+     "nome": "INSTITUTO DE DESENVOLVIMENTO, ENSINO E ASSISTENCIA A SAUDE - IDEAS",
+     "categoria": "Impedimento/proibição de contratar sem prazo determinado",
+     "inicio": "2026-03-10",
+     "orgao": "1º Grau - TRF4 / SEÇÃO JUDICIÁRIA DE SANTA CATARINA / SUBSEÇÃO JUDICIÁRIA DE FLORIANÓPOLIS / 2ª VARA FEDERAL DE FLORIANÓPOLIS",
+     "pago": 81581443.64999999,
+     "obs": 14,
+     "primeira": "2026-04-07"
+    },
+    {
+     "cnpj": "18273227000176",
+     "nome": "INSTITUTO DE DIGNIDADE E DESENVOLVIMENTO PESSOAL",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-08-27",
+     "orgao": "Consórcio Público Intermunicipal de Saúde do Setentrião Paranaense - CISAMUSEP",
+     "pago": 30110026.19000002,
+     "obs": 103,
+     "primeira": "2025-09-22"
+    },
+    {
+     "cnpj": "10271915000195",
+     "nome": "INSTITUTO TRAVESSIA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2026-04-08",
+     "orgao": "Governo do Estado de Pernambuco",
+     "pago": 28169356.58000001,
+     "obs": 116,
+     "primeira": "2026-04-08"
+    },
+    {
+     "cnpj": "24006302000488",
+     "nome": "INSTITUTO DE DESENVOLVIMENTO, ENSINO E ASSISTENCIA A SAUDE - IDEAS",
+     "categoria": "Suspensão",
+     "inicio": "2026-06-12",
+     "orgao": "EMPRESA BRASILEIRA DE SERVIÇOS HOSPITALARES",
+     "pago": 20050755.28,
+     "obs": 6,
+     "primeira": "2026-06-12"
+    },
+    {
+     "cnpj": "03314057000153",
+     "nome": "ENGE PRAT ENGENHARIA E SERVICOS LTDA.",
+     "categoria": "Suspensão",
+     "inicio": "2026-03-25",
+     "orgao": "INST.FED.DE EDUC.,CIENC.E TEC.DO RJ",
+     "pago": 18630050.509999998,
+     "obs": 50,
+     "primeira": "2026-03-26"
+    },
+    {
+     "cnpj": "76535764000143",
+     "nome": "OI S/A",
+     "categoria": "Suspensão",
+     "inicio": "2025-11-19",
+     "orgao": "COMPANHIA ÁGUAS DE JOINVILLE/SC",
+     "pago": 13242853.920000022,
+     "obs": 282,
+     "primeira": "2025-11-19"
+    },
+    {
+     "cnpj": "18546232000105",
+     "nome": "MANUTEC MONTAGEM E EMPREENDIMENTOS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-08-18",
+     "orgao": "ADVOCACIA-GERAL DA UNIAO AGU",
+     "pago": 12543468.95,
+     "obs": 49,
+     "primeira": "2025-08-25"
+    },
+    {
+     "cnpj": "34691187000139",
+     "nome": "FARAO PARTICIPACOES E EMPREENDIMENTOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-09-03",
+     "orgao": "CAIXA ECONOMICA FEDERAL",
+     "pago": 12128793.780000001,
+     "obs": 17,
+     "primeira": "2025-09-25"
+    },
+    {
+     "cnpj": "05674062000100",
+     "nome": "ITPLAN INTEGRAÇÃO TECNOLOGIA E PLANEJAMENTO LTDA",
+     "categoria": "Declaração de Inidoneidade sem prazo determinado",
+     "inicio": "2022-10-07",
+     "orgao": "Controladoria Geral do Estado do Rio de Janeiro - CGE-RJ",
+     "pago": 9510842.649999999,
+     "obs": 3,
+     "primeira": "2025-08-08"
+    },
+    {
+     "cnpj": "08081559000103",
+     "nome": "WF SERVICOS ESPECIAIS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-12-30",
+     "orgao": "COLEGIO PEDRO II",
+     "pago": 8140092.099999999,
+     "obs": 186,
+     "primeira": "2026-01-06"
+    },
+    {
+     "cnpj": "02539959000125",
+     "nome": "ESPAÇO CIDADANIAE OPORTUNIDADES SOCIAIS - ECOS",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-10-15",
+     "orgao": "Prefeitura Municipal de Maricá - RJ",
+     "pago": 7808028.02,
+     "obs": 4,
+     "primeira": "2025-12-15"
+    },
+    {
+     "cnpj": "41710060000185",
+     "nome": "ALAG COMERCIO E SERVICOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-04-22",
+     "orgao": "COMANDO DO EXERCITO",
+     "pago": 7032628.309999999,
+     "obs": 15,
+     "primeira": "2025-08-06"
+    },
+    {
+     "cnpj": "33192856000165",
+     "nome": "RADIOCOM DIAGNOSTICOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-12-16",
+     "orgao": "GRUPO HOSPITALAR CONCEICAO",
+     "pago": 5658610.7,
+     "obs": 6,
+     "primeira": "2026-03-13"
+    },
+    {
+     "cnpj": "10427965000119",
+     "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
+     "categoria": "Suspensão",
+     "inicio": "2025-09-05",
+     "orgao": "JUSTICA ELEITORAL",
+     "pago": 5552798.54,
+     "obs": 33,
+     "primeira": "2025-09-09"
+    },
+    {
+     "cnpj": "10526336000146",
+     "nome": "STATLED BRASIL CONSTRUTORA E PARTICIPAÇÕES S.A.",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-03-17",
+     "orgao": "Prefeitura Municipal de Barra Mansa (RJ)",
+     "pago": 5507975.8100000005,
+     "obs": 25,
+     "primeira": "2025-04-01"
+    },
+    {
+     "cnpj": "08081559000103",
+     "nome": "WF SERVICOS ESPECIAIS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2026-06-23",
+     "orgao": "COLEGIO PEDRO II",
+     "pago": 4641286.989999999,
+     "obs": 46,
+     "primeira": "2026-06-23"
+    },
+    {
+     "cnpj": "25165749000110",
+     "nome": "NEO CONSULTORIA E ADMINISTRAÇÃO DE BENEFÍCIOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2026-03-19",
+     "orgao": "Empresa Brasileira de Correios e Telégrafos",
+     "pago": 4230900.7,
+     "obs": 23,
+     "primeira": "2026-04-01"
+    },
+    {
+     "cnpj": "10427965000119",
+     "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
+     "categoria": "Suspensão",
+     "inicio": "2025-04-22",
+     "orgao": "Tribunal de Justiça do Estado do Rio Grande do Norte (TJRN)",
+     "pago": 4165695.4100000006,
+     "obs": 33,
+     "primeira": "2025-04-28"
+    },
+    {
+     "cnpj": "50400407000184",
+     "nome": "PROVAC TERCEIRIZAÇÃO DE MÃO DE OBRA LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-09-15",
+     "orgao": "Petróleo Brasileiro S.A.",
+     "pago": 4107189.4500000007,
+     "obs": 24,
+     "primeira": "2025-09-24"
+    },
+    {
+     "cnpj": "02539959000125",
+     "nome": "ESPAÇO CIDADANIAE OPORTUNIDADES SOCIAIS - ECOS",
+     "categoria": "Suspensão/Interdição das atividades com prazo determinado",
+     "inicio": "2026-05-25",
+     "orgao": "Prefeitura Municipal da Cidade do Rio de Janeiro (RJ)",
+     "pago": 4033690.13,
+     "obs": 2,
+     "primeira": "2026-08-14"
+    },
+    {
+     "cnpj": "10581285000155",
+     "nome": "WS SERVICOS TERCEIRIZADOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2026-04-30",
+     "orgao": "CENTRO NACIONAL DE TEC ELETRONICA AVANçADA SA",
+     "pago": 3980006.0,
+     "obs": 7,
+     "primeira": "2026-04-30"
+    },
+    {
+     "cnpj": "07956924000105",
+     "nome": "Centro de Apoio ao Deficinete Visual de Sõa Gonçalo - CADEVISG",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-10-15",
+     "orgao": "Prefeitura Municipal de Maricá - RJ",
+     "pago": 3834830.6399999997,
+     "obs": 2,
+     "primeira": "2025-10-20"
+    },
+    {
+     "cnpj": "23417238000112",
+     "nome": "Monsaras Distribuidora e Comércio Ltda. ME",
+     "categoria": "Declaração de Inidoneidade sem prazo determinado",
+     "inicio": "2021-10-06",
+     "orgao": "Governo do Estado da Bahia (BA)",
+     "pago": 3611670.74,
+     "obs": 15,
+     "primeira": "2023-09-13"
+    },
+    {
+     "cnpj": "51884749000180",
+     "nome": "GPS ALIMENTACAO E SERVICOS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-01-24",
+     "orgao": "FUNDO MUNIC.DE ASSISTÊNCIA SOCIAL DE MENDES",
+     "pago": 3571371.8899999997,
+     "obs": 16,
+     "primeira": "2025-02-18"
+    },
+    {
+     "cnpj": "17298685000105",
+     "nome": "B7 EMPREENDIMENTOS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2024-05-06",
+     "orgao": "Tribunal de Contas do Estado do Rio de Janeiro - TCE-RJ",
+     "pago": 3550655.8799999994,
+     "obs": 54,
+     "primeira": "2024-05-07"
+    },
+    {
+     "cnpj": "01274719000183",
+     "nome": "LIDER CONSTRUÇÃO E SERVIÇOS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-08-04",
+     "orgao": "Prefeitura Municipal de Cantagalo - RJ",
+     "pago": 3058589.4100000006,
+     "obs": 47,
+     "primeira": "2025-08-05"
+    },
+    {
+     "cnpj": "16930136000130",
+     "nome": "HAWK SEGURANCA E VIGILANCIA LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-08-19",
+     "orgao": "BB Tecnologia e Serviços S.A.",
+     "pago": 3050167.950000005,
+     "obs": 143,
+     "primeira": "2025-08-26"
+    },
+    {
+     "cnpj": "10427965000119",
+     "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-07-12",
+     "orgao": "CÂMARA MUNICIPAL DE BELO HORIZONTE (MG)",
+     "pago": 3002845.6799999997,
+     "obs": 45,
+     "primeira": "2025-07-14"
+    },
+    {
+     "cnpj": "04236076000171",
+     "nome": "INSTITUTO DE DESENVOLVIMENTO EDUCACIONAL, CULTURAL E ASSISTENCIAL NACIONAL",
+     "categoria": "Suspensão",
+     "inicio": "2026-01-19",
+     "orgao": "INST.FED.DE EDUC.,CIENC.E TEC.DO CEARÁ",
+     "pago": 2972121.62,
+     "obs": 5,
+     "primeira": "2026-02-10"
+    },
+    {
+     "cnpj": "17771867000143",
+     "nome": "DBV COMERCIO IMPORTACAO E EXPORTACAO DO BRASIL LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2026-04-10",
+     "orgao": "Prefeitura de Joinville (SC)",
+     "pago": 2878048.9599999995,
+     "obs": 106,
+     "primeira": "2026-04-10"
+    },
+    {
+     "cnpj": "05769219000173",
+     "nome": "CONQUISTA SERVICO E TERCEIRIZACAO DE MAO DE OBRA LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2026-06-12",
+     "orgao": "PREFEITURA MUNICIPAL DO RIO DE JANEIRO - RJ",
+     "pago": 2695608.29,
+     "obs": 2,
+     "primeira": "2026-07-20"
+    },
+    {
+     "cnpj": "81571010000189",
+     "nome": "ULTRAMAR IMPORTAÇÃO LTDA.",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2022-09-09",
+     "orgao": "Prefeitura Municipal de Jaguariúna (SP)",
+     "pago": 2476876.11,
+     "obs": 8,
+     "primeira": "2023-01-24"
+    },
+    {
+     "cnpj": "17695642000155",
+     "nome": "TAGG SERVICES LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2024-10-10",
+     "orgao": "Empresa Municipal de Água e Saneamento de Balneário Camboriú - EMASA (SC)",
+     "pago": 2446340.879999997,
+     "obs": 94,
+     "primeira": "2024-10-23"
+    },
+    {
+     "cnpj": "11804114000100",
+     "nome": "CONQUISTA VIGILÂNCIA E SEGURANÇA PATRIMONIAL LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2026-05-19",
+     "orgao": "Companhia Estadual de Águas e Esgotos do Rio de Janeiro - CEDAE",
+     "pago": 2286791.37,
+     "obs": 23,
+     "primeira": "2026-05-19"
+    },
+    {
+     "cnpj": "14647297000196",
+     "nome": "Plural Serviços Técnicos Ltda",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-12-04",
+     "orgao": "Prefeitura Municipal de Mogi Mirim (SP)",
+     "pago": 2196235.38,
+     "obs": 11,
+     "primeira": "2025-12-17"
+    },
+    {
+     "cnpj": "01646611000174",
+     "nome": "O UNIVERSITARIO RESTAURANTE IND COM E AGROPECUARIA LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-07-15",
+     "orgao": "EAC-INSTITUTO DE ADMINISTRAÇAO PENITENCIARIA",
+     "pago": 2192439.5900000003,
+     "obs": 9,
+     "primeira": "2025-07-31"
+    },
+    {
+     "cnpj": "01590728000930",
+     "nome": "MICROTÉCNICA INFORMÁTICA LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-02-10",
+     "orgao": "Banco de Desenvolvimento do Espírito Santo S/A - BANDES",
+     "pago": 2170081.66,
+     "obs": 16,
+     "primeira": "2025-04-09"
+    },
+    {
+     "cnpj": "17771867000143",
+     "nome": "DBV COMERCIO IMPORTACAO E EXPORTACAO DO BRASIL LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2026-07-10",
+     "orgao": "EMPRESA BRASILEIRA DE SERVIÇOS HOSPITALARES",
+     "pago": 1874445.2200000007,
+     "obs": 65,
+     "primeira": "2026-07-10"
+    },
+    {
+     "cnpj": "30364285000100",
+     "nome": "LAB. DE ANALISES CLINICAS SAO JOSE LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2026-05-26",
+     "orgao": "GRUPO HOSPITALAR CONCEICAO",
+     "pago": 1672060.04,
+     "obs": 5,
+     "primeira": "2026-07-21"
+    },
+    {
+     "cnpj": "07432517000107",
+     "nome": "SIMPRESS COMERCIO LOCACAO E SERVICOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2026-07-07",
+     "orgao": "MINISTERIO PUBLICO DO EST. DO RIO DE JANEIRO",
+     "pago": 1582563.14,
+     "obs": 19,
+     "primeira": "2026-07-10"
+    },
+    {
+     "cnpj": "08221047000197",
+     "nome": "Achei Indústria de Móveis Ltda",
+     "categoria": "Suspensão",
+     "inicio": "2024-08-19",
+     "orgao": "Prefeitura Municipal de São Sebastião do Maranhão (MG)",
+     "pago": 1413258.83,
+     "obs": 11,
+     "primeira": "2025-12-11"
+    },
+    {
+     "cnpj": "35093555000100",
+     "nome": "TWO CLOUD SERVICOS DE INFORMATICA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2023-11-22",
+     "orgao": "INSTITUTO NAC. DA PROPRIEDADE INDUSTRIAL",
+     "pago": 1302421.3,
+     "obs": 2,
+     "primeira": "2024-07-02"
+    },
+    {
+     "cnpj": "11932216000101",
+     "nome": "INSTITUTO EVENTOS AMBIENTAIS - IEVA",
+     "categoria": "Suspensão",
+     "inicio": "2025-02-07",
+     "orgao": "PREFEITURA MUNICIPAL DO RIO DE JANEIRO - RJ",
+     "pago": 1045363.84,
+     "obs": 11,
+     "primeira": "2025-02-20"
+    },
+    {
+     "cnpj": "17091035000186",
+     "nome": "BLRS SOLUCOES PREDIAIS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2024-08-30",
+     "orgao": "INST.FED.DE EDUC.,CIENC.E TEC.DO RJ",
+     "pago": 942778.9400000002,
+     "obs": 29,
+     "primeira": "2024-09-05"
+    },
+    {
+     "cnpj": "10981677000101",
+     "nome": "Sistematech Informatica Eireli - ME",
+     "categoria": "Declaração de Inidoneidade com prazo determinado",
+     "inicio": "2025-11-26",
+     "orgao": "TRIBUNAL DE CONTAS DA UNIÃO",
+     "pago": 857791.0800000001,
+     "obs": 5,
+     "primeira": "2025-12-08"
+    },
+    {
+     "cnpj": "45087236000145",
+     "nome": "BRASCOMP TECNOLOGIA DA INFORMAÇÃO EIRELI",
+     "categoria": "Declaração de Inidoneidade sem prazo determinado",
+     "inicio": "2022-12-19",
+     "orgao": "TRIBUNAL DE JUSTICA",
+     "pago": 837621.0399999999,
+     "obs": 9,
+     "primeira": "2022-12-27"
+    },
+    {
+     "cnpj": "10427965000119",
+     "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
+     "categoria": "Suspensão",
+     "inicio": "2026-02-19",
+     "orgao": "TRIBUNAL DE CONTAS DA UNIAO",
+     "pago": 776498.05,
+     "obs": 15,
+     "primeira": "2026-06-01"
+    },
+    {
+     "cnpj": "37670865000175",
+     "nome": "EXCLUSIVE FITPLAY FITNESS E PLAYGROUNDS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-10-29",
+     "orgao": "SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO - GO",
+     "pago": 711145.7000000001,
+     "obs": 4,
+     "primeira": "2025-11-04"
+    },
+    {
+     "cnpj": "50325167000109",
+     "nome": "X CAR VEICULOS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-05-27",
+     "orgao": "INST.FED.DE EDUC.,CIENC.E TEC. DO ESP.SANTO",
+     "pago": 689018.03,
+     "obs": 2,
+     "primeira": "2025-07-15"
+    },
+    {
+     "cnpj": "38073038000167",
+     "nome": "WR NUTRIÇÃO ANIMAL LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2024-01-08",
+     "orgao": "UNIVERSIDADE FEDERAL DOS VALES DO JEQUITINHONHA E MUCURI",
+     "pago": 630603.97,
+     "obs": 9,
+     "primeira": "2024-02-06"
+    }
+   ]
+  },
+  "porte_incompativel": {
+   "ok": true,
+   "segundos": 12.5,
+   "n": 1144,
+   "topo": [
+    {
+     "cnpj_basico": "31418513",
+     "razao_social": "MONTEIRO & RODRIGUEZ DIAGNOSTICO POR IMAGEM LTDA",
+     "porte": "Microempresa",
+     "capital_social": 7000000.0,
+     "ano": "2025",
+     "pago": 78167922.05999999,
+     "teto": 360000.0,
+     "razao_teto": 217.1331168333333,
+     "ug_principal": "294200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "36813448",
+     "razao_social": "MDL SOUZA COMERCIO LTDA",
+     "porte": "Microempresa",
+     "capital_social": 930000.0,
+     "ano": "2022",
+     "pago": 73063350.0,
+     "teto": 360000.0,
+     "razao_teto": 202.95375,
+     "ug_principal": "297100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "31418513",
+     "razao_social": "MONTEIRO & RODRIGUEZ DIAGNOSTICO POR IMAGEM LTDA",
+     "porte": "Microempresa",
+     "capital_social": 7000000.0,
+     "ano": "2024",
+     "pago": 65902546.68000001,
+     "teto": 360000.0,
+     "razao_teto": 183.06262966666668,
+     "ug_principal": "294200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "18463305",
+     "razao_social": "GEO AMBIENTAL EMPREENDIMENTOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 16500000.0,
+     "ano": "2024",
+     "pago": 41138354.870000005,
+     "teto": 360000.0,
+     "razao_teto": 114.27320797222224,
+     "ug_principal": "243200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9944967684431583
+    },
+    {
+     "cnpj_basico": "18463305",
+     "razao_social": "GEO AMBIENTAL EMPREENDIMENTOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 16500000.0,
+     "ano": "2025",
+     "pago": 39422896.309999995,
+     "teto": 360000.0,
+     "razao_teto": 109.50804530555554,
+     "ug_principal": "243200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9944967684431583
+    },
+    {
+     "cnpj_basico": "31418513",
+     "razao_social": "MONTEIRO & RODRIGUEZ DIAGNOSTICO POR IMAGEM LTDA",
+     "porte": "Microempresa",
+     "capital_social": 7000000.0,
+     "ano": "2026",
+     "pago": 30570945.360000003,
+     "teto": 360000.0,
+     "razao_teto": 84.91929266666668,
+     "ug_principal": "294200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "12474585",
+     "razao_social": "MCX7 COMERCIO E SERVICOS GERAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 650000.0,
+     "ano": "2025",
+     "pago": 28212742.990000002,
+     "teto": 360000.0,
+     "razao_teto": 78.36873052777779,
+     "ug_principal": "263100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9968807677859555
+    },
+    {
+     "cnpj_basico": "05389546",
+     "razao_social": "CONPLAN EMPREENDIMENTOS E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 4500000.0,
+     "ano": "2024",
+     "pago": 22356628.929999996,
+     "teto": 360000.0,
+     "razao_teto": 62.10174702777777,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.41448765577092883
+    },
+    {
+     "cnpj_basico": "12474585",
+     "razao_social": "MCX7 COMERCIO E SERVICOS GERAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 650000.0,
+     "ano": "2024",
+     "pago": 21477583.96,
+     "teto": 360000.0,
+     "razao_teto": 59.65995544444445,
+     "ug_principal": "263100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9968807677859555
+    },
+    {
+     "cnpj_basico": "00482487",
+     "razao_social": "COSTA VERDE DIESEL LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2000000.0,
+     "ano": "2025",
+     "pago": 20410938.66,
+     "teto": 360000.0,
+     "razao_teto": 56.69705183333333,
+     "ug_principal": "130100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "12474585",
+     "razao_social": "MCX7 COMERCIO E SERVICOS GERAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 650000.0,
+     "ano": "2026",
+     "pago": 17510485.92,
+     "teto": 360000.0,
+     "razao_teto": 48.64023866666667,
+     "ug_principal": "263100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9968807677859555
+    },
+    {
+     "cnpj_basico": "18463305",
+     "razao_social": "GEO AMBIENTAL EMPREENDIMENTOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 16500000.0,
+     "ano": "2026",
+     "pago": 16086579.67,
+     "teto": 360000.0,
+     "razao_teto": 44.684943527777776,
+     "ug_principal": "243200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9944967684431583
+    },
+    {
+     "cnpj_basico": "05389546",
+     "razao_social": "CONPLAN EMPREENDIMENTOS E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 4500000.0,
+     "ano": "2025",
+     "pago": 15220126.040000007,
+     "teto": 360000.0,
+     "razao_teto": 42.27812788888891,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.41448765577092883
+    },
+    {
+     "cnpj_basico": "07681401",
+     "razao_social": "C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA",
+     "porte": "Microempresa",
+     "capital_social": 10000000.0,
+     "ano": "2025",
+     "pago": 14301277.079999996,
+     "teto": 360000.0,
+     "razao_teto": 39.72576966666666,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.6470305192118396
+    },
+    {
+     "cnpj_basico": "11505067",
+     "razao_social": "ABBM BRAGA COMERCIO E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 1000000.0,
+     "ano": "2023",
+     "pago": 14267103.750000002,
+     "teto": 360000.0,
+     "razao_teto": 39.630843750000004,
+     "ug_principal": "130100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.7460005705331074
+    },
+    {
+     "cnpj_basico": "19036929",
+     "razao_social": "BWL TRANSPORTES E LOCACOES LTDA",
+     "porte": "Microempresa",
+     "capital_social": 1500000.0,
+     "ano": "2025",
+     "pago": 13403975.130000003,
+     "teto": 360000.0,
+     "razao_teto": 37.233264250000005,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "17947184",
+     "razao_social": "BARUCH EMPREENDIMENTOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 600000.0,
+     "ano": "2024",
+     "pago": 12655930.399999999,
+     "teto": 360000.0,
+     "razao_teto": 35.155362222222216,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.6847782177655505
+    },
+    {
+     "cnpj_basico": "11437470",
+     "razao_social": "GRUPO SBV EMPREENDIMENTOS E PARTICIPACOES LTDA",
+     "porte": "Microempresa",
+     "capital_social": 3500000.0,
+     "ano": "2025",
+     "pago": 12528276.09,
+     "teto": 360000.0,
+     "razao_teto": 34.80076691666667,
+     "ug_principal": "135300",
+     "socios": 3,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.7185321427098136
+    },
+    {
+     "cnpj_basico": "06134616",
+     "razao_social": "COORDENA COORDENACAO DE PROJETOS LTDA.",
+     "porte": "Microempresa",
+     "capital_social": 1950000.0,
+     "ano": "2025",
+     "pago": 12493246.85,
+     "teto": 360000.0,
+     "razao_teto": 34.70346347222222,
+     "ug_principal": "044100",
+     "socios": 3,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.7620735365898182
+    },
+    {
+     "cnpj_basico": "07681401",
+     "razao_social": "C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA",
+     "porte": "Microempresa",
+     "capital_social": 10000000.0,
+     "ano": "2026",
+     "pago": 11565669.739999998,
+     "teto": 360000.0,
+     "razao_teto": 32.126860388888886,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.6470305192118396
+    },
+    {
+     "cnpj_basico": "34008202",
+     "razao_social": "INTER BLOCOS CONSTRUCOES E PROJETOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2100000.0,
+     "ano": "2022",
+     "pago": 11311106.4,
+     "teto": 360000.0,
+     "razao_teto": 31.41974,
+     "ug_principal": "197100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "24862673",
+     "razao_social": "BIOLLOGUS SOLUCOES AMBIENTAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2000000.0,
+     "ano": "2025",
+     "pago": 11085163.0,
+     "teto": 360000.0,
+     "razao_teto": 30.792119444444445,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "13970717",
+     "razao_social": "CONSTRUTEC MANUTENCAO CONSTRUCAO E REFORMAS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 5450000.0,
+     "ano": "2025",
+     "pago": 10873242.11,
+     "teto": 360000.0,
+     "razao_teto": 30.203450305555553,
+     "ug_principal": "530100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9552913707369483
+    },
+    {
+     "cnpj_basico": "05389546",
+     "razao_social": "CONPLAN EMPREENDIMENTOS E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 4500000.0,
+     "ano": "2023",
+     "pago": 10638120.84,
+     "teto": 360000.0,
+     "razao_teto": 29.550335666666665,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.41448765577092883
+    },
+    {
+     "cnpj_basico": "20848184",
+     "razao_social": "RYC GARRA PATRIMONIAL LTDA",
+     "porte": "Microempresa",
+     "capital_social": 600000.0,
+     "ano": "2025",
+     "pago": 10589616.830000006,
+     "teto": 360000.0,
+     "razao_teto": 29.41560230555557,
+     "ug_principal": "294200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "20848184",
+     "razao_social": "RYC GARRA PATRIMONIAL LTDA",
+     "porte": "Microempresa",
+     "capital_social": 600000.0,
+     "ano": "2024",
+     "pago": 10279321.66,
+     "teto": 360000.0,
+     "razao_teto": 28.553671277777777,
+     "ug_principal": "294200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "07681401",
+     "razao_social": "C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA",
+     "porte": "Microempresa",
+     "capital_social": 10000000.0,
+     "ano": "2022",
+     "pago": 9910481.82,
+     "teto": 360000.0,
+     "razao_teto": 27.529116166666668,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.6470305192118396
+    },
+    {
+     "cnpj_basico": "07673474",
+     "razao_social": "CONSTRUMAX DE ITAOCARA CONSTRUCAO REFORMA E PINTURA TECNICA LTDA",
+     "porte": "Microempresa",
+     "capital_social": 450000.0,
+     "ano": "2022",
+     "pago": 9798183.719999999,
+     "teto": 360000.0,
+     "razao_teto": 27.217176999999996,
+     "ug_principal": "130100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "26701090",
+     "razao_social": "CURTY CARVALHAL COMERCIO E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 5500000.0,
+     "ano": "2025",
+     "pago": 9671423.43,
+     "teto": 360000.0,
+     "razao_teto": 26.86506508333333,
+     "ug_principal": "180100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9765383073426172
+    },
+    {
+     "cnpj_basico": "37076194",
+     "razao_social": "CENTRO PEDIATRICO DE SAUDE INTEGRADA LTDA",
+     "porte": "Microempresa",
+     "capital_social": 50000.0,
+     "ano": "2025",
+     "pago": 9615686.64,
+     "teto": 360000.0,
+     "razao_teto": 26.710240666666667,
+     "ug_principal": "296100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "00482487",
+     "razao_social": "COSTA VERDE DIESEL LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2000000.0,
+     "ano": "2024",
+     "pago": 9592343.020000001,
+     "teto": 360000.0,
+     "razao_teto": 26.645397277777782,
+     "ug_principal": "130100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "00482487",
+     "razao_social": "COSTA VERDE DIESEL LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2000000.0,
+     "ano": "2026",
+     "pago": 9470747.600000001,
+     "teto": 360000.0,
+     "razao_teto": 26.307632222222228,
+     "ug_principal": "130100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "37407191",
+     "razao_social": "INDUSTRIA E COMERCIO DE ARTEFATOS DE CIMENTO COSTA LTDA",
+     "porte": "Microempresa",
+     "capital_social": 600000.0,
+     "ano": "2024",
+     "pago": 9173240.08,
+     "teto": 360000.0,
+     "razao_teto": 25.481222444444445,
+     "ug_principal": "044100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "07681401",
+     "razao_social": "C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA",
+     "porte": "Microempresa",
+     "capital_social": 10000000.0,
+     "ano": "2023",
+     "pago": 9002260.959999999,
+     "teto": 360000.0,
+     "razao_teto": 25.006280444444442,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.6470305192118396
+    },
+    {
+     "cnpj_basico": "31418513",
+     "razao_social": "MONTEIRO & RODRIGUEZ DIAGNOSTICO POR IMAGEM LTDA",
+     "porte": "Microempresa",
+     "capital_social": 7000000.0,
+     "ano": "2023",
+     "pago": 8997010.02,
+     "teto": 360000.0,
+     "razao_teto": 24.991694499999998,
+     "ug_principal": "294200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "11505067",
+     "razao_social": "ABBM BRAGA COMERCIO E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 1000000.0,
+     "ano": "2022",
+     "pago": 8872792.839999998,
+     "teto": 360000.0,
+     "razao_teto": 24.64664677777777,
+     "ug_principal": "130100",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.7460005705331074
+    },
+    {
+     "cnpj_basico": "45992528",
+     "razao_social": "DLW COMERCIAL DISTRIBUIDORA LTDA",
+     "porte": "Microempresa",
+     "capital_social": 100000.0,
+     "ano": "2024",
+     "pago": 8775023.929999998,
+     "teto": 360000.0,
+     "razao_teto": 24.375066472222215,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.7872128059896367
+    },
+    {
+     "cnpj_basico": "33643150",
+     "razao_social": "G. S. GOUVEA DISTRIBUIDORA E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 3000000.0,
+     "ano": "2025",
+     "pago": 8699001.7,
+     "teto": 360000.0,
+     "razao_teto": 24.16389361111111,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "52969017",
+     "razao_social": "TARGET MEDICAMENTOS E PRODUTOS HOSPITALARES LTDA",
+     "porte": "Microempresa",
+     "capital_social": 700000.0,
+     "ano": "2025",
+     "pago": 8643882.069999995,
+     "teto": 360000.0,
+     "razao_teto": 24.010783527777765,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.5242989961457174
+    },
+    {
+     "cnpj_basico": "24862673",
+     "razao_social": "BIOLLOGUS SOLUCOES AMBIENTAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2000000.0,
+     "ano": "2024",
+     "pago": 8606786.469999999,
+     "teto": 360000.0,
+     "razao_teto": 23.90774019444444,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "42779168",
+     "razao_social": "MULTIPLAR LOCACOES E SERVICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 1900000.0,
+     "ano": "2026",
+     "pago": 8517303.149999999,
+     "teto": 360000.0,
+     "razao_teto": 23.659175416666663,
+     "ug_principal": "130100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "24862673",
+     "razao_social": "BIOLLOGUS SOLUCOES AMBIENTAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 2000000.0,
+     "ano": "2026",
+     "pago": 8474416.0,
+     "teto": 360000.0,
+     "razao_teto": 23.540044444444444,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "19345406",
+     "razao_social": "LLS COMERCIO E SERVICO EM  EQUIPAMENTOS ELETRONICOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 250000.0,
+     "ano": "2023",
+     "pago": 8380834.329999999,
+     "teto": 360000.0,
+     "razao_teto": 23.28009536111111,
+     "ug_principal": "296100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.7987900212453017
+    },
+    {
+     "cnpj_basico": "12894679",
+     "razao_social": "FOCO SERVICOS ESPECIALIZADOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 600000.0,
+     "ano": "2025",
+     "pago": 8360889.359999962,
+     "teto": 360000.0,
+     "razao_teto": 23.224692666666563,
+     "ug_principal": "404600",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.5842041133028009
+    },
+    {
+     "cnpj_basico": "07681401",
+     "razao_social": "C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA",
+     "porte": "Microempresa",
+     "capital_social": 10000000.0,
+     "ano": "2024",
+     "pago": 8314621.239999998,
+     "teto": 360000.0,
+     "razao_teto": 23.096170111111107,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.6470305192118396
+    },
+    {
+     "cnpj_basico": "12474585",
+     "razao_social": "MCX7 COMERCIO E SERVICOS GERAIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 650000.0,
+     "ano": "2023",
+     "pago": 8280815.35,
+     "teto": 360000.0,
+     "razao_teto": 23.00226486111111,
+     "ug_principal": "263100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9968807677859555
+    },
+    {
+     "cnpj_basico": "27291577",
+     "razao_social": "GALILEU SERVICOS TERCEIRIZADOS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 300000.0,
+     "ano": "2025",
+     "pago": 8164865.310000004,
+     "teto": 360000.0,
+     "razao_teto": 22.680181416666677,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "34630189",
+     "razao_social": "RC CONSTRUCOES COMERCIO E SERVICOS EM GERAL LTDA",
+     "porte": "Microempresa",
+     "capital_social": 1500000.0,
+     "ano": "2025",
+     "pago": 8152151.730000001,
+     "teto": 360000.0,
+     "razao_teto": 22.64486591666667,
+     "ug_principal": "294200",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 1.0
+    },
+    {
+     "cnpj_basico": "35208086",
+     "razao_social": "MOBILIZA FOR RENT LTDA",
+     "porte": "Microempresa",
+     "capital_social": 8600000.0,
+     "ano": "2025",
+     "pago": 8063844.910000002,
+     "teto": 360000.0,
+     "razao_teto": 22.39956919444445,
+     "ug_principal": "243200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.729075324489378
+    },
+    {
+     "cnpj_basico": "15361478",
+     "razao_social": "ALFAMA INDUSTRIA E COMERCIO DE DESCARTAVEIS LTDA",
+     "porte": "Microempresa",
+     "capital_social": 600000.0,
+     "ano": "2026",
+     "pago": 8061072.24,
+     "teto": 360000.0,
+     "razao_teto": 22.391867333333334,
+     "ug_principal": "180100",
+     "socios": 1,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.9996051377388455
+    }
+   ]
+  }
+ },
+ "aviso": "Indícios para apuração interna — cada lente ORDENA fila, nenhuma acusa."
+}

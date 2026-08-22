@@ -7839,6 +7839,73 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         <td style="font-size:12px">${(x.nucleo_comum || []).map((n) => esc(n.slice(0, 30))).join("<br>") || '<span class="dim">—</span>'}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
     o.appendChild(alvo);
   }
+  var _DIM_ROTULO = { TAMANHO: "porte × pago", SANCAO: "sanção vigente", DEPENDENCIA: "dependência mútua" };
+  async function renderLentes() {
+    let h = cover(
+      "estado",
+      "Lentes cruzadas",
+      "Quatro detectores independentes sobre a mesma base de pagamento (OB SIAFE). O que ordena a fila não é acender numa lente — é acender em <b>mais de uma</b>.",
+      "🔬"
+    );
+    let d;
+    try {
+      d = await J("/api/lentes?top=40");
+    } catch (e) {
+      return h + card(`<div class="warn">${esc(String(e && e.message || e))}</div>`);
+    }
+    if (!d || d.ok === false) return h + card(`<div class="warn">${esc(d && d.erro || "lentes não materializadas")} — rode <code>tools/lentes_materializar.py</code>.</div>`);
+    const L = d.lentes || {};
+    const conv = L.convergencia && L.convergencia.topo || [];
+    const mult = conv.filter((x) => x.n_dim >= 2);
+    h += `<div class="grid g2">
+    ${kpi(fmtN(mult.length), "Empresas em 2+ dimensões", "var(--rose)", "🎯", { sobre: "Convergência de detectores independentes. <b>Dimensão não é detector</b>: porte e estrutura magra medem a mesma coisa e contam uma vez só." })}
+    ${kpi(fmtRc(mult.reduce((s, x) => s + (x.pago || 0), 0)), "Pago a essas empresas", "var(--amber)", "💸", { sobre: "Soma das OB <b>Contabilizado</b> do SIAFE — pagamento efetivo, não empenho." })}
+    ${kpi(fmtN((L.convergencia && L.convergencia.n) != null ? L.convergencia.n : "—"), "Marcadas por ao menos 1", "var(--dim)", "🔎")}
+    ${kpi(esc((d.gerado_em || "").replace("T", " ").slice(0, 16)), "Materializado em", null, "🕒", { sobre: "A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira." })}
+  </div>`;
+    h += leitura("Convergência <b>ordena</b>, não acusa. Cada dimensão carrega as ressalvas da própria lente: porte da Receita pode estar desatualizado, dependência alta é esperada em serviço essencial com operador único, e sanção de outro ente pode não alcançar o contrato estadual.");
+    h += sec("Em mais de uma dimensão");
+    h += mult.length ? mult.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(x.cnpj_basico, x.razao_social || x.cnpj_basico)}
+        <div class="dim">${(x.dimensoes || []).map((k) => `<span class="sev ${x.n_dim >= 3 ? "alta" : "media"}">${esc(_DIM_ROTULO[k] || k)}</span>`).join(" ")}</div>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">${esc((x.porques || []).join(" · "))}</div></div>
+      <div class="right"><div class="num"><b>${fmtRc(x.pago)}</b></div><div class="dim">${fmtN(x.n_dim)} dimensões</div></div></div>`, x.n_dim >= 3 ? "hl" : "")).join("") : card('<div class="muted">Nenhuma empresa em duas dimensões nesta materialização.</div>');
+    const _blocos = [
+      [
+        "dependencia_mutua",
+        "Dependência mútua",
+        "Fornecedor com 95%+ do que recebe vindo de UMA unidade, E que pesa 5%+ no orçamento dela. Repasse fundo-a-fundo, folha e OSS ficam de fora — contrato de gestão não é captura.",
+        (x) => `${clk(x.cnpj, x.nome)}<div class="dim">UG ${esc(x.ug)} · ${(100 * x.concentracao).toFixed(0)}% dele · ${(100 * x.fatia_ug).toFixed(1)}% dela</div>`,
+        (x) => x.pago_ug
+      ],
+      [
+        "porte_incompativel",
+        "Porte × pago",
+        "Empresa declarada ME/EPP que recebeu acima do teto legal de faturamento do próprio porte (LC 123/2006, art. 3º) num único ano.",
+        (x) => `${clk(x.cnpj_basico, x.razao_social)}<div class="dim">${esc(x.porte)} · ${esc(x.ano)} · ${x.razao_teto >= 1 ? x.razao_teto.toFixed(0) + "× o teto" : "—"}</div>`,
+        (x) => x.pago
+      ],
+      [
+        "pago_a_sancionado",
+        "Pago sob sanção",
+        "Pagamento (OB) emitido dentro da vigência de sanção que restringe contratar. Ver a aba <b>Sancionadas</b> para o detalhe por empresa.",
+        (x) => `${clk(x.cnpj, x.nome)}<div class="dim">${esc((x.categoria || "").slice(0, 64))}</div>`,
+        (x) => x.pago_durante || x.pago || 0
+      ]
+    ];
+    for (const [chave, titulo, nota, linha, valor] of _blocos) {
+      const b = L[chave] || {};
+      h += sec(titulo);
+      if (b.ok === false) {
+        h += card(`<div class="warn">INDISPONÍVEL — a lente falhou ao materializar: ${esc(b.erro || "")}</div>`);
+        continue;
+      }
+      h += `<div class="dim" style="margin:0 2px 6px">${esc(nota)} — ${b.n == null ? "<b>INDISPONÍVEL</b>" : fmtN(b.n) + " no total, mostrando " + fmtN((b.topo || []).length)}</div>`;
+      h += (b.topo || []).slice(0, 12).map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${linha(x)}</div><div class="right"><b>${fmtRc(valor(x))}</b></div></div>`)).join("");
+    }
+    h += `<div class="note">${esc(d.aviso || "")}</div>`;
+    return h;
+  }
 
   // static/js/src/entrada.js
   window.__jfnBootReadyState = document.readyState;
@@ -7872,6 +7939,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { id: "e_panorama", ic: "📊", tl: "Panorama", render: renderPanoramaEstado },
       { id: "e_pericias", ic: "⚖️", tl: "Perícias", render: renderPericias },
       { id: "e_sanc", ic: "🚫", tl: "Sancionadas", render: () => renderSancionadas("estado") },
+      { id: "e_lentes", ic: "🔬", tl: "Lentes", render: renderLentes },
       { id: "e_frac", ic: "§frac", tl: "Fracion.", render: renderFracionamento },
       { id: "e_sobre", ic: "📈", tl: "Sobrepreço", render: renderSobrepreco },
       { id: "e_escal", ic: "🪜", tl: "Escalada", render: renderEscalada },
