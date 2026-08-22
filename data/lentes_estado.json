@@ -1,10 +1,10 @@
 {
- "gerado_em": "2026-08-22T11:37:40-0300",
+ "gerado_em": "2026-08-22T14:06:46-0300",
  "limite": 50,
  "lentes": {
   "convergencia": {
    "ok": true,
-   "segundos": 37.4,
+   "segundos": 17.5,
    "n": 1427,
    "topo": [
     {
@@ -734,7 +734,7 @@
   },
   "dependencia_mutua": {
    "ok": true,
-   "segundos": 6.8,
+   "segundos": 2.6,
    "n": 63,
    "topo": [
     {
@@ -1241,7 +1241,7 @@
   },
   "pago_a_sancionado": {
    "ok": true,
-   "segundos": 5.3,
+   "segundos": 2.1,
    "n": 213,
    "topo": [
     {
@@ -1748,7 +1748,7 @@
   },
   "porte_incompativel": {
    "ok": true,
-   "segundos": 12.5,
+   "segundos": 3.6,
    "n": 1144,
    "topo": [
     {
@@ -2450,6 +2450,298 @@
      "socios": 1,
      "natureza": "Soc. Ltda",
      "concentracao_ug": 0.9996051377388455
+    }
+   ]
+  },
+  "porte_declarado_certame": {
+   "ok": true,
+   "segundos": 3.2,
+   "n": 8,
+   "topo": [
+    {
+     "cnpj_basico": "12515796",
+     "nome": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 2,
+     "homologado": 3787358.416,
+     "recebido_pico": 27227092.16,
+     "certames": [
+      {
+       "certame": "28606630000123-1-000118/2024",
+       "data_pub": "2024-11-25",
+       "recebido_ate": 27227092.16,
+       "homologado": 3720967.31,
+       "porte": "ME"
+      },
+      {
+       "certame": "01618408000194-1-000006/2024",
+       "data_pub": "2024-06-14",
+       "recebido_ate": 12337682.120000001,
+       "homologado": 66391.106,
+       "porte": "ME"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "21116118",
+     "nome": "EVOLUCAO COMERCIO E DISTRIBUIDORA LTDA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 1,
+     "homologado": 2623128.64,
+     "recebido_pico": 26352238.88,
+     "certames": [
+      {
+       "certame": "39223581000166-1-000062/2026",
+       "data_pub": "2026-07-07",
+       "recebido_ate": 26352238.88,
+       "homologado": 2623128.64,
+       "porte": "ME"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "17286183",
+     "nome": "GRAVISA CONSTRUCOES E EMPREENDIMENTOS LIMITADA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 1,
+     "homologado": 2488747.2975,
+     "recebido_pico": 12882933.95,
+     "certames": [
+      {
+       "certame": "42498733000148-1-001523/2024",
+       "data_pub": "2024-10-03",
+       "recebido_ate": 12882933.95,
+       "homologado": 2488747.2975,
+       "porte": "ME"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "01312680",
+     "nome": "FLEET CARDS GESTAO DE FROTAS LTDA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 3,
+     "homologado": 2856677.6568000005,
+     "recebido_pico": 11929598.49,
+     "certames": [
+      {
+       "certame": "00394460000141-1-001738/2024",
+       "data_pub": "2024-11-07",
+       "recebido_ate": 11929598.49,
+       "homologado": 188565.6,
+       "porte": "ME"
+      },
+      {
+       "certame": "00394502000144-1-016059/2024",
+       "data_pub": "2024-11-12",
+       "recebido_ate": 11929598.49,
+       "homologado": 417815.1568,
+       "porte": "ME"
+      },
+      {
+       "certame": "00394502000144-1-011989/2024",
+       "data_pub": "2024-09-17",
+       "recebido_ate": 8402142.540000001,
+       "homologado": 369987.73,
+       "porte": "ME"
+      },
+      {
+       "certame": "00394502000144-1-011989/2024",
+       "data_pub": "2024-09-17",
+       "recebido_ate": 8402142.540000001,
+       "homologado": 582529.64,
+       "porte": "ME"
+      },
+      {
+       "certame": "00394502000144-1-011989/2024",
+       "data_pub": "2024-09-17",
+       "recebido_ate": 8402142.540000001,
+       "homologado": 537689.43,
+       "porte": "ME"
+      },
+      {
+       "certame": "00394502000144-1-011989/2024",
+       "data_pub": "2024-09-17",
+       "recebido_ate": 8402142.540000001,
+       "homologado": 671042.4,
+       "porte": "ME"
+      },
+      {
+       "certame": "00394502000144-1-011989/2024",
+       "data_pub": "2024-09-17",
+       "recebido_ate": 8402142.540000001,
+       "homologado": 89047.7,
+       "porte": "ME"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "40975251",
+     "nome": "NIVEL 1 SOLUCOES AUTOMOTIVAS LTDA",
+     "portes": [
+      "EPP"
+     ],
+     "n_certames": 1,
+     "homologado": 328800.0,
+     "recebido_pico": 8347318.130000001,
+     "certames": [
+      {
+       "certame": "04543783000100-1-000008/2024",
+       "data_pub": "2024-11-25",
+       "recebido_ate": 8347318.130000001,
+       "homologado": 328800.0,
+       "porte": "EPP"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "07340993",
+     "nome": "WEBTRIP AGENCIA DE VIAGENS E TURISMO LTDA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 2,
+     "homologado": 1286576.8925,
+     "recebido_pico": 7828078.55,
+     "certames": [
+      {
+       "certame": "30892350000170-1-000063/2026",
+       "data_pub": "2026-07-27",
+       "recebido_ate": 7828078.55,
+       "homologado": 177000.024,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 0.058,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 0.002,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 0.006,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 0.0005,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 0.002,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 1067884.4,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 36823.6,
+       "porte": "ME"
+      },
+      {
+       "certame": "04884574000120-1-000036/2025",
+       "data_pub": "2025-07-01",
+       "recebido_ate": 5770734.1,
+       "homologado": 4868.8,
+       "porte": "ME"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "03246961",
+     "nome": "CAMERA 2 VIDEO FILMES LTDA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 1,
+     "homologado": 4275000.0,
+     "recebido_pico": 6051654.41,
+     "certames": [
+      {
+       "certame": "29831716000112-1-000013/2025",
+       "data_pub": "2025-05-15",
+       "recebido_ate": 6051654.41,
+       "homologado": 4275000.0,
+       "porte": "ME"
+      }
+     ]
+    },
+    {
+     "cnpj_basico": "24079703",
+     "nome": "J F FARMA DISTRIBUIDORA DE PRODUTOS FARMACEUTICOS LTDA",
+     "portes": [
+      "ME"
+     ],
+     "n_certames": 2,
+     "homologado": 4003719.74,
+     "recebido_pico": 5223776.78,
+     "certames": [
+      {
+       "certame": "42498733000148-1-001923/2024",
+       "data_pub": "2024-11-14",
+       "recebido_ate": 5223776.78,
+       "homologado": 39700.5,
+       "porte": "ME"
+      },
+      {
+       "certame": "42498733000148-1-001923/2024",
+       "data_pub": "2024-11-14",
+       "recebido_ate": 5223776.78,
+       "homologado": 64476.0,
+       "porte": "ME"
+      },
+      {
+       "certame": "42498733000148-1-001923/2024",
+       "data_pub": "2024-11-14",
+       "recebido_ate": 5223776.78,
+       "homologado": 24775.5,
+       "porte": "ME"
+      },
+      {
+       "certame": "42498733000148-1-001923/2024",
+       "data_pub": "2024-11-14",
+       "recebido_ate": 5223776.78,
+       "homologado": 3806100.0,
+       "porte": "ME"
+      },
+      {
+       "certame": "42498733000148-1-001838/2024",
+       "data_pub": "2024-11-04",
+       "recebido_ate": 5184882.51,
+       "homologado": 68667.74,
+       "porte": "ME"
+      }
+     ]
     }
    ]
   }

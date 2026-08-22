@@ -7886,6 +7886,13 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         (x) => x.pago
       ],
       [
+        "porte_declarado_certame",
+        "Declarou-se pequena depois de estourar o teto",
+        "Empresa que se declarou ME/EPP/MEI em certame publicado <b>depois</b> de já ter recebido do Estado, naquele mesmo ano-calendário, acima do teto de EPP (R$ 4,8 mi — LC 123/2006, art. 3º). O TCU firmou que a declaração falsa de porte já é fraude à licitação, ainda que não haja vantagem concreta. Número é PISO: só o pago pelo Estado entra, e o PNCP capturado cobre 2024-2026/RJ.",
+        (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc((x.portes || []).join("/"))} · ${fmtN(x.n_certames)} certame(s) · já recebera ${fmtRc(x.recebido_pico)} no ano</div>`,
+        (x) => x.homologado
+      ],
+      [
         "pago_a_sancionado",
         "Pago sob sanção",
         "Pagamento (OB) emitido dentro da vigência de sanção que restringe contratar. Ver a aba <b>Sancionadas</b> para o detalhe por empresa.",

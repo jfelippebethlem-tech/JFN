@@ -52,6 +52,7 @@ def materializar(limite: int = 50) -> dict:
     from convergencia import convergir
     from dependencia_mutua import dependencia
     from pago_a_sancionado import pagos_durante_sancao
+    from porte_declarado_certame import declaracoes_incompativeis
     from porte_incompativel import incompativeis
 
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
@@ -60,6 +61,10 @@ def materializar(limite: int = 50) -> dict:
         "dependencia_mutua": _seguro("dependencia_mutua", dependencia, con),
         "pago_a_sancionado": _seguro("pago_a_sancionado", pagos_durante_sancao, con),
         "porte_incompativel": _seguro("porte_incompativel", incompativeis, con),
+        # corte ESTRITO por padrão: só certame publicado DEPOIS de a empresa já ter estourado o
+        # teto no ano. O amplo triplica o número e inclui quem podia não saber ainda.
+        "porte_declarado_certame": _seguro("porte_declarado_certame", declaracoes_incompativeis,
+                                           con, estrito=True),
     }
     con.close()
 
