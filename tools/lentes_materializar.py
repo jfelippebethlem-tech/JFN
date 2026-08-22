@@ -38,7 +38,12 @@ def _seguro(nome: str, fn, *a, **kw) -> dict:
     t0 = time.time()
     try:
         return {"ok": True, "itens": fn(*a, **kw), "segundos": round(time.time() - t0, 1)}
-    except Exception as exc:  # noqa: BLE001  — uma lente quebrada não pode derrubar as outras
+    # Enumeradas, e não a captura genérica: uma lente quebrada não pode derrubar as outras, mas a
+    # catraca `test_catraca_excepts` está certa — captura genérica engole erro de programação
+    # (NameError num campo renomeado) e o transforma em "INDISPONÍVEL", que parece dado.
+    # Estas são as falhas REAIS das lentes: tabela/coluna ausente, banco travado ou corrompido,
+    # arquivo sumido, chave que mudou de nome no dicionário, tipo inesperado vindo do SQLite.
+    except (sqlite3.Error, OSError, KeyError, IndexError, ValueError, TypeError) as exc:
         return {"ok": False, "erro": f"{type(exc).__name__}: {exc}", "itens": None,
                 "segundos": round(time.time() - t0, 1)}
 

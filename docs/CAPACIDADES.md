@@ -19,6 +19,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `editais_direcionamento` | jfn | cli | `tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]` | PRONTO | 'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade' |
 | `emendas_coletar` | jfn | cli | `tools/emendas_coletar.py [--anos 2019 ... 2026]` | PRONTO | 'atualizar emendas', 'coletar emendas do deputado X / destino Y' |
 | `emendas_pericia` | jfn | cli | `tools/emendas_pericia.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia/analise das emendas', 'quais emendas suspeitas' |
+| `lentes_cruzadas` | jfn | http | `/api/lentes` | PRONTO | priorizar fila de apuracao; 'quais empresas acendem em mais de um detector' |
 | `listar_ugs` | jfn | http | `/api/ugs` | PRONTO | '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo |
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
 | `missao_estado` | jfn | http | `/api/hermes/estado` | PRONTO | 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar |

@@ -16,10 +16,17 @@ def test_falha_de_lente_vira_indisponivel_nao_zero():
     """Lente que estoura NÃO pode virar `n: 0` — zero é uma afirmação, INDISPONÍVEL não é."""
     from tools.lentes_materializar import _seguro
 
-    bloco = _seguro("x", lambda: (_ for _ in ()).throw(RuntimeError("tabela sumiu")))
+    bloco = _seguro("x", lambda: (_ for _ in ()).throw(KeyError("tabela sumiu")))
     assert bloco["ok"] is False
     assert bloco["itens"] is None, "falha virou lista vazia — o painel leria como 'nada encontrado'"
     assert "tabela sumiu" in bloco["erro"]
+
+
+def test_erro_de_programacao_NAO_e_engolido():
+    """NameError vira INDISPONÍVEL? Não. Bug de código tem de estourar, não virar dado."""
+    from tools.lentes_materializar import _seguro
+    with pytest.raises(NameError):
+        _seguro("x", lambda: (_ for _ in ()).throw(NameError("campo renomeado")))
 
 
 def test_lente_boa_devolve_itens_e_tempo():

@@ -156,6 +156,37 @@
     {
       "type": "function",
       "function": {
+        "name": "lentes_cruzadas",
+        "description": "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao. Le JSON materializado (tools/lentes_materializar.py, cron 04:17) — as 4 lentes somam ~31s e nao rodam na rota. — usar quando: priorizar fila de apuracao; 'quais empresas acendem em mais de um detector' — chamar: GET /api/lentes (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "lente": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "top": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/lentes",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "certame_indice",
         "description": "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial) — usar quando: risco de um certame/licitacao especifica pelo nº de controle PNCP — chamar: GET /api/certame/indice (base http://127.0.0.1:8000)",
         "parameters": {

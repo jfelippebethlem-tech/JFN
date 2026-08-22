@@ -90,6 +90,7 @@ GET /api/intel/socio_oculto -> api_intel_socio_oculto
 GET /api/intel/socio_servidor -> api_intel_socio_servidor
 GET /api/laranjas -> api_laranjas
 GET /api/leaks -> api_leaks
+GET /api/lentes -> api_lentes
 GET /api/links -> api_links
 GET /api/lista -> api_lista
 GET /api/memoria -> api_memoria
