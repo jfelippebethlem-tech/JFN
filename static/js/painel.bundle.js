@@ -7860,7 +7860,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div class="grid g2">
     ${kpi(fmtN(mult.length), "Empresas em 2+ dimensões", "var(--rose)", "🎯", { sobre: "Convergência de detectores independentes. <b>Dimensão não é detector</b>: porte e estrutura magra medem a mesma coisa e contam uma vez só." })}
     ${kpi(fmtRc(mult.reduce((s, x) => s + (x.pago || 0), 0)), "Pago a essas empresas", "var(--amber)", "💸", { sobre: "Soma das OB <b>Contabilizado</b> do SIAFE — pagamento efetivo, não empenho." })}
-    ${kpi(fmtN((L.convergencia && L.convergencia.n) != null ? L.convergencia.n : "—"), "Marcadas por ao menos 1", "var(--dim)", "🔎")}
+    ${kpi(fmtN((L.convergencia && L.convergencia.n) != null ? L.convergencia.n : "—"), "Marcadas por ao menos 1", "var(--dim)", "🔎", { sobre: "Total de empresas que acenderam em <b>alguma</b> das lentes — a base de onde sai a convergência. Acender numa lente sozinha <b>não é achado</b>: 93,9% estão nesse caso, e é por isso que a fila se ordena pelo cruzamento, não pelo total. Vem do JSON materializado, não da tela: por isso não tem gaveta." })}
     ${kpi(esc((d.gerado_em || "").replace("T", " ").slice(0, 16)), "Materializado em", null, "🕒", { sobre: "A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira." })}
   </div>`;
     h += leitura("Convergência <b>ordena</b>, não acusa. Cada dimensão carrega as ressalvas da própria lente: porte da Receita pode estar desatualizado, dependência alta é esperada em serviço essencial com operador único, e sanção de outro ente pode não alcançar o contrato estadual.");
