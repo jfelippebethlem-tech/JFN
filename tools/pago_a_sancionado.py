@@ -118,7 +118,8 @@ def pagos_durante_sancao(con: sqlite3.Connection, restringe_apenas: bool = True,
     return saida
 
 
-def sucessao_societaria(con: sqlite3.Connection, so_administrador: bool = True) -> list[dict]:
+def sucessao_societaria(con: sqlite3.Connection, so_administrador: bool = True,
+                        temporal: bool = True) -> list[dict]:
     """Empresa NÃO sancionada que recebe do Estado e tem sócio vindo de empresa SANCIONADA.
 
     O padrão é clássico: empresa punida é substituída por outra, com a mesma gente. O que impede
@@ -132,13 +133,32 @@ def sucessao_societaria(con: sqlite3.Connection, so_administrador: bool = True) 
     3,4% já discrimina; 1,7% é o corte forte, e é o padrão da função. Sócio minoritário de grande
     grupo entra no primeiro e sai no segundo — que é exatamente a diferença entre coincidência de
     participação e continuidade de comando.
+
+    **2026-08-23 — A ORDEM DOS FATOS FALTAVA, e ela É o achado.** A prevalência acima estava certa
+    e mesmo assim o detector errava: ele não checava QUANDO a punição começou. Medido: dos 178
+    casos, **146 (82%)** tinham a sanção iniciando DEPOIS de o sócio já estar na empresa nova —
+    não há fuga de uma punição que ainda não existia. O valor somado caiu de **R$ 1,02 bi para
+    R$ 39,28 mi** (26× de inflação) e as empresas, de 178 para **32**.
+
+    O caso que abriu isso foi a DIMPI (R$ 181,26 mi do Estado): os dois sócios entraram em
+    19/01 e 19/02/2026, e a punição da origem (RC Gestão) só veio em **13/05/2026** — e é
+    suspensão perante a ENTIDADE SANCIONADORA (Lei 13.303, art. 83, III), que nem alcança o RJ.
+
+    `temporal=False` mantém o corte antigo para conferência. Sem data de entrada, o caso NÃO entra:
+    ausência de dado não vira presunção de sucessão.
     """
     ADM = re.compile(r"administrador", re.I)
     sanc_b = set()
-    for doc, cat in con.execute("SELECT cpf_cnpj, categoria FROM sancoes_federais"):
+    # A ORDEM DOS FATOS É O ACHADO. Guardar o INÍCIO da sanção, não só quem foi sancionado:
+    # "sócio saiu da punida e foi para a nova" só é sucessão se a punição veio ANTES da entrada.
+    sanc_ini: dict = {}
+    for doc, cat, inicio in con.execute(
+            "SELECT cpf_cnpj, categoria, data_inicio FROM sancoes_federais"):
         d = re.sub(r"\D", "", str(doc))
         if len(d) == 14 and RESTRINGE.search(str(cat or "")):
             sanc_b.add(d[:8])
+            if inicio and (d[:8] not in sanc_ini or str(inicio) < sanc_ini[d[:8]]):
+                sanc_ini[d[:8]] = str(inicio)
 
     de_sancionada: dict = {}
     for b, doc, nome, qual in con.execute(
@@ -150,14 +170,26 @@ def sucessao_societaria(con: sqlite3.Connection, so_administrador: bool = True) 
         de_sancionada.setdefault(str(doc), (nome, str(b).zfill(8)))
 
     alvo: dict = collections.defaultdict(list)
-    for b, doc, nome, qual in con.execute(
-            "SELECT cnpj_basico, doc_socio, nome_socio, qualificacao_txt FROM socios_receita"):
+    for b, doc, nome, qual, entrada in con.execute(
+            "SELECT cnpj_basico, doc_socio, nome_socio, qualificacao_txt, data_entrada "
+            "FROM socios_receita"):
         bb = str(b).zfill(8)
         if bb in sanc_b or str(doc) not in de_sancionada:
             continue
         if so_administrador and not ADM.search(str(qual or "")):
             continue
-        alvo[bb].append((nome, str(doc), de_sancionada[str(doc)][1]))
+        # FILTRO TEMPORAL. Medido em 2026-08-23: sem ele, 146 dos 178 casos (82%) tinham a sanção
+        # começando DEPOIS de o sócio já estar na empresa nova — a ordem dos fatos desmentia a
+        # hipótese que o detector nomeia. O caso que abriu isso foi a DIMPI: os dois sócios
+        # entraram em 01-02/2026 e a punição da origem (RC Gestão) só veio em 13/05/2026. Não há
+        # fuga quando a punição ainda não existia.
+        origem = de_sancionada[str(doc)][1]
+        inicio = sanc_ini.get(origem)
+        e = str(entrada or "")
+        entrada_iso = f"{e[:4]}-{e[4:6]}-{e[6:8]}" if len(e) == 8 else ""
+        if temporal and (not inicio or not entrada_iso or inicio >= entrada_iso):
+            continue
+        alvo[bb].append((nome, str(doc), origem))
     if not alvo:
         return []
 

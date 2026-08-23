@@ -1,12 +1,96 @@
 {
- "gerado_em": "2026-08-23T08:38:14-0300",
+ "gerado_em": "2026-08-23T18:13:30-0300",
  "limite": 50,
  "lentes": {
   "convergencia": {
    "ok": true,
-   "segundos": 35.3,
-   "n": 1448,
+   "segundos": 40.3,
+   "n": 1371,
    "topo": [
+    {
+     "cnpj_basico": "18776916",
+     "razao_social": "LAND SERVICOS E ENGENHARIA LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 128255090.59000015,
+     "porques": [
+      "2 sócio(s)",
+      "100% de 1 UG / 6% dela",
+      "troca total de sócios em 2024-06"
+     ]
+    },
+    {
+     "cnpj_basico": "17298685",
+     "razao_social": "B7 EMPREENDIMENTOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 61089719.16,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "19308719",
+     "razao_social": "S & B DISTRIBUIDORA E IMPORTADORA DE MEDICAMENTOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 38343561.44,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi"
+     ]
+    },
+    {
+     "cnpj_basico": "33780199",
+     "razao_social": "KRATUS TECNOLOGIA COMERCIO E SERVICOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 17492500.450000025,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "14647297",
+     "razao_social": "PLURAL SERVICOS TECNICO LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 16115542.410000002,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto"
+     ]
+    },
     {
      "cnpj_basico": "10981677",
      "razao_social": "SISTEMATECH DESENVOLVIMENTO DE SOFTWARE LTDA",
@@ -21,6 +105,85 @@
       "1 sócio(s)",
       "pago sob Declaração de Inid",
       "100% de 1 UG / 8% dela"
+     ]
+    },
+    {
+     "cnpj_basico": "13411926",
+     "razao_social": "INNOVA AIR SERVICOS TECNICOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 13836847.20000001,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi",
+      "troca total de sócios em 2025-02"
+     ]
+    },
+    {
+     "cnpj_basico": "41710060",
+     "razao_social": "ALAG COMERCIO E SERVICOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 7144109.709999999,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "1 sócio(s)",
+      "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "19078854",
+     "razao_social": "RFC RASTREAMENTO DE FROTAS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 6524995.830000002,
+     "porques": [
+      "2 sócio(s)",
+      "pago sob Impedimento/proibi",
+      "troca total de sócios em 2024-10"
+     ]
+    },
+    {
+     "cnpj_basico": "10910334",
+     "razao_social": "GUARAILHA DISTRIBUIDORA DE ALIMENTOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 3,
+     "pago": 5604125.910000005,
+     "porques": [
+      "1 sócio(s)",
+      "pago sob Impedimento/proibi",
+      "troca total de sócios em 2023-07"
+     ]
+    },
+    {
+     "cnpj_basico": "00801512",
+     "razao_social": "AGILE CORP SERVICOS ESPECIALIZADOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 778863787.2300007,
+     "porques": [
+      "2 sócio(s)",
+      "troca total de sócios em 2023-09"
      ]
     },
     {
@@ -108,6 +271,20 @@
      ]
     },
     {
+     "cnpj_basico": "07231868",
+     "razao_social": "BRAVO ASSESSORIA E SERVICOS EMPRESARIAIS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 370436767.2700008,
+     "porques": [
+      "1 sócio(s)",
+      "troca total de sócios em 2026-03"
+     ]
+    },
+    {
      "cnpj_basico": "11804114",
      "razao_social": "CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA",
      "dimensoes": [
@@ -136,6 +313,48 @@
      ]
     },
     {
+     "cnpj_basico": "01920177",
+     "razao_social": "COMERCIAL MILANO BRASIL LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 317950174.2200002,
+     "porques": [
+      "2 sócio(s)",
+      "troca total de sócios em 2023-09"
+     ]
+    },
+    {
+     "cnpj_basico": "09077954",
+     "razao_social": "RESTAURANTE NOVA RODOVIA 2007 LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 278077663.1699999,
+     "porques": [
+      "1 sócio(s)",
+      "troca total de sócios em 2024-02"
+     ]
+    },
+    {
+     "cnpj_basico": "02102125",
+     "razao_social": "CASSAROTTI FOODS - SERVICOS DE REFEICOES COLETIVAS E EVENTOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "DEPENDENCIA"
+     ],
+     "n_dim": 2,
+     "pago": 275226109.39999986,
+     "porques": [
+      "99% de 1 UG / 10% dela",
+      "troca total de sócios em 2023-10"
+     ]
+    },
+    {
      "cnpj_basico": "05351320",
      "razao_social": "SD ENGENHARIA LTDA",
      "dimensoes": [
@@ -150,17 +369,31 @@
      ]
     },
     {
-     "cnpj_basico": "61704482",
-     "razao_social": "AGENCIA NACIONAL DE PROPAGANDA LTDA",
+     "cnpj_basico": "07726017",
+     "razao_social": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
      "dimensoes": [
-      "DEPENDENCIA",
-      "SANCAO"
+      "CONTROLE",
+      "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 239486756.08000025,
+     "pago": 241122965.88000005,
      "porques": [
-      "sócio de sancionada",
-      "100% de 1 UG / 20% dela"
+      "1 sócio(s)",
+      "troca total de sócios em 2025-02"
+     ]
+    },
+    {
+     "cnpj_basico": "20360878",
+     "razao_social": "CONSTRUVERDE CONSTRUCOES E SERVICOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 204843098.8799999,
+     "porques": [
+      "2 sócio(s)",
+      "troca total de sócios em 2025-02"
      ]
     },
     {
@@ -181,14 +414,14 @@
      "cnpj_basico": "10893674",
      "razao_social": "DIMPI GESTAO EM SAUDE LTDA",
      "dimensoes": [
-      "SANCAO",
+      "CONTROLE",
       "TAMANHO"
      ],
      "n_dim": 2,
      "pago": 181262048.57999998,
      "porques": [
       "2 sócio(s)",
-      "sócio de sancionada"
+      "troca total de sócios em 2026-01"
      ]
     },
     {
@@ -199,11 +432,39 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 179248453.06,
+     "pago": 180616415.71999994,
      "porques": [
       "1 sócio(s)",
       "pago sob Suspensão",
       "pago sob Suspensão"
+     ]
+    },
+    {
+     "cnpj_basico": "19088605",
+     "razao_social": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 173235728.01,
+     "porques": [
+      "1 sócio(s)",
+      "troca total de sócios em 2024-11"
+     ]
+    },
+    {
+     "cnpj_basico": "17820990",
+     "razao_social": "LOCASEM SERVICOS DE LIMPEZA, MANUTENCAO E ALIMENTACAO LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 170127645.35999992,
+     "porques": [
+      "1 sócio(s)",
+      "troca total de sócios em 2024-06"
      ]
     },
     {
@@ -235,17 +496,17 @@
      ]
     },
     {
-     "cnpj_basico": "01936069",
-     "razao_social": "DIGISYSTEM SERVICOS ESPECIALIZADOS LTDA",
+     "cnpj_basico": "24977781",
+     "razao_social": "JRF MANUTENCAO E SERVICOS LTDA",
      "dimensoes": [
-      "SANCAO",
+      "CONTROLE",
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 152022818.10999995,
+     "pago": 148490692.10999995,
      "porques": [
-      "2 sócio(s)",
-      "sócio de sancionada"
+      "1 sócio(s)",
+      "troca total de sócios em 2024-01"
      ]
     },
     {
@@ -263,17 +524,17 @@
      ]
     },
     {
-     "cnpj_basico": "18776916",
-     "razao_social": "LAND SERVICOS E ENGENHARIA LTDA",
+     "cnpj_basico": "40494483",
+     "razao_social": "INFINITY MULTISERVICOS LTDA",
      "dimensoes": [
-      "DEPENDENCIA",
+      "CONTROLE",
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 128255090.59000015,
+     "pago": 119463434.5700001,
      "porques": [
       "2 sócio(s)",
-      "100% de 1 UG / 6% dela"
+      "troca total de sócios em 2024-02"
      ]
     },
     {
@@ -333,6 +594,36 @@
      ]
     },
     {
+     "cnpj_basico": "21116118",
+     "razao_social": "EVOLUCAO COMERCIO E DISTRIBUIDORA LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 92360059.3,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "1 sócio(s)"
+     ]
+    },
+    {
+     "cnpj_basico": "10562003",
+     "razao_social": "INOVA MEDIC SERVICOS ESPECIALIZADOS EM SAUDE LTDA.",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 84764809.30000004,
+     "porques": [
+      "2 sócio(s)",
+      "troca total de sócios em 2024-07"
+     ]
+    },
+    {
      "cnpj_basico": "36813448",
      "razao_social": "MDL SOUZA COMERCIO LTDA",
      "dimensoes": [
@@ -363,6 +654,50 @@
      ]
     },
     {
+     "cnpj_basico": "26129034",
+     "razao_social": "CONECTA GESTAO EM SAUDE LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 67830260.72999999,
+     "porques": [
+      "2 sócio(s)",
+      "troca total de sócios em 2024-11"
+     ]
+    },
+    {
+     "cnpj_basico": "08947037",
+     "razao_social": "BASE MONTAGENS E SERVICOS PROMOCIONAIS LTDA",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 66822699.099999994,
+     "porques": [
+      "porte acima do teto",
+      "porte acima do teto",
+      "porte acima do teto",
+      "1 sócio(s)"
+     ]
+    },
+    {
+     "cnpj_basico": "07843380",
+     "razao_social": "PLASMA LABORATORIO DE ANALISES CLINICAS LTDA.",
+     "dimensoes": [
+      "CONTROLE",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 63891982.96000003,
+     "porques": [
+      "2 sócio(s)",
+      "troca total de sócios em 2026-03"
+     ]
+    },
+    {
      "cnpj_basico": "05805527",
      "razao_social": "EMSIMEM MANUTENCAO E CONSERVACAO LTDA",
      "dimensoes": [
@@ -379,363 +714,39 @@
      ]
     },
     {
-     "cnpj_basico": "17298685",
-     "razao_social": "B7 EMPREENDIMENTOS LTDA",
+     "cnpj_basico": "02911547",
+     "razao_social": "KROY SERVICOS LTDA",
      "dimensoes": [
-      "SANCAO",
+      "CONTROLE",
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 61052740.62,
+     "pago": 59899933.330000035,
      "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto"
+      "1 sócio(s)",
+      "troca total de sócios em 2023-11"
      ]
     },
     {
-     "cnpj_basico": "00482840",
-     "razao_social": "LIDERANCA LIMPEZA E CONSERVACAO LTDA",
+     "cnpj_basico": "31472249",
+     "razao_social": "EDM EMPRESA DISTRIBUIDORA DE MOBILIARIOS LTDA.",
      "dimensoes": [
-      "SANCAO",
+      "CONTROLE",
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 59534721.61999989,
+     "pago": 58181657.71000001,
      "porques": [
       "2 sócio(s)",
-      "sócio de sancionada"
-     ]
-    },
-    {
-     "cnpj_basico": "07844436",
-     "razao_social": "CABERJ INTEGRAL SAUDE S.A.",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 57940287.019999996,
-     "porques": [
-      "2 sócio(s)",
-      "95% de 1 UG / 37% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "09060537",
-     "razao_social": "LAPA TERCEIRIZACOES E PLANEJAMENTO LTDA - EM RECUPERACAO JUDICIAL",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 53717638.620000035,
-     "porques": [
-      "2 sócio(s)",
-      "pago sob Suspensão"
-     ]
-    },
-    {
-     "cnpj_basico": "30431915",
-     "razao_social": "VERONA SERVICOS LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 48256150.379999995,
-     "porques": [
-      "1 sócio(s)",
-      "pago sob Impedimento/proibi"
-     ]
-    },
-    {
-     "cnpj_basico": "04635778",
-     "razao_social": "FERTHYMAR EMPREENDIMENTOS E PARTICIPACOES LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 47500133.54000001,
-     "porques": [
-      "1 sócio(s)",
-      "100% de 1 UG / 17% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "00482487",
-     "razao_social": "COSTA VERDE DIESEL LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 44655896.690000005,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto"
-     ]
-    },
-    {
-     "cnpj_basico": "10581285",
-     "razao_social": "WS SERVICOS TERCEIRIZADOS LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 42497476.96,
-     "porques": [
-      "1 sócio(s)",
-      "pago sob Suspensão"
-     ]
-    },
-    {
-     "cnpj_basico": "08081559",
-     "razao_social": "WF SERVICOS ESPECIAIS LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 39302887.310000025,
-     "porques": [
-      "1 sócio(s)",
-      "pago sob Impedimento/proibi",
-      "pago sob Impedimento/proibi"
-     ]
-    },
-    {
-     "cnpj_basico": "19308719",
-     "razao_social": "S & B DISTRIBUIDORA E IMPORTADORA DE MEDICAMENTOS LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 38343561.44,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "1 sócio(s)",
-      "pago sob Impedimento/proibi"
-     ]
-    },
-    {
-     "cnpj_basico": "30364285",
-     "razao_social": "LABORATORIO DE ANALISES CLINICAS SAO JOSE LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 33141746.769999992,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto",
-      "2 sócio(s)"
-     ]
-    },
-    {
-     "cnpj_basico": "16991823",
-     "razao_social": "HSOL INCENTIVE PERFORMANCE S.A.",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 32194291.6,
-     "porques": [
-      "2 sócio(s)",
-      "100% de 1 UG / 7% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "59394375",
-     "razao_social": "XPTO INC TECNOLOGIA LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 30347836.01,
-     "porques": [
-      "1 sócio(s)",
-      "100% de 1 UG / 7% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "16930136",
-     "razao_social": "HAWK SEGURANCA E VIGILANCIA LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 28504087.740000095,
-     "porques": [
-      "2 sócio(s)",
-      "pago sob Suspensão"
-     ]
-    },
-    {
-     "cnpj_basico": "34691187",
-     "razao_social": "FARAO PARTICIPACOES E EMPREENDIMENTOS LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 27993195.279999997,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "2 sócio(s)",
-      "pago sob Suspensão"
-     ]
-    },
-    {
-     "cnpj_basico": "01611866",
-     "razao_social": "P J REFEICOES COLETIVAS LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 27258534.309999995,
-     "porques": [
-      "1 sócio(s)",
-      "100% de 1 UG / 7% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "20419850",
-     "razao_social": "K8.COM ENGENHARIA E SERVICOS LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 26398893.339999992,
-     "porques": [
-      "1 sócio(s)",
-      "96% de 1 UG / 6% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "31761603",
-     "razao_social": "STEM SOLUCOES E INTEGRACOES EDUCACIONAIS LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 25662000.0,
-     "porques": [
-      "1 sócio(s)",
-      "100% de 1 UG / 6% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "03655231",
-     "razao_social": "BS TECNOLOGIA E SERVICOS LTDA EM RECUPERACAO JUDICIAL",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 24982408.770000003,
-     "porques": [
-      "2 sócio(s)",
-      "pago sob Impedimento/proibi"
-     ]
-    },
-    {
-     "cnpj_basico": "18546232",
-     "razao_social": "MANUTEC MONTAGEM E EMPREENDIMENTOS LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 21625328.28999999,
-     "porques": [
-      "2 sócio(s)",
-      "sócio de sancionada"
-     ]
-    },
-    {
-     "cnpj_basico": "09526734",
-     "razao_social": "VEEK TECNOLOGIA S.A.",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 20220479.76,
-     "porques": [
-      "1 sócio(s)",
-      "100% de 1 UG / 6% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "33780199",
-     "razao_social": "KRATUS TECNOLOGIA COMERCIO E SERVICOS LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 17411014.71000002,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto"
-     ]
-    },
-    {
-     "cnpj_basico": "07704429",
-     "razao_social": "CODEX REMOTE CIENCIAS ESPACIAIS E IMAGENS DIGITAIS LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 17207004.7,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "100% de 1 UG / 8% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "14647297",
-     "razao_social": "PLURAL SERVICOS TECNICO LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 16115542.410000002,
-     "porques": [
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto",
-      "porte acima do teto"
+      "troca total de sócios em 2025-02"
      ]
     }
    ]
   },
   "dependencia_mutua": {
    "ok": true,
-   "segundos": 7.5,
-   "n": 64,
+   "segundos": 6.1,
+   "n": 67,
    "topo": [
     {
      "cnpj": "09127934000163",
@@ -878,16 +889,6 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "13569390000167",
-     "nome": "CDEL CIA DISTRIBUIDORA E EDITORA DE LIVROS LTDA",
-     "ug": "570100",
-     "pago_ug": 75461957.42,
-     "pago_total": 75461957.42,
-     "concentracao": 1.0,
-     "fatia_ug": 0.17089031773509034,
-     "n_ugs": 1
-    },
-    {
      "cnpj": "04635778000128",
      "nome": "Ferthymar Empreend. E Participacoes Ltda",
      "ug": "404500",
@@ -895,6 +896,16 @@
      "pago_total": 47500133.54000001,
      "concentracao": 1.0,
      "fatia_ug": 0.16672102448821483,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "13569390000167",
+     "nome": "CDEL CIA DISTRIBUIDORA E EDITORA DE LIVROS LTDA",
+     "ug": "570100",
+     "pago_ug": 75461957.42,
+     "pago_total": 75461957.42,
+     "concentracao": 1.0,
+     "fatia_ug": 0.16308467338286683,
      "n_ugs": 1
     },
     {
@@ -952,10 +963,10 @@
      "nome": "Rio De Janeiro Sec.de Estado Da Defesa Civil",
      "ug": "166100",
      "pago_ug": 302037284.61000025,
-     "pago_total": 302107328.2600002,
-     "concentracao": 0.9997681497817236,
+     "pago_total": 302123092.9500002,
+     "concentracao": 0.9997159821873856,
      "fatia_ug": 0.13520769551178966,
-     "n_ugs": 5
+     "n_ugs": 6
     },
     {
      "cnpj": "10770313000182",
@@ -998,13 +1009,13 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "11495418000133",
-     "nome": "Fundo Mun.de Assist.social De Duque De Caxias",
-     "ug": "326100",
-     "pago_ug": 36194302.25,
-     "pago_total": 36194302.25,
+     "cnpj": "54753106000195",
+     "nome": "CONSORCIO RIO PARKING CARIOCA",
+     "ug": "313300",
+     "pago_ug": 3270301.6500000004,
+     "pago_total": 3270301.6500000004,
      "concentracao": 1.0,
-     "fatia_ug": 0.08889708665920464,
+     "fatia_ug": 0.09056650948160784,
      "n_ugs": 1
     },
     {
@@ -1078,6 +1089,16 @@
      "n_ugs": 1
     },
     {
+     "cnpj": "11495418000133",
+     "nome": "Fundo Mun.de Assist.social De Duque De Caxias",
+     "ug": "326100",
+     "pago_ug": 37792414.25,
+     "pago_total": 37792414.25,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07581738755357173,
+     "n_ugs": 1
+    },
+    {
      "cnpj": "10981677000101",
      "nome": "Sistematech Desenvolvimento de Software Eireli Me",
      "ug": "223200",
@@ -1095,16 +1116,6 @@
      "pago_total": 17207004.7,
      "concentracao": 1.0,
      "fatia_ug": 0.07522157732714274,
-     "n_ugs": 1
-    },
-    {
-     "cnpj": "16991823000166",
-     "nome": "HSOL INCENTIVE PERFORMANCE S.A",
-     "ug": "570100",
-     "pago_ug": 32194291.6,
-     "pago_total": 32194291.6,
-     "concentracao": 1.0,
-     "fatia_ug": 0.07290683821199175,
      "n_ugs": 1
     },
     {
@@ -1138,13 +1149,13 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "59394375000126",
-     "nome": "XPTO INC TECNOLOGIA LTDA",
+     "cnpj": "16991823000166",
+     "nome": "HSOL INCENTIVE PERFORMANCE S.A",
      "ug": "570100",
-     "pago_ug": 30347836.01,
-     "pago_total": 30347836.01,
+     "pago_ug": 32194291.6,
+     "pago_total": 32194291.6,
      "concentracao": 1.0,
-     "fatia_ug": 0.06872537521729868,
+     "fatia_ug": 0.06957672064026316,
      "n_ugs": 1
     },
     {
@@ -1165,6 +1176,26 @@
      "pago_total": 701346438.5400009,
      "concentracao": 1.0,
      "fatia_ug": 0.06576207256047821,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "04744134000178",
+     "nome": "SOS TECNOLOGIA E GESTÃO DA INFORMAÇÃO LTDA",
+     "ug": "213600",
+     "pago_ug": 3891203.17,
+     "pago_total": 3891203.17,
+     "concentracao": 1.0,
+     "fatia_ug": 0.0657393134342262,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "59394375000126",
+     "nome": "XPTO INC TECNOLOGIA LTDA",
+     "ug": "570100",
+     "pago_ug": 30347836.01,
+     "pago_total": 30347836.01,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06558625157337795,
      "n_ugs": 1
     },
     {
@@ -1208,41 +1239,21 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "31761603000130",
-     "nome": "STEM SOLUCOES E INTEGRACOES EDUCACIONAIS LTDA",
-     "ug": "570100",
-     "pago_ug": 25662000.0,
-     "pago_total": 25662000.0,
+     "cnpj": "63268056000141",
+     "nome": "ALOINFO COMERCIO, TECNOLOGIA E SISTEMAS LTDA",
+     "ug": "043500",
+     "pago_ug": 6267221.39,
+     "pago_total": 6267221.39,
      "concentracao": 1.0,
-     "fatia_ug": 0.05811388259265602,
-     "n_ugs": 1
-    },
-    {
-     "cnpj": "14625837000130",
-     "nome": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
-     "ug": "294200",
-     "pago_ug": 618391046.459998,
-     "pago_total": 636396197.159998,
-     "concentracao": 0.9717076393913879,
-     "fatia_ug": 0.0579837219287926,
-     "n_ugs": 7
-    },
-    {
-     "cnpj": "18776916000101",
-     "nome": "LAND SERVIÇOS E ENGENHARIA LTDA",
-     "ug": "404400",
-     "pago_ug": 128255090.59000015,
-     "pago_total": 128255090.59000015,
-     "concentracao": 1.0,
-     "fatia_ug": 0.05782255526167941,
+     "fatia_ug": 0.05812674344327448,
      "n_ugs": 1
     }
    ]
   },
   "pago_a_sancionado": {
    "ok": true,
-   "segundos": 4.5,
-   "n": 219,
+   "segundos": 5.1,
+   "n": 220,
    "topo": [
     {
      "cnpj": "24006302000488",
@@ -1350,9 +1361,9 @@
      "categoria": "Suspensão",
      "inicio": "2025-04-22",
      "orgao": "COMANDO DO EXERCITO",
-     "pago": 7032628.309999999,
-     "obs": 15,
-     "primeira": "2025-08-06"
+     "pago": 7144109.709999999,
+     "obs": 16,
+     "primeira": "2025-05-29"
     },
     {
      "cnpj": "33192856000165",
@@ -1393,6 +1404,16 @@
      "pago": 4641286.989999999,
      "obs": 46,
      "primeira": "2026-06-23"
+    },
+    {
+     "cnpj": "19078854000119",
+     "nome": "RFC RASTREAMENTO DE FROTAS LTDA.",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2024-08-14",
+     "orgao": "Prefeitura Municipal de Cachoeirinha (RS)",
+     "pago": 4497606.72,
+     "obs": 28,
+     "primeira": "2024-09-10"
     },
     {
      "cnpj": "25165749000110",
@@ -1733,23 +1754,13 @@
      "pago": 785124.0499999998,
      "obs": 15,
      "primeira": "2025-02-25"
-    },
-    {
-     "cnpj": "10427965000119",
-     "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2026-04-13",
-     "orgao": "TRIBUNAL DE JUSTICA DO ESTADO DO RIO JANEIRO",
-     "pago": 776498.05,
-     "obs": 15,
-     "primeira": "2026-06-01"
     }
    ]
   },
   "porte_incompativel": {
    "ok": true,
-   "segundos": 7.9,
-   "n": 1158,
+   "segundos": 10.0,
+   "n": 1163,
    "topo": [
     {
      "cnpj_basico": "31418513",
@@ -1960,6 +1971,20 @@
      "socios": 2,
      "natureza": "Soc. Ltda",
      "concentracao_ug": 0.7383472792511844
+    },
+    {
+     "cnpj_basico": "35208086",
+     "razao_social": "MOBILIZA FOR RENT LTDA",
+     "porte": "Microempresa",
+     "capital_social": 8600000.0,
+     "ano": "2025",
+     "pago": 14167570.160000006,
+     "teto": 360000.0,
+     "razao_teto": 39.35436155555557,
+     "ug_principal": "243200",
+     "socios": 2,
+     "natureza": "Soc. Ltda",
+     "concentracao_ug": 0.5842538821896589
     },
     {
      "cnpj_basico": "19036929",
@@ -2365,7 +2390,7 @@
      "ug_principal": "404600",
      "socios": 1,
      "natureza": "Soc. Ltda",
-     "concentracao_ug": 0.5842041133028009
+     "concentracao_ug": 0.5814723823986889
     },
     {
      "cnpj_basico": "07681401",
@@ -2424,20 +2449,6 @@
      "concentracao_ug": 1.0
     },
     {
-     "cnpj_basico": "35208086",
-     "razao_social": "MOBILIZA FOR RENT LTDA",
-     "porte": "Microempresa",
-     "capital_social": 8600000.0,
-     "ano": "2025",
-     "pago": 8063844.910000002,
-     "teto": 360000.0,
-     "razao_teto": 22.39956919444445,
-     "ug_principal": "243200",
-     "socios": 2,
-     "natureza": "Soc. Ltda",
-     "concentracao_ug": 0.729075324489378
-    },
-    {
      "cnpj_basico": "15361478",
      "razao_social": "ALFAMA INDUSTRIA E COMERCIO DE DESCARTAVEIS LTDA",
      "porte": "Microempresa",
@@ -2455,7 +2466,7 @@
   },
   "porte_declarado_certame": {
    "ok": true,
-   "segundos": 7.5,
+   "segundos": 5.8,
    "n": 8,
    "topo": [
     {
@@ -2747,8 +2758,8 @@
   },
   "troca_de_controle": {
    "ok": true,
-   "segundos": 8.9,
-   "n": 135,
+   "segundos": 3.4,
+   "n": 136,
    "topo": [
     {
      "cnpj_basico": "00801512",
@@ -3057,7 +3068,7 @@
     {
      "cnpj_basico": "73833360",
      "nome": "RIO SHOP SERVICOS LTDA",
-     "pago": 124569441.05999997,
+     "pago": 124638669.96,
      "primeiro_pagamento": "2021-02",
      "ultimo_pagamento": "2026-07",
      "saidas": [
@@ -3246,7 +3257,7 @@
     {
      "cnpj_basico": "17298685",
      "nome": "B7 EMPREENDIMENTOS LTDA",
-     "pago": 61052740.62,
+     "pago": 61089719.16,
      "primeiro_pagamento": "2016-04",
      "ultimo_pagamento": "2025-07",
      "saidas": [
@@ -3268,7 +3279,7 @@
     {
      "cnpj_basico": "02911547",
      "nome": "KROY ENGENHARIA EIRELI",
-     "pago": 59832649.04000003,
+     "pago": 59899933.330000035,
      "primeiro_pagamento": "2021-12",
      "ultimo_pagamento": "2026-08",
      "saidas": [
@@ -3491,7 +3502,7 @@
     {
      "cnpj_basico": "07028841",
      "nome": "DE SÁ SERVIÇOS LTDA",
-     "pago": 38896928.47999997,
+     "pago": 39163869.489999965,
      "primeiro_pagamento": "2021-02",
      "ultimo_pagamento": "2026-08",
      "saidas": [
@@ -5475,6 +5486,28 @@
      "troca_total": true
     },
     {
+     "cnpj_basico": "33204413",
+     "nome": "HOTEL SANTA COMBA LTDA",
+     "pago": 34167400.87,
+     "primeiro_pagamento": "2021-11",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-12",
+       "nome": "HORACIO FIUZA MUNIZ",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-12",
+       "nome": "DANIEL FIUZA MUNIZ",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
      "cnpj_basico": "35834967",
      "nome": "CONE ENGENHARIA E CONSTRUÇÃO LTDA",
      "pago": 33208796.130000006,
@@ -6711,28 +6744,6 @@
      "troca_total": true
     },
     {
-     "cnpj_basico": "33204413",
-     "nome": "HOTEL SANTA COMBA LTDA",
-     "pago": 25274815.36,
-     "primeiro_pagamento": "2021-11",
-     "ultimo_pagamento": "2026-08",
-     "saidas": [
-      {
-       "quando": "2023-12",
-       "nome": "HORACIO FIUZA MUNIZ",
-       "qualificacao": "Sócio-Administrador"
-      }
-     ],
-     "socios_atuais": [
-      {
-       "desde": "2023-12",
-       "nome": "DANIEL FIUZA MUNIZ",
-       "qualificacao": "Sócio-Administrador"
-      }
-     ],
-     "troca_total": true
-    },
-    {
      "cnpj_basico": "19036929",
      "nome": "BWL TRANSPORTES E LOCACOES LTDA",
      "pago": 24947716.259999998,
@@ -6882,8 +6893,8 @@
     {
      "cnpj_basico": "33780199",
      "nome": "KRATUS TECNOLOGIA COMERCIO E SERVICOS LTDA",
-     "pago": 17411014.71000002,
-     "primeiro_pagamento": "2023-05",
+     "pago": 17492500.450000025,
+     "primeiro_pagamento": "2023-03",
      "ultimo_pagamento": "2026-07",
      "saidas": [
       {

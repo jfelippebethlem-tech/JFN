@@ -45,7 +45,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from compliance_agent.reporting.intel_base import moeda
 from tools.dependencia_mutua import dependencia
 from tools.pago_a_sancionado import pagos_durante_sancao, sucessao_societaria
+from tools.porte_declarado_certame import declaracoes_incompativeis
 from tools.porte_incompativel import estrutura_magra, incompativeis
+from tools.troca_de_controle import trocas
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 
@@ -75,6 +77,24 @@ def convergir(con: sqlite3.Connection, min_pago_estrutura: float = 5_000_000.0) 
     for x in dependencia(con):
         marcar(x["cnpj"][:8], "DEPENDENCIA", x["nome"],
                f"{100*x['concentracao']:.0f}% de 1 UG / {100*x['fatia_ug']:.0f}% dela")
+
+    # `porte_declarado_certame` entra em TAMANHO, NÃO como dimensão própria. Ele mede o mesmo
+    # fenômeno que `porte_incompativel` — empresa maior do que o porte que ostenta —, mudando só
+    # a FONTE (declaração no certame × cadastro da Receita). Contá-lo separado inflaria a
+    # convergência exatamente como já aconteceu quando `porte` e `estrutura magra` contavam duas
+    # vezes: "15 empresas em 3 lentes" virou 0 quando a duplicidade saiu.
+    # O que ele acrescenta é AGRAVANTE, não dimensão: declarar-se ME ao licitar é ATO datado da
+    # própria empresa, enquanto cadastro desatualizado é estado de terceiro. O `porque` diz isso.
+    for x in declaracoes_incompativeis(con, estrito=True):
+        marcar(x["cnpj_basico"], "TAMANHO", x["nome"],
+               f"declarou-se {'/'.join(x['portes'])} em {x['n_certames']} certame(s)")
+
+    # CONTROLE é dimensão PRÓPRIA: nada tem a ver com tamanho, sanção ou dependência. Mede outra
+    # coisa — quem recebe hoje não é quem contratou.
+    for x in trocas(con, forte=True):
+        s0 = (x["saidas"] or [{}])[0]
+        marcar(x["cnpj_basico"], "CONTROLE", x["nome"],
+               f"troca total de sócios em {s0.get('quando', '?')}")
 
     pago: dict = collections.defaultdict(float)
     for credor, valor in con.execute(
