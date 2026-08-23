@@ -41,10 +41,33 @@ cd /home/ubuntu/JFN || exit 1
 exec 9>/tmp/arquivar_integra.lock
 flock -n 9 || exit 0
 
-# `ps -C python` (nunca `pgrep -f`, que casa a si mesmo). Duas guardas de convivência:
-# a própria tarefa já rodando, e a CAPTURA — que tem prioridade sobre o arquivamento.
+# `ps -C python` (nunca `pgrep -f`, que casa a si mesmo).
 if ps -C python -o args= 2>/dev/null | grep -qE "sei_arquivar\.py"; then exit 0; fi
-if ps -C python -o args= 2>/dev/null | grep -qE "tools\.sei_sweep|sei_integra_fila"; then exit 0; fi
+
+# CEDER À CAPTURA, MAS COM COTA CONTRA INANIÇÃO.
+#
+# A primeira versão cedia SEMPRE que houvesse captura em voo. Medido em 2026-08-23, o cron disparou
+# às 00:10, 03:10 e 06:10 e o lane saiu nas TRÊS — o `sweep_sei` roda de 30 em 30 min e seus ciclos
+# se emendam ("ciclo anterior ainda rodando — pula"), então a janela livre quase não existe e o
+# arquivamento morreria de fome. É a lição `siafe-dreno-cota-contra-inanicao` de novo:
+# PRIORIDADE ESTRITA COM VAZÃO BAIXA É EXCLUSÃO, não prioridade.
+#
+# Regra: cede enquanto a última execução REAL for recente; passado o teto, roda junto — protegido
+# por `nice`/`ionice`, que é o que torna a convivência possível sem tirar a vez da captura.
+TETO_JEJUM_H=${ARQUIVA_INTEGRA_JEJUM_H:-12}
+ultima=0
+[ -f data/.arquivar_integra.ultima ] && ultima=$(cat data/.arquivar_integra.ultima 2>/dev/null || echo 0)
+jejum_h=$(( ($(date +%s) - ultima) / 3600 ))
+
+if ps -C python -o args= 2>/dev/null | grep -qE "tools\.sei_sweep|sei_integra_fila"; then
+  if [ "$jejum_h" -lt "$TETO_JEJUM_H" ]; then
+    # SILÊNCIO NÃO É SUCESSO — e também não é falha. A cessão vai para o log, senão a próxima
+    # investigação vê log vazio e não sabe se o cron falhou ou se o script cedeu de propósito.
+    echo "$(date -Is) cedi à captura (jejum ${jejum_h}h < ${TETO_JEJUM_H}h)" >> data/arquivar_integra.log
+    exit 0
+  fi
+  echo "$(date -Is) captura em voo, mas jejum ${jejum_h}h >= ${TETO_JEJUM_H}h — rodando junto (nice/ionice)" >> data/arquivar_integra.log
+fi
 
 livre_mb=$(awk '/MemAvailable/{printf "%d", $2/1024}' /proc/meminfo)
 [ "$livre_mb" -lt 1500 ] && exit 0
@@ -56,4 +79,7 @@ set -a; . .env 2>/dev/null; set +a
 
 timeout 1500 nice -n 10 ionice -c3 .venv/bin/python tools/sei_arquivar.py --pendentes \
     >> data/arquivar_integra.log 2>&1 9>&-
-echo "$(date -Is) disparo encerrado (saída $?)" >> data/arquivar_integra.log
+rc=$?
+# Marca a execução REAL (não a cessão): é o relógio do jejum acima.
+date +%s > data/.arquivar_integra.ultima
+echo "$(date -Is) disparo encerrado (saída $rc)" >> data/arquivar_integra.log
