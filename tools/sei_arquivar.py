@@ -230,6 +230,19 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             cap_ant = sum(1 for d in (anterior.get("docs") or [])
                           if isinstance(d, dict) and not d.get("nao_capturado"))
             if cap_ant > cap_novos:
+                # TOCAR O MTIME AO PRESERVAR. Manter o antigo é a decisão certa, mas ela não
+                # mexia no manifesto — e `arquivar_pendentes` monta a fila por "cache mais novo
+                # que o manifesto". Resultado medido em 2026-08-23: o `030001_087722_2024`
+                # reaparecia em TODO disparo do lane, e o OCR dos 319 PDFs rodava ANTES da
+                # decisão de preservar. Com `timeout 1500`, os dois primeiros processos comiam
+                # os 25 min e o lane terminava em 124 sem NUNCA alcançar o resto da fila — o
+                # `080002/019206/2025` ficou 3 disparos sem ser tocado por isso.
+                # Mesmo bug, mesmo conserto que `sei_arquivar_do_cache` já aplicara em
+                # 2026-08-15: o irmão foi corrigido, este não. O conteúdo não muda.
+                try:
+                    mdest_ant.touch()
+                except OSError:
+                    pass
                 print(f"  preservado: {destino.name} já tinha {cap_ant} docs capturados "
                       f"(> {cap_novos} agora) — não regrido", flush=True)
                 return anterior

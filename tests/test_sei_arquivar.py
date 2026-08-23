@@ -79,3 +79,36 @@ def test_arquivar_e_idempotente(tmp_path):
     assert len(m2["docs"]) == 2
     fotos = list((destino / "fotos").glob("*.jpg"))
     assert len(fotos) == len(set(f.name for f in fotos))
+
+
+def test_preservar_toca_o_mtime_do_manifesto(tmp_path, monkeypatch):
+    """Preservar o arquivo maior é certo — mas TEM de tocar o mtime, ou a fila não anda.
+
+    `arquivar_pendentes` monta a fila por "cache mais novo que o manifesto". Preservando sem
+    tocar, o processo reaparece em TODO disparo, e o OCR roda ANTES da decisão de preservar:
+    medido em 2026-08-23, os dois primeiros processos comiam os 25 min do `timeout` e o lane
+    terminava em 124 sem alcançar o resto da fila. É o mesmo bug que `sei_arquivar_do_cache`
+    corrigiu em 2026-08-15 — o irmão tinha o conserto, este não.
+    """
+    import os
+    import time
+
+    from tools.sei_arquivar import arquivar
+
+    origem = _integra_fake(tmp_path)
+    destino = tmp_path / "arq"
+    (destino / "texto").mkdir(parents=True)
+    # manifesto anterior com MAIS docs capturados do que a íntegra sintética (2) tem
+    mdest = destino / "manifest.json"
+    mdest.write_text(json.dumps({"docs": [{"i": i, "titulo": f"d{i}"} for i in range(9)]}),
+                     encoding="utf-8")
+    antigo = time.time() - 86_400          # manifesto de ontem
+    os.utime(mdest, (antigo, antigo))
+
+    devolvido = arquivar(origem, destino, processo="030001/087722/2024", ocr=False)
+
+    assert len(devolvido["docs"]) == 9, "preservou o manifesto errado — regrediu para o menor"
+    assert mdest.stat().st_mtime > antigo + 3600, (
+        "preservou sem tocar o mtime: o processo volta à fila em todo disparo e o lane "
+        "nunca alcança o resto"
+    )
