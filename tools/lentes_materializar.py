@@ -54,6 +54,7 @@ def materializar(limite: int = 50) -> dict:
     from pago_a_sancionado import pagos_durante_sancao
     from porte_declarado_certame import declaracoes_incompativeis
     from porte_incompativel import incompativeis
+    from troca_de_controle import trocas
 
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     lentes = {
@@ -65,6 +66,8 @@ def materializar(limite: int = 50) -> dict:
         # teto no ano. O amplo triplica o número e inclui quem podia não saber ainda.
         "porte_declarado_certame": _seguro("porte_declarado_certame", declaracoes_incompativeis,
                                            con, estrito=True),
+        # corte FORTE: o fraco marca 21,6% do universo e não ordena fila nenhuma.
+        "troca_de_controle": _seguro("troca_de_controle", trocas, con, forte=True),
     }
     con.close()
 

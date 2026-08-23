@@ -7886,6 +7886,13 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         (x) => x.pago
       ],
       [
+        "troca_de_controle",
+        "Trocou de dono durante a execução",
+        "Empresa cujo quadro de sócios mudou <b>por inteiro</b> durante a janela de pagamentos: nenhum sócio de hoje estava lá quando saiu o primeiro pagamento. <b>Trocar de dono é lícito</b> — o achado é a pergunta (a habilitação do novo controlador foi examinada?), não a resposta. Corte forte: 7,1% do universo; qualquer saída marcaria 21,6% e não ordenaria fila. Histórico começa em 03/2023 — troca anterior é invisível, e ausência aqui é limite de fonte.",
+        (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc(x.primeiro_pagamento)} → ${esc(x.ultimo_pagamento)} · ${fmtN((x.saidas || []).length)} saída(s)${(x.saidas || []).length ? " · saiu " + esc(x.saidas[0].quando) + " " + esc((x.saidas[0].nome || "").slice(0, 28)) : ""}</div>`,
+        (x) => x.pago
+      ],
+      [
         "porte_declarado_certame",
         "Declarou-se pequena depois de estourar o teto",
         "Empresa que se declarou ME/EPP/MEI em certame publicado <b>depois</b> de já ter recebido do Estado, naquele mesmo ano-calendário, acima do teto de EPP (R$ 4,8 mi — LC 123/2006, art. 3º). O TCU firmou que a declaração falsa de porte já é fraude à licitação, ainda que não haja vantagem concreta. Número é PISO: só o pago pelo Estado entra, e o PNCP capturado cobre 2024-2026/RJ.",

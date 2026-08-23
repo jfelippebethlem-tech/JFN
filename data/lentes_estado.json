@@ -1,11 +1,11 @@
 {
- "gerado_em": "2026-08-22T14:06:46-0300",
+ "gerado_em": "2026-08-23T08:38:14-0300",
  "limite": 50,
  "lentes": {
   "convergencia": {
    "ok": true,
-   "segundos": 17.5,
-   "n": 1427,
+   "segundos": 35.3,
+   "n": 1448,
    "topo": [
     {
      "cnpj_basico": "10981677",
@@ -16,11 +16,11 @@
       "TAMANHO"
      ],
      "n_dim": 3,
-     "pago": 12028929.459999992,
+     "pago": 14386801.06,
      "porques": [
       "1 sócio(s)",
       "pago sob Declaração de Inid",
-      "100% de 1 UG / 7% dela"
+      "100% de 1 UG / 8% dela"
      ]
     },
     {
@@ -45,7 +45,7 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 636330262.3399979,
+     "pago": 636396197.1599976,
      "porques": [
       "1 sócio(s)",
       "97% de 1 UG / 6% dela"
@@ -87,10 +87,10 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 403979440.3700002,
+     "pago": 452458595.83000046,
      "porques": [
       "1 sócio(s)",
-      "100% de 1 UG / 22% dela"
+      "100% de 1 UG / 23% dela"
      ]
     },
     {
@@ -136,6 +136,20 @@
      ]
     },
     {
+     "cnpj_basico": "05351320",
+     "razao_social": "SD ENGENHARIA LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 249085130.63000003,
+     "porques": [
+      "2 sócio(s)",
+      "98% de 1 UG / 10% dela"
+     ]
+    },
+    {
      "cnpj_basico": "61704482",
      "razao_social": "AGENCIA NACIONAL DE PROPAGANDA LTDA",
      "dimensoes": [
@@ -147,20 +161,6 @@
      "porques": [
       "sócio de sancionada",
       "100% de 1 UG / 20% dela"
-     ]
-    },
-    {
-     "cnpj_basico": "05351320",
-     "razao_social": "SD ENGENHARIA LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 239058512.63000003,
-     "porques": [
-      "2 sócio(s)",
-      "98% de 1 UG / 11% dela"
      ]
     },
     {
@@ -199,7 +199,7 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 177858037.10999966,
+     "pago": 179248453.06,
      "porques": [
       "1 sócio(s)",
       "pago sob Suspensão",
@@ -214,7 +214,7 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 158298327.41999993,
+     "pago": 160140491.46999994,
      "porques": [
       "2 sócio(s)",
       "100% de 1 UG / 37% dela"
@@ -228,7 +228,7 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 156868001.0000001,
+     "pago": 158553251.40000004,
      "porques": [
       "2 sócio(s)",
       "100% de 1 UG / 6% dela"
@@ -326,7 +326,7 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 101803538.53999996,
+     "pago": 103621636.17999998,
      "porques": [
       "1 sócio(s)",
       "pago sob Suspensão"
@@ -379,20 +379,6 @@
      ]
     },
     {
-     "cnpj_basico": "00482840",
-     "razao_social": "LIDERANCA LIMPEZA E CONSERVACAO LTDA",
-     "dimensoes": [
-      "SANCAO",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 59231794.989999905,
-     "porques": [
-      "2 sócio(s)",
-      "sócio de sancionada"
-     ]
-    },
-    {
      "cnpj_basico": "17298685",
      "razao_social": "B7 EMPREENDIMENTOS LTDA",
      "dimensoes": [
@@ -400,12 +386,26 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 58702562.85000001,
+     "pago": 61052740.62,
      "porques": [
       "porte acima do teto",
       "porte acima do teto",
       "porte acima do teto",
       "porte acima do teto"
+     ]
+    },
+    {
+     "cnpj_basico": "00482840",
+     "razao_social": "LIDERANCA LIMPEZA E CONSERVACAO LTDA",
+     "dimensoes": [
+      "SANCAO",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 59534721.61999989,
+     "porques": [
+      "2 sócio(s)",
+      "sócio de sancionada"
      ]
     },
     {
@@ -451,6 +451,20 @@
      ]
     },
     {
+     "cnpj_basico": "04635778",
+     "razao_social": "FERTHYMAR EMPREENDIMENTOS E PARTICIPACOES LTDA",
+     "dimensoes": [
+      "DEPENDENCIA",
+      "TAMANHO"
+     ],
+     "n_dim": 2,
+     "pago": 47500133.54000001,
+     "porques": [
+      "1 sócio(s)",
+      "100% de 1 UG / 17% dela"
+     ]
+    },
+    {
      "cnpj_basico": "00482487",
      "razao_social": "COSTA VERDE DIESEL LTDA",
      "dimensoes": [
@@ -478,20 +492,6 @@
      "porques": [
       "1 sócio(s)",
       "pago sob Suspensão"
-     ]
-    },
-    {
-     "cnpj_basico": "04635778",
-     "razao_social": "FERTHYMAR EMPREENDIMENTOS E PARTICIPACOES LTDA",
-     "dimensoes": [
-      "DEPENDENCIA",
-      "TAMANHO"
-     ],
-     "n_dim": 2,
-     "pago": 40831362.41,
-     "porques": [
-      "1 sócio(s)",
-      "100% de 1 UG / 17% dela"
      ]
     },
     {
@@ -577,7 +577,7 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 28369382.40000008,
+     "pago": 28504087.740000095,
      "porques": [
       "2 sócio(s)",
       "pago sob Suspensão"
@@ -621,10 +621,10 @@
       "TAMANHO"
      ],
      "n_dim": 2,
-     "pago": 26261869.019999992,
+     "pago": 26398893.339999992,
      "porques": [
       "1 sócio(s)",
-      "97% de 1 UG / 6% dela"
+      "96% de 1 UG / 6% dela"
      ]
     },
     {
@@ -666,7 +666,7 @@
      "pago": 21625328.28999999,
      "porques": [
       "2 sócio(s)",
-      "pago sob Impedimento/proibi"
+      "sócio de sancionada"
      ]
     },
     {
@@ -734,8 +734,8 @@
   },
   "dependencia_mutua": {
    "ok": true,
-   "segundos": 2.6,
-   "n": 63,
+   "segundos": 7.5,
+   "n": 64,
    "topo": [
     {
      "cnpj": "09127934000163",
@@ -765,16 +765,6 @@
      "pago_total": 110289037.35000001,
      "concentracao": 1.0,
      "fatia_ug": 0.8057913085120426,
-     "n_ugs": 1
-    },
-    {
-     "cnpj": "64191286000112",
-     "nome": "FUNDESTAP FUNDO DE INVESTIMENTO EM DIREITOS CREDITÓRIOS",
-     "ug": "317100",
-     "pago_ug": 101247254.42,
-     "pago_total": 101247254.42,
-     "concentracao": 1.0,
-     "fatia_ug": 0.5594163238138175,
      "n_ugs": 1
     },
     {
@@ -808,6 +798,16 @@
      "n_ugs": 1
     },
     {
+     "cnpj": "64191286000112",
+     "nome": "FUNDESTAP FUNDO DE INVESTIMENTO EM DIREITOS CREDITÓRIOS",
+     "ug": "317100",
+     "pago_ug": 101247254.42,
+     "pago_total": 101247254.42,
+     "concentracao": 1.0,
+     "fatia_ug": 0.5137018884686655,
+     "n_ugs": 1
+    },
+    {
      "cnpj": "50466541000188",
      "nome": "METTA INDUSTRIA EM SOLUCOES AMBIENTAIS LTDA",
      "ug": "640100",
@@ -818,16 +818,6 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "20040269000109",
-     "nome": "BUZZLINE SERV, ENTRETENIMENTO E PRODUÇAO EIRELI-ME",
-     "ug": "430100",
-     "pago_ug": 157971127.41999993,
-     "pago_total": 158298327.41999993,
-     "concentracao": 0.9979330166949151,
-     "fatia_ug": 0.37436695013273447,
-     "n_ugs": 2
-    },
-    {
      "cnpj": "07844436000106",
      "nome": "Caberj Integral Saude S.a.",
      "ug": "053100",
@@ -835,6 +825,16 @@
      "pago_total": 57940287.019999996,
      "concentracao": 0.9506866305475198,
      "fatia_ug": 0.3735878532770332,
+     "n_ugs": 2
+    },
+    {
+     "cnpj": "20040269000109",
+     "nome": "BUZZLINE SERV, ENTRETENIMENTO E PRODUÇAO EIRELI-ME",
+     "ug": "430100",
+     "pago_ug": 159813291.46999994,
+     "pago_total": 160140491.46999994,
+     "concentracao": 0.9979567940812689,
+     "fatia_ug": 0.3728499628826999,
      "n_ugs": 2
     },
     {
@@ -851,10 +851,10 @@
      "cnpj": "09239320000173",
      "nome": "QUALYBEM FOOD & SERVICE S/A",
      "ug": "250100",
-     "pago_ug": 403979440.3700002,
-     "pago_total": 403979440.3700002,
+     "pago_ug": 452458595.83000046,
+     "pago_total": 452458595.83000046,
      "concentracao": 1.0,
-     "fatia_ug": 0.22493501971344163,
+     "fatia_ug": 0.2271023559752656,
      "n_ugs": 1
     },
     {
@@ -878,16 +878,6 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "04635778000128",
-     "nome": "Ferthymar Empreend. E Participacoes Ltda",
-     "ug": "404500",
-     "pago_ug": 40831362.41,
-     "pago_total": 40831362.41,
-     "concentracao": 1.0,
-     "fatia_ug": 0.171319697304002,
-     "n_ugs": 1
-    },
-    {
      "cnpj": "13569390000167",
      "nome": "CDEL CIA DISTRIBUIDORA E EDITORA DE LIVROS LTDA",
      "ug": "570100",
@@ -895,6 +885,16 @@
      "pago_total": 75461957.42,
      "concentracao": 1.0,
      "fatia_ug": 0.17089031773509034,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "04635778000128",
+     "nome": "Ferthymar Empreend. E Participacoes Ltda",
+     "ug": "404500",
+     "pago_ug": 47500133.54000001,
+     "pago_total": 47500133.54000001,
+     "concentracao": 1.0,
+     "fatia_ug": 0.16672102448821483,
      "n_ugs": 1
     },
     {
@@ -952,8 +952,8 @@
      "nome": "Rio De Janeiro Sec.de Estado Da Defesa Civil",
      "ug": "166100",
      "pago_ug": 302037284.61000025,
-     "pago_total": 302105292.32000023,
-     "concentracao": 0.9997748873928103,
+     "pago_total": 302107328.2600002,
+     "concentracao": 0.9997681497817236,
      "fatia_ug": 0.13520769551178966,
      "n_ugs": 5
     },
@@ -971,20 +971,20 @@
      "cnpj": "02102125000158",
      "nome": "CASSAROTTI FOODS - SERVICOS DE REFEICOES COLETIVAS E EVENTOS LTDA",
      "ug": "250100",
-     "pago_ug": 191043131.32,
-     "pago_total": 191043131.32,
-     "concentracao": 1.0,
-     "fatia_ug": 0.10637246903016645,
-     "n_ugs": 1
+     "pago_ug": 199915717.35999995,
+     "pago_total": 202411001.14999995,
+     "concentracao": 0.987672192836244,
+     "fatia_ug": 0.10034361337672466,
+     "n_ugs": 2
     },
     {
      "cnpj": "05351320000100",
      "nome": "Souza Dutra Engenharia Ltda - Epp",
      "ug": "045200",
-     "pago_ug": 233558367.40000007,
-     "pago_total": 239058512.63000005,
-     "concentracao": 0.9769924728072211,
-     "fatia_ug": 0.10560460046817478,
+     "pago_ug": 243584985.40000007,
+     "pago_total": 249085130.63000005,
+     "concentracao": 0.9779186127405971,
+     "fatia_ug": 0.09706135355041513,
      "n_ugs": 2
     },
     {
@@ -1038,6 +1038,16 @@
      "n_ugs": 1
     },
     {
+     "cnpj": "26989350000116",
+     "nome": "Fundacao Nacional De Saude / Ms",
+     "ug": "070100",
+     "pago_ug": 52488127.410000004,
+     "pago_total": 52488127.410000004,
+     "concentracao": 1.0,
+     "fatia_ug": 0.0852722266300999,
+     "n_ugs": 1
+    },
+    {
      "cnpj": "05805527000107",
      "nome": "Emsimem Manutencao E Conservacao Ltda",
      "ug": "137200",
@@ -1046,6 +1056,16 @@
      "concentracao": 0.9924420060597855,
      "fatia_ug": 0.08309029180782497,
      "n_ugs": 2
+    },
+    {
+     "cnpj": "10886180000104",
+     "nome": "Atsnet Informatica E Desenvol.de Sistema Ltda",
+     "ug": "223200",
+     "pago_ug": 15297292.87,
+     "pago_total": 15297292.87,
+     "concentracao": 1.0,
+     "fatia_ug": 0.08041761598980751,
+     "n_ugs": 1
     },
     {
      "cnpj": "10571692000181",
@@ -1058,6 +1078,16 @@
      "n_ugs": 1
     },
     {
+     "cnpj": "10981677000101",
+     "nome": "Sistematech Desenvolvimento de Software Eireli Me",
+     "ug": "223200",
+     "pago_ug": 14386801.06,
+     "pago_total": 14386801.06,
+     "concentracao": 1.0,
+     "fatia_ug": 0.07563117558099257,
+     "n_ugs": 1
+    },
+    {
      "cnpj": "07704429000109",
      "nome": "Codex Remote Cienc.esp.e Imag.digitais Ltda",
      "ug": "124100",
@@ -1065,26 +1095,6 @@
      "pago_total": 17207004.7,
      "concentracao": 1.0,
      "fatia_ug": 0.07522157732714274,
-     "n_ugs": 1
-    },
-    {
-     "cnpj": "10886180000104",
-     "nome": "Atsnet Informatica E Desenvol.de Sistema Ltda",
-     "ug": "223200",
-     "pago_ug": 12046854.830000002,
-     "pago_total": 12046854.830000002,
-     "concentracao": 1.0,
-     "fatia_ug": 0.0738144537120001,
-     "n_ugs": 1
-    },
-    {
-     "cnpj": "10981677000101",
-     "nome": "Sistematech Desenvolvimento de Software Eireli Me",
-     "ug": "223200",
-     "pago_ug": 12028929.459999992,
-     "pago_total": 12028929.459999992,
-     "concentracao": 1.0,
-     "fatia_ug": 0.0737046199493452,
      "n_ugs": 1
     },
     {
@@ -1138,16 +1148,6 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "09070101000103",
-     "nome": "SPACECOMM MONITORAMENTO S/A",
-     "ug": "250100",
-     "pago_ug": 121189774.56999998,
-     "pago_total": 121189774.56999998,
-     "concentracao": 1.0,
-     "fatia_ug": 0.06747824668256268,
-     "n_ugs": 1
-    },
-    {
      "cnpj": "55114414000133",
      "nome": "Consorcio Pavimentação Sacramento",
      "ug": "660100",
@@ -1165,6 +1165,16 @@
      "pago_total": 701346438.5400009,
      "concentracao": 1.0,
      "fatia_ug": 0.06576207256047821,
+     "n_ugs": 1
+    },
+    {
+     "cnpj": "09070101000103",
+     "nome": "SPACECOMM MONITORAMENTO S/A",
+     "ug": "250100",
+     "pago_ug": 124587954.39999998,
+     "pago_total": 124587954.39999998,
+     "concentracao": 1.0,
+     "fatia_ug": 0.06253438045192929,
      "n_ugs": 1
     },
     {
@@ -1188,23 +1198,13 @@
      "n_ugs": 1
     },
     {
-     "cnpj": "39818737000151",
-     "nome": "Horto Central Marataizes Ltda",
-     "ug": "404500",
-     "pago_ug": 14412239.290000005,
-     "pago_total": 14427481.590000005,
-     "concentracao": 0.9989435231710456,
-     "fatia_ug": 0.06047068544621815,
-     "n_ugs": 2
-    },
-    {
      "cnpj": "29001559000118",
      "nome": "Das Engenharia Ltda",
      "ug": "243200",
-     "pago_ug": 156868001.0000001,
-     "pago_total": 156868001.0000001,
+     "pago_ug": 158553251.40000004,
+     "pago_total": 158553251.40000004,
      "concentracao": 1.0,
-     "fatia_ug": 0.06028924524838512,
+     "fatia_ug": 0.05954086550823199,
      "n_ugs": 1
     },
     {
@@ -1222,8 +1222,8 @@
      "nome": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
      "ug": "294200",
      "pago_ug": 618391046.459998,
-     "pago_total": 636330262.339998,
-     "concentracao": 0.9718083251077333,
+     "pago_total": 636396197.159998,
+     "concentracao": 0.9717076393913879,
      "fatia_ug": 0.0579837219287926,
      "n_ugs": 7
     },
@@ -1241,8 +1241,8 @@
   },
   "pago_a_sancionado": {
    "ok": true,
-   "segundos": 2.1,
-   "n": 213,
+   "segundos": 4.5,
+   "n": 219,
    "topo": [
     {
      "cnpj": "24006302000488",
@@ -1295,26 +1295,6 @@
      "primeira": "2026-03-26"
     },
     {
-     "cnpj": "76535764000143",
-     "nome": "OI S/A",
-     "categoria": "Suspensão",
-     "inicio": "2025-11-19",
-     "orgao": "COMPANHIA ÁGUAS DE JOINVILLE/SC",
-     "pago": 13242853.920000022,
-     "obs": 282,
-     "primeira": "2025-11-19"
-    },
-    {
-     "cnpj": "18546232000105",
-     "nome": "MANUTEC MONTAGEM E EMPREENDIMENTOS LTDA",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2025-08-18",
-     "orgao": "ADVOCACIA-GERAL DA UNIAO AGU",
-     "pago": 12543468.95,
-     "obs": 49,
-     "primeira": "2025-08-25"
-    },
-    {
      "cnpj": "34691187000139",
      "nome": "FARAO PARTICIPACOES E EMPREENDIMENTOS LTDA",
      "categoria": "Suspensão",
@@ -1323,6 +1303,26 @@
      "pago": 12128793.780000001,
      "obs": 17,
      "primeira": "2025-09-25"
+    },
+    {
+     "cnpj": "02539959000125",
+     "nome": "ESPAÇO CIDADANIAE OPORTUNIDADES SOCIAIS - ECOS",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2025-10-15",
+     "orgao": "Prefeitura Municipal de Maricá - RJ",
+     "pago": 11841718.149999999,
+     "obs": 6,
+     "primeira": "2025-12-15"
+    },
+    {
+     "cnpj": "02913444001620",
+     "nome": "REDE SOL FUEL DISTRIBUIDORA S/A",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2026-07-14",
+     "orgao": "Secretaria de Estado de Polícia Militar - PMERJ",
+     "pago": 11079605.35,
+     "obs": 81,
+     "primeira": "2026-07-14"
     },
     {
      "cnpj": "05674062000100",
@@ -1343,16 +1343,6 @@
      "pago": 8140092.099999999,
      "obs": 186,
      "primeira": "2026-01-06"
-    },
-    {
-     "cnpj": "02539959000125",
-     "nome": "ESPAÇO CIDADANIAE OPORTUNIDADES SOCIAIS - ECOS",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2025-10-15",
-     "orgao": "Prefeitura Municipal de Maricá - RJ",
-     "pago": 7808028.02,
-     "obs": 4,
-     "primeira": "2025-12-15"
     },
     {
      "cnpj": "41710060000185",
@@ -1419,7 +1409,7 @@
      "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
      "categoria": "Suspensão",
      "inicio": "2025-04-22",
-     "orgao": "Tribunal de Justiça do Estado do Rio Grande do Norte (TJRN)",
+     "orgao": "TRIBUNAL DE JUSTICA DO ESTADO DO R. G. NORTE",
      "pago": 4165695.4100000006,
      "obs": 33,
      "primeira": "2025-04-28"
@@ -1433,16 +1423,6 @@
      "pago": 4107189.4500000007,
      "obs": 24,
      "primeira": "2025-09-24"
-    },
-    {
-     "cnpj": "02539959000125",
-     "nome": "ESPAÇO CIDADANIAE OPORTUNIDADES SOCIAIS - ECOS",
-     "categoria": "Suspensão/Interdição das atividades com prazo determinado",
-     "inicio": "2026-05-25",
-     "orgao": "Prefeitura Municipal da Cidade do Rio de Janeiro (RJ)",
-     "pago": 4033690.13,
-     "obs": 2,
-     "primeira": "2026-08-14"
     },
     {
      "cnpj": "10581285000155",
@@ -1465,16 +1445,6 @@
      "primeira": "2025-10-20"
     },
     {
-     "cnpj": "23417238000112",
-     "nome": "Monsaras Distribuidora e Comércio Ltda. ME",
-     "categoria": "Declaração de Inidoneidade sem prazo determinado",
-     "inicio": "2021-10-06",
-     "orgao": "Governo do Estado da Bahia (BA)",
-     "pago": 3611670.74,
-     "obs": 15,
-     "primeira": "2023-09-13"
-    },
-    {
      "cnpj": "51884749000180",
      "nome": "GPS ALIMENTACAO E SERVICOS LTDA",
      "categoria": "Impedimento/proibição de contratar com prazo determinado",
@@ -1485,14 +1455,14 @@
      "primeira": "2025-02-18"
     },
     {
-     "cnpj": "17298685000105",
-     "nome": "B7 EMPREENDIMENTOS LTDA",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2024-05-06",
-     "orgao": "Tribunal de Contas do Estado do Rio de Janeiro - TCE-RJ",
-     "pago": 3550655.8799999994,
-     "obs": 54,
-     "primeira": "2024-05-07"
+     "cnpj": "76535764000143",
+     "nome": "OI S/A",
+     "categoria": "Suspensão",
+     "inicio": "2026-05-20",
+     "orgao": "PREFEITURA MUNICIPAL DE JI-PARANÁ - RO",
+     "pago": 3525910.259999999,
+     "obs": 88,
+     "primeira": "2026-05-20"
     },
     {
      "cnpj": "01274719000183",
@@ -1500,8 +1470,8 @@
      "categoria": "Impedimento/proibição de contratar com prazo determinado",
      "inicio": "2025-08-04",
      "orgao": "Prefeitura Municipal de Cantagalo - RJ",
-     "pago": 3058589.4100000006,
-     "obs": 47,
+     "pago": 3167208.2700000005,
+     "obs": 49,
      "primeira": "2025-08-05"
     },
     {
@@ -1509,7 +1479,7 @@
      "nome": "HAWK SEGURANCA E VIGILANCIA LTDA",
      "categoria": "Suspensão",
      "inicio": "2025-08-19",
-     "orgao": "BB Tecnologia e Serviços S.A.",
+     "orgao": "MINISTERIO DA FAZENDA",
      "pago": 3050167.950000005,
      "obs": 143,
      "primeira": "2025-08-26"
@@ -1517,12 +1487,12 @@
     {
      "cnpj": "10427965000119",
      "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2025-07-12",
-     "orgao": "CÂMARA MUNICIPAL DE BELO HORIZONTE (MG)",
-     "pago": 3002845.6799999997,
-     "obs": 45,
-     "primeira": "2025-07-14"
+     "categoria": "Suspensão",
+     "inicio": "2025-07-10",
+     "orgao": "DEFENSORIA PUBLICA DA UNIAO",
+     "pago": 3006142.51,
+     "obs": 46,
+     "primeira": "2025-07-11"
     },
     {
      "cnpj": "04236076000171",
@@ -1545,6 +1515,16 @@
      "primeira": "2026-04-10"
     },
     {
+     "cnpj": "17298685000105",
+     "nome": "B7 EMPREENDIMENTOS LTDA",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2024-05-06",
+     "orgao": "TRIBUNAL DE CONTAS DO ESTADO DO R. DE JANEIRO",
+     "pago": 2765531.83,
+     "obs": 39,
+     "primeira": "2024-05-07"
+    },
+    {
      "cnpj": "05769219000173",
      "nome": "CONQUISTA SERVICO E TERCEIRIZACAO DE MAO DE OBRA LTDA",
      "categoria": "Suspensão",
@@ -1565,6 +1545,16 @@
      "primeira": "2023-01-24"
     },
     {
+     "cnpj": "23417238000112",
+     "nome": "Monsaras Distribuidora e Comércio Ltda. ME",
+     "categoria": "Declaração de Inidoneidade sem prazo determinado",
+     "inicio": "2021-10-06",
+     "orgao": "Governo do Estado da Bahia (BA)",
+     "pago": 2473089.6999999997,
+     "obs": 8,
+     "primeira": "2023-09-13"
+    },
+    {
      "cnpj": "17695642000155",
      "nome": "TAGG SERVICES LTDA",
      "categoria": "Impedimento/proibição de contratar com prazo determinado",
@@ -1583,6 +1573,16 @@
      "pago": 2286791.37,
      "obs": 23,
      "primeira": "2026-05-19"
+    },
+    {
+     "cnpj": "01476404000119",
+     "nome": "INSTITUTO DE ATENÇÃO À SAÚDE E EDUCAÇÃO - IASE",
+     "categoria": "Impedimento/proibição de contratar sem prazo determinado",
+     "inicio": "2025-02-28",
+     "orgao": "Controladoria Geral do Estado de São Paulo",
+     "pago": 2267269.5300000003,
+     "obs": 8,
+     "primeira": "2025-03-28"
     },
     {
      "cnpj": "14647297000196",
@@ -1646,10 +1646,10 @@
     },
     {
      "cnpj": "08221047000197",
-     "nome": "Achei Indústria de Móveis Ltda",
+     "nome": "ACHEI INDUSTRIA DE MOVEIS LTDA",
      "categoria": "Suspensão",
-     "inicio": "2024-08-19",
-     "orgao": "Prefeitura Municipal de São Sebastião do Maranhão (MG)",
+     "inicio": "2022-12-30",
+     "orgao": "ESTADO DO ESPIRITO SANTO",
      "pago": 1413258.83,
      "obs": 11,
      "primeira": "2025-12-11"
@@ -1663,6 +1663,16 @@
      "pago": 1302421.3,
      "obs": 2,
      "primeira": "2024-07-02"
+    },
+    {
+     "cnpj": "23417238000112",
+     "nome": "Monsaras Distribuidora e Comércio Ltda. ME",
+     "categoria": "Suspensão",
+     "inicio": "2024-10-31",
+     "orgao": "Controladoria Geral do Estado do Rio de Janeiro - CGE-RJ",
+     "pago": 1138581.04,
+     "obs": 7,
+     "primeira": "2024-11-28"
     },
     {
      "cnpj": "11932216000101",
@@ -1695,6 +1705,16 @@
      "primeira": "2025-12-08"
     },
     {
+     "cnpj": "00700484000181",
+     "nome": "JUDKAL SERVICOS DE TRANSPORTE E ALIMENTACAO EIRELI",
+     "categoria": "Declaração de Inidoneidade sem prazo determinado",
+     "inicio": "2023-11-29",
+     "orgao": "Controladoria-Geral da União",
+     "pago": 843043.5700000002,
+     "obs": 19,
+     "primeira": "2024-09-05"
+    },
+    {
      "cnpj": "45087236000145",
      "nome": "BRASCOMP TECNOLOGIA DA INFORMAÇÃO EIRELI",
      "categoria": "Declaração de Inidoneidade sem prazo determinado",
@@ -1705,51 +1725,31 @@
      "primeira": "2022-12-27"
     },
     {
+     "cnpj": "17298685000105",
+     "nome": "B7 EMPREENDIMENTOS LTDA",
+     "categoria": "Suspensão",
+     "inicio": "2025-01-17",
+     "orgao": "INST.CHICO MENDES DE CONSER.DA BIODIVERSIDADE",
+     "pago": 785124.0499999998,
+     "obs": 15,
+     "primeira": "2025-02-25"
+    },
+    {
      "cnpj": "10427965000119",
      "nome": "INSTITUTO INTERAMERICANO DE DESENVOLVIMENTO HUMANO - BEM BRASIL",
-     "categoria": "Suspensão",
-     "inicio": "2026-02-19",
-     "orgao": "TRIBUNAL DE CONTAS DA UNIAO",
+     "categoria": "Impedimento/proibição de contratar com prazo determinado",
+     "inicio": "2026-04-13",
+     "orgao": "TRIBUNAL DE JUSTICA DO ESTADO DO RIO JANEIRO",
      "pago": 776498.05,
      "obs": 15,
      "primeira": "2026-06-01"
-    },
-    {
-     "cnpj": "37670865000175",
-     "nome": "EXCLUSIVE FITPLAY FITNESS E PLAYGROUNDS LTDA",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2025-10-29",
-     "orgao": "SECRETARIA MUNICIPAL DE ADMINISTRAÇÃO - GO",
-     "pago": 711145.7000000001,
-     "obs": 4,
-     "primeira": "2025-11-04"
-    },
-    {
-     "cnpj": "50325167000109",
-     "nome": "X CAR VEICULOS LTDA",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2025-05-27",
-     "orgao": "INST.FED.DE EDUC.,CIENC.E TEC. DO ESP.SANTO",
-     "pago": 689018.03,
-     "obs": 2,
-     "primeira": "2025-07-15"
-    },
-    {
-     "cnpj": "38073038000167",
-     "nome": "WR NUTRIÇÃO ANIMAL LTDA",
-     "categoria": "Impedimento/proibição de contratar com prazo determinado",
-     "inicio": "2024-01-08",
-     "orgao": "UNIVERSIDADE FEDERAL DOS VALES DO JEQUITINHONHA E MUCURI",
-     "pago": 630603.97,
-     "obs": 9,
-     "primeira": "2024-02-06"
     }
    ]
   },
   "porte_incompativel": {
    "ok": true,
-   "segundos": 3.6,
-   "n": 1144,
+   "segundos": 7.9,
+   "n": 1158,
    "topo": [
     {
      "cnpj_basico": "31418513",
@@ -1959,7 +1959,7 @@
      "ug_principal": "130100",
      "socios": 2,
      "natureza": "Soc. Ltda",
-     "concentracao_ug": 0.7460005705331074
+     "concentracao_ug": 0.7383472792511844
     },
     {
      "cnpj_basico": "19036929",
@@ -2253,7 +2253,7 @@
      "ug_principal": "130100",
      "socios": 2,
      "natureza": "Soc. Ltda",
-     "concentracao_ug": 0.7460005705331074
+     "concentracao_ug": 0.7383472792511844
     },
     {
      "cnpj_basico": "45992528",
@@ -2455,7 +2455,7 @@
   },
   "porte_declarado_certame": {
    "ok": true,
-   "segundos": 3.2,
+   "segundos": 7.5,
    "n": 8,
    "topo": [
     {
@@ -2610,68 +2610,68 @@
      ],
      "n_certames": 2,
      "homologado": 1286576.8925,
-     "recebido_pico": 7828078.55,
+     "recebido_pico": 7906049.24,
      "certames": [
       {
        "certame": "30892350000170-1-000063/2026",
        "data_pub": "2026-07-27",
-       "recebido_ate": 7828078.55,
+       "recebido_ate": 7906049.24,
        "homologado": 177000.024,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 0.058,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 0.002,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 0.006,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 0.0005,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 0.002,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 1067884.4,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 36823.6,
        "porte": "ME"
       },
       {
        "certame": "04884574000120-1-000036/2025",
        "data_pub": "2025-07-01",
-       "recebido_ate": 5770734.1,
+       "recebido_ate": 5910606.12,
        "homologado": 4868.8,
        "porte": "ME"
       }
@@ -2742,6 +2742,4223 @@
        "porte": "ME"
       }
      ]
+    }
+   ]
+  },
+  "troca_de_controle": {
+   "ok": true,
+   "segundos": 8.9,
+   "n": 135,
+   "topo": [
+    {
+     "cnpj_basico": "00801512",
+     "nome": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+     "pago": 778863787.2300007,
+     "primeiro_pagamento": "2021-03",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-09",
+       "nome": "GRA PARTICIPACOES E SERVICOS LTDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "SEPASA SERVICOS E PARTICIPACOES S/A",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-10",
+       "nome": "DL4 PARTICIPACOES S/A",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "07231868",
+     "nome": "BRAVO ASSESSORIA E SERVIÇOS EMPRESARIAIS EIRELI",
+     "pago": 370436767.2700008,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2026-03",
+       "nome": "URSO INVEST COMPANY LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2021-10",
+       "nome": "LIANE MARIA SIMI VILLARTA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "01920177",
+     "nome": "Comercial Milano Brasil Ltda",
+     "pago": 317950174.2200002,
+     "primeiro_pagamento": "2021-01",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-09",
+       "nome": "GRA PARTICIPACOES E SERVICOS LTDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "SEPASA SERVICOS E PARTICIPACOES S/A",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-10",
+       "nome": "DL4 PARTICIPACOES S/A",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "09077954",
+     "nome": "Restaurante Nova Rodovia 2007 Ltda",
+     "pago": 278077663.1699999,
+     "primeiro_pagamento": "2021-04",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-02",
+       "nome": "IVAN CRUZ FILHO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-03",
+       "nome": "THALYA SANTOS DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "02102125",
+     "nome": "CASSAROTTI FOODS - SERVICOS DE REFEICOES COLETIVAS E EVENTOS LTDA",
+     "pago": 275226109.39999986,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2023-10",
+       "nome": "APARECIDA REGINA CASSAROTTI",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2024-03",
+       "nome": "MEAMX ADMINISTRADORA DE BENS, INVESTIMENTOS E PARTICIPACOES LTDA.",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2021-11",
+       "nome": "MAXIMIANO CASSAROTTI",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2023-11",
+       "nome": "AETERMUM JUNIOR ADMINISTRADORA DE BENS, INVESTIMENTOS E PARTICIPACOES LTDA.",
+       "qualificacao": "Sócio"
+      },
+      {
+       "desde": "2023-11",
+       "nome": "2V HOLDING ADMINISTRADORA DE BENS, INVESTIMENTOS E PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "desde": "2024-03",
+       "nome": "MEX DO BRASIL, HOLDING FAMILIAR LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "07726017",
+     "nome": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
+     "pago": 241122965.88000005,
+     "primeiro_pagamento": "2022-05",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2025-02",
+       "nome": "BERNARDO MARIANTE CARVALHO",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2026-05",
+       "nome": "GUSTAVO VARELLA PIMENTA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-05",
+       "nome": "JOSE LUIS PERESTRELO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "20360878",
+     "nome": "CONSTRUVERDE CONSTRUÇÕES E SERVIÇOS EIRELI",
+     "pago": 204843098.8799999,
+     "primeiro_pagamento": "2021-10",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2025-02",
+       "nome": "JOAQUIM RODRIGUES DOS SANTOS",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-03",
+       "nome": "GRUPO VERDE HOLDING S.A",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "10893674",
+     "nome": "DIMPI - GESTÃO EM SAÚDE LTDA",
+     "pago": 181262048.57999998,
+     "primeiro_pagamento": "2021-01",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2026-01",
+       "nome": "MARCOS ANTONIO FERNANDES DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-01",
+       "nome": "JOAO VICTOR FERNANDES CAMISAO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "19088605",
+     "nome": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
+     "pago": 173235728.01,
+     "primeiro_pagamento": "2021-05",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-11",
+       "nome": "MAYKON RODRIGUES",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-12",
+       "nome": "EDUARDO DA SILVA AZEVEDO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "17820990",
+     "nome": "LOCASEM SERVICOS DE LIMPEZA, MANUTENCAO E ALIMENTACAO LTDA",
+     "pago": 170127645.35999992,
+     "primeiro_pagamento": "2022-04",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2024-06",
+       "nome": "CHRISTIANE ADELINA CAMARA RODRIGUES",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2026-02",
+       "nome": "MARCOS ANTONIO MOREIRA DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-07",
+       "nome": "LUCIANE CAMARA MILAN",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "24977781",
+     "nome": "JRF Manutenção e Serviços LTDA",
+     "pago": 148490692.10999995,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-01",
+       "nome": "FERNANDO GOES ROCHA FILHO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-02",
+       "nome": "JOSE EMILIANO DA SILVA IRMAO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "18776916",
+     "nome": "LAND SERVIÇOS E ENGENHARIA LTDA",
+     "pago": 128255090.59000015,
+     "primeiro_pagamento": "2021-08",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-06",
+       "nome": "ASPEN ENGENHARIA E PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2022-12",
+       "nome": "ASPEN PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "73833360",
+     "nome": "RIO SHOP SERVICOS LTDA",
+     "pago": 124569441.05999997,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2026-05",
+       "nome": "ESTILO SERVICOS TERCEIRIZADOS LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2021-08",
+       "nome": "FLAVIO ROBERTO DO PATROCINIO ALVES",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2026-06",
+       "nome": "RGN SERVICOS TERCEIRIZADOS LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "40494483",
+     "nome": "INFINITY MULTISERVICOS LTDA",
+     "pago": 119463434.5700001,
+     "primeiro_pagamento": "2022-09",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-02",
+       "nome": "HB MULTISERVICOS S.A.",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-03",
+       "nome": "FABIO ABREU DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-03",
+       "nome": "UP PARTICIPACOES E PATRIMONIAL LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "21116118",
+     "nome": "EVOLUÇÃO COMERCIO E DISTRIBUIDORA LTDA",
+     "pago": 92360059.3,
+     "primeiro_pagamento": "2023-10",
+     "ultimo_pagamento": "2026-05",
+     "saidas": [
+      {
+       "quando": "2025-11",
+       "nome": "FABIO ROSA DE ABREU",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-11",
+       "nome": "EDUARDO ZEVOLI BORGES",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "10562003",
+     "nome": "INOVA MEDIC SERVICOS ESPECIALIZADOS EM SAUDE LTDA.",
+     "pago": 84764809.30000004,
+     "primeiro_pagamento": "2021-01",
+     "ultimo_pagamento": "2025-10",
+     "saidas": [
+      {
+       "quando": "2024-07",
+       "nome": "CAROLINA RIBEIRO NETTO",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANGELA MARIA NETTO DE ALBUQUERQUE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JJG PARTICIPACOES LTDA.",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-07",
+       "nome": "FUNDACAO OSWALDO ARANHA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "26129034",
+     "nome": "DOCTOR VIP NEGOCIOS E GESTÃO EMPRESARIAL EIRELI",
+     "pago": 67830260.72999999,
+     "primeiro_pagamento": "2021-12",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-11",
+       "nome": "RAMON COSTA PEREIRA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2025-06",
+       "nome": "THAMIRES MEIRELLES RIBEIRO PEREIRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-07",
+       "nome": "CLEBIO LOPES PEREIRA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2025-07",
+       "nome": "PERFIL CONSULTORIA EMPRESARIAL LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "08947037",
+     "nome": "BASE MONTAGENS E SERVIÇOS PROMOCIONAIS LTDA",
+     "pago": 66822699.099999994,
+     "primeiro_pagamento": "2021-11",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2026-03",
+       "nome": "LEONARDO GUIMARAES RANGEL",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-03",
+       "nome": "JERONIMO VARGAS DOS SANTOS",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "07843380",
+     "nome": "PLASMA LABORATÓRIO DE ANALISES CLINICAS LTDA - ME",
+     "pago": 63891982.96000003,
+     "primeiro_pagamento": "2021-01",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2026-03",
+       "nome": "FABIO DUNHA DA ENCARNACAO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-03",
+       "nome": "GRACILENE VIANA MEDEIROS",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2026-03",
+       "nome": "JULIO CESAR MEDEIROS",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "17298685",
+     "nome": "B7 EMPREENDIMENTOS LTDA",
+     "pago": 61052740.62,
+     "primeiro_pagamento": "2016-04",
+     "ultimo_pagamento": "2025-07",
+     "saidas": [
+      {
+       "quando": "2024-03",
+       "nome": "GUILHERME DA SILVA BARBOSA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-02",
+       "nome": "BRUNO CAMPOS DE ALMEIDA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "02911547",
+     "nome": "KROY ENGENHARIA EIRELI",
+     "pago": 59832649.04000003,
+     "primeiro_pagamento": "2021-12",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-11",
+       "nome": "WADSON MARCELO PIMENTEL SODRE",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2022-01",
+       "nome": "GABRIELE SPINDOLA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "31472249",
+     "nome": "EDM EMPRESA DISTRIBUIDORA DE MOBILIARIOS LTDA.",
+     "pago": 58181657.71000001,
+     "primeiro_pagamento": "2022-08",
+     "ultimo_pagamento": "2025-04",
+     "saidas": [
+      {
+       "quando": "2025-02",
+       "nome": "EDUARDO ERNESTO BAZHUNI MAIA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-03",
+       "nome": "EM2 INVESTIMENTOS E PARTICIPACOES LTDA.",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "35692091",
+     "nome": "NORDEO ENGENHARIA E LOGISTICA LTDA",
+     "pago": 57004868.33,
+     "primeiro_pagamento": "2024-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-07",
+       "nome": "SEITON CONSULTORIA EMPRESARIAL LTDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-12",
+       "nome": "ROGERIO SERGIO COUTINHO",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2025-06",
+       "nome": "LUCIANO CABRAL DE SOUZA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-07",
+       "nome": "SOLID ASSET HOLDING E SERVICOS S/A",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "41833444",
+     "nome": "LIDER SERVICOS MEDICOS LTDA",
+     "pago": 55060832.330000006,
+     "primeiro_pagamento": "2022-05",
+     "ultimo_pagamento": "2026-02",
+     "saidas": [
+      {
+       "quando": "2023-05",
+       "nome": "LEONARDO DE LEMOS LEMER",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-05",
+       "nome": "THIAGO FERREIRA SAMARY",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "59128553",
+     "nome": "STRATURA ASFALTOS S/A.",
+     "pago": 52804544.87000001,
+     "primeiro_pagamento": "2021-03",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2025-02",
+       "nome": "FIORD CAPITAL LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-03",
+       "nome": "NEXA CAPITAL",
+       "qualificacao": "Sócio Pessoa Jurídica Domiciliado no Exterior"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "02754941",
+     "nome": "Nutrimed Alimentacao Industrial Ltda.",
+     "pago": 49021866.39999999,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-07",
+       "nome": "VAGNER AUGUSTO DANTAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2026-04",
+       "nome": "JOAO PEDRO RITTO NONATO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-11",
+       "nome": "PRIMUS PARTICIPACOES E INVESTIMENTOS S.A.",
+       "qualificacao": "Sócio"
+      },
+      {
+       "desde": "2023-11",
+       "nome": "JPRN PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "30587992",
+     "nome": "CN GLOBAL PARTICIPAÇÃO E SERVIÇOS LTDA",
+     "pago": 45437175.72000002,
+     "primeiro_pagamento": "2022-05",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-10",
+       "nome": "LUCIENE DOS SANTOS NOGUEIRA DE ALCANTARA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-07",
+       "nome": "JORGE RODRIGUES DOS SANTOS",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "41742950",
+     "nome": "BAM COMERCIO E SERVICO LTDA ME",
+     "pago": 44953592.95000003,
+     "primeiro_pagamento": "2022-06",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2023-11",
+       "nome": "MATTHEUS DE ALMEIDA BELAN",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-11",
+       "nome": "RODOLPHO RIBEIRO DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "12039966",
+     "nome": "LINK CARD ADMINISTRADORA DE BENEFÍCIOS EIRELI",
+     "pago": 39781062.25999999,
+     "primeiro_pagamento": "2023-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2025-02",
+       "nome": "MARCELO DE OLIVEIRA LIMA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-03",
+       "nome": "JOAO MARCIO OLIVEIRA FERREIRA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2025-03",
+       "nome": "RODRIGO MANTOVANI",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "07028841",
+     "nome": "DE SÁ SERVIÇOS LTDA",
+     "pago": 38896928.47999997,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-07",
+       "nome": "FARLY SOUZA DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2023-07",
+       "nome": "CONCEICAO DE MARIA FERREIRA BONAVITA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-07",
+       "nome": "EVANDRO JOSE FERREIRA TAVEIRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "19308719",
+     "nome": "S & B DISTRIBUIDORA E IMPORTADORA DE MEDICAMENTOS LTDA",
+     "pago": 38343561.44,
+     "primeiro_pagamento": "2021-09",
+     "ultimo_pagamento": "2025-02",
+     "saidas": [
+      {
+       "quando": "2024-10",
+       "nome": "FILIPE SOARES DOMINGUES DE SOUZA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2024-10",
+       "nome": "ROMULO RODRIGUES PINTO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-10",
+       "nome": "ROGERIO DO NASCIMENTO CARLOS",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "12478252",
+     "nome": "HUMANI SAUDE LTDA",
+     "pago": 35000862.98999999,
+     "primeiro_pagamento": "2023-04",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-04",
+       "nome": "ADEMIR MARTINS ZORATTO",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2023-07",
+       "nome": "BIANCA KOBBAZ BETTONI MOREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-08",
+       "nome": "MIRELA JUNQUEIRA SCALI RIBEIRO FREITAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "LIGIA JUNQUEIRA COIMBRA RONCONI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "JULIANA GRACA MARANHAO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "MILTON GARIBALDI FONSECA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "ANA CAROLINA MONTEIRO PEREIRA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "GLEICE COSTA RODRIGUES DOS REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "LIZKA KENTY MORENO CERDAN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2023-09",
+       "nome": "JOSE CARLOS PIZARRO BORGES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-01",
+       "nome": "PAULA DANYELLE DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-04",
+       "nome": "DENNIS PHILIP ALVES DIAS",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2024-06",
+       "nome": "MARISTELLA FROIO TOLEDO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GUSTAVO LACERDA MARQUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JULLYE ANNE COELHO DE LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LEONEL TELLES DE MENEZES MORAIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ENRICO MARCONDES DE MOURA LANFRANCHI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIA JULIA TEIXEIRA VAZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANDREIA BENITES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LARISSA ELEOTERIO CORSINI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GISELLE LETA CAMILO VIEGAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BRUNA DA SILVA DAMIATI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "VINICIUS PEREIRA DE BARROS COBRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "AMABILE CRISTYNE SCHMIDT",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GUSTAVO HENRIQUE FIRMINO MENDONCA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "THIAGO FELIPE DOS SANTOS LIMA GONCALVES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "NATHANA SANTOS MOURA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "POLYANA MARIA DE CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIO SERGIO MIRANDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "PEDRO HENRIQUE MEIRELLES FERREIRA PINHEIRO DE MATOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "REBECCA CAROLINA SANCHES RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BRUNO ZULIANI DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LUIZA DE AGUIAR MISSEL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "SARAH FEITOSA NUNES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "THAIS RUIZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MONICA TALLYA CLAUDIA ASSIS LOPES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "IGOR NOGUEIRA NISSAN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MATHEUS DA SILVA COSTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANA CAROLINA AYUMI TAJIRI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANA CLAUDIA SILVA ALVES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LUIZA OLIVEIRA BORGES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "THALES DO VALE OTTONI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIA JULIA DE CARVALHO FEIJO DE MOURA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MATHEUS SOUSA MELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GIOVANA CUGINI SANCHES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LUCAS TAFFARELLO JAQUEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARINA RODRIGUES BARBOSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "DANIELA MONTESI CUGINI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JORDANA JOSE DOS SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "VANESSA SILVA CAOVILA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LUCAS PINHO BEZERRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LETICIA ALMEIDA CEZARIO ARAI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GIOVANA FREITAS MONFERRARI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIA EDUARDA VIEIRA RIBEIRO GARCIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ALEXANDRE PEREIRA XAVIER",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ALCIONE BARROS FONTES PINTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "PACITA FERNANDEZ BONFILL FLORENCANO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "VITORIA CRISTINA BORTOLANI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "DESIRRE LESLIE VIZZOTTO DOS SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LEONARDO AMARANTE PAGOTTI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "SOPHIA BRIZOLA HISSE DE CASTRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BARBARA DOS SANTOS PIRES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JULIA PEREIRA LIMA FRASCHETTI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RUY SERGIO SAMPAIO REZENDE DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ELISA JARDIM MIQUELETTI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CAMILA BOAVENTURA CZELUSNIAK",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "DEBORA CRISTINA DE PAULA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "TALLITA ARAUJO DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RODRIGO TELEMACO FARIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARCUS MURILO MARQUES NUNES MAIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CAIO PUSTIGLIONE SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ELOA SILVA MOTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RAFAEL ALVES BANZATI VIANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BEATRIZ NAGEM MORALES VITORAZZO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CAMILA MARIA MARTINS SALLES PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANNA GABRIELA NERY SILVA RAMOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIA DE NAZARE BRITO AGUIAR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "NADER ABD ALI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RICARDO RAMOS DISCONZI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIA EDUARDA VILELA AMARANTE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ALINE GABRIELE PEREIRA SANTANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "KAUE DE MOURA GERMANO CABRAL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "VICTOR CHAMMAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARCIA TORNIZIELLO BRAZ DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "SILVERIA APARECIDA VILELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CARLOS ANDRE DA COSTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARCELO DA MOTTA BARRICHELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LAIS FAGUNDES MATOS PEREIRA DE GOUVEA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIANA MOREIRA LIAO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ROBERTO ALIAGA RODRIGUES FILHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BRUNO DE SOUZA SUAED",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANDREI RICARDO RODRIGUES GUEDES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MATHEUS MAGALHAES CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "PAMELA FERNANDES ALVES DE CASTRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MONIQUE VIEIRA FURUKAWA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "FLAVIA LILA MEDINA POVEDA MAXIMO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIA CAROLINA AMARAL DIAS DE CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BRUNA PEVIDE MUSSI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LUIZA LACERDA TEIXEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ROCIO NOEMI VILA ROMERO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "VINICIUS JOSE DOS SANTOS REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANA ISABEL FERREIRA VILARINHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ROBERTA DUARTE LOPES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "REGIS COELHO FILHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LEANDRA DOS PASSOS E SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARIO SERGIO SANT ANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "EDUARDO MARCUS LEMOS PEREIRA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ISADORA SEITHER GOULARTE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "TULLYO MYCHEL FERNANDES RAMOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "FRANCIELLY CAPELETE BRIET KATAYAMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MICHELLY FERNANDES FREITAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANDRESSA PANSARDIS FRANCA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "THIAGO BASSO RAMOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "AMIR MAHOMED OMAR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "HELOISA SARTO CAMOES VIEITO PADILHA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CRISTINA MONTEIRO BIANCHI JUNQUEIRA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "DANIELA PAULA EMMERT MANGINI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ERIC MAXIMO ORRICO SIQUEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RAFAELA ALVES PELIZZARO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "EDUARDO EPAMINONDAS FARIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "TAYANE CAROLINE CAMPOS MONTEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARCELLA FERREIRA FUNCHAL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "FABIANA ALINE HIGA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "BRUNA LOPES SILVA PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "TINZIA MARCIA ALVES DE CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RENATA ANTUNES RANGEL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARINA SILVEIRA DUARTE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "THAIS CASTILHO SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARCOS SANTOS DA ROCHA LOURES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "DENISE CRISTINA DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANDRE DE LIMA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JULIO CEZAR GONCALVES DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANA PAULA VASCONCELOS DE ASSIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JULIANA SANTOS DE LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ARTUR FRACASSI GUERRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "SEGUNDO TERCEROS LUJAN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "THIAGO CASSIANO DE SIQUEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JULIA RESENDE MOREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ALEPH HENRIQUE GARCIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "IVANILSON BATISTA FEQUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MAURI FARIA GALVAO DE FRANCA CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CINTHIA OLIVEIRA VILELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MATHEUS DE OLIVEIRA NASCIMENTO SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MANOEL ROCHA NETO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "WANESSA COSTA LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "SEBASTIAN CACERES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "MARISTELLA FROIO TOLEDO MELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ARYANE YOSHIE AKAHANE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "NICOLE FRANCH PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JEAN PIERRE CUNHA KIRALY",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "VITORIA GOUVEIA ANDRADE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GEORGE HENRIQUE CAMILO JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JOAO PEDRO RONCONI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANA CAROLINA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "JORDANA BORGES CAMARGO DINIZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ISLAINE BARBOSA MAGALHAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "PRISCILLA DA SILVA VASCONCELOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "GRAZIELE FERNANDA RISSO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RAFAELA PRUDENCIO BARBOSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ISABELA HELENA MORAES MONTEIRO MELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LINCOLN VALERIO ANDRADE RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "RODRIGO ERMINIO HRYNIEWICZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "LILIAN BORGHETTI ANTUNES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "EDUARDO EICHI TAKANO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "NADIA SAAD EL ORRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "YASMIN REDI CASTAGNA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ANDRES ORTIZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "CHESTER ALAN FURTADO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-07",
+       "nome": "ROSS - SERVICOS MEDICOS LTDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIS FERNANDO D ALINCOURT CAPOTORTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JEAN CARLOS FONTANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "AGNES BARCANIAS REGO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANDRESSA MELOTO DOS SANTOS PINHEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "THIAGO GOMES CAVINI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOAO PEDRO PESSIQUELI BONIN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ISABELLA DE OLIVEIRA MARECA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "SHIRLEY MARIETA ALVES DOS SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUSTAVO DE SOUZA SABIONI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "NATHALIA DE MORAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ENGLER MORI FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARCELA FACCI ANDRADE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ESCARLATE BETINA BUZZELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOSE LUIZ BONFITTO FILHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MAURICIO KENZO MARUYAMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PALTI DE OLIVEIRA MASSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FELIPE MARTINS BASTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VICTOR RABELO SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FARID FARRAGE ABD EL FATAH",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAULO DE TARSO ARAUJO MARTINS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUILHERME NAVES FONSECA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PATRICIA FERREIRA DOS SANTOS ABIORANA LUCENA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIZ CARLOS DE OLIVEIRA JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIZA PIRES MIRANDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PEDRO HENRIQUE DIAS ORFAO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANNE KAROLINE PIRES DE JESUS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LETICIA GOMES RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PATRICIA PELLEGRINELLI BERNARDES PLACCHI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUANA CARLA LIMA VERDE RODRIGUES SPAGNOL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JULIANA NAVAS BRAGA DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VANESSA DOMICIANO DE SOUZA MARCELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FABIANO CUNHA BORGES RALID",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARIO DAMASCENO FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOAO PEDRO MARTINS BATISTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DIEMES CRISTIANO LOPES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ENZO DOS SANTOS CAMPOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MAURO DUILIO MEZA CHACON",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VANESSA CAVALCANTE E SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MATHEUS DIAS RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "KALYNE MARIA DE PAIVA NALON",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAULA MARTINS RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FELIPE MUNIZ REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOSE ARIMATEIA CORREIA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUTENBERG FERREIRA SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GIOVANA SILVERIO SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "YASMIM MARIA PEREIRA MARQUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "EDSON DA ROCHA CONSTANTINO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "SAMANTHA DE OLIVEIRA NOBRE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "YAMIL CHIHUANTITO CHOQUECHAMBI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "AMANDA MARECA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VINICIUS ALMEIDA ASSIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LEANDRO LEITE PRADO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARTA FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "EDUARDO HENRIQUE ANTUNES MANN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "TAYNAN BRUNO RAMOS IZIDORO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAOLA DIAS CABRAL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "BARBARA CAVALCANTE HOLANDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "SOPHIA KELLY ABREU DE CASTRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIZ GONZAGA DE ABREU",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUILHERME RODRIGUES DE MOURA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOAO RAPHAEL CABRAL MATEUS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PEDRO HENRIQUE QUINTAES GARCIA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRIEL PEREIRA ESCUDEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FLAVIO CORREA DE AZEVEDO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOHNNY WILLIAN FONSECA GALLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOAO PAULO DE SOUZA RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ADRIANO DE OLIVEIRA SOUSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GESSIANE DOMICIANO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUSTAVO CAPRANICO CORREA GIMENEZ GERMANO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CHRISMAEL RAMOS BARBOSA DE PAULO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUSTAVO LAGE DE PAIVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "SARAH CHRISTIE VILAS BOAS E SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CARLOS EDUARDO CAPOBIANCO LOPES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MAXIMILIANO LEITE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MONIQUE DE CASTRO ROCHA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RENATO LAVOYER ESCUDEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "THALES AUGUSTO OLIVEIRA DIAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JESSICA HELOISA DOS SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRIELA VALENTE MARINS MACEDO DE AZEVEDO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ARIANE CARVALHO CRUZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VANESSA HELEN DE CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARILENE MARIA FELTRIN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "YARA MARIA MOURA BATISTA PEREIRA SERRA LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUCAS GONCALVES PINHEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ALCIDES EDGARDO MALDONADO PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DAYSON DE ASSIS PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARIA CELESTE DILELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAULA DE CARVALHO MAGALHAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RENATO DE PAULA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARCO AURELIO BRAZ DE LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAULO CESAR FERREIRA DUTRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CAROLINA VALENTE COUTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ESTEVAO DOS SANTOS DINIZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "KARLA CORREA DE CASTRO COELHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MAYRA CRISTINA FERREIRA DE ARAUJO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ALEANDRO MAGALHAES DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARCELLA CERQUEIRA AMBROSIO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LEONARDO FANTOZZI SILVA CHIMINAZO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANDRE LUIS LONCHI BRETAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CAMILLA FAZOLIN AMORIM",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RAPHAEL TAVARES RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOAO PAULO CHEVRAND LATINI DE ALMEIDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JULIA PEREIRA DE SOUSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RODRIGO OCTAVIO MONTEIRO VALLE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARCIO BITTENCOURT BARBOSA MATIAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUANA APARECIDA DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARINA LOPES PEASE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "KAREN MOTA GOMES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FELIPE FARIAS DANTAS BERGAMASCHI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FELIPE OLIVEIRA GUILHERME",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAULO CESAR CRUZEIRO RAMOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FILIPE OSNI COELHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUANA ROSA FREITAS FERNANDES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "IAGO RODRIGUES FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DOUGLAS KARFAN BARBOSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DANIELA VIEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "HUGO ALFONSO PRADO SUAREZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARCELA KAUANA OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CLARA ALVARENGA MOREIRA CARVALHO RAMOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIS ANEZ AYLLON",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LAURA COSTA BOARETTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUCAS DE CARVALHO VILELA RODRIGUEZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRIEL DE CARVALHO VILELA RODRIGUEZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARINA TASCA RIBEIRO DA COSTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "THAMIRES ESPOSITO VICENTE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOIRA MARIA QUINDERE BARRETO CAOVILLA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUCIANA NONATO DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIS ENRIQUE LARA TERRAZAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GUILHERME NOGUEIRA DUTRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "STEFANYA CAETANO DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CECILIA PENHA DALL ORTO CRUZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LIRIA PIMENTA DIAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JESSICA LORANY DE BARROS TEIXEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FAGNEY DOS ANJOS CARDOSO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "HERES DE OLIVEIRA MASSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MIRELA JUNQUEIRA SCALI RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRIEL MUNIZ REZENDE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RAPHAEL COSTA TEIXEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ALICE MOTTA DA ROCHA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "KASSIELLY MELISSA RIBEIRO RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ALICE MESSIAS AMARAL LATRONICO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANDRE LUIZ TEIXEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MATHEUS FERNANDES RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAMELA LUNARDI FUCKS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARINA BARBOSA DA COSTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FLAVIANE ALVES DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ONES SABINO JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARIAN MANNE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RANIEL LUIZ FIDELIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "EDUARDA CASSIA SOUZA PELOSO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "SABRINA ALVES MAIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VERIDIANA YURI DE LIMA IKEDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ERIC PAIVA VILELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CLAUDINE VALIN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JULIA HERONDINA MADEIRA SIQUEIRA VIANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARX LINCOLN MATIAS LEMES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CARLOS EDUARDO BERALDO DELMEDICO ZANGALLI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LIVIA MAYRA DE PAULA RUELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CESAR BATISTA GONCALVES DA CRUZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "TAMIRIS WELLEN DA SILVA PRADO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DANIEL MARCUS GONZAGA QUITES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ADAUTO FRANCISCO DE PAULA JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JONAS ALEX HOCKMULLER",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "EDUARDO DE OLIVEIRA RODRIGUES NETO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DESIREE FRAES VASQUES DOS SANTOS SABIONI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DAMARES PLACIDO MOREIRA DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RODRIGO FRANZOSO ALMEIDA DE ANDRADE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANDRE ALVARES FIGUEIREDO SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FABIO FORTES BONAFE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GIMENA CAMACHO MACEDO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "WALESKA CAMACHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUCCAS JORGE DANIELIDES SOLCI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUIZ FELIPE ARAGOSO BENTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRIELLA CAROLINE BARBOSA REMIGIO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRIELA BERNARDES GONCALVES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DANIELLE SOLIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANA ASNIV HOTOTIAN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RICARDO CESAR CORTES DE BOM",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "THAIANE DE CASTRO BASSO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FRANCIELI CRISTINA ONHIBENI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LIGIA NERY SILVA RAMOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "BRENDA KAORI ISHIY OZIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANTONIO TORRES NETO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUISA DINIZ MARRA VIEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANA CLARA MONTEIRO CHAGAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "TAYLLON HERBERTH DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "GABRYELLA TEIXEIRA ROCHA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "SOLIANE CRISTINA DE ABREU MIGUEL LARA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARINE DE MACEDO BORGES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANA FLAVIA DE OLIVEIRA BORDIN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FERNANDO RODRIGUES THEODORO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RODOLFFO DA SILVA FOSSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "VITORIA DA SILVA FOSSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "NICOLY AUGUSTA DA SILVA QUEZADA DOS SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LETICIA COSTA VASCONCELOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "HELENA DOMINGUES LIMA FONSECA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARIELLE BEATRIZ RODRIGUES PATTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "TULIO NICOLAS ALVES OLYMPIO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANDRE FRANCISCO DOS REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUCAS CONSTANTINO FERNANDES DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "CATHARINA ESPOSTE PURGATO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RODRIGO EUGENIO VINUTO BORGES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ISABELLA PEREIRA MORAIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "PAULA DANYELLE DE OLIVEIRA PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JOSE ANTONIO KOURY ALVES JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "FELIPE LAMEIRAO DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "KARINA MACEDO REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "RAFAEL ANDRE MONTEIRO CORREA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "ANDRE FELIPE DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "JULIA DE OLIVEIRA LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LUCAS CHAGAS DA SILVA PIMENTEL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "DOUGLAS SAMUEL NUNES GOULART",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MARIANI APARECIDA JUNQUEIRA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "BRUNO PIZZOL MARTINS",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-04",
+       "nome": "PHILLIPE DA CRUZ SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "35834967",
+     "nome": "CONE ENGENHARIA E CONSTRUÇÃO LTDA",
+     "pago": 33208796.130000006,
+     "primeiro_pagamento": "2021-08",
+     "ultimo_pagamento": "2025-12",
+     "saidas": [
+      {
+       "quando": "2025-09",
+       "nome": "CLEZIO THADEU DE SOUZA DUTRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-09",
+       "nome": "ELZA MARIA MOREIRA DE ARAUJO DUTRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "34043125",
+     "nome": "Peca Oil Distribuidora Ltda-epp",
+     "pago": 32376405.869999986,
+     "primeiro_pagamento": "2021-01",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-10",
+       "nome": "ERIVAN CUNHA MENEZES",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-10",
+       "nome": "JOSE CARLOS AMARAL",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "54512587",
+     "nome": "Sisgraph Ltda",
+     "pago": 31588067.750000026,
+     "primeiro_pagamento": "2021-03",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2025-06",
+       "nome": "HEXAGON METROLOGY SISTEMAS DE MEDICAO LTDA.",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "LEICA GEOSYSTEMS DO BRASIL COMERCIO, IMPORTACAO E PARTICIPACOES LTDA.",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2026-01",
+       "nome": "LEICA GEOSYSTEMS HOLDINGS BV",
+       "qualificacao": "Sócio Pessoa Jurídica Domiciliado no Exterior"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-01",
+       "nome": "HEXAGON INTERGRAPH AB",
+       "qualificacao": "Sócio Pessoa Jurídica Domiciliado no Exterior"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "05806715",
+     "nome": "PS SOLUCOES E COMERCIO LTDA",
+     "pago": 31444575.069999952,
+     "primeiro_pagamento": "2022-10",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2025-02",
+       "nome": "CARLOS EDUARDO PEREIRA DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-03",
+       "nome": "O2 INOVACAO E PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "46563938",
+     "nome": "CANON MEDICAL SYSTEMS DO BRASIL LTDA.",
+     "pago": 31194777.240000006,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-09",
+       "nome": "TAKUYA MIYAZAKI",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2026-04",
+       "nome": "CANON MEDICAL SYSTEMS CORPORATION",
+       "qualificacao": "Sócio Pessoa Jurídica Domiciliado no Exterior"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-10",
+       "nome": "SHUMPEI NARITA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2026-05",
+       "nome": "CANON INCORPORATED",
+       "qualificacao": "Sócio Pessoa Jurídica Domiciliado no Exterior"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "31549103",
+     "nome": "AVIV GESTÃO EM SAÚDE",
+     "pago": 30659144.849999998,
+     "primeiro_pagamento": "2023-04",
+     "ultimo_pagamento": "2026-03",
+     "saidas": [
+      {
+       "quando": "2023-04",
+       "nome": "CAIO AUGUSTO GARCIA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2023-08",
+       "nome": "RAQUEL VIEGAS PALMEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-08",
+       "nome": "FRANKLIN ROBERTO DUTRA DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-10",
+       "nome": "MARIANA FERNANDES MARTINS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2024-11",
+       "nome": "THALITA MAYARA RAMOS DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FABRICIO PEREIRA FERNANDES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANNA LUIZA DE FARIA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "HUGO ANGELO DE MARINS FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MAYARA THAIS ROVER",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "WALTER RAMOS SANTOS JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JULIEN SALAS D ALAMBERT",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GRAZIELA MARTHA DE PAULA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ROMA NAPOLI WARTH",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUANA ALENCAR DE BARROS EVANGELISTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LEONARDO DA SILVA CALIMAN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FRANCISCO RACHIDE LOPES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ADRIANA DOMINGUES FURTADO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "THAYNNAH GOUVEIA CARNEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ISABELA RODRIGUES GROHMANN BAPTISTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LEONARDO SILVA NOBREGA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LEONARDO VASCONCELOS SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LAILA ARAKAKI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUCAS VEO GUSMAO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PEDRO LUIS ESCHER ESCOBOSA PARRON",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BRUNO MARINHO GONCALVES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAMILA CARVALHO GUEDES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAQUEL VIEGAS PALMEIRA TOSTES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BEATRIZ COVICI BARROS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "NICOLY CRISTINA DIAS PELOSI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAPHAEL BARCELOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GABRIELA RICORDI BAZIN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GEISA NASCY BARROS PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "IRMO KELMANN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PEDRO AUGUSTO CANDIDO BESSORNIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "KATIUCIA SA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PAULO ROBERTO MATOS PASSARINI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MELINA RODRIGUES ROCHA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FABIO AUGUSTO PIOVESAN LYRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAMILLA VITORIA QUERINO DO CARMO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAROLINA PAVANI BARATA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "TASSIA CRISTINA DUARTE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "VITOR BOTELHO SILVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "VITOR HUGO FELICIANO PEREIRA LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAMILA LEITE BONILHA CORREIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RICARDO CANTARINO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JULIANA MARIA DA COSTA GOMES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "DANIEL DE SOUZA OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CLAUDIA DE OLIVEIRA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CLEUDIMAR DA LUZ ARAUJO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "KAMILA REIS GIRALDELLI JUNQUEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAFAEL VARGAS SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LENO DA SILVA VIANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARCELO GONCALVES DE MATTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "OTAVIO LESSA TEIXEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIANA DALSOGLIO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "EDILSON SOARES JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ALEXANDRE MORENO DOS SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARCIO LUIZ ALEXANDRE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "DANIELY QUINTAO FAGUNDES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FRANKLIN ROBERTO ISAAC DUTRA DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ODENIR BESSA DE ALMEIDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JOAO VICTOR DOS SANTOS TEIXEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "HUMBERTO LUIZ DI PACE MARANHAO ARAUJO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA LAURA DE OLIVEIRA DIAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIANA FERNANDES CHAMILETE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GIOVANNA VELOSO DE NOBREGA OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ALESSA CASTRO CORDOVIL PORTELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PEDRO HENRIQUE RODRIGUES DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "AMANDA BATISTA ARAUJO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARCIO FABIANO DE SALLES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FREDERICO VIDAL BARBOSA TORRES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "IDYANARA KAYTLE CANGUSSU ARRUDA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FERNANDO RODRIGUEZ GONZALEZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUCAS WERMELINGER DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BRUNO VIANA LIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "HUMBERTO VILLACORTA JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "EMERSON TSUNEO SHIBUYA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RENATA ANSELME DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CHARBEL KHOURI DUARTE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ELIS YUSSEF FIGUEIRAL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PRISCILA SOUZA DOS REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ALBA CRISTINA MARTINS DA SILVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PATRICIA DE LIMA LOPES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "EMILY MARQUES MORAES FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GABRIELA PAIVA DA COSTA JARDIM",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LEANDRO NICARETTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAROLAINY DALLA BERNADINA COELHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARCELLO HENRIQUE DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUCIANA ANGELICA DAMAS FERNANDES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CRISTINE SOARES ENNE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "SAMIR ABREU MUSSI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "WALLACE CARVALHO LISBOA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RENATA SCHAEFER WESTPHALEN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MONISE VERGARA MARINS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "HILDEBRANDO LAURO SILVA DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "NYCHOLAS DA COSTA TAVARES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JOAO LUCAS SCARABELOT CASTRO ALVES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "NATALIA MARIA DIAS DE SA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CESAR FERNANDO DIAS GONZAGA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAFAELA SANTIAGO CAJE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JADE PRISCYLLA BARROS VIANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GUILHERME MULLER SANT ANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUCAS GOMES DE BARROS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GUSTAVO FALCAO GUIMARAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUANA DE PRINCE GUILHERME",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANANDA MEDEIROS NAVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUIZ FELIPE FERREIRA SPALLUTO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAFAEL PEREIRA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GISELLE DE FREITAS RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ISADORA DELIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ALEX EIRAS COSENDEY",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIA JULIA GOMES DE MORAES REIS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JOSE REIS SCHALCHER MARTINS NETO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JEFERSON GOMES DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JAMIL AUGUSTO CARVALHO DAHER",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANNA CLARA COELHO DA ROCHA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "VANESSA DA COSTA RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "TAINA DE ASSUNCAO AMORIM",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIANA CASA NOVA DUARTE SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "KLEBER BRITO DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAFAEL LUSTOZA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIA DO CARMO PRIETO RODRIGUEZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FABIOLA MONTANO ZAMBRANA TORRES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "VITOR SOUZA DE FREITAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MAYRA TALISSA DE PAULA MARTINS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA BEATRIZ LEMOS DE PAULA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JORCELINO TEODORO DE FREITAS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIANE PAIVA RANGEL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "VITORIA DA SILVA BRESSAN BARBIERI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "SIMONE MARTINS DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BRUNA LEITE MARQUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LAURA CAROLINA GARCIA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BERNARDO SILVA DE ABREU",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "DANIEL MARIO RIBEIRO JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUCAS ANDERSON MARQUES SANTOS SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FLAVIA DE JESUS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAPHAEL BIRINDELLI GUIMARAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "GLADISON BIANCHINI DE CAMARGO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAIO HENRIQUE WTHEN GAMBACORTA GERANUTTI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "THALITA MAYARA RAMOS DA SILVA MUSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CICERO OLIVEIRA SANTOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAPHAEL OITAVEN ANDRADE DE AMORIM",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA CAROLINA GIACOMINI GOMES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ELIVALTER MIRANDA DE SANTANA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "THAIS DE OLIVEIRA VIEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MAXIMILIANO TERRA COSTA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA RAFAELA ANSELMO FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BEATRIZ GERALDO MOITINHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CAROLINE RIBEIRO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BRUNO REIS GIRALDELLI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIELI FERNANDA PRIOLI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PEDRO HENRIQUE GONCALVES RODRIGUES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIANA SANTOS CARDOSO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "SERGIO RODRIGUES MARCONDES DE MELLO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "IVANA FREITAS AFONSO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FLAVIA LARISSA LOPES DE CAMPOS E CAMPOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MAURICIO ANDRE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIA LUIZA CORRENTE DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "DANIEL EDUARDO LEYTON ALVAREZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "REBECA PRESTES LUZINI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BEATRIZ CUSTODIO TORTORA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ALISON TOMAS DA SILVA CARLETTI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA CAROLINA MIRANDA RIZZI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIANA MACEDO ROSA DE SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LEANDRO ALVES LINO ACIOLY DE CARVALHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "WOSHINGTON VALVERDE DE SOUSA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANDRESSA MIRANDA MAGALHAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LINDA KAREN RODRIGUEZ NAGUEL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "REBECCA HELEN ROSSER",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "LUANA VASCONCELLOS MENDONCA SCHIPHORST",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANDREIA BARBOZA TAVARES DE MATOS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "SERGIO KEIITI OZIMA FILHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "BIANCA AKI ISHIY OZIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "YAIMET PEREZ MARTINEZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "DANILLA KAROLLINA VIANA FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "SAMUEL DOUGLAS VASCONCELOS CABALLERO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ROGER FREITAS RAMIREZ JORDAN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ALLYSON DIEGO SILVA BARROS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MIRYS KAROLINE CADETE DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA CAROLINA DA SILVA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "HAROALDO HIROMI ISHI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA PAULA TEMISTOCLES RANGEL",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "RAFAEL OLIVEIRA SOUZA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JOAO MATHEUS CALIXTO LINS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "EWERTON ARAUJO FERREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "OTAVIO EUGENIO RODRIGUES DE OLIVEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CRISTIANE MARTINS AZEVEDO TARRE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "FELIPE FERREIRA MARTINS MACHADO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "PAULO SERGIO VIEIRA DE SOUZA JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "VIVIAN DOS SANTOS VILELA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ROSILENE CAMARA FERREIRA DE MORAES",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ERIC MAURICE KRAMER",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARIA EDUARDA FIGUEIREDO REBOLHO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANDRES ORTIZ",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "ANA CLARA DONATO PEREIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MARCELO VASSALLO VISCIANI",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "DAVI LINS GRILO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "CHAN TZU CHIEN",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "STEPHANIE BRAZ BIO",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "AMANDA TAVARES ALBUQUERQUE",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MAURICIO GUAMAN DEL AGUILA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "SERGIO ENRIQUE SARIOL VEGA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "MATEUS REIS NOGUEIRA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-05",
+       "nome": "JULIANA LOPES SOARES",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-06",
+       "nome": "GIULIA SANTOS TRUDES FREITAS DE AZEVEDO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "28890663",
+     "nome": "PEDREIRA PRONTA ENTREGA LTDA",
+     "pago": 27076868.349999998,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-05",
+     "saidas": [
+      {
+       "quando": "2024-06",
+       "nome": "ASPEN ENGENHARIA E PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2022-08",
+       "nome": "ASPEN PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "08264054",
+     "nome": "CENTRO PERINATAL E PEDIATRICO SANTA MARIA LTDA",
+     "pago": 25379396.02999999,
+     "primeiro_pagamento": "2021-01",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-04",
+       "nome": "ISABEL DE ALMEIDA FONSECA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-04",
+       "nome": "HAMILTON GOMES FERREIRA JUNIOR",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-04",
+       "nome": "LUCIENE DE SOUZA BANDEIRA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2025-04",
+       "nome": "FLAVIO CORDEIRO DE BARROS",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-04",
+       "nome": "LIDIANE DINIZ BRAGA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-04",
+       "nome": "JANAINA GONCALVES",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-05",
+       "nome": "GRUPOMED-ADMINISTRACAO E PARTICIPACOES LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "33204413",
+     "nome": "HOTEL SANTA COMBA LTDA",
+     "pago": 25274815.36,
+     "primeiro_pagamento": "2021-11",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2023-12",
+       "nome": "HORACIO FIUZA MUNIZ",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2023-12",
+       "nome": "DANIEL FIUZA MUNIZ",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "19036929",
+     "nome": "BWL TRANSPORTES E LOCACOES LTDA",
+     "pago": 24947716.259999998,
+     "primeiro_pagamento": "2023-10",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2025-08",
+       "nome": "FLAVIO MACHADO DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-08",
+       "nome": "FREDERICO NASCIMENTO AZEVEDO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "33643150",
+     "nome": "G. S. GOUVEA DISTRIBUIDORA E SERVICOS LTDA",
+     "pago": 22287539.029999997,
+     "primeiro_pagamento": "2022-11",
+     "ultimo_pagamento": "2025-12",
+     "saidas": [
+      {
+       "quando": "2025-11",
+       "nome": "GABRIEL SARNO GOUVEA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-02",
+       "nome": "MANOEL DA SILVA ARAUJO",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "11428597",
+     "nome": "TAPEVAS SOLUCAO INTEGRADA LTDA",
+     "pago": 22068060.819999978,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-07",
+       "nome": "DEVISON CARLOS FERREIRA PAZ",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-07",
+       "nome": "JOSE GABRIEL DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "03698620",
+     "nome": "GREEN4T SOLUCOES TI SA",
+     "pago": 18393424.960000027,
+     "primeiro_pagamento": "2021-02",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2026-01",
+       "nome": "JOSE FERNANDO DE ALMEIDA ANDRADE JUNIOR",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2026-05",
+       "nome": "GREEN4T SERVICOS S.A.",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2021-06",
+       "nome": "MARCIO JOSE MARTIN",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2024-08",
+       "nome": "EDUARDO CASASANTA MARINI",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "desde": "2024-08",
+       "nome": "GREEN4T SERVICOS LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "24099485",
+     "nome": "Betel do Brasil Serviços, Distribuição e Importação LTDA",
+     "pago": 17816831.13,
+     "primeiro_pagamento": "2021-12",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2024-04",
+       "nome": "MARIA AMELIA MARQUES MAGALHAES",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-05",
+       "nome": "RODOLPHO RIBEIRO DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "27291577",
+     "nome": "GALILEU SERVICOS TERCEIRIZADOS EIRELI",
+     "pago": 17743674.540000048,
+     "primeiro_pagamento": "2022-11",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2024-12",
+       "nome": "CAIZA NASCIMENTO PEREIRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2024-12",
+       "nome": "LUCAS NASCIMENTO PEREIRA DA SILVA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "33780199",
+     "nome": "KRATUS TECNOLOGIA COMERCIO E SERVICOS LTDA",
+     "pago": 17411014.71000002,
+     "primeiro_pagamento": "2023-05",
+     "ultimo_pagamento": "2026-07",
+     "saidas": [
+      {
+       "quando": "2024-12",
+       "nome": "LEANDRO LAZZARONI DIAS",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2025-08",
+       "nome": "LUIZ CARLOS DOS SANTOS",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-09",
+       "nome": "MARCELO DA SILVA FERREIRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "28871366",
+     "nome": "KIARGOS SERVICOS E FACILITY LTDA",
+     "pago": 16993442.09,
+     "primeiro_pagamento": "2021-03",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2025-08",
+       "nome": "ANGELICA BARBOZA FONSECA LIMA",
+       "qualificacao": "Sócio-Administrador"
+      },
+      {
+       "quando": "2025-08",
+       "nome": "VINICIUS BARBOZA FONSECA LIMA",
+       "qualificacao": "Sócio"
+      },
+      {
+       "quando": "2025-11",
+       "nome": "MI3 CONSULTORIA LTDA",
+       "qualificacao": "Sócio"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2025-12",
+       "nome": "MARCEL TULLER PEREIRA",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
+    },
+    {
+     "cnpj_basico": "14647297",
+     "nome": "PLURAL SERVIÇOS TÉCNICOS EIRELI",
+     "pago": 16115542.410000002,
+     "primeiro_pagamento": "2021-04",
+     "ultimo_pagamento": "2026-08",
+     "saidas": [
+      {
+       "quando": "2026-01",
+       "nome": "DENIVAL FERREIRA JUNIOR",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "socios_atuais": [
+      {
+       "desde": "2026-02",
+       "nome": "FLAVIO DUTRA GONCALVES",
+       "qualificacao": "Sócio-Administrador"
+      }
+     ],
+     "troca_total": true
     }
    ]
   }
