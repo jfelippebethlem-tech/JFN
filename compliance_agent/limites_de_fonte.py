@@ -31,6 +31,25 @@ class LimiteDeFonte:
 # Ordem: os que mais enganam primeiro (falham com aparência de sucesso).
 LIMITES: tuple[LimiteDeFonte, ...] = (
     LimiteDeFonte(
+        fonte="PNCP — `ordem_classificacao` NÃO diz quem venceu apesar de não ser o primeiro",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "O campo parece prometer uma lente boa — 'fornecedor que homologa sistematicamente sem "
+            "ser o 1º colocado' seria indício de desclassificação seletiva. NÃO É ISSO. Medido em "
+            "2026-08-23: o MESMO fornecedor aparece com ordem 1, 2 e 3 **dentro do mesmo certame** "
+            "(`36507127000149-1-000110/2026`, YPMED: ord=1 R$ 238.392,00 · ord=2 R$ 308.880,00 · "
+            "ord=3 R$ 117.803,00). A ordem é por ITEM/lote, não a posição do licitante na disputa. "
+            "Some-se que 45% das linhas com ordem>1 são cadastro de reserva de registro de preços, "
+            "que é legítimo. Um ranking construído sobre isso teria 31 'suspeitos' e nenhum sinal."),
+        caminho_alternativo=(
+            "Desclassificação do primeiro colocado mora na ATA DA SESSÃO, que o PNCP não publica "
+            "(ver o limite de ata neste mesmo módulo). Sem a ata, a pergunta não se responde por "
+            "dado estruturado — só abrindo o processo. O que o PNCP sustenta com segurança é o "
+            "`porte_fornecedor` (domínio oficial conferido na API), usado em "
+            "`tools/porte_declarado_certame.py`."),
+        medido_em="2026-08-23",
+    ),
+    LimiteDeFonte(
         fonte="SIAFE-Rio — OBs que a tela NÃO devolve mais (resíduo de coleta antiga)",
         tipo="limite_de_dado",
         o_que_acontece=(
