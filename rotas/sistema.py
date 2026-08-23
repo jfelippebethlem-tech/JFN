@@ -253,6 +253,18 @@ def api_captura_cobertura():
     do dinheiro a casa consegue afirmar alguma coisa. Medido em 2026-08-04: **1.941 processos
     íntegros de 40.482 com OB paga (4,8%)**, num universo de R$ 18,06 bi. Ponto cego medido é
     melhor que ponto cego calado.
+
+    **2026-08-23 — a cobertura CAIU para 1,2% e isso é BOA notícia.** Hoje: 2.666 íntegros de
+    **221.130** processos com OB paga, num universo de **R$ 115,10 bi**. O numerador subiu
+    (1.941 -> 2.666); quem despencou foi a fração, porque o DENOMINADOR quintuplicou: das
+    1.064.763 linhas de `ob_orcamentaria_siafe`, **1.024.417 foram coletadas em 08/2026**. O
+    sweep do SIAFE achou um universo cinco vezes maior que o conhecido em agosto.
+
+    Registrar isto no lugar onde o número é lido, e não só no vault, porque a leitura ingênua da
+    série (4,8% -> 1,2%) diz "o motor piorou", e o que houve foi o contrário: a casa passou a
+    enxergar o tamanho real do que não lê. **Queda de cobertura por crescimento de denominador
+    não é regressão de trabalho — é ganho de honestidade**, e só é distinguível se os dois
+    números viajarem juntos.
     """
     try:
         from compliance_agent.reporting import cobertura_captura
