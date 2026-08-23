@@ -109,6 +109,12 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     (destino / "fotos").mkdir(parents=True, exist_ok=True)
 
     titulos = {}
+    # Inicializado AQUI, fora do `if mpath.exists()`. Antes só era definido lá dentro, e um
+    # diretório de íntegra SEM `manifest.json` — o que sobra quando a captura é interrompida
+    # antes de gravá-lo — estourava `UnboundLocalError` na varredura dos PDFs mais abaixo.
+    # Latente no acervo de 2026-08-23 (83 diretórios com PDF, todos com manifesto), mas
+    # capturas SÃO interrompidas: descoberto por um teste que montou o caso sem manifesto.
+    alheios_i: set[int] = set()
     captura_completa = None   # None = manifesto antigo (não declara); True/False = novo
     total_arvore = None
     mpath = origem / "manifest.json"
@@ -287,10 +293,29 @@ def arquivar_pendentes(ocr: bool = True, apagar_pdf: bool = False) -> int:
     """Arquiva toda íntegra em data/sei_cache/integra_* ainda sem arquivo
     (ou re-baixada depois do arquivamento). Para o supervisor do sweep."""
     feitos = 0
-    for origem in sorted(CACHE.glob("integra_*")):
-        if not origem.is_dir() or not any(origem.glob("[0-9][0-9][0-9]*.pdf")):
+    # ORDEM POR CUSTO, NÃO ALFABÉTICA. Medido em 2026-08-23: a fila tinha 10 processos e o
+    # primeiro em ordem alfabética (`070002_005897_2024`) traz 741 PDFs / 548 MB — sozinho ele
+    # estoura o `timeout 1500` do lane, e o `080002/019206/2025` (3º, 40 PDFs) nunca era
+    # alcançado. Alfabético não é prioridade: é sorteio pelo nome. Menor primeiro faz a fila
+    # ANDAR — os grandes passam quando sobrarem sozinhos, e nenhum fica preso atrás deles.
+    def _peso(d: Path) -> tuple:
+        try:
+            return (sum(p.stat().st_size for p in d.glob("[0-9][0-9][0-9]*.pdf")), d.name)
+        except OSError:
+            return (0, d.name)
+
+    for origem in sorted((d for d in CACHE.glob("integra_*") if d.is_dir()), key=_peso):
+        if not any(origem.glob("[0-9][0-9][0-9]*.pdf")):
             continue
         tag = origem.name.replace("integra_", "")
+        # TAG MALFORMADA: resíduo do bug do prefixo `SEI-` (`integra_____080002_...`), corrigido
+        # em `sei_integra_completa.py` mas com diretórios antigos ainda no cache. Sem esta guarda
+        # o lane tentaria arquivá-los em TODO disparo e criaria `sei_arquivo/____080002_...` —
+        # lixo novo a partir de lixo velho. Os processos reais já estão arquivados sob o slug
+        # correto; o cache órfão fica onde está (apagar dado não é chamada de quem repara).
+        if not (len(tag.split("_")) == 3 and all(x.isdigit() for x in tag.split("_"))):
+            print(f"  ignorado (slug malformado, resíduo do prefixo SEI-): {origem.name}", flush=True)
+            continue
         destino = ARQUIVO / tag
         mdest = destino / "manifest.json"
         if mdest.exists() and mdest.stat().st_mtime >= max(

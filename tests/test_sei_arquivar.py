@@ -112,3 +112,60 @@ def test_preservar_toca_o_mtime_do_manifesto(tmp_path, monkeypatch):
         "preservou sem tocar o mtime: o processo volta à fila em todo disparo e o lane "
         "nunca alcança o resto"
     )
+
+
+def _pdf_min(caminho, texto="conteudo do documento " * 20):
+    doc = fitz.open()
+    doc.new_page().insert_text((50, 100), texto)
+    doc.save(str(caminho)); doc.close()
+
+
+def test_slug_malformado_e_ignorado(tmp_path, monkeypatch, capsys):
+    """`integra_____080002_...` é resíduo do bug do prefixo `SEI-`, já corrigido na captura.
+
+    Sem esta guarda o lane tentaria arquivá-lo em TODO disparo e criaria `sei_arquivo/____0800...`
+    — lixo NOVO a partir de lixo velho. Os processos reais já estão arquivados sob o slug correto.
+    """
+    from tools import sei_arquivar
+
+    cache = tmp_path / "cache"; arq = tmp_path / "arq"
+    cache.mkdir(); arq.mkdir()
+    ruim = cache / "integra_____080002_000803_2025"; ruim.mkdir()
+    _pdf_min(ruim / "000.pdf")
+    monkeypatch.setattr(sei_arquivar, "CACHE", cache)
+    monkeypatch.setattr(sei_arquivar, "ARQUIVO", arq)
+
+    sei_arquivar.arquivar_pendentes(ocr=False)
+
+    assert "slug malformado" in capsys.readouterr().out
+    assert not (arq / "____080002_000803_2025").exists(), "criou lixo a partir do resíduo"
+    assert list(arq.iterdir()) == [], "não devia ter arquivado nada"
+
+
+def test_fila_ordena_por_CUSTO_e_nao_por_nome(tmp_path, monkeypatch):
+    """Alfabético não é prioridade: é sorteio pelo nome — e o maior bloqueia a fila no timeout.
+
+    Medido em 2026-08-23: o 1º alfabético trazia 741 PDFs / 548 MB e sozinho estourava o
+    `timeout 1500` do lane; o `080002/019206/2025` (3º, 40 PDFs) nunca era alcançado.
+    """
+    from tools import sei_arquivar
+
+    cache = tmp_path / "cache"; arq = tmp_path / "arq"
+    cache.mkdir(); arq.mkdir()
+    # `010001_...` é o primeiro em ordem alfabética E o mais pesado; `990001_...` é o último e leve
+    pesado = cache / "integra_010001_000001_2024"; pesado.mkdir()
+    for i in range(4):
+        _pdf_min(pesado / f"{i:03d}.pdf", "texto longo " * 400)
+    leve = cache / "integra_990001_000001_2024"; leve.mkdir()
+    _pdf_min(leve / "000.pdf", "curto")
+    monkeypatch.setattr(sei_arquivar, "CACHE", cache)
+    monkeypatch.setattr(sei_arquivar, "ARQUIVO", arq)
+
+    ordem = []
+    original = sei_arquivar.arquivar
+    monkeypatch.setattr(sei_arquivar, "arquivar",
+                        lambda o, d, **kw: (ordem.append(o.name), original(o, d, **kw))[1])
+    sei_arquivar.arquivar_pendentes(ocr=False)
+
+    assert ordem[0] == "integra_990001_000001_2024", (
+        f"a fila continua alfabética: {ordem} — o pesado bloqueia o leve no timeout")
