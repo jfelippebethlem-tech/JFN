@@ -169,3 +169,66 @@ def test_fila_ordena_por_CUSTO_e_nao_por_nome(tmp_path, monkeypatch):
 
     assert ordem[0] == "integra_990001_000001_2024", (
         f"a fila continua alfabética: {ordem} — o pesado bloqueia o leve no timeout")
+
+
+def test_retomada_nao_refaz_o_que_ja_esta_pronto(tmp_path, monkeypatch):
+    """Sem retomada, processo grande NUNCA completa — o timeout corta sempre no mesmo ponto.
+
+    Medido em 2026-08-23 no `080002/019206/2025` (40 PDFs): cada disparo refazia do `000.pdf`, o
+    `timeout 1500` cortava perto do 13º, e os txt de 000-012 reapareciam com hora nova. Trabalho
+    refeito e jogado fora — e nada no log denunciava, porque cada disparo PARECIA progresso.
+    """
+    import time
+
+    from tools.sei_arquivar import arquivar
+
+    origem = _integra_fake(tmp_path)
+    destino = tmp_path / "arq"
+
+    man1 = arquivar(origem, destino, processo="", ocr=False)   # 1ª passada: extrai
+    txts = sorted((destino / "texto").glob("*.txt"))
+    assert txts, "nada foi extraído na primeira passada"
+    antes = {t.name: t.stat().st_mtime_ns for t in txts}
+    conteudo = {t.name: t.read_text(encoding="utf-8") for t in txts}
+
+    time.sleep(0.01)
+    man = arquivar(origem, destino, processo="", ocr=False)    # 2ª passada: deve REAPROVEITAR
+
+    depois = {t.name: t.stat().st_mtime_ns for t in (destino / "texto").glob("*.txt")}
+    assert depois == antes, f"reescreveu texto já pronto: {set(depois) ^ set(antes) or 'mtime mudou'}"
+    for nome, txt in conteudo.items():
+        assert (destino / "texto" / nome).read_text(encoding="utf-8") == txt, f"{nome} mudou"
+    assert all(d.get("reaproveitado") for d in man["docs"]), "manifesto não marcou reaproveitamento"
+    # `chars` tem de bater com a extração original — não basta reaproveitar o arquivo e perder a
+    # contagem. Comparar com a 1ª passada, e não exigir >0: relatório fotográfico é 0 por direito.
+    assert ({d["i"]: d["chars"] for d in man["docs"]}
+            == {d["i"]: d["chars"] for d in man1["docs"]}), "reaproveitou e mudou a contagem"
+
+
+def test_retomada_REEXTRAI_quando_o_pdf_e_mais_novo(tmp_path):
+    """PDF recapturado depois do txt tem conteúdo novo — aí reaproveitar seria servir o velho.
+
+    ATENÇÃO ao ler: este teste é GUARDA, não detector. Ele passa mesmo SEM a retomada (sem ela o
+    código sempre reextrai), então não prova que a retomada existe — quem prova isso é o teste
+    acima. O papel deste é impedir que a retomada, uma vez presente, sirva texto velho depois de
+    uma recaptura. Conferido rodando com o bloco removido: acima falha, este passa.
+    """
+    import os
+    import time
+
+    from tools.sei_arquivar import arquivar
+
+    origem = _integra_fake(tmp_path)
+    destino = tmp_path / "arq"
+    arquivar(origem, destino, processo="", ocr=False)
+    alvo = sorted((destino / "texto").glob("*.txt"))[0]
+    antes = alvo.stat().st_mtime_ns
+
+    time.sleep(0.01)
+    futuro = time.time() + 60                                   # PDF "recapturado" agora
+    for pdf in origem.glob("*.pdf"):
+        os.utime(pdf, (futuro, futuro))
+    arquivar(origem, destino, processo="", ocr=False)
+
+    assert sorted((destino / "texto").glob("*.txt"))[0].stat().st_mtime_ns != antes, (
+        "não reextraiu apesar de o PDF ser mais novo que o txt")

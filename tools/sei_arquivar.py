@@ -161,6 +161,31 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         tipos_vistos.add(tipo)
         entrada = {"i": i, "titulo": titulo, "fase": fase, "tipo": tipo,
                    "texto": "", "chars": 0, "ocr": False, "fotos": []}
+
+        # RETOMADA INCREMENTAL — sem isto, processo grande NUNCA completa.
+        # Medido em 2026-08-23 no `080002/019206/2025` (40 PDFs): o disparo refazia do `000.pdf`
+        # a cada vez e o `timeout 1500` do lane cortava por volta do 13º. Os txt de 000-012
+        # apareciam reescritos com hora nova a cada disparo — trabalho refeito e jogado fora, e
+        # NADA no log denunciava: cada disparo parecia progresso. Reaproveitar o texto já extraído
+        # torna o trabalho monotônico; o disparo seguinte continua de onde o anterior parou.
+        # O OCR é o custo (minutos por PDF de imagem); ler o txt de volta custa microssegundos.
+        pronto = next(destino.glob(f"texto/{i:03d}_*.txt"), None)
+        if pronto is not None and pronto.stat().st_mtime >= pdf.stat().st_mtime:
+            try:
+                bruto_txt = pronto.read_text("utf-8", errors="ignore")
+                # o arquivo guarda `[titulo] (fase: X · tipo: Y)\n\n<texto>`; o corpo é o que
+                # vem depois do cabeçalho — é ele que conta para `chars`.
+                corpo = bruto_txt.split("\n\n", 1)[1] if "\n\n" in bruto_txt else ""
+                entrada["texto"] = f"texto/{pronto.name}"
+                entrada["chars"] = len(corpo)
+                entrada["reaproveitado"] = True
+                entrada["fotos"] = sorted(
+                    f"fotos/{f.name}" for f in destino.glob(f"fotos/{i:03d}_p*.jpg"))
+                docs_saida.append(entrada)
+                continue
+            except OSError:
+                pass    # txt ilegível: cai no caminho normal e reextrai
+
         try:
             doc = fitz.open(str(pdf))
         except Exception:
