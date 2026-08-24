@@ -43,6 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from compliance_agent.reporting.intel_base import moeda
+from tools.contrato_acima_do_porte import acima_do_porte
 from tools.dependencia_mutua import dependencia
 from tools.pago_a_sancionado import pagos_durante_sancao, sucessao_societaria
 from tools.porte_declarado_certame import declaracoes_incompativeis
@@ -95,6 +96,14 @@ def convergir(con: sqlite3.Connection, min_pago_estrutura: float = 5_000_000.0) 
     for x in declaracoes_incompativeis(con, estrito=True):
         marcar(x["cnpj_basico"], "TAMANHO", x["nome"],
                f"declarou-se {'/'.join(x['portes'])} em {x['n_certames']} certame(s)")
+
+    # `contrato_acima_do_porte` também entra em TAMANHO, pelo mesmo motivo do
+    # `porte_declarado_certame`: mede o MESMO fenômeno (empresa maior do que o porte que ostenta),
+    # mudando a fonte — aqui o valor do CONTRATO CELEBRADO, no espelho do TCE-RJ. É a forma
+    # literal do critério legal, e por isso o `porque` diz "contratou", não "recebeu".
+    for x in acima_do_porte(con):
+        marcar(x["cnpj_basico"], "TAMANHO", x["nome"],
+               f"contratou {x['razao_teto']:.0f}x o teto de {x['porte'][:12]}")
 
     # CONTROLE é dimensão PRÓPRIA: nada tem a ver com tamanho, sanção ou dependência. Mede outra
     # coisa — quem recebe hoje não é quem contratou.
