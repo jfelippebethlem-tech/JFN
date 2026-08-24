@@ -119,8 +119,14 @@ def convergir(con: sqlite3.Connection, min_pago_estrutura: float = 5_000_000.0) 
         if len(d) >= 8 and d[:8] in dim:
             pago[d[:8]] += (valor or 0)
 
+    # DEDUPLICAR os `porques`. `incompativeis` devolve CNPJ×ANO, então uma empresa que estourou o
+    # teto em quatro exercícios entrava com "porte acima do teto" quatro vezes — e a repetição
+    # EMPURRAVA PARA FORA os motivos informativos (dependência, troca de sócios), cortados pelo
+    # limite de 4. Na tela, o cartão dizia três vezes a mesma coisa e escondia o resto. Mantém a
+    # ordem de chegada (dict.fromkeys), que é a ordem das dimensões no laço acima.
     saida = [{"cnpj_basico": b, "razao_social": nome.get(b, "?"), "dimensoes": sorted(v),
-              "n_dim": len(v), "pago": pago.get(b, 0.0), "porques": detalhe[b][:4]}
+              "n_dim": len(v), "pago": pago.get(b, 0.0),
+              "porques": list(dict.fromkeys(detalhe[b]))[:4]}
              for b, v in dim.items()]
     saida.sort(key=lambda x: (-x["n_dim"], -x["pago"]))
     return saida
