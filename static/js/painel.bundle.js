@@ -7886,6 +7886,13 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         (x) => x.pago
       ],
       [
+        "contrato_acima_do_porte",
+        "Contrato acima do teto do porte",
+        "Contrato <b>celebrado</b> com ME/EPP cujo valor supera o teto de receita do próprio porte (LC 123/2006, art. 3º). É o critério <b>legal na forma literal</b>: a Lei 14.133 fala em contratos celebrados no ano-calendário, não em dinheiro recebido. Fonte: espelho de contratos do <b>próprio TCE-RJ</b>. Prevalência 1,87% do cadastro ME/EPP. <b>Valor contratado não é valor executado</b> — esta lente mede incompatibilidade no dia da assinatura, não dano.",
+        (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc(x.porte)} · ${x.razao_teto >= 1 ? fmtN(Math.round(x.razao_teto)) + "× o teto" : ""} · ${fmtN(x.n_contratos)} contrato(s)${(x.contratos || []).length ? " · " + esc(x.contratos[0].data) + " " + esc((x.contratos[0].unidade || "").slice(0, 30)) : ""}</div>`,
+        (x) => x.maior
+      ],
+      [
         "troca_de_controle",
         "Trocou de dono durante a execução",
         "Empresa cujo quadro de sócios mudou <b>por inteiro</b> durante a janela de pagamentos: nenhum sócio de hoje estava lá quando saiu o primeiro pagamento. <b>Trocar de dono é lícito</b> — o achado é a pergunta (a habilitação do novo controlador foi examinada?), não a resposta. Corte forte: 7,1% do universo; qualquer saída marcaria 21,6% e não ordenaria fila. Histórico começa em 03/2023 — troca anterior é invisível, e ausência aqui é limite de fonte.",

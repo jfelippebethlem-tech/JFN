@@ -49,6 +49,7 @@ def _seguro(nome: str, fn, *a, **kw) -> dict:
 
 
 def materializar(limite: int = 50) -> dict:
+    from contrato_acima_do_porte import acima_do_porte
     from convergencia import convergir
     from dependencia_mutua import dependencia
     from pago_a_sancionado import pagos_durante_sancao
@@ -68,6 +69,8 @@ def materializar(limite: int = 50) -> dict:
                                            con, estrito=True),
         # corte FORTE: o fraco marca 21,6% do universo e não ordena fila nenhuma.
         "troca_de_controle": _seguro("troca_de_controle", trocas, con, forte=True),
+        # critério LEGAL na forma literal: contrato CELEBRADO acima do teto do porte.
+        "contrato_acima_do_porte": _seguro("contrato_acima_do_porte", acima_do_porte, con),
     }
     con.close()
 
