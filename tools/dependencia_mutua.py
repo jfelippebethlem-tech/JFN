@@ -67,12 +67,18 @@ def dependencia(con: sqlite3.Connection, min_pago: float = 1_000_000.0,
     for credor, ug, valor, nome in con.execute(
             "SELECT credor, ug_emitente, valor, nome_credor FROM ob_orcamentaria_siafe "
             "WHERE status='Contabilizado'"):
+        v = valor or 0
+        # DENOMINADOR = TUDO que a unidade pagou, inclusive o que não tem CNPJ no campo `credor`
+        # (folha de pagamento, prêmios de loteria, precatórios). Antes o filtro de 14 dígitos
+        # valia para os DOIS lados, e a fatia era calculada sobre um orçamento encolhido:
+        # medido em 2026-08-24 na LOTERJ, a MCE aparecia com 68,0% da unidade quando o real é
+        # 38,0% — R$ 127,7 mi de folha e prêmios ficavam fora do denominador. Viés SISTEMÁTICO e
+        # sempre para cima, tanto maior quanto mais folha a unidade tiver.
+        ug_total[str(ug)] += v
         d = re.sub(r"\D", "", str(credor))
         if len(d) != 14:
             continue
-        v = valor or 0
         forn[d][str(ug)] += v
-        ug_total[str(ug)] += v
         if nome and d not in nomes:
             nomes[d] = nome
 
