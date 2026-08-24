@@ -80,6 +80,15 @@ TETO_ANUAL = {
 }
 
 
+# SINAL TESTADO E DESCARTADO (2026-08-24): "capital social acima do teto de receita do porte".
+# Parecia promissor — há microempresa com capital declarado de R$ 1,45 BILHÃO (4.028x o teto), e
+# 2.133 das 24.178 ME/EPP do cadastro (8,8%) têm capital maior que a receita máxima do porte.
+# NÃO VIRA LENTE, por duas razões medidas:
+#   1. porte é definido por RECEITA, não por capital — capital alto com faturamento baixo é
+#      legal e comum (holding, empresa recém-capitalizada). Sozinho não indica nada;
+#   2. cruzando com quem recebeu >= R$ 1 mi do Estado, a prevalência é de **25,0%** (195 de 780).
+#      Um em cada quatro não ordena fila — e quem recebe acima do teto esta função já marca.
+# O campo `capital_social` continua no retorno como CONTEXTO de leitura, não como voto.
 def _ano(data_emissao: str) -> str:
     """`data_emissao` do SIAFE é TEXTO `DD/MM/AAAA` — o ano são os 4 últimos, nunca `ORDER BY` cru."""
     m = re.search(r"/(\d{4})$", str(data_emissao or ""))
