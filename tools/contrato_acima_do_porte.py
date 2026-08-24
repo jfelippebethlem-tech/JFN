@@ -26,6 +26,14 @@ ata de registro de preços cujo valor global seria rateado entre vários fornece
 esvaziaria o achado. Não é o caso: o contrato de R$ 87 mi da MAJU tem fornecedor único e
 `num_contratacao` exclusivo, e apenas **12 de 37.661** números de contratação se repetem (0,03%).
 
+**O ESPELHO COBRE METADE — e isso é a ressalva mais importante.** Medido em 2026-08-24: dos 3.221
+fornecedores que receberam mais de R$ 1 mi do Estado, apenas **1.644 (51,0%)** têm algum contrato
+registrado em `contratos_tcerj`. Os outros **1.577 (49,0%)**, que somam **R$ 37,92 bi** recebidos,
+NÃO aparecem — a CASSAROTTI FOODS, por exemplo, recebeu R$ 275,23 mi e tem R$ 13,97 mi de contrato
+no espelho. Portanto: **o resultado desta lente é PISO**, e a AUSÊNCIA de uma empresa aqui não diz
+nada sobre ela (INDISPONÍVEL != 0). Para o que a empresa recebeu, a fonte completa é a OB do SIAFE
+(`porte_incompativel`).
+
 RESSALVAS que viajam com o número:
   · **valor contratado ≠ executado.** O contrato de R$ 87 mi da MAJU tem R$ 7,91 mi empenhados e
     R$ 2,98 mi pagos. Para o critério legal isso não importa (ele fala em celebrar); para medir

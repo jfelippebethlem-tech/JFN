@@ -7888,7 +7888,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       [
         "contrato_acima_do_porte",
         "Contrato acima do teto do porte",
-        "Contrato <b>celebrado</b> com ME/EPP cujo valor supera o teto de receita do próprio porte (LC 123/2006, art. 3º). É o critério <b>legal na forma literal</b>: a Lei 14.133 fala em contratos celebrados no ano-calendário, não em dinheiro recebido. Fonte: espelho de contratos do <b>próprio TCE-RJ</b>. Prevalência 1,87% do cadastro ME/EPP. <b>Valor contratado não é valor executado</b> — esta lente mede incompatibilidade no dia da assinatura, não dano.",
+        "Contrato <b>celebrado</b> com ME/EPP cujo valor supera o teto de receita do próprio porte (LC 123/2006, art. 3º). É o critério <b>legal na forma literal</b>: a Lei 14.133 fala em contratos celebrados no ano-calendário, não em dinheiro recebido. Fonte: espelho de contratos do <b>próprio TCE-RJ</b>, que cobre <b>51% dos fornecedores</b> pagos acima de R$ 1 mi — o resultado é <b>PISO</b>, e a ausência aqui não diz nada sobre a empresa. Prevalência 1,87% do cadastro ME/EPP. <b>Valor contratado não é valor executado</b> — esta lente mede incompatibilidade no dia da assinatura, não dano.",
         (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc(x.porte)} · ${x.razao_teto >= 1 ? fmtN(Math.round(x.razao_teto)) + "× o teto" : ""} · ${fmtN(x.n_contratos)} contrato(s)${(x.contratos || []).length ? " · " + esc(x.contratos[0].data) + " " + esc((x.contratos[0].unidade || "").slice(0, 30)) : ""}</div>`,
         (x) => x.maior
       ],
