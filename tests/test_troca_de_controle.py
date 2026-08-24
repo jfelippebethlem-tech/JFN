@@ -97,3 +97,36 @@ def test_janela_nao_confiavel_fica_de_fora():
                 "'saiu','20190101',0)")
     con.execute("INSERT INTO socio_historico VALUES ('11111111','NOVO','Sócio',NULL,'ativo','20231001',0)")
     assert trocas(con) == []
+
+
+def test_ADMINISTRADOR_remanescente_impede_troca_total():
+    """Comando que continua desmente "troca total" — mesmo com todos os SÓCIOS trocados.
+
+    Falso positivo medido em 2026-08-23 ao abrir o 1º colocado: a LAND SERVIÇOS (R$ 128,26 mi)
+    trocou de sócio (ASPEN ENGENHARIA E PARTICIPAÇÕES -> ASPEN PARTICIPAÇÕES, nomes quase
+    idênticos) enquanto o mesmo Administrador seguia desde 2017. Eram 11 casos assim (8,1%,
+    R$ 543 mi), incluindo a Comercial Milano, que já havia sido publicada num caso do vault.
+    """
+    con = _banco(); _empresa(con)
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','SOCIO ANTIGO','Sócio',"
+                "'2023-09..2023-10','saiu','20190101',1)")
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','SOCIO NOVO','Sócio',NULL,"
+                "'ativo','20231001',1)")
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','QUEM MANDA','Administrador',NULL,"
+                "'ativo','20170101',1)")
+    assert trocas(con, forte=True) == [], "administrador desde antes do 1º pagamento é continuidade"
+
+
+def test_troca_de_SOCIO_e_de_ADMINISTRADOR_juntas_contam():
+    """Quando o administrador também é substituído, a troca é real — é o caso da AGILE CORP."""
+    con = _banco(); _empresa(con)
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','SOCIO ANTIGO','Sócio',"
+                "'2023-09..2023-10','saiu','20190101',1)")
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','ADM ANTIGO','Administrador',"
+                "'2024-02..2024-03','saiu','20190327',1)")
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','SOCIO NOVO','Sócio',NULL,"
+                "'ativo','20231002',1)")
+    con.execute("INSERT INTO socio_historico VALUES ('11111111','ADM NOVO','Administrador',NULL,"
+                "'ativo','20240305',1)")
+    r = trocas(con, forte=True)
+    assert len(r) == 1 and r[0]["troca_total"] is True

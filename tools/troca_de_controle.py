@@ -58,6 +58,17 @@ DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 # administrador rotativo NÃO é troca de controle.
 NATUREZAS = {"2062", "2240", "2305"}
 
+# QUEM É "COMANDO" — sócio E administrador, não só sócio.
+# A primeira versão exigia `'cio' in qualificacao` e deixava de fora o "Administrador" puro. Isso
+# produziu falso positivo medido em 2026-08-23 ao abrir o 1º colocado, como manda a casa: a LAND
+# SERVIÇOS (R$ 128,26 mi) trocou de sócio (ASPEN ENGENHARIA E PARTICIPAÇÕES -> ASPEN PARTICIPAÇÕES,
+# nomes quase idênticos) enquanto ALESSANDRO CARVALHO DE MIRANDA seguia ADMINISTRADOR desde 2017.
+# Chamar isso de "troca total de controle" é falso: o comando não mudou. Eram 11 casos assim
+# (8,1%, R$ 543 mi), incluindo a Comercial Milano, que eu já havia publicado.
+# Diretor/Presidente continuam FORA — em S.A. e empresa pública são mandato, não controle; e a
+# natureza já restringe a LTDA, onde "Administrador" designa quem responde pela sociedade.
+_COMANDO = re.compile(r"s[oó]cio|administrador", re.I)
+
 
 def _ym(data_emissao: str) -> str:
     """`data_emissao` do SIAFE é TEXTO DD/MM/AAAA — vira AAAA-MM para comparar com o histórico."""
@@ -100,7 +111,7 @@ def trocas(con: sqlite3.Connection, min_pago: float = 1_000_000.0,
             "SELECT cnpj_basico, nome_norm, qualificacao, saiu_entre, status, data_entrada "
             "FROM socio_historico WHERE janela_confiavel=1"):
         b = str(b).zfill(8)
-        if b == "00000000" or "cio" not in str(qual):   # só SÓCIO; Diretor/Presidente fora
+        if b == "00000000" or not _COMANDO.search(str(qual)):
             continue
         if status == "saiu":
             saiu[b].append({"quando": str(saiu_entre)[:7], "nome": nn, "qualificacao": qual})

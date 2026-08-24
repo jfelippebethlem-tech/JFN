@@ -68,8 +68,15 @@ def convergir(con: sqlite3.Connection, min_pago_estrutura: float = 5_000_000.0) 
 
     for x in incompativeis(con, min_razao=1.0):
         marcar(x["cnpj_basico"], "TAMANHO", x["razao_social"], "porte acima do teto")
-    for x in estrutura_magra(con, min_pago=min_pago_estrutura):
-        marcar(x["cnpj_basico"], "TAMANHO", x["razao_social"], f"{x['socios']} sócio(s)")
+    # `estrutura_magra` FORA da convergência (2026-08-23). Medido: ela marca **707 de 1.278**
+    # empresas do universo (QSA conhecido, >= R$ 5 mi) — **55,3%**, e mesmo o corte de UM só sócio
+    # atinge 29,2%. Sinal que marca metade do acervo não ordena fila; ele só empurra empresas para
+    # a dimensão TAMANHO sem dizer nada. Das 1.114 marcadas por TAMANHO, **541 vinham SÓ dela**.
+    # A própria casa já havia descartado "um só sócio" por prevalência (54,9%, registrado no
+    # docstring de `sucessao_societaria`) — e o sinal descartado seguia alimentando a convergência
+    # por outra porta. Encontrado ao abrir o 1º colocado (LAND Serviços), cuja única marca de
+    # TAMANHO era esta: 2 sócios para R$ 128,26 mi, o que não é anomalia nenhuma.
+    # A função continua existindo e útil no CLI de `porte_incompativel`, como leitura de contexto.
     for x in pagos_durante_sancao(con):
         marcar(x["cnpj"][:8], "SANCAO", x["nome"], f"pago sob {x['categoria'][:18]}")
     for x in sucessao_societaria(con):
