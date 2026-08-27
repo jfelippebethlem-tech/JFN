@@ -34,7 +34,7 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
-from compliance_agent.sei.cache_arquivo import glob_cache, ler_json
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
 
 RAIZ = Path(__file__).resolve().parent.parent
 CACHE = RAIZ / "data" / "sei_cache"
@@ -91,9 +91,43 @@ def _ja_arquivado(numero: str) -> bool:
     return td.is_dir() and any(f.stat().st_size > 200 for f in td.glob("*.txt"))
 
 
+# VEREDITO POR BLOB, PERSISTIDO. Medido em 2026-08-27: `ler_json` custa ~715 ms por cache (os
+# blobs têm 11,9 MB descomprimidos em média) e 3.494 caches sem arquivo davam **42 minutos** por
+# varredura — mais que o `timeout 1500` do lane, que por isso NUNCA completava e a fila não andava.
+# Pior: amostrando 90 desses, **ZERO era arquivável** (90% amostra trimada, 9% sem número/docs).
+# O lane gastava a janela inteira reabrindo caches que nunca virarão arquivo.
+#
+# A tentação era cortar por TAMANHO EM DISCO (87% têm <20 KB). O CONTROLE POSITIVO derrubou:
+# entre 60 blobs pequenos amostrados, **8 eram arquiváveis** — um com 40.119 caracteres. Corte por
+# tamanho perderia dado real, então o que se guarda é o VEREDITO, não um atalho por proxy.
+_VEREDITOS = Path(__file__).resolve().parent.parent / "data" / ".cache_veredito.json"
+
+
+def _ler_vereditos() -> dict:
+    try:
+        return json.loads(_VEREDITOS.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _grava_vereditos(v: dict) -> None:
+    # RELÊ E MESCLA antes de gravar: dois disparos do lane podem se sobrepor, e sobrescrever com o
+    # que está em memória apagaria o trabalho do outro (lição `indice-read-modify-write-sem-merge`).
+    try:
+        atual = _ler_vereditos()
+        atual.update(v)
+        tmp = _VEREDITOS.with_suffix(".tmp")
+        tmp.write_text(json.dumps(atual, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(_VEREDITOS)
+    except OSError:
+        pass
+
+
 def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
     """Caches com texto suficiente e ainda não arquivados, do maior conteúdo para o menor."""
     out = []
+    vereditos = _ler_vereditos()
+    novos: dict = {}
     # `glob_cache`/`ler_json`, NÃO `Path.glob` + `read_text`: 5.660 dos 6.195 blobs do acervo
     # estão em `.json.zst`, e com o glob cru este arquivador enxergava **535 (8,6%)**. O resto do
     # cache — texto já pago, já lido do SEI — simplesmente não tinha caminho para virar arquivo
@@ -101,18 +135,42 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
     # no catálogo, e uma delas era a ÚNICA que gravava `sei_ficha`.
     for f in glob_cache(CACHE, "cdp_*.json"):
         f = Path(f)
+        # TRIAGEM POR mtime ANTES DE ABRIR O BLOB. Medido em 2026-08-27: `ler_json` custa ~715 ms
+        # por cache (os blobs têm 11,9 MB descomprimidos em média), e 6.748 caches dariam **80
+        # minutos** — mais que o `timeout 1500` do lane, que por isso NUNCA completava a varredura
+        # e a fila não andava. O teste de frescor é `stat()`, custa microssegundos, e descarta a
+        # imensa maioria: só quem não tem arquivo ou tem arquivo mais VELHO que o cache precisa
+        # ser aberto. O nome do arquivo dá o slug direto — não é preciso ler o `numero` de dentro.
+        tag = nome_logico(f).replace("cdp_SEI_", "").replace("cdp_", "").removesuffix(".json")
+        man_provavel = ARQUIVO / tag / "manifest.json"
+        if man_provavel.exists():
+            try:
+                if man_provavel.stat().st_mtime >= f.stat().st_mtime:
+                    continue          # arquivo em dia: nem abre o cache
+            except OSError:
+                continue
+        # veredito guardado: "recusado" com o mesmo mtime significa que já abrimos este blob e ele
+        # não serve. Não reabre — é o que devolve a janela do lane ao trabalho útil.
+        chave = f.name
+        marca = f"{f.stat().st_mtime:.0f}"
+        if vereditos.get(chave) == marca:
+            continue
         try:
             d = ler_json(f)
         except (json.JSONDecodeError, OSError, ValueError):
+            novos[chave] = marca
             continue
         numero = (d.get("numero") or "").strip()
         cd = d.get("conteudo_documentos") or []
         if not numero or not cd:
+            novos[chave] = marca
             continue
         if _ja_arquivado(numero):
             # RE-arquiva quando o CACHE é mais novo que o arquivo (releitura pós-cura do cap de
             # 20k, 2026-08-01): sem isto, o sweep relia o processo e o arquivo truncado ficava
             # para sempre. `arquivar()` afasta o arquivo antigo p/ _substituido/ (nada se apaga).
+            # Confere de novo pelo slug REAL derivado do `numero` — a triagem acima usou o nome do
+            # arquivo, que é um palpite bom mas não é a fonte da verdade.
             man = ARQUIVO / _slug_processo(numero) / "manifest.json"
             try:
                 if man.stat().st_mtime >= f.stat().st_mtime:
@@ -122,6 +180,7 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
         chars = sum(len(str(x.get("conteudo") or x.get("texto") or "")) for x in cd)
         q = qualidade_cache(cd)
         if q != "completo":
+            novos[chave] = marca
             continue          # amostra truncada NÃO vira arquivo (veredito sobre migalha é pior que nada)
         if chars >= min_chars:
             out.append({"numero": numero, "cache": f, "dados": d, "n_docs": len(cd), "chars": chars,
@@ -130,6 +189,8 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
                         # fora. Sem ele o manifesto saía com `lacunas: []` sobre 40 de 956
                         # documentos, e o motor lia ausência de prova como ausência do fato.
                         "na_arvore": len(d.get("documentos") or [])})
+    if novos:
+        _grava_vereditos(novos)
     out.sort(key=lambda e: -e["chars"])
     return out
 
