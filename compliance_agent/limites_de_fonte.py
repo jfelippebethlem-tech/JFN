@@ -31,6 +31,26 @@ class LimiteDeFonte:
 # Ordem: os que mais enganam primeiro (falham com aparência de sucesso).
 LIMITES: tuple[LimiteDeFonte, ...] = (
     LimiteDeFonte(
+        fonte="Receita/QSA — NÃO há data de abertura da empresa, e `socios_receita` não serve de proxy",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "`empresas_cadastro` tem porte, capital, natureza e razão social — **não tem data de "
+            "início de atividade**. A tentação é usar a entrada do sócio MAIS ANTIGO como limite "
+            "superior da idade da empresa ('empresa recém-criada que já fatura milhões'). NÃO "
+            "FUNCIONA: `socios_receita` é snapshot de quem está HOJE, não de quem fundou. Medido "
+            "em 2026-08-26 sobre 1.330 empresas acima de R$ 5 mi: o corte de 'primeiro pagamento "
+            "até 12 meses após a entrada do sócio mais antigo' marca **330 (24,8%)** — um em "
+            "quatro, que não ordena fila — e o topo é Banco do Brasil, Light, Vibra e Ampla, com "
+            "diferença NEGATIVA de até 2.460 dias (o sócio 'mais antigo' entrou anos DEPOIS do "
+            "primeiro pagamento). O proxy mede rotatividade de QSA, não idade da empresa."),
+        caminho_alternativo=(
+            "Idade de empresa exige o campo `data_inicio_atividade` da base de Estabelecimentos da "
+            "Receita, que a casa não ingeriu. Enquanto isso, o que existe e É confiável é a SÉRIE "
+            "`socio_historico` (41 meses, com `saiu_entre` datado) — ela mede MUDANÇA de controle, "
+            "que é outra pergunta, e está em `tools/troca_de_controle.py`."),
+        medido_em="2026-08-26",
+    ),
+    LimiteDeFonte(
         fonte="PNCP — `ordem_classificacao` NÃO diz quem venceu apesar de não ser o primeiro",
         tipo="limite_de_dado",
         o_que_acontece=(
