@@ -315,7 +315,15 @@ def main(argv=None) -> int:
     if a.max:
         alvos = alvos[:a.max]
     total_chars = sum(x["chars"] for x in alvos)
-    print(f"processos no cache com texto e sem arquivo: {len(alvos):,} — {total_chars:,} caracteres")
+    # RÓTULO É CONTRATO SEMÂNTICO. Esta linha dizia "sem arquivo", texto congelado na população
+    # original — mas `candidatos()` passou a incluir também quem TEM arquivo DESATUALIZADO
+    # (re-arquivamento por frescor, 2026-08-01). Medido em 2026-08-27: o lane imprimia "0" disparo
+    # após disparo enquanto 98 processos tinham cache mais novo que o manifesto, 32 deles já
+    # `completo` — um com 787.668 chars parados. Fila que se declara vazia não é investigada.
+    novos = sum(1 for x in alvos
+                if not (ARQUIVO / _slug_processo(x["numero"]) / "manifest.json").exists())
+    print(f"processos do cache a arquivar: {len(alvos):,} — {total_chars:,} caracteres "
+          f"({novos:,} sem arquivo · {len(alvos) - novos:,} com cache mais novo que o arquivo)")
     if not alvos:
         return 0
     feitos = mantidos = 0
