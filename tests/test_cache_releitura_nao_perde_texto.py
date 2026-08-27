@@ -80,3 +80,52 @@ def test_sem_cache_anterior_grava_normal(tmp_path):
     assert [d["doc"] for d in gravado["conteudo_documentos"]] == ["Único (7)"]
     assert "%PDF" not in cache.read_text(encoding="utf-8"), (
         "o anexo binário voltou a vazar para o disco — era o cache de 127 MB")
+
+
+def test_glob_cache_escolhe_a_forma_com_MAIS_conteudo(tmp_path):
+    """Quando `.json` e `.json.zst` coexistem, ganha a MAIOR — não a não-comprimida.
+
+    A regra antiga ("a não comprimida ganha, é janela entre comprimir e remover") partia de
+    premissa falsa. Medido em 2026-08-27: 130 pares PERMANENTES no acervo, e em 81 deles o `.json`
+    solto tinha MENOS texto que o `.zst` — 27.427.878 caracteres que nenhuma ferramenta enxergava.
+    No caso extremo, 16.000 chars contra 787.668. Em 45 pares o `.json` é que era maior, então
+    inverter a preferência cegamente só trocaria o lado do prejuízo: a regra tem de ser o tamanho.
+    """
+    import json
+    import subprocess
+
+    from compliance_agent.sei.cache_arquivo import glob_cache
+
+    pobre = {"numero": "SEI-1", "conteudo_documentos": [{"conteudo": "x" * 400, "_trimado": True}]}
+    rico = {"numero": "SEI-1", "conteudo_documentos": [{"conteudo": "y" * 40_000}]}
+
+    (tmp_path / "cdp_SEI_1.json").write_text(json.dumps(pobre), encoding="utf-8")
+    (tmp_path / "cdp_SEI_1.json.zst").write_bytes(
+        subprocess.run(["zstd", "-q", "-c", "-"], input=json.dumps(rico).encode(),
+                       capture_output=True, check=True).stdout)
+
+    achados = [str(p) for p in glob_cache(tmp_path, "cdp_SEI_*.json")]
+    assert len(achados) == 1, f"devolveu as duas formas do mesmo conteúdo lógico: {achados}"
+    assert achados[0].endswith(".zst"), (
+        "escolheu o `.json` pobre em vez do `.zst` com 100x mais texto")
+
+
+def test_glob_cache_mantem_o_json_quando_ele_e_o_maior(tmp_path):
+    """O inverso também vale — em 45 dos 130 pares o `.json` é que tinha mais texto."""
+    import json
+    import subprocess
+
+    from compliance_agent.sei.cache_arquivo import glob_cache
+
+    (tmp_path / "cdp_SEI_2.json").write_text(
+        json.dumps({"numero": "SEI-2", "conteudo_documentos": [{"conteudo": "y" * 40_000}]}),
+        encoding="utf-8")
+    (tmp_path / "cdp_SEI_2.json.zst").write_bytes(
+        subprocess.run(["zstd", "-q", "-c", "-"],
+                       input=json.dumps({"numero": "SEI-2",
+                                         "conteudo_documentos": [{"conteudo": "x" * 400}]}).encode(),
+                       capture_output=True, check=True).stdout)
+
+    achados = [str(p) for p in glob_cache(tmp_path, "cdp_SEI_*.json")]
+    assert len(achados) == 1 and not achados[0].endswith(".zst"), (
+        f"deveria manter o `.json`, que aqui é o maior: {achados}")

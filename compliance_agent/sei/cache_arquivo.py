@@ -104,19 +104,48 @@ def escrever_json(caminho: Path, obj) -> Path:
     return alvo
 
 
+def _tamanho_logico(caminho: Path) -> int:
+    """Tamanho do conteúdo DESCOMPRIMIDO, para comparar `.json` com `.json.zst`.
+
+    Falha vira 0 (o outro lado ganha) — nunca exceção: um blob corrompido não pode derrubar a
+    varredura inteira do acervo.
+    """
+    try:
+        b = ler_bytes(caminho)
+        return len(b) if b else 0
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return 0
+
+
 def glob_cache(cache_dir: Path, padrao: str):
     """Itera `padrao` e `padrao + '.zst'`, recursivo, sem repetir o mesmo conteúdo lógico.
 
     Ex.: `glob_cache(d, 'cdp_SEI_*.json')` devolve tanto `cdp_SEI_x.json` quanto
-    `cdp_SEI_x.json.zst`. Quando as duas formas existem (janela entre comprimir e remover), a
-    NÃO comprimida ganha — é a que o resto do código já sabe ler direto.
+    `cdp_SEI_x.json.zst`.
+
+    QUANDO AS DUAS FORMAS EXISTEM, GANHA A MAIOR — não a não-comprimida.
+    A regra antiga ("a não comprimida ganha, é janela entre comprimir e remover") partia de uma
+    premissa falsa: a coexistência NÃO é transitória. Medido em 2026-08-27: **130 pares
+    permanentes**, e em **81 deles o `.json` solto tem MENOS texto que o `.zst`** — somando
+    **27.427.878 caracteres** que o acervo tinha e nenhuma ferramenta enxergava. O caso extremo é
+    o `270006/006457/2024`: 16.000 chars no `.json` (40 documentos trimados a 400 cada) contra
+    **787.668** no `.zst`. Em 45 pares o `.json` é que é maior, então trocar a preferência
+    cegamente só inverteria o prejuízo — a regra tem de ser pelo TAMANHO.
+    Comparar bytes em disco seria errado (um está comprimido); a comparação é pelo conteúdo
+    descomprimido, e o custo se paga: sem isso o arquivador classifica o cache como "amostra" e
+    RECUSA o processo, deixando texto já pago fora do alcance.
     """
     cache_dir = Path(cache_dir)
     vistos: dict[str, Path] = {}
     for p in sorted(cache_dir.rglob(padrao)):
         vistos.setdefault(p.name, p)
     for p in sorted(cache_dir.rglob(padrao + ".zst")):
-        vistos.setdefault(p.name[: -len(".zst")], p)
+        chave = p.name[: -len(".zst")]
+        atual = vistos.get(chave)
+        if atual is None:
+            vistos[chave] = p
+        elif _tamanho_logico(p) > _tamanho_logico(atual):
+            vistos[chave] = p     # o .zst guarda mais conteúdo que o .json solto
     return list(vistos.values())
 
 
