@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import logging
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -104,17 +105,57 @@ def escrever_json(caminho: Path, obj) -> Path:
     return alvo
 
 
-def _tamanho_logico(caminho: Path) -> int:
+_UNIDADE = {"B": 1, "KB": 1024, "KiB": 1024, "MB": 1024 ** 2, "MiB": 1024 ** 2,
+            "GB": 1024 ** 3, "GiB": 1024 ** 3}
+
+
+@lru_cache(maxsize=8192)
+def _tamanho_logico(caminho_str: str, mtime: float) -> int:
     """Tamanho do conteúdo DESCOMPRIMIDO, para comparar `.json` com `.json.zst`.
+
+    CUSTO IMPORTA: `glob_cache` roda em toda ferramenta da casa, e descomprimir para medir custava
+    ~82 ms por blob — 214 pares davam 31 s em CADA varredura, inviabilizando o arquivador.
+    A saída é o cabeçalho do próprio zstd: `zstd -l` informa o tamanho descomprimido em **7 ms**,
+    sem descomprimir nada. Memoizado por (caminho, mtime): a mesma varredura no mesmo processo não
+    paga de novo, e um blob reescrito invalida a entrada sozinho.
 
     Falha vira 0 (o outro lado ganha) — nunca exceção: um blob corrompido não pode derrubar a
     varredura inteira do acervo.
     """
+    caminho = Path(caminho_str)
     try:
+        if caminho.suffix != ".zst":
+            return caminho.stat().st_size
+        saida = subprocess.run(["zstd", "-l", str(caminho)],
+                               capture_output=True, text=True, timeout=10).stdout
+        # linha de dados: "Frames Skips Compressed Uncompressed Ratio Check Filename"
+        for linha in saida.splitlines()[1:]:
+            campos = linha.split()
+            # `zstd -l` imprime "…  532   B   832   B  1.564 …": o 1º par é comprimido, o 2º é o
+            # descomprimido — que é o que interessa para comparar com o `.json` solto.
+            nums = [(float(campos[i]), campos[i + 1]) for i in range(len(campos) - 1)
+                    if campos[i].replace(".", "").replace(",", "").isdigit()
+                    and campos[i + 1] in _UNIDADE]
+            if len(nums) >= 2:
+                v, un = nums[1]
+                return int(v * _UNIDADE[un])
+        # CABEÇALHO SEM O TAMANHO. `zstd -l` deixa `Uncompressed` VAZIO quando o blob foi
+        # comprimido a partir de STDIN — que é exatamente como `escrever_json` grava (`zstd -c -`
+        # com `input=`). Ou seja: o atalho barato NÃO vale para os nossos próprios arquivos, só
+        # para os que vieram comprimidos de fora. Sem este fallback o tamanho voltava 0 e o `.json`
+        # POBRE vencia — a regressão apareceu no par `270006/006457/2024` (zst=0 vs json=150.862)
+        # e foi pega pelo teste, não por leitura do código.
         b = ler_bytes(caminho)
         return len(b) if b else 0
-    except (OSError, ValueError, subprocess.SubprocessError):
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError):
         return 0
+
+
+def _maior(a: Path, b: Path) -> Path:
+    """O dos dois caminhos cujo conteúdo lógico é maior; empate fica com o primeiro."""
+    ta = _tamanho_logico(str(a), a.stat().st_mtime)
+    tb = _tamanho_logico(str(b), b.stat().st_mtime)
+    return b if tb > ta else a
 
 
 def glob_cache(cache_dir: Path, padrao: str):
@@ -144,8 +185,8 @@ def glob_cache(cache_dir: Path, padrao: str):
         atual = vistos.get(chave)
         if atual is None:
             vistos[chave] = p
-        elif _tamanho_logico(p) > _tamanho_logico(atual):
-            vistos[chave] = p     # o .zst guarda mais conteúdo que o .json solto
+        else:
+            vistos[chave] = _maior(atual, p)   # ganha quem tem mais conteúdo, não a forma
     return list(vistos.values())
 
 
