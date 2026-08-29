@@ -27,6 +27,28 @@ RESSALVAS que viajam com o número:
     em que o serviço foi prestado sem cobertura contratual — o achado clássico do FSERJ;
   · o valor é o pago no PROCESSO (OB `Contabilizado`), não o do contrato inexistente.
 
+**OUTROS PADRÕES MINERADOS DA MESMA FONTE (2026-08-28/29)** — o campo `chama_atencao` guarda muito
+mais que ausência de contrato. Medido sobre 3.257 leituras, com a prevalência de cada um:
+
+    lei revogada/antiga citada ......... 118 (3,6%)
+    divergência de valor entre peças ... 110 (3,4%)   <- ver o DESCARTE abaixo
+    prazo de vigência expirado .......... 29 (0,9%)
+    ata de OUTRO ente (carona) .......... 28 (0,9%)   <- gerou o caso CDEL × SEGOV
+    assinatura/autenticação ............. 25 (0,8%)
+    documento de OUTRO CNPJ ............. 21 (0,6%)
+    nota fiscal ausente/irregular ....... 18 (0,6%)
+
+Todos abaixo de 4% — cortes que discriminam. São candidatos a lente própria, não implementados.
+
+**DIVERGÊNCIA DE VALOR: TESTADA E DESCARTADA COMO LENTE AUTOMÁTICA.** Parecia a melhor das sete —
+110 processos, 98 sem explicação por retenção tributária, R$ 524,68 mi pagos, cada apontamento com
+documento e trecho. Mas para virar número publicável era preciso EXTRAIR os dois valores
+divergentes, e aí o controle positivo derrubou: das **1.532 frases** de divergência, apenas **2**
+trazem os dois valores na mesma frase. Uma extração ingênua (pegar todos os `R$` do apontamento)
+produz Δ falsos — no `030001/011369/2026` ela inventava uma diferença de **R$ 276,6 milhões**
+juntando números de contextos diferentes. O sinal é REAL e vale a fila humana; o que não existe é
+o número automático. Fica registrado para não ser retentado por regex.
+
 Uso:
     .venv/bin/python tools/pago_sem_contrato.py
     .venv/bin/python tools/pago_sem_contrato.py --com-legitimos --limite 30
