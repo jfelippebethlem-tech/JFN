@@ -53,6 +53,7 @@ def materializar(limite: int = 50) -> dict:
     from convergencia import convergir
     from dependencia_mutua import dependencia
     from pago_a_sancionado import pagos_durante_sancao
+    from pago_sem_contrato import sem_contrato
     from porte_declarado_certame import declaracoes_incompativeis
     from porte_incompativel import incompativeis
     from troca_de_controle import trocas
@@ -71,6 +72,8 @@ def materializar(limite: int = 50) -> dict:
         "troca_de_controle": _seguro("troca_de_controle", trocas, con, forte=True),
         # critério LEGAL na forma literal: contrato CELEBRADO acima do teto do porte.
         "contrato_acima_do_porte": _seguro("contrato_acima_do_porte", acima_do_porte, con),
+        # LÊ A INTERPRETAÇÃO DA IA, não uma tabela — única lente que vem do texto dos autos.
+        "pago_sem_contrato": _seguro("pago_sem_contrato", sem_contrato, con),
     }
     con.close()
 

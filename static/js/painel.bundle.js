@@ -7886,6 +7886,13 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         (x) => x.pago
       ],
       [
+        "pago_sem_contrato",
+        "Pago sem contrato (leitura dos autos)",
+        "Única lente que vem do <b>texto</b>: lê a interpretação que a IA grava no confronto duplo e isola os processos em que ela aponta <b>ausência de contrato ou instrumento</b> — a citação típica é da própria nota de empenho, <i>&quot;Contrato 00000000 - SEM CONTRATO&quot;</i>. <b>Pagar sem contrato é lícito</b> em compra de entrega imediata (Lei 14.133, art. 95), e folha, tarifa, tributo, repasse e precatório ficam FORA por natureza. Sobra o núcleo em que o instrumento era esperado. Só vê o que foi lido: 3.256 de 221.130 processos com OB paga.",
+        (x) => `${clk("", x.numero_sei)}<div class="dim">${esc((x.credor || "").slice(0, 30))} · ${fmtN(x.n_obs)} OB</div><div class="muted" style="font-size:12px">${esc((x.o_que_e || "").slice(0, 120))}</div>`,
+        (x) => x.pago
+      ],
+      [
         "contrato_acima_do_porte",
         "Contrato acima do teto do porte",
         "Contrato <b>celebrado</b> com ME/EPP cujo valor supera o teto de receita do próprio porte (LC 123/2006, art. 3º). É o critério <b>legal na forma literal</b>: a Lei 14.133 fala em contratos celebrados no ano-calendário, não em dinheiro recebido. Fonte: espelho de contratos do <b>próprio TCE-RJ</b>, que cobre <b>51% dos fornecedores</b> pagos acima de R$ 1 mi — o resultado é <b>PISO</b>, e a ausência aqui não diz nada sobre a empresa. Prevalência 1,87% do cadastro ME/EPP. <b>Valor contratado não é valor executado</b> — esta lente mede incompatibilidade no dia da assinatura, não dano.",
