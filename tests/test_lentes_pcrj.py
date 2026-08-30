@@ -479,3 +479,99 @@ def test_fonte_de_agentes_ausente_e_indisponivel(banco):
     db = banco(despesas=[_d(2022, "SMS", "11111111000191", "X", "33903901", 1000.0)])
     r = L.servidor_estadual_socio_de_fornecedor(db)
     assert r["prevalencia"] is None and "indisponível" in r["_indisponivel"].lower()
+
+
+# ── L10 · empresa recém-criada ───────────────────────────────────────────────────────────────
+
+def test_idade_e_medida_contra_o_exercicio_pago_nao_contra_hoje(banco):
+    """Usar 'hoje' faria toda empresa parecer velha com o passar do tempo."""
+    db = banco(despesas=[_d(2021, "SMS", "11111111000191", "NOVA LTDA", "33903901", 5_000_000.0)],
+               empresas=[("11111111000191", "NOVA LTDA", "2062", "Comércio")])
+    con = sqlite3.connect(db)
+    con.execute("UPDATE empresas SET data_abertura='2021-07-22'")
+    con.commit()
+    con.close()
+    r = L.empresa_recem_criada(db)
+    assert r["n"] == 1
+    assert r["achados"][0]["idade_meses_no_fim_do_exercicio"] == 5
+
+
+def test_spe_de_concessao_e_ressalvada(banco):
+    """SPE é criada PARA o contrato: idade curta é a estrutura, não anomalia."""
+    db = banco(despesas=[_d(2022, "SMS", "11111111000191", "AGUAS DO RIO 4 SPE S.A.",
+                            "33903901", 80_000_000.0)],
+               empresas=[("11111111000191", "AGUAS DO RIO 4 SPE S.A.", "2062", "Saneamento")])
+    con = sqlite3.connect(db)
+    con.execute("UPDATE empresas SET data_abertura='2021-07-08'")
+    con.commit()
+    con.close()
+    r = L.empresa_recem_criada(db)
+    assert r["n"] == 0 and len(r["ressalvados"]) == 1
+    assert "propósito específico" in r["ressalvados"][0]["ressalva"]
+
+
+def test_empresa_sem_data_conhecida_e_indisponivel_nao_antiga(banco):
+    db = banco(despesas=[_d(2022, "SMS", "11111111000191", "X", "33903901", 5_000_000.0)])
+    r = L.empresa_recem_criada(db)
+    assert r["universo"] == 0 and r["prevalencia"] is None
+
+
+# ── L11 · HHI ────────────────────────────────────────────────────────────────────────────────
+
+def test_hhi_de_fornecedor_unico_e_um(banco):
+    db = banco(despesas=[_d(2022, "SMS", "11111111000191", "UNICO", "33903901", 9_000_000.0)])
+    r = L.concentracao_hhi(db)
+    assert r["achados"][0]["hhi"] == pytest.approx(1.0)
+    assert r["achados"][0]["equivalente_a_n_iguais"] == pytest.approx(1.0)
+
+
+def test_hhi_pega_concentracao_que_o_corte_de_80_perde(banco):
+    """Três fornecedores com 1/3 cada: nenhum tem 80%, mas o órgão é concentrado (HHI 0,33)."""
+    db = banco(despesas=[_d(2022, "SMS", f"{i}" * 8 + "000191", f"F{i}", "33903901", 3_000_000.0)
+                         for i in (1, 2, 3)])
+    assert L.fornecedor_quase_exclusivo(db)["n"] == 0
+    r = L.concentracao_hhi(db, limiar=0.30)
+    assert r["n"] == 1 and r["achados"][0]["hhi"] == pytest.approx(1 / 3, abs=1e-3)
+
+
+def test_hhi_disperso_nao_e_marcado(banco):
+    db = banco(despesas=[_d(2022, "SMS", f"{i:08d}" + "000191", f"F{i}", "33903901", 1_000_000.0)
+                         for i in range(1, 11)])
+    assert L.concentracao_hhi(db)["n"] == 0, "dez fornecedores iguais dão HHI 0,10"
+
+
+def test_hhi_ressalva_monopolio_natural(banco):
+    db = banco(despesas=[_d(2021, "Fundo Iluminação", "60444437000146", "LIGHT SERVICOS",
+                            "33903901", 9_000_000.0)],
+               empresas=[("60444437000146", "LIGHT", "2054", "Distribuição de energia elétrica")])
+    r = L.concentracao_hhi(db)
+    assert r["n"] == 0 and len(r["ressalvados"]) == 1
+
+
+def test_data_de_abertura_posterior_ao_primeiro_pagamento_e_descartada(banco):
+    """Se a empresa já recebia antes da 'abertura', a data não é de constituição.
+    Medido: só 0,3% dos pares, mas eram exatamente o topo da lente."""
+    db = banco(despesas=[_d(2020, "SME", "11111111000191", "EBN COMERCIO", "33903001", 22_000_000.0),
+                         _d(2021, "SME", "11111111000191", "EBN COMERCIO", "33903001", 62_000_000.0)],
+               empresas=[("11111111000191", "EBN COMERCIO", "2062", "Comércio")])
+    con = sqlite3.connect(db)
+    con.execute("UPDATE empresas SET data_abertura='2021-07-22'")
+    con.commit()
+    con.close()
+    r = L.empresa_recem_criada(db)
+    assert r["n"] == 0, "pagou em 2020 e 'abriu' em 2021 — a data está errada"
+    assert len(r["data_inconsistente"]) >= 1
+    assert r["data_inconsistente"][0]["primeiro_exercicio_pago"] == 2020
+
+
+def test_empresa_realmente_nova_sobrevive_a_guarda(banco):
+    """A guarda não pode matar o achado legítimo: primeiro pagamento no ano da abertura."""
+    db = banco(despesas=[_d(2021, "SME", "11111111000191", "NOVA DE VERDADE LTDA",
+                            "33903001", 9_000_000.0)],
+               empresas=[("11111111000191", "NOVA DE VERDADE LTDA", "2062", "Comércio")])
+    con = sqlite3.connect(db)
+    con.execute("UPDATE empresas SET data_abertura='2021-03-10'")
+    con.commit()
+    con.close()
+    r = L.empresa_recem_criada(db)
+    assert r["n"] == 1 and not r["data_inconsistente"]

@@ -64,6 +64,23 @@ _CNAE_ESTRUTURAL = re.compile(
     r"metrovi[áa]rio|ferrovi[áa]rio|conces", re.I)
 
 
+def _ressalva_nome(nome: str) -> str | None:
+    """Parte da ressalva estrutural que depende só do NOME — usável sem conexão ao banco."""
+    if re.search(r"tribunal|minist[ée]rio p[úu]blico|prefeitura|estado do|uni[ãa]o|"
+                 r"c[âa]mara municipal|defensoria", str(nome or ""), re.I):
+        return "credor é órgão público pelo nome — repasse entre entes, não contratação"
+    if re.search(r"concession[áa]ri|companhia de [áa]gua|empresa de correios", str(nome or ""), re.I):
+        return "credor é concessionária pelo nome"
+    if re.search(r"\bspe\b|\bs\.?p\.?e\.?\b|[áa]guas do rio|aguas do rio|\bigua\b|"
+                 r"prop[óo]sito espec[íi]fico", str(nome or ""), re.I):
+        return ("sociedade de propósito específico / concessionária — constituída PARA o "
+                "contrato, então idade curta é a estrutura, não anomalia")
+    if re.search(r"\bbanco\b|caixa econ[ôo]mica|correios|petrobras|eletrobras|"
+                 r"\bbndes\b|bradesco|ita[úu]|santander", str(nome or ""), re.I):
+        return "instituição financeira ou estatal de grande porte"
+    return None
+
+
 def _ressalva_estrutural(con, cnpj: str, nome: str) -> str | None:
     """Diz por que o domínio deste credor pode ser estrutural — ou None se não for o caso.
 
@@ -87,6 +104,13 @@ def _ressalva_estrutural(con, cnpj: str, nome: str) -> str | None:
     if re.search(r"concession[áa]ri|\bconc[.\s]|companhia de [áa]gua|"
                  r"empresa de correios", str(nome or ""), re.I):
         return "credor é concessionária pelo nome — o objeto decorre de concessão, não de escolha"
+    # SPE (sociedade de propósito específico) é criada PARA o contrato de concessão: ser nova é a
+    # regra, não a exceção. Sem esta ressalva, a lente de empresa recém-criada coroava
+    # "AGUAS DO RIO 4 SPE S.A." e "IGUA RIO DE JANEIRO S.A." — as concessionárias de saneamento.
+    if re.search(r"\bspe\b|\bs\.?p\.?e\.?\b|aguas do rio|[áa]guas do rio|\bigua\b|"
+                 r"prop[óo]sito espec[íi]fico", str(nome or ""), re.I):
+        return ("sociedade de propósito específico / concessionária — constituída PARA o "
+                "contrato, então idade curta é a estrutura, não anomalia")
     # Instituição financeira, estatal e grande S.A. têm dezenas de administradores e razão social
     # notória: cruzar nome de sócio contra folha pública ali produz homônimo, não achado. Medido:
     # sem esta ressalva, o topo trazia "EMPRESA BRASILEIRA DE CORREIOS — Diretor que é Subtenente
@@ -728,10 +752,153 @@ def servidor_estadual_socio_de_fornecedor(db_path=None, so_gerencia: bool = True
                      "`risco_homonimia` e `n_socios_da_empresa` graduam a confiança"}
 
 
+# ── L10 · empresa recém-criada recebendo valor relevante ────────────────────────────────────
+
+def empresa_recem_criada(db_path=None, meses: int = 24, piso: float = 1_000_000.0) -> dict:
+    """Empresa que recebeu valor relevante da PCRJ com menos de `meses` de existência.
+
+    Empresa nova ganhar contrato é lícito e acontece. O que se examina é a combinação: pouca
+    idade + valor alto + objeto que exige experiência. É o perfil que a Súmula 250/TCU manda
+    olhar (nexo efetivo, reputação, compatibilidade de preços) e o degrau inicial do rastro de
+    empresa constituída para um contrato.
+
+    A idade é medida **contra 31/12 do exercício pago** — a base não tem data de pagamento, e
+    usar "hoje" faria toda empresa parecer velha com o passar do tempo.
+
+    ⚠️ COBERTURA: `empresas.data_abertura` existe para **1.602 das 7.197 raízes (22,3%)** de
+    fornecedores da PCRJ. O resultado é **PISO**, e o universo desta lente é o das empresas com
+    data conhecida — quem não tem data não é "empresa velha", é INDISPONÍVEL.
+
+    ⚠️ O CAMPO NEM SEMPRE É A CONSTITUIÇÃO. Em parte dos registros ele traz data de
+    estabelecimento ou de alteração cadastral: há "PHILIPS MEDICAL SYSTEMS aberta em 2021" e
+    "VYTTRA DIAGNOSTICOS aberta em 2025" com pagamento em 2023. A guarda `data_inconsistente`
+    remove quem **já recebia antes** da abertura declarada — detecta 10 desses, e eram o topo da
+    lente. **Limite que permanece**: se a data errada cair no mesmo ano do primeiro pagamento, a
+    guarda não vê (é o caso de FRESENIUS KABI, multinacional com "3 meses" em 2019). Por isso o
+    achado desta lente é candidato a exame, e o primeiro passo é conferir a constituição na fonte.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        try:
+            abertura = {re.sub(r"\D", "", str(cnpj or ""))[:8]: dt for cnpj, dt in con.execute(
+                "SELECT cnpj, data_abertura FROM empresas WHERE data_abertura IS NOT NULL "
+                "AND data_abertura <> ''")}
+        except sqlite3.OperationalError as e:
+            return {"lente": f"empresa com menos de {meses} meses recebendo da PCRJ",
+                    "universo": 0, "n": 0, "prevalencia": None, "massa": 0.0, "achados": [],
+                    "_indisponivel": f"fonte indisponível: {e}"}
+        rows = con.execute(
+            f"SELECT exercicio, credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+            f"WHERE {filtro_sql()} GROUP BY 1,2,3 HAVING sum(pago) >= ?", (piso,)).fetchall()
+        # CONTROLE INTERNO barato: se a empresa já recebia ANTES da data de abertura declarada,
+        # a data está errada — e não dá para medir idade com ela. Medido em 30/08/2026: isso
+        # ocorre em só 0,3% dos pares (15 de 4.472), MAS eram exatamente o topo desta lente:
+        # EBN (paga em 2020, "aberta" em 07/2021), MEDFUTURA ("aberta" em 2022, paga desde 2019),
+        # e uma "PHILIPS MEDICAL SYSTEMS aberta em 2021". Provavelmente é data de estabelecimento
+        # ou de alteração cadastral, não de constituição.
+        primeiro_ano = {}
+        for ano, doc, _ in con.execute(
+                f"SELECT min(exercicio), credor_documento, sum(pago) FROM pcrj_despesa "
+                f"WHERE {filtro_sql()} GROUP BY credor_documento"):
+            raiz = _cnpj_basico(doc)
+            if raiz:
+                primeiro_ano[raiz] = min(primeiro_ano.get(raiz, 9999), ano)
+    finally:
+        con.close()
+
+    achados, universo, inconsistentes = [], 0, []
+    for ano, doc, nome, pago in rows:
+        raiz = _cnpj_basico(doc)
+        dt = abertura.get(raiz) if raiz else None
+        if not dt or len(str(dt)) < 7:
+            continue
+        if primeiro_ano.get(raiz, 9999) < int(str(dt)[:4]):
+            inconsistentes.append({"exercicio": ano, "cnpj": doc, "nome": nome, "pago": pago,
+                                   "data_abertura": dt,
+                                   "primeiro_exercicio_pago": primeiro_ano.get(raiz),
+                                   "motivo": "já recebia antes da data de abertura declarada — "
+                                             "a data não é de constituição"})
+            continue
+        universo += 1
+        try:
+            ano_ab, mes_ab = int(str(dt)[:4]), int(str(dt)[5:7])
+        except ValueError:
+            continue
+        idade_meses = (ano - ano_ab) * 12 + (12 - mes_ab)      # até 31/12 do exercício pago
+        if 0 <= idade_meses < meses:
+            achados.append({"exercicio": ano, "cnpj": doc, "nome": nome, "pago": pago,
+                            "data_abertura": dt, "idade_meses_no_fim_do_exercicio": idade_meses,
+                            "ressalva": _ressalva_nome(nome)})
+    achados.sort(key=lambda a: -a["pago"])
+    exame = [a for a in achados if not a["ressalva"]]
+    return {"lente": f"empresa com menos de {meses} meses recebendo R$ {moeda(piso)}+ da PCRJ",
+            "universo": universo, "n": len(exame),
+            "prevalencia": len(exame) / universo if universo else None,
+            "massa": sum(a["pago"] for a in exame), "achados": exame,
+            "ressalvados": [a for a in achados if a["ressalva"]],
+            "data_inconsistente": inconsistentes,
+            "_nota": "cobertura de data_abertura é 22,3% das raízes — resultado é PISO; "
+                     "empresa sem data conhecida é INDISPONÍVEL, não 'empresa antiga'. "
+                     "`data_inconsistente` lista quem já recebia antes da abertura declarada"}
+
+
+# ── L11 · concentração do órgão medida em escala contínua (HHI) ─────────────────────────────
+
+def concentracao_hhi(db_path=None, piso_orgao: float = 5_000_000.0,
+                     limiar: float = 0.50) -> dict:
+    """Índice Herfindahl-Hirschman das compras de cada órgão no exercício.
+
+    O corte binário de quase-exclusividade (um credor com 80%+) perde o órgão onde TRÊS
+    fornecedores dividem tudo — que é igualmente concentrado. O HHI mede em escala contínua:
+    soma dos quadrados das participações. 1,0 = fornecedor único; 1/n = perfeitamente disperso.
+
+    O limiar padrão é **0,50** — equivale a dois fornecedores iguais. Varri a escala antes de
+    fixá-lo: 0,25 marca 12,38% dos órgão-ano (não ordena fila), 0,40 marca 5,10%, **0,50 marca
+    2,67%** e 0,60 marca 1,46%. O 0,25 da doutrina antitruste é referência de MERCADO, não norma
+    de licitação, e aqui não discrimina.
+
+    Órgão com concessionária ou plano de saúde no topo é RESSALVADO pelo mesmo critério
+    estrutural das outras lentes: monopólio natural produz HHI alto sem que haja captura.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        rows = con.execute(
+            f"SELECT exercicio, orgao, credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+            f"WHERE {filtro_sql()} GROUP BY 1,2,3,4").fetchall()
+        por_orgao = defaultdict(list)
+        for ano, org, doc, nome, pago in rows:
+            por_orgao[(ano, org)].append((doc, nome, pago))
+        achados, universo = [], 0
+        for (ano, org), cs in por_orgao.items():
+            total = sum(p for _, _, p in cs)
+            if total < piso_orgao:
+                continue
+            universo += 1
+            hhi = sum((p / total) ** 2 for _, _, p in cs)
+            if hhi >= limiar:
+                doc, nome, pago = max(cs, key=lambda x: x[2])
+                achados.append({"exercicio": ano, "orgao": org, "hhi": round(hhi, 4),
+                                "n_credores": len(cs), "total_orgao": total,
+                                "maior_credor": nome, "maior_share": pago / total,
+                                "equivalente_a_n_iguais": round(1 / hhi, 1),
+                                "ressalva": _ressalva_estrutural(con, doc, nome)})
+    finally:
+        con.close()
+    achados.sort(key=lambda a: -a["hhi"])
+    exame = [a for a in achados if not a["ressalva"]]
+    return {"lente": f"órgão-ano com HHI >= {limiar} nas compras (altamente concentrado)",
+            "universo": universo, "n": len(exame),
+            "prevalencia": len(exame) / universo if universo else None,
+            "massa": sum(a["total_orgao"] for a in exame), "achados": exame,
+            "ressalvados": [a for a in achados if a["ressalva"]],
+            "_nota": "HHI é referência de MERCADO, não norma de licitação. Limiar 0,50 escolhido "
+                     "por varredura: 0,25 marcava 12,38% dos órgão-ano e não ordenava fila"}
+
+
 LENTES = (me_epp_acima_do_teto, sancao_de_efeito_amplo, pessoa_fisica_em_elemento_de_pj,
           salto_de_faturamento, liquidado_sem_pagamento, fornecedor_quase_exclusivo,
           socio_comum_a_fornecedores, pago_muito_acima_do_capital,
-          servidor_estadual_socio_de_fornecedor)
+          servidor_estadual_socio_de_fornecedor, empresa_recem_criada, concentracao_hhi)
 
 # DESCARTADAS, com o número que as matou — registradas para não voltarem por engano:
 #   · fornecedor_mono_cliente — 8,8% mesmo no corte mais severo; o topo é especialização setorial
