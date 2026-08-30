@@ -46,6 +46,8 @@ import sqlite3
 import unicodedata
 from collections import defaultdict
 
+from compliance_agent.reporting.intel_base import moeda
+
 DB = "data/compliance.db"
 RAIZ_PCRJ = "42498733"
 
@@ -205,17 +207,17 @@ def resumo(db_path: str = DB) -> dict:
 if __name__ == "__main__":
     r = resumo()
     print(f"dispensas art. 75 II da PCRJ: {r['n_dispensas_art75_II']:,} · "
-          f"R$ {r['valor_estimado_total']:,.2f} (estimado)")
+          f"R$ {moeda(r['valor_estimado_total'])} (estimado)")
     bn = r["bunching"]
     print(f"bunching: {bn['colado_5pct_abaixo']} colados nos 5% abaixo do teto × "
           f"{bn['acima_do_teto']} acima = {bn['razao']:.1f}x")
     print(f"\n(A) mesmo processo administrativo: {r['corte_a']['n_processos']} processos · "
-          f"R$ {r['corte_a']['soma']:,.2f}")
+          f"R$ {moeda(r['corte_a']['soma'])}")
     for x in r["corte_a"]["achados"][:5]:
-        print(f"   {x['processo']}  {x['n']} disp.  R$ {x['soma']:,.2f}  ({x['razao']:.2f}x o teto)")
+        print(f"   {x['processo']}  {x['n']} disp.  R$ {moeda(x['soma'])}  ({x['razao']:.2f}x o teto)")
     print(f"\n(B) mesma unidade + objeto semelhante: {r['corte_b']['n_grupos']} grupos · "
-          f"R$ {r['corte_b']['soma']:,.2f}")
+          f"R$ {moeda(r['corte_b']['soma'])}")
     for x in r["corte_b"]["achados"][:5]:
         print(f"   {x['unidade'][:44]:46s} {x['ano']} {x['n']:3d} disp. "
-              f"R$ {x['soma']:>13,.2f}  ({x['razao']:.1f}x)")
+              f"R$ {moeda(x['soma']):>16s}  ({x['razao']:.1f}x)")
     print(f"\nFONTE: {r['_fonte']}\nLIMITE: {r['_limite']}")

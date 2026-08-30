@@ -72,3 +72,40 @@ def test_ddddocr_le_captcha_real_do_sei_municipal():
         pytest.skip("amostra não versionada nesta máquina")
     texto = ddddocr.DdddOcr(show_ad=False).classification(amostra.read_bytes())
     assert texto.lower() == "27ca2y"
+
+
+def test_falha_do_onnxruntime_nao_derruba_o_pipeline(tmp_path, monkeypatch):
+    """As classes de erro do ORT herdam de Exception DIRETO, não de RuntimeError — capturá-las
+    exige nomeá-las. Este teste falha se alguém trocar por uma hierarquia que não as cobre."""
+    pytest.importorskip("ddddocr")
+    ort = pytest.importorskip("onnxruntime.capi.onnxruntime_pybind11_state")
+    from compliance_agent import captcha_solver
+
+    class OcrQueFalha:
+        def __init__(self, **kw): pass
+        def classification(self, _): raise ort.Fail("modelo corrompido")
+
+    import ddddocr
+    monkeypatch.setattr(ddddocr, "DdddOcr", OcrQueFalha)
+    alvo = tmp_path / "x.png"
+    alvo.write_bytes(b"\x89PNG\r\n\x1a\n")
+    assert captcha_solver._ddddocr_ler(alvo) == ""      # degrada para o tesseract, não explode
+
+
+def test_erro_inesperado_sobe_em_vez_de_virar_captcha_ilegivel():
+    """Engolir tudo transformaria bug nosso em 'não deu para ler' — silêncio não é sucesso."""
+    pytest.importorskip("ddddocr")
+    from compliance_agent import captcha_solver
+    import ddddocr
+
+    class OcrComBugNosso:
+        def __init__(self, **kw): pass
+        def classification(self, _): raise KeyError("defeito de programação")
+
+    original = ddddocr.DdddOcr
+    ddddocr.DdddOcr = OcrComBugNosso
+    try:
+        with pytest.raises(KeyError):
+            captcha_solver._ddddocr_ler(b"qualquer")
+    finally:
+        ddddocr.DdddOcr = original

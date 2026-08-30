@@ -128,10 +128,20 @@ def _ddddocr_ler(image_path) -> str:
         import ddddocr
     except ImportError:
         return ""
+    # Exceções ESPECÍFICAS, nunca genérica. CONFERIDO na biblioteca, não presumido: as classes
+    # de erro do pybind do onnxruntime herdam de `Exception` DIRETO — não de `RuntimeError` —,
+    # então capturá-las exige nomeá-las. OSError cobre arquivo ausente/ilegível e ValueError
+    # cobre bytes que não são imagem. Qualquer outra coisa é defeito nosso e deve subir, em vez
+    # de virar "captcha ilegível" silencioso.
+    try:
+        from onnxruntime.capi import onnxruntime_pybind11_state as _ort
+        erros_ort = (_ort.Fail, _ort.InvalidArgument, _ort.RuntimeException, _ort.NoSuchFile)
+    except (ImportError, AttributeError):
+        erros_ort = ()
     try:
         dados = Path(image_path).read_bytes() if not isinstance(image_path, bytes) else image_path
         return (ddddocr.DdddOcr(show_ad=False).classification(dados) or "").strip()
-    except Exception:
+    except (OSError, ValueError, *erros_ort):
         return ""
 
 

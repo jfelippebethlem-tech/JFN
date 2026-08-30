@@ -32,12 +32,12 @@ def _rodar(cenario):
                 return await cenario(await b.new_page())
             finally:
                 await b.close()
+    from playwright.async_api import Error as PlaywrightError
     try:
         return asyncio.run(_main())
-    except Exception as e:                                     # pragma: no cover
-        if "executable doesn't exist" in str(e).lower() or "browsertype.launch" in str(e).lower():
-            pytest.skip(f"chromium indisponível nesta máquina: {e}")
-        raise
+    except PlaywrightError as e:                               # pragma: no cover
+        # só o erro do próprio Playwright vira skip; qualquer outro é falha de verdade
+        pytest.skip(f"chromium indisponível nesta máquina: {e}")
 
 
 def test_marca_apenas_o_orgao_pedido():
