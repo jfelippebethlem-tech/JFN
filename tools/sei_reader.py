@@ -593,10 +593,20 @@ async def _ler_cracked(pg, proc: str) -> dict:
     return dump
 
 
-async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: int = 5) -> list[dict]:
+async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: int = 5,
+                              max_docs_cadeia: int | None = None) -> list[dict]:
     """Abre cada processo RELACIONADO (na MESMA sessão, URL viva) e extrai a árvore. Reusado pelo
     ler_com_cadeia E pelo sweep — o processo de pagamento aponta p/ a licitação/contrato (a substância
-    vive no relacionado). Dedup por id_procedimento; pula o próprio processo. Honesto: erro por relacionado."""
+    vive no relacionado). Dedup por id_procedimento; pula o próprio processo. Honesto: erro por relacionado.
+
+    ORÇAMENTO DE DOCUMENTOS (`max_docs_cadeia`). O teto antigo era só de PROCESSOS (`max_rel`), e um
+    único relacionado pode trazer mil documentos: medido na VM-2 em 2026-08-30, três processos de
+    ~50 docs arrastaram cadeias de **948, 968 e 881 documentos** e levaram 652 s, 588 s e 524 s —
+    contra um `timeout` de disparo de 900 s. A máquina caiu de 21 processos/dia para ZERO: gastava
+    a janela inteira num só e era morta antes de terminar.
+    Atingido o teto, a cadeia PARA e o que já veio é devolvido — com `truncada: True` no último
+    item, para que ninguém leia a cadeia curta como cadeia completa (INDISPONÍVEL != 0).
+    `None` mantém o comportamento antigo, sem teto."""
     vistos: set = set()
     alvos: list = []
     for r in (relacionados or []):
@@ -608,7 +618,14 @@ async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: in
         if len(alvos) >= max_rel:
             break
     cadeia: list = []
+    docs_ate_agora = 0
     for pid, url, titulo in alvos:
+        if max_docs_cadeia is not None and docs_ate_agora >= max_docs_cadeia:
+            # DECLARA o corte em vez de calar: cadeia truncada não é cadeia inexistente.
+            cadeia.append({"id_procedimento": pid, "truncada": True,
+                           "motivo": f"orçamento de {max_docs_cadeia} documentos da cadeia atingido "
+                                     f"({docs_ate_agora} lidos); relacionados restantes não abertos"})
+            break
         try:
             await pg.goto(url, wait_until="domcontentloaded", timeout=25000)
             try:
@@ -622,6 +639,7 @@ async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: in
                     break
             dump = await _extrair_de_todos_frames(pg)
             txt = dump.get("texto", "")
+            docs_ate_agora += len(dump.get("documentos", []))
             cadeia.append({
                 "id_procedimento": pid, "titulo_rel": titulo[:80], "url": url[:90],
                 "n_docs": len(dump.get("documentos", [])), "n_texto": len(txt),

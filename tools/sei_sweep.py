@@ -212,6 +212,20 @@ def _unidades_sem_acesso(prog: dict, min_amostra: int = 6) -> set:
     return {u for u in tot if tot[u] >= min_amostra and zero[u] == tot[u]}
 
 
+# ORÇAMENTO DE DOCUMENTOS DA CADEIA — o teto que faltava.
+#
+# O `max_rel` limitava PROCESSOS relacionados, não documentos, e um só relacionado pode trazer mil.
+# Medido na VM-2 em 2026-08-30: três processos de ~50 docs arrastaram cadeias de 948, 968 e 881
+# documentos, a 652 s, 588 s e 524 s cada — contra `timeout 900` do disparo. A máquina caiu de
+# **21 processos/dia para ZERO**: gastava a janela num só e era morta antes de completar.
+#
+# O NÚMERO VEM DA MEDIÇÃO, não de palpite: sobre 3.156 processos arquivados, a árvore tem
+# mediana 19 docs, p75 41, p90 65 — e só 1,0% passa de 300. Um teto de 300 preserva 99% das
+# cadeias inteiras e corta exatamente a cauda que estoura o orçamento. Ajustável por
+# `SEI_MAX_DOCS_CADEIA` para quem quiser a cadeia completa num processo específico.
+MAX_DOCS_CADEIA = int(os.environ.get("SEI_MAX_DOCS_CADEIA", "300"))
+
+
 def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     """Processos SEI distintos das OBs, priorizando as UNIDADES que o itkava já leu (escopo
     aprendido), depois por valor desc. Filtra por UG e/ou CNPJ do favorecido (alvo de um relatório)."""
@@ -862,7 +876,9 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                     cadeia = []
                     if seguir_arvore and 1 <= len(rel) <= 15:
                         try:
-                            cadeia = await seguir_relacionados(pg, r.get("url") or "", rel, max_rel=max_rel_arvore)
+                            cadeia = await seguir_relacionados(pg, r.get("url") or "", rel,
+                                                               max_rel=max_rel_arvore,
+                                                               max_docs_cadeia=MAX_DOCS_CADEIA)
                         except Exception:  # noqa: BLE001
                             cadeia = []
                     nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
