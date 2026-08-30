@@ -96,10 +96,16 @@ def _materializar_pcrj(limite: int) -> dict:
     Contrato diferente do das lentes estaduais: cada uma devolve um dicionário com `universo`,
     `prevalencia` e `massa`, não uma lista. A prevalência viaja junto porque é o que decide se o
     sinal discrimina — publicar contagem sem denominador é o erro que a casa já catalogou."""
-    from lentes_pcrj import LENTES
+    from lentes_pcrj import LENTES as L_FORNECEDOR
+    from lentes_pcrj_contrato import CONTROLES as C_CONTRATO
+    from lentes_pcrj_contrato import LENTES as L_CONTRATO
+    from lentes_pcrj_execucao import CONTROLES as C_EXECUCAO
+    from lentes_pcrj_execucao import LENTES as L_EXECUCAO
 
+    # os CONTROLES entram junto: não procuram irregularidade, procuram defeito no dado — e um
+    # acervo que falha neles não sustenta nenhuma das outras lentes
     saida = {}
-    for fn in LENTES:
+    for fn in L_FORNECEDOR + L_EXECUCAO + L_CONTRATO + C_EXECUCAO + C_CONTRATO:
         b = _seguro(fn.__name__, fn)
         r = b.pop("itens", None)
         if not b["ok"] or r is None:
