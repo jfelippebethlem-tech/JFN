@@ -54,6 +54,7 @@ def materializar(limite: int = 50) -> dict:
     from dependencia_mutua import dependencia
     from pago_a_sancionado import pagos_durante_sancao
     from pago_sem_contrato import sem_contrato
+    from pericia_tripla import periciar
     from porte_declarado_certame import declaracoes_incompativeis
     from porte_incompativel import incompativeis
     from troca_de_controle import trocas
@@ -74,6 +75,8 @@ def materializar(limite: int = 50) -> dict:
         "contrato_acima_do_porte": _seguro("contrato_acima_do_porte", acima_do_porte, con),
         # LÊ A INTERPRETAÇÃO DA IA, não uma tabela — única lente que vem do texto dos autos.
         "pago_sem_contrato": _seguro("pago_sem_contrato", sem_contrato, con),
+        # ordena PROCESSOS por lacuna probatória, não fornecedores por sinal.
+        "pericia_tripla": _seguro("pericia_tripla", periciar, con),
     }
     con.close()
 

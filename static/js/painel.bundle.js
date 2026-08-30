@@ -7886,6 +7886,13 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         (x) => x.pago
       ],
       [
+        "pericia_tripla",
+        "Perícia tripla: jurídica · forense · financeira",
+        "Ordena <b>processos</b> por <b>lacuna probatória</b> — o que deveria estar nos autos e não está —, lendo o campo <i>o_que_falta</i> da leitura dupla, que <b>nomeia o documento ausente</b>. Só entram processos de <b>captura completa</b> (docs ≥ árvore, sem lacuna declarada): sem esse corte, falta da NOSSA coleta viraria acusação contra a Administração. Ordenado por <b>gravidade</b>, não por contagem: falta de pesquisa de preços (3,9%) pesa 5; falta de instrumento (54,8%, e lícita no art. 95) pesa 1. Sinal raro ordena, sinal comum descreve.",
+        (x) => `${clk("", x.numero_sei)}<div class="dim">peso ${fmtN(x.peso)} · ${esc((x.lentes || []).join("+"))} · ${esc((x.credor || "").slice(0, 26))}</div><div class="muted" style="font-size:12px">${esc((x.falta || "").slice(0, 130))}</div>`,
+        (x) => x.pago
+      ],
+      [
         "pago_sem_contrato",
         "Pago sem contrato (leitura dos autos)",
         "Única lente que vem do <b>texto</b>: lê a interpretação que a IA grava no confronto duplo e isola os processos em que ela aponta <b>ausência de contrato ou instrumento</b> — a citação típica é da própria nota de empenho, <i>&quot;Contrato 00000000 - SEM CONTRATO&quot;</i>. <b>Pagar sem contrato é lícito</b> em compra de entrega imediata (Lei 14.133, art. 95), e folha, tarifa, tributo, repasse e precatório ficam FORA por natureza. Sobra o núcleo em que o instrumento era esperado. Só vê o que foi lido: 3.256 de 221.130 processos com OB paga.",
