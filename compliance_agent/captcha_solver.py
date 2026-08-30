@@ -109,12 +109,41 @@ def _read_image(source):
     raise TypeError(f"Fonte não suportada: {type(source)}")
 
 
+def _ddddocr_ler(image_path) -> str:
+    """OCR por rede neural local (ddddocr, ONNX) — offline, sem API e sem custo.
+
+    MEDIDO em 30/08/2026 nos captchas reais de `prefeitura.sei.rio` (180x50, 6 caracteres
+    alfanuméricos de caixa mista, riscados por 2-3 retas e ruído sal-e-pimenta):
+
+    | motor      | resultado |
+    |------------|-----------|
+    | tesseract  | 3 de 9 vieram VAZIOS; nenhuma leitura foi aceita pelo servidor em ~15 tentativas ("Código de confirmação inválido 1.") |
+    | ddddocr    | 9 de 9 devolveram 6 caracteres plausíveis; conferidos 2 contra gabarito visual: `2ZZPDP` -> `2ZzPDP` (6/6 caracteres, diverge só a caixa de um) e `27cA2y` -> `27cA2y` (exato) |
+
+    Por isso o ddddocr vem PRIMEIRO e o tesseract fica de reserva — ele continua servindo
+    captchas simples, para os quais foi calibrado.
+
+    Devolve "" se a biblioteca não estiver instalada, o que mantém o tesseract como caminho."""
+    try:
+        import ddddocr
+    except ImportError:
+        return ""
+    try:
+        dados = Path(image_path).read_bytes() if not isinstance(image_path, bytes) else image_path
+        return (ddddocr.DdddOcr(show_ad=False).classification(dados) or "").strip()
+    except Exception:
+        return ""
+
+
 def solve_captcha_image(
     image_path,
     *,
     lang: str = "eng",
     config: str = "--psm 7 -c tessedit_char_whitelist=0123456789/abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
 ) -> str:
+    texto = _ddddocr_ler(image_path)
+    if texto:
+        return texto
     img = _read_image(image_path)
     if img is None:
         return ""
@@ -133,6 +162,35 @@ def solve_captcha_image(
     if not candidates:
         return ""
     return max(candidates, key=len)
+
+
+def solve_captcha_data_uri(
+    data_uri: str,
+    *,
+    lang: str = "eng",
+    config: str = "--psm 7 --oem 3",
+) -> str:
+    """Resolve captcha embutido como `data:image/...;base64,...` no atributo src da <img>.
+
+    O SEI da Prefeitura do Rio (`prefeitura.sei.rio`) serve o captcha assim — não há URL de
+    imagem para baixar. `solve_captcha_url` rejeita isso em `_url_segura` ("esquema de URL não
+    permitido: 'data'"), e o chamador engolia a exceção: **o OCR nunca chegava a rodar** nessa
+    instância. Medido em 30/08/2026.
+
+    A guarda de `_url_segura` continua valendo para tudo que é URL de rede — aqui não há
+    requisição alguma, os bytes já vieram no DOM."""
+    import base64
+
+    if not data_uri.startswith("data:"):
+        raise ValueError("não é data URI")
+    cabeca, _, corpo = data_uri.partition(",")
+    if not corpo:
+        return ""
+    dados = base64.b64decode(corpo) if "base64" in cabeca else corpo.encode()
+    tmp = Path("data/tmp/captcha_current.png")
+    tmp.parent.mkdir(parents=True, exist_ok=True)
+    tmp.write_bytes(dados)
+    return solve_captcha_image(tmp, lang=lang, config=config)
 
 
 def solve_captcha_url(

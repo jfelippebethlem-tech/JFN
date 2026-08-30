@@ -365,8 +365,13 @@ async def _resolver_captcha_ocr(page) -> bool:
     # Tenta ler a imagem direto do DOM (mais confiável que baixar de novo)
     texto_ocr = ""
     try:
-        from compliance_agent.captcha_solver import solve_captcha_url
-        texto_ocr = await asyncio.to_thread(solve_captcha_url, img_src)
+        if img_src.startswith("data:"):
+            # SEI municipal (prefeitura.sei.rio) embute o captcha no src — não há URL a baixar.
+            from compliance_agent.captcha_solver import solve_captcha_data_uri
+            texto_ocr = await asyncio.to_thread(solve_captcha_data_uri, img_src)
+        else:
+            from compliance_agent.captcha_solver import solve_captcha_url
+            texto_ocr = await asyncio.to_thread(solve_captcha_url, img_src)
     except Exception as e:
         print(f"[SEI] OCR falhou: {e}")
         return False
