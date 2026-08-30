@@ -87,6 +87,14 @@ def _ressalva_estrutural(con, cnpj: str, nome: str) -> str | None:
     if re.search(r"concession[áa]ri|\bconc[.\s]|companhia de [áa]gua|"
                  r"empresa de correios", str(nome or ""), re.I):
         return "credor é concessionária pelo nome — o objeto decorre de concessão, não de escolha"
+    # Instituição financeira, estatal e grande S.A. têm dezenas de administradores e razão social
+    # notória: cruzar nome de sócio contra folha pública ali produz homônimo, não achado. Medido:
+    # sem esta ressalva, o topo trazia "EMPRESA BRASILEIRA DE CORREIOS — Diretor que é Subtenente
+    # PM" e "BANCO ITAU S.A. — Diretor que é Assistente da PGE".
+    if re.search(r"\bbanco\b|caixa econ[ôo]mica|correios|petrobras|eletrobras|"
+                 r"\bbndes\b|\bcef\b|bradesco|ita[úu]|santander|\bbb\b", str(nome or ""), re.I):
+        return ("instituição financeira ou estatal de grande porte — quadro de administradores "
+                "numeroso e razão social notória tornam o casamento por nome não confiável")
     return None
 
 
@@ -391,6 +399,40 @@ def _radical(razao: str) -> str | None:
     return None
 
 
+def _frequencia_do_nome(con, nomes: set[str]) -> dict:
+    """Quantos AGENTES PÚBLICOS distintos carregam cada nome — a medida real da homonímia.
+
+    Contar palavras do nome é heurística ruim, e ela me enganou: "LUIZ CARLOS DA SILVA" tem
+    quatro palavras e passou como risco *normal*, mas aparece **1.779 vezes** na folha do Estado.
+    "DA" é preposição, não sobrenome. O número de portadores é dado; o tamanho do nome é palpite.
+
+    Medido em 30/08/2026: LUIZ CARLOS DA SILVA = 1.779 agentes · JOSE DE SOUZA FILHO = 46 ·
+    ELSO VENANCIO VIEIRA FONSECA = 0 (é sócio, não agente)."""
+    if not nomes:
+        return {}
+    marks = ",".join("?" for _ in nomes)
+    try:
+        return {n: q for n, q in con.execute(
+            f"SELECT nome_socio, count(*) FROM agente_publico_societario "
+            f"WHERE nome_socio IN ({marks}) GROUP BY 1", tuple(nomes))}
+    except sqlite3.OperationalError:
+        return {}
+
+
+def _grau_homonimia(portadores: int | None) -> str:
+    """Grau a partir do número de portadores do nome na folha pública.
+
+    Um só portador ainda não prova identidade — prova que, DENTRO desta base, não há colisão.
+    Por isso o melhor grau é "baixo", nunca "nenhum"."""
+    if portadores is None:
+        return "INDISPONIVEL"
+    if portadores > 10:
+        return "ALTO"
+    if portadores > 1:
+        return "MEDIO"
+    return "baixo"
+
+
 # ── L7 · sócio comum a vários fornecedores do Município ─────────────────────────────────────
 
 def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
@@ -434,6 +476,11 @@ def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
                 socios[nome_norm].add(raiz)
     finally:
         con.close()
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        freq_nomes = _frequencia_do_nome(con, {n for n, r in socios.items() if len(r) >= minimo})
+    finally:
+        con.close()
     achados = []
     for nome_norm, raizes in socios.items():
         if len(raizes) < minimo:
@@ -463,7 +510,8 @@ def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
             "n_fornecedores": len(raizes),
             "fornecedores": forn,
             "pago_somado": sum(pagos[r][1] for r in raizes if r in pagos),
-            "risco_homonimia": "ALTO" if len(str(nome_norm).split()) < 3 else "normal",
+            "risco_homonimia": _grau_homonimia(freq_nomes.get(nome_norm)),
+            "portadores_do_nome": freq_nomes.get(nome_norm),
             "ressalva": ressalva,
         })
     achados.sort(key=lambda a: -a["pago_somado"])
@@ -564,9 +612,126 @@ def fornecedor_mono_cliente(db_path=None, piso: float = 5_000_000.0) -> dict:
             "massa": sum(a["pago"] for a in achados), "achados": achados}
 
 
+# Qualificação societária da Receita → a pessoa GERE a empresa, ou apenas detém cota?
+# O estatuto do servidor veda "participar da GERÊNCIA ou ADMINISTRAÇÃO de sociedade privada"
+# (Lei 8.112/90, art. 117, X, e estatutos estaduais análogos) — não veda ser quotista. A
+# distinção é o que separa achado de ruído: 137.625 dos registros são "Sócio" simples.
+QUALIFICACAO_GERE = {
+    "05": "Administrador", "08": "Conselheiro de Administração", "10": "Diretor",
+    "16": "Presidente", "49": "Sócio-Administrador",
+    "65": "Titular Pessoa Física (empresário individual / EIRELI)",
+}
+
+
+def servidor_estadual_socio_de_fornecedor(db_path=None, so_gerencia: bool = True,
+                                          so_comissionado: bool = False) -> dict:
+    """Agente público ESTADUAL ou da ALERJ que administra empresa paga pela PREFEITURA do Rio.
+
+    Cruzamento INTER-ESFERAS. A vedação do art. 14, IV da Lei 14.133/2021 alcança o agente do
+    **órgão contratante** — servidor do Estado contratando com o Município não cai nela pela
+    letra. O que incide é outro plano: o **estatuto do servidor**, que veda participar da
+    gerência ou administração de sociedade privada (Lei 8.112/90, art. 117, X; estatutos
+    estaduais análogos), e o dever de não haver conflito de interesses.
+
+    Por isso o corte padrão é `so_gerencia=True`: entram apenas as qualificações em que a pessoa
+    **administra** (Sócio-Administrador, Administrador, Diretor, Presidente, Conselheiro, Titular
+    de EIRELI). Mera condição de sócio quotista (código 22) **não** viola o estatuto e fica fora
+    — são 137.625 registros no acervo, e incluí-los transformaria a lente em ruído.
+
+    ⚠️ HOMONÍMIA. O cruzamento é por `nome_norm`: o documento vem mascarado nas duas pontas. Cada
+    achado carrega `risco_homonimia`. Nome com menos de quatro palavras é ALTO — "JOSE SILVA" na
+    folha do Estado e "JOSE SILVA" no quadro societário podem ser duas pessoas. Confirmar exige
+    CPF completo. CPF não é exibido (LGPD).
+
+    Credor que é ente público (estatal, autarquia) é RESSALVADO, não somado: uma estatal não tem
+    sócio pessoa física no sentido desta lente.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        pagos = {}
+        for doc, nome, pago in con.execute(
+                f"SELECT credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+                f"WHERE {filtro_sql()} GROUP BY 1,2"):
+            raiz = _cnpj_basico(doc)
+            if raiz:
+                pagos[raiz] = (nome, doc, pagos.get(raiz, (None, None, 0.0))[2] + (pago or 0.0))
+        if not pagos:
+            return {"lente": "agente público estadual/ALERJ administrando fornecedor da PCRJ",
+                    "universo": 0, "n": 0, "prevalencia": None, "massa": 0.0, "achados": [],
+                    "ressalvados": []}
+        marks = ",".join("?" for _ in pagos)
+        try:
+            linhas = con.execute(
+                f"SELECT cnpj_basico, nome_socio, qualif_cod, cargo, vinculo, orgao, "
+                f"comissionado, origem FROM agente_publico_societario "
+                f"WHERE cnpj_basico IN ({marks})", tuple(pagos)).fetchall()
+        except sqlite3.OperationalError as e:
+            return {"lente": "agente público estadual/ALERJ administrando fornecedor da PCRJ",
+                    "universo": 0, "n": 0, "prevalencia": None, "massa": 0.0, "achados": [],
+                    "ressalvados": [], "_indisponivel": f"fonte indisponível: {e}"}
+
+        # quantos sócios tem cada fornecedor: quadro numeroso amplia a chance de colisão de nome,
+        # e o leitor precisa disso para pesar o achado
+        n_socios = {}
+        try:
+            for raiz, q in con.execute(
+                    f"SELECT cnpj_basico, count(*) FROM socios_receita "
+                    f"WHERE cnpj_basico IN ({marks}) GROUP BY 1", tuple(pagos)):
+                n_socios[raiz] = q
+        except sqlite3.OperationalError:
+            pass                       # sem a fonte, o campo fica None — INDISPONÍVEL declarado
+        freq = _frequencia_do_nome(con, {l[1] for l in linhas if l[1]})
+        vistos, achados = set(), []
+        for raiz, socio, qualif, cargo, vinculo, orgao, comiss, origem in linhas:
+            q = str(qualif or "").zfill(2)
+            if so_gerencia and q not in QUALIFICACAO_GERE:
+                continue
+            if so_comissionado and not comiss:
+                continue
+            chave = (raiz, socio, q)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            nome_cred, doc_cred, pago = pagos[raiz]
+            achados.append({
+                "fornecedor": nome_cred, "cnpj": doc_cred, "pago": pago,
+                "agente": socio, "qualificacao": QUALIFICACAO_GERE.get(q, f"código {q}"),
+                "cargo": cargo, "vinculo": vinculo, "orgao_do_agente": orgao,
+                "comissionado": bool(comiss), "origem": origem,
+                "risco_homonimia": _grau_homonimia(freq.get(socio)),
+                "portadores_do_nome": freq.get(socio),
+                "n_socios_da_empresa": n_socios.get(raiz),
+                "ressalva": _ressalva_estrutural(con, doc_cred, nome_cred),
+            })
+    finally:
+        con.close()
+    achados.sort(key=lambda a: -a["pago"])
+    exame = [a for a in achados if not a["ressalva"]]
+    # DOIS CORTES. O amplo (qualquer gerência) marca 4,39% dos fornecedores — prevalência alta
+    # demais para ordenar fila, e o topo ainda carrega homônimo de razão social notória. O FORTE
+    # exige que o agente seja COMISSIONADO: cargo de confiança, nomeação discricionária, é onde o
+    # conflito de interesse pesa mais e onde a prevalência cai para 0,75%.
+    fortes = [a for a in exame if a["comissionado"]] if not so_comissionado else exame
+    def _bloco(lista):
+        cnpjs = {a["cnpj"]: a["pago"] for a in lista}
+        return {"n": len(cnpjs), "massa": sum(cnpjs.values()),
+                "prevalencia": len(cnpjs) / len(pagos) if pagos else None, "achados": lista}
+    b_forte, b_amplo = _bloco(fortes), _bloco(exame)
+    rotulo = "administrando" if so_gerencia else "sócio de"
+    return {"lente": f"agente público estadual/ALERJ COMISSIONADO {rotulo} fornecedor da PCRJ",
+            "universo": len(pagos), **b_forte,
+            "corte_amplo": {**b_amplo,
+                            "_nota": "qualquer agente com gerência, comissionado ou efetivo; "
+                                     "4,4% dos fornecedores — não ordena fila sozinho"},
+            "ressalvados": [a for a in achados if a["ressalva"]],
+            "_nota": "cruzamento por nome (documento mascarado nas duas pontas); "
+                     "`risco_homonimia` e `n_socios_da_empresa` graduam a confiança"}
+
+
 LENTES = (me_epp_acima_do_teto, sancao_de_efeito_amplo, pessoa_fisica_em_elemento_de_pj,
           salto_de_faturamento, liquidado_sem_pagamento, fornecedor_quase_exclusivo,
-          socio_comum_a_fornecedores, pago_muito_acima_do_capital)
+          socio_comum_a_fornecedores, pago_muito_acima_do_capital,
+          servidor_estadual_socio_de_fornecedor)
 
 # DESCARTADAS, com o número que as matou — registradas para não voltarem por engano:
 #   · fornecedor_mono_cliente — 8,8% mesmo no corte mais severo; o topo é especialização setorial

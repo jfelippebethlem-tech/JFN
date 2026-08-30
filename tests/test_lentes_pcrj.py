@@ -332,12 +332,14 @@ def test_empresas_de_nomes_distintos_ficam_para_exame(banco_socios):
     assert r["n"] == 1 and r["achados"][0]["ressalva"] is None
 
 
-def test_nome_curto_marca_risco_de_homonimia(banco_socios):
+def test_homonimia_sem_folha_publica_e_indisponivel(banco_socios):
+    """Sem a base de agentes não se sabe quantos portadores o nome tem — INDISPONÍVEL."""
     db = banco_socios(
         despesas=[_d(2022, "SMS", f"{i}" * 8 + "000191", f"EMPRESA {i}", "33903901", 1000.0)
                   for i in (1, 2, 3)],
         socios=[(f"{i}" * 8, "JOSE SILVA") for i in (1, 2, 3)])
-    assert L.socio_comum_a_fornecedores(db)["achados"][0]["risco_homonimia"] == "ALTO"
+    a = L.socio_comum_a_fornecedores(db)["achados"][0]
+    assert a["risco_homonimia"] == "INDISPONIVEL" and a["portadores_do_nome"] is None
 
 
 # ── L8 · capital social ──────────────────────────────────────────────────────────────────────
@@ -379,3 +381,101 @@ def test_fonte_de_socios_ausente_devolve_indisponivel_nao_zero(banco):
     r = L.socio_comum_a_fornecedores(db)
     assert r["prevalencia"] is None
     assert "indisponível" in r["_indisponivel"].lower()
+
+
+# ── L9 · agente público estadual administrando fornecedor municipal ─────────────────────────
+
+DDL_AGENTE = """
+CREATE TABLE agente_publico_societario (nome_norm TEXT, nome_socio TEXT, doc_socio TEXT,
+  cnpj_basico TEXT, qualif_cod TEXT, origem TEXT, cargo TEXT, vinculo TEXT, orgao TEXT,
+  comissionado INT, construido_em TEXT)"""
+
+
+@pytest.fixture()
+def banco_agente(tmp_path):
+    def _criar(despesas, agentes, empresas=()):
+        p = tmp_path / "a.db"
+        con = sqlite3.connect(p)
+        for ddl in (DDL_DESPESA, DDL_CADASTRO, DDL_SANCOES, DDL_EMPRESAS, DDL_SOCIOS, DDL_AGENTE):
+            con.execute(ddl)
+        con.executemany("INSERT INTO pcrj_despesa (exercicio,orgao,credor_documento,credor_nome,"
+                        "natureza,empenhado,liquidado,pago) VALUES (?,?,?,?,?,?,?,?)", despesas)
+        con.executemany("INSERT INTO agente_publico_societario (cnpj_basico,nome_socio,qualif_cod,"
+                        "cargo,vinculo,orgao,comissionado,origem) VALUES (?,?,?,?,?,?,?,?)", agentes)
+        con.executemany("INSERT INTO empresas (cnpj,razao_social,natureza_jur,atividade_princ) "
+                        "VALUES (?,?,?,?)", empresas)
+        con.commit()
+        con.close()
+        return str(p)
+    return _criar
+
+
+def test_socio_quotista_simples_nao_viola_o_estatuto(banco_agente):
+    """O estatuto veda GERÊNCIA, não a cota. 'Sócio' (código 22) fica fora por padrão."""
+    db = banco_agente(
+        despesas=[_d(2022, "SMS", "11111111000191", "ALFA LTDA", "33903901", 1_000_000.0)],
+        agentes=[("11111111", "MARIA DE SOUZA LIMA COSTA", "22", "ANALISTA", "EFETIVO",
+                  "SEC ESTADO", 0, "folha_estado")])
+    assert L.servidor_estadual_socio_de_fornecedor(db)["corte_amplo"]["n"] == 0
+    r = L.servidor_estadual_socio_de_fornecedor(db, so_gerencia=False)
+    assert r["corte_amplo"]["n"] == 1, "com so_gerencia=False o quotista aparece"
+
+
+def test_administrador_entra_e_comissionado_e_o_corte_forte(banco_agente):
+    db = banco_agente(
+        despesas=[_d(2022, "SMS", "11111111000191", "ALFA LTDA", "33903901", 1_000_000.0),
+                  _d(2022, "SMS", "22222222000191", "BETA LTDA", "33903901", 2_000_000.0)],
+        agentes=[("11111111", "MARIA DE SOUZA LIMA COSTA", "49", "ASSISTENTE", "CARGO COMISSAO",
+                  "CASA CIVIL", 1, "folha_estado"),
+                 ("22222222", "JOAO PEREIRA DOS SANTOS NETO", "49", "ANALISTA", "EFETIVO",
+                  "SEC ESTADO", 0, "folha_estado")])
+    r = L.servidor_estadual_socio_de_fornecedor(db)
+    assert r["n"] == 1 and r["achados"][0]["fornecedor"] == "ALFA LTDA"
+    assert r["corte_amplo"]["n"] == 2, "o efetivo não some — fica no corte amplo"
+    assert r["massa"] == pytest.approx(1_000_000.0)
+
+
+def test_banco_e_estatal_sao_ressalvados_por_homonimia(banco_agente):
+    """Quadro numeroso + razão social notória = homônimo, não achado."""
+    db = banco_agente(
+        despesas=[_d(2022, "SMF", "60701190000104", "BANCO ITAU S A", "33903901", 9_000_000.0),
+                  _d(2022, "SMF", "34028316000103", "EMPRESA BRASILEIRA DE CORREIOS",
+                     "33903901", 9_000_000.0)],
+        agentes=[("60701190", "JOSE DA SILVA PEREIRA JUNIOR", "10", "ASSISTENTE II",
+                  "CARGO COMISSAO", "PGE", 1, "folha_estado"),
+                 ("34028316", "ANTONIO CARLOS DE OLIVEIRA", "10", "SUBTENENTE PM", "EFETIVO",
+                  "PMERJ", 0, "folha_estado")])
+    r = L.servidor_estadual_socio_de_fornecedor(db)
+    assert r["n"] == 0
+    assert len(r["ressalvados"]) == 2
+
+
+def test_homonimia_vem_do_numero_de_portadores_nao_do_tamanho_do_nome(banco_agente):
+    """Contar palavras me enganou: 'LUIZ CARLOS DA SILVA' tem quatro e 1.779 portadores.
+    O grau passa a vir do número de pessoas que carregam o nome na folha pública."""
+    comum = [("11111111", "LUIZ CARLOS DA SILVA", "49", f"CARGO {i}", "CARGO COMISSAO", "X", 1,
+              "folha_estado") for i in range(12)]
+    raro = [("22222222", "PEDRO DANIEL STROZENBERG", "49", "DIRETOR", "CARGO COMISSAO", "Y", 1,
+             "folha_estado")]
+    db = banco_agente(
+        despesas=[_d(2022, "SMS", "11111111000191", "ALFA LTDA", "33903901", 1_000_000.0),
+                  _d(2022, "SMS", "22222222000191", "BETA LTDA", "33903901", 1_000_000.0)],
+        agentes=comum + raro)
+    por = {a["fornecedor"]: a for a in L.servidor_estadual_socio_de_fornecedor(db)["achados"]}
+    assert por["ALFA LTDA"]["risco_homonimia"] == "ALTO"
+    assert por["ALFA LTDA"]["portadores_do_nome"] == 12
+    assert por["BETA LTDA"]["risco_homonimia"] == "baixo"
+
+
+def test_um_unico_portador_e_baixo_nunca_nulo():
+    """Um portador prova que NESTA base não há colisão — não prova identidade."""
+    assert L._grau_homonimia(1) == "baixo"
+    assert L._grau_homonimia(5) == "MEDIO"
+    assert L._grau_homonimia(11) == "ALTO"
+    assert L._grau_homonimia(None) == "INDISPONIVEL"
+
+
+def test_fonte_de_agentes_ausente_e_indisponivel(banco):
+    db = banco(despesas=[_d(2022, "SMS", "11111111000191", "X", "33903901", 1000.0)])
+    r = L.servidor_estadual_socio_de_fornecedor(db)
+    assert r["prevalencia"] is None and "indisponível" in r["_indisponivel"].lower()
