@@ -85,7 +85,50 @@ def materializar(limite: int = 50) -> dict:
         bloco["n"] = len(itens) if itens is not None else None  # None = INDISPONÍVEL, não zero
         bloco["topo"] = itens[:limite] if itens else []
     return {"gerado_em": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "limite": limite, "lentes": lentes,
+            # bloco NOVO e aditivo: quem já lê `lentes` não muda de comportamento
+            "pcrj": _materializar_pcrj(limite),
             "aviso": "Indícios para apuração interna — cada lente ORDENA fila, nenhuma acusa."}
+
+
+def _materializar_pcrj(limite: int) -> dict:
+    """Lentes sobre a despesa do MUNICÍPIO do Rio (`tools/lentes_pcrj`).
+
+    Contrato diferente do das lentes estaduais: cada uma devolve um dicionário com `universo`,
+    `prevalencia` e `massa`, não uma lista. A prevalência viaja junto porque é o que decide se o
+    sinal discrimina — publicar contagem sem denominador é o erro que a casa já catalogou."""
+    from lentes_pcrj import LENTES
+
+    saida = {}
+    for fn in LENTES:
+        b = _seguro(fn.__name__, fn)
+        r = b.pop("itens", None)
+        if not b["ok"] or r is None:
+            saida[fn.__name__] = {**b, "n": None, "topo": []}
+            continue
+        saida[fn.__name__] = {
+            "ok": True, "segundos": b["segundos"],
+            "titulo": r["lente"],
+            "n": r["n"], "universo": r["universo"],
+            "prevalencia": r["prevalencia"],      # None = INDISPONÍVEL, jamais 0%
+            "massa": r["massa"],
+            "topo": (r["achados"] or [])[:limite],
+            # o que foi RESSALVADO fica contado e visível: sumir com ele esconderia o dia em que
+            # a concessionária cobrar demais
+            "n_ressalvados": len(r.get("ressalvados") or []),
+            "n_inconclusivos": len(r.get("inconclusivos") or []),
+            "indisponivel": r.get("_indisponivel"),
+            "nota": r.get("_nota"),
+        }
+    return {"universo_contratual": _universo_pcrj(), "lentes": saida}
+
+
+def _universo_pcrj() -> dict:
+    """O denominador declarado: quanto do bruto entra no exame contratual, e o que saiu."""
+    from compliance_agent.pcrj.universo import resumo
+    try:
+        return resumo(str(DB))
+    except (sqlite3.Error, OSError, KeyError) as e:
+        return {"indisponivel": f"{type(e).__name__}: {e}"}
 
 
 def main() -> int:
@@ -103,6 +146,16 @@ def main() -> int:
         n = b["n"] if b["n"] is not None else "INDISPONÍVEL"
         print(f"  {nome:22s} {str(n):>12}  {b['segundos']:5.1f}s"
               f"{'' if b['ok'] else '  ← ' + b['erro'][:60]}")
+    u = estado["pcrj"].get("universo_contratual", {})
+    if "contratual" in u:
+        from compliance_agent.reporting.intel_base import moeda
+        print(f"\n  PCRJ · universo contratual: R$ {moeda(u['contratual']['pago'])} "
+              f"({u['fracao_do_bruto']*100:.1f}% do bruto)")
+    for nome, b in estado["pcrj"]["lentes"].items():
+        n = b["n"] if b["n"] is not None else "INDISPONÍVEL"
+        pv = f"{b['prevalencia']*100:.2f}%" if b.get("prevalencia") is not None else "INDISP."
+        print(f"  pcrj.{nome:24s} {str(n):>8} {pv:>9}  {b['segundos']:5.1f}s"
+              f"{'' if b['ok'] else '  ← ' + str(b.get('erro'))[:50]}")
     print(f"\n{SAIDA.relative_to(RAIZ)} ({SAIDA.stat().st_size:,} bytes)")
     return 0
 

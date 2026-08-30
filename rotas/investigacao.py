@@ -2369,7 +2369,7 @@ def api_fontes_frescor():
 
 
 @router.get("/api/lentes")
-def api_lentes(lente: Optional[str] = None, top: int = 20):
+def api_lentes(lente: Optional[str] = None, top: int = 20, esfera: str = "estadual"):
     """Lentes de detecção materializadas: convergência, dependência mútua, sanção, porte.
 
     Lê `data/lentes_estado.json` (gravado por `tools/lentes_materializar.py`) — NÃO calcula na
@@ -2377,7 +2377,13 @@ def api_lentes(lente: Optional[str] = None, top: int = 20):
 
     Honestidade: cada lente ORDENA fila de apuração, nenhuma acusa. Lente que falhou na
     materialização volta com `n: null` (INDISPONÍVEL), nunca com zero.
-    Filtros: `?lente=convergencia&top=20`."""
+    Filtros: `?lente=convergencia&top=20`.
+
+    `esfera=municipal` devolve as lentes da despesa da PREFEITURA do Rio, que trazem junto o
+    `universo_contratual` — o denominador. Sem ele, contagem de lente municipal não se lê: os
+    R$ 89,62 bi brutos incluem folha, dívida e precatório, e só R$ 30,64 bi (34,2%) são
+    contratação. As municipais também devolvem `prevalencia`, `n_ressalvados` e
+    `n_inconclusivos`, porque o que foi qualificado não pode sumir da conta."""
     caminho = RAIZ / "data" / "lentes_estado.json"
     try:
         estado = json.loads(caminho.read_text(encoding="utf-8"))
@@ -2385,6 +2391,19 @@ def api_lentes(lente: Optional[str] = None, top: int = 20):
         return JSONResponse({"ok": False, "erro": f"lentes não materializadas: {exc}",
                              "dica": "rode tools/lentes_materializar.py"}, status_code=503)
     top = max(1, min(int(top or 20), 200))
+    if str(esfera).lower().startswith("municip"):
+        bloco = estado.get("pcrj") or {}
+        lentes = bloco.get("lentes", {})
+        if lente:
+            if lente not in lentes:
+                return JSONResponse({"ok": False, "erro": f"lente municipal desconhecida: {lente}",
+                                     "disponiveis": sorted(lentes)}, status_code=404)
+            lentes = {lente: lentes[lente]}
+        saida = {k: {**v, "topo": (v.get("topo") or [])[:top]} for k, v in lentes.items()}
+        return JSONResponse({"ok": True, "esfera": "municipal",
+                             "gerado_em": estado.get("gerado_em"),
+                             "universo_contratual": bloco.get("universo_contratual"),
+                             "lentes": saida, "aviso": estado.get("aviso")})
     lentes = estado.get("lentes", {})
     if lente:
         if lente not in lentes:
@@ -2392,5 +2411,6 @@ def api_lentes(lente: Optional[str] = None, top: int = 20):
                                  "disponiveis": sorted(lentes)}, status_code=404)
         lentes = {lente: lentes[lente]}
     saida = {k: {**v, "topo": (v.get("topo") or [])[:top]} for k, v in lentes.items()}
-    return JSONResponse({"ok": True, "gerado_em": estado.get("gerado_em"), "lentes": saida,
+    return JSONResponse({"ok": True, "esfera": "estadual",
+                         "gerado_em": estado.get("gerado_em"), "lentes": saida,
                          "aviso": estado.get("aviso")})
