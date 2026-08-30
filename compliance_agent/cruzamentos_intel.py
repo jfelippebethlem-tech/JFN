@@ -933,6 +933,36 @@ def _norm_item(desc: str) -> str:
     return " ".join(sorted(set(toks)))  # ordem-insensível: "caneta azul" == "azul caneta"
 
 
+TOKENS_ITEM_COMPARAVEL = 3   # descrição com <3 tokens úteis não sustenta comparação de preço
+
+
+def comparabilidade_item(desc: str) -> tuple[str, str]:
+    """Diz se a descrição do item sustenta comparação de PREÇO entre certames.
+
+    `_norm_item` casa descrições idênticas token a token — o casamento é exato, não por
+    substring. O problema não é o casamento: é a POBREZA da descrição. "Seringa",
+    "INSULINA", "Ração animal" casam com outros itens de mesmo nome que podem ser produtos
+    inteiramente distintos (seringa descartável × seringa de bomba de infusão; insulina NPH ×
+    análoga de ação prolongada). A razão contra a mediana então mede heterogeneidade de
+    produto, não sobrepreço.
+
+    Medido em 30/08/2026 sobre os 488 flags `sobrepreco_vs_mediana` do índice: **62,9%
+    nasciam de descrições com ≤2 tokens.**
+
+    NÃO cortamos esses flags. O controle positivo mostrou que 41 deles têm razão ≥10× —
+    entre eles "Agulha Hipodérmica" a 74× — e um corte seco os perderia. Declaramos a
+    fragilidade e deixamos o exame humano decidir, que é a doutrina da casa: INDISPONÍVEL e
+    FRÁGIL se declaram, não se apagam.
+
+    Devolve ("FORTE"|"FRACA", motivo por extenso)."""
+    toks = _norm_item(desc).split()
+    if len(toks) < TOKENS_ITEM_COMPARAVEL:
+        return ("FRACA", f"descrição com {len(toks)} token(s) úteis: itens de nome igual e "
+                         f"especificação distinta caem na mesma mediana — a razão pode medir "
+                         f"produto diferente, não preço fora de curva")
+    return ("FORTE", f"descrição com {len(toks)} tokens úteis")
+
+
 def _mediana(xs: list) -> float:
     xs = sorted(xs)
     n = len(xs)

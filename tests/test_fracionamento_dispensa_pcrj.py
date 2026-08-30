@@ -135,3 +135,32 @@ def test_bunching_conta_faixas_e_nao_divide_por_zero(banco):
     assert bn["colado_5pct_abaixo"] == 1
     assert bn["acima_do_teto"] == 0
     assert bn["razao"] is None          # sem nenhuma acima, a razão é INDISPONÍVEL, não infinito
+
+
+# --- comparabilidade do item (mora em cruzamentos_intel, usada pelo índice de certames) ---
+
+def test_descricao_pobre_e_declarada_fraca():
+    from compliance_agent.cruzamentos_intel import comparabilidade_item
+    for d in ("Seringa", "INSULINA", "Álcool Etílico", "Agulha Hipodérmica"):
+        comp, motivo = comparabilidade_item(d)
+        assert comp == "FRACA", d
+        assert "token" in motivo
+
+
+def test_descricao_especificada_e_forte():
+    from compliance_agent.cruzamentos_intel import comparabilidade_item
+    comp, _ = comparabilidade_item(
+        "TIPO: SUBCLAVIA, MATERIAL CATETER: PTFE, USO: HEMODINAMICA")
+    assert comp == "FORTE"
+
+
+def test_fraca_nao_zera_o_flag_apenas_declara():
+    """O controle positivo achou 41 flags frágeis com razão >=10x — cortar perderia sinal real.
+    A fragilidade se DECLARA; o valor do flag não pode ser silenciosamente rebaixado."""
+    import inspect
+
+    from compliance_agent.editais import indice_certame
+    src = inspect.getsource(indice_certame._f_preco)
+    assert 'fl["comparabilidade"]' in src          # campo aditivo existe
+    # o valor do flag vem de `melhor[0]`, calculado só a partir da razão — sem fator de comparabilidade
+    assert "_flag(\"sobrepreco_vs_mediana\", melhor[0], melhor[1])" in src
