@@ -124,6 +124,33 @@ def test_so_sancao_de_efeito_amplo_entra(banco):
                  ("CNEP", "33333333000191", "Multa", "2020-01-01", None, "CGE")])
     r = L.sancao_de_efeito_amplo(db)
     assert [a["nome"] for a in r["achados"]] == ["INIDONEA"]
+    assert r["achados"][0]["veredito"] == "CONCLUSIVO"
+
+
+def test_sancao_que_cobre_so_parte_do_exercicio_e_inconclusiva(banco):
+    """A base não tem data de pagamento. Sanção que começa em agosto não permite afirmar que a
+    OB de março caiu dentro da vigência — vira fila de conferência, não achado."""
+    db = banco(
+        despesas=[_d(2019, "SMS", "11111111000191", "PARCIAL", "33903901", 2_000_000.0),
+                  _d(2022, "SMS", "11111111000191", "PARCIAL", "33903901", 60_000.0)],
+        sancoes=[("CEIS", "11111111000191", "Declaração de Inidoneidade sem prazo determinado",
+                  "2019-08-26", None, "TJRJ")])
+    r = L.sancao_de_efeito_amplo(db)
+    assert [a["exercicio"] for a in r["achados"]] == [2022], "2019 tem sobreposição parcial"
+    assert [a["exercicio"] for a in r["inconclusivos"]] == [2019]
+    assert r["inconclusivos"][0]["veredito"] == "INCONCLUSIVO"
+    assert "data da OB" in r["inconclusivos"][0]["motivo"]
+    assert r["massa"] == pytest.approx(60_000.0), "a massa só soma o que é conclusivo"
+
+
+def test_inconclusivo_fica_visivel_e_nao_e_descartado(banco):
+    db = banco(
+        despesas=[_d(2019, "SMS", "11111111000191", "X", "33903901", 500.0)],
+        sancoes=[("CEIS", "11111111000191", "Declaração de Inidoneidade sem prazo determinado",
+                  "2019-08-26", None, "TJRJ")])
+    r = L.sancao_de_efeito_amplo(db)
+    assert r["n"] == 0
+    assert len(r["inconclusivos"]) == 1, "sumir com ele perderia a fila de conferência"
 
 
 def test_sancao_encerrada_antes_do_exercicio_nao_conta(banco):
@@ -235,3 +262,120 @@ def test_toda_lente_declara_universo_prevalencia_e_massa(banco):
         assert isinstance(r["lente"], str) and len(r["lente"]) > 10
         if r["universo"] == 0:
             assert r["prevalencia"] is None, f"{f.__name__}: universo vazio virou 0%, não INDISPONÍVEL"
+
+
+# ── L7 · sócio comum ─────────────────────────────────────────────────────────────────────────
+
+DDL_SOCIOS = """
+CREATE TABLE socios_receita (cnpj_basico TEXT, ident TEXT, nome_socio TEXT, nome_norm TEXT,
+  doc_socio TEXT, qualificacao_cod TEXT, qualificacao_txt TEXT, data_entrada TEXT,
+  faixa_etaria TEXT, fonte_mes TEXT)"""
+
+
+@pytest.fixture()
+def banco_socios(tmp_path):
+    def _criar(despesas, socios):
+        p = tmp_path / "s.db"
+        con = sqlite3.connect(p)
+        for ddl in (DDL_DESPESA, DDL_CADASTRO, DDL_SANCOES, DDL_EMPRESAS, DDL_SOCIOS):
+            con.execute(ddl)
+        con.executemany("INSERT INTO pcrj_despesa (exercicio,orgao,credor_documento,credor_nome,"
+                        "natureza,empenhado,liquidado,pago) VALUES (?,?,?,?,?,?,?,?)", despesas)
+        con.executemany("INSERT INTO socios_receita (cnpj_basico,nome_norm) VALUES (?,?)", socios)
+        con.commit()
+        con.close()
+        return str(p)
+    return _criar
+
+
+def test_socio_comum_exige_o_minimo_de_empresas(banco_socios):
+    db = banco_socios(
+        despesas=[_d(2022, "SMS", "11111111000191", "ALFA", "33903901", 1000.0),
+                  _d(2022, "SMS", "22222222000191", "BETA", "33903901", 1000.0)],
+        socios=[("11111111", "JOAO DA SILVA SANTOS"), ("22222222", "JOAO DA SILVA SANTOS")])
+    assert L.socio_comum_a_fornecedores(db, minimo=3)["n"] == 0
+    assert L.socio_comum_a_fornecedores(db, minimo=2)["n"] == 1
+
+
+def test_consorcio_e_consorciada_e_ressalvado(banco_socios):
+    """O consórcio partilha sócio com a consorciada por definição — vínculo declarado."""
+    db = banco_socios(
+        despesas=[_d(2022, "SMS", "11111111000191", "CONSORCIO VIEIRA BRT", "33903901", 1000.0),
+                  _d(2022, "SMS", "22222222000191", "F P VIEIRA ENGENHARIA LTDA", "33903901", 1000.0),
+                  _d(2022, "SMS", "33333333000191", "FMV CONSTRUCOES LTDA", "33903901", 1000.0)],
+        socios=[("11111111", "MARIA VIEIRA DE SOUZA"), ("22222222", "MARIA VIEIRA DE SOUZA"),
+                ("33333333", "MARIA VIEIRA DE SOUZA")])
+    r = L.socio_comum_a_fornecedores(db)
+    assert r["n"] == 0 and len(r["ressalvados"]) == 1
+    assert "consórcio" in r["ressalvados"][0]["ressalva"]
+
+
+def test_radical_comum_e_grupo_declarado_no_nome(banco_socios):
+    db = banco_socios(
+        despesas=[_d(2022, "SMS", "11111111000191", "CLARO S. A.", "33903901", 1000.0),
+                  _d(2022, "SMS", "22222222000191", "CLARO NXT TELECOMUNICACOES SA", "33903901", 1000.0),
+                  _d(2022, "SMS", "33333333000191", "CLARO PARTICIPACOES LTDA", "33903901", 1000.0)],
+        socios=[(f"{i}" * 8, "ACIONISTA CONTROLADOR UNICO") for i in (1, 2, 3)])
+    r = L.socio_comum_a_fornecedores(db)
+    assert r["n"] == 0, "grupo anunciado no nome não é rede oculta"
+    assert "radical" in r["ressalvados"][0]["ressalva"]
+
+
+def test_empresas_de_nomes_distintos_ficam_para_exame(banco_socios):
+    """O corte tem de DEIXAR PASSAR o que interessa: nomes sem parentesco aparente."""
+    db = banco_socios(
+        despesas=[_d(2022, "SMS", "11111111000191", "OBRA PRIMA CONSTRUCAO LTDA", "33903901", 1000.0),
+                  _d(2022, "SMS", "22222222000191", "MASSIMO OBRAS EIRELI", "33903901", 1000.0),
+                  _d(2022, "SMS", "33333333000191", "ARIA COMERCIO HOSPITALAR", "33903901", 1000.0)],
+        socios=[(f"{i}" * 8, "PESSOA COM NOME COMPRIDO") for i in (1, 2, 3)])
+    r = L.socio_comum_a_fornecedores(db)
+    assert r["n"] == 1 and r["achados"][0]["ressalva"] is None
+
+
+def test_nome_curto_marca_risco_de_homonimia(banco_socios):
+    db = banco_socios(
+        despesas=[_d(2022, "SMS", f"{i}" * 8 + "000191", f"EMPRESA {i}", "33903901", 1000.0)
+                  for i in (1, 2, 3)],
+        socios=[(f"{i}" * 8, "JOSE SILVA") for i in (1, 2, 3)])
+    assert L.socio_comum_a_fornecedores(db)["achados"][0]["risco_homonimia"] == "ALTO"
+
+
+# ── L8 · capital social ──────────────────────────────────────────────────────────────────────
+
+def test_capital_ausente_fica_fora_do_universo(banco):
+    """Sem capital declarado nada se conclui — INDISPONÍVEL, não 'capital baixo'."""
+    db = banco(despesas=[_d(2022, "SMS", "11111111000191", "X", "33903901", 9_000_000.0)],
+               cadastro=[])
+    r = L.pago_muito_acima_do_capital(db)
+    assert r["universo"] == 0 and r["prevalencia"] is None
+
+
+def test_piso_de_pagamento_evita_ruido_aritmetico(banco, tmp_path):
+    con = sqlite3.connect(tmp_path / "c.db")
+    for ddl in (DDL_DESPESA, DDL_CADASTRO, DDL_SANCOES, DDL_EMPRESAS):
+        con.execute(ddl)
+    con.execute("INSERT INTO pcrj_despesa (exercicio,orgao,credor_documento,credor_nome,natureza,"
+                "empenhado,liquidado,pago) VALUES (2022,'SMS','11111111000191','X','33903901',"
+                "150000,150000,150000)")
+    con.execute("INSERT INTO empresas_cadastro (cnpj_basico,capital_social) VALUES ('11111111',1000)")
+    con.commit()
+    con.close()
+    r = L.pago_muito_acima_do_capital(str(tmp_path / "c.db"))
+    assert r["n"] == 0, "R$ 150 mil sobre capital de R$ 1 mil é 150x, mas está abaixo do piso"
+
+
+# ── lente descartada ─────────────────────────────────────────────────────────────────────────
+
+def test_mono_cliente_esta_fora_das_lentes_ativas():
+    """Descartada por prevalência: 8,8% mesmo no corte mais severo. Fica registrada."""
+    assert L.fornecedor_mono_cliente not in L.LENTES
+    assert L.fornecedor_mono_cliente in L.DESCARTADAS
+    assert "DESCARTADA" in L.fornecedor_mono_cliente.__doc__
+
+
+def test_fonte_de_socios_ausente_devolve_indisponivel_nao_zero(banco):
+    """Sem `socios_receita`, a resposta honesta é INDISPONÍVEL — não 'nenhum sócio comum'."""
+    db = banco(despesas=[_d(2022, "SMS", "11111111000191", "X", "33903901", 1000.0)])
+    r = L.socio_comum_a_fornecedores(db)
+    assert r["prevalencia"] is None
+    assert "indisponível" in r["_indisponivel"].lower()

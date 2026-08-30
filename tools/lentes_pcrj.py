@@ -28,6 +28,7 @@ LIMITES HERDADOS DA FONTE (medidos, não supostos)
 from __future__ import annotations
 
 import re
+import sqlite3
 from collections import defaultdict
 
 from compliance_agent.pcrj.universo import conectar, filtro_sql
@@ -186,14 +187,34 @@ def sancao_de_efeito_amplo(db_path=None) -> dict:
         universo += 1
         vig = [(c, i, f) for c, i, f in sanc.get(d, [])
                if (i or "9999") <= f"{ano}-12-31" and (f is None or f == "" or f >= f"{ano}-01-01")]
-        if vig:
-            achados.append({"exercicio": ano, "cnpj": doc, "nome": nome, "pago": pago,
-                            "sancoes": vig})
-    achados.sort(key=lambda a: -a["pago"])
-    return {"lente": "credor sob sanção de efeito AMPLO no exercício pago",
-            "universo": universo, "n": len(achados),
-            "prevalencia": len(achados) / universo if universo else None,
-            "massa": sum(a["pago"] for a in achados), "achados": achados}
+        if not vig:
+            continue
+        # COBERTURA DO EXERCÍCIO. A base não traz a data do pagamento — só o exercício. Se a
+        # sanção começou (ou terminou) no meio do ano, o pagamento pode ter ocorrido fora da
+        # vigência e o achado é INCONCLUSIVO até se obter a data da OB. Só é conclusivo quando a
+        # sanção cobre 01/01 a 31/12 inteiros. Medido no caso LAQUIX: a inidoneidade é de
+        # 26/08/2019, então os R$ 2.005.896,08 pagos em 2019 NÃO se pode afirmar irregulares —
+        # mas os R$ 69.432,29 de 2022 sim, porque 2022 está inteiro dentro da vigência.
+        integral = [(c, i, f) for c, i, f in vig
+                    if (i or "9999") <= f"{ano}-01-01"
+                    and (f is None or f == "" or f >= f"{ano}-12-31")]
+        achados.append({"exercicio": ano, "cnpj": doc, "nome": nome, "pago": pago,
+                        "sancoes": vig, "cobertura_integral": bool(integral),
+                        "veredito": "CONCLUSIVO" if integral else "INCONCLUSIVO",
+                        "motivo": ("sanção vigente durante todo o exercício"
+                                   if integral else
+                                   "sanção vigente em PARTE do exercício — exige a data da OB "
+                                   "para afirmar que o pagamento caiu dentro da vigência")})
+    achados.sort(key=lambda a: (not a["cobertura_integral"], -a["pago"]))
+    conclusivos = [a for a in achados if a["cobertura_integral"]]
+    return {"lente": "credor sob sanção de efeito AMPLO durante TODO o exercício pago",
+            "universo": universo, "n": len(conclusivos),
+            "prevalencia": len(conclusivos) / universo if universo else None,
+            "massa": sum(a["pago"] for a in conclusivos), "achados": conclusivos,
+            # os inconclusivos ficam visíveis: são fila de conferência, não descarte
+            "inconclusivos": [a for a in achados if not a["cobertura_integral"]],
+            "_nota": "`pcrj_despesa` não tem data de pagamento; a vigência é aferida contra o "
+                     "exercício inteiro. Sobreposição parcial vira fila de conferência da OB"}
 
 
 # ── L3 · pessoa física recebendo em elemento típico de pessoa jurídica ───────────────────────
@@ -352,8 +373,204 @@ def fornecedor_quase_exclusivo(db_path=None, corte: float = 0.80,
                      "o orçamento inteiro. Os dois são verdadeiros e medem coisas diferentes"}
 
 
+_PALAVRA_VAZIA_RAZAO = {"a", "de", "do", "da", "e", "s", "sa", "ltda", "eireli", "me", "epp",
+                        "cia", "companhia", "empresa", "grupo", "brasil", "rio", "servicos",
+                        "servico", "comercio", "industria", "participacoes"}
+
+
+def _radical(razao: str) -> str | None:
+    """Primeira palavra significativa da razão social — o 'sobrenome' da empresa.
+
+    Serve para reconhecer grupo econômico ANUNCIADO no nome (CLARO S.A. / CLARO NXT), que não é
+    rede oculta. Devolve None quando não há palavra útil, e nesse caso nada se conclui."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(razao or "")).encode("ascii", "ignore").decode().lower()
+    for w in re.findall(r"[a-z0-9]{2,}", s):
+        if w not in _PALAVRA_VAZIA_RAZAO:
+            return w
+    return None
+
+
+# ── L7 · sócio comum a vários fornecedores do Município ─────────────────────────────────────
+
+def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
+    """Pessoa que figura no quadro societário de `minimo` ou mais fornecedores pagos pela PCRJ.
+
+    Sinal de REDE, não de volume: um sócio que aparece em três empresas que vendem ao mesmo ente
+    pode significar grupo econômico não declarado — o que compromete a independência das
+    propostas (art. 14, IV da Lei 14.133) e a fruição de benefício de porte por empresas que, em
+    conjunto, não seriam ME/EPP (LC 123/2006, art. 3º, §4º).
+
+    ⚠️ CASAMENTO POR NOME, e a fragilidade é estrutural: `socios_receita.doc_socio` vem
+    **mascarado**. Homônimos existem, e nomes muito comuns produzem falso positivo. Cada achado
+    carrega `risco_homonimia` alto quando o nome tem menos de três palavras. CPF não é exibido.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        pagos = {}
+        for doc, nome, pago in con.execute(
+                f"SELECT credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+                f"WHERE {filtro_sql()} GROUP BY 1,2"):
+            raiz = _cnpj_basico(doc)
+            if raiz:
+                pagos[raiz] = (nome, pagos.get(raiz, (None, 0.0))[1] + (pago or 0.0))
+        if not pagos:
+            return {"lente": f"sócio comum a {minimo}+ fornecedores do Município", "universo": 0,
+                    "n": 0, "prevalencia": None, "massa": 0.0, "achados": []}
+        marks = ",".join("?" for _ in pagos)
+        socios = defaultdict(set)
+        try:
+            linhas = con.execute(
+                f"SELECT nome_norm, cnpj_basico FROM socios_receita "
+                f"WHERE cnpj_basico IN ({marks})", tuple(pagos)).fetchall()
+        except sqlite3.OperationalError as e:
+            # fonte não coletada = INDISPONÍVEL, jamais "nenhum sócio comum". Devolver 0 aqui
+            # afirmaria ausência de vínculo onde não se olhou.
+            return {"lente": f"sócio comum a {minimo}+ fornecedores do Município",
+                    "universo": 0, "n": 0, "prevalencia": None, "massa": 0.0, "achados": [],
+                    "ressalvados": [], "_indisponivel": f"socios_receita indisponível: {e}"}
+        for nome_norm, raiz in linhas:
+            if nome_norm:
+                socios[nome_norm].add(raiz)
+    finally:
+        con.close()
+    achados = []
+    for nome_norm, raizes in socios.items():
+        if len(raizes) < minimo:
+            continue
+        forn = sorted((pagos[r][0], pagos[r][1]) for r in raizes if r in pagos)
+        # RESSALVA ESTRUTURAL: consórcio partilha sócio com as consorciadas POR DEFINIÇÃO. O
+        # vínculo é público e declarado no instrumento — não é rede oculta. Achado sem esta
+        # ressalva coroava "CONSÓRCIO VIEIRA BRT + F P VIEIRA ENGENHARIA" como se fosse
+        # descoberta, quando é a estrutura normal de um consórcio de obra.
+        consorcios = [n for n, _ in forn if re.search(r"cons[óo]rcio", str(n), re.I)]
+        ressalva = None
+        # RADICAL COMUM: "CLARO S.A." + "CLARO NXT" ou "DAVITA BRASIL" + "DAVITA SERVIÇOS" são
+        # grupo econômico DECLARADO — o nome anuncia o vínculo. Não é descoberta. O corte é bom
+        # justamente porque deixa passar o que interessa: CDR/Centro Nefrológico/RenalVida e
+        # Obra Prima/Massimo/Aria NÃO partilham radical, e são esses que merecem exame.
+        radicais = {_radical(n) for n, _ in forn}
+        if len(radicais) == 1 and next(iter(radicais)):
+            ressalva = (f"todas as empresas partilham o radical '{next(iter(radicais))}' — "
+                        f"grupo econômico declarado no próprio nome")
+        elif consorcios and len(consorcios) < len(forn):
+            ressalva = (f"grupo inclui {len(consorcios)} consórcio(s) e suas consorciadas — "
+                        f"vínculo declarado no instrumento, não rede oculta")
+        elif len(consorcios) == len(forn):
+            ressalva = "todos os fornecedores são consórcios — sócio comum é a própria consorciada"
+        achados.append({
+            "socio": nome_norm,
+            "n_fornecedores": len(raizes),
+            "fornecedores": forn,
+            "pago_somado": sum(pagos[r][1] for r in raizes if r in pagos),
+            "risco_homonimia": "ALTO" if len(str(nome_norm).split()) < 3 else "normal",
+            "ressalva": ressalva,
+        })
+    achados.sort(key=lambda a: -a["pago_somado"])
+    exame = [a for a in achados if not a["ressalva"]]
+    return {"lente": f"sócio comum a {minimo}+ fornecedores do Município",
+            "universo": len(socios), "n": len(exame),
+            "prevalencia": len(exame) / len(socios) if socios else None,
+            "massa": sum(a["pago_somado"] for a in exame), "achados": exame,
+            "ressalvados": [a for a in achados if a["ressalva"]]}
+
+
+# ── L8 · recebimento desproporcional ao capital social declarado ────────────────────────────
+
+def pago_muito_acima_do_capital(db_path=None, fator: float = 100.0,
+                                piso_pago: float = 1_000_000.0) -> dict:
+    """Empresa que recebeu, num exercício, mais de `fator` vezes o próprio capital social.
+
+    Capital social é a medida declarada de capacidade econômica. Receber 100× isso em um ano não
+    é ilegal — capital social baixo é comum e legítimo — mas, combinado com objeto que exige
+    estrutura (obra, fornecimento de grande porte), é o retrato clássico da empresa que não tinha
+    lastro para executar. Piso de R$ 1 mi evita que capital de R$ 1.000,00 com contrato de
+    R$ 150.000,00 domine o resultado por aritmética.
+
+    Capital ausente ou zero devolve o credor FORA do universo — INDISPONÍVEL, não "capital baixo".
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        capital = {r[0]: r[1] for r in con.execute(
+            "SELECT cnpj_basico, capital_social FROM empresas_cadastro "
+            "WHERE capital_social IS NOT NULL AND capital_social > 0")}
+        rows = con.execute(
+            f"SELECT exercicio, credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+            f"WHERE {filtro_sql()} GROUP BY 1,2,3 HAVING sum(pago) >= ?", (piso_pago,)).fetchall()
+    finally:
+        con.close()
+    achados, universo = [], 0
+    for ano, doc, nome, pago in rows:
+        raiz = _cnpj_basico(doc)
+        cap = capital.get(raiz) if raiz else None
+        if not cap:
+            continue
+        universo += 1
+        if pago > fator * cap:
+            achados.append({"exercicio": ano, "cnpj": doc, "nome": nome, "pago": pago,
+                            "capital_social": cap, "razao": pago / cap})
+    achados.sort(key=lambda a: -a["razao"])
+    return {"lente": f"recebimento anual acima de {fator:.0f}× o capital social declarado",
+            "universo": universo, "n": len(achados),
+            "prevalencia": len(achados) / universo if universo else None,
+            "massa": sum(a["pago"] for a in achados), "achados": achados}
+
+
+# ── L9 · fornecedor que vive de um único órgão ──────────────────────────────────────────────
+
+def fornecedor_mono_cliente(db_path=None, piso: float = 5_000_000.0) -> dict:
+    """⚠️ DESCARTADA como lente — fica no módulo para não ser reimplementada.
+
+    Hipótese: credor de alto valor cuja receita municipal inteira vem de UM só órgão seria
+    candidato a exame de vínculo.
+
+    **Não discrimina.** Medido em 30/08/2026, varrendo piso × exigência de anos:
+
+    | piso | anos mín. | universo | casos | prevalência |
+    |---|---:|---:|---:|---:|
+    | R$ 5.000.000,00 | 1 | 602 | 211 | 35,0% |
+    | R$ 5.000.000,00 | 5 | 602 | 62 | 10,3% |
+    | R$ 20.000.000,00 | 5 | 237 | 24 | 10,1% |
+    | R$ 50.000.000,00 | 5 | 102 | 9 | **8,8%** |
+
+    O piso mais severo ainda marca quase 1 em cada 11, e o topo é **especialização setorial
+    legítima**: limpeza urbana, nefrologia, sinalização viária, diabetes. Vender só à Secretaria
+    de Saúde não é indício quando a empresa é uma clínica de nefrologia.
+
+    Fica fora de `LENTES`. Continua chamável para inspeção manual.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        rows = con.execute(
+            f"SELECT credor_documento, credor_nome, orgao, sum(pago) FROM pcrj_despesa "
+            f"WHERE {filtro_sql()} GROUP BY 1,2,3").fetchall()
+    finally:
+        con.close()
+    por_credor = defaultdict(list)
+    for doc, nome, org, pago in rows:
+        por_credor[(str(doc), str(nome))].append((org, pago))
+    achados, universo = [], 0
+    for (doc, nome), orgs in por_credor.items():
+        total = sum(p for _, p in orgs)
+        if total < piso:
+            continue
+        universo += 1
+        if len({o for o, _ in orgs}) == 1:
+            achados.append({"cnpj": doc, "nome": nome, "orgao": orgs[0][0], "pago": total})
+    achados.sort(key=lambda a: -a["pago"])
+    return {"lente": f"fornecedor de R$ {moeda(piso)}+ com receita municipal de UM só órgão",
+            "universo": universo, "n": len(achados),
+            "prevalencia": len(achados) / universo if universo else None,
+            "massa": sum(a["pago"] for a in achados), "achados": achados}
+
+
 LENTES = (me_epp_acima_do_teto, sancao_de_efeito_amplo, pessoa_fisica_em_elemento_de_pj,
-          salto_de_faturamento, liquidado_sem_pagamento, fornecedor_quase_exclusivo)
+          salto_de_faturamento, liquidado_sem_pagamento, fornecedor_quase_exclusivo,
+          socio_comum_a_fornecedores, pago_muito_acima_do_capital)
+
+# DESCARTADAS, com o número que as matou — registradas para não voltarem por engano:
+#   · fornecedor_mono_cliente — 8,8% mesmo no corte mais severo; o topo é especialização setorial
+DESCARTADAS = (fornecedor_mono_cliente,)
 
 
 def rodar_todas(db_path=None) -> list[dict]:
