@@ -231,3 +231,30 @@ def test_pico_devolve_a_serie_inteira(banco):
 def test_mercado_estavel_nao_e_marcado(banco):
     linhas = [_sub(ano, "3004", "1" * 14, 10e6) for ano in (2019, 2020, 2021, 2022)]
     assert E.pico_de_gasto_por_subelemento(banco(linhas), piso=1_000_000.0)["n"] == 0
+
+
+# ── premiação paga a fornecedor de bem ──────────────────────────────────────────────────────
+
+def test_premiacao_a_fornecedor_de_bem(banco):
+    """Elemento 31 é para PREMIAR. Distribuidora de hardware que fatura em Equipamentos (52) e
+    recebe 'premiação cultural' está com a despesa classificada em elemento incompatível."""
+    db = banco([_l(2022, "1" * 14, "DATEN TECNOLOGIA", 1e6, 1e6, 1e6, nat="33903101"),
+                _l(2022, "1" * 14, "DATEN TECNOLOGIA", 40e6, 40e6, 40e6, nat="44905202")])
+    r = E.premiacao_a_fornecedor_de_bem(db)
+    assert r["n"] == 1
+    assert r["achados"][0]["elemento_dominante"] == "52"
+    assert r["achados"][0]["pago_como_premiacao"] == pytest.approx(1e6)
+
+
+def test_produtora_cultural_que_recebe_premio_e_presta_servico_nao_e_achado(banco):
+    """São 98 de 656 credores premiados (14,9%) — ganhar edital de fomento E prestar serviço
+    cultural contratado é normal. O que discrimina é o RAMO do credor."""
+    db = banco([_l(2022, "1" * 14, "PRODUTORA", 400e3, 400e3, 400e3, nat="33903101"),
+                _l(2022, "1" * 14, "PRODUTORA", 600e3, 600e3, 600e3, nat="33903901")])
+    assert E.premiacao_a_fornecedor_de_bem(db)["n"] == 0
+
+
+def test_quem_so_recebe_premio_e_premiado_nao_fornecedor(banco):
+    db = banco([_l(2022, "1" * 14, "ARTISTA LTDA", 50e3, 50e3, 50e3, nat="33903101")])
+    r = E.premiacao_a_fornecedor_de_bem(db)
+    assert r["n"] == 0 and r["credores_premiados"] == 1

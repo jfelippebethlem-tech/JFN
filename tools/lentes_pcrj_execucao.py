@@ -297,6 +297,83 @@ def pico_de_gasto_por_subelemento(db_path=None, fator: float = 5.0,
                      "só o volume marca 16,2% dos subelementos"}
 
 
+# ── classificação incompatível: prêmio pago a quem fornece BEM ──────────────────────────────
+
+# Elementos de fornecimento de BEM. Quem os domina é fornecedor de mercadoria, e receber
+# "premiação cultural, artística, científica ou desportiva" é incompatível com esse perfil.
+ELEMENTOS_DE_BEM = ("30", "52")
+ELEMENTO_PREMIACAO = "31"
+
+
+def premiacao_a_fornecedor_de_bem(db_path=None) -> dict:
+    """Elemento 31 (Premiações) pago a credor cujo faturamento é dominado por fornecimento de bem.
+
+    O elemento 31 da Portaria 163/2001 é *Premiações Culturais, Artísticas, Científicas,
+    Desportivas e Outras*. Destina-se a **premiar**, não a comprar. Quando o credor é uma
+    distribuidora de hardware que fatura dezenas de milhões em Equipamentos (52), receber por
+    "premiação" é **classificação incompatível** — e classificação errada não é detalhe contábil:
+    o elemento define qual controle incide, e prêmio não passa pelos mesmos ritos de aquisição.
+
+    DOIS REFINOS, ambos por medição, e o segundo é o que faz a lente valer:
+
+    1. "Credor com elemento minoritário destoante" **não discrimina** — 135 casos e
+       R$ 508.545.908,15 no corte de 10%, e o topo é legítimo: elemento 92 (Despesas de
+       Exercícios Anteriores) de um prestador de serviço, e a alternância normal
+       serviço↔obra de construtora.
+    2. "Recebe premiação E também fornece" também não: são **98 de 656 credores premiados
+       (14,9%)**, e a maioria é produtora cultural que ganha edital de fomento *e* presta
+       serviço cultural contratado — o que é normal.
+
+    O que discrimina é o **ramo do credor**: entram apenas os que dominam elementos de BEM
+    (30 Material de Consumo, 52 Equipamentos). **6 credores, 0,083% do universo,
+    R$ 1.988.022,27.**
+
+    ⚠️ MASSA MODESTA, declarada: R$ 1,99 milhão não é o valor do risco, é o valor do desvio de
+    classificação encontrado. A lente vale pela precisão, não pelo tamanho.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        rows = con.execute(
+            f"SELECT credor_documento, credor_nome, substr(natureza,5,2), sum(pago) "
+            f"FROM pcrj_despesa WHERE {filtro_sql()} GROUP BY 1,2,3").fetchall()
+    finally:
+        con.close()
+    por = defaultdict(lambda: defaultdict(float))
+    nomes, docs = {}, {}
+    for doc, nome, el, pago in rows:
+        raiz = re.sub(r"\D", "", str(doc or ""))[:8]
+        if len(raiz) != 8:
+            continue
+        por[raiz][el] += pago
+        nomes[raiz] = nome
+        docs[raiz] = doc
+    achados, premiados = [], 0
+    for raiz, els in por.items():
+        if els.get(ELEMENTO_PREMIACAO, 0) <= 0:
+            continue
+        premiados += 1
+        outros = {e: v for e, v in els.items() if e != ELEMENTO_PREMIACAO}
+        if not outros:
+            continue                       # só recebe prêmio: é premiado, não fornecedor
+        dominante = max(outros, key=lambda e: outros[e])
+        if dominante in ELEMENTOS_DE_BEM:
+            achados.append({
+                "credor": nomes[raiz], "cnpj": docs[raiz],
+                "pago_como_premiacao": els[ELEMENTO_PREMIACAO],
+                "elemento_dominante": dominante,
+                "elemento_dominante_nome": ELEMENTOS_OFICIAIS.get(dominante),
+                "pago_no_elemento_dominante": outros[dominante],
+            })
+    achados.sort(key=lambda a: -a["pago_como_premiacao"])
+    return {"lente": "premiação (elemento 31) paga a credor que fornece BEM",
+            "universo": len(por), "n": len(achados),
+            "prevalencia": len(achados) / len(por) if por else None,
+            "massa": sum(a["pago_como_premiacao"] for a in achados), "achados": achados,
+            "credores_premiados": premiados,
+            "_nota": "massa modesta e declarada: o valor é o do desvio de classificação, não o "
+                     "do risco. Vale pela precisão (0,08%), não pelo tamanho"}
+
+
 # ── CONTROLE: a cascata da despesa é coerente? ──────────────────────────────────────────────
 
 def cascata_coerente(db_path=None) -> dict:
@@ -431,7 +508,7 @@ def qualidade_cadastral(db_path=None) -> dict:
 
 
 LENTES = (empenhado_sem_pagamento, superempenho, fornecedor_de_exercicio_unico,
-          pico_de_gasto_por_subelemento)
+          pico_de_gasto_por_subelemento, premiacao_a_fornecedor_de_bem)
 CONTROLES = (cascata_coerente, qualidade_cadastral)
 
 
