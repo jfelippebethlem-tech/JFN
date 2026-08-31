@@ -23,6 +23,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 
+from compliance_agent.pcrj.natureza_despesa import ELEMENTOS as ELEMENTOS_OFICIAIS
 from compliance_agent.pcrj.universo import conectar, filtro_sql
 from compliance_agent.reporting.intel_base import moeda
 
@@ -267,7 +268,12 @@ def pico_de_gasto_por_subelemento(db_path=None, fator: float = 5.0,
         so_no_pico = no_pico - outros
         novos = len(so_no_pico) / len(no_pico) if no_pico else 0.0
         achados.append({
-            "subelemento": sub, "ano_de_pico": ano_pico, "pago_no_pico": anos[ano_pico],
+            "subelemento": sub,
+            # rótulo OFICIAL do elemento (Portaria 163). O subelemento fica sem rótulo de
+            # propósito: é desdobramento de livre definição do ente, e não há tabela nacional.
+            "elemento": ELEMENTOS_OFICIAIS.get(sub[:2]),
+            "codigo_elemento": sub[:2], "codigo_subelemento": sub[2:],
+            "ano_de_pico": ano_pico, "pago_no_pico": anos[ano_pico],
             "mediana_dos_exercicios": mediana, "razao": razao,
             "serie": {a: v for a, v in sorted(anos.items())},
             "fornecedores_no_pico": len(no_pico),

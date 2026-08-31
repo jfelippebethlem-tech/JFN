@@ -35,28 +35,19 @@ from __future__ import annotations
 
 import sqlite3
 
+from compliance_agent.pcrj.natureza_despesa import ELEMENTOS_NAO_CONTRATUAIS
+
 DB = "data/compliance.db"
 
 GRUPOS_CONTRATUAIS = ("3", "4")
 MODALIDADE_DIRETA = "90"
 
-# elemento → por que NÃO é contratação
-ELEMENTOS_FORA: dict[str, str] = {
-    "91": "sentenças judiciais — nasce de condenação, não de contrato",
-    "93": "indenizações e restituições — reparação, não aquisição",
-    "94": "indenização por demissão/incentivo à demissão",
-    "95": "indenização pela execução de trabalhos de campo",
-    "41": "contribuições — transferência corrente, não contraprestação",
-    "43": "subvenções sociais",
-    "45": "subvenções econômicas",
-    "47": "obrigações tributárias e contributivas — tributo, não compra",
-    "08": "outros benefícios assistenciais",
-    "18": "auxílio financeiro a estudantes",
-    "20": "auxílio financeiro a pesquisadores",
-    "46": "auxílio-alimentação (benefício de pessoal)",
-    "48": "outros auxílios financeiros a pessoa física",
-    "49": "auxílio-transporte (benefício de pessoal)",
-}
+# UMA DEFINIÇÃO, DOIS USUÁRIOS: a lista vem de `natureza_despesa`, que a extraiu do Anexo II da
+# Portaria STN/SOF 163/2001. Antes eu mantinha uma cópia aqui, escrita de memória — e ela estava
+# incompleta: faltavam os elementos 42 (Auxílios), 81 (distribuição legal de receitas), 96
+# (ressarcimento de pessoal requisitado) e 97 (aporte para déficit atuarial), todos transferência
+# ou pessoal, nenhum contraprestação de contrato.
+ELEMENTOS_FORA: dict[str, str] = dict(ELEMENTOS_NAO_CONTRATUAIS)
 
 # elemento → rótulo, para leitura humana do que ficou DENTRO
 ELEMENTOS_DENTRO: dict[str, str] = {

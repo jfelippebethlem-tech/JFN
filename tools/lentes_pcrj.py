@@ -31,6 +31,7 @@ import re
 import sqlite3
 from collections import defaultdict
 
+from compliance_agent.pcrj.natureza_despesa import ELEMENTOS as ELEMENTOS_OFICIAIS
 from compliance_agent.pcrj.universo import conectar, filtro_sql
 from compliance_agent.reporting.intel_base import moeda
 
@@ -39,12 +40,10 @@ TETO_EPP_ANUAL = 4_800_000.00
 TETO_ME_ANUAL = 360_000.00
 
 # Elementos em que o pagamento a PESSOA FÍSICA é anômalo: pressupõem fornecedor empresarial.
+# Os rótulos vêm da tabela OFICIAL (Portaria STN/SOF 163/2001), não de memória — o elemento 40
+# que eu chamava de "serviços de tecnologia da informação" não existe nessa acepção na Portaria.
 ELEMENTOS_TIPICOS_DE_PJ = {
-    "39": "serviços de terceiros — pessoa jurídica",
-    "37": "locação de mão de obra",
-    "51": "obras e instalações",
-    "52": "equipamentos e material permanente",
-    "40": "serviços de tecnologia da informação",
+    e: ELEMENTOS_OFICIAIS[e] for e in ("39", "37", "51", "52") if e in ELEMENTOS_OFICIAIS
 }
 
 
