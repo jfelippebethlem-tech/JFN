@@ -1492,10 +1492,118 @@ def api_perfil(cnpj: str):
                                     "hub_compartilhado": hub or None}
         except Exception as e:  # noqa: BLE001 — enriquecimento opcional; nunca derruba o dossiê
             logger.debug("enriquecimento cadastral do dossiê falhou (%s) — segue sem ele", e)
+        # ── MUNICÍPIO DO RIO ──────────────────────────────────────────────────────────────
+        # Sem este bloco o dossiê mente por omissão: a empresa clicada numa lente MUNICIPAL
+        # abriria uma tela que só fala do Estado ("Pago pelo Estado", órgãos estaduais, perícia
+        # estadual) e pareceria não ter movimento algum. Clicável e incompleto é pior que não
+        # clicável — o leitor conclui ausência onde há R$ 30,6 bi de universo não consultado.
+        out["municipio"] = _perfil_municipio(con, dig)
+        # Empresa que só existe no acervo MUNICIPAL vinha com nome "—": o nome era buscado apenas
+        # na perícia e na OB estaduais. O dossiê abria mudo justamente para quem chegou por uma
+        # lente da Prefeitura — o caminho novo era o que mais precisava do nome.
+        if (not out.get("nome") or out["nome"] == "—") and out["municipio"]:
+            razoes = out["municipio"].get("razoes_sociais") or []
+            if razoes:
+                out["nome"] = razoes[0]
         con.close()
         return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+def _perfil_municipio(con, dig: str) -> dict | None:
+    """O que o Município do Rio pagou a este CNPJ, e quais lentes municipais o marcaram.
+
+    Agrupa por RAIZ de CNPJ (8 dígitos): 0,96% das raízes do acervo aparecem com mais de uma
+    razão social, e agrupar pelo documento inteiro perderia a filial. Devolve `None` quando não
+    há pagamento — ausência de dado, que a tela declara em vez de imprimir zero."""
+    raiz = dig[:8]
+    try:
+        from compliance_agent.pcrj.natureza_despesa import ELEMENTOS
+        from compliance_agent.pcrj.universo import filtro_sql
+    except ImportError:
+        return None
+    try:
+        tot = con.execute(
+            f"SELECT count(*) n, sum(pago) v, count(DISTINCT orgao) orgaos, "
+            f"min(exercicio) de_, max(exercicio) ate FROM pcrj_despesa "
+            f"WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=? "
+            f"AND {filtro_sql()}", (raiz,)).fetchone()
+        if not tot or not tot["n"]:
+            return None
+        orgs = con.execute(
+            f"SELECT orgao, sum(pago) v FROM pcrj_despesa "
+            f"WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=? "
+            f"AND {filtro_sql()} GROUP BY 1 ORDER BY 2 DESC LIMIT 6", (raiz,)).fetchall()
+        elems = con.execute(
+            f"SELECT substr(natureza,5,2) el, sum(pago) v FROM pcrj_despesa "
+            f"WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=? "
+            f"AND {filtro_sql()} GROUP BY 1 ORDER BY 2 DESC LIMIT 5", (raiz,)).fetchall()
+        razoes = [r["n"] for r in con.execute(
+            "SELECT DISTINCT credor_nome n FROM pcrj_despesa "
+            "WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=?",
+            (raiz,))]
+    except _sqlite3.Error:
+        return None
+    return {
+        "pago": tot["v"] or 0.0, "linhas": tot["n"], "orgaos": tot["orgaos"],
+        "periodo": f"{tot['de_']}–{tot['ate']}",
+        "razoes_sociais": sorted(x for x in razoes if x),
+        "por_orgao": [{"orgao": r["orgao"], "total": r["v"]} for r in orgs],
+        "por_elemento": [{"codigo": r["el"], "nome": ELEMENTOS.get(r["el"]), "total": r["v"]}
+                         for r in elems],
+        "lentes": _lentes_que_marcaram(raiz),
+        "_nota": "universo CONTRATUAL (grupo 3/4, aplicação direta, sem folha/dívida/precatório) — "
+                 "34,2% do bruto pago pelo Município. Agrupado por RAIZ de CNPJ.",
+    }
+
+
+def _lentes_que_marcaram(raiz: str) -> list:
+    """Quais lentes municipais apontaram este CNPJ, lendo o JSON materializado.
+
+    É o que fecha o ciclo do clique: o usuário chega ao dossiê por UMA lente e vê se OUTRAS
+    também o marcaram — a convergência entre réguas independentes, que é o sinal forte."""
+    caminho = RAIZ / "data" / "lentes_estado.json"
+    try:
+        estado = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    def _raizes_do_item(item) -> set:
+        """As raízes de CNPJ que o item cita — inclusive as aninhadas.
+
+        Cada lente guarda o documento num campo próprio (`cnpj`, `raiz`) e algumas o escondem
+        numa lista (`fornecedores`, `raizes`). Varrer só o nível de cima faria a empresa aparecer
+        na lista da lente e sumir do próprio dossiê — clicável para um lado, mudo para o outro."""
+        achadas = set()
+        pilha = [item]
+        while pilha:
+            no = pilha.pop()
+            if isinstance(no, dict):
+                for chave, valor in no.items():
+                    if chave in ("cnpj", "raiz", "cnpj_basico", "documento") and valor:
+                        d = re.sub(r"\D", "", str(valor))
+                        if len(d) >= 8:
+                            achadas.add(d[:8])
+                    elif isinstance(valor, (dict, list)):
+                        pilha.append(valor)
+            elif isinstance(no, list):
+                for v in no:
+                    if isinstance(v, (dict, list)):
+                        pilha.append(v)
+                    elif isinstance(v, str) and len(re.sub(r"\D", "", v)) in (8, 14):
+                        achadas.add(re.sub(r"\D", "", v)[:8])
+        return achadas
+
+    achados = []
+    for nome, bloco in ((estado.get("pcrj") or {}).get("lentes") or {}).items():
+        for item in (bloco.get("topo") or []):
+            if raiz not in _raizes_do_item(item):
+                continue
+            achados.append({"lente": nome, "titulo": bloco.get("titulo"),
+                            "prevalencia": bloco.get("prevalencia"),
+                            "n_na_lente": bloco.get("n"), "item": item})
+            break
+    return achados
 
 
 # ── INTELIGÊNCIA 2026-07-17: sancionadas × contratadas, perdedoras contumazes, fantasmas ──
@@ -2406,6 +2514,13 @@ def api_pericia_bateria(so_mortos: bool = False):
         "n_testes": r["n_testes"],
         "testes_que_rodam": r["testes_que_rodam"],
         "testes_sem_insumo": r["testes_sem_insumo"],
+        # BUG que a conferência ao vivo pegou: estes campos nasceram no módulo DEPOIS da rota, e
+        # ela não os repassava — o painel recebia `undefined` e imprimia vazio. Rodar não basta:
+        # o teste precisa apontar algo e não apontar quase tudo.
+        "testes_uteis": r.get("testes_uteis"),
+        "uteis": r.get("uteis"),
+        "inertes": r.get("inertes"),
+        "nao_discriminam": r.get("nao_discriminam"),
         "itens": r["itens"],
         "itens_indisponiveis": r["itens_indisponiveis"],
         "fracao_indisponivel": r["fracao_indisponivel"],

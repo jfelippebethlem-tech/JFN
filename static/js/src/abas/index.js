@@ -1640,6 +1640,8 @@ export async function renderConluio(esf){
       <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`);}).join('')+`</div>`;}
   if(!cap.length&&!rod.length)h+=card('<div class="muted">Nenhum padrão de captura ou rodízio com o volume atual desta esfera. A base cresce a cada coleta do PNCP.</div>');
   if(esfera==='geral')h+=`<div style="height:14px"></div>`+card(`<div style="font-weight:700">E quem participa e NUNCA vence?</div><div class="muted" style="font-size:13px;margin-top:3px">As perdedoras contumazes (candidatas a proposta de cobertura) estão em Riscos.</div><div class="btns"><button class="btn ghost" onclick="_riscoView='cover';ir('g_riscos')">Abrir perdedoras</button></div>`);
+  h+=await _lentesMunicipais();
+  h+=await _bateriaPericia();
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;
   return h;
 }
@@ -2696,6 +2698,128 @@ async function consorcioVeiculo(){
 // `/api/lentes` lê JSON materializado (as lentes somam ~31 s; calcular na rota travaria o painel).
 // O que ela mostra e as outras não: a CONVERGÊNCIA. Cada lente sozinha devolve centenas de
 // empresas; o cruzamento é que ordena a fila.
+// ── LENTES MUNICIPAIS (Prefeitura do Rio) ────────────────────────────────────────────────────
+// Vinte e seis lentes sobre `pcrj_despesa`, materializadas junto das estaduais. O que muda em
+// relação ao bloco de cima: aqui o DENOMINADOR viaja com o número. Os R$ 89,62 bi brutos do
+// Município incluem folha (R$ 21,18 bi), intra-orçamentária (R$ 27,83 bi) e precatório; só
+// R$ 30,64 bi (34,2%) são contratação. Publicar contagem municipal sem isso não se lê.
+export const _LENTE_MUN_LINHA={
+  me_epp_acima_do_teto:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(x.porte||'')} · ${esc(String(x.exercicio||''))} · ${x.razao?fmtN(Math.round(x.razao))+'× o teto':''}</div>`,
+  sancao_de_efeito_amplo:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(String(x.exercicio||''))} · ${esc(String((x.sancoes&&x.sancoes[0]&&x.sancoes[0][0])||'').slice(0,52))}</div>`,
+  pessoa_fisica_em_elemento_de_pj:x=>`<b>${esc((x.credor||'').slice(0,40))}</b>${x.mascarado?' <span class="tag amber">documento mascarado</span>':''}<div class="dim">${esc(x.elemento_txt||'')} · ${esc(String(x.exercicio||''))} · ${esc((x.orgao||'').slice(0,34))}</div>`,
+  salto_de_faturamento:x=>`${clk(x.cnpj,x.credor||x.cnpj)}<div class="dim">${esc(String(x.de))}→${esc(String(x.para))} · ${fmtRc(x.pago_antes)} → ${fmtRc(x.pago_depois)} (${x.razao?fmtN(Math.round(x.razao))+'×':''})</div>`,
+  liquidado_sem_pagamento:x=>`${clk(x.cnpj,x.credor||x.cnpj)}<div class="dim">${esc(String(x.exercicio||''))} · ${esc((x.orgao||'').slice(0,40))}</div>`,
+  fornecedor_quase_exclusivo:x=>`${clk(x.cnpj,x.credor||x.cnpj)}<div class="dim">${esc((x.orgao||'').slice(0,34))} · ${esc(String(x.exercicio||''))} · ${x.share!=null?(100*x.share).toFixed(0)+'% das compras':''}${x.share_orcamento_total!=null?' · '+(100*x.share_orcamento_total).toFixed(0)+'% do orçamento':''} · ${fmtN(x.n_credores)} credores</div>`,
+  socio_comum_a_fornecedores:x=>`<b>${esc(String(x.socio||'').slice(0,40))}</b><div class="dim">${fmtN(x.n_fornecedores)} empresas · homonímia ${esc(x.risco_homonimia||'—')}${x.portadores_do_nome!=null?' ('+fmtN(x.portadores_do_nome)+' portadores)':''}</div><div class="muted" style="font-size:12px">${(x.fornecedores||[]).slice(0,3).map(f=>clk(f.raiz&&f.raiz.length===8?'':f.raiz,f.nome||'')).join(' · ')}</div>`,
+  pago_muito_acima_do_capital:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">capital ${fmtRc(x.capital_social)} · pago ${fmtRc(x.pago)} (${x.razao?fmtN(Math.round(x.razao))+'×':''})</div>`,
+  servidor_estadual_socio_de_fornecedor:x=>`${clk(x.cnpj,x.fornecedor||x.cnpj)}<div class="dim">${esc((x.agente||'').slice(0,30))} · ${esc((x.cargo||'').slice(0,24))} · ${esc((x.orgao_do_agente||'').slice(0,30))}</div>`,
+  empresa_recem_criada:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">aberta ${esc(x.data_abertura||'')} · ${fmtN(x.idade_meses_no_fim_do_exercicio)} meses no fim de ${esc(String(x.exercicio||''))}</div>`,
+  concentracao_hhi:x=>`<b>${esc((x.orgao||'').slice(0,44))}</b><div class="dim">${esc(String(x.exercicio||''))} · HHI ${x.hhi} (≈${x.equivalente_a_n_iguais} fornecedores iguais) · maior ${esc((x.maior_credor||'').slice(0,26))} ${x.maior_share!=null?(100*x.maior_share).toFixed(0)+'%':''}</div>`,
+  empenhado_sem_pagamento:x=>`${clk(x.cnpj,x.credor||x.cnpj)}<div class="dim">${esc(String(x.exercicio||''))} · ${esc((x.orgao||'').slice(0,34))}${x.houve_atesto?' · <span class="sev alta">com atesto</span>':''}</div>`,
+  superempenho:x=>`${clk(x.cnpj,x.credor||x.cnpj)}<div class="dim">${esc(String(x.exercicio||''))} · pagou ${x.fracao_paga!=null?(100*x.fracao_paga).toFixed(0)+'%':''} do empenhado</div>`,
+  fornecedor_de_exercicio_unico:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">só em ${esc(String(x.exercicio||''))}${(x.razoes_sociais||[]).length>1?' · '+fmtN(x.razoes_sociais.length)+' razões sociais':''}</div>`,
+  pico_de_gasto_por_subelemento:x=>`<b>${esc(x.elemento||('elemento '+x.codigo_elemento))}</b><div class="dim">subelemento ${esc(x.codigo_elemento)}.${esc(x.codigo_subelemento)} · pico ${esc(String(x.ano_de_pico))} · ${x.razao?fmtN(Math.round(x.razao))+'× a mediana':''} · ${x.fracao_de_fornecedores_novos!=null?(100*x.fracao_de_fornecedores_novos).toFixed(0)+'% de fornecedores novos':''}</div>`,
+  premiacao_a_fornecedor_de_bem:x=>`${clk(x.cnpj,x.credor||x.cnpj)}<div class="dim">recebeu como premiação, mas fatura em ${esc(x.elemento_dominante_nome||x.elemento_dominante)} (${fmtRc(x.pago_no_elemento_dominante)})</div>`,
+  aditivos_em_serie:x=>`${clk(x.cnpj,x.fornecedor||x.cnpj)}<div class="dim">${fmtN(x.n_aditivos)} aditivos · ${esc(String(x.ano||''))} · ${esc((x.objeto||'').slice(0,50))}</div>`,
+  vigencia_acima_do_prazo:x=>`<b>${esc((x.fornecedor||'').slice(0,40))}</b><div class="dim">${esc(x.vigencia_ini||'')} a ${esc(x.vigencia_fim||'')} · ${x.duracao_anos} anos</div>`,
+  vencedor_contumaz:x=>`${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${fmtN(x.n_certames)} certames vencidos</div>`,
+  estimativa_fora_de_escala:x=>`<b>${esc((x.objeto||'').slice(0,48))}</b><div class="dim">${esc(x.certame||'')} · ${esc(x.modalidade||'')} · ${x.vezes_o_orcamento_anual?fmtN(Math.round(x.vezes_o_orcamento_anual))+'× o gasto anual do Município':''}</div>`,
+  objeto_generico:x=>`<b>${esc((x.objeto||'').slice(0,54))}</b><div class="dim">termo aberto: <b>${esc(x.termo_aberto||'')}</b> · ${esc(x.modalidade||'')}</div>`,
+  concentracao_do_terceiro_setor:x=>`<b>${esc((x.entidade||'').slice(0,44))}</b><div class="dim">${x.share!=null?(100*x.share).toFixed(1)+'% do repasse total':''}</div>`,
+  entidade_paga_como_servico:x=>`<b>${esc((x.entidade||'').slice(0,40))}</b><div class="dim">serviço ${fmtRc(x.pago_como_servico)} × parceria ${fmtRc(x.pago_como_transferencia)} (${x.razao?fmtN(Math.round(x.razao))+'×':''})</div>`,
+  qualidade_cadastral:x=>`<b>${esc((x.razoes||[]).slice(0,2).join(' · ').slice(0,52))}</b><div class="dim">${fmtN(x.n_razoes)} razões sob o mesmo documento${x.documento_mascarado?' · <span class="tag amber">mascarado</span>':''}</div>`,
+};
+export const _LENTE_MUN_VALOR={
+  salto_de_faturamento:x=>x.pago_depois, empenhado_sem_pagamento:x=>x.empenhado,
+  superempenho:x=>x.nao_executado, concentracao_hhi:x=>x.total_orgao,
+  pico_de_gasto_por_subelemento:x=>x.pago_no_pico, premiacao_a_fornecedor_de_bem:x=>x.pago_como_premiacao,
+  aditivos_em_serie:x=>x.valor, vigencia_acima_do_prazo:x=>x.valor,
+  vencedor_contumaz:x=>x.homologado, estimativa_fora_de_escala:x=>x.valor_estimado,
+  objeto_generico:x=>x.valor_estimado, concentracao_do_terceiro_setor:x=>x.recebido,
+  entidade_paga_como_servico:x=>x.pago_como_servico, socio_comum_a_fornecedores:x=>x.pago_somado,
+  liquidado_sem_pagamento:x=>x.liquidado,
+};
+// ── COBERTURA DA BATERIA DE PERÍCIA ──────────────────────────────────────────────────────────
+// Existe porque o painel, sem isto, AFIRMA UM TRABALHO QUE NÃO HOUVE: mostra 31.017
+// fornecedores periciados e 27.846 "com indício", e parece um sistema em pleno funcionamento.
+// Medido: 83,3% dos itens são INDISPONÍVEL, 20 dos 24 testes não rodam por falta de insumo, e
+// NENHUM item chega a CONFIRMADO no acervo inteiro. INDISPONÍVEL é ausência de EXAME, não de
+// irregularidade — e a diferença precisa estar na tela, não só no JSON.
+export const _UTIL_COR={UTIL:'green','NAO DISCRIMINA':'amber',INERTE:'amber','SEM INSUMO':'rose'};
+export async function _bateriaPericia(){
+  let d;
+  try{ d=await J('/api/pericia/bateria'); }
+  catch(e){ return card(`<div class="warn">bateria de perícia: ${esc(String(e&&e.message||e))}</div>`); }
+  if(!d||d.ok===false)return card(`<div class="warn">${esc((d&&d.erro)||'bateria indisponível')}</div>`);
+  let h=sec('Bateria de perícia — quanto do exame realmente aconteceu');
+  h+=`<div class="grid g2">
+    ${kpi(fmtN(d.testes_uteis)+'/'+fmtN(d.n_testes),'Testes ÚTEIS','var(--rose)','🔬',{sobre:'Ter insumo não basta: um teste que aponta 85% dos apurados não ordena fila, e um que nunca aponta nada não acrescenta. <b>Úteis</b> são os que rodam E discriminam.'})}
+    ${kpi((d.fracao_indisponivel!=null?(100*d.fracao_indisponivel).toFixed(1)+'%':'—'),'Itens sem exame','var(--amber)','🕳️',{sobre:'INDISPONÍVEL é ausência de <b>exame</b>, não de irregularidade. Cada um traz o motivo por extenso — o sistema é honesto; o painel é que escondia.'})}
+    ${kpi(fmtN(d.confirmados_no_acervo),'CONFIRMADOS no acervo',(d.confirmados_no_acervo?null:'var(--rose)'),'⚖️',{sobre:'Zero em todo o acervo. Nenhum item da perícia chegou a confirmação — não porque nada exista, mas porque o insumo que confirmaria não foi capturado.'})}
+    ${kpi(fmtN(d.periciados),'Fornecedores periciados',null,'🏢',{sobre:'O número que o painel mostrava sozinho, e que sem os três acima sugere um exame que não houve.'})}
+  </div>`;
+  h+=leitura('O que falta não é regra — é <b>insumo</b>. Escrever o vigésimo quinto teste não ajuda enquanto vinte dos vinte e quatro não têm dado para rodar. Abaixo, a captura que destrava mais testes primeiro.');
+  h+=sec('O que destrava o quê — ordem de retorno da captura');
+  h+=(d.insumos_que_destravam||[]).map(i=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">`+
+    `<div style="font-weight:650">${esc(i.insumo)}</div>`+
+    `<div class="dim" style="font-size:12px">${esc(i.detalhe||'')}</div>`+
+    `<div class="muted" style="font-size:12px;margin-top:3px">${(i.testes||[]).map(esc).join(' · ')}</div></div>`+
+    `<div class="right"><b>${fmtN(i.testes_que_destrava)}</b><div class="dim">teste(s)</div></div></div>`,
+    i.testes_que_destrava>=3?'hl':'')).join('');
+  h+=sec('Os 24 testes, um a um');
+  h+=(d.testes||[]).map(t=>{
+    const cor=_UTIL_COR[t.utilidade]||'accent';
+    const ap=t.taxa_de_apontamento!=null?(100*t.taxa_de_apontamento).toFixed(1).replace('.',',')+'%':'—';
+    return card(`<div style="display:flex;gap:9px;align-items:flex-start">
+      <span class="tag ${cor}">${esc(t.utilidade||'')}</span>
+      <div style="min-width:0"><div style="font-weight:650;font-size:13.5px">${esc(t.codigo)} — ${esc(t.titulo||'')}</div>
+      <div class="dim" style="font-size:12px">${fmtN(t.apurados)} apurados · aponta ${ap}${t.taxa_confiavel===false?' <span class="tag amber">taxa sobre punhado</span>':''} · ${fmtN(t.indisponivel)} sem insumo</div>
+      ${t.motivo_da_falta?`<div class="muted" style="font-size:12px;margin-top:3px">${esc(String(t.motivo_da_falta).split('.')[0])}</div>`:''}</div></div>`);
+  }).join('');
+  h+=`<div class="note">${esc(d.aviso||'')}</div>`;
+  return h;
+}
+
+export async function _lentesMunicipais(){
+  let d;
+  try{ d=await J('/api/lentes?esfera=municipal&top=25'); }
+  catch(e){ return card(`<div class="warn">lentes municipais: ${esc(String(e&&e.message||e))}</div>`); }
+  if(!d||d.ok===false)return card(`<div class="warn">${esc((d&&d.erro)||'lentes municipais não materializadas')}</div>`);
+  const L=d.lentes||{}, u=d.universo_contratual||{};
+  const contr=(u.contratual||{}), bruto=(u.bruto||{});
+  let h=sec('Município do Rio de Janeiro — 26 lentes');
+  // O DENOMINADOR PRIMEIRO. Sem ele, "461 casos" não diz nada: pode ser 0,7% de um universo
+  // grande ou metade de um pequeno, e a diferença é entre ordenar fila e descrever o acervo.
+  h+=`<div class="grid g2">
+    ${kpi(fmtRc(contr.pago),'Universo contratual','var(--accent)','🧮',{sobre:'O denominador honesto. Dos <b>'+fmtRc(bruto.pago)+'</b> pagos pelo Município, só esta fatia é <b>contratação</b>: sai folha, dívida, intra-orçamentária, sentença, tributo e benefício. Ranquear o bruto ranqueia a previdência e o banco, não risco.'})}
+    ${kpi((u.fracao_do_bruto!=null?(100*u.fracao_do_bruto).toFixed(1)+'%':'—'),'do bruto pago',null,'📐',{sobre:'Fração do total municipal que é contraprestação de contrato.'})}
+    ${kpi(fmtN(contr.credores),'Credores no universo',null,'🏢',{sobre:'Fornecedores com ao menos um pagamento contratual, agrupados por documento.'})}
+    ${kpi(fmtN(Object.keys(L).length),'Lentes materializadas',null,'🔬',{sobre:'Cada uma com prevalência medida. Prevalência alta descreve o acervo; baixa ordena fila.'})}
+  </div>`;
+  h+=leitura('Cada lente carrega a <b>prevalência</b> — quantos por cento do universo ela marca. É o que separa achado de descrição: um sinal que marca metade do acervo não ordena fila nenhuma, e várias hipóteses morreram exatamente assim (mono-cliente 8,8%, objeto curto 12,3%, "recebe pelas duas portas" 56,9%). O que foi <b>ressalvado</b> continua contado, com o motivo — sumir com ele esconderia o dia em que a concessionária cobrar demais.');
+  const ordem=Object.keys(L).sort((a,b)=>{
+    const pa=L[a].prevalencia, pb=L[b].prevalencia;
+    if(pa==null&&pb==null)return 0; if(pa==null)return 1; if(pb==null)return -1; return pa-pb;});
+  for(const chave of ordem){
+    const b=L[chave]||{};
+    if(b.ok===false){ h+=sec(chave)+card(`<div class="warn">INDISPONÍVEL — a lente falhou: ${esc(b.erro||'')}</div>`); continue; }
+    const linha=_LENTE_MUN_LINHA[chave], valor=_LENTE_MUN_VALOR[chave]||(x=>x.pago);
+    h+=sec(esc(b.titulo||chave));
+    const prev=b.prevalencia!=null?(100*b.prevalencia).toFixed(2).replace('.',',')+'%':'<b>INDISPONÍVEL</b>';
+    const extras=[];
+    if(b.n_ressalvados)extras.push(fmtN(b.n_ressalvados)+' ressalvado(s)');
+    if(b.n_inconclusivos)extras.push(fmtN(b.n_inconclusivos)+' inconclusivo(s)');
+    if(b.indisponivel)extras.push('fonte: '+esc(String(b.indisponivel).slice(0,60)));
+    h+=`<div class="dim" style="margin:0 2px 6px">${b.n==null?'<b>INDISPONÍVEL</b>':fmtN(b.n)+' casos'} · prevalência ${prev} de ${fmtN(b.universo)} · ${fmtRc(b.massa||0)}${extras.length?' · '+extras.join(' · '):''}</div>`;
+    if(b.nota)h+=`<div class="muted" style="font-size:12px;margin:0 2px 6px">${esc(b.nota)}</div>`;
+    const itens=(b.topo||[]).slice(0,10);
+    h+=itens.length?itens.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${linha?linha(x):esc(JSON.stringify(x).slice(0,120))}</div><div class="right"><b>${fmtRc(valor(x)||0)}</b></div></div>`)).join('')
+      :card('<div class="muted">Sem itens nesta materialização.</div>');
+  }
+  return h;
+}
+
 export const _DIM_ROTULO={TAMANHO:'porte × pago',SANCAO:'sanção vigente',DEPENDENCIA:'dependência mútua'};
 export async function renderLentes(){
   let h=cover('estado','Lentes cruzadas',

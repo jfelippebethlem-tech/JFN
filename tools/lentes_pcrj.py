@@ -510,18 +510,21 @@ def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
     for nome_norm, raizes in socios.items():
         if len(raizes) < minimo:
             continue
-        forn = sorted((pagos[r][0], pagos[r][1]) for r in raizes if r in pagos)
+        # a RAIZ viaja junto do nome: sem ela o dossiê não consegue ligar esta lente ao CNPJ
+        # clicado, e o achado fica visível na lista mas invisível no perfil da empresa
+        forn = sorted(((pagos[r][0], pagos[r][1], r) for r in raizes if r in pagos),
+                      key=lambda x: (x[0] or ""))
         # RESSALVA ESTRUTURAL: consórcio partilha sócio com as consorciadas POR DEFINIÇÃO. O
         # vínculo é público e declarado no instrumento — não é rede oculta. Achado sem esta
         # ressalva coroava "CONSÓRCIO VIEIRA BRT + F P VIEIRA ENGENHARIA" como se fosse
         # descoberta, quando é a estrutura normal de um consórcio de obra.
-        consorcios = [n for n, _ in forn if re.search(r"cons[óo]rcio", str(n), re.I)]
+        consorcios = [n for n, _, _ in forn if re.search(r"cons[óo]rcio", str(n), re.I)]
         ressalva = None
         # RADICAL COMUM: "CLARO S.A." + "CLARO NXT" ou "DAVITA BRASIL" + "DAVITA SERVIÇOS" são
         # grupo econômico DECLARADO — o nome anuncia o vínculo. Não é descoberta. O corte é bom
         # justamente porque deixa passar o que interessa: CDR/Centro Nefrológico/RenalVida e
         # Obra Prima/Massimo/Aria NÃO partilham radical, e são esses que merecem exame.
-        radicais = {_radical(n) for n, _ in forn}
+        radicais = {_radical(n) for n, _, _ in forn}
         if len(radicais) == 1 and next(iter(radicais)):
             ressalva = (f"todas as empresas partilham o radical '{next(iter(radicais))}' — "
                         f"grupo econômico declarado no próprio nome")
@@ -533,7 +536,8 @@ def socio_comum_a_fornecedores(db_path=None, minimo: int = 3) -> dict:
         achados.append({
             "socio": nome_norm,
             "n_fornecedores": len(raizes),
-            "fornecedores": forn,
+            "fornecedores": [{"nome": n, "pago": v, "raiz": r} for n, v, r in forn],
+            "raizes": sorted(r for _, _, r in forn),
             "pago_somado": sum(pagos[r][1] for r in raizes if r in pagos),
             "risco_homonimia": _grau_homonimia(freq_nomes.get(nome_norm)),
             "portadores_do_nome": freq_nomes.get(nome_norm),
