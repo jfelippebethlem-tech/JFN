@@ -6518,8 +6518,6 @@ void main(){
     }
     if (!cap.length && !rod.length) h += card('<div class="muted">Nenhum padrão de captura ou rodízio com o volume atual desta esfera. A base cresce a cada coleta do PNCP.</div>');
     if (esfera === "geral") h += `<div style="height:14px"></div>` + card(`<div style="font-weight:700">E quem participa e NUNCA vence?</div><div class="muted" style="font-size:13px;margin-top:3px">As perdedoras contumazes (candidatas a proposta de cobertura) estão em Riscos.</div><div class="btns"><button class="btn ghost" onclick="_riscoView='cover';ir('g_riscos')">Abrir perdedoras</button></div>`);
-    h += await _lentesMunicipais();
-    h += await _bateriaPericia();
     h += `<div class="note">${esc(d.aviso || "")}</div>`;
     return h;
   }
@@ -8088,6 +8086,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       h += `<div class="dim" style="margin:0 2px 6px">${esc(nota)} — ${b.n == null ? "<b>INDISPONÍVEL</b>" : fmtN(b.n) + " no total, mostrando " + fmtN((b.topo || []).length)}</div>`;
       h += (b.topo || []).slice(0, 12).map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${linha(x)}</div><div class="right"><b>${fmtRc(valor(x))}</b></div></div>`)).join("");
     }
+    h += await _lentesMunicipais();
+    h += await _bateriaPericia();
     h += `<div class="note">${esc(d.aviso || "")}</div>`;
     return h;
   }
