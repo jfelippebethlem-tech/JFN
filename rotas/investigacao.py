@@ -2368,9 +2368,13 @@ def api_fontes_frescor():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
-@router.get("/api/pericia/cobertura")
-def api_pericia_cobertura(so_mortos: bool = False):
-    """Cobertura da perícia de contratos: quais testes REALMENTE rodam, e o que falta aos demais.
+@router.get("/api/pericia/bateria")
+def api_pericia_bateria(so_mortos: bool = False):
+    """Cobertura da BATERIA: quais dos 24 testes de perícia REALMENTE rodam, e o que falta.
+
+    ⚠️ Distinta de `/api/pericia/cobertura` (em `rotas/sistema.py`), que mede **quanto do acervo
+    já recebeu juízo**. Aqui se mede **quantos testes têm insumo**. Um acervo pode estar
+    inteiramente periciado e ainda assim ter 83% dos itens sem exame — é o caso.
 
     Esta rota existe porque o painel, sem ela, **afirma um trabalho que não houve**. Ele mostra
     31.017 fornecedores periciados e 27.846 "com indício", e isso parece um sistema em pleno
@@ -2387,7 +2391,7 @@ def api_pericia_cobertura(so_mortos: bool = False):
     """
     import sqlite3 as _sq
     try:
-        from tools.cobertura_pericia import cobertura
+        from tools.bateria_pericia import cobertura
         r = cobertura()
     except ImportError as exc:
         return JSONResponse({"ok": False, "erro": f"módulo indisponível: {exc}"}, status_code=503)
