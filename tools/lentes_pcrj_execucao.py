@@ -148,18 +148,33 @@ def fornecedor_de_exercicio_unico(db_path=None, piso: float = 10_000_000.0) -> d
         faixa = con.execute("SELECT min(exercicio), max(exercicio) FROM pcrj_despesa").fetchone()
     finally:
         con.close()
-    por = defaultdict(dict)
+    # AGRUPAR POR RAIZ DE CNPJ, não por (documento, nome): 72 raízes do acervo (0,96%) aparecem
+    # com mais de uma razão social — "Companhia Brasileira de Soluções e Serviços" e "ALELO S.A."
+    # são o mesmo CNPJ, e "Instituto Gnosis" e "Projeto Social Colibri" também. Agrupar pelo nome
+    # partiria a empresa em duas e inventaria "exercício único" onde há continuidade.
+    # Documento MASCARADO não tem raiz utilizável: cai fora, com a razão declarada.
+    por = defaultdict(lambda: {"anos": {}, "nomes": set(), "doc": None})
+    fora_por_mascara = 0
     for doc, nome, ano, pago in rows:
-        por[(str(doc), str(nome))][ano] = pago
+        raiz = re.sub(r"\D", "", str(doc or ""))[:8]
+        if len(raiz) != 8 or "*" in str(doc or ""):
+            fora_por_mascara += 1
+            continue
+        por[raiz]["anos"][ano] = por[raiz]["anos"].get(ano, 0.0) + pago
+        por[raiz]["nomes"].add(str(nome))
+        por[raiz]["doc"] = doc
     achados, universo = [], 0
-    for (doc, nome), anos in por.items():
+    for raiz, x in por.items():
+        anos = x["anos"]
         total = sum(anos.values())
         if total < piso:
             continue
         universo += 1
         if len(anos) == 1:
             ano = next(iter(anos))
-            achados.append({"cnpj": doc, "nome": nome, "exercicio": ano, "pago": total,
+            achados.append({"cnpj": x["doc"], "raiz": raiz, "nome": sorted(x["nomes"])[0],
+                            "razoes_sociais": sorted(x["nomes"]), "exercicio": ano,
+                            "pago": total,
                             "no_limite_da_serie": ano in (faixa[0], faixa[1])})
     achados.sort(key=lambda a: -a["pago"])
     # Mesma disciplina de borda das outras lentes deste módulo: quem aparece só no PRIMEIRO ou
@@ -172,8 +187,108 @@ def fornecedor_de_exercicio_unico(db_path=None, piso: float = 10_000_000.0) -> d
             "prevalencia": len(conclusivos) / universo if universo else None,
             "massa": sum(a["pago"] for a in conclusivos), "achados": conclusivos,
             "na_borda_da_serie": [a for a in achados if a["no_limite_da_serie"]],
+            "linhas_fora_por_documento_mascarado": fora_por_mascara,
             "_nota": f"série cobre {faixa[0]}–{faixa[1]}. Quem aparece só em {faixa[0]} ou "
-                     f"{faixa[1]} sai do achado: pode ter começado antes ou continuado depois"}
+                     f"{faixa[1]} sai do achado: pode ter começado antes ou continuado depois. "
+                     f"Agrupa por RAIZ de CNPJ — 0,96% das raízes têm mais de uma razão social, "
+                     f"e agrupar pelo nome inventaria 'exercício único' onde há continuidade"}
+
+
+# ── pico anômalo de gasto num mercado específico ────────────────────────────────────────────
+
+def pico_de_gasto_por_subelemento(db_path=None, fator: float = 5.0,
+                                  piso: float = 5_000_000.0,
+                                  fracao_novos: float = 0.70) -> dict:
+    """Subelemento de despesa cujo gasto num exercício supera `fator` vezes a mediana dos demais.
+
+    O subelemento (posições 5-8 da natureza) é o mercado concreto: 33.90.30.04 é vestuário e
+    confecção, 33.90.30.07 é gêneros de alimentação. Uma compra pública tem sazonalidade, mas o
+    volume de um mercado não salta de ordem de grandeza sem causa — e a causa pode ser legítima
+    (programa novo, emergência sanitária) ou não (compra concentrada em janela, fornecedores que
+    aparecem só naquele ano).
+
+    A lente **não afirma irregularidade**: ela nomeia o mercado e o ano em que examinar, e
+    devolve junto quantos fornecedores daquele pico aparecem em um só exercício — porque é a
+    combinação "volume explode + fornecedores novos que somem" que distingue programa de
+    anomalia.
+
+    Achado que motivou a lente: **confecção (33.90.30.04) em 2021 — R$ 166.679.222,10**, contra
+    R$ 11.024.608,05 em 2019 e R$ 17.779.630,96 em 2022.
+
+    CORTE POR VARREDURA, não por convenção. Só a razão de volume marca demais — 28,7% dos
+    subelementos com 3×, 16,2% com 5×. É a **combinação** com a renovação do elenco que
+    discrimina, porque programa novo traz fornecedores conhecidos e anomalia traz gente que
+    aparece uma vez:
+
+    | razão | fornecedores novos | subelementos marcados |
+    |---|---|---:|
+    | ≥ 3× | qualquer | 28,7% |
+    | ≥ 5× | qualquer | 16,2% |
+    | ≥ 3× | ≥ 70% | 8,8% |
+    | **≥ 5×** | **≥ 70%** | **6,6%** |
+    | ≥ 5× | ≥ 90% | 3,7% |
+
+    O padrão mais extremo do acervo é o subelemento 3937 em 2019: **R$ 122.478.212,79** contra
+    R$ 1–2 milhões nos demais exercícios (**64×**), com **196 de 197 fornecedores (99,5%)
+    aparecendo só naquele ano**.
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        rows = con.execute(
+            f"SELECT substr(natureza,5,4), exercicio, credor_documento, credor_nome, sum(pago) "
+            f"FROM pcrj_despesa WHERE {filtro_sql()} GROUP BY 1,2,3,4").fetchall()
+    finally:
+        con.close()
+
+    por_sub = defaultdict(lambda: defaultdict(float))
+    forn = defaultdict(lambda: defaultdict(set))
+    for sub, ano, doc, nome, pago in rows:
+        por_sub[sub][ano] += pago
+        raiz = re.sub(r"\D", "", str(doc or ""))[:8]
+        forn[sub][ano].add(raiz or str(nome))
+
+    achados, universo = [], 0
+    for sub, anos in por_sub.items():
+        if len(anos) < 3 or sum(anos.values()) < piso:
+            continue                       # sem série não há "normal" contra o qual comparar
+        universo += 1
+        vals = sorted(anos.values())
+        mediana = (vals[len(vals) // 2] if len(vals) % 2
+                   else (vals[len(vals) // 2 - 1] + vals[len(vals) // 2]) / 2)
+        if not mediana:
+            continue
+        ano_pico = max(anos, key=lambda a: anos[a])
+        razao = anos[ano_pico] / mediana
+        if razao < fator:
+            continue
+        # dos fornecedores do ano de pico, quantos só aparecem naquele ano?
+        no_pico = forn[sub][ano_pico]
+        outros = {f for a, s in forn[sub].items() if a != ano_pico for f in s}
+        so_no_pico = no_pico - outros
+        novos = len(so_no_pico) / len(no_pico) if no_pico else 0.0
+        achados.append({
+            "subelemento": sub, "ano_de_pico": ano_pico, "pago_no_pico": anos[ano_pico],
+            "mediana_dos_exercicios": mediana, "razao": razao,
+            "serie": {a: v for a, v in sorted(anos.items())},
+            "fornecedores_no_pico": len(no_pico),
+            "fornecedores_so_no_pico": len(so_no_pico),
+            "fracao_de_fornecedores_novos": novos if no_pico else None,
+            "elenco_renovado": novos >= fracao_novos,
+        })
+    achados.sort(key=lambda a: -a["pago_no_pico"])
+    fortes = [a for a in achados if a["elenco_renovado"]]
+    return {"lente": f"subelemento com pico de {fator:.0f}×+ a mediana E elenco de fornecedores "
+                     f"renovado em {fracao_novos:.0%}+",
+            "universo": universo, "n": len(fortes),
+            "prevalencia": len(fortes) / universo if universo else None,
+            "massa": sum(a["pago_no_pico"] for a in fortes), "achados": fortes,
+            "corte_amplo": {"n": len(achados),
+                            "prevalencia": len(achados) / universo if universo else None,
+                            "achados": achados,
+                            "_nota": "só o pico de volume, sem exigir renovação do elenco"},
+            "_nota": "não afirma irregularidade: nomeia o MERCADO e o ANO em que examinar. "
+                     "É a COMBINAÇÃO volume-explode + fornecedores-que-somem que discrimina — "
+                     "só o volume marca 16,2% dos subelementos"}
 
 
 # ── CONTROLE: a cascata da despesa é coerente? ──────────────────────────────────────────────
@@ -309,7 +424,8 @@ def qualidade_cadastral(db_path=None) -> dict:
                      "oculto inventaria erro. A prevalência publicada é a do teste 1"}
 
 
-LENTES = (empenhado_sem_pagamento, superempenho, fornecedor_de_exercicio_unico)
+LENTES = (empenhado_sem_pagamento, superempenho, fornecedor_de_exercicio_unico,
+          pico_de_gasto_por_subelemento)
 CONTROLES = (cascata_coerente, qualidade_cadastral)
 
 

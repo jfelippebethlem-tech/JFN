@@ -159,3 +159,75 @@ def test_toda_lente_e_controle_declaram_o_contrato(banco):
         assert {"lente", "universo", "n", "prevalencia", "massa", "achados"} <= set(r), fn.__name__
         if r["universo"] == 0:
             assert r["prevalencia"] is None, f"{fn.__name__}: universo vazio virou 0%"
+
+
+# ── agrupamento por RAIZ de CNPJ ─────────────────────────────────────────────────────────────
+
+def test_troca_de_razao_social_nao_inventa_exercicio_unico(banco):
+    """Medido: 0,96% das raízes têm mais de uma razão social. 'Companhia Brasileira de Soluções
+    e Serviços' e 'ALELO S.A.' são o mesmo CNPJ; agrupar pelo NOME partiria a empresa em duas."""
+    db = banco([_l(2020, "04740876000197", "COMPANHIA BRASILEIRA DE SOLUCOES", 10e6, 10e6, 10e6),
+                _l(2021, "04740876000197", "ALELO S.A.", 10e6, 10e6, 10e6)])
+    r = E.fornecedor_de_exercicio_unico(db, piso=1_000_000.0)
+    assert r["n"] == 0, "é a mesma raiz em dois exercícios — não é exercício único"
+
+
+def test_matriz_e_filial_sao_a_mesma_raiz(banco):
+    """'Projeto Social Colibri' é a filial 0006 do 'Instituto Gnosis' 0001, não outra entidade."""
+    db = banco([_l(2022, "10635117000103", "INSTITUTO GNOSIS", 10e6, 10e6, 10e6),
+                _l(2023, "10635117000600", "PROJETO SOCIAL COLIBRI", 10e6, 10e6, 10e6)])
+    assert E.fornecedor_de_exercicio_unico(db, piso=1_000_000.0)["n"] == 0
+
+
+def test_documento_mascarado_sai_com_a_razao_declarada(banco):
+    db = banco([_l(2021, "***201901**", "ESTRANGEIRA", 20e6, 20e6, 20e6)])
+    r = E.fornecedor_de_exercicio_unico(db)
+    assert r["n"] == 0 and r["linhas_fora_por_documento_mascarado"] == 1
+
+
+def test_razoes_sociais_do_achado_sao_devolvidas(banco):
+    db = banco([_l(2021, "1" * 14, "NOME A", 20e6, 20e6, 20e6),
+                _l(2021, "1" * 14, "NOME B", 5e6, 5e6, 5e6),
+                _l(2022, "2" * 14, "OUTRO", 1.0, 1.0, 1.0),
+                _l(2019, "3" * 14, "BORDA", 1.0, 1.0, 1.0)])
+    r = E.fornecedor_de_exercicio_unico(db)
+    assert r["achados"][0]["razoes_sociais"] == ["NOME A", "NOME B"]
+
+
+# ── pico de gasto por subelemento ────────────────────────────────────────────────────────────
+
+def _sub(ano, sub, cnpj, pago):
+    return (ano, "SME", cnpj, f"F{cnpj[:4]}", f"3390{sub}", pago, pago, pago)
+
+
+def test_pico_exige_serie_para_ter_normal_contra_o_que_comparar(banco):
+    """Com menos de 3 exercícios não há mediana que signifique alguma coisa."""
+    db = banco([_sub(2021, "3004", "1" * 14, 50e6), _sub(2022, "3004", "1" * 14, 1e6)])
+    assert E.pico_de_gasto_por_subelemento(db)["universo"] == 0
+
+
+def test_pico_exige_volume_E_elenco_renovado(banco):
+    """Só o volume marca 16,2% dos subelementos; é a combinação que discrimina."""
+    # mercado A: volume explode E fornecedores novos
+    linhas = [_sub(2019, "3004", "1" * 14, 1e6), _sub(2020, "3004", "1" * 14, 1e6),
+              _sub(2021, "3004", "9" * 14, 50e6)]
+    # mercado B: volume explode com OS MESMOS fornecedores
+    linhas += [_sub(2019, "3007", "2" * 14, 1e6), _sub(2020, "3007", "2" * 14, 1e6),
+               _sub(2021, "3007", "2" * 14, 50e6)]
+    r = E.pico_de_gasto_por_subelemento(banco(linhas), piso=1_000_000.0)
+    assert [a["subelemento"] for a in r["achados"]] == ["3004"]
+    assert r["corte_amplo"]["n"] == 2, "o de elenco estável não some — fica no corte amplo"
+
+
+def test_pico_devolve_a_serie_inteira(banco):
+    linhas = [_sub(2019, "3004", "1" * 14, 1e6), _sub(2020, "3004", "1" * 14, 1e6),
+              _sub(2021, "3004", "9" * 14, 50e6)]
+    a = E.pico_de_gasto_por_subelemento(banco(linhas), piso=1_000_000.0)["achados"][0]
+    assert set(a["serie"]) == {2019, 2020, 2021}
+    assert a["ano_de_pico"] == 2021
+    assert a["fracao_de_fornecedores_novos"] == pytest.approx(1.0)
+
+
+def test_mercado_estavel_nao_e_marcado(banco):
+    linhas = [_sub(ano, "3004", "1" * 14, 10e6) for ano in (2019, 2020, 2021, 2022)]
+    assert E.pico_de_gasto_por_subelemento(banco(linhas), piso=1_000_000.0)["n"] == 0
