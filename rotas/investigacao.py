@@ -2368,6 +2368,51 @@ def api_fontes_frescor():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/pericia/cobertura")
+def api_pericia_cobertura(so_mortos: bool = False):
+    """Cobertura da perícia de contratos: quais testes REALMENTE rodam, e o que falta aos demais.
+
+    Esta rota existe porque o painel, sem ela, **afirma um trabalho que não houve**. Ele mostra
+    31.017 fornecedores periciados e 27.846 "com indício", e isso parece um sistema em pleno
+    funcionamento. Medido: **620.108 dos 744.259 itens (83,3%) são INDISPONÍVEL**, **20 dos 24
+    testes estão 95%+ indisponíveis** e **nenhum item chega a CONFIRMADO em todo o acervo**.
+
+    A perícia é honesta — cada indisponível traz o motivo por extenso. O que falta é INSUMO, e
+    `insumos_que_destravam` diz qual captura resolve quantos testes: a planilha de custos do
+    contrato sozinha destrava 6 dos 20.
+
+    ⚠️ INDISPONÍVEL **não é** ausência de irregularidade. É ausência de exame.
+
+    `?so_mortos=1` devolve apenas os testes sem insumo.
+    """
+    import sqlite3 as _sq
+    try:
+        from tools.cobertura_pericia import cobertura
+        r = cobertura()
+    except ImportError as exc:
+        return JSONResponse({"ok": False, "erro": f"módulo indisponível: {exc}"}, status_code=503)
+    except _sq.Error as exc:
+        return JSONResponse({"ok": False, "erro": f"perícia não disponível: {exc}",
+                             "dica": "a tabela pericia_fornecedor pode não ter sido gerada"},
+                            status_code=503)
+    testes = [x for x in r["testes"] if not x["roda"]] if so_mortos else r["testes"]
+    return JSONResponse({
+        "ok": True,
+        "periciados": r["periciados"],
+        "n_testes": r["n_testes"],
+        "testes_que_rodam": r["testes_que_rodam"],
+        "testes_sem_insumo": r["testes_sem_insumo"],
+        "itens": r["itens"],
+        "itens_indisponiveis": r["itens_indisponiveis"],
+        "fracao_indisponivel": r["fracao_indisponivel"],
+        "confirmados_no_acervo": r["confirmados_no_acervo"],
+        "insumos_que_destravam": r["insumos_que_destravam"],
+        "testes": testes,
+        "aviso": "INDISPONÍVEL é ausência de EXAME, não de irregularidade. "
+                 + str(r.get("_nota") or ""),
+    })
+
+
 @router.get("/api/lentes")
 def api_lentes(lente: Optional[str] = None, top: int = 20, esfera: str = "estadual"):
     """Lentes de detecção materializadas: convergência, dependência mútua, sanção, porte.

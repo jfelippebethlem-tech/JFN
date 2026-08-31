@@ -102,3 +102,92 @@ def test_acervo_real_tem_os_4_testes_vivos_conhecidos():
     except sqlite3.OperationalError:
         pytest.skip("pericia_fornecedor ausente")
     assert {"T01-3WAY", "T02-STATUS-PAGO"} <= set(r["vivos"]), r["vivos"]
+
+
+# ── a rota ───────────────────────────────────────────────────────────────────────────────────
+
+def test_rota_declara_que_indisponivel_nao_e_ausencia_de_irregularidade():
+    """O painel, sem esta rota, afirma um trabalho que não houve: mostra 31.017 periciados e
+    27.846 'com indício', sem dizer que 83,3% dos itens não foram examinados."""
+    import json as _json
+    from pathlib import Path
+    if not Path("data/compliance.db").exists():
+        pytest.skip("compliance.db ausente")
+    from rotas.investigacao import api_pericia_cobertura
+    resp = api_pericia_cobertura()
+    if resp.status_code == 503:
+        pytest.skip("perícia não disponível nesta máquina")
+    d = _json.loads(resp.body)
+    assert d["ok"]
+    assert "ausência de EXAME" in d["aviso"]
+    assert d["insumos_que_destravam"], "a rota tem de dizer o que destrava o quê"
+    assert d["testes_que_rodam"] + d["testes_sem_insumo"] == d["n_testes"]
+
+
+def test_rota_so_mortos_filtra_sem_mexer_nos_totais():
+    import json as _json
+    from pathlib import Path
+    if not Path("data/compliance.db").exists():
+        pytest.skip("compliance.db ausente")
+    from rotas.investigacao import api_pericia_cobertura
+    r1, r2 = api_pericia_cobertura(), api_pericia_cobertura(so_mortos=True)
+    if r1.status_code == 503:
+        pytest.skip("perícia não disponível")
+    d1, d2 = _json.loads(r1.body), _json.loads(r2.body)
+    assert len(d2["testes"]) == d1["testes_sem_insumo"]
+    assert d2["n_testes"] == d1["n_testes"], "o total não muda com o filtro de exibição"
+
+
+# ── rodar não basta: utilidade ───────────────────────────────────────────────────────────────
+
+def test_teste_que_nunca_aponta_nada_e_INERTE(banco):
+    """T01 (three-way match) roda em 31.003 apurados e tem ZERO indícios no acervo real."""
+    db = banco([(str(i), [_it("T01", "AFASTADO")]) for i in range(200)])
+    t = C.cobertura(db)["testes"][0]
+    assert t["roda"] and t["utilidade"] == "INERTE"
+    assert t["taxa_de_apontamento"] == 0.0
+
+
+def test_teste_que_aponta_a_maioria_NAO_DISCRIMINA(banco):
+    """T08 aponta 85,1% dos apurados. Sinal que marca a maioria não ordena fila nenhuma."""
+    forn = [(str(i), [_it("T08", "INDICIO")]) for i in range(85)]
+    forn += [(str(100 + i), [_it("T08", "AFASTADO")]) for i in range(15)]
+    t = C.cobertura(banco(forn))["testes"][0]
+    assert t["utilidade"] == "NAO DISCRIMINA" and t["taxa_de_apontamento"] > 0.5
+
+
+def test_teste_com_taxa_intermediaria_e_UTIL(banco):
+    forn = [(str(i), [_it("T02", "INDICIO")]) for i in range(17)]
+    forn += [(str(100 + i), [_it("T02", "AFASTADO")]) for i in range(83)]
+    r = C.cobertura(banco(forn))
+    assert r["testes"][0]["utilidade"] == "UTIL"
+    assert r["testes_uteis"] == 1 and r["uteis"] == ["T02"]
+
+
+def test_taxa_sobre_punhado_nao_e_confiavel(banco):
+    """T04 tem 13 apurados de 31.017 e 'aponta 100%'. Ler isso como teste que acha tudo seria o
+    oposto da verdade — a taxa viaja com o denominador e com a marca de confiabilidade."""
+    forn = [(str(i), [_it("T04", "INDISPONIVEL", motivo="falta a CCT")]) for i in range(200)]
+    forn += [(str(500 + i), [_it("T04", "INDICIO")]) for i in range(3)]
+    t = C.cobertura(banco(forn))["testes"][0]
+    assert t["utilidade"] == "SEM INSUMO", "sem insumo, a utilidade não se avalia"
+    assert t["apurados"] == 3 and t["taxa_confiavel"] is False
+
+
+def test_util_exige_denominador_grande(banco):
+    forn = [(str(i), [_it("T02", "INDICIO")]) for i in range(20)]
+    forn += [(str(100 + i), [_it("T02", "AFASTADO")]) for i in range(80)]
+    assert C.cobertura(banco(forn))["testes"][0]["taxa_confiavel"] is True
+
+
+def test_acervo_real_tem_apenas_dois_testes_uteis():
+    """Controle contra o acervo: 24 testes, 4 rodam, 2 úteis. Se mudar, algo mudou de verdade."""
+    from pathlib import Path
+    if not Path("data/compliance.db").exists():
+        pytest.skip("compliance.db ausente")
+    try:
+        r = C.cobertura()
+    except sqlite3.OperationalError:
+        pytest.skip("pericia_fornecedor ausente")
+    assert set(r["uteis"]) == {"T02-STATUS-PAGO", "T07-DUPLICIDADE-COMP"}, r["uteis"]
+    assert r["inertes"] == ["T01-3WAY"] and r["nao_discriminam"] == ["T08-GAP-COMPETENCIA"]

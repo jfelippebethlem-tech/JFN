@@ -36,6 +36,8 @@ from collections import Counter, defaultdict
 from compliance_agent.pcrj.universo import conectar
 
 LIMIAR_MORTO = 0.95      # 95%+ indisponível = o teste não roda de verdade
+LIMIAR_NAO_DISCRIMINA = 0.50   # marca metade ou mais dos apurados = não ordena fila
+LIMIAR_INERTE = 0.0            # roda, mas nunca aponta nada
 
 # Agrupa os motivos de indisponibilidade pelo INSUMO que os resolveria. "83% indisponível" não é
 # diagnóstico — é sintoma. O diagnóstico é *qual captura destrava quantos testes*, e é isso que
@@ -135,6 +137,28 @@ def cobertura(db_path=None, limite: int | None = None) -> dict:
             "afastado": cnt.get("AFASTADO", 0),
             "motivo_da_falta": m[0][0] if m else None,
         })
+    # RODAR NÃO BASTA. Um teste que aponta 85% dos apurados não ordena fila nenhuma, e um que
+    # nunca aponta nada não acrescenta. Medido nos 4 que rodam: T01 tem 0 indícios em 31.003
+    # apurados (inerte) e T08 tem 85,1% (não discrimina). Úteis de verdade: T02 (17,2%) e
+    # T07 (18,8%) — dois, de vinte e quatro.
+    for x in testes:
+        apurados = x["indicio"] + x["afastado"] + x["confirmado"]
+        x["apurados"] = apurados
+        taxa = (x["indicio"] + x["confirmado"]) / apurados if apurados else None
+        x["taxa_de_apontamento"] = taxa
+        # taxa calculada sobre punhado de itens não sustenta veredito de utilidade: T04 tem 13
+        # apurados de 31.017 e "aponta 100%". Sem insumo, a utilidade não se avalia.
+        x["taxa_confiavel"] = bool(apurados >= 100)
+        if not x["roda"]:
+            x["utilidade"] = "SEM INSUMO"
+        elif taxa is None:
+            x["utilidade"] = "INDISPONIVEL"
+        elif taxa <= LIMIAR_INERTE:
+            x["utilidade"] = "INERTE"
+        elif taxa >= LIMIAR_NAO_DISCRIMINA:
+            x["utilidade"] = "NAO DISCRIMINA"
+        else:
+            x["utilidade"] = "UTIL"
     # agrupa os testes mortos pelo insumo que os destravaria
     por_insumo: dict[str, list] = defaultdict(list)
     for t in testes:
@@ -148,6 +172,7 @@ def cobertura(db_path=None, limite: int | None = None) -> dict:
 
     vivos = [t for t in testes if t["roda"]]
     mortos = [t for t in testes if not t["roda"]]
+    uteis = [t for t in testes if t["utilidade"] == "UTIL"]
     tot_itens = sum(t["itens"] for t in testes)
     tot_ind = sum(t["indisponivel"] for t in testes)
     return {
@@ -155,6 +180,11 @@ def cobertura(db_path=None, limite: int | None = None) -> dict:
         "n_testes": len(testes),
         "testes_que_rodam": len(vivos),
         "testes_sem_insumo": len(mortos),
+        # rodar não basta: o teste precisa APONTAR ALGO e não apontar quase tudo
+        "testes_uteis": len(uteis),
+        "uteis": [t["codigo"] for t in uteis],
+        "inertes": [t["codigo"] for t in testes if t["utilidade"] == "INERTE"],
+        "nao_discriminam": [t["codigo"] for t in testes if t["utilidade"] == "NAO DISCRIMINA"],
         "itens": tot_itens,
         "itens_indisponiveis": tot_ind,
         "fracao_indisponivel": tot_ind / tot_itens if tot_itens else None,
@@ -171,15 +201,20 @@ def cobertura(db_path=None, limite: int | None = None) -> dict:
 if __name__ == "__main__":
     r = cobertura()
     print(f"periciados: {r['periciados']:,} · testes: {r['n_testes']} "
-          f"({r['testes_que_rodam']} rodam, {r['testes_sem_insumo']} sem insumo)")
+          f"({r['testes_que_rodam']} rodam, {r['testes_sem_insumo']} sem insumo, "
+          f"{r['testes_uteis']} ÚTEIS)")
+    print(f"   úteis: {r['uteis']} · inertes: {r['inertes']} · "
+          f"não discriminam: {r['nao_discriminam']}")
     print(f"itens: {r['itens']:,} · indisponíveis: {r['itens_indisponiveis']:,} "
           f"({r['fracao_indisponivel']*100:.1f}%) · CONFIRMADOS no acervo inteiro: "
           f"{r['confirmados_no_acervo']}")
-    print(f"\n{'teste':26s} {'itens':>8s} {'indisp':>8s} {'%':>6s}  título")
+    print(f"\n{'teste':26s} {'apurados':>9s} {'indisp':>6s} {'aponta':>7s}  {'utilidade':16s} título")
     for t in r["testes"]:
-        marca = "  " if t["roda"] else "✗ "
-        print(f"{marca}{t['codigo']:24s} {t['itens']:8,} {t['indisponivel']:8,} "
-              f"{t['fracao_indisponivel']*100:5.1f}%  {t['titulo'][:40]}")
+        # a taxa vem SEMPRE acompanhada do denominador: T04 aponta "100%" sobre 13 itens de
+        # 31.017, e ler isso como um teste que acha tudo seria o oposto da verdade
+        ap = f"{t['taxa_de_apontamento']*100:5.1f}%" if t["taxa_de_apontamento"] is not None else "    —"
+        print(f"  {t['codigo']:24s} {t['apurados']:9,} {t['fracao_indisponivel']*100:5.1f}% {ap:>7s}  "
+              f"{t['utilidade']:16s} {t['titulo'][:34]}")
     print("\nO QUE DESTRAVA O QUÊ — ordem de retorno da captura:")
     for i in r["insumos_que_destravam"]:
         print(f"   {i['testes_que_destrava']:2d} teste(s) · {i['insumo']}")
