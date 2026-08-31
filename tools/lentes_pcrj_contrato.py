@@ -366,9 +366,73 @@ def concentracao_do_terceiro_setor(db_path=None, top: int = 10) -> dict:
                      "concentração. Não é lente de irregularidade, é de superfície"}
 
 
+def entidade_paga_como_servico(db_path=None, razao_minima: float = 10.0,
+                               piso: float = 1_000_000.0) -> dict:
+    """Entidade sem fins lucrativos que recebe muito mais como SERVIÇO do que como parceria.
+
+    Uma organização da sociedade civil pode receber do poder público por duas portas:
+    **transferência** (modalidade 50), que aciona o regime da Lei 13.019/2014 — chamamento
+    público, plano de trabalho, prestação de contas específica —, ou **contrato de serviço**
+    (3390.39), que segue a Lei 14.133 e o regime de contrato de gestão da Lei 9.637/98.
+
+    Receber pelas duas portas é **a norma, não o desvio**: medido, **243 de 427 entidades
+    (56,9%)** fazem isso. Essa hipótese está descartada por prevalência.
+
+    O que discrimina é a **proporção invertida** — a entidade que recebe quase tudo como serviço
+    e quase nada como parceria. Pode ser legítimo (organização social com contrato de gestão é
+    contratada, não conveniada) ou pode ser a via que dispensa o chamamento público. A lente
+    ordena para exame.
+
+    Varredura da razão serviço/transferência, com serviço >= R$ 1.000.000,00:
+
+    | razão | entidades | % de 427 | massa |
+    |---|---:|---:|---:|
+    | >= 1x | 12 | 2,81% | R$ 361.987.124,43 |
+    | >= 3x | 11 | 2,58% | R$ 358.172.505,29 |
+    | **>= 10x** | **5** | **1,17%** | **R$ 309.826.411,44** |
+    | >= 100x | 2 | 0,47% | R$ 123.623.020,00 |
+    """
+    con = conectar(db_path or "data/compliance.db")
+    try:
+        transf, servico, nomes = defaultdict(float), defaultdict(float), {}
+        for doc, nome, p in con.execute(
+                "SELECT credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+                "WHERE substr(natureza,3,2)='50' AND pago > 0 GROUP BY 1,2"):
+            r = re.sub(r"\D", "", str(doc or ""))[:8]
+            if len(r) == 8:
+                transf[r] += p
+                nomes[r] = nome
+        for doc, nome, p in con.execute(
+                "SELECT credor_documento, credor_nome, sum(pago) FROM pcrj_despesa "
+                "WHERE substr(natureza,3,2)='90' AND substr(natureza,5,2)='39' AND pago > 0 "
+                "GROUP BY 1,2"):
+            r = re.sub(r"\D", "", str(doc or ""))[:8]
+            if r in transf:
+                servico[r] += p
+                nomes.setdefault(r, nome)
+    finally:
+        con.close()
+    achados = [{"entidade": nomes[r], "raiz": r, "pago_como_servico": servico[r],
+                "pago_como_transferencia": transf[r], "razao": servico[r] / transf[r]}
+               for r in servico
+               if transf[r] > 0 and servico[r] >= piso and servico[r] / transf[r] >= razao_minima]
+    achados.sort(key=lambda a: -a["pago_como_servico"])
+    return {"lente": f"entidade sem fins lucrativos com {razao_minima:.0f}x+ mais recebimento "
+                     f"como servico do que como parceria",
+            "universo": len(transf), "n": len(achados),
+            "prevalencia": len(achados) / len(transf) if transf else None,
+            "massa": sum(a["pago_como_servico"] for a in achados), "achados": achados,
+            "recebem_pelas_duas_portas": len(servico),
+            "_nota": "receber pelas duas portas e a NORMA (56,9% das entidades) — hipotese "
+                     "descartada por prevalencia. O que discrimina e a proporcao invertida. "
+                     "Contrato de gestao de organizacao social e legitimo nesta natureza: a "
+                     "lente ordena exame, nao afirma fuga ao chamamento publico"}
+
+
 LENTES = (aditivos_em_serie, vigencia_acima_do_prazo, sazonalidade_das_assinaturas,
           vencedor_contumaz,
-          estimativa_fora_de_escala, objeto_generico, concentracao_do_terceiro_setor)
+          estimativa_fora_de_escala, objeto_generico, concentracao_do_terceiro_setor,
+          entidade_paga_como_servico)
 CONTROLES = (contrato_assinado_apos_o_inicio_da_vigencia,)
 
 

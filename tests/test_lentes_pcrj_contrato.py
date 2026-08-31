@@ -197,3 +197,34 @@ def test_toda_lente_declara_o_contrato(banco):
         assert {"lente", "universo", "n", "prevalencia", "massa", "achados"} <= set(r), fn.__name__
         if r["universo"] == 0:
             assert r["prevalencia"] is None, f"{fn.__name__}: universo vazio virou 0%"
+
+
+# ── entidade paga como serviço em vez de parceria ───────────────────────────────────────────
+
+def test_receber_pelas_duas_portas_nao_e_achado(banco):
+    """Medido: 56,9% das entidades fazem isso. É a norma — hipótese descartada por prevalência."""
+    desp = [(2022, "SMS", "1" * 14, "ONG", "33503901", 0, 0, 1_000_000.0),
+            (2022, "SMS", "1" * 14, "ONG", "33903901", 0, 0, 1_000_000.0)]
+    r = C.entidade_paga_como_servico(banco(despesa=desp))
+    assert r["n"] == 0, "razão 1x não passa do corte de 10x"
+    assert r["recebem_pelas_duas_portas"] == 1
+
+
+def test_proporcao_invertida_e_o_que_discrimina(banco):
+    desp = [(2022, "SMS", "1" * 14, "SEGUMED", "33503901", 0, 0, 700_000.00),
+            (2022, "SMS", "1" * 14, "SEGUMED", "33903901", 0, 0, 80_000_000.00)]
+    r = C.entidade_paga_como_servico(banco(despesa=desp))
+    assert r["n"] == 1
+    assert r["achados"][0]["razao"] == pytest.approx(80_000_000 / 700_000)
+
+
+def test_entidade_sem_transferencia_alguma_fica_fora(banco):
+    """Sem a porta da parceria não há proporção a inverter — é fornecedor comum, outra lente."""
+    desp = [(2022, "SMS", "1" * 14, "EMPRESA", "33903901", 0, 0, 90_000_000.0)]
+    assert C.entidade_paga_como_servico(banco(despesa=desp))["n"] == 0
+
+
+def test_piso_evita_entidade_minuscula(banco):
+    desp = [(2022, "SMS", "1" * 14, "ONG", "33503901", 0, 0, 10.0),
+            (2022, "SMS", "1" * 14, "ONG", "33903901", 0, 0, 100_000.0)]
+    assert C.entidade_paga_como_servico(banco(despesa=desp))["n"] == 0
