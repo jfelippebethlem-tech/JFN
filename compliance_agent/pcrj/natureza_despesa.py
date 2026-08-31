@@ -10,6 +10,13 @@ código de despesa vira erro de leitura em relatório de controle externo.
 Este módulo traz a tabela **da fonte**: os 77 elementos do Anexo II da Portaria 163/2001,
 extraídos do PDF oficial, mais as modalidades de aplicação e os grupos de natureza.
 
+⚠️ A TABELA TEM VERSÃO. A Portaria 163 é de 2001 e recebe alterações periódicas; o PDF que serviu
+de base é a consolidação de **2014**. Elementos criados depois (40, 82, 85) estão em
+`ELEMENTOS_POSTERIORES`, cada um com a norma que o criou. Ao reextrair, **rodar o controle
+positivo**: varrer os códigos que o acervo usa e conferir se algum falta na tabela. Foi assim que
+a lacuna apareceu — R$ 6,51 bilhões classificados em elementos desconhecidos, sendo R$ 5,52 bi só
+no 85 (Contrato de Gestão), que é o dinheiro das organizações sociais.
+
 A ESTRUTURA DO CÓDIGO
 ---------------------
 `C G MM EE (SS)` — categoria econômica, grupo de natureza, modalidade de aplicação, elemento e,
@@ -112,6 +119,30 @@ ELEMENTOS: dict[str, str] = {
     "96": "Ressarcimento de Despesas de Pessoal Requisitado",
     "97": "Aporte para Cobertura do Déficit Atuarial do RPPS",
     "99": "A Classificar",
+}
+
+# ELEMENTOS CRIADOS DEPOIS da versão do PDF que serviu de base (consolidação de 2014). Sem eles,
+# a tabela reprovava como "inexistente" código que o Município USA — e foi o próprio acervo que
+# denunciou a falta, num controle positivo: R$ 6.514.285.739,62 estavam classificados em
+# elementos que a tabela não conhecia.
+#
+# Cada um com a norma que o criou, conferida na fonte:
+ELEMENTOS_POSTERIORES: dict[str, tuple[str, str]] = {
+    "40": ("Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica",
+           "Portaria Conjunta STN/SOF nº 02, de 30/10/2017 — desmembrou itens do elemento 39"),
+    "82": ("Aporte de Recursos pelo Parceiro Público em Favor do Parceiro Privado decorrente de "
+           "Contrato de Parceria Público-Privada (PPP)",
+           "Lei nº 11.079/2004; elemento incluído por alteração da Portaria 163"),
+    "85": ("Contrato de Gestão",
+           "Portaria SO nº 7, de 18/08/2021 — transferências a organizações sociais e outras "
+           "entidades privadas sem fins lucrativos para execução de serviços em contrato de gestão"),
+}
+ELEMENTOS.update({c: nome for c, (nome, _) in ELEMENTOS_POSTERIORES.items()})
+
+# Códigos que o Município usa e que NÃO foram identificados em norma. Ficam declarados como
+# desconhecidos — melhor um buraco nomeado que um rótulo inventado.
+ELEMENTOS_NAO_IDENTIFICADOS: dict[str, str] = {
+    "59": "usado pelo Município do Rio (5 linhas, R$ 16.322,82) — norma de origem não localizada",
 }
 
 MODALIDADES: dict[str, str] = {

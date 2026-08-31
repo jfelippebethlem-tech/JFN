@@ -40,10 +40,12 @@ TETO_EPP_ANUAL = 4_800_000.00
 TETO_ME_ANUAL = 360_000.00
 
 # Elementos em que o pagamento a PESSOA FÍSICA é anômalo: pressupõem fornecedor empresarial.
-# Os rótulos vêm da tabela OFICIAL (Portaria STN/SOF 163/2001), não de memória — o elemento 40
-# que eu chamava de "serviços de tecnologia da informação" não existe nessa acepção na Portaria.
+# Rótulos da tabela OFICIAL, nunca de memória. O 40 (Serviços de TIC) voltou depois de eu o ter
+# removido por engano: ele NÃO está na consolidação de 2014 da Portaria 163, mas foi criado pela
+# Portaria Conjunta STN/SOF nº 02/2017 e o Município usa — R$ 332.956.445,29 no universo
+# contratual. Removê-lo tinha custado 10 casos legítimos desta lente.
 ELEMENTOS_TIPICOS_DE_PJ = {
-    e: ELEMENTOS_OFICIAIS[e] for e in ("39", "37", "51", "52") if e in ELEMENTOS_OFICIAIS
+    e: ELEMENTOS_OFICIAIS[e] for e in ("39", "37", "40", "51", "52") if e in ELEMENTOS_OFICIAIS
 }
 
 

@@ -11,9 +11,44 @@ from compliance_agent.pcrj import natureza_despesa as N
 def test_elementos_inexistentes_nao_foram_inventados():
     """Regressão da armadilha da extração: a Portaria traz DUAS listas de códigos de dois
     dígitos (modalidades e elementos), e varrer o documento inteiro faz uma vazar na outra.
-    A lista de elementos salta de 39 direto para 41 — 40, 50, 60 e 90 não existem."""
-    for c in ("40", "50", "60", "90", "02"):
+    Na consolidação de 2014, a lista salta de 39 direto para 41.
+
+    ⚠️ O 40 SAIU desta lista: ele não está na consolidação de 2014, mas foi CRIADO pela Portaria
+    Conjunta STN/SOF nº 02/2017 e o Município usa. Eu o havia removido por engano, e o custo foi
+    perder 10 casos legítimos da lente de pessoa física em elemento de PJ."""
+    for c in ("50", "60", "90", "02"):
         assert N.ELEMENTOS.get(c) is None, f"elemento {c} não existe na Portaria 163"
+
+
+def test_elementos_criados_depois_da_consolidacao_de_2014():
+    """A tabela tem VERSÃO. Sem estes três, R$ 6,51 bi do acervo ficavam sem rótulo."""
+    assert N.ELEMENTOS["40"].startswith("Serviços de Tecnologia da Informação")
+    assert "Parceria Público-Privada" in N.ELEMENTOS["82"]
+    assert N.ELEMENTOS["85"] == "Contrato de Gestão"
+    for c, (_, norma) in N.ELEMENTOS_POSTERIORES.items():
+        assert len(norma) > 20 and ("Portaria" in norma or "Lei" in norma), c
+
+
+def test_controle_positivo_contra_o_acervo():
+    """A tabela tem de cobrir os códigos que o Município REALMENTE usa. Foi este controle que
+    denunciou a falta dos elementos 40, 82 e 85 — R$ 6.514.285.739,62 sem rótulo."""
+    import sqlite3
+    from pathlib import Path
+    db = Path("data/compliance.db")
+    if not db.exists():
+        pytest.skip("compliance.db ausente")
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        usados = {r[0]: r[1] for r in con.execute(
+            "SELECT substr(natureza,5,2), sum(pago) FROM pcrj_despesa WHERE pago > 0 GROUP BY 1")}
+    except sqlite3.OperationalError:
+        pytest.skip("pcrj_despesa ausente")
+    finally:
+        con.close()
+    sem_rotulo = {c: v for c, v in usados.items()
+                  if c not in N.ELEMENTOS and c not in N.ELEMENTOS_NAO_IDENTIFICADOS}
+    assert not sem_rotulo, (
+        f"o acervo usa elementos que a tabela não conhece nem declara: {sem_rotulo}")
 
 
 def test_elementos_conhecidos_estao_corretos():
