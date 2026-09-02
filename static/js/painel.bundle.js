@@ -17,7 +17,9 @@
   };
   var kpi = (v, l, cor, gl, dest) => {
     const ik = _kpiIco(cor);
-    const go = dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
+    const drill = dest && typeof dest === "object" && dest.drill;
+    const sobre = dest && typeof dest === "object" && dest.sobre;
+    const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : sobre ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
     return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ""}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
   };
   var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
@@ -93,6 +95,108 @@
     aditivos: "aditivos"
   };
   var rot = (id) => ROTULOS[id] || String(id || "").replace(/_/g, " ");
+
+  // static/js/src/nucleo/drill.js
+  var _REG = /* @__PURE__ */ new Map();
+  var _NOMES = [
+    "razao_social",
+    "nome",
+    "nome_socio",
+    "orgao_nome",
+    "entidade",
+    "ancora",
+    "descricao",
+    "objeto",
+    "chave",
+    "sobrenome",
+    "item"
+  ];
+  var _DOCS = ["cnpj", "cnpj_fmt", "cnpj_basico", "documento", "cpf", "processo", "numero"];
+  function linhaGenerica(x) {
+    if (x == null || typeof x !== "object") return card(esc(String(x)));
+    const tit = _NOMES.map((k) => x[k]).find((v) => v != null && v !== "") ?? "—";
+    const doc = _DOCS.map((k) => x[k]).find((v) => v != null && v !== "");
+    const nums = Object.entries(x).filter(([k, v]) => typeof v === "number" && !_DOCS.includes(k)).slice(0, 3).map(([k, v]) => `${esc(k)} <b>${fmtN(v)}</b>`).join(" · ");
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><div style="font-weight:700">${esc(String(tit))}</div>
+      ${doc ? `<div class="dim">${esc(String(doc))}</div>` : ""}</div>
+      ${nums ? `<div class="right dim" style="font-size:12.5px">${nums}</div>` : ""}</div>`);
+  }
+  function registrarDrill(nome, { titulo, itens, render, nota }) {
+    if (!nome) return;
+    _REG.set(nome, { titulo: titulo || nome, itens: itens || [], render, nota: nota || "" });
+  }
+  function drillSeCompleto(nome, total, itens, cfg) {
+    const lista = itens || [];
+    if (total == null || Number(total) !== lista.length) return null;
+    if (lista.length > TETO_LINHAS_GAVETA) return null;
+    registrarDrill(nome, { ...cfg || {}, itens: lista });
+    return { drill: nome };
+  }
+  var TETO_LINHAS_GAVETA = 800;
+  function abrirDrill(nome) {
+    const d = _REG.get(nome);
+    const alvo = $("drill-out") || $("view");
+    if (!d || !alvo) return;
+    const linhas = d.itens || [];
+    let h = `<div id="drill-box" class="drill-box">`;
+    h += `<button type="button" class="btn ghost" data-drill-fechar="1" style="float:right">Fechar</button>`;
+    h += sec(d.titulo, linhas.length);
+    h += linhas.length ? `<div class="grid">${linhas.map((x) => {
+      try {
+        return d.render ? d.render(x) : linhaGenerica(x);
+      } catch (e) {
+        return card(`<div class="warn">linha ilegível: ${esc(String(e))}</div>`);
+      }
+    }).join("")}</div>` : card('<div class="dim">Nenhuma linha nesta métrica.</div>');
+    h += `<div class="note">${fmtN(linhas.length)} linha(s) — este número tem de bater com a métrica
+        que você clicou. ${esc(d.nota || "")}</div></div>`;
+    const box = $("drill-box");
+    if (box) box.remove();
+    alvo.insertAdjacentHTML("afterbegin", h);
+    const novo = $("drill-box");
+    if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: "start" });
+  }
+  function abrirSobre(titulo, texto) {
+    const alvo = $("drill-out") || $("view");
+    if (!alvo) return;
+    const box = $("drill-box");
+    if (box) box.remove();
+    alvo.insertAdjacentHTML(
+      "afterbegin",
+      `<div id="drill-box" class="drill-box">
+       <button type="button" class="btn ghost" data-drill-fechar="1" style="float:right">Fechar</button>
+       ${sec(titulo)}${card(`<div style="line-height:1.55">${texto}</div>`)}
+       <div class="note">Esta métrica não tem lista por trás — ela mede uma relação, não um conjunto
+       de itens. O que se pode conferir é a procedência acima.</div></div>`
+    );
+    const novo = $("drill-box");
+    if (novo && novo.scrollIntoView) novo.scrollIntoView({ block: "start" });
+  }
+  function ligarDrill() {
+    document.addEventListener("click", (ev) => {
+      if (!ev.target.closest) return;
+      if (ev.target.closest("[data-drill-fechar]")) {
+        const b = $("drill-box");
+        if (b) {
+          ev.preventDefault();
+          b.remove();
+        }
+        return;
+      }
+      const s = ev.target.closest("[data-sobre]");
+      if (s) {
+        ev.preventDefault();
+        abrirSobre(s.dataset.sobreTit || "A métrica", s.dataset.sobre);
+        return;
+      }
+      const k = ev.target.closest("[data-drill]");
+      if (k && _REG.has(k.dataset.drill)) {
+        ev.preventDefault();
+        abrirDrill(k.dataset.drill);
+      }
+    });
+  }
 
   // static/js/src/nucleo/http.js
   var _jCache = /* @__PURE__ */ new Map();
@@ -2904,6 +3008,31 @@ void main(){
     if (d.resumo) h += card(`<div style="font-size:13.5px;color:var(--mut)">${esc(d.resumo).slice(0, 600)}</div>`);
     if ((d.socios || []).length) h += `<div style="height:12px"></div>` + sec("Quadro societário (QSA)", d.socios.length) + card(`<table><tbody>${d.socios.map((s) => `<tr><td>${esc(s.nome)}${s.servidor ? ' <span class="tag rose">servidor</span>' : ""}</td><td class="dim">${esc(s.qualificacao || "")}</td></tr>`).join("")}</tbody></table>`);
     if ((d.orgaos || []).length) h += `<div style="height:12px"></div>` + sec("Órgãos que mais pagaram") + card(`<table><tbody>${d.orgaos.map((o) => `<tr><td>${esc(o.nome || o.ug)}</td><td>${fmtRc(o.total)}</td></tr>`).join("")}</tbody></table>`);
+    const mun = d.municipio;
+    if (mun) {
+      h += `<div style="height:12px"></div>` + sec("Município do Rio de Janeiro");
+      h += `<div class="mini">
+      <div class="b"><div class="v">${fmtRc(mun.pago)}</div><div class="l">Pago pela Prefeitura</div></div>
+      <div class="b"><div class="v">${fmtN(mun.orgaos)}</div><div class="l">Órgãos municipais</div></div>
+      <div class="b"><div class="v">${esc(mun.periodo || "—")}</div><div class="l">Exercícios</div></div>
+      <div class="b"><div class="v" style="color:${(mun.lentes || []).length ? "var(--amber)" : "#fff"}">${fmtN((mun.lentes || []).length)}</div><div class="l">Lentes que marcaram</div></div></div>`;
+      if ((mun.razoes_sociais || []).length > 1)
+        h += card(`<div class="kv"><span class="k">Razões sociais sob este CNPJ</span><b class="right" style="max-width:64%">${mun.razoes_sociais.map(esc).join(" · ")}</b></div>` + leitura("O mesmo CNPJ aparece com mais de uma razão social — troca de nome ou matriz/filial. 0,96% das raízes do acervo estão nesse caso; agrupar pelo NOME partiria a empresa em duas."));
+      if ((mun.por_elemento || []).length)
+        h += card(`<table><tbody>${mun.por_elemento.map((e) => `<tr><td>${esc(e.nome || "elemento " + e.codigo)}</td><td class="dim">${esc(e.codigo)}</td><td>${fmtRc(e.total)}</td></tr>`).join("")}</tbody></table>`);
+      if ((mun.por_orgao || []).length)
+        h += card(`<table><tbody>${mun.por_orgao.map((o) => `<tr><td>${esc(o.orgao)}</td><td>${fmtRc(o.total)}</td></tr>`).join("")}</tbody></table>`);
+      if ((mun.lentes || []).length) {
+        h += `<div style="height:10px"></div>` + sec("Lentes municipais que marcaram esta empresa", mun.lentes.length);
+        h += `<div class="grid">` + mun.lentes.map((l) => card(
+          `<div style="font-weight:650;font-size:13.5px">${esc(l.titulo || l.lente)}</div><div class="dim" style="font-size:12px">prevalência ${l.prevalencia != null ? (100 * l.prevalencia).toFixed(2).replace(".", ",") + "%" : "<b>INDISPONÍVEL</b>"} · ${l.n_na_lente != null ? fmtN(l.n_na_lente) + " na lente" : ""}</div>`
+        )).join("") + `</div>`;
+        h += leitura("Acender em <b>mais de uma</b> lente é o sinal forte — cada uma sozinha só ordena fila. Prevalência baixa significa que a lente discrimina; alta significa que descreve o acervo.");
+      } else {
+        h += `<div class="dim" style="margin:6px 2px">Nenhuma lente municipal marcou esta empresa.</div>`;
+      }
+      h += `<div class="note">${esc(mun._nota || "")}</div>`;
+    }
     if (sede.endereco) h += `<div style="height:12px"></div>` + sec("Sede / fachada") + card(`<div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:64%">${esc(sede.endereco)}, ${esc(sede.municipio || "")}/${esc(sede.uf || "")}</b></div>${sede.status ? `<div class="kv"><span class="k">Verificação</span><b>${esc(sede.status)}${sede.nivel ? " · " + esc(sede.nivel) : ""}</b></div>` : ""}${sede.residencial ? `<div class="kv"><span class="k">Natureza</span><b style="color:var(--amber)">endereço residencial</b></div>` : ""}${sv ? `<div class="btns"><a class="btn ghost" href="${sv}" target="_blank">Street View</a></div>` : ""}`);
     const est = d.estab;
     if (est) {
@@ -3344,7 +3473,25 @@ void main(){
     let h = `<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     h += `<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida || "")}</span></h3>`;
-    h += `<div class="grid g2">${kpi(fmtR(d.mediana_geral), "Mediana do item", "var(--amber)", "⚖️")}${kpi(fmtN(d.n_orgaos), "Órgãos", null, "🏛️")}${kpi(fmtN(d.n_fornecedores), "Fornecedores", null, "🏢")}${kpi(fmtN(d.n_compras), "Compras", null, "🧾")}</div>`;
+    h += `<div class="grid g2">${kpi(fmtR(d.mediana_geral), "Mediana do item", "var(--amber)", "⚖️", { sobre: "Mediana do preço unitário do MESMO item, entre todos os compradores públicos com compra registrada. Mediana e não média porque uma compra atípica desloca a média e não desloca a mediana. <b>Item diferente não compara</b>: 60% da 'economia' de uma medição anterior desta casa vinha de comparar produtos que só tinham a descrição parecida." })}${kpi(
+      fmtN(d.n_orgaos),
+      "Órgãos",
+      null,
+      "🏛️",
+      { sobre: "Quantos compradores públicos distintos têm compra registrada deste item. É o que dá sustentação à mediana: mediana calculada sobre poucos órgãos descreve aqueles órgãos, não o mercado." }
+    )}${kpi(
+      fmtN(d.n_fornecedores),
+      "Fornecedores",
+      null,
+      "🏢",
+      { sobre: "Quantos fornecedores distintos venderam este item. Número baixo pode significar mercado concentrado — e nesse caso preço acima da mediana diz menos sobre sobrepreço e mais sobre falta de concorrência." }
+    )}${kpi(
+      fmtN(d.n_compras),
+      "Compras",
+      null,
+      "🧾",
+      { sobre: 'Registros de compra que entraram no cálculo. É o tamanho da amostra: com poucas compras, a mediana é frágil e a razão "× mediana" precisa ser lida com essa reserva.' }
+    )}</div>`;
     const linha = (x) => {
       const c = x.vs_geral >= 1.5 ? "var(--rose)" : x.vs_geral <= 0.75 ? "var(--green)" : "var(--amber)";
       return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
@@ -3472,8 +3619,21 @@ void main(){
     if (!d.ok) return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = `<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Casos caro + suspeito", "var(--rose)", "🚨")}${kpi(fmtN(d.n_sancionada), "Fornecedor SANCIONADO", "var(--rose)", "⚖️")}
-      ${kpi(a.length ? a[0].vs_mediana + "×" : "—", "Pior caso (× mediana)", "var(--rose)")}${kpi(a.filter((x) => x.sinais.length >= 2).length, "Com ≥2 sinais", null, "🎯")}</div>`;
+    registrarDrill("compDoisSinais", { titulo: "Casos com dois ou mais sinais", itens: a.filter((x) => x.sinais.length >= 2), nota: "Sinal isolado explica-se; dois pedem verificação." });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Casos caro + suspeito", "var(--rose)", "🚨", drillSeCompleto("compCaroSuspeito", d.n, a, { titulo: "Casos caros E com sinal", nota: "Preço acima da mediana E sinal aceso no mesmo fornecedor — o cruzamento é a fila que rende." }) || { sobre: "Casos em que o preço está acima da mediana E há sinal aceso no mesmo fornecedor. O cruzamento é a fila que rende; nenhum dos dois lados sozinho basta. A gaveta está desligada porque a tela recebe uma página." })}${kpi(
+      fmtN(d.n_sancionada),
+      "Fornecedor SANCIONADO",
+      "var(--rose)",
+      "⚖️",
+      { sobre: "Casos em que o fornecedor caro também tem registro de sanção. A abrangência importa e viaja em cada linha: sanção de um órgão não alcança toda a Administração, e sanção posterior à compra não a contamina." }
+    )}
+      ${kpi(
+      a.length ? a[0].vs_mediana + "×" : "—",
+      "Pior caso (× mediana)",
+      "var(--rose)",
+      null,
+      { sobre: 'O maior múltiplo da mediana entre os casos caro + suspeito. Só vale entre produtos equivalentes: 60% da "economia" de uma medição anterior desta casa vinha de comparar itens diferentes sob descrição parecida.' }
+    )}${kpi(a.filter((x) => x.sinais.length >= 2).length, "Com ≥2 sinais", null, "🎯", { drill: "compDoisSinais" })}</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
     h += `<div id="dossie-list" class="grid">` + a.map((x) => {
       const ABR = { total: "toda a Adm.", ente: "ente federativo", orgao: "órgão sancionador" };
@@ -3537,10 +3697,34 @@ void main(){
     );
     if (s.ok) {
       const n = s.n_snapshots || 0, st = s.vinculos_por_status || {};
-      h += `<div class="grid g2">${kpi(fmtN(n), "Snapshots mensais na série", n >= 2 ? "var(--emerald)" : "var(--rose)", "📅")}
-        ${kpi(esc(s.cobertura || "—"), "Janela observada", null, "🗓️")}
-        ${kpi(fmtN(st.saiu || 0), "Saídas de sócio detectadas", "var(--amber)", "🚪")}
-        ${kpi(fmtN(st.ativo || 0), "Vínculos vistos no último mês", null, "✅")}</div>`;
+      h += `<div class="grid g2">${kpi(
+        fmtN(n),
+        "Snapshots mensais na série",
+        n >= 2 ? "var(--emerald)" : "var(--rose)",
+        "📅",
+        { sobre: "Quantos meses da base de sócios da Receita foram efetivamente ingeridos. É o DENOMINADOR de tudo nesta aba: a Receita publica data de entrada e <b>nenhuma data de saída</b>, então saída de sócio só existe como diferença entre dois snapshots. Com menos de dois, ela é inobservável — e a resposta correta é INDISPONÍVEL, nunca NÃO." }
+      )}
+        ${kpi(
+        esc(s.cobertura || "—"),
+        "Janela observada",
+        null,
+        "🗓️",
+        { sobre: "O primeiro e o último mês ingeridos. Fora desta janela nada foi observado: um sócio ausente num mês que não entrou na série <b>não saiu</b> — o mês é que não existe aqui." }
+      )}
+        ${kpi(
+        fmtN(st.saiu || 0),
+        "Saídas de sócio detectadas",
+        "var(--amber)",
+        "🚪",
+        { sobre: "Vínculos presentes num snapshot e ausentes no seguinte. A precisão máxima é de <b>um mês</b>, porque é esse o passo da série — a data exata da alteração contratual só a JUCERJA tem." }
+      )}
+        ${kpi(
+        fmtN(st.ativo || 0),
+        "Vínculos vistos no último mês",
+        null,
+        "✅",
+        { sobre: 'Vínculos presentes no snapshot mais recente. "Ativo" aqui significa <b>visto por último</b>, não juridicamente vigente hoje: entre a extração da Receita e agora pode ter havido alteração não publicada.' }
+      )}</div>`;
       h += leitura(n < 2 ? `<b>Série com ${n} snapshot(s).</b> Com menos de dois meses observados, <b>saída de sócio é inobservável</b> — a base da Receita traz data de entrada e nenhuma de saída. Toda pergunta do tipo "era sócio na data do certame?" sai como INDISPONÍVEL, nunca como afastada.` : `Série de <b>${n} meses</b> (${esc(s.cobertura)}). Saída de sócio é inferida por <b>diferença entre snapshots</b>: precisão máxima de um mês. Sócio ausente num mês <b>não ingerido</b> não saiu — o mês não foi observado.`);
       h += `<div class="note" style="margin-top:8px">Fonte: ${esc(s.fonte || "")}</div>`;
     } else {
@@ -3553,11 +3737,17 @@ void main(){
     <div class="btns" style="margin-top:10px">
       <button type="button" class="btn" data-vinc="consultar">Beneficiário final</button>
       <button type="button" class="btn ghost" data-vinc="parentesco">Parentesco no QSA</button>
+      <button type="button" class="btn ghost" data-vinc="contato">Contato compartilhado</button>
       <button type="button" class="btn ghost" data-vinc="trocas">Trocas de quadro</button>
       <button type="button" class="btn ghost" data-vinc="grafo">Rede de poder</button>
       <button type="button" class="btn ghost" data-vinc="ftm">Exportar FollowTheMoney</button>
     </div>
     <div class="btns" style="margin-top:8px">
+      <button type="button" class="btn ghost" data-vinc="agentePublico">Agente público no QSA (fila)</button>
+      <button type="button" class="btn ghost" data-vinc="osintProcessos">OSINT × processos lidos</button>
+      <button type="button" class="btn ghost" data-vinc="elosOcultos">Elos ocultos (contato × dinheiro)</button>
+      <button type="button" class="btn ghost" data-vinc="cocontato">Mesmo certame, mesmo contato</button>
+      <button type="button" class="btn ghost" data-vinc="assinaturasPcrj">Quem assinou (Prefeitura)</button>
       <button type="button" class="btn ghost" data-vinc="conluioMunicipal">Conluio municipal (vencedor × perdedora)</button>
       <button type="button" class="btn ghost" data-vinc="resolucao">Resolução nome → CNPJ</button>
       <button type="button" class="btn ghost" data-vinc="interposicao">Perfil de laranja</button>
@@ -3598,11 +3788,36 @@ void main(){
       return;
     }
     const cob = d.cobertura || {}, ps = d.pessoas || [];
+    registrarDrill("bfCiclos", {
+      titulo: "Participações cruzadas circulares",
+      itens: d.ciclos || [],
+      render: (ci) => card(`<div>${(Array.isArray(ci) ? ci : [ci]).map((x) => esc(String(x))).join(" → ")}</div>`),
+      nota: "Ciclo é indício de estrutura que dificulta identificar o beneficiário — não prova."
+    });
     let h = sec("Beneficiário final — " + esc(d.pj || c));
-    h += `<div class="grid g2">${kpi(fmtN(d.n_pessoas), "Pessoas físicas na cadeia", ps.length ? "var(--emerald)" : "var(--amber)", "👤")}
-      ${kpi(cob.pct == null ? "—" : cob.pct + "%", "Cobertura de QSA da cadeia", cob.pct >= 80 ? null : "var(--amber)", "🔍")}
-      ${kpi(fmtN(d.saltos_max), "Degraus até a pessoa física")}
-      ${kpi(fmtN((d.ciclos || []).length), "Participações cruzadas circulares", (d.ciclos || []).length ? "var(--rose)" : null, "🔄")}</div>`;
+    registrarDrill("bfPessoas", {
+      titulo: "Pessoas físicas ao fim da cadeia",
+      itens: ps,
+      render: (x) => card(`<div style="font-weight:700">${esc(x.nome || x)}</div>
+      <div class="dim">${esc(x.qualificacao || x.doc || "")}</div>`),
+      nota: "CPF de sócio sai mascarado por dever legal (LGPD) — a identificação plena é do órgão de controle, não do painel."
+    });
+    h += `<div class="grid g2">${kpi(fmtN(d.n_pessoas), "Pessoas físicas na cadeia", ps.length ? "var(--emerald)" : "var(--amber)", "👤", { drill: "bfPessoas" })}
+      ${kpi(
+      cob.pct == null ? "—" : cob.pct + "%",
+      "Cobertura de QSA da cadeia",
+      cob.pct >= 80 ? null : "var(--amber)",
+      "🔍",
+      { sobre: "Que fração das PJ da cadeia teve o quadro societário efetivamente lido. Cobertura baixa <b>não</b> significa cadeia curta: significa que degraus ficaram por abrir, e o beneficiário final pode estar atrás de um deles. Por isso o número aparece ao lado da resposta, e não escondido." }
+    )}
+      ${kpi(
+      fmtN(d.saltos_max),
+      "Degraus até a pessoa física",
+      null,
+      null,
+      { sobre: "Quantas PJ foram atravessadas até chegar a uma pessoa natural. Cadeia longa é <b>lícita</b> e comum em grupo econômico; ela só pesa combinada com outros sinais — sozinha, mede estrutura societária, não irregularidade." }
+    )}
+      ${kpi(fmtN((d.ciclos || []).length), "Participações cruzadas circulares", (d.ciclos || []).length ? "var(--rose)" : null, "🔄", { drill: "bfCiclos" })}</div>`;
     h += leitura(esc(d.motivo || ""));
     if (ps.length) {
       h += `<div class="grid">` + ps.map((p) => card(
@@ -3624,6 +3839,375 @@ void main(){
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
     o.innerHTML = h;
   }
+  async function vincContato() {
+    const c = _vincCnpj();
+    const o = $("vinc-out");
+    if (!c) {
+      o.innerHTML = card('<div class="warn">Informe um CNPJ.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">cruzando telefone e e-mail em 6,17 milhões de estabelecimentos…</div>');
+    const d = await J("/api/osint/contato_compartilhado?cnpj=" + encodeURIComponent(c));
+    if (d.erro) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const ar = d.arestas || [], cob = d.cobertura || {}, desc = d.descartados || {};
+    let h = sec("Contato compartilhado — " + esc(c));
+    registrarDrill("contatoArestas", {
+      titulo: "Empresas ligadas por telefone ou e-mail",
+      itens: ar,
+      render: (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.para)}</div><div class="dim">${esc(x.detalhe || "")} · ${esc(x.tipo)}</div><div class="dim">${esc(x.explicacao_inocente || "")}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((x.forca || 0) * 100)}%</div></div></div>`),
+      nota: "Contato dividido é indício de mesma administração, não prova."
+    });
+    registrarDrill("contatoDesc", {
+      titulo: "Contatos descartados, por guarda",
+      itens: Object.entries(desc).map(([g, n]) => ({ guarda: g, n })),
+      render: (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="font-weight:700">${esc(x.guarda)}</div><div class="num">${fmtN(x.n)}</div></div>`),
+      nota: "Guarda que descarta contato existe porque contato repetido nem sempre é mesma mão: central de atendimento, escritório contábil e provedor de e-mail produzem o mesmo padrão."
+    });
+    h += `<div class="grid g2">${kpi(fmtN(ar.length), "Empresas ligadas por contato", ar.length ? "var(--amber)" : null, "📞", { drill: "contatoArestas" })}
+      ${kpi(
+      fmtN(cob.com_telefone),
+      "Alvos com telefone publicado",
+      null,
+      null,
+      { sobre: "Dos estabelecimentos consultados, quantos publicam telefone na base da Receita — <b>83,9%</b> dos 6.171.766 no acervo. Quem não publica não pode ser ligado por este eixo: ausência de aresta aqui é lacuna de cadastro, não prova de independência." }
+    )}
+      ${kpi(
+      fmtN(cob.com_email),
+      "Alvos com e-mail publicado",
+      null,
+      null,
+      { sobre: "Idem para e-mail — <b>69,0%</b> da base. O eixo de e-mail é o mais forte da régua depois de mesma sala (0,80), justamente porque endereço eletrônico é escolhido, não herdado do imóvel." }
+    )}
+      ${kpi(fmtN(Object.values(desc).reduce((s, x) => s + x, 0)), "Contatos DESCARTADOS por guarda", "var(--dim)", "🚫", { drill: "contatoDesc" })}</div>`;
+    h += leitura("Contato dividido é indício de mesma administração, não prova: escritório contábil, central de atendimento e grupo econômico legítimo produzem o mesmo sinal. Por isso o e-mail de contabilidade cai para <b>mesmo_contador</b> (0,30) e o que passa do teto de fan-out sai fora — o corte é medido, e o que fica de fora está contado abaixo.");
+    if (ar.length) {
+      h += `<div class="grid">` + ar.slice(0, 40).map((a) => card(
+        `<div style="display:flex;justify-content:space-between;gap:10px">
+         <div style="min-width:0"><div style="font-weight:700">${esc(a.para)}</div>
+           <div class="muted" style="font-size:12.5px">${esc(a.detalhe || "")} · ${esc(a.tipo)}</div>
+           <div class="dim" style="font-size:12px;margin-top:3px">${esc(a.explicacao_inocente || "")}</div></div>
+         <div class="right"><div class="num" style="font-weight:800;font-size:20px">${(a.forca * 100).toFixed(0)}%</div>
+           <div class="dim">força · ${fmtN(a.n_no_grupo)} no grupo</div></div></div>`,
+        a.forca >= 0.7 ? "hl" : ""
+      )).join("") + `</div>`;
+      if (ar.length > 40) h += `<div class="note">40 de ${fmtN(ar.length)} exibidas.</div>`;
+    } else {
+      h += card('<div class="dim">Nenhuma empresa dividindo contato dentro dos tetos medidos. Ausência de aresta não é ausência de vínculo — é ausência <b>por esta via</b>.</div>');
+    }
+    h += `<div class="note">Descartados: ` + Object.entries(desc).map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>`;
+    h += `<div class="note">${esc(cob.nota || "")}</div>`;
+    o.innerHTML = h;
+  }
+  async function vincAssinaturasPcrj() {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">casando matrículas do SEI com a folha da Prefeitura…</div>');
+    const d = await J("/api/pcrj/assinaturas?limite=150");
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    const _porMatricula = (lista) => {
+      const m = /* @__PURE__ */ new Map();
+      for (const x of lista) {
+        const k = x.matricula_num || x.matricula || "—";
+        if (!m.has(k)) m.set(k, { ...x, n_assinaturas: 0, processos: /* @__PURE__ */ new Set() });
+        const v = m.get(k);
+        v.n_assinaturas++;
+        if (x.numero) v.processos.add(x.numero);
+      }
+      return [...m.values()];
+    };
+    const _linMat = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${x.identificada ? esc(x.nome) : "matrícula " + esc(x.matricula_num || x.matricula)}</div>
+        ${x.identificada ? `<div class="dim">${esc(x.orgao || "")}${x.unidade_folha ? " · " + esc(x.unidade_folha) : ""}</div>` : '<div class="dim">sem par na folha — requisitado de outro ente, empresa pública ou vínculo anterior a 12/2020</div>'}
+        <div class="dim" style="font-size:12.5px;margin-top:4px">matrícula ${esc(x.matricula_num || x.matricula || "—")} · ${fmtN(x.processos.size)} processo(s)</div>
+      </div>
+      <div class="right"><div class="num" style="font-weight:800">${fmtN(x.n_assinaturas)}</div>
+        <div class="dim">assinatura(s)</div></div></div>`);
+    const _mIdent = _porMatricula(it.filter((x) => x.identificada && !x.ambigua));
+    const _mSemPar = _porMatricula(it.filter((x) => !x.identificada));
+    const _dIdent = drillSeCompleto("apIdent", d.identificadas, _mIdent, {
+      titulo: "Matrículas identificadas na folha",
+      render: _linMat,
+      nota: "Uma linha por MATRÍCULA, não por assinatura — a mesma pessoa assina vários despachos, e é a matrícula que o KPI conta."
+    });
+    const _dSemPar = drillSeCompleto("apSemPar", d.nao_identificadas, _mSemPar, {
+      titulo: "Sem par na folha municipal",
+      render: _linMat,
+      nota: "NÃO significa inexistente: requisitado de outro ente, empresa pública com registro próprio, ou vínculo encerrado antes de 12/2020."
+    });
+    let h = sec("Quem assinou — despachos da Prefeitura");
+    const _lin = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${x.identificada ? esc(x.nome) : "matrícula " + esc(x.matricula_num || x.matricula)}</div>
+        ${x.identificada ? `<div class="dim">${esc(x.orgao || "")}${x.unidade_folha ? " · " + esc(x.unidade_folha) : ""}</div>` : '<div class="dim">sem par na folha — requisitado de outro ente, empresa pública ou vínculo anterior a 12/2020</div>'}
+        <div style="font-size:12.5px;margin-top:4px">${esc(x.tipo || "")} ${esc(x.documento || "")} · processo ${esc(x.numero || "")}</div>
+        <div class="dim" style="font-size:12px">${esc(x.quando || "")} · ${esc(x.unidade || "")}</div>
+        ${x.ambigua ? '<div class="dim" style="font-size:12px;color:var(--amber)">matrícula com MAIS DE UM nome na folha — ambígua, não identificada</div>' : ""}
+      </div></div>`, x.identificada && !x.ambigua ? "" : "");
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.total),
+      "Assinaturas capturadas",
+      "var(--amber)",
+      "✍️",
+      drillSeCompleto("apAll", d.total, it, { titulo: "Assinaturas capturadas", render: _lin }) || { sobre: "Assinaturas de despacho capturadas na Lista de Andamentos do SEI da Prefeitura. A tela recebe uma PÁGINA da lista (parâmetro <b>limite</b>), não o acervo — por isso a gaveta fica desligada aqui: um número que abre uma lista menor é pior que um número sem caminho. Os recortes por identificação, ao lado, cabem inteiros e continuam clicáveis." }
+    )}
+      ${kpi(
+      fmtN(d.identificadas),
+      "Matrículas identificadas",
+      "var(--emerald)",
+      "🪪",
+      _dIdent || { sobre: `Matrículas que casaram com nome na folha municipal, contadas sobre o ACERVO. A tela recebe uma página das assinaturas, e nela aparecem ${fmtN(_mIdent.length)} das ${fmtN(d.identificadas)} — por isso a gaveta fica desligada: abrir uma lista menor que o número faria desconfiar do número certo. <b>Formato não é identidade</b>: a folha guarda a matrícula com 7 dígitos e zero à esquerda, o SEI com 8; comparadas como texto davam 0 de 69, como número dão 51.` }
+    )}
+      ${kpi(
+      fmtN(d.nao_identificadas),
+      "Sem par na folha",
+      "var(--dim)",
+      "❔",
+      _dSemPar || { sobre: `Matrículas sem par na folha municipal — ${fmtN(_mSemPar.length)} visíveis na página servida, ${fmtN(d.nao_identificadas)} no acervo. <b>Não são erro nem ausência</b>: podem ser servidor requisitado de outro ente, empresa pública com registro próprio, ou vínculo encerrado antes de 12/2020, que é a primeira competência da folha.` }
+    )}
+      ${kpi(fmtN(d.com_empresa_paga_pela_prefeitura ?? "—"), "Sócio de quem a Prefeitura paga", d.com_empresa_paga_pela_prefeitura || 0 ? "var(--red)" : null, "🚨", { drill: "apQsa" })}</div>`;
+    h += leitura(esc(d.ressalva || ""));
+    if (d.ressalva_qsa) h += leitura(esc(d.ressalva_qsa));
+    registrarDrill("apQsa", {
+      titulo: "Signatário sócio de empresa paga pela Prefeitura",
+      itens: d.qsa_itens || [],
+      render: (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.signatario || "")}</div>
+        <div class="dim">${esc(x.orgao || "")} · processo ${esc(x.processo || "—")}</div>
+        <div style="margin-top:4px">${esc(x.empresa || "")} <span class="dim">(${esc(x.qualificacao || "")})</span></div>
+      </div><div class="right"><div class="num" style="font-weight:800">${fmtRc(x.pago_pela_prefeitura)}</div>
+        <div class="dim">pago pela Prefeitura</div></div></div>`, "hl"),
+      nota: "Estar no QSA de alguma empresa NÃO é sinal: 33% dos signatários identificados aparecem no cadastro nacional. O sinal é a empresa receber do MESMO poder público cujo ato ele assina. Lista vazia = não observado nesta amostra."
+    });
+    if ((d.top_signatarios || []).length) {
+      h += sec("Quem mais assina") + `<div class="grid g2">` + (d.top_signatarios || []).slice(0, 8).map(
+        ([nome, n]) => card(`<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0;font-weight:700">${esc(nome)}</div><div class="right"><b>${fmtN(n)}</b></div></div>`)
+      ).join("") + `</div>`;
+    }
+    h += `<div class="grid" style="margin-top:12px">` + it.slice(0, 60).map(_lin).join("") + `</div>`;
+    h += `<div class="note">${fmtN(Math.min(60, it.length))} de ${fmtN(d.total)} exibidas · gerado em ${esc(d.gerado_em || "—")}.</div>`;
+    o.innerHTML = h;
+  }
+  async function vincCocontato() {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">cruzando participantes de 4.517 certames com 6,17 milhões de estabelecimentos…</div>');
+    const d = await J("/api/osint/cocontato_certame?limite=120");
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    let h = sec("Mesmo certame, mesmo contato");
+    h += `<div class="grid g2">${kpi(fmtN(d.total), "Pares no mesmo certame", "var(--amber)", "⚖️", { drill: "ccTodos" })}
+      ${kpi(fmtN(d.sem_explicacao), "SEM explicação", d.sem_explicacao || 0 ? "var(--red)" : null, "🚨", { drill: "ccSemExpl" })}
+      ${kpi(fmtN(d.contato_de_servico), "Contato de serviço", "var(--dim)", "📗", { drill: "ccServico" })}
+      ${kpi(
+      fmtN(d.certames_com_disputa),
+      "Certames com 2+ fornecedores",
+      null,
+      null,
+      { sobre: "O DENOMINADOR do teste. Certame com um único participante não pode ter disputa fingida — não há com quem fingir. Só estes entram na conta, e é contra este número que a taxa de achado deve ser lida." }
+    )}</div>`;
+    h += leitura(esc(d.ressalva || ""));
+    const _lin = (x) => card(`<div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome_a)}</div>
+      <div style="font-weight:700">${esc(x.nome_b)}</div>
+      <div style="margin-top:5px;font-size:12.5px">${esc(x.via)} · <b>${esc(x.tipo)}</b></div>
+      <div class="dim" style="font-size:12px;margin-top:3px">certame ${esc(x.certame)} · ${esc(x.orgao || "")}</div>
+      <div class="dim" style="font-size:12px">foro: <b>${esc(x.corte || "—")}</b>${x.esfera ? ` (${esc(x.esfera)})` : ""}</div>
+      <div class="dim" style="font-size:12px">${esc((x.objeto || "").slice(0, 140))}</div>
+      ${x.contato_de_servico ? '<div class="dim" style="font-size:12px;margin-top:3px">contato de serviço (contabilidade/central) — não liga as empresas entre si</div>' : ""}
+      ${x.mesmo_grupo_aparente ? `<div class="dim" style="font-size:12px;margin-top:3px">mesmo grupo aparente (<b>${esc(x.marca)}</b>) — grupo é lícito; disputar o mesmo certame fingindo concorrência não é</div>` : ""}
+    </div>`, !x.contato_de_servico && !x.mesmo_grupo_aparente ? "hl" : "");
+    registrarDrill("ccTodos", { titulo: "Pares do mesmo certame que dividem contato", itens: it, render: _lin });
+    registrarDrill("ccSemExpl", {
+      titulo: "Sem explicação — disputa com contato compartilhado",
+      itens: it.filter((x) => !x.contato_de_servico && !x.mesmo_grupo_aparente),
+      render: _lin,
+      nota: "Art. 337-F do Código Penal e Lei 12.529/2011 — cabe verificar as propostas e os sócios."
+    });
+    registrarDrill("ccServico", {
+      titulo: "Explicados por contato de serviço",
+      itens: it.filter((x) => x.contato_de_servico),
+      render: _lin,
+      nota: "Escritório de contabilidade ou central de atendimento não liga as empresas entre si."
+    });
+    h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
+    h += `<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos · ${fmtN(d.cnpjs_participantes)} CNPJs cruzados · gerado em ${esc(d.gerado_em || "—")}.</div>`;
+    o.innerHTML = h;
+  }
+  async function vincElosOcultos(soSemExplicacao) {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">cruzando contato compartilhado com quem recebeu do Estado…</div>');
+    const d = await J("/api/osint/elos_ocultos?limite=120" + (soSemExplicacao ? "&so_sem_explicacao=1" : ""));
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    let h = sec("Elos ocultos — contato compartilhado × dinheiro público");
+    h += `<div class="grid g2">${kpi(fmtN(d.total), "Pares com os DOIS lados pagos", "var(--amber)", "🔗", { drill: "eoTodos" })}
+      ${kpi(fmtN(d.sem_explicacao), "SEM explicação aparente", d.sem_explicacao || 0 ? "var(--red)" : null, "🚨", { drill: "eoSemExpl" })}
+      ${kpi(fmtN(d.mesmo_grupo_aparente), "Mesmo grupo aparente", "var(--dim)", "🏢", { drill: "eoGrupo" })}
+      ${kpi(
+      fmtN(d.estruturais),
+      "Estruturais (fora da fila)",
+      "var(--dim)",
+      "📗",
+      { sobre: "Pares cujo contato compartilhado é explicado pela própria forma jurídica — filial e matriz, empresa e seu sindicato patronal, entidades do mesmo grupo declarado. Saem da fila do fiscal de propósito: acusar o que a lei organiza assim é ruído que faz o leitor desconfiar do resto." }
+    )}</div>`;
+    if (d.peso_e_piso && d.peso_e_piso.ug_ano_no_teto_de_coleta) {
+      h += leitura(`<b>Os valores abaixo são PISO.</b> A coleta do SIAFE tem teto por unidade e ano, e <b>${fmtN(d.peso_e_piso.ug_ano_no_teto_de_coleta)}</b> pares (UG, ano) ainda estão parados em contagem redonda — sintoma de coleta interrompida, não de órgão sem despesa. Onde o espelho conhece 50× mais que a fonte canônica, o valor dele vem declarado no item.`);
+    }
+    if (d.cobertura_grafo && d.cobertura_grafo.universo) {
+      const cg = d.cobertura_grafo;
+      h += leitura(`O grafo societário percorreu <b>${fmtN(cg.percorridos)}</b> de <b>${fmtN(cg.universo)}</b> credores com Ordem Bancária (<b>${cg.pct}%</b>). Os elos abaixo existem SÓ dentro desse recorte — credor ainda não percorrido não foi afastado, não foi visto. A cobertura cresce a cada varredura, nas duas máquinas.`);
+    }
+    h += leitura(esc(d.ressalva || ""));
+    const _lin = (x) => card(
+      `<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${esc(x.a)}</div>
+        <div class="dim">${esc(x.cnpj_a)} · ${fmtRc(x.pago_a)}</div>
+        <div style="font-weight:700;margin-top:5px">${esc(x.b)}</div>
+        <div class="dim">${esc(x.cnpj_b)} · ${fmtRc(x.pago_b)}</div>
+        <div style="margin-top:5px;font-size:12.5px">${esc(x.detalhe || x.tipo)}</div>
+        ${x.mesmo_grupo_aparente ? `<div class="dim" style="font-size:12px;margin-top:3px">mesmo grupo aparente (<b>${esc(x.marca)}</b>) — grupo econômico é lícito; disputar o mesmo certame fingindo concorrência não é</div>` : ""}
+      </div>
+      <div class="right"><div class="num" style="font-weight:800">${fmtRc(x.peso)}</div><div class="dim">somados</div></div></div>`,
+      x.mesmo_grupo_aparente ? "" : "hl"
+    );
+    registrarDrill("eoTodos", { titulo: "Pares com os dois lados pagos pelo Estado", itens: it, render: _lin });
+    registrarDrill("eoSemExpl", {
+      titulo: "Sem explicação aparente",
+      itens: it.filter((x) => !x.mesmo_grupo_aparente),
+      render: _lin,
+      nota: "Nomes distintos, sem forma jurídica que os una, mesmo contato, ambos pagos pelo poder público."
+    });
+    registrarDrill("eoGrupo", {
+      titulo: "Mesmo grupo aparente",
+      itens: it.filter((x) => x.mesmo_grupo_aparente),
+      render: _lin,
+      nota: "Grupo econômico é LÍCITO — art. 337-F do CP alcança a disputa fingida, não a existência do grupo."
+    });
+    h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
+    h += `<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos · ${fmtN(d.arestas_de_contato)} arestas de contato no grafo, ${fmtN(d.estruturais)} explicadas pela forma jurídica · gerado em ${esc(d.gerado_em || "—")}.</div>`;
+    o.innerHTML = h;
+  }
+  async function vincOsintProcessos(soConflito) {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">cruzando a fila de agente público com as fichas de processo…</div>');
+    const d = await J("/api/osint/processos?limite=120" + (soConflito ? "&so_conflito=1" : ""));
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    const nConf = (d.itens || []).filter((x) => (x.agentes || []).some((a) => a.conflito_pelo_processo || a.conflito_de_orgao)).length;
+    let h = sec("OSINT × processos lidos");
+    const _lin = (x) => {
+      const g = (x.agentes || [])[0] || {};
+      const conf = g.conflito_pelo_processo || g.conflito_de_orgao;
+      return card(
+        `<div style="display:flex;justify-content:space-between;gap:10px">
+       <div style="min-width:0"><div style="font-weight:700">${esc(x.processo)}</div>
+         <div class="dim">${esc(x.orgao_do_processo || "órgão não resolvido")}</div>
+         <div style="font-size:13px;margin-top:4px">${esc(g.nome || "—")} · ${esc(g.cargo || "")} <span class="dim">(${esc(g.orgao || "")})</span></div>
+         <div class="dim" style="font-size:12.5px">${esc(g.entidade || "")}</div>
+         ${conf ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ os AUTOS correm no próprio órgão do agente: ${esc(conf)}</div>` : ""}
+         ${(x.sem_qsa_capturado || []).length ? `<div class="dim" style="font-size:12px;margin-top:3px">${fmtN(x.sem_qsa_capturado.length)} CNPJ(s) sem QSA capturado — LACUNA, não limpeza</div>` : ""}
+       </div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.peso)}</div><div class="dim">peso</div></div></div>`,
+        conf ? "hl" : ""
+      );
+    };
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.total),
+      "Processos com sinal",
+      "var(--amber)",
+      "⚖️",
+      drillSeCompleto("opTodos", d.total, it, { titulo: "Processos com sinal OSINT", render: _lin }) || { sobre: "Processos cuja ficha cita CNPJ que aparece na fila de agente público. Medido em 07/08/2026: <b>294</b> no acervo, e a tela recebe os primeiros <b>120</b> — por isso a gaveta fica desligada neste KPI. O recorte grave ao lado (autos no próprio órgão do agente) cabe inteiro e abre." }
+    )}
+      ${kpi(
+      fmtN(d.processos_com_cnpj),
+      "Fichas com CNPJ",
+      null,
+      null,
+      { sobre: "Quantas fichas de processo têm ao menos um CNPJ extraído — é o universo que pode ser cruzado com a fila de agente público. Processo sem CNPJ na ficha não foi afastado: ele simplesmente <b>não pôde ser testado</b>, e essa diferença é o que separa lacuna de achado." }
+    )}
+      ${kpi(fmtN(nConf), "Autos no PRÓPRIO órgão do agente", nConf ? "var(--red)" : null, "⚠️", { drill: "opConflito" })}</div>`;
+    h += leitura(esc(d.ressalva || ""));
+    registrarDrill("opConflito", {
+      titulo: "Autos que correm no próprio órgão do agente",
+      itens: it.filter((x) => (x.agentes || []).some((a) => a.conflito_pelo_processo || a.conflito_de_orgao)),
+      render: _lin,
+      nota: "Art. 9º, III da Lei 8.429/1992 e dever de impedimento do art. 20 da Lei 9.784/1999."
+    });
+    h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
+    h += `<div class="note">${fmtN(it.length)} de ${fmtN(d.total)} exibidos · gerado em ${esc(d.gerado_em || "—")}.</div>`;
+    o.innerHTML = h;
+  }
+  async function vincAgentePublico(filtro) {
+    const o = $("vinc-out");
+    o.innerHTML = card('<div class="dim">cruzando as folhas com o quadro societário do país…</div>');
+    const d = await J("/api/osint/agente_publico?limite=250&filtro=" + encodeURIComponent(filtro || "apTodos"));
+    if (d.erro || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+      return;
+    }
+    const FILTROS = {
+      apTodos: "todos os pares",
+      apComissionados: "agentes comissionados",
+      apTerceiroSetor: "entidades de terceiro setor",
+      apExplicados: "pares com explicação do programa",
+      apNovos: "novos desde a última rodada",
+      apConflito: "pagos pelo próprio órgão"
+    };
+    const sel = { t: FILTROS[filtro] || FILTROS.apTodos };
+    const it = d.itens || [];
+    let h = sec("Agente público no quadro societário" + (filtro && filtro !== "apTodos" ? " · " + sel.t : ""));
+    h += `<div class="grid g2">${kpi(fmtN(d.total), "Pares agente × entidade", "var(--amber)", "🏛️", { drill: "apTodos" })}
+      ${kpi(fmtN(d.comissionados), "Agentes COMISSIONADOS", d.comissionados ? "var(--red)" : null, "★", { drill: "apComissionados" })}
+      ${kpi(fmtN(d.terceiro_setor), "Em ONG / associação / fundação", null, null, { drill: "apTerceiroSetor" })}
+      ${kpi(fmtN(d.com_explicacao_institucional), "Com explicação do PROGRAMA", "var(--dim)", "📗", { drill: "apExplicados" })}
+      ${kpi(fmtN(d.novos || 0), "NOVOS desde a última rodada", d.novos || 0 ? "var(--red)" : null, "🆕", { drill: "apNovos" })}</div>`;
+    h += leitura(esc(d.ressalva || ""));
+    h += `<div class="grid">` + it.map((x) => {
+      const _FONTE = {
+        siafe_ob: "OB do Estado (SIAFE)",
+        pcrj_despesa: "pago pela Prefeitura do Rio",
+        pcrj_contratos: "contratos da Prefeitura (valor global, não pagamento)",
+        emenda_favorecidos: "emendas parlamentares"
+      };
+      const v = Object.entries(x.valor_por_fonte || {}).map(([k, n]) => `${esc(_FONTE[k] || k)} ${fmtRc(n)}`).join(" · ");
+      const ex = x.explicacao_institucional ? `<div class="dim" style="font-size:12px;margin-top:3px">desenho do programa: <b>${esc(x.explicacao_institucional)}</b></div>` : "";
+      const cf = x.orgao_pagador_e_o_proprio ? `<div style="margin-top:5px;font-size:12.5px;color:var(--red);font-weight:700">⚠ pago pelo PRÓPRIO ÓRGÃO do agente: ${esc(x.orgao_pagador_e_o_proprio)}</div>` : "";
+      return card(
+        `<div style="display:flex;justify-content:space-between;gap:10px">
+         <div style="min-width:0">
+           <div style="font-weight:700">${x.novo ? "🆕 " : ""}${x.comissionado ? "★ " : ""}${esc(x.agente)}</div>
+           <div class="muted" style="font-size:12.5px">${esc(x.cargo || "")} · ${esc(x.orgao || "")}</div>
+           <div style="font-size:13px;margin-top:4px">${esc(x.entidade)}${x.terceiro_setor ? ' <span class="dim">[3º setor]</span>' : ""}</div>
+           <div class="dim" style="font-size:12px;margin-top:3px">${v || "sem desembolso — só contrato"}</div>
+           ${cf}${ex}
+         </div>
+         <div class="right"><div class="dim" style="font-size:12px">${(x.fontes || []).map(esc).join("<br>")}</div>
+           <div class="dim" style="font-size:12px;margin-top:4px">${fmtN(x.servidores_no_qsa)} de ${fmtN(x.socios_no_qsa)} sócios</div></div>
+       </div>`,
+        !x.explicacao_institucional && (x.orgao_pagador_e_o_proprio || x.comissionado) ? "hl" : ""
+      );
+    }).join("") + `</div>`;
+    if (!it.length) h += card(`<div class="dim">Nenhum par nesta fatia.</div>`);
+    h += `<div class="note">${fmtN(it.length)} exibidos de ${fmtN(d.total_fatia)} nesta fatia${filtro && filtro !== "apTodos" ? " (" + esc(sel.t) + ")" : ""} · ${fmtN(d.total)} na fila inteira. Clique em qualquer métrica acima para trocar a fatia.</div>`;
+    h += `<div class="note">Fontes: ${esc(d.fontes || "")}</div>`;
+    o.innerHTML = h;
+  }
   async function vincParentesco() {
     const c = _vincCnpj();
     const o = $("vinc-out");
@@ -3639,10 +4223,34 @@ void main(){
     }
     const cor = { indicio: "var(--rose)", hipotese: "var(--amber)", hipotese_fraca: null }[d.grau] || null;
     let h = sec("Parentesco inferido — CNPJ raiz " + esc(d.cnpj_basico));
-    h += `<div class="grid g2">${kpi(esc(d.grau || "nenhum eixo"), "Grau", cor, "👪")}
-      ${kpi(fmtN(d.n_hipoteses), "Hipóteses")}
-      ${kpi(d.falso_positivo_esperado_pct + "%", "Falso positivo esperado", d.falso_positivo_esperado_pct >= 10 ? "var(--amber)" : null, "📉")}
-      ${kpi(fmtN(d.n_socios_pf), "Sócios PF no QSA")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      esc(d.grau || "nenhum eixo"),
+      "Grau",
+      cor,
+      "👪",
+      { sobre: "A força do que os eixos sustentam: <b>hipótese fraca</b>, <b>hipótese</b> ou <b>indício</b>. Nenhum grau aqui é prova — no Brasil não há base aberta de filiação, e parentesco só se prova por certidão de registro civil. O que existe é inferência calibrada." }
+    )}
+      ${kpi(
+      fmtN(d.n_hipoteses),
+      "Hipóteses",
+      null,
+      null,
+      { sobre: "Quantos pares de sócios acionaram ao menos um eixo. Número alto em empresa grande é esperado: quanto mais sócios, mais pares — por isso o grau depende do eixo acionado, não da quantidade." }
+    )}
+      ${kpi(
+      d.falso_positivo_esperado_pct + "%",
+      "Falso positivo esperado",
+      d.falso_positivo_esperado_pct >= 10 ? "var(--amber)" : null,
+      "📉",
+      { sobre: "Medido na PRÓPRIA BASE antes de deixar o eixo pesar: um eixo que acende na maioria das empresas mede a base, não o alvo. Foi assim que sobrenome compartilhado deixou de acender sozinho — no Brasil ele casa com meio país." }
+    )}
+      ${kpi(
+      fmtN(d.n_socios_pf),
+      "Sócios PF no QSA",
+      null,
+      null,
+      { sobre: "Pessoas naturais no quadro societário declarado. É o universo dos pares testados: com um sócio só, nenhum eixo de parentesco pode acionar, e a resposta correta é ausência de teste, não ausência de parentesco." }
+    )}</div>`;
     h += leitura(esc(d.leitura || ""));
     if ((d.eixos_acionados || []).length) {
       h += `<div class="grid">` + (d.eixos_acionados || []).map((e) => card(
@@ -3684,10 +4292,34 @@ void main(){
     }
     const cor = { SIM: "var(--rose)", NAO: null, INDISPONIVEL: "var(--amber)" }[d.resposta] || null;
     let h = sec("Havia vínculo societário em " + esc(dt) + "?");
-    h += `<div class="grid g2">${kpi(esc(d.resposta), "Resposta", cor, "⚖️")}
-      ${kpi(esc(d.mes_observado || "—"), "Mês efetivamente observado")}
-      ${kpi(d.defasagem_meses == null ? "—" : d.defasagem_meses, "Defasagem (meses)")}
-      ${kpi(fmtN((d.serie || {}).n_meses), "Meses na série")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      esc(d.resposta),
+      "Resposta",
+      cor,
+      "⚖️",
+      { sobre: "SIM, NÃO ou INDISPONÍVEL. <b>INDISPONÍVEL não é NÃO</b>: significa que o mês da data pedida não foi observado na série, e responder NÃO ali seria afirmar uma ausência que o dado não sustenta." }
+    )}
+      ${kpi(
+      esc(d.mes_observado || "—"),
+      "Mês efetivamente observado",
+      null,
+      null,
+      { sobre: "O snapshot realmente usado para responder — quase nunca é o mês exato da pergunta, porque a série tem passo mensal. É este mês, não a data pedida, que a resposta descreve." }
+    )}
+      ${kpi(
+      d.defasagem_meses == null ? "—" : d.defasagem_meses,
+      "Defasagem (meses)",
+      null,
+      null,
+      { sobre: "Distância entre a data perguntada e o snapshot usado. Defasagem grande enfraquece a resposta: quanto mais longe, mais espaço houve para alteração contratual não observada entre os dois pontos." }
+    )}
+      ${kpi(
+      fmtN((d.serie || {}).n_meses),
+      "Meses na série",
+      null,
+      null,
+      { sobre: "Tamanho da série disponível para esta consulta. Com um único mês, toda pergunta sobre data anterior sai INDISPONÍVEL por construção." }
+    )}</div>`;
     if (d.resposta === "INDISPONIVEL") h += leitura("<b>INDISPONÍVEL não é NÃO.</b> " + esc(d.motivo || ""));
     else h += leitura(esc(d.ressalva || ""));
     if ((d.socios || []).length) {
@@ -3722,9 +4354,31 @@ void main(){
       return;
     }
     let h = sec("Trocas de quadro societário perto de " + esc(dt));
-    h += `<div class="grid g2">${kpi(fmtN(d.n_entradas), "Entradas na janela", d.n_entradas ? "var(--amber)" : null, "➡️")}
-      ${kpi(fmtN(d.n_saidas), "Saídas na janela", d.n_saidas ? "var(--amber)" : null, "🚪")}
-      ${kpi(fmtN(d.janela_meses), "Janela (meses)")}</div>`;
+    const _troca = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.nome || "")}</div>
+      <div class="dim">${esc(x.qualificacao || "")}</div></div>
+      <div class="right"><div class="dim">${esc(x.mes || x.data || "")}</div></div></div>`);
+    registrarDrill("trEntradas", {
+      titulo: "Entradas de sócio na janela",
+      itens: d.entradas || [],
+      render: _troca,
+      nota: "A data é do SNAPSHOT em que o sócio apareceu, com precisão de um mês — não da alteração contratual."
+    });
+    registrarDrill("trSaidas", {
+      titulo: "Saídas de sócio na janela",
+      itens: d.saidas || [],
+      render: _troca,
+      nota: "Saída é inferida por AUSÊNCIA entre dois snapshots. Mês não ingerido não produz saída — produz lacuna."
+    });
+    h += `<div class="grid g2">${kpi(fmtN(d.n_entradas), "Entradas na janela", d.n_entradas ? "var(--amber)" : null, "➡️", { drill: "trEntradas" })}
+      ${kpi(fmtN(d.n_saidas), "Saídas na janela", d.n_saidas ? "var(--amber)" : null, "🚪", { drill: "trSaidas" })}
+      ${kpi(
+      fmtN(d.janela_meses),
+      "Janela (meses)",
+      null,
+      null,
+      { sobre: "Quantos meses ao redor da data de referência foram varridos. Janela larga acha mais trocas e diz menos sobre proximidade com o ato; janela estreita diz mais e acha menos. O número está aqui para o leitor calibrar a leitura." }
+    )}</div>`;
     h += leitura(esc(d.leitura || ""));
     const linhas = [...(d.entradas || []).map((x) => ["entrada", x]), ...(d.saidas || []).map((x) => ["saída", x])];
     if (linhas.length) {
@@ -3770,8 +4424,24 @@ void main(){
       return;
     }
     const nos = d.nos || [], ar = d.arestas || [];
-    o.innerHTML = sec("Rede de poder — 2 saltos") + `<div class="grid g2">${kpi(fmtN(nos.length), "Nós")}${kpi(fmtN(ar.length), "Arestas")}
-      ${kpi(fmtN((d.comunidades || []).length), "Comunidades")}</div>` + card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
+    registrarDrill("grafoNos", {
+      titulo: "Nós da rede (2 saltos)",
+      itens: nos,
+      render: (n) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(n.rotulo || n.id || "—")}</div><div class="dim">${esc(n.tipo || "")}</div></div></div>`)
+    });
+    registrarDrill("grafoArestas", {
+      titulo: "Arestas da rede",
+      itens: ar,
+      render: (x) => card(`<div><b>${esc(x.de || x.origem || "—")}</b> → <b>${esc(x.para || x.destino || "—")}</b><div class="dim">${esc(x.tipo || "")}${x.fonte ? " · " + esc(x.fonte) : ""}</div></div>`),
+      nota: "Aresta por NOME sem documento vale pouco (homonímia)."
+    });
+    registrarDrill("grafoComunidades", {
+      titulo: "Comunidades detectadas",
+      itens: d.comunidades || [],
+      render: (cm) => card(`<div><b>${esc(cm.rotulo || cm.id || "comunidade")}</b><div class="dim">${fmtN((cm.membros || []).length || cm.n || 0)} membro(s)</div></div>`)
+    });
+    o.innerHTML = sec("Rede de poder — 2 saltos") + `<div class="grid g2">${kpi(fmtN(nos.length), "Nós", null, null, { drill: "grafoNos" })}${kpi(fmtN(ar.length), "Arestas", null, null, { drill: "grafoArestas" })}
+      ${kpi(fmtN((d.comunidades || []).length), "Comunidades", null, null, { drill: "grafoComunidades" })}</div>` + card(`<div class="dim">A rede completa, navegável, abre em tela própria.</div>
       <div class="btns" style="margin-top:8px"><a class="btn ghost" target="_blank" href="/graph?alvo=${encodeURIComponent(c)}">Abrir grafo</a></div>`) + leitura("A aresta por <b>nome sem documento</b> vale pouco (homonímia). Para vínculo que pesa numa peça, use o beneficiário final — ele sobe a cadeia por documento.");
   }
   async function vincFtm() {
@@ -3829,10 +4499,42 @@ void main(){
     }
     const c = d.cobertura || {};
     let h = sec("Conluio municipal — sócio em comum entre vencedor e perdedora");
-    h += `<div class="grid g2">${kpi(fmtN(d.n_certames_com_achado), "Certames com achado", d.n_certames_com_achado ? "var(--rose)" : null, "🤝")}
-      ${kpi(fmtN(d.n_pares), "Pares vencedor × perdedora")}
-      ${kpi(fmtN(c.cruzaveis_com_qsa_dos_dois_lados), "Certames efetivamente cruzados")}
-      ${kpi(c.taxa_de_achado_pct == null ? "—" : c.taxa_de_achado_pct + "%", "Taxa de achado")}</div>`;
+    const _cmLin = (a) => card(`<div style="font-weight:700">${esc(a.certame)}</div>
+      <div class="dim" style="margin-top:3px">vencedor <b>${esc(a.vencedor_raiz)}</b> × perdedora <b>${esc(a.perdedora_raiz)}</b></div>
+      <div style="margin-top:4px">Sócio(s) em comum: <b>${esc((a.socios_em_comum || []).join(" · "))}</b></div>
+      <div class="dim" style="margin-top:3px">${esc(a.veredito || "")}</div>`, "hl");
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n_certames_com_achado),
+      "Certames com achado",
+      d.n_certames_com_achado ? "var(--rose)" : null,
+      "🤝",
+      { sobre: "Certames DISTINTOS em que ao menos um par vencedor × perdedora divide sócio — 31 certames para 42 pares em 07/08/2026. Não é o mesmo número que o de pares: um certame com dois classificados problemáticos conta UMA vez aqui e DUAS ali. As linhas estão na gaveta do KPI ao lado, que é o que elas contam." }
+    )}
+      ${kpi(
+      fmtN(d.n_pares),
+      "Pares vencedor × perdedora",
+      null,
+      null,
+      drillSeCompleto("cmAchados", d.n_pares, d.achados || [], {
+        titulo: "Pares vencedor × perdedora com sócio em comum",
+        render: _cmLin,
+        nota: "Sócio em comum entre quem venceu e quem perdeu o MESMO certame é o teste clássico de concorrência fingida (art. 337-F do CP). Grupo econômico declarado é lícito; disputar contra si mesmo não é."
+      }) || { sobre: "Quantos pares foram efetivamente testados. Um certame com quatro classificados gera três pares contra o vencedor — por isso este número é maior que o de certames, e não deve ser lido como quantidade de irregularidades. A gaveta só liga quando a lista em mão é o universo inteiro; cortada, o KPI prefere não ter caminho a ter um caminho que mente." }
+    )}
+      ${kpi(
+      fmtN(c.cruzaveis_com_qsa_dos_dois_lados),
+      "Certames efetivamente cruzados",
+      null,
+      null,
+      { sobre: "O DENOMINADOR honesto: só entram os certames em que o QSA dos DOIS lados foi resolvido. O eixo devolvia zero por falta de dado, não de motor — havia 114 certames com classificado além do 1º lugar em todo o acervo. O que está fora daqui é INDISPONÍVEL, não afastado." }
+    )}
+      ${kpi(
+      c.taxa_de_achado_pct == null ? "—" : c.taxa_de_achado_pct + "%",
+      "Taxa de achado",
+      null,
+      null,
+      { sobre: "Achados sobre certames efetivamente cruzados — nunca sobre o acervo inteiro, que daria um percentual falsamente tranquilizador. Taxa alta neste eixo pede desconfiança do próprio motor antes de acusar: 7 famílias de detector já caíram por leitura defeituosa, nenhuma por limiar." }
+    )}</div>`;
     h += leitura(`O eixo devolvia zero por falta de <b>dado</b>, não de motor: eram <b>114</b> certames com
      classificado além do 1º lugar em todo o acervo. Hoje são <b>${fmtN(c.com_vencedor_e_perdedora_resolvidos)}</b>
      com vencedor e perdedora resolvidos, e <b>${fmtN(c.cruzaveis_com_qsa_dos_dois_lados)}</b> com QSA dos dois lados.
@@ -3861,10 +4563,34 @@ void main(){
       o.innerHTML = card(`<div class="warn">${erroHumano(d.motivo || d.erro)}</div>`);
       return;
     }
-    o.innerHTML = sec("Resolução razão social → CNPJ (catálogo nacional da Receita)") + `<div class="grid g2">${kpi(fmtN(d.nomes), "Nomes no universo")}
-      ${kpi(fmtN(d.resolvidos), "Resolvidos", "var(--emerald)", "✅")}
-      ${kpi(fmtN(d.ambiguos), "Ambíguos (CNPJ nulo)", "var(--amber)", "⚖️")}
-      ${kpi(d.pct_resolvido + "%", "Taxa de resolução")}</div>` + leitura("Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.") + `<div class="note">${esc(d.nota || "")}</div>`;
+    o.innerHTML = sec("Resolução razão social → CNPJ (catálogo nacional da Receita)") + `<div class="grid g2">${kpi(
+      fmtN(d.nomes),
+      "Nomes no universo",
+      null,
+      null,
+      { sobre: "Razões sociais que aparecem em atas e editais sem CNPJ ao lado — o problema que esta rotina existe para resolver. Nome sem documento não cruza com nada: não vira QSA, não vira sanção, não vira pagamento." }
+    )}
+      ${kpi(
+      fmtN(d.resolvidos),
+      "Resolvidos",
+      "var(--emerald)",
+      "✅",
+      { sobre: "Nomes que casaram com um ÚNICO CNPJ no catálogo nacional da Receita. Casamento múltiplo não conta como resolvido — eleger um entre vários seria inventar identidade." }
+    )}
+      ${kpi(
+      fmtN(d.ambiguos),
+      "Ambíguos (CNPJ nulo)",
+      "var(--amber)",
+      "⚖️",
+      { sobre: "Nomes que casaram com mais de um CNPJ, ou com nenhum. Ficam declarados em vez de sumir: são exatamente os alvos que uma diligência humana (JUCERJA, ata original) ainda pode fechar." }
+    )}
+      ${kpi(
+      d.pct_resolvido + "%",
+      "Taxa de resolução",
+      null,
+      null,
+      { sobre: "Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. A técnica de comparação nunca foi o problema — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes." }
+    )}</div>` + leitura("Contra o catálogo LOCAL a taxa era de <b>13,9%</b>. O problema nunca foi a técnica de comparação — era o tamanho do catálogo: a maioria dos licitantes municipais nunca vendeu ao Estado e não estava nas nossas raízes.") + `<div class="note">${esc(d.nota || "")}</div>`;
   }
   async function vincInterposicao() {
     const c = _vincCnpj();
@@ -3903,9 +4629,18 @@ void main(){
     h += card(`<pre style="white-space:pre-wrap;font-size:12px;margin:0">${esc(JSON.stringify(d, null, 1)).slice(0, 3e3)}</pre>`);
     o.innerHTML = h;
   }
+  var DRILL_ACOES = Object.fromEntries(
+    ["apTodos", "apComissionados", "apTerceiroSetor", "apExplicados", "apNovos"].map((k) => [k, () => vincAgentePublico(k)])
+  );
   var VINC_ACOES = {
     consultar: vincConsultar,
     parentesco: vincParentesco,
+    contato: vincContato,
+    agentePublico: vincAgentePublico,
+    osintProcessos: vincOsintProcessos,
+    elosOcultos: vincElosOcultos,
+    cocontato: vincCocontato,
+    assinaturasPcrj: vincAssinaturasPcrj,
     trocas: vincTrocas,
     grafo: vincGrafo,
     ftm: vincFtm,
@@ -3924,6 +4659,13 @@ void main(){
       if (f) {
         ev.preventDefault();
         f();
+        return;
+      }
+      const k = ev.target.closest && ev.target.closest("[data-drill]");
+      const g = k && DRILL_ACOES[k.dataset.drill];
+      if (g) {
+        ev.preventDefault();
+        g();
       }
     });
     document.addEventListener("keydown", (ev) => {
@@ -3985,10 +4727,279 @@ void main(){
       b("/api/mandato/minuta", "Minuta .docx para assinar", "Requerimento de informação (ALERJ) ou representação ao TCE-RJ, já fundamentado.", "alvo"),
       b("/api/ppp", "Dossiê pericial de PPP/concessão", "Perícia de parceria público-privada: equilíbrio, aportes, matriz de risco.", "alvo"),
       b("/api/sei/acatamento", "Acatamento de parecer (art. 53)", "O gestor seguiu o parecer jurídico? Divergência não motivada é achado.", "processo"),
+      // 2026-08-02: até aqui, processo ainda não avaliado devolvia a mensagem "POST /api/processo/avaliar"
+      // e NÃO havia botão nenhum — o painel mandava o usuário fazer uma requisição HTTP à mão. A rota
+      // só tinha "superfície" porque duplicava o /processo no menu; tirada a duplicata, o buraco apareceu.
+      b("/api/processo/avaliar", "Avaliar um processo SEI ainda não avaliado", "Dispara a avaliação 360 em background (fases, marcos, A1-A5, acatamento, juízo por documento). Use quando a consulta disser que o processo ainda não foi avaliado.", "numero"),
       b("/api/conjunto/orgao", "Avaliação de conjunto dos certames", "Lê o órgão como conjunto, não certame a certame — §5 da metodologia.", "orgao")
     ].join("") + `</div><div id="pc-out"></div>`;
+    h += sec("Fila do fiscal — por onde começar");
+    h += card(`<div class="dim">Ordenada por <b>qualidade do achado</b>, não por score cru: o score de
+      convergência satura no topo em processo grande, e ali tudo parece igual. Vício <b>lido nos
+      autos</b> pesa mais que indício sobre a empresa.</div>
+    <div class="btns" style="margin-top:10px">
+      <button type="button" class="btn" data-fila="todos">Ver a fila</button>
+      <button type="button" class="btn ghost" data-fila="osint">Só os com sinal OSINT</button>
+    </div><div id="ff-out"></div>`);
+    h += sec("Leitura de conjunto de um processo SEI");
+    h += card(`<div class="dim">O esqueleto do processo fase a fase, as contradições entre documentos
+      e a leitura do todo — sobre TODOS os documentos capturados, sem corte de páginas.</div>
+    <div class="btns" style="margin-top:10px">
+      <input id="sg-num" class="inp" placeholder="SEI-070002/001289/2022" style="min-width:260px">
+      <button type="button" class="btn" onclick="sinteseProcesso()">Ler o conjunto</button>
+    </div><div id="sg-out"></div>`);
     h += `<div class="note">Toda peça passa pelo gate de neutralidade (nenhum nome interno) e pelo gate de citações (nenhum acórdão inexistente).</div>`;
     return h;
+  }
+  async function filaFiscal(soOsint) {
+    const o = $("ff-out");
+    o.innerHTML = card('<div class="dim">recalculando a fila sobre o acervo de hoje…</div>');
+    const d = await J("/api/fiscal/fila?limite=60" + (soOsint ? "&so_osint=1" : ""));
+    if (!d || d.ok === false) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(d && d.erro)}</div>`);
+      return;
+    }
+    const it = d.itens || [];
+    if (!it.length) {
+      o.innerHTML = card(soOsint ? '<div class="dim">Nenhum processo da fila tem sinal OSINT hoje. <b>Não observado nesta rodada</b> não é ausência de vínculo — o grafo cresce a cada varredura.</div>' : '<div class="warn">Fila vazia — o ranking não devolveu processo algum.</div>');
+      return;
+    }
+    const cor = (g) => /EXTREMO/.test(g || "") ? "var(--red)" : /ALTO/.test(g || "") ? "var(--amber)" : null;
+    let h = `<div class="grid g2" style="margin-top:12px">
+      ${kpi(fmtN(d.total), "Processos na fila", "var(--amber)", "📋", { drill: "ffTodos" })}
+      ${kpi(fmtN(d.com_osint), "Com sinal OSINT", d.com_osint || 0 ? "var(--red)" : null, "🕸️", { drill: "ffOsint" })}</div>`;
+    h += leitura(esc(d.regua || ""));
+    const _lin = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700">${x.posicao}. ${esc(x.processo)}</div>
+        <div class="dim">${esc(x.grau)}</div>
+        <div style="font-size:12.5px;margin-top:4px">${esc(x.motivos || "")}</div>
+      </div>
+      <div class="right">
+        <div class="num" style="font-weight:800;color:${cor(x.grau) || "inherit"}">${x.pontos}</div>
+        <div class="dim">pontos</div>
+        <button type="button" class="btn ghost" style="margin-top:6px"
+                data-fila-abrir="${esc(x.processo)}">Abrir</button>
+      </div></div>`, x.osint ? "hl" : "");
+    registrarDrill("ffTodos", { titulo: "Fila do fiscal", itens: it, render: _lin });
+    registrarDrill("ffOsint", {
+      titulo: "Processos com sinal OSINT",
+      itens: it.filter((x) => x.osint),
+      render: _lin,
+      nota: "Sinal OSINT NUNCA supera vício lido nos autos: conflito de órgão vale 3, achado de pagamento sem execução vale 5."
+    });
+    h += `<div class="grid">` + it.map(_lin).join("") + `</div>`;
+    h += `<div class="note">${esc(d.resumo || "")} · a fila é recalculada a cada consulta, sobre o acervo do momento.</div>`;
+    o.innerHTML = h;
+    (async () => {
+      for (const f of [
+        taxaPorUnidade,
+        fimDeExercicio,
+        concentracaoPorGrupo,
+        coparticipacaoRelacionados,
+        recuperacaoJudicial,
+        aditivoPrecoce,
+        nucleoCartel,
+        consorcioVeiculo,
+        emergenciaRecorrente,
+        leituraDupla,
+        zerosSemCausa,
+        detectoresFramework
+      ]) {
+        try {
+          await f();
+        } catch (e) {
+          console.warn("painel de padrão falhou:", e);
+        }
+      }
+    })();
+  }
+  async function taxaPorUnidade() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/taxa_por_unidade");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Taxa da lacuna por unidade") + vazioDeclarado(d, "unidade com processos avaliados suficientes para publicar taxa");
+      o.appendChild(alvo);
+      return;
+    }
+    const fx = (v, k) => {
+      const f = (v.faixas || {})[k] || [0, 0];
+      return f[0] ? `${f[1]}/${f[0]}` : "—";
+    };
+    alvo.innerHTML = sec("O padrão por unidade — pagamento sem prova de execução") + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">avaliados</th>
+      <th class="right">com a lacuna</th><th class="right">taxa</th><th class="right">1-9 docs</th>
+      <th class="right">10-19</th><th class="right">20-49</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td>${esc(x.unidade)}</td><td class="right">${fmtN(x.n)}</td>
+          <td class="right">${fmtN(x.com)}</td>
+          <td class="right" style="font-weight:800;color:${x.taxa >= 25 ? "var(--red)" : x.taxa >= 10 ? "var(--amber)" : "inherit"}">${x.taxa}%</td>
+          <td class="right dim">${fx(x, "1-9")}</td><td class="right dim">${fx(x, "10-19")}</td>
+          <td class="right dim">${fx(x, "20-49")}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
+  }
+  async function fimDeExercicio() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/fim_de_exercicio?limite=15");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Ano inteiro pago em nov–dez") + vazioDeclarado(d, "credor privado com o ano concentrado no fim do exercício");
+      o.appendChild(alvo);
+      return;
+    }
+    alvo.innerHTML = sec(`Ano inteiro pago em nov–dez (${fmtN(d.total)} credores privados)`) + card(`<table class="tb"><thead><tr><th>Ano</th><th>Credor</th><th class="right">total no ano</th>
+      <th class="right">% em nov–dez</th><th class="right">OBs</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td>${esc(String(x.exercicio))}</td>
+          <td>${esc(x.nome.slice(0, 46))} <span class="dim">${esc(x.raiz)}</span></td>
+          <td class="right">${fmtRc(x.total)}</td>
+          <td class="right" style="font-weight:800;color:${x.pct >= 95 ? "var(--red)" : "var(--amber)"}">${x.pct}%</td>
+          <td class="right dim">${fmtN(x.obs)}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
+  }
+  async function concentracaoPorGrupo() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/concentracao_por_grupo?ano=2025&limite=10");
+    if (!d || d.ok === false) return;
+    if (!(d.itens || []).length) {
+      const vazio = document.createElement("div");
+      vazio.innerHTML = sec("Concentração por grupo econômico") + vazioDeclarado(d, "unidade gestora concentrada por grupo em 2025");
+      o.appendChild(vazio);
+      return;
+    }
+    const rot2 = {
+      comando_comum: ["comando comum", "var(--red)"],
+      coparticipacao_com_excecao: ["coparticipação (1 exceção)", "var(--amber)"],
+      coparticipacao: ["coparticipação", "inherit"]
+    };
+    const alvo = document.createElement("div");
+    alvo.innerHTML = sec("Concentração por GRUPO econômico — o que a medição por CNPJ não mostra") + card(`<table class="tb"><thead><tr><th>Unidade</th><th class="right">pago em 2025</th>
+      <th class="right">HHI CNPJ</th><th class="right">HHI grupo</th>
+      <th class="right">maior grupo</th><th>o que sustenta o grupo</th>
+      <th>base</th></tr></thead><tbody>` + d.itens.map((x) => {
+      const g = x.maior_grupo || {}, c = g.cimento || {};
+      const [txt, cor2] = rot2[c.tipo] || ["QSA indisponível", "inherit"];
+      const cb = x.cobertura || {};
+      const base = cb.estado === "parcial" ? `<span style="color:var(--red)">parcial · ${cb.pct_ausente}% ausente</span>` : cb.estado === "coberto" ? '<span class="dim">coberta</span>' : `<span class="dim">${esc(cb.estado || "—")}</span>`;
+      return `<tr><td>${esc(x.nome_ug || "UG " + x.ug)} <span class="dim">${esc(x.ug)}</span></td>
+          <td class="right">${fmtRc(x.total_pago)}</td>
+          <td class="right dim">${x.hhi_por_cnpj.toFixed(4)}</td>
+          <td class="right" style="font-weight:800;color:${x.hhi_por_grupo >= 0.25 ? "var(--red)" : "inherit"}">${x.hhi_por_grupo.toFixed(4)}</td>
+          <td class="right">${((g.fracao || 0) * 100).toFixed(1)}% <span class="dim">${fmtN(g.n_cnpj || 0)} CNPJs</span></td>
+          <td style="color:${cor2}">${esc(txt)}${c.pontes ? ` <span class="dim">${c.pontes_que_administram}/${c.pontes} pontes</span>` : ""}</td>
+          <td style="font-size:12px">${base}</td></tr>`;
+    }).join("") + `</tbody></table>`) + leitura("<b>A coluna 'base' não é detalhe técnico.</b> Onde a fonte canônica está parcial, o valor pago é PISO e a fração do maior grupo só se sustenta se o que falta for aleatório — ela pode estar enviesada nos dois sentidos. " + esc(d.ressalva || ""));
+    o.appendChild(alvo);
+  }
+  function vazioDeclarado(d, oQue) {
+    const f = d.fonte || {};
+    const t = f.tabelas || {};
+    if (f.ok === false) {
+      const falta = Object.entries(t).filter(([, v]) => v === "ausente" || v === 0).map(([k]) => k).join(", ");
+      return card(`<div class="dim"><b>Não medido</b> — ${esc(oQue)}: fonte indisponível${falta ? " (" + esc(falta) + ")" : ""}${f.erro ? ": " + esc(f.erro) : ""}. Lista vazia aqui significa
+      <b>não medi</b>, nunca "nada a apurar".</div>`);
+    }
+    return card(`<div class="dim">Nenhum caso de ${esc(oQue)} <b>na fatia já medida</b> — a base foi
+    varrida e respondeu. Ausência aqui é resultado, não silêncio; a fatia é que limita.</div>`);
+  }
+  async function coparticipacaoRelacionados() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/coparticipacao_relacionados?limite=12");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Relacionadas no mesmo certame") + vazioDeclarado(d, "empresas relacionadas disputando o mesmo certame");
+      o.appendChild(alvo);
+      return;
+    }
+    alvo.innerHTML = sec(`Relacionadas no mesmo certame (${fmtN(d.total)} pares)`) + card(`<table class="tb"><thead><tr><th class="right">certames</th><th class="right">mun.</th>
+      <th>empresa A</th><th>empresa B</th><th>elo vigente</th>
+      <th class="right">homologado</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+          <td class="right" style="font-weight:800;color:${x.certames >= 4 ? "var(--red)" : x.certames >= 3 ? "var(--amber)" : "inherit"}">${x.certames}</td>
+          <td class="right dim">${x.municipios}</td>
+          <td>${esc(x.nome_a.slice(0, 30))} <span class="dim">${esc(x.cnpj_a)}</span></td>
+          <td>${esc(x.nome_b.slice(0, 30))} <span class="dim">${esc(x.cnpj_b)}</span></td>
+          <td class="dim">${esc((x.elos || []).join("; ").slice(0, 44))}</td>
+          <td class="right">${fmtRc(x.valor)}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
+  }
+  async function recuperacaoJudicial() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/recuperacao_judicial?limite=12");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Pagos em recuperação judicial") + vazioDeclarado(d, "credor pago com recuperação judicial no quadro");
+      o.appendChild(alvo);
+      return;
+    }
+    alvo.innerHTML = sec(`Pagos em recuperação judicial — ${fmtN(d.total)} credores, ${fmtRc(d.soma)}`) + card(`<table class="tb"><thead><tr><th>Credor</th><th class="right">UGs</th><th>anos</th>
+      <th>como aparece</th><th class="right">pago (OB)</th><th class="right">OBs</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+          <td>${esc(x.nome.slice(0, 42))} <span class="dim">${esc(x.raiz)}</span></td>
+          <td class="right dim">${x.n_ug}</td><td class="dim">${esc(x.anos)}</td>
+          <td style="color:${x.via === "credor" ? "inherit" : "var(--amber)"}">${esc(x.via)}${(x.membros_em_recuperacao || []).length ? ` <span class="dim">${esc(x.membros_em_recuperacao[0].slice(0, 30))}</span>` : ""}</td>
+          <td class="right" style="font-weight:700">${fmtRc(x.total)}</td>
+          <td class="right dim">${fmtN(x.obs)}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
+  }
+  function ligarFila() {
+    document.addEventListener("click", (ev) => {
+      if (!ev.target.closest) return;
+      const b = ev.target.closest("[data-fila]");
+      if (b) {
+        ev.preventDefault();
+        filaFiscal(b.dataset.fila === "osint" ? 1 : 0);
+        return;
+      }
+      const a = ev.target.closest("[data-fila-abrir]");
+      if (!a) return;
+      ev.preventDefault();
+      const i = $("sg-num");
+      if (!i) return;
+      i.value = a.getAttribute("data-fila-abrir");
+      i.scrollIntoView({ behavior: "smooth", block: "center" });
+      sinteseProcesso();
+    });
+  }
+  async function sinteseProcesso() {
+    const v = ($("sg-num")?.value || "").trim();
+    const o = $("sg-out");
+    if (!v) {
+      o.innerHTML = card('<div class="warn">Informe o número do processo.</div>');
+      return;
+    }
+    o.innerHTML = card('<div class="dim">lendo o conjunto…</div>');
+    try {
+      const d = await J("/api/processo?numero=" + encodeURIComponent(v));
+      if (d && d.rodando) {
+        o.innerHTML = card('<div class="dim">avaliação em curso — tente em instantes.</div>');
+        return;
+      }
+      const a = d && (d.avaliacao || d) || {};
+      const s = a.sintese;
+      if (!s || s.indisponivel) {
+        o.innerHTML = card(`<div class="warn">Síntese INDISPONÍVEL para este processo${s && s.motivo ? ": " + esc(s.motivo) : ""} — indisponível não é ausência de irregularidade.</div>`);
+        return;
+      }
+      const fases = Object.entries(s.fases || {}).map(([f, r]) => `<tr><td>${esc(f)}</td><td class="r">${r.n_docs}</td>
+       <td>${r.de ? esc(r.de) + " → " + esc(r.ate) : '<span class="dim">sem data</span>'}</td>
+       <td class="r">${r.viciados ? '<b class="bad">' + r.viciados + "</b>" : "—"}</td>
+       <td class="dim">${(r.assinantes || []).slice(0, 3).map(esc).join(", ") || "—"}</td></tr>`).join("");
+      const contr = (s.contradicoes || []).map((c) => `<li><b>${esc(c.codigo)}</b> — ${esc(c.diz)}<br><span class="dim">${esc(c.evidencia || "")}</span></li>`).join("");
+      o.innerHTML = card(
+        `<div style="font-weight:700">${esc(v)}</div>
+       <div style="margin:8px 0">${esc(s.leitura || "")}</div>
+       <table class="tb"><thead><tr><th>Fase</th><th class="r">Docs</th><th>Período</th>
+         <th class="r">Viciados</th><th>Assinantes</th></tr></thead><tbody>${fases}</tbody></table>
+       ${contr ? `<div style="margin-top:10px;font-weight:700">Contradições entre documentos (${s.contradicoes.length})</div><ul>${contr}</ul>` : '<div class="dim" style="margin-top:8px">Nenhuma contradição entre documentos pela leitura do conjunto.</div>'}
+       ${s.prosa ? `<div style="margin-top:10px">${esc(s.prosa)}</div>` : ""}`
+      );
+    } catch (e) {
+      o.innerHTML = card(`<div class="warn">${erroHumano(String(e))}</div>`);
+    }
   }
   async function pecaGerar(rota, campo) {
     const v = ($("pc-alvo")?.value || "").trim();
@@ -4081,9 +5092,27 @@ void main(){
       "Endereço, telefone ou e-mail <b>idêntico</b> em empresas distintas que vendem ao Estado. A lição já paga: <b>mesma sala</b> significa muito, <b>mesmo prédio</b> quase nada — o topo do acervo por prédio é um endereço com 318 CNPJs. Só a âncora com complemento (sala/andar) pesa.",
       "🏢"
     ) + acoesAba("hub_compartilhado");
-    h += `<div class="grid g2">${kpi(fmtN(a.length), "Hubs", "var(--amber)", "🏢")}
-      ${kpi(fmtN(a.reduce((s, x) => s + (x.n_cnpjs || x.n || 0), 0)), "CNPJs envolvidos")}
-      ${kpi(fmtN(a.filter((x) => (x.tipo || "").includes("sala") || x.complemento).length), "Com complemento (sala/andar)", "var(--rose)", "🚪")}</div>`;
+    const _linHub = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.ancora || x.endereco || x.valor || "—")}</div><div class="dim">${esc(x.tipo || "")}${x.complemento ? " · " + esc(x.complemento) : ""}</div></div><div class="right"><div class="num" style="font-weight:800">${fmtN(x.n_cnpjs || x.n || 0)}</div><div class="dim">CNPJs</div></div></div>`);
+    registrarDrill("hubTodos", {
+      titulo: "Hubs — âncora compartilhada por empresas distintas",
+      itens: a,
+      render: _linHub,
+      nota: "Mesma SALA pesa; mesmo PRÉDIO quase nada — o topo do acervo por prédio tem 318 CNPJs."
+    });
+    registrarDrill("hubComComplemento", {
+      titulo: "Hubs com complemento (sala/andar) — os que pesam",
+      itens: a.filter((x) => (x.tipo || "").includes("sala") || x.complemento),
+      render: _linHub
+    });
+    h += `<div class="grid g2">${kpi(fmtN(a.length), "Hubs", "var(--amber)", "🏢", { drill: "hubTodos" })}
+      ${kpi(
+      fmtN(a.reduce((s, x) => s + (x.n_cnpjs || x.n || 0), 0)),
+      "CNPJs envolvidos",
+      null,
+      null,
+      { sobre: "Soma de CNPJs distintos nos agrupamentos exibidos. A mesma empresa pode aparecer em mais de um grupo — o número mede alcance do padrão, não quantidade de empresas suspeitas." }
+    )}
+      ${kpi(fmtN(a.filter((x) => (x.tipo || "").includes("sala") || x.complemento).length), "Com complemento (sala/andar)", "var(--rose)", "🚪", { drill: "hubComComplemento" })}</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por âncora ou empresa…" oninput="filtrar(this,'#hub-list .card')"></div>`;
     h += `<div id="hub-list" class="grid">` + a.map((x) => card(
       `<div style="font-weight:700">${esc(x.ancora || x.endereco || x.valor || "—")} <span class="tag">${esc(x.tipo || "endereço")}</span></div>
@@ -4108,10 +5137,10 @@ void main(){
       if (he.tem_baseline === false) h += `<div class="dim">Também não há baseline aceito — a primeira medição vira o baseline.</div>`;
     } else if (he && he.ok !== false) {
       h += sec("Juízo jurídico (conjunto-ouro TCU)");
-      h += `<div class="grid g2">${kpi(fmtD(he.f1_macro, 3), "F1 macro", null, "⚖️")}
-        ${kpi(fmtD(he.baseline_f1, 3), "F1 do baseline burro")}
-        ${kpi(he.acuracia == null ? "—" : fmtD(100 * he.acuracia, 1) + "%", "Acurácia")}
-        ${kpi(he.n == null ? "—" : fmtN(he.n), "Casos rotulados")}</div>`;
+      h += `<div class="grid g2">${kpi(fmtD(he.f1_macro, 3), "F1 macro", null, "⚖️", { sobre: "Média harmônica de precisão e recall, calculada por CLASSE e depois promediada (macro) — cada classe pesa igual, mesmo as raras. É a régua honesta quando as classes são desbalanceadas: acertar só a classe comum não infla o número. Fonte: casos ROTULADOS À MÃO em <code>eval_groundtruth</code>. Recalcula com <code>python -m tools.eval_hermeneutica</code>." })}
+        ${kpi(fmtD(he.baseline_f1, 3), "F1 do baseline burro", null, null, { sobre: "O que um chute sem inteligência alcançaria (classe majoritária sempre). Existe para responder a única pergunta que importa sobre um F1: <b>ele é melhor que nada?</b> Modelo acima do baseline por pouco não sustenta decisão. Mesma fonte e mesmo comando do F1 macro." })}
+        ${kpi(he.acuracia == null ? "—" : fmtD(100 * he.acuracia, 1) + "%", "Acurácia", null, null, { sobre: "Proporção de acertos sobre os casos ROTULADOS À MÃO. Sozinha ela engana quando as classes são desbalanceadas — acertar só a classe comum já dá acurácia alta. Por isso o F1 macro está ao lado, e o F1 do baseline burro ao lado dele." })}
+        ${kpi(he.n == null ? "—" : fmtN(he.n), "Casos rotulados", null, null, { sobre: "Quantos casos foram rotulados À MÃO para servir de gabarito. É o DENOMINADOR de todas as métricas desta aba: um F1 excelente sobre poucas dezenas de casos diz pouco. Sem rótulo não há medição — e é por isso que este número aparece ao lado dos outros, não escondido." })}</div>`;
       if (he.alucinacao_citacao != null)
         h += leitura(`Alucinação de citação: <b>${fmtD(100 * he.alucinacao_citacao, 1)}%</b>. Abstenção: ${he.abstencao == null ? "—" : fmtD(100 * he.abstencao, 0) + "%"} — abster-se é resultado honesto, não falha.`);
     } else h += card(`<div class="dim">Acurácia do juízo indisponível nesta execução${he && he.erro ? ": " + esc(he.erro) : ""}.</div>`);
@@ -4297,22 +5326,184 @@ void main(){
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
     );
-    const [ag, pp, mm, ug, sf, rd] = await Promise.all([
+    const [ag, pp, mm, ug, sf, rd, cb, rt, cc, tr, tk, mo] = await Promise.all([
       J("/api/agenda"),
       J("/api/pipelines"),
       J("/api/memoria"),
       J("/api/ugs?limite=15"),
       J("/api/siafe/status"),
-      J("/api/radar/status")
+      J("/api/radar/status"),
+      J("/api/pericia/cobertura"),
+      J("/api/ob/retiradas"),
+      J("/api/captura/cobertura"),
+      J("/api/siafe/truncamento"),
+      J("/api/tac/ranking"),
+      J("/api/motor/fotografia")
     ]);
+    h += sec("Cobertura de CAPTURA — sobre quanto do dinheiro a casa consegue falar");
+    if (cc && cc.indisponivel === false) {
+      const a = cc.acervo || {};
+      const rx = cc.restricao || {};
+      const rest = rx.disponivel ? `<div style="margin-top:8px">Dos <b>${fmtN(rx.processos_tentados)}</b> processos com veredito
+           de leitura registrado${rx.desde ? " (desde " + esc(rx.desde) + ")" : ""},
+           <b>${fmtN(rx.restritos)}</b> (${rx.pct}%) o registro de controle classifica como
+           de <b>nível de acesso restrito</b> — a árvore não abriu em duas leituras de processo que
+           existe no cadastro, nem pelo caminho <i>cracked</i>. Não é ausência de irregularidade e
+           não é falta de permissão da nossa conta (ostensivos das mesmas unidades abrem normal):
+           é sigilo do processo, a confirmar por amostra com o leitor canônico.
+           <span class="dim">Ordenado pela relevância do ponto cego (rateio proporcional do valor
+           pago da unidade), não pelo percentual: 93% de uma unidade que pagou R$ 0,9 mi não é o
+           maior ponto cego.</span></div>
+         <div style="margin-top:6px">` + (rx.por_unidade || []).map(
+        (u) => `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome || "")}</span><b>${u.pct.toFixed(0)}% restrito</b> <span class="dim">(${u.restritos} de ${u.lidos} · unidade pagou ${fmtRc(u.valor_pago)})</span></div>`
+      ).join("") + `</div>` : "";
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Processos legíveis</div><div style="font-size:1.5rem;font-weight:700">${a.integro} <span class="dim" style="font-size:.9rem">de ${cc.processos_com_ob_paga} com OB paga (${cc.pct_utilizavel}%)</span></div></div>
+        <div><div class="dim">Nunca tocados</div><div style="font-size:1.5rem;font-weight:700">${cc.nunca_tocados}</div></div>
+        <div><div class="dim">Universo pago</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(cc.valor_pago_universo)}</div></div>
+      </div>
+      <div style="margin-top:8px">Arquivados: <b>${a.integro}</b> íntegros · <b>${a.parcial}</b> parciais ·
+        <b>${a.sem_teor}</b> sem teor · <b>${a.sem_docs}</b> sem índice` + // TETO DE COLETA: o painel dizia 1.941 íntegros enquanto o motor recusava 176 deles —
+      // arquivos vindos do CACHE do sweep parados em EXATAMENTE 40 documentos. O cache do
+      // SEI-170002/000732/2022 registra árvore de 783 contra 40 lidos: é corte, não processo
+      // completo. Some no balde de "íntegro" seria repetir no painel o erro que o gate cometia.
+      (a.teto_de_coleta ? ` · <b>${a.teto_de_coleta}</b> no <b>teto de coleta</b> (parados em 40 documentos)` : "") + ` — todos estes voltam à fila do sweep</div>
+      ${rest}
+      <div class="dim" style="margin-top:6px">${esc(cc.nota || "")}</div>`);
+    } else {
+      h += card(`<div class="warn">Cobertura de captura INDISPONÍVEL${cc && cc.motivo ? ": " + esc(cc.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Estado do motor — achados por código no acervo");
+    if (mo && mo.codigos) {
+      const cod = Object.entries(mo.codigos).filter(([k]) => k !== "—").sort((a, b) => b[1] - a[1]).slice(0, 14);
+      const org = Object.entries(mo.origens || {}).sort((a, b) => b[1] - a[1]).slice(0, 8);
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Códigos distintos</div><div style="font-size:1.5rem;font-weight:700">${fmtN(cod.length)}</div></div>
+        <div><div class="dim">Achados no acervo</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.codigos).reduce((s, x) => s + x, 0))}</div></div>
+        <div><div class="dim">Processos avaliados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(Object.values(mo.faixas || {}).reduce((s, x) => s + x, 0))}</div></div>
+      </div>
+      <div style="margin-top:8px">` + cod.map(([k, v]) => {
+        const sev = Object.entries(mo.graus || {}).filter(([g]) => g.startsWith(k + " · ")).map(([g, n]) => [g.split(" · ")[1], n]).sort((a, b) => b[1] - a[1]);
+        const ACENTO = { critica: "crítica", media: "média", alta: "alta", baixa: "baixa", medio: "médio", baixo: "baixo" };
+        const det = sev.length > 1 ? ` <span class="dim">(${sev.map(([s, n]) => fmtN(n) + " " + esc(ACENTO[s] || s)).join(" · ")})</span>` : "";
+        return `<div class="kv"><span class="k">${esc(k)}${det}</span><b>${fmtN(v)}</b></div>`;
+      }).join("") + `</div>
+      <div class="dim" style="margin-top:6px">Por origem: ` + org.map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · ") + `</div>` + // COBERTURA DAS RÉGUAS — o número mais silencioso do sistema até 2026-08-04: `indisponiveis`
+      // só registrava motor QUEBRADO, então o dossiê dizia "indisponíveis: nenhum" num processo em
+      // que 30 das 43 réguas não tinham dado. A mediana real é 5 réguas aferidas por processo.
+      (mo.reguas && mo.reguas.processos_medidos ? `<div style="margin-top:10px" class="kv">
+        <span class="k">Réguas que conseguem AFERIR o processo (mediana)</span><b>${mo.reguas.aferidas_mediana}</b></div>
+      <div class="kv"><span class="k">Réguas SEM DADO para avaliar (mediana · máximo)</span>
+        <b>${mo.reguas.sem_dado_mediana} · ${mo.reguas.sem_dado_max}</b></div>
+      <div class="dim" style="margin-top:4px">Não é ausência de irregularidade: é ausência de dado.
+        Cada dossiê lista quais réguas ficaram de fora e por quê.</div>` : ""));
+    } else {
+      h += card(`<div class="warn">Estado do motor INDISPONÍVEL${mo && mo.erro ? ": " + esc(mo.erro) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Pagamento fora de contrato regular (TAC/indenização) — por unidade");
+    if (tk && tk.indisponivel === false && (tk.unidades || []).length) {
+      const us2 = tk.unidades.slice(0, 8), topo = us2[0];
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Mediana entre ${fmtN(tk.unidades.length)} unidades</div><div style="font-size:1.5rem;font-weight:700">${tk.mediana_pct}%</div></div>
+        <div><div class="dim">Mais alta: ${esc(topo.ug)}</div><div style="font-size:1.5rem;font-weight:700">${topo.pct}%</div></div>
+        <div><div class="dim">Valor via TAC nessa unidade</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(topo.total_tac)}</div></div>
+      </div>
+      <div style="margin-top:8px">` + us2.map(
+        (u) => `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome || "")}</span><b>${u.pct}%</b> <span class="dim">${fmtRc(u.total_tac)} de ${fmtRc(u.total)}</span></div>`
+      ).join("") + `</div>
+      <div class="dim" style="margin-top:6px">${esc(tk.nota || "")}</div>`, topo.pct >= 25 ? "hl" : "");
+    } else {
+      h += card(`<div class="warn">Ranking de TAC INDISPONÍVEL${tk && tk.motivo ? ": " + esc(tk.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Cobertura da fonte canônica — o que o SIAFE ainda não tem");
+    if (tr && tr.indisponivel === false && (tr.pares_parciais || tr.pares_nunca_coletados)) {
+      const pp2 = (tr.parciais || []).filter((x) => x.estado === "parcial").slice(0, 8).map((t) => `<div class="kv"><span class="k">UG ${esc(t.ug)} · exercício ${esc(t.exercicio)}</span><b>${t.pct_ausente}% da amostra ausente</b> <span class="dim">${fmtN(t.obs_siafe)} linhas no SIAFE · espelho tem ${fmtN(t.obs_espelho_tfe)}</span></div>`).join("");
+      const nunca = (tr.parciais || []).filter((x) => x.estado === "nunca_coletado").length;
+      const desl = (tr.parciais || []).filter((x) => x.estado === "deslocado");
+      h += card(`<div class="grid g3">
+        <div><div class="dim">A fonte canônica tem, do que o espelho conhece</div>
+          <div style="font-size:1.5rem;font-weight:700;color:${(tr.pct_do_espelho || 0) < 80 ? "var(--red)" : "inherit"}">${tr.pct_do_espelho == null ? "—" : tr.pct_do_espelho + "%"}
+          <span class="dim" style="font-size:.9rem">${fmtN(tr.obs_siafe_total || 0)} de ${fmtN(tr.obs_espelho_total || 0)} OBs</span></div></div>
+        <div><div class="dim">Pares com coleta INTERROMPIDA</div><div style="font-size:1.5rem;font-weight:700;color:var(--red)">${fmtN((tr.parciais || []).filter((x) => x.estado === "parcial").length)}</div></div>
+        <div><div class="dim">Pares NUNCA coletados</div><div style="font-size:1.5rem;font-weight:700">${fmtN(nunca)}</div></div>
+        <div><div class="dim">Pares com colunas DESLOCADAS</div><div style="font-size:1.5rem;font-weight:700;color:${desl.length ? "var(--red)" : "inherit"}">${fmtN(desl.length)}
+          <span class="dim" style="font-size:.9rem">${fmtN(desl.reduce((s0, x) => s0 + (x.obs_deslocadas || 0), 0))} linhas</span></div></div>
+        <div><div class="dim">Parados no teto de ${tr.teto_consulta}</div><div style="font-size:1.5rem;font-weight:700">${fmtN(tr.pares_truncados)} <span class="dim" style="font-size:.9rem">de ${fmtN(tr.pares_avaliados)}</span></div></div>
+      </div>
+      <div style="margin-top:8px">${pp2}</div>
+      ${desl.length ? `<div class="warn" style="margin-top:8px"><b>Coletado, porém INUTILIZÁVEL</b> —
+        ${fmtN(desl.length)} par(es) com os campos deslocados: o valor está gravado no campo do nome
+        do credor e <b>a coluna de valor lê R$ 0,00</b>. Soma por esses exercícios devolve zero, e
+        cruzamento por credor devolve número onde deveria vir nome. Não é lacuna de coleta — é
+        coleta que passou por completa. ${desl.map((x) => esc(x.ug + "/" + x.exercicio)).join(" · ")}.
+        A cura é RECOLETAR (o parser já foi corrigido); esses pares estão no topo da fila do dreno.</div>` : ""}
+      <div class="dim" style="margin-top:6px">A contagem redonda é a assinatura do <b>teto de consulta</b>; passada que morre em
+        timeout grava o que deu tempo e para num número qualquer, <b>com cara de concluída</b> — e é
+        por isso que o segundo detector, que compara NÚMEROS de OB com o espelho, acha muito mais.
+        <b>Todo total tirado do SIAFE é PISO enquanto estes pares existirem.</b></div>`, "hl");
+    } else if (tr && tr.indisponivel === false && tr.pares_truncados) {
+      const linhas = (tr.truncados || []).slice(0, 8).map((t) => `<div class="kv"><span class="k">UG ${esc(t.ug)} · exercício ${esc(t.exercicio)}</span><b>${fmtN(t.obs_faltando_ao_menos)} OBs a menos</b></div>`).join("");
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Pares (UG, ano) travados no teto</div><div style="font-size:1.5rem;font-weight:700">${tr.pares_truncados} <span class="dim" style="font-size:.9rem">de ${tr.pares_avaliados}</span></div></div>
+        <div><div class="dim">OBs faltando ao menos</div><div style="font-size:1.5rem;font-weight:700">${fmtN(tr.obs_faltando_ao_menos)}</div></div>
+        <div><div class="dim">Nesses pares: SIAFE × espelho</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(tr.valor_siafe_nos_truncados)} <span class="dim" style="font-size:.9rem">× ${fmtRc(tr.valor_espelho_nos_truncados)}</span></div></div>
+      </div>
+      <div style="margin-top:8px">${linhas}</div>
+      <div class="dim" style="margin-top:6px">${esc(tr.nota || "")}</div>`, "hl");
+    } else if (tr && tr.indisponivel === false) {
+      h += card(`<div>Nenhum par (UG, ano) parado no teto de ${tr.teto_consulta} — a coleta do SIAFE não aparenta truncamento.</div>`);
+    } else {
+      h += card(`<div class="warn">Truncamento do SIAFE INDISPONÍVEL${tr && tr.motivo ? ": " + esc(tr.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Perícia documental — cobertura do acervo (24/7)");
+    if (cb && cb.indisponivel === false) {
+      const pct = cb.pct == null ? "—" : cb.pct + "%";
+      const cadeias = Object.entries(cb.por_cadeia || {}).map(([k, v]) => `${esc(k)}: ${v}`).join(" · ") || "—";
+      const esc3 = (cb.por_escala || {})["3"] || 0, esc2 = (cb.por_escala || {})["2"] || 0, esc1 = (cb.por_escala || {})["1"] || 0, escN = (cb.por_escala || {})["null"] || 0;
+      h += card(`<div class="grid g3">
+        <div><div class="dim">Processos com juízo</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_com_juizo} <span class="dim" style="font-size:.9rem">de ${cb.processos_periciaveis == null ? cb.processos_avaliados : cb.processos_periciaveis} periciáveis (${pct})</span></div></div>
+        <div><div class="dim">Documentos julgados</div><div style="font-size:1.5rem;font-weight:700">${cb.documentos_julgados}</div></div>
+        <div><div class="dim">Pendentes</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_pendentes}</div></div>
+      </div>
+      <div style="margin-top:8px">Escala do juízo: <b>${esc3}</b> viciado · <b>${esc2}</b> frágil · <b>${esc1}</b> regular · <span class="dim">${escN} não classificável</span></div>
+      <div class="dim" style="margin-top:4px">Julgado por: ${cadeias} · rubrica v${esc(cb.rubrica)} · último juízo ${esc(cb.ultimo_juizo || "—")}</div>
+      ${cb.processos_sem_captura ? `<div class="dim" style="margin-top:4px">+ ${cb.processos_sem_captura} processos fora desta conta: não têm captura utilizável, e essa é outra fila (ver o cartão acima).</div>` : ""}
+      <div class="dim" style="margin-top:6px">${esc(cb._nota || "")}</div>`);
+    } else {
+      h += card(`<div class="warn">Cobertura da perícia INDISPONÍVEL${cb && cb.motivo ? ": " + esc(cb.motivo) : ""} — indisponível não é zero.</div>`);
+    }
+    h += sec("Ordens bancárias despublicadas pela fonte");
+    if (rt && rt.indisponivel === false) {
+      const anos = (rt.por_exercicio || []).map((e) => `${esc(e.exercicio)}: ${e.n}`).join(" · ") || "—";
+      h += card(`<div class="grid g3">
+        <div><div class="dim">OBs retiradas</div><div style="font-size:1.5rem;font-weight:700">${rt.n}</div></div>
+        <div><div class="dim">Valor que saiu do portal</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(rt.valor)}</div></div>
+        <div><div class="dim">Favorecidos distintos</div><div style="font-size:1.5rem;font-weight:700">${rt.favorecidos_distintos}</div></div>
+      </div>
+      <div style="margin-top:8px">Por exercício: ${anos}</div>
+      <div class="dim" style="margin-top:4px">Última retirada detectada: ${esc(rt.ultima_retirada || "—")}</div>
+      <div class="dim" style="margin-top:6px">${esc(rt.ressalva || "")}</div>`);
+      const mm2 = (rt.maiores || []).slice(0, 8);
+      if (mm2.length) {
+        h += `<table class="tb"><thead><tr><th>OB</th><th>Órgão</th><th>Favorecido</th><th class="r">Valor</th></tr></thead><tbody>`;
+        for (const o of mm2)
+          h += `<tr><td class="dim">${esc(o.numero_ob)}</td><td>${esc(o.ug_nome || "—")}</td>
+            <td>${esc(o.favorecido_nome || "—")}</td><td class="r">${fmtR(o.valor)}</td></tr>`;
+        h += `</tbody></table>`;
+      }
+    } else {
+      h += card(`<div class="dim">Retiradas de OB ${rt && rt.motivo ? esc(rt.motivo) : "indisponíveis nesta execução"} — indisponível não é zero.</div>`);
+    }
     h += sec("Frescor das fontes (SLO por pipeline)");
     const ps = pp && (pp.pipelines || pp.itens) || [];
     if (ps.length) {
       h += `<table class="tb"><thead><tr><th>Pipeline</th><th>Estado</th><th class="r">Idade</th></tr></thead><tbody>`;
       for (const p of ps) {
-        const ok = String(p.estado || "").toLowerCase().startsWith("ok");
-        h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ok ? "ok" : "bad"}">${esc(p.estado || "—")}</td>
-          <td class="r dim">${p.idade_dias == null ? "—" : p.idade_dias + " d"}</td></tr>`;
+        const st = String(p.estado || p.status || "").toLowerCase();
+        const ruim = st === "stale" || st === "ausente" || st && !/^(ok|pausado|sob_demanda)/.test(st);
+        const idade = p.idade_dias != null ? p.idade_dias + " d" : p.idade_h != null ? p.idade_h + " h" : "—";
+        h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ruim ? "bad" : "ok"}">${esc(p.estado || p.status || "—")}</td>
+          <td class="r dim">${idade}</td></tr>`;
       }
       h += `</tbody></table>`;
     } else h += card(`<div class="dim">${pp && pp.ok === false ? "Pipelines indisponíveis nesta execução" + (pp.erro ? ": " + esc(pp.erro) : "") + "." : "Nenhum pipeline registrado — a rota respondeu, a lista está vazia."}</div>`);
@@ -4327,10 +5518,34 @@ void main(){
     } else h += card(`<div class="dim">${ag && ag.ok === false ? "Agenda indisponível nesta execução" + (ag.erro ? ": " + esc(ag.erro) : "") + "." : "Nenhum job agendado — a rota respondeu, a agenda está vazia."}</div>`);
     h += sec("SIAFE e radar");
     h += `<div class="grid g2">
-    ${kpi(esc(sf && (sf.estado || sf.status) || "—"), "SIAFE", null, "💵")}
-    ${kpi(fmtN(sf && (sf.n_obs || sf.obs)), "OBs coletadas")}
-    ${kpi(esc(rd && (rd.estado || rd.status) || "—"), "Radar", null, "🎯")}
-    ${kpi(fmtN(mm && (mm.n || mm.total || mm.aprendizados)), "Itens na memória", "var(--accent)", "🧠")}</div>`;
+    ${kpi(
+      esc(sf && (sf.estado || sf.status) || "—"),
+      "SIAFE",
+      null,
+      "💵",
+      { sobre: "Estado da coleta no SIAFE — a fonte canônica de pagamento. Coleta parada significa números <b>congelados na última data</b>, não ausência de pagamento novo: é a diferença entre o mundo e o que a casa viu do mundo." }
+    )}
+    ${kpi(
+      fmtN(sf && (sf.n_obs || sf.obs)),
+      "OBs coletadas",
+      null,
+      null,
+      { sobre: 'Ordens bancárias ingeridas — pagamento EFETIVO. Empenho é reserva orçamentária e pode ser cancelado; liquidação é o reconhecimento da dívida. Só a OB significa que o dinheiro saiu, e é por isso que só ela conta como "pago" nesta casa.' }
+    )}
+    ${kpi(
+      esc(rd && (rd.estado || rd.status) || "—"),
+      "Radar",
+      null,
+      "🎯",
+      { sobre: "Estado do varredor que reavalia os fornecedores. Parado, as faixas de risco continuam mostrando a última avaliação — número velho com cara de atual é a forma mais silenciosa de errar." }
+    )}
+    ${kpi(
+      fmtN(mm && (mm.n || mm.total || mm.aprendizados)),
+      "Itens na memória",
+      "var(--accent)",
+      "🧠",
+      { sobre: "Aprendizados registrados no acervo de metacognição — o que a casa já descobriu sobre os próprios erros. É o que impede um defeito corrigido de voltar por esquecimento; cada família de falha do catálogo nasceu de um caso concreto." }
+    )}</div>`;
     h += card(`<div class="btns" style="flex-wrap:wrap">
       <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/status','GET')">Status SIAFE</button>
       <button type="button" class="btn ghost" onclick="instAcionar('/api/siafe/atualizar','POST')">Atualizar SIAFE</button>
@@ -4447,10 +5662,10 @@ void main(){
     let h = cover("estado", "Estado do Rio de Janeiro", "Ordens Bancárias do SIAFE, concentração de fornecedores, sancionadas, perícias e conluio — somente órgãos ESTADUAIS (esfera oficial do PNCP; federais e municípios ficam em Transversal).", "🏛️");
     if (coletaErro) h += `<div class="warn">Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
     h += `<div class="grid g2">
-    ${kpi(fmtN(o.total), "Ordens Bancárias", null, "💳")}${kpi(fmtRc(o.valor_total), "Valor fiscalizado", null, "💰")}
+    ${kpi(fmtN(o.total), "Ordens Bancárias", null, "💳", "e_siafe")}${kpi(fmtRc(o.valor_total), "Valor fiscalizado", null, "💰", "e_siafe")}
     ${kpi(fmtN(a.total ?? 0), "Alertas ativos", a.alta ? "var(--rose)" : "#fff", "🚨", "e_alertas")}${kpi(nc, "Conluio (estado)", "var(--purple)", "🕸️", "e_conluio")}
     ${kpi(fmtN(sc.n_a_epoca ?? "—"), "Sancionadas à época", "var(--rose)", "🚫", "e_sanc")}${kpi(fmtN(a.alta ?? 0), "🔴 Alta", "var(--rose)", null, "e_alertas")}
-    ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"))}${kpi(fmtN(o.hoje ?? 0), "OBs hoje")}</div>`;
+    ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"), null, null, "e_siafe")}${kpi(fmtN(o.hoje ?? 0), "OBs hoje", null, null, "e_siafe")}</div>`;
     h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
@@ -4471,8 +5686,33 @@ void main(){
       "Empresas punidas no CEIS/CNEP (impedimento, suspensão, inidoneidade) que receberam pagamento (OB SIAFE) ou venceram licitação (PNCP). <b>À ÉPOCA</b> = o ato ocorreu DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156).",
       "🚫"
     ) + acoesAba("sancionadas");
-    h += `<div class="grid g2">${kpi(fmtN(emp.length), "Empresas sancionadas c/ contrato", null, "🚫")}${kpi(fmtN(aepoca.length), "Com ato À ÉPOCA", "var(--rose)", "⚠️")}
-      ${kpi(fmtRc(aepoca.reduce((s, e) => s + e.estado.valor_durante, 0)), "Pago durante sanção (OB)", "var(--rose)", "💸")}${kpi(fmtN(aepoca.reduce((s, e) => s + e.pncp.vitorias_durante, 0)), "Vitórias durante sanção", "var(--amber)", "🏆")}</div>`;
+    const _linSanc = (e) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj, e.razao_social || e.cnpj)}<div class="dim">${esc(e.cnpj)}</div></div><div class="right"><div class="dim">OB ${fmtN(e.estado.obs)} · à época ${fmtN(e.estado.obs_durante)}</div><div class="dim">PNCP ${fmtN(e.pncp.vitorias)} · à época ${fmtN(e.pncp.vitorias_durante)}</div></div></div>`);
+    registrarDrill("sancComContrato", {
+      titulo: "Sancionadas com contrato ou pagamento",
+      itens: emp,
+      render: _linSanc,
+      nota: 'Sanção vigente não é o mesmo que ato à época — a coluna "à época" é a que sustenta a vedação do art. 156.'
+    });
+    registrarDrill("sancAEpoca", {
+      titulo: "Ato praticado À ÉPOCA da sanção",
+      itens: aepoca,
+      render: _linSanc,
+      nota: "O ato ocorreu DENTRO da vigência da punição (Lei 14.133, art. 156)."
+    });
+    h += `<div class="grid g2">${kpi(fmtN(emp.length), "Empresas sancionadas c/ contrato", null, "🚫", { drill: "sancComContrato" })}${kpi(fmtN(aepoca.length), "Com ato À ÉPOCA", "var(--rose)", "⚠️", { drill: "sancAEpoca" })}
+      ${kpi(
+      fmtRc(aepoca.reduce((s, e) => s + e.estado.valor_durante, 0)),
+      "Pago durante sanção (OB)",
+      "var(--rose)",
+      "💸",
+      { sobre: "Ordens bancárias emitidas <b>enquanto</b> a sanção estava vigente — não o histórico da empresa. A fonte é a OB do SIAFE, que é pagamento efetivo: empenho é reserva e pode ser cancelado, liquidação é reconhecimento da dívida. Só a OB significa que o dinheiro saiu." }
+    )}${kpi(
+      fmtN(aepoca.reduce((s, e) => s + e.pncp.vitorias_durante, 0)),
+      "Vitórias durante sanção",
+      "var(--amber)",
+      "🏆",
+      { sobre: "Certames vencidos <b>enquanto</b> a sanção vigorava, segundo o PNCP. Vencer não é receber: o valor efetivamente pago está no KPI ao lado, e vem da OB do SIAFE." }
+    )}</div>`;
     h += buscaPag("san", "filtrar por nome ou CNPJ…");
     h += `<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(80, emp.length))} de ${fmtN(emp.length)}${d.n && d.n > carregadas ? ` carregadas — a base tem ${fmtN(d.n)}; a rota entrega no máximo 1000, então <b>o filtro NÃO cobre a base inteira</b>: se um CNPJ não aparecer aqui, use a busca por CNPJ do painel antes de concluir qualquer coisa` : " — o filtro busca em todas"}</div>`;
     h += listaPaginada("san", emp, (e) => {
@@ -4501,8 +5741,21 @@ void main(){
       "✂️"
     ) + acoesAba("fracionamento");
     const alta = g.filter((x) => x.concentracao >= 0.5).length;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Grupos sinalizados", "var(--amber)", "✂️")}${kpi(fmtN(alta), "Concentração ≥50%", "var(--rose)", "🎯")}
-      ${kpi(fmtRc(g.reduce((s, x) => s + x.soma, 0)), "Soma dos grupos exibidos", null, "💰")}${kpi(g.length ? Math.round(Math.max(...g.map((x) => x.concentracao)) * 100) + "%" : "—", "Pior concentração", "var(--rose)")}</div>`;
+    registrarDrill("fracConc50", { titulo: "Grupos com concentração ≥ 50% num único favorecido", itens: g.filter((x) => x.concentracao >= 0.5), nota: "Fracionamento é indício de divisão da compra para escapar da licitação — o objeto decide." });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Grupos sinalizados", "var(--amber)", "✂️", drillSeCompleto("fracGrupos", d.n, g, { titulo: "Grupos com indício de fracionamento", nota: "Mesmo favorecido, mesma UG e mesmo mês, com OBs coladas no teto de dispensa. O objeto decide se houve divisão indevida." }) || { sobre: "Grupos com indício de fracionamento — mesmo favorecido, mesma UG, mesmo mês, com pagamentos colados no teto de dispensa. A tela recebe uma página e por isso a gaveta está desligada aqui. Este eixo já esteve <b>26× inflado</b> nesta casa (59.209 caindo para 2.225): o número só vale com a régua de agrupamento à vista." })}${kpi(fmtN(alta), "Concentração ≥50%", "var(--rose)", "🎯", { drill: "fracConc50" })}
+      ${kpi(
+      fmtRc(g.reduce((s, x) => s + x.soma, 0)),
+      "Soma dos grupos exibidos",
+      null,
+      "💰",
+      { sobre: "Soma dos grupos EM TELA, não do acervo — o rótulo diz isso de propósito. Fracionamento já esteve 26× inflado nesta casa (59.209 caindo para 2.225) por contar o que não devia; somar só o exibido é o que impede o número de crescer sem lastro." }
+    )}${kpi(
+      g.length ? Math.round(Math.max(...g.map((x) => x.concentracao)) * 100) + "%" : "—",
+      "Pior concentração",
+      "var(--rose)",
+      null,
+      { sobre: "O grupo com maior parcela num único favorecido. Concentração alta pode ser mercado de um fornecedor só; o que ela indica é onde perguntar por pesquisa de preço, não onde concluir." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
     h += `<div id="frac-list" class="grid">` + g.map((x) => {
       const pct = Math.round(x.concentracao * 100);
@@ -4530,8 +5783,10 @@ void main(){
       "🧮"
     ) + acoesAba("certames");
     const piores = o.filter((x) => (x.desvio_vs_pares || 0) > 10).length, aud = o.filter((x) => x.auditoria_tematica && x.auditoria_tematica.length).length;
-    h += `<div class="grid g2">${kpi(fmtN(d.n_orgaos), "Órgãos avaliados (≥3 certames)", null, "🏢")}${kpi(d.mediana_pares != null ? d.mediana_pares.toFixed(0) : "—", "Mediana dos pares", null, "📏")}
-      ${kpi(fmtN(piores), "Acima dos pares (+10)", "var(--amber)", "📈")}${kpi(fmtN(aud), "Com gatilho de auditoria temática", "var(--rose)", "🎯")}</div>`;
+    registrarDrill("orgAcimaPares", { titulo: "Órgãos acima dos pares em mais de 10 pontos", itens: o.filter((x) => (x.desvio_vs_pares || 0) > 10), nota: "A régua é COMPARATIVA: o desvio mede este órgão contra os semelhantes, não contra zero." });
+    registrarDrill("orgAuditoriaTematica", { titulo: "Órgãos com gatilho de auditoria temática", itens: o.filter((x) => x.auditoria_tematica && x.auditoria_tematica.length) });
+    h += `<div class="grid g2">${kpi(fmtN(d.n_orgaos), "Órgãos avaliados (≥3 certames)", null, "🏢", drillSeCompleto("orgaosAvaliados", d.n_orgaos, o, { titulo: "Órgãos avaliados (≥3 certames indexados)", nota: "Órgão com menos de 3 certames fica fora: régua comparativa exige base para comparar." }) || { sobre: "Órgãos com pelo menos três certames — abaixo disso não há série para falar de padrão, e qualquer concentração seria ruído de amostra pequena. A gaveta está desligada porque a tela recebe uma página do total." })}${kpi(d.mediana_pares != null ? d.mediana_pares.toFixed(0) : "—", "Mediana dos pares", null, "📏", { sobre: "Mediana do Índice de Direcionamento entre órgãos COMPARÁVEIS (≥3 certames indexados). A régua desta casa é comparativa de propósito: 40 pontos não significa nada sozinho — significa alguma coisa contra os 22 dos semelhantes. Órgão sem par suficiente fica sem desvio, e isso é dito, não preenchido com zero." })}
+      ${kpi(fmtN(piores), "Acima dos pares (+10)", "var(--amber)", "📈", { drill: "orgAcimaPares" })}${kpi(fmtN(aud), "Com gatilho de auditoria temática", "var(--rose)", "🎯", { drill: "orgAuditoriaTematica" })}</div>`;
     h += `<div class="grid" style="margin-top:14px">` + o.map((x) => {
       const md = x.score_mediana != null ? x.score_mediana : 0, dv = x.desvio_vs_pares;
       const cor = md >= 50 ? "var(--rose)" : md >= 25 ? "var(--amber)" : "var(--tx2)";
@@ -4582,8 +5837,8 @@ void main(){
       "Para cada <b>ramo de objeto</b> (limpeza, TI, veículos…), quem domina os contratos do Município do Rio: <b>top-share</b> (≥60% forte · ≥40% médio — régua R8) e <b>HHI</b> (>2.500 = mercado altamente concentrado, referência CADE). <b>Base = valor CONTRATADO</b> do PNCP — a PCRJ não publica pagamento por credor 2024+; concentração de contrato é screen de captura, não medida de execução.",
       "🔗"
     );
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Mercados analisados", null, "🧺")}${kpi(fmtN(d.n_criticos || 0), "Concentrados (share ≥40%)", "var(--rose)", "🚨")}
-      ${kpi(a.length ? fmtN(a[0].hhi) : "—", "Maior HHI", "var(--rose)")}${kpi(a.length ? a[0].top_share + "%" : "—", "Maior top-share", "var(--rose)")}</div>`;
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Mercados analisados", null, "🧺", drillSeCompleto("mercadosAnalisados", d.n, a, { titulo: "Mercados analisados", nota: "" }) || { sobre: "Mercados (agrupamentos de item comparável) submetidos ao teste de concentração. É o DENOMINADOR: mercado fora desta conta não foi considerado competitivo — não foi examinado. A gaveta está desligada porque a tela recebe uma página do total." })}${kpi(fmtN(d.n_criticos || 0), "Concentrados (share ≥40%)", "var(--rose)", "🚨", { sobre: "Quantos fornecedores concentram 40% ou mais do que o órgão pagou. O corte de 40% é a régua desta casa, não da lei: serve para separar o que merece leitura do que é a distribuição normal de um mercado pequeno." })}
+      ${kpi(a.length ? fmtN(a[0].hhi) : "—", "Maior HHI", "var(--rose)", null, { sobre: "Índice Herfindahl-Hirschman do maior caso: soma dos quadrados das participações de mercado. Acima de 2.500 o mercado é considerado <b>altamente concentrado</b> pelo padrão do CADE. Concentração alta não é ilícito — é a condição em que combinação se torna fácil, e por isso pede exame do objeto e do número de participantes." })}${kpi(a.length ? a[0].top_share + "%" : "—", "Maior top-share", "var(--rose)", null, { sobre: "Fatia do maior fornecedor no órgão. Complementa o HHI: um mercado pode ter HHI moderado e ainda assim um único fornecedor dominante. <b>Não prova captura</b> — objeto muito específico e mercado pequeno produzem o mesmo número." })}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por ramo ou fornecedor…" oninput="filtrar(this,'#cmun-list .card')"></div>`;
     h += `<div id="cmun-list" class="grid">` + a.map((o) => {
       const forte = o.grav >= 3;
@@ -4616,8 +5871,32 @@ void main(){
     ) + acoesAba("sancionadas_municipio");
     const vdTotal = d.valor_durante_total;
     const parcial = vdTotal == null;
-    h += `<div class="grid g2">${kpi(fmtN(d.n ?? emp.length), "Sancionadas c/ contrato municipal", null, "🚫")}${kpi(fmtN(d.n_a_epoca ?? aepoca.length), "Com contrato À ÉPOCA", "var(--rose)", "⚠️")}
-      ${kpi(fmtRc(parcial ? aepoca.reduce((s, e) => s + (e.valor_durante || 0), 0) : vdTotal), parcial ? `Contratado durante sanção (soma das ${fmtN(emp.length)} em tela)` : "Contratado durante sanção", "var(--rose)", "💸")}${kpi(fmtN(Object.values(d.descartados_outra_esfera || {}).reduce((s, v) => s + v, 0)), "Descartados (outra esfera)", null, "🧹")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n ?? emp.length),
+      "Sancionadas c/ contrato municipal",
+      null,
+      "🚫",
+      { sobre: "Empresas com registro de sanção que aparecem em contrato do município. <b>Estar aqui não é achado</b>: a sanção pode ser posterior ao contrato, ou de outro ente, ou já cumprida. O recorte que decide é o de ao lado." }
+    )}${kpi(
+      fmtN(d.n_a_epoca ?? aepoca.length),
+      "Com contrato À ÉPOCA",
+      "var(--rose)",
+      "⚠️",
+      { sobre: 'O ACHADO: contrato ou pagamento <b>dentro da vigência</b> da sanção. Situação vale na data do ato, não hoje — a medição desta casa mostrou que 78,7% das acusações de "empresa não-ativa" eram anacrônicas, e é esse erro que este recorte existe para não repetir.' }
+    )}
+      ${kpi(
+      fmtRc(parcial ? aepoca.reduce((s, e) => s + (e.valor_durante || 0), 0) : vdTotal),
+      parcial ? `Contratado durante sanção (soma das ${fmtN(emp.length)} em tela)` : "Contratado durante sanção",
+      "var(--rose)",
+      "💸",
+      { sobre: "Valor contratado enquanto a sanção vigorava. O rótulo muda quando a lista vem cortada — ali a soma é <b>das empresas em tela</b>, não do acervo, e dizer isso no próprio rótulo é o que impede o número de ser lido como total." }
+    )}${kpi(
+      fmtN(Object.values(d.descartados_outra_esfera || {}).reduce((s, v) => s + v, 0)),
+      "Descartados (outra esfera)",
+      null,
+      "🧹",
+      { sobre: "Casos recusados por serem de OUTRA esfera de governo — sanção estadual não alcança contrato municipal e vice-versa. Ficam contados porque esfera trocada já produziu acusação errada aqui, e o descarte precisa ser auditável." }
+    )}</div>`;
     h += buscaPag("sanm", "filtrar por nome ou CNPJ…");
     h += `<div class="dim" style="margin:6px 2px 0">mostrando ${fmtN(Math.min(100, emp.length))} de ${fmtN(d.n ?? emp.length)}${emp.length < (d.n ?? emp.length) ? " — o filtro busca nas " + fmtN(emp.length) + " carregadas" : " — o filtro busca em todas"}</div>`;
     h += listaPaginada("sanm", emp, (e) => {
@@ -4648,8 +5927,20 @@ void main(){
       "Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).",
       "📑"
     ) + acoesAba("aditivos");
-    h += `<div class="grid g2">${kpi(fmtN(d.n_estoura_teto), "Estouram o teto legal", "var(--rose)", "🚨")}${kpi(fmtN(d.n_serie), "3+ aditivos em série", "var(--amber)", "📑")}
-      ${kpi(fmtN(d.contratos_analisados), "Contratos analisados", null, "📄")}${kpi(a.length ? fmtPct(a[0].pct) : "—", "Pior acréscimo", "var(--rose)")}</div>`;
+    h += `<div class="grid g2">${kpi(fmtN(d.n_estoura_teto), "Estouram o teto legal", "var(--rose)", "🚨", drillSeCompleto("aditEstouraTeto", d.n_estoura_teto, a.filter((x) => x.estoura_teto), { titulo: "Aditivos que estouram o teto legal", nota: "Art. 125 da Lei 14.133: 25% para obras e serviços, 50% para reforma de edifício." }) || { sobre: "Aditivos que ultrapassam o limite do art. 125 da Lei 14.133 (25%, ou 50% em reforma de edifício). Estourar o teto não é automaticamente ilícito: a lei admite hipóteses excepcionais que o próprio processo tem de justificar. A gaveta está desligada porque a lista vem paginada." })}${kpi(
+      fmtN(d.n_serie),
+      "3+ aditivos em série",
+      "var(--amber)",
+      "📑",
+      { sobre: "Contratos com três ou mais termos aditivos. Aditar é lícito e às vezes necessário; a sequência longa é que levanta a pergunta sobre o planejamento original do objeto." }
+    )}
+      ${kpi(fmtN(d.contratos_analisados), "Contratos analisados", null, "📄", { sobre: "Universo efetivamente examinado nesta tela. Serve para responder a pergunta que todo número de achado exige: <b>de quantos?</b> Contrato fora do universo não foi julgado limpo — não foi julgado." })}${kpi(
+      a.length ? fmtPct(a[0].pct) : "—",
+      "Pior acréscimo",
+      "var(--rose)",
+      null,
+      { sobre: "O maior percentual de acréscimo da lista. O teto do art. 125 da Lei 14.133 é de 25% (50% em reforma de edifício) — acima disso, o aditivo exige justificativa que o próprio processo tem de trazer." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
     h += `<div id="adt-list" class="grid">` + a.map((x) => {
       const forte = x.estoura_teto;
@@ -4660,6 +5951,8 @@ void main(){
       <div class="dim" style="margin-top:2px">${esc((x.objeto || "").slice(0, 90))}</div></div>
       <div class="right"><div class="num" style="font-weight:800;color:${forte ? "var(--rose)" : "var(--tx2)"}">${forte ? fmtPct(x.pct) : x.num_aditivos + "×"}</div><div class="dim">${forte ? "acréscimo" : "aditivos"}</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">R$ inicial ${fmtRc(x.valor_inicial)} → global ${fmtRc(x.valor_global)}${x.acrescimo_real != null ? ` · acréscimo real ${fmtRc(x.acrescimo_real)}` : ""}</span><b>teto ${x.teto_pct}%</b></div>
+      ${forte ? `<div class="dim" style="font-size:12px;margin-top:4px">${x.acrescimo_confirmado ? "✓ acréscimo <b>confirmado no termo</b> (natureza classificada como valor)" : "⚠ percentual por <b>valor global − inicial</b>, que inclui reajuste e prorrogação — indício, não conclusão"}
+        · base do %: valor inicial <b>não atualizado</b> (o art. 125 mede sobre o atualizado; rente ao teto pode ser lícito)</div>` : ""}
       ${leitura(forte ? `Contrato de <b>${esc(x.fornecedor || "—")}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>${fmtPct(x.pct)}</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real != null ? "Acréscimo classificado no termo: " + fmtRc(x.acrescimo_real) + "." : "Separar reajuste do acréscimo no termo aditivo."}` : `${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor || "—")} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
         forte ? "hl" : ""
       );
@@ -4681,8 +5974,26 @@ void main(){
       h += `<div class="warn" style="margin-top:12px">Base de preços unitários em formação: ${fmtN(d.itens_com_preco)} itens com preço, ${fmtN(d.grupos_comparaveis)} grupos comparáveis (≥5 compras do mesmo item). O backfill do PNCP popula o preço unitário item a item; a aba acende conforme a cobertura cresce.</div>`;
       return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
     }
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Itens com sobrepreço", "var(--rose)", "📈")}${kpi(fmtN(d.grupos_comparaveis), "Grupos comparáveis", null, "🧺")}
-      ${kpi(a.length ? fmtN(a[0].razao) + "×" : "—", "Pior caso (× mediana)", "var(--rose)")}${kpi(fmtRc(a.reduce((s, x) => s + x.sobrepreco_est * (x.amostra ? 1 : 1), 0)), "Δ acima da mediana (unit.)", null, "💸")}</div>`;
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Itens com sobrepreço", "var(--rose)", "📈", drillSeCompleto("itensSobrepreco", d.n, a, { titulo: "Itens com indício de sobrepreço", nota: "Comparação com a mediana de mercado do MESMO item — produto diferente não compara." }) || { sobre: "Itens com preço unitário acima da mediana do MESMO item entre compradores públicos. Comparação só vale entre produtos equivalentes — 60% da 'economia' de uma medição anterior desta casa vinha de comparar coisas diferentes sob descrição parecida. A gaveta está desligada porque a tela recebe uma página." })}${kpi(
+      fmtN(d.grupos_comparaveis),
+      "Grupos comparáveis",
+      null,
+      "🧺",
+      { sobre: "Grupos de itens que puderam ser comparados entre si. É o DENOMINADOR: item sem par comparável não é caro nem barato — é INDISPONÍVEL, e sair dessa contagem não significa aprovação." }
+    )}
+      ${kpi(
+      a.length ? fmtN(a[0].razao) + "×" : "—",
+      "Pior caso (× mediana)",
+      "var(--rose)",
+      null,
+      { sobre: "Quantas vezes o item mais caro supera a mediana do MESMO item. Comparação só vale entre produtos equivalentes: 60% de uma estimativa anterior desta casa comparava coisas diferentes sob descrição genérica." }
+    )}${kpi(
+      fmtRc(a.reduce((s, x) => s + x.sobrepreco_est * (x.amostra ? 1 : 1), 0)),
+      "Δ acima da mediana (unit.)",
+      null,
+      "💸",
+      { sobre: "Diferença unitária entre o preço praticado e a mediana. É estimativa de sobrepreço, não dano apurado — sobrepreço se confirma com pesquisa de mercado da época e especificação completa do item." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
     h += `<div id="sob-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
@@ -4706,8 +6017,9 @@ void main(){
       h += `<div class="warn" style="margin-top:12px">Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
       return h + `<div class="note">${esc(d.ressalva || "")}</div>`;
     }
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Escaladas detectadas", "var(--rose)", "📈")}${kpi(a.filter((x) => x.final_vs_mercado && x.final_vs_mercado >= 2).length, "Também acima do mercado", "var(--rose)", "🎯")}
-      ${kpi(a.length ? fmtN(a[0].razao) + "×" : "—", "Maior escalada", "var(--rose)")}${kpi(a.length ? fmtN(a[0].span_dias) + "d" : "—", "Janela do pior caso", null, "📅")}</div>`;
+    registrarDrill("aditAcimaMercado", { titulo: "Aditivos cujo preço final também supera o mercado", itens: a.filter((x) => x.final_vs_mercado && x.final_vs_mercado >= 2), nota: "Acréscimo dentro do limite legal ainda pode chegar a preço fora do mercado." });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Escaladas detectadas", "var(--rose)", "📈", drillSeCompleto("escaladasTodas", d.n, a, { titulo: "Escaladas de preço detectadas", nota: "Escalada compara o mesmo item ao longo do tempo no mesmo comprador — variação legítima existe e o objeto decide." }) || { sobre: "Contratos cujo valor cresce em degraus sucessivos. Escalada tem explicações inocentes fortes — reequilíbrio econômico-financeiro e reajuste contratual respondem por boa parte. A gaveta está desligada porque a lista vem paginada." })}${kpi(a.filter((x) => x.final_vs_mercado && x.final_vs_mercado >= 2).length, "Também acima do mercado", "var(--rose)", "🎯", { drill: "aditAcimaMercado" })}
+      ${kpi(a.length ? fmtN(a[0].razao) + "×" : "—", "Maior escalada", "var(--rose)", null, { sobre: "O EXTREMO da cauda, não o típico: quantas vezes o preço do mesmo item cresceu no mesmo comprador, no pior caso observado. Serve para dizer até onde a cauda vai. Reajuste contratual, mudança de especificação e variação cambial produzem escalada legítima — o objeto decide." })}${kpi(a.length ? fmtN(a[0].span_dias) + "d" : "—", "Janela do pior caso", null, "📅", { sobre: "Em quantos dias a maior escalada aconteceu. Uma alta de 3× em 30 dias e a mesma alta em 3 anos são fatos diferentes: a janela é o que separa reajuste de salto." })}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item ou fornecedor…" oninput="filtrar(this,'#escal-list .card')"></div>`;
     h += `<div id="escal-list" class="grid">` + a.map((x) => {
       const serie = (x.serie || []).map((s) => `<span title="${esc(s.orgao || "")} ${esc(s.data)}">${fmtR(s.preco)}</span>`).join(' <span class="dim">→</span> ');
@@ -4742,7 +6054,19 @@ void main(){
       ) + chips + acoesAba("perdedoras");
       if (!d2.ok) return h2 + card(`<div class="warn">${erroHumano(d2.erro)}</div>`);
       const cov = d2.cobertura_extracao || {};
-      h2 += `<div class="grid g2">${kpi(fmtN(d2.n), "Perdedoras contumazes", "var(--amber)", "🎭")}${kpi(fmtN(cov.atas_entrada), "Atas no corpus", null, "📄")}${kpi(fmtN(cov.atas_avaliaveis), "Atas avaliáveis", null, "✅")}${kpi(fmtN(cov.certames_no_grafo), "Certames no grafo", null, "🕸️")}</div>`;
+      registrarDrill("perdedorasContumazes", {
+        titulo: "Perdedoras contumazes — participam e nunca vencem",
+        itens: d2.perdedoras || [],
+        render: (p) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj, p.nome !== "—" ? p.nome : p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt || "")}</div></div><div class="right"><div class="num" style="font-weight:800">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>`),
+        nota: "Perder sempre é indício de proposta de cobertura, não prova."
+      });
+      h2 += `<div class="grid g2">${kpi(fmtN(d2.n), "Perdedoras contumazes", "var(--amber)", "🎭", { drill: "perdedorasContumazes" })}${kpi(fmtN(cov.atas_entrada), "Atas no corpus", null, "📄", { sobre: "Quantas atas de sessão entraram no corpus. É o DENOMINADOR: sem ele, '12 perdedoras contumazes' pode ser 12 em 12 ou 12 em 12 mil. O PNCP publica só o vencedor — os perdedores vêm do TEXTO das atas, e a extração é conservadora de propósito." })}${kpi(fmtN(cov.atas_avaliaveis), "Atas avaliáveis", null, "✅", { sobre: "Das atas no corpus, quantas têm participantes E resultado extraíveis. A diferença para o total não é falha do órgão: é ata que não traz a lista de quem disputou. <b>Cobertura pequena não é ausência de conluio</b> — é ausência de observação." })}${kpi(
+        fmtN(cov.certames_no_grafo),
+        "Certames no grafo",
+        null,
+        "🕸️",
+        { sobre: "Certames que entraram na rede de participantes. Fora dela não há como testar rodízio nem captura — o certame não foi absolvido, ficou sem exame." }
+      )}</div>`;
       if ((cov.atas_avaliaveis || 0) < 50) h2 += `<div class="warn" style="margin-top:12px">Cobertura ainda pequena: só ${fmtN(cov.atas_avaliaveis)} de ${fmtN(cov.atas_entrada)} atas têm participantes+resultado extraíveis. O PNCP publica apenas o vencedor; os perdedores vêm do texto das atas — a extração é conservadora de propósito (zero falso-positivo) e cresce com o corpus.</div>`;
       h2 += `<div class="grid" style="margin-top:12px">` + (d2.perdedoras || []).map((p) => card(
         `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj, p.nome !== "—" ? p.nome : p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
@@ -4761,8 +6085,17 @@ void main(){
     ) + chips + acoesAba("fantasmas");
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const emp = (d.empresas || []).filter((e) => e.classificacao !== "sem_cadastro");
-    h += `<div class="grid g2">${kpi(fmtN(d.total_alvo), "Empresas no alvo", null, "🎯")}${kpi(fmtN(emp.filter((e) => e.classificacao === "alto").length), "Risco ALTO", "var(--rose)", "🔴")}
-      ${kpi(fmtN(emp.filter((e) => e.classificacao === "medio").length), "Risco médio", "var(--amber)", "🟡")}${kpi(fmtN(d.sem_cadastro), "Sem cadastro ainda", "var(--dim)", "⏳")}</div>`;
+    const _lin = (e) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj, e.razao_social || e.cnpj)}<div class="dim">${esc(e.cnpj)} · ${rot(e.origem || "—")}</div></div><div class="right"><div class="num" style="font-weight:800">${e.score ?? "—"}</div><div class="dim">/100 ${esc(e.classificacao || "")}</div></div></div>`);
+    registrarDrill("fantasmaAlto", { titulo: "Empresas com risco ALTO de fachada", itens: emp.filter((e) => e.classificacao === "alto"), render: _lin, nota: "Score 0-100 por 8 sinais objetivos; indício de fachada, não prova." });
+    registrarDrill("fantasmaMedio", { titulo: "Empresas com risco médio", itens: emp.filter((e) => e.classificacao === "medio"), render: _lin });
+    h += `<div class="grid g2">${kpi(fmtN(d.total_alvo), "Empresas no alvo", null, "🎯", { sobre: "Conjunto submetido ao radar de fachada: vencedoras de captura ou rodízio, perdedoras contumazes, sancionadas e maiores favorecidos. <b>Não é o universo de fornecedores</b> — é onde faz sentido gastar verificação. Empresa fora do alvo não foi considerada regular." })}${kpi(fmtN(emp.filter((e) => e.classificacao === "alto").length), "Risco ALTO", "var(--rose)", "🔴", { drill: "fantasmaAlto" })}
+      ${kpi(fmtN(emp.filter((e) => e.classificacao === "medio").length), "Risco médio", "var(--amber)", "🟡", { drill: "fantasmaMedio" })}${kpi(
+      fmtN(d.sem_cadastro),
+      "Sem cadastro ainda",
+      "var(--dim)",
+      "⏳",
+      { sobre: "Empresas do alvo cujo cadastro ainda não foi coletado. É fila de trabalho, não achado: enquanto está aqui, nenhuma conclusão sobre fachada pode ser tirada." }
+    )}</div>`;
     if (d.sem_cadastro > 0) h += `<div class="warn" style="margin-top:12px"><b>${fmtN(d.sem_cadastro)}</b> empresas do alvo ainda sem cadastro da Receita na base (fila de enriquecimento). "Sem cadastro" NÃO significa regular — significa não-avaliada.</div>`;
     h += `<div class="grid" style="margin-top:12px">` + emp.slice(0, 50).map((e) => {
       const cor = e.classificacao === "alto" ? "var(--rose)" : e.classificacao === "medio" ? "var(--amber)" : "var(--green)";
@@ -4808,7 +6141,19 @@ void main(){
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const it = d.comissionados || [];
     const nCidades = new Set(it.flatMap((x) => (x.candidaturas || []).map((c) => c.cidade)).filter(Boolean)).size;
-    h += `<div class="grid g2">${kpi(fmtN(d.n_pessoas || it.length), "Pessoas ex-candidatas", "var(--amber)", "🎖️")}${kpi(fmtN(nCidades), "Cidades de candidatura", null, "🗺️")}</div>`;
+    registrarDrill("comissCandidatos", {
+      titulo: "Comissionados da Prefeitura que foram candidatos",
+      itens: it,
+      render: (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome || "—")}</div><div class="dim">${fmtN((x.postos || []).length)} posto(s) · ${fmtN((x.candidaturas || []).length)} candidatura(s)</div><div class="dim">${(x.candidaturas || []).slice(0, 3).map((c) => esc(`${c.cargo || ""} ${c.ano || ""} ${c.cidade || ""}`)).join(" · ")}</div></div></div>`),
+      nota: "Cruzamento por NOME com o TSE — indício; cargo de confiança não é, por si, irregularidade."
+    });
+    h += `<div class="grid g2">${kpi(fmtN(d.n_pessoas || it.length), "Pessoas ex-candidatas", "var(--amber)", "🎖️", { drill: "comissCandidatos" })}${kpi(
+      fmtN(nCidades),
+      "Cidades de candidatura",
+      null,
+      "🗺️",
+      { sobre: "Municípios em que os nomes da folha aparecem como candidatos. Candidatar-se é direito político e não é irregularidade alguma — o cruzamento serve para ver coincidência entre nomeação e vínculo partidário, que é outra pergunta." }
+    )}</div>`;
     h += buscaPag("cc-list", "filtrar por nome, cargo, órgão, cidade — busca em TODAS as pessoas…");
     if (d.truncado) h += `<div class="note" style="margin-top:8px">Base tem mais pessoas do que o teto do servidor (1000) — caso raro; avise se precisar de mais.</div>`;
     const _montarCC = (x) => {
@@ -4838,10 +6183,52 @@ void main(){
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const r = d.resumo || {};
     h += `<div class="note" style="margin:10px 0 4px"><b>Como ler:</b> <span class="sev alta" style="padding:1px 7px">identidade confirmada</span> = há UM só servidor com esse nome na folha e o fragmento de CPF bate (é mesmo esta pessoa). <span class="sev media" style="padding:1px 7px">conferir homônimo</span> = nome comum, confirmar o CPF antes de usar. Isso é sobre <b>QUEM é a pessoa</b> — separado de <span class="tag rose">ainda recebe</span>, que diz que o benefício <b>continua ativo</b> hoje.</div>`;
-    h += `<div class="grid g2">${kpi(fmtN(d.n_casos), "Pessoas identificadas", "var(--amber)", "👥")}${kpi(fmtN(r.n_alta), "Identidade confirmada (nome único + CPF)", "var(--rose)", "🪪")}
-      ${kpi(fmtN(r.n_nomeados), "Comissionados/nomeados", "var(--amber)", "🎖️")}${kpi(fmtN(r.n_ainda), "Benefício ainda ativo", "var(--rose)", "⏰")}
-      ${kpi(fmtN(r.n_bf), "Bolsa Família", null, "🍞")}${kpi(fmtN(r.n_bpc), "BPC", null, "♿")}
-      ${kpi(esc(r.cobertura_benef || "—"), "Cobertura benefícios", null, "📅")}${kpi(esc(r.ultima || "—"), "Última competência", null, "🗓️")}</div>`;
+    h += `<div class="grid g2">${kpi(fmtN(d.n_casos), "Pessoas identificadas", "var(--amber)", "👥", drillSeCompleto("pessoasIdentificadas", d.n_casos, d.casos || d.itens || [], { titulo: "Pessoas identificadas", nota: "Identificação por nome — confirmar homônimo antes de qualquer juízo." }) || { sobre: "Pessoas cujo nome na folha municipal casou com o cadastro de benefício. Identificação por nome carrega homônimo — o recorte com CPF conferido está no KPI ao lado, e é ele que sustenta qualquer afirmação individual. A gaveta está desligada porque a lista vem paginada." })}${kpi(
+      fmtN(r.n_alta),
+      "Identidade confirmada (nome único + CPF)",
+      "var(--rose)",
+      "🪪",
+      { sobre: "Casos em que o nome é único na base E o fragmento de CPF confere. Sem os dois, o cruzamento é indício de identidade, não identidade — e nenhum caso sobe a produto sem essa distinção declarada." }
+    )}
+      ${kpi(
+      fmtN(r.n_nomeados),
+      "Comissionados/nomeados",
+      "var(--amber)",
+      "🎖️",
+      { sobre: "Do universo identificado, quantos ocupam cargo de <b>livre nomeação</b>. É o recorte que importa: cargo comissionado tem remuneração conhecida e nomeação discricionária, o que torna a acumulação com benefício assistencial verificável — e a nomeação, atribuível." }
+    )}${kpi(
+      fmtN(r.n_ainda),
+      "Benefício ainda ativo",
+      "var(--rose)",
+      "⏰",
+      { sobre: "Casos em que o benefício aparece na competência MAIS RECENTE da base, não apenas em algum mês passado. A distinção é o que separa situação corrente de sobreposição já encerrada — e só a primeira comporta providência." }
+    )}
+      ${kpi(
+      fmtN(r.n_bf),
+      "Bolsa Família",
+      null,
+      "🍞",
+      { sobre: "Benefício com critério de <b>renda familiar</b>. A sobreposição com remuneração pública é indício de renda não declarada ao cadastro — não de fraude provada: composição familiar muda, e a atualização cadastral tem prazo próprio." }
+    )}${kpi(
+      fmtN(r.n_bpc),
+      "BPC",
+      null,
+      "♿",
+      { sobre: "Benefício de Prestação Continuada — critério de <b>deficiência ou idade</b> somado à renda per capita. Ser servidor não veda o BPC por si; o que pesa é a renda do grupo familiar. Por isso este número fica separado do Bolsa Família em vez de somado." }
+    )}
+      ${kpi(
+      esc(r.cobertura_benef || "—"),
+      "Cobertura benefícios",
+      null,
+      "📅",
+      { sobre: "A janela de competências efetivamente ingerida. Fora dela nada foi observado — e benefício ausente num mês que não entrou na base <b>não cessou</b>: o mês é que não existe aqui." }
+    )}${kpi(
+      esc(r.ultima || "—"),
+      "Última competência",
+      null,
+      "🗓️",
+      { sobre: 'O mês mais recente disponível. É contra ele que "ainda ativo" é medido; se a base estiver defasada, o número de ativos descreve o passado dessa data, não o presente.' }
+    )}</div>`;
     h += buscaPag("bv-list", "filtrar por nome, órgão, cargo, partido — busca em TODOS os casos…");
     const _montarBV = (x) => {
       const idOk = x.certeza === "ALTA";
@@ -4882,7 +6269,13 @@ void main(){
     const dets = Object.keys(d.detectores || {});
     h += `<div class="grid g2">` + dets.map((k) => {
       const m = _DET_ROTULO[k] || ["📌", k, ""];
-      return kpi(fmtN(d.detectores[k]), m[1], k === "d9_socio_na_folha" ? "var(--rose)" : null, m[0]);
+      return kpi(
+        fmtN(d.detectores[k]),
+        m[1],
+        k === "d9_socio_na_folha" ? "var(--rose)" : null,
+        m[0],
+        m[2] ? { sobre: esc(m[2]) + " — a contagem é de INDÍCIOS a examinar, nunca de irregularidades apuradas." } : null
+      );
     }).join("") + `</div>`;
     h += `<div class="chips" style="margin-top:12px"><button type="button" class="chip ${_gastosDet === "" ? "on" : ""}" onclick="_gastosDet='';ir('p_gastos')">Todos</button>` + dets.map((k) => `<button type="button" class="chip ${_gastosDet === k ? "on" : ""}" onclick="_gastosDet='${k}';ir('p_gastos')">${svgIco((_DET_ROTULO[k] || ["📌", k])[0])} ${(_DET_ROTULO[k] || ["", k])[1]}</button>`).join("") + `</div>`;
     h += `<div class="search"><span class="mag"></span><input placeholder="filtrar por credor, órgão, objeto…" oninput="filtrar(this,'#pg-list .card')"></div>`;
@@ -4916,7 +6309,31 @@ void main(){
     ) + acoesAba("fantasmas_pcrj");
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const fx = d.faixas || {};
-    h += `<div class="grid g2">${kpi(fmtN(fx.forte), "Faixa FORTE", "var(--rose)", "🔴")}${kpi(fmtN(fx.verificar), "Verificar", "var(--amber)", "🟡")}${kpi(fmtN(fx.fraco), "Fraco", null, "🟢")}${kpi(esc((d.gerado_em || "").slice(0, 10)), "Gerado em", null, "🗓️")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(fx.forte),
+      "Faixa FORTE",
+      "var(--rose)",
+      "🔴",
+      { sobre: "Servidores da folha municipal com o conjunto MAIS FORTE de sinais de vínculo apenas formal. Faixa é ordem de diligência, não conclusão: nenhum caso aqui afirma que a pessoa não trabalha — afirma que o cruzamento não achou o que deveria achar se ela trabalhasse." }
+    )}${kpi(
+      fmtN(fx.verificar),
+      "Verificar",
+      "var(--amber)",
+      "🟡",
+      { sobre: "Sinais presentes mas insuficientes para separar de explicação inocente — licença, cessão, lotação em unidade que não publica frequência. Existe para não empurrar dúvida para dentro da faixa forte." }
+    )}${kpi(
+      fmtN(fx.fraco),
+      "Fraco",
+      null,
+      "🟢",
+      { sobre: "Um único sinal, ou sinal com alta prevalência na própria base. Fica visível de propósito: esconder a cauda faria as faixas de cima parecerem mais decisivas do que são." }
+    )}${kpi(
+      esc((d.gerado_em || "").slice(0, 10)),
+      "Gerado em",
+      null,
+      "🗓️",
+      { sobre: "Data da última execução do detector. Número velho com cara de atual é a forma mais silenciosa de errar; por isso a data fica ao lado das faixas, não escondida no rodapé." }
+    )}</div>`;
     h += `<div class="chips" style="margin-top:12px">` + ["", "forte", "verificar", "fraco"].map((f) => `<button type="button" class="chip ${_fantFaixa === f ? "on" : ""}" onclick="_fantFaixa='${f}';ir('p_fant')">${f || "Todas as faixas"}</button>`).join("") + `</div>`;
     h += buscaPag("pf-list", "filtrar por nome ou gabinete — busca em TODOS os servidores…");
     const _itF = d.itens || [];
@@ -4942,7 +6359,31 @@ void main(){
     );
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const r = d.resumo || {};
-    h += `<div class="grid g2">${kpi(fmtN(r.projetos), "Projetos triados", null, "🏗️")}${kpi(fmtN(r.alto), "Grau ALTO", "var(--rose)", "🔴")}${kpi(fmtN(r.medio), "Grau médio", "var(--amber)", "🟡")}${kpi(fmtN(r.cobertura_doe_ppp), "Matérias D.O. PPP", null, "📰")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(r.projetos),
+      "Projetos triados",
+      null,
+      "🏗️",
+      { sobre: "Parcerias público-privadas e concessões municipais submetidas à triagem. É o denominador: PPP fora desta contagem não foi avaliada, e não avaliar não é aprovar." }
+    )}${kpi(
+      fmtN(r.alto),
+      "Grau ALTO",
+      "var(--rose)",
+      "🔴",
+      { sobre: "Projetos com o conjunto mais forte de sinais — desequilíbrio na matriz de risco, aporte público desproporcional, prazo ou reajuste fora do padrão. Grau é ordem de exame; a perícia de PPP é que conclui." }
+    )}${kpi(
+      fmtN(r.medio),
+      "Grau médio",
+      "var(--amber)",
+      "🟡",
+      { sobre: "Sinais presentes e insuficientes para separar de arranjo contratual legítimo. Fica visível para não empurrar dúvida para dentro do grau alto — faixa que absorve incerteza deixa de significar alguma coisa." }
+    )}${kpi(
+      fmtN(r.cobertura_doe_ppp),
+      "Matérias D.O. PPP",
+      null,
+      "📰",
+      { sobre: "Publicações do Diário Oficial sobre PPP que alimentaram a triagem. Cobertura baixa significa triagem parcial — projeto que não teve matéria capturada não foi avaliado." }
+    )}</div>`;
     h += `<div class="grid" style="margin-top:14px">` + (d.itens || []).map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome)}</div>
@@ -4974,7 +6415,19 @@ void main(){
     let h = cover("prefeitura", "Contratações do município — cada uma com a sua análise", "Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.", "📄") + chips + acoesAba("contratos_analise");
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const its = d.itens || [], rs = d.resumo || {};
-    h += `<div class="grid g2">${kpi(fmtN(rs.total), "Certames na base", null, "📄")}${kpi(fmtN(rs.analisados), "Com análise (índice calculado)", "var(--amber)", "🧮")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(rs.total),
+      "Certames na base",
+      null,
+      "📄",
+      { sobre: "Certames municipais capturados. É o denominador de tudo nesta aba: certame fora da base não foi considerado regular — não foi visto." }
+    )}${kpi(
+      fmtN(rs.analisados),
+      "Com análise (índice calculado)",
+      "var(--amber)",
+      "🧮",
+      { sobre: "Quantos já passaram pelo motor de índice. A diferença para o total é <b>fila de trabalho</b>, não achado nem ausência dele — e ela encolhe a cada rodada do sweep." }
+    )}</div>`;
     h += buscaPag("ctr-list", "filtrar por objeto ou nº de controle — busca em TODOS os certames…");
     const _montarCtr = (c) => {
       const cor = c.faixa === "EXTREMO" || c.faixa === "ALTO" ? "var(--rose)" : c.faixa === "MEDIO" ? "var(--amber)" : "var(--tx2)";
@@ -5011,7 +6464,30 @@ void main(){
       const chip = (id, tl) => `<button type="button" class="chip ${_cjEsf === id ? "on" : ""}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id] != null ? ` <span class="dim">${fmtN(esfs[id])}</span>` : ""}</button>`;
       h += `<div class="chips">${chip("", "🌐 Todas")}${chip("estado", "🏛️ Estado")}${chip("prefeitura", "🏙️ Pref. Rio")}${chip("municipios", "🏘️ Municípios")}${chip("federal", "🏦 Federais")}</div>`;
     }
-    h += `<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado), "Certames analisados", null, "📄")}${kpi(fmtN(cov.orgaos), "Órgãos compradores", null, "🏢")}${kpi(cap.length, "Capturas", "var(--rose)", "🎯")}${kpi(rod.length, "Rodízios", "var(--amber)", "🔁")}</div>`;
+    registrarDrill("conluioCapturas", {
+      titulo: "Captura de órgão — 1 empresa vence ≥80%",
+      itens: cap,
+      render: (c) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(c.orgao_nome || "—")}</div><div class="dim">${esc(c.vencedor_nome || c.vencedor_cnpj || "")}</div></div><div class="right"><div class="num" style="font-weight:800">${Math.round((c.share || 0) * 100)}%</div><div class="dim">${fmtN(c.itens || c.n || 0)} itens</div></div></div>`),
+      nota: "Vencedor homologado por item (PNCP). Concentração alta pede explicação, não a substitui."
+    });
+    registrarDrill("conluioRodizios", {
+      titulo: "Rodízio — 2-3 empresas se revezam",
+      itens: rod,
+      render: (r) => card(`<div><div style="font-weight:700">${esc(r.orgao_nome || "—")}</div><div class="dim">${(r.empresas || []).map((e) => esc(e.nome || e.cnpj || "")).join(" · ")}</div></div>`)
+    });
+    h += `<div class="grid g2">${kpi(
+      fmtN(cov.certames_com_resultado),
+      "Certames analisados",
+      null,
+      "📄",
+      { sobre: "O DENOMINADOR desta tela: certames com resultado publicado, que são os únicos em que se pode saber quem ganhou e quem perdeu. Certame fora daqui não foi afastado — não pôde ser examinado, e confundir as duas coisas transforma lacuna em conclusão." }
+    )}${kpi(
+      fmtN(cov.orgaos),
+      "Órgãos compradores",
+      null,
+      "🏢",
+      { sobre: "Quantos órgãos aparecem como compradores no conjunto examinado. Serve para ler a concentração do achado: espalhado por muitos órgãos sugere padrão de mercado; concentrado em um, sugere padrão daquele comprador." }
+    )}${kpi(cap.length, "Capturas", "var(--rose)", "🎯", { drill: "conluioCapturas" })}${kpi(rod.length, "Rodízios", "var(--amber)", "🔁", { drill: "conluioRodizios" })}</div>`;
     if (cov.certames_sem_unidade > 0) h += `<div class="warn" style="margin-top:12px"><span>Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
     const orgHead = (x) => `<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome && x.ente_nome !== x.orgao_nome ? `<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt || "")}</div>` : ""}`;
     if (cap.length) {
@@ -5175,7 +6651,15 @@ void main(){
     if (!d.ok) return sec("Poder") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const it = d.itens || [];
     let h = cover("estado", "Nomeados × candidatos (Estado)", "Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.", "🏛️") + acoesAba("nomeados");
-    h += `<div class="grid g2">${kpi(it.length, "Cruzamentos", null, "🏛️")}${kpi(d.n_comissionados, "Comissionados", "var(--rose)", "🎖️")}</div>`;
+    const _linPoder = (x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="dim">${esc(x.orgao || "—")} · ${esc(x.cargo_folha || "—")}</div><div class="dim">disputou ${esc(x.cargo_disputado || "—")} · ${esc(x.partido || "—")} · ${esc(x.ano || "—")}</div></div>${x.comissionado ? '<span class="tag rose">comissão</span>' : '<span class="tag accent">efetivo</span>'}</div>`);
+    registrarDrill("poderCruzamentos", {
+      titulo: "Servidor que também foi candidato",
+      itens: it,
+      render: _linPoder,
+      nota: "Cruzamento por NOME — verificar homônimo antes de qualquer juízo."
+    });
+    registrarDrill("poderComissionados", { titulo: "Cruzamentos em cargo COMISSIONADO", itens: it.filter((x) => x.comissionado), render: _linPoder });
+    h += `<div class="grid g2">${kpi(it.length, "Cruzamentos", null, "🏛️", { drill: "poderCruzamentos" })}${kpi(fmtN(it.filter((x) => x.comissionado).length), "Comissionados", "var(--rose)", "🎖️", { drill: "poderComissionados" })}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
     h += `<div id="pod-list" class="grid">` + it.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao || "—")} · ${esc(x.cargo_folha || "—")}</div></div>${x.comissionado ? '<span class="tag rose">comissão</span>' : '<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado || "—")} · ${esc(x.partido || "—")} · ${esc(x.ano || "—")}</b></div>`)).join("") + `</div>`;
     h += `<div class="note">${esc(d.aviso || "")}</div>`;
@@ -5191,8 +6675,32 @@ void main(){
       "Servidor que aparece nas folhas coletadas e também é sócio de empresa que recebeu do Estado. Servidor <b>administrador/diretor</b> de empresa privada viola a vedação estatutária de gerência; se a empresa contrata com o órgão dele, há impedimento (Lei 14.133 art. 9). <b>Confiança ALTA</b> = nome e fragmento de CPF batem; <b>MÉDIA</b> = só o nome.",
       "🕴️"
     ) + acoesAba("socio_servidor");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Servidores sócios", "var(--rose)", "🕴️")}${kpi(fmtN(d.n_gerencia), "Com gerência (vedada)", "var(--rose)", "⚖️")}
-      ${kpi(fmtN(d.n_art9 || 0), "Art. 9 (mesmo órgão)", "var(--rose)", "🎯")}${kpi(fmtN(d.n_alta), "Confiança ALTA (CPF)", "var(--amber)", "🔎")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Servidores sócios",
+      "var(--rose)",
+      "🕴️",
+      { sobre: "Pessoas que aparecem ao mesmo tempo na folha do Estado e no quadro societário de empresa paga pelo Estado. <b>Estar aqui não é irregularidade</b>: servidor pode ser sócio, e a medição na própria base dá 28%. O que pesa são os recortes ao lado." }
+    )}${kpi(
+      fmtN(d.n_gerencia),
+      "Com gerência (vedada)",
+      "var(--rose)",
+      "⚖️",
+      { sobre: "Sócio com qualificação de <b>administrador, diretor ou gerente</b> — o estatuto do servidor veda o exercício de gerência em empresa privada (art. 117, X da Lei 8.112/1990 e correspondentes estaduais). Aqui a qualificação vem do QSA da Receita, declarada pela própria empresa." }
+    )}
+      ${kpi(
+      fmtN(d.n_art9 || 0),
+      "Art. 9 (mesmo órgão)",
+      "var(--rose)",
+      "🎯",
+      { sobre: "O recorte MAIS GRAVE desta tela: a empresa é paga pela <b>própria repartição</b> onde o sócio serve. É o impedimento direto do art. 9º, III da Lei 8.429/1992 — auferir vantagem de contrato de órgão em que atua. Os demais casos exigem investigar; este já nasce com o vínculo entre o dinheiro e a decisão." }
+    )}${kpi(
+      fmtN(d.n_alta),
+      "Confiança ALTA (CPF)",
+      "var(--amber)",
+      "🔎",
+      { sobre: "Casamento em que <b>nome e fragmento de CPF</b> coincidem, não só o nome. O resto é casamento por nome, que carrega homônimo — por isso a confiança viaja junto do achado, e nenhum caso sobe a relatório sem confirmação do CPF completo pelo órgão de controle." }
+    )}</div>`;
     h += `<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas || []).join(", ")) || "—"}. Homônimos descartados por CPF: ${fmtN(d.homonimos_descartados)}. Art. 9 = empresa paga pela própria repartição do servidor (impedimento direto).</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por servidor, empresa, órgão ou cargo…" oninput="filtrar(this,'#ss-list .card')"></div>`;
     h += `<div id="ss-list" class="grid">` + a.map((x) => card(
@@ -5214,8 +6722,27 @@ void main(){
     if (!d.ok) return sec("Capital irrisório") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Capital irrisório — sem lastro para o que faturou", "Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.", "🫧") + acoesAba("capital_incompativel");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Empresas", "var(--rose)", "🫧")}${kpi(a.length ? fmtN(a[0].razao) + "×" : "—", "Pior razão (recebido/capital)", "var(--rose)")}
-      ${kpi(fmtRc(a.reduce((s, x) => s + (x.total_recebido || 0), 0)), "Volume recebido", null, "💰")}${kpi(a.filter((x) => x.capital <= 1e3).length, "Capital ≤ R$1k", "var(--amber)", "⚠️")}</div>`;
+    registrarDrill("capitalIrrisorio", { titulo: "Empresas com capital social de até R$ 1.000", itens: a.filter((x) => x.capital <= 1e3), nota: "Capital irrisório frente ao recebido é indício de fachada, não prova." });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Empresas",
+      "var(--rose)",
+      "🫧",
+      { sobre: "Empresas cujo <b>capital social declarado</b> é pequeno diante do que receberam do Estado. Capital baixo é lícito e comum — mede o que a empresa declarou à Junta, não a capacidade real, que também vem de faturamento e crédito. O sinal serve para perguntar se havia estrutura para executar, não para afirmar que não havia." }
+    )}${kpi(
+      a.length ? fmtN(a[0].razao) + "×" : "—",
+      "Pior razão (recebido/capital)",
+      "var(--rose)",
+      null,
+      { sobre: "O extremo da lista: quantas vezes o recebido supera o capital declarado. Razão altíssima com capital de R$ 1.000 é o perfil clássico de empresa aberta para o contrato — mas também aparece em prestadora de serviço que não precisa de imobilizado. Por isso é ordem de diligência, não conclusão." }
+    )}
+      ${kpi(
+      fmtRc(a.reduce((s, x) => s + (x.total_recebido || 0), 0)),
+      "Volume recebido",
+      null,
+      "💰",
+      { sobre: "Soma paga às empresas desta página. Volume dimensiona o que está sob exame; não afirma nada sobre a regularidade do pagamento." }
+    )}${kpi(a.filter((x) => x.capital <= 1e3).length, "Capital ≤ R$1k", "var(--amber)", "⚠️", { drill: "capitalIrrisorio" })}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#cap-list .card')"></div>`;
     h += `<div id="cap-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
@@ -5232,8 +6759,21 @@ void main(){
     if (!d.ok) return sec("Prioridade por valor em risco") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Prioridade — onde a auditoria rende mais", "Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.", "⚡") + acoesAba("prioridade_valor");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Na interseção", "var(--teal)", "⚡")}${kpi(fmtRc(d.economia_em_risco), "Economia em risco", null, "💰")}
-      ${kpi(a.filter((x) => x.score >= 25).length, "Sinal médio+ (🟡🔴)", "var(--amber)")}${kpi(a.length ? fmtRc(a[0].economia) : "—", "Maior isolado", "var(--rose)")}</div>`;
+    registrarDrill("sinalMedioMais", { titulo: "Com sinal médio ou alto (score ≥ 25)", itens: a.filter((x) => x.score >= 25), nota: "" });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Na interseção", "var(--teal)", "⚡", drillSeCompleto("prioridadeTodos", d.n, a, { titulo: "Risco × dinheiro — a interseção", nota: "Risco alto sem dinheiro pode esperar; dinheiro sem sinal pode ser variação legítima. A fila é o cruzamento dos dois." }) || { sobre: "A interseção entre risco e dinheiro: risco alto sem valor pode esperar, valor alto sem sinal pode ser só volume. A gaveta está desligada porque a tela recebe uma página do total do servidor." })}${kpi(
+      fmtRc(d.economia_em_risco),
+      "Economia em risco",
+      null,
+      "💰",
+      { sobre: "Soma da economia potencial estimada na interseção risco × dinheiro. É estimativa de comparação de preço, não dano apurado — e depende de os itens comparados serem realmente equivalentes." }
+    )}
+      ${kpi(a.filter((x) => x.score >= 25).length, "Sinal médio+ (🟡🔴)", "var(--amber)", null, { drill: "sinalMedioMais" })}${kpi(
+      a.length ? fmtRc(a[0].economia) : "—",
+      "Maior isolado",
+      "var(--rose)",
+      null,
+      { sobre: "O maior valor único da interseção risco × dinheiro. É <b>economia potencial estimada</b>, não dano apurado: nasce de comparação de preço, e comparação só vale entre produtos equivalentes — 60% de uma estimativa anterior desta casa comparava itens diferentes sob descrição genérica." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#pri-list .card')"></div>`;
     h += `<div id="pri-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_compras)} compra(s) acima da mediana</div>
@@ -5250,8 +6790,27 @@ void main(){
     if (!d.ok) return sec("Cativos") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", 'Fornecedor cativo — "empresa do órgão"', "Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.", "🔗") + acoesAba("fornecedor_dependente");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Fornecedores cativos", "var(--amber)", "🔗")}${kpi(fmtRc(a.reduce((s, x) => s + x.total, 0)), "Volume dependente", null, "💰")}
-      ${kpi(a.filter((x) => x.share >= 0.99).length, "100% de 1 órgão", "var(--rose)", "🎯")}${kpi(a.length ? Math.round(a[0].share * 100) + "%" : "—", "Maior dependência")}</div>`;
+    registrarDrill("dep100Orgao", { titulo: "Fornecedores que faturam ~100% com um único órgão", itens: a.filter((x) => x.share >= 0.99), nota: "Dependência total de um comprador é indício de captura — cabe verificar o objeto." });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Fornecedores cativos",
+      "var(--amber)",
+      "🔗",
+      { sobre: "Empresas cuja receita pública vem quase toda de <b>um único órgão</b>. Dependência não é irregularidade — pode ser especialização legítima. O que ela mede é a assimetria: fornecedor que só vive daquele comprador tem pouco incentivo para contestar, e o comprador ganha poder que não está em contrato nenhum." }
+    )}${kpi(
+      fmtRc(a.reduce((s, x) => s + x.total, 0)),
+      "Volume dependente",
+      null,
+      "💰",
+      { sobre: "Soma recebida pelos fornecedores <b>desta página</b>, não do acervo. Volume não é dano: dimensiona o que está sob concentração, e nada aqui afirma pagamento indevido." }
+    )}
+      ${kpi(a.filter((x) => x.share >= 0.99).length, "100% de 1 órgão", "var(--rose)", "🎯", { drill: "dep100Orgao" })}${kpi(
+      a.length ? Math.round(a[0].share * 100) + "%" : "—",
+      "Maior dependência",
+      null,
+      null,
+      { sobre: "A maior fração da receita pública de um fornecedor vinda de um só órgão. Dependência não é irregularidade: mede assimetria de poder na relação, que é o que pode explicar preço sem contestação." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
     h += `<div id="dep-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
@@ -5268,8 +6827,27 @@ void main(){
     if (!d.ok) return sec("Dezembro") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Corrida do empenho de dezembro", 'Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.', "📅") + acoesAba("corrida_dezembro");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Fornecedores concentrados", "var(--amber)", "📅")}${kpi(fmtRc(a.reduce((s, x) => s + x.dezembro, 0)), "Pago em dezembro", null, "💰")}
-      ${kpi(a.filter((x) => x.share >= 0.99).length, "100% em dezembro", "var(--rose)", "🎯")}${kpi(a.length ? Math.round(a[0].share * 100) + "%" : "—", "Maior concentração")}</div>`;
+    registrarDrill("dez100", { titulo: "Fornecedores com ~100% do faturamento em dezembro", itens: a.filter((x) => x.share >= 0.99), nota: "Concentração no fim do exercício pede exame do empenho e da entrega." });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Fornecedores concentrados",
+      "var(--amber)",
+      "📅",
+      { sobre: "Fornecedores com parcela desproporcional do ano recebida em <b>dezembro</b>. O padrão tem explicação inocente forte — encerramento do exercício financeiro empurra liquidação e pagamento para o fim do ano. O que o sinal pede é olhar se houve entrega correspondente, não presumir que não houve." }
+    )}${kpi(
+      fmtRc(a.reduce((s, x) => s + x.dezembro, 0)),
+      "Pago em dezembro",
+      null,
+      "💰",
+      { sobre: "Ordens bancárias emitidas em dezembro para os fornecedores desta página. Fonte: OB do SIAFE — pagamento efetivo. Empenho concentrado em dezembro é rotina orçamentária; <b>pagamento</b> concentrado é que levanta a pergunta sobre a data da entrega." }
+    )}
+      ${kpi(a.filter((x) => x.share >= 0.99).length, "100% em dezembro", "var(--rose)", "🎯", { drill: "dez100" })}${kpi(
+      a.length ? Math.round(a[0].share * 100) + "%" : "—",
+      "Maior concentração",
+      null,
+      null,
+      { sobre: "A maior parcela do ano paga em dezembro a um único fornecedor. Encerramento de exercício explica boa parte do padrão; o que resta a perguntar é a data da entrega." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#dez-list .card')"></div>`;
     h += `<div id="dez-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
@@ -5287,8 +6865,27 @@ void main(){
     const a = d.achados || [];
     let h = cover("geral", "Radar de risco — todos os detectores somados", "Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.", "🎯") + acoesAba("radar_risco");
     const _nVerm = Number(d.n_vermelho || 0), _maior = a.length ? Number(a[0].score) : null;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Fornecedores com sinal", null)}${kpi(fmtN(_nVerm), "Score ≥50 (crítico)", _nVerm > 0 ? "var(--rose)" : null)}
-      ${kpi(_maior != null ? _maior : "—", "Maior score", _maior != null && _maior >= 50 ? "var(--rose)" : null)}${kpi(a.filter((x) => x.n_sinais >= 3).length, "Com ≥3 sinais", null)}</div>`;
+    registrarDrill("tresSinais", { titulo: "Com três ou mais sinais acumulados", itens: a.filter((x) => x.n_sinais >= 3), nota: "" });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Fornecedores com sinal",
+      null,
+      null,
+      { sobre: "Fornecedores com ao menos um indício acionado no conjunto de detectores. Ter sinal é comum e não classifica ninguém: o que ordena a fila é o <b>score</b>, e mesmo ele é indício interno da casa, jamais juízo sobre a empresa." }
+    )}${kpi(
+      fmtN(_nVerm),
+      "Score ≥50 (crítico)",
+      _nVerm > 0 ? "var(--rose)" : null,
+      null,
+      { sobre: "Corte de 50 na escala interna. O número que ele produz depende dos detectores ligados no dia — quando sete famílias foram corrigidas por leitura defeituosa, esta faixa caiu sozinha. Score é da CASA, não da empresa: mede quanto material há para examinar." }
+    )}
+      ${kpi(
+      _maior != null ? _maior : "—",
+      "Maior score",
+      _maior != null && _maior >= 50 ? "var(--rose)" : null,
+      null,
+      { sobre: "O maior valor da escala interna de risco. Score é da CASA, não da empresa: mede quanto material há para examinar, e muda quando os detectores mudam." }
+    )}${kpi(a.filter((x) => x.n_sinais >= 3).length, "Com ≥3 sinais", null, null, { drill: "tresSinais" })}</div>`;
     h += `<div class="dim" style="margin-top:8px">${esc(d.escala || "").replace(/\b([a-z]+_[a-z_]+)\b/g, (m) => rot(m))}</div>`;
     h += `<div class="search" style="margin-top:12px"><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-tbl tbody tr')"></div>`;
     h += `<div class="card" style="padding:4px 15px;overflow-x:auto"><table id="radar-tbl"><thead><tr><th>Fornecedor</th><th style="text-align:left">Sinais que dispararam</th><th class="right">Nº</th><th class="right">Score</th></tr></thead><tbody>` + a.map((x) => `<tr><td style="min-width:180px">${clk(x.cnpj, x.nome || x.cnpj_fmt)}<div class="dim mono" style="font-size:11px">${esc(x.cnpj_fmt)}</div></td>
@@ -5304,8 +6901,32 @@ void main(){
     const a = d.pares || [];
     const cob = d.cobertura || {};
     let h = cover("geral", "Conluio direto — vencedor × perdedora do mesmo dono", 'Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.', "🤝") + acoesAba("conluio_qsa");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Pares vencedor×perdedora", "var(--rose)", "🤝")}${kpi(fmtN(d.n_forte || 0), "Fortes (QSA/matriz-filial)", "var(--rose)", "🚨")}
-      ${kpi(fmtN(cob.certames_com_perdedora || 0), "Certames com perdedora conhecida", null, "⚖️")}${kpi(fmtN(cob.pares_sem_qsa || 0), "Pares sem QSA local (INDISPONÍVEL ≠ 0)", "var(--amber)", "❓")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Pares vencedor×perdedora",
+      "var(--rose)",
+      "🤝",
+      { sobre: "Pares em que quem venceu e quem perdeu o mesmo certame têm sócio em comum — ou são a mesma empresa em filiais diferentes. É o teste clássico de <b>concorrência fingida</b> (art. 337-F do Código Penal). Grupo econômico é lícito; disputar contra si mesmo não é." }
+    )}${kpi(
+      fmtN(d.n_forte || 0),
+      "Fortes (QSA/matriz-filial)",
+      "var(--rose)",
+      "🚨",
+      { sobre: "O recorte em que o vínculo é <b>documental</b>, não inferido: mesma raiz de CNPJ (matriz e filial) ou sócio comum no QSA da Receita. Os demais pares dependem de casamento por nome e pedem confirmação de CPF antes de qualquer citação." }
+    )}
+      ${kpi(
+      fmtN(cob.certames_com_perdedora || 0),
+      "Certames com perdedora conhecida",
+      null,
+      "⚖️",
+      { sobre: "O DENOMINADOR: só entra certame cuja ata registra quem perdeu. A maioria das atas publica apenas o vencedor — e sem a perdedora não há par a testar. Este número diz o tamanho real do que pôde ser examinado." }
+    )}${kpi(
+      fmtN(cob.pares_sem_qsa || 0),
+      "Pares sem QSA local (INDISPONÍVEL ≠ 0)",
+      "var(--amber)",
+      "❓",
+      { sobre: "Pares que existiam e <b>não puderam ser testados</b> por falta de quadro societário na base local. Não foram afastados — ficam contados aqui exatamente para não serem lidos como ausência de conluio. Cada QSA que a coleta traz reduz este número e pode aumentar o de achados." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por empresa ou sócio…" oninput="filtrar(this,'#cq-list .card')"></div>`;
     h += `<div id="cq-list" class="grid">` + a.map((x) => {
       const socios = (x.socios_comuns || []).map((s) => esc(s.nome)).slice(0, 3).join(", ") || "matriz × filial (mesmo CNPJ-raiz)";
@@ -5330,8 +6951,21 @@ void main(){
     const g = d.grafo || {};
     let h = cover("geral", "Comunidades — clusters família-empresa-órgão (Louvain)", "Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.", "🧩") + acoesAba("comunidades", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">Grafo das comunidades</a>`);
     const _nCrit = a.filter((x) => x.score >= 50).length;
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Comunidades relevantes", "var(--amber)", "🧩")}${kpi(fmtN(_nCrit), "Score ≥50 (🔴)", _nCrit > 0 ? "var(--rose)" : null, _nCrit > 0 ? "🚨" : "")}
-      ${kpi(fmtN(g.nos || 0), "Nós no grafo", null, "🕸️")}${kpi(fmtN(g.arestas || 0), "Arestas", null, "🔗")}</div>`;
+    registrarDrill("comunidadesCriticas", { titulo: "Comunidades com score ≥ 50", itens: a.filter((x) => x.score >= 50), nota: "Zero comunidade crítica NÃO é alarme — a cor e o glifo já foram fixos aqui uma vez." });
+    h += `<div class="grid g2">${kpi(fmtN(d.n), "Comunidades relevantes", "var(--amber)", "🧩", drillSeCompleto("comunidadesTodas", d.n, a, { titulo: "Comunidades detectadas no grafo", nota: "Comunidade é agrupamento por densidade de vínculo — indício de grupo, não prova de grupo econômico." }) || { sobre: "Agrupamentos por densidade de vínculo no grafo. Comunidade é indício de <b>grupo</b>, não de conluio — família, holding e sócios recorrentes produzem o mesmo desenho. A gaveta está desligada porque a lista vem paginada." })}${kpi(fmtN(_nCrit), "Score ≥50 (🔴)", _nCrit > 0 ? "var(--rose)" : null, _nCrit > 0 ? "🚨" : "", { drill: "comunidadesCriticas" })}
+      ${kpi(
+      fmtN(g.nos || 0),
+      "Nós no grafo",
+      null,
+      "🕸️",
+      { sobre: "Pessoas e empresas persistidas no grafo de vínculos. O grafo cresce a cada varredura — comunidade que não aparece hoje pode aparecer amanhã, e por isso ausência aqui nunca é afastamento." }
+    )}${kpi(
+      fmtN(g.arestas || 0),
+      "Arestas",
+      null,
+      "🔗",
+      { sobre: "Ligações gravadas entre esses nós, cada uma com tipo, força e fonte. Tipos simétricos (mesmo telefone, mesmo e-mail) são gravados em <b>direção canônica</b> para não contar a mesma ligação duas vezes." }
+    )}</div>`;
     h += `<div class="dim" style="margin-top:8px">${esc(d.escala || "").replace(/\b([a-z]+_[a-z_]+)\b/g, (m) => rot(m))}</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;
     h += `<div id="com-list" class="grid">` + a.map((x) => {
@@ -5368,8 +7002,32 @@ void main(){
     const ncor = Object.values(ps).reduce((s, x) => s + x.n_sancao_depois, 0);
     const pago = Object.values(ps).reduce((s, x) => s + x.pago_depois, 0);
     let h = cover("geral", "Retro-auditoria — o que aconteceu DEPOIS do alerta", "Para cada detector, o <b>ledger de sinais</b> guarda a data do 1º alerta por empresa (nunca regravada). Aqui medimos o que veio depois: <b>sanção federal posterior</b> (corroboração independente do detector) e <b>R$ que o Estado continuou pagando após o alerta</b> — o custo da inação. A janela cresce todo dia com o timer.", "🔮") + acoesAba("retro");
-    h += `<div class="grid g2">${kpi(fmtN(nsin), "Sinais no ledger", "var(--amber)", "📒")}${kpi(fmtN(ncor), "Sanção DEPOIS do sinal", "var(--rose)", "⚖️")}
-      ${kpi(fmtRc(pago), "Pago APÓS o alerta", "var(--rose)", "💸")}${kpi((j.sinal_mais_antigo_dias ?? "—") + "d", "Idade do sinal mais antigo", null, "📅")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(nsin),
+      "Sinais no ledger",
+      "var(--amber)",
+      "📒",
+      { sobre: "Sinais que o motor registrou com <b>data</b>, para poder ser cobrado depois. Sem esse registro não há retroteste possível: detector que só olha o presente nunca descobre se acertou." }
+    )}${kpi(
+      fmtN(ncor),
+      "Sanção DEPOIS do sinal",
+      "var(--rose)",
+      "⚖️",
+      { sobre: "Casos em que o motor apontou a empresa ANTES de ela ser sancionada por outro órgão. É a única medida honesta de <b>poder preditivo</b> desta casa — e foi medindo assim que dois detectores se revelaram anti-preditivos e saíram da régua." }
+    )}
+      ${kpi(
+      fmtRc(pago),
+      "Pago APÓS o alerta",
+      "var(--rose)",
+      "💸",
+      { sobre: "Dinheiro que continuou saindo depois de o sinal existir. Não afirma que o pagamento era indevido — afirma que houve <b>tempo e informação</b> para olhar antes, que é exatamente o que o controle externo cobra." }
+    )}${kpi(
+      (j.sinal_mais_antigo_dias ?? "—") + "d",
+      "Idade do sinal mais antigo",
+      null,
+      "📅",
+      { sobre: 'Há quantos dias o registro mais antigo espera confirmação. Ledger novo não pode ser lido como "detector sem acerto": sem tempo decorrido, a ausência de confirmação mede a idade do ledger, não a qualidade do sinal.' }
+    )}</div>`;
     h += `<div class="dim" style="margin-top:8px">Janela retro de ${j.sinal_mais_antigo_dias ?? "—"} dia(s) — zeros são esperados no começo (sanção demora); a leitura fica forte com semanas de ledger.</div>`;
     h += sec("Por detector") + `<div class="grid">` + Object.entries(ps).map(([s, v]) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(s)}</b>
@@ -5414,8 +7072,27 @@ void main(){
     if (!d.ok) return sec("Sócio oculto") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Sócio oculto — um dono, vários fornecedores", "Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.", "🫥") + acoesAba("socio_oculto");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Sócios com ≥3 empresas", "var(--amber)", "🕸️")}${kpi(fmtRc(a.reduce((s, x) => s + x.total, 0)), "Volume das empresas", null, "💰")}
-      ${kpi(a.length ? a[0].n_empresas : "—", "Mais empresas (1 sócio)", "var(--rose)")}${kpi(a.filter((x) => x.holding).length, "Holdings/PJ", null, "🏢")}</div>`;
+    registrarDrill("holdings", { titulo: "Casos em que o sócio é PJ (holding)", itens: a.filter((x) => x.holding), nota: "Sócio PJ é o degrau que permite subir a cadeia até a pessoa física." });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Sócios com ≥3 empresas",
+      "var(--amber)",
+      "🕸️",
+      { sobre: "Pessoas no quadro societário de <b>três ou mais</b> empresas que receberam do Estado. Ter várias empresas é lícito e comum; o que este número faz é apontar onde vale cruzar se elas <b>disputam os mesmos certames</b> — porque aí o mesmo dono estaria dos dois lados da mesa." }
+    )}${kpi(
+      fmtRc(a.reduce((s, x) => s + x.total, 0)),
+      "Volume das empresas",
+      null,
+      "💰",
+      { sobre: "Soma do que TODAS as empresas destes sócios receberam — <b>exibidas nesta página</b>, não o acervo. É volume sob um mesmo dono, não dano: nada aqui afirma que o pagamento foi indevido." }
+    )}
+      ${kpi(
+      a.length ? a[0].n_empresas : "—",
+      "Mais empresas (1 sócio)",
+      "var(--rose)",
+      null,
+      { sobre: "O caso extremo da lista: quantas empresas pagas pelo Estado o sócio mais ramificado detém. Número alto pode ser grupo econômico declarado — a pergunta que ele levanta é se essas empresas se encontram no mesmo certame." }
+    )}${kpi(a.filter((x) => x.holding).length, "Holdings/PJ", null, "🏢", { drill: "holdings" })}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por sócio ou empresa…" oninput="filtrar(this,'#ocult-list .card')"></div>`;
     h += `<div id="ocult-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.holding ? '<span class="tag purple">holding/PJ</span>' : ""}</div>
@@ -5432,8 +7109,27 @@ void main(){
     if (!d.ok) return sec("Nepotismo") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Nepotismo — parentes em cargo de confiança", "Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.", "👪") + acoesAba("nepotismo", `<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">Grafo de famílias</a>`);
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Clusters familiares", "var(--rose)", "👪")}${kpi(fmtN(d.n_com_autoridade), "Com autoridade nomeante", "var(--rose)", "⚖️")}
-      ${kpi(a.filter((x) => x.concentracao >= 1).length, "100% do sobrenome", "var(--amber)", "🎯")}${kpi(a.length ? a[0].n_membros : "—", "Maior cluster")}</div>`;
+    registrarDrill("sobrenome100", { titulo: "Grupos em que o sobrenome cobre 100% do quadro", itens: a.filter((x) => x.concentracao >= 1), nota: "Sobrenome compartilhado NÃO é sinal sozinho: 16,9% das empresas com 2+ sócios PF o têm." });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Clusters familiares",
+      "var(--rose)",
+      "👪",
+      { sobre: "Grupos de pessoas com o <b>mesmo sobrenome</b> em cargo de confiança no mesmo órgão. Sobrenome não prova parentesco e no Brasil não há base aberta de filiação — o que sustenta o sinal é a <b>prevalência</b>: o eixo só acende quando o sobrenome é raro na folha e está concentrado ali." }
+    )}${kpi(
+      fmtN(d.n_com_autoridade),
+      "Com autoridade nomeante",
+      "var(--rose)",
+      "⚖️",
+      { sobre: "Clusters em que um dos membros ocupa cargo com <b>poder de nomear</b>. É o que separa coincidência de cadeia: a Súmula Vinculante 13 alcança a nomeação feita por quem tem a competência, não a simples presença de parentes na mesma repartição." }
+    )}
+      ${kpi(a.filter((x) => x.concentracao >= 1).length, "100% do sobrenome", "var(--amber)", "🎯", { drill: "sobrenome100" })}${kpi(
+      a.length ? a[0].n_membros : "—",
+      "Maior cluster",
+      null,
+      null,
+      { sobre: "Quantas pessoas tem o maior grupo da lista. Número alto com sobrenome comum é ruído de base; com sobrenome raro, é o caso a abrir primeiro — por isso a concentração aparece em cada linha, e não só o tamanho." }
+    )}</div>`;
     h += `<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas || []).join(", ")) || "—"}. Cobertura cresce com novas folhas.</div>`;
     h += `<div class="search" style="margin-top:12px"><span class="mag"></span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
     h += `<div id="nep-list" class="grid">` + a.map((x) => card(
@@ -5461,8 +7157,32 @@ void main(){
       return `${quem} e recebeu ${fmtRc(x.total_recebido)} do Estado. A <b>data da baixa</b> não está na base da Receita local, então não dá para dizer se os pagamentos são posteriores — <b>INDISPONÍVEL</b>, que não é o mesmo que regular.`;
     };
     let h = cover("geral", "Empresa fênix — morta que recebe, ou nascida para faturar", "Empresa <b>BAIXADA/INAPTA</b> na Receita que mesmo assim recebeu do Estado (pagamento a empresa morta), ou <b>aberta poucos meses antes</b> do primeiro pagamento (nasceu já para faturar — perfil de laranja).", "🦅") + acoesAba("fenix");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Empresas fênix", "var(--rose)", "🦅")}${kpi(fmtN(d.n_defunta_confirmada || 0), "Recebeu DEPOIS da baixa", d.n_defunta_confirmada ? "var(--rose)" : null, "💀")}
-      ${kpi(fmtRc(d.total_apos_baixa || 0), "Pago após a baixa", d.total_apos_baixa ? "var(--rose)" : null, "💰")}${kpi(fmtN(d.n_defunta || 0), "Baixada hoje (recebeu antes)", null, "🗓️")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Empresas fênix",
+      "var(--rose)",
+      "🦅",
+      { sobre: "Empresas com baixa no cadastro da Receita que aparecem no fluxo de pagamento do Estado. O rótulo sozinho não acusa nada — o que separa achado de ruído é a <b>ordem das datas</b>, e ela está nos dois KPIs seguintes." }
+    )}${kpi(
+      fmtN(d.n_defunta_confirmada || 0),
+      "Recebeu DEPOIS da baixa",
+      d.n_defunta_confirmada ? "var(--rose)" : null,
+      "💀",
+      { sobre: "O ACHADO de verdade: ordem bancária emitida em data POSTERIOR à baixa. Uma versão anterior desta tela somava tudo que empresa hoje baixada já recebeu — e anunciava bilhões que eram pagamentos regulares feitos quando a empresa estava viva; o erro foi de ~218×. Situação cadastral vale <b>na data do ato</b>, nunca hoje." }
+    )}
+      ${kpi(
+      fmtRc(d.total_apos_baixa || 0),
+      "Pago após a baixa",
+      d.total_apos_baixa ? "var(--rose)" : null,
+      "💰",
+      { sobre: "Soma das OB emitidas depois da baixa — só destas, não do histórico da empresa. Fonte: <b>SIAFE</b>, ordem bancária, que é o único registro de pagamento efetivo; empenho e liquidação não entram porque empenho pode ser cancelado." }
+    )}${kpi(
+      fmtN(d.n_defunta || 0),
+      "Baixada hoje (recebeu antes)",
+      null,
+      "🗓️",
+      { sobre: "Empresas hoje baixadas cujos pagamentos são TODOS anteriores à baixa. Ficam listadas e fora do achado de propósito: encerrar atividade depois de cumprir contrato é o curso normal das coisas, e contá-las como irregularidade é o erro que esta tela já cometeu." }
+    )}</div>`;
     h += `<div class="note" style="margin-top:8px">Só o pagamento <b>posterior à baixa</b> caracteriza "pagamento a empresa morta". Estar baixada hoje e ter recebido antes disso é situação comum e não é indício — por isso os dois números aparecem separados.</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
     h += `<div id="fenix-list" class="grid">` + a.map((x) => card(
@@ -5480,8 +7200,27 @@ void main(){
     if (!d.ok) return sec("Porta giratória") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Porta giratória — ex-servidor virou fornecedor", "Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.", "🚪") + acoesAba("porta_giratoria");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Ex-servidores fornecedores", "var(--rose)", "🚪")}${kpi(fmtRc(a.reduce((s, x) => s + (x.total_pago || 0), 0)), "Volume recebido", null, "💰")}
-      ${kpi(fmtN(a.filter((x) => x.confianca === "ALTA").length), "Confiança ALTA (CPF)", "var(--amber)", "🔎")}${kpi(fmtN(d.homonimos_descartados), "Homônimos descartados", null, "🚮")}</div>`;
+    registrarDrill("confiancaAlta", { titulo: "Cruzamentos com confiança ALTA (casados por CPF)", itens: a.filter((x) => x.confianca === "ALTA"), nota: "Confiança ALTA = documento, não nome. É a única faixa que dispensa checar homônimo." });
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Ex-servidores fornecedores",
+      "var(--rose)",
+      "🚪",
+      { sobre: "Pessoas que constam na folha como <b>ex-servidores</b> e hoje figuram no quadro societário de empresa paga pelo Estado. Não é irregularidade por si: o que a lei restringe é a <b>quarentena</b> — contratar com o órgão de onde se saiu, dentro do prazo de impedimento. Por isso cada caso pede as duas datas." }
+    )}${kpi(
+      fmtRc(a.reduce((s, x) => s + (x.total_pago || 0), 0)),
+      "Volume recebido",
+      null,
+      "💰",
+      { sobre: "Soma paga às empresas <b>desta página</b>. Volume não é dano: mede o tamanho do que precisa ser olhado, não o prejuízo — este só existe se o contrato tiver vício próprio." }
+    )}
+      ${kpi(fmtN(a.filter((x) => x.confianca === "ALTA").length), "Confiança ALTA (CPF)", "var(--amber)", "🔎", { drill: "confiancaAlta" })}${kpi(
+      fmtN(d.homonimos_descartados),
+      "Homônimos descartados",
+      null,
+      "🚮",
+      { sobre: "Casos que o motor RECUSOU por não distinguir a pessoa — nome igual sem fragmento de CPF que confirme. Ficam contados de propósito: o que se joga fora é tão auditável quanto o que fica, e um detector que não mostra o próprio descarte pede fé em vez de conferência." }
+    )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, empresa ou órgão…" oninput="filtrar(this,'#porta-list .card')"></div>`;
     h += `<div id="porta-list" class="grid">` + a.map((x) => card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)}</div>
@@ -5499,7 +7238,13 @@ void main(){
     if (!d.ok) return sec("Nepotismo cruzado") + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
     const a = d.achados || [];
     let h = cover("geral", "Nepotismo cruzado — troca de favores entre órgãos", "A família X manda no órgão A e coloca um parente no órgão B, enquanto a família Y manda no órgão B e coloca um parente no A. A <b>reciprocidade</b> dribla a Súmula Vinculante 13, que só proíbe nomear parente no PRÓPRIO órgão.", "🔀") + acoesAba("nepotismo_cruzado");
-    h += `<div class="grid g2">${kpi(fmtN(d.n), "Pares recíprocos", "var(--rose)", "🔀")}</div>`;
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.n),
+      "Pares recíprocos",
+      "var(--rose)",
+      "🔀",
+      { sobre: "Pares de órgãos em que o padrão se INVERTE: num deles manda um sobrenome e está colocado o outro; no segundo, o contrário. É o desenho do <b>nepotismo cruzado</b> — a troca que a Súmula Vinculante 13 alcança justamente por burlar a vedação direta. Continua valendo que sobrenome não é parentesco: o par indica onde perguntar, não o que concluir." }
+    )}</div>`;
     if (!a.length) return h + card('<div class="muted">Nenhum par recíproco com o padrão rigoroso nas folhas atuais. Cresce com mais folhas. 🟢</div>') + `<div class="note">${esc(d.ressalva || "")}</div>`;
     h += `<div class="grid" style="margin-top:14px">` + a.map((x) => card(
       `<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)}</div>
@@ -5573,7 +7318,27 @@ void main(){
     const s = await J("/api/siafe/stats");
     if (!s.ok) return sec("SIAFE") + card('<div class="muted">SIAFE indisponível.</div>');
     const linhas = (s.por_ano || []).filter((x) => x.valor > 0).map((x) => `<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join("");
-    let h = sec("SIAFE · ordens bancárias") + `<div class="grid g2">${kpi(fmtN(s.total), "OBs ingeridas")}${kpi(fmtRc(s.valor_total), "Valor total")}</div><div style="height:12px"></div>` + card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+    let h = sec("SIAFE · ordens bancárias") + `<div class="grid g2">${kpi(
+      fmtN(s.total),
+      "OBs ingeridas",
+      null,
+      null,
+      { sobre: "Ordens bancárias no acervo — pagamento EFETIVO. Empenho é reserva e pode ser cancelado; liquidação reconhece a dívida. Só a OB significa que o dinheiro saiu." }
+    )}${kpi(
+      fmtRc(s.valor_total),
+      "Valor total",
+      null,
+      null,
+      { sobre: "Soma das OB ingeridas. É o total do que a casa VIU, não o do orçamento executado: exercício não coletado não entra, e a diferença é lacuna de coleta, não economia." }
+    )}</div><div style="height:12px"></div>`;
+    const cb0 = s.cobertura || {};
+    if (cb0.pct_do_espelho != null) {
+      h += leitura(`Este total é <b>o que a casa já coletou</b>, não o gasto do Estado: a fonte canônica
+      tem <b>${cb0.pct_do_espelho}%</b> das OBs que o espelho conhece
+      (${fmtN(s.total)} de ${fmtN(cb0.obs_espelho_total || 0)}), <b>Todo valor daqui é PISO</b> — a drenagem roda
+      a cada 2 h e o estado por par sai em <code>cobertura_siafe.medir()</code>.`);
+    }
+    h += card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas || '<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
     h += `<div style="height:16px"></div>` + await frescorHtml();
     return h;
   }
@@ -5590,10 +7355,34 @@ void main(){
       "🛰️"
     );
     h += `<div class="grid g2" id="sis-live">
-    ${kpi(sei.pct_lido == null ? "—" : fmtD(sei.pct_lido, 1) + "%", "Fila SEI já lida", null, "📄")}
-    ${kpi(fmtN(sei.arquivados), "Processos no arquivo compacto")}
-    ${kpi(gb(sei.arquivo_bytes), "Espaço do arquivo (texto+fases+fotos)")}
-    ${kpi(fmtN(aprTotal), "Aprendizados acumulados", "var(--accent)", "🧠")}</div>`;
+    ${kpi(
+      sei.pct_lido == null ? "—" : fmtD(sei.pct_lido, 1) + "%",
+      "Fila SEI já lida",
+      null,
+      "📄",
+      { sobre: "Fração da fila de processos já capturada e arquivada. É a medida de <b>cobertura</b> de tudo que depende de leitura de autos: com fila incompleta, a ausência de achado num processo não lido não significa processo regular — significa processo não visto." }
+    )}
+    ${kpi(
+      fmtN(sei.arquivados),
+      "Processos no arquivo compacto",
+      null,
+      null,
+      { sobre: "Processos com texto, fases e fotos gravados em disco. O arquivo é o caminho principal de leitura — browser e IA só entram quando ele não tem a peça, porque reler o SEI a cada pergunta é lento e derruba a sessão única por IP." }
+    )}
+    ${kpi(
+      gb(sei.arquivo_bytes),
+      "Espaço do arquivo (texto+fases+fotos)",
+      null,
+      null,
+      { sobre: "Disco ocupado pelo arquivo compacto de processos. Importa porque o arquivo é o caminho principal de leitura — quando ele cresce sem controle, a poda passa a ser o que decide o que a casa consegue reler." }
+    )}
+    ${kpi(
+      fmtN(aprTotal),
+      "Aprendizados acumulados",
+      "var(--accent)",
+      "🧠",
+      { sobre: "Lições registradas pelo motor de metacognição. É o que impede um defeito corrigido de voltar por esquecimento — cada família do catálogo de falhas nasceu de um caso concreto." }
+    )}</div>`;
     const falta = sei.fila_total != null && sei.arquivados != null ? sei.fila_total - sei.arquivados : null;
     h += card(`<div class="kv"><span class="k">Fila SEI por dinheiro — lidos × restantes</span><b><span class="num" id="sis-lidos">${fmtN(sei.arquivados)}</span> de ${fmtN(sei.fila_total)}${falta != null ? ` · faltam <span class="num" id="sis-falta">${fmtN(falta)}</span>` : ""}</b></div>
     <div class="sisbar bar" title="${sei.pct_lido == null ? "fila total indisponível" : fmtD(sei.pct_lido, 1) + "% lido"}"><i id="sis-barra" style="width:${sei.pct_lido == null ? 0 : Math.max(1.2, sei.pct_lido)}%"></i></div>
@@ -5608,8 +7397,9 @@ void main(){
     if ((a.pipelines || []).length) {
       h += `<div style="height:14px"></div>` + sec("Pipelines (SLO)", a.pipelines.length);
       h += card(`<div style="display:flex;flex-wrap:wrap;gap:8px">` + a.pipelines.map((p0) => {
-        const ok = String(p0.estado).toLowerCase().startsWith("ok");
-        return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado)}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
+        const st = String(p0.estado || p0.status || "").toLowerCase();
+        const ok = /^(ok|pausado|sob_demanda)/.test(st);
+        return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado || p0.status || "")}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
       }).join("") + `</div>`);
     }
     h += `<div style="height:14px"></div>` + sec("Aprendizados — o que a leitura já produziu");
@@ -5792,6 +7582,515 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   function _set_perGrau(v) {
     _perGrau = v;
   }
+  async function aditivoPrecoce() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/aditivo_precoce?dias=90&limite=12");
+    if (!d || d.ok === false) return;
+    const c = d.cobertura || {};
+    const alvo = document.createElement("div");
+    let h = sec(`Aditivo de valor nos primeiros ${d.dias} dias (${fmtN(d.total)})`);
+    if ((d.itens || []).length) {
+      h += card(`<table class="tb"><thead><tr><th class="right">dias</th><th>órgão</th><th>fornecedor</th>
+      <th class="right">inicial</th><th class="right">acréscimo</th><th class="right">%</th>
+      <th>art. 125</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+        <td class="right" style="font-weight:800;color:${x.dias <= 30 ? "var(--red)" : "var(--amber)"}">${x.dias}</td>
+        <td>${esc((x.orgao || "").slice(0, 26))}</td><td>${esc((x.fornecedor || "").slice(0, 28))}</td>
+        <td class="right dim">${fmtRc(x.valor_inicial)}</td>
+        <td class="right" style="font-weight:700">${fmtRc(x.acrescimo)}</td>
+        <td class="right">${x.pct == null ? "—" : x.pct + "%"}</td>
+        <td style="color:${x.acima_do_teto ? "var(--red)" : "inherit"}">${x.acima_do_teto ? "acima do teto de " + x.teto_pct + "%" : "dentro"}</td></tr>`).join("") + `</tbody></table>`);
+    } else if ((d.fonte || {}).ok === false) {
+      h += vazioDeclarado(d, `acréscimo de valor nos primeiros ${d.dias} dias`);
+    } else {
+      h += card(`<div class="dim">Nenhum acréscimo de valor nos primeiros ${d.dias} dias <b>na fatia já
+      medida</b> — e a fatia é o que importa ler junto: ausência aqui não é ausência no acervo.</div>`);
+    }
+    if (c.estado === "medido") {
+      h += leitura(`Cobertura: <b>${fmtN(c.avaliaveis)}</b> de <b>${fmtN(c.termos)}</b> termos aditivos
+      são avaliáveis (<b>${c.pct}%</b>) — só entram os que têm a data do TERMO e a do CONTRATO. A data
+      do termo passou a ser guardada em 09/08/2026; os coletados antes disso estão sendo recoletados.`);
+    }
+    h += leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function detectoresFramework() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/detectores?limite=12");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Framework de detectores — ${fmtN(d.confirmados)} confirmados de ${fmtN(d.avaliacoes)} avaliações`);
+    if (!(d.detectores || []).length) {
+      h += card('<div class="dim">Nenhuma varredura gravou achado ainda — as três rodam por linha de comando e gravam em data/achados.db.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g2">${kpi(
+      fmtN(d.confirmados),
+      "Indícios confirmados",
+      "var(--rose)",
+      "🎯",
+      { sobre: "Achados que passaram a régua do detector. <b>Indício apurado, não acusação</b>: cada registro carrega explicação inocente e motivo de refutação." }
+    )}${kpi(
+      fmtN(d.nao_avaliaveis),
+      "Não avaliáveis",
+      null,
+      "⬜",
+      { sobre: "A fatia que a base não alimenta. Contá-la junto com os descartados esconderia a cobertura real — por isso ela aparece separada." }
+    )}</div>`;
+    h += card(`<table class="tb"><thead><tr><th>detector</th><th>escopo</th><th class="right">confirmados</th>
+    <th class="right">descartados</th><th class="right">não avaliáveis</th></tr></thead><tbody>` + d.detectores.filter((x) => x.confirmado > 0).map((x) => `<tr>
+      <td><b>${esc(x.detector)}</b></td><td class="dim">${esc(x.escopo)}</td>
+      <td class="right" style="font-weight:800;color:${x.confirmado >= 30 ? "var(--rose)" : "inherit"}">${fmtN(x.confirmado)}</td>
+      <td class="right dim">${fmtN(x.descartado || 0)}</td>
+      <td class="right dim">${fmtN(x.nao_avaliavel || 0)}</td></tr>`).join("") + `</tbody></table>`);
+    if ((d.itens || []).length) {
+      h += card(`<table class="tb"><thead><tr><th>detector</th><th>alvo</th><th>motivo</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td><b>${esc(x.detector)}</b></td>
+        <td class="dim" style="font-size:12px">${esc(String(x.alvo).slice(0, 34))}</td>
+        <td style="font-size:12px">${esc(String(x.motivo).slice(0, 110))}</td></tr>`).join("") + `</tbody></table>`);
+    }
+    const f = (d.fonte || {}).medido_em || {};
+    if (Object.keys(f).length) {
+      h += `<div class="dim" style="margin-top:6px">Medido em: ` + Object.entries(f).map(([k, v]) => `<b>${esc(k)}</b> ${esc(String(v).replace("T", " ").slice(0, 16))}`).join(" · ") + ((d.fonte || {}).delegado_vm2 ? " — <b>órgão e certame estão delegados à VM-2</b>; enquanto a colheita não voltar, esses dois números não avançam." : "") + `</div>`;
+    }
+    h += leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function emergenciaRecorrente() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/emergencia_recorrente?limite=14");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Emergência recorrente — unidade × exercício com ${d.minimo}+ dispensas (${fmtN(d.total)})`);
+    if (!(d.itens || []).length) {
+      h += card('<div class="dim">Nenhum grupo na fatia medida — o que não significa que não haja emergência recorrente fora dela.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g2">${kpi(
+      fmtRc(d.valor_total),
+      "Somado nos grupos",
+      "var(--amber)",
+      "🚨",
+      { sobre: "Dispensa emergencial é legal e às vezes indispensável. O indício é a <b>recorrência</b>: imprevisibilidade não se repete todo exercício. Uma linha por PROCESSO — a tabela do TCE-RJ tem uma linha por item e repete o total do processo em cada uma, o que inflava a soma em 2,3×." }
+    )}${kpi(
+      fmtN(d.total),
+      "Grupos",
+      null,
+      "🏛️",
+      { sobre: "Unidade × exercício. A régua reconhece a emergência pelo <b>enquadramento legal</b> (art. 75, VIII da Lei 14.133/2021 e art. 24, IV da Lei 8.666/93), não só pela palavra no objeto — 891 dispensas emergenciais diziam “PEITO DE FRANGO” e ficavam invisíveis." }
+    )}</div>`;
+    h += card(`<table class="tb"><thead><tr><th>unidade</th><th class="right">exerc.</th>
+    <th class="right">dispensas</th><th class="right">valor</th><th>dominante</th>
+    <th class="right">concentr.</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+      <td>${esc(String(x.unidade || "").slice(0, 40))}</td>
+      <td class="right dim">${esc(String(x.exercicio || ""))}</td>
+      <td class="right">${fmtN(x.n)}</td>
+      <td class="right">${fmtRc(x.total)}</td>
+      <td style="font-size:12px">${esc(String(x.fornecedor_dominante || "").slice(0, 30))}
+        <span class="dim">(${fmtN(x.n_fornecedores)} forn.)</span></td>
+      <td class="right">${x.concentracao_dominante >= 0.8 ? "<b>" : ""}${(100 * (x.concentracao_dominante || 0)).toFixed(0)}%${x.concentracao_dominante >= 0.8 ? "</b>" : ""}</td>
+    </tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function leituraDupla() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/leitura_dupla?limite=14");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Leitura dupla — onde a regra e a IA discordam (${fmtN(d.total)} processos)`);
+    if (!(d.itens || []).length) {
+      h += card('<div class="dim">Nenhum processo lido pelos dois caminhos ainda — rode <code>tools.sei_leitura_dupla</code>.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g4">${kpi(
+      fmtN(d.acordos),
+      "Fatos em ACORDO",
+      "var(--green)",
+      "🤝",
+      { sobre: "Regra e IA leram o mesmo valor: fato duplamente confirmado, ninguém precisa reler." }
+    )}${kpi(
+      fmtN(d.ausencias_concordes || 0),
+      "FORA da fila humana",
+      null,
+      "✔️",
+      { sobre: 'Fatos que não estão na fila, por motivos DIFERENTES — e a quebra abaixo importa porque nem todos são "resolvido". Resolvidos: os dois leitores dizem que o campo não existe; o documento DECLARA que não há; o ranque de valor é decidido por aritmética; a Ordem Bancária já resolveu quem recebeu. NÃO resolvido: `nao_perguntado` — a leitura é anterior ao campo (arp, tac, valor e favorecido entraram depois), então a IA nunca foi perguntada. Isso é falta de MEDIDA, não concordância, e some quando o processo for relido.' }
+    )}${kpi(
+      fmtN(d.discordancias),
+      "DISCORDÂNCIAS — a fila",
+      "var(--amber)",
+      "⚖️",
+      { sobre: "Onde os dois leitores divergem. Não é veredito: é o único lugar em que o tempo de um humano rende, porque ali ou a nossa régua é estreita ou o modelo inventou." }
+    )}${kpi(
+      fmtN(d.total),
+      "Processos lidos 2×",
+      null,
+      "📖",
+      { sobre: "Cada um lido por regex e por IA gratuita. Processo marcado como truncado foi lido em parte — omissão ali não é ausência." }
+    )}</div>`;
+    const est = d.por_estado || {};
+    h += card(`<div class="dim">por tipo de divergência: ` + Object.entries(est).map(([k, v]) => `<b>${esc(k)}</b> ${fmtN(v)}`).join(" · ") + `</div>`);
+    const _fora = d.fora_da_fila_por_motivo || {};
+    const _nome = {
+      nenhum_dos_dois: "nenhum dos dois achou",
+      ausencia_declarada: "o documento declara que NÃO HÁ",
+      ia_errou_o_maior: "ranque de valor — aritmética decide",
+      so_fonte_canonica: "a Ordem Bancária já resolveu",
+      ia_corroborada_pela_ob: "a Ordem Bancária confirma a IA",
+      varios_instrumentos: "o processo cita VÁRIOS — a pergunta não tem resposta única",
+      fora_da_janela_da_ia: "⚠️ o valor está além do texto que a IA leu",
+      nao_perguntado: "⚠️ campo criado DEPOIS da leitura — a IA não foi perguntada"
+    };
+    if (Object.keys(_fora).length) h += card(`<div class="dim">fora da fila, por motivo: ` + Object.entries(_fora).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<b>${fmtN(v)}</b> ${esc(_nome[k] || k)}`).join(" · ") + `</div>`);
+    if (d.medidos_com_regua_antiga > 0) h += card(`<div class="dim">⚠️ <b>${fmtN(d.medidos_com_regua_antiga)}</b> de ${fmtN(d.total)} processos foram medidos com a RÉGUA ANTIGA, que contava ausência concorde como divergência — a fila deles está inflada e não é comparável com as leituras novas.</div>`);
+    const _fal = d.documentos_que_mais_faltam || [];
+    if (_fal.length) h += card(`<div><b>${fmtN(d.processos_com_lacuna || 0)}</b> processos declaram documento AUSENTE nos autos<div class="dim" style="margin-top:6px">` + _fal.slice(0, 6).map(([doc, n]) => `<b>${fmtN(n)}×</b> ${esc(String(doc).slice(0, 70))}`).join("<br>") + `</div></div>`);
+    h += card(`<table class="tb"><thead><tr><th>processo</th><th class="right">acordo</th>
+    <th class="right">divergência</th><th>o que a IA entendeu</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+      <td>${esc(x.processo)}${x.truncado ? ' <span class="dim">(truncado)</span>' : ""}</td>
+      <td class="right">${fmtN(x.acordo)}</td>
+      <td class="right">${x.discordancia > 2 ? "<b>" : ""}${fmtN(x.discordancia)}${x.discordancia > 2 ? "</b>" : ""}</td>
+      <td style="font-size:12px">${esc(String(x.o_que_e || "—").slice(0, 120))}${(x.o_que_falta || []).length ? `<div style="color:var(--amber);margin-top:3px">falta nos autos: ${esc((x.o_que_falta || []).slice(0, 3).join(" · ").slice(0, 150))}</div>` : ""}</td>
+    </tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function zerosSemCausa() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/zeros_sem_causa?limite=12");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Processos lidos que voltaram VAZIOS — fila de diligência (${fmtN(d.fila_total || d.total)})`);
+    if (!(d.itens || []).length) {
+      h += card('<div class="dim">Nenhum processo zerado sem causa — todo zero do acervo tem motivo registrado.</div>');
+      alvo.innerHTML = h;
+      o.appendChild(alvo);
+      return;
+    }
+    h += `<div class="grid g3">${kpi(
+      fmtRc(d.valor_ob_fornecedor != null ? d.valor_ob_fornecedor : d.valor_ob_sem_causa),
+      "OB a FORNECEDOR atrás da fila",
+      "var(--rose)",
+      "💸",
+      { sobre: "Soma das ordens bancárias <b>contabilizadas</b> a CNPJ/CPF nos processos que a casa leu e não trouxe nada. Não é irregularidade: é a medida do que ainda não foi possível examinar." + (d.valor_ob_folha ? " Fora desta conta ficam <b>" + fmtRc(d.valor_ob_folha) + "</b> de folha de pagamento e previdência (credor genérico: FOLHA DE PAGAMENTOS, RIOPREV)" : "") + (d.valor_ob_publico ? " e <b>" + fmtRc(d.valor_ob_publico) + "</b> de repasse a ente público (fundo municipal de saúde, Ministério da Fazenda), que tem CNPJ mas não é contratação" : "") + (d.valor_ob_folha || d.valor_ob_publico ? " — publicá-los junto superestimaria a exposição fiscalizável." : "") }
+    )}${kpi(
+      fmtN(d.total),
+      "Sem causa nenhuma",
+      null,
+      "❓",
+      { sobre: "Zero documento e nenhum motivo — nem no registro de restritos, nem no progresso do sweep. É o balde de ignorância propriamente dito." }
+    )}${kpi(
+      fmtN(d.caixa_leitura_falhou || 0),
+      "CAIXA: a leitura FALHOU",
+      "var(--amber)",
+      "🚫",
+      { sobre: "O SEI devolveu a <b>caixa de entrada</b> (mais de 15 relacionados) em vez do processo — pela própria regra do sweep, isso é leitura falha, não processo vazio. A causa estava gravada no progresso o tempo todo; até 2026-08-11 esses casos eram contados como “sem causa”." }
+    )}</div>`;
+    h += card(`<div class="dim">De ${fmtN(d.zeros)} zerados em ${fmtN(d.processos_com_registro)} processos com registro de leitura.</div>`);
+    h += card(`<table class="tb"><thead><tr><th>causa</th><th class="right">processos</th></tr></thead><tbody>` + Object.entries(d.por_causa || {}).map(([k, v]) => `<tr><td>${esc(k)}</td><td class="right">${fmtN(v)}</td></tr>`).join("") + `</tbody></table>`);
+    if ((d.contradicao || []).length) {
+      h += card(`<div><b>${fmtN(d.contradicao.length)} em contradição</b> — o registro diz que a leitura foi OK
+      e mesmo assim não veio documento nem há arquivo. Se dá para ler, o zero é falha nossa:
+      <span class="dim">${d.contradicao.map((p) => esc(p)).join(" · ")}</span></div>`);
+    }
+    h += card(`<table class="tb"><thead><tr><th>processo</th><th class="right">OB a fornecedor</th><th>causa</th>
+    <th class="right">tentativas</th></tr></thead><tbody>` + d.itens.map((x) => `<tr><td>${esc(x.processo)}${x.eh_folha ? ' <span class="dim">(folha/previdência)</span>' : ""}</td>
+      <td class="right">${fmtRc(x.valor_ob_fornecedor != null ? x.valor_ob_fornecedor : x.valor_ob)}</td>
+      <td class="dim">${esc(x.causa || "—")}</td>
+      <td class="right">${x.esgotou_tentativas ? `<b title="o sweep desistiu: repetir a mesma leitura não muda o resultado — precisa de outro caminho (CRACKED, VM-2, pedido formal)">${fmtN(x.tentativas || 0)} ⛔</b>` : `<span class="dim">${fmtN(x.tentativas || 0)}</span>`}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function nucleoCartel() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/nucleo_cartel?limite=10");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    let h = sec(`Núcleo de arranjo — generalista orbitado (${fmtN(d.total)} de ${fmtN(d.n_contumazes)} contumazes)`);
+    if ((d.itens || []).length) {
+      h += card(`<table class="tb"><thead><tr><th>Vencedor generalista</th><th class="right">ramos</th>
+      <th class="right">vitórias</th><th class="right">municípios</th>
+      <th>perdedores contumazes na órbita</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+        <td>${esc((x.vencedor || "").slice(0, 38))}${x.so_estrutural ? ' <span class="dim">(FP estrutural provável)</span>' : ""}</td>
+        <td class="right">${x.n_ramos}</td><td class="right">${fmtN(x.vitorias)}</td>
+        <td class="right dim">${x.n_entes}</td>
+        <td style="font-size:12px">${(x.orbitantes || []).map((o0) => `${esc((o0.perdedor || "").slice(0, 26))} <span class="dim">${o0.n}p/${o0.vitorias}v · órbita ${o0.conc}%</span>`).join("<br>")}</td></tr>`).join("") + `</tbody></table>`);
+    } else if ((d.fonte || {}).ok === false) {
+      h += vazioDeclarado(d, "núcleo de arranjo");
+    } else {
+      h += card('<div class="dim">Nenhum núcleo com os pisos atuais — o que não é ausência de arranjo, é ausência de INTERSEÇÃO entre os dois screens.</div>');
+    }
+    if ((d.viajantes || []).length) {
+      h += card(`<div class="dim" style="margin-bottom:6px"><b>Licitante-viajante</b> — contumaz em três ou mais
+      municípios: o custo de participar sem expectativa de ganhar é o sinal.</div>` + (d.viajantes || []).slice(0, 6).map((v) => `<div class="kv"><span class="k">${esc((v.perdedor || "").slice(0, 42))}</span><b>${v.n_entes} municípios</b>
+         <span class="dim">${v.n} part / ${v.vitorias} vit</span></div>`).join(""));
+    }
+    h += leitura(esc(d.ressalva || ""));
+    alvo.innerHTML = h;
+    o.appendChild(alvo);
+  }
+  async function consorcioVeiculo() {
+    const o = $("ff-out");
+    if (!o) return;
+    const d = await J("/api/fiscal/consorcio_veiculo?limite=10");
+    if (!d || d.ok === false) return;
+    const alvo = document.createElement("div");
+    if (!(d.itens || []).length) {
+      alvo.innerHTML = sec("Um consórcio por certame") + vazioDeclarado(d, "administrador com mais de um consórcio pago");
+      o.appendChild(alvo);
+      return;
+    }
+    alvo.innerHTML = sec(`Um consórcio por certame — administrador com vários veículos (${fmtN(d.total)})`) + card(`<table class="tb"><thead><tr><th>Administrador</th><th class="right">consórcios</th>
+      <th class="right">nos veículos</th><th class="right">+ diretas</th>
+      <th class="right">UGs</th><th>núcleo presente em TODOS</th></tr></thead><tbody>` + d.itens.map((x) => `<tr>
+        <td>${esc((x.administrador || "").slice(0, 34))}</td>
+        <td class="right" style="font-weight:800;color:${x.n_consorcios >= 4 ? "var(--red)" : x.n_consorcios >= 3 ? "var(--amber)" : "inherit"}">${x.n_consorcios}</td>
+        <td class="right">${fmtRc(x.total)}</td>
+        <td class="right dim">${(x.total_com_diretas || x.total) > x.total ? fmtRc(x.total_com_diretas - x.total) : "—"}
+          ${(x.empresas_diretas || []).length ? `<span class="dim" style="font-size:11px">${(x.empresas_diretas || []).length} empresa(s)</span>` : ""}</td>
+        <td class="right dim">${x.n_ugs}</td>
+        <td style="font-size:12px">${(x.nucleo_comum || []).map((n) => esc(n.slice(0, 30))).join("<br>") || '<span class="dim">—</span>'}</td></tr>`).join("") + `</tbody></table>`) + leitura(esc(d.ressalva || ""));
+    o.appendChild(alvo);
+  }
+  var _LENTE_MUN_LINHA = {
+    me_epp_acima_do_teto: (x) => `${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">${esc(x.porte || "")} · ${esc(String(x.exercicio || ""))} · ${x.razao ? fmtN(Math.round(x.razao)) + "× o teto" : ""}</div>`,
+    sancao_de_efeito_amplo: (x) => `${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">${esc(String(x.exercicio || ""))} · ${esc(String(x.sancoes && x.sancoes[0] && x.sancoes[0][0] || "").slice(0, 52))}</div>`,
+    pessoa_fisica_em_elemento_de_pj: (x) => `<b>${esc((x.credor || "").slice(0, 40))}</b>${x.mascarado ? ' <span class="tag amber">documento mascarado</span>' : ""}<div class="dim">${esc(x.elemento_txt || "")} · ${esc(String(x.exercicio || ""))} · ${esc((x.orgao || "").slice(0, 34))}</div>`,
+    salto_de_faturamento: (x) => `${clk(x.cnpj, x.credor || x.cnpj)}<div class="dim">${esc(String(x.de))}→${esc(String(x.para))} · ${fmtRc(x.pago_antes)} → ${fmtRc(x.pago_depois)} (${x.razao ? fmtN(Math.round(x.razao)) + "×" : ""})</div>`,
+    liquidado_sem_pagamento: (x) => `${clk(x.cnpj, x.credor || x.cnpj)}<div class="dim">${esc(String(x.exercicio || ""))} · ${esc((x.orgao || "").slice(0, 40))}</div>`,
+    fornecedor_quase_exclusivo: (x) => `${clk(x.cnpj, x.credor || x.cnpj)}<div class="dim">${esc((x.orgao || "").slice(0, 34))} · ${esc(String(x.exercicio || ""))} · ${x.share != null ? (100 * x.share).toFixed(0) + "% das compras" : ""}${x.share_orcamento_total != null ? " · " + (100 * x.share_orcamento_total).toFixed(0) + "% do orçamento" : ""} · ${fmtN(x.n_credores)} credores</div>`,
+    socio_comum_a_fornecedores: (x) => `<b>${esc(String(x.socio || "").slice(0, 40))}</b><div class="dim">${fmtN(x.n_fornecedores)} empresas · homonímia ${esc(x.risco_homonimia || "—")}${x.portadores_do_nome != null ? " (" + fmtN(x.portadores_do_nome) + " portadores)" : ""}</div><div class="muted" style="font-size:12px">${(x.fornecedores || []).slice(0, 3).map((f) => clk(f.raiz && f.raiz.length === 8 ? "" : f.raiz, f.nome || "")).join(" · ")}</div>`,
+    pago_muito_acima_do_capital: (x) => `${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">capital ${fmtRc(x.capital_social)} · pago ${fmtRc(x.pago)} (${x.razao ? fmtN(Math.round(x.razao)) + "×" : ""})</div>`,
+    servidor_estadual_socio_de_fornecedor: (x) => `${clk(x.cnpj, x.fornecedor || x.cnpj)}<div class="dim">${esc((x.agente || "").slice(0, 30))} · ${esc((x.cargo || "").slice(0, 24))} · ${esc((x.orgao_do_agente || "").slice(0, 30))}</div>`,
+    empresa_recem_criada: (x) => `${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">aberta ${esc(x.data_abertura || "")} · ${fmtN(x.idade_meses_no_fim_do_exercicio)} meses no fim de ${esc(String(x.exercicio || ""))}</div>`,
+    concentracao_hhi: (x) => `<b>${esc((x.orgao || "").slice(0, 44))}</b><div class="dim">${esc(String(x.exercicio || ""))} · HHI ${x.hhi} (≈${x.equivalente_a_n_iguais} fornecedores iguais) · maior ${esc((x.maior_credor || "").slice(0, 26))} ${x.maior_share != null ? (100 * x.maior_share).toFixed(0) + "%" : ""}</div>`,
+    empenhado_sem_pagamento: (x) => `${clk(x.cnpj, x.credor || x.cnpj)}<div class="dim">${esc(String(x.exercicio || ""))} · ${esc((x.orgao || "").slice(0, 34))}${x.houve_atesto ? ' · <span class="sev alta">com atesto</span>' : ""}</div>`,
+    superempenho: (x) => `${clk(x.cnpj, x.credor || x.cnpj)}<div class="dim">${esc(String(x.exercicio || ""))} · pagou ${x.fracao_paga != null ? (100 * x.fracao_paga).toFixed(0) + "%" : ""} do empenhado</div>`,
+    fornecedor_de_exercicio_unico: (x) => `${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">só em ${esc(String(x.exercicio || ""))}${(x.razoes_sociais || []).length > 1 ? " · " + fmtN(x.razoes_sociais.length) + " razões sociais" : ""}</div>`,
+    pico_de_gasto_por_subelemento: (x) => `<b>${esc(x.elemento || "elemento " + x.codigo_elemento)}</b><div class="dim">subelemento ${esc(x.codigo_elemento)}.${esc(x.codigo_subelemento)} · pico ${esc(String(x.ano_de_pico))} · ${x.razao ? fmtN(Math.round(x.razao)) + "× a mediana" : ""} · ${x.fracao_de_fornecedores_novos != null ? (100 * x.fracao_de_fornecedores_novos).toFixed(0) + "% de fornecedores novos" : ""}</div>`,
+    premiacao_a_fornecedor_de_bem: (x) => `${clk(x.cnpj, x.credor || x.cnpj)}<div class="dim">recebeu como premiação, mas fatura em ${esc(x.elemento_dominante_nome || x.elemento_dominante)} (${fmtRc(x.pago_no_elemento_dominante)})</div>`,
+    aditivos_em_serie: (x) => `${clk(x.cnpj, x.fornecedor || x.cnpj)}<div class="dim">${fmtN(x.n_aditivos)} aditivos · ${esc(String(x.ano || ""))} · ${esc((x.objeto || "").slice(0, 50))}</div>`,
+    vigencia_acima_do_prazo: (x) => `<b>${esc((x.fornecedor || "").slice(0, 40))}</b><div class="dim">${esc(x.vigencia_ini || "")} a ${esc(x.vigencia_fim || "")} · ${x.duracao_anos} anos</div>`,
+    vencedor_contumaz: (x) => `${clk(x.cnpj, x.nome || x.cnpj)}<div class="dim">${fmtN(x.n_certames)} certames vencidos</div>`,
+    estimativa_fora_de_escala: (x) => `<b>${esc((x.objeto || "").slice(0, 48))}</b><div class="dim">${esc(x.certame || "")} · ${esc(x.modalidade || "")} · ${x.vezes_o_orcamento_anual ? fmtN(Math.round(x.vezes_o_orcamento_anual)) + "× o gasto anual do Município" : ""}</div>`,
+    objeto_generico: (x) => `<b>${esc((x.objeto || "").slice(0, 54))}</b><div class="dim">termo aberto: <b>${esc(x.termo_aberto || "")}</b> · ${esc(x.modalidade || "")}</div>`,
+    concentracao_do_terceiro_setor: (x) => `<b>${esc((x.entidade || "").slice(0, 44))}</b><div class="dim">${x.share != null ? (100 * x.share).toFixed(1) + "% do repasse total" : ""}</div>`,
+    entidade_paga_como_servico: (x) => `<b>${esc((x.entidade || "").slice(0, 40))}</b><div class="dim">serviço ${fmtRc(x.pago_como_servico)} × parceria ${fmtRc(x.pago_como_transferencia)} (${x.razao ? fmtN(Math.round(x.razao)) + "×" : ""})</div>`,
+    qualidade_cadastral: (x) => `<b>${esc((x.razoes || []).slice(0, 2).join(" · ").slice(0, 52))}</b><div class="dim">${fmtN(x.n_razoes)} razões sob o mesmo documento${x.documento_mascarado ? ' · <span class="tag amber">mascarado</span>' : ""}</div>`
+  };
+  var _LENTE_MUN_VALOR = {
+    salto_de_faturamento: (x) => x.pago_depois,
+    empenhado_sem_pagamento: (x) => x.empenhado,
+    superempenho: (x) => x.nao_executado,
+    concentracao_hhi: (x) => x.total_orgao,
+    pico_de_gasto_por_subelemento: (x) => x.pago_no_pico,
+    premiacao_a_fornecedor_de_bem: (x) => x.pago_como_premiacao,
+    aditivos_em_serie: (x) => x.valor,
+    vigencia_acima_do_prazo: (x) => x.valor,
+    vencedor_contumaz: (x) => x.homologado,
+    estimativa_fora_de_escala: (x) => x.valor_estimado,
+    objeto_generico: (x) => x.valor_estimado,
+    concentracao_do_terceiro_setor: (x) => x.recebido,
+    entidade_paga_como_servico: (x) => x.pago_como_servico,
+    socio_comum_a_fornecedores: (x) => x.pago_somado,
+    liquidado_sem_pagamento: (x) => x.liquidado
+  };
+  var _UTIL_COR = { UTIL: "green", "NAO DISCRIMINA": "amber", INERTE: "amber", "SEM INSUMO": "rose" };
+  async function _bateriaPericia() {
+    let d;
+    try {
+      d = await J("/api/pericia/bateria");
+    } catch (e) {
+      return card(`<div class="warn">bateria de perícia: ${esc(String(e && e.message || e))}</div>`);
+    }
+    if (!d || d.ok === false) return card(`<div class="warn">${esc(d && d.erro || "bateria indisponível")}</div>`);
+    let h = sec("Bateria de perícia — quanto do exame realmente aconteceu");
+    h += `<div class="grid g2">
+    ${kpi(fmtN(d.testes_uteis) + "/" + fmtN(d.n_testes), "Testes ÚTEIS", "var(--rose)", "🔬", { sobre: "Ter insumo não basta: um teste que aponta 85% dos apurados não ordena fila, e um que nunca aponta nada não acrescenta. <b>Úteis</b> são os que rodam E discriminam." })}
+    ${kpi(d.fracao_indisponivel != null ? (100 * d.fracao_indisponivel).toFixed(1) + "%" : "—", "Itens sem exame", "var(--amber)", "🕳️", { sobre: "INDISPONÍVEL é ausência de <b>exame</b>, não de irregularidade. Cada um traz o motivo por extenso — o sistema é honesto; o painel é que escondia." })}
+    ${kpi(fmtN(d.confirmados_no_acervo), "CONFIRMADOS no acervo", d.confirmados_no_acervo ? null : "var(--rose)", "⚖️", { sobre: "Zero em todo o acervo. Nenhum item da perícia chegou a confirmação — não porque nada exista, mas porque o insumo que confirmaria não foi capturado." })}
+    ${kpi(fmtN(d.periciados), "Fornecedores periciados", null, "🏢", { sobre: "O número que o painel mostrava sozinho, e que sem os três acima sugere um exame que não houve." })}
+  </div>`;
+    h += leitura("O que falta não é regra — é <b>insumo</b>. Escrever o vigésimo quinto teste não ajuda enquanto vinte dos vinte e quatro não têm dado para rodar. Abaixo, a captura que destrava mais testes primeiro.");
+    h += sec("O que destrava o quê — ordem de retorno da captura");
+    h += (d.insumos_que_destravam || []).map((i) => card(
+      `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:650">${esc(i.insumo)}</div><div class="dim" style="font-size:12px">${esc(i.detalhe || "")}</div><div class="muted" style="font-size:12px;margin-top:3px">${(i.testes || []).map(esc).join(" · ")}</div></div><div class="right"><b>${fmtN(i.testes_que_destrava)}</b><div class="dim">teste(s)</div></div></div>`,
+      i.testes_que_destrava >= 3 ? "hl" : ""
+    )).join("");
+    h += sec("Os 24 testes, um a um");
+    h += (d.testes || []).map((t) => {
+      const cor = _UTIL_COR[t.utilidade] || "accent";
+      const ap = t.taxa_de_apontamento != null ? (100 * t.taxa_de_apontamento).toFixed(1).replace(".", ",") + "%" : "—";
+      return card(`<div style="display:flex;gap:9px;align-items:flex-start">
+      <span class="tag ${cor}">${esc(t.utilidade || "")}</span>
+      <div style="min-width:0"><div style="font-weight:650;font-size:13.5px">${esc(t.codigo)} — ${esc(t.titulo || "")}</div>
+      <div class="dim" style="font-size:12px">${fmtN(t.apurados)} apurados · aponta ${ap}${t.taxa_confiavel === false ? ' <span class="tag amber">taxa sobre punhado</span>' : ""} · ${fmtN(t.indisponivel)} sem insumo</div>
+      ${t.motivo_da_falta ? `<div class="muted" style="font-size:12px;margin-top:3px">${esc(String(t.motivo_da_falta).split(".")[0])}</div>` : ""}</div></div>`);
+    }).join("");
+    h += `<div class="note">${esc(d.aviso || "")}</div>`;
+    return h;
+  }
+  async function _lentesMunicipais() {
+    let d;
+    try {
+      d = await J("/api/lentes?esfera=municipal&top=25");
+    } catch (e) {
+      return card(`<div class="warn">lentes municipais: ${esc(String(e && e.message || e))}</div>`);
+    }
+    if (!d || d.ok === false) return card(`<div class="warn">${esc(d && d.erro || "lentes municipais não materializadas")}</div>`);
+    const L = d.lentes || {}, u = d.universo_contratual || {};
+    const contr = u.contratual || {}, bruto = u.bruto || {};
+    let h = sec("Município do Rio de Janeiro — 26 lentes");
+    h += `<div class="grid g2">
+    ${kpi(fmtRc(contr.pago), "Universo contratual", "var(--accent)", "🧮", { sobre: "O denominador honesto. Dos <b>" + fmtRc(bruto.pago) + "</b> pagos pelo Município, só esta fatia é <b>contratação</b>: sai folha, dívida, intra-orçamentária, sentença, tributo e benefício. Ranquear o bruto ranqueia a previdência e o banco, não risco." })}
+    ${kpi(u.fracao_do_bruto != null ? (100 * u.fracao_do_bruto).toFixed(1) + "%" : "—", "do bruto pago", null, "📐", { sobre: "Fração do total municipal que é contraprestação de contrato." })}
+    ${kpi(fmtN(contr.credores), "Credores no universo", null, "🏢", { sobre: "Fornecedores com ao menos um pagamento contratual, agrupados por documento." })}
+    ${kpi(fmtN(Object.keys(L).length), "Lentes materializadas", null, "🔬", { sobre: "Cada uma com prevalência medida. Prevalência alta descreve o acervo; baixa ordena fila." })}
+  </div>`;
+    h += leitura('Cada lente carrega a <b>prevalência</b> — quantos por cento do universo ela marca. É o que separa achado de descrição: um sinal que marca metade do acervo não ordena fila nenhuma, e várias hipóteses morreram exatamente assim (mono-cliente 8,8%, objeto curto 12,3%, "recebe pelas duas portas" 56,9%). O que foi <b>ressalvado</b> continua contado, com o motivo — sumir com ele esconderia o dia em que a concessionária cobrar demais.');
+    const ordem = Object.keys(L).sort((a, b) => {
+      const pa = L[a].prevalencia, pb = L[b].prevalencia;
+      if (pa == null && pb == null) return 0;
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      return pa - pb;
+    });
+    for (const chave of ordem) {
+      const b = L[chave] || {};
+      if (b.ok === false) {
+        h += sec(chave) + card(`<div class="warn">INDISPONÍVEL — a lente falhou: ${esc(b.erro || "")}</div>`);
+        continue;
+      }
+      const linha = _LENTE_MUN_LINHA[chave], valor = _LENTE_MUN_VALOR[chave] || ((x) => x.pago);
+      h += sec(esc(b.titulo || chave));
+      const prev = b.prevalencia != null ? (100 * b.prevalencia).toFixed(2).replace(".", ",") + "%" : "<b>INDISPONÍVEL</b>";
+      const extras = [];
+      if (b.n_ressalvados) extras.push(fmtN(b.n_ressalvados) + " ressalvado(s)");
+      if (b.n_inconclusivos) extras.push(fmtN(b.n_inconclusivos) + " inconclusivo(s)");
+      if (b.indisponivel) extras.push("fonte: " + esc(String(b.indisponivel).slice(0, 60)));
+      h += `<div class="dim" style="margin:0 2px 6px">${b.n == null ? "<b>INDISPONÍVEL</b>" : fmtN(b.n) + " casos"} · prevalência ${prev} de ${fmtN(b.universo)} · ${fmtRc(b.massa || 0)}${extras.length ? " · " + extras.join(" · ") : ""}</div>`;
+      if (b.nota) h += `<div class="muted" style="font-size:12px;margin:0 2px 6px">${esc(b.nota)}</div>`;
+      const itens = (b.topo || []).slice(0, 10);
+      h += itens.length ? itens.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${linha ? linha(x) : esc(JSON.stringify(x).slice(0, 120))}</div><div class="right"><b>${fmtRc(valor(x) || 0)}</b></div></div>`)).join("") : card('<div class="muted">Sem itens nesta materialização.</div>');
+    }
+    return h;
+  }
+  var _DIM_ROTULO = { TAMANHO: "porte × pago", SANCAO: "sanção vigente", DEPENDENCIA: "dependência mútua" };
+  async function renderLentes() {
+    let h = cover(
+      "estado",
+      "Lentes cruzadas",
+      "Quatro detectores independentes sobre a mesma base de pagamento (OB SIAFE). O que ordena a fila não é acender numa lente — é acender em <b>mais de uma</b>.",
+      "🔬"
+    );
+    let d;
+    try {
+      d = await J("/api/lentes?top=40");
+    } catch (e) {
+      return h + card(`<div class="warn">${esc(String(e && e.message || e))}</div>`);
+    }
+    if (!d || d.ok === false) return h + card(`<div class="warn">${esc(d && d.erro || "lentes não materializadas")} — rode <code>tools/lentes_materializar.py</code>.</div>`);
+    const L = d.lentes || {};
+    const conv = L.convergencia && L.convergencia.topo || [];
+    const mult = conv.filter((x) => x.n_dim >= 2);
+    h += `<div class="grid g2">
+    ${kpi(fmtN(mult.length), "Empresas em 2+ dimensões", "var(--rose)", "🎯", { sobre: "Convergência de detectores independentes. <b>Dimensão não é detector</b>: porte e estrutura magra medem a mesma coisa e contam uma vez só." })}
+    ${kpi(fmtRc(mult.reduce((s, x) => s + (x.pago || 0), 0)), "Pago a essas empresas", "var(--amber)", "💸", { sobre: "Soma das OB <b>Contabilizado</b> do SIAFE — pagamento efetivo, não empenho." })}
+    ${kpi(fmtN((L.convergencia && L.convergencia.n) != null ? L.convergencia.n : "—"), "Marcadas por ao menos 1", "var(--dim)", "🔎", { sobre: "Total de empresas que acenderam em <b>alguma</b> das lentes — a base de onde sai a convergência. Acender numa lente sozinha <b>não é achado</b>: 93,9% estão nesse caso, e é por isso que a fila se ordena pelo cruzamento, não pelo total. Vem do JSON materializado, não da tela: por isso não tem gaveta." })}
+    ${kpi(esc((d.gerado_em || "").replace("T", " ").slice(0, 16)), "Materializado em", null, "🕒", { sobre: "A rota LÊ um JSON; ela não calcula. As quatro lentes somam ~31 s de varredura sobre a OB inteira." })}
+  </div>`;
+    h += leitura("Convergência <b>ordena</b>, não acusa. Cada dimensão carrega as ressalvas da própria lente: porte da Receita pode estar desatualizado, dependência alta é esperada em serviço essencial com operador único, e sanção de outro ente pode não alcançar o contrato estadual.");
+    h += sec("Em mais de uma dimensão");
+    h += mult.length ? mult.map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(x.cnpj_basico, x.razao_social || x.cnpj_basico)}
+        <div class="dim">${(x.dimensoes || []).map((k) => `<span class="sev ${x.n_dim >= 3 ? "alta" : "media"}">${esc(_DIM_ROTULO[k] || k)}</span>`).join(" ")}</div>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">${esc((x.porques || []).join(" · "))}</div></div>
+      <div class="right"><div class="num"><b>${fmtRc(x.pago)}</b></div><div class="dim">${fmtN(x.n_dim)} dimensões</div></div></div>`, x.n_dim >= 3 ? "hl" : "")).join("") : card('<div class="muted">Nenhuma empresa em duas dimensões nesta materialização.</div>');
+    const _blocos = [
+      [
+        "dependencia_mutua",
+        "Dependência mútua",
+        "Fornecedor com 95%+ do que recebe vindo de UMA unidade, E que pesa 5%+ no orçamento dela. Repasse fundo-a-fundo, folha e OSS ficam de fora — contrato de gestão não é captura.",
+        (x) => `${clk(x.cnpj, x.nome)}<div class="dim">UG ${esc(x.ug)} · ${(100 * x.concentracao).toFixed(0)}% dele · ${(100 * x.fatia_ug).toFixed(1)}% dela</div>`,
+        (x) => x.pago_ug
+      ],
+      [
+        "porte_incompativel",
+        "Porte × pago",
+        "Empresa declarada ME/EPP que recebeu acima do teto legal de faturamento do próprio porte (LC 123/2006, art. 3º) num único ano.",
+        (x) => `${clk(x.cnpj_basico, x.razao_social)}<div class="dim">${esc(x.porte)} · ${esc(x.ano)} · ${x.razao_teto >= 1 ? x.razao_teto.toFixed(0) + "× o teto" : "—"}</div>`,
+        (x) => x.pago
+      ],
+      [
+        "pericia_tripla",
+        "Perícia tripla: jurídica · forense · financeira",
+        "Ordena <b>processos</b> por <b>lacuna probatória</b> — o que deveria estar nos autos e não está —, lendo o campo <i>o_que_falta</i> da leitura dupla, que <b>nomeia o documento ausente</b>. Só entram processos de <b>captura completa</b> (docs ≥ árvore, sem lacuna declarada): sem esse corte, falta da NOSSA coleta viraria acusação contra a Administração. Ordenado por <b>gravidade</b>, não por contagem: falta de pesquisa de preços (3,9%) pesa 5; falta de instrumento (54,8%, e lícita no art. 95) pesa 1. Sinal raro ordena, sinal comum descreve.",
+        (x) => `${clk("", x.numero_sei)}<div class="dim">peso ${fmtN(x.peso)} · ${esc((x.lentes || []).join("+"))} · ${esc((x.credor || "").slice(0, 26))}</div><div class="muted" style="font-size:12px">${esc((x.falta || "").slice(0, 130))}</div>`,
+        (x) => x.pago
+      ],
+      [
+        "pago_sem_contrato",
+        "Pago sem contrato (leitura dos autos)",
+        "Única lente que vem do <b>texto</b>: lê a interpretação que a IA grava no confronto duplo e isola os processos em que ela aponta <b>ausência de contrato ou instrumento</b> — a citação típica é da própria nota de empenho, <i>&quot;Contrato 00000000 - SEM CONTRATO&quot;</i>. <b>Pagar sem contrato é lícito</b> em compra de entrega imediata (Lei 14.133, art. 95), e folha, tarifa, tributo, repasse e precatório ficam FORA por natureza. Sobra o núcleo em que o instrumento era esperado. Só vê o que foi lido: 3.256 de 221.130 processos com OB paga.",
+        (x) => `${clk("", x.numero_sei)}<div class="dim">${esc((x.credor || "").slice(0, 30))} · ${fmtN(x.n_obs)} OB</div><div class="muted" style="font-size:12px">${esc((x.o_que_e || "").slice(0, 120))}</div>`,
+        (x) => x.pago
+      ],
+      [
+        "contrato_acima_do_porte",
+        "Contrato acima do teto do porte",
+        "Contrato <b>celebrado</b> com ME/EPP cujo valor supera o teto de receita do próprio porte (LC 123/2006, art. 3º). É o critério <b>legal na forma literal</b>: a Lei 14.133 fala em contratos celebrados no ano-calendário, não em dinheiro recebido. Fonte: espelho de contratos do <b>próprio TCE-RJ</b>, que cobre <b>51% dos fornecedores</b> pagos acima de R$ 1 mi — o resultado é <b>PISO</b>, e a ausência aqui não diz nada sobre a empresa. Prevalência 1,87% do cadastro ME/EPP. <b>Valor contratado não é valor executado</b> — esta lente mede incompatibilidade no dia da assinatura, não dano.",
+        (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc(x.porte)} · ${x.razao_teto >= 1 ? fmtN(Math.round(x.razao_teto)) + "× o teto" : ""} · ${fmtN(x.n_contratos)} contrato(s)${(x.contratos || []).length ? " · " + esc(x.contratos[0].data) + " " + esc((x.contratos[0].unidade || "").slice(0, 30)) : ""}</div>`,
+        (x) => x.maior
+      ],
+      [
+        "troca_de_controle",
+        "Trocou de dono durante a execução",
+        "Empresa cujo quadro de sócios mudou <b>por inteiro</b> durante a janela de pagamentos: nenhum sócio de hoje estava lá quando saiu o primeiro pagamento. <b>Trocar de dono é lícito</b> — o achado é a pergunta (a habilitação do novo controlador foi examinada?), não a resposta. Corte forte: 7,1% do universo; qualquer saída marcaria 21,6% e não ordenaria fila. Histórico começa em 03/2023 — troca anterior é invisível, e ausência aqui é limite de fonte.",
+        (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc(x.primeiro_pagamento)} → ${esc(x.ultimo_pagamento)} · ${fmtN((x.saidas || []).length)} saída(s)${(x.saidas || []).length ? " · saiu " + esc(x.saidas[0].quando) + " " + esc((x.saidas[0].nome || "").slice(0, 28)) : ""}</div>`,
+        (x) => x.pago
+      ],
+      [
+        "porte_declarado_certame",
+        "Declarou-se pequena depois de estourar o teto",
+        "Empresa que se declarou ME/EPP/MEI em certame publicado <b>depois</b> de já ter recebido do Estado, naquele mesmo ano-calendário, acima do teto de EPP (R$ 4,8 mi — LC 123/2006, art. 3º). O TCU firmou que a declaração falsa de porte já é fraude à licitação, ainda que não haja vantagem concreta. Número é PISO: só o pago pelo Estado entra, e o PNCP capturado cobre 2024-2026/RJ.",
+        (x) => `${clk(x.cnpj_basico, x.nome)}<div class="dim">${esc((x.portes || []).join("/"))} · ${fmtN(x.n_certames)} certame(s) · já recebera ${fmtRc(x.recebido_pico)} no ano</div>`,
+        (x) => x.homologado
+      ],
+      [
+        "pago_a_sancionado",
+        "Pago sob sanção",
+        "Pagamento (OB) emitido dentro da vigência de sanção que restringe contratar. Ver a aba <b>Sancionadas</b> para o detalhe por empresa.",
+        (x) => `${clk(x.cnpj, x.nome)}<div class="dim">${esc((x.categoria || "").slice(0, 64))}</div>`,
+        (x) => x.pago_durante || x.pago || 0
+      ]
+    ];
+    for (const [chave, titulo, nota, linha, valor] of _blocos) {
+      const b = L[chave] || {};
+      h += sec(titulo);
+      if (b.ok === false) {
+        h += card(`<div class="warn">INDISPONÍVEL — a lente falhou ao materializar: ${esc(b.erro || "")}</div>`);
+        continue;
+      }
+      h += `<div class="dim" style="margin:0 2px 6px">${esc(nota)} — ${b.n == null ? "<b>INDISPONÍVEL</b>" : fmtN(b.n) + " no total, mostrando " + fmtN((b.topo || []).length)}</div>`;
+      h += (b.topo || []).slice(0, 12).map((x) => card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${linha(x)}</div><div class="right"><b>${fmtRc(valor(x))}</b></div></div>`)).join("");
+    }
+    h += await _lentesMunicipais();
+    h += await _bateriaPericia();
+    h += `<div class="note">${esc(d.aviso || "")}</div>`;
+    return h;
+  }
 
   // static/js/src/entrada.js
   window.__jfnBootReadyState = document.readyState;
@@ -5825,6 +8124,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { id: "e_panorama", ic: "📊", tl: "Panorama", render: renderPanoramaEstado },
       { id: "e_pericias", ic: "⚖️", tl: "Perícias", render: renderPericias },
       { id: "e_sanc", ic: "🚫", tl: "Sancionadas", render: () => renderSancionadas("estado") },
+      { id: "e_lentes", ic: "🔬", tl: "Lentes", render: renderLentes },
       { id: "e_frac", ic: "§frac", tl: "Fracion.", render: renderFracionamento },
       { id: "e_sobre", ic: "📈", tl: "Sobrepreço", render: renderSobrepreco },
       { id: "e_escal", ic: "🪜", tl: "Escalada", render: renderEscalada },
@@ -6079,6 +8379,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   uiLigarSpotlight();
   uiLigarDialogo();
   ligarVinculos();
+  ligarFila();
+  ligarDrill();
   sobrioAoMudar(() => {
     nebulaViva();
     nucleoViva();
@@ -6280,6 +8582,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     montarTabs,
     ordenar,
     pecaGerar,
+    sinteseProcesso,
     seiArvore,
     seiBaixarZip,
     sweep,

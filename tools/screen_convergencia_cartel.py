@@ -80,6 +80,54 @@ def contumazes(d: dict, min_part: int, min_conc: float = 0.4) -> list[dict]:
     return saida
 
 
+def nucleos(db: str = "", min_part: int = 8, min_ramos: int = 4) -> dict:
+    """Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — o núcleo, não cada screen isolado.
+
+    Esta lógica vivia dentro do `main()` e por isso **nenhuma rota conseguia consumi-la**: os dois
+    screens que ela cruza (R025 perdedor contumaz, R048 fornecedor generalista) estavam entre os
+    únicos dois módulos de screen do projeto sem um único chamador fora de si mesmos, medido em
+    2026-08-09. Extrair daqui é o que os liga ao painel — a família "construído, testado, nunca
+    rodado" resolvida pela raiz.
+
+    Devolve `{nucleos, contumazes, viajantes}` — o viajante é o contumaz que aparece em muitos
+    municípios sem nunca vencer, e o custo de participar sem expectativa de ganhar é o sinal.
+    """
+    alvo = db or f"{REPO / 'data' / 'compliance.db'}"
+    con = sqlite3.connect(f"file:{alvo}?mode=ro", uri=True)
+    try:
+        d = coletar(con)
+    finally:
+        con.close()
+    cont = contumazes(d, min_part)
+
+    por_vencedor: dict[str, list] = defaultdict(list)
+    for c in cont:
+        por_vencedor[c["orbita"]].append(c)
+
+    saida = []
+    for venc, orbitantes in por_vencedor.items():
+        n_ramos = len(d["ramos"].get(venc, ()))
+        if n_ramos < min_ramos:
+            continue
+        vit = sum(v for k, v in d["stats"][venc].items() if "VENCEDOR" in k)
+        saida.append({"vencedor": venc, "n_ramos": n_ramos, "vitorias": vit,
+                      "n_entes": len(d["entes"][venc]),
+                      "orbitantes": sorted(orbitantes, key=lambda x: -x["conc"]),
+                      "so_estrutural": all(o["fp_estrutural"] for o in orbitantes)})
+    saida.sort(key=lambda x: (-len(x["orbitantes"]), -x["n_ramos"], -x["vitorias"]))
+    viajantes = sorted([c for c in cont if c["n_entes"] >= 3], key=lambda x: -x["n_entes"])
+    return {"nucleos": saida, "contumazes": cont, "viajantes": viajantes}
+
+
+RESSALVA = (
+    "Perder muito é o normal de quem disputa muito, e vencer em ramos díspares é o normal de "
+    "distribuidora regional — cada screen isolado tem falso positivo ESTRUTURAL conhecido (farma "
+    "orbita farma). O que vai à fila é a INTERSEÇÃO: um vencedor generalista cercado de "
+    "perdedores contumazes. Indício de arranjo a apurar nos autos, nunca afirmação de cartel; a "
+    "fonte é `tcerj_licitante` (municipal), então o Estado não está aqui."
+)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--min-part", type=int, default=8)
@@ -87,36 +135,21 @@ def main():
     ap.add_argument("--md", action="store_true")
     args = ap.parse_args()
 
-    con = sqlite3.connect(f"file:{REPO / 'data' / 'compliance.db'}?mode=ro", uri=True)
-    d = coletar(con)
-    cont = contumazes(d, args.min_part)
-
-    por_vencedor: dict[str, list] = defaultdict(list)
-    for c in cont:
-        por_vencedor[c["orbita"]].append(c)
-
-    nucleos = []
-    for venc, orbitantes in por_vencedor.items():
-        n_ramos = len(d["ramos"].get(venc, ()))
-        if n_ramos < args.min_ramos:
-            continue
-        vit = sum(v for k, v in d["stats"][venc].items() if "VENCEDOR" in k)
-        nucleos.append({"vencedor": venc, "n_ramos": n_ramos, "vitorias": vit,
-                        "n_entes": len(d["entes"][venc]),
-                        "orbitantes": sorted(orbitantes, key=lambda x: -x["conc"]),
-                        "so_estrutural": all(o["fp_estrutural"] for o in orbitantes)})
-    nucleos.sort(key=lambda x: (-len(x["orbitantes"]), -x["n_ramos"], -x["vitorias"]))
+    # o nome local não pode sombrear a função `nucleos` — F823 no ruff, e em runtime seria
+    # UnboundLocalError na primeira chamada
+    r = nucleos(min_part=args.min_part, min_ramos=args.min_ramos)
+    lista, cont = r["nucleos"], r["contumazes"]
 
     if args.md:
         print("| Vencedor generalista | Ramos | Vitórias | Entes | Perdedores contumazes na órbita |")
         print("|---|---|---|---|---|")
-        for nu in nucleos:
+        for nu in lista:
             orb = "; ".join(f"{o['perdedor'][:28]} ({o['n']}p/{o['vitorias']}v, {o['conc']}%)"
                             for o in nu["orbitantes"][:3])
             print(f"| {nu['vencedor'][:40]} | {nu['n_ramos']} | {nu['vitorias']} "
                   f"| {nu['n_entes']} | {orb} |")
     else:
-        for i, nu in enumerate(nucleos, 1):
+        for i, nu in enumerate(lista, 1):
             marca = " [FP estrutural provável]" if nu["so_estrutural"] else ""
             print(f"{i:3d}. {nu['vencedor'][:46]:46} ramos={nu['n_ramos']} vit={nu['vitorias']:3d} "
                   f"entes={nu['n_entes']:2d} · {len(nu['orbitantes'])} orbitante(s){marca}")
@@ -130,7 +163,7 @@ def main():
     for v in viajantes:
         print(f"   {v['perdedor'][:44]:44} {v['n_entes']} municípios · {v['n']}part/"
               f"{v['vitorias']}vit", file=sys.stderr)
-    print(f"\n{len(nucleos)} núcleos (generalista orbitado) de {len(cont)} contumazes",
+    print(f"\n{len(lista)} núcleos (generalista orbitado) de {len(cont)} contumazes",
           file=sys.stderr)
     return 0
 

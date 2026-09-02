@@ -17,7 +17,8 @@ obsoleta por semanas (dizia `feat/fiscalizacao-emendas-pcrj` enquanto a real era
 4. **Git:** sem force-push sem ok; commit por unidade; msg semântica. Nunca `&&` depois de comando git com pipe (o pipe mascara o exit code — já acertou a branch errada).
 5. **Contexto/cota:** cortar DESPERDÍCIO, nunca profundidade. Ler grande em PARTES; grep/tail > dump. Pesado → background. Salvar cedo.
 6. **Honestidade:** indício ≠ acusação; **INDISPONÍVEL ≠ 0**; nunca inventar número; presunção de regularidade; score = indício interno; CPF de sócio mascarado (LGPD). Onde a casa corta lista, perguntar **quais** N, nunca só **quantos**.
-7. **Não crashar a VM:** 1 pesado por vez; suíte SEMPRE em lotes (`tools/ci_lote.py`, nunca monolítica — já caiu 4×); `pgrep`+`kill` por PID, **nunca `pkill -f`**.
+7. **Portão de pre-push:** `tools/pre_push_gate.sh` roda catracas + testes casados com o que muda ANTES do push (1,4 s no mínimo). CI vermelho vira e-mail para o dono — consertar depois do e-mail é tarde. Acima de load 6 ele DECLARA que não mediu; `--no-verify` só com motivo escrito no commit seguinte.
+8. **Não crashar a VM:** 1 pesado por vez; suíte SEMPRE em lotes (`tools/ci_lote.py`, nunca monolítica — já caiu 4×); `pgrep`+`kill` por PID, **nunca `pkill -f`**.
 
 ## ECOSSISTEMA
 **Yoda** (Telegram) → aciona o JFN pela API `127.0.0.1:8000` (`server.py` + `rotas/`).
@@ -53,7 +54,7 @@ Fonte única de capacidades: **`capabilities.yaml`** — derivados (`data/jfn_to
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **JFN** (41218 symbols, 61643 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **JFN** (41847 symbols, 61806 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

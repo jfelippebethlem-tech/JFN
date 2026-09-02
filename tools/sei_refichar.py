@@ -42,13 +42,28 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=10_000)
     ap.add_argument("--forca", action="store_true", help="re-ficha mesmo quem já tem o campo novo")
+    # ORÇAMENTO PRÓPRIO, para o código de saída voltar a significar alguma coisa. Medido em
+    # 2026-08-07 na auditoria dos 32 passos agendados: `sei_refichar rc=124` em **407 de 474
+    # execuções (86%)** — e 124 é o `timeout` do shell, não erro da ferramenta. Ela trabalha ~60 s
+    # por documento (chamada de LLM), cabem 9 ou 10 no slot de 600 s, e o resto morre no relógio.
+    # Um passo que termina "em falha" toda vez é um alarme permanente, e alarme permanente é
+    # alarme desligado — foi por isso que o aborto crônico da recaptura passou quatro dias
+    # invisível na mesma tabela. Parando por conta própria dentro do orçamento, `rc != 0` volta a
+    # querer dizer defeito.
+    ap.add_argument("--orcamento-s", type=int, default=0,
+                    help="para sozinho ao atingir este tempo (0 = sem limite)")
     a = ap.parse_args()
+    t_inicio = time.time()
     # `glob_cache` (não `glob.glob`) porque 5.741 dos 5.973 blobs do acervo estão em `.json.zst`:
     # com o glob cru esta ferramenta enxergava 3,9% do que deveria refichar.
     arquivos = glob_cache(CACHE, "cdp_*.json")
     feitos = pulados = erros = 0
+    parou_por_tempo = False
     for caminho in arquivos:
         if feitos >= a.max:
+            break
+        if a.orcamento_s and (time.time() - t_inicio) >= a.orcamento_s:
+            parou_por_tempo = True
             break
         d = ler_json(caminho)
         if not isinstance(d, dict):
@@ -75,7 +90,9 @@ async def main():
         tem_per = "perícia✓" if isinstance(f.get("pericia_contabil"), dict) else "perícia—"
         sit = f.get("situacao") or "—"
         print(f"  [{feitos}] {Path(caminho).name} → {tem_per} situacao={sit} ({time.time()-t0:.0f}s)", flush=True)
-    print(f"FIM re-ficha: {feitos} refichados, {pulados} já no schema novo, {erros} erros.", flush=True)
+    print(f"FIM re-ficha: {feitos} refichados, {pulados} já no schema novo, {erros} erros"
+          + (f" — parei no orçamento de {a.orcamento_s}s (não é falha: a fila continua na próxima "
+             f"passada)" if parou_por_tempo else "") + ".", flush=True)
 
 
 if __name__ == "__main__":

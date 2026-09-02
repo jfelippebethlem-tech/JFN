@@ -36,9 +36,18 @@ async def _navegar_ob(pg):
     # 1) menu Execução (anchor xyo, texto exato)
     await pg.evaluate(r"""() => {const a=[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução'); if(a)a.click();}""")
     await pg.wait_for_timeout(1800)
-    # 2) Execução Financeira (disclosureAnchor)
-    await pg.evaluate(r"""() => {const a=document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor')
-                                  || [...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução Financeira'); if(a)a.click();}""")
+    # 2) Execução Financeira — RÓTULO primeiro, id de posição só como último recurso. O id
+    # `pt1:pt_np3:1:...` é a POSIÇÃO do item no menu do SIAFE 2; no SIAFE 1 ele existe e aponta
+    # para outro item, o clique leva a sessão para fora e cai numa página que finge ser bloqueio
+    # de IP (família 28 do catálogo; receita em docs/PLAYBOOK-SIAFE-NAVEGACAO.md).
+    await pg.evaluate(r"""() => {
+        const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+        const a = [...document.querySelectorAll('a.xyo')]
+                    .find(e => norm(e.innerText)==='execução financeira'
+                            || norm(e.innerText)==='execucao financeira')
+                  || document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor');
+        if(a) a.click();
+    }""")
     await pg.wait_for_timeout(2200)
     # 3) Ordens Bancárias (por texto)
     await pg.evaluate(r"""() => {const a=[...document.querySelectorAll('a')].find(e=>(e.innerText||'').trim()==='Ordens Bancárias'); if(a)a.click();}""")

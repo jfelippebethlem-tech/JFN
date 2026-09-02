@@ -30,6 +30,17 @@ logger = logging.getLogger(__name__)
 # Sem fallback literal: chave hardcoded aqui (removida em 2026-07-23) já estava
 # revogada e produzia 401 disfarçado de "LLM não respondeu" — pior que falhar.
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+
+def _chave() -> str:
+    """Resolve a chave em TEMPO DE EXECUÇÃO — a constante do import não basta.
+
+    Processo que sobe antes do `.env` ser carregado ficava com a constante vazia para sempre. Com
+    ela vazia o header saía `"Bearer "` e o httpx recusava: o log dizia `Illegal header value`,
+    o cooldown marcava o Groq como fora do ar, e o segundo provedor da rede de segurança sumia em
+    silêncio. O `free_llm._groq_key()` já resolvia assim; aqui a lição não tinha chegado.
+    """
+    return (os.environ.get("GROQ_API_KEY") or GROQ_API_KEY or "").strip()
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -64,8 +75,13 @@ async def _groq(messages: list[dict], max_tokens: int = 800, temperature: float 
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    chave = _chave()
+    if not chave:
+        # Falha de configuração não se resolve com backoff: erra na hora, dizendo o que falta.
+        raise RuntimeError("GROQ_API_KEY não configurada (nem no ambiente nem no .env carregado) "
+                           "— o fallback Groq fica indisponível até a chave existir")
     headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Authorization": f"Bearer {chave}",
         "Content-Type": "application/json",
     }
     async with httpx.AsyncClient(timeout=30) as client:

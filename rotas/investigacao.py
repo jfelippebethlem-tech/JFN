@@ -4,6 +4,7 @@ Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from pathlib import Path
@@ -855,10 +856,17 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
             return JSONResponse(content={"ok": True, "modo": "fornecedor", "cnpj": cnpj,
                                          "n": len(contratos), "contratos": contratos,
                                          "_fonte": "PNCP API consulta (sem login)"})
-        contratacoes = await pncp.buscar_contratacoes(
+        ck = f"pncp:{uf}:{orgao}:{abertos}:{modalidade}:{dias}:{esfera}"
+        if (cache := _cache_get(ck, 3600)) is not None:
+            return JSONResponse(content=cache)
+        contratacoes, nota = await _com_teto(pncp.buscar_contratacoes(
             uf=uf, data_ini=hoje - timedelta(days=dias), data_fim=hoje,
             modalidade=(modalidade or None), abertos=abertos,
-            orgao_cnpj=(orgao or None))
+            orgao_cnpj=(orgao or None)), "PNCP")
+        if nota:  # indisponibilidade NÃO entra no cache: congelaria a aba vazia por 1 h
+            return JSONResponse(content={
+                "ok": True, "indisponivel": True, "uf": uf, "n": 0, "contratacoes": [],
+                "_fonte": "PNCP API consulta (sem login)", "_nota": nota})
         if esfera and esfera != "todas":
             # esfera OFICIAL do ente (pncp_ente + exceções de unidade) — aba estanque no painel
             import sqlite3 as _sq
@@ -873,11 +881,11 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
                 {"orgao_cnpj": x.get("orgao_cnpj"), "orgao_nome": x.get("orgao"),
                  "unidade_nome": x.get("unidade"), "municipio": x.get("municipio")},
                 oficial) == esfera]
-        return JSONResponse(content={
+        return JSONResponse(content=_cache_put(ck, {
             "ok": True, "modo": "abertos" if abertos else "publicacao",
             "uf": uf, "n": len(contratacoes), "contratacoes": contratacoes,
             "_fonte": "PNCP API consulta (sem login)",
-            "_nota": "Indício/triagem; red_flags do edital virão da Onda 2c. Proveniência: link+id_pncp."})
+            "_nota": "Indício/triagem; red_flags do edital virão da Onda 2c. Proveniência: link+id_pncp."}))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
@@ -1034,9 +1042,17 @@ async def api_sei_direcionamento(ug: str = "", objeto: str = "", uf: str = "RJ",
     try:
         from compliance_agent.sei_direcionamento import varrer_direcionamento
 
-        res = await varrer_direcionamento(uf=uf, ug=(ug or None), objeto=(objeto or None),
-                                          max_itens=max(1, min(int(max_itens), 15)))
-        return JSONResponse(content=res)
+        ck = f"seidir:{uf}:{ug}:{objeto}:{max_itens}"
+        if (cache := _cache_get(ck, 3600)) is not None:
+            return JSONResponse(content=cache)
+        res, nota = await _com_teto(
+            varrer_direcionamento(uf=uf, ug=(ug or None), objeto=(objeto or None),
+                                  max_itens=max(1, min(int(max_itens), 15))),
+            "PNCP (varredura de direcionamento)")
+        if nota:
+            return JSONResponse(content={"ok": True, "indisponivel": True, "itens": [],
+                                         "_nota": nota})
+        return JSONResponse(content=_cache_put(ck, res))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
@@ -1169,6 +1185,23 @@ async def pagina_controle():
 import time as _time
 
 _cache: dict = {}
+
+
+# Teto de espera por fonte VIVA (PNCP). Health-check de 2026-08-02: /api/pncp e
+# /api/sei/direcionamento devolviam `000` — conexão pendurada, sem resposta em 25 s. Fonte
+# externa sem teto trava a aba do painel; com teto, ela diz "não respondeu" e o usuário decide.
+_TETO_FONTE_VIVA = 20.0
+
+
+async def _com_teto(coro, rotulo: str):
+    """Aguarda `coro` até o teto. Estourou → (None, nota honesta); senão → (valor, None)."""
+    import asyncio as _aio
+    teto = _TETO_FONTE_VIVA
+    try:
+        return await _aio.wait_for(coro, timeout=teto), None
+    except (TimeoutError, _aio.TimeoutError):
+        return None, (f"{rotulo} não respondeu em {teto:.0f}s — INDISPONÍVEL, "
+                      "não é ausência de resultado. Tente de novo ou reduza o período.")
 
 
 def _cache_get(chave: str, ttl: int):
@@ -1459,10 +1492,118 @@ def api_perfil(cnpj: str):
                                     "hub_compartilhado": hub or None}
         except Exception as e:  # noqa: BLE001 — enriquecimento opcional; nunca derruba o dossiê
             logger.debug("enriquecimento cadastral do dossiê falhou (%s) — segue sem ele", e)
+        # ── MUNICÍPIO DO RIO ──────────────────────────────────────────────────────────────
+        # Sem este bloco o dossiê mente por omissão: a empresa clicada numa lente MUNICIPAL
+        # abriria uma tela que só fala do Estado ("Pago pelo Estado", órgãos estaduais, perícia
+        # estadual) e pareceria não ter movimento algum. Clicável e incompleto é pior que não
+        # clicável — o leitor conclui ausência onde há R$ 30,6 bi de universo não consultado.
+        out["municipio"] = _perfil_municipio(con, dig)
+        # Empresa que só existe no acervo MUNICIPAL vinha com nome "—": o nome era buscado apenas
+        # na perícia e na OB estaduais. O dossiê abria mudo justamente para quem chegou por uma
+        # lente da Prefeitura — o caminho novo era o que mais precisava do nome.
+        if (not out.get("nome") or out["nome"] == "—") and out["municipio"]:
+            razoes = out["municipio"].get("razoes_sociais") or []
+            if razoes:
+                out["nome"] = razoes[0]
         con.close()
         return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+def _perfil_municipio(con, dig: str) -> dict | None:
+    """O que o Município do Rio pagou a este CNPJ, e quais lentes municipais o marcaram.
+
+    Agrupa por RAIZ de CNPJ (8 dígitos): 0,96% das raízes do acervo aparecem com mais de uma
+    razão social, e agrupar pelo documento inteiro perderia a filial. Devolve `None` quando não
+    há pagamento — ausência de dado, que a tela declara em vez de imprimir zero."""
+    raiz = dig[:8]
+    try:
+        from compliance_agent.pcrj.natureza_despesa import ELEMENTOS
+        from compliance_agent.pcrj.universo import filtro_sql
+    except ImportError:
+        return None
+    try:
+        tot = con.execute(
+            f"SELECT count(*) n, sum(pago) v, count(DISTINCT orgao) orgaos, "
+            f"min(exercicio) de_, max(exercicio) ate FROM pcrj_despesa "
+            f"WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=? "
+            f"AND {filtro_sql()}", (raiz,)).fetchone()
+        if not tot or not tot["n"]:
+            return None
+        orgs = con.execute(
+            f"SELECT orgao, sum(pago) v FROM pcrj_despesa "
+            f"WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=? "
+            f"AND {filtro_sql()} GROUP BY 1 ORDER BY 2 DESC LIMIT 6", (raiz,)).fetchall()
+        elems = con.execute(
+            f"SELECT substr(natureza,5,2) el, sum(pago) v FROM pcrj_despesa "
+            f"WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=? "
+            f"AND {filtro_sql()} GROUP BY 1 ORDER BY 2 DESC LIMIT 5", (raiz,)).fetchall()
+        razoes = [r["n"] for r in con.execute(
+            "SELECT DISTINCT credor_nome n FROM pcrj_despesa "
+            "WHERE substr(replace(replace(replace(credor_documento,'.',''),'/',''),'-',''),1,8)=?",
+            (raiz,))]
+    except _sqlite3.Error:
+        return None
+    return {
+        "pago": tot["v"] or 0.0, "linhas": tot["n"], "orgaos": tot["orgaos"],
+        "periodo": f"{tot['de_']}–{tot['ate']}",
+        "razoes_sociais": sorted(x for x in razoes if x),
+        "por_orgao": [{"orgao": r["orgao"], "total": r["v"]} for r in orgs],
+        "por_elemento": [{"codigo": r["el"], "nome": ELEMENTOS.get(r["el"]), "total": r["v"]}
+                         for r in elems],
+        "lentes": _lentes_que_marcaram(raiz),
+        "_nota": "universo CONTRATUAL (grupo 3/4, aplicação direta, sem folha/dívida/precatório) — "
+                 "34,2% do bruto pago pelo Município. Agrupado por RAIZ de CNPJ.",
+    }
+
+
+def _lentes_que_marcaram(raiz: str) -> list:
+    """Quais lentes municipais apontaram este CNPJ, lendo o JSON materializado.
+
+    É o que fecha o ciclo do clique: o usuário chega ao dossiê por UMA lente e vê se OUTRAS
+    também o marcaram — a convergência entre réguas independentes, que é o sinal forte."""
+    caminho = RAIZ / "data" / "lentes_estado.json"
+    try:
+        estado = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    def _raizes_do_item(item) -> set:
+        """As raízes de CNPJ que o item cita — inclusive as aninhadas.
+
+        Cada lente guarda o documento num campo próprio (`cnpj`, `raiz`) e algumas o escondem
+        numa lista (`fornecedores`, `raizes`). Varrer só o nível de cima faria a empresa aparecer
+        na lista da lente e sumir do próprio dossiê — clicável para um lado, mudo para o outro."""
+        achadas = set()
+        pilha = [item]
+        while pilha:
+            no = pilha.pop()
+            if isinstance(no, dict):
+                for chave, valor in no.items():
+                    if chave in ("cnpj", "raiz", "cnpj_basico", "documento") and valor:
+                        d = re.sub(r"\D", "", str(valor))
+                        if len(d) >= 8:
+                            achadas.add(d[:8])
+                    elif isinstance(valor, (dict, list)):
+                        pilha.append(valor)
+            elif isinstance(no, list):
+                for v in no:
+                    if isinstance(v, (dict, list)):
+                        pilha.append(v)
+                    elif isinstance(v, str) and len(re.sub(r"\D", "", v)) in (8, 14):
+                        achadas.add(re.sub(r"\D", "", v)[:8])
+        return achadas
+
+    achados = []
+    for nome, bloco in ((estado.get("pcrj") or {}).get("lentes") or {}).items():
+        for item in (bloco.get("topo") or []):
+            if raiz not in _raizes_do_item(item):
+                continue
+            achados.append({"lente": nome, "titulo": bloco.get("titulo"),
+                            "prevalencia": bloco.get("prevalencia"),
+                            "n_na_lente": bloco.get("n"), "item": item})
+            break
+    return achados
 
 
 # ── INTELIGÊNCIA 2026-07-17: sancionadas × contratadas, perdedoras contumazes, fantasmas ──
@@ -2333,3 +2474,107 @@ def api_fontes_frescor():
         return JSONResponse(_cache_put("fontes:frescor", out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pericia/bateria")
+def api_pericia_bateria(so_mortos: bool = False):
+    """Cobertura da BATERIA: quais dos 24 testes de perícia REALMENTE rodam, e o que falta.
+
+    ⚠️ Distinta de `/api/pericia/cobertura` (em `rotas/sistema.py`), que mede **quanto do acervo
+    já recebeu juízo**. Aqui se mede **quantos testes têm insumo**. Um acervo pode estar
+    inteiramente periciado e ainda assim ter 83% dos itens sem exame — é o caso.
+
+    Esta rota existe porque o painel, sem ela, **afirma um trabalho que não houve**. Ele mostra
+    31.017 fornecedores periciados e 27.846 "com indício", e isso parece um sistema em pleno
+    funcionamento. Medido: **620.108 dos 744.259 itens (83,3%) são INDISPONÍVEL**, **20 dos 24
+    testes estão 95%+ indisponíveis** e **nenhum item chega a CONFIRMADO em todo o acervo**.
+
+    A perícia é honesta — cada indisponível traz o motivo por extenso. O que falta é INSUMO, e
+    `insumos_que_destravam` diz qual captura resolve quantos testes: a planilha de custos do
+    contrato sozinha destrava 6 dos 20.
+
+    ⚠️ INDISPONÍVEL **não é** ausência de irregularidade. É ausência de exame.
+
+    `?so_mortos=1` devolve apenas os testes sem insumo.
+    """
+    import sqlite3 as _sq
+    try:
+        from tools.bateria_pericia import cobertura
+        r = cobertura()
+    except ImportError as exc:
+        return JSONResponse({"ok": False, "erro": f"módulo indisponível: {exc}"}, status_code=503)
+    except _sq.Error as exc:
+        return JSONResponse({"ok": False, "erro": f"perícia não disponível: {exc}",
+                             "dica": "a tabela pericia_fornecedor pode não ter sido gerada"},
+                            status_code=503)
+    testes = [x for x in r["testes"] if not x["roda"]] if so_mortos else r["testes"]
+    return JSONResponse({
+        "ok": True,
+        "periciados": r["periciados"],
+        "n_testes": r["n_testes"],
+        "testes_que_rodam": r["testes_que_rodam"],
+        "testes_sem_insumo": r["testes_sem_insumo"],
+        # BUG que a conferência ao vivo pegou: estes campos nasceram no módulo DEPOIS da rota, e
+        # ela não os repassava — o painel recebia `undefined` e imprimia vazio. Rodar não basta:
+        # o teste precisa apontar algo e não apontar quase tudo.
+        "testes_uteis": r.get("testes_uteis"),
+        "uteis": r.get("uteis"),
+        "inertes": r.get("inertes"),
+        "nao_discriminam": r.get("nao_discriminam"),
+        "itens": r["itens"],
+        "itens_indisponiveis": r["itens_indisponiveis"],
+        "fracao_indisponivel": r["fracao_indisponivel"],
+        "confirmados_no_acervo": r["confirmados_no_acervo"],
+        "insumos_que_destravam": r["insumos_que_destravam"],
+        "testes": testes,
+        "aviso": "INDISPONÍVEL é ausência de EXAME, não de irregularidade. "
+                 + str(r.get("_nota") or ""),
+    })
+
+
+@router.get("/api/lentes")
+def api_lentes(lente: Optional[str] = None, top: int = 20, esfera: str = "estadual"):
+    """Lentes de detecção materializadas: convergência, dependência mútua, sanção, porte.
+
+    Lê `data/lentes_estado.json` (gravado por `tools/lentes_materializar.py`) — NÃO calcula na
+    rota: as quatro lentes varrem a OB inteira e somam ~31 s, o que travaria o painel.
+
+    Honestidade: cada lente ORDENA fila de apuração, nenhuma acusa. Lente que falhou na
+    materialização volta com `n: null` (INDISPONÍVEL), nunca com zero.
+    Filtros: `?lente=convergencia&top=20`.
+
+    `esfera=municipal` devolve as lentes da despesa da PREFEITURA do Rio, que trazem junto o
+    `universo_contratual` — o denominador. Sem ele, contagem de lente municipal não se lê: os
+    R$ 89,62 bi brutos incluem folha, dívida e precatório, e só R$ 30,64 bi (34,2%) são
+    contratação. As municipais também devolvem `prevalencia`, `n_ressalvados` e
+    `n_inconclusivos`, porque o que foi qualificado não pode sumir da conta."""
+    caminho = RAIZ / "data" / "lentes_estado.json"
+    try:
+        estado = json.loads(caminho.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return JSONResponse({"ok": False, "erro": f"lentes não materializadas: {exc}",
+                             "dica": "rode tools/lentes_materializar.py"}, status_code=503)
+    top = max(1, min(int(top or 20), 200))
+    if str(esfera).lower().startswith("municip"):
+        bloco = estado.get("pcrj") or {}
+        lentes = bloco.get("lentes", {})
+        if lente:
+            if lente not in lentes:
+                return JSONResponse({"ok": False, "erro": f"lente municipal desconhecida: {lente}",
+                                     "disponiveis": sorted(lentes)}, status_code=404)
+            lentes = {lente: lentes[lente]}
+        saida = {k: {**v, "topo": (v.get("topo") or [])[:top]} for k, v in lentes.items()}
+        return JSONResponse({"ok": True, "esfera": "municipal",
+                             "gerado_em": estado.get("gerado_em"),
+                             "universo_contratual": bloco.get("universo_contratual"),
+                             "lentes": saida, "aviso": estado.get("aviso")})
+    lentes = estado.get("lentes", {})
+    if lente:
+        if lente not in lentes:
+            return JSONResponse({"ok": False, "erro": f"lente desconhecida: {lente}",
+                                 "disponiveis": sorted(lentes)}, status_code=404)
+        lentes = {lente: lentes[lente]}
+    saida = {k: {**v, "topo": (v.get("topo") or [])[:top]} for k, v in lentes.items()}
+    return JSONResponse({"ok": True, "esfera": "estadual",
+                         "gerado_em": estado.get("gerado_em"), "lentes": saida,
+                         "aviso": estado.get("aviso")})

@@ -26,7 +26,12 @@ _RAIZ = Path(__file__).resolve().parents[1]
 _YAML = _RAIZ / "capabilities.yaml"
 
 # Medido em 2026-07-30. SÓ PODE CAIR.
-TETO_PRONTO_SEM_MENU = 48
+# 2026-08-02: o teto contava BRUTO — somava a dívida real com as exceções já declaradas logo
+# abaixo, e por isso vivia em 48 quando a dívida de verdade era 25. Pior: tirar um menu
+# DUPLICADO (mecanismo interno que aparecia como capacidade própria) fazia o número SUBIR, como
+# se limpar a tela criasse dívida. Agora mede o que interessa — capacidade pronta que ninguém
+# alcança e que ninguém justificou —, e o teto cai de 48 para 25 no mesmo movimento.
+TETO_PRONTO_SEM_MENU = 25
 
 # Capacidades que NÃO devem ter botão, uma a uma e com o motivo — nunca um padrão que engole o que
 # não deveria (a lição de `_SEM_UI_POR_DESENHO` na catraca de rotas órfãs).
@@ -38,6 +43,11 @@ _SEM_MENU_POR_DESENHO = {
     # gatilhos de COLETA: pesados, com janela de horário, e disparo acidental custa caro
     "siafe_atualizar", "siafe_coletar_ug", "emendas_coletar", "pcrj_gastos_coletar",
     "editais_corpus", "enriquecer_socios", "cruzador", "vigiar",
+    # MECANISMO da mesma capacidade, não capacidade: `processo_360_avaliar` é o POST assíncrono
+    # que o `/processo` dispara quando o GET devolve 404. Tinha item de menu próprio e o leitor
+    # via "Avaliação 360 de um processo SEI" e "Avaliar um processo SEI (360)" como duas coisas
+    # — foi o teto do menu curado que pegou (2026-08-02). A porta de entrada é uma só.
+    "processo_360_avaliar",
 }
 
 
@@ -46,8 +56,12 @@ def _capacidades() -> list[dict]:
 
 
 def _prontas_sem_menu() -> list[str]:
+    """Dívida REAL: pronta, sem porta e sem justificativa. O que está em _SEM_MENU_POR_DESENHO
+    não é dívida — é decisão, uma a uma e com motivo (e o `test_declaracao_sem_fantasma` impede
+    que a lista guarde id morto)."""
     return sorted(c["id"] for c in _capacidades()
-                  if str(c.get("status", "")).upper() == "PRONTO" and not c.get("menu"))
+                  if str(c.get("status", "")).upper() == "PRONTO" and not c.get("menu")
+                  and c["id"] not in _SEM_MENU_POR_DESENHO)
 
 
 def test_divida_de_capacidade_sem_porta_nao_cresce():

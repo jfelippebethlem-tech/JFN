@@ -356,7 +356,30 @@ def conteudo_real(d: dict) -> str:
     return "\n\n---\n\n".join(partes)
 
 
-STEPFUN = "stepfun/step-3.7-flash:free"
+# MODELO GRÁTIS DO SWEEP — fonte única (20 usos no repo derivam desta constante).
+#
+# O NOME É HISTÓRICO: a constante se chama STEPFUN porque foi o stepfun que serviu o sweep por
+# meses. O catálogo do provedor ROTACIONA, e o id de ontem morre sem aviso:
+#   · `stepfun:free` (rótulo original) -> 404 "Model not found";
+#   · `stepfun/step-3.7-flash:free` (correção anterior) -> 400 "missing tags";
+#   · `stepfun/step-3.7-flash` (pago) -> 404 "requires available credits".
+#
+# MEDIDO em 2026-08-27, testando os SEIS modelos com `pricing.prompt == 0` do catálogo:
+#   meituan/longcat-2.0:free ....... 200 OK, 2,3 s, JSON correto, contexto 1M   <- ÚNICO que serve
+#   upstage/solar-pro4:free ........ 400 "missing tags"
+#   tencent/hy3:free ............... 400 "missing tags"
+#   stepfun/step-3.7-flash:free .... 400 "missing tags"
+#   poolside/laguna-xs-2.1:free .... 429 "temporarily unavailable"
+#   poolside/laguna-s-2.1:free ..... erro de protocolo
+#
+# O SINTOMA ENGANAVA: a varredura registrava "três leituras seguidas sem resposta — a cadeia grátis
+# está fora … retomar quando a cota renovar", e o log tinha 25 ocorrências de 429. Parecia cota.
+# Era modelo inexistente: 13 de 1.170 chamadas ok em 24 h (98,9% de falha) com HTTP 400/404.
+# A conta e a chave estavam boas o tempo todo — `meituan/longcat-2.0:free` respondeu de primeira.
+#
+# COMO CONFERIR quando isto voltar a quebrar (e vai): `GET {base}/v1/models` com a chave do nous e
+# filtrar `pricing.prompt == 0`. Não presumir cota antes de testar UM modelo do catálogo vivo.
+STEPFUN = os.environ.get("SEI_MODELO_SWEEP", "meituan/longcat-2.0:free")
 
 
 async def extrair_ficha_producao(texto: str, preferir_gratis: bool = True) -> tuple[dict, str]:

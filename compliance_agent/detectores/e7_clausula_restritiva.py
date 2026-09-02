@@ -33,6 +33,8 @@ nunca inventa número. Cada cláusula confirmada cita súmula/dispositivo; itens
 carregam o aviso (o relatório o exibe)."""
 from __future__ import annotations
 
+import re
+
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
@@ -117,9 +119,21 @@ def _teste_atestado_identico(c: dict, ve: float | None) -> tuple[str | None, str
 
 
 def _teste_indices(c: dict, ve: float | None) -> tuple[str | None, str]:
+    # DIZER O QUE FOI CONFERIDO. `justificativa_autos` é calculado sobre a MESMA LINHA da cláusula
+    # (`coletor_edital`), e a Súmula TCU 289 exige a justificativa no PROCESSO — que na prática
+    # mora no estudo técnico, no termo de referência ou num despacho, nunca dentro da frase que
+    # fixa o índice. Escrever "sem justificativa nos autos" afirma uma ausência que ninguém
+    # verificou nos autos.
+    #
+    # Medido em 2026-08-05 no SEI-270099/000714/2022: procurar palavra de justificativa perto de
+    # "índice" no edital inteiro devolve VERDADEIRO — e o trecho é uma "NOTA 3.1" sobre GARANTIA,
+    # onde o que casou foi "em razão da celebração de Termo Aditivo". Alargar a janela inventaria
+    # a exculpação, que é o erro simétrico. Então a régua não muda; muda o que ela DECLARA.
     if c.get("justificativa_autos"):
-        return "ausente", "índice contábil com justificativa nos autos"
-    return "medio", "índice contábil sem justificativa nos autos / parâmetro de mercado (Súmula TCU 289)"
+        return "ausente", "índice contábil justificado na própria cláusula"
+    return "medio", ("índice contábil sem justificativa NA PRÓPRIA CLÁUSULA — a Súmula TCU 289 "
+                     "exige justificativa no processo, que costuma viver no estudo técnico ou no "
+                     "termo de referência: conferir lá antes de concluir")
 
 
 def _teste_amostra(c: dict, ve: float | None) -> tuple[str | None, str]:
@@ -151,6 +165,36 @@ _TESTES_FINALISTICOS: dict[str, tuple] = {
 }
 
 _NIVEIS_MARCA = {"medio", "forte", "critico"}  # níveis que contam como cláusula restritiva marcada
+
+
+def _trecho_completo(clausula: str, edital: str | None, largura: int = 320) -> str:
+    """A cláusula com o contexto ao redor, recortada do EDITAL — não o fragmento do banco.
+
+    A tabela `edital_clausula` guarda o trecho já cortado na ingestão (mediana de 91 caracteres,
+    e `trecho_fonte` traz o mesmo), então a evidência chegava ao fiscal partida no meio da frase:
+    "9.3.2 Prova de possuir no seu quadro permanente, na data da Concorrência, profissional ou" —
+    e com meia cláusula não se decide nada. Medido em 2026-08-04 nos 13 disparos do acervo.
+
+    O texto integral do edital JÁ ESTÁ no contexto (`tr_texto`), então basta relocalizar a
+    cláusula nele e alargar a janela até a fronteira de frase mais próxima. Sem o edital no
+    contexto, devolve o que havia — nunca menos.
+    """
+    base = (clausula or "").strip()
+    if not base:
+        return ""
+    if not edital:
+        return base[:largura]
+    pos = edital.lower().find(base[:60].lower())
+    if pos < 0:
+        return base[:largura]
+    ini = max(0, pos - largura // 3)
+    fim = min(len(edital), pos + len(base) + largura)
+    seg = re.sub(r"\s+", " ", edital[ini:fim]).strip()
+    # termina em fronteira de frase, para não entregar palavra pela metade
+    corte = seg.rfind(". ")
+    if corte > largura // 2:
+        seg = seg[:corte + 1]
+    return seg
 
 
 class E7ClausulaRestritiva(Detector):
@@ -212,7 +256,10 @@ class E7ClausulaRestritiva(Detector):
             score = max(score, ancora(nivel))
             marcadas.append({**c, "_nivel": nivel})
             razoes.append(f"[{tipo}/{nivel}] {motivo}")
-            res.add_evidencia(fonte=f"cláusula do edital ({tipo})", trecho=str(c.get("texto") or "")[:160])
+            res.add_evidencia(fonte=f"cláusula do edital ({tipo})",
+                              trecho=_trecho_completo(
+                                  str(c.get("texto") or ""),
+                                  contexto.get("edital_texto") or contexto.get("tr_texto")))
             if tipo_fund not in fundamentacao:
                 fund = fundamentar_clausula(tipo_fund)
                 if fund:

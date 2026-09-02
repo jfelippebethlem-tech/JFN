@@ -20,11 +20,15 @@ from __future__ import annotations
 
 import os
 import re
+import logging
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 
 # Regex (pedido do dono): casa os instrumentos de regularização fora de contrato regular no texto livre da OB.
 # "RECONHEC...DIVIDA" tolera "RECONHECIMENTO DE DÍVIDA" (a frase natural) — janela de até 12 chars.
+logger = logging.getLogger(__name__)
+
 _RX_TAC = re.compile(r"AJUSTE DE CONTAS|INDENIZ|RECONHEC.{0,12}D[IÍ]VIDA", re.IGNORECASE)
 
 # Faixas de severidade por % do valor pago via TAC/indenização (sobre o universo COM observação preenchida).
@@ -147,6 +151,80 @@ def tac_por_cnpj(cnpj: str, *, db_path=None) -> dict:
 
 
 # ───────────────────────── por UG (o sistêmico) ─────────────────────────
+
+@lru_cache(maxsize=4)
+def _mapa_cnpj_ug(caminho: str) -> dict:
+    """Mapa `CNPJ → UG onde ele mais recebeu`, montado numa VARREDURA ÚNICA.
+
+    `replace(replace(replace(favorecido_cpf,…)))` não usa índice: cada consulta por CNPJ lê 1,16
+    milhão de OBs e custa **8,45 segundos**. Medido em 2026-08-04, na mesma sessão em que esta
+    consulta foi introduzida: a reavaliação do acervo caiu de 0,8 s para 3,3 s por processo, e um
+    cache por CNPJ não resolveria — com ~1.000 fornecedores distintos, seriam horas só nas
+    primeiras chamadas.
+
+    Uma passada monta tudo. O dicionário é pequeno (um par por CNPJ) e vale por execução.
+    """
+    mapa: dict[str, tuple[float, str]] = {}
+    try:
+        con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
+        try:
+            for cpf, ug, v in con.execute(
+                    "SELECT replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-',''), "
+                    "       ug_codigo, SUM(valor) FROM ordens_bancarias GROUP BY 1, 2"):
+                if not cpf or not ug:
+                    continue
+                valor = float(v or 0)
+                if valor > mapa.get(str(cpf), (0.0, ""))[0]:
+                    mapa[str(cpf)] = (valor, str(ug))
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return {}
+    return {k: v[1] for k, v in mapa.items()}
+
+
+def tac_da_unidade_do_cnpj(cnpj: str, *, db_path=None) -> dict:
+    """Taxa de TAC da UNIDADE onde este fornecedor mais recebeu — a base de comparação.
+
+    POR QUE ISTO EXISTE. O C9 dispara com limiar ABSOLUTO (30% do valor via TAC). Medido em
+    2026-08-04: **24 dos 41 disparos do acervo** eram de fornecedores a menos de 2× a taxa da
+    própria unidade, e nove deles marcavam **29,8% numa unidade que paga 27,0%** — 1,1×, ou seja,
+    indistinguível da norma local. Acusar o contratado ali é apontar para o lado errado: a
+    docstring do próprio C9 diz que o vício é do ÓRGÃO, com o fornecedor como beneficiário.
+
+    A leitura barata: o ranking por unidade já é calculado pelo cron
+    (`tools/tac_ranking_ugs.py` → `data/tac_ranking_ugs.json`), então aqui é um dicionário. Sem o
+    arquivo, calcula na hora — e sem dado nenhum devolve `{}`, que o detector trata como
+    "sem base de comparação" e mantém o comportamento antigo.
+    """
+    import json
+
+    d = _digitos(cnpj)
+    if len(d) < 14:
+        return {}
+    caminho = _resolver_db(db_path)
+    if not caminho.exists():
+        return {}
+    ug = _mapa_cnpj_ug(str(caminho)).get(d, "")
+    if not ug:
+        return {}
+
+    pronto = _root() / "data" / "tac_ranking_ugs.json"
+    try:
+        for u in json.loads(pronto.read_text(encoding="utf-8")).get("unidades") or []:
+            if str(u.get("ug")) == ug:
+                return {"ug": ug, "ug_nome": u.get("nome") or "", "pct": u.get("pct"),
+                        "fonte": "ranking pré-calculado"}
+    except (OSError, ValueError) as e:
+        # ranking pré-calculado ausente ou ilegível NÃO é ausência de base: mede-se na hora, mais
+        # caro. Calar aqui esconderia que o cron do `tac_ranking_ugs` parou de rodar.
+        logger.debug("ranking de TAC por unidade indisponível (%s) — medindo na hora", str(e)[:80])
+    medida = tac_por_ug(ug, db_path=db_path)
+    if not medida or not medida.get("n"):
+        return {}
+    return {"ug": ug, "ug_nome": medida.get("ug_nome") or "", "pct": medida.get("pct"),
+            "fonte": "medido na hora"}
+
 
 def tac_por_ug(ug_codigo: str, *, db_path=None) -> dict:
     """% do valor pago por UMA UG pagadora via TAC/indenização (o sinal sistêmico: FSERJ/294200).

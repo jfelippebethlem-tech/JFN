@@ -17,16 +17,23 @@ from __future__ import annotations
 import pytest
 
 from tools.bench_modelos import PROVAS, _p_documento_longo
+# O gabarito vem das CONSTANTES do módulo, nunca repetido aqui. Repeti-lo foi o que fez estes
+# testes falharem quando o documento da prova precisou mudar: o valor e os empenhos viraram
+# literais em quatro lugares, e o teste passou a afirmar um gabarito que não existia mais.
+from tools.bench_modelos import _EMPENHOS as _EMP
+from tools.bench_modelos import _VALOR_TRIBUTOS as _VALOR
+
+_E1, _E2 = _EMP[0], _EMP[1]
 
 
 def test_resposta_completa_e_correta_vale_tudo():
     assert _p_documento_longo(
-        "Val Aprox Tributos: R$ 74.650,31. Empenhos: 2024NE07134 e 2024NE08035.") == 100
+        f"Val Aprox Tributos: R$ {_VALOR}. Empenhos: {_E1} e {_E2}.") == 100
 
 
 def test_achar_so_um_empenho_perde_pontos_de_completude():
     """Achar um dos dois é o resultado típico de quem desiste no meio do documento."""
-    parcial = _p_documento_longo("R$ 74.650,31 e o empenho 2024NE07134.")
+    parcial = _p_documento_longo(f"R$ {_VALOR} e o empenho {_E1}.")
     assert 50 < parcial < 100
 
 
@@ -43,7 +50,7 @@ def test_falha_honesta_vale_mais_que_alucinacao():
 
 def test_completude_pontua_mesmo_sem_o_valor():
     """As duas dimensões são independentes: recuperação e cobertura do documento."""
-    assert _p_documento_longo("Empenhos: 2024NE07134 e 2024NE08035.") >= 50
+    assert _p_documento_longo(f"Empenhos: {_E1} e {_E2}.") >= 50
 
 
 @pytest.mark.parametrize("resp", ["", "   ", "não sei responder"])
@@ -66,7 +73,7 @@ def test_execucao_de_prova_unica_produz_nota():
     from tools import bench_modelos as B
 
     with patch.object(B, "_chamar_com_paciencia",
-                      return_value="R$ 74.650,31 · 2024NE07134 e 2024NE08035"):
+                      return_value=f"R$ {_VALOR} · {_E1} e {_E2}"):
         r = B.avaliar_modelo("modelo/x:free", ["documento_longo"])
     assert r["nota"] == 100.0, "prova única tem de produzir nota"
     assert r["n_provas"] == 1

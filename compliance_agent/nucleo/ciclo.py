@@ -112,6 +112,10 @@ def rodar_ciclo(session=None, limite_pericias: int = 200) -> dict:
     relatorio["calibracoes_mantidas"] = evolucao.mantidos
     relatorio["calibracoes_revertidas"] = evolucao.revertidos
     relatorio["red_flags_propostas"] = evolucao.red_flags_propostas
+    relatorio["sinal"] = {"saturado": evolucao.saturado,
+                          "sem_caso_real": evolucao.sem_caso_real,
+                          "casos_reais": evolucao.casos_reais,
+                          "motivo": evolucao.motivo}
 
     # 4. Estado da memória e do feedback.
     relatorio["memoria"] = memoria_pericial.estatisticas()

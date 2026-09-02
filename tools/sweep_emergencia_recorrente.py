@@ -35,8 +35,29 @@ def _moeda(v: float) -> str:
 
 
 def carregar(con: sqlite3.Connection):
+    """Uma linha por PROCESSO — que é a unidade da contratação. Nunca por item.
+
+    `compras_diretas_tcerj` tem uma linha por ITEM, e o campo `valor` repete o **total do
+    processo** em cada uma. Medido em 2026-08-11: dos 1.486 processos com 2+ linhas, **1.485 têm
+    `valor` idêntico em todas**; somar linha a linha infla o acervo inteiro em **2,30×**
+    (R$ 39,65 bi contra R$ 17,20 bi). No DETRAN/2025 isso virava "6 contratações emergenciais,
+    R$ 148,8 mi" onde há UM processo de R$ 24,8 mi, com seis itens de vigilância
+    (armada/desarmada, diurno/noturno, supervisor) — a soma de `quantidade × valor_unitario`
+    vezes os 6 meses de vigência dá exatamente o `valor` repetido.
+
+    O sweep IRMÃO já fazia assim (`sweep_fracionamento_tcerj`: `MAX(valor) ... GROUP BY processo`,
+    com o comentário "1 linha por processo"). A régua existia numa cópia só — e é a mesma família
+    do fracionamento que esteve 26× inflado: contar LINHA onde o fenômeno é PROCESSO.
+
+    `enquadramento_legal` entra como 6º campo porque o OBJETO não prova a emergência: objeto e
+    dispositivo só coincidem em 613 de 1.504 dispensas do art. 75, VIII — 891 delas (R$ 2,60 bi)
+    diziam "PEITO DE FRANGO" e ficavam fora da triagem.
+    """
     return con.execute(
-        "SELECT unidade, ano_processo, fornecedor, valor, objeto FROM compras_diretas_tcerj"
+        "SELECT unidade, ano_processo, fornecedor, MAX(valor), MIN(objeto), "
+        "       MIN(enquadramento_legal) "
+        "FROM compras_diretas_tcerj "
+        "GROUP BY processo, unidade, ano_processo, fornecedor"
     ).fetchall()
 
 

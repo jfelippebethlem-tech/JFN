@@ -160,6 +160,20 @@ const CAPS_MESTRAS = [
   "descricao": "Anomalias em OBs (+Benford na Onda 3)"
  },
  {
+  "id": "lentes_cruzadas",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Lentes cruzadas (empresa em 2+ detectores)",
+  "cmd": "",
+  "exemplo": "quais empresas acendem em mais de uma lente?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/lentes",
+  "ordem": 25,
+  "descricao": "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao"
+ },
+ {
   "id": "responsaveis_processo",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",
@@ -188,18 +202,18 @@ const CAPS_MESTRAS = [
   "descricao": "Avaliacao 360 do PROCESSO como um todo (fases, ordem dos marcos, pericia A1-A5, detectores P/E/J/C/X, acatamento de pareceres com suficiencia do emissor, score de convergencia)"
  },
  {
-  "id": "processo_360_avaliar",
+  "id": "lentes_municipais",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",
   "grupo_rot": "Investigação",
-  "nome": "Avaliar um processo SEI (360)",
+  "nome": "Lentes municipais (Prefeitura do Rio)",
   "cmd": "",
-  "exemplo": "avaliar o processo SEI-070026/000410/2021",
+  "exemplo": "o que a Prefeitura do Rio pagou fora da curva?",
   "tipo": "http",
-  "metodo": "POST",
-  "rota": "/api/processo/avaliar",
+  "metodo": "GET",
+  "rota": "/api/lentes",
   "ordem": 27,
-  "descricao": "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)"
+  "descricao": "26 lentes sobre a despesa da PREFEITURA do Rio (pcrj_despesa), com o DENOMINADOR junto: universo contratual de R$ 30,64 bi de R$ 89,62 bi brutos (34,2%) — o resto e folha, divida, "
  },
  {
   "id": "conjunto_portfolio",
@@ -214,6 +228,20 @@ const CAPS_MESTRAS = [
   "rota": "/api/conjunto/portfolio",
   "ordem": 27,
   "descricao": "Ranking de ORGAOS por risco de certame (peer-benchmark: desvio da mediana do orgao vs pares)"
+ },
+ {
+  "id": "pericia_bateria",
+  "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
+  "nome": "Bateria de perícia — quanto do exame aconteceu",
+  "cmd": "",
+  "exemplo": "a pericia esta confirmando alguma coisa?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/pericia/bateria",
+  "ordem": 28,
+  "descricao": "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos"
  },
  {
   "id": "emendas_pericia",

@@ -24,7 +24,9 @@ import json
 import logging
 import os
 import re
+import sys
 import signal
+from functools import lru_cache
 import sqlite3
 import time
 from datetime import datetime
@@ -77,6 +79,36 @@ def _browser_morto(exc: BaseException) -> bool:
     if "targetclosed" in nome or "browser" in nome and "closed" in nome:
         return True
     return any(s in msg for s in _SINAIS_BROWSER_MORTO)
+
+
+# ── O CONTEXTO DO NAVEGADOR É UM SÓ, e isso não é preferência de estilo ───────────────────────
+# Medido em 2026-08-07: dos três caminhos que fazem login no SEI aqui, dois montavam o contexto com
+# `user_agent` de desktop e o terceiro — a RECAPTURA — não. Resultado no log: **16 slots de
+# recaptura, 16 abortos, ZERO documento recuperado**, sempre com a mesma mensagem de "login não
+# completou em 20 tentativas". A mensagem levantava a hipótese de sessão anterior deixada aberta;
+# ninguém a conferiu, e a diferença real era o navegador se apresentando como HeadlessChrome.
+#
+# Pior que o defeito era a forma dele: o passo RODAVA, escrevia no log e não entregava nada — a
+# aparência de funcionamento. Três cópias de uma configuração é convite para a quarta divergir, por
+# isso a montagem passa a ser uma só. Quem precisar mudar o UA muda aqui, para os três.
+class FalhaDeclarada(Exception):
+    """Falha JÁ diagnosticada e logada — o que falta é o código de saída dizer o mesmo.
+
+    TIPO PRÓPRIO, e não `RuntimeError`, porque `RuntimeError` é o que um crash genérico levanta:
+    a catraca `test_main_engole_excecao_de_run` simula justamente "write EPIPE — browser morreu no
+    meio" com um `RuntimeError`, e usá-lo como sinal misturaria as duas coisas — um crash de
+    verdade sairia com a mensagem de falha esperada, sem o aviso de "erro não previsto" que manda
+    alguém olhar. Ela pegou isso na primeira tentativa desta mudança.
+    """
+
+
+_UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+               "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+
+
+async def _contexto_sei(b):
+    """O contexto que o SEI aceita — mesmo UA para os três caminhos de login."""
+    return await b.new_context(ignore_https_errors=True, locale="pt-BR", user_agent=_UA_DESKTOP)
 
 
 def na_minha_fatia(processo: str, indice: int, total: int) -> bool:
@@ -180,6 +212,20 @@ def _unidades_sem_acesso(prog: dict, min_amostra: int = 6) -> set:
     return {u for u in tot if tot[u] >= min_amostra and zero[u] == tot[u]}
 
 
+# ORÇAMENTO DE DOCUMENTOS DA CADEIA — o teto que faltava.
+#
+# O `max_rel` limitava PROCESSOS relacionados, não documentos, e um só relacionado pode trazer mil.
+# Medido na VM-2 em 2026-08-30: três processos de ~50 docs arrastaram cadeias de 948, 968 e 881
+# documentos, a 652 s, 588 s e 524 s cada — contra `timeout 900` do disparo. A máquina caiu de
+# **21 processos/dia para ZERO**: gastava a janela num só e era morta antes de completar.
+#
+# O NÚMERO VEM DA MEDIÇÃO, não de palpite: sobre 3.156 processos arquivados, a árvore tem
+# mediana 19 docs, p75 41, p90 65 — e só 1,0% passa de 300. Um teto de 300 preserva 99% das
+# cadeias inteiras e corta exatamente a cauda que estoura o orçamento. Ajustável por
+# `SEI_MAX_DOCS_CADEIA` para quem quiser a cadeia completa num processo específico.
+MAX_DOCS_CADEIA = int(os.environ.get("SEI_MAX_DOCS_CADEIA", "300"))
+
+
 def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     """Processos SEI distintos das OBs, priorizando as UNIDADES que o itkava já leu (escopo
     aprendido), depois por valor desc. Filtra por UG e/ou CNPJ do favorecido (alvo de um relatório)."""
@@ -209,9 +255,36 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         f"WHERE {where_siafe} GROUP BY processo ORDER BY tot DESC",
         tuple(args),
     ).fetchall()
+    sinal = _raizes_com_sinal_osint()
+    credores = _credores_por_processo(con) if sinal else {}
+    provados = _fila_com_lacuna_provada(con)
+    folha = _processos_de_folha(con)
     con.close()
     legiveis = _unidades_legiveis()
-    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1, -(r[2] or 0)))
+    # ORDEM: unidade que rende documentos primeiro; depois o que o PARECER PROVA que falta (não há
+    # hipótese aqui — o documento existe e nós não o temos); depois o que a inteligência marcou; e
+    # só então o valor. Valor não é risco: é o tamanho do risco quando ele existe.
+    def _norm_proc(x):
+        return re.sub(r"\D", "", str(x))
+
+    provados_norm = {_norm_proc(x) for x in provados}
+    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
+                             0 if _norm_proc(r[0]) in provados_norm else 1,
+                             0 if (credores.get(r[0]) or set()) & sinal else 1,
+                             # FOLHA/PREVIDÊNCIA por último dentro do estrato: 82% do top-50 por
+                             # valor era folha, e o browser é o recurso mais escasso da casa.
+                             1 if r[0] in folha else 0,
+                             -(r[2] or 0)))
+    n_prov = sum(1 for r in rows if _norm_proc(r[0]) in provados_norm)
+    n_pri = sum(1 for r in rows if (credores.get(r[0]) or set()) & sinal) if sinal else 0
+    n_folha = sum(1 for r in rows if r[0] in folha)
+    if n_prov or n_pri:
+        _log(f"fila: {n_prov} com lacuna PROVADA pelo parecer e {n_pri} com sinal OSINT no credor "
+             f"entram na frente (de {len(rows)}); ordem = legível > lacuna provada > sinal > "
+             f"fornecedor antes de folha > valor")
+    if n_folha:
+        _log(f"fila: {n_folha} processos são de FOLHA/PREVIDÊNCIA (credor genérico) e foram "
+             f"rebaixados dentro do próprio estrato — rebaixados, não excluídos.")
     # FATIA da máquina: com duas capturando, cada uma fica com metade determinística do
     # universo. Sem isto as duas começam pelo mesmo processo (mesma fila, mesma ordem) e
     # gastam o dobro de browser para entregar a mesma coisa. Ver `na_minha_fatia`.
@@ -221,6 +294,98 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         rows = [r for r in rows if na_minha_fatia(r[0], indice, total)]
         _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
     return rows
+
+
+def _fila_com_lacuna_provada(con) -> set[str]:
+    """Processos que o PRÓPRIO PARECER prova estarem incompletos na nossa captura.
+
+    `sei_fila_captura` era escrita por `fila_recaptura_por_parecer` e **lida por ninguém** — só um
+    relatório a consultava. Os 380 processos gravados em 2026-08-07, com a lista dos documentos que
+    o parecer cita e a nossa pasta não tem, nunca voltavam para captura: a fila era um beco.
+
+    Isto é a prioridade MAIS ALTA da fila, acima do sinal OSINT, e a razão é simples: aqui não há
+    hipótese. O documento existe (o parecer o cita), nós não o temos, e a falta já rebaixou cinco
+    acusações de "pagamento sem prova de entrega" para INDISPONÍVEL. Recapturar converte uma
+    ressalva em resposta.
+    """
+    try:
+        return {str(r[0]) for r in con.execute("SELECT numero_sei FROM sei_fila_captura")}
+    except sqlite3.Error:
+        return set()
+
+
+def _raizes_com_sinal_osint() -> set[str]:
+    """Raízes de CNPJ que a fila curada de agente público já marcou — a inteligência que temos.
+
+    POR QUE A CAPTURA PRECISA DISSO. O universo do SIAFE tem 45.634 processos e a casa capturou
+    2.182 (4,8%); a ~16 processos por dia, ler tudo levaria SETE ANOS. A fila já ordenava por
+    VALOR, e valor não é risco: um pagamento grande e limpo entra antes de um pequeno com agente
+    público no quadro societário da contratada.
+
+    Medido em 2026-08-06: dos 44.072 processos ainda não capturados, **632** têm credor na fila
+    curada de `agente_publico_reverso` (307 raízes, já sem homônimo comprovado e sem o que é
+    desenho de programa). São 1,4% do universo — quarenta dias de captura em vez de sete anos.
+
+    Degrada em silêncio de propósito: sem o arquivo, devolve vazio e a ordem volta a ser a antiga.
+    Prioridade que quebra a captura seria pior que prioridade nenhuma.
+    """
+    alvo = Path(__file__).resolve().parent.parent / "data" / "agente_publico_fila.json"
+    if not alvo.exists():
+        return set()
+    try:
+        corpo = json.loads(alvo.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    return {x["cnpj_basico"] for x in corpo.get("itens", [])
+            if not x.get("explicacao_institucional")}
+
+
+def _processos_de_folha(con) -> set[str]:
+    """Processos cujo dinheiro é FOLHA/PREVIDÊNCIA, não pagamento a fornecedor.
+
+    A fila termina em `-valor`, e a casa já escreveu que "valor não é risco". O que faltava era
+    notar o que o valor bruto de fato ranqueia. Quem encabeça é `CG0004700` (**FOLHA DE
+    PAGAMENTOS**), `123400`/`123499` (RIOPREV e plano previdenciário) e `CG0006026`
+    (RIOPREV/INATIVOS) — credor GENÉRICO, que não tem CNPJ nem CPF.
+
+    MEDIDO NA FILA REAL, por estrato (2026-08-11) — e a medição corrige a primeira versão desta
+    nota, que citava o ranking por valor PURO (82% do top-50) e teria exagerado o efeito:
+
+        estrato                                    processos   folha no seu top-50
+        legível + lacuna provada                       2.346          0
+        legível + sinal OSINT no credor                2.346         22
+        legível, sem sinal (o estrato de trabalho)    77.748         30
+        não legível, sem sinal                        38.423         48
+
+    Ou seja: na cabeça de HOJE não muda nada — os estratos de lacuna provada e OSINT ocupam as
+    primeiras vagas e são de fornecedor. O desperdício está no estrato onde o sweep passa a vida,
+    e no estrato do próprio sinal OSINT, onde 22 das 50 primeiras vagas iam para a folha.
+
+    O sweep lê ~16 processos por dia com browser. Mandar as primeiras vagas para a folha é gastar
+    o recurso mais escasso da casa no que os detectores de licitação e contrato nem examinam.
+
+    REBAIXAR, NÃO EXCLUIR, e dentro do mesmo estrato: folha tem irregularidade própria (a casa já
+    faz perícia de benefício×vínculo) e segue alcançável. O que não pode é ela chegar na frente do
+    fornecedor por um critério que não mede risco.
+
+    A RÉGUA MORA EM `compliance_agent/credor_generico`, não aqui: o painel publica a mesma
+    separação (quanto da exposição é fornecedor, quanto é folha) e duas cópias do mesmo critério
+    divergem — foi o que aconteceu com o teto do art. 125, que chegou a cinco cópias com valores
+    diferentes dentro de detectores de risco alto.
+    """
+    from compliance_agent.credor_generico import processos_de_folha
+    return processos_de_folha(con)
+
+
+def _credores_por_processo(con) -> dict[str, set[str]]:
+    """Raiz do credor de cada processo, pelas OBs do SIAFE."""
+    fora: dict[str, set[str]] = {}
+    for proc, doc in con.execute(
+            "SELECT processo, credor FROM ob_orcamentaria_siafe WHERE processo IS NOT NULL"):
+        d = re.sub(r"\D", "", str(doc or ""))
+        if len(d) == 14:
+            fora.setdefault(str(proc), set()).add(d[:8])
+    return fora
 
 
 def _arvores_encerradas() -> set[str]:
@@ -328,6 +493,126 @@ def _ja_lido_ok(proc: str) -> bool:
     return False
 
 
+_DIAS_PARA_NOVA_CHANCE = int(os.environ.get("SEI_SWEEP_DIAS_RETENTAR", "14"))
+
+
+def _tentativa_expirou(em: str | None) -> bool:
+    """Faz mais de `_DIAS_PARA_NOVA_CHANCE` que a última tentativa falhou?
+
+    Sem data registrada NÃO expira: na dúvida, mantém o comportamento antigo — a guarda existe
+    para não martelar, e afrouxá-la por ausência de dado seria o oposto do que a casa faz.
+    """
+    if not em:
+        return False
+    try:
+        return (datetime.now() - datetime.fromisoformat(str(em))).days >= _DIAS_PARA_NOVA_CHANCE
+    except (TypeError, ValueError):
+        return False
+
+
+_DIAS_RECONFERIR_RESTRITO = int(os.environ.get("SEI_SWEEP_DIAS_RESTRITO", "90"))
+
+
+@lru_cache(maxsize=1)
+def _registro_restritos() -> dict:
+    """O controle de restritos, lido UMA vez por execução do sweep.
+
+    São 419 KB: reparsear por processo custava 4,5 ms, ~9,5 s por passada e ~95 s por ciclo do
+    cron numa VM de 2 vCPU. A fila é montada inteira antes do laço de leitura, e quem escreve no
+    registro é o `sei_restritos.registrar`, depois — dentro de uma execução o arquivo não muda.
+    """
+    try:
+        return json.loads((REPO / "data" / "sei_restritos.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _restrito_confirmado(proc: str) -> bool:
+    """O registro de controle diz que este processo é de ACESSO RESTRITO, e a marca ainda é recente?
+
+    Dos 2.760 abandonados, 311 estão como RESTRITO (score>=2: duas leituras 0-doc de um processo
+    que EXISTE no cadastro) e 69 como RESTRITO?. Retentá-los é gastar ~100s cada em acesso negado
+    documentado — INDISPONÍVEL de verdade, não falha intermitente. O sweep rende mais nos 2.262
+    que são anteriores ao registro (2026-07-14) e sobre os quais não há evidência nenhuma.
+
+    Só o RESTRITO **confirmado** (score>=2) segura; `RESTRITO?` com uma leitura só volta à fila —
+    é precisamente a segunda leitura que confirma ou desmente a marca.
+
+    E a marca também EXPIRA, em janela mais larga: nível de acesso muda, processo é desclassificado,
+    o acesso do itkava é ampliado. Trocar uma isenção permanente por outra seria repetir o defeito
+    que esta mesma função foi escrita para corrigir.
+    """
+    try:
+        e = _registro_restritos().get(re.sub(r"\D", "", proc or ""))
+        if not isinstance(e, dict) or e.get("status") != "RESTRITO":
+            return False
+        visto = datetime.fromisoformat(str(e.get("ultima") or "").replace(" ", "T"))
+        return (datetime.now() - visto).days < _DIAS_RECONFERIR_RESTRITO
+    except (OSError, ValueError, TypeError, AttributeError):
+        return False  # sem registro legível não se nega leitura a ninguém
+
+
+def _arquivo_incompleto(proc: str) -> bool:
+    """A captura arquivada deste processo está ABAIXO do mínimo que a casa exige para chamá-la
+    íntegra (60% dos documentos com texto)?
+
+    O critério é o MESMO do `manifesto_norm.captura_integra` de propósito: um processo que o
+    motor recusa avaliar por captura insuficiente é, por definição, um processo a recapturar —
+    não faria sentido a leitura e a avaliação usarem réguas diferentes. Medido em 2026-08-04:
+    94 processos com ZERO teor, 86 abaixo do mínimo e 54 com manifesto sem docs; 234 no total,
+    contra 1.941 íntegros que seguem pulados. O sweep faz ~288/dia, então o passivo cabe num dia.
+
+    Só devolve True quando há pasta: processo nunca arquivado não é captura incompleta, é
+    não-capturado, e esse caminho já é tratado pela ausência no progresso.
+    """
+    tag = re.sub(r"_+", "_", re.sub(r"\D", "_", re.sub(r"^SEI-?", "", proc or ""))).strip("_")
+    pasta = REPO / "data" / "sei_arquivo" / tag
+    mf = pasta / "manifest.json"
+    if not mf.exists():
+        return False
+    try:
+        from compliance_agent.sei import manifesto_norm
+        man = json.loads(mf.read_text(encoding="utf-8"))
+        man["_pasta"] = str(pasta)
+        return not manifesto_norm.captura_integra(man, pasta)[0]
+    except (ImportError, OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def _arquivo_integro(proc: str) -> str | None:
+    """Data da captura arquivada, quando ela é ÍNTEGRA pela régua da casa; `None` caso contrário.
+
+    A METADE QUE FALTAVA. `_arquivo_incompleto` devolve à fila quem tem captura insuficiente — o
+    disco mandando mais que o progresso. Faltava o sentido oposto: captura COMPLETA tira da fila,
+    mesmo que o progresso diga zero. Progresso e acervo são preenchidos por caminhos diferentes (o
+    sweep grava o primeiro; a colheita da VM-2, a recaptura integral e o `sei_arquivar` gravam o
+    segundo), e eles divergem.
+
+    Medido em 2026-08-11: de 2.315 pastas no acervo, **321** têm entrada no progresso dizendo ZERO
+    documento e **118** dessas são íntegras — processos completos que continuavam elegíveis para
+    releitura, alguns com 3 a 5 tentativas já gastas. Foi assim que o processo de R$ 88,0 mi do
+    caso AGILE/SEEDUC ficou dado como "nunca lido" com 407 documentos no disco desde 09/08.
+
+    Devolve a DATA, e não um booleano, porque quem chama precisa dela: processo que ANDOU (OB mais
+    nova que a captura) volta a ser lido. Sem essa exceção, o conserto trocaria releitura inútil
+    por cegueira a fato novo.
+    """
+    tag = re.sub(r"_+", "_", re.sub(r"\D", "_", re.sub(r"^SEI-?", "", proc or ""))).strip("_")
+    pasta = REPO / "data" / "sei_arquivo" / tag
+    mf = pasta / "manifest.json"
+    if not mf.exists():
+        return None
+    try:
+        from compliance_agent.sei import manifesto_norm
+        man = json.loads(mf.read_text(encoding="utf-8"))
+        man["_pasta"] = str(pasta)
+        if not manifesto_norm.captura_integra(man, pasta)[0]:
+            return None
+        return str(man.get("gerado_em") or "") or None
+    except (ImportError, OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def _salvar_cadeia_no_cache(proc: str, cadeia: list):
     """Anexa a cadeia (relacionados lidos) ao cache cdp_*.json do processo — o Lex passa a ver a árvore."""
     cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
@@ -427,10 +712,75 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # re-ler, 'em' vira agora() > data da OB → não re-dispara.
         if f and f.get("n_docs", 0) and _ob_desatualizada(ob_recente.get(p, ""), f.get("em", "")):
             return False
-        # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
-        return bool(f and (f.get("n_docs", 0) > 0 or f.get("tentativas", 1) >= 3))
+        # ARQUIVO SEM TEOR MANDA MAIS QUE O PROGRESSO. Medido em 2026-08-04: **120 processos**
+        # estavam marcados `n_docs>0` no progresso e não tinham UM documento com texto no acervo
+        # — o sweep os pulava para sempre. E a ferramenta que os devolveria à fila
+        # (`sei_reparar_truncados --sem-texto`) pula quem já tem `captura_vazia`, de modo que
+        # DECLARAR a captura vazia virou isenção permanente de nova tentativa. Declarar é honesto;
+        # desistir não era o combinado. Mesma doutrina do `captura_integra`: o disco decide.
+        if f and f.get("n_docs", 0) > 0 and _arquivo_incompleto(p):
+            return False
+        # E A METADE SIMÉTRICA: captura ÍNTEGRA no acervo TIRA da fila, mesmo com o progresso
+        # dizendo zero. Progresso e acervo são preenchidos por caminhos diferentes e divergem —
+        # medido em 2026-08-11: 118 processos completos continuavam elegíveis para releitura,
+        # alguns com 3 a 5 tentativas gastas. O disco decide nos dois sentidos.
+        # A exceção fica de pé: se há OB mais nova que a captura, o processo ANDOU e volta a ser
+        # lido — trocar releitura inútil por cegueira a fato novo não seria conserto.
+        _integro_em = _arquivo_integro(p)
+        if _integro_em and not _ob_desatualizada(ob_recente.get(p, ""), _integro_em):
+            return True
+        # DESISTIR NÃO PODE SER PARA SEMPRE. A regra de 3 tentativas existe para não martelar
+        # processo vazio ou restrito — mas a própria docstring do `_ja_lido_ok` diz que "a
+        # abertura do SEI é flaky". Medido em 2026-08-04: **2.760 processos abandonados**, e as
+        # unidades deles são as MESMAS onde milhares foram lidos com sucesso (UG 080002: 826
+        # abandonados contra 1.284 lidos) — não é falta de acesso, é falha intermitente. Entre os
+        # abandonados estão o SEI-150001/011573/2021 (R$ 210 mi, o primeiro da fila por dinheiro)
+        # e o SEI-080001/005089/2022 (I.D.E.A.S, R$ 135 mi): a fila propõe justamente o que o
+        # sweep desistiu.
+        # 2.131 dos 2.760 foram abandonados há MAIS DE 14 DIAS, sob episódios de WAF/sessão que
+        # já passaram. A tentativa expira: depois da janela, o processo ganha nova chance. Não é
+        # martelar — é reconhecer que a condição mudou.
+        if f and f.get("n_docs", 0) == 0 and f.get("tentativas", 0) >= 3:
+            if not _tentativa_expirou(f.get("em")):
+                return True
+            # expirou: volta à fila, SALVO acesso restrito confirmado e ainda recente — esse é
+            # INDISPONÍVEL documentado, não falha intermitente (e a marca também expira, em 90d).
+            return _restrito_confirmado(p)
+        return bool(f and f.get("n_docs", 0) > 0)
 
-    fila = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)][:max_n]
+    # COTA PARA A RETENTATIVA. Devolver os 1.977 abandonados à fila foi certo — mas medido nas
+    # primeiras horas: **22 das 31 leituras (71%)** eram deles, e TODAS deram 0 documento, porque
+    # se concentram nas unidades de alta restrição (080001/080002/040014). A retentativa se paga
+    # (duas leituras classificam o processo como RESTRITO e o tiram da fila por 90 dias), mas não
+    # pode consumir a capacidade de quem nunca foi tocado. Um terço do lote, no máximo; a ordem
+    # por valor é preservada dentro de cada grupo.
+    candidatos = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)]
+    def _e_retentativa(proc: str) -> bool:
+        f = prog["feitos"].get(proc) or {}
+        return bool(f.get("tentativas", 0) >= 3 and f.get("n_docs", 0) == 0)
+    novos = [c for c in candidatos if not _e_retentativa(c[0])]
+    velhos = [c for c in candidatos if _e_retentativa(c[0])]
+    teto_velhos = max(1, max_n // 3)
+    usar_velhos = velhos[:teto_velhos]
+    # INTERCALADO, não concatenado: o lote é cortado por `timeout`, e pôr a retentativa no fim
+    # faria o corte comê-la sempre — trocaria uma inanição por outra. Uma retentativa a cada três
+    # posições mantém a cota e garante que ela seja de fato lida.
+    fila, iv, inv = [], iter(usar_velhos), iter(novos)
+    while len(fila) < max_n:
+        bloco = [next(inv, None) for _ in range(2)] + [next(iv, None)]
+        bloco = [x for x in bloco if x]
+        if not bloco:
+            break
+        fila.extend(bloco)
+    # A cota limita CONCORRÊNCIA, não trabalho: se não há mais nada a ler, o lote se completa com
+    # retentativa em vez de devolver vagas vazias ao cron.
+    if len(fila) < max_n:
+        ja = set(fila)
+        fila.extend(x for x in velhos if x not in ja)
+    fila = fila[:max_n]
+    if usar_velhos:
+        _log(f"fila: {len(novos)} nunca lidos + {len(usar_velhos)} de {len(velhos)} "
+             f"retentativas (cota de 1/3, intercaladas)")
     if not fila:
         _log("nada novo na fila (tudo já lido/cacheado).")
         return
@@ -446,16 +796,32 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
             b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
-            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
-                    _log("ABORTADO: login itkava não venceu o WAF agora (tente mais tarde).")
+                    _log(f"ABORTADO: login itkava não completou em {tentativas_login} tentativas. "
+                         "NÃO se atribui a WAF nem a bloqueio de acesso (o acesso é liberado): "
+                         "a causa já observada é sessão anterior deixada aberta por "
+                         "encerramento abrupto do slot anterior.")
                     return
                 _log("login OK — varrendo…")
+                # NÃO COMEÇAR O QUE NÃO DÁ PARA TERMINAR. O `timeout -k 120 --foreground 1500` do
+                # sweep manda TERM aos 1500s e KILL 120s depois; `_PARAR` só é lido ENTRE processos,
+                # e uma leitura leva 123s na mediana mas 249s no p90 (máx. medido: 2768s). Quando o
+                # TERM cai no meio de uma leitura longa, a carência estoura e vem o SIGKILL — que
+                # mata o ciclo inteiro antes dos passos finais e apaga a linha de "fim" do log.
+                # Medido em 2026-08-10: **725 ocorrências de rc=137** no histórico do sweep.
+                # Aqui a parada é ANTES de abrir o próximo processo, e o ciclo termina inteiro.
+                t_ciclo = time.time()
+                orcamento_s = int(os.environ.get("SEI_ORCAMENTO_S", "1200") or 0)
                 for i, (proc, nob, tot) in enumerate(fila, 1):
+                    gasto = time.time() - t_ciclo
+                    if orcamento_s and gasto > orcamento_s:
+                        _log(f"ORÇAMENTO de {orcamento_s}s esgotado em {gasto:.0f}s após {i - 1} "
+                             f"processo(s) — paro ANTES de abrir o próximo, para o ciclo chegar "
+                             f"aos passos finais em vez de morrer no SIGKILL.")
+                        break
                     if _PARAR:
                         _log("SIGTERM/timeout — encerrando LIMPO entre processos (browser fecha no finally, sem EPIPE)."); break
                     if PAUSE.exists():
@@ -510,7 +876,9 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                     cadeia = []
                     if seguir_arvore and 1 <= len(rel) <= 15:
                         try:
-                            cadeia = await seguir_relacionados(pg, r.get("url") or "", rel, max_rel=max_rel_arvore)
+                            cadeia = await seguir_relacionados(pg, r.get("url") or "", rel,
+                                                               max_rel=max_rel_arvore,
+                                                               max_docs_cadeia=MAX_DOCS_CADEIA)
                         except Exception:  # noqa: BLE001
                             cadeia = []
                     nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
@@ -546,12 +914,24 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     except Exception as e:  # noqa: BLE001 — CRASH-PROOF: morte de browser/pipe/lock vira saída LIMPA (cron repete)
         _log(f"sessão de browser caiu ({type(e).__name__}: {str(e)[:80]}) — encerrando LIMPO, sem crash. Cron repete.")
         return
-    _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem (fora de escopo/vazio). "
+    # "fora de escopo/vazio" era uma CAUSA AFIRMADA que ninguém mediu. Medido em 2026-08-10 sobre os
+    # 3.775 processos zerados do progresso: só 930 têm motivo registrado (378 RESTRITO, 352
+    # NAO_LOCALIZADO, 200 RESTRITO?); 2.794 não têm motivo nenhum, e 51 estão marcados OK no
+    # `sei_restritos` e ainda assim vieram vazios. Zero sem causa é NÃO SEI, não "não havia".
+    _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem documento — CAUSA NÃO MEDIDA "
+         f"(restrito, inexistente ou falha de leitura; ver data/sei_restritos.json). "
          f"Progresso em {PROG.name}.")
 
 
 async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = True,
-                   so_alta: bool = False, cnpj: str | None = None):
+                   so_alta: bool = False, cnpj: str | None = None,
+                   # A FOLGA TEM DE CABER A LEITURA, não o contrário. O shell chama este caminho sob
+                   # `timeout -k 120 --foreground 900`: com orçamento de 700s sobravam 200s até o
+                   # TERM e 320s até o KILL, mas a leitura leva 123s na mediana e **249s no p90**
+                   # (máx. medido 2768s) — o orçamento era menor que o caso ruim típico, e o ciclo
+                   # morria de SIGKILL (visto em 2026-08-10 às 10:08, `sei_pais rc=137`). Com 600s
+                   # a folga vai a 300s até o TERM e 420s até o KILL, acima do p90.
+                   orcamento_s: int = int(os.environ.get("SEI_PAIS_ORCAMENTO_S", "600"))):
     """MODO 'SEGUIR PAIS' (recupera a substância dos dockets vazios/execução): detecta no cache os
     PROCESSOS-PAI de CONTRATAÇÃO referenciados (regex SEI + janela de palavra-chave de contratação, com
     denylist de boilerplate do menu lateral) que AINDA NÃO estão no cache, e os LÊ na mesma sessão única
@@ -585,8 +965,17 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
         pais = [p for p in pais if p["origem"] in seus] or pais  # se nada casar, não trava: usa todos
     prog = _carregar_prog()
     feitos = prog.get("pais_feitos") or {}
-    fila = [p for p in pais if _norm(p["pai"]) not in {_norm(k) for k in feitos
-            if (feitos[k].get("n_docs", 0) or 0) > 0}][:max_n]
+    # TETO DE TENTATIVAS — SEM ELE A FILA NUNCA ANDA. A regra antiga excluía apenas quem tinha
+    # devolvido documento; quem devolvia ZERO voltava para sempre. Medido na VM-2 em 2026-08-07:
+    # os MESMOS CINCO processos relidos a cada 30 minutos, 110-136 s cada, **34 minutos de CPU por
+    # rodada**, durante dias, enquanto os outros 120 detectados nunca chegavam a ser oferecidos.
+    # Zero documentos é resultado legítimo (processo restrito, árvore que não abre) e repeti-lo
+    # indefinidamente é a definição de trabalho inútil. O sweep normal já tinha o skip após três
+    # tentativas exatamente por isto; aqui faltava.
+    _TETO_TENTATIVAS = 3
+    _chega = {_norm(k) for k, v in feitos.items()
+              if (v.get("n_docs", 0) or 0) > 0 or (v.get("tentativas", 1) or 1) >= _TETO_TENTATIVAS}
+    fila = [p for p in pais if _norm(p["pai"]) not in _chega][:max_n]
     if not fila:
         _log("[pais] nada novo (todos os pais detectados já lidos/cacheados).")
         return
@@ -599,15 +988,31 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
             b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
                                          **({"proxy": proxy} if proxy else {}))
-            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            ctx = await _contexto_sei(b)
             pg = await ctx.new_page()
             try:
                 if not await login(pg, tentativas=tentativas_login):
-                    _log("[pais] ABORTADO: login itkava não venceu o WAF agora."); return
+                    _log("[pais] ABORTADO: login itkava não completou em "
+                         f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio "
+                         "de acesso (o acesso é liberado): a causa já observada é sessão "
+                         "anterior deixada aberta por encerramento abrupto do slot."); return
                 _log("[pais] login OK — lendo os pais…")
+                # ORÇAMENTO DE TEMPO — O SLOT MORRIA DE SIGKILL EM **TODAS** AS EXECUÇÕES. Medido em
+                # 2026-08-06: `sei_pais rc=137` nas dez últimas rodadas, desde 05/08 pelo menos, e
+                # nenhuma linha `[pais] FIM` no log. O `timeout -k 120 --foreground 900` manda
+                # SIGTERM aos 900 s, mas `_PARAR` só é consultado ENTRE processos — e uma leitura de
+                # pai tem mediana de 121 s, p90 de 137 s e máximo medido de **502 s**. O SIGKILL
+                # sempre vencia, o browser nunca fechava, e a sessão itkava ficava pendurada: os
+                # dois slots seguintes falhavam no login e o código culpava o WAF, que é justamente
+                # a explicação que esta casa proíbe. Aqui o laço para SOZINHO, com margem para uma
+                # leitura de p90 e para fechar o browser.
+                t_inicio = time.time()
                 for i, p in enumerate(fila, 1):
+                    gasto = time.time() - t_inicio
+                    if orcamento_s and gasto > orcamento_s:
+                        _log(f"[pais] ORÇAMENTO de {orcamento_s}s esgotado em {gasto:.0f}s — parei "
+                             f"em {i-1}/{len(fila)}, sessão fechada LIMPA. O cron retoma.")
+                        break
                     if _PARAR:
                         _log("[pais] SIGTERM/timeout — encerrando LIMPO entre processos."); break
                     if PAUSE.exists():
@@ -650,8 +1055,10 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                             ficha_info = await _ficha_e_storage(proc)
                         except Exception:  # noqa: BLE001
                             ficha_info = None
+                    _antes = (feitos.get(proc) or {}).get("tentativas", 0) or 0
                     feitos[proc] = {"n_docs": nd, "via": p["fonte"], "conf": p["confianca"],
-                                    "origem": p["origem"], "em": datetime.now().isoformat(timespec="seconds")}
+                                    "origem": p["origem"], "tentativas": _antes + 1,
+                                    "em": datetime.now().isoformat(timespec="seconds")}
                     prog["pais_feitos"] = feitos
                     _salvar_prog(prog)
                     if nd:
@@ -675,6 +1082,130 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     _log(f"[pais] FIM: {n_ok} pais com docs ({n_doc_total} docs), {n_zero} sem. Progresso em {PROG.name}.")
 
 
+
+
+async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
+                        ate: int = 0) -> None:
+    """RELÊ processos cujo cache prova que há documento na árvore SEM texto — login ÚNICO.
+
+    Por que aqui e não num script à parte, e isto foi MEDIDO em 2026-08-03: uma passada
+    independente pagava o login + carga de árvore a cada processo — **556 segundos para um
+    processo de 5 documentos**. O custo não é do teto de documentos, é da entrada. Aqui a sessão
+    é uma só para o lote inteiro, exatamente como o `run_pais` já fazia.
+
+    O que se ganha: dos 314 processos com cache, a árvore tem 19.583 documentos e só 9.136 tinham
+    texto lido — 10.447 fechados, porque o `SEI_MAX_DOCS` do leitor era 40 e 179 processos
+    paravam exatamente lá.
+
+    Ordem: do MENOR buraco para o MAIOR. Medido: o processo gigante (956 documentos) estoura o
+    slot, mata o browser e não entrega nada — e enquanto ele falha, nenhum outro anda.
+    """
+    from compliance_agent.envfile import carregar_env
+    carregar_env()
+    from compliance_agent.recursos import browser_lock_async, aguardar_load_async
+    from compliance_agent.collectors.sei_cdp import _proxy_do_env
+    from tools.sei_reader import login, ler_processo, _ler_cracked, _montar_resultado_cracked
+    from playwright.async_api import async_playwright
+
+    os.environ["SEI_MAX_DOCS"] = str(teto)
+    from tools.sweep_recaptura_integral import fila as _fila_recap
+    fila = _fila_recap()
+    # A FATIA VALE AQUI TAMBÉM. O sweep principal já divide o universo entre as duas máquinas
+    # (`JFN_SWEEP_FATIA=1/2`), mas a recaptura não dividia nada: as duas percorriam a MESMA fila,
+    # na mesma ordem, e a segunda máquina gastaria seus slots refazendo o que a primeira acabara de
+    # fazer. É o defeito que já custou trabalho duplicado no grafo societário — 400 credores
+    # percorridos duas vezes — e que aqui custaria mais, porque o slot da recaptura é o recurso
+    # mais escasso da casa: 2 processos a cada 3 horas sobre uma fila de 1.516.
+    #
+    # A divisão é determinística e sem coordenação: cada máquina fica com metade dos números, e as
+    # duas somadas dobram a vazão sem que uma precise saber da outra. Não fere "1 sessão SEI por
+    # IP" — são IPs distintos, cada um com sua sessão.
+    indice, total = fatia_desta_maquina()
+    if total > 1:
+        antes = len(fila)
+        fila = [x for x in fila if na_minha_fatia(str(x["numero"]), indice, total)]
+        _log(f"[recap] fatia {indice}/{total}: {len(fila)} de {antes} processos são desta máquina")
+    if ate:
+        fila = [x for x in fila if x["faltam"] <= ate]
+    prog = _carregar_prog()
+    feitos = prog.get("recaptura_feitos") or {}
+    # DESISTIR NÃO É PARA SEMPRE — a mesma doutrina do sweep principal (tentativa expira) e do
+    # caminho resiliente. `not in feitos` cru transformava UMA releitura sem ganho em exclusão
+    # perpétua: com a recaptura viva, os casos "4 → 4" (doc que falhou hoje, restrição transitória)
+    # sumiriam da fila para sempre. Quem GANHOU fica fora; quem não ganhou volta depois de 7 dias.
+    from tools.sweep_recaptura_integral import _sem_ganho_expirou
+    fila = [x for x in fila
+            if x["numero"] not in feitos or _sem_ganho_expirou(feitos[x["numero"]])][:max_n]
+    if not fila:
+        _log("[recap] nada pendente (fila de recaptura vazia ou já percorrida).")
+        return
+    _log(f"[recap] {len(fila)} processos a reler com SEI_MAX_DOCS={teto}; login único itkava…")
+
+    await aguardar_load_async(max_por_core=1.5, espera_max=120)
+    proxy = _proxy_do_env()
+    ganho = 0
+    try:
+        async with browser_lock_async(espera_max=600), async_playwright() as pw:
+            b = await pw.chromium.launch(headless=True,
+                                         args=["--no-sandbox", "--ignore-certificate-errors"],
+                                         **({"proxy": proxy} if proxy else {}))
+            ctx = await _contexto_sei(b)
+            pg = await ctx.new_page()
+            try:
+                if not await login(pg, tentativas=tentativas_login):
+                    # A MENSAGEM NÃO PODE ELEGER UMA CAUSA QUE NINGUÉM CONFERIU. Até 07/08/2026
+                    # ela afirmava "sessão anterior deixada aberta" como causa OBSERVADA — e a
+                    # causa real era outra, estrutural: este caminho montava o navegador sem
+                    # User-Agent de desktop, ao contrário dos outros dois. Foram 47 slots
+                    # abortados nas duas máquinas enquanto o log apontava para o lugar errado.
+                    # Causa afirmada sem verificação faz o leitor procurar onde não está.
+                    _log("[recap] ABORTADO: login itkava não completou em "
+                         f"{tentativas_login} tentativas. NÃO se atribui a WAF nem a bloqueio de "
+                         "acesso (o acesso é liberado). Causas JÁ VERIFICADAS neste caminho: "
+                         "contexto do navegador sem User-Agent de desktop (corrigido em 07/08) e "
+                         "outra sessão SEI aberta pela mesma máquina — o SEI aceita uma por IP, "
+                         "então conferir se o sweep principal ou o [pais] ainda estão no slot.")
+                    # O CÓDIGO DE SAÍDA PRECISA CONTAR A VERDADE. Até 07/08/2026 este `return`
+                    # devolvia 0, e o sweep registrava `sei_recaptura rc=0` — 16 vezes seguidas,
+                    # para 16 slots que não recuperaram um único documento. A auditoria dos 32
+                    # passos agendados desta casa foi feita POR rc, e este passou por saudável.
+                    # Passo que não faz o que existe para fazer não pode reportar sucesso.
+                    raise FalhaDeclarada("recaptura: login itkava não completou")
+                _log("[recap] login OK — relendo…")
+                for i, x in enumerate(fila, 1):
+                    if _PARAR or PAUSE.exists():
+                        _log("[recap] encerrando LIMPO entre processos.")
+                        break
+                    proc, antes = x["numero"], x["lido"]
+                    try:
+                        r = await ler_processo(pg, proc, usar_cache=False)
+                        nd = len(r.get("conteudo_documentos") or [])
+                        if not nd:
+                            dump = await _ler_cracked(pg, proc)
+                            if dump.get("documentos"):
+                                r = await _montar_resultado_cracked(pg, proc, dump,
+                                                                    usar_cache=False)
+                                nd = len(r.get("conteudo_documentos") or [])
+                    except Exception as e:  # noqa: BLE001
+                        _log(f"  [recap {i}/{len(fila)}] {proc} ERRO {type(e).__name__}: "
+                             f"{str(e)[:60]}")
+                        if _browser_morto(e):
+                            _log("  [recap] browser caiu — encerrando a sessão LIMPO.")
+                            break
+                        continue
+                    feitos[proc] = {"antes": antes, "depois": nd,
+                                    "em": datetime.now().isoformat(timespec="seconds")}
+                    prog["recaptura_feitos"] = feitos
+                    _salvar_prog(prog)
+                    ganho += max(0, nd - antes)
+                    _log(f"  [recap {i}/{len(fila)}] {proc}: {antes} → {nd} docs com texto")
+            finally:
+                await ctx.close()
+                await b.close()
+    finally:
+        _log(f"[recap] fim do slot — +{ganho} documentos com texto nesta sessão.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=30)
@@ -689,6 +1220,11 @@ def main():
     ap.add_argument("--seguir-pais", action="store_true",
                     help="MODO PAI: detecta no cache os processos-pai de CONTRATAÇÃO referenciados pelos "
                          "dockets (execução/pagamento) e os lê — recupera a substância dos 'vazios'.")
+    ap.add_argument("--recaptura", action="store_true",
+                    help="relê processos com documento na árvore sem texto (login único)")
+    ap.add_argument("--recap-teto", type=int, default=120, help="SEI_MAX_DOCS na recaptura")
+    ap.add_argument("--recap-ate", type=int, default=0,
+                    help="só processos com lacuna <= N (o gigante não cabe num slot)")
     ap.add_argument("--pais-so-alta", action="store_true",
                     help="(com --seguir-pais) só os pais de ALTA confiança (conteúdo+keyword), ignora leads de relacionados")
     a = ap.parse_args()
@@ -700,14 +1236,26 @@ def main():
     # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
     # KeyboardInterrupt/SystemExit (BaseException) propagam normal; qualquer Exception vira log + saída limpa.
     try:
-        if a.seguir_pais:
+        if a.recaptura:
+            asyncio.run(run_recaptura(a.max, teto=a.recap_teto, ate=a.recap_ate))
+        elif a.seguir_pais:
             asyncio.run(run_pais(a.max, fazer_ficha=not a.sem_ficha, so_alta=a.pais_so_alta, cnpj=a.cnpj))
         else:
             asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
                             fazer_ficha=not a.sem_ficha, cnpj=a.cnpj, diario=a.diario))
+    except FalhaDeclarada as e:
+        # Falha JÁ LOGADA com diagnóstico acima — o que faltava era o código de saída dizer o
+        # mesmo. O sweep continua sem crashar (regra do dono: o sweep NUNCA crasha), mas o cron e
+        # a auditoria por rc passam a enxergar o que o log já dizia.
+        _log(f"saída com falha: {e}")
+        return 1
     except Exception as e:  # noqa: BLE001
         _log(f"ABORTADO por erro não previsto ({type(e).__name__}: {str(e)[:120]}) — saída limpa, sem crash. Cron repete.")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    # `sys.exit(main())`, não `main()`: sem isto o valor de retorno é descartado e todo passo sai
+    # com 0, que foi exatamente como 16 abortos de recaptura passaram por saudáveis na auditoria.
+    sys.exit(main())

@@ -23,6 +23,7 @@ import logging
 import os
 import re
 import sys
+import sqlite3
 import time
 from pathlib import Path
 
@@ -82,6 +83,50 @@ def _money_br(s) -> float:
         return 0.0
 
 
+def _migrar_chave(con) -> int:
+    """Troca a PK velha (`numero_ob`) pela real (`numero_ob, ug_emitente, exercicio`).
+
+    O número da OB só é único DENTRO da unidade: no espelho, 133.295 de 198.894 números (67%)
+    aparecem em mais de uma UG — `2024OB00284` está em 72. Com a chave velha, cada coleta apagava
+    a linha homônima de outra unidade, em silêncio, na fonte canônica de PAGAMENTO. Rastro medido
+    em 2026-08-09: o `siafe_sweep_full` registrou "180100 2023: 10046 ing | ok=True" em 19 fatias
+    e a tabela guardava 1.000 linhas de numeração contígua — uma consulta capada, não 19 fatias.
+
+    A migração NÃO recupera o que já se perdeu (o dado foi sobrescrito; só a recoleta traz de
+    volta) — ela impede que a próxima coleta apague de novo. Roda uma vez: se a PK já é a certa,
+    devolve 0 sem tocar em nada.
+    """
+    import sqlite3            # o módulo importa sqlite3 dentro das funções que o usam
+    linha = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='ob_orcamentaria_siafe'"
+    ).fetchone()
+    if not linha or "PRIMARY KEY (numero_ob, ug_emitente, exercicio)" in (linha[0] or ""):
+        return 0
+    cols = [r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")]
+    lista = ", ".join(cols)
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        con.execute(
+            "CREATE TABLE ob_orcamentaria_siafe__novo ("
+            + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c != "valor")
+            + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
+            "PRIMARY KEY (numero_ob, ug_emitente, exercicio))")
+        con.execute(f"INSERT OR REPLACE INTO ob_orcamentaria_siafe__novo ({lista}) "
+                    f"SELECT {lista} FROM ob_orcamentaria_siafe")
+        n = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe__novo").fetchone()[0]
+        con.execute("DROP TABLE ob_orcamentaria_siafe")
+        con.execute("ALTER TABLE ob_orcamentaria_siafe__novo RENAME TO ob_orcamentaria_siafe")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ug ON ob_orcamentaria_siafe(ug_emitente)")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
+        con.commit()
+        return n
+    except sqlite3.Error:
+        # tudo aqui é SQLite (CREATE/INSERT/DROP/ALTER); desfaz e RELANÇA — migração que falha
+        # pela metade deixaria a tabela num estado que ninguém sabe ler.
+        con.rollback()
+        raise
+
+
 def ingerir(exercicio: int, header: list, linhas: list) -> dict:
     """
     Ingere as OBs da OB Orçamentária na `compliance.db`, tabela `ob_orcamentaria_siafe`.
@@ -92,14 +137,20 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
     import time as _t
     if not linhas:
         return {"ok": True, "ingeridas": 0, "exercicio": exercicio}
-    con = sqlite3.connect(str(_DB))
+    # TIMEOUT NA ESCRITA, como o resto da casa faz. O banco tem vários escritores (sweeps do
+    # SEI, avaliação 360, cruzamentos) e o padrão do sqlite é esperar só 5 s: medido em
+    # 2026-08-09, a recoleta do SIAFE morreu com `database is locked` DEPOIS de 18 fatias, e
+    # cada fatia custa minutos de browser. Esperar o outro escritor é sempre mais barato que
+    # refazer a coleta.
+    con = sqlite3.connect(str(_DB), timeout=120)
     try:
         con.execute(
             "CREATE TABLE IF NOT EXISTS ob_orcamentaria_siafe ("
             + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c not in ("valor",))
             + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
-            "PRIMARY KEY (numero_ob))"
+            "PRIMARY KEY (numero_ob, ug_emitente, exercicio))"
         )
+        _migrar_chave(con)
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ug ON ob_orcamentaria_siafe(ug_emitente)")
         con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
         agora = _t.strftime("%Y-%m-%d %H:%M:%S", _t.gmtime())
@@ -295,19 +346,49 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
     pedido_ts = time.time()
     siafe_coord.notificar(
         "🔐 JFN — SIAFE-2 agora exige código MFA (mudança da SEFAZ em 13/07).\n\n"
-        "Um código de 6 dígitos acabou de ser enviado ao seu e-mail da ALERJ.\n"
-        "Responda aqui: *siafe codigo NNNNNN*\n\n"
+        "Um código acabou de ser enviado ao seu e-mail da ALERJ.\n"
+        "Responda aqui com o código — sozinho ou como *siafe codigo XXXX*.\n\n"
         "Vou marcar 'dispensar por 30 dias' — só pedirei de novo no mês que vem.")
     print("   [mfa] aguardando código do Mestre via Telegram...", flush=True)
     codigo = ""
+    # DUAS PORTAS, PORQUE UMA DELAS NUNCA EXISTIU. `siafe_coord.get_mfa()` lê um flag que o Yoda
+    # deveria gravar ao receber "siafe codigo XXXX" — mas NÃO HÁ handler que chame `set_mfa`: o
+    # único chamador é o CLI (`siafe_coord.py:144`). Ou seja, a mensagem instruía o dono a responder
+    # um comando que ninguém escutava, e a sessão ficava presa até o timeout.
+    #
+    # Medido em 2026-08-18: sessão parada 35 min pedindo o código, com o dono respondendo o formato
+    # certo. Destravou só quando gravei o flag à mão.
+    #
+    # A segunda porta JÁ FUNCIONAVA e é usada pelo `siafe_session.py`: captura PASSIVA do state.db
+    # do Yoda, sem handler nenhum. `extrair_codigo` aceita alfanumérico misto (o SIAFE manda
+    # "wmNY6bkR", não 6 dígitos). Reaproveitar é melhor que remendar o Hermes — que o update
+    # sobrescreve (ver `hermes-update-destroi-patches-locais`).
+    from compliance_agent.mfa_telegram import extrair_codigo, mensagens_novas_telegram
+    visto = pedido_ts - 60
     while time.time() - pedido_ts < timeout_s:
         codigo = siafe_coord.get_mfa(depois_de=pedido_ts - 60)
+        if codigo:
+            break
+        try:
+            for ts, texto in mensagens_novas_telegram(visto):
+                visto = max(visto, ts)
+                cod = extrair_codigo(texto)
+                if cod:
+                    codigo = cod
+                    siafe_coord.set_mfa(cod)      # grava para quem só olha o flag
+                    break
+        except (sqlite3.Error, OSError, ImportError, ValueError) as exc:
+            # ESPECÍFICO, não `Exception`: a catraca `test_except_exception_nao_cresce` reprovou o
+            # genérico (1627 > 1626) e tem razão — aqui as falhas possíveis são o state.db do Yoda
+            # ilegível/ausente (sqlite3/OSError), o módulo não instalado (ImportError) ou timestamp
+            # corrompido (ValueError). Qualquer outra coisa é bug e DEVE subir.
+            print(f"   [mfa] captura passiva falhou ({exc}); resta o flag", flush=True)
         if codigo:
             break
         await asyncio.sleep(10)
     if not codigo:
         return {"ok": False, "erro": "mfa_sem_codigo",
-                "detail": f"Mestre não enviou o código MFA em {timeout_s//60}min (responder 'siafe codigo NNNNNN')."}
+                "detail": f"Mestre não enviou o código MFA em {timeout_s//60}min (basta responder o código no Telegram)."}
     print("   [mfa] código recebido — preenchendo", flush=True)
     # IDs EXATOS do diálogo MFA (build 4.168.13). O form de login (usuário/senha) CONTINUA no DOM
     # atrás do popup — um seletor genérico digitava o código no campo Senha e a validação falhava.
@@ -397,7 +478,20 @@ async def _navegar(pg) -> dict:
     await pg.evaluate(r"""()=>{const a=[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução');if(a)a.click();}""")
     await pg.wait_for_timeout(1800)
     await _shot(pg, "1_execucao")
-    await pg.evaluate(r"""()=>{const a=document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor')||[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução Financeira');if(a)a.click();}""")
+    # TEXTO PRIMEIRO, id como último recurso. O id `pt1:pt_np3:1:...` é o ÍNDICE do item no menu
+    # do SIAFE 2; no SIAFE 1 o mesmo id existe e aponta para OUTRO item (lá "Execução" é o índice
+    # 3), então o clique cego levava a sessão para fora do sistema e caía na página de bloqueio da
+    # SEFAZ — que parece bloqueio de IP e não é: `curl` no login do www5 devolve a página normal, e
+    # o print pós-login mostra o SIAFE-Rio aberto no exercício certo. Índice de menu não é
+    # identidade; o rótulo é.
+    await pg.evaluate(r"""()=>{
+        const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+        const a = [...document.querySelectorAll('a.xyo')]
+                    .find(e => norm(e.innerText) === 'execução financeira'
+                            || norm(e.innerText) === 'execucao financeira')
+                  || document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor');
+        if (a) a.click();
+    }""")
     await pg.wait_for_timeout(2200)
     await _shot(pg, "2_execfinanceira")
     itens = await pg.evaluate(r"""()=>[...document.querySelectorAll('a')].map(e=>(e.innerText||'').trim()).filter(t=>t.length>2&&t.length<60)""")
@@ -816,6 +910,61 @@ async def _filtrar_ug(pg, ug_codigo) -> dict:
 
 
 # linha 1 do filtro (a tabela já vem com 2 linhas: 0 e 1) — p/ combinar UG (linha 0) + Número (linha 1)
+async def _login_e_navegar(pg, exercicio: int, tentativas: int = 3) -> dict:
+    """Login + navegação até a grade, com RETRY — o prólogo do SIAFE 1 é intermitente.
+
+    Medido em 2026-08-09, na mesma UG e no mesmo dia: uma passada logou e navegou e coletou seis
+    fatias; a seguinte devolveu `etapa: nav` sem sair do lugar. O ADF redireciona no meio do
+    `evaluate` (`Execution context was destroyed`), o workspace às vezes demora a montar, e
+    qualquer um dos dois derruba a passada INTEIRA — depois de já ter pago o login, que leva
+    minutos. Repetir o prólogo é barato perto de perder a coleta.
+    """
+    from playwright.async_api import Error as PWError   # import local: o módulo faz assim
+
+    ultimo: dict = {}
+    for tentativa in range(max(1, tentativas)):
+        try:
+            ultimo = await _login(pg, exercicio)
+            if ultimo.get("ok") and (await _navegar(pg)).get("ok"):
+                return {"ok": True, "tentativas": tentativa + 1}
+        except PWError as exc:
+            ultimo = {"ok": False, "erro": f"{type(exc).__name__}: {str(exc)[:90]}"}
+        await pg.wait_for_timeout(4000)
+    return {"ok": False, "etapa": "login_nav", "tentativas": tentativas, "ultimo": ultimo}
+
+
+async def _esperar_linha_filtro(pg, idx: int, adf, espera_s: int = 45) -> bool:
+    """Espera a linha `idx` do filtro EXISTIR — ela nasce sozinha quando a anterior é preenchida.
+
+    Não há botão de "adicionar linha": o inventário do painel (medido 2026-08-09) traz só
+    "Ocultar este painel", "Limpar" e o botão de excluir de cada linha. O ADF acrescenta a linha
+    seguinte por PPR, depois que a de cima tem propriedade, operador e valor. Quem seguia direto
+    para a linha 1 estourava em `Locator.click: Timeout 30000ms ... table_rtfFilter:1` — e o erro
+    parecia "a tela do SIAFE 1 não tem segunda linha", quando era corrida: numa passada anterior a
+    mesma coleta funcionou e chegou a subdividir prefixos.
+
+    Espera a PRESENÇA (não o conteúdo), cutucando com um blur a cada tentativa — é o blur que
+    dispara o PPR quando o valor foi digitado e o campo não perdeu o foco.
+    """
+    from playwright.async_api import Error as PWError   # import local: o módulo faz assim
+
+    alvo = f'[id*="table_rtfFilter:{idx}:"]'
+    for tentativa in range(max(1, espera_s // 3)):
+        if await pg.locator(alvo).count() > 0:
+            return True
+        if tentativa % 2 == 1:                      # cutuca: blur → PPR do ADF
+            try:
+                await pg.keyboard.press("Tab")
+            except PWError as exc:
+                logger.debug("blur para acordar o PPR falhou: %s", str(exc)[:80])
+        await pg.wait_for_timeout(3000)
+        try:
+            await adf.wait()
+        except PWError as exc:
+            logger.debug("adf.wait durante a espera da linha %s: %s", idx, str(exc)[:80])
+    return await pg.locator(alvo).count() > 0
+
+
 _F_PROP1 = "pt1:tblOBOrcamentaria:table_rtfFilter:1:cbx_col_sel_rtfFilter::content"
 _F_OP1 = "pt1:tblOBOrcamentaria:table_rtfFilter:1:cbx_op_sel_rtfFilter::content"
 _F_VAL1_SEL = '[id*="table_rtfFilter:1"] input[type="text"]:visible'
@@ -823,8 +972,22 @@ _F_VAL1_SEL = '[id*="table_rtfFilter:1"] input[type="text"]:visible'
 
 async def _set_valor(pg, sel, valor):
     """Seta o campo de valor do filtro, LIMPANDO de forma confiável antes (Ctrl+A/Delete falha no
-    campo ADF e concatena lixo → 0 resultados na 2ª iteração). Verifica que ficou só o valor novo."""
+    campo ADF e concatena lixo → 0 resultados na 2ª iteração). Verifica que ficou só o valor novo.
+
+    ESPERA O CAMPO EXISTIR antes de clicar. O ADF re-renderiza a linha do filtro a cada PPR, e no
+    meio de um laço de prefixos o input some por instantes: medido em 2026-08-09, a coleta da UG
+    180100/2023 morria em `Locator.click: Timeout 30000ms` **depois de 6 fatias já colhidas** —
+    perdendo a passada inteira por uma janela de re-render. Esperar é barato; recomeçar não é.
+    """
+    from playwright.async_api import Error as PWError
+
     v = pg.locator(sel).last
+    try:
+        await v.wait_for(state="visible", timeout=30000)
+    except PWError:
+        await pg.wait_for_timeout(2500)          # deixa o PPR terminar e tenta uma segunda vez
+        v = pg.locator(sel).last
+        await v.wait_for(state="visible", timeout=30000)
     await v.click()
     await v.fill("")                       # limpeza confiável (síncrona)
     await pg.wait_for_timeout(150)
@@ -838,8 +1001,18 @@ async def _set_valor(pg, sel, valor):
     # COMMIT do valor: dispara o valueChange via o CLIENTE ADF (FUNCIONA no SIAFE 1 — campo sem autoSubmit —
     # e no SIAFE 2). Sem isso, no SIAFE 1 o filtro não aplica. Tab fica como reforço (SIAFE 2).
     try:
+        # `:visible` é seletor do PLAYWRIGHT, não CSS — dentro de `querySelectorAll` do navegador
+        # ele lança `DOMException: is not a valid selector` e o commit NUNCA acontece. Medido em
+        # 2026-08-09: o log trazia a exceção a cada valor de filtro, e sem o commit o SIAFE 1 não
+        # aplica o filtro nem cria a linha seguinte — daí a coleta parecer intermitente. A
+        # visibilidade já é filtrada em JS logo abaixo, então basta remover o sufixo.
+        # `r"""` OBRIGATÓRIO: sem o prefixo raw, o Python converte `\b` em BACKSPACE antes de o
+        # JS ver a regex — ela vira `/:visible\x08/` e não casa com nada. O conserto do seletor
+        # ficou inerte por isso, e o log seguiu acusando DOMException a cada valor. O resto do
+        # arquivo já usa `r"""` nos blocos de JS exatamente por esta razão.
         await pg.evaluate(
-            """(args)=>{const [sel,val]=args;
+            r"""(args)=>{const [sel0,val]=args;
+               const sel = sel0.replace(/:visible\b/g, '');
                const els=[...document.querySelectorAll(sel)].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});
                const el=els[els.length-1]; if(!el)return;
                const id=el.id.replace(/::content$/,'');
@@ -853,6 +1026,21 @@ async def _set_valor(pg, sel, valor):
     await pg.keyboard.press("Tab")
 
 
+# PLATÔ MEDIDO DA COLHEITA, não o teto teórico do SIAFE. Em 5.893 fatias já coletadas, NENHUMA
+# chegou a 990 (o limiar antigo) e 76 pararam exatamente em 989 ou 984: a tabela é virtualizada e o
+# scroller satura antes do teto nominal de 1.000. Com o guard em 990, 124 fatias truncadas entraram
+# no banco como se fossem o universo. Errar para o lado de subdividir custa consulta; errar para o
+# outro custa dado que ninguém sabe que falta.
+_FATIA_CAPOU = 980
+_PROF_MAX_PREFIXO = 7
+
+
+def _fatia_capou(n: int, prefixo: str, exercicio: int) -> bool:
+    """A fatia bateu no platô da colheita E ainda cabe subdividir? (ver `_FATIA_CAPOU`)"""
+    profundidade = len(prefixo) - len(str(exercicio)) - 2   # tira "{ano}OB"
+    return n >= _FATIA_CAPOU and profundidade < _PROF_MAX_PREFIXO
+
+
 async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, prefixos=None, maxn=20000) -> dict:
     """UG GRANDE (>1000/ano): combina UG Emitente (linha 0) + Número 'começa com' <prefixo> (linha 1),
     iterando prefixos {ano}OB0..9 (sub-divide se uma fatia ainda bater ~1000). Fura o teto p/ UGs grandes."""
@@ -863,10 +1051,9 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
     async with async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
-            if not (await _login(pg, exercicio)).get("ok"):
-                return {"ok": False, "etapa": "login"}
-            if not (await _navegar(pg)).get("ok"):
-                return {"ok": False, "etapa": "nav"}
+            pronto = await _login_e_navegar(pg, exercicio)   # retry: o prólogo é intermitente
+            if not pronto.get("ok"):
+                return {"ok": False, **pronto}
             adf = AdfSync(pg); await adf.boot()
             if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
                 await _click_real(pg, _F_DISC); await adf.wait()
@@ -874,7 +1061,13 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             await _typeahead(pg, _F_PROP, "UG Emi"); await adf.wait()
             await _typeahead(pg, _F_OP, "começa com"); await adf.wait()  # vale SIAFE 1 e 2 (UG=6 dígitos)
             await _set_valor(pg, _F_VAL_SEL, ug); await adf.wait()
-            # linha 1 = Número começa com (prop/op uma vez; valor por prefixo)
+            # linha 1 = Número começa com (prop/op uma vez; valor por prefixo). ELA NASCE SOZINHA
+            # depois que a linha 0 fica completa — esperar a PRESENÇA antes de usar (ver
+            # `_esperar_linha_filtro`); ir direto estourava em Timeout e parecia falta de tela.
+            if not await _esperar_linha_filtro(pg, 1, adf):
+                return {"ok": False, "etapa": "filtro_linha1",
+                        "erro": ("a 2ª linha do filtro não apareceu depois da 1ª completa; sem ela "
+                                 "não há subdivisão por prefixo e o teto de 1.000 não é furado")}
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
             await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
             # worklist com SUBDIVISÃO automática + CHECKPOINT por prefixo (RESUMÍVEL: se cair no meio de uma
@@ -909,18 +1102,35 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                     continue
                 await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2200)
                 vistos, linhas = set(), []
-                await _colher(pg, maxn, vistos, linhas, None)
+                # `_colher` DEVOLVE o cabeçalho ao vivo — e é ele que diz em que coluna está o
+                # número da OB. Este caminho passava `_COLS_SIAFE` (os nomes internos), que
+                # `_LABEL2COL` não reconhece: a ingestão caía no mapa POSICIONAL e, no SIAFE 1
+                # (19 colunas contra 23), tudo deslocava. Medido em 2026-08-09: as fatias entravam
+                # com `numero_ob` VAZIO, colapsavam todas na mesma chave primária e sobrava UMA
+                # linha por fatia — 100 OBs colhidas viravam 1 gravada, calada.
+                header = await _colher(pg, maxn, vistos, linhas, None)
                 n = len(linhas)
-                capou = n >= 990
-                if capou and len(pref) - len(str(exercicio)) - 2 < 7:   # subdivide (limite de profundidade)
+                if _fatia_capou(n, pref, exercicio):   # platô medido + limite de profundidade
                     capped.add(pref); _save_ckpt()
                     work[:0] = [f"{pref}{d}" for d in range(10)]
                     print(f"  {ug} {exercicio} pref {pref}: {n} (CAP) → subdividindo", flush=True)
                 else:
                     if linhas:                          # ingere fatia COMPLETA
-                        tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+                        tot += ingerir(exercicio, header, linhas).get("ingeridas", 0)
                     done.add(pref); _save_ckpt(); por_prefixo[pref] = n
                     print(f"  {ug} {exercicio} pref {pref}: {n} OBs ✓", flush=True)
+            # ZERO FATIA NÃO É SUCESSO — e este `ok:true` já me enganou. Quando todos os
+            # prefixos estão no checkpoint `done` de uma execução anterior, o laço não consulta
+            # nada e a função devolvia `ok:true, fatias:0, ingeridas:0`, que o operador lê como
+            # "coletei e não havia nada". São coisas diferentes: "nada a fazer porque já foi" tem
+            # de dizer isso, com o caminho do checkpoint, para quem quiser refazer saber onde
+            # mexer. (Medido 2026-08-09 refazendo a UG 180100/2023.)
+            if not por_prefixo:
+                return {"ok": True, "nada_a_fazer": True, "exercicio": exercicio, "ug": ug,
+                        "ingeridas": 0, "fatias": 0, "por_prefixo": {},
+                        "motivo": (f"todos os {len(prefixos)} prefixos já constam como feitos no "
+                                   f"checkpoint {ckp}; apague o arquivo (ou remova as fatias que "
+                                   "quiser refazer da lista `done`) para recoletar")}
             return {"ok": True, "exercicio": exercicio, "ug": ug, "ingeridas": tot,
                     "fatias": len(por_prefixo), "por_prefixo": por_prefixo}
         finally:
@@ -937,10 +1147,9 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
     async with async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
-            if not (await _login(pg, exercicio)).get("ok"):
-                return {"ok": False, "etapa": "login"}
-            if not (await _navegar(pg)).get("ok"):
-                return {"ok": False, "etapa": "nav"}
+            pronto = await _login_e_navegar(pg, exercicio)   # retry: o prólogo é intermitente
+            if not pronto.get("ok"):
+                return {"ok": False, **pronto}
             adf = AdfSync(pg); await adf.boot()
             if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
                 await _click_real(pg, _F_DISC); await adf.wait()
@@ -950,15 +1159,20 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             datasel = '[id*="table_rtfFilter:0"] input[id*="in_date"]:visible, [id*="table_rtfFilter:0"] input[type="text"]:visible'
             await _set_valor(pg, datasel, data); await adf.wait(); await pg.wait_for_timeout(2500)
             n0 = await _contar_linhas(pg)
-            estouro = n0 >= 990
+            estouro = n0 >= _FATIA_CAPOU   # platô MEDIDO da colheita (ver _fatia_capou)
             # coleta direta (sem subdividir) se < cap
             if not estouro:
                 vistos, linhas = set(), []
-                await _colher(pg, maxn, vistos, linhas, None)
-                ing = ingerir(exercicio, _COLS_SIAFE, linhas) if linhas else {"ingeridas": 0}
+                header = await _colher(pg, maxn, vistos, linhas, None)   # cabeçalho VIVO
+                ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
                 return {"ok": True, "data": data, "estouro": False, "colhidas": len(linhas),
                         "ingeridas": ing.get("ingeridas")}
-            # ESTOURO: >1000 no dia → subdivide por Número (linha 1)
+            # ESTOURO: >1000 no dia → subdivide por Número (linha 1). A linha nasce sozinha
+            # depois da 1ª completa — esperar a PRESENÇA, como na coleta por UG grande.
+            if not await _esperar_linha_filtro(pg, 1, adf):
+                return {"ok": False, "data": data, "etapa": "filtro_linha1",
+                        "erro": "a 2ª linha do filtro não apareceu; sem ela o dia estourado não "
+                                "pode ser subdividido"}
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
             await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
             try:
@@ -972,12 +1186,12 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
                 pref = work.pop(0)
                 await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2000)
                 vistos, linhas = set(), []
-                await _colher(pg, maxn, vistos, linhas, None)
+                header = await _colher(pg, maxn, vistos, linhas, None)   # cabeçalho VIVO, ver acima
                 n = len(linhas)
-                if n >= 990 and len(pref) - len(str(exercicio)) - 2 < 7:
+                if _fatia_capou(n, pref, exercicio):
                     work[:0] = [f"{pref}{d}" for d in range(10)]
                 elif linhas:
-                    tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+                    tot += ingerir(exercicio, header, linhas).get("ingeridas", 0)
             return {"ok": True, "data": data, "estouro": True, "ingeridas": tot,
                     "detalhe": f">1000 OBs no dia {data} — coletado completo por subdivisão de Número"}
         finally:
@@ -1029,7 +1243,17 @@ def main():
     a = ap.parse_args()
     if a.por_ug:
         fn = coletar_por_ug_grande if a.ug_grande else coletar_por_ug
-        res = asyncio.run(fn(a.exercicio, a.por_ug.strip()))
+        # `--prefixos` já era aceito por `coletar_por_ug_grande` e o CLI o descartava: quem
+        # precisava recolher UMA faixa (ex.: o mês em que uma OB específica foi emitida) tinha de
+        # varrer a UG inteira, horas de browser para minutos de trabalho. Só vale no modo grande —
+        # sem subdivisão não há prefixo que aplicar.
+        pref_ug = [x.strip() for x in a.prefixos.split(",") if x.strip()] or None
+        if pref_ug and not a.ug_grande:
+            print(json.dumps({"ok": False, "erro": "--prefixos exige --ug-grande (é o modo que "
+                                                   "subdivide por prefixo de número)"},
+                             ensure_ascii=False)); return
+        res = asyncio.run(fn(a.exercicio, a.por_ug.strip(), prefixos=pref_ug)
+                          if a.ug_grande else fn(a.exercicio, a.por_ug.strip()))
         print(json.dumps(res, ensure_ascii=False, indent=1)); return
     if a.por_numero:
         pref = [p.strip() for p in a.prefixos.split(",") if p.strip()] or None

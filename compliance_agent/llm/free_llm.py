@@ -999,6 +999,23 @@ def _get_provider_order() -> list[str]:
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
                      "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink", "wisdomgate", "ofox", "routeway", "mistral"]
+    # CADEIA CURTA PARA VOLUME (`FREE_LLM_ONLY`). Medido em 2026-08-13 no sweep do SEI: com o
+    # cerebras em 429 (cota do dia estourada, 50 vezes), CADA leitura passava a percorrer os doze
+    # provedores em sequência, somando o timeout de todos — 437 chamadas em 4 h para 54 sucessos
+    # (12%) e 7,5 horas de espera acumulada. Não é o modelo que era lento: era a cascata.
+    #
+    # Quem faz VOLUME declara a lista curta e falha rápido, para tentar de novo mais tarde, em vez
+    # de gastar minutos por leitura provando que todo mundo está fora. Nome desconhecido é ignorado
+    # com aviso — silêncio aqui foi exatamente o que fez `FREE_LLM_PREFER=nous` (provedor que não
+    # existe) parecer configurado por semanas.
+    somente = [x.strip().lower() for x in os.environ.get("FREE_LLM_ONLY", "").split(",") if x.strip()]
+    if somente:
+        curta = [p for p in somente if p in all_providers]
+        if len(curta) != len(somente):
+            logger.warning("FREE_LLM_ONLY tem nome(s) que não existem: %s",
+                           [p for p in somente if p not in all_providers])
+        if curta:
+            return curta
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]

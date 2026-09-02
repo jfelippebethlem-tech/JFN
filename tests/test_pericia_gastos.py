@@ -209,3 +209,186 @@ def test_d12_guard_cep_popular(con_semeado):
     for i in range(6):  # +6 empresas quaisquer no mesmo CEP = popular
         con.execute("insert into empresas (cnpj, cep) values (?, '20000-000')", (f"9988877700010{i}",))
     assert pericia_gastos.d12_coendereco_concorrentes(con) == []
+
+
+def test_d10_nao_acusa_rede_que_ainda_nao_existia(con_semeado):
+    """O QSA é retrato de HOJE; o contrato é de ontem. Sem corte de vigência o detector acusava
+    rede societária inexistente à época — medido em 2026-08-09, **54 dos 649 alertas (8,3%)**,
+    inclusive ROMA×MEDKA em 2024, cujo administrador comum só entrou em março de 2026.
+    Mesma família de `situacao-cadastral-vigencia-na-data`.
+
+    Vínculo SEM data não é descartado: ausência de dado não vira prova de nada.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("T1", "11222333000181", "ALFA"), ("T2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2024,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2024-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','TARDIO','TARDIO','***777666**','20130101'),
+                                        ('44555666','TARDIO','TARDIO','***777666**','20260326')""")
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','SEM DATA','SEM DATA','***555444**',''),
+                                        ('44555666','SEM DATA','SEM DATA','***555444**','')""")
+    nomes = {a["titulo"] for a in pericia_gastos.d10_rede_concorrentes(con)}
+    assert not any("TARDIO" in t for t in nomes), (
+        "sócio que entrou em 2026 não descreve rede de 2024")
+    assert any("SEM DATA" in t for t in nomes), (
+        "vínculo sem data não pode ser descartado — ausência de dado não é prova")
+
+
+def test_poda_retira_alerta_que_o_detector_nao_produz_mais(con_semeado):
+    """Consertar o detector não limpa o painel: os 54 alertas anacrônicos do d10 continuaram
+    afirmando o que o detector já não afirmava. A poda tira o superado."""
+    con = con_semeado
+    con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                   values ('pcrj_d10_rede_concorrentes','media','Rede societária — FANTASMA',
+                           'alerta de uma versão anterior do detector','{}','novo')""")
+    for pncp, forn, nome in (("P1", "11222333000181", "ALFA"), ("P2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    restantes = [r[0] for r in con.execute(
+        "select titulo from alertas where tipo='pcrj_d10_rede_concorrentes'")]
+    assert not any("FANTASMA" in t for t in restantes), "alerta superado ficou no painel"
+    assert any("VIVO" in t for t in restantes), "o alerta que o detector ainda produz sumiu"
+
+
+def test_poda_nao_apaga_detector_que_zerou(con_semeado):
+    """INDISPONÍVEL ≠ 0: detector que zerou pode ter zerado porque a FONTE sumiu. Apagar aí
+    transformaria falha de coleta em 'nada a apurar' — o pior estrago num painel de fiscalização."""
+    con = con_semeado
+    con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                   values ('pcrj_d10_rede_concorrentes','media','Rede societária — ANTIGO',
+                           'de quando a fonte existia','{}','novo')""")
+    r = pericia_gastos.rodar_todas(con, gravar_alertas=True)   # sem contratos: d10 devolve 0
+    assert con.execute("select count(*) from alertas where titulo like '%ANTIGO%'").fetchone()[0] == 1
+    assert "POUPADOS" in r["poda"], "o poupamento tem de sair declarado, não calado"
+
+
+def test_poda_nunca_apaga_alerta_com_triagem_humana(con_semeado):
+    """`status` guarda a decisão de quem fiscaliza — o detector não pode desfazê-la.
+
+    Medido em 2026-08-09: os 21 alertas triados do acervo (15 descartados, 6 confirmados) são
+    TODOS `pcrj_d7_fracionamento`, a mesma família que a poda varre. Sobreviveram por sorte — o
+    título do d7 não mudou naquela rodada — e a recalibração do d7 os teria destruído em silêncio.
+
+    O teste roda sobre o d10 porque a poda só age em detector que PRODUZIU achado; com o d7 zerado
+    nesta base semeada o tipo seria poupado inteiro e o teste não provaria nada.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("Q1", "11222333000181", "ALFA"), ("Q2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    for titulo, status in (("Rede societária — CONFIRMADO PELO FISCAL", "confirmado"),
+                           ("Rede societária — DESCARTADO PELO FISCAL", "descartado"),
+                           ("Rede societária — SO VISTO", "novo")):
+        con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values ('pcrj_d10_rede_concorrentes','media',?,'versão anterior','{}',?)""",
+                    (titulo, status))
+    r = pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    vivos = {t for (t,) in con.execute(
+        "select titulo from alertas where tipo='pcrj_d10_rede_concorrentes'")}
+    assert "Rede societária — CONFIRMADO PELO FISCAL" in vivos, "poda destruiu decisão do fiscal"
+    assert "Rede societária — DESCARTADO PELO FISCAL" in vivos, "poda destruiu decisão do fiscal"
+    assert "Rede societária — SO VISTO" not in vivos, "alerta sem triagem e superado deve sair"
+    assert "PRESERVADOS" in r["poda"], "a preservação tem de sair declarada"
+
+
+def test_d7_severidade_considera_o_EXCESSO_nao_so_a_contagem(con_semeado):
+    """Cinco fatias a 1,05× do teto não é a mesma coisa que cinco a 3× — e pesavam igual.
+
+    Medido em 2026-08-09 nos 698 alertas com teto legível: mediana 1,70×, p75 2,41×, máximo
+    16,56×. A contagem sozinha não separava; o excesso separa. Nada é escondido — o caso rente ao
+    teto continua saindo, só não ocupa a faixa ALTA da fila.
+    """
+    con = con_semeado
+    teto = pericia_gastos.teto_dispensa(2025)
+
+    def semear(doc, valor, n):
+        for i in range(n):
+            con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                           orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                           data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                           ?,?)""", (f"{doc}-{i}", doc, f"F{doc}", valor, f"2025-03-{i+1:02d}"))
+
+    semear("11111111000191", teto * 0.21, 5)      # 5 fatias → soma ≈ 1,05× o teto
+    semear("22222222000122", teto * 0.60, 5)      # 5 fatias → soma ≈ 3,00× o teto
+    por = {a["evidencias"]["fornecedor"]: a for a in pericia_gastos.d7_fracionamento(con)}
+    rente, folgado = por["11111111000191"], por["22222222000122"]
+    assert rente["risco"] < folgado["risco"], "o excesso tem de separar dois achados de igual contagem"
+    assert rente["risco"] <= 7, "rente ao teto não pode ocupar a faixa ALTA"
+    assert folgado["risco"] >= 8
+
+
+def test_copias_antigas_do_MESMO_titulo_sao_colapsadas(con_semeado):
+    """Dedup que só ATUALIZA a primeira deixa as cópias antigas vivas para sempre.
+
+    Medido em 2026-08-09: 73 pares (tipo, título) com até 7 cópias cada, sobreviventes de
+    gravações anteriores ao dedup. A cópia com TRIAGEM nunca é colapsada.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("Z1", "11222333000181", "ALFA"), ("Z2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    titulo = [a["titulo"] for a in pericia_gastos.d10_rede_concorrentes(con)][0]
+    for status in ("novo", "novo", "confirmado"):
+        con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values ('pcrj_d10_rede_concorrentes','media',?,'cópia antiga','{}',?)""",
+                    (titulo, status))
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    linhas = con.execute("select status from alertas where tipo='pcrj_d10_rede_concorrentes' "
+                         "and titulo=?", (titulo,)).fetchall()
+    # a que fica é a TRIADA — ela é preferida na ordenação e recebe a atualização no lugar,
+    # de modo que a decisão do fiscal sobrevive E não há cópia duplicada ao lado dela
+    assert len(linhas) == 1, f"as cópias sem triagem deviam ser colapsadas, veio {len(linhas)}"
+    assert linhas[0][0] == "confirmado", "a cópia com triagem foi destruída"
+
+
+def test_triagem_IGUAL_colapsa_e_triagem_DIVERGENTE_fica(con_semeado):
+    """Cópias com a MESMA decisão são redundância; com decisões DIFERENTES são conflito.
+
+    Medido em 2026-08-09: os 21 alertas "triados" do acervo eram **7 decisões triplicadas**.
+    Colapsar cópias de mesma decisão é sem perda; resolver decisões divergentes é de quem
+    fiscaliza, não do gravador — por isso elas ficam todas.
+    """
+    con = con_semeado
+    for pncp, forn, nome in (("W1", "11222333000181", "ALFA"), ("W2", "44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,'Contrato',
+                       100000,'2025-02-01')""", (pncp, forn, nome))
+    con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio,
+                   data_entrada) values ('11222333','VIVO','VIVO','***111222**','20200101'),
+                                        ('44555666','VIVO','VIVO','***111222**','20200101')""")
+    titulo = [a["titulo"] for a in pericia_gastos.d10_rede_concorrentes(con)][0]
+    for status in ("descartado", "descartado", "descartado"):
+        con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values ('pcrj_d10_rede_concorrentes','media',?,'cópia','{}',?)""",
+                    (titulo, status))
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    iguais = con.execute("select count(*) from alertas where titulo=?", (titulo,)).fetchone()[0]
+    assert iguais == 1, f"três 'descartado' idênticos deviam virar um, veio {iguais}"
+
+    con.execute("""insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                   values ('pcrj_d10_rede_concorrentes','media',?,'outra leitura','{}','confirmado')""",
+                (titulo,))
+    pericia_gastos.rodar_todas(con, gravar_alertas=True)
+    st = sorted(r[0] for r in con.execute("select status from alertas where titulo=?", (titulo,)))
+    assert st == ["confirmado", "descartado"], f"decisões divergentes têm de ficar, veio {st}"

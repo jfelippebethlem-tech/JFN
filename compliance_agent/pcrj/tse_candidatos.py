@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import csv
 import io
+import sqlite3
 import zipfile
 from datetime import datetime, timezone
 
@@ -34,7 +35,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 _URL = "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_{ano}.zip"
 # Municipais (NM_UE = município → habilita "outra cidade") + gerais (candidatura em si).
-ANOS_PADRAO = [2024, 2020, 2016, 2022, 2018]
+# Municipais do Rio: 2012, 2016, 2020, 2024 · gerais: 2014, 2018, 2022. O dono pediu "as
+# eleições anteriores se possível" — a série vai a 2012, que é o limite em que o layout do TSE
+# ainda traz `NM_UE` como município no arquivo estadual.
+ANOS_PADRAO = [2024, 2022, 2020, 2018, 2016, 2014, 2012]
 _RIO = "RIO DE JANEIRO"
 
 # valores "vazios/redigidos" do TSE que não devem virar dado
@@ -52,10 +56,28 @@ def _idx(header: list[str]) -> dict:
     return {c.strip().upper(): i for i, c in enumerate(header)}
 
 
-def _nomes_servidores(con) -> set[str]:
-    """Conjunto de nomes normalizados dos servidores da Câmara (universo dos 'nomeados')."""
-    return {r[0] for r in con.execute(
+def _nomes_servidores(con, *, com_prefeitura: bool = True) -> set[str]:
+    """Nomes normalizados do universo de 'nomeados': Câmara **e** folha da Prefeitura.
+
+    A Câmara sozinha dá ~5 mil nomes e explicava as 142 candidaturas casadas até 2026-08-05. A
+    folha da Prefeitura (`pcrj_folha_pref`, 12,1 mi de linhas · **263.989 pessoas distintas**,
+    competências 2020-12 a 2026-05) é o universo que o dono pediu — exatamente a janela das
+    gestões Eduardo Paes / Eduardo Cavaliere.
+
+    O casamento é por NOME normalizado e continua sendo INDÍCIO, não prova: o CPF vem mascarado
+    nos dados abertos do TSE e a folha da Prefeitura não traz CPF nenhum. Homônimo é frequente em
+    base desse tamanho — quem decide a certeza é a análise, com as travas já usadas na perícia de
+    benefícios (município, janela de vínculo, fragmento de CPF quando existir).
+    """
+    alvos = {r[0] for r in con.execute(
         "SELECT DISTINCT nome_norm FROM pcrj_camara_servidores WHERE nome_norm<>''")}
+    if com_prefeitura:
+        try:
+            alvos |= {r[0] for r in con.execute(
+                "SELECT DISTINCT nome_norm FROM pcrj_folha_pref WHERE nome_norm<>''")}
+        except sqlite3.Error as exc:   # base sem a tabela da folha ainda: segue só com a Câmara
+            print(f"  [alvos] folha da Prefeitura indisponível ({str(exc)[:70]})", flush=True)
+    return alvos
 
 
 def _processar_ano(ano: int, alvos: set[str], con, uf_arquivo: str = "RJ") -> int:
@@ -134,10 +156,10 @@ def _processar_ano(ano: int, alvos: set[str], con, uf_arquivo: str = "RJ") -> in
     return n
 
 
-def coletar(anos: list[int] | None = None, db_path=None) -> dict:
+def coletar(anos: list[int] | None = None, db_path=None, *, com_prefeitura: bool = True) -> dict:
     _db.inicializar(db_path)
     con = _db.conectar(db_path)
-    alvos = _nomes_servidores(con)
+    alvos = _nomes_servidores(con, com_prefeitura=com_prefeitura)
     total = 0
     try:
         for ano in (anos or ANOS_PADRAO):

@@ -18,12 +18,18 @@ from __future__ import annotations
 
 import re
 
+from compliance_agent.sei import acervo_texto
+
 # órgãos de controle/jurídico cujo parecer/despacho carrega recomendação/ressalva
 _EMISSORES = [
     ("PGE", r"\b(procuradoria\s+geral|PGE|procurador(?:ia)?\s+do\s+estado)\b"),
     ("CGE", r"\b(controladoria\s+geral|CGE|auditoria\s+geral\s+do\s+estado|AGE)\b"),
     ("CONTROLE_INTERNO", r"\b(controle\s+interno|auditoria\s+interna|unidade\s+de\s+controle)\b"),
-    ("ASSESSORIA_JURIDICA", r"\b(assessoria\s+jur[ií]dica|consultoria\s+jur[ií]dica|parecer\s+jur[ií]dico|ASJUR|nota\s+t[eé]cnica\s+jur[ií]dica)\b"),
+    # `diretoria jurídica`/DIRJUR entram aqui, e não em PGE: é o órgão de assessoramento jurídico
+    # da PRÓPRIA Administração de que fala o art. 53 — o mesmo eixo que a casa separou em
+    # 2026-08-03 ao corrigir a `suficiencia_emissor`.
+    ("ASSESSORIA_JURIDICA", r"\b(assessoria\s+jur[ií]dica|consultoria\s+jur[ií]dica|diretoria\s+jur[ií]dica|"
+                            r"parecer\s+jur[ií]dico|ASJUR|DIRJUR|nota\s+t[eé]cnica\s+jur[ií]dica)\b"),
     ("TCE", r"\b(tribunal\s+de\s+contas|TCE-?RJ|corte\s+de\s+contas)\b"),
     # esfera MUNICIPAL (PCRJ): procuradoria e controladoria do Município
     ("PGM", r"\b(procuradoria\s+geral\s+do\s+munic[ií]pio|PGM)\b"),
@@ -33,18 +39,51 @@ _RE_RECOMENDA = re.compile(
     r"\b(recomenda|recomenda[çc][aã]o|ressalva|determina|determina[çc][aã]o|gloss?a|apontamento|"
     r"exige|condiciona|dever[aá]\s+ser\s+(?:sanad|suprid|corrigid)|sane-?se|suprir|impugna|n[aã]o\s+recomenda|"
     r"opina\s+pelo?\s+n[aã]o|abst[eê]m-se|com\s+ressalvas?)\b", re.I)
+# `reiter` SOZINHO era ruído puro. Medido em 2026-08-04 sobre os 755 pareceres do acervo: dos 73
+# documentos com sinal de "não atendida", **49 (67%) tinham como ÚNICO gatilho "reitera-se"** — o
+# conectivo retórico de qualquer texto jurídico ("que, reitera-se, caso existente deverá ser
+# comprovada nos autos"). A intenção do padrão era outra e continua valendo: o parecer que
+# **reitera uma RECOMENDAÇÃO** está dizendo que ela não foi atendida. Então o verbo passa a exigir
+# objeto de linguagem de CONTROLE — e não basta "reiterada a solicitação de cotação", que é
+# reenvio de pedido de preço. Na varredura de hoje a forma estreita casa ZERO documentos: os 49
+# eram todos falsos, e o que sobra é a regra correta esperando o caso verdadeiro.
 _RE_NAO_ATENDIDA = re.compile(
-    r"\b(n[aã]o\s+(?:foi\s+)?atendid|n[aã]o\s+(?:foi\s+)?sanad|reiter|permanec\w+\s+a\s+(?:pend|ressalv|recomend|falh)|"
-    r"persist\w+\s+a\s+(?:pend|irregular|falh)|descumpr|sem\s+manifesta[çc][aã]o|deixou\s+de\s+(?:atender|cumprir|sanar)|"
+    r"\b(n[aã]o\s+(?:foi\s+)?atendid|n[aã]o\s+(?:foi\s+)?sanad|"
+    r"reiter\w*(?:-se)?\s+(?:a|o|as|os)?\s*"
+    r"(?:recomenda|ressalva|determina|pend[êe]ncia|apontamento|exig[êe]ncia)|"
+    r"permanec\w+\s+a\s+(?:pend|ressalv|recomend|falh)|"
+    r"persist\w+\s+a\s+(?:pend|irregular|falh)|"
+    # `descumpr` cru casava a NORMA, não o FATO. Medido em 2026-08-05: as 18 ocorrências de
+    # `sinal_nao_atendida` do acervo inteiro — 12 processos, 100% delas — vinham da MESMA frase de
+    # praxe da PGE, que só descreve a regra em abstrato: "…deverão ser ressarcidos ao Fundo
+    # Estadual de Saúde (art. 18), e que o DESCUMPRIMENTO das normas nele previstas deve ser
+    # apurado conforme a legislação…". Isso é "se houver descumprimento, apura-se" — hipótese
+    # normativa, não afirmação de que algo foi descumprido. E custava caro: os 10 vereditos
+    # IGNORADO_INDICIO do acervo saíam daí, valem +4 pontos cada, e ocupavam SETE das nove
+    # primeiras posições da fila do fiscal. Agora exige forma que AFIRMA o fato.
+    r"descumpri(?:u|ram|d[oa]s?)\b|"
+    r"(?:houve|h[áa]|constatad[oa]|verificad[oa]|em|ante\s+o)\s+descumprimento\b|"
+    r"descumprimento\s+d[ao]s?\s+"
+    r"(?:parecer|recomenda|ressalva|determina|condicionante|exig[êe]ncia)|"
+    r"sem\s+manifesta[çc][aã]o|deixou\s+de\s+(?:atender|cumprir|sanar)|"
     r"n[aã]o\s+(?:foi\s+)?observ\w+\s+(?:o|a)\s+(?:parecer|recomenda|determina)|contrari\w+\s+(?:o|ao)\s+parecer|"
     r"pend[eê]ncia\s+n[aã]o\s+(?:sanad|atendid)|ressalva\s+n[aã]o\s+(?:sanad|atendid))", re.I)
 
 
 # ── eixo de ACATAMENTO (art. 53 Lei 14.133: parecer jurídico prévio obrigatório; a autoridade só
 #    pode divergir MOTIVADAMENTE — LINDB art. 22). Sinais no despacho da autoridade:
+# ATENDER a ressalva é acolhê-la, e o OBJETO decide: "em atendimento ao PARECER" responde o
+# controle prévio; "em atendimento ao DESPACHO" é encaminhamento de rotina e fica fora. Mesma
+# lacuna de recall medida na triagem em 2026-08-04 — 6 de 65 processos respondiam o parecer ponto
+# a ponto e eram lidos como silêncio administrativo.
 _RE_ACOLHIMENTO = re.compile(
     r"\b(acolho|acato|adoto|aprovo\s+(?:o|nos\s+termos\s+do)\s+parecer|nos\s+termos\s+do\s+parecer|"
-    r"conforme\s+(?:o\s+)?parecer|em\s+conson[âa]ncia\s+com\s+o\s+parecer|acolhimento\s+(?:integral|do\s+parecer))\b", re.I)
+    r"conforme\s+(?:o\s+)?parecer|em\s+conson[âa]ncia\s+com\s+o\s+parecer|acolhimento\s+(?:integral|do\s+parecer))\b"
+    r"|em\s+atendimento\s+(?:ao|à|aos|às)\s+"
+    r"(?:parecer|cota|manifesta[çc][ãa]o|recomenda|ressalva|condicionante|exig[êe]ncia)"
+    r"|atendid[ao]s?\s+(?:a|as|o|os)?\s*"
+    r"(?:recomenda|ressalva|condicionante|exig[êe]ncia|parecer)"
+    r"|(?:recomenda[çc][ãa]o|ressalva|condicionante|exig[êe]ncia)[^.]{0,60}\batendid", re.I)
 _RE_REJEICAO_MOTIVADA = re.compile(
     r"\b(deixo\s+de\s+acolher|n[aã]o\s+acolho|divirjo\s+do\s+parecer|em\s+que\s+pese\s+o\s+parecer|"
     r"n[aã]o\s+obstante\s+o\s+parecer|afasto\s+a\s+(?:ressalva|recomenda[çc][aã]o)|"
@@ -58,21 +97,74 @@ _RE_DECISORIO_FORTE = re.compile(
     r"\b(homologo|homologa[çc][aã]o|adjudico|adjudica[çc][aã]o|autorizo|ratifico|aprovo\s+a\s+"
     r"(?:contrata[çc][aã]o|dispensa|inexigibilidade)|decis[aã]o\s+(?:final|da\s+autoridade))\b", re.I)
 # boilerplate de parecer/certidão que casa _RE_RECOMENDA mas NÃO é ressalva substantiva (teste real):
+# TEXTO DE FÔRMA — o que se repete igual em processo nenhum é ressalva DESTE processo. Medido em
+# 2026-08-04 nos 150 de maior risco: das 31 passagens distintas que acendiam "parecer com
+# ressalva", **7 se repetiam e cobriam 39 processos**:
+#     13× o item de um CHECKLIST da PGE ("(item 5 do enunciado n.º 08 da PGE) *recomenda-se que a
+#         fiscalização acoste descritivo…") — formulário, não opinião sobre este processo;
+#     12× a CITAÇÃO LITERAL da lei ("ao prever no art. 149 da Lei 14.133/21 a seguinte expressão:
+#         'desde que não lhe seja imputável'") — a condição é do legislador, não do parecerista;
+#      5× DOUTRINA no corpo do parecer ("desde que complementar à lei ou outro ato legislativo");
+#      3× o rodapé de uma CERTIDÃO ("a aceitação desta certidão está condicionada à verificação").
+# É a mesma família do falso positivo que já derrubou 71 disparos do G3 e 14 do I2: documento de
+# fôrma lido como manifestação. Repetição idêntica entre processos é a prova objetiva.
 _RE_BOILERPLATE = re.compile(
     r"aplica[çc][aã]o\s+do\s+checklist|checklist\s+correspondente|condiciona-?se\s+[àa]\s+verifica[çc][aã]o|"
     r"verifica[çc][aã]o\s+de\s+(?:sua\s+)?autenticidade|recomenda-?se\s+a\s+leitura|"
-    r"observ[âa]ncia\s+ao\s+princ[ií]pio\s+da\s+prud[êe]ncia", re.I)
+    r"observ[âa]ncia\s+ao\s+princ[ií]pio\s+da\s+prud[êe]ncia"
+    r"|enunciado\s+n\.?\s*[ºo°]?\s*\d+\s+da\s+pge|item\s+\d+\s+do\s+enunciado"
+    r"|a\s+seguinte\s+express[ãa]o\s*:|desde\s+que\s+complementar\s+[àa]\s+lei"
+    r"|aceita[çc][ãa]o\s+desta\s+certid[ãa]o"
+    # O AVISO DE NÃO-VINCULAÇÃO é a assinatura do parecer, não uma ressalva dele: "esta
+    # manifestação, embora de emissão obrigatória, NÃO POSSUI CARÁTER VINCULANTE para o gestor,
+    # que poderá dela discordar, DESDE QUE apresente as razões de fato e de direito". O "desde
+    # que" é o que casa o padrão de ressalva — e a frase aparece em praticamente todo parecer.
+    # Medido em 2026-08-04: **4 dos 15** disparos de A3 que ainda afirmavam ausência de resposta
+    # se ancoravam nela, com o MESMO texto em três órgãos diferentes.
+    r"|n[ãa]o\s+(?:possui|tem)\s+car[áa]ter\s+vinculante|car[áa]ter\s+meramente\s+opinativo"
+    r"|n[ãa]o\s+vincula\s+o\s+gestor", re.I)
 # doc que É parecer pelo TÍTULO (mesmo favorável, sem ressalva) — p/ separar "sem parecer" de "parecer regular"
 _RE_TITULO_PARECER = re.compile(
     r"\b(parecer|manifesta[çc][aã]o\s+jur[ií]dica|nota\s+t[eé]cnica|promo[çc][aã]o)\b", re.I)
 
 
-# ── suficiência do EMISSOR (lição IDESI 2026-08-01: contrato emergencial de alto valor só com
-#    DIRJUR/AUDIN internos — parecer interno NÃO supre a análise da PGE/CGE). Níveis: 3 = controle
-#    externo ao órgão (PGE/PGM/CGE/CGM/TCE); 2 = controle interno; 1 = assessoria jurídica do órgão.
+# ── suficiência do EMISSOR. Níveis: 3 = controle externo ao órgão (PGE/PGM/CGE/CGM/TCE);
+#    2 = controle interno; 1 = assessoria jurídica do órgão.
+#
+# CORREÇÃO JURÍDICA (2026-08-04). A tabela exigia nível 3 para TODO `contrato` e disparava 37
+# vezes dizendo "parecer interno não supre o controle externo". Isso afirma um vício que a lei
+# não cria: o art. 53 da Lei 14.133/2021 manda o processo ao **órgão de assessoramento jurídico
+# da própria Administração**, que realiza o controle prévio de legalidade — a assessoria jurídica
+# do órgão (nível 1) CUMPRE o art. 53.
+#
+# A manifestação individual da PGE-RJ é exigida nas hipóteses das normas estaduais, e o próprio
+# acervo mostra o mecanismo que a DISPENSA: a "DECLARAÇÃO DE CONFORMIDADE … com as minutas-padrão
+# estabelecidas pela Procuradoria Geral do Estado" (Resoluções PGE 2.599/2.838/3.055), que
+# aparece nos autos exatamente para isso. Amostrando 25 dos 37 acusados, NENHUM parecer invoca
+# minuta-padrão ou enunciado da PGE — ou seja, não há no texto o que sustente a exigência.
+#
+# A lição IDESI (2026-08-01) segue INTACTA, mas era o que dizia: **contratação direta** de alto
+# valor com parecer só de DIRJUR/AUDIN internos. Dispensa e inexigibilidade afastam a competição
+# e por isso carregam controle mais estrito — ali o nível 3 fica. O excesso era estender o padrão
+# da contratação direta ao contrato ORDINÁRIO e ao aditivo, que o art. 53 entrega à assessoria
+# jurídica do órgão.
 NIVEL_EMISSOR = {"PGE": 3, "PGM": 3, "CGE": 3, "CGM": 3, "TCE": 3,
                  "CONTROLE_INTERNO": 2, "ASSESSORIA_JURIDICA": 1}
-EXIGENCIA_POR_ATO = {"contratacao_direta": 3, "contrato": 3, "aditivo": 2, "geral": 1}
+EXIGENCIA_POR_ATO = {"contratacao_direta": 3, "contrato": 1, "aditivo": 1, "geral": 1}
+
+
+def _limpos(docs: list[dict] | None) -> list[dict]:
+    """Documentos com o texto livre da ETIQUETA que o arquivo compacto prepõe ao `.txt`.
+
+    A porta única (`processo_360._texto_de` → `sei/acervo_texto`) já entrega limpo; isto é cinto
+    de segurança para quem monta a lista por conta própria — `lex_analise_conteudo`,
+    `backfill_dossie_mestre` e as ferramentas de linha de comando. É idempotente. O motivo está
+    em `sei/acervo_texto`: a etiqueta punha a NOSSA classificação dentro do documento e comia até
+    478 caracteres de janelas que aqui têm 200. (2026-08-03)
+    """
+    return [{**d, "texto": acervo_texto.sem_etiqueta(d.get("texto") or "",
+                                                     str(d.get("ref") or ""))}
+            for d in docs or [] if isinstance(d, dict)]
 
 
 def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
@@ -82,7 +174,15 @@ def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
     Vereditos: SUFICIENTE · PARECER_DE_EMISSOR_INSUFICIENTE (há parecer, mas só de nível
     inferior ao exigido pelo ato) · SEM_PARECER_LOCALIZADO (nenhum emissor identificado —
     leitura parcial ≠ inexistência)."""
-    emissores = sorted({e for e in (classificar_emissor(d.get("texto") or "") for d in docs or [])
+    docs = _limpos(docs)
+    # SÓ MANIFESTAÇÃO DE CONTROLE CONTA. Medido em 2026-08-04: sem este portão, um contrato, uma
+    # certidão de FGTS ou uma tela do portal de contratação que MENCIONE a PGE fazia o processo
+    # passar por "tem parecer da PGE" (nível 3, controle externo). Nos 2.174 processos do acervo,
+    # **391 mudam de veredito** quando o portão entra — e a amostra dos documentos barrados não
+    # tem um parecer sequer: certidão de regularidade do FGTS, extrato de Termo de Ajuste de
+    # Contas, telas do portal, empenho, nota de liquidação, ata de registro de preços.
+    emissores = sorted({e for e in (classificar_emissor(d.get("texto") or "")
+                                    for d in (docs or []) if e_manifestacao_de_controle(d))
                         if e})
     exigido = EXIGENCIA_POR_ATO.get(ato, 1)
     max_nivel = max((NIVEL_EMISSOR.get(e, 0) for e in emissores), default=0)
@@ -96,11 +196,81 @@ def suficiencia_parecer(docs: list[dict], ato: str = "geral") -> dict:
             "max_nivel": max_nivel, "emissores": emissores}
 
 
+_CABECALHO_EMISSOR = 700
+"""Janela do cabeçalho onde o documento DIZ quem o emite (órgão, unidade, número do parecer)."""
+
+
+_LINHA_DE_CORPO = 120
+"""Acima disto a linha é texto corrido, não linha de cabeçalho."""
+
+
+def _bloco_institucional(texto: str) -> str:
+    """O trecho onde o documento DIZ quem o emite — o timbre, não o corpo.
+
+    Cabeçalho de documento oficial é feito de LINHAS CURTAS ("Governo do Estado do Rio de
+    Janeiro", "Fundação Saúde", "Diretoria Jurídica", "PARECER Nº 2848/2024 FS/DIRJUR"). Texto
+    corrido começa numa linha longa — o contrato abre com "CONTRATO Nº 01/2025 que entre si
+    celebram o Estado do Rio de Janeiro e ...". Cortar só por número de caracteres deixaria passar
+    documento curto que cita um órgão de controle na primeira frase; cortar na primeira linha de
+    corpo resolve os dois casos com a mesma régua.
+
+    Termina também em "Assunto:"/"Ementa:", que é onde começa o mérito e as citações de normas e
+    enunciados de OUTROS órgãos.
+    """
+    bruto = re.split(r"(?im)^\s*(?:assunto|ementa)\s*:", (texto or "")[:_CABECALHO_EMISSOR])[0]
+    linhas = []
+    for ln in bruto.splitlines():
+        if len(ln.strip()) > _LINHA_DE_CORPO:
+            break
+        linhas.append(ln)
+    return "\n".join(linhas)
+
+
+def e_manifestacao_de_controle(doc: dict) -> bool:
+    """O documento É uma manifestação de controle/jurídica — ou apenas MENCIONA uma?
+
+    `detectar` aceitava qualquer documento cujo texto produzisse um emissor, e um CONTRATO que cita
+    a Procuradoria Geral do Estado numa cláusula entrava como se fosse parecer dela. Medido em
+    2026-08-04 no acervo: dos **99 documentos** com sinal de "não atendida", **só 19 eram parecer**
+    — 20 eram contrato, e o resto anexo, termo de referência, recurso, ETP. E as cláusulas
+    contratuais padrão ("Persistindo a irregularidade, o CONTRATANTE deverá adotar as medidas...")
+    viravam prova de recomendação ignorada, alimentando a fila do fiscal.
+
+    Duas provas aceitas, ambas sobre a IDENTIDADE do documento e nunca sobre o corpo: o título/tipo
+    o anuncia (`parecer`, `manifestação jurídica`, `nota técnica`, `promoção`), ou o **bloco
+    institucional** do cabeçalho nomeia um órgão de controle/jurídico.
+    """
+    rotulo = f"{doc.get('tipo') or ''} {doc.get('ref') or ''}"
+    if _RE_TITULO_PARECER.search(rotulo):
+        return True
+    cab = _bloco_institucional(doc.get("texto") or "")
+    return any(re.search(pat, cab, re.I) for _, pat in _EMISSORES)
+
+
 def classificar_emissor(texto: str) -> str | None:
+    """Quem EMITE o parecer — decidido pelo cabeçalho, não por citação no corpo.
+
+    A regra casava qualquer menção no texto inteiro, e um parecer que apenas CITA a PGE virava
+    parecer DA PGE. Medido em 2026-08-04 sobre os 755 pareceres do acervo: dos 210 rotulados PGE,
+    **74 (35%) têm no cabeçalho a diretoria/assessoria jurídica do próprio órgão** — "Governo do
+    Estado do Rio de Janeiro / Fundação Saúde / Diretoria Jurídica / PARECER Nº 2848/2024
+    FS/DIRJUR", cuja ementa cita o Enunciado nº 08 da PGE-RJ. Como `NIVEL_EMISSOR['PGE'] = 3`
+    (controle EXTERNO ao órgão) e o jurídico próprio é nível menor, um parecer da própria casa era
+    creditado como controle externo — exatamente a confusão que a correção do art. 53 desfez em
+    2026-08-03.
+
+    O cabeçalho decide; o corpo só é consultado quando o cabeçalho não identifica ninguém (parecer
+    cujo timbre não foi capturado). Mesmo idioma do veto posicional já adotado neste módulo.
+    """
     t = texto or ""
-    for nome, pat in _EMISSORES:
-        if re.search(pat, t, re.I):
-            return nome
+    # O bloco INSTITUCIONAL termina onde começa a ementa: "Assunto:"/"Ementa:" abre a parte que
+    # descreve o MÉRITO e cita normas e enunciados de outros órgãos. Sem esse corte a janela do
+    # cabeçalho não resolve nada — a ementa do Parecer 2848 cita o Enunciado nº 08 da PGE-RJ na
+    # terceira linha, e o documento voltava a ser "da PGE".
+    for alvo in (_bloco_institucional(t), t):
+        for nome, pat in _EMISSORES:
+            if re.search(pat, alvo, re.I):
+                return nome
     return None
 
 
@@ -117,11 +287,15 @@ def _trechos(texto: str, rgx: re.Pattern, n: int = 2, janela: int = 140) -> list
 def detectar(docs: list[dict]) -> list[dict]:
     """Camada determinística. docs: [{ref, tipo, texto}]. Retorna candidatos: doc de controle/jurídico com
     linguagem de recomendação (e, se houver, sinais explícitos de não-atendimento)."""
+    docs = _limpos(docs)
     achados = []
     for d in docs or []:
         texto = d.get("texto") or ""
         emissor = classificar_emissor(texto) or classificar_emissor(d.get("tipo") or "")
         if not emissor:
+            continue
+        # citar um órgão de controle não faz do documento uma manifestação dele
+        if not e_manifestacao_de_controle(d):
             continue
         if not _RE_RECOMENDA.search(texto):
             continue
@@ -146,16 +320,15 @@ def auditar_acatamento(docs: list[dict]) -> dict:
     manifesta) · SEM_PARECER_LOCALIZADO (nenhum doc de emissor jurídico/controle entre os LIDOS —
     art. 53 exige parecer prévio, mas cobertura de leitura ≠ inexistência: indício a confirmar).
     """
+    docs = _limpos(docs)
     candidatos = detectar(docs)
     # ressalva SUBSTANTIVA = ao menos um trecho de recomendação fora do boilerplate, OU sinal de
     # não-atendimento (teste real 2026-07-20: checklist/certidão da PGE inflava falso IGNORADO)
     pareceres = [p for p in candidatos
                  if p["sinal_nao_atendida"]
                  or any(not _RE_BOILERPLATE.search(t) for t in p["trechos_recomendacao"])]
-    tem_doc_parecer = any(
-        _RE_TITULO_PARECER.search(f"{d.get('tipo') or ''} {d.get('ref') or ''}")
-        or classificar_emissor(d.get("texto") or "")
-        for d in docs or [])
+    # mesma régua da suficiência: identidade do documento, nunca menção no corpo
+    tem_doc_parecer = any(e_manifestacao_de_controle(d) for d in docs or [])
     despachos = []
     for i, d in enumerate(docs or []):
         texto = d.get("texto") or ""
@@ -229,6 +402,7 @@ def avaliar_pensante(texto: str, timeout: float = 60.0) -> dict:
 
 def analisar(docs: list[dict], usar_llm: bool = True, max_llm: int = 4) -> dict:
     """Orquestra: detecta candidatos (determinístico) e, opcionalmente, avalia os mais relevantes com o nous."""
+    docs = _limpos(docs)
     candidatos = detectar(docs)
     if usar_llm:
         # prioriza os com sinal explícito de não-atendimento

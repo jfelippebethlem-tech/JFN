@@ -35,6 +35,22 @@ capacidades:
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
      args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}",
      menu: {grupo: "🔎 Investigação", nome: "Anomalias automáticas nos pagamentos", exemplo: "algo estranho nos pagamentos do ITERJ?", ordem: 24}}
+  - {id: lentes_cruzadas, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lentes, status: PRONTO,
+     descricao: "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao. Le JSON materializado (tools/lentes_materializar.py, cron 04:17) — as 4 lentes somam ~31s e nao rodam na rota.",
+     quando_usar: "priorizar fila de apuracao; 'quais empresas acendem em mais de um detector'",
+     args: {lente: opcional, top: opcional}, retorno: "{ok,gerado_em,lentes:{nome:{ok,n,segundos,topo[]}}}",
+     menu: {grupo: "🔎 Investigação", nome: "Lentes cruzadas (empresa em 2+ detectores)", exemplo: "quais empresas acendem em mais de uma lente?", ordem: 25}}
+  - {id: lentes_municipais, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lentes, status: PRONTO,
+     descricao: "26 lentes sobre a despesa da PREFEITURA do Rio (pcrj_despesa), com o DENOMINADOR junto: universo contratual de R$ 30,64 bi de R$ 89,62 bi brutos (34,2%) — o resto e folha, divida, intra-orcamentaria e precatorio. Cada lente carrega prevalencia medida; o que foi ressalvado continua contado, com o motivo.",
+     quando_usar: "risco na contratacao MUNICIPAL do Rio; 'o que a Prefeitura pagou fora da curva'; competencia TCM-RJ",
+     args: {esfera: "municipal", lente: opcional, top: opcional},
+     retorno: "{ok,esfera,universo_contratual,lentes:{nome:{titulo,n,universo,prevalencia,massa,topo[],n_ressalvados}}}",
+     menu: {grupo: "🔎 Investigação", nome: "Lentes municipais (Prefeitura do Rio)", exemplo: "o que a Prefeitura do Rio pagou fora da curva?", ordem: 27}}
+  - {id: pericia_bateria, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/pericia/bateria, status: PRONTO,
+     descricao: "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos. Medido: 83,3% dos itens sao INDISPONIVEL, 20 testes nao rodam e NENHUM item chega a CONFIRMADO. INDISPONIVEL e ausencia de EXAME, nao de irregularidade. Distinta de /api/pericia/cobertura, que mede quanto do ACERVO recebeu juizo.",
+     quando_usar: "'a pericia esta funcionando?'; decidir QUAL captura priorizar; entender por que o placar nao confirma nada",
+     args: {so_mortos: opcional}, retorno: "{ok,n_testes,testes_que_rodam,testes_uteis,fracao_indisponivel,confirmados_no_acervo,insumos_que_destravam[],testes[]}",
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Bateria de perícia — quanto do exame aconteceu", exemplo: "a pericia esta confirmando alguma coisa?", ordem: 28}}
   - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
      descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
      args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}"}
@@ -46,8 +62,11 @@ capacidades:
   - {id: processo_360_avaliar, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/processo/avaliar, status: PRONTO,
      descricao: "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)",
      quando_usar: "quando GET /api/processo devolver 404 (ainda nao avaliado)", exemplo: "avaliar o processo SEI-070026/000410/2021",
-     args: {numero: "string (numero SEI)", com_llm: "bool opcional"}, retorno: "{ok,status,msg} (assincrono)",
-     menu: {grupo: "🔎 Investigação", nome: "Avaliar um processo SEI (360)", exemplo: "avaliar o processo SEI-070026/000410/2021", ordem: 27}}
+     args: {numero: "string (numero SEI)", com_llm: "bool opcional"}, retorno: "{ok,status,msg} (assincrono)"}
+     # SEM item de menu de propósito (2026-08-02): é o gatilho assíncrono da MESMA capacidade que já
+     # aparece como "Avaliação 360 de um processo SEI" (/processo) — quem lê o menu via a mesma coisa
+     # duas vezes, e o teto do menu curado (test_render_menu_curado_e_enxuto) caiu em 31 por causa
+     # disto. Mecanismo interno não é capacidade; a porta de entrada é uma só.
   - {id: responsaveis_processo, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/responsaveis, status: PRONTO,
      descricao: "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo. Ausencia vem como LACUNA declarada, nunca como inexistencia de responsavel.", quando_usar: "'quem e o fiscal do processo X', 'quem assinou', 'quem autorizou', 'ordenador de despesas do SEI Y', '/responsaveis'", exemplo: "/responsaveis SEI-030001/004724/2026",
      args: {processo: "string (numero SEI, com ou sem prefixo SEI-)"},

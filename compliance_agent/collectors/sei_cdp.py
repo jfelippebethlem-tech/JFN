@@ -365,8 +365,13 @@ async def _resolver_captcha_ocr(page) -> bool:
     # Tenta ler a imagem direto do DOM (mais confiável que baixar de novo)
     texto_ocr = ""
     try:
-        from compliance_agent.captcha_solver import solve_captcha_url
-        texto_ocr = await asyncio.to_thread(solve_captcha_url, img_src)
+        if img_src.startswith("data:"):
+            # SEI municipal (prefeitura.sei.rio) embute o captcha no src — não há URL a baixar.
+            from compliance_agent.captcha_solver import solve_captcha_data_uri
+            texto_ocr = await asyncio.to_thread(solve_captcha_data_uri, img_src)
+        else:
+            from compliance_agent.captcha_solver import solve_captcha_url
+            texto_ocr = await asyncio.to_thread(solve_captcha_url, img_src)
     except Exception as e:
         print(f"[SEI] OCR falhou: {e}")
         return False
@@ -392,10 +397,32 @@ async def _resolver_captcha_ocr(page) -> bool:
     return True
 
 
+# O SEI municipal (prefeitura.sei.rio) barra a busca NO CLIENTE quando nenhum Órgão Gerador
+# está marcado: o handler de submit faz `alert('Nenhum Órgão Gerador selecionado.')` e retorna
+# sem emitir POST algum. Como o Playwright descarta alerts em silêncio, isso aparecia como
+# "a página não mudou" — sintoma que convida a culpar bloqueio, quando é requisito de formulário.
+_JS_MARCA_ORGAO = """
+(valor) => {
+  const sel = document.querySelectorAll('input[data-name="selectItemselOrgaoPesquisa[]"]');
+  if (!sel.length) return {ok: false, motivo: 'widget de órgão não está no DOM'};
+  let marcados = 0;
+  for (const el of sel) {
+    if (valor === null || String(el.value) === String(valor)) {
+      if (!el.checked) { el.checked = true; el.dispatchEvent(new Event('click', {bubbles: true})); }
+      marcados++;
+      if (valor !== null) break;
+    }
+  }
+  return {ok: marcados > 0, marcados, total: sel.length};
+}
+"""
+
+
 # ── API original: busca crua e devolve texto/HTML ─────────────────────────────
 
 async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_CAPTCHA,
-                            url_pesquisa: str | None = None, login_interno: bool = True) -> dict:
+                            url_pesquisa: str | None = None, login_interno: bool = True,
+                            orgao_gerador: str | None = None) -> dict:
     """
     Busca um processo no SEI e devolve o texto/HTML da página de resultado.
     Resolve o CAPTCHA de imagem via OCR automaticamente.
@@ -403,6 +430,11 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
     ``url_pesquisa`` (opcional) aponta para outra instância SEI (ex.: prefeitura.sei.rio,
     o SEI municipal). Default = SEI-RJ estadual. ``login_interno=False`` pula o login itkava
     (o municipal é público, não tem usuário interno) — a mesma máquina de captcha OCR serve.
+
+    ``orgao_gerador`` marca o Órgão Gerador antes de submeter, exigência do SEI municipal
+    (``"0"`` = PCRJ, ``"35"`` = SES-RIO; 62 órgãos no widget). Sem ele, o formulário do
+    municipal aborta no cliente e nenhum POST sai. Ignorado quando o widget não existe, que é
+    o caso do SEI estadual.
     """
     if not await _chrome_disponivel():
         return {"erro": "Chrome 9222 indisponível. Abra o Chrome debug (HERMES.bat passo 4)."}
@@ -427,8 +459,18 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
         await page.goto(url_pesquisa or SEI_PESQUISA_PUBLICA, wait_until="domcontentloaded", timeout=30000)
         await asyncio.sleep(1.5)
 
+        # Alerts do formulário são REGISTRADOS, não descartados: era assim que
+        # "Nenhum Órgão Gerador selecionado." sumia e a falha virava mistério.
+        alertas: list[str] = []
+        page.on("dialog", lambda d: (alertas.append(d.message), asyncio.ensure_future(d.dismiss())))
+
         await page.evaluate(_JS_PREENCHE_BUSCA, numero)
         await asyncio.sleep(0.5)
+        if orgao_gerador is not None:
+            marca = await page.evaluate(_JS_MARCA_ORGAO, orgao_gerador)
+            if not marca.get("ok"):
+                logger.debug("SEI busca %s: órgão gerador não marcado (%s)", numero, marca.get("motivo"))
+            await asyncio.sleep(0.3)
         await page.evaluate(_JS_CLICA_PESQUISAR)
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=30000)
@@ -457,6 +499,9 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
             "texto": txt,
             "url": page.url,
             "captcha_resolvido": not _is_captcha_page(txt),
+            # alerta do formulário é DIAGNÓSTICO, não ruído: "Nenhum Órgão Gerador selecionado."
+            # distingue requisito não atendido de captcha errado ou de página que não respondeu.
+            "alertas": alertas,
         }
     except Exception as e:
         return {"erro": f"{type(e).__name__}: {e}"}

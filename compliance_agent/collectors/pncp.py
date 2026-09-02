@@ -21,7 +21,6 @@ from typing import Optional
 import logging
 
 import httpx
-from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
 
@@ -334,6 +333,10 @@ async def buscar_contratos_fornecedor(
     if len(cnpj) != 14:
         return []
 
+    # A API IGNORA `cnpjFornecedor` — medido em 2026-08-09 contra a fonte: pedindo o CNPJ
+    # 00801512000157 ela devolveu contrato de `niFornecedor` 45769285000168. O parâmetro não
+    # filtra e não dá erro. Por isso o filtro é aplicado AQUI, sobre o que voltou, e o resultado
+    # é uma AMOSTRA da janela — não a lista completa do fornecedor.
     params = {
         "cnpjFornecedor": cnpj,
         "dataInicial": data_inicial.strftime("%Y%m%d"),
@@ -344,7 +347,9 @@ async def buscar_contratos_fornecedor(
     result = await _get_pncp("/contratos", params)
     if not result:
         return []
-    return result.get("data", []) or (result if isinstance(result, list) else [])
+    linhas = result.get("data", []) or (result if isinstance(result, list) else [])
+    return [c for c in linhas
+            if re.sub(r"\D", "", str(c.get("niFornecedor") or "")) == cnpj]
 
 
 async def buscar_licitacoes_orgao(
@@ -374,7 +379,7 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
 
     Lei 14.133/21 art. 94: contratos devem ser publicados no PNCP.
     """
-    from compliance_agent.database.models import OrdemBancaria, Alerta
+    from compliance_agent.database.models import OrdemBancaria
 
     target_date = target_date or date.today()
     MINIMO = 30_000.0
@@ -404,33 +409,16 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
         await asyncio.sleep(0.3)
 
         if not contratos:
-            # Sem contrato publicado no PNCP para este CNPJ
-            titulo = f"OB sem contrato no PNCP — {ob.favorecido_nome or cnpj}"[:300]
-            existe = session.query(Alerta).filter_by(titulo=titulo).first()
-            if not existe:
-                alerta = Alerta(
-                    tipo="pncp_sem_contrato",
-                    severidade="alta",
-                    titulo=titulo,
-                    descricao=(
-                        f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}) paga a "
-                        f"'{ob.favorecido_nome}' (CNPJ {cnpj}) em {target_date}. "
-                        f"Nenhum contrato encontrado no PNCP para este fornecedor "
-                        f"nos últimos {JANELA_DIAS} dias. Pagamento sem amparo contratual "
-                        f"publicado — possível irregularidade à luz da Lei 14.133/21 art. 94."
-                    ),
-                    evidencias=str({
-                        "numero_ob": ob.numero_ob,
-                        "cnpj": cnpj,
-                        "favorecido": ob.favorecido_nome,
-                        "valor": ob.valor,
-                        "pncp_contratos_encontrados": 0,
-                    }),
-                    data_referencia=target_date,
-                    ordem_bancaria_id=ob.id,
-                )
-                session.add(alerta)
-                alertas.append({"ob": ob.numero_ob, "cnpj": cnpj, "valor": ob.valor})
+            # NÃO se afirma ausência com esta fonte. A consulta do PNCP ignora o filtro por
+            # fornecedor (medido em 2026-08-09), então "nenhum contrato encontrado" aqui significa
+            # "não achei nesta janela e nesta página", não "não existe contrato". Um alerta de
+            # severidade ALTA dizendo "pagamento sem amparo contratual" construído sobre isso seria
+            # acusação a partir de lacuna — o oposto da regra INDISPONÍVEL ≠ 0.
+            # O detector nunca chegou a rodar (0 alertas no acervo); fica desligado até haver fonte
+            # que sustente a afirmação (consulta por fornecedor ou varredura completa por órgão).
+            logger.info("pncp_sem_contrato NÃO emitido p/ %s: a fonte não permite afirmar ausência",
+                        cnpj)
+            continue
 
     session.commit()
     return alertas
@@ -584,6 +572,12 @@ def _parse_termo(t: dict) -> dict:
         "qualif_vigencia": t.get("qualificacaoVigencia"),
         "qualif_reajuste": t.get("qualificacaoReajuste"),
         "fundamento_legal": t.get("fundamentoLegal"),
+        # a fonte entrega, e a casa jogava fora: sem `dataAssinatura` não se mede aditivo precoce
+        # (o sinal da CGE no caso SECID), sem `tipoTermoContratoNome` a natureza vem só do objeto,
+        # e sem `processo` não há ponte para os autos.
+        "data_assinatura": t.get("dataAssinatura"),
+        "tipo_termo": t.get("tipoTermoContratoNome"),
+        "processo": t.get("processo"),
     }
 
 
@@ -609,11 +603,17 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
     termos = await termos_contrato(cnpj, ano, seq)
     for row in termos:
         con.execute(
-            """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+            """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                  numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal,
+                 data_assinatura, tipo_termo, processo)
                VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,
+                 :fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
             {**row, "ncp": numero_controle_pncp})
     con.commit()
     return len(termos)
@@ -722,11 +722,21 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
         vg_max = None
         for row in termos:
             con.execute(
-                """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                # MESMO conjunto de colunas do outro gravador (coletar_aditivos): este INSERT é a
+                # segunda cópia, e foi ela que quase ficou para trás quando as três colunas novas
+                # (data_assinatura, tipo_termo, processo) entraram — o defeito clássico de dois
+                # escritores para a mesma tabela.
+                """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                      numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste,
+                     fundamento_legal, data_assinatura, tipo_termo, processo)
                    VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,
+                     :qualif_reajuste,:fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
                 {**row, "ncp": ncp})
             if row.get("valor_acrescido"):
                 acresc += row["valor_acrescido"]

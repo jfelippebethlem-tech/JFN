@@ -38,6 +38,11 @@ from typing import Any
 MAX_EMPRESAS_POR_PESSOA = 20
 HHI_CONCENTRADO = 0.25          # o mesmo piso já usado em `editais/screens_participacao`
 DELTA_RELEVANTE = 0.05          # abaixo disto o agrupamento não mudou a leitura
+# Fração mínima de pontes com poder de mando para o grupo ser LIDO como comandado. Calibrado no
+# acervo (2026-08-09): Cidades tem 2 administradores em 5 pontes (40%) e é comando; FSERJ tem 1 em
+# 28 (3,6%) e é teia de cotistas com uma exceção. Não há caso do acervo entre 0,036 e 0,40 — o piso
+# fica no meio, longe dos dois. Não altera agrupamento nem HHI: só a leitura.
+PONTE_DE_COMANDO_MIN = 0.20
 
 
 def _doc(s: Any) -> str:
@@ -98,6 +103,77 @@ def montar_grupos(con: sqlite3.Connection, *,
     return {"grupo_de": grupo_de, "unido_por": {k: sorted(v) for k, v in final.items()},
             "pessoas_usadas": usadas, "pessoas_descartadas": descartadas,
             "max_empresas_por_pessoa": max_empresas_por_pessoa}
+
+
+def cimento_do_grupo(con: sqlite3.Connection, cnpjs: list[str]) -> dict[str, Any]:
+    """O grupo é cimentado por CONTROLE ou por mera coparticipação? A leitura muda inteira.
+
+    Medido em 2026-08-09, comparando os dois maiores grupos do acervo:
+
+      · UG 660100 (Cidades) — 5 pessoas ligam 7 CNPJs e **duas administram** duas empresas cada
+        (uma delas é Administrador em uma e Presidente em outra). Isso é comando comum.
+      · UG 294200 (FSERJ) — 11 pessoas ligam 8 CNPJs e **só uma administra** duas; as outras dez
+        são sócias de sociedades médicas com 17 a 110 cotistas. Um médico ser cotista de duas
+        clínicas é o exercício normal da profissão, não estrutura de grupo.
+
+    O fecho transitivo trata os dois casos igual — e deve mesmo, porque grupo **de fato** não exige
+    controle formal (é o que o cabeçalho deste módulo declara). Mas entregar os dois números com a
+    mesma cara faz o fiscal ler coparticipação profissional como comando comum. Este qualificador
+    não altera o agrupamento nem o HHI: só diz o que sustenta o grupo, para quem for ler.
+
+    Devolve `estado='indisponivel'` se o QSA não estiver na base — ausência de dado nunca vira
+    "sem controle".
+    """
+    raizes = sorted({_doc(c)[:8] for c in cnpjs if len(_doc(c)) >= 8})
+    if len(raizes) < 2:
+        return {"estado": "grupo_de_um", "pontes": 0, "pontes_que_administram": 0}
+    onde: dict[str, set[str]] = {}
+    manda: dict[str, set[str]] = {}
+    try:
+        for rz in raizes:
+            for nome, qual in con.execute(
+                    "SELECT nome_socio, qualificacao_txt FROM socios_receita WHERE cnpj_basico = ?",
+                    (rz,)):
+                pessoa = str(nome or "").strip()
+                if not pessoa:
+                    continue
+                onde.setdefault(pessoa, set()).add(rz)
+                if "dministrador" in str(qual or "") or "residente" in str(qual or ""):
+                    manda.setdefault(pessoa, set()).add(rz)
+    except sqlite3.OperationalError:
+        return {"estado": "indisponivel", "motivo": "socios_receita ausente"}
+
+    pontes = {p: v for p, v in onde.items() if len(v) > 1}
+    if not pontes:
+        return {"estado": "indisponivel", "motivo": "QSA sem ponte entre os CNPJs do grupo",
+                "pontes": 0, "pontes_que_administram": 0}
+    controle = sorted(p for p in pontes if len(manda.get(p, set())) > 1)
+    fracao = len(controle) / len(pontes)
+    # A PROPORÇÃO decide, não a existência. Medido: Cidades tem 2 administradores em 5 pontes (40%)
+    # e FSERJ tem 1 em 28 (3,6%) — um teste de existência acendia "comando comum" nos dois. Uma
+    # única ponte de mando dentro de uma teia grande de cotistas é o ruído esperado, não a estrutura.
+    if not controle:
+        tipo, leitura = "coparticipacao", (
+            "coparticipação: nenhuma ponte administra duas empresas do grupo — pode ser "
+            "sobreposição profissional (sociedade de cotistas), não estrutura de comando")
+    elif fracao >= PONTE_DE_COMANDO_MIN:
+        tipo, leitura = "comando_comum", (
+            f"comando comum: {len(controle)} de {len(pontes)} pontes ADMINISTRAM duas ou mais "
+            "empresas do grupo")
+    else:
+        tipo, leitura = "coparticipacao_com_excecao", (
+            f"predominantemente coparticipação: só {len(controle)} de {len(pontes)} pontes "
+            "administram duas empresas — o grupo se sustenta em sócios sem poder de mando, e a "
+            "exceção merece olhar isolado, não a leitura de grupo comandado")
+    return {
+        "estado": "medido",
+        "tipo": tipo,
+        "pontes": len(pontes),
+        "pontes_que_administram": len(controle),
+        "fracao_de_comando": round(fracao, 4),
+        "administradores_em_comum": controle[:5],
+        "leitura": leitura,
+    }
 
 
 def _hhi(valores: dict[str, float]) -> float:
@@ -163,6 +239,8 @@ def concentracao_da_ug(con: sqlite3.Connection, ug: str, *,
         "n_cnpj": len(membros[raiz]),
         "cnpjs": sorted(membros[raiz])[:8],
         "unido_por": (g.get("unido_por") or {}).get(raiz, [])[:5],
+        # o que SUSTENTA o grupo — comando comum ou coparticipação (ver `cimento_do_grupo`)
+        "cimento": cimento_do_grupo(con, sorted(membros[raiz])),
     } for raiz, v in topo]
 
     return {

@@ -161,6 +161,12 @@ _RX_EDITAL_CONTEUDO = re.compile(
     re.IGNORECASE)
 
 
+_TIPOS_DO_LICITANTE = ("habilitacao",)
+"""Documentos que a EMPRESA entrega — contrato social, certidões, atestados. Eles declaram fatos
+sobre o licitante; quem exige é o edital. `proposta` fica de fora desta lista de propósito: ela é
+peça do certame e alimenta outras regras."""
+
+
 def _fontes_de_edital(leitura: dict) -> list[dict]:
     """Fontes de texto que são EDITAL ou PLANEJAMENTO (TR/ETP/DFD/pesquisa de preços). Um doc entra se o TÍTULO
     classifica como edital/planejamento (via `sei.fases.classificar`) OU se o CONTEÚDO tem marcador forte de
@@ -174,6 +180,15 @@ def _fontes_de_edital(leitura: dict) -> list[dict]:
         if not conteudo:
             continue
         fase, tipo = classificar(doc)
+        # TÍTULO QUE IDENTIFICA O DOCUMENTO DO LICITANTE VETA A PORTA DO CONTEÚDO. A porta do
+        # conteúdo existe porque no SEI o título costuma ser só o número do documento — mas quando
+        # ele DIZ o que é, a classificação positiva vale mais que a heurística. Medido em
+        # 2026-08-04: o "Documento HABILITAÇÃO - CONSTRUTORA BRASFORM" entrou como fonte de edital
+        # (o arquivo tem 22 mil caracteres e cita o edital em algum ponto), e sua CLÁUSULA NONA —
+        # governança interna da empresa, registrada na Junta Comercial — virou "exigência de
+        # capital social de 75%". O edital EXIGE; o contrato social do licitante DECLARA.
+        if tipo in _TIPOS_DO_LICITANTE:
+            continue
         por_titulo = (fase == "selecao" and tipo in ("edital", "proposta")) or fase == "planejamento"
         if por_titulo or _RX_EDITAL_CONTEUDO.search(conteudo):
             marca = f"{fase}/{tipo}" if por_titulo else "conteúdo=edital/TR"
@@ -561,7 +576,30 @@ def montar_ctx_de_sei(leitura: dict, *, usar_llm: bool = False, gerar: Callable[
 
     # exigências de habilitação (E1) — SÓ dos docs de edital/planejamento (mesma guarda das cláusulas:
     # "patrimônio líquido" de um balanço não é exigência de habilitação)
-    linhas_edital = _linhas_com_contexto(_fontes_de_edital(leitura))
+    fontes_edital = _fontes_de_edital(leitura)
+    # O TEXTO DO EDITAL NÃO CHEGAVA AOS DETECTORES, só as linhas dele. Duas consequências medidas
+    # em 2026-08-05 no SEI-070002/001289/2022 (o processo de maior score do acervo, 90,2):
+    #  · o E7 tem `_trecho_completo`, que realoca a cláusula no edital e alarga a janela até a
+    #    fronteira de frase — mas ele só funciona com `tr_texto` no contexto. Sem ele, a evidência
+    #    chegava ao fiscal cortada no meio: "9.3.2 Prova de possuir no seu quadro permanente, na
+    #    data da Concorrência, profissional ou" — e o que decide o caso vem DEPOIS ("a comprovação
+    #    ... deverá ser feita através de cópia de sua ficha de registro de EMPREGADO", que é a
+    #    exigência de vínculo na data da licitação).
+    #  · o P1 devolvia `nao_avaliavel` com o motivo "sem TR e sem lista de requisitos no contexto".
+    # A fonte é a MESMA já calibrada para o E1 (`_fontes_de_edital`), que veta documento do
+    # licitante — a guarda que impediu o contrato social da CONSTRUTORA BRASFORM de virar
+    # "exigência de capital social".
+    # CHAVE PRÓPRIA, e não `tr_texto`. Eu escrevi `tr_texto` primeiro e a reavaliação devolveu
+    # **175 achados P1 do nada, 44 deles críticos** — todos falsos, e a prova estava na evidência
+    # que eles mesmos imprimiam: "QUANTIDADE RECEBIDA: 50.150 UNID. MARCA: N/C" (termo de
+    # recebimento, e N/C é "não consta"), "LOTE FABRICAÇÃO | VALIDADE | Marca | RECEBIDA" (cabeçalho
+    # de tabela de entrega), "solicitações de troca de marca/prorrogação do prazo" (e-mail de
+    # execução). `_fontes_de_edital` aceita documento pelo CONTEÚDO — o que é certo para localizar
+    # uma cláusula num processo de 498 peças, e errado como "descrição do item", que é o que o P1
+    # entende por `tr_texto`. O P1 volta a dizer `nao_avaliavel`, que é honesto.
+    if fontes_edital:
+        ctx["edital_texto"] = "\n\n".join(f["texto"] for f in fontes_edital)
+    linhas_edital = _linhas_com_contexto(fontes_edital)
     exig = _extrair_exigencias(linhas_edital, valor_estimado)
     if exig:
         ctx["exigencias_habilitacao"] = exig
