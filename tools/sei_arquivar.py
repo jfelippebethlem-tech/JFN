@@ -21,6 +21,7 @@ Consulta canônica depois: tools/sei_consultar.py (NÃO reinventar parsing).
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -33,6 +34,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import fitz
 
 from compliance_agent.sei.fases import FASES, classificar, lacunas
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parents[1]
 CACHE = RAIZ / "data" / "sei_cache"
@@ -183,8 +186,8 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                     f"fotos/{f.name}" for f in destino.glob(f"fotos/{i:03d}_p*.jpg"))
                 docs_saida.append(entrada)
                 continue
-            except OSError:
-                pass    # txt ilegível: cai no caminho normal e reextrai
+            except OSError as e:
+                logger.debug("reaproveitamento do texto existente falhou: %s", e)    # txt ilegível: cai no caminho normal e reextrai
 
         try:
             doc = fitz.open(str(pdf))
@@ -272,8 +275,8 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
                 # 2026-08-15: o irmão foi corrigido, este não. O conteúdo não muda.
                 try:
                     mdest_ant.touch()
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.debug("mtime do manifesto anterior não tocado: %s", e)
                 print(f"  preservado: {destino.name} já tinha {cap_ant} docs capturados "
                       f"(> {cap_novos} agora) — não regrido", flush=True)
                 return anterior

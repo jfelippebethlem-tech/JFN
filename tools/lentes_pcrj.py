@@ -27,6 +27,7 @@ LIMITES HERDADOS DA FONTE (medidos, não supostos)
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 from collections import defaultdict
@@ -34,6 +35,8 @@ from collections import defaultdict
 from compliance_agent.pcrj.natureza_despesa import ELEMENTOS as ELEMENTOS_OFICIAIS
 from compliance_agent.pcrj.universo import conectar, filtro_sql
 from compliance_agent.reporting.intel_base import moeda
+
+logger = logging.getLogger(__name__)
 
 # LC 123/2006, art. 3º: ME até R$ 360.000,00/ano; EPP até R$ 4.800.000,00/ano de receita bruta.
 TETO_EPP_ANUAL = 4_800_000.00
@@ -707,8 +710,10 @@ def servidor_estadual_socio_de_fornecedor(db_path=None, so_gerencia: bool = True
                     f"SELECT cnpj_basico, count(*) FROM socios_receita "
                     f"WHERE cnpj_basico IN ({marks}) GROUP BY 1", tuple(pagos)):
                 n_socios[raiz] = q
-        except sqlite3.OperationalError:
-            pass                       # sem a fonte, o campo fica None — INDISPONÍVEL declarado
+        except sqlite3.OperationalError as e:
+            # `pass` mudo aqui era dívida minha: some com a razão de o campo ter ficado vazio, e
+            # quem lê o achado não distingue "empresa sem sócios" de "não consegui olhar".
+            logger.debug("n_socios_da_empresa indisponível (socios_receita): %s", e)
         freq = _frequencia_do_nome(con, {l[1] for l in linhas if l[1]})
         vistos, achados = set(), []
         for raiz, socio, qualif, cargo, vinculo, orgao, comiss, origem in linhas:

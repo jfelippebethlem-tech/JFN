@@ -35,6 +35,7 @@ Uso:
 
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -47,6 +48,8 @@ sys.path.insert(0, str(RAIZ))
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 
 from compliance_agent.sei import acervo_texto  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 # Tipos que o arquivador já classifica. Fonte: contagem no acervo em 2026-07-25.
 _PARECER = {"parecer_juridico", "parecer", "nota_juridica"}
@@ -330,8 +333,10 @@ def periciar(pasta: Path) -> dict | None:
     try:
         from compliance_agent.sei import manifesto_norm as _mn
         man = _mn.normalizar({**man, "_pasta": str(pasta)})
-    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass                     # sem normalização, segue com o cru: pior, não quebrado
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        # sem normalização, segue com o cru: pior, não quebrado. Mas a razão precisa aparecer —
+        # este `pass` mudo escondia por que a triagem lia o manifesto no formato antigo.
+        logger.debug("manifesto não normalizado em %s: %s", pasta, e)
 
     docs = _docs(man)
     tipos = Counter(str(d.get("tipo") or "").lower() for d in docs)

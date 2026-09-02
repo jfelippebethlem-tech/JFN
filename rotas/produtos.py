@@ -828,8 +828,10 @@ def api_processo(numero: str = ""):
               "escalada_json", "cobertura_json", "sintese_json"):
         try:
             out[k.removesuffix("_json")] = _json.loads(out.pop(k) or "null")
-        except (ValueError, KeyError):
-            pass
+        except (ValueError, KeyError) as e:
+            # campo JSON malformado vira ausência silenciosa na resposta — e a tela não distingue
+            # "o processo não tem achados" de "o achado não pôde ser lido"
+            logger.debug("campo %s ilegível na avaliação: %s", k, e)
     return JSONResponse({"ok": True, "rodando": rodando, "avaliacao": out})
 
 

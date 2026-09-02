@@ -26,6 +26,7 @@ Uso:
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -35,6 +36,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parent.parent
 CACHE = RAIZ / "data" / "sei_cache"
@@ -119,8 +122,10 @@ def _grava_vereditos(v: dict) -> None:
         tmp = _VEREDITOS.with_suffix(".tmp")
         tmp.write_text(json.dumps(atual, ensure_ascii=False), encoding="utf-8")
         tmp.replace(_VEREDITOS)
-    except OSError:
-        pass
+    except OSError as e:
+        # o veredito é cache de conferência: perdê-lo custa uma revarredura, não o dado — mas
+        # sumir com a razão faz a revarredura parecer defeito do lane
+        logger.debug("veredito do cache não gravado (%s): %s", _VEREDITOS, e)
 
 
 def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
@@ -225,8 +230,8 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
             # conteúdo do arquivo continua exatamente o mesmo.
             try:
                 (destino / "manifest.json").touch()
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("mtime do manifesto não atualizado em %s: %s", destino, e)
             return {"numero": numero, "docs": 0, "chars": 0, "escritos": 0,
                     "mantido_antigo": f"{docs_velho} docs c/ texto no arquivo × {docs_novo} no cache"}
         import shutil
