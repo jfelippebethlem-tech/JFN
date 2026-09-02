@@ -187,6 +187,68 @@
     {
       "type": "function",
       "function": {
+        "name": "lentes_municipais",
+        "description": "26 lentes sobre a despesa da PREFEITURA do Rio (pcrj_despesa), com o DENOMINADOR junto: universo contratual de R$ 30,64 bi de R$ 89,62 bi brutos (34,2%) — o resto e folha, divida, intra-orcamentaria e precatorio. Cada lente carrega prevalencia medida; o que foi ressalvado continua contado, com o motivo. — usar quando: risco na contratacao MUNICIPAL do Rio; 'o que a Prefeitura pagou fora da curva'; competencia TCM-RJ — chamar: GET /api/lentes (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "esfera": {
+              "type": "string",
+              "description": "municipal"
+            },
+            "lente": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "top": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/lentes",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pericia_bateria",
+        "description": "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos. Medido: 83,3% dos itens sao INDISPONIVEL, 20 testes nao rodam e NENHUM item chega a CONFIRMADO. INDISPONIVEL e ausencia de EXAME, nao de irregularidade. Distinta de /api/pericia/cobertura, que mede quanto do ACERVO recebeu juizo. — usar quando: 'a pericia esta funcionando?'; decidir QUAL captura priorizar; entender por que o placar nao confirma nada — chamar: GET /api/pericia/bateria (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "so_mortos": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/pericia/bateria",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "certame_indice",
         "description": "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial) — usar quando: risco de um certame/licitacao especifica pelo nº de controle PNCP — chamar: GET /api/certame/indice (base http://127.0.0.1:8000)",
         "parameters": {

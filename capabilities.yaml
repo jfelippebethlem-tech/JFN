@@ -40,6 +40,17 @@ capacidades:
      quando_usar: "priorizar fila de apuracao; 'quais empresas acendem em mais de um detector'",
      args: {lente: opcional, top: opcional}, retorno: "{ok,gerado_em,lentes:{nome:{ok,n,segundos,topo[]}}}",
      menu: {grupo: "🔎 Investigação", nome: "Lentes cruzadas (empresa em 2+ detectores)", exemplo: "quais empresas acendem em mais de uma lente?", ordem: 25}}
+  - {id: lentes_municipais, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lentes, status: PRONTO,
+     descricao: "26 lentes sobre a despesa da PREFEITURA do Rio (pcrj_despesa), com o DENOMINADOR junto: universo contratual de R$ 30,64 bi de R$ 89,62 bi brutos (34,2%) — o resto e folha, divida, intra-orcamentaria e precatorio. Cada lente carrega prevalencia medida; o que foi ressalvado continua contado, com o motivo.",
+     quando_usar: "risco na contratacao MUNICIPAL do Rio; 'o que a Prefeitura pagou fora da curva'; competencia TCM-RJ",
+     args: {esfera: "municipal", lente: opcional, top: opcional},
+     retorno: "{ok,esfera,universo_contratual,lentes:{nome:{titulo,n,universo,prevalencia,massa,topo[],n_ressalvados}}}",
+     menu: {grupo: "🔎 Investigação", nome: "Lentes municipais (Prefeitura do Rio)", exemplo: "o que a Prefeitura do Rio pagou fora da curva?", ordem: 27}}
+  - {id: pericia_bateria, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/pericia/bateria, status: PRONTO,
+     descricao: "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos. Medido: 83,3% dos itens sao INDISPONIVEL, 20 testes nao rodam e NENHUM item chega a CONFIRMADO. INDISPONIVEL e ausencia de EXAME, nao de irregularidade. Distinta de /api/pericia/cobertura, que mede quanto do ACERVO recebeu juizo.",
+     quando_usar: "'a pericia esta funcionando?'; decidir QUAL captura priorizar; entender por que o placar nao confirma nada",
+     args: {so_mortos: opcional}, retorno: "{ok,n_testes,testes_que_rodam,testes_uteis,fracao_indisponivel,confirmados_no_acervo,insumos_que_destravam[],testes[]}",
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Bateria de perícia — quanto do exame aconteceu", exemplo: "a pericia esta confirmando alguma coisa?", ordem: 28}}
   - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
      descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
      args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}"}
