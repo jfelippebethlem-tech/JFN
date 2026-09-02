@@ -323,6 +323,57 @@ async def baixar_documentos(id_pncp: str, max_arquivos: int = 5,
     return out
 
 
+async def baixar_arquivos_contrato(cnpj: str, ano, seq, *, max_arquivos: int = 3,
+                                   max_chars: int = 120_000) -> list[dict]:
+    """Baixa os arquivos do CONTRATO (instrumento assinado) e extrai o texto.
+
+    Endpoint distinto do de compras: ``/orgaos/{cnpj}/contratos/{ano}/{seq}/arquivos``. Os
+    sequenciais de compra e de contrato são numerações INDEPENDENTES — usar o seq de contrato
+    na rota de compras traz o documento de outra licitação.
+
+    Devolve [{titulo, tipo, url, n_chars, texto}]. É aqui que mora a íntegra: o PDF assinado
+    cita o processo SEI que originou a contratação (ver ``processos_sei_no_texto``).
+    """
+    meta = await _get_pncp(f"/orgaos/{cnpj}/contratos/{ano}/{seq}/arquivos", {})
+    arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
+    out: list[dict] = []
+    total = 0
+    async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
+        for a in (arquivos or [])[:max_arquivos]:
+            url = a.get("url") or a.get("uri")
+            if not url:
+                continue
+            nome = a.get("titulo") or a.get("nomeArquivo") or ""
+            try:
+                d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
+                blob = d.content if d.status_code == 200 else b""
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("PNCP contrato %s/%s/%s: falha em %s: %s", cnpj, ano, seq, url, exc)
+                blob = b""
+            texto = _extrair_texto(nome, blob) if blob else ""
+            if total < max_chars:
+                texto = texto[: max_chars - total]
+                total += len(texto)
+            else:
+                texto = ""
+            out.append({"titulo": nome, "tipo": a.get("tipoDocumentoNome"),
+                        "url": url, "n_chars": len(texto), "texto": texto})
+            await asyncio.sleep(0.2)
+    return out
+
+
+# O nº de processo SEI.RIO citado no corpo do contrato é a ponte para o SEI municipal. Vem do
+# documento ASSINADO — procedência muito melhor que raspar o campo `objeto` do registro PNCP.
+_RE_SEI_NO_TEXTO = re.compile(r"\d{6}\.\d{6}/\d{4}-\d{2}")
+
+
+def processos_sei_no_texto(texto: str) -> list[str]:
+    """Nºs de processo SEI.RIO citados num texto, sem repetição e em ordem estável."""
+    if not texto:
+        return []
+    return sorted(set(_RE_SEI_NO_TEXTO.findall(texto)))
+
+
 async def buscar_contratos_fornecedor(
     cnpj_fornecedor: str,
     data_inicial: date,
