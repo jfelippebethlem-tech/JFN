@@ -140,6 +140,91 @@ def carregar_empenhos_csv(con, caminho: Path | str, arquivo_origem: str) -> int:
     return n
 
 
+# ── Família `Desp`: a única com 2024+ ───────────────────────────────────────────────────────
+# Medido em 2026-09-02: `Empenhos`, `Favorecidos`, `Contratos` e `Doc_Pago` param em 2023 (404
+# para 2024+). `Desp` responde 200 para 2024, 2025 e 2026 — e NÃO está listada na página de
+# dados abertos para esses anos; só se acha testando o padrão de URL.
+#
+# LIMITE que decide o que dá para perguntar: `Desp` NÃO tem credor. É despesa agregada por
+# dotação (órgão, unidade, função, natureza, fonte). Serve para execução por ÓRGÃO/natureza;
+# NÃO serve para o elo contrato×execução por credor — esse morre em 2023 com `Empenhos`.
+#
+# Traz as três fases separadas (Empenhada / Liquidada / Paga), então a distinção que importa
+# — empenho ≠ liquidação ≠ pagamento — está preservada no dado, não colapsada num "valor".
+DDL_DESP_DOTACAO = """
+CREATE TABLE IF NOT EXISTS pcrj_despesa_dotacao (
+    exercicio        INTEGER,
+    orgao            VARCHAR,
+    orgao_nome       VARCHAR,
+    unidade          VARCHAR,
+    unidade_nome     VARCHAR,
+    funcao           VARCHAR,
+    subfuncao        VARCHAR,
+    programa         VARCHAR,
+    acao             VARCHAR,
+    fonte_recurso    VARCHAR,
+    natureza         VARCHAR,
+    natureza_nome    VARCHAR,
+    modalidade       VARCHAR,
+    elemento         VARCHAR,
+    dotacao_inicial   DOUBLE,
+    dotacao_atualizada DOUBLE,
+    empenhado        DOUBLE,
+    liquidado        DOUBLE,
+    pago             DOUBLE,
+    pagamento_rp     DOUBLE,
+    arquivo_origem   VARCHAR,
+    coletado_em      TIMESTAMP DEFAULT (datetime('now')),
+    PRIMARY KEY (exercicio, orgao, unidade, natureza, fonte_recurso, acao, arquivo_origem)
+)
+"""
+
+
+def carregar_desp_csv(con, caminho: Path | str, arquivo_origem: str) -> int:
+    """Carrega Open_Data_Desp_<ANO>.csv em pcrj_despesa_dotacao. Devolve nº de linhas gravadas.
+
+    Agrega pela PK (várias linhas do CSV caem na mesma dotação quando diferem só em item
+    patrimonial). Somar as fases separadamente preserva empenho ≠ liquidação ≠ pago.
+    """
+    con.execute(DDL_DESP_DOTACAO)
+    with open(caminho, "rb") as fb:
+        amostra = fb.read(1 << 20)
+    try:
+        amostra.decode("utf-8")
+        enc = "utf-8-sig"
+    except UnicodeDecodeError:
+        enc = "latin-1"
+    ag: dict[tuple, list] = {}
+    with open(caminho, encoding=enc, newline="") as fh:
+        for row in csv.DictReader(fh, delimiter=";"):
+            g = lambda k: (row.get(k) or "").strip()  # noqa: E731
+            chave = (int(g("Exercicio") or 0), g("Orgao"), g("Unidade_Orcamentaria"),
+                     g("Codigo_Natureza_Despesa"), g("Fonte_Recurso"), g("Codigo_Acao"))
+            v = ag.get(chave)
+            if v is None:
+                v = ag[chave] = [g("Descricao_Orgao"), g("Descricao_Unidade_Orcamentaria"),
+                                 g("Codigo_Funcao"), g("Codigo_Subfuncao"), g("Codigo_Programa"),
+                                 g("Descricao_Natureza Despesa"), g("Codigo_Modalidade_Aplicacao"),
+                                 g("Codigo_Elemento"), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            for i, col in enumerate(("Dotacao_Inicial", "Dotacao_Atualizada", "Despesa_Empenhada",
+                                     "Despesa_Liquidada", "Despesa_Paga", "Pagamento_RP")):
+                v[8 + i] += parse_brl(g(col))
+    n = 0
+    for (ex, org, uni, nat, fonte, acao), d in ag.items():
+        con.execute(
+            """INSERT OR REPLACE INTO pcrj_despesa_dotacao
+               (exercicio, orgao, orgao_nome, unidade, unidade_nome, funcao, subfuncao,
+                programa, acao, fonte_recurso, natureza, natureza_nome, modalidade, elemento,
+                dotacao_inicial, dotacao_atualizada, empenhado, liquidado, pago, pagamento_rp,
+                arquivo_origem)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (ex, org, d[0], uni, d[1], d[2], d[3], d[4], acao, fonte, nat, d[5], d[6], d[7],
+             d[8], d[9], d[10], d[11], d[12], d[13], arquivo_origem))
+        n += 1
+    con.commit()
+    return n
+
+
 def _data_iso(s: str | None) -> str | None:
     """'28/04/2022' → '2022-04-28' (os CSVs usam dd/mm/aaaa; PNCP usa ISO —
     normalizar aqui mantém pcrj_contratos homogêneo p/ os detectores)."""
