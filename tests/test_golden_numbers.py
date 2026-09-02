@@ -54,7 +54,13 @@ GOLDEN = {
     # 151.941.518,47 − 151.855.865,21 = 85.653,26, exatamente a `2022OB00184` (UG 133100), que o
     # TFE deixou de publicar e está preservada em `ob_retirada` desde 10/08. A segunda OB retirada
     # da MGS (`2026OB08146`, R$ 244.897,92) foi publicada DEPOIS deste golden, então não o afeta.
-    "mgs_clean": {"cnpj": "19088605000104", "obs": 1238, "total": 151855865.21},
+    # 2026-09-01: 1238 → 1239 (+R$ 85.653,26). A `2022OB00184` VOLTOU. É a mesma OB que o
+    # comentário acima registra como despublicada em 12/08 — a fonte a republicou, e o
+    # mecanismo `ob_retirada` da casa prova os dois movimentos: retirada em 2026-08-10T09:01:58
+    # e ausente das retiradas posteriores. A conta fecha no centavo: 151.941.518,47 −
+    # 151.855.865,21 = 85.653,26, exatamente o valor dela. Republicação da fonte, não coleta
+    # nova nem reprocessamento.
+    "mgs_clean": {"cnpj": "19088605000104", "obs": 1239, "total": 151941518.47},
     # 2026-07-20: total revisado DE PROPÓSITO 295.179.659,72 → 295.301.277,60 (+121.617,88).
     # Mesmas 2.524 OBs e 197 fornecedores — o sweep SIAFE atualizou VALORES de OBs in place
     # (correção da fonte). Drift auditado antes da revisão (contagem e fornecedores intactos).
@@ -81,7 +87,13 @@ GOLDEN = {
     # antes da corrupção — está medido no dia 11/08 às 20:00, no banco ainda quebrado. É revisão
     # de valor pela fonte. NÃO identifiquei qual OB mudou: não há snapshot anterior ao drift, e
     # dizer qual seria chute.
-    "iterj_ug": {"ug": "133100", "obs": 2572, "total": 298312376.04, "fornecedores": 198},
+    # 2026-09-01: 2572 → 2571 e total 298.312.376,04 → 298.390.655,78. O saldo de −1 OB é
+    # LÍQUIDO e cada parcela está em `ob_retirada`: saíram a `2022OB00085` (R$ 340,10) e a
+    # `2022OB00289` (R$ 295,50), ambas retiradas em 2026-08-31T09:01:17, e voltou a
+    # `2022OB00184` (R$ 85.653,26) — 2572 − 2 + 1 = 2571. Fornecedores seguem 198, assinatura de
+    # movimento na publicação da fonte e não de reprocessamento. O total SOBE apesar de a
+    # contagem CAIR porque a OB que voltou vale mais que as duas que saíram somadas.
+    "iterj_ug": {"ug": "133100", "obs": 2571, "total": 298390655.78, "fornecedores": 198},
     # 2026-08-12: piso 1.121.301 → 1.178.076 e pct_cnpj_min 76 → 75.
     # O piso sobe porque a recoleta de 2024-2026 (reparo da corrupção) trouxe a base de 1.142.056
     # para 1.178.076. O `pct_cnpj_min` cai por COMPOSIÇÃO, não por perda: o percentual de OBs com
