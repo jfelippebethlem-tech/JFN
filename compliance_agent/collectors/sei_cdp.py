@@ -295,6 +295,23 @@ def _is_captcha_page(text: str) -> bool:
     ])
 
 
+# A pesquisa pública do SEI municipal é AJAX: o resultado é injetado em `.retorno-ajax` e a
+# página NUNCA navega. Ler o `body` devolve o formulário de novo — que sempre contém a palavra
+# "captcha" e nunca contém o resultado. Era por isso que toda busca parecia "não encontrou" e
+# `captcha_resolvido` vinha False mesmo com o OCR certo.
+_JS_RETORNO_AJAX = """() => {
+    const e = document.querySelector('.retorno-ajax, [class*=retorno]');
+    return e ? (e.innerText || '') : '';
+}"""
+
+
+def _captcha_recusado(text: str) -> bool:
+    """O servidor recusou o código — distinto de 'a página tem um captcha'."""
+    t = (text or "").lower()
+    return ("código de confirmação inválido" in t or "codigo de confirmacao invalido" in t
+            or "informe o código de confirmação" in t)
+
+
 def _is_waf_block(text: str) -> bool:
     """Detecta a página de bloqueio do WAF (ou o vazio de uma conexão dropada)."""
     t = (text or "").lower()
@@ -352,7 +369,7 @@ async def testar_acesso(headless: bool = True, timeout_ms: int = 25000) -> dict:
 
 # ── Resolução do CAPTCHA via OCR ───────────────────────────────────────────────
 
-async def _resolver_captcha_ocr(page) -> bool:
+async def _resolver_captcha_ocr(page, *, reenviar: bool = True) -> bool:
     """
     Lê o CAPTCHA de imagem com OCR e preenche o campo. Retorna True se conseguiu
     preencher e reenviar. Usa compliance_agent.captcha_solver (import lazy).
@@ -388,6 +405,12 @@ async def _resolver_captcha_ocr(page) -> bool:
 
     await campo.fill(texto_ocr)
     await asyncio.sleep(0.3)
+    # `reenviar=False` só PREENCHE. O SEI municipal exige o código já no PRIMEIRO submit — não é
+    # uma página de captcha que aparece depois de uma tentativa, como no estadual. Clicar antes de
+    # preencher devolvia o alerta "Informe o código de confirmação." e o laço de reenvio nunca
+    # chegava a rodar, porque a resposta não era "página de captcha": era o formulário de novo.
+    if not reenviar:
+        return True
     await page.evaluate(_JS_CLICA_PESQUISAR)
     try:
         await page.wait_for_load_state("domcontentloaded", timeout=20000)
@@ -471,6 +494,10 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
             if not marca.get("ok"):
                 logger.debug("SEI busca %s: órgão gerador não marcado (%s)", numero, marca.get("motivo"))
             await asyncio.sleep(0.3)
+        # CAPTCHA ANTES DO CLIQUE. No municipal o código é exigido no primeiro envio; preencher
+        # depois é tarde, e o formulário volta com "Informe o código de confirmação." — que não é
+        # página de captcha, então o laço de reenvio abaixo nem chegava a rodar.
+        await _resolver_captcha_ocr(page, reenviar=False)
         await page.evaluate(_JS_CLICA_PESQUISAR)
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=30000)
@@ -478,14 +505,17 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
             logger.debug("SEI busca %s: wait_for_load_state após pesquisar não concluiu: %s", numero, exc)
         await asyncio.sleep(1.5)
 
-        txt = await page.inner_text("body")
+        ajax = await page.evaluate(_JS_RETORNO_AJAX)
         for _ in range(max_attempts):
-            if not _is_captcha_page(txt):
+            if not _captcha_recusado(ajax):
                 break
+            # o OCR erra ~1 em 6; recomeçar a página é mais barato que adivinhar o mesmo código
             ok = await _resolver_captcha_ocr(page)
             if not ok:
                 break
-            txt = await page.inner_text("body")
+            await asyncio.sleep(2.0)
+            ajax = await page.evaluate(_JS_RETORNO_AJAX)
+        txt = ajax or await page.inner_text("body")
 
         try:
             Path("data/tmp").mkdir(parents=True, exist_ok=True)
@@ -498,7 +528,9 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
             "ok": True,
             "texto": txt,
             "url": page.url,
-            "captcha_resolvido": not _is_captcha_page(txt),
+            # mede a RECUSA do servidor. `_is_captcha_page` casaria o próprio formulário, que
+            # continua na tela porque a busca é AJAX — dava False mesmo com o código correto.
+            "captcha_resolvido": not _captcha_recusado(ajax),
             # alerta do formulário é DIAGNÓSTICO, não ruído: "Nenhum Órgão Gerador selecionado."
             # distingue requisito não atendido de captcha errado ou de página que não respondeu.
             "alertas": alertas,
