@@ -80,6 +80,55 @@ async def consultar(numero: str, *, max_attempts: int = 4) -> dict:
         url_pesquisa=url_pesquisa_publica(), login_interno=False)
 
 
+# ── Pesquisa pública: estrutura medida em 2026-09-02 ────────────────────────────────────────
+# A pesquisa é AJAX e devolve JSON {"itens": N, "html": "<tr>…"}. Cada resultado traz o
+# protocolo em `data-prot` e um link `md_pesq_processo_exibir.php?<token>` — que é o acesso à
+# ÍNTEGRA (árvore de documentos) do processo. O token é opaco e por-sessão: não se constrói,
+# só se colhe do resultado.
+#
+# Campos do formulário que carregam a busca (medidos, não presumidos):
+#   · txtProtocoloPesquisa  — protocolo; o servidor tira pontuação E espaços antes de casar
+#   · txtDescricaoPesquisa  — texto livre. É ESTE o campo de busca livre; `as_q` existe no
+#     formulário mas é inerte (devolve resposta sem a chave "itens").
+_RE_PROT_ATTR = re.compile(r'data-prot="([^"]+)"')
+_RE_LINK_EXIBIR = re.compile(r'href="(md_pesq_processo_exibir\.php\?[^"]+)"')
+_RE_UNIDADE = re.compile(r"<b>Unidade:</b>\s*<a[^>]*>([^<]+)</a>")
+_RE_DATA = re.compile(r"<b>Data:</b>\s*([0-9/]+)")
+_RE_TAG = re.compile(r"<[^>]+>")
+
+
+def parse_resultado_html(html: str) -> list[dict]:
+    """Extrai os resultados do campo `html` da resposta JSON da pesquisa pública.
+
+    Devolve um dict por processo com `protocolo`, `titulo`, `unidade`, `data` e `url_integra`
+    (absoluta). Puro e testável offline — a fixture é uma resposta real.
+    """
+    if not html:
+        return []
+    itens: list[dict] = []
+    # cada registro começa num <tr class="pesquisaTituloRegistro">; o bloco de metadados
+    # (Unidade/Data) vem no <tr> seguinte, então fatiamos por registro e olhamos o resto.
+    partes = html.split('<tr class="pesquisaTituloRegistro">')
+    for parte in partes[1:]:
+        m_prot = _RE_PROT_ATTR.search(parte)
+        if not m_prot:
+            continue
+        m_link = _RE_LINK_EXIBIR.search(parte)
+        cabeca = parte.split("</tr>", 1)[0]
+        titulo = _RE_TAG.sub("", cabeca).replace("&nbsp;", " ")
+        titulo = re.sub(r"\s+", " ", titulo).strip()
+        m_uni, m_data = _RE_UNIDADE.search(parte), _RE_DATA.search(parte)
+        itens.append({
+            "protocolo": m_prot.group(1),
+            "titulo": titulo,
+            "unidade": m_uni.group(1).strip() if m_uni else None,
+            "data": m_data.group(1) if m_data else None,
+            # token opaco e por-sessão: só vale colhido deste resultado
+            "url_integra": f"{BASE}/sei/modulos/pesquisa/{m_link.group(1)}" if m_link else None,
+        })
+    return itens
+
+
 def _cli() -> None:
     import argparse
     import asyncio
