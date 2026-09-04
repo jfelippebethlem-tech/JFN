@@ -364,7 +364,10 @@ async def baixar_arquivos_contrato(cnpj: str, ano, seq, *, max_arquivos: int = 3
 
 # O nº de processo SEI.RIO citado no corpo do contrato é a ponte para o SEI municipal. Vem do
 # documento ASSINADO — procedência muito melhor que raspar o campo `objeto` do registro PNCP.
-_RE_SEI_NO_TEXTO = re.compile(r"\d{6}\.\d{6}/\d{4}-\d{2}")
+# Larga de proposito, medido em 316 integras: o DV obrigatorio perdia 12 contratos (47,5% ->
+# 51,3%). O cabecalho cita o processo sem DV ("002200.000007/2025") e ha orgao com 5 digitos
+# ("00700.000789/2025-78"). O \b nas pontas evita casar pedaco de numero maior.
+_RE_SEI_NO_TEXTO = re.compile(r"\b\d{5,6}\.\d{6}/\d{4}(?:-\d{2})?\b")
 
 
 def processos_sei_no_texto(texto: str) -> list[str]:
