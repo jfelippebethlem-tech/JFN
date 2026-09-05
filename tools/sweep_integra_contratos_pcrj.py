@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS contrato_integra (
 # O piso é frouxo de propósito: serve para separar imagem de texto, não para julgar conteúdo.
 MIN_CHARS_TEXTO = 200
 
+# nomeadas de proposito — ver o comentario no INSERT
+COLS = ("numero_controle_pncp, orgao_cnpj, ano, seq, fornecedor_nome, valor_global, titulo, url, n_chars, texto, processos_sei, estado, coletado_em")
+
 
 def classificar(n_chars: int, teve_arquivo: bool) -> str:
     if not teve_arquivo:
@@ -101,7 +104,9 @@ async def _uma(con, numero: str, fornecedor: str | None, valor) -> int:
         # grava a AUSÊNCIA: sem isso o sweep repete o mesmo contrato para sempre, e
         # "sem arquivo publicado" é fato — não é o mesmo que "ainda não tentei".
         con.execute(
-            "INSERT OR REPLACE INTO contrato_integra VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            # colunas NOMEADAS: o INSERT posicional quebrou calado quando o OCR acrescentou
+            # `fonte_texto` (13 valores para 14 colunas) e o sweep passou 2 dias sem gravar.
+            "INSERT OR REPLACE INTO contrato_integra (" + COLS + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [numero, cnpj, ano, seq, fornecedor, valor, None, None, 0, None,
              "[]", classificar(0, False), datetime.now(timezone.utc).isoformat()],
         )
@@ -110,7 +115,7 @@ async def _uma(con, numero: str, fornecedor: str | None, valor) -> int:
     melhor = max(arquivos, key=lambda a: a["n_chars"])
     seis = processos_sei_no_texto(melhor["texto"])
     con.execute(
-        "INSERT OR REPLACE INTO contrato_integra VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT OR REPLACE INTO contrato_integra (" + COLS + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [numero, cnpj, ano, seq, fornecedor, valor, melhor["titulo"], melhor["url"],
          melhor["n_chars"], melhor["texto"], json.dumps(seis),
          classificar(melhor["n_chars"], True), datetime.now(timezone.utc).isoformat()],
