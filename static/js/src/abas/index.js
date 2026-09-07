@@ -2891,6 +2891,12 @@ export async function renderLentes(){
  * A cobertura é DECLARADA no topo — a tela nunca pode sugerir que o acervo é o universo. */
 let _intQ='', _intFonte='', _intOrdem='valor', _intAberto=null;
 const _intDoc={};   // detalhe ja baixado, por numero de contrato
+/* Teto do que vai para a TELA. Medido em 2026-09-07: escapar 54.036 chars dentro de uma lista
+   de 304 cards levava 10-20s de repinte — a tela ficava em "Carregando…" e parecia quebrada.
+   O documento INTEIRO continua disponivel no .txt/.md; aqui mostra-se o começo e diz-se quanto
+   ficou de fora, que e honesto: recortar calado seria o entregavel mentindo por omissao. */
+const _INT_TETO_TELA=12000;
+const _INT_POR_PAGINA=60;
 
 /* Delegacao por `data-int` num listener SO, em vez de cinco nomes no window: cada handler
  * inline novo aumenta a superficie que a migracao do painel tem de carregar, e o gate de
@@ -2902,17 +2908,7 @@ function _intDelegar(ev){
   if(acao==='buscar'){ const i=document.getElementById('intq'); _intQ=i?i.value:''; }
   else if(acao==='fonte'){ _intFonte=(_intFonte===arg?'':arg); }
   else if(acao==='ordem'){ _intOrdem=arg; }
-  else if(acao==='abrir'){
-    const n=el.dataset.num;
-    _intAberto=(_intAberto===n?null:n);
-    ev.preventDefault();
-    if(_intAberto&&!_intDoc[_intAberto]){
-      // busca o documento e SO ENTAO repinta — nada de correr contra o DOM
-      J(`/api/pcrj/integra/${encodeURIComponent(_intAberto)}`).then(d=>{ _intDoc[n]=d||{}; _intIr(); });
-      return;
-    }
-    _intIr(); return;
-  }
+  else if(acao==='abrir'){ _intAberto=(_intAberto===el.dataset.num?null:el.dataset.num); }
   else return;
   ev.preventDefault();
   _intIr();
@@ -2934,8 +2930,18 @@ if(typeof document!=='undefined'&&!document.__intLigado){
 export async function renderIntegras(){
   const d=await J(`/api/pcrj/integras?q=${encodeURIComponent(_intQ)}&fonte=${_intFonte}`
                  +`&ordem=${_intOrdem}&limite=300`);
-  if(d&&d.erro) return card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`);
+  /* `d` NULO quando a API falha (500/timeout). Sem esta guarda, `d.itens` lancava e a aba
+     inteira esvaziava — 304 cards viravam 0, com o cover na tela e nenhum erro visivel.
+     INDISPONIVEL tem de aparecer como INDISPONIVEL, nunca como tela vazia. */
+  if(!d||d.erro) return cover('prefeitura','Íntegras · Contratos do Município do Rio',
+      'acervo de contratos capturados do PNCP','doc')
+    +card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d||{}).erro||'a API não respondeu'))}</div>`);
   const itens=d.itens||[];
+  /* o documento aberto e buscado AQUI, no proprio render. Buscar no handler e chamar ir() de
+     dentro do .then reentrava no render em andamento e o painel travava em "Carregando…". */
+  if(_intAberto&&!_intDoc[_intAberto]){
+    _intDoc[_intAberto]=await J(`/api/pcrj/integra/${encodeURIComponent(_intAberto)}`)||{erro:'sem resposta'};
+  }
   let h=cover('prefeitura','Íntegras · Contratos do Município do Rio',
     'O documento assinado de cada contrato, capturado do PNCP. Clique para ler a íntegra, '
     +'baixar o texto ou abrir o original.','doc');
@@ -2965,9 +2971,12 @@ export async function renderIntegras(){
     <button class="btn${_intOrdem==='texto'?' on':''}" data-int="ordem:texto">por tamanho</button>
   </div>`;
 
-  h+=sec(`Contratos (${fmtN(itens.length)} em tela)`);
+  const mostra=itens.slice(0,_INT_POR_PAGINA);
+  h+=sec(`Contratos (${fmtN(mostra.length)} de ${fmtN(itens.length)} encontrados)`);
+  if(itens.length>mostra.length) h+=`<div class="dim" style="margin:0 2px 6px">mostrando os `
+    +`${fmtN(mostra.length)} maiores — refine a busca para chegar aos demais</div>`;
   if(!itens.length) h+=card('<div class="dim">Nenhum contrato para este filtro.</div>');
-  for(const it of itens.slice(0,300)){
+  for(const it of mostra){
     const ocr=it.fonte_texto==='ocr';
     const sel=_intAberto===it.numero;
     const seis=(it.processos_sei||[]).map(p=>
@@ -3008,6 +3017,9 @@ function _intDocHtml(num){
   const d=_intDoc[num];
   if(!d) return '<div class="dim" style="margin-top:8px">carregando a íntegra…</div>';
   if(d.erro) return `<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`;
+  const inteiro=d.texto||'';
+  const cortou=inteiro.length>_INT_TETO_TELA;
+  const txt=cortou?inteiro.slice(0,_INT_TETO_TELA):inteiro;
   const meta=[['Objeto',d.objeto],['Órgão',d.orgao],['Unidade',d.unidade],
               ['Assinatura',d.assinatura],['Tipo',d.tipo],
               ['Vigência',(d.vigencia||[]).filter(Boolean).join(' a ')],
@@ -3022,5 +3034,7 @@ function _intDocHtml(num){
       <a class="btn sm" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(num)}">dossiê .md</a>
     </div>
     <pre class="doc" style="max-height:460px;overflow:auto;white-space:pre-wrap;font-size:12px;
-      line-height:1.5;padding:10px;border-radius:8px">${esc(d.texto||'')}</pre>`;
+      line-height:1.5;padding:10px;border-radius:8px">${esc(txt)}</pre>`
+    +(cortou?`<div class="dim" style="margin-top:6px">mostrando ${fmtN(_INT_TETO_TELA)} de `
+      +`${fmtN((d.texto||'').length)} caracteres — baixe o .txt ou o .md para o documento inteiro</div>`:'');
 }

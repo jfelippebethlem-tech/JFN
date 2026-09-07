@@ -8096,6 +8096,8 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   var _intOrdem = "valor";
   var _intAberto = null;
   var _intDoc = {};
+  var _INT_TETO_TELA = 12e3;
+  var _INT_POR_PAGINA = 60;
   function _intDelegar(ev) {
     const el = ev.target && ev.target.closest && ev.target.closest("[data-int]");
     if (!el) return;
@@ -8108,18 +8110,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     } else if (acao2 === "ordem") {
       _intOrdem = arg;
     } else if (acao2 === "abrir") {
-      const n = el.dataset.num;
-      _intAberto = _intAberto === n ? null : n;
-      ev.preventDefault();
-      if (_intAberto && !_intDoc[_intAberto]) {
-        J(`/api/pcrj/integra/${encodeURIComponent(_intAberto)}`).then((d) => {
-          _intDoc[n] = d || {};
-          _intIr();
-        });
-        return;
-      }
-      _intIr();
-      return;
+      _intAberto = _intAberto === el.dataset.num ? null : el.dataset.num;
     } else return;
     ev.preventDefault();
     _intIr();
@@ -8139,8 +8130,16 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   async function renderIntegras() {
     const d = await J(`/api/pcrj/integras?q=${encodeURIComponent(_intQ)}&fonte=${_intFonte}&ordem=${_intOrdem}&limite=300`);
-    if (d && d.erro) return card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`);
+    if (!d || d.erro) return cover(
+      "prefeitura",
+      "Íntegras · Contratos do Município do Rio",
+      "acervo de contratos capturados do PNCP",
+      "doc"
+    ) + card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
     const itens = d.itens || [];
+    if (_intAberto && !_intDoc[_intAberto]) {
+      _intDoc[_intAberto] = await J(`/api/pcrj/integra/${encodeURIComponent(_intAberto)}`) || { erro: "sem resposta" };
+    }
     let h = cover(
       "prefeitura",
       "Íntegras · Contratos do Município do Rio",
@@ -8164,9 +8163,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     <button class="btn${_intOrdem === "valor" ? " on" : ""}" data-int="ordem:valor">por valor</button>
     <button class="btn${_intOrdem === "texto" ? " on" : ""}" data-int="ordem:texto">por tamanho</button>
   </div>`;
-    h += sec(`Contratos (${fmtN(itens.length)} em tela)`);
+    const mostra = itens.slice(0, _INT_POR_PAGINA);
+    h += sec(`Contratos (${fmtN(mostra.length)} de ${fmtN(itens.length)} encontrados)`);
+    if (itens.length > mostra.length) h += `<div class="dim" style="margin:0 2px 6px">mostrando os ${fmtN(mostra.length)} maiores — refine a busca para chegar aos demais</div>`;
     if (!itens.length) h += card('<div class="dim">Nenhum contrato para este filtro.</div>');
-    for (const it of itens.slice(0, 300)) {
+    for (const it of mostra) {
       const ocr = it.fonte_texto === "ocr";
       const sel = _intAberto === it.numero;
       const seis = (it.processos_sei || []).map((p) => `<span class="tag" title="processo SEI citado no documento assinado">${esc(p)}</span>`).join(" ");
@@ -8203,6 +8204,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     const d = _intDoc[num];
     if (!d) return '<div class="dim" style="margin-top:8px">carregando a íntegra…</div>';
     if (d.erro) return `<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`;
+    const inteiro = d.texto || "";
+    const cortou = inteiro.length > _INT_TETO_TELA;
+    const txt = cortou ? inteiro.slice(0, _INT_TETO_TELA) : inteiro;
     const meta = [
       ["Objeto", d.objeto],
       ["Órgão", d.orgao],
@@ -8221,7 +8225,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       <a class="btn sm" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(num)}">dossiê .md</a>
     </div>
     <pre class="doc" style="max-height:460px;overflow:auto;white-space:pre-wrap;font-size:12px;
-      line-height:1.5;padding:10px;border-radius:8px">${esc(d.texto || "")}</pre>`;
+      line-height:1.5;padding:10px;border-radius:8px">${esc(txt)}</pre>` + (cortou ? `<div class="dim" style="margin-top:6px">mostrando ${fmtN(_INT_TETO_TELA)} de ${fmtN((d.texto || "").length)} caracteres — baixe o .txt ou o .md para o documento inteiro</div>` : "");
   }
 
   // static/js/src/entrada.js
