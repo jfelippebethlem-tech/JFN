@@ -24,6 +24,11 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+
+class PncpIndisponivel(RuntimeError):
+    """A requisição ao PNCP falhou. NÃO é o mesmo que 'não há arquivo' — quem trata deve
+    poder retentar depois, em vez de gravar uma ausência que nunca mais será revisitada."""
+
 PNCP_BASE = "https://pncp.gov.br/api/pncp/v1"
 # API de CONSULTA (publica, sem login) — Onda 2. Difere da de gestao (api/pncp/v1).
 CONSULTA_BASE = "https://pncp.gov.br/api/consulta/v1"
@@ -335,7 +340,12 @@ async def baixar_arquivos_contrato(cnpj: str, ano, seq, *, max_arquivos: int = 3
     cita o processo SEI que originou a contratação (ver ``processos_sei_no_texto``).
     """
     meta = await _get_pncp(f"/orgaos/{cnpj}/contratos/{ano}/{seq}/arquivos", {})
-    arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
+    if meta is None:
+        # None = a REQUISIÇÃO falhou (502/503/timeout/disconnect do PNCP), que é diferente de
+        # "o contrato não tem arquivo publicado". Confundir os dois grava ausência como fato e
+        # exclui o contrato do universo para sempre — aconteceu com 455 registros em 2026-09-05.
+        raise PncpIndisponivel(f"PNCP não respondeu para contrato {cnpj}/{ano}/{seq}")
+    arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", [])
     out: list[dict] = []
     total = 0
     async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:

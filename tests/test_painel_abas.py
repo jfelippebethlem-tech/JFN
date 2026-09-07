@@ -27,8 +27,8 @@ from tools.painel_abas import abas, abas_por_esfera
 # `/api/lentes`. Mesmo motivo da aba "Responsáveis" acima: quatro lentes de detecção existiam
 # como CLI e nenhuma tinha caller — o 7º "construído, testado, nunca rodado" da casa. Quem
 # acusou foi `test_rotas_sem_superficie`, cujo teto é 0.
-TOTAL = 61
-POR_ESFERA = {"inicio": 1, "estado": 16, "prefeitura": 14, "geral": 30}
+TOTAL = 62
+POR_ESFERA = {"inicio": 1, "estado": 17, "prefeitura": 14, "geral": 30}
 
 
 def test_le_todas_as_abas_do_painel():

@@ -2578,3 +2578,134 @@ def api_lentes(lente: Optional[str] = None, top: int = 20, esfera: str = "estadu
     return JSONResponse({"ok": True, "esfera": "estadual",
                          "gerado_em": estado.get("gerado_em"), "lentes": saida,
                          "aviso": estado.get("aviso")})
+
+
+# ── Acervo de íntegras dos contratos do Município do Rio ────────────────────────────────────
+# Capturado do PNCP (o SEI público municipal indexa só cadastro de representação — medido em
+# 2026-09-02, 0/9 processos de contratação com controle positivo 1/1). O texto vem do PDF
+# assinado; `fonte_texto` distingue nativo de OCR, porque OCR erra e o achado precisa saber.
+_CNPJ_MUNICIPIO_RIO = "42498733000148"
+
+
+def _con_integras():
+    """sqlite3 nativo: pcrj_contratos tem linhas de outros entes com colunas deslocadas que
+    derrubam o scanner do DuckDB na LEITURA, antes de qualquer cast."""
+    return _sqlite3.connect("data/compliance.db")
+
+
+@router.get("/api/pcrj/integras")
+def api_pcrj_integras(q: str = "", modalidade: str = "", fonte: str = "",
+                      ordem: str = "valor", limite: int = 200):
+    """Lista as íntegras capturadas. `q` casa fornecedor, objeto do contrato ou nº de processo."""
+    con = _con_integras()
+    try:
+        con.execute("SELECT 1 FROM contrato_integra LIMIT 1")
+    except _sqlite3.OperationalError:
+        return JSONResponse({"itens": [], "total": 0, "aviso": "acervo ainda não capturado"})
+    where, args = ["1=1"], []
+    if q:
+        where.append("(upper(fornecedor_nome) LIKE ? OR upper(titulo) LIKE ? "
+                     "OR processos_sei LIKE ? OR numero_controle_pncp LIKE ?)")
+        args += [f"%{q.upper()}%", f"%{q.upper()}%", f"%{q}%", f"%{q}%"]
+    if fonte in ("nativo", "ocr"):
+        where.append("coalesce(fonte_texto,'nativo') = ?")
+        args.append(fonte)
+    ordens = {"valor": "CAST(valor_global AS REAL) DESC",
+              "recente": "coletado_em DESC", "texto": "n_chars DESC"}
+    sql = (f"SELECT numero_controle_pncp, fornecedor_nome, valor_global, titulo, url, n_chars, "
+           f"processos_sei, estado, coalesce(fonte_texto,'nativo'), ano "
+           f"FROM contrato_integra WHERE {' AND '.join(where)} "
+           f"ORDER BY {ordens.get(ordem, ordens['valor'])} LIMIT ?")
+    linhas = con.execute(sql, args + [max(1, min(limite, 2000))]).fetchall()
+    total = con.execute("SELECT count(*) FROM contrato_integra").fetchone()[0]
+    legiveis = con.execute("SELECT count(*) FROM contrato_integra WHERE estado='TEXTO_OK'").fetchone()[0]
+    # ERRO_REDE é fila, NÃO é processado: contá-lo na cobertura infla o placar — foi o que
+    # transformou 46,7% em "69,4%" antes. Cobertura mede o que foi de fato lido ou decidido.
+    processados = con.execute(
+        "SELECT count(*) FROM contrato_integra WHERE estado <> 'ERRO_REDE'").fetchone()[0]
+    na_fila = con.execute(
+        "SELECT count(*) FROM contrato_integra WHERE estado = 'ERRO_REDE'").fetchone()[0]
+    universo = con.execute("SELECT count(*) FROM pcrj_contratos WHERE orgao_cnpj=?",
+                           [_CNPJ_MUNICIPIO_RIO]).fetchone()[0]
+    con.close()
+    itens = [{
+        "numero": r[0], "fornecedor": r[1], "valor": float(r[2] or 0), "titulo": r[3],
+        "url_pncp": r[4], "n_chars": r[5] or 0,
+        "processos_sei": json.loads(r[6] or "[]"), "estado": r[7], "fonte_texto": r[8],
+        "ano": r[9],
+    } for r in linhas]
+    return JSONResponse({
+        "itens": itens, "mostrando": len(itens),
+        # cobertura DECLARADA: o painel nunca deve sugerir que o acervo é o universo
+        "acervo": total, "legiveis": legiveis, "universo_municipio": universo,
+        "processados": processados, "na_fila_rede": na_fila,
+        "cobertura_pct": round(100 * processados / universo, 1) if universo else None,
+    })
+
+
+@router.get("/api/pcrj/integra/{numero:path}")
+def api_pcrj_integra(numero: str):
+    """Íntegra de um contrato: texto completo, processos SEI citados e link do original."""
+    con = _con_integras()
+    r = con.execute(
+        "SELECT numero_controle_pncp, orgao_cnpj, ano, seq, fornecedor_nome, valor_global, "
+        "titulo, url, n_chars, texto, processos_sei, estado, coalesce(fonte_texto,'nativo'), "
+        "coletado_em FROM contrato_integra WHERE numero_controle_pncp = ?", [numero]).fetchone()
+    reg = con.execute("SELECT objeto, orgao_nome, unidade, data_assinatura, tipo, vigencia_ini, "
+                      "vigencia_fim FROM pcrj_contratos WHERE numero_controle_pncp = ?",
+                      [numero]).fetchone()
+    con.close()
+    if not r:
+        return JSONResponse({"erro": "não capturado", "numero": numero}, status_code=404)
+    cnpj, ano, seq = r[1], r[2], r[3]
+    return JSONResponse({
+        "numero": r[0], "fornecedor": r[4], "valor": float(r[5] or 0),
+        "titulo": r[6], "url_pncp": r[7], "n_chars": r[8] or 0, "texto": r[9] or "",
+        "processos_sei": json.loads(r[10] or "[]"), "estado": r[11], "fonte_texto": r[12],
+        "coletado_em": r[13],
+        # o registro do PNCP, ao lado da íntegra: objeto e vigência não estão no PDF
+        "objeto": reg[0] if reg else None, "orgao": reg[1] if reg else None,
+        "unidade": reg[2] if reg else None, "assinatura": reg[3] if reg else None,
+        "tipo": reg[4] if reg else None,
+        "vigencia": [reg[5], reg[6]] if reg else None,
+        # links para a FONTE original — o painel tem de levar ao documento, não só ao resumo
+        "url_pncp_contrato": f"https://pncp.gov.br/api/pncp/v1/orgaos/{cnpj}/contratos/{ano}/{seq}/arquivos",
+        "url_pncp_web": f"https://pncp.gov.br/app/contratos/{cnpj}/{ano}/{seq}",
+    })
+
+
+# numero em QUERY, não em path: o número de controle do PNCP contém barra
+# ("…-2-000708/2026") e um {numero:path} é guloso — engolia o "/download" do fim e a rota
+# devolvia 404. Medido no painel, não presumido.
+@router.get("/api/pcrj/download")
+def api_pcrj_integra_download(numero: str, formato: str = "txt"):
+    """Baixa a íntegra. `txt` = texto extraído; `md` = texto com cabeçalho de procedência.
+
+    A procedência vai NO ARQUIVO, não só na tela: quem abrir o .md depois precisa saber se o
+    texto veio nativo do PDF ou de OCR (que erra), e de qual URL do PNCP.
+    """
+    from fastapi.responses import PlainTextResponse
+    con = _con_integras()
+    r = con.execute("SELECT fornecedor_nome, valor_global, titulo, url, texto, processos_sei, "
+                    "coalesce(fonte_texto,'nativo'), coletado_em, n_chars "
+                    "FROM contrato_integra WHERE numero_controle_pncp = ?", [numero]).fetchone()
+    con.close()
+    if not r:
+        return JSONResponse({"erro": "não capturado", "numero": numero}, status_code=404)
+    nome = re.sub(r"[^A-Za-z0-9._-]", "_", numero)
+    if formato != "md":
+        return PlainTextResponse(r[4] or "", headers={
+            "Content-Disposition": f'attachment; filename="{nome}.txt"'})
+    seis = json.loads(r[5] or "[]")
+    val = f"R$ {float(r[1] or 0):,.2f}".replace(",", "@").replace(".", ",").replace("@", ".")
+    corpo = (
+        f"# Contrato {numero}\n\n"
+        f"| campo | valor |\n|---|---|\n"
+        f"| Fornecedor | {r[0] or '—'} |\n| Valor global | {val} |\n"
+        f"| Arquivo | {r[2] or '—'} |\n| Caracteres | {r[8] or 0} |\n"
+        f"| Processos SEI citados | {', '.join(seis) if seis else '—'} |\n"
+        f"| Origem do texto | {'OCR (pode conter erro de leitura)' if r[6] == 'ocr' else 'nativo do PDF'} |\n"
+        f"| Capturado em | {r[7] or '—'} |\n| Fonte | {r[3] or '—'} |\n\n"
+        f"---\n\n{r[4] or ''}\n")
+    return PlainTextResponse(corpo, headers={
+        "Content-Disposition": f'attachment; filename="{nome}.md"'})

@@ -2884,3 +2884,143 @@ export async function renderLentes(){
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;
   return h;
 }
+
+/* ── Íntegras dos contratos do Município do Rio ─────────────────────────────────────────────
+ * Tudo clicável leva ao DOCUMENTO, não ao resumo: o card abre a íntegra e oferece o original
+ * no PNCP, o texto em .txt e o dossiê em .md (com a procedência dentro do arquivo).
+ * A cobertura é DECLARADA no topo — a tela nunca pode sugerir que o acervo é o universo. */
+let _intQ='', _intFonte='', _intOrdem='valor', _intAberto=null;
+const _intDoc={};   // detalhe ja baixado, por numero de contrato
+
+/* Delegacao por `data-int` num listener SO, em vez de cinco nomes no window: cada handler
+ * inline novo aumenta a superficie que a migracao do painel tem de carregar, e o gate de
+ * globais (teto 59) reprova com razao. Ligado uma vez, no modulo — nao no window. */
+function _intDelegar(ev){
+  const el=ev.target&&ev.target.closest&&ev.target.closest('[data-int]');
+  if(!el) return;
+  const [acao,arg]=(el.dataset.int||'').split(':');
+  if(acao==='buscar'){ const i=document.getElementById('intq'); _intQ=i?i.value:''; }
+  else if(acao==='fonte'){ _intFonte=(_intFonte===arg?'':arg); }
+  else if(acao==='ordem'){ _intOrdem=arg; }
+  else if(acao==='abrir'){
+    const n=el.dataset.num;
+    _intAberto=(_intAberto===n?null:n);
+    ev.preventDefault();
+    if(_intAberto&&!_intDoc[_intAberto]){
+      // busca o documento e SO ENTAO repinta — nada de correr contra o DOM
+      J(`/api/pcrj/integra/${encodeURIComponent(_intAberto)}`).then(d=>{ _intDoc[n]=d||{}; _intIr(); });
+      return;
+    }
+    _intIr(); return;
+  }
+  else return;
+  ev.preventDefault();
+  _intIr();
+}
+
+/* `ir` vive no window (as outras abas so a chamam de onclick inline). Chamada direta daqui
+ * dava ReferenceError e o clique morria calado — sem pageerror visivel no smoke. */
+function _intIr(){
+  if(typeof window!=='undefined'&&typeof window.ir==='function') window.ir('e_integras');
+}
+if(typeof document!=='undefined'&&!document.__intLigado){
+  document.__intLigado=true;
+  document.addEventListener('click',_intDelegar);
+  document.addEventListener('keydown',ev=>{
+    if(ev.key==='Enter'&&ev.target&&ev.target.id==='intq'){ _intQ=ev.target.value; _intIr(); }
+  });
+}
+
+export async function renderIntegras(){
+  const d=await J(`/api/pcrj/integras?q=${encodeURIComponent(_intQ)}&fonte=${_intFonte}`
+                 +`&ordem=${_intOrdem}&limite=300`);
+  if(d&&d.erro) return card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`);
+  const itens=d.itens||[];
+  let h=cover('prefeitura','Íntegras · Contratos do Município do Rio',
+    'O documento assinado de cada contrato, capturado do PNCP. Clique para ler a íntegra, '
+    +'baixar o texto ou abrir o original.','doc');
+
+  /* Cobertura primeiro e sem eufemismo: 47% do universo é 47%, não "amplo acervo". */
+  /* kpi(v, l): VALOR primeiro, rotulo depois — inverter imprime `undefined` na tela.
+     `grid` e a classe que existe; `grid4` era invencao minha e nao tinha CSS. */
+  h+=`<div class="grid">
+    ${kpi(fmtN(d.processados||0),'Processados')}
+    ${kpi(fmtN(d.legiveis||0),'Com texto legível')}
+    ${kpi(fmtN(d.universo_municipio||0),'Universo do Município')}
+    ${kpi(d.cobertura_pct==null?'INDISPONÍVEL':fmtN(d.cobertura_pct)+'%','Cobertura do universo')}
+  </div>`;
+  if(d.aviso) h+=`<div class="note">${esc(d.aviso)}</div>`;
+  /* a fila por erro de rede aparece na TELA: 455 contratos esperando o PNCP voltar nao sao
+     "sem documento", e o painel nao pode deixar isso invisivel. */
+  if(d.na_fila_rede) h+=`<div class="note">${fmtN(d.na_fila_rede)} contrato(s) aguardando `
+    +`retentativa — o PNCP falhou (502/503) no momento da captura. Nao e ausencia de documento.</div>`;
+
+  h+=sec('Buscar');
+  h+=`<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin:0 2px 8px">
+    <input id="intq" class="inp" style="flex:1;min-width:220px" placeholder="fornecedor, arquivo ou nº de processo SEI…"
+      value="${esc(_intQ)}"     <button class="btn" data-int="buscar">Buscar</button>
+    <button class="btn${_intFonte==='ocr'?' on':''}" data-int="fonte:ocr" title="texto recuperado por OCR — pode conter erro de leitura">só OCR</button>
+    <button class="btn${_intFonte==='nativo'?' on':''}" data-int="fonte:nativo" title="texto nativo do PDF">só nativo</button>
+    <button class="btn${_intOrdem==='valor'?' on':''}" data-int="ordem:valor">por valor</button>
+    <button class="btn${_intOrdem==='texto'?' on':''}" data-int="ordem:texto">por tamanho</button>
+  </div>`;
+
+  h+=sec(`Contratos (${fmtN(itens.length)} em tela)`);
+  if(!itens.length) h+=card('<div class="dim">Nenhum contrato para este filtro.</div>');
+  for(const it of itens.slice(0,300)){
+    const ocr=it.fonte_texto==='ocr';
+    const sel=_intAberto===it.numero;
+    const seis=(it.processos_sei||[]).map(p=>
+      `<span class="tag" title="processo SEI citado no documento assinado">${esc(p)}</span>`).join(' ');
+    h+=card(`
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div style="min-width:0;flex:1">
+          <b style="cursor:pointer" data-int="abrir" data-num="${esc(it.numero)}">${esc(it.fornecedor||'—')}</b>
+          <div class="dim">${esc(it.numero)} · ${esc(it.titulo||'sem arquivo')}</div>
+          <div class="dim" style="margin-top:3px">
+            ${it.estado==='TEXTO_OK'?fmtN(it.n_chars)+' caracteres':'<b>ILEGÍVEL</b> — PDF de imagem'}
+            ${ocr?' · <span class="tag warn" title="recuperado por OCR: pode conter erro de leitura">OCR</span>':''}
+          </div>
+          ${seis?`<div style="margin-top:5px">${seis}</div>`:''}
+        </div>
+        <div class="right" style="white-space:nowrap">
+          <b>${fmtRc(it.valor)}</b>
+          <div style="margin-top:6px;display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap">
+            <button class="btn sm" data-int="abrir" data-num="${esc(it.numero)}">${sel?'fechar':'ler'}</button>
+            <a class="btn sm" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(it.numero)}"
+               title="dossiê em Markdown, com a procedência do texto no cabeçalho">.md</a>
+            <a class="btn sm" href="/api/pcrj/download?numero=${encodeURIComponent(it.numero)}"
+               title="texto puro extraído do documento">.txt</a>
+            ${it.url_pncp?`<a class="btn sm" href="${esc(it.url_pncp)}" target="_blank" rel="noopener"
+               title="documento original no PNCP">original</a>`:''}
+          </div>
+        </div>
+      </div>
+      ${sel?_intDocHtml(it.numero):''}
+    `);
+  }
+  return h;
+}
+
+/* Carrega o corpo do documento sob demanda: a íntegra tem dezenas de milhares de caracteres e
+ * trazer todas de uma vez na lista travaria o event loop — painel mudo é event loop bloqueado. */
+function _intDocHtml(num){
+  const d=_intDoc[num];
+  if(!d) return '<div class="dim" style="margin-top:8px">carregando a íntegra…</div>';
+  if(d.erro) return `<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`;
+  const meta=[['Objeto',d.objeto],['Órgão',d.orgao],['Unidade',d.unidade],
+              ['Assinatura',d.assinatura],['Tipo',d.tipo],
+              ['Vigência',(d.vigencia||[]).filter(Boolean).join(' a ')],
+              ['Origem do texto',d.fonte_texto==='ocr'?'OCR — pode conter erro de leitura':'nativo do PDF'],
+              ['Capturado em',d.coletado_em]]
+    .filter(([,v])=>v).map(([k,v])=>`<tr><td class="dim">${esc(k)}</td><td>${esc(String(v))}</td></tr>`).join('');
+  return `
+    <table class="tb" style="margin-bottom:8px">${meta}</table>
+    <div class="row" style="gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <a class="btn sm" href="${esc(d.url_pncp_web||'#')}" target="_blank" rel="noopener">ver no PNCP</a>
+      <a class="btn sm" href="${esc(d.url_pncp||'#')}" target="_blank" rel="noopener">baixar o PDF original</a>
+      <a class="btn sm" href="/api/pcrj/download?formato=md&numero=${encodeURIComponent(num)}">dossiê .md</a>
+    </div>
+    <pre class="doc" style="max-height:460px;overflow:auto;white-space:pre-wrap;font-size:12px;
+      line-height:1.5;padding:10px;border-radius:8px">${esc(d.texto||'')}</pre>`;
+}

@@ -25,7 +25,8 @@ from datetime import datetime, timezone
 
 import sqlite3
 
-from compliance_agent.collectors.pncp import baixar_arquivos_contrato, processos_sei_no_texto
+from compliance_agent.collectors.pncp import (PncpIndisponivel, baixar_arquivos_contrato,
+                                              processos_sei_no_texto)
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ def _pendentes(con, limite: int) -> list[tuple]:
                ON i.numero_controle_pncp = c.numero_controle_pncp
         WHERE c.orgao_cnpj = ?
           AND c.numero_controle_pncp GLOB '*-*-*/[0-9][0-9][0-9][0-9]'
-          AND i.numero_controle_pncp IS NULL
+          AND (i.numero_controle_pncp IS NULL OR i.estado = 'ERRO_REDE')
         ORDER BY v DESC
         LIMIT ?
         """,
@@ -99,7 +100,17 @@ async def _uma(con, numero: str, fornecedor: str | None, valor) -> int:
         logger.warning("numero_controle_pncp fora do formato: %s", numero)
         return 0
     cnpj, ano, seq = partes
-    arquivos = await baixar_arquivos_contrato(cnpj, ano, seq)
+    try:
+        arquivos = await baixar_arquivos_contrato(cnpj, ano, seq)
+    except PncpIndisponivel as exc:
+        # ERRO_REDE é retentável; SEM_ARQUIVO seria uma afirmação sobre o contrato.
+        logger.warning("  %s: %s", numero, exc)
+        con.execute(
+            "INSERT OR REPLACE INTO contrato_integra (" + COLS + ") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [numero, cnpj, ano, seq, fornecedor, valor, None, None, 0, None, "[]",
+             "ERRO_REDE", datetime.now(timezone.utc).isoformat()])
+        con.commit()
+        return 0
     if not arquivos:
         # grava a AUSÊNCIA: sem isso o sweep repete o mesmo contrato para sempre, e
         # "sem arquivo publicado" é fato — não é o mesmo que "ainda não tentei".
