@@ -38,3 +38,17 @@ def test_a_fila_do_sweep_retenta_erro_de_rede():
     import inspect
     sql = inspect.getsource(_pendentes)
     assert "ERRO_REDE" in sql, "a fila precisa retentar o que falhou por rede"
+
+
+def test_404_e_ausencia_nao_erro_de_rede(monkeypatch):
+    """404/204 é a FONTE dizendo 'não há'. Tratá-lo como erro de rede faz o sweep retentar
+    para sempre um recurso que não existe — o oposto do bug original, e igualmente errado."""
+    class _R:
+        status_code = 404
+        def json(self): return None
+    class _C:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, *a, **k): return _R()
+    monkeypatch.setattr(pncp.httpx, "AsyncClient", lambda **k: _C())
+    assert asyncio.run(pncp._get_pncp("/qualquer", {})) == []

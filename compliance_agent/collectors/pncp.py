@@ -63,6 +63,11 @@ async def _get_pncp(endpoint: str, params: dict) -> Optional[dict]:
                                  headers={"User-Agent": "JFN-Compliance/1.0"})
             if r.status_code == 200:
                 return r.json()
+            if r.status_code in (204, 404):
+                # 204/404 é a FONTE respondendo "não há" — fato, não falha. Devolver None aqui
+                # faria o chamador retentar para sempre um recurso que não existe.
+                return []
+            logger.warning("PNCP %s: HTTP %s", endpoint, r.status_code)
     except Exception as exc:
         logger.warning("PNCP %s indisponível (None pode ser falso 'sem contrato'): %s", endpoint, exc)
     return None
