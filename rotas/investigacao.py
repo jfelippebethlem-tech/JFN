@@ -2439,8 +2439,9 @@ def api_fontes_frescor():
 
         con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
         try:
+            from compliance_agent.siafe_runner import detalhe_frescor as _siafe_detalhe
             _add("SIAFE · OB orçamentária (coleta)", "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe", con,
-                 detalhe="coletor diário 05:00 (MFA mensal)")
+                 detalhe=_siafe_detalhe("coletor diário 05:00 (MFA mensal)"))
             _add("SIAFE · OB orçamentária (dado)",
                  "SELECT MAX(substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)) "
                  "FROM ob_orcamentaria_siafe WHERE exercicio=(SELECT MAX(exercicio) FROM ob_orcamentaria_siafe)", con,

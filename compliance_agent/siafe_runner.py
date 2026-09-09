@@ -26,6 +26,38 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _LOCK = _REPO / "data" / "sei_cache" / "siafe_lock.json"
+# Último resultado do diário — o painel (LED de frescor do SIAFE) lê isto para dizer POR QUE a coleta
+# parou. Sem isto, 7 dias de "senha expirada" (02→09/09/2026) apareceram como um LED só desatualizado.
+ULTIMO = _LOCK.parent / "siafe_runner_ultimo.json"
+
+
+def gravar_ultimo(res: dict) -> None:
+    try:
+        ULTIMO.parent.mkdir(parents=True, exist_ok=True)
+        ULTIMO.write_text(json.dumps({"iso": datetime.now(timezone.utc).isoformat(), "ok": bool(res.get("ok")),
+                                      "erro": res.get("erro") or res.get("etapa"), "detail": (res.get("detail") or "")[:300],
+                                      "n": res.get("n")}, ensure_ascii=False))
+    except OSError as exc:
+        logger.debug("não gravei o último resultado do diário: %s", exc)
+
+
+def ultimo_resultado() -> dict | None:
+    try:
+        return json.loads(ULTIMO.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def detalhe_frescor(base: str) -> str:
+    """Texto do LED de frescor do SIAFE: o `base` quando a última coleta foi bem, senão o MOTIVO."""
+    u = ultimo_resultado()
+    if not u or u.get("ok"):
+        return base
+    quando = (u.get("iso") or "")[:16].replace("T", " ")
+    motivo = u.get("erro") or "falhou"
+    det = u.get("detail") or ""
+    return f"⛔ última coleta {quando} UTC falhou: {motivo}" + (f" — {det}" if det else "") + f" · {base}"
+
 _LOG = _REPO / "data" / "siafe_runner.log"
 LOCK_TTL = 1800  # lock vence em 30min SEM heartbeat (recuperação de crash). Processos longos (sweep)
                  # RENOVAM o lock via refresh_lock() a cada passo → fica vivo enquanto ativo, sem colisão.
@@ -107,6 +139,7 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
         res = await M.coletar(ano, maxn=maxn)
         if not res.get("ok"):
             _log(f"diário {ano}: coleta falhou: {res}")
+            gravar_ultimo(res)
             # falha NUNCA silenciosa: o dono fica sabendo na hora (a defasagem de 16-17/07 passou batida)
             try:
                 from compliance_agent import siafe_coord
@@ -118,6 +151,7 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             return {"ok": False, "etapa": "coleta", **res}
         ing = M.ingerir(ano, res.get("header", []), res.get("linhas", []))
         _log(f"diário {ano}: {res.get('n')} colhidas, {ing.get('ingeridas')} ingeridas (total {ing.get('total_tabela')})")
+        gravar_ultimo({"ok": True, "n": res.get("n")})
         # VERIFICADOR: o incremental pega as ~1000 OBs mais novas GLOBAIS; se um dia teve >1000 OBs (ex.: dia de
         # FOLHA), as OBs antigas desse dia caem abaixo da posição 1000 e seriam PERDIDAS. Conferimos o dia anterior
         # por Data Emissão; se estourou (>1000), coletar_por_data subdivide por Número e completa o dia.
