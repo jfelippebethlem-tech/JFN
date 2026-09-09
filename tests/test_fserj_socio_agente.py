@@ -10,6 +10,7 @@ def test_graduacao_por_ente():
     assert graduar("SECRETARIA DE ESTADO DE SAUDE", "MÉDICO LEI 7946'18", "EFETIVO") == "🟡"
     assert graduar("SECRETARIA DE ESTADO DE POLICIA MILITAR", "SUBTENENTE PM", "EFETIVO") == "⚪"
     assert graduar(None, None, None) == "⚪"
+    assert graduar("PREFEITURA DO RIO — RioSaúde (RS/PRE)", "", "PCRJ") == "⚪"   # saúde MUNICIPAL não é SES
 
 
 def test_peso_do_nome_separa_homonimo_provavel():

@@ -47,8 +47,8 @@ def graduar(orgao: str | None, cargo: str | None, vinculo: str | None) -> str:
     o = _norm(orgao)   # cargo/vínculo ficam na tabela para leitura humana; a graduação é pelo ENTE
     if "FUNDACAO SAUDE" in o or "FSERJ" in o:
         return "🔴"
-    if "SAUDE" in o:
-        return "🟡"
+    if "SAUDE" in o and not any(k in o for k in ("PREFEITURA", "RIOSAUDE", "MUNICIP")):
+        return "🟡"          # saúde ESTADUAL (SES); RioSaúde/Prefeitura é outra esfera → ⚪
     return "⚪"
 
 

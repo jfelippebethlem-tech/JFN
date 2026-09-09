@@ -38,6 +38,7 @@ saiu de fato, nunca empenho).
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import re
 import sqlite3
@@ -49,6 +50,7 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 _ZST = _REPO / "data" / "receita_dump" / "socios_full.csv.zst"
 _ESTAB = _REPO / "data" / "receita_estab.db"
+logger = logging.getLogger(__name__)
 _MIN_TERMOS = 3           # "JOSE SILVA" casa com meio estado; três termos é o mínimo defensável
 
 _SQL = """
@@ -58,7 +60,7 @@ CREATE TABLE IF NOT EXISTS agente_publico_societario (
     doc_socio       TEXT,
     cnpj_basico     TEXT NOT NULL,
     qualif_cod      TEXT,
-    origem          TEXT NOT NULL,   -- folha_estado | alerj
+    origem          TEXT NOT NULL,   -- folha_estado | alerj | folha_pcrj | folha_cmrj
     cargo           TEXT,
     vinculo         TEXT,
     orgao           TEXT,
@@ -101,6 +103,33 @@ def semente(con: sqlite3.Connection) -> dict[str, dict]:
         # A ALERJ prevalece sobre a folha do Estado: mandato e gabinete são o poder que interessa.
         alvo[n] = {"nome": nome, "cargo": cargo, "vinculo": "ALERJ", "orgao": "ALERJ",
                    "origem": "alerj", "comissionado": 1}
+    # FOLHA MUNICIPAL (Prefeitura + Câmara do Rio) — lacuna medida em 2026-09-09: o cruzamento sócio × folha
+    # municipal só existia à mão. `pcrj_folha_pref` não traz cargo (só a lotação `sigla_ua`); usa-se a
+    # competência mais recente e só quem está na folha em 2025+ (ex-servidor não é agente em exercício).
+    # Estado/ALERJ prevalecem quando o mesmo nome aparece nos dois.
+    pcrj = _REPO / "data" / "pcrj.db"
+    if pcrj.exists():
+        try:
+            con.execute("ATTACH DATABASE ? AS pcrj", (str(pcrj),))
+            for nome, ua, org in con.execute(
+                    "SELECT nome, sigla_ua, orgao FROM pcrj.pcrj_folha_pref WHERE competencia >= '202501' "
+                    "GROUP BY nome ORDER BY MAX(competencia)"):
+                n = norm(nome)
+                if len(n.split()) < _MIN_TERMOS or n in alvo:
+                    continue
+                alvo[n] = {"nome": nome, "cargo": ua or "", "vinculo": "PCRJ", "orgao": f"PREFEITURA DO RIO — {org or ua or '?'}",
+                           "origem": "folha_pcrj", "comissionado": 0}
+            cols = {r[1] for r in con.execute("PRAGMA pcrj.table_info(pcrj_camara_servidores)")}
+            ccargo = "cargo" if "cargo" in cols else "''"
+            for nome, cargo in con.execute(f"SELECT DISTINCT nome, {ccargo} FROM pcrj.pcrj_camara_servidores"):
+                n = norm(nome)
+                if len(n.split()) < _MIN_TERMOS or n in alvo:
+                    continue
+                alvo[n] = {"nome": nome, "cargo": cargo or "", "vinculo": "CMRJ", "orgao": "CAMARA MUNICIPAL DO RIO DE JANEIRO",
+                           "origem": "folha_cmrj", "comissionado": int(bool(_RX_COMISSAO.search(cargo or "")))}
+            con.execute("DETACH DATABASE pcrj")
+        except sqlite3.Error as exc:
+            logger.warning("folha municipal não entrou na semente (%s) — segue só Estado/ALERJ", exc)
     return alvo
 
 
