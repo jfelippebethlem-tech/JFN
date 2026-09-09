@@ -2954,6 +2954,7 @@ export async function renderIntegras(){
     ${kpi(fmtN(d.legiveis||0),'Com texto legível')}
     ${kpi(fmtN(d.universo_municipio||0),'Universo do Município')}
     ${kpi(d.cobertura_pct==null?'INDISPONÍVEL':fmtN(d.cobertura_pct)+'%','Cobertura do universo')}
+    ${kpi(fmtN(d.sinais_total||0),'Sinais íntegra × D.O.')}
   </div>`;
   if(d.aviso) h+=`<div class="note">${esc(d.aviso)}</div>`;
   /* a fila por erro de rede aparece na TELA: 455 contratos esperando o PNCP voltar nao sao
@@ -2991,6 +2992,8 @@ export async function renderIntegras(){
             ${ocr?' · <span class="tag warn" title="recuperado por OCR: pode conter erro de leitura">OCR</span>':''}
           </div>
           ${seis?`<div style="margin-top:5px">${seis}</div>`:''}
+          ${(it.sinais||[]).length?`<div style="margin-top:5px">${it.sinais.map(s=>
+            `<span class="tag${s.grau==='🔴'?' rose':' amber'}" title="${esc(s.detalhe)}">${s.grau} ${esc(s.sinal.replace(/_/g,' '))}</span>`).join(' ')}</div>`:''}
         </div>
         <div class="right" style="white-space:nowrap">
           <b>${fmtRc(it.valor)}</b>

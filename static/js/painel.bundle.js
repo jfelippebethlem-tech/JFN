@@ -8151,6 +8151,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     ${kpi(fmtN(d.legiveis || 0), "Com texto legível")}
     ${kpi(fmtN(d.universo_municipio || 0), "Universo do Município")}
     ${kpi(d.cobertura_pct == null ? "INDISPONÍVEL" : fmtN(d.cobertura_pct) + "%", "Cobertura do universo")}
+    ${kpi(fmtN(d.sinais_total || 0), "Sinais íntegra × D.O.")}
   </div>`;
     if (d.aviso) h += `<div class="note">${esc(d.aviso)}</div>`;
     if (d.na_fila_rede) h += `<div class="note">${fmtN(d.na_fila_rede)} contrato(s) aguardando retentativa — o PNCP falhou (502/503) no momento da captura. Nao e ausencia de documento.</div>`;
@@ -8181,6 +8182,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
             ${ocr ? ' · <span class="tag warn" title="recuperado por OCR: pode conter erro de leitura">OCR</span>' : ""}
           </div>
           ${seis ? `<div style="margin-top:5px">${seis}</div>` : ""}
+          ${(it.sinais || []).length ? `<div style="margin-top:5px">${it.sinais.map((s) => `<span class="tag${s.grau === "🔴" ? " rose" : " amber"}" title="${esc(s.detalhe)}">${s.grau} ${esc(s.sinal.replace(/_/g, " "))}</span>`).join(" ")}</div>` : ""}
         </div>
         <div class="right" style="white-space:nowrap">
           <b>${fmtRc(it.valor)}</b>

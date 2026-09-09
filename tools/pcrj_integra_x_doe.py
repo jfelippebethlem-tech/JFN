@@ -105,8 +105,9 @@ def sinais_do_contrato(contrato: dict, eventos: list[dict], historico: list[dict
         if historico and e.get("mesmo_fornecedor") is True:
             h = historico[0]
             out.append({"sinal": "emergencial_incumbente", "grau": "🔴",
-                        "detalhe": (f"emergência recai no incumbente: mesmo fornecedor já tinha contrato com o "
-                                    f"mesmo órgão desde {h.get('data_assinatura')} ({h.get('numero_controle_pncp')})"),
+                        "detalhe": (f"emergência recai no incumbente: o mesmo fornecedor já contratava com o Município "
+                                    f"desde {h.get('data_assinatura')} ({h.get('numero_controle_pncp')}; `unidade` do PNCP "
+                                    f"não distingue secretaria — conferir a pasta nas Partes do extrato)"),
                         "evidencia": {"id_materia": e.get("id_materia"), "anterior": h.get("numero_controle_pncp"),
                                       "n_anteriores": len(historico)}})
         else:

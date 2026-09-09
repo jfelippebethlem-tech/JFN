@@ -2628,6 +2628,17 @@ def api_pcrj_integras(q: str = "", modalidade: str = "", fonte: str = "",
         "SELECT count(*) FROM contrato_integra WHERE estado = 'ERRO_REDE'").fetchone()[0]
     universo = con.execute("SELECT count(*) FROM pcrj_contratos WHERE orgao_cnpj=?",
                            [_CNPJ_MUNICIPIO_RIO]).fetchone()[0]
+    # SINAIS do cruzamento íntegra × D.O. (tools/pcrj_integra_x_doe, noturno no cruzador.sh). Só sinal
+    # positivo; contrato sem sinal é contrato sem sinal, não contrato limpo — a cobertura do D.O. é parcial.
+    sinais_por: dict[str, list] = {}
+    sinais_total = 0
+    try:
+        for num, grau, sinal, det in con.execute(
+                "SELECT numero_controle_pncp, grau, sinal, detalhe FROM contrato_doe_sinal"):
+            sinais_por.setdefault(num, []).append({"grau": grau, "sinal": sinal, "detalhe": det})
+            sinais_total += 1
+    except _sqlite3.OperationalError:       # tabela ainda não materializada: sem sinais, sem erro
+        pass
     con.close()
     itens = [{
         "numero": r[0], "fornecedor": r[1], "valor": float(r[2] or 0), "titulo": r[3],
@@ -2635,8 +2646,10 @@ def api_pcrj_integras(q: str = "", modalidade: str = "", fonte: str = "",
         "processos_sei": json.loads(r[6] or "[]"), "estado": r[7], "fonte_texto": r[8],
         "ano": r[9],
     } for r in linhas]
+    for it in itens:
+        it["sinais"] = sorted(sinais_por.get(it["numero"], []), key=lambda s: s["grau"] != "🔴")
     return JSONResponse({
-        "itens": itens, "mostrando": len(itens),
+        "itens": itens, "mostrando": len(itens), "sinais_total": sinais_total,
         # cobertura DECLARADA: o painel nunca deve sugerir que o acervo é o universo
         "acervo": total, "legiveis": legiveis, "universo_municipio": universo,
         "processados": processados, "na_fila_rede": na_fila,
