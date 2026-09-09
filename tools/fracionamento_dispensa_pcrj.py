@@ -51,11 +51,7 @@ from compliance_agent.reporting.intel_base import moeda
 DB = "data/compliance.db"
 RAIZ_PCRJ = "42498733"
 
-TETO_ART75_II = {
-    2021: 50_000.00, 2022: 54_020.41, 2023: 59_906.02,
-    2024: 59_906.02, 2025: 62_725.59, 2026: 62_725.59,
-}
-TETO_PADRAO = 62_725.59
+from compliance_agent.limites_dispensa import limite_dispensa  # fonte única do teto (por exercício)
 
 _RX_PROCESSO = re.compile(r"\b([A-Z]{2,6})[-–]([A-Z]{3})[-–](20\d{2})\s*/\s*(\d{3,8})\b")
 _RX_INCISO = re.compile(
@@ -76,7 +72,7 @@ LIMIAR_JACCARD = 0.5
 
 
 def teto(ano: int | None) -> float:
-    return TETO_ART75_II.get(ano or 0, TETO_PADRAO)
+    return limite_dispensa(int(ano or 2026), "compras")
 
 
 def _palavras(texto) -> set[str]:

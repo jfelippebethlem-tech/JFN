@@ -10,8 +10,8 @@ apostilamento, ratificação…). Este módulo materializa o cruzamento e dele e
   emergencial             art. 75, VIII ou "emergenc" no extrato
   emergencial_incumbente  emergencial + o MESMO fornecedor já contratava com o MESMO órgão antes
                           (o padrão do caso AGILE/SEEDUC: a "emergência" recai no incumbente)
-  acrescimo_acima_teto    aditivos com objeto de ACRÉSCIMO/reequilíbrio somando > 25% do valor PNCP
-                          (art. 125 da 14.133 — teto INCLUSIVO, "até 25%"); prorrogação não conta
+  acrescimo_acima_teto    aditivos de ACRÉSCIMO (classificados por `limites_aditivo`) somando mais que o teto
+                          do art. 125 (fonte única; inclusivo); prorrogação/reajuste não contam
   valor_divergente        valor do extrato ≠ valor global PNCP (> 5%) — inconsistência entre fontes
 
 HONESTIDADE: ausência de extrato no D.O. NÃO é sinal — `pcrj_doe_materia` cobre só o que o coletor
@@ -35,12 +35,12 @@ _REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO))
 
 from compliance_agent.pcrj.doe_minerador import minerar_extratos  # noqa: E402
+from compliance_agent.limites_aditivo import ato_normativo, estouro  # noqa: E402
 from compliance_agent.reporting.intel_base import moeda  # noqa: E402
 
 logger = logging.getLogger("pcrj_integra_x_doe")
 DB = _REPO / "data" / "compliance.db"
 PCRJ_DB = _REPO / "data" / "pcrj.db"
-TETO_ACRESCIMO = 0.25          # art. 125, Lei 14.133/2021 — "até 25%": 25,0% é regular, 25,01% não
 TOLERANCIA_VALOR = 0.05
 
 DDL = """
@@ -56,7 +56,6 @@ CREATE TABLE IF NOT EXISTS contrato_doe_sinal (
 CREATE INDEX IF NOT EXISTS ix_cds_pncp ON contrato_doe_sinal(numero_controle_pncp);
 """
 
-_ACRESCIMO = ("acréscimo", "acrescimo", "aumento", "reequil", "acresc")
 _STOP = {"LTDA", "ME", "EPP", "SA", "S/A", "EIRELI", "EMPRESA", "DE", "DO", "DA", "DOS", "DAS", "E", "COMERCIO",
          "SERVICOS", "SERVICO", "CIA", "COMPANHIA", "GRUPO", "INDUSTRIA", "CONSTRUCOES", "CONSTRUTORA"}
 
@@ -115,16 +114,18 @@ def sinais_do_contrato(contrato: dict, eventos: list[dict], historico: list[dict
                         "detalhe": f"contratação emergencial ({e.get('fundamento') or 'objeto menciona emergência'})",
                         "evidencia": {"id_materia": e.get("id_materia")}})
     base = contrato.get("valor_global") or 0
-    acresc = [e for e in certos if e.get("tipo") == "aditivo" and e.get("valor")
-              and any(k in (e.get("objeto") or "").lower() for k in _ACRESCIMO)]
-    if base > 0 and acresc:
-        soma = sum(e["valor"] for e in acresc)
-        if soma / base > TETO_ACRESCIMO:
-            out.append({"sinal": "acrescimo_acima_teto", "grau": "🔴",
-                        "detalhe": (f"acréscimos declarados em {len(acresc)} aditivo(s) somam {moeda(soma)} = "
-                                    f"{100 * soma / base:.1f}% do valor PNCP (teto 25%, art. 125) — conferir se "
-                                    f"o valor publicado é o do acréscimo ou o do período"),
-                        "evidencia": {"ids_materia": [e.get("id_materia") for e in acresc], "soma": soma, "base": base}})
+    # Teto e classificação (acréscimo × prorrogação × reajuste) vêm da FONTE ÚNICA do art. 125 —
+    # `limites_aditivo.estouro` — nunca de uma fração local. Só aditivos do MESMO fornecedor entram.
+    aditivos = [{"objeto": e.get("objeto"), "valor": e.get("valor"), "id_materia": e.get("id_materia")}
+                for e in certos if e.get("tipo") == "aditivo" and e.get("valor")]
+    est = estouro(base, aditivos) if aditivos else None
+    if est and est["aferivel"] and est["estourou"]:
+        ids = [i.get("id_materia") for i in est["itens"] if i.get("tipo") == "valor"]
+        out.append({"sinal": "acrescimo_acima_teto", "grau": "🔴",
+                    "detalhe": (f"acréscimos declarados em {len(ids)} aditivo(s) somam {moeda(est['acrescimo'])} = "
+                                f"{100 * est['pct']:.1f}% do valor PNCP (teto {100 * est['teto']:.0f}%, "
+                                f"{ato_normativo()}) — conferir se o valor publicado é o do acréscimo ou o do período"),
+                    "evidencia": {"ids_materia": ids, "soma": est["acrescimo"], "base": base, "teto": est["teto"]}})
     extratos = [e for e in certos if e.get("tipo") == "contrato" and e.get("valor")]
     if base > 0 and extratos:
         e = extratos[0]
