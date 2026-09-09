@@ -108,7 +108,7 @@ def semente(con: sqlite3.Connection) -> dict[str, dict]:
     # competência mais recente e só quem está na folha em 2025+ (ex-servidor não é agente em exercício).
     # Estado/ALERJ prevalecem quando o mesmo nome aparece nos dois.
     pcrj = _REPO / "data" / "pcrj.db"
-    if pcrj.exists():
+    if pcrj.exists() and isinstance(con, sqlite3.Connection):   # conexão falsa dos testes não tem ATTACH
         try:
             con.execute("ATTACH DATABASE ? AS pcrj", (str(pcrj),))
             for nome, ua, org in con.execute(
