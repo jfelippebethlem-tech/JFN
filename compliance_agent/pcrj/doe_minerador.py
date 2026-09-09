@@ -248,6 +248,76 @@ def canal_informal(db_path=None) -> dict:
     }
 
 
+
+# ── Extratos: contrato / aditivo / apostilamento / ratificação / dispensa / inexigibilidade / aviso ──
+# `pcrj_doe_materia.tipo` é o TERMO DE BUSCA da página, não o tipo do extrato — uma página rotulada
+# "inexigibilidade" trazia um EXTRATO DE TERMO ADITIVO. A página é segmentada pelo cabeçalho REAL
+# (maiúsculo, como o D.O. imprime) e cada campo fica preso ao seu segmento; nada herda do vizinho.
+_RE_HEAD_EXTRATO = re.compile(
+    r"(EXTRATO D[EA] (?:TERMO DE )?(?:INSTRUMENTO CONTRATUAL|INSTRUMENTO|CONTRATO|TERMO ADITIVO|ADITIVO|"
+    r"TERMO DE APOSTILAMENTO|APOSTILAMENTO|TERMO DE COMPROMISSO|TERMO DE FOMENTO|TERMO FOMENTO)"
+    r"|TERMO DE RATIFICA[ÇC][ÃA]O|RATIFICA[ÇC][ÃA]O DE [A-ZÇÃ ]{4,30}|DISPENSA DE LICITA[ÇC][ÃA]O"
+    r"|INEXIGIBILIDADE DE LICITA[ÇC][ÃA]O|AVISO DE LICITA[ÇC][ÃA]O)")
+_RE_CONTRATO_NUM = re.compile(r"(?:CONTRATO|INSTRUMENTO CONTRATUAL)[^\n:]{0,20}?\bN\.?\s*[º°o]?\.?\s*:?\s*([0-9][\w./-]*)", re.I)
+_RE_DATA_ASS = re.compile(r"DATA D[AE] ASSINATURA\s*:?\s*(\d{2})/(\d{2})/(\d{4})", re.I)
+_RE_PARTES = re.compile(r"\bPARTES\s*:\s*(.+?)(?=\s(?:OBJETO|CNPJ)\b|$)", re.I | re.S)
+_RE_OBJETO_EXT = re.compile(r"\bOBJETO\s*:\s*(.+?)(?=\s(?:PRAZO|VALOR|FUNDAMENTO|PROGRAMA DE TRABALHO|DATA D[AE])\b|$)", re.I | re.S)
+_RE_PRAZO = re.compile(r"\bPRAZO\s*:\s*(.+?)(?=\s(?:VALOR|FUNDAMENTO|PROGRAMA DE TRABALHO)\b|$)", re.I | re.S)
+_RE_VALOR_EXT = re.compile(r"\bVALOR[^:R$\n]{0,20}:?\s*R\$\s*([\d][\d.]*,\d{2})", re.I)
+_RE_FUNDAMENTO = re.compile(r"\bart\.?\s*(7[45])\b[^A-Za-z0-9]{0,6}(?:inciso|inc\.?)?\s*([IVX]{1,5})\b", re.I)
+
+_TIPO_POR_CABECALHO = (("ADITIVO", "aditivo"), ("APOSTILAMENTO", "apostilamento"), ("RATIFICA", "ratificacao"),
+                       ("DISPENSA", "dispensa"), ("INEXIGIBILIDADE", "inexigibilidade"), ("AVISO", "aviso"),
+                       ("COMPROMISSO", "convenio"), ("FOMENTO", "convenio"))
+
+
+def _tipo_extrato(cabecalho: str) -> str:
+    c = cabecalho.upper()
+    return next((t for chave, t in _TIPO_POR_CABECALHO if chave in c), "contrato")
+
+
+def _processos_no_texto(s: str) -> list[str]:
+    from .doweb import _RE_PROCESSO  # lazy: doweb carrega o cliente HTTP
+    vistos: list[str] = []
+    for rx in _RE_PROCESSO:
+        for m in rx.findall(s):
+            n = re.sub(r"\s+", "", m)
+            if n not in vistos:
+                vistos.append(n)
+    return vistos
+
+
+def _campo(rx: re.Pattern, s: str, n: int) -> str | None:
+    m = rx.search(s)
+    return _limpa(m.group(1))[:n] if m else None
+
+
+def minerar_extratos(texto: str) -> list[dict]:
+    """Página do D.O. → lista de eventos, um por extrato: tipo, processos, contrato_num, data_assinatura
+    (ISO), partes, objeto, prazo, valor (float ou None), fundamento ("art. 75, VIII" ou None)."""
+    marcas = list(_RE_HEAD_EXTRATO.finditer(texto or ""))
+    eventos: list[dict] = []
+    for i, m in enumerate(marcas):
+        fim = marcas[i + 1].start() if i + 1 < len(marcas) else len(texto)
+        corpo = texto[m.end():fim]
+        d = _RE_DATA_ASS.search(corpo)
+        f = _RE_FUNDAMENTO.search(corpo)
+        v = _RE_VALOR_EXT.search(corpo)
+        eventos.append({
+            "tipo": _tipo_extrato(m.group(1)),
+            "cabecalho": _limpa(m.group(1)),
+            "processos": _processos_no_texto(corpo),
+            "contrato_num": _campo(_RE_CONTRATO_NUM, corpo, 40),
+            "data_assinatura": f"{d.group(3)}-{d.group(2)}-{d.group(1)}" if d else None,
+            "partes": _campo(_RE_PARTES, corpo, 200),
+            "objeto": _campo(_RE_OBJETO_EXT, corpo, 300),
+            "prazo": _campo(_RE_PRAZO, corpo, 80),
+            "valor": valor_br(v.group(1)) if v else None,
+            "fundamento": f"art. {f.group(1)}, {f.group(2).upper()}" if f else None,
+        })
+    return eventos
+
+
 if __name__ == "__main__":
     import sys
     cmd = sys.argv[1] if len(sys.argv) > 1 else "resumo"
