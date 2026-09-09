@@ -91,6 +91,9 @@ def extrair_tacs(texto: str) -> list[dict]:
             "objeto": re.sub(r"\s+", " ", ob.group(1)).strip()[:300] if ob else None,
             "data_assinatura": dt.group(1) if dt else None,
         })
+    # MENÇÃO não é extrato: resolução que delega "assinar Termo de Ajuste de Contas", sindicância que cita o
+    # TAC — sem nº, sem partes e sem valor não entra (medido 09/09: eram a maioria dos "(não lido)").
+    out = [r for r in out if r["numero_tac"] or r["fornecedor"] or r["valor"] is not None]
     # a mesma publicação repete o TAC (apostilamento cita o TAC original): dedupe por nº + fornecedor
     vistos, dedup = set(), []
     for r in out:
