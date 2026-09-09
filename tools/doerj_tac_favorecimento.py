@@ -72,7 +72,10 @@ def resolver_cnpj(con: sqlite3.Connection, fornecedor: str) -> str | None:
 
 
 def grau_agente(orgao: str | None) -> str:
+    """🔴 só para a saúde ESTADUAL (SES/FSERJ — o contratante dos TAC); RioSaúde/Prefeitura é outra esfera → 🟡."""
     o = norm(orgao or "")
+    if any(k in o for k in ("PREFEITURA", "RIOSAUDE", "MUNICIP", "CAMARA MUNICIPAL")):
+        return "🟡"
     return "🔴" if any(norm(k) in o for k in ORGAOS_SAUDE) else "🟡"
 
 

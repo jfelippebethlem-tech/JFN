@@ -16,3 +16,4 @@ def test_agente_da_saude_e_vermelho_outros_amarelo():
     assert grau_agente("Secretaria de Estado de Saúde") == "🔴"
     assert grau_agente("SECRETARIA DE ESTADO DE POLICIA MILITAR") == "🟡"
     assert grau_agente(None) == "🟡"
+    assert grau_agente("PREFEITURA DO RIO — RioSaúde (RS/PRE)") == "🟡"   # saúde municipal não é o contratante do TAC
