@@ -51,5 +51,16 @@ def test_dispensa_e_ratificacao_viram_tipo_proprio():
     assert ev[1]["processos"] == ["001200.000097/2026-12"]
 
 
+def test_aditivo_real_valor_do_termo_e_ordinal():
+    tx = ("EXTRATO DE TERMO ADITIVO Processo: 000600.000099/2026-28 Instrumento: 4º Termo Aditivo nº 66/2026 ao "
+          "Contrato Nº 136/2022. Data da assinatura: 14/07/2026 Partes: MUNICÍPIO DO RIO DE JANEIRO - SMI e EXCEL "
+          "ELEVADORES LTDA Objeto: Prorrogação do prazo. Valor do Termo: R$ 1.285.266,59 (um milhão) "
+          "Programa de Trabalho: 10.1501.15.122 Fundamento: Art. nº 57, inciso II da Lei 8.666/93")
+    (e,) = minerar_extratos(tx)
+    assert e["tipo"] == "aditivo" and e["aditivo_n"] == 4
+    assert e["contrato_num"] == "136/2022" and e["valor"] == 1285266.59
+    assert e["fundamento"] is None          # art. 57 não é base de contratação direta
+
+
 def test_pagina_sem_cabecalho_devolve_vazio():
     assert minerar_extratos("Diário Oficial — expediente do dia, sem extratos.") == []

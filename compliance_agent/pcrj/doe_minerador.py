@@ -263,8 +263,9 @@ _RE_DATA_ASS = re.compile(r"DATA D[AE] ASSINATURA\s*:?\s*(\d{2})/(\d{2})/(\d{4})
 _RE_PARTES = re.compile(r"\bPARTES\s*:\s*(.+?)(?=\s(?:OBJETO|CNPJ)\b|$)", re.I | re.S)
 _RE_OBJETO_EXT = re.compile(r"\bOBJETO\s*:\s*(.+?)(?=\s(?:PRAZO|VALOR|FUNDAMENTO|PROGRAMA DE TRABALHO|DATA D[AE])\b|$)", re.I | re.S)
 _RE_PRAZO = re.compile(r"\bPRAZO\s*:\s*(.+?)(?=\s(?:VALOR|FUNDAMENTO|PROGRAMA DE TRABALHO)\b|$)", re.I | re.S)
-_RE_VALOR_EXT = re.compile(r"\bVALOR[^:R$\n]{0,20}:?\s*R\$\s*([\d][\d.]*,\d{2})", re.I)
-_RE_FUNDAMENTO = re.compile(r"\bart\.?\s*(7[45])\b[^A-Za-z0-9]{0,6}(?:inciso|inc\.?)?\s*([IVX]{1,5})\b", re.I)
+_RE_VALOR_EXT = re.compile(r"\bVALOR[^:\n]{0,25}:?\s*R\$\s*([\d][\d.]*,\d{2})", re.I)   # "Valor do Termo: R$"
+_RE_FUNDAMENTO = re.compile(r"\bart\.?\s*(?:n[º°o.]*\s*)?(7[45]|2[45])\b[^A-Za-z0-9]{0,6}(?:inciso|inc\.?)?\s*([IVX]{1,5})\b", re.I)  # 14.133 (74/75) e 8.666 (24/25)
+_RE_ADITIVO_N = re.compile(r"\b(\d{1,2})\s*[º°o]\s*(?:TERMO\s+)?ADITIVO", re.I)
 
 _TIPO_POR_CABECALHO = (("ADITIVO", "aditivo"), ("APOSTILAMENTO", "apostilamento"), ("RATIFICA", "ratificacao"),
                        ("DISPENSA", "dispensa"), ("INEXIGIBILIDADE", "inexigibilidade"), ("AVISO", "aviso"),
@@ -307,13 +308,14 @@ def minerar_extratos(texto: str) -> list[dict]:
             "tipo": _tipo_extrato(m.group(1)),
             "cabecalho": _limpa(m.group(1)),
             "processos": _processos_no_texto(corpo),
-            "contrato_num": _campo(_RE_CONTRATO_NUM, corpo, 40),
+            "contrato_num": (_campo(_RE_CONTRATO_NUM, corpo, 40) or "").rstrip(".,;") or None,
             "data_assinatura": f"{d.group(3)}-{d.group(2)}-{d.group(1)}" if d else None,
             "partes": _campo(_RE_PARTES, corpo, 200),
             "objeto": _campo(_RE_OBJETO_EXT, corpo, 300),
             "prazo": _campo(_RE_PRAZO, corpo, 80),
             "valor": valor_br(v.group(1)) if v else None,
             "fundamento": f"art. {f.group(1)}, {f.group(2).upper()}" if f else None,
+            "aditivo_n": int(a.group(1)) if (a := _RE_ADITIVO_N.search(corpo)) else None,
         })
     return eventos
 
