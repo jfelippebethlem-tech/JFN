@@ -41,3 +41,12 @@ def test_extrai_numero_valor_partes_processo():
 
 def test_sem_tac_devolve_vazio():
     assert extrair_tacs("EXTRATO DE CONTRATO nº 1/2026 PARTES: A e B VALOR: R$ 1,00") == []
+
+
+def test_cnpj_do_extrato_quando_publicado():
+    tx = ("EXTRATO DE TERMO INSTRUMENTO: Termo de Ajuste de Contas nº 12/2026 PARTES: Fundação Saúde do Estado do "
+          "Rio de Janeiro e a empresa AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA., CNPJ: 00.801.512/0001- 57. "
+          "OBJETO: apoio. VALOR: R$ 1,00")
+    (r,) = extrair_tacs(tx)
+    assert r["cnpj"] == "00801512000157"
+    assert extrair_tacs("Termo de Ajuste de Contas nº 1/2026 PARTES: A e B. VALOR: R$ 1,00")[0]["cnpj"] is None

@@ -6,7 +6,7 @@ TAC é o instrumento pelo qual o Estado paga serviço prestado SEM cobertura con
 [[casos/idesi-fundacao-saude-rj]] (a contratação regular nunca chega e o pagamento vira rotina).
 Desde 09/09/2026 o corpus do DOERJ é o PDF integral; este módulo lê os extratos de TAC e materializa:
 
-  doerj_tac (data_doe, numero_tac, orgao, fornecedor, valor, processo, objeto, id_publicacao)
+  doerj_tac (data_doe, numero_tac, orgao, fornecedor, cnpj, valor, processo, objeto, id_publicacao)
 
 e imprime o ranking por fornecedor (n de TAC, soma, órgãos). Só sinal positivo e só o que o texto
 diz: valor ausente fica NULL, nunca zero; fornecedor não lido fica "(não lido)".
@@ -41,10 +41,12 @@ _RE_PARTES = re.compile(r"P\s*A\s*R\s*T\s*E\s*S\s*:\s*(.+?)(?=\s(?:O\s*B\s*J\s*E
 _RE_PROCESSO = re.compile(r"SEI\s*-?\s*((?:\d\s?){6}/\s?(?:\d\s?){6}/\s?(?:\d\s?){4})", re.I)   # dígitos podem vir espaçados no PDF
 _RE_OBJETO = re.compile(r"O\s*B\s*J\s*E\s*T\s*O\s*:\s*(.+?)(?=\s(?:FUNDAMENTO|V\s*A\s*L\s*O\s*R|DATA|PROCESSO|P\s*A\s*R\s*T\s*E\s*S|PRAZO|Id:)\b|$)", re.I | re.S)
 _RE_DATA = re.compile(r"DATA\s+D[AE]\s+ASSINATURA\s*:?\s*(\d{2}/\d{2}/\d{4})", re.I)
+_RE_CNPJ = re.compile(r"CNPJ[^\d]{0,12}((?:\d\s?){2}\.?\s?(?:\d\s?){3}\.?\s?(?:\d\s?){3}/\s?(?:\d\s?){4}-?\s?(?:\d\s?){2})", re.I)
 
 
 def normalizar(texto: str) -> str:
-    t = _RE_HIFEN_QUEBRA.sub("", texto or "")
+    t = re.sub(r"[\x00-\x08\x0b-\x1f]", " ", texto or "")   # fonte de PDF vaza bytes de controle no nome
+    t = _RE_HIFEN_QUEBRA.sub("", t)
     t = _RE_ESPACADO.sub(lambda m: m.group(0).replace(" ", ""), t)
     return re.sub(r"[ \t]+", " ", t)
 
@@ -82,7 +84,9 @@ def extrair_tacs(texto: str) -> list[dict]:
         pr = _RE_PROCESSO.search(seg)
         ob = _RE_OBJETO.search(seg)
         dt = _RE_DATA.search(seg)
+        cj = _RE_CNPJ.search(seg[max(0, (seg.find(forn[:20]) if forn else 0) - 40):] if forn else seg)
         out.append({
+            "cnpj": re.sub(r"\D", "", cj.group(1)) if cj else None,
             "numero_tac": m.group(1),
             "orgao": orgao,
             "fornecedor": forn,
@@ -111,7 +115,7 @@ def materializar() -> dict:
     con.executescript("""
         DROP TABLE IF EXISTS doerj_tac;
         CREATE TABLE doerj_tac (
-            data_doe TEXT, numero_tac TEXT, orgao TEXT, fornecedor TEXT, valor REAL, processo TEXT,
+            data_doe TEXT, numero_tac TEXT, orgao TEXT, fornecedor TEXT, cnpj TEXT, valor REAL, processo TEXT,
             objeto TEXT, data_assinatura TEXT, id_publicacao INTEGER, gerado_em TEXT
         );
         CREATE INDEX ix_doerj_tac_forn ON doerj_tac(fornecedor);
@@ -123,8 +127,8 @@ def materializar() -> dict:
     with con:
         for pid, data, texto in rows:
             for r in extrair_tacs(texto):
-                con.execute("INSERT INTO doerj_tac VALUES (?,?,?,?,?,?,?,?,?,?)",
-                            (str(data), r["numero_tac"], r["orgao"], r["fornecedor"], r["valor"], r["processo"],
+                con.execute("INSERT INTO doerj_tac VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                            (str(data), r["numero_tac"], r["orgao"], r["fornecedor"], r["cnpj"], r["valor"], r["processo"],
                              r["objeto"], r["data_assinatura"], pid, agora))
                 n += 1
     con.close()
