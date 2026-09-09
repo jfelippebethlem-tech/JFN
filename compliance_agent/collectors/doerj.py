@@ -29,6 +29,12 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+try:
+    from playwright.async_api import Error as PWError
+except ImportError:  # sem playwright o coletor não roda, mas o módulo importa
+    class PWError(Exception):
+        pass
+
 logger = logging.getLogger(__name__)
 
 CDP_URL = "http://127.0.0.1:9222"
@@ -242,7 +248,7 @@ def _texto_pdf(b: bytes) -> str:
     try:
         with fitz.open(stream=b, filetype="pdf") as doc:
             return "\n\n".join(pg.get_text("text") for pg in doc)
-    except Exception as exc:  # PDF truncado/protegido: o DOM continua servindo
+    except (RuntimeError, ValueError, TypeError) as exc:  # fitz.FileDataError é RuntimeError; o DOM continua servindo
         logger.debug("PyMuPDF não leu o PDF da edição (%d bytes): %s", len(b), exc)
         return ""
 
@@ -417,7 +423,7 @@ class DOERJCollector:
             try:
                 if "pdf" in (resp.headers.get("content-type") or "").lower() and not pdf_urls:
                     pdf_urls.append(resp.url)
-            except Exception as exc:
+            except (AttributeError, KeyError) as exc:      # resposta sem cabeçalho/URL legível
                 logger.debug("resposta PDF da edição %s não registrada: %s", data, exc)
 
         page.on("response", _guarda_pdf)
@@ -436,7 +442,7 @@ class DOERJCollector:
                 r = await page.context.request.get(pdf_urls[0], timeout=120000)
                 if r.ok:
                     pdf_bytes.append(await r.body())
-            except Exception as exc:
+            except (PWError, asyncio.TimeoutError, OSError) as exc:
                 logger.debug("download integral do PDF da edição %s falhou: %s", data, exc)
 
         dump = await page.evaluate(_JS_EXTRACT)
