@@ -6642,7 +6642,13 @@ void main(){
       }).join("") + `</div>`;
     }
     if (ctr.length) h += `<div style="height:14px"></div>` + sec("Contratos", ctr.length) + `<div class="grid">` + ctr.slice(0, 20).map((c) => card(`<div style="font-weight:650;font-size:13.5px">${esc(c.objeto || c.descricao || "contrato").slice(0, 140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(c.fornecedor || c.contratado || "")} ${c.valor ? "· " + fmtRc(c.valor) : ""}</div>`)).join("") + `</div>`;
-    if (doe.length) h += `<div style="height:14px"></div>` + sec("Diário Oficial", doe.length) + `<div class="grid">` + doe.slice(0, 12).map((x) => card(`<div style="font-size:13px">${esc((x.texto || x.trecho || JSON.stringify(x)).slice(0, 220))}</div>`)).join("") + `</div>`;
+    const _doeCard = (x) => {
+      const tr = esc(x.excerpt || x.texto || "").replace(/&lt;b&gt;/g, "<b>").replace(/&lt;\/b&gt;/g, "</b>");
+      return card(`<div class="dim" style="font-size:12px">${esc(x.data || "—")} · ${esc(x.tipo || "ato")}${x.orgao ? " · " + esc(String(x.orgao).slice(0, 60)) : ""}</div>
+      <div style="font-weight:700;margin:3px 0">${esc(String(x.titulo || "").slice(0, 120))}</div>
+      <div style="font-size:13px">${tr.slice(0, 400)}</div>`);
+    };
+    if (doe.length) h += `<div style="height:14px"></div>` + sec("Diário Oficial do Estado", doe.length) + `<div class="grid">` + doe.slice(0, 12).map(_doeCard).join("") + `</div>`;
     if (alt.length) h += `<div style="height:14px"></div>` + sec("Alertas", alt.length) + `<div class="grid">` + alt.slice(0, 12).map((x) => card(`<div style="font-size:13px">${esc(x.titulo || x.tipo || JSON.stringify(x).slice(0, 180))}</div>`)).join("") + `</div>`;
     box.innerHTML = h || card('<div class="muted">Nada encontrado. Tente nome parcial, CNPJ ou objeto.</div>');
   }
