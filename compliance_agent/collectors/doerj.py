@@ -151,7 +151,7 @@ def _pub_dict(texto: str, data: date, url: str,
         "tipo_ato":                classificar_tipo_ato(texto),
         "numero_ato":              _extrair_numero_ato(texto),
         "titulo":                  (titulo or texto[:200])[:500],
-        "texto":                   texto[:8000],
+        "texto":                   texto[:200000],  # o fatiador agrupa grosso no texto do PDF; 8.000 cortava o teor
         "cpfs_extraidos":          json.dumps(extrair_cpfs(texto)),
         "cnpjs_extraidos":         json.dumps(extrair_cnpjs(texto)),
         "valores_extraidos":       json.dumps(extrair_valores(texto)),
@@ -231,6 +231,20 @@ _JS_LE_IFRAME = r"""
 }
 """
 
+
+
+def _texto_pdf(b: bytes) -> str:
+    """Texto nativo do PDF da edição (PyMuPDF), página a página, com separador de página."""
+    try:
+        import fitz
+    except ImportError:
+        return ""
+    try:
+        with fitz.open(stream=b, filetype="pdf") as doc:
+            return "\n\n".join(pg.get_text("text") for pg in doc)
+    except Exception as exc:  # PDF truncado/protegido: o DOM continua servindo
+        logger.debug("PyMuPDF não leu o PDF da edição (%d bytes): %s", len(b), exc)
+        return ""
 
 class DOERJCollector:
     """Coleta o DOERJ pelo Chrome aberto (CDP), sem esbarrar no 403."""
@@ -391,15 +405,48 @@ class DOERJCollector:
         titulo: str,
     ) -> list[dict]:
         """Navega para url, extrai texto (incluindo iframe se necessário), fatia atos."""
+        # A edição é um visualizador pdf.js: o DOM só tem o SUMÁRIO dos cadernos (medido em 09/09/2026:
+        # 14 "atos" por dia, todos índice). O teor integral chega ao viewer como `application/pdf`
+        # (`mostra_edicao.php?k=<GUID>`) — capturar esses bytes é o que dá o texto inteiro.
+        pdf_bytes: list[bytes] = []
+        pdf_urls: list[str] = []
+
+        async def _guarda_pdf(resp):
+            # O pdf.js pode pedir o arquivo em PEDAÇOS (206): o corpo desta resposta não é o PDF
+            # inteiro. Guarda-se a URL e baixa-se completo pela mesma sessão do Chrome (cookies/WAF).
+            try:
+                if "pdf" in (resp.headers.get("content-type") or "").lower() and not pdf_urls:
+                    pdf_urls.append(resp.url)
+            except Exception as exc:
+                logger.debug("resposta PDF da edição %s não registrada: %s", data, exc)
+
+        page.on("response", _guarda_pdf)
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         except Exception as e:
             print(f"[DOERJ] goto {url[:60]}: {e}")
             return []
         await asyncio.sleep(2.5)
+        for _ in range(12):                      # o PDF vem depois do DOM; até ~6 s a mais
+            if pdf_urls:
+                break
+            await asyncio.sleep(0.5)
+        if pdf_urls:
+            try:
+                r = await page.context.request.get(pdf_urls[0], timeout=120000)
+                if r.ok:
+                    pdf_bytes.append(await r.body())
+            except Exception as exc:
+                logger.debug("download integral do PDF da edição %s falhou: %s", data, exc)
 
         dump = await page.evaluate(_JS_EXTRACT)
         texto = dump.get("text", "")
+        if pdf_bytes:
+            texto_pdf = _texto_pdf(pdf_bytes[0])
+            if len(texto_pdf) > len(texto):
+                dump["fonte_texto"] = "pdf"
+                dump["pdf_bytes"] = len(pdf_bytes[0])
+                texto = texto_pdf
 
         # Se a página está vazia, tenta iframe (padrão antigo do IOERJ)
         if len(texto) < 300 and dump.get("has_iframe"):
