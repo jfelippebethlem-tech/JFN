@@ -37,8 +37,15 @@ class _PaginaSenhaExpirada:
         if "btnConfirmar" in seletor:
             self.clicou_ok = True
 
+    leituras_ate_popup = 0          # 0 = popup já na 1ª leitura; N = só aparece depois de N leituras
+
     async def inner_text(self, _sel):
-        return _FORM + (_POPUP if self.clicou_ok else "")
+        if not self.clicou_ok:
+            return _FORM
+        if self.leituras_ate_popup > 0:
+            self.leituras_ate_popup -= 1
+            return _FORM
+        return _FORM + _POPUP
 
     async def evaluate(self, js):
         if "a.xyo" in js:                       # _logado / tem_workspace
@@ -75,3 +82,13 @@ def test_sem_popup_segue_para_login_falhou_como_antes(monkeypatch):
     monkeypatch.setattr(pg, "inner_text", lambda _s: asyncio.sleep(0, result=_FORM))
     r = asyncio.run(S._login(pg, 2026))
     assert r["ok"] is False and r["erro"] == "login_falhou"
+
+
+def test_popup_que_aparece_tarde_ainda_e_nomeado(monkeypatch):
+    """05:00 de 09/09: o popup chegou depois da espera inicial e o clicador genérico o fechou."""
+    monkeypatch.setenv("SIAFE_USER", "u")
+    monkeypatch.setenv("SIAFE_PASS", "p")
+    pg = _PaginaSenhaExpirada()
+    pg.leituras_ate_popup = 1
+    r = asyncio.run(S._login(pg, 2026))
+    assert r["erro"] == "senha_expirada" and pg.cliques_em_popup == 0

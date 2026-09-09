@@ -281,6 +281,13 @@ async def _login(pg, exercicio: int):
     # Clica nos botões conhecidos até não haver mais (até 7 rodadas). MFA tem tratamento próprio ANTES do
     # clique genérico (senão o "Ok" do diálogo MFA seria clicado com o código vazio).
     for _ in range(7):
+        # A senha expirada pode aparecer DEPOIS dos 4 s iniciais (05:00 de 09/09: o teste acima não viu
+        # o popup e o clicador genérico o fechou — 'login_falhou' de novo). Reler a cada rodada.
+        corpo_rodada = ((await pg.inner_text("body")) or "").lower()
+        if "senha expirada" in corpo_rodada or "sua senha expirou" in corpo_rodada:
+            return {"ok": False, "erro": "senha_expirada",
+                    "detail": "SIAFE exige NOVA senha na tela de login (popup 'Senha Expirada'). "
+                              "Dono: definir a nova senha no SIAFE e atualizar SIAFE_PASS no .env."}
         if await _mfa_presente(pg):
             r = await _resolver_mfa(pg)
             if not r.get("ok"):
