@@ -362,7 +362,7 @@ async def baixar_arquivos_contrato(cnpj: str, ano, seq, *, max_arquivos: int = 3
             try:
                 d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
                 blob = d.content if d.status_code == 200 else b""
-            except Exception as exc:  # noqa: BLE001
+            except httpx.HTTPError as exc:      # rede/timeout/protocolo — a família real do client.get
                 logger.debug("PNCP contrato %s/%s/%s: falha em %s: %s", cnpj, ano, seq, url, exc)
                 blob = b""
             texto = _extrair_texto(nome, blob) if blob else ""
