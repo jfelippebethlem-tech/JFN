@@ -26,3 +26,13 @@ def test_corta_com_sigla_e_numero_sei():
     assert any(t.startswith("RESOLUÇÃO SEPM") for t in textos)
     assert any(t.startswith("PORTARIA Nº 364") for t in textos)
     assert not any("sindicância" in t and "apostilada" in t for t in textos)   # não agrupou os dois
+
+
+def test_secao_por_palavra_inteira():
+    from compliance_agent.collectors.doerj import _inferir_secao
+    assert _inferir_secao("Parte I (Poder Executivo)", "") == "I"
+    assert _inferir_secao("Parte IB - (Tribunal de Contas)", "") == "IB"
+    assert _inferir_secao("Parte II (Poder Legislativo)", "") == "II"
+    assert _inferir_secao("Parte IV (Municipalidades)", "") == "IV"
+    assert _inferir_secao("Parte V (Publicações a Pedido)", "") == "V"
+    assert _inferir_secao("Edição Extra", "") == "E"

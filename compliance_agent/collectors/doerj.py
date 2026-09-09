@@ -138,10 +138,19 @@ def _extrair_numero_ato(texto: str) -> str:
     return m.group(0).strip()[:150] if m else ""
 
 
+_RE_PARTE = re.compile(r"\b(?:parte|se[çc][ãa]o)\s+(ib|iv|v|iii|ii|i)\b", re.I)
+
+
 def _inferir_secao(edicao: str, titulo: str) -> str:
+    """'Parte IB' / 'Parte IV' / 'Parte V' são cadernos próprios: `"parte i" in s` casava o PREFIXO e tudo
+    virava "I" (medido 09/09/2026: 50/50 publicações com secao I). Casa a palavra inteira."""
     s = (edicao + " " + titulo).lower()
-    if "parte i" in s or "seção i" in s or "secao i" in s:
-        return "I"
+    m = _RE_PARTE.search(s)
+    if m:
+        return m.group(1).upper()
+    if "extra" in s or "suplemento" in s or "supl" in s:
+        return "E"
+    return "I"
     if "parte ii" in s or "seção ii" in s:
         return "II"
     if "parte iii" in s:
