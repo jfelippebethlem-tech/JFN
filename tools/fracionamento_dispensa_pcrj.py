@@ -51,7 +51,9 @@ from compliance_agent.reporting.intel_base import moeda
 DB = "data/compliance.db"
 RAIZ_PCRJ = "42498733"
 
-from compliance_agent.limites_dispensa import limite_dispensa  # fonte única do teto (por exercício)
+from compliance_agent.limites_dispensa import LIMITES, limite_dispensa  # fonte única do teto (por exercício)
+
+TETO_PADRAO = limite_dispensa(max(LIMITES), "compras")   # ano desconhecido → o exercício mais recente conhecido
 
 _RX_PROCESSO = re.compile(r"\b([A-Z]{2,6})[-–]([A-Z]{3})[-–](20\d{2})\s*/\s*(\d{3,8})\b")
 _RX_INCISO = re.compile(

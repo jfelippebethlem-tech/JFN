@@ -8147,11 +8147,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       "doc"
     );
     h += `<div class="grid">
-    ${kpi(fmtN(d.processados || 0), "Processados")}
-    ${kpi(fmtN(d.legiveis || 0), "Com texto legível")}
-    ${kpi(fmtN(d.universo_municipio || 0), "Universo do Município")}
-    ${kpi(d.cobertura_pct == null ? "INDISPONÍVEL" : fmtN(d.cobertura_pct) + "%", "Cobertura do universo")}
-    ${kpi(fmtN(d.sinais_total || 0), "Sinais íntegra × D.O.")}
+    ${kpi(fmtN(d.processados || 0), "Processados", null, null, { sobre: "Contratos do Município cujo arquivo no PNCP foi baixado e decidido (texto lido, PDF de imagem ou sem arquivo publicado). Fila por erro de rede NÃO conta — é espera, não decisão." })}
+    ${kpi(fmtN(d.legiveis || 0), "Com texto legível", null, null, { sobre: "Contratos com texto extraído do PDF assinado (nativo ou recuperado por OCR). Texto legível é condição de leitura, não prova de regularidade." })}
+    ${kpi(fmtN(d.universo_municipio || 0), "Universo do Município", null, null, { sobre: "Total de contratos do CNPJ do Município do Rio publicados no PNCP (tabela pcrj_contratos). É o denominador honesto da cobertura; o PNCP não publica tudo que o Município contrata." })}
+    ${kpi(d.cobertura_pct == null ? "INDISPONÍVEL" : fmtN(d.cobertura_pct) + "%", "Cobertura do universo", null, null, { sobre: "Processados ÷ universo do Município. Mede quanto do que o PNCP publica já foi lido — não quanto o Município contratou." })}
+    ${kpi(fmtN(d.sinais_total || 0), "Sinais íntegra × D.O.", null, null, { sobre: "Sinais POSITIVOS do cruzamento entre a íntegra PNCP e os extratos do D.O. Rio (emergência no incumbente, contratação direta, valor divergente). Só entram extratos cujas Partes casam com o fornecedor; ausência de extrato no D.O. é cobertura de captura, nunca sinal." })}
   </div>`;
     if (d.aviso) h += `<div class="note">${esc(d.aviso)}</div>`;
     if (d.na_fila_rede) h += `<div class="note">${fmtN(d.na_fila_rede)} contrato(s) aguardando retentativa — o PNCP falhou (502/503) no momento da captura. Nao e ausencia de documento.</div>`;

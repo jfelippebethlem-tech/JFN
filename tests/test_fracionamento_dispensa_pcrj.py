@@ -35,7 +35,7 @@ def _linha(cert, proc, unidade, objeto, valor, ano=2025, cnpj="42498733000148"):
 
 def test_teto_vem_do_ano_e_o_de_2025_e_o_do_decreto_12343(banco):
     assert fd.teto(2025) == 62_725.59        # Decreto 12.343/2024, conferido na fonte
-    assert fd.teto(2023) == 59_906.02
+    assert fd.teto(2023) == 57_208.33     # Decreto 11.317/2022 — a tabela local antiga tinha o valor de 2024 aqui
     assert fd.teto(None) == fd.TETO_PADRAO   # ano desconhecido não vira zero
 
 

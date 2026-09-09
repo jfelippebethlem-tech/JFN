@@ -45,7 +45,10 @@ DB = Path(__file__).resolve().parents[1] / "data" / "compliance.db"
 
 # Teto medido em 01/09/2026. Só pode DESCER — cada queda exige dizer no commit o que foi limpo e
 # por quê. Se subir, alguém voltou a escrever registro alheio na tabela de pagamento.
-TETO_UG_INVALIDA = 17_893
+# 2026-09-09: 0. As 14.736 linhas alheias (perícias, laudos, lex) que a reconstrução de 12/08 salvou
+# dentro de `ordens_bancarias` foram movidas para `ordens_bancarias_lixo_20260909` e apagadas
+# (critério: numero_ob NÃO '####OB*' E data_emissao fora de formato de data — 0 linhas caíam em só um).
+TETO_UG_INVALIDA = 0
 
 
 def _con():
@@ -72,7 +75,7 @@ def test_o_status_nao_pode_estar_na_coluna_da_UG():
             "SELECT count(*) FROM ordens_bancarias WHERE ug_codigo IN "
             "('Contabilizado','Anulado','Excluído','Não contabilizado','Nao contabilizado')"
         ).fetchone()[0]
-    assert n <= 11_900, f"linhas com STATUS na coluna UG subiram para {n}"
+    assert n <= 0, f"linhas com STATUS na coluna UG subiram para {n}"   # 2026-09-09: era 11.900; lixo removido
 
 
 def test_a_soma_de_valor_so_e_confiavel_com_o_filtro_de_UG():
@@ -83,9 +86,11 @@ def test_a_soma_de_valor_so_e_confiavel_com_o_filtro_de_UG():
         limpo = c.execute("SELECT round(sum(valor),2) FROM ordens_bancarias "
                           "WHERE ug_codigo GLOB '[0-9][0-9][0-9][0-9][0-9][0-9]'").fetchone()[0] or 0
     assert limpo < 1e12, f"soma filtrada implausível: R$ {limpo:,.2f}"
-    assert bruto > limpo * 100, (
-        "a soma bruta deixou de estar contaminada — se a limpeza aconteceu, ABAIXE o teto de "
-        "`test_ug_invalida_nao_cresce` e diga no commit o que foi removido")
+    # 2026-09-09: a contaminação acabou (bruto era 1,54e17; hoje R$ 139,24 bi nos dois). O que este
+    # teste protege agora é que ela NÃO VOLTE: soma sem filtro tem de ser a soma com filtro.
+    assert abs(bruto - limpo) <= 0.01 * max(limpo, 1), (
+        f"a soma bruta voltou a divergir da filtrada: R$ {bruto:,.2f} × R$ {limpo:,.2f} — "
+        "registro alheio entrou de novo em `ordens_bancarias`")
 
 
 def test_a_tabela_do_siafe_continua_limpa():
