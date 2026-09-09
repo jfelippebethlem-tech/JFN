@@ -1627,6 +1627,37 @@ def api_intel_sancionadas(limite: int = 60):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/doerj/tac_recorrente")
+def api_doerj_tac_recorrente(top: int = 20):
+    """Termos de Ajuste de Contas publicados no DOERJ (PDF integral, desde 09/09/2026) — quem recebe
+    sem cobertura contratual, quantas vezes, quanto. Materializado por tools/doerj_tac_recorrente
+    (cruzador 23:00). Valores são os PUBLICADOS nos extratos, não OB; fornecedor '(não lido)' = extrato
+    sem campo PARTES legível (conta na soma, não no ranking)."""
+    con = _sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+    try:
+        try:
+            tot = con.execute("SELECT count(*), count(valor), round(sum(valor),2), min(data_doe), max(data_doe), "
+                              "count(DISTINCT fornecedor) FROM doerj_tac").fetchone()
+        except _sqlite3.OperationalError:
+            return JSONResponse({"ok": True, "aviso": "doerj_tac ainda não materializada", "total": 0, "itens": []})
+        itens = [dict(zip(("fornecedor", "n", "n_com_valor", "soma", "n_orgaos", "de", "ate", "processos"), r))
+                 for r in con.execute(
+                     "SELECT fornecedor, count(*), count(valor), round(sum(valor),2) AS soma, count(DISTINCT orgao), "
+                     "min(data_doe), max(data_doe), count(DISTINCT processo) FROM doerj_tac "
+                     "WHERE fornecedor IS NOT NULL GROUP BY fornecedor ORDER BY count(*) DESC, soma DESC LIMIT ?",
+                     (max(1, min(int(top or 20), 200)),))]
+        orgaos = [dict(zip(("orgao", "n", "soma"), r)) for r in con.execute(
+            "SELECT coalesce(orgao,'(não lido)'), count(*), round(sum(valor),2) FROM doerj_tac GROUP BY 1 "
+            "ORDER BY 2 DESC LIMIT 8")]
+        nao_lidos = con.execute("SELECT count(*) FROM doerj_tac WHERE fornecedor IS NULL").fetchone()[0]
+        edicoes = con.execute("SELECT count(DISTINCT data_publicacao) FROM publicacoes_doerj").fetchone()[0]
+    finally:
+        con.close()
+    return JSONResponse({"ok": True, "total": tot[0], "com_valor": tot[1], "soma": tot[2] or 0, "de": tot[3],
+                         "ate": tot[4], "fornecedores": tot[5], "nao_lidos": nao_lidos, "edicoes": edicoes,
+                         "itens": itens, "orgaos": orgaos})
+
+
 @router.get("/api/intel/sancionadas_municipio")
 def api_intel_sancionadas_municipio(limite: int = 60):
     """Empresas com sanção IMPEDITIVA contratadas pela PREFEITURA DO RIO (pcrj_contratos fonte='pncp'),

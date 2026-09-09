@@ -8235,6 +8235,30 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     <pre class="doc" style="max-height:460px;overflow:auto;white-space:pre-wrap;font-size:12px;
       line-height:1.5;padding:10px;border-radius:8px">${esc(txt)}</pre>` + (cortou ? `<div class="dim" style="margin-top:6px">mostrando ${fmtN(_INT_TETO_TELA)} de ${fmtN((d.texto || "").length)} caracteres — baixe o .txt ou o .md para o documento inteiro</div>` : "");
   }
+  async function renderTacRecorrente() {
+    const d = await J("/api/doerj/tac_recorrente?top=30");
+    if (!d || d.erro || d.ok === false) return cover("estado", "TAC recorrente (DOERJ)", "Termos de Ajuste de Contas publicados no Diário Oficial do Estado", "🧾") + card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
+    let h = cover(
+      "estado",
+      "TAC recorrente (DOERJ)",
+      "Quem o Estado paga por <b>Termo de Ajuste de Contas</b> — serviço prestado sem contrato regular — e quantas vezes. Valores são os <b>publicados</b> nos extratos, não ordens bancárias.",
+      "🧾"
+    );
+    if (d.aviso) return h + card(`<div class="note">${esc(d.aviso)}</div>`);
+    h += `<div class="grid">
+    ${kpi(fmtN(d.total || 0), "TACs publicados", null, null, { sobre: `Extratos de Termo de Ajuste de Contas lidos no PDF integral do DOERJ em ${fmtN(d.edicoes || 0)} edições (${esc(d.de || "?")} → ${esc(d.ate || "?")}). Cada linha é um extrato; apostilamento do mesmo TAC não duplica.` })}
+    ${kpi(fmtRc(d.soma || 0), "Soma publicada", "var(--rose)", null, { sobre: `Soma dos valores que os extratos declaram (${fmtN(d.com_valor || 0)} de ${fmtN(d.total || 0)} têm valor legível). Publicado ≠ pago: pagamento é OB no SIAFE.` })}
+    ${kpi(fmtN(d.fornecedores || 0), "Fornecedores", null, null, { sobre: "Fornecedores distintos lidos no campo PARTES dos extratos. Extrato sem PARTES legível conta na soma, não aqui." })}
+    ${kpi(fmtN(d.nao_lidos || 0), "Extratos sem fornecedor lido", null, null, { sobre: "Extratos em que o campo PARTES não foi reconhecido (texto de PDF quebrado). Entram na soma; ficam fora do ranking. É limite de leitura, não ausência de fornecedor." })}
+  </div>`;
+    h += sec("Por órgão");
+    h += `<div class="grid">` + (d.orgaos || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} TAC · ${fmtRc(o.soma || 0)}</div>`)).join("") + `</div>`;
+    h += sec("Quem mais recebe por TAC", (d.itens || []).length);
+    h += `<div class="note">Um fornecedor com dezenas de TACs no trimestre não vive uma excepcionalidade: vive de um contrato que não existe. O que decide é o processo citado no extrato (justificativa e apuração de responsabilidade, art. 4º, III do Decreto 47.283/2020) — indício, não acusação.</div>`;
+    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>` + (d.itens || []).map((x) => `<tr><td>${esc(x.fornecedor)}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma || 0)}${x.n_com_valor < x.n ? ` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>` : ""}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join("") + `</tbody></table></div>`;
+    h += `<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Busque um fornecedor na aba <b>Buscar</b> (fonte DOERJ) para ler os extratos.</div>`;
+    return h;
+  }
 
   // static/js/src/entrada.js
   window.__jfnBootReadyState = document.readyState;
@@ -8268,6 +8292,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { id: "e_panorama", ic: "📊", tl: "Panorama", render: renderPanoramaEstado },
       { id: "e_pericias", ic: "⚖️", tl: "Perícias", render: renderPericias },
       { id: "e_sanc", ic: "🚫", tl: "Sancionadas", render: () => renderSancionadas("estado") },
+      { id: "e_tac", ic: "🧾", tl: "TAC recorrente", render: renderTacRecorrente },
       { id: "e_lentes", ic: "🔬", tl: "Lentes", render: renderLentes },
       { id: "e_integras", ic: "📄", tl: "Íntegras", render: renderIntegras },
       { id: "e_frac", ic: "§frac", tl: "Fracion.", render: renderFracionamento },

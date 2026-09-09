@@ -30,6 +30,7 @@ GET /api/conjunto/unidades -> api_conjunto_unidades
 GET /api/cruzamento -> api_cruzamento
 GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
+GET /api/doerj/tac_recorrente -> api_doerj_tac_recorrente
 GET /api/empresa -> api_empresa
 GET /api/eval/hermeneutica -> api_eval_hermeneutica
 GET /api/eval/lift -> api_eval_lift
