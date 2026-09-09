@@ -163,7 +163,11 @@ def test_render_menu_curado_e_enxuto():
     # como se fossem capacidades distintas — mecanismo interno não é capacidade, o menu dele saiu.
     # A outra é capacidade nova de verdade (a avaliação 360 de processo, produto de 2026-08-01),
     # e para essa o teto sobe: ele existe contra despejo do catálogo, não contra capacidade nova.
-    assert 6 <= n_itens <= 30                          # curado (grupos + exemplos), não as ~47 prontas
+    # 33 em 2026-09-09: o lote 1/4 pegou 33 > 30. As três a mais são capacidades novas com superfície
+    # própria — "Lentes cruzadas (empresa em 2+ detectores)" (800ce1f2, 22/08) e as duas que 953e8fb5
+    # (01/09) achou defasadas na superfície ("Lentes municipais", "Achados de gastos da Prefeitura").
+    # Nenhuma é mecanismo interno nem duplicata; o teto existe contra despejo do catálogo.
+    assert 6 <= n_itens <= 33                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota
