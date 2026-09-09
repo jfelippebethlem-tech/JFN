@@ -226,6 +226,30 @@ def _unidades_sem_acesso(prog: dict, min_amostra: int = 6) -> set:
 MAX_DOCS_CADEIA = int(os.environ.get("SEI_MAX_DOCS_CADEIA", "300"))
 
 
+def _dirigidos(con) -> set[str]:
+    """Processos enfileirados À MÃO (hipótese do vault / tarefa aberta) — os únicos que o sweep aceita
+    FORA do universo das OBs. `nunca_capturado` (676 fora do universo) e `parecer cita…` ficam de fora:
+    entrariam aos centenas na frente da fila e sequestrariam o browser por semanas."""
+    try:
+        return {str(r[0]) for r in con.execute(
+            "SELECT numero_sei FROM sei_fila_captura WHERE motivo LIKE 'hipotese%' OR motivo LIKE '%vault%'")}
+    except sqlite3.Error:
+        return set()
+
+
+def _incluir_dirigidos_fora_do_universo(rows: list[tuple], dirigidos: set[str], filtrado: bool) -> list[tuple]:
+    """A fila nasce das OBs do SIAFE; processo SEM OB nunca era oferecido ao sweep, mesmo enfileirado
+    como prioridade máxima — SEI-080001/000803/2021 (contrato-pai do IDESI, tarefa do vault) esperou
+    de 09/08 a 09/09/2026 num beco. Entra com nob=0/tot=0; a ordem (lacuna provada antes de valor) o
+    põe na frente. Só no sweep geral: com filtro de UG/CNPJ o alvo é outro."""
+    if filtrado or not dirigidos:
+        return rows
+    vistos = {re.sub(r"\D", "", str(r[0])) for r in rows}
+    extra = [(p, 0, 0.0) for p in sorted(dirigidos)
+             if p.startswith("SEI-") and re.sub(r"\D", "", p) not in vistos]
+    return rows + extra
+
+
 def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     """Processos SEI distintos das OBs, priorizando as UNIDADES que o itkava já leu (escopo
     aprendido), depois por valor desc. Filtra por UG e/ou CNPJ do favorecido (alvo de um relatório)."""
@@ -258,6 +282,7 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     sinal = _raizes_com_sinal_osint()
     credores = _credores_por_processo(con) if sinal else {}
     provados = _fila_com_lacuna_provada(con)
+    rows = _incluir_dirigidos_fora_do_universo(rows, _dirigidos(con), filtrado=bool(ug or cnpj))
     folha = _processos_de_folha(con)
     con.close()
     legiveis = _unidades_legiveis()
