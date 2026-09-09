@@ -20,6 +20,8 @@ say "início — cruzando dados"
 $PRIO timeout 1200 $PY -m compliance_agent.correlacao_sei >> "$LOG" 2>&1; say "correlacao_sei rc=$?"
 # 1b) íntegras PNCP × extratos do D.O. Rio → contrato_doe_evento/contrato_doe_sinal (emergência no incumbente, direta, valor divergente)
 $PRIO timeout 900 $PY -m tools.pcrj_integra_x_doe >> "$LOG" 2>&1; say "pcrj_integra_x_doe rc=$?"
+# 1c) DOERJ: Termos de Ajuste de Contas recorrentes (quem recebe sem contrato, quantas vezes, quanto) → doerj_tac
+$PRIO timeout 600 $PY -m tools.doerj_tac_recorrente --top 5 >> "$LOG" 2>&1; say "doerj_tac_recorrente rc=$?"
 # 2) concentração por grupo econômico nas 60 maiores UGs (cartel oculto) — DuckDB pesado, mas SOZINHO à noite
 $PRIO timeout 1800 $PY - >> "$LOG" 2>&1 <<'PYEOF'
 from compliance_agent import grafo_cartel as gc
