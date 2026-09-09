@@ -1649,13 +1649,25 @@ def api_doerj_tac_recorrente(top: int = 20):
         orgaos = [dict(zip(("orgao", "n", "soma"), r)) for r in con.execute(
             "SELECT coalesce(orgao,'(não lido)'), count(*), round(sum(valor),2) FROM doerj_tac GROUP BY 1 "
             "ORDER BY 2 DESC LIMIT 8")]
+        # sinais de favorecimento por fornecedor (tools/doerj_tac_favorecimento, cruzador 1d) — 🔴 antes
+        sinais: dict[str, list] = {}
+        try:
+            for f, grau, sinal, det in con.execute(
+                    "SELECT fornecedor, grau, sinal, detalhe FROM doerj_tac_sinal WHERE sinal <> 'cnpj_nao_localizado'"):
+                sinais.setdefault(f, []).append({"grau": grau, "sinal": sinal, "detalhe": det})
+        except _sqlite3.OperationalError:
+            pass
+        for it in itens:
+            it["sinais"] = sorted(sinais.get(it["fornecedor"], []), key=lambda x: x["grau"] != "🔴")
         nao_lidos = con.execute("SELECT count(*) FROM doerj_tac WHERE fornecedor IS NULL").fetchone()[0]
         edicoes = con.execute("SELECT count(DISTINCT data_publicacao) FROM publicacoes_doerj").fetchone()[0]
     finally:
         con.close()
     return JSONResponse({"ok": True, "total": tot[0], "com_valor": tot[1], "soma": tot[2] or 0, "de": tot[3],
                          "ate": tot[4], "fornecedores": tot[5], "nao_lidos": nao_lidos, "edicoes": edicoes,
-                         "itens": itens, "orgaos": orgaos})
+                         "itens": itens, "orgaos": orgaos,
+                         "sinais_total": sum(len(v) for v in sinais.values()),
+                         "sinais_vermelhos": sum(1 for v in sinais.values() for x in v if x["grau"] == "🔴")})
 
 
 @router.get("/api/intel/sancionadas_municipio")
