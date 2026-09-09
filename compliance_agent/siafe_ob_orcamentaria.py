@@ -269,6 +269,14 @@ async def _login(pg, exercicio: int):
     if "bloqueado" in body0.lower() and "exerc" in body0.lower() or "está bloqueado" in body0.lower():
         return {"ok": False, "erro": "exercicio_bloqueado", "ano": exercicio,
                 "detail": f"Exercício {exercicio} bloqueado para esta conta (pedir liberação ao Administrador do SIAFE)."}
+    # SENHA EXPIRADA (build 202609021528, 02/09/2026): o SIAFE abre o popup "Senha Expirada — informe uma
+    # nova senha". Sem este teste, o clicador genérico abaixo apertava "Ok" com os campos vazios, o popup
+    # fechava e o erro que sobrava era um "login_falhou" mudo — 7 dias de coleta zero sem ninguém saber
+    # por quê. Trocar a senha é ato do DONO; aqui só se nomeia o motivo.
+    if "senha expirada" in body0.lower() or "sua senha expirou" in body0.lower():
+        return {"ok": False, "erro": "senha_expirada",
+                "detail": "SIAFE exige NOVA senha na tela de login (popup 'Senha Expirada'). "
+                          "Dono: definir a nova senha no SIAFE e atualizar SIAFE_PASS no .env."}
     # SEQUÊNCIA DE POPUPS pós-Ok (sessão única "já logado" + MFA da build 13/07/2026 + avisos/termos).
     # Clica nos botões conhecidos até não haver mais (até 7 rodadas). MFA tem tratamento próprio ANTES do
     # clique genérico (senão o "Ok" do diálogo MFA seria clicado com o código vazio).
