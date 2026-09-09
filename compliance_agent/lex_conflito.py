@@ -265,3 +265,51 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ── Sócio na folha pública (folha do Estado × QSA) — a segunda perna do conflito de interesse ──────────
+# A primeira perna (acima) é doador × sócio. Esta é agente público × sócio: `agente_publico_societario`
+# casa a folha do Estado (cargo, vínculo, órgão) com o QSA por NOME normalizado. Nasceu do caso da
+# Fundação Saúde (09/09/2026): a Diretora Assistencial de uma UPA era sócia da clínica que a UPA pagava
+# por TAC. Grau pelo ENTE: saúde estadual (FSERJ/SES) = alto; outro órgão = médio. Nome curto = homônimo
+# provável — o achado diz isso e pede CPF.
+
+def socios_agentes_publicos(cnpj: str) -> list[dict]:
+    """Sócios da raiz do CNPJ que constam na folha do Estado. Vazio = nada casou OU base ausente."""
+    raiz = _digits(cnpj)[:8]
+    if len(raiz) != 8:
+        return []
+    _DB = _resolver_db()
+    if not _DB.exists():
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        rows = con.execute("SELECT nome_socio, cargo, vinculo, orgao, origem FROM agente_publico_societario "
+                           "WHERE cnpj_basico=? LIMIT 20", (raiz,)).fetchall()
+    except sqlite3.Error as exc:
+        logger.debug("agente_publico_societario indisponível para %s: %s", raiz, exc)
+        return []
+    finally:
+        con.close()
+    return [{"nome": r[0], "cargo": r[1] or "", "vinculo": r[2] or "", "orgao": r[3] or "", "origem": r[4] or ""} for r in rows]
+
+
+def achado_socio_agente(socios: list[dict]) -> dict | None:
+    """Achado estrutural do Lex ({rf, grav, obs}) a partir dos sócios-agentes; None quando não há."""
+    if not socios:
+        return None
+    def _saude(o: str) -> int:
+        n = _norm_nome(o)
+        return 2 if ("FUNDACAO SAUDE" in n or "FSERJ" in n) else 1 if "SAUDE" in n else 0
+    nivel = max(_saude(s["orgao"]) for s in socios)
+    grav = 4 if nivel == 2 else 3 if nivel == 1 else 2
+    def _peso(nome: str) -> str:
+        toks = [t for t in _norm_nome(nome).split() if t not in {"DE", "DA", "DO", "DOS", "DAS", "E"}]
+        return "nome forte" if len(toks) >= 3 else "nome comum — confirmar CPF"
+    linhas = "; ".join(f"{s['nome']} — {s['cargo'] or '?'} ({s['vinculo'] or '?'}) em {s['orgao'] or '?'} [{_peso(s['nome'])}]"
+                       for s in socios[:4])
+    ente = "da própria saúde estadual (FSERJ)" if nivel == 2 else "da saúde estadual (SES)" if nivel == 1 else "de outro órgão público"
+    return {"rf": "DD/SOCIO-AGENTE", "grav": grav,
+            "obs": (f"**Sócio na folha pública {ente}.** {linhas}. Casamento por NOME (folha × QSA); "
+                    f"vínculo tem de valer na data do ato. Art. 14, IV da Lei 14.133 quando o ente for o contratante; "
+                    f"indício, não acusação.")}

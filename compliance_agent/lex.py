@@ -16,6 +16,7 @@ administrativos; NUNCA afirma crime/improbidade/dolo (compete ao TCE-RJ/MP-RJ/Ju
 from __future__ import annotations
 
 import logging
+import sqlite3
 import os
 import time
 
@@ -243,6 +244,16 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
             investigacao["veredito_fachada"] = rf.veredito_llm(pacote)
         except Exception as exc:  # noqa: BLE001 — pacote/LLM degradam honesto; a DD básica permanece
             logger.warning("veredito de fachada (LLM) indisponível — parecer segue só com a DD básica: %s", exc)
+        # Sócio na folha pública (folha do Estado × QSA) — segunda perna do conflito de interesse
+        # (a primeira, doador × sócio, está em lex_conflito.conflito). Aditivo e degrada em silêncio.
+        try:
+            from compliance_agent.lex_conflito import achado_socio_agente, socios_agentes_publicos
+            _socios_ag = socios_agentes_publicos(cnpj)
+            investigacao["socios_agentes_publicos"] = _socios_ag
+            if (_ach := achado_socio_agente(_socios_ag)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("sócio-agente indisponível para %s: %s", cnpj, exc)
     except Exception:
         investigacao = {}
 
