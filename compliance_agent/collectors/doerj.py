@@ -66,11 +66,15 @@ _RE_NUMERO_ATO = re.compile(
 )
 # Lookahead que identifica o início de um novo ato pelo tipo + "Nº"
 _RE_ACT_START = re.compile(
+    # Texto de PDF (09/09/2026): entre o TIPO e o "Nº" há sigla de órgão ("PORTARIA UERJ/PPC Nº SEI
+    # 1080/2026", "RESOLUÇÃO SEPM Nº 9164 DE …") — até 40 caracteres sem quebra; e "Nº SEI 1080".
+    # Cabeçalhos de seção ("ATO DO SECRETÁRIO", "DESPACHOS DA DIRETORA") também abrem ato.
     r"(?m)(?=^[ \t]*(?:PORTARIA|RESOLU[ÇC][ÃA]O|DECRETO|ATO\b|EDITAL|EXTRATO"
     r"|AVISO\b|DESPACHO|DELIBERA[ÇC][ÃA]O|INSTRU[ÇC][ÃA]O\s+NORMATIVA"
     r"|LEI\b|CONTRATO\b|CHAMAMENTO|INEXIGIBILIDADE|DISPENSA\b|HOMOLOGA[ÇC][ÃA]O"
     r"|RATIFICA[ÇC][ÃA]O|ANULA[ÇC][ÃA]O|RESULTADO\b|TERMO\b|CONCURSO\b"
-    r"|AUTORIZA[ÇC][ÃA]O\b)\s+N[ºOo°]?\s*\d)",
+    r"|AUTORIZA[ÇC][ÃA]O\b)[^\n]{0,40}?\bN[ºOo°]?\.?\s*(?:SEI\s*)?\d"
+    r"|^[ \t]*(?:ATOS?|DESPACHOS?)\s+D[OA]S?\s+[A-ZÇÃÕÉÊÍÓÚÂ][A-ZÇÃÕÉÊÍÓÚÂ \-]{2,60}$)",
     re.IGNORECASE,
 )
 
