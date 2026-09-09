@@ -24,6 +24,8 @@ $PRIO timeout 900 $PY -m tools.pcrj_integra_x_doe >> "$LOG" 2>&1; say "pcrj_inte
 $PRIO timeout 600 $PY -m tools.doerj_tac_recorrente --top 5 >> "$LOG" 2>&1; say "doerj_tac_recorrente rc=$?"
 # 1d) TAC × favorecimento (agente público no QSA, sócio comum, capital ínfimo, fachada, emergência recorrente, doação) → doerj_tac_sinal
 $PRIO timeout 900 $PY -m tools.doerj_tac_favorecimento --top 5 >> "$LOG" 2>&1; say "doerj_tac_favorecimento rc=$?"
+# 1e) contratadas da FSERJ (contrato + TAC) com sócio na folha da saúde estadual → fserj_socio_agente
+$PRIO timeout 600 $PY -m tools.fserj_socio_agente --top 5 >> "$LOG" 2>&1; say "fserj_socio_agente rc=$?"
 # 2) concentração por grupo econômico nas 60 maiores UGs (cartel oculto) — DuckDB pesado, mas SOZINHO à noite
 $PRIO timeout 1800 $PY - >> "$LOG" 2>&1 <<'PYEOF'
 from compliance_agent import grafo_cartel as gc
