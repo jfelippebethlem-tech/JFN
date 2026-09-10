@@ -35,7 +35,7 @@ def conectar(db: str | None = None):
             s.execute(f"ATTACH '{alvo}' AS db (TYPE sqlite, READ_ONLY);")
             s.execute("SELECT 1 FROM db.sqlite_master LIMIT 1")
             _SENTINELA[alvo] = s
-        except Exception:  # noqa: BLE001 — sentinela é proteção, nunca motivo de falha
+        except (duckdb.Error, OSError):   # sentinela é proteção, nunca motivo de falha
             _SENTINELA[alvo] = None
     con = duckdb.connect()
     con.execute("INSTALL sqlite; LOAD sqlite;")
