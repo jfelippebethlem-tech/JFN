@@ -99,3 +99,23 @@ def test_concordancia_processo_x_credor_siafe_mede_o_extrator():
     vazio = sqlite3.connect(":memory:")
     vazio.execute("CREATE TABLE doerj_tac (fornecedor TEXT, processo TEXT)")
     assert concordancia_siafe(vazio)["taxa"] is None
+
+
+# Layout da SEEDUC (pub 5929, 10/09): caixa alta, "por intermédio da", CNPJ colado ao nome e a frase
+# "OBJETO: Termo de Ajuste de Contas tem por objeto…" — a menção dentro do OBJETO partia o extrato e
+# fabricava uma linha fantasma sem fornecedor com o valor e o processo (R$ 15,6 mi da AGILE).
+_SEEDUC = ("EXTRATO DE TERMO INSTRUMEN TO : Termo de Ajuste de Contas nº 06/2026 PA RTES : O ESTADO DO RIO DE "
+           "JANEIRO, POR INTERMÉDIO DA SECRETARIA DE ESTADO DE EDUCAÇÃO, E A EMPRESA AGILE CORP SERVIÇOS "
+           "ESPECIALIZADOS LTDA. CNPJ: 00.801.512/0001-57 OBJE TO : Termo de Ajuste de Contas tem por objeto "
+           "regularizar pendência de valores em aberto pela prestação do serviço de limpeza. VALOR: R$ "
+           "15.648.509,04 (quinze milhões). PROCESSO ADMINISTRATIVO Nº SEI-030001/040129/2026. Id: 2745992")
+
+
+def test_mencao_dentro_do_objeto_nao_abre_extrato_e_caixa_alta_separa_as_partes():
+    (r,) = extrair_tacs(_SEEDUC)
+    assert r["numero_tac"] == "06/2026"
+    assert r["orgao"] == "SECRETARIA DE ESTADO DE EDUCAÇÃO"
+    assert r["fornecedor"] == "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA"
+    assert r["cnpj"] == "00801512000157"
+    assert r["valor"] == 15648509.04
+    assert r["processo"] == "SEI-030001/040129/2026"

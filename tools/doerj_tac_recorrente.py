@@ -41,6 +41,7 @@ _RE_VALOR = re.compile(r"V\s*A\s*(?:-\s*)?L\s*O\s*R(?:\s+TOTAL|\s+GLOBAL)?[^:R$]
 _RE_PARTES = re.compile(r"P\s*A\s*R\s*T\s*E\s*S\s*:\s*(.+?)(?=\s(?:O\s*B\s*J\s*E\s*T\s*O|FUNDAMENTO|V\s*A\s*L\s*O\s*R|DATA|PROCESSO|Id:)\b|$)", re.I | re.S)
 _RE_PROCESSO = re.compile(r"SEI\s*-?\s*((?:\d\s?){6}/\s?(?:\d\s?){6}/\s?(?:\d\s?){4})", re.I)   # dígitos podem vir espaçados no PDF
 _RE_OBJETO = re.compile(r"O\s*B\s*J\s*E\s*T\s*O\s*:\s*(.+?)(?=\s(?:FUNDAMENTO|V\s*A\s*L\s*O\s*R|DATA|PROCESSO|P\s*A\s*R\s*T\s*E\s*S|PRAZO|Id:)\b|$)", re.I | re.S)
+_RE_DENTRO_DO_OBJETO = re.compile(r"O\s*B\s*J\s*E\s*T\s*O\s*:\s*$", re.I)   # o marcador vem logo depois de "OBJETO:"
 _RE_FIM_EXTRATO = re.compile(r"\bId:\s*\d|\bINSTRUMENTO\s*:|\bEXTRATO\s+DE\s+(?:TERMO|CONTRATO)", re.I)   # fim do extrato: marcador Id do D.O. ou o próximo cabeçalho
 _RE_DATA = re.compile(r"DATA\s+D[AE]\s+ASSINATURA\s*:?\s*(\d{2}/\d{2}/\d{4})", re.I)
 _RE_CNPJ = re.compile(r"CNPJ[^\d]{0,12}((?:\d\s?){2}\.?\s?(?:\d\s?){3}\.?\s?(?:\d\s?){3}/\s?(?:\d\s?){4}-?\s?(?:\d\s?){2})", re.I)
@@ -64,13 +65,15 @@ def _partes(seg: str) -> tuple[str | None, str | None]:
     p = re.sub(r"\s+", " ", m.group(1)).strip(" .")
     # "Fundação Saúde do Estado do Rio de Janeiro e a empresa X" / "… e X LTDA"
     # "Estado do RJ, através da Secretaria X, e EMPRESA" / "Fundação Y e a empresa Z" / "… e a Z LTDA"
-    div = re.split(r",?\s+e\s+(?:a\s+empresa\s+|a\s+|o\s+)?(?=[A-ZÀ-Ú0-9])", p, maxsplit=1)
+    # a SEEDUC publica em CAIXA ALTA ("…, E A EMPRESA AGILE…"): o divisor tem de ser case-insensitive
+    div = re.split(r",?\s+e\s+(?:a\s+empresa\s+|a\s+|o\s+)?(?=[A-ZÀ-Ú0-9])", p, maxsplit=1, flags=re.I)
     if len(div) == 2:
         orgao = div[0]
-        m2 = re.search(r"atrav[ée]s\s+d[aeo]s?\s+(.+)$", orgao, re.I)
+        m2 = re.search(r"(?:atrav[ée]s|por\s+interm[ée]dio)\s+d[aeo]s?\s+(.+)$", orgao, re.I)
         if m2:
             orgao = m2.group(1)
-        return orgao.strip(" ,")[:120], div[1].strip(" .")[:120]
+        forn = re.split(r",?\s*CNPJ\b", div[1], maxsplit=1, flags=re.I)[0]   # o CNPJ tem campo próprio
+        return orgao.strip(" ,")[:120], forn.strip(" .,")[:120]
     return p[:120], None
 
 
@@ -84,7 +87,10 @@ def extrair_tacs(texto: str) -> list[dict]:
     # e o processo dos vizinhos (PANTHER e GUERREIRO), e 75% dos processos não batiam com o credor
     # da OB no SIAFE. O extrato do D.O. é sempre INSTRUMENTO → PARTES → OBJETO → VALOR → FUNDAMENTO
     # (processo) → DATA; nada do próprio extrato vem antes do instrumento.
-    matches = list(_RE_TAC.finditer(t))
+    # MENÇÃO dentro do OBJETO ("OBJETO: Termo de Ajuste de Contas tem por objeto regularizar…", layout da
+    # SEEDUC) não começa extrato: partia o segmento real ao meio e fabricava uma linha fantasma com o
+    # VALOR e o processo do extrato de cima (48 linhas = R$ 84 mi "sem fornecedor" em 10/09).
+    matches = [m for m in _RE_TAC.finditer(t) if not _RE_DENTRO_DO_OBJETO.search(t[max(0, m.start() - 60):m.start()])]
     for i, m in enumerate(matches):
         fim = matches[i + 1].start() if i + 1 < len(matches) else len(t)
         fim = min(fim, m.start() + 1500)
