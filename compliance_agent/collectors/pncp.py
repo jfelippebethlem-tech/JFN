@@ -91,6 +91,12 @@ async def _get_consulta(endpoint: str, params: dict) -> tuple[Optional[dict], st
                                  headers={"User-Agent": "JFN-Compliance/2.0"})
             if r.status_code == 200:
                 return r.json(), "ok"
+            if r.status_code in (204, 404):
+                # A FONTE disse "não há" (204 = sem conteúdo): fato, não falha — igual ao `_get_pncp`.
+                # Tratar como "http" fazia o `_consulta_retry` pedir 3× a mesma página vazia com
+                # 2/4/6 s de espera: a maioria dos pares órgão×mês é 204, e o `--incremental` do
+                # jfn-intel-cache estourava as 2 h de TimeoutStartSec (medido 09-10/09/2026).
+                return {"data": [], "totalPaginas": 0}, "ok"
             logger.warning("PNCP %s devolveu HTTP %s (None pode ser falso 'sem contrato')",
                            endpoint, r.status_code)
             return None, "http"
