@@ -10,6 +10,8 @@ Environment=JFN_DATA_DIR=%h/JFN/data
 Environment=JFN_HOST=127.0.0.1
 Environment=JFN_PORT=8000
 ExecStart=%h/JFN/.venv/bin/python %h/JFN/server.py --host 127.0.0.1 --port 8000
+# Parada travada (browser/consulta longa) virava SIGKILL aos 90 s e alarme OnFailure a cada restart manual (10/09): 30 s bastam.
+TimeoutStopSec=30
 Restart=always
 RestartSec=5
 # logs em journalctl --user -u jfn
