@@ -530,6 +530,18 @@ class MotorCompliance:
         from datetime import timedelta
         return _date.today() - timedelta(days=self.JANELA_OB_DIAS)
 
+    # Favorecido que é ENTE PÚBLICO (transferência, tributo, fundo) não é fornecedor: "MINISTÉRIO DA
+    # FAZENDA em 3 UGs" e "FUNDO DE EQUALIZAÇÃO fracionado" eram os primeiros alertas da lista (10/09).
+    _PREFIXOS_ENTE = ("MINIST", "FUNDO ", "SECRETARIA", "TRIBUNAL", "PREFEITURA", "UNIVERSIDADE", "INSTITUTO NACIONAL",
+                      "CAIXA ECONOMICA", "BANCO DO BRASIL", "UNIAO", "ESTADO DO", "MUNICIPIO", "CAMARA", "ASSEMBLEIA",
+                      "DEFENSORIA", "PROCURADORIA", "GOVERNO", "FUNDACAO ", "RECEITA FEDERAL", "INSS", "TESOURO")
+
+    @classmethod
+    def _eh_ente_publico(cls, nome: str | None) -> bool:
+        import unicodedata
+        n = unicodedata.normalize("NFKD", (nome or "").upper()).encode("ascii", "ignore").decode()
+        return n.startswith(cls._PREFIXOS_ENTE)
+
     def _regra_ob_fracionamento(self):
         """
         Fracionamento de pagamentos via OB: mesmo favorecido recebe múltiplos
@@ -582,11 +594,13 @@ class MotorCompliance:
             # sem janela e sem teto esta regra gravou 68.893 alertas "alta" numa execução (10/09) —
             # o painel lista os 40 mais novos: o resto vira ruído que enterra os alertas de verdade
             .order_by(func.sum(OrdemBancaria.valor).desc())
-            .limit(self.TETO_CANDIDATOS)
+            .limit(100)
             .all()
         )
 
         for row in subq:
+            if self._eh_ente_publico(row.favorecido_nome):
+                continue
             if not row.total:
                 continue
             exercicio = getattr(row.data_ini, "year", None) or _date.today().year
@@ -599,7 +613,7 @@ class MotorCompliance:
             )
             self._criar_alerta(
                 tipo       = "fracionamento",
-                severidade = "alta",
+                severidade = "média",   # soma mensal > teto de dispensa com 2+ OBs é INDÍCIO fraco; o detector de verdade é o P4/pcrj_d7
                 titulo     = f"Fracionamento OB — {row.favorecido_nome or row.favorecido_cpf} / UG {row.ug_codigo}",
                 descricao  = (
                     f"{row.n_obs} OBs para '{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) "
@@ -697,18 +711,20 @@ class MotorCompliance:
             .having(func.count(func.distinct(OrdemBancaria.ug_codigo)) >= 3)
             # 16.336 alertas numa execução sem janela (10/09) — ver _regra_ob_fracionamento
             .order_by(func.sum(OrdemBancaria.valor).desc())
-            .limit(self.TETO_CANDIDATOS)
+            .limit(50)
             .all()
         )
 
         for row in resultados:
+            if self._eh_ente_publico(row.favorecido_nome):
+                continue
             empresa = (
                 self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
                 if row.favorecido_cpf else None
             )
             self._criar_alerta(
                 tipo       = "direcionamento",
-                severidade = "média",
+                severidade = "baixa",   # fornecedor grande atende várias UGs; só vira notícia com outro sinal
                 titulo     = f"Favorecido em {row.n_ugs} UGs distintas — {row.favorecido_nome or row.favorecido_cpf} ({row.mes})",
                 descricao  = (
                     f"'{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) recebeu OBs de "
