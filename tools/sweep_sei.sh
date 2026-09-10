@@ -72,7 +72,7 @@ say "início (best-effort baixa prio, bounded)"
 # tempo por processo cresce, então cada slot cobre MENOS processos — mas o slot é o mesmo, o cron
 # repete, e o que se ganha é profundidade onde antes havia corte cego. Ajustável por ambiente.
 export SEI_MAX_DOCS=${SEI_MAX_DOCS:-120}
-$PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
+$PRIO timeout -k 120 --foreground 1900 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$? (SEI_MAX_DOCS=$SEI_MAX_DOCS)"
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
 # CAUSA-RAIZ (2026-08-08): o laço antigo era `while read -r ugcod ... < data/ugs_foco.txt`, e o
 # arquivo era o STDIN do laço. Cada UG roda `timeout --foreground python -m tools.sei_sweep`, e o
@@ -104,7 +104,7 @@ if [ -f data/ugs_foco.txt ]; then
       # de processo grande (180100, 210700, 294200…) morriam rc=137 NO MEIO do 1º processo, toda
       # passada, perdendo a leitura em voo — rodavam sempre e nunca produziam. 1500 s cabe 1
       # grande ou 2 médios; o ORÇAMENTO total acima segue limitando o foco inteiro.
-      $PRIO timeout -k 120 --foreground 1500 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
+      $PRIO timeout -k 120 --foreground 1900 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
       _feitas=$((_feitas+1))
     done
     echo $(( (_CUR + _feitas) % _N )) > data/.foco_cursor   # onde o próximo ciclo começa
@@ -119,7 +119,7 @@ fi
 # chamar `carregar_cache()`, que era o que ainda faltava (um OOM de 9 GB às 23:04 nasceu justamente
 # de validar o conserto com o chamador antigo). O guard de OOM no topo deste arquivo garante que,
 # se algo escapar, quem morre é o sweep — nunca a sessão do dono.
-$PRIO timeout -k 120 --foreground 900 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
+$PRIO timeout -k 120 --foreground 1300 $PY -m tools.sei_sweep --seguir-pais --max 5 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
 # RECAPTURA INTEGRAL — o modo existia e NINGUEM o chamava. `sei_sweep --recaptura` esta escrito
 # desde 2026-08-03 e nenhum agendamento o acionava: a fila de 540 processos com documento sem texto
 # lido nao tinha quem a drenasse (familia 8 do catalogo — construido, testado, nunca rodado).

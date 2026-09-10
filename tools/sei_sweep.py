@@ -1218,9 +1218,18 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
                     # Passo que não faz o que existe para fazer não pode reportar sucesso.
                     raise FalhaDeclarada("recaptura: login itkava não completou")
                 _log("[recap] login OK — relendo…")
+                # mesmo orçamento do sweep principal: parar ANTES de abrir a leitura que não cabe no
+                # `timeout` do shell (rc=137 em 2 de 2 recapturas de 10/09 — a folga tem de caber UMA
+                # leitura p90 com SEI_MAX_DOCS=120, e essa passa de 600 s).
+                t_ciclo = time.time()
+                orcamento_s = int(os.environ.get("SEI_RECAP_ORCAMENTO_S", "800") or 0)
                 for i, x in enumerate(fila, 1):
                     if _PARAR or PAUSE.exists():
                         _log("[recap] encerrando LIMPO entre processos.")
+                        break
+                    if orcamento_s and (time.time() - t_ciclo) > orcamento_s:
+                        _log(f"[recap] ORÇAMENTO de {orcamento_s}s esgotado após {i - 1} processo(s) — parei "
+                             "antes de abrir o próximo (o cron repete).")
                         break
                     proc, antes = x["numero"], x["lido"]
                     try:
