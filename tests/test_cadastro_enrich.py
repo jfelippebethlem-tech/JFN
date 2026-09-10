@@ -57,3 +57,16 @@ def test_upsert_e_idempotente_e_completa(tmp_path):
                     "WHERE cnpj='11111111000111'").fetchone()
     con.close()
     assert r[0] == "BAIXADA" and r[1] == "NITEROI" and r[2] == "ANTIGA"  # razão preservada (COALESCE)
+
+
+def test_alvos_ignora_cpf_mascarado_de_14_caracteres(tmp_path):
+    """'***.123.456-**' tem 14 caracteres como um CNPJ — e virava 404 no registro (494/500 em 10/09)."""
+    import sqlite3
+    from tools.cadastro_enrich_sweep import _alvos
+    con = sqlite3.connect(":memory:")
+    con.executescript("""
+        CREATE TABLE favorecido_resumo (favorecido_cpf TEXT, total_pago REAL);
+        CREATE TABLE empresas (cnpj TEXT, situacao TEXT);
+        INSERT INTO favorecido_resumo VALUES ('***.123.456-**', 9e6), ('00801512000157', 5e6), ('42221720000127', 1e3);
+    """)
+    assert _alvos(con, 10, 100_000.0) == [("00801512000157", 5e6)]
