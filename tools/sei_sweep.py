@@ -226,6 +226,25 @@ def _unidades_sem_acesso(prog: dict, min_amostra: int = 6) -> set:
 MAX_DOCS_CADEIA = int(os.environ.get("SEI_MAX_DOCS_CADEIA", "300"))
 
 
+class LeituraExcedeuPrazo(Exception):
+    """A leitura de UM processo passou do prazo e foi cancelada — o browser continua vivo."""
+
+
+async def _com_prazo(coro, proc: str, prazo_s: float | None = None):
+    """Cancela a leitura que passa do prazo (10/09/2026). As fases pais/recaptura morriam com rc=137 sem
+    completar UM processo (login 10:06 → kill 10:28; 12:35 → 12:59): uma leitura de 120 docs com OCR
+    passa de 20 min, e nenhum orçamento "entre processos" segura o que está DENTRO de um. O cancel do
+    asyncio interrompe o Playwright no próximo await; a página fica onde estava e a próxima leitura
+    recomeça pela Pesquisa. O processo abandonado não grava cache — volta à fila."""
+    prazo = prazo_s if prazo_s is not None else float(os.environ.get("SEI_PRAZO_LEITURA_S", "900") or 0)
+    if not prazo:
+        return await coro
+    try:
+        return await asyncio.wait_for(coro, timeout=prazo)
+    except asyncio.TimeoutError as exc:
+        raise LeituraExcedeuPrazo(f"{proc}: leitura passou de {prazo:.0f}s e foi abandonada") from exc
+
+
 def _dirigidos(con) -> set[str]:
     """Processos enfileirados À MÃO (hipótese do vault / tarefa aberta) — os únicos que o sweep aceita
     FORA do universo das OBs. `nunca_capturado` (676 fora do universo) e `parecer cita…` ficam de fora:
@@ -901,7 +920,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                         r, nd = {}, 0
                         for _try in range(3):
                             # SEMPRE fresco: _ja_lido_ok já pulou os sucessos; aqui são 0-doc/novos → não usar cache 0-doc.
-                            r = await ler_processo(pg, proc, usar_cache=False)
+                            r = await _com_prazo(ler_processo(pg, proc, usar_cache=False), proc)
                             nd = len(r.get("documentos") or [])
                             # sucesso = DOCUMENTOS>0. relacionados sozinho (sem docs) é a CAIXA/desktop (~40 inbox),
                             # NÃO um processo aberto — não contar como sucesso.
@@ -923,7 +942,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             # p.ex. 270042 ITERJ (normal=0/rel40 → cracked=10); fica 0 honesto em restrito.
                             # 2026-07-10: o filtro do menu (sei_cdp) zerou o rel~40 da caixa → o gatilho
                             # passa a ser o flag indisponivel do ler_processo (arvore_vista=False).
-                            dump = await _ler_cracked(pg, proc)
+                            dump = await _com_prazo(_ler_cracked(pg, proc), proc)
                             if dump.get("documentos"):
                                 r = await _montar_resultado_cracked(pg, proc, dump, usar_cache=False)
                                 nd = len(r.get("documentos") or [])
@@ -1094,18 +1113,20 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                     try:
                         r, nd = {}, 0
                         for _try in range(3):
-                            r = await ler_processo(pg, proc, usar_cache=False)
+                            r = await _com_prazo(ler_processo(pg, proc, usar_cache=False), proc)
                             nd = len(r.get("documentos") or [])
                             if nd > 0:
                                 break
                             if not r.get("indisponivel") and len(r.get("relacionados") or []) <= 15:
                                 break              # 0-doc honesto (árvore abriu) — retry não muda
+                            if r.get("sem_resultado"):
+                                break              # a pesquisa RESPONDEU "nenhum resultado": definitivo
                             await asyncio.sleep(2)
-                        if nd == 0:
+                        if nd == 0 and not r.get("sem_resultado"):
                             # caminho normal caiu na caixa (rel=40/0 docs) → tenta o método CRACKED, como
                             # ler()/ler_com_cadeia (provado ao vivo: recupera 270042 ITERJ onde o normal
                             # dá 0; fica 0 honesto em restrito). NÃO substitui o normal — só recupera o 0.
-                            dump = await _ler_cracked(pg, proc)
+                            dump = await _com_prazo(_ler_cracked(pg, proc), proc)
                             if dump.get("documentos"):
                                 r = await _montar_resultado_cracked(pg, proc, dump, usar_cache=False)
                                 nd = len(r.get("documentos") or [])
@@ -1259,10 +1280,10 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
                         break
                     proc, antes = x["numero"], x["lido"]
                     try:
-                        r = await ler_processo(pg, proc, usar_cache=False)
+                        r = await _com_prazo(ler_processo(pg, proc, usar_cache=False), proc)
                         nd = len(r.get("conteudo_documentos") or [])
                         if not nd:
-                            dump = await _ler_cracked(pg, proc)
+                            dump = await _com_prazo(_ler_cracked(pg, proc), proc)
                             if dump.get("documentos"):
                                 r = await _montar_resultado_cracked(pg, proc, dump,
                                                                     usar_cache=False)
