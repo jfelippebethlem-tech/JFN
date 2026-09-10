@@ -27,6 +27,8 @@ descritor) e ataca a causa, não o sintoma.
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -173,9 +175,22 @@ def test_guardia_liga_persist_wal(banco):
 
 
 def test_com_persist_wal_o_irmao_sobrevive_ao_fechamento_da_guardia(banco):
-    """Quando a própria guardiã é a última a fechar, os arquivos TÊM de ficar."""
-    guarda_wal.segurar(banco)
-    guarda_wal.soltar()          # guardiã fecha por último
+    """Quando a própria guardiã é a última a fechar, os arquivos TÊM de ficar.
+
+    Desde 2026-09-10 a guardiã carrega uma sentinela stdlib (sem PERSIST_WAL) que fecha junto; quem
+    a impede de apagar é o wal-keeper EXTERNO (tools/wal_keeper.py) — o arranjo real de produção.
+    O teste sobe o keeper de verdade sobre o banco temporário."""
+    import subprocess
+    import sys
+    import time
+    keeper = subprocess.Popen([sys.executable, str(Path(__file__).resolve().parents[1] / "tools" / "wal_keeper.py"),
+                               str(banco)], stdout=subprocess.PIPE, text=True)
+    try:
+        assert "lock compartilhado" in keeper.stdout.readline()
+        guarda_wal.segurar(banco)
+        guarda_wal.soltar()          # guardiã (e sentinela) fecham por último NESTE processo
+    finally:
+        keeper.terminate(); keeper.wait(timeout=10)
 
     assert (banco.parent / (banco.name + "-wal")).exists(), "o -wal foi desvinculado mesmo com PERSIST_WAL"
 
@@ -187,5 +202,40 @@ def test_sem_apsw_degrada_honesto(banco, monkeypatch):
     try:
         assert guarda_wal.segurar(banco) is True, "sem apsw a guardiã ainda tem de segurar"
         assert guarda_wal.persist_wal_ligado() is False, "sem apsw não há como ligar a bandeira"
+    finally:
+        guarda_wal.soltar()
+
+
+# ── 2026-09-10: os locks da guardiã sobrevivem ao fechamento de uma conexão stdlib ──────────
+# Medido no servidor vivo: `/proc/locks` sem NENHUMA entrada do processo, com o `-shm` mapeado.
+# Causa: lock POSIX é por (pid, inode); a stdlib fechava seu descritor do `-shm` e levava junto
+# os locks da guardiã apsw. Efeito: o próximo cron ganhava o DMS exclusivo, truncava o `-shm` e
+# o servidor morria com SIGBUS (10 quedas em 09/09). A sentinela stdlib permanente fecha isso.
+def _locks_meus(inode: int) -> list[str]:
+    me = str(os.getpid())
+    out = []
+    for linha in Path("/proc/locks").read_text().splitlines():
+        p = linha.split()
+        if len(p) >= 8 and p[4] == me and p[5].endswith(f":{inode}"):
+            out.append(f"{p[6]}-{p[7]}")
+    return out
+
+
+@pytest.mark.skipif(not Path("/proc/locks").exists(), reason="precisa de /proc/locks (Linux)")
+def test_fechar_conexao_stdlib_nao_solta_os_locks_da_guardia(banco):
+    if guarda_wal._APSW is None:
+        pytest.skip("sem apsw a guardiã já é stdlib")
+    try:
+        assert guarda_wal.segurar(banco) is True
+        shm = Path(str(banco) + "-shm")
+        assert shm.exists()
+        ino = shm.stat().st_ino
+        assert "128-128" in _locks_meus(ino), "guardiã sem lock DMS logo após abrir"
+        efemera = sqlite3.connect(banco)
+        list(efemera.execute("SELECT count(*) FROM sqlite_master"))
+        efemera.close()
+        assert "128-128" in _locks_meus(ino), (
+            "fechar UMA conexão stdlib soltou o lock DMS da guardiã — o próximo processo a abrir "
+            "o banco trunca o -shm mapeado aqui (SIGBUS)")
     finally:
         guarda_wal.soltar()

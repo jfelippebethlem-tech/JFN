@@ -91,6 +91,16 @@ _ERROS = (sqlite3.Error, OSError) + ((_APSW.Error,) if _APSW is not None else ()
 _CONEXAO = None                # apsw.Connection (ou sqlite3.Connection na degradação)
 _CAMINHO: Path | None = None   # lembrado p/ o batimento poder reabrir
 _PERSIST: bool = False         # a bandeira ficou ligada nesta guardiã?
+# SENTINELA DA STDLIB (2026-09-10). Lock POSIX é por (pid, inode): fechar QUALQUER descritor do
+# inode solta TODOS os locks do processo naquele arquivo. O SQLite se protege disso adiando o
+# close enquanto há lock — mas só DENTRO da mesma biblioteca. Este processo tem duas (apsw na
+# guardiã, sqlite3 da stdlib nas rotas): quando a última conexão stdlib fechava o `-shm`, os locks
+# da guardiã apsw (DMS e SHARED) evaporavam — `/proc/locks` do servidor vivo: zero entradas — e o
+# próximo cron a abrir o banco ganhava o DMS exclusivo, TRUNCAVA o `-shm` mapeado aqui e o
+# servidor caía com SIGBUS (10× em 09/09). Reproduzido em tests/test_conexao_guardia_do_wal.py.
+# Uma conexão stdlib PERMANENTE mantém o descritor `-shm` da stdlib aberto para sempre; assim
+# a stdlib nunca fecha o inode e os locks da guardiã sobrevivem. Ver tools/wal_keeper.py.
+_SENTINELA_STDLIB = None
 
 
 def segurar(db_path) -> bool:
@@ -130,6 +140,15 @@ def segurar(db_path) -> bool:
                        "guardião de restart", caminho.name, exc)
         return False
     _CONEXAO, _CAMINHO = con, caminho
+    global _SENTINELA_STDLIB
+    if _APSW is not None and _SENTINELA_STDLIB is None:
+        try:
+            sent = sqlite3.connect(str(caminho), timeout=30, check_same_thread=False)
+            list(sent.execute("SELECT count(*) FROM sqlite_master"))   # abre e mapeia o -shm na stdlib
+            _SENTINELA_STDLIB = sent
+        except (sqlite3.Error, OSError) as exc:
+            logger.warning("guarda_wal: sentinela stdlib não abriu (%s) — locks da guardiã ficam "
+                           "expostos ao fechamento de conexões stdlib", exc)
     logger.info("guarda_wal: conexão viva em %s — -wal/-shm não serão desvinculados", caminho.name)
     return True
 
@@ -170,7 +189,14 @@ def bater() -> bool:
 
 def soltar() -> None:
     """Fecha a guardiã (usado nos testes e no desligamento)."""
-    global _CONEXAO
+    global _CONEXAO, _SENTINELA_STDLIB
+    # a sentinela stdlib fecha ANTES: se fechasse por último, ela (sem PERSIST_WAL) apagaria -wal/-shm
+    if _SENTINELA_STDLIB is not None:
+        try:
+            _SENTINELA_STDLIB.close()
+        except sqlite3.Error as exc:
+            logger.debug("guarda_wal: fechar a sentinela stdlib falhou (%s)", exc)
+        _SENTINELA_STDLIB = None
     if _CONEXAO is not None:
         try:
             _CONEXAO.close()
