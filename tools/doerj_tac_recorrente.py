@@ -20,6 +20,7 @@ import argparse
 import json
 import re
 import sqlite3
+import unicodedata
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -143,8 +144,32 @@ def materializar() -> dict:
                             (str(data), r["numero_tac"], r["orgao"], r["fornecedor"], r["cnpj"], r["valor"], r["processo"],
                              r["objeto"], r["data_assinatura"], pid, agora))
                 n += 1
+    conc = concordancia_siafe(con)
     con.close()
-    return {"publicacoes_com_tac": len(rows), "tacs": n}
+    return {"publicacoes_com_tac": len(rows), "tacs": n, "concordancia_siafe": conc}
+
+
+def _tokens_nome(s: str | None) -> set[str]:
+    t = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().upper()
+    return {x for x in re.findall(r"[A-Z]{3,}", t) if x not in _GENERICOS}
+
+
+_GENERICOS = {"LTDA", "EIRELI", "SERVICOS", "MEDICOS", "MEDICA", "SAUDE", "DISTRIBUIDORA", "COMERCIO",
+              "HOSPITALAR", "PRODUTOS", "CLINICA", "SOCIEDADE", "SIMPLES", "EPP"}
+
+
+def concordancia_siafe(con) -> dict:
+    """CONTROLE EXTERNO do extrator (10/09): processo do TAC → credor da OB no SIAFE. O extrator com janela
+    de ±900 chars passou nos testes e a tabela 'parecia' certa, mas 75% dos processos eram do extrato
+    vizinho. Medir a cada materialização é o que impede a regressão silenciosa; abaixo de 80% é defeito."""
+    try:
+        rows = con.execute(
+            "SELECT t.fornecedor, o.nome_credor FROM doerj_tac t JOIN ob_orcamentaria_siafe o ON o.processo = t.processo "
+            "WHERE t.processo IS NOT NULL AND t.processo <> '' AND t.fornecedor IS NOT NULL GROUP BY t.processo").fetchall()
+    except sqlite3.OperationalError:   # sem a tabela do SIAFE (teste/base parcial): não há controle
+        return {"com_ob": 0, "batem": 0, "taxa": None}
+    batem = sum(1 for f, c in rows if _tokens_nome(f) & _tokens_nome(c))
+    return {"com_ob": len(rows), "batem": batem, "taxa": round(batem / len(rows), 3) if rows else None}
 
 
 def resumo(top: int = 15) -> list[dict]:

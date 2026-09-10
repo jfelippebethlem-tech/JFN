@@ -78,3 +78,24 @@ def test_cnpj_do_extrato_quando_publicado():
     (r,) = extrair_tacs(tx)
     assert r["cnpj"] == "00801512000157"
     assert extrair_tacs("Termo de Ajuste de Contas nº 1/2026 PARTES: A e B. VALOR: R$ 1,00")[0]["cnpj"] is None
+
+
+def test_concordancia_processo_x_credor_siafe_mede_o_extrator():
+    """O controle externo que pegou o defeito da janela: processo do TAC → credor da OB (nome por tokens)."""
+    import sqlite3
+    from tools.doerj_tac_recorrente import concordancia_siafe
+    con = sqlite3.connect(":memory:")
+    con.executescript("""
+        CREATE TABLE doerj_tac (fornecedor TEXT, processo TEXT);
+        CREATE TABLE ob_orcamentaria_siafe (processo TEXT, nome_credor TEXT);
+        INSERT INTO doerj_tac VALUES ('CMP - CAMPOS CLÍNICA MÉDICA E PEDIÁTRICA LTDA', 'SEI-080002/018591/2026'),
+                                     ('PANTHER HEALTHCARE DO BRASIL LTDA', 'SEI-080002/017978/2026'),
+                                     ('GUERREIRO SERVIÇOS MÉDICOS LTDA', 'SEI-080002/000001/2026');
+        INSERT INTO ob_orcamentaria_siafe VALUES ('SEI-080002/018591/2026', 'CMP CAMPOS CLINICA MEDICA E PEDIATRICA'),
+                                                ('SEI-080002/017978/2026', 'PANTHER HEALTHCARE BRASIL DISTRIBUIDORA'),
+                                                ('SEI-080002/000001/2026', 'MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA');
+    """)
+    assert concordancia_siafe(con) == {"com_ob": 3, "batem": 2, "taxa": 0.667}
+    vazio = sqlite3.connect(":memory:")
+    vazio.execute("CREATE TABLE doerj_tac (fornecedor TEXT, processo TEXT)")
+    assert concordancia_siafe(vazio)["taxa"] is None
