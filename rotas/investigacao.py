@@ -1661,11 +1661,19 @@ def api_doerj_tac_recorrente(top: int = 20):
             it["sinais"] = sorted(sinais.get(it["fornecedor"], []), key=lambda x: x["grau"] != "🔴")
         nao_lidos = con.execute("SELECT count(*) FROM doerj_tac WHERE fornecedor IS NULL").fetchone()[0]
         edicoes = con.execute("SELECT count(DISTINCT data_publicacao) FROM publicacoes_doerj").fetchone()[0]
+        # controle externo do extrator (10/09): processo do TAC → credor da OB no SIAFE; None = ainda não medido
+        concordancia = None
+        try:
+            _m = con.execute("SELECT valor, texto, em FROM doerj_tac_meta WHERE chave='concordancia_siafe'").fetchone()
+            if _m:
+                concordancia = {"taxa": _m[0], "texto": _m[1], "em": _m[2]}
+        except _sqlite3.OperationalError:
+            pass
     finally:
         con.close()
     return JSONResponse({"ok": True, "total": tot[0], "com_valor": tot[1], "soma": tot[2] or 0, "de": tot[3],
                          "ate": tot[4], "fornecedores": tot[5], "nao_lidos": nao_lidos, "edicoes": edicoes,
-                         "itens": itens, "orgaos": orgaos,
+                         "itens": itens, "orgaos": orgaos, "concordancia": concordancia,
                          "sinais_total": sum(len(v) for v in sinais.values()),
                          "sinais_vermelhos": sum(1 for v in sinais.values() for x in v if x["grau"] == "🔴")})
 

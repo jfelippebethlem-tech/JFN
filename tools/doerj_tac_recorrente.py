@@ -151,8 +151,19 @@ def materializar() -> dict:
                              r["objeto"], r["data_assinatura"], pid, agora))
                 n += 1
     conc = concordancia_siafe(con)
+    gravar_meta(con, conc, n)
     con.close()
     return {"publicacoes_com_tac": len(rows), "tacs": n, "concordancia_siafe": conc}
+
+
+def gravar_meta(con, conc: dict, n_tacs: int) -> None:
+    """Guarda a medida do controle externo para o painel mostrar (KPI com procedência), não só o log."""
+    with con:
+        con.execute("CREATE TABLE IF NOT EXISTS doerj_tac_meta (chave TEXT PRIMARY KEY, valor REAL, texto TEXT, em TEXT)")
+        em = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        con.execute("INSERT OR REPLACE INTO doerj_tac_meta VALUES ('concordancia_siafe', ?, ?, ?)",
+                    (conc.get("taxa"), f"{conc.get('batem', 0)} de {conc.get('com_ob', 0)} processos com OB casam o credor", em))
+        con.execute("INSERT OR REPLACE INTO doerj_tac_meta VALUES ('tacs', ?, ?, ?)", (n_tacs, "extratos materializados", em))
 
 
 def _tokens_nome(s: str | None) -> set[str]:
