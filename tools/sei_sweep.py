@@ -284,6 +284,7 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     provados = _fila_com_lacuna_provada(con)
     rows = _incluir_dirigidos_fora_do_universo(rows, _dirigidos(con), filtrado=bool(ug or cnpj))
     folha = _processos_de_folha(con)
+    dirig_cache = _dirigidos(con)   # lido antes do close; usado na ordenação abaixo
     con.close()
     legiveis = _unidades_legiveis()
     # ORDEM: unidade que rende documentos primeiro; depois o que o PARECER PROVA que falta (não há
@@ -293,7 +294,12 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         return re.sub(r"\D", "", str(x))
 
     provados_norm = {_norm_proc(x) for x in provados}
+    # Enfileirado À MÃO (hipótese do vault, `hipotese%`) vem antes dos 4 mil "provados pelo parecer": sem este
+    # degrau, os alvos da CMP/IDESI caíam nas posições 168–2.148 (ordem por valor dentro do estrato) e o sweep
+    # de 12/ciclo nunca chegava neles. Medido em 2026-09-09.
+    dirigidos_norm = {_norm_proc(x) for x in dirig_cache}
     rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
+                             0 if _norm_proc(r[0]) in dirigidos_norm else 1,
                              0 if _norm_proc(r[0]) in provados_norm else 1,
                              0 if (credores.get(r[0]) or set()) & sinal else 1,
                              # FOLHA/PREVIDÊNCIA por último dentro do estrato: 82% do top-50 por
