@@ -36,10 +36,11 @@ _RE_HIFEN_QUEBRA = re.compile(r"(?<=\w)-\s+(?=\w)")   # "RESTAU- RANTE", "OBJE-\
 _RE_ESPACADO = re.compile(r"\b(?:[A-ZÇÃÕÉÍÓÚÂÊ] ){2,}[A-ZÇÃÕÉÍÓÚÂÊ]\b")
 
 _RE_TAC = re.compile(r"Termo\s+de\s+Ajuste\s+de\s+Contas(?:\s*[-–]?\s*(?:N\.?I\.?|n[º°o.]*)\s*(\d{1,5}/\d{4}))?", re.I)   # NI antes de nº: o ramo curto casava e engolia o número
-_RE_VALOR = re.compile(r"V\s*A\s*L\s*O\s*R(?:\s+TOTAL|\s+GLOBAL)?[^:R$]{0,30}:?\s*R\$\s*([\d][\d.]*,\d{2})", re.I)
+_RE_VALOR = re.compile(r"V\s*A\s*(?:-\s*)?L\s*O\s*R(?:\s+TOTAL|\s+GLOBAL)?[^:R$]{0,30}:?\s*R\$\s*([\d][\d.]*,\d{2})", re.I)   # "VA - LOR": hífen de quebra COM espaço antes (o normalizador não o remove p/ não colar "CMP - CAMPOS")
 _RE_PARTES = re.compile(r"P\s*A\s*R\s*T\s*E\s*S\s*:\s*(.+?)(?=\s(?:O\s*B\s*J\s*E\s*T\s*O|FUNDAMENTO|V\s*A\s*L\s*O\s*R|DATA|PROCESSO|Id:)\b|$)", re.I | re.S)
 _RE_PROCESSO = re.compile(r"SEI\s*-?\s*((?:\d\s?){6}/\s?(?:\d\s?){6}/\s?(?:\d\s?){4})", re.I)   # dígitos podem vir espaçados no PDF
 _RE_OBJETO = re.compile(r"O\s*B\s*J\s*E\s*T\s*O\s*:\s*(.+?)(?=\s(?:FUNDAMENTO|V\s*A\s*L\s*O\s*R|DATA|PROCESSO|P\s*A\s*R\s*T\s*E\s*S|PRAZO|Id:)\b|$)", re.I | re.S)
+_RE_FIM_EXTRATO = re.compile(r"\bId:\s*\d|\bINSTRUMENTO\s*:|\bEXTRATO\s+DE\s+(?:TERMO|CONTRATO)", re.I)   # fim do extrato: marcador Id do D.O. ou o próximo cabeçalho
 _RE_DATA = re.compile(r"DATA\s+D[AE]\s+ASSINATURA\s*:?\s*(\d{2}/\d{2}/\d{4})", re.I)
 _RE_CNPJ = re.compile(r"CNPJ[^\d]{0,12}((?:\d\s?){2}\.?\s?(?:\d\s?){3}\.?\s?(?:\d\s?){3}/\s?(?:\d\s?){4}-?\s?(?:\d\s?){2})", re.I)
 
@@ -76,9 +77,20 @@ def extrair_tacs(texto: str) -> list[dict]:
     """Cada ocorrência de 'Termo de Ajuste de Contas' vira um registro com o que o entorno diz."""
     t = normalizar(texto)
     out: list[dict] = []
-    for m in _RE_TAC.finditer(t):
-        ini, fim = max(0, m.start() - 900), min(len(t), m.end() + 900)
-        seg = t[ini:fim]
+    # O SEGMENTO É PARA A FRENTE, do instrumento até o próximo (2026-09-10). A janela de ±900 chars
+    # fabricava extratos híbridos: numa página com vários TACs em sequência (~700 chars cada), o
+    # primeiro VALOR/SEI-/nº que a regex via era o do extrato ANTERIOR — a CMP saiu com o nº, o valor
+    # e o processo dos vizinhos (PANTHER e GUERREIRO), e 75% dos processos não batiam com o credor
+    # da OB no SIAFE. O extrato do D.O. é sempre INSTRUMENTO → PARTES → OBJETO → VALOR → FUNDAMENTO
+    # (processo) → DATA; nada do próprio extrato vem antes do instrumento.
+    matches = list(_RE_TAC.finditer(t))
+    for i, m in enumerate(matches):
+        fim = matches[i + 1].start() if i + 1 < len(matches) else len(t)
+        fim = min(fim, m.start() + 1500)
+        corte = _RE_FIM_EXTRATO.search(t, m.end(), fim)
+        if corte:
+            fim = corte.start()
+        seg = t[m.start():fim]
         orgao, forn = _partes(seg)
         v = _RE_VALOR.search(seg)
         pr = _RE_PROCESSO.search(seg)

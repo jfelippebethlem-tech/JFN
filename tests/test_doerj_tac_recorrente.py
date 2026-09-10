@@ -33,10 +33,38 @@ def test_extrato_da_ses_com_rotulos_partidos_e_NI():
 def test_extrai_numero_valor_partes_processo():
     (r,) = extrair_tacs(_TX)
     assert r["numero_tac"] == "604/2026"
-    assert r["valor"] == 782492.44
+    assert r["valor"] is None, "o VALOR antes do INSTRUMENTO é do extrato ANTERIOR — apostilamento não tem valor"
     assert r["orgao"].startswith("Fundação Saúde")
     assert "IDESI" in r["fornecedor"]
-    assert r["processo"] in ("SEI-080002/013873/2026", "SEI-080002/001820/2026")
+    assert r["processo"] == "SEI-080002/001820/2026"
+
+
+# Página real do D.O. (pub 10100, 30/07/2026): três TACs em sequência. A janela de ±900 dava à CMP o nº e o
+# valor da GUERREIRO (2194/2026, R$ 481.505,76) e o processo da PANTHER (017978/2026) — e o sweep SEI foi ler
+# o processo errado. Cada extrato só pode enxergar o que vem DEPOIS do seu próprio INSTRUMENTO.
+_TRES = ("INSTRUMENTO: Termo de Ajuste de Contas nº 2089/2026. PA R T E S : Fundação Saúde do Estado do Rio de "
+         "Janeiro e a empresa PAN- THER HEALTHCARE DO BRASIL LTDA. OBJETO: indenização OPME. VALOR TOTAL: R$ "
+         "329.105,00 (trezentos). FUNDAMENTO: Decidido no processo administrativo SEI-080002/017978/2026. DATA DA "
+         "ASSINATURA: 27/07/2026. INSTRUMENTO: Termo de Ajuste de Contas nº 2175/2026. PA R T E S : Fundação Saúde "
+         "do Estado do Rio de Janeiro e a empresa CMP - CAMPOS CLÍNICA MÉDICA E PEDIÁTRICA LTDA. OBJETO: Te m por "
+         "objeto a indenização pela prestação de serviços médicos, para UPA 24h Campos dos Goytacazes. VA - LOR "
+         "TOTAL: R$ 534.678,80 (quinhentos). FUNDAMENTO: De- cidido no processo administrativo SEI-080002/018591/2026. "
+         "DATA DA ASSINATURA: 27/07/2026. INSTRUMENTO: Termo de Ajuste de Contas nº 2194/2026. PA R T E S : Fundação "
+         "Saúde do Estado do Rio de Janeiro e a empresa GUER- REIRO SERVIÇOS MÉDICOS LTDA. OBJETO: serviços médicos, "
+         "para UPA 24h Marechal Hermes. VALOR TOTAL: R$ 481.505,76 (quatrocentos). FUNDAMENTO: Decidido no processo "
+         "administrativo SEI-080002/018602/2026. DATA DA ASSINATURA: 27/07/2026. Id: 2760001")
+
+
+def test_tres_extratos_em_sequencia_nao_se_contaminam():
+    rs = extrair_tacs(_TRES)
+    assert [r["numero_tac"] for r in rs] == ["2089/2026", "2175/2026", "2194/2026"]
+    cmp = rs[1]
+    assert cmp["fornecedor"].startswith("CMP - CAMPOS")
+    assert cmp["valor"] == 534678.80
+    assert cmp["processo"] == "SEI-080002/018591/2026"
+    assert "UPA 24h Campos" in cmp["objeto"]
+    assert rs[0]["processo"] == "SEI-080002/017978/2026" and rs[0]["valor"] == 329105.00
+    assert rs[2]["processo"] == "SEI-080002/018602/2026" and rs[2]["valor"] == 481505.76
 
 
 def test_sem_tac_devolve_vazio():
