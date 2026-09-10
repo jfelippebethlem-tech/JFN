@@ -881,13 +881,17 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             # NÃO um processo aberto — não contar como sucesso.
                             if nd > 0:
                                 break
+                            # a pesquisa RESPONDEU "nenhum resultado": retentar e o cracked usam a mesma
+                            # pesquisa — era ~5 min por processo para o mesmo nada (10/09).
+                            if r.get("sem_resultado"):
+                                break
                             # árvore ABRIU e deu 0 docs = restrito/vazio HONESTO — retentar leitura completa
                             # não muda o resultado (era o custo dominante do sweep: 3×~45s p/ cada 0-doc).
                             # Só retenta quando a LEITURA falhou: árvore não abriu ou caiu na caixa (rel>15).
                             if not r.get("indisponivel") and len(r.get("relacionados") or []) <= 15:
                                 break
                             await asyncio.sleep(2)
-                        if nd == 0 and (r.get("indisponivel") or len(r.get("relacionados") or []) > 15):
+                        if nd == 0 and not r.get("sem_resultado") and (r.get("indisponivel") or len(r.get("relacionados") or []) > 15):
                             # CAIXA/leitura falha (indisponivel=árvore não abriu; rel>15=inbox legado) →
                             # tenta o método CRACKED, como ler()/ler_com_cadeia. Provado ao vivo: recupera
                             # p.ex. 270042 ITERJ (normal=0/rel40 → cracked=10); fica 0 honesto em restrito.

@@ -77,6 +77,14 @@ async def _tem_campo_protocolo(pg) -> bool:
         """()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')"""))
 
 
+_RE_SEM_RESULTADO = re.compile(r"Nenhum\s+resultado\s+encontrado", re.I)
+
+
+def pesquisa_sem_resultado(corpo: str) -> bool:
+    """A página de resultado da pesquisa do SEI disse, em texto, que não há resultado."""
+    return bool(_RE_SEM_RESULTADO.search(corpo or ""))
+
+
 async def _tem_resultado_ou_arvore(pg) -> bool:
     """Pós-submit da pesquisa: True quando a lista de resultados OU a árvore (ifrArvore) já pintou."""
     if any("arvore" in (fr.url or "").lower() or fr.name == "ifrArvore" for fr in pg.frames):
@@ -939,6 +947,19 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     try: await pg.wait_for_load_state("networkidle", timeout=15000)
     except Exception as exc: logger.debug("networkidle após submit da pesquisa estourou o timeout: %s", exc)
     await _ate(pg, lambda: _tem_resultado_ou_arvore(pg), 4000)
+    # "Nenhum resultado encontrado." é resposta DEFINITIVA da pesquisa (medido 10/09 com controle
+    # positivo na mesma unidade): o índice é sobre DOCUMENTOS, e processo sem documento visível a
+    # esta unidade = acesso restrito. Retentar, abrir "primeiro resultado" e o método cracked (que usa
+    # a MESMA pesquisa) custavam ~5 min por processo para o mesmo nada. Devolve honesto e rápido.
+    try:
+        _corpo = await pg.evaluate("()=>document.body?document.body.innerText.slice(-1500):''")
+    except PWError:
+        _corpo = ""
+    if pesquisa_sem_resultado(_corpo):
+        return {"numero": proc, "url": pg.url, "documentos": [], "relacionados": [], "cadeado": False,
+                "n_docs_restritos": 0, "texto": "", "conteudo_documentos": [], "cnpjs": [], "valores": [],
+                "indisponivel": True, "sem_resultado": True,
+                "_login": {"ok": True, "via": "sei_reader/itkava"}}
     await _abrir_primeiro_resultado(pg)
     await pg.wait_for_timeout(3000)
     dump = await _extrair_de_todos_frames(pg)

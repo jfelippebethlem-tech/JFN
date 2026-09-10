@@ -150,6 +150,7 @@ def registrar(numero: str, r: dict, *, fonte: str = "sweep") -> str:
         e["n_leituras"] = int(e.get("n_leituras", 0)) + 1
         e["ult_leitura"] = st
         e["ult_docs"] = len(r.get("documentos") or [])
+        e["pesquisa_vazia"] = bool(r.get("sem_resultado"))   # "Nenhum resultado encontrado" com controle positivo
         if existe and not e.get("fonte_existencia"):
             e["fonte_existencia"] = existe; e["existe"] = existe
         if st == "RESTRITO":
