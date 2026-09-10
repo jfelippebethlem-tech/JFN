@@ -256,10 +256,12 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
             logger.debug("sócio-agente indisponível para %s: %s", cnpj, exc)
         # TAC recorrente no D.O. (doerj_tac): pagamento sem contrato como rotina — terceira perna, aditiva.
         try:
-            from compliance_agent.lex_conflito import achado_tac_recorrente, tacs_do_fornecedor
+            from compliance_agent.lex_conflito import achado_tac_recorrente, sinais_tac_do_fornecedor, tacs_do_fornecedor
             _tacs = tacs_do_fornecedor(cnpj, ctx.get("nome"))
             investigacao["tacs_doerj"] = _tacs
-            if (_ach := achado_tac_recorrente(_tacs)):
+            _sin = sinais_tac_do_fornecedor(ctx.get("nome")) if _tacs else []
+            investigacao["tacs_sinais"] = _sin
+            if (_ach := achado_tac_recorrente(_tacs, _sin)):
                 ach_estrutural.append(_ach)
         except (ImportError, sqlite3.Error) as exc:
             logger.debug("doerj_tac indisponível para %s: %s", cnpj, exc)

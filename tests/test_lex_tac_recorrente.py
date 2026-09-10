@@ -26,3 +26,11 @@ def test_tokens_do_nome_ignoram_forma_juridica():
     assert _tokens_tac("CMP - CAMPOS CLÍNICA MÉDICA E PEDIÁTRICA LTDA") == ["CMP", "CAMPOS"]
     assert _tokens_tac("AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA") == ["AGILE", "CORP"]
     assert _tokens_tac("LTDA") == []
+
+
+def test_cruzamentos_entram_na_obs_quando_existem():
+    tacs = [_tac("2026-0%d-02" % i, 1.0) for i in range(1, 4)]
+    sin = [{"sinal": "contrato_vencido_tac", "grau": "🔴", "detalhe": "contrato até 2026-01-13 → TAC desde 2026-01-14"}]
+    a = achado_tac_recorrente(tacs, sin)
+    assert "Cruzamentos: 🔴 contrato_vencido_tac — contrato até 2026-01-13" in a["obs"]
+    assert "Cruzamentos" not in achado_tac_recorrente(tacs)["obs"]

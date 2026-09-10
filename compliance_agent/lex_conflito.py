@@ -337,28 +337,50 @@ def tacs_do_fornecedor(cnpj: str | None, nome: str | None) -> list[dict]:
         return []
     con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
     try:
+        # O upper() do SQLite não dobra acento ('GESTÃO' ≠ 'GESTAO'): busca pelo 1º token e confere o resto em
+        # Python com o nome normalizado (a TUISE sumia do Lex por isso — 10/09).
         cond, args = [], []
         if len(dig) == 14:
             cond.append("cnpj = ?"); args.append(dig)
         if toks:
-            cond.append("(" + " AND ".join("upper(fornecedor) LIKE ?" for _ in toks) + ")")
-            args.extend(f"%{t}%" for t in toks)
+            cond.append("upper(fornecedor) LIKE ?"); args.append(f"%{toks[0]}%")
         rows = con.execute(
-            "SELECT data_doe, numero_tac, orgao, valor, processo FROM doerj_tac WHERE " + " OR ".join(cond) +
-            " ORDER BY data_doe LIMIT 200", args).fetchall()
+            "SELECT data_doe, numero_tac, orgao, valor, processo, fornecedor FROM doerj_tac WHERE " + " OR ".join(cond) +
+            " ORDER BY data_doe LIMIT 400", args).fetchall()
     except sqlite3.Error as exc:
         logger.debug("doerj_tac indisponível para %s: %s", cnpj, exc)
         return []
     finally:
         con.close()
-    return [{"data": r[0], "numero": r[1] or "", "orgao": r[2] or "", "valor": r[3], "processo": r[4] or ""} for r in rows]
+    rows = [r for r in rows if all(t in _norm_nome(r[5] or "") for t in toks)] if toks else rows
+    return [{"data": r[0], "numero": r[1] or "", "orgao": r[2] or "", "valor": r[3], "processo": r[4] or ""} for r in rows[:200]]
 
 
 def _moeda(v: float) -> str:
     return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def achado_tac_recorrente(tacs: list[dict]) -> dict | None:
+def sinais_tac_do_fornecedor(nome: str | None) -> list[dict]:
+    """Sinais do cruzamento TAC × favorecimento (`doerj_tac_sinal`, tools/doerj_tac_favorecimento) para o nome."""
+    _DB = _resolver_db()
+    toks = _tokens_tac(nome)
+    if not _DB.exists() or not toks:
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        rows = con.execute(
+            "SELECT sinal, grau, detalhe, fornecedor FROM doerj_tac_sinal WHERE sinal NOT IN ('sem_sinal','cnpj_nao_localizado') "
+            "AND upper(fornecedor) LIKE ? ORDER BY grau <> '🔴', sinal LIMIT 40", (f"%{toks[0]}%",)).fetchall()
+        rows = [r for r in rows if all(t in _norm_nome(r[3] or "") for t in toks)][:8]
+    except sqlite3.Error as exc:
+        logger.debug("doerj_tac_sinal indisponível: %s", exc)
+        return []
+    finally:
+        con.close()
+    return [{"sinal": r[0], "grau": r[1], "detalhe": r[2] or ""} for r in rows]
+
+
+def achado_tac_recorrente(tacs: list[dict], sinais: list[dict] | None = None) -> dict | None:
     """Achado estrutural do Lex: pagamento por TAC como ROTINA. 1 TAC é exceção prevista no Decreto 47.283/2020;
     a partir de 3 é serviço contínuo sem contrato (grav 3); 6+ ou R$ 10 mi+ é regime permanente (grav 4)."""
     n = len(tacs)
@@ -373,4 +395,5 @@ def achado_tac_recorrente(tacs: list[dict]) -> dict | None:
                     f"R$ {_moeda(soma)}, por {', '.join(o[:60] for o in orgaos[:2]) or 'órgão não lido'}. TAC é o instrumento que "
                     "indeniza serviço prestado SEM contrato (Decreto 47.283/2020): como rotina mensal, indica "
                     "serviço contínuo sem licitação e exige, a cada termo, a apuração de responsabilidade pela "
-                    "lacuna (art. 4º, III). Conferir nos autos se ela existe; indício, não acusação.")}
+                    "lacuna (art. 4º, III). Conferir nos autos se ela existe; indício, não acusação."
+                    + (" Cruzamentos: " + "; ".join(f"{x['grau']} {x['sinal']} — {x['detalhe'][:160]}" for x in sinais[:3]) if sinais else ""))}
