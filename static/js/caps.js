@@ -188,6 +188,20 @@ const CAPS_MESTRAS = [
   "descricao": "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo"
  },
  {
+  "id": "tac_recorrente",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "TAC recorrente (quem recebe sem contrato)",
+  "cmd": "",
+  "exemplo": "quem mais recebe por Termo de Ajuste de Contas?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/doerj/tac_recorrente",
+  "ordem": 25,
+  "descricao": "Quem o Estado paga por Termo de Ajuste de Contas (servico prestado SEM contrato regular) no DOERJ: por fornecedor (n, soma, periodo, processos) + sinais de favorecimento (agente pu"
+ },
+ {
   "id": "processo_360",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",

@@ -46,6 +46,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `sei_acatamento` | jfn | http | `/api/sei/acatamento` | PRONTO | os pareceres juridicos/controladoria foram atendidos no processo X? |
 | `sobrepreco` | lex | http | `/api/sobrepreco` | PRONTO | 'esta caro?', superfaturamento, R4 |
 | `sobrepreco_interno` | lex | cli | `compliance_agent.precos_extract` | PRONTO | 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco |
+| `tac_recorrente` | jfn | http | `/api/doerj/tac_recorrente` | PRONTO | 'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao' |
 | `bond_captura` | bond | cli | `desktop: telegram /capturar (poller) ou captura_nodriver.py` | ONDA 0 | ver quem curtiu posts do IG / leaderboard de engajamento do gabinete; SO no desktop residencial, NUNCA na VM (= ban) |
 | `cruzador` | jfn | cli | `bash tools/cruzador.sh` | PRONTO | rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande |
 | `enriquecer_socios` | jfn | cli | `tools.enriquecer_socios_ob` | PRONTO | apos novo sweep |

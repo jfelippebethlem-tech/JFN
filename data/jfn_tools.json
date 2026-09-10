@@ -156,6 +156,33 @@
     {
       "type": "function",
       "function": {
+        "name": "tac_recorrente",
+        "description": "Quem o Estado paga por Termo de Ajuste de Contas (servico prestado SEM contrato regular) no DOERJ: por fornecedor (n, soma, periodo, processos) + sinais de favorecimento (agente publico no QSA, socio comum, doacao de socio, capital infimo) + concordancia com o SIAFE — usar quando: 'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao' — chamar: GET /api/doerj/tac_recorrente (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "integer",
+              "description": "int opcional (default 20)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/doerj/tac_recorrente",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "lentes_cruzadas",
         "description": "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao. Le JSON materializado (tools/lentes_materializar.py, cron 04:17) — as 4 lentes somam ~31s e nao rodam na rota. — usar quando: priorizar fila de apuracao; 'quais empresas acendem em mais de um detector' — chamar: GET /api/lentes (base http://127.0.0.1:8000)",
         "parameters": {

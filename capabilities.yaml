@@ -4,7 +4,7 @@
 # Regra de ouro do roteador: o Yoda só pode chamar ids presentes aqui; fora do registro = erro explícito.
 meta:
   versao: "2.4.0"   # 2026-07-20: +certame_indice, +conjunto_orgao, +conjunto_portfolio, +sei_acatamento (dossiê mestre)
-  atualizado: "2026-07-28"
+  atualizado: "2026-09-10"
   base_http: "http://127.0.0.1:8000"
   cli_prefixo: "cd ~/JFN && PYTHONPATH=. .venv/bin/python -m"
   invariantes:
@@ -35,6 +35,11 @@ capacidades:
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
      args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}",
      menu: {grupo: "🔎 Investigação", nome: "Anomalias automáticas nos pagamentos", exemplo: "algo estranho nos pagamentos do ITERJ?", ordem: 24}}
+  - {id: tac_recorrente, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/doerj/tac_recorrente, status: PRONTO,
+     descricao: "Quem o Estado paga por Termo de Ajuste de Contas (servico prestado SEM contrato regular) no DOERJ: por fornecedor (n, soma, periodo, processos) + sinais de favorecimento (agente publico no QSA, socio comum, doacao de socio, capital infimo) + concordancia com o SIAFE",
+     quando_usar: "'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao'",
+     args: {top: "int opcional (default 20)"}, retorno: "{total,soma,fornecedores,itens[{fornecedor,n,soma,processos,sinais[]}],orgaos[],concordancia}",
+     menu: {grupo: "🔎 Investigação", nome: "TAC recorrente (quem recebe sem contrato)", exemplo: "quem mais recebe por Termo de Ajuste de Contas?", ordem: 25}}
   - {id: lentes_cruzadas, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lentes, status: PRONTO,
      descricao: "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao. Le JSON materializado (tools/lentes_materializar.py, cron 04:17) — as 4 lentes somam ~31s e nao rodam na rota.",
      quando_usar: "priorizar fila de apuracao; 'quais empresas acendem em mais de um detector'",
