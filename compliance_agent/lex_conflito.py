@@ -313,3 +313,64 @@ def achado_socio_agente(socios: list[dict]) -> dict | None:
             "obs": (f"**Sócio na folha pública {ente}.** {linhas}. Casamento por NOME (folha × QSA); "
                     f"vínculo tem de valer na data do ato. Art. 14, IV da Lei 14.133 quando o ente for o contratante; "
                     f"indício, não acusação.")}
+
+
+# ── TAC recorrente (D.O. do Estado × fornecedor) — 10/09/2026 ─────────────────────────────────
+_GENERICOS_TAC = {"LTDA", "EIRELI", "SERVICOS", "MEDICOS", "MEDICA", "SAUDE", "DISTRIBUIDORA", "COMERCIO",
+                  "HOSPITALAR", "PRODUTOS", "CLINICA", "SOCIEDADE", "SIMPLES", "EPP", "ME", "SA", "S/A"}
+
+
+def _tokens_tac(nome: str | None) -> list[str]:
+    return [t for t in _norm_nome(nome or "").split() if len(t) >= 3 and t not in _GENERICOS_TAC][:2]
+
+
+def tacs_do_fornecedor(cnpj: str | None, nome: str | None) -> list[dict]:
+    """Termos de Ajuste de Contas publicados no DOERJ (tabela `doerj_tac`) para este fornecedor.
+    Casa por CNPJ quando o extrato o publicou (raro) e, senão, pelos 2 primeiros tokens distintivos do
+    nome — o mesmo casamento do `doerj_tac_favorecimento`. Vazio = nada casou OU base ausente."""
+    _DB = _resolver_db()
+    if not _DB.exists():
+        return []
+    toks = _tokens_tac(nome)
+    dig = _digits(cnpj or "")
+    if not toks and len(dig) != 14:
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        cond, args = [], []
+        if len(dig) == 14:
+            cond.append("cnpj = ?"); args.append(dig)
+        if toks:
+            cond.append("(" + " AND ".join("upper(fornecedor) LIKE ?" for _ in toks) + ")")
+            args.extend(f"%{t}%" for t in toks)
+        rows = con.execute(
+            "SELECT data_doe, numero_tac, orgao, valor, processo FROM doerj_tac WHERE " + " OR ".join(cond) +
+            " ORDER BY data_doe LIMIT 200", args).fetchall()
+    except sqlite3.Error as exc:
+        logger.debug("doerj_tac indisponível para %s: %s", cnpj, exc)
+        return []
+    finally:
+        con.close()
+    return [{"data": r[0], "numero": r[1] or "", "orgao": r[2] or "", "valor": r[3], "processo": r[4] or ""} for r in rows]
+
+
+def _moeda(v: float) -> str:
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def achado_tac_recorrente(tacs: list[dict]) -> dict | None:
+    """Achado estrutural do Lex: pagamento por TAC como ROTINA. 1 TAC é exceção prevista no Decreto 47.283/2020;
+    a partir de 3 é serviço contínuo sem contrato (grav 3); 6+ ou R$ 10 mi+ é regime permanente (grav 4)."""
+    n = len(tacs)
+    if n < 3:
+        return None
+    soma = sum(t["valor"] or 0 for t in tacs)
+    grav = 4 if (n >= 6 or soma >= 10_000_000) else 3
+    orgaos = sorted({t["orgao"] for t in tacs if t["orgao"]})
+    de, ate = tacs[0]["data"], tacs[-1]["data"]
+    return {"rf": "DD/TAC-RECORRENTE", "grav": grav,
+            "obs": (f"**{n} Termos de Ajuste de Contas publicados no DOERJ** ({de} → {ate}), somando "
+                    f"R$ {_moeda(soma)}, por {', '.join(o[:60] for o in orgaos[:2]) or 'órgão não lido'}. TAC é o instrumento que "
+                    "indeniza serviço prestado SEM contrato (Decreto 47.283/2020): como rotina mensal, indica "
+                    "serviço contínuo sem licitação e exige, a cada termo, a apuração de responsabilidade pela "
+                    "lacuna (art. 4º, III). Conferir nos autos se ela existe; indício, não acusação.")}
