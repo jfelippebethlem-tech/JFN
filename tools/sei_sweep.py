@@ -231,10 +231,36 @@ def _dirigidos(con) -> set[str]:
     FORA do universo das OBs. `nunca_capturado` (676 fora do universo) e `parecer cita…` ficam de fora:
     entrariam aos centenas na frente da fila e sequestrariam o browser por semanas."""
     try:
-        return {str(r[0]) for r in con.execute(
+        alvo = {str(r[0]) for r in con.execute(
             "SELECT numero_sei FROM sei_fila_captura WHERE motivo LIKE 'hipotese%' OR motivo LIKE '%vault%'")}
     except sqlite3.Error:
         return set()
+    try:
+        from tools import sei_restritos as _R
+        return _sem_pesquisa_vazia_recente(alvo, _R._load(), datetime.now())
+    except Exception:  # noqa: BLE001 — registro ilegível não pode calar a fila
+        return alvo
+
+
+def _sem_pesquisa_vazia_recente(dirigidos: set[str], registro: dict, agora, dias: int = 7) -> set[str]:
+    """Dirigido que a pesquisa do SEI já respondeu "Nenhum resultado" (pesquisa_vazia) nos últimos `dias`
+    NÃO volta à fila: é resposta definitiva de acesso, e o sweep relia os 8 da CMP a cada ciclo (10/09:
+    ~50 s cada, três ciclos seguidos) para o mesmo nada. Depois do prazo, tenta de novo (o nível de acesso
+    pode mudar)."""
+    from datetime import timedelta
+    limite = agora - timedelta(days=dias)
+    out = set()
+    for p in dirigidos:
+        e = registro.get(re.sub(r"\D", "", p)) or {}
+        if e.get("pesquisa_vazia"):
+            try:
+                ultima = datetime.strptime(str(e.get("ultima", ""))[:16], "%Y-%m-%d %H:%M")
+            except ValueError:
+                ultima = None
+            if ultima and ultima >= limite:
+                continue
+        out.add(p)
+    return out
 
 
 def _incluir_dirigidos_fora_do_universo(rows: list[tuple], dirigidos: set[str], filtrado: bool) -> list[tuple]:

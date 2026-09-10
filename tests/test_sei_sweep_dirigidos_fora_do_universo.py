@@ -33,3 +33,16 @@ def test_dirigido_sobrevive_a_fatia_da_outra_maquina():
     for r in fora:
         if r[0] != "SEI-080002/003231/2026":
             assert r not in out                                      # o resto respeita a fatia
+
+
+def test_dirigido_com_pesquisa_vazia_recente_sai_da_fila_e_volta_depois_do_prazo():
+    """'Nenhum resultado' é resposta definitiva de acesso: reler a cada ciclo custava ~50 s por processo (10/09)."""
+    from datetime import datetime
+    from tools.sei_sweep import _sem_pesquisa_vazia_recente
+    reg = {"0800020185912026": {"pesquisa_vazia": True, "ultima": "2026-09-10 06:32"},
+           "0800020231312026": {"pesquisa_vazia": True, "ultima": "2026-08-20 06:32"},
+           "0800020000010026": {"pesquisa_vazia": False, "ultima": "2026-09-10 06:32"}}
+    d = {"SEI-080002/018591/2026", "SEI-080002/023131/2026", "SEI-080002/000010/026", "SEI-030001/999999/2026"}
+    agora = datetime(2026, 9, 10, 12, 0)
+    assert _sem_pesquisa_vazia_recente(d, reg, agora) == {"SEI-080002/023131/2026", "SEI-080002/000010/026", "SEI-030001/999999/2026"}
+    assert _sem_pesquisa_vazia_recente(d, {}, agora) == d
