@@ -1675,7 +1675,10 @@ def api_doerj_tac_recorrente(top: int = 20):
                          "ate": tot[4], "fornecedores": tot[5], "nao_lidos": nao_lidos, "edicoes": edicoes,
                          "itens": itens, "orgaos": orgaos, "concordancia": concordancia,
                          "sinais_total": sum(len(v) for v in sinais.values()),
-                         "sinais_vermelhos": sum(1 for v in sinais.values() for x in v if x["grau"] == "🔴")})
+                         "sinais_vermelhos": sum(1 for v in sinais.values() for x in v if x["grau"] == "🔴"),
+                         # fornecedores por sinal (o mecanismo "contrato venceu → TAC" tem KPI próprio no painel)
+                         "por_sinal": {k: sum(1 for v in sinais.values() if any(x["sinal"] == k for x in v))
+                                       for k in sorted({x["sinal"] for v in sinais.values() for x in v})}})
 
 
 @router.get("/api/intel/sancionadas_municipio")
