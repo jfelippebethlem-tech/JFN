@@ -93,12 +93,70 @@ def _doadores_por_nome(con: sqlite3.Connection) -> dict[str, list[tuple]]:
     return out
 
 
+_RE_PERIODO = re.compile(r"per[ií]odo de (\d{2}/\d{2}/\d{4}) a (\d{2}/\d{2}/\d{4})", re.I)
+JANELA_VENCIDO_DIAS = 45
+
+
+def _iso(d: str) -> str:
+    dd, mm, aa = d.split("/")
+    return f"{aa}-{mm}-{dd}"
+
+
+def periodos_dos_tacs(objetos) -> list[tuple[str, str]]:
+    """(ini, fim) ISO dos períodos indenizados que o extrato declara ("no período de dd/mm/aaaa a dd/mm/aaaa")."""
+    out = []
+    for o in objetos:
+        m = _RE_PERIODO.search(o or "")
+        if m:
+            out.append((_iso(m.group(1)), _iso(m.group(2))))
+    return sorted(set(out))
+
+
+def contrato_vencido_para_tac(contratos: list[tuple[str, str, float]], periodos: list[tuple[str, str]],
+                              janela_dias: int = JANELA_VENCIDO_DIAS) -> dict | None:
+    """O MECANISMO, datado (10/09/2026 — TUISE × HETO Melchiades: contrato até 13/01/2026, TAC desde 14/01/2026;
+    AGILE × SEEDUC idem): o contrato vence e o serviço segue pago por indenização. Casa cada início de período
+    de TAC com um contrato TCE-RJ do MESMO fornecedor cujo fim de vigência caiu até `janela_dias` antes.
+    `contratos` = (vig_inicio ISO, vig_fim ISO, valor). Grau 🔴 quando não há NENHUM contrato vigente na data do
+    TAC (o fornecedor ficou só na indenização); 🟡 quando outro contrato ainda vigia (pode ser outra unidade)."""
+    from datetime import date
+    if not contratos or not periodos:
+        return None
+    casos, sem_vigente = [], 0
+    for ini, _fim in periodos:
+        di = date.fromisoformat(ini)
+        for a, b, v in contratos:
+            db = date.fromisoformat(b)
+            if 0 <= (di - db).days <= janela_dias:
+                vigente = any(date.fromisoformat(x) <= di <= date.fromisoformat(y) for x, y, _ in contratos)
+                casos.append({"tac_inicio": ini, "contrato_fim": b, "dias": (di - db).days, "valor_contrato": v, "outro_vigente": vigente})
+                sem_vigente += 0 if vigente else 1
+                break
+    if not casos:
+        return None
+    return {"casos": casos, "grau": "🔴" if sem_vigente else "🟡", "n": len(casos), "sem_vigente": sem_vigente}
+
+
 def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac: int, soma_tac: float,
-              socios_por_nome: dict[str, set[str]], doadores: dict[str, list[tuple]] | None = None) -> list[dict]:
+              socios_por_nome: dict[str, set[str]], doadores: dict[str, list[tuple]] | None = None,
+              periodos_tac: list[tuple[str, str]] | None = None) -> list[dict]:
     out: list[dict] = []
     toks = tokens(fornecedor)
     if cnpj:
         raiz = cnpj[:8]
+        # contrato venceu → TAC no mês seguinte (o mecanismo da AGILE e da TUISE)
+        if periodos_tac:
+            ctr = [(_iso(a), _iso(b), float(v or 0)) for a, b, v in con.execute(
+                "SELECT vig_inicio, vig_fim, valor_contrato FROM contratos_tcerj WHERE replace(replace(replace(cnpj,'.',''),'/',''),'-','')=? "
+                "AND vig_inicio LIKE '__/__/____' AND vig_fim LIKE '__/__/____'", (cnpj,))]
+            cv = contrato_vencido_para_tac(ctr, periodos_tac)
+            if cv:
+                c0 = cv["casos"][0]
+                out.append({"sinal": "contrato_vencido_tac", "grau": cv["grau"],
+                            "detalhe": f"{cv['n']} período(s) de TAC começam até {JANELA_VENCIDO_DIAS} dias após o fim de um contrato "
+                                       f"TCE-RJ do próprio fornecedor (ex.: contrato até {c0['contrato_fim']} → TAC desde {c0['tac_inicio']}, "
+                                       f"{c0['dias']} dia(s)); {cv['sem_vigente']} sem nenhum contrato vigente na data — o serviço seguiu por indenização",
+                            "evidencia": cv})
         # sócio doador — nome 3+ tokens E os 6 dígitos do meio do CPF (mascarado na Receita) batendo
         if doadores:
             achados = []
@@ -192,7 +250,8 @@ def materializar(min_tac: int = 3) -> dict:
             cnpj = cnpj_de[f]
             if not cnpj:
                 nao_res += 1
-            sinais = sinais_de(con, cnpj, f, n, soma or 0, socios_por_nome, doadores)
+            periodos = periodos_dos_tacs(o for (o,) in con.execute("SELECT objeto FROM doerj_tac WHERE fornecedor=?", (f,)))
+            sinais = sinais_de(con, cnpj, f, n, soma or 0, socios_por_nome, doadores, periodos_tac=periodos)
             if cnpj and not sinais:      # linha-âncora: o CNPJ resolvido fica materializado mesmo sem sinal
                 con.execute("INSERT INTO doerj_tac_sinal VALUES (?,?,?,?,?,?,?,?,?)",
                             (f, cnpj, n, soma, "sem_sinal", "⚪", "nenhum cruzamento positivo — não é atestado", "{}", agora))
