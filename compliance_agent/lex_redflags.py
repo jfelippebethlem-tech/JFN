@@ -12,6 +12,14 @@ import re
 
 # Red flags (resumo operacional; detalhe em docs/LEX-BASE-JURIDICA.md)
 _RF = {
+    # Achados ESTRUTURAIS da DD (prefixo DD/) com identidade própria — sem entrada aqui o parecer imprimia o
+    # código duas vezes e aplicava a defesa de FACHADA a um Termo de Ajuste de Contas (visto em 10/09/2026).
+    "DD/TAC-RECORRENTE": ("Pagamento por Termo de Ajuste de Contas como rotina (serviço contínuo sem contrato)",
+                          "Decreto RJ 47.283/2020 (art. 4º, III — apuração de responsabilidade a cada termo); Lei 14.133/2021 arts. 147-149 (nulidade e dever de indenizar) e 72-75 (contratação direta exige processo); Lei 8.666/93 art. 59, p. ún. (fatos até 2023)"),
+    "DD/RF-TAC": ("Pagamento por Termo de Ajuste de Contas (sinal nas OBs)",
+                  "Decreto RJ 47.283/2020; Lei 14.133/2021 arts. 147-149"),
+    "DD/SOCIO-AGENTE": ("Sócio da contratada é agente público (folha pública × QSA)",
+                        "Lei 14.133/2021 art. 14, IV e art. 9º, §1º; Lei 8.429/92 arts. 9º e 11 (dolo específico, pós-14.230)"),
     "R2": ("Fracionamento de despesa", "Art. 75, §1º, I e II, e §2º Lei 14.133/2021; Art. 23 §§1º-5º Lei 8.666/93 (revogada — fatos até 2023)"),
     "R3": ("Pesquisa de preços frágil / possível sobrepreço", "Art. 23 Lei 14.133; Acórdão 1875/2021-TCU (cesta de preços)"),
     "R4": ("Sobrepreço / superfaturamento (valores fora de referência)", "Art. 11 III Lei 14.133; Acórdão 2622/2013-TCU (BDI)"),
@@ -199,11 +207,21 @@ _EXCULPATORIO = {
            "divergido com motivação idônea registrada em documento apartado (LINDB art. 22).",
     "DD": "Sinais cadastrais isolados (endereço residencial, capital baixo, empresa recente) são comuns em "
           "microempresas legítimas e, sozinhos, não caracterizam fachada/laranja.",
+    "DD/TAC-RECORRENTE": "O Termo de Ajuste de Contas é o instrumento legítimo para indenizar serviço já prestado quando "
+                         "a nova licitação atrasou; um ou dois termos podem refletir transição contratual regular, e a "
+                         "responsabilidade pela lacuna pode ter sido apurada em processo apartado.",
+    "DD/RF-TAC": "Um ajuste de contas isolado pode fechar uma transição contratual regular, com serviço comprovado.",
+    "DD/SOCIO-AGENTE": "O casamento é por NOME (homônimo possível), o vínculo pode ter cessado antes do ato, e agente de "
+                       "OUTRO ente não é impedimento por si (o art. 14, IV alcança o próprio contratante).",
 }
 
 
 def _fam_exculpatorio(rf: str) -> str:
-    return "DD" if str(rf).startswith("DD/") else str(rf)
+    """Código completo quando ele tem entrada própria; senão a família (DD/… → fachada)."""
+    rf = str(rf)
+    if rf in _EXCULPATORIO:
+        return rf
+    return "DD" if rf.startswith("DD/") else rf
 
 
 def _exculpatorio(achados: list) -> list[dict]:
@@ -261,6 +279,9 @@ _MOTIVO_IMPROBIDADE_RF = {
     "R14": "conluio/fraude à licitação (cartel entre licitantes)",
     "R15": "parecer/controle prévio não acatado",
     "DD": "fachada/laranja",
+    "DD/TAC-RECORRENTE": "serviço contínuo sem contrato (TAC em série) e omissão na apuração de responsabilidade",
+    "DD/RF-TAC": "pagamento sem cobertura contratual (TAC)",
+    "DD/SOCIO-AGENTE": "vínculo de sócio da contratada com agente público (art. 14, IV Lei 14.133)",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
 _RF_DESTINATARIO = {
@@ -279,6 +300,9 @@ _RF_DESTINATARIO = {
     "R14": ("conluio", "improbidade"),
     "R15": ("improbidade",),
     "DD": ("par", "improbidade"),
+    "DD/TAC-RECORRENTE": ("debito", "improbidade"),   # dano/gestão (TCE-RJ) + omissão do gestor (MP)
+    "DD/RF-TAC": ("debito",),
+    "DD/SOCIO-AGENTE": ("improbidade", "par"),
 }
 
 
@@ -299,7 +323,9 @@ def _elemento_subjetivo(a: dict) -> tuple[str, str]:
     só 'dolo a apurar' com sinal desonesto; senão é controle de contas (não improbidade)."""
     rf = a.get("rf", "") or ""
     obs = (a.get("obs") or "").lower()
-    dolo = rf in _DOLO_RF or rf.startswith("DD") or rf == "FRAUDE" or any(t in obs for t in _DOLO_OBS)
+    # TAC em série é ilegalidade de GESTÃO (deixou vencer o contrato) — dolo só com outro sinal na obs
+    dd_sem_dolo = rf in ("DD/TAC-RECORRENTE", "DD/RF-TAC")
+    dolo = rf in _DOLO_RF or (rf.startswith("DD") and not dd_sem_dolo) or rf == "FRAUDE" or any(t in obs for t in _DOLO_OBS)
     if dolo:
         return ("dolo a apurar",
                 "há sinal de elemento subjetivo (fachada/laranja/cartel/interposição) — SE confirmados o dolo e "
