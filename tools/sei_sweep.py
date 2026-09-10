@@ -238,7 +238,7 @@ def _dirigidos(con) -> set[str]:
     try:
         from tools import sei_restritos as _R
         return _sem_pesquisa_vazia_recente(alvo, _R._load(), datetime.now())
-    except Exception:  # noqa: BLE001 — registro ilegível não pode calar a fila
+    except (ImportError, OSError, ValueError, TypeError):   # registro ilegível não pode calar a fila
         return alvo
 
 
