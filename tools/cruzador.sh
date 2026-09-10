@@ -20,6 +20,8 @@ say "início — cruzando dados"
 $PRIO timeout 1200 $PY -m compliance_agent.correlacao_sei >> "$LOG" 2>&1; say "correlacao_sei rc=$?"
 # 1b) íntegras PNCP × extratos do D.O. Rio → contrato_doe_evento/contrato_doe_sinal (emergência no incumbente, direta, valor divergente)
 $PRIO timeout 900 $PY -m tools.pcrj_integra_x_doe >> "$LOG" 2>&1; say "pcrj_integra_x_doe rc=$?"
+# 1b') cópia analítica do compliance.db para o DuckDB (o sqlite_scanner solta os locks do processo que lê o vivo)
+$PRIO ionice -c3 timeout 1500 $PY -m tools.snapshot_analitico >> "$LOG" 2>&1; say "snapshot_analitico rc=$?"
 # 1c) DOERJ: Termos de Ajuste de Contas recorrentes (quem recebe sem contrato, quantas vezes, quanto) → doerj_tac
 $PRIO timeout 600 $PY -m tools.doerj_tac_recorrente --top 5 >> "$LOG" 2>&1; say "doerj_tac_recorrente rc=$?"
 # 1d) TAC × favorecimento (agente público no QSA, sócio comum, capital ínfimo, fachada, emergência recorrente, doação) → doerj_tac_sinal

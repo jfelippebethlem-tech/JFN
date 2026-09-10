@@ -73,6 +73,7 @@ stdlib em vez de derrubar o boot — mas aí sem a bandeira, e o log diz isso em
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from pathlib import Path
 
@@ -176,6 +177,7 @@ def bater() -> bool:
     shm = _CAMINHO.with_name(_CAMINHO.name + "-shm")
     try:
         if shm.exists():
+            _avisar_se_locks_sumiram(shm)
             return True
     except OSError as exc:
         logger.debug("guarda_wal: não consegui olhar %s (%s) — mantendo a guardiã atual", shm.name, exc)
@@ -185,6 +187,29 @@ def bater() -> bool:
     alvo = _CAMINHO
     soltar()
     return segurar(alvo)
+
+
+_AVISOU_LOCKS = False
+
+
+def _avisar_se_locks_sumiram(shm: Path) -> None:
+    """Observabilidade (10/09/2026): com o -shm mapeado, este processo TEM de aparecer em /proc/locks no
+    byte DMS (128). Se não aparece, algum descritor do inode foi fechado por outra biblioteca (DuckDB no
+    vivo, p.ex.) e os locks evaporaram — o wal-keeper externo segura o DMS, mas aqui fica registrado."""
+    global _AVISOU_LOCKS
+    try:
+        ino = shm.stat().st_ino
+        me = str(os.getpid())
+        tem = any(p[4] == me and p[5].endswith(f":{ino}") for p in
+                  (l.split() for l in Path("/proc/locks").read_text().splitlines()) if len(p) >= 8)
+    except OSError:
+        return
+    if tem:
+        _AVISOU_LOCKS = False
+    elif not _AVISOU_LOCKS:
+        _AVISOU_LOCKS = True
+        logger.warning("guarda_wal: este processo NÃO tem lock no %s (byte DMS) — locks POSIX perdidos por "
+                       "fechamento de descritor de outra biblioteca; o wal-keeper externo cobre o DMS", shm.name)
 
 
 def soltar() -> None:
