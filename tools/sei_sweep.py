@@ -322,9 +322,20 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     indice, total = fatia_desta_maquina()
     if total > 1:
         antes = len(rows)
-        rows = [r for r in rows if na_minha_fatia(r[0], indice, total)]
+        rows = _aplicar_fatia(rows, indice, total, dirigidos_norm)
         _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
     return rows
+
+
+def _aplicar_fatia(rows: list[tuple], indice: int, total: int, dirigidos_norm: set[str]) -> list[tuple]:
+    """Fatia determinística da máquina — mas o que foi enfileirado À MÃO fica SEMPRE aqui. A outra máquina
+    não tem esta `sei_fila_captura`; um alvo de caso que caísse na fatia dela não seria lido por ninguém
+    (medido em 2026-09-09: alvos da CMP sumiam da fila por hash)."""
+    return [r for r in rows if na_minha_fatia(r[0], indice, total) or _norm_proc_global(r[0]) in dirigidos_norm]
+
+
+def _norm_proc_global(x) -> str:
+    return re.sub(r"\D", "", str(x))
 
 
 def _fila_com_lacuna_provada(con) -> set[str]:
