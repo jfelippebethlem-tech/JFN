@@ -6,6 +6,8 @@ cada um, resolve o CNPJ (registro do TCE-RJ; depois `socios_fornecedor`) e procu
 
   doacao_eleitoral        a empresa (CNPJ) consta como doadora em `doacoes_eleitorais` — lícito, mas
                           relevante quando o candidato tem cargo no Estado; grau 🟡, 🔴 se ≥ R$ 50 mil
+  doacao_socio            SÓCIO da empresa é doador (nome 3+ tokens corroborado pelos 6 dígitos do CPF
+                          mascarado — regra do lex_conflito); 🟡, 🔴 se ≥ R$ 50 mil no conjunto
   agente_publico_no_qsa   sócio que é agente público (`agente_publico_societario`) — 🔴 se o órgão é da
                           saúde estadual (SES/FSERJ), 🟡 nos demais
   socio_comum             sócio presente em 2+ fornecedores de TAC (`socios_fornecedor`) — rede, 🟡
@@ -79,12 +81,41 @@ def grau_agente(orgao: str | None) -> str:
     return "🔴" if any(norm(k) in o for k in ORGAOS_SAUDE) else "🟡"
 
 
+def _doadores_por_nome(con: sqlite3.Connection) -> dict[str, list[tuple]]:
+    """Doadores RJ com nome de 3+ tokens → [(candidato, cargo, partido, ano, valor, cpf_meio6)]."""
+    out: dict[str, list[tuple]] = defaultdict(list)
+    for nome, cand, cargo, part, ano, val, doc in con.execute(
+            "SELECT nome_doador, nome_candidato, cargo_candidato, partido, substr(data_doacao,1,4), valor, cpf_cnpj_doador "
+            "FROM doacoes_eleitorais WHERE uf='RJ'"):
+        n = norm(nome)
+        if len(n.split()) >= 3:
+            out[n].append((cand, cargo, part, ano, val or 0.0, re.sub(r"\D", "", doc or "")[3:9]))
+    return out
+
+
 def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac: int, soma_tac: float,
-              socios_por_nome: dict[str, set[str]]) -> list[dict]:
+              socios_por_nome: dict[str, set[str]], doadores: dict[str, list[tuple]] | None = None) -> list[dict]:
     out: list[dict] = []
     toks = tokens(fornecedor)
     if cnpj:
         raiz = cnpj[:8]
+        # sócio doador — nome 3+ tokens E os 6 dígitos do meio do CPF (mascarado na Receita) batendo
+        if doadores:
+            achados = []
+            for nome, doc in con.execute("SELECT nome_socio, doc_socio FROM socios_receita WHERE cnpj_basico=?", (raiz,)):
+                k = norm(nome)
+                if k in doadores:
+                    meio = re.sub(r"\D", "", doc or "")
+                    ds = [d for d in doadores[k] if d[5] and d[5] == meio]
+                    if ds:
+                        achados.append((nome, ds))
+            if achados:
+                total = sum(d[4] for _, ds in achados for d in ds)
+                det = "; ".join(f"{nome} → " + ", ".join(sorted({f'{d[0][:28]} ({d[1]}, {d[2]}, {d[3]})' for d in ds}))
+                                for nome, ds in achados[:3])
+                out.append({"sinal": "doacao_socio", "grau": "🔴" if total >= DOACAO_FORTE else "🟡",
+                            "detalhe": f"{len(achados)} sócio(s) doador(es), {moeda(total)} (nome + CPF mascarado): {det}",
+                            "evidencia": {"socios": [{"nome": n, "doacoes": [list(d) for d in ds]} for n, ds in achados]}})
         d = con.execute("SELECT nome_candidato, cargo_candidato, partido, substr(data_doacao,1,4), round(sum(valor),2) "
                         "FROM doacoes_eleitorais WHERE replace(replace(replace(cpf_cnpj_doador,'.',''),'/',''),'-','')=? "
                         "GROUP BY 1,2,3,4 ORDER BY 5 DESC LIMIT 8", (cnpj,)).fetchall()
@@ -154,13 +185,18 @@ def materializar(min_tac: int = 3) -> dict:
         CREATE INDEX ix_dts_forn ON doerj_tac_sinal(fornecedor);
     """)
     agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    doadores = _doadores_por_nome(con)
     n_sin, nao_res, por_sinal = 0, 0, Counter()
     with con:
         for f, n, soma in forns:
             cnpj = cnpj_de[f]
             if not cnpj:
                 nao_res += 1
-            for s in sinais_de(con, cnpj, f, n, soma or 0, socios_por_nome):
+            sinais = sinais_de(con, cnpj, f, n, soma or 0, socios_por_nome, doadores)
+            if cnpj and not sinais:      # linha-âncora: o CNPJ resolvido fica materializado mesmo sem sinal
+                con.execute("INSERT INTO doerj_tac_sinal VALUES (?,?,?,?,?,?,?,?,?)",
+                            (f, cnpj, n, soma, "sem_sinal", "⚪", "nenhum cruzamento positivo — não é atestado", "{}", agora))
+            for s in sinais:
                 con.execute("INSERT INTO doerj_tac_sinal VALUES (?,?,?,?,?,?,?,?,?)",
                             (f, cnpj, n, soma, s["sinal"], s["grau"], s["detalhe"], json.dumps(s["evidencia"], ensure_ascii=False), agora))
                 n_sin += 1
@@ -177,7 +213,7 @@ def resumo(top: int = 20) -> list[dict]:
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
     rows = con.execute(
         "SELECT fornecedor, cnpj, n_tac, soma_tac, group_concat(grau || ' ' || sinal, ' · '), "
-        "sum(grau='🔴') vermelhos, count(*) n FROM doerj_tac_sinal WHERE sinal <> 'cnpj_nao_localizado' "
+        "sum(grau='🔴') vermelhos, count(*) n FROM doerj_tac_sinal WHERE sinal NOT IN ('cnpj_nao_localizado','sem_sinal') "
         "GROUP BY 1,2,3,4 ORDER BY vermelhos DESC, n DESC, soma_tac DESC LIMIT ?", (top,)).fetchall()
     con.close()
     return [dict(zip(("fornecedor", "cnpj", "n_tac", "soma_tac", "sinais", "vermelhos", "n"), r)) for r in rows]
