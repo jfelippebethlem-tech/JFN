@@ -816,13 +816,20 @@ async def serve_report(filename: str):
 
 @app.get("/status")
 async def status():
-    """Check agent status."""
-    agent = await get_agent()
+    """Check agent status — SEM acordar o browser. `get_agent()` aqui LANÇAVA o Chromium e marcava
+    "uso" a cada poll do painel/Yoda, e o guard de idle de 15 min nunca disparava (medido 10/09:
+    Chromium do servidor vivo 2,8 h sem nenhuma leitura). Status é observação, não uso."""
+    agent = _agent
+    if agent is None:
+        return {"logged_in": False, "username": os.environ.get("SIAFE_USER", ""),
+                "exercicio": os.environ.get("SIAFE_EXERCICIO") or str(__import__('datetime').date.today().year),
+                "extracted_records": 0, "browser": "ocioso (relança na próxima leitura)"}
     return {
         "logged_in": agent._siafe._logged_in,
         "username": agent._siafe_username,
         "exercicio": agent._siafe_exercicio or str(__import__('datetime').date.today().year),
         "extracted_records": len(agent._extracted_data),
+        "browser": "ativo",
     }
 
 
