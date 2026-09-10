@@ -245,6 +245,22 @@ async def _com_prazo(coro, proc: str, prazo_s: float | None = None):
         raise LeituraExcedeuPrazo(f"{proc}: leitura passou de {prazo:.0f}s e foi abandonada") from exc
 
 
+def _despejar_tarefas(signum, frame):
+    """Diagnóstico sem matar (10/09/2026): a fase pais morria com SIGKILL sem logar uma linha e o prazo
+    por leitura não disparava — só a pilha das corrotinas diz ONDE a leitura está presa."""
+    import traceback
+    try:
+        tarefas = asyncio.all_tasks()
+    except RuntimeError:
+        tarefas = set()
+    _log(f"[USR1] {len(tarefas)} tarefa(s) asyncio:")
+    for t in tarefas:
+        quadros = t.get_stack(limit=8)
+        linhas = [f"{fr.f_code.co_filename.split('/')[-1]}:{fr.f_lineno} {fr.f_code.co_name}" for fr in quadros]
+        _log(f"[USR1]  {t.get_name()} {'cancelando ' if t.cancelling() else ''}→ " + " < ".join(reversed(linhas)))
+    del traceback
+
+
 def _dirigidos(con) -> set[str]:
     """Processos enfileirados À MÃO (hipótese do vault / tarefa aberta) — os únicos que o sweep aceita
     FORA do universo das OBs. `nunca_capturado` (676 fora do universo) e `parecer cita…` ficam de fora:
@@ -967,9 +983,9 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                     cadeia = []
                     if seguir_arvore and 1 <= len(rel) <= 15:
                         try:
-                            cadeia = await seguir_relacionados(pg, r.get("url") or "", rel,
+                            cadeia = await _com_prazo(seguir_relacionados(pg, r.get("url") or "", rel,
                                                                max_rel=max_rel_arvore,
-                                                               max_docs_cadeia=MAX_DOCS_CADEIA)
+                                                               max_docs_cadeia=MAX_DOCS_CADEIA), proc, prazo_s=float(os.environ.get('SEI_PRAZO_ARVORE_S', '600') or 0))
                         except Exception:  # noqa: BLE001
                             cadeia = []
                     nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
@@ -979,7 +995,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                     ficha_info = None
                     if fazer_ficha and (nd or nd_arv):
                         try:
-                            ficha_info = await _ficha_e_storage(proc)
+                            ficha_info = await _com_prazo(_ficha_e_storage(proc), proc, prazo_s=float(os.environ.get('SEI_PRAZO_FICHA_S', '300') or 0))
                         except Exception:  # noqa: BLE001
                             ficha_info = None
                     _f = prog["feitos"].get(proc, {})
@@ -1145,7 +1161,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                     ficha_info = None
                     if fazer_ficha and nd:
                         try:
-                            ficha_info = await _ficha_e_storage(proc)
+                            ficha_info = await _com_prazo(_ficha_e_storage(proc), proc, prazo_s=float(os.environ.get('SEI_PRAZO_FICHA_S', '300') or 0))
                         except Exception:  # noqa: BLE001
                             ficha_info = None
                     _antes = (feitos.get(proc) or {}).get("tentativas", 0) or 0
@@ -1333,6 +1349,7 @@ def main():
     # encerramento gracioso por timeout/SIGTERM: o loop vê a flag e sai limpo (fecha o browser) — sem EPIPE.
     try:
         signal.signal(signal.SIGTERM, _pedir_parada)
+        signal.signal(signal.SIGUSR1, _despejar_tarefas)   # kill -USR1 <pid>: onde cada corrotina está (diagnóstico)
     except (ValueError, OSError) as exc:  # noqa: BLE001 — em thread non-main signal não pode ser registrado; ignora
         logger.debug("SIGTERM não registrado (thread non-main): %s", exc)
     # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
