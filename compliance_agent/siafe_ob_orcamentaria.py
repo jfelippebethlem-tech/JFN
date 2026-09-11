@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+
+from compliance_agent.recursos import browser_lock_async
 import json
 import logging
 import os
@@ -675,7 +677,7 @@ async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=N
     vistos = vistos if vistos is not None else set()
     linhas = linhas if linhas is not None else []
     save_cb = lambda h, ls: _ckpt_save(exercicio, h, ls)
-    async with async_playwright() as pw:
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         _t0 = time.time()
         _log = lambda m: print(f"[{time.time()-_t0:5.1f}s] {m}", flush=True)
@@ -837,7 +839,7 @@ async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
     pend = [p for p in prefixos if p not in _ckpt_prefixos(exercicio)]
     if not pend:
         return {"ok": True, "pendentes": []}
-    async with async_playwright() as pw:
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
             lg = await _login(pg, exercicio); _log(f"login: {lg.get('ok')}")
@@ -1063,7 +1065,7 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
     from compliance_agent.siafe_adf import AdfSync
     if not prefixos:
         prefixos = [f"{exercicio}OB{d}" for d in range(10)]
-    async with async_playwright() as pw:
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
             pronto = await _login_e_navegar(pg, exercicio)   # retry: o prólogo é intermitente
@@ -1159,7 +1161,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
     ⚠️ Formato do campo de data (in_date) a validar ao vivo — assume DD/MM/AAAA. Ver doc §verificador-dia."""
     from playwright.async_api import async_playwright
     from compliance_agent.siafe_adf import AdfSync
-    async with async_playwright() as pw:
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
             pronto = await _login_e_navegar(pg, exercicio)   # retry: o prólogo é intermitente
@@ -1218,7 +1220,7 @@ async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000)
     Login → nav → filtra UG → colhe (scroll) → ingere. Ver docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §8b."""
     from playwright.async_api import async_playwright
     from compliance_agent.siafe_adf import AdfSync
-    async with async_playwright() as pw:
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         b, pg = await _novo_browser(pw, headless)
         try:
             lg = await _login(pg, exercicio)
