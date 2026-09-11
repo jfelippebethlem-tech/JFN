@@ -137,6 +137,12 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
     try:
         _log(f"diário {ano}: iniciando (maxn={maxn})")
         res = await M.coletar(ano, maxn=maxn)
+        if not res.get("ok") and res.get("etapa") == "navegacao":
+            # 11/09/2026 05:00: 'tabela tblOBOrcamentaria não apareceu' com login OK — transitório do SIAFE
+            # às 5 h (às 16 h a mesma navegação colheu 971). Uma 2ª tentativa custa 3 min; o alarme, um dia.
+            _log(f"diário {ano}: navegação falhou ({res.get('detail')}) — 2ª tentativa em 90 s")
+            await asyncio.sleep(90)
+            res = await M.coletar(ano, maxn=maxn)
         if not res.get("ok"):
             _log(f"diário {ano}: coleta falhou: {res}")
             gravar_ultimo(res)

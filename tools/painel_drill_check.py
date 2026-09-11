@@ -88,14 +88,17 @@ def _abrir_e_contar(pg, nome: str, estaveis: int = 2, tentativas: int = 12) -> i
 def checar(abas=ABAS, espera_ms: int = 9000) -> dict:
     from playwright.sync_api import sync_playwright
 
+    from compliance_agent.recursos import browser_lock
     from tools.painel_boot_check import _BASE, _senha
 
     achados: list[dict] = []
     erros: list[str] = []
     total = 0
-    with sync_playwright() as pw:
+    with browser_lock(espera_max=300), sync_playwright() as pw:
         b = pw.chromium.launch(headless=True, args=["--no-sandbox"])
-        pg = b.new_page()
+        # prefers-reduced-motion: o painel para os canvas/vídeo (`_redMotion`) — sem isso o drill rendia
+        # 10 min de gpu-process a 70% (load 16 na VM em 11/09/2026) só para clicar 19 métricas
+        pg = b.new_context(reduced_motion="reduce").new_page()
         pg.on("pageerror", lambda e: erros.append(f"pageerror: {e}"))
         pg.on("console", lambda m: erros.append(f"console.error: {m.text}")
               if m.type == "error" else None)
