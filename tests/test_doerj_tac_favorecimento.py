@@ -38,3 +38,11 @@ def test_contrato_vencido_no_dia_anterior_ao_tac_e_vermelho_quando_nada_mais_vig
     # TAC 200 dias depois do fim: não é "o dia seguinte" — sem sinal
     assert contrato_vencido_para_tac(ctr, [("2026-08-01", "2026-08-31")]) is None
     assert contrato_vencido_para_tac([], [("2026-01-14", "2026-01-31")]) is None
+
+
+def test_chaves_do_objeto_e_ug_do_orgao():
+    from tools.doerj_tac_favorecimento import chaves_objeto, ug_do_orgao
+    assert chaves_objeto("Tem por objeto a indenização pela prestação de serviços de apoio técnico assistencial, para UPA 24h Penha") == ["APOIO", "TECNICO", "ASSISTENCIAL"]
+    assert chaves_objeto("Tem por objeto a indenização pela prestação de serviços médicos, para UPA 24h Campos") == ["MEDICOS"]
+    assert ug_do_orgao("Fundação Saúde do Estado do Rio de Janeiro") == "294200" and ug_do_orgao("Secretaria de Estado de Educação") == "180100"
+    assert ug_do_orgao("INSTITUTO VITAL BRAZIL S/A") is None

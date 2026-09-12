@@ -166,6 +166,44 @@ def _midia_adversa_cache(con: sqlite3.Connection, alvo: str) -> dict | None:
     return r
 
 
+_STOP_OBJ = {"TEM", "POR", "OBJETO", "INDENIZACAO", "PELA", "PRESTACAO", "SERVICOS", "SERVICO", "PARA", "PERIODO", "CONFORME",
+             "SOLICITADO", "COMPROVADO", "ATRAVES", "APRESENTACAO", "NOTAS", "FISCAIS", "DEVIDAMENTE", "ATESTADAS", "CONTRATACAO",
+             "EMPRESA", "ESPECIALIZADA", "FORNECIMENTO"}
+_UG_DO_ORGAO = {"FUNDACAO SAUDE": "294200", "SECRETARIA DE ESTADO DE SAUDE": "290100", "SECRETARIA DE ESTADO DE EDUCACAO": "180100",
+                "SEEDUC": "180100", "CORPO DE BOMBEIROS": "160100"}
+
+
+def chaves_objeto(objeto: str | None, n: int = 3) -> list[str]:
+    """Palavras que dizem O QUE foi pago ("APOIO TECNICO ASSISTENCIAL", "ALIMENTACAO"), sem o boilerplate do extrato
+    e sem a unidade ("para UPA…")."""
+    t = norm(objeto or "")
+    t = re.split(r",|\bPARA (?:O |A )?[A-Z]", t)[0]
+    return [w for w in re.findall(r"[A-Z]{4,}", t) if w not in _STOP_OBJ][:n]
+
+
+def ug_do_orgao(orgao: str | None) -> str | None:
+    o = norm(orgao or "")
+    for k, ug in _UG_DO_ORGAO.items():
+        if k in o:
+            return ug
+    return None
+
+
+def previsto_no_pca(con: sqlite3.Connection, orgao: str | None, objeto: str | None) -> dict | None:
+    """O serviço pago por TAC consta no Plano de Contratações Anual da unidade (siga_pca_itens)?"""
+    ug, ks = ug_do_orgao(orgao), chaves_objeto(objeto)
+    if not ug or not ks:
+        return None
+    try:
+        r = con.execute("SELECT count(*), round(sum(vl_total),2), min(descricao), min(ano) FROM siga_pca_itens WHERE ug=? AND "
+                        + " AND ".join("descricao LIKE ?" for _ in ks), [ug] + [f"%{k}%" for k in ks]).fetchone()
+    except sqlite3.OperationalError:
+        return None
+    if not r or not r[0]:
+        return None
+    return {"ug": ug, "chaves": ks, "itens": r[0], "valor": r[1] or 0.0, "exemplo": (r[2] or "")[:120], "ano": r[3]}
+
+
 def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac: int, soma_tac: float,
               socios_por_nome: dict[str, set[str]], doadores: dict[str, list[tuple]] | None = None,
               periodos_tac: list[tuple[str, str]] | None = None) -> list[dict]:
@@ -253,6 +291,14 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
                         "detalhe": f"{sg[1]} de {sg[0]} contratações no SIGA são 'Dispensa - Especial' (emergência) = {moeda(sg[3] or 0)}, "
                                    f"{sg[2] or 0} por pregão/concorrência, {sg[4]} órgão(s)",
                         "evidencia": {"n": sg[0], "emergencia": sg[1], "competitivas": sg[2], "valor_emergencia": sg[3], "orgaos": sg[4]}})
+        # o serviço pago por TAC estava no PCA da unidade: planejamento existiu, licitação não (tools/siga_pca)
+        ot = con.execute("SELECT orgao, objeto FROM doerj_tac WHERE fornecedor=? AND objeto IS NOT NULL ORDER BY valor DESC LIMIT 1", (fornecedor,)).fetchone()
+        pc = previsto_no_pca(con, ot[0], ot[1]) if ot else None
+        if pc:
+            out.append({"sinal": "previsto_no_pca", "grau": "🟡",
+                        "detalhe": f"o objeto do TAC ({' '.join(pc['chaves'])}) consta no PCA {pc['ano']} da UG {pc['ug']}: {pc['itens']} item(ns) = "
+                                   f"{moeda(pc['valor'])} (ex.: {pc['exemplo'][:80]}) — planejado, orçado e pago sem licitação",
+                        "evidencia": pc})
         # Cadastro de Empregadores do MTE (trabalho escravo) — fonte pública, tools/lista_suja_mte
         try:
             ls = con.execute("SELECT nome, inclusao FROM lista_suja_mte WHERE cnpj=? OR substr(cnpj,1,8)=? LIMIT 1",
