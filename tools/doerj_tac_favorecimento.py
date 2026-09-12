@@ -156,7 +156,7 @@ def _midia_adversa_cache(con: sqlite3.Connection, alvo: str) -> dict | None:
     try:
         from compliance_agent.enrich.midia_adversa import varrer
         r = varrer(alvo, max_artigos=12)
-    except Exception:  # noqa: BLE001 — fonte externa: indisponível não derruba o cruzamento
+    except (ImportError, OSError, ValueError):   # fonte externa/JSON: indisponível não derruba o cruzamento
         return None
     if not r.get("ok"):
         return None

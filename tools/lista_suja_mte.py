@@ -81,7 +81,8 @@ def main() -> int:
     r = materializar()
     print(f"[lista-suja] {r['entradas']} empregadores; favorecidos do Estado na lista: {len(r['cruzados_favorecidos'])}")
     for c in r["cruzados_favorecidos"]:
-        print(f"   {c[0]} {c[1][:50]} inclusão {c[2]} | pago R$ {c[4]:,.2f}")
+        pago = f"{c[4]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")   # padrão brasileiro
+        print(f"   {c[0]} {c[1][:50]} inclusão {c[2]} | pago R$ {pago}")
     return 0
 
 

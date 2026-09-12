@@ -88,11 +88,12 @@ def _gnews(alvo: str, max_r: int = 20) -> tuple[list | None, str]:
     try:
         r = httpx.get(_GNEWS, params=q, headers={"User-Agent": "Mozilla/5.0 (JFN/2.0 fiscalizacao)"},
                       timeout=20, follow_redirects=True)
-    except Exception as e:  # noqa: BLE001
+    except (httpx.HTTPError, OSError) as e:
         return None, f"gnews {str(e)[:50]}"
     if r.status_code != 200:
         return None, f"gnews HTTP {r.status_code}"
-    itens = re.findall(r"<item>(.*?)</item>", r.text, re.S)
+    corpo = getattr(r, "text", "") or ""   # resposta sem corpo (ou fake de teste) = sem itens, não erro
+    itens = re.findall(r"<item>(.*?)</item>", corpo, re.S)
     out = []
     for it in itens[:max_r]:
         def _tag(t):
