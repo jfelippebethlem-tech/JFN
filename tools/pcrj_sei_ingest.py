@@ -62,6 +62,59 @@ def ingerir(origem: Path | None = None, db_path=None) -> dict:
     return {"origem": str(origem), "ingeridos": ingeridos, "publicos": publicos}
 
 
+# SEI (000255.000010/2025-10) ou Processo.rio/SIGA (EIS-PRO-2023/06224): o documento diz de qual é
+_RE_PROC_SEI = re.compile(r"\b(\d{6}\.\d{6}/20\d{2}-\d{2}|[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5})\b")
+_URL_CONFERIR = ("https://prefeitura.sei.rio/sei/controlador_externo.php?acao=documento_conferir"
+                 "&id_orgao_acesso_externo=0&codigo_verificador={v}&codigo_crc={c}")
+
+
+def processo_do_documento(processo: str | None, texto: str | None, verificador: str) -> str:
+    """Nº do processo a que o documento pertence: o que o D.O. deu; senão o 1º nº SEI no
+    próprio texto; senão um balde nominal por documento (nunca inventar processo)."""
+    if processo:
+        return processo
+    m = _RE_PROC_SEI.search(texto or "")
+    return m.group(1) if m else f"SEI-DOC-{verificador}"
+
+
+def ingerir_documentos(origem: Path | None = None, db_path=None) -> dict:
+    """``sei_pcrj_documento`` (íntegras baixadas pela conferência de autenticidade na VM-2)
+    → ``pcrj_processo_doc``. seq = código verificador (único no SEI)."""
+    origem = Path(origem or ORIGEM)
+    if not origem.exists():
+        return {"erro": f"origem não encontrada: {origem}"}
+    src = sqlite3.connect(f"file:{origem}?mode=ro", uri=True)
+    try:
+        if not src.execute("SELECT 1 FROM sqlite_master WHERE name='sei_pcrj_documento'").fetchone():
+            return {"documentos": 0, "motivo": "VM-2 ainda não produziu sei_pcrj_documento"}
+        rows = src.execute(
+            "SELECT verificador, crc, processo, arquivo, texto, assinantes, capturado_em "
+            "FROM sei_pcrj_documento WHERE erro IS NULL AND texto IS NOT NULL AND length(texto) > 0").fetchall()
+    finally:
+        src.close()
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    n = 0
+    try:
+        for v, c, proc, arq, texto, assin, em in rows:
+            numero = processo_do_documento(proc, texto, v)
+            titulo = (arq or f"documento {v}") + (f" · assinantes: {assin}" if assin and assin != "[]" else "")
+            # o nº do processo pode melhorar entre ingestões (balde → nº real): não deixar a cópia velha
+            con.execute("DELETE FROM pcrj_processo_doc WHERE tipo='sei_conferencia' AND seq=? AND numero_processo<>?",
+                        (int(v), numero))
+            con.execute(
+                "INSERT INTO pcrj_processo_doc (numero_processo, seq, tipo, titulo, texto, url, coletado_em) "
+                "VALUES (?,?,?,?,?,?,?) ON CONFLICT(numero_processo, seq) DO UPDATE SET "
+                "texto=excluded.texto, titulo=excluded.titulo, coletado_em=excluded.coletado_em",
+                (numero, int(v), "sei_conferencia", titulo[:400], texto,
+                 _URL_CONFERIR.format(v=v, c=c), em))
+            n += 1
+        con.commit()
+    finally:
+        con.close()
+    return {"documentos": n}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stats", action="store_true")
@@ -78,6 +131,7 @@ def main() -> None:
         return
     import json
     print(json.dumps(ingerir(db_path=a.db), ensure_ascii=False, indent=2))
+    print(json.dumps(ingerir_documentos(db_path=a.db), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
