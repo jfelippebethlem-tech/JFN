@@ -11,6 +11,7 @@ Uso: PYTHONPATH=. .venv/bin/python -m tools.noticias_orgaos   (cron diário)
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 import sys
 import time
@@ -55,8 +56,12 @@ def coletar(orgaos=ORGAOS, pausa: float = 1.0) -> list[dict]:
         if arts is None:
             print(f"[imprensa] {rotulo}: {err}", flush=True)
             continue
+        # o nome do órgão não pode ser o "risco": a consulta "TCE-RJ" casava "tce" em 23 de 26 títulos (12/09)
+        proprios = {t for t in re.findall(r"[a-záéíóúç]{3,}", consulta.lower())}
         for a in arts:
             adv, termos = _classificar(a.get("title") or "", None)
+            termos = [t for t in termos if t not in proprios and not any(t in p for p in proprios)]
+            adv = bool(termos)
             out.append({"orgao": rotulo, "consulta": consulta, "titulo": a.get("title") or "", "url": a.get("url") or "",
                         "fonte": a.get("domain") or "", "data": _iso(a.get("seendate") or ""), "adversa": int(adv),
                         "termos": ",".join(termos)})
@@ -80,6 +85,8 @@ def materializar(itens: list[dict] | None = None) -> dict:
             cur = con.execute("INSERT OR IGNORE INTO noticias_orgaos VALUES (?,?,?,?,?,?,?,?,?)",
                               (i["url"], i["orgao"], i["consulta"], i["titulo"], i["fonte"], i["data"], i["adversa"], i["termos"], agora))
             novos += cur.rowcount
+            if not cur.rowcount:   # já existia: a classificação pode ter mudado (regra dos termos próprios)
+                con.execute("UPDATE noticias_orgaos SET adversa=?, termos=? WHERE url=?", (i["adversa"], i["termos"], i["url"]))
     tot = con.execute("SELECT count(*), sum(adversa) FROM noticias_orgaos").fetchone()
     con.close()
     return {"coletadas": len(itens), "novas": novos, "total": tot[0], "adversas": tot[1] or 0}

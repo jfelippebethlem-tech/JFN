@@ -14,3 +14,11 @@ def test_coletar_classifica_e_materializar_deduplica(tmp_path, monkeypatch):
     monkeypatch.setattr(N, "DB", tmp_path / "c.db")
     r1 = N.materializar(itens); r2 = N.materializar(itens)
     assert r1["novas"] == 2 and r2["novas"] == 0 and r2["total"] == 2 and r2["adversas"] == 1
+
+
+def test_nome_do_orgao_nao_e_termo_de_risco(monkeypatch):
+    fake = [{"title": "TCE-RJ aprova contas do governo", "url": "http://x/3", "seendate": "Thu, 26 Feb 2026 10:00:00 GMT", "domain": "g1"},
+            {"title": "TCE-RJ aponta fraude em contrato da Fundação", "url": "http://x/4", "seendate": "Thu, 26 Feb 2026 10:00:00 GMT", "domain": "g1"}]
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa._gnews", lambda q, max_r=30: (fake, ""))
+    itens = N.coletar([('"TCE-RJ"', "TCE-RJ")], pausa=0)
+    assert [i["adversa"] for i in itens] == [0, 1] and itens[1]["termos"] == "fraude"
