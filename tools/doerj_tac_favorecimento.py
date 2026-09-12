@@ -284,34 +284,43 @@ def materializar(min_tac: int = 3) -> dict:
             if s and len(s) > 8:
                 socios_por_nome[cnpj].add(s)
                 socios_por_nome["_por_socio"][s].add(cnpj)
+    # monta em tabela NOVA e troca no fim: o painel lê doerj_tac_sinal ao vivo e a montagem leva ~50 min
     con.executescript("""
-        DROP TABLE IF EXISTS doerj_tac_sinal;
-        CREATE TABLE doerj_tac_sinal (fornecedor TEXT, cnpj TEXT, n_tac INTEGER, soma_tac REAL, sinal TEXT, grau TEXT,
-                                      detalhe TEXT, evidencia TEXT, gerado_em TEXT);
-        CREATE INDEX ix_dts_forn ON doerj_tac_sinal(fornecedor);
+        DROP TABLE IF EXISTS doerj_tac_sinal_novo;
+        CREATE TABLE doerj_tac_sinal_novo (fornecedor TEXT, cnpj TEXT, n_tac INTEGER, soma_tac REAL, sinal TEXT, grau TEXT,
+                                           detalhe TEXT, evidencia TEXT, gerado_em TEXT);
     """)
     agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
     doadores = _doadores_por_nome(con)
     n_sin, nao_res, por_sinal = 0, 0, Counter()
-    with con:
-        for f, n, soma in forns:
-            cnpj = cnpj_de[f]
-            if not cnpj:
-                nao_res += 1
-            periodos = periodos_dos_tacs(o for (o,) in con.execute("SELECT objeto FROM doerj_tac WHERE fornecedor=?", (f,)))
-            sinais = sinais_de(con, cnpj, f, n, soma or 0, socios_por_nome, doadores, periodos_tac=periodos)
+    # UMA transação por fornecedor, não uma para o laço inteiro: com a mídia adversa (~20 s por alvo, fonte
+    # externa) o laço leva ~50 min, e um `with con:` em volta dele segurava o lock de ESCRITA do banco esse
+    # tempo todo — o servidor e os outros crons batiam em 'database is locked' (12/09/2026).
+    for f, n, soma in forns:
+        cnpj = cnpj_de[f]
+        if not cnpj:
+            nao_res += 1
+        periodos = periodos_dos_tacs(o for (o,) in con.execute("SELECT objeto FROM doerj_tac WHERE fornecedor=?", (f,)))
+        sinais = sinais_de(con, cnpj, f, n, soma or 0, socios_por_nome, doadores, periodos_tac=periodos)
+        with con:
             if cnpj and not sinais:      # linha-âncora: o CNPJ resolvido fica materializado mesmo sem sinal
-                con.execute("INSERT INTO doerj_tac_sinal VALUES (?,?,?,?,?,?,?,?,?)",
+                con.execute("INSERT INTO doerj_tac_sinal_novo VALUES (?,?,?,?,?,?,?,?,?)",
                             (f, cnpj, n, soma, "sem_sinal", "⚪", "nenhum cruzamento positivo — não é atestado", "{}", agora))
             for s in sinais:
-                con.execute("INSERT INTO doerj_tac_sinal VALUES (?,?,?,?,?,?,?,?,?)",
+                con.execute("INSERT INTO doerj_tac_sinal_novo VALUES (?,?,?,?,?,?,?,?,?)",
                             (f, cnpj, n, soma, s["sinal"], s["grau"], s["detalhe"], json.dumps(s["evidencia"], ensure_ascii=False), agora))
                 n_sin += 1
                 por_sinal[s["sinal"]] += 1
             if not cnpj:
-                con.execute("INSERT INTO doerj_tac_sinal VALUES (?,?,?,?,?,?,?,?,?)",
+                con.execute("INSERT INTO doerj_tac_sinal_novo VALUES (?,?,?,?,?,?,?,?,?)",
                             (f, None, n, soma, "cnpj_nao_localizado", "⚪", "nome não casou em contratos_tcerj nem socios_fornecedor — sem cruzamento possível",
                              "{}", agora))
+    with con:
+        con.executescript("""
+            DROP TABLE IF EXISTS doerj_tac_sinal;
+            ALTER TABLE doerj_tac_sinal_novo RENAME TO doerj_tac_sinal;
+            CREATE INDEX IF NOT EXISTS ix_dts_forn ON doerj_tac_sinal(fornecedor);
+        """)
     con.close()
     return {"fornecedores": len(forns), "min_tac": min_tac, "cnpj_resolvido": len(forns) - nao_res, "sinais": n_sin, "por_sinal": dict(por_sinal)}
 
