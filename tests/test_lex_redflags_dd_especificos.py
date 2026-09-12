@@ -41,3 +41,15 @@ def test_lista_suja_grave_4_so_com_pagamento_depois_da_inclusao():
     a2 = achado_lista_suja(e2)
     assert a2["grav"] == 4 and "DEPOIS da inclusão" in a2["obs"] and "150.000,00" in a2["obs"]
     assert _RF["DD/LISTA-SUJA"][0].startswith("Empregador no Cadastro")
+
+
+def test_emergencia_siga_como_regime():
+    from compliance_agent.lex_conflito import achado_emergencia_siga
+    assert achado_emergencia_siga(None) is None
+    base = {"n": 42, "emergencia": 31, "competitivas": 1, "valor": 488e6, "valor_emergencia": 235e6, "n_orgaos": 1, "orgaos": "FSERJ"}
+    a = achado_emergencia_siga(base)
+    assert a["rf"] == "DD/EMERGENCIA-SIGA" and a["grav"] == 4 and "31 de 42" in a["obs"]
+    assert achado_emergencia_siga(dict(base, n=8, emergencia=4))["grav"] == 3
+    assert achado_emergencia_siga(dict(base, n=8, emergencia=3)) is None
+    assert achado_emergencia_siga(dict(base, n=4, emergencia=4)) is None
+    assert _RF["DD/EMERGENCIA-SIGA"][0].startswith("Emergência como regime")

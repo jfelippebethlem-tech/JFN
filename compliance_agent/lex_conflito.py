@@ -442,3 +442,40 @@ def achado_lista_suja(e: dict | None) -> dict | None:
                      ""
                      if pago > 0 else "Sem pagamento estadual após a inclusão nos dados do SIAFE — monitorar. ") +
                     "Fonte pública do MTE; conferir vigência (a lista é semestral).")}
+
+
+# ── Portal SIGA: contratações do Estado por CNPJ (tools/siga_contratos) — 12/09/2026 ─────────────
+def siga_do_fornecedor(cnpj: str | None) -> dict | None:
+    dig = _digits(cnpj or "")
+    _DB = _resolver_db()
+    if len(dig) != 14 or not _DB.exists():
+        return None
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        r = con.execute("SELECT count(*), sum(modalidade LIKE 'Dispensa - Especial%'), sum(modalidade LIKE 'Pregão%' OR modalidade LIKE 'Concorr%'), "
+                        "round(sum(valor),2), round(sum(CASE WHEN modalidade LIKE 'Dispensa - Especial%' THEN valor END),2), count(DISTINCT orgao), "
+                        "group_concat(DISTINCT orgao) FROM siga_contratos WHERE cnpj=?", (dig,)).fetchone()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    if not r or not r[0]:
+        return None
+    return {"n": r[0], "emergencia": r[1] or 0, "competitivas": r[2] or 0, "valor": r[3] or 0.0, "valor_emergencia": r[4] or 0.0,
+            "n_orgaos": r[5], "orgaos": (r[6] or "")[:200]}
+
+
+def achado_emergencia_siga(sg: dict | None) -> dict | None:
+    """Emergência como regime: 5+ contratações e metade ou mais por 'Dispensa - Especial' (grav 3; 10+ e 2/3 = grav 4)."""
+    if not sg or sg["n"] < 5:
+        return None
+    share = sg["emergencia"] / sg["n"]
+    if share < 0.5:
+        return None
+    grav = 4 if (sg["emergencia"] >= 10 and share >= 2 / 3) else 3
+    return {"rf": "DD/EMERGENCIA-SIGA", "grav": grav,
+            "obs": (f"**{sg['emergencia']} de {sg['n']} contratações no Portal SIGA são 'Dispensa - Especial' (emergência)**, "
+                    f"R$ {_moeda(sg['valor_emergencia'])} de R$ {_moeda(sg['valor'])}; {sg['competitivas']} por pregão/concorrência; "
+                    f"{sg['n_orgaos']} órgão(s): {sg['orgaos'][:120]}. A emergência (art. 24, IV Lei 8.666 / art. 75, VIII Lei 14.133) "
+                    "é excepcional e não pode decorrer de falta de planejamento (art. 75, §6º, Lei 14.133): "
+                    "como regime, é contratação direta habitual a apurar — indício, não acusação.")}

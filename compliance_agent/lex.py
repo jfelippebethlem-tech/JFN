@@ -274,6 +274,15 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                 ach_estrutural.append(_ach)
         except (ImportError, sqlite3.Error) as exc:
             logger.debug("lista_suja_mte indisponível para %s: %s", cnpj, exc)
+        # Portal SIGA: emergência como regime (tools/siga_contratos). Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_emergencia_siga, siga_do_fornecedor
+            _sg = siga_do_fornecedor(cnpj)
+            investigacao["siga"] = _sg
+            if (_ach := achado_emergencia_siga(_sg)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("siga_contratos indisponível para %s: %s", cnpj, exc)
     except Exception:
         investigacao = {}
 

@@ -240,6 +240,19 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
                         "detalhe": "; ".join(f"{s[:40]} também em {len(o)} outro(s) fornecedor(es) de TAC" for s, o in list(comuns.items())[:3]),
                         "evidencia": {"socios": {s: sorted(o) for s, o in comuns.items()}}})
     if cnpj or toks:
+        # Portal SIGA (tools/siga_contratos): emergência como REGIME — "Dispensa - Especial" é o art. 24 IV/75 VIII
+        try:
+            sg = con.execute("SELECT count(*), sum(modalidade LIKE 'Dispensa - Especial%'), sum(modalidade LIKE 'Pregão%' OR modalidade LIKE 'Concorr%'), "
+                             "round(sum(CASE WHEN modalidade LIKE 'Dispensa - Especial%' THEN valor END),2), count(DISTINCT orgao) FROM siga_contratos WHERE cnpj=?",
+                             (cnpj,)).fetchone()
+        except sqlite3.OperationalError:
+            sg = None
+        if sg and sg[0] and (sg[1] or 0) >= 3:
+            share = (sg[1] or 0) / sg[0]
+            out.append({"sinal": "emergencia_siga", "grau": "🔴" if (sg[1] >= 10 and share >= 0.5) else "🟡",
+                        "detalhe": f"{sg[1]} de {sg[0]} contratações no SIGA são 'Dispensa - Especial' (emergência) = {moeda(sg[3] or 0)}, "
+                                   f"{sg[2] or 0} por pregão/concorrência, {sg[4]} órgão(s)",
+                        "evidencia": {"n": sg[0], "emergencia": sg[1], "competitivas": sg[2], "valor_emergencia": sg[3], "orgaos": sg[4]}})
         # Cadastro de Empregadores do MTE (trabalho escravo) — fonte pública, tools/lista_suja_mte
         try:
             ls = con.execute("SELECT nome, inclusao FROM lista_suja_mte WHERE cnpj=? OR substr(cnpj,1,8)=? LIMIT 1",
