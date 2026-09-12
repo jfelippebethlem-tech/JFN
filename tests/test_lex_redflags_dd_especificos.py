@@ -53,3 +53,18 @@ def test_emergencia_siga_como_regime():
     assert achado_emergencia_siga(dict(base, n=8, emergencia=3)) is None
     assert achado_emergencia_siga(dict(base, n=4, emergencia=4)) is None
     assert _RF["DD/EMERGENCIA-SIGA"][0].startswith("Emergência como regime")
+
+
+def test_sancao_siga_alcance_e_grau():
+    from compliance_agent.lex_conflito import _alcance_sancao, achado_sancao_siga
+    assert _alcance_sancao("Lei Federal Nº 8.666/93, art. 87, Inc. IV. (Inidoneidade)")[1] == 4
+    assert _alcance_sancao("Lei Federal Nº 10.520/02, art. 7º. (Impedimento)")[1] == 4
+    assert _alcance_sancao("Lei Federal Nº 8.666/93, art. 87, Inc. III. (Suspensão)")[1] == 3
+    assert _alcance_sancao("Lei Federal Nº 14.133/21, art. 156, Inc. I (Advertência)")[1] == 1
+    base = {"nome": "X", "enquadramento": "Lei Federal Nº 8.666/93, art. 87, Inc. IV.", "alcance": "inidoneidade/proibição de contratar", "peso": 4,
+            "desde": "17/05/2022", "orgao": "TCE", "status": "Vigente", "obs_depois": 1, "pago_depois": 5245646.5}
+    a = achado_sancao_siga([base])
+    assert a["rf"] == "DD/SANCAO-SIGA" and a["grav"] == 4 and "5.245.646,50" in a["obs"]
+    assert achado_sancao_siga([dict(base, pago_depois=0.0, obs_depois=0)])["grav"] == 3
+    assert achado_sancao_siga([dict(base, peso=1, status="Vigente")]) is None
+    assert achado_sancao_siga([dict(base, status="Decorrido")]) is None

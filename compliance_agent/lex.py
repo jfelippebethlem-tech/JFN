@@ -283,6 +283,15 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                 ach_estrutural.append(_ach)
         except (ImportError, sqlite3.Error) as exc:
             logger.debug("siga_contratos indisponível para %s: %s", cnpj, exc)
+        # Registro estadual de sanções (Portal SIGA, tools/siga_sancoes). Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_sancao_siga, sancoes_siga
+            _sc = sancoes_siga(cnpj)
+            investigacao["sancoes_siga"] = _sc
+            if (_ach := achado_sancao_siga(_sc)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("siga_sancoes indisponível para %s: %s", cnpj, exc)
     except Exception:
         investigacao = {}
 

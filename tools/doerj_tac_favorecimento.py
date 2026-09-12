@@ -299,6 +299,17 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
                         "detalhe": f"o objeto do TAC ({' '.join(pc['chaves'])}) consta no PCA {pc['ano']} da UG {pc['ug']}: {pc['itens']} item(ns) = "
                                    f"{moeda(pc['valor'])} (ex.: {pc['exemplo'][:80]}) — planejado, orçado e pago sem licitação",
                         "evidencia": pc})
+        # registro ESTADUAL de sanções (Portal SIGA, tools/siga_sancoes): vigente = 🔴 se veda contratar
+        try:
+            sc = con.execute("SELECT enquadramento, data_efetivacao, orgao_apenador FROM siga_sancoes WHERE doc=? AND status='Vigente' "
+                             "ORDER BY data_efetivacao DESC LIMIT 3", (cnpj,)).fetchall()
+        except sqlite3.OperationalError:
+            sc = []
+        if sc:
+            veda = any(re.search(r"INC\. IV|10\.520|156, INC\. III|8\.429|IMPEDI|INIDON", (e or "").upper()) for e, _, _ in sc)
+            out.append({"sinal": "sancao_siga", "grau": "🔴" if veda else "🟡",
+                        "detalhe": "; ".join(f"{e[:55]} ({o[:30]}, desde {d})" for e, d, o in sc),
+                        "evidencia": {"sancoes": [list(x) for x in sc]}})
         # Cadastro de Empregadores do MTE (trabalho escravo) — fonte pública, tools/lista_suja_mte
         try:
             ls = con.execute("SELECT nome, inclusao FROM lista_suja_mte WHERE cnpj=? OR substr(cnpj,1,8)=? LIMIT 1",

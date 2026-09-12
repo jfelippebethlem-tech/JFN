@@ -479,3 +479,57 @@ def achado_emergencia_siga(sg: dict | None) -> dict | None:
                     f"{sg['n_orgaos']} órgão(s): {sg['orgaos'][:120]}. A emergência (art. 24, IV Lei 8.666 / art. 75, VIII Lei 14.133) "
                     "é excepcional e não pode decorrer de falta de planejamento (art. 75, §6º, Lei 14.133): "
                     "como regime, é contratação direta habitual a apurar — indício, não acusação.")}
+
+
+# ── Registro ESTADUAL de sanções (Portal SIGA, tools/siga_sancoes) — 12/09/2026 ─────────────────
+def _alcance_sancao(enq: str) -> tuple[str, int]:
+    """(rótulo, peso): inidoneidade (8.666 art. 87 IV / 14.133 art. 156 IV / 8.429 art. 12) e impedimento (10.520 art. 7 /
+    14.133 art. 156 III) vedam contratar; suspensão (8.666 art. 87 III) vale no órgão; advertência/multa (156 I-II, 87 I-II)
+    não impedem — o SIGA registra tudo com o mesmo status 'Vigente'."""
+    e = (enq or "").upper()
+    if "INC. IV" in e and "8.666" in e or "156, INC. IV" in e or "8.429" in e or "INIDON" in e:
+        return "inidoneidade/proibição de contratar", 4
+    if "10.520" in e or "156, INC. III" in e or "IMPEDI" in e:
+        return "impedimento de licitar e contratar", 4
+    if "INC. III" in e and "8.666" in e or "SUSPENS" in e:
+        return "suspensão temporária (no órgão apenador)", 3
+    return "advertência/multa", 1
+
+
+def sancoes_siga(cnpj: str | None) -> list[dict]:
+    dig = _digits(cnpj or "")
+    _DB = _resolver_db()
+    if len(dig) != 14 or not _DB.exists():
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        rows = con.execute("SELECT nome, enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes WHERE doc=? ORDER BY status='Vigente' DESC, data_efetivacao DESC",
+                           (dig,)).fetchall()
+        out = []
+        for nome, enq, dt, org, st in rows:
+            iso = f"{dt[6:10]}-{dt[3:5]}-{dt[0:2]}" if len(dt or "") == 10 else "9999"
+            dep = con.execute("SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND "
+                              "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) >= ?", (dig, iso)).fetchone()
+            alc, peso = _alcance_sancao(enq)
+            out.append({"nome": nome, "enquadramento": enq, "alcance": alc, "peso": peso, "desde": dt, "orgao": org, "status": st,
+                        "obs_depois": dep[0] or 0, "pago_depois": dep[1] or 0.0})
+        return out
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+
+
+def achado_sancao_siga(sancoes: list[dict]) -> dict | None:
+    vig = [s for s in sancoes if s["status"] == "Vigente" and s["peso"] >= 3]
+    if not vig:
+        return None
+    pior = max(vig, key=lambda s: (s["peso"], s["pago_depois"]))
+    grav = 4 if (pior["peso"] == 4 and pior["pago_depois"] > 0) else 3
+    linhas = "; ".join(f"{s['alcance']} — {s['enquadramento'][:60]} ({s['orgao'][:40]}, desde {s['desde']})" for s in vig[:3])
+    return {"rf": "DD/SANCAO-SIGA", "grav": grav,
+            "obs": (f"**Sanção VIGENTE no registro estadual (Portal SIGA):** {linhas}. " +
+                    (f"O SIAFE registra {pior['obs_depois']} OB(s) = R$ {_moeda(pior['pago_depois'])} a este CNPJ DEPOIS da efetivação — "
+                     "pagamento de contrato anterior é lícito; contratação NOVA na vigência não é (art. 156 §§ Lei 14.133; art. 87 Lei 8.666). "
+                     "Conferir o objeto/processo das OBs. " if pior["pago_depois"] > 0 else "Sem OB após a efetivação nos dados do SIAFE. ") +
+                    "Fonte pública do SIGA; suspensão vale no órgão apenador, inidoneidade/impedimento em toda a Administração.")}

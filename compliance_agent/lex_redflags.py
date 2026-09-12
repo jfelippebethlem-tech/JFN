@@ -22,6 +22,8 @@ _RF = {
                       "Portaria MTE 671/2021 (Cadastro de Empregadores); art. 7º, XXXIII CF/88; art. 14, IV e art. 156 Lei 14.133/2021 (idoneidade/sanções)"),
     "DD/EMERGENCIA-SIGA": ("Emergência como regime de contratação (Portal SIGA)",
                            "Art. 75, VIII e §6º Lei 14.133/2021; art. 24, IV Lei 8.666/93 (fatos até 2023); vedação de emergência por falta de planejamento"),
+    "DD/SANCAO-SIGA": ("Sanção administrativa/judicial VIGENTE no registro estadual (Portal SIGA)",
+                       "Art. 156, III-IV e §§ Lei 14.133/2021; art. 87, III-IV Lei 8.666/93; art. 7º Lei 10.520/02; art. 12 Lei 8.429/92"),
     "DD/SOCIO-AGENTE": ("Sócio da contratada é agente público (folha pública × QSA)",
                         "Lei 14.133/2021 art. 14, IV e art. 9º, §1º; Lei 8.429/92 arts. 9º e 11 (dolo específico, pós-14.230)"),
     "R2": ("Fracionamento de despesa", "Art. 75, §1º, I e II, e §2º Lei 14.133/2021; Art. 23 §§1º-5º Lei 8.666/93 (revogada — fatos até 2023)"),
@@ -219,6 +221,8 @@ _EXCULPATORIO = {
                      "estabelecimento distinto do que contratou com o Estado; a lista é semestral e comporta exclusão.",
     "DD/EMERGENCIA-SIGA": "Serviços essenciais de saúde admitem emergência sucessiva quando a licitação regular foi tentada e "
                           "frustrou-se (deserta/fracassada) ou quando há calamidade declarada; o SIGA não registra o motivo.",
+    "DD/SANCAO-SIGA": "A sanção pode estar suspensa por liminar, limitada ao órgão apenador (suspensão do art. 87, III) ou ter "
+                      "sido cumprida sem baixa no registro; pagamento após a data pode ser de contrato anterior à sanção.",
     "DD/SOCIO-AGENTE": "O casamento é por NOME (homônimo possível), o vínculo pode ter cessado antes do ato, e agente de "
                        "OUTRO ente não é impedimento por si (o art. 14, IV alcança o próprio contratante).",
 }
@@ -292,6 +296,7 @@ _MOTIVO_IMPROBIDADE_RF = {
     "DD/SOCIO-AGENTE": "vínculo de sócio da contratada com agente público (art. 14, IV Lei 14.133)",
     "DD/LISTA-SUJA": "contratação de empregador do Cadastro do MTE (trabalho escravo)",
     "DD/EMERGENCIA-SIGA": "contratação direta emergencial habitual (sem planejamento)",
+    "DD/SANCAO-SIGA": "contratação/pagamento a sancionado com sanção vigente",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
 _RF_DESTINATARIO = {
@@ -315,6 +320,7 @@ _RF_DESTINATARIO = {
     "DD/SOCIO-AGENTE": ("improbidade", "par"),
     "DD/LISTA-SUJA": ("par", "improbidade"),
     "DD/EMERGENCIA-SIGA": ("debito", "improbidade"),
+    "DD/SANCAO-SIGA": ("par", "improbidade"),
 }
 
 
