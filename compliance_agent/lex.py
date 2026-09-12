@@ -265,6 +265,15 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                 ach_estrutural.append(_ach)
         except (ImportError, sqlite3.Error) as exc:
             logger.debug("doerj_tac indisponível para %s: %s", cnpj, exc)
+        # Cadastro de Empregadores do MTE (trabalho escravo) — fonte pública, sem API. Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_lista_suja, lista_suja
+            _ls = lista_suja(cnpj)
+            investigacao["lista_suja_mte"] = _ls
+            if (_ach := achado_lista_suja(_ls)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("lista_suja_mte indisponível para %s: %s", cnpj, exc)
     except Exception:
         investigacao = {}
 

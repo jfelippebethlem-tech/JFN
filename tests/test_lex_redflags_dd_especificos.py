@@ -29,3 +29,15 @@ def test_tac_em_serie_e_gestao_nao_dolo_por_si_e_socio_agente_pede_apurar_dolo()
     assert _elemento_subjetivo({"rf": "DD/TAC-RECORRENTE", "obs": "8 TACs"})[0] == "irregularidade / erro de gestão"
     assert _elemento_subjetivo({"rf": "DD/TAC-RECORRENTE", "obs": "8 TACs; sócio em comum com a concorrente"})[0] == "dolo a apurar"
     assert _elemento_subjetivo({"rf": "DD/SOCIO-AGENTE", "obs": "sócia é diretora da UPA"})[0] == "dolo a apurar"
+
+
+def test_lista_suja_grave_4_so_com_pagamento_depois_da_inclusao():
+    from compliance_agent.lex_conflito import achado_lista_suja
+    assert achado_lista_suja(None) is None
+    e = {"cnpj": "00638595000105", "nome": "VIABRAS ENGENHARIA EIRELI", "inclusao": "06/04/2026", "obs_depois": 0, "pago_depois": 0.0}
+    a = achado_lista_suja(e)
+    assert a["rf"] == "DD/LISTA-SUJA" and a["grav"] == 2 and "monitorar" in a["obs"]
+    e2 = dict(e, obs_depois=3, pago_depois=150000.0)
+    a2 = achado_lista_suja(e2)
+    assert a2["grav"] == 4 and "DEPOIS da inclusão" in a2["obs"] and "150.000,00" in a2["obs"]
+    assert _RF["DD/LISTA-SUJA"][0].startswith("Empregador no Cadastro")

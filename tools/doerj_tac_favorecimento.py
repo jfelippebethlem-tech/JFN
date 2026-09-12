@@ -137,6 +137,35 @@ def contrato_vencido_para_tac(contratos: list[tuple[str, str, float]], periodos:
     return {"casos": casos, "grau": "🔴" if sem_vigente else "🟡", "n": len(casos), "sem_vigente": sem_vigente}
 
 
+MIDIA_CACHE_DIAS = 7
+
+
+def _midia_adversa_cache(con: sqlite3.Connection, alvo: str) -> dict | None:
+    """Varredura de mídia adversa com cache em `midia_adversa_cache` (alvo → json, 7 dias). A fonte é
+    externa e lenta (~20 s); sem cache o cruzador levaria 50 min só nisso."""
+    from datetime import datetime, timedelta, timezone
+    con.execute("CREATE TABLE IF NOT EXISTS midia_adversa_cache (alvo TEXT PRIMARY KEY, json TEXT, em TEXT)")
+    row = con.execute("SELECT json, em FROM midia_adversa_cache WHERE alvo=?", (alvo,)).fetchone()
+    agora = datetime.now(timezone.utc)
+    if row:
+        try:
+            if agora - datetime.fromisoformat(row[1]) < timedelta(days=MIDIA_CACHE_DIAS):
+                return json.loads(row[0])
+        except ValueError:
+            pass
+    try:
+        from compliance_agent.enrich.midia_adversa import varrer
+        r = varrer(alvo, max_artigos=12)
+    except Exception:  # noqa: BLE001 — fonte externa: indisponível não derruba o cruzamento
+        return None
+    if not r.get("ok"):
+        return None
+    with con:
+        con.execute("INSERT OR REPLACE INTO midia_adversa_cache VALUES (?,?,?)",
+                    (alvo, json.dumps(r, ensure_ascii=False), agora.isoformat(timespec="seconds")))
+    return r
+
+
 def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac: int, soma_tac: float,
               socios_por_nome: dict[str, set[str]], doadores: dict[str, list[tuple]] | None = None,
               periodos_tac: list[tuple[str, str]] | None = None) -> list[dict]:
@@ -210,6 +239,25 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
             out.append({"sinal": "socio_comum", "grau": "🟡",
                         "detalhe": "; ".join(f"{s[:40]} também em {len(o)} outro(s) fornecedor(es) de TAC" for s, o in list(comuns.items())[:3]),
                         "evidencia": {"socios": {s: sorted(o) for s, o in comuns.items()}}})
+    if cnpj or toks:
+        # Cadastro de Empregadores do MTE (trabalho escravo) — fonte pública, tools/lista_suja_mte
+        try:
+            ls = con.execute("SELECT nome, inclusao FROM lista_suja_mte WHERE cnpj=? OR substr(cnpj,1,8)=? LIMIT 1",
+                             (cnpj or "", (cnpj or "")[:8] or "x")).fetchone()
+        except sqlite3.OperationalError:
+            ls = None
+        if ls:
+            out.append({"sinal": "lista_suja_mte", "grau": "🔴",
+                        "detalhe": f"consta no Cadastro de Empregadores do MTE (trabalho análogo ao de escravo): {ls[0][:60]}, inclusão {ls[1]}",
+                        "evidencia": {"nome": ls[0], "inclusao": ls[1]}})
+        # mídia adversa (GDELT + Google News RSS, sem chave) com cache de 7 dias por alvo — 20 s por consulta
+        ma = _midia_adversa_cache(con, fornecedor)
+        if ma and ma.get("n_adversos"):
+            adv = ma["adversos"][:3]
+            out.append({"sinal": "midia_adversa", "grau": "🟡",
+                        "detalhe": f"{ma['n_adversos']} notícia(s) com termo de risco: " +
+                                   "; ".join(f"{a.get('titulo','')[:70]} ({(a.get('data') or '')[:16]})" for a in adv),
+                        "evidencia": {"adversos": adv, "fonte": ma.get("_fonte")}})
     if toks:
         e = con.execute(f"SELECT count(*), round(sum(valor),2), min(ano_processo), max(ano_processo) FROM compras_diretas_tcerj "
                         f"WHERE {_like('fornecedor', toks)} AND (afastamento LIKE '%merg%' OR enquadramento_legal LIKE '%VIII%' "

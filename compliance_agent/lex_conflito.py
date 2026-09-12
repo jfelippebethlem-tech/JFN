@@ -397,3 +397,48 @@ def achado_tac_recorrente(tacs: list[dict], sinais: list[dict] | None = None) ->
                     "serviço contínuo sem licitação e exige, a cada termo, a apuração de responsabilidade pela "
                     "lacuna (art. 4º, III). Conferir nos autos se ela existe; indício, não acusação."
                     + (" Cruzamentos: " + "; ".join(f"{x['grau']} {x['sinal']} — {x['detalhe'][:160]}" for x in sinais[:3]) if sinais else ""))}
+
+
+# ── Cadastro de Empregadores (trabalho escravo, MTE) — 12/09/2026 ──────────────────────────────
+def lista_suja(cnpj: str | None) -> dict | None:
+    """Entrada do CNPJ (ou da raiz) no Cadastro de Empregadores do MTE (`lista_suja_mte`) + pagamentos do
+    Estado (SIAFE) DEPOIS da inclusão. None quando não consta ou a base não existe."""
+    dig = _digits(cnpj or "")
+    if len(dig) != 14:
+        return None
+    _DB = _resolver_db()
+    if not _DB.exists():
+        return None
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        row = con.execute("SELECT cnpj, nome, inclusao FROM lista_suja_mte WHERE cnpj=? OR substr(cnpj,1,8)=? LIMIT 1",
+                          (dig, dig[:8])).fetchone()
+        if not row:
+            return None
+        inc = row[2] or ""
+        iso = f"{inc[6:10]}-{inc[3:5]}-{inc[0:2]}" if len(inc) == 10 else ""
+        # data_emissao do SIAFE é TEXTO DD/MM/AAAA: converter antes de comparar
+        depois = con.execute(
+            "SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND "
+            "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) >= ?",
+            (dig, iso or "9999")).fetchone()
+    except sqlite3.Error as exc:
+        logger.debug("lista_suja_mte indisponível: %s", exc)
+        return None
+    finally:
+        con.close()
+    return {"cnpj": row[0], "nome": row[1], "inclusao": inc, "obs_depois": depois[0] or 0, "pago_depois": depois[1] or 0.0}
+
+
+def achado_lista_suja(e: dict | None) -> dict | None:
+    if not e:
+        return None
+    pago = e.get("pago_depois") or 0
+    grav = 4 if pago > 0 else 2
+    return {"rf": "DD/LISTA-SUJA", "grav": grav,
+            "obs": (f"**Consta no Cadastro de Empregadores do MTE (trabalho análogo ao de escravo)** — {e['nome']}, "
+                    f"inclusão em {e['inclusao'] or '?'}. " +
+                    (f"O Estado pagou {e['obs_depois']} OB(s) = R$ {_moeda(pago)} DEPOIS da inclusão — vedação de contratar "
+                     ""
+                     if pago > 0 else "Sem pagamento estadual após a inclusão nos dados do SIAFE — monitorar. ") +
+                    "Fonte pública do MTE; conferir vigência (a lista é semestral).")}

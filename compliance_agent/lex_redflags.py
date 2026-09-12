@@ -18,6 +18,8 @@ _RF = {
                           "Decreto RJ 47.283/2020 (art. 4º, III — apuração de responsabilidade a cada termo); Lei 14.133/2021 arts. 147-149 (nulidade e dever de indenizar) e 72-75 (contratação direta exige processo); Lei 8.666/93 art. 59, p. ún. (fatos até 2023)"),
     "DD/RF-TAC": ("Pagamento por Termo de Ajuste de Contas (sinal nas OBs)",
                   "Decreto RJ 47.283/2020; Lei 14.133/2021 arts. 147-149"),
+    "DD/LISTA-SUJA": ("Empregador no Cadastro do MTE por trabalho análogo ao de escravo",
+                      "Portaria MTE 671/2021 (Cadastro de Empregadores); art. 7º, XXXIII CF/88; art. 14, IV e art. 156 Lei 14.133/2021 (idoneidade/sanções)"),
     "DD/SOCIO-AGENTE": ("Sócio da contratada é agente público (folha pública × QSA)",
                         "Lei 14.133/2021 art. 14, IV e art. 9º, §1º; Lei 8.429/92 arts. 9º e 11 (dolo específico, pós-14.230)"),
     "R2": ("Fracionamento de despesa", "Art. 75, §1º, I e II, e §2º Lei 14.133/2021; Art. 23 §§1º-5º Lei 8.666/93 (revogada — fatos até 2023)"),
@@ -211,6 +213,8 @@ _EXCULPATORIO = {
                          "a nova licitação atrasou; um ou dois termos podem refletir transição contratual regular, e a "
                          "responsabilidade pela lacuna pode ter sido apurada em processo apartado.",
     "DD/RF-TAC": "Um ajuste de contas isolado pode fechar uma transição contratual regular, com serviço comprovado.",
+    "DD/LISTA-SUJA": "A inclusão pode ser posterior aos pagamentos, estar suspensa por decisão judicial ou referir-se a "
+                     "estabelecimento distinto do que contratou com o Estado; a lista é semestral e comporta exclusão.",
     "DD/SOCIO-AGENTE": "O casamento é por NOME (homônimo possível), o vínculo pode ter cessado antes do ato, e agente de "
                        "OUTRO ente não é impedimento por si (o art. 14, IV alcança o próprio contratante).",
 }
@@ -282,6 +286,7 @@ _MOTIVO_IMPROBIDADE_RF = {
     "DD/TAC-RECORRENTE": "serviço contínuo sem contrato (TAC em série) e omissão na apuração de responsabilidade",
     "DD/RF-TAC": "pagamento sem cobertura contratual (TAC)",
     "DD/SOCIO-AGENTE": "vínculo de sócio da contratada com agente público (art. 14, IV Lei 14.133)",
+    "DD/LISTA-SUJA": "contratação de empregador do Cadastro do MTE (trabalho escravo)",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
 _RF_DESTINATARIO = {
@@ -303,6 +308,7 @@ _RF_DESTINATARIO = {
     "DD/TAC-RECORRENTE": ("debito", "improbidade"),   # dano/gestão (TCE-RJ) + omissão do gestor (MP)
     "DD/RF-TAC": ("debito",),
     "DD/SOCIO-AGENTE": ("improbidade", "par"),
+    "DD/LISTA-SUJA": ("par", "improbidade"),
 }
 
 
