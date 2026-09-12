@@ -8265,6 +8265,29 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Busque um fornecedor na aba <b>Buscar</b> (fonte DOERJ) para ler os extratos.</div>`;
     return h;
   }
+  async function renderImprensa() {
+    const d = await J("/api/imprensa/orgaos?dias=30&so_adversas=0&limite=200");
+    if (!d || d.erro || d.ok === false) return cover("estado", "Imprensa por órgão", "O que a imprensa diz dos órgãos", "📰") + card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
+    let h = cover(
+      "estado",
+      "Imprensa por órgão",
+      "Google News (RSS público, sem chave) por órgão do Estado e da Prefeitura, últimos 30 dias. <b>Adversa</b> = título com termo de risco (fraude, operação, TCE, MP, propina…). Cobertura jornalística é <b>indício a confirmar na fonte</b>, nunca prova.",
+      "📰"
+    );
+    if (d.aviso) return h + card(`<div class="note">${esc(d.aviso)}</div>`);
+    const adv = (d.itens || []).filter((x) => x.adversa), tot = (d.itens || []).length;
+    h += `<div class="grid">
+    ${kpi(fmtN(tot), "Notícias (30 dias)", null, null, { sobre: "Itens do RSS do Google News para as consultas por órgão (tools/noticias_orgaos, diário), deduplicados por url." })}
+    ${kpi(fmtN(adv.length), "Com termo de risco", "var(--rose)", null, { sobre: "Títulos que casam termo de risco (fraude, operação, investigação, TCE, Ministério Público, propina, improbidade, punição…). Indício, não prova; homônimos existem." })}
+    ${kpi(fmtN((d.por_orgao || []).length), "Órgãos acompanhados", null, null, { sobre: "Consultas fixas em tools/noticias_orgaos.ORGAOS — FSERJ, SES, SEEDUC, CEDAE, DETRAN, PM, Bombeiros, TCE-RJ, ITERJ, Leão XIII, UERJ, Prefeitura, RioSaúde." })}
+  </div>`;
+    h += sec("Por órgão");
+    h += `<div class="grid">` + (d.por_orgao || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} notícias · <b>${fmtN(o.adversas || 0)}</b> com termo de risco</div>`)).join("") + `</div>`;
+    h += sec("Adversas mais recentes", adv.length);
+    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>data</th><th>órgão</th><th>título</th><th>termos</th><th>fonte</th></tr></thead><tbody>` + adv.slice(0, 80).map((x) => `<tr><td>${esc((x.data || "").slice(0, 10))}</td><td>${esc(x.orgao)}</td><td><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.titulo)}</a></td><td>${esc(x.termos || "")}</td><td>${esc(x.fonte || "")}</td></tr>`).join("") + `</tbody></table></div>`;
+    h += `<div class="dim" style="margin-top:8px">Fonte: news.google.com/rss (pt-BR) → noticias_orgaos. Coletado em ${esc((d.coletado_em || "").slice(0, 16))}.</div>`;
+    return h;
+  }
 
   // static/js/src/entrada.js
   window.__jfnBootReadyState = document.readyState;
@@ -8299,6 +8322,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       { id: "e_pericias", ic: "⚖️", tl: "Perícias", render: renderPericias },
       { id: "e_sanc", ic: "🚫", tl: "Sancionadas", render: () => renderSancionadas("estado") },
       { id: "e_tac", ic: "🧾", tl: "TAC recorrente", render: renderTacRecorrente },
+      { id: "e_imprensa", ic: "📰", tl: "Imprensa por órgão", render: renderImprensa },
       { id: "e_lentes", ic: "🔬", tl: "Lentes", render: renderLentes },
       { id: "e_integras", ic: "📄", tl: "Íntegras", render: renderIntegras },
       { id: "e_frac", ic: "§frac", tl: "Fracion.", render: renderFracionamento },

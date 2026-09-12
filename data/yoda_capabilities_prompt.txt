@@ -5,6 +5,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - relatorio_orgao(orgao,ug,anos) [POST /api/relatorio/orgao] — auditoria de orgao/UG/secretaria
 - listar_ugs(filtro,limite) [GET /api/ugs] — '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo
 - anomalias(ug,cnpj,exercicio) [GET /api/anomalias] — triagem de risco; 'algo estranho em X'
+- imprensa_orgaos(dias,so_adversas,limite) [GET /api/imprensa/orgaos] — 'o que saiu na imprensa sobre a Fundacao Saude', 'noticias da SEEDUC', 'escandalo', 'operacao'
 - tac_recorrente(top) [GET /api/doerj/tac_recorrente] — 'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao'
 - lentes_cruzadas(lente,top) [GET /api/lentes] — priorizar fila de apuracao; 'quais empresas acendem em mais de um detector'
 - lentes_municipais(esfera,lente,top) [GET /api/lentes] — risco na contratacao MUNICIPAL do Rio; 'o que a Prefeitura pagou fora da curva'; competencia TCM-RJ

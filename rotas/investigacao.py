@@ -1681,6 +1681,30 @@ def api_doerj_tac_recorrente(top: int = 20):
                                        for k in sorted({x["sinal"] for v in sinais.values() for x in v})}})
 
 
+@router.get("/api/imprensa/orgaos")
+def api_imprensa_orgaos(dias: int = 30, so_adversas: int = 1, limite: int = 120):
+    """Imprensa sobre os ÓRGÃOS do Estado/Prefeitura (Google News RSS, sem chave; tools/noticias_orgaos, diário).
+    Adversa = título com termo de risco (fraude, operação, TCE, MP…). Indício a confirmar na fonte — nunca prova."""
+    import datetime as _dt
+    con = _sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+    try:
+        try:
+            desde = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=max(1, min(int(dias or 30), 365)))).isoformat(timespec="seconds")
+            cond = " AND adversa=1" if so_adversas else ""
+            itens = [dict(zip(("orgao", "titulo", "url", "fonte", "data", "adversa", "termos"), r)) for r in con.execute(
+                f"SELECT orgao, titulo, url, fonte, data, adversa, termos FROM noticias_orgaos WHERE data >= ?{cond} ORDER BY data DESC LIMIT ?",
+                (desde, max(1, min(int(limite or 120), 500))))]
+            por_orgao = [dict(zip(("orgao", "n", "adversas"), r)) for r in con.execute(
+                "SELECT orgao, count(*), sum(adversa) FROM noticias_orgaos WHERE data >= ? GROUP BY 1 ORDER BY 3 DESC, 2 DESC", (desde,))]
+            tot = con.execute("SELECT count(*), sum(adversa), max(visto_em) FROM noticias_orgaos").fetchone()
+        except _sqlite3.OperationalError:
+            return JSONResponse({"ok": True, "aviso": "noticias_orgaos ainda não coletada", "itens": [], "por_orgao": []})
+    finally:
+        con.close()
+    return JSONResponse({"ok": True, "dias": dias, "itens": itens, "por_orgao": por_orgao, "total": tot[0], "adversas_total": tot[1] or 0,
+                         "coletado_em": tot[2]})
+
+
 @router.get("/api/intel/sancionadas_municipio")
 def api_intel_sancionadas_municipio(limite: int = 60):
     """Empresas com sanção IMPEDITIVA contratadas pela PREFEITURA DO RIO (pcrj_contratos fonte='pncp'),

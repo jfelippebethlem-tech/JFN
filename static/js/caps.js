@@ -216,6 +216,20 @@ const CAPS_MESTRAS = [
   "descricao": "Avaliacao 360 do PROCESSO como um todo (fases, ordem dos marcos, pericia A1-A5, detectores P/E/J/C/X, acatamento de pareceres com suficiencia do emissor, score de convergencia)"
  },
  {
+  "id": "imprensa_orgaos",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Imprensa por órgão (termos de risco)",
+  "cmd": "",
+  "exemplo": "o que saiu na imprensa sobre a Fundação Saúde?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/imprensa/orgaos",
+  "ordem": 26,
+  "descricao": "O que a imprensa diz dos ORGAOS (Google News RSS, sem chave): noticias por orgao nos ultimos N dias, marcadas quando o titulo traz termo de risco (fraude, operacao, TCE, MP, propin"
+ },
+ {
   "id": "lentes_municipais",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",

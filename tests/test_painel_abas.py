@@ -30,8 +30,10 @@ from tools.painel_abas import abas, abas_por_esfera
 # 2026-09-09: 62 → 63 e estado 17 → 18. Entrou "TAC recorrente" (`e_tac`): o coletor do DOERJ passou a
 # ler o PDF integral e `doerj_tac` mostrou 1.134 Termos de Ajuste de Contas (R$ 722,7 mi) em 69 dias —
 # pagamento sem contrato como rotina na saúde estadual; a aba expõe quem, quantas vezes e quanto.
-TOTAL = 63
-POR_ESFERA = {"inicio": 1, "estado": 18, "prefeitura": 14, "geral": 30}
+# 2026-09-12: 63 → 64 e estado 18 → 19. Entrou "Imprensa por órgão" (`e_imprensa`): Google News RSS (sem chave)
+# por órgão, classificado por termo de risco — pedido do dono por fontes online sem API.
+TOTAL = 64
+POR_ESFERA = {"inicio": 1, "estado": 19, "prefeitura": 14, "geral": 30}
 
 
 def test_le_todas_as_abas_do_painel():
