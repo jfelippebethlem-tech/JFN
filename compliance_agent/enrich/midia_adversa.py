@@ -115,7 +115,7 @@ def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int =
     headers = {"User-Agent": "JFN/2.0 (fiscalizacao publica)"}
     arts = None
     erro = ""
-    for tentativa in range(3):  # GDELT free dá 429 sob carga; backoff curto resolve a maioria
+    for tentativa in range(1):  # GDELT: UMA tentativa — o Google News RSS é a fonte que rende p/ imprensa BR; o 429 do GDELT custava 7,5 s de sono por alvo
         try:
             r = httpx.get(_GDELT, params=params, headers=headers, timeout=25)
             if r.status_code == 200:

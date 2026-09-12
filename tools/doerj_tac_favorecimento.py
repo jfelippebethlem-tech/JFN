@@ -250,8 +250,9 @@ def sinais_de(con: sqlite3.Connection, cnpj: str | None, fornecedor: str, n_tac:
             out.append({"sinal": "lista_suja_mte", "grau": "🔴",
                         "detalhe": f"consta no Cadastro de Empregadores do MTE (trabalho análogo ao de escravo): {ls[0][:60]}, inclusão {ls[1]}",
                         "evidencia": {"nome": ls[0], "inclusao": ls[1]}})
-        # mídia adversa (GDELT + Google News RSS, sem chave) com cache de 7 dias por alvo — 20 s por consulta
-        ma = _midia_adversa_cache(con, fornecedor)
+        # mídia adversa (GDELT + Google News RSS, sem chave) com cache de 7 dias por alvo — ~20 s por consulta,
+        # por isso só para quem tem 5+ TACs ou R$ 1 mi+ (o resto entra quando vira Lex/dossiê)
+        ma = _midia_adversa_cache(con, fornecedor) if (n_tac >= 5 or soma_tac >= 1_000_000) else None
         if ma and ma.get("n_adversos"):
             adv = ma["adversos"][:3]
             out.append({"sinal": "midia_adversa", "grau": "🟡",
