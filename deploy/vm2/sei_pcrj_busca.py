@@ -33,6 +33,7 @@ FILA = S.RAIZ / "fila.txt"
 ROWS = 50
 TETO_ITENS = 2000          # por termo: além disso o termo é genérico demais
 _RX_PROC = re.compile(r"^\d{6}\.\d{6}/20\d{2}-\d{2}$")
+_RX_LEGADO = re.compile(r"^[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5}(?:\.\d+)?$")
 
 DDL = """CREATE TABLE IF NOT EXISTS sei_pcrj_busca (
     termo TEXT NOT NULL, prot TEXT NOT NULL, processo TEXT, titulo TEXT, tipo_registro TEXT, unidade TEXT, data TEXT,
@@ -150,7 +151,7 @@ def gravar(con: sqlite3.Connection, termo: str, r: dict) -> int:
     if r.get("linhas"):
         regs = [t for t in (_linha(termo, ln) for ln in r["linhas"]) if t]
         con.executemany("INSERT OR IGNORE INTO sei_pcrj_busca VALUES (?,?,?,?,?,?,?,?,?,?)", regs)
-        procs = {t[2] for t in regs if t[2] and _RX_PROC.match(t[2])}
+        procs = {t[2] for t in regs if t[2] and (_RX_PROC.match(t[2]) or _RX_LEGADO.match(t[2]))}
         if procs:
             atuais = set(FILA.read_text().split()) if FILA.exists() else set()
             novos = sorted(procs - atuais)

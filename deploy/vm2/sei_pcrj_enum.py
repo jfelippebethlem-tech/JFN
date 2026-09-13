@@ -26,10 +26,11 @@ from playwright.async_api import Error as PlaywrightError
 import sei_pcrj_busca as B
 import sei_pcrj_sweep as S
 
-INICIO_SEI = date(2025, 12, 5)     # SEI!RIO substituiu o Processo.rio em 05/12/2025
+INICIO_SEI = date(2020, 1, 1)      # o Solr do SEI também indexa os processos migrados do Processo.rio (SME-PRO-2024/…): medido 2022 e 2024
 ROWS = 50
 _RX_META = re.compile(r"Unidade:\s*(\S+).*?Data:\s*(\d{2}/\d{2}/\d{4})")
-_RX_TIPO = re.compile(r"^(.*?)\s*n[ºo]\s*\d{6}\.\d{6}/20\d{2}-\d{2}")
+_RX_TIPO = re.compile(r"^(.*?)\s*n[ºo]\s*(?:\d{6}\.\d{6}/20\d{2}-\d{2}|[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5})")
+_RX_QUALQUER = re.compile(r"^(?:\d{6}\.\d{6}/20\d{2}-\d{2}|[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5}(?:\.\d+)?)$")
 
 DDL = """CREATE TABLE IF NOT EXISTS sei_pcrj_enum (
     processo TEXT PRIMARY KEY, tipo TEXT, unidade TEXT, data TEXT, dia_consulta TEXT, capturado_em TEXT);
@@ -94,7 +95,7 @@ async def enumerar_dia(page, dia: str, *, max_captchas: int = 20, diag=None) -> 
 
 def _registro(ln: dict, dia: str) -> tuple | None:
     prot = (ln.get("prot") or "").strip()
-    if not B._RX_PROC.match(prot):
+    if not _RX_QUALQUER.match(prot):
         return None
     m = _RX_META.search(ln.get("meta") or "")
     mt = _RX_TIPO.match(ln.get("titulo") or "")
