@@ -56,7 +56,7 @@ def obs_e_sei(cnpj: str) -> dict:
     out = {"n_obs": 0, "total_pago": 0.0, "sei_processos": [], "n_sei": 0}
     if not os.path.exists(_DB):
         return out
-    con = sqlite3.connect(_DB)
+    con = sqlite3.connect(_DB, timeout=120)
     try:
         # total_pago = total recebido do Estado (TODAS as UGs); só valores positivos
         # (exclui estornos/anulações de sinal negativo). Não filtra por UG aqui de propósito.
@@ -148,7 +148,7 @@ def fornecedores_no_mesmo_endereco(endereco_norm: str, cnpj_excluir: str = "") -
     if not endereco_norm or len(endereco_norm) < 12 or not os.path.exists(_DB):
         return []  # endereço vazio/curto demais não é evidência confiável de co-localização
     cnpj_excluir = _so_digitos(cnpj_excluir)
-    con = sqlite3.connect(_DB)
+    con = sqlite3.connect(_DB, timeout=120)
     con.row_factory = sqlite3.Row
     try:
         rows = con.execute(
@@ -278,7 +278,7 @@ def clusters_mesmo_endereco(min_forn: int = 2, limite: int = 50, so_com_obs: boo
     if not os.path.exists(_DB):
         out["_nota"] = "compliance.db ausente."
         return out
-    con = sqlite3.connect(_DB)
+    con = sqlite3.connect(_DB, timeout=120)
     con.row_factory = sqlite3.Row
     try:
         grupos = con.execute(
@@ -333,7 +333,7 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
     if not os.path.exists(_DB):
         out["_nota"] = "compliance.db ausente."
         return out
-    con = sqlite3.connect(_DB)
+    con = sqlite3.connect(_DB, timeout=120)
     con.row_factory = sqlite3.Row
     try:
         filtro, params = "WHERE ob.favorecido_cpf IS NOT NULL AND length(ob.favorecido_cpf)=14", []

@@ -19,6 +19,9 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `editais_direcionamento` | jfn | cli | `tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]` | PRONTO | 'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade' |
 | `emendas_coletar` | jfn | cli | `tools/emendas_coletar.py [--anos 2019 ... 2026]` | PRONTO | 'atualizar emendas', 'coletar emendas do deputado X / destino Y' |
 | `emendas_pericia` | jfn | cli | `tools/emendas_pericia.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia/analise das emendas', 'quais emendas suspeitas' |
+| `imprensa_orgaos` | jfn | http | `/api/imprensa/orgaos` | PRONTO | 'o que saiu na imprensa sobre a Fundacao Saude', 'noticias da SEEDUC', 'escandalo', 'operacao' |
+| `lentes_cruzadas` | jfn | http | `/api/lentes` | PRONTO | priorizar fila de apuracao; 'quais empresas acendem em mais de um detector' |
+| `lentes_municipais` | jfn | http | `/api/lentes` | PRONTO | risco na contratacao MUNICIPAL do Rio; 'o que a Prefeitura pagou fora da curva'; competencia TCM-RJ |
 | `listar_ugs` | jfn | http | `/api/ugs` | PRONTO | '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo |
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
 | `missao_estado` | jfn | http | `/api/hermes/estado` | PRONTO | 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar |
@@ -30,6 +33,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `pcrj_gastos_achados` | jfn | http | `/api/pcrj/gastos_achados` | PRONTO | 'quais os achados de gastos da prefeitura', 'me mostra o fracionamento da PCRJ agora' |
 | `pcrj_gastos_coletar` | jfn | cli | `tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]` | PRONTO | 'atualizar gastos/contratos da prefeitura do Rio' |
 | `pcrj_pericia_gastos` | jfn | cli | `tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia dos gastos da prefeitura', 'fracionamento na PCRJ' |
+| `pericia_bateria` | jfn | http | `/api/pericia/bateria` | PRONTO | 'a pericia esta funcionando?'; decidir QUAL captura priorizar; entender por que o placar nao confirma nada |
 | `pericia_beneficios` | jfn | cli | `tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]` | PRONTO | 'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos' |
 | `ppp_dossie` | jfn | http | `/api/ppp` | PRONTO | 'dossie/pericia da PPP X', 'a PPP do Souza Aguiar', 'concessao/parceria publico-privada da prefeitura' |
 | `ppp_triagem` | jfn | http | `/api/ppp/triagem` | PRONTO | 'triagem das PPPs', 'quais PPPs/concessoes da prefeitura tem risco', 'lista as PPPs em lote' |
@@ -43,6 +47,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `sei_acatamento` | jfn | http | `/api/sei/acatamento` | PRONTO | os pareceres juridicos/controladoria foram atendidos no processo X? |
 | `sobrepreco` | lex | http | `/api/sobrepreco` | PRONTO | 'esta caro?', superfaturamento, R4 |
 | `sobrepreco_interno` | lex | cli | `compliance_agent.precos_extract` | PRONTO | 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco |
+| `tac_recorrente` | jfn | http | `/api/doerj/tac_recorrente` | PRONTO | 'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao' |
 | `bond_captura` | bond | cli | `desktop: telegram /capturar (poller) ou captura_nodriver.py` | ONDA 0 | ver quem curtiu posts do IG / leaderboard de engajamento do gabinete; SO no desktop residencial, NUNCA na VM (= ban) |
 | `cruzador` | jfn | cli | `bash tools/cruzador.sh` | PRONTO | rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande |
 | `enriquecer_socios` | jfn | cli | `tools.enriquecer_socios_ob` | PRONTO | apos novo sweep |

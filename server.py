@@ -212,6 +212,35 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.debug("warmup do motor de relatório não agendado: %s", exc)
 
+    # WARMUP DAS TELAS DE PADRÃO da fila do fiscal. Elas varrem o acervo e têm cache de 1 h; na
+    # PRIMEIRA visita depois de um restart o cache está frio, e como a API é single-process os oito
+    # cards entram em fila — medido em 2026-08-09, um deles não chegava à tela e o verificador
+    # reprovava. Aquecer em background resolve para quem abre o painel, sem atrasar o boot: cada
+    # tela roda uma vez, em série, com o servidor já respondendo.
+    async def _warmup_padroes():
+        try:
+            await asyncio.sleep(20)          # deixa o boot e o warmup de relatório passarem
+            import anyio
+            from tools.screen_aditivo_precoce import medir as _adit
+            from tools.screen_consorcio_veiculo import medir as _consv
+            from tools.screen_coparticipacao_relacionados import medir as _copa
+            from tools.screen_fim_de_exercicio import medir as _fim
+            from tools.screen_recuperacao_judicial import medir as _recj
+            for nome, fn in (("fim_de_exercicio", _fim), ("coparticipacao", _copa),
+                             ("recuperacao_judicial", _recj), ("aditivo_precoce", _adit),
+                             ("consorcio_veiculo", _consv)):
+                await anyio.to_thread.run_sync(fn)   # fora do event loop: não trava as rotas
+                await asyncio.sleep(1)
+            print("[warmup] telas de padrão aquecidas (fila do fiscal abre instantânea)")
+        except (ImportError, OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
+            # aquecimento é conforto, nunca requisito — mas o motivo tem de sair, senão a tela
+            # lenta na primeira visita vira mistério
+            print(f"[warmup] telas de padrão não aquecidas (não-fatal): {exc.__class__.__name__}")
+    try:
+        asyncio.create_task(_warmup_padroes())
+    except RuntimeError as exc:              # sem event loop rodando — só isso pode falhar aqui
+        logger.debug("warmup das telas de padrão não agendado: %s", exc)
+
     # Guard de idle: encerra o Chromium ocioso após N min (§6, evita o leak de browser 24h numa VM sem swap).
     global _browser_reaper_task
     if _BROWSER_IDLE_MIN > 0:
@@ -787,13 +816,20 @@ async def serve_report(filename: str):
 
 @app.get("/status")
 async def status():
-    """Check agent status."""
-    agent = await get_agent()
+    """Check agent status — SEM acordar o browser. `get_agent()` aqui LANÇAVA o Chromium e marcava
+    "uso" a cada poll do painel/Yoda, e o guard de idle de 15 min nunca disparava (medido 10/09:
+    Chromium do servidor vivo 2,8 h sem nenhuma leitura). Status é observação, não uso."""
+    agent = _agent
+    if agent is None:
+        return {"logged_in": False, "username": os.environ.get("SIAFE_USER", ""),
+                "exercicio": os.environ.get("SIAFE_EXERCICIO") or str(__import__('datetime').date.today().year),
+                "extracted_records": 0, "browser": "ocioso (relança na próxima leitura)"}
     return {
         "logged_in": agent._siafe._logged_in,
         "username": agent._siafe_username,
         "exercicio": agent._siafe_exercicio or str(__import__('datetime').date.today().year),
         "extracted_records": len(agent._extracted_data),
+        "browser": "ativo",
     }
 
 

@@ -26,6 +26,7 @@ Uso:
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -33,6 +34,10 @@ import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
+
+from compliance_agent.sei.cache_arquivo import glob_cache, ler_json, nome_logico
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parent.parent
 CACHE = RAIZ / "data" / "sei_cache"
@@ -52,7 +57,16 @@ _FRACAO_AMOSTRA = 0.8                  # ≥80% dos docs no corte ⇒ é amostra
 
 def qualidade_cache(conteudo_documentos: list) -> str:
     """'completo' | 'amostra' | 'misto' — só 'completo' pode virar arquivo consultável."""
-    tam = [len(str(x.get("conteudo") or x.get("texto") or "")) for x in (conteudo_documentos or [])]
+    # EXCERTO DE STORAGE FORA DA CONTA. `_trimado` marca documento JÁ LIDO cujo texto cru virou
+    # excerto de 400 chars depois que a ficha foi extraída (tools/sei_sweep.py) — é política de
+    # armazenamento, não captura rasa. Medido 2026-08-09: num processo RELIDO por inteiro a fusão
+    # de cache preserva os excertos antigos, e 8 deles ao lado de 34 leituras íntegras davam
+    # 9/42 = 21% na faixa do corte ⇒ "misto" ⇒ arquivador RECUSAVA o processo mais bem lido do
+    # lote. Sem eles: 1/34 = 3% ⇒ "completo". Se SÓ houver excertos, não há leitura a arquivar e
+    # o caminho de baixo devolve "amostra" como antes.
+    lidos = [x for x in (conteudo_documentos or [])
+             if not (isinstance(x, dict) and x.get("_trimado"))]
+    tam = [len(str(x.get("conteudo") or x.get("texto") or "")) for x in lidos]
     if not tam:
         return "amostra"
     frac = sum(1 for t in tam if _CORTE_MIN <= t <= _CORTE_MAX) / len(tam)
@@ -80,22 +94,88 @@ def _ja_arquivado(numero: str) -> bool:
     return td.is_dir() and any(f.stat().st_size > 200 for f in td.glob("*.txt"))
 
 
+# VEREDITO POR BLOB, PERSISTIDO. Medido em 2026-08-27: `ler_json` custa ~715 ms por cache (os
+# blobs têm 11,9 MB descomprimidos em média) e 3.494 caches sem arquivo davam **42 minutos** por
+# varredura — mais que o `timeout 1500` do lane, que por isso NUNCA completava e a fila não andava.
+# Pior: amostrando 90 desses, **ZERO era arquivável** (90% amostra trimada, 9% sem número/docs).
+# O lane gastava a janela inteira reabrindo caches que nunca virarão arquivo.
+#
+# A tentação era cortar por TAMANHO EM DISCO (87% têm <20 KB). O CONTROLE POSITIVO derrubou:
+# entre 60 blobs pequenos amostrados, **8 eram arquiváveis** — um com 40.119 caracteres. Corte por
+# tamanho perderia dado real, então o que se guarda é o VEREDITO, não um atalho por proxy.
+_VEREDITOS = Path(__file__).resolve().parent.parent / "data" / ".cache_veredito.json"
+
+
+def _ler_vereditos() -> dict:
+    try:
+        return json.loads(_VEREDITOS.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _grava_vereditos(v: dict) -> None:
+    # RELÊ E MESCLA antes de gravar: dois disparos do lane podem se sobrepor, e sobrescrever com o
+    # que está em memória apagaria o trabalho do outro (lição `indice-read-modify-write-sem-merge`).
+    try:
+        atual = _ler_vereditos()
+        atual.update(v)
+        tmp = _VEREDITOS.with_suffix(".tmp")
+        tmp.write_text(json.dumps(atual, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(_VEREDITOS)
+    except OSError as e:
+        # o veredito é cache de conferência: perdê-lo custa uma revarredura, não o dado — mas
+        # sumir com a razão faz a revarredura parecer defeito do lane
+        logger.debug("veredito do cache não gravado (%s): %s", _VEREDITOS, e)
+
+
 def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
     """Caches com texto suficiente e ainda não arquivados, do maior conteúdo para o menor."""
     out = []
-    for f in CACHE.glob("cdp_*.json"):
+    vereditos = _ler_vereditos()
+    novos: dict = {}
+    # `glob_cache`/`ler_json`, NÃO `Path.glob` + `read_text`: 5.660 dos 6.195 blobs do acervo
+    # estão em `.json.zst`, e com o glob cru este arquivador enxergava **535 (8,6%)**. O resto do
+    # cache — texto já pago, já lido do SEI — simplesmente não tinha caminho para virar arquivo
+    # consultável. É a terceira ferramenta desta casa cega à compressão; as duas primeiras estão
+    # no catálogo, e uma delas era a ÚNICA que gravava `sei_ficha`.
+    for f in glob_cache(CACHE, "cdp_*.json"):
+        f = Path(f)
+        # TRIAGEM POR mtime ANTES DE ABRIR O BLOB. Medido em 2026-08-27: `ler_json` custa ~715 ms
+        # por cache (os blobs têm 11,9 MB descomprimidos em média), e 6.748 caches dariam **80
+        # minutos** — mais que o `timeout 1500` do lane, que por isso NUNCA completava a varredura
+        # e a fila não andava. O teste de frescor é `stat()`, custa microssegundos, e descarta a
+        # imensa maioria: só quem não tem arquivo ou tem arquivo mais VELHO que o cache precisa
+        # ser aberto. O nome do arquivo dá o slug direto — não é preciso ler o `numero` de dentro.
+        tag = nome_logico(f).replace("cdp_SEI_", "").replace("cdp_", "").removesuffix(".json")
+        man_provavel = ARQUIVO / tag / "manifest.json"
+        if man_provavel.exists():
+            try:
+                if man_provavel.stat().st_mtime >= f.stat().st_mtime:
+                    continue          # arquivo em dia: nem abre o cache
+            except OSError:
+                continue
+        # veredito guardado: "recusado" com o mesmo mtime significa que já abrimos este blob e ele
+        # não serve. Não reabre — é o que devolve a janela do lane ao trabalho útil.
+        chave = f.name
+        marca = f"{f.stat().st_mtime:.0f}"
+        if vereditos.get(chave) == marca:
+            continue
         try:
-            d = json.loads(f.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+            d = ler_json(f)
+        except (json.JSONDecodeError, OSError, ValueError):
+            novos[chave] = marca
             continue
         numero = (d.get("numero") or "").strip()
         cd = d.get("conteudo_documentos") or []
         if not numero or not cd:
+            novos[chave] = marca
             continue
         if _ja_arquivado(numero):
             # RE-arquiva quando o CACHE é mais novo que o arquivo (releitura pós-cura do cap de
             # 20k, 2026-08-01): sem isto, o sweep relia o processo e o arquivo truncado ficava
             # para sempre. `arquivar()` afasta o arquivo antigo p/ _substituido/ (nada se apaga).
+            # Confere de novo pelo slug REAL derivado do `numero` — a triagem acima usou o nome do
+            # arquivo, que é um palpite bom mas não é a fonte da verdade.
             man = ARQUIVO / _slug_processo(numero) / "manifest.json"
             try:
                 if man.stat().st_mtime >= f.stat().st_mtime:
@@ -105,10 +185,17 @@ def candidatos(min_chars: int = MIN_CHARS) -> list[dict]:
         chars = sum(len(str(x.get("conteudo") or x.get("texto") or "")) for x in cd)
         q = qualidade_cache(cd)
         if q != "completo":
+            novos[chave] = marca
             continue          # amostra truncada NÃO vira arquivo (veredito sobre migalha é pior que nada)
         if chars >= min_chars:
             out.append({"numero": numero, "cache": f, "dados": d, "n_docs": len(cd), "chars": chars,
-                        "qualidade": q})
+                        "qualidade": q,
+                        # O TAMANHO DA ÁRVORE É UM FATO QUE ESTE ARQUIVO JÁ TINHA EM MÃOS e jogava
+                        # fora. Sem ele o manifesto saía com `lacunas: []` sobre 40 de 956
+                        # documentos, e o motor lia ausência de prova como ausência do fato.
+                        "na_arvore": len(d.get("documentos") or [])})
+    if novos:
+        _grava_vereditos(novos)
     out.sort(key=lambda e: -e["chars"])
     return out
 
@@ -135,6 +222,16 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
         docs_novo = sum(1 for x in (item["dados"].get("conteudo_documentos") or [])
                         if len(str(x.get("conteudo") or x.get("texto") or "")) > 50)
         if docs_velho > docs_novo:
+            # SAIR DO LAÇO SEM APAGAR NADA. A decisão de manter o antigo é certa, mas ela não mexia
+            # no manifesto — e a fila é montada por "cache mais novo que o manifesto". Resultado
+            # medido em 2026-08-15: o `070002/019153/2024` reaparecia em TODO disparo do lane
+            # (a cada 20 min), era recontado como "arquivado" e nada era escrito; o manifesto seguia
+            # com a data da véspera. Tocar o `mtime` encerra a repetição e não perde informação: o
+            # conteúdo do arquivo continua exatamente o mesmo.
+            try:
+                (destino / "manifest.json").touch()
+            except OSError as e:
+                logger.debug("mtime do manifesto não atualizado em %s: %s", destino, e)
             return {"numero": numero, "docs": 0, "chars": 0, "escritos": 0,
                     "mantido_antigo": f"{docs_velho} docs c/ texto no arquivo × {docs_novo} no cache"}
         import shutil
@@ -166,7 +263,17 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
         # deixa explícito que veio do cache: não tem fotos nem anexos binários, ao contrário da íntegra
         "origem": f"cache CDP ({item['cache'].name}) — texto já lido pelo sweep, arquivado sem browser",
         "modalidade": "", "docs": docs_manifest,
-        "linha_do_tempo": linha_do_tempo(titulos), "lacunas": [],
+        "linha_do_tempo": linha_do_tempo(titulos),
+        "docs_na_arvore": item.get("na_arvore") or len(docs_manifest),
+        "lacunas": ([] if (item.get("na_arvore") or 0) <= len(docs_manifest) else
+                    [{"tipo": "captura_truncada",
+                      "detalhe": (f"a árvore do processo tem {item['na_arvore']} documentos e o "
+                                  f"cache trouxe {len(docs_manifest)} — faltam "
+                                  f"{item['na_arvore'] - len(docs_manifest)}"),
+                      "faltam": item["na_arvore"] - len(docs_manifest),
+                      "consequencia": ("ausência de documento NESTE arquivo é lacuna de CAPTURA, "
+                                       "não do processo — nenhuma acusação de ausência pode se "
+                                       "apoiar nele até a recaptura")}]),
         "fotos_total": 0,
         "aviso": ("arquivo montado a partir do CACHE do sweep: contém o TEXTO dos documentos, não os "
                   "anexos binários nem as fotos de medição — para esses, capturar a íntegra"),
@@ -181,27 +288,131 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
     return {"numero": numero, "docs": len(docs_manifest), "chars": item["chars"], "escritos": escritos}
 
 
+def retro_arvore(aplicar: bool = False) -> dict:
+    """Grava `docs_na_arvore` nos manifestos JÁ ESCRITOS, lendo o tamanho da árvore no cache.
+
+    SEM ISTO O CONSERTO NÃO ALCANÇA O ACERVO. Os 2.216 arquivos existentes foram montados por uma
+    versão que jogava fora o tamanho da árvore, e o gate de captura íntegra continuaria decidindo
+    por heurística — o número redondo 40 — sobre todos eles. Medido em 2026-08-07: dos 198 parados
+    em 40, **171 estão de fato truncados** (o pior tem 40 de 956) e **21 têm árvore de exatamente
+    40**, isto é, estão completos e vinham sendo excluídos da análise à toa.
+
+    Idempotente e conservador: só escreve onde o campo falta E o cache traz a árvore. Manifesto
+    sem cache correspondente fica como está — inventar o número seria pior que não tê-lo.
+    """
+    idx = {}
+    for c in glob_cache(CACHE, "cdp_*.json"):
+        nome = Path(c).name.replace(".zst", "").replace(".json", "")[4:]
+        idx[re.sub(r"\D", "", nome)] = c
+
+    r = {"manifestos": 0, "ja_tinham": 0, "sem_cache": 0, "gravados": 0,
+         "truncados": 0, "completos_liberados": 0}
+    for pasta in sorted(ARQUIVO.iterdir()):
+        man = pasta / "manifest.json"
+        if not man.is_file():
+            continue
+        r["manifestos"] += 1
+        try:
+            j = json.loads(man.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        if isinstance(j.get("docs_na_arvore"), int):
+            r["ja_tinham"] += 1
+            continue
+        c = idx.get(re.sub(r"\D", "", pasta.name))
+        if not c:
+            r["sem_cache"] += 1
+            continue
+        try:
+            d = ler_json(c)
+        except (json.JSONDecodeError, OSError, ValueError):
+            r["sem_cache"] += 1
+            continue
+        arv = len(d.get("documentos") or [])
+        if arv <= 0:
+            r["sem_cache"] += 1
+            continue
+        n = len(j.get("docs") or [])
+        j["docs_na_arvore"] = arv
+        if arv > n:
+            r["truncados"] += 1
+            faltam = arv - n
+            lac = [x for x in (j.get("lacunas") or []) if x.get("tipo") != "captura_truncada"]
+            lac.append({"tipo": "captura_truncada",
+                        "detalhe": (f"a árvore do processo tem {arv} documentos e o arquivo tem "
+                                    f"{n} — faltam {faltam}"),
+                        "faltam": faltam,
+                        "consequencia": ("ausência de documento NESTE arquivo é lacuna de CAPTURA, "
+                                         "não do processo — nenhuma acusação de ausência pode se "
+                                         "apoiar nele até a recaptura")})
+            j["lacunas"] = lac
+        elif n == 40:
+            # árvore de exatamente 40: o arquivo está COMPLETO e a heurística o punia
+            r["completos_liberados"] += 1
+        if aplicar:
+            man.write_text(json.dumps(j, ensure_ascii=False), encoding="utf-8")
+        r["gravados"] += 1
+    return r
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--aplicar", action="store_true")
     ap.add_argument("--max", type=int, default=0, help="limita quantos processos arquivar (0 = todos)")
     ap.add_argument("--min-chars", type=int, default=MIN_CHARS)
+    # `--so`: arquivar UM processo. A passada de recaptura (`sweep_recaptura_integral`) relê um
+    # processo por vez com o teto levantado e precisa materializar SÓ ele — varrer o acervo
+    # inteiro a cada processo relido custaria minutos por iteração numa VM de 2 vCPU.
+    ap.add_argument("--so", default="", help="arquivar apenas este processo (número SEI)")
+    ap.add_argument("--retro-arvore", action="store_true",
+                    help="grava docs_na_arvore nos manifestos já escritos (não arquiva nada novo)")
     a = ap.parse_args(argv)
+    if a.retro_arvore:
+        r = retro_arvore(aplicar=a.aplicar)
+        for k, v in r.items():
+            print(f"{k:22s} {v:,}")
+        if not a.aplicar:
+            print("\n(SIMULAÇÃO — use --aplicar)")
+        return 0
     alvos = candidatos(a.min_chars)
+    if a.so:
+        alvo_norm = re.sub(r"\D", "", a.so)
+        alvos = [x for x in alvos if re.sub(r"\D", "", x["numero"]) == alvo_norm]
     if a.max:
         alvos = alvos[:a.max]
     total_chars = sum(x["chars"] for x in alvos)
-    print(f"processos no cache com texto e sem arquivo: {len(alvos):,} — {total_chars:,} caracteres")
+    # RÓTULO É CONTRATO SEMÂNTICO. Esta linha dizia "sem arquivo", texto congelado na população
+    # original — mas `candidatos()` passou a incluir também quem TEM arquivo DESATUALIZADO
+    # (re-arquivamento por frescor, 2026-08-01). Medido em 2026-08-27: o lane imprimia "0" disparo
+    # após disparo enquanto 98 processos tinham cache mais novo que o manifesto, 32 deles já
+    # `completo` — um com 787.668 chars parados. Fila que se declara vazia não é investigada.
+    novos = sum(1 for x in alvos
+                if not (ARQUIVO / _slug_processo(x["numero"]) / "manifest.json").exists())
+    print(f"processos do cache a arquivar: {len(alvos):,} — {total_chars:,} caracteres "
+          f"({novos:,} sem arquivo · {len(alvos) - novos:,} com cache mais novo que o arquivo)")
     if not alvos:
         return 0
-    feitos = 0
+    feitos = mantidos = 0
+    chars_escritos = 0
     for x in alvos:
         r = arquivar(x, aplicar=a.aplicar)
         feitos += 1
+        if r.get("mantido_antigo"):
+            mantidos += 1
+        else:
+            chars_escritos += r.get("chars") or 0
         if feitos <= 5 or feitos % 500 == 0:
-            print(f"  {feitos:5d}. {r['numero']:28s} {r['docs']:3d} docs  {r['chars']:>9,} chars")
-    print(f"\n{'arquivados' if a.aplicar else 'arquivaria'}: {feitos:,} processos · "
-          f"{total_chars:,} caracteres" + ("" if a.aplicar else "  (SIMULAÇÃO — use --aplicar)"))
+            print(f"  {feitos:5d}. {r['numero']:28s} {r['docs']:3d} docs  {r['chars']:>9,} chars"
+                  + (f"  [mantido: {r['mantido_antigo']}]" if r.get("mantido_antigo") else ""))
+    # CONTAR O QUE FOI ESCRITO, NÃO O QUE ENTROU NA FILA. O total saía de `alvos` — o ESPERADO — e
+    # somava também os processos em que nada foi escrito. O `070002/019153/2024` era relatado como
+    # "arquivados: 1 processos · 185.203 caracteres" em todo disparo, com zero bytes gravados.
+    # Prometer entrega que não houve é o vício de ler o `200` como prova de entrega.
+    print(f"\n{'arquivados' if a.aplicar else 'arquivaria'}: {feitos - mantidos:,} processos · "
+          f"{chars_escritos:,} caracteres"
+          + (f" · {mantidos:,} mantidos (arquivo existente é mais completo que o cache)"
+             if mantidos else "")
+          + ("" if a.aplicar else "  (SIMULAÇÃO — use --aplicar)"))
     return 0
 
 

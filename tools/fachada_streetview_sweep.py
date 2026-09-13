@@ -551,11 +551,38 @@ def main() -> int:
         print("[sv_sweep] ⛔ GOOGLE_MAPS_KEY ausente (.env/os.environ). Abortando.", flush=True)
         return 2
     if not _embed_api_ok(_key):
+        # AUTO-PAUSA APÓS ABORTO REPETIDO. A 'Maps Embed API' está desabilitada no console do dono
+        # — condição de CONFIGURAÇÃO que só ele resolve, e que nenhuma rodada deste sweep muda.
+        # Medido em 2026-08-08: 20 abortos `rc=3` na auditoria, um alarme que se repete a cada 3 h
+        # e dessensibiliza a tabela inteira (foi assim que a recaptura morta passou 4 dias
+        # invisível). Depois de 3 abortos idênticos consecutivos, o sweep cria o próprio flag de
+        # pausa: para de tentar, deixa o motivo escrito no flag para o dono, e a auditoria volta a
+        # significar algo. Reabilitar a API OU apagar o flag retoma. NÃO é "culpar o acesso" — o
+        # próprio Google Cloud reporta a API como desabilitada; é config ausente, não fonte negada.
+        marca = _RAIZ / "data" / ".streetview_403_seguidos"
+        try:
+            n = int(marca.read_text().strip()) + 1 if marca.exists() else 1
+        except (OSError, ValueError):
+            n = 1
+        marca.write_text(str(n), encoding="utf-8")
         print("[sv_sweep] ⛔ Maps Embed API 403 (DESABILITADA no projeto Google Cloud). "
               "Todo render sairia tela-de-erro — aborto em vez de disparar renders condenados. "
-              "Habilite a 'Maps Embed API' no console (é grátis) OU pause este sweep "
-              "(data/.pause_fachada_streetview_sweep).", flush=True)
+              f"Habilite a 'Maps Embed API' no console (é grátis). Aborto seguido nº {n}/3.",
+              flush=True)
+        if n >= 3:
+            pausa = _RAIZ / "data" / ".pause_fachada_streetview_sweep"
+            pausa.write_text(
+                "auto-pausado em 2026-08-08 após 3 abortos por Maps Embed API 403 (desabilitada no "
+                "Google Cloud do dono). Habilite a 'Maps Embed API' no console e APAGUE este flag "
+                "para retomar. Ver tools/fachada_streetview_sweep.py.\n", encoding="utf-8")
+            print("[sv_sweep] auto-pausado: criei data/.pause_fachada_streetview_sweep — "
+                  "para de poluir a auditoria até a API ser habilitada.", flush=True)
         return 3
+    # a API respondeu: zera o contador de abortos seguidos (uma habilitação posterior limpa a
+    # dívida sem intervenção; o flag de pausa, esse, o dono apaga à mão de propósito).
+    _marca_403 = _RAIZ / "data" / ".streetview_403_seguidos"
+    if _marca_403.exists():
+        _marca_403.unlink()
     if not Path(_RCLONE).exists():
         print(f"[sv_sweep] ⛔ rclone não encontrado em {_RCLONE} (defina RCLONE_BIN). Abortando.", flush=True)
         return 2

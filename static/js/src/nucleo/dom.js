@@ -30,9 +30,29 @@ const _kpiIco = cor => {
 
 // dest (opcional) = id de aba: torna o KPI clicável e leva à aba (ir() troca de esfera sozinho;
 // a11yfy() já torna qualquer [onclick] operável por teclado). Ex.: kpi(n,'Alertas ativos',cor,'🚨','e_alertas').
+/* KPI CLICÁVEL — `dest` existia na assinatura desde sempre e NENHUMA das 198 chamadas do painel o
+   passava: 198 métricas, zero caminhos para o dado por trás delas. Quem via "68 comissionados" não
+   tinha como chegar aos 68.
+
+   Duas formas, e a segunda é a que faltava:
+     · `dest` = id de aba  → navega (comportamento original, preservado);
+     · `dest` = `{drill}`  → dispara a ação registrada em `DRILL_ACOES`, que renderiza as LINHAS
+       que produziram o número, na mesma tela.
+   A ação vai em `data-drill`, nunca em `onclick` com nome de função global — é a mesma delegação
+   de `data-vinc`, um ouvinte no `document`, que sobrevive à troca de `innerHTML` do `#view`. */
 export const kpi = (v, l, cor, gl, dest) => {
   const ik = _kpiIco(cor);
-  const go = dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : '';
+  const drill = dest && typeof dest === 'object' && dest.drill;
+  /* TERCEIRA FORMA: `{sobre:'texto'}`. Nem toda métrica tem linhas — mediana, F1, percentual de
+     concentração e "SIAFE ok/off" contam relação, não itens, e exigir gaveta seria pedir mentira.
+     O que falta a essas não é a lista: é a PROCEDÊNCIA — o que o número mede, de que fonte sai e
+     como se recalcula. Clicar abre isso na mesma gaveta. */
+  const sobre = dest && typeof dest === 'object' && dest.sobre;
+  const go = drill
+    ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}`
+    : (sobre
+      ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}`
+      : (dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : ''));
   return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ''}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ''}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ''}</div>`;
 };
 

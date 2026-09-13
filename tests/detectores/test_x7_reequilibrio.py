@@ -121,10 +121,42 @@ def test_sem_valor_inicial_a_magnitude_nao_e_aferida():
 
 # ───────────────────────────── T5 · reiteração ────────────────────────────────────────────────
 
-def test_tres_recomposicoes_indicam_desequilibrio_estrutural():
-    r = X7.avaliar(_ctx(aditivos=[_ad(data=f"202{i}-01-01", valor=10_000.0) for i in range(1, 4)]))
+def test_tres_revisoes_por_alea_EXTRAORDINARIA_indicam_desequilibrio_estrutural():
+    """REVISTO em 2026-08-04: o teste passava com aditivos sem justificativa nenhuma, e o detector
+    contava reajuste anual junto com reequilíbrio. O texto do achado invoca "álea EXTRAORDINÁRIA",
+    e reajuste por índice é ORDINÁRIO e previsto — um contrato de cinco anos tem quatro reajustes
+    sem nada de errado. A intenção do teste é a mesma; o que mudou é que a recomposição precisa
+    trazer a marca da álea extraordinária."""
+    r = X7.avaliar(_ctx(aditivos=[
+        _ad(data=f"202{i}-01-01", valor=10_000.0,
+            justificativa="pedido de reequilíbrio econômico-financeiro por álea extraordinária")
+        for i in range(1, 4)]))
     assert r.status == "confirmado"
     assert any("REITERAÇÃO" in e["trecho"] for e in r.evidencia)
+
+
+def test_reajuste_anual_por_INDICE_nao_conta_como_reiteracao():
+    """Medido no acervo: **18 dos 20 disparos** do X7 não tinham NENHUMA recomposição
+    extraordinária — e entre as "recomposições" contadas havia endereço e cabeçalho de documento
+    ("Francisco Matarazzo, nº 1.350, 17º andar"), porque a extração casa a frase que menciona a
+    palavra. Erro jurídico também é falso positivo."""
+    r = X7.avaliar(_ctx(aditivos=[
+        _ad(data=f"202{i}-01-01", valor=10_000.0,
+            justificativa="reajuste anual pelo IPCA, na forma da cláusula décima do contrato")
+        for i in range(1, 5)]))
+    assert not any("REITERAÇÃO" in e["trecho"] for e in (r.evidencia or []))
+
+
+def test_o_achado_declara_quantas_eram_ao_todo():
+    """O fiscal precisa ver as duas contagens: quantas revisões extraordinárias e quantas
+    recomposições havia — senão o número parece menor do que o movimento do contrato."""
+    r = X7.avaliar(_ctx(aditivos=[
+        _ad(data="2021-01-01", valor=10_000.0, justificativa="reajuste anual pelo IPCA"),
+        *[_ad(data=f"202{i}-06-01", valor=10_000.0,
+              justificativa="reequilíbrio por álea extraordinária documentada") for i in range(2, 5)],
+    ]))
+    trecho = " ".join(e["trecho"] for e in (r.evidencia or []))
+    assert "3 revisões por álea extraordinária" in trecho and "de 4 recomposições" in trecho
 
 
 # ───────────────────────────── rubrica de álea (LLM-opcional) ─────────────────────────────────

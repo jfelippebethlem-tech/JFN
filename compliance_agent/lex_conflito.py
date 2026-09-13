@@ -143,10 +143,27 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
     """
     _DB = _resolver_db()
     if not _DB.exists():
-        return {"ok": False, "erro": "compliance.db ausente"}
+        # O módulo já declarava INDISPONÍVEL quando a tabela está VAZIA (logo abaixo), mas devolvia
+        # um `ok=False` seco quando o BANCO falta — duas formas para a mesma situação, e a segunda
+        # sem fonte nem ressalva. Quem consome não distinguia "não há conflito" de "não há base".
+        return {"ok": False, "indisponivel": True, "rede": [],
+                "erro": "compliance.db ausente",
+                "_fonte": "TSE Dados Abertos",
+                "_nota": "INDISPONÍVEL: base local ausente nesta máquina — nada foi medido, e "
+                         "ausência de medida não é ausência de conflito."}
     con = sqlite3.connect(str(_DB))
     try:
-        n_doacoes = con.execute("SELECT COUNT(*) FROM doacoes_eleitorais").fetchone()[0]
+        try:
+            n_doacoes = con.execute("SELECT COUNT(*) FROM doacoes_eleitorais").fetchone()[0]
+        except sqlite3.OperationalError as exc:
+            # Banco presente mas SEM a tabela é a mesma situação de tabela vazia — e virava HTTP
+            # 500 (visto no runner do CI, onde outro teste cria o compliance.db sem o schema do
+            # TSE). Erro de execução e ausência de fonte são coisas diferentes para quem consome.
+            return {"ok": False, "indisponivel": True, "rede": [],
+                    "erro": f"tabela doacoes_eleitorais ausente ({exc})",
+                    "_fonte": "TSE Dados Abertos",
+                    "_nota": "INDISPONÍVEL: a base do TSE não foi coletada nesta máquina — rodar "
+                             "compliance_agent.collectors.tse baixar_doacoes_ano."}
         if n_doacoes == 0:
             return {"ok": True, "rede": [], "_fonte": "TSE Dados Abertos",
                     "_nota": "INDISPONÍVEL: base doacoes_eleitorais vazia — rodar coletor TSE "
@@ -248,3 +265,339 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ── Sócio na folha pública (folha do Estado × QSA) — a segunda perna do conflito de interesse ──────────
+# A primeira perna (acima) é doador × sócio. Esta é agente público × sócio: `agente_publico_societario`
+# casa a folha do Estado (cargo, vínculo, órgão) com o QSA por NOME normalizado. Nasceu do caso da
+# Fundação Saúde (09/09/2026): a Diretora Assistencial de uma UPA era sócia da clínica que a UPA pagava
+# por TAC. Grau pelo ENTE: saúde estadual (FSERJ/SES) = alto; outro órgão = médio. Nome curto = homônimo
+# provável — o achado diz isso e pede CPF.
+
+def socios_agentes_publicos(cnpj: str) -> list[dict]:
+    """Sócios da raiz do CNPJ que constam na folha do Estado. Vazio = nada casou OU base ausente."""
+    raiz = _digits(cnpj)[:8]
+    if len(raiz) != 8:
+        return []
+    _DB = _resolver_db()
+    if not _DB.exists():
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        rows = con.execute("SELECT nome_socio, cargo, vinculo, orgao, origem FROM agente_publico_societario "
+                           "WHERE cnpj_basico=? LIMIT 20", (raiz,)).fetchall()
+    except sqlite3.Error as exc:
+        logger.debug("agente_publico_societario indisponível para %s: %s", raiz, exc)
+        return []
+    finally:
+        con.close()
+    return [{"nome": r[0], "cargo": r[1] or "", "vinculo": r[2] or "", "orgao": r[3] or "", "origem": r[4] or ""} for r in rows]
+
+
+def achado_socio_agente(socios: list[dict]) -> dict | None:
+    """Achado estrutural do Lex ({rf, grav, obs}) a partir dos sócios-agentes; None quando não há."""
+    if not socios:
+        return None
+    def _saude(o: str) -> int:
+        n = _norm_nome(o)
+        return 2 if ("FUNDACAO SAUDE" in n or "FSERJ" in n) else 1 if "SAUDE" in n else 0
+    nivel = max(_saude(s["orgao"]) for s in socios)
+    grav = 4 if nivel == 2 else 3 if nivel == 1 else 2
+    def _peso(nome: str) -> str:
+        toks = [t for t in _norm_nome(nome).split() if t not in {"DE", "DA", "DO", "DOS", "DAS", "E"}]
+        return "nome forte" if len(toks) >= 3 else "nome comum — confirmar CPF"
+    linhas = "; ".join(f"{s['nome']} — {s['cargo'] or '?'} ({s['vinculo'] or '?'}) em {s['orgao'] or '?'} [{_peso(s['nome'])}]"
+                       for s in socios[:4])
+    ente = "da própria saúde estadual (FSERJ)" if nivel == 2 else "da saúde estadual (SES)" if nivel == 1 else "de outro órgão público"
+    return {"rf": "DD/SOCIO-AGENTE", "grav": grav,
+            "obs": (f"**Sócio na folha pública {ente}.** {linhas}. Casamento por NOME (folha × QSA); "
+                    f"vínculo tem de valer na data do ato. Art. 14, IV da Lei 14.133 quando o ente for o contratante; "
+                    f"indício, não acusação.")}
+
+
+# ── TAC recorrente (D.O. do Estado × fornecedor) — 10/09/2026 ─────────────────────────────────
+_GENERICOS_TAC = {"LTDA", "EIRELI", "SERVICOS", "MEDICOS", "MEDICA", "SAUDE", "DISTRIBUIDORA", "COMERCIO",
+                  "HOSPITALAR", "PRODUTOS", "CLINICA", "SOCIEDADE", "SIMPLES", "EPP", "ME", "SA", "S/A"}
+
+
+def _tokens_tac(nome: str | None) -> list[str]:
+    return [t for t in _norm_nome(nome or "").split() if len(t) >= 3 and t not in _GENERICOS_TAC][:2]
+
+
+def tacs_do_fornecedor(cnpj: str | None, nome: str | None) -> list[dict]:
+    """Termos de Ajuste de Contas publicados no DOERJ (tabela `doerj_tac`) para este fornecedor.
+    Casa por CNPJ quando o extrato o publicou (raro) e, senão, pelos 2 primeiros tokens distintivos do
+    nome — o mesmo casamento do `doerj_tac_favorecimento`. Vazio = nada casou OU base ausente."""
+    _DB = _resolver_db()
+    if not _DB.exists():
+        return []
+    toks = _tokens_tac(nome)
+    dig = _digits(cnpj or "")
+    if not toks and len(dig) != 14:
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        # O upper() do SQLite não dobra acento ('GESTÃO' ≠ 'GESTAO'): busca pelo 1º token e confere o resto em
+        # Python com o nome normalizado (a TUISE sumia do Lex por isso — 10/09).
+        cond, args = [], []
+        if len(dig) == 14:
+            cond.append("cnpj = ?"); args.append(dig)
+        if toks:
+            cond.append("upper(fornecedor) LIKE ?"); args.append(f"%{toks[0]}%")
+        rows = con.execute(
+            "SELECT data_doe, numero_tac, orgao, valor, processo, fornecedor FROM doerj_tac WHERE " + " OR ".join(cond) +
+            " ORDER BY data_doe LIMIT 400", args).fetchall()
+    except sqlite3.Error as exc:
+        logger.debug("doerj_tac indisponível para %s: %s", cnpj, exc)
+        return []
+    finally:
+        con.close()
+    rows = [r for r in rows if all(t in _norm_nome(r[5] or "") for t in toks)] if toks else rows
+    return [{"data": r[0], "numero": r[1] or "", "orgao": r[2] or "", "valor": r[3], "processo": r[4] or ""} for r in rows[:200]]
+
+
+def _moeda(v: float) -> str:
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def sinais_tac_do_fornecedor(nome: str | None) -> list[dict]:
+    """Sinais do cruzamento TAC × favorecimento (`doerj_tac_sinal`, tools/doerj_tac_favorecimento) para o nome."""
+    _DB = _resolver_db()
+    toks = _tokens_tac(nome)
+    if not _DB.exists() or not toks:
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        rows = con.execute(
+            "SELECT sinal, grau, detalhe, fornecedor FROM doerj_tac_sinal WHERE sinal NOT IN ('sem_sinal','cnpj_nao_localizado') "
+            "AND upper(fornecedor) LIKE ? ORDER BY grau <> '🔴', sinal LIMIT 40", (f"%{toks[0]}%",)).fetchall()
+        rows = [r for r in rows if all(t in _norm_nome(r[3] or "") for t in toks)][:8]
+    except sqlite3.Error as exc:
+        logger.debug("doerj_tac_sinal indisponível: %s", exc)
+        return []
+    finally:
+        con.close()
+    return [{"sinal": r[0], "grau": r[1], "detalhe": r[2] or ""} for r in rows]
+
+
+def achado_tac_recorrente(tacs: list[dict], sinais: list[dict] | None = None) -> dict | None:
+    """Achado estrutural do Lex: pagamento por TAC como ROTINA. 1 TAC é exceção prevista no Decreto 47.283/2020;
+    a partir de 3 é serviço contínuo sem contrato (grav 3); 6+ ou R$ 10 mi+ é regime permanente (grav 4)."""
+    n = len(tacs)
+    if n < 3:
+        return None
+    soma = sum(t["valor"] or 0 for t in tacs)
+    grav = 4 if (n >= 6 or soma >= 10_000_000) else 3
+    orgaos = sorted({t["orgao"] for t in tacs if t["orgao"]})
+    de, ate = tacs[0]["data"], tacs[-1]["data"]
+    return {"rf": "DD/TAC-RECORRENTE", "grav": grav,
+            "obs": (f"**{n} Termos de Ajuste de Contas publicados no DOERJ** ({de} → {ate}), somando "
+                    f"R$ {_moeda(soma)}, por {', '.join(o[:60] for o in orgaos[:2]) or 'órgão não lido'}. TAC é o instrumento que "
+                    "indeniza serviço prestado SEM contrato (Decreto 47.283/2020): como rotina mensal, indica "
+                    "serviço contínuo sem licitação e exige, a cada termo, a apuração de responsabilidade pela "
+                    "lacuna (art. 4º, III). Conferir nos autos se ela existe; indício, não acusação."
+                    + (" Cruzamentos: " + "; ".join(f"{x['grau']} {x['sinal']} — {x['detalhe'][:160]}" for x in sinais[:3]) if sinais else ""))}
+
+
+# ── Cadastro de Empregadores (trabalho escravo, MTE) — 12/09/2026 ──────────────────────────────
+def lista_suja(cnpj: str | None) -> dict | None:
+    """Entrada do CNPJ (ou da raiz) no Cadastro de Empregadores do MTE (`lista_suja_mte`) + pagamentos do
+    Estado (SIAFE) DEPOIS da inclusão. None quando não consta ou a base não existe."""
+    dig = _digits(cnpj or "")
+    if len(dig) != 14:
+        return None
+    _DB = _resolver_db()
+    if not _DB.exists():
+        return None
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        row = con.execute("SELECT cnpj, nome, inclusao FROM lista_suja_mte WHERE cnpj=? OR substr(cnpj,1,8)=? LIMIT 1",
+                          (dig, dig[:8])).fetchone()
+        if not row:
+            return None
+        inc = row[2] or ""
+        iso = f"{inc[6:10]}-{inc[3:5]}-{inc[0:2]}" if len(inc) == 10 else ""
+        # data_emissao do SIAFE é TEXTO DD/MM/AAAA: converter antes de comparar
+        depois = con.execute(
+            "SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND "
+            "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) >= ?",
+            (dig, iso or "9999")).fetchone()
+    except sqlite3.Error as exc:
+        logger.debug("lista_suja_mte indisponível: %s", exc)
+        return None
+    finally:
+        con.close()
+    return {"cnpj": row[0], "nome": row[1], "inclusao": inc, "obs_depois": depois[0] or 0, "pago_depois": depois[1] or 0.0}
+
+
+def achado_lista_suja(e: dict | None) -> dict | None:
+    if not e:
+        return None
+    pago = e.get("pago_depois") or 0
+    grav = 4 if pago > 0 else 2
+    return {"rf": "DD/LISTA-SUJA", "grav": grav,
+            "obs": (f"**Consta no Cadastro de Empregadores do MTE (trabalho análogo ao de escravo)** — {e['nome']}, "
+                    f"inclusão em {e['inclusao'] or '?'}. " +
+                    (f"O Estado pagou {e['obs_depois']} OB(s) = R$ {_moeda(pago)} DEPOIS da inclusão — vedação de contratar "
+                     ""
+                     if pago > 0 else "Sem pagamento estadual após a inclusão nos dados do SIAFE — monitorar. ") +
+                    "Fonte pública do MTE; conferir vigência (a lista é semestral).")}
+
+
+# ── Portal SIGA: contratações do Estado por CNPJ (tools/siga_contratos) — 12/09/2026 ─────────────
+def siga_do_fornecedor(cnpj: str | None) -> dict | None:
+    dig = _digits(cnpj or "")
+    _DB = _resolver_db()
+    if len(dig) != 14 or not _DB.exists():
+        return None
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        r = con.execute("SELECT count(*), sum(modalidade LIKE 'Dispensa - Especial%'), sum(modalidade LIKE 'Pregão%' OR modalidade LIKE 'Concorr%'), "
+                        "round(sum(valor),2), round(sum(CASE WHEN modalidade LIKE 'Dispensa - Especial%' THEN valor END),2), count(DISTINCT orgao), "
+                        "group_concat(DISTINCT orgao) FROM siga_contratos WHERE cnpj=?", (dig,)).fetchone()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    if not r or not r[0]:
+        return None
+    return {"n": r[0], "emergencia": r[1] or 0, "competitivas": r[2] or 0, "valor": r[3] or 0.0, "valor_emergencia": r[4] or 0.0,
+            "n_orgaos": r[5], "orgaos": (r[6] or "")[:200]}
+
+
+def achado_emergencia_siga(sg: dict | None) -> dict | None:
+    """Emergência como regime: 5+ contratações e metade ou mais por 'Dispensa - Especial' (grav 3; 10+ e 2/3 = grav 4)."""
+    if not sg or sg["n"] < 5:
+        return None
+    share = sg["emergencia"] / sg["n"]
+    if share < 0.5:
+        return None
+    grav = 4 if (sg["emergencia"] >= 10 and share >= 2 / 3) else 3
+    return {"rf": "DD/EMERGENCIA-SIGA", "grav": grav,
+            "obs": (f"**{sg['emergencia']} de {sg['n']} contratações no Portal SIGA são 'Dispensa - Especial' (emergência)**, "
+                    f"R$ {_moeda(sg['valor_emergencia'])} de R$ {_moeda(sg['valor'])}; {sg['competitivas']} por pregão/concorrência; "
+                    f"{sg['n_orgaos']} órgão(s): {sg['orgaos'][:120]}. A emergência (art. 24, IV Lei 8.666 / art. 75, VIII Lei 14.133) "
+                    "é excepcional e não pode decorrer de falta de planejamento (art. 75, §6º, Lei 14.133): "
+                    "como regime, é contratação direta habitual a apurar — indício, não acusação.")}
+
+
+# ── Registro ESTADUAL de sanções (Portal SIGA, tools/siga_sancoes) — 12/09/2026 ─────────────────
+def _alcance_sancao(enq: str) -> tuple[str, int]:
+    """(rótulo, peso): inidoneidade (8.666 art. 87 IV / 14.133 art. 156 IV / 8.429 art. 12) e impedimento (10.520 art. 7 /
+    14.133 art. 156 III) vedam contratar; suspensão (8.666 art. 87 III) vale no órgão; advertência/multa (156 I-II, 87 I-II)
+    não impedem — o SIGA registra tudo com o mesmo status 'Vigente'."""
+    e = (enq or "").upper()
+    if "INC. IV" in e and "8.666" in e or "156, INC. IV" in e or "8.429" in e or "INIDON" in e:
+        return "inidoneidade/proibição de contratar", 4
+    if "10.520" in e or "156, INC. III" in e or "IMPEDI" in e:
+        return "impedimento de licitar e contratar", 4
+    if "INC. III" in e and "8.666" in e or "SUSPENS" in e:
+        return "suspensão temporária (no órgão apenador)", 3
+    return "advertência/multa", 1
+
+
+def sancoes_siga(cnpj: str | None) -> list[dict]:
+    dig = _digits(cnpj or "")
+    _DB = _resolver_db()
+    if len(dig) != 14 or not _DB.exists():
+        return []
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True, timeout=30)
+    try:
+        rows = con.execute("SELECT nome, enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes WHERE doc=? ORDER BY status='Vigente' DESC, data_efetivacao DESC",
+                           (dig,)).fetchall()
+        out = []
+        for nome, enq, dt, org, st in rows:
+            iso = f"{dt[6:10]}-{dt[3:5]}-{dt[0:2]}" if len(dt or "") == 10 else "9999"
+            dep = con.execute("SELECT count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE credor=? AND "
+                              "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) >= ?", (dig, iso)).fetchone()
+            alc, peso = _alcance_sancao(enq)
+            out.append({"nome": nome, "enquadramento": enq, "alcance": alc, "peso": peso, "desde": dt, "orgao": org, "status": st,
+                        "obs_depois": dep[0] or 0, "pago_depois": dep[1] or 0.0})
+        return out
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+
+
+def achado_sancao_siga(sancoes: list[dict]) -> dict | None:
+    vig = [s for s in sancoes if s["status"] == "Vigente" and s["peso"] >= 3]
+    if not vig:
+        return None
+    pior = max(vig, key=lambda s: (s["peso"], s["pago_depois"]))
+    grav = 4 if (pior["peso"] == 4 and pior["pago_depois"] > 0) else 3
+    linhas = "; ".join(f"{s['alcance']} — {s['enquadramento'][:60]} ({s['orgao'][:40]}, desde {s['desde']})" for s in vig[:3])
+    return {"rf": "DD/SANCAO-SIGA", "grav": grav,
+            "obs": (f"**Sanção VIGENTE no registro estadual (Portal SIGA):** {linhas}. " +
+                    (f"O SIAFE registra {pior['obs_depois']} OB(s) = R$ {_moeda(pior['pago_depois'])} a este CNPJ DEPOIS da efetivação — "
+                     "pagamento de contrato anterior é lícito; contratação NOVA na vigência não é (art. 156 §§ Lei 14.133; art. 87 Lei 8.666). "
+                     "Conferir o objeto/processo das OBs. " if pior["pago_depois"] > 0 else "Sem OB após a efetivação nos dados do SIAFE. ") +
+                    "Fonte pública do SIGA; suspensão vale no órgão apenador, inidoneidade/impedimento em toda a Administração.")}
+
+
+# ── Contratos com a PREFEITURA do Rio (ContasRio → tools/contasrio_ingest) — 13/09/2026 ─────────
+def contratos_pcrj(cnpj: str | None) -> dict | None:
+    """Pegada do fornecedor na contratação MUNICIPAL (pcrj.db::contasrio_contrato): quantos contratos,
+    quantos por contratação direta (inexigibilidade/dispensa), valores e os maiores com o nº do
+    processo e o link do inteiro teor (CCON). None se não há base ou não há contrato."""
+    dig = _digits(cnpj or "")
+    if len(dig) != 14:
+        return None
+    from compliance_agent.pcrj.db import DB_PATH
+    if not DB_PATH.exists():
+        return None
+    con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=30)
+    try:
+        r = con.execute(
+            "SELECT count(*), sum(forma_contratacao LIKE 'Contratação Direta%'), "
+            "round(sum(coalesce(valor_atualizado,0)),2), round(sum(coalesce(total_pago,0)),2), "
+            "round(sum(CASE WHEN forma_contratacao LIKE 'Contratação Direta%' THEN coalesce(valor_atualizado,0) END),2), "
+            "count(DISTINCT orgao), group_concat(DISTINCT orgao), min(ano), max(ano), max(favorecido_nome) "
+            "FROM contasrio_contrato WHERE favorecido_doc=?", (dig,)).fetchone()
+        top = con.execute(
+            "SELECT ano, orgao, forma_contratacao, objeto, valor_atualizado, total_pago, processo, url_ccon "
+            "FROM contasrio_contrato WHERE favorecido_doc=? ORDER BY coalesce(total_pago,0) DESC, coalesce(valor_atualizado,0) DESC LIMIT 5",
+            (dig,)).fetchall()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    if not r or not r[0]:
+        return None
+    return {"n": r[0], "diretas": r[1] or 0, "valor": r[2] or 0.0, "pago": r[3] or 0.0, "valor_diretas": r[4] or 0.0,
+            "n_orgaos": r[5], "orgaos": (r[6] or "")[:200], "ano_min": r[7], "ano_max": r[8], "nome": r[9],
+            "maiores": [{"ano": t[0], "orgao": t[1], "forma": t[2], "objeto": (t[3] or "")[:160], "valor": t[4] or 0.0,
+                         "pago": t[5] or 0.0, "processo": t[6], "url_ccon": t[7]} for t in top]}
+
+
+# estatais, concessionárias e entes públicos contratam direto por natureza (art. 75, IX/XI e art. 74):
+# COMLURB, Correios, Light, RioSaúde, IplanRio… — 4 dos 8 primeiros da lista real eram esses.
+_ESTATAL = ("COMPANHIA MUNICIPAL", "COMPANHIA ESTADUAL", "COMPANHIA DE ", "EMPRESA PUBLICA", "EMPRESA MUNICIPAL",
+            "EMPRESA BRASILEIRA DE CORREIOS", "LIGHT SERVICOS", "CEDAE", "COMLURB", "RIOSAUDE", "IPLANRIO", "RIOLUZ",
+            "CET-RIO", "FUNDACAO ", "INSTITUTO MUNICIPAL", "SECRETARIA", "MUNICIPIO", "ESTADO DO", "UNIAO", "MINIST",
+            "UNIVERSIDADE", "SERVICO SOCIAL", "SERVICO NACIONAL", "SEBRAE", "CAIXA ECONOMICA", "BANCO DO BRASIL",
+            "IMPRENSA OFICIAL", "PETROBRAS", "NATURGY", "AGUAS DO RIO")
+
+
+def _eh_estatal(nome: str | None) -> bool:
+    n = unicodedata.normalize("NFKD", (nome or "").upper()).encode("ascii", "ignore").decode()
+    return any(p in n for p in _ESTATAL)
+
+
+def achado_contratacao_direta_pcrj(cp: dict | None) -> dict | None:
+    """Contratação direta como regime no MUNICÍPIO: 5+ contratos e metade ou mais por inexigibilidade/
+    dispensa (grav 3; 10+ e 2/3 = grav 4). Espelha achado_emergencia_siga para a esfera municipal.
+    Estatal/concessionária/ente público não conta (contrata direto por natureza)."""
+    if not cp or cp["n"] < 5 or _eh_estatal(cp.get("nome")):
+        return None
+    share = cp["diretas"] / cp["n"]
+    if share < 0.5:
+        return None
+    grav = 4 if (cp["diretas"] >= 10 and share >= 2 / 3) else 3
+    procs = [m["processo"] for m in cp["maiores"] if m.get("processo")][:3]
+    return {"rf": "DD/DIRETA-PCRJ", "grav": grav,
+            "obs": (f"**{cp['diretas']} de {cp['n']} contratos com a Prefeitura do Rio ({cp['ano_min']}–{cp['ano_max']}) são por "
+                    f"contratação direta (inexigibilidade/dispensa)**, R$ {_moeda(cp['valor_diretas'])} de R$ {_moeda(cp['valor'])} "
+                    f"(pago pelo Município: R$ {_moeda(cp['pago'])}); {cp['n_orgaos']} órgão(s): {cp['orgaos'][:120]}. "
+                    f"Processos: {', '.join(procs) or 'n/d'}. A contratação direta é excepcional (arts. 74-75 Lei 14.133/2021) e a "
+                    "habitualidade com o mesmo fornecedor pede a motivação de cada inexigibilidade — indício, não acusação.")}

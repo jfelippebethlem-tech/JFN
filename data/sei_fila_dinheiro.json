@@ -1,0 +1,6502 @@
+[
+ {
+  "sei": "SEI-150001/011573/2021",
+  "score": 210000000.0,
+  "valor_ob": 210000000.0,
+  "forn": "Fundo Municipal De Saude De Duque De Caxias",
+  "cnpj": "11128809000110",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/005089/2022",
+  "score": 135274563.22,
+  "valor_ob": 135274563.22,
+  "forn": "I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA A SAUDE",
+  "cnpj": "24006302000488",
+  "n_ob": 10,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/002641/2022",
+  "score": 109796849.43,
+  "valor_ob": 109796849.43,
+  "forn": "I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA A SAUDE",
+  "cnpj": "24006302000488",
+  "n_ob": 17,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "sei-080007/002208/2021",
+  "score": 66000000.0,
+  "valor_ob": 66000000.0,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/025088/2021",
+  "score": 60650109.6,
+  "valor_ob": 60650109.6,
+  "forn": "I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA A SAUDE",
+  "cnpj": "24006302000488",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/025266/2021",
+  "score": 54636538.06,
+  "valor_ob": 54636538.06,
+  "forn": "I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA A SAUDE",
+  "cnpj": "24006302000488",
+  "n_ob": 13,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/015269/2023",
+  "score": 48129769.29,
+  "valor_ob": 48129769.29,
+  "forn": "INSTITUTO D'OR DE GESTÃO DE SAÚDE PÚBLICA",
+  "cnpj": "08850962000222",
+  "n_ob": 17,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/003388/2024",
+  "score": 39000000.0,
+  "valor_ob": 39000000.0,
+  "forn": "Fundo Municipal De Saude De Duque De Caxias",
+  "cnpj": "11128809000110",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/009542/2022",
+  "score": 36585039.39,
+  "valor_ob": 36585039.39,
+  "forn": "ASSOCIAÇÃO DE PROTEÇÃO A MATERNIDADE E A INFANCIA DE MUTUIPE",
+  "cnpj": "14812333000120",
+  "n_ob": 12,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/018755/2026",
+  "score": 30000000.0,
+  "valor_ob": 30000000.0,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/006323/2025",
+  "score": 25662000.0,
+  "valor_ob": 25662000.0,
+  "forn": "STEM SOLUCOES E INTEGRACOES EDUCACIONAIS LTDA",
+  "cnpj": "31761603000130",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/003257/2024",
+  "score": 24586878.09,
+  "valor_ob": 24586878.09,
+  "forn": "CDEL CIA DISTRIBUIDORA E EDITORA DE LIVROS LTDA",
+  "cnpj": "13569390000167",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030029/000256/2024",
+  "score": 22264653.6,
+  "valor_ob": 22264653.6,
+  "forn": "DRA METROPOLITANA IV",
+  "cnpj": "CG0012873",
+  "n_ob": 237,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/011579/2025",
+  "score": 22087131.36,
+  "valor_ob": 22087131.36,
+  "forn": "Fundo Mun. De Saude De Campos Dos Goytacazes",
+  "cnpj": "11384874000106",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/010741/2026",
+  "score": 21273964.56,
+  "valor_ob": 21273964.56,
+  "forn": "DRA METROPOLITANA VII",
+  "cnpj": "CG0012876",
+  "n_ob": 203,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/000247/2024",
+  "score": 20672295.63,
+  "valor_ob": 20672295.63,
+  "forn": "Construtora Passarelli Ltda.",
+  "cnpj": "60625829000101",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001500/2025",
+  "score": 19893454.27,
+  "valor_ob": 19893454.27,
+  "forn": "CONSORCIO VIEIRA BOM RETIRO",
+  "cnpj": "49298100000135",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001405/2025",
+  "score": 19764061.59,
+  "valor_ob": 19764061.59,
+  "forn": "CONSORCIO MUV SAO GONCALO",
+  "cnpj": "48479530000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/000028/2026",
+  "score": 19285945.6,
+  "valor_ob": 19285945.6,
+  "forn": "DRA METROPOLITANA VII",
+  "cnpj": "CG0012876",
+  "n_ob": 235,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/002446/2024",
+  "score": 18268665.12,
+  "valor_ob": 18268665.12,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 24,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012006/2025",
+  "score": 18088253.86,
+  "valor_ob": 18088253.86,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/008025/2023",
+  "score": 18000000.0,
+  "valor_ob": 18000000.0,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001294/2025",
+  "score": 16893874.49,
+  "valor_ob": 16893874.49,
+  "forn": "CONSORCIO MUV SAO GONCALO",
+  "cnpj": "48479530000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/002376/2024",
+  "score": 16528755.2,
+  "valor_ob": 16528755.2,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 100,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/001309/2022",
+  "score": 15883450.34,
+  "valor_ob": 15883450.34,
+  "forn": "Helicopteros Do Brasil S/a",
+  "cnpj": "20367629000181",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011066/2025",
+  "score": 15288500.34,
+  "valor_ob": 15288500.34,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/011950/2024",
+  "score": 15000000.0,
+  "valor_ob": 15000000.0,
+  "forn": "Fundo Municipal De Saude De Nova Iguacu",
+  "cnpj": "10497795000149",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/007714/2026",
+  "score": 15000000.0,
+  "valor_ob": 15000000.0,
+  "forn": "Fundo Municipal De Saude De Duque De Caxias",
+  "cnpj": "11128809000110",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000585/2024",
+  "score": 14945154.18,
+  "valor_ob": 14945154.18,
+  "forn": "CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL",
+  "cnpj": "07792269000105",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001299/2025",
+  "score": 14600848.28,
+  "valor_ob": 14600848.28,
+  "forn": "CONSORCIO VIEIRA BOM RETIRO",
+  "cnpj": "49298100000135",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/006258/2024",
+  "score": 14458039.54,
+  "valor_ob": 14458039.54,
+  "forn": "Oriente Construcao Civil Ltda.",
+  "cnpj": "01127106000113",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001393/2025",
+  "score": 14259641.21,
+  "valor_ob": 14259641.21,
+  "forn": "CONSORCIO MOBILIDADE AV. 22 DE MAIO",
+  "cnpj": "48177702000171",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/117693/2025",
+  "score": 14077955.0,
+  "valor_ob": 14077955.0,
+  "forn": "RECURSOS PROGRAMA",
+  "cnpj": "CG0003585",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/019314/2024",
+  "score": 14000000.0,
+  "valor_ob": 14000000.0,
+  "forn": "Fundo Municipal De Saude De Itaborai",
+  "cnpj": "11865033000110",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/002250/2026",
+  "score": 14000000.0,
+  "valor_ob": 14000000.0,
+  "forn": "Fundo Municipal De Saude De Itaborai",
+  "cnpj": "11865033000110",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001520/2025",
+  "score": 13785441.13,
+  "valor_ob": 13785441.13,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030029/000546/2024",
+  "score": 13772426.1,
+  "valor_ob": 13772426.1,
+  "forn": "DRA NORTE FLUMINENSE",
+  "cnpj": "CG0012878",
+  "n_ob": 38,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/002411/2023",
+  "score": 13472868.25,
+  "valor_ob": 13472868.25,
+  "forn": "Fundo Municipal De Saude Pmvr Sms",
+  "cnpj": "39563911000162",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001514/2025",
+  "score": 13345033.23,
+  "valor_ob": 13345033.23,
+  "forn": "CONSTRUTORA JM INCORPORAÇÃO LTDA",
+  "cnpj": "03478949000190",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001523/2025",
+  "score": 13227071.5,
+  "valor_ob": 13227071.5,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/002080/2025",
+  "score": 13212211.84,
+  "valor_ob": 13212211.84,
+  "forn": "CONSORCIO EMERGENCIA QUITANDINHA",
+  "cnpj": "64002921000176",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/040129/2026",
+  "score": 13176044.7,
+  "valor_ob": 13176044.7,
+  "forn": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+  "cnpj": "00801512000157",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/003310/2026",
+  "score": 13168100.51,
+  "valor_ob": 13168100.51,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/001205/2024",
+  "score": 12969278.21,
+  "valor_ob": 12969278.21,
+  "forn": "CONSTRUVERDE CONSTRUÇÕES E SERVIÇOS EIRELI",
+  "cnpj": "20360878000145",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/006152/2025",
+  "score": 12499650.0,
+  "valor_ob": 12499650.0,
+  "forn": "HSOL INCENTIVE PERFORMANCE S.A",
+  "cnpj": "16991823000166",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/007124/2025",
+  "score": 12471166.96,
+  "valor_ob": 12471166.96,
+  "forn": "INTELIGENCIA ARTIFICIAL TECNOLOGIA E REFRIGERACAO LTDA",
+  "cnpj": "01579387000145",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/000191/2024",
+  "score": 12427130.46,
+  "valor_ob": 12427130.46,
+  "forn": "Consorcio Sondotecnica Cobrape-ch2m (scc)",
+  "cnpj": "17310993000109",
+  "n_ob": 16,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001547/2025",
+  "score": 12411825.62,
+  "valor_ob": 12411825.62,
+  "forn": "OMEGA CONSTRUTORA E SERVICOS LTDA",
+  "cnpj": "12647362000158",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001552/2025",
+  "score": 12308622.0,
+  "valor_ob": 12308622.0,
+  "forn": "CONSORCIO VIEIRA BOM RETIRO",
+  "cnpj": "49298100000135",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/000241/2024",
+  "score": 12264104.39,
+  "valor_ob": 12264104.39,
+  "forn": "Hydra Engenharia E Saneamento Ltda",
+  "cnpj": "10547330000155",
+  "n_ob": 10,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010672/2025",
+  "score": 12037396.45,
+  "valor_ob": 12037396.45,
+  "forn": "MVT EDUCAÇÃO LTDA",
+  "cnpj": "14619967000160",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/001611/2024",
+  "score": 11700232.33,
+  "valor_ob": 11700232.33,
+  "forn": "Omega Construtora E Servicos Ltda.",
+  "cnpj": "12647362000158",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/002789/2026",
+  "score": 11524765.84,
+  "valor_ob": 11524765.84,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 62,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001473/2025",
+  "score": 11508144.59,
+  "valor_ob": 11508144.59,
+  "forn": "CONSORCIO MOBILIDADE AV. 22 DE MAIO",
+  "cnpj": "48177702000171",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001567/2025",
+  "score": 11474259.13,
+  "valor_ob": 11474259.13,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001409/2025",
+  "score": 10975084.96,
+  "valor_ob": 10975084.96,
+  "forn": "CONSORCIO PAVIMENTACAO BAIRRO SAO GONCALO",
+  "cnpj": "61798774000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010324/2025",
+  "score": 10676000.0,
+  "valor_ob": 10676000.0,
+  "forn": "GLOBALTEC TECNOLOGIAS EDUCACIONAIS LTDA",
+  "cnpj": "30570278000165",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/006351/2024",
+  "score": 10468666.6,
+  "valor_ob": 10468666.6,
+  "forn": "DRA METROPOLITANA VII",
+  "cnpj": "CG0012876",
+  "n_ob": 94,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/002413/2023",
+  "score": 10381151.92,
+  "valor_ob": 10381151.92,
+  "forn": "Fundo Municipal De Saude Pmvr Sms",
+  "cnpj": "39563911000162",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001536/2025",
+  "score": 10314790.2,
+  "valor_ob": 10314790.2,
+  "forn": "CONSORCIO RECUPERACAO ASFALTICA LOTE 02",
+  "cnpj": "57989870000152",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/003268/2023",
+  "score": 10242512.19,
+  "valor_ob": 10242512.19,
+  "forn": "Fundo Mun. De Saude De Campos Dos Goytacazes",
+  "cnpj": "11384874000106",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-040009/000072/2024",
+  "score": 10202627.67,
+  "valor_ob": 10202627.67,
+  "forn": "BANCO DO BRASIL S/A",
+  "cnpj": "00000000045292",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001574/2025",
+  "score": 10184771.92,
+  "valor_ob": 10184771.92,
+  "forn": "CONSTRUTORA JM INCORPORAÇÃO LTDA",
+  "cnpj": "03478949000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000871/2025",
+  "score": 10180442.96,
+  "valor_ob": 10180442.96,
+  "forn": "CONSORCIO MUV SAO GONCALO",
+  "cnpj": "48479530000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-040047/000388/2022",
+  "score": 10000000.0,
+  "valor_ob": 10000000.0,
+  "forn": "SECRETARIA DE ESTADO DE FAZENDA - SEFAZ",
+  "cnpj": "42498675000152",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/003697/2026",
+  "score": 9765641.34,
+  "valor_ob": 9765641.34,
+  "forn": "Fundo Municipal De Saude De Itaperuna",
+  "cnpj": "39215827000158",
+  "n_ob": 98,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011071/2025",
+  "score": 9758622.86,
+  "valor_ob": 9758622.86,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/023573/2026",
+  "score": 9700371.0,
+  "valor_ob": 9700371.0,
+  "forn": "UERJ-AC/BOLSISTAS",
+  "cnpj": "CG0004122",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001555/2025",
+  "score": 9655404.12,
+  "valor_ob": 9655404.12,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001140/2024",
+  "score": 9588394.15,
+  "valor_ob": 9588394.15,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/022045/2025",
+  "score": 9584422.42,
+  "valor_ob": 9584422.42,
+  "forn": "Fundo Municipal De Saude Pmvr Sms",
+  "cnpj": "39563911000162",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/001353/2023",
+  "score": 9500000.0,
+  "valor_ob": 9500000.0,
+  "forn": "Fundo Municipal De Saude - Barra Mansa",
+  "cnpj": "36507127000149",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000690/2024",
+  "score": 9450574.68,
+  "valor_ob": 9450574.68,
+  "forn": "CONSORCIO VIEIRA BOM RETIRO",
+  "cnpj": "49298100000135",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012007/2025",
+  "score": 9433284.71,
+  "valor_ob": 9433284.71,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/103231/2024",
+  "score": 9356751.21,
+  "valor_ob": 9356751.21,
+  "forn": "Fundacao Apoio A Pesq.ens. E Assist. A Escola",
+  "cnpj": "04313403000141",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001415/2025",
+  "score": 9268184.83,
+  "valor_ob": 9268184.83,
+  "forn": "OMEGA CONSTRUTORA E SERVICOS LTDA",
+  "cnpj": "12647362000158",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000436/2024",
+  "score": 9252731.59,
+  "valor_ob": 9252731.59,
+  "forn": "Enge Prat Engenharia E Serviços Ltda.",
+  "cnpj": "03314057000153",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001280/2025",
+  "score": 9135126.25,
+  "valor_ob": 9135126.25,
+  "forn": "CONSORCIO MOBILIDADE AV. 22 DE MAIO",
+  "cnpj": "48177702000171",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/008317/2024",
+  "score": 9093500.0,
+  "valor_ob": 9093500.0,
+  "forn": "Fund.de Apoio A Esc.tec.do Est.rio De Janeiro",
+  "cnpj": "31608763002600",
+  "n_ob": 70,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/018248/2024",
+  "score": 9087113.4,
+  "valor_ob": 9087113.4,
+  "forn": "Uniao Norte Fluminense Eng. E Comercio Ltda",
+  "cnpj": "02354917000110",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001421/2025",
+  "score": 9006446.49,
+  "valor_ob": 9006446.49,
+  "forn": "INFRATECH ENGENHARIA LTDA",
+  "cnpj": "24408367000107",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001699/2025",
+  "score": 8988384.64,
+  "valor_ob": 8988384.64,
+  "forn": "TCE EMPREENDIMENTOS ESPORTIVOS LTDA",
+  "cnpj": "22475546000131",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-300001/002012/2026",
+  "score": 8982791.31,
+  "valor_ob": 8982791.31,
+  "forn": "Confederacao Brasileira De Volley-ball",
+  "cnpj": "34046722000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/036554/2025",
+  "score": 8751960.0,
+  "valor_ob": 8751960.0,
+  "forn": "Riopar Participações S.A.",
+  "cnpj": "16727386000178",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000568/2025",
+  "score": 8670144.16,
+  "valor_ob": 8670144.16,
+  "forn": "OMEGA CONSTRUTORA E SERVICOS LTDA",
+  "cnpj": "12647362000158",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/003457/2024",
+  "score": 8634969.89,
+  "valor_ob": 8634969.89,
+  "forn": "SUDESTE BRASIL COOPERATIVA DE TRANSPORTES",
+  "cnpj": "21445959000100",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/057189/2024",
+  "score": 8576000.0,
+  "valor_ob": 8576000.0,
+  "forn": "Gratificação de incentivo ao aperfeiçoamento e produtividade",
+  "cnpj": "CG0014482",
+  "n_ob": 14,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001166/2025",
+  "score": 8403969.37,
+  "valor_ob": 8403969.37,
+  "forn": "CONSORCIO MOBILIDADE AV. 22 DE MAIO",
+  "cnpj": "48177702000171",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/010794/2024",
+  "score": 7959005.09,
+  "valor_ob": 7959005.09,
+  "forn": "Hydra Engenharia E Saneamento Ltda",
+  "cnpj": "10547330000155",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/122676/2025",
+  "score": 7640100.0,
+  "valor_ob": 7640100.0,
+  "forn": "Fundacao Getulio Vargas",
+  "cnpj": "33641663000144",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000484/2024",
+  "score": 7598415.8,
+  "valor_ob": 7598415.8,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 9,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330020/5/2024",
+  "score": 7362133.33,
+  "valor_ob": 7362133.33,
+  "forn": "Enge Prat Engenharia E Serviços Ltda.",
+  "cnpj": "03314057000153",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/015644/2026",
+  "score": 7303286.01,
+  "valor_ob": 7303286.01,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013732/2026",
+  "score": 7263433.87,
+  "valor_ob": 7263433.87,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011932/2026",
+  "score": 7087600.78,
+  "valor_ob": 7087600.78,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-040009/000008/2026",
+  "score": 7026866.28,
+  "valor_ob": 7026866.28,
+  "forn": "COMPANHIA ESTADUAL DE ÁGUAS E ESGOTOS DO RIO DE JANEIRO ¿ CEDAE",
+  "cnpj": "CG0014307",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/094731/2025",
+  "score": 7002700.0,
+  "valor_ob": 7002700.0,
+  "forn": "Fundacao Getulio Vargas",
+  "cnpj": "33641663000144",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016400/2026",
+  "score": 6990995.91,
+  "valor_ob": 6990995.91,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/010724/2026",
+  "score": 6959050.13,
+  "valor_ob": 6959050.13,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011363/2026",
+  "score": 6928265.77,
+  "valor_ob": 6928265.77,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000639/2025",
+  "score": 6908709.36,
+  "valor_ob": 6908709.36,
+  "forn": "CONSORCIO MUV SAO GONCALO",
+  "cnpj": "48479530000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/026526/2025",
+  "score": 6858734.0,
+  "valor_ob": 6858734.0,
+  "forn": "UERJ-AC/BOLSISTAS",
+  "cnpj": "CG0004122",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/001005/2024",
+  "score": 6789878.72,
+  "valor_ob": 6789878.72,
+  "forn": "Omega Construtora E Servicos Ltda.",
+  "cnpj": "12647362000158",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012010/2025",
+  "score": 6731650.33,
+  "valor_ob": 6731650.33,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001429/2025",
+  "score": 6713269.06,
+  "valor_ob": 6713269.06,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/106914/2025",
+  "score": 6652900.0,
+  "valor_ob": 6652900.0,
+  "forn": "Fundacao Getulio Vargas",
+  "cnpj": "33641663000144",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/029774/2025",
+  "score": 6622166.83,
+  "valor_ob": 6622166.83,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/002469/2024",
+  "score": 6593283.41,
+  "valor_ob": 6593283.41,
+  "forn": "Rio Sustentável",
+  "cnpj": "CG0013215",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000395/2025",
+  "score": 6585806.3,
+  "valor_ob": 6585806.3,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/026923/2024",
+  "score": 6519760.33,
+  "valor_ob": 6519760.33,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000499/2025",
+  "score": 6491680.61,
+  "valor_ob": 6491680.61,
+  "forn": "CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL",
+  "cnpj": "07792269000105",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/100880/2024",
+  "score": 6456916.8,
+  "valor_ob": 6456916.8,
+  "forn": "DRA METROPOLITANA IV",
+  "cnpj": "CG0012873",
+  "n_ob": 59,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/047690/2026",
+  "score": 6430206.88,
+  "valor_ob": 6430206.88,
+  "forn": "DRA METROPOLITANA III",
+  "cnpj": "CG0012872",
+  "n_ob": 112,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010100/2025",
+  "score": 6415459.81,
+  "valor_ob": 6415459.81,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000482/2024",
+  "score": 6348533.01,
+  "valor_ob": 6348533.01,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/011969/2024",
+  "score": 6318084.0,
+  "valor_ob": 6318084.0,
+  "forn": "UERJ-AC/BOLSISTAS",
+  "cnpj": "CG0004122",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001738/2025",
+  "score": 6314176.25,
+  "valor_ob": 6314176.25,
+  "forn": "FAB MIX CONCRETOS LTDA",
+  "cnpj": "22888990000189",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/022031/2021",
+  "score": 6267283.33,
+  "valor_ob": 6267283.33,
+  "forn": "Organizacao Pan-americana Da Saude",
+  "cnpj": "04096431000154",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000353/2025",
+  "score": 6260865.69,
+  "valor_ob": 6260865.69,
+  "forn": "CONSORCIO MOBILIDADE AV. 22 DE MAIO",
+  "cnpj": "48177702000171",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000978/2025",
+  "score": 6236242.38,
+  "valor_ob": 6236242.38,
+  "forn": "Santa Luzia Engenharia e Construções Ltda",
+  "cnpj": "01868396000156",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011072/2025",
+  "score": 6221677.17,
+  "valor_ob": 6221677.17,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/029077/2024",
+  "score": 6209851.97,
+  "valor_ob": 6209851.97,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/015487/2026",
+  "score": 6184534.42,
+  "valor_ob": 6184534.42,
+  "forn": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
+  "cnpj": "07726017000170",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/025110/2024",
+  "score": 6179270.97,
+  "valor_ob": 6179270.97,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/014430/2024",
+  "score": 6131290.88,
+  "valor_ob": 6131290.88,
+  "forn": "AMC SOLUÇÕES E SAUDE LTDA.",
+  "cnpj": "50917361000175",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001171/2024",
+  "score": 6048386.27,
+  "valor_ob": 6048386.27,
+  "forn": "INFRATECH ENGENHARIA LTDA",
+  "cnpj": "24408367000107",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/095360/2025",
+  "score": 6048111.16,
+  "valor_ob": 6048111.16,
+  "forn": "LT GLOBAL COMERCIO E SERVICOS LTDA",
+  "cnpj": "08191340000230",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/008444/2026",
+  "score": 6038120.59,
+  "valor_ob": 6038120.59,
+  "forn": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
+  "cnpj": "07726017000170",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016640/2024",
+  "score": 6020929.96,
+  "valor_ob": 6020929.96,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013230/2026",
+  "score": 6008917.18,
+  "valor_ob": 6008917.18,
+  "forn": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
+  "cnpj": "07726017000170",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016464/2025",
+  "score": 6008268.94,
+  "valor_ob": 6008268.94,
+  "forn": "Fundo Municipal De Saude De Barra Do Pirai",
+  "cnpj": "01606604000149",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016511/2023",
+  "score": 6000000.0,
+  "valor_ob": 6000000.0,
+  "forn": "Fundo Municipal De Saude De Mage",
+  "cnpj": "12133004000127",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/010563/2025",
+  "score": 6000000.0,
+  "valor_ob": 6000000.0,
+  "forn": "Fundo Municipal De Saude De Miguel Pereira",
+  "cnpj": "12240308000193",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/002195/2024",
+  "score": 6000000.0,
+  "valor_ob": 6000000.0,
+  "forn": "Progr. Das Nacoes Unidas P/o Desenvolvimento",
+  "cnpj": "03723329000179",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013083/2024",
+  "score": 5989113.74,
+  "valor_ob": 5989113.74,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/019241/2024",
+  "score": 5987540.43,
+  "valor_ob": 5987540.43,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/018110/2024",
+  "score": 5984925.94,
+  "valor_ob": 5984925.94,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016458/2024",
+  "score": 5984877.29,
+  "valor_ob": 5984877.29,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013303/2024",
+  "score": 5976679.85,
+  "valor_ob": 5976679.85,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011680/2026",
+  "score": 5954595.3,
+  "valor_ob": 5954595.3,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016684/2024",
+  "score": 5947634.9,
+  "valor_ob": 5947634.9,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/008221/2024",
+  "score": 5912071.99,
+  "valor_ob": 5912071.99,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001422/2025",
+  "score": 5842605.93,
+  "valor_ob": 5842605.93,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/006074/2025",
+  "score": 5801338.4,
+  "valor_ob": 5801338.4,
+  "forn": "GLOBALTEC TECNOLOGIAS EDUCACIONAIS LTDA",
+  "cnpj": "30570278000165",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/006326/2025",
+  "score": 5790597.12,
+  "valor_ob": 5790597.12,
+  "forn": "INSTITUTO NTC DO BRASIL LTDA",
+  "cnpj": "10614200000198",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011899/2024",
+  "score": 5763720.35,
+  "valor_ob": 5763720.35,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028279/2025",
+  "score": 5759966.42,
+  "valor_ob": 5759966.42,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/027524/2025",
+  "score": 5753874.88,
+  "valor_ob": 5753874.88,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030029/007380/2020",
+  "score": 5746402.06,
+  "valor_ob": 5746402.06,
+  "forn": "Mec/fnde",
+  "cnpj": "00378257000181",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/029734/2025",
+  "score": 5733747.75,
+  "valor_ob": 5733747.75,
+  "forn": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
+  "cnpj": "07726017000170",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028499/2025",
+  "score": 5732108.13,
+  "valor_ob": 5732108.13,
+  "forn": "MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA",
+  "cnpj": "07726017000170",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000543/2024",
+  "score": 5714522.79,
+  "valor_ob": 5714522.79,
+  "forn": "Santa Luzia Engenharia e Construções Ltda",
+  "cnpj": "01868396000156",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/000748/2024",
+  "score": 5700414.35,
+  "valor_ob": 5700414.35,
+  "forn": "Uniao Norte Fluminense Eng. E Comercio Ltda",
+  "cnpj": "02354917000110",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001404/2025",
+  "score": 5652243.42,
+  "valor_ob": 5652243.42,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000515/2024",
+  "score": 5619664.35,
+  "valor_ob": 5619664.35,
+  "forn": "Hydra Engenharia E Saneamento Ltda",
+  "cnpj": "10547330000155",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/008621/2024",
+  "score": 5615873.57,
+  "valor_ob": 5615873.57,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/002400/2026",
+  "score": 5600000.0,
+  "valor_ob": 5600000.0,
+  "forn": "Fundo Municipal De Saude De Nilopolis",
+  "cnpj": "11390042000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011019/2024",
+  "score": 5568079.1,
+  "valor_ob": 5568079.1,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/013391/2024",
+  "score": 5558755.36,
+  "valor_ob": 5558755.36,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/124484/2025",
+  "score": 5556602.11,
+  "valor_ob": 5556602.11,
+  "forn": "Aae Ciep Brizolao 359 Charles Perrault",
+  "cnpj": "00856362000189",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-040009/001027/2026",
+  "score": 5549621.97,
+  "valor_ob": 5549621.97,
+  "forn": "CONTRATO 12.1.191",
+  "cnpj": "CG0007154",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011959/2026",
+  "score": 5531196.94,
+  "valor_ob": 5531196.94,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/006481/2024",
+  "score": 5505977.58,
+  "valor_ob": 5505977.58,
+  "forn": "CONSTRUTORA BRASFORM LTDA",
+  "cnpj": "28618254000197",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/008330/2026",
+  "score": 5476906.69,
+  "valor_ob": 5476906.69,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/001096/2025",
+  "score": 5472777.08,
+  "valor_ob": 5472777.08,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 155,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/119360/2025",
+  "score": 5460522.5,
+  "valor_ob": 5460522.5,
+  "forn": "INSTITUTO POSITIVA SOCIAL",
+  "cnpj": "33981408000655",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001494/2025",
+  "score": 5421767.29,
+  "valor_ob": 5421767.29,
+  "forn": "CONSORCIO PAVIMENTACAO BAIRRO SAO GONCALO",
+  "cnpj": "61798774000102",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/015092/2026",
+  "score": 5388463.88,
+  "valor_ob": 5388463.88,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/003360/2024",
+  "score": 5250000.0,
+  "valor_ob": 5250000.0,
+  "forn": "Fundo Municipal De Saude De Duque De Caxias",
+  "cnpj": "11128809000110",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/029812/2025",
+  "score": 5232994.41,
+  "valor_ob": 5232994.41,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028276/2025",
+  "score": 5232818.75,
+  "valor_ob": 5232818.75,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/003048/2025",
+  "score": 5226212.68,
+  "valor_ob": 5226212.68,
+  "forn": "Fundo Municipal De Saude Pmvr Sms",
+  "cnpj": "39563911000162",
+  "n_ob": 48,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016031/2025",
+  "score": 5218793.22,
+  "valor_ob": 5218793.22,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/012399/2024",
+  "score": 5099000.0,
+  "valor_ob": 5099000.0,
+  "forn": "Fundo Municipal De Saude De Itaperuna",
+  "cnpj": "39215827000158",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/000515/2025",
+  "score": 5043495.2,
+  "valor_ob": 5043495.2,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/029569/2024",
+  "score": 5015637.5,
+  "valor_ob": 5015637.5,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 12,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-150016/027294/2026",
+  "score": 5013622.82,
+  "valor_ob": 5013622.82,
+  "forn": "CIX CITIZEN EXPERIENCE S/A",
+  "cnpj": "07917303000112",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/083934/2024",
+  "score": 5012662.52,
+  "valor_ob": 5012662.52,
+  "forn": "Hawai 2010 Comercial Ltda.",
+  "cnpj": "11472955000168",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/055120/2024",
+  "score": 5004500.0,
+  "valor_ob": 5004500.0,
+  "forn": "BOLSAS DE AUXÍLIOS",
+  "cnpj": "CG0006052",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011199/2025",
+  "score": 5000000.0,
+  "valor_ob": 5000000.0,
+  "forn": "Fund.de Apoio A Esc.tec.do Est.rio De Janeiro",
+  "cnpj": "31608763002600",
+  "n_ob": 73,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-140001/043975/2023",
+  "score": 5000000.0,
+  "valor_ob": 5000000.0,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016776/2023",
+  "score": 5000000.0,
+  "valor_ob": 5000000.0,
+  "forn": "Fundo Municipal De Saude De Porto Real",
+  "cnpj": "12107049000127",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010113/2024",
+  "score": 4980000.0,
+  "valor_ob": 4980000.0,
+  "forn": "Fund.de Apoio A Esc.tec.do Est.rio De Janeiro",
+  "cnpj": "31608763002600",
+  "n_ob": 55,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/023577/2026",
+  "score": 4958600.0,
+  "valor_ob": 4958600.0,
+  "forn": "BOLSAS DE AUXÍLIOS",
+  "cnpj": "CG0006052",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001197/2025",
+  "score": 4943071.35,
+  "valor_ob": 4943071.35,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/033701/2024",
+  "score": 4937214.45,
+  "valor_ob": 4937214.45,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 12,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/018894/2026",
+  "score": 4932820.68,
+  "valor_ob": 4932820.68,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/026060/2025",
+  "score": 4908895.7,
+  "valor_ob": 4908895.7,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000430/2024",
+  "score": 4907159.88,
+  "valor_ob": 4907159.88,
+  "forn": "Hydra Engenharia E Saneamento Ltda",
+  "cnpj": "10547330000155",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/038254/2025",
+  "score": 4890321.58,
+  "valor_ob": 4890321.58,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 9,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-220004/000650/2026",
+  "score": 4885453.65,
+  "valor_ob": 4885453.65,
+  "forn": "AMBIENTECH SOLUCOES EM TECNOLOGIA AMBIENTAL E CONSTRUCOES LTDA",
+  "cnpj": "52739361000158",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000496/2024",
+  "score": 4829649.61,
+  "valor_ob": 4829649.61,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/026149/2024",
+  "score": 4827190.31,
+  "valor_ob": 4827190.31,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 13,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000436/2025",
+  "score": 4823950.85,
+  "valor_ob": 4823950.85,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001713/2024",
+  "score": 4813725.61,
+  "valor_ob": 4813725.61,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/028909/2024",
+  "score": 4812600.0,
+  "valor_ob": 4812600.0,
+  "forn": "BOLSAS DE AUXÍLIOS",
+  "cnpj": "CG0006052",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-80001/003356/2024",
+  "score": 4800000.0,
+  "valor_ob": 4800000.0,
+  "forn": "Fundo Munic.de Saude De Sao Joao Meriti",
+  "cnpj": "10435993000188",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001397/2025",
+  "score": 4768925.98,
+  "valor_ob": 4768925.98,
+  "forn": "CONSTRUTORA JM INCORPORAÇÃO LTDA",
+  "cnpj": "03478949000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001508/2025",
+  "score": 4756951.14,
+  "valor_ob": 4756951.14,
+  "forn": "INFRATECH ENGENHARIA LTDA",
+  "cnpj": "24408367000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/014078/2026",
+  "score": 4742007.24,
+  "valor_ob": 4742007.24,
+  "forn": "Appa Servicos Temporarios E Efetivos Ltda",
+  "cnpj": "05969071000110",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/042534/2024",
+  "score": 4739254.71,
+  "valor_ob": 4739254.71,
+  "forn": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+  "cnpj": "00801512000157",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/024528/2024",
+  "score": 4738018.31,
+  "valor_ob": 4738018.31,
+  "forn": "Uti Rio Servicos Medicos Ltda - Epp",
+  "cnpj": "08866771000178",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/005874/2024",
+  "score": 4725197.71,
+  "valor_ob": 4725197.71,
+  "forn": "RTC ENGENHARIA LTDA",
+  "cnpj": "00822501000153",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/025558/2025",
+  "score": 4695514.61,
+  "valor_ob": 4695514.61,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001548/2025",
+  "score": 4692219.85,
+  "valor_ob": 4692219.85,
+  "forn": "CONSORCIO PAVIMENTACAO BAIRRO SAO GONCALO",
+  "cnpj": "61798774000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-350005/11346/2025",
+  "score": 4666081.67,
+  "valor_ob": 4666081.67,
+  "forn": "FUNDO DA POLICIA MILITAR DO ERJ",
+  "cnpj": "266500",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/025895/2025",
+  "score": 4661809.55,
+  "valor_ob": 4661809.55,
+  "forn": "Hospinova Distribuidora de Produtos Hospitalares Ltda",
+  "cnpj": "12499494000260",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000231/2025",
+  "score": 4644495.77,
+  "valor_ob": 4644495.77,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001287/2025",
+  "score": 4601825.66,
+  "valor_ob": 4601825.66,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/009174/2024",
+  "score": 4594224.24,
+  "valor_ob": 4594224.24,
+  "forn": "VIA GRAFICA LTDA",
+  "cnpj": "13944941000125",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-040009/000009/2026",
+  "score": 4584054.46,
+  "valor_ob": 4584054.46,
+  "forn": "COMPANHIA ESTADUAL DE ÁGUAS E ESGOTOS DO RIO DE JANEIRO ¿ CEDAE",
+  "cnpj": "CG0014308",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001212/2024",
+  "score": 4577092.67,
+  "valor_ob": 4577092.67,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001718/2025",
+  "score": 4548850.05,
+  "valor_ob": 4548850.05,
+  "forn": "Construtora Augusto Velloso S.a.",
+  "cnpj": "60853934000106",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010027/2025",
+  "score": 4538318.99,
+  "valor_ob": 4538318.99,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/025040/2025",
+  "score": 4534296.74,
+  "valor_ob": 4534296.74,
+  "forn": "FUNDACAO EDUCACIONAL SEVERINO SOMBRA",
+  "cnpj": "32410037002047",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-150016/044284/2026",
+  "score": 4526463.6,
+  "valor_ob": 4526463.6,
+  "forn": "M.i. Montreal Informatica S.a",
+  "cnpj": "42563692000126",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260003/003837/2026",
+  "score": 4521602.0,
+  "valor_ob": 4521602.0,
+  "forn": "MMAR MONTAGENS EVENTOS E PROGRAMACAO VISUAL LTDA",
+  "cnpj": "19543304000123",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/009557/2024",
+  "score": 4514991.02,
+  "valor_ob": 4514991.02,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/019836/2025",
+  "score": 4507593.71,
+  "valor_ob": 4507593.71,
+  "forn": "AGUAS DO RIO 4 SPE S.A",
+  "cnpj": "42644220000106",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/025039/2025",
+  "score": 4506471.65,
+  "valor_ob": 4506471.65,
+  "forn": "ASSOCIAÇÃO LAR SÃO FRANCISCO DE ASSIS NA PROVIDENCIA DE DEUS",
+  "cnpj": "53221255004995",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/017249/2026",
+  "score": 4506345.28,
+  "valor_ob": 4506345.28,
+  "forn": "Appa Servicos Temporarios E Efetivos Ltda",
+  "cnpj": "05969071000110",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/019088/2024",
+  "score": 4451967.32,
+  "valor_ob": 4451967.32,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001399/2025",
+  "score": 4447798.32,
+  "valor_ob": 4447798.32,
+  "forn": "CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL",
+  "cnpj": "07792269000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/005515/2024",
+  "score": 4428535.67,
+  "valor_ob": 4428535.67,
+  "forn": "Dimensional Engenharia Ltda",
+  "cnpj": "00299904000160",
+  "n_ob": 10,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/008149/2026",
+  "score": 4428043.91,
+  "valor_ob": 4428043.91,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/024138/2026",
+  "score": 4369696.5,
+  "valor_ob": 4369696.5,
+  "forn": "VR BENEFICIOS E SERVICOS DE PROCESSAMENTO S.A",
+  "cnpj": "02535864000133",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/021832/2025",
+  "score": 4365263.06,
+  "valor_ob": 4365263.06,
+  "forn": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+  "cnpj": "294200",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/004385/2024",
+  "score": 4355158.92,
+  "valor_ob": 4355158.92,
+  "forn": "Cobrape Cia Brasileira De Projetos E Empreend",
+  "cnpj": "58645219000128",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/008767/2025",
+  "score": 4353884.21,
+  "valor_ob": 4353884.21,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/014165/2026",
+  "score": 4349689.43,
+  "valor_ob": 4349689.43,
+  "forn": "BRAVO ASSESSORIA E SERVIÇOS EMPRESARIAIS EIRELI",
+  "cnpj": "07231868000141",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001676/2024",
+  "score": 4326123.0,
+  "valor_ob": 4326123.0,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/074071/2026",
+  "score": 4313971.5,
+  "valor_ob": 4313971.5,
+  "forn": "INSTITUTO POSITIVA SOCIAL",
+  "cnpj": "33981408000655",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070026/002667/2023",
+  "score": 4306702.5,
+  "valor_ob": 4306702.5,
+  "forn": "Rio Sustentável",
+  "cnpj": "CG0013215",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000388/2025",
+  "score": 4300284.05,
+  "valor_ob": 4300284.05,
+  "forn": "JP SERVIÇOS, CONSTRUÇÕES, REFORMAS E INSTALAÇÕES EM GERAL EIRELI",
+  "cnpj": "21214056000119",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001519/2025",
+  "score": 4294059.05,
+  "valor_ob": 4294059.05,
+  "forn": "CONSORCIO RECUPERACAO ASFALTICA LOTE 02",
+  "cnpj": "57989870000152",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/029334/2024",
+  "score": 4269057.97,
+  "valor_ob": 4269057.97,
+  "forn": "ASSOCIAÇÃO LAR SÃO FRANCISCO DE ASSIS NA PROVIDENCIA DE DEUS",
+  "cnpj": "53221255004995",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/013670/2024",
+  "score": 4251730.52,
+  "valor_ob": 4251730.52,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/001798/2025",
+  "score": 4247297.54,
+  "valor_ob": 4247297.54,
+  "forn": "POMA S.A.S.",
+  "cnpj": "CG0014462",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001568/2024",
+  "score": 4222029.1,
+  "valor_ob": 4222029.1,
+  "forn": "Abre Construções Ltda",
+  "cnpj": "23902149000161",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260007/007137/2026",
+  "score": 4208210.42,
+  "valor_ob": 4208210.42,
+  "forn": "CDA - Médico Residentes",
+  "cnpj": "CG0012784",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001182/2025",
+  "score": 4179475.47,
+  "valor_ob": 4179475.47,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-100001/000811/2026",
+  "score": 4165429.5,
+  "valor_ob": 4165429.5,
+  "forn": "Concessao Metroviaria Do Rio De Janeiro",
+  "cnpj": "10324624000118",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/010149/2026",
+  "score": 4159191.01,
+  "valor_ob": 4159191.01,
+  "forn": "BRAVO ASSESSORIA E SERVIÇOS EMPRESARIAIS EIRELI",
+  "cnpj": "07231868000141",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/004386/2024",
+  "score": 4120155.45,
+  "valor_ob": 4120155.45,
+  "forn": "Cobrape Cia Brasileira De Projetos E Empreend",
+  "cnpj": "58645219000128",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/063527/2025",
+  "score": 4064656.17,
+  "valor_ob": 4064656.17,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/026955/2026",
+  "score": 4064574.18,
+  "valor_ob": 4064574.18,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260007/062294/2022",
+  "score": 4061825.5,
+  "valor_ob": 4061825.5,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001714/2024",
+  "score": 4059202.38,
+  "valor_ob": 4059202.38,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001756/2025",
+  "score": 4039885.11,
+  "valor_ob": 4039885.11,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/009124/2025",
+  "score": 4007084.14,
+  "valor_ob": 4007084.14,
+  "forn": "MVT EDUCAÇÃO LTDA",
+  "cnpj": "14619967000160",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000513/2024",
+  "score": 4003108.23,
+  "valor_ob": 4003108.23,
+  "forn": "Gravisa Engenharia e Empreendimentos LTDA",
+  "cnpj": "17286183000156",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/001292/2021",
+  "score": 4000000.0,
+  "valor_ob": 4000000.0,
+  "forn": "Fundo Mun. De Saude De Conceicao De Macabu",
+  "cnpj": "08640219000167",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/038478/2024",
+  "score": 4000000.0,
+  "valor_ob": 4000000.0,
+  "forn": "Fundo Municipal De Saude De Guapimirim",
+  "cnpj": "12468947000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/037507/2024",
+  "score": 4000000.0,
+  "valor_ob": 4000000.0,
+  "forn": "Fundo Municipal De Saude De Areal",
+  "cnpj": "06810909000191",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/005130/2024",
+  "score": 4000000.0,
+  "valor_ob": 4000000.0,
+  "forn": "Fundo Municipal De Saude De Paracambi",
+  "cnpj": "09206510000194",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/003729/2026",
+  "score": 4000000.0,
+  "valor_ob": 4000000.0,
+  "forn": "FUNDO MUNICIPAL DE SAÚDE DE BOM JARDIM",
+  "cnpj": "11867889000125",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/024951/2023",
+  "score": 3956898.84,
+  "valor_ob": 3956898.84,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/042033/2025",
+  "score": 3940660.24,
+  "valor_ob": 3940660.24,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000495/2024",
+  "score": 3939356.66,
+  "valor_ob": 3939356.66,
+  "forn": "JP SERVIÇOS, CONSTRUÇÕES, REFORMAS E INSTALAÇÕES EM GERAL EIRELI",
+  "cnpj": "21214056000119",
+  "n_ob": 9,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/002051/2024",
+  "score": 3931996.15,
+  "valor_ob": 3931996.15,
+  "forn": "CONSORCIO COPACABANA R2X/TANGRAN",
+  "cnpj": "57332287000174",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001780/2024",
+  "score": 3907077.55,
+  "valor_ob": 3907077.55,
+  "forn": "Integral Construtora e Empreendimentos Ltda",
+  "cnpj": "35824033000130",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/036202/2024",
+  "score": 3895277.97,
+  "valor_ob": 3895277.97,
+  "forn": "FUNDACAO EDUCACIONAL SEVERINO SOMBRA",
+  "cnpj": "32410037002047",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/037705/2024",
+  "score": 3893679.83,
+  "valor_ob": 3893679.83,
+  "forn": "Light Servicos De Eletricidade S/a",
+  "cnpj": "60444437000146",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/020933/2025",
+  "score": 3883275.08,
+  "valor_ob": 3883275.08,
+  "forn": "ASSOCIAÇÃO LAR SÃO FRANCISCO DE ASSIS NA PROVIDENCIA DE DEUS",
+  "cnpj": "53221255004995",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/015616/2024",
+  "score": 3847774.9,
+  "valor_ob": 3847774.9,
+  "forn": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
+  "cnpj": "14625837000130",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001286/2025",
+  "score": 3829626.93,
+  "valor_ob": 3829626.93,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/106504/2024",
+  "score": 3810398.93,
+  "valor_ob": 3810398.93,
+  "forn": "EBN COMERCIO, IMPORTACAO E EXPORTACAO LTDA",
+  "cnpj": "21111808000540",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000392/2025",
+  "score": 3800579.98,
+  "valor_ob": 3800579.98,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000222/2025",
+  "score": 3797516.79,
+  "valor_ob": 3797516.79,
+  "forn": "CONSORCIO MUV SAO GONCALO",
+  "cnpj": "48479530000190",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012515/2024",
+  "score": 3781137.98,
+  "valor_ob": 3781137.98,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000703/2024",
+  "score": 3777909.06,
+  "valor_ob": 3777909.06,
+  "forn": "CONSORCIO PARQUE SARAIVA",
+  "cnpj": "46061279000114",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000504/2024",
+  "score": 3733384.11,
+  "valor_ob": 3733384.11,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012446/2025",
+  "score": 3727741.06,
+  "valor_ob": 3727741.06,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/000221/2026",
+  "score": 3711235.34,
+  "valor_ob": 3711235.34,
+  "forn": "DRA NOROESTE FLUMINENSE",
+  "cnpj": "CG0012877",
+  "n_ob": 20,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013524/2026",
+  "score": 3709021.79,
+  "valor_ob": 3709021.79,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/100395/2024",
+  "score": 3698119.66,
+  "valor_ob": 3698119.66,
+  "forn": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+  "cnpj": "00801512000157",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016999/2026",
+  "score": 3695717.7,
+  "valor_ob": 3695717.7,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/103954/2024",
+  "score": 3686030.4,
+  "valor_ob": 3686030.4,
+  "forn": "Bazar Irmãos Mendes Ltda-ME",
+  "cnpj": "19004598000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/084912/2024",
+  "score": 3678915.03,
+  "valor_ob": 3678915.03,
+  "forn": "Aae Ce Dr Albert Sabin",
+  "cnpj": "01421532000165",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001504/2025",
+  "score": 3674866.31,
+  "valor_ob": 3674866.31,
+  "forn": "NOVACAP ENGENHARIA INDUSTRIA E COMÉRCIO LTDA.",
+  "cnpj": "10738611000195",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/043936/2025",
+  "score": 3644844.27,
+  "valor_ob": 3644844.27,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028594/2024",
+  "score": 3643458.46,
+  "valor_ob": 3643458.46,
+  "forn": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
+  "cnpj": "14625837000130",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/001502/2024",
+  "score": 3639992.52,
+  "valor_ob": 3639992.52,
+  "forn": "Oriente Construcao Civil Ltda.",
+  "cnpj": "01127106000113",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/015670/2026",
+  "score": 3637848.83,
+  "valor_ob": 3637848.83,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/020591/2025",
+  "score": 3633582.3,
+  "valor_ob": 3633582.3,
+  "forn": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
+  "cnpj": "14625837000130",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/012364/2026",
+  "score": 3632036.72,
+  "valor_ob": 3632036.72,
+  "forn": "ECO RIO COMÉRCIO E SERVIÇOS LTDA",
+  "cnpj": "14625837000130",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001531/2025",
+  "score": 3579562.31,
+  "valor_ob": 3579562.31,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001417/2025",
+  "score": 3571208.37,
+  "valor_ob": 3571208.37,
+  "forn": "CONSORCIO RECUPERACAO ASFALTICA LOTE 02",
+  "cnpj": "57989870000152",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001181/2025",
+  "score": 3554392.35,
+  "valor_ob": 3554392.35,
+  "forn": "CONSORCIO PAVIMENTACAO BAIRRO SAO GONCALO",
+  "cnpj": "61798774000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010093/2024",
+  "score": 3551186.69,
+  "valor_ob": 3551186.69,
+  "forn": "CEJOM COMÉRCIO E SERVIÇOS LTDA",
+  "cnpj": "39882029000180",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/076004/2024",
+  "score": 3548573.31,
+  "valor_ob": 3548573.31,
+  "forn": "Aae Ce Princesa Isabel",
+  "cnpj": "00864416000158",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/036909/2024",
+  "score": 3541383.29,
+  "valor_ob": 3541383.29,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/021826/2025",
+  "score": 3540367.68,
+  "valor_ob": 3540367.68,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/007721/2024",
+  "score": 3533855.1,
+  "valor_ob": 3533855.1,
+  "forn": "INSTITUTO POSITIVA SOCIAL",
+  "cnpj": "33981408000655",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001186/2025",
+  "score": 3526952.47,
+  "valor_ob": 3526952.47,
+  "forn": "Consorcio Pavimentação Sacramento",
+  "cnpj": "55114414000133",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/033858/2024",
+  "score": 3506034.44,
+  "valor_ob": 3506034.44,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/018129/2025",
+  "score": 3500000.0,
+  "valor_ob": 3500000.0,
+  "forn": "Fundo Municipal De Saude De Itaborai",
+  "cnpj": "11865033000110",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/009355/2026",
+  "score": 3496590.4,
+  "valor_ob": 3496590.4,
+  "forn": "LEFE EMERGENCIAS MEDICAS LTDA-ME",
+  "cnpj": "11204117000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001677/2024",
+  "score": 3496042.37,
+  "valor_ob": 3496042.37,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/096962/2024",
+  "score": 3459256.56,
+  "valor_ob": 3459256.56,
+  "forn": "Aae Ce Carmela Dutra",
+  "cnpj": "30871701000167",
+  "n_ob": 772,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028438/2025",
+  "score": 3454852.54,
+  "valor_ob": 3454852.54,
+  "forn": "Appa Servicos Temporarios E Efetivos Ltda",
+  "cnpj": "05969071000110",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/031878/2025",
+  "score": 3423624.86,
+  "valor_ob": 3423624.86,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/001228/2026",
+  "score": 3423233.46,
+  "valor_ob": 3423233.46,
+  "forn": "CONSORCIO AGUAS DE SAO GONCALO - HFB",
+  "cnpj": "64003606000163",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/056720/2024",
+  "score": 3401372.14,
+  "valor_ob": 3401372.14,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028406/2025",
+  "score": 3391921.06,
+  "valor_ob": 3391921.06,
+  "forn": "GPC SOLUÇÕES EM SAUDE LTDA.",
+  "cnpj": "44167538000160",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000402/2025",
+  "score": 3388626.31,
+  "valor_ob": 3388626.31,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016607/2026",
+  "score": 3384560.15,
+  "valor_ob": 3384560.15,
+  "forn": "4ID MEDICOS ASSOCIADOS EIRELI",
+  "cnpj": "20476731000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/076161/2024",
+  "score": 3384258.72,
+  "valor_ob": 3384258.72,
+  "forn": "Aae Ce Ezequiel Freire",
+  "cnpj": "00775897000125",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260007/017396/2024",
+  "score": 3377417.56,
+  "valor_ob": 3377417.56,
+  "forn": "BIOTECH INNOVATORS ZR, LLC",
+  "cnpj": "CG3802632",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001715/2024",
+  "score": 3366717.27,
+  "valor_ob": 3366717.27,
+  "forn": "Abre Construções Ltda",
+  "cnpj": "23902149000161",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001575/2025",
+  "score": 3344156.77,
+  "valor_ob": 3344156.77,
+  "forn": "CONSORCIO RECUPERACAO ASFALTICA LOTE 02",
+  "cnpj": "57989870000152",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013413/2026",
+  "score": 3333794.96,
+  "valor_ob": 3333794.96,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000510/2024",
+  "score": 3329601.23,
+  "valor_ob": 3329601.23,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 12,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001180/2025",
+  "score": 3319023.04,
+  "valor_ob": 3319023.04,
+  "forn": "CONSORCIO VIEIRA BOM RETIRO",
+  "cnpj": "49298100000135",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/077330/2024",
+  "score": 3293090.04,
+  "valor_ob": 3293090.04,
+  "forn": "Aae Ciep 440 Maj J A Coutinho",
+  "cnpj": "01327779000117",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/031041/2025",
+  "score": 3290347.98,
+  "valor_ob": 3290347.98,
+  "forn": "GPC SOLUÇÕES EM SAUDE LTDA.",
+  "cnpj": "44167538000160",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/008222/2024",
+  "score": 3288191.0,
+  "valor_ob": 3288191.0,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/013273/2026",
+  "score": 3287360.16,
+  "valor_ob": 3287360.16,
+  "forn": "4ID MEDICOS ASSOCIADOS EIRELI",
+  "cnpj": "20476731000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001456/2025",
+  "score": 3270424.9,
+  "valor_ob": 3270424.9,
+  "forn": "CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL",
+  "cnpj": "07792269000105",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-120001/002706/2024",
+  "score": 3260478.88,
+  "valor_ob": 3260478.88,
+  "forn": "Rio Sustentável",
+  "cnpj": "CG0013215",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/018327/2026",
+  "score": 3252986.58,
+  "valor_ob": 3252986.58,
+  "forn": "4ID MEDICOS ASSOCIADOS EIRELI",
+  "cnpj": "20476731000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/022291/2026",
+  "score": 3249860.29,
+  "valor_ob": 3249860.29,
+  "forn": "MULTSERV - SEGURANCA E VIGILANCIA PATRIMONIAL LTDA",
+  "cnpj": "04689445000181",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/106764/2024",
+  "score": 3242745.8,
+  "valor_ob": 3242745.8,
+  "forn": "EBN COMERCIO, IMPORTACAO E EXPORTACAO LTDA",
+  "cnpj": "21111808000540",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260007/005565/2024",
+  "score": 3242611.59,
+  "valor_ob": 3242611.59,
+  "forn": "STRATTNER B.V.",
+  "cnpj": "CG0013039",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/031229/2025",
+  "score": 3240387.51,
+  "valor_ob": 3240387.51,
+  "forn": "Appa Servicos Temporarios E Efetivos Ltda",
+  "cnpj": "05969071000110",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/084793/2024",
+  "score": 3231546.76,
+  "valor_ob": 3231546.76,
+  "forn": "Aae Do Ce Trasilbo Filgueiras",
+  "cnpj": "00683916000193",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/042636/2025",
+  "score": 3224352.3,
+  "valor_ob": 3224352.3,
+  "forn": "CAPITAL AMBIENTAL CONSTRUÇÃO E SERVIÇOS LTDA",
+  "cnpj": "12557528000145",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000497/2024",
+  "score": 3219054.41,
+  "valor_ob": 3219054.41,
+  "forn": "STATLED BRASIL CONSTRUTORA E PARTICIPACOES S.A.",
+  "cnpj": "10526336000146",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/030459/2025",
+  "score": 3218919.23,
+  "valor_ob": 3218919.23,
+  "forn": "MONTEIRO & RODRIGUEZ DIAGNOSTICO POR IMAGEM LTDA",
+  "cnpj": "31418513000140",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/099992/2024",
+  "score": 3186160.86,
+  "valor_ob": 3186160.86,
+  "forn": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+  "cnpj": "00801512000157",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/093234/2024",
+  "score": 3123484.78,
+  "valor_ob": 3123484.78,
+  "forn": "Aae Ciep 100 S Francisco De Assis",
+  "cnpj": "01105061000186",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/023280/2024",
+  "score": 3109831.86,
+  "valor_ob": 3109831.86,
+  "forn": "HOSPITAL E MATERNIDADE NEOMATER LTDA",
+  "cnpj": "33793421000176",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000517/2024",
+  "score": 3104556.89,
+  "valor_ob": 3104556.89,
+  "forn": "CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL",
+  "cnpj": "07792269000105",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/014849/2026",
+  "score": 3093984.67,
+  "valor_ob": 3093984.67,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016909/2024",
+  "score": 3086665.93,
+  "valor_ob": 3086665.93,
+  "forn": "Uti Rio Servicos Medicos Ltda - Epp",
+  "cnpj": "08866771000178",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/005406/2026",
+  "score": 3081075.9,
+  "valor_ob": 3081075.9,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/001230/2026",
+  "score": 3077462.56,
+  "valor_ob": 3077462.56,
+  "forn": "CONSORCIO AGUAS DE SAO GONCALO - HFB",
+  "cnpj": "64003606000163",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016551/2024",
+  "score": 3077027.2,
+  "valor_ob": 3077027.2,
+  "forn": "HOSPITAL E MATERNIDADE NEOMATER LTDA",
+  "cnpj": "33793421000176",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/000071/2024",
+  "score": 3067751.0,
+  "valor_ob": 3067751.0,
+  "forn": "Ong-con-tato C.de Pesq.de Acoes Soc/culturais",
+  "cnpj": "03686998000118",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/001026/2024",
+  "score": 3051148.35,
+  "valor_ob": 3051148.35,
+  "forn": "Dratec - Engenharia Ltda.",
+  "cnpj": "28065845000184",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000401/2025",
+  "score": 3048542.12,
+  "valor_ob": 3048542.12,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011498/2024",
+  "score": 3041841.6,
+  "valor_ob": 3041841.6,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/017975/2024",
+  "score": 3038527.99,
+  "valor_ob": 3038527.99,
+  "forn": "Appa Servicos Temporarios E Efetivos Ltda",
+  "cnpj": "05969071000110",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012616/2024",
+  "score": 3033874.2,
+  "valor_ob": 3033874.2,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/105367/2024",
+  "score": 3023317.92,
+  "valor_ob": 3023317.92,
+  "forn": "Fluscop Com. E Serv. De Equipamento Eireli - Epp",
+  "cnpj": "13790125000104",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/008622/2025",
+  "score": 3023010.9,
+  "valor_ob": 3023010.9,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012514/2024",
+  "score": 3021804.34,
+  "valor_ob": 3021804.34,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000403/2025",
+  "score": 3018049.89,
+  "valor_ob": 3018049.89,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/100870/2024",
+  "score": 3014540.8,
+  "valor_ob": 3014540.8,
+  "forn": "DRA BAIXADAS LITORÂNEAS",
+  "cnpj": "CG0012868",
+  "n_ob": 37,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012098/2025",
+  "score": 3013941.0,
+  "valor_ob": 3013941.0,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/021243/2024",
+  "score": 3012899.34,
+  "valor_ob": 3012899.34,
+  "forn": "Appa Servicos Temporarios E Efetivos Ltda",
+  "cnpj": "05969071000110",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010010/2025",
+  "score": 3009192.9,
+  "valor_ob": 3009192.9,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/013644/2024",
+  "score": 3000946.2,
+  "valor_ob": 3000946.2,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/017876/2026",
+  "score": 2989011.18,
+  "valor_ob": 2989011.18,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001563/2025",
+  "score": 2984797.55,
+  "valor_ob": 2984797.55,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/100385/2024",
+  "score": 2984584.76,
+  "valor_ob": 2984584.76,
+  "forn": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+  "cnpj": "00801512000157",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/019206/2025",
+  "score": 2984113.75,
+  "valor_ob": 2984113.75,
+  "forn": "PVAX CONSULTORIA E LOGISTICA LTDA",
+  "cnpj": "12117414000184",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011262/2025",
+  "score": 2982571.2,
+  "valor_ob": 2982571.2,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000509/2024",
+  "score": 2979959.83,
+  "valor_ob": 2979959.83,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/007242/2025",
+  "score": 2976720.6,
+  "valor_ob": 2976720.6,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010029/2025",
+  "score": 2968735.85,
+  "valor_ob": 2968735.85,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/001207/2024",
+  "score": 2963701.22,
+  "valor_ob": 2963701.22,
+  "forn": "CONSTRUVERDE CONSTRUÇÕES E SERVIÇOS EIRELI",
+  "cnpj": "20360878000145",
+  "n_ob": 11,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/011465/2024",
+  "score": 2963700.65,
+  "valor_ob": 2963700.65,
+  "forn": "REDE D'OR SAO LUIZ S.A.",
+  "cnpj": "06047087014350",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/006972/2024",
+  "score": 2963667.0,
+  "valor_ob": 2963667.0,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/055755/2024",
+  "score": 2962400.66,
+  "valor_ob": 2962400.66,
+  "forn": "CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA",
+  "cnpj": "11804114000100",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/028758/2024",
+  "score": 2959566.36,
+  "valor_ob": 2959566.36,
+  "forn": "Uti Rio Servicos Medicos Ltda - Epp",
+  "cnpj": "08866771000178",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/055913/2024",
+  "score": 2959426.74,
+  "valor_ob": 2959426.74,
+  "forn": "CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA",
+  "cnpj": "11804114000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/029397/2024",
+  "score": 2955667.96,
+  "valor_ob": 2955667.96,
+  "forn": "CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA",
+  "cnpj": "11804114000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/012267/2025",
+  "score": 2955288.0,
+  "valor_ob": 2955288.0,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/005537/2026",
+  "score": 2945858.0,
+  "valor_ob": 2945858.0,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001467/2025",
+  "score": 2943804.93,
+  "valor_ob": 2943804.93,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260004/004239/2025",
+  "score": 2937598.58,
+  "valor_ob": 2937598.58,
+  "forn": "CECIERJ-EMP.COLETIV",
+  "cnpj": "CG0004461",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/005118/2025",
+  "score": 2935575.3,
+  "valor_ob": 2935575.3,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001735/2025",
+  "score": 2933565.08,
+  "valor_ob": 2933565.08,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001664/2025",
+  "score": 2933403.6,
+  "valor_ob": 2933403.6,
+  "forn": "FAB MIX CONCRETOS LTDA",
+  "cnpj": "22888990000189",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010158/2024",
+  "score": 2924118.63,
+  "valor_ob": 2924118.63,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010463/2024",
+  "score": 2922424.68,
+  "valor_ob": 2922424.68,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/009519/2024",
+  "score": 2921536.8,
+  "valor_ob": 2921536.8,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260004/002887/2024",
+  "score": 2921183.85,
+  "valor_ob": 2921183.85,
+  "forn": "CECIERJ-EMP.COLETIV",
+  "cnpj": "CG0004461",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/020407/2024",
+  "score": 2920011.95,
+  "valor_ob": 2920011.95,
+  "forn": "AMQ BAIXADA GESTÃO EM SAÚDE LTDA",
+  "cnpj": "38404574000106",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/006988/2026",
+  "score": 2917177.34,
+  "valor_ob": 2917177.34,
+  "forn": "Tuise Representacao Comercial Ltda",
+  "cnpj": "10190061000112",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/029876/2024",
+  "score": 2906725.52,
+  "valor_ob": 2906725.52,
+  "forn": "Personal Service Rec.humanos E Ass.empr.ltda",
+  "cnpj": "00277106000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000440/2025",
+  "score": 2906403.89,
+  "valor_ob": 2906403.89,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000538/2025",
+  "score": 2906072.58,
+  "valor_ob": 2906072.58,
+  "forn": "INFRATECH ENGENHARIA LTDA",
+  "cnpj": "24408367000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016060/2026",
+  "score": 2899357.0,
+  "valor_ob": 2899357.0,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/031586/2025",
+  "score": 2895686.07,
+  "valor_ob": 2895686.07,
+  "forn": "Uti Rio Servicos Medicos Ltda - Epp",
+  "cnpj": "08866771000178",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000498/2024",
+  "score": 2890310.36,
+  "valor_ob": 2890310.36,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 10,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/008718/2024",
+  "score": 2888970.06,
+  "valor_ob": 2888970.06,
+  "forn": "Ampla Energia E Servicos S.a.",
+  "cnpj": "33050071000158",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/008472/2024",
+  "score": 2886640.0,
+  "valor_ob": 2886640.0,
+  "forn": "Sind.das Emp.de Trans.de Pass.b.mansa E V.red",
+  "cnpj": "29055993000180",
+  "n_ob": 11,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000511/2024",
+  "score": 2882755.38,
+  "valor_ob": 2882755.38,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 12,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/006097/2025",
+  "score": 2882500.0,
+  "valor_ob": 2882500.0,
+  "forn": "BICICLETARIA E BIKE SHOP CARIOCA LTDA",
+  "cnpj": "43669459000195",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/018812/2024",
+  "score": 2866745.87,
+  "valor_ob": 2866745.87,
+  "forn": "REDE D'OR SAO LUIZ S.A.",
+  "cnpj": "06047087014350",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001454/2025",
+  "score": 2863332.69,
+  "valor_ob": 2863332.69,
+  "forn": "Abre Construções Ltda",
+  "cnpj": "23902149000161",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016916/2024",
+  "score": 2863022.9,
+  "valor_ob": 2863022.9,
+  "forn": "Ceplin-inst De Neonatologia E Ped Ltda",
+  "cnpj": "39695945000100",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000360/2025",
+  "score": 2862345.76,
+  "valor_ob": 2862345.76,
+  "forn": "CONSORCIO VIEIRA BOM RETIRO",
+  "cnpj": "49298100000135",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/008749/2024",
+  "score": 2862340.49,
+  "valor_ob": 2862340.49,
+  "forn": "Light Servicos De Eletricidade S/a",
+  "cnpj": "60444437000146",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028140/2025",
+  "score": 2859961.12,
+  "valor_ob": 2859961.12,
+  "forn": "PVAX CONSULTORIA E LOGISTICA LTDA",
+  "cnpj": "12117414000184",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/011981/2024",
+  "score": 2857800.0,
+  "valor_ob": 2857800.0,
+  "forn": "BOLSAS DE AUXÍLIOS",
+  "cnpj": "CG0006052",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000502/2024",
+  "score": 2854814.84,
+  "valor_ob": 2854814.84,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 7,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/001639/2024",
+  "score": 2854624.52,
+  "valor_ob": 2854624.52,
+  "forn": "Hydra Engenharia E Saneamento Ltda",
+  "cnpj": "10547330000155",
+  "n_ob": 12,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260004/002681/2026",
+  "score": 2851424.46,
+  "valor_ob": 2851424.46,
+  "forn": "CECIERJ-EMP.COLETIV",
+  "cnpj": "CG0004461",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-420001/006337/2025",
+  "score": 2846860.8,
+  "valor_ob": 2846860.8,
+  "forn": "INSTITUTO NOVAS ATITUDES TRANSFORMAM O AMANHA",
+  "cnpj": "02286861000103",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/023348/2025",
+  "score": 2844851.58,
+  "valor_ob": 2844851.58,
+  "forn": "Uti Rio Servicos Medicos Ltda - Epp",
+  "cnpj": "08866771000178",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/009225/2024",
+  "score": 2843472.3,
+  "valor_ob": 2843472.3,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/009860/2025",
+  "score": 2840900.0,
+  "valor_ob": 2840900.0,
+  "forn": "Fund.de Apoio A Esc.tec.do Est.rio De Janeiro",
+  "cnpj": "31608763002600",
+  "n_ob": 53,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/017686/2024",
+  "score": 2835241.07,
+  "valor_ob": 2835241.07,
+  "forn": "AMQ BAIXADA GESTÃO EM SAÚDE LTDA",
+  "cnpj": "38404574000106",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/013788/2024",
+  "score": 2834748.0,
+  "valor_ob": 2834748.0,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000773/2024",
+  "score": 2831151.24,
+  "valor_ob": 2831151.24,
+  "forn": "Engebio Engenharia Do Meio Ambiente Ltda",
+  "cnpj": "01792153000181",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011333/202",
+  "score": 2827280.58,
+  "valor_ob": 2827280.58,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/030667/2025",
+  "score": 2819245.8,
+  "valor_ob": 2819245.8,
+  "forn": "TAPEVAS SOLUCOES INTEGRADAS LTDA",
+  "cnpj": "17695001000109",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001636/2025",
+  "score": 2812430.88,
+  "valor_ob": 2812430.88,
+  "forn": "Abre Construções Ltda",
+  "cnpj": "23902149000161",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000513/2024",
+  "score": 2809703.69,
+  "valor_ob": 2809703.69,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 27,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/002037/2025",
+  "score": 2803294.89,
+  "valor_ob": 2803294.89,
+  "forn": "ECONORTE, MEIO AMBIENTE, INFRAESTRUTURA E SERVICOS LTDA",
+  "cnpj": "13684530000148",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/011531/2026",
+  "score": 2782764.92,
+  "valor_ob": 2782764.92,
+  "forn": "TAPEVAS SOLUCOES INTEGRADAS LTDA",
+  "cnpj": "17695001000109",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-350011/001959/2026",
+  "score": 2772701.68,
+  "valor_ob": 2772701.68,
+  "forn": "L8 GROUP SA",
+  "cnpj": "19952299000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330018/000015/2024",
+  "score": 2758997.38,
+  "valor_ob": 2758997.38,
+  "forn": "CONPLAN EMPREENDIMENTOS E SERVIÇOS LTDA-ME",
+  "cnpj": "05389546000108",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000516/2025",
+  "score": 2750515.59,
+  "valor_ob": 2750515.59,
+  "forn": "Alberto Couto Alves-brasil Ltda.",
+  "cnpj": "13548038000145",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/014068/2024",
+  "score": 2750470.0,
+  "valor_ob": 2750470.0,
+  "forn": "AMQ BAIXADA GESTÃO EM SAÚDE LTDA",
+  "cnpj": "38404574000106",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260007/007138/2026",
+  "score": 2746376.16,
+  "valor_ob": 2746376.16,
+  "forn": "CDA - Residentes",
+  "cnpj": "CG0012786",
+  "n_ob": 4,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/020564/2024",
+  "score": 2740418.84,
+  "valor_ob": 2740418.84,
+  "forn": "Uti Rio Servicos Medicos Ltda - Epp",
+  "cnpj": "08866771000178",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/020044/2026",
+  "score": 2740021.14,
+  "valor_ob": 2740021.14,
+  "forn": "HOSPITAL E MATERNIDADE NEOMATER LTDA",
+  "cnpj": "33793421000176",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001737/2025",
+  "score": 2737141.01,
+  "valor_ob": 2737141.01,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001447/2025",
+  "score": 2724422.8,
+  "valor_ob": 2724422.8,
+  "forn": "Empresa Fluminense de Serviços Eireli",
+  "cnpj": "17309157000104",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/016107/2026",
+  "score": 2718799.64,
+  "valor_ob": 2718799.64,
+  "forn": "4ID MEDICOS ASSOCIADOS EIRELI",
+  "cnpj": "20476731000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001298/2025",
+  "score": 2713023.77,
+  "valor_ob": 2713023.77,
+  "forn": "OMEGA CONSTRUTORA E SERVICOS LTDA",
+  "cnpj": "12647362000158",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001400/2025",
+  "score": 2712065.15,
+  "valor_ob": 2712065.15,
+  "forn": "OMEGA CONSTRUTORA E SERVICOS LTDA",
+  "cnpj": "12647362000158",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001691/2024",
+  "score": 2710618.83,
+  "valor_ob": 2710618.83,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070001/002677/2024",
+  "score": 2705056.2,
+  "valor_ob": 2705056.2,
+  "forn": "VOLUME PARTICIPACOES, PRODUCOES E EVENTOS LTDA",
+  "cnpj": "35294692000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001726/2024",
+  "score": 2704104.72,
+  "valor_ob": 2704104.72,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/023344/2025",
+  "score": 2703950.05,
+  "valor_ob": 2703950.05,
+  "forn": "CLINICA MATERNO INFANTIL DOMINGOS LOURENCO LT",
+  "cnpj": "08026117000156",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/002414/2023",
+  "score": 2702398.41,
+  "valor_ob": 2702398.41,
+  "forn": "Fundo Municipal De Saude Pmvr Sms",
+  "cnpj": "39563911000162",
+  "n_ob": 9,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/008059/2024",
+  "score": 2700259.96,
+  "valor_ob": 2700259.96,
+  "forn": "RC CARD SOLUCOES EM PAGAMENTOS LTDA",
+  "cnpj": "12515796000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/024948/2023",
+  "score": 2690762.64,
+  "valor_ob": 2690762.64,
+  "forn": "Fundo Municipal De Saude Da Cidade Do Rj",
+  "cnpj": "11715094000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000486/2024",
+  "score": 2688202.36,
+  "valor_ob": 2688202.36,
+  "forn": "Construsan Servicos Industriais",
+  "cnpj": "28955565000141",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/023646/2025",
+  "score": 2685039.7,
+  "valor_ob": 2685039.7,
+  "forn": "RIKE IS INTELIGÊNCIA DE SOFTWARE LTDA",
+  "cnpj": "21466831000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/021293/2024",
+  "score": 2685039.7,
+  "valor_ob": 2685039.7,
+  "forn": "RIKE IS INTELIGÊNCIA DE SOFTWARE LTDA",
+  "cnpj": "21466831000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/088475/2024",
+  "score": 2680396.11,
+  "valor_ob": 2680396.11,
+  "forn": "Aae Ciep Brizolao 296 Presidenter Benes",
+  "cnpj": "00764414000197",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080007/000531/2024",
+  "score": 2670000.0,
+  "valor_ob": 2670000.0,
+  "forn": "Diretoria Administrativa Financeira",
+  "cnpj": "CG0009658",
+  "n_ob": 41,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/013619/2024",
+  "score": 2663102.94,
+  "valor_ob": 2663102.94,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/018626/2026",
+  "score": 2654377.06,
+  "valor_ob": 2654377.06,
+  "forn": "4ID MEDICOS ASSOCIADOS EIRELI",
+  "cnpj": "20476731000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-330001/000581/2025",
+  "score": 2653788.76,
+  "valor_ob": 2653788.76,
+  "forn": "Abre Construções Ltda",
+  "cnpj": "23902149000161",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-070002/024000/2024",
+  "score": 2644846.45,
+  "valor_ob": 2644846.45,
+  "forn": "Erwil-construcoes Ltda.",
+  "cnpj": "30905111000108",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/084717/2024",
+  "score": 2634729.91,
+  "valor_ob": 2634729.91,
+  "forn": "Aae Ce Boa Vista",
+  "cnpj": "00779141000154",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/000929/2025",
+  "score": 2623816.66,
+  "valor_ob": 2623816.66,
+  "forn": "CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL",
+  "cnpj": "07792269000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260007/012277/2025",
+  "score": 2617577.27,
+  "valor_ob": 2617577.27,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001734/2025",
+  "score": 2615059.75,
+  "valor_ob": 2615059.75,
+  "forn": "Oriente Construcao Civil Ltda.",
+  "cnpj": "01127106000113",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/012820/2026",
+  "score": 2612446.78,
+  "valor_ob": 2612446.78,
+  "forn": "4ID MEDICOS ASSOCIADOS EIRELI",
+  "cnpj": "20476731000115",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011998/2025",
+  "score": 2611225.79,
+  "valor_ob": 2611225.79,
+  "forn": "SPE CP & D EMPREENDIMENTOS LTDA",
+  "cnpj": "19953960000102",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/018567/2026",
+  "score": 2610622.41,
+  "valor_ob": 2610622.41,
+  "forn": "DIMPI - GESTÃO EM SAÚDE LTDA",
+  "cnpj": "10893674000116",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-090001/001425/2026",
+  "score": 2607566.39,
+  "valor_ob": 2607566.39,
+  "forn": "RIKE IS INTELIGÊNCIA DE SOFTWARE LTDA",
+  "cnpj": "21466831000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000438/2025",
+  "score": 2605458.74,
+  "valor_ob": 2605458.74,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 8,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/087996/2024",
+  "score": 2603807.77,
+  "valor_ob": 2603807.77,
+  "forn": "Aae Ce Hilario Ribeiro",
+  "cnpj": "00631909000148",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/027660/2024",
+  "score": 2591946.75,
+  "valor_ob": 2591946.75,
+  "forn": "HOSPITAL E MATERNIDADE NEOMATER LTDA",
+  "cnpj": "33793421000176",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000437/2025",
+  "score": 2589713.68,
+  "valor_ob": 2589713.68,
+  "forn": "LAND SERVIÇOS E ENGENHARIA LTDA",
+  "cnpj": "18776916000101",
+  "n_ob": 9,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/010160/2024",
+  "score": 2585388.39,
+  "valor_ob": 2585388.39,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001752/2025",
+  "score": 2585173.01,
+  "valor_ob": 2585173.01,
+  "forn": "CONSTRUTORA R2X LTDA ME",
+  "cnpj": "18796728000137",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/020193/2024",
+  "score": 2582222.62,
+  "valor_ob": 2582222.62,
+  "forn": "PVAX CONSULTORIA E LOGISTICA LTDA",
+  "cnpj": "12117414000184",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/016398/2026",
+  "score": 2573238.03,
+  "valor_ob": 2573238.03,
+  "forn": "HOSPITAL E MATERNIDADE NEOMATER LTDA",
+  "cnpj": "33793421000176",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/019593/2024",
+  "score": 2569714.95,
+  "valor_ob": 2569714.95,
+  "forn": "DIMPI - GESTÃO EM SAÚDE LTDA",
+  "cnpj": "10893674000116",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/023614/2024",
+  "score": 2568618.99,
+  "valor_ob": 2568618.99,
+  "forn": "Llak Medicina Neonatal Ltda",
+  "cnpj": "40398398000342",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/017163/2024",
+  "score": 2561172.07,
+  "valor_ob": 2561172.07,
+  "forn": "TAPEVAS SOLUCOES INTEGRADAS LTDA",
+  "cnpj": "17695001000109",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/019649/2024",
+  "score": 2554113.05,
+  "valor_ob": 2554113.05,
+  "forn": "TAPEVAS SOLUCOES INTEGRADAS LTDA",
+  "cnpj": "17695001000109",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/001564/2021",
+  "score": 2542038.1,
+  "valor_ob": 2542038.1,
+  "forn": "Fundo Municipal De Saude De Pinheiral",
+  "cnpj": "01648573000199",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/007001/2026",
+  "score": 2540290.43,
+  "valor_ob": 2540290.43,
+  "forn": "CONSERV IGUAÇU PRESTAÇÃO DE SERVIÇOS DE LIMPEZA LTDA",
+  "cnpj": "09588780000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000408/2025",
+  "score": 2538403.5,
+  "valor_ob": 2538403.5,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 14,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/064198/2025",
+  "score": 2533500.0,
+  "valor_ob": 2533500.0,
+  "forn": "Bolsa ¿ Prociência",
+  "cnpj": "CG0012805",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/056193/2024",
+  "score": 2533500.0,
+  "valor_ob": 2533500.0,
+  "forn": "Bolsa ¿ Prociência",
+  "cnpj": "CG0012805",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/025093/2024",
+  "score": 2533500.0,
+  "valor_ob": 2533500.0,
+  "forn": "Bolsa ¿ Prociência",
+  "cnpj": "CG0012805",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/030767/2026",
+  "score": 2532250.0,
+  "valor_ob": 2532250.0,
+  "forn": "Bolsa ¿ Prociência",
+  "cnpj": "CG0012805",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-270004/003358/2026",
+  "score": 2527155.2,
+  "valor_ob": 2527155.2,
+  "forn": "Empresa Brasileira De Correios E Telegrafos",
+  "cnpj": "34028316000294",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/028340/2024",
+  "score": 2523910.26,
+  "valor_ob": 2523910.26,
+  "forn": "PVAX CONSULTORIA E LOGISTICA LTDA",
+  "cnpj": "12117414000184",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/035741/2024",
+  "score": 2519990.96,
+  "valor_ob": 2519990.96,
+  "forn": "MPE ENGENHARIA E SERVICOS S/A",
+  "cnpj": "04743858000105",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000428/2026",
+  "score": 2515766.3,
+  "valor_ob": 2515766.3,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-510001/001527/2025",
+  "score": 2503648.17,
+  "valor_ob": 2503648.17,
+  "forn": "NOVA ORIENTE CONSTRUÇÃO CIVIL LTDA",
+  "cnpj": "05589462000100",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001621/2024",
+  "score": 2501477.22,
+  "valor_ob": 2501477.22,
+  "forn": "Integral Construtora e Empreendimentos Ltda",
+  "cnpj": "35824033000130",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/038480/2024",
+  "score": 2500000.0,
+  "valor_ob": 2500000.0,
+  "forn": "Fundo Municipal De Saude De Silva Jardim",
+  "cnpj": "11740547000140",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/009371/2026",
+  "score": 2497542.8,
+  "valor_ob": 2497542.8,
+  "forn": "CONSERV IGUAÇU PRESTAÇÃO DE SERVIÇOS DE LIMPEZA LTDA",
+  "cnpj": "09588780000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/030891/2025",
+  "score": 2492334.25,
+  "valor_ob": 2492334.25,
+  "forn": "DIMPI - GESTÃO EM SAÚDE LTDA",
+  "cnpj": "10893674000116",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/017056/2024",
+  "score": 2490480.84,
+  "valor_ob": 2490480.84,
+  "forn": "PVAX CONSULTORIA E LOGISTICA LTDA",
+  "cnpj": "12117414000184",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/027725/2024",
+  "score": 2488722.69,
+  "valor_ob": 2488722.69,
+  "forn": "DIMPI - GESTÃO EM SAÚDE LTDA",
+  "cnpj": "10893674000116",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000405/2025",
+  "score": 2486792.37,
+  "valor_ob": 2486792.37,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 15,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/029679/2025",
+  "score": 2469706.07,
+  "valor_ob": 2469706.07,
+  "forn": "CONSERV IGUAÇU PRESTAÇÃO DE SERVIÇOS DE LIMPEZA LTDA",
+  "cnpj": "09588780000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/069405/2024",
+  "score": 2468095.31,
+  "valor_ob": 2468095.31,
+  "forn": "AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.",
+  "cnpj": "00801512000157",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001350/2024",
+  "score": 2467451.74,
+  "valor_ob": 2467451.74,
+  "forn": "MARENGE ENGENHARIA CONSTRUCOES E SERVICOS LTDA",
+  "cnpj": "19304206000133",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/014649/2026",
+  "score": 2465261.84,
+  "valor_ob": 2465261.84,
+  "forn": "HUPE - BR LIFE, LLC",
+  "cnpj": "CG0006731",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/012550/2026",
+  "score": 2465163.66,
+  "valor_ob": 2465163.66,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011336/2024",
+  "score": 2452533.46,
+  "valor_ob": 2452533.46,
+  "forn": "SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA",
+  "cnpj": "19024253000123",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-490001/001702/2024",
+  "score": 2449100.36,
+  "valor_ob": 2449100.36,
+  "forn": "Oriente Construcao Civil Ltda.",
+  "cnpj": "01127106000113",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/012992/2026",
+  "score": 2444178.49,
+  "valor_ob": 2444178.49,
+  "forn": "CONSERV IGUAÇU PRESTAÇÃO DE SERVIÇOS DE LIMPEZA LTDA",
+  "cnpj": "09588780000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/062378/2025",
+  "score": 2443650.0,
+  "valor_ob": 2443650.0,
+  "forn": "BOLSAS DE AUXÍLIOS",
+  "cnpj": "CG0006052",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/018320/2024",
+  "score": 2442800.0,
+  "valor_ob": 2442800.0,
+  "forn": "Fundo Municipal De Saude De Itaperuna",
+  "cnpj": "39215827000158",
+  "n_ob": 5,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/012877/2026",
+  "score": 2431856.21,
+  "valor_ob": 2431856.21,
+  "forn": "DAFLON ATENDIMENTOS MÉDICOS LTDA",
+  "cnpj": "29776968000196",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/028560/2024",
+  "score": 2429600.0,
+  "valor_ob": 2429600.0,
+  "forn": "Fundo Municipal De Saude De Itaperuna",
+  "cnpj": "39215827000158",
+  "n_ob": 6,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/000516/2024",
+  "score": 2421805.83,
+  "valor_ob": 2421805.83,
+  "forn": "MULTIPLY SERVICOS DE MANUTENCAO LTDA",
+  "cnpj": "04312370000115",
+  "n_ob": 10,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080002/015531/2025",
+  "score": 2419689.57,
+  "valor_ob": 2419689.57,
+  "forn": "CONSERV IGUAÇU PRESTAÇÃO DE SERVIÇOS DE LIMPEZA LTDA",
+  "cnpj": "09588780000107",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/069062/2024",
+  "score": 2418676.44,
+  "valor_ob": 2418676.44,
+  "forn": "Aae Ce Antonio Dias Lima",
+  "cnpj": "00755855000122",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-030001/108119/2024",
+  "score": 2413478.38,
+  "valor_ob": 2413478.38,
+  "forn": "Fundacao Cesgranrio",
+  "cnpj": "42270181000116",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-080001/012141/2023",
+  "score": 2400000.0,
+  "valor_ob": 2400000.0,
+  "forn": "Fundo Munic.de Saude De Sao Joao Meriti",
+  "cnpj": "10435993000188",
+  "n_ob": 2,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260006/026522/2025",
+  "score": 2375700.0,
+  "valor_ob": 2375700.0,
+  "forn": "BOLSAS DE AUXÍLIOS",
+  "cnpj": "CG0006052",
+  "n_ob": 3,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ },
+ {
+  "sei": "SEI-260005/011378/2025",
+  "score": 2373616.85,
+  "valor_ob": 2373616.85,
+  "forn": "ENGECORP MANUTENCAO E SERVICOS LTDA",
+  "cnpj": "10471095000185",
+  "n_ob": 1,
+  "tipo": "DINHEIRO",
+  "flags": [
+   "FILA_POR_VALOR_PAGO"
+  ],
+  "folha": false
+ }
+]

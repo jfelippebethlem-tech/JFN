@@ -225,3 +225,46 @@ def test_x1_reajuste_por_tipo_e_repactuacao_nao_contam():
     assert r.status == "descartado"
     assert r.valores["pct_acrescimo"] == 0.0
     assert r.valores["n_aditivos_reajuste"] == 2
+
+
+# ═══════ base desmentida pelos próprios autos (2026-08-04) ═══════
+
+def test_nao_afirma_estouro_sobre_base_que_os_autos_contradizem():
+    """Medido no SEI-070002/001289/2022: a base saiu de uma "Publicação Errata 01"
+    (R$ 46.866,00) e o X1 anunciou acréscimo de **10.024%**. O contrato é o 38/2023, de
+    R$ 105.988.095,41 — declarado seis vezes nos autos — e o aditivo de R$ 4.697.858,84 é 4,4%,
+    dentro do teto. Não havia achado nenhum, e o processo liderava a fila de risco.
+
+    A base sai da 1ª ocorrência do padrão num monte de dezenas de documentos concatenados, sem
+    noção de qual deles é o contrato. A refutação não é limiar arbitrário: é o próprio processo
+    declarando outro número, sobre o qual o acréscimo cabe no teto.
+    """
+    r = X1CrescimentoAditivo().avaliar({
+        "processo": "SEI-070002/001289/2022", "valor_inicial": 46_866.00, "tipo_objeto": "obra",
+        "aditivos": [{"data": "2025-01-01", "tipo": "valor", "valor": 4_697_858.84,
+                      "justificativa": "acréscimo de quantitativos"}],
+        "_texto_fonte": ("valor do contrato de R$ 46.866,00 ... o Contrato nº 38/2023, no valor "
+                         "de R$ 105.988.095,41, recebe acréscimo de R$ 4.697.858,84")})
+    assert r.status == "nao_avaliavel" and r.score == 0.0
+    assert r.valores.get("base_contraditada_por") == 105_988_095.41
+    assert "não fecham" in (r.motivo_refutacao or "")
+
+
+def test_estouro_real_continua_confirmado_quando_nada_o_contradiz():
+    """O corte só vale quando o TEXTO oferece outra base que faz o acréscimo caber no teto — sem
+    isso, estouro é estouro. Do contrário a refutação viraria anistia geral."""
+    r = X1CrescimentoAditivo().avaliar({
+        "processo": "P-1", "valor_inicial": 1_000_000.0, "tipo_objeto": "obra",
+        "aditivos": [{"data": "2025-01-01", "tipo": "valor", "valor": 400_000.0,
+                      "justificativa": "acréscimo"}],
+        "_texto_fonte": "contrato de R$ 1.000.000,00 com aditivo de R$ 400.000,00"})
+    assert r.status == "confirmado" and r.score > 0
+
+
+def test_sem_texto_fonte_o_detector_segue_como_antes():
+    """Chamador que não passa `_texto_fonte` (teste, CLI, contexto sintético) não perde o X1."""
+    r = X1CrescimentoAditivo().avaliar({
+        "processo": "P-2", "valor_inicial": 100_000.0, "tipo_objeto": "obra",
+        "aditivos": [{"data": "2025-01-01", "tipo": "valor", "valor": 90_000.0,
+                      "justificativa": "acréscimo"}]})
+    assert r.status == "confirmado"

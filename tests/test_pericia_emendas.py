@@ -61,11 +61,18 @@ def test_d3_favorecido_sancionado(con_semeado):
     con.execute("""insert into emenda_favorecidos (codigo_emenda, documento_favorecido,
                    nome_favorecido, fase, valor) values
                    ('E1','11222333000181','ACME LTDA','Pagamento',100000)""")
-    con.execute("""insert into sancoes_federais (cadastro, cpf_cnpj, nome, categoria, orgao)
-                   values ('CEIS','11222333000181','ACME LTDA','Inidoneidade','CGU')""")
+    # A sanção precisa de DATA: desde 2026-08-10 o d3 só acusa se ela estava VIGENTE no ano da
+    # emenda (medido: 87,9% dos casamentos eram de sanção posterior ao ato) E se a categoria VEDA
+    # contratar. A fixture ganhou data_inicio/data_fim cobrindo 2024 para exercer o caminho de
+    # acusação; sem data o achado sai como "vigência não apurada", que é outro teste.
+    con.execute("""insert into sancoes_federais (cadastro, cpf_cnpj, nome, categoria, orgao,
+                                                 data_inicio, data_fim)
+                   values ('CEIS','11222333000181','ACME LTDA','Inidoneidade','CGU',
+                           '2023-01-01','2030-01-01')""")
     achados = pericia.d3_favorecido_sancionado(con)
     assert len(achados) == 1 and achados[0]["risco"] >= 8
     assert "CEIS" in achados[0]["descricao"]
+    assert achados[0]["evidencias"]["vigencia_na_emenda"] == "vigente"
 
 
 def test_d4_favorecido_fantasma_injetado(con_semeado):

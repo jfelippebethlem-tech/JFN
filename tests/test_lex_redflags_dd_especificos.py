@@ -1,0 +1,90 @@
+# -*- coding: utf-8 -*-
+"""Achados DD/ com identidade própria (10/09/2026): TAC recorrente e sócio-agente não são 'fachada'.
+Antes, todo DD/… caía na família DD: código impresso duas vezes, defesa de fachada aplicada a um Termo de
+Ajuste de Contas e 'dolo a apurar' por padrão."""
+from __future__ import annotations
+
+from compliance_agent.lex_redflags import _RF, _destinatarios, _elemento_subjetivo, _exculpatorio, _fam_exculpatorio
+
+
+def test_codigos_dd_especificos_tem_nome_e_familia_propria():
+    assert "Termo de Ajuste de Contas" in _RF["DD/TAC-RECORRENTE"][0]
+    assert "agente público" in _RF["DD/SOCIO-AGENTE"][0]
+    assert _fam_exculpatorio("DD/TAC-RECORRENTE") == "DD/TAC-RECORRENTE"
+    assert _fam_exculpatorio("DD/FACHADA-XYZ") == "DD"      # hipóteses de fachada seguem na família DD
+    assert _fam_exculpatorio("R8") == "R8"
+
+
+def test_defesa_e_destinatario_do_tac_nao_sao_os_da_fachada():
+    a = {"rf": "DD/TAC-RECORRENTE", "grav": 4, "obs": "8 Termos de Ajuste de Contas publicados no DOERJ"}
+    (e,) = _exculpatorio([a])
+    assert "Termo de Ajuste de Contas" in e["defesa"] and "fachada" not in e["defesa"]
+    assert e["encaminhamento"] == "representação"   # grav 4 refuta a defesa
+    dest = _destinatarios([a])
+    assert {d["familia"] for d in dest} == {"debito", "improbidade"}
+    assert any("TAC em série" in d["motivo"] for d in dest if d["familia"] == "improbidade")
+
+
+def test_tac_em_serie_e_gestao_nao_dolo_por_si_e_socio_agente_pede_apurar_dolo():
+    assert _elemento_subjetivo({"rf": "DD/TAC-RECORRENTE", "obs": "8 TACs"})[0] == "irregularidade / erro de gestão"
+    assert _elemento_subjetivo({"rf": "DD/TAC-RECORRENTE", "obs": "8 TACs; sócio em comum com a concorrente"})[0] == "dolo a apurar"
+    assert _elemento_subjetivo({"rf": "DD/SOCIO-AGENTE", "obs": "sócia é diretora da UPA"})[0] == "dolo a apurar"
+
+
+def test_lista_suja_grave_4_so_com_pagamento_depois_da_inclusao():
+    from compliance_agent.lex_conflito import achado_lista_suja
+    assert achado_lista_suja(None) is None
+    e = {"cnpj": "00638595000105", "nome": "VIABRAS ENGENHARIA EIRELI", "inclusao": "06/04/2026", "obs_depois": 0, "pago_depois": 0.0}
+    a = achado_lista_suja(e)
+    assert a["rf"] == "DD/LISTA-SUJA" and a["grav"] == 2 and "monitorar" in a["obs"]
+    e2 = dict(e, obs_depois=3, pago_depois=150000.0)
+    a2 = achado_lista_suja(e2)
+    assert a2["grav"] == 4 and "DEPOIS da inclusão" in a2["obs"] and "150.000,00" in a2["obs"]
+    assert _RF["DD/LISTA-SUJA"][0].startswith("Empregador no Cadastro")
+
+
+def test_emergencia_siga_como_regime():
+    from compliance_agent.lex_conflito import achado_emergencia_siga
+    assert achado_emergencia_siga(None) is None
+    base = {"n": 42, "emergencia": 31, "competitivas": 1, "valor": 488e6, "valor_emergencia": 235e6, "n_orgaos": 1, "orgaos": "FSERJ"}
+    a = achado_emergencia_siga(base)
+    assert a["rf"] == "DD/EMERGENCIA-SIGA" and a["grav"] == 4 and "31 de 42" in a["obs"]
+    assert achado_emergencia_siga(dict(base, n=8, emergencia=4))["grav"] == 3
+    assert achado_emergencia_siga(dict(base, n=8, emergencia=3)) is None
+    assert achado_emergencia_siga(dict(base, n=4, emergencia=4)) is None
+    assert _RF["DD/EMERGENCIA-SIGA"][0].startswith("Emergência como regime")
+
+
+def test_sancao_siga_alcance_e_grau():
+    from compliance_agent.lex_conflito import _alcance_sancao, achado_sancao_siga
+    assert _alcance_sancao("Lei Federal Nº 8.666/93, art. 87, Inc. IV. (Inidoneidade)")[1] == 4
+    assert _alcance_sancao("Lei Federal Nº 10.520/02, art. 7º. (Impedimento)")[1] == 4
+    assert _alcance_sancao("Lei Federal Nº 8.666/93, art. 87, Inc. III. (Suspensão)")[1] == 3
+    assert _alcance_sancao("Lei Federal Nº 14.133/21, art. 156, Inc. I (Advertência)")[1] == 1
+    base = {"nome": "X", "enquadramento": "Lei Federal Nº 8.666/93, art. 87, Inc. IV.", "alcance": "inidoneidade/proibição de contratar", "peso": 4,
+            "desde": "17/05/2022", "orgao": "TCE", "status": "Vigente", "obs_depois": 1, "pago_depois": 5245646.5}
+    a = achado_sancao_siga([base])
+    assert a["rf"] == "DD/SANCAO-SIGA" and a["grav"] == 4 and "5.245.646,50" in a["obs"]
+    assert achado_sancao_siga([dict(base, pago_depois=0.0, obs_depois=0)])["grav"] == 3
+    assert achado_sancao_siga([dict(base, peso=1, status="Vigente")]) is None
+    assert achado_sancao_siga([dict(base, status="Decorrido")]) is None
+
+
+# ── 13/09/2026: contratação direta como regime na PREFEITURA (ContasRio → contasrio_contrato) ──
+def test_contratacao_direta_pcrj_como_regime():
+    from compliance_agent.lex_conflito import achado_contratacao_direta_pcrj
+    from compliance_agent.lex_redflags import _EXCULPATORIO, _RF, _RF_DESTINATARIO
+    assert achado_contratacao_direta_pcrj(None) is None
+    base = {"n": 12, "diretas": 10, "valor": 5e6, "nome": "LABORATORIO BLESSING LTDA", "pago": 3e6, "valor_diretas": 4e6, "n_orgaos": 2,
+            "orgaos": "SMC,RIOFILME", "ano_min": 2024, "ano_max": 2026,
+            "maiores": [{"processo": "006300.000569/2026-14"}, {"processo": None}]}
+    a = achado_contratacao_direta_pcrj(base)
+    assert a["rf"] == "DD/DIRETA-PCRJ" and a["grav"] == 4 and "10 de 12" in a["obs"] and "006300.000569/2026-14" in a["obs"]
+    assert achado_contratacao_direta_pcrj({**base, "n": 12, "diretas": 6})["grav"] == 3
+    assert achado_contratacao_direta_pcrj({**base, "n": 4, "diretas": 4}) is None
+    assert achado_contratacao_direta_pcrj({**base, "n": 20, "diretas": 5}) is None
+    # ente público/estatal (COMLURB, Correios, Light, RioSaúde) contrata direto por natureza — não é sinal
+    assert achado_contratacao_direta_pcrj({**base, "nome": "COMPANHIA MUNICIPAL DE LIMPEZA URBANA - COMLURB"}) is None
+    assert achado_contratacao_direta_pcrj({**base, "nome": "EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS"}) is None
+    assert "DD/DIRETA-PCRJ" in _RF and "DD/DIRETA-PCRJ" in _EXCULPATORIO and "DD/DIRETA-PCRJ" in _RF_DESTINATARIO
+    assert "14.133" in _RF["DD/DIRETA-PCRJ"][1] and "revogada" in _RF["DD/DIRETA-PCRJ"][1]

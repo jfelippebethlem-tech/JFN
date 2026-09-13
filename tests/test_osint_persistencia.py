@@ -109,3 +109,41 @@ def test_export_ftm_usa_ontologia_pronta(con):
     assert ftm[0]["properties"]["startDate"] == ["2019-08-16"]
     assert ftm[0]["properties"]["endDate"] == [], "término não observado não pode virar data"
     assert FTM_POR_TIPO["parente_de"] == "Family"
+
+
+def test_aresta_simetrica_nao_entra_nos_dois_sentidos(con):
+    """O grafo é montado POR ALVO — e quando os dois lados são alvo, cada um produz a sua metade.
+
+    "A divide o telefone com B" e "B divide o telefone com A" são UM fato. Gravadas as duas, a base
+    afirmaria o dobro dos vínculos que existem, e quem contasse arestas por empresa leria
+    concentração onde só há espelho. Apareceu ao ligar `tools/grafo_persistir` sobre os 5.615
+    credores do SIAFE: os pares de contato são, eles próprios, credores.
+    """
+    a, b = no_pj("11111111000100"), no_pj("22222222000100")
+    fonte = "Receita Federal — dados abertos CNPJ (Estabelecimentos)"
+
+    ida = GrafoVinculos()
+    ida.ligar(a, b, "mesmo_telefone", fonte=fonte, detalhe="telefone 2122223333")
+    volta = GrafoVinculos()
+    volta.ligar(b, a, "mesmo_telefone", fonte=fonte, detalhe="telefone 2122223333")
+
+    assert salvar_grafo(con, ida)["arestas_novas"] == 1
+    r = salvar_grafo(con, volta)
+    assert r["arestas_novas"] == 0 and r["arestas_repetidas"] == 1
+    assert con.execute("SELECT COUNT(*) FROM relacionamentos").fetchone()[0] == 1
+
+
+def test_aresta_dirigida_mantem_os_dois_sentidos(con):
+    """Controle positivo: em `socio_de` a direção É a informação, e o espelho não pode ser comido.
+
+    Sem este teste, apertar a simetria demais transformaria "MARIA é sócia da ALFA" e "ALFA é sócia
+    da MARIA" no mesmo registro — que é precisamente a confusão que o vocabulário fechado evita.
+    """
+    m, alfa = no_pf("", "MARIA|123456"), no_pj("11111111000100")
+    g1, g2 = GrafoVinculos(), GrafoVinculos()
+    g1.ligar(m, alfa, "socio_de", fonte="QSA/RFB snapshot 2026-05")
+    g2.ligar(alfa, m, "socio_de", fonte="QSA/RFB snapshot 2026-05")
+
+    assert salvar_grafo(con, g1)["arestas_novas"] == 1
+    assert salvar_grafo(con, g2)["arestas_novas"] == 1
+    assert con.execute("SELECT COUNT(*) FROM relacionamentos").fetchone()[0] == 2

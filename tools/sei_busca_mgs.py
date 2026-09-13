@@ -12,12 +12,60 @@ from tools.vm_guard import preflight, cleanup_orphans
 
 import re
 TERMO = next((a for a in sys.argv[1:] if not a.startswith("--")), "MGS CLEAN")
-DOCS = "--docs" in sys.argv
+# LIGADO POR PADRÃO: o índice de texto livre do SEI é sobre DOCUMENTOS. Desmarcado, ele varre só
+# metadado de processo e devolve zero para QUALQUER termo — foi o que manteve o #10 aberto.
+# `--sem-docs` mantém o comportamento antigo, para quem quiser exatamente isso.
+DOCS = "--sem-docs" not in sys.argv
 ORGAO = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--orgao=")), "")  # regex p/ texto da opção
 DE = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--de=")), "")       # dd/mm/aaaa
 ATE = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--ate=")), "")
 LISTAORGAOS = "--listorgaos" in sys.argv
 INTERESSADO = "--interessado" in sys.argv  # busca ESTRUTURADA por Contato/Interessado (não full-text)
+
+
+# ── o que a tela devolve, medido ao vivo em 2026-08-11 ──────────────────────────────────────────
+# O #10 do handoff ficou um dia aberto porque três coisas se somaram, e nenhuma era "seletor mudou":
+#
+# 1. O ÍNDICE DO SEI É SOBRE DOCUMENTOS. Com `Considerar Documentos` desmarcado — o padrão desta
+#    ferramenta — a busca por texto livre varre só metadado de processo e devolve ZERO para
+#    qualquer coisa, inclusive o controle positivo. Marcada, "LIMPEZA" devolve 213.563.
+# 2. A CONTAGEM TEM OUTRO FORMATO. O parser procurava `Lista de Processos ... (N registros)`; a
+#    tela devolve `<div class="pesquisaBarraD">Exibindo 1 - 10 de 213.563</div>`.
+# 3. "Nenhum resultado encontrado" É TEMPLATE ESCONDIDO — vem no HTML mesmo com 213.563 achados.
+#    Lê-lo como veredito é publicar ausência que não existe.
+_RE_EXIBINDO = re.compile(
+    r"Exibindo\s*([\d.]+)\s*-\s*([\d.]+)\s*de\s*([\d.]+)", re.IGNORECASE)
+_RE_PROTOCOLO = re.compile(
+    r'<a[^>]*class="protocoloNormal"[^>]*title="([^"]*)"[^>]*>\s*(SEI-\d{6}/\d{6}/\d{4})\s*</a>',
+    re.IGNORECASE)
+
+
+def _num(s: str) -> int:
+    return int(re.sub(r"\D", "", s or "0") or 0)
+
+
+def parse_resultado(html: str) -> dict:
+    """Lê a tela de resultado. Distingue ZERO LEGÍTIMO de NÃO CONSEGUI LER — as duas respostas
+    saíam iguais (`n_total: 0`, `n_registros: null`), e é por isso que o #10 ficou sem causa.
+
+    Estados:
+        com_resultado  a barra de contagem existe e é > 0
+        sem_resultado  a barra existe e é 0, ou a página traz a barra vazia — zero apurado
+        nao_parseei    não achei a barra: pode ser sessão caída, WAF, layout novo. NUNCA é zero.
+    """
+    h = html or ""
+    m = _RE_EXIBINDO.search(h)
+    procs: dict[str, str] = {}
+    for titulo, num in _RE_PROTOCOLO.findall(h):
+        procs.setdefault(num, (titulo or "").strip()[:120])
+    if m:
+        total = _num(m.group(3))
+        return {"estado": "com_resultado" if total else "sem_resultado", "total": total,
+                "exibindo": (_num(m.group(1)), _num(m.group(2))), "processos": procs}
+    if 'class="pesquisaBarra"' in h:
+        # a barra existe e não traz contagem: a tela do SEI a omite quando não há nada
+        return {"estado": "sem_resultado", "total": 0, "exibindo": (0, 0), "processos": procs}
+    return {"estado": "nao_parseei", "total": None, "exibindo": None, "processos": procs}
 
 
 async def main():
@@ -83,10 +131,46 @@ async def main():
                 await pg.wait_for_load_state("networkidle", timeout=25000)
             except Exception:
                 pass
-            await pg.wait_for_timeout(3000)
-            txt0 = await pg.inner_text("body")
-            reg = (re.search(r"Lista de Processos[^\d]*\((\d+)\s+registro", txt0, re.I)
-                   or re.search(r"\((\d+)\s+registro", txt0, re.I) or [None, None])[1]
+            # ESPERAR PELA PRESENÇA, NÃO PELO RELÓGIO. A lição já é da casa (o falso INDISPONÍVEL
+            # em massa da árvore do SEI saiu exatamente disto): `networkidle` + `sleep(3)` é aposta,
+            # e sob carga a aposta perde. A barra de resultado é a PROVA de que a tela chegou —
+            # ela existe tanto com resultado quanto sem. Medido em 2026-08-12: a busca por
+            # "AGILE CORP" voltou `nao_parseei` com este bloco em espera fixa, enquanto "LIMPEZA"
+            # passou; a diferença era o tempo do Solr, não a existência do termo.
+            from playwright.async_api import TimeoutError as _PWTimeout
+            try:
+                await pg.wait_for_selector(".pesquisaBarra, table.pesquisaResultado", timeout=60000)
+            except _PWTimeout:
+                # a falta da barra vira `nao_parseei` adiante, que NÃO é zero. Captura ESPECÍFICA:
+                # Captura genérica aqui esconderia sessão caída e erro de seletor no mesmo
+                # balde — e a catraca da casa conta TEXTO, então nem citá-la por extenso.
+                await pg.wait_for_timeout(3000)
+            laudo = parse_resultado(await pg.content())
+            # UMA SEGUNDA CHANCE, e só uma: `nao_parseei` costuma ser tela que ainda não pintou.
+            # Insistir mais que isto viraria martelo — e zero inconclusivo já tem estado próprio.
+            if laudo["estado"] == "nao_parseei":
+                await pg.wait_for_timeout(8000)
+                laudo = parse_resultado(await pg.content())
+            if laudo["estado"] == "nao_parseei":
+                # GRAVA A PÁGINA QUE NÃO FOI LIDA. Sem isto, `nao_parseei` é honesto e inútil: diz
+                # que não deu, não diz o quê. O diagnóstico à mão via a tela normalmente enquanto a
+                # ferramenta não — e sem o HTML dela o próximo passo vira adivinhação.
+                try:
+                    import pathlib as _pl
+                    _d = _pl.Path("/home/ubuntu/JFN/data/sei_buscas")
+                    _d.mkdir(parents=True, exist_ok=True)
+                    _slug = re.sub(r"[^A-Za-z0-9]+", "_", TERMO)[:40] or "termo"
+                    (_d / f"_naoparseei_{_slug}.html").write_text(await pg.content(), encoding="utf-8")
+                    (_d / f"_naoparseei_{_slug}.url").write_text(
+                        f"{pg.url}\nframes={[f.url[:120] for f in pg.frames]}", encoding="utf-8")
+                except OSError as _exc:
+                    # NUNCA MUDO. A catraca da casa pegou este `pass` no meu próprio push, e com
+                    # razão: gravar o diagnóstico é o que salva o próximo passo — falhar em gravar
+                    # e não dizer transforma a instrumentação em nada.
+                    print(json.dumps(
+                        {"aviso": f"não consegui gravar a página do nao_parseei: {_exc}"},
+                        ensure_ascii=False), file=sys.stderr)
+            reg = laudo["total"]
             # pares tipo↔número, percorrendo TODAS as páginas
             achados: dict[str, str] = {}
 
@@ -128,21 +212,55 @@ async def main():
                 if len(achados) == antes:  # não cresceu → fim
                     break
             pagamentos = {n: t for n, t in achados.items() if re.search(r"pagament", t, re.I)}
-            print(json.dumps({"ok": True, "termo": TERMO, "modo": ("interessado" if INTERESSADO else "fulltext"),
+            # o que a página DIZ, ao lado do que nós colhemos: se `estado` é `nao_parseei`, um
+            # `n_total: 0` não é zero — é leitura falha, e quem consome tem de saber a diferença.
+            achados.update({k: v for k, v in laudo["processos"].items() if k not in achados})
+            _saida = {"ok": True, "termo": TERMO, "modo": ("interessado" if INTERESSADO else "fulltext"),
+                      "estado": laudo["estado"], "exibindo": laudo["exibindo"],
                               "considerar_docs": DOCS, "setup": setup, "interessado_dbg": inter_dbg,
                               "diag_submit": diag, "n_registros": reg, "n_total": len(achados),
                               "n_pagamentos": len(pagamentos),
                               "pagamentos": dict(sorted(pagamentos.items())),
-                              "todos": dict(sorted(achados.items()))},
-                             ensure_ascii=False, indent=1))
+                              "todos": dict(sorted(achados.items()))}
+            _registrar({k: v for k, v in _saida.items() if k != "todos"}
+                       | {"n_todos": len(achados)})
+            print(json.dumps(_saida, ensure_ascii=False, indent=1))
         finally:
             await b.close()
+
+
+def _registrar(payload: dict) -> None:
+    """Grava SEMPRE o resultado em disco, inclusive a recusa do guard.
+
+    Quem chama esta ferramenta pelo sweep lê o `n_total` do stdout e descarta o resto. Quando o
+    CONTROLE POSITIVO não retorna, o ciclo aborta corretamente — mas sem nada em disco não há como
+    saber POR QUÊ (guard? sessão tomada? seletor?). Medido em 2026-08-10 às 18:52: a busca abortou
+    dizendo "controle positivo não devolveu contagem válida" e o motivo se perdeu com o stdout.
+    """
+    import datetime
+    import pathlib
+    import re as _re
+    try:
+        base = pathlib.Path("/home/ubuntu/JFN/data/sei_buscas")
+        base.mkdir(parents=True, exist_ok=True)
+        slug = _re.sub(r"[^A-Za-z0-9]+", "_", TERMO)[:40] or "termo"
+        payload = dict(payload)
+        payload["quando"] = datetime.datetime.now().isoformat(timespec="seconds")
+        (base / f"_ultimo_{slug}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
+    except OSError as exc:
+        # registro é diagnóstico e nunca derruba a busca — mas falhar CALADO aqui seria o mesmo
+        # defeito que este registro existe para consertar
+        print(json.dumps({"aviso": f"não consegui gravar o diagnóstico: {exc}"}, ensure_ascii=False),
+              file=sys.stderr)
 
 
 if __name__ == "__main__":
     ok, motivo = preflight()
     if not ok:
-        print(json.dumps({"ok": False, "vm_guard": motivo})); sys.exit(1)
+        recusa = {"ok": False, "vm_guard": motivo}
+        _registrar(recusa)
+        print(json.dumps(recusa)); sys.exit(1)
     cleanup_orphans()
     try:
         asyncio.run(main())

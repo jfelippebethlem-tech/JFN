@@ -191,3 +191,6 @@ static/assets/_antes-v*/
 # v58: masters de video sao INTERMEDIARIOS do gerador (pre-loop, pre-corte). O que o painel
 # carrega sao os .webm/.mp4/.jpg finais; os masters ficam fora do repo — 16 MB que ninguem serve.
 static/assets/*-master.mp4
+data/.siafe_dreno_vez
+data/sei_busca_pedidos.txt*
+data/sei_buscas/

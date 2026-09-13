@@ -255,9 +255,11 @@ def rodar_regras():
     try:
         alertas = motor.executar_todas_as_regras(competencia=competencia)
     except Exception as e:
+        # O código de saída conta a verdade: 84 execuções com "Erro:" e rc=0 passaram por saudáveis
+        # na auditoria dos passos agendados (10/09/2026).
         print(f"  {R}Erro: {e}{RST}")
         session.close()
-        return
+        raise SystemExit(1)
 
     if not alertas:
         print(f"  {G}Nenhum alerta novo gerado.{RST}")

@@ -3,16 +3,291 @@
  "gerado_em": "2026-07-06T07:28:55+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_003321_2026",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1573,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "relat rio",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/002_relat_rio.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1323,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "checklist",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/004_checklist.txt",
+   "chars": 1350,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1475,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "anexo sigfis e tce",
+   "fase": "controle",
+   "tipo": "orgao_controle",
+   "texto": "texto/006_anexo_sigfis_e_tce.txt",
+   "chars": 615,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/008_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1501,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "nota de empenho original ne especifarma",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/009_nota_de_empenho_original_ne_especifarma.txt",
+   "chars": 2484,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "nota de autoriza o de despesa nad especi",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/010_nota_de_autoriza_o_de_despesa_nad_especi.txt",
+   "chars": 2319,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "anexo publica o pncp nota de empenho",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/011_anexo_publica_o_pncp_nota_de_empenho.txt",
+   "chars": 1881,
+   "ocr": false,
+   "fotos": [
+    "fotos/011_p01.jpg"
+   ]
+  },
+  {
+   "i": 12,
+   "titulo": "anexo publica o pncp edital contratos em",
+   "fase": "selecao",
+   "tipo": "edital",
+   "texto": "texto/012_anexo_publica_o_pncp_edital_contratos_em.txt",
+   "chars": 2583,
+   "ocr": false,
+   "fotos": [
+    "fotos/012_p01.jpg"
+   ]
+  },
+  {
+   "i": 13,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/013_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1750,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "correspond ncia interna na 166",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/014_correspond_ncia_interna_na_166.txt",
+   "chars": 1855,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "processo",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/015_processo.txt",
+   "chars": 1682,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "requisi o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/016_requisi_o.txt",
+   "chars": 1866,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "registro",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/017_registro.txt",
+   "chars": 1840,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "consulta",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/018_consulta.txt",
+   "chars": 957,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "declara o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/019_declara_o.txt",
+   "chars": 1999,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "certid es neg de d bitos trabalhistas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/020_certid_es_neg_de_d_bitos_trabalhistas.txt",
+   "chars": 1835,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "certid es negativas do fgts",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/021_certid_es_negativas_do_fgts.txt",
+   "chars": 1052,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "certid es neg de d bitos federais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/022_certid_es_neg_de_d_bitos_federais.txt",
+   "chars": 1994,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "cnpj",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/023_cnpj.txt",
+   "chars": 2537,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "publica o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/024_publica_o.txt",
+   "chars": 1986,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "publica o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/025_publica_o.txt",
+   "chars": 24570,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "ata",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/026_ata.txt",
+   "chars": 29313,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
-  "selecao": 0,
+  "selecao": 1,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
-  "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "despesa": 3,
+  "controle": 1,
+  "tramitacao": 7,
+  "indefinida": 15
  },
  "lacunas": [
   {
@@ -20,13 +295,17 @@
    "gravidade": "media"
   },
   {
-   "falta": "Seleção (edital, julgamento, homologação)",
-   "gravidade": "alta"
-  },
-  {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 2,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

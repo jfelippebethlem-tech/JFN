@@ -1,0 +1,570 @@
+{
+ "ok": true,
+ "indisponivel": false,
+ "gerado_em": "2026-08-04T13:13:38",
+ "min_valor": 300000000.0,
+ "unidades": [
+  {
+   "ug": "294200",
+   "nome": "FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO",
+   "n": 82479,
+   "n_tac": 10648,
+   "total": 10409158853.82,
+   "total_tac": 2814466115.49,
+   "pct": 27.0,
+   "cobertura": "verificado (82462/82479 OBs com observação)"
+  },
+  {
+   "ug": "310100",
+   "nome": "Secretaria de Estado de Transportes",
+   "n": 1672,
+   "n_tac": 33,
+   "total": 2701149481.11,
+   "total_tac": 427027283.14,
+   "pct": 15.8,
+   "cobertura": "verificado (1672/1672 OBs com observação)"
+  },
+  {
+   "ug": "370200",
+   "nome": "ENCARGOS GERAIS DO ESTADO - SUPERVISAO SEFAZ",
+   "n": 9538,
+   "n_tac": 6,
+   "total": 14872965546.42,
+   "total_tac": 1500460000.0,
+   "pct": 10.1,
+   "cobertura": "verificado (9538/9538 OBs com observação)"
+  },
+  {
+   "ug": "490100",
+   "nome": "SECRETARIA DE ESTADO DESENVOLVIMENTO SOCIAL E DE DIREITOS HUMANOS",
+   "n": 7209,
+   "n_tac": 117,
+   "total": 381750704.28,
+   "total_tac": 21671547.68,
+   "pct": 5.7,
+   "cobertura": "verificado (7209/7209 OBs com observação)"
+  },
+  {
+   "ug": "263100",
+   "nome": "Departamento de Trânsito do Estado do RJ",
+   "n": 27553,
+   "n_tac": 703,
+   "total": 2935304114.49,
+   "total_tac": 161625385.11,
+   "pct": 5.5,
+   "cobertura": "verificado (27553/27553 OBs com observação)"
+  },
+  {
+   "ug": "326100",
+   "nome": "Fundo Estadual de Assistência Social",
+   "n": 7551,
+   "n_tac": 162,
+   "total": 769136442.22,
+   "total_tac": 39381472.0,
+   "pct": 5.1,
+   "cobertura": "verificado (7551/7551 OBs com observação)"
+  },
+  {
+   "ug": "296100",
+   "nome": "FUNDO ESTADUAL DA SAUDE",
+   "n": 73011,
+   "n_tac": 4122,
+   "total": 31650702534.42,
+   "total_tac": 901628375.19,
+   "pct": 2.8,
+   "cobertura": "verificado (73011/73011 OBs com observação)"
+  },
+  {
+   "ug": "243200",
+   "nome": "INSTITUTO ESTADUAL DO AMBIENTE",
+   "n": 16623,
+   "n_tac": 906,
+   "total": 2229452059.24,
+   "total_tac": 40863055.44,
+   "pct": 1.8,
+   "cobertura": "verificado (16623/16623 OBs com observação)"
+  },
+  {
+   "ug": "110100",
+   "nome": "Defensoria Pública Geral do Estado",
+   "n": 12447,
+   "n_tac": 155,
+   "total": 956322703.91,
+   "total_tac": 14617029.67,
+   "pct": 1.5,
+   "cobertura": "verificado (12447/12447 OBs com observação)"
+  },
+  {
+   "ug": "430100",
+   "nome": "Secretaria de Estado de Turismo",
+   "n": 5904,
+   "n_tac": 8,
+   "total": 345089697.83,
+   "total_tac": 4866585.6,
+   "pct": 1.4,
+   "cobertura": "verificado (5904/5904 OBs com observação)"
+  },
+  {
+   "ug": "297100",
+   "nome": "INSTITUTO VITAL BRAZIL SA.",
+   "n": 8453,
+   "n_tac": 105,
+   "total": 574406164.0,
+   "total_tac": 7289011.55,
+   "pct": 1.3,
+   "cobertura": "verificado (8453/8453 OBs com observação)"
+  },
+  {
+   "ug": "180100",
+   "nome": "Secretaria de Estado de Educação",
+   "n": 141976,
+   "n_tac": 46,
+   "total": 7096451654.28,
+   "total_tac": 72365869.54,
+   "pct": 1.0,
+   "cobertura": "verificado (141976/141976 OBs com observação)"
+  },
+  {
+   "ug": "210700",
+   "nome": "Secretaria de Estado de Educação",
+   "n": 13345,
+   "n_tac": 59,
+   "total": 433874910.07,
+   "total_tac": 4498850.59,
+   "pct": 1.0,
+   "cobertura": "verificado (13345/13345 OBs com observação)"
+  },
+  {
+   "ug": "166100",
+   "nome": "FUND.ESP.DO CORPO DE BOMBEIROS.",
+   "n": 53037,
+   "n_tac": 74,
+   "total": 2204095290.64,
+   "total_tac": 19299598.0,
+   "pct": 0.9,
+   "cobertura": "verificado (53037/53037 OBs com observação)"
+  },
+  {
+   "ug": "250100",
+   "nome": "Secretaria de Estado de Administração Penitenciária",
+   "n": 7631,
+   "n_tac": 239,
+   "total": 2146348963.4,
+   "total_tac": 19086412.88,
+   "pct": 0.9,
+   "cobertura": "verificado (7631/7631 OBs com observação)"
+  },
+  {
+   "ug": "404310",
+   "nome": "FUNDACAO UNIV. DO EST. RIO DE JANEIRO",
+   "n": 23272,
+   "n_tac": 51,
+   "total": 1613126981.09,
+   "total_tac": 13610377.95,
+   "pct": 0.8,
+   "cobertura": "verificado (23269/23272 OBs com observação)"
+  },
+  {
+   "ug": "650100",
+   "nome": "Secretaria de Estado de Habitação de Interesse Social",
+   "n": 2170,
+   "n_tac": 68,
+   "total": 619126975.61,
+   "total_tac": 4805859.02,
+   "pct": 0.8,
+   "cobertura": "verificado (2170/2170 OBs com observação)"
+  },
+  {
+   "ug": "106100",
+   "nome": "FUNDO ESPECIAL DO MINISTERIO PUBLICO DO ERJ",
+   "n": 2764,
+   "n_tac": 6,
+   "total": 426610765.59,
+   "total_tac": 3064016.29,
+   "pct": 0.7,
+   "cobertura": "verificado (2764/2764 OBs com observação)"
+  },
+  {
+   "ug": "045200",
+   "nome": "EMPRESA DE OBRAS PUBLICAS DO ESTADO DO RJ",
+   "n": 9683,
+   "n_tac": 83,
+   "total": 1880837716.48,
+   "total_tac": 12445343.93,
+   "pct": 0.7,
+   "cobertura": "verificado (9683/9683 OBs com observação)"
+  },
+  {
+   "ug": "260400",
+   "nome": "SECRETARIA DE ESTADO DE POLICIA CIVIL",
+   "n": 10970,
+   "n_tac": 134,
+   "total": 1043860280.97,
+   "total_tac": 7036101.04,
+   "pct": 0.7,
+   "cobertura": "verificado (10970/10970 OBs com observação)"
+  },
+  {
+   "ug": "010100",
+   "nome": "Assembléia Legislativa",
+   "n": 15367,
+   "n_tac": 48,
+   "total": 1365000628.46,
+   "total_tac": 6641224.59,
+   "pct": 0.5,
+   "cobertura": "verificado (15367/15367 OBs com observação)"
+  },
+  {
+   "ug": "266500",
+   "nome": "Fundo Especial da Polícia Militar",
+   "n": 31504,
+   "n_tac": 76,
+   "total": 1082441270.29,
+   "total_tac": 5300662.32,
+   "pct": 0.5,
+   "cobertura": "verificado (31504/31504 OBs com observação)"
+  },
+  {
+   "ug": "261100",
+   "nome": "SECRETARIA DE ESTADO DE POLÍCIA MILITAR",
+   "n": 41888,
+   "n_tac": 410,
+   "total": 2110065565.38,
+   "total_tac": 11311268.42,
+   "pct": 0.5,
+   "cobertura": "verificado (41888/41888 OBs com observação)"
+  },
+  {
+   "ug": "206100",
+   "nome": "FUNDO ESPECIAL DE ADMINISTRACAO FAZENDARIA",
+   "n": 3797,
+   "n_tac": 4,
+   "total": 389796902.64,
+   "total_tac": 2112375.43,
+   "pct": 0.5,
+   "cobertura": "verificado (3797/3797 OBs com observação)"
+  },
+  {
+   "ug": "203100",
+   "nome": "LOTERIA DO EST. RIO DE JANEIRO",
+   "n": 6096,
+   "n_tac": 26,
+   "total": 338163314.9,
+   "total_tac": 1278217.56,
+   "pct": 0.4,
+   "cobertura": "verificado (6096/6096 OBs com observação)"
+  },
+  {
+   "ug": "530100",
+   "nome": "SECRETARIA DE ESTADO DE CIDADES",
+   "n": 5137,
+   "n_tac": 202,
+   "total": 2152439168.62,
+   "total_tac": 7659096.55,
+   "pct": 0.4,
+   "cobertura": "verificado (5137/5137 OBs com observação)"
+  },
+  {
+   "ug": "240200",
+   "nome": "Secretaria de Estado do Ambiente e Sustentabilidade",
+   "n": 742,
+   "n_tac": 5,
+   "total": 501911988.59,
+   "total_tac": 1967251.03,
+   "pct": 0.4,
+   "cobertura": "verificado (742/742 OBs com observação)"
+  },
+  {
+   "ug": "044100",
+   "nome": "Fund Dep Estradas de Rodagem do Estado do RJ",
+   "n": 20232,
+   "n_tac": 291,
+   "total": 4042575467.11,
+   "total_tac": 13052257.56,
+   "pct": 0.3,
+   "cobertura": "verificado (20232/20232 OBs com observação)"
+  },
+  {
+   "ug": "404340",
+   "nome": "FUNDACAO UNIV. DO EST. RIO DE JANEIRO",
+   "n": 37061,
+   "n_tac": 32,
+   "total": 1497474915.24,
+   "total_tac": 3757389.03,
+   "pct": 0.3,
+   "cobertura": "verificado (37061/37061 OBs com observação)"
+  },
+  {
+   "ug": "100100",
+   "nome": "Ministério Público",
+   "n": 47520,
+   "n_tac": 64,
+   "total": 1897866643.26,
+   "total_tac": 3464076.23,
+   "pct": 0.2,
+   "cobertura": "verificado (47518/47520 OBs com observação)"
+  },
+  {
+   "ug": "154100",
+   "nome": "FUND. ANITA MANTUANO DE ARTES DO ESTADO DO RJ",
+   "n": 6375,
+   "n_tac": 21,
+   "total": 407764244.34,
+   "total_tac": 655571.53,
+   "pct": 0.2,
+   "cobertura": "verificado (6375/6375 OBs com observação)"
+  },
+  {
+   "ug": "140100",
+   "nome": "SECRETARIA DE ESTADO DE GOVERNO E RELAÇÕES INSTITUCIONAIS",
+   "n": 13071,
+   "n_tac": 157,
+   "total": 1277631102.32,
+   "total_tac": 2163172.35,
+   "pct": 0.2,
+   "cobertura": "verificado (13071/13071 OBs com observação)"
+  },
+  {
+   "ug": "123400",
+   "nome": "FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.",
+   "n": 8330,
+   "n_tac": 18,
+   "total": 802925293.38,
+   "total_tac": 1434131.53,
+   "pct": 0.2,
+   "cobertura": "verificado (8330/8330 OBs com observação)"
+  },
+  {
+   "ug": "096100",
+   "nome": "FUNDO ESPECIAL DA PROCURADORIA GERAL DO RJ",
+   "n": 10871,
+   "n_tac": 4,
+   "total": 401724306.77,
+   "total_tac": 390794.92,
+   "pct": 0.1,
+   "cobertura": "verificado (10870/10871 OBs com observação)"
+  },
+  {
+   "ug": "070100",
+   "nome": "Secretaria de Estado de Obras",
+   "n": 2366,
+   "n_tac": 45,
+   "total": 508666033.14,
+   "total_tac": 606992.62,
+   "pct": 0.1,
+   "cobertura": "verificado (2366/2366 OBs com observação)"
+  },
+  {
+   "ug": "390200",
+   "nome": "Secretaria de Estado da Casa Civil e Desenvolvimento Econômico",
+   "n": 11690,
+   "n_tac": 21,
+   "total": 854296487.92,
+   "total_tac": 1101617.46,
+   "pct": 0.1,
+   "cobertura": "verificado (11690/11690 OBs com observação)"
+  },
+  {
+   "ug": "404400",
+   "nome": "FUND. APOIO A ESCOLA TEC. EST.RJ - FAETEC",
+   "n": 22822,
+   "n_tac": 4,
+   "total": 1820302065.16,
+   "total_tac": 1597550.49,
+   "pct": 0.1,
+   "cobertura": "verificado (22822/22822 OBs com observação)"
+  },
+  {
+   "ug": "403200",
+   "nome": "Centro de Tecnologia de Informação e Comunicação do Estado do Rio de Janeiro",
+   "n": 6298,
+   "n_tac": 31,
+   "total": 650043094.37,
+   "total_tac": 732150.33,
+   "pct": 0.1,
+   "cobertura": "verificado (6298/6298 OBs com observação)"
+  },
+  {
+   "ug": "570100",
+   "nome": "SECRETARIA DE ESTADO DE GOVERNO",
+   "n": 12665,
+   "n_tac": 67,
+   "total": 430160956.18,
+   "total_tac": 241877.16,
+   "pct": 0.1,
+   "cobertura": "verificado (12665/12665 OBs com observação)"
+  },
+  {
+   "ug": "999900",
+   "nome": "",
+   "n": 5,
+   "n_tac": 0,
+   "total": 405561085.6,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "INDISPONIVEL (nenhuma OB com observação)"
+  },
+  {
+   "ug": "036100",
+   "nome": "FUNDO ESPECIAL DO TRIBUNAL DE JUSTICA",
+   "n": 49236,
+   "n_tac": 76,
+   "total": 7111880408.27,
+   "total_tac": 787921.69,
+   "pct": 0.0,
+   "cobertura": "verificado (49217/49236 OBs com observação)"
+  },
+  {
+   "ug": "020100",
+   "nome": "Tribunal de Contas do Estado do Rio de Janeiro",
+   "n": 13478,
+   "n_tac": 5,
+   "total": 465506534.74,
+   "total_tac": 128800.16,
+   "pct": 0.0,
+   "cobertura": "verificado (13478/13478 OBs com observação)"
+  },
+  {
+   "ug": "016100",
+   "nome": "FUNDO ESPECIAL DA ASSEMBLEIA LEGISLATIVA ERJ.",
+   "n": 233,
+   "n_tac": 0,
+   "total": 382657776.59,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "verificado (233/233 OBs com observação)"
+  },
+  {
+   "ug": "404600",
+   "nome": "FUND. CENT.DE CIENCIA E EDUC.SUP.DIST. DO ERJ",
+   "n": 17768,
+   "n_tac": 21,
+   "total": 314693587.98,
+   "total_tac": 137534.07,
+   "pct": 0.0,
+   "cobertura": "verificado (17768/17768 OBs com observação)"
+  },
+  {
+   "ug": "030100",
+   "nome": "Tribunal de Justiça do Estado do Rio de Janeiro",
+   "n": 1614,
+   "n_tac": 3,
+   "total": 1745659774.82,
+   "total_tac": 20829.85,
+   "pct": 0.0,
+   "cobertura": "verificado (1614/1614 OBs com observação)"
+  },
+  {
+   "ug": "200900",
+   "nome": "Secretaria de Estado de Fazenda e Planejamento",
+   "n": 11163,
+   "n_tac": 0,
+   "total": 1372393508.24,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "verificado (11163/11163 OBs com observação)"
+  },
+  {
+   "ug": "135300",
+   "nome": "EMPRESA ASSIST. TEC. EXT. RURAL DO ESTADO RJ.",
+   "n": 8174,
+   "n_tac": 1,
+   "total": 305691891.04,
+   "total_tac": 91702.04,
+   "pct": 0.0,
+   "cobertura": "verificado (8174/8174 OBs com observação)"
+  },
+  {
+   "ug": "137200",
+   "nome": "CENTRAIS DE ABASTECIMENTO DO ESTADO DO RJ.",
+   "n": 13538,
+   "n_tac": 27,
+   "total": 806343114.28,
+   "total_tac": 355061.62,
+   "pct": 0.0,
+   "cobertura": "verificado (13538/13538 OBs com observação)"
+  },
+  {
+   "ug": "197100",
+   "nome": "Companhia Estadual de Habitação do Estado do Rio de Janeiro",
+   "n": 8356,
+   "n_tac": 19,
+   "total": 1147999779.62,
+   "total_tac": 47063.62,
+   "pct": 0.0,
+   "cobertura": "verificado (8356/8356 OBs com observação)"
+  },
+  {
+   "ug": "246300",
+   "nome": "FUNDO ESTADUAL DE RECURSOS HIDRICOS",
+   "n": 2849,
+   "n_tac": 0,
+   "total": 549327508.65,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "verificado (2849/2849 OBs com observação)"
+  },
+  {
+   "ug": "130100",
+   "nome": "Secretaria de Estado de Agricultura, Pecuária, Pesca e Abastecimento",
+   "n": 9829,
+   "n_tac": 4,
+   "total": 727754801.62,
+   "total_tac": 307911.32,
+   "pct": 0.0,
+   "cobertura": "verificado (9829/9829 OBs com observação)"
+  },
+  {
+   "ug": "404100",
+   "nome": "FUND.CARLOS CHAGAS FILHO DE AMP.A PESQUISA-RJ",
+   "n": 15470,
+   "n_tac": 0,
+   "total": 1145005205.1,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "verificado (15470/15470 OBs com observação)"
+  },
+  {
+   "ug": "170100",
+   "nome": "Secretaria de Estado de  Esporte, Lazer e Juventude",
+   "n": 2570,
+   "n_tac": 17,
+   "total": 306107343.05,
+   "total_tac": 10022.37,
+   "pct": 0.0,
+   "cobertura": "verificado (2570/2570 OBs com observação)"
+  },
+  {
+   "ug": "316100",
+   "nome": "FUNDO ESTADUAL DE TRANSPORTES",
+   "n": 365,
+   "n_tac": 0,
+   "total": 4317631438.18,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "verificado (365/365 OBs com observação)"
+  },
+  {
+   "ug": "216500",
+   "nome": "Secretaria de Estado da Casa Civil",
+   "n": 1009,
+   "n_tac": 0,
+   "total": 416132897.52,
+   "total_tac": 0.0,
+   "pct": 0.0,
+   "cobertura": "verificado (1009/1009 OBs com observação)"
+  },
+  {
+   "ug": "660100",
+   "nome": "Secretaria de Estado de Cidades",
+   "n": 1467,
+   "n_tac": 2,
+   "total": 1112228952.07,
+   "total_tac": 2020.44,
+   "pct": 0.0,
+   "cobertura": "verificado (1467/1467 OBs com observação)"
+  }
+ ],
+ "mediana_pct": 0.3,
+ "nota": "Universo do espelho TFE — único lugar onde a observação da OB existe; numerador e denominador saem da mesma fonte, então a proporção é coerente, mas não é o universo do SIAFE. A régua é COMPARATIVA: um percentual sozinho não sustenta afirmação — o que informa é a distância para as outras unidades, sobretudo para as do mesmo setor."
+}

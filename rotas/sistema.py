@@ -61,9 +61,35 @@ def api_siafe_stats():
             con.close()
         from datetime import date as _date
         coletou_hoje = bool(ultima and str(ultima)[:10] == _date.today().isoformat())
+        # QUANTO DISSO É O UNIVERSO. Publicar "R$ X coletados" sem a razão faz o número parecer o
+        # gasto do Estado; medido em 2026-08-09, a fonte canônica tinha 23,6% das OBs que o espelho
+        # conhece, e a coleta sobe a cada drenagem. O detalhe por par sai em
+        # `reporting.cobertura_siafe.medir()` (parciais + nunca coletados).
+        # A RAZÃO É BARATA; o INVENTÁRIO POR PAR não é. Chamar `medir()` aqui levou a rota de
+        # instantânea para **59 s** e a aba do painel passou a cair no "SIAFE indisponível" — o
+        # próprio conserto quebrou a tela que ele queria melhorar. Duas contagens bastam para o
+        # número de manchete; o detalhe por par continua em /api/siafe/truncamento, que é a tela
+        # feita para esperar.
+        cob = {}
+        try:
+            con2 = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            try:
+                n_esp = con2.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0]
+            finally:
+                con2.close()
+            if n_esp:
+                cob = {"pct_do_espelho": round(100.0 * tot[0] / n_esp, 1),
+                       "obs_espelho_total": n_esp,
+                       "nota": ("A fonte canônica é a que tem status e campos ricos, mas está "
+                                "parcialmente coletada — todo total daqui é PISO. O espelho TFE é "
+                                "mais completo em contagem e não publica status. Pares incompletos "
+                                "em /api/siafe/truncamento.")}
+        except sqlite3.Error as _e:
+            logger.warning("cobertura do SIAFE indisponível nesta resposta: %s", _e)
         return JSONResponse({"ok": True, "total": tot[0], "valor_total": round(tot[1] or 0, 2),
                              "por_ano": por_ano, "com_processo": com_processo,
                              "ultima_atualizacao": ultima, "coletou_hoje": coletou_hoje,
+                             "cobertura": cob,
                              "fonte": "SIAFE-Rio 2 / OB Orçamentária (23 colunas: NL, PD, Processo, Credor...)"})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -141,6 +167,126 @@ def api_route(q: str = ""):
                              "candidatos": top, "n_avaliadas": len(SKILLTREE.capacidades)})
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(e)[:120]}, status_code=500)
+
+
+@router.get("/api/pericia/cobertura")
+def api_pericia_cobertura():
+    """Quanto do acervo já recebeu JUÍZO documento a documento — e por qual cadeia de LLM.
+
+    Pedido do dono (2026-08-03): as perícias rodando 24/7 e visíveis no painel. O primeiro
+    requisito de 'rodando' é poder ver quanto já rodou: o número (39 de 2.082 quando isto foi
+    escrito) só existia para quem abrisse o SQLite.
+    """
+    try:
+        from compliance_agent.reporting import cobertura_pericia
+        return JSONResponse(content=cobertura_pericia.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@router.get("/api/motor/fotografia")
+def api_motor_fotografia():
+    """O estado do MOTOR: faixas, achados por código e por origem, motivos no topo da fila.
+
+    Estes números só existiam via SQL na mão, e cada correção de detector exigia medi-los de novo
+    — foi assim que duas medições saíram erradas em 2026-08-04 (uma engolindo exceção, outra
+    comparando chave de 19 caracteres com chaves de 20). É a mesma função que a pipeline
+    `tools/pos_correcao` usa para o antes/depois, então o painel e o diff nunca divergem.
+    """
+    try:
+        from tools.pos_correcao import fotografia
+        return JSONResponse(content=fotografia())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@router.get("/api/tac/ranking")
+def api_tac_ranking():
+    """Quem paga FORA de contrato regular, e quanto fora da curva está.
+
+    `detector_tac.tac_por_ug` sempre respondeu por UMA unidade, dentro do `/orgao` — e um
+    percentual sozinho não sustenta afirmação nenhuma. Medido em 2026-08-04 pela primeira vez de
+    forma comparativa: entre as 56 unidades que movimentaram mais de R$ 300 mi, a **mediana é
+    0,3%** e a FUNDAÇÃO SAÚDE está em **27,0% (R$ 2,81 bi de R$ 10,41 bi)** — noventa vezes a
+    mediana. E não é "a saúde sendo assim": o FUNDO ESTADUAL DA SAÚDE, três vezes maior, paga
+    2,8%.
+
+    Lê o JSON gerado por `tools/tac_ranking_ugs.py`: a definição de TAC é a regex canônica do
+    `detector_tac`, aplicada em UMA passada sobre 1,16 milhão de OBs — cálculo que nunca pode
+    acontecer dentro do request.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+    alvo = _Path(__file__).resolve().parent.parent / "data" / "tac_ranking_ugs.json"
+    try:
+        return JSONResponse(content=_json.loads(alvo.read_text(encoding="utf-8")))
+    except (OSError, ValueError):
+        return JSONResponse(content={
+            "ok": True, "indisponivel": True,
+            "motivo": ("ranking ainda não gerado — rodar `python tools/tac_ranking_ugs.py` "
+                       "(uma passada sobre as OBs; fora do horário de pico)")})
+
+
+@router.get("/api/siafe/truncamento")
+def api_siafe_truncamento():
+    """A fonte CANÔNICA de pagamento está truncada — e nada avisava.
+
+    A tela de OB Orçamentária do SIAFE-Rio 2 devolve no máximo 1.000 registros por consulta, e uma
+    coleta feita só com `--por-ug` numa UG grande para exatamente nesse número, em silêncio.
+    Medido em 2026-08-04: **23 pares (UG, ano) de 642** param em 1.000, enquanto outros chegam a
+    6.836; nesses 23 o SIAFE conhece R$ 8,46 bi contra R$ 19,26 bi no espelho TFE. Toda soma por
+    UG e toda medida de cobertura saem desse dado — o limite da nossa própria coleta tem de ser
+    visível como qualquer outro INDISPONÍVEL.
+    """
+    try:
+        from compliance_agent.reporting import cobertura_siafe
+        return JSONResponse(content=cobertura_siafe.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@router.get("/api/captura/cobertura")
+def api_captura_cobertura():
+    """Quanto do que foi PAGO o motor consegue ler — o número que limita todos os outros.
+
+    O painel mostrava achados, fila do fiscal e cobertura da perícia sem dizer sobre que fração
+    do dinheiro a casa consegue afirmar alguma coisa. Medido em 2026-08-04: **1.941 processos
+    íntegros de 40.482 com OB paga (4,8%)**, num universo de R$ 18,06 bi. Ponto cego medido é
+    melhor que ponto cego calado.
+
+    **2026-08-23 — a cobertura CAIU para 1,2% e isso é BOA notícia.** Hoje: 2.666 íntegros de
+    **221.130** processos com OB paga, num universo de **R$ 115,10 bi**. O numerador subiu
+    (1.941 -> 2.666); quem despencou foi a fração, porque o DENOMINADOR quintuplicou: das
+    1.064.763 linhas de `ob_orcamentaria_siafe`, **1.024.417 foram coletadas em 08/2026**. O
+    sweep do SIAFE achou um universo cinco vezes maior que o conhecido em agosto.
+
+    Registrar isto no lugar onde o número é lido, e não só no vault, porque a leitura ingênua da
+    série (4,8% -> 1,2%) diz "o motor piorou", e o que houve foi o contrário: a casa passou a
+    enxergar o tamanho real do que não lê. **Queda de cobertura por crescimento de denominador
+    não é regressão de trabalho — é ganho de honestidade**, e só é distinguível se os dois
+    números viajarem juntos.
+    """
+    try:
+        from compliance_agent.reporting import cobertura_captura
+        return JSONResponse(content=cobertura_captura.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@router.get("/api/ob/retiradas")
+def api_ob_retiradas():
+    """OBs que o portal da transparência publicou e depois DESPUBLICOU.
+
+    A base é reconstruída por exercício a cada coleta do TFE — corretamente, e até 2026-08-04 em
+    SILÊNCIO: 140 OBs somando R$ 30.001.367,60 sumiram sem aviso, e só apareceram dois dias
+    depois porque um golden de números quebrou. Ordem bancária é a prova de pagamento; sair do
+    portal é fato sobre a prova, e agora é visível no dia em que acontece.
+    """
+    try:
+        from compliance_agent.reporting import ob_retiradas
+        return JSONResponse(content=ob_retiradas.medir())
+    except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
 @router.get("/api/sweeps/status")
@@ -244,8 +390,16 @@ def api_ugs(filtro: Optional[str] = None, limite: int = 50):
         from compliance_agent.reporting.inteligencia_orgao import listar_ugs
         limite = max(1, min(int(limite or 50), 151))
         dados = listar_ugs(filtro=filtro, limite=limite)
-        return JSONResponse({"ok": dados.get("ok", True), "texto": dados.get("texto", ""),
-                             "ugs": dados.get("ugs", []), "n": dados.get("n", 0), "n_total": dados.get("n_total", 0)})
+        # `ok=False` SEM motivo é falha muda: o chamador recebia `erro=None` e não sabia se a base
+        # sumiu ou se o catálogo está vazio. O `texto` do módulo já diz ("Base local
+        # indisponível.") — basta não descartá-lo. INDISPONÍVEL tem de vir dito.
+        ok = bool(dados.get("ok", True))
+        corpo = {"ok": ok, "texto": dados.get("texto", ""), "ugs": dados.get("ugs", []),
+                 "n": dados.get("n", 0), "n_total": dados.get("n_total", 0)}
+        if not ok:
+            corpo["erro"] = dados.get("texto") or "catálogo de UGs indisponível"
+            corpo["indisponivel"] = True     # ausência de FONTE, não erro de execução
+        return JSONResponse(corpo)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 

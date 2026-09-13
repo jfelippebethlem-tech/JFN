@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS endereco_fornecedor (
 
 
 def _con():
-    c = sqlite3.connect(_DB)
+    c = sqlite3.connect(_DB, timeout=120)
     c.execute(_DDL)
     c.execute(_DDL_END)
     c.execute("CREATE INDEX IF NOT EXISTS ix_socio_norm ON socios_fornecedor(socio_nome_norm)")

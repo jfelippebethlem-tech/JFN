@@ -16,8 +16,14 @@ while true; do
   if [ -f data/.pause_bombeiros ]; then sleep 120; continue; fi
   # nunca 2 browsers: se o sweep principal estiver lendo, espera (browser_lock já serializa, mas evita thrash)
   if pgrep -f "tools.sei_sweep" >/dev/null || pgrep -f "tools.sei_bombeiros_sweep" >/dev/null; then sleep 60; continue; fi
+  # 1 pesado por vez: com load >= 4 (2x núcleos) o lote espera — em 11/09/2026 o lote entrou em cima do
+  # sweep_dados + SIAFE e a VM foi a load 19 (pressão de CPU 90%)
+  L=$(awk '{print int($1)}' /proc/loadavg); if [ "$L" -ge 4 ]; then say "load $L alto — lote adiado 2 min"; sleep 120; continue; fi
   # 1) COLETA um lote em ordem de prioridade
-  $PY -m tools.sei_bombeiros_sweep --max "$LOTE" >> data/bombeiros_sweep.out 2>&1
+  # timeout OBRIGATÓRIO: sem ele o sweep ficou 21 dias (18/08→09/09) parado em ep_poll do driver
+  # do Playwright depois do 1º processo, e o supervisor inteiro esperou junto. 10 processos a
+  # ~133 s cada cabem em 1 h com folga para uma leitura lenta (p90).
+  timeout 3600 $PY -m tools.sei_bombeiros_sweep --max "$LOTE" >> data/bombeiros_sweep.out 2>&1
   rc=$?; say "sweep lote rc=$rc"
   # fila drenada? o sweep loga "nada novo na fila" → back-off longo e revalida
   if tail -3 data/bombeiros_sweep.out 2>/dev/null | grep -q "nada novo na fila"; then

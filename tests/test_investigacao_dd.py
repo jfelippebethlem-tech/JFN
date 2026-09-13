@@ -4,6 +4,7 @@
 Puros/determinísticos (sem rede): passam `cadastral` pronto e `usar_rede=False`/`geocode=False`.
 Cobrem: marcadores residenciais, capital ínfimo, recência, situação irregular, porte, sócio único,
 honestidade (INDISPONÍVEL quando falta dado; nenhum achado quando empresa é regular)."""
+from compliance_agent import investigacao_dd as I
 from compliance_agent.investigacao_dd import (
     _cpf_completo, _marcadores_residenciais, _socio_eh_pf, investigar,
 )
@@ -63,11 +64,30 @@ def test_empresa_antiga_nao_dispara():
     assert "H-RECENTE" not in _codigos(out)
 
 
-def test_situacao_irregular_confirmado():
+def test_situacao_irregular_sem_data_declara_o_limite(monkeypatch):
+    """REVISTO em 2026-08-04. Antes exigia CONFIRMADO/ALTO a partir do retrato de HOJE, sem
+    comparar datas. Medido na base inteira: dos 75 CNPJs hoje irregulares que receberam do Estado,
+    **59 (78,7%) tiveram TODO o pagamento ANTES** da data da irregularidade — a acusação de "ato
+    vedado" era anacrônica na maioria dos casos (família do caso Fênix).
+
+    O CNPJ deste teste é fictício e não está na base da Receita: cai no ramo em que a data não foi
+    apurada, e aí a resposta honesta é INDÍCIO com o limite declarado, não confirmação. A
+    confirmação com data está em `test_h_situacao_vigencia_na_data.py`.
+    """
     out = _inv({"situacao": "BAIXADA"}, total=100_000)
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-SITUACAO")
-    assert h["status"] == "CONFIRMADO"
-    assert h["nivel"] == "ALTO"
+    assert h["status"] == "INDICIO"
+    assert "não foi apurada" in h["evidencia"]
+
+
+def test_situacao_irregular_COM_data_e_pagamento_posterior_confirma(monkeypatch):
+    """A correção não pode desarmar a acusação verdadeira — só a anacrônica."""
+    import datetime as _dt
+    monkeypatch.setattr(I, "_situacao_com_data", lambda c, db_path=None: ("BAIXADA", _dt.date(2024, 1, 10)))
+    monkeypatch.setattr(I, "_ultimo_pagamento_ob", lambda c, db_path=None: _dt.date(2024, 6, 1))
+    out = _inv({"situacao": "BAIXADA"}, total=100_000)
+    h = next(h for h in out["hipoteses"] if h["codigo"] == "H-SITUACAO")
+    assert h["status"] == "CONFIRMADO" and h["nivel"] == "ALTO"
 
 
 def test_porte_acima_do_teto():

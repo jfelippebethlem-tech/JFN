@@ -14,19 +14,30 @@ from compliance_agent.sei import fases
 _GRAV_EMOJI = {"critica": "🔴", "alta": "🟠", "media": "🟡", "baixa": "🟢"}
 
 
-def _vereditos_persistidos(numero_sei: str) -> dict | None:
-    """Vereditos por documento já pagos (doc_veredito) — o PDF os mostra mesmo sem --com-llm."""
+def _vereditos_persistidos(numero_sei: str, db=None) -> dict | None:
+    """Vereditos por documento já pagos (doc_veredito) — o PDF os mostra mesmo sem --com-llm.
+
+    UM documento, UM juízo. `doc_veredito` acumula uma linha por rubrica: em 2026-08-02, 50 dos
+    57 processos tinham veredito de 2 ou 3 rubricas (407 pares numero_sei/doc_i repetidos). Sem
+    filtro, o entregável repetia o mesmo despacho e exibia as rubricas v1/v2 — que o próprio
+    `doc_juizo` declara erradas. Fica a avaliação da rubrica MAIS NOVA (numérica: v10 > v9) e,
+    no empate, a mais recente.
+    """
     import json
     import sqlite3
     from pathlib import Path
-    db = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
+    db = Path(db) if db else Path(__file__).resolve().parents[2] / "data" / "compliance.db"
     if not db.exists():
         return None
     try:
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
         try:
             rows = con.execute(
-                "select veredito_json from doc_veredito where numero_sei=? order by doc_i",
+                "select veredito_json from doc_veredito d where numero_sei=? and d.id = ("
+                "  select x.id from doc_veredito x"
+                "   where x.numero_sei = d.numero_sei and x.doc_i = d.doc_i"
+                "   order by cast(x.rubrica_versao as integer) desc, x.avaliado_em desc, x.id desc"
+                "   limit 1) order by d.doc_i",
                 (numero_sei,)).fetchall()
         finally:
             con.close()
@@ -71,6 +82,38 @@ def render_processo_ctx(out: dict) -> dict:
         fases_html += (f"<p class='nota'>Ordem dos marcos: <b>{_h.escape(str(cadeia.get('grau', '—')))}</b> — "
                        f"{_h.escape(str(cadeia.get('resumo') or ''))[:400]}</p>")
     secoes.append({"titulo": "II. Linha do tempo por fase", "html": fases_html})
+
+    # LEITURA DE CONJUNTO — a narrativa do processo inteiro. A lista de achados responde "o que há
+    # de errado"; isto responde "o que este processo mostra": a ordem dos atos, quem assina cada
+    # etapa, onde os documentos se contradizem. Sem ela, quem lê o PDF reconstrói tudo de cabeça.
+    sint = out.get("sintese") or {}
+    if sint:
+        if sint.get("indisponivel"):
+            secoes.append({"titulo": "II-B. Leitura de conjunto",
+                           "html": ("<p class='nota'>Leitura de conjunto <b>INDISPONÍVEL</b>"
+                                    + (f": {_h.escape(str(sint.get('motivo'))[:200])}"
+                                       if sint.get("motivo") else "")
+                                    + " — indisponível não é ausência de irregularidade.</p>")})
+        else:
+            linhas_f = "".join(
+                f"<tr><td>{_h.escape(fases.FASES.get(f, f))}</td><td>{r.get('n_docs', 0)}</td>"
+                f"<td>{_h.escape(str(r.get('de') or '—'))} → {_h.escape(str(r.get('ate') or '—'))}</td>"
+                f"<td>{r.get('viciados', 0) or '—'}</td>"
+                f"<td>{_h.escape(', '.join((r.get('assinantes') or [])[:3]) or '—')}</td></tr>"
+                for f, r in (sint.get("fases") or {}).items())
+            contr = "".join(
+                f"<li><b>{_h.escape(str(c.get('codigo')))}</b> — {_h.escape(str(c.get('diz')))}"
+                f"<br><span class='dim'>{_h.escape(str(c.get('evidencia') or ''))}</span></li>"
+                for c in (sint.get("contradicoes") or []))
+            secoes.append({"titulo": "II-B. Leitura de conjunto do processo", "html": (
+                f"<p>{_h.escape(str(sint.get('leitura') or ''))}</p>"
+                + ("<table><tr><th>Fase</th><th>Docs</th><th>Período</th><th>Viciados</th>"
+                   f"<th>Assinantes</th></tr>{linhas_f}</table>" if linhas_f else "")
+                + (f"<p class='nota'><b>Contradições entre documentos "
+                   f"({len(sint.get('contradicoes') or [])})</b></p><ul>{contr}</ul>" if contr
+                   else "<p class='nota'>Nenhuma contradição entre documentos pela leitura do "
+                        "conjunto.</p>")
+                + (f"<p>{_h.escape(str(sint.get('prosa')))}</p>" if sint.get("prosa") else ""))})
 
     if out.get("achados"):
         linhas = "".join(
@@ -117,8 +160,22 @@ def render_processo_ctx(out: dict) -> dict:
     if lc:
         hon += ("<p><b>Lacunas de CAPTURA</b> (trabalho NOSSO — não capturado ≠ inexistente):</p><ul>"
                 + "".join(f"<li>{_h.escape(str(x.get('falta')))}</li>" for x in lc) + "</ul>")
+    # DETECTOR SEM CONDIÇÃO DE AVALIAR É INDISPONIBILIDADE, e a seção existe para dizer isso. Até
+    # 2026-08-04 aqui saía "indisponíveis: nenhum" num processo em que 30 das 43 réguas não tinham
+    # dado para rodar — porque `indisponiveis` só listava MOTOR QUEBRADO. Quem lê o dossiê
+    # concluía que tudo fora aferido.
+    na = cob.get("nao_avaliaveis") or []
+    if na:
+        itens = "".join(
+            f"<li><b>{_h.escape(str(x.get('detector')))}</b> — {_h.escape(str(x.get('motivo')))}</li>"
+            for x in na[:12])
+        hon += (f"<p><b>Réguas SEM CONDIÇÃO DE AVALIAR</b> ({len(na)} de "
+                f"{len(cob.get('detectores_rodados') or [])} rodadas) — não é ausência de "
+                f"irregularidade, é ausência de dado:</p><ul>{itens}</ul>"
+                + (f"<p class='nota'>… e mais {len(na) - 12}.</p>" if len(na) > 12 else ""))
     hon += (f"<p class='nota'>Cobertura: captura íntegra = <b>{cob.get('captura_integra')}</b> · "
-            f"{len(cob.get('detectores_rodados') or [])} régua(s) rodada(s) · indisponíveis: "
+            f"{len(cob.get('detectores_rodados') or [])} régua(s) rodada(s) · "
+            f"{len(na)} sem condição de avaliar · motores com falha: "
             f"{_h.escape('; '.join(cob.get('indisponiveis') or []) or 'nenhum')[:400]}. "
             "INDISPONÍVEL ≠ 0.</p>")
     secoes.append({"titulo": "VI. Honestidade da cobertura (lacunas e indisponibilidades)", "html": hon})

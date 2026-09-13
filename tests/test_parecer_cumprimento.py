@@ -318,3 +318,240 @@ def test_enumeracao_romana_com_ponto_e_reconhecida():
     conds = PC.extrair_condicionantes(txt)
     assert [c["id"] for c in conds] == ["i", "ii", "iii"]
     assert conds[2]["tipo"] == "dotacao_orcamentaria"
+
+
+# ───── o gate que descartava o próprio parecer (medido no acervo, 2026-08-02) ─────
+# 506 processos do arquivo SEI têm documento de tipo canônico `parecer`; `e_parecer` só reconhecia
+# 157. Os 349 restantes eram descartados por dois motivos: (a) o tipo canônico do classificador da
+# casa não valia como prova de título, e (b) o veto anti-falso-positivo varria 3.000 caracteres e
+# barrava o parecer por citar a peça sobre a qual ele OPINA ("TERMO ADITIVO", "EDITAL DE",
+# "CONTRATO Nº"). Resultado: `auditar_parecer_pge` devolvia SEM_PARECER_LOCALIZADO — o entregável
+# afirmava que não há parecer jurídico num processo que tem um, de 20 mil caracteres.
+# Regra nova: identidade é o que o documento anuncia PRIMEIRO no cabeçalho.
+
+def test_tipo_canonico_parecer_vale_como_titulo():
+    """Se o classificador de documentos da casa já disse `parecer`, não se discute o corpo."""
+    assert PC.e_parecer("parecer", "Governo do Estado. Trata-se de termo aditivo.") is True
+    assert PC.e_parecer("parecer_juridico", "qualquer corpo") is True
+
+
+def test_parecer_sobre_aditivo_nao_e_vetado_por_falar_do_aditivo():
+    """Caso real: Parecer 462/2024/SEDEC/ASSJUR (20 mil chars) era descartado porque 'TERMO
+    ADITIVO' aparecia no cabeçalho — inevitável, o parecer OPINA sobre o aditivo."""
+    corpo = ("PARECER Nº 462/2024/SEDEC/ASSJUR. Secretaria de Estado de Defesa Civil — "
+             "Assessoria Jurídica. PROCESSO Nº SEI-270131/000548/2023. "
+             "ASSUNTO: TERMO ADITIVO de prorrogação. " + "Trata-se de análise. " * 30
+             + "ISTO POSTO, opino favoravelmente desde que seja juntada a pesquisa de preços.")
+    assert PC.e_parecer("outro", corpo) is True
+    r = PC.auditar_parecer_pge([{"ref": "1", "tipo": "outro", "texto": corpo}])
+    assert r["veredito"] != "SEM_PARECER_LOCALIZADO"
+
+
+def test_peca_que_se_anuncia_contrato_antes_de_citar_parecer_continua_fora():
+    """O veto não some: ele passa a ser POSICIONAL. Quem se anuncia contrato primeiro é contrato."""
+    contrato = ("CONTRATO Nº 10/2024 — TERMO DE CONTRATO. " + "Cláusulas gerais. " * 20
+                + "O ajuste seguiu o PARECER Nº 02/2017 da PGE, conforme consignado.")
+    assert PC.e_parecer("outro", contrato) is False
+
+
+# ───── G1: grau verde não pode ser dado por falha de leitura (medido 2026-08-02) ─────
+# 378 processos recebiam veredito SEM_CONDICIONANTES / grau VERDE / "nada a cobrar quanto a
+# condicionantes" — e 160 desses pareceres tinham linguagem de exigência no texto. No dossiê o
+# bloco inteiro some (capitulos_dossie.py:386) e a tabela pinta verde: o leitor não distingue
+# "não havia exigência" de "não consegui ler a exigência". INDISPONÍVEL ≠ 0.
+
+def test_parecer_com_exigencia_nao_parseada_nao_sai_verde():
+    """Há linguagem de exigência e a extração não a alcançou → amarelo, não verde."""
+    # 'recomendo' + 'imprescindível' sem estrutura que a extração saiba ler
+    corpo = ("PARECER Nº 900/2024 — Procuradoria Geral do Estado. " + "Relatório. " * 40
+             + "Isto posto, recomendo cautela ao gestor quanto ao que se apontou acima, "
+               "reputando imprescindível o saneamento antes do prosseguimento do feito.")
+    r = PC.auditar_parecer_pge([{"ref": "1", "tipo": "parecer", "texto": corpo}])
+    assert r["veredito"] == "CONDICIONANTES_NAO_EXTRAIDAS"
+    assert r["grau"] == "amarelo"
+    assert "INDISPON" in r["leitura"].upper() or "não" in r["leitura"].lower()
+
+
+def test_parecer_realmente_sem_exigencia_continua_verde():
+    """O estado novo não pode engolir o verde legítimo — aprovação lisa segue verde."""
+    corpo = ("PARECER Nº 901/2024 — Procuradoria Geral do Estado. " + "Relatório. " * 40
+             + "Isto posto, opino favoravelmente à celebração do ajuste, nada mais havendo a "
+               "observar quanto aos aspectos jurídicos do feito.")
+    r = PC.auditar_parecer_pge([{"ref": "1", "tipo": "parecer", "texto": corpo}])
+    assert r["veredito"] == "SEM_CONDICIONANTES"
+    assert r["grau"] == "verde"
+
+
+# ───── G2: formas de exigência colhidas no acervo que o gatilho não reconhecia ─────
+
+def test_sugere_se_a_adaptacao_da_clausula_e_condicionante():
+    """Caso real perdido: 'sugere-se a adaptação da redação das cláusulas segunda e quarta'."""
+    corpo = ("PARECER Nº 902/2024 da Assessoria Jurídica. Isto posto, opino pelo prosseguimento e, "
+             "com o objetivo de aprimorar o texto da minuta encaminhada, sugere-se a adaptação da "
+             "redação das cláusulas segunda e quarta aos termos da Lei 14.133/2021.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert conds, "a exigência de adaptação de cláusula continua invisível"
+    assert conds[0]["tipo"] == "minuta_clausula"
+
+
+def test_mediante_o_atendimento_das_recomendacoes_e_condicionante():
+    """Fórmula clássica de ementa da PGE: aprovação condicionada às recomendações."""
+    corpo = ("PARECER Nº 903/2024 — Procuradoria Geral do Estado. POSSIBILIDADE, MEDIANTE O "
+             "ATENDIMENTO DAS RECOMENDAÇÕES FORMULADAS. " + "Relatório. " * 30
+             + "Ante o exposto, opino pela possibilidade jurídica mediante o atendimento das "
+               "recomendações formuladas, a saber: i) juntada da pesquisa de preços atualizada; "
+               "ii) comprovação da dotação orçamentária.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert len(conds) >= 2
+    assert {c["tipo"] for c in conds} >= {"pesquisa_precos", "dotacao_orcamentaria"}
+
+
+def test_faz_se_necessario_e_condicionante():
+    corpo = ("PARECER Nº 904/2024 da Assessoria Jurídica. Do exposto, opino favoravelmente, mas "
+             "faz-se necessária a juntada da certidão negativa de débitos da contratada antes da "
+             "assinatura do termo.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert conds and conds[0]["tipo"] == "regularidade_fiscal"
+
+
+def test_gatilho_novo_nao_dispara_em_transcricao_de_norma():
+    """A porta abre só para a exigência do parecerista — norma citada continua fora."""
+    corpo = ("PARECER Nº 905/2024 — PGE. Isto posto, opino favoravelmente. Registre-se que, nos "
+             "termos do art. 92 da Lei 14.133/2021, faz-se necessária a indicação do prazo de "
+             "vigência em todo contrato administrativo.")
+    conds = PC.extrair_condicionantes(corpo)
+    assert conds == [], f"transcrição de norma virou exigência: {conds}"
+
+
+def test_dossie_nao_silencia_o_estado_novo():
+    """O bloco de condicionantes some no dossiê para SEM_PARECER/SEM_CONDICIONANTES. O estado
+    'não consegui ler' NÃO pode entrar nessa lista de silêncio: é justamente a ressalva que o
+    leitor precisa ver — 332 processos no acervo estão nele."""
+    from pathlib import Path
+    txt = Path(__file__).resolve().parents[1].joinpath(
+        "compliance_agent", "reporting", "capitulos_dossie.py").read_text(encoding="utf-8")
+    for linha in txt.splitlines():
+        if "SEM_CONDICIONANTES" in linha and "not in" in linha:
+            assert "CONDICIONANTES_NAO_EXTRAIDAS" not in linha, (
+                "o estado de leitura incompleta foi silenciado no dossiê")
+
+
+# ───── H4: "sem parecer" era três coisas diferentes (medido 2026-08-03) ─────
+# 117 processos com documento de tipo canônico `parecer` recebiam SEM_PARECER_LOCALIZADO —
+# "nenhum parecer de PGE/PGM/CGE/jurídico entre os documentos LIDOS". Separando as causas:
+#   14  o parecer ESTÁ nos autos, com 48-60 chars de texto (só o cabeçalho foi capturado);
+#   42  certidão tipada como `parecer_juridico` pelo classificador (o gate acerta ao recusar);
+#   61  parecer real de Secretaria cujo corpo não nomeia PGE/CGE/assessoria.
+# Só a primeira é afirmação falsa sobre os autos — e é a que ganha estado próprio. A terceira
+# ganha uma porta estreita: cabeçalho que ANUNCIA "PARECER Nº" basta, com emissor declarado
+# NAO_IDENTIFICADO (recupera 20 pareceres reais e admite 3 certidões, medido no acervo).
+
+def test_parecer_sem_texto_capturado_nao_e_ausencia_de_parecer():
+    docs = [{"ref": "Parecer 181 (94130757)", "tipo": "parecer", "texto": "[Parecer 181] (tipo: parecer)"}]
+    r = PC.auditar_parecer_pge(docs)
+    assert r["veredito"] == "PARECER_SEM_TEXTO_CAPTURADO"
+    assert r["grau"] == "amarelo"
+    assert "captur" in r["acao"].lower()
+
+
+def test_processo_realmente_sem_parecer_continua_dizendo_isso():
+    docs = [{"ref": "NF 1", "tipo": "nota_fiscal", "texto": "Nota fiscal de serviços prestados."}]
+    assert PC.auditar_parecer_pge(docs)["veredito"] == "SEM_PARECER_LOCALIZADO"
+
+
+def test_parecer_de_secretaria_sem_orgao_nomeado_e_analisado_com_emissor_declarado():
+    """Parecer real que não escreve 'PGE' nem 'Assessoria Jurídica' no corpo. Não se inventa o
+    emissor: declara-se NAO_IDENTIFICADO."""
+    corpo = ("PARECER Nº 111/2025. Governo do Estado do Rio de Janeiro. Secretaria de Estado de "
+             "Educação. " + "Trata-se de análise da contratação. " * 20
+             + "Isto posto, opino favoravelmente desde que seja juntada a pesquisa de preços.")
+    r = PC.auditar_parecer_pge([{"ref": "Parecer 111", "tipo": "parecer", "texto": corpo}])
+    assert r["veredito"] not in ("SEM_PARECER_LOCALIZADO", "PARECER_SEM_TEXTO_CAPTURADO")
+    assert r["pareceres"][0]["emissor"] == "NAO_IDENTIFICADO"
+
+
+def test_certidao_tipada_como_parecer_continua_fora():
+    """O classificador erra o tipo em 42 processos; o gate não pode herdar o erro."""
+    cert = ("Certidão Negativa de Débitos em Dívida Ativa. MINISTÉRIO DA FAZENDA. "
+            + "Certificamos que não constam débitos. " * 20)
+    r = PC.auditar_parecer_pge([{"ref": "Certidões", "tipo": "parecer", "texto": cert}])
+    assert r["veredito"] in ("SEM_PARECER_LOCALIZADO", "PARECER_SEM_TEXTO_CAPTURADO")
+
+
+# ───── A EMENTA também impõe condicionantes (leitura do original, 2026-08-03) ─────
+# Confronto do SEI-270131/000548/2023 lido na íntegra: o Parecer 462/2024/SEDEC/ASSJUR enumera
+# QUATRO exigências na EMENTA (o cabeçalho em caixa alta que abre a peça) — pesquisa de mercado,
+# decisão da autoridade sobre vantajosidade, reforço da instrução para supressão e juntada da
+# habilitação. O extrator lia só o FECHO e devolveu UMA, tipada como minuta_clausula. É a mesma
+# causa dos 332 processos em CONDICIONANTES_NAO_EXTRAIDAS: nesta casa a ementa é onde o
+# parecerista resume o que exige.
+
+_EMENTA_REAL = (
+    "PARECER Nº 462/2024/SEDEC/ASSJUR. Assessoria Jurídica. "
+    "1º TERMO ADITIVO AO CONTRATO Nº 16/2023 - PRORROGAÇÃO DE PRAZO DE VIGÊNCIA CONTRATUAL, SEM "
+    "APLICAÇÃO DE REAJUSTE - ART. 57, INCISO II, DA LEI Nº 8.666/93 - ENUNCIADOS NºS 09 E 29 DA "
+    "PGE - NECESSIDADE DE COMPLEMENTAÇÃO DA INSTRUÇÃO PROCESSUAL: (I) MANIFESTAÇÃO DO SETOR "
+    "RESPONSÁVEL PELA PESQUISA DE MERCADO, A RESPEITO DOS NOVOS DOCUMENTOS JUNTADOS; (II) DECISÃO "
+    "PELA AUTORIDADE MÁXIMA ACERCA DA VANTAJOSIDADE NA PRORROGAÇÃO; (III) SE ACATADA A SUGESTÃO DE "
+    "REDUÇÃO DE 25%, DEVERÁ HAVER O REFORÇO DA INSTRUÇÃO PROCESSUAL PARA A ALTERAÇÃO CONTRATUAL "
+    "(SUPRESSÃO); (IV) NECESSIDADE DA JUNTADA DA DOCUMENTAÇÃO DE HABILITAÇÃO - VIABILIDADE DO "
+    "PROSSEGUIMENTO DO FEITO CONDICIONADA, DESDE QUE SANADAS AS RESSALVAS APONTADAS. "
+    "I. RELATÓRIO. Trata-se de processo administrativo. " + "Fundamentação diversa. " * 40
+    + "III. CONCLUSÃO. Diante do exposto, esta ASSJUR manifesta-se pela necessidade de reforço da "
+      "instrução processual, conforme apontamentos trazidos no parecer.")
+
+
+def test_condicionantes_da_ementa_sao_extraidas():
+    conds = PC.extrair_condicionantes(_EMENTA_REAL)
+    assert len(conds) >= 4, f"a ementa impõe 4 exigências e saíram {len(conds)}: {conds}"
+
+
+def test_as_quatro_familias_da_ementa_sao_reconhecidas():
+    tipos = {c["tipo"] for c in PC.extrair_condicionantes(_EMENTA_REAL)}
+    assert "pesquisa_precos" in tipos
+    assert "regularidade_fiscal" in tipos, "a juntada da HABILITAÇÃO não foi tipada"
+
+
+def test_ementa_sem_exigencia_nao_inventa_condicionante():
+    """Ementa que só descreve o objeto e aprova não pode virar exigência."""
+    limpo = ("PARECER Nº 100/2025. PGE. PRORROGAÇÃO CONTRATUAL - ART. 57, II - VIABILIDADE "
+             "JURÍDICA DO PROSSEGUIMENTO DO FEITO. I. RELATÓRIO. " + "Texto. " * 50
+             + "III. CONCLUSÃO. Opino favoravelmente, sem ressalvas.")
+    assert PC.extrair_condicionantes(limpo) == []
+
+
+# ───── remissão a recomendações POR NÚMERO (medido 2026-08-03) ─────
+# Caso real, obra de R$ 129.595.387,83 (SEI-070002/001289/2022, macrodrenagem do Jacarezinho): a
+# Coordenadoria do Sistema Jurídico da PGE conclui que "a instrução processual necessita de
+# aperfeiçoamento para possibilitar a continuidade do feito, pelos motivos que passo a expor no
+# que tange às recomendações 3, 4, 5, 10, 13, 19, 21" — contradizendo o parecer do INEA, que
+# declarara as recomendações cumpridas. São SETE condicionantes remetidas por número, e o
+# extrator devolvia zero: a exigência não vem em lista nova, vem por remissão à lista anterior.
+
+_REMISSAO = (
+    "Promoção PGE/PG15/COO-CSJ Nº 55. Procuradoria Geral do Estado. PROCESSO Nº "
+    "SEI-070002/001289/2022. I. RELATÓRIO. Trata-se de análise de proposta de contratação. "
+    + "Relato. " * 30
+    + "Vênia devida, me parece que a instrução processual necessita de aperfeiçoamento para "
+      "possibilitar a continuidade do feito, pelos motivos que passo a expor no que tange às "
+      "recomendações 3, 4, 5, 10, 13, 19, 21.")
+
+
+def test_recomendacoes_referidas_por_numero_viram_condicionantes():
+    conds = PC.extrair_condicionantes(_REMISSAO)
+    assert len(conds) == 7, f"esperava as 7 recomendações remetidas, vieram {len(conds)}: {conds}"
+    assert {c["id"] for c in conds} == {"3", "4", "5", "10", "13", "19", "21"}
+
+
+def test_a_remissao_declara_que_o_conteudo_esta_no_parecer_ANTERIOR():
+    """Honestidade: aqui só se sabe o NÚMERO. O texto da exigência mora na peça anterior, e o
+    veredito não pode fingir que o leu."""
+    c = PC.extrair_condicionantes(_REMISSAO)[0]
+    assert "anterior" in c["texto"].lower() or "remiss" in c["texto"].lower()
+
+
+def test_numero_solto_no_texto_nao_vira_condicionante():
+    """'nos termos do art. 3, 4 e 5' não é remissão a recomendação."""
+    txt = ("PARECER Nº 7. PGE. I. RELATÓRIO. Texto. II. FUNDAMENTAÇÃO. Opino favoravelmente nos "
+           "termos dos arts. 3, 4 e 5 da Lei 14.133/2021, sem ressalvas.")
+    assert PC.extrair_condicionantes(txt) == []

@@ -3,16 +3,2203 @@
  "gerado_em": "2026-07-06T07:34:16+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_080001_007110_2023",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "rela o de ordens banc rias externas pagt",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/000_rela_o_de_ordens_banc_rias_externas_pagt.txt",
+   "chars": 237980,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "programa o de desembolso pd 3 pds comple",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/001_programa_o_de_desembolso_pd_3_pds_comple.txt",
+   "chars": 6845,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_nota_de_liquida_o_nl.txt",
+   "chars": 117535,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/004_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/005_nota_de_empenho_original_ne.txt",
+   "chars": 133797,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_nota_de_empenho_original_ne.txt",
+   "chars": 9516,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "nota de autoriza o de despesa nad 3365",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/007_nota_de_autoriza_o_de_despesa_nad_3365.txt",
+   "chars": 239,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "nota de autoriza o de despesa nad 3364",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/008_nota_de_autoriza_o_de_despesa_nad_3364.txt",
+   "chars": 240,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/009_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "programa o de desembolso pd 2025pd12989",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/010_programa_o_de_desembolso_pd_2025pd12989.txt",
+   "chars": 2365,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/012_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/013_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "programa o de desembolso pd",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/014_programa_o_de_desembolso_pd.txt",
+   "chars": 98167,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/015_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "nota de liquida o nl div liquida es",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/016_nota_de_liquida_o_nl_div_liquida_es.txt",
+   "chars": 109098,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/017_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/018_nota_de_empenho_original_ne.txt",
+   "chars": 133435,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "nota de autoriza o de despesa nad 3254",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/019_nota_de_autoriza_o_de_despesa_nad_3254.txt",
+   "chars": 235,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "rela o de ordens banc rias externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/020_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 7446,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "rela o de ordens banc rias externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/021_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 69798,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/022_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "programa o de desembolso pd",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/023_programa_o_de_desembolso_pd.txt",
+   "chars": 7014,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/024_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "nota de liquida o nl 03389",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/025_nota_de_liquida_o_nl_03389.txt",
+   "chars": 2491,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/026_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/027_nota_de_empenho_original_ne.txt",
+   "chars": 3070,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "nota de autoriza o de despesa nad 2130",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/028_nota_de_autoriza_o_de_despesa_nad_2130.txt",
+   "chars": 263,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/029_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "programa o de desembolso pd 2025pd06330",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/030_programa_o_de_desembolso_pd_2025pd06330.txt",
+   "chars": 2466,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "programa o de desembolso pd 2025pd06328",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/031_programa_o_de_desembolso_pd_2025pd06328.txt",
+   "chars": 2467,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/032_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "nota de liquida o nl 2025nl02216",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/033_nota_de_liquida_o_nl_2025nl02216.txt",
+   "chars": 2748,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/034_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/035_nota_de_empenho_original_ne.txt",
+   "chars": 3152,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "nota de autoriza o de despesa nad 1647",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/036_nota_de_autoriza_o_de_despesa_nad_1647.txt",
+   "chars": 331,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/037_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "rela o de ordens banc rias externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/038_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 7800,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/039_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "programa o de desembolso pd 2025pd02293",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/040_programa_o_de_desembolso_pd_2025pd02293.txt",
+   "chars": 2270,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "programa o de desembolso pd 2025pd02241",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/041_programa_o_de_desembolso_pd_2025pd02241.txt",
+   "chars": 2344,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "programa o de desembolso pd 2025pd02243",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/042_programa_o_de_desembolso_pd_2025pd02243.txt",
+   "chars": 2344,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "programa o de desembolso pd 2025pd02242",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/043_programa_o_de_desembolso_pd_2025pd02242.txt",
+   "chars": 2343,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/044_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "nota de liquida o nl 2024nl11210",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/045_nota_de_liquida_o_nl_2024nl11210.txt",
+   "chars": 2576,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "despacho de solicita o de liquida o de d",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/046_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/047_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "termo de cancelamento de documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/048_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/049_nota_de_empenho_original_ne.txt",
+   "chars": 3102,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/050_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "programa o de desembolso pd 2025pd01747",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/051_programa_o_de_desembolso_pd_2025pd01747.txt",
+   "chars": 2267,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "programa o de desembolso pd 2025pd01743",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/052_programa_o_de_desembolso_pd_2025pd01743.txt",
+   "chars": 2266,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "programa o de desembolso pd 2025pd01741",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/053_programa_o_de_desembolso_pd_2025pd01741.txt",
+   "chars": 2267,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "programa o de desembolso pd 2025pd01752",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/054_programa_o_de_desembolso_pd_2025pd01752.txt",
+   "chars": 2286,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "programa o de desembolso pd 2025pd01750",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/055_programa_o_de_desembolso_pd_2025pd01750.txt",
+   "chars": 2285,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "programa o de desembolso pd 2025pd01749",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/056_programa_o_de_desembolso_pd_2025pd01749.txt",
+   "chars": 2286,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/057_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/058_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "anexo nls",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/059_anexo_nls.txt",
+   "chars": 5156,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/060_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "programa o de desembolso pd s o jo o do",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/061_programa_o_de_desembolso_pd_s_o_jo_o_do.txt",
+   "chars": 7194,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/062_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 63,
+   "titulo": "nota de liquida o nl 10235",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/063_nota_de_liquida_o_nl_10235.txt",
+   "chars": 2641,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/064_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/065_nota_de_empenho_original_ne.txt",
+   "chars": 3247,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "nota de autoriza o de despesa nad 5866",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/066_nota_de_autoriza_o_de_despesa_nad_5866.txt",
+   "chars": 323,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/067_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/068_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "programa o de desembolso pd",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/069_programa_o_de_desembolso_pd.txt",
+   "chars": 7086,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/070_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/071_nota_de_liquida_o_nl.txt",
+   "chars": 5258,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/072_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "programa o de desembolso pd araruama set",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/073_programa_o_de_desembolso_pd_araruama_set.txt",
+   "chars": 7164,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 74,
+   "titulo": "programa o de desembolso pd queimados se",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/074_programa_o_de_desembolso_pd_queimados_se.txt",
+   "chars": 7089,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/075_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/076_nota_de_liquida_o_nl.txt",
+   "chars": 5252,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/077_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/078_nota_de_empenho_original_ne.txt",
+   "chars": 6407,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "nota de autoriza o de despesa nad 5755",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/079_nota_de_autoriza_o_de_despesa_nad_5755.txt",
+   "chars": 192,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 80,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/080_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 81,
+   "titulo": "nota de liquida o nl 9913",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/081_nota_de_liquida_o_nl_9913.txt",
+   "chars": 2644,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 82,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/082_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 83,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/083_nota_de_empenho_original_ne.txt",
+   "chars": 3305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 84,
+   "titulo": "nota de autoriza o de despesa nad 5676",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/084_nota_de_autoriza_o_de_despesa_nad_5676.txt",
+   "chars": 475,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 85,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/085_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 86,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/086_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 87,
+   "titulo": "programa o de desembolso pd pds fms itab",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/087_programa_o_de_desembolso_pd_pds_fms_itab.txt",
+   "chars": 7242,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 88,
+   "titulo": "programa o de desembolso pd pds fms para",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/088_programa_o_de_desembolso_pd_pds_fms_para.txt",
+   "chars": 7104,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 89,
+   "titulo": "programa o de desembolso pd pds fms nilo",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/089_programa_o_de_desembolso_pd_pds_fms_nilo.txt",
+   "chars": 6591,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 90,
+   "titulo": "rela o de ordens banc rias externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/090_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 165471,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 91,
+   "titulo": "rela o de ordens banc rias externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/091_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 7389,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 92,
+   "titulo": "rela o de ordens banc rias externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/092_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 207172,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 93,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/093_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 94,
+   "titulo": "programa o de desembolso pd",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/094_programa_o_de_desembolso_pd.txt",
+   "chars": 152838,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 95,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/095_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 96,
+   "titulo": "anexo nls dezembro 2023",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/096_anexo_nls_dezembro_2023.txt",
+   "chars": 170188,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 97,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/097_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 98,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/098_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 99,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/099_nota_de_empenho_original_ne.txt",
+   "chars": 205624,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 100,
+   "titulo": "nota de empenho de anula o ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/100_nota_de_empenho_de_anula_o_ne.txt",
+   "chars": 2601,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 101,
+   "titulo": "nota de autoriza o de despesa nad 3502",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/101_nota_de_autoriza_o_de_despesa_nad_3502.txt",
+   "chars": 261,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 102,
+   "titulo": "nota de autoriza o de despesa nad 3501",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/102_nota_de_autoriza_o_de_despesa_nad_3501.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 103,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/103_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 104,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/104_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 105,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/105_nota_de_empenho_original_ne.txt",
+   "chars": 3204,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 106,
+   "titulo": "nota de autoriza o de despesa nad 3473",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/106_nota_de_autoriza_o_de_despesa_nad_3473.txt",
+   "chars": 302,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 107,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/107_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 108,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/108_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 109,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/109_nota_de_liquida_o_nl.txt",
+   "chars": 52532,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 110,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/110_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 111,
+   "titulo": "nota de liquida o nl 2024nl03869",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/111_nota_de_liquida_o_nl_2024nl03869.txt",
+   "chars": 2502,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 112,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/112_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 113,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/113_nota_de_empenho_original_ne.txt",
+   "chars": 3093,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 114,
+   "titulo": "nota de autoriza o de despesa nad 2620",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/114_nota_de_autoriza_o_de_despesa_nad_2620.txt",
+   "chars": 247,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 115,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/115_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 116,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/116_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 117,
+   "titulo": "nota de liquida o nl 2024nl02944",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/117_nota_de_liquida_o_nl_2024nl02944.txt",
+   "chars": 2523,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 118,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/118_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 119,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/119_nota_de_empenho_original_ne.txt",
+   "chars": 3108,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 120,
+   "titulo": "nota de liquida o nl 01677",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/120_nota_de_liquida_o_nl_01677.txt",
+   "chars": 2542,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 121,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/121_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 122,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/122_nota_de_empenho_original_ne.txt",
+   "chars": 6245,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 123,
+   "titulo": "nota de autoriza o de despesa nad 1517",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/123_nota_de_autoriza_o_de_despesa_nad_1517.txt",
+   "chars": 115,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 124,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/124_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 125,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/125_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 126,
+   "titulo": "programa o de desembolso pd mesquita pds",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/126_programa_o_de_desembolso_pd_mesquita_pds.txt",
+   "chars": 9657,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 127,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/127_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 128,
+   "titulo": "anexo 2024nl01412",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/128_anexo_2024nl01412.txt",
+   "chars": 2591,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 129,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/129_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 130,
+   "titulo": "rela o de ordens banc rias externas mai",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/130_rela_o_de_ordens_banc_rias_externas_mai.txt",
+   "chars": 205613,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 131,
+   "titulo": "rela o de ordens banc rias externas abr",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/131_rela_o_de_ordens_banc_rias_externas_abr.txt",
+   "chars": 206428,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 132,
+   "titulo": "rela o de ordens banc rias externas mar",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/132_rela_o_de_ordens_banc_rias_externas_mar.txt",
+   "chars": 212045,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 133,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/133_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 134,
+   "titulo": "anexo notas de liquida o",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/134_anexo_notas_de_liquida_o.txt",
+   "chars": 238245,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 135,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/135_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 415,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 136,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/136_nota_de_empenho_original_ne.txt",
+   "chars": 284597,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 137,
+   "titulo": "nota de autoriza o de despesa nad 3791",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/137_nota_de_autoriza_o_de_despesa_nad_3791.txt",
+   "chars": 105,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 138,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/138_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 139,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/139_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 140,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/140_nota_de_empenho_original_ne.txt",
+   "chars": 287696,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 141,
+   "titulo": "nota de autoriza o de despesa nad 2778",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/141_nota_de_autoriza_o_de_despesa_nad_2778.txt",
+   "chars": 100,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 142,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/142_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 143,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/143_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 144,
+   "titulo": "programa o de desembolso pd mai 23",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/144_programa_o_de_desembolso_pd_mai_23.txt",
+   "chars": 208316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 145,
+   "titulo": "programa o de desembolso pd abr 23",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/145_programa_o_de_desembolso_pd_abr_23.txt",
+   "chars": 208980,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 146,
+   "titulo": "programa o de desembolso pd mar 23",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/146_programa_o_de_desembolso_pd_mar_23.txt",
+   "chars": 208812,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 147,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/147_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 148,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/148_nota_de_liquida_o_nl.txt",
+   "chars": 242790,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 149,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/149_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 595,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 150,
+   "titulo": "documento",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/150_documento.txt",
+   "chars": 235742,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 151,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/151_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 152,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/152_nota_de_empenho_original_ne.txt",
+   "chars": 51829,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 153,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/153_nota_de_empenho_original_ne.txt",
+   "chars": 62850,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 154,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/154_nota_de_empenho_original_ne.txt",
+   "chars": 60584,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 155,
+   "titulo": "nota de empenho original ne",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/155_nota_de_empenho_original_ne.txt",
+   "chars": 114316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 156,
+   "titulo": "despacho de autoriza o de emiss o e exec",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/156_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 157,
+   "titulo": "programa o de desembolso pd 2023pd08470",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/157_programa_o_de_desembolso_pd_2023pd08470.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 158,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/158_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 159,
+   "titulo": "nota de liquida o nl 2023nl05659",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/159_nota_de_liquida_o_nl_2023nl05659.txt",
+   "chars": 2633,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 160,
+   "titulo": "anexo termo de compromisso serop dica",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/160_anexo_termo_de_compromisso_serop_dica.txt",
+   "chars": 3459,
+   "ocr": false,
+   "fotos": [
+    "fotos/160_p01.jpg",
+    "fotos/160_p02.jpg"
+   ]
+  },
+  {
+   "i": 161,
+   "titulo": "anexo termo de comprisso para recebiment",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/161_anexo_termo_de_comprisso_para_recebiment.txt",
+   "chars": 3147,
+   "ocr": false,
+   "fotos": [
+    "fotos/161_p01.jpg"
+   ]
+  },
+  {
+   "i": 162,
+   "titulo": "anexo termo de compromisso sapucaia",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/162_anexo_termo_de_compromisso_sapucaia.txt",
+   "chars": 3005,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 163,
+   "titulo": "anexo termo de compromisso s o sebasti o",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/163_anexo_termo_de_compromisso_s_o_sebasti_o.txt",
+   "chars": 3145,
+   "ocr": false,
+   "fotos": [
+    "fotos/163_p01.jpg"
+   ]
+  },
+  {
+   "i": 164,
+   "titulo": "anexo termo de compromisso s o sebasti o",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/164_anexo_termo_de_compromisso_s_o_sebasti_o.txt",
+   "chars": 3145,
+   "ocr": false,
+   "fotos": [
+    "fotos/164_p01.jpg"
+   ]
+  },
+  {
+   "i": 165,
+   "titulo": "anexo termo de compromisso s o jos do va",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/165_anexo_termo_de_compromisso_s_o_jos_do_va.txt",
+   "chars": 2915,
+   "ocr": false,
+   "fotos": [
+    "fotos/165_p01.jpg"
+   ]
+  },
+  {
+   "i": 166,
+   "titulo": "anexo termo de compromisso prefaps s o j",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/166_anexo_termo_de_compromisso_prefaps_s_o_j.txt",
+   "chars": 2781,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 167,
+   "titulo": "anexo termo prefaps s o jo o de meriti",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/167_anexo_termo_prefaps_s_o_jo_o_de_meriti.txt",
+   "chars": 2917,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 168,
+   "titulo": "anexo prefeitura de s o jo o da barra 2",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/168_anexo_prefeitura_de_s_o_jo_o_da_barra_2.txt",
+   "chars": 2877,
+   "ocr": false,
+   "fotos": [
+    "fotos/168_p01.jpg"
+   ]
+  },
+  {
+   "i": 169,
+   "titulo": "anexo termo de compromisso s o gon alo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/169_anexo_termo_de_compromisso_s_o_gon_alo.txt",
+   "chars": 1032,
+   "ocr": false,
+   "fotos": [
+    "fotos/169_p01.jpg"
+   ]
+  },
+  {
+   "i": 170,
+   "titulo": "anexo termo compromisso prefaps 2023 21",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/170_anexo_termo_compromisso_prefaps_2023_21.txt",
+   "chars": 3037,
+   "ocr": false,
+   "fotos": [
+    "fotos/170_p01.jpg"
+   ]
+  },
+  {
+   "i": 171,
+   "titulo": "anexo termo de compromisso queimados",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/171_anexo_termo_de_compromisso_queimados.txt",
+   "chars": 2950,
+   "ocr": false,
+   "fotos": [
+    "fotos/171_p01.jpg"
+   ]
+  },
+  {
+   "i": 172,
+   "titulo": "anexo termo de compromisso quatis",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/172_anexo_termo_de_compromisso_quatis.txt",
+   "chars": 3463,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 173,
+   "titulo": "anexo termo de compromisso porto real",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/173_anexo_termo_de_compromisso_porto_real.txt",
+   "chars": 2402,
+   "ocr": false,
+   "fotos": [
+    "fotos/173_p01.jpg"
+   ]
+  },
+  {
+   "i": 174,
+   "titulo": "anexo termo de compromisso porci ncula",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/174_anexo_termo_de_compromisso_porci_ncula.txt",
+   "chars": 3214,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 175,
+   "titulo": "anexo termo de compromisso pira",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/175_anexo_termo_de_compromisso_pira.txt",
+   "chars": 3846,
+   "ocr": false,
+   "fotos": [
+    "fotos/175_p01.jpg",
+    "fotos/175_p02.jpg"
+   ]
+  },
+  {
+   "i": 176,
+   "titulo": "anexo termo de compromisso pinheiral",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/176_anexo_termo_de_compromisso_pinheiral.txt",
+   "chars": 3222,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 177,
+   "titulo": "anexo termo de compromisso prefaps 2023",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/177_anexo_termo_de_compromisso_prefaps_2023.txt",
+   "chars": 3585,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 178,
+   "titulo": "anexo termo de ads o prefaps 2023 paty d",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/178_anexo_termo_de_ads_o_prefaps_2023_paty_d.txt",
+   "chars": 3185,
+   "ocr": false,
+   "fotos": [
+    "fotos/178_p01.jpg",
+    "fotos/178_p02.jpg"
+   ]
+  },
+  {
+   "i": 179,
+   "titulo": "anexo termo de compromisso paraty",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/179_anexo_termo_de_compromisso_paraty.txt",
+   "chars": 3062,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 180,
+   "titulo": "anexo termo de miracema prefaps 1",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/180_anexo_termo_de_miracema_prefaps_1.txt",
+   "chars": 3395,
+   "ocr": false,
+   "fotos": [
+    "fotos/180_p01.jpg",
+    "fotos/180_p02.jpg"
+   ]
+  },
+  {
+   "i": 181,
+   "titulo": "anexo termo de compromisso prefaps 2023",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/181_anexo_termo_de_compromisso_prefaps_2023.txt",
+   "chars": 3107,
+   "ocr": false,
+   "fotos": [
+    "fotos/181_p01.jpg",
+    "fotos/181_p02.jpg"
+   ]
+  },
+  {
+   "i": 182,
+   "titulo": "anexo termo de compromisso mesquita",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/182_anexo_termo_de_compromisso_mesquita.txt",
+   "chars": 3193,
+   "ocr": false,
+   "fotos": [
+    "fotos/182_p01.jpg",
+    "fotos/182_p02.jpg"
+   ]
+  },
+  {
+   "i": 183,
+   "titulo": "anexo termo de compromisso mendes",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/183_anexo_termo_de_compromisso_mendes.txt",
+   "chars": 2995,
+   "ocr": false,
+   "fotos": [
+    "fotos/183_p01.jpg",
+    "fotos/183_p02.jpg"
+   ]
+  },
+  {
+   "i": 184,
+   "titulo": "anexo termo de compromisso prefaps maric",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/184_anexo_termo_de_compromisso_prefaps_maric.txt",
+   "chars": 3022,
+   "ocr": false,
+   "fotos": [
+    "fotos/184_p01.jpg"
+   ]
+  },
+  {
+   "i": 185,
+   "titulo": "anexo termo de compromisso mag",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/185_anexo_termo_de_compromisso_mag.txt",
+   "chars": 3563,
+   "ocr": false,
+   "fotos": [
+    "fotos/185_p01.jpg",
+    "fotos/185_p02.jpg"
+   ]
+  },
+  {
+   "i": 186,
+   "titulo": "anexo termo de compromisso macuco",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/186_anexo_termo_de_compromisso_macuco.txt",
+   "chars": 2445,
+   "ocr": false,
+   "fotos": [
+    "fotos/186_p01.jpg"
+   ]
+  },
+  {
+   "i": 187,
+   "titulo": "anexo termo de compromisso maca",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/187_anexo_termo_de_compromisso_maca.txt",
+   "chars": 3111,
+   "ocr": false,
+   "fotos": [
+    "fotos/187_p01.jpg"
+   ]
+  },
+  {
+   "i": 188,
+   "titulo": "anexo termo de compromisso laje do muria",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/188_anexo_termo_de_compromisso_laje_do_muria.txt",
+   "chars": 3191,
+   "ocr": false,
+   "fotos": [
+    "fotos/188_p01.jpg"
+   ]
+  },
+  {
+   "i": 189,
+   "titulo": "anexo termo de compromisso japeri",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/189_anexo_termo_de_compromisso_japeri.txt",
+   "chars": 2835,
+   "ocr": false,
+   "fotos": [
+    "fotos/189_p01.jpg"
+   ]
+  },
+  {
+   "i": 190,
+   "titulo": "anexo termo de compromisso prefaps 2023",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/190_anexo_termo_de_compromisso_prefaps_2023.txt",
+   "chars": 2744,
+   "ocr": false,
+   "fotos": [
+    "fotos/190_p01.jpg",
+    "fotos/190_p02.jpg"
+   ]
+  },
+  {
+   "i": 191,
+   "titulo": "anexo termo de compromisso duas barras",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/191_anexo_termo_de_compromisso_duas_barras.txt",
+   "chars": 2753,
+   "ocr": false,
+   "fotos": [
+    "fotos/191_p01.jpg"
+   ]
+  },
+  {
+   "i": 192,
+   "titulo": "anexo termo de compromisso cordeiro",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/192_anexo_termo_de_compromisso_cordeiro.txt",
+   "chars": 2898,
+   "ocr": false,
+   "fotos": [
+    "fotos/192_p01.jpg"
+   ]
+  },
+  {
+   "i": 193,
+   "titulo": "anexo termo de compromisso comendador le",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/193_anexo_termo_de_compromisso_comendador_le.txt",
+   "chars": 2948,
+   "ocr": false,
+   "fotos": [
+    "fotos/193_p01.jpg"
+   ]
+  },
+  {
+   "i": 194,
+   "titulo": "anexo termo de compromisso prefass casim",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/194_anexo_termo_de_compromisso_prefass_casim.txt",
+   "chars": 3304,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 195,
+   "titulo": "anexo termo de compromisso carmo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/195_anexo_termo_de_compromisso_carmo.txt",
+   "chars": 2761,
+   "ocr": false,
+   "fotos": [
+    "fotos/195_p01.jpg"
+   ]
+  },
+  {
+   "i": 196,
+   "titulo": "anexo termo de compromisso carmo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/196_anexo_termo_de_compromisso_carmo.txt",
+   "chars": 2761,
+   "ocr": false,
+   "fotos": [
+    "fotos/196_p01.jpg"
+   ]
+  },
+  {
+   "i": 197,
+   "titulo": "anexo termo de compromisso cardoso morei",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/197_anexo_termo_de_compromisso_cardoso_morei.txt",
+   "chars": 2911,
+   "ocr": false,
+   "fotos": [
+    "fotos/197_p01.jpg"
+   ]
+  },
+  {
+   "i": 198,
+   "titulo": "anexo termo de comp carapebus",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/198_anexo_termo_de_comp_carapebus.txt",
+   "chars": 3134,
+   "ocr": false,
+   "fotos": [
+    "fotos/198_p01.jpg",
+    "fotos/198_p02.jpg"
+   ]
+  },
+  {
+   "i": 199,
+   "titulo": "anexo termo compromisso prefaps cantagal",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/199_anexo_termo_compromisso_prefaps_cantagal.txt",
+   "chars": 3408,
+   "ocr": false,
+   "fotos": [
+    "fotos/199_p01.jpg",
+    "fotos/199_p02.jpg"
+   ]
+  },
+  {
+   "i": 200,
+   "titulo": "anexo termo de compromisso arma o de b z",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/200_anexo_termo_de_compromisso_arma_o_de_b_z.txt",
+   "chars": 3199,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 201,
+   "titulo": "anexo termo ades o prefaps areal",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/201_anexo_termo_ades_o_prefaps_areal.txt",
+   "chars": 2739,
+   "ocr": false,
+   "fotos": [
+    "fotos/201_p01.jpg",
+    "fotos/201_p02.jpg"
+   ]
+  },
+  {
+   "i": 202,
+   "titulo": "anexo oficio e termo compromisso prefaps",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/202_anexo_oficio_e_termo_compromisso_prefaps.txt",
+   "chars": 6042,
+   "ocr": false,
+   "fotos": [
+    "fotos/202_p01.jpg",
+    "fotos/202_p02.jpg",
+    "fotos/202_p03.jpg"
+   ]
+  },
+  {
+   "i": 203,
+   "titulo": "anexo termo de compromisso aperib",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/203_anexo_termo_de_compromisso_aperib.txt",
+   "chars": 2727,
+   "ocr": false,
+   "fotos": [
+    "fotos/203_p01.jpg",
+    "fotos/203_p02.jpg"
+   ]
+  },
+  {
+   "i": 204,
+   "titulo": "anexo termo de compromisso angra dos rei",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/204_anexo_termo_de_compromisso_angra_dos_rei.txt",
+   "chars": 5961,
+   "ocr": false,
+   "fotos": [
+    "fotos/204_p01.jpg",
+    "fotos/204_p02.jpg"
+   ]
+  },
+  {
+   "i": 205,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/205_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 206,
+   "titulo": "nota de empenho original ne 5912",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/206_nota_de_empenho_original_ne_5912.txt",
+   "chars": 3192,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 207,
+   "titulo": "nota de autoriza o de despesa nad 2421",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/207_nota_de_autoriza_o_de_despesa_nad_2421.txt",
+   "chars": 134,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 208,
+   "titulo": "despacho de solicita o de an lise da nad",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/208_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 209,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/209_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 79,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 58,
+  "indefinida": 73
  },
  "lacunas": [
   {
@@ -26,7 +2213,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 51,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

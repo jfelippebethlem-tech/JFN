@@ -3,7 +3,38 @@
  "gerado_em": "2026-07-06T07:09:30+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_027088_2026",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho.txt",
+   "chars": 1450,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho.txt",
+   "chars": 1850,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1452,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
@@ -11,7 +42,7 @@
   "execucao": 0,
   "despesa": 0,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 3,
   "indefinida": 0
  },
  "lacunas": [
@@ -28,5 +59,9 @@
    "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 0,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }
