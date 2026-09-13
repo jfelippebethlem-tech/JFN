@@ -50,6 +50,9 @@ pgrep -f "^\.venv/bin/python ccon_anexos" >/dev/null || nice -n 15 timeout -k 30
 # 4d) busca LIVRE no Solr público do SEI (termos vindos da VM-1): descobre processos e documentos por alvo
 pgrep -f "^\.venv/bin/python sei_pcrj_busca" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python sei_pcrj_busca.py --max-termos 60 --segundos 1800 >> data/sweep_cron.log 2>&1
 
+# 4e) catálogo dia a dia de TODOS os processos públicos (as_q=* + janela de datas): 1 captcha por dia
+pgrep -f "^\\.venv/bin/python sei_pcrj_enum" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python sei_pcrj_enum.py --dias 20 --segundos 1800 >> data/sweep_cron.log 2>&1
+
 # 4) consolida, limpa DBs de shard, sincroniza p/ a VM-1
 .venv/bin/python sei_pcrj_sweep.py --merge >> data/sweep_cron.log 2>&1
 rm -f data/sei_pcrj_[0-9]*.db

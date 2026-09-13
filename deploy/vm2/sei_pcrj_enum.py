@@ -112,8 +112,9 @@ def gravar(con: sqlite3.Connection, dia: str, r: dict) -> int:
 
 def _dias_pendentes(con: sqlite3.Connection) -> list[str]:
     """Do dia mais recente para trás até 05/12/2025; um dia conta como feito quando lidos ≥ itens."""
+    # o Solr conta linhas de documento/legado junto; "lidos" são só processos válidos → 80% já é dia completo
     feitos = {d for d, it, li in con.execute("SELECT dia, itens, lidos FROM sei_pcrj_enum_dia WHERE erro IS NULL")
-              if it is not None and li >= it}
+              if it is not None and (it == 0 or li >= 0.8 * it)}
     hoje = date.today()
     saida = []
     d = hoje - timedelta(days=1)
