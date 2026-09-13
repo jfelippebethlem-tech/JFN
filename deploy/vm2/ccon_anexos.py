@@ -173,7 +173,9 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                         await asyncio.sleep(10)
                         aba = await page.context.new_page()
                 await d.save_as(str(alvo))
-                texto = extrair_texto(alvo)
+                # pdftotext/OCR em THREAD: bloquear o event loop (OCR leva minutos) deixava o Playwright
+                # surdo — o evento de download do anexo seguinte nunca chegava (3 tentativas × 40 s).
+                texto = await asyncio.to_thread(extrair_texto, alvo)
                 saida.append({**item, "arquivo": alvo.name, "n_bytes": alvo.stat().st_size, "texto": texto})
                 if diag:
                     diag(f"  {contrato} anexo {item['id']} {item.get('tipoAnexoNome')} · {alvo.stat().st_size} B → {len(texto)} chars")
