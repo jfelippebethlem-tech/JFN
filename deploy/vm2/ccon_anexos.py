@@ -128,6 +128,7 @@ async def _baixar(page, href: str, alvo: Path, tamanho: int | None) -> None:
             raise PlaywrightError(f"fetch HTTP {out.get('status')}")
         except PlaywrightError as e1:
             ultimo = e1
+            print(f"  fetch falhou ({str(e1)[:200]}) → aba nova", flush=True)
     else:
         ultimo = PlaywrightError("arquivo grande: direto para aba nova")
     aba = await page.context.new_page()
@@ -178,6 +179,9 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
         # todos (medido no contrato 2512362, 13/09/2026).
         hrefs = await page.evaluate("()=>[...document.querySelectorAll('a.btn-download')].map(a=>a.href)")
         por_id = {m.group(1): h for h in hrefs for m in [re.search(r"anexos/(\d+)/download", h)] if m}
+        # FASE 1 — baixar TUDO antes de extrair qualquer texto: um subprocesso (pdftotext) entre dois
+        # fetches deixa a página sem rede ("Failed to fetch" em 4 de 5; medido 13/09, thread ou não).
+        baixados: list[tuple[dict, Path]] = []
         for item in lista:
             nome = re.sub(r"[^\w.\-]+", "_", item.get("nomeArquivo") or f"anexo_{item['id']}")[:150]
             alvo = pasta / f"{item['id']}_{nome}"
@@ -187,16 +191,21 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                 continue
             try:
                 await _baixar(page, href, alvo, item.get("tamanho"))
+                baixados.append((item, alvo))
+            except (PlaywrightError, OSError) as e:  # um anexo não derruba o contrato
+                saida.append({**item, "arquivo": None, "n_bytes": None, "texto": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"})
+                if diag:
+                    diag(f"  {contrato} anexo {item['id']} ERRO {type(e).__name__}: {str(e)[:160]}")
+            await asyncio.sleep(2)   # ritmo: um anexo por vez, sem rajada
+        # FASE 2 — texto (pdftotext/OCR) com a rede já dispensada
+        for item, alvo in baixados:
+            try:
                 texto = await asyncio.to_thread(extrair_texto, alvo)
                 saida.append({**item, "arquivo": alvo.name, "n_bytes": alvo.stat().st_size, "texto": texto})
                 if diag:
                     diag(f"  {contrato} anexo {item['id']} {item.get('tipoAnexoNome')} · {alvo.stat().st_size} B → {len(texto)} chars")
-            except (PlaywrightError, OSError, subprocess.SubprocessError) as e:  # um anexo não derruba o contrato
-                saida.append({**item, "arquivo": None, "n_bytes": None, "texto": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"})
-                if diag:
-                    diag(f"  {contrato} anexo {item['id']} ERRO {type(e).__name__}: {str(e)[:160]}")
-            finally:
-                await asyncio.sleep(2)   # ritmo: um anexo por vez, sem rajada
+            except (OSError, subprocess.SubprocessError) as e:
+                saida.append({**item, "arquivo": alvo.name, "n_bytes": alvo.stat().st_size, "texto": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"})
         com_erro = sum(1 for a in saida if a.get("erro"))
         return {"anexos": saida, "erro": f"{com_erro} anexo(s) com erro" if com_erro else None}
     finally:
