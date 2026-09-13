@@ -87,6 +87,48 @@ def colher(anos: list[int], max_paginas: int = 60, db_path=None) -> dict:
     return {"anos": anos, "hits": hits, "novos": novos, "total": total, "exportados": exportados}
 
 
+# Os PRÓPRIOS documentos baixados (CCON, conferência) trazem no rodapé o par de outros documentos (e o seu):
+# 113 pares novos na primeira mineração (13/09). Cada par novo = mais um documento + assinantes.
+CORPORA = (
+    (Path.home() / "shared-brain" / "ccon.db", "ccon_anexo", "texto"),
+    (Path.home() / "shared-brain" / "sei_pcrj.db", "sei_pcrj_documento", "texto"),
+    (Path(__file__).resolve().parents[1] / "data" / "pcrj.db", "pcrj_processo_doc", "texto"),
+)
+
+
+def colher_dos_corpora(db_path=None, corpora=CORPORA) -> dict:
+    """Minera pares verificador+CRC nos textos já capturados e grava em sei_pcrj_crc_par (origem=corpus)."""
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    _garantir(con)
+    agora = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    novos = 0
+    try:
+        for db, tab, col in corpora:
+            if not Path(db).exists():
+                continue
+            src = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            try:
+                if not src.execute("SELECT 1 FROM sqlite_master WHERE name=?", (tab,)).fetchone():
+                    continue
+                for (texto,) in src.execute(f"SELECT {col} FROM {tab} WHERE {col} IS NOT NULL"):
+                    for p in extrair_pares(texto):
+                        cur = con.execute(
+                            "INSERT OR IGNORE INTO sei_pcrj_crc_par VALUES (?,?,?,?,?,?,?,?)",
+                            (p["verificador"], p["crc"], p["processo"], None, f"corpus:{tab}", None, p["contexto"], agora))
+                        novos += cur.rowcount
+            except sqlite3.Error:
+                continue
+            finally:
+                src.close()
+        con.commit()
+        total = con.execute("SELECT count(*) FROM sei_pcrj_crc_par").fetchone()[0]
+        exportados = exportar(con)
+    finally:
+        con.close()
+    return {"novos": novos, "total": total, "exportados": exportados}
+
+
 def exportar(con: sqlite3.Connection, destino: Path | None = None) -> int:
     """Lista `verificador<TAB>crc<TAB>processo` para a VM-2 (Syncthing)."""
     destino = destino or SAIDA
@@ -105,6 +147,7 @@ def main() -> None:
     a = ap.parse_args()
     import json
     print(json.dumps(colher(a.anos, a.max_paginas, a.db), ensure_ascii=False))
+    print(json.dumps(colher_dos_corpora(a.db), ensure_ascii=False))
 
 
 if __name__ == "__main__":

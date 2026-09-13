@@ -29,3 +29,15 @@ def test_ingest_liga_documento_ao_processo_sem_inventar():
     assert processo_do_documento(None, "Processo nº 000100.003402/2026-85 — Despacho", "7073421") == "000100.003402/2026-85"
     assert processo_do_documento(None, "planta sem número", "7073421") == "SEI-DOC-7073421"
     assert processo_do_documento(None, "MINUTA | Processo Nº : EIS-PRO-2023/06224 | Licença", "7073421") == "EIS-PRO-2023/06224"
+
+
+def test_colher_dos_corpora_le_rodape_dos_pdfs_baixados(tmp_path):
+    import sqlite3
+    from tools.pcrj_sei_crc_harvest import colher_dos_corpora
+    corpus = tmp_path / "ccon.db"
+    c = sqlite3.connect(corpus)
+    c.execute("CREATE TABLE ccon_anexo (texto)")
+    c.execute("INSERT INTO ccon_anexo VALUES ('Processo 000700.007924/2026-97 … código verificador 5192267 e o código CRC 1A2B3C4D.')")
+    c.commit(); c.close()
+    r = colher_dos_corpora(tmp_path / "pcrj.db", corpora=((corpus, "ccon_anexo", "texto"),))
+    assert r["novos"] == 1 and r["total"] == 1
