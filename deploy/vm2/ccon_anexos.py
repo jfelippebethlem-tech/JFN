@@ -150,13 +150,19 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
             try:
                 d = None
                 for tentativa in (1, 2):
+                    # espera o evento em paralelo: se o goto DEVOLVER uma página (sem download), o
+                    # servidor respondeu erro (HTML) — registrar já, sem esperar 90 s à toa.
+                    espera = asyncio.ensure_future(aba.wait_for_event("download", timeout=90000))
                     try:
-                        async with aba.expect_download(timeout=90000) as dl:
-                            try:
-                                await aba.goto(href, timeout=90000)
-                            except PlaywrightError:
-                                pass   # "Download is starting" é o esperado
-                        d = await dl.value
+                        resp = await aba.goto(href, timeout=90000)
+                    except PlaywrightError:
+                        resp = None   # "Download is starting" é o esperado
+                    if resp is not None:
+                        espera.cancel()
+                        corpo = " ".join((await aba.inner_text("body")).split())[:160]
+                        raise PlaywrightError(f"sem download: HTTP {resp.status} {corpo}")
+                    try:
+                        d = await espera
                         break
                     except PlaywrightError:
                         # quedas intermitentes (F5/bot-defense derruba pedidos em rajada): espera e tenta 1×;
