@@ -5,6 +5,7 @@ Cada ano vira data/contasrio/contratos_<ano>.csv (latin-1, ';'), copiado p/ ~/sh
 import argparse
 import shutil
 from pathlib import Path
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
 URL = "https://contasrio.rio.rj.gov.br/ContasRio/#!Contratos/Rela%C3%A7%C3%A3o%20de%20Contratos"
 
@@ -41,7 +42,7 @@ def exportar(anos, dest: Path):
                 n = sum(1 for _ in open(alvo, encoding="latin-1")) - 2
                 feitos[ano] = n; print(f"{ano}: {n} contratos → {alvo}", flush=True)
                 pg.keyboard.press("Escape"); pg.wait_for_timeout(1000)
-            except Exception as e:
+            except (PlaywrightError, OSError) as e:
                 print(f"{ano}: erro {type(e).__name__}: {str(e)[:140]}", flush=True)
         b.close()
     sb = Path.home() / "shared-brain" / "contasrio"; sb.mkdir(exist_ok=True)

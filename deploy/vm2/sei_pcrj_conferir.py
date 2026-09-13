@@ -22,6 +22,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from playwright.async_api import Error as PlaywrightError
+
 import sei_pcrj_sweep as S
 
 PARES = Path.home() / "shared-brain" / "sei_pcrj_crc_pares.txt"
@@ -101,7 +103,7 @@ async def conferir(page, verificador: str, crc: str, *, max_captchas: int = 8, d
         await page.click("#sbmPesquisar", timeout=8000)
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=20000)
-        except Exception:
+        except PlaywrightError:
             pass
         await asyncio.sleep(2)
         txt = await page.inner_text("body")
@@ -165,7 +167,7 @@ async def lote(maxn: int, segundos: int) -> dict:
                 break
             try:
                 r = await asyncio.wait_for(conferir(pg, v, c, diag=lambda m: print("  " + m, flush=True)), 300)
-            except Exception as e:  # noqa: BLE001 — um par não derruba o lote
+            except (PlaywrightError, OSError, asyncio.TimeoutError, subprocess.SubprocessError) as e:  # um par não derruba o lote
                 r = {"erro": f"{type(e).__name__}: {str(e)[:150]}"}
             gravar(con, v, c, proc, r)
             ok += 0 if r.get("erro") else 1

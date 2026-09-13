@@ -26,6 +26,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
 RAIZ = Path(__file__).resolve().parent
@@ -94,7 +95,7 @@ def extrair_texto(path: Path) -> str:
 async def _resolver_desafio(page) -> bool:
     try:
         await page.wait_for_selector("#captcha-challenge", state="visible", timeout=8000)
-    except Exception:
+    except PlaywrightError:
         return True   # já validado na sessão
     m = _RX_DESAFIO.match((await page.inner_text("#captcha-challenge")).strip())
     if not m:
@@ -115,7 +116,7 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
         if "ccon-api/api/anexos?" in r.url and r.status == 200:
             try:
                 lista.extend(await r.json())
-            except Exception:
+            except (PlaywrightError, ValueError):
                 pass
     page.on("response", _resp)
     try:
@@ -153,11 +154,11 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                         async with aba.expect_download(timeout=90000) as dl:
                             try:
                                 await aba.goto(href, timeout=90000)
-                            except Exception:
+                            except PlaywrightError:
                                 pass   # "Download is starting" é o esperado
                         d = await dl.value
                         break
-                    except Exception:
+                    except PlaywrightError:
                         # quedas intermitentes (F5/bot-defense derruba pedidos em rajada): espera e tenta 1×;
                         # o contrato fica com erro e volta na fila do próximo lote.
                         if tentativa == 2:
@@ -170,7 +171,7 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                 saida.append({**item, "arquivo": alvo.name, "n_bytes": alvo.stat().st_size, "texto": texto})
                 if diag:
                     diag(f"  {contrato} anexo {item['id']} {item.get('tipoAnexoNome')} · {alvo.stat().st_size} B → {len(texto)} chars")
-            except Exception as e:  # noqa: BLE001 — um anexo não derruba o contrato
+            except (PlaywrightError, OSError, subprocess.SubprocessError) as e:  # um anexo não derruba o contrato
                 saida.append({**item, "arquivo": None, "n_bytes": None, "texto": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"})
                 if diag:
                     diag(f"  {contrato} anexo {item['id']} ERRO {type(e).__name__}: {str(e)[:160]}")
@@ -214,7 +215,7 @@ async def lote(maxn: int, segundos: int, so: str | None = None) -> dict:
                 try:
                     r = await asyncio.wait_for(capturar_contrato(page, contrato, RAIZ / "data" / "ccon" / contrato,
                                                                  diag=lambda m: print(m, flush=True)), 600)
-                except Exception as e:  # noqa: BLE001
+                except (PlaywrightError, OSError, asyncio.TimeoutError, sqlite3.Error) as e:
                     r = {"erro": f"{type(e).__name__}: {str(e)[:150]}"}
                 gravar(con, contrato, r)
                 ok += 0 if r.get("erro") else 1
