@@ -149,12 +149,12 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
             aba = await page.context.new_page()
             try:
                 d = None
-                for tentativa in (1, 2):
+                for tentativa in (1, 2, 3):
                     # espera o evento em paralelo: se o goto DEVOLVER uma página (sem download), o
                     # servidor respondeu erro (HTML) — registrar já, sem esperar 90 s à toa.
-                    espera = asyncio.ensure_future(aba.wait_for_event("download", timeout=90000))
+                    espera = asyncio.ensure_future(aba.wait_for_event("download", timeout=40000))
                     try:
-                        resp = await aba.goto(href, timeout=90000)
+                        resp = await aba.goto(href, timeout=40000)
                     except PlaywrightError:
                         resp = None   # "Download is starting" é o esperado
                     if resp is not None:
@@ -167,10 +167,10 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                     except PlaywrightError:
                         # quedas intermitentes (F5/bot-defense derruba pedidos em rajada): espera e tenta 1×;
                         # o contrato fica com erro e volta na fila do próximo lote.
-                        if tentativa == 2:
+                        if tentativa == 3:
                             raise
                         await aba.close()
-                        await asyncio.sleep(20)
+                        await asyncio.sleep(10)
                         aba = await page.context.new_page()
                 await d.save_as(str(alvo))
                 texto = extrair_texto(alvo)
