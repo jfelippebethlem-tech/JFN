@@ -107,6 +107,45 @@ async def _resolver_desafio(page) -> bool:
     return True
 
 
+
+_FETCH_JS = """async (u)=>{const r=await fetch(u,{credentials:'include'});
+    const b=new Uint8Array(await r.arrayBuffer()); let s='';
+    for(let i=0;i<b.length;i+=8192) s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
+    return {status:r.status, ct:r.headers.get('content-type')||'', b64:btoa(s)};}"""
+FETCH_MAX_BYTES = 40_000_000   # acima disso o base64 pesa demais no evaluate → aba nova
+
+
+async def _baixar(page, href: str, alvo: Path, tamanho: int | None) -> None:
+    """1º fetch DENTRO da página (mesma pilha TLS/cookies do app; 5/5 no contrato 2518004, mesmo com o
+    loop bloqueado entre anexos); 2º aba nova + evento de download (perdia 1 em 3 sem motivo visível)."""
+    if not tamanho or tamanho <= FETCH_MAX_BYTES:
+        try:
+            out = await page.evaluate(_FETCH_JS, href)
+            if out.get("status") == 200:
+                import base64
+                alvo.write_bytes(base64.b64decode(out["b64"]))
+                return
+            raise PlaywrightError(f"fetch HTTP {out.get('status')}")
+        except PlaywrightError as e1:
+            ultimo = e1
+    else:
+        ultimo = PlaywrightError("arquivo grande: direto para aba nova")
+    aba = await page.context.new_page()
+    try:
+        espera = asyncio.ensure_future(aba.wait_for_event("download", timeout=60000))
+        try:
+            resp = await aba.goto(href, timeout=60000)
+        except PlaywrightError:
+            resp = None   # "Download is starting" é o esperado
+        if resp is not None:
+            espera.cancel()
+            corpo = " ".join((await aba.inner_text("body")).split())[:160]
+            raise PlaywrightError(f"{ultimo}; sem download: HTTP {resp.status} {corpo}")
+        d = await espera
+        await d.save_as(str(alvo))
+    finally:
+        await aba.close()
+
 async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> dict:
     """Abre a página do contrato, lê a lista de anexos (JSON da API interceptado) e baixa cada um
     por clique em 'Download'. Retorna {anexos:[...]} ou {erro}."""
@@ -146,35 +185,8 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
             if not href:
                 saida.append({**item, "arquivo": None, "n_bytes": None, "texto": None, "erro": "sem link de download"})
                 continue
-            aba = await page.context.new_page()
             try:
-                d = None
-                for tentativa in (1, 2, 3):
-                    # espera o evento em paralelo: se o goto DEVOLVER uma página (sem download), o
-                    # servidor respondeu erro (HTML) — registrar já, sem esperar 90 s à toa.
-                    espera = asyncio.ensure_future(aba.wait_for_event("download", timeout=40000))
-                    try:
-                        resp = await aba.goto(href, timeout=40000)
-                    except PlaywrightError:
-                        resp = None   # "Download is starting" é o esperado
-                    if resp is not None:
-                        espera.cancel()
-                        corpo = " ".join((await aba.inner_text("body")).split())[:160]
-                        raise PlaywrightError(f"sem download: HTTP {resp.status} {corpo}")
-                    try:
-                        d = await espera
-                        break
-                    except PlaywrightError:
-                        # quedas intermitentes (F5/bot-defense derruba pedidos em rajada): espera e tenta 1×;
-                        # o contrato fica com erro e volta na fila do próximo lote.
-                        if tentativa == 3:
-                            raise
-                        await aba.close()
-                        await asyncio.sleep(10)
-                        aba = await page.context.new_page()
-                await d.save_as(str(alvo))
-                # pdftotext/OCR em THREAD: bloquear o event loop (OCR leva minutos) deixava o Playwright
-                # surdo — o evento de download do anexo seguinte nunca chegava (3 tentativas × 40 s).
+                await _baixar(page, href, alvo, item.get("tamanho"))
                 texto = await asyncio.to_thread(extrair_texto, alvo)
                 saida.append({**item, "arquivo": alvo.name, "n_bytes": alvo.stat().st_size, "texto": texto})
                 if diag:
@@ -184,8 +196,7 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                 if diag:
                     diag(f"  {contrato} anexo {item['id']} ERRO {type(e).__name__}: {str(e)[:160]}")
             finally:
-                await aba.close()
-                await asyncio.sleep(4)   # ritmo: um anexo por vez, sem rajada
+                await asyncio.sleep(2)   # ritmo: um anexo por vez, sem rajada
         com_erro = sum(1 for a in saida if a.get("erro"))
         return {"anexos": saida, "erro": f"{com_erro} anexo(s) com erro" if com_erro else None}
     finally:
