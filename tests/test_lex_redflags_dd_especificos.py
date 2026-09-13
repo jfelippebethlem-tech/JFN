@@ -68,3 +68,23 @@ def test_sancao_siga_alcance_e_grau():
     assert achado_sancao_siga([dict(base, pago_depois=0.0, obs_depois=0)])["grav"] == 3
     assert achado_sancao_siga([dict(base, peso=1, status="Vigente")]) is None
     assert achado_sancao_siga([dict(base, status="Decorrido")]) is None
+
+
+# ── 13/09/2026: contratação direta como regime na PREFEITURA (ContasRio → contasrio_contrato) ──
+def test_contratacao_direta_pcrj_como_regime():
+    from compliance_agent.lex_conflito import achado_contratacao_direta_pcrj
+    from compliance_agent.lex_redflags import _EXCULPATORIO, _RF, _RF_DESTINATARIO
+    assert achado_contratacao_direta_pcrj(None) is None
+    base = {"n": 12, "diretas": 10, "valor": 5e6, "nome": "LABORATORIO BLESSING LTDA", "pago": 3e6, "valor_diretas": 4e6, "n_orgaos": 2,
+            "orgaos": "SMC,RIOFILME", "ano_min": 2024, "ano_max": 2026,
+            "maiores": [{"processo": "006300.000569/2026-14"}, {"processo": None}]}
+    a = achado_contratacao_direta_pcrj(base)
+    assert a["rf"] == "DD/DIRETA-PCRJ" and a["grav"] == 4 and "10 de 12" in a["obs"] and "006300.000569/2026-14" in a["obs"]
+    assert achado_contratacao_direta_pcrj({**base, "n": 12, "diretas": 6})["grav"] == 3
+    assert achado_contratacao_direta_pcrj({**base, "n": 4, "diretas": 4}) is None
+    assert achado_contratacao_direta_pcrj({**base, "n": 20, "diretas": 5}) is None
+    # ente público/estatal (COMLURB, Correios, Light, RioSaúde) contrata direto por natureza — não é sinal
+    assert achado_contratacao_direta_pcrj({**base, "nome": "COMPANHIA MUNICIPAL DE LIMPEZA URBANA - COMLURB"}) is None
+    assert achado_contratacao_direta_pcrj({**base, "nome": "EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS"}) is None
+    assert "DD/DIRETA-PCRJ" in _RF and "DD/DIRETA-PCRJ" in _EXCULPATORIO and "DD/DIRETA-PCRJ" in _RF_DESTINATARIO
+    assert "14.133" in _RF["DD/DIRETA-PCRJ"][1] and "revogada" in _RF["DD/DIRETA-PCRJ"][1]

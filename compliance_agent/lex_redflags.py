@@ -22,6 +22,8 @@ _RF = {
                       "Portaria MTE 671/2021 (Cadastro de Empregadores); art. 7º, XXXIII CF/88; art. 14, IV e art. 156 Lei 14.133/2021 (idoneidade/sanções)"),
     "DD/EMERGENCIA-SIGA": ("Emergência como regime de contratação (Portal SIGA)",
                            "Art. 75, VIII e §6º Lei 14.133/2021; art. 24, IV Lei 8.666/93 (revogada — fatos até 2023); vedação de emergência por falta de planejamento"),
+    "DD/DIRETA-PCRJ": ("Contratação direta como regime na Prefeitura do Rio (ContasRio)",
+                       "Arts. 72, 74 e 75 Lei 14.133/2021 (inexigibilidade/dispensa: motivação e excepcionalidade); art. 25 Lei 8.666/93 (revogada — fatos até 2023)"),
     "DD/SANCAO-SIGA": ("Sanção administrativa/judicial VIGENTE no registro estadual (Portal SIGA)",
                        "Art. 156, III-IV e §§ Lei 14.133/2021; art. 7º Lei 10.520/02 (revogada — fatos até 2023); art. 87, III-IV Lei 8.666/93 (revogada — fatos até 2023); art. 12 Lei 8.429/92 (sanção judicial; dolo específico exigido pós-Lei 14.230/2021)"),
     "DD/SOCIO-AGENTE": ("Sócio da contratada é agente público (folha pública × QSA)",
@@ -221,6 +223,8 @@ _EXCULPATORIO = {
                      "estabelecimento distinto do que contratou com o Estado; a lista é semestral e comporta exclusão.",
     "DD/EMERGENCIA-SIGA": "Serviços essenciais de saúde admitem emergência sucessiva quando a licitação regular foi tentada e "
                           "frustrou-se (deserta/fracassada) ou quando há calamidade declarada; o SIGA não registra o motivo.",
+    "DD/DIRETA-PCRJ": "Incentivo à cultura, patrocínio e serviços singulares (art. 74, III) são inexigíveis por natureza; a "
+                      "recorrência pode refletir exclusividade real (representante único) ou registro de preços regular.",
     "DD/SANCAO-SIGA": "A sanção pode estar suspensa por liminar, limitada ao órgão apenador (suspensão do art. 87, III) ou ter "
                       "sido cumprida sem baixa no registro; pagamento após a data pode ser de contrato anterior à sanção.",
     "DD/SOCIO-AGENTE": "O casamento é por NOME (homônimo possível), o vínculo pode ter cessado antes do ato, e agente de "
@@ -296,6 +300,7 @@ _MOTIVO_IMPROBIDADE_RF = {
     "DD/SOCIO-AGENTE": "vínculo de sócio da contratada com agente público (art. 14, IV Lei 14.133)",
     "DD/LISTA-SUJA": "contratação de empregador do Cadastro do MTE (trabalho escravo)",
     "DD/EMERGENCIA-SIGA": "contratação direta emergencial habitual (sem planejamento)",
+    "DD/DIRETA-PCRJ": "contratação direta habitual no Município (inexigibilidade/dispensa recorrentes)",
     "DD/SANCAO-SIGA": "contratação/pagamento a sancionado com sanção vigente",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
@@ -320,6 +325,7 @@ _RF_DESTINATARIO = {
     "DD/SOCIO-AGENTE": ("improbidade", "par"),
     "DD/LISTA-SUJA": ("par", "improbidade"),
     "DD/EMERGENCIA-SIGA": ("debito", "improbidade"),
+    "DD/DIRETA-PCRJ": ("debito", "improbidade"),
     "DD/SANCAO-SIGA": ("par", "improbidade"),
 }
 
@@ -342,7 +348,7 @@ def _elemento_subjetivo(a: dict) -> tuple[str, str]:
     rf = a.get("rf", "") or ""
     obs = (a.get("obs") or "").lower()
     # TAC em série é ilegalidade de GESTÃO (deixou vencer o contrato) — dolo só com outro sinal na obs
-    dd_sem_dolo = rf in ("DD/TAC-RECORRENTE", "DD/RF-TAC", "DD/EMERGENCIA-SIGA")
+    dd_sem_dolo = rf in ("DD/TAC-RECORRENTE", "DD/RF-TAC", "DD/EMERGENCIA-SIGA", "DD/DIRETA-PCRJ")
     dolo = rf in _DOLO_RF or (rf.startswith("DD") and not dd_sem_dolo) or rf == "FRAUDE" or any(t in obs for t in _DOLO_OBS)
     if dolo:
         return ("dolo a apurar",

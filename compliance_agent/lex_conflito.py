@@ -533,3 +533,71 @@ def achado_sancao_siga(sancoes: list[dict]) -> dict | None:
                      "pagamento de contrato anterior é lícito; contratação NOVA na vigência não é (art. 156 §§ Lei 14.133; art. 87 Lei 8.666). "
                      "Conferir o objeto/processo das OBs. " if pior["pago_depois"] > 0 else "Sem OB após a efetivação nos dados do SIAFE. ") +
                     "Fonte pública do SIGA; suspensão vale no órgão apenador, inidoneidade/impedimento em toda a Administração.")}
+
+
+# ── Contratos com a PREFEITURA do Rio (ContasRio → tools/contasrio_ingest) — 13/09/2026 ─────────
+def contratos_pcrj(cnpj: str | None) -> dict | None:
+    """Pegada do fornecedor na contratação MUNICIPAL (pcrj.db::contasrio_contrato): quantos contratos,
+    quantos por contratação direta (inexigibilidade/dispensa), valores e os maiores com o nº do
+    processo e o link do inteiro teor (CCON). None se não há base ou não há contrato."""
+    dig = _digits(cnpj or "")
+    if len(dig) != 14:
+        return None
+    from compliance_agent.pcrj.db import DB_PATH
+    if not DB_PATH.exists():
+        return None
+    con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=30)
+    try:
+        r = con.execute(
+            "SELECT count(*), sum(forma_contratacao LIKE 'Contratação Direta%'), "
+            "round(sum(coalesce(valor_atualizado,0)),2), round(sum(coalesce(total_pago,0)),2), "
+            "round(sum(CASE WHEN forma_contratacao LIKE 'Contratação Direta%' THEN coalesce(valor_atualizado,0) END),2), "
+            "count(DISTINCT orgao), group_concat(DISTINCT orgao), min(ano), max(ano), max(favorecido_nome) "
+            "FROM contasrio_contrato WHERE favorecido_doc=?", (dig,)).fetchone()
+        top = con.execute(
+            "SELECT ano, orgao, forma_contratacao, objeto, valor_atualizado, total_pago, processo, url_ccon "
+            "FROM contasrio_contrato WHERE favorecido_doc=? ORDER BY coalesce(total_pago,0) DESC, coalesce(valor_atualizado,0) DESC LIMIT 5",
+            (dig,)).fetchall()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    if not r or not r[0]:
+        return None
+    return {"n": r[0], "diretas": r[1] or 0, "valor": r[2] or 0.0, "pago": r[3] or 0.0, "valor_diretas": r[4] or 0.0,
+            "n_orgaos": r[5], "orgaos": (r[6] or "")[:200], "ano_min": r[7], "ano_max": r[8], "nome": r[9],
+            "maiores": [{"ano": t[0], "orgao": t[1], "forma": t[2], "objeto": (t[3] or "")[:160], "valor": t[4] or 0.0,
+                         "pago": t[5] or 0.0, "processo": t[6], "url_ccon": t[7]} for t in top]}
+
+
+# estatais, concessionárias e entes públicos contratam direto por natureza (art. 75, IX/XI e art. 74):
+# COMLURB, Correios, Light, RioSaúde, IplanRio… — 4 dos 8 primeiros da lista real eram esses.
+_ESTATAL = ("COMPANHIA MUNICIPAL", "COMPANHIA ESTADUAL", "COMPANHIA DE ", "EMPRESA PUBLICA", "EMPRESA MUNICIPAL",
+            "EMPRESA BRASILEIRA DE CORREIOS", "LIGHT SERVICOS", "CEDAE", "COMLURB", "RIOSAUDE", "IPLANRIO", "RIOLUZ",
+            "CET-RIO", "FUNDACAO ", "INSTITUTO MUNICIPAL", "SECRETARIA", "MUNICIPIO", "ESTADO DO", "UNIAO", "MINIST",
+            "UNIVERSIDADE", "SERVICO SOCIAL", "SERVICO NACIONAL", "SEBRAE", "CAIXA ECONOMICA", "BANCO DO BRASIL",
+            "IMPRENSA OFICIAL", "PETROBRAS", "NATURGY", "AGUAS DO RIO")
+
+
+def _eh_estatal(nome: str | None) -> bool:
+    n = unicodedata.normalize("NFKD", (nome or "").upper()).encode("ascii", "ignore").decode()
+    return any(p in n for p in _ESTATAL)
+
+
+def achado_contratacao_direta_pcrj(cp: dict | None) -> dict | None:
+    """Contratação direta como regime no MUNICÍPIO: 5+ contratos e metade ou mais por inexigibilidade/
+    dispensa (grav 3; 10+ e 2/3 = grav 4). Espelha achado_emergencia_siga para a esfera municipal.
+    Estatal/concessionária/ente público não conta (contrata direto por natureza)."""
+    if not cp or cp["n"] < 5 or _eh_estatal(cp.get("nome")):
+        return None
+    share = cp["diretas"] / cp["n"]
+    if share < 0.5:
+        return None
+    grav = 4 if (cp["diretas"] >= 10 and share >= 2 / 3) else 3
+    procs = [m["processo"] for m in cp["maiores"] if m.get("processo")][:3]
+    return {"rf": "DD/DIRETA-PCRJ", "grav": grav,
+            "obs": (f"**{cp['diretas']} de {cp['n']} contratos com a Prefeitura do Rio ({cp['ano_min']}–{cp['ano_max']}) são por "
+                    f"contratação direta (inexigibilidade/dispensa)**, R$ {_moeda(cp['valor_diretas'])} de R$ {_moeda(cp['valor'])} "
+                    f"(pago pelo Município: R$ {_moeda(cp['pago'])}); {cp['n_orgaos']} órgão(s): {cp['orgaos'][:120]}. "
+                    f"Processos: {', '.join(procs) or 'n/d'}. A contratação direta é excepcional (arts. 74-75 Lei 14.133/2021) e a "
+                    "habitualidade com o mesmo fornecedor pede a motivação de cada inexigibilidade — indício, não acusação.")}

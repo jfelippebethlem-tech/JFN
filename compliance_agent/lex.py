@@ -292,6 +292,15 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                 ach_estrutural.append(_ach)
         except (ImportError, sqlite3.Error) as exc:
             logger.debug("siga_sancoes indisponível para %s: %s", cnpj, exc)
+        # Prefeitura do Rio (ContasRio/CCON, tools/contasrio_ingest): contratação direta como regime. Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_contratacao_direta_pcrj, contratos_pcrj
+            _cp = contratos_pcrj(cnpj)
+            investigacao["pcrj_contratos"] = _cp
+            if (_ach := achado_contratacao_direta_pcrj(_cp)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("contasrio_contrato indisponível para %s: %s", cnpj, exc)
     except Exception:
         investigacao = {}
 
