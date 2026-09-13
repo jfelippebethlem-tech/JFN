@@ -53,3 +53,17 @@ def test_ingest_busca_livre_do_sei_municipal(tmp_path):
     c.commit(); c.close()
     r = ingerir_busca(o, tmp_path / "pcrj.db")
     assert r["busca"] == 1 and r["processos_distintos"] == 1
+
+
+def test_ingest_enum_cataloga_processo_com_tipo_e_unidade_sem_apagar_o_que_ja_existe(tmp_path):
+    import sqlite3
+    from tools.pcrj_sei_ingest import ingerir_enum
+    o = tmp_path / "sei_pcrj.db"
+    c = sqlite3.connect(o)
+    c.execute("CREATE TABLE sei_pcrj_enum (processo, tipo, unidade, data, dia_consulta, capturado_em)")
+    c.execute("INSERT INTO sei_pcrj_enum VALUES ('000900.084662/2026-28','AQUISIÇÃO DE MATERIAL','S/SUBG/CIL/GI','01/09/2026','01/09/2026','2026-09-13')")
+    c.commit(); c.close()
+    r = ingerir_enum(o, tmp_path / "pcrj.db")
+    assert r["enum"] == 1 and r["pcrj_processo_sei"] == 1
+    con = sqlite3.connect(tmp_path / "pcrj.db")
+    assert con.execute("SELECT assunto, orgao, disponivel FROM pcrj_processo").fetchone() == ("AQUISIÇÃO DE MATERIAL · gerado 01/09/2026", "S/SUBG/CIL/GI", None)

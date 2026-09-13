@@ -144,6 +144,35 @@ def ingerir_busca(origem: Path | None = None, db_path=None) -> dict:
     return {"busca": len(rows), "total": total[0], "processos_distintos": total[1]}
 
 
+def ingerir_enum(origem: Path | None = None, db_path=None) -> dict:
+    """``sei_pcrj_enum`` (catálogo dia a dia de TODOS os processos públicos do SEI municipal, VM-2)
+    → ``pcrj_processo`` (assunto = tipo do processo, orgao = unidade geradora; disponivel fica como está)."""
+    origem = Path(origem or ORIGEM)
+    if not origem.exists():
+        return {"enum": 0, "motivo": f"origem não encontrada: {origem}"}
+    src = sqlite3.connect(f"file:{origem}?mode=ro", uri=True)
+    try:
+        if not src.execute("SELECT 1 FROM sqlite_master WHERE name='sei_pcrj_enum'").fetchone():
+            return {"enum": 0, "motivo": "VM-2 ainda não produziu sei_pcrj_enum"}
+        rows = src.execute("SELECT processo, tipo, unidade, data, capturado_em FROM sei_pcrj_enum").fetchall()
+    finally:
+        src.close()
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    try:
+        con.executemany(
+            "INSERT INTO pcrj_processo (numero_processo, sistema, interessado, assunto, orgao, andamento_json, "
+            "disponivel, coletado_em) VALUES (?,'SEI.RIO',NULL,?,?,NULL,NULL,?) "
+            "ON CONFLICT(numero_processo) DO UPDATE SET assunto=COALESCE(pcrj_processo.assunto, excluded.assunto), "
+            "orgao=COALESCE(pcrj_processo.orgao, excluded.orgao)",
+            [(p, (f"{t} · gerado {d}" if t else (f"gerado {d}" if d else None)), u, em) for p, t, u, d, em in rows])
+        con.commit()
+        total = con.execute("SELECT count(*) FROM pcrj_processo WHERE sistema='SEI.RIO'").fetchone()[0]
+    finally:
+        con.close()
+    return {"enum": len(rows), "pcrj_processo_sei": total}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stats", action="store_true")
@@ -162,6 +191,7 @@ def main() -> None:
     print(json.dumps(ingerir(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_documentos(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_busca(db_path=a.db), ensure_ascii=False, indent=2))
+    print(json.dumps(ingerir_enum(db_path=a.db), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
