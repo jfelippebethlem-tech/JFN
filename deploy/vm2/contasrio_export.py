@@ -7,15 +7,20 @@ import shutil
 from pathlib import Path
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import sync_playwright
-URL = "https://contasrio.rio.rj.gov.br/ContasRio/#!Contratos/Rela%C3%A7%C3%A3o%20de%20Contratos"
+VISTAS = {  # nome → (fragmento da URL, prefixo do CSV)
+    "contratos": ("Rela%C3%A7%C3%A3o%20de%20Contratos", "contratos"),
+    "fiscais": ("Fiscais%20de%20Contratos", "fiscais"),   # + Nome do Fiscal e CPF/matrícula (mascarado)
+}
+URL = "https://contasrio.rio.rj.gov.br/ContasRio/#!Contratos/{frag}"
 
-def exportar(anos, dest: Path):
+def exportar(anos, dest: Path, vista: str = "contratos"):
+    frag, prefixo = VISTAS[vista]
     dest.mkdir(parents=True, exist_ok=True)
     feitos = {}
     with sync_playwright() as p:
         b = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
         pg = b.new_context(accept_downloads=True, viewport={"width": 1400, "height": 900}).new_page()
-        pg.goto(URL, wait_until="domcontentloaded", timeout=60000); pg.wait_for_timeout(12000)
+        pg.goto(URL.format(frag=frag), wait_until="domcontentloaded", timeout=60000); pg.wait_for_timeout(15000)
         for ano in anos:
             try:
                 combo = pg.locator(".v-filterselect").nth(2)
@@ -38,7 +43,7 @@ def exportar(anos, dest: Path):
                 pg.click(".v-button:has(.v-icon-download)", timeout=10000); pg.wait_for_timeout(1500)
                 with pg.expect_download(timeout=300000) as dl:
                     pg.click("text=/^Csv$/", timeout=10000)
-                alvo = dest / f"contratos_{ano}.csv"; dl.value.save_as(str(alvo))
+                alvo = dest / f"{prefixo}_{ano}.csv"; dl.value.save_as(str(alvo))
                 n = sum(1 for _ in open(alvo, encoding="latin-1")) - 2
                 feitos[ano] = n; print(f"{ano}: {n} contratos → {alvo}", flush=True)
                 pg.keyboard.press("Escape"); pg.wait_for_timeout(1000)
@@ -46,9 +51,10 @@ def exportar(anos, dest: Path):
                 print(f"{ano}: erro {type(e).__name__}: {str(e)[:140]}", flush=True)
         b.close()
     sb = Path.home() / "shared-brain" / "contasrio"; sb.mkdir(exist_ok=True)
-    for ano in feitos: shutil.copy2(dest / f"contratos_{ano}.csv", sb / f"contratos_{ano}.csv")
+    for ano in feitos: shutil.copy2(dest / f"{prefixo}_{ano}.csv", sb / f"{prefixo}_{ano}.csv")
     return feitos
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--anos", nargs="+", type=int, default=[2026]); ap.add_argument("--dest", default="data/contasrio")
-    a = ap.parse_args(); print(exportar(a.anos, Path(a.dest)))
+    ap.add_argument("--vista", choices=sorted(VISTAS), default="contratos")
+    a = ap.parse_args(); print(exportar(a.anos, Path(a.dest), a.vista))

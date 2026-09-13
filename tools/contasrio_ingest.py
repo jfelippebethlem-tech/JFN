@@ -117,6 +117,64 @@ def ingerir_contratos(csv_dir: Path | None = None, db_path=None) -> dict:
     return {"arquivos": len(arqs), "linhas": n, "total": total}
 
 
+# "Fiscais de Contratos": mesmas colunas até "Forma de Contratação", depois Nome do Fiscal, CPF/matrícula
+# (mascarado pela própria CGM), Anexos, Valor. É QUEM responde pela fiscalização do contrato.
+COLS_FISCAIS = COLS[:13] + ["fiscal_nome", "fiscal_doc", "anexos_html", "valor_atualizado"]
+DDL_FISCAIS = """CREATE TABLE IF NOT EXISTS contasrio_fiscal (
+    contrato TEXT NOT NULL, fiscal_nome TEXT NOT NULL, fiscal_doc TEXT, ano INTEGER, processo TEXT,
+    favorecido_doc TEXT, favorecido_nome TEXT, orgao TEXT, forma_contratacao TEXT, coletado_em TEXT,
+    PRIMARY KEY (contrato, fiscal_nome));
+CREATE INDEX IF NOT EXISTS ix_contasrio_fiscal_nome ON contasrio_fiscal(fiscal_nome);"""
+
+
+def parse_linha_fiscal(r: list[str]) -> dict | None:
+    if len(r) < 17 or r[0].strip() == "TOTAL":
+        return None
+    d = dict(zip(COLS_FISCAIS, (x.strip() for x in r[:17])))
+    if not d["fiscal_nome"]:
+        return None
+    m = _RX_CONTRATO.search(d["anexos_html"])
+    d["contrato"] = m.group(1) if m else d["numero_instrumento"]
+    if not d["contrato"]:
+        return None
+    mf = _RX_CNPJ.match(d["favorecido"])
+    d["favorecido_doc"] = mf.group(1) if mf else None
+    d["favorecido_nome"] = mf.group(2) if mf else d["favorecido"]
+    d["ano"] = int(d["ano"]) if d["ano"].isdigit() else None
+    d["fiscal_nome"] = d["fiscal_nome"].upper()
+    return d
+
+
+def ingerir_fiscais(csv_dir: Path | None = None, db_path=None) -> dict:
+    csv_dir = Path(csv_dir or CSV_DIR)
+    arqs = sorted(csv_dir.glob("fiscais_*.csv"))
+    if not arqs:
+        return {"fiscais": 0, "motivo": f"nenhum fiscais_*.csv em {csv_dir}"}
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    con.executescript(DDL_FISCAIS)
+    n = 0
+    try:
+        for arq in arqs:
+            with open(arq, encoding="latin-1", newline="") as f:
+                rows = list(csv.reader(f, delimiter=";"))
+            for r in rows[1:]:
+                d = parse_linha_fiscal(r)
+                if not d:
+                    continue
+                con.execute(
+                    "INSERT OR REPLACE INTO contasrio_fiscal (contrato, fiscal_nome, fiscal_doc, ano, processo, favorecido_doc, "
+                    "favorecido_nome, orgao, forma_contratacao, coletado_em) VALUES (?,?,?,?,?,?,?,?,?,datetime('now','localtime'))",
+                    (d["contrato"], d["fiscal_nome"], d["fiscal_doc"], d["ano"], d["processo"], d["favorecido_doc"],
+                     d["favorecido_nome"], d["orgao"], d["forma_contratacao"]))
+                n += 1
+        con.commit()
+        total = con.execute("SELECT count(*) FROM contasrio_fiscal").fetchone()[0]
+    finally:
+        con.close()
+    return {"arquivos": len(arqs), "fiscais": n, "total": total}
+
+
 def ingerir_anexos(origem: Path | None = None, db_path=None) -> dict:
     """``ccon.db::ccon_anexo`` → ``pcrj_processo_doc`` ligado ao processo do contrato."""
     origem = Path(origem or CCON_DB)
@@ -160,6 +218,7 @@ def main() -> None:
         print("CSVs:", [p.name for p in sorted(CSV_DIR.glob("contratos_*.csv"))], "| ccon.db:", CCON_DB.exists())
         return
     print(json.dumps(ingerir_contratos(db_path=a.db), ensure_ascii=False))
+    print(json.dumps(ingerir_fiscais(db_path=a.db), ensure_ascii=False))
     print(json.dumps(ingerir_anexos(db_path=a.db), ensure_ascii=False))
 
 

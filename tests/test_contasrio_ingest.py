@@ -49,3 +49,16 @@ def test_ingest_liga_anexo_ao_processo_do_contrato(tmp_path):
     con = sqlite3.connect(db)
     rows = con.execute("SELECT numero_processo, seq, tipo FROM pcrj_processo_doc ORDER BY seq").fetchall()
     assert rows == [("CCON-999", 1, "ccon_outros"), ("006300.000569/2026-14", 16198, "ccon_termo_de_referencia")]
+
+
+def test_fiscal_do_contrato_e_ingerido_com_nome_e_documento_mascarado(tmp_path):
+    from tools.contasrio_ingest import ingerir_fiscais, parse_linha_fiscal
+    linha = _LINHA[:13] + ["Jaziel Aguiar Matos", "053.***.***-21", _LINHA[13], "25.000,00"]
+    d = parse_linha_fiscal(linha)
+    assert d["fiscal_nome"] == "JAZIEL AGUIAR MATOS" and d["fiscal_doc"] == "053.***.***-21" and d["contrato"] == "2611958"
+    assert parse_linha_fiscal(_LINHA[:13] + ["", "", "", ""]) is None
+    csv_dir = tmp_path / "contasrio"
+    csv_dir.mkdir()
+    (csv_dir / "fiscais_2026.csv").write_text("cab;" * 16 + "cab\n" + ";".join(linha) + "\n", encoding="latin-1")
+    r = ingerir_fiscais(csv_dir, tmp_path / "pcrj.db")
+    assert r["fiscais"] == 1 and r["total"] == 1
