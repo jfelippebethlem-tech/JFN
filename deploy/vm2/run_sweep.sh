@@ -47,6 +47,9 @@ pgrep -f "^\.venv/bin/python sei_pcrj_conferir" >/dev/null || nice -n 15 timeout
 # 4c) anexos (inteiro teor) dos contratos municipais via CCON — contratos vindos dos CSVs do ContasRio
 pgrep -f "^\.venv/bin/python ccon_anexos" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python ccon_anexos.py --max 60 --segundos 1800 >> data/sweep_cron.log 2>&1
 
+# 4d) busca LIVRE no Solr público do SEI (termos vindos da VM-1): descobre processos e documentos por alvo
+pgrep -f "^\.venv/bin/python sei_pcrj_busca" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python sei_pcrj_busca.py --max-termos 60 --segundos 1800 >> data/sweep_cron.log 2>&1
+
 # 4) consolida, limpa DBs de shard, sincroniza p/ a VM-1
 .venv/bin/python sei_pcrj_sweep.py --merge >> data/sweep_cron.log 2>&1
 rm -f data/sei_pcrj_[0-9]*.db

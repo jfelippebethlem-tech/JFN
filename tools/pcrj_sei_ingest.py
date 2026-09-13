@@ -115,6 +115,35 @@ def ingerir_documentos(origem: Path | None = None, db_path=None) -> dict:
     return {"documentos": n}
 
 
+def ingerir_busca(origem: Path | None = None, db_path=None) -> dict:
+    """``sei_pcrj_busca`` (busca livre no Solr público do SEI, VM-2) → ``pcrj.db::pcrj_sei_busca``:
+    para cada termo (fornecedor/expressão), os processos e documentos que o SEI municipal devolve."""
+    origem = Path(origem or ORIGEM)
+    if not origem.exists():
+        return {"busca": 0, "motivo": f"origem não encontrada: {origem}"}
+    src = sqlite3.connect(f"file:{origem}?mode=ro", uri=True)
+    try:
+        if not src.execute("SELECT 1 FROM sqlite_master WHERE name='sei_pcrj_busca'").fetchone():
+            return {"busca": 0, "motivo": "VM-2 ainda não produziu sei_pcrj_busca"}
+        rows = src.execute("SELECT termo, prot, processo, titulo, tipo_registro, unidade, data, snippet, capturado_em "
+                           "FROM sei_pcrj_busca").fetchall()
+    finally:
+        src.close()
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    con.executescript("""CREATE TABLE IF NOT EXISTS pcrj_sei_busca (
+        termo TEXT NOT NULL, prot TEXT NOT NULL, processo TEXT, titulo TEXT, tipo_registro TEXT, unidade TEXT,
+        data TEXT, snippet TEXT, capturado_em TEXT, PRIMARY KEY (termo, prot));
+        CREATE INDEX IF NOT EXISTS ix_pcrj_sei_busca_proc ON pcrj_sei_busca(processo);""")
+    try:
+        con.executemany("INSERT OR REPLACE INTO pcrj_sei_busca VALUES (?,?,?,?,?,?,?,?,?)", rows)
+        con.commit()
+        total = con.execute("SELECT count(*), count(DISTINCT processo) FROM pcrj_sei_busca").fetchone()
+    finally:
+        con.close()
+    return {"busca": len(rows), "total": total[0], "processos_distintos": total[1]}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stats", action="store_true")
@@ -132,6 +161,7 @@ def main() -> None:
     import json
     print(json.dumps(ingerir(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_documentos(db_path=a.db), ensure_ascii=False, indent=2))
+    print(json.dumps(ingerir_busca(db_path=a.db), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

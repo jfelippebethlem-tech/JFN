@@ -41,3 +41,15 @@ def test_colher_dos_corpora_le_rodape_dos_pdfs_baixados(tmp_path):
     c.commit(); c.close()
     r = colher_dos_corpora(tmp_path / "pcrj.db", corpora=((corpus, "ccon_anexo", "texto"),))
     assert r["novos"] == 1 and r["total"] == 1
+
+
+def test_ingest_busca_livre_do_sei_municipal(tmp_path):
+    import sqlite3
+    from tools.pcrj_sei_ingest import ingerir_busca
+    o = tmp_path / "sei_pcrj.db"
+    c = sqlite3.connect(o)
+    c.execute("CREATE TABLE sei_pcrj_busca (termo, prot, processo, titulo, tipo_registro, unidade, data, snippet, href, capturado_em)")
+    c.execute("INSERT INTO sei_pcrj_busca VALUES ('TUISE','4344543','006900.007829/2026-13','LIQUIDAÇÃO nº006900.007829/2026-13 4344543','documento','RS/PRE','20/04/2026','…TUISE…',NULL,'2026-09-13')")
+    c.commit(); c.close()
+    r = ingerir_busca(o, tmp_path / "pcrj.db")
+    assert r["busca"] == 1 and r["processos_distintos"] == 1
