@@ -33,7 +33,7 @@ def exportar(anos, dest: Path, vista: str = "contratos"):
                 pg.keyboard.press("Escape"); pg.wait_for_timeout(1000)
                 # espera o grid trocar: a coluna 'Ano de Celebração' (índice 4) da 1ª linha de dados
                 ano_grid = None
-                for _ in range(45):
+                for _ in range(150):   # a vista de fiscais de 2024 levou > 90 s para renderizar
                     pg.wait_for_timeout(2000)
                     ano_grid = pg.evaluate("()=>{const r=document.querySelectorAll('.v-grid-body tr')[1]; return r? (r.querySelectorAll('td')[4]||{}).innerText : null}")
                     if ano_grid and str(ano) in ano_grid: break
