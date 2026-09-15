@@ -194,3 +194,7 @@ static/assets/*-master.mp4
 data/.siafe_dreno_vez
 data/sei_busca_pedidos.txt*
 data/sei_buscas/
+
+# LAI: dados do requerente (CPF) — nunca versionar
+data/lai_requerente.json
+data/lai.db

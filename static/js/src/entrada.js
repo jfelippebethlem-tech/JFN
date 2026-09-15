@@ -47,6 +47,7 @@ import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, sei
 
 /* AS TELAS — 59 renders. Ver `abas/index.js`. */
 import {ligarVinculos, ligarFila, SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, sinteseProcesso, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderIntegras, renderLentes, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau, renderTacRecorrente, renderImprensa} from './abas/index.js';
+import {renderLai, ligarLai} from './abas/lai.js';
 
 async function gerarPdfIntel(tipo,el){
   const txt=el.innerHTML;el.innerHTML='<span class="sp" style="width:12px;height:12px"></span> gerando…';el.disabled=true;
@@ -107,6 +108,7 @@ const TABS={
     {id:'p_ppp',     ic:'🏗️',tl:'PPP',     render:renderPPPPref},
     {id:'p_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio('prefeitura')},
     {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
+    {id:'p_lai',     ic:'📨',tl:'LAI',      render:renderLai},
   ],
   geral:[
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
@@ -357,6 +359,7 @@ uiLigarDialogo();
    Ver o bloco `VINC_ACOES` em `abas/index.js` para a razão de ser Vínculos o primeiro. */
 ligarVinculos();
 ligarFila();
+ligarLai();
 /* Um ouvinte para TODAS as métricas clicáveis do painel — ver nucleo/drill.js. */
 ligarDrill();
 sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever();

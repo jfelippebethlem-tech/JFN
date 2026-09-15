@@ -55,6 +55,7 @@ SEQUENCIA = [
     # ouvinte no `document`, nada de nome novo no `window`. Entrou aqui porque a primeira versao
     # custava dois globais e a catraca de globais reprovou em 61 contra teto 59.
     "chamada:ligarFila()",
+    "chamada:ligarLai()",              # 2026-09-15: delegacao `data-lai` (LAI automatizada), colada na ligarFila
     # 2026-08-06: delegacao das METRICAS CLICAVEIS. Colada no `ligarVinculos` de proposito — as
     # duas prendem UM ouvinte no `document`, que sobrevive a troca de `innerHTML` do `#view`, e
     # nenhuma delas toca a tela. Verificado com `pageerror` limpo na pagina viva.
