@@ -17,9 +17,13 @@ if db.exists():
         pass
     finally:
         c.close()
+# prioridade 0: alvos de requerimento LAI da VM-1 (shared-brain) — entram na fila mesmo se ainda não estavam
+prio0_path = Path("/home/ubuntu/shared-brain/sei_pcrj_prioridade.txt")
+prio0 = [l.strip() for l in prio0_path.read_text().splitlines() if l.strip()] if prio0_path.exists() else []
+nums = list(dict.fromkeys(prio0 + nums))
 seen, out = set(), []
-for grupo in (sorted(n for n in nums if n in prio1), sorted(n for n in nums if n in prio2), sorted(nums)):
+for grupo in (prio0, sorted(n for n in nums if n in prio1), sorted(n for n in nums if n in prio2), sorted(nums)):
     for n in grupo:
         if n not in seen: seen.add(n); out.append(n)
 fila.write_text("".join(n + "\n" for n in out))
-print(f"fila: {len(out)} (contratação {len(prio1 & set(nums))}, busca {len(prio2 & set(nums))})")
+print(f"fila: {len(out)} (LAI {len(prio0)}, contratação {len(prio1 & set(nums))}, busca {len(prio2 & set(nums))})")

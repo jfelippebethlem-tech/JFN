@@ -173,6 +173,45 @@ def ingerir_enum(origem: Path | None = None, db_path=None) -> dict:
     return {"enum": len(rows), "pcrj_processo_sei": total}
 
 
+def ingerir_arvore(origem: Path | None = None, db_path=None) -> dict:
+    """Árvore (documentos), andamentos e assinaturas dos processos capturados na VM-2 → pcrj.db
+    (pcrj_sei_arvore / pcrj_sei_andamento / pcrj_sei_assinatura). A assinatura vem por MATRÍCULA —
+    o nome é resolvido depois contra a folha (pcrj_folha_pref)."""
+    origem = Path(origem or ORIGEM)
+    if not origem.exists():
+        return {"arvore": 0, "motivo": f"origem não encontrada: {origem}"}
+    src = sqlite3.connect(f"file:{origem}?mode=ro", uri=True)
+    try:
+        if not src.execute("SELECT 1 FROM sqlite_master WHERE name='sei_pcrj_arvore'").fetchone():
+            return {"arvore": 0, "motivo": "VM-2 ainda não produziu sei_pcrj_arvore"}
+        arv = src.execute("SELECT numero, doc, tipo, data, inclusao, unidade FROM sei_pcrj_arvore").fetchall()
+        and_ = src.execute("SELECT numero, quando, unidade, descricao FROM sei_pcrj_andamento WHERE quando <> 'Data/Hora'").fetchall()
+        ass = src.execute("SELECT numero, documento, tipo, matricula, quando, unidade FROM sei_pcrj_assinatura").fetchall()
+    finally:
+        src.close()
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    con.executescript("""
+        CREATE TABLE IF NOT EXISTS pcrj_sei_arvore (numero TEXT NOT NULL, doc TEXT NOT NULL, tipo TEXT, data TEXT,
+            inclusao TEXT, unidade TEXT, PRIMARY KEY (numero, doc));
+        CREATE TABLE IF NOT EXISTS pcrj_sei_andamento (numero TEXT NOT NULL, quando TEXT, unidade TEXT, descricao TEXT,
+            PRIMARY KEY (numero, quando, descricao));
+        CREATE TABLE IF NOT EXISTS pcrj_sei_assinatura (numero TEXT NOT NULL, documento TEXT NOT NULL, tipo TEXT,
+            matricula TEXT NOT NULL, quando TEXT, unidade TEXT, PRIMARY KEY (numero, documento, matricula));
+        CREATE INDEX IF NOT EXISTS ix_pcrj_sei_assinatura_mat ON pcrj_sei_assinatura(matricula);""")
+    try:
+        con.executemany("INSERT OR IGNORE INTO pcrj_sei_arvore VALUES (?,?,?,?,?,?)", arv)
+        con.executemany("INSERT OR IGNORE INTO pcrj_sei_andamento VALUES (?,?,?,?)", and_)
+        con.executemany("INSERT OR IGNORE INTO pcrj_sei_assinatura VALUES (?,?,?,?,?,?)", ass)
+        con.commit()
+        tot = con.execute("SELECT (SELECT count(*) FROM pcrj_sei_arvore), (SELECT count(*) FROM pcrj_sei_assinatura), "
+                          "(SELECT count(DISTINCT numero) FROM pcrj_sei_arvore)").fetchone()
+    finally:
+        con.close()
+    return {"arvore": len(arv), "andamentos": len(and_), "assinaturas": len(ass),
+            "total_arvore": tot[0], "total_assinaturas": tot[1], "processos_com_arvore": tot[2]}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stats", action="store_true")
@@ -192,6 +231,7 @@ def main() -> None:
     print(json.dumps(ingerir_documentos(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_busca(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_enum(db_path=a.db), ensure_ascii=False, indent=2))
+    print(json.dumps(ingerir_arvore(db_path=a.db), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

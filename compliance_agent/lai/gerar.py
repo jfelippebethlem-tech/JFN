@@ -42,6 +42,25 @@ def _escrever(texto: str, nome_base: str) -> tuple[str, str]:
     return (str(docx_path) if docx_path else None), str(md)
 
 
+_PRIORIDADE = Path.home() / "shared-brain" / "sei_pcrj_prioridade.txt"
+
+
+def _priorizar_no_sweep(numeros: list[str]) -> None:
+    """Processo pedido na LAI sem árvore capturada vai para a FRENTE da fila da VM-2 (Syncthing →
+    refresh_fila_prio.py). Nunca falha o requerimento por causa disso."""
+    try:
+        if not numeros:
+            return
+        atuais = set(_PRIORIDADE.read_text(encoding="utf-8").split()) if _PRIORIDADE.exists() else set()
+        novos = [n for n in numeros if n not in atuais]
+        if novos:
+            _PRIORIDADE.parent.mkdir(parents=True, exist_ok=True)
+            with open(_PRIORIDADE, "a", encoding="utf-8") as f:
+                f.write("".join(n + "\n" for n in novos))
+    except OSError:
+        pass
+
+
 def gerar(alvo: str, esfera: str | None = None, motivo: str | None = None, db_path=None, lai_db=None) -> dict:
     """Retorna {ok, id, alvo, esfera, destinatario, canal, prazo_dias, itens_pedido, path_docx, path_md,
     texto, resumo, avisos[], processos[], contratos[]}. Nunca levanta por base vazia: pede a íntegra."""
@@ -59,6 +78,7 @@ def gerar(alvo: str, esfera: str | None = None, motivo: str | None = None, db_pa
     id_ = registro.registrar(alvo, r["esfera"], r["destinatario"], procs, contratos, r["itens_pedido"],
                              path_docx, path_md, db_path=lai_db)
     docs_vistos = sum(len(p.get("documentos_vistos") or []) for p in fatos.get("processos") or [])
+    _priorizar_no_sweep([p["numero"] for p in fatos.get("processos") or [] if not p.get("documentos_vistos")])
     resumo = (f"LAI #{id_} · {r['esfera']} · {len(procs)} processo(s), {len(contratos)} contrato(s), "
               f"{docs_vistos} documento(s) nomeados · {r['itens_pedido']} itens · prazo {r['prazo_dias']} dias após protocolo")
     return {"ok": True, "id": id_, "alvo": alvo, "esfera": r["esfera"], "destinatario": r["destinatario"], "canal": r["canal"],

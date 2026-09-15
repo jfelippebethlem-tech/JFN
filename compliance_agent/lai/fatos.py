@@ -71,12 +71,18 @@ def _processo(con, numero: str) -> dict | None:
 
 
 def _documentos_vistos(con, numero: str) -> list[dict]:
-    """Documentos que a busca livre do SEI enxergou no processo (nº SEI, título, unidade, data)."""
-    if not _tem(con, "pcrj_sei_busca"):
-        return []
-    rows = con.execute("SELECT DISTINCT prot, titulo, unidade, data FROM pcrj_sei_busca WHERE upper(processo)=upper(?) "
-                       "AND tipo_registro='documento' ORDER BY data", (numero,)).fetchall()
-    return [dict(r) for r in rows]
+    """Documentos que o SEI mostra mas não abre: a ÁRVORE capturada (todos os docs do processo, com tipo,
+    unidade e data) unida ao que a busca livre enxergou. Chave = nº SEI do documento."""
+    vistos: dict[str, dict] = {}
+    if _tem(con, "pcrj_sei_arvore"):
+        for r in con.execute("SELECT doc, tipo, unidade, data FROM pcrj_sei_arvore WHERE upper(numero)=upper(?) ORDER BY data",
+                             (numero,)):
+            vistos[r["doc"]] = {"prot": r["doc"], "titulo": r["tipo"] or "", "unidade": r["unidade"], "data": r["data"], "fonte": "arvore"}
+    if _tem(con, "pcrj_sei_busca"):
+        for r in con.execute("SELECT DISTINCT prot, titulo, unidade, data FROM pcrj_sei_busca WHERE upper(processo)=upper(?) "
+                             "AND tipo_registro='documento' ORDER BY data", (numero,)):
+            vistos.setdefault(r["prot"], {"prot": r["prot"], "titulo": r["titulo"], "unidade": r["unidade"], "data": r["data"], "fonte": "busca"})
+    return list(vistos.values())
 
 
 def _documentos_obtidos(con, numero: str) -> list[dict]:
