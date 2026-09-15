@@ -6,8 +6,6 @@ import {$, esc, card, kpi, sec, cover} from '../nucleo/dom.js';
 import {J, erroHumano} from '../nucleo/http.js';
 import {fmtN} from '../nucleo/formato.js';
 
-const ST = {rascunho:'rascunho', protocolado:'protocolado', respondido:'respondido', negado:'negado', recurso:'recurso', arquivado:'arquivado'};
-
 function _linha(it){
   const venc = it.vencido ? '<span class="warn"> vencido</span>' : '';
   const links = [it.url_docx?`<a href="${esc(it.url_docx)}" target="_blank" rel="noopener">docx</a>`:'', it.url_md?`<a href="${esc(it.url_md)}" target="_blank" rel="noopener">md</a>`:''].filter(Boolean).join(' · ');
@@ -19,15 +17,23 @@ function _linha(it){
 }
 
 export async function renderLai(){
-  const d = await J('/api/lai/lista?limite=100', {tetoMs: 15000});
+  const [d, pz, sd] = await Promise.all([J('/api/lai/lista?limite=100', {tetoMs: 15000}),
+                                          J('/api/lai/prazos?dias=3', {tetoMs: 15000}),
+                                          J('/api/pcrj/saude', {tetoMs: 60000})]);
   const itens = (d && d.itens) || [];
-  const prot = itens.filter(x=>x.status==='protocolado'), venc = itens.filter(x=>x.vencido);
+  const prot = itens.filter(x=>x.status==='protocolado'), venc = (pz && pz.itens) || itens.filter(x=>x.vencido);
   let h = cover('prefeitura','LAI automatizada','Um botão e o requerimento sai: o alvo vira pedido de acesso à informação fundamentado (Lei 12.527/2011), com os documentos SEI nomeados pelo número e os contratos do ContasRio. O protocolo no e-SIC é humano; aqui fica o texto pronto e o prazo.','📨');
   h += `<div class="grid">
     ${kpi(fmtN(itens.length),'Requerimentos gerados',null,null,{sobre:'Registros em data/lai.db (rascunho → protocolado → respondido/negado/recurso).'})}
     ${kpi(fmtN(prot.length),'Protocolados (aguardando)',null,null,{sobre:'Prazo legal: 20 dias, prorrogável por 10 (art. 11, LAI).'})}
     ${kpi(fmtN(venc.length),'Prazo vencido','var(--rose)',null,{sobre:'Cabe recurso (art. 15) ou reclamação à CGM/CGE.'})}
   </div>`;
+  if(sd && sd.ok){
+    h += sec('Saúde dos pipelines da Prefeitura', sd.grau_geral);
+    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>`
+      + (sd.etapas||[]).map(e=>`<tr><td>${esc(e.etapa)}</td><td>${fmtN(e.n)}</td><td>${esc((e.ultimo||'—').slice(0,16))}</td><td>${esc(e.grau)} ${esc(e.leitura||'')}</td><td class="dim">${esc(e.acao||'')}</td></tr>`).join('')
+      + `</tbody></table></div>`;
+  }
   h += sec('Gerar requerimento');
   h += card(`<div class="grid" style="grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end">
       <label>Alvo<br><input id="lai-alvo" class="inp" placeholder="SME-PRO-2025/38233 · 000700.007924/2026-97 · 2509437 · CNPJ · nome" style="width:100%"></label>

@@ -167,7 +167,12 @@ def test_render_menu_curado_e_enxuto():
     # própria — "Lentes cruzadas (empresa em 2+ detectores)" (800ce1f2, 22/08) e as duas que 953e8fb5
     # (01/09) achou defasadas na superfície ("Lentes municipais", "Achados de gastos da Prefeitura").
     # Nenhuma é mecanismo interno nem duplicata; o teto existe contra despejo do catálogo.
-    assert 6 <= n_itens <= 33                          # curado (grupos + exemplos), não as ~47 prontas
+    # 36 em 2026-09-15: três capacidades novas com produto e pergunta próprios — `tac_recorrente`
+    # (quem o Estado paga por TAC, 12/09) e `imprensa_orgaos` (Google News por órgão, 12/09), que
+    # entraram sem esta catraca rodar, e `lai_requerimento` (LAI automatizada: um botão → .docx
+    # fundamentado com os documentos SEI nomeados e prazo registrado). `lai_prazos` e `pcrj_saude`
+    # ficaram SEM item de menu, de propósito (detalhamento). O teto existe contra despejo do catálogo.
+    assert 6 <= n_itens <= 36                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota

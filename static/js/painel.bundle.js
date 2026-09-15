@@ -8296,15 +8296,23 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     return `<tr><td>#${it.id}</td><td>${esc(it.alvo)}</td><td>${esc(it.esfera || "")}</td><td>${esc(it.status)}${venc}</td><td>${esc(it.protocolo || "—")}</td><td>${esc(it.prazo_resposta || "—")}</td><td>${links || "—"}</td><td><button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="protocolado">protocolado</button> <button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="respondido">respondido</button> <button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="negado">negado</button></td></tr>`;
   }
   async function renderLai() {
-    const d = await J("/api/lai/lista?limite=100", { tetoMs: 15e3 });
+    const [d, pz, sd] = await Promise.all([
+      J("/api/lai/lista?limite=100", { tetoMs: 15e3 }),
+      J("/api/lai/prazos?dias=3", { tetoMs: 15e3 }),
+      J("/api/pcrj/saude", { tetoMs: 6e4 })
+    ]);
     const itens = d && d.itens || [];
-    const prot = itens.filter((x) => x.status === "protocolado"), venc = itens.filter((x) => x.vencido);
+    const prot = itens.filter((x) => x.status === "protocolado"), venc = pz && pz.itens || itens.filter((x) => x.vencido);
     let h = cover("prefeitura", "LAI automatizada", "Um botão e o requerimento sai: o alvo vira pedido de acesso à informação fundamentado (Lei 12.527/2011), com os documentos SEI nomeados pelo número e os contratos do ContasRio. O protocolo no e-SIC é humano; aqui fica o texto pronto e o prazo.", "📨");
     h += `<div class="grid">
     ${kpi(fmtN(itens.length), "Requerimentos gerados", null, null, { sobre: "Registros em data/lai.db (rascunho → protocolado → respondido/negado/recurso)." })}
     ${kpi(fmtN(prot.length), "Protocolados (aguardando)", null, null, { sobre: "Prazo legal: 20 dias, prorrogável por 10 (art. 11, LAI)." })}
     ${kpi(fmtN(venc.length), "Prazo vencido", "var(--rose)", null, { sobre: "Cabe recurso (art. 15) ou reclamação à CGM/CGE." })}
   </div>`;
+    if (sd && sd.ok) {
+      h += sec("Saúde dos pipelines da Prefeitura", sd.grau_geral);
+      h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>etapa</th><th>registros</th><th>último</th><th>estado</th><th>se parar</th></tr></thead><tbody>` + (sd.etapas || []).map((e) => `<tr><td>${esc(e.etapa)}</td><td>${fmtN(e.n)}</td><td>${esc((e.ultimo || "—").slice(0, 16))}</td><td>${esc(e.grau)} ${esc(e.leitura || "")}</td><td class="dim">${esc(e.acao || "")}</td></tr>`).join("") + `</tbody></table></div>`;
+    }
     h += sec("Gerar requerimento");
     h += card(`<div class="grid" style="grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end">
       <label>Alvo<br><input id="lai-alvo" class="inp" placeholder="SME-PRO-2025/38233 · 000700.007924/2026-97 · 2509437 · CNPJ · nome" style="width:100%"></label>
