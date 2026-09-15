@@ -81,3 +81,12 @@ def test_gerar_fecha_o_ciclo(tmp_path, monkeypatch):
     r = g.gerar("2509437", db_path=_base(tmp_path), lai_db=tmp_path / "lai.db")
     assert r["ok"] and r["id"] == 1 and r["path_md"].endswith(".md") and r["documentos_nomeados"] == 1
     assert "PEDIDO:" in r["texto"] and r["resumo"].startswith("LAI #1")
+
+
+def test_alvo_sem_arvore_vai_para_a_prioridade_do_sweep(tmp_path, monkeypatch):
+    import importlib
+    g = importlib.import_module("compliance_agent.lai.gerar")
+    monkeypatch.setattr(g, "_PRIORIDADE", tmp_path / "prio.txt")
+    g._priorizar_no_sweep(["SME-PRO-2025/38233", "000700.007924/2026-97"])
+    g._priorizar_no_sweep(["SME-PRO-2025/38233"])   # idempotente
+    assert (tmp_path / "prio.txt").read_text().split() == ["SME-PRO-2025/38233", "000700.007924/2026-97"]

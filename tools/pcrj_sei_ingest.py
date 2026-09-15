@@ -227,14 +227,19 @@ def resolver_assinantes(db_path=None) -> dict:
             CREATE TEMP TABLE _mats AS SELECT DISTINCT matricula, CAST(matricula AS INTEGER) AS m
                 FROM pcrj_sei_assinatura WHERE matricula GLOB '[0-9]*';
             CREATE INDEX ix__mats_m ON _mats(m);""")
+        # incremental: sem matrícula nova, não varre a folha (o scan agrupado custa ~14 min)
+        novas = con.execute("SELECT count(*) FROM _mats WHERE matricula NOT IN (SELECT matricula FROM pcrj_sei_assinante)").fetchone()[0]
+        if not novas:
+            tot = con.execute("SELECT count(*) FROM pcrj_sei_assinante").fetchone()[0]
+            return {"assinantes": 0, "total": tot, "matriculas": con.execute("SELECT count(*) FROM _mats").fetchone()[0], "motivo": "nada novo"}
+        # 1 scan agrupado da folha (12,6 mi linhas → ~310 mil matrículas, última competência), depois o join
         con.execute("""CREATE TEMP TABLE _f AS
-            SELECT CAST(f.matricula AS INTEGER) AS m, f.nome, f.orgao, f.sigla_ua, f.competencia
-            FROM pcrj_folha_pref f JOIN _mats x ON x.m = CAST(f.matricula AS INTEGER)
-            WHERE f.matricula GLOB '[0-9]*'""")
+            SELECT matricula, max(competencia) AS competencia, max(nome) AS nome, max(orgao) AS orgao, max(sigla_ua) AS sigla_ua
+            FROM pcrj_folha_pref WHERE matricula GLOB '[0-9]*' GROUP BY matricula""")
+        con.execute("CREATE INDEX ix__f_m ON _f(CAST(matricula AS INTEGER))")
         cur = con.execute("""INSERT OR REPLACE INTO pcrj_sei_assinante (matricula, matricula_int, nome, orgao, sigla_ua, competencia)
             SELECT x.matricula, x.m, f.nome, f.orgao, f.sigla_ua, f.competencia FROM _mats x
-            JOIN _f f ON f.m = x.m
-            WHERE f.competencia = (SELECT max(competencia) FROM _f g WHERE g.m = x.m)""")
+            JOIN _f f ON CAST(f.matricula AS INTEGER) = x.m""")
         con.commit()
         tot = con.execute("SELECT count(*) FROM pcrj_sei_assinante").fetchone()[0]
         n_mats = con.execute("SELECT count(*) FROM _mats").fetchone()[0]
