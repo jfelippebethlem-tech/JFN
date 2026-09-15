@@ -81,6 +81,21 @@ def _bloco_documentos(proc: dict) -> list[str]:
                           f"({d.get('unidade') or 'unidade n/d'}, {d.get('data') or 'data n/d'})")
         if len(vistos) > 60:
             linhas.append(f"    · … e mais {len(vistos) - 60} documentos listados na pesquisa pública")
+    cp = proc.get("campos") or {}
+    if cp:
+        partes = []
+        if cp.get("contrato_numero"):
+            partes.append("contrato(s) nº " + ", ".join(cp["contrato_numero"][:4]))
+        if cp.get("termo_aditivo"):
+            partes.append("aditivo(s) " + ", ".join(cp["termo_aditivo"][:4]))
+        if cp.get("fundamento"):
+            partes.append("fundamento declarado: " + "; ".join(cp["fundamento"][:3]))
+        if cp.get("prazo_vigencia"):
+            partes.append("vigência: " + "; ".join(cp["prazo_vigencia"][:3]))
+        if cp.get("pregao"):
+            partes.append("certame de origem: pregão " + ", ".join(cp["pregao"][:2]))
+        if partes:
+            linhas.append("  O que os documentos já obtidos declaram (leitura estruturada): " + " · ".join(partes) + ".")
     ass = [a for a in (proc.get("assinantes") or []) if a.get("nome")]
     if ass:
         linhas.append("  Servidores que assinaram documentos no processo (matrícula → folha municipal): "

@@ -106,6 +106,19 @@ def _assinantes(con, numero: str) -> list[dict]:
     return [dict(r) for r in con.execute(sql, (numero,))]
 
 
+def _campos(con, numero: str) -> dict[str, list[str]]:
+    """Leitura estruturada dos documentos já obtidos (pcrj_doc_campos): o que os AUTOS declaram —
+    nº do contrato, valor, vigência, fundamento legal, pregão — para o pedido citar o que já se sabe."""
+    if not _tem(con, "pcrj_doc_campos"):
+        return {}
+    saida: dict[str, list[str]] = {}
+    for campo, valor in con.execute("SELECT DISTINCT campo, valor FROM pcrj_doc_campos WHERE upper(numero_processo)=upper(?) "
+                                    "AND campo IN ('contrato_numero','termo_aditivo','valor_total','prazo_vigencia','fundamento','pregao') "
+                                    "ORDER BY campo, valor", (numero,)):
+        saida.setdefault(campo, []).append(valor)
+    return saida
+
+
 def _fiscais(con, contratos: list[str]) -> list[dict]:
     if not contratos or not _tem(con, "contasrio_fiscal"):
         return []
@@ -129,7 +142,8 @@ def fatos_do_alvo(alvo: str, db_path=None) -> dict:
             detalhe.append({"numero": p, "catalogo": _processo(con, p),
                             "documentos_vistos": _documentos_vistos(con, p),
                             "documentos_obtidos": _documentos_obtidos(con, p),
-                            "assinantes": _assinantes(con, p)})
+                            "assinantes": _assinantes(con, p),
+                            "campos": _campos(con, p)})
         fiscais = _fiscais(con, [c["contrato"] for c in contratos][:40])
     finally:
         con.close()

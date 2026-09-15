@@ -176,10 +176,21 @@ def md(l: dict) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--alertar", action="store_true", help="manda o laudo no Telegram se houver 🔴")
     a = ap.parse_args()
     l = laudo()
     SAIDA.write_text(json.dumps(l, ensure_ascii=False, indent=1), encoding="utf-8")
     print(json.dumps(l, ensure_ascii=False) if a.json else md(l))
+    if a.alertar and l["n_vermelhos"]:
+        try:
+            import asyncio
+            from compliance_agent.notifications import telegram as _tg
+            piores = [e for e in l["etapas"] if e["grau"] == "🔴"]
+            msg = ("🔴 Pipelines PCRJ com falha (" + str(l["n_vermelhos"]) + "):\n" +
+                   "\n".join(f"• {e['etapa']}: {e['leitura']} → {e['acao']}" for e in piores[:8]))
+            asyncio.run(_tg.enviar_mensagem(msg[:3500]))
+        except (ImportError, RuntimeError, OSError) as exc:
+            print(f"alerta Telegram falhou: {exc}")
 
 
 if __name__ == "__main__":
