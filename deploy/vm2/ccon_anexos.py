@@ -115,6 +115,10 @@ _FETCH_JS = """async (u)=>{const r=await fetch(u,{credentials:'include'});
 FETCH_MAX_BYTES = 40_000_000   # acima disso o base64 pesa demais no evaluate → aba nova
 
 
+class HttpDefinitivo(PlaywrightError):
+    """Resposta HTTP de erro do próprio CCON: registrar e seguir, sem fallback."""
+
+
 async def _baixar(page, href: str, alvo: Path, tamanho: int | None) -> None:
     """1º fetch DENTRO da página (mesma pilha TLS/cookies do app; 5/5 no contrato 2518004, mesmo com o
     loop bloqueado entre anexos); 2º aba nova + evento de download (perdia 1 em 3 sem motivo visível)."""
@@ -125,7 +129,10 @@ async def _baixar(page, href: str, alvo: Path, tamanho: int | None) -> None:
                 import base64
                 alvo.write_bytes(base64.b64decode(out["b64"]))
                 return
-            raise PlaywrightError(f"fetch HTTP {out.get('status')}")
+            # 5xx do servidor é definitivo para ESTE anexo (medido 15/09: contrato 2601251) — não esperar 60 s numa aba
+            raise HttpDefinitivo(f"fetch HTTP {out.get('status')}")
+        except HttpDefinitivo:
+            raise
         except PlaywrightError as e1:
             ultimo = e1
             print(f"  fetch falhou ({str(e1)[:200]}) → aba nova", flush=True)
@@ -182,7 +189,7 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
         # FASE 1 — baixar TUDO antes de extrair qualquer texto: um subprocesso (pdftotext) entre dois
         # fetches deixa a página sem rede ("Failed to fetch" em 4 de 5; medido 13/09, thread ou não).
         baixados: list[tuple[dict, Path]] = []
-        for item in lista:
+        for item in list(lista):   # snapshot: a recarga da página (após erro) dispara o listener e estenderia a lista em laço
             nome = re.sub(r"[^\w.\-]+", "_", item.get("nomeArquivo") or f"anexo_{item['id']}")[:150]
             alvo = pasta / f"{item['id']}_{nome}"
             href = por_id.get(str(item["id"]))
@@ -196,6 +203,16 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                 saida.append({**item, "arquivo": None, "n_bytes": None, "texto": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"})
                 if diag:
                     diag(f"  {contrato} anexo {item['id']} ERRO {type(e).__name__}: {str(e)[:160]}")
+                # depois de um erro a página fica surda ("Failed to fetch" nos seguintes): recarrega o contrato (token novo)
+                try:
+                    await page.goto(CCON.format(c=contrato), wait_until="domcontentloaded", timeout=60000)
+                    await asyncio.sleep(2)
+                    await _resolver_desafio(page)
+                    await asyncio.sleep(4)
+                    hrefs = await page.evaluate("()=>[...document.querySelectorAll('a.btn-download')].map(a=>a.href)")
+                    por_id = {m.group(1): h for h in hrefs for m in [re.search(r"anexos/(\d+)/download", h)] if m}
+                except PlaywrightError:
+                    pass
             await asyncio.sleep(2)   # ritmo: um anexo por vez, sem rajada
         # FASE 2 — texto (pdftotext/OCR) com a rede já dispensada
         for item, alvo in baixados:
