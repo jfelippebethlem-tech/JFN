@@ -223,7 +223,8 @@ async def capturar_contrato(page, contrato: str, pasta: Path, *, diag=None) -> d
                     diag(f"  {contrato} anexo {item['id']} {item.get('tipoAnexoNome')} · {alvo.stat().st_size} B → {len(texto)} chars")
             except (OSError, subprocess.SubprocessError) as e:
                 saida.append({**item, "arquivo": alvo.name, "n_bytes": alvo.stat().st_size, "texto": None, "erro": f"{type(e).__name__}: {str(e)[:120]}"})
-        com_erro = sum(1 for a in saida if a.get("erro"))
+        # 5xx definitivo do servidor não devolve o contrato à fila (voltaria toda noite pelo mesmo erro)
+        com_erro = sum(1 for a in saida if a.get("erro") and not str(a["erro"]).startswith("HttpDefinitivo"))
         return {"anexos": saida, "erro": f"{com_erro} anexo(s) com erro" if com_erro else None}
     finally:
         page.remove_listener("response", _resp)
