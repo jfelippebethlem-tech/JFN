@@ -84,6 +84,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
 | `agenda_jobs` | jfn | http | `/api/agenda` | PRONTO | 'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado' |
 | `memoria` | jfn | http | `/api/memoria` | PRONTO | 'o que voce aprendeu', consolidar memoria |
+| `pcrj_saude` | jfn | http | `/api/pcrj/saude` | PRONTO | 'os pipelines da prefeitura estao rodando?', 'o que parou', 'saude do SEI municipal', 'por que nao chegou dado novo' |
 | `serie_societaria` | jfn | http | `/api/osint/serie_societaria` | PRONTO | 'desde quando temos historico societario', 'a serie cobre 2024?', antes de afirmar que alguem nao era socio |
 | `skill_detalhe` | yoda | cli | `telegram /skill <id>` | PRONTO | 'como funciona a skill X', detalhe de uma capacidade |
 | `skills` | yoda | cli | `telegram /skills [filtro]` | PRONTO | 'o que voce sabe fazer', 'quais skills', 'capacidades' |

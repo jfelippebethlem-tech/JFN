@@ -81,6 +81,11 @@ def _bloco_documentos(proc: dict) -> list[str]:
                           f"({d.get('unidade') or 'unidade n/d'}, {d.get('data') or 'data n/d'})")
         if len(vistos) > 60:
             linhas.append(f"    · … e mais {len(vistos) - 60} documentos listados na pesquisa pública")
+    ass = [a for a in (proc.get("assinantes") or []) if a.get("nome")]
+    if ass:
+        linhas.append("  Servidores que assinaram documentos no processo (matrícula → folha municipal): "
+                      + "; ".join(f"{a['nome']} (mat. {a['matricula']}, {a.get('sigla_ua') or a.get('orgao') or ''}, {a['n']} assinatura(s))"
+                                  for a in ass[:10]) + (" …" if len(ass) > 10 else ""))
     obtidos = proc.get("documentos_obtidos") or []
     if obtidos:
         linhas.append(f"  Já obtidos por fonte pública (não precisam ser reenviados): {len(obtidos)} documento(s) — "

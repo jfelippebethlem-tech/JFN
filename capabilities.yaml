@@ -45,6 +45,11 @@ capacidades:
      quando_usar: "'pede a integra do processo X', 'faz um pedido LAI', 'requerimento de informacao', 'e-SIC', 'quero os documentos desse contrato'",
      args: {alvo: "obrigatorio (processo|contrato|cnpj|nome)", esfera: "prefeitura|estado opcional", motivo: "opcional", telegram: "0|1 (1 = manda docx+md no Telegram)"}, retorno: "{ok,id,esfera,destinatario,canal,prazo_dias,itens_pedido,url_docx,url_md,texto,resumo,avisos[]}",
      menu: {grupo: "📨 Mandato", nome: "Requerimento LAI (um botão)", exemplo: "faz um pedido LAI do processo SME-PRO-2025/38233", ordem: 40}}
+  - {id: pcrj_saude, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/pcrj/saude, status: PRONTO,
+     descricao: "Saude dos pipelines da Prefeitura do Rio (catalogo SEI, busca livre, arvore/assinaturas, ContasRio, CCON, conferencia CRC, LAI): registros, frescor, erros nos logs, arquivos do shared-brain e veredito verde/amarelo/vermelho com a acao. Depuracao comeca por medir.",
+     quando_usar: "'os pipelines da prefeitura estao rodando?', 'o que parou', 'saude do SEI municipal', 'por que nao chegou dado novo'",
+     args: {md: "0|1 (1 = inclui laudo em markdown)"}, retorno: "{ok,gerado_em,grau_geral,etapas[],shared_brain[],logs[],extras}",
+     menu: {grupo: "🛠️ Sistema", nome: "Saúde dos pipelines PCRJ", exemplo: "os pipelines da Prefeitura estão rodando?", ordem: 90}}
   - {id: lai_prazos, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lai/prazos, status: PRONTO,
      descricao: "Pedidos LAI protocolados com prazo de resposta vencendo em ate N dias ou vencido — para cobrar o orgao ou recorrer (art. 15 da LAI)",
      quando_usar: "'quais LAI estao vencendo', 'cobrar resposta do e-SIC'", args: {dias: "int opcional (3)"}, retorno: "{ok,n,itens[]}",

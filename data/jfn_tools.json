@@ -232,6 +232,33 @@
     {
       "type": "function",
       "function": {
+        "name": "pcrj_saude",
+        "description": "Saude dos pipelines da Prefeitura do Rio (catalogo SEI, busca livre, arvore/assinaturas, ContasRio, CCON, conferencia CRC, LAI): registros, frescor, erros nos logs, arquivos do shared-brain e veredito verde/amarelo/vermelho com a acao. Depuracao comeca por medir. — usar quando: 'os pipelines da prefeitura estao rodando?', 'o que parou', 'saude do SEI municipal', 'por que nao chegou dado novo' — chamar: GET /api/pcrj/saude (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "md": {
+              "type": "string",
+              "description": "0|1 (1 = inclui laudo em markdown)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "sistema",
+        "tipo": "http",
+        "rota": "/api/pcrj/saude",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "lai_prazos",
         "description": "Pedidos LAI protocolados com prazo de resposta vencendo em ate N dias ou vencido — para cobrar o orgao ou recorrer (art. 15 da LAI) — usar quando: 'quais LAI estao vencendo', 'cobrar resposta do e-SIC' — chamar: GET /api/lai/prazos (base http://127.0.0.1:8000)",
         "parameters": {

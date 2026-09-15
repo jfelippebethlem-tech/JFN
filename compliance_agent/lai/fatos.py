@@ -93,6 +93,19 @@ def _documentos_obtidos(con, numero: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _assinantes(con, numero: str) -> list[dict]:
+    """Quem assinou no processo: matrícula → nome/órgão pela folha (pcrj_sei_assinante). Sem nome = matrícula só."""
+    if not _tem(con, "pcrj_sei_assinatura"):
+        return []
+    tem_nome = _tem(con, "pcrj_sei_assinante")
+    sql = ("SELECT a.matricula, count(*) AS n, min(a.quando) AS primeira, max(a.quando) AS ultima"
+           + (", s.nome, s.orgao, s.sigla_ua" if tem_nome else ", NULL AS nome, NULL AS orgao, NULL AS sigla_ua")
+           + " FROM pcrj_sei_assinatura a"
+           + (" LEFT JOIN pcrj_sei_assinante s ON s.matricula=a.matricula" if tem_nome else "")
+           + " WHERE upper(a.numero)=upper(?) GROUP BY a.matricula ORDER BY n DESC")
+    return [dict(r) for r in con.execute(sql, (numero,))]
+
+
 def _fiscais(con, contratos: list[str]) -> list[dict]:
     if not contratos or not _tem(con, "contasrio_fiscal"):
         return []
@@ -115,7 +128,8 @@ def fatos_do_alvo(alvo: str, db_path=None) -> dict:
         for p in processos[:12]:
             detalhe.append({"numero": p, "catalogo": _processo(con, p),
                             "documentos_vistos": _documentos_vistos(con, p),
-                            "documentos_obtidos": _documentos_obtidos(con, p)})
+                            "documentos_obtidos": _documentos_obtidos(con, p),
+                            "assinantes": _assinantes(con, p)})
         fiscais = _fiscais(con, [c["contrato"] for c in contratos][:40])
     finally:
         con.close()

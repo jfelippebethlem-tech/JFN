@@ -90,6 +90,8 @@ GET /api/intel/sancionadas_municipio -> api_intel_sancionadas_municipio
 GET /api/intel/sobrepreco -> api_intel_sobrepreco
 GET /api/intel/socio_oculto -> api_intel_socio_oculto
 GET /api/intel/socio_servidor -> api_intel_socio_servidor
+GET /api/lai/lista -> api_lai_lista
+GET /api/lai/prazos -> api_lai_prazos
 GET /api/laranjas -> api_laranjas
 GET /api/leaks -> api_leaks
 GET /api/lentes -> api_lentes
@@ -126,6 +128,7 @@ GET /api/pcrj/fantasmas -> api_pcrj_fantasmas
 GET /api/pcrj/gastos_achados -> api_pcrj_gastos_achados
 GET /api/pcrj/integra/{numero:path} -> api_pcrj_integra
 GET /api/pcrj/integras -> api_pcrj_integras
+GET /api/pcrj/saude -> api_pcrj_saude
 GET /api/perfil -> api_perfil
 GET /api/pericia/bateria -> api_pericia_bateria
 GET /api/pericia/cobertura -> api_pericia_cobertura
@@ -192,6 +195,8 @@ POST /api/hermes/missoes -> api_hermes_criar_missao
 POST /api/hermes/parar -> api_hermes_parar
 POST /api/hermes/relatorio -> api_hermes_relatorio
 POST /api/hermes/trabalhar -> api_hermes_trabalhar
+POST /api/lai/gerar -> api_lai_gerar
+POST /api/lai/status -> api_lai_status
 POST /api/mandato/minuta -> api_mandato_minuta
 POST /api/nucleo/comando -> api_nucleo_comando
 POST /api/ppp -> api_ppp

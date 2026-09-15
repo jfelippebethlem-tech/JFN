@@ -212,6 +212,37 @@ def ingerir_arvore(origem: Path | None = None, db_path=None) -> dict:
             "total_arvore": tot[0], "total_assinaturas": tot[1], "processos_com_arvore": tot[2]}
 
 
+def resolver_assinantes(db_path=None) -> dict:
+    """Matrícula do assinante no SEI (8 dígitos com zeros à esquerda) = matrícula da folha municipal
+    (pcrj_folha_pref) como inteiro: 3.207 de 3.828 casaram (84%, 15/09/2026). Materializa
+    pcrj_sei_assinante (matricula, nome, orgao, sigla_ua, competencia) — quem assina cada documento.
+    UMA varredura da folha (12,6 mi linhas) para uma tabela temporária; nunca um SELECT por matrícula."""
+    pcrj_db.inicializar(db_path)
+    con = pcrj_db.conectar(db_path)
+    try:
+        if not con.execute("SELECT 1 FROM sqlite_master WHERE name='pcrj_folha_pref'").fetchone():
+            return {"assinantes": 0, "motivo": "pcrj_folha_pref ausente"}
+        con.executescript("""CREATE TABLE IF NOT EXISTS pcrj_sei_assinante (
+            matricula TEXT PRIMARY KEY, matricula_int INTEGER, nome TEXT, orgao TEXT, sigla_ua TEXT, competencia TEXT);
+            CREATE TEMP TABLE _mats AS SELECT DISTINCT matricula, CAST(matricula AS INTEGER) AS m
+                FROM pcrj_sei_assinatura WHERE matricula GLOB '[0-9]*';
+            CREATE INDEX ix__mats_m ON _mats(m);""")
+        con.execute("""CREATE TEMP TABLE _f AS
+            SELECT CAST(f.matricula AS INTEGER) AS m, f.nome, f.orgao, f.sigla_ua, f.competencia
+            FROM pcrj_folha_pref f JOIN _mats x ON x.m = CAST(f.matricula AS INTEGER)
+            WHERE f.matricula GLOB '[0-9]*'""")
+        cur = con.execute("""INSERT OR REPLACE INTO pcrj_sei_assinante (matricula, matricula_int, nome, orgao, sigla_ua, competencia)
+            SELECT x.matricula, x.m, f.nome, f.orgao, f.sigla_ua, f.competencia FROM _mats x
+            JOIN _f f ON f.m = x.m
+            WHERE f.competencia = (SELECT max(competencia) FROM _f g WHERE g.m = x.m)""")
+        con.commit()
+        tot = con.execute("SELECT count(*) FROM pcrj_sei_assinante").fetchone()[0]
+        n_mats = con.execute("SELECT count(*) FROM _mats").fetchone()[0]
+    finally:
+        con.close()
+    return {"assinantes": cur.rowcount, "total": tot, "matriculas": n_mats}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--stats", action="store_true")
@@ -232,6 +263,7 @@ def main() -> None:
     print(json.dumps(ingerir_busca(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_enum(db_path=a.db), ensure_ascii=False, indent=2))
     print(json.dumps(ingerir_arvore(db_path=a.db), ensure_ascii=False, indent=2))
+    print(json.dumps(resolver_assinantes(db_path=a.db), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
