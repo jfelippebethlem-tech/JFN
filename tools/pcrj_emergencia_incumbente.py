@@ -47,6 +47,33 @@ def _codigo_orgao(orgao: str | None) -> str:
     return (orgao or "").split(" - ")[0].strip()
 
 
+_RX_PROC_QUALQUER = re.compile(r"\b(\d{6}\.\d{6}/20\d{2}-\d{2}|[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5})\b")
+
+
+def fundamento_ancorado(texto: str, processo: str, raio: int = 700, coletivo_a_partir_de: int = 4) -> str | None:
+    """Fundamento de emergência atribuível a ESTE processo.
+    O anexo do CCON pertence ao contrato por construção; o risco é a página COLETIVA do D.O. (anexo 'Extrato'),
+    onde o art. 75, VIII pode ser do extrato vizinho. Regra: documento com ≥4 processos distintos é coletivo →
+    exige que o nº de processo mais próximo do fundamento seja o nosso; caso contrário, aceita o 1º fundamento.
+    Medido 17/09: 14 'emergências' do GEO-RIO vinham de vizinhos numa página de D.O."""
+    if not texto:
+        return None
+    t = re.sub(r"(-)\s*\n?\s*(20\d{2}/\d{5})", r"\1\2", texto)          # "SME-PRO- 2025/38233" quebrado na linha
+    t = re.sub(r"(\d{6}\.\d{6}/)\s+(20\d{2}-\d{2})", r"\1\2", t)
+    alvo = (processo or "").upper()
+    distintos = {pm.group(1).upper() for pm in _RX_PROC_QUALQUER.finditer(t)}
+    coletivo = len(distintos) >= coletivo_a_partir_de
+    for m in _RX_EMERG.finditer(t):
+        if not coletivo:
+            return re.sub(r"\s+", " ", m.group(0))
+        ini = max(0, m.start() - raio)
+        janela = t[ini:m.end() + raio]
+        procs = sorted((abs(pm.start() - (m.start() - ini)), pm.group(1).upper()) for pm in _RX_PROC_QUALQUER.finditer(janela))
+        if procs and procs[0][1] == alvo:
+            return re.sub(r"\s+", " ", m.group(0))
+    return None
+
+
 def eh_emergencia(fundamentos: list[str]) -> str | None:
     """Devolve o fundamento que caracteriza emergência (75, VIII / 24, IV) ou None."""
     for f in fundamentos:
@@ -90,6 +117,7 @@ def calcular(db_path=None) -> dict:
     con.executescript(DDL)
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     n = {"🔴": 0, "🟡": 0, "⚪": 0}
+    n_desanc = 0
     try:
         if not con.execute("SELECT 1 FROM sqlite_master WHERE name='pcrj_doc_campos'").fetchone():
             return {"erro": "pcrj_doc_campos ausente — rode compliance_agent.pcrj.leitura_campos"}
@@ -106,6 +134,17 @@ def calcular(db_path=None) -> dict:
             fund = eh_emergencia([c["valor"] for c in campos if c["campo"] == "fundamento"])
             if not fund:
                 continue
+            # confirma no TEXTO dos documentos do processo que o fundamento é DESTE processo (não do vizinho no D.O.)
+            ancorado = None
+            for (texto,) in con.execute("SELECT texto FROM pcrj_processo_doc WHERE upper(numero_processo)=upper(?) AND texto IS NOT NULL",
+                                        (d["processo"],)):
+                ancorado = fundamento_ancorado(texto, d["processo"])
+                if ancorado:
+                    break
+            if not ancorado:
+                n_desanc += 1
+                continue
+            fund = ancorado
             certame = next((c["valor"] for c in campos if c["campo"] == "pregao"), None)
             prorrogada = any(c["campo"] == "termo_aditivo" for c in campos)
             anteriores = [dict(r) for r in con.execute(
@@ -124,7 +163,7 @@ def calcular(db_path=None) -> dict:
         con.commit()
     finally:
         con.close()
-    return {"dispensas": len(dispensas), "sinais": n}
+    return {"dispensas": len(dispensas), "sinais": n, "descartados_fundamento_de_vizinho": n_desanc}
 
 
 def listar(top: int = 20, db_path=None) -> list[dict]:
