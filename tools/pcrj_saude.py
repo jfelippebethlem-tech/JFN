@@ -62,6 +62,19 @@ def _tabela(con, tabela: str, col_tempo: str | None, filtro: str = "") -> dict:
     return {"existe": True, "n": n, "ultimo": ultimo}
 
 
+def _busca_completa(con) -> bool:
+    """Busca livre 'parada' não é falha quando todos os termos da lista já foram buscados."""
+    arq = SHARED / "sei_pcrj_busca_termos.txt"
+    if not arq.exists():
+        return False
+    termos = {ln.split("\t")[0].strip() for ln in arq.read_text(encoding="utf-8").splitlines() if ln.strip()}
+    try:
+        feitos = {r[0] for r in con.execute("SELECT DISTINCT termo FROM pcrj_sei_busca")}
+    except sqlite3.Error:
+        return False
+    return bool(termos) and len(termos - feitos) <= max(3, len(termos) // 20)
+
+
 def _veredito(n: int, ultimo: str | None, max_h: int | None) -> tuple[str, str]:
     if not n:
         return "🔴", "vazio"
@@ -104,6 +117,10 @@ def _shared() -> list[dict]:
         else:   # prioridade e termos são opcionais (só existem depois do 1º pedido LAI / 1ª lista): ausência é aviso, não falha
             saida.append({"arquivo": nome, "mb": 0, "idade_h": None,
                           "grau": "🟡" if nome in ("sei_pcrj_prioridade.txt", "sei_pcrj_busca_termos.txt") else "🔴"})
+    # listas de entrada (termos, pares, prioridade) são ESTÁTICAS por natureza: envelhecer não é falha
+    for s in saida:
+        if s["arquivo"].endswith(".txt") and s["grau"] == "🔴" and s["idade_h"] is not None:
+            s["grau"] = "🟡"
     return saida
 
 
@@ -133,6 +150,8 @@ def laudo(db_path=None) -> dict:
                 filtro = "WHERE sistema='SEI.RIO'"
             t = _tabela(con, tabela, col, filtro)
             grau, leitura = _veredito(t["n"], t["ultimo"], max_h)
+            if tabela == "pcrj_sei_busca" and grau != "🔴" and _busca_completa(con):
+                grau, leitura = "🟢", f"completa (todos os termos buscados; {leitura})"
             etapas.append({"etapa": nome, "n": t["n"], "ultimo": t["ultimo"], "grau": grau, "leitura": leitura, "acao": acao})
         extras = {}
         for k, sql in (("processos_com_arvore", "SELECT count(DISTINCT numero) FROM pcrj_sei_arvore"),

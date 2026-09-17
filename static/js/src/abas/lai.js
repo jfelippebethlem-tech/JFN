@@ -17,9 +17,10 @@ function _linha(it){
 }
 
 export async function renderLai(){
-  const [d, pz, sd] = await Promise.all([J('/api/lai/lista?limite=100', {tetoMs: 15000}),
+  const [d, pz, sd, em] = await Promise.all([J('/api/lai/lista?limite=100', {tetoMs: 15000}),
                                           J('/api/lai/prazos?dias=3', {tetoMs: 15000}),
-                                          J('/api/pcrj/saude', {tetoMs: 60000})]);
+                                          J('/api/pcrj/saude', {tetoMs: 60000}),
+                                          J('/api/pcrj/emergencias?top=40', {tetoMs: 20000})]);
   const itens = (d && d.itens) || [];
   const prot = itens.filter(x=>x.status==='protocolado'), venc = (pz && pz.itens) || itens.filter(x=>x.vencido);
   let h = cover('prefeitura','LAI automatizada','Um botão e o requerimento sai: o alvo vira pedido de acesso à informação fundamentado (Lei 12.527/2011), com os documentos SEI nomeados pelo número e os contratos do ContasRio. O protocolo no e-SIC é humano; aqui fica o texto pronto e o prazo.','📨');
@@ -43,6 +44,15 @@ export async function renderLai(){
     </div>
     <label style="display:block;margin-top:8px">Contexto do pedido (opcional)<br><input id="lai-motivo" class="inp" style="width:100%" placeholder="ex.: dispensa por emergência à incumbente enquanto lote do pregão estava sub judice"></label>
     <div id="lai-out" style="margin-top:10px"></div>`);
+  const emItens = (em && em.itens) || [];
+  if(emItens.length){
+    h += sec('Emergências à incumbente (autos lidos) — alvos de LAI', emItens.length);
+    h += `<div class="dim" style="margin-bottom:6px">Dispensa por emergência (art. 75, VIII) para quem já era contratado do mesmo órgão; 🔴 = com certame citado ou prorrogação. Indício, não acusação: o botão gera o pedido dos autos.</div>`;
+    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th></th><th>fornecedor</th><th>órgão</th><th>processo</th><th>pago</th><th>leitura</th><th></th></tr></thead><tbody>`
+      + emItens.map(e=>`<tr><td>${esc(e.grau)}</td><td>${esc((e.favorecido_nome||'').slice(0,40))}</td><td>${esc((e.orgao||'').slice(0,34))}</td><td>${esc(e.processo||'')}</td><td>${fmtN(Math.round(e.total_pago||0))}</td><td class="dim">${esc((e.detalhe||'').slice(0,120))}</td>`
+        + `<td><button type="button" class="btn ghost" data-lai="alvo" data-alvo="${esc(e.processo||e.contrato)}">📨 LAI</button></td></tr>`).join('')
+      + `</tbody></table></div>`;
+  }
   h += sec('Requerimentos', itens.length);
   h += itens.length
     ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>#</th><th>alvo</th><th>esfera</th><th>status</th><th>protocolo</th><th>prazo</th><th>arquivos</th><th>marcar</th></tr></thead><tbody>${itens.map(_linha).join('')}</tbody></table></div>`
@@ -90,5 +100,6 @@ export function ligarLai(){
     if(a==='gerar') laiGerar();
     else if(a==='status') laiStatus(Number(b.dataset.id), b.dataset.st);
     else if(a==='copiar'){ const t=$('lai-texto'); if(t && navigator.clipboard) navigator.clipboard.writeText(t.textContent); }
+    else if(a==='alvo'){ const i=$('lai-alvo'); if(i){ i.value=b.dataset.alvo||''; i.scrollIntoView({behavior:'smooth',block:'center'}); } laiGerar(); }
   });
 }

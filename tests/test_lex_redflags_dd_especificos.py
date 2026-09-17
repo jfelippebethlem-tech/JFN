@@ -88,3 +88,16 @@ def test_contratacao_direta_pcrj_como_regime():
     assert achado_contratacao_direta_pcrj({**base, "nome": "EMPRESA BRASILEIRA DE CORREIOS E TELEGRAFOS"}) is None
     assert "DD/DIRETA-PCRJ" in _RF and "DD/DIRETA-PCRJ" in _EXCULPATORIO and "DD/DIRETA-PCRJ" in _RF_DESTINATARIO
     assert "14.133" in _RF["DD/DIRETA-PCRJ"][1] and "revogada" in _RF["DD/DIRETA-PCRJ"][1]
+
+
+def test_emergencia_a_incumbente_sustenta_achado_mesmo_sem_regime_de_direta():
+    from compliance_agent.lex_conflito import achado_contratacao_direta_pcrj
+    base = {"n": 3, "diretas": 1, "valor": 5e6, "pago": 3e6, "valor_diretas": 2e6, "n_orgaos": 1, "orgaos": "SME",
+            "ano_min": 2024, "ano_max": 2026, "nome": "AGILE CORP", "maiores": [],
+            "emergencias": [{"grau": "🔴", "processo": "SME-PRO-2025/38233", "orgao": "1601 - SME", "pago": 23633526.63,
+                             "detalhe": "emergência (art. 75, VIII); incumbente desde 01/07/2025 (contrato 2508828); prorrogada"}]}
+    a = achado_contratacao_direta_pcrj(base)
+    assert a and a["grav"] == 3 and "SME-PRO-2025/38233" in a["obs"] and "incumbente" in a["obs"]
+    assert achado_contratacao_direta_pcrj({**base, "emergencias": [{**base["emergencias"][0], "grau": "🟡"}]}) is None
+    # com regime de direta E emergência vermelha → grav 4
+    assert achado_contratacao_direta_pcrj({**base, "n": 12, "diretas": 7})["grav"] == 4

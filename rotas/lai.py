@@ -82,3 +82,12 @@ async def api_pcrj_saude(md: int = 0):
     if md:
         l["md"] = _md(l)
     return JSONResponse(content={"ok": True, **l})
+
+
+@router.get("/api/pcrj/emergencias")
+async def api_pcrj_emergencias(top: int = 50):
+    """Emergências à incumbente na Prefeitura (tools/pcrj_emergencia_incumbente): fundamento lido nos autos ×
+    contrato anterior no mesmo órgão × certame citado × prorrogação. Alvos naturais de um pedido LAI."""
+    from tools.pcrj_emergencia_incumbente import listar
+    itens = await asyncio.to_thread(listar, top)
+    return JSONResponse(content={"ok": True, "n": len(itens), "itens": itens})

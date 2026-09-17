@@ -8296,10 +8296,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     return `<tr><td>#${it.id}</td><td>${esc(it.alvo)}</td><td>${esc(it.esfera || "")}</td><td>${esc(it.status)}${venc}</td><td>${esc(it.protocolo || "—")}</td><td>${esc(it.prazo_resposta || "—")}</td><td>${links || "—"}</td><td><button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="protocolado">protocolado</button> <button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="respondido">respondido</button> <button type="button" class="btn ghost" data-lai="status" data-id="${it.id}" data-st="negado">negado</button></td></tr>`;
   }
   async function renderLai() {
-    const [d, pz, sd] = await Promise.all([
+    const [d, pz, sd, em] = await Promise.all([
       J("/api/lai/lista?limite=100", { tetoMs: 15e3 }),
       J("/api/lai/prazos?dias=3", { tetoMs: 15e3 }),
-      J("/api/pcrj/saude", { tetoMs: 6e4 })
+      J("/api/pcrj/saude", { tetoMs: 6e4 }),
+      J("/api/pcrj/emergencias?top=40", { tetoMs: 2e4 })
     ]);
     const itens = d && d.itens || [];
     const prot = itens.filter((x) => x.status === "protocolado"), venc = pz && pz.itens || itens.filter((x) => x.vencido);
@@ -8322,6 +8323,12 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     </div>
     <label style="display:block;margin-top:8px">Contexto do pedido (opcional)<br><input id="lai-motivo" class="inp" style="width:100%" placeholder="ex.: dispensa por emergência à incumbente enquanto lote do pregão estava sub judice"></label>
     <div id="lai-out" style="margin-top:10px"></div>`);
+    const emItens = em && em.itens || [];
+    if (emItens.length) {
+      h += sec("Emergências à incumbente (autos lidos) — alvos de LAI", emItens.length);
+      h += `<div class="dim" style="margin-bottom:6px">Dispensa por emergência (art. 75, VIII) para quem já era contratado do mesmo órgão; 🔴 = com certame citado ou prorrogação. Indício, não acusação: o botão gera o pedido dos autos.</div>`;
+      h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th></th><th>fornecedor</th><th>órgão</th><th>processo</th><th>pago</th><th>leitura</th><th></th></tr></thead><tbody>` + emItens.map((e) => `<tr><td>${esc(e.grau)}</td><td>${esc((e.favorecido_nome || "").slice(0, 40))}</td><td>${esc((e.orgao || "").slice(0, 34))}</td><td>${esc(e.processo || "")}</td><td>${fmtN(Math.round(e.total_pago || 0))}</td><td class="dim">${esc((e.detalhe || "").slice(0, 120))}</td><td><button type="button" class="btn ghost" data-lai="alvo" data-alvo="${esc(e.processo || e.contrato)}">📨 LAI</button></td></tr>`).join("") + `</tbody></table></div>`;
+    }
     h += sec("Requerimentos", itens.length);
     h += itens.length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>#</th><th>alvo</th><th>esfera</th><th>status</th><th>protocolo</th><th>prazo</th><th>arquivos</th><th>marcar</th></tr></thead><tbody>${itens.map(_linha).join("")}</tbody></table></div>` : card('<div class="dim">Nenhum requerimento ainda. Informe um alvo acima.</div>');
     h += `<div class="dim" style="margin-top:8px">Requerente: <code>data/lai_requerente.json</code> (nome, cargo, CPF, e-mail) — sem ele o texto sai com «placeholders». Canais: Carioca Digital → Acesso à Informação (PCRJ); e-SIC RJ (Estado).</div>`;
@@ -8391,6 +8398,13 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       else if (a === "copiar") {
         const t = $("lai-texto");
         if (t && navigator.clipboard) navigator.clipboard.writeText(t.textContent);
+      } else if (a === "alvo") {
+        const i = $("lai-alvo");
+        if (i) {
+          i.value = b.dataset.alvo || "";
+          i.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        laiGerar();
       }
     });
   }

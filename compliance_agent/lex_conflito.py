@@ -564,7 +564,17 @@ def contratos_pcrj(cnpj: str | None) -> dict | None:
         con.close()
     if not r or not r[0]:
         return None
-    return {"n": r[0], "diretas": r[1] or 0, "valor": r[2] or 0.0, "pago": r[3] or 0.0, "valor_diretas": r[4] or 0.0,
+    emerg = []
+    try:
+        con2 = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=30)
+        if con2.execute("SELECT 1 FROM sqlite_master WHERE name='pcrj_emergencia_sinal'").fetchone():
+            emerg = [{"grau": g, "processo": p, "orgao": o, "pago": v or 0.0, "detalhe": d} for g, p, o, v, d in con2.execute(
+                "SELECT grau, processo, orgao, total_pago, detalhe FROM pcrj_emergencia_sinal WHERE favorecido_doc=? "
+                "AND grau IN ('🔴','🟡') ORDER BY CASE grau WHEN '🔴' THEN 0 ELSE 1 END, coalesce(total_pago,0) DESC", (dig,))]
+        con2.close()
+    except sqlite3.Error:
+        emerg = []
+    return {"n": r[0], "diretas": r[1] or 0, "valor": r[2] or 0.0, "pago": r[3] or 0.0, "valor_diretas": r[4] or 0.0, "emergencias": emerg,
             "n_orgaos": r[5], "orgaos": (r[6] or "")[:200], "ano_min": r[7], "ano_max": r[8], "nome": r[9],
             "maiores": [{"ano": t[0], "orgao": t[1], "forma": t[2], "objeto": (t[3] or "")[:160], "valor": t[4] or 0.0,
                          "pago": t[5] or 0.0, "processo": t[6], "url_ccon": t[7]} for t in top]}
@@ -588,16 +598,30 @@ def achado_contratacao_direta_pcrj(cp: dict | None) -> dict | None:
     """Contratação direta como regime no MUNICÍPIO: 5+ contratos e metade ou mais por inexigibilidade/
     dispensa (grav 3; 10+ e 2/3 = grav 4). Espelha achado_emergencia_siga para a esfera municipal.
     Estatal/concessionária/ente público não conta (contrata direto por natureza)."""
-    if not cp or cp["n"] < 5 or _eh_estatal(cp.get("nome")):
+    if not cp or _eh_estatal(cp.get("nome")):
         return None
+    emerg = cp.get("emergencias") or []
+    vermelhas = [e for e in emerg if e["grau"] == "🔴"]
+    if cp["n"] < 5 or (cp["diretas"] / cp["n"]) < 0.5:
+        # sem regime de contratação direta, a emergência à incumbente (autos lidos) sustenta achado sozinha
+        if not vermelhas:
+            return None
+        e = vermelhas[0]
+        return {"rf": "DD/DIRETA-PCRJ", "grav": 3,
+                "obs": (f"**Emergência à incumbente na Prefeitura do Rio** (processo {e['processo']}, {e['orgao'][:60]}, pago R$ {_moeda(e['pago'])}): "
+                        f"{e['detalhe']}. A leitura dos autos (fundamento art. 75, VIII) mostra contratação direta de quem já era "
+                        "contratado do órgão; emergência exige fato imprevisível, não certame travado ou planejamento falho "
+                        "(art. 75, §6º, Lei 14.133) — indício, não acusação.")}
     share = cp["diretas"] / cp["n"]
-    if share < 0.5:
-        return None
     grav = 4 if (cp["diretas"] >= 10 and share >= 2 / 3) else 3
+    if vermelhas:
+        grav = 4
     procs = [m["processo"] for m in cp["maiores"] if m.get("processo")][:3]
     return {"rf": "DD/DIRETA-PCRJ", "grav": grav,
             "obs": (f"**{cp['diretas']} de {cp['n']} contratos com a Prefeitura do Rio ({cp['ano_min']}–{cp['ano_max']}) são por "
                     f"contratação direta (inexigibilidade/dispensa)**, R$ {_moeda(cp['valor_diretas'])} de R$ {_moeda(cp['valor'])} "
                     f"(pago pelo Município: R$ {_moeda(cp['pago'])}); {cp['n_orgaos']} órgão(s): {cp['orgaos'][:120]}. "
-                    f"Processos: {', '.join(procs) or 'n/d'}. A contratação direta é excepcional (arts. 74-75 Lei 14.133/2021) e a "
+                    f"Processos: {', '.join(procs) or 'n/d'}. "
+                    + (f"**{len(vermelhas)} emergência(s) à incumbente com autos lidos** ({'; '.join(e['processo'] for e in vermelhas[:3])}). " if vermelhas else "")
+                    + "A contratação direta é excepcional (arts. 74-75 Lei 14.133/2021) e a "
                     "habitualidade com o mesmo fornecedor pede a motivação de cada inexigibilidade — indício, não acusação.")}
