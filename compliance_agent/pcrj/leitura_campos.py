@@ -59,13 +59,37 @@ def _trecho(texto: str, m: re.Match, raio: int = 90) -> str:
     return re.sub(r"\s+", " ", texto[max(0, m.start() - raio):m.end() + raio]).strip()
 
 
-def extrair(texto: str) -> list[dict]:
-    """→ [{campo, valor, trecho}], sem repetição de (campo, valor). Nunca inventa: só o que casou."""
+_RX_PROC_QUALQUER = re.compile(r"\b(\d{6}\.\d{6}/20\d{2}-\d{2}|[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5})\b")
+COLETIVO_A_PARTIR_DE = 4   # documento com ≥4 processos distintos = página coletiva do D.O. (extratos lado a lado)
+
+
+def _normalizar(texto: str) -> str:
     t = re.sub(r"[ \t]+", " ", texto or "")
+    t = re.sub(r"(-)\s*\n?\s*(20\d{2}/\d{5})", r"\1\2", t)          # "SME-PRO- 2025/38233" quebrado na linha
+    return re.sub(r"(\d{6}\.\d{6}/)\s+(20\d{2}-\d{2})", r"\1\2", t)
+
+
+def extrair(texto: str, processo: str | None = None, raio: int = 700) -> list[dict]:
+    """→ [{campo, valor, trecho}], sem repetição de (campo, valor). Nunca inventa: só o que casou.
+    Com `processo` informado e documento COLETIVO (≥4 processos distintos — página do D.O.), cada campo só
+    vale se o nº de processo mais próximo do trecho for o próprio (medido 17/09: o art. 75, VIII do vizinho
+    virava emergência nossa). O campo `processo` nunca é filtrado (é a âncora)."""
+    t = _normalizar(texto)
     saida, vistos = [], set()
+    alvo = (processo or "").upper()
+    ancoras = [(pm.start(), pm.group(1).upper()) for pm in _RX_PROC_QUALQUER.finditer(t)]
+    coletivo = bool(alvo) and len({a for _, a in ancoras}) >= COLETIVO_A_PARTIR_DE
+
+    def _do_alvo(m) -> bool:
+        if not coletivo:
+            return True
+        perto = [(abs(pos - m.start()), a) for pos, a in ancoras if abs(pos - m.start()) <= raio]
+        return bool(perto) and min(perto)[1] == alvo
 
     def add(campo, valor, m):
         valor = str(valor).strip()
+        if campo != "processo" and not _do_alvo(m):
+            return
         if valor and (campo, valor) not in vistos:
             vistos.add((campo, valor))
             saida.append({"campo": campo, "valor": valor, "trecho": _trecho(t, m)})
@@ -118,7 +142,7 @@ def ler_pendentes(db_path=None, limite: int = 5000) -> dict:
             "ON l.numero_processo=d.numero_processo AND l.seq=d.seq WHERE l.seq IS NULL AND d.texto IS NOT NULL "
             "AND length(d.texto) >= 40 LIMIT ?", (limite,)).fetchall()
         for numero, seq, texto in rows:
-            campos = extrair(texto)
+            campos = extrair(texto, numero)
             con.executemany("INSERT OR IGNORE INTO pcrj_doc_campos VALUES (?,?,?,?,?,?)",
                             [(numero, seq, c["campo"], c["valor"], c["trecho"], agora) for c in campos])
             con.execute("INSERT OR REPLACE INTO pcrj_doc_lido VALUES (?,?,?,?)", (numero, seq, len(campos), agora))

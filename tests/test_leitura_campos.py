@@ -51,3 +51,18 @@ def test_ler_pendentes_e_idempotente(tmp_path):
     assert r1["documentos_lidos"] == 1 and r1["campos"] >= 10 and r2["documentos_lidos"] == 0
     cp = campos_do_processo("SME-PRO-2025/38233", db)
     assert cp["contrato_numero"][0]["valor"] == "167/2025" and "valor_total" in cp
+
+
+def test_pagina_coletiva_do_diario_so_atribui_o_que_esta_perto_do_proprio_processo():
+    pagina = ("EXTRATO Processo 005600.000386/2026-51 Partes: GEO-RIO e R T C ENGENHARIA. Fundamento: art. 74, I da Lei 14.133/2021. "
+              "Valor total de R$ 1.000,00. " + "x" * 300 +
+              " EXTRATO Processo 005600.000111/2026-11 Partes: A LTDA. " + "y" * 300 +
+              " EXTRATO Processo 005600.000222/2026-22 Partes: B LTDA. " + "z" * 300 +
+              " EXTRATO Processo 005600.000999/2026-00 Partes: OUTRA LTDA, conforme o Art. 75, Inciso VIII da Lei 14.133/2021. "
+              "Valor total de R$ 9.999,00.")
+    c = {(x["campo"], x["valor"]) for x in extrair(pagina, "005600.000386/2026-51")}
+    assert ("valor_total", "1000.00") in c and ("valor_total", "9999.00") not in c
+    assert any(k == "fundamento" and "74" in v for k, v in c) and not any(k == "fundamento" and "75" in v for k, v in c)
+    assert ("processo", "005600.000999/2026-00") in c            # âncoras continuam registradas
+    # sem processo informado, ou documento próprio (não coletivo): comportamento antigo
+    assert ("valor_total", "9999.00") in {(x["campo"], x["valor"]) for x in extrair(pagina)}
