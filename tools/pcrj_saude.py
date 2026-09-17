@@ -32,6 +32,8 @@ ETAPAS_VM1 = [
     ("fiscais ContasRio (contasrio_fiscal)", "contasrio_fiscal", "coletado_em", 24 * 8, "idem, --vista fiscais"),
     ("íntegras CCON (pcrj_processo_doc ccon_*)", "pcrj_processo_doc", "coletado_em", 48, "VM-2: ccon_anexos.py (passo 4c); shared-brain/ccon.db → contasrio_ingest"),
     ("conferência CRC (pcrj_processo_doc sei_conferencia)", "pcrj_processo_doc", "coletado_em", 24 * 8, "VM-1: pcrj_sei_crc_harvest (seg 08:30) → VM-2 sei_pcrj_conferir.py (passo 4b)"),
+    ("leitura estruturada (pcrj_doc_campos)", "pcrj_doc_campos", "lido_em", 48, "VM-1: cron 02:55 compliance_agent.pcrj.leitura_campos"),
+    ("emergência à incumbente (pcrj_emergencia_sinal)", "pcrj_emergencia_sinal", "gerado_em", 48, "VM-1: cron 03:05 tools.pcrj_emergencia_incumbente"),
     ("requerimentos LAI (data/lai.db)", None, None, None, "aba Prefeitura › LAI ou POST /api/lai/gerar"),
 ]
 LOGS = [

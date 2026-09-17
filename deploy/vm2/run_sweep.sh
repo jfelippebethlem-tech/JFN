@@ -45,7 +45,7 @@ fi
 pgrep -f "^\.venv/bin/python sei_pcrj_conferir" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python sei_pcrj_conferir.py --max 200 --segundos 1800 >> data/sweep_cron.log 2>&1
 
 # 4c) anexos (inteiro teor) dos contratos municipais via CCON — contratos vindos dos CSVs do ContasRio
-pgrep -f "^\.venv/bin/python ccon_anexos" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python ccon_anexos.py --max 60 --segundos 1800 >> data/sweep_cron.log 2>&1
+pgrep -f "^\.venv/bin/python ccon_anexos" >/dev/null || nice -n 15 timeout -k 30 3100 .venv/bin/python ccon_anexos.py --max 150 --segundos 3000 >> data/sweep_cron.log 2>&1
 
 # 4d) busca LIVRE no Solr público do SEI (termos vindos da VM-1): descobre processos e documentos por alvo
 pgrep -f "^\.venv/bin/python sei_pcrj_busca" >/dev/null || nice -n 15 timeout -k 30 1900 .venv/bin/python sei_pcrj_busca.py --max-termos 60 --segundos 1800 >> data/sweep_cron.log 2>&1
