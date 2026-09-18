@@ -49,6 +49,10 @@ capacidades:
      descricao: "Saude dos pipelines da Prefeitura do Rio (catalogo SEI, busca livre, arvore/assinaturas, ContasRio, CCON, conferencia CRC, LAI): registros, frescor, erros nos logs, arquivos do shared-brain e veredito verde/amarelo/vermelho com a acao. Depuracao comeca por medir.",
      quando_usar: "'os pipelines da prefeitura estao rodando?', 'o que parou', 'saude do SEI municipal', 'por que nao chegou dado novo'",
      args: {md: "0|1 (1 = inclui laudo em markdown)"}, retorno: "{ok,gerado_em,grau_geral,etapas[],shared_brain[],logs[],extras}"}
+  - {id: pcrj_emergencias, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/pcrj/emergencias, status: PRONTO,
+     descricao: "Emergencias a INCUMBENTE na Prefeitura do Rio: dispensa por emergencia (art. 75, VIII, lida nos autos) para quem ja era contratado do mesmo orgao, com certame citado, prorrogacao e o FATO declarado (desastre / certame travado / nao declarado). Vermelho = incumbente + certame ou prorrogacao sem desastre declarado. Indicio, nao acusacao; alvo natural de LAI.",
+     quando_usar: "'emergencias da prefeitura', 'dispensa emergencial para o mesmo fornecedor', 'quem ganhou emergencia sendo incumbente'",
+     args: {top: "int opcional (50)"}, retorno: "{ok,n,itens[{grau,favorecido_nome,orgao,processo,total_pago,motivo,detalhe}]}"}
   - {id: lai_prazos, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/lai/prazos, status: PRONTO,
      descricao: "Pedidos LAI protocolados com prazo de resposta vencendo em ate N dias ou vencido — para cobrar o orgao ou recorrer (art. 15 da LAI)",
      quando_usar: "'quais LAI estao vencendo', 'cobrar resposta do e-SIC'", args: {dias: "int opcional (3)"}, retorno: "{ok,n,itens[]}"}

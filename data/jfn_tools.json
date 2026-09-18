@@ -259,6 +259,33 @@
     {
       "type": "function",
       "function": {
+        "name": "pcrj_emergencias",
+        "description": "Emergencias a INCUMBENTE na Prefeitura do Rio: dispensa por emergencia (art. 75, VIII, lida nos autos) para quem ja era contratado do mesmo orgao, com certame citado, prorrogacao e o FATO declarado (desastre / certame travado / nao declarado). Vermelho = incumbente + certame ou prorrogacao sem desastre declarado. Indicio, nao acusacao; alvo natural de LAI. — usar quando: 'emergencias da prefeitura', 'dispensa emergencial para o mesmo fornecedor', 'quem ganhou emergencia sendo incumbente' — chamar: GET /api/pcrj/emergencias (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "integer",
+              "description": "int opcional (50)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/pcrj/emergencias",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "lai_prazos",
         "description": "Pedidos LAI protocolados com prazo de resposta vencendo em ate N dias ou vencido — para cobrar o orgao ou recorrer (art. 15 da LAI) — usar quando: 'quais LAI estao vencendo', 'cobrar resposta do e-SIC' — chamar: GET /api/lai/prazos (base http://127.0.0.1:8000)",
         "parameters": {

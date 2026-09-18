@@ -31,6 +31,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `missao_trabalhar` | jfn | http | `/api/hermes/trabalhar` | PRONTO | 'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono) |
 | `nucleo_pericia` | jfn | http | `/api/nucleo/comando` | PRONTO | 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'essa empresa e fantasma/laranja?', 'fantasma cnpj X', 'fases da contratacao', 'como foi o certame <n PNCP>?' |
 | `pcrj_dossie_comissionados` | jfn | cli | `tools/pcrj_finalizar.py` | PRONTO | 'dossie dos comissionados', 'relatorio completo dos gabinetes', 'finaliza o sweep da camara' |
+| `pcrj_emergencias` | jfn | http | `/api/pcrj/emergencias` | PRONTO | 'emergencias da prefeitura', 'dispensa emergencial para o mesmo fornecedor', 'quem ganhou emergencia sendo incumbente' |
 | `pcrj_fantasmas` | jfn | http | `/api/pcrj/fantasmas` | PRONTO | 'servidores fantasmas na prefeitura/camara', 'quem tem sinal de fantasma', 'faixa forte de fantasma' |
 | `pcrj_gastos_achados` | jfn | http | `/api/pcrj/gastos_achados` | PRONTO | 'quais os achados de gastos da prefeitura', 'me mostra o fracionamento da PCRJ agora' |
 | `pcrj_gastos_coletar` | jfn | cli | `tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]` | PRONTO | 'atualizar gastos/contratos da prefeitura do Rio' |

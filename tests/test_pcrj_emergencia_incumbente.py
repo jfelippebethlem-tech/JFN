@@ -22,6 +22,15 @@ def test_incumbencia_exige_contrato_anterior_no_mesmo_orgao_dentro_da_janela():
     assert incumbencia([], "01/07/2025") is None and incumbencia(ant, None) is None
 
 
+def test_motivo_declarado_muda_o_grau():
+    from tools.pcrj_emergencia_incumbente import motivo_emergencia
+    assert motivo_emergencia(["fortes chuvas … deslizamento de encosta … deslizamento"], None) == "desastre"
+    assert motivo_emergencia(["mandado de segurança impetrado pela Infinity Rio … suspensão do certame"], "90209/2025") == "litigio"
+    assert motivo_emergencia(["contrato de serviços continuados"], None) == "nao_declarado"
+    assert graduar("art. 75, VIII", {"contrato": "A"}, "x", True, "desastre") == "🟡"
+    assert graduar("art. 75, VIII", {"contrato": "A"}, "x", True, "litigio") == "🔴"
+
+
 def test_graduacao():
     assert graduar(None, {"contrato": "A"}, "90209/2025", True) is None
     assert graduar("art. 75, VIII", {"contrato": "A"}, "90209/2025", False) == "🔴"
@@ -46,13 +55,14 @@ def test_calcular_no_caso_agile(tmp_path):
     INSERT INTO pcrj_doc_campos VALUES ('SME-PRO-2025/38233',3618,'termo_aditivo','1º TA 119/2025','t','x');
     CREATE TABLE pcrj_processo_doc (numero_processo, seq, tipo, titulo, texto, url, coletado_em);
     INSERT INTO pcrj_processo_doc VALUES ('SME-PRO-2025/38233',12408,'ccon_termo_de_referencia','TR',
-        'TERMO DE REFERÊNCIA … DISPENSA DE LICITAÇÃO POR EMERGÊNCIA, com fundamento legal no art. 75, inciso VIII, da Lei Federal nº 14.133/2021 … processo administrativo SME-PRO- 2025/38233','u','x');
+        'TERMO DE REFERÊNCIA … DISPENSA DE LICITAÇÃO POR EMERGÊNCIA, com fundamento legal no art. 75, inciso VIII, da Lei Federal nº 14.133/2021 … mandado de segurança impetrado pela Infinity Rio … processo administrativo SME-PRO- 2025/38233','u','x');
     """)
     c.commit(); c.close()
     r = calcular(db)
     assert r["sinais"]["🔴"] == 1
     s = listar(5, db)[0]
     assert s["grau"] == "🔴" and s["incumbente_contrato"] == "2409356" and s["certame_citado"] == "90209/2025" and s["prorrogada"] == 1
+    assert s["motivo"] == "litigio"
 
 
 def test_fundamento_do_vizinho_na_pagina_do_diario_nao_conta():

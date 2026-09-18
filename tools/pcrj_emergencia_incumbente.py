@@ -32,7 +32,7 @@ JANELA_INCUMBENCIA_DIAS = 730
 DDL = """CREATE TABLE IF NOT EXISTS pcrj_emergencia_sinal (
     contrato TEXT PRIMARY KEY, processo TEXT, favorecido_doc TEXT, favorecido_nome TEXT, orgao TEXT, ano INTEGER,
     valor_atualizado REAL, total_pago REAL, vigencia_ini TEXT, vigencia_fim TEXT, fundamento TEXT,
-    incumbente_contrato TEXT, incumbente_desde TEXT, certame_citado TEXT, prorrogada INTEGER, grau TEXT,
+    incumbente_contrato TEXT, incumbente_desde TEXT, certame_citado TEXT, prorrogada INTEGER, motivo TEXT, grau TEXT,
     detalhe TEXT, gerado_em TEXT);"""
 
 
@@ -45,6 +45,25 @@ def _data(s: str | None):
 
 def _codigo_orgao(orgao: str | None) -> str:
     return (orgao or "").split(" - ")[0].strip()
+
+
+_RX_DESASTRE = re.compile(r"deslizamento|desabamento|rompimento|chuvas?\b|inunda[çc][ãa]o|alagamento|incêndio|vendaval", re.I)
+_RX_LITIGIO = re.compile(r"mandado\s+de\s+seguran[çc]a|agravo\s+de\s+instrumento|suspens[ãa]o\s+do\s+(?:certame|preg[ãa]o|lote)|desclassifica[çc][ãa]o", re.I)
+
+
+def motivo_emergencia(textos: list[str], certame: str | None) -> str:
+    """O que os autos DECLARAM como fato da emergência: 'desastre' (chuva, deslizamento, desabamento — fato
+    imprevisível de verdade), 'litigio' (certame travado por mandado de segurança/liminar — planejamento, não
+    imprevisto) ou 'nao_declarado'. Medido 18/09: o bloco GEO-RIO 2026 é 'desastre' (deslizamentos); a AGILE é 'litigio'."""
+    des = lit = 0
+    for t in textos:
+        des += len(_RX_DESASTRE.findall(t or ""))
+        lit += len(_RX_LITIGIO.findall(t or ""))
+    if lit >= 1:
+        return "litigio"
+    if des >= 2:
+        return "desastre"
+    return "nao_declarado"
 
 
 _RX_PROC_QUALQUER = re.compile(r"\b(\d{6}\.\d{6}/20\d{2}-\d{2}|[A-Z]{2,5}-[A-Z]{3}-20\d{2}/\d{5})\b")
@@ -100,10 +119,13 @@ def incumbencia(anteriores: list[dict], vigencia_ini: str | None, janela_dias: i
     return melhor
 
 
-def graduar(emergencia: str | None, incumbente: dict | None, certame: str | None, prorrogada: bool) -> str | None:
+def graduar(emergencia: str | None, incumbente: dict | None, certame: str | None, prorrogada: bool,
+            motivo: str = "nao_declarado") -> str | None:
+    """🔴 incumbente + (certame ou prorrogação) e o fato declarado NÃO é desastre; 🟡 incumbente (ou desastre
+    declarado, que é a hipótese inocente legítima do art. 75, VIII); ⚪ sem incumbência."""
     if not emergencia:
         return None
-    if incumbente and (certame or prorrogada):
+    if incumbente and (certame or prorrogada) and motivo != "desastre":
         return "🔴"
     if incumbente:
         return "🟡"
@@ -125,7 +147,8 @@ def calcular(db_path=None) -> dict:
             "SELECT contrato, processo, favorecido_doc, favorecido_nome, orgao, ano, valor_atualizado, total_pago, "
             "vigencia_ini, vigencia_fim FROM contasrio_contrato WHERE forma_contratacao LIKE 'Contratação Direta%' "
             "AND processo IS NOT NULL AND processo <> ''").fetchall()
-        con.execute("DELETE FROM pcrj_emergencia_sinal")
+        con.execute("DROP TABLE IF EXISTS pcrj_emergencia_sinal")   # esquema evolui (motivo); recalculado inteiro toda noite
+        con.executescript(DDL)
         for d in dispensas:
             campos = con.execute("SELECT campo, valor FROM pcrj_doc_campos WHERE upper(numero_processo)=upper(?) "
                                  "AND campo IN ('fundamento','pregao','termo_aditivo')", (d["processo"],)).fetchall()
@@ -136,8 +159,9 @@ def calcular(db_path=None) -> dict:
                 continue
             # confirma no TEXTO dos documentos do processo que o fundamento é DESTE processo (não do vizinho no D.O.)
             ancorado = None
-            for (texto,) in con.execute("SELECT texto FROM pcrj_processo_doc WHERE upper(numero_processo)=upper(?) AND texto IS NOT NULL",
-                                        (d["processo"],)):
+            textos = [t for (t,) in con.execute("SELECT texto FROM pcrj_processo_doc WHERE upper(numero_processo)=upper(?) AND texto IS NOT NULL",
+                                                (d["processo"],))]
+            for texto in textos:
                 ancorado = fundamento_ancorado(texto, d["processo"])
                 if ancorado:
                     break
@@ -147,19 +171,22 @@ def calcular(db_path=None) -> dict:
             fund = ancorado
             certame = next((c["valor"] for c in campos if c["campo"] == "pregao"), None)
             prorrogada = any(c["campo"] == "termo_aditivo" for c in campos)
+            motivo = motivo_emergencia(textos, certame)
             anteriores = [dict(r) for r in con.execute(
                 "SELECT contrato, vigencia_ini, vigencia_fim FROM contasrio_contrato WHERE favorecido_doc=? AND contrato<>? "
                 "AND substr(orgao,1,4)=?", (d["favorecido_doc"], d["contrato"], _codigo_orgao(d["orgao"])))]
             inc = incumbencia(anteriores, d["vigencia_ini"])
-            grau = graduar(fund, inc, certame, prorrogada)
+            grau = graduar(fund, inc, certame, prorrogada, motivo)
             n[grau] += 1
+            rot = {"desastre": "fato declarado: desastre (chuva/deslizamento)", "litigio": "fato declarado: certame travado (mandado de segurança/liminar)",
+                   "nao_declarado": "fato da emergência não localizado nos autos lidos"}[motivo]
             detalhe = (f"emergência ({fund}); " + (f"incumbente desde {inc['vigencia_ini']} (contrato {inc['contrato']}); " if inc else "sem contrato anterior no órgão; ")
-                       + (f"autos citam pregão {certame}; " if certame else "") + ("prorrogada por termo aditivo" if prorrogada else "sem aditivo lido"))
-            con.execute("INSERT OR REPLACE INTO pcrj_emergencia_sinal VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                       + (f"autos citam pregão {certame}; " if certame else "") + ("prorrogada por termo aditivo; " if prorrogada else "sem aditivo lido; ") + rot)
+            con.execute("INSERT OR REPLACE INTO pcrj_emergencia_sinal VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (d["contrato"], d["processo"], d["favorecido_doc"], d["favorecido_nome"], d["orgao"], d["ano"],
                          d["valor_atualizado"], d["total_pago"], d["vigencia_ini"], d["vigencia_fim"], fund,
                          inc["contrato"] if inc else None, inc["vigencia_ini"] if inc else None, certame, int(prorrogada),
-                         grau, detalhe, agora))
+                         motivo, grau, detalhe, agora))
         con.commit()
     finally:
         con.close()
