@@ -160,6 +160,20 @@ const CAPS_MESTRAS = [
   "descricao": "Anomalias em OBs (+Benford na Onda 3)"
  },
  {
+  "id": "lentes_cruzadas",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Lentes cruzadas (empresa em 2+ detectores)",
+  "cmd": "",
+  "exemplo": "quais empresas acendem em mais de uma lente?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/lentes",
+  "ordem": 25,
+  "descricao": "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao"
+ },
+ {
   "id": "responsaveis_processo",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",
@@ -172,6 +186,20 @@ const CAPS_MESTRAS = [
   "rota": "/api/responsaveis",
   "ordem": 25,
   "descricao": "Quem responde por um processo SEI: ordenador de despesas, gestor e fiscal, com ID funcional e cargo"
+ },
+ {
+  "id": "tac_recorrente",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "TAC recorrente (quem recebe sem contrato)",
+  "cmd": "",
+  "exemplo": "quem mais recebe por Termo de Ajuste de Contas?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/doerj/tac_recorrente",
+  "ordem": 25,
+  "descricao": "Quem o Estado paga por Termo de Ajuste de Contas (servico prestado SEM contrato regular) no DOERJ: por fornecedor (n, soma, periodo, processos) + sinais de favorecimento (agente pu"
  },
  {
   "id": "processo_360",
@@ -188,18 +216,32 @@ const CAPS_MESTRAS = [
   "descricao": "Avaliacao 360 do PROCESSO como um todo (fases, ordem dos marcos, pericia A1-A5, detectores P/E/J/C/X, acatamento de pareceres com suficiencia do emissor, score de convergencia)"
  },
  {
-  "id": "processo_360_avaliar",
+  "id": "imprensa_orgaos",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",
   "grupo_rot": "Investigação",
-  "nome": "Avaliar um processo SEI (360)",
+  "nome": "Imprensa por órgão (termos de risco)",
   "cmd": "",
-  "exemplo": "avaliar o processo SEI-070026/000410/2021",
+  "exemplo": "o que saiu na imprensa sobre a Fundação Saúde?",
   "tipo": "http",
-  "metodo": "POST",
-  "rota": "/api/processo/avaliar",
+  "metodo": "GET",
+  "rota": "/api/imprensa/orgaos",
+  "ordem": 26,
+  "descricao": "O que a imprensa diz dos ORGAOS (Google News RSS, sem chave): noticias por orgao nos ultimos N dias, marcadas quando o titulo traz termo de risco (fraude, operacao, TCE, MP, propin"
+ },
+ {
+  "id": "lentes_municipais",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Lentes municipais (Prefeitura do Rio)",
+  "cmd": "",
+  "exemplo": "o que a Prefeitura do Rio pagou fora da curva?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/lentes",
   "ordem": 27,
-  "descricao": "Dispara a avaliacao 360 de um processo SEI em background (exige processo arquivado; com_llm liga o juizo por documento na cadeia gratis)"
+  "descricao": "26 lentes sobre a despesa da PREFEITURA do Rio (pcrj_despesa), com o DENOMINADOR junto: universo contratual de R$ 30,64 bi de R$ 89,62 bi brutos (34,2%) — o resto e folha, divida, "
  },
  {
   "id": "conjunto_portfolio",
@@ -214,6 +256,20 @@ const CAPS_MESTRAS = [
   "rota": "/api/conjunto/portfolio",
   "ordem": 27,
   "descricao": "Ranking de ORGAOS por risco de certame (peer-benchmark: desvio da mediana do orgao vs pares)"
+ },
+ {
+  "id": "pericia_bateria",
+  "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
+  "nome": "Bateria de perícia — quanto do exame aconteceu",
+  "cmd": "",
+  "exemplo": "a pericia esta confirmando alguma coisa?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/pericia/bateria",
+  "ordem": 28,
+  "descricao": "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos"
  },
  {
   "id": "emendas_pericia",

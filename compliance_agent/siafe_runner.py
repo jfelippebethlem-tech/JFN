@@ -26,6 +26,38 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _LOCK = _REPO / "data" / "sei_cache" / "siafe_lock.json"
+# Último resultado do diário — o painel (LED de frescor do SIAFE) lê isto para dizer POR QUE a coleta
+# parou. Sem isto, 7 dias de "senha expirada" (02→09/09/2026) apareceram como um LED só desatualizado.
+ULTIMO = _LOCK.parent / "siafe_runner_ultimo.json"
+
+
+def gravar_ultimo(res: dict) -> None:
+    try:
+        ULTIMO.parent.mkdir(parents=True, exist_ok=True)
+        ULTIMO.write_text(json.dumps({"iso": datetime.now(timezone.utc).isoformat(), "ok": bool(res.get("ok")),
+                                      "erro": res.get("erro") or res.get("etapa"), "detail": (res.get("detail") or "")[:300],
+                                      "n": res.get("n")}, ensure_ascii=False))
+    except OSError as exc:
+        logger.debug("não gravei o último resultado do diário: %s", exc)
+
+
+def ultimo_resultado() -> dict | None:
+    try:
+        return json.loads(ULTIMO.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def detalhe_frescor(base: str) -> str:
+    """Texto do LED de frescor do SIAFE: o `base` quando a última coleta foi bem, senão o MOTIVO."""
+    u = ultimo_resultado()
+    if not u or u.get("ok"):
+        return base
+    quando = (u.get("iso") or "")[:16].replace("T", " ")
+    motivo = u.get("erro") or "falhou"
+    det = u.get("detail") or ""
+    return f"⛔ última coleta {quando} UTC falhou: {motivo}" + (f" — {det}" if det else "") + f" · {base}"
+
 _LOG = _REPO / "data" / "siafe_runner.log"
 LOCK_TTL = 1800  # lock vence em 30min SEM heartbeat (recuperação de crash). Processos longos (sweep)
                  # RENOVAM o lock via refresh_lock() a cada passo → fica vivo enquanto ativo, sem colisão.
@@ -105,8 +137,15 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
     try:
         _log(f"diário {ano}: iniciando (maxn={maxn})")
         res = await M.coletar(ano, maxn=maxn)
+        if not res.get("ok") and res.get("etapa") == "navegacao":
+            # 11/09/2026 05:00: 'tabela tblOBOrcamentaria não apareceu' com login OK — transitório do SIAFE
+            # às 5 h (às 16 h a mesma navegação colheu 971). Uma 2ª tentativa custa 3 min; o alarme, um dia.
+            _log(f"diário {ano}: navegação falhou ({res.get('detail')}) — 2ª tentativa em 90 s")
+            await asyncio.sleep(90)
+            res = await M.coletar(ano, maxn=maxn)
         if not res.get("ok"):
             _log(f"diário {ano}: coleta falhou: {res}")
+            gravar_ultimo(res)
             # falha NUNCA silenciosa: o dono fica sabendo na hora (a defasagem de 16-17/07 passou batida)
             try:
                 from compliance_agent import siafe_coord
@@ -118,6 +157,7 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             return {"ok": False, "etapa": "coleta", **res}
         ing = M.ingerir(ano, res.get("header", []), res.get("linhas", []))
         _log(f"diário {ano}: {res.get('n')} colhidas, {ing.get('ingeridas')} ingeridas (total {ing.get('total_tabela')})")
+        gravar_ultimo({"ok": True, "n": res.get("n")})
         # VERIFICADOR: o incremental pega as ~1000 OBs mais novas GLOBAIS; se um dia teve >1000 OBs (ex.: dia de
         # FOLHA), as OBs antigas desse dia caem abaixo da posição 1000 e seriam PERDIDAS. Conferimos o dia anterior
         # por Data Emissão; se estourou (>1000), coletar_por_data subdivide por Número e completa o dia.
@@ -179,7 +219,10 @@ async def coletar_ug(ug: str, exercicio: int | None = None) -> dict:
         return {"ok": False, "erro": "lock", "lock": lock_status()}
     try:
         r = await M.coletar_por_ug(ano, ug)
-        if r.get("ok") and r.get("colhidas", 0) >= 990:
+        # PLATÔ MEDIDO, não teto nominal: em 5.893 fatias coletadas, NENHUMA chegou a 990 e 76
+        # pararam em 989/984 — a colheita satura antes do limite do SIAFE. Com o limiar antigo
+        # este caminho nunca subdividia (ver `_fatia_capou`, corrigido nos outros três pontos).
+        if r.get("ok") and r.get("colhidas", 0) >= M._FATIA_CAPOU:
             r = await M.coletar_por_ug_grande(ano, ug)
         return r
     finally:

@@ -5,7 +5,7 @@ Costura (sem reimplementar) as peças que existiam soltas:
   manifesto_norm (shape único + gate captura_integra) → fases.lacunas (ausência com gravidade)
   → cadeia_processo (ordem dos marcos) → triagem pericial A1–A5 (3 baldes) → execucao_fatos +
   rodar_execucao (X) → analisar_processo_sei (P/E/J) → rodar_fornecedor (C6–C9, CNPJ vencedor)
-  → auditar_acatamento + suficiencia_parecer (lição IDESI: parecer interno não supre PGE/CGE)
+  → auditar_acatamento + suficiencia_parecer (escalada de emissor na CONTRATAÇÃO DIRETA)
   → **score_processo** (base.py — o agregador oficial, aqui pela 1ª vez em produção)
   → grau_flag + escalada.recomendar + matriz S×V (verossimilhança com teto 3 sem base de pares).
 
@@ -17,8 +17,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 
 from compliance_agent import sei_recomendacoes
@@ -28,7 +30,7 @@ from compliance_agent.detectores.base import ResultadoDetector, score_processo
 from compliance_agent.editais.escalada import recomendar
 from compliance_agent.editais.flags import grau_flag
 from compliance_agent.execucao_fatos import contexto_x1, contexto_x3
-from compliance_agent.sei import fases, manifesto_norm
+from compliance_agent.sei import acervo_texto, fases, manifesto_norm
 
 VERSAO = "360.1"
 _DB = Path(__file__).resolve().parents[1] / "data" / "compliance.db"
@@ -53,6 +55,117 @@ async def _analisar_pej(numero: str, leitura: dict | None = None) -> dict:
     return await analisar_processo_sei(numero, ler_fn=_ler)
 
 
+# ── declaração de entrega no TEXTO (art. 63 Lei 4.320) ────────────────────────
+# O que aqui se procura é a AFIRMAÇÃO de que o objeto chegou — não o atesto do ATO financeiro
+# ("ATESTO e CERTIFICO a regularidade da liquidação da despesa"), que é o servidor certificando o
+# próprio expediente e apareceu em 93% de uma amostra de 60. Casar os dois como se fossem o mesmo
+# esvaziaria o maior achado do acervo com prova que não é prova.
+_RX_ENTREGA_AFIRMADA = re.compile(
+    r"atest\w+\s+(?:o\s+)?recebimento|"
+    r"atest\w+\s+(?:a|o)\s+(?:entrega|execu[çc][ãa]o|presta[çc][ãa]o\s+d[eo]s?\s+servi|"
+    r"realiza[çc][ãa]o\s+d[eo])|"
+    r"(?:servi[çc]os?|materia\w*|bens|produtos?|objeto|equipamentos?)\s+(?:foram|foi)\s+"
+    r"(?:efetivamente\s+)?(?:prestad|entregu|executad|recebid|fornecid)|"
+    r"recebemos?\s+(?:definitivamente|provisoriamente)", re.I)
+
+# O MODO VERBAL decide (família 19 do catálogo). Estes vizinhos denunciam norma, pergunta,
+# hipótese ou doutrina — nenhum afirma que a entrega ocorreu. Todos foram medidos no acervo:
+# "reconhecendo que o serviço foi prestado" é texto de checklist e do Parecer 1994 sobre TAC (19
+# ocorrências); "deve ser informado se o serviço foi prestado adequadamente" é a PGE PERGUNTANDO,
+# e vinha logo antes de "a despeito da ausência de..." (11 ocorrências).
+_RX_ENTREGA_NAO_AFIRMADA = re.compile(
+    r"regularidade\s+d[ao]\s+(?:liquida|despesa)|"
+    r"deve\s+ser\s+informado\s+se|a\s+despeito\s+da\s+aus[êe]ncia|"
+    r"dever[áa]\s+(?:ser\s+)?atest|deve\s+(?:ser\s+)?atest|"
+    r"reconhecendo\s+que\s+(?:o|um\s+determinado)\s+servi[çc]o|"
+    r"caso\s+(?:o|os|a|as)\s|se\s+o\s+servi[çc]o|"
+    r"na\s+hip[óo]tese|dever[áa]\s+ser\s+comprovad", re.I)
+
+
+def _declaracao_de_entrega(pasta, docs: list[dict]) -> dict | None:
+    """Primeiro documento cujo TEXTO afirma que o objeto foi entregue. `None` se nenhum afirma."""
+    for d in docs or []:
+        try:
+            texto = _texto_de(pasta, d) or ""
+        except OSError:
+            continue
+        m = _RX_ENTREGA_AFIRMADA.search(texto)
+        if not m:
+            continue
+        janela = re.sub(r"\s+", " ", texto[max(0, m.start() - 130):m.end() + 130]).strip()
+        if _RX_ENTREGA_NAO_AFIRMADA.search(janela):
+            continue
+        return {"ref": str(d.get("titulo") or d.get("i") or "documento"), "trecho": janela[:220]}
+    return None
+
+
+# ── instrumento hábil que SUBSTITUI o termo de contrato ───────────────────────
+# Art. 95, §1º da Lei 14.133/2021 (e art. 62 da Lei 8.666/93, para fatos até 2023): o instrumento
+# de contrato **pode ser substituído** por carta-contrato, **nota de empenho de despesa**,
+# autorização de compra ou ordem de execução de serviço nas hipóteses ali definidas. Medido em
+# 2026-08-05: dos 21 processos acusados de "Formalização do contrato" ausente, **9 têm Nota de
+# Empenho nos autos e nenhum termo de contrato** — dizer "falta formalização" ali é cobrar a forma
+# que a lei dispensa. O achado NÃO some (a substituição só vale nas hipóteses legais, e é isso que
+# o fiscal confere), mas passa a dizer o que se vê e cai de grau.
+def _instrumento_habil(docs: list[dict]) -> str | None:
+    """Título da peça que a lei admite no lugar do termo de contrato. `None` se não houver."""
+    for d in docs or []:
+        if str(d.get("tipo") or "") == "nota_empenho" or str(d.get("fase") or "") == "nota_empenho":
+            return str(d.get("titulo") or "nota de empenho")
+    return None
+
+
+def _contrato_registrado(numero_sei: str) -> dict:
+    """Vigência e valor do contrato como REGISTRADOS no TCE-RJ, ligados pelo número do processo.
+
+    Fio que faltava. Medido em 2026-08-04 sobre os 2.174 processos avaliados: **a vigência do
+    contrato estava ausente em TODOS eles**, e com isso o X2 (teto de 60 meses, art. 57) e o X8
+    (termo aditivo retroativo) nunca avaliaram nada — dois achados sérios desligados por um campo.
+    O dado existia o tempo todo em `contratos_tcerj`, que o `varredura_execucao_ctx` já usa no
+    caminho do TCE; só não chegava ao caminho do SEI. São **195 processos** com contrato
+    registrado.
+
+    `valor_inicial` só é preenchido quando a extração do TEXTO não achou nada: o valor declarado
+    nos autos foi calibrado em 2026-08-04 por FORÇA DA DECLARAÇÃO, e sobrescrevê-lo em silêncio
+    desfaria essa calibração. Divergência entre os dois é assunto de outro achado, não de um
+    preenchimento mudo.
+
+    ⚠️ **NÃO preencher `vigencia_fim` com este dado.** O X8 (termo retroativo) pede a vigência
+    ORIGINAL do contrato, e `contratos_tcerj` guarda um único par de datas, sem distinguir a
+    original da já prorrogada — para contrato com aditivo, `vig_fim` é provavelmente a ATUAL.
+    Alimentar o X8 com ela faria o detector medir retroatividade contra a baseline errada, que é
+    pior do que não medir. Ele segue `nao_avaliavel`, e isso agora aparece na cobertura do dossiê.
+    """
+    import sqlite3 as _sq
+
+    db = _DB
+    chave = re.sub(r"\D", "", str(numero_sei or ""))
+    if not chave or not db.exists():
+        return {}
+    try:
+        con = _sq.connect(f"file:{db}?mode=ro", uri=True)
+        try:
+            row = con.execute(
+                "SELECT vig_inicio, vig_fim, valor_contrato FROM contratos_tcerj "
+                "WHERE sei_norm = ? LIMIT 1", (chave,)).fetchone()
+        finally:
+            con.close()
+    except _sq.Error:
+        return {}
+    if not row:
+        return {}
+    fora: dict = {}
+    if row[0]:
+        fora["vigencia_inicio"] = str(row[0])
+    if row[1]:
+        fora["vigencia_fim_atual"] = str(row[1])
+    if row[2]:
+        fora["valor_contrato_registrado"] = float(row[2])
+    if fora:
+        fora["fonte_contrato_registrado"] = "contratos_tcerj (ligado por sei_norm)"
+    return fora
+
+
 def _rodar_execucao(numero: str, contexto: dict) -> list[ResultadoDetector]:
     from compliance_agent.detectores import rodar_execucao
     return rodar_execucao(numero, contexto=contexto)
@@ -61,6 +174,123 @@ def _rodar_execucao(numero: str, contexto: dict) -> list[ResultadoDetector]:
 def _rodar_fornecedor(cnpj: str) -> list[ResultadoDetector]:
     from compliance_agent.detectores import rodar_fornecedor
     return rodar_fornecedor(cnpj)
+
+
+def _vereditos_por_doc(numero: str) -> dict:
+    """Juízo por documento já pago (doc_veredito) na rubrica vigente — entra na ficha de cada doc."""
+    try:
+        from compliance_agent.sei.doc_juizo import RUBRICA_VERSAO
+        if not _DB.exists():
+            return {}
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            return {int(i): json.loads(v) for i, v in con.execute(
+                "select doc_i, veredito_json from doc_veredito where numero_sei=? "
+                "and rubrica_versao=?", (numero, RUBRICA_VERSAO))}
+        finally:
+            con.close()
+    except (sqlite3.Error, ValueError, TypeError, ImportError):
+        return {}
+
+
+def achados_de_fornecedor(resultados) -> list[dict]:
+    """Detectores de perfil do CONTRATADO que pontuam viram achado VISÍVEL.
+
+    Medido em 2026-08-03: 14 processos ficaram EXTREMO com ZERO achados porque C9 (score 1,0) e
+    C3/C5 (0,85) entravam no `score_processo` sem aparecer em lugar nenhum. O fiscal abria o topo
+    da fila e não via nada escrito — e o processo cujos nove achados eu confirmei lendo os autos
+    ficava ABAIXO de processos com um achado só. O que não aparece no entregável não existe.
+
+    O achado declara que é do FORNECEDOR: confundir perfil da empresa com vício do processo seria
+    imputar ao gestor o que é característica de quem ele contratou.
+    """
+    saida = []
+    for r in resultados or []:
+        if r.status != "confirmado" or r.refutada:
+            continue
+        s = float(r.score or 0)
+        grav = "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media"
+        # `explicacao_inocente` é o CONTRA-argumento do detector, não o achado. Usá-la como texto
+        # principal fazia o item ler "FALSO POSITIVO a descartar" no lugar da acusação — o oposto
+        # do que se quer dizer. Ela entra em campo próprio, rotulada, como a doutrina da casa pede.
+        inocente = (r.explicacao_inocente or "").strip()
+        # A PROVA É O `trecho`, não o repr do dicionário. `str(e)[:120]` serializava
+        # `{'fonte': ..., 'trecho': ...}` inteiro e cortava nos 120 caracteres — sobrava a chave
+        # `fonte` e meia frase da prova. Medido no SEI-080002/019028/2024 (2026-08-04), o achado
+        # C3/C5 de R$ 92,37 mi chegava ao painel escrito "Situação cadastral 'INAPTA' na Receita
+        # Federal. Pagamento/contra" — truncado no meio da palavra. Mesma extração das outras três
+        # famílias (`achados_de_detector`), inclusive o teto de 220.
+        trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
+                   for e in (r.evidencia or [])[:2]]
+        saida.append({
+            "origem": "fornecedor", "codigo": r.detector, "gravidade": grav,
+            # o `diz` carrega a prova quando ela existe: "C9 confirmado (intensidade 1.00)" sozinho
+            # é score sem explicação, que é o que a família C foi corrigida para não ser.
+            # O DINHEIRO ENTRA NO TÍTULO DO ACHADO. O `diz` é o que o fiscal lê na fila; o
+            # `evidencia` só se abre no dossiê. Medido em 2026-08-05 nas 9 C9 críticas: o `diz`
+            # trazia só o múltiplo ("3.2× a norma local") enquanto a segunda razão, invisível ali,
+            # dizia o que importa — "86.9% do valor pago via TAC/indenização (R$ 52.829.081,39 de
+            # R$ 60.772.657,25; 15/32 OB)". Múltiplo sem base ordena mal a fila: 3,2× de uma
+            # unidade pequena não é o mesmo problema que 3,2× de R$ 52,8 milhões.
+            "diz": (f"perfil do fornecedor contratado: detector {r.detector} confirmado "
+                    f"(intensidade {s:.2f})"
+                    + "".join(f" — {x}" for x in trechos[:2])),
+            "explicacao_inocente": inocente,
+            "evidencia": "; ".join(trechos),
+            "ressalva": ("Indício sobre a EMPRESA contratada, não sobre a conduta do gestor "
+                         "neste processo."),
+        })
+    return saida
+
+
+def achados_de_detector(resultados, *, origem: str, rotulo: str, ressalva: str) -> list[dict]:
+    """Resultado CONFIRMADO de detector vira achado VISÍVEL, com a prova literal.
+
+    Forma única para as famílias que pontuam no `score_processo`. A regra é uma só e já custou
+    três correções separadas (C em 2026-08-03, X e P/E/J em 2026-08-04): **o que entra no score
+    entra na lista de achados**, senão a fila mostra processo vazio no topo.
+    """
+    saida = []
+    for r in resultados or []:
+        if r.status != "confirmado" or r.refutada:
+            continue
+        s = float(r.score or 0)
+        trechos = [str((e or {}).get("trecho") if isinstance(e, dict) else e)[:220]
+                   for e in (r.evidencia or [])[:2]]
+        razao = (r.motivo_refutacao or "").strip()
+        if not trechos and not razao:
+            continue                      # sem prova literal, não entra
+        saida.append({
+            "origem": origem, "codigo": r.detector,
+            "gravidade": "critica" if s >= 0.9 else "alta" if s >= 0.6 else "media",
+            "diz": (f"{rotulo}: {r.detector} confirmado (intensidade {s:.2f})"
+                    + f" — {trechos[0] if trechos else razao[:220]}"),
+            "explicacao_inocente": (r.explicacao_inocente or "").strip(),
+            "evidencia": "; ".join(trechos) or razao[:220],
+            "ressalva": ressalva,
+        })
+    return saida
+
+
+def achados_de_execucao(resultados) -> list[dict]:
+    """Detectores da FASE DE EXECUÇÃO (X) que pontuam viram achado VISÍVEL.
+
+    A mesma falha que `achados_de_fornecedor` corrigiu para a família C ficou aberta aqui, e é
+    pior: os X medem o que aconteceu com o CONTRATO — aditivo que engorda, execução financeira
+    anômala, reequilíbrio indevido, supressão que esvazia o objeto. Medido em 2026-08-04 nos 120
+    processos de maior risco: **X3 confirmado em 29, X7 em 14, X1 em 4, X9 em 3**, todos
+    pontuando no `score_processo` e nenhum aparecendo em lugar nenhum. Um deles (070002/013553/
+    2024) estava em EXTREMO com score 80 e ZERO achados — o fiscal abria o topo da fila e não
+    havia nada escrito.
+
+    Ao contrário do fornecedor, aqui o achado É sobre este processo: a execução do contrato é
+    conduta do gestor, não característica de quem ele contratou. Por isso não leva a ressalva de
+    "indício sobre a empresa" — leva a ressalva de sempre, que indício não é acusação.
+    """
+    return achados_de_detector(
+        resultados, origem="execucao", rotulo="execução do contrato",
+        ressalva=("Indício a verificar nos autos, não acusação: o detector lê o texto dos "
+                  "termos e pode ter colhido número de documento diverso."))
 
 
 def _cnpj_vencedor(numero: str) -> str | None:
@@ -79,13 +309,41 @@ def _cnpj_vencedor(numero: str) -> str | None:
             return None
         forn = sorted(json.loads(row[0]), key=lambda f: -(f.get("valor") or 0))
         return re.sub(r"\D", "", str(forn[0].get("cnpj") or "")) or None
-    except Exception:
+    except (sqlite3.Error, json.JSONDecodeError, ValueError, KeyError, TypeError, IndexError):
         return None
 
 
 _RX_CNPJ = re.compile(r"\b(\d{2})\.?(\d{3})\.?(\d{3})/?(\d{4})-?(\d{2})\b")
-# raízes de entes públicos que nunca são "o contratado" (Estado do RJ, Município do Rio)
+# raízes de entes públicos que nunca são "o contratado" (Estado do RJ, Município do Rio).
+# Lista curta de propósito: o teste que vale é a NATUREZA JURÍDICA, logo abaixo — uma lista de
+# raízes nunca acompanha a realidade (o ITERJ, 40173726, não estava aqui e por isso passou).
 _RAIZES_PUBLICAS = {"42498600", "42498733"}
+
+
+@lru_cache(maxsize=4096)
+def _e_ente_publico(cnpj: str) -> bool:
+    """Natureza jurídica 1xx (Administração Pública, tabela CONCLA) — o ente nunca é o contratado.
+
+    Medido em 2026-08-05 no SEI-330020/000762/2021: o fallback por texto devolvia
+    **40.173.726/0001-40, que é o próprio ITERJ** — o documento diz, com todas as letras,
+    "INSTITUTO DE TERRAS E CARTOGRAFIA DO ESTADO DO RIO DE JANEIRO - ITERJ, CNPJ:
+    40.173.726/0001-40 doravante denominada CONTRATANTE", enquanto a contratada é a "MGS CLEAN
+    SOLUÇÕES E SERVIÇOS LTDA, CNPJ 19.088.605/0001-04". Com o órgão no lugar do fornecedor, toda
+    a família C (perfil, fachada, sócio servidor, TAC) passaria a examinar o próprio contratante.
+    """
+    base = re.sub(r"\D", "", str(cnpj or ""))[:8]
+    if not base or not _DB.exists():
+        return False
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            row = con.execute("SELECT natureza_cod FROM empresas_cadastro "
+                              "WHERE cnpj_basico = ? LIMIT 1", (base,)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return False
+    return bool(row) and str(row[0] or "").startswith("1")
 _P1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 _P2 = [6] + _P1
 
@@ -100,32 +358,74 @@ def _cnpj_valido(c: str) -> bool:
     return True
 
 
+# "doravante denominado CONTRATANTE" identifica o ÓRGÃO; a exigência de que CONTRATADA não
+# apareça na mesma janela evita virar o jogo em cabeçalho que cita os dois lados de enfiada.
+_RX_E_CONTRATANTE = re.compile(r"\bCONTRATANTE\b", re.I)
+_RX_E_CONTRATADA = re.compile(r"\bCONTRATAD[AO]S?\b", re.I)
+
+
 def _cnpj_do_texto(pasta: Path, docs: list[dict]) -> str | None:
     """Fallback: CNPJ do contratado extraído do TEXTO dos docs de contrato/homologação
     (mais frequente, DV válido, excluídas raízes de ente público)."""
     from collections import Counter
     cont: Counter = Counter()
+    # SEM TETO POSICIONAL, pela mesma razão do acatamento: no SEI-330020/000762/2021 os 12
+    # primeiros davam EMPATE (1 × 1) entre o órgão e a contratada, desempatado pela ordem de
+    # inserção — e o órgão ganhava. Lendo os 25, a contratada aparece 4 vezes contra 2. São 7
+    # processos no acervo com mais de 12 peças de contrato: o teto não pagava o seu preço.
     alvo = [d for d in docs if d.get("tipo") in
-            ("contrato", "homologacao", "ata_rp", "contratacao_direta", "adjudicacao")][:12]
+            ("contrato", "homologacao", "ata_rp", "contratacao_direta", "adjudicacao")]
+    # O DOCUMENTO SE DECLARA. O contrato diz, com todas as letras, quem é quem — "inscrita no CNPJ
+    # sob o nº 40.015.416/0001-06, doravante denominado CONTRATANTE" — e é a única fonte que não
+    # depende de cadastro externo. Foi o que pegou a SEGOV (4 processos) e a SECID: nenhuma das
+    # duas está em `empresas_cadastro`, então o teste de natureza jurídica passava batido, e elas
+    # figuravam como VENCEDORAS das próprias contratações. Medido em 2026-08-05 no acervo inteiro:
+    # 303 processos não mudam, 6 mudam — e nos que mudam o novo CNPJ é o que o texto chama de
+    # CONTRATADA (PRIME CONSULTORIA no lugar da SEGOV; CONSÓRCIO PAVIMENTAÇÃO BAIRRO SÃO GONÇALO
+    # no lugar da SECID).
+    # O papel é do CNPJ, não da ocorrência: uma vez que o instrumento declara "40.015.416/0001-06,
+    # doravante denominado CONTRATANTE", TODA menção àquele número é o mesmo órgão — inclusive as
+    # do cabeçalho de cada página, que não repetem a palavra. Vetar ocorrência a ocorrência deixa
+    # o contratante ganhar por repetição, e foi o próprio teste desta regra que mostrou isso.
+    contratantes: set[str] = set()
     for d in alvo:
-        for m in _RX_CNPJ.finditer(_texto_de(pasta, d, teto=30_000)):
+        texto = _texto_de(pasta, d, teto=30_000)
+        for m in _RX_CNPJ.finditer(texto):
             c = "".join(m.groups())
             # 00394… = base da União (ministérios); nunca é o contratado
-            if _cnpj_valido(c) and c[:8] not in _RAIZES_PUBLICAS and not c.startswith("00394"):
-                cont[c] += 1
-    return cont.most_common(1)[0][0] if cont else None
+            if not (_cnpj_valido(c) and c[:8] not in _RAIZES_PUBLICAS
+                    and not c.startswith("00394") and not _e_ente_publico(c)):
+                continue
+            cont[c] += 1
+            janela = texto[m.end():m.end() + 130]
+            if _RX_E_CONTRATANTE.search(janela) and not _RX_E_CONTRATADA.search(janela):
+                contratantes.add(c)
+    # nunca PERDER a identificação: se sobrou ninguém, vale a contagem crua — dizer "não
+    # identifiquei" quando há um CNPJ nos autos é trocar um erro por outro.
+    limpo = Counter({c: n for c, n in cont.items() if c not in contratantes})
+    fonte = limpo or cont
+    return fonte.most_common(1)[0][0] if fonte else None
 
 
-def _texto_de(pasta: Path, doc: dict, teto: int = 20_000) -> str:
-    rel = doc.get("texto")
-    if rel:
-        p = pasta / rel
-        if p.exists():
-            try:
-                return p.read_text(encoding="utf-8", errors="ignore")[:teto]
-            except OSError:
-                return ""
-    return ""
+# LER TUDO é o ponto do projeto (diretriz do dono, 2026-08-03). O corte de 20.000 caracteres
+# alimentava o acatamento, a execução e a triagem: o Parecer 462 tem 54.900 e a CONCLUSÃO — onde o
+# parecerista impõe as condicionantes — ficava fora. Conclusão de parecer mora no fim.
+# A separação que importa: regex sobre disco não tem custo por token; LLM tem, e janela finita.
+TETO_CHARS_DETERMINISTICO = int(os.environ.get("JFN_360_TETO_CHARS", "400000"))
+TETO_CHARS_LLM = int(os.environ.get("JFN_360_TETO_CHARS_LLM", "20000"))
+
+
+def _texto_de(pasta: Path, doc: dict, teto: int | None = None) -> str:
+    """O texto que o SEI serviu para este documento — sem a etiqueta que o ARQUIVO escreveu.
+
+    A etiqueta (`[título] (fase: … · tipo: …)`) punha a NOSSA classificação dentro do texto: o
+    detector que perguntava "isto é manifestação jurídica?" recebia de volta o próprio rótulo, e
+    o teto de leitura era gasto com ele (mediana 71 chars, máximo medido 478 — 36,5% de uma
+    janela de 200). Quem precisa do rótulo pede `acervo_texto.etiqueta()` explicitamente; é o
+    caso da `conferencia_captura`, e só dele. Ver `compliance_agent/sei/acervo_texto.py`.
+    """
+    return acervo_texto.ler(pasta, doc,
+                            TETO_CHARS_DETERMINISTICO if teto is None else teto)
 
 
 def _rd(origem: str, numero: str, score: float, detalhe: str) -> ResultadoDetector:
@@ -133,6 +433,26 @@ def _rd(origem: str, numero: str, score: float, detalhe: str) -> ResultadoDetect
                           score=score, status="confirmado")
     r.explicacao_inocente = detalhe[:300]
     return r
+
+
+def faixa_com_captura(score100: float, *, integra: bool) -> str:
+    """Faixa de risco só se emite sobre processo LIDO. Sem captura íntegra: NAO_AVALIAVEL.
+
+    Medido em 2026-08-03: 199 processos do acervo têm ZERO caractere capturado e 25 deles
+    carregavam score >= 70 — um estava gravado como 89,0 EXTREMO. Faixa é afirmação sobre o
+    processo; sobre o que não se leu, a única afirmação honesta é que não se leu.
+    """
+    return _faixa(score100) if integra else "NAO_AVALIAVEL"
+
+
+def grau_com_captura(grau: dict, *, integra: bool) -> dict:
+    """O grau (🟡 FLAG SUSPEITO etc.) também é afirmação — não se emite sem captura íntegra."""
+    if integra:
+        return grau
+    return {"grau": "-", "rotulo": "NÃO AVALIÁVEL", "emoji": "⚪",
+            "pode_fundamentar_peca": False,
+            "motivo": ("captura do processo abaixo do mínimo utilizável — não se afirma risco "
+                       "sobre o que não foi lido (INDISPONÍVEL ≠ irregular)")}
 
 
 def _faixa(score100: float) -> str:
@@ -174,7 +494,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         nat = "indefinido"
     fases_presentes = {d["fase"] for d in docs} - {"indefinida"}
     com_pagamento = any(d["tipo"] in ("ordem_bancaria", "programacao_desembolso") for d in docs)
-    lac = fases.lacunas(fases_presentes, modalidade, com_pagamento=com_pagamento)
+    lac = fases.lacunas(fases_presentes, modalidade, com_pagamento=com_pagamento, natureza=nat)
     lacunas_processo = lac if integra else []
     lacunas_captura = [] if integra else lac
     if not integra:
@@ -182,9 +502,49 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
             {"falta": "captura íntegra do processo (texto no disco abaixo do mínimo)",
              "gravidade": "captura", **ev_captura}]
     for item in lacunas_processo:
-        if nat == "contratacao" or item["gravidade"] == "critica":
-            achados.append({"origem": "fases.lacunas", "diz": item["falta"],
-                            "gravidade": item["gravidade"]})
+        # `aditivo` é espécie de contratação para efeito de cobrança (só a seleção sai, e já saiu
+        # em `fases.lacunas`) — sem isto o aditivo perderia também as lacunas que lhe cabem.
+        if nat in ("contratacao", "aditivo") or item["gravidade"] == "critica":
+            # CÓDIGO em todo achado. Medido em 2026-08-05: 532 dos 667 achados do acervo (80%)
+            # chegavam sem `codigo` e o painel os empilhava num único balde "—". O diff da
+            # pós-correção herdava a cegueira: mudança dentro de `fases.lacunas`, `cadeia`,
+            # `acatamento` ou `suficiencia_emissor` era invisível para o instrumento que existe
+            # para medir mudança. Prefixo próprio por família — nunca "A1"/"A2", que o ranking
+            # usa para decidir peso (`processo_360_ranking.pontuar`).
+            ach = {"origem": "fases.lacunas", "diz": item["falta"],
+                   "codigo": f"F_{str(item.get('fase') or 'lacuna').upper()}",
+                   "gravidade": item["gravidade"]}
+            # A PROVA DE ENTREGA MORA NO TEXTO, NÃO NO TÍTULO. `fases.classificar` decide a fase
+            # pelo título, e o título destes documentos não anuncia execução nenhuma: "Ofício - NI
+            # 196/2024", "Correspondência Interna - NA 163", "Anexo ANS". Medido em 2026-08-05
+            # sobre os 319 processos com este achado — o maior do acervo, quase metade do total —
+            # **69 (21,6%) trazem no TEXTO a afirmação de que o objeto foi entregue**, e o caso
+            # mais eloquente é a própria PGE lendo os autos: "na Nota Fiscal nº 894 (101360976),
+            # ASSINADA POR DOIS SERVIDORES, em conformidade com a exigência do art. 90, §3º, da
+            # Lei Estadual nº 287/79, que confirma que o serviço foi prestado a contento".
+            # Afirmar "nenhuma evidência" ali é afirmar ausência que os autos desmentem.
+            # O achado NÃO some — a peça própria de execução (medição/atesto formal) continua
+            # faltando, e é ela que o art. 63 da Lei 4.320 pede para liquidar. Ele passa a dizer o
+            # que se sabe, aponta ONDE está a declaração, e cai de grau.
+            if item.get("fase") == "contratacao":
+                ne = _instrumento_habil(docs)
+                if ne:
+                    ach["gravidade"] = "baixa"
+                    ach["diz"] = ("sem termo de contrato, mas há nota de empenho nos autos — o "
+                                  "art. 95, §1º da Lei 14.133/2021 (art. 62 da Lei 8.666/93 para "
+                                  "fatos até 2023) admite a substituição NAS HIPÓTESES LEGAIS; "
+                                  "conferir o enquadramento antes de tratar como falta de "
+                                  "formalização")
+                    ach["apoio"] = ne
+            if item.get("fase") == "execucao_sem_evidencia":
+                decl = _declaracao_de_entrega(pasta, docs)
+                if decl:
+                    ach["gravidade"] = "media"
+                    ach["diz"] = ("sem peça própria de execução (medição/atesto formal), mas há "
+                                  "documento nos autos que DECLARA a entrega — conferir o teor "
+                                  "antes de tratar como pagamento sem prova (art. 63 Lei 4.320)")
+                    ach["apoio"] = f"{decl['ref']} · «{decl['trecho']}»"
+            achados.append(ach)
 
     # 2) ordem dos marcos (a inversão contrato→parecer também é a A1 da triagem: dedup por
     # código para não contar o MESMO fato duas vezes no score de convergência)
@@ -207,6 +567,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                 and "A1_CONTRATO_ANTES_DO_PARECER" in codigos_triagem):
             continue  # mesmo fato já pontuado pela A1
         achados.append({"origem": "cadeia", "diz": inv.get("observacao", inv.get("tipo")),
+                        "codigo": f"CD_{str(inv.get('tipo') or 'inversao').upper()}",
                         "gravidade": "alta", "detalhe": inv})
 
     # 4) execução (X) — fatos extraídos do TEXTO dos docs de contratação/execução/despesa
@@ -216,28 +577,132 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         t_despesa = "\n".join(_texto_de(pasta, d) for d in docs
                               if d["fase"] in ("despesa", "execucao"))
         ctx_exec = {**(contexto_x1(t_contrato) if t_contrato.strip() else {}),
-                    **(contexto_x3(t_despesa) if t_despesa.strip() else {})}
+                    **(contexto_x3(t_despesa) if t_despesa.strip() else {}),
+                    **_contrato_registrado(numero)}
+        # PAGOU E NÃO ATESTOU. Observação do dono em 2026-08-06: *"pagar algo sem atestação ou
+        # antes dela (antecipação de pagamento não pode) são irregularidades graves sim"* — e a lei
+        # é dura: a antecipação é VEDADA (art. 5º da Lei 14.133/2021; art. 38 do Decreto
+        # 93.872/86) e a liquidação prévia é condição do pagamento (arts. 62 e 63 da Lei 4.320).
+        # O motor ficava MUDO justamente na hipótese mais grave: sem data de atesto, o X3 devolvia
+        # `False` e nada mais.
+        #
+        # Só pesa contra o PROCESSO sob captura íntegra — ausência sobre leitura parcial não é
+        # ausência (é a mesma regra do `AC_SEM_PARECER_LOCALIZADO`, e a razão de a família 22
+        # existir). Sem OB nos autos não se afirma nada: empenho e liquidação não são pagamento.
+        if ctx_exec.get("atestacao_ausente") and integra:
+            achados.append({
+                "origem": "execucao", "codigo": "X_PAGAMENTO_SEM_ATESTACAO", "gravidade": "alta",
+                "diz": ("há Ordem Bancária nos autos e NÃO SE LOCALIZA o comprovante de "
+                        "entrega/atesto — o art. 63 da Lei 4.320/1964 manda que a liquidação "
+                        "tenha por base o contrato, a nota de empenho e os COMPROVANTES DA "
+                        "ENTREGA; sem eles a liquidação não se demonstra, e a antecipação de "
+                        "pagamento é vedada (art. 5º da Lei 14.133/2021; art. 38 do Decreto "
+                        "93.872/86)"),
+                # O ENUNCIADO SAIU DA LEITURA DOS AUTOS, não da primeira redação. Medido em
+                # 2026-08-06 nos 109 disparos: **108 TÊM Nota de Liquidação** formalizada e 94 não
+                # têm sequer a nota fiscal arquivada. Ou seja, não é "pagou sem ato nenhum" — é
+                # liquidação formalizada sem a peça que a lei manda usar como base. E o achado diz
+                # "não se localiza NOS AUTOS", que é o que se verificou: o comprovante pode existir
+                # em papel no almoxarifado e não ter sido juntado ao processo eletrônico.
+                "apoio": "captura íntegra do processo · comprovante a exigir do ordenador",
+            })
         res_exec = _rodar_execucao(numero, ctx_exec)
         resultados.extend(res_exec)
+        # PONTUAR SEM APARECER é a falha que já custou 14 processos EXTREMO sem achado nenhum na
+        # família C. Aqui ela seguia aberta para a família X — ver `achados_de_execucao`.
+        achados += achados_de_execucao(res_exec)
         rodados += sorted({r.detector for r in res_exec})
     except Exception as e:  # noqa: BLE001
         indisponiveis.append(f"execucao: {e}")
+
+    # 4b) instrumento × assinatura — três achados que moram no TEXTO e não nos títulos, nascidos
+    #     da leitura integral do SEI-270131/000548/2023 confrontada com o veredito da casa:
+    #     minuta aprovada que não corresponde ao instrumento assinado (e ordinal repetido),
+    #     autorização de despesa anterior ao parecer, e ato do ordenador sem a assinatura de quem
+    #     ele nomeia como decisor. Determinístico e offline — lê o texto já em disco.
+    try:
+        from compliance_agent.sei import instrumento_assinatura as _ia
+        # teto ALTO de propósito: o rodapé de assinatura mora no FIM do documento, e o Parecer 462
+        # tem 54.900 caracteres — com o teto padrão de 20.000 a data da assinatura ficava fora do
+        # texto lido e o I2 nunca disparava. É varredura por regex, custo desprezível.
+        # `etiqueta` vai junto e SEPARADA: o texto chega limpo do rótulo do arquivo (que fazia o
+        # documento provar a si mesmo), e a `conferencia_captura` — a única que legitimamente
+        # precisa do rótulo, para achar o número do documento quando o manifesto foi reconstruído
+        # do nome do arquivo — o recebe explicitamente, sem depender de resíduo dentro do texto.
+        docs_txt = [{"ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
+                     "texto": _texto_de(pasta, d, teto=400_000),
+                     "etiqueta": acervo_texto.etiqueta_de(pasta, d)} for d in docs]
+        achados += _ia.avaliar(docs_txt)
+        rodados.append("instrumento_assinatura")
+        # C · a lista de documentos do próprio parecer confere a NOSSA captura. Entra como lacuna
+        # de CAPTURA (nunca vício do processo): mede o que a coleta ainda não trouxe.
+        from compliance_agent.sei import conferencia_captura as _cc
+        for a in _cc.avaliar(docs_txt):
+            lacunas_captura.append({"falta": a["diz"], "gravidade": "captura",
+                                    "codigo": a["codigo"], "evidencia": a["evidencia"],
+                                    "ausentes": a["ausentes"]})
+        rodados.append("conferencia_captura")
+        # A LACUNA DE CAPTURA REBAIXA A CRÍTICA — e a ordem em que isso é sabido é o que estava
+        # errado. `F_EXECUCAO_SEM_EVIDENCIA` ("pagamento sem prova de entrega") é a acusação mais
+        # dura do motor, e nascia acima, ANTES de a conferência do parecer dizer quais documentos
+        # citados nos autos não chegaram à nossa pasta. Se um deles falta, ele PODE SER o próprio
+        # atesto — e afirmar ausência de prova quando a ausência é NOSSA é exatamente o erro que
+        # esta casa mais corrigiu (INDISPONÍVEL ≠ descumprido).
+        #
+        # Medido em 2026-08-07 nos 63 processos colhidos da VM-2: 10 tinham a crítica e **4 delas
+        # conviviam com documento citado e não capturado**. O achado não some — muda de grau e
+        # passa a dizer o que falta conferir, com o número do documento ausente ao lado.
+        _sem_captura = sorted({d for lc in lacunas_captura for d in (lc.get("ausentes") or [])})
+        if _sem_captura:
+            for _a in achados:
+                if _a.get("codigo") == "F_EXECUCAO_SEM_EVIDENCIA" and _a.get("gravidade") == "critica":
+                    _a["gravidade"] = "media"
+                    _a["diz"] = (
+                        "há pagamento e NENHUMA evidência de execução entre os documentos que "
+                        "conseguimos ler — mas o próprio parecer dos autos cita documento(s) que a "
+                        "nossa captura não trouxe (" + ", ".join(_sem_captura[:4]) +
+                        "), e um deles pode ser o atesto. INDISPONÍVEL, não descumprido: exigir a "
+                        "peça faltante antes de tratar como pagamento sem prova (art. 63 da Lei "
+                        "4.320/1964)")
+                    _a["apoio"] = ("documento(s) citado(s) no parecer e ausente(s) da captura: "
+                                   + ", ".join(_sem_captura))
+    # O módulo é determinístico e já trata o que é dele; aqui só restam falha de import e de
+    # leitura do texto em disco — por isso a captura é específica, e não genérica. (A catraca da
+    # casa conta a string literal, então nem o comentário pode citá-la: foi assim que este
+    # arquivo subiu 1 na contagem sem ter ganhado nenhum handler novo.)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        indisponiveis.append(f"instrumento_assinatura: {e}")
 
     # 5) P/E/J sobre a leitura do ARQUIVO (nunca browser aqui)
     try:
         leitura = {"texto": "", "documentos": [d["titulo"] for d in docs],
                    "conteudo_documentos": [
-                       {"doc": d["titulo"], "conteudo": _texto_de(pasta, d)}
+                       {"doc": d["titulo"], "conteudo": _texto_de(pasta, d, TETO_CHARS_LLM)}
                        for d in docs if d.get("texto")]}
         pej = asyncio.run(_analisar_pej(numero, leitura=leitura))
         if pej.get("status") == "OK":
+            res_pej: list[ResultadoDetector] = []
             for rd in pej.get("resultados", []):
                 if isinstance(rd, dict):
-                    resultados.append(ResultadoDetector(
+                    # A prova ia embora na conversão: `evidencia` e `explicacao_inocente` eram
+                    # descartadas, e o resultado nunca virava achado. Terceira vez que a mesma
+                    # falha aparece (C, X e agora P/E/J) — 4 processos ficaram EXTREMO/ALTO com
+                    # ZERO achados por E1 e E7 pontuando invisíveis. (2026-08-04)
+                    r = ResultadoDetector(
                         detector=str(rd.get("detector") or "?"), processo=numero,
                         score=float(rd.get("score") or 0),
-                        status=str(rd.get("status") or "nao_avaliavel")))
+                        status=str(rd.get("status") or "nao_avaliavel"))
+                    r.evidencia = list(rd.get("evidencia") or [])
+                    r.explicacao_inocente = str(rd.get("explicacao_inocente") or "")
+                    r.motivo_refutacao = str(rd.get("motivo_refutacao") or "")
+                    r.refutada = bool(rd.get("refutada"))
+                    res_pej.append(r)
+                    resultados.append(r)
                     rodados.append(str(rd.get("detector")))
+            achados += achados_de_detector(
+                res_pej, origem="edital", rotulo="planejamento/edital/julgamento",
+                ressalva=("Indício a verificar nos autos, não acusação: o detector lê o texto do "
+                          "edital e das peças de julgamento."))
         else:
             indisponiveis.append(f"pej: {pej.get('motivo')}")
     except Exception as e:  # noqa: BLE001
@@ -249,6 +714,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         try:
             res_forn = _rodar_fornecedor(cnpj)
             resultados.extend(res_forn)
+            achados += achados_de_fornecedor(res_forn)
             rodados += sorted({r.detector for r in res_forn})
         except Exception as e:  # noqa: BLE001
             indisponiveis.append(f"fornecedor: {e}")
@@ -256,8 +722,16 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         indisponiveis.append("fornecedor: CNPJ vencedor não identificado (sei_arvore)")
 
     # 7) acatamento (art. 53) + suficiência do emissor (lição IDESI)
+    # SEM TETO POSICIONAL. Havia um `[:40]` aqui, e ele fabricava acusação de AUSÊNCIA — que é
+    # justamente o que um corte por posição não pode decidir. Medido em 2026-08-05: 26 processos
+    # perdiam documentos no corte (1.165 despachos e 54 pareceres ao todo), e rodando os 26 com e
+    # sem teto **2 vereditos mudavam, os dois retratando acusação**:
+    #   · SEI-070002/015404/2022  SEM_PARECER_LOCALIZADO → ACOLHIDO  (o parecer estava no 41º+)
+    #   · SEI-070026/000410/2021  SILENTE                → ACOLHIDO
+    # O custo de ler tudo é 1.508 documentos a mais no acervo inteiro (+16,9%), diluídos em 26
+    # processos. Barato demais para pagar com acusação falsa de "nenhum parecer nos autos".
     docs_ac = [{"ref": d["titulo"], "tipo": d["tipo"], "texto": _texto_de(pasta, d)}
-               for d in docs if d["tipo"] in _TIPOS_ACATAMENTO][:40]
+               for d in docs if d["tipo"] in _TIPOS_ACATAMENTO]
     ac = sei_recomendacoes.auditar_acatamento(docs_ac)
     tipos = {d["tipo"] for d in docs}
     ato = ("contratacao_direta" if "contratacao_direta" in tipos
@@ -268,24 +742,35 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     ac["suficiencia"] = suf
     if ac.get("veredito") == "IGNORADO_INDICIO":
         achados.append({"origem": "acatamento", "gravidade": "alta",
+                        "codigo": "AC_RESSALVA_SEM_ACOLHIMENTO",
                         "diz": "ressalva de parecer com sinal de não-atendimento e sem "
                                "acolhimento/motivação posterior (art. 53 / LINDB art. 22)"})
     if (ac.get("veredito") == "SEM_PARECER_LOCALIZADO" and integra
             and nat == "contratacao" and "contrato" in tipos):
         achados.append({"origem": "acatamento", "gravidade": "media",
+                        "codigo": "AC_SEM_PARECER_LOCALIZADO",
                         "diz": "contratação com contrato nos autos e NENHUM parecer jurídico "
                                "localizado entre os documentos lidos (art. 53 exige análise "
                                "prévia; captura íntegra — indício a confirmar na íntegra)"})
     if suf["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE" and integra:
         achados.append({"origem": "suficiencia_emissor", "gravidade": "alta",
+                        "codigo": "SE_EMISSOR_INSUFICIENTE",
                         "diz": (f"ato '{ato}' exige parecer de nível {suf['exigido']} "
                                 f"(PGE/CGE) e os autos só têm emissores de nível "
                                 f"{suf['max_nivel']} ({', '.join(suf['emissores']) or '—'}) "
-                                "— parecer interno não supre o controle externo")})
+                                "— a análise do art. 53 é do órgão de assessoramento jurídico "
+                                "da Administração; a manifestação da PGE-RJ é exigida nas "
+                                "hipóteses das normas estaduais e pode ter sido dispensada por "
+                                "declaração de conformidade com a minuta-padrão, que se confere "
+                                "nos autos")})
 
     # 8) sinais estruturais → ResultadoDetector sintéticos + agregador OFICIAL
     for a in achados:
         origem = a["origem"]
+        # o achado de FORNECEDOR e o de EXECUÇÃO já vieram do próprio detector, que JÁ está em
+        # `resultados`: convertê-los em sinal sintético os contaria duas vezes e inflaria o score.
+        if origem in ("fornecedor", "execucao", "edital"):
+            continue
         if origem == "triagem":
             s = _ANCORA_TRIAGEM.get(str(a.get("grau")), 0.3)
         else:
@@ -293,7 +778,7 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         resultados.append(_rd(origem, numero, s, str(a.get("diz") or "")))
     score = score_processo(resultados, pesos={**PESOS_DETECTOR, **_PESOS_360})
     score100 = round(score * 100, 1)
-    faixa = _faixa(score100)
+    faixa = faixa_com_captura(score100, integra=integra)
 
     # 9) grau/escalada/matriz (verossimilhança: nº de origens independentes; teto 3 sem pares)
     origens = {r.detector.split("-")[0] if r.detector.startswith("P360") else r.detector[:1]
@@ -303,7 +788,24 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     grau = grau_flag(origem="deterministico", score=score,
                      teste_status="violado" if teste_violado else None,
                      familias_convergentes=max(0, n_familias - 1))
-    sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}[faixa]
+    grau = grau_com_captura(grau, integra=integra)
+
+    # SÍNTESE GLOBAL: o olhar de conjunto sobre TODOS os documentos (map-reduce sobre as fichas,
+    # nunca sobre o texto cru). É o que responde "o que este processo mostra" — a lista de achados
+    # responde "o que há de errado", que é outra pergunta.
+    try:
+        from compliance_agent.sei import sintese_global as _sg
+        _fichas = _sg.fichas(
+            [{"i": d.get("i"), "ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
+              "fase": d.get("fase", ""), "texto": _texto_de(pasta, d)} for d in docs],
+            _vereditos_por_doc(numero))
+        sintese = _sg.sintetizar(_fichas, lacunas_captura=len(lacunas_captura), numero=numero)
+    except (ImportError, OSError, ValueError, KeyError, TypeError, AttributeError) as e:
+        sintese = {"indisponivel": True, "motivo": str(e)[:140]}
+        indisponiveis.append(f"sintese_global: {e}")
+    # NAO_AVALIAVEL entra como a severidade MÍNIMA da matriz: sem leitura não se afirma gravidade,
+    # e deixar a chave de fora quebrava a avaliação inteira do processo (KeyError).
+    sev = {"EXTREMO": 5, "ALTO": 4, "MEDIO": 3, "BAIXO": 2}.get(faixa, 1)
     ver = min(3, 2 + (1 if n_familias >= 2 else 0))  # teto 3: não há base de pares por processo
     escalada = recomendar(sev * ver, teste_objetivo_violado=teste_violado,
                           familias_independentes=n_familias)
@@ -325,11 +827,24 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
         "acatamento": ac,
         "cnpj_vencedor": cnpj,
         "score": float(score), "score100": score100, "faixa": faixa, "grau": grau,
+        "sintese": sintese,
         "matriz_sv": {"severidade": sev, "verossimilhanca": ver, "produto": sev * ver},
         "escalada": escalada,
+        # DETECTOR QUE NÃO PÔDE AVALIAR TAMBÉM É INDISPONIBILIDADE. `indisponiveis` só registrava
+        # MOTOR QUEBRADO (exceção), então um processo em que 33 dos 43 detectores devolveram
+        # `nao_avaliavel` por falta de dado saía com "indisponíveis: nenhum" — e a seção
+        # "Honestidade da cobertura" do dossiê lia isso como "nada ficou de fora". Medido em
+        # 2026-08-04 no SEI-070002/001289/2022: 43 detectores rodados, 0 indisponíveis
+        # declarados, 33 sem condição de avaliar. É a regra da casa (INDISPONÍVEL ≠ 0) falhando
+        # no relatório da própria casa.
         "cobertura": {"captura_integra": integra, **ev_captura,
                       "detectores_rodados": sorted(set(rodados)),
-                      "indisponiveis": indisponiveis},
+                      "indisponiveis": indisponiveis,
+                      "nao_avaliaveis": [
+                          {"detector": r.detector,
+                           "motivo": (r.motivo_refutacao or "")[:180]}
+                          for r in resultados if r.status == "nao_avaliavel"],
+                      },
         "llm": None,
     }
     if com_llm:
@@ -346,6 +861,7 @@ CREATE TABLE IF NOT EXISTS processo_avaliacao (
   numero_sei TEXT PRIMARY KEY, score REAL, score100 REAL, grau TEXT, faixa TEXT,
   achados_json TEXT, lacunas_json TEXT, docs_chave_json TEXT, acatamento_json TEXT,
   escalada_json TEXT, cnpj_vencedor TEXT, confianca REAL, cobertura_json TEXT,
+  sintese_json TEXT,
   avaliado_em TEXT DEFAULT (datetime('now')), versao TEXT
 );
 """
@@ -366,14 +882,15 @@ def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
         con.execute(
             "insert into processo_avaliacao (numero_sei, score, score100, grau, faixa, "
             "achados_json, lacunas_json, docs_chave_json, acatamento_json, escalada_json, "
-            "cnpj_vencedor, confianca, cobertura_json, avaliado_em, versao) "
-            "values (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?) "
+            "cnpj_vencedor, confianca, cobertura_json, sintese_json, avaliado_em, versao) "
+            "values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?) "
             "on conflict(numero_sei) do update set score=excluded.score, "
             "score100=excluded.score100, grau=excluded.grau, faixa=excluded.faixa, "
             "achados_json=excluded.achados_json, lacunas_json=excluded.lacunas_json, "
             "docs_chave_json=excluded.docs_chave_json, acatamento_json=excluded.acatamento_json, "
             "escalada_json=excluded.escalada_json, cnpj_vencedor=excluded.cnpj_vencedor, "
             "confianca=excluded.confianca, cobertura_json=excluded.cobertura_json, "
+            "sintese_json=excluded.sintese_json, "
             "avaliado_em=excluded.avaliado_em, versao=excluded.versao",
             (out["numero_sei"], out["score"], out["score100"], out["grau"]["grau"],
              out["faixa"], json.dumps(out["achados"], ensure_ascii=False, default=str),
@@ -383,7 +900,8 @@ def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
              json.dumps(out["acatamento"], ensure_ascii=False, default=str),
              json.dumps(out["escalada"], ensure_ascii=False, default=str),
              out.get("cnpj_vencedor"), confianca,
-             json.dumps(cob, ensure_ascii=False, default=str), VERSAO))
+             json.dumps(cob, ensure_ascii=False, default=str),
+             json.dumps(out.get("sintese") or {}, ensure_ascii=False, default=str), VERSAO))
         con.commit()
         return True
     finally:

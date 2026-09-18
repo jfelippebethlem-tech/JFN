@@ -3,16 +3,193 @@
  "gerado_em": "2026-07-06T07:42:26+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_057770_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "nota de liquida o nl 6830",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_nl_6830.txt",
+   "chars": 2321,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "despacho de solicita o de liquida o de d",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "nota de empenho refor o ne 2025ne06682 3",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/003_nota_de_empenho_refor_o_ne_2025ne06682_3.txt",
+   "chars": 2554,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "nota de autoriza o de despesa nad 202300",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/004_nota_de_autoriza_o_de_despesa_nad_202300.txt",
+   "chars": 2177,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "certificado de regularidade do fgts crf",
+   "fase": "tramitacao",
+   "tipo": "certidao",
+   "texto": "texto/006_certificado_de_regularidade_do_fgts_crf.txt",
+   "chars": 1023,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "certid es neg de d bitos trabalhistas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/007_certid_es_neg_de_d_bitos_trabalhistas.txt",
+   "chars": 1751,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "certid es neg de d bitos federais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_certid_es_neg_de_d_bitos_federais.txt",
+   "chars": 1634,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "certid es neg de d bitos estaduais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_certid_es_neg_de_d_bitos_estaduais.txt",
+   "chars": 2410,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "certid es neg de d bitos municipais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_certid_es_neg_de_d_bitos_municipais.txt",
+   "chars": 1634,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "certid o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_certid_o.txt",
+   "chars": 4380,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/012_anexo.txt",
+   "chars": 807,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/013_anexo.txt",
+   "chars": 684,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "ordem de servi o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/014_ordem_de_servi_o.txt",
+   "chars": 1207,
+   "ocr": false,
+   "fotos": [
+    "fotos/014_p01.jpg"
+   ]
+  },
+  {
+   "i": 15,
+   "titulo": "nota fiscal nf",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/015_nota_fiscal_nf.txt",
+   "chars": 2167,
+   "ocr": false,
+   "fotos": [
+    "fotos/015_p01.jpg"
+   ]
+  },
+  {
+   "i": 16,
+   "titulo": "nota fiscal nf 507",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/016_nota_fiscal_nf_507.txt",
+   "chars": 2104,
+   "ocr": false,
+   "fotos": [
+    "fotos/016_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 4,
+  "indefinida": 8
  },
  "lacunas": [
   {
@@ -26,7 +203,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 3,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

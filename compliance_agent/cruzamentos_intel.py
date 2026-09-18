@@ -33,9 +33,10 @@ _CACHE_DIR = _REPO / "data" / "cache"
 logger = logging.getLogger(__name__)
 
 # mesma régua do nucleo/adaptador_db._tem_sancao_vigente: só sanção IMPEDITIVA conta
-_SQL_IMPEDITIVA = ("(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%suspens%' "
-                   "OR lower(categoria) LIKE '%inid%' OR lower(categoria) LIKE '%proib%' "
-                   "OR lower(categoria) LIKE '%declara%')")
+# a régua do que VEDA contratar mora em `sancao_impeditiva` — multa e publicação extraordinária
+# são penalidades reais que NÃO impedem contratação, e a distinção estava replicada em SQL aqui e
+# no `nucleo/adaptador_db`. Cópias idênticas hoje; este import existe para que continuem idênticas.
+from compliance_agent.sancao_impeditiva import SQL_IMPEDITIVA as _SQL_IMPEDITIVA
 
 # OB SIAFE guarda data DD/MM/AAAA (string) — converter p/ ISO na consulta
 _OB_ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
@@ -642,6 +643,16 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
     — 25% p/ compras/serviços/obras, 50% p/ reforma). Usa pcrj_contratos (valor_inicial × valor_global)
     e cruza com contrato_aditivo p/ separar ACRÉSCIMO real de reajuste (qualif_acrescimo). Também
     marca CHANGE ORDERS EM SÉRIE (≥3 aditivos — red-flag OCDE/Banco Mundial), mesmo sem estouro de valor."""
+    # PARÂMETRO PRIMEIRO, banco depois. Rótulo fora do vocabulário não pode virar lista vazia:
+    # "estadual" (em vez de "estado") devolvia ZERO achados sobre uma base com 260 — o filtro mentia
+    # com cara de resposta. E validar antes de abrir conexão faz a recusa valer também sobre base
+    # vazia, que é justamente onde o zero engana mais.
+    if esfera and esfera != "todas":
+        from compliance_agent.collectors.pncp_resultados import ESFERAS as _ESFERAS
+        if esfera not in _ESFERAS:
+            return {"ok": False, "achados": [], "n": 0,
+                    "erro": (f"esfera '{esfera}' não existe — use uma de {list(_ESFERAS)} ou "
+                             "'todas'. Lista vazia aqui seria NÃO MEDIDO, não 'nada a apurar'.")}
     con = _ro(db_path)
     try:
         # acréscimos reais (não reajuste) por contrato, do contrato_aditivo (fonte granular)
@@ -709,7 +720,13 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
             # efeito era falso NEGATIVO: obra nova com 30% de acréscimo passava calada.
             obj = _norm_nome(r["objeto"])
             teto = _teto_acrescimo("reforma" if re.search(r"REFORMA", obj) else None)
-            estouro = pct >= teto
+            # ATÉ 25% é LÍCITO (art. 125: "os acréscimos ... até 25%"). No teto exato o contrato
+            # está DENTRO da lei, e `pct >= teto` acusava ilegalidade onde não havia: medido em
+            # 2026-08-10, QUATRO dos sete estouros com acréscimo granular confirmado estavam em
+            # 25,000000% — mais da metade do que a casa podia afirmar era falso. A tolerância
+            # existe porque `acrescimo/vi` em ponto flutuante devolve 0,25000000000000006 para um
+            # aditivo exatamente no teto; sem ela o `>` não resolveria nada.
+            estouro = pct > teto + 1e-9
             serie = nad >= 3
             if not (estouro or serie):
                 continue
@@ -721,7 +738,16 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120,
                 "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
                 "valor_inicial": vi, "valor_global": vg, "acrescimo": round(vg - vi, 2),
                 "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": int(teto * 100),
-                "estoura_teto": pct >= teto,
+                # O art. 125 mede sobre o "valor inicial ATUALIZADO", e aqui a base é o inicial CRU:
+                # a varredura roda sobre todo o PNCP, onde não há índice nem data-base para corrigir.
+                # O efeito é superestimar. Medido em 2026-08-10 no caso VR Benefícios: o termo declara
+                # "acréscimo de 25%" e R$ 20.000 é exatamente 25% de R$ 80.000 — a unidade usou o
+                # valor atualizado, e o nosso 26,4% acusava estouro num aditivo LÍCITO. Quem tem o
+                # índice é o `x1_crescimento_aditivo` (recebe `indice_atualizacao` do contexto dos
+                # autos); aqui a base sai DECLARADA para ninguém ler o percentual como definitivo.
+                "base_do_percentual": "valor_inicial (NÃO atualizado — o art. 125 mede sobre o "
+                                      "atualizado; percentual rente ao teto pode ser lícito)",
+                "estoura_teto": estouro,
                 "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
                 "acrescimo_confirmado": bool(confirmado),
                 "lacunas_aditivo": lacunas_ad.get(r["cc"], []),
@@ -905,6 +931,36 @@ def _norm_item(desc: str) -> str:
         t = re.sub(r"(es|s)$", "", t) if len(t) > 4 else t  # plural simples
         toks.append(t)
     return " ".join(sorted(set(toks)))  # ordem-insensível: "caneta azul" == "azul caneta"
+
+
+TOKENS_ITEM_COMPARAVEL = 3   # descrição com <3 tokens úteis não sustenta comparação de preço
+
+
+def comparabilidade_item(desc: str) -> tuple[str, str]:
+    """Diz se a descrição do item sustenta comparação de PREÇO entre certames.
+
+    `_norm_item` casa descrições idênticas token a token — o casamento é exato, não por
+    substring. O problema não é o casamento: é a POBREZA da descrição. "Seringa",
+    "INSULINA", "Ração animal" casam com outros itens de mesmo nome que podem ser produtos
+    inteiramente distintos (seringa descartável × seringa de bomba de infusão; insulina NPH ×
+    análoga de ação prolongada). A razão contra a mediana então mede heterogeneidade de
+    produto, não sobrepreço.
+
+    Medido em 30/08/2026 sobre os 488 flags `sobrepreco_vs_mediana` do índice: **62,9%
+    nasciam de descrições com ≤2 tokens.**
+
+    NÃO cortamos esses flags. O controle positivo mostrou que 41 deles têm razão ≥10× —
+    entre eles "Agulha Hipodérmica" a 74× — e um corte seco os perderia. Declaramos a
+    fragilidade e deixamos o exame humano decidir, que é a doutrina da casa: INDISPONÍVEL e
+    FRÁGIL se declaram, não se apagam.
+
+    Devolve ("FORTE"|"FRACA", motivo por extenso)."""
+    toks = _norm_item(desc).split()
+    if len(toks) < TOKENS_ITEM_COMPARAVEL:
+        return ("FRACA", f"descrição com {len(toks)} token(s) úteis: itens de nome igual e "
+                         f"especificação distinta caem na mesma mediana — a razão pode medir "
+                         f"produto diferente, não preço fora de curva")
+    return ("FORTE", f"descrição com {len(toks)} tokens úteis")
 
 
 def _mediana(xs: list) -> float:

@@ -10,7 +10,7 @@
      uma vez — um segundo sistema de design para manter, e uma tela que não parecia do mesmo
      produto. Agora herda os mesmos tokens, o mesmo relógio (`--bpm`), a mesma moldura usinada e
      os mesmos glifos autorais. Nenhum estilo novo é declarado aqui. -->
-<link rel="stylesheet" href="/static/css/painel.css?v=a7282605">
+<link rel="stylesheet" href="/static/css/painel.css?v=5bbfa8d9">
 </head>
 <body data-esf="geral">
 <div class="aura a1" aria-hidden="true"></div><div class="aura a2" aria-hidden="true"></div>
@@ -110,7 +110,7 @@ function tabelaRestritos(itens){
   return `<div class="card" style="overflow-x:auto"><table>
     <tr><th>Status</th><th>Processo</th><th>Unidade</th><th>Existe</th><th>Leituras</th><th>Última</th></tr>
     ${itens.map(e=>`<tr>
-      <td><span class="tag">${esc(e.status||'')}</span></td>
+      <td><span class="tag">${esc(e.status||'')}</span>${e.pesquisa_vazia?' <span class="tag" title="A pesquisa do SEI respondeu \'Nenhum resultado encontrado\' com controle positivo na mesma unidade: todos os documentos restritos a outras unidades. INDISPONÍVEL por acesso, não zero.">pesquisa vazia</span>':''}</td>
       <td><code>${esc(e.numero||'')}</code></td>
       <td>${esc(e.unidade||'—')}</td>
       <td>${esc(e.fonte_existencia||e.existe||'—')}</td>

@@ -192,7 +192,30 @@ REPO = Path(__file__).resolve().parent.parent
 # `foto_procedencia.buscar_reversa` também é amplo pelo mesmo tipo de razão (o provedor de busca
 # reversa é um callable INJETADO por terceiro e pode levantar qualquer coisa; um bug dele não pode
 # derrubar o laudo), mas ele entrou dentro do saldo pago acima.
-BASELINE = 1596
+# 2026-08-03: +27 (1596→1623), dívida acumulada ENTRE 00c10627 e 6dd2b91d — a catraca estava
+# vermelha desde antes da série de loops de qualidade, e ninguém a documentou entrada a entrada
+# como manda o costume acima. Auditadas uma a uma agora:
+#   · `processo_360` (5) — catch POR DETECTOR que grava em `indisponiveis`: é o próprio mecanismo
+#     de honestidade do 360 (rodar detector arbitrário tem espaço de exceção enorme). Amplo certo.
+#   · `tools/processo_360` (2) + `sentinela_integridade` (2) — "1 processo ruim não derruba o lote"
+#     e "a sentinela nunca derruba o cron"; ambos imprimem/registram o erro, nenhum é mudo.
+#   · `painel_computado` (4) + `painel_clique_check` (2) — fronteira de Playwright/CDP.
+#   · `confronto_caso` (4) — cada motor devolve `INDISPONIVEL: {e}` no lugar do resultado; é a
+#     matriz de lacunas, o erro É o dado.
+#   · `doc_juizo` (2) — fronteira de LLM, devolve `{"escala": None, "aviso": ...}` declarado.
+#   · o resto — idioma-padrão das rotas (catch-and-return no JSON) e leitura de arquivo.
+# PAGAS neste mesmo commit as duas ÚNICAS realmente engolidoras (1625→1623): `_cnpj_vencedor`
+# (`except: return None` sobre leitura de SQLite/JSON) e o loop de manifests do `--lote`.
+# 2026-08-03: +2 (1623→1625) — DUAS fronteiras de BROWSER na recaptura, mesmo idioma do `run_pais`
+# (um processo ruim não pode derrubar o lote; o erro sai logado com tipo e mensagem):
+#   • `sweep_recaptura_integral.reler` e • `sei_sweep.run_recaptura`.
+# Estreitar aqui trocaria dívida CONTADA por sessão de SEI perdida no meio do slot — e a sessão é
+# única por IP. Contei uma só na primeira passada: a do commit anterior escapou da conferência
+# porque eu comparava contra HEAD~1, que já a continha.
+# 2026-08-03: +1 (1625->1626) — `sintese_global._prosa`, fronteira de LLM: a leitura em prosa
+# é opcional e o provedor pode falhar de qualquer forma; o catch devolve a indisponibilidade
+# DECLARADA e a síntese determinística fica de pé inteira, com os mesmos fatos.
+BASELINE = 1626
 
 
 def _contar() -> int:
@@ -205,8 +228,13 @@ def _contar() -> int:
     arquivos = git.stdout.splitlines()
     total = 0
     for rel in arquivos:
-        if rel.startswith("massare") or rel == "tests/test_catraca_excepts.py":
-            continue  # massare tem catraca própria; este arquivo cita a string 4× (auto-referência)
+        # AUTO-REFERÊNCIA. O contador procura a string literal, então TODO teste que fala sobre
+        # esta catraca a infla ao citá-la em prosa. Já valia para este arquivo (4 citações); em
+        # 2026-08-06 nasceu `tests/test_catraca_nao_pode_ser_tolerada.py`, que explica no docstring
+        # por que a catraca estava em base de toleradas — e o +1 apareceu como se fosse código novo.
+        # A exclusão é por PREFIXO e vale só para `tests/`: código de produção nunca escapa.
+        if rel.startswith("massare") or rel.startswith("tests/test_catraca_"):
+            continue  # massare tem catraca própria; testes sobre a catraca citam a string em prosa
         try:
             total += (REPO / rel).read_text(encoding="utf-8", errors="ignore").count("except Exception")
         except OSError:

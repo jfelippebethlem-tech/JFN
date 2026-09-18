@@ -23,11 +23,15 @@ import argparse
 import html
 import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(RAIZ))
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
+
+from compliance_agent.sei import acervo_texto  # noqa: E402
 REPORT = RAIZ / "reports" / "backfill_dossie_mestre.json"
 
 _RX_CERTAME = re.compile(r"\b(\d{14}-\d-\d{6}/\d{4})\b")
@@ -51,7 +55,12 @@ def _leitura_do_arquivo(pdir: Path) -> dict | None:
             # unescape: textos do arquivo SEI carregam entidades HTML (&acirc;…) que quebram
             # regex acentuado e sujam trecho citado (aprendido no teste real 2026-07-20)
             conteudo.append({"doc": d.get("titulo") or rel,
-                             "conteudo": html.unescape(f.read_text(errors="replace"))})
+                             # sem a etiqueta do arquivo: isto alimenta `auditar_acatamento`,
+                             # que decide sobre o art. 53 numa janela de 200 caracteres
+                             # (ver `sei/acervo_texto`).
+                             "conteudo": acervo_texto.sem_etiqueta(
+                                 html.unescape(f.read_text(errors="replace")),
+                                 str(d.get("titulo") or ""))})
         except OSError:
             continue
     if not conteudo:

@@ -451,6 +451,13 @@ def esferas_por_ente(con) -> dict[str, str]:
         return {}
 
 
+# VOCABULÁRIO FECHADO da esfera. Existe porque um valor errado não dá erro: `esfera="estadual"`
+# (que parece certo em português) não casa com nada e a varredura devolve **zero achados** — li
+# "0 aditivo irregular no Estado" numa base que tinha 260, em 2026-08-10. Filtro que erra o rótulo
+# mente com cara de resposta. Quem recebe `esfera` do usuário valida contra isto ANTES de filtrar.
+ESFERAS = ("estado", "prefeitura", "municipios", "federal", "outros")
+
+
 def classificar_esfera(registro: dict, oficial: dict[str, str]) -> str:
     """Esfera de UM certame: 'estado' | 'prefeitura' (município do Rio) | 'municipios' (demais
     municípios) | 'federal' | 'outros'. Fonte 1 = esferaId OFICIAL do ente no PNCP; exceção real:
@@ -495,6 +502,12 @@ def certames_da_esfera(con, esfera: str | None) -> set | None:
     nenhum detector deve reinventar a classificação (exceções de unidade vivem no classificar_esfera)."""
     if not esfera or esfera == "todas":
         return None
+    # Rótulo fora do vocabulário devolveria um SET VAZIO, e set vazio filtra tudo: o detector some
+    # com zero achados sobre uma base cheia. Medido em 2026-08-10 com `esfera="estadual"` (o
+    # português natural) em vez de `"estado"` — 0 achados numa base com 260. Erro é melhor que
+    # silêncio: quem chama tem de saber que não mediu.
+    if esfera not in ESFERAS:
+        raise ValueError(f"esfera '{esfera}' não existe — use uma de {list(ESFERAS)} ou 'todas'")
     return certames_das_esferas(con, {esfera})
 
 

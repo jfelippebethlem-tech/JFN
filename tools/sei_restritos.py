@@ -98,9 +98,35 @@ def _load() -> dict:
 
 
 def _save(reg: dict) -> None:
+    """Grava MESCLANDO com o que estiver no disco AGORA — nunca sobrescrevendo às cegas.
+
+    Este arquivo é um índice read-modify-write, e a casa roda sweeps CONCORRENTES (o do ciclo, o de
+    recaptura e o dos bombeiros estavam vivos ao mesmo tempo em 2026-08-12). Sem merge acontece o
+    clássico: A carrega, B carrega, A grava, B grava por cima — e o registro de A some sem erro
+    nenhum. É a mesma família de `indice-read-modify-write-sem-merge`, que já apagou trabalho aqui.
+
+    Empate no MESMO processo: fica a entrada com mais `n_leituras`. O contador é monotônico, então
+    o maior é o que viu mais leitura; escolher o outro jogaria fora uma leitura de verdade.
+
+    O `.tmp` leva o PID no nome: dois processos gravando ao mesmo tempo no MESMO temporário
+    trocariam um problema por outro (o `os.replace` é atômico, o arquivo intermediário não era).
+    """
     REG.parent.mkdir(parents=True, exist_ok=True)
-    tmp = REG.with_suffix(".tmp")
-    tmp.write_text(json.dumps(reg, ensure_ascii=False, indent=1), encoding="utf-8")
+    try:
+        disco = json.loads(REG.read_text(encoding="utf-8")) if REG.exists() else {}
+        if not isinstance(disco, dict):
+            disco = {}
+    except (OSError, ValueError):
+        disco = {}   # disco ilegível: grava o que se tem; descartar seria trocar de problema
+    final = dict(disco)
+    for k, v in (reg or {}).items():
+        atual = final.get(k)
+        if isinstance(atual, dict) and isinstance(v, dict):
+            if int(atual.get("n_leituras", 0) or 0) > int(v.get("n_leituras", 0) or 0):
+                continue
+        final[k] = v
+    tmp = REG.with_suffix(f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(final, ensure_ascii=False, indent=1), encoding="utf-8")
     os.replace(tmp, REG)
 
 
@@ -124,6 +150,7 @@ def registrar(numero: str, r: dict, *, fonte: str = "sweep") -> str:
         e["n_leituras"] = int(e.get("n_leituras", 0)) + 1
         e["ult_leitura"] = st
         e["ult_docs"] = len(r.get("documentos") or [])
+        e["pesquisa_vazia"] = bool(r.get("sem_resultado"))   # "Nenhum resultado encontrado" com controle positivo
         if existe and not e.get("fonte_existencia"):
             e["fonte_existencia"] = existe; e["existe"] = existe
         if st == "RESTRITO":

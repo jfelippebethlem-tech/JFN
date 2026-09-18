@@ -64,15 +64,36 @@ def correlacionar() -> dict:
         con.close()
 
 
+def variantes_sei(sei: str) -> list[str]:
+    """As duas grafias do MESMO processo: com e sem o prefixo `SEI-`.
+
+    O SIAFE grava o processo na notação oficial (`SEI-080001/001211/2024`) e é dela que
+    `ordens_bancarias.numero_sei` é copiado — **84,3% das 212.994 linhas preenchidas trazem o
+    prefixo**, contra 3,0% sem ele. Quem consulta, porém, costuma ter o número nu (é assim que ele
+    aparece na pasta do arquivo do SEI e nos relatórios). O `WHERE numero_sei=?` casava, então, com
+    3% do que existe — e devolvia lista vazia, que se lê como "processo sem pagamento" quando na
+    verdade é "chave escrita de outro jeito".
+
+    Não é dado corrompido e não pede migração: as duas grafias são legítimas. Pede normalização na
+    consulta. (Há ainda 12,1% de processos com OUTRA numeração, não-SEI, que esta função não
+    alcança por definição — e 0,6% de fato irregulares, como `-150157/001357/2023`.)
+    """
+    nu = re.sub(r"^SEI[-\s]?", "", (sei or "").strip(), flags=re.I)
+    return [nu, f"SEI-{nu}"] if nu else []
+
+
 def obs_por_processo(sei: str) -> list[dict]:
     """Todas as OBs (TFE) vinculadas a um processo SEI. Para o Lex saber o que o processo pagou."""
     if not _DB.exists():
+        return []
+    v = variantes_sei(sei)
+    if not v:
         return []
     con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
     try:
         rows = con.execute(
             "SELECT numero_ob, data_pagamento, ug_codigo, ug_nome, favorecido_cpf, favorecido_nome, valor, exercicio "
-            "FROM ordens_bancarias WHERE numero_sei=? ORDER BY data_pagamento", (sei.strip(),)).fetchall()
+            "FROM ordens_bancarias WHERE numero_sei IN (?,?) ORDER BY data_pagamento", tuple(v)).fetchall()
         return [dict(r) for r in rows]
     finally:
         con.close()

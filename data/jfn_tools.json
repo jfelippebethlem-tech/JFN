@@ -156,6 +156,283 @@
     {
       "type": "function",
       "function": {
+        "name": "imprensa_orgaos",
+        "description": "O que a imprensa diz dos ORGAOS (Google News RSS, sem chave): noticias por orgao nos ultimos N dias, marcadas quando o titulo traz termo de risco (fraude, operacao, TCE, MP, propina). Indicio a confirmar na fonte — usar quando: 'o que saiu na imprensa sobre a Fundacao Saude', 'noticias da SEEDUC', 'escandalo', 'operacao' — chamar: GET /api/imprensa/orgaos (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dias": {
+              "type": "integer",
+              "description": "int opcional (30)"
+            },
+            "so_adversas": {
+              "type": "string",
+              "description": "0|1 (1)"
+            },
+            "limite": {
+              "type": "integer",
+              "description": "int opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/imprensa/orgaos",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lai_requerimento",
+        "description": "LAI automatizada: um alvo (nº de processo SEI/Processo.rio, contrato CCON, CNPJ ou nome) vira REQUERIMENTO de acesso a informacao pronto (docx+md): fundamento (Lei 12.527, Lei Municipal 5.394/2012 ou Decreto 46.475/2018), contratos do ContasRio, documentos SEI NOMEADOS pelo numero, fiscais; registra em data/lai.db com prazo de 20 dias para cobranca. Protocolo no e-SIC e humano. — usar quando: 'pede a integra do processo X', 'faz um pedido LAI', 'requerimento de informacao', 'e-SIC', 'quero os documentos desse contrato' — chamar: POST /api/lai/gerar (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "obrigatorio (processo|contrato|cnpj|nome)"
+            },
+            "esfera": {
+              "type": "string",
+              "description": "prefeitura|estado opcional"
+            },
+            "motivo": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "telegram": {
+              "type": "string",
+              "description": "0|1 (1 = manda docx+md no Telegram)"
+            }
+          },
+          "required": [
+            "alvo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/lai/gerar",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pcrj_saude",
+        "description": "Saude dos pipelines da Prefeitura do Rio (catalogo SEI, busca livre, arvore/assinaturas, ContasRio, CCON, conferencia CRC, LAI): registros, frescor, erros nos logs, arquivos do shared-brain e veredito verde/amarelo/vermelho com a acao. Depuracao comeca por medir. — usar quando: 'os pipelines da prefeitura estao rodando?', 'o que parou', 'saude do SEI municipal', 'por que nao chegou dado novo' — chamar: GET /api/pcrj/saude (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "md": {
+              "type": "string",
+              "description": "0|1 (1 = inclui laudo em markdown)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "sistema",
+        "tipo": "http",
+        "rota": "/api/pcrj/saude",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pcrj_emergencias",
+        "description": "Emergencias a INCUMBENTE na Prefeitura do Rio: dispensa por emergencia (art. 75, VIII, lida nos autos) para quem ja era contratado do mesmo orgao, com certame citado, prorrogacao e o FATO declarado (desastre / certame travado / nao declarado). Vermelho = incumbente + certame ou prorrogacao sem desastre declarado. Indicio, nao acusacao; alvo natural de LAI. — usar quando: 'emergencias da prefeitura', 'dispensa emergencial para o mesmo fornecedor', 'quem ganhou emergencia sendo incumbente' — chamar: GET /api/pcrj/emergencias (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "integer",
+              "description": "int opcional (50)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/pcrj/emergencias",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lai_prazos",
+        "description": "Pedidos LAI protocolados com prazo de resposta vencendo em ate N dias ou vencido — para cobrar o orgao ou recorrer (art. 15 da LAI) — usar quando: 'quais LAI estao vencendo', 'cobrar resposta do e-SIC' — chamar: GET /api/lai/prazos (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dias": {
+              "type": "integer",
+              "description": "int opcional (3)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/lai/prazos",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "tac_recorrente",
+        "description": "Quem o Estado paga por Termo de Ajuste de Contas (servico prestado SEM contrato regular) no DOERJ: por fornecedor (n, soma, periodo, processos) + sinais de favorecimento (agente publico no QSA, socio comum, doacao de socio, capital infimo) + concordancia com o SIAFE — usar quando: 'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao' — chamar: GET /api/doerj/tac_recorrente (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "integer",
+              "description": "int opcional (default 20)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/doerj/tac_recorrente",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lentes_cruzadas",
+        "description": "Lentes de deteccao cruzadas: convergencia (empresa marcada por 2+ dimensoes), dependencia mutua, porte x pago, pago sob sancao. Le JSON materializado (tools/lentes_materializar.py, cron 04:17) — as 4 lentes somam ~31s e nao rodam na rota. — usar quando: priorizar fila de apuracao; 'quais empresas acendem em mais de um detector' — chamar: GET /api/lentes (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "lente": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "top": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/lentes",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lentes_municipais",
+        "description": "26 lentes sobre a despesa da PREFEITURA do Rio (pcrj_despesa), com o DENOMINADOR junto: universo contratual de R$ 30,64 bi de R$ 89,62 bi brutos (34,2%) — o resto e folha, divida, intra-orcamentaria e precatorio. Cada lente carrega prevalencia medida; o que foi ressalvado continua contado, com o motivo. — usar quando: risco na contratacao MUNICIPAL do Rio; 'o que a Prefeitura pagou fora da curva'; competencia TCM-RJ — chamar: GET /api/lentes (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "esfera": {
+              "type": "string",
+              "description": "municipal"
+            },
+            "lente": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "top": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/lentes",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pericia_bateria",
+        "description": "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos. Medido: 83,3% dos itens sao INDISPONIVEL, 20 testes nao rodam e NENHUM item chega a CONFIRMADO. INDISPONIVEL e ausencia de EXAME, nao de irregularidade. Distinta de /api/pericia/cobertura, que mede quanto do ACERVO recebeu juizo. — usar quando: 'a pericia esta funcionando?'; decidir QUAL captura priorizar; entender por que o placar nao confirma nada — chamar: GET /api/pericia/bateria (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "so_mortos": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/pericia/bateria",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "certame_indice",
         "description": "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial) — usar quando: risco de um certame/licitacao especifica pelo nº de controle PNCP — chamar: GET /api/certame/indice (base http://127.0.0.1:8000)",
         "parameters": {

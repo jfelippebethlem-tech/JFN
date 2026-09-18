@@ -34,8 +34,11 @@ import re
 from typing import Any, Callable
 
 from compliance_agent.knowledge.golden_veredito import (
+    ROTULOS_BINARIOS,
     ROTULOS_VALIDOS,
     baseline_classe_majoritaria,
+    baseline_deontico,
+    binarizar,
     carregar,
     metricas,
     split,
@@ -73,7 +76,13 @@ _RE_CONCLUSAO = re.compile(
     r"n[ãa]o\s+(?:[ée]|s[ãa]o)\s+(?:obrigat[óo]ri\w*|admit\w*|permit\w*|l[íi]cit\w*|"
     r"irregular|ileg[ai]l\w*|vedad\w*|exig[íi]v\w*)|"
     r"n[ãa]o\s+(?:configura|caracteriza)\w*)\b[,:]?\s*", re.I)
-_RE_DEVER_INICIAL = re.compile(r"\b(?:deve[m]?|dever[áa](?:o)?)\s+", re.I)
+# 2026-08-02 — REMOVIDO o apagamento do verbo de dever. Ele existia para não entregar o rótulo
+# `vicio_por_omissao` (verbo de dever presente em 100% dessa classe contra 24% de `licito`), mas
+# apagava o verbo em QUALQUER posição e devolvia texto agramatical — "podem e ser considerados",
+# "a Administração descontar as parcelas". Resultado medido no holdout: 26 dos 58 casos da classe
+# majoritária lidos como `licito`, o erro dominante da avaliação inteira. O modelo acertava o
+# texto mutilado; errada era a régua. O vazamento que aquilo tentava evitar é tratado onde deve
+# ser tratado: na medição de DUAS classes, com o baseline deôntico ao lado como comparador.
 
 
 def mascarar_conclusao(enunciado: str) -> str:
@@ -84,9 +93,6 @@ def mascarar_conclusao(enunciado: str) -> str:
     """
     texto = re.sub(r"\s+", " ", enunciado or "").strip()
     mascarado = _RE_CONCLUSAO.sub("", texto, count=1)
-    if mascarado == texto:
-        # o dever costuma vir no meio ("A demonstração ... deve ser realizada mediante ...")
-        mascarado = _RE_DEVER_INICIAL.sub("", texto, count=1)
     return mascarado.strip() or texto
 
 
@@ -125,12 +131,23 @@ def avaliar_caso(caso: dict, gerar: Callable) -> dict:
             "vicio": caso["vicio"], "id": caso["id"], "condicionada": caso.get("condicionada")}
 
 
-def avaliar(casos: list[dict], gerar: Callable, *, limite: int | None = None) -> dict[str, Any]:
-    """Roda o conjunto e devolve as métricas completas, incluindo o baseline burro."""
+def avaliar(casos: list[dict], gerar: Callable, *, limite: int | None = None,
+            duas_classes: bool = False) -> dict[str, Any]:
+    """Roda o conjunto e devolve as métricas completas, incluindo os baselines burros.
+
+    `duas_classes` mede a pergunta bem posta (irregular × lícito). O PROMPT não muda: o veredito
+    de 3 classes do modelo é binarizado na hora de pontuar, para que a diferença medida seja a da
+    RÉGUA e não a de um prompt novo. A abstenção continua abstenção.
+    """
     alvo = casos[:limite] if limite else casos
     detalhes = [avaliar_caso(c, gerar) for c in alvo]
+    if duas_classes:
+        for d in detalhes:
+            d["esperado_3c"], d["previsto_3c"] = d["esperado"], d["previsto"]
+            d["esperado"], d["previsto"] = binarizar(d["esperado"]), binarizar(d["previsto"])
     pares = [(d["esperado"], d["previsto"]) for d in detalhes]
-    m = metricas(pares)
+    m = metricas(pares, rotulos=ROTULOS_BINARIOS if duas_classes else ROTULOS_VALIDOS)
+    m["modo"] = "2classes" if duas_classes else "3classes"
     n = len(detalhes) or 1
     m["alucinacao_citacao"] = sum(1 for d in detalhes
                                   if d["previsto"] == "citacao_nao_ancorada") / n
@@ -138,6 +155,15 @@ def avaliar(casos: list[dict], gerar: Callable, *, limite: int | None = None) ->
     m["invalido"] = sum(1 for d in detalhes if d["previsto"] == "invalido") / n
     m["baseline_burro"] = baseline_classe_majoritaria(alvo)
     m["bate_o_baseline"] = m["f1_macro"] > m["baseline_burro"].get("f1_macro", 0.0)
+    if duas_classes:
+        # O papagaio deôntico é o comparador que impede o modo binário de parecer avanço quando
+        # for só o atalho da forma verbal. Publicado ao lado, sempre.
+        m["baseline_deontico"] = baseline_deontico(alvo)
+        m["bate_o_deontico"] = m["f1_macro"] > m["baseline_deontico"].get("f1_macro", 0.0)
+        m["veredito_da_medicao"] = (
+            "o motor supera o papagaio deôntico" if m["bate_o_deontico"] else
+            "O MOTOR NÃO SUPERA um classificador de uma linha que responde 'irregular' sempre que "
+            "houver verbo de dever — o número não sustenta uso do veredito para decidir")
     m["prompt_versao"] = PROMPT_VERSAO
     # Hash da FONTE do prompt, não só a versão declarada: versão é o que alguém lembrou de subir.
     from compliance_agent.nucleo.prompt_versao import impressao, REGISTRO
@@ -156,6 +182,11 @@ def avaliar(casos: list[dict], gerar: Callable, *, limite: int | None = None) ->
 # a rede. A trava roda como job (off-hours) e o teste unitário cobre a lógica de comparação — que
 # é onde mora o erro silencioso (tolerância frouxa demais, métrica errada, direção invertida).
 BASELINE_PADRAO = "data/hermeneutica_baseline.json"
+# O card de acurácia do painel (`reporting/painel_acuracia`) lê a ÚLTIMA medição daqui — e até
+# 2026-08-02 ninguém escrevia este arquivo. O card dizia "ainda não medido neste ambiente — rode
+# eval_hermeneutica --holdout --aceitar" e o `--aceitar` só gravava o baseline: o comando sugerido
+# jamais apagaria a própria mensagem. Baseline é o PISO da catraca; última é O QUE SE MEDIU AGORA.
+ULTIMA_PADRAO = "data/hermeneutica_ultima.json"
 
 # Tolerância: variação de amostragem do modelo é real, e travar no valor exato produziria alarme
 # a cada rodada. 3 pontos de F1 macro é folga suficiente para ruído e apertada o bastante para
@@ -178,6 +209,16 @@ def comparar_com_baseline(atual: dict, baseline: dict | None,
     if not baseline:
         return {"ok": True, "primeira_medicao": True, "regressoes": [], "melhorias": [],
                 "motivo": "sem baseline — esta medição passa a ser a linha de base"}
+
+    # Régua nova não se compara com régua velha. O baseline de 2026-08-02 (0,48) foi medido em 3
+    # classes sobre enunciado MUTILADO; confrontar um F1 de 2 classes com ele acusaria regressão
+    # ou melhoria que não existem. Modo diferente = não há o que comparar, e isso se diz.
+    modo_a, modo_b = atual.get("modo") or "3classes", baseline.get("modo") or "3classes"
+    if modo_a != modo_b:
+        return {"ok": True, "modo_incompativel": True, "regressoes": [], "melhorias": [],
+                "motivo": (f"baseline foi medido em {modo_b} e esta medição é {modo_a} — "
+                           "números de réguas diferentes não se comparam; aceite um baseline novo "
+                           "com --aceitar antes de usar a catraca")}
 
     regressoes: list[str] = []
     melhorias: list[str] = []
@@ -224,6 +265,46 @@ def resumo_para_baseline(resultado: dict) -> dict[str, Any]:
              "indisponivel", "invalido", "bate_o_baseline", "prompt_versao", "prompt_hash")}
 
 
+# Acima disto a "medição" mediu o provedor, não o motor. Medido em 2026-08-03: uma execução com
+# Gemini e Cerebras fora do ar devolveu indisponivel=100% e o card passou a exibir "F1 0,0 ·
+# insuficiente" — a mentira que o próprio `painel_acuracia` diz não aceitar. INDISPONÍVEL ≠ 0.
+TETO_INDISPONIVEL = 0.30
+# Sondagem de depuração não é medição. Uma corrida de 6 casos foi parar no card durante o próprio
+# debug de 2026-08-03 — o card fala do motor para quem lê o relatório, não do que se testou à mão.
+MIN_AMOSTRA_PUBLICAVEL = 30
+
+
+def gravar_ultima(resumo: dict, caminho: str = ULTIMA_PADRAO) -> str | None:
+    """Publica a medição recém-feita para o card do painel, com carimbo de QUANDO.
+
+    Devolve `None` e NÃO escreve quando a rodada foi dominada por indisponibilidade de provedor:
+    queda de LLM não é qualidade zero, e sobrescrever o último número válido com um zero deixaria
+    o card pior do que estava. Sem a data, um número de três meses atrás apareceria como se fosse
+    de hoje — que é o defeito que o `painel_acuracia` chama de pior que o card vazio.
+    """
+    import datetime
+    import os
+    n = int(resumo.get("n") or 0)
+    if n < MIN_AMOSTRA_PUBLICAVEL:
+        print(f"[eval] NÃO publicado: amostra de {n} casos (mínimo {MIN_AMOSTRA_PUBLICAVEL}) — "
+              "sondagem de depuração não vira o número do painel.")
+        return None
+    indisp = float(resumo.get("indisponivel") or 0.0)
+    if indisp > TETO_INDISPONIVEL:
+        print(f"[eval] NÃO publicado: {indisp:.0%} das respostas ficaram INDISPONÍVEIS "
+              f"(teto {TETO_INDISPONIVEL:.0%}) — isso mede o provedor, não o motor. "
+              "O último número válido do card fica de pé.")
+        return None
+    os.makedirs(os.path.dirname(caminho) or ".", exist_ok=True)
+    # A chave é `medido_em` porque é a que o card lê (`painel_acuracia.montar`). Gravar com outro
+    # nome deixaria o número aparecer sem data — o card explicitamente chama isso de pior que vazio.
+    payload = {**resumo, "medido_em": datetime.datetime.now(
+        datetime.timezone.utc).isoformat(timespec="seconds")}
+    with open(caminho, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2, default=str)
+    return caminho
+
+
 def carregar_baseline(caminho: str = BASELINE_PADRAO) -> dict | None:
     import os
     if not os.path.exists(caminho):
@@ -255,6 +336,9 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
     ap.add_argument("--saida", help="grava o JSON completo aqui")
     ap.add_argument("--catraca", action="store_true",
                     help="compara com data/hermeneutica_baseline.json e falha (exit 1) em regressão")
+    ap.add_argument("--tres-classes", action="store_true",
+                    help="medição antiga (vicio/licito/vicio_por_omissao) — CONTAMINADA por "
+                         "vazamento de forma verbal; mantida só para histórico")
     ap.add_argument("--aceitar", action="store_true",
                     help="grava a medição atual como novo baseline aceito")
     a = ap.parse_args(argv)
@@ -269,9 +353,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
 
     from compliance_agent.direcionamento_cerebro import gerar_sync
 
-    r = avaliar(alvo, gerar_sync, limite=a.limite)
+    r = avaliar(alvo, gerar_sync, limite=a.limite, duas_classes=not a.tres_classes)
     resumo = {k: v for k, v in r.items() if k != "detalhes"}
     print(json.dumps(resumo, ensure_ascii=False, indent=2, default=str))
+    # Toda medição publica — não só a que vira baseline. Métrica que fica no log não disciplina
+    # ninguém, e era exatamente o que acontecia: o card nunca saía de "sem medição".
+    print(f"\núltima medição → {gravar_ultima(resumo)}")
     if a.por_vicio:
         pv = {v: {"n": m["n"], "f1_macro": round(m["f1_macro"], 3)}
               for v, m in por_vicio(r).items()}
