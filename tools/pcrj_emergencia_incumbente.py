@@ -151,7 +151,7 @@ def calcular(db_path=None) -> dict:
         con.executescript(DDL)
         for d in dispensas:
             campos = con.execute("SELECT campo, valor FROM pcrj_doc_campos WHERE upper(numero_processo)=upper(?) "
-                                 "AND campo IN ('fundamento','pregao','termo_aditivo')", (d["processo"],)).fetchall()
+                                 "AND campo IN ('fundamento','pregao','termo_aditivo','base_preco')", (d["processo"],)).fetchall()
             if not campos:
                 continue
             fund = eh_emergencia([c["valor"] for c in campos if c["campo"] == "fundamento"])
@@ -180,8 +180,10 @@ def calcular(db_path=None) -> dict:
             n[grau] += 1
             rot = {"desastre": "fato declarado: desastre (chuva/deslizamento)", "litigio": "fato declarado: certame travado (mandado de segurança/liminar)",
                    "nao_declarado": "fato da emergência não localizado nos autos lidos"}[motivo]
+            bases = sorted({c["valor"] for c in campos if c["campo"] == "base_preco"})
             detalhe = (f"emergência ({fund}); " + (f"incumbente desde {inc['vigencia_ini']} (contrato {inc['contrato']}); " if inc else "sem contrato anterior no órgão; ")
-                       + (f"autos citam pregão {certame}; " if certame else "") + ("prorrogada por termo aditivo; " if prorrogada else "sem aditivo lido; ") + rot)
+                       + (f"autos citam pregão {certame}; " if certame else "") + ("prorrogada por termo aditivo; " if prorrogada else "sem aditivo lido; ") + rot
+                       + (f"; preço: {', '.join(bases)}" if bases else "; base de preço não localizada"))
             con.execute("INSERT OR REPLACE INTO pcrj_emergencia_sinal VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (d["contrato"], d["processo"], d["favorecido_doc"], d["favorecido_nome"], d["orgao"], d["ano"],
                          d["valor_atualizado"], d["total_pago"], d["vigencia_ini"], d["vigencia_fim"], fund,

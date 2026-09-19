@@ -94,6 +94,8 @@ def _bloco_documentos(proc: dict) -> list[str]:
             partes.append("vigência: " + "; ".join(cp["prazo_vigencia"][:3]))
         if cp.get("pregao"):
             partes.append("certame de origem: pregão " + ", ".join(cp["pregao"][:2]))
+        if cp.get("base_preco"):
+            partes.append("base de preço declarada: " + ", ".join(cp["base_preco"][:4]))
         if partes:
             linhas.append("  O que os documentos já obtidos declaram (leitura estruturada): " + " · ".join(partes) + ".")
     ass = [a for a in (proc.get("assinantes") or []) if a.get("nome")]

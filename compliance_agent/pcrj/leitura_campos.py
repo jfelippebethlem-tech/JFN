@@ -39,6 +39,17 @@ _RX = {
     "pregao": re.compile(r"Preg[ãa]o\s+(?:Eletr[ôo]nico\s+)?(?:n[ºo°.]?\s*)?(?:PE-RP-)?([A-Z-]*\d{3,6}/20\d{2})", re.I),
     "data_assinatura": re.compile(r"(?:Rio de Janeiro|Aos)\s*,?\s*(?:dias?\s+)?(\d{1,2})\s*(?:\(\w+\)\s*)?(?:dias?\s+)?(?:de|do\s+m[êe]s\s+de)\s+(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+(?:de|do\s+ano\s+de)\s+(20\d{2})", re.I),
 }
+# de onde veio o PREÇO (medido em 185 justificativas do CCON, 19/09): SINAPI/EMOP/SCO-RIO 71, pesquisa de preços 65,
+# ata de registro de preços 12, 3 orçamentos 4, Banco/Painel de Preços 2 — e "mesmos preços do contrato anterior" (o que
+# perpetua o incumbente) é o que se quer ver marcado quando aparecer.
+_RX_BASE_PRECO = {
+    "contrato_anterior": re.compile(r"(?:mesm[oa]s?\s+(?:pre[çc]os?|valores?|condi[çc][õo]es)|pre[çc]os?\s+praticad[oa]s?)[^.\n]{0,60}contrato", re.I),
+    "orcamentos": re.compile(r"\b(?:tr[êe]s|3)\s*\(?(?:tr[êe]s)?\)?\s*(?:or[çc]amentos|propostas|cota[çc][õo]es)", re.I),
+    "painel_precos": re.compile(r"painel\s+de\s+pre[çc]os|banco\s+de\s+pre[çc]os", re.I),
+    "sinapi_emop": re.compile(r"\bSINAPI\b|\bEMOP\b|\bSCO-RIO\b", re.I),
+    "ata_rp": re.compile(r"ata\s+de\s+registro\s+de\s+pre[çc]os|\bcarona\b", re.I),
+    "pesquisa_precos": re.compile(r"pesquisa\s+de\s+pre[çc]os|pesquisa\s+mercadol[óo]gica", re.I),
+}
 _MESES = {m: i for i, m in enumerate(("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
                                      "setembro", "outubro", "novembro", "dezembro"), 1)}
 _MESES["marco"] = 3
@@ -123,6 +134,10 @@ def extrair(texto: str, processo: str | None = None, raio: int = 700) -> list[di
         add("verificador_crc", f"{m.group(1)}/{m.group(2).upper()}", m)
     for m in _RX["pregao"].finditer(t):
         add("pregao", m.group(1), m)
+    for base, rx in _RX_BASE_PRECO.items():
+        m = rx.search(t)
+        if m:
+            add("base_preco", base, m)
     for m in _RX["data_assinatura"].finditer(t):
         mes = _MESES.get(m.group(2).lower())
         if mes:

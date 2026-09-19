@@ -66,3 +66,9 @@ def test_pagina_coletiva_do_diario_so_atribui_o_que_esta_perto_do_proprio_proces
     assert ("processo", "005600.000999/2026-00") in c            # âncoras continuam registradas
     # sem processo informado, ou documento próprio (não coletivo): comportamento antigo
     assert ("valor_total", "9999.00") in {(x["campo"], x["valor"]) for x in extrair(pagina)}
+
+
+def test_base_de_preco_declarada():
+    c = {(x["campo"], x["valor"]) for x in extrair("Dentre as 3 propostas apresentadas … mantidos os mesmos preços praticados no contrato anterior … referência SINAPI")}
+    assert ("base_preco", "orcamentos") in c and ("base_preco", "contrato_anterior") in c and ("base_preco", "sinapi_emop") in c
+    assert not any(k == "base_preco" for k, _ in extrair("sem menção a preço"))

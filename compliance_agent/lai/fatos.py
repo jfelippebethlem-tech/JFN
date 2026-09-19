@@ -113,7 +113,7 @@ def _campos(con, numero: str) -> dict[str, list[str]]:
         return {}
     saida: dict[str, list[str]] = {}
     for campo, valor in con.execute("SELECT DISTINCT campo, valor FROM pcrj_doc_campos WHERE upper(numero_processo)=upper(?) "
-                                    "AND campo IN ('contrato_numero','termo_aditivo','valor_total','prazo_vigencia','fundamento','pregao') "
+                                    "AND campo IN ('contrato_numero','termo_aditivo','valor_total','prazo_vigencia','fundamento','pregao','base_preco') "
                                     "ORDER BY campo, valor", (numero,)):
         saida.setdefault(campo, []).append(valor)
     return saida
