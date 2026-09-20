@@ -172,7 +172,8 @@ def test_render_menu_curado_e_enxuto():
     # entraram sem esta catraca rodar, e `lai_requerimento` (LAI automatizada: um botão → .docx
     # fundamentado com os documentos SEI nomeados e prazo registrado). `lai_prazos` e `pcrj_saude`
     # ficaram SEM item de menu, de propósito (detalhamento). O teto existe contra despejo do catálogo.
-    assert 6 <= n_itens <= 36                          # curado (grupos + exemplos), não as ~47 prontas
+    # 37 em 2026-09-20: `acervo_buscar` — a busca ÚNICA de processos nas duas esferas (a ficha `acervo_processo` fica sem menu).
+    assert 6 <= n_itens <= 37                          # curado (grupos + exemplos), não as ~47 prontas
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota

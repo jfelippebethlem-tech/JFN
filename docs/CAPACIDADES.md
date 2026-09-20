@@ -4,6 +4,8 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 
 | id | agente | tipo | rota/comando | status | quando usar |
 |---|---|---|---|---|---|
+| `acervo_buscar` | jfn | http | `/api/acervo/buscar` | PRONTO | 'que processos existem sobre X', 'acha o processo do contrato Y', 'processos desse CNPJ', 'onde aparece esse fornecedor' |
+| `acervo_processo` | jfn | http | `/api/acervo/processo` | PRONTO | 'me conta tudo do processo N', 'quem assinou no processo', 'quanto foi pago nesse processo', 'o que ja temos desse processo' |
 | `anomalias` | jfn | http | `/api/anomalias` | PRONTO | triagem de risco; 'algo estranho em X' |
 | `cartel` | jfn | http | `/api/cartel` | PRONTO | conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?' |
 | `certame_indice` | jfn | http | `/api/certame/indice` | PRONTO | risco de um certame/licitacao especifica pelo nº de controle PNCP |

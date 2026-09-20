@@ -286,6 +286,72 @@
     {
       "type": "function",
       "function": {
+        "name": "acervo_buscar",
+        "description": "ACERVO: busca unica de processos SEI do Estado e da Prefeitura por numero, CNPJ, fornecedor, orgao ou termo — devolve os processos com grau, pago, documentos e as fontes onde cada um existe (sei_arvore, avaliacao 360, OB do SIAFE, ContasRio, catalogo municipal, busca livre, emergencias) — usar quando: 'que processos existem sobre X', 'acha o processo do contrato Y', 'processos desse CNPJ', 'onde aparece esse fornecedor' — chamar: GET /api/acervo/buscar (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "esfera": {
+              "type": "string",
+              "description": "todos|estado|prefeitura (todos)"
+            },
+            "limite": {
+              "type": "integer",
+              "description": "int opcional (60)"
+            }
+          },
+          "required": [
+            "q"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/acervo/buscar",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "acervo_processo",
+        "description": "FICHA completa de um processo (Estado ou Prefeitura): identidade, documentos (com texto quando obtido), OBs do SIAFE ligadas ao numero, contratos, agentes/assinantes nomeados, achados de todos os detectores, pericias (ficha contabil/juridica, avaliacao 360, leitura estruturada), pedidos LAI e a COBERTURA (o que ainda nao foi coletado) — usar quando: 'me conta tudo do processo N', 'quem assinou no processo', 'quanto foi pago nesse processo', 'o que ja temos desse processo' — chamar: GET /api/acervo/processo (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "numero": {
+              "type": "string",
+              "description": "obrigatorio (SEI-080001/000633/2024 | 000700.007924/2026-97 | SME-PRO-2025/38233)"
+            }
+          },
+          "required": [
+            "numero"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/acervo/processo",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "lai_prazos",
         "description": "Pedidos LAI protocolados com prazo de resposta vencendo em ate N dias ou vencido — para cobrar o orgao ou recorrer (art. 15 da LAI) — usar quando: 'quais LAI estao vencendo', 'cobrar resposta do e-SIC' — chamar: GET /api/lai/prazos (base http://127.0.0.1:8000)",
         "parameters": {

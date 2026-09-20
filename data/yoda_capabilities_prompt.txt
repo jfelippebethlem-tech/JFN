@@ -9,6 +9,8 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - lai_requerimento(alvo,esfera,motivo,telegram) [POST /api/lai/gerar] — 'pede a integra do processo X', 'faz um pedido LAI', 'requerimento de informacao', 'e-SIC', 'quero os documentos desse contrato'
 - pcrj_saude(md) [GET /api/pcrj/saude] — 'os pipelines da prefeitura estao rodando?', 'o que parou', 'saude do SEI municipal', 'por que nao chegou dado novo'
 - pcrj_emergencias(top) [GET /api/pcrj/emergencias] — 'emergencias da prefeitura', 'dispensa emergencial para o mesmo fornecedor', 'quem ganhou emergencia sendo incumbente'
+- acervo_buscar(q,esfera,limite) [GET /api/acervo/buscar] — 'que processos existem sobre X', 'acha o processo do contrato Y', 'processos desse CNPJ', 'onde aparece esse fornecedor'
+- acervo_processo(numero) [GET /api/acervo/processo] — 'me conta tudo do processo N', 'quem assinou no processo', 'quanto foi pago nesse processo', 'o que ja temos desse processo'
 - lai_prazos(dias) [GET /api/lai/prazos] — 'quais LAI estao vencendo', 'cobrar resposta do e-SIC'
 - tac_recorrente(top) [GET /api/doerj/tac_recorrente] — 'quem recebe por TAC', 'ajuste de contas', 'pagamento sem contrato', 'FSERJ paga sem licitacao'
 - lentes_cruzadas(lente,top) [GET /api/lentes] — priorizar fila de apuracao; 'quais empresas acendem em mais de um detector'
