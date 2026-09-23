@@ -359,7 +359,10 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     # degrau, os alvos da CMP/IDESI caíam nas posições 168–2.148 (ordem por valor dentro do estrato) e o sweep
     # de 12/ciclo nunca chegava neles. Medido em 2026-09-09.
     dirigidos_norm = {_norm_proc(x) for x in dirig_cache}
-    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1,
+    # ...e sobe também de unidade NUNCA tentada: "legível" é aprendido lendo, e o alvo à mão de unidade nova
+    # (SEDSODH 310001, 23/09) caía atrás de 125 mil legíveis — ninguém lia, ela nunca virava legível.
+    # Unidade aprendida como sem acesso continua pulada pelo loop (`_unidades_sem_acesso`).
+    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis or _norm_proc(r[0]) in dirigidos_norm else 1,
                              0 if _norm_proc(r[0]) in dirigidos_norm else 1,
                              0 if _norm_proc(r[0]) in provados_norm else 1,
                              0 if (credores.get(r[0]) or set()) & sinal else 1,

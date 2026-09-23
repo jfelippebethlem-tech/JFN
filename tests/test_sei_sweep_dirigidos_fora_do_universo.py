@@ -46,3 +46,28 @@ def test_dirigido_com_pesquisa_vazia_recente_sai_da_fila_e_volta_depois_do_prazo
     agora = datetime(2026, 9, 10, 12, 0)
     assert _sem_pesquisa_vazia_recente(d, reg, agora) == {"SEI-080002/023131/2026", "SEI-080002/000010/026", "SEI-030001/999999/2026"}
     assert _sem_pesquisa_vazia_recente(d, {}, agora) == d
+
+
+def test_dirigido_de_unidade_NUNCA_tentada_vem_antes_dos_legiveis(tmp_path, monkeypatch):
+    """23/09/2026: 5 TACs da SEDSODH (310001, unidade que o leitor nunca tentou) enfileirados à mão caíram na
+    posição 125.587 de 256.279 — atrás de todo processo de unidade legível. 'Legível' só se aprende lendo:
+    sem este degrau a unidade nova nunca é lida e nunca vira legível."""
+    import sqlite3
+    import tools.sei_sweep as S
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, credor TEXT, nome_credor TEXT, valor REAL, status TEXT, ug_emitente TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,'12345678000199','',?,'Contabilizado','010100')",
+                    [("SEI-080002/000001/2026", 9e8), ("SEI-080002/000002/2026", 5e8), ("SEI-999999/000003/2026", 1e9)])
+    con.execute("CREATE TABLE sei_fila_captura (numero_sei, sei_norm, motivo, total_pago, n_docs, visto_em)")
+    con.execute("INSERT INTO sei_fila_captura VALUES ('SEI-310001/000714/2025','3100010007142025','hipotese_tac_sedsodh: x',0,0,'')")
+    con.commit(); con.close()
+    monkeypatch.setattr(S, "DB", p)
+    monkeypatch.setattr(S, "_unidades_legiveis", lambda: {"080002"})
+    monkeypatch.setattr(S, "_raizes_com_sinal_osint", lambda: set())
+    monkeypatch.setattr(S, "_fila_com_lacuna_provada", lambda con: set())
+    monkeypatch.setattr(S, "fatia_desta_maquina", lambda: (0, 1))
+    fila = [r[0] for r in S._fila(None, 10)]
+    assert fila[0] == "SEI-310001/000714/2025"
+    assert fila[1:3] == ["SEI-080002/000001/2026", "SEI-080002/000002/2026"]   # legíveis antes do resto
+    assert fila[-1] == "SEI-999999/000003/2026"                                  # não-legível sem alvo segue atrás
