@@ -89,3 +89,11 @@ def test_bissecao_por_data_isola_o_envenenado():
     assert all((r[1], r[3]) in fatias_env for r in regs if r[0] in falta)
     assert len(falta) <= 7
     assert out["fatias_perdidas"] == []
+
+
+def test_total_da_consulta_desvia_da_primeira_janela_envenenada():
+    from tools.sei_rj_catalogo import total_da_consulta
+    regs = [(f"P{k}", 1, k == 0, "o0") for k in range(120)]
+    assert total_da_consulta(_base_datada(regs), "x AND dta_ger:[NOW/DAY-5DAYS TO NOW/DAY+1DAYS}") == 120
+    todos = [(f"P{k}", 1, True, "o0") for k in range(3)]
+    assert total_da_consulta(_base_datada(todos), "x AND dta_ger:[NOW/DAY-5DAYS TO NOW/DAY+1DAYS}") is None

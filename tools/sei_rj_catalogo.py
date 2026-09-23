@@ -287,22 +287,37 @@ def conectar(db=DB) -> sqlite3.Connection:
     return con
 
 
+def total_da_consulta(pagina, pf: str, limite: int = PAGINA) -> int | None:
+    """Total informado pelo servidor. Se a 1ª janela vier envenenada, desloca o início até uma abrir
+    (o `itens` vem em qualquer janela não vazia). None = INDISPONÍVEL, não zero."""
+    for s in range(0, limite + 1):
+        try:
+            n, rows = pagina(pf, s)
+        except Envenenada:
+            continue
+        return n if rows or s == 0 else None
+    return None
+
+
 def varrer_tipo(s: Sessao, con, id_tipo: str, tipo: str, incremental: bool) -> dict:
-    """Um tipo de processo. Incremental: só os últimos 45 dias (processo novo entra por data de geração)."""
+    """Um tipo de processo. Incremental: só os últimos 45 dias (processo novo entra por data de geração)
+    e as perdas medidas na varredura completa são PRESERVADAS — a rodada curta não as mede."""
     pf = f"sta_prot:P AND id_tipo_proc:{id_tipo}"
-    try:
-        total = s.pagina(pf, 0)[0]
-    except Envenenada:
-        total = None
+    total = total_da_consulta(s.pagina, pf)
     tem = con.execute("SELECT 1 FROM sei_rj_varredura WHERE id_tipo=?", (id_tipo,)).fetchone()
-    out = coletar_por_data(s.pagina, pf, b=45 if (incremental and tem) else DIAS_MAX, orgaos=s.orgaos)
+    curto = bool(incremental and tem)
+    out = coletar_por_data(s.pagina, pf, b=45 if curto else DIAS_MAX, orgaos=s.orgaos)
     agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     con.executemany("INSERT OR REPLACE INTO sei_rj_processo VALUES (?,?,?,?,?,?,?,?)",
                     [(x["numero"], x["tipo"] or tipo, id_tipo, x["unidade_sigla"], x["unidade_nome"], x["orgao"], x["data"], agora)
                      for x in out["linhas"].values()])
     no_banco = con.execute("SELECT count(*) FROM sei_rj_processo WHERE id_tipo=?", (id_tipo,)).fetchone()[0]
-    con.execute("INSERT OR REPLACE INTO sei_rj_varredura VALUES (?,?,?,?,?,?,?)",
-                (id_tipo, tipo, total, no_banco, out["envenenados"], out["perdidos"] + len(out["fatias_perdidas"]), agora))
+    if curto:
+        con.execute("UPDATE sei_rj_varredura SET itens=coalesce(?, itens), coletados=?, varrido_em=? WHERE id_tipo=?",
+                    (total, no_banco, agora, id_tipo))
+    else:
+        con.execute("INSERT OR REPLACE INTO sei_rj_varredura VALUES (?,?,?,?,?,?,?)",
+                    (id_tipo, tipo, total, no_banco, out["envenenados"], out["perdidos"] + len(out["fatias_perdidas"]), agora))
     con.commit()
     return {"id_tipo": id_tipo, "tipo": tipo, "itens": total, "coletados": len(out["linhas"]), "no_banco": no_banco,
             "envenenados": out["envenenados"], "perdidos": out["perdidos"], "fatias_perdidas": len(out["fatias_perdidas"])}
