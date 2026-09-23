@@ -225,20 +225,29 @@ class Sessao:
         self.orgaos: list[str] = []
         self._ocr = None
 
-    def _captcha(self, h: str) -> str:
+    def _captcha(self, h: str) -> str | None:
+        """None quando a página veio sem a imagem (resposta transitória) — quem chama tenta de novo."""
+        m = re.search(r'<img[^>]*id="imgCaptcha"[^>]*>', h)
+        b64 = re.search(r'src="data:image/png;base64,([^"]+)"', m.group(0)) if m else None
+        if not b64:
+            return None
         if self._ocr is None:
             import ddddocr
             self._ocr = ddddocr.DdddOcr(show_ad=False)
-        png = base64.b64decode(re.search(r'id="imgCaptcha" src="data:image/png;base64,([^"]+)"', h).group(1))
-        return re.sub(r"[^A-Za-z0-9]", "", self._ocr.classification(png))
+        return re.sub(r"[^A-Za-z0-9]", "", self._ocr.classification(base64.b64decode(b64.group(1))))
 
     def abrir(self, tentativas: int = 8) -> None:
         for n in range(tentativas):
             h = self.c.get(FORM).text
+            cap = self._captcha(h)
+            if cap is None:
+                log.info("formulário sem captcha (tentativa %d) — %d bytes", n + 1, len(h))
+                time.sleep(5)
+                continue
             ini = h.find('id="selOrgaoPesquisa"')
             orgs = re.findall(r'<option value="(\d+)"', h[ini:h.find("</select>", ini)])
             dados = [("txtProtocoloPesquisa", ""), ("q", "*"), ("chkSinProcessos", "P"), ("txtDataInicio", ""),
-                     ("txtDataFim", ""), ("txtInfraCaptcha", self._captcha(h)), ("hdnInfraCaptcha", "1"),
+                     ("txtDataFim", ""), ("txtInfraCaptcha", cap), ("hdnInfraCaptcha", "1"),
                      ("sbmPesquisar", "Pesquisar"), ("partialfields", "sta_prot:P"), ("hdnFlagPesquisa", "1"),
                      ("hdnInfraPrefixoCookie", "ERJ_SEI_")] + [("selOrgaoPesquisa[]", o) for o in orgs]
             r = self.c.post(FORM, content=urllib.parse.urlencode(dados, encoding="iso-8859-1"),
