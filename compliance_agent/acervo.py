@@ -215,6 +215,11 @@ def _ficha_prefeitura(numero: str) -> dict:
             for x in con.execute("SELECT * FROM pcrj_emergencia_sinal WHERE upper(processo)=upper(?)", (numero,)):
                 f["achados"].append({"fonte": "emergencia_incumbente", "codigo": "EMERGENCIA-INCUMBENTE", "grau": x["grau"], "diz": x["detalhe"],
                                      "apoio": f"fundamento: {x['fundamento']}; motivo: {x['motivo']}", "explicacao_inocente": "desastre declarado / vão entre certames"})
+        if _tem(con, "pcrj_ocp_sinal"):
+            for x in con.execute("SELECT * FROM pcrj_ocp_sinal WHERE upper(processo_2)=upper(?) OR upper(processo_1)=upper(?)", (numero, numero)):
+                f["achados"].append({"fonte": "ocp_redflags", "codigo": f"OCP-{x['indicador']}", "grau": x["grau"], "diz": x["detalhe"],
+                                     "apoio": f"contratos {x['contrato_1']} → {x['contrato_2']} ({x['favorecido_nome']})",
+                                     "explicacao_inocente": "expansão legítima do serviço; 1º contrato foi piloto ou emergência real"})
         if _tem(con, "pcrj_sei_busca"):
             f["identidade"]["termos_que_acharam"] = [x[0] for x in con.execute("SELECT DISTINCT termo FROM pcrj_sei_busca WHERE upper(processo)=upper(?) LIMIT 20", (numero,))]
     finally:
@@ -371,6 +376,11 @@ def buscar(q: str, esfera: str = "todos", limite: int = 60) -> dict:
                                   "OR upper(orgao) LIKE ? LIMIT ?", (dig if e_cnpj else "-", like, like, lim)).fetchall()
                 for r in rows:
                     add(_hit("prefeitura", r["processo"], r["detalhe"], r["orgao"], r["grau"], r["total_pago"], None, "emergencia", None, {"fornecedor": r["favorecido_nome"]}))
+            if _tem(pc, "pcrj_ocp_sinal"):
+                for r in pc.execute("SELECT processo_2, favorecido_nome, orgao, grau, valor_2, detalhe FROM pcrj_ocp_sinal WHERE favorecido_doc=? OR upper(favorecido_nome) LIKE ? "
+                                    "OR upper(orgao) LIKE ? LIMIT ?", (dig if e_cnpj else "-", like, like, lim)):
+                    if r["processo_2"]:
+                        add(_hit("prefeitura", r["processo_2"], r["detalhe"], r["orgao"], r["grau"], None, None, "ocp_r052", None, {"fornecedor": r["favorecido_nome"]}))
             if _tem(pc, "pcrj_processo") and not e_cnpj and len(q) >= 4:
                 for r in pc.execute("SELECT numero_processo, assunto, orgao, disponivel FROM pcrj_processo WHERE sistema='SEI.RIO' AND (upper(assunto) LIKE ? OR upper(orgao) LIKE ?) "
                                     "ORDER BY coletado_em DESC LIMIT ?", (like, like, lim)):
@@ -406,7 +416,8 @@ def estatisticas() -> dict:
         try:
             for k, sql in (("pcrj_catalogo", "SELECT count(*) FROM pcrj_processo WHERE sistema='SEI.RIO'"), ("pcrj_com_arvore", "SELECT count(DISTINCT numero) FROM pcrj_sei_arvore"),
                            ("pcrj_com_integra", "SELECT count(DISTINCT numero_processo) FROM pcrj_processo_doc"), ("pcrj_contratos", "SELECT count(*) FROM contasrio_contrato"),
-                           ("pcrj_emergencias", "SELECT count(*) FROM pcrj_emergencia_sinal")):
+                           ("pcrj_emergencias", "SELECT count(*) FROM pcrj_emergencia_sinal"),
+                           ("pcrj_ocp_r052", "SELECT count(*) FROM pcrj_ocp_sinal")):
                 try:
                     out[k] = pc.execute(sql).fetchone()[0]
                 except sqlite3.Error:

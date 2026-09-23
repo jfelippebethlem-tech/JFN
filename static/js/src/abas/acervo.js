@@ -26,6 +26,7 @@ export async function renderAcervo(){
       ${kpi(fmtN(st.pcrj_catalogo), 'Catálogo SEI municipal', null, null, {sobre: 'pcrj_processo: todos os processos públicos enumerados (2020→hoje).'})}
       ${kpi(fmtN(st.pcrj_com_integra), 'Municipais com íntegra', null, null, {sobre: 'pcrj_processo_doc: processos com pelo menos um documento com texto (CCON/conferência).'})}
       ${kpi(fmtN(st.pcrj_emergencias), 'Emergências à incumbente', 'var(--rose)', null, {sobre: 'pcrj_emergencia_sinal: dispensa por emergência a quem já era contratado do órgão.'})}
+      ${kpi(fmtN(st.pcrj_ocp_r052), 'Compra-teste (OCP R052)', 'var(--amber)', null, {sobre: 'pcrj_ocp_sinal: 1º contrato pequeno seguido de um muito maior com o mesmo órgão (Open Contracting Partnership, 2024). 🔴 quando o 1º foi contratação direta e o 2º veio em até 1 ano.'})}
     </div>`;
   }
   h += card(`<form data-acervo-form="1" role="search" style="display:grid;grid-template-columns:3fr 1fr auto;gap:8px;align-items:end">
