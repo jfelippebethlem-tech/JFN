@@ -222,12 +222,19 @@ def _contar() -> int:
     # `check=True` derrubava a catraca em máquina que tem o CÓDIGO mas não o repositório (a
     # VM-2 roda uma cópia por rsync): exit 128, "not a git repository". Medir dívida exige
     # saber o que é versionado, então sem repositório a resposta honesta é `skip`, não falha.
-    git = subprocess.run(["git", "ls-files", "*.py"], cwd=REPO, capture_output=True, text=True)
-    if git.returncode != 0:
+    #
+    # ÍNDICE, não árvore de trabalho (2026-09-22): a VM é compartilhada por várias sessões, e uma delas
+    # deixou `tools/sei_busca_mgs.py` modificado e não commitado por 4 dias com 1 `except` a mais — a
+    # catraca reprovou TODO push de todas as sessões, que passaram a usar `--no-verify` (o que desliga
+    # as outras catracas junto). A dívida que se mede é a que vai para o repositório: `git grep --cached`
+    # lê o índice (pre-commit vê o staged; pre-push e CI, o commit) numa chamada só.
+    git = subprocess.run(["git", "grep", "--cached", "-F", "-c", "except Exception", "--", "*.py"],
+                         cwd=REPO, capture_output=True, text=True)
+    if git.returncode not in (0, 1):   # 1 = nenhuma ocorrência; 128 = sem repositório
         pytest.skip("cópia sem repositório git — não dá para separar versionado de alheio")
-    arquivos = git.stdout.splitlines()
     total = 0
-    for rel in arquivos:
+    for linha in git.stdout.splitlines():
+        rel, _, n = linha.rpartition(":")
         # AUTO-REFERÊNCIA. O contador procura a string literal, então TODO teste que fala sobre
         # esta catraca a infla ao citá-la em prosa. Já valia para este arquivo (4 citações); em
         # 2026-08-06 nasceu `tests/test_catraca_nao_pode_ser_tolerada.py`, que explica no docstring
@@ -235,10 +242,7 @@ def _contar() -> int:
         # A exclusão é por PREFIXO e vale só para `tests/`: código de produção nunca escapa.
         if rel.startswith("massare") or rel.startswith("tests/test_catraca_"):
             continue  # massare tem catraca própria; testes sobre a catraca citam a string em prosa
-        try:
-            total += (REPO / rel).read_text(encoding="utf-8", errors="ignore").count("except Exception")
-        except OSError:
-            continue
+        total += int(n)
     return total
 
 
