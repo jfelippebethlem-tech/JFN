@@ -21,6 +21,7 @@ DB_COMPLIANCE = _RAIZ / "data" / "compliance.db"
 DB_ACHADOS = _RAIZ / "data" / "achados.db"
 DB_PCRJ = _RAIZ / "data" / "pcrj.db"
 DB_LAI = _RAIZ / "data" / "lai.db"
+DB_SEI_RJ = _RAIZ / "data" / "sei_rj_catalogo.db"      # catálogo da pesquisa pública do SEI estadual
 ARQUIVO_SEI = _RAIZ / "data" / "sei_arquivo"
 
 _RX_ESTADO = re.compile(r"(\d{6})\D{0,3}(\d{6})\D{0,3}(20\d{2})")
@@ -130,6 +131,17 @@ def _ficha_estado(canon: str) -> dict:
         for c in (con,):
             if c:
                 c.close()
+    cat = _ro(DB_SEI_RJ)
+    try:
+        if _tem(cat, "sei_rj_processo"):
+            r = cat.execute(f"SELECT tipo, unidade_sigla, unidade_nome, orgao, data FROM sei_rj_processo WHERE numero IN ({q})", vars_).fetchone()
+            if r:
+                f["identidade"].update({"tipo": r["tipo"], "unidade": r["unidade_sigla"], "unidade_nome": r["unidade_nome"],
+                                        "orgao_gerador": r["orgao"], "gerado_em": r["data"]})
+            f["cobertura"]["catalogo_publico"] = "lido" if r else "fora do catálogo (só tipos de contratação/controle são catalogados)"
+    finally:
+        if cat:
+            cat.close()
     # arquivo compacto (documentos com texto)
     pasta = ARQUIVO_SEI / vars_[2]
     man = pasta / "manifest.json"
@@ -360,6 +372,16 @@ def buscar(q: str, esfera: str = "todos", limite: int = 60) -> dict:
                         add(_hit("estado", nn[1], None, r["nome_credor"], None, r["total"], None, "siafe_ob", r["ultima"], {"n_obs": r["n"]}))
         finally:
             con.close()
+    cat = _ro(DB_SEI_RJ)
+    if cat and esfera in ("todos", "estado") and not e_cnpj and len(q) >= 3:
+        try:
+            if _tem(cat, "sei_rj_processo"):
+                for r in cat.execute("SELECT numero, tipo, unidade_sigla, unidade_nome, data FROM sei_rj_processo WHERE upper(tipo) LIKE ? "
+                                     "OR upper(unidade_sigla) LIKE ? OR upper(unidade_nome) LIKE ? ORDER BY data DESC LIMIT ?", (like, like, like, lim)):
+                    add(_hit("estado", r["numero"], r["tipo"], r["unidade_sigla"], None, None, None, "catalogo_publico", r["data"],
+                             {"unidade_nome": r["unidade_nome"]}))
+        finally:
+            cat.close()
     pc = _ro(DB_PCRJ)
     if pc and esfera in ("todos", "prefeitura"):
         try:
@@ -410,6 +432,12 @@ def estatisticas() -> dict:
                     out[k] = None
         finally:
             con.close()
+    cat = _ro(DB_SEI_RJ)
+    if cat:
+        try:
+            out["estado_catalogo"] = cat.execute("SELECT count(*) FROM sei_rj_processo").fetchone()[0] if _tem(cat, "sei_rj_processo") else None
+        finally:
+            cat.close()
     out["estado_arquivos"] = sum(1 for p in ARQUIVO_SEI.iterdir() if (p / "manifest.json").exists()) if ARQUIVO_SEI.exists() else 0
     pc = _ro(DB_PCRJ)
     if pc:

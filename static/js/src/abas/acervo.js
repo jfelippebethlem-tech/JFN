@@ -21,6 +21,7 @@ export async function renderAcervo(){
   if (st && st.ok) {
     h += `<div class="grid">
       ${kpi(fmtN(st.estado_arvores), 'Processos SEI do Estado (árvore)', null, null, {sobre: 'sei_arvore: processos estaduais com árvore lida e OBs ligadas.'})}
+      ${kpi(fmtN(st.estado_catalogo), 'Catálogo SEI estadual (contratação)', null, null, {sobre: 'sei_rj_processo: processos de contratação/controle enumerados pela pesquisa pública do SEI-RJ (82 tipos: dispensa, inexigibilidade, pregão, aditivo, TAC, obras, auditoria).'})}
       ${kpi(fmtN(st.estado_avaliados_360), 'Avaliados 360', null, null, {sobre: 'processo_avaliacao: perícia 360 gravada (achados, lacunas, síntese).'})}
       ${kpi(fmtN(st.estado_obs_com_processo), 'Processos citados em OB (SIAFE)', null, null, {sobre: 'ob_orcamentaria_siafe.processo distinto com prefixo SEI-.'})}
       ${kpi(fmtN(st.pcrj_catalogo), 'Catálogo SEI municipal', null, null, {sobre: 'pcrj_processo: todos os processos públicos enumerados (2020→hoje).'})}

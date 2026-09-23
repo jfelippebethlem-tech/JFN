@@ -50,6 +50,12 @@ def _bases(tmp_path, monkeypatch):
     monkeypatch.setattr(acervo, "DB_PCRJ", pc)
     monkeypatch.setattr(acervo, "DB_LAI", tmp_path / "lai.db")
     monkeypatch.setattr(acervo, "ARQUIVO_SEI", tmp_path / "sei_arquivo")
+    cat = sqlite3.connect(tmp_path / "sei_rj_catalogo.db")
+    cat.executescript("""CREATE TABLE sei_rj_processo (numero, tipo, id_tipo, unidade_sigla, unidade_nome, orgao, data, coletado_em);
+    INSERT INTO sei_rj_processo VALUES ('SEI-080001/000633/2024','Contratação: Inexigibilidade','100000549','SES/SUBGC','Subsecretaria de Gestão','SES','2024-03-05','x');
+    INSERT INTO sei_rj_processo VALUES ('SEI-150016/000001/2025','Administrativo: Termo de Ajuste de Contas - TAC','100001192','DEGASE/DG','Direção-Geral','DEGASE','2025-01-02','x');""")
+    cat.commit(); cat.close()
+    monkeypatch.setattr(acervo, "DB_SEI_RJ", tmp_path / "sei_rj_catalogo.db")
     arq = tmp_path / "sei_arquivo" / "080001_000633_2024" / "texto"
     arq.mkdir(parents=True)
     (arq / "000_despacho.txt").write_text("Despacho de liquidação …", encoding="utf-8")
@@ -91,3 +97,13 @@ def test_busca_por_numero_cnpj_e_texto(tmp_path, monkeypatch):
     r = acervo.buscar("hospital", esfera="estado")
     assert r["n"] == 1 and r["hits"][0]["fonte"] == "sei_arvore"
     assert acervo.buscar("")["ok"] is False
+
+
+def test_catalogo_publico_do_estado_entra_na_ficha_na_busca_e_nas_estatisticas(tmp_path, monkeypatch):
+    _bases(tmp_path, monkeypatch)
+    f = acervo.ficha("080001/000633/2024")
+    assert f["identidade"]["tipo"] == "Contratação: Inexigibilidade" and f["identidade"]["orgao_gerador"] == "SES"
+    assert f["cobertura"]["catalogo_publico"] == "lido"
+    b = acervo.buscar("termo de ajuste", esfera="estado")
+    assert [h["numero"] for h in b["hits"]] == ["SEI-150016/000001/2025"] and b["hits"][0]["fonte"] == "catalogo_publico"
+    assert acervo.estatisticas()["estado_catalogo"] == 2
