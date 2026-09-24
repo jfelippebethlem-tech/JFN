@@ -47,6 +47,10 @@
   // static/js/src/nucleo/formato.js
   var fmtN = (n) => n == null ? "—" : Number(n).toLocaleString("pt-BR");
   var fmtD = (v, d) => v == null || v === "" ? "—" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: d, maximumFractionDigits: d });
+  var fmtData = (v) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(v ?? ""));
+    return !m ? v == null || v === "" ? "—" : String(v) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ""}`;
+  };
   var fmtPct = (p) => p == null ? "—" : (p > 0 ? "+" : "") + fmtN(p) + "%";
   var fmtR = (v) => "R$ " + (v == null ? "0,00" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   var fmtRc = (v) => {
@@ -8246,7 +8250,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     );
     if (d.aviso) return h + card(`<div class="note">${esc(d.aviso)}</div>`);
     h += `<div class="grid">
-    ${kpi(fmtN(d.total || 0), "TACs publicados", null, null, { sobre: `Extratos de Termo de Ajuste de Contas lidos no PDF integral do DOERJ em ${fmtN(d.edicoes || 0)} edições (${esc(d.de || "?")} → ${esc(d.ate || "?")}). Cada linha é um extrato; apostilamento do mesmo TAC não duplica.` })}
+    ${kpi(fmtN(d.total || 0), "TACs publicados", null, null, { sobre: `Extratos de Termo de Ajuste de Contas lidos no PDF integral do DOERJ em ${fmtN(d.edicoes || 0)} edições (${esc(fmtData(d.de) || "?")} → ${esc(fmtData(d.ate) || "?")}). Cada linha é um extrato; apostilamento do mesmo TAC não duplica.` })}
     ${kpi(fmtRc(d.soma || 0), "Soma publicada", "var(--rose)", null, { sobre: `Soma dos valores que os extratos declaram (${fmtN(d.com_valor || 0)} de ${fmtN(d.total || 0)} têm valor legível). Publicado ≠ pago: pagamento é OB no SIAFE.` })}
     ${kpi(fmtN(d.fornecedores || 0), "Fornecedores", null, null, { sobre: "Fornecedores distintos lidos no campo PARTES dos extratos. Extrato sem PARTES legível conta na soma, não aqui." })}
     ${kpi(fmtN(d.nao_lidos || 0), "Extratos sem fornecedor lido", null, null, { sobre: "Extratos em que o campo PARTES não foi reconhecido (texto de PDF quebrado). Entram na soma; ficam fora do ranking. É limite de leitura, não ausência de fornecedor." })}
@@ -8261,7 +8265,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div class="grid g3">` + (d.orgaos || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} TAC · ${fmtRc(o.soma || 0)}</div>`)).join("") + `</div>`;
     h += sec("Quem mais recebe por TAC", (d.itens || []).length);
     h += `<div class="note">Um fornecedor com dezenas de TACs no trimestre não vive uma excepcionalidade: vive de um contrato que não existe. O que decide é o processo citado no extrato (justificativa e apuração de responsabilidade, art. 4º, III do Decreto 47.283/2020) — indício, não acusação.</div>`;
-    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>` + (d.itens || []).map((x) => `<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais || []).length ? '<div style="margin-top:3px">' + x.sinais.map((s) => `<span class="tag${s.grau === "🔴" ? " rose" : " amber"}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(" ") + "</div>" : ""}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma || 0)}${x.n_com_valor < x.n ? ` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>` : ""}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join("") + `</tbody></table></div>`;
+    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>` + (d.itens || []).map((x) => `<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais || []).length ? '<div style="margin-top:3px">' + x.sinais.map((s) => `<span class="tag${s.grau === "🔴" ? " rose" : " amber"}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(" ") + "</div>" : ""}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma || 0)}${x.n_com_valor < x.n ? ` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>` : ""}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(fmtData(x.de))} → ${esc(fmtData(x.ate))}</td></tr>`).join("") + `</tbody></table></div>`;
     h += `<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Clique no fornecedor para abrir no <b>Acervo</b> os processos, os extratos de TAC e as OBs do SIAFE de cada um.</div>`;
     return h;
   }
@@ -8410,7 +8414,6 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
 
   // static/js/src/abas/acervo.js
-  var dBR = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : v || "";
   var _q = "";
   var _esf = "todos";
   var _ultimaFicha = null;
@@ -8421,7 +8424,6 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     return null;
   };
   var tag = (t, cor) => t ? `<span class="tag" ${cor ? `style="color:${cor};border-color:${cor}"` : ""}>${esc(t)}</span>` : "";
-  var _pre = (v) => `<pre style="white-space:pre-wrap;font-size:12px;max-height:340px;overflow:auto;margin:6px 0">${esc(typeof v === "string" ? v : JSON.stringify(v, null, 1))}</pre>`;
   function _acervoKpis(st) {
     if (!st || !st.ok) return '<div class="dim">Estatísticas do acervo indisponíveis agora (a busca funciona).</div>';
     return `<div class="grid">
@@ -8435,6 +8437,14 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       ${kpi(fmtN(st.pcrj_ocp_r052), "Compra-teste (OCP R052)", "var(--amber)", null, { sobre: "pcrj_ocp_sinal: 1º contrato pequeno seguido de um muito maior com o mesmo órgão (Open Contracting Partnership, 2024). 🔴 quando o 1º foi contratação direta e o 2º veio em até 1 ano." })}
     </div>`;
   }
+  async function _quandoExistir(id, ms = 5e3) {
+    for (let t = 0; t < ms; t += 50) {
+      const o = $(id);
+      if (o) return o;
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return null;
+  }
   async function renderAcervo() {
     let h = cover(
       "geral",
@@ -8445,7 +8455,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     h += `<div id="ac-kpis">${spin("Contando o acervo…")}</div>`;
     setTimeout(async () => {
       const st = await J("/api/acervo/estatisticas", { tetoMs: 3e4 });
-      const o = $("ac-kpis");
+      const o = await _quandoExistir("ac-kpis");
       if (o) o.innerHTML = _acervoKpis(st);
     }, 0);
     h += card(`<form data-acervo-form="1" role="search" style="display:grid;grid-template-columns:3fr 1fr auto;gap:8px;align-items:end">
@@ -8460,7 +8470,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   async function acervoBuscar(q, esf) {
     _q = q;
     _esf = esf;
-    const o = $("ac-res");
+    const o = await _quandoExistir("ac-res");
     if (!o) return;
     o.innerHTML = spin('Buscando "' + esc(q) + '"…');
     const r = await J("/api/acervo/buscar?q=" + encodeURIComponent(q) + "&esfera=" + encodeURIComponent(esf) + "&limite=100", { tetoMs: 6e4 });
@@ -8495,18 +8505,52 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     else h += '<div class="dim">Nenhum achado gravado para este processo (não é ausência de problema: ver cobertura).</div>';
     return h;
   }
+  var _RX_CIT = /\[Doc:\s*([^\]—]+?)\s*—\s*[“"]?([^\]]*?)[”"]?\]/g;
+  var _item = (t) => {
+    const s = String(t ?? "");
+    const cits = [...s.matchAll(_RX_CIT)];
+    const corpo = esc(s.replace(_RX_CIT, "").replace(/\s+e\s*$/, "").replace(/^\s*e\s+/, "").trim());
+    return `<li style="margin:4px 0">${corpo || '<span class="dim">(ver evidência)</span>'}${cits.map((m) => `<div class="dim" style="border-left:2px solid var(--bd2);padding-left:8px;margin:3px 0 0 2px;font-size:12.5px"><b>${esc(m[1].trim())}</b> — “${esc(m[2].trim())}”</div>`).join("")}</li>`;
+  };
+  var _rot = (k) => ({
+    achados: "Achados",
+    conclusao: "Conclusão",
+    recomendacoes: "Recomendações",
+    riscos: "Riscos",
+    lacunas: "Lacunas",
+    fundamentos: "Fundamentos",
+    grau: "Grau",
+    nivel_risco: "Nível de risco"
+  })[k] || String(k).replace(/_/g, " ");
+  function _rico(v) {
+    if (v == null || v === "") return "";
+    if (typeof v === "string") {
+      const j = (() => {
+        try {
+          return JSON.parse(v);
+        } catch (e) {
+          return null;
+        }
+      })();
+      if (j && typeof j === "object") return _rico(j);
+      return `<div>${esc(v)}</div>`;
+    }
+    if (Array.isArray(v)) return v.length ? `<ol style="margin:6px 0 6px 18px;padding:0">${v.map((x) => typeof x === "object" && x ? `<li>${_rico(x)}</li>` : _item(x)).join("")}</ol>` : "";
+    if (typeof v === "object") return Object.entries(v).filter(([, x]) => x != null && x !== "" && !(Array.isArray(x) && !x.length)).map(([k, x]) => `<div style="margin-top:6px"><div style="font-weight:600">${esc(_rot(k))}</div>${typeof x === "object" ? _rico(x) : `<div>${esc(String(x))}</div>`}</div>`).join("");
+    return `<div>${esc(String(v))}</div>`;
+  }
   function _secPericias(f) {
     const p = f.pericias || {};
     let h = "";
     if (p.contabil || p.juridica || p.red_flags) {
-      h += `<div class="grid g2">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha)</div>${_pre(p.contabil)}`) : ""}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha)</div>${_pre(p.juridica)}`) : ""}</div>`;
-      if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))}</div>${_pre(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || "—")} · ${esc(p.atualizado_em || "")}</div>`);
+      h += `<div class="grid two">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha)</div>${_rico(p.contabil)}`) : ""}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha)</div>${_rico(p.juridica)}`) : ""}</div>`;
+      if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))}</div>${_rico(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || "—")} · ${esc(p.atualizado_em || "")}</div>`);
     }
     const a = f.avaliacao_360;
     if (a) {
       h += card(`<div style="font-weight:700">Avaliação 360 ${tag(a.grau, GRAU(a.grau))} · score ${esc(a.score100)} · ${esc(a.faixa || "")} · vencedor ${esc(a.cnpj_vencedor || "—")} · ${esc(a.avaliado_em || "")}</div>
       ${(a.lacunas || []).length ? `<div style="margin-top:6px"><b>Lacunas</b>: ${esc((a.lacunas || []).map((l) => typeof l === "string" ? l : l.diz || l.codigo || JSON.stringify(l)).join(" · ").slice(0, 600))}</div>` : ""}
-      ${a.sintese ? `<details><summary>síntese do conjunto</summary>${_pre(a.sintese)}</details>` : ""}`);
+      ${a.sintese ? `<details><summary>síntese do conjunto</summary>${_rico(a.sintese)}</details>` : ""}`);
     }
     if (p.leitura_estruturada && Object.keys(p.leitura_estruturada).length) {
       h += card(`<div style="font-weight:700">Leitura estruturada dos documentos obtidos</div><div style="overflow-x:auto"><table class="tb"><thead><tr><th>campo</th><th>valores</th></tr></thead><tbody>` + Object.entries(p.leitura_estruturada).map(([k, v]) => `<tr><td><b>${esc(k)}</b></td><td>${esc([...new Set(v.map((x) => x.valor))].slice(0, 12).join(" · ").slice(0, 300))}</td></tr>`).join("") + `</tbody></table></div>`);
@@ -8542,7 +8586,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       const soma = f.tac.reduce((t, x) => t + (x.valor || 0), 0);
       h += sec("Termos de Ajuste de Contas (DOERJ)", f.tac.length) + card(`<div class="dim">Pagamento de serviço prestado SEM contrato (Decreto 47.283/2020). Valor PUBLICADO no extrato — pagamento é OB, acima.</div>
       <div class="num" style="font-size:20px;font-weight:800">${fmtR(soma)}</div>
-      <div style="overflow-x:auto"><table class="tb"><thead><tr><th>DOERJ</th><th>TAC nº</th><th>fornecedor</th><th>órgão</th><th class="right">valor publicado</th><th>objeto</th></tr></thead><tbody>` + f.tac.map((x) => `<tr><td class="dim">${esc(dBR(x.data_doe))}</td><td>${esc(x.numero_tac || "")}</td><td>${esc(x.fornecedor || "(não lido)")}${x.cnpj ? `<div class="dim">${esc(x.cnpj)}</div>` : ""}</td>
+      <div style="overflow-x:auto"><table class="tb"><thead><tr><th>DOERJ</th><th>TAC nº</th><th>fornecedor</th><th>órgão</th><th class="right">valor publicado</th><th>objeto</th></tr></thead><tbody>` + f.tac.map((x) => `<tr><td class="dim">${esc(fmtData(x.data_doe))}</td><td>${esc(x.numero_tac || "")}</td><td>${esc(x.fornecedor || "(não lido)")}${x.cnpj ? `<div class="dim">${esc(x.cnpj)}</div>` : ""}</td>
         <td class="dim">${esc((x.orgao || "").slice(0, 40))}</td><td class="num right">${x.valor != null ? fmtR(x.valor) : "—"}</td><td class="dim">${esc((x.objeto || "").slice(0, 140))}</td></tr>`).join("") + `</tbody></table></div><div class="dim" style="margin-top:6px">Fonte: DOERJ (PDF integral) → doerj_tac.</div>`);
     }
     if ((f.contratos || []).length) {

@@ -16,6 +16,14 @@ export const fmtN = n => (n == null ? '—' : Number(n).toLocaleString('pt-BR'))
 export const fmtD = (v, d) => (v == null || v === '' ? '—'
   : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}));
 
+/* data pt-BR: '2026-09-24' → '24/09/2026' e '2026-09-24 13:05:09' → '24/09/2026 13:05'. Texto que não é ISO passa
+   intacto (o SIAFE já grava DD/MM/AAAA) — quem chama continua escapando. Datas ISO na tela eram desvio do padrão
+   (auditoria 24/09/2026). */
+export const fmtData = v => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(v ?? ''));
+  return !m ? (v == null || v === '' ? '—' : String(v)) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ''}`;
+};
+
 /* pct assinado: o + so aparece quando e positivo — '+-8%' era bug em e_adit */
 export const fmtPct = p => (p == null ? '—' : (p > 0 ? '+' : '') + fmtN(p) + '%');
 

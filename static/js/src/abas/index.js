@@ -14,7 +14,7 @@
 import {$, esc, svgIco, card, kpi, sec, cover, spin, leitura, semMedicao, btnPdf, acoesAba,
         toggle, corta, clk} from '../nucleo/dom.js';
 import {drillSeCompleto, limparDrill, registrarDrill} from '../nucleo/drill.js';
-import {fmtN, fmtD, fmtPct, fmtR, fmtRc, ROTULOS, rot} from '../nucleo/formato.js';
+import {fmtN, fmtD, fmtData, fmtPct, fmtR, fmtRc, ROTULOS, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
 import {filtrar, filtrarPag, _pagMais, _acPagPick, buscaPag, listaPaginada, ordenar,
         _pagState} from '../nucleo/lista.js';
@@ -3062,7 +3062,7 @@ export async function renderTacRecorrente(){
     +'Valores são os <b>publicados</b> nos extratos, não ordens bancárias.','🧾');
   if(d.aviso) return h+card(`<div class="note">${esc(d.aviso)}</div>`);
   h+=`<div class="grid">
-    ${kpi(fmtN(d.total||0),'TACs publicados',null,null,{sobre:`Extratos de Termo de Ajuste de Contas lidos no PDF integral do DOERJ em ${fmtN(d.edicoes||0)} edições (${esc(d.de||'?')} → ${esc(d.ate||'?')}). Cada linha é um extrato; apostilamento do mesmo TAC não duplica.`})}
+    ${kpi(fmtN(d.total||0),'TACs publicados',null,null,{sobre:`Extratos de Termo de Ajuste de Contas lidos no PDF integral do DOERJ em ${fmtN(d.edicoes||0)} edições (${esc(fmtData(d.de)||'?')} → ${esc(fmtData(d.ate)||'?')}). Cada linha é um extrato; apostilamento do mesmo TAC não duplica.`})}
     ${kpi(fmtRc(d.soma||0),'Soma publicada','var(--rose)',null,{sobre:`Soma dos valores que os extratos declaram (${fmtN(d.com_valor||0)} de ${fmtN(d.total||0)} têm valor legível). Publicado ≠ pago: pagamento é OB no SIAFE.`})}
     ${kpi(fmtN(d.fornecedores||0),'Fornecedores',null,null,{sobre:'Fornecedores distintos lidos no campo PARTES dos extratos. Extrato sem PARTES legível conta na soma, não aqui.'})}
     ${kpi(fmtN(d.nao_lidos||0),'Extratos sem fornecedor lido',null,null,{sobre:'Extratos em que o campo PARTES não foi reconhecido (texto de PDF quebrado). Entram na soma; ficam fora do ranking. É limite de leitura, não ausência de fornecedor.'})}
@@ -3078,7 +3078,7 @@ export async function renderTacRecorrente(){
   h+=sec('Quem mais recebe por TAC',(d.itens||[]).length);
   h+=`<div class="note">Um fornecedor com dezenas de TACs no trimestre não vive uma excepcionalidade: vive de um contrato que não existe. O que decide é o processo citado no extrato (justificativa e apuração de responsabilidade, art. 4º, III do Decreto 47.283/2020) — indício, não acusação.</div>`;
   h+=`<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>`
-    +(d.itens||[]).map(x=>`<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais||[]).length?'<div style="margin-top:3px">'+x.sinais.map(s=>`<span class="tag${s.grau==='🔴'?' rose':' amber'}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(' ')+'</div>':''}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma||0)}${x.n_com_valor<x.n?` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>`:''}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join('')
+    +(d.itens||[]).map(x=>`<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais||[]).length?'<div style="margin-top:3px">'+x.sinais.map(s=>`<span class="tag${s.grau==='🔴'?' rose':' amber'}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(' ')+'</div>':''}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma||0)}${x.n_com_valor<x.n?` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>`:''}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(fmtData(x.de))} → ${esc(fmtData(x.ate))}</td></tr>`).join('')
     +`</tbody></table></div>`;
   h+=`<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Clique no fornecedor para abrir no <b>Acervo</b> os processos, os extratos de TAC e as OBs do SIAFE de cada um.</div>`;
   return h;

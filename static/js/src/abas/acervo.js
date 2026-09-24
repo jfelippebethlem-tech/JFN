@@ -5,16 +5,13 @@
 // Delegação por data-acervo (sem global novo no window).
 import {$, esc, card, kpi, sec, cover, spin} from '../nucleo/dom.js';
 import {J, erroHumano} from '../nucleo/http.js';
-import {fmtN, fmtR, fmtRc} from '../nucleo/formato.js';
-
-const dBR = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : (v || '');
+import {fmtN, fmtR, fmtRc, fmtData} from '../nucleo/formato.js';
 
 let _q = '', _esf = 'todos', _ultimaFicha = null;
 
 const GRAU = g => { const s = String(g || '').toUpperCase();
   if (/EXTREMO|ALTO|🔴|CRIT/.test(s)) return 'var(--rose)'; if (/MEDIO|MÉDIO|🟡|ATEN/.test(s)) return 'var(--amber)'; return null; };
 const tag = (t, cor) => t ? `<span class="tag" ${cor ? `style="color:${cor};border-color:${cor}"` : ''}>${esc(t)}</span>` : '';
-const _pre = (v) => `<pre style="white-space:pre-wrap;font-size:12px;max-height:340px;overflow:auto;margin:6px 0">${esc(typeof v === 'string' ? v : JSON.stringify(v, null, 1))}</pre>`;
 
 function _acervoKpis(st){
   if (!st || !st.ok) return '<div class="dim">Estatísticas do acervo indisponíveis agora (a busca funciona).</div>';
@@ -30,12 +27,20 @@ function _acervoKpis(st){
     </div>`;
 }
 
+/* O ir() insere o HTML DEPOIS que render() devolve (View Transitions): trabalho agendado com setTimeout(0) achava
+   #ac-res/#ac-kpis ainda fora do DOM e desistia calado — o clique no fornecedor do TAC abria o Acervo sem buscar
+   (24/09/2026). Espera o elemento aparecer (até ~5 s) antes de escrever nele. */
+async function _quandoExistir(id, ms = 5000){
+  for (let t = 0; t < ms; t += 50) { const o = $(id); if (o) return o; await new Promise(r => setTimeout(r, 50)); }
+  return null;
+}
+
 export async function renderAcervo(){
   // Busca primeiro, números depois: as estatísticas custavam 15–25 s a frio e seguravam a aba inteira (auditoria 24/09).
   let h = cover('geral', 'Acervo — todo processo, uma ficha',
     'Digite um nº de processo (Estado ou Prefeitura), um CNPJ, um fornecedor, um órgão ou um termo. A ficha reúne documentos, OBs do SIAFE, contratos, agentes, achados, perícias e LAI de todas as bases da casa — e diz o que ainda não foi coletado.', '🗂️');
   h += `<div id="ac-kpis">${spin('Contando o acervo…')}</div>`;
-  setTimeout(async () => { const st = await J('/api/acervo/estatisticas', {tetoMs: 30000}); const o = $('ac-kpis'); if (o) o.innerHTML = _acervoKpis(st); }, 0);
+  setTimeout(async () => { const st = await J('/api/acervo/estatisticas', {tetoMs: 30000}); const o = await _quandoExistir('ac-kpis'); if (o) o.innerHTML = _acervoKpis(st); }, 0);
   h += card(`<form data-acervo-form="1" role="search" style="display:grid;grid-template-columns:3fr 1fr auto;gap:8px;align-items:end">
       <label>O que procurar<br><input id="ac-q" class="inp" style="width:100%" value="${esc(_q)}" placeholder="SEI-080001/000633/2024 · 000700.007924/2026-97 · SME-PRO-2025/38233 · CNPJ · fornecedor · órgão · termo"></label>
       <label>Esfera<br><select id="ac-esf" class="inp"><option value="todos">todas</option><option value="estado" ${_esf === 'estado' ? 'selected' : ''}>Estado</option><option value="prefeitura" ${_esf === 'prefeitura' ? 'selected' : ''}>Prefeitura</option></select></label>
@@ -47,7 +52,7 @@ export async function renderAcervo(){
 }
 
 async function acervoBuscar(q, esf){
-  _q = q; _esf = esf; const o = $('ac-res'); if (!o) return;
+  _q = q; _esf = esf; const o = await _quandoExistir('ac-res'); if (!o) return;
   o.innerHTML = spin('Buscando "' + esc(q) + '"…');
   const r = await J('/api/acervo/buscar?q=' + encodeURIComponent(q) + '&esfera=' + encodeURIComponent(esf) + '&limite=100', {tetoMs: 60000});
   if (!r || !r.ok) { o.innerHTML = card(`<div class="warn">${esc(erroHumano((r || {}).erro || 'a busca não respondeu'))}</div>`); return; }
@@ -83,17 +88,37 @@ function _secAchados(f){
   return h;
 }
 
+/* Perícia legível (auditoria 24/09: JSON cru num <pre>). Item = frase com citações "[Doc: título — "trecho"]":
+   a frase fica em texto corrido e cada citação vira evidência destacada, com o documento de origem. */
+const _RX_CIT = /\[Doc:\s*([^\]—]+?)\s*—\s*[“"]?([^\]]*?)[”"]?\]/g;
+const _item = t => {
+  const s = String(t ?? ''); const cits = [...s.matchAll(_RX_CIT)];
+  const corpo = esc(s.replace(_RX_CIT, '').replace(/\s+e\s*$/, '').replace(/^\s*e\s+/, '').trim());
+  return `<li style="margin:4px 0">${corpo || '<span class="dim">(ver evidência)</span>'}${cits.map(m =>
+    `<div class="dim" style="border-left:2px solid var(--bd2);padding-left:8px;margin:3px 0 0 2px;font-size:12.5px"><b>${esc(m[1].trim())}</b> — “${esc(m[2].trim())}”</div>`).join('')}</li>`;
+};
+const _rot = k => ({achados: 'Achados', conclusao: 'Conclusão', recomendacoes: 'Recomendações', riscos: 'Riscos', lacunas: 'Lacunas',
+  fundamentos: 'Fundamentos', grau: 'Grau', nivel_risco: 'Nível de risco'})[k] || String(k).replace(/_/g, ' ');
+function _rico(v){
+  if (v == null || v === '') return '';
+  if (typeof v === 'string') { const j = (() => { try { return JSON.parse(v); } catch (e) { return null; } })(); if (j && typeof j === 'object') return _rico(j); return `<div>${esc(v)}</div>`; }
+  if (Array.isArray(v)) return v.length ? `<ol style="margin:6px 0 6px 18px;padding:0">${v.map(x => typeof x === 'object' && x ? `<li>${_rico(x)}</li>` : _item(x)).join('')}</ol>` : '';
+  if (typeof v === 'object') return Object.entries(v).filter(([, x]) => x != null && x !== '' && !(Array.isArray(x) && !x.length))
+    .map(([k, x]) => `<div style="margin-top:6px"><div style="font-weight:600">${esc(_rot(k))}</div>${typeof x === 'object' ? _rico(x) : `<div>${esc(String(x))}</div>`}</div>`).join('');
+  return `<div>${esc(String(v))}</div>`;
+}
+
 function _secPericias(f){
   const p = f.pericias || {}; let h = '';
   if (p.contabil || p.juridica || p.red_flags) {
-    h += `<div class="grid g2">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha)</div>${_pre(p.contabil)}`) : ''}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha)</div>${_pre(p.juridica)}`) : ''}</div>`;
-    if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))}</div>${_pre(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || '—')} · ${esc(p.atualizado_em || '')}</div>`);
+    h += `<div class="grid two">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha)</div>${_rico(p.contabil)}`) : ''}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha)</div>${_rico(p.juridica)}`) : ''}</div>`;
+    if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))}</div>${_rico(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || '—')} · ${esc(p.atualizado_em || '')}</div>`);
   }
   const a = f.avaliacao_360;
   if (a) {
     h += card(`<div style="font-weight:700">Avaliação 360 ${tag(a.grau, GRAU(a.grau))} · score ${esc(a.score100)} · ${esc(a.faixa || '')} · vencedor ${esc(a.cnpj_vencedor || '—')} · ${esc(a.avaliado_em || '')}</div>
       ${(a.lacunas || []).length ? `<div style="margin-top:6px"><b>Lacunas</b>: ${esc((a.lacunas || []).map(l => typeof l === 'string' ? l : (l.diz || l.codigo || JSON.stringify(l))).join(' · ').slice(0, 600))}</div>` : ''}
-      ${a.sintese ? `<details><summary>síntese do conjunto</summary>${_pre(a.sintese)}</details>` : ''}`);
+      ${a.sintese ? `<details><summary>síntese do conjunto</summary>${_rico(a.sintese)}</details>` : ''}`);
   }
   if (p.leitura_estruturada && Object.keys(p.leitura_estruturada).length) {
     h += card(`<div style="font-weight:700">Leitura estruturada dos documentos obtidos</div><div style="overflow-x:auto"><table class="tb"><thead><tr><th>campo</th><th>valores</th></tr></thead><tbody>`
@@ -135,7 +160,7 @@ export async function acervoAbrir(numero){
     h += sec('Termos de Ajuste de Contas (DOERJ)', f.tac.length) + card(`<div class="dim">Pagamento de serviço prestado SEM contrato (Decreto 47.283/2020). Valor PUBLICADO no extrato — pagamento é OB, acima.</div>
       <div class="num" style="font-size:20px;font-weight:800">${fmtR(soma)}</div>
       <div style="overflow-x:auto"><table class="tb"><thead><tr><th>DOERJ</th><th>TAC nº</th><th>fornecedor</th><th>órgão</th><th class="right">valor publicado</th><th>objeto</th></tr></thead><tbody>`
-      + f.tac.map(x => `<tr><td class="dim">${esc(dBR(x.data_doe))}</td><td>${esc(x.numero_tac || '')}</td><td>${esc(x.fornecedor || '(não lido)')}${x.cnpj ? `<div class="dim">${esc(x.cnpj)}</div>` : ''}</td>
+      + f.tac.map(x => `<tr><td class="dim">${esc(fmtData(x.data_doe))}</td><td>${esc(x.numero_tac || '')}</td><td>${esc(x.fornecedor || '(não lido)')}${x.cnpj ? `<div class="dim">${esc(x.cnpj)}</div>` : ''}</td>
         <td class="dim">${esc((x.orgao || '').slice(0, 40))}</td><td class="num right">${x.valor != null ? fmtR(x.valor) : '—'}</td><td class="dim">${esc((x.objeto || '').slice(0, 140))}</td></tr>`).join('')
       + `</tbody></table></div><div class="dim" style="margin-top:6px">Fonte: DOERJ (PDF integral) → doerj_tac.</div>`);
   }
