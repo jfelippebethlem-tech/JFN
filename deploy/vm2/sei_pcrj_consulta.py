@@ -19,6 +19,7 @@ import asyncio
 import fcntl
 import json
 import re
+import sqlite3
 import sys
 import time
 from datetime import datetime
@@ -26,6 +27,7 @@ from pathlib import Path
 
 sys.path.insert(0, "/home/ubuntu/sei-pcrj")
 import sei_pcrj_sweep as S  # noqa: E402
+from playwright.async_api import Error as PlaywrightError  # noqa: E402
 
 BASE = Path("/home/ubuntu/shared-brain/sei_pcrj_consulta")
 PED, RESP = BASE / "pedidos", BASE / "respostas"
@@ -66,7 +68,7 @@ def gravar(numero: str, r: dict) -> None:
             S.gravar_arvore(con, numero, arv)
             con.commit()
             con.close()
-        except Exception as e:  # noqa: BLE001 — a resposta já foi entregue; a base local é bônus
+        except (sqlite3.Error, OSError) as e:  # a resposta já foi entregue; a base local é bônus
             print(f"{numero}: árvore não gravada na base local ({type(e).__name__})")
 
 
@@ -75,7 +77,7 @@ async def rodar(nums: list[str]) -> None:
         for n in nums:
             try:
                 r = await S.capturar(pg, n, max_captchas=40)
-            except Exception as e:  # noqa: BLE001 — um pedido ruim não derruba os outros
+            except (PlaywrightError, OSError, asyncio.TimeoutError, ValueError, RuntimeError) as e:  # um pedido ruim não derruba os outros
                 r = {"disponivel": 0, "erro": f"{type(e).__name__}: {str(e)[:120]}"}
             gravar(n, r)
             print(f"{datetime.now():%H:%M:%S} {n}: {'ok' if r.get('disponivel') else 'sem resultado'} "

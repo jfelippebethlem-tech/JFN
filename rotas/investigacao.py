@@ -237,7 +237,7 @@ def api_painel():
                 ultimo_dia, n_ultimo_dia, v_ultimo_dia = s.execute(_t(
                     f"SELECT {_iso} d, count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
                     f"AND {_iso} <= :h GROUP BY d ORDER BY d DESC LIMIT 1"), {"h": str(hoje)}).one()
-            except Exception as exc:  # noqa: BLE001 — sem SIAFE o KPI diz INDISPONÍVEL, não 0
+            except (sa.exc.SQLAlchemyError, ValueError, TypeError) as exc:  # sem SIAFE o KPI diz INDISPONÍVEL, não 0
                 logger.warning("último dia do SIAFE indisponível: %s", exc)
                 ultimo_dia, n_ultimo_dia, v_ultimo_dia = None, 0, 0.0
 
