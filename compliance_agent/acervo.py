@@ -79,7 +79,8 @@ def _digits(s) -> str:
 def _ficha_estado(canon: str) -> dict:
     con, ach, lai = _ro(DB_COMPLIANCE), _ro(DB_ACHADOS), _ro(DB_LAI)
     f: dict = {"esfera": "estado", "numero": canon, "cobertura": {}, "identidade": {}, "documentos": [], "obs": {},
-               "contratos": [], "agentes": [], "achados": [], "pericias": {}, "avaliacao_360": None, "lai": [], "acoes": []}
+               "contratos": [], "agentes": [], "achados": [], "pericias": {}, "avaliacao_360": None, "lai": [], "acoes": [],
+               "tac": []}
     vars_ = _variantes_estado(canon)
     q = ",".join("?" * len(vars_))
     try:
@@ -116,12 +117,27 @@ def _ficha_estado(canon: str) -> dict:
             f["agentes"] = [dict(x) for x in con.execute(f"SELECT nome, papel, cargo, origem, documento, contexto FROM agente_processo "
                                                           f"WHERE processo IN ({q})", vars_)]
         if _tem(con, "ob_orcamentaria_siafe"):
+            # PAGO = só OB `Contabilizado`. Anulada/Excluída/Não contabilizada somavam R$ 6,58 bi em 5.726 processos
+            # e inflavam o total da ficha (medido 24/09/2026); aparecem à parte, na lista, com o status.
             rows = con.execute(f"SELECT credor, nome_credor, count(*) n, round(sum(valor),2) total, min(data_emissao) primeira, max(data_emissao) ultima, "
-                               f"group_concat(DISTINCT ug_emitente) ugs FROM ob_orcamentaria_siafe WHERE processo IN ({q}) "
+                               f"group_concat(DISTINCT ug_emitente) ugs FROM ob_orcamentaria_siafe WHERE processo IN ({q}) AND status='Contabilizado' "
                                f"GROUP BY credor ORDER BY total DESC LIMIT 30", vars_).fetchall()
-            f["obs"] = {"fonte": "SIAFE (ob_orcamentaria_siafe.processo)", "n": sum(x["n"] for x in rows), "total": round(sum(x["total"] or 0 for x in rows), 2),
-                        "por_credor": [dict(x) for x in rows]}
-            f["cobertura"]["obs_siafe"] = f"{f['obs']['n']} OB(s) com este nº de processo" if rows else "nenhuma OB do SIAFE cita este processo"
+            lista = [dict(x) for x in con.execute(
+                f"SELECT numero_ob, data_emissao, ug_emitente, credor, nome_credor, valor, status FROM ob_orcamentaria_siafe "
+                f"WHERE processo IN ({q}) ORDER BY substr(data_emissao,7,4)||substr(data_emissao,4,2)||substr(data_emissao,1,2) DESC LIMIT 400", vars_)]
+            nao_pagas = [x for x in lista if x["status"] != "Contabilizado"]
+            f["obs"] = {"fonte": "SIAFE (ob_orcamentaria_siafe.processo, só OB Contabilizado no total)", "n": sum(x["n"] for x in rows),
+                        "total": round(sum(x["total"] or 0 for x in rows), 2), "por_credor": [dict(x) for x in rows], "lista": lista,
+                        "n_nao_pagas": len(nao_pagas), "valor_nao_pago": round(sum(x["valor"] or 0 for x in nao_pagas), 2)}
+            f["cobertura"]["obs_siafe"] = (f"{f['obs']['n']} OB(s) contabilizada(s) com este nº de processo"
+                                           + (f"; {len(nao_pagas)} anulada(s)/excluída(s) fora do total" if nao_pagas else "")) if lista \
+                else "nenhuma OB do SIAFE cita este processo"
+        if _tem(con, "doerj_tac"):
+            f["tac"] = [dict(x) for x in con.execute(
+                f"SELECT data_doe, numero_tac, orgao, fornecedor, cnpj, valor, objeto, data_assinatura, id_publicacao "
+                f"FROM doerj_tac WHERE processo IN ({q}) ORDER BY data_doe", vars_)]
+            f["cobertura"]["doerj_tac"] = (f"{len(f['tac'])} extrato(s) de TAC no DOERJ citam este processo" if f["tac"]
+                                           else "nenhum extrato de TAC no DOERJ cita este processo (DOERJ lido desde 02/01/2026)")
         if _tem(con, "sei_fila_captura"):
             r = con.execute(f"SELECT * FROM sei_fila_captura WHERE numero_sei IN ({q}) OR processo IN ({q})", vars_ + vars_).fetchone() \
                 if "processo" in [c[1] for c in con.execute("PRAGMA table_info(sei_fila_captura)")] else None
@@ -270,7 +286,7 @@ def ficha(numero: str) -> dict:
     f = _ficha_estado(canon) if esfera == "estado" else _ficha_prefeitura(canon)
     f["ok"] = True
     f["n_achados"] = len(f["achados"])
-    f["existe"] = bool(f["identidade"] or f["documentos"] or f["contratos"] or (f["obs"] or {}).get("n"))
+    f["existe"] = bool(f["identidade"] or f["documentos"] or f["contratos"] or (f["obs"] or {}).get("n") or f.get("tac"))
     return f
 
 
@@ -364,9 +380,18 @@ def buscar(q: str, esfera: str = "todos", limite: int = 60) -> dict:
                     nn = norm(r["numero_sei"])
                     if nn:
                         add(_hit("estado", nn[1], r["objeto"], None, r["nivel_risco"], None, r["n_docs"], "sei_ficha", r["atualizado_em"]))
+            if _tem(con, "doerj_tac") and (e_cnpj or len(q) >= 4):
+                cond, arg = ("replace(replace(replace(cnpj,'.',''),'/',''),'-','')=?", dig) if e_cnpj else ("upper(fornecedor) LIKE ?", like)
+                for r in con.execute(f"SELECT processo, max(fornecedor) forn, max(orgao) org, count(*) n, round(sum(valor),2) soma, max(data_doe) ult, "
+                                     f"max(objeto) obj FROM doerj_tac WHERE processo IS NOT NULL AND {cond} GROUP BY processo "
+                                     f"ORDER BY soma DESC LIMIT ?", (arg, lim)):
+                    nn = norm(r["processo"])
+                    if nn:
+                        add(_hit("estado", nn[1], f"TAC: {r['obj'] or ''}", r["org"], None, None, None, "doerj_tac", r["ult"],
+                                 {"fornecedor": r["forn"], "n_tac": r["n"], "soma_tac_publicada": r["soma"]}))
             if _tem(con, "ob_orcamentaria_siafe") and e_cnpj:
                 for r in con.execute("SELECT processo, nome_credor, count(*) n, round(sum(valor),2) total, max(data_emissao) ultima FROM ob_orcamentaria_siafe "
-                                     "WHERE credor LIKE ? AND processo LIKE 'SEI-%' GROUP BY processo ORDER BY total DESC LIMIT ?", (f"%{dig[:8]}%", lim)):
+                                     "WHERE credor LIKE ? AND processo LIKE 'SEI-%' AND status='Contabilizado' GROUP BY processo ORDER BY total DESC LIMIT ?", (f"%{dig[:8]}%", lim)):
                     nn = norm(r["processo"])
                     if nn:
                         add(_hit("estado", nn[1], None, r["nome_credor"], None, r["total"], None, "siafe_ob", r["ultima"], {"n_obs": r["n"]}))

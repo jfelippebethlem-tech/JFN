@@ -8258,11 +8258,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     ${kpi(d.concordancia && d.concordancia.taxa != null ? Math.round(d.concordancia.taxa * 100) + "%" : "não medida", "Concordância SIAFE", d.concordancia && d.concordancia.taxa != null && d.concordancia.taxa < 0.8 ? "var(--rose)" : null, null, { sobre: "Controle externo do extrator: para cada processo citado num TAC que tem OB no SIAFE, o credor da OB tem de ser o fornecedor do extrato (casamento por nome). " + (d.concordancia ? esc(d.concordancia.texto) + " — medido em " + esc((d.concordancia.em || "").slice(0, 16)).replace("T", " ") + ". Abaixo de 80% é defeito de extração, não notícia." : "Ainda não medida: roda a cada materialização (tools/doerj_tac_recorrente).") })}
   </div>`;
     h += sec("Por órgão");
-    h += `<div class="grid">` + (d.orgaos || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} TAC · ${fmtRc(o.soma || 0)}</div>`)).join("") + `</div>`;
+    h += `<div class="grid g3">` + (d.orgaos || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} TAC · ${fmtRc(o.soma || 0)}</div>`)).join("") + `</div>`;
     h += sec("Quem mais recebe por TAC", (d.itens || []).length);
     h += `<div class="note">Um fornecedor com dezenas de TACs no trimestre não vive uma excepcionalidade: vive de um contrato que não existe. O que decide é o processo citado no extrato (justificativa e apuração de responsabilidade, art. 4º, III do Decreto 47.283/2020) — indício, não acusação.</div>`;
-    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>` + (d.itens || []).map((x) => `<tr><td>${esc(x.fornecedor)}${(x.sinais || []).length ? '<div style="margin-top:3px">' + x.sinais.map((s) => `<span class="tag${s.grau === "🔴" ? " rose" : " amber"}" title="${esc(s.detalhe)}">${s.grau} ${esc(s.sinal.replace(/_/g, " "))}</span>`).join(" ") + "</div>" : ""}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma || 0)}${x.n_com_valor < x.n ? ` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>` : ""}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join("") + `</tbody></table></div>`;
-    h += `<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Busque um fornecedor na aba <b>Buscar</b> (fonte DOERJ) para ler os extratos.</div>`;
+    h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>` + (d.itens || []).map((x) => `<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais || []).length ? '<div style="margin-top:3px">' + x.sinais.map((s) => `<span class="tag${s.grau === "🔴" ? " rose" : " amber"}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(" ") + "</div>" : ""}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma || 0)}${x.n_com_valor < x.n ? ` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>` : ""}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join("") + `</tbody></table></div>`;
+    h += `<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Clique no fornecedor para abrir no <b>Acervo</b> os processos, os extratos de TAC e as OBs do SIAFE de cada um.</div>`;
     return h;
   }
   async function renderImprensa() {
@@ -8282,7 +8282,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     ${kpi(fmtN((d.por_orgao || []).length), "Órgãos acompanhados", null, null, { sobre: "Consultas fixas em tools/noticias_orgaos.ORGAOS — FSERJ, SES, SEEDUC, CEDAE, DETRAN, PM, Bombeiros, TCE-RJ, ITERJ, Leão XIII, UERJ, Prefeitura, RioSaúde." })}
   </div>`;
     h += sec("Por órgão");
-    h += `<div class="grid">` + (d.por_orgao || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} notícias · <b>${fmtN(o.adversas || 0)}</b> com termo de risco</div>`)).join("") + `</div>`;
+    h += `<div class="grid g3">` + (d.por_orgao || []).map((o) => card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} notícias · <b>${fmtN(o.adversas || 0)}</b> com termo de risco</div>`)).join("") + `</div>`;
     h += sec("Adversas mais recentes", adv.length);
     h += `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>data</th><th>órgão</th><th>título</th><th>termos</th><th>fonte</th></tr></thead><tbody>` + adv.slice(0, 80).map((x) => `<tr><td>${esc((x.data || "").slice(0, 10))}</td><td>${esc(x.orgao)}</td><td><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.titulo)}</a></td><td>${esc(x.termos || "")}</td><td>${esc(x.fonte || "")}</td></tr>`).join("") + `</tbody></table></div>`;
     h += `<div class="dim" style="margin-top:8px">Fonte: news.google.com/rss (pt-BR) → noticias_orgaos. Coletado em ${esc((d.coletado_em || "").slice(0, 16))}.</div>`;
@@ -8410,6 +8410,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
 
   // static/js/src/abas/acervo.js
+  var dBR = (v) => /^\d{4}-\d{2}-\d{2}/.test(v || "") ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : v || "";
   var _q = "";
   var _esf = "todos";
   var _ultimaFicha = null;
@@ -8532,8 +8533,17 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     <div class="btns" style="margin-top:8px">${(f.acoes || []).map((a) => a.metodo === "dossie" ? `<button type="button" class="btn ghost" data-acervo="dossie" data-cnpj="${esc(a.cnpj)}" data-nome="${esc(a.nome || "")}">${esc(a.rotulo)}</button>` : `<button type="button" class="btn ghost" data-acervo="acao" data-rota="${esc(a.rota)}" data-body='${esc(JSON.stringify(a.body))}'>${esc(a.rotulo)}</button>`).join(" ")}
       <span id="ac-acao-out" class="dim"></span></div>`);
     const obs = f.obs || {};
-    if (obs.n) {
-      h += sec("Pagamentos ligados ao processo", obs.n) + card(`<div class="dim">${esc(obs.fonte)}</div><div class="num" style="font-size:20px;font-weight:800">${fmtRc(obs.total)}</div>` + ((obs.por_credor || []).length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>credor</th><th>OBs</th><th>total</th><th>período</th><th>UGs</th></tr></thead><tbody>` + obs.por_credor.map((c) => `<tr><td>${esc(c.nome_credor || c.credor)}</td><td>${fmtN(c.n)}</td><td class="num">${fmtRc(c.total)}</td><td class="dim">${esc(c.primeira || "")} → ${esc(c.ultima || "")}</td><td class="dim">${esc(c.ugs || "")}</td></tr>`).join("") + `</tbody></table></div>` : ""));
+    if (obs.n || (obs.lista || []).length) {
+      h += sec("Pagamentos ligados ao processo", obs.n) + card(`<div class="dim">${esc(obs.fonte)}</div><div class="num" style="font-size:20px;font-weight:800">${fmtR(obs.total)}</div>` + (obs.n_nao_pagas ? `<div class="warn" style="margin-top:6px">${fmtN(obs.n_nao_pagas)} OB(s) anulada(s)/excluída(s) somando ${fmtR(obs.valor_nao_pago)} — fora do total pago.</div>` : "") + ((obs.por_credor || []).length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>credor</th><th class="right">OBs</th><th class="right">total pago</th><th>período</th><th>UGs</th></tr></thead><tbody>` + obs.por_credor.map((c) => `<tr><td>${esc(c.nome_credor || c.credor)}<div class="dim">${esc(c.credor || "")}</div></td><td class="right">${fmtN(c.n)}</td><td class="num right">${fmtR(c.total)}</td><td class="dim">${esc(c.primeira || "")} → ${esc(c.ultima || "")}</td><td class="dim">${esc(c.ugs || "")}</td></tr>`).join("") + `</tbody></table></div>` : "") + ((obs.lista || []).length ? `<details style="margin-top:8px"><summary>Cada ordem bancária (${fmtN(obs.lista.length)}${obs.lista.length >= 400 ? ", as 400 mais recentes" : ""})</summary>
+        <div style="overflow-x:auto;max-height:420px"><table class="tb"><thead><tr><th>OB</th><th>emissão</th><th>UG</th><th>credor</th><th class="right">valor</th><th>status</th></tr></thead><tbody>` + obs.lista.map((o2) => `<tr><td>${esc(o2.numero_ob || "")}</td><td class="dim">${esc(o2.data_emissao || "")}</td><td class="dim">${esc(o2.ug_emitente || "")}</td><td>${esc(o2.nome_credor || o2.credor || "")}</td>
+          <td class="num right">${fmtR(o2.valor)}</td><td>${o2.status === "Contabilizado" ? '<span class="dim">pago</span>' : tag(o2.status, "var(--rose)")}</td></tr>`).join("") + `</tbody></table></div></details>` : ""));
+    }
+    if ((f.tac || []).length) {
+      const soma = f.tac.reduce((t, x) => t + (x.valor || 0), 0);
+      h += sec("Termos de Ajuste de Contas (DOERJ)", f.tac.length) + card(`<div class="dim">Pagamento de serviço prestado SEM contrato (Decreto 47.283/2020). Valor PUBLICADO no extrato — pagamento é OB, acima.</div>
+      <div class="num" style="font-size:20px;font-weight:800">${fmtR(soma)}</div>
+      <div style="overflow-x:auto"><table class="tb"><thead><tr><th>DOERJ</th><th>TAC nº</th><th>fornecedor</th><th>órgão</th><th class="right">valor publicado</th><th>objeto</th></tr></thead><tbody>` + f.tac.map((x) => `<tr><td class="dim">${esc(dBR(x.data_doe))}</td><td>${esc(x.numero_tac || "")}</td><td>${esc(x.fornecedor || "(não lido)")}${x.cnpj ? `<div class="dim">${esc(x.cnpj)}</div>` : ""}</td>
+        <td class="dim">${esc((x.orgao || "").slice(0, 40))}</td><td class="num right">${x.valor != null ? fmtR(x.valor) : "—"}</td><td class="dim">${esc((x.objeto || "").slice(0, 140))}</td></tr>`).join("") + `</tbody></table></div><div class="dim" style="margin-top:6px">Fonte: DOERJ (PDF integral) → doerj_tac.</div>`);
     }
     if ((f.contratos || []).length) {
       h += sec("Contratos e fornecedores", f.contratos.length) + `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fonte</th><th>fornecedor</th><th>órgão</th><th>forma / objeto</th><th>valor</th><th>pago</th><th>vigência</th><th></th></tr></thead><tbody>` + f.contratos.map((c) => `<tr><td class="dim">${esc(c.fonte || "")}</td><td>${esc(c.nome || "")}<div class="dim">${esc(c.cnpj || "")}</div></td><td class="dim">${esc((c.orgao || "").slice(0, 40))}</td><td>${esc(((c.forma_contratacao ? c.forma_contratacao + ": " : "") + (c.objeto || "")).slice(0, 120))}</td>
@@ -8588,7 +8598,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       if (!b) return;
       ev.preventDefault();
       const a = b.dataset.acervo;
-      if (a === "abrir") acervoAbrir(b.dataset.numero);
+      if (a === "buscar") {
+        _q = b.dataset.q || "";
+        _esf = b.dataset.esf || "todos";
+        if (typeof window.ir === "function") window.ir("g_acervo");
+      } else if (a === "abrir") acervoAbrir(b.dataset.numero);
       else if (a === "ler") acervoLer(b.dataset.numero, b.dataset.seq);
       else if (a === "acao") acervoAcao(b.dataset.rota, JSON.parse(b.dataset.body || "{}"));
       else if (a === "dossie" && typeof window.abrirDossie === "function") window.abrirDossie(b.dataset.cnpj, b.dataset.nome);

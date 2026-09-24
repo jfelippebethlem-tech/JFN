@@ -26,9 +26,10 @@ def _bases(tmp_path, monkeypatch):
         '[{"cnpj": "10497795000149", "nome": "Fundo Municipal De Saude", "valor": 115000000.0}]','/x.txt','2026-09-01','ativo','2026-08-01','',0,NULL);
     CREATE TABLE processo_avaliacao (numero_sei, score100, grau, faixa, achados_json, lacunas_json, docs_chave_json, acatamento_json, escalada_json, cnpj_vencedor, confianca, cobertura_json, avaliado_em, versao, sintese_json);
     INSERT INTO processo_avaliacao VALUES ('080001/000633/2024', 72.5, 'ALTO', 'ALTO', '[{"codigo":"A1","grau":"alto","diz":"contrato antes do parecer","apoio":"doc 3"}]', '[]', '[]', NULL, NULL, '10497795000149', 'media', NULL, '2026-09-02', 3, NULL);
-    CREATE TABLE ob_orcamentaria_siafe (numero_ob, ug_emitente, credor, nome_credor, data_emissao, processo, valor);
-    INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB1','080001','10497795000149','FUNDO MUN SAUDE','01/03/2025','SEI-080001/000633/2024', 1000.0);
-    INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB2','080001','10497795000149','FUNDO MUN SAUDE','01/04/2025','SEI-080001/000633/2024', 2000.0);
+    CREATE TABLE ob_orcamentaria_siafe (numero_ob, ug_emitente, credor, nome_credor, data_emissao, processo, valor, status);
+    INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB1','080001','10497795000149','FUNDO MUN SAUDE','01/03/2025','SEI-080001/000633/2024', 1000.0, 'Contabilizado');
+    INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB2','080001','10497795000149','FUNDO MUN SAUDE','01/04/2025','SEI-080001/000633/2024', 2000.0, 'Contabilizado');
+    INSERT INTO ob_orcamentaria_siafe VALUES ('2025OB3','080001','10497795000149','FUNDO MUN SAUDE','02/04/2025','SEI-080001/000633/2024', 9000.0, 'Anulado');
     """)
     c.commit(); c.close()
     pc = tmp_path / "pcrj.db"
@@ -107,3 +108,27 @@ def test_catalogo_publico_do_estado_entra_na_ficha_na_busca_e_nas_estatisticas(t
     b = acervo.buscar("termo de ajuste", esfera="estado")
     assert [h["numero"] for h in b["hits"]] == ["SEI-150016/000001/2025"] and b["hits"][0]["fonte"] == "catalogo_publico"
     assert acervo.estatisticas()["estado_catalogo"] == 2
+
+
+def test_tac_do_doerj_entra_na_ficha_e_na_busca_por_fornecedor(tmp_path, monkeypatch):
+    _bases(tmp_path, monkeypatch)
+    c = sqlite3.connect(tmp_path / "compliance.db")
+    c.executescript("""CREATE TABLE doerj_tac (data_doe, numero_tac, orgao, fornecedor, cnpj, valor, processo, objeto, data_assinatura, id_publicacao, gerado_em);
+    INSERT INTO doerj_tac VALUES ('2026-06-02','696/2026','Fundação Saúde','ECO CONSULTORIA LTDA',NULL,311625.36,'SEI-080001/000633/2024','indenização por serviço','2026-05-30',282,'x');
+    INSERT INTO doerj_tac VALUES ('2026-07-02','801/2026','Fundação Saúde','ECO CONSULTORIA LTDA',NULL,100.0,'SEI-080001/000633/2024','indenização por serviço','2026-06-30',300,'x');""")
+    c.commit(); c.close()
+    f = acervo.ficha("SEI-080001/000633/2024")
+    assert [t["numero_tac"] for t in f["tac"]] == ["696/2026", "801/2026"]
+    assert f["cobertura"]["doerj_tac"].startswith("2 extrato")
+    b = acervo.buscar("eco consultoria", esfera="estado")
+    h = [x for x in b["hits"] if x["fonte"] == "doerj_tac"]
+    assert len(h) == 1 and h[0]["numero"] == "SEI-080001/000633/2024" and h[0]["n_tac"] == 2
+
+
+def test_ob_anulada_fica_fora_do_total_e_aparece_na_lista(tmp_path, monkeypatch):
+    """R$ 6,58 bi em OB Anulada/Excluída inflavam o total de 5.726 fichas (24/09/2026)."""
+    _bases(tmp_path, monkeypatch)
+    o = acervo.ficha("SEI-080001/000633/2024")["obs"]
+    assert o["total"] == 3000.0 and o["n"] == 2
+    assert o["n_nao_pagas"] == 1 and o["valor_nao_pago"] == 9000.0
+    assert [x["numero_ob"] for x in o["lista"]] == ["2025OB3", "2025OB2", "2025OB1"]

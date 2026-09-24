@@ -3074,13 +3074,13 @@ export async function renderTacRecorrente(){
     ${kpi(d.concordancia&&d.concordancia.taxa!=null?Math.round(d.concordancia.taxa*100)+'%':'não medida','Concordância SIAFE',(d.concordancia&&d.concordancia.taxa!=null&&d.concordancia.taxa<0.8)?'var(--rose)':null,null,{sobre:'Controle externo do extrator: para cada processo citado num TAC que tem OB no SIAFE, o credor da OB tem de ser o fornecedor do extrato (casamento por nome). '+(d.concordancia?esc(d.concordancia.texto)+' — medido em '+esc((d.concordancia.em||'').slice(0,16)).replace('T',' ')+'. Abaixo de 80% é defeito de extração, não notícia.':'Ainda não medida: roda a cada materialização (tools/doerj_tac_recorrente).')})}
   </div>`;
   h+=sec('Por órgão');
-  h+=`<div class="grid">`+(d.orgaos||[]).map(o=>card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} TAC · ${fmtRc(o.soma||0)}</div>`)).join('')+`</div>`;
+  h+=`<div class="grid g3">`+(d.orgaos||[]).map(o=>card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} TAC · ${fmtRc(o.soma||0)}</div>`)).join('')+`</div>`;
   h+=sec('Quem mais recebe por TAC',(d.itens||[]).length);
   h+=`<div class="note">Um fornecedor com dezenas de TACs no trimestre não vive uma excepcionalidade: vive de um contrato que não existe. O que decide é o processo citado no extrato (justificativa e apuração de responsabilidade, art. 4º, III do Decreto 47.283/2020) — indício, não acusação.</div>`;
   h+=`<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fornecedor</th><th class="right">TACs</th><th class="right">soma publicada</th><th class="right">órgãos</th><th class="right">processos</th><th>período</th></tr></thead><tbody>`
-    +(d.itens||[]).map(x=>`<tr><td>${esc(x.fornecedor)}${(x.sinais||[]).length?'<div style="margin-top:3px">'+x.sinais.map(s=>`<span class="tag${s.grau==='🔴'?' rose':' amber'}" title="${esc(s.detalhe)}">${s.grau} ${esc(s.sinal.replace(/_/g,' '))}</span>`).join(' ')+'</div>':''}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma||0)}${x.n_com_valor<x.n?` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>`:''}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join('')
+    +(d.itens||[]).map(x=>`<tr><td><a href="#" data-acervo="buscar" data-q="${esc(x.fornecedor)}" data-esf="estado" title="Abrir no Acervo: processos, extratos e OBs">${esc(x.fornecedor)}</a>${(x.sinais||[]).length?'<div style="margin-top:3px">'+x.sinais.map(s=>`<span class="tag${s.grau==='🔴'?' rose':' amber'}" title="${esc(s.detalhe)}">${s.grau} ${esc(rot(s.sinal))}</span>`).join(' ')+'</div>':''}</td><td class="right"><b>${fmtN(x.n)}</b></td><td class="right">${fmtRc(x.soma||0)}${x.n_com_valor<x.n?` <span class="dim">(${fmtN(x.n_com_valor)} c/ valor)</span>`:''}</td><td class="right">${fmtN(x.n_orgaos)}</td><td class="right">${fmtN(x.processos)}</td><td class="dim">${esc(x.de)} → ${esc(x.ate)}</td></tr>`).join('')
     +`</tbody></table></div>`;
-  h+=`<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Busque um fornecedor na aba <b>Buscar</b> (fonte DOERJ) para ler os extratos.</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Fonte: publicacoes_doerj → doerj_tac (tools/doerj_tac_recorrente). Clique no fornecedor para abrir no <b>Acervo</b> os processos, os extratos de TAC e as OBs do SIAFE de cada um.</div>`;
   return h;
 }
 
@@ -3100,7 +3100,7 @@ export async function renderImprensa(){
     ${kpi(fmtN((d.por_orgao||[]).length),'Órgãos acompanhados',null,null,{sobre:'Consultas fixas em tools/noticias_orgaos.ORGAOS — FSERJ, SES, SEEDUC, CEDAE, DETRAN, PM, Bombeiros, TCE-RJ, ITERJ, Leão XIII, UERJ, Prefeitura, RioSaúde.'})}
   </div>`;
   h+=sec('Por órgão');
-  h+=`<div class="grid">`+(d.por_orgao||[]).map(o=>card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} notícias · <b>${fmtN(o.adversas||0)}</b> com termo de risco</div>`)).join('')+`</div>`;
+  h+=`<div class="grid g3">`+(d.por_orgao||[]).map(o=>card(`<div style="font-weight:700">${esc(o.orgao)}</div><div class="dim">${fmtN(o.n)} notícias · <b>${fmtN(o.adversas||0)}</b> com termo de risco</div>`)).join('')+`</div>`;
   h+=sec('Adversas mais recentes',adv.length);
   h+=`<div style="overflow-x:auto"><table class="tb"><thead><tr><th>data</th><th>órgão</th><th>título</th><th>termos</th><th>fonte</th></tr></thead><tbody>`
     +adv.slice(0,80).map(x=>`<tr><td>${esc((x.data||'').slice(0,10))}</td><td>${esc(x.orgao)}</td><td><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.titulo)}</a></td><td>${esc(x.termos||'')}</td><td>${esc(x.fonte||'')}</td></tr>`).join('')

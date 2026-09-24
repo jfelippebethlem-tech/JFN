@@ -5,7 +5,9 @@
 // Delegação por data-acervo (sem global novo no window).
 import {$, esc, card, kpi, sec, cover, spin} from '../nucleo/dom.js';
 import {J, erroHumano} from '../nucleo/http.js';
-import {fmtN, fmtRc} from '../nucleo/formato.js';
+import {fmtN, fmtR, fmtRc} from '../nucleo/formato.js';
+
+const dBR = v => /^\d{4}-\d{2}-\d{2}/.test(v || '') ? `${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}` : (v || '');
 
 let _q = '', _esf = 'todos', _ultimaFicha = null;
 
@@ -118,10 +120,24 @@ export async function acervoAbrir(numero){
       : `<button type="button" class="btn ghost" data-acervo="acao" data-rota="${esc(a.rota)}" data-body='${esc(JSON.stringify(a.body))}'>${esc(a.rotulo)}</button>`).join(' ')}
       <span id="ac-acao-out" class="dim"></span></div>`);
   const obs = f.obs || {};
-  if (obs.n) {
-    h += sec('Pagamentos ligados ao processo', obs.n) + card(`<div class="dim">${esc(obs.fonte)}</div><div class="num" style="font-size:20px;font-weight:800">${fmtRc(obs.total)}</div>`
-      + ((obs.por_credor || []).length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>credor</th><th>OBs</th><th>total</th><th>período</th><th>UGs</th></tr></thead><tbody>`
-        + obs.por_credor.map(c => `<tr><td>${esc(c.nome_credor || c.credor)}</td><td>${fmtN(c.n)}</td><td class="num">${fmtRc(c.total)}</td><td class="dim">${esc(c.primeira || '')} → ${esc(c.ultima || '')}</td><td class="dim">${esc(c.ugs || '')}</td></tr>`).join('') + `</tbody></table></div>` : ''));
+  if (obs.n || (obs.lista || []).length) {
+    h += sec('Pagamentos ligados ao processo', obs.n) + card(`<div class="dim">${esc(obs.fonte)}</div><div class="num" style="font-size:20px;font-weight:800">${fmtR(obs.total)}</div>`
+      + (obs.n_nao_pagas ? `<div class="warn" style="margin-top:6px">${fmtN(obs.n_nao_pagas)} OB(s) anulada(s)/excluída(s) somando ${fmtR(obs.valor_nao_pago)} — fora do total pago.</div>` : '')
+      + ((obs.por_credor || []).length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>credor</th><th class="right">OBs</th><th class="right">total pago</th><th>período</th><th>UGs</th></tr></thead><tbody>`
+        + obs.por_credor.map(c => `<tr><td>${esc(c.nome_credor || c.credor)}<div class="dim">${esc(c.credor || '')}</div></td><td class="right">${fmtN(c.n)}</td><td class="num right">${fmtR(c.total)}</td><td class="dim">${esc(c.primeira || '')} → ${esc(c.ultima || '')}</td><td class="dim">${esc(c.ugs || '')}</td></tr>`).join('') + `</tbody></table></div>` : '')
+      + ((obs.lista || []).length ? `<details style="margin-top:8px"><summary>Cada ordem bancária (${fmtN(obs.lista.length)}${obs.lista.length >= 400 ? ', as 400 mais recentes' : ''})</summary>
+        <div style="overflow-x:auto;max-height:420px"><table class="tb"><thead><tr><th>OB</th><th>emissão</th><th>UG</th><th>credor</th><th class="right">valor</th><th>status</th></tr></thead><tbody>`
+        + obs.lista.map(o => `<tr><td>${esc(o.numero_ob || '')}</td><td class="dim">${esc(o.data_emissao || '')}</td><td class="dim">${esc(o.ug_emitente || '')}</td><td>${esc(o.nome_credor || o.credor || '')}</td>
+          <td class="num right">${fmtR(o.valor)}</td><td>${o.status === 'Contabilizado' ? '<span class="dim">pago</span>' : tag(o.status, 'var(--rose)')}</td></tr>`).join('') + `</tbody></table></div></details>` : ''));
+  }
+  if ((f.tac || []).length) {
+    const soma = f.tac.reduce((t, x) => t + (x.valor || 0), 0);
+    h += sec('Termos de Ajuste de Contas (DOERJ)', f.tac.length) + card(`<div class="dim">Pagamento de serviço prestado SEM contrato (Decreto 47.283/2020). Valor PUBLICADO no extrato — pagamento é OB, acima.</div>
+      <div class="num" style="font-size:20px;font-weight:800">${fmtR(soma)}</div>
+      <div style="overflow-x:auto"><table class="tb"><thead><tr><th>DOERJ</th><th>TAC nº</th><th>fornecedor</th><th>órgão</th><th class="right">valor publicado</th><th>objeto</th></tr></thead><tbody>`
+      + f.tac.map(x => `<tr><td class="dim">${esc(dBR(x.data_doe))}</td><td>${esc(x.numero_tac || '')}</td><td>${esc(x.fornecedor || '(não lido)')}${x.cnpj ? `<div class="dim">${esc(x.cnpj)}</div>` : ''}</td>
+        <td class="dim">${esc((x.orgao || '').slice(0, 40))}</td><td class="num right">${x.valor != null ? fmtR(x.valor) : '—'}</td><td class="dim">${esc((x.objeto || '').slice(0, 140))}</td></tr>`).join('')
+      + `</tbody></table></div><div class="dim" style="margin-top:6px">Fonte: DOERJ (PDF integral) → doerj_tac.</div>`);
   }
   if ((f.contratos || []).length) {
     h += sec('Contratos e fornecedores', f.contratos.length) + `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>fonte</th><th>fornecedor</th><th>órgão</th><th>forma / objeto</th><th>valor</th><th>pago</th><th>vigência</th><th></th></tr></thead><tbody>`
@@ -175,7 +191,8 @@ export function ligarAcervo(){
     if (!b) return;
     ev.preventDefault();
     const a = b.dataset.acervo;
-    if (a === 'abrir') acervoAbrir(b.dataset.numero);
+    if (a === 'buscar') { _q = b.dataset.q || ''; _esf = b.dataset.esf || 'todos'; if (typeof window.ir === 'function') window.ir('g_acervo'); }
+    else if (a === 'abrir') acervoAbrir(b.dataset.numero);
     else if (a === 'ler') acervoLer(b.dataset.numero, b.dataset.seq);
     else if (a === 'acao') acervoAcao(b.dataset.rota, JSON.parse(b.dataset.body || '{}'));
     else if (a === 'dossie' && typeof window.abrirDossie === 'function') window.abrirDossie(b.dataset.cnpj, b.dataset.nome);
