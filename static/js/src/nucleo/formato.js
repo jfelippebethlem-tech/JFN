@@ -30,13 +30,10 @@ export const fmtPct = p => (p == null ? '—' : (p > 0 ? '+' : '') + fmtN(p) + '
 export const fmtR = v => 'R$ ' + (v == null ? '0,00'
   : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
-export const fmtRc = v => {
-  v = Number(v || 0); const a = Math.abs(v);
-  if (a >= 1e9) return 'R$ ' + (v / 1e9).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' bi';
-  if (a >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' mi';
-  if (a >= 1e3) return 'R$ ' + (v / 1e3).toLocaleString('pt-BR', {maximumFractionDigits: 0}) + ' mil';
-  return fmtR(v);
-};
+/* fmtRc era a forma CURTA ('R$ 1,3 bi'). A regra da casa é número financeiro sempre com separador de milhar e duas
+   casas (auditoria quadro a quadro de 24/09/2026: 119 lugares mostravam valor arredondado a 1 casa de bilhão — um erro
+   de até R$ 50 mi na leitura). Fica o nome para não mexer em 119 chamadas; o valor agora é o exato. */
+export const fmtRc = v => fmtR(Number(v || 0));
 
 // rótulos humanos p/ ids técnicos de sinal/detector — snake_case NUNCA chega ao usuário
 export const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio societário',sancao_a_epoca:'sanção vigente à época',

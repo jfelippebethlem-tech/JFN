@@ -20,7 +20,8 @@
     const drill = dest && typeof dest === "object" && dest.drill;
     const sobre = dest && typeof dest === "object" && dest.sobre;
     const go = drill ? ` kpi-go" data-drill="${drill}" role="button" tabindex="0" title="Ver os dados: ${l}` : sobre ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}` : dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : "";
-    return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ""}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
+    const n = String(v ?? "").replace(/<[^>]*>/g, "").replace(/&[a-z#0-9]+;/gi, "x").length || 1;
+    return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" style="--n:${n}${cor ? `;color:${cor}` : ""}">${v}</div>${gl ? `<span class="gl">${gl}</span>` : ""}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ""}</div>`;
   };
   var sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ""}</h2>`;
   var spin = (t) => `<div class="skel"><span class="sp"></span>${t || "Carregando…"}</div>`;
@@ -53,14 +54,7 @@
   };
   var fmtPct = (p) => p == null ? "—" : (p > 0 ? "+" : "") + fmtN(p) + "%";
   var fmtR = (v) => "R$ " + (v == null ? "0,00" : Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  var fmtRc = (v) => {
-    v = Number(v || 0);
-    const a = Math.abs(v);
-    if (a >= 1e9) return "R$ " + (v / 1e9).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " bi";
-    if (a >= 1e6) return "R$ " + (v / 1e6).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mi";
-    if (a >= 1e3) return "R$ " + (v / 1e3).toLocaleString("pt-BR", { maximumFractionDigits: 0 }) + " mil";
-    return fmtR(v);
-  };
+  var fmtRc = (v) => fmtR(Number(v || 0));
   var ROTULOS = {
     conluio_forte: "conluio societário",
     conluio_qsa: "conluio societário",
@@ -8145,7 +8139,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       "Íntegras · Contratos do Município do Rio",
       "acervo de contratos capturados do PNCP",
       "doc"
-    ) + card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
+    ) + card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
     const itens = d.itens || [];
     if (_intAberto && !_intDoc[_intAberto]) {
       _intDoc[_intAberto] = await J(`/api/pcrj/integra/${encodeURIComponent(_intAberto)}`) || { erro: "sem resposta" };
@@ -8215,7 +8209,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   function _intDocHtml(num) {
     const d = _intDoc[num];
     if (!d) return '<div class="dim" style="margin-top:8px">carregando a íntegra…</div>';
-    if (d.erro) return `<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`;
+    if (d.erro) return `<div class="warn">INDISPONÍVEL — ${erroHumano(d.erro)}</div>`;
     const inteiro = d.texto || "";
     const cortou = inteiro.length > _INT_TETO_TELA;
     const txt = cortou ? inteiro.slice(0, _INT_TETO_TELA) : inteiro;
@@ -8241,7 +8235,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   async function renderTacRecorrente() {
     const d = await J("/api/doerj/tac_recorrente?top=30");
-    if (!d || d.erro || d.ok === false) return cover("estado", "TAC recorrente (DOERJ)", "Termos de Ajuste de Contas publicados no Diário Oficial do Estado", "🧾") + card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
+    if (!d || d.erro || d.ok === false) return cover("estado", "TAC recorrente (DOERJ)", "Termos de Ajuste de Contas publicados no Diário Oficial do Estado", "🧾") + card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
     let h = cover(
       "estado",
       "TAC recorrente (DOERJ)",
@@ -8271,7 +8265,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }
   async function renderImprensa() {
     const d = await J("/api/imprensa/orgaos?dias=30&so_adversas=0&limite=200");
-    if (!d || d.erro || d.ok === false) return cover("estado", "Imprensa por órgão", "O que a imprensa diz dos órgãos", "📰") + card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
+    if (!d || d.erro || d.ok === false) return cover("estado", "Imprensa por órgão", "O que a imprensa diz dos órgãos", "📰") + card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
     let h = cover(
       "estado",
       "Imprensa por órgão",
@@ -8354,7 +8348,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         body: JSON.stringify({ alvo, esfera: $("lai-esfera")?.value || "", motivo: $("lai-motivo")?.value || "", telegram: Number($("lai-tg")?.value || "1") })
       });
       if (!d || !d.ok) {
-        o.innerHTML = card(`<div class="warn">${esc(erroHumano((d || {}).erro || "a API não respondeu"))}</div>`);
+        o.innerHTML = card(`<div class="warn">${erroHumano((d || {}).erro || "a API não respondeu")}</div>`);
         return;
       }
       const avisos = (d.avisos || []).map((a) => `<div class="warn">${esc(a)}</div>`).join("");
@@ -8475,7 +8469,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     o.innerHTML = spin('Buscando "' + esc(q) + '"…');
     const r = await J("/api/acervo/buscar?q=" + encodeURIComponent(q) + "&esfera=" + encodeURIComponent(esf) + "&limite=100", { tetoMs: 6e4 });
     if (!r || !r.ok) {
-      o.innerHTML = card(`<div class="warn">${esc(erroHumano((r || {}).erro || "a busca não respondeu"))}</div>`);
+      o.innerHTML = card(`<div class="warn">${erroHumano((r || {}).erro || "a busca não respondeu")}</div>`);
       return;
     }
     const it = r.hits || [];
@@ -8563,7 +8557,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     o.innerHTML = spin("Reunindo tudo sobre " + esc(numero) + "…");
     const f = await J("/api/acervo/processo?numero=" + encodeURIComponent(numero), { tetoMs: 9e4 });
     if (!f || !f.ok) {
-      o.innerHTML = card(`<div class="warn">${esc(erroHumano((f || {}).erro || "ficha indisponível"))}</div>`);
+      o.innerHTML = card(`<div class="warn">${erroHumano((f || {}).erro || "ficha indisponível")}</div>`);
       return;
     }
     _ultimaFicha = f;
@@ -8621,7 +8615,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     o.innerHTML = spin("lendo documento " + esc(seq) + "…");
     const d = await J("/api/acervo/documento?numero=" + encodeURIComponent(numero) + "&seq=" + encodeURIComponent(seq), { tetoMs: 3e4 });
     if (!d || !d.ok) {
-      o.innerHTML = card(`<div class="warn">${esc(erroHumano((d || {}).erro || "sem texto"))}</div>`);
+      o.innerHTML = card(`<div class="warn">${erroHumano((d || {}).erro || "sem texto")}</div>`);
       return;
     }
     o.innerHTML = card(`<div style="font-weight:700">${esc(d.titulo || seq)}</div><pre style="white-space:pre-wrap;font-size:12px;max-height:520px;overflow:auto">${esc(d.texto || "")}</pre>`);

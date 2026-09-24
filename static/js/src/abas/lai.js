@@ -68,7 +68,7 @@ async function laiGerar(){
   try{
     const d = await J('/api/lai/gerar',{method:'POST',headers:{'Content-Type':'application/json'},tetoMs:90000,
       body: JSON.stringify({alvo, esfera:$('lai-esfera')?.value||'', motivo:$('lai-motivo')?.value||'', telegram: Number($('lai-tg')?.value||'1')})});
-    if(!d || !d.ok){ o.innerHTML = card(`<div class="warn">${esc(erroHumano((d||{}).erro||'a API não respondeu'))}</div>`); return; }
+    if(!d || !d.ok){ o.innerHTML = card(`<div class="warn">${erroHumano((d||{}).erro||'a API não respondeu')}</div>`); return; }
     const avisos = (d.avisos||[]).map(a=>`<div class="warn">${esc(a)}</div>`).join('');
     o.innerHTML = card(`<div class="ok">${esc(d.resumo)}</div>${avisos}
       <div class="dim" style="margin-top:6px">Destinatário: ${esc(d.destinatario)}<br>Canal: ${esc(d.canal)}</div>

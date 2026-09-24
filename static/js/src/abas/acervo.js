@@ -55,7 +55,7 @@ async function acervoBuscar(q, esf){
   _q = q; _esf = esf; const o = await _quandoExistir('ac-res'); if (!o) return;
   o.innerHTML = spin('Buscando "' + esc(q) + '"…');
   const r = await J('/api/acervo/buscar?q=' + encodeURIComponent(q) + '&esfera=' + encodeURIComponent(esf) + '&limite=100', {tetoMs: 60000});
-  if (!r || !r.ok) { o.innerHTML = card(`<div class="warn">${esc(erroHumano((r || {}).erro || 'a busca não respondeu'))}</div>`); return; }
+  if (!r || !r.ok) { o.innerHTML = card(`<div class="warn">${erroHumano((r || {}).erro || 'a busca não respondeu')}</div>`); return; }
   const it = r.hits || [];
   if (!it.length) { o.innerHTML = card('<div class="dim">Nada encontrado nas bases da casa. Nº de processo desconhecido pode ser capturado: Estado → sei_fila_captura; Prefeitura → busca livre no SEI municipal.</div>'); return; }
   o.innerHTML = `<div class="dim" style="margin-bottom:6px">${fmtN(it.length)} resultado(s) · ${esc(r.tipo)}${r.esferas ? ` · Estado ${fmtN(r.esferas.estado)} · Prefeitura ${fmtN(r.esferas.prefeitura)}` : ''}</div>
@@ -131,7 +131,7 @@ export async function acervoAbrir(numero){
   const o = $('ac-ficha'); if (!o) return;
   o.innerHTML = spin('Reunindo tudo sobre ' + esc(numero) + '…');
   const f = await J('/api/acervo/processo?numero=' + encodeURIComponent(numero), {tetoMs: 90000});
-  if (!f || !f.ok) { o.innerHTML = card(`<div class="warn">${esc(erroHumano((f || {}).erro || 'ficha indisponível'))}</div>`); return; }
+  if (!f || !f.ok) { o.innerHTML = card(`<div class="warn">${erroHumano((f || {}).erro || 'ficha indisponível')}</div>`); return; }
   _ultimaFicha = f;
   const id = f.identidade || {}, cob = f.cobertura || {};
   let h = sec(`${f.esfera === 'estado' ? 'Estado' : 'Prefeitura'} · ${esc(f.numero)}`);
@@ -203,7 +203,7 @@ async function acervoLer(numero, seq){
   const o = $('ac-doc'); if (!o) return;
   o.innerHTML = spin('lendo documento ' + esc(seq) + '…');
   const d = await J('/api/acervo/documento?numero=' + encodeURIComponent(numero) + '&seq=' + encodeURIComponent(seq), {tetoMs: 30000});
-  if (!d || !d.ok) { o.innerHTML = card(`<div class="warn">${esc(erroHumano((d || {}).erro || 'sem texto'))}</div>`); return; }
+  if (!d || !d.ok) { o.innerHTML = card(`<div class="warn">${erroHumano((d || {}).erro || 'sem texto')}</div>`); return; }
   o.innerHTML = card(`<div style="font-weight:700">${esc(d.titulo || seq)}</div><pre style="white-space:pre-wrap;font-size:12px;max-height:520px;overflow:auto">${esc(d.texto || '')}</pre>`);
 }
 

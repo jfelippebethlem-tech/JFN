@@ -53,7 +53,10 @@ export const kpi = (v, l, cor, gl, dest) => {
     : (sobre
       ? ` kpi-go" data-sobre="${esc(sobre)}" data-sobre-tit="${esc(l)}" role="button" tabindex="0" title="O que é: ${l}`
       : (dest ? ` kpi-go" onclick="ir('${dest}')" title="Abrir: ${l}` : ''));
-  return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" ${cor ? `style="color:${cor}"` : ''}>${v}</div>${gl ? `<span class="gl">${gl}</span>` : ''}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ''}</div>`;
+  /* `--n` = caracteres VISÍVEIS do valor: o CSS (v59) só encolhe o corpo quando o valor exato não cabe na largura do
+     cartão — "R$ 1.311.540.133,79" encolhe, "302" fica do tamanho de sempre. */
+  const n = String(v ?? '').replace(/<[^>]*>/g, '').replace(/&[a-z#0-9]+;/gi, 'x').length || 1;
+  return `<div class="card kpi${go}"><div class="l">${l}</div><div class="v" style="--n:${n}${cor ? `;color:${cor}` : ''}">${v}</div>${gl ? `<span class="gl">${gl}</span>` : ''}${ik ? `<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>` : ''}</div>`;
 };
 
 export const sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ''}</h2>`;

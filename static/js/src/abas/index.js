@@ -2941,7 +2941,7 @@ export async function renderIntegras(){
      INDISPONIVEL tem de aparecer como INDISPONIVEL, nunca como tela vazia. */
   if(!d||d.erro) return cover('prefeitura','Íntegras · Contratos do Município do Rio',
       'acervo de contratos capturados do PNCP','doc')
-    +card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d||{}).erro||'a API não respondeu'))}</div>`);
+    +card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d||{}).erro||'a API não respondeu')}</div>`);
   const itens=d.itens||[];
   /* o documento aberto e buscado AQUI, no proprio render. Buscar no handler e chamar ir() de
      dentro do .then reentrava no render em andamento e o painel travava em "Carregando…". */
@@ -3025,7 +3025,7 @@ export async function renderIntegras(){
 function _intDocHtml(num){
   const d=_intDoc[num];
   if(!d) return '<div class="dim" style="margin-top:8px">carregando a íntegra…</div>';
-  if(d.erro) return `<div class="warn">INDISPONÍVEL — ${esc(erroHumano(d.erro))}</div>`;
+  if(d.erro) return `<div class="warn">INDISPONÍVEL — ${erroHumano(d.erro)}</div>`;
   const inteiro=d.texto||'';
   const cortou=inteiro.length>_INT_TETO_TELA;
   const txt=cortou?inteiro.slice(0,_INT_TETO_TELA):inteiro;
@@ -3056,7 +3056,7 @@ function _intDocHtml(num){
 export async function renderTacRecorrente(){
   const d=await J('/api/doerj/tac_recorrente?top=30');
   if(!d||d.erro||d.ok===false) return cover('estado','TAC recorrente (DOERJ)','Termos de Ajuste de Contas publicados no Diário Oficial do Estado','🧾')
-    +card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d||{}).erro||'a API não respondeu'))}</div>`);
+    +card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d||{}).erro||'a API não respondeu')}</div>`);
   let h=cover('estado','TAC recorrente (DOERJ)',
     'Quem o Estado paga por <b>Termo de Ajuste de Contas</b> — serviço prestado sem contrato regular — e quantas vezes. '
     +'Valores são os <b>publicados</b> nos extratos, não ordens bancárias.','🧾');
@@ -3088,7 +3088,7 @@ export async function renderTacRecorrente(){
 export async function renderImprensa(){
   const d=await J('/api/imprensa/orgaos?dias=30&so_adversas=0&limite=200');
   if(!d||d.erro||d.ok===false) return cover('estado','Imprensa por órgão','O que a imprensa diz dos órgãos','📰')
-    +card(`<div class="warn">INDISPONÍVEL — ${esc(erroHumano((d||{}).erro||'a API não respondeu'))}</div>`);
+    +card(`<div class="warn">INDISPONÍVEL — ${erroHumano((d||{}).erro||'a API não respondeu')}</div>`);
   let h=cover('estado','Imprensa por órgão',
     'Google News (RSS público, sem chave) por órgão do Estado e da Prefeitura, últimos 30 dias. <b>Adversa</b> = título com termo de risco '
     +'(fraude, operação, TCE, MP, propina…). Cobertura jornalística é <b>indício a confirmar na fonte</b>, nunca prova.','📰');
