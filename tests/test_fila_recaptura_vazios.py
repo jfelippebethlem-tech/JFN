@@ -118,3 +118,20 @@ def test_nao_recaptura_arquivo_completo(tmp_path):
         "docs": [{"i": i, "titulo": f"d{i}", "chars": 500} for i in range(40)],
         "total_arvore": 40, "nao_capturados": 0}), encoding="utf-8")
     assert _arquivado_ok(arq) is True, "40 de 40 = completo → não re-captura"
+
+
+def test_relatorio_fotografico_vindo_so_do_cache_pede_a_integra(tmp_path):
+    """24/09/2026: 159 processos com relatório fotográfico arquivados só do TEXTO do cache — fotos/ vazia e a
+    fila os dava por prontos, então a íntegra (a única que baixa as fotos) nunca era pedida."""
+    import json as _j
+    arq = tmp_path / "080002_019408_2024"
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "005.txt").write_text("RELATORIO FOTOGRÁFICO " + "x" * 200, encoding="utf-8")
+    doc = {"i": "5", "titulo": "Relatório FOTOGRÁFICO (82081372)", "texto": "texto/005.txt", "chars": "3629",
+           "ocr": "True", "fotos": "[]", "via_cache": "ocr"}
+    man = {"origem": "cache CDP (cdp_SEI_080002_019408_2024.json) — texto já lido pelo sweep", "docs": [doc]}
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is False, "relatório fotográfico sem foto, vindo do cache → pedir a íntegra"
+    man["origem"] = "/home/ubuntu/JFN/data/sei_cache/integra_080002_019408_2024"   # já veio da íntegra
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is True, "depois da íntegra não repete, mesmo que o relatório não tenha imagem"

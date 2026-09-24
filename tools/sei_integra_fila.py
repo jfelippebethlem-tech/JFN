@@ -140,8 +140,26 @@ def _arquivado_ok(dir_arq: Path) -> bool:
             return False
         if _tem_falha_nao_declarada(dir_arq, m):
             return False
+        if _relatorio_fotografico_sem_foto(m):
+            return False
         return True
     return (m.get("gerado_em") or "") >= CORTE_ESCRITOR
+
+
+_RX_REL_FOTO = re.compile(r"relat[óo]rio\s+fotogr|registro\s+fotogr|memorial\s+fotogr", re.I)
+
+
+def _relatorio_fotografico_sem_foto(arq_manifest: dict) -> bool:
+    """(c) Arquivo montado SÓ do TEXTO do cache (sei_arquivar_do_cache) com relatório fotográfico e zero foto.
+
+    Medido em 24/09/2026: 214 documentos de relatório fotográfico chegaram pelo caminho do cache (OCR do texto) e
+    NENHUM trouxe imagem — o caminho declara que não traz fotos. Como o processo "tinha texto", esta fila o dava
+    por pronto e a íntegra (a única que baixa as fotos) nunca era pedida: 159 processos com relatório fotográfico
+    e a pasta fotos/ vazia. Auto-limitante: depois da íntegra a origem deixa de ser o cache e isto não repete."""
+    if not str(arq_manifest.get("origem") or "").startswith("cache CDP"):
+        return False
+    return any(isinstance(d, dict) and _RX_REL_FOTO.search(str(d.get("titulo") or ""))
+               and str(d.get("fotos") or "[]") in ("[]", "") for d in (arq_manifest.get("docs") or []))
 
 
 def _tem_falha_nao_declarada(dir_arq: Path, arq_manifest: dict) -> bool:
