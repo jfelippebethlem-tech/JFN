@@ -5669,7 +5669,7 @@ void main(){
     ${kpi(fmtN(o.total), "Ordens Bancárias", null, "💳", "e_siafe")}${kpi(fmtRc(o.valor_total), "Valor fiscalizado", null, "💰", "e_siafe")}
     ${kpi(fmtN(a.total ?? 0), "Alertas ativos", a.alta ? "var(--rose)" : "#fff", "🚨", "e_alertas")}${kpi(nc, "Conluio (estado)", "var(--purple)", "🕸️", "e_conluio")}
     ${kpi(fmtN(sc.n_a_epoca ?? "—"), "Sancionadas à época", "var(--rose)", "🚫", "e_sanc")}${kpi(fmtN(a.alta ?? 0), "🔴 Alta", "var(--rose)", null, "e_alertas")}
-    ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"), null, null, "e_siafe")}${kpi(fmtN(o.hoje ?? 0), "OBs hoje", null, null, "e_siafe")}</div>`;
+    ${kpi(st.logged_in ? "🟢 ok" : "🔴 off", "SIAFE · " + esc(st.exercicio || "—"), null, null, "e_siafe")}${kpi(o.ultimo_dia ? fmtN(o.n_ultimo_dia) : "INDISPONÍVEL", o.ultimo_dia ? "OBs pagas em " + esc(fmtData(o.ultimo_dia)) + " (SIAFE)" : "OBs — último dia (SIAFE)", null, null, { sobre: "Ordens bancárias CONTABILIZADAS no SIAFE no dia mais recente com pagamento coletado" + (o.ultimo_dia ? " (" + fmtData(o.ultimo_dia) + ": " + fmtR(o.valor_ultimo_dia || 0) + ")" : "") + ". O SIAFE é coletado todo dia. O espelho TFE (dados abertos), base do total de OBs deste painel, está publicado só até " + (o.tfe_ultimo_dia ? fmtData(o.tfe_ultimo_dia) : "—") + ": a fonte tem atraso de semanas — não é falha de coleta." })}</div>`;
     h += `<div style="height:16px"></div>` + sec("Ir para") + `<div class="grid two">
     ${card(`<div style="font-weight:700">Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
@@ -8599,6 +8599,12 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if ((f.agentes || []).length) {
       h += sec("Agentes públicos no processo", f.agentes.length) + `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>nome</th><th>papel</th><th>cargo / lotação</th><th>detalhe</th></tr></thead><tbody>` + f.agentes.map((a) => `<tr><td><b>${esc(a.nome || "")}</b></td><td>${esc(a.papel || "")}</td><td class="dim">${esc(a.cargo || "")}</td><td class="dim">${esc(a.n_assinaturas ? a.n_assinaturas + " assinatura(s) · " + (a.primeira || "") + " → " + (a.ultima || "") : a.contexto || a.contrato || a.origem || "")}</td></tr>`).join("") + `</tbody></table></div>`;
     }
+    const cv = f.consulta_ao_vivo;
+    if (cv && cv.pendente) h += sec("Consulta ao vivo — SEI.RIO") + card('<div class="dim">Pedida — a VM-2 consulta a pesquisa pública do SEI.RIO em até ~3 min.</div>');
+    else if (cv) {
+      const docs = cv.documentos || [], ass = cv.assinaturas || [], and = cv.andamentos || [];
+      h += sec("Consulta ao vivo — SEI.RIO", docs.length) + card(`<div class="dim">${esc(cv.fonte || "pesquisa pública SEI.RIO")} · consultado em ${esc(fmtData(cv.consultado_em))}${cv.tipo_processo ? " · " + esc(cv.tipo_processo) : ""}${cv.n_registros != null ? ` · ${fmtN(cv.n_registros)} registro(s) declarados` : ""}${cv.encontrado === false ? " · <b>não encontrado na pesquisa pública</b>" : ""}</div>` + (docs.length ? `<details open style="margin-top:6px"><summary>Árvore — ${fmtN(docs.length)} documento(s)</summary><div style="overflow-x:auto;max-height:420px"><table class="tb"><thead><tr><th>nº</th><th>tipo</th><th>data</th><th>inclusão</th><th>unidade</th></tr></thead><tbody>` + docs.map((x) => `<tr><td>${esc(x.numero || "")}</td><td>${esc(x.tipo || "")}</td><td class="dim">${esc(x.data || "")}</td><td class="dim">${esc(x.inclusao || "")}</td><td class="dim">${esc(x.unidade || "")}</td></tr>`).join("") + `</tbody></table></div></details>` : "") + (ass.length ? `<details style="margin-top:6px"><summary>Quem assinou — ${fmtN(ass.length)} assinatura(s)</summary><div style="overflow-x:auto;max-height:360px"><table class="tb"><thead><tr><th>documento</th><th>tipo</th><th>matrícula</th><th>quando</th><th>unidade</th></tr></thead><tbody>` + ass.map((x) => `<tr><td>${esc(x.documento || "")}</td><td>${esc(x.tipo || "")}</td><td>${esc(x.matricula || "")}</td><td class="dim">${esc(x.quando || "")}</td><td class="dim">${esc(x.unidade || "")}</td></tr>`).join("") + `</tbody></table></div></details>` : "") + (and.length ? `<details style="margin-top:6px"><summary>Andamentos — ${fmtN(and.length)}</summary><div style="overflow-x:auto;max-height:360px"><table class="tb"><tbody>` + and.map((x) => `<tr><td class="dim">${esc(x.quando || "")}</td><td class="dim">${esc(x.unidade || "")}</td><td>${esc((x.descricao || "").slice(0, 200))}</td></tr>`).join("") + `</tbody></table></div></details>` : ""));
+    }
     h += sec("Documentos", (f.documentos || []).length) + _secDocs(f);
     if ((id.andamentos || []).length) {
       h += sec("Andamentos (últimos)", id.andamentos.length) + `<div style="max-height:260px;overflow:auto"><table class="tb"><tbody>` + id.andamentos.map((a) => `<tr><td class="dim">${esc(a.quando)}</td><td class="dim">${esc(a.unidade)}</td><td>${esc((a.descricao || "").slice(0, 160))}</td></tr>`).join("") + `</tbody></table></div>`;
@@ -8625,7 +8631,20 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (o) o.textContent = "acionando…";
     try {
       const d = await J(rota, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), tetoMs: 12e4 });
-      if (o) o.textContent = d && (d.resumo || d.msg || d.status || (d.ok ? "ok" : erroHumano(d.erro || "falhou"))) || "sem resposta";
+      if (o) o.textContent = d && (d.mensagem || d.resumo || d.msg || d.status || (d.ok ? "ok" : erroHumano(d.erro || "falhou"))) || "sem resposta";
+      if (rota === "/api/pcrj/consultar" && d && d.ok) {
+        for (let t = 0; t < 18; t++) {
+          await new Promise((r) => setTimeout(r, 2e4));
+          const f = await J("/api/acervo/processo?numero=" + encodeURIComponent(d.numero), { tetoMs: 6e4 });
+          if (f && f.consulta_ao_vivo && !f.consulta_ao_vivo.pendente) {
+            acervoAbrir(d.numero);
+            return;
+          }
+          const oo = $("ac-acao-out");
+          if (!oo) return;
+          oo.textContent = `aguardando a VM-2 consultar o SEI.RIO… (${(t + 1) * 20} s)`;
+        }
+      }
     } catch (e) {
       if (o) o.textContent = erroHumano(String(e));
     }

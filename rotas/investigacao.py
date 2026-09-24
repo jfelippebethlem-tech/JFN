@@ -226,6 +226,20 @@ def api_painel():
             valor_hoje = s.query(sa.func.sum(OrdemBancaria.valor)).filter(
                 OrdemBancaria.data_emissao == hoje).scalar() or 0
             valor_total = s.query(sa.func.sum(OrdemBancaria.valor)).scalar() or 0
+            # "OBs hoje" era quase sempre 0 — o espelho chega com atraso, e 0 parecia "nenhum pagamento".
+            # O número honesto é o do ÚLTIMO dia que tem OB coletada, com a data ao lado (24/09/2026).
+            # O espelho TFE é publicado com ~3 semanas de atraso (fonte, não coleta: jfn-tfe-ob ingere toda segunda);
+            # o dia a dia vem do SIAFE, coletado diariamente — só OB Contabilizado. data_emissao do SIAFE é DD/MM/AAAA.
+            tfe_ultimo_dia = s.query(sa.func.max(OrdemBancaria.data_emissao)).filter(OrdemBancaria.data_emissao <= hoje).scalar()
+            try:
+                from sqlalchemy import text as _t
+                _iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+                ultimo_dia, n_ultimo_dia, v_ultimo_dia = s.execute(_t(
+                    f"SELECT {_iso} d, count(*), round(sum(valor),2) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+                    f"AND {_iso} <= :h GROUP BY d ORDER BY d DESC LIMIT 1"), {"h": str(hoje)}).one()
+            except Exception as exc:  # noqa: BLE001 — sem SIAFE o KPI diz INDISPONÍVEL, não 0
+                logger.warning("último dia do SIAFE indisponível: %s", exc)
+                ultimo_dia, n_ultimo_dia, v_ultimo_dia = None, 0, 0.0
 
             sev = {}
             for r in s.query(Alerta.severidade, sa.func.count(Alerta.id)).group_by(Alerta.severidade).all():
@@ -280,7 +294,8 @@ def api_painel():
 
             return JSONResponse(content=_cache_put("painel:snapshot", {
                 "atualizado": str(hoje),
-                "obs": {"total": total_obs, "hoje": obs_hoje,
+                "obs": {"total": total_obs, "hoje": obs_hoje, "ultimo_dia": ultimo_dia, "n_ultimo_dia": n_ultimo_dia, "valor_ultimo_dia": v_ultimo_dia,
+                        "tfe_ultimo_dia": str(tfe_ultimo_dia) if tfe_ultimo_dia else None,
                         "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
                 "alertas": {"alta": alta, "media": media,
                             "total": s.query(Alerta).count()},

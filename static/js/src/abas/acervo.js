@@ -176,6 +176,18 @@ export async function acervoAbrir(numero){
     h += sec('Agentes públicos no processo', f.agentes.length) + `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>nome</th><th>papel</th><th>cargo / lotação</th><th>detalhe</th></tr></thead><tbody>`
       + f.agentes.map(a => `<tr><td><b>${esc(a.nome || '')}</b></td><td>${esc(a.papel || '')}</td><td class="dim">${esc(a.cargo || '')}</td><td class="dim">${esc(a.n_assinaturas ? a.n_assinaturas + ' assinatura(s) · ' + (a.primeira || '') + ' → ' + (a.ultima || '') : (a.contexto || a.contrato || a.origem || ''))}</td></tr>`).join('') + `</tbody></table></div>`;
   }
+  const cv = f.consulta_ao_vivo;
+  if (cv && cv.pendente) h += sec('Consulta ao vivo — SEI.RIO') + card('<div class="dim">Pedida — a VM-2 consulta a pesquisa pública do SEI.RIO em até ~3 min.</div>');
+  else if (cv) {
+    const docs = cv.documentos || [], ass = cv.assinaturas || [], and = cv.andamentos || [];
+    h += sec('Consulta ao vivo — SEI.RIO', docs.length) + card(`<div class="dim">${esc(cv.fonte || 'pesquisa pública SEI.RIO')} · consultado em ${esc(fmtData(cv.consultado_em))}${cv.tipo_processo ? ' · ' + esc(cv.tipo_processo) : ''}${cv.n_registros != null ? ` · ${fmtN(cv.n_registros)} registro(s) declarados` : ''}${cv.encontrado === false ? ' · <b>não encontrado na pesquisa pública</b>' : ''}</div>`
+      + (docs.length ? `<details open style="margin-top:6px"><summary>Árvore — ${fmtN(docs.length)} documento(s)</summary><div style="overflow-x:auto;max-height:420px"><table class="tb"><thead><tr><th>nº</th><th>tipo</th><th>data</th><th>inclusão</th><th>unidade</th></tr></thead><tbody>`
+        + docs.map(x => `<tr><td>${esc(x.numero || '')}</td><td>${esc(x.tipo || '')}</td><td class="dim">${esc(x.data || '')}</td><td class="dim">${esc(x.inclusao || '')}</td><td class="dim">${esc(x.unidade || '')}</td></tr>`).join('') + `</tbody></table></div></details>` : '')
+      + (ass.length ? `<details style="margin-top:6px"><summary>Quem assinou — ${fmtN(ass.length)} assinatura(s)</summary><div style="overflow-x:auto;max-height:360px"><table class="tb"><thead><tr><th>documento</th><th>tipo</th><th>matrícula</th><th>quando</th><th>unidade</th></tr></thead><tbody>`
+        + ass.map(x => `<tr><td>${esc(x.documento || '')}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.matricula || '')}</td><td class="dim">${esc(x.quando || '')}</td><td class="dim">${esc(x.unidade || '')}</td></tr>`).join('') + `</tbody></table></div></details>` : '')
+      + (and.length ? `<details style="margin-top:6px"><summary>Andamentos — ${fmtN(and.length)}</summary><div style="overflow-x:auto;max-height:360px"><table class="tb"><tbody>`
+        + and.map(x => `<tr><td class="dim">${esc(x.quando || '')}</td><td class="dim">${esc(x.unidade || '')}</td><td>${esc((x.descricao || '').slice(0, 200))}</td></tr>`).join('') + `</tbody></table></div></details>` : ''));
+  }
   h += sec('Documentos', (f.documentos || []).length) + _secDocs(f);
   if ((id.andamentos || []).length) {
     h += sec('Andamentos (últimos)', id.andamentos.length) + `<div style="max-height:260px;overflow:auto"><table class="tb"><tbody>` + id.andamentos.map(a => `<tr><td class="dim">${esc(a.quando)}</td><td class="dim">${esc(a.unidade)}</td><td>${esc((a.descricao || '').slice(0, 160))}</td></tr>`).join('') + `</tbody></table></div>`;
@@ -199,7 +211,16 @@ async function acervoAcao(rota, body){
   const o = $('ac-acao-out'); if (o) o.textContent = 'acionando…';
   try {
     const d = await J(rota, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body), tetoMs: 120000});
-    if (o) o.textContent = (d && (d.resumo || d.msg || d.status || (d.ok ? 'ok' : erroHumano(d.erro || 'falhou')))) || 'sem resposta';
+    if (o) o.textContent = (d && (d.mensagem || d.resumo || d.msg || d.status || (d.ok ? 'ok' : erroHumano(d.erro || 'falhou')))) || 'sem resposta';
+    // consulta ao vivo do SEI.RIO: a VM-2 responde em minutos — reabre a ficha sozinha quando a resposta chegar
+    if (rota === '/api/pcrj/consultar' && d && d.ok) {
+      for (let t = 0; t < 18; t++) {
+        await new Promise(r => setTimeout(r, 20000));
+        const f = await J('/api/acervo/processo?numero=' + encodeURIComponent(d.numero), {tetoMs: 60000});
+        if (f && f.consulta_ao_vivo && !f.consulta_ao_vivo.pendente) { acervoAbrir(d.numero); return; }
+        const oo = $('ac-acao-out'); if (!oo) return; oo.textContent = `aguardando a VM-2 consultar o SEI.RIO… (${(t + 1) * 20} s)`;
+      }
+    }
   } catch (e) { if (o) o.textContent = erroHumano(String(e)); }
 }
 

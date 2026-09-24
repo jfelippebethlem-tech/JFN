@@ -22,6 +22,9 @@ DB_ACHADOS = _RAIZ / "data" / "achados.db"
 DB_PCRJ = _RAIZ / "data" / "pcrj.db"
 DB_LAI = _RAIZ / "data" / "lai.db"
 DB_SEI_RJ = _RAIZ / "data" / "sei_rj_catalogo.db"      # catálogo da pesquisa pública do SEI estadual
+# Consulta SOB DEMANDA do SEI da Prefeitura: a VM-1 escreve pedidos/, a VM-2 (deploy/vm2/sei_pcrj_consulta.py,
+# timer de 2 min) consulta a pesquisa pública do SEI.RIO e escreve respostas/ — Syncthing, um escritor por pasta.
+CONSULTA_PCRJ = Path.home() / "shared-brain" / "sei_pcrj_consulta"
 ARQUIVO_SEI = _RAIZ / "data" / "sei_arquivo"
 
 _RX_ESTADO = re.compile(r"(\d{6})\D{0,3}(\d{6})\D{0,3}(20\d{2})")
@@ -187,6 +190,33 @@ def _ficha_estado(canon: str) -> dict:
     return f
 
 
+def _slug(numero: str) -> str:
+    return re.sub(r"[^0-9A-Za-z]+", "_", numero.strip()).strip("_")
+
+
+def pedir_consulta_pcrj(numero: str) -> dict:
+    """Pede à VM-2 a consulta ao vivo de um processo da Prefeitura na pesquisa pública do SEI.RIO."""
+    n = norm(numero)
+    if not n or n[0] != "prefeitura":
+        return {"ok": False, "erro": f"não é nº de processo da Prefeitura: {numero!r}"}
+    ped = CONSULTA_PCRJ / "pedidos"
+    ped.mkdir(parents=True, exist_ok=True)
+    tmp = ped / (_slug(n[1]) + ".req.tmp")
+    tmp.write_text(n[1], encoding="utf-8")
+    tmp.replace(ped / (_slug(n[1]) + ".req"))
+    return {"ok": True, "numero": n[1], "pedido": True,
+            "mensagem": "Pedido enviado à VM-2: a consulta à pesquisa pública do SEI.RIO sai em até ~3 min; reabra a ficha."}
+
+
+def ler_consulta_pcrj(numero: str) -> dict | None:
+    """Resposta da consulta ao vivo (ou {'pendente': True}); None se nunca foi pedida."""
+    s = _slug(numero)
+    resp, ped = CONSULTA_PCRJ / "respostas" / f"{s}.json", CONSULTA_PCRJ / "pedidos" / f"{s}.req"
+    if resp.exists() and (not ped.exists() or resp.stat().st_mtime >= ped.stat().st_mtime):
+        return _js(resp.read_text(encoding="utf-8", errors="ignore"))
+    return {"pendente": True} if ped.exists() else None
+
+
 def _ficha_prefeitura(numero: str) -> dict:
     con, lai = _ro(DB_PCRJ), _ro(DB_LAI)
     f: dict = {"esfera": "prefeitura", "numero": numero, "cobertura": {}, "identidade": {}, "documentos": [], "obs": {}, "contratos": [],
@@ -254,7 +284,13 @@ def _ficha_prefeitura(numero: str) -> dict:
         if con:
             con.close()
     f["lai"] = _lai_do(lai, [numero])
-    f["acoes"] = [{"id": "lai", "rotulo": "Gerar requerimento LAI", "metodo": "POST", "rota": "/api/lai/gerar", "body": {"alvo": numero, "esfera": "prefeitura"}}]
+    f["consulta_ao_vivo"] = ler_consulta_pcrj(numero)
+    cv = f["consulta_ao_vivo"] or {}
+    f["cobertura"]["consulta_ao_vivo"] = ("pedida — aguardando a VM-2" if cv.get("pendente") else
+                                          f"SEI.RIO consultado em {cv.get('consultado_em')}: {len(cv.get('documentos') or [])} documento(s) na árvore"
+                                          if cv else "nunca consultado ao vivo")
+    f["acoes"] = [{"id": "consultar_pcrj", "rotulo": "Consultar agora no SEI.RIO", "metodo": "POST", "rota": "/api/pcrj/consultar", "body": {"numero": numero}},
+                  {"id": "lai", "rotulo": "Gerar requerimento LAI", "metodo": "POST", "rota": "/api/lai/gerar", "body": {"alvo": numero, "esfera": "prefeitura"}}]
     for c in f["contratos"]:
         if c.get("cnpj"):
             f["acoes"].append({"id": f"dossie_{c['cnpj']}", "rotulo": f"Dossiê do fornecedor {c.get('nome', '')[:30]}", "metodo": "dossie", "cnpj": c["cnpj"], "nome": c.get("nome")})
@@ -286,7 +322,8 @@ def ficha(numero: str) -> dict:
     f = _ficha_estado(canon) if esfera == "estado" else _ficha_prefeitura(canon)
     f["ok"] = True
     f["n_achados"] = len(f["achados"])
-    f["existe"] = bool(f["identidade"] or f["documentos"] or f["contratos"] or (f["obs"] or {}).get("n") or f.get("tac"))
+    f["existe"] = bool(f["identidade"] or f["documentos"] or f["contratos"] or (f["obs"] or {}).get("n") or f.get("tac")
+                       or (f.get("consulta_ao_vivo") or {}).get("documentos"))
     return f
 
 

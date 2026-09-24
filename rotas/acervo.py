@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 router = APIRouter()
@@ -44,3 +44,14 @@ async def api_acervo_estatisticas():
     v = {"ok": True, **(await asyncio.to_thread(estatisticas))}
     _EST.update(t=time.time(), v=v)
     return JSONResponse(content=v)
+
+
+@router.post("/api/pcrj/consultar")
+async def api_pcrj_consultar(req: Request):
+    """Consulta ao vivo de processo da Prefeitura na pesquisa pública do SEI.RIO (executada na VM-2)."""
+    from compliance_agent.acervo import pedir_consulta_pcrj
+    try:
+        body = await req.json()
+    except ValueError:
+        body = {}
+    return JSONResponse(content=pedir_consulta_pcrj(str((body or {}).get("numero") or "")))

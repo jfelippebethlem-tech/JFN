@@ -132,3 +132,24 @@ def test_ob_anulada_fica_fora_do_total_e_aparece_na_lista(tmp_path, monkeypatch)
     assert o["total"] == 3000.0 and o["n"] == 2
     assert o["n_nao_pagas"] == 1 and o["valor_nao_pago"] == 9000.0
     assert [x["numero_ob"] for x in o["lista"]] == ["2025OB3", "2025OB2", "2025OB1"]
+
+
+def test_consulta_ao_vivo_pcrj_pedido_resposta(tmp_path, monkeypatch):
+    """Canal VM-1 → VM-2: pedido em pedidos/, resposta em respostas/ (um escritor por pasta)."""
+    import json as _j
+    import os as _os
+    _bases(tmp_path, monkeypatch)
+    monkeypatch.setattr(acervo, "CONSULTA_PCRJ", tmp_path / "consulta")
+    assert acervo.pedir_consulta_pcrj("SEI-080001/000633/2024")["ok"] is False
+    r = acervo.pedir_consulta_pcrj("000700.007924/2026-97")
+    assert r["ok"] and (tmp_path / "consulta/pedidos/000700_007924_2026_97.req").read_text() == "000700.007924/2026-97"
+    f = acervo.ficha("000700.007924/2026-97")
+    assert f["consulta_ao_vivo"] == {"pendente": True} and f["acoes"][0]["rota"] == "/api/pcrj/consultar"
+    resp = tmp_path / "consulta/respostas"; resp.mkdir(parents=True)
+    (resp / "000700_007924_2026_97.json").write_text(_j.dumps({"numero": "000700.007924/2026-97", "consultado_em": "2026-09-24 05:01:28",
+                                                               "documentos": [{"numero": "5479825", "tipo": "Ordem de Serviço"}]}))
+    ped = tmp_path / "consulta/pedidos/000700_007924_2026_97.req"
+    _os.utime(ped, (1, 1))
+    f = acervo.ficha("000700.007924/2026-97")
+    assert f["consulta_ao_vivo"]["documentos"][0]["numero"] == "5479825"
+    assert f["cobertura"]["consulta_ao_vivo"].startswith("SEI.RIO consultado em 2026-09-24")
