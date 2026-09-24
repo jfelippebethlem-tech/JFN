@@ -3535,3 +3535,8 @@
   /* `!important` porque a regra original da v55 tem `!important` — sem ele esta perde. */
   nav.tabs button.on::after{animation:ignicao .3s cubic-bezier(.2,.9,.25,1.2),
                             sabreBreath var(--bpm) ease-in-out .3s infinite!important}
+  /* [hidden] SEMPRE esconde (24/09/2026). `.ck-ved{display:inline-flex}` vencia o atributo `hidden`, e o cockpit
+     mostrava a caixa vermelha "R$ — pago acima do mercado a fornecedor vedado" com a API dizendo 0,00: uma
+     manchete vazia que parecia dado indisponível. Qualquer `display:` de classe vence o `hidden` do navegador;
+     esta regra devolve ao atributo o sentido que o JS espera. */
+  [hidden]{display:none!important}
