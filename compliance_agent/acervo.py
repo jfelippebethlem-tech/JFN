@@ -185,9 +185,70 @@ def _ficha_estado(canon: str) -> dict:
         if ach:
             ach.close()
     f["lai"] = _lai_do(lai, [canon] + vars_)
+    f["reconciliacao"] = reconciliar_pericia_siafe((f["pericias"] or {}).get("contabil"), f["obs"])
     f["acoes"] = [{"id": "avaliar_360", "rotulo": "Avaliar 360", "metodo": "POST", "rota": "/api/processo/avaliar", "body": {"numero": canon}},
                   {"id": "lai", "rotulo": "Gerar requerimento LAI", "metodo": "POST", "rota": "/api/lai/gerar", "body": {"alvo": canon, "esfera": "estado"}}]
     return f
+
+
+# ── perícia × SIAFE ──────────────────────────────────────────────────────────────────────────────────────
+# A perícia contábil lê o TRECHO do processo; o SIAFE sabe se houve pagamento. Medido em 24/09/2026: 3.162 das
+# 5.505 perícias diziam "ausência de OB no trecho", e em 2.082 delas o SIAFE tinha OB contabilizada com o mesmo
+# nº de processo (R$ 9.210.278.394,96); 1.065 levavam isso como RED FLAG. A ficha responde sozinha o que a
+# perícia deixou em "verificar", em vez de deixar a lacuna de leitura parecer achado.
+_SEM_OB = re.compile(r"(aus[êe]ncia|sem|n[ãa]o h[áa]|n[ãa]o consta|falta)[^.;\"]{0,60}(ordem banc[áa]ria|\bOB\b)"
+                     r"|(ordem banc[áa]ria|\bOB\b)[^.;\"]{0,40}(n[ãa]o consta|ausente|inexistente)", re.I)
+_LIQ = re.compile(r"liquida[çcd][ãa]?[oa]?[^.;\"]{0,80}?R\$\s?([\d.]+,\d{2})", re.I)
+
+
+def _brl(txt: str) -> float:
+    return float(txt.replace(".", "").replace(",", "."))
+
+
+def _fmt_brl(v: float) -> str:
+    return "R$ " + f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def reconciliar_pericia_siafe(pericia_contabil, obs: dict) -> list[dict]:
+    """Confronta o que a perícia contábil afirma sobre PAGAMENTO com as OBs contabilizadas do SIAFE.
+
+    Só compara o que dá para comparar: (1) "não há OB no trecho" × OB contabilizada no mesmo nº de processo;
+    (2) valor LIQUIDADO citado × total pago. Nunca conclui irregularidade — diz o que cada fonte mostra.
+    Sem OB no SIAFE não prova ausência de pagamento (a OB pode citar outro nº): INDISPONÍVEL ≠ 0."""
+    texto = pericia_contabil if isinstance(pericia_contabil, str) else json.dumps(pericia_contabil or "", ensure_ascii=False)
+    if not texto or not obs:
+        return []
+    n, total = int(obs.get("n") or 0), float(obs.get("total") or 0)
+    lista = [x for x in (obs.get("lista") or []) if x.get("status") == "Contabilizado"]
+    out: list[dict] = []
+    if _SEM_OB.search(texto):
+        if n:
+            # data_emissao do SIAFE é TEXTO DD/MM/AAAA — ordenar pela forma ISO, não pela string
+            datas = sorted((x.get("data_emissao") or "" for x in lista), key=lambda d: d[6:10] + d[3:5] + d[0:2])
+            out.append({"tipo": "ob_ausente_no_trecho", "veredito": "respondido_pelo_siafe",
+                        "diz": (f"A perícia não viu Ordem Bancária no trecho lido; o SIAFE tem {n} OB(s) contabilizada(s) "
+                                f"com este nº de processo, total {_fmt_brl(total)}"
+                                + ((f" ({datas[0]})" if datas[0] == datas[-1] else f" ({datas[0]} a {datas[-1]})") if datas and datas[0] else "")
+                                + ". A lacuna é de leitura, não de pagamento.")})
+        else:
+            out.append({"tipo": "ob_ausente_no_trecho", "veredito": "sem_ob_nas_duas_fontes",
+                        "diz": ("Nem o trecho lido nem o SIAFE mostram OB contabilizada com este nº de processo. Não prova que não "
+                                "houve pagamento — a OB pode citar outro nº —, mas é o caso a conferir primeiro.")})
+    liq = sorted({_brl(v) for v in _LIQ.findall(texto)})
+    if liq and n:
+        perto = [v for v in liq if total and abs(total - v) <= max(0.01 * v, 1.0)]
+        fmt = _fmt_brl
+        if perto:
+            out.append({"tipo": "liquidado_x_pago", "veredito": "pago_bate_liquidado",
+                        "diz": f"Pago no SIAFE ({fmt(total)}) bate com o liquidado citado na perícia ({fmt(perto[0])})."})
+        else:
+            out.append({"tipo": "liquidado_x_pago", "veredito": "pago_diverge_liquidado",
+                        "diz": (f"Liquidado citado na perícia: {' · '.join(fmt(v) for v in liq[:4])}; pago no SIAFE com este nº de "
+                                f"processo: {fmt(total)}"
+                                + (f" — diferença de {fmt(abs(liq[-1] - total))} ({f'{abs(liq[-1] - total) / liq[-1]:.1%}'.replace('.', ',')})"
+                                   if len(liq) == 1 else "")
+                                + ". Pode ser pagamento parcial, retenção tributária ou OB em outro nº — conferir.")})
+    return out
 
 
 def _slug(numero: str) -> str:

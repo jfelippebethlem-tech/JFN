@@ -108,8 +108,23 @@ function _rico(v){
   return `<div>${esc(String(v))}</div>`;
 }
 
+/* Perícia × SIAFE (24/09/2026): a perícia lê o TRECHO; o SIAFE sabe se houve pagamento. 2.082 perícias diziam
+   "sem OB no trecho" com OB contabilizada no mesmo processo — a ficha responde sozinha o que ficou em "verificar". */
+const _VEREDITO = {
+  respondido_pelo_siafe: ['SIAFE responde', 'var(--green)'], pago_bate_liquidado: ['pago = liquidado', 'var(--green)'],
+  pago_diverge_liquidado: ['pago ≠ liquidado', 'var(--amber)'], sem_ob_nas_duas_fontes: ['sem OB nas duas fontes', 'var(--rose)'],
+};
+function _secReconciliacao(f){
+  const r = f.reconciliacao || [];
+  if (!r.length) return '';
+  return card(`<div style="font-weight:700">Perícia × SIAFE</div>`
+    + r.map(x => { const [rotulo, cor] = _VEREDITO[x.veredito] || [x.veredito, null];
+      return `<div style="margin:8px 0">${tag(rotulo, cor)} ${esc(x.diz)}</div>`; }).join('')
+    + `<div class="dim">A perícia lê o trecho do processo; o SIAFE é a fonte do pagamento (só OB Contabilizada). Nenhuma das duas, sozinha, conclui irregularidade.</div>`);
+}
+
 function _secPericias(f){
-  const p = f.pericias || {}; let h = '';
+  const p = f.pericias || {}; let h = _secReconciliacao(f);
   if (p.contabil || p.juridica || p.red_flags) {
     h += `<div class="grid two">${p.contabil ? card(`<div style="font-weight:700">Perícia contábil (ficha)</div>${_rico(p.contabil)}`) : ''}${p.juridica ? card(`<div style="font-weight:700">Perícia jurídica (ficha)</div>${_rico(p.juridica)}`) : ''}</div>`;
     if (p.red_flags) h += card(`<div style="font-weight:700">Red flags da ficha ${tag(p.nivel_risco, GRAU(p.nivel_risco))}</div>${_rico(p.red_flags)}<div class="dim">modelo: ${esc(p.fonte_modelo || '—')} · ${esc(p.atualizado_em || '')}</div>`);
