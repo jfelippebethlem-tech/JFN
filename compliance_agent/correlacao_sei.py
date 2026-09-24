@@ -45,6 +45,7 @@ def correlacionar() -> dict:
         con.execute("CREATE INDEX IF NOT EXISTS ix_ob_numero ON ordens_bancarias(numero_ob)")
         # casa por numero_ob + UG Pagadora (o numero_ob NÃO é único entre UGs; casar só por OB sobrecola).
         pares = [(p.strip(), _norm_ob(ob), (ugp or "").strip()) for ob, p, ugp in
+                 # ob-qualquer-status: só casa OB → processo (metadado); não soma pagamento
                  con.execute("SELECT numero_ob, processo, ug_pagadora FROM ob_orcamentaria_siafe "
                              "WHERE processo IS NOT NULL AND processo!=''")]
         # UPDATE em lote (executemany) — antes era 1 execute() por par (N+1, ~65k chamadas). O ramo "com/sem
@@ -128,7 +129,7 @@ def processos_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
              "FROM ordens_bancarias WHERE favorecido_cpf=? AND numero_sei IS NOT NULL AND numero_sei!='' "
              "GROUP BY numero_sei", (cnpj,)),
             ("SELECT processo p, COUNT(*) n_obs, ROUND(SUM(valor),2) total, MIN(exercicio) ano "
-             "FROM ob_orcamentaria_siafe WHERE REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')=? "
+             "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND REPLACE(REPLACE(REPLACE(credor,'.',''),'/',''),'-','')=? "
              "AND processo IS NOT NULL AND processo!='' GROUP BY processo", (cnpj,)),
         ):
             try:

@@ -194,7 +194,7 @@ def concentracao_da_ug(con: sqlite3.Connection, ug: str, *,
     mapa = g.get("grupo_de") or {}
 
     sql = ("SELECT credor, nome_credor, SUM(valor) FROM ob_orcamentaria_siafe "
-           "WHERE ug_emitente = ? AND valor > 0")
+           "WHERE ug_emitente = ? AND valor > 0 AND status = 'Contabilizado'")   # só OB paga (24/09/2026)
     par: list[Any] = [str(ug)]
     if ano:
         sql += " AND substr(data_emissao, 7, 4) = ?"   # data_emissao é TEXTO DD/MM/AAAA
@@ -267,7 +267,7 @@ def ranking(con: sqlite3.Connection, *, ano: str | None = None, minimo_cnpj: int
     g = montar_grupos(con)
     try:
         ugs = [r[0] for r in con.execute(
-            "SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE valor > 0 "
+            "SELECT ug_emitente FROM ob_orcamentaria_siafe WHERE valor > 0 AND status = 'Contabilizado' "
             "GROUP BY ug_emitente HAVING COUNT(DISTINCT credor) >= ?", (minimo_cnpj,))]
     except sqlite3.OperationalError:
         return []
