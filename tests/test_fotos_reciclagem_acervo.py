@@ -22,6 +22,9 @@ def test_mesma_foto_em_orgaos_diferentes_vem_primeiro_com_objeto(tmp_path, monke
     arq = tmp_path / "sei_arquivo"
     for slug in ("080001_000001_2025", "130100_000002_2025", "130100_000003_2025"):
         (arq / slug / "fotos").mkdir(parents=True)
+    # captura ANTIGA do mesmo processo em _substituido/ — não é outro processo, não pode virar reciclagem
+    (arq / "_substituido" / "130100_000003_2025__20260815T021725" / "fotos").mkdir(parents=True)
+    _foto(arq / "_substituido" / "130100_000003_2025__20260815T021725" / "fotos" / "c.jpg", cor=(5, 200, 5), n=2)
     _foto(arq / "080001_000001_2025" / "fotos" / "a.jpg")
     _foto(arq / "130100_000002_2025" / "fotos" / "b.jpg")                     # mesma foto, outro órgão
     _foto(arq / "130100_000003_2025" / "fotos" / "c.jpg", cor=(5, 200, 5), n=2)  # foto diferente

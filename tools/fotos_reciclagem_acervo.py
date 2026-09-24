@@ -16,6 +16,7 @@ Uso:
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import sys
 import time
@@ -32,8 +33,14 @@ SAIDA = RAIZ / "data" / "fotos_reciclagem_acervo.json"
 DB = RAIZ / "data" / "compliance.db"
 
 
+_SLUG = re.compile(r"^\d+_\d+_\d{4}$")
+
+
 def _processos_com_foto() -> list[Path]:
-    return sorted(d for d in ARQUIVO.iterdir() if d.is_dir() and FM._fotos_do_processo(d))
+    """Só pastas de PROCESSO (UG_SEQ_ANO). `_substituido/` guarda 3.078 capturas ANTIGAS dos mesmos processos e
+    `_orfaos_residuo/` sobras: na 1ª rodada (24/09/2026) a pasta de substituídas entrou como "processo" e 22 fotos
+    "recicladas" eram o processo contra a própria captura anterior."""
+    return sorted(d for d in ARQUIVO.iterdir() if d.is_dir() and _SLUG.match(d.name) and FM._fotos_do_processo(d))
 
 
 def _contexto(slugs: set[str]) -> dict[str, dict]:

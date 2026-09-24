@@ -37,6 +37,12 @@ DESVIO_MINIMO = 8.0
 # de PDF: sem este corte, o detector acusa "reciclagem" de rodapé de formulário, não de registro de obra.
 BRILHO_DOCUMENTO = 200.0
 SATURACAO_DOCUMENTO = 12.0
+# Escaneamento CINZA (CamScanner/fotocópia): brilho 183-196, saturação 0-2,8 — abaixo do corte de brilho acima, e
+# por isso a alteração contratual de um fornecedor, anexada a dois processos, virou "foto reciclada" na 1ª rodada do
+# acervo inteiro (24/09/2026). Amostra de 78 fotos reais: saturação mínima p5 = 17,1, nenhuma abaixo de 12.
+# Papel cinza é claro (>170); foto em preto e branco de verdade tende a ser mais escura.
+BRILHO_DOCUMENTO_CINZA = 170.0
+SATURACAO_DOCUMENTO_CINZA = 5.0
 _EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 _LADO = 9               # dHash: 9×8 pixels → 64 comparações horizontais
 # Recorte da foto embutida em página de relatório fotográfico (ver `_regioes_foto`). Aferido em
@@ -264,9 +270,11 @@ def _hashear(im) -> int | None:
     st = ImageStat.Stat(cinza)
     if st.stddev[0] < DESVIO_MINIMO:
         return None                                # branco/preto/fundo liso
-    if (st.mean[0] > BRILHO_DOCUMENTO
-            and ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1] < SATURACAO_DOCUMENTO):
+    sat = ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1]
+    if st.mean[0] > BRILHO_DOCUMENTO and sat < SATURACAO_DOCUMENTO:
         return None                                # página de documento escaneada, não fotografia
+    if st.mean[0] > BRILHO_DOCUMENTO_CINZA and sat < SATURACAO_DOCUMENTO_CINZA:
+        return None                                # escaneamento cinza (fotocópia/CamScanner) de documento
     if _fundo_de_papel(cinza):
         return None                                # papel AMARELADO: escapava do corte por saturação
     g = cinza.resize((_LADO, 8))
@@ -340,6 +348,62 @@ def _cobertura(dirs_processos, idx: dict) -> dict:
                 "Ausência de reciclagem NÃO se estende aos processos não alcançados.")}
 
 
+# ── confirmação por assinatura INDEPENDENTE ─────────────────────────────────────────────────────────────
+# O dHash tem 64 bits: no acervo inteiro (4.998 fotos, 24/09/2026) ele juntou uma página de relatório fotográfico
+# (hidrante, porta corta-fogo) com a cópia autenticada de um documento pessoal — imagens sem nada em comum. Grupo
+# de "reciclagem" agora só vale se a MESMA região também bater numa 2ª medida, que não compartilha o viés do
+# dHash: miniatura 16×16 em cinza com correlação normalizada ≥ NCC_MIN e cor média a menos de COR_MAX.
+NCC_MIN = 0.90
+COR_MAX = 30.0
+
+
+def _alvo_do_hash(caminho, h: int):
+    """A região (ou a imagem inteira) do arquivo cujo dHash é `h` — a mesma que entrou no índice."""
+    from PIL import Image
+    with Image.open(caminho) as im:
+        im.load()
+        for a in ([im.crop(c) for c in _regioes_foto(im)] or [im]):
+            if _hashear(a) == h:
+                return a.convert("RGB")
+    return None
+
+
+def _assinatura2(caminho, h: int):
+    from PIL import Image
+    try:
+        a = _alvo_do_hash(caminho, h)
+    except (OSError, ValueError, Image.DecompressionBombError) as e:  # ilegível agora: não confirma (não acusa)
+        logger.debug("assinatura 2 falhou (%s): %s", caminho, e)
+        return None
+    if a is None:
+        return None
+    cinza = list(a.convert("L").resize((16, 16)).getdata())
+    m = sum(cinza) / len(cinza)
+    v = [x - m for x in cinza]
+    n = sum(x * x for x in v) ** 0.5 or 1.0
+    cor = [sum(c) / len(c) for c in zip(*a.resize((8, 8)).getdata())]
+    return [x / n for x in v], cor
+
+
+def _confirma(s1, s2) -> bool:
+    if not s1 or not s2:
+        return False
+    ncc = sum(x * y for x, y in zip(s1[0], s2[0]))
+    dcor = sum((x - y) ** 2 for x, y in zip(s1[1], s2[1])) ** 0.5
+    return ncc >= NCC_MIN and dcor <= COR_MAX
+
+
+def _confirmar_grupo(ocorrencias: list[dict]) -> list[dict]:
+    """Mantém só as ocorrências que batem na 2ª assinatura com ao menos uma de OUTRO processo."""
+    sig = [_assinatura2(o["arquivo"], o["_h"]) for o in ocorrencias]
+    ok = set()
+    for i in range(len(ocorrencias)):
+        for j in range(i + 1, len(ocorrencias)):
+            if ocorrencias[i]["processo"] != ocorrencias[j]["processo"] and _confirma(sig[i], sig[j]):
+                ok.update((i, j))
+    return [ocorrencias[i] for i in sorted(ok)]
+
+
 def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
     """MESMA foto em processos DIFERENTES — veredito resolvido.
 
@@ -364,6 +428,7 @@ def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
             baldes.setdefault((pos, (h >> (pos * 8)) & 0xFF), []).append(h)
     usado: set[int] = set()
     grupos = []
+    nao_confirmados = 0                            # o dHash juntou, a 2ª assinatura não confirmou
     for h in hashes:
         if h in usado:
             continue
@@ -375,20 +440,27 @@ def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
                 bloco.append(h2)
                 usado.add(h2)
         usado.add(h)
-        ocorrencias = [o for hh in bloco for o in idx[hh]]
-        processos = {o["processo"] for o in ocorrencias}
-        if len(processos) > 1:                     # só é RECICLAGEM entre processos distintos
-            grupos.append({"n_processos": len(processos), "ocorrencias": ocorrencias})
+        ocorrencias = [{**o, "_h": hh} for hh in bloco for o in idx[hh]]
+        if len({o["processo"] for o in ocorrencias}) > 1:   # só é RECICLAGEM entre processos distintos
+            confirmadas = _confirmar_grupo(ocorrencias)
+            processos = {o["processo"] for o in confirmadas}
+            if len(processos) > 1:
+                grupos.append({"n_processos": len(processos),
+                               "ocorrencias": [{k: v for k, v in o.items() if k != "_h"} for o in confirmadas]})
+            else:
+                nao_confirmados += 1
     n_fotos = sum(len(v) for v in idx.values())
     if not grupos:
         return {"grau": "verde", "n_fotos": n_fotos, "n_grupos": 0, "grupos": [],
                 "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
+                "n_pares_dhash_nao_confirmados": nao_confirmados,
                 "resumo": f"{n_fotos} foto(s) analisada(s): nenhuma imagem se repete entre processos "
                           "distintos (sem indício de registro fotográfico reciclado).",
                 "acao": "", "ressalva": _RESSALVA, "fonte": "foto_medicao (dHash, offline)"}
     total = sum(len(g["ocorrencias"]) for g in grupos)
     return {"grau": "vermelho", "n_fotos": n_fotos, "n_grupos": len(grupos), "grupos": grupos,
             "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
+            "n_pares_dhash_nao_confirmados": nao_confirmados,
             "resumo": (f"{len(grupos)} imagem(ns) aparece(m) em MAIS DE UM PROCESSO ({total} ocorrências "
                        f"em {n_fotos} fotos): o mesmo registro fotográfico lastreia medições de processos "
                        "diferentes — indício GRAVE de comprovação reciclada, a confirmar nos autos."),
