@@ -31,7 +31,16 @@ async def api_acervo_documento(numero: str = "", seq: str = ""):
     return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
 
 
+_EST: dict = {}
+
+
 @router.get("/api/acervo/estatisticas")
 async def api_acervo_estatisticas():
+    """Cache de 1 h (o prewarm de 30 min o mantém quente): count(DISTINCT) no SIAFE custava 15–25 s a frio."""
+    import time
     from compliance_agent.acervo import estatisticas
-    return JSONResponse(content={"ok": True, **(await asyncio.to_thread(estatisticas))})
+    if _EST and time.time() - _EST["t"] < 3600:
+        return JSONResponse(content=_EST["v"])
+    v = {"ok": True, **(await asyncio.to_thread(estatisticas))}
+    _EST.update(t=time.time(), v=v)
+    return JSONResponse(content=v)

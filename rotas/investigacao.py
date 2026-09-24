@@ -205,8 +205,9 @@ def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
 @router.get("/api/compliance/painel")
 def api_painel():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.
-    Cacheado 120s — as agregações varrem ~1,1M de OBs (~3s) e o panorama abre em toda visita."""
-    if cache := _cache_get("painel:snapshot", 120):
+    Cacheado 3600s (TTL analítico da casa; o prewarm de 30 min o mantém quente) — com 120s o prewarm
+    expirava antes da visita e o panorama abria frio: 30,8 s medidos em 24/09/2026."""
+    if cache := _cache_get("painel:snapshot", 3600):
         return JSONResponse(content=cache)
     try:
         from datetime import date
@@ -1970,7 +1971,7 @@ def api_intel_fracionamento(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import fracionamento
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:frac:{lim}", 600)):
+        if not (d := _cache_get(f"intel:frac:{lim}", 3600)):
             d = _cache_put(f"intel:frac:{lim}", fracionamento(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -2171,7 +2172,7 @@ def api_intel_escalada(limite: int = 120, esfera: str = ""):
         from compliance_agent.cruzamentos_intel import escalada_preco
         lim = max(1, min(int(limite or 120), 300))
         ck = f"intel:escal:{lim}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 600)):
+        if not (d := _cache_get(ck, 3600)):
             d = _cache_put(ck, escalada_preco(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -2186,7 +2187,7 @@ def api_intel_sobrepreco(limite: int = 120, esfera: str = ""):
         from compliance_agent.cruzamentos_intel import sobrepreco
         lim = max(1, min(int(limite or 120), 300))
         ck = f"intel:sobre:{lim}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 600)):
+        if not (d := _cache_get(ck, 3600)):
             d = _cache_put(ck, sobrepreco(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -2200,7 +2201,7 @@ def api_intel_fantasmas(limite: int = 50):
     try:
         from compliance_agent.cruzamentos_intel import ranking_fantasmas
         lim = max(1, min(int(limite or 50), 200))
-        if not (d := _cache_get(f"intel:fant:{lim}", 600)):
+        if not (d := _cache_get(f"intel:fant:{lim}", 3600)):
             d = _cache_put(f"intel:fant:{lim}", ranking_fantasmas(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001

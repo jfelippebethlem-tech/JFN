@@ -318,6 +318,10 @@
   .lead{color:var(--mut);font-size:12.5px;margin:-4px 0 14px;max-width:720px}
 
   .grid{display:grid;gap:10px;min-width:0}
+  /* Grade de KPIs SEM modificador empilhava tudo numa coluna de 1.160 px (74 usos de `class="grid"` em abas/*.js;
+     os 10 KPIs do TAC ocupavam a tela inteira — auditoria 24/09/2026). Só quando os filhos são KPIs: grade de
+     cards largos continua empilhada. 160 px = 2 colunas no celular de 390 px. */
+  .grid:not(.g2):not(.g3):not(.g4):not(.two):has(> .kpi){grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
   .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
   /* .g3 era usado em 3 cards (index.js) e NUNCA existiu no CSS — o grid caía para uma
      coluna só e ninguém percebeu, porque `.grid` sozinho não quebra, só empilha.

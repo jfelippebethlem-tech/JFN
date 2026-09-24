@@ -8421,16 +8421,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   };
   var tag = (t, cor) => t ? `<span class="tag" ${cor ? `style="color:${cor};border-color:${cor}"` : ""}>${esc(t)}</span>` : "";
   var _pre = (v) => `<pre style="white-space:pre-wrap;font-size:12px;max-height:340px;overflow:auto;margin:6px 0">${esc(typeof v === "string" ? v : JSON.stringify(v, null, 1))}</pre>`;
-  async function renderAcervo() {
-    const st = await J("/api/acervo/estatisticas", { tetoMs: 3e4 });
-    let h = cover(
-      "geral",
-      "Acervo — todo processo, uma ficha",
-      "Digite um nº de processo (Estado ou Prefeitura), um CNPJ, um fornecedor, um órgão ou um termo. A ficha reúne documentos, OBs do SIAFE, contratos, agentes, achados, perícias e LAI de todas as bases da casa — e diz o que ainda não foi coletado.",
-      "🗂️"
-    );
-    if (st && st.ok) {
-      h += `<div class="grid">
+  function _acervoKpis(st) {
+    if (!st || !st.ok) return '<div class="dim">Estatísticas do acervo indisponíveis agora (a busca funciona).</div>';
+    return `<div class="grid">
       ${kpi(fmtN(st.estado_arvores), "Processos SEI do Estado (árvore)", null, null, { sobre: "sei_arvore: processos estaduais com árvore lida e OBs ligadas." })}
       ${kpi(fmtN(st.estado_catalogo), "Catálogo SEI estadual (contratação)", null, null, { sobre: "sei_rj_processo: processos de contratação/controle enumerados pela pesquisa pública do SEI-RJ (82 tipos: dispensa, inexigibilidade, pregão, aditivo, TAC, obras, auditoria)." })}
       ${kpi(fmtN(st.estado_avaliados_360), "Avaliados 360", null, null, { sobre: "processo_avaliacao: perícia 360 gravada (achados, lacunas, síntese)." })}
@@ -8440,7 +8433,20 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       ${kpi(fmtN(st.pcrj_emergencias), "Emergências à incumbente", "var(--rose)", null, { sobre: "pcrj_emergencia_sinal: dispensa por emergência a quem já era contratado do órgão." })}
       ${kpi(fmtN(st.pcrj_ocp_r052), "Compra-teste (OCP R052)", "var(--amber)", null, { sobre: "pcrj_ocp_sinal: 1º contrato pequeno seguido de um muito maior com o mesmo órgão (Open Contracting Partnership, 2024). 🔴 quando o 1º foi contratação direta e o 2º veio em até 1 ano." })}
     </div>`;
-    }
+  }
+  async function renderAcervo() {
+    let h = cover(
+      "geral",
+      "Acervo — todo processo, uma ficha",
+      "Digite um nº de processo (Estado ou Prefeitura), um CNPJ, um fornecedor, um órgão ou um termo. A ficha reúne documentos, OBs do SIAFE, contratos, agentes, achados, perícias e LAI de todas as bases da casa — e diz o que ainda não foi coletado.",
+      "🗂️"
+    );
+    h += `<div id="ac-kpis">${spin("Contando o acervo…")}</div>`;
+    setTimeout(async () => {
+      const st = await J("/api/acervo/estatisticas", { tetoMs: 3e4 });
+      const o = $("ac-kpis");
+      if (o) o.innerHTML = _acervoKpis(st);
+    }, 0);
     h += card(`<form data-acervo-form="1" role="search" style="display:grid;grid-template-columns:3fr 1fr auto;gap:8px;align-items:end">
       <label>O que procurar<br><input id="ac-q" class="inp" style="width:100%" value="${esc(_q)}" placeholder="SEI-080001/000633/2024 · 000700.007924/2026-97 · SME-PRO-2025/38233 · CNPJ · fornecedor · órgão · termo"></label>
       <label>Esfera<br><select id="ac-esf" class="inp"><option value="todos">todas</option><option value="estado" ${_esf === "estado" ? "selected" : ""}>Estado</option><option value="prefeitura" ${_esf === "prefeitura" ? "selected" : ""}>Prefeitura</option></select></label>
