@@ -1198,6 +1198,7 @@ async def pagina_controle():
 # ─────────────────────────────────────────────────────────────────────────────
 # CENTRAL DE INTELIGÊNCIA (painel v2) — conluio PNCP, nomeados×candidatos, laranjas
 # ─────────────────────────────────────────────────────────────────────────────
+import threading as _threading
 import time as _time
 
 _cache: dict = {}
@@ -1230,6 +1231,25 @@ def _cache_get(chave: str, ttl: int):
 def _cache_put(chave: str, val):
     _cache[chave] = (_time.time(), val)
     return val
+
+
+_cache_travas: dict = {}
+_cache_travas_mestra = _threading.Lock()
+
+
+def _cache_calc(chave: str, ttl: int, calcular):
+    """Cache com UM cálculo por chave (single-flight). Sem isto, N visitas com o cache frio disparavam N cálculos
+    iguais em paralelo: em 24/09/2026 eram 25 threads refazendo `fornecedor_dependente` ao mesmo tempo, carga 29 em
+    2 vCPU e o painel inteiro sem responder por mais de 120 s. Quem chega durante o cálculo espera o resultado.
+    Só para rota SÍNCRONA (roda no pool de threads) — em `async def` a trava bloquearia o event loop."""
+    if d := _cache_get(chave, ttl):
+        return d
+    with _cache_travas_mestra:
+        trava = _cache_travas.setdefault(chave, _threading.Lock())
+    with trava:
+        if d := _cache_get(chave, ttl):
+            return d
+        return _cache_put(chave, calcular())
 
 
 @router.get("/api/certames/lista")
@@ -1633,8 +1653,7 @@ def api_intel_sancionadas(limite: int = 60):
         from compliance_agent.cruzamentos_intel import ler_cache_intel, sancionadas_contratadas
         d = ler_cache_intel("sancionadas_contratadas")
         if not d:
-            if not (d := _cache_get("intel:sanc", 3600)):
-                d = _cache_put("intel:sanc", sancionadas_contratadas())
+            d = _cache_calc("intel:sanc", 3600, lambda: sancionadas_contratadas())
         d = dict(d)
         # teto explícito 1000 > n atual (770): cobre a base inteira (~839 KB, leitura de cache)
         d["empresas"] = d.get("empresas", [])[:max(1, min(int(limite or 60), 1000))]
@@ -1729,8 +1748,7 @@ def api_intel_sancionadas_municipio(limite: int = 60):
     try:
         from compliance_agent.cruzamentos_intel import sancionadas_municipio
         ck = "intel:sanc_mun"
-        if not (d := _cache_get(ck, 3600)):
-            d = _cache_put(ck, sancionadas_municipio())
+        d = _cache_calc(ck, 3600, lambda: sancionadas_municipio())
         d = dict(d)
         d["empresas"] = d.get("empresas", [])[:max(1, min(int(limite or 60), 300))]
         d["explicacao"] = ("Contratação municipal do Rio de empresa sob sanção impeditiva vigente à "
@@ -1750,8 +1768,7 @@ def api_intel_concentracao_municipio(limite: int = 60):
     try:
         from compliance_agent.cruzamentos_intel import concentracao_municipio
         ck = "intel:conc_mun"
-        if not (d := _cache_get(ck, 3600)):
-            d = _cache_put(ck, concentracao_municipio(limite=max(1, min(int(limite or 60), 200))))
+        d = _cache_calc(ck, 3600, lambda: concentracao_municipio(limite=max(1, min(int(limite or 60), 200))))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001 — idioma-padrão das rotas (catch-and-return)
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1780,8 +1797,7 @@ def api_intel_conluio_qsa():
         from compliance_agent.cruzamentos_intel import conluio_qsa, ler_cache_intel
         d = ler_cache_intel("conluio_qsa")
         if not d:
-            if not (d := _cache_get("intel:conluio", 3600)):
-                d = _cache_put("intel:conluio", conluio_qsa(incluir_atas=False))
+            d = _cache_calc("intel:conluio", 3600, lambda: conluio_qsa(incluir_atas=False))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1811,8 +1827,7 @@ def api_intel_radar(limite: int = 100):
         d = ler_cache_intel("radar_risco")
         if not d:
             lim = max(1, min(int(limite or 100), 300))
-            if not (d := _cache_get(f"intel:radar:{lim}", 3600)):
-                d = _cache_put(f"intel:radar:{lim}", radar_risco(limite=lim))
+            d = _cache_calc(f"intel:radar:{lim}", 3600, lambda: radar_risco(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1824,8 +1839,7 @@ def api_intel_retro():
     independente) e R$ pagos/vitórias APÓS o alerta (custo da inação). Ledger diário no timer."""
     try:
         from compliance_agent.retro_auditoria import medir
-        if not (d := _cache_get("intel:retro", 3600)):
-            d = _cache_put("intel:retro", medir())
+        d = _cache_calc("intel:retro", 3600, lambda: medir())
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1841,8 +1855,7 @@ def api_comparador_buscar(termo: str = "", esfera: str = ""):
         if len(t) < 3:
             return JSONResponse({"ok": False, "erro": "termo muito curto (≥3 letras)"})
         ck = f"comp:busca:{t.lower()}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 600)):
-            d = _cache_put(ck, buscar_grupos(t, esfera=esfera or None))
+        d = _cache_calc(ck, 600, lambda: buscar_grupos(t, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1871,8 +1884,7 @@ def api_comparador_item(grupo: str = "", unidade: str = "", esfera: str = ""):
         if not g:
             return JSONResponse({"ok": False, "erro": "grupo vazio"})
         ck = f"comp:item:{g}:{(unidade or '').lower()}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 600)):
-            d = _cache_put(ck, comparar(g, unidade or None, esfera=esfera or None))
+        d = _cache_calc(ck, 600, lambda: comparar(g, unidade or None, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1885,8 +1897,7 @@ def api_comparador_economia(esfera: str = ""):
     try:
         from compliance_agent.comparador_precos import economia_potencial
         ck = f"comp:economia:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 1800)):
-            d = _cache_put(ck, economia_potencial(esfera=esfera or None))
+        d = _cache_calc(ck, 1800, lambda: economia_potencial(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1899,8 +1910,7 @@ def api_comparador_vedada(esfera: str = ""):
     try:
         from compliance_agent.comparador_precos import economia_vedada
         ck = f"comp:vedada:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 1800)):
-            d = _cache_put(ck, economia_vedada(esfera=esfera or None))
+        d = _cache_calc(ck, 1800, lambda: economia_vedada(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1933,8 +1943,7 @@ def api_comparador_dossie(esfera: str = ""):
     try:
         from compliance_agent.comparador_precos import caro_e_suspeito
         ck = f"comp:dossie:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 1800)):
-            d = _cache_put(ck, caro_e_suspeito(esfera=esfera or None))
+        d = _cache_calc(ck, 1800, lambda: caro_e_suspeito(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1946,8 +1955,7 @@ def api_comparador_orgaos(esfera: str = ""):
     try:
         from compliance_agent.comparador_precos import ranking_orgaos
         ck = f"comp:orgaos:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 1800)):
-            d = _cache_put(ck, ranking_orgaos(esfera=esfera or None))
+        d = _cache_calc(ck, 1800, lambda: ranking_orgaos(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1959,8 +1967,7 @@ def api_comparador_fornecedores(esfera: str = ""):
     try:
         from compliance_agent.comparador_precos import ranking_fornecedores
         ck = f"comp:forn:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 1800)):
-            d = _cache_put(ck, ranking_fornecedores(esfera=esfera or None))
+        d = _cache_calc(ck, 1800, lambda: ranking_fornecedores(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1972,8 +1979,7 @@ def api_intel_lift():
     sancionados no que o detector marca ÷ taxa-base do universo. lift>1 = sinal; <1 = anti-sinal."""
     try:
         from compliance_agent.retro_auditoria import avaliar_lift
-        if not (d := _cache_get("intel:lift", 3600)):
-            d = _cache_put("intel:lift", avaliar_lift())
+        d = _cache_calc("intel:lift", 3600, lambda: avaliar_lift())
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1986,8 +1992,7 @@ def api_intel_fracionamento(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import fracionamento
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:frac:{lim}", 3600)):
-            d = _cache_put(f"intel:frac:{lim}", fracionamento(limite=lim))
+        d = _cache_calc(f"intel:frac:{lim}", 3600, lambda: fracionamento(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2011,8 +2016,7 @@ def api_intel_capital(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import capital_incompativel
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:capinc:{lim}", 600)):
-            d = _cache_put(f"intel:capinc:{lim}", capital_incompativel(limite=lim))
+        d = _cache_calc(f"intel:capinc:{lim}", 600, lambda: capital_incompativel(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2026,8 +2030,7 @@ def api_intel_prioridade_valor(limite: int = 60, min_score: int = 10):
         from compliance_agent.cruzamentos_intel import prioridade_valor
         lim = max(1, min(int(limite or 60), 200))
         ms = max(0, min(int(min_score or 10), 100))
-        if not (d := _cache_get(f"intel:prival:{lim}:{ms}", 900)):
-            d = _cache_put(f"intel:prival:{lim}:{ms}", prioridade_valor(min_score=ms, limite=lim))
+        d = _cache_calc(f"intel:prival:{lim}:{ms}", 900, lambda: prioridade_valor(min_score=ms, limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2039,8 +2042,7 @@ def api_intel_fornecedor_dependente(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import fornecedor_dependente
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:dep:{lim}", 3600)):
-            d = _cache_put(f"intel:dep:{lim}", fornecedor_dependente(limite=lim))
+        d = _cache_calc(f"intel:dep:{lim}", 3600, lambda: fornecedor_dependente(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2052,8 +2054,7 @@ def api_intel_corrida_dezembro(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import corrida_dezembro
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:dez:{lim}", 600)):
-            d = _cache_put(f"intel:dez:{lim}", corrida_dezembro(limite=lim))
+        d = _cache_calc(f"intel:dez:{lim}", 600, lambda: corrida_dezembro(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2065,8 +2066,7 @@ def api_intel_grafo_familias():
     consumido pelo graph.html em /graph?fonte=familias."""
     try:
         from compliance_agent.cruzamentos_intel import grafo_familias
-        if not (d := _cache_get("intel:grafofam", 600)):
-            d = _cache_put("intel:grafofam", grafo_familias(db_path=str(RAIZ / "data" / "compliance.db")))
+        d = _cache_calc("intel:grafofam", 600, lambda: grafo_familias(db_path=str(RAIZ / "data" / "compliance.db")))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"nodes": [], "links": [], "erro": str(exc)}, status_code=500)
@@ -2090,8 +2090,7 @@ def api_intel_fenix(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import empresa_fenix
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:fenix:{lim}", 600)):
-            d = _cache_put(f"intel:fenix:{lim}", empresa_fenix(limite=lim))
+        d = _cache_calc(f"intel:fenix:{lim}", 600, lambda: empresa_fenix(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2103,8 +2102,7 @@ def api_intel_porta_giratoria(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import porta_giratoria
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:porta:{lim}", 3600)):
-            d = _cache_put(f"intel:porta:{lim}", porta_giratoria(limite=lim))
+        d = _cache_calc(f"intel:porta:{lim}", 3600, lambda: porta_giratoria(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2116,8 +2114,7 @@ def api_intel_nepotismo_cruzado(limite: int = 60):
     try:
         from compliance_agent.cruzamentos_intel import nepotismo_cruzado
         lim = max(1, min(int(limite or 60), 200))
-        if not (d := _cache_get(f"intel:nepcruz:{lim}", 3600)):
-            d = _cache_put(f"intel:nepcruz:{lim}", nepotismo_cruzado(limite=lim))
+        d = _cache_calc(f"intel:nepcruz:{lim}", 3600, lambda: nepotismo_cruzado(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2130,8 +2127,7 @@ def api_intel_nepotismo(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import nepotismo
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:nep:{lim}", 3600)):
-            d = _cache_put(f"intel:nep:{lim}", nepotismo(limite=lim))
+        d = _cache_calc(f"intel:nep:{lim}", 3600, lambda: nepotismo(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2143,8 +2139,7 @@ def api_intel_socio_oculto(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import socio_oculto
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:ocult:{lim}", 600)):
-            d = _cache_put(f"intel:ocult:{lim}", socio_oculto(limite=lim))
+        d = _cache_calc(f"intel:ocult:{lim}", 600, lambda: socio_oculto(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2158,8 +2153,7 @@ def api_intel_aditivos(limite: int = 120, esfera: str = ""):
         from compliance_agent.cruzamentos_intel import aditivos_estouro
         lim = max(1, min(int(limite or 120), 300))
         ck = f"intel:adit:{lim}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 600)):
-            d = _cache_put(ck, aditivos_estouro(limite=lim, esfera=esfera or None))
+        d = _cache_calc(ck, 600, lambda: aditivos_estouro(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2172,8 +2166,7 @@ def api_intel_socio_servidor(limite: int = 150):
     try:
         from compliance_agent.cruzamentos_intel import socio_servidor
         lim = max(1, min(int(limite or 150), 300))
-        if not (d := _cache_get(f"intel:socserv:{lim}", 3600)):
-            d = _cache_put(f"intel:socserv:{lim}", socio_servidor(limite=lim))
+        d = _cache_calc(f"intel:socserv:{lim}", 3600, lambda: socio_servidor(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2187,8 +2180,7 @@ def api_intel_escalada(limite: int = 120, esfera: str = ""):
         from compliance_agent.cruzamentos_intel import escalada_preco
         lim = max(1, min(int(limite or 120), 300))
         ck = f"intel:escal:{lim}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 3600)):
-            d = _cache_put(ck, escalada_preco(limite=lim, esfera=esfera or None))
+        d = _cache_calc(ck, 3600, lambda: escalada_preco(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2202,8 +2194,7 @@ def api_intel_sobrepreco(limite: int = 120, esfera: str = ""):
         from compliance_agent.cruzamentos_intel import sobrepreco
         lim = max(1, min(int(limite or 120), 300))
         ck = f"intel:sobre:{lim}:{esfera or 'todas'}"
-        if not (d := _cache_get(ck, 3600)):
-            d = _cache_put(ck, sobrepreco(limite=lim, esfera=esfera or None))
+        d = _cache_calc(ck, 3600, lambda: sobrepreco(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -2216,8 +2207,7 @@ def api_intel_fantasmas(limite: int = 50):
     try:
         from compliance_agent.cruzamentos_intel import ranking_fantasmas
         lim = max(1, min(int(limite or 50), 200))
-        if not (d := _cache_get(f"intel:fant:{lim}", 3600)):
-            d = _cache_put(f"intel:fant:{lim}", ranking_fantasmas(limite=lim))
+        d = _cache_calc(f"intel:fant:{lim}", 3600, lambda: ranking_fantasmas(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
