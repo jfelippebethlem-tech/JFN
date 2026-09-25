@@ -189,7 +189,12 @@ def _ficha_estado(canon: str) -> dict:
     # camada DETERMINÍSTICA: a data escrita dentro das peças (NL/NF/ordem/aceite) — cronologia_do_ato
     try:
         from compliance_agent import cronologia_do_ato as _cron
-        f["cronologia"] = _cron.analisar(_cron.docs_do_arquivo(pasta), numero_processo=canon) if man.exists() else None
+        _docs = _cron.docs_do_arquivo(pasta) if man.exists() else []
+        f["cronologia"] = _cron.analisar(_docs, numero_processo=canon) if man.exists() else None
+        from compliance_agent import execucao_fatos as _ef
+        _ads = _ef.aditivos_por_documento(_docs)
+        f["aditivos_regra"] = ({**_ef.prorrogacao_renova_valor(_ads, continuo_nos_autos=_ef.declara_continuo(_docs)),
+                                "aditivos": _ads} if _ads else None)
     except (OSError, ValueError) as e:
         f["cronologia"] = {"grau": "nao_aplicavel", "achados": [], "resumo": f"cronologia indisponível ({type(e).__name__})"}
     # camada SUBJETIVA sobreposta: leitura integral do analista (Claude), quando feita — nunca substitui a regra

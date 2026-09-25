@@ -135,6 +135,16 @@ function _secCronologia(f){
        || `<div class="dim">${esc(c.resumo || '')}</div>`)
     + `<div class="dim">${esc(c.ressalva || '')}</div>`);
 }
+function _secAditivos(f){
+  const a = f.aditivos_regra;
+  if (!a || !(a.aditivos || []).length) return '';
+  const [ic, cor] = _GR[a.grau] || ['', null];
+  return sec('Aditivos — regra', a.aditivos.length) + card(`<div style="font-weight:700">${ic} ${tag(a.grau, cor)} ${esc(a.diz || 'aditivos lidos por documento')}</div>`
+    + `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>aditivo</th><th>contrato</th><th>natureza</th><th class="right">valor</th><th class="right">total após</th></tr></thead><tbody>`
+    + a.aditivos.map(x => `<tr><td>${esc(x.numero || x.titulo || '')}</td><td>${esc(x.contrato || '—')}</td><td>${esc(x.tipo || '—')}</td>
+        <td class="num right">${x.valor != null ? fmtR(x.valor) : '—'}</td><td class="num right">${x.total_apos != null ? fmtR(x.total_apos) : '—'}</td></tr>`).join('')
+    + `</tbody></table></div><div class="dim">${esc(a.fundamento || '')}</div>`);
+}
 function _secLeitura(f){
   const l = f.leitura_analista;
   if (!l) return '';
@@ -212,7 +222,7 @@ export async function acervoAbrir(numero){
         <td class="num">${c.valor != null ? fmtRc(c.valor) : '—'}</td><td class="num">${c.total_pago != null ? fmtRc(c.total_pago) : '—'}</td><td class="dim">${esc(c.vigencia_ini || '')}${c.vigencia_fim ? ' → ' + esc(c.vigencia_fim) : ''}</td>
         <td>${c.url_ccon ? `<a href="${esc(c.url_ccon)}" target="_blank" rel="noopener">anexos</a>` : ''}</td></tr>`).join('') + `</tbody></table></div>`;
   }
-  h += _secCronologia(f) + _secLeitura(f);
+  h += _secCronologia(f) + _secAditivos(f) + _secLeitura(f);
   h += sec('Achados', (f.achados || []).length) + _secAchados(f);
   h += sec('Perícias') + _secPericias(f);
   if ((f.agentes || []).length) {

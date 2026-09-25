@@ -33,7 +33,8 @@ _NATUREZA = (
     ("reajuste", r"reajust|repactua|reequil[íi]brio|revis[ãa]o\s+de\s+pre[çc]|corre[çc][ãa]o\s+monet|"
                  r"\bIPCA\b|\bINCC\b|\bIGP-?M\b"),
     ("prazo", r"prorroga|prazo\s+de\s+vig[êe]ncia|dilata[çc][ãa]o\s+de\s+prazo"),
-    ("valor", r"acr[ée]scim|acrescer|supress[ãa]o|suprimir|aditamento\s+de\s+valor|majora"),
+    ("valor", r"acr[ée]scim|acrescer|supress[ãa]o|suprimir|aditamento\s+de\s+valor|majora|"
+              r"altera[çc][ãa]o\s+quantitativ"),
 )
 _RE_ADITIVO = re.compile(
     r"(primeiro|segundo|terceiro|quarto|quinto|sexto|s[ée]timo|oitavo|nono|d[ée]cimo|\d+[ºo°]?)?\s*"
@@ -155,11 +156,120 @@ def base_contraditada(texto: str, base: float | None, acrescimos: float) -> floa
     return None
 
 
+# "prorrogação do prazo SEM RENÚNCIA DE REAJUSTE" é ressalva, não natureza: a palavra "reajuste" classificava a
+# prorrogação como recomposição (Contrato INEA 34/2023, aditivos 71/2024 e 80/2025, lidos em 25/09/2026).
+_RE_RESSALVA_REAJUSTE = re.compile(r"sem\s+ren[úu]ncia\s+(?:a[oa]?|de|do|ao\s+direito\s+de)\s+reajust\w*", re.I)
+
+
 def _natureza(frase: str) -> str:
+    frase = _RE_RESSALVA_REAJUSTE.sub(" ", frase or "")
     for nome, pat in _NATUREZA:
         if re.search(pat, frase, re.I):
             return nome
     return ""
+
+
+# ── aditivo lido POR DOCUMENTO ──────────────────────────────────────────────────────────────────────────
+# `extrair_aditivos` lê FRASES da concatenação dos documentos — e a página coletiva do D.O. traz aditivos de
+# OUTROS contratos (INEA 34/2023 recebeu o 06/2023 da Dimensional e um do HUPE), e o valor mora noutra frase
+# ("Dá-se ao termo aditivo o valor de R$ …") que não cita "termo aditivo" de novo — os 4 aditivos do INEA 34/2023
+# saíam SEM valor. Aqui cada Termo Aditivo é o próprio documento: natureza pela cláusula de OBJETO, valor e total
+# pelas cláusulas de valor. Não substitui `extrair_aditivos` (o X1 continua nele).
+_RE_T_ADITIVO = re.compile(r"^\s*termo\s+aditivo|^\s*\d+[ºo°]?\s*termo\s+aditivo", re.I)
+_RE_OBJETO_AD = re.compile(r"(?:constitui\s+objeto\s+do\s+presente\s+instrumento|tem\s+por\s+objeto)\s+(.{0,260})",
+                           re.I | re.S)
+_RE_VALOR_AD = re.compile(r"d[áa]-se\s+ao\s+termo\s+aditivo\s+o\s+valor\s+de\s+R\$\s*([\d.]+,\d{2})", re.I)
+_RE_TOTAL_AD = re.compile(r"totalizando\s+o\s+contrato\s+o\s+valor\s+(?:de\s+)?R\$\s*([\d.]+,\d{2})", re.I)
+_RE_NUM_AD = re.compile(r"termo\s+aditivo\s+n?[º°o.]*\s*(\d{1,4}/\d{4})", re.I)
+_RE_CONTRATO_AD = re.compile(r"aditivo\s+ao\s+contrato\s+(?:[A-Z]{2,8}\s+)?n?[º°o.]*\s*(\d{1,4}/\d{4})", re.I)
+
+
+# o próprio aditivo ENQUADRA o objeto como contínuo ("prestação de serviços contínuos de …") — medido em 25/09/2026:
+# sem este corte a regra acendia em 65 de 213 processos (30%), quase todos serviço contínuo declarado.
+_RE_CONTINUO = re.compile(r"servi[çc]os?\s+(?:de\s+natureza\s+)?cont[íi]nu|natureza\s+continuad|regime\s+continuad|"
+                          r"servi[çc]os?\s+continuados?", re.I)
+
+
+def _br(v: str) -> float:
+    return float(v.replace(".", "").replace(",", "."))
+
+
+def aditivos_por_documento(docs: list[dict]) -> list[dict]:
+    """[{titulo, numero, contrato, tipo, valor, total_apos}] — um por documento-aditivo (não extrato/publicação)."""
+    out = []
+    for d in docs or []:
+        t = str(d.get("titulo") or "")
+        if not _RE_T_ADITIVO.search(t):
+            continue
+        x = str(d.get("texto") or "")
+        m = _RE_OBJETO_AD.search(x)
+        objeto = re.sub(r"\s+", " ", m.group(1)) if m else ""
+        tipo = _natureza(objeto) or _natureza(x[:1500])
+        mv, mt = _RE_VALOR_AD.search(x), _RE_TOTAL_AD.search(x)
+        mn, mc = _RE_NUM_AD.search(x) or _RE_NUM_AD.search(t), _RE_CONTRATO_AD.search(x[:2000])
+        out.append({"titulo": t, "numero": mn.group(1) if mn else None, "contrato": mc.group(1) if mc else None,
+                    "tipo": tipo, "valor": _br(mv.group(1)) if mv else None,
+                    "total_apos": _br(mt.group(1)) if mt else None, "objeto": objeto[:200],
+                    "declara_continuo": bool(_RE_CONTINUO.search(x))})
+    return out
+
+
+# natureza TIPICAMENTE contínua, mesmo sem a palavra "contínuo" no texto (SEGOV 001/2020: locação de 165
+# motocicletas com manutenção — contínuo por natureza). O que sobra fora daqui e sem declaração é juízo.
+_RE_CONTINUO_TIPICO = re.compile(
+    r"loca[çc][ãa]o,?\s+(?:com\s+manuten[çc][ãa]o,?\s+)?de\s+(?:\d+\s*\(?[^)]*\)?\s*)?(?:ve[íi]culos|motocicletas|"
+    r"equipamentos|impressoras|m[áa]quinas|im[óo]ve)|vigil[âa]ncia|limpeza\s+(?:e\s+conserva|predial|hospitalar)|"
+    r"conserva[çc][ãa]o\s+predial|manuten[çc][ãa]o\s+(?:predial|preventiva|corretiva)|portaria|copeiragem|"
+    r"recep[çc][ãa]o|apoio\s+administrativo|fornecimento\s+de\s+(?:refei|alimenta)|transporte\s+de\s+(?:pacientes|"
+    r"servidores|alunos)|f[áa]brica\s+de\s+software|outsourcing", re.I)
+
+
+def declara_continuo(docs: list[dict]) -> bool:
+    """Contrato, TR, edital ou aditivo do processo enquadram o objeto como serviço contínuo (declarado ou típico)?"""
+    return any(_RE_CONTINUO.search(str(d.get("texto") or "")) or _RE_CONTINUO_TIPICO.search(str(d.get("texto") or ""))
+               for d in docs or [] if re.search(r"contrato|termo\s+de\s+refer|edital|projeto\s+b[áa]sico|aditivo",
+                                                str(d.get("titulo") or ""), re.I))
+
+
+def prorrogacao_renova_valor(aditivos: list[dict], *, continuo_nos_autos: bool = False) -> dict:
+    """Prorrogação que RENOVA o valor anual e multiplica o contrato — só é lícita em serviço CONTÍNUO.
+
+    Lei 8.666/1993, art. 57, II (e Lei 14.133/2021, arts. 106-107): prorrogar com novo valor pressupõe natureza
+    continuada; em serviço de escopo definido é contratação nova sem licitação. Caso: INEA 34/2023 (Lytorânea),
+    de R$ 48.491.100,00 a R$ 177.178.293,72 com duas prorrogações de R$ 57.011.710,08 e R$ 60.083.291,82.
+    Veredito: 🟡 a conferir (a natureza contínua é questão jurídica que o texto do aditivo nem sempre declara)."""
+    renov = [a for a in aditivos or [] if a.get("tipo") == "prazo" and (a.get("valor") or 0) > 0]
+    totais = [a["total_apos"] for a in aditivos or [] if a.get("total_apos")]
+    ac_valor = [a for a in aditivos or [] if a.get("tipo") == "valor" and a.get("valor") and a.get("total_apos")]
+    inicial = None
+    if ac_valor:                                   # 1º acréscimo: total − acréscimo = valor inicial (atualizado)
+        a0 = min(ac_valor, key=lambda a: a["total_apos"])
+        inicial = round(a0["total_apos"] - a0["valor"], 2)
+    elif renov and renov[0].get("total_apos"):
+        inicial = round(renov[0]["total_apos"] - renov[0]["valor"], 2)
+    if not renov:
+        return {"grau": "verde" if aditivos else "nao_aplicavel", "renovacoes": [], "multiplicador": None}
+    final = max(totais) if totais else None
+    mult = round(final / inicial, 2) if (final and inicial) else None
+    relevante = bool((mult and mult >= 2) or sum(a["valor"] for a in renov) >= (inicial or 0) * 0.5)
+    # declarado contínuo = enquadramento FORMAL correto: atributo (verde); se desassoreamento/obra é mesmo contínuo
+    # é juízo — vai para a camada de parecer, não para a regra
+    # basta UM aditivo da série enquadrar como contínuo: os posteriores costumam ter texto curto e não repetem
+    # (SEGOV 007/2019: 9 aditivos em 7 anos, os 3 primeiros declaram, os últimos não)
+    continuo = continuo_nos_autos or any(a.get("declara_continuo") for a in aditivos or [])
+    grau = "amarelo" if relevante and not continuo else "verde"
+    return {"grau": grau, "renovacoes": [{"titulo": a["titulo"], "valor": a["valor"], "total_apos": a["total_apos"]}
+                                          for a in renov],
+            "valor_inicial": inicial, "valor_final": final, "multiplicador": mult,
+            "diz": (f"{len(renov)} prorrogação(ões) com valor novo somando R$ "
+                    + f"{sum(a['valor'] for a in renov):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    + (f"; o contrato foi de R$ {inicial:,.2f} a R$ {final:,.2f} ({mult}×)".replace(",", "X").replace(".", ",").replace("X", ".")
+                       if mult else "")
+                    + (". O aditivo declara serviço contínuo (enquadramento formal do art. 57, II)." if continuo else
+                       ". O aditivo NÃO declara serviço contínuo — só é lícito se o objeto for de natureza continuada: "
+                       "conferir a natureza e o parecer jurídico.")),
+            "declara_continuo": continuo,
+            "fundamento": "Lei 8.666/1993, art. 57, II · Lei 14.133/2021, arts. 106-107"}
 
 
 def extrair_aditivos(texto: str) -> list[dict]:

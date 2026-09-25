@@ -138,6 +138,15 @@ def _arquivado_ok(dir_arq: Path) -> bool:
         total = m.get("total_arvore")
         if total and len(entradas) < total:
             return False
+        # o arquivo montado do CACHE grava a árvore como `docs_na_arvore`, não `total_arvore`: medido em 25/09/2026,
+        # 809 processos truncados (28.705 documentos faltando — INEA 34/2023 com 124 de 817) eram dados por prontos.
+        # Piso de 5 docs ou 10%: diferença de 1 documento costuma ser peça restrita, e reler não a traz.
+        try:
+            arvore = int(m.get("docs_na_arvore") or 0)
+        except (TypeError, ValueError):
+            arvore = 0
+        if not total and arvore and arvore - len(entradas) >= max(5, 0.10 * arvore):
+            return False
         if _tem_falha_nao_declarada(dir_arq, m):
             return False
         if _relatorio_fotografico_sem_foto(m):

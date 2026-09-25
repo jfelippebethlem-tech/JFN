@@ -135,3 +135,18 @@ def test_relatorio_fotografico_vindo_so_do_cache_pede_a_integra(tmp_path):
     man["origem"] = "/home/ubuntu/JFN/data/sei_cache/integra_080002_019408_2024"   # já veio da íntegra
     (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
     assert _arquivado_ok(arq) is True, "depois da íntegra não repete, mesmo que o relatório não tenha imagem"
+
+
+def test_arvore_truncada_do_cache_pede_recaptura(tmp_path):
+    """25/09/2026: o cache grava `docs_na_arvore` (não `total_arvore`) — 809 processos truncados davam 'pronto'."""
+    import json as _j
+    arq = tmp_path / "070002_006459_2024"
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "0.txt").write_text("TERMO ADITIVO " + "x" * 200, encoding="utf-8")
+    docs = [{"i": str(i), "titulo": f"Doc {i}", "texto": "texto/0.txt", "chars": "900", "fotos": "[]"} for i in range(124)]
+    man = {"origem": "cache CDP (…)", "docs": docs, "docs_na_arvore": 817}
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is False, "124 de 817 = truncado → recapturar"
+    man["docs_na_arvore"] = 125                                   # falta 1 (peça restrita): não reprocessa
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is True
