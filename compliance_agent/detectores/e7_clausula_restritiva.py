@@ -109,6 +109,14 @@ def _teste_geografico(c: dict, ve: float | None) -> tuple[str | None, str]:
 
 def _teste_atestado(c: dict, ve: float | None) -> tuple[str | None, str]:
     pct = c.get("pct")
+    # capacidade TÉCNICO-PROFISSIONAL com quantitativo mínimo: vedado em QUALQUER percentual (art. 30 §1º I da Lei
+    # 8.666 — "vedadas as exigências de quantidades mínimas"; Ac. TCU 165/2012-Plenário, reiterado no 634/2021).
+    # Caso que ensinou: PE 24/2023 do INEA exigia CAT dos profissionais com 25% dos quantitativos de 6 parcelas de
+    # equipamento — e as grades de habilitação mostram as eliminações caindo justamente nesses itens.
+    if c.get("exige_do_profissional") and (pct is not None or re.search(r"quantitativ|no\s+m[íi]nimo", str(c.get("texto") or ""), re.I)):
+        return "forte", ((f"exige {pct:.0%} " if pct is not None else "exige ") + "dos quantitativos em atestado/CAT "
+                         "do PROFISSIONAL — quantidade mínima na capacidade técnico-profissional é vedada (art. 30 §1º "
+                         "I, Lei 8.666; Ac. TCU 165/2012 e 634/2021 — há doutrina divergente)")
     if pct is not None and pct > 0.50:
         return "forte", f"atestado exige {pct:.0%} do quantitativo (> 50% — restritivo, Súmula TCU 263)"
     return "medio", "exigência de atestado de capacidade técnica (avaliar parcela de maior relevância — Súmula 263)"
