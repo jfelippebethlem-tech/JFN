@@ -190,6 +190,10 @@ _RE_CONTINUO = re.compile(r"servi[çc]os?\s+(?:de\s+natureza\s+)?cont[íi]nu|nat
                           r"servi[çc]os?\s+continuados?", re.I)
 
 
+def _moeda(v: float) -> str:
+    return "R$ " + f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def _br(v: str) -> float:
     return float(v.replace(".", "").replace(",", "."))
 
@@ -261,9 +265,8 @@ def prorrogacao_renova_valor(aditivos: list[dict], *, continuo_nos_autos: bool =
     return {"grau": grau, "renovacoes": [{"titulo": a["titulo"], "valor": a["valor"], "total_apos": a["total_apos"]}
                                           for a in renov],
             "valor_inicial": inicial, "valor_final": final, "multiplicador": mult,
-            "diz": (f"{len(renov)} prorrogação(ões) com valor novo somando R$ "
-                    + f"{sum(a['valor'] for a in renov):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    + (f"; o contrato foi de R$ {inicial:,.2f} a R$ {final:,.2f} ({mult}×)".replace(",", "X").replace(".", ",").replace("X", ".")
+            "diz": (f"{len(renov)} prorrogação(ões) com valor novo somando {_moeda(sum(a['valor'] for a in renov))}"
+                    + (f"; o contrato foi de {_moeda(inicial)} a {_moeda(final)} ({str(mult).replace('.', ',')}×)"
                        if mult else "")
                     + (". O aditivo declara serviço contínuo (enquadramento formal do art. 57, II)." if continuo else
                        ". O aditivo NÃO declara serviço contínuo — só é lícito se o objeto for de natureza continuada: "
