@@ -1,0 +1,71 @@
+{
+ "numero": "SEI-030001/000071/2025",
+ "grau": "vermelho",
+ "linha_do_tempo": [
+  [
+   "30/12/2024 20:15–20:18",
+   "Contrato 39/2024 assinado (empresa e Subsecretária), dotação 'do corrente exercício de 2024'"
+  ],
+  [
+   "31/12/2024",
+   "NL 2024NL26909 'passivo reconhecido e liquidado' — R$ 125.949.837,44 (valor integral)"
+  ],
+  [
+   "31/12/2024",
+   "NP 2024NP006998 que cita o processo SEI-030001/000071/2025 (aberto só em 2025)"
+  ],
+  [
+   "08/01/2025",
+   "Extrato do contrato no DOERJ"
+  ],
+  [
+   "08/01/2025 12:57",
+   "Ordem de fornecimento por e-mail, 'considerando a publicação'"
+  ],
+  [
+   "08/01/2025 14:56",
+   "NF 1.780 pelo valor integral"
+  ],
+  [
+   "08/01/2025",
+   "Conferência, aceite e atesto de todo o material"
+  ],
+  [
+   "16/01/2025",
+   "OB 2025OB00269 — R$ 124.438.439,39"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "vermelho",
+   "diz": "Liquidação 8 dias ANTES da ordem de fornecimento: liquidou-se em 2024 o que só foi pedido e entregue em 2025 — inscrição como restos a pagar PROCESSADOS de despesa não liquidável no exercício.",
+   "fundamento": "Lei 4.320/1964, arts. 36 e 63"
+  },
+  {
+   "grau": "vermelho",
+   "diz": "Documentos do SIAFE com data de 31/12/2024 citam processo aberto em 2025: gerados depois, com data retroativa, no encerramento do exercício.",
+   "fundamento": "o encerramento só acolhe fatos do exercício"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "R$ 125,9 mi entregues, conferidos e aceitos em ~2 h depois da ordem: ou o material foi entregue antes da eficácia do contrato (publicação), ou o atesto registrou entrega não conferida.",
+   "fundamento": "Lei 14.133/2021, arts. 94 e 140"
+  }
+ ],
+ "parecer": "INDÍCIO GRAVE de liquidação antecipada e datação retroativa para empenhar e liquidar em 2024 uma compra de R$ 125,9 mi que só se concretizou em 2025. A cronologia sai dos próprios documentos (datas de emissão), não de inferência. Não se conclui fraude: falta ver a justificativa da urgência de fim de ano e as fotos da entrega. Prioridade de apuração: ALTA.",
+ "leitor": "Claude — leitura integral dos autos arquivados (25/09/2026)",
+ "caso": "vault/casos/eureka-seeduc-inexigibilidade-2025.md",
+ "conexoes": [
+  "Mesmo fornecedor (EUREKA SOLUÇÕES PEDAGÓGICAS LTDA, 06.982.873/0001-23) em 3 processos de pagamento: 030001/000071/2025, 030001/015319/2025, 030001/025906/2025 — R$ 550.264.708,30 pagos em 9 OBs de 16/01 a 21/03/2025; nenhuma OB antes de 2025.",
+  "4 contratos por INEXIGIBILIDADE entre 30/12/2024 e 17/01/2025 (TCE-RJ): 39/2024 R$ 125.949.837,44 (proc. 030001/069533/2024) e, do proc. 030001/103373/2024, A = 02/2025 R$ 430.998.247,89, B R$ 51.529.774,56 ('Em Aberto'), C R$ 45.132.036,40 — total R$ 653.609.896,29.",
+  "Mesma signatária pela SEEDUC nos dois contratos lidos (Subsecretária de Gestão de Ensino); mesmo sócio-administrador pela empresa desde 2004.",
+  "Capital social R$ 2.330.000,00 — contratos somam 280× o capital."
+ ],
+ "verificar": [
+  "Processos de contratação 030001/069533/2024 e 030001/103373/2024 (enfileirados para captura): justificativa da inexigibilidade (art. 74, I — exclusividade), pesquisa de preço (art. 23), parecer jurídico e a razão de dividir o 103373 em 3 contratos no mesmo dia.",
+  "Relatório fotográfico de 60 fotos do 030001/000071/2025 (fila de íntegra): datas e locais da entrega.",
+  "Preço de referência das coleções em outros entes (INDISPONÍVEL na base local).",
+  "Contratos B e C (R$ 96,66 mi) — sem OB no SIAFE até aqui: executados? cancelados?"
+ ],
+ "ressalvas": "Indício ≠ acusação; presunção de legitimidade. A natureza 'venda de mercadoria adquirida de terceiros' foi REBAIXADA: editora que terceiriza a impressão emite assim legitimamente."
+}

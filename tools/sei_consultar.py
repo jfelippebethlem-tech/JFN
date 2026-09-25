@@ -51,13 +51,15 @@ def _resumo(man: dict) -> str:
     linhas.append("Linha do tempo: " + " · ".join(
         f"{f}={n}" for f, n in man["linha_do_tempo"].items() if n))
     for l in man.get("lacunas", []):
-        icone = "🔴" if l["gravidade"] == "critica" else "🟡"
-        linhas.append(f"{icone} LACUNA ({l['gravidade']}): {l['falta']}")
+        icone = "🔴" if l.get("gravidade") == "critica" else "🟡"
+        linhas.append(f"{icone} LACUNA ({l.get('gravidade', '?')}): {l.get('falta') or l.get('detalhe') or l.get('descricao') or l}")
     linhas.append("")
     for d in man["docs"]:
-        foto = f" 📷{len(d['fotos'])}" if d.get("fotos") else ""
-        ocr = " (ocr)" if d.get("ocr") else ""
-        linhas.append(f"  {d['i']:3d} [{d['fase']:<12}] {d['tipo']:<22} "
+        # manifesto montado do cache grava os campos como TEXTO ("[]", "False"): len("[]") virava "📷2" em todo doc
+        fotos = d.get("fotos")
+        foto = f" 📷{len(fotos)}" if isinstance(fotos, list) and fotos else ""
+        ocr = " (ocr)" if str(d.get("ocr")) == "True" else ""
+        linhas.append(f"  {int(d['i']):3d} [{d['fase']:<12}] {d['tipo']:<22} "
                       f"{(d['titulo'] or '?')[:48]}{foto}{ocr}")
     return "\n".join(linhas)
 
@@ -100,13 +102,13 @@ def main() -> int:
 
     if args.fotos:
         for d in man["docs"]:
-            for f in d.get("fotos", []):
+            for f in (d.get("fotos") if isinstance(d.get("fotos"), list) else []):
                 print(raiz / f)
         return 0
 
     if args.doc >= 0:
         for d in man["docs"]:
-            if d["i"] == args.doc:
+            if str(d["i"]) == str(args.doc):   # manifesto do cache grava "i" como texto
                 txt = _ler_texto(raiz, d)
                 if txt is None:
                     print(f"doc {args.doc} está no manifesto e SEM TEOR no acervo — "

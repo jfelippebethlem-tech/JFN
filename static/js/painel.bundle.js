@@ -8547,6 +8547,20 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       return `<div style="margin:8px 0">${tag(rotulo, cor)} ${esc(x.diz)}</div>`;
     }).join("") + `<div class="dim">A perícia lê o trecho do processo; o SIAFE é a fonte do pagamento (só OB Contabilizada). Nenhuma das duas, sozinha, conclui irregularidade.</div>`);
   }
+  var _GR = { vermelho: ["🔴", "var(--rose)"], amarelo: ["🟡", "var(--amber)"], verde: ["🟢", "var(--green)"] };
+  function _secCronologia(f) {
+    const c = f.cronologia;
+    if (!c || c.grau === "nao_aplicavel") return "";
+    const [ic, cor] = _GR[c.grau] || ["", null];
+    return sec("Cronologia dos atos — regra") + card(`<div style="font-weight:700">${ic} ${tag(c.grau, cor)} datas lidas dentro das peças</div>` + ((c.achados || []).map((a) => `<div style="margin:8px 0">${tag((_GR[a.grau] || [""])[0] + " " + a.tipo.replace(/_/g, " "), (_GR[a.grau] || [])[1])} ${esc(a.diz)}<div class="dim">${esc(a.fundamento || "")}</div></div>`).join("") || `<div class="dim">${esc(c.resumo || "")}</div>`) + `<div class="dim">${esc(c.ressalva || "")}</div>`);
+  }
+  function _secLeitura(f) {
+    const l = f.leitura_analista;
+    if (!l) return "";
+    const [ic, cor] = _GR[l.grau] || ["", null];
+    const lista = (xs) => (xs || []).map((x) => `<li>${esc(x)}</li>`).join("");
+    return sec("Leitura do analista — parecer") + card(`<div style="font-weight:700">${ic} ${tag(l.grau, cor)} ${esc(l.leitor || "")}</div><p style="margin:8px 0"><b>Parecer:</b> ${esc(l.parecer || "")}</p>` + ((l.linha_do_tempo || []).length ? `<div style="overflow-x:auto"><table class="tb"><thead><tr><th>quando</th><th style="text-align:left">ato</th></tr></thead><tbody>` + l.linha_do_tempo.map(([q, a]) => `<tr><td class="dim" style="white-space:nowrap">${esc(q)}</td><td style="text-align:left">${esc(a)}</td></tr>`).join("") + `</tbody></table></div>` : "") + (l.achados || []).map((a) => `<div style="margin:6px 0">${(_GR[a.grau] || [""])[0]} ${esc(a.diz)} <span class="dim">— ${esc(a.fundamento || "")}</span></div>`).join("") + ((l.conexoes || []).length ? `<div style="margin-top:8px"><b>Conexões</b><ul>${lista(l.conexoes)}</ul></div>` : "") + ((l.verificar || []).length ? `<div><b>A verificar</b><ul>${lista(l.verificar)}</ul></div>` : "") + `<div class="dim">${esc(l.ressalvas || "")}${l.caso ? " · caso: " + esc(l.caso) : ""}</div>`);
+  }
   function _secPericias(f) {
     const p = f.pericias || {};
     let h = _secReconciliacao(f);
@@ -8602,6 +8616,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         <td class="num">${c.valor != null ? fmtRc(c.valor) : "—"}</td><td class="num">${c.total_pago != null ? fmtRc(c.total_pago) : "—"}</td><td class="dim">${esc(c.vigencia_ini || "")}${c.vigencia_fim ? " → " + esc(c.vigencia_fim) : ""}</td>
         <td>${c.url_ccon ? `<a href="${esc(c.url_ccon)}" target="_blank" rel="noopener">anexos</a>` : ""}</td></tr>`).join("") + `</tbody></table></div>`;
     }
+    h += _secCronologia(f) + _secLeitura(f);
     h += sec("Achados", (f.achados || []).length) + _secAchados(f);
     h += sec("Perícias") + _secPericias(f);
     if ((f.agentes || []).length) {

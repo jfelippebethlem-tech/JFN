@@ -1,0 +1,55 @@
+{
+ "numero": "SEI-030001/015319/2025",
+ "grau": "amarelo",
+ "linha_do_tempo": [
+  [
+   "17/01/2025",
+   "Contrato 02/2025 (TCE-RJ: data da contratação) — R$ 430.998.247,89, inexigibilidade"
+  ],
+  [
+   "28/01/2025",
+   "OF nº 01 e NFs 1.805/1.806 no MESMO dia — R$ 369.733.584,71 (valor exato da OF), prazo contratual de 90 dias"
+  ],
+  [
+   "03/02/2025 / 11/02/2025",
+   "Conferência / aceite"
+  ],
+  [
+   "26/02 a 18/03/2025",
+   "5 OBs — R$ 365.296.781,69 (NF menos IR 1,2%)"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "amarelo",
+   "diz": "Preço unitário R$ 582,83 (Ensino Médio em Foco) e R$ 363,88 (Literatura a Vapor) por kit, sem referência de mercado nos autos de pagamento — a pesquisa de preço está no processo de contratação.",
+   "fundamento": "Lei 14.133/2021, art. 23"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "10% de 'reserva técnica' acima da demanda declarada, integralmente consumida (OF 1 + OF 2 = 100% do contrato).",
+   "fundamento": "art. 18 — dimensionamento da demanda"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Os 6 itens da coleção 'Literatura a Vapor' usam o mesmo ID SIGA 182524 — catálogo não distingue os volumes.",
+   "fundamento": "controle de catálogo"
+  }
+ ],
+ "parecer": "Execução financeira coerente com as NFs (retenção de IR conferida). Os pontos são de CONTRATAÇÃO (preço, dimensionamento, exclusividade) e dependem do processo 030001/103373/2024.",
+ "leitor": "Claude — leitura integral dos autos arquivados (25/09/2026)",
+ "caso": "vault/casos/eureka-seeduc-inexigibilidade-2025.md",
+ "conexoes": [
+  "Mesmo fornecedor (EUREKA SOLUÇÕES PEDAGÓGICAS LTDA, 06.982.873/0001-23) em 3 processos de pagamento: 030001/000071/2025, 030001/015319/2025, 030001/025906/2025 — R$ 550.264.708,30 pagos em 9 OBs de 16/01 a 21/03/2025; nenhuma OB antes de 2025.",
+  "4 contratos por INEXIGIBILIDADE entre 30/12/2024 e 17/01/2025 (TCE-RJ): 39/2024 R$ 125.949.837,44 (proc. 030001/069533/2024) e, do proc. 030001/103373/2024, A = 02/2025 R$ 430.998.247,89, B R$ 51.529.774,56 ('Em Aberto'), C R$ 45.132.036,40 — total R$ 653.609.896,29.",
+  "Mesma signatária pela SEEDUC nos dois contratos lidos (Subsecretária de Gestão de Ensino); mesmo sócio-administrador pela empresa desde 2004.",
+  "Capital social R$ 2.330.000,00 — contratos somam 280× o capital."
+ ],
+ "verificar": [
+  "Processos de contratação 030001/069533/2024 e 030001/103373/2024 (enfileirados para captura): justificativa da inexigibilidade (art. 74, I — exclusividade), pesquisa de preço (art. 23), parecer jurídico e a razão de dividir o 103373 em 3 contratos no mesmo dia.",
+  "Relatório fotográfico de 60 fotos do 030001/000071/2025 (fila de íntegra): datas e locais da entrega.",
+  "Preço de referência das coleções em outros entes (INDISPONÍVEL na base local).",
+  "Contratos B e C (R$ 96,66 mi) — sem OB no SIAFE até aqui: executados? cancelados?"
+ ],
+ "ressalvas": "Indício ≠ acusação; presunção de legitimidade. A natureza 'venda de mercadoria adquirida de terceiros' foi REBAIXADA: editora que terceiriza a impressão emite assim legitimamente."
+}

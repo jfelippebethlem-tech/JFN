@@ -186,6 +186,14 @@ def _ficha_estado(canon: str) -> dict:
             ach.close()
     f["lai"] = _lai_do(lai, [canon] + vars_)
     f["reconciliacao"] = reconciliar_pericia_siafe((f["pericias"] or {}).get("contabil"), f["obs"])
+    # camada DETERMINÍSTICA: a data escrita dentro das peças (NL/NF/ordem/aceite) — cronologia_do_ato
+    try:
+        from compliance_agent import cronologia_do_ato as _cron
+        f["cronologia"] = _cron.analisar(_cron.docs_do_arquivo(pasta), numero_processo=canon) if man.exists() else None
+    except (OSError, ValueError) as e:
+        f["cronologia"] = {"grau": "nao_aplicavel", "achados": [], "resumo": f"cronologia indisponível ({type(e).__name__})"}
+    # camada SUBJETIVA sobreposta: leitura integral do analista (Claude), quando feita — nunca substitui a regra
+    f["leitura_analista"] = leitura_analista(vars_[2])
     f["acoes"] = [{"id": "avaliar_360", "rotulo": "Avaliar 360", "metodo": "POST", "rota": "/api/processo/avaliar", "body": {"numero": canon}},
                   {"id": "lai", "rotulo": "Gerar requerimento LAI", "metodo": "POST", "rota": "/api/lai/gerar", "body": {"alvo": canon, "esfera": "estado"}}]
     return f
@@ -249,6 +257,17 @@ def reconciliar_pericia_siafe(pericia_contabil, obs: dict) -> list[dict]:
                                    if len(liq) == 1 else "")
                                 + ". Pode ser pagamento parcial, retenção tributária ou OB em outro nº — conferir.")})
     return out
+
+
+LEITURAS = Path(__file__).resolve().parent.parent / "data" / "leitura_claude"
+
+
+def leitura_analista(slug: str) -> dict | None:
+    """Parecer da leitura integral do processo (camada subjetiva sobre a determinística). `None` = não lido."""
+    p = LEITURAS / f"{slug}.json"
+    if not p.exists():
+        return None
+    return _js(p.read_text(encoding="utf-8", errors="ignore"))
 
 
 def _slug(numero: str) -> str:

@@ -1,0 +1,50 @@
+{
+ "numero": "SEI-030001/025906/2025",
+ "grau": "amarelo",
+ "linha_do_tempo": [
+  [
+   "03/02/2025",
+   "'Data de Conferência' registrada no termo de recebimento"
+  ],
+  [
+   "06/03/2025",
+   "OF nº 02 e NF 5.095 no mesmo dia — R$ 61.264.663,18"
+  ],
+  [
+   "07/03/2025",
+   "Aceite"
+  ],
+  [
+   "18/03 e 21/03/2025",
+   "OBs — R$ 60.529.487,22"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "amarelo",
+   "diz": "Conferência datada um mês ANTES da ordem de fornecimento — mesma data da 1ª entrega: termo copiado sem nova conferência, ou material entregue antes de ser pedido.",
+   "fundamento": "Lei 14.133/2021, art. 140"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Esta OF fecha o contrato em exatamente R$ 430.998.247,89 — a reserva técnica foi toda pedida.",
+   "fundamento": "art. 18"
+  }
+ ],
+ "parecer": "Atesto frágil (data de conferência incompatível). Somado ao 39/2024, reforça o padrão de recebimento sem conferência própria de cada entrega.",
+ "leitor": "Claude — leitura integral dos autos arquivados (25/09/2026)",
+ "caso": "vault/casos/eureka-seeduc-inexigibilidade-2025.md",
+ "conexoes": [
+  "Mesmo fornecedor (EUREKA SOLUÇÕES PEDAGÓGICAS LTDA, 06.982.873/0001-23) em 3 processos de pagamento: 030001/000071/2025, 030001/015319/2025, 030001/025906/2025 — R$ 550.264.708,30 pagos em 9 OBs de 16/01 a 21/03/2025; nenhuma OB antes de 2025.",
+  "4 contratos por INEXIGIBILIDADE entre 30/12/2024 e 17/01/2025 (TCE-RJ): 39/2024 R$ 125.949.837,44 (proc. 030001/069533/2024) e, do proc. 030001/103373/2024, A = 02/2025 R$ 430.998.247,89, B R$ 51.529.774,56 ('Em Aberto'), C R$ 45.132.036,40 — total R$ 653.609.896,29.",
+  "Mesma signatária pela SEEDUC nos dois contratos lidos (Subsecretária de Gestão de Ensino); mesmo sócio-administrador pela empresa desde 2004.",
+  "Capital social R$ 2.330.000,00 — contratos somam 280× o capital."
+ ],
+ "verificar": [
+  "Processos de contratação 030001/069533/2024 e 030001/103373/2024 (enfileirados para captura): justificativa da inexigibilidade (art. 74, I — exclusividade), pesquisa de preço (art. 23), parecer jurídico e a razão de dividir o 103373 em 3 contratos no mesmo dia.",
+  "Relatório fotográfico de 60 fotos do 030001/000071/2025 (fila de íntegra): datas e locais da entrega.",
+  "Preço de referência das coleções em outros entes (INDISPONÍVEL na base local).",
+  "Contratos B e C (R$ 96,66 mi) — sem OB no SIAFE até aqui: executados? cancelados?"
+ ],
+ "ressalvas": "Indício ≠ acusação; presunção de legitimidade. A natureza 'venda de mercadoria adquirida de terceiros' foi REBAIXADA: editora que terceiriza a impressão emite assim legitimamente."
+}
