@@ -3,16 +3,226 @@
  "gerado_em": "2026-07-06T07:39:46+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_055879_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "termo de encerramento de processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1272,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "comprovante 2025ob00431",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob00431.txt",
+   "chars": 911,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "nota de liquida o nl 2024nl07440",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_nota_de_liquida_o_nl_2024nl07440.txt",
+   "chars": 2240,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "anexo 2024ne06460 symplicius 27084 22",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_anexo_2024ne06460_symplicius_27084_22.txt",
+   "chars": 2502,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "anexo nad 2023004310 0012 symplicius 270",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/007_anexo_nad_2023004310_0012_symplicius_270.txt",
+   "chars": 2088,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/008_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "relat rio",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_relat_rio.txt",
+   "chars": 736,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/010_anexo.txt",
+   "chars": 8709,
+   "ocr": false,
+   "fotos": [
+    "fotos/010_p01.jpg",
+    "fotos/010_p02.jpg",
+    "fotos/010_p03.jpg",
+    "fotos/010_p04.jpg",
+    "fotos/010_p05.jpg",
+    "fotos/010_p06.jpg"
+   ]
+  },
+  {
+   "i": 11,
+   "titulo": "declara o",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_declara_o.txt",
+   "chars": 2766,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/012_anexo.txt",
+   "chars": 932,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "certid es negativa de d bitos em d vida",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/013_certid_es_negativa_de_d_bitos_em_d_vida.txt",
+   "chars": 1421,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "certid es neg de d bitos trabalhistas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/014_certid_es_neg_de_d_bitos_trabalhistas.txt",
+   "chars": 1813,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "certid es neg de d bitos federais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/015_certid_es_neg_de_d_bitos_federais.txt",
+   "chars": 2183,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "certid es neg de d bitos estaduais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/016_certid_es_neg_de_d_bitos_estaduais.txt",
+   "chars": 2281,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "certid es neg de d bitos municipais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/017_certid_es_neg_de_d_bitos_municipais.txt",
+   "chars": 1439,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "certid o negativa de fal ncia ou concord",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/018_certid_o_negativa_de_fal_ncia_ou_concord.txt",
+   "chars": 2845,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "nota fiscal nf",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/019_nota_fiscal_nf.txt",
+   "chars": 2641,
+   "ocr": false,
+   "fotos": [
+    "fotos/019_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 5,
+  "indefinida": 10
  },
  "lacunas": [
   {
@@ -26,7 +236,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 7,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

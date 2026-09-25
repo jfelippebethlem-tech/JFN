@@ -3,15 +3,88 @@
  "gerado_em": "2026-07-06T07:14:44+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_014193_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_nl.txt",
+   "chars": 2371,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "despacho de solicita o de liquida o de d",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "nota fiscal nf 246589 venda",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/003_nota_fiscal_nf_246589_venda.txt",
+   "chars": 2816,
+   "ocr": false,
+   "fotos": [
+    "fotos/003_p01.jpg"
+   ]
+  },
+  {
+   "i": 4,
+   "titulo": "nota de empenho refor o ne 2025ne06187",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/004_nota_de_empenho_refor_o_ne_2025ne06187.txt",
+   "chars": 2531,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "nota de empenho refor o ne 2025ne05991",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/005_nota_de_empenho_refor_o_ne_2025ne05991.txt",
+   "chars": 2542,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "nota de empenho original ne 2025ne04914",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_nota_de_empenho_original_ne_2025ne04914.txt",
+   "chars": 2527,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 2,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,7 +99,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

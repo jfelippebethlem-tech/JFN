@@ -45,8 +45,12 @@ def _inventario() -> str:
     return "\n".join(sorted(linhas)) + "\n"
 
 
-def test_inventario_de_rotas_identico_ao_golden():
+def test_inventario_de_rotas_identico_ao_golden(request):
     atual = _inventario()
+    if request.config.getoption("--update-rotas"):
+        GOLDEN.parent.mkdir(parents=True, exist_ok=True)
+        GOLDEN.write_text(atual, encoding="utf-8")
+        return
     if not GOLDEN.exists():
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)
         GOLDEN.write_text(atual, encoding="utf-8")
@@ -69,4 +73,11 @@ def test_smoke_gets_deterministicos():
             assert r.status_code == 200, f"{rota} → {r.status_code}"
             corpo = r.json()
             if isinstance(corpo, dict) and "ok" in corpo:
+                # `ok=False` por AUSÊNCIA DE FONTE não é regressão de rota — é a base local que não
+                # existe naquela máquina (o runner do CI não tem `compliance.db`). O que a rota tem
+                # de fazer é DIZER isso: `indisponivel=True` com motivo. Sem essa distinção, o
+                # smoke reprovava por falta de dado e o alarme virava ruído.
+                if corpo.get("indisponivel"):
+                    assert corpo.get("erro"), f"{rota} → indisponível SEM motivo declarado"
+                    continue
                 assert corpo["ok"] is True, f"{rota} → ok={corpo.get('ok')} erro={str(corpo.get('erro'))[:120]}"

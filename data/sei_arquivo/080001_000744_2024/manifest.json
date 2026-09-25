@@ -3,16 +3,147 @@
  "gerado_em": "2026-07-06T07:08:46+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_080001_000744_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "programa o de desembolso pd 2025pd04651",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/000_programa_o_de_desembolso_pd_2025pd04651.txt",
+   "chars": 2321,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "programa o de desembolso pd 2025pd04650",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/001_programa_o_de_desembolso_pd_2025pd04650.txt",
+   "chars": 2331,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "programa o de desembolso pd 2025pd04648",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/002_programa_o_de_desembolso_pd_2025pd04648.txt",
+   "chars": 2339,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "programa o de desembolso pd 2025pd04640",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/003_programa_o_de_desembolso_pd_2025pd04640.txt",
+   "chars": 2327,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "programa o de desembolso pd 2025pd04670",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/004_programa_o_de_desembolso_pd_2025pd04670.txt",
+   "chars": 2306,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "programa o de desembolso pd 2025pd04655",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/005_programa_o_de_desembolso_pd_2025pd04655.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "programa o de desembolso pd 2025pd04660",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/006_programa_o_de_desembolso_pd_2025pd04660.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "programa o de desembolso pd 2025pd04663",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/007_programa_o_de_desembolso_pd_2025pd04663.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "programa o de desembolso pd 2025pd04666",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/008_programa_o_de_desembolso_pd_2025pd04666.txt",
+   "chars": 2293,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "programa o de desembolso pd 2025pd04667",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/009_programa_o_de_desembolso_pd_2025pd04667.txt",
+   "chars": 2288,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "correspond ncia interna na 158",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_correspond_ncia_interna_na_158.txt",
+   "chars": 1639,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "correspond ncia interna na 157",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/019_correspond_ncia_interna_na_157.txt",
+   "chars": 1647,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/031_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1859,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 10,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 2
  },
  "lacunas": [
   {
@@ -26,7 +157,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 0,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

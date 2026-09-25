@@ -6,9 +6,9 @@ Mesmo contrato dos detectores de emendas: risco 0–10 explícito, fonte citada,
 """
 from __future__ import annotations
 
-import json
 import logging
 import re as _re_reforma
+import sqlite3
 from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,31 @@ def d7_fracionamento(con, teto: float | None = None,
         if soma <= teto_janela:
             continue        # fatias que nem somadas passam do teto não indicam fuga
         r0 = melhor[0][1]
-        risco = min(9, 5 + min(4, len(melhor) - minimo + 1))
+        # A severidade vinha SÓ da contagem: cinco contratações somando 1,05× o teto pesavam igual
+        # a cinco somando 3×. Medido em 2026-08-09 nos 698 alertas com teto legível — mediana
+        # 1,70×, p75 2,41×, máximo 16,56× (143 contratações) — o excesso separa bem e a contagem
+        # sozinha não. Agora o quanto passou do teto também conta, e o caso RENTE ao teto não
+        # ocupa a faixa ALTA: passar 4% do limite é fato jurídico, mas não é a fila do fiscal.
+        excesso = soma / teto_janela if teto_janela else 1.0
+        # O EXCESSO MANDA, a contagem acompanha. A fórmula anterior dava até +4 pela CONTAGEM de
+        # contratos e só +1 pelo excesso: com mediana de 8 contratos o termo saturava e **451 dos
+        # 451** alertas saíam com severidade alta, do rente ao teto ao 21×. Fila de uma coisa só
+        # não é fila — é lista. Medido em 2026-08-10: soma mediana R$ 142.086,45 sobre teto de
+        # R$ 65.492,11 (2,2×), com 186 alertas a menos de 2× e 32 acima de 5×.
+        # Quem decide a gravidade é o quanto se passou do LIMITE LEGAL; a contagem de contratos
+        # corrobora o desenho do fracionamento, mas 20 compras de R$ 3 mil não são mais graves que
+        # 4 de R$ 60 mil.
+        risco = 5
+        # A curva do excesso vai até +4 porque o teste da casa (2026-08-09) fixa o caso que importa:
+        # CINCO fatias somando 3× o teto TÊM de ocupar a faixa alta. A minha primeira curva parava
+        # em +2 nesse ponto e devolvia 7 — conservadora demais para um fracionamento que triplica o
+        # limite legal. Referência medida: mediana 1,70×, p75 2,41×, máximo 16,56×.
+        risco += (4 if excesso >= 5 else 3 if excesso >= 3 else
+                  2 if excesso >= 2 else 1 if excesso >= 1.5 else 0)
+        risco += 2 if len(melhor) >= 12 else 1 if len(melhor) >= 6 else 0
+        risco = min(9, risco)
+        if excesso < 1.2:
+            risco = min(risco, 7)          # 7 = média; nada é escondido, só reordenado
         achados.append(_achado(
             "d7_fracionamento", risco,
             f"Fracionamento — {r0['fornecedor_nome'] or forn} × {r0['orgao_nome'] or orgao}",
@@ -221,9 +245,18 @@ def _folha_padrao() -> dict[str, dict]:
 def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[dict]:
     """QSA dos credores PCRJ × folha municipal por nome normalizado.
     Sem CPF em nenhuma das pontas → SEMPRE indício (homônimo possível)."""
+    # O VÍNCULO TEM DE SER VIGENTE NO EXERCÍCIO. Sócio que entrou no quadro depois da despesa não
+    # descreve a despesa — é a mesma lição do E.3.2 (`screen_coparticipacao_relacionados`), onde o
+    # filtro de `data_entrada` derrubou os dois maiores pares da lista. Medido em 2026-08-10 sobre
+    # 209.559 pares (despesa, sócio): **84.365 (40,3%) têm o sócio entrando DEPOIS** do exercício,
+    # com vão de até 7 anos. `min(data_entrada)` contra `max(exercicio)`: basta ter sido sócio em
+    # ALGUM exercício em que o credor recebeu — critério conservador, que não derruba o indício por
+    # detalhe de data, mas separa quem não podia estar lá.
     rows = con.execute("""
-        select distinct s.nome_norm, s.nome_socio, s.cnpj_basico,
-               d.credor_nome, d.credor_documento, sum(d.pago) as pago
+        select s.nome_norm, s.nome_socio, s.cnpj_basico,
+               d.credor_nome, d.credor_documento, sum(d.pago) as pago,
+               max(cast(d.exercicio as integer)) as ultimo_exercicio,
+               min(substr(coalesce(s.data_entrada,''), 1, 4)) as entrada_ano
         from pcrj_despesa d
         join socios_receita s
           on length(d.credor_documento) = 14
@@ -242,10 +275,17 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
         hit = folha_norm.get(r["nome_norm"])
         if not hit:
             continue
+        ent, ult = str(r["entrada_ano"] or ""), r["ultimo_exercicio"]
+        posterior = bool(ent.isdigit() and ult and int(ent) > int(ult))
         achados.append(_achado(
-            "d9_socio_na_folha", 5,
-            f"Sócio de credor na folha — {r['nome_socio']}",
-            f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
+            "d9_socio_na_folha", 3 if posterior else 5,
+            # o CREDOR entra no título: o mesmo sócio em três credores distintos são três achados,
+            # e com título só do nome eles colapsavam num só (dedup do gravador + poda por título)
+            ("Sócio POSTERIOR de credor na folha — " if posterior else "Sócio de credor na folha — ")
+            + f"{r['nome_socio']} × {(r['credor_nome'] or r['credor_documento'])[:44]}",
+            (f"NÃO descreve a despesa: o vínculo societário começou em {ent}, depois do último "
+             f"exercício com pagamento ({ult}). " if posterior else "")
+            + f"Indício de conflito: {r['nome_socio']}, sócio do credor {r['credor_nome']} "
             f"(CNPJ {r['credor_documento']}, R$ {_brl(r['pago'])} pagos pela PCRJ), tem "
             f"HOMÔNIMO na folha municipal (lotação {hit.get('orgao') or 'n/d'}). Match "
             f"somente por nome normalizado — homônimo é possível; confirmar CPF/matrícula "
@@ -253,7 +293,8 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
             f"folha PCRJ via contracheque)",
             {"subtipo": "socio_folha", "socio": r["nome_socio"],
              "credor": r["credor_documento"], "lotacao": hit.get("orgao"),
-             "match_tipo": "NOME"}))
+             "match_tipo": "NOME", "entrada_socio_ano": ent or None,
+             "ultimo_exercicio": ult, "vinculo_posterior": posterior}))
     return achados
 
 
@@ -270,22 +311,48 @@ def d10_rede_concorrentes(con) -> list[dict]:
         join socios_receita s
           on length(c.fornecedor_documento) = 14
          and s.cnpj_basico = substr(c.fornecedor_documento, 1, 8)
+        -- O vínculo tem de existir NA ÉPOCA do contrato. O QSA é um retrato de hoje, e sem este
+        -- corte o detector acusava rede societária que ainda não existia: medido em 2026-08-09,
+        -- 54 dos 649 alertas (8,3%) apoiavam-se em sócio que entrou na empresa DEPOIS do ano do
+        -- contrato — inclusive o par ROMA×MEDKA em 2024, cujo administrador comum só chegou em
+        -- março de 2026. Mesma lição de `situacao-cadastral-vigencia-na-data`. O teto é o fim do
+        -- ano (a tabela só tem o ano), o que é generoso de propósito: na dúvida, mantém o alerta.
+         and (length(coalesce(s.data_entrada,'')) <> 8
+              or s.data_entrada <= cast(c.ano as text) || '1231')
         group by c.orgao_cnpj, c.ano, s.nome_norm,
                  case when s.doc_socio != '' then s.doc_socio else s.nome_norm end
         having count(distinct substr(c.fornecedor_documento, 1, 8)) >= 2""").fetchall()
     for r in rows:
         forte = bool(r["doc_socio"])
+        # RAIZ ≠ ESTABELECIMENTO. O `having` conta raízes (grupos econômicos), mas a evidência
+        # listava CNPJs de 14 dígitos — com filiais. Medido em 2026-08-10: um achado exibia
+        # "30 fornecedores" para uma pessoa que está em DUAS raízes; eram 30 estabelecimentos de 2
+        # grupos. Quem lê entende 30 empresas concorrentes, que é impressão falsa e muito mais
+        # grave que o fato. A gravidade mora na RAIZ; o estabelecimento só diz por onde o contrato
+        # entrou.
+        cnpjs = [c for c in (r["fornecedores"] or "").split(",") if c]
+        raizes = sorted({c[:8] for c in cnpjs})
         achados.append(_achado(
             "d10_rede_concorrentes", 7 if forte else 5,
-            f"Rede societária — {r['nome_socio']} em ≥2 fornecedores do mesmo órgão",
+            # O título é a IDENTIDADE do achado: é por ele que o gravador dedupa e a poda decide o
+            # que morreu. Sem órgão e ano, catorze achados distintos do mesmo sócio colapsavam num
+            # título só — a dedup nunca os separou e a poda não conseguia retirar o anacrônico de
+            # 2024 sem levar junto o legítimo de 2026.
+            f"Rede societária — {r['nome_socio']} em {len(raizes)} fornecedores de "
+            f"{(r['orgao_nome'] or r['orgao_cnpj'])[:40]} ({r['ano']})",
             f"Indício de rede entre fornecedores: {r['nome_socio']} figura no QSA de "
-            f"fornecedores distintos ({r['nomes']}) contratados pelo mesmo órgão "
+            f"{len(raizes)} grupo(s) econômico(s) distinto(s)"
+            + (f" — {len(cnpjs)} estabelecimentos, contando filiais" if len(cnpjs) > len(raizes)
+               else "")
+            + f" ({r['nomes']}) contratados pelo mesmo órgão "
             f"({r['orgao_nome'] or r['orgao_cnpj']}) em {r['ano']} — padrão compatível com "
             f"concorrência fictícia (checar se disputaram os mesmos certames)."
             + ("" if forte else " Match por NOME normalizado — homônimo possível.")
             + " (fontes: PNCP + QSA Receita local)",
             {"subtipo": "rede_socios", "socio": r["nome_socio"], "ano": r["ano"],
-             "fornecedores": (r["fornecedores"] or "").split(","),
+             "n_grupos": len(raizes), "grupos": raizes,
+             "n_estabelecimentos": len(cnpjs),
+             "fornecedores": cnpjs,
              "match_tipo": "CPF" if forte else "NOME"}))
     return achados
 
@@ -306,6 +373,12 @@ def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> li
     from compliance_agent.limites_aditivo import acrescimo_computavel, ato_normativo
 
     # pré-filtro largo pelo MENOR teto possível: nada que possa estourar é descartado no SQL.
+    # LACUNA LATENTE, medida e declarada: o filtro exige que o GLOBAL tenha crescido, e o art. 125
+    # computa acréscimos e supressões SEPARADAMENTE (não se compensam). Um contrato que acresce 40%
+    # e suprime 20% cresce 20% no global e escaparia daqui. Medido em 2026-08-10 sobre todo o
+    # acervo: **zero** casos — a coleta granular é rala demais (82,8% dos termos sem valor) para
+    # produzir a situação. Fica escrito para ninguém confundir "não acontece" com "está coberto":
+    # quando o PNCP passar a publicar valor, isto vira falso negativo real.
     rows = con.execute("""
         select numero_controle_pncp, ano, orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
@@ -387,6 +460,16 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
         g = grupos.setdefault((r["cep"], docs), {"anos": set(), "r": r})
         g["anos"].add(r["ano"])
     achados = []
+    # O CEP É O DE HOJE. A tabela `empresas` guarda o cadastro ATUAL (com `updated_at`) e não tem
+    # histórico de endereço: não há como saber onde a empresa estava no ano do contrato. Isso não
+    # invalida o indício — mudança de sede é menos comum que sanção nova —, mas afirmar
+    # "compartilhavam endereço quando concorreram" seria afirmar o que a fonte não diz. A data da
+    # foto viaja com o achado, como já fazem o dossiê (sanção) e o d3 (vigência).
+    try:
+        foto = con.execute("SELECT MAX(updated_at) FROM empresas").fetchone()[0]
+    except sqlite3.Error:      # base sem a coluna: o achado sai sem a data, e diz que saiu
+        foto = None
+    quando_foto = str(foto)[:10] if foto else "data não registrada"
     for (cep, docs), g in grupos.items():
         n_no_cep = con.execute("SELECT COUNT(*) FROM empresas WHERE cep=?", (cep,)).fetchone()[0]
         if n_no_cep > cep_popular:
@@ -404,9 +487,13 @@ def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list
             + ". Empresas concorrentes no mesmo endereço é red flag da lista OCDE 2025 de "
             "combinação de propostas (bid rigging). CEP cobre trecho de logradouro (não um "
             "imóvel) — corroborar com QSA, telefone/e-mail de cadastro e participação nos "
-            "mesmos certames. (fontes: PNCP + cadastro local RFB)",
+            "mesmos certames. ATENÇÃO À DATA: o CEP é o do cadastro ATUAL (foto de "
+            f"{quando_foto}); a base não guarda histórico de endereço, então co-localização NA "
+            "ÉPOCA do certame não está estabelecida — é o que se pede conferir. "
+            "(fontes: PNCP + cadastro local RFB)",
             {"subtipo": "coendereco", "cep": cep, "fornecedores": list(docs), "anos": sorted(g["anos"]),
-             "n_empresas_no_cep_base": n_no_cep}))
+             "n_empresas_no_cep_base": n_no_cep,
+             "cep_e_de": quando_foto, "coendereco_na_epoca": "nao_apurado"}))
     return achados
 
 
@@ -434,20 +521,11 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
             cobertura[nome] = f"ERRO (INDISPONÍVEL ≠ 0): {e}"
     achados.sort(key=lambda a: -a["risco"])
     if gravar_alertas:
-        for a in achados:
-            # dedup por (tipo, titulo): re-rodar a perícia ATUALIZA o alerta em vez de duplicar
-            # (antes cada corrida empilhava cópias; o painel dedupava na leitura, o DB inchava)
-            ex = con.execute("select id from alertas where tipo=? and titulo=?",
-                             (f"pcrj_{a['detector']}", a["titulo"])).fetchone()
-            if ex:
-                con.execute("update alertas set severidade=?, descricao=?, evidencias=? where id=?",
-                            (_sev(a["risco"]), a["descricao"],
-                             json.dumps(a["evidencias"], ensure_ascii=False, default=str), ex[0]))
-            else:
-                con.execute(
-                    """insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
-                       values (?,?,?,?,?, 'novo')""",
-                    (f"pcrj_{a['detector']}", _sev(a["risco"]), a["titulo"], a["descricao"],
-                     json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
-        con.commit()
+        # Persistência ÚNICA (dedup + poda + as três regras) em `alertas_persistencia`: havia dois
+        # gravadores e só este estava correto — o das emendas inseria cru e nunca removia nada,
+        # e 81,3% das linhas de alerta de emendas eram cópias de reexecução.
+        from compliance_agent.alertas_persistencia import gravar as _gravar
+        poda = _gravar(con, achados, cobertura, prefixo="pcrj",
+                       detectores=_DETECTORES, severidade=_sev)
+        return {"achados": achados, "cobertura": cobertura, "poda": poda}
     return {"achados": achados, "cobertura": cobertura}

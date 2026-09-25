@@ -58,11 +58,22 @@ def test_processo_AUSENTE_do_progress_tambem_e_marcado(ambiente):
 
 
 def test_cap_refila_mesmo_sem_chave_previa(ambiente):
+    """REVISTO em 2026-08-04. Antes o alvo vinha de `data/recaptura_cap21k.json`, uma lista
+    CURADA UMA VEZ (2026-08-01, 375 processos) e nunca regerada: o acervo já tinha 446 processos
+    no cap, e os 103 capturados depois da curadoria nunca voltariam à fila. O alvo passa a ser
+    MEDIDO no acervo, então o teste monta um documento cortado em vez de escrever a lista — a
+    intenção (refilar mesmo sem chave prévia no progress) é a mesma.
+    """
     cache, prog = ambiente
     tag = "080002_012345_2024"
     (cache / f"cdp_SEI_{tag}.json").write_text("{}", encoding="utf-8")
-    (tmp := R.RAIZ / "data").mkdir(parents=True, exist_ok=True)
-    (tmp / "recaptura_cap21k.json").write_text(json.dumps({"processos": [tag], "prioridade": []}))
+    pasta = R.RAIZ / "data" / "sei_arquivo" / tag
+    (pasta / "texto").mkdir(parents=True, exist_ok=True)
+    (pasta / "texto" / "000_doc.txt").write_text(
+        "[Doc] (tipo: outro)\n\n" + "x" * 20_000, encoding="utf-8")
+    (pasta / "manifest.json").write_text(json.dumps(
+        {"docs": [{"i": 0, "titulo": "Doc 0", "tipo": "outro", "texto": "texto/000_doc.txt"}]}),
+        encoding="utf-8")
     prog.write_text(json.dumps({"feitos": {}}))
     r = R.reparar_cap(aplicar=True, max_n=5)
     assert r["encontrados"] == 1

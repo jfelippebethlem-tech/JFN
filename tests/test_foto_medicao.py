@@ -197,3 +197,35 @@ def test_foto_colorida_de_obra_continua_valendo(tmp_path):
                     fill=((30 * i) % 256, (200 - 20 * i) % 256, (90 + 15 * i) % 256))
     img.save(obra)
     assert FM.informativa(obra) is True
+
+
+# ── confirmação por 2ª assinatura (24/09/2026): o dHash de 64 bits juntou fotos sem nada em comum ──────
+def test_colisao_de_dhash_sem_semelhanca_real_nao_vira_reciclagem(tmp_path, monkeypatch):
+    p1, p2 = tmp_path / "SEI-1" / "fotos", tmp_path / "SEI-2" / "fotos"
+    p1.mkdir(parents=True); p2.mkdir(parents=True)
+    _foto(p1 / "a.jpg")
+    _foto(p2 / "b.jpg", cor=(5, 200, 5), n=2)                 # imagem diferente
+    monkeypatch.setattr(FM, "_hashear", lambda im: 0xABCDEF)   # força a colisão de dHash
+    r = FM.reciclagem([p1.parent, p2.parent])
+    assert r["n_grupos"] == 0 and r["grau"] == "verde"
+    assert r["n_pares_dhash_nao_confirmados"] == 1
+
+
+def test_mesma_foto_confirma_na_segunda_assinatura(tmp_path):
+    _foto(tmp_path / "a.jpg"); _foto(tmp_path / "b.jpg")
+    _foto(tmp_path / "c.jpg", cor=(5, 200, 5), n=2)
+    h = FM._triar_e_hashear(tmp_path / "a.jpg")[0]
+    hc = FM._triar_e_hashear(tmp_path / "c.jpg")[0]
+    sa, sb, sc = (FM._assinatura2(tmp_path / n, x) for n, x in (("a.jpg", h), ("b.jpg", h), ("c.jpg", hc)))
+    assert FM._confirma(sa, sb) is True
+    assert FM._confirma(sa, sc) is False
+
+
+def test_escaneamento_cinza_de_documento_nao_e_foto(tmp_path):
+    """Alteração contratual escaneada em cinza (brilho ~190, saturação ~0) virou 'foto reciclada' no acervo."""
+    img = Image.new("RGB", (900, 1200), (200, 200, 200))
+    d = ImageDraw.Draw(img)
+    for y in range(40, 1180, 22):                       # linhas de texto finas: brilho ~178 e desvio alto, como o real
+        d.rectangle([60, y, 840, y + 2], fill=(40, 40, 40))
+    img.save(tmp_path / "scan.jpg")
+    assert FM._triar_e_hashear(tmp_path / "scan.jpg") == []

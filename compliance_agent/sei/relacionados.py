@@ -25,6 +25,8 @@ import logging
 import pathlib
 import re
 
+from compliance_agent.sei import acervo_texto
+
 logger = logging.getLogger(__name__)
 
 _RE_SEI = re.compile(r"SEI-\d{6}/\d{6}/\d{4}")
@@ -97,9 +99,12 @@ def textos_do_relacionado(numero_sei: str, acervo: pathlib.Path,
     import html
 
     out: dict[str, str] = {}
-    for f in sorted(pasta.glob("*.txt"))[:max_docs]:
+    for f in acervo_texto.arquivos_declarados(pasta.parent)[:max_docs]:
         try:
-            out[f"rel:{numero_sei}::{f.name}"] = html.unescape(f.read_text(errors="replace"))
+            # sem a etiqueta do arquivo: este texto vira EVIDÊNCIA citada de um fato, e o
+            # rótulo que nós escrevemos não é prova sobre o documento (ver `sei/acervo_texto`).
+            out[f"rel:{numero_sei}::{f.name}"] = acervo_texto.sem_etiqueta(
+                html.unescape(f.read_text(errors="replace")))
         except OSError:
             continue
     return out

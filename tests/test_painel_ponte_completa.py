@@ -44,7 +44,10 @@ from tools import painel_ponte_check as ponte  # noqa: E402
 # para `ir('e_resp')` ou `abrirDossie(cnpj,nome)`.
 # Este numero SO DESCE. O teste falha de proposito quando ele cai sem ser atualizado aqui: teto que
 # nao acompanha o progresso para de medir progresso e vira desculpa permanente.
-TETO_GLOBAIS = 58
+# 2026-08-03: +1 — `sinteseProcesso`, o cartão da leitura de CONJUNTO do processo (esqueleto
+# por fase, contradições entre documentos). Mesmo idioma do `pecaGerar`: handler chamado por
+# onclick inline, que é como as outras peças do painel funcionam.
+TETO_GLOBAIS = 59
 
 # Os 19 que o HTML nao le, ESCREVE. `onchange="_respProc=this.value;ir('e_resp')"` e o caso tipico.
 # Para estes, `Object.assign(window, {...})` NAO serve: `window._respProc='X'` nao atualiza um

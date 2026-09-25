@@ -27,9 +27,6 @@
 #
 # ── Banco ausente (`data/compliance.db`, 2,6 GB, não versionado) ────────────────────────────
 # Assinatura no log: "0 != 2526", "Cobertura encolheu: 0 < 1121301", "base ausente/vazia".
-tests/test_golden_numbers.py::test_golden_cobertura
-tests/test_golden_numbers.py::test_golden_iterj_ug133100
-tests/test_golden_numbers.py::test_golden_mgs_clean
 tests/test_grupo_economico_paridade.py::test_a_cobertura_de_qsa_viaja_com_o_numero
 tests/test_grupo_economico_paridade.py::test_contrato_do_j1_intacto
 tests/test_grupo_economico_paridade.py::test_j1_continua_avaliando_a_ug

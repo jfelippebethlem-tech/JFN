@@ -65,10 +65,38 @@ class C9TacFornecedor(Detector):
                                     "regularização pontual não é padrão")
             return res
 
+        # PREVALÊNCIA DECIDE O EIXO. O limiar é absoluto, e numa unidade que paga 27% do total por
+        # TAC um fornecedor com 29,8% é a NORMA, não a exceção. Medido em 2026-08-04: 24 dos 41
+        # disparos do acervo estavam a menos de 2× a taxa da própria unidade, nove deles a 1,1×.
+        # O achado não some — ele passa a apontar para quem de direito: a docstring deste detector
+        # sempre disse que o vício é do ÓRGÃO, com o fornecedor como beneficiário.
+        base = contexto.get("tac_unidade") or {}
+        pct_unidade = base.get("pct")
+        na_norma = (isinstance(pct_unidade, (int, float)) and pct_unidade > 0
+                    and pct < 2 * float(pct_unidade))
+        if na_norma:
+            nivel = "medio" if nivel == "critico" else "fraco"
+            res.valores["pct_da_unidade"] = pct_unidade
+            res.valores["razao_sobre_a_unidade"] = round(pct / float(pct_unidade), 2)
+            res.valores["padrao_e_do_orgao"] = True
         res.score = ancora(nivel)
         res.status = "confirmado"
         res.explicacao_inocente = ("passivo legítimo de serviço prestado sem cobertura contratual por "
                                    "falha administrativa do órgão — verificar atesto e justificativa no SEI")
+        # A COMPARAÇÃO COM A UNIDADE VAI EM EVIDÊNCIA PRÓPRIA. Ela é o que muda o eixo do
+        # achado, e emendada no fim da primeira frase morria no corte de 220 caracteres do
+        # `achados_de_fornecedor` — o mesmo defeito de truncamento corrigido nesta casa hoje de
+        # manhã, um nível adiante. Verificado no dado: nenhum dos 42 achados gravados exibia a
+        # frase, embora o rebaixamento de grau já tivesse acontecido.
+        if isinstance(pct_unidade, (int, float)) and pct_unidade:
+            razao = pct / float(pct_unidade)
+            res.add_evidencia(
+                "tac_ranking_ugs (taxa da unidade)",
+                (f"a unidade onde mais recebeu ({base.get('ug_nome') or base.get('ug')}) paga "
+                 f"{pct_unidade:.1f}% por essa via — o fornecedor está a {razao:.1f}× a norma "
+                 + ("local: o padrão é do ÓRGÃO e o contratado é beneficiário; investigar a "
+                    "prática da unidade, não só a empresa" if na_norma
+                    else "local, acima do que a unidade pratica")))
         res.add_evidencia(
             "ordens_bancarias (observação TFE)",
             f"{pct:.1f}% do valor pago via TAC/indenização/reconhecimento de dívida "

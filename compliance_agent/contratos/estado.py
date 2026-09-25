@@ -53,9 +53,18 @@ def _sinais_fornecedor(con, doc: str) -> list[str]:
     sinais = []
     if not doc:
         return sinais
-    if _tem_tabela(con, "sancoes_federais") and con.execute(
-            "select 1 from sancoes_federais where cpf_cnpj=? limit 1", (doc,)).fetchone():
-        sinais.append("fornecedor sancionado (CEIS)")
+    # A VIGÊNCIA VIAJA COM O SINAL. "fornecedor sancionado (CEIS)" é atemporal, e o dossiê é sobre
+    # um contrato que TEM data: sem o período, quem lê não distingue a sanção que já valia à época
+    # daquela que começou anos depois. Medido em 2026-08-10 no detector irmão das emendas: 87,9%
+    # dos casamentos favorecido×sanção eram de sanção POSTERIOR ao ato.
+    if _tem_tabela(con, "sancoes_federais"):
+        _s = con.execute("select cadastro, data_inicio, data_fim from sancoes_federais "
+                         "where cpf_cnpj=? order by data_inicio desc limit 1", (doc,)).fetchone()
+        if _s:
+            _ini = str(_s[1] or "")[:10] or "início n/d"
+            _fim = str(_s[2] or "")[:10] or "sem fim declarado"
+            sinais.append(f"fornecedor sancionado ({_s[0] or 'CEIS'}, {_ini} a {_fim} — "
+                          "conferir se vigia na data do contrato)")
     if _tem_tabela(con, "emenda_favorecidos") and con.execute(
             "select 1 from emenda_favorecidos where documento_favorecido=? limit 1", (doc,)).fetchone():
         sinais.append("favorecido de emenda federal")
@@ -74,7 +83,8 @@ def _pagamentos_por_processo(con, processo: str) -> dict:
     if not processo or not _tem_tabela(con, "ob_orcamentaria_siafe"):
         return {}
     r = con.execute(
-        "select coalesce(sum(valor),0) from ob_orcamentaria_siafe where processo=?",
+        # só OB CONTABILIZADA é pagamento — anulada/excluída inflava o "pago" do contrato (24/09/2026)
+        "select coalesce(sum(valor),0) from ob_orcamentaria_siafe where processo=? and status='Contabilizado'",
         (processo,)).fetchone()
     return {"pago": r[0], "empenhado": None, "liquidado": None} if r and r[0] else {}
 

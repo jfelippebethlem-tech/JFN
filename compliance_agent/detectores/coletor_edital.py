@@ -149,6 +149,28 @@ def _linhas_com_contexto(fontes: list[dict]) -> list[tuple[str, str]]:
     return out
 
 
+def _paragrafos(linhas: list[tuple[str, str]], teto: int = 700) -> list[tuple[str, str]]:
+    """Reagrupa em PARÁGRAFO as linhas que o PDF/OCR quebrou no meio da frase (~100 caracteres por linha).
+
+    A cláusula restritiva raramente cabe numa linha: no PE 24/2023 do INEA (SEI-070002/015404/2022, lido em
+    25/09/2026) "atestado… CAT… em nome dos profissionais responsáveis técnicos… equivalentes a 25% dos
+    quantitativos" ocupa três linhas, e o casamento por LINHA não via nenhuma. Junta até pontuação final ou
+    marcador de item (•, alínea, 9.3.2), com teto de tamanho para não fundir a página inteira."""
+    out: list[tuple[str, str]] = []
+    buf, fonte_buf = "", None
+    rx_inicio = re.compile(r"^(?:[•\-–]|\(?[a-z]\)|\d+(?:\.\d+)+\.?\s|[IVX]+\s*[-–.]\s)")
+    for ln, fonte in linhas:
+        novo_item = bool(rx_inicio.match(ln))
+        if buf and (fonte != fonte_buf or novo_item or len(buf) >= teto or re.search(r"[.;:]\s*$", buf)):
+            out.append((buf, fonte_buf))
+            buf = ""
+        buf = (buf + " " + ln).strip() if buf else ln
+        fonte_buf = fonte
+    if buf:
+        out.append((buf, fonte_buf))
+    return out
+
+
 # marcadores FORTES de que um CONTEÚDO é edital/TR/ETP (seções e identificadores que NF/OB/empenho não têm).
 # Necessário porque no SEI real o título do doc costuma ser o NÚMERO do documento (ex.: "121656966"), não o
 # nome — então `classificar(titulo)` cai em 'indefinida' e não basta filtrar por título (perda de sensibilidade).
@@ -159,6 +181,12 @@ _RX_EDITAL_CONTEUDO = re.compile(
     r"|(?:preg[ãa]o|concorr[êe]ncia|tomada\s+de\s+pre[çc]os)\s+(?:eletr[ôo]nico\s+)?n[ºo\.]"
     r"|condi[çc][õo]es\s+de\s+(?:habilita|participa[çc])|crit[ée]rio\s+de\s+julgamento",
     re.IGNORECASE)
+
+
+_TIPOS_DO_LICITANTE = ("habilitacao",)
+"""Documentos que a EMPRESA entrega — contrato social, certidões, atestados. Eles declaram fatos
+sobre o licitante; quem exige é o edital. `proposta` fica de fora desta lista de propósito: ela é
+peça do certame e alimenta outras regras."""
 
 
 def _fontes_de_edital(leitura: dict) -> list[dict]:
@@ -174,6 +202,15 @@ def _fontes_de_edital(leitura: dict) -> list[dict]:
         if not conteudo:
             continue
         fase, tipo = classificar(doc)
+        # TÍTULO QUE IDENTIFICA O DOCUMENTO DO LICITANTE VETA A PORTA DO CONTEÚDO. A porta do
+        # conteúdo existe porque no SEI o título costuma ser só o número do documento — mas quando
+        # ele DIZ o que é, a classificação positiva vale mais que a heurística. Medido em
+        # 2026-08-04: o "Documento HABILITAÇÃO - CONSTRUTORA BRASFORM" entrou como fonte de edital
+        # (o arquivo tem 22 mil caracteres e cita o edital em algum ponto), e sua CLÁUSULA NONA —
+        # governança interna da empresa, registrada na Junta Comercial — virou "exigência de
+        # capital social de 75%". O edital EXIGE; o contrato social do licitante DECLARA.
+        if tipo in _TIPOS_DO_LICITANTE:
+            continue
         por_titulo = (fase == "selecao" and tipo in ("edital", "proposta")) or fase == "planejamento"
         if por_titulo or _RX_EDITAL_CONTEUDO.search(conteudo):
             marca = f"{fase}/{tipo}" if por_titulo else "conteúdo=edital/TR"
@@ -308,7 +345,10 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
      # exige contexto de CAPACIDADE/ACERVO/QUALIFICAÇÃO técnica (não "nota fiscal atestada por 2 fiscais")
      re.compile(r"atestad[oa].{0,60}(?:capacidade\s+t[ée]cnic|acervo\s+t[ée]cnic|qualifica[çc][ãa]o\s+t[ée]cnic|aptid[ãa]o)"
                 r".{0,80}(?:quantitativo|no\s+m[íi]nimo|percentual|\d+\s*%|parcela)"
-                r"|(?:capacidade\s+t[ée]cnic|acervo\s+t[ée]cnic).{0,60}(?:quantitativo|no\s+m[íi]nimo|\d+\s*%)",
+                r"|(?:capacidade\s+t[ée]cnic|acervo\s+t[ée]cnic).{0,60}(?:quantitativo|no\s+m[íi]nimo|\d+\s*%)"
+                # período longo (parágrafo reagrupado): "atestado… CAT… em nome dos profissionais… equivalentes a
+                # 25% dos quantitativos" — INEA PE 24/2023, o percentual vem ~300 caracteres depois do atestado
+                r"|(?:atestad[oa]|acervo\s+t[ée]cnic|\bCAT\b).{0,360}?\d{1,3}\s*%\s*(?:d[oa]s?\s+)?(?:quantitativ|servi[çc]os|parcela)",
                 re.IGNORECASE | re.DOTALL)),
     ("visita_tecnica", "tecnica",
      re.compile(r"(?:visita|vistoria)\s+t[ée]cnica.*(?:obrigat[óo]ri|condi[çc][ãa]o (?:de|para).*habilita)"
@@ -386,6 +426,10 @@ _EXCLUDENTE_GLOBAL = re.compile(
     r"n[ãa]o\s+ser[áa]\s+exigid|dispensad|art\.\s*\d+.{0,30}lei", re.IGNORECASE)
 
 
+_RX_PROFISSIONAL = re.compile(r"em\s+nome\s+d[oa]s?\s+(?:seus?\s+)?(?:profissiona|respons[áa]ve)|"
+                              r"t[ée]cnico[\s-]+profissional|respons[áa]ve(?:l|is)\s+t[ée]cnic[oa]s?\s+(?:com\s+)?v[íi]nculo")
+
+
 def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado: float | None) -> list[dict]:
     """Lista COMPLETA de cláusulas restritivas do edital (E7), cada uma normalizada em `tipo`+`categoria`, com
     proveniência e flags do teste finalístico (`tem_ou_equivalente`, `tem_declaracao_substitutiva`,
@@ -410,6 +454,8 @@ def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado
                 "tem_ou_equivalente": bool(_RX_OU_EQUIVALENTE.search(low)),
                 "tem_declaracao_substitutiva": bool(_RX_DECLARACAO_SUBST.search(low)),
                 "justificativa_autos": bool(_RX_JUSTIFICATIVA.search(low)),
+                # quantitativo exigido do PROFISSIONAL (CAT em nome do responsável técnico) — art. 30 §1º I veda
+                "exige_do_profissional": bool(_RX_PROFISSIONAL.search(low)),
             }
             valor = _valor_reais(ln)
             pct = _pct(ln)
@@ -561,14 +607,43 @@ def montar_ctx_de_sei(leitura: dict, *, usar_llm: bool = False, gerar: Callable[
 
     # exigências de habilitação (E1) — SÓ dos docs de edital/planejamento (mesma guarda das cláusulas:
     # "patrimônio líquido" de um balanço não é exigência de habilitação)
-    linhas_edital = _linhas_com_contexto(_fontes_de_edital(leitura))
+    fontes_edital = _fontes_de_edital(leitura)
+    # O TEXTO DO EDITAL NÃO CHEGAVA AOS DETECTORES, só as linhas dele. Duas consequências medidas
+    # em 2026-08-05 no SEI-070002/001289/2022 (o processo de maior score do acervo, 90,2):
+    #  · o E7 tem `_trecho_completo`, que realoca a cláusula no edital e alarga a janela até a
+    #    fronteira de frase — mas ele só funciona com `tr_texto` no contexto. Sem ele, a evidência
+    #    chegava ao fiscal cortada no meio: "9.3.2 Prova de possuir no seu quadro permanente, na
+    #    data da Concorrência, profissional ou" — e o que decide o caso vem DEPOIS ("a comprovação
+    #    ... deverá ser feita através de cópia de sua ficha de registro de EMPREGADO", que é a
+    #    exigência de vínculo na data da licitação).
+    #  · o P1 devolvia `nao_avaliavel` com o motivo "sem TR e sem lista de requisitos no contexto".
+    # A fonte é a MESMA já calibrada para o E1 (`_fontes_de_edital`), que veta documento do
+    # licitante — a guarda que impediu o contrato social da CONSTRUTORA BRASFORM de virar
+    # "exigência de capital social".
+    # CHAVE PRÓPRIA, e não `tr_texto`. Eu escrevi `tr_texto` primeiro e a reavaliação devolveu
+    # **175 achados P1 do nada, 44 deles críticos** — todos falsos, e a prova estava na evidência
+    # que eles mesmos imprimiam: "QUANTIDADE RECEBIDA: 50.150 UNID. MARCA: N/C" (termo de
+    # recebimento, e N/C é "não consta"), "LOTE FABRICAÇÃO | VALIDADE | Marca | RECEBIDA" (cabeçalho
+    # de tabela de entrega), "solicitações de troca de marca/prorrogação do prazo" (e-mail de
+    # execução). `_fontes_de_edital` aceita documento pelo CONTEÚDO — o que é certo para localizar
+    # uma cláusula num processo de 498 peças, e errado como "descrição do item", que é o que o P1
+    # entende por `tr_texto`. O P1 volta a dizer `nao_avaliavel`, que é honesto.
+    if fontes_edital:
+        ctx["edital_texto"] = "\n\n".join(f["texto"] for f in fontes_edital)
+    linhas_edital = _linhas_com_contexto(fontes_edital)
     exig = _extrair_exigencias(linhas_edital, valor_estimado)
     if exig:
         ctx["exigencias_habilitacao"] = exig
         prov["exigencias_habilitacao"] = [e["prov"] for e in exig]
 
     # cláusulas restritivas — SÓ dos documentos de edital/planejamento (precisão: não varre NF/OB/despacho)
-    clausulas = _extrair_clausulas_restritivas(linhas_edital, valor_estimado)
+    # PARÁGRAFO para o que a quebra de linha escondia (atestado 40 → 82, índices 261 → 348 — amostra conferida);
+    # "pontuação dirigida" continua por LINHA: no parágrafo a regex frouxa casou formulário de fiscalização
+    # ("Pontuação obtida… Ciente do Preposto") em 8 de 8 capturas novas (25/09/2026).
+    _SO_LINHA = {"pontuacao_dirigida"}
+    clausulas = ([c for c in _extrair_clausulas_restritivas(_paragrafos(linhas_edital), valor_estimado)
+                  if c["tipo"] not in _SO_LINHA]
+                 + [c for c in _extrair_clausulas_restritivas(linhas_edital, valor_estimado) if c["tipo"] in _SO_LINHA])
     if clausulas:
         ctx["clausulas_edital"] = clausulas
         prov["clausulas_edital"] = [c["prov"] for c in clausulas]

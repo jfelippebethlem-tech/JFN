@@ -25,6 +25,7 @@ import unicodedata
 from pathlib import Path
 
 from compliance_agent.editais.flags import grau_flag
+from compliance_agent.sei import acervo_texto
 from compliance_agent.llm.json_resposta import parse_json_llm
 
 TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
@@ -39,8 +40,13 @@ TETO_DEFAULT = int(os.environ.get("JFN_360_TETO_DOCS", "25"))
 RUBRICA_VERSAO = "3"
 _DB = Path(__file__).resolve().parents[2] / "data" / "compliance.db"
 
+# Ordem de importância para o controle: primeiro quem DECIDE (contratação direta, parecer,
+# homologação, autorização de despesa), depois quem DEFINE o objeto e o preço, depois a execução.
+# Fora do _PRIORIDADE o documento vai para o fim da fila e o teto o corta — foi por isso que a
+# autorização de despesa precisou entrar aqui, e não só no RUBRICAS.
 _PRIORIDADE = ("contratacao_direta", "parecer", "homologacao", "adjudicacao",
-               "despacho", "aceite", "medicao")
+               "autorizacao_despesa", "despacho", "termo_referencia", "projeto_basico",
+               "pesquisa_precos", "aceite", "medicao")
 
 # escala: 1 = regular · 2 = frágil · 3 = viciado (a AUSÊNCIA do elemento pontua MAIS que a
 # versão fraca dele — regra P5 do vault). O modelo NUNCA vê número de score, só níveis nomeados.
@@ -81,9 +87,43 @@ RUBRICAS: dict[str, str] = {
         "1 = específico (diz O QUE foi entregue, quantidade/medição e data); 2 = genérico "
         "('de acordo', 'a contento', sem dizer o quê); 3 = incoerente (data anterior à "
         "medição, objeto diferente do contratado, ou quantidade divergente)."),
+    # 2026-08-02 — três tipos que carregavam decisão e não recebiam juízo NENHUM. Medido no
+    # arquivo: 29.945 documentos de 2.175 processos ficavam fora de qualquer rubrica; destes,
+    # 998 autorizações de despesa, 207 termos de referência e 193 pesquisas de preços — as três
+    # peças em que a discricionariedade de fato se exerce. Sem rubrica, o juízo por documento
+    # via só o despacho e o parecer, e o ato que AUTORIZA o gasto passava em branco.
+    "autorizacao_despesa": (
+        "Este documento AUTORIZA a despesa (ordenador de despesa). É o ato em que o gasto "
+        "público é decidido. Classifique a MOTIVAÇÃO do ato: 1 = autoriza indicando o objeto, o "
+        "valor, a dotação/disponibilidade e o fundamento (processo/parecer/etapa que o sustenta); "
+        "2 = autoriza de forma sumária, sem enfrentar os elementos dos autos, mas sem contrariá-los; "
+        "3 = autoriza CONTRARIANDO ressalva, parecer ou lacuna apontada nos autos sem motivar, ou "
+        "autoriza sem qualquer elemento que identifique objeto e valor. Autorizar é ato decisório: "
+        "o dever de motivar é do art. 50 da Lei 9.784/1999 e do art. 20 da LINDB — a motivação tem "
+        "de mostrar as consequências práticas consideradas. Se o documento é mero encaminhamento "
+        "administrativo e não autoriza nada, retorne null."),
+    "termo_referencia": (
+        "Este é um termo de referência / projeto básico — a peça que define O QUE se contrata. "
+        "Classifique a SUFICIÊNCIA da definição do objeto: 1 = objeto definido com precisão "
+        "(quantitativos, prazos, critérios de aceitação e requisitos verificáveis); 2 = definição "
+        "genérica que ainda permite executar, mas não permite medir/fiscalizar objetivamente; "
+        "3 = objeto indeterminado, ou requisito DIRECIONADOR — exigência de marca, modelo, atestado "
+        "ou característica que só um fornecedor atende, sem justificativa técnica nos autos "
+        "(art. 7º, §5º e art. 41 da Lei 14.133/2021). Descrição genérica não é vício por si: só é "
+        "3 quando impede o controle do que foi entregue ou restringe a competição."),
+    "pesquisa_precos": (
+        "Este documento é a pesquisa/mapa de preços que fundamenta o valor estimado. Classifique "
+        "a IDONEIDADE da pesquisa: 1 = múltiplas fontes de natureza distinta, identificadas e "
+        "datadas (painel de preços, contratos similares, notas fiscais, cotações com CNPJ), com "
+        "critério de escolha do valor; 2 = fontes poucas ou todas do mesmo tipo (só cotações de "
+        "fornecedores), ou sem data/identificação completa; 3 = pesquisa que não sustenta o preço "
+        "— cotações do próprio futuro contratado ou de empresas ligadas entre si, valores "
+        "idênticos/sequenciais, ou nenhuma fonte verificável (art. 23 da Lei 14.133/2021). "
+        "Cotação só com fornecedor é fragilidade (2), não vício automático."),
 }
 RUBRICAS["adjudicacao"] = RUBRICAS["homologacao"]
 RUBRICAS["medicao"] = RUBRICAS["aceite"]
+RUBRICAS["projeto_basico"] = RUBRICAS["termo_referencia"]
 
 _SISTEMA = (
     "Você audita documentos de processos administrativos (controle externo, RJ). Responda "
@@ -110,14 +150,24 @@ def selecionar(docs: list[dict], teto: int | None = None) -> list[dict]:
     Rubrica exige PRECISÃO no rótulo: 'parecer' só entra se o TÍTULO confirmar (o tipo por
     conteúdo rotulou 'Documento Trabalhista' como parecer e o veredito 'não-conclusivo'
     contaminava a contagem de problemáticos — debug 080001/018592/2026 doc 2)."""
+    # `teto=0` (ou JFN_360_TETO_DOCS=0) = SEM teto: julga todo documento elegível. O teto de 25
+    # era proteção de custo de LLM; a cadeia usada é a GRÁTIS, então ele só escondia processo
+    # grande — 39 de 2.082 processos tinham juízo. O limite real é o tempo do slot, não a contagem.
+    teto = TETO_DEFAULT if teto is None else teto
+    if teto <= 0:
+        return alvo_ordenado(docs)
+    return alvo_ordenado(docs)[:teto]
+
+
+def alvo_ordenado(docs: list[dict]) -> list[dict]:
+    """Documentos elegíveis por rubrica, na ordem de importância para o controle (sem corte)."""
     from compliance_agent.sei.fases import classificar
-    teto = teto or TETO_DEFAULT
     rank = {t: n for n, t in enumerate(_PRIORIDADE)}
     alvo = [d for d in docs if d.get("tipo") in RUBRICAS
             and not (d.get("tipo") == "parecer"
                      and classificar(str(d.get("titulo") or ""))[1] != "parecer")]
     alvo.sort(key=lambda d: (rank.get(d.get("tipo"), 99), d.get("i", 0)))
-    return alvo[:teto]
+    return alvo
 
 
 def _norm_txt(s: str) -> str:
@@ -169,11 +219,23 @@ def _conn(con):
 
 def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                 gerar=None, con=_DB_PADRAO) -> dict:
-    """Julga os docs-chave do processo. `gerar(prompt, sistema)->str` injetável (teste);
-    default = cadeia grátis da camada_triagem. `con` sqlite injetável; default compliance.db."""
+    """Julga os docs-chave do processo. `gerar(prompt, sistema)->str` injetável (teste).
+
+    Default = **gemini + cerebras** (`direcionamento_cerebro.gerar_sync`), por ordem expressa do
+    dono em 2026-08-03: "use nossas melhores IAs para esse serviço". Isso SUSPENDE, para o juízo
+    documental, a regra de isolamento do CLAUDE.md que reservava o volume à cadeia grátis — e
+    tem custo: a Gemini é paga (§4.1), então cobertura do acervo passa a consumir cota. Quem
+    quiser o comportamento antigo injeta `gerar=camada_triagem.gerar_triagem()`, e
+    `JFN_JUIZO_CADEIA=gratis` faz o mesmo por ambiente, sem editar código.
+    """
+    cadeia = "injetada"
     if gerar is None:
-        from compliance_agent.llm.camada_triagem import gerar_triagem
-        gerar = gerar_triagem()
+        if os.environ.get("JFN_JUIZO_CADEIA", "").strip().lower() == "gratis":
+            from compliance_agent.llm.camada_triagem import gerar_triagem
+            gerar, cadeia = gerar_triagem(), "cadeia_gratis"
+        else:
+            from compliance_agent.direcionamento_cerebro import gerar_sync
+            gerar, cadeia = gerar_sync, "gemini+cerebras"
     numero = str(man.get("processo") or pasta.name)
     docs = [d for d in (man.get("docs") or []) if isinstance(d, dict)]
     sel = selecionar(docs, teto=teto)
@@ -186,10 +248,11 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
     sem_resposta = cache_hits = 0
     try:
         for d in sel:
-            texto = ""
-            rel = d.get("texto")
-            if rel and (pasta / rel).exists():
-                texto = (pasta / rel).read_text(encoding="utf-8", errors="ignore")[:6000]
+            # Pela porta única: sem a etiqueta do arquivo. Ela mandava a NOSSA classificação
+            # (`tipo: parecer_juridico`) dentro do documento que a IA vai julgar — a rubrica já é
+            # escolhida por esse mesmo tipo, então o modelo via o palpite da casa antes de opinar,
+            # e o rótulo ainda comia até 478 dos 6.000 caracteres do orçamento. (2026-08-03)
+            texto = acervo_texto.ler(pasta, d, 6000)
             if not texto.strip():
                 vereditos.append({"i": d.get("i"), "tipo": d.get("tipo"), "escala": None,
                                   "aviso": "sem texto capturado (INDISPONÍVEL ≠ 0)"})
@@ -225,7 +288,7 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                           "tipo_canonico, hash_texto, rubrica_versao, modelo, escala, "
                           "trecho_literal, veredito_json, grau) values (?,?,?,?,?,?,?,?,?,?)",
                           (numero, d.get("i"), d.get("tipo"), h, RUBRICA_VERSAO,
-                           "cadeia_gratis", v.get("escala"), v.get("trecho_literal"),
+                           cadeia, v.get("escala"), v.get("trecho_literal"),
                            json.dumps(v, ensure_ascii=False, default=str),
                            v["grau"]["grau"]))
                 c.commit()
