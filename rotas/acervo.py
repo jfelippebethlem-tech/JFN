@@ -31,6 +31,13 @@ async def api_acervo_documento(numero: str = "", seq: str = ""):
     return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
 
 
+@router.get("/api/acervo/regras")
+async def api_acervo_regras(limite: int = 300):
+    """Processos com regra determinística acesa no acervo inteiro (a leitura processo a processo virou regra)."""
+    from compliance_agent.acervo import regras_acesas
+    return JSONResponse(content=await asyncio.to_thread(regras_acesas, max(1, min(int(limite or 300), 2000))))
+
+
 _EST: dict = {}
 
 

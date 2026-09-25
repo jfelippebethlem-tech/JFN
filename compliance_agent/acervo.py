@@ -199,6 +199,7 @@ def _ficha_estado(canon: str) -> dict:
         f["cronologia"] = {"grau": "nao_aplicavel", "achados": [], "resumo": f"cronologia indisponível ({type(e).__name__})"}
     # camada SUBJETIVA sobreposta: leitura integral do analista (Claude), quando feita — nunca substitui a regra
     f["leitura_analista"] = leitura_analista(vars_[2])
+    f["familia"] = familia(canon)
     f["acoes"] = [{"id": "avaliar_360", "rotulo": "Avaliar 360", "metodo": "POST", "rota": "/api/processo/avaliar", "body": {"numero": canon}},
                   {"id": "lai", "rotulo": "Gerar requerimento LAI", "metodo": "POST", "rota": "/api/lai/gerar", "body": {"alvo": canon, "esfera": "estado"}}]
     return f
@@ -265,6 +266,58 @@ def reconciliar_pericia_siafe(pericia_contabil, obs: dict) -> list[dict]:
 
 
 LEITURAS = Path(__file__).resolve().parent.parent / "data" / "leitura_claude"
+_DATA = Path(__file__).resolve().parent.parent / "data"
+_JCACHE: dict = {}
+
+
+def _json_mtime(path: Path) -> dict:
+    """JSON grande lido uma vez por versão do arquivo (mtime) — sei_familia/regras_acervo são regravados por tool."""
+    try:
+        mt = path.stat().st_mtime
+    except OSError:
+        return {}
+    if _JCACHE.get(path, (None,))[0] != mt:
+        _JCACHE[path] = (mt, _js(path.read_text(encoding="utf-8", errors="ignore")) or {})
+    return _JCACHE[path][1]
+
+
+def familia(canon: str, limite: int = 40) -> dict:
+    """Processos que ESTE cita e que o CITAM (tools/acervo_regras_e_familia) — a leitura íntegra passa por eles:
+    o pagamento só se explica com a contratação e os aditivos. Página coletiva do D.O. já sai filtrada na origem."""
+    fam = _json_mtime(_DATA / "sei_familia.json")
+    if not fam:
+        return {"disponivel": False}
+    no_acervo = set(fam.get("no_acervo") or [])
+    cat = _ro(DB_SEI_RJ)
+
+    def _itens(d: dict) -> list[dict]:
+        out = []
+        for n, k in sorted((d or {}).items(), key=lambda x: -x[1])[:limite]:
+            tipo = None
+            if cat is not None and _tem(cat, "sei_rj_processo"):
+                r = cat.execute("SELECT tipo FROM sei_rj_processo WHERE numero=?", (n,)).fetchone()
+                tipo = r["tipo"] if r else None
+            out.append({"numero": n, "n_docs": k, "no_acervo": n in no_acervo, "tipo": tipo})
+        return out
+    try:
+        return {"disponivel": True, "gerado_em": fam.get("gerado_em"),
+                "cita": _itens((fam.get("cita") or {}).get(canon)), "citado_por": _itens((fam.get("citado_por") or {}).get(canon))}
+    finally:
+        if cat is not None:
+            cat.close()
+
+
+def regras_acesas(limite: int = 300) -> dict:
+    """Processos do acervo com regra determinística acesa (tools/acervo_regras_e_familia), 🔴 primeiro."""
+    rg = _json_mtime(_DATA / "regras_acervo.json")
+    if not rg:
+        return {"ok": True, "disponivel": False, "itens": []}
+    itens = [{"numero": n, "regras": a, "vermelho": any(x["grau"] == "vermelho" for x in a),
+              "lido_pelo_analista": (LEITURAS / f"{n.replace('SEI-', '').replace('/', '_')}.json").exists()}
+             for n, a in (rg.get("acesos") or {}).items()]
+    itens.sort(key=lambda x: (not x["vermelho"], -len(x["regras"])))
+    return {"ok": True, "disponivel": True, "gerado_em": rg.get("gerado_em"), "processos_lidos": rg.get("processos_lidos"),
+            "por_regra": rg.get("por_regra"), "itens": itens[:limite], "total": len(itens)}
 
 
 def leitura_analista(slug: str) -> dict | None:

@@ -47,6 +47,8 @@ export async function renderAcervo(){
       <button type="submit" class="btn accent">🔎 Buscar</button></form>
     <div id="ac-res" style="margin-top:10px">${_q ? spin() : '<div class="dim">Resultados ordenados por valor pago; clique no nº para abrir a ficha.</div>'}</div>`);
   h += `<div id="ac-ficha" style="margin-top:12px"></div>`;
+  h += `<div id="ac-regras" style="margin-top:12px"></div>`;
+  setTimeout(async () => { const r = await J('/api/acervo/regras?limite=200', {tetoMs: 30000}); const o = await _quandoExistir('ac-regras'); if (o) o.innerHTML = _secRegrasAcervo(r); }, 0);
   if (_q) setTimeout(() => acervoBuscar(_q, _esf), 0);
   return h;
 }
@@ -145,6 +147,27 @@ function _secAditivos(f){
         <td class="num right">${x.valor != null ? fmtR(x.valor) : '—'}</td><td class="num right">${x.total_apos != null ? fmtR(x.total_apos) : '—'}</td></tr>`).join('')
     + `</tbody></table></div><div class="dim">${esc(a.fundamento || '')}</div>`);
 }
+/* Replicação (25/09/2026): as regras que a leitura processo a processo ensinou, rodadas no acervo inteiro. */
+function _secRegrasAcervo(r){
+  if (!r || !r.ok) return card(`<div class="warn">INDISPONÍVEL — ${erroHumano((r || {}).erro || 'regras do acervo não responderam')}</div>`);
+  if (!r.disponivel) return '';
+  const pr = Object.entries(r.por_regra || {}).map(([k, v]) => `${esc(k.replace(/_/g, ' '))}: <b>${fmtN(v)}</b>`).join(' · ');
+  return sec('Regras acesas no acervo', r.total) + card(`<div class="dim">${fmtN(r.processos_lidos)} processos lidos por regra em ${esc(fmtData(r.gerado_em))} · ${pr}</div>`
+    + `<div style="overflow-x:auto;margin-top:8px"><table class="tb"><thead><tr><th>processo</th><th>regra</th><th style="text-align:left">o que diz</th><th>parecer</th></tr></thead><tbody>`
+    + r.itens.map(it => it.regras.map((g, i) => `<tr>${i ? '<td></td>' : `<td><a href="#" data-acervo="abrir" data-numero="${esc(it.numero)}"><b>${esc(it.numero)}</b></a></td>`}
+        <td>${tag((_GR[g.grau] || [''])[0] + ' ' + g.regra.split(':')[1].replace(/_/g, ' '), (_GR[g.grau] || [])[1])}</td>
+        <td style="text-align:left" class="dim">${esc(g.diz.slice(0, 260))}</td><td>${i ? '' : (it.lido_pelo_analista ? '✔ lido' : '—')}</td></tr>`).join('')).join('')
+    + `</tbody></table></div>`);
+}
+function _secFamilia(f){
+  const fa = f.familia;
+  if (!fa || !fa.disponivel || (!(fa.cita || []).length && !(fa.citado_por || []).length)) return '';
+  const lin = xs => xs.map(x => `<tr><td>${x.no_acervo ? `<a href="#" data-acervo="abrir" data-numero="${esc(x.numero)}"><b>${esc(x.numero)}</b></a>` : esc(x.numero)}</td>
+      <td class="dim">${esc(x.tipo || (x.no_acervo ? 'no acervo' : 'fora do acervo'))}</td><td class="num right">${fmtN(x.n_docs)}</td></tr>`).join('');
+  const tab = (tit, xs) => xs.length ? `<div style="font-weight:700;margin-top:6px">${tit}</div><div style="overflow-x:auto"><table class="tb"><thead><tr><th>processo</th><th>tipo</th><th class="right">docs que citam</th></tr></thead><tbody>${lin(xs)}</tbody></table></div>` : '';
+  return sec('Processos ligados') + card(`<div class="dim">Contratação, pagamentos e aditivos se explicam juntos: a leitura íntegra passa por estes (página coletiva do D.O. fora).</div>`
+    + tab('Este processo cita', fa.cita || []) + tab('É citado por', fa.citado_por || []));
+}
 function _secLeitura(f){
   const l = f.leitura_analista;
   if (!l) return '';
@@ -222,7 +245,7 @@ export async function acervoAbrir(numero){
         <td class="num">${c.valor != null ? fmtRc(c.valor) : '—'}</td><td class="num">${c.total_pago != null ? fmtRc(c.total_pago) : '—'}</td><td class="dim">${esc(c.vigencia_ini || '')}${c.vigencia_fim ? ' → ' + esc(c.vigencia_fim) : ''}</td>
         <td>${c.url_ccon ? `<a href="${esc(c.url_ccon)}" target="_blank" rel="noopener">anexos</a>` : ''}</td></tr>`).join('') + `</tbody></table></div>`;
   }
-  h += _secCronologia(f) + _secAditivos(f) + _secLeitura(f);
+  h += _secCronologia(f) + _secAditivos(f) + _secLeitura(f) + _secFamilia(f);
   h += sec('Achados', (f.achados || []).length) + _secAchados(f);
   h += sec('Perícias') + _secPericias(f);
   if ((f.agentes || []).length) {
