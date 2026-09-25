@@ -4,6 +4,7 @@ GET /api/acervo/buscar -> api_acervo_buscar
 GET /api/acervo/documento -> api_acervo_documento
 GET /api/acervo/estatisticas -> api_acervo_estatisticas
 GET /api/acervo/processo -> api_acervo_processo
+GET /api/acervo/regras -> api_acervo_regras
 GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
 GET /api/captura/cobertura -> api_captura_cobertura

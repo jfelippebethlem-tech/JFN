@@ -48,6 +48,11 @@ _SEM_MENU_POR_DESENHO = {
     # via "Avaliação 360 de um processo SEI" e "Avaliar um processo SEI (360)" como duas coisas
     # — foi o teto do menu curado que pegou (2026-08-02). A porta de entrada é uma só.
     "processo_360_avaliar",
+    # MECANISMO de uma porta que já existe no painel/menu (25/09/2026 — as 4 entraram em 15–20/09 sem declarar):
+    # `acervo_processo` é a ficha que o `acervo_buscar` (com menu) abre ao clicar no resultado; `lai_prazos` é a
+    # tabela de prazos DENTRO da aba LAI (`lai_requerimento` tem menu); `pcrj_emergencias` e `pcrj_saude` são
+    # painéis da Prefeitura (tabela de emergências com botão LAI; laudo de saúde dos pipelines, cron 07:30).
+    "acervo_processo", "lai_prazos", "pcrj_emergencias", "pcrj_saude",
 }
 
 

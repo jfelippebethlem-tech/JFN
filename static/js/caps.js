@@ -104,6 +104,20 @@ const CAPS_MESTRAS = [
   "descricao": "Dossie Kroll COMPLETO de comissionados/gabinetes da Camara x Prefeitura do Rio: acumulo com direcao temporal, movimentacoes gabinete<->prefeitura<->candidatura, alternancia titular"
  },
  {
+  "id": "acervo_buscar",
+  "grupo": "🔎 Investigação",
+  "grupo_ic": "🔎",
+  "grupo_rot": "Investigação",
+  "nome": "Acervo (ache qualquer processo)",
+  "cmd": "",
+  "exemplo": "que processos existem sobre a AGILE CORP?",
+  "tipo": "http",
+  "metodo": "GET",
+  "rota": "/api/acervo/buscar",
+  "ordem": 5,
+  "descricao": "ACERVO: busca unica de processos SEI do Estado e da Prefeitura por numero, CNPJ, fornecedor, orgao ou termo — devolve os processos com grau, pago, documentos e as fontes onde cada "
+ },
+ {
   "id": "cartel",
   "grupo": "🔎 Investigação",
   "grupo_ic": "🔎",
@@ -270,6 +284,20 @@ const CAPS_MESTRAS = [
   "rota": "/api/pericia/bateria",
   "ordem": 28,
   "descricao": "Cobertura da BATERIA de pericia: quais dos 24 testes tem insumo para rodar, e qual captura destrava quantos"
+ },
+ {
+  "id": "lai_requerimento",
+  "grupo": "🕵️ Fiscalização & Perícias",
+  "grupo_ic": "🕵️",
+  "grupo_rot": "Fiscalização & Perícias",
+  "nome": "Requerimento LAI (um botão)",
+  "cmd": "",
+  "exemplo": "faz um pedido LAI do processo SME-PRO-2025/38233",
+  "tipo": "http",
+  "metodo": "POST",
+  "rota": "/api/lai/gerar",
+  "ordem": 40,
+  "descricao": "LAI automatizada: um alvo (nº de processo SEI/Processo"
  },
  {
   "id": "emendas_pericia",
