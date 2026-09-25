@@ -83,6 +83,54 @@ def regras(docs: list[dict], numero: str) -> list[dict]:
     return acesos
 
 
+CATALOGO = RAIZ / "data" / "sei_rj_catalogo.db"
+DB_RW = RAIZ / "data" / "compliance.db"
+
+
+def enfileirar_contratacoes(familia: dict, *, teto: int = 300) -> int:
+    """Leitura ÍNTEGRA = a família inteira: o processo de CONTRATAÇÃO citado por pagamentos do acervo e ausente dele
+    entra na fila de captura, pelo valor pago por trás (só citação feita por ≥ 2 documentos). Medido em 25/09/2026:
+    508 contratações ausentes atrás de R$ 2.611.911.710,79 pagos. INSERT OR IGNORE: não rebaixa pedido à mão."""
+    import sqlite3
+    no = set(familia.get("no_acervo") or [])
+    try:
+        cat = sqlite3.connect(f"file:{CATALOGO}?mode=ro", uri=True)
+        con = sqlite3.connect(DB_RW, timeout=30)
+    except sqlite3.Error:
+        return 0
+    try:
+        pago: dict[str, float] = defaultdict(float)
+        for p, v in con.execute("SELECT processo, sum(valor) FROM ob_orcamentaria_siafe WHERE status='Contabilizado' "
+                                "AND processo LIKE 'SEI-%' GROUP BY processo"):
+            m = re.search(r"(\d{6})/(\d{6})/(\d{4})", p or "")
+            if m:
+                pago[f"SEI-{m[1]}/{m[2]}/{m[3]}"] += v or 0
+        alvos = []
+        for alvo, orig in (familia.get("citado_por") or {}).items():
+            if alvo in no:
+                continue
+            r = cat.execute("SELECT tipo FROM sei_rj_processo WHERE numero=?", (alvo,)).fetchone()
+            if not r or not str(r[0]).startswith("Contratação"):
+                continue
+            peso = sum(pago.get(o, 0) for o, k in orig.items() if k >= 2)
+            if peso > 0:
+                alvos.append((peso, alvo))
+        agora = time.strftime("%Y-%m-%dT%H:%M:%S")
+        n = 0
+        for peso, alvo in sorted(alvos, reverse=True)[:teto]:
+            n += con.execute("INSERT OR IGNORE INTO sei_fila_captura VALUES (?,?,?,?,?,?)",
+                             (alvo, alvo.replace("SEI-", "").replace("/", ""),
+                              f"familia_contratacao: citado por pagamentos do acervo (R$ {peso:.2f} pagos)",
+                              round(peso, 2), 0, agora)).rowcount
+        con.commit()
+        return n
+    except sqlite3.Error:
+        return 0
+    finally:
+        cat.close()
+        con.close()
+
+
 def rodar() -> dict:
     t0 = time.time()
     res_regras: dict[str, list] = {}
@@ -116,10 +164,12 @@ def rodar() -> dict:
         tmp = p.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(obj, ensure_ascii=False), encoding="utf-8")
         tmp.replace(p)
+    rg["contratacoes_enfileiradas"] = enfileirar_contratacoes(familia)
     rg["segundos"] = round(time.time() - t0, 1)
     return rg
 
 
 if __name__ == "__main__":
     r = rodar()
-    print(f"{r['processos_lidos']} processos · {len(r['acesos'])} com regra acesa · {r['por_regra']} · {r['segundos']} s")
+    print(f"{r['processos_lidos']} processos · {len(r['acesos'])} com regra acesa · {r['por_regra']} · "
+          f"{r['contratacoes_enfileiradas']} contratação(ões) enfileirada(s) · {r['segundos']} s")
