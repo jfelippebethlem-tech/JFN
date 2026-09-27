@@ -29,6 +29,7 @@ sys.path.insert(0, str(RAIZ))
 from compliance_agent import cronologia_do_ato as CR  # noqa: E402
 from compliance_agent import execucao_fatos as EF  # noqa: E402
 from compliance_agent import inexigibilidade_coerencia as IX  # noqa: E402
+from compliance_agent import foto_medicao as FM  # noqa: E402
 from compliance_agent.detectores import coletor_edital as CE  # noqa: E402
 from compliance_agent.detectores import e7_clausula_restritiva as E7  # noqa: E402
 
@@ -147,7 +148,14 @@ def rodar() -> dict:
             continue
         n += 1
         num = _numero(d.name)
-        if (a := regras(docs, num)):
+        a = regras(docs, num)
+        # foto repetida entre MEDIÇÕES do mesmo contrato — pesada (hash de cada foto): só com ≥ 2 relatórios de medição
+        if sum(1 for x in docs if re.search(r"fotogr", str(x.get("titulo") or ""), re.I)
+               and re.search(r"\d{1,3}\s*[ªa°º]\s*medi", str(x.get("titulo") or ""), re.I)) >= 2:
+            fm = FM.reciclagem_entre_medicoes(d)
+            if fm["grau"] == "vermelho":
+                a.append({"regra": "fotos:repetida_entre_medicoes", "grau": "vermelho", "diz": fm["resumo"]})
+        if a:
             res_regras[num] = a
         if (c := citacoes(docs, num)):
             cita[num] = c

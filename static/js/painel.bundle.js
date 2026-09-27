@@ -8560,6 +8560,11 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     const [ic, cor] = _GR[c.grau] || ["", null];
     return sec("Cronologia dos atos — regra") + card(`<div style="font-weight:700">${ic} ${tag(c.grau, cor)} datas lidas dentro das peças</div>` + ((c.achados || []).map((a) => `<div style="margin:8px 0">${tag((_GR[a.grau] || [""])[0] + " " + a.tipo.replace(/_/g, " "), (_GR[a.grau] || [])[1])} ${esc(a.diz)}<div class="dim">${esc(a.fundamento || "")}</div></div>`).join("") || `<div class="dim">${esc(c.resumo || "")}</div>`) + `<div class="dim">${esc(c.ressalva || "")}</div>`);
   }
+  function _secNoturnas(f) {
+    const r = (f.regras_noturnas || []).filter((x) => !/^(cronologia|inexigibilidade|aditivos):/.test(x.regra));
+    if (!r.length) return "";
+    return sec("Varredura noturna — regra") + card(r.map((a) => `<div style="margin:6px 0">${tag((_GR[a.grau] || [""])[0] + " " + a.regra.split(":")[1].replace(/_/g, " "), (_GR[a.grau] || [])[1])} ${esc(a.diz)}</div>`).join("") + `<div class="dim">Regras pesadas (hash de fotos, cláusulas do edital) rodam às 05:30 sobre o acervo inteiro.</div>`);
+  }
   function _secInexig(f) {
     const c = f.inexigibilidade;
     if (!c || c.grau === "nao_aplicavel" || !(c.achados || []).length) return "";
@@ -8651,7 +8656,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         <td class="num">${c.valor != null ? fmtRc(c.valor) : "—"}</td><td class="num">${c.total_pago != null ? fmtRc(c.total_pago) : "—"}</td><td class="dim">${esc(c.vigencia_ini || "")}${c.vigencia_fim ? " → " + esc(c.vigencia_fim) : ""}</td>
         <td>${c.url_ccon ? `<a href="${esc(c.url_ccon)}" target="_blank" rel="noopener">anexos</a>` : ""}</td></tr>`).join("") + `</tbody></table></div>`;
     }
-    h += _secCronologia(f) + _secInexig(f) + _secAditivos(f) + _secLeitura(f) + _secFamilia(f);
+    h += _secCronologia(f) + _secInexig(f) + _secNoturnas(f) + _secAditivos(f) + _secLeitura(f) + _secFamilia(f);
     h += sec("Achados", (f.achados || []).length) + _secAchados(f);
     h += sec("Perícias") + _secPericias(f);
     if ((f.agentes || []).length) {

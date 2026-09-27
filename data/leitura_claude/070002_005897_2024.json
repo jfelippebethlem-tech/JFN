@@ -1,0 +1,52 @@
+{
+ "numero": "SEI-070002/005897/2024",
+ "grau": "vermelho",
+ "leitor": "Claude — leitura dos relatórios fotográficos de 18 medições (27/09/2026)",
+ "linha_do_tempo": [
+  [
+   "2023",
+   "Contrato INEA 35/2023 (lote 5 do PE 24/2023, após 3 afastamentos) — R$ 78.241.028,43"
+  ],
+  [
+   "01/07/2024 → 30/12/2025",
+   "40 OBs — R$ 83.936.180,81 neste processo"
+  ],
+  [
+   "23/09–22/10/2024",
+   "14ª medição: foto do trator em 'Casimiro de Abreu – bota fora'"
+  ],
+  [
+   "01/10–31/10/2025",
+   "28ª e 29ª medições: a MESMA foto, agora 'Casimiro de Abreu – Rio Lontra'"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "vermelho",
+   "diz": "62 fotografias de campo reaparecem em relatórios de MEDIÇÕES de períodos diferentes — 134 ocorrências, ~20% das 677 fotos, em 18 medições (13ª a 31ª e 35ª); a maior distância é de 18 medições (13ª → 31ª). Conferidas a olho 12 amostras: todas a mesma fotografia (mesma máquina, posição e nuvens).",
+   "fundamento": "Lei 8.666/1993, arts. 67 e 73 (fiscalização e recebimento) · Lei 4.320/1964, art. 63 (liquidação com prova da entrega)"
+  },
+  {
+   "grau": "vermelho",
+   "diz": "Uma foto de 'bota fora' de set/out-2024 foi reapresentada em out/2025 com outra legenda ('Rio Lontra'): o registro de uma frente e de um período 'prova' outra frente um ano depois.",
+   "fundamento": "art. 63, §2º, III da Lei 4.320/1964"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Os demais lotes do mesmo pregão (Lytorânea, Oriente, Dragmaq, Via Expressa) não repetem foto entre medições — o padrão é deste contrato, não do programa.",
+   "fundamento": "controle comparativo"
+  }
+ ],
+ "conexoes": [
+  "PE 24/2023 do INEA: a Geo Ambiental venceu o lote 5 depois de 3 afastamentos (Construtora JM, Dratec, Oriente) — vault/casos/inea-desassoreamento-pe-24-2023.md.",
+  "Contrato 35/2023: R$ 78.241.028,43 → R$ 132.695.839,68 por prorrogações com valor (1,70×)."
+ ],
+ "verificar": [
+  "Boletins de medição das 18 medições: quantidades pagas nas frentes cujas fotos se repetem.",
+  "Atestos e pareceres técnicos dessas medições — quem atestou com foto repetida.",
+  "Pedir à fiscalização os originais (com EXIF/data) das fotos reapresentadas."
+ ],
+ "parecer": "INDÍCIO GRAVE de comprovação fotográfica reciclada: a mesma fotografia sustenta medições de meses — e frentes — diferentes, inclusive com troca de legenda um ano depois. A fiscalização atestou essas medições. Recomenda-se apurar as medições afetadas (quantidades e valores) e representar ao TCE-RJ, anexando os pares de fotos.",
+ "ressalvas": "A regra só olha fotos de campo com céu (mapas de satélite e fotos sem céu ficam de fora). Repetição de foto não prova, sozinha, que o serviço não ocorreu — prova que o relatório não comprova o período.",
+ "caso": "vault/casos/inea-desassoreamento-pe-24-2023.md"
+}

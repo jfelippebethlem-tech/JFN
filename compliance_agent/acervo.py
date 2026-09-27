@@ -202,6 +202,7 @@ def _ficha_estado(canon: str) -> dict:
     # camada SUBJETIVA sobreposta: leitura integral do analista (Claude), quando feita — nunca substitui a regra
     f["leitura_analista"] = leitura_analista(vars_[2])
     f["familia"] = familia(canon)
+    f["regras_noturnas"] = ((_json_mtime(_DATA / "regras_acervo.json").get("acesos") or {}).get(canon) or [])
     f["acoes"] = [{"id": "avaliar_360", "rotulo": "Avaliar 360", "metodo": "POST", "rota": "/api/processo/avaliar", "body": {"numero": canon}},
                   {"id": "lai", "rotulo": "Gerar requerimento LAI", "metodo": "POST", "rota": "/api/lai/gerar", "body": {"alvo": canon, "esfera": "estado"}}]
     return f
