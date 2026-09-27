@@ -28,6 +28,7 @@ sys.path.insert(0, str(RAIZ))
 
 from compliance_agent import cronologia_do_ato as CR  # noqa: E402
 from compliance_agent import execucao_fatos as EF  # noqa: E402
+from compliance_agent import inexigibilidade_coerencia as IX  # noqa: E402
 from compliance_agent.detectores import coletor_edital as CE  # noqa: E402
 from compliance_agent.detectores import e7_clausula_restritiva as E7  # noqa: E402
 
@@ -65,6 +66,8 @@ def regras(docs: list[dict], numero: str) -> list[dict]:
     for a in c.get("achados", []):
         if a["grau"] in ("vermelho", "amarelo") and a["tipo"] != "entrega_no_dia_da_ordem":
             acesos.append({"regra": f"cronologia:{a['tipo']}", "grau": a["grau"], "diz": a["diz"]})
+    for a in IX.analisar(docs, numero).get("achados", []):
+        acesos.append({"regra": f"inexigibilidade:{a['tipo']}", "grau": a["grau"], "diz": a["diz"]})
     ads = EF.aditivos_por_documento(docs)
     if ads:
         r = EF.prorrogacao_renova_valor(ads, continuo_nos_autos=EF.declara_continuo(docs))

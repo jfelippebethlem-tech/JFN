@@ -191,6 +191,8 @@ def _ficha_estado(canon: str) -> dict:
         from compliance_agent import cronologia_do_ato as _cron
         _docs = _cron.docs_do_arquivo(pasta) if man.exists() else []
         f["cronologia"] = _cron.analisar(_docs, numero_processo=canon) if man.exists() else None
+        from compliance_agent import inexigibilidade_coerencia as _inex
+        f["inexigibilidade"] = _inex.analisar(_docs, canon) if _docs else None
         from compliance_agent import execucao_fatos as _ef
         _ads = _ef.aditivos_por_documento(_docs)
         f["aditivos_regra"] = ({**_ef.prorrogacao_renova_valor(_ads, continuo_nos_autos=_ef.declara_continuo(_docs)),
