@@ -16,19 +16,24 @@ export const fmtN = n => (n == null ? '—' : Number(n).toLocaleString('pt-BR'))
 export const fmtD = (v, d) => (v == null || v === '' ? '—'
   : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: d, maximumFractionDigits: d}));
 
+/* data pt-BR: '2026-09-24' → '24/09/2026' e '2026-09-24 13:05:09' → '24/09/2026 13:05'. Texto que não é ISO passa
+   intacto (o SIAFE já grava DD/MM/AAAA) — quem chama continua escapando. Datas ISO na tela eram desvio do padrão
+   (auditoria 24/09/2026). */
+export const fmtData = v => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(v ?? ''));
+  return !m ? (v == null || v === '' ? '—' : String(v)) : `${m[3]}/${m[2]}/${m[1]}${m[4] ? ` ${m[4]}:${m[5]}` : ''}`;
+};
+
 /* pct assinado: o + so aparece quando e positivo — '+-8%' era bug em e_adit */
 export const fmtPct = p => (p == null ? '—' : (p > 0 ? '+' : '') + fmtN(p) + '%');
 
 export const fmtR = v => 'R$ ' + (v == null ? '0,00'
   : Number(v).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
-export const fmtRc = v => {
-  v = Number(v || 0); const a = Math.abs(v);
-  if (a >= 1e9) return 'R$ ' + (v / 1e9).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' bi';
-  if (a >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' mi';
-  if (a >= 1e3) return 'R$ ' + (v / 1e3).toLocaleString('pt-BR', {maximumFractionDigits: 0}) + ' mil';
-  return fmtR(v);
-};
+/* fmtRc era a forma CURTA ('R$ 1,3 bi'). A regra da casa é número financeiro sempre com separador de milhar e duas
+   casas (auditoria quadro a quadro de 24/09/2026: 119 lugares mostravam valor arredondado a 1 casa de bilhão — um erro
+   de até R$ 50 mi na leitura). Fica o nome para não mexer em 119 chamadas; o valor agora é o exato. */
+export const fmtRc = v => fmtR(Number(v || 0));
 
 // rótulos humanos p/ ids técnicos de sinal/detector — snake_case NUNCA chega ao usuário
 export const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio societário',sancao_a_epoca:'sanção vigente à época',

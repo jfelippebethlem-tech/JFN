@@ -18,3 +18,7 @@ websocket-client>=1.7.0
 selenium>=4.20.0
 webdriver-manager>=4.0.0
 easyocr>=1.7.0
+
+# captcha_solver.py — OCR neural local (ONNX) do captcha do SEI; sem ele cai no tesseract (2026-09-09, catraca requirements)
+ddddocr>=1.4
+onnxruntime>=1.16

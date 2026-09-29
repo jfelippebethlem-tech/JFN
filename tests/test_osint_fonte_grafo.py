@@ -129,3 +129,41 @@ def test_beneficiario_final_roda_sobre_cadeia_real():
     assert out["documentacao"]["cpf_mascarado"] is True
     assert 0.0 <= out["cobertura"]["pct"] <= 100.0
     assert "CAPTURA" in out["cobertura"]["nota"].upper()
+
+
+def test_socio_pj_entra_pela_raiz_e_a_cadeia_sobe():
+    """A cadeia se partia NO DEGRAU QUE ESTE CÓDIGO EXISTE PARA SUBIR.
+
+    `montar_grafo_societario` põe o alvo de cada nível como `no_pj(raiz)` — 8 dígitos — enquanto o
+    sócio PJ entrava com os 14 do CNPJ íntegro. A MESMA empresa virava dois nós: um recebendo a
+    aresta `socio_de` do nível de cima, outro emitindo a do nível de baixo. `beneficiario_final`
+    sobe seguindo as arestas em que o nó é DESTINO, e por isso parava sempre no primeiro salto.
+
+    Medido em 2026-08-06 sobre os 400 maiores credores do SIAFE: dos 17 com cadeia de duas ou mais
+    empresas, **17** tinham o nó partido; cadeias de 2+ saltos: **0 → 14**; beneficiários finais
+    localizados: **20 → 66**. Nenhum teste pegava porque todos montavam o grafo à mão, com as
+    chaves já coerentes — o defeito morava no CONSTRUTOR, não no motor.
+    """
+    import compliance_agent.osint.fonte_grafo as F
+
+    con = sqlite3.connect(":memory:")
+    con.executescript(
+        "CREATE TABLE socios_receita (cnpj_basico TEXT, ident TEXT, nome_socio TEXT, "
+        "doc_socio TEXT, qualificacao_txt TEXT, data_entrada TEXT, faixa_etaria TEXT, "
+        "fonte_mes TEXT);"
+        # ALFA (11111111) tem a BETA como sócia — e o QSA traz o CNPJ ÍNTEGRO da BETA, com filial
+        # 0002, que é justamente o caso que o casamento por 14 dígitos não fecha.
+        "INSERT INTO socios_receita VALUES "
+        "('11111111','1','BETA HOLDING','22222222000278','Sócia','20190816','','2026-05'),"
+        "('22222222','2','MARIA DA SILVA','***123456**','Sócia-Administradora','20150301','','2026-05');")
+
+    g, diag = F.montar_grafo_societario(con, "11111111000100", profundidade=4)
+    con.close()
+
+    assert diag["visitadas"] == ["11111111", "22222222"], "a travessia não chegou ao segundo nível"
+    out = g.beneficiario_final(no_pj("11111111"))
+    assert out["n_pessoas"] == 1, f"beneficiário final não encontrado: {out}"
+    assert out["pessoas"][0]["rotulo"] == "MARIA DA SILVA"
+    assert out["pessoas"][0]["saltos"] == 2, (
+        "a cadeia parou no primeiro degrau — sócio PJ e alvo do nível seguinte viraram nós "
+        f"distintos da mesma empresa: {out['pessoas'][0]}")

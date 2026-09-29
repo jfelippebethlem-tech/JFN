@@ -112,3 +112,29 @@ def test_score_processo_recebe_shape_valido(tmp_path, sem_motores, monkeypatch):
     monkeypatch.setattr(processo_360, "score_processo", spy)
     processo_360.avaliar_pasta(_acervo(tmp_path))
     assert all(isinstance(r, ResultadoDetector) for r in visto["res"])
+
+
+def test_contrato_ORDINARIO_e_suficiente_com_a_assessoria_do_orgao():
+    """CORREÇÃO JURÍDICA (2026-08-04): a tabela exigia PGE para TODO `contrato` e disparava 37
+    vezes dizendo "parecer interno não supre o controle externo" — afirmando um vício que a lei
+    não cria. O art. 53 da Lei 14.133/2021 manda o processo ao **órgão de assessoramento jurídico
+    da própria Administração**, que realiza o controle prévio: a assessoria do órgão CUMPRE o
+    artigo. E o próprio acervo traz o mecanismo que dispensa a manifestação individual da PGE —
+    a "Declaração de Conformidade com as minutas-padrão" das Resoluções PGE 2.599/2.838/3.055.
+    """
+    docs = [{"ref": "Parecer 12", "tipo": "parecer",
+             "texto": "Parecer jurídico da assessoria jurídica do órgão. Opino favoravelmente."}]
+    s = sei_recomendacoes.suficiencia_parecer(docs, "contrato")
+    assert s["veredito"] == "SUFICIENTE", s
+
+
+def test_contratacao_DIRETA_mantem_a_escalada_da_licao_IDESI():
+    """A correção acima é cirúrgica: dispensa e inexigibilidade afastam a competição e carregam
+    controle mais estrito. A lição IDESI — contratação direta de alto valor só com DIRJUR/AUDIN
+    internos — continua acendendo."""
+    docs = [{"ref": "Parecer", "tipo": "parecer",
+             "texto": "Parecer jurídico da assessoria jurídica do órgão."},
+            {"ref": "Auditoria", "tipo": "orgao_controle",
+             "texto": "Relatório de auditoria interna 0793/2024."}]
+    s = sei_recomendacoes.suficiencia_parecer(docs, "contratacao_direta")
+    assert s["veredito"] == "PARECER_DE_EMISSOR_INSUFICIENTE" and s["exigido"] == 3

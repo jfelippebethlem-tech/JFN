@@ -421,6 +421,22 @@ def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
                 f"nenhum recebe benefício de subsistência (indício de laranja afastado para os verificados; "
                 f"{_b['n_indisponivel']} de {_b['total_qsa']} ainda INDISPONÍVEL).")
         add("")
+    # Pegada na PREFEITURA do Rio (ContasRio → contasrio_contrato): contexto de esfera municipal com o nº do
+    # processo e o link do inteiro teor (CCON). O achado (DD/DIRETA-PCRJ) vive nos estruturais; aqui é o retrato.
+    _cp = (inv or {}).get("pcrj_contratos") if isinstance(inv, dict) else None
+    if _cp and _cp.get("n"):
+        def _brl(v):   # 1234567.89 → 1.234.567,89 (só o número, não a frase)
+            return f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        add(f"> **Contratos com a Prefeitura do Rio (ContasRio, {_cp.get('ano_min')}–{_cp.get('ano_max')}):** "
+            f"{_cp['n']} contrato(s), {_cp.get('diretas', 0)} por contratação direta; valor atualizado "
+            f"R$ {_brl(_cp.get('valor'))}, pago pelo Município R$ {_brl(_cp.get('pago'))}; "
+            f"{_cp.get('n_orgaos', 0)} órgão(s): {_cp.get('orgaos', '')[:120]}.")
+        for m in (_cp.get("maiores") or [])[:3]:
+            proc = m.get("processo") or "processo n/d"
+            link = f" — [inteiro teor]({m['url_ccon']})" if m.get("url_ccon") else ""
+            add(f">   · {m.get('ano')} · {m.get('orgao', '')[:50]} · {m.get('forma', '')} · {proc}: "
+                f"{(m.get('objeto') or '')[:90]}{link}")
+        add("")
     if not inv or not isinstance(inv, dict):
         add("> Investigação não disponível para este alvo nesta análise (cadastro/base insuficientes).")
         add("")

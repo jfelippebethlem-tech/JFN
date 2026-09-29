@@ -21,9 +21,13 @@ from typing import Optional
 import logging
 
 import httpx
-from compliance_agent.reporting.intel_base import moeda
 
 logger = logging.getLogger(__name__)
+
+
+class PncpIndisponivel(RuntimeError):
+    """A requisição ao PNCP falhou. NÃO é o mesmo que 'não há arquivo' — quem trata deve
+    poder retentar depois, em vez de gravar uma ausência que nunca mais será revisitada."""
 
 PNCP_BASE = "https://pncp.gov.br/api/pncp/v1"
 # API de CONSULTA (publica, sem login) — Onda 2. Difere da de gestao (api/pncp/v1).
@@ -59,6 +63,11 @@ async def _get_pncp(endpoint: str, params: dict) -> Optional[dict]:
                                  headers={"User-Agent": "JFN-Compliance/1.0"})
             if r.status_code == 200:
                 return r.json()
+            if r.status_code in (204, 404):
+                # 204/404 é a FONTE respondendo "não há" — fato, não falha. Devolver None aqui
+                # faria o chamador retentar para sempre um recurso que não existe.
+                return []
+            logger.warning("PNCP %s: HTTP %s", endpoint, r.status_code)
     except Exception as exc:
         logger.warning("PNCP %s indisponível (None pode ser falso 'sem contrato'): %s", endpoint, exc)
     return None
@@ -82,6 +91,12 @@ async def _get_consulta(endpoint: str, params: dict) -> tuple[Optional[dict], st
                                  headers={"User-Agent": "JFN-Compliance/2.0"})
             if r.status_code == 200:
                 return r.json(), "ok"
+            if r.status_code in (204, 404):
+                # A FONTE disse "não há" (204 = sem conteúdo): fato, não falha — igual ao `_get_pncp`.
+                # Tratar como "http" fazia o `_consulta_retry` pedir 3× a mesma página vazia com
+                # 2/4/6 s de espera: a maioria dos pares órgão×mês é 204, e o `--incremental` do
+                # jfn-intel-cache estourava as 2 h de TimeoutStartSec (medido 09-10/09/2026).
+                return {"data": [], "totalPaginas": 0}, "ok"
             logger.warning("PNCP %s devolveu HTTP %s (None pode ser falso 'sem contrato')",
                            endpoint, r.status_code)
             return None, "http"
@@ -324,6 +339,65 @@ async def baixar_documentos(id_pncp: str, max_arquivos: int = 5,
     return out
 
 
+async def baixar_arquivos_contrato(cnpj: str, ano, seq, *, max_arquivos: int = 3,
+                                   max_chars: int = 120_000) -> list[dict]:
+    """Baixa os arquivos do CONTRATO (instrumento assinado) e extrai o texto.
+
+    Endpoint distinto do de compras: ``/orgaos/{cnpj}/contratos/{ano}/{seq}/arquivos``. Os
+    sequenciais de compra e de contrato são numerações INDEPENDENTES — usar o seq de contrato
+    na rota de compras traz o documento de outra licitação.
+
+    Devolve [{titulo, tipo, url, n_chars, texto}]. É aqui que mora a íntegra: o PDF assinado
+    cita o processo SEI que originou a contratação (ver ``processos_sei_no_texto``).
+    """
+    meta = await _get_pncp(f"/orgaos/{cnpj}/contratos/{ano}/{seq}/arquivos", {})
+    if meta is None:
+        # None = a REQUISIÇÃO falhou (502/503/timeout/disconnect do PNCP), que é diferente de
+        # "o contrato não tem arquivo publicado". Confundir os dois grava ausência como fato e
+        # exclui o contrato do universo para sempre — aconteceu com 455 registros em 2026-09-05.
+        raise PncpIndisponivel(f"PNCP não respondeu para contrato {cnpj}/{ano}/{seq}")
+    arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", [])
+    out: list[dict] = []
+    total = 0
+    async with httpx.AsyncClient(timeout=90, follow_redirects=True) as client:
+        for a in (arquivos or [])[:max_arquivos]:
+            url = a.get("url") or a.get("uri")
+            if not url:
+                continue
+            nome = a.get("titulo") or a.get("nomeArquivo") or ""
+            try:
+                d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
+                blob = d.content if d.status_code == 200 else b""
+            except httpx.HTTPError as exc:      # rede/timeout/protocolo — a família real do client.get
+                logger.debug("PNCP contrato %s/%s/%s: falha em %s: %s", cnpj, ano, seq, url, exc)
+                blob = b""
+            texto = _extrair_texto(nome, blob) if blob else ""
+            if total < max_chars:
+                texto = texto[: max_chars - total]
+                total += len(texto)
+            else:
+                texto = ""
+            out.append({"titulo": nome, "tipo": a.get("tipoDocumentoNome"),
+                        "url": url, "n_chars": len(texto), "texto": texto})
+            await asyncio.sleep(0.2)
+    return out
+
+
+# O nº de processo SEI.RIO citado no corpo do contrato é a ponte para o SEI municipal. Vem do
+# documento ASSINADO — procedência muito melhor que raspar o campo `objeto` do registro PNCP.
+# Larga de proposito, medido em 316 integras: o DV obrigatorio perdia 12 contratos (47,5% ->
+# 51,3%). O cabecalho cita o processo sem DV ("002200.000007/2025") e ha orgao com 5 digitos
+# ("00700.000789/2025-78"). O \b nas pontas evita casar pedaco de numero maior.
+_RE_SEI_NO_TEXTO = re.compile(r"\b\d{5,6}\.\d{6}/\d{4}(?:-\d{2})?\b")
+
+
+def processos_sei_no_texto(texto: str) -> list[str]:
+    """Nºs de processo SEI.RIO citados num texto, sem repetição e em ordem estável."""
+    if not texto:
+        return []
+    return sorted(set(_RE_SEI_NO_TEXTO.findall(texto)))
+
+
 async def buscar_contratos_fornecedor(
     cnpj_fornecedor: str,
     data_inicial: date,
@@ -334,6 +408,10 @@ async def buscar_contratos_fornecedor(
     if len(cnpj) != 14:
         return []
 
+    # A API IGNORA `cnpjFornecedor` — medido em 2026-08-09 contra a fonte: pedindo o CNPJ
+    # 00801512000157 ela devolveu contrato de `niFornecedor` 45769285000168. O parâmetro não
+    # filtra e não dá erro. Por isso o filtro é aplicado AQUI, sobre o que voltou, e o resultado
+    # é uma AMOSTRA da janela — não a lista completa do fornecedor.
     params = {
         "cnpjFornecedor": cnpj,
         "dataInicial": data_inicial.strftime("%Y%m%d"),
@@ -344,7 +422,9 @@ async def buscar_contratos_fornecedor(
     result = await _get_pncp("/contratos", params)
     if not result:
         return []
-    return result.get("data", []) or (result if isinstance(result, list) else [])
+    linhas = result.get("data", []) or (result if isinstance(result, list) else [])
+    return [c for c in linhas
+            if re.sub(r"\D", "", str(c.get("niFornecedor") or "")) == cnpj]
 
 
 async def buscar_licitacoes_orgao(
@@ -374,7 +454,7 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
 
     Lei 14.133/21 art. 94: contratos devem ser publicados no PNCP.
     """
-    from compliance_agent.database.models import OrdemBancaria, Alerta
+    from compliance_agent.database.models import OrdemBancaria
 
     target_date = target_date or date.today()
     MINIMO = 30_000.0
@@ -404,33 +484,16 @@ async def verificar_obs_sem_pncp(session, target_date: date = None) -> list[dict
         await asyncio.sleep(0.3)
 
         if not contratos:
-            # Sem contrato publicado no PNCP para este CNPJ
-            titulo = f"OB sem contrato no PNCP — {ob.favorecido_nome or cnpj}"[:300]
-            existe = session.query(Alerta).filter_by(titulo=titulo).first()
-            if not existe:
-                alerta = Alerta(
-                    tipo="pncp_sem_contrato",
-                    severidade="alta",
-                    titulo=titulo,
-                    descricao=(
-                        f"OB nº {ob.numero_ob} (R$ {moeda(ob.valor)}) paga a "
-                        f"'{ob.favorecido_nome}' (CNPJ {cnpj}) em {target_date}. "
-                        f"Nenhum contrato encontrado no PNCP para este fornecedor "
-                        f"nos últimos {JANELA_DIAS} dias. Pagamento sem amparo contratual "
-                        f"publicado — possível irregularidade à luz da Lei 14.133/21 art. 94."
-                    ),
-                    evidencias=str({
-                        "numero_ob": ob.numero_ob,
-                        "cnpj": cnpj,
-                        "favorecido": ob.favorecido_nome,
-                        "valor": ob.valor,
-                        "pncp_contratos_encontrados": 0,
-                    }),
-                    data_referencia=target_date,
-                    ordem_bancaria_id=ob.id,
-                )
-                session.add(alerta)
-                alertas.append({"ob": ob.numero_ob, "cnpj": cnpj, "valor": ob.valor})
+            # NÃO se afirma ausência com esta fonte. A consulta do PNCP ignora o filtro por
+            # fornecedor (medido em 2026-08-09), então "nenhum contrato encontrado" aqui significa
+            # "não achei nesta janela e nesta página", não "não existe contrato". Um alerta de
+            # severidade ALTA dizendo "pagamento sem amparo contratual" construído sobre isso seria
+            # acusação a partir de lacuna — o oposto da regra INDISPONÍVEL ≠ 0.
+            # O detector nunca chegou a rodar (0 alertas no acervo); fica desligado até haver fonte
+            # que sustente a afirmação (consulta por fornecedor ou varredura completa por órgão).
+            logger.info("pncp_sem_contrato NÃO emitido p/ %s: a fonte não permite afirmar ausência",
+                        cnpj)
+            continue
 
     session.commit()
     return alertas
@@ -584,6 +647,12 @@ def _parse_termo(t: dict) -> dict:
         "qualif_vigencia": t.get("qualificacaoVigencia"),
         "qualif_reajuste": t.get("qualificacaoReajuste"),
         "fundamento_legal": t.get("fundamentoLegal"),
+        # a fonte entrega, e a casa jogava fora: sem `dataAssinatura` não se mede aditivo precoce
+        # (o sinal da CGE no caso SECID), sem `tipoTermoContratoNome` a natureza vem só do objeto,
+        # e sem `processo` não há ponte para os autos.
+        "data_assinatura": t.get("dataAssinatura"),
+        "tipo_termo": t.get("tipoTermoContratoNome"),
+        "processo": t.get("processo"),
     }
 
 
@@ -609,11 +678,17 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
     termos = await termos_contrato(cnpj, ano, seq)
     for row in termos:
         con.execute(
-            """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+            """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                  numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal,
+                 data_assinatura, tipo_termo, processo)
                VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,
+                 :fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
             {**row, "ncp": numero_controle_pncp})
     con.commit()
     return len(termos)
@@ -722,11 +797,21 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
         vg_max = None
         for row in termos:
             con.execute(
-                """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                # MESMO conjunto de colunas do outro gravador (coletar_aditivos): este INSERT é a
+                # segunda cópia, e foi ela que quase ficou para trás quando as três colunas novas
+                # (data_assinatura, tipo_termo, processo) entraram — o defeito clássico de dois
+                # escritores para a mesma tabela.
+                """INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
                      numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
-                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste,
+                     fundamento_legal, data_assinatura, tipo_termo, processo)
                    VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
-                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,
+                     :qualif_reajuste,:fundamento_legal,:data_assinatura,:tipo_termo,:processo)
+                   ON CONFLICT(numero_controle_pncp, sequencial_termo) DO UPDATE SET
+                     data_assinatura=COALESCE(excluded.data_assinatura, data_assinatura),
+                     tipo_termo=COALESCE(excluded.tipo_termo, tipo_termo),
+                     processo=COALESCE(excluded.processo, processo)""",
                 {**row, "ncp": ncp})
             if row.get("valor_acrescido"):
                 acresc += row["valor_acrescido"]

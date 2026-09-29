@@ -69,10 +69,18 @@ def _boot_time() -> float:
     return 0.0
 
 
-def _lock_obsoleto(idade_max: float) -> bool:
+def _arquivo_lock(nome: str | None) -> Path:
+    """`nome=None` → data/browser.lock (o mutex do SEI); `nome="siafe"` → data/browser_siafe.lock. Dois nomes = no
+    máximo DOIS Chromiums na VM (2 vCPU): o SEI e o SIAFE não se bloqueiam, mas cada família serializa a sua —
+    em 11/09/2026 três browsers ao mesmo tempo (bombeiros + SIAFE + drill do painel) levaram o load a 19."""
+    return _LOCK if not nome else _LOCK.with_name(f"browser_{nome}.lock")
+
+
+def _lock_obsoleto(idade_max: float, arq: Path | None = None) -> bool:
     """Lock é obsoleto se foi criado ANTES do último boot, OU o dono morreu, OU é mais velho que idade_max."""
+    arq = arq or _LOCK
     try:
-        txt = _LOCK.read_text(encoding="utf-8").strip().split(":")
+        txt = arq.read_text(encoding="utf-8").strip().split(":")
         pid, ts = int(txt[0]), float(txt[1])
     except (OSError, ValueError, IndexError):
         return True
@@ -84,60 +92,64 @@ def _lock_obsoleto(idade_max: float) -> bool:
     return (time.time() - ts) > idade_max
 
 
-def _tentar_adquirir(idade_max: float) -> bool:
-    _LOCK.parent.mkdir(parents=True, exist_ok=True)
+def _tentar_adquirir(idade_max: float, arq: Path | None = None) -> bool:
+    arq = arq or _LOCK
+    arq.parent.mkdir(parents=True, exist_ok=True)
     try:
-        fd = os.open(str(_LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        fd = os.open(str(arq), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         os.write(fd, f"{os.getpid()}:{time.time()}".encode())
         os.close(fd)
         return True
     except FileExistsError:
-        if _lock_obsoleto(idade_max):
+        if _lock_obsoleto(idade_max, arq):
             try:
-                _LOCK.unlink()
+                arq.unlink()
             except OSError as exc:
                 logger.debug("lock obsoleto não removido: %s", exc)
-            return _tentar_adquirir(idade_max)
+            return _tentar_adquirir(idade_max, arq)
         return False
 
 
-def _liberar() -> None:
+def _liberar(arq: Path | None = None) -> None:
+    arq = arq or _LOCK
     try:
-        txt = _LOCK.read_text(encoding="utf-8").strip().split(":")
+        txt = arq.read_text(encoding="utf-8").strip().split(":")
         if int(txt[0]) == os.getpid():  # só o dono remove
-            _LOCK.unlink()
+            arq.unlink()
     except (OSError, ValueError, IndexError) as exc:
         logger.debug("liberação do browser_lock falhou: %s", exc)
 
 
 @contextmanager
-def browser_lock(*, espera_max: float = 600.0, idade_max: float = 1800.0, intervalo: float = 5.0):
+def browser_lock(*, espera_max: float = 600.0, idade_max: float = 1800.0, intervalo: float = 5.0, nome: str | None = None):
     """Lock EXCLUSIVO de browser (SÍNCRONO). Bloqueia até adquirir (ou `espera_max` s). Libera no fim.
     `idade_max`: locks mais velhos que isso (ou de PID morto) são órfãos e são quebrados.
     Uso:  with browser_lock(): ... lança Chromium ..."""
+    arq = _arquivo_lock(nome)
     fim = time.monotonic() + espera_max
-    while not _tentar_adquirir(idade_max):
+    while not _tentar_adquirir(idade_max, arq):
         if time.monotonic() >= fim:
             raise TimeoutError(f"browser_lock: não adquiriu em {espera_max}s (outro browser ativo)")
         time.sleep(intervalo)
     try:
         yield
     finally:
-        _liberar()
+        _liberar(arq)
 
 
 @asynccontextmanager
-async def browser_lock_async(*, espera_max: float = 600.0, idade_max: float = 1800.0, intervalo: float = 5.0):
+async def browser_lock_async(*, espera_max: float = 600.0, idade_max: float = 1800.0, intervalo: float = 5.0, nome: str | None = None):
     """Versão ASSÍNCRONA (não bloqueia o event loop) — p/ o reader SEI, que roda no server async."""
+    arq = _arquivo_lock(nome)
     fim = time.monotonic() + espera_max
-    while not _tentar_adquirir(idade_max):
+    while not _tentar_adquirir(idade_max, arq):
         if time.monotonic() >= fim:
             raise TimeoutError(f"browser_lock_async: não adquiriu em {espera_max}s (outro browser ativo)")
         await asyncio.sleep(intervalo)
     try:
         yield
     finally:
-        _liberar()
+        _liberar(arq)
 
 
 def aguardar_load(max_por_core: float = 1.5, espera_max: float = 300.0, intervalo: float = 5.0) -> bool:

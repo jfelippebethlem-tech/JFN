@@ -99,7 +99,13 @@ def checar() -> list[dict]:
                                     it["consulta"])
         else:
             idade = _idade_h(arq)
-        if pausado:
+        # SOB DEMANDA não tem frescor a vigiar. O DataJud é consulta por número CNJ conhecido —
+        # não coleta em lote, não tem tabela e nunca teve log; ficava como `ausente` (⚠️) para
+        # sempre, e alarme permanente é alarme desligado. Declarar a natureza da fonte é mais
+        # honesto que fingir que ela está atrasada.
+        if it.get("sob_demanda"):
+            status = "sob_demanda"
+        elif pausado:
             status = "pausado"
         elif idade is None:
             status = "ausente"
@@ -154,7 +160,7 @@ def _incidente_vault(eventos: list[str]) -> None:
 def main() -> int:
     res = checar()
     ruins = [r for r in res if r["status"] in ("stale", "ausente")]
-    ico = {"ok": "✅", "pausado": "⏸", "stale": "🔴", "ausente": "⚠️"}
+    ico = {"ok": "✅", "pausado": "⏸", "stale": "🔴", "ausente": "⚠️", "sob_demanda": "🔎"}
     for r in res:
         idade = "—" if r["idade_h"] is None else f"{r['idade_h']}h"
         print(f"{ico[r['status']]} {r['nome']:<22} [{r['grupo']}] idade={idade} slo={r['slo_h']}h")

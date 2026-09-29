@@ -117,3 +117,20 @@ def test_motivo_separa_rede_de_http(monkeypatch):
 
     monkeypatch.setattr(httpx, "AsyncClient", _cliente(_estoura))
     assert asyncio.run(P._get_consulta("/x", {}))[1] == "rede"
+
+
+# ── 10/09/2026: 204 é a FONTE respondendo "não há" — fato, não falha ────────────────────────────
+# O `--incremental` do jfn-intel-cache pedia 3× a mesma página vazia (2/4/6 s de sono) para a
+# maioria dos pares órgão×mês, e estourava as 2 h de TimeoutStartSec. Igual ao `_get_pncp`.
+def test_204_e_resposta_definitiva_sem_retentativa(monkeypatch, sem_sono):
+    chamadas = []
+
+    def efeito():
+        chamadas.append(1)
+        return _Resp(204)
+
+    monkeypatch.setattr(P.httpx, "AsyncClient", _cliente(efeito))
+    j = asyncio.run(P._consulta_retry("/contratos", {"pagina": 1}))
+    assert j == {"data": [], "totalPaginas": 0}
+    assert len(chamadas) == 1, "204 não pode ser retentado"
+    assert sem_sono == []

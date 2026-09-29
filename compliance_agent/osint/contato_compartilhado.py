@@ -87,8 +87,20 @@ def dominio_de(email: Any) -> str:
 
 
 def _de_servico(email: Any) -> bool:
-    dom = dominio_de(email)
-    return bool(dom) and any(s in dom for s in DOMINIOS_DE_SERVICO)
+    """Contato de prestador de serviço — e a PARTE LOCAL conta tanto quanto o domínio.
+
+    A regra olhava só o domínio, e contador com Gmail ou Outlook põe o nome na parte local:
+    `burgarellicontabilidade@outlook.com` uniu LUGOM e AVANTTE num mesmo certame como se fosse elo
+    societário. Medido na base de 6,17 milhões de estabelecimentos: **126.537 e-mails trazem
+    "contabil" na parte local com domínio livre**, contra 76.078 no domínio — a regra enxergava um
+    terço do problema.
+    """
+    e = str(email or "").strip().lower()
+    if not e or "@" not in e:
+        return False
+    local, dom = e.rsplit("@", 1)
+    return any(s in dom for s in DOMINIOS_DE_SERVICO) or any(
+        s in local for s in DOMINIOS_DE_SERVICO if "." not in s)
 
 
 def _tipo_email(n_empresas: int, email: str) -> tuple[str, str] | None:
@@ -102,6 +114,28 @@ def _tipo_email(n_empresas: int, email: str) -> tuple[str, str] | None:
                 f"e-mail compartilhado por {n_empresas} empresas — acima de {TETO_FANOUT_EMAIL} o "
                 "padrão é escritório de contabilidade, não grupo")
     return ("mesmo_email", "")
+
+
+def _por_raiz(cnpjs: list[str]) -> list[str]:
+    """Um representante por RAIZ, matriz primeiro. Filial não é outra empresa.
+
+    O filtro `substr(cnpj,1,8)<>?` já tirava as filiais do PRÓPRIO alvo, mas as do DESTINO
+    contavam uma a uma — e isso errava dos dois lados. Medido em 2026-08-06 sobre os 120 CNPJs
+    vencedores do acervo: das 252 arestas, **65 eram 21 pares de raiz repetidos por filial** — a
+    APPA SERVIÇOS TEMPORÁRIOS e a OBJETIVA SERVIÇOS TERCEIRIZADOS dividem o telefone 1147593220 e
+    apareciam 3× porque a OBJETIVA tem 3 filiais com o mesmo número. A aresta é UMA.
+
+    E o erro simétrico é pior: um telefone compartilhado com 6 filiais de UMA empresa media
+    fan-out 7 e era **descartado** como contato de prestador, quando é exatamente o vínculo que
+    se procura. Contar por raiz corrige a inflação e recupera o falso negativo.
+    """
+    vistas: dict[str, str] = {}
+    for c in cnpjs:
+        raiz = c[:8]
+        atual = vistas.get(raiz)
+        if atual is None or (c[8:12] == "0001" and atual[8:12] != "0001"):
+            vistas[raiz] = c
+    return list(vistas.values())
 
 
 def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = "") -> dict:
@@ -135,10 +169,15 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
 
         for ln in linhas:
             alvo = ln["cnpj"]
+            # MESMO NÚMERO NOS DOIS CAMPOS. Empresa que cadastra o telefone em `telefone1` e
+            # `telefone2` gerava a aresta DUAS vezes — foi o único par ainda repetido depois da
+            # agregação por raiz (11389387 × 11412771, telefone 2227851280).
+            ja_vistos: set[str] = set()
             for campo in ("telefone1", "telefone2"):
                 tel = normalizar_telefone(ln[campo])
-                if not tel:
+                if not tel or tel in ja_vistos:
                     continue
+                ja_vistos.add(tel)
                 if not telefone_valido(tel):
                     out["descartados"]["telefone_invalido"] += 1
                     continue
@@ -151,6 +190,7 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
                 pares = [r[0] for r in con.execute(
                     "SELECT cnpj FROM estabelecimentos WHERE telefone1=? AND substr(cnpj,1,8)<>?",
                     (ln[campo], alvo[:8])).fetchall()]
+                pares = _por_raiz(pares)
                 if not pares:
                     continue
                 if len(pares) + 1 > TETO_FANOUT:
@@ -172,6 +212,7 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
             pares = [r[0] for r in con.execute(
                 "SELECT cnpj FROM estabelecimentos WHERE lower(correio_eletronico)=? "
                 "AND substr(cnpj,1,8)<>?", (email, alvo[:8])).fetchall()]
+            pares = _por_raiz(pares)
             if not pares:
                 continue
             classificado = _tipo_email(len(pares) + 1, email)
@@ -210,6 +251,34 @@ def vinculos_por_contato(cnpjs: list[str] | tuple[str, ...], *, db_estab: str = 
                     "o fiscal, como o co-endereço por prédio já fez."),
     }
     return out
+
+
+
+# ESTRUTURA NÃO É ELO OCULTO. Ao percorrer 850 credores, as empresas mais ligadas por contato eram
+# CONSÓRCIOS — e consórcio divide telefone e e-mail com as consorciadas POR DESENHO: a lei o define
+# como reunião de empresas para um empreendimento, sem personalidade própria. O mesmo vale para a
+# SCP (o sócio ostensivo é quem aparece) e para o fundo público (que não é empresa).
+#
+# Medido em 2026-08-07 sobre 761 arestas de contato: 69 (9,1%) citam "CONSORCIO" no nome, e entre
+# os nós há 59 de natureza 2151 (consórcio), 53 de 2127 (SCP) e 79 de 1333 (fundo público).
+#
+# O corte é pela NATUREZA JURÍDICA, nunca pelo nome — "CONSTRUTORA METROPOLITANA S.A. SCP ACADEMIA
+# DE BOMBEIROS" traz as duas palavras e é o que ela for pelo código, não pelo rótulo.
+_NATUREZA_ESTRUTURAL = {
+    "2151": "consórcio de sociedades — divide contato com as consorciadas por desenho",
+    "2127": "sociedade em conta de participação — quem aparece é o sócio ostensivo",
+    "2143": "cooperativa — o contato costuma ser o da central",
+}
+
+
+def explicacao_estrutural(natureza_a: str, natureza_b: str) -> str:
+    """Por que estas duas dividirem contato pode ser a forma jurídica, não a mão por trás."""
+    for n in (str(natureza_a or ""), str(natureza_b or "")):
+        if n.startswith("1"):
+            return "ente público ou fundo — não é empresa; o contato é o da unidade"
+        if n in _NATUREZA_ESTRUTURAL:
+            return _NATUREZA_ESTRUTURAL[n]
+    return ""
 
 
 def cobertura(db_estab: str = "") -> dict:

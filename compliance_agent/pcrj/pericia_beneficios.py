@@ -46,7 +46,7 @@ _VINCULO_COMISSIONADO = ("livre nomeação", "livre nomeacao", "requisitado")
 #     explicitamente "não informada pela fonte" — nunca se presume comissionamento.
 # Padrão de cargo em comissão (mesma família do _RE_COMISSIONADO canônico), com VETOS para os
 # falsos positivos conhecidos ("AGENTE DE APOIO A EDUCACAO ESPECIAL", "ESPECIALIDADE", estágios).
-_RE_CARGO_COMISSAO = re.compile(r"^ESPECIAL\b|\bDAS\b|\bDAI\b|COMISS|^ASSESSOR", re.IGNORECASE)
+_RE_CARGO_COMISSAO = re.compile(r"^ESPECIAL\b|\bDAS\b|\bDAI\b|COMISS|^ASSESSOR|^ASSISTENTE ESPECIAL", re.IGNORECASE)
 _RE_CARGO_VETO = re.compile(r"EDUCA[CÇ][AÃ]O ESPECIAL|ESPECIALIDADE|ESTAGI", re.IGNORECASE)
 
 

@@ -2,7 +2,7 @@
 """
 siafe_sweep_ugs — varre as OBs por UG Emitente (fura o teto de 1000) p/ um conjunto de UGs × anos.
 Usa a receita §8b validada: coletar_por_ug (typeahead + Tab). Resumível por (ug,ano) via checkpoint.
-Detecta CAP (colhidas>=990 → UG grande, precisa sub-filtro por período — sinaliza p/ fase 2).
+Detecta CAP (colhidas>=980, platô medido → UG grande, precisa sub-filtro por período — sinaliza p/ fase 2).
 
 Resolve "Casa Civil" lendo as opções do selUg ao vivo (1 login). Demais por código fixo do dropdown.
 Uso (background): PYTHONPATH=. .venv/bin/python -m tools.siafe_sweep_ugs
@@ -97,7 +97,9 @@ async def main():
                 r = await M.coletar_por_ug(ano, ug)
             except Exception as e:  # noqa: BLE001
                 r = {"ok": False, "erro": f"{type(e).__name__}: {str(e)[:80]}"}
-            cap = r.get("colhidas", 0) >= 990
+            # platô MEDIDO (ver siafe_ob_orcamentaria._fatia_capou): nenhuma das 5.893
+            # fatias de junho chegou a 990; 76 pararam em 989/984.
+            cap = r.get("colhidas", 0) >= M._FATIA_CAPOU
             r["cap_atingido"] = cap
             ck[chave] = r; _ck_save(ck)
             flag = " ⚠️CAP(precisa sub-filtro por período)" if cap else ""

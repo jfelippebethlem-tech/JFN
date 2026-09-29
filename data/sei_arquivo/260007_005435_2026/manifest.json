@@ -3,7 +3,28 @@
  "gerado_em": "2026-07-06T07:29:27+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_005435_2026",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho de solicita o de liquida o de d",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 1793,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
@@ -11,7 +32,7 @@
   "execucao": 0,
   "despesa": 0,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 2,
   "indefinida": 0
  },
  "lacunas": [
@@ -28,5 +49,9 @@
    "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 0,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }
