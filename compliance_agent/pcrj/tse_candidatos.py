@@ -38,7 +38,7 @@ _URL = "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_ca
 # Municipais do Rio: 2012, 2016, 2020, 2024 · gerais: 2014, 2018, 2022. O dono pediu "as
 # eleições anteriores se possível" — a série vai a 2012, que é o limite em que o layout do TSE
 # ainda traz `NM_UE` como município no arquivo estadual.
-ANOS_PADRAO = [2024, 2022, 2020, 2018, 2016, 2014, 2012]
+ANOS_PADRAO = [2026, 2024, 2022, 2020, 2018, 2016, 2014, 2012]   # 2026: eleição geral em curso
 _RIO = "RIO DE JANEIRO"
 
 # valores "vazios/redigidos" do TSE que não devem virar dado
@@ -80,78 +80,99 @@ def _nomes_servidores(con, *, com_prefeitura: bool = True) -> set[str]:
     return alvos
 
 
-def _processar_ano(ano: int, alvos: set[str], con, uf_arquivo: str = "RJ") -> int:
-    """Baixa o zip do ano, streama o CSV do estado, filtra pelos nomes-alvo e grava. Retorna nº."""
+def _csv_do_ano(ano: int, uf_arquivo: str = "RJ") -> bytes | None:
+    """Bytes do CSV do estado: cache local primeiro; senão baixa o zip do TSE e guarda no cache."""
+    from compliance_agent.pcrj.comissionados_candidatos import _cache_path
+    cache = _cache_path(ano) if uf_arquivo == "RJ" else None
+    if cache is not None and cache.exists():
+        print(f"  [{ano}] usando CACHE local ({cache.name})", flush=True)
+        return cache.read_bytes()
     try:
         r = requests.get(_URL.format(ano=ano), verify=False, timeout=300)
         r.raise_for_status()
-    except requests.RequestException as exc:
-        print(f"  [{ano}] ERRO download: {exc}", flush=True)
+        with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+            suf = f"_{uf_arquivo}.csv".lower()
+            alvo_csv = next((nm for nm in z.namelist() if nm.lower().endswith(suf)), None)
+            if not alvo_csv:
+                print(f"  [{ano}] sem CSV _{uf_arquivo}", flush=True)
+                return None
+            bruto = z.read(alvo_csv)
+    except (requests.RequestException, zipfile.BadZipFile) as exc:
+        print(f"  [{ano}] ERRO download: {exc} — sem cache local", flush=True)
+        return None
+    if cache is not None:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_bytes(bruto)
+    return bruto
+
+
+def _processar_ano(ano: int, alvos: set[str], con, uf_arquivo: str = "RJ") -> int:
+    """Lê o CSV do estado do ano (cache local ou download), filtra pelos nomes-alvo e grava. Retorna nº.
+
+    29/09/2026: o CDN do TSE recusa (403) os IPs de nuvem — o CSV do RJ passa a vir do cache
+    `data/tse_cache/consulta_cand_{ano}_RJ.csv` (o mesmo de `comissionados_candidatos`), preenchido pelo
+    download quando ele funciona ou por `tools/tse_importar.py` com o arquivo trazido de fora da nuvem."""
+    bruto = _csv_do_ano(ano, uf_arquivo)
+    if bruto is None:
         return 0
     n = 0
     agora = datetime.now(timezone.utc).isoformat()
-    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        suf = f"_{uf_arquivo}.csv".lower()
-        alvo_csv = next((nm for nm in z.namelist() if nm.lower().endswith(suf)), None)
-        if not alvo_csv:
-            print(f"  [{ano}] sem CSV _{uf_arquivo}", flush=True)
+    with io.BytesIO(bruto) as fh:
+        texto = io.TextIOWrapper(fh, encoding="latin-1", newline="")
+        leitor = csv.reader(texto, delimiter=";")
+        header = next(leitor, None)
+        if not header:
             return 0
-        with z.open(alvo_csv) as fh:
-            texto = io.TextIOWrapper(fh, encoding="latin-1", newline="")
-            leitor = csv.reader(texto, delimiter=";")
-            header = next(leitor, None)
-            if not header:
-                return 0
-            ix = _idx(header)
-            c_uf = ix.get("SG_UF")
-            c_nome = ix.get("NM_CANDIDATO")
-            c_munic = ix.get("NM_UE")
-            if c_uf is None or c_nome is None or c_munic is None:
-                print(f"  [{ano}] cabeçalho inesperado — pulando", flush=True)
-                return 0
-            c_urna = ix.get("NM_URNA_CANDIDATO", ix.get("NM_URNA"))
-            c_cargo = ix.get("DS_CARGO")
-            c_part = ix.get("SG_PARTIDO")
-            c_sit = ix.get("DS_SITUACAO_CANDIDATURA", ix.get("DS_SITUACAO"))
-            c_nasc = ix.get("SG_UF_NASCIMENTO")
-            c_munnasc = ix.get("NM_MUNICIPIO_NASCIMENTO")   # existe em anos antigos (2016)
-            c_titulo = ix.get("NR_TITULO_ELEITORAL_CANDIDATO")  # anos que não redigem
-            c_res = ix.get("DS_SIT_TOT_TURNO")
-            c_anoele = ix.get("ANO_ELEICAO")
+        ix = _idx(header)
+        c_uf = ix.get("SG_UF")
+        c_nome = ix.get("NM_CANDIDATO")
+        c_munic = ix.get("NM_UE")
+        if c_uf is None or c_nome is None or c_munic is None:
+            print(f"  [{ano}] cabeçalho inesperado — pulando", flush=True)
+            return 0
+        c_urna = ix.get("NM_URNA_CANDIDATO", ix.get("NM_URNA"))
+        c_cargo = ix.get("DS_CARGO")
+        c_part = ix.get("SG_PARTIDO")
+        c_sit = ix.get("DS_SITUACAO_CANDIDATURA", ix.get("DS_SITUACAO"))
+        c_nasc = ix.get("SG_UF_NASCIMENTO")
+        c_munnasc = ix.get("NM_MUNICIPIO_NASCIMENTO")   # existe em anos antigos (2016)
+        c_titulo = ix.get("NR_TITULO_ELEITORAL_CANDIDATO")  # anos que não redigem
+        c_res = ix.get("DS_SIT_TOT_TURNO")
+        c_anoele = ix.get("ANO_ELEICAO")
 
-            def cell(row, i):
-                return row[i] if (i is not None and i < len(row)) else ""
+        def cell(row, i):
+            return row[i] if (i is not None and i < len(row)) else ""
 
-            for row in leitor:
-                if len(row) <= c_munic or len(row) <= c_nome or len(row) <= c_uf:
-                    continue
-                if (row[c_uf] or "").strip().upper() != "RJ":
-                    continue                    # fronteira RJ-only (defensivo; o arquivo já é do RJ)
-                nn = normalizar(row[c_nome])
-                if nn not in alvos:
-                    continue
-                munic = (cell(row, c_munic) or "").strip().upper()
-                resultado = _limpo(cell(row, c_res))
-                ru = resultado.upper()
-                eleito = 1 if ("ELEIT" in ru and "NÃO" not in ru and "NAO" not in ru) else 0
-                try:
-                    ano_ele = int(cell(row, c_anoele) or ano)
-                except ValueError:
-                    ano_ele = ano
-                uf_alist = uf_do_titulo(cell(row, c_titulo))
-                con.execute(
-                    """INSERT OR IGNORE INTO tse_candidatura
-                       (nome_norm,nome_tse,nome_urna,ano,cargo,municipio,uf,partido,
-                        situacao,outra_cidade,uf_nascimento,resultado,eleito,
-                        municipio_nascimento,uf_alistamento,coletado_em)
-                       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (nn, cell(row, c_nome).strip(), cell(row, c_urna).strip(),
-                     ano_ele, cell(row, c_cargo).strip(), munic, cell(row, c_uf).strip(),
-                     cell(row, c_part).strip(), _limpo(cell(row, c_sit)),
-                     1 if munic and munic != _RIO else 0,
-                     _limpo(cell(row, c_nasc)), resultado, eleito,
-                     _limpo(cell(row, c_munnasc)), uf_alist, agora))
-                n += 1
+        for row in leitor:
+            if len(row) <= c_munic or len(row) <= c_nome or len(row) <= c_uf:
+                continue
+            if (row[c_uf] or "").strip().upper() != "RJ":
+                continue                    # fronteira RJ-only (defensivo; o arquivo já é do RJ)
+            nn = normalizar(row[c_nome])
+            if nn not in alvos:
+                continue
+            munic = (cell(row, c_munic) or "").strip().upper()
+            resultado = _limpo(cell(row, c_res))
+            ru = resultado.upper()
+            eleito = 1 if ("ELEIT" in ru and "NÃO" not in ru and "NAO" not in ru) else 0
+            try:
+                ano_ele = int(cell(row, c_anoele) or ano)
+            except ValueError:
+                ano_ele = ano
+            uf_alist = uf_do_titulo(cell(row, c_titulo))
+            con.execute(
+                """INSERT OR IGNORE INTO tse_candidatura
+                   (nome_norm,nome_tse,nome_urna,ano,cargo,municipio,uf,partido,
+                    situacao,outra_cidade,uf_nascimento,resultado,eleito,
+                    municipio_nascimento,uf_alistamento,coletado_em)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (nn, cell(row, c_nome).strip(), cell(row, c_urna).strip(),
+                 ano_ele, cell(row, c_cargo).strip(), munic, cell(row, c_uf).strip(),
+                 cell(row, c_part).strip(), _limpo(cell(row, c_sit)),
+                 1 if munic and munic != _RIO else 0,
+                 _limpo(cell(row, c_nasc)), resultado, eleito,
+                 _limpo(cell(row, c_munnasc)), uf_alist, agora))
+            n += 1
     con.commit()
     return n
 
