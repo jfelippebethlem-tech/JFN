@@ -43,3 +43,22 @@ def test_confianca_rebaixa_nome_comum_e_homonimo():
     cands = [{"cidade": c} for c in ("RIO", "NITEROI", "MAGE")]
     conf, motivos = M._confianca("JOAO PEDRO ALVES MOREIRA", set(), cands, 1)
     assert conf == "MÉDIA" and motivos
+
+
+def test_saida_da_folha_em_junho_2026_vai_ao_capitulo_da_desincompatibilizacao(tmp_path):
+    con = _base(tmp_path)
+    nn = "CARLOS EDUARDO MOTTA RIBEIRO"
+    con.execute("INSERT INTO tse_candidatura VALUES (?,?,'',2024,'VEREADOR','RIO DE JANEIRO','PL','','SUPLENTE',0,0)",
+                (nn, nn))
+    for comp in ("202501", "202606"):
+        con.execute("INSERT INTO pcrj_folha_pref VALUES (?,?,'0789','UA','SMS','NORMAL','500,00',?)", (nn, nn, comp))
+    con.execute("INSERT INTO pcrj_cargo_portal VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (nn, "202606", "789", nn, "ESPECIAL", "L", "02/01/2025", "", "F", "", "x"))
+    con.commit()
+    con.close()
+    ctx = M.montar_ctx(tmp_path / "pcrj.db")
+    titulos = [s["titulo"] for s in ctx["secoes"]]
+    assert any(t.startswith("6. Exonerados") and t.endswith("(1)") for t in titulos)
+    assert any(t.startswith("7. Continuam nomeados") and t.endswith("(1)") for t in titulos)
+    cap6 = next(s["html"] for s in ctx["secoes"] if s["titulo"].startswith("6."))
+    assert "CARLOS EDUARDO MOTTA RIBEIRO" in cap6 and "saiu da folha em 06/2026" in cap6

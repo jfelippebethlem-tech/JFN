@@ -21,6 +21,8 @@ from compliance_agent.pcrj import db as _db
 from compliance_agent.pcrj.nomes import normalizar
 
 INICIO = "202501"
+# Eleições gerais 2026: 1º turno 04/10/2026 → comissionado exonerado até 04/07/2026 (LC 64/90, art. 1º, II, l; Súm. TSE 54)
+DESINC_INI, DESINC_PRAZO, DESINC_FIM = "20260601", "20260704", "20260731"
 _NUM = "CAST(replace(replace(remun_bruta,'.',''),',','.') AS REAL)"
 
 
@@ -264,7 +266,28 @@ def montar_ctx(db_path=None) -> dict:
         flags = f"<span class='flag' style='background:#eee;color:#555'>confiança {conf}</span>"
         if motivos:
             flags += f"<br><span class='dim'>{_e('; '.join(motivos))}</span>"
-        linhas.append((("ALTA", "MÉDIA", "BAIXA").index(conf), p["nome"],
+        exo = sorted(_data(v["exoneracao"]) for v in p["vinculos"] if _data(v["exoneracao"]))
+        na_janela = [d for d in exo if DESINC_INI <= d <= DESINC_FIM]
+        ativo_agora = any(v["ultima"] == ultima and not v["exoneracao"] for v in p["vinculos"])
+        # o portal quase nunca publica a data de exoneração no último mês pago (sai depois): a SAÍDA DA FOLHA
+        # (última competência do vínculo comissionado) é o sinal observável; a data exata entra quando existe
+        saida = max(v["ultima"] for v in p["vinculos"])
+        p["saida"] = None if ativo_agora else saida
+        if na_janela or (not ativo_agora and DESINC_INI[:6] <= saida <= DESINC_FIM[:6]):
+            grupo = "desinc"
+            p["exo_desinc"] = na_janela[-1] if na_janela else None
+            if na_janela:
+                d = na_janela[-1]
+                flags += (f"<br><span class='flag'>exonerado em {d[6:]}/{d[4:6]}/{d[:4]}"
+                          + (" — dentro do prazo" if d <= DESINC_PRAZO else " — APÓS o prazo de 04/07") + "</span>")
+            else:
+                flags += f"<br><span class='flag'>saiu da folha em {_comp(saida)} (data do ato não publicada)</span>"
+        elif ativo_agora:
+            grupo = "ativo"
+        else:
+            grupo = "demais"
+        p["grupo"] = grupo
+        linhas.append((("ALTA", "MÉDIA", "BAIXA").index(conf), p["nome"], grupo,
                        [f"<b>{_e(p['nome'])}</b><br>{flags}", vinc,
                         "<br>".join(_cand_txt(c, adm) for c in p["cands"]) or "—"]))
     linhas.sort(key=lambda x: (x[0], x[1]))
@@ -274,11 +297,20 @@ def montar_ctx(db_path=None) -> dict:
     def _cnt(lst, so_confiaveis=True):
         return sum(1 for p in lst if not so_confiaveis or p["conf"] != "BAIXA")
 
+    g = {k: [x for x in linhas if x[2] == k] for k in ("desinc", "ativo", "demais")}
+    ps_g = {k: [p for p in ps if p["grupo"] == k] for k in g}
+    jun = [p for p in ps_g["desinc"] if p["saida"] == DESINC_INI[:6] or (p["exo_desinc"] or "")[:6] == DESINC_INI[:6]]
+    jul = [p for p in ps_g["desinc"] if p not in jun]
+    saidas_mes = Counter(p["saida"] for p in ps if p.get("saida"))
+
     sumario = _tabela(["Indicador", "Total", "Confiança ALTA/MÉDIA"], [
         ["Comissionados em 2025–2026 que já foram candidatos", _int(n), _int(_cnt(ps))],
         ["… nomeados (admissão) em 2025 ou 2026", _int(len(nomeados_janela)), _int(_cnt(nomeados_janela))],
         [f"… ainda na folha em {_comp(ultima)}", _int(len(ativos)), _int(_cnt(ativos))],
         ["… saíram da folha dentro da janela", _int(len(exonerados)), _int(_cnt(exonerados))],
+        ["… saíram na janela da desincompatibilização (06–07/2026)", _int(len(ps_g["desinc"])),
+         _int(_cnt(ps_g["desinc"]))],
+        [f"… continuam nomeados ({_comp(ultima)}, sem exoneração)", _int(len(ps_g["ativo"])), _int(_cnt(ps_g["ativo"]))],
         ["… candidatos em OUTRA cidade do RJ", "—", _int(len(fora))],
         ["… eleitos em alguma candidatura (titular)", _int(len(eleitos)), _int(_cnt(eleitos))],
         ["Confiança ALTA · MÉDIA · BAIXA", f"{conf_n['ALTA']} · {conf_n['MÉDIA']} · {conf_n['BAIXA']}", "—"],
@@ -299,8 +331,33 @@ def montar_ctx(db_path=None) -> dict:
                                   f"({_e(c['partido'] or '—')}) — {_e(c['resultado'])}" for c in p["cands"] if c["eleito"]),
                       "<br>".join(f"{_e(v['cargo'])} · {_e(v['orgao'] or '')}" for v in p["vinculos"])]
                      for p in sorted(eleitos, key=lambda p: (("ALTA", "MÉDIA", "BAIXA").index(p["conf"]), p["nome"]))])
-    lista = _tabela(["Nome · confiança", "Vínculo(s) comissionado(s) em 2025–2026",
-                     "Candidatura(s) — ano · cargo · cidade · partido «urna» — resultado"], [x[2] for x in linhas])
+    cab = ["Nome · confiança", "Vínculo(s) comissionado(s) em 2025–2026",
+           "Candidatura(s) — ano · cargo · cidade · partido «urna» — resultado"]
+    alerta = "style='border-left:4px solid #9b1c1c;background:#fbeaea;padding:8px 12px;margin:8px 0'"
+    cap_desinc = (
+        f"<p {alerta}><b>Prazo legal.</b> Eleições gerais de 2026: 1º turno em <b>04/10/2026</b>. O ocupante de cargo em "
+        "comissão que pretende concorrer deve ser <b>exonerado</b> até <b>três meses antes do pleito — 04/07/2026</b> "
+        "(LC 64/1990, art. 1º, II, <i>l</i>; Súmula TSE nº 54: a desincompatibilização do comissionado \"pressupõe a "
+        "exoneração do cargo comissionado, e não apenas seu afastamento de fato\"). Aqui: comissionados que já foram "
+        "candidatos e saíram da folha em <b>06/2026 ou 07/2026</b> (ou com exoneração publicada nesse período). O portal "
+        "raramente publica a data do ato no último mês pago; quando a data existe, ela aparece no nome.</p>"
+        + _tabela(["Recorte", "Pessoas", "Confiança ALTA/MÉDIA"], [
+            ["Saíram em 06/2026 (mês anterior ao prazo)", _int(len(jun)), _int(_cnt(jun))],
+            ["Saíram em 07/2026 (mês do prazo — até 04/07 é tempestivo)", _int(len(jul)), _int(_cnt(jul))]], {1, 2})
+        + "<p><b>Saídas da folha por mês</b> (comissionados que já foram candidatos — o pico antes do prazo é o padrão "
+        "da desincompatibilização):</p>"
+        + _tabela(["Última competência na folha", "Pessoas que saíram", ""],
+                  [[_comp(m), _int(k), "<span style='display:inline-block;height:9px;background:#9b1c1c;width:"
+                    f"{min(260, 12 * k)}px'></span>"] for m, k in sorted(saidas_mes.items())], {1})
+        + "<p class='dim'>Saída nesta janela é forte indício de pré-candidatura em 2026, não prova: a lista de "
+        "candidatos de 2026 do TSE ainda não foi cruzada (download bloqueado para a nuvem). Quem foi exonerado depois de "
+        "04/07 e registrou candidatura está sujeito a impugnação por desincompatibilização intempestiva.</p>"
+        + _tabela(cab, [x[3] for x in g["desinc"]]))
+    cap_ativo = (
+        f"<p {alerta}><b>Continuam nomeados.</b> Na folha de {_comp(ultima)} e sem data de exoneração no portal. Se algum "
+        "deles tiver registrado candidatura em 2026, não se desincompatibilizou no prazo — cruzamento a fazer assim "
+        "que a lista de candidatos de 2026 do TSE chegar.</p>" + _tabela(cab, [x[3] for x in g["ativo"]]))
+    lista = _tabela(cab, [x[3] for x in g["demais"]])
     pend = cob["consultas"] - cob["consultas_feitas"]
     metodo = (
         "<p><b>Universo.</b> Todas as candidaturas do Estado do Rio de Janeiro de 2012 a 2024 (TSE, dados abertos, "
@@ -341,8 +398,11 @@ def montar_ctx(db_path=None) -> dict:
             {"titulo": f"4. Candidatos em outras cidades do RJ ({len(por_cidade)} cidades · confiança alta/média)",
              "html": cidades},
             {"titulo": f"5. Eleitos ({len(eleitos)})", "html": eleit},
-            {"titulo": f"6. Lista nominal completa ({_int(n)}) — por confiança, depois alfabética", "html": lista},
-            {"titulo": "7. Método, cobertura e limitações", "html": metodo},
+            {"titulo": f"6. Exonerados na desincompatibilização eleitoral de 2026 ({_int(len(ps_g['desinc']))})",
+             "html": cap_desinc},
+            {"titulo": f"7. Continuam nomeados até {_comp(ultima)} ({_int(len(ps_g['ativo']))})", "html": cap_ativo},
+            {"titulo": f"8. Demais — saíram em outros momentos ({_int(len(ps_g['demais']))})", "html": lista},
+            {"titulo": "9. Método, cobertura e limitações", "html": metodo},
         ],
         "proveniencia": [
             {"dado": "Folha mensal em bloco", "estado": "REAL", "fonte": "contrachequedoc.rio.gov.br",
