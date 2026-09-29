@@ -32,8 +32,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _URL = "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_{ano}.zip"
 _C = {"ano": 2, "uf": 10, "munic": 12, "cargo": 14, "nome": 17}
 ANOS_MUNICIPAIS = [2016, 2020, 2024]
-# Comissionado na Prefeitura do Rio: cargo em comissão. 'ESPECIAL' é o rótulo dominante.
-_RE_COMISSIONADO = re.compile(r"\bESPECIAL\b|\bDAS\b|\bDAI\b|COMISS|ASSESSOR", re.IGNORECASE)
+# Comissionado na Prefeitura do Rio: classificador canônico (pericia_beneficios). A regex local antiga
+# (\bESPECIAL\b em qualquer posição) gravava "AGENTE DE APOIO A EDUCACAO ESPECIAL" — cargo EFETIVO — como
+# comissionado: 20 registros / 16 pessoas, removidos em 29/09/2026.
+from compliance_agent.pcrj.pericia_beneficios import _cargo_comissionado  # noqa: E402
 _ADM_MIN = 2021
 
 
@@ -123,7 +125,7 @@ def coletar(anos: list[int] | None = None, apenas_municipio: str | None = "RIO D
             for row in linhas:
                 if normalizar(row.get("nome", "")) != nn:
                     continue
-                if not _RE_COMISSIONADO.search(row.get("cargo", "")):
+                if not _cargo_comissionado(row.get("cargo", "")):
                     continue                       # só comissionados
                 adm_ano = _ano(row.get("admissao", ""))
                 if not adm_ano or adm_ano < _ADM_MIN:
@@ -257,7 +259,7 @@ def coletar_mensal(anos: list[int] | None = None,
             for row in sess.consultar_nome(info["nome"], mm, aa) or []:
                 if normalizar(row.get("nome", "")) != nn:
                     continue
-                if not _RE_COMISSIONADO.search(row.get("cargo", "")):
+                if not _cargo_comissionado(row.get("cargo", "")):
                     continue
                 adm_ano = _ano(row.get("admissao", ""))
                 if not adm_ano or adm_ano < _ADM_MIN:
