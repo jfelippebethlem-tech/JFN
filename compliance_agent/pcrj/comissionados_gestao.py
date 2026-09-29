@@ -196,10 +196,10 @@ def pessoas(con) -> tuple[list[dict], dict]:
         d = pr[(nn, mat)]
         exo = c["exoneracao"] or exo_antiga.get(mat, "")
         adm8 = _data(c["admissao"])
-        ini = max(INICIO, adm8[:6]) if adm8 else d["primeira"]
-        ini = max(ini, min(base)) if base else ini
         meses = set(d["meses"])
-        lac = continuidade(meses, min(ini, d["primeira"]), d["ultima"], base)
+        # continuidade conta do 1º PAGAMENTO, não da admissão: nomeado no fim do mês só recebe no mês seguinte
+        # (1ª versão contava da admissão e marcou 599 de 735 com "interrupção" — era o atraso normal da folha)
+        lac = continuidade(meses, d["primeira"], d["ultima"], base)
         p = por.setdefault(nn, {"nn": nn, "nome": c["nome"], "vinculos": [], "cands": cands.get(nn, []),
                                 "mats_nome": mats_nome.get(nn, 0)})
         p["vinculos"].append({
@@ -211,8 +211,10 @@ def pessoas(con) -> tuple[list[dict], dict]:
             "bruto_paes": sum(v for k, v in d["meses"].items() if k <= PAES_ULTIMA_COMP),
             "bruto_cav": sum(v for k, v in d["meses"].items() if k > PAES_ULTIMA_COMP),
             "na_transicao": PAES_ULTIMA_COMP in meses and any(k > PAES_ULTIMA_COMP for k in meses),
-            "paes_inteiro": INICIO in meses and PAES_ULTIMA_COMP in meses
-                            and not continuidade(meses, INICIO, PAES_ULTIMA_COMP, base),
+            # toda a gestão Paes: já nomeado em 01/2021 (1º pagamento até 02/2021) e sem interrupção até 03/2026
+            "paes_inteiro": bool(adm8) and adm8 <= INICIO + "31" and d["primeira"] <= _prox(INICIO)
+                            and PAES_ULTIMA_COMP in meses
+                            and not continuidade(meses, d["primeira"], PAES_ULTIMA_COMP, base),
             "gestao": ("anterior a 2021" if adm8 and adm8 < INICIO + "01" else
                        "Cavaliere" if adm8 and adm8 >= PAES_FIM else "Paes" if adm8 else "admissão não publicada"),
         })
@@ -292,11 +294,11 @@ def _vinc_txt(v: dict, ultima: str) -> str:
     else:
         fim = f"<b>saída da folha em {_comp(v['ultima'])}</b> (data do ato não publicada)"
     if v["lacunas"]:
-        cont = f"<span class='flag'>interrupções: {_e(_faixas(v['lacunas']))}</span>"
+        cont = f"<span class='flag'>meses sem pagamento: {_e(_faixas(v['lacunas']))}</span>"
     elif v["paes_inteiro"]:
         cont = "<span class='flag' style='background:#1f4e79;color:#fff'>contínuo em TODA a gestão Paes</span>"
     else:
-        cont = "contínuo (sem interrupção na folha)"
+        cont = "pago em todos os meses do período"
     trans = " · <span class='flag'>atravessou a transição Paes→Cavaliere</span>" if v["na_transicao"] else ""
     return (f"<b>{_e(v['cargo'])}</b> · mat. {_e(v['matricula'])}<br>{_e(v['orgao'] or '')}"
             f"{(' · ' + _e(v['lotacao'])) if v['lotacao'] else ''}"
@@ -436,7 +438,7 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
         ["… no cargo durante TODA a gestão Paes (01/2021–03/2026, sem interrupção)", _int(len(paes_inteiro)),
          _int(_cnt(paes_inteiro))],
         ["… atravessaram a transição Paes → Cavaliere", _int(len(transicao)), _int(_cnt(transicao))],
-        ["… com interrupção(ões) no vínculo", _int(len(com_lacuna)), _int(_cnt(com_lacuna))],
+        ["… com mês(es) sem pagamento no meio do vínculo", _int(len(com_lacuna)), _int(_cnt(com_lacuna))],
         ["… nomeados até 6 meses depois de uma eleição em que não se elegeram",
          _int(len({x[0]['nn'] for x in pos_eleicao})), _int(_cnt(list({x[0]['nn']: x[0] for x in pos_eleicao}.values())))],
         ["… com candidatura registrada em 2026", _int(len(cand26)), _int(_cnt(cand26))],
@@ -476,8 +478,10 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
 
     cap_cont = (
         f"<p {info}>Continuidade medida mês a mês na folha em bloco. <b>Contínuo em toda a gestão Paes</b> = presente "
-        "em todas as competências de 01/2021 a 03/2026. <b>Interrupção</b> = mês em que a base tem folha e a matrícula "
-        "não aparece (licença sem vencimento, exoneração e renomeação, ou falha pontual da fonte).</p>"
+        "desde o 1º pagamento (nomeados até 01/2021) até 03/2026, sem mês vazio. <b>Mês sem pagamento</b> = mês em que a "
+        "base tem folha e a matrícula não aparece — conferido por amostra no portal de remuneração, que também não "
+        "traz pagamento nesses meses. Pode ser exoneração e renomeação na mesma matrícula, licença sem vencimento ou "
+        "pagamento acumulado no mês seguinte; não é, por si, irregularidade.</p>"
         + "<p><b>A. No cargo durante toda a gestão Paes</b></p>"
         + _tabela(["Nome · confiança", "Cargo · órgão", "Início", "Situação atual"],
                   [[f"{_e(p['nome'])}<br><span class='dim'>{p['conf']}</span>",
@@ -485,7 +489,7 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
                     "<br>".join(_e(v["admissao"] or "—") for v in p["vinculos"] if v["paes_inteiro"]),
                     "em curso" if any(v["em_curso"] for v in p["vinculos"]) else f"saiu em {_comp(p['saida'])}"]
                    for p in _ord(paes_inteiro)])
-        + "<p><b>B. Vínculos com interrupção</b></p>"
+        + "<p><b>B. Vínculos com mês sem pagamento</b></p>"
         + _tabela(["Nome · confiança", "Cargo · órgão", "Período na folha", "Meses sem a matrícula"],
                   [[f"{_e(p['nome'])}<br><span class='dim'>{p['conf']}</span>",
                     "<br>".join(f"{_e(v['cargo'])} · {_e(v['orgao'] or '')}" for v in p["vinculos"] if v["lacunas"]),
@@ -498,12 +502,15 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
             f"<p {alerta}><b>Candidatos de 2026 que ocuparam cargo em comissão na Prefeitura.</b> Prazo de "
             "desincompatibilização: <b>04/07/2026</b> (LC 64/1990, art. 1º, II, <i>l</i>; Súmula TSE nº 54 — exige "
             "<b>exoneração</b>, não mero afastamento). Quem segue nomeado depois do prazo expõe o registro de "
-            "candidatura a impugnação.</p>"
+            "candidatura a impugnação. No arquivo do TSE usado, a <b>situação do registro de 2026 ainda não foi "
+            "publicada</b> (campo \"#NE\" em todas as 2.055 candidaturas do RJ): trata-se de <b>pedido de registro</b>; "
+            "deferimento, indeferimento ou renúncia precisam ser conferidos no DivulgaCandContas.</p>"
             + _tabela(["Situação", "Pessoas", "Confiança ALTA/MÉDIA"], [
                 [f"<b>Continuam nomeados em {_comp(ultima)}</b>", _int(len(c26_ativos)), _int(_cnt(c26_ativos))],
                 ["Saíram na janela 06–07/2026", _int(len(c26_desinc)), _int(_cnt(c26_desinc))],
                 ["Saíram antes de 06/2026", _int(len(c26_antes)), _int(_cnt(c26_antes))]], {1, 2})
-            + _tabela(cab, [p["linha"] for p in _ord(cand26)]))
+            + _tabela(cab, [p["linha"] for p in sorted(cand26, key=lambda p: (("ativo", "desinc", "demais").index(p["grupo"]),
+                                                                        ordem_conf.index(p["conf"]), p["nome"]))]))
     else:
         cap26 = "<p>Lista de candidatos de 2026 do TSE ainda não importada — cruzamento INDISPONÍVEL.</p>"
 
@@ -570,7 +577,8 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
         + f"; {_int(cob['sem_cargo_no_portal'])} matrícula(s) sem linha no portal para o nome exato. O portal raramente "
         "publica a exoneração no último mês pago: sem data, o fim é a <b>saída da folha</b>. Exonerações publicadas em "
         "varreduras anteriores do portal completam a data quando existem.</p>"
-        "<p><b>Continuidade.</b> Mês a mês na folha em bloco, do início (admissão ou 01/2021) à última competência.</p>"
+        "<p><b>Continuidade.</b> Mês a mês na folha em bloco, do 1º pagamento à última competência (o 1º pagamento costuma "
+        "vir no mês seguinte à nomeação).</p>"
         "<p><b>Comissionado</b> = classificador canônico da casa: cargo iniciado por <i>ESPECIAL</i>, <i>ASSESSOR</i> ou "
         "<i>ASSISTENTE ESPECIAL</i>, símbolo <i>DAS</i>/<i>DAI</i> ou contendo <i>COMISS</i>; vetados Educação Especial, "
         "estágios e 'especialidade'. Efetivos ficam fora, inclusive com função gratificada na mesma matrícula. Cargos "
@@ -599,7 +607,7 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
             {"titulo": f"6. Nomeados logo após perder a eleição (≤ 6 meses) ({_int(len(lista_pos))} nomeações)",
              "html": cap_pos},
             {"titulo": f"7. Continuidade dos vínculos ({_int(len(paes_inteiro))} em toda a gestão Paes · "
-                       f"{_int(len(com_lacuna))} com interrupção)", "html": cap_cont},
+                       f"{_int(len(com_lacuna))} com mês sem pagamento)", "html": cap_cont},
             {"titulo": f"8. Demais — saíram em outros momentos ({_int(len(grupos['demais']))})", "html": cap_demais},
             {"titulo": f"9. Distribuição por órgão ({len(por_orgao)})", "html": orgaos},
             {"titulo": "10. Distribuição por partido (candidatura mais recente)", "html": partidos},
