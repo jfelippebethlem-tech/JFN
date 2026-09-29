@@ -14,6 +14,7 @@ empregados (ver `os_panorama.py` / memória). Impossível pela fonte pública.
 from __future__ import annotations
 
 import html
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -149,7 +150,7 @@ def montar_ctx(db_path=None) -> dict:
                                                      (ultima,)) for w in set((n or "").split()) if w.lower() not in _PARTICULAS)
             freq_top = {w for w, _ in cont.most_common(200)}
             situ = {nn: por_mat.get(nn) or _situacao_folha(con, nn, ultima) for nn in pessoas}
-        except Exception:                                  # sem a folha em bloco: coluna declara INDISPONÍVEL
+        except sqlite3.Error:                              # sem a folha em bloco: coluna declara INDISPONÍVEL
             ultima, situ, freq_top = None, {}, set()
         eleitos = {r[0] for r in con.execute("SELECT nome_norm FROM tse_candidatura WHERE eleito=1 OR "
                                              "upper(resultado) LIKE 'ELEITO%'")} if pessoas else set()

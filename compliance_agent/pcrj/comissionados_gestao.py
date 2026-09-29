@@ -515,7 +515,10 @@ def montar_ctx(db_path=None) -> dict:  # noqa: C901 — um relatório, lido de c
         f"<p {alerta}><b>Prazo legal.</b> Eleições gerais de 2026: 1º turno em <b>04/10/2026</b>. O ocupante de cargo em "
         "comissão que pretende concorrer deve ser <b>exonerado</b> até <b>três meses antes do pleito — 04/07/2026</b> "
         "(LC 64/1990, art. 1º, II, <i>l</i>; Súmula TSE nº 54: a desincompatibilização do comissionado \"pressupõe a "
-        "exoneração do cargo comissionado, e não apenas seu afastamento de fato\"). Aqui: quem saiu da folha em "
+        "exoneração do cargo comissionado, e não apenas seu afastamento de fato\"). O servidor efetivo, ao contrário, "
+        "apenas se afasta, com vencimentos, e pode seguir afastado até 10 dias após o 2º turno (redação da LC 219/2025). "
+        "Para concorrer a outro cargo, o Prefeito renuncia até 6 meses antes (art. 1º, § 1º): Eduardo Paes renunciou "
+        "em 20/03/2026, antes de 04/04/2026. Aqui: quem saiu da folha em "
         "<b>06/2026 ou 07/2026</b> (ou com exoneração publicada nesse período). Os candidatos de 2026 confirmados no TSE "
         "estão marcados em vermelho e no topo.</p>"
         + _tabela(["Recorte", "Pessoas", "Confiança ALTA/MÉDIA"], [
