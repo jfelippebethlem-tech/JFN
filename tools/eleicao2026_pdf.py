@@ -29,6 +29,7 @@ KEYS = ["municipio", "zona", "secao"]
 ORD_AP = ["AP1 · Centro", "AP2.1 · Zona Sul", "AP2.2 · Grande Tijuca", "AP3 · Zona Norte",
           "AP4 · Barra e Jacarepaguá", "AP5 · Zona Oeste"]
 DOUGLAS, PAES = 22, 55
+BLOCO = 4000  # linhas por bloco de anexo impresso separadamente
 # nome curto de coluna: como cada federal é conhecido (o último sobrenome nem sempre é: "Altineu Cortes")
 CURTO = {2222: "Soraya", 1177: "Luizinho", 4400: "Rossi", 2212: "Pazuello", 7090: "Onassis", 2767: "Galvão",
          2269: "Altineu", 1522: "Trovão"}
@@ -1124,6 +1125,105 @@ negativa entre eles não indica rivalidade; a comparação mais informativa é a
                      "redutos, zona, bairro e seção a seção na AP4 e na AP5", kp, toc, "".join(C))
 
 
+def pdf_trio_tabelas(nm, v, base, fed=1177, outro=11123):
+    """Tabelas dos votos de Dr. Luizinho, Felipe Pampolha e Jorge no estado inteiro: municípios, capital por
+    AP/zona/bairro e seção a seção (toda urna em que ao menos um dos três teve voto)."""
+    J = A.JFN
+    s7 = por_secao(v, 7, [J, outro]).rename(columns={"validos": "val7"})
+    s6 = por_secao(v, 6, [fed]).rename(columns={"validos": "val6"})
+    d = base.merge(s7, left_on=KEYS, right_index=True, how="left").merge(s6, left_on=KEYS, right_index=True, how="left").fillna(0)
+    tot = {}
+    for cargo, n in ((7, J), (7, outro), (6, fed)):
+        tot[n] = int(d[n].sum())
+        assert tot[n] == nm[(cargo, n)][3], nm[(cargo, n)][0]
+    NO, NF = tit(nm[(7, outro)][0]), tit(nm[(6, fed)][0])
+    CO, CF = NO.split()[-1], CURTO.get(fed, NF)
+
+    def agg(df, by):
+        g = df.groupby(by).agg(j=(J, "sum"), o=(outro, "sum"), f=(fed, "sum"), v7=("val7", "sum"), v6=("val6", "sum"),
+                               secoes=("secao", "count")).reset_index()
+        g["pj"], g["po"], g["pf"] = g.j / g.v7 * 100, g.o / g.v7 * 100, g.f / g.v6 * 100
+        return g
+
+    cab = ["Jorge", "Jorge %", CO, f"{CO} %", CF, f"{CF} %", "Seções"]
+
+    def lin(r):
+        return [n0(r["j"]), p2(r["pj"]), n0(r["o"]), p2(r["po"]), n0(r["f"]), p2(r["pf"]), n0(r["secoes"])]
+
+    C, toc = [], []
+
+    def sec(a, t, c, quebra=False):
+        toc.append((a, t))
+        C.append(f'<h2 id="{a}" class="{"pg" if quebra else ""}">{e(t)}</h2>{c}')
+
+    rio = d[d.municipio == A.RIO]
+    reg = agg(d.assign(r2=np.where(d.municipio == A.RIO, d.regiao, "Fora da capital")), ["r2"]).rename(columns={"r2": "regiao"})
+    reg = reg.assign(o_=reg.regiao.map(lambda x: (ORD_AP + ["Fora da capital"]).index(x))).sort_values("o_")
+    sec("x1", "1. Totais", tabela(
+        ["Candidato", "Cargo", "Partido", "Número", "Situação", "Votos no estado", "Na capital", "Na Zona Oeste"],
+        [[nome, cargo_t, e(nm[(c, n)][1]), str(n), e(nm[(c, n)][2]), n0(tot[n]), n0(int(rio[n].sum())),
+          n0(int(rio[rio.regiao.isin(A.ZONA_OESTE)][n].sum()))]
+         for nome, cargo_t, c, n in (("Jorge Felippe Neto", "Dep. estadual", 7, J), (NO, "Dep. estadual", 7, outro), (NF, "Dep. federal", 6, fed))],
+        num=(3, 5, 6, 7)) + "<p>Percentuais sobre os válidos do próprio cargo (estadual para Jorge e " + e(NO) + ", federal para " + e(NF) +
+        "). Fonte: boletins de urna do TSE, pleito 3220, 1º turno de 04/10/2026; totais idênticos ao oficial do TSE.</p>" +
+        "<h3>Por região</h3>" + tabela(["Região"] + cab, [[e(r["regiao"])] + lin(r) for _, r in reg.iterrows()], num=range(1, 8)))
+    mun = agg(d, ["NM_MUNICIPIO"]).sort_values(["j", "NM_MUNICIPIO"], ascending=[False, True])
+    sec("x2", "2. Os 92 municípios", tabela(["Município"] + cab, [[tit(r["NM_MUNICIPIO"])] + lin(r) for _, r in mun.iterrows()],
+                                            num=range(1, 8)), quebra=True)
+    zt = agg(rio, ["zona"]).sort_values("zona")
+    za = agg(rio, ["regiao", "zona"])
+    za = za.assign(o_=za.regiao.map(ORD_AP.index)).sort_values(["o_", "j"], ascending=[True, False])
+    sec("x3", "3. Capital: zonas eleitorais", "<h3>Total de cada zona</h3>" + tabela(["Zona"] + cab, [[f"{int(r['zona'])}ª"] + lin(r) for _, r in zt.iterrows()],
+                                                                                   num=range(1, 8)) +
+        "<h3>Zonas dentro de cada Área de Planejamento</h3>" + tabela(["AP", "Zona"] + cab,
+                                                                     [[e(r["regiao"].split(" · ")[0]), f"{int(r['zona'])}ª"] + lin(r) for _, r in za.iterrows()],
+                                                                     num=range(2, 9)), quebra=True)
+    bt = agg(rio, ["regiao", "NM_BAIRRO"])
+    bt = bt.assign(o_=bt.regiao.map(ORD_AP.index)).sort_values(["o_", "j"], ascending=[True, False])
+    sec("x4", "4. Capital: bairros", tabela(["Bairro", "AP"] + cab, [[tit(r["NM_BAIRRO"]), e(r["regiao"].split(" · ")[0])] + lin(r)
+                                                                      for _, r in bt.iterrows()], num=range(2, 9)), quebra=True)
+    assert int(mun.j.sum()) == tot[J] and int(zt.f.sum()) == int(bt.f.sum()) == int(rio[fed].sum()) and int(bt.o.sum()) == int(rio[outro].sum())
+    alg = d[(d[J] > 0) | (d[outro] > 0) | (d[fed] > 0)].sort_values(["NM_MUNICIPIO", "zona", "secao"])
+    assert int(alg[J].sum()) == tot[J] and int(alg[outro].sum()) == tot[outro] and int(alg[fed].sum()) == tot[fed]
+    sec("x5", "5. Seção a seção", f"<p>As {n0(len(alg))} seções do estado em que pelo menos um dos três teve voto (de {n0(len(d))}), por "
+        "município, zona e seção, vêm em seguida, em ordem de município, zona e seção. A soma de cada coluna é o total do candidato "
+        "no estado.</p>")
+    # o anexo sai em blocos impressos separadamente: uma página única de ~30 mil linhas ficou 55 min no
+    # printToPDF, falhou e sobrecarregou a VM (05/10/2026, junto da queda do jfn.service)
+    cab_a = ["Município", "Zona", "Seção", "Local de votação", "Bairro", "Jorge", CO, CF]
+    linhas_a = [[tit(r["NM_MUNICIPIO"]), f"{int(r['zona'])}ª", int(r["secao"]), tit(r["NM_LOCAL_VOTACAO"]), tit(r["NM_BAIRRO"]),
+                 n0(r[J]), n0(r[outro]), n0(r[fed])] for r in alg.to_dict("records")]
+    anexos = [f"<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='wrap'>"
+              f"<h3>Seção a seção — linhas {n0(i + 1)} a {n0(min(i + BLOCO, len(linhas_a)))} de {n0(len(linhas_a))}</h3>"
+              + tabela(cab_a, linhas_a[i:i + BLOCO], num=(5, 6, 7), cls="mini") + "</div></body></html>"
+              for i in range(0, len(linhas_a), BLOCO)]
+
+    kp = [(n0(tot[J]), "Jorge (estadual)"), (n0(tot[outro]), f"{NO} (estadual)"), (n0(tot[fed]), f"{NF} (federal)"),
+          (n0(len(alg)), "seções com voto de algum dos três"), (n0(int((mun.j > 0).sum())), "municípios com voto de Jorge"),
+          (n0(len(d)), "seções no estado")]
+    return documento(f"Votos de {NF}, {NO} e Jorge Felippe Neto", "Tabelas · estado do Rio de Janeiro — municípios, capital por AP, "
+                     "zona e bairro, e seção a seção", kp, toc, "".join(C)), anexos
+
+
+async def gerar_partes(htmls, nome):
+    """Imprime cada parte num PDF próprio e junta na ordem: tabela gigante numa página só trava o Chromium."""
+    from pypdf import PdfWriter
+    partes = []
+    for k, h in enumerate(htmls):
+        A.checar_neutro(h, f"{nome} parte {k}")
+        destino = f"{OUT}/.{nome}.parte{k}.pdf"
+        await html_to_pdf(h, destino, timeout_s=900)
+        partes.append(destino)
+    w = PdfWriter()
+    for f in partes:
+        w.append(f)
+    w.write(f"{OUT}/{nome}.pdf")
+    for f in partes:
+        os.remove(f)
+    open(f"{OUT}/{nome}.html", "w").write("".join(htmls))
+    print(nome, os.path.getsize(f"{OUT}/{nome}.pdf") // 1024, "KB", len(htmls), "partes")
+
+
 async def gerar(html, nome):
     A.checar_neutro(html, nome)
     open(f"{OUT}/{nome}.html", "w").write(html)
@@ -1139,6 +1239,9 @@ def main():
     if alvo in ("jorge", "ambos"):
         html, _ = pdf_jorge(nm, v, base)
         asyncio.run(gerar(html, "Jorge_Felippe_Neto_2026_votacao_completa"))
+    if alvo == "trio_tabelas":
+        principal, anexos = pdf_trio_tabelas(nm, v, base)
+        asyncio.run(gerar_partes([principal] + anexos, "Tabelas_Luizinho_Pampolha_Jorge_2026_estado"))
     if alvo == "trio":
         asyncio.run(gerar(pdf_trio_zo(nm, v, base), "Luizinho_Jorge_Pampolha_2026_zona_oeste"))
     if alvo == "douglas_estado":
