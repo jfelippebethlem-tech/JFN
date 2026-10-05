@@ -74,6 +74,30 @@ def locais(ano):
     return df
 
 
+def corr_controlada(x, y, grupo):
+    """Correlação DENTRO do grupo (efeito fixo): tira de cada fatia a média do seu grupo antes de
+    correlacionar. Sem isso, dois candidatos fortes em regiões diferentes da cidade saem com correlação
+    perto de zero ou negativa mesmo andando juntos dentro de cada região (Jorge na AP5, Pazuello na
+    Zona Sul: bruta -0,01, dentro da AP +0,05)."""
+    x, y, grupo = pd.Series(x).reset_index(drop=True), pd.Series(y).reset_index(drop=True), pd.Series(grupo).reset_index(drop=True)
+    ok = x.notna() & y.notna()
+    x, y, grupo = x[ok], y[ok], grupo[ok]
+    a = x - x.groupby(grupo).transform("mean")
+    b = y - y.groupby(grupo).transform("mean")
+    return float(np.corrcoef(a, b)[0, 1]) if len(a) > 2 and a.std() > 0 and b.std() > 0 else None
+
+
+def lift_controlado(fj, votos, validos, grupo, q=0.9):
+    """Índice de reduto controlado: reduto = decil superior de Jorge DENTRO de cada grupo; o esperado é a
+    fatia do federal no próprio grupo aplicada aos válidos do reduto. 1,00 = neutro."""
+    df = pd.DataFrame({"fj": pd.Series(fj).values, "v": pd.Series(votos).values, "val": pd.Series(validos).values,
+                       "g": pd.Series(grupo).values}).dropna(subset=["fj"])
+    red = df.fj >= df.groupby("g").fj.transform(lambda s: s.quantile(q))
+    taxa = df.groupby("g").v.sum() / df.groupby("g").val.sum()
+    esperado = (df.loc[red, "val"] * df.loc[red, "g"].map(taxa)).sum()
+    return float(df.loc[red, "v"].sum() / esperado) if esperado else None
+
+
 def checar_neutro(html, contexto):
     """Gate de neutralidade do entregável. Nome público do cadastro do TSE (bairro "Marechal Hermes",
     "CIEP Ministro Hermes de Lima") casa com termo proibido sem ser menção interna: só esses nomes,
@@ -224,6 +248,8 @@ def main():
         frac = piv.div(vt, axis=0)
         fj = base.set_index(keys).fj
         red = fj >= corte
+        # grupo de controle: AP na capital, município fora dela
+        grupo = pd.Series(np.where(base.municipio == RIO, base.regiao, base.NM_MUNICIPIO), index=fj.index)
         tot_reg = piv.sum()
         linhas = []
         for n in piv.columns:
@@ -231,16 +257,18 @@ def main():
             if share < min_pct:
                 continue
             c = np.corrcoef(fj.values, frac[n].values)[0, 1]
+            cc = corr_controlada(fj, frac[n], grupo)
+            lc = lift_controlado(fj, piv[n], vt, grupo)
             sh_red = piv.loc[red, n].sum() / vt[red].sum() * 100
             nmu, sg, st, _ = nm.get((cargo, n), ("?", "?", "", None))
             linhas.append((n, nmu, sg, st, int(tot_reg[n]), share, int(piv.loc[red, n].sum()), sh_red,
-                           sh_red / share, c))
+                           sh_red / share, c, cc, lc))
         df = pd.DataFrame(linhas, columns=["numero", "nome", "partido", "situacao", "votos_no_recorte",
                                            "pct_no_recorte", "votos_nos_redutos_jfn", "pct_nos_redutos_jfn",
-                                           "lift_reduto", "correlacao_secao"])
+                                           "lift_reduto", "correlacao_secao", "correlacao_controlada", "lift_controlado"])
         meta = {"secoes": int(len(base)), "secoes_reduto": int(red.sum()), "corte_pct_jfn": float(corte * 100),
                 "votos_jfn_redutos": int(base.jfn[red.values].sum())}
-        return df.sort_values("correlacao_secao", ascending=False).reset_index(drop=True), meta
+        return df.sort_values("correlacao_controlada", ascending=False).reset_index(drop=True), meta
 
     cz = {}
     for nome_r, f in (("Capital", lambda d: d.municipio == RIO),
@@ -282,6 +310,11 @@ def main():
             "secoes_fed_maior_que_jfn": int((cmp[c] > cmp.votos_jfn).sum()),
             "secoes_jfn_maior": int((cmp.votos_jfn > cmp[c]).sum()),
             "correlacao_com_jfn": float(np.corrcoef(base.pct_jfn, base[f"pct_fed_{n}"].fillna(0))[0, 1]),
+            "correlacao_controlada": corr_controlada(base.pct_jfn, base[f"pct_fed_{n}"], base.regiao),
+            "correlacao_controlada_zo": corr_controlada(base.pct_jfn[base.regiao.isin(ZONA_OESTE)],
+                                                        base[f"pct_fed_{n}"][base.regiao.isin(ZONA_OESTE)],
+                                                        base.regiao[base.regiao.isin(ZONA_OESTE)]),
+            "lift_controlado": lift_controlado(base.pct_jfn, base[c], base.validos_dep_fed, base.regiao),
             "pct_nos_redutos_jfn": sh_red, "lift_reduto": sh_red / sh if sh else None,
             "melhor_bairro": porb.index[0] if len(porb) else None, "votos_melhor_bairro": int(porb.iloc[0]) if len(porb) else 0,
         })

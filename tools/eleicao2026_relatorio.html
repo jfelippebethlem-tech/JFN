@@ -139,7 +139,7 @@ footer{margin-top:48px;border-top:1px solid var(--rule);padding-top:16px}
 
   <section id="s6">
     <h2><span class="n">6</span>Cruzamento com federal, governador, senador e presidente</h2>
-    <p>Para cada seção, mede-se a fatia de Jorge nos válidos de deputado estadual e a fatia de cada candidato nos válidos do outro cargo. Duas medidas: a <b>correlação</b> entre essas fatias nas seções do recorte, e o <b>índice de reduto</b>, que é a votação do candidato nas seções em que Jorge foi mais forte (o decil superior) dividida pela votação dele no recorte inteiro. Um índice de 2,0 significa o dobro do desempenho onde Jorge é forte.</p>
+    <p>Para cada seção, mede-se a fatia de Jorge nos válidos de deputado estadual e a fatia de cada candidato nos válidos do outro cargo. A medida principal é a <b>correlação controlada</b>: as fatias são comparadas <b>dentro da mesma região</b> (Área de Planejamento na capital, município fora dela). Sem esse controle, dois candidatos fortes em regiões diferentes aparecem com correlação nula ou negativa mesmo quando sobem juntos dentro de cada região; a correlação bruta (sem controle) fica ao lado. O <b>reduto controlado</b> compara a votação do candidato nas seções em que Jorge é mais forte dentro de cada região com o que ele teria repetindo ali a própria média da região: 1,00 é neutro, 2,00 é o dobro.</p>
     <p class="callout"><b>Leitura correta:</b> isto é inferência ecológica, feita sobre seções e não sobre eleitores. Mostra afinidade territorial entre votações, compatível com dobrada, mas não prova que o mesmo eleitor votou nos dois.</p>
     <div class="tabs" id="cruzTabs"></div>
     <p class="note" id="cruzMeta"></p>
@@ -247,8 +247,8 @@ const top3 = bZO.slice(0, 3).map(b => `${titulo(b.NM_BAIRRO)} (${nf(b.votos_jorg
 const melhorPct = bairrosRio.filter(b => b.validos > 3000).sort((a, b) => b.pct_validos - a.pct_validos)[0];
 const lidera = bairrosRio.filter(b => b.posicao_jorge === 1).map(b => titulo(b.NM_BAIRRO));
 const cz = D.cruz["6|Zona Oeste (AP4+AP5)"]?.linhas || [];
-const czTop = cz.filter(r => r.correlacao_secao != null).slice(0, 3).map(r => `${titulo(r.nome)} (${esc(r.partido)})`).join(", ");
-const gz = (D.cruz["3|Zona Oeste (AP4+AP5)"]?.linhas || []).filter(r => r.correlacao_secao != null);
+const czTop = cz.filter(r => r.correlacao_controlada != null).slice(0, 3).map(r => `${titulo(r.nome)} (${esc(r.partido)})`).join(", ");
+const gz = (D.cruz["3|Zona Oeste (AP4+AP5)"]?.linhas || []).filter(r => r.correlacao_controlada != null);
 const forteMun = D.por_mun.find(m => m.NM_MUNICIPIO !== "RIO DE JANEIRO");
 document.getElementById("sumario").innerHTML = [
   `<b>${esc(D.situacao)} com ${nf(D.oficial)} votos</b>, ${posEst ? posEst + "º colocado entre os candidatos a deputado estadual do estado" : ""}${var22 != null ? `, ${var22 >= 0 ? "crescimento" : "queda"} de ${nf(Math.abs(var22), 1)}% sobre os ${nf(D.total22)} votos de 2022` : ""}.`,
@@ -258,7 +258,7 @@ document.getElementById("sumario").innerHTML = [
   melhorPct ? `<b>Maior participação proporcional na capital:</b> ${titulo(melhorPct.NM_BAIRRO)}, com ${pc(melhorPct.pct_validos)} dos válidos (bairros com mais de 3 mil válidos).` : "",
   lidera.length ? `<b>Mais votado para deputado estadual em ${lidera.length} bairro(s):</b> ${lidera.join(", ")}.` : `<b>Não foi o mais votado em nenhum bairro da capital.</b> A votação é espalhada, sem um reduto único que a domine (ver seção 3).`,
   czTop ? `<b>Maior afinidade territorial com deputado federal na Zona Oeste:</b> ${czTop}. A afinidade é por seção, não por eleitor (seção 6).` : "",
-  D.feds?.resumo?.length ? `<b>Federais selecionados na capital:</b> ${D.feds.resumo.slice().sort((a, b) => b.correlacao_com_jorge - a.correlacao_com_jorge).slice(0, 2).map(r => `${titulo(r.nome)} (correlação ${nf(r.correlacao_com_jorge, 2)})`).join(" e ")} são os que mais acompanham o território de Jorge; detalhe seção a seção na seção 5.` : "",
+  D.feds?.resumo?.length ? `<b>Federais selecionados na capital:</b> ${D.feds.resumo.slice().sort((a, b) => b.correlacao_controlada - a.correlacao_controlada).slice(0, 2).map(r => `${titulo(r.nome)} (correlação controlada ${nf(r.correlacao_controlada, 2)})`).join(" e ")} são os que mais acompanham o território de Jorge; detalhe seção a seção na seção 5.` : "",
   gz.length ? `<b>Governador:</b> nas seções em que Jorge é mais forte na Zona Oeste, ${titulo(gz[0].nome)} teve ${pc(gz[0].pct_nos_redutos_jorge)} dos válidos, contra ${pc(gz[0].pct_no_recorte)} na região toda.` : "",
 ].filter(Boolean).map(s => `<li>${s}</li>`).join("");
 
@@ -381,7 +381,7 @@ new MutationObserver(desenha).observe(document.documentElement, {attributes:true
 // ---------- federais selecionados x Jorge ----------
 const F = D.feds, FEDN = F.resumo.map(r => r.numero);
 const curto = n => titulo(F.resumo.find(r => r.numero === n)?.nome || n);
-tabela("t_feds", F.resumo.slice().sort((a, b) => b.votos_capital - a.votos_capital), [
+tabela("t_feds", F.resumo.slice().sort((a, b) => b.correlacao_controlada - a.correlacao_controlada), [
   {k:"nome", t:"Federal", w:1, f:r => `${titulo(r.nome)} <span style="color:var(--mute)">${r.numero}</span>`},
   {k:"partido", t:"Partido", f:r => esc(r.partido)},
   {k:"situacao", t:"Situação", f:r => esc(r.situacao)},
@@ -392,8 +392,10 @@ tabela("t_feds", F.resumo.slice().sort((a, b) => b.votos_capital - a.votos_capit
   {k:"secoes_ambos", t:"Seções com os dois", num:1, f:r => nf(r.secoes_ambos)},
   {k:"secoes_fed_maior_que_jorge", t:"Seções em que supera Jorge", num:1, f:r => nf(r.secoes_fed_maior_que_jorge)},
   {k:"secoes_jorge_maior", t:"Seções em que Jorge supera", num:1, f:r => nf(r.secoes_jorge_maior)},
-  {k:"correlacao_com_jorge", t:"Correlação", num:1, f:r => nf(r.correlacao_com_jorge, 2), cls:r => r.correlacao_com_jorge > 0.1 ? "pos" : r.correlacao_com_jorge < -0.1 ? "neg" : ""},
-  {k:"lift_reduto", t:"Índice reduto", num:1, f:r => nf(r.lift_reduto, 2)},
+  {k:"correlacao_controlada", t:"Correlação controlada", num:1, f:r => `<b>${nf(r.correlacao_controlada, 2)}</b>`, cls:r => r.correlacao_controlada > 0.1 ? "pos" : r.correlacao_controlada < -0.1 ? "neg" : ""},
+  {k:"correlacao_controlada_zo", t:"Controlada ZO", num:1, f:r => nf(r.correlacao_controlada_zo, 2)},
+  {k:"lift_controlado", t:"Reduto controlado", num:1, f:r => nf(r.lift_controlado, 2)},
+  {k:"correlacao_com_jorge", t:"Correlação bruta", num:1, f:r => nf(r.correlacao_com_jorge, 2)},
   {k:"melhor_bairro", t:"Melhor bairro", f:r => r.melhor_bairro ? `${titulo(r.melhor_bairro)} (${nf(r.votos_melhor_bairro)})` : "—"}], {lim:10});
 document.getElementById("fedsNota").textContent = `Jorge na capital: ${nf(capital)} votos. Redutos de Jorge na capital = seções com ${pc(F.corte_reduto)} ou mais dos válidos de deputado estadual (decil superior, seções com 50 ou mais válidos).`;
 const fc = Object.fromEntries(F.cols.map((c, i) => [c, i]));
@@ -440,8 +442,9 @@ const recs = ["Zona Oeste (AP4+AP5)", "Capital", "Estado"];
 const cruzCols = [
   {k:"nome", t:"Candidato", w:1, f:r => titulo(r.nome)},
   {k:"partido", t:"Partido", f:r => esc(r.partido)},
-  {k:"correlacao_secao", t:"Correlação", num:1, f:r => nf(r.correlacao_secao, 2), cls:r => r.correlacao_secao > 0.1 ? "pos" : r.correlacao_secao < -0.1 ? "neg" : ""},
-  {k:"lift_reduto", t:"Índice reduto", num:1, f:r => nf(r.lift_reduto, 2)},
+  {k:"correlacao_controlada", t:"Correlação controlada", num:1, f:r => `<b>${nf(r.correlacao_controlada, 2)}</b>`, cls:r => r.correlacao_controlada > 0.1 ? "pos" : r.correlacao_controlada < -0.1 ? "neg" : ""},
+  {k:"lift_controlado", t:"Reduto controlado", num:1, f:r => nf(r.lift_controlado, 2)},
+  {k:"correlacao_secao", t:"Correlação bruta", num:1, f:r => nf(r.correlacao_secao, 2)},
   {k:"pct_nos_redutos_jorge", t:"% nos redutos", num:1, f:r => pc(r.pct_nos_redutos_jorge)},
   {k:"pct_no_recorte", t:"% no recorte", num:1, f:r => pc(r.pct_no_recorte)},
   {k:"votos_no_recorte", t:"Votos", num:1, f:r => nf(r.votos_no_recorte)}];
@@ -454,10 +457,10 @@ const ct = document.getElementById("cruzTabs");
 function cruz(rc) {
   ct.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.r === rc));
   const a = D.cruz["6|" + rc], g = D.cruz["3|" + rc];
-  tdf.set((a?.linhas || []).filter(r => r.correlacao_secao != null));
-  tgov.set((g?.linhas || []).filter(r => r.correlacao_secao != null));
-  tsen.set((D.cruz["5|" + rc]?.linhas || []).filter(r => r.correlacao_secao != null));
-  tpres.set((D.cruz["1|" + rc]?.linhas || []).filter(r => r.correlacao_secao != null));
+  tdf.set((a?.linhas || []).filter(r => r.correlacao_controlada != null));
+  tgov.set((g?.linhas || []).filter(r => r.correlacao_controlada != null));
+  tsen.set((D.cruz["5|" + rc]?.linhas || []).filter(r => r.correlacao_controlada != null));
+  tpres.set((D.cruz["1|" + rc]?.linhas || []).filter(r => r.correlacao_controlada != null));
   const m = a?.meta;
   document.getElementById("cruzMeta").textContent = m ? `${rc}: ${nf(m.secoes)} seções com 50 ou mais votos válidos. Redutos = ${nf(m.secoes_reduto)} seções em que Jorge teve ${pc(m.corte_pct_jorge)} ou mais dos válidos, somando ${nf(m.votos_jorge_redutos)} votos dele. Deputados federais listados: os que tiveram ao menos 0,3% dos válidos no recorte.` : "";
 }
@@ -490,6 +493,6 @@ document.getElementById("metodo").innerHTML = [
   `<b>Bairro e região:</b> bairro do local de votação no cadastro do TSE (eleitorado_local_votacao_2026). Área de Planejamento atribuída pelo nome do bairro. "Zona Oeste" = AP4 + AP5. Seções agregadas votam na urna da seção principal e entram pelo local dela.`,
   `<b>Votos válidos:</b> nominais + legenda, sem brancos, nulos e anulados. Votos dados a números que não constam da lista oficial do TSE (candidaturas com votos anulados) são tratados como anulados, como no total oficial: ${Object.entries(D.anulados || {}).map(([c, q]) => `${c} ${nf(q)}`).join(" · ")}. Percentuais calculados sobre os válidos do mesmo cargo no mesmo recorte.`,
   `<b>Comparação com 2022:</b> votos de Jorge Felippe Neto (70800, AVANTE) por seção em 2022, agregados pelo bairro do local de votação de 2022. Como seções e locais mudam entre eleições, a comparação vale no nível de bairro e município, não de seção.`,
-  `<b>Cruzamento:</b> correlação de Pearson entre fatias por seção (seções com 50 ou mais válidos) e índice de reduto no decil superior de Jorge. É inferência ecológica e não identifica o voto individual, que é secreto.`,
+  `<b>Cruzamento:</b> correlação de Pearson entre fatias por seção (seções com 50 ou mais válidos), controlada por região (cada fatia menos a média da sua AP na capital, ou do seu município fora dela), e índice de reduto no decil superior de Jorge dentro de cada região. A correlação bruta, sem controle, aparece ao lado. É inferência ecológica e não identifica o voto individual, que é secreto.`,
 ].map(s => `<li>${s}</li>`).join("");
 </script>
