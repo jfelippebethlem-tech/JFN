@@ -8,13 +8,20 @@ pela soma dos votos de cada cargo contra o comparecimento da seção.
 Uso:  python tools/tse_bu_2026.py baixar     # baixa os .bu (retomável)
       python tools/tse_bu_2026.py parse      # grava o SQLite
 """
+import http.client
 import json
 import os
 import sqlite3
 import sys
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
+
+# falhas de rede/HTTP (404 de seção agregada inclusive) e de JSON do manifesto
+ERROS_REDE = (urllib.error.URLError, http.client.HTTPException, ConnectionError, TimeoutError, json.JSONDecodeError)
+# BU fora do layout esperado: o parse posicional quebra por índice/estrutura
+ERROS_BU = (IndexError, ValueError, KeyError, StopIteration, AssertionError)
 
 BASE = "https://resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220"
 DIR = os.path.expanduser("~/JFN/data/tse_cache/bu2026_rj")
@@ -28,7 +35,7 @@ def _get(url, tentativas=4):
         try:
             with urllib.request.urlopen(url, timeout=60) as r:
                 return r.read()
-        except Exception:
+        except ERROS_REDE:
             if i == tentativas - 1:
                 raise
             time.sleep(2 * (i + 1))
@@ -73,7 +80,7 @@ def baixar():
         for i, fu in enumerate(futs, 1):
             try:
                 r = fu.result()
-            except Exception as e:
+            except ERROS_REDE as e:
                 r = "erro"
                 erros.append((futs[fu], repr(e)[:120]))
             cont[r] = cont.get(r, 0) + 1
@@ -215,7 +222,7 @@ def parse():
                                 (mun, zona, sec, ident.get("local"), el["id"], c["cargo"], el["aptos"], c["comparecimento"], soma))
                     con.executemany("INSERT INTO voto VALUES(?,?,?,?,?,?,?,?)",
                                     [(mun, zona, sec, c["cargo"], *v) for v in c["votos"]])
-        except Exception as e:
+        except ERROS_BU as e:
             falhas += 1
             print("FALHA", f, repr(e)[:150])
         if j % 5000 == 0:
