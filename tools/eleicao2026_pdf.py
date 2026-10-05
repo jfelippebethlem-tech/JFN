@@ -880,6 +880,250 @@ seções agregadas não aparecem em linha própria porque votam na urna da seç�
                      "zona, bairro, local e todas as seções", kp, toc, "".join(C))
 
 
+def pdf_douglas_estado(nm, v, base):
+    """Douglas Ruas (governador, 22) × Eduardo Paes no estado, cidade a cidade: um capítulo por município com
+    zona, bairro, local e todas as seções; na capital, também a divisão por Área de Planejamento."""
+    nomes_g = sorted({n for (c, n) in nm if c == 3 and nm[(c, n)][2] != "legenda"}, key=lambda n: -nm[(3, n)][3])
+    sg = por_secao(v, 3, nomes_g)
+    comp3 = pd.read_sql("SELECT municipio,zona,secao,aptos,comparecimento FROM secao WHERE cargo=3",
+                        sqlite3.connect(f"{A.T}/eleicao2026_rj_secao.sqlite")).set_index(KEYS)
+    d = base.drop(columns=["aptos", "comparecimento"]).merge(sg, left_on=KEYS, right_index=True, how="left") \
+        .merge(comp3, left_on=KEYS, right_index=True, how="left").fillna(0)
+    for n in nomes_g:
+        assert int(d[n].sum()) == nm[(3, n)][3], nm[(3, n)][0]
+    d["pd"] = d[DOUGLAS] / d.validos.replace(0, np.nan) * 100
+    d["pp"] = d[PAES] / d.validos.replace(0, np.nan) * 100
+    d["dif"] = d[DOUGLAS] - d[PAES]
+    cols = ["aptos", "comparecimento", "validos"] + nomes_g
+    est = d[cols].sum()
+
+    def agg(df, by):
+        x = df.groupby(by)[cols].sum().reset_index()
+        x["secoes"] = df.groupby(by).size().values
+        x["pd"] = x[DOUGLAS] / x.validos * 100
+        x["pp"] = x[PAES] / x.validos * 100
+        x["dif"] = x[DOUGLAS] - x[PAES]
+        x["abst"] = (1 - x.comparecimento / x.aptos) * 100
+        x["dv"] = df.assign(t=df[DOUGLAS] > df[PAES]).groupby(by).t.sum().values
+        x["pv"] = df.assign(t=df[PAES] > df[DOUGLAS]).groupby(by).t.sum().values
+        return x
+
+    def sinal(x):
+        return ("+" if x > 0 else "") + n0(x)
+
+    def venc(a, b):
+        return "Douglas" if a > b else ("Paes" if b > a else "empate")
+
+    mun = agg(d, ["NM_MUNICIPIO"]).sort_values([DOUGLAS, "NM_MUNICIPIO"], ascending=[False, True]).reset_index(drop=True)
+    mun["anc"] = [f"m{i}" for i in range(len(mun))]
+    assert len(mun) == 92 and int(mun[DOUGLAS].sum()) == nm[(3, DOUGLAS)][3]
+    vence_d = int((mun[DOUGLAS] > mun[PAES]).sum())
+    outros = [n for n in nomes_g if n not in (DOUGLAS, PAES)]
+    cab = ["Aptos", "Abstenção", "Válidos", "Douglas", "Douglas %", "Paes", "Paes %", "Diferença", "Seções Douglas à frente",
+           "Seções Paes à frente"]
+
+    def lin(r):
+        return [n0(r["aptos"]), p2(r["abst"]), n0(r["validos"]), n0(r[DOUGLAS]), p2(r["pd"]), n0(r[PAES]), p2(r["pp"]),
+                sinal(r["dif"]), n0(r["dv"]), n0(r["pv"])]
+
+    cap_t = d[d.municipio == A.RIO][cols].sum()
+    sem_cap = est - cap_t
+    toc = [("g1", "Visão do estado"), ("g2", "Fonte e leitura"), ("g3", "Os 92 municípios")]
+    C = [f"""<h2 id="g1">Visão do estado</h2>
+<p>Douglas Ruas (PL, 22) teve <b>{n0(est[DOUGLAS])} votos ({p2(est[DOUGLAS] / est.validos * 100)} dos válidos)</b> no 1º turno para
+governador do Estado do Rio de Janeiro, contra {n0(est[PAES])} de Eduardo Paes (PSD, 55; {p2(est[PAES] / est.validos * 100)}), e os dois
+disputam o 2º turno. Douglas teve mais votos que Paes em <b>{vence_d} dos 92 municípios</b>. Na capital, perdeu por
+{n0(abs(cap_t[DOUGLAS] - cap_t[PAES]))} votos ({p2(cap_t[DOUGLAS] / cap_t.validos * 100)} contra {p2(cap_t[PAES] / cap_t.validos * 100)}); fora dela,
+somou {n0(sem_cap[DOUGLAS])} votos contra {n0(sem_cap[PAES])} de Paes ({p2(sem_cap[DOUGLAS] / sem_cap.validos * 100)} contra
+{p2(sem_cap[PAES] / sem_cap.validos * 100)}), {"vantagem" if sem_cap[DOUGLAS] > sem_cap[PAES] else "desvantagem"} de {n0(abs(sem_cap[DOUGLAS] - sem_cap[PAES]))} votos.
+As maiores votações de Douglas fora da capital foram em {", ".join(f"{tit(r.NM_MUNICIPIO)} ({n0(r[DOUGLAS])})" for _, r in mun[mun.NM_MUNICIPIO != "RIO DE JANEIRO"].head(5).iterrows())};
+os maiores percentuais, em {", ".join(f"{tit(r.NM_MUNICIPIO)} ({p2(r.pd)})" for _, r in mun.sort_values("pd", ascending=False).head(5).iterrows())}.</p>"""
+         + "<h3>Todos os candidatos no estado (% dos válidos)</h3>" + tabela(
+             ["Candidato", "Partido", "Votos", "% válidos"],
+             [[tit(nm[(3, n)][0]), e(nm[(3, n)][1]), n0(est[n]), p2(est[n] / est.validos * 100)] for n in nomes_g], num=(2, 3)),
+         """<h2 id="g2">Fonte e leitura</h2>
+<p>Os números vêm dos boletins de urna de todas as seções do Estado do Rio de Janeiro, publicados pelo Tribunal Superior Eleitoral
+(pleito 3220, 1º turno de 04/10/2026); a soma das seções é idêntica ao total oficial do TSE de cada candidato a governador. Percentuais
+são sobre os votos válidos para governador (excluídos brancos e nulos); abstenção = 1 − comparecimento ÷ eleitores aptos. "Diferença"
+é sempre votos de Douglas menos votos de Paes. Cada município tem um capítulo, na ordem da votação de Douglas, com zonas, bairros,
+locais e todas as seções (as seções agregadas votam na urna da principal, onde seus votos já estão contados). Na capital, as zonas
+também aparecem repartidas por Área de Planejamento, porque zona eleitoral não respeita limite de AP.</p>""",
+         '<h2 id="g3">Os 92 municípios</h2>' + tabela(
+             ["#", "Município", "Douglas", "Douglas %", "Paes", "Paes %", "Diferença", "Quem venceu", "Abstenção", "Seções"],
+             [[str(i + 1), f'<a href="#{r["anc"]}">{tit(r["NM_MUNICIPIO"])}</a>', n0(r[DOUGLAS]), p2(r["pd"]), n0(r[PAES]), p2(r["pp"]),
+               sinal(r["dif"]), venc(r[DOUGLAS], r[PAES]), p2(r["abst"]), n0(r["secoes"])] for i, r in mun.iterrows()],
+             num=(0, 2, 3, 4, 5, 6, 8, 9))]
+
+    for i, r in mun.iterrows():
+        m = d[d.NM_MUNICIPIO == r.NM_MUNICIPIO]
+        zt = agg(m, ["zona"]).sort_values("zona")
+        bt = agg(m, ["NM_BAIRRO"]).sort_values([DOUGLAS, "NM_BAIRRO"], ascending=[False, True])
+        lt = agg(m, ["zona", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "NM_BAIRRO"]).sort_values([DOUGLAS, "NM_LOCAL_VOTACAO"], ascending=[False, True])
+        assert int(zt[DOUGLAS].sum()) == int(bt[DOUGLAS].sum()) == int(lt[DOUGLAS].sum()) == int(r[DOUGLAS])
+        prosa = (f"<p>Em {tit(r.NM_MUNICIPIO)}, Douglas Ruas teve <b>{n0(r[DOUGLAS])} votos ({p2(r.pd)} dos válidos)</b> e Eduardo Paes "
+                 f"{n0(r[PAES])} ({p2(r.pp)}): " + (f"<b>vitória de Douglas</b> por {n0(r.dif)} votos" if r.dif > 0 else
+                 (f"<b>vitória de Paes</b> por {n0(-r.dif)} votos" if r.dif < 0 else "<b>empate</b>")) +
+                 f". Douglas teve mais votos em {n0(r.dv)} das {n0(r.secoes)} seções e Paes em {n0(r.pv)}; {n0(r.aptos)} eleitores aptos, "
+                 f"abstenção de {p2(r.abst)}. Demais candidatos: " + ", ".join(f"{tit(nm[(3, n)][0])} {n0(r[n])} ({p2(r[n] / r.validos * 100)})"
+                                                                              for n in outros) + ".</p>")
+        extra = ""
+        if r.NM_MUNICIPIO == "RIO DE JANEIRO":
+            ap = agg(m, ["regiao"])
+            ap = ap.assign(o=ap.regiao.map(ORD_AP.index)).sort_values("o")
+            za = agg(m, ["zona", "regiao"])
+            za = za.assign(o=za.regiao.map(ORD_AP.index)).sort_values(["o", DOUGLAS], ascending=[True, False])
+            extra = ("<h3>Áreas de Planejamento</h3>" + tabela(["Área de Planejamento"] + cab, [[e(x["regiao"])] + lin(x) for _, x in ap.iterrows()],
+                                                              num=range(1, 11), cls="mini") +
+                     "<h3>Zonas eleitorais dentro de cada Área de Planejamento</h3>" + tabela(
+                         ["AP", "Zona"] + cab, [[e(x["regiao"].split(" · ")[0]), f"{int(x['zona'])}ª"] + lin(x) for _, x in za.iterrows()],
+                         num=range(2, 12), cls="mini"))
+        ms = m.sort_values(["zona", "secao"])
+        C.append(f'<h2 id="{r.anc}" class="pg">{i + 1}. {tit(r.NM_MUNICIPIO)} — Douglas {n0(r[DOUGLAS])} × Paes {n0(r[PAES])}</h2>' + prosa + extra +
+                 "<h3>Zonas eleitorais</h3>" + tabela(["Zona"] + cab, [[f"{int(x['zona'])}ª"] + lin(x) for _, x in zt.iterrows()],
+                                                     num=range(1, 11), cls="mini") +
+                 "<h3>Bairros</h3>" + tabela(["Bairro", "Válidos", "Douglas", "Douglas %", "Paes", "Paes %", "Diferença"],
+                                             [[tit(x["NM_BAIRRO"]), n0(x["validos"]), n0(x[DOUGLAS]), p2(x["pd"]), n0(x[PAES]), p2(x["pp"]), sinal(x["dif"])]
+                                              for _, x in bt.iterrows()], num=range(1, 7), cls="mini") +
+                 "<h3>Locais de votação</h3>" + tabela(["Local", "Bairro", "Zona", "Douglas", "Douglas %", "Paes", "Paes %", "Diferença"],
+                                                      [[tit(x["NM_LOCAL_VOTACAO"]), tit(x["NM_BAIRRO"]), f"{int(x['zona'])}ª", n0(x[DOUGLAS]), p2(x["pd"]),
+                                                        n0(x[PAES]), p2(x["pp"]), sinal(x["dif"])] for _, x in lt.iterrows()], num=range(3, 8), cls="mini") +
+                 f"<h3>Todas as seções ({n0(len(ms))})</h3>" + tabela(
+                     ["Zona", "Seção", "Local de votação", "Bairro", "Válidos", "Douglas", "Douglas %", "Paes", "Paes %", "Diferença"],
+                     [[f"{int(x['zona'])}ª", int(x["secao"]), tit(x["NM_LOCAL_VOTACAO"]), tit(x["NM_BAIRRO"]), n0(x["validos"]), n0(x[DOUGLAS]),
+                       p2(x["pd"]), n0(x[PAES]), p2(x["pp"]), sinal(x["dif"])] for x in ms.to_dict("records")],
+                     num=range(4, 10), cls="mini", destaque=lambda j, _d=ms.dif.values: _d[j] > 0))
+        toc.append((r.anc, f"{i + 1}. {tit(r.NM_MUNICIPIO)} — Douglas {n0(r[DOUGLAS])} × Paes {n0(r[PAES])}"))
+
+    kp = [(n0(est[DOUGLAS]), f"Douglas · {p2(est[DOUGLAS] / est.validos * 100)}"), (n0(est[PAES]), f"Paes · {p2(est[PAES] / est.validos * 100)}"),
+          (f"{vence_d} de 92", "municípios vencidos por Douglas"), (sinal(sem_cap[DOUGLAS] - sem_cap[PAES]), "diferença fora da capital"),
+          (sinal(cap_t[DOUGLAS] - cap_t[PAES]), "diferença na capital"), (n0(len(d)), "seções")]
+    return documento("Douglas Ruas no Estado do Rio de Janeiro: cidade a cidade", "Governador · PL · 22 × Eduardo Paes (PSD, 55) — os 92 "
+                     "municípios, zona, bairro, local e todas as seções", kp, toc, "".join(C))
+
+
+def pdf_trio_zo(nm, v, base, fed=1177, outro=11123):
+    """Dr. Luizinho (federal) × Jorge × Felipe Pampolha (estaduais) na Zona Oeste (AP4 + AP5): correlação
+    controlada (matriz), redutos cruzados, mesmas urnas, AP, zona, bairro e seção a seção."""
+    J = A.JFN
+    s7 = por_secao(v, 7, [J, outro]).rename(columns={"validos": "val7"})
+    s6 = por_secao(v, 6, [fed]).rename(columns={"validos": "val6"})
+    d = base.merge(s7, left_on=KEYS, right_index=True, how="left").merge(s6, left_on=KEYS, right_index=True, how="left").fillna(0)
+    for cargo, n in ((7, J), (7, outro), (6, fed)):
+        assert int(d[n].sum()) == nm[(cargo, n)][3], nm[(cargo, n)][0]
+    z = d[d.regiao.isin(A.ZONA_OESTE)].copy()
+    z["j"] = z[J] / z.val7.replace(0, np.nan) * 100
+    z["o"] = z[outro] / z.val7.replace(0, np.nan) * 100
+    z["f"] = z[fed] / z.val6.replace(0, np.nan) * 100
+    zb = z[z.val7 >= 50]
+    NJ, NO, NF = "Jorge Felippe Neto", tit(nm[(7, outro)][0]), tit(nm[(6, fed)][0])
+    CJ, CO, CF = "Jorge", NO.split()[-1], CURTO.get(fed, NF)
+    tj, to_, tf = int(z[J].sum()), int(z[outro].sum()), int(z[fed].sum())
+    sj, so, sf = tj / z.val7.sum() * 100, to_ / z.val7.sum() * 100, tf / z.val6.sum() * 100
+
+    def bruta(a, b, df=zb):
+        return float(np.corrcoef(df[a], df[b])[0, 1])
+
+    pares = [("f", "j", f"{CF} × {CJ}"), ("f", "o", f"{CF} × {CO}"), ("j", "o", f"{CJ} × {CO}")]
+    mat = []
+    for a, b, rot in pares:
+        mat.append([rot, bruta(a, b), A.corr_controlada(zb[a], zb[b], zb.regiao), A.corr_controlada(zb[a], zb[b], zb.zona),
+                    A.corr_controlada(zb[a], zb[b], zb.NM_BAIRRO)] +
+                   [bruta(a, b, zb[zb.regiao == ap]) for ap in A.ZONA_OESTE])
+    cc = {r[0]: r[2] for r in mat}
+
+    # redutos cruzados: decil superior de cada um DENTRO da AP; fatia dos outros dois ali × na AP
+    def reduto(col):
+        q = zb[col] >= zb.groupby("regiao")[col].transform(lambda x: x.quantile(0.9))
+        return zb[q]
+    red = {}
+    for col, nome in (("f", CF), ("j", CJ), ("o", CO)):
+        r = reduto(col)
+        red[nome] = dict(n=len(r), j=r[J].sum() / r.val7.sum() * 100, o=r[outro].sum() / r.val7.sum() * 100, f=r[fed].sum() / r.val6.sum() * 100)
+    lift = {(alvo, base_): A.lift_controlado(zb[base_], zb[alvo_col], zb[val], zb.regiao)
+            for alvo, alvo_col, val, base_ in ((CF, fed, "val6", "j"), (CF, fed, "val6", "o"), (CJ, J, "val7", "f"),
+                                                (CO, outro, "val7", "f"), (CJ, J, "val7", "o"), (CO, outro, "val7", "j"))}
+    mesmas = {k: int(z[z[col] > 0][fed].sum()) for k, col in ((CJ, J), (CO, outro))}
+    ambos3 = int(((z[J] > 0) & (z[outro] > 0) & (z[fed] > 0)).sum())
+
+    C, toc = [], []
+
+    def sec(a, t, c, quebra=False):
+        toc.append((a, t))
+        C.append(f'<h2 id="{a}" class="{"pg" if quebra else ""}">{e(t)}</h2>{c}')
+
+    mais = CO if (cc[f"{CF} × {CO}"] or 0) > (cc[f"{CF} × {CJ}"] or 0) else CJ
+    sec("t1", "1. Sumário executivo", f"""
+<p>Na Zona Oeste da capital (AP4 Barra e Jacarepaguá + AP5), {NJ} (PL, 22800, estadual) teve <b>{n0(tj)} votos</b> ({p2(sj)} dos válidos
+de estadual), {NO} ({e(nm[(7, outro)][1])}, {outro}, estadual) teve <b>{n0(to_)}</b> ({p2(so)}) e {NF} ({e(nm[(6, fed)][1])}, {fed}, federal)
+teve <b>{n0(tf)}</b> ({p2(sf)} dos válidos de federal), em {n0(len(z))} seções.</p>
+<p>Medida dentro da mesma Área de Planejamento, a correlação por seção de {NF} é de <b>{d2(cc[f"{CF} × {CJ}"])} com Jorge</b> e
+<b>{d2(cc[f"{CF} × {CO}"])} com {NO}</b>: o voto de {NF} acompanha os dois, e mais de perto o de {mais}. Entre Jorge e {NO}, que disputam o
+mesmo cargo, a correlação controlada é de {d2(cc[f"{CJ} × {CO}"])}. Nas seções em que {NF} é mais forte, Jorge teve {p2(red[CF]["j"])} dos
+válidos de estadual (média da região: {p2(sj)}) e {NO} {p2(red[CF]["o"])} (média: {p2(so)}).</p>
+<p>Do total de {n0(tf)} votos de {NF} na Zona Oeste, {n0(mesmas[CJ])} estão em urnas em que Jorge também teve voto e {n0(mesmas[CO])} em urnas
+com voto de {NO}; os três foram votados juntos em {n0(ambos3)} urnas.</p>""")
+
+    sec("t2", "2. Fonte, método e leitura", METODO_CORR + """
+<p>Os números vêm dos boletins de urna de cada seção, publicados pelo Tribunal Superior Eleitoral (pleito 3220, 1º turno de 04/10/2026),
+conferidos contra o total oficial do TSE dos três candidatos.</p>
+<div class="callout"><b>Dois cuidados de leitura.</b> (1) A medida é territorial, por seção; o voto é secreto, e correlação alta é compatível
+com dobrada, mas não a prova. (2) Jorge e """ + e(NO) + """ disputam o <b>mesmo cargo</b>: cada eleitor dá um único voto para deputado estadual.
+Onde um ganha fatia, sobra menos para o outro, o que puxa a correlação entre os dois para baixo por construção. Uma correlação baixa ou
+negativa entre eles não indica rivalidade; a comparação mais informativa é a de cada um com o federal.</div>""")
+
+    cab_m = ["Par", "Bruta", "Controlada (AP)", "Dentro da zona", "Dentro do bairro"] + [f"Só {ap.split(' · ')[0]}" for ap in A.ZONA_OESTE]
+    sec("t3", "3. Matriz de correlação", tabela(cab_m, [[r[0]] + [f"<b>{d2(x)}</b>" if k == 1 else d2(x) for k, x in enumerate(r[1:])] for r in mat],
+                                                  num=range(1, 7)) +
+        f"<p class='nota'>{n0(len(zb))} seções da Zona Oeste com 50 ou mais válidos de estadual.</p>")
+
+    sec("t4", "4. Redutos cruzados", "<p>Para cada candidato, as seções do decil superior dele dentro de cada AP; a tabela mostra a fatia dos "
+        "outros dois ali. O índice de reduto controlado compara com o que cada um teria repetindo a própria média da AP (1,00 = neutro).</p>" + tabela(
+            ["Reduto de", "Seções", f"{CJ} % (est.)", f"{CO} % (est.)", f"{CF} % (fed.)"],
+            [[k, n0(x["n"]), p2(x["j"]), p2(x["o"]), p2(x["f"])] for k, x in red.items()] +
+            [["<i>Média da Zona Oeste</i>", n0(len(zb)), p2(sj), p2(so), p2(sf)]], num=range(1, 5)) + tabela(
+            ["Candidato", "No reduto de", "Índice de reduto controlado"],
+            [[a, b_n, d2(x)] for (a, b), x in lift.items() for b_n in [{"j": CJ, "o": CO, "f": CF}[b]]], num=(2,)))
+
+    sec("t5", "5. Mesmas urnas", tabela(
+        ["", "Votos"], [[f"Votos de {NF} na Zona Oeste", n0(tf)], ["…em urnas com voto de Jorge", n0(mesmas[CJ])],
+                        [f"…em urnas com voto de {NO}", n0(mesmas[CO])], ["Urnas com voto dos três", n0(ambos3)],
+                        ["Urnas da Zona Oeste", n0(len(z))]], num=(1,)))
+
+    def agg(df, by):
+        g = df.groupby(by).agg(j=(J, "sum"), o=(outro, "sum"), f=(fed, "sum"), v7=("val7", "sum"), v6=("val6", "sum"),
+                               secoes=("secao", "count")).reset_index()
+        g["pj"], g["po"], g["pf"] = g.j / g.v7 * 100, g.o / g.v7 * 100, g.f / g.v6 * 100
+        return g
+
+    cab = [CJ, f"{CJ} %", CO, f"{CO} %", CF, f"{CF} %", "Seções"]
+
+    def lin(r):
+        return [n0(r.j), p2(r.pj), n0(r.o), p2(r.po), n0(r.f), p2(r.pf), n0(r.secoes)]
+
+    ap = agg(z, ["regiao"])
+    sec("t6", "6. Por Área de Planejamento", tabela(["AP"] + cab, [[e(r.regiao)] + lin(r) for r in ap.itertuples()], num=range(1, 8)))
+    zt = agg(z, ["zona", "regiao"]).sort_values(["regiao", "j"], ascending=[True, False])
+    bt = agg(z, ["regiao", "NM_BAIRRO"]).sort_values(["regiao", "j"], ascending=[True, False])
+    assert int(zt.j.sum()) == int(bt.j.sum()) == tj and int(zt.f.sum()) == tf and int(bt.o.sum()) == to_
+    sec("t7", "7. Zona a zona", "<p>Cada zona repartida pelas APs da Zona Oeste em que tem seções.</p>" + tabela(
+        ["Zona", "AP"] + cab, [[f"{int(r.zona)}ª", e(r.regiao.split(" · ")[0])] + lin(r) for r in zt.itertuples()], num=range(2, 9)), quebra=True)
+    sec("t8", "8. Bairro a bairro", tabela(["Bairro", "AP"] + cab, [[tit(r.NM_BAIRRO), e(r.regiao.split(" · ")[0])] + lin(r) for r in bt.itertuples()],
+                                           num=range(2, 9)), quebra=True)
+    zs = z.sort_values(["zona", "secao"])
+    sec("t9", "9. Seção a seção", f"<p>As {n0(len(zs))} seções da Zona Oeste. Em destaque, as seções em que os três tiveram voto.</p>" + tabela(
+        ["Zona", "Seção", "Local de votação", "Bairro", "AP", CJ, "%", CO, "%", CF, "%"],
+        [[f"{int(r['zona'])}ª", int(r["secao"]), tit(r["NM_LOCAL_VOTACAO"]), tit(r["NM_BAIRRO"]), e(r["regiao"].split(" · ")[0]),
+          n0(r[J]), p2(r["j"]), n0(r[outro]), p2(r["o"]), n0(r[fed]), p2(r["f"])] for r in zs.to_dict("records")],
+        num=range(5, 11), cls="mini",
+        destaque=lambda k, _a=zs[J].values, _b=zs[outro].values, _c=zs[fed].values: _a[k] > 0 and _b[k] > 0 and _c[k] > 0), quebra=True)
+
+    kp = [(n0(tj), "Jorge na Zona Oeste"), (n0(to_), f"{NO} na Zona Oeste"), (n0(tf), f"{NF} na Zona Oeste"),
+          (d2(cc[f"{CF} × {CJ}"]), f"correlação controlada {CF} × Jorge"), (d2(cc[f"{CF} × {CO}"]), f"correlação controlada {CF} × {CO}"),
+          (d2(cc[f"{CJ} × {CO}"]), f"correlação controlada Jorge × {CO}")]
+    return documento(f"{NF}, Jorge Felippe Neto e {NO} na Zona Oeste", "Federal (PP, 1177) × estaduais (PL, 22800 · PP, 11123) — correlação, "
+                     "redutos, zona, bairro e seção a seção na AP4 e na AP5", kp, toc, "".join(C))
+
+
 async def gerar(html, nome):
     A.checar_neutro(html, nome)
     open(f"{OUT}/{nome}.html", "w").write(html)
@@ -895,6 +1139,10 @@ def main():
     if alvo in ("jorge", "ambos"):
         html, _ = pdf_jorge(nm, v, base)
         asyncio.run(gerar(html, "Jorge_Felippe_Neto_2026_votacao_completa"))
+    if alvo == "trio":
+        asyncio.run(gerar(pdf_trio_zo(nm, v, base), "Luizinho_Jorge_Pampolha_2026_zona_oeste"))
+    if alvo == "douglas_estado":
+        asyncio.run(gerar(pdf_douglas_estado(nm, v, base), "Douglas_Ruas_2026_estado_cidade_a_cidade"))
     if alvo == "estado":
         asyncio.run(gerar(pdf_estado(nm, v, base), "Jorge_Felippe_Neto_2026_estado_cidade_a_cidade"))
     if alvo == "urnas":
