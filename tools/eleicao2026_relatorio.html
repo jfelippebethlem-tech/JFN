@@ -87,7 +87,7 @@ footer{margin-top:48px;border-top:1px solid var(--rule);padding-top:16px}
 
   <section id="s3">
     <h2><span class="n">3</span>Capital: bairro a bairro</h2>
-    <p>Os 162 bairros do cadastro de locais de votação do TSE, agrupados nas Áreas de Planejamento da Prefeitura. "Posição" é o lugar de Jorge entre todos os candidatos a deputado estadual naquele bairro.</p>
+    <p>Os bairros oficiais da Prefeitura que têm local de votação, agrupados nas Áreas de Planejamento. O bairro de cada escola vem da localização dela na malha oficial de bairros; o nome dado pelo cadastro do TSE diverge do oficial em cerca de 19% das escolas. "Posição" é o lugar de Jorge entre todos os candidatos a deputado estadual naquele bairro.</p>
     <div class="tools">
       <input id="f_bairro" type="search" placeholder="Filtrar bairro" aria-label="Filtrar bairro">
       <select id="f_ap" aria-label="Área de planejamento"><option value="">Todas as áreas</option></select>
@@ -490,9 +490,9 @@ porRegiao("t_gov", D.maj_reg["3"] || [], 6); porRegiao("t_sen", D.maj_reg["5"] |
 document.getElementById("metodo").innerHTML = [
   `<b>Fonte primária:</b> boletim de urna (BU) de cada uma das ${nf(D.secoes)} seções do RJ, baixado do repositório oficial do TSE. O BU de 2026 traz campos novos em relação à especificação ASN.1 de 2022 e foi decodificado diretamente da estrutura BER.`,
   `<b>Validação:</b> em toda seção, a soma dos votos de cada cargo é igual ao comparecimento (no Senado, o dobro, por haver 2 vagas). A soma das seções foi conferida candidato a candidato contra o total oficial do TSE: ${D.conf_diferencas === 0 ? `os ${nf(D.conf_n)} candidatos batem exatamente` : `${nf(D.conf_diferencas)} de ${nf(D.conf_n)} candidatos com diferença (ver aba "Conferência TSE" da planilha)`}.`,
-  `<b>Bairro e região:</b> bairro do local de votação no cadastro do TSE (eleitorado_local_votacao_2026). Área de Planejamento atribuída pelo nome do bairro. "Zona Oeste" = AP4 + AP5. Seções agregadas votam na urna da seção principal e entram pelo local dela.`,
+  `<b>Bairro e região:</b> na capital, bairro e Área de Planejamento oficiais da Prefeitura, pela localização de cada escola na malha oficial de 167 bairros (pgeo3.rio.rj.gov.br); nos demais municípios, bairro do cadastro de locais de votação do TSE, com grafias unificadas. "Zona Oeste" = AP4 + AP5. Seções agregadas votam na urna da seção principal e entram pelo local dela.`,
   `<b>Votos válidos:</b> nominais + legenda, sem brancos, nulos e anulados. Votos dados a números que não constam da lista oficial do TSE (candidaturas com votos anulados) são tratados como anulados, como no total oficial: ${Object.entries(D.anulados || {}).map(([c, q]) => `${c} ${nf(q)}`).join(" · ")}. Percentuais calculados sobre os válidos do mesmo cargo no mesmo recorte.`,
-  `<b>Comparação com 2022:</b> votos de Jorge Felippe Neto (70800, AVANTE) por seção em 2022, agregados pelo bairro do local de votação de 2022. Como seções e locais mudam entre eleições, a comparação vale no nível de bairro e município, não de seção.`,
+  `<b>Comparação com 2022:</b> votos de Jorge Felippe Neto (70800, AVANTE) por seção em 2022, agregados pelo bairro oficial das escolas de 2022 (mesmo critério). Como seções e locais mudam entre eleições, a comparação vale no nível de bairro e município, não de seção.`,
   `<b>Cruzamento:</b> correlação de Pearson entre fatias por seção (seções com 50 ou mais válidos), controlada por região (cada fatia menos a média da sua AP na capital, ou do seu município fora dela), e índice de reduto no decil superior de Jorge dentro de cada região. A correlação bruta, sem controle, aparece ao lado. É inferência ecológica e não identifica o voto individual, que é secreto.`,
 ].map(s => `<li>${s}</li>`).join("");
 </script>

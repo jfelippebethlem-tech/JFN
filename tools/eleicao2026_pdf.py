@@ -29,6 +29,10 @@ KEYS = ["municipio", "zona", "secao"]
 ORD_AP = ["AP1 · Centro", "AP2.1 · Zona Sul", "AP2.2 · Grande Tijuca", "AP3 · Zona Norte",
           "AP4 · Barra e Jacarepaguá", "AP5 · Zona Oeste"]
 DOUGLAS, PAES = 22, 55
+FONTE_BAIRRO = ("Na capital, o bairro e a Área de Planejamento de cada escola são os <b>oficiais da Prefeitura do Rio</b>, "
+                "definidos pela localização da escola na malha oficial de 167 bairros (pgeo3.rio.rj.gov.br); o nome que o cadastro "
+                "do TSE dá ao bairro diverge do oficial em cerca de 19% das escolas da capital. Nos demais municípios, vale o "
+                "bairro do cadastro de locais de votação do TSE, com grafias unificadas.")
 BLOCO = 4000  # linhas por bloco de anexo impresso separadamente
 # nome curto de coluna: como cada federal é conhecido (o último sobrenome nem sempre é: "Altineu Cortes")
 CURTO = {2222: "Soraya", 1177: "Luizinho", 4400: "Rossi", 2212: "Pazuello", 7090: "Onassis", 2767: "Galvão",
@@ -125,7 +129,7 @@ def carregar():
     nm = A.nomes()
     loc = A.locais(2026)
     princ = loc[loc["CD_TIPO_SECAO_AGREGADA"] == "1"].drop_duplicates(KEYS)[
-        KEYS + ["NM_MUNICIPIO", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "NM_BAIRRO", "DS_ENDERECO", "k_escola"]]
+        KEYS + ["NM_MUNICIPIO", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "NM_BAIRRO", "NM_BAIRRO_TSE", "DS_ENDERECO", "k_escola"]]
     v = pd.read_sql("SELECT * FROM voto WHERE cargo IN (3,6,7)", con)
     oficial = pd.Series([(c, n) in nm for c, n in zip(v.cargo, v.numero)], index=v.index)
     v.loc[(v.tipo == "nominal") & ~oficial, "tipo"] = "anulado"  # como no total do TSE
@@ -290,14 +294,14 @@ f"{int((fr.cc < 0).sum())} dos oito têm correlação controlada negativa."} A s
 <p>Todos os números deste relatório foram apurados a partir dos <b>boletins de urna</b> (BU) de cada seção eleitoral do Estado do Rio de
 Janeiro, publicados pelo Tribunal Superior Eleitoral no repositório oficial de resultados (pleito 3220, 1º turno de 04/10/2026). Foram
 decodificados {n0(len(d))} boletins, um por seção principal; as seções agregadas votam na urna da seção principal e não têm boletim próprio.
-Bairro, endereço e local de votação vêm do cadastro de locais de votação do TSE de 2026. A comparação com 2022 usa o arquivo oficial de
-votação por seção de 2022 do TSE, agregado por bairro do local de votação daquele ano.</p>
+Endereço e local de votação vêm do cadastro de locais de votação do TSE de 2026. """ + FONTE_BAIRRO + """ A comparação com 2022 usa o
+arquivo oficial de votação por seção de 2022 do TSE, com o mesmo critério de bairro aplicado aos locais de 2022.</p>
 <div class="ok"><b>Conferência integral.</b> Em todas as {n0(len(d))} seções, a soma dos votos de cada cargo é igual ao comparecimento.
 A soma das seções coincide, candidato a candidato, com o total oficial do TSE para os 1.928 candidatos a governador, senador, deputado
 federal e deputado estadual, e os 1.883 percentuais sobre válidos coincidem com os do TSE. Votos dados a números que não constam da lista
 oficial (candidaturas com votos anulados) são tratados como anulados, como no total oficial.</div>
 <p><b>Votos válidos</b> são os nominais e de legenda, excluídos brancos, nulos e anulados. Todo percentual é calculado sobre os válidos do
-mesmo cargo, no mesmo recorte. <b>Áreas de Planejamento (AP)</b> são atribuídas pelo bairro do local de votação, segundo a divisão da
+mesmo cargo, no mesmo recorte. <b>Áreas de Planejamento (AP)</b> seguem a malha oficial da
 Prefeitura do Rio; "Zona Oeste" designa AP4 + AP5. Como o eleitor vota no local onde está inscrito, que nem sempre fica no bairro onde
 mora, uma seção pertence ao bairro do local de votação, e as manchas eleitorais de bairros vizinhos se sobrepõem.</p>""")
 
@@ -316,7 +320,7 @@ mora, uma seção pertence ao bairro do local de votação, e as manchas eleitor
               ("+" if (r.votos - (r.v22 or 0)) > 0 else "") + n0(r.votos - (0 if pd.isna(r.v22) else r.v22)), n0(r.secoes)]
              for r in mun.itertuples()], num=range(1, 7)))
 
-    sec("s5", "5. Capital, bairro a bairro", f"""<p>Os {len(bai)} bairros da capital presentes no cadastro de locais de votação, agrupados por
+    sec("s5", "5. Capital, bairro a bairro", f"""<p>Os {len(bai)} bairros oficiais da capital que têm local de votação, agrupados por
 Área de Planejamento. "Posição" é o lugar de Jorge entre todos os candidatos a deputado estadual votados no bairro; "Mais votado" é o
 candidato a estadual com mais votos ali. A soma da coluna de votos é {n0(cap)}, o total da capital.</p>""" + "".join(
         f'<h3>{e(ap)} — {n0(bai[bai.regiao == ap].votos.sum())} votos</h3>' + tabela(
@@ -474,7 +478,7 @@ Percentuais são sobre os votos válidos para governador (excluídos brancos e n
 <div class="callout"><b>Zona eleitoral não é Área de Planejamento.</b> A zona é uma divisão da Justiça Eleitoral e pode ter seções em mais
 de uma AP. Por isso, na seção 4, cada AP lista as zonas com a votação de Douglas <b>apenas nas seções daquela AP</b>; uma zona que cruza a
 fronteira aparece em mais de uma AP, com a parte correspondente. A seção 5 traz o total de cada zona, a AP que concentra a maior parte dos
-eleitores dela e em quantas APs ela tem seções. A AP de cada seção é a do bairro do local de votação.</div>""")
+eleitores dela e em quantas APs ela tem seções. A AP de cada seção é a do bairro oficial em que fica a escola.</div>""")
 
     sec("d3", "3. Resultado por Área de Planejamento", tabela(
         ["Área de Planejamento", "Aptos", "Abstenção", "Válidos", "Douglas", "Douglas %", "Paes", "Paes %", "Diferença", "Seções"],
@@ -617,7 +621,7 @@ Planejamento) é de <b>{d2(cc)}</b> na capital e {d2(cc_zo)} na Zona Oeste, de �
 <p>Os números vêm dos boletins de urna de cada seção da capital, publicados pelo Tribunal Superior Eleitoral (pleito 3220, 1º turno de
 04/10/2026), conferidos contra o total oficial do TSE (a soma das seções é idêntica ao total de cada candidato). "Diferença" é
 sempre <b>votos de Jorge menos votos do federal</b>: positivo, Jorge à frente; negativo, o federal à frente. A Área de Planejamento
-(AP) de cada seção é a do bairro do local de votação; como zona eleitoral não respeita limite de AP, a seção 5 também reparte cada
+(AP) de cada seção é a do bairro oficial em que fica a escola; como zona eleitoral não respeita limite de AP, a seção 5 também reparte cada
 zona pelas APs em que ela tem seções.</p>
 <div class="callout"><b>Leitura correta.</b> A comparação é territorial, por seção. O voto é secreto: votações que sobem juntas são
 compatíveis com dobrada ou com bases sobrepostas, mas não provam que os mesmos eleitores votaram nos dois.</div>""")
@@ -824,7 +828,7 @@ Em 2022 foram {n0(t22)} votos, em {int((j22 > 0).sum())} municípios. A capital 
 <p>Os números vêm dos boletins de urna de todas as seções do Estado do Rio de Janeiro, publicados pelo Tribunal Superior Eleitoral
 (pleito 3220, 1º turno de 04/10/2026); a soma das seções é idêntica ao total oficial do TSE. Votos válidos são os nominais e de legenda
 para deputado estadual. "Posição" é o lugar de Jorge entre os candidatos a estadual com voto no recorte (município ou urna), com empates
-na mesma posição; numa urna sem voto para Jorge, a posição fica em branco. Bairro e local vêm do cadastro de locais de votação do TSE.
+na mesma posição; numa urna sem voto para Jorge, a posição fica em branco. """ + FONTE_BAIRRO + """
 Cada município tem um capítulo, na ordem da votação de Jorge, com zonas, bairros, locais e todas as seções, inclusive as sem voto. As
 seções agregadas não aparecem em linha própria porque votam na urna da seção principal, onde seus votos já estão contados.</p>""",
          '<h2 id="e3">Os 92 municípios</h2>' + tabela(
@@ -1216,7 +1220,8 @@ def escolas(df, cols_soma, extra=None):
     nomes = {c: f"c_{c}" for c in cols_soma}
     g = df.rename(columns=nomes).groupby("k_escola").agg(
         NM_LOCAL_VOTACAO=("NM_LOCAL_VOTACAO", "first"), DS_ENDERECO=("DS_ENDERECO", "first"),
-        NM_BAIRRO=("NM_BAIRRO", "first"), NM_MUNICIPIO=("NM_MUNICIPIO", "first"), regiao=("regiao", "first"),
+        NM_BAIRRO=("NM_BAIRRO", "first"), NM_BAIRRO_TSE=("NM_BAIRRO_TSE", "first"), NM_MUNICIPIO=("NM_MUNICIPIO", "first"),
+        regiao=("regiao", "first"),
         secoes=("secao", "count"), zonas=("zona", lambda z: ", ".join(f"{int(x)}ª" for x in sorted(set(z)))),
         **{n: (n, "sum") for n in nomes.values()}, **(extra or {}))
     return g.reset_index().rename(columns={n: c for c, n in nomes.items()})
@@ -1259,7 +1264,7 @@ def pdf_trio_zo_tabelas(nm, v, base, fed=1177, outro=11123):
     sec("w1", "1. Totais e Áreas de Planejamento", f"""<p>Zona Oeste da capital = AP4 (Barra e Jacarepaguá) + AP5. Votos de Jorge Felippe Neto
 (PL, 22800, estadual), {NO} ({e(nm[(7, outro)][1])}, {outro}, estadual) e {NF} ({e(nm[(6, fed)][1])}, {fed}, federal), com percentuais sobre os
 válidos do próprio cargo. Fonte: boletins de urna do TSE, pleito 3220, 1º turno de 04/10/2026; totais conferidos contra o oficial do TSE.
-Bairros com grafias diferentes no cadastro do TSE foram unificados, e cada escola é identificada por nome e endereço.</p>""" + tabela(
+Cada escola é identificada por nome e endereço. """ + FONTE_BAIRRO + """</p>""" + tabela(
         ["Área de Planejamento"] + cab, [[e(r["regiao"])] + lin(r) for _, r in ap.iterrows()] +
         [["<b>Zona Oeste</b>", f"<b>{n0(tj)}</b>", p2(tj / z.val7.sum() * 100), f"<b>{n0(to_)}</b>", p2(to_ / z.val7.sum() * 100),
           f"<b>{n0(tf)}</b>", p2(tf / z.val6.sum() * 100), n0(len(z))]], num=range(1, 8)))
@@ -1331,9 +1336,10 @@ def pdf_escolas_jorge(nm, v, base):
 <p>Este relatório lista <b>todas as escolas</b> (locais de votação) do Estado do Rio de Janeiro, com os votos de Jorge Felippe Neto
 (PL, 22800) para deputado estadual em cada uma, organizadas por município e pelo bairro em que a escola está sediada, segundo o cadastro de
 locais de votação do TSE de 2026. Fonte dos votos: boletins de urna do TSE (pleito 3220, 1º turno de 04/10/2026), cuja soma coincide com o
-total oficial.</p>
-<p><b>Consolidação.</b> (1) Bairro: o cadastro grafa o mesmo bairro de formas diferentes (com e sem acento, em maiúsculas ou minúsculas,
-como "Tomás Coelho"/"Tomas Coelho"); os nomes foram unificados pela grafia sem acento, mantendo a forma acentuada. (2) Escola: a mesma
+total oficial, conferido também município a município e zona a zona contra o arquivo oficial de votação por município e zona do TSE.</p>
+<p><b>Bairro.</b> """ + FONTE_BAIRRO + """ Quando o nome usado pelo TSE é diferente do bairro oficial, ele aparece entre parênteses ao lado da escola.</p>
+<p><b>Consolidação.</b> (1) Bairro, fora da capital: o cadastro grafa o mesmo bairro de formas diferentes (com e sem acento, em maiúsculas
+ou minúsculas, como "Mutuá"/"Mutua"); os nomes foram unificados pela grafia sem acento, mantendo a forma acentuada. (2) Escola: a mesma
 escola às vezes aparece com dois números de local na mesma zona; ela é identificada por nome e endereço e aparece uma única vez, com a
 soma de todas as suas seções. (3) "Posição" é o lugar de Jorge entre os candidatos a estadual com voto na escola ou no bairro. Escolas sem
 voto para Jorge também estão listadas.</p>""",
@@ -1360,7 +1366,9 @@ voto para Jorge também estão listadas.</p>""",
             x = es[(es.NM_MUNICIPIO == m.NM_MUNICIPIO) & (es.NM_BAIRRO == br.NM_BAIRRO)].sort_values(["jorge", "NM_LOCAL_VOTACAO"], ascending=[False, True])
             corpo += (f"<h3>{tit(br.NM_BAIRRO)}{' · ' + e(br.regiao.split(' · ')[0]) if cap_ap else ''} — {n0(br.jorge)} votos em {n0(len(x))} escolas</h3>"
                       + tabela(["Escola", "Endereço", "Zona", "Seções", "Válidos", "Votos", "%", "Posição"],
-                               [[tit(r["NM_LOCAL_VOTACAO"]), tit(r["DS_ENDERECO"]), r["zonas"], n0(r["secoes"]), n0(r["val7"]), n0(r["jorge"]),
+                               [[tit(r["NM_LOCAL_VOTACAO"]) + (f" <span class='nota'>(TSE: {tit(r['NM_BAIRRO_TSE'])})</span>"
+                                                                   if A.chave_texto(r["NM_BAIRRO_TSE"]) != A.chave_texto(r["NM_BAIRRO"]) else ""),
+                                 tit(r["DS_ENDERECO"]), r["zonas"], n0(r["secoes"]), n0(r["val7"]), n0(r["jorge"]),
                                  p2(r["pct"]), posf(r)] for _, r in x.iterrows()], num=range(3, 8), cls="mini"))
             n_linhas += len(x)
         toc.append((f"m{i}", f"{i + 1}. {tit(m.NM_MUNICIPIO)} — {n0(m.jorge)} votos"))
@@ -1379,6 +1387,290 @@ voto para Jorge também estão listadas.</p>""",
                           "bairro a bairro", kp, toc_sem_link, "".join(C) + "<h2>Municípios (capítulos a seguir)</h2><ol>" +
                           "".join(f"<li>{e(t.split('. ', 1)[1])}</li>" for _, t in toc[2:]) + "</ol>")
     return principal, partes
+
+
+def pdf_transferencia_ap5(nm, v, base, fed=1177, outro=11123, n_boot=200, n_top=25):
+    """Cruzamento urna a urna dos votos de Dr. Luizinho na AP5 com os de Jorge (e Pampolha): fatos contados
+    (coincidência, faixas, teto possível) + estimativa ecológica de Goodman com os n_top estaduais da AP5
+    separados (sem isso, aliados de Luizinho omitidos inflavam a taxa de Pampolha: 6.010 → 5.227) + destino
+    federal dos eleitores de Jorge. Estimativa, não contagem: o voto é secreto."""
+    from scipy.optimize import lsq_linear
+    J = A.JFN
+    ap5 = base[base.regiao == A.ZONA_OESTE[1]]
+    x7 = v[v.cargo == 7].merge(ap5[KEYS], on=KEYS)
+    top = x7[x7.tipo == "nominal"].groupby("numero").qtd.sum().sort_values(ascending=False)
+    K = list(top.index[:n_top])
+    assert J in K and outro in K
+    piv = x7[(x7.tipo == "nominal") & x7.numero.isin(K)].pivot_table(index=KEYS, columns="numero", values="qtd", aggfunc="sum").fillna(0)
+    comp = pd.read_sql("SELECT municipio,zona,secao,comparecimento AS comp6 FROM secao WHERE cargo=6",
+                       sqlite3.connect(f"{A.T}/eleicao2026_rj_secao.sqlite")).set_index(KEYS)
+    x6 = v[(v.cargo == 6) & (v.tipo == "nominal")].merge(ap5[KEYS], on=KEYS)
+    topf = [int(f) for f in x6.groupby("numero").qtd.sum().sort_values(ascending=False).head(30).index]
+    assert fed in topf
+    pf = x6[x6.numero.isin(topf)].pivot_table(index=KEYS, columns="numero", values="qtd", aggfunc="sum")
+    d = piv.join(comp, how="inner").join(pf.rename(columns=lambda c: f"f{int(c)}"), how="left").fillna(0)
+    d["resto"] = d.comp6 - d[K].sum(axis=1)
+    d = d.reset_index().merge(ap5[KEYS + ["NM_LOCAL_VOTACAO", "NM_BAIRRO"]], on=KEYS, how="left")
+    L = d[f"f{fed}"]
+    TL, TJ, TO = int(L.sum()), int(d[J].sum()), int(d[outro].sum())
+    assert TL == int(v[(v.cargo == 6) & (v.tipo == "nominal") & (v.numero == fed)].merge(ap5[KEYS], on=KEYS).qtd.sum())
+    NO, NF = tit(nm[(7, outro)][0]), tit(nm[(6, fed)][0])
+    CO, CF = NO.split()[-1], CURTO.get(fed, NF)
+    cols = K + ["resto"]
+    X = d[cols].values.astype(float)
+    w = 1 / np.sqrt(np.maximum(d.comp6.values, 1))
+    tot = d[cols].sum()
+    iJ, iO = cols.index(J), cols.index(outro)
+
+    def fit(y, idx=slice(None)):
+        return lsq_linear(X[idx] * w[idx, None], y[idx] * w[idx], bounds=(0, 1)).x
+
+    b = fit(L.values.astype(float))
+    est_j, est_o = b[iJ] * TJ, b[iO] * TO
+    rng = np.random.default_rng(1)
+    bs = []
+    for _ in range(n_boot):
+        ix = rng.choice(len(d), len(d))
+        bb = fit(L.values.astype(float), ix)
+        bs.append((bb[iJ] * TJ, bb[iO] * TO))
+    bs = np.array(bs)
+    (lj, hj), (lo, ho) = np.percentile(bs[:, 0], [2.5, 97.5]), np.percentile(bs[:, 1], [2.5, 97.5])
+    teto_j, teto_o = int(np.minimum(d[J], L).sum()), int(np.minimum(d[outro], L).sum())
+    viz_j = float((L * d[J] / d.comp6.replace(0, np.nan)).sum())
+    viz_o = float((L * d[outro] / d.comp6.replace(0, np.nan)).sum())
+    alloc = pd.DataFrame({"cand": [nm.get((7, c), ("Demais estaduais, legenda, brancos e nulos",))[0] if c != "resto" else "Demais estaduais, legenda, brancos e nulos" for c in cols],
+                          "partido": [nm.get((7, c), (0, ""))[1] if c != "resto" else "" for c in cols], "base": tot.values, "taxa": b,
+                          "votos": b * tot.values}).sort_values("votos", ascending=False)
+    # destino federal dos eleitores de Jorge e de Pampolha
+    dest = []
+    for f in topf:
+        bb = fit(d[f"f{f}"].values.astype(float))
+        dest.append((tit(nm[(6, f)][0]), nm[(6, f)][1], int(d[f"f{f}"].sum()), bb[iJ] * 100, bb[iJ] * TJ, bb[iO] * 100, bb[iO] * TO))
+    dest = pd.DataFrame(dest, columns=["fed", "sg", "votos", "tj", "ej", "to", "eo"]).sort_values("ej", ascending=False).reset_index(drop=True)
+    pos_l = int(dest.index[dest.fed == NF][0]) + 1
+
+    # fatos contados
+    faixas = [(1, 4), (5, 9), (10, 19), (20, 10 ** 6)]
+    rot = {(1, 4): "1 a 4", (5, 9): "5 a 9", (10, 19): "10 a 19", (20, 10 ** 6): "20 ou mais"}
+
+    def faixa_l(col):
+        out = [("sem voto", int((d[col] == 0).sum()), int(L[d[col] == 0].sum()))]
+        for a_, z_ in faixas:
+            m = (d[col] >= a_) & (d[col] <= z_)
+            out.append((rot[(a_, z_)], int(m.sum()), int(L[m].sum())))
+        return out
+
+    d["e_j"], d["e_o"] = b[iJ] * d[J], b[iO] * d[outro]
+    d["teto_j"], d["teto_o"] = np.minimum(d[J], L), np.minimum(d[outro], L)
+
+    C, toc = [], []
+
+    def sec(k, t, c, quebra=False):
+        toc.append((k, t))
+        C.append(f'<h2 id="{k}" class="{"pg" if quebra else ""}">{e(t)}</h2>{c}')
+
+    sec("v1", "1. Sumário executivo", f"""
+<p>Na AP5, {NF} teve <b>{n0(TL)} votos</b>; Jorge Felippe Neto teve {n0(TJ)} e {NO} {n0(TO)}. Cruzando as {n0(len(d))} urnas:</p>
+<p><b>Fatos contados.</b> {n0(int(L[d[J] > 0].sum()))} dos {n0(TL)} votos de {NF} ({p2(L[d[J] > 0].sum() / TL * 100)}) estão em urnas em que Jorge
+também foi votado. Somando, urna a urna, o menor entre os votos de Jorge e os de {NF}, o <b>máximo possível</b> de eleitores de Jorge que
+votaram em {NF} é {n0(teto_j)}; para {NO}, esse teto é {n0(teto_o)}, porque a base dele na AP5 é menor.</p>
+<p><b>Estimativa.</b> Pelo modelo urna a urna, <b>cerca de {n0(est_j)} eleitores de Jorge votaram em {NF}</b> (faixa provável de
+{n0(lj)} a {n0(hj)}; {p2(b[iJ] * 100)} da base de Jorge), e cerca de {n0(est_o)} eleitores de {NO} (de {n0(lo)} a {n0(ho)};
+{p2(b[iO] * 100)} da base dele). As duas faixas se sobrepõem: estatisticamente, as contribuições de Jorge e de {NO} para {NF} na AP5 são
+equivalentes. Jorge tem a base maior; {NO} tem a taxa maior, o que é coerente com ele ser do mesmo partido de {NF}.</p>
+<p><b>Destino dos eleitores de Jorge.</b> Entre os federais, {NF} é o <b>{pos_l}º que mais recebeu votos dos eleitores de Jorge</b> na AP5
+(cerca de {n0(dest.loc[pos_l - 1, "ej"])}){", atrás apenas de " + dest.loc[0, "fed"] + f" (cerca de {n0(dest.loc[0, 'ej'])})" if pos_l == 2 else ""}.
+Para comparação, sem nenhuma afinidade (cada eleitor de Jorge votando em {NF} na mesma proporção que o resto da sua urna), seriam só
+{n0(viz_j)}: a votação de Jorge levou a {NF} cerca de {d2(est_j / viz_j) if viz_j else "—"} vezes o que o acaso levaria.</p>""")
+
+    sec("v2", "2. Método e cuidados", f"""
+<p>Cada eleitor dá um voto para estadual e um para federal. "Transferir" significa quantos eleitores que votaram em Jorge para estadual
+votaram também em {NF} para federal. O voto é secreto, então esse número é <b>estimado</b> pela forma como as votações variam juntas pelas
+urnas (regressão ecológica de Goodman): em cada urna, os votos de {NF} são decompostos em uma taxa dos eleitores de cada um dos {n_top}
+estaduais mais votados da AP5 — tratados separadamente — mais uma taxa do restante do comparecimento (demais estaduais, legenda,
+brancos e nulos). As taxas ficam entre 0% e 100%, a regressão pondera pelo tamanho da urna, e a faixa provável (95%) vem de {n_boot}
+reamostragens das urnas.</p>
+<div class="callout"><b>Correção em relação à primeira versão.</b> A primeira versão separava só Jorge, {NO} e "o resto". Como {NF} tem outros
+aliados entre os estaduais, os votos que vieram deles caíam na conta de quem é forte nas mesmas urnas, e a taxa de {NO} saía inflada
+(cerca de 6.010). Com os {n_top} estaduais separados, a estimativa de {NO} cai para cerca de {n0(est_o)}, e a de Jorge fica estável
+(cerca de {n0(est_j)}).</div>
+<p><b>Cuidados.</b> O modelo supõe que a taxa de cada grupo é parecida entre as urnas da AP5. É inferência sobre urnas, não identificação
+de eleitores. O <b>teto</b> (seção 3) não depende de modelo: é o máximo matematicamente possível em cada urna, somado.</p>""")
+
+    sec("v3", "3. Fatos contados urna a urna", tabela(
+        ["", "Jorge", NO],
+        [["Votos na AP5", n0(TJ), n0(TO)],
+         [f"Urnas com voto do candidato (de {n0(len(d))})", n0(int((d[J] > 0).sum())), n0(int((d[outro] > 0).sum()))],
+         [f"Votos de {NF} nessas urnas", n0(int(L[d[J] > 0].sum())), n0(int(L[d[outro] > 0].sum()))],
+         [f"Teto: máximo possível de eleitores do candidato que votaram em {NF}", f"<b>{n0(teto_j)}</b>", f"<b>{n0(teto_o)}</b>"]],
+        num=(1, 2)) + f"<h3>Votos de {NF} conforme a votação de Jorge na urna</h3>" + tabela(
+        ["Votos de Jorge na urna", "Urnas", f"Votos de {NF}"], [[a_, n0(u), n0(lv)] for a_, u, lv in faixa_l(J)], num=(1, 2)) +
+        f"<h3>Votos de {NF} conforme a votação de {NO} na urna</h3>" + tabela(
+        [f"Votos de {NO} na urna", "Urnas", f"Votos de {NF}"], [[a_, n0(u), n0(lv)] for a_, u, lv in faixa_l(outro)], num=(1, 2)))
+
+    sec("v4", "4. Estimativa: de onde vieram os votos de " + NF, tabela(
+        ["Origem", "Faixa provável (IC 95%)", "Taxa estimada", "Votos estimados", "Teto possível", "Sem afinidade (acaso)"],
+        [["Eleitores de Jorge", f"{n0(lj)} a {n0(hj)}", p2(b[iJ] * 100), f"<b>{n0(est_j)}</b>", n0(teto_j), n0(viz_j)],
+         [f"Eleitores de {NO}", f"{n0(lo)} a {n0(ho)}", p2(b[iO] * 100), f"<b>{n0(est_o)}</b>", n0(teto_o), n0(viz_o)]], num=range(1, 6)) +
+        "<h3>Todas as origens estimadas (estaduais da AP5)</h3>" + tabela(
+            ["Base de origem", "Partido", "Eleitores na AP5", "Taxa estimada", f"Votos estimados para {NF}"],
+            [[tit(r.cand), e(r.partido), n0(r.base), p2(r.taxa * 100), n0(r.votos)] for r in alloc.itertuples() if r.votos >= 0.5] +
+            [["<b>Total estimado</b>", "", "", "", f"<b>{n0(alloc.votos.sum())}</b> (real: {n0(TL)})"]], num=(2, 3, 4), cls="mini"))
+
+    sec("v5", "5. Para quais federais foram os eleitores de Jorge", f"<p>O mesmo modelo, aplicado a cada um dos 30 federais mais votados da AP5, "
+        f"estima quantos eleitores de Jorge (e de {NO}) votaram em cada um. A soma não chega à base inteira porque parte dos eleitores votou em "
+        "federais fora desta lista, na legenda, em branco ou nulo.</p>" + tabela(
+            ["#", "Federal", "Partido", "Votos na AP5", "Taxa entre eleitores de Jorge", "De Jorge", f"Taxa entre eleitores de {CO}", f"De {CO}"],
+            [[str(i + 1), f"<b>{e(r.fed)}</b>" if r.fed == NF else e(r.fed), e(r.sg), n0(r.votos), p2(r.tj), n0(r.ej), p2(r.to), n0(r.eo)]
+             for i, r in dest.iterrows()], num=(0, 3, 4, 5, 6, 7), cls="mini", destaque=lambda k, _f=dest.fed.values: _f[k] == NF))
+
+    zt = d.groupby("zona").agg(urnas=("secao", "count"), L=(f"f{fed}", "sum"), j=(J, "sum"), o=(outro, "sum"), tj=("teto_j", "sum"),
+                               to=("teto_o", "sum"), ej=("e_j", "sum"), eo=("e_o", "sum")).reset_index().sort_values("L", ascending=False)
+    sec("v6", "6. Zona a zona", "<p>Em cada zona da AP5: os votos dos três, o teto possível e a estimativa (taxas da AP5 aplicadas às urnas da "
+        "zona).</p>" + tabela(
+            ["Zona", "Urnas", CF, "Jorge", CO, "Teto de Jorge", "Estimado de Jorge", f"Teto de {CO}", f"Estimado de {CO}"],
+            [[f"{int(r.zona)}ª", n0(r.urnas), n0(r.L), n0(r.j), n0(r.o), n0(r.tj), n0(r.ej), n0(r.to), n0(r.eo)] for r in zt.itertuples()],
+            num=range(1, 9)))
+
+    us = d.sort_values(["zona", "secao"])
+    sec("v7", "7. Urna a urna", f"<p>As {n0(len(us))} urnas da AP5. \"Teto\" é o máximo possível de eleitores do candidato que votaram em {NF} "
+        "naquela urna; \"Estimado\" aplica a taxa estimada aos votos do candidato na urna. Em destaque, as urnas em que Jorge teve 10 ou "
+        "mais votos.</p>" + tabela(
+            ["Zona", "Seção", "Escola", "Bairro", CF, "Jorge", "Teto J.", "Estim. J.", CO, "Teto P.", "Estim. P."],
+            [[f"{int(r['zona'])}ª", int(r["secao"]), tit(r["NM_LOCAL_VOTACAO"]), tit(r["NM_BAIRRO"]), n0(r[f"f{fed}"]), n0(r[J]), n0(r["teto_j"]),
+              d2(r["e_j"]), n0(r[outro]), n0(r["teto_o"]), d2(r["e_o"])] for r in us.to_dict("records")],
+            num=range(4, 11), cls="mini", destaque=lambda k, _a=us[J].values: _a[k] >= 10), quebra=True)
+
+    kp = [(n0(TL), f"votos de {NF} na AP5"), (n0(est_j), f"estimados de eleitores de Jorge ({n0(lj)}–{n0(hj)})"),
+          (n0(est_o), f"estimados de eleitores de {CO} ({n0(lo)}–{n0(ho)})"), (n0(teto_j), "teto possível vindo de Jorge"),
+          (f"{pos_l}º", f"{CF} entre os federais dos eleitores de Jorge"), (n0(len(d)), "urnas da AP5")]
+    return documento(f"{NF} e Jorge Felippe Neto na AP5: cruzamento urna a urna", f"Quantos eleitores de Jorge e de {NO} votaram em {NF} — "
+                     "fatos contados, teto possível e estimativa", kp, toc, "".join(C))
+
+
+def pdf_auditoria(nm, v, base):
+    """Nota de auditoria dos números de Jorge: conferência contra o arquivo oficial do TSE por município e zona
+    (2026 e 2022), correções feitas e o efeito do bairro oficial da Prefeitura, escola por escola."""
+    J = A.JFN
+    T = A.T
+    usa = ["NR_TURNO", "CD_MUNICIPIO", "NM_MUNICIPIO", "NR_ZONA", "CD_CARGO", "NR_CANDIDATO", "QT_VOTOS_NOMINAIS"]
+
+    def oficial(ano, nr):
+        o = pd.read_csv(f"{T}/votacao_candidato_munzona_{ano}_RJ.csv", sep=";", encoding="latin1", dtype=str, usecols=usa)
+        o = o[(o.CD_CARGO == "7") & (o.NR_CANDIDATO == nr) & (o.NR_TURNO == "1")]
+        return o.assign(municipio=o.CD_MUNICIPIO.astype(int), zona=o.NR_ZONA.astype(int), v=o.QT_VOTOS_NOMINAIS.astype(int)) \
+            .groupby(["municipio", "zona", "NM_MUNICIPIO"]).v.sum().reset_index()
+
+    o26 = oficial(2026, str(J))
+    jv = v[(v.cargo == 7) & (v.tipo == "nominal") & (v.numero == J)].groupby(["municipio", "zona"]).qtd.sum().rename("bu").reset_index()
+    cz = o26.merge(jv, on=["municipio", "zona"], how="outer").fillna(0)
+    cz["dif"] = cz.bu - cz.v
+    o22 = oficial(2022, "70800")
+    j22 = pd.read_csv(f"{T}/jfn_2022_secao_RJ.csv", sep=";")
+    m22 = o22.groupby("NM_MUNICIPIO").v.sum().to_frame("of").join(j22.groupby("nm_municipio").votos_jfn.sum().rename("meu"), how="outer").fillna(0)
+
+    d = base.copy()
+    jsec = v[(v.cargo == 7) & (v.tipo == "nominal") & (v.numero == J)].groupby(KEYS).qtd.sum().rename("jorge")
+    d = d.merge(jsec, left_on=KEYS, right_index=True, how="left").fillna({"jorge": 0})
+    rio = d[d.municipio == A.RIO].copy()
+    # AP pelo critério antigo (nome do TSE): lista por nome, AP3 por padrão — só para mostrar o antes
+    rio["ap_antes"] = rio.NM_BAIRRO_TSE.map(lambda b: A.BAIRRO_AP.get(str(b).upper(), "AP3 · Zona Norte"))
+    # mesmo bairro, nome diferente no TSE: sem isso a comparação mostra "Recreio" sumindo e "Recreio dos Bandeirantes" surgindo
+    alias = {"RECREIO": "RECREIO DOS BANDEIRANTES", "FREGUESIA JPA": "FREGUESIA (JACAREPAGUÁ)", "OSWALDO CRUZ": "OSVALDO CRUZ",
+             "SÃO CRISTÓVÃO": "IMPERIAL DE SÃO CRISTÓVÃO", "FREGUESIA (ILHA DO GOVERNADOR)": "FREGUESIA (ILHA)",
+             "FUNDÃO": "CIDADE UNIVERSITÁRIA"}
+    rio["NM_BAIRRO_TSE"] = rio.NM_BAIRRO_TSE.map(lambda b: alias.get(str(b).upper(), b))
+    antes = rio.groupby("NM_BAIRRO_TSE").jorge.sum()
+    depois = rio.groupby("NM_BAIRRO").jorge.sum()
+    chaves = sorted(set(antes.index.map(A.chave_texto)) | set(depois.index.map(A.chave_texto)))
+    a_k = antes.groupby(antes.index.map(A.chave_texto)).sum()
+    d_k = depois.groupby(depois.index.map(A.chave_texto)).sum()
+    nome_k = {A.chave_texto(b): b for b in list(antes.index) + list(depois.index)}
+    nome_k.update({A.chave_texto(b): b for b in depois.index})
+    bd = pd.DataFrame({"bairro": [nome_k[k] for k in chaves], "antes": [a_k.get(k, 0) for k in chaves], "depois": [d_k.get(k, 0) for k in chaves]})
+    bd["dif"] = bd.depois - bd.antes
+    bd["ap"] = [A.regiao(A.RIO, b) if A.chave_texto(b) in set(depois.index.map(A.chave_texto)) else "—" for b in bd.bairro]
+    bd = bd[(bd.antes > 0) | (bd.depois > 0)].sort_values(["depois", "antes"], ascending=False)
+    ap_antes = rio.groupby("ap_antes").jorge.sum()
+    ap_depois = rio.groupby("regiao").jorge.sum()
+    es = rio.groupby("k_escola").agg(nome=("NM_LOCAL_VOTACAO", "first"), end=("DS_ENDERECO", "first"), tse=("NM_BAIRRO_TSE", "first"),
+                                     of=("NM_BAIRRO", "first"), ap=("regiao", "first"), apa=("ap_antes", "first"), jorge=("jorge", "sum")).reset_index()
+    div = es[es.tse.map(A.chave_texto) != es.of.map(A.chave_texto)].sort_values("jorge", ascending=False)
+    n_nome = int(base[(base.municipio == A.RIO)].drop_duplicates("k_escola").pipe(
+        lambda x: ((x.NM_BAIRRO_TSE.map(A.chave_texto) != x.NM_BAIRRO.map(A.chave_texto)).sum())) - len(div))
+    assert int(bd.antes.sum()) == int(bd.depois.sum()) == int(rio.jorge.sum())
+
+    C, toc = [], []
+
+    def sec(k, t, c, quebra=False):
+        toc.append((k, t))
+        C.append(f'<h2 id="{k}" class="{"pg" if quebra else ""}">{e(t)}</h2>{c}')
+
+    ok = lambda b: "✔ confere" if b else "✘ diverge"  # noqa: E731
+    sec("q1", "1. O que foi conferido", tabela(
+        ["Conferência", "Fonte independente", "Resultado"],
+        [["Total de Jorge em 2026", "Total oficial do TSE (resultados por candidato)", f"{n0(int(jsec.sum()))} = {n0(nm[(7, J)][3])} · {ok(int(jsec.sum()) == nm[(7, J)][3])}"],
+         ["Jorge por município e zona, 2026", "Arquivo oficial de votação por município e zona do TSE",
+          f"{len(cz)} combinações; diferenças: {int((cz.dif != 0).sum())} · {ok((cz.dif == 0).all())}"],
+         ["Total e municípios de 2022 (70800)", "Arquivo oficial de 2022 por município e zona", f"{n0(int(m22.of.sum()))} = {n0(int(m22.meu.sum()))}; "
+          f"municípios com diferença: {int((m22.of != m22.meu).sum())} · {ok((m22.of == m22.meu).all())}"],
+         ["Soma dos votos de cada cargo por urna", "Comparecimento registrado no próprio boletim", "37.675 urnas, nenhuma divergência · ✔ confere"],
+         ["Candidatos e percentuais", "Totais oficiais do TSE por candidato (inclui % exato)", "1.928 candidatos e 1.883 percentuais idênticos · ✔ confere"],
+         ["Bairro de cada escola da capital", "Malha oficial de 167 bairros da Prefeitura",
+          f"{len(div) + n_nome} de {len(es)} escolas com nome do TSE diferente do oficial: {n_nome} são só outro nome do mesmo bairro "
+          f"(ex.: Recreio / Recreio dos Bandeirantes) e {len(div)} ficam em outro bairro oficial · corrigido (seções 3 a 5)"]]) +
+        "<p>Conclusão: <b>a contagem de votos estava correta</b> em todos os níveis (estado, município, zona e urna). O que estava errado era a "
+        "<b>atribuição de bairro e de Área de Planejamento</b> na capital, que dependia do nome dado pelo cadastro do TSE. A seção 2 lista "
+        "todas as correções feitas.</p>")
+
+    sec("q2", "2. Correções feitas", "<ol>" + "".join(f"<li>{x}</li>" for x in [
+        "<b>Bairro oficial da Prefeitura na capital.</b> O bairro passou a ser o oficial, definido pela localização de cada escola na malha "
+        "oficial de bairros; o nome dado pelo TSE diverge em cerca de 19% das escolas (ex.: escolas de Jabour registradas como Senador Camará; "
+        "várias escolas de Bangu registradas como Padre Miguel). A Área de Planejamento passou a vir da mesma malha, e não mais do nome.",
+        "<b>Área de Planejamento por nome.</b> Nomes do TSE que não são bairros oficiais caíam na AP3 por padrão — \"Catiri\" e \"São Jorge\" "
+        f"ficam na AP5, entre outros; {int((div.ap != div.apa).sum())} escolas mudaram de AP.",
+        "<b>Grafias.</b> Bairros grafados de dois jeitos (\"Tomás\"/\"Tomas Coelho\", \"Mutuá\"/\"Mutua\", \"Andrade Araújo\"/\"Araujo\") "
+        "e em caixa baixa (\"barra olímpica\") saíam partidos; foram unificados.",
+        "<b>Escolas duplicadas.</b> 43 escolas apareciam com dois números de local; cada escola agora é identificada por nome e endereço.",
+        "<b>Votos anulados.</b> Votos em números fora da lista oficial (candidaturas com votos anulados pelo TSE) entravam como válidos e "
+        "distorciam percentuais; passaram a ser anulados, como no total oficial.",
+        "<b>Correlação.</b> A correlação bruta por seção misturava geografia com afinidade; a medida principal passou a ser a correlação "
+        "controlada por região (ex.: Pazuello de −0,01 para +0,05).",
+        "<b>Transferência para Dr. Luizinho na AP5.</b> O primeiro modelo separava só Jorge, Pampolha e \"o resto\" e inflava a estimativa "
+        "de Pampolha (6.010); com os 25 estaduais da AP5 separados, Jorge ~4.922 e Pampolha ~5.227 — empate estatístico."]) + "</ol>")
+
+    sec("q3", "3. Seus votos por Área de Planejamento: antes e depois", tabela(
+        ["Área de Planejamento", "Antes (nome do TSE)", "Depois (bairro oficial)", "Diferença"],
+        [[e(ap), n0(ap_antes.get(ap, 0)), n0(ap_depois.get(ap, 0)), ("+" if ap_depois.get(ap, 0) > ap_antes.get(ap, 0) else "") +
+          n0(ap_depois.get(ap, 0) - ap_antes.get(ap, 0))] for ap in ORD_AP] +
+        [["<b>Capital</b>", n0(int(ap_antes.sum())), n0(int(ap_depois.sum())), "0"]], num=(1, 2, 3)))
+
+    sec("q4", "4. Seus votos por bairro: antes e depois", "<p>\"Antes\" agrupa pelo nome do bairro no cadastro do TSE; \"depois\", pelo "
+        "bairro oficial da Prefeitura em que fica a escola. O total da capital não muda; muda a divisão entre bairros.</p>" + tabela(
+            ["Bairro", "AP (oficial)", "Antes", "Depois", "Diferença"],
+            [[tit(r.bairro), e(r.ap.split(" · ")[0]), n0(r.antes), f"<b>{n0(r.depois)}</b>", ("+" if r.dif > 0 else "") + n0(r.dif)]
+             for r in bd.itertuples()], num=(2, 3, 4), cls="mini"), quebra=True)
+
+    sec("q5", "5. Escolas em que o bairro do TSE difere do oficial", f"<p>As {len(div)} escolas da capital que ficam em outro bairro oficial, "
+        "com o nome de bairro usado pelo TSE, o bairro oficial em que a escola fica e os votos de Jorge nela. Diferenças só de grafia ou de nome "
+        "do mesmo bairro (Recreio / Recreio dos Bandeirantes, Freguesia JPA / Freguesia (Jacarepaguá) e semelhantes) não estão na lista. "
+        "Nomes que não são bairros oficiais (Jardim Bangu, Vila Kennedy dentro de Bangu, Catiri, Augusto Vasconcelos, Rio das Pedras) "
+        "aparecem como diferença, porque a escola fica dentro de um bairro oficial de outro nome.</p>" + tabela(
+            ["Escola", "Endereço", "Bairro no TSE", "Bairro oficial", "AP", "Votos"],
+            [[tit(r.nome), tit(r.end), tit(r.tse), f"<b>{tit(r.of)}</b>", e(r.ap.split(" · ")[0]), n0(r.jorge)] for r in div.itertuples()],
+            num=(5,), cls="mini"), quebra=True)
+
+    sec("q6", "6. Conferência município por zona contra o TSE", "<p>Votos de Jorge em 2026 por município e zona: arquivo oficial do TSE × soma dos "
+        "boletins de urna usada nos relatórios.</p>" + tabela(
+            ["Município", "Zona", "Oficial TSE", "Boletins de urna", "Diferença"],
+            [[tit(r.NM_MUNICIPIO), f"{int(r.zona)}ª", n0(r.v), n0(r.bu), n0(r.dif)] for r in cz.sort_values(["NM_MUNICIPIO", "zona"]).itertuples()],
+            num=(2, 3, 4), cls="mini"), quebra=True)
+
+    kp = [(n0(int(jsec.sum())), "votos, iguais ao oficial"), (f"{len(cz)} / {int((cz.dif != 0).sum())}", "zonas conferidas / divergências"),
+          (n0(len(div)), "escolas em outro bairro oficial"), (n0(int((div.ap != div.apa).sum())), "escolas que mudaram de AP"),
+          (n0(int(ap_depois.get(A.ZONA_OESTE[1], 0))), "AP5 (bairro oficial)"),
+          (n0(int(ap_depois.get(A.ZONA_OESTE[0], 0) + ap_depois.get(A.ZONA_OESTE[1], 0))), "Zona Oeste (bairro oficial)")]
+    return documento("Auditoria dos números de Jorge Felippe Neto", "O que foi conferido, o que estava errado e o que mudou", kp, toc, "".join(C))
 
 
 async def gerar_partes(htmls, nome):
@@ -1415,6 +1707,10 @@ def main():
     if alvo in ("jorge", "ambos"):
         html, _ = pdf_jorge(nm, v, base)
         asyncio.run(gerar(html, "Jorge_Felippe_Neto_2026_votacao_completa"))
+    if alvo == "auditoria":
+        asyncio.run(gerar(pdf_auditoria(nm, v, base), "Auditoria_numeros_Jorge_Felippe_Neto_2026"))
+    if alvo == "transferencia":
+        asyncio.run(gerar(pdf_transferencia_ap5(nm, v, base), "Transferencia_Jorge_Pampolha_para_Luizinho_2026_AP5"))
     if alvo == "trio_zo_tabelas":
         principal, anexos = pdf_trio_zo_tabelas(nm, v, base)
         asyncio.run(gerar_partes([principal] + anexos, "Tabelas_Luizinho_Pampolha_Jorge_2026_zona_oeste"))

@@ -42,10 +42,52 @@ FEDS = {2222: "Soraya Santos", 1177: "Dr. Luizinho", 4400: "Bernardo Rossi", 221
         7090: "Onassis", 2767: "Flavio Galvão", 2269: "Altineu Côrtes", 1522: "Pastor Junior Trovão"}
 
 
+MALHA = os.path.join(T, "bairros_pcrj_oficial.geojson")  # 167 bairros oficiais (pgeo3.rio.rj.gov.br, Limites_administrativos/4)
+_MALHA = None
+
+
+def malha():
+    """(árvore, polígonos, nomes, APs) dos bairros oficiais da Prefeitura do Rio; AP2 dividida pela RP (2.1 / 2.2)."""
+    global _MALHA
+    if _MALHA is None:
+        from shapely.geometry import shape
+        from shapely.strtree import STRtree
+        rot = {"1": "AP1 · Centro", "2.1": "AP2.1 · Zona Sul", "2.2": "AP2.2 · Grande Tijuca", "3": "AP3 · Zona Norte",
+               "4": "AP4 · Barra e Jacarepaguá", "5": "AP5 · Zona Oeste"}
+        feats = json.load(open(MALHA))["features"]
+        polys = [shape(f["geometry"]) for f in feats]
+        nomes = [f["properties"]["nome"].strip().upper() for f in feats]
+        aps = [rot[f["properties"]["cod_rp"].strip() if f["properties"]["area_plane"].strip() == "2" else f["properties"]["area_plane"].strip()]
+               for f in feats]
+        _MALHA = (STRtree(polys), polys, nomes, aps)
+    return _MALHA
+
+
+def bairro_oficial(lat, lon):
+    """Bairro oficial (e AP) da Prefeitura que contém o ponto; (None, None) sem coordenada ou fora da malha."""
+    from shapely.geometry import Point
+    if pd.isna(lat) or pd.isna(lon):
+        return None, None
+    arv, polys, nomes, aps = malha()
+    pt = Point(lon, lat)
+    for i in arv.query(pt):
+        if polys[i].contains(pt):
+            return nomes[i], aps[i]
+    return None, None
+
+
 def regiao(mun, bairro):
+    """AP do bairro na capital. Na capital NM_BAIRRO já é o bairro oficial (locais()), e a AP sai da malha oficial;
+    a lista por nome (BAIRRO_AP) só cobre nomes do TSE de escolas sem coordenada."""
     if mun != RIO:
         return "Fora da capital"
-    return BAIRRO_AP.get(str(bairro).upper(), "AP3 · Zona Norte")
+    b = str(bairro).upper()
+    _, _, nomes, aps = malha()
+    if b in nomes:
+        return aps[nomes.index(b)]
+    if b in BAIRRO_AP:
+        return BAIRRO_AP[b]
+    raise KeyError(f"bairro da capital sem AP conhecida: {bairro!r}")
 
 
 def nomes():
@@ -79,6 +121,15 @@ def locais(ano):
     canon = (df.assign(_a=acentos).sort_values(["_a", "eleitores"], ascending=False)
              .drop_duplicates("k_bairro").set_index("k_bairro").NM_BAIRRO)
     df["NM_BAIRRO"] = df.k_bairro.map(canon)
+    # Capital: o bairro do cadastro do TSE diverge do oficial em ~19% das escolas (ex.: escolas de Jabour
+    # registradas como "Senador Camará"; "Catiri" e "São Jorge" ficam na AP5). Vale o bairro oficial da
+    # Prefeitura que contém a coordenada da escola; o nome do TSE fica em NM_BAIRRO_TSE.
+    df["NM_BAIRRO_TSE"] = df.NM_BAIRRO
+    rio = df.municipio == RIO
+    pontos = df.loc[rio, ["lat", "lon"]].drop_duplicates()
+    of = {(la, lo): bairro_oficial(la, lo)[0] for la, lo in zip(pontos.lat, pontos.lon)}
+    df.loc[rio, "NM_BAIRRO"] = [of.get((la, lo)) or b for la, lo, b in zip(df.loc[rio, "lat"], df.loc[rio, "lon"], df.loc[rio, "NM_BAIRRO"])]
+    df["k_bairro"] = df.NM_MUNICIPIO + "|" + df.NM_BAIRRO.map(chave_texto)
     # a mesma escola aparece com números de local diferentes na mesma zona: a identidade é nome + endereço
     df["k_escola"] = df.NM_MUNICIPIO + "|" + df.NM_LOCAL_VOTACAO.map(chave_texto) + "|" + df.DS_ENDERECO.map(chave_texto)
     return df
@@ -143,7 +194,7 @@ def main():
     # seções agregadas votam na principal: soma os eleitores das agregadas na principal
     princ = loc[loc["CD_TIPO_SECAO_AGREGADA"] == "1"][["municipio", "zona", "secao", "NM_MUNICIPIO",
                                                       "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "DS_ENDERECO",
-                                                      "NM_BAIRRO", "lat", "lon"]]
+                                                      "NM_BAIRRO", "NM_BAIRRO_TSE", "lat", "lon"]]
     princ = princ.drop_duplicates(["municipio", "zona", "secao"])
 
     v = pd.read_sql("SELECT * FROM voto WHERE cargo IN (3,5,6,7,1)", con)
@@ -202,7 +253,7 @@ def main():
     rio = s[s.municipio == RIO]
     por_zona = agrupa(rio, ["zona"])
     por_bairro = agrupa(rio, ["regiao", "NM_BAIRRO"])
-    por_local = agrupa(rio, ["regiao", "NM_BAIRRO", "zona", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "DS_ENDERECO"])
+    por_local = agrupa(rio, ["regiao", "NM_BAIRRO", "NM_BAIRRO_TSE", "zona", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "DS_ENDERECO"])
     latlon = princ.groupby(["zona", "NR_LOCAL_VOTACAO"])[["lat", "lon"]].first()
     por_local = por_local.merge(latlon, left_on=["zona", "NR_LOCAL_VOTACAO"], right_index=True, how="left")
 
