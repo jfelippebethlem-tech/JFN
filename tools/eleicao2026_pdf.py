@@ -1673,6 +1673,85 @@ def pdf_auditoria(nm, v, base):
     return documento("Auditoria dos números de Jorge Felippe Neto", "O que foi conferido, o que estava errado e o que mudou", kp, toc, "".join(C))
 
 
+def pdf_bairros_jorge(nm, v, base):
+    """Jorge bairro a bairro, cidade a cidade: todos os bairros dos 92 municípios (capital por AP, bairro oficial),
+    com votos, % válidos, posição, mais votado no bairro, 2022 e variação."""
+    J = A.JFN
+    x7 = v[v.cargo == 7]
+    val = x7[x7.valido].groupby(KEYS).qtd.sum().rename("val7")
+    nomi = x7[x7.tipo == "nominal"][KEYS + ["numero", "qtd"]].merge(base[KEYS + ["NM_MUNICIPIO", "NM_BAIRRO"]], on=KEYS)
+    jv = nomi[nomi.numero == J].set_index(KEYS).qtd.rename("jorge")
+    d = base.merge(val, left_on=KEYS, right_index=True, how="left").merge(jv, left_on=KEYS, right_index=True, how="left").fillna({"val7": 0, "jorge": 0})
+    total = int(d.jorge.sum())
+    assert total == nm[(7, J)][3]
+    rk = nomi.groupby(["NM_MUNICIPIO", "NM_BAIRRO", "numero"]).qtd.sum().reset_index()
+    rk = rk[rk.qtd > 0]
+    rk["p"] = rk.groupby(["NM_MUNICIPIO", "NM_BAIRRO"]).qtd.rank(ascending=False, method="min")
+    pos = rk[rk.numero == J].set_index(["NM_MUNICIPIO", "NM_BAIRRO"]).p
+    ncand = rk.groupby(["NM_MUNICIPIO", "NM_BAIRRO"]).size()
+    lid = rk.sort_values("qtd", ascending=False).drop_duplicates(["NM_MUNICIPIO", "NM_BAIRRO"]).set_index(["NM_MUNICIPIO", "NM_BAIRRO"])
+    # 2022 pelo mesmo critério de bairro (oficial na capital, TSE unificado fora)
+    l22 = A.locais(2022)
+    l22 = l22[l22.CD_TIPO_SECAO_AGREGADA == "1"].drop_duplicates(KEYS)[KEYS + ["NM_BAIRRO"]]
+    j22 = pd.read_csv(f"{A.T}/jfn_2022_secao_RJ.csv", sep=";").rename(columns={"cd_municipio": "municipio"}).merge(l22, on=KEYS, how="left")
+    b22 = j22.groupby(["nm_municipio", "NM_BAIRRO"]).votos_jfn.sum()
+    b22 = b22.groupby([b22.index.get_level_values(0), b22.index.get_level_values(1).map(A.chave_texto)]).sum()
+    bt = d.groupby(["NM_MUNICIPIO", "NM_BAIRRO", "regiao"]).agg(jorge=("jorge", "sum"), val7=("val7", "sum"), secoes=("secao", "count"),
+                                                               escolas=("k_escola", "nunique")).reset_index()
+    bt["pct"] = bt.jorge / bt.val7.replace(0, np.nan) * 100
+    idx = list(zip(bt.NM_MUNICIPIO, bt.NM_BAIRRO))
+    bt["pos"] = [pos.get(k) for k in idx]
+    bt["ncand"] = [ncand.get(k) for k in idx]
+    bt["lider"] = [tit(nm.get((7, lid.numero.get(k)), ("—",))[0]) if k in lid.index else "—" for k in idx]
+    bt["lider_v"] = [lid.qtd.get(k, 0) for k in idx]
+    bt["v22"] = [b22.get((m, A.chave_texto(b)), 0) for m, b in idx]
+    assert int(bt.jorge.sum()) == total
+    mun = bt.groupby("NM_MUNICIPIO").agg(jorge=("jorge", "sum"), val7=("val7", "sum"), bairros=("NM_BAIRRO", "nunique"),
+                                          v22=("v22", "sum")).reset_index()
+    mun["pct"] = mun.jorge / mun.val7 * 100
+    mun = mun.sort_values(["jorge", "NM_MUNICIPIO"], ascending=[False, True]).reset_index(drop=True)
+    t22 = int(j22.votos_jfn.sum())
+
+    def sinal(x):
+        return ("+" if x > 0 else "") + n0(x)
+
+    def linhas(x, com_ap):
+        return [[tit(r["NM_BAIRRO"])] + ([e(r["regiao"].split(" · ")[0])] if com_ap else []) +
+                [n0(r["jorge"]), p2(r["pct"]), f"{int(r['pos'])}º de {n0(r['ncand'])}" if not pd.isna(r["pos"]) else "—",
+                 f"{r['lider']} ({n0(r['lider_v'])})", n0(r["v22"]), sinal(r["jorge"] - r["v22"]), n0(r["escolas"]), n0(r["secoes"])]
+                for _, r in x.iterrows()]
+
+    cab = ["Bairro", "Votos", "% válidos", "Posição", "Mais votado no bairro", "2022", "Variação", "Escolas", "Seções"]
+    toc = [("b1", "Leitura"), ("b2", "Os 92 municípios")]
+    C = [f"""<h2 id="b1">Leitura</h2>
+<p>Votos de Jorge Felippe Neto (PL, 22800) para deputado estadual em 2026, bairro a bairro, em cada um dos 92 municípios do Estado do Rio
+de Janeiro: {n0(total)} votos ({n0(t22)} em 2022). Fonte: boletins de urna do TSE (pleito 3220, 1º turno de 04/10/2026), conferidos contra o
+total oficial e contra o arquivo oficial do TSE por município e zona. {FONTE_BAIRRO} "Posição" é o lugar de Jorge entre os candidatos a
+estadual com voto no bairro; "Mais votado" é o candidato a estadual com mais votos ali. A coluna 2022 usa o mesmo critério de bairro
+aplicado aos locais de votação de 2022.</p>""",
+         '<h2 id="b2">Os 92 municípios</h2>' + tabela(
+             ["#", "Município", "Votos", "% válidos", "2022", "Variação", "Bairros"],
+             [[str(i + 1), f'<a href="#m{i}">{tit(r["NM_MUNICIPIO"])}</a>', n0(r["jorge"]), p2(r["pct"]), n0(r["v22"]),
+               sinal(r["jorge"] - r["v22"]), n0(r["bairros"])] for i, r in mun.iterrows()], num=(0, 2, 3, 4, 5, 6))]
+    for i, m in mun.iterrows():
+        x = bt[bt.NM_MUNICIPIO == m.NM_MUNICIPIO]
+        cap = m.NM_MUNICIPIO == "RIO DE JANEIRO"
+        corpo = f'<h2 id="m{i}" class="pg">{i + 1}. {tit(m.NM_MUNICIPIO)} — {n0(m.jorge)} votos ({p2(m.pct)})</h2>'
+        if cap:
+            for ap in ORD_AP:
+                y = x[x.regiao == ap].sort_values(["jorge", "NM_BAIRRO"], ascending=[False, True])
+                corpo += f"<h3>{e(ap)} — {n0(y.jorge.sum())} votos em {len(y)} bairros</h3>" + tabela(cab, linhas(y, False), num=(1, 2, 3, 5, 6, 7, 8), cls="mini")
+        else:
+            y = x.sort_values(["jorge", "NM_BAIRRO"], ascending=[False, True])
+            corpo += tabela(cab, linhas(y, False), num=(1, 2, 3, 5, 6, 7, 8), cls="mini")
+        C.append(corpo)
+        toc.append((f"m{i}", f"{i + 1}. {tit(m.NM_MUNICIPIO)} — {n0(m.jorge)} votos"))
+    kp = [(n0(total), "votos de Jorge"), (n0(len(bt)), "bairros no estado"), (n0(int((bt.jorge > 0).sum())), "bairros com voto"),
+          (n0(int((bt.pos == 1).sum())), "bairros em que Jorge é o mais votado"), (n0(t22), "votos em 2022"), ("92", "municípios")]
+    return documento("Jorge Felippe Neto bairro a bairro, cidade a cidade", "Deputado estadual · PL · 22800 — os 92 municípios do Estado do Rio "
+                     "de Janeiro", kp, toc, "".join(C))
+
+
 async def gerar_partes(htmls, nome):
     """Imprime cada parte num PDF próprio e junta na ordem: tabela gigante numa página só trava o Chromium."""
     from pypdf import PdfWriter
@@ -1707,6 +1786,8 @@ def main():
     if alvo in ("jorge", "ambos"):
         html, _ = pdf_jorge(nm, v, base)
         asyncio.run(gerar(html, "Jorge_Felippe_Neto_2026_votacao_completa"))
+    if alvo == "bairros":
+        asyncio.run(gerar(pdf_bairros_jorge(nm, v, base), "Jorge_Felippe_Neto_2026_bairro_a_bairro_cidade_a_cidade"))
     if alvo == "auditoria":
         asyncio.run(gerar(pdf_auditoria(nm, v, base), "Auditoria_numeros_Jorge_Felippe_Neto_2026"))
     if alvo == "transferencia":
