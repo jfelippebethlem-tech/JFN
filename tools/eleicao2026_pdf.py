@@ -51,7 +51,7 @@ def d2(x):
     return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-SIGLAS = r"Ciep|Ciem|Jpa|Ufrj|Uerj|Uff|Unirio|Faetec|Cefet|Senai|Sesi|Sesc|Iserj|Ifrj|Puc|Cap|Cpii|Ii|Iii|Iv|Vi|Vii|Viii|Ix|Xi|Xii"
+SIGLAS = r"Rj|Ciep|Ciem|Jpa|Ufrj|Uerj|Uff|Unirio|Faetec|Cefet|Senai|Sesi|Sesc|Iserj|Ifrj|Puc|Cap|Cpii|Ii|Iii|Iv|Vi|Vii|Viii|Ix|Xi|Xii"
 
 
 def tit(s):
@@ -125,7 +125,7 @@ def carregar():
     nm = A.nomes()
     loc = A.locais(2026)
     princ = loc[loc["CD_TIPO_SECAO_AGREGADA"] == "1"].drop_duplicates(KEYS)[
-        KEYS + ["NM_MUNICIPIO", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "NM_BAIRRO"]]
+        KEYS + ["NM_MUNICIPIO", "NR_LOCAL_VOTACAO", "NM_LOCAL_VOTACAO", "NM_BAIRRO", "DS_ENDERECO", "k_escola"]]
     v = pd.read_sql("SELECT * FROM voto WHERE cargo IN (3,6,7)", con)
     oficial = pd.Series([(c, n) in nm for c, n in zip(v.cargo, v.numero)], index=v.index)
     v.loc[(v.tipo == "nominal") & ~oficial, "tipo"] = "anulado"  # como no total do TSE
@@ -1205,6 +1205,182 @@ def pdf_trio_tabelas(nm, v, base, fed=1177, outro=11123):
                      "zona e bairro, e seção a seção", kp, toc, "".join(C)), anexos
 
 
+def parte_html(corpo):
+    """Documento-anexo sem capa, para impressão em partes (gerar_partes)."""
+    return f"<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><style>{CSS}</style></head><body><div class='wrap'>{corpo}</div></body></html>"
+
+
+def escolas(df, cols_soma, extra=None):
+    """Consolida por escola (nome + endereço): zonas, seções e somas. extra: {nome: (coluna, função)}."""
+    # colunas de voto têm o número do candidato (int) como nome; a agregação nomeada exige texto
+    nomes = {c: f"c_{c}" for c in cols_soma}
+    g = df.rename(columns=nomes).groupby("k_escola").agg(
+        NM_LOCAL_VOTACAO=("NM_LOCAL_VOTACAO", "first"), DS_ENDERECO=("DS_ENDERECO", "first"),
+        NM_BAIRRO=("NM_BAIRRO", "first"), NM_MUNICIPIO=("NM_MUNICIPIO", "first"), regiao=("regiao", "first"),
+        secoes=("secao", "count"), zonas=("zona", lambda z: ", ".join(f"{int(x)}ª" for x in sorted(set(z)))),
+        **{n: (n, "sum") for n in nomes.values()}, **(extra or {}))
+    return g.reset_index().rename(columns={n: c for c, n in nomes.items()})
+
+
+def pdf_trio_zo_tabelas(nm, v, base, fed=1177, outro=11123):
+    """Tabelas dos votos de Luizinho, Pampolha e Jorge na Zona Oeste: AP, zona por AP, bairro, escola e seção."""
+    J = A.JFN
+    s7 = por_secao(v, 7, [J, outro]).rename(columns={"validos": "val7"})
+    s6 = por_secao(v, 6, [fed]).rename(columns={"validos": "val6"})
+    d = base.merge(s7, left_on=KEYS, right_index=True, how="left").merge(s6, left_on=KEYS, right_index=True, how="left").fillna(0)
+    for cargo, n in ((7, J), (7, outro), (6, fed)):
+        assert int(d[n].sum()) == nm[(cargo, n)][3], nm[(cargo, n)][0]
+    z = d[d.regiao.isin(A.ZONA_OESTE)].copy()
+    NO, NF = tit(nm[(7, outro)][0]), tit(nm[(6, fed)][0])
+    CO, CF = NO.split()[-1], CURTO.get(fed, NF)
+    tj, to_, tf = int(z[J].sum()), int(z[outro].sum()), int(z[fed].sum())
+
+    def pct(g):
+        g["pj"], g["po"], g["pf"] = g[J] / g.val7 * 100, g[outro] / g.val7 * 100, g[fed] / g.val6 * 100
+        return g
+
+    def agg(df, by):
+        g = df.groupby(by)[[J, outro, fed, "val7", "val6"]].sum().reset_index()
+        g["secoes"] = df.groupby(by).size().values
+        return pct(g)
+
+    cab = ["Jorge", "Jorge %", CO, f"{CO} %", CF, f"{CF} %", "Seções"]
+
+    def lin(r):
+        return [n0(r[J]), p2(r["pj"]), n0(r[outro]), p2(r["po"]), n0(r[fed]), p2(r["pf"]), n0(r["secoes"])]
+
+    C, toc = [], []
+
+    def sec(a, t, c, quebra=False):
+        toc.append((a, t))
+        C.append(f'<h2 id="{a}" class="{"pg" if quebra else ""}">{e(t)}</h2>{c}')
+
+    ap = agg(z, ["regiao"])
+    sec("w1", "1. Totais e Áreas de Planejamento", f"""<p>Zona Oeste da capital = AP4 (Barra e Jacarepaguá) + AP5. Votos de Jorge Felippe Neto
+(PL, 22800, estadual), {NO} ({e(nm[(7, outro)][1])}, {outro}, estadual) e {NF} ({e(nm[(6, fed)][1])}, {fed}, federal), com percentuais sobre os
+válidos do próprio cargo. Fonte: boletins de urna do TSE, pleito 3220, 1º turno de 04/10/2026; totais conferidos contra o oficial do TSE.
+Bairros com grafias diferentes no cadastro do TSE foram unificados, e cada escola é identificada por nome e endereço.</p>""" + tabela(
+        ["Área de Planejamento"] + cab, [[e(r["regiao"])] + lin(r) for _, r in ap.iterrows()] +
+        [["<b>Zona Oeste</b>", f"<b>{n0(tj)}</b>", p2(tj / z.val7.sum() * 100), f"<b>{n0(to_)}</b>", p2(to_ / z.val7.sum() * 100),
+          f"<b>{n0(tf)}</b>", p2(tf / z.val6.sum() * 100), n0(len(z))]], num=range(1, 8)))
+    za = agg(z, ["regiao", "zona"]).sort_values(["regiao", J], ascending=[True, False])
+    sec("w2", "2. Zonas eleitorais por AP", tabela(["AP", "Zona"] + cab, [[e(r["regiao"].split(" · ")[0]), f"{int(r['zona'])}ª"] + lin(r)
+                                                                          for _, r in za.iterrows()], num=range(2, 9)))
+    bt = agg(z, ["regiao", "NM_BAIRRO"]).sort_values(["regiao", J], ascending=[True, False])
+    sec("w3", "3. Bairros", tabela(["Bairro", "AP"] + cab, [[tit(r["NM_BAIRRO"]), e(r["regiao"].split(" · ")[0])] + lin(r)
+                                                          for _, r in bt.iterrows()], num=range(2, 9)), quebra=True)
+    es = pct(escolas(z, [J, outro, fed, "val7", "val6"])).sort_values(["regiao", "NM_BAIRRO", J], ascending=[True, True, False])
+    assert int(es[J].sum()) == int(bt[J].sum()) == tj and int(es[fed].sum()) == tf and int(es[outro].sum()) == to_
+    corpo_es = ""
+    for (rg, b), x in es.groupby(["regiao", "NM_BAIRRO"], sort=False):
+        corpo_es += f"<h3>{tit(b)} · {e(rg.split(' · ')[0])} — Jorge {n0(x[J].sum())}, {CO} {n0(x[outro].sum())}, {CF} {n0(x[fed].sum())}</h3>" + tabela(
+            ["Escola", "Endereço", "Zona"] + cab, [[tit(r["NM_LOCAL_VOTACAO"]), tit(r["DS_ENDERECO"]), r["zonas"]] + lin(r) for _, r in x.iterrows()],
+            num=range(3, 10), cls="mini")
+    sec("w4", "4. Escola a escola, por bairro", f"<p>As {n0(len(es))} escolas (locais de votação) da Zona Oeste vêm a seguir, agrupadas "
+        "pelo bairro em que estão sediadas, com os votos dos três em cada uma.</p>")
+    zs = z.sort_values(["zona", "secao"])
+    linhas = [[f"{int(r['zona'])}ª", int(r["secao"]), tit(r["NM_LOCAL_VOTACAO"]), tit(r["NM_BAIRRO"]), e(r["regiao"].split(" · ")[0]),
+               n0(r[J]), n0(r[outro]), n0(r[fed])] for r in zs.to_dict("records")]
+    sec("w5", "5. Seção a seção", f"<p>As {n0(len(zs))} seções da Zona Oeste vêm após a parte de escolas, em ordem de zona e seção.</p>")
+    cab_s = ["Zona", "Seção", "Escola", "Bairro", "AP", "Jorge", CO, CF]
+    anexos = [parte_html('<h2 class="pg">4. Escola a escola, por bairro</h2>' + corpo_es)] + [
+        parte_html(f"<h3>Seção a seção — linhas {n0(i + 1)} a {n0(min(i + BLOCO, len(linhas)))} de {n0(len(linhas))}</h3>" +
+                   tabela(cab_s, linhas[i:i + BLOCO], num=(5, 6, 7), cls="mini")) for i in range(0, len(linhas), BLOCO)]
+    kp = [(n0(tj), "Jorge na Zona Oeste"), (n0(to_), f"{NO}"), (n0(tf), f"{NF}"), (n0(len(es)), "escolas"),
+          (n0(len(bt)), "bairros"), (n0(len(z)), "seções")]
+    return documento(f"Votos de {NF}, {NO} e Jorge Felippe Neto na Zona Oeste", "Tabelas · AP4 e AP5 — zona, bairro, escola e seção",
+                     kp, toc, "".join(C)), anexos
+
+
+def pdf_escolas_jorge(nm, v, base):
+    """Jorge escola a escola no estado: município → bairro (consolidado) → escola (nome + endereço), todas as escolas."""
+    J = A.JFN
+    x7 = v[v.cargo == 7]
+    val = x7[x7.valido].groupby(KEYS).qtd.sum().rename("val7")
+    nomi = x7[x7.tipo == "nominal"][KEYS + ["numero", "qtd"]].merge(base[KEYS + ["k_escola", "NM_BAIRRO", "NM_MUNICIPIO"]], on=KEYS)
+    jv = nomi[nomi.numero == J].set_index(KEYS).qtd.rename("jorge")
+    d = base.merge(val, left_on=KEYS, right_index=True, how="left").merge(jv, left_on=KEYS, right_index=True, how="left") \
+        .fillna({"val7": 0, "jorge": 0})
+    total = int(d.jorge.sum())
+    assert total == nm[(7, J)][3]
+
+    def posicao(chave):
+        r = nomi.groupby(chave + ["numero"]).qtd.sum().reset_index()
+        r = r[r.qtd > 0]
+        r["p"] = r.groupby(chave).qtd.rank(ascending=False, method="min")
+        n = r.groupby(chave).size().rename("ncand")
+        return r[r.numero == J].set_index(chave).p.rename("pos").to_frame().join(n, how="outer")
+
+    es = escolas(d, ["jorge", "val7"]).merge(posicao(["k_escola"]), left_on="k_escola", right_index=True, how="left")
+    es["pct"] = es.jorge / es.val7.replace(0, np.nan) * 100
+    bt = d.groupby(["NM_MUNICIPIO", "NM_BAIRRO", "regiao"]).agg(jorge=("jorge", "sum"), val7=("val7", "sum"), secoes=("secao", "count"),
+                                                               escolas=("k_escola", "nunique")).reset_index()
+    bt = bt.merge(posicao(["NM_MUNICIPIO", "NM_BAIRRO"]), left_on=["NM_MUNICIPIO", "NM_BAIRRO"], right_index=True, how="left")
+    bt["pct"] = bt.jorge / bt.val7 * 100
+    mun = d.groupby("NM_MUNICIPIO").agg(jorge=("jorge", "sum"), val7=("val7", "sum"), escolas=("k_escola", "nunique"),
+                                         bairros=("NM_BAIRRO", "nunique"), secoes=("secao", "count")).reset_index()
+    mun["pct"] = mun.jorge / mun.val7 * 100
+    mun = mun.sort_values(["jorge", "NM_MUNICIPIO"], ascending=[False, True]).reset_index(drop=True)
+    assert int(es.jorge.sum()) == int(bt.jorge.sum()) == int(mun.jorge.sum()) == total and len(mun) == 92
+
+    def posf(r):
+        return f"{int(r['pos'])}º de {n0(r['ncand'])}" if not pd.isna(r.get("pos")) else "—"
+
+    toc = [("k1", "Leitura e consolidação"), ("k2", "Os 92 municípios")]
+    C = ["""<h2 id="k1">Leitura e consolidação</h2>
+<p>Este relatório lista <b>todas as escolas</b> (locais de votação) do Estado do Rio de Janeiro, com os votos de Jorge Felippe Neto
+(PL, 22800) para deputado estadual em cada uma, organizadas por município e pelo bairro em que a escola está sediada, segundo o cadastro de
+locais de votação do TSE de 2026. Fonte dos votos: boletins de urna do TSE (pleito 3220, 1º turno de 04/10/2026), cuja soma coincide com o
+total oficial.</p>
+<p><b>Consolidação.</b> (1) Bairro: o cadastro grafa o mesmo bairro de formas diferentes (com e sem acento, em maiúsculas ou minúsculas,
+como "Tomás Coelho"/"Tomas Coelho"); os nomes foram unificados pela grafia sem acento, mantendo a forma acentuada. (2) Escola: a mesma
+escola às vezes aparece com dois números de local na mesma zona; ela é identificada por nome e endereço e aparece uma única vez, com a
+soma de todas as suas seções. (3) "Posição" é o lugar de Jorge entre os candidatos a estadual com voto na escola ou no bairro. Escolas sem
+voto para Jorge também estão listadas.</p>""",
+         '<h2 id="k2">Os 92 municípios</h2>' + tabela(
+             ["#", "Município", "Votos", "% válidos", "Bairros", "Escolas", "Seções"],
+             [[str(i + 1), tit(r["NM_MUNICIPIO"]), n0(r["jorge"]), p2(r["pct"]), n0(r["bairros"]), n0(r["escolas"]), n0(r["secoes"])]
+              for i, r in mun.iterrows()], num=(0, 2, 3, 4, 5, 6))]
+    partes, atual, n_atual = [], "", 0
+    for i, m in mun.iterrows():
+        b = bt[bt.NM_MUNICIPIO == m.NM_MUNICIPIO].copy()
+        if m.NM_MUNICIPIO == "RIO DE JANEIRO":
+            b = b.assign(o_=b.regiao.map(ORD_AP.index)).sort_values(["o_", "jorge"], ascending=[True, False])
+        else:
+            b = b.sort_values(["jorge", "NM_BAIRRO"], ascending=[False, True])
+        cap_ap = m.NM_MUNICIPIO == "RIO DE JANEIRO"
+        corpo = (f'<h2 class="pg">{i + 1}. {tit(m.NM_MUNICIPIO)} — {n0(m.jorge)} votos ({p2(m.pct)})</h2>'
+                 f"<p>{n0(m.bairros)} bairros, {n0(m.escolas)} escolas e {n0(m.secoes)} seções.</p><h3>Bairros</h3>" + tabela(
+                     ["Bairro"] + (["AP"] if cap_ap else []) + ["Votos", "% válidos", "Posição", "Escolas", "Seções"],
+                     [[tit(r["NM_BAIRRO"])] + ([e(r["regiao"].split(" · ")[0])] if cap_ap else []) +
+                      [n0(r["jorge"]), p2(r["pct"]), posf(r), n0(r["escolas"]), n0(r["secoes"])] for _, r in b.iterrows()],
+                     num=range(1 + cap_ap, 6 + cap_ap), cls="mini"))
+        n_linhas = len(b)
+        for _, br in b.iterrows():
+            x = es[(es.NM_MUNICIPIO == m.NM_MUNICIPIO) & (es.NM_BAIRRO == br.NM_BAIRRO)].sort_values(["jorge", "NM_LOCAL_VOTACAO"], ascending=[False, True])
+            corpo += (f"<h3>{tit(br.NM_BAIRRO)}{' · ' + e(br.regiao.split(' · ')[0]) if cap_ap else ''} — {n0(br.jorge)} votos em {n0(len(x))} escolas</h3>"
+                      + tabela(["Escola", "Endereço", "Zona", "Seções", "Válidos", "Votos", "%", "Posição"],
+                               [[tit(r["NM_LOCAL_VOTACAO"]), tit(r["DS_ENDERECO"]), r["zonas"], n0(r["secoes"]), n0(r["val7"]), n0(r["jorge"]),
+                                 p2(r["pct"]), posf(r)] for _, r in x.iterrows()], num=range(3, 8), cls="mini"))
+            n_linhas += len(x)
+        toc.append((f"m{i}", f"{i + 1}. {tit(m.NM_MUNICIPIO)} — {n0(m.jorge)} votos"))
+        if n_atual and n_atual + n_linhas > BLOCO:
+            partes.append(parte_html(atual))
+            atual, n_atual = "", 0
+        atual += corpo
+        n_atual += n_linhas
+    if atual:
+        partes.append(parte_html(atual))
+    kp = [(n0(total), "votos de Jorge"), (n0(len(es)), "escolas no estado"), (n0(int((es.jorge > 0).sum())), "escolas com voto"),
+          (n0(len(bt)), "bairros"), (n0(int((es.pos == 1).sum())), "escolas em que Jorge foi o mais votado"), ("92", "municípios")]
+    # sumário sem link: os capítulos vêm em partes impressas separadamente
+    toc_sem_link = toc[:2]
+    principal = documento("Jorge Felippe Neto escola a escola", "Deputado estadual · PL · 22800 — estado do Rio de Janeiro, município a município, "
+                          "bairro a bairro", kp, toc_sem_link, "".join(C) + "<h2>Municípios (capítulos a seguir)</h2><ol>" +
+                          "".join(f"<li>{e(t.split('. ', 1)[1])}</li>" for _, t in toc[2:]) + "</ol>")
+    return principal, partes
+
+
 async def gerar_partes(htmls, nome):
     """Imprime cada parte num PDF próprio e junta na ordem: tabela gigante numa página só trava o Chromium."""
     from pypdf import PdfWriter
@@ -1239,6 +1415,12 @@ def main():
     if alvo in ("jorge", "ambos"):
         html, _ = pdf_jorge(nm, v, base)
         asyncio.run(gerar(html, "Jorge_Felippe_Neto_2026_votacao_completa"))
+    if alvo == "trio_zo_tabelas":
+        principal, anexos = pdf_trio_zo_tabelas(nm, v, base)
+        asyncio.run(gerar_partes([principal] + anexos, "Tabelas_Luizinho_Pampolha_Jorge_2026_zona_oeste"))
+    if alvo == "escolas":
+        principal, partes = pdf_escolas_jorge(nm, v, base)
+        asyncio.run(gerar_partes([principal] + partes, "Jorge_Felippe_Neto_2026_escola_a_escola"))
     if alvo == "trio_tabelas":
         principal, anexos = pdf_trio_tabelas(nm, v, base)
         asyncio.run(gerar_partes([principal] + anexos, "Tabelas_Luizinho_Pampolha_Jorge_2026_estado"))

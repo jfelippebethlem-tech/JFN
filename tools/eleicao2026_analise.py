@@ -71,7 +71,25 @@ def locais(ano):
     df["lat"] = pd.to_numeric(df["NR_LATITUDE"].str.replace(",", "."), errors="coerce")
     df["lon"] = pd.to_numeric(df["NR_LONGITUDE"].str.replace(",", "."), errors="coerce")
     df["eleitores"] = pd.to_numeric(df["QT_ELEITOR_SECAO"], errors="coerce")
+    # o cadastro grafa o mesmo bairro de dois jeitos ("TOMÁS COELHO"/"TOMAS COELHO", "MUTUÁ"/"MUTUA") e em
+    # caixa baixa às vezes ("barra olímpica"): sem consolidar, o bairro sai partido em duas linhas
+    df["NM_BAIRRO"] = df["NM_BAIRRO"].fillna("").str.strip().str.upper()
+    df["k_bairro"] = df.NM_MUNICIPIO + "|" + df.NM_BAIRRO.map(chave_texto)
+    acentos = df.NM_BAIRRO.map(lambda b: sum(ord(c) > 127 for c in b))
+    canon = (df.assign(_a=acentos).sort_values(["_a", "eleitores"], ascending=False)
+             .drop_duplicates("k_bairro").set_index("k_bairro").NM_BAIRRO)
+    df["NM_BAIRRO"] = df.k_bairro.map(canon)
+    # a mesma escola aparece com números de local diferentes na mesma zona: a identidade é nome + endereço
+    df["k_escola"] = df.NM_MUNICIPIO + "|" + df.NM_LOCAL_VOTACAO.map(chave_texto) + "|" + df.DS_ENDERECO.map(chave_texto)
     return df
+
+
+def chave_texto(t):
+    """Chave de comparação: sem acento, maiúscula, só letras e números."""
+    import re
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(t or "")).encode("ascii", "ignore").decode().upper()
+    return re.sub(r"[^A-Z0-9]+", " ", t).strip()
 
 
 def corr_controlada(x, y, grupo):
