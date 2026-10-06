@@ -1,0 +1,68 @@
+{
+ "numero": "SEI-070002/015404/2022",
+ "grau": "vermelho",
+ "leitor": "Claude — leitura do processo da licitação (353 peças, 25/09/2026)",
+ "linha_do_tempo": [
+  [
+   "27/12/2022",
+   "Abertura (INEA/DIRRAM)"
+  ],
+  [
+   "2023",
+   "ETP, TR, orçamento, Anexo 09 (parcelas de maior relevância), vedação de consórcio e de subcontratação"
+  ],
+  [
+   "jul/2023",
+   "Impugnação da JEED Engenharia (BDI, exigências de equipamento) — indeferida"
+  ],
+  [
+   "04/08/2023",
+   "Sessão pública do PE 24/2023 — ~14 propostas iguais ao estimado; lances de centavos"
+  ],
+  [
+   "ago–set/2023",
+   "Habilitação em cascata: 9 afastamentos em 4 lotes"
+  ],
+  [
+   "out/2023",
+   "Recurso da Construtora JM (lote 5) indeferido; homologação; contratos 32–36/2023"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "vermelho",
+   "diz": "O Anexo 09 exige atestado/CAT EM NOME DOS PROFISSIONAIS com 25% dos quantitativos de 6 parcelas definidas por EQUIPAMENTO (long reach, escavadeira anfíbia, 23 t, 17 t, caminhões). Quantidade mínima na capacidade técnico-profissional é vedada.",
+   "fundamento": "Lei 8.666/1993, art. 30, §1º, I; Ac. TCU 165/2012-Plenário e 634/2021 (há doutrina divergente)"
+  },
+  {
+   "grau": "vermelho",
+   "diz": "As grades de habilitação mostram as eliminações caindo nesses itens de equipamento: a cláusula produziu o resultado — em 4 lotes a contratada foi a 2ª a 5ª chamada.",
+   "fundamento": "Lei 8.666/1993, art. 3º, §1º, I (vedação a cláusulas que restrinjam o caráter competitivo)"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Custo no preço da licitação foi mínimo (no lote 1 a diferença entre o 1º lance e o contratado é R$ 0,77): o dano é à competitividade e à legalidade, e o valor grande veio depois, nos aditivos.",
+   "fundamento": "análise"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Propostas iniciais iguais ao estimado ao centavo em ~14 empresas — REBAIXADO: comportamento comum no SIGA (proposta ≤ teto), a disputa se dá nos lances.",
+   "fundamento": "análise"
+  }
+ ],
+ "parecer": "INDÍCIO GRAVE de cláusula restritiva com efeito comprovado no resultado: a exigência de quantitativo mínimo do PROFISSIONAL por tipo de máquina é vedada pela lei na leitura do TCU e eliminou, em cascata, os primeiros colocados de 4 lotes. Recomenda-se representar ao TCE-RJ pela nulidade da cláusula e apuração das inabilitações, com as grades de decisão e o Anexo 09 como prova.",
+ "conexoes": [
+  "PE 24/2023 do INEA (SEI-070002/015404/2022, sessão 04/08/2023): 6 lotes, ~16 licitantes; contratos 32 a 36/2023 + D.A.S (lote 1).",
+  "Em 4 dos 6 lotes a contratada NÃO foi a 1ª colocada: 9 afastamentos na habilitação antes de chegar a ela (Dratec afastada em 3 lotes).",
+  "Todos os lotes viraram contratos que dobraram ou triplicaram por prorrogação com valor: 34/2023 3,65×, 36/2023 2,22×, 35/2023 1,70×; 32/2023 já pagou 2,27× o valor inicial neste processo.",
+  "Oriente Construção Civil é SÓCIA da Nova Oriente Construção Civil (mesmo administrador desde 27/03/2024): R$ 764.211.810,57 do Estado somados; grupo concentrado na SECID (R$ 350,6 mi em 12 contratos) e DER-RJ — ver caso SECID/concentração por grupo.",
+  "Nenhum sócio em comum entre as 15 licitantes identificadas (QSA da Receita)."
+ ],
+ "verificar": [
+  "Ler cada Relatório Técnico de decisão e a resposta ao recurso da Construtora JM (motivo exato de cada 'NÃO ATENDE').",
+  "Ata completa (OCR degradado a partir do lote 2): classificação final por lote.",
+  "Resposta à impugnação da JEED."
+ ],
+ "ressalvas": "Indício ≠ acusação. A jurisprudência do TCU é a leitura dominante, mas há doutrina que admite quantitativo para o profissional em parcela de maior relevância.",
+ "caso": "vault/casos/inea-desassoreamento-pe-24-2023.md"
+}

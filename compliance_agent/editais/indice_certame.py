@@ -52,7 +52,7 @@ from pathlib import Path
 
 from compliance_agent.limites_aditivo import teto_acrescimo as _teto_acrescimo
 from compliance_agent.collectors.pncp import MODALIDADE_NOME   # tabela de dominio do PNCP (existia, nao era usada)
-from compliance_agent.cruzamentos_intel import _mediana, _norm_item
+from compliance_agent.cruzamentos_intel import _mediana, _norm_item, comparabilidade_item
 from compliance_agent.editais.db import DDL_CERTAME_INDICE, conectar
 from compliance_agent.editais.screens_conluio import screens
 from compliance_agent.emendas.db import _DB_PADRAO
@@ -353,15 +353,21 @@ def _f_preco(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
         apuravel = True
         razao = vu / med
         valor = max(0.0, min(1.0, (razao - 1.0) / (SOBREPRECO_FATOR - 1.0)))
+        comp, motivo = comparabilidade_item(desc)
         ev = (f"item '{desc[:60]}': unitário do vencedor {vu:,.2f} = {razao:.2f}× a mediana "
               f"{med:,.2f} de {len(precos)} preços em outros certames")
+        if comp == "FRACA":
+            ev += f" — COMPARAÇÃO FRÁCA: {motivo}"
         if melhor is None or valor > melhor[0]:
-            melhor = (valor, ev)
+            melhor = (valor, ev, comp)
     if not apuravel:
         return _familia([], "pncp_resultado.valor_unitario (mediana por item)",
                         f"sem item com ≥{MIN_AMOSTRA_PRECO} preços comparáveis em outros certames")
-    return _familia([_flag("sobrepreco_vs_mediana", melhor[0], melhor[1])],
-                    "pncp_resultado.valor_unitario (mediana por item)")
+    # `comparabilidade` é campo ADITIVO: o `valor` do flag NÃO muda. Mexer no score sem
+    # recalibrar contra desfechos reais só trocaria um viés por outro (ver docstring do módulo).
+    fl = _flag("sobrepreco_vs_mediana", melhor[0], melhor[1])
+    fl["comparabilidade"] = melhor[2]
+    return _familia([fl], "pncp_resultado.valor_unitario (mediana por item)")
 
 
 def _f_execucao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:

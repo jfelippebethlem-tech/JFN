@@ -220,13 +220,14 @@ def _tem_sancao_vigente(session, doc: str, ref=None) -> bool:
         or __import__("datetime").date.today().isoformat()
     try:
         from sqlalchemy import text
+
+        from compliance_agent.sancao_impeditiva import SQL_IMPEDITIVA as _SQL_IMPEDITIVA
         row = session.execute(text(
             "SELECT 1 FROM sancoes_federais WHERE cpf_cnpj = :doc "
             "AND (data_inicio IS NULL OR data_inicio <= :ref) "
             "AND (data_fim IS NULL OR data_fim >= :ref) "
-            "AND (lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%suspens%' "
-            " OR lower(categoria) LIKE '%inid%' OR lower(categoria) LIKE '%proib%' "
-            " OR lower(categoria) LIKE '%declara%') LIMIT 1"),
+            # régua única em `sancao_impeditiva` (era a 2ª cópia deste mesmo filtro)
+            f"AND {_SQL_IMPEDITIVA} LIMIT 1"),
             {"doc": doc, "ref": ref_iso}).fetchone()
         return row is not None
     except Exception:

@@ -29,6 +29,7 @@ def test_natureza_camara(vinculo, curta, nomeado):
     ("ESPECIAL RPA", True),
     ("ASSESSOR III", True),
     ("ASSESSOR ESPECIAL DA PRESIDÊNCIA", True),
+    ("ASSISTENTE ESPECIAL DA PRESIDENCIA", True),       # livre nomeação (visto em 2026-09)
     ("AGENTE DE APOIO A EDUCACAO ESPECIAL", False),   # falso positivo conhecido — vetado
     ("ESTAGIÁRIO DE EDUCAÇÃO ESPECIAL", False),
     ("Analista Legislativo - Especialidade Enfermagem", False),

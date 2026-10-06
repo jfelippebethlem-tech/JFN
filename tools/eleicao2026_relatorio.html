@@ -1,0 +1,498 @@
+<title>Mapa de Votos Jorge Felippe Neto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+:root{
+  --paper:#F6F7F9; --sheet:#FFFFFF; --ink:#16202E; --ink2:#4A5566; --mute:#7B8594; --rule:#DDE1E7; --rule2:#EEF0F3;
+  --navy:#1B2F4E; --acc:#B8740B; --acc-soft:#F6E7CC; --pos:#1F7A4D; --neg:#B23A3A; --dot:#B9C1CC;
+  --serif:"IBM Plex Serif",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark; --paper:#0F141B; --sheet:#151C25; --ink:#E6EAF0; --ink2:#B5BECA; --mute:#8590A0; --rule:#2A3441; --rule2:#1D2530;
+  --navy:#9FB8DC; --acc:#E2A23A; --acc-soft:#3A2C12; --pos:#5CC08C; --neg:#E07A7A; --dot:#3B4656;}}
+:root[data-theme="dark"]{
+  color-scheme:dark; --paper:#0F141B; --sheet:#151C25; --ink:#E6EAF0; --ink2:#B5BECA; --mute:#8590A0; --rule:#2A3441; --rule2:#1D2530;
+  --navy:#9FB8DC; --acc:#E2A23A; --acc-soft:#3A2C12; --pos:#5CC08C; --neg:#E07A7A; --dot:#3B4656;}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--sans);margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:28px 64px}
+h1,h2,h3{font-family:var(--serif);text-wrap:balance;margin:0;color:var(--ink)}
+h1{font-size:clamp(28px,4.4vw,42px);line-height:1.12;font-weight:600}
+h2{font-size:24px;font-weight:600;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--mono);font-size:14px;color:var(--acc);font-weight:500}
+h3{font-size:17px;font-weight:600;margin-top:6px}
+p{margin:0;max-width:72ch;color:var(--ink2)}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.cover{background:var(--sheet);border:1px solid var(--rule);border-top:4px solid var(--navy);padding:28px;display:grid;gap:18px}
+.cover .meta{display:flex;flex-wrap:wrap;gap:8px 24px;font:13px var(--mono);color:var(--mute)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.kpi{background:var(--sheet);padding:14px 16px;display:grid;gap:4px}
+.kpi b{font:600 24px/1.1 var(--mono);color:var(--ink);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--mute)}
+.kpi.hl b{color:var(--acc)}
+section{margin-top:44px;display:grid;gap:16px}
+.callout{border-left:3px solid var(--acc);background:var(--acc-soft);padding:12px 16px;color:var(--ink);max-width:none}
+.callout b{font-weight:600}
+ul.find{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--ink2);max-width:80ch}
+ul.find b{color:var(--ink)}
+.tbl{overflow-x:auto;background:var(--sheet);border:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--rule2);white-space:nowrap}
+th{font:500 11.5px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mute);background:var(--sheet);position:sticky;top:0;cursor:pointer;user-select:none}
+th:hover{color:var(--ink)}
+th.num,td.num{text-align:right}
+td.wrapc{white-space:normal;min-width:180px}
+tr.me td{background:var(--acc-soft);font-weight:600}
+td.pos{color:var(--pos)} td.neg{color:var(--neg)}
+.bar{display:inline-block;height:8px;background:var(--acc);vertical-align:middle;margin-right:6px;border-radius:1px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tools input,.tools select{font:14px var(--sans);padding:6px 10px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:3px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px}
+.tabs button{font:500 13px var(--sans);padding:6px 12px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink2);border-radius:3px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:var(--sheet)}
+button:focus-visible,input:focus-visible,select:focus-visible,th:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.more{font:500 13px var(--sans);background:none;border:none;color:var(--navy);cursor:pointer;padding:8px 10px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.mapbox{background:var(--sheet);border:1px solid var(--rule);position:relative}
+canvas{display:block;width:100%;height:auto}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font:12.5px/1.4 var(--sans);padding:6px 9px;border-radius:3px;max-width:260px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:var(--mute);padding:10px 14px;border-top:1px solid var(--rule2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.note{font-size:12.5px;color:var(--mute);max-width:90ch}
+.src{font:12.5px var(--mono);color:var(--mute);display:grid;gap:4px}
+footer{margin-top:48px;border-top:1px solid var(--rule);padding-top:16px}
+</style>
+
+<div class="wrap">
+  <header class="cover">
+    <div class="eyebrow">Eleições Gerais 2026 · 1º turno · 04/10/2026 · Estado do Rio de Janeiro</div>
+    <h1>Mapa de votos de Jorge Felippe Neto<br>seção por seção</h1>
+    <p>Resultado de deputado estadual, deputado federal, governador, senador e presidente apurado a partir dos boletins de urna de todas as seções do estado, com foco na capital e na Zona Oeste.</p>
+    <div class="kpis" id="kpis"></div>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section id="s1">
+    <h2><span class="n">1</span>Sumário executivo</h2>
+    <ul class="find" id="sumario"></ul>
+  </section>
+
+  <section id="s2">
+    <h2><span class="n">2</span>Distribuição no estado</h2>
+    <p>Votos de Jorge Felippe Neto (22800, PL) por região. A participação é sobre os votos válidos para deputado estadual (nominais + legenda) em cada recorte.</p>
+    <div class="tbl" id="t_reg"></div>
+    <h3>Municípios (25 maiores votações)</h3>
+    <div class="tbl" id="t_mun"></div>
+  </section>
+
+  <section id="s3">
+    <h2><span class="n">3</span>Capital: bairro a bairro</h2>
+    <p>Os bairros oficiais da Prefeitura que têm local de votação, agrupados nas Áreas de Planejamento. O bairro de cada escola vem da localização dela na malha oficial de bairros; o nome dado pelo cadastro do TSE diverge do oficial em cerca de 19% das escolas. "Posição" é o lugar de Jorge entre todos os candidatos a deputado estadual naquele bairro.</p>
+    <div class="tools">
+      <input id="f_bairro" type="search" placeholder="Filtrar bairro" aria-label="Filtrar bairro">
+      <select id="f_ap" aria-label="Área de planejamento"><option value="">Todas as áreas</option></select>
+    </div>
+    <div class="tbl" id="t_bairro"></div>
+    <h3>Zonas eleitorais da capital</h3>
+    <div class="tbl" id="t_zona"></div>
+  </section>
+
+  <section id="s4">
+    <h2><span class="n">4</span>Zona Oeste</h2>
+    <p>Zona Oeste = AP4 (Barra e Jacarepaguá) + AP5 (Bangu, Campo Grande, Santa Cruz, Guaratiba e entorno). Cada círculo é um local de votação, com área proporcional aos votos de Jorge; os pontos cinza são os demais locais da cidade.</p>
+    <div class="tabs" id="mapTabs">
+      <button type="button" data-r="ZO" aria-pressed="true">Zona Oeste</button>
+      <button type="button" data-r="RIO" aria-pressed="false">Cidade inteira</button>
+    </div>
+    <div class="mapbox"><canvas id="map" width="1080" height="620" aria-label="Mapa dos locais de votação"></canvas><div class="tip" id="tip" hidden></div>
+      <div class="legend"><span><i style="background:var(--acc)"></i>votos de Jorge no local</span><span><i style="background:var(--dot)"></i>outros locais de votação</span><span>Passe o cursor sobre um círculo para ver o local</span></div>
+    </div>
+    <div class="grid2">
+      <div><h3>Ranking de deputado estadual na Zona Oeste</h3><div class="tbl" id="t_rank_zo"></div></div>
+      <div><h3>Locais de votação com mais votos na Zona Oeste</h3><div class="tbl" id="t_loc_zo"></div></div>
+    </div>
+    <h3>Seções com mais votos na capital</h3>
+    <div class="tbl" id="t_sec"></div>
+  </section>
+
+  <section id="s5">
+    <h2><span class="n">5</span>Federais selecionados × Jorge, seção a seção na capital</h2>
+    <p>Oito candidatos a deputado federal comparados com Jorge em cada seção da cidade do Rio de Janeiro. A fatia de cada federal é sobre os válidos de deputado federal da seção; a de Jorge, sobre os válidos de deputado estadual. "Seções em que supera" conta as seções em que o federal teve mais votos absolutos que Jorge.</p>
+    <div class="tbl" id="t_feds"></div>
+    <p class="note" id="fedsNota"></p>
+    <h3>Por bairro</h3>
+    <div class="tools">
+      <input id="fb_q" type="search" placeholder="Filtrar bairro" aria-label="Filtrar bairro">
+      <select id="fb_ap" aria-label="Área de planejamento"><option value="">Todas as áreas</option></select>
+    </div>
+    <div class="tbl" id="t_feds_bairro"></div>
+    <h3>Seção a seção</h3>
+    <div class="tools">
+      <input id="fs_q" type="search" placeholder="Bairro ou local de votação" aria-label="Filtrar por bairro ou local">
+      <select id="fs_ap" aria-label="Área de planejamento"><option value="">Todas as áreas</option></select>
+      <input id="fs_z" type="search" inputmode="numeric" placeholder="Zona" aria-label="Zona eleitoral" style="width:90px">
+      <select id="fs_cmp" aria-label="Comparar com"><option value="">Comparar com: todos</option></select>
+    </div>
+    <div class="tbl" id="t_feds_secao"></div>
+    <p class="note">Células em destaque: o federal teve mais votos que Jorge na seção. A planilha e o arquivo comparativo_secao_capital_jorge_x_federais.csv trazem todas as seções com os percentuais.</p>
+  </section>
+
+  <section id="s6">
+    <h2><span class="n">6</span>Cruzamento com federal, governador, senador e presidente</h2>
+    <p>Para cada seção, mede-se a fatia de Jorge nos válidos de deputado estadual e a fatia de cada candidato nos válidos do outro cargo. A medida principal é a <b>correlação controlada</b>: as fatias são comparadas <b>dentro da mesma região</b> (Área de Planejamento na capital, município fora dela). Sem esse controle, dois candidatos fortes em regiões diferentes aparecem com correlação nula ou negativa mesmo quando sobem juntos dentro de cada região; a correlação bruta (sem controle) fica ao lado. O <b>reduto controlado</b> compara a votação do candidato nas seções em que Jorge é mais forte dentro de cada região com o que ele teria repetindo ali a própria média da região: 1,00 é neutro, 2,00 é o dobro.</p>
+    <p class="callout"><b>Leitura correta:</b> isto é inferência ecológica, feita sobre seções e não sobre eleitores. Mostra afinidade territorial entre votações, compatível com dobrada, mas não prova que o mesmo eleitor votou nos dois.</p>
+    <div class="tabs" id="cruzTabs"></div>
+    <p class="note" id="cruzMeta"></p>
+    <h3>Deputado federal</h3><div class="tbl" id="t_cruz_df"></div>
+    <div class="grid2">
+      <div><h3>Governador</h3><div class="tbl" id="t_cruz_gov"></div></div>
+      <div><h3>Senador</h3><div class="tbl" id="t_cruz_sen"></div></div>
+    </div>
+    <h3>Presidente</h3><div class="tbl" id="t_cruz_pres"></div>
+  </section>
+
+  <section id="s7">
+    <h2><span class="n">7</span>Panorama: todos os cargos</h2>
+    <div class="tabs" id="rankTabs"></div>
+    <div class="grid2">
+      <div><h3>Deputado estadual</h3><div class="tbl" id="t_r7"></div></div>
+      <div><h3>Deputado federal</h3><div class="tbl" id="t_r6"></div></div>
+    </div>
+    <div class="grid2">
+      <div><h3>Governador</h3><div class="tbl" id="t_r3"></div></div>
+      <div><h3>Senador (2 votos por eleitor)</h3><div class="tbl" id="t_r5"></div></div>
+    </div>
+    <h3>Presidente</h3><div class="tbl" id="t_r1"></div>
+    <h3>Governador por região (% dos válidos)</h3>
+    <div class="tbl" id="t_gov"></div>
+    <h3>Senador por região (% dos válidos)</h3>
+    <div class="tbl" id="t_sen"></div>
+    <h3>Presidente por região (% dos válidos)</h3>
+    <div class="tbl" id="t_pres"></div>
+  </section>
+
+  <section id="s8">
+    <h2><span class="n">8</span>Metodologia e fontes</h2>
+    <ul class="find" id="metodo"></ul>
+    <div class="src">
+      <span>Boletins de urna: resultados.tse.jus.br/oficial/ele2026/arquivo-urna/3220 (pleito 3220, eleições 6257 e 6259)</span>
+      <span>Totais oficiais e situação: resultados.tse.jus.br/oficial/ele2026/6259/dados/rj (arquivos -u.json)</span>
+      <span>Locais de votação e bairros: cdn.tse.jus.br · eleitorado_local_votacao_2026 e _2022</span>
+      <span>Comparação 2022: cdn.tse.jus.br · votacao_secao_2022_RJ</span>
+    </div>
+  </section>
+
+  <footer class="note">Acompanham este relatório a planilha com todas as tabelas e os arquivos de votos por seção de cada cargo, extraídos dos boletins de urna do TSE.</footer>
+</div>
+
+<script>
+const D = /*__DADOS__*/null;
+const nf = (x, d=0) => x == null ? "—" : Number(x).toLocaleString("pt-BR", {minimumFractionDigits:d, maximumFractionDigits:d});
+const pc = x => x == null ? "—" : nf(x, 2) + "%";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ZO = ["AP4 · Barra e Jacarepaguá", "AP5 · Zona Oeste"];
+const titulo0 = s => String(s ?? "").toLowerCase().replace(/(^|[\s(\-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+const titulo = s => titulo0(s).replace(/(?<=\s)(De|Da|Do|Dos|Das|E)(?=\s)/g, w => w.toLowerCase())
+  .replace(/\b(Ciep|Ciem|Jpa|Ufrj|Uerj|Uff|Unirio|Faetec|Cefet|Senai|Sesi|Sesc|Iserj|Ifrj|Puc|Cap|Cpii|Ii|Iii|Iv|Vi|Vii|Viii|Ix|Xi|Xii)\b/g, w => w.toUpperCase());
+
+function tabela(el, linhas, cols, opt={}) {
+  const box = document.getElementById(el);
+  let ordem = opt.ordem || null, asc = false, lim = opt.lim || 25, todos = false;
+  function render() {
+    let L = linhas.slice();
+    if (ordem) { const c = cols.find(c => c.k === ordem); L.sort((a, b) => { const x = c.v ? c.v(a) : a[c.k], y = c.v ? c.v(b) : b[c.k];
+      if (x == null) return 1; if (y == null) return -1; return (x > y ? 1 : x < y ? -1 : 0) * (asc ? 1 : -1); }); }
+    const mostra = todos ? L : L.slice(0, lim);
+    const maxBar = opt.bar ? Math.max(...L.map(r => r[opt.bar] || 0)) : 0;
+    box.innerHTML = `<table><thead><tr>${cols.map(c => `<th tabindex="0" class="${c.num ? "num" : ""}" data-k="${c.k}">${c.t}${ordem === c.k ? (asc ? " ↑" : " ↓") : ""}</th>`).join("")}</tr></thead><tbody>${
+      mostra.map(r => `<tr class="${opt.me && opt.me(r) ? "me" : ""}">${cols.map(c => { const v = c.f ? c.f(r) : r[c.k];
+        const cls = [c.num ? "num" : "", c.w ? "wrapc" : "", c.cls ? c.cls(r) : ""].join(" ");
+        const bar = opt.bar === c.k && maxBar ? `<span class="bar" style="width:${Math.max(1, 60 * (r[c.k] || 0) / maxBar)}px"></span>` : "";
+        return `<td class="${cls}">${bar}${v}</td>`; }).join("")}</tr>`).join("")}</tbody></table>${
+      L.length > lim ? `<button type="button" class="more">${todos ? "Mostrar menos" : `Mostrar todas as ${nf(L.length)} linhas`}</button>` : ""}`;
+    box.querySelectorAll("th").forEach(th => { const go = () => { const k = th.dataset.k; if (ordem === k) asc = !asc; else { ordem = k; asc = false; } render(); };
+      th.onclick = go; th.onkeydown = e => { if (e.key === "Enter") go(); }; });
+    const b = box.querySelector(".more"); if (b) b.onclick = () => { todos = !todos; render(); };
+  }
+  render();
+  return { set(l) { linhas = l; render(); } };
+}
+
+// ---------- capa ----------
+const reg = Object.fromEntries(D.por_reg.map(r => [r.regiao, r]));
+const capital = D.por_reg.filter(r => r.regiao !== "Fora da capital").reduce((a, r) => a + r.votos_jorge, 0);
+const zo = ZO.reduce((a, k) => a + (reg[k]?.votos_jorge || 0), 0);
+const zoVal = ZO.reduce((a, k) => a + (reg[k]?.validos || 0), 0);
+const capVal = D.por_reg.filter(r => r.regiao !== "Fora da capital").reduce((a, r) => a + r.validos, 0);
+const rk = (chave) => { const r = (D.rank[chave] || []).find(r => r.numero === 22800); return r ? r.index : null; };
+const posEst = rk("7|Estado"), posCap = rk("7|Capital"), posZO = rk("7|Zona Oeste (AP4+AP5)");
+const var22 = D.total22 ? (D.total_jorge / D.total22 - 1) * 100 : null;
+document.getElementById("kpis").innerHTML = [
+  ["hl", nf(D.oficial), "votos (total oficial TSE)"],
+  ["", D.situacao, "situação"],
+  ["", posEst ? posEst + "º" : "—", "posição no estado"],
+  ["", nf(capital), `na capital · ${pc(capital / D.total_jorge * 100)} do total`],
+  ["hl", nf(zo), `na Zona Oeste · ${pc(zo / D.total_jorge * 100)} do total`],
+  ["", var22 == null ? "—" : (var22 >= 0 ? "+" : "") + nf(var22, 1) + "%", `sobre 2022 (${nf(D.total22)} votos)`],
+].map(([c, b, s]) => `<div class="kpi ${c}"><b>${esc(b)}</b><span>${s}</span></div>`).join("");
+document.getElementById("meta").innerHTML = [
+  `Seções apuradas: ${nf(D.secoes)}`, `Seções com voto em Jorge: ${nf(D.secoes_com_voto)}`,
+  `Conferência com o TSE: ${D.conf_diferencas === 0 ? "100% dos candidatos batem" : nf(D.conf_diferencas) + " divergências"}`,
+  `Gerado em ${new Date().toLocaleDateString("pt-BR")}`].map(s => `<span>${s}</span>`).join("");
+
+// ---------- sumário ----------
+const bairrosRio = D.por_bairro.slice().sort((a, b) => b.votos_jorge - a.votos_jorge);
+const bZO = bairrosRio.filter(b => ZO.includes(b.regiao));
+const top3 = bZO.slice(0, 3).map(b => `${titulo(b.NM_BAIRRO)} (${nf(b.votos_jorge)})`).join(", ");
+const melhorPct = bairrosRio.filter(b => b.validos > 3000).sort((a, b) => b.pct_validos - a.pct_validos)[0];
+const lidera = bairrosRio.filter(b => b.posicao_jorge === 1).map(b => titulo(b.NM_BAIRRO));
+const cz = D.cruz["6|Zona Oeste (AP4+AP5)"]?.linhas || [];
+const czTop = cz.filter(r => r.correlacao_controlada != null).slice(0, 3).map(r => `${titulo(r.nome)} (${esc(r.partido)})`).join(", ");
+const gz = (D.cruz["3|Zona Oeste (AP4+AP5)"]?.linhas || []).filter(r => r.correlacao_controlada != null);
+const forteMun = D.por_mun.find(m => m.NM_MUNICIPIO !== "RIO DE JANEIRO");
+document.getElementById("sumario").innerHTML = [
+  `<b>${esc(D.situacao)} com ${nf(D.oficial)} votos</b>, ${posEst ? posEst + "º colocado entre os candidatos a deputado estadual do estado" : ""}${var22 != null ? `, ${var22 >= 0 ? "crescimento" : "queda"} de ${nf(Math.abs(var22), 1)}% sobre os ${nf(D.total22)} votos de 2022` : ""}.`,
+  `<b>A capital deu ${nf(capital)} votos (${pc(capital / D.total_jorge * 100)} do total)</b> e ${pc(capital / capVal * 100)} dos válidos da cidade${posCap ? `, ${posCap}º lugar na capital` : ""}. ${forteMun ? `Fora da capital, o município com mais votos foi ${titulo(forteMun.NM_MUNICIPIO)} (${nf(forteMun.votos_jorge)}).` : ""}`,
+  `<b>A Zona Oeste concentrou ${nf(zo)} votos (${pc(zo / D.total_jorge * 100)} do total)</b>, com ${pc(zo / zoVal * 100)} dos válidos da região${posZO ? ` e ${posZO}º lugar no ranking da região` : ""}. AP4: ${nf(reg[ZO[0]]?.votos_jorge)} · AP5: ${nf(reg[ZO[1]]?.votos_jorge)}.`,
+  top3 ? `<b>Bairros mais fortes da Zona Oeste:</b> ${top3}.` : "",
+  melhorPct ? `<b>Maior participação proporcional na capital:</b> ${titulo(melhorPct.NM_BAIRRO)}, com ${pc(melhorPct.pct_validos)} dos válidos (bairros com mais de 3 mil válidos).` : "",
+  lidera.length ? `<b>Mais votado para deputado estadual em ${lidera.length} bairro(s):</b> ${lidera.join(", ")}.` : `<b>Não foi o mais votado em nenhum bairro da capital.</b> A votação é espalhada, sem um reduto único que a domine (ver seção 3).`,
+  czTop ? `<b>Maior afinidade territorial com deputado federal na Zona Oeste:</b> ${czTop}. A afinidade é por seção, não por eleitor (seção 6).` : "",
+  D.feds?.resumo?.length ? `<b>Federais selecionados na capital:</b> ${D.feds.resumo.slice().sort((a, b) => b.correlacao_controlada - a.correlacao_controlada).slice(0, 2).map(r => `${titulo(r.nome)} (correlação controlada ${nf(r.correlacao_controlada, 2)})`).join(" e ")} são os que mais acompanham o território de Jorge; detalhe seção a seção na seção 5.` : "",
+  gz.length ? `<b>Governador:</b> nas seções em que Jorge é mais forte na Zona Oeste, ${titulo(gz[0].nome)} teve ${pc(gz[0].pct_nos_redutos_jorge)} dos válidos, contra ${pc(gz[0].pct_no_recorte)} na região toda.` : "",
+].filter(Boolean).map(s => `<li>${s}</li>`).join("");
+
+// ---------- tabelas estado ----------
+const ordReg = ["AP5 · Zona Oeste", "AP4 · Barra e Jacarepaguá", "AP3 · Zona Norte", "AP2.2 · Grande Tijuca", "AP2.1 · Zona Sul", "AP1 · Centro", "Fora da capital"];
+tabela("t_reg", D.por_reg.slice().sort((a, b) => ordReg.indexOf(a.regiao) - ordReg.indexOf(b.regiao)), [
+  {k:"regiao", t:"Região", f:r => esc(r.regiao)},
+  {k:"votos_jorge", t:"Votos", num:1, f:r => nf(r.votos_jorge)},
+  {k:"pct_do_total_jorge", t:"% do total de Jorge", num:1, f:r => pc(r.pct_do_total_jorge)},
+  {k:"pct_validos", t:"% dos válidos", num:1, f:r => pc(r.pct_validos)},
+  {k:"validos", t:"Válidos dep. est.", num:1, f:r => nf(r.validos)},
+  {k:"secoes", t:"Seções", num:1, f:r => nf(r.secoes)}], {bar:"votos_jorge", lim:10});
+tabela("t_mun", D.por_mun, [
+  {k:"NM_MUNICIPIO", t:"Município", f:r => titulo(r.NM_MUNICIPIO)},
+  {k:"votos_jorge", t:"Votos 2026", num:1, f:r => nf(r.votos_jorge)},
+  {k:"pct_validos", t:"% válidos", num:1, f:r => pc(r.pct_validos)},
+  {k:"pct_do_total_jorge", t:"% do total", num:1, f:r => pc(r.pct_do_total_jorge)},
+  {k:"votos_jorge_2022", t:"Votos 2022", num:1, f:r => nf(r.votos_jorge_2022)},
+  {k:"variacao_votos", t:"Variação", num:1, f:r => r.variacao_votos == null ? "—" : (r.variacao_votos > 0 ? "+" : "") + nf(r.variacao_votos), cls:r => r.variacao_votos > 0 ? "pos" : r.variacao_votos < 0 ? "neg" : ""}],
+  {bar:"votos_jorge", lim:25});
+
+// ---------- capital ----------
+const apSel = document.getElementById("f_ap");
+ordReg.filter(r => r !== "Fora da capital").forEach(r => apSel.insertAdjacentHTML("beforeend", `<option>${r}</option>`));
+const colsBairro = [
+  {k:"NM_BAIRRO", t:"Bairro", f:r => titulo(r.NM_BAIRRO)},
+  {k:"regiao", t:"Área", f:r => esc(r.regiao.split(" · ")[0])},
+  {k:"votos_jorge", t:"Votos", num:1, f:r => nf(r.votos_jorge)},
+  {k:"pct_validos", t:"% válidos", num:1, f:r => pc(r.pct_validos)},
+  {k:"posicao_jorge", t:"Posição", num:1, f:r => r.posicao_jorge ? nf(r.posicao_jorge) + "º" : "—"},
+  {k:"mais_votado", t:"Mais votado no bairro", w:1, f:r => r.mais_votado ? `${titulo(r.mais_votado)} (${nf(r.votos_mais_votado)})` : "—"},
+  {k:"votos_jorge_2022", t:"2022", num:1, f:r => nf(r.votos_jorge_2022)},
+  {k:"variacao_votos", t:"Variação", num:1, f:r => r.variacao_votos == null ? "—" : (r.variacao_votos > 0 ? "+" : "") + nf(r.variacao_votos), cls:r => r.variacao_votos > 0 ? "pos" : r.variacao_votos < 0 ? "neg" : ""}];
+const tb = tabela("t_bairro", bairrosRio, colsBairro, {bar:"votos_jorge", lim:30});
+const filtra = () => { const q = document.getElementById("f_bairro").value.trim().toUpperCase(), a = apSel.value;
+  tb.set(bairrosRio.filter(b => (!q || b.NM_BAIRRO.toUpperCase().includes(q)) && (!a || b.regiao === a))); };
+document.getElementById("f_bairro").oninput = filtra; apSel.onchange = filtra;
+tabela("t_zona", D.por_zona, [
+  {k:"zona", t:"Zona", f:r => nf(r.zona) + "ª"},
+  {k:"votos_jorge", t:"Votos", num:1, f:r => nf(r.votos_jorge)},
+  {k:"pct_validos", t:"% válidos", num:1, f:r => pc(r.pct_validos)},
+  {k:"pct_do_total_jorge", t:"% do total", num:1, f:r => pc(r.pct_do_total_jorge)},
+  {k:"secoes", t:"Seções", num:1, f:r => nf(r.secoes)}], {bar:"votos_jorge", lim:15});
+
+// ---------- Zona Oeste ----------
+const rankCols = [
+  {k:"index", t:"#", num:1, f:r => r.index + "º"},
+  {k:"nome", t:"Candidato", w:1, f:r => titulo(r.nome)},
+  {k:"partido_sg", t:"Partido", f:r => esc(r.partido_sg)},
+  {k:"votos", t:"Votos", num:1, f:r => nf(r.votos)},
+  {k:"pct_validos", t:"% válidos", num:1, f:r => pc(r.pct_validos)}];
+const meJ = r => r.numero === 22800;
+tabela("t_rank_zo", D.rank["7|Zona Oeste (AP4+AP5)"] || [], rankCols, {me:meJ, lim:15});
+const locZO = D.locais.filter(l => ZO.includes(l.regiao)).sort((a, b) => b.votos_jorge - a.votos_jorge);
+tabela("t_loc_zo", locZO, [
+  {k:"NM_LOCAL_VOTACAO", t:"Local", w:1, f:r => titulo(r.NM_LOCAL_VOTACAO)},
+  {k:"NM_BAIRRO", t:"Bairro", f:r => titulo(r.NM_BAIRRO)},
+  {k:"votos_jorge", t:"Votos", num:1, f:r => nf(r.votos_jorge)},
+  {k:"pct_validos", t:"% válidos", num:1, f:r => pc(r.pct_validos)}], {lim:15});
+tabela("t_sec", D.top_secoes, [
+  {k:"zona", t:"Zona/Seção", f:r => `${r.zona}ª / ${r.secao}`},
+  {k:"NM_LOCAL_VOTACAO", t:"Local", w:1, f:r => titulo(r.NM_LOCAL_VOTACAO)},
+  {k:"NM_BAIRRO", t:"Bairro", f:r => titulo(r.NM_BAIRRO)},
+  {k:"jorge", t:"Votos", num:1, f:r => nf(r.jorge)},
+  {k:"validos", t:"Válidos", num:1, f:r => nf(r.validos)},
+  {k:"pct_jorge", t:"% válidos", num:1, f:r => pc(r.pct_jorge)}], {lim:15});
+
+// mapa
+const cv = document.getElementById("map"), ctx = cv.getContext("2d"), tip = document.getElementById("tip");
+const pts = D.locais.filter(l => l.lat && l.lon && l.lat < -22.7 && l.lat > -23.1 && l.lon < -43.0 && l.lon > -43.8);
+let modo = "ZO", proj = null, desenhados = [];
+function cor(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function desenha() {
+  const W = cv.width, H = cv.height, pad = 24;
+  const sel = modo === "ZO" ? pts.filter(p => ZO.includes(p.regiao)) : pts;
+  const lats = sel.map(p => p.lat), lons = sel.map(p => p.lon);
+  const la0 = Math.min(...lats), la1 = Math.max(...lats), lo0 = Math.min(...lons), lo1 = Math.max(...lons);
+  const k = Math.cos((la0 + la1) / 2 * Math.PI / 180);
+  const s = Math.min((W - 2 * pad) / ((lo1 - lo0) * k), (H - 2 * pad) / (la1 - la0));
+  const ox = (W - (lo1 - lo0) * k * s) / 2, oy = (H - (la1 - la0) * s) / 2;
+  proj = p => [ox + (p.lon - lo0) * k * s, oy + (la1 - p.lat) * s];
+  ctx.fillStyle = cor("--sheet"); ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = cor("--dot");
+  pts.forEach(p => { const [x, y] = proj(p); if (x > -5 && x < W + 5 && y > -5 && y < H + 5) { ctx.beginPath(); ctx.arc(x, y, 1.6, 0, 7); ctx.fill(); } });
+  const vmax = Math.max(...sel.map(p => p.votos_jorge || 0), 1), rmax = modo === "ZO" ? 22 : 16;
+  desenhados = [];
+  const acc = cor("--acc");
+  sel.filter(p => p.votos_jorge > 0).sort((a, b) => b.votos_jorge - a.votos_jorge).forEach(p => {
+    const [x, y] = proj(p), r = Math.max(2, rmax * Math.sqrt(p.votos_jorge / vmax));
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.globalAlpha = .45; ctx.fillStyle = acc; ctx.fill();
+    ctx.globalAlpha = .9; ctx.strokeStyle = acc; ctx.lineWidth = 1; ctx.stroke(); ctx.globalAlpha = 1;
+    desenhados.push({x, y, r, p});
+  });
+  // rótulos: bairros mais fortes
+  const bx = {};
+  sel.forEach(p => { const b = bx[p.NM_BAIRRO] ||= {v:0, x:0, y:0, n:0}; const [x, y] = proj(p); b.v += p.votos_jorge || 0; b.x += x; b.y += y; b.n++; });
+  ctx.font = `600 12px ${cor("--sans")}`; ctx.fillStyle = cor("--ink"); ctx.textAlign = "center";
+  Object.entries(bx).sort((a, b) => b[1].v - a[1].v).slice(0, modo === "ZO" ? 14 : 10)
+    .reduce((usados, [n, b]) => { const x = b.x / b.n, y = b.y / b.n - 6, w = ctx.measureText(titulo(n)).width;
+      if (usados.some(u => Math.abs(u.x - x) < (u.w + w) / 2 + 6 && Math.abs(u.y - y) < 16)) return usados;
+      ctx.lineWidth = 3; ctx.strokeStyle = cor("--sheet"); ctx.strokeText(titulo(n), x, y); ctx.fillText(titulo(n), x, y);
+      return usados.concat({x, y, w}); }, []);
+}
+cv.addEventListener("mousemove", e => {
+  const R = cv.getBoundingClientRect(), x = (e.clientX - R.left) * cv.width / R.width, y = (e.clientY - R.top) * cv.height / R.height;
+  let best = null; desenhados.forEach(d => { const dd = Math.hypot(d.x - x, d.y - y); if (dd <= Math.max(d.r, 5) && (!best || d.r < best.r)) best = d; });
+  if (!best) { tip.hidden = true; return; }
+  const p = best.p;
+  tip.innerHTML = `<b>${esc(titulo(p.NM_LOCAL_VOTACAO))}</b><br>${esc(titulo(p.NM_BAIRRO))} · zona ${p.zona}<br>${nf(p.votos_jorge)} votos · ${pc(p.pct_validos)} dos válidos`;
+  tip.hidden = false;
+  tip.style.left = Math.min(e.clientX - R.left + 12, R.width - 270) + "px"; tip.style.top = (e.clientY - R.top + 12) + "px";
+});
+cv.addEventListener("mouseleave", () => tip.hidden = true);
+document.querySelectorAll("#mapTabs button").forEach(b => b.onclick = () => {
+  modo = b.dataset.r; document.querySelectorAll("#mapTabs button").forEach(x => x.setAttribute("aria-pressed", x === b)); desenha(); });
+desenha();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", desenha);
+new MutationObserver(desenha).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+
+// ---------- federais selecionados x Jorge ----------
+const F = D.feds, FEDN = F.resumo.map(r => r.numero);
+const curto = n => titulo(F.resumo.find(r => r.numero === n)?.nome || n);
+tabela("t_feds", F.resumo.slice().sort((a, b) => b.correlacao_controlada - a.correlacao_controlada), [
+  {k:"nome", t:"Federal", w:1, f:r => `${titulo(r.nome)} <span style="color:var(--mute)">${r.numero}</span>`},
+  {k:"partido", t:"Partido", f:r => esc(r.partido)},
+  {k:"situacao", t:"Situação", f:r => esc(r.situacao)},
+  {k:"votos_estado", t:"Votos RJ", num:1, f:r => nf(r.votos_estado)},
+  {k:"votos_capital", t:"Votos capital", num:1, f:r => nf(r.votos_capital)},
+  {k:"votos_zona_oeste", t:"Zona Oeste", num:1, f:r => nf(r.votos_zona_oeste)},
+  {k:"pct_capital", t:"% válidos capital", num:1, f:r => pc(r.pct_capital)},
+  {k:"secoes_ambos", t:"Seções com os dois", num:1, f:r => nf(r.secoes_ambos)},
+  {k:"secoes_fed_maior_que_jorge", t:"Seções em que supera Jorge", num:1, f:r => nf(r.secoes_fed_maior_que_jorge)},
+  {k:"secoes_jorge_maior", t:"Seções em que Jorge supera", num:1, f:r => nf(r.secoes_jorge_maior)},
+  {k:"correlacao_controlada", t:"Correlação controlada", num:1, f:r => `<b>${nf(r.correlacao_controlada, 2)}</b>`, cls:r => r.correlacao_controlada > 0.1 ? "pos" : r.correlacao_controlada < -0.1 ? "neg" : ""},
+  {k:"correlacao_controlada_zo", t:"Controlada ZO", num:1, f:r => nf(r.correlacao_controlada_zo, 2)},
+  {k:"lift_controlado", t:"Reduto controlado", num:1, f:r => nf(r.lift_controlado, 2)},
+  {k:"correlacao_com_jorge", t:"Correlação bruta", num:1, f:r => nf(r.correlacao_com_jorge, 2)},
+  {k:"melhor_bairro", t:"Melhor bairro", f:r => r.melhor_bairro ? `${titulo(r.melhor_bairro)} (${nf(r.votos_melhor_bairro)})` : "—"}], {lim:10});
+document.getElementById("fedsNota").textContent = `Jorge na capital: ${nf(capital)} votos. Redutos de Jorge na capital = seções com ${pc(F.corte_reduto)} ou mais dos válidos de deputado estadual (decil superior, seções com 50 ou mais válidos).`;
+const fc = Object.fromEntries(F.cols.map((c, i) => [c, i]));
+const secs = F.linhas.map(r => Object.fromEntries(F.cols.map((c, i) => [c, r[i]])));
+["fb_ap", "fs_ap"].forEach(id => ordReg.filter(r => r !== "Fora da capital").forEach(r => document.getElementById(id).insertAdjacentHTML("beforeend", `<option>${r}</option>`)));
+FEDN.forEach(n => document.getElementById("fs_cmp").insertAdjacentHTML("beforeend", `<option value="${n}">${esc(curto(n))}</option>`));
+const supera = (r, n) => (r["fed_" + n] || 0) > (r.votos_jorge || 0) ? "pos" : "";
+const colsFB = [
+  {k:"NM_BAIRRO", t:"Bairro", f:r => titulo(r.NM_BAIRRO)},
+  {k:"votos_jorge", t:"Jorge", num:1, f:r => `<b>${nf(r.votos_jorge)}</b>`},
+  ...FEDN.map(n => ({k:"fed_" + n, t:curto(n), num:1, f:r => nf(r["fed_" + n]), cls:r => supera(r, n)}))];
+const tfb = tabela("t_feds_bairro", F.bairro.slice().sort((a, b) => b.votos_jorge - a.votos_jorge), colsFB, {lim:25});
+const fbFiltra = () => { const q = document.getElementById("fb_q").value.trim().toUpperCase(), a = document.getElementById("fb_ap").value;
+  tfb.set(F.bairro.filter(b => (!q || String(b.NM_BAIRRO).toUpperCase().includes(q)) && (!a || b.regiao === a)).sort((x, y) => y.votos_jorge - x.votos_jorge)); };
+document.getElementById("fb_q").oninput = fbFiltra; document.getElementById("fb_ap").onchange = fbFiltra;
+function colsFS(sel) {
+  const ns = sel ? [Number(sel)] : FEDN;
+  return [
+    {k:"zona", t:"Zona/Seção", f:r => `${r.zona}ª / ${r.secao}`},
+    {k:"NM_LOCAL_VOTACAO", t:"Local", w:1, f:r => titulo(r.NM_LOCAL_VOTACAO)},
+    {k:"NM_BAIRRO", t:"Bairro", f:r => titulo(r.NM_BAIRRO)},
+    {k:"votos_jorge", t:"Jorge", num:1, f:r => `<b>${nf(r.votos_jorge)}</b>`},
+    {k:"pct_jorge", t:"Jorge %", num:1, f:r => pc(r.pct_jorge)},
+    ...ns.flatMap(n => sel ? [
+      {k:"fed_" + n, t:curto(n), num:1, f:r => nf(r["fed_" + n]), cls:r => supera(r, n)},
+      {k:"pct_fed_" + n, t:"%", num:1, f:r => pc(r["pct_fed_" + n])},
+      {k:"dif_" + n, t:"Jorge − federal", num:1, v:r => (r.votos_jorge || 0) - (r["fed_" + n] || 0), f:r => { const d = (r.votos_jorge || 0) - (r["fed_" + n] || 0); return (d > 0 ? "+" : "") + nf(d); }, cls:r => (r.votos_jorge || 0) >= (r["fed_" + n] || 0) ? "" : "neg"}]
+      : [{k:"fed_" + n, t:curto(n), num:1, f:r => nf(r["fed_" + n]), cls:r => supera(r, n)}]),
+    {k:"validos_dep_est", t:"Válidos est.", num:1, f:r => nf(r.validos_dep_est)}];
+}
+let tfs = tabela("t_feds_secao", secs, colsFS(""), {ordem:"votos_jorge", lim:40});
+function fsFiltra() {
+  const q = document.getElementById("fs_q").value.trim().toUpperCase(), a = document.getElementById("fs_ap").value,
+        z = document.getElementById("fs_z").value.trim(), c = document.getElementById("fs_cmp").value;
+  const L = secs.filter(r => (!q || String(r.NM_BAIRRO).toUpperCase().includes(q) || String(r.NM_LOCAL_VOTACAO).toUpperCase().includes(q))
+    && (!a || r.regiao === a) && (!z || String(r.zona) === z));
+  tfs = tabela("t_feds_secao", L, colsFS(c), {ordem:"votos_jorge", lim:40});
+}
+["fs_q", "fs_z"].forEach(id => document.getElementById(id).oninput = fsFiltra);
+["fs_ap", "fs_cmp"].forEach(id => document.getElementById(id).onchange = fsFiltra);
+
+// ---------- cruzamento ----------
+const recs = ["Zona Oeste (AP4+AP5)", "Capital", "Estado"];
+const cruzCols = [
+  {k:"nome", t:"Candidato", w:1, f:r => titulo(r.nome)},
+  {k:"partido", t:"Partido", f:r => esc(r.partido)},
+  {k:"correlacao_controlada", t:"Correlação controlada", num:1, f:r => `<b>${nf(r.correlacao_controlada, 2)}</b>`, cls:r => r.correlacao_controlada > 0.1 ? "pos" : r.correlacao_controlada < -0.1 ? "neg" : ""},
+  {k:"lift_controlado", t:"Reduto controlado", num:1, f:r => nf(r.lift_controlado, 2)},
+  {k:"correlacao_secao", t:"Correlação bruta", num:1, f:r => nf(r.correlacao_secao, 2)},
+  {k:"pct_nos_redutos_jorge", t:"% nos redutos", num:1, f:r => pc(r.pct_nos_redutos_jorge)},
+  {k:"pct_no_recorte", t:"% no recorte", num:1, f:r => pc(r.pct_no_recorte)},
+  {k:"votos_no_recorte", t:"Votos", num:1, f:r => nf(r.votos_no_recorte)}];
+const tdf = tabela("t_cruz_df", [], cruzCols, {lim:15});
+const majCols = cruzCols.filter(c => c.k !== "votos_no_recorte");
+const tgov = tabela("t_cruz_gov", [], majCols, {lim:10});
+const tsen = tabela("t_cruz_sen", [], majCols, {lim:10});
+const tpres = tabela("t_cruz_pres", [], majCols, {lim:12});
+const ct = document.getElementById("cruzTabs");
+function cruz(rc) {
+  ct.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.r === rc));
+  const a = D.cruz["6|" + rc], g = D.cruz["3|" + rc];
+  tdf.set((a?.linhas || []).filter(r => r.correlacao_controlada != null));
+  tgov.set((g?.linhas || []).filter(r => r.correlacao_controlada != null));
+  tsen.set((D.cruz["5|" + rc]?.linhas || []).filter(r => r.correlacao_controlada != null));
+  tpres.set((D.cruz["1|" + rc]?.linhas || []).filter(r => r.correlacao_controlada != null));
+  const m = a?.meta;
+  document.getElementById("cruzMeta").textContent = m ? `${rc}: ${nf(m.secoes)} seções com 50 ou mais votos válidos. Redutos = ${nf(m.secoes_reduto)} seções em que Jorge teve ${pc(m.corte_pct_jorge)} ou mais dos válidos, somando ${nf(m.votos_jorge_redutos)} votos dele. Deputados federais listados: os que tiveram ao menos 0,3% dos válidos no recorte.` : "";
+}
+recs.forEach(r => ct.insertAdjacentHTML("beforeend", `<button type="button" data-r="${r}">${r}</button>`));
+ct.querySelectorAll("button").forEach(b => b.onclick = () => cruz(b.dataset.r));
+cruz(recs[0]);
+
+// ---------- panorama ----------
+const rt = document.getElementById("rankTabs"), rrecs = ["Estado", "Capital", "Zona Oeste (AP4+AP5)", "AP4", "AP5"];
+const t7 = tabela("t_r7", [], rankCols, {me:meJ, lim:20}), t6 = tabela("t_r6", [], rankCols, {me:r => FEDN.includes(r.numero), lim:20});
+const t3 = tabela("t_r3", [], rankCols, {lim:10}), t5 = tabela("t_r5", [], rankCols, {lim:12}), t1 = tabela("t_r1", [], rankCols, {lim:13});
+function rank(rc) { rt.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.r === rc));
+  t7.set(D.rank["7|" + rc] || []); t6.set(D.rank["6|" + rc] || []); t3.set(D.rank["3|" + rc] || []);
+  t5.set(D.rank["5|" + rc] || []); t1.set(D.rank["1|" + rc] || []); }
+rrecs.forEach(r => rt.insertAdjacentHTML("beforeend", `<button type="button" data-r="${r}">${r}</button>`));
+rt.querySelectorAll("button").forEach(b => b.onclick = () => rank(b.dataset.r));
+rank("Estado");
+function porRegiao(el, linhas, n) {
+  const nomes = Object.keys(linhas[0] || {}).filter(k => k !== "regiao" && !k.startsWith("LEGENDA"))
+    .sort((a, b) => linhas.reduce((s, r) => s + (r[b] || 0), 0) - linhas.reduce((s, r) => s + (r[a] || 0), 0));
+  tabela(el, linhas.slice().sort((a, b) => ordReg.indexOf(a.regiao) - ordReg.indexOf(b.regiao)),
+    [{k:"regiao", t:"Região", f:r => esc(r.regiao)}, ...nomes.slice(0, n).map(k => ({k, t:titulo(k), num:1, f:r => pc(r[k])}))], {lim:10});
+}
+porRegiao("t_gov", D.maj_reg["3"] || [], 6); porRegiao("t_sen", D.maj_reg["5"] || [], 6); porRegiao("t_pres", D.maj_reg["1"] || [], 6);
+
+// ---------- metodologia ----------
+document.getElementById("metodo").innerHTML = [
+  `<b>Fonte primária:</b> boletim de urna (BU) de cada uma das ${nf(D.secoes)} seções do RJ, baixado do repositório oficial do TSE. O BU de 2026 traz campos novos em relação à especificação ASN.1 de 2022 e foi decodificado diretamente da estrutura BER.`,
+  `<b>Validação:</b> em toda seção, a soma dos votos de cada cargo é igual ao comparecimento (no Senado, o dobro, por haver 2 vagas). A soma das seções foi conferida candidato a candidato contra o total oficial do TSE: ${D.conf_diferencas === 0 ? `os ${nf(D.conf_n)} candidatos batem exatamente` : `${nf(D.conf_diferencas)} de ${nf(D.conf_n)} candidatos com diferença (ver aba "Conferência TSE" da planilha)`}.`,
+  `<b>Bairro e região:</b> na capital, bairro e Área de Planejamento oficiais da Prefeitura, pela localização de cada escola na malha oficial de 167 bairros (pgeo3.rio.rj.gov.br); nos demais municípios, bairro do cadastro de locais de votação do TSE, com grafias unificadas. "Zona Oeste" = AP4 + AP5. Seções agregadas votam na urna da seção principal e entram pelo local dela.`,
+  `<b>Votos válidos:</b> nominais + legenda, sem brancos, nulos e anulados. Votos dados a números que não constam da lista oficial do TSE (candidaturas com votos anulados) são tratados como anulados, como no total oficial: ${Object.entries(D.anulados || {}).map(([c, q]) => `${c} ${nf(q)}`).join(" · ")}. Percentuais calculados sobre os válidos do mesmo cargo no mesmo recorte.`,
+  `<b>Comparação com 2022:</b> votos de Jorge Felippe Neto (70800, AVANTE) por seção em 2022, agregados pelo bairro oficial das escolas de 2022 (mesmo critério). Como seções e locais mudam entre eleições, a comparação vale no nível de bairro e município, não de seção.`,
+  `<b>Cruzamento:</b> correlação de Pearson entre fatias por seção (seções com 50 ou mais válidos), controlada por região (cada fatia menos a média da sua AP na capital, ou do seu município fora dela), e índice de reduto no decil superior de Jorge dentro de cada região. A correlação bruta, sem controle, aparece ao lado. É inferência ecológica e não identifica o voto individual, que é secreto.`,
+].map(s => `<li>${s}</li>`).join("");
+</script>

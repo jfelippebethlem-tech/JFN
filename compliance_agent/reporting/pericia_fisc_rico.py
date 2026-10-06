@@ -41,10 +41,20 @@ _DET_META: dict[str, dict] = {
     },
     "d3_favorecido_sancionado": {
         "rotulo": "D3 · Favorecido sancionado (CEIS/CNEP)",
-        "detecta": "Beneficiário de emenda inscrito em cadastro de sanção federal (impedimento de contratar).",
+        # O rótulo antigo dizia "inscrito em cadastro de sanção federal (impedimento de contratar)"
+        # e o quadro de evidência não trazia a VIGÊNCIA — o entregável seguia afirmando o que o
+        # detector deixou de afirmar em 2026-08-10. Medido: dos 756 casamentos, 696 são de sanção
+        # POSTERIOR à emenda e 10 de categoria que NÃO veda contratar; só 50 estavam vigentes e
+        # impeditivas. Sem o campo na peça, o leitor não distingue os dois.
+        "detecta": ("Beneficiário de emenda inscrito em cadastro de sanção federal. Só acusa quando "
+                    "a sanção estava VIGENTE no ano da emenda E é de categoria que veda contratar "
+                    "(multa e publicação extraordinária não vedam) — os demais casos saem como "
+                    "contexto, com a vigência declarada."),
         "irregularidade": "empresa_sancionada",
         "dispositivos": ["Lei 14.133/2021 art. 14 e art. 156", "Lei 12.846/2013 (CNEP)"],
         "evid": [("cadastro", "Cadastro de sanção", "s"), ("doc", "Favorecido (doc.)", "doc"),
+                 ("vigencia_na_emenda", "Vigência na data da emenda", "s"),
+                 ("sancao_inicio", "Início da sanção", "s"), ("sancao_fim", "Fim da sanção", "s"),
                  ("match_exato", "Correspondência exata (CPF/CNPJ)", "bool")],
     },
     "d4_favorecido_fantasma": {
@@ -74,10 +84,16 @@ _DET_META: dict[str, dict] = {
     },
     "d9_socio_na_folha": {
         "rotulo": "D9 · Sócio de credor na folha do município",
-        "detecta": "Sócio de empresa contratada com vínculo (ou homônimo) na folha de pessoal municipal.",
+        # o vínculo POSTERIOR não descreve a despesa (40,3% dos pares medidos em 2026-08-10)
+        "detecta": ("Sócio de empresa contratada com vínculo (ou homônimo) na folha de pessoal "
+                    "municipal. O achado distingue o sócio que já estava no quadro no exercício da "
+                    "despesa daquele que entrou DEPOIS — este último não a descreve."),
         "irregularidade": "conflito_interesse",
         "dispositivos": ["Lei 14.133/2021 art. 9º", "Lei 8.429/92 art. 11", "Súmula Vinculante 13"],
         "evid": [("socio", "Sócio", "s"), ("credor", "Credor (CNPJ)", "doc"),
+                 ("vinculo_posterior", "Sócio entrou DEPOIS da despesa", "bool"),
+                 ("entrada_socio_ano", "Ano de entrada no quadro", "s"),
+                 ("ultimo_exercicio", "Último exercício com pagamento", "s"),
                  ("lotacao", "Lotação na folha", "s"), ("match_tipo", "Tipo de correspondência", "s")],
     },
     "d8_credor_recem_aberto": {
@@ -85,8 +101,11 @@ _DET_META: dict[str, dict] = {
         "detecta": "Empresa constituída há menos de 180 dias já contratada/paga pela Prefeitura.",
         "irregularidade": "empresa_laranja",
         "dispositivos": ["Lei 14.133/2021 arts. 66-69 (habilitação)", "Lei 8.429/92 art. 10"],
+        # a chave é `total`, não `valor`: o campo declarado errado renderizava SEMPRE vazio, e o
+        # valor recebido é justamente o que dá tamanho ao achado de credor recém-aberto. Pego por
+        # uma conferência de contrato entre a peça e a evidência dos detectores (teste abaixo).
         "evid": [("cnpj", "Credor (CNPJ)", "doc"), ("idade_dias", "Idade na 1ª contratação", "s"),
-                 ("valor", "Valor recebido", "moeda")],
+                 ("total", "Valor recebido", "moeda")],
     },
     "d10_rede_concorrentes": {
         "rotulo": "D10 · Rede societária entre fornecedores do mesmo órgão",
@@ -98,18 +117,36 @@ _DET_META: dict[str, dict] = {
     },
     "d12_coendereco_concorrentes": {
         "rotulo": "D12 · Co-endereço entre fornecedores do mesmo órgão",
-        "detecta": "Fornecedores concorrentes contratados pelo mesmo órgão compartilhando o mesmo CEP (red flag OCDE 2025 de bid rigging).",
+        # o CEP é o do cadastro ATUAL: a base não tem histórico de endereço
+        "detecta": ("Fornecedores concorrentes contratados pelo mesmo órgão compartilhando o mesmo "
+                    "CEP (red flag OCDE 2025 de bid rigging). O CEP é o do cadastro ATUAL — "
+                    "co-localização NA ÉPOCA do certame não está estabelecida."),
         "irregularidade": "conluio",
         "dispositivos": ["Lei 14.133/2021 art. 9º", "Lei 12.529/2011 art. 36 §3º I"],
         "evid": [("cep", "CEP compartilhado", "s"), ("fornecedores", "Fornecedores (CNPJs)", "lista"),
+                 ("cep_e_de", "Cadastro consultado em", "s"),
+                 ("coendereco_na_epoca", "Co-endereço na época do certame", "s"),
                  ("n_empresas_no_cep_base", "Empresas no CEP (base)", "s")],
     },
     "d11_aditivo_estourado": {
         "rotulo": "D11 · Acréscimo contratual acima do limite legal",
-        "detecta": "Aditivo que eleva o valor do contrato além dos 25%/50% do art. 125.",
+        # O percentual sozinho nao basta: ele pode vir do TERMO (natureza classificada como valor)
+        # ou de `valor_global − valor_inicial`, que mistura reajuste, prorrogação e reequilíbrio.
+        # Sem `acrescimo_confirmado` na peça, o leitor não distingue afirmação de indício — e sem
+        # `teto_pct` não sabe se o caso é de 25% ou de 50% (reforma). O art. 125 admite acréscimos
+        # ATÉ o teto: no teto exato o contrato está DENTRO da lei.
+        "detecta": ("Aditivo que eleva o valor do contrato além do teto do art. 125 (25% em regra, "
+                    "50% só para reforma de edifício ou equipamento). O percentual é calculado "
+                    "sobre o valor inicial NÃO atualizado — a norma mede sobre o atualizado, então "
+                    "caso rente ao teto pode ser lícito. Acréscimo apurado no termo aditivo é "
+                    "afirmação; diferença de valor global é indício."),
         "irregularidade": "superfaturamento",
         "dispositivos": ["Lei 14.133/2021 art. 125", "Lei 8.666/93 art. 65 §1º"],
-        "evid": [("controle", "Contrato (controle PNCP)", "s"), ("pct_acrescimo", "Acréscimo", "pct_direto"),
+        "evid": [("controle", "Contrato (controle PNCP)", "s"),
+                 ("pct_acrescimo", "Acréscimo", "pct_direto"),
+                 ("teto_pct", "Teto aplicável (%)", "s"),
+                 ("acrescimo_confirmado", "Apurado no termo aditivo", "bool"),
+                 ("lacunas_aditivo", "Lacunas declaradas do termo", "lista"),
                  ("subtipo", "Subtipo", "s")],
     },
 }

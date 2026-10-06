@@ -13,6 +13,7 @@ anexa — quando a data pedida está fora da série de snapshots.
 from __future__ import annotations
 
 import logging
+import re
 import sqlite3
 
 # Erros que uma rota de LEITURA do acervo pode ver de verdade: base ocupada/corrompida, esquema
@@ -28,9 +29,91 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# CACHE DAS TELAS DE PADRÃO. Elas varrem o acervo inteiro (a de coparticipação cruza 82.941
+# licitantes com o QSA) e a API é single-process: uma rota pesada SÍNCRONA bloqueia o event loop e
+# põe todas as outras na fila. Medido em 2026-08-09: com os seis cards da fila do fiscal pedindo ao
+# mesmo tempo, o `fim_de_exercicio` não respondeu em 300 s — não por ser lento, mas por estar
+# esperando a vez. O acervo muda por coleta, não por requisição; TTL de 1 h como nas rotas pesadas
+# de `investigacao`.
+_CACHE: dict[str, tuple[float, object]] = {}
+_TTL_PADRAO = 3600
+
+
+def _cache(chave: str, calcular, ttl: int = _TTL_PADRAO):
+    import time as _t
+    v = _CACHE.get(chave)
+    if v and (_t.time() - v[0]) < ttl:
+        return v[1]
+    val = calcular()
+    _CACHE[chave] = (_t.time(), val)
+    return val
+
+
+def _fonte(*tabelas: str) -> dict:
+    """As tabelas de origem existem e têm linha? — para a rota distinguir MEDI E NÃO ACHEI de
+    NÃO TENHO A FONTE.
+
+    As telas de padrão devolvem `[]` nos dois casos, e a rota transformava isso em "0 achados" —
+    que é a afirmação mais perigosa que um painel de fiscalização pode fazer. Aqui a resposta passa
+    a carregar o estado da fonte, e o card sabe dizer "nenhum achado NA FATIA MEDIDA" em vez de
+    sugerir que não há o que apurar.
+    """
+    estado: dict[str, object] = {"ok": True, "tabelas": {}}
+    try:
+        con = _db_ro()
+        try:
+            existentes = {r[0] for r in con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            for t in tabelas:
+                if t not in existentes:
+                    estado["tabelas"][t] = "ausente"
+                    estado["ok"] = False
+                    continue
+                n = con.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]  # noqa: S608 — nome interno
+                estado["tabelas"][t] = n
+                if not n:
+                    estado["ok"] = False
+        finally:
+            con.close()
+    except sqlite3.Error as exc:
+        return {"ok": False, "erro": str(exc), "tabelas": {}}
+    if not estado["ok"]:
+        estado["nota"] = ("Alguma fonte deste screen está AUSENTE ou VAZIA — uma lista vazia aqui "
+                          "significa 'não medi', não 'nada a apurar'.")
+    return estado
+
+
 def _db_ro() -> sqlite3.Connection:
     from compliance_agent.reporting.intel_base import _DB
     return sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+
+
+@router.get("/api/osint/contato_compartilhado")
+def api_contato_compartilhado(cnpj: str, extras: str = ""):
+    """Telefone e e-mail compartilhados — as arestas mais fortes da régua depois de `mesma_sala`.
+
+    ESTAVA TUDO PRONTO E PARADO. `data/receita_estab.db` guarda **6.171.766 estabelecimentos** com
+    telefone (83,9%) e e-mail (69,0%), indexados; `osint/contato_compartilhado` implementa
+    `mesmo_telefone` (0,70) e `mesmo_email` (0,80) com os guardas todos medidos — telefone-lixo (o
+    `00` liga 129.152 empresas), fan-out (43 telefones ligam mais de mil) e e-mail de contabilidade
+    (`abertura@maismei.com.br`, 17.665 clientes, que vira `mesmo_contador` a 0,30). Faltava
+    consumidor: o docstring do módulo dizia, literalmente, *"dado ingerido, indexado, e sem um
+    único consumidor"*.
+
+    O que a primeira amostra real mostrou (120 CNPJs vencedores do acervo, 2026-08-06): **APPA
+    SERVIÇOS TEMPORÁRIOS** e **OBJETIVA SERVIÇOS TERCEIRIZADOS** — raízes de CNPJ diferentes, duas
+    empresas de terceirização que atendem o poder público — dividem o telefone 1147593220.
+
+    `extras`: outros CNPJs separados por vírgula, para pedir o conjunto de uma vez.
+    """
+    try:
+        from compliance_agent.osint.contato_compartilhado import vinculos_por_contato
+
+        alvos = [c.strip() for c in (cnpj + "," + extras).split(",") if c.strip()]
+        return JSONResponse(vinculos_por_contato(alvos))
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("contato_compartilhado falhou")
+        return JSONResponse({"erro": str(exc)[:200], "arestas": []}, status_code=200)
 
 
 @router.get("/api/osint/beneficiario_final")
@@ -298,4 +381,873 @@ def api_patrimonio(cnpj: str = "", nome: str = ""):
             con.close()
     except _FALHAS_DE_LEITURA as exc:
         logger.exception("patrimonio falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/agente_publico")
+def api_agente_publico(so_comissionados: int = 0, limite: int = 60, filtro: str = ""):
+    """Fila de agente público × entidade que recebeu dinheiro público.
+
+    A fila nasceu em linha de comando e ficou lá — o mesmo "construído, testado, nunca rodado" que
+    esta casa já corrigiu seis vezes. Aqui ela ganha superfície, com as ressalvas coladas ao dado:
+    o casamento é por NOME (a folha não traz CPF utilizável e o dump traz o CPF mascarado), a
+    explicação institucional vai declarada ao lado do par, e o valor vem SEPARADO POR FONTE porque
+    OB estadual, despesa municipal e emenda federal não são a mesma coisa.
+    """
+    try:
+        import json
+
+        from tools.agente_publico_reverso import _FILA_JSON
+
+        # SÓ LÊ O ARQUIVO. Calcular aqui custava 22,3 s por request — a fila remonta o dicionário de
+        # 5,86 milhões de razões sociais. Quem escreve é o sweep, como já faz `/api/tac/ranking`.
+        if not _FILA_JSON.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "fila ainda não materializada — rode `python -m tools.agente_publico_reverso` "
+                "(o sweep diário a regenera)")}, status_code=503)
+        corpo = json.loads(_FILA_JSON.read_text(encoding="utf-8"))
+        itens = corpo.get("itens") or []
+        if so_comissionados:
+            itens = [x for x in itens if x.get("comissionado")]
+        # O FILTRO É APLICADO NA FILA INTEIRA, NUNCA NA PÁGINA. Filtrar depois do corte fazia o
+        # clique contradizer o próprio KPI: o cartão dizia 68 comissionados e a fatia mostrava 55,
+        # porque só os 60 primeiros tinham chegado ao navegador. Métrica que não bate com o que o
+        # clique mostra é pior do que métrica sem clique.
+        _FATIAS = {
+            "apComissionados": lambda x: x.get("comissionado"),
+            "apTerceiroSetor": lambda x: x.get("terceiro_setor"),
+            "apExplicados": lambda x: bool(x.get("explicacao_institucional")),
+            "apNovos": lambda x: bool(x.get("novo")),
+            "apConflito": lambda x: bool(x.get("orgao_pagador_e_o_proprio")),
+        }
+        fn = _FATIAS.get(filtro)
+        if fn:
+            itens = [x for x in itens if fn(x)]
+        return JSONResponse({
+            "ok": True,
+            "gerado_em": corpo.get("gerado_em"),
+            "total": corpo.get("total"),
+            "comissionados": corpo.get("comissionados"),
+            "terceiro_setor": corpo.get("terceiro_setor"),
+            "com_explicacao_institucional": corpo.get("com_explicacao_institucional"),
+            "novos": corpo.get("novos", 0),
+            "fila_md": corpo.get("fila_md"),
+            "filtro": filtro or "apTodos",
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 500))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. O casamento é por NOME NORMALIZADO: a folha não traz CPF "
+                "utilizável e a Receita entrega o CPF do sócio mascarado. Nomes com mais de um CPF "
+                "no índice já foram excluídos, mas os que ficam podem ser homônimos sem que a base "
+                "o mostre. Servidor PODE ser sócio — o que se afirma aqui é que há o que conferir."),
+            "fontes": (
+                "socios_full.csv.zst (QSA nacional, 27,6 mi de linhas) × folhas do Estado e da "
+                "ALERJ; dinheiro por OB do SIAFE, despesa paga do município (2019-2023), emenda "
+                "federal na fase de pagamento e contrato municipal (procedência, não valor)"),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("agente_publico falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/processos")
+def api_osint_processos(limite: int = 80, so_conflito: int = 0):
+    """Processos já lidos cuja empresa tem sinal OSINT — a correlação que faltava.
+
+    Inteligência sobre empresa não fiscaliza nada sozinha: quem fiscaliza abre AUTOS. Aqui a fila
+    de agente público (já sem homônimo comprovado e sem o que é desenho de programa) encontra as
+    fichas de processo que citam aquele CNPJ.
+    """
+    try:
+        import json
+
+        from tools.osint_x_processos import _SAIDA_JSON
+
+        if not _SAIDA_JSON.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "correlação ainda não materializada — rode `python -m tools.osint_x_processos` "
+                "(o sweep diário a regenera)")}, status_code=503)
+        corpo = json.loads(_SAIDA_JSON.read_text(encoding="utf-8"))
+        itens = corpo.get("achados") or []
+        if so_conflito:
+            itens = [x for x in itens
+                     if any(a.get("conflito_pelo_processo") or a.get("conflito_de_orgao")
+                            for a in x.get("agentes") or [])]
+        return JSONResponse({
+            "ok": True,
+            "gerado_em": corpo.get("gerado_em"),
+            "processos_com_cnpj": corpo.get("processos_com_cnpj"),
+            "total": corpo.get("com_achado"),
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 500))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. A ponte processo→empresa vem do CNPJ citado na FICHA; a "
+                "ponte empresa→pessoa vem do casamento por NOME com as folhas. Ausência de QSA "
+                "capturado é LACUNA de captura, não limpeza."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("osint_processos falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/elos_ocultos")
+def api_elos_ocultos(limite: int = 60, so_sem_explicacao: int = 0):
+    """Empresas que dividem contato E ambas recebem do Estado — o elo que ninguém declarou."""
+    try:
+        import json
+
+        from tools.elos_ocultos import _SAIDA
+
+        if not _SAIDA.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "levantamento ainda não materializado — rode `python -m tools.elos_ocultos` "
+                "(o sweep diário o regenera)")}, status_code=503)
+        corpo = json.loads(_SAIDA.read_text(encoding="utf-8"))
+        itens = corpo.get("itens") or []
+        if so_sem_explicacao:
+            itens = [x for x in itens if not x.get("mesmo_grupo_aparente")]
+        # O DENOMINADOR DO GRAFO VIAJA COM OS ELOS. Medido em 2026-08-08: o grafo tinha percorrido
+        # 1.558 dos 16.651 credores com OB (9,4%) e a tela dizia "39 elos" sem dizer sobre QUANTO
+        # do universo — quem lê pensa que o resto foi afastado, quando não foi visto. É a mesma
+        # família do gate que media o que LI e não o que EXISTE. Consulta barata (2 COUNTs com
+        # índice); se falhar, o dado segue sem a cobertura — nunca derruba a rota.
+        cobertura_grafo = None
+        try:
+            import sqlite3 as _sq3
+
+            from compliance_agent.reporting.intel_base import _DB as _db_path
+
+            _con = _sq3.connect(f"file:{_db_path}?mode=ro", uri=True)
+            try:
+                _perc = _con.execute("SELECT COUNT(*) FROM grafo_persistido").fetchone()[0]
+                _uni = _con.execute(
+                    "SELECT COUNT(DISTINCT substr(replace(replace(replace(credor,'.',''),"
+                    "'/',''),'-',''),1,8)) FROM ob_orcamentaria_siafe").fetchone()[0]
+                cobertura_grafo = {"percorridos": _perc, "universo": _uni,
+                                   "pct": round(_perc * 100.0 / _uni, 1) if _uni else None}
+            finally:
+                _con.close()
+        except _sq3.Error:
+            logger.debug("cobertura do grafo indisponível — sigo sem ela")
+        return JSONResponse({
+            "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "cobertura_grafo": cobertura_grafo,
+            # O PESO É PISO, e isso tem de chegar à tela junto com o número. A ferramenta já
+            # calculava `peso_e_piso` (quantos pares UG/ano estão parados em contagem redonda, o
+            # sintoma do teto de coleta) e a rota descartava o campo — o fiscal via "R$ 4,3 mi"
+            # sem saber que a fonte canônica só tinha 1 das 13 OBs daquele credor. Medido em
+            # 2026-08-09, quando a recoleta levou o par PHOTONLUX × EVOLUÇÃO de R$ 40,7 mi para
+            # R$ 423,2 mi e ele virou o primeiro da fila.
+            "peso_e_piso": corpo.get("peso_e_piso"),
+            "arestas_de_contato": corpo.get("arestas_de_contato"),
+            "estruturais": corpo.get("estruturais"),
+            "total": corpo.get("os_dois_lados_pagos"),
+            "mesmo_grupo_aparente": corpo.get("mesmo_grupo_aparente"),
+            "sem_explicacao": corpo.get("sem_explicacao"),
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 300))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. Telefone e e-mail vêm do cadastro da Receita e podem ser de "
+                "escritório de contabilidade, central de atendimento ou grupo econômico legítimo. "
+                "Grupo econômico é LÍCITO — o que ele não pode é disputar o mesmo certame fingindo "
+                "concorrência (art. 337-F do Código Penal; Lei 12.529/2011)."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("elos_ocultos falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/osint/cocontato_certame")
+def api_cocontato_certame(limite: int = 60, so_sem_explicacao: int = 0):
+    """Dois participantes do MESMO certame atendendo pelo mesmo telefone ou e-mail."""
+    try:
+        import json
+
+        from tools.cocontato_certame import SAIDA
+
+        if not SAIDA.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "levantamento ainda não materializado — rode "
+                "`python -m tools.cocontato_certame` (o sweep diário o regenera)")},
+                status_code=503)
+        corpo = json.loads(SAIDA.read_text(encoding="utf-8"))
+        pares = corpo.get("pares") or []
+        if so_sem_explicacao:
+            pares = [p for p in pares
+                     if not p.get("contato_de_servico") and not p.get("mesmo_grupo_aparente")]
+        return JSONResponse({
+            "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "certames_com_disputa": corpo.get("certames_com_disputa"),
+            "cnpjs_participantes": corpo.get("cnpjs_participantes"),
+            "total": len(corpo.get("pares") or []),
+            "sem_explicacao": corpo.get("sem_explicacao"),
+            "contato_de_servico": corpo.get("contato_de_servico"),
+            "mesmo_grupo_aparente": corpo.get("mesmo_grupo_aparente"),
+            "total_fatia": len(pares),
+            "itens": pares[:max(1, min(int(limite), 300))],
+            "ressalva": (
+                "INDÍCIO, nunca prova. Telefone e e-mail vêm do cadastro da Receita e podem estar "
+                "desatualizados ou ser de escritório contábil. O que se afirma é que dois "
+                "participantes do MESMO certame atendem pelo mesmo contato — cabe verificar as "
+                "propostas, os sócios e se houve disputa real (art. 337-F do Código Penal)."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("cocontato_certame falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/assinaturas")
+def api_pcrj_assinaturas(limite: int = 80, so_identificadas: int = 0):
+    """Quem assinou cada despacho da Prefeitura — matrícula publicada pelo SEI × folha municipal.
+
+    Identificação por CADASTRO, não por nome: a matrícula vem do próprio órgão. É a ponte que faz
+    a pergunta da fila de agente público valer também para o município.
+    """
+    try:
+        import json
+
+        from tools.pcrj_assinaturas_x_folha import SAIDA
+        from tools.pcrj_signatario_x_qsa import SAIDA as SAIDA_QSA
+
+        if not SAIDA.exists():
+            return JSONResponse({"ok": False, "erro": (
+                "identificação ainda não materializada — rode "
+                "`python -m tools.pcrj_assinaturas_x_folha` (o sweep diário a regenera)")},
+                status_code=503)
+        corpo = json.loads(SAIDA.read_text(encoding="utf-8"))
+        itens = corpo.get("itens") or []
+        if so_identificadas:
+            itens = [x for x in itens if x.get("identificada")]
+        qsa = {}
+        if SAIDA_QSA.exists():
+            q = json.loads(SAIDA_QSA.read_text(encoding="utf-8"))
+            qsa = {"no_qsa_nacional": q.get("no_qsa_nacional"),
+                   "vinculos_societarios": q.get("vinculos_societarios"),
+                   "com_empresa_paga_pela_prefeitura": q.get("com_empresa_paga_pela_prefeitura"),
+                   # AS LINHAS, não só o número: este é o KPI mais grave da aba — o signatário do
+                   # despacho é sócio de quem a Prefeitura paga. Servir a contagem sem o que a
+                   # sustenta obriga o leitor a acreditar em mim.
+                   "qsa_itens": q.get("itens") or [],
+                   "signatarios_no_qsa": q.get("no_qsa_nacional"),
+                   "ressalva_qsa": q.get("ressalva")}
+        return JSONResponse({
+            "ok": True, "gerado_em": corpo.get("gerado_em"),
+            "total": corpo.get("assinaturas"),
+            "matriculas": corpo.get("matriculas"),
+            "identificadas": corpo.get("identificadas"),
+            "ambiguas": corpo.get("ambiguas"),
+            "nao_identificadas": corpo.get("nao_identificadas"),
+            "top_signatarios": corpo.get("top_signatarios") or [],
+            "total_fatia": len(itens),
+            "itens": itens[:max(1, min(int(limite), 500))],
+            "ressalva": corpo.get("ressalva"), **qsa,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("pcrj_assinaturas falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/fila")
+def api_fiscal_fila(limite: int = 60, so_osint: int = 0):
+    """A FILA DO FISCAL — a ordem em que os autos devem ser abertos.
+
+    Ela existia só como markdown em disco: quem quisesse a prioridade da casa tinha de abrir um
+    arquivo. Aqui ela chega ao painel com a régua declarada — pontos por QUALIDADE do achado, não
+    por score cru, porque o score satura no topo em processo grande.
+    """
+    try:
+        import subprocess
+        from pathlib import Path
+
+        raiz = Path(__file__).resolve().parent.parent
+        # so_osint usa `--osint` (TODOS os itens com sinal, em qualquer posição), não `--top`:
+        # o sinal OSINT pontua pouco e cai para o fundo, então filtrar dentro do top-N dizia "0"
+        # quando os itens estavam logo abaixo da janela. Corte de janela não pode virar "não há".
+        _args = (["--osint"] if so_osint
+                 else ["--top", str(max(1, min(limite, 300)))])
+        r = subprocess.run(
+            [str(raiz / ".venv" / "bin" / "python"),
+             str(raiz / "tools" / "processo_360_ranking.py"), *_args],
+            capture_output=True, text=True, timeout=300, cwd=str(raiz), check=False)
+        if r.returncode != 0:
+            return JSONResponse({"ok": False, "erro": "ranking não pôde ser calculado"},
+                                status_code=503)
+        itens, resumo = [], ""
+        for linha in r.stdout.splitlines():
+            m = re.match(r"\s*(\d+)\.\s*\[\s*(\d+) pts\]\s+(\S+)\s+\(([^)]+)\)\s+—\s*(.*)",
+                         linha)
+            if m:
+                itens.append({"posicao": int(m.group(1)), "pontos": int(m.group(2)),
+                              "processo": m.group(3), "grau": m.group(4),
+                              "motivos": m.group(5).strip(),
+                              "osint": "OSINT:" in m.group(5)})
+            elif "processos avaliados" in linha:
+                resumo = linha.strip()
+        if so_osint:
+            # com --osint todo item já tem sinal; o filtro fica como cinto de segurança e NÃO
+            # aplica `limite` — a lista de OSINT é curta (dezenas) e cortá-la reintroduziria o
+            # zero-por-janela que este modo existe para eliminar.
+            itens = [x for x in itens if x["osint"]]
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "com_osint": sum(1 for x in itens if x["osint"]),
+            "resumo": resumo, "itens": itens,
+            "regua": ("Pontos por QUALIDADE do achado, não por score cru — o score de convergência "
+                      "satura no topo em processo grande. Vício LIDO NOS AUTOS pesa mais que "
+                      "indício sobre a empresa: pagamento sem execução vale 5; o sinal OSINT mais "
+                      "forte (autos no próprio órgão do agente) vale 3."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("fiscal_fila falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/concentracao_por_grupo")
+def api_concentracao_por_grupo(ug: str = "", ano: str = "", limite: int = 12):
+    """Concentração de uma unidade gestora COLAPSADA por grupo econômico — o que o CNPJ esconde.
+
+    O módulo `osint/grupo_economico` mede isto desde sempre e **nenhuma rota o expunha**: para ver
+    o número era preciso abrir o Python. Medido na UG 660100 (Cidades) em 2025, já com o SIAFE
+    recoletado: **HHI por CNPJ 0,1022 → por GRUPO 0,3671**, com **7 CNPJs somando 57,5%** — de
+    "mercado desconcentrado" para "altamente concentrado" só por agrupar quem tem sócio em comum.
+
+    Grupo econômico NÃO é ilícito (holding, franquia, sócio investidor são lícitos). O achado é a
+    concentração que a medição por CNPJ não mostra, e o que ela pede é diligência sobre os
+    certames — não imputação. A cobertura de QSA vem declarada: fornecedor sem QSA na base conta
+    como grupo de si mesmo, então o share do maior grupo é **piso, nunca teto**.
+
+    Cada grupo vem com `cimento`, que diz o que o SUSTENTA — sem isso dois grupos de tamanhos
+    parecidos leem-se iguais quando não são. Medido no mesmo dia: Cidades tem 2 das 5 pontes
+    ADMINISTRANDO duas empresas (comando comum); a FSERJ tem 1 em 28, e as outras 27 são sócias de
+    sociedades médicas com dezenas de cotistas — ser cotista de duas clínicas é a profissão, não
+    estrutura de grupo. `tipo` distingue `comando_comum`, `coparticipacao_com_excecao` e
+    `coparticipacao`; QSA ausente sai `indisponivel`, jamais "não há comando".
+    """
+    try:
+        from compliance_agent.osint.grupo_economico import _RESSALVA, concentracao_da_ug, ranking
+
+        ug = "".join(ch for ch in str(ug) if ch.isdigit())[:6]
+        if ug and len(ug) < 6:
+            return JSONResponse({"ok": False, "erro": "UG inválida"}, status_code=400)
+        con = _db_ro()
+        try:
+            if ug:
+                from compliance_agent.reporting.cobertura_siafe import estado_do_par
+
+                dados = concentracao_da_ug(con, ug, ano=ano or None)
+                # A fração só vale o que valer a base. Publicar 57,5% sem dizer que 65% da amostra
+                # daquele ano NÃO está na fonte canônica é o tipo de número que envelhece mal.
+                if ano:
+                    dados["cobertura"] = estado_do_par(ug, ano)
+                return JSONResponse({"ok": True, **dados})
+            # Sem UG: o ranking ordena pelo DELTA — o quanto agrupar mudou a leitura —, não pelo
+            # HHI absoluto. UG dominada por um fornecedor único já aparece na medida por CNPJ e
+            # não é o que esta tela existe para achar.
+            from compliance_agent.reporting.cobertura_siafe import estado_do_par
+            from compliance_agent.ugs import nome_canonico   # caminho único p/ nome de unidade
+
+            lim = max(1, min(int(limite), 40))
+            itens = _cache(f"conc_grupo:{ano}:{lim}",
+                           lambda: ranking(con, ano=ano or None, limite=lim))
+            # cobertura POR LINHA: cada UG tem a sua, e o ranking mistura base completa com base
+            # 65% ausente. Sem a coluna, o leitor compara frações que não são comparáveis.
+            return JSONResponse({"ok": True, "ano": ano or None, "itens": [{
+                "ug": x["ug"], "nome_ug": nome_canonico(str(x["ug"])) or f"UG {x['ug']}",
+                "cobertura": estado_do_par(str(x["ug"]), str(ano)) if ano else None,
+                "total_pago": x["total_pago"], "n_cnpj": x["n_cnpj"],
+                "hhi_por_cnpj": x["hhi_por_cnpj"], "hhi_por_grupo": x["hhi_por_grupo"],
+                "delta_hhi": x["delta_hhi"], "concentrado_por_grupo": x.get("concentrado_por_grupo"),
+                "maior_grupo": (x["maiores_grupos"] or [{}])[0],
+            } for x in itens], "total": len(itens),
+                "fonte": _fonte("ob_orcamentaria_siafe", "socios_receita"), "ressalva": _RESSALVA})
+        finally:
+            con.close()
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("concentracao_por_grupo falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/aditivo_precoce")
+def api_aditivo_precoce(dias: int = 90, min_acrescimo: float = 50_000.0, limite: int = 20):
+    """Acréscimo de VALOR logo após a assinatura — o sinal que a CGE usou na SECID.
+
+    Um acréscimo de 45,4% dezessete dias depois de assinar enfraquece a tese de recomposição
+    (desequilíbrio superveniente não se forma em duas semanas) e sugere valor de certame
+    subestimado. Só termo de natureza VALOR entra — prorrogação, reajuste e reequilíbrio ficam
+    fora pela régua do art. 125.
+
+    A COBERTURA vem junto e não é detalhe: a data do termo só passou a ser guardada em 09/08/2026,
+    e enquanto a recoleta não termina esta tela mede uma fatia. "0 achados" sem cobertura declarada
+    leria-se como "nada a apurar".
+    """
+    try:
+        from tools.screen_aditivo_precoce import RESSALVA, cobertura, medir
+
+        itens = _cache(f"adit_prec:{dias}:{min_acrescimo}",
+                       lambda: medir(dias=max(1, int(dias)), min_acrescimo=float(min_acrescimo)))
+        return JSONResponse({
+            "ok": True, "total": len(itens), "dias": int(dias),
+            "itens": itens[:max(1, min(int(limite), 200))],
+            "cobertura": cobertura(),
+            "fonte": _fonte("contrato_aditivo", "pcrj_contratos"), "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("aditivo_precoce falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/consorcio_veiculo")
+def api_consorcio_veiculo(min_consorcios: int = 2, min_valor: float = 1_000_000.0,
+                          limite: int = 15):
+    """Um CONSÓRCIO por certame — o mesmo núcleo em veículos diferentes.
+
+    A concentração por grupo diz QUANTO um grupo leva numa unidade; não diz COMO a diversidade de
+    CNPJs se forma. O quadro societário diz: consórcios constituídos um por certame, com as mesmas
+    empresas dentro e o mesmo administrador. E o alcance atravessa unidades — o que o recorte por
+    UG, sozinho, não mostra.
+
+    Consórcio é lícito (art. 15 da Lei 14.133) e administrar vários também. O que se mede é a
+    REPETIÇÃO do veículo, com o núcleo comum ao lado para o leitor julgar.
+    """
+    try:
+        from tools.screen_consorcio_veiculo import RESSALVA, medir
+
+        mc, mv = max(1, int(min_consorcios)), float(min_valor)
+        itens = _cache(f"consorcio_veic:{mc}:{mv}",
+                       lambda: medir(min_consorcios=mc, min_valor=mv))
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "itens": itens[:max(1, min(int(limite), 100))],
+            "fonte": _fonte("ob_orcamentaria_siafe", "socios_receita"), "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("consorcio_veiculo falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/detectores")
+def api_detectores(limite: int = 25):
+    """Os achados do framework de detectores — que nenhuma tela lia.
+
+    `data/achados.db` guarda o que as três varreduras produzem (órgão/fornecedor, certame,
+    execução): 10.630 avaliações e **543 confirmados por 13 detectores**. Medido em 2026-08-11:
+    NENHUMA rota, relatório ou card tocava esse banco. O framework inteiro — 41 detectores, a spec
+    V2 — rodava, gravava e ninguém lia. Um achado que não chega ao fiscal não é achado.
+
+    A resposta separa CONFIRMADO de NÃO AVALIÁVEL de propósito: o segundo é a medida da cobertura,
+    e some quando se conta só o primeiro.
+    """
+    import sqlite3 as _sq
+    from pathlib import Path as _Path
+
+    tabelas = (("achado_detector", "ug"), ("achado_certame", "certame"),
+               ("achado_execucao", "contrato"))
+    try:
+        con = _sq.connect("file:data/achados.db?mode=ro", uri=True, timeout=30)
+        con.row_factory = _sq.Row
+    except _sq.Error as exc:
+        return JSONResponse({"ok": False, "erro": f"banco de achados indisponível: {exc}"})
+    try:
+        por_det: dict[str, dict] = {}
+        itens: list[dict] = []
+        # FRESCOR POR ESCOPO. Desde 2026-08-11 16:30 as varreduras de órgão e de certame estão
+        # DELEGADAS À VM-2 (`data/.varredura_na_vm2`), então este banco congela para elas enquanto
+        # a colheita não voltar. Servir a contagem sem a data faria dado parado passar por atual —
+        # é a mesma regra dos carimbos de alerta (`created_at`/`visto_em`).
+        frescor: dict[str, str] = {}
+        for tab, chave in tabelas:
+            try:
+                linhas = con.execute(
+                    f"SELECT detector, status, score, {chave} AS alvo, motivo, gerado_em "  # noqa: S608
+                    f"FROM {tab}").fetchall()
+            except _sq.Error:
+                continue                       # tabela ausente = varredura nunca rodou, não zero
+            for r in linhas:
+                q = str(r["gerado_em"] or "")[:19]
+                if q:
+                    frescor[tab] = max(frescor.get(tab, ""), q)
+                d = por_det.setdefault(str(r["detector"]), {
+                    "detector": str(r["detector"]), "confirmado": 0, "descartado": 0,
+                    "nao_avaliavel": 0, "escopo": tab.replace("achado_", "")})
+                d[str(r["status"] or "descartado")] = d.get(str(r["status"] or "descartado"), 0) + 1
+                if r["status"] == "confirmado":
+                    itens.append({"detector": str(r["detector"]), "escopo": d["escopo"],
+                                  "alvo": str(r["alvo"] or ""), "score": r["score"],
+                                  "motivo": str(r["motivo"] or "")[:200],
+                                  "quando": str(r["gerado_em"] or "")[:19]})
+    finally:
+        con.close()
+
+    ordem = sorted(por_det.values(), key=lambda d: -d["confirmado"])
+    itens.sort(key=lambda x: -(x["score"] or 0))
+    return JSONResponse({
+        "ok": True,
+        "confirmados": sum(d["confirmado"] for d in ordem),
+        "avaliacoes": sum(d["confirmado"] + d["descartado"] + d["nao_avaliavel"] for d in ordem),
+        "nao_avaliaveis": sum(d["nao_avaliavel"] for d in ordem),
+        "detectores": ordem,
+        "itens": itens[:max(1, min(int(limite), 200))],
+        "fonte": {"ok": True, "banco": "data/achados.db",
+                  "medido_em": {k.replace("achado_", ""): v for k, v in frescor.items()},
+                  "delegado_vm2": _Path("data/.varredura_na_vm2").exists()},
+        "ressalva": (
+            "CONFIRMADO é indício apurado pela régua do detector, não acusação — cada um traz "
+            "explicação inocente e motivo de refutação no próprio registro. NÃO AVALIÁVEL não é "
+            "'limpo': é a fatia que a base não alimenta, e conta-la junto com os descartados "
+            "esconderia a cobertura real."),
+    })
+
+
+@router.get("/api/fiscal/zeros_sem_causa")
+def api_zeros_sem_causa(limite: int = 25):
+    """Processo lido pelo sweep que voltou com ZERO documento — e a causa NÃO está medida.
+
+    O sweep encerrava cada ciclo dizendo `N sem (fora de escopo/vazio)`, afirmando uma causa que
+    ninguém apurou. "Não há documento" fecha o processo para a análise; "não consegui ler" o mantém
+    aberto. Enquanto a causa é desconhecida, nenhuma conclusão de ausência pode se apoiar nele — e
+    é por isso que este número precisa estar no painel, e não só num log.
+    """
+    try:
+        from tools.sei_zeros_por_causa import medir
+
+        r = _cache("zeros_sem_causa", medir)
+        if not r.get("ok"):
+            return JSONResponse({"ok": False, "erro": r.get("erro", "indisponível")})
+        return JSONResponse({
+            "ok": True, "total": r["sem_causa"], "zeros": r["zeros"],
+            "processos_com_registro": r["processos_com_registro"],
+            "por_causa": r["por_causa"],
+            # CAIXA é causa CONHECIDA e mesmo assim trabalho ABERTO: o processo segue ilegível.
+            # Sai do balde de ignorância, continua na fila — com a causa declarada no item.
+            "caixa_leitura_falhou": r["caixa_leitura_falhou"],
+            "fila_total": len(r["fila"]),
+            "contradicao": r["contradicao_ok_mas_vazio"],
+            "valor_ob_sem_causa": r["valor_ob_sem_causa"],
+            "valor_ob_fila": r["valor_ob_fila"],
+            # A exposição precisa dizer DE QUE é feita: 62% do total é folha/previdência, que
+            # nenhum detector de licitação examina. Publicar o bruto como exposição fiscalizável
+            # é a família dos quatro números de manchete já corrigidos.
+            "valor_ob_fornecedor": r["valor_ob_fornecedor"],
+            "valor_ob_publico": r["valor_ob_publico"],
+            "valor_ob_folha": r["valor_ob_folha"],
+            "itens": r["fila"][:max(1, min(int(limite), 200))],
+            "ressalva": r["ressalva"],
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("zeros_sem_causa falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+def _falta(v) -> list:
+    """A lista de documentos ausentes, venha ela como lista ou como frase corrida NUMERADA.
+
+    O primeiro agregado saiu com `1`, `2`, `3` no topo: quando a leitura devolve
+    `"1. Cópia do Contrato 2. Folha de Medição"`, quebrar em `". "` produz os NÚMEROS como se
+    fossem documentos. Quebrar NO enumerador (e não depois dele) resolve, e a poda final descarta
+    o que sobrar curto demais para ser nome de documento.
+    """
+    if isinstance(v, list):
+        itens = [str(x) for x in v]
+    else:
+        t = str(v or "").strip()
+        if not t or t in ("[]", "None"):
+            return []
+        itens = re.split(r";|\n|(?:^|\s)\d{1,2}[.)]\s+", t)
+    limpos = [re.sub(r"^\W*\d{0,2}[.)]?\s*", "", i).strip(" .;-")[:120] for i in itens]
+    return [i for i in limpos if len(i) > 8][:8]
+
+
+@router.get("/api/fiscal/leitura_dupla")
+def api_leitura_dupla(limite: int = 20):
+    """Onde a REGRA e a IA discordam ao ler o mesmo processo — a fila de leitura humana.
+
+    Cada processo do acervo é lido duas vezes: por regex (barata, reproduzível, não inventa, mas só
+    acha o previsto) e por IA gratuita (generaliza, mas varia e pode inventar). Onde as duas
+    concordam, o fato está duplamente confirmado e ninguém precisa ler. **A fila é a
+    discordância** — ali ou a régua é estreita ou a IA inventou, e é o único lugar onde o tempo de
+    um humano rende.
+
+    O card existe porque a tabela nasceu MUDA: `sei_leitura_dupla` já gravava e nenhuma rota a
+    consumia — a mesma família do `achados.db`, que produzia 543 confirmados sem um leitor.
+    """
+    try:
+        import json as _j
+
+        def _medir():
+            con = _db_ro()
+            try:
+                # A RÉGUA MUDOU NO MEIO. As primeiras 31 linhas contavam "os dois dizem que não
+                # existe" como divergência (61 das 77 da fila eram isso). Somar essas com as novas
+                # seria misturar duas medidas em silêncio — por isso a rota DECLARA quantas vieram
+                # da régua velha em vez de fingir que é tudo igual. A coluna pode ainda não existir
+                # (o gravador a cria); ausência dela é o caso "tudo régua velha".
+                _cols = {r[1] for r in con.execute("PRAGMA table_info(sei_leitura_dupla)")}
+                _regua = "regua" if "regua" in _cols else "NULL AS regua"
+                _naus = "n_ausencia" if "n_ausencia" in _cols else "NULL AS n_ausencia"
+                _aus = ("ausencia_concorde" if "ausencia_concorde" in _cols
+                        else "NULL AS ausencia_concorde")
+                linhas = con.execute(
+                    f"SELECT numero_sei, n_acordo, n_discordancia, discordancia, ia, truncado, "
+                    f"{_regua}, {_naus}, {_aus} "
+                    "FROM sei_leitura_dupla ORDER BY n_discordancia DESC, numero_sei").fetchall()
+            finally:
+                con.close()
+            itens, por_estado, regua_velha, fora = [], {}, 0, {}
+            faltam: dict = {}
+            for sei, na, nd, disc, ia, trunc, regua, naus, aus in linhas:
+                if not regua:
+                    regua_velha += 1
+                d = _j.loads(disc or "{}")
+                for _campo, v in d.items():
+                    e = str(v.get("estado") or "?")
+                    por_estado[e] = por_estado.get(e, 0) + 1
+                # O BALDE "FORA DA FILA" TEM QUATRO MOTIVOS DIFERENTES, e chamá-lo de "ausência"
+                # deixou de ser verdade: dos 404 atuais, 238 são ausência (os dois leitores dizem
+                # que o campo não existe, ou o documento DECLARA que não há), 121 são ranque de
+                # valor decidido por aritmética e 45 são fato já resolvido pela Ordem Bancária.
+                # O card mostra a quebra em vez de um rótulo que não descreve o número.
+                for _c, _v in _j.loads(aus or "{}").items():
+                    _e = str(_v.get("estado") or "?")
+                    fora[_e] = fora.get(_e, 0) + 1
+                iad = _j.loads(ia or "{}")
+                for _d in _falta((iad.get("interpretacao") or {}).get("o_que_falta")):
+                    _k = _d.lower().strip(" .;-")[:60]
+                    faltam[_k] = faltam.get(_k, 0) + 1
+                itens.append({
+                    "processo": sei, "acordo": na, "discordancia": nd,
+                    "ausencia": naus, "regua": regua,
+                    "truncado": bool(trunc), "estado_ia": iad.get("estado"),
+                    "o_que_e": (iad.get("interpretacao") or {}).get("o_que_e", ""),
+                    # O QUE FALTA NOS AUTOS — 354 dos 397 processos lidos trazem essa lista, e
+                    # NENHUMA rota a consumia. É a família "achado sem leitor" que a casa já
+                    # documentou: o dado existia, custou chamada de IA e morria no banco.
+                    #
+                    # O valor é alto porque boa parte vem do CHECKLIST DO PRÓPRIO PROCESSO — o
+                    # órgão declarando que Cópia do Contrato, Folha de Medição e Relatório dos
+                    # Fiscais não estão nos autos. Documento que prova execução faltando num
+                    # processo de pagamento é a mesma lacuna que sustenta o caso dos TACs da FSERJ.
+                    "o_que_falta": _falta((iad.get("interpretacao") or {}).get("o_que_falta")),
+                    "campos": {k: {"regra": v.get("regra"), "ia": v.get("ia"),
+                                   "estado": v.get("estado")} for k, v in d.items()},
+                })
+            return {"itens": itens, "por_estado": por_estado, "regua_velha": regua_velha,
+                    "fora_da_fila": fora, "faltam": faltam}
+
+        r = _cache("leitura_dupla", _medir)
+        lim = max(1, min(int(limite), 100))
+        return JSONResponse({
+            "ok": True, "total": len(r["itens"]),
+            "acordos": sum(x["acordo"] for x in r["itens"]),
+            "discordancias": sum(x["discordancia"] for x in r["itens"]),
+            "ausencias_concordes": sum(x["ausencia"] or 0 for x in r["itens"]),
+            "medidos_com_regua_antiga": r["regua_velha"],
+            "fora_da_fila_por_motivo": r["fora_da_fila"],
+            "documentos_que_mais_faltam": sorted(
+                r["faltam"].items(), key=lambda kv: -kv[1])[:12],
+            "processos_com_lacuna": sum(1 for x in r["itens"] if x.get("o_que_falta")),
+            "por_estado": r["por_estado"],
+            "itens": r["itens"][:lim],
+            "fonte": _fonte("sei_leitura_dupla"),
+            "ressalva": (
+                "Acordo entre regra e IA é fato duplamente confirmado; DISCORDÂNCIA é fila de "
+                "leitura humana, não veredito — pode ser régua estreita nossa ou invenção do "
+                "modelo. O resumo em linguagem natural é OPINIÃO da IA a conferir e nunca vira "
+                "achado sozinho. Processo TRUNCADO foi lido em parte: omissão ali não é ausência. "
+                "AUSÊNCIA CONCORDE é campo que o processo não tem — os dois leitores dizendo o "
+                "mesmo, não briga. `medidos_com_regua_antiga` são leituras anteriores a "
+                "2026-08-13 que contavam ausência como divergência: a divergência delas está "
+                "INFLADA e não é comparável com as novas."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("leitura_dupla falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/emergencia_recorrente")
+def api_emergencia_recorrente(minimo: int = 5, limite: int = 14):
+    """Emergência RECORRENTE — o art. 75, VIII exige imprevisibilidade, e ela não se repete.
+
+    O SCREEN EXISTIA E ERA MUDO. `sweep_emergencia_recorrente` roda a régua sobre as 20.113
+    contratações diretas do espelho do TCE-RJ e **nenhuma rota, card ou cron o consumia** — só
+    saía se alguém digitasse o comando. Medido em 2026-08-11: 27 grupos, R$ 3,47 bi. É a mesma
+    família do `data/achados.db`, que produzia 543 confirmados sem um leitor.
+
+    A régua foi corrigida no mesmo dia, em dois sentidos opostos: enxergava só o texto do OBJETO
+    (891 dispensas do art. 75, VIII, R$ 2,60 bi, tinham objeto "PEITO DE FRANGO") e contava LINHA
+    onde o fenômeno é PROCESSO (inflação de 2,30× no acervo).
+    """
+    try:
+        from compliance_agent.fracionamento_emergencia import RESSALVA, agrupar_emergencias
+        from tools.sweep_emergencia_recorrente import carregar
+
+        def _medir():
+            con = _db_ro()
+            try:
+                return agrupar_emergencias(carregar(con), minimo=max(2, min(int(minimo), 50)))
+            finally:
+                con.close()
+
+        grupos = _cache(f"emergencia_recorrente:{minimo}", _medir)
+        lim = max(1, min(int(limite), 60))
+        return JSONResponse({
+            "ok": True, "total": len(grupos),
+            "valor_total": round(sum(g["total"] for g in grupos), 2),
+            "minimo": int(minimo),
+            "itens": grupos[:lim],
+            "fonte": _fonte("compras_diretas_tcerj"),
+            "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:   # já inclui sqlite3.Error
+        logger.exception("emergencia_recorrente falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/nucleo_cartel")
+def api_nucleo_cartel(min_part: int = 8, min_ramos: int = 4, limite: int = 12):
+    """Vencedor GENERALISTA orbitado por PERDEDORES CONTUMAZES — a interseção, não cada screen.
+
+    Os dois screens que isto cruza (R025 perdedor contumaz, R048 fornecedor generalista) eram,
+    medido em 2026-08-09, **os únicos dois módulos de screen do projeto sem um chamador fora de si
+    mesmos**: a lógica que os une vivia dentro de um `main()` e nenhuma rota conseguia consumi-la.
+
+    Isolado, cada um tem falso positivo estrutural (farma orbita farma; distribuidora regional é
+    generalista por natureza). A interseção é o que merece a fila. Fonte municipal (`tcerj_licitante`).
+    """
+    try:
+        from tools.screen_convergencia_cartel import RESSALVA, nucleos
+
+        r = _cache(f"nucleo_cartel:{min_part}:{min_ramos}",
+                   lambda: nucleos(min_part=int(min_part), min_ramos=int(min_ramos)))
+        lim = max(1, min(int(limite), 60))
+        return JSONResponse({
+            "ok": True, "total": len(r["nucleos"]),
+            "n_contumazes": len(r["contumazes"]),
+            "itens": [{k: v for k, v in n.items() if k != "orbitantes"}
+                      | {"orbitantes": n["orbitantes"][:4]} for n in r["nucleos"][:lim]],
+            # o viajante é sinal por si: participa em muitos municípios e nunca vence
+            "viajantes": r["viajantes"][:lim],
+            "fonte": _fonte("tcerj_licitante"),
+            "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("nucleo_cartel falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/recuperacao_judicial")
+def api_recuperacao_judicial(min_valor: float = 100_000.0, limite: int = 20):
+    """Quem o Estado paga estando em recuperação judicial — inclusive DENTRO de consórcio.
+
+    A casa já usara este sinal uma vez, à mão, num dossiê; nunca virou varredura. O caso da SECID
+    mostrou o custo: seis consórcios da UG 660100 carregam a MESMA empresa em recuperação judicial
+    no quadro societário, R$ 415,5 mi pagos — invisíveis a qualquer busca pelo nome do credor.
+
+    Participar **não é vedado** (exige plano homologado e viabilidade demonstrada): a lista diz
+    ONDE conferir a habilitação econômico-financeira. O rótulo vem do NOME na Receita — quem não
+    atualizou não aparece (piso) — e não tem data, então recuperação encerrada pode deixar marca.
+    """
+    try:
+        from tools.screen_recuperacao_judicial import RESSALVA, medir
+
+        itens = _cache(f"recjud:{min_valor}", lambda: medir(min_valor=float(min_valor)))
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "soma": round(sum(x["total"] for x in itens), 2),
+            "itens": itens[:max(1, min(int(limite), 200))],
+            "fonte": _fonte("ob_orcamentaria_siafe", "socios_receita"), "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("recuperacao_judicial falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/coparticipacao_relacionados")
+def api_coparticipacao_relacionados(min_certames: int = 2, limite: int = 20):
+    """Empresas do mesmo comando disputando o MESMO certame — competição simulada (E.3.2).
+
+    Cruza os 82.941 licitantes municipais do TCE-RJ com o quadro societário, atravessando a ponte
+    `nome_cnpj_resolvido` que o coletor construiu e **nenhum módulo usava**. O elo precisa estar
+    VIGENTE na data do certame: sem esse filtro os dois maiores pares eram anacronismos — o
+    administrador comum entrou na segunda empresa no ano seguinte ao certame.
+
+    Coparticipar não é vedado (a Lei 14.133 pune fraudar o caráter competitivo, art. 90). O indício
+    é a repetição; o julgamento é dos autos. Cobertura de 68,5% dos licitantes: lista é piso.
+    """
+    try:
+        from tools.screen_coparticipacao_relacionados import RESSALVA, medir
+
+        mc = max(1, int(min_certames))
+        itens = _cache(f"coparticipa:{mc}", lambda: medir(min_certames=mc))
+        return JSONResponse({
+            "ok": True, "total": len(itens),
+            "itens": itens[:max(1, min(int(limite), 200))],
+            "fonte": _fonte("tcerj_licitante", "nome_cnpj_resolvido", "socios_receita"),
+            "ressalva": RESSALVA,
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("coparticipacao_relacionados falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/fim_de_exercicio")
+def api_fim_de_exercicio(min_valor: float = 5_000_000, pct: float = 80.0, limite: int = 25):
+    """Credores privados cujo ano inteiro cabe em novembro e dezembro — a janela frouxa.
+
+    Dezembro é quando o empenho precisa ser consumido, e é onde a prova de entrega costuma faltar:
+    a NRTT recebeu R$ 25,4 mi em SETE ordens bancárias num único 28/12/2023, e a EVOLUÇÃO teve 30
+    OBs num único 22/12. **Indício, não acusação** — concentração é onde OLHAR a liquidação.
+
+    Ente público (repasse a fundo municipal) e desenho de programa saem por veto: sem isso o topo
+    da lista era ruído institucional, e lista com topo ruim ensina o fiscal a largar a lista.
+    """
+    try:
+        from tools.screen_fim_de_exercicio import medir
+
+        itens = _cache(f"fim_exerc:{min_valor}:{pct}", lambda: medir(min_valor=min_valor, pct=pct))
+        return JSONResponse({
+            "ok": True, "total": len(itens), "itens": itens[:max(1, min(int(limite), 200))],
+            "fonte": _fonte("ob_orcamentaria_siafe"),
+            "criterio": {"min_valor": min_valor, "pct_no_fim": pct, "meses": ["11", "12"]},
+            "ressalva": (
+                "Só OB **Contabilizada** (cancelada não é pagamento). Entes públicos e desenho de "
+                "programa vetados. Concentrar pagamento em dezembro é legal e comum — o que este "
+                "screen faz é dizer ONDE conferir medição, atesto e recebimento definitivo."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("fim_de_exercicio falhou")
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fiscal/taxa_por_unidade")
+def api_taxa_por_unidade(termo: str = "execu"):
+    """A TAXA da lacuna por unidade — o achado que só existe no conjunto, não no processo.
+
+    A fila mostra processo a processo; nenhuma tela mostrava o PADRÃO. Medido em 2026-08-09:
+    "pagamento sem evidência de execução" está em 45,8% dos processos avaliados do Fundo Estadual
+    da Saúde (260007) e em **0% dos 44 do Fundo do Corpo de Bombeiros** — e o contraste SOBE quando
+    se controla pela profundidade de leitura (66% × 0% na faixa de 10 a 19 documentos), o que
+    afasta a hipótese de que seja artefato do nosso gate. É o tipo de achado que se leva ao TCE-RJ
+    pela taxa, não pelo processo isolado.
+
+    Consulta barata (uma varredura de `processo_avaliacao`, ~2 mil linhas), sem browser e sem LLM.
+    """
+    try:
+        from tools.taxa_lacuna_por_unidade import MIN_N, medir
+
+        dados = medir(termo)
+        linhas = [{"unidade": u, **v,
+                   "taxa": round(v["com"] * 100 / v["n"], 1) if v["n"] else None}
+                  for u, v in dados.items() if v["n"] >= MIN_N]
+        linhas.sort(key=lambda x: (-(x["taxa"] or 0), -x["n"]))
+        return JSONResponse({
+            "ok": True, "termo": termo, "unidades": len(linhas), "itens": linhas,
+            "fonte": _fonte("processo_avaliacao"),
+            "ressalva": (
+                "Denominador = processos AVALIÁVEIS; NAO_AVALIAVEL fica de fora porque captura "
+                "insuficiente não é conclusão sobre a unidade (INDISPONÍVEL ≠ 0). A taxa só é "
+                f"publicada com n ≥ {MIN_N}. As faixas são por documentos LIDOS: é o que limita a "
+                "busca por prova, e é o confundidor que a comparação bruta esconderia."),
+        })
+    except _FALHAS_DE_LEITURA as exc:
+        logger.exception("taxa_por_unidade falhou")
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

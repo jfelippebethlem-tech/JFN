@@ -313,6 +313,39 @@ export async function abrirDossie(cnpj,nome){
   if(d.resumo)h+=card(`<div style="font-size:13.5px;color:var(--mut)">${esc(d.resumo).slice(0,600)}</div>`);
   if((d.socios||[]).length)h+=`<div style="height:12px"></div>`+sec('Quadro societário (QSA)',d.socios.length)+card(`<table><tbody>${d.socios.map(s=>`<tr><td>${esc(s.nome)}${s.servidor?' <span class="tag rose">servidor</span>':''}</td><td class="dim">${esc(s.qualificacao||'')}</td></tr>`).join('')}</tbody></table>`);
   if((d.orgaos||[]).length)h+=`<div style="height:12px"></div>`+sec('Órgãos que mais pagaram')+card(`<table><tbody>${d.orgaos.map(o=>`<tr><td>${esc(o.nome||o.ug)}</td><td>${fmtRc(o.total)}</td></tr>`).join('')}</tbody></table>`);
+  // ── MUNICÍPIO DO RIO ────────────────────────────────────────────────────────────────────
+  // Sem este bloco o dossiê MENTE POR OMISSÃO: a empresa clicada numa lente municipal abria uma
+  // tela que só falava do Estado — "Pago pelo Estado", órgãos estaduais, perícia estadual — e
+  // parecia não ter movimento algum. Clicável e incompleto é pior que não clicável: o leitor
+  // conclui ausência onde há um universo inteiro não consultado.
+  const mun=d.municipio;
+  if(mun){
+    h+=`<div style="height:12px"></div>`+sec('Município do Rio de Janeiro');
+    h+=`<div class="mini">
+      <div class="b"><div class="v">${fmtRc(mun.pago)}</div><div class="l">Pago pela Prefeitura</div></div>
+      <div class="b"><div class="v">${fmtN(mun.orgaos)}</div><div class="l">Órgãos municipais</div></div>
+      <div class="b"><div class="v">${esc(mun.periodo||'—')}</div><div class="l">Exercícios</div></div>
+      <div class="b"><div class="v" style="color:${(mun.lentes||[]).length?'var(--amber)':'#fff'}">${fmtN((mun.lentes||[]).length)}</div><div class="l">Lentes que marcaram</div></div></div>`;
+    if((mun.razoes_sociais||[]).length>1)
+      h+=card(`<div class="kv"><span class="k">Razões sociais sob este CNPJ</span><b class="right" style="max-width:64%">${mun.razoes_sociais.map(esc).join(' · ')}</b></div>`+
+              leitura('O mesmo CNPJ aparece com mais de uma razão social — troca de nome ou matriz/filial. 0,96% das raízes do acervo estão nesse caso; agrupar pelo NOME partiria a empresa em duas.'));
+    if((mun.por_elemento||[]).length)
+      h+=card(`<table><tbody>${mun.por_elemento.map(e=>`<tr><td>${esc(e.nome||('elemento '+e.codigo))}</td><td class="dim">${esc(e.codigo)}</td><td>${fmtRc(e.total)}</td></tr>`).join('')}</tbody></table>`);
+    if((mun.por_orgao||[]).length)
+      h+=card(`<table><tbody>${mun.por_orgao.map(o=>`<tr><td>${esc(o.orgao)}</td><td>${fmtRc(o.total)}</td></tr>`).join('')}</tbody></table>`);
+    // As lentes que marcaram esta empresa — é aqui que a CONVERGÊNCIA entre réguas independentes
+    // aparece para quem chegou por uma delas.
+    if((mun.lentes||[]).length){
+      h+=`<div style="height:10px"></div>`+sec('Lentes municipais que marcaram esta empresa',mun.lentes.length);
+      h+=`<div class="grid">`+mun.lentes.map(l=>card(
+        `<div style="font-weight:650;font-size:13.5px">${esc(l.titulo||l.lente)}</div>`+
+        `<div class="dim" style="font-size:12px">prevalência ${l.prevalencia!=null?(100*l.prevalencia).toFixed(2).replace('.',',')+'%':'<b>INDISPONÍVEL</b>'} · ${l.n_na_lente!=null?fmtN(l.n_na_lente)+' na lente':''}</div>`)).join('')+`</div>`;
+      h+=leitura('Acender em <b>mais de uma</b> lente é o sinal forte — cada uma sozinha só ordena fila. Prevalência baixa significa que a lente discrimina; alta significa que descreve o acervo.');
+    }else{
+      h+=`<div class="dim" style="margin:6px 2px">Nenhuma lente municipal marcou esta empresa.</div>`;
+    }
+    h+=`<div class="note">${esc(mun._nota||'')}</div>`;
+  }
   if(sede.endereco)h+=`<div style="height:12px"></div>`+sec('Sede / fachada')+card(`<div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:64%">${esc(sede.endereco)}, ${esc(sede.municipio||'')}/${esc(sede.uf||'')}</b></div>${sede.status?`<div class="kv"><span class="k">Verificação</span><b>${esc(sede.status)}${sede.nivel?' · '+esc(sede.nivel):''}</b></div>`:''}${sede.residencial?`<div class="kv"><span class="k">Natureza</span><b style="color:var(--amber)">endereço residencial</b></div>`:''}${sv?`<div class="btns"><a class="btn ghost" href="${sv}" target="_blank">Street View</a></div>`:''}`);
   const est=d.estab;
   if(est){const hb=est.hub_compartilhado||{};const hbk=Object.keys(hb);

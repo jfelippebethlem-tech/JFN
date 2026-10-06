@@ -16,6 +16,7 @@ administrativos; NUNCA afirma crime/improbidade/dolo (compete ao TCE-RJ/MP-RJ/Ju
 from __future__ import annotations
 
 import logging
+import sqlite3
 import os
 import time
 
@@ -243,6 +244,63 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
             investigacao["veredito_fachada"] = rf.veredito_llm(pacote)
         except Exception as exc:  # noqa: BLE001 — pacote/LLM degradam honesto; a DD básica permanece
             logger.warning("veredito de fachada (LLM) indisponível — parecer segue só com a DD básica: %s", exc)
+        # Sócio na folha pública (folha do Estado × QSA) — segunda perna do conflito de interesse
+        # (a primeira, doador × sócio, está em lex_conflito.conflito). Aditivo e degrada em silêncio.
+        try:
+            from compliance_agent.lex_conflito import achado_socio_agente, socios_agentes_publicos
+            _socios_ag = socios_agentes_publicos(cnpj)
+            investigacao["socios_agentes_publicos"] = _socios_ag
+            if (_ach := achado_socio_agente(_socios_ag)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("sócio-agente indisponível para %s: %s", cnpj, exc)
+        # TAC recorrente no D.O. (doerj_tac): pagamento sem contrato como rotina — terceira perna, aditiva.
+        try:
+            from compliance_agent.lex_conflito import achado_tac_recorrente, sinais_tac_do_fornecedor, tacs_do_fornecedor
+            _tacs = tacs_do_fornecedor(cnpj, ctx.get("nome"))
+            investigacao["tacs_doerj"] = _tacs
+            _sin = sinais_tac_do_fornecedor(ctx.get("nome")) if _tacs else []
+            investigacao["tacs_sinais"] = _sin
+            if (_ach := achado_tac_recorrente(_tacs, _sin)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("doerj_tac indisponível para %s: %s", cnpj, exc)
+        # Cadastro de Empregadores do MTE (trabalho escravo) — fonte pública, sem API. Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_lista_suja, lista_suja
+            _ls = lista_suja(cnpj)
+            investigacao["lista_suja_mte"] = _ls
+            if (_ach := achado_lista_suja(_ls)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("lista_suja_mte indisponível para %s: %s", cnpj, exc)
+        # Portal SIGA: emergência como regime (tools/siga_contratos). Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_emergencia_siga, siga_do_fornecedor
+            _sg = siga_do_fornecedor(cnpj)
+            investigacao["siga"] = _sg
+            if (_ach := achado_emergencia_siga(_sg)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("siga_contratos indisponível para %s: %s", cnpj, exc)
+        # Registro estadual de sanções (Portal SIGA, tools/siga_sancoes). Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_sancao_siga, sancoes_siga
+            _sc = sancoes_siga(cnpj)
+            investigacao["sancoes_siga"] = _sc
+            if (_ach := achado_sancao_siga(_sc)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("siga_sancoes indisponível para %s: %s", cnpj, exc)
+        # Prefeitura do Rio (ContasRio/CCON, tools/contasrio_ingest): contratação direta como regime. Aditivo.
+        try:
+            from compliance_agent.lex_conflito import achado_contratacao_direta_pcrj, contratos_pcrj
+            _cp = contratos_pcrj(cnpj)
+            investigacao["pcrj_contratos"] = _cp
+            if (_ach := achado_contratacao_direta_pcrj(_cp)):
+                ach_estrutural.append(_ach)
+        except (ImportError, sqlite3.Error) as exc:
+            logger.debug("contasrio_contrato indisponível para %s: %s", cnpj, exc)
     except Exception:
         investigacao = {}
 

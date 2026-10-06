@@ -27,7 +27,7 @@ def con():
               "doc_socio TEXT, n_fornecedores INT, cnpjs_basicos TEXT, qualificacoes TEXT, "
               "total_recebido REAL)")
     c.execute("CREATE TABLE ob_orcamentaria_siafe(ug_emitente TEXT, credor TEXT, "
-              "nome_credor TEXT, valor REAL, data_emissao TEXT)")
+              "nome_credor TEXT, valor REAL, data_emissao TEXT, status TEXT DEFAULT 'Contabilizado')")
     return c
 
 
@@ -37,7 +37,8 @@ def _pessoa(c, nome, basicos):
 
 
 def _ob(c, ug, cnpj, valor, nome="EMPRESA", data="15/03/2024"):
-    c.execute("INSERT INTO ob_orcamentaria_siafe VALUES(?,?,?,?,?)", (ug, cnpj, nome, valor, data))
+    c.execute("INSERT INTO ob_orcamentaria_siafe (ug_emitente, credor, nome_credor, valor, data_emissao) "
+              "VALUES(?,?,?,?,?)", (ug, cnpj, nome, valor, data))
 
 
 # ─────────────────── o delta é o achado ───────────────────────────────────────────────────────

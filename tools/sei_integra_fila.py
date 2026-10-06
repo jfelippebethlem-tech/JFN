@@ -88,6 +88,21 @@ def _esperar_browser_livre(espera_max: int = 300) -> None:
 CORTE_ESCRITOR = "2026-07-23"
 
 
+def _chars(d: dict) -> int:
+    """Tamanho do teor de um documento — TOLERANDO `chars` gravado como texto.
+
+    `sei_reparar_vazios` gravava `str(len(texto))` e contaminou **1.972 manifests**. A comparação
+    crua (`chars >= 40`) estourava `TypeError: '>=' not supported between str and int` e derrubava
+    o drenador `--geral` INTEIRO antes de baixar qualquer processo — seis rodadas mortas entre
+    24/07 e 09/08, todas caladas no log do cron. O produtor foi corrigido; isto cobre o passado.
+    """
+    v = d.get("chars")
+    try:
+        return int(v or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _arquivado_ok(dir_arq: Path) -> bool:
     """True só se o arquivo tem CONTEÚDO real (>=1 texto/*.txt). Um STUB (manifest.json docs=0 de
     download que falhou) NÃO conta — senão a fila pula pra sempre e o processo nunca é baixado
@@ -112,7 +127,7 @@ def _arquivado_ok(dir_arq: Path) -> bool:
     entradas = [d for d in docs if isinstance(d, dict)]
     if len(entradas) != len(docs):
         return True                     # manifesto fora do formato: não julgo o teor
-    if any((d.get("chars") or 0) >= 40 for d in entradas):
+    if any(_chars(d) >= 40 for d in entradas):
         # tem teor — MAS re-captura se a captura está INCOMPLETA:
         # (a) menos docs que a árvore (total_arvore) → captura parou no meio (timeout) e
         #     centenas de docs nunca foram tentados (260007/004617 = 215 de 646!);
@@ -123,10 +138,37 @@ def _arquivado_ok(dir_arq: Path) -> bool:
         total = m.get("total_arvore")
         if total and len(entradas) < total:
             return False
+        # o arquivo montado do CACHE grava a árvore como `docs_na_arvore`, não `total_arvore`: medido em 25/09/2026,
+        # 809 processos truncados (28.705 documentos faltando — INEA 34/2023 com 124 de 817) eram dados por prontos.
+        # Piso de 5 docs ou 10%: diferença de 1 documento costuma ser peça restrita, e reler não a traz.
+        try:
+            arvore = int(m.get("docs_na_arvore") or 0)
+        except (TypeError, ValueError):
+            arvore = 0
+        if not total and arvore and arvore - len(entradas) >= max(5, 0.10 * arvore):
+            return False
         if _tem_falha_nao_declarada(dir_arq, m):
+            return False
+        if _relatorio_fotografico_sem_foto(m):
             return False
         return True
     return (m.get("gerado_em") or "") >= CORTE_ESCRITOR
+
+
+_RX_REL_FOTO = re.compile(r"relat[óo]rio\s+fotogr|registro\s+fotogr|memorial\s+fotogr", re.I)
+
+
+def _relatorio_fotografico_sem_foto(arq_manifest: dict) -> bool:
+    """(c) Arquivo montado SÓ do TEXTO do cache (sei_arquivar_do_cache) com relatório fotográfico e zero foto.
+
+    Medido em 24/09/2026: 214 documentos de relatório fotográfico chegaram pelo caminho do cache (OCR do texto) e
+    NENHUM trouxe imagem — o caminho declara que não traz fotos. Como o processo "tinha texto", esta fila o dava
+    por pronto e a íntegra (a única que baixa as fotos) nunca era pedida: 159 processos com relatório fotográfico
+    e a pasta fotos/ vazia. Auto-limitante: depois da íntegra a origem deixa de ser o cache e isto não repete."""
+    if not str(arq_manifest.get("origem") or "").startswith("cache CDP"):
+        return False
+    return any(isinstance(d, dict) and _RX_REL_FOTO.search(str(d.get("titulo") or ""))
+               and str(d.get("fotos") or "[]") in ("[]", "") for d in (arq_manifest.get("docs") or []))
 
 
 def _tem_falha_nao_declarada(dir_arq: Path, arq_manifest: dict) -> bool:
@@ -183,6 +225,41 @@ def _fila_geral() -> list[dict]:
             continue
         out.append({"sei": num, "score": valores.get(num, 0)})
     out.sort(key=lambda e: -(e.get("score") or 0))
+    return out
+
+
+def _fila_inscrita(limite: int = 40) -> list[str]:
+    """Processos INSCRITOS à mão em `sei_fila_captura` — a fila que ninguém drenava.
+
+    A tabela existe desde `fila_recaptura_por_parecer` / `sei_inventario_captura` e acumulou 3.632
+    processos; medido em 2026-08-09, o único leitor era o relatório de requisição. `_fila_geral`
+    varre o cache CDP, ou seja, só enxerga o que o sweep JÁ capturou — um processo inscrito e sem
+    cache não era buscado por ninguém, e inscrever nele era registrar intenção, não agendar
+    trabalho. `_baixar_e_arquivar` funciona por NÚMERO e não precisa de cache: basta ligar.
+
+    Vem depois dos não-arquivados na ordem de prioridade e é limitado — a inscrição é manual e
+    intencional, mas 3.632 alvos não podem monopolizar a janela do drenador.
+    """
+    if not DB.exists():
+        return []
+    import sqlite3
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    try:
+        con.execute("PRAGMA busy_timeout=15000")
+        linhas = con.execute(
+            "SELECT numero_sei FROM sei_fila_captura WHERE COALESCE(numero_sei,'') <> '' "
+            "ORDER BY COALESCE(total_pago,0) DESC, numero_sei LIMIT ?", (int(limite) * 4,)).fetchall()
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    out: list[str] = []
+    for (num,) in linhas:
+        proc = _proc_limpo(num)
+        if proc and not _arquivado_ok(ARQUIVO / proc.replace("/", "_")):
+            out.append(num)
+        if len(out) >= limite:
+            break
     return out
 
 
@@ -264,7 +341,7 @@ def _fila_empresa(cnpj: str, busca_viva: bool = False) -> list[str]:
 
 
 def _baixar_e_arquivar(proc: str, env: dict) -> str:
-    """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'erro'.
+    """Baixa a íntegra do processo e arquiva. Retorna 'ok' | 'timeout' | 'adiado' | 'erro'.
 
     O timeout de 900s NUNCA propaga: um processo grande (646 docs > 15min) estourava
     o subprocess.run e crashava a fila inteira (finally removia as pausas e encerrava).
@@ -275,6 +352,10 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
         rc = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
                             cwd=RAIZ, env=env, timeout=900,
                             stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        if rc == 75:
+            # o preflight de carga recusou: o alvo continua na fila e a próxima passada retoma.
+            # Registrar como "erro" fazia parecer defeito do processo — era a VM ocupada.
+            return "adiado"
         rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                              cwd=RAIZ, env=env, timeout=900,
                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
@@ -288,7 +369,7 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
 def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
     """Processa os alvos sequencialmente até o deadline. Um timeout/erro num processo
     não derruba os demais. Retorna quantos foram tentados."""
-    feitos = 0
+    feitos, adiados_seguidos = 0, 0
     for proc in alvos:
         if deadline and time.time() > deadline:
             log(f"orçamento esgotado — encerrando limpo ({feitos} feitos)")
@@ -297,6 +378,13 @@ def _rodar_fila(alvos: list, env: dict, deadline, log) -> int:
         status = _baixar_e_arquivar(proc, env)
         log(f"  {proc}: {status}")
         feitos += 1
+        # Se a VM está ocupada, o preflight recusa TODOS — desfilar a fila inteira colhendo
+        # "adiado" gasta a janela sem baixar nada. Três seguidos = a carga não vai ceder nesta
+        # rodada; a fila fica intacta e a próxima passada retoma do mesmo lugar.
+        adiados_seguidos = adiados_seguidos + 1 if status == "adiado" else 0
+        if adiados_seguidos >= 3:
+            log(f"três adiamentos seguidos por carga — encerrando a rodada ({feitos} tentados)")
+            break
         time.sleep(5)
     return feitos
 
@@ -325,9 +413,13 @@ def main() -> int:
         _log(f"fonte=EMPRESA {args.empresa}: {len(candidatos)} processo(s) (busca_viva={args.busca_viva})")
     elif args.geral:
         novos = [c["sei"] for c in _fila_geral()]
+        inscritos = _fila_inscrita()          # inscrição manual: alvo escolhido por quem investiga
         reler = _fila_reler_por_ob()          # frescor: OB nova em processo já arquivado → re-ler
-        candidatos = novos + reler
-        _log(f"fonte=GERAL: {len(novos)} não arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
+        # inscritos primeiro: são alvos escolhidos a dedo, não varredura. O `dict.fromkeys` tira
+        # repetido preservando a ordem — um inscrito pode também ter cache CDP.
+        candidatos = list(dict.fromkeys(inscritos + novos + reler))
+        _log(f"fonte=GERAL: {len(inscritos)} inscritos em sei_fila_captura + {len(novos)} não "
+             f"arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
     else:
         fila_path = Path(args.fila)
         if not fila_path.exists():

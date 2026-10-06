@@ -5,11 +5,9 @@
 
 **CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** Controle Externo (automatizado)
 **Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)
-**Classificação de fonte:** OBs/Contratos = **REAL** (SIAFE/TFE) · Perfil/Sanções/Rede = **INDISPONIVEL**
+**Classificação de fonte:** OBs/Contratos = **REAL** (espelho TFE-RJ; o SIAFE distingue status mas está parcialmente coletado) · Perfil/Sanções/Rede = **INDISPONIVEL**
 
 ---
-
-> _Cobertura da base: 1.138.236 OBs · 77% com CNPJ (PJ) · OB mais recente: 2026-07-01. OB = pagamento definitivo (SIAFE/TFE-RJ); afirmações limitadas a esta cobertura._
 
 ## SUMÁRIO EXECUTIVO
 
@@ -73,7 +71,9 @@ _Nenhum processo SEI deste fornecedor foi periciado quanto à execução ainda �
 
 ## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO
 
-> Fonte: SIAFE/TFE-RJ (Ordem Bancária = dado **definitivo de pagamento**). Por exercício, as **maiores OBs** (materiais); a **lista completa** de cada pagamento está na **planilha XLSX** deste relatório. OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam ao total).
+> **Fonte: espelho TFE-RJ** (Ordem Bancária = dado definitivo de pagamento). Por exercício, as **maiores OBs** (materiais); a **lista completa** está na **planilha XLSX** deste relatório. OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam).
+
+> ⚠️ **O que este total inclui e o que ele não distingue.** O espelho é hoje a fonte mais COMPLETA (1,16 milhão de OBs contra 245 mil já coletadas do SIAFE), mas **não publica o status da OB** — cancelamento e anulação entram somados. No universo em que dá para medir, **9,7% do valor não é OB contabilizada**. O SIAFE distingue status e traz processo, NL e competência, mas a coleta dele está incompleta (`reporting.cobertura_siafe`). Para peça que dependa do valor exato de um credor, conferir no SIAFE o que ele já tem.
 
 > **Nota conceitual (cadeia da despesa):** a **OB (Ordem Bancária) é o pagamento** — a verdade financeira, porém **uma parcela**, não um contrato. Um **contrato** gera **várias OBs** (parcelas/medições/aditivos); um **processo SEI** (licitação ou **Registro de Preços/SRP**) pode gerar **vários contratos**, **aditivos** e **muitas OBs**. Portanto **nº de OBs ≠ nº de contratos ≠ nº de processos** — os contadores abaixo são distintos e honestos quanto à cobertura (a vinculação OB→processo só existe onde o SIAFE/SEI a preencheu).
 

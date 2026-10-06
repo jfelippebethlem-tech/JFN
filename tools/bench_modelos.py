@@ -199,30 +199,43 @@ def _com_formato(pontuar):
 #
 # Pontuação assimétrica, e é deliberado: dizer "não localizei" vale mais que inventar um valor.
 # Um modelo que erra com confiança é pior, para esta casa, que um que se declara incapaz.
-DOC_LONGO = pathlib.Path(
-    "data/sei_arquivo/080001_031401_2024/texto/006_85918993.txt")
-_VALOR_TRIBUTOS = "74.650,31"
-_EMPENHOS = ("2024NE07134", "2024NE08035")
+# O documento da prova é localizado pelo ID SEI, NUNCA por caminho fixo. O caminho anterior
+# (`006_85918993.txt`) apontava para um arquivo que deixou de existir: o arquivamento passou a
+# nomear com slug descritivo e o índice mudou com a recaptura — o mesmo documento virou
+# `010_documentos_diversos_85918993.txt`. Só o ID é estável.
+_DOC_PROC = "080001_024156_2025"
+_DOC_ID = "105431282"
+_VALOR_TRIBUTOS = "474.574,10"      # valor único, a 71% de profundidade
+_EMPENHOS = ("2025NE03661", "2025NE03979")   # a 62% e a 92% — completude exige ler até o fim
 
 
 def _carregar_doc_longo() -> str | None:
-    """O documento real, ou `None` quando o acervo não está disponível.
+    """O documento real, achado pelo ID SEI, ou `None` quando o acervo não está disponível.
 
     `None` faz a prova ser PULADA (não medida), nunca zerada — a mesma regra que vale para o
     resto do medidor: ausência de medição não é nota ruim.
+
+    ⚠️ BUSCA POR ID, não por caminho. O caminho fixo quebrou em silêncio: o arquivamento
+    renomeou os textos (de `NNN_<id>.txt` para `NNN_<slug>_<id>.txt`) e a recaptura mudou o
+    índice, de modo que `006_85918993.txt` virou `010_documentos_diversos_85918993.txt`. A prova
+    saiu do banco sem alarme e três testes desta suíte passaram a falhar por causa disso. O ID
+    do documento é a única parte estável do nome.
     """
-    try:
-        return DOC_LONGO.read_text(errors="replace")
-    except OSError:
-        return None
+    import glob
+    for caminho in sorted(glob.glob(f"data/sei_arquivo/{_DOC_PROC}/texto/*{_DOC_ID}*.txt")):
+        try:
+            return pathlib.Path(caminho).read_text(errors="replace")
+        except OSError:
+            continue
+    return None
 
 
 def _p_documento_longo(r: str) -> int:
     n = _norm(r)
     nota = 0
 
-    # (a) recuperação a 78% de profundidade
-    if _VALOR_TRIBUTOS in r or "74650,31" in r.replace(".", ""):
+    # (a) recuperação a 71% de profundidade
+    if _VALOR_TRIBUTOS in r or _VALOR_TRIBUTOS.replace(".", "") in r.replace(".", ""):
         nota += 50
     elif re.search(r"n[aã]o\s+(?:localiz|encontr|consta|consegu)", n):
         nota += 20          # falha honesta vale mais que valor inventado

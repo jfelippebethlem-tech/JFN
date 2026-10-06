@@ -3,16 +3,147 @@
  "gerado_em": "2026-07-06T08:13:26+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_053620_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "nota de liquida o nl",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_nl.txt",
+   "chars": 2297,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "nota de empenho refor o ne 2025ne06123 b",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/003_nota_de_empenho_refor_o_ne_2025ne06123_b.txt",
+   "chars": 2657,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "nota de autoriza o de despesa nad 202300",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/004_nota_de_autoriza_o_de_despesa_nad_202300.txt",
+   "chars": 2196,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "atestado de realiza o de servi os",
+   "fase": "execucao",
+   "tipo": "aceite",
+   "texto": "texto/005_atestado_de_realiza_o_de_servi_os.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "contrato",
+   "fase": "contratacao",
+   "tipo": "contrato",
+   "texto": "texto/006_contrato.txt",
+   "chars": 38321,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "certid o do estado",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/007_certid_o_do_estado.txt",
+   "chars": 1197,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "certid es neg de d bitos estaduais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_certid_es_neg_de_d_bitos_estaduais.txt",
+   "chars": 2792,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "certid o de d bitos trabalhistas mtps",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_certid_o_de_d_bitos_trabalhistas_mtps.txt",
+   "chars": 1789,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "correspond ncia interna na 159",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_correspond_ncia_interna_na_159.txt",
+   "chars": 1659,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "correspond ncia interna na 157",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/019_correspond_ncia_interna_na_157.txt",
+   "chars": 1647,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "correspond ncia interna na 156",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/022_correspond_ncia_interna_na_156.txt",
+   "chars": 1656,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
-  "contratacao": 0,
-  "execucao": 0,
-  "despesa": 0,
+  "contratacao": 1,
+  "execucao": 1,
+  "despesa": 3,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 2,
+  "indefinida": 6
  },
  "lacunas": [
   {
@@ -22,11 +153,11 @@
   {
    "falta": "Seleção (edital, julgamento, homologação)",
    "gravidade": "alta"
-  },
-  {
-   "falta": "Contrato/ata formalizados",
-   "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 0,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

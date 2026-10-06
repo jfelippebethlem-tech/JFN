@@ -43,6 +43,8 @@ import logging
 import pathlib
 from dataclasses import dataclass, field
 
+from compliance_agent.sei import acervo_texto
+
 logger = logging.getLogger(__name__)
 
 # Português jurídico é denso em palavra longa e número; ~3,5 caracteres por token é a razão
@@ -128,7 +130,10 @@ def carregar_documentos(pasta: pathlib.Path) -> list[Documento]:
         logger.debug("%s: sem manifest legível — usando o nome do arquivo como título", pasta)
 
     docs: list[Documento] = []
-    for f in sorted((pasta / "texto").glob("*.txt")) if (pasta / "texto").is_dir() else []:
+    # pelo MANIFESTO, não pelo diretório: varrer `texto/*.txt` lia também as sobras de uma
+    # captura anterior (6.286 arquivos órfãos em 121 processos, medido em 2026-08-03) e o
+    # dossiê saía com o mesmo documento duas vezes, consumindo orçamento de token em cópia.
+    for f in acervo_texto.arquivos_declarados(pasta):
         try:
             txt = f.read_text(errors="replace")
         except OSError:
@@ -137,8 +142,12 @@ def carregar_documentos(pasta: pathlib.Path) -> list[Documento]:
         # "Subsecretário". Medido em 2026-07-28 numa amostra de 300 processos: 5 processos e 45
         # arquivos afetados, 727 ocorrências. Pouco em volume, mas quebra o casamento de NOME —
         # e é justamente em despacho e portaria, que é onde estão os responsáveis.
+        # sem a etiqueta do arquivo: o dossiê fracionado alimenta a IA, e o rótulo levava a NOSSA
+        # classificação para dentro do documento além de consumir orçamento de token que é o
+        # recurso escasso deste módulo (2026-08-03 — ver `sei/acervo_texto`).
         docs.append(Documento(nome=f.name, titulo=titulos.get(f.name, ""),
-                              texto=html.unescape(txt)))
+                              texto=acervo_texto.sem_etiqueta(html.unescape(txt),
+                                                              titulos.get(f.name, ""))))
     return docs
 
 

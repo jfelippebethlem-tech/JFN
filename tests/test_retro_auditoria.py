@@ -19,7 +19,7 @@ def db(tmp_path, monkeypatch):
     CREATE TABLE sancoes_federais (cpf_cnpj TEXT, nome TEXT, cadastro TEXT, categoria TEXT,
         data_inicio TEXT, data_fim TEXT, orgao TEXT);
     CREATE TABLE ob_orcamentaria_siafe (credor TEXT, nome_credor TEXT, numero_ob TEXT,
-        valor REAL, data_emissao TEXT, ug_emitente TEXT);
+        valor REAL, data_emissao TEXT, ug_emitente TEXT, status TEXT);
     CREATE TABLE pncp_resultado (certame TEXT, fornecedor_cnpj TEXT, valor_homologado REAL,
         ordem_classificacao INTEGER, data_pub TEXT);
     """)
@@ -57,12 +57,12 @@ def test_medir_corrobora_sancao_posterior_e_pago_depois(db):
     con.execute("INSERT INTO sancoes_federais VALUES "
                 "('11111111000111','ALFA','CEIS','Impedimento','2026-03-01','2028-01-01','CGU')")
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES "
-                "('11111111000111','ALFA','OB1',50000.0,'15/04/2026','133100')")
+                "('11111111000111','ALFA','OB1',50000.0,'15/04/2026','133100','Contabilizado')")
     # BETA: sanção ANTES do sinal → NÃO corrobora; pagamento antes → não soma
     con.execute("INSERT INTO sancoes_federais VALUES "
                 "('22222222000122','BETA','CEIS','Impedimento','2025-06-01','2027-01-01','CGU')")
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES "
-                "('22222222000122','BETA','OB2',99999.0,'10/12/2025','133100')")
+                "('22222222000122','BETA','OB2',99999.0,'10/12/2025','133100','Contabilizado')")
     con.commit()
     con.close()
     d = RA.medir(db)
