@@ -132,3 +132,32 @@ def test_tres_adiamentos_seguidos_encerram_a_rodada(monkeypatch):
     n = F._rodar_fila(["a", "b", "c", "d", "e"], {}, None, lambda m: vistos.append(m))
     assert n == 3, f"devia parar no terceiro adiamento, tentou {n}"
     assert any("três adiamentos" in v for v in vistos), "o encerramento tem de sair declarado"
+
+
+def test_alvo_de_caso_vem_antes_da_inscricao_em_massa(tmp_path, monkeypatch):
+    """Inscrição À MÃO para um caso tem `total_pago = 0` (é processo-continente, sindicância,
+    dossiê de origem) e, ordenada só por valor, ficava atrás das ~600 inscrições automáticas com
+    pago > 0 — e a rodada noturna, que morre por carga em ~5 processos, nunca chegava nela.
+    Medido em 2026-10-12: 55 alvos de caso parados desde agosto (ex.: `SEI-080002/010544/2024`,
+    onde a sindicância da AUDIN 0793/2024 deve aparecer). Valor continua decidindo DENTRO de
+    cada grupo."""
+    db = tmp_path / "compliance.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE sei_fila_captura (numero_sei TEXT, sei_norm TEXT, motivo TEXT,"
+                " total_pago REAL, n_docs INT, visto_em TEXT)")
+    linhas = [("SEI-030001/000001/2024", "familia_contratacao: citado por pagamentos (R$ 9.000.000,00)", 9e6),
+              ("SEI-030001/000002/2024", "nunca_capturado", 5e6),
+              ("SEI-030001/000003/2024", "parecer cita 3 documentos e 3 faltam na captura", 1e6),
+              ("SEI-080002/010544/2024", "processo PRINCIPAL indicado pela DIREX para a juntada", 0.0),
+              ("SEI-080001/000803/2021", "hipotese_idesi_contrato_pai: dossiê de origem", 0.0),
+              ("SEI-080002/019070/2025", "caso IDESI: citado no extrato", 50.0)]
+    for num, motivo, valor in linhas:
+        con.execute("INSERT INTO sei_fila_captura VALUES (?,?,?,?,0,'2026-08-09')", (num, num, motivo, valor))
+    con.commit()
+    con.close()
+    monkeypatch.setattr(F, "DB", db)
+    monkeypatch.setattr(F, "ARQUIVO", tmp_path / "arq")
+    fila = F._fila_inscrita()
+    assert fila[:3] == ["SEI-080002/019070/2025", "SEI-080001/000803/2021", "SEI-080002/010544/2024"]
+    assert fila[3:] == ["SEI-030001/000001/2024", "SEI-030001/000002/2024", "SEI-030001/000003/2024"]
+    assert F._fila_inscrita(limite=2) == ["SEI-080002/019070/2025", "SEI-080001/000803/2021"]

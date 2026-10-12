@@ -228,6 +228,10 @@ def _fila_geral() -> list[dict]:
     return out
 
 
+_MOTIVOS_EM_MASSA = ("nunca_capturado", "parecer cita", "familia_contratacao", "fila_tac_recorrente",
+                     "medviva_regime_tac", "recaptura:")
+
+
 def _fila_inscrita(limite: int = 40) -> list[str]:
     """Processos INSCRITOS à mão em `sei_fila_captura` — a fila que ninguém drenava.
 
@@ -239,6 +243,10 @@ def _fila_inscrita(limite: int = 40) -> list[str]:
 
     Vem depois dos não-arquivados na ordem de prioridade e é limitado — a inscrição é manual e
     intencional, mas 3.632 alvos não podem monopolizar a janela do drenador.
+
+    2026-10-12: alvo de CASO antes da inscrição EM MASSA. Os produtores automáticos (prefixos em
+    `_MOTIVOS_EM_MASSA`) inscrevem centenas com pago > 0; o alvo à mão costuma ter pago 0
+    (processo-continente, sindicância) e, só por valor, nunca entrava nos 40 — 55 parados desde agosto.
     """
     if not DB.exists():
         return []
@@ -248,7 +256,9 @@ def _fila_inscrita(limite: int = 40) -> list[str]:
         con.execute("PRAGMA busy_timeout=15000")
         linhas = con.execute(
             "SELECT numero_sei FROM sei_fila_captura WHERE COALESCE(numero_sei,'') <> '' "
-            "ORDER BY COALESCE(total_pago,0) DESC, numero_sei LIMIT ?", (int(limite) * 4,)).fetchall()
+            "ORDER BY (" + " OR ".join(["COALESCE(motivo,'') LIKE ?"] * len(_MOTIVOS_EM_MASSA)) + "), "
+            "COALESCE(total_pago,0) DESC, numero_sei LIMIT ?",
+            (*(p + "%" for p in _MOTIVOS_EM_MASSA), int(limite) * 4)).fetchall()
     except sqlite3.Error:
         return []
     finally:
