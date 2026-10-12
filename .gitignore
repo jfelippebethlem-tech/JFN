@@ -198,3 +198,8 @@ data/sei_buscas/
 # LAI: dados do requerente (CPF) — nunca versionar
 data/lai_requerente.json
 data/lai.db
+
+# Análise eleitoral (resultado/sub judice/dobradas) — uso privado do dono, NUNCA no repositório público
+tools/eleicao2026_*
+tools/tse_bu_2026.py
+tools/enviar_eleicao2026_yoda.py
