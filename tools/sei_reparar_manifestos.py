@@ -27,6 +27,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 ARQUIVO = RAIZ / "data" / "sei_arquivo"
 sys.path.insert(0, str(RAIZ))
 
+from compliance_agent.sei import acervo_texto  # noqa: E402
 from compliance_agent.sei.fases import FASES, classificar, lacunas  # noqa: E402
 
 
@@ -76,10 +77,16 @@ def reparar(dir_proc: Path, aplicar: bool) -> dict | None:
         fase, tipo = classificar(titulo)
         tipos.add(tipo)
         conteudo = t.read_text(encoding="utf-8", errors="ignore")
+        # `chars` conta o DOCUMENTO, não a etiqueta que nós prepomos ao .txt — é o que
+        # `sei_arquivar` grava e o que os portões da casa leem (`sei_integra_fila` exige >=40,
+        # `sentinela_integridade` exige >50). Contando a etiqueta, um arquivo só-rótulo sairia
+        # daqui com `chars` ~71 e passaria por documento lido: o reparo fabricaria justamente a
+        # mentira que a sentinela existe para achar. (2026-08-03)
+        teor = acervo_texto.sem_etiqueta(conteudo, titulo)
         fotos = sorted(p.name for p in (dir_proc / "fotos").glob(f"{i:03d}_*.jpg")) \
             if (dir_proc / "fotos").is_dir() else []
         docs.append({"i": i, "titulo": titulo, "fase": fase, "tipo": tipo,
-                     "texto": f"texto/{t.name}", "chars": len(conteudo), "ocr": False,
+                     "texto": f"texto/{t.name}", "chars": len(teor), "ocr": False,
                      "fotos": [f"fotos/{f}" for f in fotos]})
     docs.sort(key=lambda d: d["i"])
     fases_presentes = {d["fase"] for d in docs} - {"indefinida"}

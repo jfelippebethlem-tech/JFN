@@ -9,10 +9,20 @@ cd /home/ubuntu/JFN || exit 1
 PY=.venv/bin/python
 DB=data/pcrj_benef.db
 
-for ym in 202604 202603 202602 202601 \
-          202512 202511 202510 202509 202508 202507 202506 202505 202504 202503 202502 202501 \
-          202412 202411 202410 202409 202408 202407 202406 202405 202404 202403 202402 202401 \
-          202312 202311 202310 202309 202308 202307 202306 202305 202304 202303 202302 202301; do
+# MESES CALCULADOS PELA DATA (2026-10-12). A lista era fixa e terminava em 202604: nenhum mês novo
+# entrava, e o pcrj_benef.db parou em 202605 (rodado à mão). Do mês passado até 2023-01; o Portal
+# publica com ~2 meses de atraso, então os meses mais novos falham no download e são tentados de
+# novo no próximo disparo (coletar() não apaga nada quando nenhum download funciona).
+MESES=$($PY -c "
+from datetime import date
+y, m = date.today().year, date.today().month
+out = []
+while (y, m) >= (2023, 1):
+    m -= 1
+    if m == 0: y, m = y - 1, 12
+    if (y, m) >= (2023, 1): out.append(f'{y}{m:02d}')
+print(' '.join(out))")
+for ym in $MESES; do
   ja=$($PY - <<EOF
 import sqlite3
 try:
@@ -23,7 +33,11 @@ EOF
 )
   if [ "${ja:-0}" -gt 0 ]; then echo "[sweep] $ym já coletado ($ja linhas) — pulo"; continue; fi
   # não competir com a VM ocupada (sweeps SEI/SIAFE etc.)
-  while [ "$(awk '{print ($1>1.8)}' /proc/loadavg)" = "1" ]; do echo "[sweep] load alto, aguardo 120s"; sleep 120; done
+  esperas=0
+  while [ "$(awk '{print ($1>1.8)}' /proc/loadavg)" = "1" ]; do
+    esperas=$((esperas + 1)); [ "$esperas" -gt 15 ] && { echo "[sweep] load alto há 30 min — encerro, próximo disparo retoma"; exit 0; }
+    echo "[sweep] load alto, aguardo 120s"; sleep 120
+  done
   echo "[sweep] === $ym ==="
   $PY -m compliance_agent.pcrj.beneficio_pcrj "$ym"
   sleep 10

@@ -41,6 +41,18 @@ FTM_POR_TIPO: dict[str, str] = {
 }
 _FTM_PADRAO = "UnknownLink"
 
+# ARESTA SEM SENTIDO NÃO PODE ENTRAR DUAS VEZES. "A tem o mesmo telefone que B" e "B tem o mesmo
+# telefone que A" são UM fato; o grafo, porém, é montado por alvo, e quando A e B são os dois
+# credores do universo cada um produz a sua metade. Gravadas as duas, a base diria o dobro dos
+# vínculos que existem — e quem contasse arestas por empresa acharia concentração onde há espelho.
+# `socio_de`, `doou_para`, `nomeado_por`, `sucessora_de` e `subcontratou` NÃO entram aqui: nesses a
+# direção é a informação (quem é sócio de quem, quem doou para quem).
+_SIMETRICOS = frozenset({
+    "mesmo_socio", "mesmo_socio_doc_parcial", "mesma_sala", "mesmo_predio", "mesmo_ip",
+    "mesmo_telefone", "mesmo_email", "mesmo_contador", "mesmo_advogado", "mesmo_registrante",
+    "parente_de", "nome_igual_sem_documento",
+})
+
 
 def _pessoa_id(con: sqlite3.Connection, chave: str, rotulo: str) -> int:
     """Id em `pessoas` para um nó do grafo, criando se preciso.
@@ -56,9 +68,15 @@ def _pessoa_id(con: sqlite3.Connection, chave: str, rotulo: str) -> int:
     doc = resto if prefixo in ("pj", "pf") else None
     nome = (rotulo or chave).strip()[:200]
 
-    r = con.execute(
-        "SELECT id FROM pessoas WHERE nome=? AND COALESCE(tipo,'')=? AND COALESCE(cpf,'')=?",
-        (nome, tipo, doc or "")).fetchone()
+    # O DOCUMENTO É A IDENTIDADE, e a base já dizia isso: `pessoas` tem UNIQUE em `cpf`. Procurar
+    # por (nome, tipo, doc) fazia a MESMA empresa, vinda com dois rótulos diferentes (razão social
+    # de um lado, chave crua do outro), ser inserida duas vezes — e a segunda estourava a UNIQUE,
+    # derrubando a passada inteira. Sem documento não há o que casar senão o nome.
+    if doc:
+        r = con.execute("SELECT id FROM pessoas WHERE cpf=?", (doc,)).fetchone()
+    else:
+        r = con.execute("SELECT id FROM pessoas WHERE nome=? AND COALESCE(tipo,'')=? AND cpf IS NULL",
+                        (nome, tipo)).fetchone()
     if r:
         return int(r[0])
     cur = con.execute(
@@ -82,6 +100,8 @@ def salvar_grafo(con: sqlite3.Connection, grafo: GrafoVinculos) -> dict:
             continue
         a_id = _pessoa_id(con, a.origem, grafo.rotulos.get(a.origem, ""))
         b_id = _pessoa_id(con, a.destino, grafo.rotulos.get(a.destino, ""))
+        if a.tipo in _SIMETRICOS and a_id > b_id:
+            a_id, b_id = b_id, a_id      # direção canônica: o espelho não vira segunda aresta
         ja = con.execute(
             "SELECT 1 FROM relacionamentos WHERE pessoa_a_id=? AND pessoa_b_id=? AND tipo=? "
             "AND COALESCE(fonte,'')=? AND COALESCE(data_inicio,'')=?",

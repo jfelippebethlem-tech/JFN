@@ -40,7 +40,28 @@ TIPOS: dict[str, list[str]] = {
     "autorizacao_despesa": ["autorizacao de despesa", "nota de autorizacao de despesa", "nad"],
     "tramitacao": ["despacho de encaminhamento", "despacho", "informacao", "oficio", "memorando",
                    "e-mail", "email", "recibo", "comprovante", "anexo", "capa",
-                   "termo de encerramento", "relatorio", "termo de juntada", "certidao"],
+                   "termo de encerramento", "relatorio", "termo de juntada", "certidao",
+                   # 2026-08-03: faltava o PLURAL. O SEI-RJ nomeia "Certidões Negativa de Débitos"
+                   # e "Documentos fiscais - Certidões"; sem o plural o título não casava, a
+                   # classificação caía para o CONTEÚDO e a CND virava parecer pela PGFN.
+                   "certidoes", "certificado de regularidade"],
+}
+
+# VETO por tipo: keyword que, presente no texto, DESQUALIFICA o tipo. Nasceu de 42 processos do
+# acervo em que a Certidão Negativa de Débitos era tipada `parecer_juridico` — toda CND traz
+# "Procuradoria-Geral da Fazenda Nacional" no corpo, e `procuradoria` sozinho bastava. O custo não
+# era cosmético: `parecer_juridico` tem valor_doc 'alto' (guarda o texto inteiro), entra na rubrica
+# de juízo por documento e é o que `auditar_parecer_pge` procura para responder sobre o art. 53.
+# O veto só vale quando o documento NÃO se anuncia como a peça — parecer que EXIGE certidão fala de
+# certidão e continua parecer.
+ANTI: dict[str, tuple[str, ...]] = {
+    "parecer_juridico": ("certidao negativa", "certidoes negativa", "certificado de regularidade",
+                         "divida ativa da uniao", "nao constam debitos", "crf -", "regularidade do fgts"),
+}
+# ... salvo se o próprio texto se anunciar como a peça (mesma lógica posicional do parecer_cumprimento)
+AUTOANUNCIO: dict[str, tuple[str, ...]] = {
+    "parecer_juridico": ("parecer n", "parecer no", "parecer nº", "opino", "opina-se",
+                         "manifestacao juridica", "cota juridica"),
 }
 
 # documentos que carregam a tabela de itens com preço unitário (prioridade do varredor de preços)
@@ -66,8 +87,13 @@ def _classificar_texto(t: str, min_kw: int = 0) -> str:
     """Casa o 1º tipo cujo keyword aparece em `t`. `min_kw`>0 ignora keywords curtas (uso em CONTEÚDO,
     onde 'tr'/'nad'/'arp' dariam falso-positivo por substring — ex.: 'tr' em 'adminisTRacao')."""
     for tipo, kws in TIPOS.items():
-        if any(_n(k) in t for k in kws if len(k) >= min_kw):
-            return tipo
+        if not any(_n(k) in t for k in kws if len(k) >= min_kw):
+            continue
+        veto = ANTI.get(tipo)
+        if veto and any(_n(v) in t for v in veto) and not any(
+                _n(a) in t for a in AUTOANUNCIO.get(tipo, ())):
+            continue  # a marca do tipo apareceu, mas o documento é outra coisa (CND, CRF…)
+        return tipo
     return "outros"
 
 

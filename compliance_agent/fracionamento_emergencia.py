@@ -9,9 +9,24 @@ inciso VIII, cujo teto é o próprio valor da urgência.
 Medido em 2026-07-28, sobre `compras_diretas_tcerj`:
 
     contratações com objeto EMERGENCIAL ......... 1.638 · R$ 1.963.745.047,92
-      FSERJ 2023 .................................. 245 · R$   392.350.345,76
-      SEDSODH 2023 ................................ 471 · R$   121.557.667,80
-      UERJ Hospital Universitário 2024 ............ 203 · R$   120.101.832,55
+
+REMEDIDO EM 2026-08-11, e o número de cima estava errado nos DOIS sentidos:
+
+    grupos (unidade × exercício) com 5+ emergências .... 27 · R$ 3.467.504.016,02
+      FSERJ 2024 ....................................... 414 · R$ 1.727.774.208,83
+      DER-RJ 2024 ........................................ 9 · R$   343.085.852,46
+      SEEDUC 2024 (100% AGILE CORP) ...................... 8 · R$   159.742.703,70
+
+1. **Cego pela metade.** A régua lia só o texto do OBJETO. Objeto e enquadramento coincidem em
+   apenas 613 das 1.504 dispensas do art. 75, VIII: **891 contratações emergenciais pela LEI**
+   (R$ 2,60 bi) tinham objeto "PEITO DE FRANGO", "CESTA ALIMENTOS", "MEDICAMENTO VETERINÁRIO" e
+   ficavam fora. Somando o art. 24, IV da Lei 8.666/93 — o mesmo instituto na lei anterior, vivo
+   em 514 linhas —, são 1.001 e R$ 2,80 bi. (Foi assim que o DER-RJ, cujos objetos são "OBRAS DE
+   CONTENÇÃO", nunca apareceu.)
+2. **Inflado por contar LINHA.** A tabela tem uma linha por ITEM e repete o TOTAL do processo em
+   cada uma: de 1.486 processos com 2+ linhas, 1.485 têm `valor` idêntico em todas. Somar linha a
+   linha infla o acervo em 2,30× (R$ 39,65 bi contra R$ 17,20 bi). No DETRAN/2025 isso virava "6
+   emergências, R$ 148,8 mi" onde há UM processo de R$ 24,8 mi com seis itens de vigilância.
 
 Apareceu ao avaliar o grupo de topo do sweep de fracionamento: SEDSODH/2024, cuja composição
 real era **LOCALMED com 147 contratações emergenciais, R$ 8,5 milhões** — matéria do inciso
@@ -37,19 +52,47 @@ import re
 # pronto-socorro contratado por licitação normal.
 _RE_EMERGENCIA = re.compile(r"emergenc|emerg[êe]ncia", re.IGNORECASE)
 
+# O OBJETO NÃO É A ÚNICA PROVA — E É A PIOR DELAS. Medido em 2026-08-11 nas 20.113 linhas de
+# `compras_diretas_tcerj`: 1.800 objetos dizem "emergencial", 1.504 contratações têm enquadramento
+# no art. 75, VIII, e apenas **613 são as mesmas**. Ou seja, **891 dispensas emergenciais pela LEI
+# ficavam fora da régua** (R$ 2,60 bi), porque o objeto delas diz "PEITO DE FRANGO", "CESTA
+# ALIMENTOS", "AQUISIÇÃO DE MEDICAMENTO DE USO VETERINÁRIO". Somando o art. 24, IV da Lei 8.666/93
+# — o mesmo instituto na lei anterior, vivo em 514 linhas do acervo — são 1.001 e R$ 2,80 bi.
+#
+# O caso que revelou: a AGILE CORP × SEEDUC tem contratos emergenciais em 2023 sob a 8.666 e em
+# 2024 sob a 14.133. Régua presa a uma redação enxerga metade da cadeia.
+#
+# `\D{0,4}` entre o artigo e o inciso absorve a pontuação irregular do espelho ("Art. 75º, VIII",
+# "Art. 75. VIII", "art.24, inciso IV"). Os OUTROS incisos ficam de fora de propósito: o inciso II
+# é dispensa por VALOR e tem régua própria; misturá-los devolveria a confusão que este módulo
+# existe para desfazer.
+_RE_ENQ_EMERGENCIA = re.compile(
+    r"(?:art\.?\s*)?75\D{0,6}VIII"                      # Lei 14.133/2021, art. 75, VIII
+    r"|(?:art\.?\s*)?24\D{0,10}IV(?![IVX])",             # Lei 8.666/93, art. 24, IV
+    re.IGNORECASE)
+
 RESSALVA = ("indício a apurar, não afirmação de irregularidade: a dispensa emergencial é "
             "legal (art. 75, VIII); o que se mede aqui é a RECORRÊNCIA, que o inciso não "
             "prevê — imprevisibilidade não se repete todo exercício")
 
 
-def eh_emergencial(objeto: str | None) -> bool:
-    return bool(_RE_EMERGENCIA.search(str(objeto or "")))
+def eh_emergencial(objeto: str | None, enquadramento: str | None = None) -> bool:
+    """A contratação é dispensa EMERGENCIAL — pelo objeto ou pelo dispositivo invocado?
+
+    `enquadramento` é opcional para não quebrar o chamador antigo, mas quem tem a coluna deve
+    passá-la: ela é a prova documental, e o texto do objeto é só o indício de linguagem.
+    """
+    if _RE_EMERGENCIA.search(str(objeto or "")):
+        return True
+    return bool(_RE_ENQ_EMERGENCIA.search(str(enquadramento or "")))
 
 
 def agrupar_emergencias(linhas, *, minimo: int = 5) -> list[dict]:
     """Agrupa contratações EMERGENCIAIS por unidade × exercício.
 
-    `linhas` = iterável de `(unidade, exercicio, fornecedor, valor, objeto)`.
+    `linhas` = iterável de `(unidade, exercicio, fornecedor, valor, objeto)` ou, melhor, de
+    `(unidade, exercicio, fornecedor, valor, objeto, enquadramento_legal)` — com o enquadramento,
+    a régua alcança as 891 dispensas emergenciais cujo objeto não diz "emergencial".
     `minimo` = quantas emergências no mesmo exercício para o grupo virar indício. Uma
     emergência isolada é o uso legítimo do inciso; o padrão é o que interessa.
 
@@ -58,8 +101,10 @@ def agrupar_emergencias(linhas, *, minimo: int = 5) -> list[dict]:
     fornecedores sugerem um serviço realmente sob pressão.
     """
     grupos: dict[tuple, dict] = {}
-    for unidade, exercicio, fornecedor, valor, objeto in linhas or []:
-        if not eh_emergencial(objeto):
+    for linha in linhas or []:
+        unidade, exercicio, fornecedor, valor, objeto = linha[:5]
+        enq = linha[5] if len(linha) > 5 else None
+        if not eh_emergencial(objeto, enq):
             continue
         chave = (str(unidade or "?"), exercicio)
         g = grupos.setdefault(chave, {"unidade": chave[0], "exercicio": exercicio, "n": 0,

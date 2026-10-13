@@ -1,0 +1,50 @@
+{
+ "numero": "SEI-070002/006258/2024",
+ "grau": "amarelo",
+ "leitor": "Claude — leitura dos autos arquivados (99 de 795 peças, 25/09/2026)",
+ "linha_do_tempo": [
+  [
+   "2023",
+   "Contrato INEA 32/2023 — lote do PE 24/2023 — R$ 39.824.687,21, 12 meses"
+  ],
+  [
+   "30/04/2024 → 04/08/2026",
+   "35 OBs — R$ 90.470.871,17 neste processo (2,27× o valor inicial)"
+  ],
+  [
+   "mar/2024",
+   "7ª medição: pagamento por HORA de máquina e MÊS de mão de obra"
+  ],
+  [
+   "2026",
+   "38ª medição: controle diário de horas por frente (Lago Purys, Rio Fagundes)"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "amarelo",
+   "diz": "Medição por disponibilidade (hora de máquina, mês de equipe) e nenhum item de PRODUTO (m³ removido, km limpo, material destinado): paga-se o tempo, não o resultado — a efetividade do desassoreamento não é medida.",
+   "fundamento": "Lei 8.666/1993, art. 6º, IX (projeto com quantitativos do serviço)"
+  },
+  {
+   "grau": "verde",
+   "diz": "Horas produtivas e improdutivas pagas a preços distintos (R$ 254,42 × R$ 109,51/h) — desenho correto.",
+   "fundamento": "EMOP"
+  }
+ ],
+ "parecer": "Execução documentada mês a mês com controle de horas; o problema é o desenho do contrato (paga disponibilidade) somado à origem (licitação com cláusula restritiva) e ao crescimento por prorrogação. Cruzar as horas do controle diário com as fotos da mesma data quando a íntegra trouxer as imagens.",
+ "conexoes": [
+  "PE 24/2023 do INEA (SEI-070002/015404/2022, sessão 04/08/2023): 6 lotes, ~16 licitantes; contratos 32 a 36/2023 + D.A.S (lote 1).",
+  "Em 4 dos 6 lotes a contratada NÃO foi a 1ª colocada: 9 afastamentos na habilitação antes de chegar a ela (Dratec afastada em 3 lotes).",
+  "Todos os lotes viraram contratos que dobraram ou triplicaram por prorrogação com valor: 34/2023 3,65×, 36/2023 2,22×, 35/2023 1,70×; 32/2023 já pagou 2,27× o valor inicial neste processo.",
+  "Oriente Construção Civil é SÓCIA da Nova Oriente Construção Civil (mesmo administrador desde 27/03/2024): R$ 764.211.810,57 do Estado somados; grupo concentrado na SECID (R$ 350,6 mi em 12 contratos) e DER-RJ — ver caso SECID/concentração por grupo.",
+  "Nenhum sócio em comum entre as 15 licitantes identificadas (QSA da Receita)."
+ ],
+ "verificar": [
+  "Aditivos do 32/2023 (não capturados; DOERJ local só cobre 2026).",
+  "Fotos dos relatórios fotográficos (fila de íntegra).",
+  "Produtividade: volume removido por hora faturada — não consta dos autos."
+ ],
+ "ressalvas": "Leitura sobre 12% dos autos.",
+ "caso": "vault/casos/inea-desassoreamento-pe-24-2023.md"
+}

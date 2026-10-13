@@ -40,7 +40,7 @@ def _num(v) -> str:
 
 
 def _con():
-    return sqlite3.connect(str(_DB))
+    return sqlite3.connect(str(_DB), timeout=120)
 
 
 def _quantil(ordenados: list, q: float) -> float | None:

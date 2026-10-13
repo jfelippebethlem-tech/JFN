@@ -223,6 +223,17 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
         except Exception as e:  # noqa: BLE001 — sem medição, C9 fica nao_avaliavel
             logger.debug("C9 sem medição de TAC para %s (%s) — detector degrada honesto",
                          cnpj, str(e)[:120])
+    # BASE DE COMPARAÇÃO: a taxa de TAC da UNIDADE onde o fornecedor mais recebeu. Sem ela o C9
+    # aponta para o lado errado — 24 dos 41 disparos do acervo eram de fornecedores a menos de 2×
+    # a taxa da própria unidade (nove a 29,8% onde a unidade paga 27,0%). Leitura de dicionário:
+    # o ranking por unidade já é calculado pelo cron.
+    if "tac_unidade" not in ctx:
+        try:
+            from compliance_agent.reporting.detector_tac import tac_da_unidade_do_cnpj
+            ctx["tac_unidade"] = tac_da_unidade_do_cnpj(str(cnpj))
+        except (ImportError, OSError, ValueError, KeyError, TypeError) as e:
+            # sem base, o C9 segue com o limiar absoluto (comportamento anterior)
+            logger.debug("C9 sem base de unidade para %s (%s)", cnpj, str(e)[:120])
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
     # C (fachada) — multi-resultado por investigação

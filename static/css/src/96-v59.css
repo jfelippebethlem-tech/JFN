@@ -195,4 +195,20 @@
      e quem visse o painel só lá concluiria que ela nunca tinha sido feita. Desenho parado custa
      um quadro, uma vez. */
 
+/* ══ v59 · O VALOR EXATO CABE NO CARTÃO — sem quebrar dentro dos dígitos ═══════════════════════
+   Em 24/09/2026 o `fmtRc` deixou de abreviar ("R$ 1,3 bi" → "R$ 1.311.540.133,79": regra da casa,
+   milhar + duas casas). O v54 tinha liberado `overflow-wrap:anywhere` para o número nunca ser
+   cortado, e com o valor inteiro isso passou a partir o número no meio: "R$ 1.311.540.13 / 3,79"
+   no TAC a 1440 px. MEDIDO pela sonda de valores: 1 KPI no panorama e 1 no TAC, em 2–3 linhas.
+   Cura em duas partes: (1) o cartão vira container e o corpo do valor encolhe com a LARGURA DO
+   CARTÃO na medida do COMPRIMENTO do valor — `--n` (caracteres visíveis, posto por `kpi()` em
+   nucleo/dom.js) × 0,62 em por caractere monoespaçado; o min() deixa no tamanho de antes tudo o
+   que já cabia ("302" não encolhe — a 1ª versão, 7,8cqi fixo, encolheu até os curtos no celular);
+   (2) a quebra só pode cair no espaço depois do "R$", nunca dentro dos dígitos. `.kpi` é item de
+   grade, então a contenção de largura não o colapsa. Sem `--n` (valor montado fora de `kpi()`) a
+   divisão dá enorme e vale o tamanho de sempre. */
+  .kpi{container-type:inline-size}
+  .kpi .v{font-size:min(clamp(15px,calc(0.95rem + 0.55vw),1.35rem),calc(100cqi / (var(--n,1) * 0.62)));
+    overflow-wrap:normal;word-break:keep-all}
+
 }

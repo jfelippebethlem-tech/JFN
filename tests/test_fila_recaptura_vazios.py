@@ -118,3 +118,35 @@ def test_nao_recaptura_arquivo_completo(tmp_path):
         "docs": [{"i": i, "titulo": f"d{i}", "chars": 500} for i in range(40)],
         "total_arvore": 40, "nao_capturados": 0}), encoding="utf-8")
     assert _arquivado_ok(arq) is True, "40 de 40 = completo → não re-captura"
+
+
+def test_relatorio_fotografico_vindo_so_do_cache_pede_a_integra(tmp_path):
+    """24/09/2026: 159 processos com relatório fotográfico arquivados só do TEXTO do cache — fotos/ vazia e a
+    fila os dava por prontos, então a íntegra (a única que baixa as fotos) nunca era pedida."""
+    import json as _j
+    arq = tmp_path / "080002_019408_2024"
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "005.txt").write_text("RELATORIO FOTOGRÁFICO " + "x" * 200, encoding="utf-8")
+    doc = {"i": "5", "titulo": "Relatório FOTOGRÁFICO (82081372)", "texto": "texto/005.txt", "chars": "3629",
+           "ocr": "True", "fotos": "[]", "via_cache": "ocr"}
+    man = {"origem": "cache CDP (cdp_SEI_080002_019408_2024.json) — texto já lido pelo sweep", "docs": [doc]}
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is False, "relatório fotográfico sem foto, vindo do cache → pedir a íntegra"
+    man["origem"] = "/home/ubuntu/JFN/data/sei_cache/integra_080002_019408_2024"   # já veio da íntegra
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is True, "depois da íntegra não repete, mesmo que o relatório não tenha imagem"
+
+
+def test_arvore_truncada_do_cache_pede_recaptura(tmp_path):
+    """25/09/2026: o cache grava `docs_na_arvore` (não `total_arvore`) — 809 processos truncados davam 'pronto'."""
+    import json as _j
+    arq = tmp_path / "070002_006459_2024"
+    (arq / "texto").mkdir(parents=True)
+    (arq / "texto" / "0.txt").write_text("TERMO ADITIVO " + "x" * 200, encoding="utf-8")
+    docs = [{"i": str(i), "titulo": f"Doc {i}", "texto": "texto/0.txt", "chars": "900", "fotos": "[]"} for i in range(124)]
+    man = {"origem": "cache CDP (…)", "docs": docs, "docs_na_arvore": 817}
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is False, "124 de 817 = truncado → recapturar"
+    man["docs_na_arvore"] = 125                                   # falta 1 (peça restrita): não reprocessa
+    (arq / "manifest.json").write_text(_j.dumps(man), encoding="utf-8")
+    assert _arquivado_ok(arq) is True

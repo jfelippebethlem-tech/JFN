@@ -8,9 +8,9 @@ separados (empenhado ≠ liquidado ≠ pago). Match por NOME = indício fraco
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
+import sqlite3
 
 from .camara import norm_nome
 
@@ -55,7 +55,9 @@ def d1_pix_impedida(con) -> list[dict]:
         risco = 7 if rejeitado else 6
         achados.append(_achado(
             "d1_pix_impedida", risco,
-            f"Emenda PIX impedida — {r['nome_beneficiario']}",
+            # o PLANO no título: um beneficiário com 36 planos impedidos são 36 achados, e sem
+            # o id eles colapsavam num só (a dedup do gravador e a poda decidem por título)
+            f"Emenda PIX impedida — {r['nome_beneficiario']} (plano {r['id_plano']}/{r['ano']})",
             f"Indício de transferência especial (art. 166-A CF) sem execução regular: "
             f"plano de ação {r['id_plano']} ({r['ano']}) do beneficiário "
             f"{r['nome_beneficiario']} (CNPJ {r['cnpj_beneficiario']}) está na situação "
@@ -100,31 +102,122 @@ def d2_concentracao_autor(con, share_minimo: float = D2_SHARE_MINIMO,
 
 # ── D3 — favorecido sancionado (CEIS/CNEP/…) ────────────────────────────────
 def d3_favorecido_sancionado(con) -> list[dict]:
+    """Favorecido de emenda que consta em cadastro de sanção — com a VIGÊNCIA conferida.
+
+    A versão anterior cruzava favorecido × sanção sem olhar data nenhuma, e acusava com risco 9.
+    Medido em 2026-08-10 sobre os 746 pares (emenda, favorecido) que casam: **656 (87,9%) têm
+    sanção que só COMEÇOU depois do ano da emenda** — e o vão não é de meses: 529 têm 2 anos ou
+    mais, 278 têm 4 ou mais. É a mesma lição de `situacao-cadastral-vigencia-na-data`, onde 78,7%
+    das acusações de "empresa não-ativa" eram anacrônicas.
+
+    Contratar quem JÁ ESTAVA sancionado é o achado. Contratar quem viria a ser sancionado anos
+    depois é informação de contexto — pode até indicar que o problema já existia e só foi apurado
+    tarde, mas não sustenta acusação, e chamar as duas coisas de "favorecido sancionado" com risco
+    9 é fabricar gravidade.
+
+    RESSALVA DE MÉTODO: a régua aqui é o ANO DA EMENDA, não a data do pagamento — o
+    `emenda_favorecidos` não guarda data de pagamento (só `coletado_em`, que é nossa). Um pagamento
+    pode ocorrer anos depois da emenda, então o corte de 1 ano de vão é conservador de propósito: o
+    achado posterior não some, muda de natureza e de risco.
+    """
+    # O CASAMENTO É EM MEMÓRIA, não em SQL. O join anterior tinha um `OR` com `substr()`, o que
+    # impede o uso dos índices: o plano virava SCAN × SCAN — 24.220 favorecidos × 25.218 sanções =
+    # ~600 milhões de comparações por corrida, numa máquina de 2 vCPU. Dois dicionários (por
+    # documento e por raiz de CNPJ) fazem o mesmo em segundos, e o resultado é idêntico porque a
+    # regra de casamento é exatamente essa: documento igual, ou raiz igual quando os dois são CNPJ.
+    from compliance_agent.sancao_impeditiva import e_impeditiva as _impeditiva
+
     achados = []
-    rows = con.execute("""
-        select f.codigo_emenda, f.documento_favorecido, f.nome_favorecido, f.valor,
-               s.cadastro, s.categoria, s.orgao, s.cpf_cnpj as doc_sancao
-        from emenda_favorecidos f
-        join sancoes_federais s
-          on s.cpf_cnpj = f.documento_favorecido
-          or (length(f.documento_favorecido) = 14
-              and length(s.cpf_cnpj) = 14
-              and substr(s.cpf_cnpj, 1, 8) = substr(f.documento_favorecido, 1, 8))
-        group by f.codigo_emenda, f.documento_favorecido, s.cadastro, s.cpf_cnpj""").fetchall()
+    por_doc: dict[str, list] = {}
+    por_raiz: dict[str, list] = {}
+    for s_ in con.execute("select cadastro, cpf_cnpj, categoria, orgao, data_inicio, data_fim "
+                          "from sancoes_federais"):
+        d = (s_["cpf_cnpj"] or "").strip()
+        por_doc.setdefault(d, []).append(s_)
+        if len(d) == 14:
+            por_raiz.setdefault(d[:8], []).append(s_)
+
+    rows, visto = [], set()
+    for f_ in con.execute(
+            "select f.codigo_emenda, f.documento_favorecido, f.nome_favorecido, f.valor, "
+            "e.ano as ano_emenda from emenda_favorecidos f "
+            "left join emendas e on e.codigo = f.codigo_emenda"):
+        doc = (f_["documento_favorecido"] or "").strip()
+        candidatas = por_doc.get(doc) or (por_raiz.get(doc[:8], []) if len(doc) == 14 else [])
+        for s_ in candidatas:
+            # mesma chave de dedup do `group by` anterior
+            chave = (f_["codigo_emenda"], doc, s_["cadastro"], s_["cpf_cnpj"])
+            if chave in visto:
+                continue
+            visto.add(chave)
+            rows.append({**dict(f_), "cadastro": s_["cadastro"], "categoria": s_["categoria"],
+                         "orgao": s_["orgao"], "doc_sancao": s_["cpf_cnpj"],
+                         "data_inicio": s_["data_inicio"], "data_fim": s_["data_fim"]})
+
+    def _ano(v) -> int | None:
+        t = str(v or "")[:4]
+        return int(t) if t.isdigit() else None
+
     for r in rows:
         exato = r["doc_sancao"] == r["documento_favorecido"]
-        risco = 9 if exato else 7
+        ano_e, ini, fim = _ano(r["ano_emenda"]), _ano(r["data_inicio"]), _ano(r["data_fim"])
+        if ano_e is None or ini is None:
+            vigencia, risco = "indeterminada", (7 if exato else 5)
+        elif ini > ano_e:
+            vigencia, risco = "posterior", 3
+        elif fim is not None and fim < ano_e:
+            vigencia, risco = "encerrada", 3
+        else:
+            vigencia, risco = "vigente", (9 if exato else 7)
+
+        # VIGENTE não basta: a sanção precisa VEDAR CONTRATAR. Multa do CNEP e publicação
+        # extraordinária da decisão condenatória (Lei 12.846, art. 6º) são penalidades reais que
+        # não impedem contratação. Medido em 2026-08-10: 10 dos 60 vigentes (16,7%) eram desses —
+        # saíam com o mesmo risco 9 dos impedimentos e das inidoneidades. Régua única em
+        # `sancao_impeditiva`, a mesma do `nucleo/adaptador_db` e do `cruzamentos_intel`.
+        if vigencia == "vigente" and not _impeditiva(r["categoria"]):
+            vigencia, risco = "nao_impeditiva", 4
+
+        rotulo = {"vigente": "Favorecido sancionado",
+                  "nao_impeditiva": "Favorecido com sanção NÃO impeditiva vigente",
+                  "posterior": "Favorecido sancionado APÓS a emenda",
+                  "encerrada": "Favorecido com sanção encerrada antes da emenda",
+                  "indeterminada": "Favorecido sancionado (vigência não apurada)"}[vigencia]
+        # SEM DICIONÁRIO LITERAL AQUI. Um `{...}[vigencia]` avalia TODOS os ramos antes de escolher,
+        # e o ramo "posterior" faz aritmética com as datas: numa sanção sem `data_inicio` isso
+        # estoura com TypeError e derruba o detector inteiro. Foi o que um teste da casa pegou —
+        # as minhas fixtures tinham data em todas as linhas e não alcançavam o caso.
+        if vigencia == "vigente":
+            explica = "Indício grave: a sanção já estava VIGENTE no ano da emenda"
+        elif vigencia == "posterior":
+            explica = (f"NÃO é acusação: a sanção só começou em {ini}, {ini - ano_e} ano(s) DEPOIS "
+                       f"da emenda de {ano_e}. Serve de contexto sobre o favorecido, não de "
+                       "irregularidade na emenda")
+        elif vigencia == "encerrada":
+            explica = f"NÃO é acusação: a sanção terminou em {fim}, antes da emenda de {ano_e}"
+        elif vigencia == "nao_impeditiva":
+            explica = (f"A sanção estava vigente, mas é '{r['categoria']}' — categoria que NÃO veda "
+                       "contratar (multa e publicação extraordinária são penalidades, não "
+                       "impedimento). Não sustenta acusação de contratação irregular")
+        else:
+            explica = ("Vigência não apurada — falta o ano da emenda ou a data da sanção; "
+                       "INDISPONÍVEL, não confirmação")
         achados.append(_achado(
             "d3_favorecido_sancionado", risco,
-            f"Favorecido sancionado — {r['nome_favorecido']}",
-            f"Indício grave: o favorecido {r['nome_favorecido']} "
+            # a EMENDA no título: o mesmo favorecido sancionado em 60 emendas são 60 achados
+            f"{rotulo} — {r['nome_favorecido']} (emenda {r['codigo_emenda']})",
+            f"{explica}. Favorecido {r['nome_favorecido']} "
             f"(doc. {r['documento_favorecido']}) da emenda {r['codigo_emenda']} consta no "
-            f"{r['cadastro']} ({r['categoria'] or 'sanção'}, órgão {r['orgao'] or 'n/d'})"
+            f"{r['cadastro']} ({r['categoria'] or 'sanção'}, órgão {r['orgao'] or 'n/d'}), "
+            f"sanção de {r['data_inicio'] or 'data n/d'} a {r['data_fim'] or 'sem fim declarado'}"
             + ("" if exato else " — match pela RAIZ do CNPJ (filial/matriz), conferir")
-            + f". Valor no documento: R$ {_brl(r['valor'])}. "
-            f"(fontes: API Portal da Transparência /emendas/documentos + tabela sancoes_federais/CEIS)",
+            + f". Valor no documento: R$ {_brl(r['valor'])}. A régua é o ANO DA EMENDA: o "
+            "`emenda_favorecidos` não guarda data de pagamento. "
+            f"(fontes: API Portal da Transparência /emendas/documentos + sancoes_federais/CEIS)",
             {"cadastro": r["cadastro"], "doc": r["documento_favorecido"],
-             "match_exato": exato}, r["codigo_emenda"]))
+             "match_exato": exato, "vigencia_na_emenda": vigencia,
+             "ano_emenda": ano_e, "sancao_inicio": r["data_inicio"], "sancao_fim": r["data_fim"]},
+            r["codigo_emenda"]))
     return achados
 
 
@@ -180,8 +273,31 @@ def d4_favorecido_fantasma(con, avaliar_cnpj=None, valor_minimo: float = D4_VALO
 
 # ── D5 — retroalimentação eleitoral (doador ∈ QSA do favorecido) ────────────
 def d5_retroalimentacao_eleitoral(con) -> list[dict]:
+    """Doador de campanha do AUTOR da emenda que é sócio do FAVORECIDO dela.
+
+    COBERTURA, e ela é pequena: a ponte é o NOME do candidato contra o nome normalizado do autor
+    da emenda. Medido em 2026-08-10: **8 dos 130 autores (6,2%)** casam com algum candidato nas
+    542.244 doações da base. Um "0 achados" aqui fala sobre 6% dos autores, não sobre o Estado — e
+    até hoje saía como `ok: 0 achado(s)`, indistinguível de "varri tudo e está limpo".
+
+    A cobertura passa a viajar com o resultado (atributo `cobertura` da própria função, lido pelo
+    orquestrador), porque detector quase cego que se declara `ok` é a mesma família do zero sem
+    causa.
+    """
     con.create_function("jfn_norm", 1, norm_nome)
     achados = []
+    try:
+        autores = con.execute("select count(distinct autor_norm) from emendas").fetchone()[0]
+        casam = con.execute(
+            "select count(*) from (select distinct jfn_norm(nome_candidato) n "
+            "                      from doacoes_eleitorais) x "
+            "join (select distinct autor_norm a from emendas) y on x.n = y.a").fetchone()[0]
+        d5_retroalimentacao_eleitoral.cobertura = (
+            f"{casam} de {autores} autor(es) de emenda casam com candidato na base de doações "
+            f"({100.0 * casam / autores:.1f}%) — o resto é INDISPONÍVEL, não limpo"
+            if autores else "sem emendas na base")
+    except sqlite3.Error as exc:
+        d5_retroalimentacao_eleitoral.cobertura = f"cobertura não medida: {exc}"
     rows = con.execute("""
         select e.codigo, e.autor_raw, e.autor_norm,
                f.documento_favorecido, f.nome_favorecido,
@@ -267,18 +383,21 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
     for nome, fn in _DETECTORES.items():
         try:
             res = fn(con)
-            cobertura[nome] = f"ok: {len(res)} achado(s)"
+            # detector que sabe da própria cegueira anexa `cobertura`; sem isso, `ok: 0 achado(s)`
+            # é indistinguível de "varri tudo e está limpo" (ver d5, que enxerga 6,2% dos autores)
+            extra = getattr(fn, "cobertura", "")
+            cobertura[nome] = f"ok: {len(res)} achado(s)" + (f" — {extra}" if extra else "")
             achados.extend(res)
         except Exception as e:
             logger.exception("detector %s falhou", nome)
             cobertura[nome] = f"ERRO (INDISPONÍVEL ≠ 0): {e}"
     achados.sort(key=lambda a: -a["risco"])
     if gravar_alertas:
-        for a in achados:
-            con.execute(
-                """insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
-                   values (?,?,?,?,?, 'novo')""",
-                (f"emendas_{a['detector']}", _sev(a["risco"]), a["titulo"],
-                 a["descricao"], json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
-        con.commit()
+        # Antes: INSERT cru a cada corrida, sem dedup e sem poda — 81,3% das 2.322 linhas de
+        # alerta de emendas eram cópias de reexecução (a mesma ONG sancionada 60 vezes). A
+        # persistência agora é a mesma dos dois lados, com as três regras num lugar só.
+        from compliance_agent.alertas_persistencia import gravar as _gravar
+        poda = _gravar(con, achados, cobertura, prefixo="emendas",
+                       detectores=_DETECTORES, severidade=_sev)
+        return {"achados": achados, "cobertura": cobertura, "poda": poda}
     return {"achados": achados, "cobertura": cobertura}

@@ -41,6 +41,10 @@ _MARCOS: dict[str, tuple[str, str]] = {
     "pagamento": (r"ordem_bancaria|ob\b", r"ordem\s+banc[áa]ria|\b20\d{2}OB\d+"),
 }
 
+# marcos cujo TÍTULO precisa confirmar o tipo (ver a nota em `_marco`): a acusação aqui é de
+# inversão da ordem legal da despesa, e o `tipo` do arquivador erra 79% das vezes.
+_CADEIA_ORCAMENTARIA = ("empenho", "liquidacao", "pagamento")
+
 # (antes, depois, tipo do achado, fundamento) — o que a lei manda vir primeiro
 _REGRAS: tuple[tuple[str, str, str, str], ...] = (
     ("parecer_juridico", "contrato", "contrato_antes_do_parecer",
@@ -113,6 +117,22 @@ def _marco(doc: dict) -> str | None:
     for nome, (pat_tipo, pat_titulo) in _MARCOS.items():
         if re.search(pat_tipo, tipo, re.I) or re.search(pat_titulo, titulo, re.I):
             if nome in ("contrato", "aditivo") and _RE_NAO_CONTRATO.search(titulo):
+                continue
+            # A CADEIA ORÇAMENTÁRIA EXIGE A MARCA DO ATO NO TÍTULO. O casamento acima é um OU: o
+            # `tipo` do arquivador sozinho basta — e ele mente. Medido em 2026-08-05 nos 24
+            # achados de cadeia do acervo: **19 (79%) apontavam como peça “fora de ordem” um
+            # documento que não é da fase alegada**. Seis eram "Planilha de Controle de
+            # Faturamento" tipada PAGAMENTO — planilha de faturamento é controle interno de
+            # cobrança, e empenho ≠ liquidação ≠ OB; quatro eram "Correspondência Interna - NI/NA"
+            # tipada LIQUIDAÇÃO; uma era "Documento Trabalhista"; outra, "Declaração NÃO RETENÇÃO
+            # INSS" tipada CONTRATO.
+            #
+            # É a mesma doutrina que o A1 da triagem já aplica ("dupla concordância: o tipo do
+            # arquivador E o classificador por título"), e que aqui faltava justamente onde a
+            # acusação é de inversão da ordem legal dos arts. 60, 62 e 63 da Lei 4.320/1964.
+            # Para empenho/liquidação/pagamento o título tem de trazer a marca do ato — o nome da
+            # peça ou o número SIAFE (20XXNE/NL/OB). Sem ela, não é marco: é papel do processo.
+            if nome in _CADEIA_ORCAMENTARIA and not re.search(pat_titulo, titulo, re.I):
                 continue
             # "Anexo Contrato <Empresa>" é cópia JUNTADA (habilitação/terceiro), não o ato:
             # anexo só é marco de contrato se o título ESTRITO confirmar (Termo/Nº/Instrumento).

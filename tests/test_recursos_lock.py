@@ -71,3 +71,16 @@ def test_aquisicao_rouba_lock_pre_boot(monkeypatch):
         assert int(dono) == os.getpid()
     finally:
         _limpa()
+
+
+def test_lock_com_nome_e_um_arquivo_a_parte_e_nao_bloqueia_o_padrao(tmp_path, monkeypatch):
+    """Dois slots (SEI × SIAFE): cada família serializa a sua, e no máximo dois Chromiums na VM (11/09/2026)."""
+    import compliance_agent.recursos as R
+    monkeypatch.setattr(R, "_LOCK", tmp_path / "browser.lock")
+    assert R._arquivo_lock("siafe") == tmp_path / "browser_siafe.lock"
+    with R.browser_lock(espera_max=1):
+        with R.browser_lock(espera_max=1, nome="siafe"):        # slot diferente: não espera
+            assert (tmp_path / "browser.lock").exists() and (tmp_path / "browser_siafe.lock").exists()
+        assert not (tmp_path / "browser_siafe.lock").exists()   # soltou só o seu
+        assert (tmp_path / "browser.lock").exists()
+    assert not (tmp_path / "browser.lock").exists()

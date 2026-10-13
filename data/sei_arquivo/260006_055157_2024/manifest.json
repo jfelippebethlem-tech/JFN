@@ -3,16 +3,139 @@
  "gerado_em": "2026-07-06T07:36:20+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_055157_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "termo de encerramento de processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1273,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "comprovante 2025ob02391",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob02391.txt",
+   "chars": 927,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "comprovante 2025ob00403",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2025ob00403.txt",
+   "chars": 921,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "nota de liquida o nl 07291",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_nota_de_liquida_o_nl_07291.txt",
+   "chars": 2466,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "anexo consultarsituacaofornecedor 020165",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/007_anexo_consultarsituacaofornecedor_020165.txt",
+   "chars": 1563,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "anexo 2024ne06551 diagprime 34212 23",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/008_anexo_2024ne06551_diagprime_34212_23.txt",
+   "chars": 2494,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "anexo nad 2023009725 0004 diagprime 3421",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/009_anexo_nad_2023009725_0004_diagprime_3421.txt",
+   "chars": 2055,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "nota fiscal nf 0",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/010_nota_fiscal_nf_0.txt",
+   "chars": 3111,
+   "ocr": false,
+   "fotos": [
+    "fotos/010_p01.jpg"
+   ]
+  },
+  {
+   "i": 11,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1259,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 6,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 5,
+  "indefinida": 1
  },
  "lacunas": [
   {
@@ -26,7 +149,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

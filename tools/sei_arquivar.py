@@ -21,6 +21,7 @@ Consulta canônica depois: tools/sei_consultar.py (NÃO reinventar parsing).
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -33,6 +34,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import fitz
 
 from compliance_agent.sei.fases import FASES, classificar, lacunas
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parents[1]
 CACHE = RAIZ / "data" / "sei_cache"
@@ -109,6 +112,12 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
     (destino / "fotos").mkdir(parents=True, exist_ok=True)
 
     titulos = {}
+    # Inicializado AQUI, fora do `if mpath.exists()`. Antes só era definido lá dentro, e um
+    # diretório de íntegra SEM `manifest.json` — o que sobra quando a captura é interrompida
+    # antes de gravá-lo — estourava `UnboundLocalError` na varredura dos PDFs mais abaixo.
+    # Latente no acervo de 2026-08-23 (83 diretórios com PDF, todos com manifesto), mas
+    # capturas SÃO interrompidas: descoberto por um teste que montou o caso sem manifesto.
+    alheios_i: set[int] = set()
     captura_completa = None   # None = manifesto antigo (não declara); True/False = novo
     total_arvore = None
     mpath = origem / "manifest.json"
@@ -155,6 +164,31 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
         tipos_vistos.add(tipo)
         entrada = {"i": i, "titulo": titulo, "fase": fase, "tipo": tipo,
                    "texto": "", "chars": 0, "ocr": False, "fotos": []}
+
+        # RETOMADA INCREMENTAL — sem isto, processo grande NUNCA completa.
+        # Medido em 2026-08-23 no `080002/019206/2025` (40 PDFs): o disparo refazia do `000.pdf`
+        # a cada vez e o `timeout 1500` do lane cortava por volta do 13º. Os txt de 000-012
+        # apareciam reescritos com hora nova a cada disparo — trabalho refeito e jogado fora, e
+        # NADA no log denunciava: cada disparo parecia progresso. Reaproveitar o texto já extraído
+        # torna o trabalho monotônico; o disparo seguinte continua de onde o anterior parou.
+        # O OCR é o custo (minutos por PDF de imagem); ler o txt de volta custa microssegundos.
+        pronto = next(destino.glob(f"texto/{i:03d}_*.txt"), None)
+        if pronto is not None and pronto.stat().st_mtime >= pdf.stat().st_mtime:
+            try:
+                bruto_txt = pronto.read_text("utf-8", errors="ignore")
+                # o arquivo guarda `[titulo] (fase: X · tipo: Y)\n\n<texto>`; o corpo é o que
+                # vem depois do cabeçalho — é ele que conta para `chars`.
+                corpo = bruto_txt.split("\n\n", 1)[1] if "\n\n" in bruto_txt else ""
+                entrada["texto"] = f"texto/{pronto.name}"
+                entrada["chars"] = len(corpo)
+                entrada["reaproveitado"] = True
+                entrada["fotos"] = sorted(
+                    f"fotos/{f.name}" for f in destino.glob(f"fotos/{i:03d}_p*.jpg"))
+                docs_saida.append(entrada)
+                continue
+            except OSError as e:
+                logger.debug("reaproveitamento do texto existente falhou: %s", e)    # txt ilegível: cai no caminho normal e reextrai
+
         try:
             doc = fitz.open(str(pdf))
         except Exception:
@@ -230,6 +264,19 @@ def arquivar(origem: Path, destino: Path, processo: str = "",
             cap_ant = sum(1 for d in (anterior.get("docs") or [])
                           if isinstance(d, dict) and not d.get("nao_capturado"))
             if cap_ant > cap_novos:
+                # TOCAR O MTIME AO PRESERVAR. Manter o antigo é a decisão certa, mas ela não
+                # mexia no manifesto — e `arquivar_pendentes` monta a fila por "cache mais novo
+                # que o manifesto". Resultado medido em 2026-08-23: o `030001_087722_2024`
+                # reaparecia em TODO disparo do lane, e o OCR dos 319 PDFs rodava ANTES da
+                # decisão de preservar. Com `timeout 1500`, os dois primeiros processos comiam
+                # os 25 min e o lane terminava em 124 sem NUNCA alcançar o resto da fila — o
+                # `080002/019206/2025` ficou 3 disparos sem ser tocado por isso.
+                # Mesmo bug, mesmo conserto que `sei_arquivar_do_cache` já aplicara em
+                # 2026-08-15: o irmão foi corrigido, este não. O conteúdo não muda.
+                try:
+                    mdest_ant.touch()
+                except OSError as e:
+                    logger.debug("mtime do manifesto anterior não tocado: %s", e)
                 print(f"  preservado: {destino.name} já tinha {cap_ant} docs capturados "
                       f"(> {cap_novos} agora) — não regrido", flush=True)
                 return anterior
@@ -274,10 +321,29 @@ def arquivar_pendentes(ocr: bool = True, apagar_pdf: bool = False) -> int:
     """Arquiva toda íntegra em data/sei_cache/integra_* ainda sem arquivo
     (ou re-baixada depois do arquivamento). Para o supervisor do sweep."""
     feitos = 0
-    for origem in sorted(CACHE.glob("integra_*")):
-        if not origem.is_dir() or not any(origem.glob("[0-9][0-9][0-9]*.pdf")):
+    # ORDEM POR CUSTO, NÃO ALFABÉTICA. Medido em 2026-08-23: a fila tinha 10 processos e o
+    # primeiro em ordem alfabética (`070002_005897_2024`) traz 741 PDFs / 548 MB — sozinho ele
+    # estoura o `timeout 1500` do lane, e o `080002/019206/2025` (3º, 40 PDFs) nunca era
+    # alcançado. Alfabético não é prioridade: é sorteio pelo nome. Menor primeiro faz a fila
+    # ANDAR — os grandes passam quando sobrarem sozinhos, e nenhum fica preso atrás deles.
+    def _peso(d: Path) -> tuple:
+        try:
+            return (sum(p.stat().st_size for p in d.glob("[0-9][0-9][0-9]*.pdf")), d.name)
+        except OSError:
+            return (0, d.name)
+
+    for origem in sorted((d for d in CACHE.glob("integra_*") if d.is_dir()), key=_peso):
+        if not any(origem.glob("[0-9][0-9][0-9]*.pdf")):
             continue
         tag = origem.name.replace("integra_", "")
+        # TAG MALFORMADA: resíduo do bug do prefixo `SEI-` (`integra_____080002_...`), corrigido
+        # em `sei_integra_completa.py` mas com diretórios antigos ainda no cache. Sem esta guarda
+        # o lane tentaria arquivá-los em TODO disparo e criaria `sei_arquivo/____080002_...` —
+        # lixo novo a partir de lixo velho. Os processos reais já estão arquivados sob o slug
+        # correto; o cache órfão fica onde está (apagar dado não é chamada de quem repara).
+        if not (len(tag.split("_")) == 3 and all(x.isdigit() for x in tag.split("_"))):
+            print(f"  ignorado (slug malformado, resíduo do prefixo SEI-): {origem.name}", flush=True)
+            continue
         destino = ARQUIVO / tag
         mdest = destino / "manifest.json"
         if mdest.exists() and mdest.stat().st_mtime >= max(

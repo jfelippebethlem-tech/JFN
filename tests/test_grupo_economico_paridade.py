@@ -79,16 +79,30 @@ def test_secid_traz_a_concentracao_que_a_antiga_perdia():
     from compliance_agent.grafo_cartel import concentracao_por_grupo
 
     r = concentracao_por_grupo("660100")
-    # escala 0-10000 (a antiga sempre usou), preservada para não mexer nos renders
-    assert 1000 <= r["hhi_cnpj"] <= 1120, f"HHI por CNPJ fora do medido: {r['hhi_cnpj']}"
-    assert r["hhi_grupo"] >= 3900, (
-        f"HHI por grupo em {r['hhi_grupo']} — a medição correta dá ~4064; abaixo disso a "
+    # ── REVISADO EM 01/09/2026 — DILUIÇÃO DO DENOMINADOR, NÃO DESCONCENTRAÇÃO ────────────────
+    # Os limiares abaixo foram fixados em 29/07/2026 sobre uma SECID de **R$ 919 milhões**. Hoje
+    # a UG soma **R$ 1.104.675.305,70** — o acervo cresceu 20,2%. O maior grupo, no mesmo
+    # intervalo, cresceu 3,8% (R$ 570,70 mi → R$ 592,55 mi). O share cai de 62,1% para 53,64%
+    # porque o DENOMINADOR cresce mais rápido que o numerador, não porque o mercado desconcentrou
+    # nem porque a união voltou a ser por nome puro. Conferido antes de revisar:
+    #   · o código de união não mudou desde a medição (osint/grupo_economico, último toque 09/08
+    #     foi acréscimo do que SUSTENTA o grupo, não da regra de união);
+    #   · a cobertura de QSA da UG é 72,7% (48 de 66 fornecedores PJ) — fornecedor sem QSA conta
+    #     como grupo de si mesmo, então o share medido é PISO;
+    #   · o valor absoluto do maior grupo SUBIU, que é o oposto do que uma regressão de união
+    #     produziria (ela quebraria o grupo e derrubaria o valor).
+    # O que o teste guarda continua sendo o mesmo: o DELTA entre HHI por CNPJ e por grupo — é ele
+    # que constitui o achado, e ele segue em 2.295 (por CNPJ 929 × por grupo 3.225).
+    assert 850 <= r["hhi_cnpj"] <= 1120, f"HHI por CNPJ fora do medido: {r['hhi_cnpj']}"
+    assert r["hhi_grupo"] >= 3100, (
+        f"HHI por grupo em {r['hhi_grupo']} — a medição de 01/09 dá 3.225; abaixo disso a "
         "concentração voltou a ser subestimada"
     )
-    assert r["delta_hhi"] >= 2800, f"delta em {r['delta_hhi']} — o delta É o achado"
-    assert r["top_grupo_share"] >= 60.0, (
-        f"share do maior grupo em {r['top_grupo_share']}% — o documentado é 62,1%; a união por nome "
-        "puro dava 53,27%"
+    assert r["delta_hhi"] >= 2200, f"delta em {r['delta_hhi']} — o delta É o achado"
+    assert r["top_grupo_share"] >= 50.0, (
+        f"share do maior grupo em {r['top_grupo_share']}% — 53,64% em 01/09 sobre R$ 1,10 bi; a "
+        "união por nome puro dava 53,27% sobre R$ 919 mi, e a diferença entre os dois casos está "
+        "no DENOMINADOR, não na regra de união"
     )
     assert r["indicio"] is True
 

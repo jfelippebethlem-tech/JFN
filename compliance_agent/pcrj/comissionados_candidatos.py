@@ -32,40 +32,65 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _URL = "https://cdn.tse.jus.br/estatistica/sead/odsele/consulta_cand/consulta_cand_{ano}.zip"
 _C = {"ano": 2, "uf": 10, "munic": 12, "cargo": 14, "nome": 17}
 ANOS_MUNICIPAIS = [2016, 2020, 2024]
-# Comissionado na Prefeitura do Rio: cargo em comissão. 'ESPECIAL' é o rótulo dominante.
-_RE_COMISSIONADO = re.compile(r"\bESPECIAL\b|\bDAS\b|\bDAI\b|COMISS|ASSESSOR", re.IGNORECASE)
+# Comissionado na Prefeitura do Rio: classificador canônico (pericia_beneficios). A regex local antiga
+# (\bESPECIAL\b em qualquer posição) gravava "AGENTE DE APOIO A EDUCACAO ESPECIAL" — cargo EFETIVO — como
+# comissionado: 20 registros / 16 pessoas, removidos em 29/09/2026.
+from compliance_agent.pcrj.pericia_beneficios import _cargo_comissionado  # noqa: E402
 _ADM_MIN = 2021
 
 
+class TSEIndisponivel(RuntimeError):
+    """Nenhum candidato baixado nem em cache — cruzar contra lista vazia marcaria meses como feitos à toa."""
+
+
+def _cache_path(ano: int):
+    return _db.DB_PATH.parent / "tse_cache" / f"consulta_cand_{ano}_RJ.csv"
+
+
 def _candidatos(anos: list[int], apenas_municipio: str | None) -> dict[str, dict]:
-    """Nomes de candidatos (RJ) → info da candidatura mais recente. Dedup por nome normalizado."""
+    """Nomes de candidatos (RJ) → info da candidatura mais recente. Dedup por nome normalizado.
+
+    27/09/2026: o CDN do TSE passou a responder 403 (Akamai "Access Denied") para os IPs de nuvem das duas VMs, e
+    esta função devolvia {} CALADA — o coletor mensal seguiu "cruzando" 33 competências contra zero candidatos e as
+    marcou como feitas. Agora o CSV do RJ de cada ano fica em CACHE local ao baixar, é lido de lá quando o CDN recusa,
+    e sem nenhum dos dois levanta TSEIndisponivel (o serviço fica 'failed', visível)."""
     cands: dict[str, dict] = {}
     for ano in anos:
+        linhas = None
+        cache = _cache_path(ano)
         try:
             r = requests.get(_URL.format(ano=ano), verify=False, timeout=300)
             r.raise_for_status()
-        except requests.RequestException as exc:
+            with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+                nome_csv = next((n for n in z.namelist() if n.lower().endswith("_rj.csv")), None)
+                if nome_csv:
+                    bruto = z.read(nome_csv)
+                    cache.parent.mkdir(parents=True, exist_ok=True)
+                    cache.write_bytes(bruto)
+                    linhas = bruto
+        except (requests.RequestException, zipfile.BadZipFile) as exc:
             print(f"  [{ano}] erro download: {exc}", flush=True)
+        if linhas is None and cache.exists():
+            print(f"  [{ano}] usando CACHE local ({cache.name})", flush=True)
+            linhas = cache.read_bytes()
+        if linhas is None:
             continue
-        with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-            nome_csv = next((n for n in z.namelist() if n.lower().endswith("_rj.csv")), None)
-            if not nome_csv:
+        leitor = csv.reader(io.TextIOWrapper(io.BytesIO(linhas), encoding="latin-1", newline=""), delimiter=";")
+        next(leitor, None)
+        for row in leitor:
+            if len(row) <= _C["nome"] or (row[_C["uf"]] or "").strip().upper() != "RJ":
                 continue
-            with z.open(nome_csv) as fh:
-                leitor = csv.reader(io.TextIOWrapper(fh, encoding="latin-1", newline=""), delimiter=";")
-                next(leitor, None)
-                for row in leitor:
-                    if len(row) <= _C["nome"] or (row[_C["uf"]] or "").strip().upper() != "RJ":
-                        continue
-                    munic = (row[_C["munic"]] or "").strip().upper()
-                    if apenas_municipio and munic != apenas_municipio:
-                        continue
-                    nn = normalizar(row[_C["nome"]])
-                    if not nn:
-                        continue
-                    cands[nn] = {"nome": row[_C["nome"]].strip(), "cidade": munic,
-                                 "ano": int(row[_C["ano"]] or ano), "cargo": row[_C["cargo"]].strip()}
+            munic = (row[_C["munic"]] or "").strip().upper()
+            if apenas_municipio and munic != apenas_municipio:
+                continue
+            nn = normalizar(row[_C["nome"]])
+            if not nn:
+                continue
+            cands[nn] = {"nome": row[_C["nome"]].strip(), "cidade": munic,
+                         "ano": int(row[_C["ano"]] or ano), "cargo": row[_C["cargo"]].strip()}
         print(f"  [{ano}] {len(cands)} candidatos únicos acumulados", flush=True)
+    if not cands:
+        raise TSEIndisponivel("nenhum candidato do TSE (download recusado e sem cache local) — cruzamento NÃO rodado")
     return cands
 
 
@@ -100,7 +125,7 @@ def coletar(anos: list[int] | None = None, apenas_municipio: str | None = "RIO D
             for row in linhas:
                 if normalizar(row.get("nome", "")) != nn:
                     continue
-                if not _RE_COMISSIONADO.search(row.get("cargo", "")):
+                if not _cargo_comissionado(row.get("cargo", "")):
                     continue                       # só comissionados
                 adm_ano = _ano(row.get("admissao", ""))
                 if not adm_ano or adm_ano < _ADM_MIN:
@@ -234,7 +259,7 @@ def coletar_mensal(anos: list[int] | None = None,
             for row in sess.consultar_nome(info["nome"], mm, aa) or []:
                 if normalizar(row.get("nome", "")) != nn:
                     continue
-                if not _RE_COMISSIONADO.search(row.get("cargo", "")):
+                if not _cargo_comissionado(row.get("cargo", "")):
                     continue
                 adm_ano = _ano(row.get("admissao", ""))
                 if not adm_ano or adm_ano < _ADM_MIN:

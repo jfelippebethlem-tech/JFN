@@ -141,3 +141,30 @@ def test_prorrogacao_e_reajuste_nao_entram_como_supressao():
         {"objeto": "prorrogação de vigência", "valor_acrescido": 500_000.0},
         {"objeto": "reajuste pelo IPCA", "valor_acrescido": 300_000.0}]))
     assert r.status == "descartado" and r.valores["supressao"] == 0.0
+
+
+# ───────── invariante físico: não se suprime mais do que existe (2026-08-04) ─────────
+
+def test_supressao_maior_que_o_contrato_e_leitura_quebrada_nao_achado():
+    """Medido no SEI-070002/013553/2024: supressão de R$ 1.153.949,75 sobre um "valor inicial" de
+    R$ 71.974,32 — **1603% suprimidos**. O detector devolvia `critico` com score 1,0 e levava o
+    processo a EXTREMO (score 80) com ZERO achados visíveis. Passar de 100% não é contrato
+    esvaziado, é `valor_inicial` colhido do documento errado; erro de leitura não vira acusação.
+    """
+    from compliance_agent.detectores.x9_supressao_abusiva import X9SupressaoAbusiva
+    r = X9SupressaoAbusiva().avaliar({
+        "processo": "SEI-070002/013553/2024", "valor_inicial": 71_974.32,
+        "aditivos": [{"objeto": "supressão de itens", "valor_acrescido": -1_153_949.75}]})
+    assert r.status == "nao_avaliavel" and r.score == 0.0
+    assert r.valores.get("leitura_incoerente") is True
+    assert "não se suprime mais do que existe" in (r.motivo_refutacao or "").lower()
+
+
+def test_supressao_de_exatamente_100_por_cento_ainda_e_achado():
+    """O corte é em MAIS de 100%: suprimir o contrato inteiro é fisicamente possível — e é o
+    esvaziamento que o art. 126 veda. Cortar em >= 100% apagaria o caso mais grave."""
+    from compliance_agent.detectores.x9_supressao_abusiva import X9SupressaoAbusiva
+    r = X9SupressaoAbusiva().avaliar({
+        "processo": "P-1", "valor_inicial": 500_000.0,
+        "aditivos": [{"objeto": "supressão total", "valor_acrescido": -500_000.0}]})
+    assert r.status == "confirmado" and r.score > 0

@@ -65,6 +65,14 @@ say "5/8 materializando empresas_min (nomeia os CNPJ do reverso)..."
 PYTHONPATH="$REPO" $NICE "$PY" -m tools.empresas_min_build >> "$LOG" 2>&1 \
   || { say "FALHA em empresas_min_build — abortando (ZIPs preservados)"; exit 1; }
 
+# 5.1) empresas (razão social de TODAS as raízes que têm estabelecimento) ---------------------------
+# A base tinha 6,17 mi de estabelecimentos e a razão social de NENHUM — procurar empresa pelo NOME
+# era impossível, e a natureza jurídica (3xxx = terceiro setor) só era conhecida de 3.861 entidades.
+# Entra AQUI, antes do passo 8, porque o passo 8 apaga os Empresas*.zip.
+say "5.1/8 razão social + natureza das 5,86 mi de raízes com estabelecimento..."
+PYTHONPATH="$REPO" $NICE "$PY" -m tools.empresas_rj_build >> "$LOG" 2>&1 \
+  || { say "FALHA em empresas_rj_build — abortando (ZIPs preservados)"; exit 1; }
+
 # 6) socios_full.csv.zst (sócios COMPLETO do Brasil, enxuto+comprimido) ------------------------------
 say "6/8 gerando socios_full.csv.zst (stream unzip -p | awk | zstd -19 -T2)..."
 bash "$REPO/tools/socios_full_build.sh" >> "$LOG" 2>&1 \

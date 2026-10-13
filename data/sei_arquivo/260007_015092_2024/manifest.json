@@ -3,16 +3,321 @@
  "gerado_em": "2026-07-06T07:39:24+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_015092_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "termo de encerramento de processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1270,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "comprovante 2025ob02564",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob02564.txt",
+   "chars": 1021,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "comprovante 2024ob10727",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2024ob10727.txt",
+   "chars": 995,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "nota de liquida o nl 06406",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_nota_de_liquida_o_nl_06406.txt",
+   "chars": 2601,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "relat rio",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/006_relat_rio.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "anexo nf 225203 especifarma",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/008_anexo_nf_225203_especifarma.txt",
+   "chars": 2879,
+   "ocr": false,
+   "fotos": [
+    "fotos/008_p01.jpg"
+   ]
+  },
+  {
+   "i": 9,
+   "titulo": "anexo nf 224356 especifarma",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/009_anexo_nf_224356_especifarma.txt",
+   "chars": 4292,
+   "ocr": false,
+   "fotos": [
+    "fotos/009_p01.jpg"
+   ]
+  },
+  {
+   "i": 10,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/010_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/012_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "nota de empenho original ne especifarma",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/013_nota_de_empenho_original_ne_especifarma.txt",
+   "chars": 2578,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "nota de autoriza o de despesa nad especi",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/014_nota_de_autoriza_o_de_despesa_nad_especi.txt",
+   "chars": 2263,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/015_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/016_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "despacho de encaminhamento de processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/017_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "anexo processo sei 260007 015092 2024",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/018_anexo_processo_sei_260007_015092_2024.txt",
+   "chars": 2555,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "anexo sc 0175 2024",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/019_anexo_sc_0175_2024.txt",
+   "chars": 3763,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "anexo registro ocorrencia especifarma",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/020_anexo_registro_ocorrencia_especifarma.txt",
+   "chars": 1879,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "anexo portal da transpar ncia especifarm",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/021_anexo_portal_da_transpar_ncia_especifarm.txt",
+   "chars": 660,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "anexo certidao trabalhista especifarma",
+   "fase": "tramitacao",
+   "tipo": "certidao",
+   "texto": "texto/022_anexo_certidao_trabalhista_especifarma.txt",
+   "chars": 1835,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "anexo certidao fgts especifarma",
+   "fase": "tramitacao",
+   "tipo": "certidao",
+   "texto": "texto/023_anexo_certidao_fgts_especifarma.txt",
+   "chars": 919,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "anexo certidao federal especifarma",
+   "fase": "tramitacao",
+   "tipo": "certidao",
+   "texto": "texto/024_anexo_certidao_federal_especifarma.txt",
+   "chars": 1994,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "anexo cnpj especifarma",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/025_anexo_cnpj_especifarma.txt",
+   "chars": 2449,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "anexo d o ata 0026 03",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/026_anexo_d_o_ata_0026_03.txt",
+   "chars": 23600,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "anexo ata 0026 03",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/027_anexo_ata_0026_03.txt",
+   "chars": 48852,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "anexo saldo ata 0026 03",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/028_anexo_saldo_ata_0026_03.txt",
+   "chars": 5274,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "anexo resumo ata 0026 03",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/029_anexo_resumo_ata_0026_03.txt",
+   "chars": 1133,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 13,
+  "indefinida": 12
  },
  "lacunas": [
   {
@@ -26,7 +331,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 2,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

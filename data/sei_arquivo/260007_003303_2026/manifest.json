@@ -3,16 +3,107 @@
  "gerado_em": "2026-07-06T07:30:20+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_003303_2026",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "despacho de formaliza o de liquida o de",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "despacho de solicita o de liquida o de d",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "nota fiscal nf",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/002_nota_fiscal_nf.txt",
+   "chars": 3778,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "comunicado",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/003_comunicado.txt",
+   "chars": 2034,
+   "ocr": false,
+   "fotos": [
+    "fotos/003_p01.jpg",
+    "fotos/003_p02.jpg"
+   ]
+  },
+  {
+   "i": 4,
+   "titulo": "nota fiscal nf",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/004_nota_fiscal_nf.txt",
+   "chars": 42747,
+   "ocr": false,
+   "fotos": [
+    "fotos/004_p01.jpg",
+    "fotos/004_p02.jpg",
+    "fotos/004_p03.jpg",
+    "fotos/004_p04.jpg",
+    "fotos/004_p05.jpg",
+    "fotos/004_p06.jpg",
+    "fotos/004_p07.jpg",
+    "fotos/004_p08.jpg",
+    "fotos/004_p09.jpg",
+    "fotos/004_p10.jpg",
+    "fotos/004_p11.jpg",
+    "fotos/004_p12.jpg",
+    "fotos/004_p13.jpg",
+    "fotos/004_p14.jpg",
+    "fotos/004_p15.jpg",
+    "fotos/004_p16.jpg"
+   ]
+  },
+  {
+   "i": 5,
+   "titulo": "nota de empenho refor o 2026ne00853",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/005_nota_de_empenho_refor_o_2026ne00853.txt",
+   "chars": 2488,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "nota de empenho original 2026ne00295",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_nota_de_empenho_original_2026ne00295.txt",
+   "chars": 2516,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 4,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 2,
+  "indefinida": 1
  },
  "lacunas": [
   {
@@ -26,7 +117,15 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 18,
+ "captura_vazia": false,
+ "aviso": "captura INCOMPLETA: o manifest lista documentos mas nenhum texto foi extraído e os PDFs não estão no cache. NÃO interpretar como processo sem documentos — reprocessar (marcado em 2026-08-02).",
+ "reparado_em": "2026-08-04T01:28:45+00:00",
+ "reparo": "manifesto reconstruído a partir do texto já extraído em disco (manifesto havia sido zerado por rerun com cache vazio)"
 }

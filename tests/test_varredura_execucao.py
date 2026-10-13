@@ -46,7 +46,11 @@ def con():
             id INTEGER PRIMARY KEY, numero_controle_pncp TEXT, sequencial_termo INT,
             numero_termo TEXT, objeto TEXT, valor_acrescido REAL, valor_global REAL,
             prazo_aditado_dias INT, vigencia_fim TEXT, qualif_acrescimo TEXT,
-            qualif_vigencia TEXT, qualif_reajuste TEXT, fundamento_legal TEXT);
+            qualif_vigencia TEXT, qualif_reajuste TEXT, fundamento_legal TEXT,
+            -- a data de ASSINATURA do termo entrou na produção em 2026-08-09 e é o que sustenta o
+            -- X8 (aditivo retroativo). A fixture precisa espelhá-la, senão a suíte exercita um
+            -- schema que a produção não tem mais e o detector fica sem cobertura de teste.
+            data_assinatura TEXT);
     """)
     return c
 
@@ -70,7 +74,10 @@ def _aditivo(con, **kw):
          # fundamento em branco por padrão: ele DECIDE antes do qualificador (art. 124 =
          # reequilíbrio, art. 125 = acréscimo), então deixá-lo preenchido no fixture mascararia
          # justamente o caminho do qualificador que alguns testes querem exercitar.
-         "qualif_vigencia": "0", "qualif_reajuste": "0", "fundamento_legal": ""}
+         "qualif_vigencia": "0", "qualif_reajuste": "0", "fundamento_legal": "",
+         # dentro da vigência por padrão: só o teste do X8 assina fora, e assim os demais não
+         # ganham um achado de retroatividade por acidente
+         "data_assinatura": "2024-06-01"}
     d.update(kw)
     con.execute(f"INSERT INTO contrato_aditivo VALUES ({','.join('?' * len(d))})", tuple(d.values()))
     con.commit()
@@ -304,8 +311,37 @@ def test_so_roda_detectores_que_a_base_alimenta():
     cobertura real em vez de revelá-la (mesma regra de `varredura_certames`).
 
     X7 entra porque três dos seus cinco testes (dupla correção, magnitude, reiteração) rodam só
-    com data e valor do termo, que a base tem; os outros dois viram lacuna declarada."""
-    assert DETECTORES_EXECUCAO == ("X1", "X2", "X7")
+    com data e valor do termo, que a base tem; os outros dois viram lacuna declarada.
+
+    X8 entrou em 2026-08-11. Ele ficava fora porque `contrato_aditivo` não tinha a data de
+    ASSINATURA do termo — verdade até 2026-08-09, quando o coletor do PNCP passou a gravar
+    `dataAssinatura` (1.684 de 1.770 termos, 95,1%). O critério deste teste não mudou: continua
+    sendo "só roda o que a base alimenta" — o que mudou foi a BASE. Por isso a asserção abaixo
+    confere as duas coisas: a lista E o campo que a sustenta."""
+    assert DETECTORES_EXECUCAO == ("X1", "X2", "X7", "X8")
+
+
+def test_x8_acusa_termo_assinado_DEPOIS_do_fim_da_vigencia(con):
+    """O critério do teste acima é "só roda o que a base alimenta" — aqui se prova que ela alimenta.
+
+    Medido no acervo ao ligar o X8: 36 contratos de 1.099 têm termo assinado após o fim da vigência
+    corrente; num deles (MPRJ × AGABO, R$ 3,62 mi) o 1º termo, de acréscimo quantitativo, saiu
+    quatro dias depois de o contrato expirar."""
+    _contrato(con, vigencia_fim="2024-11-25")
+    _aditivo(con, objeto="Acréscimo quantitativo", data_assinatura="2024-11-29",
+             vigencia_fim="2025-03-25")
+    r = varrer_contrato(con, _PNCP)
+    x8 = [a for a in r["achados"] if a.detector == "X8" and a.status == "confirmado"]
+    assert x8, "X8 não confirmou termo assinado após o fim da vigência"
+
+
+def test_x8_nao_acusa_termo_assinado_dentro_da_vigencia(con):
+    _contrato(con, vigencia_fim="2024-11-25")
+    _aditivo(con, objeto="Acréscimo quantitativo", data_assinatura="2024-10-10",
+             vigencia_fim="2025-03-25")
+    r = varrer_contrato(con, _PNCP)
+    conf = [a for a in r["achados"] if a.detector == "X8" and a.status == "confirmado"]
+    assert not conf
 
 
 def test_varrer_contrato_devolve_achados_e_cobertura(con):
