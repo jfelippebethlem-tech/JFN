@@ -221,7 +221,9 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
             docs_velho = 0
         docs_novo = sum(1 for x in (item["dados"].get("conteudo_documentos") or [])
                         if len(str(x.get("conteudo") or x.get("texto") or "")) > 50)
-        if docs_velho > docs_novo:
+        # EMPATE MANTÉM O ANTIGO (2026-10-12): com `>` o empate 48 × 48 trocava a íntegra (86 docs,
+        # 83 fotos das páginas escaneadas) por um arquivo de cache sem nenhuma foto.
+        if docs_velho >= docs_novo:
             # SAIR DO LAÇO SEM APAGAR NADA. A decisão de manter o antigo é certa, mas ela não mexia
             # no manifesto — e a fila é montada por "cache mais novo que o manifesto". Resultado
             # medido em 2026-08-15: o `070002/019153/2024` reaparecia em TODO disparo do lane
@@ -238,6 +240,9 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
         sub = ARQUIVO / "_substituido" / f"{destino.name}__{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}"
         sub.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(destino), str(sub))
+        fotos_antigas = sub / "fotos"    # o cache nunca traz foto: quem a tem é o arquivo antigo
+    else:
+        fotos_antigas = None
     docs_manifest, titulos, escritos = [], [], 0
     for i, doc in enumerate(item["dados"].get("conteudo_documentos") or []):
         titulo = str(doc.get("doc") or doc.get("titulo") or f"documento {i}").strip()
@@ -285,6 +290,12 @@ def arquivar(item: dict, aplicar: bool = False) -> dict:
         destino.mkdir(parents=True, exist_ok=True)
         (destino / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
         (destino / "fotos").mkdir(exist_ok=True)
+        if fotos_antigas is not None and fotos_antigas.is_dir() and any(fotos_antigas.iterdir()):
+            import shutil
+            shutil.copytree(fotos_antigas, destino / "fotos", dirs_exist_ok=True)
+            manifest["fotos_total"] = sum(1 for _ in (destino / "fotos").iterdir())
+            manifest["aviso"] += f" — {manifest['fotos_total']} fotos herdadas da captura anterior"
+            (destino / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
     return {"numero": numero, "docs": len(docs_manifest), "chars": item["chars"], "escritos": escritos}
 
 
