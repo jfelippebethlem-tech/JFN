@@ -39,6 +39,8 @@ _SEM_MENU_POR_DESENHO = {
     # plano de controle: existe para o Yoda/Hermes e para operação, não para a tela
     "skills", "skill_detalhe", "skills_reload", "skills_sync", "skills_validate",
     "status_jfn", "agenda_jobs", "memoria", "radar_status", "sweeps_status", "siafe_status",
+    # porta é o comando /siafe do plugin jfn-siafe + botão "🔐 SIAFE" do /lista (menu_lista), não o painel
+    "siafe_codigo_mfa",
     "missao_autonoma", "missao_estado", "missao_trabalhar", "missao_parar",
     # gatilhos de COLETA: pesados, com janela de horário, e disparo acidental custa caro
     "siafe_atualizar", "siafe_coletar_ug", "emendas_coletar", "pcrj_gastos_coletar",

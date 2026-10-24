@@ -330,8 +330,7 @@ capacidades:
      descricao: "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica)", quando_usar: "'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'", args: {}, retorno: "{ok,lock}"}
   - {id: siafe_codigo_mfa, agente: yoda, dominio: coleta, tipo: cli, comando: "compliance_agent.siafe_coord mfa <CODIGO> | livre | ocupado | pedido", status: PRONTO,
      descricao: "Código MFA do SIAFE (ALFANUMÉRICO, ex. 4ZuteXbN) e sessão livre/ocupada. Tratado SEM o modelo pelo plugin ~/.hermes/plugins/jfn-siafe: /siafe e as frases 'siafe codigo X', 'siafe livre', 'vou usar o siafe' são reescritas antes de chegar ao LLM. NÃO existe ferramenta 'siafecodigo'.",
-     quando_usar: "'siafe codigo XXXX', código sozinho logo após o pedido do coletor, 'liberei o siafe', 'vou usar o siafe'", args: {codigo: "string 4-8 letras/números"}, retorno: "texto de confirmação",
-     menu: {grupo: "🛰️ Coleta & Base", nome: "Código MFA / sessão do SIAFE", exemplo: "/siafe 4ZuteXbN", ordem: 62, cmd: "/siafe"}}
+     quando_usar: "'siafe codigo XXXX', código sozinho logo após o pedido do coletor, 'liberei o siafe', 'vou usar o siafe'", args: {codigo: "string 4-8 letras/números"}, retorno: "texto de confirmação"}
   - {id: siafe_coletar_ug, agente: jfn, dominio: coleta, tipo: cli, comando: "compliance_agent.siafe_runner ug <UG> [ANO]", status: PRONTO,
      descricao: "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5", quando_usar: "backfill de UG", args: {ug: obrigatorio, ano: opcional}, retorno: "stdout"}
   - {id: enriquecer_socios, agente: jfn, dominio: coleta, tipo: cli, comando: "tools.enriquecer_socios_ob", status: PRONTO,
@@ -415,6 +414,7 @@ menu_lista:
     🕵️ **Fiscalização & perícias** — emendas, gastos e editais da Prefeitura, parecer de contratos.
     👥 **Pessoal × benefícios** — quem do quadro (nomeado? efetivo?) recebe benefício; sócios também.
     🔐 **SIAFE** — mande o código MFA (/siafe CODIGO) ou avise que vai usar/liberou o SIAFE.
+    🔁 **Automelhoria** — o que está quebrado em todo o sistema, o que voltou e o que foi curado (/melhorias).
     📚 **Ver todas as funções** — o catálogo completo.
 
     *Toque numa opção ou fale comigo em linguagem natural.*
@@ -426,8 +426,19 @@ menu_lista:
     - [["🕵️ Fiscalização & perícias", "menu:fisc"]]
     - [["👥 Pessoal × benefícios", "menu:benef"]]
     - [["🔐 SIAFE (código MFA · livre/ocupado)", "menu:siafe"]]
+    - [["🔁 Automelhoria (o que está quebrado)", "menu:melhorias"]]
     - [["📚 Ver todas as funções", "menu:all"]]
   dicas:
+    melhorias: |
+      🔁 **Automelhoria de tudo**
+      Todo dia às 07:40 eu meço o ecossistema inteiro — rotinas (SLO), CI, catracas de código, serviços,
+      API/LLM, SIAFE e as minhas próprias falhas de conversa — numa fila única:
+
+      • 🟡 aberto — problema medido agora
+      • ✅ curado — o sensor voltou ao verde (conserto verificado pelo efeito, não pela promessa)
+      • 🔴 REINCIDIU — estava curado e voltou
+
+      /melhorias mostra a fila · /melhorias agora mede tudo na hora. Só aviso sozinho quando há novidade.
     siafe: |
       🔐 **SIAFE — código MFA e sessão única**
       O código chega no seu e-mail da ALERJ e tem **letras e números** (ex.: 4ZuteXbN). Mande assim:

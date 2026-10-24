@@ -94,6 +94,14 @@ pipelines:
     pausa: data/.pause_bombeiros
     nota: supervisor contínuo (lote ~1h + back-off 20min); 6h parado = morreu
 
+  - nome: automelhoria-geral
+    arquivo: data/automelhoria_geral.log
+    max_stale_h: 30
+    grupo: base
+    nota: >-
+      cron 07:40 — loop de automelhoria de TUDO (SLO, CI, catracas, systemd, ronda, SIAFE, Yoda) numa fila
+      única aberto → curado → REINCIDIU; o Yoda mostra com /melhorias. Escreve o log todo dia.
+
   - nome: yoda-autoauditoria
     arquivo: data/yoda_autoauditoria.log
     max_stale_h: 30
