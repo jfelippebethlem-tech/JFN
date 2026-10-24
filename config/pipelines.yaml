@@ -94,6 +94,14 @@ pipelines:
     pausa: data/.pause_bombeiros
     nota: supervisor contínuo (lote ~1h + back-off 20min); 6h parado = morreu
 
+  - nome: yoda-autoauditoria
+    arquivo: data/yoda_autoauditoria.log
+    max_stale_h: 30
+    grupo: base
+    nota: >-
+      cron 07:20 — loop de automelhoria do Yoda (falhas de conversa → fila data/yoda_melhorias_fila.json,
+      conserto que não pegou vira REINCIDIU). Escreve o log todo dia, com ou sem falha.
+
   # ---- POLIMONITOR ----
   - nome: likers-import
     arquivo: /home/ubuntu/polimonitor/data/likers_import_cron.log
@@ -116,11 +124,13 @@ pipelines:
 
   # ---- PCRJ (Prefeitura do Rio — coletas que alimentam a esfera do painel) ----
   - nome: pcrj-fisc-refresh
-    arquivo: data/fisc_coletar_tudo.log
-    consulta: "SELECT MAX(coletado_em) FROM emendas"
+    arquivo: data/fisc_coletar_tudo.ok
     max_stale_h: 192
     grupo: pcrj
     nota: >-
+      24/10/2026: a régua passou a ser a sentinela `fisc_coletar_tudo.ok`, escrita SÓ no fim de uma rodada
+      completa. MAX(emendas.coletado_em) só anda quando entra emenda NOVA — em 19/10 a rodada saiu certa,
+      sem emenda nova, e o SLO acusou 296 h. Histórico da régua anterior:
       refresh semanal seg 00:30 (timer jfn-fisc-refresh) — emendas + ContasRio + PNCP municipal.
       Vigia o DADO, não o log: medido em 2026-08-09, o SLO acusava 710h de atraso enquanto o
       serviço rodava toda semana e saía 0. O `ExecStart` do unit NÃO redireciona a saída para

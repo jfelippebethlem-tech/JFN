@@ -203,3 +203,7 @@ data/lai.db
 tools/eleicao2026_*
 tools/tse_bu_2026.py
 tools/enviar_eleicao2026_yoda.py
+data/fisc_coletar_tudo.ok
+data/yoda_melhorias_fila.json
+data/siafe_dreno_quarentena.json
+data/.siafe_dreno_aviso_login_*

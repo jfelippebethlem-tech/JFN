@@ -147,6 +147,12 @@ async def main():
             await _pncp(con, desde_pncp)
 
     _log("coleta 2021→hoje concluída.")
+    # SENTINELA DE SUCESSO para o SLO (config/pipelines.yaml → pcrj-fisc-refresh). Só é escrita aqui, no
+    # fim de uma rodada que chegou ao fim — `sys.exit(2)` acima não a toca. O SLO media MAX(emendas.coletado_em),
+    # que só anda quando ENTRA emenda nova: em 19/10/2026 a rodada saiu certa com 558 emendas já conhecidas e o
+    # alarme acusou 296 h de atraso. Semana sem emenda nova é fato, não defeito.
+    (Path(__file__).resolve().parent.parent / "data" / "fisc_coletar_tudo.ok").write_text(
+        date.today().isoformat() + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":
