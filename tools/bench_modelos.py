@@ -31,6 +31,7 @@ curtas por modelo — com 15 modelos vivos, 60 chamadas.
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import pathlib
@@ -375,7 +376,7 @@ def avaliar_modelo(model_id: str, tarefas=None) -> dict:
                     from compliance_agent.llm.openrouter_catalogo import marcar_morto
                     marcar_morto(model_id, motivo="sem endpoint (404) no banco de provas")
                 except Exception:  # noqa: BLE001
-                    pass
+                    logging.getLogger(__name__).debug("bench_modelos.py:377: exceção ignorada (era except-pass mudo)", exc_info=True)
             detalhe[nome] = {"nota": None, "ms": int((time.monotonic() - t0) * 1000),
                              "indisponivel": bool(permanente),
                              "erro": f"{type(e).__name__}: {str(e)[:90]}"}

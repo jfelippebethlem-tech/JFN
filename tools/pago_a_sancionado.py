@@ -225,7 +225,7 @@ def main() -> int:
     if a.sucessao:
         linhas = sucessao_societaria(con, so_administrador=not a.amplo)
         corte = "qualquer qualificação (prevalência 3,4%)" if a.amplo else "ADMINISTRADOR em ambas (prevalência 1,7%)"
-        print(f"empresas NÃO sancionadas que recebem do Estado, com sócio vindo de SANCIONADA")
+        print("empresas NÃO sancionadas que recebem do Estado, com sócio vindo de SANCIONADA")
         print(f"  corte: {corte}")
         print(f"  {len(linhas)} empresas · R$ {moeda(sum(x['pago'] for x in linhas))}\n")
         print(f"{'pago':>18} {'OBs':>5}  empresa · sócio em comum")

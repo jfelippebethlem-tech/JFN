@@ -23,6 +23,7 @@ Indício ≠ acusação; cada sinal carrega a evidência para conferência human
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -152,7 +153,7 @@ def _midia_adversa_cache(con: sqlite3.Connection, alvo: str) -> dict | None:
             if agora - datetime.fromisoformat(row[1]) < timedelta(days=MIDIA_CACHE_DIAS):
                 return json.loads(row[0])
         except ValueError:
-            pass
+            logging.getLogger(__name__).debug("doerj_tac_favorecimento.py:154: exceção ignorada (era except-pass mudo)", exc_info=True)
     try:
         from compliance_agent.enrich.midia_adversa import varrer
         r = varrer(alvo, max_artigos=12)

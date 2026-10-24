@@ -20,6 +20,7 @@ HONESTIDADE: casamento por nome; nome comum é hipótese até o CPF. O vínculo 
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import re
@@ -78,7 +79,7 @@ def materializar() -> dict:
             u["tacs"] = max(u["tacs"], n or 0)
             u["valor_tacs"] = max(u["valor_tacs"], soma or 0)
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("fserj_socio_agente.py:80: exceção ignorada (era except-pass mudo)", exc_info=True)
     con.executescript("""
         DROP TABLE IF EXISTS fserj_socio_agente;
         CREATE TABLE fserj_socio_agente (

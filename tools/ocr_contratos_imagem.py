@@ -43,7 +43,7 @@ def main() -> None:
     try:
         con.execute("ALTER TABLE contrato_integra ADD COLUMN fonte_texto VARCHAR")
     except sqlite3.OperationalError:
-        pass  # coluna já existe — o ALTER do sqlite não tem IF NOT EXISTS
+        logger.debug("ocr_contratos_imagem.py:45: exceção ignorada (era except-pass mudo)", exc_info=True)  # coluna já existe — o ALTER do sqlite não tem IF NOT EXISTS
     try:
         alvos = con.execute(
             """SELECT numero_controle_pncp, fornecedor_nome, url

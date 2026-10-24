@@ -12,6 +12,7 @@ Uso: PYTHONPATH=. .venv/bin/python -m tools.siga_sancoes   (semanal)
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 import sys
@@ -72,7 +73,7 @@ def materializar(itens: list[dict] | None = None) -> dict:
         cruz["tac_vigentes"] = con.execute(
             "SELECT count(DISTINCT s.doc) FROM siga_sancoes s JOIN doerj_tac_sinal t ON t.cnpj=s.doc WHERE s.status='Vigente'").fetchone()[0]
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("siga_sancoes.py:74: exceção ignorada (era except-pass mudo)", exc_info=True)
     con.close()
     return {"sancoes": len(itens), "vigentes": sum(1 for i in itens if i["status"] == "Vigente"), **cruz}
 

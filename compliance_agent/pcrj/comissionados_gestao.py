@@ -13,6 +13,7 @@ Sem CPF → o casamento servidor × candidato é por nome (indício); a confian�
 """
 from __future__ import annotations
 
+import logging
 import html
 import re
 import sqlite3
@@ -175,7 +176,7 @@ def pessoas(con) -> tuple[list[dict], dict]:
                                     "WHERE exoneracao IS NOT NULL AND exoneracao <> ''"):
             exo_antiga[str(mat)] = exo
     except sqlite3.Error:
-        pass
+        logging.getLogger(__name__).debug("comissionados_gestao.py:177: exceção ignorada (era except-pass mudo)", exc_info=True)
     consultadas = {tuple(r) for r in con.execute("SELECT nome_norm, competencia FROM pcrj_cargo_portal_consulta")}
     alvo = {(nn, d["ultima"]) for (nn, _m), d in pr.items()}
     sem_cargo = sum(1 for k, d in pr.items() if (k[0], d["ultima"]) in consultadas and k not in cargos)

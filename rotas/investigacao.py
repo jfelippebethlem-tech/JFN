@@ -1691,7 +1691,7 @@ def api_doerj_tac_recorrente(top: int = 20):
                     "SELECT fornecedor, grau, sinal, detalhe FROM doerj_tac_sinal WHERE sinal <> 'cnpj_nao_localizado'"):
                 sinais.setdefault(f, []).append({"grau": grau, "sinal": sinal, "detalhe": det})
         except _sqlite3.OperationalError:
-            pass
+            logger.debug("investigacao.py:1693: exceção ignorada (era except-pass mudo)", exc_info=True)
         for it in itens:
             it["sinais"] = sorted(sinais.get(it["fornecedor"], []), key=lambda x: x["grau"] != "🔴")
         nao_lidos = con.execute("SELECT count(*) FROM doerj_tac WHERE fornecedor IS NULL").fetchone()[0]
@@ -1703,7 +1703,7 @@ def api_doerj_tac_recorrente(top: int = 20):
             if _m:
                 concordancia = {"taxa": _m[0], "texto": _m[1], "em": _m[2]}
         except _sqlite3.OperationalError:
-            pass
+            logger.debug("investigacao.py:1705: exceção ignorada (era except-pass mudo)", exc_info=True)
     finally:
         con.close()
     return JSONResponse({"ok": True, "total": tot[0], "com_valor": tot[1], "soma": tot[2] or 0, "de": tot[3],
@@ -2722,7 +2722,7 @@ def api_pcrj_integras(q: str = "", modalidade: str = "", fonte: str = "",
             sinais_por.setdefault(num, []).append({"grau": grau, "sinal": sinal, "detalhe": det})
             sinais_total += 1
     except _sqlite3.OperationalError:       # tabela ainda não materializada: sem sinais, sem erro
-        pass
+        logger.debug("investigacao.py:2724: exceção ignorada (era except-pass mudo)", exc_info=True)
     con.close()
     itens = [{
         "numero": r[0], "fornecedor": r[1], "valor": float(r[2] or 0), "titulo": r[3],

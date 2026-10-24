@@ -24,6 +24,7 @@ e a competência fiscalizatória do art. 70 e 71 c/c art. 75 da Constituição.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import date
 
@@ -92,7 +93,7 @@ def minutas(con: sqlite3.Connection, *, limite_por_orgao: int = 60) -> list[dict
                 _slot(cod)["restritos"].append(
                     {"numero": r[0], "n_docs_restritos": r[1], "n_docs": r[2]})
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("requisicao.py:94: exceção ignorada (era except-pass mudo)", exc_info=True)
 
     try:
         for r in con.execute(
@@ -104,7 +105,7 @@ def minutas(con: sqlite3.Connection, *, limite_por_orgao: int = 60) -> list[dict
                 _slot(cod)["fila"].append(
                     {"numero": r[0], "motivo": r[1], "total_pago": r[2]})
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("requisicao.py:106: exceção ignorada (era except-pass mudo)", exc_info=True)
 
     saida = []
     for m in por_orgao.values():

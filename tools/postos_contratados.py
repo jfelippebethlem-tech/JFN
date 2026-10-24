@@ -33,7 +33,6 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import collections
 import re
 import sys
 from pathlib import Path

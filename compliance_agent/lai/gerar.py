@@ -2,6 +2,7 @@
 """Um botão → o requerimento sai: fatos → texto → .docx/.md → registro com prazo."""
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -58,7 +59,7 @@ def _priorizar_no_sweep(numeros: list[str]) -> None:
             with open(_PRIORIDADE, "a", encoding="utf-8") as f:
                 f.write("".join(n + "\n" for n in novos))
     except OSError:
-        pass
+        logging.getLogger(__name__).debug("gerar.py:60: exceção ignorada (era except-pass mudo)", exc_info=True)
 
 
 def gerar(alvo: str, esfera: str | None = None, motivo: str | None = None, db_path=None, lai_db=None) -> dict:

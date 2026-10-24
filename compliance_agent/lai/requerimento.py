@@ -2,6 +2,7 @@
 """Texto do requerimento LAI — fundamentado, nominal, neutro (diligência, nunca acusação)."""
 from __future__ import annotations
 
+import logging
 import json
 import os
 from datetime import datetime
@@ -44,7 +45,7 @@ def requerente() -> dict:
         try:
             base.update({k: str(v or "") for k, v in json.loads(_REQUERENTE_JSON.read_text(encoding="utf-8")).items()})
         except (OSError, ValueError):
-            pass
+            logging.getLogger(__name__).debug("requerimento.py:46: exceção ignorada (era except-pass mudo)", exc_info=True)
     for k in list(base):
         base[k] = base[k] or os.environ.get(f"LAI_{k.upper()}", "")
     base["completo"] = bool(base["nome"] and base["cpf"] and base["email"])

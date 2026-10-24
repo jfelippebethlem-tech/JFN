@@ -47,7 +47,7 @@ from tools.contrato_acima_do_porte import acima_do_porte
 from tools.dependencia_mutua import dependencia
 from tools.pago_a_sancionado import pagos_durante_sancao, sucessao_societaria
 from tools.porte_declarado_certame import declaracoes_incompativeis
-from tools.porte_incompativel import estrutura_magra, incompativeis
+from tools.porte_incompativel import incompativeis
 from tools.troca_de_controle import trocas
 
 DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
