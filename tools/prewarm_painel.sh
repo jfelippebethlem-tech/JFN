@@ -10,6 +10,7 @@ flock -n 9 || exit 0
 BASE="http://127.0.0.1:8000/api"
 URLS=(
   "intel/fornecedor_dependente?limite=150"
+  "siafe/stats"
   "fontes/frescor"
   "pericias?limite=80&ordem=score"
   "intel/socio_servidor?limite=150"

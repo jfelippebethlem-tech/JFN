@@ -6,6 +6,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -36,9 +38,32 @@ def _siafe_spawn(args: list, quem: str):
     return {"ok": True, "iniciado": True, "comando": quem, "detail": "Coleta SIAFE iniciada em background."}
 
 
+# CACHE DO /siafe/stats (24/10/2026). A rota faz 5 varreduras completas em 1,24 mi de linhas a cada chamada:
+# medido 3,5–11,7 s conforme a carga, e o sensor `painel` do loop de automelhoria a acusou lenta. Os números
+# só mudam com a coleta (diário 05:00 + dreno), então 5 min de cache não envelhece nada que importe; um cálculo
+# por vez (single-flight) para N visitas com cache frio não virarem N varreduras na VM de 2 vCPU.
+_STATS_TTL = 300
+_stats_cache: dict = {}
+_stats_trava = threading.Lock()
+
+
 @router.get("/api/siafe/stats")
 def api_siafe_stats():
     """Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante)."""
+    v = _stats_cache.get("v")
+    if v and time.time() - v[0] < _STATS_TTL:
+        return JSONResponse(v[1])
+    with _stats_trava:
+        v = _stats_cache.get("v")
+        if v and time.time() - v[0] < _STATS_TTL:
+            return JSONResponse(v[1])
+        resp = _calc_siafe_stats()
+        if resp.status_code == 200:
+            _stats_cache["v"] = (time.time(), json.loads(resp.body))
+        return resp
+
+
+def _calc_siafe_stats():
     try:
         import sqlite3
         from pathlib import Path as _P

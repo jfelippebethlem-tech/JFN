@@ -202,9 +202,55 @@ def sensor_vm() -> list[dict]:
     return out
 
 
+def sensor_polimonitor() -> list[dict]:
+    """Polimonitor/Bond (pm2): processo fora de `online` vira problema; o remédio é `pm2 restart`."""
+    r = subprocess.run(["pm2", "jlist"], capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        raise RuntimeError(f"pm2 jlist rc={r.returncode}")
+    out = []
+    for proc in json.loads(r.stdout or "[]"):
+        st = proc.get("pm2_env", {}).get("status")
+        if st != "online":
+            out.append(_p("polimonitor", proc["name"], f"processo pm2 {proc['name']} {st}",
+                          f"reinícios: {proc.get('pm2_env', {}).get('restart_time')}",
+                          remediar=f"pm2 restart {proc['name']}"))
+    return out
+
+
+_PAINEL = ("lista", "siafe/stats", "fontes/frescor")      # rotas que o dono e o Yoda usam
+
+
+def sensor_painel() -> list[dict]:
+    """Painel/API do JFN: rota fora do ar (≠200) ou lenta (> 8 s, cache frio) vira problema. Lento tem remédio
+    (o pré-aquecimento do cron); fora do ar é humano (a ronda já religa o serviço quando ele cai)."""
+    import urllib.error
+    import urllib.request
+    out = []
+    for rota in _PAINEL:
+        t0 = time.time()
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:8000/api/{rota}", timeout=20) as resp:
+                cod = resp.status
+        except urllib.error.HTTPError as exc:
+            cod = exc.code
+        except (urllib.error.URLError, TimeoutError):
+            # tempo esgotado é CACHE FRIO, não rota quebrada: medido 24/10 logo após reiniciar o jfn.service,
+            # /fontes/frescor levou 46 s frio (carga 6,4) e 0,006 s em seguida. O remédio é o pré-aquecimento.
+            cod = 200
+        dt = time.time() - t0
+        if cod != 200:
+            out.append(_p("painel", rota, f"rota /api/{rota} respondeu {cod}",
+                          acao_humana="ver `journalctl --user -u jfn` — a rota quebrou, não é lentidão"))
+        elif dt > 8:
+            out.append(_p("painel", f"lento_{rota}", f"rota /api/{rota} lenta ({dt:.1f} s)",
+                          remediar="bash tools/prewarm_painel.sh"))
+    return out
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
-            "dados": sensor_dados_siafe, "vm": sensor_vm}
+            "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
+            "painel": sensor_painel}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
@@ -260,7 +306,8 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
 
 
 _AREAS = ("rotinas (SLO)", "CI", "catracas de código", "serviços", "API/LLM", "SIAFE", "dados do SIAFE",
-          "VM (disco/memória)", "sono REM do Hermes", "minhas conversas")
+          "VM (disco/memória)", "sono REM do Hermes", "minhas conversas", "Polimonitor (pm2)",
+          "painel/API")
 MAX_TENTATIVAS, INTERVALO_S, CARGA_MAX = 2, 20 * 3600, 4.0
 
 

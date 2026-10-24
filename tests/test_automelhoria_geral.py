@@ -176,3 +176,14 @@ def test_colheita_estavel_em_duas_rodadas_verifica_o_dia(tmp_path, monkeypatch):
     asyncio.run(R.recoletar(["17/03/2026"], 2026))                  # 2ª igual: estável → verificado
     v = json.loads((tmp_path / "v.json").read_text())["17/03/2026"]
     assert v["ingeridas"] == 879 and v["base"] == 998 and "estável" in v["nota"]
+
+
+def test_polimonitor_processo_parado_tem_remedio(monkeypatch):
+    import json
+    import subprocess as sp
+    saida = json.dumps([{"name": "bond-worker", "pm2_env": {"status": "errored", "restart_time": 7}},
+                        {"name": "politimonitor", "pm2_env": {"status": "online"}}])
+    monkeypatch.setattr(A.subprocess, "run", lambda *a, **k: sp.CompletedProcess(a, 0, saida, ""))
+    ps = A.sensor_polimonitor()
+    assert [p["assinatura"] for p in ps] == ["polimonitor:bond-worker"]
+    assert ps[0]["remediar"] == "pm2 restart bond-worker"
