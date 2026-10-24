@@ -8,8 +8,12 @@
 # grupo · pausa (flag que legitima silêncio) · nota (contexto p/ quem debuga o alerta).
 
 pipelines:
+  # `remediar`: comando SEGURO que tools/automelhoria_geral.py executa sozinho (2x no máximo, 20 h de
+  # intervalo). Tem de produzir o MESMO sinal que o SLO mede (o arquivo/dado acima) — senão a cura nunca
+  # é vista: medido no 1º teste ao vivo (24/10/2026), o remédio rodou e escreveu no log errado.
   # ---- BASE (dados-fonte, diários) ----
   - nome: siafe-runner
+    remediar: "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario >> data/siafe_runner_cron.log 2>&1"
     arquivo: data/siafe_runner_cron.log
     consulta: "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe"
     max_stale_h: 30
@@ -75,6 +79,7 @@ pipelines:
     nota: loop de aprendizado progressivo da perícia (fim do ciclo)
 
   - nome: sei-integra-fila
+    remediar: "PYTHONPATH=. .venv/bin/python tools/sei_integra_fila.py --max 4"
     arquivo: data/sei_integra_fila.log
     max_stale_h: 30
     grupo: sei
@@ -94,6 +99,16 @@ pipelines:
     pausa: data/.pause_bombeiros
     nota: supervisor contínuo (lote ~1h + back-off 20min); 6h parado = morreu
 
+  - nome: hermes-sono-rem
+    arquivo: data/hermes_metacognicao_ultimo.json
+    remediar: "systemctl --user start --no-block jfn-metacognicao.service"
+    max_stale_h: 30
+    grupo: base
+    nota: >-
+      timer jfn-metacognicao 06:50 — sono REM do Hermes (higiene, base empírica, reflexão, auto-melhoria de
+      método, hipóteses do vault, RAG, backup). Grava o resultado da rodada; passo degradado vira item da
+      fila de automelhoria (sensor `rem`).
+
   - nome: automelhoria-geral
     arquivo: data/automelhoria_geral.log
     max_stale_h: 30
@@ -103,6 +118,7 @@ pipelines:
       única aberto → curado → REINCIDIU; o Yoda mostra com /melhorias. Escreve o log todo dia.
 
   - nome: yoda-autoauditoria
+    remediar: "PYTHONPATH=. .venv/bin/python tools/yoda_autoauditoria.py >> data/yoda_autoauditoria.log 2>&1"
     arquivo: data/yoda_autoauditoria.log
     max_stale_h: 30
     grupo: base
@@ -112,6 +128,7 @@ pipelines:
 
   # ---- POLIMONITOR ----
   - nome: likers-import
+    acao_humana: "a captura de curtidores roda no desktop Windows (Hermes do desktop + Syncthing); o último comando de captura (01/09) saiu rc=1 e o likers.json não muda desde 13/08 — religar a captura lá"
     arquivo: /home/ubuntu/polimonitor/data/likers_import_cron.log
     max_stale_h: 72
     grupo: polimonitor
@@ -132,6 +149,7 @@ pipelines:
 
   # ---- PCRJ (Prefeitura do Rio — coletas que alimentam a esfera do painel) ----
   - nome: pcrj-fisc-refresh
+    remediar: "systemctl --user start --no-block jfn-fisc-refresh.service"
     arquivo: data/fisc_coletar_tudo.ok
     max_stale_h: 192
     grupo: pcrj

@@ -48,8 +48,17 @@ _SYSTEMD_RUIDO = {"xfce4-notifyd.service"}
 logger = logging.getLogger(__name__)
 
 
-def _p(area: str, chave: str, titulo: str, detalhe: str = "") -> dict:
-    return {"assinatura": f"{area}:{chave}", "area": area, "titulo": titulo, "detalhe": detalhe[:300]}
+def _p(area: str, chave: str, titulo: str, detalhe: str = "", remediar: str = "", acao_humana: str = "") -> dict:
+    """`remediar` = comando SEGURO que o loop executa sozinho; `acao_humana` = o que só gente resolve."""
+    return {"assinatura": f"{area}:{chave}", "area": area, "titulo": titulo, "detalhe": detalhe[:300],
+            "remediar": remediar, "acao_humana": acao_humana}
+
+
+# Diagnóstico medido (sonda de 24/10/2026), para a ação humana não ser genérica.
+_ACAO_LOGIN = {"1": "servidor do SIAFE 1 responde NullPointerException no RootMenuParser (menu do usuário) "
+                    "com o formulário correto, desde 13/09 — dono: testar login manual em "
+                    "www5.fazenda.rj.gov.br/SiafeRio (2016-2023); se falhar também, abrir chamado na SEFAZ"}
+_DIARIO_SIAFE = "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario >> data/siafe_runner_cron.log 2>&1"
 
 
 # ─────────────────────────── sensores (cada um devolve a lista de problemas AGORA) ───────────────────────────
@@ -57,8 +66,12 @@ def _p(area: str, chave: str, titulo: str, detalhe: str = "") -> dict:
 def sensor_slo() -> list[dict]:
     sys.path.insert(0, str(_REPO))
     from tools.pipelines_slo import checar
+    import yaml
+    cfg = {c["nome"]: c for c in yaml.safe_load((_REPO / "config" / "pipelines.yaml").read_text())["pipelines"]}
     return [_p("slo", it["nome"], f"rotina {it['nome']} {it['status']}",
-               f"idade {it['idade_h']} h · SLO {it['slo_h']} h")
+               f"idade {it['idade_h']} h · SLO {it['slo_h']} h",
+               remediar=cfg.get(it["nome"], {}).get("remediar", ""),
+               acao_humana=cfg.get(it["nome"], {}).get("acao_humana", ""))
             for it in checar() if it["status"] in ("stale", "ausente")]
 
 
@@ -72,7 +85,8 @@ def sensor_ci() -> list[dict]:
     runs = [x for x in json.loads(r.stdout or "[]") if x.get("status") == "completed"
             and x.get("conclusion") not in ("skipped", "cancelled")]
     if runs and runs[0]["conclusion"] != "success":
-        return [_p("ci", br, f"CI vermelho em {br}", f"commit {runs[0]['headSha'][:8]} · {runs[0]['name'][:60]}")]
+        return [_p("ci", br, f"CI vermelho em {br}", f"commit {runs[0]['headSha'][:8]} · {runs[0]['name'][:60]}",
+                   acao_humana="conserto de código: `gh run view <id> --log-failed` diz o teste/lint que quebrou")]
     return []
 
 
@@ -82,14 +96,16 @@ def sensor_catracas() -> list[dict]:
     falhas = [ln.split(" ", 1)[1].split(" - ")[0] for ln in r.stdout.splitlines() if ln.startswith("FAILED ")]
     if r.returncode not in (0, 1):
         raise RuntimeError(f"pytest rc={r.returncode}: {r.stdout[-160:]}")
-    return [_p("catraca", f, f"catraca vermelha: {f.split('::')[-1]}", f) for f in falhas]
+    return [_p("catraca", f, f"catraca vermelha: {f.split('::')[-1]}", f,
+               acao_humana="conserto de código: a mensagem da catraca diz o que cresceu e onde") for f in falhas]
 
 
 def sensor_systemd() -> list[dict]:
     r = subprocess.run(["systemctl", "--user", "list-units", "--failed", "--plain", "--no-legend"],
                        capture_output=True, text=True, timeout=30)
     unid = [ln.split()[0] for ln in r.stdout.splitlines() if ln.strip()]
-    return [_p("systemd", u, f"serviço {u} em falha") for u in unid if u not in _SYSTEMD_RUIDO]
+    return [_p("systemd", u, f"serviço {u} em falha", remediar=f"systemctl --user restart {u}")
+            for u in unid if u not in _SYSTEMD_RUIDO]
 
 
 def sensor_ronda() -> list[dict]:
@@ -109,17 +125,19 @@ def sensor_siafe() -> list[dict]:
     ult = json.loads((DATA / "sei_cache" / "siafe_runner_ultimo.json").read_text(encoding="utf-8"))
     if not ult.get("ok"):
         out.append(_p("siafe", "diario", "coleta diária do SIAFE falhou",
-                      f"{ult.get('erro')} — {ult.get('detail', '')}"))
+                      f"{ult.get('erro')} — {ult.get('detail', '')}", remediar=_DIARIO_SIAFE))
     for sis in ("1", "2"):
         av = DATA / f".siafe_dreno_aviso_login_{sis}"
         if av.exists() and time.time() - av.stat().st_mtime < 86400:
-            out.append(_p("siafe", f"login_sistema_{sis}", f"login do SIAFE {sis} quebrado (disjuntor do dreno)"))
+            out.append(_p("siafe", f"login_sistema_{sis}", f"login do SIAFE {sis} quebrado (disjuntor do dreno)",
+                          acao_humana=_ACAO_LOGIN.get(sis, "investigar o login com sonda que lê a tela sem clicar "
+                                                                  "em popup; nunca culpar WAF")))
     q = DATA / "siafe_dreno_quarentena.json"
     if q.exists():
         for par, e in json.loads(q.read_text(encoding="utf-8")).items():
             if e.get("n", 0) >= 99:
                 out.append(_p("siafe", f"conflito_{par}", f"dreno: conflito checkpoint × medidor em {par}",
-                              e.get("motivo", "")))
+                              e.get("motivo", ""), acao_humana="conferir checkpoint uggrande_* contra o medidor"))
     return out
 
 
@@ -132,12 +150,25 @@ def sensor_yoda() -> list[dict]:
     for sig, it in json.loads(f.read_text(encoding="utf-8")).items():
         if it.get("status") == "REINCIDIU" or (it.get("status") == "aberto" and it.get("ultimo_ts", 0) > recente):
             out.append(_p("yoda", sig, f"Yoda: {it['tipo']} — “{it['exemplo']['pedido'][:60]}”",
-                          f"{it['n']}× · último {it['ultimo']}"))
+                          f"{it['n']}× · último {it['ultimo']}",
+                          acao_humana="consertar e marcar com yoda_autoauditoria --resolver … --licao … "
+                                      "(a lição entra na memória do Yoda)"))
     return out
 
 
+def sensor_rem() -> list[dict]:
+    """Sono REM do Hermes (jfn-metacognicao, 06:50): cada passo que degradou (`*_erro`) é um problema."""
+    f = DATA / "hermes_metacognicao_ultimo.json"
+    if not f.exists():
+        return []          # a rodada que não acontece é pega pelo SLO `hermes-sono-rem`
+    res = json.loads(f.read_text(encoding="utf-8"))
+    return [_p("rem", k, f"sono REM do Hermes: passo {k.removesuffix('_erro')} degradado", str(v),
+               acao_humana="ver `journalctl --user -u jfn-metacognicao` — o passo caiu, os outros seguiram")
+            for k, v in res.items() if k.endswith("_erro")]
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd,
-            "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda}
+            "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
@@ -151,7 +182,8 @@ def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
         # estas as falhas reais — arquivo/JSON ausente, gh/pytest/systemctl falhando ou estourando tempo.
         except (OSError, ValueError, KeyError, RuntimeError, ImportError, subprocess.SubprocessError) as exc:
             logger.warning("sensor %s não mediu: %s", nome, exc)
-            problemas.append(_p("sensor", nome, f"sensor {nome} não conseguiu medir", f"{type(exc).__name__}: {exc}"))
+            problemas.append(_p("sensor", nome, f"sensor {nome} não conseguiu medir", f"{type(exc).__name__}: {exc}",
+                                acao_humana="o sensor está cego: ver data/automelhoria_geral.log"))
             medidos[nome] = None
     return problemas, medidos
 
@@ -174,16 +206,64 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
             novos.append(p["assinatura"])
             continue
         if it["status"] == "curado":
-            it.update(status="REINCIDIU", reincidiu_em=quando)
+            it.update(status="REINCIDIU", reincidiu_em=quando, acoes=[], escalado=False)
             reinc.append(p["assinatura"])
-        it.update(titulo=p["titulo"], detalhe=p["detalhe"], ultimo=quando, rodadas=it.get("rodadas", 0) + 1)
+        it.update(titulo=p["titulo"], detalhe=p["detalhe"], remediar=p.get("remediar", ""),
+                  acao_humana=p.get("acao_humana", ""), ultimo=quando, rodadas=it.get("rodadas", 0) + 1)
     for sig, it in fila.items():
         if sig not in vistos and it["status"] in ("aberto", "REINCIDIU"):
-            it.update(status="curado", curado_em=quando)
+            # o EFEITO verificado: se houve remédio automático, a cura é creditada a ele
+            it.update(status="curado", curado_em=quando,
+                      curado_por="remédio automático" if it.get("acoes") else "conserto externo")
+            it["historico_acoes"] = it.get("historico_acoes", []) + it.get("acoes", [])
+            it["acoes"] = []
             curados.append(sig)
     fila_path.parent.mkdir(parents=True, exist_ok=True)
     fila_path.write_text(json.dumps(fila, ensure_ascii=False, indent=1), encoding="utf-8")
     return {"fila": fila, "novos": novos, "reincidiu": reinc, "curados": curados}
+
+
+MAX_TENTATIVAS, INTERVALO_S, CARGA_MAX = 2, 20 * 3600, 4.0
+
+
+def remediar(fila: dict, agora: float | None = None, executar=None) -> dict:
+    """O loop AGE: para cada problema aberto que tem remédio seguro declarado, executa (destacado, sem
+    bloquear), no máximo 2 vezes com 20 h de intervalo. A rodada seguinte mede o efeito — se o sinal some,
+    `conciliar` marca curado pelo remédio; se 2 tentativas não curaram, ESCALA ao dono (conserto automático
+    que não pega não pode virar ruído silencioso). Carga alta adia, não força (a VM tem 2 vCPU)."""
+    import os
+    agora = agora or time.time()
+    executar = executar or _executar_destacado
+    feitos, escalados, adiados = [], [], []
+    for sig, it in fila.items():
+        if it["status"] == "curado" or not it.get("remediar"):
+            continue
+        acoes = it.setdefault("acoes", [])
+        if len(acoes) >= MAX_TENTATIVAS:
+            if not it.get("escalado"):
+                it["escalado"] = True
+                escalados.append(sig)
+            continue
+        if acoes and agora - acoes[-1]["ts"] < INTERVALO_S:
+            continue
+        if os.getloadavg()[0] >= CARGA_MAX:
+            adiados.append(sig)
+            continue
+        log = DATA / f"automelhoria_remedio_{sig.replace(':', '_').replace('/', '_')[:60]}.log"
+        executar(it["remediar"], log)
+        acoes.append({"ts": agora, "quando": datetime.fromtimestamp(agora).strftime("%Y-%m-%d %H:%M"),
+                      "cmd": it["remediar"], "log": str(log.relative_to(_REPO))})
+        feitos.append(sig)
+    return {"feitos": feitos, "escalados": escalados, "adiados": adiados}
+
+
+def _executar_destacado(cmd: str, log: Path) -> None:
+    with open(log, "a", encoding="utf-8") as f:
+        f.write(f"\n[{datetime.now():%F %T}] remédio automático: {cmd}\n")
+        f.flush()
+        # `nice` FORA do shell: `nice -n 10 PYTHONPATH=. …` falha ("No such file") — medido no 1º teste ao vivo
+        subprocess.Popen(["nice", "-n", "10", "bash", "-c", cmd], cwd=_REPO, stdout=f, stderr=subprocess.STDOUT,
+                         start_new_session=True)
 
 
 def resumo(fila: dict, max_itens: int = 15) -> str:
@@ -196,11 +276,16 @@ def resumo(fila: dict, max_itens: int = 15) -> str:
         marca = "🔴 REINCIDIU" if it["status"] == "REINCIDIU" else "🟡"
         L.append(f"{marca} [{it['area']}] {it['titulo']} — desde {it['primeiro'][:10]}"
                  + (f" · {it['detalhe'][:80]}" if it.get("detalhe") else ""))
+        if it.get("acoes"):
+            L.append(f"    🤖 remédio automático tentado {len(it['acoes'])}× (último {it['acoes'][-1]['quando']})"
+                     + (" — NÃO PEGOU, precisa de você" if it.get("escalado") else ""))
+        elif it.get("acao_humana"):
+            L.append(f"    👤 {it['acao_humana'][:140]}")
     if len(abertos) > max_itens:
         L.append(f"… e mais {len(abertos) - max_itens}")
     if curados:
-        L.append("✅ Curados recentes: " + "; ".join(f"{it['titulo'][:50]} ({it.get('curado_em', '')[:10]})"
-                                                  for _, it in curados[:5]))
+        L.append("✅ Curados recentes: " + "; ".join(
+            f"{it['titulo'][:50]} ({it.get('curado_em', '')[:10]}, {it.get('curado_por', 'conserto externo')})" for _, it in curados[:5]))
     return "\n".join(L)
 
 
@@ -217,21 +302,27 @@ def main() -> int:
         return 0
     problemas, medidos = sentir()
     r = conciliar(problemas)
+    rem = remediar(r["fila"])
+    FILA.write_text(json.dumps(r["fila"], ensure_ascii=False, indent=1), encoding="utf-8")
     txt = resumo(r["fila"], max_itens=60)
     md = (f"# Automelhoria geral — {datetime.now():%Y-%m-%d %H:%M}\n\n"
           f"Sensores (problemas achados; `None` = não mediu): `{json.dumps(medidos, ensure_ascii=False)}`\n\n"
           f"Novos: {len(r['novos'])} · reincidências: {len(r['reincidiu'])} · curados nesta rodada: "
-          f"{len(r['curados'])}\n\n```\n{txt}\n```\n")
+          f"{len(r['curados'])} · remédios lançados: {rem['feitos']} · escalados: {rem['escalados']} · "
+          f"adiados por carga: {rem['adiados']}\n\n```\n{txt}\n```\n")
     RELATORIOS.mkdir(parents=True, exist_ok=True)
     (RELATORIOS / f"{datetime.now():%Y-%m-%d}.md").write_text(md, encoding="utf-8")
     print(md)
-    if (r["novos"] or r["reincidiu"]) and not a.sem_aviso:
+    if (r["novos"] or r["reincidiu"] or rem["escalados"]) and not a.sem_aviso:
         from compliance_agent.siafe_coord import notificar
         L = [f"🔁 Automelhoria: {len(r['novos'])} problema(s) novo(s), {len(r['reincidiu'])} reincidência(s)"
              + (f", {len(r['curados'])} curado(s)" if r["curados"] else "") + "."]
+        for s in rem["escalados"]:
+            L.append(f"🆘 conserto automático NÃO pegou em 2 tentativas: {r['fila'][s]['titulo']}")
         for s in (r["reincidiu"] + r["novos"])[:8]:
             it = r["fila"][s]
-            L.append(f"{'🔴 ' if s in r['reincidiu'] else '• '}[{it['area']}] {it['titulo']}")
+            L.append(f"{'🔴 ' if s in r['reincidiu'] else '• '}[{it['area']}] {it['titulo']}"
+                     + (" — 🤖 já tentando consertar" if s in rem["feitos"] else ""))
         L.append("Detalhe: /melhorias")
         notificar("\n".join(L))
     return 0

@@ -240,6 +240,16 @@ async def _login(pg, exercicio: int):
     # FLUXO QUE FUNCIONA: preencher usuário+senha, escolher o exercício (com retry — o ADF reverte o
     # <select> sozinho), repor a senha se o re-render limpou, e CLICAR o botão de login por ID.
     await pg.fill('[id="loginBox:itxUsuario::content"]', u)
+    # O CAMPO DE USUÁRIO DISPARA UM RE-RENDER ASSÍNCRONO (ADF carrega os exercícios da conta). Medido em
+    # 24/10/2026 com sonda no SIAFE 1: preencher a senha logo em seguida a perdia, e o <select> voltava para
+    # 2023 — 10 tentativas seguidas. Esperar a rede assentar ANTES da senha e do ano resolve o formulário.
+    await pg.press('[id="loginBox:itxUsuario::content"]', "Tab")
+    from playwright.async_api import TimeoutError as _PwTimeout
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=10000)
+    except _PwTimeout as exc:  # assentar é melhor-esforço; o retry do ano/senha abaixo cobre
+        logger.debug("login SIAFE: rede não assentou após o usuário: %s", exc)
+    await pg.wait_for_timeout(800)
     await pg.fill('[id="loginBox:itxSenhaAtual::content"]', p)
     if exercicio:
         alvo = str(exercicio)
@@ -275,6 +285,14 @@ async def _login(pg, exercicio: int):
     # nova senha". Sem este teste, o clicador genérico abaixo apertava "Ok" com os campos vazios, o popup
     # fechava e o erro que sobrava era um "login_falhou" mudo — 7 dias de coleta zero sem ninguém saber
     # por quê. Trocar a senha é ato do DONO; aqui só se nomeia o motivo.
+    # ERRO INTERNO DO SIAFE (24/10/2026, SIAFE 1 desde 13/09): com o formulário CERTO, o servidor responde
+    # NullPointerException no RootMenuParser (montagem do menu do usuário) e cai em errorDisplay.jsp. Não é
+    # bloqueio nem formulário: é o servidor/perfil. Nomear o motivo evita 652 tentativas mudas no dreno.
+    if "nullpointerexception" in body0.lower() or "ocorreu um erro interno" in body0.lower():
+        return {"ok": False, "erro": "erro_interno_siafe",
+                "detail": "SIAFE respondeu erro interno (NullPointerException no RootMenuParser ao montar o menu "
+                          "do usuário). Formulário correto; falha do servidor/perfil. Testar login manual e, se "
+                          "repetir, abrir chamado na SEFAZ."}
     if "senha expirada" in body0.lower() or "sua senha expirou" in body0.lower():
         return {"ok": False, "erro": "senha_expirada",
                 "detail": "SIAFE exige NOVA senha na tela de login (popup 'Senha Expirada'). "

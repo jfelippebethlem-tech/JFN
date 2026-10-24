@@ -157,14 +157,67 @@ def atualizar_fila(falhas: list[dict], fila_path: Path = FILA) -> dict:
     return {"novas": novas, "reincidiu": reinc, "fila": fila}
 
 
-def resolver(assinatura: str, nota: str, fila_path: Path = FILA) -> bool:
+def resolver(assinatura: str, nota: str, fila_path: Path = FILA, licao: str = "") -> bool:
+    """Marca o conserto. `licao` (opcional) é a regra que o PRÓPRIO Yoda passa a ler na memória dele."""
     fila = json.loads(fila_path.read_text(encoding="utf-8"))
     if assinatura not in fila:
         return False
     fila[assinatura].update(status="resolvido", resolvido_ts=time.time(), nota=nota,
                             resolvido_em=datetime.now().strftime("%Y-%m-%d %H:%M"))
+    if licao:
+        fila[assinatura]["licao"] = licao
     fila_path.write_text(json.dumps(fila, ensure_ascii=False, indent=1), encoding="utf-8")
     return True
+
+
+YODA_MEMORY = Path.home() / ".hermes" / "memories" / "MEMORY.md"
+_MARCA = "LIÇÕES DAS MINHAS FALHAS"
+_LIMITE_MEMORIA = 6000          # memory.memory_char_limit do ~/.hermes/config.yaml
+_DELIM = "\n§\n"              # ENTRY_DELIMITER do memory_tool_store do Hermes
+
+
+def entrada_licoes(fila: dict, teto: int = 900) -> str:
+    """A entrada que o Yoda lê em TODA conversa: lições dos consertos + o que reincidiu. Fecha o laço:
+    a falha medida vira regra no prompt do próprio Yoda (não só num relatório que ele nunca lê)."""
+    licoes = sorted({it["licao"] for it in fila.values() if it.get("licao")})
+    reinc = [it for it in fila.values() if it.get("status") == "REINCIDIU"]
+    if not licoes and not reinc:
+        return ""
+    L = [f"{_MARCA} (gerado todo dia por ~/JFN/tools/yoda_autoauditoria.py a partir das conversas reais — "
+         "não editar à mão):"]
+    L += [f"• {x}" for x in licoes]
+    L += [f"• ⚠ VOLTOU A FALHAR ({it['tipo']}): “{it['exemplo']['pedido'][:70]}” — cuidado redobrado" for it in reinc[:3]]
+    L.append("• Estado do sistema / o que está quebrado → comando /melhorias (sem IA).")
+    txt = "\n".join(L)
+    return txt if len(txt) <= teto else txt[:teto - 1] + "…"
+
+
+def gravar_licoes_no_yoda(fila: dict, memoria: Path = YODA_MEMORY) -> str:
+    """Substitui SÓ a nossa entrada no MEMORY.md do Yoda, com o mesmo protocolo do Hermes: flock exclusivo
+    no `.lock` irmão, entradas separadas por `§`, escrita atômica (tmp + rename), modo 600. Nunca estoura o
+    limite: se não couber, não grava e diz por quê (perder memória do dono é pior que perder a lição)."""
+    import fcntl
+    import os
+    nova = entrada_licoes(fila)
+    with open(memoria.with_suffix(memoria.suffix + ".lock"), "a+") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        try:
+            bruto = memoria.read_text(encoding="utf-8") if memoria.exists() else ""
+            entradas = [e.strip() for e in bruto.split("\n§\n") if e.strip() and not e.strip().startswith(_MARCA)]
+            if nova:
+                entradas.append(nova)
+            texto = _DELIM.join(entradas)
+            if len(texto) > _LIMITE_MEMORIA:
+                return f"não gravado: {len(texto)} > {_LIMITE_MEMORIA} caracteres na memória do Yoda"
+            if texto == bruto:
+                return "sem mudança"
+            tmp = memoria.with_name(f".mem_jfn_{os.getpid()}")
+            tmp.write_text(texto, encoding="utf-8")
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, memoria)
+            return f"gravado ({len(nova)} caracteres de lições)"
+        finally:
+            fcntl.flock(lk, fcntl.LOCK_UN)
 
 
 def relatorio_md(falhas: list[dict], r: dict, dias: float) -> str:
@@ -196,13 +249,20 @@ def main() -> int:
     ap.add_argument("--sem-aviso", action="store_true")
     ap.add_argument("--resolver")
     ap.add_argument("--nota", default="")
+    ap.add_argument("--licao", default="", help="regra que o Yoda passa a ler na memória dele")
     a = ap.parse_args()
     if a.resolver:
-        ok = resolver(a.resolver, a.nota)
+        ok = resolver(a.resolver, a.nota, licao=a.licao)
+        if ok:
+            print("memória do Yoda:", gravar_licoes_no_yoda(json.loads(FILA.read_text(encoding="utf-8"))))
         print("resolvido" if ok else "assinatura não encontrada na fila")
         return 0 if ok else 1
     falhas = detectar(mensagens(a.dias))
     r = atualizar_fila(falhas)
+    try:
+        print("memória do Yoda:", gravar_licoes_no_yoda(r["fila"]))
+    except OSError as exc:
+        print(f"memória do Yoda: não gravada ({exc})")
     md = relatorio_md(falhas, r, a.dias)
     RELATORIOS.mkdir(parents=True, exist_ok=True)
     (RELATORIOS / f"{datetime.now():%Y-%m-%d}.md").write_text(md, encoding="utf-8")

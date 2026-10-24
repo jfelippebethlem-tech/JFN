@@ -30,6 +30,8 @@ class _PaginaSenhaExpirada:
     async def goto(self, *a, **k): pass
     async def wait_for_timeout(self, *a, **k): pass
     async def fill(self, *a, **k): pass
+    async def press(self, *a, **k): pass
+    async def wait_for_load_state(self, *a, **k): pass
     async def select_option(self, *a, **k): pass
     async def screenshot(self, *a, **k): pass
 
@@ -92,3 +94,17 @@ def test_popup_que_aparece_tarde_ainda_e_nomeado(monkeypatch):
     pg.leituras_ate_popup = 1
     r = asyncio.run(S._login(pg, 2026))
     assert r["erro"] == "senha_expirada" and pg.cliques_em_popup == 0
+
+
+def test_erro_interno_do_siafe_e_nomeado():
+    """SIAFE 1 desde 13/09/2026: NullPointerException no RootMenuParser com o formulário certo. O login
+    tem de dizer `erro_interno_siafe`, não um `login_nav` genérico repetido 652 vezes pelo dreno."""
+    import asyncio
+
+    from compliance_agent import siafe_ob_orcamentaria as M
+
+    class _PgErro(_PaginaSenhaExpirada):
+        async def inner_text(self, *a, **k):
+            return "Página de erro  Ocorreu um erro interno.  java.lang.NullPointerException RootMenuParser.java"
+    r = asyncio.run(M._login(_PgErro(), 2021))
+    assert r["erro"] == "erro_interno_siafe" and "RootMenuParser" in r["detail"]

@@ -59,3 +59,26 @@ def test_janela_sobreposta_nao_conta_duas_vezes(tmp_path):
     Y.atualizar_fila([f1], fila)
     r = Y.atualizar_fila([f1], fila)
     assert r["fila"]["incapaz:x"]["n"] == 1
+
+
+def test_licao_entra_na_memoria_do_yoda_sem_apagar_o_resto(tmp_path):
+    mem = tmp_path / "MEMORY.md"
+    mem.write_text("AMBIENTE: dono\n§\nROTINAS: bom dia 07:30", encoding="utf-8")
+    fila = {"incapaz:siafe codigo #": {"tipo": "incapaz", "status": "resolvido", "licao": "use /siafe",
+                                       "exemplo": {"pedido": "x", "resposta": "y"}}}
+    assert Y.gravar_licoes_no_yoda(fila, mem).startswith("gravado")
+    partes = mem.read_text(encoding="utf-8").split("\n§\n")
+    assert partes[:2] == ["AMBIENTE: dono", "ROTINAS: bom dia 07:30"]
+    assert partes[2].startswith(Y._MARCA) and "use /siafe" in partes[2]
+    # idempotente: segunda rodada não duplica a entrada
+    assert Y.gravar_licoes_no_yoda(fila, mem) == "sem mudança"
+    assert mem.read_text(encoding="utf-8").count(Y._MARCA) == 1
+
+
+def test_nao_estoura_o_limite_da_memoria(tmp_path):
+    mem = tmp_path / "MEMORY.md"
+    original = "X" * 5800
+    mem.write_text(original, encoding="utf-8")
+    fila = {"a": {"tipo": "incapaz", "status": "resolvido", "licao": "L" * 400, "exemplo": {"pedido": "", "resposta": ""}}}
+    assert Y.gravar_licoes_no_yoda(fila, mem).startswith("não gravado")
+    assert mem.read_text(encoding="utf-8") == original
