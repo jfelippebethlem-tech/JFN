@@ -80,6 +80,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - siafe_stats() [GET /api/siafe/stats] — 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'
 - sweeps_status() [GET /api/sweeps/status] — 'como esta o sweep', 'o sweep do SEI/dados esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos'
 - siafe_status() [GET /api/siafe/status] — 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'
+- siafe_codigo_mfa(codigo) [cli: compliance_agent.siafe_coord mfa <CODIGO> | livre | ocupado | pedido] — 'siafe codigo XXXX', código sozinho logo após o pedido do coletor, 'liberei o siafe', 'vou usar o siafe'
 - siafe_coletar_ug(ug,ano) [cli: compliance_agent.siafe_runner ug <UG> [ANO]] — backfill de UG
 - enriquecer_socios() [cli: tools.enriquecer_socios_ob] — apos novo sweep
 - cruzador() [cli: bash tools/cruzador.sh] — rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande

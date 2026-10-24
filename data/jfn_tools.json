@@ -2436,6 +2436,33 @@
     {
       "type": "function",
       "function": {
+        "name": "siafe_codigo_mfa",
+        "description": "Código MFA do SIAFE (ALFANUMÉRICO, ex. 4ZuteXbN) e sessão livre/ocupada. Tratado SEM o modelo pelo plugin ~/.hermes/plugins/jfn-siafe: /siafe e as frases 'siafe codigo X', 'siafe livre', 'vou usar o siafe' são reescritas antes de chegar ao LLM. NÃO existe ferramenta 'siafecodigo'. — usar quando: 'siafe codigo XXXX', código sozinho logo após o pedido do coletor, 'liberei o siafe', 'vou usar o siafe' — chamar (cli): compliance_agent.siafe_coord mfa <CODIGO> | livre | ocupado | pedido",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "codigo": {
+              "type": "string",
+              "description": "string 4-8 letras/números"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "yoda",
+        "dominio": "coleta",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.siafe_coord mfa <CODIGO> | livre | ocupado | pedido",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "siafe_coletar_ug",
         "description": "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5 — usar quando: backfill de UG — chamar (cli): compliance_agent.siafe_runner ug <UG> [ANO]",
         "parameters": {

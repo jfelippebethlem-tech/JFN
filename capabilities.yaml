@@ -328,6 +328,10 @@ capacidades:
      args: {}, retorno: "{texto,sei{feitos,supervisor,rodando},siafe{...},pausado}"}
   - {id: siafe_status, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/status, status: PRONTO,
      descricao: "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica)", quando_usar: "'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'", args: {}, retorno: "{ok,lock}"}
+  - {id: siafe_codigo_mfa, agente: yoda, dominio: coleta, tipo: cli, comando: "compliance_agent.siafe_coord mfa <CODIGO> | livre | ocupado | pedido", status: PRONTO,
+     descricao: "Código MFA do SIAFE (ALFANUMÉRICO, ex. 4ZuteXbN) e sessão livre/ocupada. Tratado SEM o modelo pelo plugin ~/.hermes/plugins/jfn-siafe: /siafe e as frases 'siafe codigo X', 'siafe livre', 'vou usar o siafe' são reescritas antes de chegar ao LLM. NÃO existe ferramenta 'siafecodigo'.",
+     quando_usar: "'siafe codigo XXXX', código sozinho logo após o pedido do coletor, 'liberei o siafe', 'vou usar o siafe'", args: {codigo: "string 4-8 letras/números"}, retorno: "texto de confirmação",
+     menu: {grupo: "🛰️ Coleta & Base", nome: "Código MFA / sessão do SIAFE", exemplo: "/siafe 4ZuteXbN", ordem: 62, cmd: "/siafe"}}
   - {id: siafe_coletar_ug, agente: jfn, dominio: coleta, tipo: cli, comando: "compliance_agent.siafe_runner ug <UG> [ANO]", status: PRONTO,
      descricao: "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5", quando_usar: "backfill de UG", args: {ug: obrigatorio, ano: opcional}, retorno: "stdout"}
   - {id: enriquecer_socios, agente: jfn, dominio: coleta, tipo: cli, comando: "tools.enriquecer_socios_ob", status: PRONTO,
@@ -410,6 +414,7 @@ menu_lista:
     🕸️ **Vínculos** — quem está atrás da empresa, parentesco entre sócios, e desde quando o vínculo existe.
     🕵️ **Fiscalização & perícias** — emendas, gastos e editais da Prefeitura, parecer de contratos.
     👥 **Pessoal × benefícios** — quem do quadro (nomeado? efetivo?) recebe benefício; sócios também.
+    🔐 **SIAFE** — mande o código MFA (/siafe CODIGO) ou avise que vai usar/liberou o SIAFE.
     📚 **Ver todas as funções** — o catálogo completo.
 
     *Toque numa opção ou fale comigo em linguagem natural.*
@@ -420,8 +425,19 @@ menu_lista:
     - [["🕸️ Vínculos (dono real · parentesco · desde quando)", "menu:vinc"]]
     - [["🕵️ Fiscalização & perícias", "menu:fisc"]]
     - [["👥 Pessoal × benefícios", "menu:benef"]]
+    - [["🔐 SIAFE (código MFA · livre/ocupado)", "menu:siafe"]]
     - [["📚 Ver todas as funções", "menu:all"]]
   dicas:
+    siafe: |
+      🔐 **SIAFE — código MFA e sessão única**
+      O código chega no seu e-mail da ALERJ e tem **letras e números** (ex.: 4ZuteXbN). Mande assim:
+
+      • /siafe 4ZuteXbN — ou "siafe codigo 4ZuteXbN", ou só o código logo depois que eu pedir
+      • /siafe livre — liberei o SIAFE, o coletor pode entrar
+      • /siafe ocupado — vou usar o SIAFE, o coletor espera
+      • /siafe status — há coleta pedindo código agora?
+
+      Isto não passa pela IA: é gravado na hora, direto no coletor.
     forn: |
       🏢 **Relatório de fornecedor**
       Tudo que uma empresa recebeu do Estado, com rede de sócios e nível de risco (PDF + planilha + parecer jurídico Lex).

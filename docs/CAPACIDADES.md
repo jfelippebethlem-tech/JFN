@@ -57,6 +57,7 @@ Versão 2.4.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `cruzador` | jfn | cli | `bash tools/cruzador.sh` | PRONTO | rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande |
 | `enriquecer_socios` | jfn | cli | `tools.enriquecer_socios_ob` | PRONTO | apos novo sweep |
 | `siafe_atualizar` | jfn | http | `/api/siafe/atualizar` | PRONTO | 'atualize o SIAFE' |
+| `siafe_codigo_mfa` | yoda | cli | `compliance_agent.siafe_coord mfa <CODIGO> | livre | ocupado | pedido` | PRONTO | 'siafe codigo XXXX', código sozinho logo após o pedido do coletor, 'liberei o siafe', 'vou usar o siafe' |
 | `siafe_coletar_ug` | jfn | cli | `compliance_agent.siafe_runner ug <UG> [ANO]` | PRONTO | backfill de UG |
 | `siafe_stats` | jfn | http | `/api/siafe/stats` | PRONTO | 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia' |
 | `siafe_status` | jfn | http | `/api/siafe/status` | PRONTO | 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?' |
