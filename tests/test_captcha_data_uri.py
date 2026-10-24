@@ -22,6 +22,9 @@ def test_data_uri_exige_prefixo_data():
         solve_captcha_data_uri("https://exemplo/captcha.php")
 
 
+@pytest.mark.skipif(
+    __import__("shutil").which("tesseract") is None and __import__("importlib.util").util.find_spec("ddddocr") is None,
+    reason="nenhum motor de OCR nesta máquina (runner do CI não tem tesseract nem ddddocr)")
 def test_data_uri_de_imagem_real_chega_ao_ocr(tmp_path):
     """PNG mínimo válido: o que se prova aqui é que os bytes chegam ao OCR sem exceção —
     NÃO que o OCR acerte. A taxa de acerto é outra medida, feita no captcha real."""
