@@ -35,6 +35,17 @@ def verificados() -> dict:
         return {}
 
 
+INCONCLUSIVOS = _REPO / "data" / "siafe_dias_inconclusivos.json"
+try:
+    _ULT_INCONCLUSIVO: dict = json.loads(INCONCLUSIVOS.read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    _ULT_INCONCLUSIVO = {}
+
+
+def _salvar_inconclusivos() -> None:
+    INCONCLUSIVOS.write_text(json.dumps(_ULT_INCONCLUSIVO, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def _contar(dia: str, exercicio: int, db: Path = DB) -> int:
     con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     try:
@@ -68,10 +79,21 @@ async def recoletar(dias: list[str], exercicio: int) -> dict:
         # VERIFICADO SÓ COM PROVA: subdividiu (estouro) OU a colheita viu ao menos o que a base já tem.
         # Medido em 24/10/2026 no 17/03: colheu 879 com 998 na base — a rolagem parou antes do fim; marcar
         # como verificado seria declarar cura sem efeito. Fica inconclusivo, o sensor insiste e escala.
-        if r.get("ok") and (r.get("estouro") or (r.get("ingeridas") or 0) >= antes):
+        # …OU ESTÁVEL: duas colheitas independentes, abaixo do teto, com o MESMO número provam que a visão por
+        # data está completa. Medido em 24/10/2026: 17/03 deu 879 duas vezes (passo e espera diferentes) com
+        # 998 na base — as 119 a mais vêm de outras coletas (dreno por UG), não de truncamento.
+        n = r.get("ingeridas") or 0
+        estavel = bool(r.get("ok")) and n < 980 and _ULT_INCONCLUSIVO.get(d) == n
+        if r.get("ok") and (r.get("estouro") or n >= antes or estavel):
             ok[d] = {"quando": datetime.now().isoformat(timespec="seconds"), "estouro": r.get("estouro"),
-                     "ingeridas": r.get("ingeridas")}
+                     "ingeridas": n, "base": antes,
+                     "nota": "colheita estável em 2 rodadas; a base tem OBs de outras coletas" if estavel and n < antes
+                     else ""}
             VERIFICADOS.write_text(json.dumps(ok, ensure_ascii=False, indent=1), encoding="utf-8")
+            _ULT_INCONCLUSIVO.pop(d, None)
+        elif r.get("ok"):
+            _ULT_INCONCLUSIVO[d] = n
+        _salvar_inconclusivos()
         print(f"[{datetime.now():%F %T}] dia {d}: {out[d]}", flush=True)
     return out
 

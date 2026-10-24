@@ -137,6 +137,8 @@ def test_recoleta_parcial_nao_vira_verificado(tmp_path, monkeypatch):
     import types
     import tools.siafe_recoletar_dias as R
     monkeypatch.setattr(R, "VERIFICADOS", tmp_path / "v.json")
+    monkeypatch.setattr(R, "INCONCLUSIVOS", tmp_path / "i.json")      # nunca o arquivo real de data/
+    monkeypatch.setattr(R, "_ULT_INCONCLUSIVO", {})
     monkeypatch.setattr(R, "_contar", lambda d, e: 998)
     falso = types.SimpleNamespace()
 
@@ -153,3 +155,24 @@ def test_recoleta_parcial_nao_vira_verificado(tmp_path, monkeypatch):
     asyncio.run(R.recoletar(["19/10/2026"], 2026))
     assert "19/10/2026" in json.loads((tmp_path / "v.json").read_text())
     del falso
+
+
+def test_colheita_estavel_em_duas_rodadas_verifica_o_dia(tmp_path, monkeypatch):
+    """17/03/2026: 879 duas vezes com 998 na base — a visão por data é completa; o excesso vem de outras coletas."""
+    import asyncio
+    import json
+    import tools.siafe_recoletar_dias as R
+    import compliance_agent.siafe_ob_orcamentaria as M
+    monkeypatch.setattr(R, "VERIFICADOS", tmp_path / "v.json")
+    monkeypatch.setattr(R, "INCONCLUSIVOS", tmp_path / "i.json")
+    monkeypatch.setattr(R, "_ULT_INCONCLUSIVO", {})
+    monkeypatch.setattr(R, "_contar", lambda d, e: 998)
+
+    async def colhe(ex, d):
+        return {"ok": True, "estouro": False, "ingeridas": 879}
+    monkeypatch.setattr(M, "coletar_por_data", colhe)
+    asyncio.run(R.recoletar(["17/03/2026"], 2026))                  # 1ª leitura: inconclusivo
+    assert not (tmp_path / "v.json").exists()
+    asyncio.run(R.recoletar(["17/03/2026"], 2026))                  # 2ª igual: estável → verificado
+    v = json.loads((tmp_path / "v.json").read_text())["17/03/2026"]
+    assert v["ingeridas"] == 879 and v["base"] == 998 and "estável" in v["nota"]
