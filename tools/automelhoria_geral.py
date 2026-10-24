@@ -58,6 +58,9 @@ def _p(area: str, chave: str, titulo: str, detalhe: str = "", remediar: str = ""
 _ACAO_LOGIN = {"1": "servidor do SIAFE 1 responde NullPointerException no RootMenuParser (menu do usuário) "
                     "com o formulário correto, desde 13/09 — dono: testar login manual em "
                     "www5.fazenda.rj.gov.br/SiafeRio (2016-2023); se falhar também, abrir chamado na SEFAZ"}
+_ACAO_CONFLITO = {"326100_2025": "recoleta limpa de 24/10 devolveu 0 em TODAS as fatias (UG+Número 2025OB*) para um "
+                                  "par com 1.310 OBs na base, coletadas pelo mesmo caminho em 15/08; o login é o mesmo "
+                                  "do dreno que funciona — depurar o filtro com print da tela"}
 _DIARIO_SIAFE = "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario >> data/siafe_runner_cron.log 2>&1"
 
 
@@ -137,7 +140,8 @@ def sensor_siafe() -> list[dict]:
         for par, e in json.loads(q.read_text(encoding="utf-8")).items():
             if e.get("n", 0) >= 99:
                 out.append(_p("siafe", f"conflito_{par}", f"dreno: conflito checkpoint × medidor em {par}",
-                              e.get("motivo", ""), acao_humana="conferir checkpoint uggrande_* contra o medidor"))
+                              e.get("motivo", ""), acao_humana=_ACAO_CONFLITO.get(
+                                  par, "conferir checkpoint uggrande_* contra o medidor")))
     return out
 
 
