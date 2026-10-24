@@ -96,7 +96,7 @@ def test_popup_que_aparece_tarde_ainda_e_nomeado(monkeypatch):
     assert r["erro"] == "senha_expirada" and pg.cliques_em_popup == 0
 
 
-def test_erro_interno_do_siafe_e_nomeado():
+def test_erro_interno_do_siafe_e_nomeado(monkeypatch):
     """SIAFE 1 desde 13/09/2026: NullPointerException no RootMenuParser com o formulário certo. O login
     tem de dizer `erro_interno_siafe`, não um `login_nav` genérico repetido 652 vezes pelo dreno."""
     import asyncio
@@ -106,5 +106,10 @@ def test_erro_interno_do_siafe_e_nomeado():
     class _PgErro(_PaginaSenhaExpirada):
         async def inner_text(self, *a, **k):
             return "Página de erro  Ocorreu um erro interno.  java.lang.NullPointerException RootMenuParser.java"
+    # o runner do CI não tem .env: credenciais falsas, como nos outros testes deste arquivo (falhou no CI 03ba6b6a)
+    monkeypatch.setenv("SIAFE_USER", "u")
+    monkeypatch.setenv("SIAFE_PASS", "p")
+    monkeypatch.delenv("SIAFE2_USER", raising=False)
+    monkeypatch.delenv("SIAFE2_PASS", raising=False)
     r = asyncio.run(M._login(_PgErro(), 2021))
     assert r["erro"] == "erro_interno_siafe" and "RootMenuParser" in r["detail"]
