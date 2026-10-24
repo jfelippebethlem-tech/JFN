@@ -160,3 +160,18 @@ def test_estouro_do_dia_se_mede_no_colhido_nao_no_dom():
     i_decide = fonte.find("len(linhas) < _FATIA_CAPOU")
     i_subdiv = fonte.find("_esperar_linha_filtro")
     assert 0 < i_colhe < i_decide < i_subdiv
+
+
+def test_fatia_zerada_nao_vira_feita_no_checkpoint():
+    """24/10/2026: UG 326100/2025 deu 0 em todas as fatias numa rodada e 1.000+ na seguinte. Gravar o zero
+    como `done` escondia o par para sempre; todas zeradas tem de virar erro, não `ok:true`."""
+    import inspect
+
+    from compliance_agent import siafe_ob_orcamentaria as M
+
+    fonte = inspect.getsource(M.coletar_por_ug_grande)
+    i_if = fonte.find("if linhas:                          # ingere fatia COMPLETA")
+    i_done = fonte.find("done.add(pref)", i_if)
+    i_pref = fonte.find("por_prefixo[pref] = n", i_if)
+    assert 0 < i_if < i_done < i_pref, "done.add tem de estar DENTRO do `if linhas:`"
+    assert "todas_as_fatias_zeradas" in fonte

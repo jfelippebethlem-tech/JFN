@@ -1153,7 +1153,12 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                 else:
                     if linhas:                          # ingere fatia COMPLETA
                         tot += ingerir(exercicio, header, linhas).get("ingeridas", 0)
-                    done.add(pref); _save_ckpt(); por_prefixo[pref] = n
+                        done.add(pref); _save_ckpt()
+                    # ZERO NÃO ENTRA NO CHECKPOINT. 24/10/2026: a UG 326100/2025 devolveu 0 em TODAS as fatias
+                    # numa rodada e 1.000+ na seguinte, com o mesmo código — zero transitório. Gravado como
+                    # `done`, ele escondia o par para sempre (conflito checkpoint × medidor). Re-consultar
+                    # um zero legítimo (UG pequena não tem 2025OB5…) custa segundos.
+                    por_prefixo[pref] = n
                     print(f"  {ug} {exercicio} pref {pref}: {n} OBs ✓", flush=True)
             # ZERO FATIA NÃO É SUCESSO — e este `ok:true` já me enganou. Quando todos os
             # prefixos estão no checkpoint `done` de uma execução anterior, o laço não consulta
@@ -1161,6 +1166,11 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             # "coletei e não havia nada". São coisas diferentes: "nada a fazer porque já foi" tem
             # de dizer isso, com o caminho do checkpoint, para quem quiser refazer saber onde
             # mexer. (Medido 2026-08-09 refazendo a UG 180100/2023.)
+            if por_prefixo and not any(por_prefixo.values()):
+                return {"ok": False, "erro": "todas_as_fatias_zeradas", "exercicio": exercicio, "ug": ug,
+                        "fatias": len(por_prefixo),
+                        "detail": "nenhuma fatia trouxe linha — UG sem OB no exercício OU consulta falhou; "
+                                  "zero não foi gravado como feito, a próxima rodada re-consulta"}
             if not por_prefixo:
                 return {"ok": True, "nada_a_fazer": True, "exercicio": exercicio, "ug": ug,
                         "ingeridas": 0, "fatias": 0, "por_prefixo": {},
