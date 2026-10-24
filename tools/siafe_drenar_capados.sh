@@ -43,6 +43,32 @@ MAX=${1:-1}
 LOGIN1="https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 say(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
+# QUARENTENA POR PAR E DISJUNTOR DE LOGIN (24/10/2026). Medido no log: 3.721 "SEM GANHO", a UG 180100/2021
+# tentada 652 vezes, sempre os MESMOS 5 pares na cabeça da fila — e os outros 251 nunca chegavam. Os do
+# SIAFE 1 morriam todos no login (errorDisplay.jsp desde 13/09) e o 326100/2025 gastava 46 min esperando
+# MFA para um trabalho que o checkpoint já dava por feito. Trabalho que parece progresso.
+QUAR=data/siafe_dreno_quarentena.json
+quar(){ PYTHONPATH=. $PY - "$QUAR" "$@" <<'PYEOF'
+import json, sys, time
+arq, acao, chave = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    d = json.load(open(arq))
+except (OSError, ValueError):
+    d = {}
+e = d.get(chave, {"n": 0, "ts": 0})
+DIAS = 7 * 86400
+if acao == "pular":          # em quarentena = 3+ sem ganho seguidos (ou conflito) há menos de 7 dias
+    print("sim" if e["n"] >= 3 and time.time() - e["ts"] < DIAS else "nao"); sys.exit()
+if acao == "ganho":
+    d.pop(chave, None)
+elif acao == "sem_ganho":
+    d[chave] = {"n": e["n"] + 1, "ts": time.time(), "motivo": sys.argv[4] if len(sys.argv) > 4 else ""}
+elif acao == "conflito":
+    d[chave] = {"n": 99, "ts": time.time(), "motivo": sys.argv[4] if len(sys.argv) > 4 else "conflito"}
+json.dump(d, open(arq, "w"), ensure_ascii=False, indent=1)
+PYEOF
+}
+
 [ -f data/.pause_siafe_drenar ] && { say "pausado (.pause_siafe_drenar)"; exit 0; }
 
 # INSTÂNCIA ÚNICA. A sessão do SIAFE é uma por IP: dois drenadores derrubam a sessão um do outro e
@@ -116,6 +142,14 @@ feitos=0
 for par in "${PARES[@]}"; do
   [ "$feitos" -ge "$MAX" ] && break
   set -- $par; UG=$1; ANO=$2
+  # JANELA DO DIÁRIO. O cron das 04:50 começava um par que segurava o browser do SIAFE até ~05:45; o
+  # diário das 05:00 esperava 15 min pelo lock e morria (21→24/10/2026, quatro madrugadas sem OB).
+  HM=$((10#$(date +%H%M)))
+  if [ "$HM" -ge 425 ] && [ "$HM" -lt 535 ]; then say "janela do diário (04:25-05:35) — não começo par novo"; break; fi
+  if [ "$(quar pular "${UG}_${ANO}")" = "sim" ]; then continue; fi
+  # sistema com LOGIN quebrado (disjuntor abaixo) fica de fora 24 h inteiras — os pares do outro seguem
+  _S=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); _AV=data/.siafe_dreno_aviso_login_$_S
+  if [ -f "$_AV" ] && [ $(( $(date +%s) - $(stat -c %Y "$_AV") )) -lt 86400 ]; then continue; fi
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
   # GUARDA DA CASA, DOIS CRITÉRIOS. A versão anterior era `load >= 4` à mão, e medido em
   # 2026-08-10 ela barrou **10 de 10** passadas do cron — a maioria drenou ZERO pares, porque a
@@ -205,6 +239,32 @@ PYEOF
     say "UG $UG $ANO: $ANTES → $DEPOIS linhas (rc=$rc)"
   else
     say "UG $UG $ANO: SEM GANHO ($ANTES → $DEPOIS, rc=$rc) — ver $SAIDA"
+  fi
+  if [ "$DEPOIS" -gt "$ANTES" ] || { [ "${DESLOCADAS_ANTES:-0}" -gt 0 ] && [ "${TORTAS:-0}" -lt "${DESLOCADAS_ANTES:-0}" ]; }; then
+    quar ganho "${UG}_${ANO}"
+  elif grep -q '"nada_a_fazer": true' "$SAIDA"; then
+    # o checkpoint diz "tudo feito" e o medidor diz "incompleto": repetir não resolve, só gasta browser
+    quar conflito "${UG}_${ANO}" "checkpoint_feito_x_medidor_incompleto"
+    say "UG $UG $ANO: CONFLITO — checkpoint diz feito, medidor diz incompleto. Quarentena 7 dias; exame humano."
+  else
+    _mot=$(grep -o '"etapa": "[a-z_]*"' "$SAIDA" | head -1 | cut -d'"' -f4)
+    quar sem_ganho "${UG}_${ANO}" "${_mot:-sem_ganho}"
+    # DISJUNTOR: dois pares seguidos do MESMO sistema caindo no login = o login está quebrado, não o par.
+    if [ "${_mot:-}" = "login_nav" ] || [ "${_mot:-}" = "login" ]; then
+      SIS=$([ "$ANO" -le 2023 ] && echo 1 || echo 2)
+      if [ "${ULT_LOGIN_FALHO:-}" = "$SIS" ]; then
+        say "DISJUNTOR: 2 pares seguidos do SIAFE $SIS falharam no LOGIN — paro a passada (ver $SAIDA)"
+        AVISO=data/.siafe_dreno_aviso_login_$SIS
+        if [ ! -f "$AVISO" ] || [ $(( $(date +%s) - $(stat -c %Y "$AVISO") )) -gt 86400 ]; then
+          touch "$AVISO"
+          $PY -c "from compliance_agent.siafe_coord import notificar; notificar('⚠️ JFN — o dreno do SIAFE $SIS parou: o LOGIN falha em todos os pares (último: UG $UG/$ANO). A coleta histórica desse sistema está travada até investigar — log: $SAIDA')" >/dev/null 2>&1
+        fi
+        feitos=$((feitos+1)); break
+      fi
+      ULT_LOGIN_FALHO=$SIS
+    else
+      ULT_LOGIN_FALHO=
+    fi
   fi
   feitos=$((feitos+1))
   # RESPIRO ENTRE PARES. A sessão do SIAFE é única por IP e o servidor demora a soltá-la: medido em

@@ -140,3 +140,23 @@ def test_blocos_de_js_sao_raw_strings():
         src = inspect.getsource(fn)
         assert not any(ch in src for ch in perigosos.values()), (
             f"{fn.__name__} tem escape do Python dentro do JS")
+
+
+def test_estouro_do_dia_se_mede_no_colhido_nao_no_dom():
+    """O verificador anti-teto do diário NUNCA disparou: 0 estouros em 236 conferências até 24/10/2026.
+
+    `coletar_por_data` decidia o estouro com `_contar_linhas` logo após o filtro, mas a tabela do
+    ADF renderiza ~50 linhas e carrega o resto rolando — o número nunca chegava a `_FATIA_CAPOU`.
+    Oito dias de 2026 ficaram parados no platô (981–997 OBs). A decisão tem de vir do que `_colher`
+    trouxe, antes do caminho de subdivisão.
+    """
+    import inspect
+
+    from compliance_agent import siafe_ob_orcamentaria as M
+
+    fonte = inspect.getsource(M.coletar_por_data)
+    assert "await _contar_linhas" not in fonte, "estouro decidido pelo DOM (~50 linhas renderizadas) de novo"
+    i_colhe = fonte.find("_colher(")
+    i_decide = fonte.find("len(linhas) < _FATIA_CAPOU")
+    i_subdiv = fonte.find("_esperar_linha_filtro")
+    assert 0 < i_colhe < i_decide < i_subdiv

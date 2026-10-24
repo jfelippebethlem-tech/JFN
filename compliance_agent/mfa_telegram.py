@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 from compliance_agent.fachada_doubt import _texto_resposta, mensagens_novas_telegram
-from compliance_agent.siafe_coord import notificar
+from compliance_agent.siafe_coord import marcar_pedido_mfa, notificar
 
 logger = logging.getLogger(__name__)
 
@@ -85,9 +85,11 @@ def pedir_codigo_mfa(sistema: str = "SIAFE", timeout_s: int = 300, poll_s: int =
         logger.debug("MFA: não removeu .mfa_code antigo: %s", exc)
 
     desde = _agora()
+    marcar_pedido_mfa(sistema)
     notificar(
         f"🔐 {sistema} — o login precisa do código MFA.\n\n"
-        "Responda AQUI com o código (4 a 8 dígitos) que chegou no seu e-mail/app autenticador.\n"
+        "Responda AQUI com o código (4 a 8 letras/números) que chegou no seu e-mail — sozinho ou como "
+        "/siafe CODIGO.\n"
         f"Aguardo até ~{max(1, timeout_s // 60)} min; se passar, é só repetir o login.")
 
     deadline = desde + timeout_s
@@ -114,7 +116,7 @@ def pedir_codigo_mfa(sistema: str = "SIAFE", timeout_s: int = 300, poll_s: int =
         except Exception as exc:
             logger.warning("MFA: captura passiva do Telegram falhou (resta o fallback .mfa_code): %s", exc)
         if _agora() >= prox_ping:
-            notificar(f"⏳ Ainda aguardo o código do {sistema} (4–8 dígitos).")
+            notificar(f"⏳ Ainda aguardo o código do {sistema} (4–8 letras/números; /siafe CODIGO).")
             prox_ping = _agora() + 90
         _sleep(poll_s)
 

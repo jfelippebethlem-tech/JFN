@@ -31,14 +31,42 @@ _LOCK = _REPO / "data" / "sei_cache" / "siafe_lock.json"
 ULTIMO = _LOCK.parent / "siafe_runner_ultimo.json"
 
 
+def ultimo_ok_iso() -> str | None:
+    """Quando o diário deu certo pela última vez (sobrevive às falhas — `iso` é o da última TENTATIVA)."""
+    try:
+        d = json.loads(ULTIMO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d.get("ultimo_ok_iso") or (d.get("iso") if d.get("ok") else None)
+
+
 def gravar_ultimo(res: dict) -> None:
     try:
+        agora = datetime.now(timezone.utc).isoformat()
+        ok_ant = ultimo_ok_iso()
         ULTIMO.parent.mkdir(parents=True, exist_ok=True)
-        ULTIMO.write_text(json.dumps({"iso": datetime.now(timezone.utc).isoformat(), "ok": bool(res.get("ok")),
+        ULTIMO.write_text(json.dumps({"iso": agora, "ok": bool(res.get("ok")),
                                       "erro": res.get("erro") or res.get("etapa"), "detail": (res.get("detail") or "")[:300],
-                                      "n": res.get("n")}, ensure_ascii=False))
+                                      "n": res.get("n"), "ultimo_ok_iso": agora if res.get("ok") else ok_ant},
+                                     ensure_ascii=False))
     except OSError as exc:
         logger.debug("não gravei o último resultado do diário: %s", exc)
+
+
+def dias_a_verificar(ultimo_ok: str | None, agora: datetime | None = None, minimo: int = 2,
+                     maximo: int = 10) -> list[int]:
+    """Quantos dias para trás o verificador anti-teto confere. Ontem e anteontem bastam quando o diário
+    roda todo dia; depois de uma LACUNA, os dias do meio também caíram abaixo da posição 1000. Medido em
+    24/10/2026: o diário morreu 4 madrugadas seguidas (lock do browser) e o verificador só olharia 22-23/10,
+    deixando 19-21/10 sem conferência. Teto de 10 dias = ~1 h de browser no pior caso."""
+    agora = agora or datetime.now(timezone.utc)
+    lacuna = minimo
+    if ultimo_ok:
+        try:
+            lacuna = (agora - datetime.fromisoformat(ultimo_ok)).days + 1
+        except ValueError:
+            lacuna = maximo
+    return list(range(1, max(minimo, min(maximo, lacuna)) + 1))
 
 
 def ultimo_resultado() -> dict | None:
@@ -136,13 +164,25 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
         return {"ok": False, "erro": "lock", "detail": "Outra coleta SIAFE em andamento", "lock": lock_status()}
     try:
         _log(f"diário {ano}: iniciando (maxn={maxn})")
-        res = await M.coletar(ano, maxn=maxn)
+        ok_anterior = ultimo_ok_iso()      # lido ANTES de gravar este resultado — é a régua da lacuna
+
+        async def _coletar():
+            # BROWSER OCUPADO NÃO PODE MATAR O DIÁRIO CALADO. 21→24/10/2026: o dreno das 04:50 segurava o
+            # browser do SIAFE até ~05:45, o `browser_lock_async` estourava aos 15 min e a exceção subia
+            # crua — sem `gravar_ultimo`, sem Telegram. Quatro madrugadas sem OB e só o SLO (123 h) notou.
+            try:
+                return await M.coletar(ano, maxn=maxn)
+            except TimeoutError as e:
+                return {"ok": False, "etapa": "browser_lock", "erro": "navegador_ocupado",
+                        "detail": f"{e} — outra coleta SIAFE segurava o navegador"}
+
+        res = await _coletar()
         if not res.get("ok") and res.get("etapa") == "navegacao":
             # 11/09/2026 05:00: 'tabela tblOBOrcamentaria não apareceu' com login OK — transitório do SIAFE
             # às 5 h (às 16 h a mesma navegação colheu 971). Uma 2ª tentativa custa 3 min; o alarme, um dia.
             _log(f"diário {ano}: navegação falhou ({res.get('detail')}) — 2ª tentativa em 90 s")
             await asyncio.sleep(90)
-            res = await M.coletar(ano, maxn=maxn)
+            res = await _coletar()
         if not res.get("ok"):
             _log(f"diário {ano}: coleta falhou: {res}")
             gravar_ultimo(res)
@@ -163,7 +203,7 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
         # por Data Emissão; se estourou (>1000), coletar_por_data subdivide por Número e completa o dia.
         from datetime import timedelta
         verif = {}
-        for delta in (1, 2):                      # ontem e anteontem (margem)
+        for delta in dias_a_verificar(ok_anterior):   # ontem e anteontem — ou toda a lacuna desde o último OK
             d = (datetime.now(timezone.utc) - timedelta(days=delta)).strftime("%d/%m/%Y")
             try:
                 r = await M.coletar_por_data(ano, d)

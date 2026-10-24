@@ -117,11 +117,35 @@ def aguardar_liberacao(motivo: str, timeout_total_s: int = 6 * 3600, poll_s: int
 _MFA_FLAG = _REPO / "data" / "sei_cache" / "siafe_mfa.json"
 
 
+_MFA_PEDIDO = _REPO / "data" / "sei_cache" / "siafe_mfa_pedido.json"
+_MFA_CODE_FILE = _REPO / "data" / "sei_cache" / ".mfa_code"   # porta lida por mfa_telegram.pedir_codigo_mfa
+
+
 def set_mfa(codigo: str):
-    """Grava o código MFA do SIAFE (Yoda chama ao receber 'siafe codigo NNNNNN' do Jorge)."""
+    """Grava o código MFA do SIAFE nas DUAS portas que os coletores leem: o flag `siafe_mfa.json`
+    (siafe_ob_orcamentaria) e o `.mfa_code` (mfa_telegram/siafe_session). Chamado pelo plugin `jfn-siafe`
+    do Yoda (comando /siafe) e pela captura passiva do Telegram."""
+    codigo = str(codigo).strip()
     _MFA_FLAG.parent.mkdir(parents=True, exist_ok=True)
-    _MFA_FLAG.write_text(json.dumps({"codigo": str(codigo).strip(), "ts": int(time.time())}),
-                         encoding="utf-8")
+    _MFA_FLAG.write_text(json.dumps({"codigo": codigo, "ts": int(time.time())}), encoding="utf-8")
+    _MFA_CODE_FILE.write_text(codigo, encoding="utf-8")
+
+
+def marcar_pedido_mfa(sistema: str = "SIAFE"):
+    """Registra que um coletor está AGORA esperando código. O Yoda só aceita um código solto na mensagem
+    (sem a palavra 'siafe') enquanto houver pedido aberto — fora disso, um token qualquer não vira código."""
+    _MFA_PEDIDO.parent.mkdir(parents=True, exist_ok=True)
+    _MFA_PEDIDO.write_text(json.dumps({"sistema": sistema, "ts": int(time.time())}), encoding="utf-8")
+
+
+def pedido_mfa_aberto(janela_s: int = 900) -> bool:
+    """Há pedido de código nos últimos `janela_s` segundos ainda sem código gravado depois dele?"""
+    try:
+        ped = float(json.loads(_MFA_PEDIDO.read_text(encoding="utf-8")).get("ts", 0))
+    except (OSError, ValueError) as exc:
+        logger.debug("sem pedido MFA legível: %s", exc)
+        return False
+    return time.time() - ped < janela_s and not get_mfa(depois_de=ped)
 
 
 def get_mfa(depois_de: float = 0) -> str:
@@ -141,7 +165,10 @@ if __name__ == "__main__":
         set_status(sys.argv[1], " ".join(sys.argv[2:]))
         print(f"flag SIAFE = {sys.argv[1]}")
     elif len(sys.argv) > 2 and sys.argv[1] == "mfa":
+        aberto = pedido_mfa_aberto()
         set_mfa(sys.argv[2])
-        print("código MFA gravado")
+        print("código MFA gravado" + ("" if aberto else " (nenhuma coleta pedindo código agora)"))
+    elif len(sys.argv) > 1 and sys.argv[1] == "pedido":
+        print("aberto" if pedido_mfa_aberto() else "nenhum")
     else:
         print(f"status atual: {get_status()}")

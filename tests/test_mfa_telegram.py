@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """Testes do fluxo MFA-via-Telegram (envio + captura passiva), sem rede e sem dormir de verdade."""
+import pytest
+
 import compliance_agent.mfa_telegram as mfa
+
+
+@pytest.fixture(autouse=True)
+def _sem_marca_de_pedido_real(monkeypatch):
+    """`pedir_codigo_mfa` marca 'pedido aberto' no data/ real — que liberaria o Yoda a aceitar código solto."""
+    monkeypatch.setattr(mfa, "marcar_pedido_mfa", lambda sistema="SIAFE": None)
 
 
 class _Clock:

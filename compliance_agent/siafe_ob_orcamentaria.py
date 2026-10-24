@@ -361,10 +361,11 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
     (`siafe codigo NNNNNN` → siafe_coord.set_mfa). Preenche e confirma."""
     from compliance_agent import siafe_coord
     pedido_ts = time.time()
+    siafe_coord.marcar_pedido_mfa()
     siafe_coord.notificar(
         "🔐 JFN — SIAFE-2 agora exige código MFA (mudança da SEFAZ em 13/07).\n\n"
         "Um código acabou de ser enviado ao seu e-mail da ALERJ.\n"
-        "Responda aqui com o código — sozinho ou como *siafe codigo XXXX*.\n\n"
+        "Responda aqui com o código — sozinho ou como /siafe XXXX.\n\n"
         "Vou marcar 'dispensar por 30 dias' — só pedirei de novo no mês que vem.")
     print("   [mfa] aguardando código do Mestre via Telegram...", flush=True)
     codigo = ""
@@ -1175,13 +1176,16 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             await _typeahead(pg, _F_OP, "igual"); await adf.wait()
             datasel = '[id*="table_rtfFilter:0"] input[id*="in_date"]:visible, [id*="table_rtfFilter:0"] input[type="text"]:visible'
             await _set_valor(pg, datasel, data); await adf.wait(); await pg.wait_for_timeout(2500)
-            n0 = await _contar_linhas(pg)
-            estouro = n0 >= _FATIA_CAPOU   # platô MEDIDO da colheita (ver _fatia_capou)
-            # coleta direta (sem subdividir) se < cap
-            if not estouro:
-                vistos, linhas = set(), []
-                header = await _colher(pg, maxn, vistos, linhas, None)   # cabeçalho VIVO
-                ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
+            # O ESTOURO SE MEDE NO QUE FOI COLHIDO, não no DOM. A versão anterior usava
+            # `_contar_linhas` logo após o filtro — mas a tabela do ADF renderiza ~50 linhas e carrega o
+            # resto rolando, então `n0` nunca chegava a 980 e o verificador NUNCA disparou: 0 estouros em
+            # 236 conferências (log do diário até 24/10/2026), enquanto 8 dias de 2026 ficaram parados no
+            # platô do teto (981–997 OBs, entre eles 19 e 21/10). Colhe-se primeiro; se bateu no platô,
+            # o que veio é ingerido (idempotente) e o dia é refeito por subdivisão de Número.
+            vistos, linhas = set(), []
+            header = await _colher(pg, maxn, vistos, linhas, None)   # cabeçalho VIVO
+            ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
+            if len(linhas) < _FATIA_CAPOU:
                 return {"ok": True, "data": data, "estouro": False, "colhidas": len(linhas),
                         "ingeridas": ing.get("ingeridas")}
             # ESTOURO: >1000 no dia → subdivide por Número (linha 1). A linha nasce sozinha
