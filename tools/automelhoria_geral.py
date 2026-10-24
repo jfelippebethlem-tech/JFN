@@ -167,8 +167,40 @@ def sensor_rem() -> list[dict]:
             for k, v in res.items() if k.endswith("_erro")]
 
 
+def sensor_dados_siafe() -> list[dict]:
+    """Qualidade do DADO: dia do SIAFE parado no platô do teto (975–999 OBs) ainda não verificado. O remédio
+    recoleta com o verificador corrigido e marca o dia como verificado (tools/siafe_recoletar_dias.py)."""
+    from tools.siafe_recoletar_dias import suspeitos
+    sus = suspeitos()
+    if not sus:
+        return []
+    return [_p("dados", "siafe_dias_no_plato", f"{len(sus)} dia(s) do SIAFE parados no platô do teto",
+               ", ".join(f"{d}={n}" for d, n in sus[:6]),
+               remediar="PYTHONPATH=. .venv/bin/python tools/siafe_recoletar_dias.py --auto --max 3 "
+                        ">> data/siafe_recoletar_dias.log 2>&1")]
+
+
+def sensor_vm() -> list[dict]:
+    """A VM (2 vCPU, 11,6 GB) é o teto de tudo: disco cheio derruba SQLite/WAL; memória baixa derruba browser."""
+    import shutil
+    out = []
+    du = shutil.disk_usage("/")
+    pct = 100 * du.used / du.total
+    if pct >= 90:
+        out.append(_p("vm", "disco", f"disco em {pct:.0f}% ({du.free / 2**30:.0f} GB livres)",
+                      acao_humana="maiores: ~/JFN/data/sei_cache (26 GB), ~/.npm (14 GB, cache regenerável), "
+                                  "~/.ollama (9,7 GB), ~/.cache (9 GB — NÃO apagar ms-playwright nem uv). "
+                                  "Apagar só com ordem do dono"))
+    mem = {ln.split(":")[0]: int(ln.split()[1]) for ln in Path("/proc/meminfo").read_text().splitlines()[:5]}
+    if mem.get("MemAvailable", 10**9) < 700 * 1024:
+        out.append(_p("vm", "memoria", f"memória disponível baixa ({mem['MemAvailable'] // 1024} MB)",
+                      acao_humana="ver quem está pesado (`ps aux --sort=-rss | head`); 1 pesado por vez"))
+    return out
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd,
-            "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem}
+            "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
+            "dados": sensor_dados_siafe, "vm": sensor_vm}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
@@ -223,6 +255,8 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
     return {"fila": fila, "novos": novos, "reincidiu": reinc, "curados": curados}
 
 
+_AREAS = ("rotinas (SLO)", "CI", "catracas de código", "serviços", "API/LLM", "SIAFE", "dados do SIAFE",
+          "VM (disco/memória)", "sono REM do Hermes", "minhas conversas")
 MAX_TENTATIVAS, INTERVALO_S, CARGA_MAX = 2, 20 * 3600, 4.0
 
 
@@ -271,7 +305,8 @@ def resumo(fila: dict, max_itens: int = 15) -> str:
                      key=lambda x: (x[1]["status"] != "REINCIDIU", x[1]["area"], x[1]["primeiro"]))
     curados = sorted(((s, it) for s, it in fila.items() if it["status"] == "curado"),
                      key=lambda x: x[1].get("curado_em", ""), reverse=True)
-    L = [f"🔁 Automelhoria — {len(abertos)} aberto(s) · {len(curados)} curado(s) e vigiado(s)"]
+    L = [f"🔁 Automelhoria — {len(abertos)} aberto(s) · {len(curados)} curado(s) e vigiado(s)",
+         "Vigio: " + " · ".join(_AREAS)]
     for _, it in abertos[:max_itens]:
         marca = "🔴 REINCIDIU" if it["status"] == "REINCIDIU" else "🟡"
         L.append(f"{marca} [{it['area']}] {it['titulo']} — desde {it['primeiro'][:10]}"

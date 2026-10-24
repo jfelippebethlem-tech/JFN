@@ -105,3 +105,51 @@ def test_sensor_rem_transforma_passo_degradado_em_problema(tmp_path, monkeypatch
     ps = A.sensor_rem()
     assert [p["assinatura"] for p in ps] == ["rem:auto_melhoria_erro"]
     assert "auto_melhoria" in ps[0]["titulo"] and ps[0]["acao_humana"]
+
+
+def test_sensor_dados_aponta_platô_com_remedio(monkeypatch):
+    import tools.siafe_recoletar_dias as R
+    monkeypatch.setattr(R, "suspeitos", lambda exercicio=None: [("21/10/2026", 992)])
+    ps = A.sensor_dados_siafe()
+    assert ps[0]["assinatura"] == "dados:siafe_dias_no_plato" and "21/10/2026=992" in ps[0]["detalhe"]
+    assert "siafe_recoletar_dias.py --auto" in ps[0]["remediar"]
+
+
+def test_plato_ignora_dia_ja_verificado(tmp_path, monkeypatch):
+    import sqlite3
+    import tools.siafe_recoletar_dias as R
+    db = tmp_path / "c.db"
+    con = sqlite3.connect(db)
+    con.execute("create table ob_orcamentaria_siafe (exercicio int, data_emissao text)")
+    con.executemany("insert into ob_orcamentaria_siafe values (2026, ?)",
+                    [("21/10/2026",)] * 992 + [("20/10/2026",)] * 500 + [("19/10/2026",)] * 996)
+    con.commit(); con.close()
+    monkeypatch.setattr(R, "VERIFICADOS", tmp_path / "v.json")
+    assert R.suspeitos(2026, db) == [("21/10/2026", 992), ("19/10/2026", 996)]
+    (tmp_path / "v.json").write_text('{"19/10/2026": {}}')
+    assert R.suspeitos(2026, db) == [("21/10/2026", 992)]
+
+
+def test_recoleta_parcial_nao_vira_verificado(tmp_path, monkeypatch):
+    """17/03/2026: colheu 879 com 998 na base e sem estouro — não prova o dia."""
+    import asyncio
+    import json
+    import types
+    import tools.siafe_recoletar_dias as R
+    monkeypatch.setattr(R, "VERIFICADOS", tmp_path / "v.json")
+    monkeypatch.setattr(R, "_contar", lambda d, e: 998)
+    falso = types.SimpleNamespace()
+
+    async def parcial(ex, d):
+        return {"ok": True, "estouro": False, "ingeridas": 879}
+
+    async def subdividiu(ex, d):
+        return {"ok": True, "estouro": True, "ingeridas": 996}
+    import compliance_agent.siafe_ob_orcamentaria as M
+    monkeypatch.setattr(M, "coletar_por_data", parcial)
+    asyncio.run(R.recoletar(["17/03/2026"], 2026))
+    assert not (tmp_path / "v.json").exists() or "17/03/2026" not in json.loads((tmp_path / "v.json").read_text())
+    monkeypatch.setattr(M, "coletar_por_data", subdividiu)
+    asyncio.run(R.recoletar(["19/10/2026"], 2026))
+    assert "19/10/2026" in json.loads((tmp_path / "v.json").read_text())
+    del falso
