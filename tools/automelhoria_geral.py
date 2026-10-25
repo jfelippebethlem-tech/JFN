@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import shutil
 import subprocess
 import sys
 import time
@@ -204,7 +205,9 @@ def sensor_vm() -> list[dict]:
 
 def sensor_polimonitor() -> list[dict]:
     """Polimonitor/Bond (pm2): processo fora de `online` vira problema; o remédio é `pm2 restart`."""
-    r = subprocess.run(["pm2", "jlist"], capture_output=True, text=True, timeout=60)
+    # caminho ABSOLUTO: o cron não tem ~/.npm-global/bin no PATH — a 1ª rodada do cron deixou o sensor cego
+    pm2 = shutil.which("pm2") or str(Path.home() / ".npm-global" / "bin" / "pm2")
+    r = subprocess.run([pm2, "jlist"], capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
         raise RuntimeError(f"pm2 jlist rc={r.returncode}")
     out = []
@@ -213,7 +216,7 @@ def sensor_polimonitor() -> list[dict]:
         if st != "online":
             out.append(_p("polimonitor", proc["name"], f"processo pm2 {proc['name']} {st}",
                           f"reinícios: {proc.get('pm2_env', {}).get('restart_time')}",
-                          remediar=f"pm2 restart {proc['name']}"))
+                          remediar=f"{pm2} restart {proc['name']}"))
     return out
 
 

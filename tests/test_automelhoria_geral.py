@@ -186,4 +186,4 @@ def test_polimonitor_processo_parado_tem_remedio(monkeypatch):
     monkeypatch.setattr(A.subprocess, "run", lambda *a, **k: sp.CompletedProcess(a, 0, saida, ""))
     ps = A.sensor_polimonitor()
     assert [p["assinatura"] for p in ps] == ["polimonitor:bond-worker"]
-    assert ps[0]["remediar"] == "pm2 restart bond-worker"
+    assert ps[0]["remediar"].endswith("pm2 restart bond-worker")
