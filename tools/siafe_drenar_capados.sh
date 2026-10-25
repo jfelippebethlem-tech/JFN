@@ -272,7 +272,10 @@ PYEOF
   # para isso) mostrou o login falhando 3× em `Page.fill` — o campo de usuário nem aparecia, que é
   # a cara de sessão anterior ainda aberta. É MITIGAÇÃO, não certeza: se voltar a acontecer, o log
   # do par mostra de novo e aí se investiga o lado do servidor.
-  [ "$feitos" -lt "$MAX" ] && sleep 45
+  # SIAFE 1 SEGURA A SESSÃO MAIS TEMPO. Medido em 25/10/2026 com logins espaçados: 2016, 2020, 2021, 2022 e
+  # 2023 entram num browser novo, mas a tentativa feita 45-90 s depois da anterior cai em errorDisplay/campo
+  # ausente (sessão do usuário ainda presa no servidor). 4 min entre pares do SIAFE 1; o SIAFE 2 segue em 45 s.
+  if [ "$feitos" -lt "$MAX" ]; then if [ "$ANO" -le 2023 ]; then sleep 240; else sleep 45; fi; fi
 done
 # O AVISO DO VAULT SE MANTÉM SOZINHO. As notas de caso avisam que seus valores de SIAFE são PISO
 # e listam quais (UG, ano) faltam — lista que ENVELHECE a cada par drenado. Aviso desatualizado é
