@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Loop de automelhoria de TUDO: problema novo abre, sumiço do sinal cura, volta depois de curado reincide,
 e sensor que não mede vira problema — nunca 'ok'."""
+import json
+
 import tools.automelhoria_geral as A
 
 
@@ -187,3 +189,28 @@ def test_polimonitor_processo_parado_tem_remedio(monkeypatch):
     ps = A.sensor_polimonitor()
     assert [p["assinatura"] for p in ps] == ["polimonitor:bond-worker"]
     assert ps[0]["remediar"].endswith("pm2 restart bond-worker")
+
+
+def test_dispensado_pelo_dono_sai_da_fila_sem_virar_curado(tmp_path):
+    """28/10/2026: o dono mandou esquecer os curtidores do Instagram. O item não pode virar 'curado'
+    (mentira: nada foi consertado) nem continuar 'aberto' cobrando uma decisão que ele já tomou."""
+    fila = tmp_path / "f.json"
+    A.conciliar([_p("x", "slo")], fila, agora=1_000)
+    sig = next(iter(json.loads(fila.read_text())))
+    r = A.conciliar([], fila, agora=2_000, dispensados={sig})
+    assert r["fila"][sig]["status"] == "dispensado" and sig not in r["curados"]
+    txt = A.resumo(r["fila"])
+    assert "0 aberto(s)" in txt and "Dispensados pelo dono" in txt
+
+
+def test_slo_dispensado_nao_alarma(tmp_path, monkeypatch):
+    import yaml
+    import tools.pipelines_slo as SLO
+    p = tmp_path / "pipelines.yaml"
+    p.write_text(yaml.safe_dump({"pipelines": [
+        {"nome": "a", "arquivo": "x.log", "max_stale_h": 1, "dispensado": "dono"},
+        {"nome": "b", "arquivo": "y.log", "max_stale_h": 1}]}), encoding="utf-8")
+    monkeypatch.setattr(SLO, "CFG", p)
+    monkeypatch.setattr(SLO, "BASE", tmp_path)
+    st = {r["nome"]: r["status"] for r in SLO.checar()}
+    assert st == {"a": "dispensado", "b": "ausente"}      # dispensar um não cala os outros

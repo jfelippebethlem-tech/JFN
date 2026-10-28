@@ -105,6 +105,10 @@ def checar() -> list[dict]:
         # honesto que fingir que ela está atrasada.
         if it.get("sob_demanda"):
             status = "sob_demanda"
+        # DISPENSADO PELO DONO: a rotina existe, mas o dono decidiu não vigiá-la (ex.: curtidores do Instagram,
+        # 28/10/2026). Não é "ok" (seria mentira) nem "stale" (seria alarme que ele mandou calar).
+        elif it.get("dispensado"):
+            status = "dispensado"
         elif pausado:
             status = "pausado"
         elif idade is None:
@@ -160,7 +164,7 @@ def _incidente_vault(eventos: list[str]) -> None:
 def main() -> int:
     res = checar()
     ruins = [r for r in res if r["status"] in ("stale", "ausente")]
-    ico = {"ok": "✅", "pausado": "⏸", "stale": "🔴", "ausente": "⚠️", "sob_demanda": "🔎"}
+    ico = {"ok": "✅", "pausado": "⏸", "stale": "🔴", "ausente": "⚠️", "sob_demanda": "🔎", "dispensado": "🔕"}
     for r in res:
         idade = "—" if r["idade_h"] is None else f"{r['idade_h']}h"
         print(f"{ico[r['status']]} {r['nome']:<22} [{r['grupo']}] idade={idade} slo={r['slo_h']}h")

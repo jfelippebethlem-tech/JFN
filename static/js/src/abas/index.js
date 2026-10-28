@@ -875,7 +875,7 @@ export async function renderInstrumentacao(){
       // /api/pipelines devolve `status` e `idade_h`; /api/sistema/atividade devolve `estado` e
       // `idade_dias`. Lendo só um dos contratos, a aba Instrumentação pintava TODA linha de ruim.
       const st=String(p.estado||p.status||'').toLowerCase();
-      const ruim=st==='stale'||st==='ausente'||(st&&!/^(ok|pausado|sob_demanda)/.test(st));
+      const ruim=st==='stale'||st==='ausente'||(st&&!/^(ok|pausado|sob_demanda|dispensado)/.test(st));
       const idade=p.idade_dias!=null?p.idade_dias+' d':(p.idade_h!=null?p.idade_h+' h':'—');
       h+=`<tr><td>${esc(p.nome||p.id)}</td><td class="${ruim?'bad':'ok'}">${esc(p.estado||p.status||'—')}</td>
           <td class="r dim">${idade}</td></tr>`;
@@ -2255,7 +2255,7 @@ export async function renderSweeps(){
       // inclusive com o SLO 100% verde. Aceita os dois, e `pausado`/`sob_demanda` não são falha:
       // são estado declarado da fonte.
       const st=String(p0.estado||p0.status||'').toLowerCase();
-      const ok=/^(ok|pausado|sob_demanda)/.test(st);
+      const ok=/^(ok|pausado|sob_demanda|dispensado)/.test(st);
       return `<span class="tag ${ok?'green':'amber'}" title="${esc(p0.estado||p0.status||'')}"><span class="sinal" style="background:${ok?'var(--green)':'var(--amber)'}"></span>${esc(p0.nome)}</span>`;}).join('')+`</div>`);}
   h+=`<div style="height:14px"></div>`+sec('Aprendizados — o que a leitura já produziu');
   h+=card(`<div class="kv"><span class="k">Fichas SEI montadas</span><b class="num">${fmtN(apr.fichas_sei)}</b></div>

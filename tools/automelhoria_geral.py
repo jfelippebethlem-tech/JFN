@@ -56,9 +56,10 @@ def _p(area: str, chave: str, titulo: str, detalhe: str = "", remediar: str = ""
 
 
 # Diagnóstico medido (sonda de 24/10/2026), para a ação humana não ser genérica.
-_ACAO_LOGIN = {"1": "servidor do SIAFE 1 responde NullPointerException no RootMenuParser (menu do usuário) "
-                    "com o formulário correto, desde 13/09 — dono: testar login manual em "
-                    "www5.fazenda.rj.gov.br/SiafeRio (2016-2023); se falhar também, abrir chamado na SEFAZ"}
+_ACAO_LOGIN = {"1": "SIAFE 1 (www5, 2016-2023) dá NullPointerException no RootMenuParser quando a sessão anterior ainda "
+                    "está presa no servidor (medido em 25 e 28/10/2026: 240 s entre logins resolvem; desde 28/10 o "
+                    "coletor faz logout ao fechar). Se persistir 24 h com logout e espera: testar login manual e, "
+                    "repetindo, abrir chamado na SEFAZ"}
 _ACAO_CONFLITO = {"326100_2025": "recoleta limpa de 24/10 devolveu 0 em TODAS as fatias (UG+Número 2025OB*) para um "
                                   "par com 1.310 OBs na base, coletadas pelo mesmo caminho em 15/08; o login é o mesmo "
                                   "do dreno que funciona — depurar o filtro com print da tela"}
@@ -124,6 +125,17 @@ def sensor_ronda() -> list[dict]:
     return out
 
 
+def _exercicios_perfil_restrito() -> dict[int, str]:
+    """Exercícios do SIAFE 1 em que a conta só enxerga a PRÓPRIA UG (a base tem 1 UG só). Mesma regra do dreno."""
+    import sqlite3
+    con = sqlite3.connect(f"file:{DATA / 'compliance.db'}?mode=ro", uri=True)
+    try:
+        return dict(con.execute("SELECT exercicio, MIN(ug_emitente) FROM ob_orcamentaria_siafe WHERE exercicio <= 2023 "
+                                "GROUP BY exercicio HAVING COUNT(DISTINCT ug_emitente) = 1").fetchall())
+    finally:
+        con.close()
+
+
 def sensor_siafe() -> list[dict]:
     out = []
     ult = json.loads((DATA / "sei_cache" / "siafe_runner_ultimo.json").read_text(encoding="utf-8"))
@@ -138,7 +150,11 @@ def sensor_siafe() -> list[dict]:
                                                                   "em popup; nunca culpar WAF")))
     q = DATA / "siafe_dreno_quarentena.json"
     if q.exists():
+        restritos = _exercicios_perfil_restrito()
         for par, e in json.loads(q.read_text(encoding="utf-8")).items():
+            ug, _, ano = par.partition("_")
+            if ano.isdigit() and int(ano) in restritos and ug != restritos[int(ano)]:
+                continue      # não é conflito de coleta: o exercício só expõe a UG da própria conta (dreno já pula)
             if e.get("n", 0) >= 99:
                 out.append(_p("siafe", f"conflito_{par}", f"dreno: conflito checkpoint × medidor em {par}",
                               e.get("motivo", ""), acao_humana=_ACAO_CONFLITO.get(
@@ -275,7 +291,16 @@ def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
 
 # ─────────────────────────── conciliação: aberto → curado → REINCIDIU ───────────────────────────
 
-def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None = None) -> dict:
+def dispensados_slo() -> set[str]:
+    """Assinaturas que o DONO mandou não vigiar (`dispensado:` em config/pipelines.yaml)."""
+    import yaml
+    cfg = yaml.safe_load((_REPO / "config" / "pipelines.yaml").read_text())["pipelines"]
+    return {f"slo:{c['nome']}" for c in cfg if c.get("dispensado")}
+
+
+def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None = None,
+              dispensados: set[str] = frozenset()) -> dict:
+    """`dispensados`: itens que saem da fila por decisão do dono — nem curados (seria falso) nem abertos."""
     agora = agora or time.time()
     quando = datetime.fromtimestamp(agora).strftime("%Y-%m-%d %H:%M")
     try:
@@ -295,6 +320,9 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
             reinc.append(p["assinatura"])
         it.update(titulo=p["titulo"], detalhe=p["detalhe"], remediar=p.get("remediar", ""),
                   acao_humana=p.get("acao_humana", ""), ultimo=quando, rodadas=it.get("rodadas", 0) + 1)
+    for sig in dispensados:
+        if sig in fila and fila[sig]["status"] != "dispensado":
+            fila[sig].update(status="dispensado", dispensado_em=quando)
     for sig, it in fila.items():
         if sig not in vistos and it["status"] in ("aberto", "REINCIDIU"):
             # o EFEITO verificado: se houve remédio automático, a cura é creditada a ele
@@ -324,7 +352,7 @@ def remediar(fila: dict, agora: float | None = None, executar=None) -> dict:
     executar = executar or _executar_destacado
     feitos, escalados, adiados = [], [], []
     for sig, it in fila.items():
-        if it["status"] == "curado" or not it.get("remediar"):
+        if it["status"] in ("curado", "dispensado") or not it.get("remediar"):
             continue
         acoes = it.setdefault("acoes", [])
         if len(acoes) >= MAX_TENTATIVAS:
@@ -355,7 +383,7 @@ def _executar_destacado(cmd: str, log: Path) -> None:
 
 
 def resumo(fila: dict, max_itens: int = 15) -> str:
-    abertos = sorted(((s, it) for s, it in fila.items() if it["status"] != "curado"),
+    abertos = sorted(((s, it) for s, it in fila.items() if it["status"] not in ("curado", "dispensado")),
                      key=lambda x: (x[1]["status"] != "REINCIDIU", x[1]["area"], x[1]["primeiro"]))
     curados = sorted(((s, it) for s, it in fila.items() if it["status"] == "curado"),
                      key=lambda x: x[1].get("curado_em", ""), reverse=True)
@@ -372,6 +400,9 @@ def resumo(fila: dict, max_itens: int = 15) -> str:
             L.append(f"    👤 {it['acao_humana'][:140]}")
     if len(abertos) > max_itens:
         L.append(f"… e mais {len(abertos) - max_itens}")
+    disp = [it["titulo"] for it in fila.values() if it["status"] == "dispensado"]
+    if disp:
+        L.append("🔕 Dispensados pelo dono: " + "; ".join(d[:50] for d in disp))
     if curados:
         L.append("✅ Curados recentes: " + "; ".join(
             f"{it['titulo'][:50]} ({it.get('curado_em', '')[:10]}, {it.get('curado_por', 'conserto externo')})" for _, it in curados[:5]))
@@ -390,7 +421,7 @@ def main() -> int:
             print("🔁 Automelhoria — a fila ainda não foi medida (roda às 07:40; /melhorias agora mede já).")
         return 0
     problemas, medidos = sentir()
-    r = conciliar(problemas)
+    r = conciliar(problemas, dispensados=dispensados_slo())
     rem = remediar(r["fila"])
     FILA.write_text(json.dumps(r["fila"], ensure_ascii=False, indent=1), encoding="utf-8")
     txt = resumo(r["fila"], max_itens=60)

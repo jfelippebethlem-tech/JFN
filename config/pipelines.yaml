@@ -128,6 +128,7 @@ pipelines:
 
   # ---- POLIMONITOR ----
   - nome: likers-import
+    dispensado: "dono, 28/10/2026: não vigiar a captura de curtidores do Instagram"
     acao_humana: "a captura de curtidores roda no desktop Windows (Hermes do desktop + Syncthing); o último comando de captura (01/09) saiu rc=1 e o likers.json não muda desde 13/08 — religar a captura lá"
     arquivo: /home/ubuntu/polimonitor/data/likers_import_cron.log
     max_stale_h: 72

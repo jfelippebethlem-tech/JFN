@@ -216,6 +216,20 @@ async def _logout(pg):
     await pg.wait_for_timeout(4000)
 
 
+async def _encerrar(pg, b):
+    """SAIR do SIAFE antes de fechar o navegador. Medido em 28/10/2026: nenhum fluxo fazia logout; a sessão
+    ficava viva no servidor (rodapé: "Sua sessão expira em: 29:49") e o login seguinte do dreno, ~4 min
+    depois, caía na sessão órfã — NullPointerException no RootMenuParser em 217200/2022 e 254100/2020,
+    exercícios que logam normalmente. Logout é melhor-esforço: falhar nele não pode impedir o fechamento."""
+    from playwright.async_api import Error as PWError
+    try:
+        if await _logado(pg):
+            await _logout(pg)
+    except PWError as exc:
+        logger.debug("logout SIAFE antes de fechar falhou (sessão expira sozinha): %s", exc)
+    await b.close()
+
+
 async def _login(pg, exercicio: int):
     from compliance_agent.envfile import carregar_env
     try:
@@ -239,6 +253,14 @@ async def _login(pg, exercicio: int):
         await pg.wait_for_timeout(2500)
     # FLUXO QUE FUNCIONA: preencher usuário+senha, escolher o exercício (com retry — o ADF reverte o
     # <select> sozinho), repor a senha se o re-render limpou, e CLICAR o botão de login por ID.
+    # SEM CAMPO DE USUÁRIO = a tela não é o formulário. Antes isso estourava "Page.fill: Timeout 30000ms" sem
+    # dizer o que havia na tela (28/10/2026 09:47, SIAFE 1). Nomear com o começo da página dá o diagnóstico.
+    from playwright.async_api import TimeoutError as _PwTimeoutCampo
+    try:
+        await pg.wait_for_selector('[id="loginBox:itxUsuario::content"]', timeout=20000)
+    except _PwTimeoutCampo:
+        corpo = " | ".join(((await pg.inner_text("body")) or "").split())[:300]
+        return {"ok": False, "erro": "tela_login_sem_campo", "url": pg.url, "detail": corpo}
     await pg.fill('[id="loginBox:itxUsuario::content"]', u)
     # O CAMPO DE USUÁRIO DISPARA UM RE-RENDER ASSÍNCRONO (ADF carrega os exercícios da conta). Medido em
     # 24/10/2026 com sonda no SIAFE 1: preencher a senha logo em seguida a perdia, e o <select> voltava para
@@ -729,7 +751,7 @@ async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=N
             _log(f"colheu {len(linhas)} OBs | header={header}")
             return {"ok": True, "exercicio": exercicio, "header": header, "n": len(linhas), "linhas": linhas}
         finally:
-            await b.close()
+            await _encerrar(pg, b)
 
 
 async def coletar_resiliente(exercicio=2025, maxn=100000, max_tentativas=24,
@@ -887,7 +909,7 @@ async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
                     return {"ok": False}
             return {"ok": True, "pendentes": []}
         finally:
-            await b.close()
+            await _encerrar(pg, b)
 
 
 async def coletar_filtrado(exercicio=2026, prefixos=None, headless=True, maxn=4000, max_sessoes=8) -> dict:
@@ -946,6 +968,9 @@ async def _filtrar_ug(pg, ug_codigo) -> dict:
 
 
 # linha 1 do filtro (a tabela já vem com 2 linhas: 0 e 1) — p/ combinar UG (linha 0) + Número (linha 1)
+_ESPERA_RELOGIN_ERRO_INTERNO_MS = 240_000
+
+
 async def _login_e_navegar(pg, exercicio: int, tentativas: int = 3) -> dict:
     """Login + navegação até a grade, com RETRY — o prólogo do SIAFE 1 é intermitente.
 
@@ -965,7 +990,12 @@ async def _login_e_navegar(pg, exercicio: int, tentativas: int = 3) -> dict:
                 return {"ok": True, "tentativas": tentativa + 1}
         except PWError as exc:
             ultimo = {"ok": False, "erro": f"{type(exc).__name__}: {str(exc)[:90]}"}
-        await pg.wait_for_timeout(4000)
+        # ERRO INTERNO = sessão do usuário ainda presa no servidor. Medido em 25/10/2026: re-login 45–90 s
+        # depois falha de novo; com 240 s entra. Repetir em 4 s só empilhava tentativas e gastava as três.
+        espera = (_ESPERA_RELOGIN_ERRO_INTERNO_MS if ultimo.get("erro") in ("erro_interno_siafe", "tela_login_sem_campo")
+                  else 4000)
+        if tentativa < max(1, tentativas) - 1:
+            await pg.wait_for_timeout(espera)
     return {"ok": False, "etapa": "login_nav", "tentativas": tentativas, "ultimo": ultimo}
 
 
@@ -1180,7 +1210,7 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             return {"ok": True, "exercicio": exercicio, "ug": ug, "ingeridas": tot,
                     "fatias": len(por_prefixo), "por_prefixo": por_prefixo}
         finally:
-            await b.close()
+            await _encerrar(pg, b)
 
 
 async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -> dict:
@@ -1244,7 +1274,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             return {"ok": True, "data": data, "estouro": True, "ingeridas": tot,
                     "detalhe": f">1000 OBs no dia {data} — coletado completo por subdivisão de Número"}
         finally:
-            await b.close()
+            await _encerrar(pg, b)
 
 
 async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000) -> dict:
@@ -1270,7 +1300,7 @@ async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000)
             return {"ok": True, "exercicio": exercicio, "ug": ug,
                     "colhidas": len(linhas), "ingeridas": ing.get("ingeridas")}
         finally:
-            await b.close()
+            await _encerrar(pg, b)
 
 
 def main():

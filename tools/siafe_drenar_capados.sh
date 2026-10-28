@@ -138,6 +138,27 @@ PYEOF
 say "pares com coleta incompleta (teto + interrompida): ${#PARES[@]}"
 [ "$MAX" = "0" ] && { printf '   %s\n' "${PARES[@]}"; exit 0; }
 
+# PERFIL DA CONTA. Medido em 28/10/2026: no SIAFE 1 a conta só enxerga a PRÓPRIA UG em 2016–2020 (a base tem
+# 1 UG nesses anos — 010100 — contra 97 a 126 de 2021 em diante; a sessão de 2020 entra no exercício certo e
+# lista só 010100). 194 dos 235 pares da fila eram 2019–2020 de outras UGs e devolviam "todas as fatias
+# zeradas" a cada passada. Esses pares saem da fila; UMA sonda a cada 30 dias reabre o caminho — se a
+# visibilidade for ampliada, o par rende, o exercício passa a ter 2+ UGs e a regra se desfaz sozinha.
+mapfile -t RESTRITO < <($PY - <<'PYEOF'
+import sqlite3
+c = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True)
+for ano, ug in c.execute("SELECT exercicio, MIN(ug_emitente) FROM ob_orcamentaria_siafe WHERE exercicio <= 2023 "
+                         "GROUP BY exercicio HAVING COUNT(DISTINCT ug_emitente) = 1"):
+    print(f"{ano}:{ug}")
+PYEOF
+)
+SONDA_PERFIL=data/.siafe_dreno_sonda_perfil
+sonda_vencida() { [ ! -f "$SONDA_PERFIL" ] || [ $(( $(date +%s) - $(stat -c %Y "$SONDA_PERFIL") )) -ge 2592000 ]; }
+fora_do_perfil() {  # $1=UG $2=ANO → 0 se o exercício só expõe outra UG à conta
+  local r; for r in "${RESTRITO[@]}"; do [ "${r%%:*}" = "$2" ] && [ "${r#*:}" != "$1" ] && return 0; done; return 1
+}
+N_FORA=0; for par in "${PARES[@]}"; do set -- $par; fora_do_perfil "$1" "$2" && N_FORA=$((N_FORA+1)); done
+[ "$N_FORA" -gt 0 ] && say "fora do perfil da conta (exercício só expõe a UG própria): $N_FORA par(es) — $(sonda_vencida && echo 'sonda mensal liberada' || echo 'próxima sonda em até 30 dias')"
+
 feitos=0
 for par in "${PARES[@]}"; do
   [ "$feitos" -ge "$MAX" ] && break
@@ -147,6 +168,10 @@ for par in "${PARES[@]}"; do
   HM=$((10#$(date +%H%M)))
   if [ "$HM" -ge 425 ] && [ "$HM" -lt 535 ]; then say "janela do diário (04:25-05:35) — não começo par novo"; break; fi
   if [ "$(quar pular "${UG}_${ANO}")" = "sim" ]; then continue; fi
+  if fora_do_perfil "$UG" "$ANO"; then
+    sonda_vencida || continue
+    touch "$SONDA_PERFIL"; say "sonda mensal do perfil: tento $UG/$ANO (fora do perfil da conta)"
+  fi
   # sistema com LOGIN quebrado (disjuntor abaixo) fica de fora 24 h inteiras — os pares do outro seguem
   _S=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); _AV=data/.siafe_dreno_aviso_login_$_S
   if [ -f "$_AV" ] && [ $(( $(date +%s) - $(stat -c %Y "$_AV") )) -lt 86400 ]; then continue; fi
@@ -242,7 +267,11 @@ PYEOF
   fi
   if [ "$DEPOIS" -gt "$ANTES" ] || { [ "${DESLOCADAS_ANTES:-0}" -gt 0 ] && [ "${TORTAS:-0}" -lt "${DESLOCADAS_ANTES:-0}" ]; }; then
     quar ganho "${UG}_${ANO}"
+    # o login FUNCIONOU: a sequência de falhas de login acabou. Sem isto, falha–sucesso–falha disparava o
+    # disjuntor como "2 seguidos" (28/10/2026 09:13, com 316100/2022 rendendo 66 OBs entre as duas falhas).
+    ULT_LOGIN_FALHO=
   elif grep -q '"nada_a_fazer": true' "$SAIDA"; then
+    ULT_LOGIN_FALHO=      # chegou ao checkpoint = logou
     # o checkpoint diz "tudo feito" e o medidor diz "incompleto": repetir não resolve, só gasta browser
     quar conflito "${UG}_${ANO}" "checkpoint_feito_x_medidor_incompleto"
     say "UG $UG $ANO: CONFLITO — checkpoint diz feito, medidor diz incompleto. Quarentena 7 dias; exame humano."

@@ -32,6 +32,7 @@ class _PaginaSenhaExpirada:
     async def fill(self, *a, **k): pass
     async def press(self, *a, **k): pass
     async def wait_for_load_state(self, *a, **k): pass
+    async def wait_for_selector(self, *a, **k): pass
     async def select_option(self, *a, **k): pass
     async def screenshot(self, *a, **k): pass
 

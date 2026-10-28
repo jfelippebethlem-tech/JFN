@@ -5498,7 +5498,7 @@ void main(){
       h += `<table class="tb"><thead><tr><th>Pipeline</th><th>Estado</th><th class="r">Idade</th></tr></thead><tbody>`;
       for (const p of ps) {
         const st = String(p.estado || p.status || "").toLowerCase();
-        const ruim = st === "stale" || st === "ausente" || st && !/^(ok|pausado|sob_demanda)/.test(st);
+        const ruim = st === "stale" || st === "ausente" || st && !/^(ok|pausado|sob_demanda|dispensado)/.test(st);
         const idade = p.idade_dias != null ? p.idade_dias + " d" : p.idade_h != null ? p.idade_h + " h" : "—";
         h += `<tr><td>${esc(p.nome || p.id)}</td><td class="${ruim ? "bad" : "ok"}">${esc(p.estado || p.status || "—")}</td>
           <td class="r dim">${idade}</td></tr>`;
@@ -7402,7 +7402,7 @@ void main(){
       h += `<div style="height:14px"></div>` + sec("Pipelines (SLO)", a.pipelines.length);
       h += card(`<div style="display:flex;flex-wrap:wrap;gap:8px">` + a.pipelines.map((p0) => {
         const st = String(p0.estado || p0.status || "").toLowerCase();
-        const ok = /^(ok|pausado|sob_demanda)/.test(st);
+        const ok = /^(ok|pausado|sob_demanda|dispensado)/.test(st);
         return `<span class="tag ${ok ? "green" : "amber"}" title="${esc(p0.estado || p0.status || "")}"><span class="sinal" style="background:${ok ? "var(--green)" : "var(--amber)"}"></span>${esc(p0.nome)}</span>`;
       }).join("") + `</div>`);
     }
