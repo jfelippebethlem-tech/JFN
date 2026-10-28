@@ -35,6 +35,11 @@ FONTES = [
     str(REPO / "data/pericia_*comparativo*.md"),  # auditoria-ouro curada (Hermes×Lex) — evita re-acusar refutado
     "/home/ubuntu/vault/**/*.md",
 ]
+# LOG REGERADO não é conhecimento. Medido em 28/10/2026: `lex-jfn-feedback.md` (1,8 MB, 3.068 itens, reescrito a
+# cada sweep por `tools.lex_feedback --auto`) gerava 1.885 dos 1.907 chunks "novos" do dia — a reordenação muda
+# todos os chunks, o cache não reaproveita nada e a cota trial da Cohere (1.000 chamadas/mês) estourava em 429
+# todo dia, deixando o índice PARCIAL (hermes-rag stale há 52 h).
+EXCLUIR = {"/home/ubuntu/vault/aprendizados/lex-jfn-feedback.md"}
 
 
 def _key() -> str:
@@ -113,7 +118,7 @@ def _arquivos_corpus() -> list[str]:
     arquivos: list[str] = []
     for padrao in FONTES:
         arquivos.extend(glob.glob(padrao, recursive=True))
-    return sorted(set(arquivos))
+    return sorted(set(arquivos) - EXCLUIR)
 
 
 def corpus_hash() -> str:

@@ -16,6 +16,7 @@ import csv
 import io
 import os
 import sqlite3
+import subprocess
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,8 +37,20 @@ def baixar(force=False):
     CACHE.mkdir(parents=True, exist_ok=True)
     if ZIP.exists() and ZIP.stat().st_size > 1_000_000 and not force:
         return ZIP
-    r = httpx.get(URL, headers=UA, timeout=300, verify=False, follow_redirects=True)
-    ZIP.write_bytes(r.content)
+    tmp = ZIP.with_suffix(".zip.part")
+    try:
+        r = httpx.get(URL, headers=UA, timeout=300, verify=False, follow_redirects=True)
+        r.raise_for_status()
+        tmp.write_bytes(r.content)
+    except httpx.RemoteProtocolError:
+        # 26/10/2026: o servidor do TFE passou a mandar "Connection: close\x00" (byte nulo no cabeçalho). O
+        # h11 do httpx recusa a resposta inteira; o curl aceita. O semanal caiu calado por isso até o loop ver.
+        subprocess.run(["curl", "-skfL", "--max-time", "600", "-A", UA["User-Agent"], "-o", str(tmp), URL], check=True)
+    # só troca o zip bom por um zip VÁLIDO: corpo de erro gravado como .zip apagaria a base no parse seguinte
+    if not zipfile.is_zipfile(tmp):
+        tmp.unlink(missing_ok=True)
+        raise RuntimeError(f"download do TFE não é um zip válido ({URL}); mantido o zip anterior")
+    os.replace(tmp, ZIP)
     return ZIP
 
 

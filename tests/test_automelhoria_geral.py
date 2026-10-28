@@ -214,3 +214,18 @@ def test_slo_dispensado_nao_alarma(tmp_path, monkeypatch):
     monkeypatch.setattr(SLO, "BASE", tmp_path)
     st = {r["nome"]: r["status"] for r in SLO.checar()}
     assert st == {"a": "dispensado", "b": "ausente"}      # dispensar um não cala os outros
+
+
+def test_fila_que_so_acumula_vira_problema(tmp_path):
+    """28/10/2026: lex_feedback com 3.068 abertas e 0 resolvidas desde junho — produtor sem consumidor."""
+    import sqlite3
+    db = tmp_path / "c.db"
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE lex_feedback (id INTEGER, resolvido INTEGER, resolvido_em TEXT)")
+    con.executemany("INSERT INTO lex_feedback VALUES (?, 0, NULL)", [(i,) for i in range(150)])
+    con.commit()
+    r = A.sensor_filas(db)
+    assert [p["assinatura"] for p in r] == ["filas:lex_feedback"]
+    con.execute("UPDATE lex_feedback SET resolvido = 1, resolvido_em = '2999-01-01' WHERE id < 5")
+    con.commit(); con.close()
+    assert A.sensor_filas(db) == []          # alguém está fechando: a fila tem consumidor

@@ -266,10 +266,38 @@ def sensor_painel() -> list[dict]:
     return out
 
 
+# FILAS DE FEEDBACK: canal que só ACUMULA é produtor sem consumidor. Medido em 28/10/2026: `lex_feedback` tinha
+# 3.068 dificuldades abertas, 0 resolvidas desde 18/06 (~500/mês) — e a nota regerada dele no vault ainda
+# poluía o RAG. O sensor não julga cada item; acusa a FILA que cresce sem ninguém fechar.
+_FILAS = [("lex_feedback", "dificuldades do Lex/JFN", "SELECT COUNT(*) FROM lex_feedback WHERE resolvido = 0",
+           "SELECT COUNT(*) FROM lex_feedback WHERE resolvido = 1 AND resolvido_em >= ?",
+           "triar por `contexto` (670 são do loop de perícia SEI): fechar em lote o que já foi resolvido ou é "
+           "ruído, e dar um consumidor ao resto — `UPDATE lex_feedback SET resolvido=1, resolvido_em=…`")]
+FILA_MIN_ABERTOS = 100
+
+
+def sensor_filas(db: Path | None = None, agora: float | None = None) -> list[dict]:
+    import sqlite3
+    db = db or DATA / "compliance.db"
+    desde = datetime.fromtimestamp((agora or time.time()) - 30 * 86400).isoformat(timespec="seconds")
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    out = []
+    try:
+        for tabela, nome, q_abertos, q_resolvidos, acao in _FILAS:
+            abertos = con.execute(q_abertos).fetchone()[0]
+            resolvidos = con.execute(q_resolvidos, (desde,)).fetchone()[0]
+            if abertos >= FILA_MIN_ABERTOS and resolvidos == 0:
+                out.append(_p("filas", tabela, f"fila sem consumidor: {nome}",
+                              f"{abertos} aberto(s), 0 resolvido(s) em 30 dias", acao_humana=acao))
+    finally:
+        con.close()
+    return out
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
-            "painel": sensor_painel}
+            "painel": sensor_painel, "filas": sensor_filas}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:
@@ -338,7 +366,7 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
 
 _AREAS = ("rotinas (SLO)", "CI", "catracas de código", "serviços", "API/LLM", "SIAFE", "dados do SIAFE",
           "VM (disco/memória)", "sono REM do Hermes", "minhas conversas", "Polimonitor (pm2)",
-          "painel/API")
+          "painel/API", "filas de feedback")
 MAX_TENTATIVAS, INTERVALO_S, CARGA_MAX = 2, 20 * 3600, 4.0
 
 
