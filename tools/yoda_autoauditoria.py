@@ -187,7 +187,12 @@ def entrada_licoes(fila: dict, teto: int = 900) -> str:
          "não editar à mão):"]
     L += [f"• {x}" for x in licoes]
     L += [f"• ⚠ VOLTOU A FALHAR ({it['tipo']}): “{it['exemplo']['pedido'][:70]}” — cuidado redobrado" for it in reinc[:3]]
-    L.append("• Estado do sistema / o que está quebrado → comando /melhorias (sem IA).")
+    # O modelo NÃO executa comando de barra: com "→ comando /melhorias" ele respondia "o comando /melhorias não foi
+    # encontrado" (medido 28/10/2026, pergunta "o que está quebrado?" fora do gateway). A lição tem de ser algo que
+    # ele consegue FAZER com as ferramentas dele: o terminal.
+    L.append("• Estado do sistema / o que está quebrado / automelhoria: se não veio a resposta automática do /melhorias, "
+             "rode no terminal `cd ~/JFN && .venv/bin/python tools/automelhoria_geral.py --resumo` e mostre a saída. "
+             "Nunca diga que /melhorias não existe.")
     txt = "\n".join(L)
     return txt if len(txt) <= teto else txt[:teto - 1] + "…"
 

@@ -239,3 +239,7 @@ Ex.: MGS CLEAN agora 2021–2026 (R$ 136.225.497,94; não há OB em 2019/2020).
   2. `engeprat_pericia_por_orgao_v2_2026-07-11.pdf` (Repartido por unidade gestora contratante)
 - O próprio script fez o envio de ambos os relatórios (com mensagens de resumo e os PDFs acoplados) diretamente ao Telegram do Mestre Jorge via o bot.
 - A reconciliação financeira fechou com diferença de R$ 0,00.
+
+## 2026-10-28 — teste do /melhorias fora do gateway
+
+[1] Mestre Jorge perguntou "o que está quebrado?". Mestre Yoda irá executar o script `automelhoria_geral.py --resumo` para obter um panorama do estado do sistema.
