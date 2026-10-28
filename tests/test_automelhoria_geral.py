@@ -229,3 +229,13 @@ def test_fila_que_so_acumula_vira_problema(tmp_path):
     con.execute("UPDATE lex_feedback SET resolvido = 1, resolvido_em = '2999-01-01' WHERE id < 5")
     con.commit(); con.close()
     assert A.sensor_filas(db) == []          # alguém está fechando: a fila tem consumidor
+
+
+def test_causa_externa_nao_reinicia_servico(monkeypatch):
+    """28/10/2026: o TFE recusa o IP da VM; reiniciar não cura e cada falha re-avisa o dono pelo OnFailure."""
+    class _R:
+        stdout = "jfn-tfe-ob.service loaded failed failed X\n"
+    monkeypatch.setattr(A.subprocess, "run", lambda *a, **k: _R())
+    monkeypatch.setattr(A, "_ultimo_erro", lambda u: "RuntimeError: TFE recusou o IP de origem da VM (...)")
+    [p] = A.sensor_systemd()
+    assert p["remediar"] == "" and "OuvERJ" in p["acao_humana"]

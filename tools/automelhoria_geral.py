@@ -110,8 +110,22 @@ def sensor_systemd() -> list[dict]:
     r = subprocess.run(["systemctl", "--user", "list-units", "--failed", "--plain", "--no-legend"],
                        capture_output=True, text=True, timeout=30)
     unid = [ln.split()[0] for ln in r.stdout.splitlines() if ln.strip()]
-    return [_p("systemd", u, f"serviço {u} em falha", _ultimo_erro(u), remediar=f"systemctl --user restart {u}")
-            for u in unid if u not in _SYSTEMD_RUIDO]
+    out = []
+    for u in unid:
+        if u in _SYSTEMD_RUIDO:
+            continue
+        erro = _ultimo_erro(u)
+        externa = next((a for chave, a in _CAUSA_EXTERNA.items() if chave in erro), "")
+        # causa EXTERNA conhecida: reiniciar não cura e cada falha re-dispara o OnFailure no Telegram do dono
+        out.append(_p("systemd", u, f"serviço {u} em falha", erro,
+                      remediar="" if externa else f"systemctl --user restart {u}", acao_humana=externa))
+    return out
+
+
+# erro do journal → decisão que só o dono toma (medido; nada aqui é palpite)
+_CAUSA_EXTERNA = {"recusou o IP": "a SEFAZ recusa o IP da VM (AS31898 Oracle, catálogo de abuso) no TFE e recomenda "
+                                  "outra origem ou chamado na OuvERJ — decidir: reinstalar o WARP (registra dispositivo "
+                                  "na Cloudflare) ou abrir o chamado. Não é crítico: OB = SIAFE; o TFE é espelho"}
 
 
 def _ultimo_erro(unidade: str) -> str:
