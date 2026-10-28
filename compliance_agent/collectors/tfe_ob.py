@@ -48,7 +48,13 @@ def baixar(force=False):
         subprocess.run(["curl", "-skfL", "--max-time", "600", "-A", UA["User-Agent"], "-o", str(tmp), URL], check=True)
     # só troca o zip bom por um zip VÁLIDO: corpo de erro gravado como .zip apagaria a base no parse seguinte
     if not zipfile.is_zipfile(tmp):
+        corpo = tmp.read_bytes()[:4000].decode("utf-8", "replace")
         tmp.unlink(missing_ok=True)
+        # 28/10/2026: a SEFAZ responde 200 com uma página dizendo que o IP de origem está em catálogo internacional
+        # de abuso e recomenda "acessar de outra origem" ou abrir chamado na OuvERJ. É o servidor dizendo, não palpite.
+        if "endereços IP" in corpo and "bloqueia" in corpo:
+            raise RuntimeError("TFE recusou o IP de origem da VM (página da SEFAZ: IP listado em catálogo de abuso; "
+                               "recomenda outra origem ou chamado na OuvERJ). Mantido o zip anterior.")
         raise RuntimeError(f"download do TFE não é um zip válido ({URL}); mantido o zip anterior")
     os.replace(tmp, ZIP)
     return ZIP

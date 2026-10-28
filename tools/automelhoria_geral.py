@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import shutil
 import subprocess
 import sys
@@ -109,8 +110,19 @@ def sensor_systemd() -> list[dict]:
     r = subprocess.run(["systemctl", "--user", "list-units", "--failed", "--plain", "--no-legend"],
                        capture_output=True, text=True, timeout=30)
     unid = [ln.split()[0] for ln in r.stdout.splitlines() if ln.strip()]
-    return [_p("systemd", u, f"serviço {u} em falha", remediar=f"systemctl --user restart {u}")
+    return [_p("systemd", u, f"serviço {u} em falha", _ultimo_erro(u), remediar=f"systemctl --user restart {u}")
             for u in unid if u not in _SYSTEMD_RUIDO]
+
+
+def _ultimo_erro(unidade: str) -> str:
+    """A CAUSA no próprio item ("TFE recusou o IP…"), não só "em falha" — quem lê o /melhorias decide sem abrir o journal."""
+    try:
+        j = subprocess.run(["journalctl", "--user", "-u", unidade, "-n", "40", "--no-pager", "-o", "cat"],
+                           capture_output=True, text=True, timeout=20).stdout.splitlines()
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    erros = [ln.strip() for ln in j if re.match(r"^\s*[\w.]*(Error|Exception)\b", ln.strip())]
+    return erros[-1][:200] if erros else ""
 
 
 def sensor_ronda() -> list[dict]:

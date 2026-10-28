@@ -50,3 +50,14 @@ def test_corpo_que_nao_e_zip_nao_substitui_o_anterior(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         T.baixar(force=True)
     assert zipfile.is_zipfile(T.ZIP)
+
+
+def test_pagina_de_bloqueio_por_ip_e_nomeada(tmp_path, monkeypatch):
+    _isolar(tmp_path, monkeypatch)
+    class _R:
+        content = ("<body>SECRETARIA DE ESTADO DE FAZENDA ... nosso serviço de segurança da informação bloqueia "
+                   "acessos provenientes desses endereços IP ...</body>").encode()
+        def raise_for_status(self): pass
+    monkeypatch.setattr(T.httpx, "get", lambda *a, **k: _R())
+    with pytest.raises(RuntimeError, match="recusou o IP"):
+        T.baixar(force=True)
