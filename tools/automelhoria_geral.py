@@ -124,9 +124,10 @@ def sensor_systemd() -> list[dict]:
 
 
 # erro do journal → decisão que só o dono toma (medido; nada aqui é palpite)
-_CAUSA_EXTERNA = {"recusou o IP": "a SEFAZ recusa o IP da VM (AS31898 Oracle, catálogo de abuso) no TFE e recomenda "
-                                  "outra origem ou chamado na OuvERJ — decidir: reinstalar o WARP (registra dispositivo "
-                                  "na Cloudflare) ou abrir o chamado. Não é crítico: OB = SIAFE; o TFE é espelho"}
+_CAUSA_EXTERNA = {"recusou o IP": "a SEFAZ recusa o IP da VM (AS31898 Oracle) no TFE. WARP reinstalado em 29/10/2026 "
+                                  "(jfn-warp.service, SOCKS5 127.0.0.1:25344) e MEDIDO: o egress da Cloudflare "
+                                  "(104.28.198.103) também é recusado. Restam: chamado na OuvERJ ou um exit node "
+                                  "residencial no Tailscale. Não é crítico: OB = SIAFE; o TFE é espelho"}
 
 
 def _ultimo_erro(unidade: str) -> str:
