@@ -21,3 +21,12 @@ def test_sem_chave_segue_o_dedup_exato(tmp_path, monkeypatch):
     assert F.registrar("lex", "ideia", "x", "a")
     assert not F.registrar("lex", "ideia", "x", "a")
     assert F.registrar("lex", "ideia", "x", "b")
+
+
+def test_chave_vazia_um_retrato_por_contexto(tmp_path, monkeypatch):
+    monkeypatch.setattr(F, "DB", str(tmp_path / "c.db"))
+    assert F.registrar("lex", "dificuldade", "memoria_aprendizado (baselines incertos)", "8 baselines: a", chave="")
+    assert not F.registrar("lex", "dificuldade", "memoria_aprendizado (baselines incertos)", "9 baselines: b", chave="")
+    assert F.registrar("lex", "dificuldade", "outro contexto", "8 baselines: a", chave="")
+    con = sqlite3.connect(tmp_path / "c.db")
+    assert con.execute("SELECT COUNT(*) FROM lex_feedback").fetchone()[0] == 2

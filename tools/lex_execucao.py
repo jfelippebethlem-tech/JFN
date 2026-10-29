@@ -168,7 +168,8 @@ def _bloco_siafe(numero_sei: str, obs: dict | None) -> str:
         return ("PAGAMENTO NO SIAFE: nenhuma OB contabilizada localizada pelo nº deste processo — INDISPONÍVEL "
                 "(pode estar sob outra numeração), não prova de ausência de pagamento.\n")
     total = f"{d['total']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    ds = sorted(x for x in d["datas"] if x)
+    # data_emissao do SIAFE é TEXTO DD/MM/AAAA: ordenar como string punha 17/01/2025 antes de 03/12/2024
+    ds = sorted((x for x in d["datas"] if x), key=lambda s: s[6:10] + s[3:5] + s[0:2])
     periodo = f", emitidas de {ds[0]} a {ds[-1]}" if ds else ""
     return (f"PAGAMENTO NO SIAFE (fonte oficial da OB): {d['n']} OB(s) contabilizada(s), total R$ {total}{periodo}. "
             "O pagamento está registrado — avalie se a ENTREGA está comprovada.\n")

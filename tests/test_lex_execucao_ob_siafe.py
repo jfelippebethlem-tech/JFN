@@ -17,8 +17,8 @@ def _base():
     con = sqlite3.connect(":memory:")
     con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, data_emissao TEXT, status TEXT)")
     con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)", [
-        ("SEI-330002/031566/24", 1000.0, "2024-03-01", "Contabilizado"),
-        ("330002/31566/2024", 500.5, "2024-04-01", "Contabilizado"),
+        ("SEI-330002/031566/24", 1000.0, "17/01/2025", "Contabilizado"),
+        ("330002/31566/2024", 500.5, "03/12/2024", "Contabilizado"),
         ("SEI-330002/031566/2024", 9e9, "2024-05-01", "Anulado"),        # anulada não é pagamento
         ("SEI-330002/031567/2024", 7.0, "2024-05-01", "Contabilizado"),  # outro processo
     ])
@@ -39,7 +39,8 @@ def test_mapa_soma_so_contabilizadas_do_processo():
 
 def test_bloco_do_prompt_diz_pago_ou_indisponivel():
     m = L.mapa_obs_siafe(_base(), ["SEI-330002/031566/2024"])
-    assert "2 OB(s) contabilizada(s), total R$ 1.500,50" in L._bloco_siafe("SEI-330002/031566/2024", m)
+    b = L._bloco_siafe("SEI-330002/031566/2024", m)
+    assert "2 OB(s) contabilizada(s), total R$ 1.500,50, emitidas de 03/12/2024 a 17/01/2025" in b
     assert "INDISPONÍVEL" in L._bloco_siafe("SEI-999999/000001/2024", m)
 
 
