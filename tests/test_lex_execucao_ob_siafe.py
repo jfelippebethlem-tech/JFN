@@ -75,3 +75,9 @@ def test_vereditos_contestados_pelo_siafe_vem_primeiro():
         ("SEI-111111/000001/2024", "velho", "", "[]", "[]", 2),
     ])
     assert [a[0] for a in L._alvos(con, 2, False)] == ["SEI-330002/031566/2024", "SEI-222222/000002/2024"]
+
+
+def test_so_quem_negou_a_ob_e_contestado():
+    assert L._NEGA_OB.search("Ausência de Ordem Bancária (OB) para comprovar o pagamento")
+    assert L._NEGA_OB.search("não há OB no trecho")
+    assert not L._NEGA_OB.search("divergência de competência entre a ordem bancária de retenção e a liberação")

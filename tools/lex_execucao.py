@@ -238,6 +238,8 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
     return {"numero_sei": numero_sei, **fl, "verdict": r}
 
 
+_NEGA_OB = re.compile(r"(aus[eê]ncia|sem|falta|n[aã]o h[aá]|inexist[eê]ncia)[^.;\"]{0,80}(ordem(ns)? banc|\bOBs?\b)", re.I)
+
 # Vereditos dados ANTES de a perícia ver o SIAFE (29/10/2026) que acusaram falta de OB: refazer primeiro.
 _CORTE_SIAFE = "2026-10-29T00:12"
 
@@ -245,12 +247,14 @@ _CORTE_SIAFE = "2026-10-29T00:12"
 def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
     """Processos cujo veredito antigo apontou 'ausência de OB' e que TÊM OB contabilizada no SIAFE."""
     try:
-        cand = [r[0] for r in con.execute(
-            "SELECT numero_sei FROM lex_execucao WHERE em < ? AND (indicios LIKE '%Ordem Banc%' "
-            "OR indicios LIKE '%(OB)%' OR resumo LIKE '%Ordem Banc%') ORDER BY nota_risco DESC",
-            (_CORTE_SIAFE,))]
+        rows = con.execute(
+            "SELECT numero_sei, COALESCE(indicios,'') || ' ' || COALESCE(resumo,'') FROM lex_execucao "
+            "WHERE em < ? AND (indicios LIKE '%Ordem Banc%' OR indicios LIKE '%OB%' OR resumo LIKE '%Ordem Banc%') "
+            "ORDER BY nota_risco DESC", (_CORTE_SIAFE,)).fetchall()
     except sqlite3.OperationalError:
         return []
+    # só quem AFIRMOU ausência — "divergência na ordem bancária de retenção" leu a OB, não a negou
+    cand = [ns for ns, txt in rows if _NEGA_OB.search(txt)]
     m = mapa_obs_siafe(con, cand) if cand else {}
     return [ns for ns in cand if _chave_processo(ns) in m]
 

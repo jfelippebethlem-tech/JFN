@@ -628,10 +628,24 @@ def _render_execucao(ctx: dict) -> str:
     add("")
     add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Resumo da perícia |")
     add("|---|---:|---:|:--:|:--:|---|")
+    # Vereditos dados antes de a perícia ler o SIAFE (29/10/2026) que NEGAVAM a OB — e a linha mostra OB paga.
+    # 1.376 de 4.832 estavam assim; seguem em reavaliação no sweep. Não somem da tabela: ficam marcados.
+    from tools.lex_execucao import _CORTE_SIAFE, _NEGA_OB
+    n_contest = 0
     for x in tudo(sorted(suspeitos, key=lambda x: -(x.get("total") or 0))):
         res = (x.get("resumo") or "")[:90].replace("|", "/")
+        if (x.get("avaliado_em") or "") < _CORTE_SIAFE and (x.get("n_obs") or 0) > 0 and \
+                _NEGA_OB.search(f"{x.get('indicios') or ''} {x.get('resumo') or ''}"):
+            res = "⚠️ veredito anterior negava a OB que o SIAFE registra — em reavaliação. " + res
+            n_contest += 1
         add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {x.get('nota')}/10 | {res} |")
     add("")
+    if n_contest:
+        add(f"> ⚠️ **{n_contest} processo(s) acima** têm veredito de execução dado antes de a perícia consultar o "
+            "SIAFE e que apontava *ausência de Ordem Bancária* — o SIAFE registra pagamento. A conclusão sobre a "
+            "**entrega** pode se manter, mas a premissa de pagamento estava errada: tratar como **pendente de "
+            "reavaliação**, não como indício firme.")
+        add("")
     add("> 🟡 **Indício a apurar:** exigir do gestor a prova de entrega/fiscalização (atesto, NF, medição, relatório "
         "fotográfico) dos processos acima antes de novo pagamento. **Indício, não prova.**")
     add("")

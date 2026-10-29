@@ -158,7 +158,7 @@ def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
     try:
         rows = con.execute(
             "SELECT o.numero_sei, COUNT(*) n_obs, ROUND(SUM(o.valor),2) total, "
-            "l.execucao_comprovada AS exec, l.nota_risco AS nota, l.resumo "
+            "l.execucao_comprovada AS exec, l.nota_risco AS nota, l.resumo, l.indicios, l.em AS avaliado_em "
             "FROM ordens_bancarias o LEFT JOIN lex_execucao l ON l.numero_sei=o.numero_sei "
             "WHERE o.favorecido_cpf=? AND o.numero_sei IS NOT NULL AND o.numero_sei!='' "
             "GROUP BY o.numero_sei ORDER BY total DESC LIMIT ?", (cnpj, limite)).fetchall()
