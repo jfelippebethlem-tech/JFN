@@ -629,7 +629,7 @@ def _render_execucao(ctx: dict) -> str:
     add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Resumo da perícia |")
     add("|---|---:|---:|:--:|:--:|---|")
     # Vereditos dados antes de a perícia ler o SIAFE (29/10/2026) que NEGAVAM a OB — e a linha mostra OB paga.
-    # 1.376 de 4.832 estavam assim; seguem em reavaliação no sweep. Não somem da tabela: ficam marcados.
+    # 1.285 de 4.832 estavam assim (filtro preciso); seguem em reavaliação no sweep. Não somem: ficam marcados.
     from tools.lex_execucao import _CORTE_SIAFE, _NEGA_OB
     n_contest = 0
     for x in tudo(sorted(suspeitos, key=lambda x: -(x.get("total") or 0))):

@@ -201,6 +201,14 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
         print(f"  [{numero_sei}] erro LLM: {type(e).__name__}: {str(e)[:80]}")
         return None
     r = _parse_json(txt) or {}
+    if r.get("execucao_comprovada") not in ("sim", "parcial", "nao", "indeterminado"):
+        # resposta sem veredito NUNCA sobrescreve um veredito: o upsert gravava NULL por cima (medido em
+        # 29/10/2026 no SEI-420001/004995/2025, ao reavaliar). Sem veredito anterior, a linha vazia segue
+        # sendo gravada — ela marca a TENTATIVA, e `_alvos` só a refaz depois de 7 dias.
+        ant = con.execute("SELECT execucao_comprovada FROM lex_execucao WHERE numero_sei=?", (numero_sei,)).fetchone()
+        if ant and ant[0]:
+            print(f"  [{numero_sei}] resposta do LLM sem veredito válido — mantido o anterior: {str(txt)[:120]!r}")
+            return None
     nota = r.get("nota_risco_execucao")
     try:
         nota = max(0, min(10, int(nota)))  # clamp 0-10: o LLM às vezes devolve fora de faixa/negativo
@@ -238,7 +246,11 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
     return {"numero_sei": numero_sei, **fl, "verdict": r}
 
 
-_NEGA_OB = re.compile(r"(aus[eê]ncia|sem|falta|n[aã]o h[aá]|inexist[eê]ncia)[^.;\"]{0,80}(ordem(ns)? banc|\bOBs?\b)", re.I)
+# Precisão > cobertura (o relatório põe aviso em quem casa): medido em 29/10/2026, a janela de 80 caracteres
+# pegava "ausência do valor da NL…, vinculada à mesma OB" e "'SEM CONTRATO' na Ordem Bancária" — leram a OB.
+_NEGA_OB = re.compile(r"(aus[eê]ncia|sem|falta\w*|n[aã]o h[aá]|inexist[eê]ncia)\b"
+                      r"(?:(?!pr[oó]pria|vinculad|conforme|valor|reten[çc]|contrato)[^.;\"]){0,60}?"
+                      r"(ordem(ns)? banc|\bOBs?\b)(?! de reten)", re.I)
 
 # Vereditos dados ANTES de a perícia ver o SIAFE (29/10/2026) que acusaram falta de OB: refazer primeiro.
 _CORTE_SIAFE = "2026-10-29T00:12"
@@ -262,7 +274,10 @@ def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
 def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
     ja = set()
     if not reavaliar:
-        ja = {r[0] for r in con.execute("SELECT numero_sei FROM lex_execucao")}
+        # veredito VAZIO (resposta do LLM cortada — 616 em 29/10/2026) não é avaliação: volta após 7 dias
+        ja = {r[0] for r in con.execute(
+            "SELECT numero_sei FROM lex_execucao WHERE execucao_comprovada IS NOT NULL "
+            "OR em >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-7 days')")}
     # mesmo ritmo do slot (top por rodada): só a ORDEM muda — veredito errado vale mais que cobertura nova
     primeiro = set(_contestados_por_siafe(con)[:top]) if not reavaliar else set()
     ja -= primeiro

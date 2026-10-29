@@ -323,8 +323,14 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                 for off in range(n):
                     key = keys[(_GEMINI_RR + off) % n]
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{mdl}:generateContent?key={key}"
+                    corpo = body
+                    if mdl.startswith("gemini-2.5"):
+                        # o RACIOCÍNIO do 2.5 conta dentro do maxOutputTokens: medido em 29/10/2026, 3.344 de
+                        # raciocínio + 604 de resposta num teto de 4.096 — passando um pouco, o JSON saía cortado
+                        corpo = {**body, "generationConfig": {**body["generationConfig"],
+                                                              "thinkingConfig": {"thinkingBudget": 2048}}}
                     try:
-                        r = await client.post(url, json=body)
+                        r = await client.post(url, json=corpo)
                         if r.status_code in (429, 403, 401):
                             erros.append(f"{mdl}:{r.status_code}")
                             continue
@@ -334,7 +340,14 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                             break
                         r.raise_for_status()
                         j = r.json()
-                        txt = j.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        cand = j.get("candidates", [{}])[0]
+                        txt = cand.get("content", {}).get("parts", [{}])[0].get("text", "")
+                        if cand.get("finishReason") == "MAX_TOKENS":
+                            # resposta CORTADA não é resposta: 616 vereditos de lex_execucao nasceram vazios
+                            # assim (JSON truncado). Próximo modelo da cascata, não texto pela metade.
+                            erros.append(f"{mdl}:MAX_TOKENS")
+                            so_rate = False
+                            break
                         _GEMINI_RR = (_GEMINI_RR + off + 1) % n
                         return txt
                     except httpx.HTTPStatusError as e:

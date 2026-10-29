@@ -62,10 +62,11 @@ def test_execucao_fragil_nao_vai_para_a_fila_do_sistema():
 
 def test_vereditos_contestados_pelo_siafe_vem_primeiro():
     con = _base()
-    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, indicios TEXT, resumo TEXT, nota_risco INT, em TEXT)")
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, indicios TEXT, resumo TEXT, nota_risco INT, em TEXT, "
+                "execucao_comprovada TEXT DEFAULT 'nao')")
     con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, objeto TEXT, valores TEXT, documentos TEXT, "
                 "red_flags TEXT, n_docs INT)")
-    con.executemany("INSERT INTO lex_execucao VALUES (?,?,?,?,?)", [
+    con.executemany("INSERT INTO lex_execucao (numero_sei, indicios, resumo, nota_risco, em) VALUES (?,?,?,?,?)", [
         ("SEI-330002/031566/2024", '["Ausência de Ordem Bancária (OB)"]', "", 5, "2026-09-01T10:00"),
         ("SEI-111111/000001/2024", '["Ausência de Ordem Bancária (OB)"]', "", 5, "2026-09-01T10:00"),  # sem OB
     ])
@@ -81,3 +82,38 @@ def test_so_quem_negou_a_ob_e_contestado():
     assert L._NEGA_OB.search("Ausência de Ordem Bancária (OB) para comprovar o pagamento")
     assert L._NEGA_OB.search("não há OB no trecho")
     assert not L._NEGA_OB.search("divergência de competência entre a ordem bancária de retenção e a liberação")
+
+
+def _base_exec():
+    con = _base()
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT PRIMARY KEY, objeto TEXT, tem_prestacao_contas INT, "
+                "tem_fiscalizacao INT, tem_relatorio_fotografico INT, tem_atesto_recebimento INT, tem_nota_fiscal INT, "
+                "tem_medicao INT, execucao_comprovada TEXT, coerencia TEXT, nota_risco INT, indicios TEXT, duvidas TEXT, "
+                "resumo TEXT, modelo TEXT, em TEXT)")
+    return con
+
+
+def test_resposta_cortada_nao_apaga_veredito_anterior():
+    con = _base_exec()
+    con.execute("INSERT INTO lex_execucao (numero_sei, execucao_comprovada, nota_risco, em) "
+                "VALUES ('SEI-1', 'nao', 9, '2026-06-22T13:11:17-03:00')")
+    assert L.avaliar_processo(con, "SEI-1", "obj", "", [], [], lambda *a: '{"execucao_comprovada": "indet') is None
+    assert con.execute("SELECT execucao_comprovada, nota_risco FROM lex_execucao").fetchone() == ("nao", 9)
+
+
+def test_veredito_vazio_antigo_volta_para_a_fila():
+    con = _base_exec()
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, objeto TEXT, valores TEXT, documentos TEXT, "
+                "red_flags TEXT, n_docs INT)")
+    con.executemany("INSERT INTO lex_execucao (numero_sei, execucao_comprovada, em) VALUES (?,?,?)", [
+        ("SEI-vazio-velho", None, "2026-07-01T10:00:00-03:00"), ("SEI-vazio-novo", None, "2099-01-01T10:00:00"),
+        ("SEI-ok", "sim", "2026-07-01T10:00:00-03:00")])
+    con.executemany("INSERT INTO sei_ficha VALUES (?,?,?,?,?,?)",
+                    [(n, "", "", "[]", "[]", 5) for n in ("SEI-vazio-velho", "SEI-vazio-novo", "SEI-ok")])
+    assert [a[0] for a in L._alvos(con, 5, False)] == ["SEI-vazio-velho"]
+
+
+def test_quem_leu_a_ob_nao_e_contestado():
+    assert not L._NEGA_OB.search("ausência do valor da NL 2025NL03689, que está vinculada à mesma OB")
+    assert not L._NEGA_OB.search("registro 'SEM CONTRATO' na Ordem Bancária principal")
+    assert L._NEGA_OB.search("há ausência de atesto de recebimento, nota fiscal e Ordem Bancária para formalizar")
