@@ -30,6 +30,13 @@ class _Pagina:
     async def wait_for_timeout(self, ms):
         self.esperas.append(ms)
 
+    @property
+    def context(self):
+        return self
+
+    async def clear_cookies(self, **filtro):
+        self.limpezas = getattr(self, "limpezas", []) + [filtro]
+
 
 class _Browser:
     fechado = False
@@ -104,3 +111,24 @@ def test_tela_de_erro_no_login_tambem_espera_240s(monkeypatch):
     pg = _Pagina()
     asyncio.run(S._login_e_navegar(pg, 2020, tentativas=2))
     assert pg.esperas == [240_000]
+
+
+def test_relogin_apos_erro_interno_usa_sessao_nova(monkeypatch):
+    """29/10/2026: as tentativas 2 e 3 reabriam a sessão QUEBRADA (mesmo cookie) e caíam na errorDisplay."""
+    async def _login(pg, ex):
+        return {"ok": False, "erro": "erro_interno_siafe"}
+    monkeypatch.setattr(S, "_login", _login)
+    monkeypatch.setattr(S, "LOGIN_URL", "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp")
+    pg = _Pagina()
+    r = asyncio.run(S._login_e_navegar(pg, 2022, tentativas=3))
+    assert pg.limpezas == [{"domain": "www5.fazenda.rj.gov.br"}] * 2      # só o domínio do SIAFE 1
+    assert r["erros"] == ["erro_interno_siafe"] * 3
+
+
+def test_outro_erro_nao_limpa_cookies(monkeypatch):
+    async def _login(pg, ex):
+        return {"ok": False, "erro": "login_falhou"}
+    monkeypatch.setattr(S, "_login", _login)
+    pg = _Pagina()
+    asyncio.run(S._login_e_navegar(pg, 2022, tentativas=2))
+    assert not getattr(pg, "limpezas", [])

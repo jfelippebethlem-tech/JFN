@@ -983,20 +983,32 @@ async def _login_e_navegar(pg, exercicio: int, tentativas: int = 3) -> dict:
     from playwright.async_api import Error as PWError   # import local: o módulo faz assim
 
     ultimo: dict = {}
+    erros: list[str] = []
     for tentativa in range(max(1, tentativas)):
         try:
             ultimo = await _login(pg, exercicio)
             if ultimo.get("ok") and (await _navegar(pg)).get("ok"):
-                return {"ok": True, "tentativas": tentativa + 1}
+                return {"ok": True, "tentativas": tentativa + 1, "erros_anteriores": erros}
         except PWError as exc:
             ultimo = {"ok": False, "erro": f"{type(exc).__name__}: {str(exc)[:90]}"}
+        erros.append(str(ultimo.get("erro") or "navegacao"))
         # ERRO INTERNO = sessão do usuário ainda presa no servidor. Medido em 25/10/2026: re-login 45–90 s
         # depois falha de novo; com 240 s entra. Repetir em 4 s só empilhava tentativas e gastava as três.
-        espera = (_ESPERA_RELOGIN_ERRO_INTERNO_MS if ultimo.get("erro") in ("erro_interno_siafe", "tela_login_sem_campo")
-                  else 4000)
+        interno = ultimo.get("erro") in ("erro_interno_siafe", "tela_login_sem_campo")
+        espera = _ESPERA_RELOGIN_ERRO_INTERNO_MS if interno else 4000
         if tentativa < max(1, tentativas) - 1:
             await pg.wait_for_timeout(espera)
-    return {"ok": False, "etapa": "login_nav", "tentativas": tentativas, "ultimo": ultimo}
+            if interno:
+                # SESSÃO NOVA, não a mesma. Medido em 29/10/2026 00:51–00:59: 1ª tentativa caiu no erro interno
+                # e as seguintes (240 s depois) abriam login.jsp DIRETO na errorDisplay — o contexto levava o
+                # cookie da sessão quebrada; um contexto limpo, no mesmo minuto, recebia o formulário. Limpa só
+                # o domínio do SIAFE em uso: o cookie "dispensar MFA" do outro sistema fica.
+                dominio = LOGIN_URL.split("//", 1)[-1].split("/", 1)[0]
+                try:
+                    await pg.context.clear_cookies(domain=dominio)
+                except (PWError, TypeError, AttributeError) as exc:
+                    logger.debug("limpar cookies de %s antes do re-login falhou: %s", dominio, exc)
+    return {"ok": False, "etapa": "login_nav", "tentativas": tentativas, "ultimo": ultimo, "erros": erros}
 
 
 async def _esperar_linha_filtro(pg, idx: int, adf, espera_s: int = 45) -> bool:

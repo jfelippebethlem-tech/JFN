@@ -57,10 +57,11 @@ def _p(area: str, chave: str, titulo: str, detalhe: str = "", remediar: str = ""
 
 
 # Diagnóstico medido (sonda de 24/10/2026), para a ação humana não ser genérica.
-_ACAO_LOGIN = {"1": "SIAFE 1 (www5, 2016-2023) dá NullPointerException no RootMenuParser quando a sessão anterior ainda "
-                    "está presa no servidor (medido em 25 e 28/10/2026: 240 s entre logins resolvem; desde 28/10 o "
-                    "coletor faz logout ao fechar). Se persistir 24 h com logout e espera: testar login manual e, "
-                    "repetindo, abrir chamado na SEFAZ"}
+_ACAO_LOGIN = {"1": "SIAFE 1 (www5, 2016-2023): NullPointerException intermitente no RootMenuParser ao montar o menu. "
+                    "Medido em 29/10/2026: depois dele, o re-login no MESMO contexto reabria a sessão quebrada "
+                    "(login.jsp → errorDisplay), enquanto um contexto limpo recebia o formulário — desde então o "
+                    "re-login limpa os cookies do www5. Se persistir com sessão nova: ler os `erros` por tentativa "
+                    "no log do par antes de qualquer outra hipótese"}
 _ACAO_CONFLITO = {"326100_2025": "recoleta limpa de 24/10 devolveu 0 em TODAS as fatias (UG+Número 2025OB*) para um "
                                   "par com 1.310 OBs na base, coletadas pelo mesmo caminho em 15/08; o login é o mesmo "
                                   "do dreno que funciona — depurar o filtro com print da tela"}
