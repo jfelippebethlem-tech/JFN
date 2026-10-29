@@ -64,6 +64,8 @@ _SYS = (
     "traz OB contabilizada, o pagamento ESTÁ registrado na fonte oficial — NUNCA aponte 'ausência de OB'; a "
     "pergunta passa a ser se a ENTREGA que justificou esse pagamento está comprovada. Se o bloco diz que não "
     "localizou OB, isso é INDISPONÍVEL (o processo pode estar sob outra numeração), não ausência de pagamento. "
+    "A OB costuma ser o valor LÍQUIDO: bruto da NF/NL menos as retenções (guias de recolhimento de tributo). "
+    "FAÇA A CONTA antes de chamar diferença de 'discrepância' — bruto − guias = OB é pagamento regular. "
     "Responda SOMENTE o objeto JSON do schema, sem texto fora."
 )
 _SCHEMA = (

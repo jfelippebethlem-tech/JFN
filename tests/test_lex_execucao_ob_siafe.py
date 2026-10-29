@@ -117,3 +117,8 @@ def test_quem_leu_a_ob_nao_e_contestado():
     assert not L._NEGA_OB.search("ausência do valor da NL 2025NL03689, que está vinculada à mesma OB")
     assert not L._NEGA_OB.search("registro 'SEM CONTRATO' na Ordem Bancária principal")
     assert L._NEGA_OB.search("há ausência de atesto de recebimento, nota fiscal e Ordem Bancária para formalizar")
+
+
+def test_regra_do_liquido_esta_no_sistema():
+    """SEI-490001/001078/2025: 443.902,73 − 5.327,91 (guia) = 438.574,82 (OB) e o modelo chamou de discrepância."""
+    assert "bruto − guias = OB" in L._SYS
