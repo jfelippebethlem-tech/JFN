@@ -10,7 +10,16 @@ from __future__ import annotations
 import inspect
 import sqlite3
 
+import pytest
+
 from tools import lex_execucao as L
+
+
+@pytest.fixture(autouse=True)
+def _sem_memoria_real(monkeypatch):
+    """`_regras_calibracao` abre a memória pelo ORM, que CRIA data/compliance.db vazio — no CI isso fazia
+    /api/ugs responder 500 noutro teste do mesmo lote (29/10/2026)."""
+    monkeypatch.setattr(L, "_regras_calibracao", lambda: "(teste)")
 
 
 def _base():

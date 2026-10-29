@@ -81,3 +81,14 @@ def test_smoke_gets_deterministicos():
                     assert corpo.get("erro"), f"{rota} → indisponível SEM motivo declarado"
                     continue
                 assert corpo["ok"] is True, f"{rota} → ok={corpo.get('ok')} erro={str(corpo.get('erro'))[:120]}"
+
+
+def test_ugs_com_base_sem_tabela_e_indisponivel_nao_500(tmp_path, monkeypatch):
+    import sqlite3
+
+    from compliance_agent.reporting import inteligencia_orgao as IO
+    db = tmp_path / "compliance.db"
+    sqlite3.connect(db).execute("CREATE TABLE outra (x)").connection.close()
+    monkeypatch.setattr(IO, "_DB", db)
+    r = IO.listar_ugs()
+    assert r["ok"] is False and "indisponível" in r["texto"]

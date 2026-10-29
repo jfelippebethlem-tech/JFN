@@ -187,6 +187,9 @@ def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
         rows = con.execute(
             "SELECT ug_codigo, MAX(ug_nome) ug_nome, COUNT(*) n, ROUND(SUM(valor),2) total "
             "FROM ordens_bancarias WHERE valor>0 AND ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
+    except sqlite3.OperationalError:
+        # base existe mas sem a tabela (ex.: criada vazia pelo ORM) — INDISPONÍVEL, não 500 (CI 29/10/2026)
+        out["ok"] = False; out["texto"] = "Base local indisponível (sem a tabela de ordens bancárias)."; return out
     finally:
         con.close()
     itens = []
