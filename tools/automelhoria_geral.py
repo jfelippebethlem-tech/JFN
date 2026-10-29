@@ -169,8 +169,10 @@ def sensor_siafe() -> list[dict]:
         out.append(_p("siafe", "diario", "coleta diária do SIAFE falhou",
                       f"{ult.get('erro')} — {ult.get('detail', '')}", remediar=_DIARIO_SIAFE))
     for sis in ("1", "2"):
-        av = DATA / f".siafe_dreno_aviso_login_{sis}"
-        if av.exists() and time.time() - av.stat().st_mtime < 86400:
+        av, ok = DATA / f".siafe_dreno_aviso_login_{sis}", DATA / f".siafe_dreno_login_ok_{sis}"
+        # um login que deu certo DEPOIS do disjuntor cura (28/10/2026: soluço às 13:36 seguia "quebrado" por 24 h)
+        if av.exists() and time.time() - av.stat().st_mtime < 86400 and not (
+                ok.exists() and ok.stat().st_mtime > av.stat().st_mtime):
             out.append(_p("siafe", f"login_sistema_{sis}", f"login do SIAFE {sis} quebrado (disjuntor do dreno)",
                           acao_humana=_ACAO_LOGIN.get(sis, "investigar o login com sonda que lê a tela sem clicar "
                                                                   "em popup; nunca culpar WAF")))
@@ -450,7 +452,7 @@ def resumo(fila: dict, max_itens: int = 15) -> str:
         if it.get("acoes"):
             L.append(f"    🤖 remédio automático tentado {len(it['acoes'])}× (último {it['acoes'][-1]['quando']})"
                      + (" — NÃO PEGOU, precisa de você" if it.get("escalado") else ""))
-        elif it.get("acao_humana"):
+        if it.get("acao_humana"):
             L.append(f"    👤 {it['acao_humana'][:140]}")
     if len(abertos) > max_itens:
         L.append(f"… e mais {len(abertos) - max_itens}")

@@ -46,3 +46,11 @@ def test_ganho_zera_a_sequencia_de_falhas_de_login():
     t = SH.read_text(encoding="utf-8")
     trecho = t[t.index('quar ganho "${UG}_${ANO}"'):t.index('elif grep -q \'"nada_a_fazer": true\'')]
     assert "ULT_LOGIN_FALHO=" in trecho
+
+
+def test_disjuntor_pausa_curta_e_aviso_separado():
+    """Pausa de 90 min (sonda) separada do aviso ao dono (1 por 24 h); login que funciona deixa carimbo."""
+    t = SH.read_text(encoding="utf-8")
+    assert '_PAUSA=data/.siafe_dreno_pausa_login_$_S' in t and "-lt 5400" in t
+    assert 'touch "data/.siafe_dreno_pausa_login_$SIS"' in t
+    assert t.count('touch "data/.siafe_dreno_login_ok_$_S"') == 3

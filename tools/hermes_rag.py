@@ -64,7 +64,7 @@ class EmbedParcial(RuntimeError):
         self.vetores = vetores
 
 
-def _embed(textos: list[str], input_type: str) -> list[list[float]]:
+def _embed(textos: list[str], input_type: str, tentativas: int = 6, timeout: float = 120) -> list[list[float]]:
     """Cohere embed em lotes de 96. Throttle + retry no 429 (chave trial tem limite/min)."""
     import httpx
     import time
@@ -73,11 +73,13 @@ def _embed(textos: list[str], input_type: str) -> list[list[float]]:
     total = (len(textos) + 95) // 96
     for n, i in enumerate(range(0, len(textos), 96), 1):
         lote = textos[i:i + 96]
-        for tent in range(6):
+        for tent in range(tentativas):
             r = httpx.post(COHERE, headers={"Authorization": f"Bearer {key}"},
                            json={"model": MODEL, "input_type": input_type,
-                                 "embedding_types": ["float"], "texts": lote}, timeout=120)
+                                 "embedding_types": ["float"], "texts": lote}, timeout=timeout)
             if r.status_code == 429:
+                if tent == tentativas - 1:
+                    continue          # última: não dorme à toa; o laço termina e o `else` acusa o 429
                 espera = min(60, 8 * (tent + 1))
                 print(f"  lote {n}/{total}: 429, aguardando {espera}s…", flush=True)
                 time.sleep(espera); continue
@@ -241,14 +243,56 @@ def _indice():
     return _IDX_CACHE["arr"], _IDX_CACHE["regs"]
 
 
+_COHERE_FORA: dict = {"ate": 0.0}   # disjuntor em memória: Cohere recusou → lexical por 15 min, sem re-tentar
+
+
+def _tokens(s: str) -> set[str]:
+    import re
+    import unicodedata
+    s = unicodedata.normalize("NFKD", s.lower()).encode("ascii", "ignore").decode()
+    return {w for w in re.findall(r"[a-z0-9]{3,}", s)}
+
+
+def consultar_lexical(pergunta: str, k: int = 6) -> list[dict]:
+    """Plano B local (custo zero): termos da pergunta ponderados por IDF. Score em [0,1] = fração do peso
+    da pergunta presente no trecho. Medido em 29/10/2026: com a cota trial esgotada (429), `consultar`
+    ficava ~170 s em retry e o agente seguia SEM base — o Yoda perdia o segundo cérebro por dias."""
+    import math
+    _, regs = _indice()
+    if _IDX_CACHE.get("toks_mtime") != _IDX_CACHE["mtime"]:
+        _IDX_CACHE["toks"] = [_tokens(r["texto"]) for r in regs]
+        df: dict = {}
+        for ts in _IDX_CACHE["toks"]:
+            for w in ts:
+                df[w] = df.get(w, 0) + 1
+        _IDX_CACHE["df"], _IDX_CACHE["toks_mtime"] = df, _IDX_CACHE["mtime"]
+    toks, df, n = _IDX_CACHE["toks"], _IDX_CACHE["df"], len(regs)
+    pesos = {w: math.log((n + 1) / (df.get(w, 0) + 1)) for w in _tokens(pergunta) if w in df}
+    tot = sum(pesos.values())
+    if not tot:
+        return []
+    sc = sorted(((sum(p for w, p in pesos.items() if w in ts) / tot, i) for i, ts in enumerate(toks)), reverse=True)
+    return [{"score": s, "fonte": regs[i]["fonte"], "texto": regs[i]["texto"], "modo": "lexical"}
+            for s, i in sc[:k] if s > 0]
+
+
 def consultar(pergunta: str, k: int = 6) -> list[dict]:
-    """Retorna os k trechos mais relevantes do corpus p/ a pergunta (com fonte e score)."""
+    """Retorna os k trechos mais relevantes do corpus p/ a pergunta (com fonte e score).
+    Pergunta é interativa: UMA tentativa curta na Cohere; recusou/caiu → busca lexical local."""
+    import time
     import numpy as np
     arr, regs = _indice()
     if pergunta in _QEMB_CACHE:
         vet = _QEMB_CACHE[pergunta]
     else:
-        vet = _embed([pergunta], "search_query")[0]
+        if time.time() < _COHERE_FORA["ate"]:
+            return consultar_lexical(pergunta, k)
+        import httpx
+        try:
+            vet = _embed([pergunta], "search_query", tentativas=1, timeout=15)[0]
+        except (RuntimeError, httpx.HTTPError, OSError):      # 429/EmbedParcial, sem chave, rede
+            _COHERE_FORA["ate"] = time.time() + 900
+            return consultar_lexical(pergunta, k)
         if len(_QEMB_CACHE) >= _QEMB_MAX:
             _QEMB_CACHE.pop(next(iter(_QEMB_CACHE)))
         _QEMB_CACHE[pergunta] = vet

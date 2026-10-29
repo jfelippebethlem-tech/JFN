@@ -147,6 +147,7 @@ pipelines:
     max_stale_h: 30
     grupo: second-brain
     nota: verificação/rebuild incremental (metacognição 06:50 + cron 13:07); mtime marca a checagem
+    acao_humana: "se data/hermes_rag_cron.log termina em '429 persistente', é a cota trial da Cohere (1.000/mês) — renova sozinha no ciclo mensal e o build retoma de onde parou; enquanto isso a consulta do Yoda cai na busca lexical local (sem custo). Nada a fazer"
 
   # ---- PCRJ (Prefeitura do Rio — coletas que alimentam a esfera do painel) ----
   - nome: pcrj-fisc-refresh

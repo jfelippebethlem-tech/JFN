@@ -239,3 +239,18 @@ def test_causa_externa_nao_reinicia_servico(monkeypatch):
     monkeypatch.setattr(A, "_ultimo_erro", lambda u: "RuntimeError: TFE recusou o IP de origem da VM (...)")
     [p] = A.sensor_systemd()
     assert p["remediar"] == "" and "OuvERJ" in p["acao_humana"]
+
+
+def test_login_que_voltou_depois_do_disjuntor_cura(tmp_path, monkeypatch):
+    """28/10/2026: um soluço de login às 13:36 deixava o SIAFE 1 'quebrado' por 24 h no vigia."""
+    import os
+    import time
+    monkeypatch.setattr(A, "DATA", tmp_path)
+    (tmp_path / "sei_cache").mkdir()
+    (tmp_path / "sei_cache" / "siafe_runner_ultimo.json").write_text(json.dumps({"ok": True}))
+    av = tmp_path / ".siafe_dreno_aviso_login_1"
+    av.touch()
+    os.utime(av, (time.time() - 3600,) * 2)
+    assert [p["assinatura"] for p in A.sensor_siafe() if "login" in p["assinatura"]] == ["siafe:login_sistema_1"]
+    (tmp_path / ".siafe_dreno_login_ok_1").touch()
+    assert not [p for p in A.sensor_siafe() if "login" in p["assinatura"]]

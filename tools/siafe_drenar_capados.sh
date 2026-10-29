@@ -172,9 +172,12 @@ for par in "${PARES[@]}"; do
     sonda_vencida || continue
     touch "$SONDA_PERFIL"; say "sonda mensal do perfil: tento $UG/$ANO (fora do perfil da conta)"
   fi
-  # sistema com LOGIN quebrado (disjuntor abaixo) fica de fora 24 h inteiras — os pares do outro seguem
-  _S=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); _AV=data/.siafe_dreno_aviso_login_$_S
-  if [ -f "$_AV" ] && [ $(( $(date +%s) - $(stat -c %Y "$_AV") )) -lt 86400 ]; then continue; fi
+  # sistema com LOGIN quebrado (disjuntor abaixo) fica de fora 90 min — os pares do outro seguem. Eram 24 h:
+  # em 28/10/2026 um soluço às 13:36 (sessão presa no servidor, que vive 30 min) parou 37 pares por um dia
+  # inteiro, embora 240 s entre logins já resolvessem (A/B das 10:37). A pausa curta é a sonda: se o login
+  # seguir quebrado, o disjuntor rearma sozinho; o AVISO ao dono continua no máximo 1 por 24 h.
+  _S=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); _PAUSA=data/.siafe_dreno_pausa_login_$_S
+  if [ -f "$_PAUSA" ] && [ $(( $(date +%s) - $(stat -c %Y "$_PAUSA") )) -lt 5400 ]; then continue; fi
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
   # GUARDA DA CASA, DOIS CRITÉRIOS. A versão anterior era `load >= 4` à mão, e medido em
   # 2026-08-10 ela barrou **10 de 10** passadas do cron — a maioria drenou ZERO pares, porque a
@@ -269,9 +272,9 @@ PYEOF
     quar ganho "${UG}_${ANO}"
     # o login FUNCIONOU: a sequência de falhas de login acabou. Sem isto, falha–sucesso–falha disparava o
     # disjuntor como "2 seguidos" (28/10/2026 09:13, com 316100/2022 rendendo 66 OBs entre as duas falhas).
-    ULT_LOGIN_FALHO=
+    ULT_LOGIN_FALHO=; touch "data/.siafe_dreno_login_ok_$_S"     # o vigia lê: logou depois do disjuntor = curado
   elif grep -q '"nada_a_fazer": true' "$SAIDA"; then
-    ULT_LOGIN_FALHO=      # chegou ao checkpoint = logou
+    ULT_LOGIN_FALHO=; touch "data/.siafe_dreno_login_ok_$_S"     # chegou ao checkpoint = logou
     # o checkpoint diz "tudo feito" e o medidor diz "incompleto": repetir não resolve, só gasta browser
     quar conflito "${UG}_${ANO}" "checkpoint_feito_x_medidor_incompleto"
     say "UG $UG $ANO: CONFLITO — checkpoint diz feito, medidor diz incompleto. Quarentena 7 dias; exame humano."
@@ -283,7 +286,7 @@ PYEOF
       SIS=$([ "$ANO" -le 2023 ] && echo 1 || echo 2)
       if [ "${ULT_LOGIN_FALHO:-}" = "$SIS" ]; then
         say "DISJUNTOR: 2 pares seguidos do SIAFE $SIS falharam no LOGIN — paro a passada (ver $SAIDA)"
-        AVISO=data/.siafe_dreno_aviso_login_$SIS
+        AVISO=data/.siafe_dreno_aviso_login_$SIS; touch "data/.siafe_dreno_pausa_login_$SIS"
         if [ ! -f "$AVISO" ] || [ $(( $(date +%s) - $(stat -c %Y "$AVISO") )) -gt 86400 ]; then
           touch "$AVISO"
           $PY -c "from compliance_agent.siafe_coord import notificar; notificar('⚠️ JFN — o dreno do SIAFE $SIS parou: o LOGIN falha em todos os pares (último: UG $UG/$ANO). A coleta histórica desse sistema está travada até investigar — log: $SAIDA')" >/dev/null 2>&1
@@ -292,7 +295,7 @@ PYEOF
       fi
       ULT_LOGIN_FALHO=$SIS
     else
-      ULT_LOGIN_FALHO=
+      ULT_LOGIN_FALHO=; touch "data/.siafe_dreno_login_ok_$_S"   # falhou DEPOIS do login: o login funcionou
     fi
   fi
   feitos=$((feitos+1))
