@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 from datetime import datetime, timezone
 
@@ -59,6 +60,10 @@ _SYS = (
     "registre em 'duvidas' que a árvore de contratação precisa ser re-coletada (captura incompleta ≠ irregularidade). "
     "(7) CONTRATO RECENTE: empenho de poucas semanas não pode ter documentos de execução pós-entrega; não "
     "trate ausência por recência como risco. "
+    "(8) PAGAMENTO = SIAFE: a Ordem Bancária vive no SIAFE, não na pasta do SEI. Se o bloco 'PAGAMENTO NO SIAFE' "
+    "traz OB contabilizada, o pagamento ESTÁ registrado na fonte oficial — NUNCA aponte 'ausência de OB'; a "
+    "pergunta passa a ser se a ENTREGA que justificou esse pagamento está comprovada. Se o bloco diz que não "
+    "localizou OB, isso é INDISPONÍVEL (o processo pode estar sob outra numeração), não ausência de pagamento. "
     "Responda SOMENTE o objeto JSON do schema, sem texto fora."
 )
 _SCHEMA = (
@@ -124,14 +129,60 @@ def _regras_calibracao() -> str:
     return "\n".join(f"- {x}" for x in _REGRAS_CACHE) or "(sem lições registradas)"
 
 
+def _chave_processo(p: str | None) -> str | None:
+    """'SEI-330002/031566/24', 'sei-330002/31566/2024' e '330002/031566/2024' são o MESMO processo."""
+    m = re.search(r"(\d{6})\s*/\s*0*(\d+)(?:-\d)?\s*/\s*(\d{4}|\d{2})(?!\d)", p or "")
+    if not m:
+        return None
+    ano = m.group(3) if len(m.group(3)) == 4 else "20" + m.group(3)
+    return f"{m.group(1)}/{int(m.group(2))}/{ano}"
+
+
+def mapa_obs_siafe(con: sqlite3.Connection, processos: list[str]) -> dict[str, dict]:
+    """OBs CONTABILIZADAS no SIAFE por processo — UMA varredura por lote (a busca por processo custava 8 s).
+
+    Medido em 29/10/2026: 550 dos 666 processos em que a perícia de execução apontou 'ausência de Ordem
+    Bancária' têm OB contabilizada no SIAFE. A perícia lia só a pasta do SEI; a OB não mora lá."""
+    alvo = {k for k in map(_chave_processo, processos) if k}
+    out: dict[str, dict] = {}
+    if not alvo:
+        return out
+    try:
+        rows = con.execute("SELECT processo, valor, data_emissao FROM ob_orcamentaria_siafe "
+                           "WHERE status='Contabilizado' AND processo LIKE '%/%'")
+    except sqlite3.OperationalError:
+        return out                                     # base sem SIAFE: o bloco diz INDISPONÍVEL
+    for proc, valor, data in rows:
+        k = _chave_processo(proc)
+        if k in alvo:
+            d = out.setdefault(k, {"n": 0, "total": 0.0, "datas": []})
+            d["n"] += 1; d["total"] += valor or 0; d["datas"].append(str(data or ""))
+    return out
+
+
+def _bloco_siafe(numero_sei: str, obs: dict | None) -> str:
+    if obs is None:
+        return "PAGAMENTO NO SIAFE: (não consultado nesta execução — INDISPONÍVEL)\n"
+    d = obs.get(_chave_processo(numero_sei) or "")
+    if not d:
+        return ("PAGAMENTO NO SIAFE: nenhuma OB contabilizada localizada pelo nº deste processo — INDISPONÍVEL "
+                "(pode estar sob outra numeração), não prova de ausência de pagamento.\n")
+    total = f"{d['total']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    ds = sorted(x for x in d["datas"] if x)
+    periodo = f", emitidas de {ds[0]} a {ds[-1]}" if ds else ""
+    return (f"PAGAMENTO NO SIAFE (fonte oficial da OB): {d['n']} OB(s) contabilizada(s), total R$ {total}{periodo}. "
+            "O pagamento está registrado — avalie se a ENTREGA está comprovada.\n")
+
+
 def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valores: str,
-                     documentos: list[dict], red_flags: list, gerar) -> dict | None:
+                     documentos: list[dict], red_flags: list, gerar, obs_siafe: dict | None = None) -> dict | None:
     fl = _flags(documentos)
     docs_txt = "\n".join(f"- [{d.get('tipo','?')}] {d.get('ponto','')}" for d in documentos[:40] if isinstance(d, dict))
     prompt = (
         f"OBJETO CONTRATADO: {objeto or '(não informado na ficha)'}\n"
         f"VALORES: {valores or '(n/d)'}\n"
         f"RED FLAGS já anotadas: {red_flags or '[]'}\n"
+        f"{_bloco_siafe(numero_sei, obs_siafe)}"
         f"PRESENÇA DETECTADA (1=sim): {fl}\n\n"
         f"DOCUMENTOS DO PROCESSO ({len(documentos)}):\n{docs_txt or '(nenhum doc inventariado)'}\n\n"
         f"LIÇÕES DE CALIBRAÇÃO DA PERÍCIA (aplique antes de pontuar):\n{_regras_calibracao()}\n\n"
@@ -180,31 +231,41 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
          r.get("resumo"), modelo, _agora()),
     )
     con.commit()
-    # Execução frágil/duvidosa → registra no canal de feedback (surface p/ o Claude Code + relatório).
-    frag = (r.get("execucao_comprovada") in ("nao", "parcial")) or (r.get("coerencia_objeto_evidencia") in ("incoerente", "insuficiente"))
-    if frag:
-        try:
-            from tools import lex_feedback
-            ind = "; ".join((r.get("indicios") or [])[:2]) or "evidência de execução frágil"
-            lex_feedback.registrar(
-                "lex", "dificuldade",
-                contexto=f"execução {numero_sei} (objeto: {str(objeto)[:50]})",
-                mensagem=f"Execução {r.get('execucao_comprovada','?')}/coerência {r.get('coerencia_objeto_evidencia','?')}: {ind}",
-                sugestao="Exigir do gestor: prestação de contas detalhada + relatório fotográfico + medição condizente com a quantidade antes de novo pagamento.",
-            )
-        except Exception:
-            pass
+    # Execução frágil NÃO vai mais para `lex_feedback`: é achado DE CASO e já está aqui em `lex_execucao` (é
+    # daqui que a seção 1-G do relatório lê). Lá virava 1 item por processo — 2.400 dos 3.074 abertos em
+    # 28/10/2026 — numa fila de dificuldades DO SISTEMA que ninguém consome por processo.
     return {"numero_sei": numero_sei, **fl, "verdict": r}
+
+
+# Vereditos dados ANTES de a perícia ver o SIAFE (29/10/2026) que acusaram falta de OB: refazer primeiro.
+_CORTE_SIAFE = "2026-10-29T00:12"
+
+
+def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
+    """Processos cujo veredito antigo apontou 'ausência de OB' e que TÊM OB contabilizada no SIAFE."""
+    try:
+        cand = [r[0] for r in con.execute(
+            "SELECT numero_sei FROM lex_execucao WHERE em < ? AND (indicios LIKE '%Ordem Banc%' "
+            "OR indicios LIKE '%(OB)%' OR resumo LIKE '%Ordem Banc%') ORDER BY nota_risco DESC",
+            (_CORTE_SIAFE,))]
+    except sqlite3.OperationalError:
+        return []
+    m = mapa_obs_siafe(con, cand) if cand else {}
+    return [ns for ns in cand if _chave_processo(ns) in m]
 
 
 def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
     ja = set()
     if not reavaliar:
         ja = {r[0] for r in con.execute("SELECT numero_sei FROM lex_execucao")}
+    # mesmo ritmo do slot (top por rodada): só a ORDEM muda — veredito errado vale mais que cobertura nova
+    primeiro = set(_contestados_por_siafe(con)[:top]) if not reavaliar else set()
+    ja -= primeiro
     rows = con.execute(
         "SELECT numero_sei, objeto, valores, documentos, red_flags FROM sei_ficha "
         "WHERE n_docs > 0 ORDER BY n_docs DESC"
     ).fetchall()
+    rows.sort(key=lambda r: r[0] not in primeiro)      # estável: contestados na frente, resto na ordem de n_docs
     out = []
     for ns, obj, val, docs, rf in rows:
         if ns in ja:
@@ -252,9 +313,10 @@ def main() -> None:
             print("nada a avaliar (todas as fichas com docs já avaliadas; use --reavaliar).")
             return
         print(f"avaliando execução de {len(alvos)} processo(s) via cadeia LLM (gemini→groq→cerebras→extra)…")
+        obs = mapa_obs_siafe(con, [x[0] for x in alvos])
         for ns, obj, val, dl, rfl in alvos:
             try:
-                res = avaliar_processo(con, ns, obj, val, dl, rfl, gerar_sync)
+                res = avaliar_processo(con, ns, obj, val, dl, rfl, gerar_sync, obs)
             except sqlite3.OperationalError as e:
                 # write-lock alheio (sweeps concorrentes) não pode abortar o lote e
                 # jogar fora os pareceres de LLM já gastos dos demais processos.
