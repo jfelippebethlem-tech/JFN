@@ -2542,7 +2542,13 @@ def api_fontes_frescor():
         try:
             con2 = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
             try:
-                _add("PCRJ · folha Prefeitura", "SELECT MAX(coletado_em) FROM pcrj_folha_pref", con2)
+                # MAX(coletado_em) varria 13,7 mi linhas (53 s, 30/10/2026). Cada competência é carregada de uma
+                # vez (DELETE + INSERT com o mesmo coletado_em): salta pelo índice de competência, 1 linha por mês.
+                _add("PCRJ · folha Prefeitura",
+                     "WITH RECURSIVE m(c) AS (SELECT MIN(competencia) FROM pcrj_folha_pref UNION ALL "
+                     "SELECT (SELECT MIN(competencia) FROM pcrj_folha_pref WHERE competencia > m.c) FROM m "
+                     "WHERE m.c IS NOT NULL) SELECT MAX((SELECT coletado_em FROM pcrj_folha_pref "
+                     "WHERE competencia = m.c LIMIT 1)) FROM m WHERE m.c IS NOT NULL", con2)
                 _add("PCRJ · comissionados×candidatos",
                      "SELECT MAX(coletado_em) FROM pcrj_comissionado_candidato", con2)
             finally:
