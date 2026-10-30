@@ -214,6 +214,24 @@ def test_dispensado_pelo_dono_sai_da_fila_sem_virar_curado(tmp_path):
     assert "0 aberto(s)" in txt and "Dispensados pelo dono" in txt
 
 
+def test_dispensado_que_volta_nao_reincide(tmp_path):
+    """30/10/2026: o dono mandou esquecer o TFE. O serviço falha toda segunda e já estava 'curado' — sem isto a
+    volta do sinal viraria REINCIDIU (com aviso) antes de a dispensa ser aplicada."""
+    fila = tmp_path / "f.json"
+    sig = "systemd:jfn-tfe-ob.service"
+    A.conciliar([_p("jfn-tfe-ob.service", "systemd")], fila, agora=1_000)
+    A.conciliar([], fila, agora=2_000)                                    # curado
+    r = A.conciliar([_p("jfn-tfe-ob.service", "systemd")], fila, agora=3_000, dispensados={sig})
+    assert r["reincidiu"] == [] and r["fila"][sig]["status"] == "dispensado"
+    r = A.conciliar([], fila, agora=4_000, dispensados={sig})
+    assert sig not in r["curados"] and r["fila"][sig]["status"] == "dispensado"
+
+
+def test_tfe_dispensado_pelo_dono(monkeypatch):
+    monkeypatch.setattr(A, "dispensados_slo", lambda: {"slo:likers-import"})
+    assert {"systemd:jfn-tfe-ob.service", "slo:likers-import"} <= A.dispensados_dono()
+
+
 def test_slo_dispensado_nao_alarma(tmp_path, monkeypatch):
     import yaml
     import tools.pipelines_slo as SLO

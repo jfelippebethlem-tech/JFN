@@ -369,6 +369,16 @@ def dispensados_slo() -> set[str]:
     return {f"slo:{c['nome']}" for c in cfg if c.get("dispensado")}
 
 
+# Dispensas do dono fora das rotinas do SLO (sensor de serviço, de dados etc.). Cada uma com a ordem e a data.
+_DISPENSADOS_DONO = {
+    "systemd:jfn-tfe-ob.service": "dono, 30/10/2026: 'esquece automelhoria do TFE' (SEFAZ recusa IP de datacenter; OB vem do SIAFE)",
+}
+
+
+def dispensados_dono() -> set[str]:
+    return dispensados_slo() | set(_DISPENSADOS_DONO)
+
+
 def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None = None,
               dispensados: set[str] = frozenset()) -> dict:
     """`dispensados`: itens que saem da fila por decisão do dono — nem curados (seria falso) nem abertos."""
@@ -382,6 +392,10 @@ def conciliar(problemas: list[dict], fila_path: Path = FILA, agora: float | None
     novos, reinc, curados = [], [], []
     for p in problemas:
         it = fila.get(p["assinatura"])
+        if p["assinatura"] in dispensados and it is not None:
+            # dispensado que volta não REINCIDE (nem avisa): a decisão do dono vale antes da conciliação
+            it.update(status="dispensado", dispensado_em=it.get("dispensado_em") or quando, ultimo=quando)
+            continue
         if it is None:
             fila[p["assinatura"]] = {**p, "status": "aberto", "primeiro": quando, "ultimo": quando, "rodadas": 1}
             novos.append(p["assinatura"])
@@ -492,7 +506,7 @@ def main() -> int:
             print("🔁 Automelhoria — a fila ainda não foi medida (roda às 07:40; /melhorias agora mede já).")
         return 0
     problemas, medidos = sentir()
-    r = conciliar(problemas, dispensados=dispensados_slo())
+    r = conciliar(problemas, dispensados=dispensados_dono())
     rem = remediar(r["fila"])
     FILA.write_text(json.dumps(r["fila"], ensure_ascii=False, indent=1), encoding="utf-8")
     txt = resumo(r["fila"], max_itens=60)
