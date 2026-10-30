@@ -27,10 +27,12 @@ CACHE = RAIZ / "data" / "sei_cache"
 LIMITE_MB_PADRAO = 12.0
 
 
-def candidatos(limite_mb: float = LIMITE_MB_PADRAO) -> list[tuple[Path, float]]:
-    """Caches acima do limite, do maior para o menor (só `.json`; `.zst` é gerado depois)."""
+def candidatos(limite_mb: float = LIMITE_MB_PADRAO, cache: Path | None = None) -> list[tuple[Path, float]]:
+    """Caches acima do limite, do maior para o menor — `.json` e também `.json.zst`: medido em 30/10/2026,
+    os 40 maiores `.zst` tinham sido comprimidos COM o `anexo_bytes` dentro (7 GB do acervo)."""
     itens = []
-    for p in CACHE.glob("cdp_*.json"):
+    cache = cache or CACHE
+    for p in [*cache.glob("cdp_*.json"), *cache.glob("cdp_*.json.zst")]:
         try:
             mb = p.stat().st_size / 1e6
         except OSError:
@@ -155,7 +157,45 @@ def purgar_stream(p: Path, aplicar: bool) -> dict:
             "mb_depois": round(p.stat().st_size / 1e6, 2)}
 
 
+def purgar_zst(p: Path, aplicar: bool) -> dict:
+    """`.json.zst`: descomprime, tira o campo com `purgar_texto` (sem `json.loads` no bruto), valida o JSON
+    limpo, recomprime e CONFERE a volta (descomprimir o novo dá exatamente o limpo) antes de trocar."""
+    import hashlib
+    import subprocess
+    antes = p.stat().st_size / 1e6
+    base = {"arquivo": p.name, "mb_antes": round(antes, 1)}
+    try:
+        texto = subprocess.run(["zstd", "-dc", str(p)], capture_output=True, check=True).stdout.decode("utf-8")
+    except (OSError, subprocess.CalledProcessError, UnicodeDecodeError) as e:
+        return {**base, "erro": f"zst ilegível ({str(e)[:50]}) — original intacto", "removidos": 0, "mb_depois": round(antes, 1)}
+    limpo, removidos = purgar_texto(texto)
+    del texto
+    if not removidos:
+        return {**base, "removidos": 0, "mb_depois": round(antes, 1)}
+    try:
+        json.loads(limpo)
+    except json.JSONDecodeError as e:
+        return {**base, "erro": f"purga produziu JSON inválido ({str(e)[:50]}) — original intacto",
+                "removidos": 0, "mb_depois": round(antes, 1)}
+    if not aplicar:
+        return {**base, "removidos": removidos, "mb_depois": None}
+    cru = limpo.encode("utf-8")
+    del limpo
+    tmp = p.with_name(p.name + ".purga")
+    try:
+        tmp.write_bytes(subprocess.run(["zstd", "-q", "-c", "-"], input=cru, capture_output=True, check=True).stdout)
+        volta = subprocess.run(["zstd", "-dc", str(tmp)], capture_output=True, check=True).stdout
+        if hashlib.sha256(volta).digest() != hashlib.sha256(cru).digest():
+            return {**base, "erro": "recompressão não confere — original intacto", "removidos": 0, "mb_depois": round(antes, 1)}
+        tmp.replace(p)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return {**base, "removidos": removidos, "mb_depois": round(p.stat().st_size / 1e6, 2)}
+
+
 def purgar_arquivo(p: Path, aplicar: bool) -> dict:
+    if p.name.endswith(".json.zst"):
+        return purgar_zst(p, aplicar)
     try:
         if p.stat().st_size / 1e6 > LIMITE_STREAM_MB:
             return purgar_stream(p, aplicar)
