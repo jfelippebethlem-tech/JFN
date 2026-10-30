@@ -191,6 +191,17 @@ def test_polimonitor_processo_parado_tem_remedio(monkeypatch):
     assert ps[0]["remediar"].endswith("pm2 restart bond-worker")
 
 
+def test_polimonitor_le_jlist_com_aviso_de_versao(monkeypatch):
+    """30/10/2026: depois de `npm i -g pm2`, o `pm2 jlist` imprime o aviso "In-memory PM2 is out-of-date" ANTES do
+    JSON e o sensor ficava cego (JSONDecodeError)."""
+    import json
+    import subprocess as sp
+    saida = (">>>> In-memory PM2 is out-of-date, do:\n>>>> $ pm2 update\nIn memory PM2 version: 7.0.4\n"
+             "Local PM2 version: 7.1.1\n\n" + json.dumps([{"name": "bond-worker", "pm2_env": {"status": "stopped"}}]))
+    monkeypatch.setattr(A.subprocess, "run", lambda *a, **k: sp.CompletedProcess(a, 0, saida, ""))
+    assert [p["assinatura"] for p in A.sensor_polimonitor()] == ["polimonitor:bond-worker"]
+
+
 def test_dispensado_pelo_dono_sai_da_fila_sem_virar_curado(tmp_path):
     """28/10/2026: o dono mandou esquecer os curtidores do Instagram. O item não pode virar 'curado'
     (mentira: nada foi consertado) nem continuar 'aberto' cobrando uma decisão que ele já tomou."""
@@ -254,3 +265,20 @@ def test_login_que_voltou_depois_do_disjuntor_cura(tmp_path, monkeypatch):
     assert [p["assinatura"] for p in A.sensor_siafe() if "login" in p["assinatura"]] == ["siafe:login_sistema_1"]
     (tmp_path / ".siafe_dreno_login_ok_1").touch()
     assert not [p for p in A.sensor_siafe() if "login" in p["assinatura"]]
+
+
+def test_senha_recusada_vira_acao_do_dono_sem_remedio(tmp_path, monkeypatch):
+    """30/10/2026: 'Usuário e/ou senha incorretos'. Remédio automático = rodar o diário de novo = mais um login
+    errado (o caminho do bloqueio da conta). Senha é do dono: item humano, sem remédio."""
+    import os
+    data = tmp_path / "data"; (data / "sei_cache").mkdir(parents=True)
+    monkeypatch.setattr(A, "DATA", data)
+    (data / "sei_cache" / "siafe_runner_ultimo.json").write_text(json.dumps(
+        {"ok": False, "erro": "senha_incorreta", "detail": "SIAFE recusou usuário/senha"}))
+    env = tmp_path / ".env"; env.write_text("x"); os.utime(env, (1_000, 1_000))
+    (data / ".siafe_dreno_credencial_1").touch()
+    ps = {p["assinatura"]: p for p in A.sensor_siafe()}
+    assert ps["siafe:diario"]["remediar"] == "" and "SIAFE_PASS" in ps["siafe:diario"]["acao_humana"]
+    assert "SIAFE_PASS" in ps["siafe:credencial_1"]["acao_humana"]
+    os.utime(env)                                    # o dono atualizou o .env depois do carimbo
+    assert "siafe:credencial_1" not in {p["assinatura"] for p in A.sensor_siafe()}

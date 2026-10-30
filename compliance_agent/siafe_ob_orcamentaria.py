@@ -230,6 +230,16 @@ async def _encerrar(pg, b):
     await b.close()
 
 
+# SENHA RECUSADA (30/10/2026, build 202609231239): o SIAFE responde "Usuário e/ou senha incorretos." num aviso com
+# "OK". O clicador genérico de popups o fechava e sobrava `login_falhou` mudo; o retry e o dreno repetiam a senha
+# errada ~20× no dia. Nomear e NÃO repetir (ver `_CREDENCIAL_RECUSADA`): trocar/atualizar a senha é ato do dono.
+_SENHA_INCORRETA = "senha incorretos"
+_ERRO_SENHA_INCORRETA = {"ok": False, "erro": "senha_incorreta",
+                         "detail": "SIAFE recusou usuário/senha ('Usuário e/ou senha incorretos'). Dono: conferir a "
+                                   "senha no SIAFE e atualizar SIAFE_PASS (ou SIAFE1_PASS/SIAFE2_PASS) no .env."}
+_CREDENCIAL_RECUSADA = ("senha_incorreta", "senha_expirada")
+
+
 async def _login(pg, exercicio: int):
     from compliance_agent.envfile import carregar_env
     try:
@@ -315,6 +325,8 @@ async def _login(pg, exercicio: int):
                 "detail": "SIAFE respondeu erro interno (NullPointerException no RootMenuParser ao montar o menu "
                           "do usuário). Formulário correto; falha do servidor/perfil. Testar login manual e, se "
                           "repetir, abrir chamado na SEFAZ."}
+    if _SENHA_INCORRETA in body0.lower():
+        return dict(_ERRO_SENHA_INCORRETA)
     if "senha expirada" in body0.lower() or "sua senha expirou" in body0.lower():
         return {"ok": False, "erro": "senha_expirada",
                 "detail": "SIAFE exige NOVA senha na tela de login (popup 'Senha Expirada'). "
@@ -326,6 +338,8 @@ async def _login(pg, exercicio: int):
         # A senha expirada pode aparecer DEPOIS dos 4 s iniciais (05:00 de 09/09: o teste acima não viu
         # o popup e o clicador genérico o fechou — 'login_falhou' de novo). Reler a cada rodada.
         corpo_rodada = ((await pg.inner_text("body")) or "").lower()
+        if _SENHA_INCORRETA in corpo_rodada:
+            return dict(_ERRO_SENHA_INCORRETA)
         if "senha expirada" in corpo_rodada or "sua senha expirou" in corpo_rodada:
             return {"ok": False, "erro": "senha_expirada",
                     "detail": "SIAFE exige NOVA senha na tela de login (popup 'Senha Expirada'). "
@@ -992,6 +1006,8 @@ async def _login_e_navegar(pg, exercicio: int, tentativas: int = 3) -> dict:
         except PWError as exc:
             ultimo = {"ok": False, "erro": f"{type(exc).__name__}: {str(exc)[:90]}"}
         erros.append(str(ultimo.get("erro") or "navegacao"))
+        if ultimo.get("erro") in _CREDENCIAL_RECUSADA:      # repetir senha recusada só aproxima o bloqueio da conta
+            break
         # ERRO INTERNO = sessão do usuário ainda presa no servidor. Medido em 25/10/2026: re-login 45–90 s
         # depois falha de novo; com 240 s entra. Repetir em 4 s só empilhava tentativas e gastava as três.
         interno = ultimo.get("erro") in ("erro_interno_siafe", "tela_login_sem_campo")

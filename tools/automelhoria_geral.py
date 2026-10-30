@@ -65,6 +65,8 @@ _ACAO_LOGIN = {"1": "SIAFE 1 (www5, 2016-2023): NullPointerException intermitent
 _ACAO_CONFLITO = {"326100_2025": "recoleta limpa de 24/10 devolveu 0 em TODAS as fatias (UG+Número 2025OB*) para um "
                                   "par com 1.310 OBs na base, coletadas pelo mesmo caminho em 15/08; o login é o mesmo "
                                   "do dreno que funciona — depurar o filtro com print da tela"}
+_ACAO_SENHA = ("o SIAFE recusou a senha (sonda de 30/10/2026: 'Usuário e/ou senha incorretos'; ou senha expirada). "
+               "Conferir/trocar a senha no SIAFE e atualizar SIAFE_PASS no ~/JFN/.env — dreno e diário voltam sozinhos")
 _DIARIO_SIAFE = "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario >> data/siafe_runner_cron.log 2>&1"
 
 
@@ -168,9 +170,16 @@ def sensor_siafe() -> list[dict]:
     out = []
     ult = json.loads((DATA / "sei_cache" / "siafe_runner_ultimo.json").read_text(encoding="utf-8"))
     if not ult.get("ok"):
+        # senha recusada: rodar o diário de novo é mais um login errado (o caminho do bloqueio da conta)
+        cred = ult.get("erro") in ("senha_incorreta", "senha_expirada")
         out.append(_p("siafe", "diario", "coleta diária do SIAFE falhou",
-                      f"{ult.get('erro')} — {ult.get('detail', '')}", remediar=_DIARIO_SIAFE))
+                      f"{ult.get('erro')} — {ult.get('detail', '')}", remediar="" if cred else _DIARIO_SIAFE,
+                      acao_humana=_ACAO_SENHA if cred else ""))
     for sis in ("1", "2"):
+        c = DATA / f".siafe_dreno_credencial_{sis}"           # carimbado pelo dreno; o .env novo destrava
+        if c.exists() and c.stat().st_mtime > (DATA.parent / ".env").stat().st_mtime:
+            out.append(_p("siafe", f"credencial_{sis}", f"SIAFE {sis} recusou a senha (dreno parado)",
+                          acao_humana=_ACAO_SENHA))
         av, ok = DATA / f".siafe_dreno_aviso_login_{sis}", DATA / f".siafe_dreno_login_ok_{sis}"
         # um login que deu certo DEPOIS do disjuntor cura (28/10/2026: soluço às 13:36 seguia "quebrado" por 24 h)
         if av.exists() and time.time() - av.stat().st_mtime < 86400 and not (
@@ -257,7 +266,9 @@ def sensor_polimonitor() -> list[dict]:
     if r.returncode != 0:
         raise RuntimeError(f"pm2 jlist rc={r.returncode}")
     out = []
-    for proc in json.loads(r.stdout or "[]"):
+    # após `npm i -g pm2` sem `pm2 update`, o jlist imprime o aviso de versão ANTES do JSON (30/10/2026)
+    texto = r.stdout or "[]"
+    for proc in json.loads(texto[texto.find("\n[") + 1:] if not texto.lstrip().startswith("[") else texto):
         st = proc.get("pm2_env", {}).get("status")
         if st != "online":
             out.append(_p("polimonitor", proc["name"], f"processo pm2 {proc['name']} {st}",

@@ -156,6 +156,12 @@ sonda_vencida() { [ ! -f "$SONDA_PERFIL" ] || [ $(( $(date +%s) - $(stat -c %Y "
 fora_do_perfil() {  # $1=UG $2=ANO → 0 se o exercício só expõe outra UG à conta
   local r; for r in "${RESTRITO[@]}"; do [ "${r%%:*}" = "$2" ] && [ "${r#*:}" != "$1" ] && return 0; done; return 1
 }
+# SENHA RECUSADA (30/10/2026): o SIAFE disse "Usuário e/ou senha incorretos" e o disjuntor só parava 90 min — ~20
+# logins errados no dia, o caminho para bloquear a conta. Senha recusada trava o sistema até o .env mudar (o dono
+# atualizar SIAFE_PASS); não há sonda: repetir a mesma senha não testa nada.
+credencial_recusada() {  # $1=sistema (1|2) → 0 se a senha foi recusada depois da última mudança do .env
+  local c="data/.siafe_dreno_credencial_$1"; [ -f "$c" ] && [ "$c" -nt .env ]
+}
 N_FORA=0; for par in "${PARES[@]}"; do set -- $par; fora_do_perfil "$1" "$2" && N_FORA=$((N_FORA+1)); done
 [ "$N_FORA" -gt 0 ] && say "fora do perfil da conta (exercício só expõe a UG própria): $N_FORA par(es) — $(sonda_vencida && echo 'sonda mensal liberada' || echo 'próxima sonda em até 30 dias')"
 
@@ -178,6 +184,7 @@ for par in "${PARES[@]}"; do
   # seguir quebrado, o disjuntor rearma sozinho; o AVISO ao dono continua no máximo 1 por 24 h.
   _S=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); _PAUSA=data/.siafe_dreno_pausa_login_$_S
   if [ -f "$_PAUSA" ] && [ $(( $(date +%s) - $(stat -c %Y "$_PAUSA") )) -lt 5400 ]; then continue; fi
+  credencial_recusada "$_S" && continue
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
   # GUARDA DA CASA, DOIS CRITÉRIOS. A versão anterior era `load >= 4` à mão, e medido em
   # 2026-08-10 ela barrou **10 de 10** passadas do cron — a maioria drenou ZERO pares, porque a
@@ -281,6 +288,12 @@ PYEOF
   else
     _mot=$(grep -o '"etapa": "[a-z_]*"' "$SAIDA" | head -1 | cut -d'"' -f4)
     quar sem_ganho "${UG}_${ANO}" "${_mot:-sem_ganho}"
+    if grep -qE '"erro": "senha_(incorreta|expirada)"' "$SAIDA"; then
+      SIS=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); touch "data/.siafe_dreno_credencial_$SIS"
+      say "SENHA RECUSADA pelo SIAFE $SIS — paro esse sistema até o .env mudar (ver $SAIDA)"
+      $PY -c "from compliance_agent.siafe_coord import notificar; notificar('🔑 JFN — o SIAFE $SIS recusou a senha (Usuário e/ou senha incorretos, ou senha expirada). Parei as tentativas para não bloquear a conta. Atualize SIAFE_PASS no .env do JFN; o dreno volta sozinho quando o .env mudar.')" >/dev/null 2>&1
+      feitos=$((feitos+1)); continue
+    fi
     # DISJUNTOR: dois pares seguidos do MESMO sistema caindo no login = o login está quebrado, não o par.
     if [ "${_mot:-}" = "login_nav" ] || [ "${_mot:-}" = "login" ]; then
       SIS=$([ "$ANO" -le 2023 ] && echo 1 || echo 2)

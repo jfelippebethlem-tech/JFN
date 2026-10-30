@@ -54,3 +54,28 @@ def test_disjuntor_pausa_curta_e_aviso_separado():
     assert '_PAUSA=data/.siafe_dreno_pausa_login_$_S' in t and "-lt 5400" in t
     assert 'touch "data/.siafe_dreno_pausa_login_$SIS"' in t
     assert t.count('touch "data/.siafe_dreno_login_ok_$_S"') == 3
+
+
+def _credencial(tmp_path, carimbo_depois_do_env: bool | None) -> int:
+    """30/10/2026: senha recusada parava só 90 min e voltava a tentar — ~20 logins errados no dia."""
+    import os
+    env = tmp_path / ".env"; env.write_text("x")
+    os.utime(env, (1_000, 1_000))
+    if carimbo_depois_do_env is not None:
+        c = tmp_path / "data" / ".siafe_dreno_credencial_1"; c.parent.mkdir(exist_ok=True); c.write_text("")
+        os.utime(c, (2_000, 2_000) if carimbo_depois_do_env else (500, 500))
+    script = _funcoes() + "\ncredencial_recusada 1\n"
+    return subprocess.run(["bash", "-c", script], cwd=tmp_path).returncode
+
+
+def test_senha_recusada_trava_o_sistema_ate_o_env_mudar(tmp_path):
+    assert _credencial(tmp_path, True) == 0          # carimbo depois do .env: segue travado
+    assert _credencial(tmp_path, False) == 1         # o dono trocou a senha no .env: destrava
+    assert _credencial(tmp_path, None) == 1          # sem carimbo: livre
+
+
+def test_dreno_carimba_e_para_com_senha_recusada():
+    t = SH.read_text(encoding="utf-8")
+    assert "credencial_recusada \"$_S\" && continue" in t
+    assert 'grep -qE \'"erro": "senha_(incorreta|expirada)"\' "$SAIDA"' in t
+    assert 'touch "data/.siafe_dreno_credencial_$SIS"' in t
