@@ -282,3 +282,15 @@ def test_senha_recusada_vira_acao_do_dono_sem_remedio(tmp_path, monkeypatch):
     assert "SIAFE_PASS" in ps["siafe:credencial_1"]["acao_humana"]
     os.utime(env)                                    # o dono atualizou o .env depois do carimbo
     assert "siafe:credencial_1" not in {p["assinatura"] for p in A.sensor_siafe()}
+
+
+def test_carimbo_de_senha_recusada_tira_o_remedio_do_diario(tmp_path, monkeypatch):
+    """O último diário pode ter rodado ANTES de o erro ser nomeado ('login_falhou'): o carimbo manda."""
+    import os
+    data = tmp_path / "data"; (data / "sei_cache").mkdir(parents=True)
+    monkeypatch.setattr(A, "DATA", data)
+    (data / "sei_cache" / "siafe_runner_ultimo.json").write_text(json.dumps({"ok": False, "erro": "login_falhou"}))
+    env = tmp_path / ".env"; env.write_text("x"); os.utime(env, (1_000, 1_000))
+    assert {p["assinatura"]: p for p in A.sensor_siafe()}["siafe:diario"]["remediar"]
+    (data / ".siafe_dreno_credencial_2").touch()
+    assert {p["assinatura"]: p for p in A.sensor_siafe()}["siafe:diario"]["remediar"] == ""

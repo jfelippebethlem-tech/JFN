@@ -171,7 +171,9 @@ def sensor_siafe() -> list[dict]:
     ult = json.loads((DATA / "sei_cache" / "siafe_runner_ultimo.json").read_text(encoding="utf-8"))
     if not ult.get("ok"):
         # senha recusada: rodar o diário de novo é mais um login errado (o caminho do bloqueio da conta)
-        cred = ult.get("erro") in ("senha_incorreta", "senha_expirada")
+        c2 = DATA / ".siafe_dreno_credencial_2"      # o diário é SIAFE 2; o carimbo vale até o .env mudar
+        cred = ult.get("erro") in ("senha_incorreta", "senha_expirada") or (
+            c2.exists() and c2.stat().st_mtime > (DATA.parent / ".env").stat().st_mtime)
         out.append(_p("siafe", "diario", "coleta diária do SIAFE falhou",
                       f"{ult.get('erro')} — {ult.get('detail', '')}", remediar="" if cred else _DIARIO_SIAFE,
                       acao_humana=_ACAO_SENHA if cred else ""))
