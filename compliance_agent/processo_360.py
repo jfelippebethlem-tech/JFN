@@ -634,6 +634,10 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                      "etiqueta": acervo_texto.etiqueta_de(pasta, d)} for d in docs]
         achados += _ia.avaliar(docs_txt)
         rodados.append("instrumento_assinatura")
+        # FZ · fiscalização atesto a atesto: o que o fiscal assinou confere com o calendário?
+        from compliance_agent.sei import fiscalizacao as _fz
+        achados += _fz.avaliar(docs_txt)
+        rodados.append("fiscalizacao")
         # C · a lista de documentos do próprio parecer confere a NOSSA captura. Entra como lacuna
         # de CAPTURA (nunca vício do processo): mede o que a coleta ainda não trouxe.
         from compliance_agent.sei import conferencia_captura as _cc
