@@ -712,6 +712,25 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
     except Exception as e:  # noqa: BLE001
         indisponiveis.append(f"pej: {e}")
 
+    # 5b) P2 · cotações combinadas com as cotações LIDAS DOS AUTOS (o P2 nunca tinha recebido `cotacoes`).
+    #     Determinístico: cotante = documento de pesquisa/proposta com um só CNPJ privado; contato da Receita local.
+    try:
+        from compliance_agent.detectores import REGISTRO as _REG
+        from compliance_agent.sei.cotacoes_acervo import montar_cotacoes
+        cot = montar_cotacoes([{"ref": d.get("titulo", ""), "tipo": d.get("tipo", ""),
+                                "texto": _texto_de(pasta, d, teto=200_000)} for d in docs])
+        if len(cot) >= 2:
+            r_p2 = _REG["P2"].avaliar({"processo": numero, "cotacoes": cot,
+                                       "vencedor_cnpj": _cnpj_vencedor(numero) or ""})
+            resultados.append(r_p2)
+            rodados.append("P2")
+            achados += achados_de_detector(
+                [r_p2], origem="edital", rotulo="pesquisa de preços",
+                ressalva=("Indício a verificar, não acusação: o vínculo vem do cadastro da Receita (telefone, "
+                          "e-mail, endereço com sala) entre empresas que cotaram em documentos próprios."))
+    except (ImportError, KeyError, OSError, ValueError, TypeError, sqlite3.Error) as e:
+        indisponiveis.append(f"P2 cotações: {e}")
+
     # 6) perfil do contratado (C) — CNPJ vencedor/maior favorecido; fallback = texto dos autos
     cnpj = _cnpj_vencedor(numero) or _cnpj_do_texto(pasta, docs)
     if cnpj:
