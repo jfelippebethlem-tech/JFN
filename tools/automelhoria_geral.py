@@ -244,7 +244,7 @@ def sensor_dados_siafe() -> list[dict]:
     lac = lacunas_tfe()
     if lac:
         out.append(_p("dados", "siafe_lacunas_tfe",
-                      f"{len(lac)} dia(s) com OB no espelho TFE e fora do SIAFE ({sum(n for _, n in lac):,} OBs)",
+                      f"{len(lac)} dia(s) com OB no espelho TFE e fora do SIAFE ({sum(n for _, n in lac):,} OBs)".replace(",", "."),
                       ", ".join(f"{d}={n}" for d, n in lac[:6]),
                       remediar="PYTHONPATH=. .venv/bin/python tools/siafe_recoletar_dias.py --tfe --auto --max 3 "
                                ">> data/siafe_recoletar_dias.log 2>&1"))

@@ -124,7 +124,7 @@ def test_sensor_dados_aponta_lacuna_do_tfe(monkeypatch):
     monkeypatch.setattr(R, "lacunas_tfe", lambda exercicio=None: [("01/09/2026", 1235), ("18/09/2026", 1177)])
     (p,) = A.sensor_dados_siafe()
     assert p["assinatura"] == "dados:siafe_lacunas_tfe" and "01/09/2026=1235" in p["detalhe"]
-    assert "2,412 OBs" in p["titulo"] and "--tfe --auto" in p["remediar"]
+    assert "2.412 OBs" in p["titulo"] and "--tfe --auto" in p["remediar"]
 
 
 def test_lacuna_tfe_casa_numero_e_ug_e_nao_insiste_no_residuo(tmp_path, monkeypatch):
