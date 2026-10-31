@@ -109,7 +109,7 @@ def sinal_osint() -> dict[str, dict]:
     return fora
 
 
-def mudancas(db: Path, dias: int = 7, n: int = 25) -> None:
+def mudancas(db: Path, dias: int = 7, n: int = 25, md: bool = True) -> None:
     """O que o parecer de cada processo GANHOU ou PERDEU desde a avaliação anterior (histórico do 360).
     Achado que some na recaptura é tão informativo quanto o que entra: ou o documento chegou e curou a lacuna,
     ou o detector oscila — e só a comparação mostra qual."""
@@ -126,11 +126,16 @@ def mudancas(db: Path, dias: int = 7, n: int = 25) -> None:
         con.close()
     if not rows:
         return
+    cods = lambda j: ", ".join(sorted({x.split("|")[0] for x in json.loads(j or "[]")}))[:90] or "—"
+    if not md:
+        print(f"\nMudou desde o parecer anterior ({dias} dias):")
+        for num, quando, ga, gd, e, s_ in rows:
+            print(f"• {num} ({quando[:10]}) grau {ga}→{gd} · +{cods(e)} · −{cods(s_)}")
+        return
     print(f"\n### Mudou desde o parecer anterior (últimos {dias} dias)\n")
     print("| Processo | Quando | Grau | Entrou | Saiu |")
     print("|---|---|---|---|---|")
     for num, quando, ga, gd, e, s_ in rows:
-        cods = lambda j: ", ".join(sorted({x.split("|")[0] for x in json.loads(j or "[]")}))[:90] or "—"
         print(f"| {num} | {quando[:16]} | {ga} → {gd} | {cods(e)} | {cods(s_)} |")
 
 
@@ -206,8 +211,7 @@ def main():
             sinal = next((m for m in r["motivos"] if "OSINT:" in m), "")
             print(f"| {r['processo']} | {r['pontos']} | {r['grau']}/{r['faixa']} | {sinal} |")
 
-    if args.md:
-        mudancas(REPO / "data" / "compliance.db")
+    mudancas(REPO / "data" / "compliance.db", n=25 if args.md else 8, md=args.md)
 
     print(f"\n{len(rows)} processos avaliados · {sum(1 for x in ranking if x['pontos'] >= 5)} "
           f"com achado forte (≥5 pts)", file=sys.stderr)
