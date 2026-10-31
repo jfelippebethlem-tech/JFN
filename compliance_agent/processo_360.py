@@ -867,8 +867,45 @@ CREATE TABLE IF NOT EXISTS processo_avaliacao (
 """
 
 
+# HISTÓRICO DO PARECER (dono, 30/10/2026: "comparando com os dados e pareceres anteriores"). O upsert acima
+# sobrescrevia a avaliação: o que um achado virou na recaptura seguinte — confirmado, sumido, agravado — se
+# perdia. Uma linha por MUDANÇA (não por rodada: o sweep reavalia a cada 4 h e quase nada muda).
+_DDL_HIST = """
+CREATE TABLE IF NOT EXISTS processo_avaliacao_hist (
+  numero_sei TEXT, avaliado_em TEXT, versao TEXT, score100 REAL, grau TEXT,
+  achados_json TEXT, entraram_json TEXT, sairam_json TEXT, grau_antes TEXT, score100_antes REAL
+);
+CREATE INDEX IF NOT EXISTS ix_pa_hist_num ON processo_avaliacao_hist(numero_sei, avaliado_em);
+"""
+
+
+def _chave_achado(a: dict) -> str:
+    """Identidade de um achado entre rodadas: o código e a peça que o sustenta (não o texto, que muda)."""
+    return f"{a.get('codigo') or a.get('origem')}|{str(a.get('evidencia') or '')[:80]}"
+
+
+def diff_achados(antes: list[dict], depois: list[dict]) -> tuple[list[str], list[str]]:
+    a, d = {_chave_achado(x) for x in antes}, {_chave_achado(x) for x in depois}
+    return sorted(d - a), sorted(a - d)
+
+
+def _registrar_historico(con: sqlite3.Connection, out: dict) -> None:
+    con.executescript(_DDL_HIST)
+    ant = con.execute("select achados_json, grau, score100 from processo_avaliacao where numero_sei=?",
+                      (out["numero_sei"],)).fetchone()
+    antes = json.loads(ant[0] or "[]") if ant else []
+    entraram, sairam = diff_achados(antes, out["achados"])
+    if ant and not entraram and not sairam and ant[1] == out["grau"]["grau"]:
+        return
+    con.execute("insert into processo_avaliacao_hist values (?,datetime('now'),?,?,?,?,?,?,?,?)",
+                (out["numero_sei"], VERSAO, out["score100"], out["grau"]["grau"],
+                 json.dumps(out["achados"], ensure_ascii=False, default=str),
+                 json.dumps(entraram, ensure_ascii=False), json.dumps(sairam, ensure_ascii=False),
+                 ant[1] if ant else None, ant[2] if ant else None))
+
+
 def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
-    """Persiste a avaliação (upsert por numero_sei). Só grava status OK."""
+    """Persiste a avaliação (upsert por numero_sei) e o que mudou desde a anterior. Só grava status OK."""
     if out.get("status") != "OK":
         return False
     own = con is None
@@ -876,6 +913,7 @@ def gravar(out: dict, con: sqlite3.Connection | None = None) -> bool:
     try:
         con.execute("PRAGMA busy_timeout=60000")
         con.executescript(_DDL_AVALIACAO)
+        _registrar_historico(con, out)
         cob = out.get("cobertura") or {}
         n_rod = len(cob.get("detectores_rodados") or [])
         confianca = round(n_rod / (n_rod + len(cob.get("indisponiveis") or []) or 1), 3)

@@ -109,6 +109,31 @@ def sinal_osint() -> dict[str, dict]:
     return fora
 
 
+def mudancas(db: Path, dias: int = 7, n: int = 25) -> None:
+    """O que o parecer de cada processo GANHOU ou PERDEU desde a avaliação anterior (histórico do 360).
+    Achado que some na recaptura é tão informativo quanto o que entra: ou o documento chegou e curou a lacuna,
+    ou o detector oscila — e só a comparação mostra qual."""
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        rows = con.execute(
+            "select numero_sei, avaliado_em, grau_antes, grau, entraram_json, sairam_json "
+            "from processo_avaliacao_hist where grau_antes is not null "
+            "and avaliado_em >= datetime('now', ?) order by avaliado_em desc limit ?",
+            (f"-{dias} days", n)).fetchall()
+    except sqlite3.OperationalError:
+        return                      # histórico ainda não existe: nada mudou que se saiba
+    finally:
+        con.close()
+    if not rows:
+        return
+    print(f"\n### Mudou desde o parecer anterior (últimos {dias} dias)\n")
+    print("| Processo | Quando | Grau | Entrou | Saiu |")
+    print("|---|---|---|---|---|")
+    for num, quando, ga, gd, e, s_ in rows:
+        cods = lambda j: ", ".join(sorted({x.split("|")[0] for x in json.loads(j or "[]")}))[:90] or "—"
+        print(f"| {num} | {quando[:16]} | {ga} → {gd} | {cods(e)} | {cods(s_)} |")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--top", type=int, default=20)
@@ -180,6 +205,9 @@ def main():
         for r in fora_do_topo[:25]:
             sinal = next((m for m in r["motivos"] if "OSINT:" in m), "")
             print(f"| {r['processo']} | {r['pontos']} | {r['grau']}/{r['faixa']} | {sinal} |")
+
+    if args.md:
+        mudancas(REPO / "data" / "compliance.db")
 
     print(f"\n{len(rows)} processos avaliados · {sum(1 for x in ranking if x['pontos'] >= 5)} "
           f"com achado forte (≥5 pts)", file=sys.stderr)
