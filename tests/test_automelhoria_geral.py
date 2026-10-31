@@ -112,9 +112,46 @@ def test_sensor_rem_transforma_passo_degradado_em_problema(tmp_path, monkeypatch
 def test_sensor_dados_aponta_platô_com_remedio(monkeypatch):
     import tools.siafe_recoletar_dias as R
     monkeypatch.setattr(R, "suspeitos", lambda exercicio=None: [("21/10/2026", 992)])
+    monkeypatch.setattr(R, "lacunas_tfe", lambda exercicio=None: [])
     ps = A.sensor_dados_siafe()
     assert ps[0]["assinatura"] == "dados:siafe_dias_no_plato" and "21/10/2026=992" in ps[0]["detalhe"]
     assert "siafe_recoletar_dias.py --auto" in ps[0]["remediar"]
+
+
+def test_sensor_dados_aponta_lacuna_do_tfe(monkeypatch):
+    import tools.siafe_recoletar_dias as R
+    monkeypatch.setattr(R, "suspeitos", lambda exercicio=None: [])
+    monkeypatch.setattr(R, "lacunas_tfe", lambda exercicio=None: [("01/09/2026", 1235), ("18/09/2026", 1177)])
+    (p,) = A.sensor_dados_siafe()
+    assert p["assinatura"] == "dados:siafe_lacunas_tfe" and "01/09/2026=1235" in p["detalhe"]
+    assert "2,412 OBs" in p["titulo"] and "--tfe --auto" in p["remediar"]
+
+
+def test_lacuna_tfe_casa_numero_e_ug_e_nao_insiste_no_residuo(tmp_path, monkeypatch):
+    """Lacuna = OB do espelho sem par (número + UG) no SIAFE. Dia já recolhido só volta se a lacuna crescer."""
+    import sqlite3
+    import tools.siafe_recoletar_dias as R
+    db = tmp_path / "c.db"
+    con = sqlite3.connect(db)
+    con.execute("create table ordens_bancarias (numero_ob text, ug_codigo text, data_emissao text, "
+                "categoria text, exercicio text)")
+    con.execute("create table ob_orcamentaria_siafe (numero_ob text, ug_emitente text)")
+    for i in range(40):
+        con.execute("insert into ordens_bancarias values (?, '180100', '2026-09-01', 'tfe_ob', '2026')",
+                    (f"2026OB{i:05d}",))
+    for i in range(10):    # 10 no SIAFE pela mesma UG; 5 com o número certo mas OUTRA UG não contam
+        con.execute("insert into ob_orcamentaria_siafe values (?, '180100')", (f"2026OB{i:05d}",))
+    for i in range(10, 15):
+        con.execute("insert into ob_orcamentaria_siafe values (?, '999900')", (f"2026OB{i:05d}",))
+    con.execute("insert into ordens_bancarias values ('2026OB99999', '180100', '2026-09-02', 'tfe_ob', '2026')")
+    con.commit(); con.close()
+    monkeypatch.setattr(R, "TFE_VERIFICADOS", tmp_path / "t.json")
+    assert R.lacunas_tfe(2026, db, minimo=1) == [("01/09/2026", 30), ("02/09/2026", 1)]
+    assert R.lacunas_tfe(2026, db, minimo=30) == [("01/09/2026", 30)]
+    (tmp_path / "t.json").write_text('{"01/09/2026": {"falta_depois": 30}}')
+    assert R.lacunas_tfe(2026, db, minimo=1) == [("02/09/2026", 1)], "resíduo igual ao da última visita não volta"
+    (tmp_path / "t.json").write_text('{"01/09/2026": {"falta_depois": 20}}')
+    assert R.lacunas_tfe(2026, db, minimo=1)[0] == ("01/09/2026", 30), "lacuna que cresceu volta"
 
 
 def test_plato_ignora_dia_ja_verificado(tmp_path, monkeypatch):

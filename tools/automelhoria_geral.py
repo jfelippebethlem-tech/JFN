@@ -232,14 +232,23 @@ def sensor_rem() -> list[dict]:
 def sensor_dados_siafe() -> list[dict]:
     """Qualidade do DADO: dia do SIAFE parado no platô do teto (975–999 OBs) ainda não verificado. O remédio
     recoleta com o verificador corrigido e marca o dia como verificado (tools/siafe_recoletar_dias.py)."""
-    from tools.siafe_recoletar_dias import suspeitos
+    from tools.siafe_recoletar_dias import lacunas_tfe, suspeitos
+    out = []
     sus = suspeitos()
-    if not sus:
-        return []
-    return [_p("dados", "siafe_dias_no_plato", f"{len(sus)} dia(s) do SIAFE parados no platô do teto",
-               ", ".join(f"{d}={n}" for d, n in sus[:6]),
-               remediar="PYTHONPATH=. .venv/bin/python tools/siafe_recoletar_dias.py --auto --max 3 "
-                        ">> data/siafe_recoletar_dias.log 2>&1")]
+    if sus:
+        out.append(_p("dados", "siafe_dias_no_plato", f"{len(sus)} dia(s) do SIAFE parados no platô do teto",
+                      ", ".join(f"{d}={n}" for d, n in sus[:6]),
+                      remediar="PYTHONPATH=. .venv/bin/python tools/siafe_recoletar_dias.py --auto --max 3 "
+                               ">> data/siafe_recoletar_dias.log 2>&1"))
+    # O espelho TFE como gabarito (dono, 30/10/2026): dia em que ele publica OB que o SIAFE não tem é dia a recolher.
+    lac = lacunas_tfe()
+    if lac:
+        out.append(_p("dados", "siafe_lacunas_tfe",
+                      f"{len(lac)} dia(s) com OB no espelho TFE e fora do SIAFE ({sum(n for _, n in lac):,} OBs)",
+                      ", ".join(f"{d}={n}" for d, n in lac[:6]),
+                      remediar="PYTHONPATH=. .venv/bin/python tools/siafe_recoletar_dias.py --tfe --auto --max 3 "
+                               ">> data/siafe_recoletar_dias.log 2>&1"))
+    return out
 
 
 def sensor_vm() -> list[dict]:

@@ -47,7 +47,6 @@ para exatamente nele foi truncado — ver docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §5.
 
 # Quantos números de OB conferir por par. Amostra, não censo: o objetivo é DETECTAR ausência
 # sistemática, e para isso 300 bastam — o censo custaria uma consulta por OB do acervo inteiro.
-AMOSTRA_POR_PAR = 300
 # Fração da amostra ausente a partir da qual o par é declarado PARCIAL. Medido em 2026-08-09 no
 # IDESI/2025: 93% das OBs do espelho não existiam na fonte canônica. Ruído normal entre as duas
 # fontes fica muito abaixo disto (há OBs exclusivas dos dois lados).
@@ -80,12 +79,18 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
         if not con.execute("SELECT name FROM sqlite_master WHERE type='table' "
                            "AND name='ordens_bancarias'").fetchone():
             return []
+        # CONTA EXATA, não amostra. A amostra (300 primeiros números do espelho, sem ORDER BY) caía no começo
+        # do ano: medido em 30/10/2026, 180100/2023 tinha 12.554 das 17.939 OBs do espelho ausentes do SIAFE
+        # (70%, todo o 2º semestre) e passava por coberto porque janeiro estava lá. O anti-join inteiro custa ~6 s.
         pares = con.execute(
-            "SELECT ug_codigo, substr(data_emissao, 1, 4) ano, COUNT(*) FROM ordens_bancarias "
+            "SELECT ug_codigo, substr(data_emissao, 1, 4) ano, COUNT(*), "
+            "SUM(NOT EXISTS (SELECT 1 FROM ob_orcamentaria_siafe s "
+            "                WHERE s.numero_ob = o.numero_ob AND s.ug_emitente = o.ug_codigo)) "
+            "FROM ordens_bancarias o "
             "WHERE ug_codigo IS NOT NULL AND numero_ob IS NOT NULL "
             "GROUP BY 1, 2 HAVING COUNT(*) >= 50").fetchall()
         fora = []
-        for ug, ano, n_esp in pares:
+        for ug, ano, n_esp, ausentes in pares:
             chave = (str(ug), str(ano))
             if chave in ja_truncados:
                 continue                   # o detector do teto já pegou este
@@ -118,18 +123,7 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
                                   f"--exercicio {ano} --ug-grande"),
                 })
                 continue
-            amostra = [r[0] for r in con.execute(
-                "SELECT numero_ob FROM ordens_bancarias WHERE ug_codigo = ? "
-                "AND substr(data_emissao, 1, 4) = ? AND numero_ob IS NOT NULL LIMIT ?",
-                (ug, ano, AMOSTRA_POR_PAR))]
-            if not amostra:
-                continue
-            marcas = ",".join("?" * len(amostra))
-            achados = {r[0] for r in con.execute(
-                f"SELECT numero_ob FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
-                f"AND numero_ob IN ({marcas})", (str(ug), *amostra))}
-            ausentes = len(amostra) - len(achados)
-            if ausentes / len(amostra) < PISO_AUSENCIA:
+            if ausentes / n_esp < PISO_AUSENCIA:
                 continue
             # "nunca coletado" e "coletado pela metade" são lacunas diferentes: a primeira é uma
             # UG/ano que a varredura ainda não visitou, a segunda é coleta que MORREU no meio e
@@ -141,8 +135,8 @@ def _parciais_por_numero_de_ob(caminho: Path, ja_truncados: set[tuple[str, str]]
                 "ug": str(ug), "exercicio": str(ano),
                 "estado": "nunca_coletado" if n_siafe == 0 else "parcial",
                 "obs_siafe": n_siafe,
-                "amostra": len(amostra), "ausentes": ausentes,
-                "pct_ausente": round(100.0 * ausentes / len(amostra), 1),
+                "amostra": n_esp, "ausentes": ausentes,
+                "pct_ausente": round(100.0 * ausentes / n_esp, 1),
                 "obs_espelho_tfe": n_esp,
                 "recoletar": (f"python -m compliance_agent.siafe_ob_orcamentaria --por-ug {ug} "
                               f"--exercicio {ano} --ug-grande"),
@@ -192,31 +186,27 @@ def estado_do_par(ug: str, ano: str, *, db: str | Path | None = None) -> dict[st
         return {"estado": "indisponivel", "motivo": "compliance.db ausente"}
     con = sqlite3.connect(f"file:{caminho}?mode=ro", uri=True)
     try:
-        amostra = [r[0] for r in con.execute(
-            "SELECT numero_ob FROM ordens_bancarias WHERE ug_codigo = ? "
-            "AND substr(data_emissao, 1, 4) = ? AND numero_ob IS NOT NULL LIMIT ?",
-            (str(ug), str(ano), AMOSTRA_POR_PAR))]
+        # conta exata (ver `_parciais_por_numero_de_ob`: a amostra do começo do ano escondia o 2º semestre)
+        n_esp, ausentes = con.execute(
+            "SELECT COUNT(*), COALESCE(SUM(NOT EXISTS (SELECT 1 FROM ob_orcamentaria_siafe s "
+            "  WHERE s.numero_ob = o.numero_ob AND s.ug_emitente = o.ug_codigo)), 0) "
+            "FROM ordens_bancarias o WHERE ug_codigo = ? AND substr(data_emissao, 1, 4) = ? "
+            "AND numero_ob IS NOT NULL", (str(ug), str(ano))).fetchone()
         n_siafe = con.execute(
             "SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente = ? "
             "AND substr(data_emissao, 7, 4) = ?", (str(ug), str(ano))).fetchone()[0]
-        if not amostra:
+        if not n_esp:
             # sem espelho para comparar não se afirma completude — nem incompletude
             return {"estado": "sem_referencia", "obs_siafe": n_siafe}
-        marcas = ",".join("?" * len(amostra))
-        achados = con.execute(
-            f"SELECT COUNT(DISTINCT numero_ob) FROM ob_orcamentaria_siafe "
-            f"WHERE ug_emitente = ? AND numero_ob IN ({marcas})",
-            (str(ug), *amostra)).fetchone()[0]
     except sqlite3.Error as exc:
         return {"estado": "indisponivel", "motivo": str(exc)}
     finally:
         con.close()
-    ausentes = len(amostra) - achados
-    pct = 100.0 * ausentes / len(amostra)
+    pct = 100.0 * ausentes / n_esp
     return {
         "estado": ("nunca_coletado" if n_siafe == 0 else
                    "parcial" if pct >= PISO_AUSENCIA * 100 else "coberto"),
-        "obs_siafe": n_siafe, "amostra": len(amostra), "ausentes": ausentes,
+        "obs_siafe": n_siafe, "amostra": n_esp, "ausentes": ausentes,
         "pct_ausente": round(pct, 1),
     }
 

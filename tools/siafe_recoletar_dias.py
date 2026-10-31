@@ -11,6 +11,7 @@ Isto vira laço automático: `suspeitos()` acha os dias no platô, `--auto` os r
 Uso:
   python tools/siafe_recoletar_dias.py --listar            # dias suspeitos (só SQL)
   python tools/siafe_recoletar_dias.py --auto [--max 3]    # recoleta os suspeitos ainda não verificados
+  python tools/siafe_recoletar_dias.py --tfe [--auto]      # dias em que o espelho TFE tem OB que o SIAFE não tem
 """
 from __future__ import annotations
 
@@ -98,14 +99,84 @@ async def recoletar(dias: list[str], exercicio: int) -> dict:
     return out
 
 
+# ─────────── lacunas apontadas pelo TFE (gabarito) ───────────
+# Pedido do dono em 30/10/2026. O platô só vê dia que BATEU no teto; dia que a coleta mal visitou passa calado.
+# Medido no mesmo dia: 01/09/2026 com 318 OBs no SIAFE e 1.271 no espelho TFE; agosto–setembro somavam 10,7 mil
+# OBs (R$ 2,4 bi) que o espelho publica e a fonte canônica não tem. O espelho NÃO é fonte de valor — só diz QUAL
+# DIA recolher; o número continua vindo do SIAFE.
+TFE_VERIFICADOS = _REPO / "data" / "siafe_dias_tfe_verificados.json"
+MIN_LACUNA_DIA = 30
+
+
+def _tfe_verificados() -> dict:
+    try:
+        return json.loads(TFE_VERIFICADOS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _faltas_tfe(exercicio: int, db: Path = DB, dia: str | None = None) -> dict[str, int]:
+    """{DD/MM/AAAA: OBs do espelho TFE daquele dia ausentes do SIAFE (mesmo número E mesma UG)}."""
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    filtro, args = "", [str(exercicio)]
+    if dia:
+        filtro, args = " AND o.data_emissao = ?", args + ["-".join(reversed(dia.split("/")))]
+    try:
+        rows = con.execute(
+            "SELECT o.data_emissao, COUNT(*) FROM ordens_bancarias o WHERE o.categoria = 'tfe_ob' "
+            "AND o.exercicio = ?" + filtro + " AND NOT EXISTS (SELECT 1 FROM ob_orcamentaria_siafe s "
+            "WHERE s.numero_ob = o.numero_ob AND s.ug_emitente = o.ug_codigo) GROUP BY 1", args).fetchall()
+    finally:
+        con.close()
+    return {"/".join(reversed(d.split("-"))): n for d, n in rows if d}
+
+
+def lacunas_tfe(exercicio: int | None = None, db: Path = DB, minimo: int = MIN_LACUNA_DIA) -> list[tuple[str, int]]:
+    """Dias com `minimo`+ OBs do espelho fora do SIAFE, maior lacuna primeiro. Dia já recolhido só volta se a
+    lacuna CRESCEU desde então (espelho novo): o resíduo que sobra é OB cuja emissão caiu noutro dia, e insistir
+    nele seria trabalho que parece progresso."""
+    ano = exercicio or datetime.now().year
+    vistos = _tfe_verificados()
+    out = [(d, n) for d, n in _faltas_tfe(ano, db).items()
+           if n >= minimo and n > vistos.get(d, {}).get("falta_depois", -1)]
+    return sorted(out, key=lambda x: -x[1])
+
+
+async def recoletar_tfe(dias: list[str], exercicio: int) -> dict:
+    from compliance_agent import siafe_ob_orcamentaria as M
+    vistos, out = _tfe_verificados(), {}
+    for d in dias:
+        antes = _faltas_tfe(exercicio, dia=d).get(d, 0)
+        r = await M.coletar_por_data(exercicio, d)
+        depois = _faltas_tfe(exercicio, dia=d).get(d, 0)
+        out[d] = {k: r.get(k) for k in ("ok", "estouro", "ingeridas", "erro")} | {"falta_antes": antes,
+                                                                                 "falta_depois": depois}
+        if r.get("ok"):          # só a colheita que rodou conta como visita; erro de login não fecha o dia
+            vistos[d] = {"quando": datetime.now().isoformat(timespec="seconds"), "falta_antes": antes,
+                         "falta_depois": depois, "ingeridas": r.get("ingeridas")}
+            TFE_VERIFICADOS.write_text(json.dumps(vistos, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"[{datetime.now():%F %T}] dia {d} (lacuna TFE): {out[d]}", flush=True)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--listar", action="store_true")
     ap.add_argument("--auto", action="store_true")
     ap.add_argument("--max", type=int, default=3)
     ap.add_argument("--exercicio", type=int, default=None)
+    ap.add_argument("--tfe", action="store_true", help="dias que o espelho TFE aponta como lacuna do SIAFE")
     a = ap.parse_args()
     ano = a.exercicio or datetime.now().year
+    if a.tfe:
+        lac = lacunas_tfe(ano)
+        if a.listar or not a.auto:
+            print(json.dumps(lac, ensure_ascii=False))
+        elif lac:
+            asyncio.run(recoletar_tfe([d for d, _ in lac[:a.max]], ano))
+        else:
+            print(f"[{datetime.now():%F %T}] nenhuma lacuna do TFE por recolher em {ano}")
+        return 0
     sus = suspeitos(ano)
     if a.listar or not a.auto:
         print(json.dumps(sus, ensure_ascii=False))

@@ -100,3 +100,28 @@ def test_estado_do_par_e_barato_e_honesto(tmp_path):
     # sem espelho não se afirma NADA sobre cobertura — nem completa, nem incompleta
     assert C.estado_do_par("660100", "2019", db=str(p))["estado"] == "sem_referencia"
     assert C.estado_do_par("999999", "2025", db=str(p))["estado"] == "sem_referencia"
+
+
+def test_buraco_no_fim_do_ano_nao_escapa_da_amostra(tmp_path):
+    """Medido em 30/10/2026: 180100/2023 tinha 12.554 das 17.939 OBs do espelho fora do SIAFE (70%, o 2º
+    semestre inteiro) e passava por "coberto" — a amostra pegava os 300 primeiros números, que eram de janeiro."""
+    import sqlite3
+    from compliance_agent.reporting import cobertura_siafe as C
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT,"
+                " data_emissao TEXT, valor REAL)")
+    con.execute("CREATE TABLE ordens_bancarias (numero_ob TEXT, ug_codigo TEXT,"
+                " data_emissao TEXT, valor REAL)")
+    for i in range(1000):                      # as 300 primeiras coletadas; as 700 seguintes, não
+        con.execute("INSERT INTO ordens_bancarias VALUES (?,?,?,?)",
+                    (f"2023OB{i:05d}", "180100", "2023-01-02" if i < 300 else "2023-09-01", 10.0))
+        if i < 300:
+            con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)",
+                        (f"2023OB{i:05d}", "180100", "02/01/2023", 10.0))
+    con.commit()
+    con.close()
+    por = {(x["ug"], x["exercicio"]): x for x in C.medir(db=str(p))["parciais"]}
+    assert por[("180100", "2023")]["pct_ausente"] == 70.0
+    e = C.estado_do_par("180100", "2023", db=p)
+    assert e["estado"] == "parcial" and e["ausentes"] == 700
