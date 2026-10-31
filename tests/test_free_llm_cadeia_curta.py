@@ -13,15 +13,19 @@ padrão. O mesmo defeito do antigo default `qwen`.
 """
 from __future__ import annotations
 
-import importlib
 import logging
+import os
 
 
 def _ordem(monkeypatch, **env):
     for k, v in env.items():
         monkeypatch.setenv(k, v)
     import compliance_agent.llm.free_llm as F
-    importlib.reload(F)
+    # SEM `importlib.reload`: recarregar o módulo criava uma SEGUNDA classe `RespostaProvedorErro`, e os testes
+    # que vinham depois no mesmo lote (test_resposta_openai_compat) viam o `pytest.raises` errar a classe — 6
+    # falhas no CI em 31/10/2026 que passavam isoladas. Só `FREE_LLM_PREFER` é lido no import; ele vai por
+    # monkeypatch, que se desfaz sozinho. `FREE_LLM_ONLY` já é lido na chamada.
+    monkeypatch.setattr(F, "FREE_LLM_PREFER", os.environ.get("FREE_LLM_PREFER", "").lower())
     return F, F._get_provider_order()
 
 
