@@ -54,12 +54,32 @@ def test_mascara_remove_o_veredito(entrada, proibido):
     assert saida.strip(), "mascarar não pode esvaziar o texto"
 
 
-def test_mascara_de_dever_remove_o_verbo_mas_preserva_a_conduta():
+def test_mascara_NAO_apaga_o_verbo_de_dever():
+    """Apagar o dever não era máscara: era corrupção do dado.
+
+    Medido em 2026-08-02 no holdout: 26 dos 58 casos `vicio_por_omissao` (45% da classe
+    majoritária, e o erro dominante de toda a avaliação) foram lidos como `licito`. O
+    `_RE_DEVER_INICIAL` removia o verbo em QUALQUER posição — apesar do nome — e devolvia texto
+    agramatical e sem sentido deôntico: "podem e ser considerados" (era "podem e devem ser"),
+    "a Administração descontar as parcelas", "Termo aditivo ser firmado antes do fim". O modelo
+    respondia "lícito" corretamente, dado o texto mutilado; quem errava era a régua.
+
+    A máscara tira o VEREDITO. O dever é a conduta — fica.
+    """
     e = ("A demonstração da vantagem de renovação deve ser realizada mediante ampla pesquisa "
          "de preços.")
-    saida = mascarar_conclusao(e)
-    assert "pesquisa de preços" in saida
-    assert not saida.lower().startswith("deve")
+    assert mascarar_conclusao(e) == e
+
+
+@pytest.mark.parametrize("entrada", [
+    "Os referenciais oficiais podem e devem ser considerados para a análise de adequabilidade.",
+    "A Administração deve descontar as parcelas indevidamente pagas a maior à contratada.",
+    "Termo aditivo contratual deve ser firmado antes do fim da vigência do contrato original.",
+    "O cálculo do prejuízo deve levar em conta o desconto obtido na licitação.",
+])
+def test_trechos_reais_do_holdout_voltam_integros(entrada):
+    """Os enunciados que a máscara vinha mutilando, um a um, tal como aparecem no acervo."""
+    assert mascarar_conclusao(entrada) == entrada
 
 
 def test_texto_sem_formula_conhecida_passa_intacto():

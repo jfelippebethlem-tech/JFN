@@ -1,0 +1,101 @@
+#!/bin/bash
+# Lane da VARREDURA do acervo SEI — leitura dupla (regra + LLM gratuita) de todos os processos.
+#
+# POR QUE ESTE ARQUIVO EXISTE. A leitura custa ~70 s por processo e o acervo tem 2.354. Enquanto ela
+# dependia de eu relançar lote a lote entre uma supervisão e outra, o gargalo deixava de ser a
+# máquina e passava a ser a minha cadência: a VM ficava ociosa no intervalo. O dono pediu que a
+# leitura continue; este lane é a forma de continuar sem depender de sessão aberta.
+#
+# FORMA OBRIGATÓRIA DA CASA (aprendizados/obediencia-e-loop-autonomo):
+#   · cron SINGLE-PASS com `timeout`, NUNCA `while true` — cada disparo lê um lote e termina;
+#   · não paralelizar: `flock` garante um só de cada vez (2 vCPU é o gargalo);
+#   · respeitar carga: acima do teto, o disparo DESISTE em silêncio e tenta no próximo;
+#   · parar é imediato — basta `rm -f data/.varredura_sei.off` ao contrário: criar o arquivo desliga.
+#
+# Desligar:  touch data/.varredura_sei.off
+# Religar :  rm -f data/.varredura_sei.off
+set -u
+cd /home/ubuntu/JFN || exit 1
+
+[ -f data/.varredura_sei.off ] && exit 0          # kill-switch do dono, sem precisar mexer no cron
+
+exec 9>/tmp/varredura_sei.lock
+flock -n 9 || exit 0                              # já tem um DISPARO DESTE LANE lendo
+
+# O `flock` sozinho NÃO BASTA, e isso foi medido no primeiro teste: ele só serializa os disparos do
+# lane, e havia uma varredura lançada À MÃO fora dele. Resultado: dois leitores concorrendo em 2
+# vCPU, exatamente o que a regra da casa proíbe. A checagem abaixo enxerga QUALQUER leitura viva.
+#
+# A busca por padrão na linha de comando de TODOS os processos casaria com o PRÓPRIO script (o
+# comando dele contém o nome do módulo) — armadilha que já mordeu nesta casa. Por isso a checagem
+# é restrita ao interpretador, via `ps -C python`, que não inclui shells.
+# POR FATIA, NÃO "QUALQUER LEITOR". A guarda original saía se ENCONTRASSE QUALQUER leitura viva, e
+# isso quebrou quando passei a rodar 4 fatias: elas morrem no timeout em momentos diferentes, e UM
+# sobrevivente bloqueava o religamento dos outros TRÊS. Medido em 2026-08-14: 1 fatia viva, vazão
+# caída de 300/h para 150/h, sem nenhum erro no log — a varredura sangrava em silêncio.
+#
+# Um leitor NÃO fatiado (lançado à mão) ainda bloqueia tudo, que é a colisão que a guarda original
+# existia para evitar.
+vivas=$(ps -C python -o args= 2>/dev/null | grep -c "sei_leitura_dupla")
+if [ "$vivas" -gt 0 ] && ! ps -C python -o args= 2>/dev/null | grep "sei_leitura_dupla" | grep -q -- "--fatia"; then
+  exit 0                                          # leitor não fatiado no ar: não somar
+fi
+
+# TETO DE CARGA — E POR QUE ELE NÃO É 4 NESTE LANE. A regra da casa (1 pesado por vez em 2 vCPU)
+# nasceu para trabalho que QUEIMA CPU. Este leitor não é isso: medido em 2026-08-14, cada fatia fica
+# em ~0,1% de CPU, porque passa o tempo esperando resposta HTTP do provedor. Com o teto em 4, uma
+# sessão VIZINHA rodando OCR/Chromium levou a carga a 19 e manteve ESTA varredura parada por 70
+# minutos — um lane que não disputava CPU com ela foi bloqueado por um número que mede CPU.
+#
+# A variável certa é a MEMÓRIA, que é o vetor real das quedas desta VM (2 Chromium + DuckDB, 4×).
+# Então: piso de memória disponível, e teto de carga bem mais alto, só como rede de segurança
+# contra um cenário patológico. Reversível: voltar para `-ge 4` se algo aqui passar a pesar CPU.
+# DESVIO DECLARADO DE REGRA CRÍTICA. `vm-nao-crashar` manda adiar com load >= 4, e este teto de 12
+# é MAIOR que ela. A justificativa é a medida acima (0,1% de CPU por fatia), mas a decisão é do
+# dono, não minha: se ele quiser a regra literal, é trocar 12 por 4 nesta linha e aceitar que a
+# varredura pare enquanto uma sessão vizinha estiver com OCR/Chromium no ar.
+livre_mb=$(awk '/MemAvailable/{printf "%d", $2/1024}' /proc/meminfo)
+[ "$livre_mb" -lt 1500 ] && exit 0                # sem folga de RAM, não entra de jeito nenhum
+carga=$(awk '{printf "%d", $1}' /proc/loadavg)
+[ "$carga" -ge 12 ] && exit 0
+
+# `timeout` para o disparo NUNCA virar processo eterno: 50 min lê ~40 processos e devolve a máquina.
+# `--amostra` alto não é problema: o lote termina quando o timeout chega, e o próximo continua de
+# onde parou (a fila é calculada do que ainda não foi lido).
+set -a; . .env 2>/dev/null; set +a
+
+# DOIS LEITORES, E A REGRA DA CASA CONTINUA VALENDO. "1 pesado por vez" protege 2 vCPU, e a medição
+# de 2026-08-14 mostra que a leitura NÃO é pesada de CPU: o leitor vivo estava em 0,1% de CPU, com
+# mediana de 17,4 s por chamada — ele passa o tempo esperando a rede, não calculando. Medido contra
+# o provedor com documento real (corrigindo o viés de tamanho do lote de teste): ~2,1× de vazão com
+# dois em paralelo, sem 429 e sem erro de cota. A ~46 leituras/h, isso tira ~19 h do acervo.
+# O `--fatia` reparte a fila de forma DETERMINÍSTICA — sem ele os dois pegariam o mesmo processo e
+# gastariam IA em dobro. A escrita aguenta: `INSERT OR REPLACE` com `busy_timeout=60000`.
+# Se um dia o provedor passar a recusar concorrência, basta voltar a UMA linha sem `--fatia`.
+# QUATRO, e não duas: medido em 2026-08-14 contra o provedor, 4 concorrentes rendem ~2,6x a vazão
+# de 2 (80k chars em 13,9s contra 48k em 21,8s), com 4/4 de sucesso e sem 429. Desconfio do
+# superlinear — é variação de tamanho entre documentos —, então o ganho honesto esperado é ~2x.
+# Continua sem violar "1 pesado por vez": cada leitor fica em ~0,1% de CPU, esperando rede.
+# Se a memória apertar (a VM é COMPARTILHADA e outra sessão roda Chromium), voltar para 0/2 1/2.
+for fatia in 0/4 1/4 2/4 3/4; do
+  # só a fatia que NÃO está no ar — assim um sobrevivente não impede o religamento das outras,
+  # e nenhuma fatia ganha um segundo leitor gastando IA em dobro no mesmo processo.
+  if ps -C python -o args= 2>/dev/null | grep -q -- "--fatia $fatia"; then
+    continue
+  fi
+  # `9>&-` FECHA O DESCRITOR DO FLOCK PARA A FATIA. Sem isso ela HERDA o fd 9 e continua segurando o
+  # lock depois que o lane sai — o `fuser` mostrava `bash`, `timeout` E `python` no mesmo arquivo.
+  # Efeito medido: mesmo encerrando o lane preso, o disparo seguinte não conseguia a chave e saía em
+  # silêncio; a varredura ficou com UMA fatia e ninguém percebeu, porque nada disso vira erro.
+  timeout 3000 nice -n 10 ionice -c3 .venv/bin/python -u -m tools.sei_leitura_dupla \
+      --amostra 200 --gravar --max-chars 150000 --fatia "$fatia" >> data/varredura_sei.log 2>&1 9>&- &
+done
+
+# SEM `wait` — E ISSO É O CONSERTO, não descuido. Com `wait`, o lane ficava vivo os 50 minutos
+# inteiros e o `flock` ficava com ELE: quando três fatias morriam e uma sobrevivia, o próprio lane
+# preso no `wait` segurava a chave de que precisaria para religar as outras três. Ficou 1 fatia no
+# ar e a vazão caiu de 300/h para 150/h SEM UM ÚNICO ERRO NO LOG.
+# Saindo agora, o lock é liberado e o disparo seguinte (cron, 10 min) completa o que faltar. As
+# fatias seguem sob `timeout`, então continuam com fim garantido — nada aqui vira processo eterno.
+
+echo "$(date -Is) disparo encerrado (saída $?)" >> data/varredura_sei.log

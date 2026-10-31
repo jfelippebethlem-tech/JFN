@@ -10,6 +10,7 @@ flock -n 9 || exit 0
 BASE="http://127.0.0.1:8000/api"
 URLS=(
   "intel/fornecedor_dependente?limite=150"
+  "siafe/stats"
   "fontes/frescor"
   "pericias?limite=80&ordem=score"
   "intel/socio_servidor?limite=150"
@@ -29,6 +30,14 @@ URLS=(
   "conflito"
   "coendereco/clusters"
   "compliance/graph"
+  # 2026-09-24 (auditoria quadro a quadro): abas que passavam de 60 s a frio — mesmas URLs que o painel pede.
+  "intel/fracionamento?limite=120"
+  "intel/sobrepreco?limite=120&esfera=estado"
+  "intel/sobrepreco?limite=120&esfera=prefeitura"
+  "intel/escalada?limite=120&esfera=estado"
+  "intel/escalada?limite=120&esfera=prefeitura"
+  "intel/fantasmas?limite=60"
+  "acervo/estatisticas"
 )
 {
   echo "── $(date -Is) prewarm"

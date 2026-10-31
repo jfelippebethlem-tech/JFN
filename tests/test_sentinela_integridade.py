@@ -119,6 +119,40 @@ def test_purga_de_arquivo_escreve_atomico_e_encolhe(tmp_path):
     assert not list(tmp_path.glob("*.purga")), "sobrou arquivo temporário"
 
 
+def _zst(p, texto):
+    import subprocess
+    p.write_bytes(subprocess.run(["zstd", "-q", "-c", "-"], input=texto.encode("utf-8"),
+                                 capture_output=True, check=True).stdout)
+
+
+def test_purga_de_zst_encolhe_e_continua_legivel(tmp_path):
+    """30/10/2026: os 40 maiores `cdp_*.json.zst` ainda carregavam `anexo_bytes` (comprimidos ANTES da
+    purga existir) — 7 GB do acervo. O `.zst` tem de sair limpo e legível por `cache_arquivo.ler_json`."""
+    from compliance_agent.sei import cache_arquivo
+    import random
+    lixo = "".join(random.choice("0123456789abcdef\\x") for _ in range(60000))   # binário serializado
+    p = tmp_path / "cdp_teste.json.zst"
+    _zst(p, json.dumps({"conteudo_documentos": [{"conteudo": "curto", "anexo_bytes": "b'" + lixo + "'"}]}))
+    antes = p.stat().st_size
+    assert [c for c, _ in purga.candidatos(0.0, cache=tmp_path)] == [p]
+    r = purga.purgar_arquivo(p, aplicar=True)
+    assert r["removidos"] == 1
+    assert p.stat().st_size < antes / 5
+    d = cache_arquivo.ler_json(tmp_path / "cdp_teste.json")
+    assert d["conteudo_documentos"][0] == {"conteudo": "curto"}
+    assert sorted(x.name for x in tmp_path.iterdir()) == ["cdp_teste.json.zst"], "sobrou temporário"
+
+
+def test_purga_de_zst_invalido_mantem_original(tmp_path):
+    p = tmp_path / "cdp_torto.json.zst"
+    _zst(p, '{\n  "conteudo_documentos": [\n    {\n      "anexo_bytes": "b\'x\'"\n')
+    original = p.read_bytes()
+    r = purga.purgar_arquivo(p, aplicar=True)
+    assert r.get("erro") and "intacto" in r["erro"]
+    assert p.read_bytes() == original
+    assert sorted(x.name for x in tmp_path.iterdir()) == ["cdp_torto.json.zst"]
+
+
 # ---- reparo dos arquivos sem texto ----
 
 def test_reparo_declara_captura_vazia_e_refila(tmp_path, monkeypatch):

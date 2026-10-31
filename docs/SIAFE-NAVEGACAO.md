@@ -1,7 +1,13 @@
 # SIAFE-Rio 2 — Mapa de Navegação e Funções (ADF)
 
-Documento vivo: caminhos, telas e seletores do SIAFE-Rio 2 descobertos pela coleta automatizada.
+Documento vivo: caminhos, telas e seletores do SIAFE-Rio **2** descobertos pela coleta automatizada.
 Atualizar sempre que aprender um caminho novo. (Oracle ADF — `siafe2.fazenda.rj.gov.br/Siafe/faces/...`)
+
+> 📘 **Este arquivo é REFERÊNCIA de seletores do SIAFE 2.** Se você vai *operar* a coleta — ou é uma
+> IA com pouco contexto — comece por **[PLAYBOOK-SIAFE-NAVEGACAO.md](PLAYBOOK-SIAFE-NAVEGACAO.md)**:
+> lá estão a diferença entre SIAFE 1 (www5, anos 2016-2023) e SIAFE 2, as armadilhas medidas
+> (clique por índice de menu que joga a sessão para fora e finge ser bloqueio de IP; platô de 989
+> linhas; cabeçalho da tela × nomes internos) e como CONFERIR o resultado pelo banco.
 
 ## Acesso
 - **URL login:** `/Siafe/faces/login.jsp` — campos `loginBox:itxUsuario::content` (CPF),

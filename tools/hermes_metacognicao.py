@@ -185,6 +185,9 @@ async def _avaliar_hipoteses_vault() -> list[str]:
     return avaliadas
 
 
+_ULTIMO_REM = Path(__file__).resolve().parent.parent / "data" / "hermes_metacognicao_ultimo.json"
+
+
 async def run() -> dict:
     res: dict = {"quando": datetime.now().isoformat(timespec="seconds")}
 
@@ -248,6 +251,12 @@ async def run() -> dict:
     except Exception as e:  # noqa: BLE001
         res["backup_erro"] = str(e)[:150]
 
+    # resultado da rodada para o loop de automelhoria geral (sensor `rem` em tools/automelhoria_geral.py,
+    # SLO `hermes-sono-rem`): passo degradado vira item da fila única, e a rodada que não acontece também.
+    try:
+        _ULTIMO_REM.write_text(json.dumps(res, ensure_ascii=False, default=str), encoding="utf-8")
+    except OSError as exc:
+        logger.warning("resultado do sono REM não gravado: %s", exc)
     # aviso no Telegram: se aprendeu regra nova OU se algum passo degradou (antes o no-op era mudo
     # e dias de pool saturado passavam despercebidos — lição 2026-07-11)
     erros = sorted(k for k in res if k.endswith("_erro"))

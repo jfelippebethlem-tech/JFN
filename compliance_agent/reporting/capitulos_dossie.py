@@ -19,6 +19,7 @@ import sqlite3
 from pathlib import Path
 
 from compliance_agent.editais.flags import grau_flag
+from compliance_agent.sei import acervo_texto
 from compliance_agent.editais.peer_diff import forca_e7
 from compliance_agent.knowledge.jurisprudencia import obter_sumula
 
@@ -273,7 +274,12 @@ def secao_sei_arvore(processos_sei: list[str], max_docs_por_processo: int | None
                 f = pdir / doc["texto"]
                 if f.exists():
                     try:
-                        txt = html.unescape(f.read_text(errors="replace")).strip()
+                        # sem a etiqueta do arquivo: o recorte é CITAÇÃO do documento no
+                        # entregável, e o título já aparece na linha de cima — o rótulo
+                        # interno duplicava e ainda comia o teto do recorte.
+                        txt = acervo_texto.sem_etiqueta(
+                            html.unescape(f.read_text(errors="replace")),
+                            str(doc.get("titulo") or "")).strip()
                     except OSError:
                         continue
                     if txt:

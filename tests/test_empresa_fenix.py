@@ -16,7 +16,7 @@ def db(tmp_path):
     con.executescript("""
     CREATE TABLE empresas (cnpj TEXT, razao_social TEXT, data_abertura TEXT, situacao TEXT);
     CREATE TABLE favorecido_resumo (favorecido_cpf TEXT, favorecido_nome TEXT, total_pago REAL, n_obs INTEGER);
-    CREATE TABLE ob_orcamentaria_siafe (credor TEXT, valor REAL, data_emissao TEXT);
+    CREATE TABLE ob_orcamentaria_siafe (credor TEXT, valor REAL, data_emissao TEXT, status TEXT);
     """)
     con.executemany("INSERT INTO empresas VALUES (?,?,?,?)", [
         ("11111111000111", "MORTA LTDA", "2005-01-01", "BAIXADA"),
@@ -30,7 +30,7 @@ def db(tmp_path):
         ("33333333000133", 9_000_000.0, 50), ("44444444000144", 8_000_000.0, 5),
         ("55555555000155", 1_000_000.0, 4)])
     # 1ª OB de RECEM em 2025-08 (aberta 2025-06 → 2 meses) → recém_aberta
-    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('55555555000155', 100000, '10/08/2025')")
+    con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('55555555000155', 100000, '10/08/2025', 'Contabilizado')")
     con.commit()
     con.close()
     return p
@@ -65,3 +65,43 @@ def test_total_defunta_e_ressalva_temporal(db):
     d = empresa_fenix(db_path=db)
     assert d["total_defunta"] == pytest.approx(590000.0)  # 500k + 90k
     assert "APÓS o pagamento" in d["ressalva"] and "Indício" in d["ressalva"]
+
+
+# ── pago DEPOIS da baixa: só OB CONTABILIZADA é pagamento (24/09/2026) ──────────────────────────────
+# A manchete "pago a empresa morta" somava OB anulada/excluída: R$ 586.272.022,50 → R$ 579.308.009,79.
+from compliance_agent.cruzamentos_intel import _pagou_apos_baixa  # noqa: E402
+
+_ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+
+
+@pytest.fixture()
+def con_baixa(tmp_path):
+    estab = str(tmp_path / "estab.db")
+    e = sqlite3.connect(estab)
+    e.execute("CREATE TABLE estabelecimentos (cnpj TEXT, data_situacao TEXT, motivo_situacao TEXT)")
+    e.execute("INSERT INTO estabelecimentos VALUES ('11111111000111', '20240101', 'EXTINCAO')")
+    e.commit(); e.close()
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    con.execute(f"ATTACH DATABASE '{estab}' AS estab")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (credor TEXT, valor REAL, data_emissao TEXT, status TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES ('11111111000111', ?, ?, ?)", [
+        (1000.0, "10/06/2023", "Contabilizado"),   # antes da baixa — não conta
+        (2000.0, "10/03/2024", "Contabilizado"),   # depois — conta
+        (5000.0, "11/03/2024", "Anulado"),         # depois, mas ANULADA — não é pagamento
+        (7000.0, "12/03/2024", "Excluído"),        # idem
+    ])
+    yield con
+    con.close()
+
+
+def test_pago_apos_baixa_soma_so_ob_contabilizada(con_baixa):
+    r = _pagou_apos_baixa(con_baixa, "11111111000111", "2024-03-12", _ISO)
+    assert r["data_baixa"] == "2024-01-01"
+    assert r["pagou_apos_baixa"] is True
+    assert r["valor_apos_baixa"] == 2000.0 and r["n_ob_apos_baixa"] == 1
+
+
+def test_sem_data_de_baixa_e_indisponivel_nao_regular(con_baixa):
+    r = _pagou_apos_baixa(con_baixa, "99999999000199", "2024-03-12", _ISO)
+    assert r["pagou_apos_baixa"] is None and r["data_baixa"] is None

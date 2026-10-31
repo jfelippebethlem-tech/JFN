@@ -707,7 +707,10 @@ def _sei_arquivado(numero_sei: str) -> bool:
     if not m:
         return False
     d = RAIZ / "data" / "sei_arquivo" / f"{m.group(1)}_{m.group(2)}_{m.group(3)}"
-    return d.is_dir() and (d / "texto").is_dir() and any((d / "texto").glob("*.txt"))
+    # existir .txt nunca provou captura: 23,5% dos arquivos do acervo trazem só a etiqueta
+    # que nós escrevemos (2026-08-03 — ver `compliance_agent/sei/acervo_texto`).
+    from compliance_agent.sei import acervo_texto
+    return d.is_dir() and acervo_texto.docs_com_conteudo(d) > 0
 
 
 @router.post("/api/sei/empresa/iniciar")
@@ -818,12 +821,17 @@ def api_processo(numero: str = ""):
                             status_code=404)
     import json as _json
     out = {k: row[k] for k in row.keys()}
+    # `sintese_json` é a leitura de CONJUNTO do processo (fases, contradições entre documentos, o
+    # todo). Sem ela na lista, a coluna existia no banco e não chegava ao painel — módulo com
+    # caller e sem consumidor é a mesma falha de sempre, um passo adiante.
     for k in ("achados_json", "lacunas_json", "docs_chave_json", "acatamento_json",
-              "escalada_json", "cobertura_json"):
+              "escalada_json", "cobertura_json", "sintese_json"):
         try:
             out[k.removesuffix("_json")] = _json.loads(out.pop(k) or "null")
-        except (ValueError, KeyError):
-            pass
+        except (ValueError, KeyError) as e:
+            # campo JSON malformado vira ausência silenciosa na resposta — e a tela não distingue
+            # "o processo não tem achados" de "o achado não pôde ser lido"
+            logger.debug("campo %s ilegível na avaliação: %s", k, e)
     return JSONResponse({"ok": True, "rodando": rodando, "avaliacao": out})
 
 

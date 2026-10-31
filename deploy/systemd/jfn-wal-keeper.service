@@ -1,0 +1,15 @@
+[Unit]
+Description=JFN — wal-keeper: lock compartilhado que impede apagar compliance.db-wal/-shm (vetor da corrupção de 12/08 e 29/08)
+# Sobe ANTES do servidor: o lock tem de existir quando o primeiro cron fechar por último.
+Before=jfn.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ubuntu/JFN
+ExecStart=/home/ubuntu/JFN/.venv/bin/python /home/ubuntu/JFN/tools/wal_keeper.py /home/ubuntu/JFN/data/compliance.db
+Restart=always
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=default.target

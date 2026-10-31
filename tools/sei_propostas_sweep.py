@@ -69,7 +69,12 @@ import logging
 import os
 import re
 import sqlite3
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from compliance_agent.sei import acervo_texto  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -99,11 +104,19 @@ def _cnpjs(texto: str) -> list[str]:
 def candidatos() -> list[dict]:
     """Documentos do acervo que comparam FORNECEDORES entre si. Determinístico e reexecutável."""
     out = []
-    for t in sorted(_ACERVO.rglob("texto/*.txt")):
+    # Pelo MANIFESTO de cada processo VIVO, não por `rglob` na árvore inteira: o rglob varria
+    # também `_substituido/` e `_truncados/` (acervos mortos) e as sobras de captura anterior,
+    # medindo o mesmo documento mais de uma vez. (2026-08-03 — ver `sei/acervo_texto`)
+    alvo = [t
+            for pasta in sorted(p for p in _ACERVO.iterdir()
+                                if p.is_dir() and not p.name.startswith("_"))
+            for t in acervo_texto.arquivos_declarados(pasta)]
+    for t in alvo:
         if not _RE_TIPO.search(t.name):
             continue
         try:
-            txt = t.read_text(encoding="utf-8", errors="replace")
+            txt = acervo_texto.sem_etiqueta(
+                t.read_text(encoding="utf-8", errors="replace"))
         except OSError:
             continue
         if len(txt) < 400 or len(_RE_VALOR.findall(txt)) < 3:
@@ -246,7 +259,10 @@ def processar(doc: dict, gerar, *, db: Path) -> dict:
     from compliance_agent.editais.coletor_propostas import persistir_propostas
     from compliance_agent.editais.db import conectar
 
-    texto = doc["arquivo"].read_text(encoding="utf-8", errors="replace")
+    # sem a etiqueta: daqui o texto vai para a IA extrair itens e preços, e o rótulo que nós
+    # escrevemos não é conteúdo da proposta (ver `sei/acervo_texto`).
+    texto = acervo_texto.sem_etiqueta(
+        doc["arquivo"].read_text(encoding="utf-8", errors="replace"))
     certame = _certame_do_processo(doc["processo"])
     linhas: list[dict] = []
     por_fornecedor: dict[str, int] = {}

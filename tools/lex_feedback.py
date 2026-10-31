@@ -54,8 +54,14 @@ def _agora() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
-def registrar(fonte: str, tipo: str, contexto: str, mensagem: str, sugestao: str | None = None) -> bool:
-    """Registra uma dificuldade/ideia. Dedup: ignora se já existe ABERTA igual. Retorna True se inseriu."""
+def registrar(fonte: str, tipo: str, contexto: str, mensagem: str, sugestao: str | None = None,
+              chave: str | None = None) -> bool:
+    """Registra uma dificuldade/ideia. Dedup: ignora se já existe ABERTA igual. Retorna True se inseriu.
+
+    `chave` = prefixo estável da mensagem (ex.: o tema) quando o resto dela muda a cada rodada (contagens).
+    Havendo item ABERTO com o mesmo contexto e esse prefixo, ATUALIZA-o em vez de inserir: a mensagem com
+    "em 37 de 400 processos" mudava toda rodada e fez 670 cópias de 7 temas (medido em 28/10/2026).
+    `chave=""` = um item aberto por contexto (retrato agregado que se renova, ex.: "12 dúvidas em 6 fornecedores")."""
     fonte = (fonte or "jfn").strip().lower()
     tipo = (tipo or "dificuldade").strip().lower()
     if tipo not in TIPOS:
@@ -65,6 +71,15 @@ def registrar(fonte: str, tipo: str, contexto: str, mensagem: str, sugestao: str
         return False
     con = _con()
     try:
+        if chave is not None:
+            ja = con.execute(
+                "SELECT id FROM lex_feedback WHERE resolvido=0 AND fonte=? AND tipo=? AND contexto=? "
+                "AND substr(mensagem, 1, ?)=? ORDER BY id DESC LIMIT 1",
+                (fonte, tipo, (contexto or "").strip(), len(chave), chave)).fetchone()
+            if ja:
+                con.execute("UPDATE lex_feedback SET mensagem=?, em=? WHERE id=?", (mensagem, _agora(), ja[0]))
+                con.commit()
+                return False
         dup = con.execute(
             "SELECT 1 FROM lex_feedback WHERE resolvido=0 AND fonte=? AND tipo=? AND mensagem=? LIMIT 1",
             (fonte, tipo, mensagem),
@@ -152,6 +167,7 @@ def coletar_auto() -> int:
                 contexto="lex_pesquisa_internet (vereditos inconclusivos)",
                 mensagem=f"{len(inconclusivos)} dúvida(s) inconclusiva(s) em {n_forn} fornecedor(es) — faltou fonte/dado p/ fechar. Ex.: {exemplos}",
                 sugestao="Adicionar fontes (Diário Oficial municipal, JUCERJA, processos TJ) ou marcar p/ verificação manual quando o tema se repetir.",
+                chave="",
             ):
                 novos += 1
 
@@ -171,6 +187,7 @@ def coletar_auto() -> int:
                 contexto="memoria_aprendizado (baselines incertos)",
                 mensagem=f"{len(fracos)} baseline(s) empírico(s) com baixa confiança/poucas observações: {itens}",
                 sugestao="Ampliar a amostra (mais órgãos/exercícios) antes de usar esses baselines como régua.",
+                chave="",
             ):
                 novos += 1
 

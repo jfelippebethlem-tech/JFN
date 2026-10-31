@@ -1,0 +1,64 @@
+{
+ "numero": "SEI-070002/006459/2024",
+ "grau": "amarelo",
+ "leitor": "Claude — leitura dos autos arquivados (25/09/2026) — ATENÇÃO: 124 de 817 documentos (15%)",
+ "linha_do_tempo": [
+  [
+   "2023",
+   "Contrato INEA 34/2023 — desassoreamento e limpeza de corpos hídricos (RH III Médio Paraíba e RH V Baía de Guanabara) — R$ 48.491.100,00 (Lei 8.666)"
+  ],
+  [
+   "02/08/2024",
+   "Duas holdings entram no QSA da Lytorânea (em recuperação judicial)"
+  ],
+  [
+   "set/2024",
+   "Aditivo 59/2024 — acréscimo quantitativo 17,57% — R$ 8.520.610,08 → R$ 57.011.710,08"
+  ],
+  [
+   "out–nov/2024",
+   "Aditivo 71/2024 — prorrogação 15 meses + R$ 57.011.710,08 → R$ 114.023.420,16"
+  ],
+  [
+   "2025",
+   "Aditivo 53/2025 — acréscimo 6,33% — R$ 3.071.581,74 → R$ 117.095.001,90"
+  ],
+  [
+   "set/2025",
+   "Aditivo 80/2025 — prorrogação + R$ 60.083.291,82 → R$ 177.178.293,72 (R$ 182.351.451,87 com reajustes)"
+  ],
+  [
+   "2024–2026",
+   "Medições 7ª a 40ª; R$ 110.104.889,92 pagos (OB) neste processo"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "amarelo",
+   "diz": "O contrato foi a 3,65× o valor licitado por prorrogações que renovam o valor anual inteiro. O INEA enquadra o objeto como 'serviços contínuos' (art. 57, II) — formalmente lícito —, mas desassoreamento de corpos hídricos com escopo por região e frentes de serviço tem natureza de serviço de engenharia de escopo definido: a qualificação como contínuo é discutível e, se afastada, as prorrogações equivalem a contratar R$ 117 mi sem licitar.",
+   "fundamento": "Lei 8.666/1993, art. 57, II; jurisprudência do TCU sobre serviço contínuo"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Acréscimos quantitativos somam 23,90% do valor inicial — dentro do teto de 25%, mas a 1,1 p.p. dele.",
+   "fundamento": "Lei 8.666/1993, art. 65, §1º (teto inclusivo)"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "Contratada em recuperação judicial com reestruturação societária (entrada de holdings) um mês antes do 1º aditivo: conferir a capacidade econômico-financeira exigida para cada prorrogação.",
+   "fundamento": "Lei 8.666/1993, arts. 31 e 55, XIII"
+  }
+ ],
+ "conexoes": [
+  "Lytorânea S/A (07.792.269/0001-05) recebeu R$ 973.050.166,77 em 1.011 OBs do Estado desde 2021 — incumbente de grande porte.",
+  "O CNPJ que o SIAFE chama de 'Construtora Lytorânea Infraestrutura' (28.686.103/0001-76) hoje é CONSTRUTORA ABRA, com outro administrador — elo só por sobrenome comum: NÃO se liga.",
+  "Mesmo padrão de prorrogação com valor (declarado contínuo) em outros contratos do INEA no acervo — regra determinística de aditivos, 25/09/2026."
+ ],
+ "verificar": [
+  "693 documentos não capturados: as medições (boletins), fotos, pareceres jurídicos de cada aditivo e a justificativa da natureza contínua.",
+  "Pesquisa de vantajosidade de cada prorrogação (art. 57, II exige 'preços e condições mais vantajosas').",
+  "Situação da recuperação judicial e certidões na data de cada aditivo."
+ ],
+ "parecer": "Sem indício de irregularidade ESTABELECIDO: o enquadramento formal existe e os acréscimos estão dentro do teto. O ponto sensível é jurídico — tratar desassoreamento como serviço contínuo multiplicou o contrato por 3,65 sem nova licitação — e depende dos pareceres e da pesquisa de vantajosidade, que estão entre os 85% dos autos não capturados. Prioridade: MÉDIA; recapturar antes de qualquer peça.",
+ "ressalvas": "Leitura sobre 15% dos autos: ausência de documento aqui é lacuna de CAPTURA, não do processo. Indício ≠ acusação."
+}

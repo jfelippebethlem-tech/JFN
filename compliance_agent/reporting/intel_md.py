@@ -628,10 +628,24 @@ def _render_execucao(ctx: dict) -> str:
     add("")
     add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Resumo da perícia |")
     add("|---|---:|---:|:--:|:--:|---|")
+    # Vereditos dados antes de a perícia ler o SIAFE (29/10/2026) que NEGAVAM a OB — e a linha mostra OB paga.
+    # 1.285 de 4.832 estavam assim (filtro preciso); seguem em reavaliação no sweep. Não somem: ficam marcados.
+    from tools.lex_execucao import _CORTE_SIAFE, _NEGA_OB
+    n_contest = 0
     for x in tudo(sorted(suspeitos, key=lambda x: -(x.get("total") or 0))):
         res = (x.get("resumo") or "")[:90].replace("|", "/")
+        if (x.get("avaliado_em") or "") < _CORTE_SIAFE and (x.get("n_obs") or 0) > 0 and \
+                _NEGA_OB.search(f"{x.get('indicios') or ''} {x.get('resumo') or ''}"):
+            res = "⚠️ veredito anterior negava a OB que o SIAFE registra — em reavaliação. " + res
+            n_contest += 1
         add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {x.get('nota')}/10 | {res} |")
     add("")
+    if n_contest:
+        add(f"> ⚠️ **{n_contest} processo(s) acima** têm veredito de execução dado antes de a perícia consultar o "
+            "SIAFE e que apontava *ausência de Ordem Bancária* — o SIAFE registra pagamento. A conclusão sobre a "
+            "**entrega** pode se manter, mas a premissa de pagamento estava errada: tratar como **pendente de "
+            "reavaliação**, não como indício firme.")
+        add("")
     add("> 🟡 **Indício a apurar:** exigir do gestor a prova de entrega/fiscalização (atesto, NF, medição, relatório "
         "fotográfico) dos processos acima antes de novo pagamento. **Indício, não prova.**")
     add("")
@@ -849,7 +863,8 @@ def render_md(ctx: dict) -> str:
     add("")
     add(f"**CNPJ:** {ctx['cnpj_fmt']}  |  **Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)")
     add("**Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)")
-    add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (SIAFE/TFE) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
+    add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (espelho TFE-RJ; o SIAFE distingue "
+        f"status mas está parcialmente coletado) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
     add("")
     add("---")
     add("")
@@ -958,9 +973,21 @@ def render_md(ctx: dict) -> str:
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
-    add("> Fonte: SIAFE/TFE-RJ (Ordem Bancária = dado **definitivo de pagamento**). Por exercício, as **maiores "
-        "OBs** (materiais); a **lista completa** de cada pagamento está na **planilha XLSX** deste relatório. "
-        "OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam ao total).")
+    # A FONTE DESTES NÚMEROS É O ESPELHO, e ele tem um viés conhecido — dizer "SIAFE/TFE" como se
+    # fosse uma coisa só escondia os dois lados. Medido em 2026-08-09: o espelho traz 1.159.305 OBs
+    # contra 244.949 da fonte canônica (que está 21,1% coletada), mas NÃO carrega o status — não dá
+    # para excluir OB cancelada por lá. No universo em que dá para medir (o SIAFE), 9,7% do valor
+    # não é "Contabilizado" (Excluído 8,1% · Anulado 1,5% · Não contabilizado 0,2%).
+    add("> **Fonte: espelho TFE-RJ** (Ordem Bancária = dado definitivo de pagamento). Por exercício, "
+        "as **maiores OBs** (materiais); a **lista completa** está na **planilha XLSX** deste "
+        "relatório. OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam).")
+    add("")
+    add("> ⚠️ **O que este total inclui e o que ele não distingue.** O espelho é hoje a fonte mais "
+        "COMPLETA (1,16 milhão de OBs contra 245 mil já coletadas do SIAFE), mas **não publica o "
+        "status da OB** — cancelamento e anulação entram somados. No universo em que dá para "
+        "medir, **9,7% do valor não é OB contabilizada**. O SIAFE distingue status e traz processo, "
+        "NL e competência, mas a coleta dele está incompleta (`reporting.cobertura_siafe`). Para "
+        "peça que dependa do valor exato de um credor, conferir no SIAFE o que ele já tem.")
     add("")
     add(f"> {_NOTA_CARDINALIDADE}")
     card = ctx.get("cardinalidade") or {}

@@ -21,6 +21,7 @@ mesmo processo é anexo duplicado, não reciclagem. Cada achado cita os arquivos
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,12 @@ DESVIO_MINIMO = 8.0
 # de PDF: sem este corte, o detector acusa "reciclagem" de rodapé de formulário, não de registro de obra.
 BRILHO_DOCUMENTO = 200.0
 SATURACAO_DOCUMENTO = 12.0
+# Escaneamento CINZA (CamScanner/fotocópia): brilho 183-196, saturação 0-2,8 — abaixo do corte de brilho acima, e
+# por isso a alteração contratual de um fornecedor, anexada a dois processos, virou "foto reciclada" na 1ª rodada do
+# acervo inteiro (24/09/2026). Amostra de 78 fotos reais: saturação mínima p5 = 17,1, nenhuma abaixo de 12.
+# Papel cinza é claro (>170); foto em preto e branco de verdade tende a ser mais escura.
+BRILHO_DOCUMENTO_CINZA = 170.0
+SATURACAO_DOCUMENTO_CINZA = 5.0
 _EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 _LADO = 9               # dHash: 9×8 pixels → 64 comparações horizontais
 # Recorte da foto embutida em página de relatório fotográfico (ver `_regioes_foto`). Aferido em
@@ -264,9 +271,11 @@ def _hashear(im) -> int | None:
     st = ImageStat.Stat(cinza)
     if st.stddev[0] < DESVIO_MINIMO:
         return None                                # branco/preto/fundo liso
-    if (st.mean[0] > BRILHO_DOCUMENTO
-            and ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1] < SATURACAO_DOCUMENTO):
+    sat = ImageStat.Stat(im.convert("RGB").convert("HSV")).mean[1]
+    if st.mean[0] > BRILHO_DOCUMENTO and sat < SATURACAO_DOCUMENTO:
         return None                                # página de documento escaneada, não fotografia
+    if st.mean[0] > BRILHO_DOCUMENTO_CINZA and sat < SATURACAO_DOCUMENTO_CINZA:
+        return None                                # escaneamento cinza (fotocópia/CamScanner) de documento
     if _fundo_de_papel(cinza):
         return None                                # papel AMARELADO: escapava do corte por saturação
     g = cinza.resize((_LADO, 8))
@@ -340,6 +349,66 @@ def _cobertura(dirs_processos, idx: dict) -> dict:
                 "Ausência de reciclagem NÃO se estende aos processos não alcançados.")}
 
 
+# ── confirmação por assinatura INDEPENDENTE ─────────────────────────────────────────────────────────────
+# O dHash tem 64 bits: no acervo inteiro (4.998 fotos, 24/09/2026) ele juntou uma página de relatório fotográfico
+# (hidrante, porta corta-fogo) com a cópia autenticada de um documento pessoal — imagens sem nada em comum. Grupo
+# de "reciclagem" agora só vale se a MESMA região também bater numa 2ª medida, que não compartilha o viés do
+# dHash: miniatura 16×16 em cinza com correlação normalizada ≥ NCC_MIN e cor média a menos de COR_MAX.
+NCC_MIN = 0.90
+COR_MAX = 20.0          # RMS por célula da grade 8×8×RGB (idênticos: 0,6–1,0; fotos diferentes parecidas: ~49)
+
+
+def _alvo_do_hash(caminho, h: int):
+    """A região (ou a imagem inteira) do arquivo cujo dHash é `h` — a mesma que entrou no índice."""
+    from PIL import Image
+    with Image.open(caminho) as im:
+        im.load()
+        for a in ([im.crop(c) for c in _regioes_foto(im)] or [im]):
+            if _hashear(a) == h:
+                return a.convert("RGB")
+    return None
+
+
+def _assinatura2(caminho, h: int):
+    from PIL import Image
+    try:
+        a = _alvo_do_hash(caminho, h)
+    except (OSError, ValueError, Image.DecompressionBombError) as e:  # ilegível agora: não confirma (não acusa)
+        logger.debug("assinatura 2 falhou (%s): %s", caminho, e)
+        return None
+    if a is None:
+        return None
+    g16 = a.convert("L").resize((16, 16))
+    cinza = list(g16.get_flattened_data() if hasattr(g16, "get_flattened_data") else g16.getdata())
+    m = sum(cinza) / len(cinza)
+    v = [x - m for x in cinza]
+    n = sum(x * x for x in v) ** 0.5 or 1.0
+    # cor CÉLULA A CÉLULA (grade 8×8×RGB), não a média global: com a média, um caminhão laranja e um azul de
+    # composição parecida confirmavam (Geo Ambiental, 27/09/2026 — RMS por célula 48,7 × 0,6–1,0 nos idênticos)
+    c8 = a.resize((8, 8))
+    celulas = [x for px in (c8.get_flattened_data() if hasattr(c8, "get_flattened_data") else c8.getdata()) for x in px]
+    return [x / n for x in v], celulas
+
+
+def _confirma(s1, s2) -> bool:
+    if not s1 or not s2:
+        return False
+    ncc = sum(x * y for x, y in zip(s1[0], s2[0]))
+    rms = (sum((x - y) ** 2 for x, y in zip(s1[1], s2[1])) / max(1, len(s1[1]))) ** 0.5
+    return ncc >= NCC_MIN and rms <= COR_MAX
+
+
+def _confirmar_grupo(ocorrencias: list[dict]) -> list[dict]:
+    """Mantém só as ocorrências que batem na 2ª assinatura com ao menos uma de OUTRO processo."""
+    sig = [_assinatura2(o["arquivo"], o["_h"]) for o in ocorrencias]
+    ok = set()
+    for i in range(len(ocorrencias)):
+        for j in range(i + 1, len(ocorrencias)):
+            if ocorrencias[i]["processo"] != ocorrencias[j]["processo"] and _confirma(sig[i], sig[j]):
+                ok.update((i, j))
+    return [ocorrencias[i] for i in sorted(ok)]
+
+
 def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
     """MESMA foto em processos DIFERENTES — veredito resolvido.
 
@@ -364,6 +433,7 @@ def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
             baldes.setdefault((pos, (h >> (pos * 8)) & 0xFF), []).append(h)
     usado: set[int] = set()
     grupos = []
+    nao_confirmados = 0                            # o dHash juntou, a 2ª assinatura não confirmou
     for h in hashes:
         if h in usado:
             continue
@@ -375,20 +445,27 @@ def reciclagem(dirs_processos, *, limiar: int = LIMIAR_IGUAL) -> dict:
                 bloco.append(h2)
                 usado.add(h2)
         usado.add(h)
-        ocorrencias = [o for hh in bloco for o in idx[hh]]
-        processos = {o["processo"] for o in ocorrencias}
-        if len(processos) > 1:                     # só é RECICLAGEM entre processos distintos
-            grupos.append({"n_processos": len(processos), "ocorrencias": ocorrencias})
+        ocorrencias = [{**o, "_h": hh} for hh in bloco for o in idx[hh]]
+        if len({o["processo"] for o in ocorrencias}) > 1:   # só é RECICLAGEM entre processos distintos
+            confirmadas = _confirmar_grupo(ocorrencias)
+            processos = {o["processo"] for o in confirmadas}
+            if len(processos) > 1:
+                grupos.append({"n_processos": len(processos),
+                               "ocorrencias": [{k: v for k, v in o.items() if k != "_h"} for o in confirmadas]})
+            else:
+                nao_confirmados += 1
     n_fotos = sum(len(v) for v in idx.values())
     if not grupos:
         return {"grau": "verde", "n_fotos": n_fotos, "n_grupos": 0, "grupos": [],
                 "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
+                "n_pares_dhash_nao_confirmados": nao_confirmados,
                 "resumo": f"{n_fotos} foto(s) analisada(s): nenhuma imagem se repete entre processos "
                           "distintos (sem indício de registro fotográfico reciclado).",
                 "acao": "", "ressalva": _RESSALVA, "fonte": "foto_medicao (dHash, offline)"}
     total = sum(len(g["ocorrencias"]) for g in grupos)
     return {"grau": "vermelho", "n_fotos": n_fotos, "n_grupos": len(grupos), "grupos": grupos,
             "n_descartadas_nao_informativas": descartadas, "cobertura": cob,
+            "n_pares_dhash_nao_confirmados": nao_confirmados,
             "resumo": (f"{len(grupos)} imagem(ns) aparece(m) em MAIS DE UM PROCESSO ({total} ocorrências "
                        f"em {n_fotos} fotos): o mesmo registro fotográfico lastreia medições de processos "
                        "diferentes — indício GRAVE de comprovação reciclada, a confirmar nos autos."),
@@ -539,3 +616,92 @@ def avaliar_fotos(dir_processo, *, objeto: str = "", descrever=None, outros_proc
             "sinais": sinais, "fotos": descricoes, "leitura_visual": leitura,
             "resumo": " ".join(s["observacao"] for s in sinais) or rec["resumo"],
             "ressalva": _RESSALVA, "fonte": "foto_medicao"}
+
+
+# ── a MESMA foto em MEDIÇÕES DIFERENTES do mesmo contrato ─────────────────────────────────────────────────────
+# `reciclagem` ignora repetição dentro do processo ("anexo duplicado") — mas num contrato medido MÊS A MÊS, a mesma
+# foto no relatório de dois períodos "prova" dois meses de serviço com o registro de um. Caso que ensinou (27/09/2026,
+# INEA 35/2023, Geo Ambiental, SEI-070002/005897/2024): a foto de um trator em "Casimiro de Abreu – bota fora" da 14ª
+# e 15ª medições (set–nov/2024) reaparece na 28ª e 29ª (out/2025) como "Casimiro de Abreu – Rio Lontra".
+# Falso positivo que o corte de MAPA resolve: a imagem de satélite de localização (Google Earth, com pino) repete-se
+# legitimamente em todo relatório. Foto de campo tem CÉU (faixa superior lisa): razão entre o desvio do topo e o do
+# resto medida em 0,23–0,53 nas fotos e 0,94–1,40 nos mapas. Custo declarado: foto de campo SEM céu fica de fora.
+RAZAO_TEXTURA_MAPA = 0.85
+_RX_MEDICAO = re.compile(r"(\d{1,3})\s*[ªa°º]\s*medi", re.I)
+
+
+def parece_mapa(im) -> bool:
+    """Imagem SEM céu = mapa de satélite (ou foto sem céu, que fica de fora — custo declarado).
+
+    Céu = faixa superior CLARA (brilho ≥ 140) ou AZUL (azul − verde ≥ 40), e LISA (textura do topo < 0,85 da do
+    resto). Medido na Geo Ambiental: fotos de campo com topo 177–196 de brilho ou azul − verde 46–88; mapas 40–94 e ≤ 26."""
+    from PIL import ImageStat
+    rgb = im.convert("RGB")
+    w, h = rgb.size
+    corte = max(1, h // 6)
+    topo_rgb = rgb.crop((0, 0, w, corte))
+    r, g_, b = ImageStat.Stat(topo_rgb).mean
+    cinza = rgb.convert("L")
+    topo = ImageStat.Stat(cinza.crop((0, 0, w, corte)))
+    resto = ImageStat.Stat(cinza.crop((0, corte, w, h))).stddev[0] or 1.0
+    tem_ceu = (topo.mean[0] >= 140 or (b - g_) >= 40) and topo.stddev[0] / resto < RAZAO_TEXTURA_MAPA
+    return not tem_ceu
+
+
+def reciclagem_entre_medicoes(dir_processo) -> dict:
+    """Grupos de foto repetida em relatórios fotográficos de MEDIÇÕES diferentes (período diferente) do processo."""
+    import json
+    from PIL import Image
+    d = Path(dir_processo)
+    try:
+        man = json.loads((d / "manifest.json").read_text(encoding="utf-8", errors="ignore"))
+    except (OSError, ValueError):
+        return {"grau": "nao_aplicavel", "grupos": [], "n_fotos": 0}
+    titulos = {int(x["i"]): str(x.get("titulo") or "") for x in man.get("docs") or []
+               if isinstance(x, dict) and str(x.get("i", "")).isdigit()}
+    idx: dict[int, list[dict]] = {}
+    n = 0
+    for f in sorted((d / "fotos").glob("*")) if (d / "fotos").is_dir() else []:
+        m = re.match(r"(\d+)_", f.name)
+        t = titulos.get(int(m.group(1)), "") if m else ""
+        med = _RX_MEDICAO.search(t) if re.search(r"fotogr", t, re.I) else None
+        if not med:
+            continue
+        try:
+            with Image.open(f) as im:
+                im.load()
+                for a in [im.crop(c) for c in _regioes_foto(im)] or [im]:
+                    h = _hashear(a)
+                    if h is None or parece_mapa(a):
+                        continue
+                    idx.setdefault(h, []).append({"processo": f"medicao {int(med.group(1))}", "arquivo": str(f),
+                                                  "medicao": int(med.group(1)), "documento": t})
+                    n += 1
+        except (OSError, ValueError, Image.DecompressionBombError):
+            continue
+    grupos, usado = [], set()
+    baldes: dict = {}
+    for h in idx:
+        for p in range(8):
+            baldes.setdefault((p, (h >> (p * 8)) & 0xFF), []).append(h)
+    for h in idx:
+        if h in usado:
+            continue
+        bloco = {h} | {c for p in range(8) for c in baldes.get((p, (h >> (p * 8)) & 0xFF), ())
+                       if c not in usado and distancia(h, c) <= LIMIAR_IGUAL}
+        usado |= bloco
+        oc = [{**o, "_h": hh} for hh in bloco for o in idx[hh]]
+        if len({o["medicao"] for o in oc}) < 2:
+            continue
+        conf = _confirmar_grupo(oc)
+        meds = sorted({o["medicao"] for o in conf})
+        if len(meds) >= 2:
+            grupos.append({"medicoes": meds, "ocorrencias": [{k: v for k, v in o.items() if k != "_h"} for o in conf]})
+    grupos.sort(key=lambda g: -(g["medicoes"][-1] - g["medicoes"][0]))
+    return {"grau": "vermelho" if grupos else ("verde" if n else "nao_aplicavel"), "grupos": grupos, "n_fotos": n,
+            "resumo": (f"{len(grupos)} foto(s) repetida(s) em medições de PERÍODOS diferentes (maior distância: "
+                       f"{grupos[0]['medicoes'][0]}ª → {grupos[0]['medicoes'][-1]}ª)" if grupos else
+                       f"{n} foto(s) de campo em relatórios de medição, nenhuma repetida entre períodos"),
+            "ressalva": ("mapa de satélite fora do confronto (repete legitimamente); foto de campo sem céu também sai "
+                         "— ausência de achado não cobre essas. Indício a conferir nas páginas, não prova."),
+            "fonte": "foto_medicao.reciclagem_entre_medicoes (dHash + 2ª assinatura, offline)"}

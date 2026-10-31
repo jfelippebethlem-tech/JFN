@@ -16,6 +16,7 @@ registra no cabeçalho qual modelo de fato respondeu.
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import json
 import os
@@ -82,7 +83,7 @@ def _post(model_id: str, sistema: str, prompt: str, timeout_s: int = 300,
             from compliance_agent.sei.dossie_fracionado import marcar_truncado
             texto = marcar_truncado(texto)
     except (KeyError, IndexError, TypeError):
-        pass
+        logging.getLogger(__name__).debug("sei_dossie_md.py:84: exceção ignorada (era except-pass mudo)", exc_info=True)
     return texto
 
 

@@ -1,0 +1,67 @@
+{
+ "numero": "SEI-030001/069533/2024",
+ "grau": "vermelho",
+ "leitor": "Claude — leitura do processo de contratação (27/09/2026)",
+ "linha_do_tempo": [
+  [
+   "15/08/2024 / 04/12/2024",
+   "Abertura (SEEDUC/SUPED)"
+  ],
+  [
+   "dez/2024",
+   "ETP, TR, pesquisa de preço, carta de exclusividade (válida até 28/05/2025), Parecer 12 ASSJUR"
+  ],
+  [
+   "09/12/2024",
+   "Proposta da EUREKA"
+  ],
+  [
+   "30/12/2024 / 17/01/2025",
+   "Contratos 39/2024 e 02/2025 (A), B e C"
+  ]
+ ],
+ "achados": [
+  {
+   "grau": "vermelho",
+   "diz": "Inexigibilidade por fornecedor EXCLUSIVO (art. 74, I) sobre material que a própria SEEDUC já comprou de OUTRA empresa (Photonlux, 2023) — a exclusividade não é explicada nos autos.",
+   "fundamento": "Lei 14.133/2021, art. 74, I e §1º"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "O ETP admite 'outras editoras, desde que tenham características físicas similares' — incompatível com a inviabilidade de competição.",
+   "fundamento": "art. 74, §1º (vedada preferência por marca)"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "O ETP COMPAROU alternativas de mercado (ex.: Editora Melhoramentos, descartada por não ter plataforma digital) e concluiu recomendando 'a modalidade licitatória… que o processo licitatório assegure' — a contratação saiu por inexigibilidade.",
+   "fundamento": "Lei 14.133/2021, arts. 18 e 72"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "A 'declaração de exclusividade' é da própria contratada sobre as próprias obras: prova que ela é a editora, não que só aquela coleção atende.",
+   "fundamento": "art. 74, §1º"
+  },
+  {
+   "grau": "verde",
+   "diz": "Preço com referência: R$ 363,88/kit igual ao da compra de 2023 e 45% abaixo do preço de capa (R$ 661,60).",
+   "fundamento": "art. 23"
+  },
+  {
+   "grau": "amarelo",
+   "diz": "O Parecer 12 (ASSJUR) aprovou 'desde que atendidas as recomendações', alertou para o risco de direcionamento em compra de livros e declarou não condicionar o prosseguimento — não tratou da compra de 2023 nem da recomendação do ETP de licitar.",
+   "fundamento": "art. 53"
+  }
+ ],
+ "conexoes": [
+  "2023: a MESMA coleção foi comprada pela SEEDUC da PHOTONLUX DISTRIBUIDORA (09.175.434/0001-05, Cariacica/ES, atacadista de livros) por adesão à ARP 29/2022 de um Instituto Federal — Contrato SEEDUC 14/2023 (SEI-030029/008726/2023): R$ 385.799.673,52 pagos em 13 OBs.",
+  "Somando 2023 (Photonlux) e 2025 (EUREKA): R$ 936.064.381,82 da SEEDUC no mesmo material em três anos."
+ ],
+ "verificar": [
+  "Processo de adesão 2023 (SEI-030029/008726/2023, enfileirado): quantidades da ARP 29/2022 e limites de carona (art. 86 §4º).",
+  "Por que a EUREKA passou a vender direto em 2025 o que a Photonlux vendeu em 2023 — relação comercial entre as duas.",
+  "Contratos B e C (R$ 96,66 mi): executados?"
+ ],
+ "parecer": "INDÍCIO GRAVE de inexigibilidade sem inviabilidade de competição demonstrada: o próprio planejamento admite equivalentes, recomenda licitar e registra que o mesmo material foi fornecido por outra empresa um ano antes. Somado à liquidação antecipada do Contrato 39/2024, o conjunto recomenda representação ao TCE-RJ.",
+ "ressalvas": "Indício ≠ acusação. O preço tem referência e a qualidade técnica foi avaliada no ETP.",
+ "caso": "vault/casos/eureka-seeduc-inexigibilidade-2025.md"
+}

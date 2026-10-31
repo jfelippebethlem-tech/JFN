@@ -24,6 +24,7 @@ from collections import Counter
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from compliance_agent.sei import acervo_texto  # noqa: E402
 from compliance_agent.sei.agentes_publicos import (  # noqa: E402
     PAPEIS_DECISORIOS, PAPEIS_FISCALIZACAO, montar_ficha,
 )
@@ -59,9 +60,13 @@ def _textos(pasta: pathlib.Path) -> dict[str, str]:
     if not td.is_dir():
         return {}
     docs: dict[str, str] = {}
-    for f in sorted(td.glob("*.txt"))[:MAX_DOCS_POR_PROCESSO]:
+    # pelo MANIFESTO: sobra de captura anterior não é documento do processo, e daqui saem
+    # NOMES de agentes públicos (ver `sei/acervo_texto.arquivos_declarados`).
+    for f in acervo_texto.arquivos_declarados(pasta)[:MAX_DOCS_POR_PROCESSO]:
         try:
-            docs[f.name] = f.read_text(errors="replace")
+            # sem a etiqueta: daqui saem NOMES de agentes públicos, e o título que nós
+            # prepomos ao arquivo não pode virar pessoa (ver `sei/acervo_texto`).
+            docs[f.name] = acervo_texto.sem_etiqueta(f.read_text(errors="replace"))
         except OSError:
             continue
     return docs

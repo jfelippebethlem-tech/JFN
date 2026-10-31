@@ -27,6 +27,7 @@ Chutar o enquadramento produziria um conjunto-ouro que mede a nossa própria ima
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 from pathlib import Path
@@ -268,7 +269,7 @@ def cobertura(db: str | Path | None = None,
             resumo["por_rotulo"][caso["rotulo"]] = resumo["por_rotulo"].get(caso["rotulo"], 0) + 1
             resumo["por_vicio"][caso["vicio"]] = resumo["por_vicio"].get(caso["vicio"], 0) + 1
     except sqlite3.OperationalError:
-        pass
+        logging.getLogger(__name__).debug("corpus_veredito.py:270: exceção ignorada (era except-pass mudo)", exc_info=True)
     finally:
         con.close()
     return resumo

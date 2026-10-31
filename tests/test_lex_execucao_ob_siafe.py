@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+"""A perícia de execução tem de VER o pagamento do SIAFE, e achado de caso não entra na fila do sistema.
+
+Medido em 29/10/2026: 550 dos 666 processos em que ela apontou 'ausência de Ordem Bancária' tinham OB
+contabilizada no SIAFE (a OB não mora na pasta do SEI); e cada execução frágil virava 1 item em
+`lex_feedback` — 2.400 dos 3.074 abertos.
+"""
+from __future__ import annotations
+
+import inspect
+import sqlite3
+
+import pytest
+
+from tools import lex_execucao as L
+
+
+@pytest.fixture(autouse=True)
+def _sem_memoria_real(monkeypatch):
+    """`_regras_calibracao` abre a memória pelo ORM, que CRIA data/compliance.db vazio — no CI isso fazia
+    /api/ugs responder 500 noutro teste do mesmo lote (29/10/2026)."""
+    monkeypatch.setattr(L, "_regras_calibracao", lambda: "(teste)")
+
+
+def _base():
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE ob_orcamentaria_siafe (processo TEXT, valor REAL, data_emissao TEXT, status TEXT)")
+    con.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?)", [
+        ("SEI-330002/031566/24", 1000.0, "17/01/2025", "Contabilizado"),
+        ("330002/31566/2024", 500.5, "03/12/2024", "Contabilizado"),
+        ("SEI-330002/031566/2024", 9e9, "2024-05-01", "Anulado"),        # anulada não é pagamento
+        ("SEI-330002/031567/2024", 7.0, "2024-05-01", "Contabilizado"),  # outro processo
+    ])
+    return con
+
+
+def test_grafias_do_mesmo_processo_casam():
+    assert L._chave_processo("SEI-330002/031566/24") == L._chave_processo("330002/31566/2024")
+    assert L._chave_processo("350010/002351-8/2024") == "350010/2351/2024"
+    assert L._chave_processo("0") is None
+
+
+def test_mapa_soma_so_contabilizadas_do_processo():
+    m = L.mapa_obs_siafe(_base(), ["SEI-330002/031566/2024"])
+    d = m["330002/31566/2024"]
+    assert d["n"] == 2 and abs(d["total"] - 1500.5) < 1e-6 and len(m) == 1
+
+
+def test_bloco_do_prompt_diz_pago_ou_indisponivel():
+    m = L.mapa_obs_siafe(_base(), ["SEI-330002/031566/2024"])
+    b = L._bloco_siafe("SEI-330002/031566/2024", m)
+    assert "2 OB(s) contabilizada(s), total R$ 1.500,50, emitidas de 03/12/2024 a 17/01/2025" in b
+    assert "INDISPONÍVEL" in L._bloco_siafe("SEI-999999/000001/2024", m)
+
+
+def test_prompt_leva_o_bloco_do_siafe():
+    vistos = []
+
+    def _gerar(prompt, sys_, t):
+        vistos.append((prompt, sys_))
+        raise TimeoutError
+    m = L.mapa_obs_siafe(_base(), ["SEI-330002/031566/2024"])
+    L.avaliar_processo(None, "SEI-330002/031566/2024", "obj", "", [], [], _gerar, m)
+    assert "PAGAMENTO NO SIAFE (fonte oficial da OB): 2 OB(s)" in vistos[0][0]
+    assert "NUNCA aponte 'ausência de OB'" in vistos[0][1]
+
+
+def test_execucao_fragil_nao_vai_para_a_fila_do_sistema():
+    assert "lex_feedback.registrar" not in inspect.getsource(L)
+
+
+def test_vereditos_contestados_pelo_siafe_vem_primeiro():
+    con = _base()
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT, indicios TEXT, resumo TEXT, nota_risco INT, em TEXT, "
+                "execucao_comprovada TEXT DEFAULT 'nao')")
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, objeto TEXT, valores TEXT, documentos TEXT, "
+                "red_flags TEXT, n_docs INT)")
+    con.executemany("INSERT INTO lex_execucao (numero_sei, indicios, resumo, nota_risco, em) VALUES (?,?,?,?,?)", [
+        ("SEI-330002/031566/2024", '["Ausência de Ordem Bancária (OB)"]', "", 5, "2026-09-01T10:00"),
+        ("SEI-111111/000001/2024", '["Ausência de Ordem Bancária (OB)"]', "", 5, "2026-09-01T10:00"),  # sem OB
+    ])
+    con.executemany("INSERT INTO sei_ficha VALUES (?,?,?,?,?,?)", [
+        ("SEI-222222/000002/2024", "novo", "", "[]", "[]", 50),
+        ("SEI-330002/031566/2024", "velho", "", "[]", "[]", 3),
+        ("SEI-111111/000001/2024", "velho", "", "[]", "[]", 2),
+    ])
+    assert [a[0] for a in L._alvos(con, 2, False)] == ["SEI-330002/031566/2024", "SEI-222222/000002/2024"]
+
+
+def test_so_quem_negou_a_ob_e_contestado():
+    assert L._NEGA_OB.search("Ausência de Ordem Bancária (OB) para comprovar o pagamento")
+    assert L._NEGA_OB.search("não há OB no trecho")
+    assert not L._NEGA_OB.search("divergência de competência entre a ordem bancária de retenção e a liberação")
+
+
+def _base_exec():
+    con = _base()
+    con.execute("CREATE TABLE lex_execucao (numero_sei TEXT PRIMARY KEY, objeto TEXT, tem_prestacao_contas INT, "
+                "tem_fiscalizacao INT, tem_relatorio_fotografico INT, tem_atesto_recebimento INT, tem_nota_fiscal INT, "
+                "tem_medicao INT, execucao_comprovada TEXT, coerencia TEXT, nota_risco INT, indicios TEXT, duvidas TEXT, "
+                "resumo TEXT, modelo TEXT, em TEXT)")
+    return con
+
+
+def test_resposta_cortada_nao_apaga_veredito_anterior():
+    con = _base_exec()
+    con.execute("INSERT INTO lex_execucao (numero_sei, execucao_comprovada, nota_risco, em) "
+                "VALUES ('SEI-1', 'nao', 9, '2026-06-22T13:11:17-03:00')")
+    assert L.avaliar_processo(con, "SEI-1", "obj", "", [], [], lambda *a: '{"execucao_comprovada": "indet') is None
+    assert con.execute("SELECT execucao_comprovada, nota_risco FROM lex_execucao").fetchone() == ("nao", 9)
+
+
+def test_veredito_vazio_antigo_volta_para_a_fila():
+    con = _base_exec()
+    con.execute("CREATE TABLE sei_ficha (numero_sei TEXT, objeto TEXT, valores TEXT, documentos TEXT, "
+                "red_flags TEXT, n_docs INT)")
+    con.executemany("INSERT INTO lex_execucao (numero_sei, execucao_comprovada, em) VALUES (?,?,?)", [
+        ("SEI-vazio-velho", None, "2026-07-01T10:00:00-03:00"), ("SEI-vazio-novo", None, "2099-01-01T10:00:00"),
+        ("SEI-ok", "sim", "2026-07-01T10:00:00-03:00")])
+    con.executemany("INSERT INTO sei_ficha VALUES (?,?,?,?,?,?)",
+                    [(n, "", "", "[]", "[]", 5) for n in ("SEI-vazio-velho", "SEI-vazio-novo", "SEI-ok")])
+    assert [a[0] for a in L._alvos(con, 5, False)] == ["SEI-vazio-velho"]
+
+
+def test_quem_leu_a_ob_nao_e_contestado():
+    assert not L._NEGA_OB.search("ausência do valor da NL 2025NL03689, que está vinculada à mesma OB")
+    assert not L._NEGA_OB.search("registro 'SEM CONTRATO' na Ordem Bancária principal")
+    assert L._NEGA_OB.search("há ausência de atesto de recebimento, nota fiscal e Ordem Bancária para formalizar")
+
+
+def test_regra_do_liquido_esta_no_sistema():
+    """SEI-490001/001078/2025: 443.902,73 − 5.327,91 (guia) = 438.574,82 (OB) e o modelo chamou de discrepância."""
+    assert "bruto − guias = OB" in L._SYS

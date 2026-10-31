@@ -19,7 +19,49 @@ LOG=data/guardiao_db_malformed.log
 exec 9>/tmp/guardiao_db_malformed.lock
 flock -n 9 || exit 0
 
-ROTAS=("comparador/economia" "intel/sancionadas?limite=1" "pericias?limite=1")
+# ── SONDA PROATIVA DE INTEGRIDADE (2026-08-12) ─────────────────────────────────────────────────
+# POR QUE ISTO ENTROU. Este vigia era só REATIVO: checava o arquivo apenas quando UMA das rotas
+# abaixo devolvia "malformed". Em 11-12/08 o banco corrompeu de verdade e o vigia NÃO VIU — a
+# tabela atingida (`ordens_bancarias`) não é tocada por nenhuma das três sondas, e a corrupção
+# viveu ~13 horas invisível, apagando 19 achados fiscais pelo caminho (processos reavaliados com
+# dado quebrado saem com MENOS achado, e um de risco EXTREMO foi a score 0).
+#
+# `quick_check(1)` custa 10,6 s numa base de 3,4 GB — barato de hora em hora, caro a cada 5 min.
+# O carimbo controla a cadência; o vigia continua rodando a cada 5 min para o caso reativo.
+SONDA_S=${JFN_GUARDIAO_SONDA_S:-3600}
+STAMP=data/.guardiao_integridade.stamp
+AGORA=$(date +%s)
+ULT=$(cat "$STAMP" 2>/dev/null || echo 0)
+if [ $((AGORA - ULT)) -ge "$SONDA_S" ]; then
+  q=$(ionice -c3 nice -n19 .venv/bin/python -c "
+import sqlite3
+try:
+    c = sqlite3.connect('file:data/compliance.db?mode=ro', uri=True, timeout=120)
+    print(c.execute('PRAGMA quick_check(1)').fetchone()[0]); c.close()
+except Exception as e:
+    print('ERRO:%s' % e)
+" 2>/dev/null)
+  echo "$AGORA" > "$STAMP"
+  if [ "$q" != "ok" ]; then
+    # ALERTA UMA VEZ POR INCIDENTE. Avisar a cada 5 minutos seria trocar um silêncio por um
+    # dilúvio — e o dono já pagou o preço do dilúvio de e-mail do CI.
+    if [ ! -f data/.guardiao_corrompido.alertado ]; then
+      date -Is > data/.guardiao_corrompido.alertado
+      echo "$(date -Is) 🔴 SONDA: quick_check=$q — corrupção REAL detectada pela sonda proativa" >> "$LOG"
+      PYTHONPATH=. .venv/bin/python -c "
+from tools.ronda import notificar
+notificar('🔴 <b>compliance.db CORROMPIDO</b> — a sonda de integridade do guardião falhou.\n'
+          'NÃO é o caso do -shm morto (ali quick_check volta ok). Perícia de dado, não restart:\n'
+          '<code>python -m tools.reconstruir_db --saida /tmp/novo.db --laudo /tmp/laudo.json</code>\n'
+          'Avaliações feitas a partir de agora podem sair com MENOS achado — foi o que aconteceu em 12/08.')" 2>/dev/null
+    fi
+    exit 1
+  fi
+  # voltou ao normal: limpa a marca para que um próximo incidente volte a avisar
+  rm -f data/.guardiao_corrompido.alertado
+fi
+
+ROTAS=("comparador/economia" "intel/sancionadas?limite=1" "pericias?limite=1" "ugs")
 doente=""
 for r in "${ROTAS[@]}"; do
   if curl -s -m 25 "http://127.0.0.1:8000/api/$r" | grep -q "disk image is malformed"; then

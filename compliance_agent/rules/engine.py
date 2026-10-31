@@ -22,6 +22,7 @@ import json
 from datetime import date as _date
 from typing import Optional
 
+from sqlalchemy import Integer
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import (
@@ -516,6 +517,31 @@ class MotorCompliance:
     # Regras baseadas em Ordens Bancárias (dados do SIAFE2)
     # ══════════════════════════════════════════════════════════════════════════
 
+    # ── Janela e teto das regras de OB (10/09/2026) ─────────────────────────────────────────
+    # Quatro regras abaixo faziam `.query(OrdemBancaria).all()` sobre 1,18 milhão de OBs (1,7 GB de
+    # RAM) e uma consulta por OB (N+1): nunca terminavam nos 900 s do cron — o passo "regras" dava
+    # rc=124 e, antes do reparo do banco, morria antes por um erro de tipo com rc=0 (84 vezes).
+    # Regra da casa: candidatos filtrados NO SQL, janela recente e teto por execução. O `_criar_alerta`
+    # já deduplica por título, então rodar de novo não repete o alerta.
+    JANELA_OB_DIAS = 90
+    TETO_CANDIDATOS = 300
+
+    def _desde(self) -> _date:
+        from datetime import timedelta
+        return _date.today() - timedelta(days=self.JANELA_OB_DIAS)
+
+    # Favorecido que é ENTE PÚBLICO (transferência, tributo, fundo) não é fornecedor: "MINISTÉRIO DA
+    # FAZENDA em 3 UGs" e "FUNDO DE EQUALIZAÇÃO fracionado" eram os primeiros alertas da lista (10/09).
+    _PREFIXOS_ENTE = ("MINIST", "FUNDO ", "SECRETARIA", "TRIBUNAL", "PREFEITURA", "UNIVERSIDADE", "INSTITUTO NACIONAL",
+                      "CAIXA ECONOMICA", "BANCO DO BRASIL", "UNIAO", "ESTADO DO", "MUNICIPIO", "CAMARA", "ASSEMBLEIA",
+                      "DEFENSORIA", "PROCURADORIA", "GOVERNO", "FUNDACAO ", "RECEITA FEDERAL", "INSS", "TESOURO")
+
+    @classmethod
+    def _eh_ente_publico(cls, nome: str | None) -> bool:
+        import unicodedata
+        n = unicodedata.normalize("NFKD", (nome or "").upper()).encode("ascii", "ignore").decode()
+        return n.startswith(cls._PREFIXOS_ENTE)
+
     def _regra_ob_fracionamento(self):
         """
         Fracionamento de pagamentos via OB: mesmo favorecido recebe múltiplos
@@ -553,6 +579,7 @@ class MotorCompliance:
                 OrdemBancaria.favorecido_cpf.isnot(None),
                 OrdemBancaria.valor.isnot(None),
                 OrdemBancaria.valor > 0,
+                OrdemBancaria.data_emissao >= self._desde(),
             )
             .group_by(
                 OrdemBancaria.favorecido_cpf,
@@ -564,10 +591,16 @@ class MotorCompliance:
                 func.count(OrdemBancaria.id) >= 2,
                 func.sum(OrdemBancaria.valor) > LIMITE_DISPENSA,
             )
+            # sem janela e sem teto esta regra gravou 68.893 alertas "alta" numa execução (10/09) —
+            # o painel lista os 40 mais novos: o resto vira ruído que enterra os alertas de verdade
+            .order_by(func.sum(OrdemBancaria.valor).desc())
+            .limit(100)
             .all()
         )
 
         for row in subq:
+            if self._eh_ente_publico(row.favorecido_nome):
+                continue
             if not row.total:
                 continue
             exercicio = getattr(row.data_ini, "year", None) or _date.today().year
@@ -580,7 +613,7 @@ class MotorCompliance:
             )
             self._criar_alerta(
                 tipo       = "fracionamento",
-                severidade = "alta",
+                severidade = "média",   # soma mensal > teto de dispensa com 2+ OBs é INDÍCIO fraco; o detector de verdade é o P4/pcrj_d7
                 titulo     = f"Fracionamento OB — {row.favorecido_nome or row.favorecido_cpf} / UG {row.ug_codigo}",
                 descricao  = (
                     f"{row.n_obs} OBs para '{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) "
@@ -620,7 +653,10 @@ class MotorCompliance:
                 OrdemBancaria.numero_processo.is_(None),
                 OrdemBancaria.numero_sei.is_(None),
                 OrdemBancaria.status != "cancelada",
+                OrdemBancaria.data_emissao >= self._desde(),
             )
+            .order_by(OrdemBancaria.valor.desc())
+            .limit(self.TETO_CANDIDATOS)
             .all()
         )
 
@@ -666,23 +702,29 @@ class MotorCompliance:
             .filter(
                 OrdemBancaria.favorecido_cpf.isnot(None),
                 OrdemBancaria.valor > 0,
+                OrdemBancaria.data_emissao >= self._desde(),
             )
             .group_by(
                 OrdemBancaria.favorecido_cpf,
                 func.strftime("%Y-%m", OrdemBancaria.data_emissao),
             )
             .having(func.count(func.distinct(OrdemBancaria.ug_codigo)) >= 3)
+            # 16.336 alertas numa execução sem janela (10/09) — ver _regra_ob_fracionamento
+            .order_by(func.sum(OrdemBancaria.valor).desc())
+            .limit(50)
             .all()
         )
 
         for row in resultados:
+            if self._eh_ente_publico(row.favorecido_nome):
+                continue
             empresa = (
                 self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
                 if row.favorecido_cpf else None
             )
             self._criar_alerta(
                 tipo       = "direcionamento",
-                severidade = "média",
+                severidade = "baixa",   # fornecedor grande atende várias UGs; só vira notícia com outro sinal
                 titulo     = f"Favorecido em {row.n_ugs} UGs distintas — {row.favorecido_nome or row.favorecido_cpf} ({row.mes})",
                 descricao  = (
                     f"'{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) recebeu OBs de "
@@ -706,22 +748,26 @@ class MotorCompliance:
         OB paga a empresa aberta há menos de 6 meses.
         Cruza OrdemBancaria.favorecido_cpf com Empresa.cnpj e Empresa.data_abertura.
         """
-        obs = (
-            self.session.query(OrdemBancaria)
+        from sqlalchemy import func
+        dias = func.julianday(OrdemBancaria.data_emissao) - func.julianday(Empresa.data_abertura)
+        pares = (
+            self.session.query(OrdemBancaria, Empresa)
+            .join(Empresa, Empresa.cnpj == OrdemBancaria.favorecido_cpf)
             .filter(
                 OrdemBancaria.favorecido_cpf.isnot(None),
                 OrdemBancaria.valor > 0,
+                OrdemBancaria.data_emissao >= self._desde(),
+                Empresa.data_abertura.isnot(None),
+                dias >= 0,
+                dias < 180,
             )
+            .order_by(OrdemBancaria.valor.desc())
+            .limit(self.TETO_CANDIDATOS)
             .all()
         )
 
-        for ob in obs:
-            empresa = (
-                self.session.query(Empresa)
-                .filter_by(cnpj=ob.favorecido_cpf)
-                .first()
-            )
-            if not empresa or not empresa.data_abertura or not ob.data_emissao:
+        for ob, empresa in pares:
+            if not empresa.data_abertura or not ob.data_emissao:
                 continue
             try:
                 delta = (ob.data_emissao - empresa.data_abertura).days
@@ -761,12 +807,18 @@ class MotorCompliance:
         """
         MINIMO = 50_000.0
 
+        from sqlalchemy import func
         obs = (
             self.session.query(OrdemBancaria)
             .filter(
                 OrdemBancaria.valor >= MINIMO,
                 OrdemBancaria.status != "cancelada",
+                OrdemBancaria.data_emissao >= self._desde(),
+                # "redondo" decidido no SQL: múltiplo de 1000 sem centavos (valor em centavos % 100000)
+                (func.cast(func.round(OrdemBancaria.valor * 100), Integer) % 100000) == 0,
             )
+            .order_by(OrdemBancaria.valor.desc())
+            .limit(self.TETO_CANDIDATOS)
             .all()
         )
 
@@ -812,31 +864,43 @@ class MotorCompliance:
         TIPOS_SUSPEITOS = {"rescisão", "improbidade", "irregularidade", "condenação",
                            "cassação", "multa", "embargos", "inabilitação"}
 
-        obs = (
-            self.session.query(OrdemBancaria)
+        from sqlalchemy import func
+        # Um favorecido por vez (não uma OB por vez): os 100 maiores da janela. O casamento com o
+        # D.O. usa `cnpjs_extraidos` (coluna curta, já minerada), nunca ILIKE no `texto` de 500 mil
+        # caracteres por edição — era 1,18 milhão de OBs × 39 mil páginas.
+        favorecidos = (
+            self.session.query(OrdemBancaria.favorecido_cpf, func.sum(OrdemBancaria.valor).label("total"))
             .filter(
                 OrdemBancaria.favorecido_nome.isnot(None),
+                OrdemBancaria.favorecido_cpf.isnot(None),
                 OrdemBancaria.valor > 1000,
+                OrdemBancaria.data_emissao >= self._desde(),
             )
+            .group_by(OrdemBancaria.favorecido_cpf)
+            .order_by(func.sum(OrdemBancaria.valor).desc())
+            .limit(100)
             .all()
         )
 
-        for ob in obs:
+        for cpf_cnpj, _total in favorecidos:
+            cpf_cnpj = (cpf_cnpj or "").strip()
+            if len(cpf_cnpj) != 14 or not cpf_cnpj.isdigit():
+                continue   # CPF (mascarado ou não) não se cruza com o D.O. por número
+            ob = (
+                self.session.query(OrdemBancaria)
+                .filter(OrdemBancaria.favorecido_cpf == cpf_cnpj, OrdemBancaria.data_emissao >= self._desde())
+                .order_by(OrdemBancaria.valor.desc())
+                .first()
+            )
+            if ob is None:
+                continue
             nome = (ob.favorecido_nome or "").strip()
-            cpf_cnpj = (ob.favorecido_cpf or "").strip()
             if len(nome) < 5:
                 continue
 
-            # Search DOERJ for this name or CNPJ
             doerj_hits = (
                 self.session.query(PublicacaoDOERJ)
-                .filter(
-                    PublicacaoDOERJ.texto.isnot(None),
-                )
-                .filter(
-                    (PublicacaoDOERJ.texto.ilike(f"%{nome[:30]}%"))
-                    | (PublicacaoDOERJ.texto.ilike(f"%{cpf_cnpj}%") if cpf_cnpj else False)
-                )
+                .filter(PublicacaoDOERJ.cnpjs_extraidos.like(f"%{cpf_cnpj}%"))
                 .order_by(PublicacaoDOERJ.data_publicacao.desc())
                 .limit(5)
                 .all()
