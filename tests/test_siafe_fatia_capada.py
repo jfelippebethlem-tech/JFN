@@ -26,12 +26,12 @@ import pytest
 from compliance_agent.siafe_ob_orcamentaria import _fatia_capou
 
 
-@pytest.mark.parametrize("n", [989, 984, 986, 980, 1000])
+@pytest.mark.parametrize("n", [989, 984, 986, 980, 979, 975, 1000])   # 979: 18/09/2026, TFE tem 2.074
 def test_plato_medido_conta_como_capada(n):
     assert _fatia_capou(n, "2023OB1", 2023), f"fatia de {n} linhas passou como completa"
 
 
-@pytest.mark.parametrize("n", [0, 100, 643, 979])
+@pytest.mark.parametrize("n", [0, 100, 643, 974])
 def test_fatia_pequena_e_completa(n):
     assert not _fatia_capou(n, "2023OB1", 2023)
 

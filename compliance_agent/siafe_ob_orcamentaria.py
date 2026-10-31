@@ -1125,7 +1125,10 @@ async def _set_valor(pg, sel, valor):
 # scroller satura antes do teto nominal de 1.000. Com o guard em 990, 124 fatias truncadas entraram
 # no banco como se fossem o universo. Errar para o lado de subdividir custa consulta; errar para o
 # outro custa dado que ninguém sabe que falta.
-_FATIA_CAPOU = 980
+# 980 → 975 (31/10/2026): o dia 18/09/2026 colheu 979 OBs, passou por completo e o espelho TFE publica 2.074 para
+# ele. O platô medido já começava em 975 (`tools/siafe_recoletar_dias.PLATO`, e 27/10 parou em 975 exatos) — eram
+# duas cópias do mesmo número, divergindo.
+_FATIA_CAPOU = 975
 _PROF_MAX_PREFIXO = 7
 
 

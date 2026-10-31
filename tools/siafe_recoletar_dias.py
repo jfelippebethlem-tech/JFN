@@ -151,7 +151,11 @@ async def recoletar_tfe(dias: list[str], exercicio: int) -> dict:
         depois = _faltas_tfe(exercicio, dia=d).get(d, 0)
         out[d] = {k: r.get(k) for k in ("ok", "estouro", "ingeridas", "erro")} | {"falta_antes": antes,
                                                                                  "falta_depois": depois}
-        if r.get("ok"):          # só a colheita que rodou conta como visita; erro de login não fecha o dia
+        n = r.get("ingeridas") or 0
+        # colheita que parou no PLATÔ sem estourar não é visita: o dia foi cortado (18/09/2026: 979 colhidas, 2.074
+        # no espelho). Fica fora do registro para o sensor insistir — com o limiar do coletor já corrigido.
+        no_plato = not r.get("estouro") and PLATO[0] <= n < PLATO[1]
+        if r.get("ok") and not no_plato:   # só colheita completa conta como visita; erro de login não fecha o dia
             vistos[d] = {"quando": datetime.now().isoformat(timespec="seconds"), "falta_antes": antes,
                          "falta_depois": depois, "ingeridas": r.get("ingeridas")}
             TFE_VERIFICADOS.write_text(json.dumps(vistos, ensure_ascii=False, indent=1), encoding="utf-8")

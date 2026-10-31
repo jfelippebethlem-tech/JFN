@@ -376,3 +376,25 @@ def test_sem_historico_nao_acusa(tmp_path):
     import sqlite3
     sqlite3.connect(tmp_path / "c.db").close()
     assert A.sensor_pareceres(tmp_path / "c.db") == []
+
+
+def test_lacuna_tfe_colheita_no_plato_nao_vira_visita(tmp_path, monkeypatch):
+    """18/09/2026: colheu 979 sem estourar e a lacuna não mexeu — o dia foi cortado, não visitado."""
+    import asyncio
+    import json
+    import compliance_agent.siafe_ob_orcamentaria as M
+    import tools.siafe_recoletar_dias as R
+    monkeypatch.setattr(R, "TFE_VERIFICADOS", tmp_path / "t.json")
+    monkeypatch.setattr(R, "_faltas_tfe", lambda ex, dia=None: {dia: 1177})
+
+    async def cortado(ex, d):
+        return {"ok": True, "estouro": False, "ingeridas": 979}
+
+    async def completo(ex, d):
+        return {"ok": True, "estouro": True, "ingeridas": 3199}
+    monkeypatch.setattr(M, "coletar_por_data", cortado)
+    asyncio.run(R.recoletar_tfe(["18/09/2026"], 2026))
+    assert not (tmp_path / "t.json").exists()
+    monkeypatch.setattr(M, "coletar_por_data", completo)
+    asyncio.run(R.recoletar_tfe(["01/09/2026"], 2026))
+    assert json.loads((tmp_path / "t.json").read_text())["01/09/2026"]["ingeridas"] == 3199
