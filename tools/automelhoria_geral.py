@@ -346,10 +346,43 @@ def sensor_filas(db: Path | None = None, agora: float | None = None) -> list[dic
     return out
 
 
+# PARECER QUE OSCILA (dono, 30/10/2026: "comparando com os pareceres anteriores… aprendizado contínuo"). O
+# histórico do 360 (`processo_avaliacao_hist`) guarda o que cada reavaliação pôs e tirou. Achado que ENTRA, SAI e
+# VOLTA no mesmo processo é leitura instável — o detector depende de algo que muda entre rodadas (ordem da árvore,
+# teto de texto, captura parcial) — e cada oscilação é um parecer que disse coisas diferentes sobre os mesmos autos.
+OSCILA_MIN_PROCESSOS = 3
+
+
+def sensor_pareceres(db: Path | None = None) -> list[dict]:
+    import sqlite3
+    db = db or DATA / "compliance.db"
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        rows = con.execute("SELECT numero_sei, entraram_json, sairam_json FROM processo_avaliacao_hist "
+                           "WHERE avaliado_em >= datetime('now', '-30 days') ORDER BY numero_sei, avaliado_em").fetchall()
+    except sqlite3.OperationalError:
+        return []                     # histórico ainda não criado: nada a comparar
+    finally:
+        con.close()
+    saiu: set[tuple[str, str]] = set()
+    oscilou: dict[str, set[str]] = {}
+    for num, ent, sai in rows:
+        for chave in json.loads(sai or "[]"):
+            saiu.add((num, chave))
+        for chave in json.loads(ent or "[]"):
+            if (num, chave) in saiu:               # já tinha saído deste processo e voltou
+                oscilou.setdefault(chave.split("|")[0], set()).add(num)
+    return [_p("pareceres", f"oscila_{cod}", f"achado {cod} oscila entre reavaliações ({len(ps)} processos)",
+               ", ".join(sorted(ps)[:5]),
+               acao_humana="abrir 2 processos da lista, comparar as duas leituras e achar o que muda entre "
+                           "rodadas (ordem da árvore, teto de texto, captura) — consertar o detector, com teste")
+            for cod, ps in sorted(oscilou.items()) if len(ps) >= OSCILA_MIN_PROCESSOS]
+
+
 SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
-            "painel": sensor_painel, "filas": sensor_filas}
+            "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres}
 
 
 def sentir(sensores: dict = SENSORES) -> tuple[list[dict], dict]:

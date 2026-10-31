@@ -349,3 +349,30 @@ def test_carimbo_de_senha_recusada_tira_o_remedio_do_diario(tmp_path, monkeypatc
     assert {p["assinatura"]: p for p in A.sensor_siafe()}["siafe:diario"]["remediar"]
     (data / ".siafe_dreno_credencial_2").touch()
     assert {p["assinatura"]: p for p in A.sensor_siafe()}["siafe:diario"]["remediar"] == ""
+
+
+def test_parecer_que_oscila_vira_problema_do_detector(tmp_path):
+    """Achado que sai e VOLTA no mesmo processo em 3+ processos = leitura instável do detector."""
+    import json
+    import sqlite3
+    db = tmp_path / "c.db"
+    con = sqlite3.connect(db)
+    con.execute("create table processo_avaliacao_hist (numero_sei text, avaliado_em text, entraram_json text, "
+                "sairam_json text)")
+    ch = "FZ1_ATESTO_ANTES_DO_FIM_DO_PERIODO|Atestado 1"
+    for i, num in enumerate(("A", "B", "C", "D")):
+        seq = [[ch], [], [ch]] if num != "D" else [[ch], [], []]       # D saiu e não voltou: não oscila
+        sai = [[], [ch], []]
+        for k in range(3):
+            con.execute("insert into processo_avaliacao_hist values (?, datetime('now', ?), ?, ?)",
+                        (num, f"-{10 - k} hours", json.dumps(seq[k]), json.dumps(sai[k])))
+    con.commit(); con.close()
+    (p,) = A.sensor_pareceres(db)
+    assert p["assinatura"] == "pareceres:oscila_FZ1_ATESTO_ANTES_DO_FIM_DO_PERIODO"
+    assert "3 processos" in p["titulo"] and "D" not in p["detalhe"].split(", ")
+
+
+def test_sem_historico_nao_acusa(tmp_path):
+    import sqlite3
+    sqlite3.connect(tmp_path / "c.db").close()
+    assert A.sensor_pareceres(tmp_path / "c.db") == []
