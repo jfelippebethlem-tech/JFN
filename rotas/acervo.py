@@ -38,6 +38,21 @@ async def api_acervo_regras(limite: int = 300):
     return JSONResponse(content=await asyncio.to_thread(regras_acesas, max(1, min(int(limite or 300), 2000))))
 
 
+@router.get("/api/casos")
+async def api_casos():
+    """Os dossiês do vault (casos conferidos à mão), com o parecer do Processo 360 dos autos que citam."""
+    from compliance_agent.casos_vault import listar
+    r = await asyncio.to_thread(listar)
+    return JSONResponse(content=r, status_code=200 if r.get("ok") else 503)
+
+
+@router.get("/api/casos/nota")
+async def api_casos_nota(slug: str = ""):
+    from compliance_agent.casos_vault import nota
+    r = await asyncio.to_thread(nota, slug)
+    return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
+
+
 _EST: dict = {}
 
 

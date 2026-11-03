@@ -9,6 +9,8 @@ GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
 GET /api/captura/cobertura -> api_captura_cobertura
 GET /api/cartel -> api_cartel
+GET /api/casos -> api_casos
+GET /api/casos/nota -> api_casos_nota
 GET /api/certame/indice -> api_certame_indice
 GET /api/certames/lista -> api_certames_lista
 GET /api/coendereco/clusters -> api_coendereco_clusters
