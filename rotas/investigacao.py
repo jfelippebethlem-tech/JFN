@@ -1246,6 +1246,19 @@ def _cache_calc(chave: str, ttl: int, calcular):
         return d
     with _cache_travas_mestra:
         trava = _cache_travas.setdefault(chave, _threading.Lock())
+    # VENCIDO mas existente: entrega o último valor JÁ e recalcula em segundo plano (stale-while-revalidate).
+    # Sem isto, quem chegava logo após o TTL esperava o cálculo inteiro — a fênix, 72,6 s (03/11/2026).
+    if (velho := _cache.get(chave)) is not None:
+        if trava.acquire(blocking=False):
+            def _renovar():
+                try:
+                    _cache_put(chave, calcular())
+                except Exception:  # noqa: BLE001 — falha no recálculo mantém o valor anterior
+                    logger.warning("cache %s: recálculo em 2º plano falhou", chave, exc_info=True)
+                finally:
+                    trava.release()
+            _threading.Thread(target=_renovar, daemon=True, name=f"cache:{chave}").start()
+        return velho[1]
     with trava:
         if d := _cache_get(chave, ttl):
             return d
@@ -2090,7 +2103,7 @@ def api_intel_fenix(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import empresa_fenix
         lim = max(1, min(int(limite or 120), 300))
-        d = _cache_calc(f"intel:fenix:{lim}", 600, lambda: empresa_fenix(limite=lim))
+        d = _cache_calc(f"intel:fenix:{lim}", 3600, lambda: empresa_fenix(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

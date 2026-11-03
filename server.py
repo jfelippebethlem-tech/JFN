@@ -358,6 +358,17 @@ _DASH_COOKIE = "jfn_session"
 _DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(30 * 24 * 3600)))  # 30 dias
 _DASH_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
 _DASH_LOCAL = {"127.0.0.1", "::1", "localhost", "testclient", None, ""}  # "testclient" = TestClient in-process (testes/Yoda)
+# Os dois túneis (Cloudflare e Tailscale Funnel) entregam o visitante da INTERNET pela porta 127.0.0.1.
+# Hoje quem salva é o uvicorn reescrever request.client a partir do X-Forwarded-For — padrão implícito
+# (proxy_headers), que um upgrade ou flag muda sem aviso e abriria o painel inteiro. Por isso a isenção
+# de localhost exige também que NÃO haja cabeçalho de proxy: o Yoda nunca manda nenhum.
+_DASH_PROXY_HDRS = ("x-forwarded-for", "x-real-ip", "forwarded", "cf-connecting-ip", "tailscale-user-login")
+# Login sem limite de tentativa = senha adivinhável pela internet. 5 erros em 15 min por IP → 429.
+_LOGIN_FALHAS: dict[str, list[float]] = {}
+_LOGIN_MAX, _LOGIN_JANELA = 5, 15 * 60
+_SEC_HDRS = {"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+             "Referrer-Policy": "same-origin", "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+             "Content-Security-Policy": "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"}
 
 
 def _dash_token() -> str:
@@ -386,7 +397,8 @@ async def _auth_jfn(request: Request, call_next):
         return await call_next(request)
     cliente = request.client.host if request.client else ""
     path = request.url.path
-    if (cliente in _DASH_LOCAL                      # Yoda interno (127.0.0.1) nunca é barrado
+    via_proxy = any(h in request.headers for h in _DASH_PROXY_HDRS)
+    if ((cliente in _DASH_LOCAL and not via_proxy)  # Yoda interno (127.0.0.1) nunca é barrado
             or path == "/login_jfn"
             or path == "/favicon.ico"
             or path.startswith("/static/login")):
@@ -536,13 +548,29 @@ async def login_jfn_form(erro: int = 0):
     return HTMLResponse(_LOGIN_HTML.replace("{{ERRO}}", msg))
 
 
+@app.middleware("http")
+async def _cabecalhos_seguranca(request: Request, call_next):
+    resp = await call_next(request)
+    for k, v in _SEC_HDRS.items():
+        resp.headers.setdefault(k, v)
+    return resp
+
+
 @app.post("/login_jfn")
-async def login_jfn_post(senha: str = Form("")):
-    if _DASH_SENHA and hmac.compare_digest(senha, _DASH_SENHA):
+async def login_jfn_post(request: Request, senha: str = Form("")):
+    ip = request.client.host if request.client else ""
+    agora = time.time()
+    falhas = [t for t in _LOGIN_FALHAS.get(ip, []) if agora - t < _LOGIN_JANELA]
+    if len(falhas) >= _LOGIN_MAX:
+        _LOGIN_FALHAS[ip] = falhas
+        return HTMLResponse("Muitas tentativas. Aguarde 15 minutos.", status_code=429)
+    if _DASH_SENHA and hmac.compare_digest(senha.encode(), _DASH_SENHA.encode()):
+        _LOGIN_FALHAS.pop(ip, None)
         resp = RedirectResponse("/painel", status_code=303)
         resp.set_cookie(_DASH_COOKIE, _dash_token(), max_age=_DASH_TTL,
                         httponly=True, samesite="lax", secure=_DASH_COOKIE_SECURE)
         return resp
+    _LOGIN_FALHAS[ip] = falhas + [agora]
     return RedirectResponse("/login_jfn?erro=1", status_code=303)
 
 

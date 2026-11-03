@@ -7,8 +7,8 @@
 <link rel="stylesheet" href="/static/css/painel.css?v=4d222d22">
 </head>
 <body>
-<div id="portal" hidden><video id="pvid" autoplay muted loop playsinline preload="auto" aria-hidden="true"
-    poster="/static/assets/portal-hero.jpg"><source src="/static/assets/portal-hero.mp4" type="video/mp4"></video>
+<div id="portal" hidden><video id="pvid" muted loop playsinline preload="none" aria-hidden="true"
+    data-poster="/static/assets/portal-hero.jpg"><source src="/static/assets/portal-hero.mp4" type="video/mp4"></video>
   <canvas id="pcv" aria-hidden="true"></canvas><canvas id="pmap" aria-hidden="true"></canvas>
   <div class="pui">
     <div class="pln l1">Reator — online</div>
@@ -69,6 +69,6 @@
      Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
      com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
      bate com a tag e ela diz "em dia" enquanto serve código velho). -->
-<script src="/static/js/painel.bundle.js?v=811242a2"></script>
+<script src="/static/js/painel.bundle.js?v=e9f142ac"></script>
 </body>
 </html>

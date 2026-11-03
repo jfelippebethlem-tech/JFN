@@ -38,6 +38,16 @@ URLS=(
   "intel/escalada?limite=120&esfera=prefeitura"
   "intel/fantasmas?limite=60"
   "acervo/estatisticas"
+  # 2026-11-03: a HOME (cockpit) pedia 8 rotas que nunca estiveram aqui — a fênix levava 72,6 s e o
+  # lift 25 s a frio, justo na primeira tela. Mesmas URLs que cockpit.js pede (test_prewarm_cobre_home).
+  "intel/ninho_sala?limite=60"
+  "comparador/economia"
+  "comparador/vedada"
+  "comparador/dossie"
+  "intel/radar?limite=6"
+  "intel/comunidades"
+  "intel/lift"
+  "intel/fenix"
 )
 {
   echo "── $(date -Is) prewarm"

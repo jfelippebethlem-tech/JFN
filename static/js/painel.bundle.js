@@ -1123,6 +1123,13 @@ void main(){
     } catch (_) {
     }
     el.hidden = false;
+    const pv = $("pvid");
+    if (pv) {
+      pv.poster = pv.dataset.poster || "";
+      pv.preload = "auto";
+      pv.play().catch(() => {
+      });
+    }
     const cv = $("pcv"), pm = $("pmap");
     const dpr = Math.min(devicePixelRatio || 1, 1.5);
     let gl = null, U = {}, raf = 0, morto = false, mapC = null, mx = 0, my = 0;
