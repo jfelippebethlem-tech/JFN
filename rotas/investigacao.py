@@ -1202,6 +1202,29 @@ import threading as _threading
 import time as _time
 
 _cache: dict = {}
+# O cache vivia só na memória: cada restart do jfn zerava tudo e o prewarm pagava ~10 min de CPU a load 5
+# (03/11/2026: intel/retro 359 s, nepotismo_cruzado 46 s, conflito 44 s). Persistido em disco, o painel
+# volta do restart com o último valor; o TTL e o recálculo em 2º plano seguem valendo (o tempo gravado é o original).
+_CACHE_DIR = RAIZ / "data" / "cache_painel"
+
+
+def _cache_arquivo(chave: str) -> Path:
+    import hashlib as _hl
+    return _CACHE_DIR / (_hl.sha1(chave.encode()).hexdigest() + ".json")
+
+
+def _cache_carregar_disco() -> None:
+    if not _CACHE_DIR.is_dir():
+        return
+    for f in _CACHE_DIR.glob("*.json"):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+            _cache.setdefault(d["k"], (float(d["t"]), d["v"]))
+        except (OSError, ValueError, KeyError, TypeError):
+            continue                                  # arquivo truncado/alheio: ignora, o cálculo refaz
+
+
+_cache_carregar_disco()
 
 
 # Teto de espera por fonte VIVA (PNCP). Health-check de 2026-08-02: /api/pncp e
@@ -1229,7 +1252,17 @@ def _cache_get(chave: str, ttl: int):
 
 
 def _cache_put(chave: str, val):
-    _cache[chave] = (_time.time(), val)
+    agora = _time.time()
+    _cache[chave] = (agora, val)
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        f = _cache_arquivo(chave)
+        tmp = f.with_suffix(f".{_threading.get_ident()}.tmp")
+        tmp.write_text(json.dumps({"k": chave, "t": agora, "v": val}, ensure_ascii=False),
+                       encoding="utf-8")
+        tmp.replace(f)
+    except (OSError, TypeError, ValueError):
+        logger.debug("cache %s: não persistido em disco", chave, exc_info=True)
     return val
 
 

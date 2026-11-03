@@ -44,3 +44,14 @@ def test_prewarm_cobre_toda_rota_da_home():
     sh = (RAIZ / "tools/prewarm_painel.sh").read_text(encoding="utf-8")
     aquecidas = set(re.findall(r'^\s*"([^"]+)"', sh, re.M))
     assert home and not (home - aquecidas), f"rotas da home fora do prewarm: {sorted(home - aquecidas)}"
+
+
+def test_cache_sobrevive_ao_restart(monkeypatch, tmp_path):
+    monkeypatch.setattr(inv, "_CACHE_DIR", tmp_path)
+    monkeypatch.setattr(inv, "_cache", {})
+    inv._cache_put("painel:x", {"n": 3, "itens": ["a"]})
+    inv._cache_put("nao-json", {1, 2})               # set: não persiste, não quebra
+    monkeypatch.setattr(inv, "_cache", {})
+    inv._cache_carregar_disco()
+    assert inv._cache["painel:x"][1] == {"n": 3, "itens": ["a"]}
+    assert "nao-json" not in inv._cache
