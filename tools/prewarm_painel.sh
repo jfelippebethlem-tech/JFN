@@ -48,6 +48,7 @@ URLS=(
   "intel/comunidades"
   "intel/lift"
   "intel/fenix"
+  "intel/socio_sancionada"
 )
 {
   echo "── $(date -Is) prewarm"

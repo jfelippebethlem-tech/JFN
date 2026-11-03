@@ -96,6 +96,7 @@ GET /api/intel/sancionadas -> api_intel_sancionadas
 GET /api/intel/sancionadas_municipio -> api_intel_sancionadas_municipio
 GET /api/intel/sobrepreco -> api_intel_sobrepreco
 GET /api/intel/socio_oculto -> api_intel_socio_oculto
+GET /api/intel/socio_sancionada -> api_intel_socio_sancionada
 GET /api/intel/socio_servidor -> api_intel_socio_servidor
 GET /api/lai/lista -> api_lai_lista
 GET /api/lai/prazos -> api_lai_prazos

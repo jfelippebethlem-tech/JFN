@@ -2142,6 +2142,17 @@ def api_intel_fenix(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/socio_sancionada")
+def api_intel_socio_sancionada():
+    """Contratada cujo sócio é sócio de empresa sancionada (vedação que alcança o RJ), com OB SIAFE paga na
+    janela em que as duas sociedades e a sanção coexistem. Força = critérios do TCU (Ac. 1831/2014-P)."""
+    try:
+        from compliance_agent.socio_de_sancionada import socio_de_sancionada
+        return JSONResponse(_cache_calc("intel:socio_sancionada", 3600, socio_de_sancionada))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/porta_giratoria")
 def api_intel_porta_giratoria(limite: int = 120):
     """Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado."""

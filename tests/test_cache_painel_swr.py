@@ -2,12 +2,19 @@
 """A home não espera cálculo frio: cache vencido entrega o último valor, e toda rota da home é pré-aquecida."""
 import re
 import threading
+
+import pytest
 import time
 from pathlib import Path
 
 from rotas import investigacao as inv
 
 RAIZ = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(autouse=True)
+def _disco_isolado(monkeypatch, tmp_path):
+    monkeypatch.setattr(inv, "_CACHE_DIR", tmp_path / "cache")   # nunca escrever no data/ real
 
 
 def test_vencido_entrega_o_velho_e_renova_em_segundo_plano(monkeypatch):

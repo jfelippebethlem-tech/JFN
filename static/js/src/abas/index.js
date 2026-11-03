@@ -1034,6 +1034,7 @@ export async function renderPanoramaEstado(){
 
 // ═══ SANCIONADAS (Estado e Transversal) ═══
 export async function renderSancionadas(esf){
+  const pSoc=J('/api/intel/socio_sancionada');            // em paralelo: não atrasa a lista principal
   const d=await J('/api/intel/sancionadas?limite=1000');   // teto da rota = 1000 > n(770): cobre a base
   if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   let emp=d.empresas||[];const carregadas=emp.length;   // ANTES do corte de esfera — é o que o filtro varre
@@ -1067,7 +1068,25 @@ export async function renderSancionadas(esf){
       <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
       ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');},80,e=>e.nome);
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
-  return h;
+  return h+_blocoSocioSancionada(await pSoc);
+}
+
+/* A sanção contornada pelo SÓCIO (03/11/2026, caso GUARAILHA): a contratada não é a punida, mas o sócio dela
+   é sócio da punida. A lista acima só olha o CNPJ contratado e não vê isso. */
+const _FORCA={forte:['rose','forte — mesmo ramo e mesmo endereço/telefone'],medio:['amber','médio — um critério'],fraco:['accent','fraco — só o sócio']};
+function _blocoSocioSancionada(r){
+  if(!r||!r.ok)return sec('Sanção contornada pelo sócio')+card(`<div class="warn">${erroHumano(r&&r.erro)}</div>`);
+  const a=r.achados||[];
+  let h=sec('Sanção contornada pelo sócio')+`<div class="muted" style="margin:-4px 2px 10px;font-size:13px">Contratada cujo sócio é sócio de empresa <b>punida com vedação que alcança o RJ</b>. Conta só a OB SIAFE paga na janela em que as duas sociedades e a sanção coexistem. Força pelos critérios do TCU (Ac. 1831/2014-Plenário): mesmo ramo (CNAE) e mesmo endereço/telefone.</div>`;
+  if(!a.length)return h+card('<div class="muted">Nenhuma contratada nessa situação com pagamento na janela.</div>');
+  h+=`<div class="grid">`+a.map(x=>{const [cor,rot]=_FORCA[x.forca]||_FORCA.fraco;return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.contratada,x.razao_contratada||x.contratada)}
+      <div class="muted" style="font-size:12.5px;margin-top:3px">sócio <b>${esc(x.socio)}</b> <span class="dim">${esc(x.socio_doc)}</span> também é sócio de ${clk(x.sancionada,x.razao_sancionada||x.sancionada)}</div>
+      <div class="dim" style="margin-top:2px">${esc((x.sancao.categoria||'').slice(0,40))} · ${esc(x.sancao.inicio)} → ${esc(x.sancao.fim==='9999-12-31'?'sem prazo':x.sancao.fim)}</div></div>
+      <div class="right"><span class="tag ${cor}">${esc(rot)}</span><div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.pago_janela)}</div><div class="dim">${fmtN(x.n_obs)} OB na janela</div></div></div>
+      ${leitura(`Entre <b>${esc(x.janela[0])}</b> e <b>${esc(x.janela[1])}</b> a contratada recebeu ${fmtRc(x.pago_janela)} enquanto seu sócio também integrava empresa punida. ${x.mesmo.cnae?'Mesmo CNAE. ':''}${x.mesmo.endereco?'Mesmo endereço. ':''}${x.mesmo.telefone?'Mesmo telefone. ':''}Pedido que fecha: QSA/SICAF conferido na habilitação e manifestação sobre o art. 14, §1º e o art. 160 da Lei 14.133/2021.`)}`,
+    x.forca==='forte'?'hl':'');}).join('')+`</div>`;
+  return h+`<div class="note">${esc(r.nota||'')}</div>`;
 }
 
 // ═══ FRACIONAMENTO (Estado) ═══
