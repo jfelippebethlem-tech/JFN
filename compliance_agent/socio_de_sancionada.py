@@ -35,10 +35,10 @@ from pathlib import Path
 from compliance_agent.sancao_abrangencia import veda_ente
 
 _REPO = Path(__file__).resolve().parents[1]
-_SQL_PAGO = (
-    "SELECT COALESCE(SUM(valor),0), COUNT(*) FROM ob_orcamentaria_siafe "
-    "WHERE substr(credor,1,8)=? AND status='Contabilizado' AND valor>0 AND "
-    "substr(data_emissao,7,4)||substr(data_emissao,4,2)||substr(data_emissao,1,2) BETWEEN ? AND ?")
+# Sem índice em `credor`: consulta por par varria a tabela inteira ~230 vezes (145 s a frio). Uma passada só.
+_SQL_OBS = ("SELECT substr(credor,1,8), valor, "
+            "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2) "
+            "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND valor>0 AND length(credor)=14")
 
 
 def _iso(d: str | None) -> str:
@@ -78,7 +78,7 @@ def socio_de_sancionada(db_path: str | None = None, estab_path: str | None = Non
                                             "fim": hoje if st == "ativo" else _iso(ate)[:7] + "-28"})
             n_socios[b] += st == "ativo"
 
-        melhor: dict[tuple, dict] = {}
+        janelas = []
         for (doc, nome), emps in por_pessoa.items():
             nas_sanc = [e for e in emps if e["b"] in sanc]
             if not nas_sanc:
@@ -93,11 +93,19 @@ def socio_de_sancionada(db_path: str | None = None, estab_path: str | None = Non
                         ini, fim = max(a["ent"] or "0000-00-00", sc["inicio"]), min(a["fim"], sc["fim"], hoje)
                         if ini > fim:
                             continue
-                        v, n = con.execute(_SQL_PAGO, (a["b"], ini.replace("-", ""), fim.replace("-", ""))).fetchone()
-                        if v > 0 and v > melhor.get((a["b"], s["b"]), {}).get("pago_janela", 0):
-                            melhor[(a["b"], s["b"])] = {
-                                "contratada": a["b"], "sancionada": s["b"], "socio": nome, "socio_doc": doc,
-                                "janela": [ini, fim], "pago_janela": round(v, 2), "n_obs": n, "sancao": sc}
+                        janelas.append((a["b"], s["b"], nome, doc, ini, fim, sc))
+        alvo = {j[0] for j in janelas}
+        obs: dict[str, list[tuple]] = defaultdict(list)
+        for b, valor, dia in con.execute(_SQL_OBS):
+            if b in alvo:
+                obs[b].append((dia, valor))
+        melhor: dict[tuple, dict] = {}
+        for a, sb, nome, doc, ini, fim, sc in janelas:
+            dentro = [v for d, v in obs.get(a, ()) if ini <= d <= fim]
+            v = sum(dentro)
+            if v > 0 and v > melhor.get((a, sb), {}).get("pago_janela", 0):
+                melhor[(a, sb)] = {"contratada": a, "sancionada": sb, "socio": nome, "socio_doc": doc,
+                                   "janela": [ini, fim], "pago_janela": round(v, 2), "n_obs": len(dentro), "sancao": sc}
     finally:
         con.close()
 

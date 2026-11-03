@@ -29,6 +29,7 @@ def _bases(tmp_path):
         ("22222222000155", "Contabilizado", 500.0, "15/09/2025"),    # antes de Lucas entrar: não conta
         ("22222222000155", "Cancelado", 9999.0, "20/10/2025"),       # OB não paga: não conta
         ("44444444000155", "Contabilizado", 7000.0, "10/05/2025"),   # sanção federal não alcança o RJ
+        ("22222222740", "Contabilizado", 800.0, "20/10/2025"),       # CPF cujos 8 dígitos batem: não é a empresa
     ])
     c.commit(); c.close()
     e = sqlite3.connect(est)
