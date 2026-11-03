@@ -1284,10 +1284,8 @@ def _cache_calc(chave: str, ttl: int, calcular):
     if (velho := _cache.get(chave)) is not None:
         if trava.acquire(blocking=False):
             def _renovar():
-                try:
-                    _cache_put(chave, calcular())
-                except Exception:  # noqa: BLE001 — falha no recálculo mantém o valor anterior
-                    logger.warning("cache %s: recálculo em 2º plano falhou", chave, exc_info=True)
+                try:                                 # falha sobe ao threading.excepthook (logada) e o
+                    _cache_put(chave, calcular())    # valor anterior fica; o finally libera a trava
                 finally:
                     trava.release()
             _threading.Thread(target=_renovar, daemon=True, name=f"cache:{chave}").start()
