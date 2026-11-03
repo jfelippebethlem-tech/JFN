@@ -1,0 +1,4 @@
+# GitNexus indexa CÓDIGO. data/ tem ~478 mil arquivos de dados (capturas SEI, caches, bases) e nenhum
+# fonte: varrê-la estourava o buffer do LadybugDB na tabela File (387 MiB e 1,5 GiB) — 03/11/2026.
+data/
+output/
