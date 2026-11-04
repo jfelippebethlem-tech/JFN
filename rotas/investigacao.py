@@ -2159,6 +2159,22 @@ def api_intel_competencia_futura():
     return JSONResponse(_cache_calc("intel:competencia_futura", 3600, pagamento_competencia_futura))
 
 
+@router.get("/api/intel/dea_recorrente")
+def api_intel_dea_recorrente():
+    """DEA (elemento 92) repetida ao mesmo fornecedor em processos distintos — serviço sem empenho prévio
+    (L.4320 arts. 37 e 60). Só UGs com Nota de Empenho coletada. Sem `except` genérico (catraca)."""
+    from compliance_agent.dea_recorrente import dea_recorrente
+    return JSONResponse(_cache_calc("intel:dea_recorrente", 3600, dea_recorrente))
+
+
+@router.get("/api/intel/ordem_cronologica")
+def api_intel_ordem_cronologica():
+    """Quebra da ordem cronológica medida no SIAFE (Dec. RJ 49.134/2024 art. 9º: data da NL por fonte).
+    Só UGs com NE e NL coletadas. Sem `except` genérico (catraca)."""
+    from compliance_agent.ordem_cronologica_siafe import ordem_cronologica
+    return JSONResponse(_cache_calc("intel:ordem_cronologica", 3600, ordem_cronologica))
+
+
 @router.get("/api/intel/porta_giratoria")
 def api_intel_porta_giratoria(limite: int = 120):
     """Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado."""

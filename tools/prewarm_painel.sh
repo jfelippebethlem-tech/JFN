@@ -50,6 +50,8 @@ URLS=(
   "intel/fenix"
   "intel/socio_sancionada"
   "intel/competencia_futura"
+  "intel/dea_recorrente"
+  "intel/ordem_cronologica"
 )
 {
   echo "── $(date -Is) prewarm"

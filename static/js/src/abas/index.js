@@ -163,7 +163,7 @@ export async function filaFiscal(soOsint){
   // fila demorava tanto que o card parecia não existir. Em sequência cada painel aparece assim que
   // fica pronto, na ordem em que o fiscal lê.
   (async () => {
-    for (const f of [taxaPorUnidade, fimDeExercicio, competenciaFutura, concentracaoPorGrupo,
+    for (const f of [taxaPorUnidade, fimDeExercicio, competenciaFutura, deaEOrdem, concentracaoPorGrupo,
                      coparticipacaoRelacionados, recuperacaoJudicial, aditivoPrecoce,
                      nucleoCartel, consorcioVeiculo, emergenciaRecorrente, leituraDupla, zerosSemCausa,
                      detectoresFramework]) {
@@ -258,6 +258,47 @@ async function competenciaFutura() {
           <td class="right">${fmtN(a.meses_max)}</td><td class="right">${fmtRc(a.valor)}</td></tr>`; }).join("")
       + `</tbody></table>`)
     + leitura(esc(d.nota || ""));
+  o.appendChild(alvo);
+}
+
+// O QUE A NOTA DE EMPENHO E A NOTA DE LIQUIDAÇÃO MOSTRAM. Duas leituras que só existem desde que a NE e a NL
+// passaram a ser coletadas (antes, só a OB): DEA repetida ao mesmo fornecedor (Lei 4.320 arts. 37 e 60 — serviço
+// prestado sem empenho prévio) e a ordem cronológica (Dec. RJ 49.134 art. 9º — data da NL por fonte). A
+// COBERTURA vai no título: ausência numa UG sem NE/NL coletada não é regularidade.
+async function deaEOrdem() {
+  const o = $("ff-out");
+  if (!o) return;
+  const [dea, oc] = [await J("/api/intel/dea_recorrente"), await J("/api/intel/ordem_cronologica")];
+  const alvo = document.createElement("div");
+  let h = "";
+  if (dea && dea.ok !== false) {
+    const itens = (dea.achados || []).filter((a) => a.forca !== "fraco").slice(0, 12);
+    const pf = dea.por_forca || {};
+    h += sec(`DEA recorrente ao mesmo fornecedor (${fmtN(pf.forte || 0)} fortes · ${fmtN(pf.medio || 0)} médios · UGs com NE: ${esc((dea.ugs_cobertas || []).join(", "))})`)
+      + (itens.length ? card(`<table class="tb"><thead><tr><th>Força</th><th>Credor</th><th>UG</th>
+          <th class="right">processos</th><th class="right">empenhado DEA</th></tr></thead><tbody>`
+          + itens.map((a) => `<tr><td><span class="tag ${a.forca === "forte" ? "rose" : "amber"}">${esc(a.forca)}</span></td>
+              <td>${esc((a.nome || "").slice(0, 44))} <span class="dim">${esc(a.credor || "")}</span></td>
+              <td class="dim">${esc(a.ug || "")}</td><td class="right">${fmtN(a.n_processos)}</td>
+              <td class="right">${fmtRc(a.valor)}</td></tr>`).join("") + `</tbody></table>`)
+        : vazioDeclarado(dea, "DEA repetida ao mesmo fornecedor"))
+      + leitura(esc(dea.nota || ""));
+  }
+  if (oc && oc.ok !== false) {
+    const pf = oc.por_forca || {};
+    h += sec(`Ordem cronológica de pagamento (${fmtN(oc.n)} quebras · ${fmtN(pf.forte || 0)} fortes · ${fmtN(oc.inversoes_curtas || 0)} inversões curtas de agenda · UGs: ${esc((oc.ugs_cobertas || []).join(", "))})`)
+      + ((oc.achados || []).length ? card(`<table class="tb"><thead><tr><th>Força</th><th>Passou na frente</th><th>liquidada → paga</th>
+          <th>Preterida (maior espera)</th><th class="right">dias</th></tr></thead><tbody>`
+          + oc.achados.slice(0, 12).map((a) => { const x = (a.passou_na_frente_de || [])[0] || {};
+              return `<tr><td><span class="tag ${a.forca === "forte" ? "rose" : "amber"}">${esc(a.forca)}</span></td>
+              <td>${esc((a.nome || "").slice(0, 36))} <span class="dim">${esc(a.nl)}</span></td>
+              <td>${esc(a.liquidada)} → ${esc(a.pago_em)}</td>
+              <td>${esc((x.nome || "").slice(0, 32))} <span class="dim">${esc(x.liquidada || "")}</span></td>
+              <td class="right">${fmtN(a.espera_max_dias)}</td></tr>`; }).join("") + `</tbody></table>`)
+        : vazioDeclarado(oc, "quebra de ordem cronológica com espera de 10+ dias"))
+      + leitura(esc(oc.nota || ""));
+  }
+  alvo.innerHTML = h;
   o.appendChild(alvo);
 }
 

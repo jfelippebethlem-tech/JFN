@@ -76,6 +76,7 @@ GET /api/intel/comunidades_grafo -> api_intel_comunidades_grafo
 GET /api/intel/concentracao_municipio -> api_intel_concentracao_municipio
 GET /api/intel/conluio_qsa -> api_intel_conluio_qsa
 GET /api/intel/corrida_dezembro -> api_intel_corrida_dezembro
+GET /api/intel/dea_recorrente -> api_intel_dea_recorrente
 GET /api/intel/escalada -> api_intel_escalada
 GET /api/intel/fantasmas -> api_intel_fantasmas
 GET /api/intel/fenix -> api_intel_fenix
@@ -87,6 +88,7 @@ GET /api/intel/lift -> api_intel_lift
 GET /api/intel/nepotismo -> api_intel_nepotismo
 GET /api/intel/nepotismo_cruzado -> api_intel_nepotismo_cruzado
 GET /api/intel/ninho_sala -> api_intel_ninho_sala
+GET /api/intel/ordem_cronologica -> api_intel_ordem_cronologica
 GET /api/intel/pdf -> api_intel_pdf
 GET /api/intel/perdedoras -> api_intel_perdedoras
 GET /api/intel/porta_giratoria -> api_intel_porta_giratoria
