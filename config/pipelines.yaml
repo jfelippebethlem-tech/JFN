@@ -12,6 +12,15 @@ pipelines:
   # intervalo). Tem de produzir o MESMO sinal que o SLO mede (o arquivo/dado acima) — senão a cura nunca
   # é vista: medido no 1º teste ao vivo (24/10/2026), o remédio rodou e escreveu no log errado.
   # ---- BASE (dados-fonte, diários) ----
+  - nome: siafe-documento-sweep
+    arquivo: data/siafe_documento_sweep.log
+    consulta: "SELECT MAX(em) FROM siafe_documento_cobertura"
+    max_stale_h: 50
+    grupo: base
+    nota: >-
+      cobertura de Nota de Empenho/Liquidação (cron 03:10, 2 UGs/noite, para às 04:40). Vigia o DADO (última
+      coleta registrada em siafe_documento_cobertura), não o log — mesma lição do siafe-runner. Sem `remediar`
+      de propósito: re-rodar fora da janela disputaria a sessão única do SIAFE com o diário e o dreno.
   - nome: siafe-runner
     remediar: "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario >> data/siafe_runner_cron.log 2>&1"
     arquivo: data/siafe_runner_cron.log
