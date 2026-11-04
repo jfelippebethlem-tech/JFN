@@ -36,7 +36,10 @@ _REPO = Path(__file__).resolve().parents[1]
 _DB = _REPO / "data" / "compliance.db"
 TBL = "pt1:tblDocumento"
 _TETO = 1000
-_PLATO = 975            # mesmo critério do coletor da OB: contagem que encosta no teto é suspeita
+_PLATO = 900            # a rolagem virtual perde linhas: 2025NL0 (~5.400) voltou com 974 sob o teto de 1.000 e o
+                        # limiar antigo (975, o da OB) aceitou como completo (04/11/2026). Subdividir à toa custa
+                        # tempo; não subdividir custa dado.
+_COBERTURA_MIN = 0.95   # NL completa = cobre ≥95% das NL que as OBs pagas da UG/ano citam (controle positivo)
 
 _COMUM = {"numero": "numero", "ug emitente": "ug_emitente", "data emissao": "data_emissao", "doc. alt.": "doc_alt",
           "tipo alt.": "tipo_alt", "status": "status", "credor": "credor", "nome do credor": "nome_credor",
@@ -264,6 +267,27 @@ async def _colher(pg, regex, maxn: int = 20000) -> tuple[list[str], list[list[st
     return header, linhas
 
 
+def _fatia_casa(linhas: list[list[str]], prefixo: str, regex) -> bool:
+    """As linhas de uma fatia têm de começar com o prefixo filtrado — senão o filtro de Número não aplicou e a
+    página veio sem filtro. Vazio é aceitável (fim da série de números)."""
+    nums = [m.group(0) for r in linhas if (m := regex.search(" ".join(r[:2])))]
+    return not nums or sum(n.startswith(prefixo) for n in nums) >= 0.95 * len(nums)
+
+
+def cobertura_pela_ob(ug: str, exercicio: int, db=None) -> float | None:
+    """Fração das NL citadas pelas OBs pagas (UG, exercício) que estão em `nl_siafe` — o controle positivo da
+    completude da NL. None se não há OB para comparar."""
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        tot, ach = con.execute(
+            "SELECT COUNT(DISTINCT o.nl), COUNT(DISTINCT l.numero) FROM ob_orcamentaria_siafe o LEFT JOIN nl_siafe l "
+            "ON l.numero=o.nl AND l.ug_emitente=o.ug_emitente WHERE o.ug_emitente=? AND o.exercicio=? "
+            "AND o.status='Contabilizado' AND o.nl LIKE ?", (str(ug), int(exercicio), f"{exercicio}NL%")).fetchone()
+    finally:
+        con.close()
+    return round(ach / tot, 4) if tot else None
+
+
 def _subdividir(prefixo: str, n: int, base_len: int) -> list[str]:
     """Fatia que encosta no teto vira 10 fatias filhas, até 3 dígitos após o tipo (mesma regra da OB)."""
     if n >= _PLATO and len(prefixo) < base_len + 3:
@@ -287,6 +311,9 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str) -> dict:
         await S._set_valor(pg, '[id*="table_rtfFilter:1"] input[type="text"]:visible', pref)
         await adf.wait(); await pg.wait_for_timeout(4000)
         header, linhas = await _colher(pg, t["re"])
+        if not _fatia_casa(linhas, pref, t["re"]):
+            return {"ok": False, "etapa": "filtro_numero_nao_aplicou", "fatia": pref, "fatias": fatias,
+                    "ingeridas": total}
         filhas = _subdividir(pref, len(linhas), len(base))
         if filhas:
             work[:0] = filhas
@@ -346,7 +373,12 @@ def main() -> None:
     try:
         r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo))
         n = r.get("colhidas", r.get("ingeridas", 0))
-        registrar_cobertura(a.tipo, a.ug, a.exercicio, bool(r.get("ok")) and not r.get("capou"), n or 0)
+        completo = bool(r.get("ok")) and not r.get("capou")
+        if completo and a.tipo == "NL":           # o coletor dizer "completo" não basta: conferir contra as OBs
+            cob = cobertura_pela_ob(a.ug, a.exercicio)
+            r["cobertura_pela_ob"] = cob
+            completo = cob is None or cob >= _COBERTURA_MIN
+        registrar_cobertura(a.tipo, a.ug, a.exercicio, completo, n or 0)
         print(json.dumps(r, ensure_ascii=False))
     finally:
         R._release()

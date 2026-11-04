@@ -99,3 +99,31 @@ def test_navegacao_tenta_de_novo_quando_o_menu_nao_montou(monkeypatch):
             return None
     monkeypatch.setattr(N, "_ir_para_uma_vez", uma_vez)
     assert asyncio.run(N._ir_para(_Pg(), "Nota de Empenho")) is True and len(chamadas) == 3
+
+
+def test_fatia_cujas_linhas_nao_casam_o_prefixo_e_filtro_que_nao_aplicou():
+    """04/11/2026, NL 166100: o filtro de Número não pegou e cada fatia devolveu a mesma página (974 linhas, abaixo
+    do limiar) — o coletor aceitou como completo."""
+    linhas = [["2025NL04500"], ["2025NL04501"], ["2025NL04502"]]
+    assert N._fatia_casa(linhas, "2025NL0", N.TIPOS["NL"]["re"]) is True       # 045xx começa mesmo com 2025NL0
+    assert N._fatia_casa(linhas, "2025NL1", N.TIPOS["NL"]["re"]) is False      # filtro não aplicou
+    assert N._fatia_casa(linhas, "2025NL045", N.TIPOS["NL"]["re"]) is True
+    assert N._fatia_casa([], "2025NL9", N.TIPOS["NL"]["re"]) is True           # vazio é aceitável (fim da série)
+
+
+def test_nl_so_e_completa_se_cobre_as_nl_que_as_ob_citam(tmp_path):
+    db = tmp_path / "c.db"
+    c = sqlite3.connect(db)
+    c.execute("CREATE TABLE ob_orcamentaria_siafe(ug_emitente,exercicio,status,nl)")
+    c.executemany("INSERT INTO ob_orcamentaria_siafe VALUES ('166100',2025,'Contabilizado',?)",
+                  [(f"2025NL{i:05d}",) for i in range(100)])
+    c.commit()
+    c.close()
+    N.ingerir(2025, _HEADER_NL, [[f"2025NL{i:05d}", "166100"] + [""] * 15 for i in range(40)], db=db, tipo="NL")
+    assert N.cobertura_pela_ob("166100", 2025, db=db) == 0.4
+
+
+def test_fatia_com_974_linhas_ainda_e_teto():
+    """A rolagem virtual perde algumas linhas: 2025NL0 tinha ~5.400, o servidor cortou em 1.000 e vieram 974 —
+    um abaixo do limiar antigo (975), e nada foi subdividido."""
+    assert N._subdividir("2025NL0", 974, len("2025NL")) == [f"2025NL0{d}" for d in range(10)]
