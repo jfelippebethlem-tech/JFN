@@ -295,7 +295,12 @@ def _subdividir(prefixo: str, n: int, base_len: int) -> list[str]:
     return []
 
 
-async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str) -> dict:
+def _passou(ate: str | None) -> bool:
+    return bool(ate) and time.strftime("%H:%M") >= ate
+
+
+async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | None = None,
+                          ug_ckpt: str = "") -> dict:
     """Linha 1 do filtro = Número começa com <prefixo>; fatia capada subdivide. Ingesta fatia a fatia."""
     from compliance_agent import siafe_ob_orcamentaria as S
     from compliance_agent.siafe_adf import AdfSync
@@ -305,9 +310,16 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str) -> dict:
     await S._typeahead(pg, f"{TBL}:table_rtfFilter:1:cbx_col_sel_rtfFilter::content", "Número"); await adf.wait()
     await S._typeahead(pg, f"{TBL}:table_rtfFilter:1:cbx_op_sel_rtfFilter::content", "começa com"); await adf.wait()
     base = f"{exercicio}{tipo}"
+    ckp = _REPO / "data" / "sei_cache" / f"siafe_doc_{tipo}_{ug_ckpt}_{exercicio}.json"
+    feitas = set(json.loads(ckp.read_text())) if ckp.exists() else set()
     work, fatias, total, capadas = [f"{base}{d}" for d in range(10)], {}, 0, []
     while work:
+        if _passou(ate):               # para ENTRE fatias e sai pelo `finally` com logout: nunca no meio
+            return {"ok": False, "etapa": "prazo", "ate": ate, "fatias": fatias, "ingeridas": total,
+                    "faltam": len(work)}
         pref = work.pop(0)
+        if pref in feitas:             # retomada: fatia folha já colhida numa passada anterior (UG gigante)
+            continue
         await S._set_valor(pg, '[id*="table_rtfFilter:1"] input[type="text"]:visible', pref)
         await adf.wait(); await pg.wait_for_timeout(4000)
         header, linhas = await _colher(pg, t["re"])
@@ -322,10 +334,15 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str) -> dict:
             capadas.append(pref)               # profundidade máxima e ainda no teto: declarar, não esconder
         fatias[pref] = len(linhas)
         total += ingerir(exercicio, header, linhas, tipo=tipo).get("ingeridas", 0)
-    return {"ok": True, "fatias": fatias, "ingeridas": total, "capadas": capadas}
+        if linhas:                     # ZERO NÃO ENTRA NO CHECKPOINT (lição da OB, ae72a7bf): re-consultar é barato
+            feitas.add(pref)
+            ckp.parent.mkdir(parents=True, exist_ok=True)
+            ckp.write_text(json.dumps(sorted(feitas)))
+    ckp.unlink(missing_ok=True)        # UG fechou: a próxima passada começa limpa
+    return {"ok": True, "fatias": fatias, "ingeridas": total, "capadas": capadas, "retomadas": len(feitas)}
 
 
-async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE") -> dict:
+async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE", ate: str | None = None) -> dict:
     t = TIPOS[tipo]
     from playwright.async_api import async_playwright
     from compliance_agent import siafe_ob_orcamentaria as S
@@ -350,7 +367,7 @@ async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE") -> dict:
                 return {**r, "tipo": tipo, "ug": ug, "exercicio": exercicio, "colhidas": len(linhas),
                         "limite": lim, "capou": False}
             # TETO DO SERVIDOR: desmarcar o limite não basta (166100/2025 parou em 1.000 de novo). Fatiar.
-            fat = await _colher_fatiado(pg, t, exercicio, tipo)
+            fat = await _colher_fatiado(pg, t, exercicio, tipo, ate, ug_ckpt=ug)
         finally:
             await S._encerrar(pg, ctx)
     return {**fat, "tipo": tipo, "ug": ug, "exercicio": exercicio, "limite": lim, "fatiado": True,
@@ -364,6 +381,7 @@ def main() -> None:
     ap.add_argument("--tipo", choices=sorted(TIPOS), default="NE")
     ap.add_argument("--ug", required=True)
     ap.add_argument("--exercicio", type=int, required=True)
+    ap.add_argument("--ate", default=None, help="HH:MM — para entre fatias (com logout) a partir deste horário")
     a = ap.parse_args()
     from compliance_agent import host_siafe
     from compliance_agent import siafe_runner as R
@@ -371,7 +389,7 @@ def main() -> None:
     if not R._acquire("siafe_documento"):
         raise SystemExit(f"SIAFE ocupado: {R.lock_status()}")
     try:
-        r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo))
+        r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo, a.ate))
         n = r.get("colhidas", r.get("ingeridas", 0))
         completo = bool(r.get("ok")) and not r.get("capou")
         if completo and a.tipo == "NL":           # o coletor dizer "completo" não basta: conferir contra as OBs

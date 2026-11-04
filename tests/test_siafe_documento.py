@@ -127,3 +127,8 @@ def test_fatia_com_974_linhas_ainda_e_teto():
     """A rolagem virtual perde algumas linhas: 2025NL0 tinha ~5.400, o servidor cortou em 1.000 e vieram 974 —
     um abaixo do limiar antigo (975), e nada foi subdividido."""
     assert N._subdividir("2025NL0", 974, len("2025NL")) == [f"2025NL0{d}" for d in range(10)]
+
+
+def test_prazo_e_conferido_entre_fatias(monkeypatch):
+    monkeypatch.setattr(N.time, "strftime", lambda fmt: "04:41")
+    assert N._passou("04:40") is True and N._passou(None) is False
