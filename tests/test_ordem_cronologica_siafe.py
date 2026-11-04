@@ -12,6 +12,8 @@ def _bases(tmp_path):
     CREATE TABLE ne_siafe(numero,ug_emitente,exercicio,fonte,natureza,status);
     CREATE TABLE nl_siafe(numero,ug_emitente,exercicio,ano_nl,data_emissao,status,ne,credor,nome_credor,valor,processo);
     CREATE TABLE ob_orcamentaria_siafe(numero_ob,ug_emitente,nl,status,data_emissao,valor);
+    CREATE TABLE siafe_documento_cobertura(tipo,ug_emitente,exercicio,completo,colhidas,em);
+    INSERT INTO siafe_documento_cobertura VALUES ('NE','100',2025,1,4,''),('NL','100',2025,1,4,'');
     """)
     c.executemany("INSERT INTO ne_siafe VALUES (?,?,2025,?,?,'Contabilizado')", [
         ("2025NE1", "100", "500", "339039"), ("2025NE2", "100", "500", "339039"),
@@ -91,3 +93,25 @@ def test_inversao_de_poucos_dias_e_agenda_nao_quebra(tmp_path):
     c.close()
     r = ordem_cronologica(db, est)
     assert r["n"] == 0 and r["inversoes_curtas"] == 1
+
+
+def test_ug_sem_nl_completa_fica_fora(tmp_path):
+    """04/11/2026: 166100 tinha só 1.000 NL (coleta capada) e o detector acusou 346 quebras."""
+    db, est = _bases(tmp_path)
+    c = sqlite3.connect(db)
+    c.execute("UPDATE siafe_documento_cobertura SET completo=0 WHERE tipo='NL'")
+    c.commit()
+    c.close()
+    r = ordem_cronologica(db, est)
+    assert r["n"] == 0 and r["ugs_cobertas"] == []
+
+
+def test_preterida_sem_ob_na_base_nao_vira_quebra(tmp_path):
+    """Sem OB na base não prova que não pagou (cobertura da OB é parcial): vai para `pendentes`, não para quebra."""
+    db, est = _bases(tmp_path)
+    c = sqlite3.connect(db)
+    c.execute("DELETE FROM ob_orcamentaria_siafe WHERE numero_ob='OB1'")
+    c.commit()
+    c.close()
+    r = ordem_cronologica(db, est)
+    assert r["n"] == 0 and r["pendentes"] == 1

@@ -18,8 +18,9 @@ credor CNPJ privado (natureza ≠ 1xxx — alínea n) fora de concessionária/co
 4681 — alínea g). Pessoal, diárias, sentenças, tributos, indenizações e bolsistas ficam fora pela natureza.
 
 O TESTE. Na mesma UG, fonte e ANO DA NL (RP tem fila própria, arts. 22–23), a NL B "passou na frente" da NL A quando A foi liquidada ANTES de B e B foi paga
-(1ª OB Contabilizada) antes de A — A paga depois, ou ainda sem pagamento na base. `dias_esperando` = quanto A
-esperou depois que B foi paga.
+(1ª OB Contabilizada) antes de A — A paga DEPOIS (as duas OBs na base). `dias_esperando` = quanto A esperou depois que B foi paga. A sem OB na
+base vai para `pendentes` — cobertura parcial da OB não prova falta de pagamento. Só UGs com NE e NL
+COMPLETAS (`siafe_documento_cobertura`).
 
 LIMITES. Indício: o art. 10 permite alterar a ordem com justificativa prévia (ME/EPP, emergência…) — a
 justificativa tem de existir no processo e estar publicada (art. 10 §3º). Só UGs com NE e NL coletadas
@@ -39,7 +40,7 @@ _CNAE_FORA = ("35", "36", "61", "4731", "4681")
 _DIAS_FORTE, _DIAS_MEDIO = 30, 10
 _NAT_ESTATAL = ("2011", "2038")   # empresa pública / SEM — alíneas m) e n); conservador: pode excluir estatal federal
 
-_SQL = """SELECT l.numero, l.ug_emitente, l.ano_nl, l.data_emissao, l.credor, l.nome_credor, l.valor, l.processo,
+_SQL = """SELECT l.numero, l.ug_emitente, l.exercicio, l.ano_nl, l.data_emissao, l.credor, l.nome_credor, l.valor, l.processo,
                  e.fonte, e.natureza,
                  (SELECT MIN(substr(o.data_emissao,7,4)||'-'||substr(o.data_emissao,4,2)||'-'||substr(o.data_emissao,1,2))
                     FROM ob_orcamentaria_siafe o WHERE o.nl=l.numero AND o.ug_emitente=l.ug_emitente
@@ -61,7 +62,9 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
     con = sqlite3.connect(f"file:{db_path or _REPO / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=30)
     con.row_factory = sqlite3.Row      # por NOME: incluir `ano_nl` no SELECT deslocou o credor e zerou tudo calado
     try:
-        linhas = con.execute(_SQL).fetchall()
+        from compliance_agent.siafe_documento import ugs_completas
+        completas = ugs_completas(con)      # só UG com NE E NL inteiras: coleta capada fabricava quebra
+        linhas = [r for r in con.execute(_SQL).fetchall() if (str(r["ug_emitente"]), int(r["exercicio"])) in completas]
     finally:
         con.close()
     est = sqlite3.connect(f"file:{estab_path or _REPO / 'data' / 'receita_estab.db'}?mode=ro", uri=True, timeout=30)
@@ -88,7 +91,7 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
         # autorização do CPDP) — misturar RP de 2019 com NL de 2025 fabricava "furou a fila" (04/11/2026).
         filas[(ug, fonte, ano)].append({"nl": nl, "liquidada": _iso(dia), "pago_em": pago, "credor": credor,
                                    "nome": nome, "valor": valor, "processo": proc, "natureza": natureza})
-    achados = []
+    achados, pendentes = [], set()
     for (ug, fonte, ano), fila in filas.items():
         for b in fila:
             if not b["pago_em"]:
@@ -99,9 +102,13 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
                     continue
                 if a["pago_em"] and a["pago_em"] <= b["pago_em"]:
                     continue                      # A já tinha sido paga: ordem respeitada
-                fim = a["pago_em"] or hoje
+                if not a["pago_em"]:
+                    # sem OB na base NÃO prova que não pagou (a cobertura da OB SIAFE é parcial): conferir à parte
+                    pendentes.add(a["nl"])
+                    continue
+                fim = a["pago_em"]
                 furadas.append({"nl": a["nl"], "nome": a["nome"], "liquidada": a["liquidada"],
-                                "pago_em": a["pago_em"] or "sem pagamento na base", "valor": a["valor"],
+                                "pago_em": a["pago_em"], "valor": a["valor"],
                                 "dias_esperando": _dias(b["pago_em"], fim)})
             if furadas:
                 furadas.sort(key=lambda x: -x["dias_esperando"])
@@ -118,6 +125,7 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
     return {"ok": True, "n": len(achados), "ugs_cobertas": sorted({u for u, _, _ in filas}),
             "por_forca": {k: sum(x["forca"] == k for x in achados) for k in ("forte", "medio")},
             "inversoes_curtas": len(curtas),
+            "pendentes": len(pendentes),
             "nota": "Indício a verificar, não acusação: o Decreto RJ 49.134/2024 (art. 9º) manda pagar na ordem da "
                     "data da NL por fonte; o art. 10 admite alterar com justificativa prévia (ME/EPP, emergência…), "
                     "que tem de estar no processo e publicada. Só UGs com NE e NL coletadas.",

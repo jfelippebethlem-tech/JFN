@@ -72,6 +72,37 @@ TIPOS = {
 NE_RE = TIPOS["NE"]["re"]
 
 
+_DDL_COB = """CREATE TABLE IF NOT EXISTS siafe_documento_cobertura (
+    tipo TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, completo INTEGER NOT NULL,
+    colhidas INTEGER, em TEXT, PRIMARY KEY (tipo, ug_emitente, exercicio))"""
+
+
+def registrar_cobertura(tipo: str, ug: str, exercicio: int, completo: bool, colhidas: int, db=None) -> None:
+    """Quem lê NE/NL precisa saber se a UG está INTEIRA: 166100 ficou com 1.000 NL de uma coleta capada e o
+    detector de ordem cronológica acusou 346 quebras (04/11/2026). Coleta capada ou com erro = completo 0."""
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        con.execute(_DDL_COB)
+        con.execute("INSERT OR REPLACE INTO siafe_documento_cobertura VALUES (?,?,?,?,?,?)",
+                    (tipo, str(ug), int(exercicio), int(bool(completo)), int(colhidas), time.strftime("%F %T")))
+        con.commit()
+    finally:
+        con.close()
+
+
+def ugs_completas(con, tipos=("NE", "NL")) -> set[tuple[str, int]]:
+    """(ug, exercicio) com TODOS os `tipos` coletados por inteiro. Sem a tabela = nenhuma (não é 'todas')."""
+    try:
+        linhas = con.execute("SELECT ug_emitente, exercicio, tipo FROM siafe_documento_cobertura WHERE completo=1"
+                             ).fetchall()
+    except sqlite3.OperationalError:
+        return set()
+    por: dict[tuple, set] = {}
+    for ug, ex, tipo in linhas:
+        por.setdefault((str(ug), int(ex)), set()).add(tipo)
+    return {k for k, v in por.items() if set(tipos) <= v}
+
+
 def _norm(s: str) -> str:
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
     return re.sub(r"\s+", " ", s).strip().lower()
@@ -313,7 +344,10 @@ def main() -> None:
     if not R._acquire("siafe_documento"):
         raise SystemExit(f"SIAFE ocupado: {R.lock_status()}")
     try:
-        print(json.dumps(asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo)), ensure_ascii=False))
+        r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo))
+        n = r.get("colhidas", r.get("ingeridas", 0))
+        registrar_cobertura(a.tipo, a.ug, a.exercicio, bool(r.get("ok")) and not r.get("capou"), n or 0)
+        print(json.dumps(r, ensure_ascii=False))
     finally:
         R._release()
 
