@@ -42,6 +42,19 @@ _JS_CLICAR = r"""(alvo)=>{const norm=s=>(s||'').trim().toLowerCase().replace(/\s
           ||els.find(e=>norm(e.innerText)===norm(alvo));
     if(el){el.click();return true;}return false;}"""
 
+# estrutura da grade para escrever o coletor: ids do corpo/scroller virtual, checkbox de remover o teto,
+# e 3 linhas de amostra (CPF mascarado). Só lê o DOM.
+_JS_DETALHE = r"""()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);
+    const db=ids.filter(i=>/tbl\w+.*::db$/.test(i)), sc=ids.filter(i=>/tbl\w+.*::scroller$/.test(i)),
+          ch=ids.filter(i=>/tbl\w+.*::ch$/.test(i)), lim=ids.filter(i=>/RemoveLimit|chkLimit|Limite/i.test(i));
+    const corpo=db.length?document.getElementById(db[0]):null; const linhas=[];
+    if(corpo)[...corpo.querySelectorAll('tr')].slice(0,3).forEach(tr=>linhas.push([...tr.querySelectorAll('td')]
+        .map(td=>(td.innerText||'').replace(/\s+/g,' ').trim().replace(/\b(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})\b/g,'***.$2.$3-**'))));
+    const filtro=ids.filter(i=>/sdtFilter|Filtro|filter|selProp|ac[A-Z]?\d|it\d+::content/i.test(i)).slice(0,40);
+    const nlin=corpo?corpo.querySelectorAll('tr').length:0;
+    const rod=[...document.querySelectorAll('span,div')].map(e=>(e.innerText||'').trim()).filter(t=>/registro|Total|linhas/i.test(t)&&t.length<80).slice(0,6);
+    return {db, sc, ch, lim, nlin, linhas, filtro, rodape:rod};}"""
+
 # colunas da grade + opções dos selects (propriedades do filtro) — só lê o DOM
 _JS_TELA = r"""()=>{const vis=e=>!!(e.offsetWidth||e.offsetHeight);
     const cols=[...document.querySelectorAll('[id*="tbl"] th, [id*="tbl"] [role=columnheader]')]
@@ -108,7 +121,8 @@ async def _expandir(pg, topo: str) -> dict[str, list[str]]:
     return arvore
 
 
-async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int) -> dict:
+async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int,
+                 detalhar: bool = False, espera_grade: int = 30) -> dict:
     from playwright.async_api import async_playwright
     inicio, out = time.time(), {"exercicio": exercicio, "em": time.strftime("%F %T")}
     async with async_playwright() as pw:
@@ -150,13 +164,15 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int) -> 
                     out["telas"][tela] = {"achou": False, "caminho": [mod, sg]}
                     continue
                 info = {}
-                for _ in range(30):         # a grade é pesada: espera aparecer
+                for _ in range(espera_grade):  # a grade é pesada: espera aparecer
                     await pg.wait_for_timeout(2000)
                     info = await _ev(pg, _JS_TELA)    # aguenta contexto destruído por PPR
                     if info["cols"] or info["sels"]:
                         break
                 await S._shot(pg, f"mapa_tela_{tela[:24]}")
                 out["telas"][tela] = {"achou": True, "caminho": [mod, sg], **info}
+                if detalhar:
+                    out["telas"][tela]["detalhe"] = await _ev(pg, _JS_DETALHE)
                 PARCIAL.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
         finally:
             await S._encerrar(pg, ctx)
@@ -169,6 +185,8 @@ def main() -> None:
     ap.add_argument("--telas", default="")
     ap.add_argument("--exercicio", type=int, default=2026)
     ap.add_argument("--prazo", type=int, default=1200, help="segundos; corta antes da janela do dreno")
+    ap.add_argument("--detalhar", action="store_true", help="ids da grade, teto e 3 linhas de amostra")
+    ap.add_argument("--espera-grade", type=int, default=30, help="ciclos de 2 s esperando a grade")
     a = ap.parse_args()
     from compliance_agent import host_siafe
     host_siafe.exigir_autorizacao()
@@ -176,7 +194,7 @@ def main() -> None:
         raise SystemExit(f"SIAFE ocupado: {R.lock_status()}")
     try:
         r = asyncio.run(mapear(a.menu, [t.strip() for t in a.telas.split(",") if t.strip()],
-                               a.exercicio, a.prazo))
+                               a.exercicio, a.prazo, a.detalhar, a.espera_grade))
     finally:
         R._release()
     antigo = json.loads(SAIDA.read_text(encoding="utf-8")) if SAIDA.exists() else {}
