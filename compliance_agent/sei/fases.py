@@ -96,7 +96,11 @@ _REGRAS: list[tuple[str, str, list[str]]] = [
     # contrato SOCIAL é documento societário de habilitação, não o instrumento contratual
     # (virava marco de contrato e fabricava inversão do art. 53 — calibração 2026-08-01)
     ("habilitacao", "selecao", [r"contrato social"]),
-    ("ata_rp", "contratacao", [r"ata de registro de preco"]),
+    # ata de RP NUMERADA ou "SRP" — ancorada no início (o documento É a ata; ofício que só a cita segue ofício).
+    # 04/11/2026: 19 dos 180 "Contrato/ata formalizados ausente" tinham a ata no processo como "anexo ata srp 004 2021".
+    ("ata_rp", "contratacao", [r"ata de registro de preco",
+                               r"^(anexo\s+)?(sei erj \d+\s+)?ata (de )?srp\b",
+                               r"^(anexo\s+)?(sei erj \d+\s+)?ata (n\s*)?\d{1,4}\s+(de\s+)?20\d\d\b"]),
     ("contrato", "contratacao", [r"termo de contrato", r"\bcontrato\b", r"extrato de contrato",
                                  r"publicacao .*contrato"]),
     ("garantia", "contratacao", [r"garantia contratual", r"seguro garantia", r"apolice"]),
