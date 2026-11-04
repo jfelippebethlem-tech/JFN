@@ -83,9 +83,10 @@ def _caminho(tela: str) -> tuple[str, str] | None:
 
 
 async def _clicar_id(pg, id_: str, espera_ms: int = 2500) -> None:
+    from playwright.async_api import Error as PWError
     try:
         await pg.evaluate("(i)=>{const e=document.getElementById(i);if(e)e.click();}", id_)
-    except Exception:              # PPR em voo derruba o contexto: a página segue, o clique pegou
+    except PWError:                # PPR em voo derruba o contexto: a página segue, o clique pegou
         pass
     await pg.wait_for_timeout(espera_ms)
 
@@ -151,10 +152,7 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int) -> 
                 info = {}
                 for _ in range(30):         # a grade é pesada: espera aparecer
                     await pg.wait_for_timeout(2000)
-                    try:
-                        info = await pg.evaluate(_JS_TELA)
-                    except Exception:       # contexto destruído no meio de um PPR: tenta de novo
-                        continue
+                    info = await _ev(pg, _JS_TELA)    # aguenta contexto destruído por PPR
                     if info["cols"] or info["sels"]:
                         break
                 await S._shot(pg, f"mapa_tela_{tela[:24]}")
