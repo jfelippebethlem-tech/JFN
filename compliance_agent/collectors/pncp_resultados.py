@@ -29,6 +29,7 @@ from compliance_agent.collectors.pncp import (
 _H = {"User-Agent": "JFN-Compliance/2.0"}
 # menor data com dado estruturado útil no PNCP (ver docstring — 2024 é o 1º ano denso).
 PNCP_PRIMEIRO_ANO_DENSO = 2024
+_LOCK_TENTATIVAS, _LOCK_ESPERA = 10, 120      # até ~20 min de banco travado por página
 
 
 def init_schema(con: sqlite3.Connection) -> None:
@@ -150,11 +151,25 @@ async def coletar_resultados(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_A
                     data = (j or {}).get("data") or []
                     if not data:
                         break
-                    for ct in data:
-                        n = await _gravar_certame(con, client, ct, tot)
-                        tot["gravados"] += n
-                        await asyncio.sleep(pausa)
-                    con.commit()
+                    # O VACUUM de domingo (5 GB) segura o banco além do busy_timeout de 60 s: em
+                    # 01/11/2026 a coleta morreu com "database is locked" e perdeu a semana. Trava
+                    # passageira → desfaz a página, espera e refaz (upsert é idempotente).
+                    for tentativa in range(_LOCK_TENTATIVAS):
+                        antes = dict(tot)
+                        try:
+                            for ct in data:
+                                n = await _gravar_certame(con, client, ct, tot)
+                                tot["gravados"] += n
+                                await asyncio.sleep(pausa)
+                            con.commit()
+                            break
+                        except sqlite3.OperationalError as exc:
+                            if "locked" not in str(exc) or tentativa == _LOCK_TENTATIVAS - 1:
+                                raise
+                            con.rollback()
+                            tot.clear()
+                            tot.update(antes)
+                            await asyncio.sleep(_LOCK_ESPERA)
                     if pagina >= ((j or {}).get("totalPaginas") or 1):
                         break
                     await asyncio.sleep(pausa)
