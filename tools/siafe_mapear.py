@@ -27,6 +27,7 @@ from compliance_agent import siafe_runner as R
 
 _REPO = Path(__file__).resolve().parents[1]
 SAIDA = _REPO / "data" / "siafe_mapa.json"
+PARCIAL = _REPO / "data" / "siafe_mapa_parcial.json"   # gravado tela a tela: queda no meio não perde o lido
 QUEM = "siafe_mapear"
 
 _JS_LINKS = r"""()=>[...document.querySelectorAll('a')].map(e=>({t:(e.innerText||'').trim(),
@@ -55,6 +56,32 @@ _JS_IDS = r"""(pad)=>[...document.querySelectorAll('a')].filter(e=>new RegExp(pa
     .map(e=>({t:(e.innerText||'').trim(),id:e.id}))"""
 
 
+async def _ev(pg, js: str, arg=None, tentativas: int = 15):
+    """evaluate que aguenta navegação: clicar numa tela recarrega a página e o `evaluate` seguinte caía com
+    "Execution context was destroyed" (04/11/2026, 3ª passada — perdeu a passada inteira)."""
+    from playwright.async_api import Error as PWError
+    for i in range(tentativas):
+        try:
+            return await (pg.evaluate(js) if arg is None else pg.evaluate(js, arg))
+        except PWError as exc:
+            if "context was destroyed" not in str(exc) and "navigat" not in str(exc) or i == tentativas - 1:
+                raise
+            await pg.wait_for_timeout(2000)
+
+
+def _caminho(tela: str) -> tuple[str, str] | None:
+    """(módulo, 2º nível) da tela, lido do último mapa de menu gravado — clicar pelo caminho conhecido em
+    vez de varrer os 13 módulos para cada tela."""
+    if not SAIDA.exists():
+        return None
+    for ex in reversed(json.loads(SAIDA.read_text(encoding="utf-8")).get("execucoes", [])):
+        for mod, arv in (ex.get("menu") or {}).items():
+            for sg, telas in arv.items():
+                if tela.lower() in (t.lower() for t in telas):
+                    return mod, sg
+    return None
+
+
 async def _clicar_id(pg, id_: str, espera_ms: int = 2500) -> None:
     try:
         await pg.evaluate("(i)=>{const e=document.getElementById(i);if(e)e.click();}", id_)
@@ -66,16 +93,16 @@ async def _clicar_id(pg, id_: str, espera_ms: int = 2500) -> None:
 async def _expandir(pg, topo: str) -> dict[str, list[str]]:
     """Módulo (pt_np4) → 2º nível (pt_np3) → telas. Clica SÓ o módulo e depois cada item do 2º nível;
     clicar toda âncora de disclosure pulava para outros módulos (04/11/2026, 2ª passada)."""
-    mods = [x for x in await pg.evaluate(_JS_IDS, r"pt_np4:\d+:pt_cni6::disclosureAnchor$") if x["t"] == topo]
+    mods = [x for x in await _ev(pg, _JS_IDS, r"pt_np4:\d+:pt_cni6::disclosureAnchor$") if x["t"] == topo]
     if not mods:
         return {}
     await _clicar_id(pg, mods[0]["id"])
-    segundo = await pg.evaluate(_JS_IDS, r"pt_np3:\d+:pt_cni4::disclosureAnchor$")
-    base = {x["t"] for x in await pg.evaluate(_JS_LINKS)}
+    segundo = await _ev(pg, _JS_IDS, r"pt_np3:\d+:pt_cni4::disclosureAnchor$")
+    base = {x["t"] for x in await _ev(pg, _JS_LINKS)}
     arvore: dict[str, list[str]] = {}
     for sg in segundo:
         await _clicar_id(pg, sg["id"])
-        agora = {x["t"] for x in await pg.evaluate(_JS_LINKS)}
+        agora = {x["t"] for x in await _ev(pg, _JS_LINKS)}
         arvore[sg["t"]] = sorted(agora - base - {x["t"] for x in segundo})
     return arvore
 
@@ -106,20 +133,22 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int) -> 
                 if time.time() - inicio > prazo_s:
                     out["cortado_por_prazo"] = True
                     break
-                achou = False
-                for t in topo:              # a tela mora sob algum módulo/2º nível: procura por texto
-                    arv = await _expandir(pg, t)
-                    sg = next((k for k, v in arv.items() if tela.lower() in [x.lower() for x in v]), None)
-                    if sg:
-                        seg = [x for x in await pg.evaluate(_JS_IDS, r"pt_np3:\d+:pt_cni4::disclosureAnchor$")
-                               if x["t"] == sg]
-                        if seg:
-                            await _clicar_id(pg, seg[0]["id"])
-                        achou = await pg.evaluate(_JS_CLICAR, tela)
-                        break
-                if not achou:
-                    out["telas"][tela] = {"achou": False}
+                cam = _caminho(tela)
+                if not cam:
+                    out["telas"][tela] = {"achou": False, "motivo": "fora do último mapa de menu (rode --menu)"}
                     continue
+                mod, sg = cam
+                mods = [x for x in await _ev(pg, _JS_IDS, r"pt_np4:\d+:pt_cni6::disclosureAnchor$") if x["t"] == mod]
+                if mods:
+                    await _clicar_id(pg, mods[0]["id"])
+                segs = [x for x in await _ev(pg, _JS_IDS, r"pt_np3:\d+:pt_cni4::disclosureAnchor$") if x["t"] == sg]
+                if segs:
+                    await _clicar_id(pg, segs[0]["id"])
+                achou = await _ev(pg, _JS_CLICAR, tela)
+                if not achou:
+                    out["telas"][tela] = {"achou": False, "caminho": [mod, sg]}
+                    continue
+                info = {}
                 for _ in range(30):         # a grade é pesada: espera aparecer
                     await pg.wait_for_timeout(2000)
                     try:
@@ -129,7 +158,8 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int) -> 
                     if info["cols"] or info["sels"]:
                         break
                 await S._shot(pg, f"mapa_tela_{tela[:24]}")
-                out["telas"][tela] = {"achou": True, **info}
+                out["telas"][tela] = {"achou": True, "caminho": [mod, sg], **info}
+                PARCIAL.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
         finally:
             await S._encerrar(pg, ctx)
     return out
