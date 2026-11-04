@@ -125,7 +125,10 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int,
                  detalhar: bool = False, espera_grade: int = 30) -> dict:
     from playwright.async_api import Error as PWError, async_playwright
     inicio, out = time.time(), {"exercicio": exercicio, "em": time.strftime("%F %T")}
-    async with async_playwright() as pw:
+    from compliance_agent.recursos import browser_lock_async
+    # o MESMO lock de navegador do coletor da OB e do dreno: o lock do siafe_runner sozinho não os segura,
+    # e duas sessões na mesma conta derrubam uma à outra (sessão única por IP).
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         ctx, pg = await S._novo_browser(pw, headless=True)
         try:
             lg = await S._login(pg, exercicio)

@@ -69,3 +69,18 @@ def test_numero_de_ne_nao_entra_como_nl(tmp_path):
     db = tmp_path / "c.db"
     linha = ["2026NE03532"] + [""] * 16
     assert N.ingerir(2026, _HEADER_NL, [linha], db=db, tipo="NL")["ingeridas"] == 0
+
+
+def test_limite_decidido_pelo_rotulo_e_nao_pelo_id():
+    """NE/NL: "Limite de 1000 registros" marcado = limite ATIVO (166100 parou em 1.000 achando o contrário)."""
+    assert N._acao_limite("Limite de 1000 registros.", True) == "clicar"
+    assert N._acao_limite("Limite de 1000 registros.", False) == "nada"
+    assert N._acao_limite("Remover limite", False) == "clicar"
+    assert N._acao_limite("Remover limite", True) == "nada"
+    assert N._acao_limite("", True) == "desconhecido"
+
+
+def test_fatia_no_teto_subdivide_ate_tres_digitos():
+    assert N._subdividir("2025NE0", 1000, len("2025NE")) == [f"2025NE0{d}" for d in range(10)]
+    assert N._subdividir("2025NE0", 400, len("2025NE")) == []
+    assert N._subdividir("2025NE012", 1000, len("2025NE")) == []       # profundidade máxima: declara capada

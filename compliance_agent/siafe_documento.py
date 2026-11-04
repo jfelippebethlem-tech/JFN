@@ -142,14 +142,33 @@ async def _ir_para(pg, tela: str) -> bool:
     return False
 
 
+def _acao_limite(rotulo: str, marcado: bool) -> str:
+    """O mesmo id `chkRemoveLimit` tem semânticas opostas conforme a tela: na NE/NL o rótulo é "Limite de 1000
+    registros" e MARCADO = limite ATIVO (04/11/2026: UG 166100 parou em 1.000 com o código achando que o limite
+    já estava removido). Decide pelo rótulo, não pelo id."""
+    r = _norm(rotulo)
+    if "remov" in r:                       # "Remover limite": marcado = sem limite
+        return "nada" if marcado else "clicar"
+    if "limite" in r:                      # "Limite de 1000 registros": marcado = com limite
+        return "clicar" if marcado else "nada"
+    return "desconhecido"
+
+
 async def _remover_limite(pg) -> str:
     from tools.siafe_mapear import _ev
-    estado = await _ev(pg, r"""()=>{const cb=document.getElementById('""" + TBL + r""":chkRemoveLimit::content');
-        if(!cb)return 'ausente'; if(cb.checked)return 'ja_marcado';
-        cb.click(); cb.dispatchEvent(new Event('change',{bubbles:true})); return 'marcado';}""")
-    if estado == "marcado":
+    cid = TBL + ":chkRemoveLimit::content"
+    info = await _ev(pg, r"""(i)=>{const cb=document.getElementById(i); if(!cb)return null;
+        const lb=document.querySelector('label[for="'+i+'"]'); const pai=cb.closest('span,div,td');
+        return {marcado:cb.checked, rotulo:((lb&&lb.innerText)||(pai&&pai.innerText)||'').trim()};}""", cid)
+    if not info:
+        return "ausente"
+    acao = _acao_limite(info["rotulo"], info["marcado"])
+    if acao == "clicar":
+        await _ev(pg, r"""(i)=>{const cb=document.getElementById(i);cb.click();
+            cb.dispatchEvent(new Event('change',{bubbles:true}));}""", cid)
         await pg.wait_for_timeout(8000)
-    return estado
+        return "limite_removido"
+    return {"nada": "sem_limite", "desconhecido": f"rotulo_desconhecido:{info['rotulo'][:40]}"}[acao]
 
 
 async def _filtrar_ug(pg, ug: str) -> dict:
@@ -204,11 +223,48 @@ async def _colher(pg, regex, maxn: int = 20000) -> tuple[list[str], list[list[st
     return header, linhas
 
 
+def _subdividir(prefixo: str, n: int, base_len: int) -> list[str]:
+    """Fatia que encosta no teto vira 10 fatias filhas, até 3 dígitos após o tipo (mesma regra da OB)."""
+    if n >= _PLATO and len(prefixo) < base_len + 3:
+        return [f"{prefixo}{d}" for d in range(10)]
+    return []
+
+
+async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str) -> dict:
+    """Linha 1 do filtro = Número começa com <prefixo>; fatia capada subdivide. Ingesta fatia a fatia."""
+    from compliance_agent import siafe_ob_orcamentaria as S
+    from compliance_agent.siafe_adf import AdfSync
+    adf = AdfSync(pg)
+    if not await S._esperar_linha_filtro(pg, 1, adf):
+        return {"ok": False, "etapa": "filtro_linha1"}
+    await S._typeahead(pg, f"{TBL}:table_rtfFilter:1:cbx_col_sel_rtfFilter::content", "Número"); await adf.wait()
+    await S._typeahead(pg, f"{TBL}:table_rtfFilter:1:cbx_op_sel_rtfFilter::content", "começa com"); await adf.wait()
+    base = f"{exercicio}{tipo}"
+    work, fatias, total, capadas = [f"{base}{d}" for d in range(10)], {}, 0, []
+    while work:
+        pref = work.pop(0)
+        await S._set_valor(pg, '[id*="table_rtfFilter:1"] input[type="text"]:visible', pref)
+        await adf.wait(); await pg.wait_for_timeout(4000)
+        header, linhas = await _colher(pg, t["re"])
+        filhas = _subdividir(pref, len(linhas), len(base))
+        if filhas:
+            work[:0] = filhas
+            continue
+        if len(linhas) >= _PLATO:
+            capadas.append(pref)               # profundidade máxima e ainda no teto: declarar, não esconder
+        fatias[pref] = len(linhas)
+        total += ingerir(exercicio, header, linhas, tipo=tipo).get("ingeridas", 0)
+    return {"ok": True, "fatias": fatias, "ingeridas": total, "capadas": capadas}
+
+
 async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE") -> dict:
     t = TIPOS[tipo]
     from playwright.async_api import async_playwright
     from compliance_agent import siafe_ob_orcamentaria as S
-    async with async_playwright() as pw:
+    from compliance_agent.recursos import browser_lock_async
+    # o MESMO lock de navegador do coletor da OB e do dreno: o lock do siafe_runner sozinho não os segura,
+    # e duas sessões na mesma conta derrubam uma à outra (sessão única por IP).
+    async with browser_lock_async(nome="siafe", espera_max=900), async_playwright() as pw:
         ctx, pg = await S._novo_browser(pw, headless=True)
         try:
             lg = await S._login(pg, exercicio)
@@ -221,12 +277,18 @@ async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE") -> dict:
             if not f.get("ok"):
                 return {"ok": False, "etapa": "filtro", **f}
             header, linhas = await _colher(pg, t["re"])
+            if len(linhas) < _PLATO:
+                r = ingerir(exercicio, header, linhas, tipo=tipo)
+                return {**r, "tipo": tipo, "ug": ug, "exercicio": exercicio, "colhidas": len(linhas),
+                        "limite": lim, "capou": False}
+            # TETO DO SERVIDOR: desmarcar o limite não basta (166100/2025 parou em 1.000 de novo). Fatiar.
+            fat = await _colher_fatiado(pg, t, exercicio, tipo)
         finally:
             await S._encerrar(pg, ctx)
-    r = ingerir(exercicio, header, linhas, tipo=tipo)
-    capou = _PLATO <= len(linhas) <= _TETO
-    return {**r, "tipo": tipo, "ug": ug, "exercicio": exercicio, "colhidas": len(linhas), "limite": lim, "capou": capou,
-            "aviso": "encostou no teto de 1.000 — coleta INCOMPLETA, fatiar por número" if capou else ""}
+    return {**fat, "tipo": tipo, "ug": ug, "exercicio": exercicio, "limite": lim, "fatiado": True,
+            "capou": bool(fat.get("capadas")),
+            "aviso": ("fatias no teto mesmo na profundidade máxima: " + ", ".join(fat["capadas"])
+                      if fat.get("capadas") else "")}
 
 
 def main() -> None:
