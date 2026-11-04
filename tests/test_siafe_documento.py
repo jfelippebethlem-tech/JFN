@@ -84,3 +84,18 @@ def test_fatia_no_teto_subdivide_ate_tres_digitos():
     assert N._subdividir("2025NE0", 1000, len("2025NE")) == [f"2025NE0{d}" for d in range(10)]
     assert N._subdividir("2025NE0", 400, len("2025NE")) == []
     assert N._subdividir("2025NE012", 1000, len("2025NE")) == []       # profundidade máxima: declara capada
+
+
+def test_navegacao_tenta_de_novo_quando_o_menu_nao_montou(monkeypatch):
+    import asyncio
+    chamadas = []
+
+    async def uma_vez(pg, tela):
+        chamadas.append(tela)
+        return len(chamadas) == 3
+
+    class _Pg:
+        async def wait_for_timeout(self, ms):
+            return None
+    monkeypatch.setattr(N, "_ir_para_uma_vez", uma_vez)
+    assert asyncio.run(N._ir_para(_Pg(), "Nota de Empenho")) is True and len(chamadas) == 3

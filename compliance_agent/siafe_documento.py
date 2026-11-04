@@ -123,7 +123,17 @@ def ingerir(exercicio: int, header: list[str], linhas: list[list[str]], db=None,
 
 # ─────────────────────────────── navegação e colheita (precisa do SIAFE) ───────────────────────────────
 
-async def _ir_para(pg, tela: str) -> bool:
+async def _ir_para(pg, tela: str, tentativas: int = 4) -> bool:
+    """Navega com novas tentativas: logo após o login o menu às vezes ainda não montou (04/11/2026, 166100:
+    `etapa: navegacao` em 53 s com login incluso) — o mesmo prólogo intermitente que o coletor da OB trata."""
+    for i in range(tentativas):
+        if await _ir_para_uma_vez(pg, tela):
+            return True
+        await pg.wait_for_timeout(6000 * (i + 1))
+    return False
+
+
+async def _ir_para_uma_vez(pg, tela: str) -> bool:
     """Execução (pt_np4) › Execução Orçamentária (pt_np3) › <tela> — pelo TEXTO (índice de menu não é
     identidade; ver siafe1-navegacao-e-cabecalho-vivo)."""
     from tools.siafe_mapear import _JS_CLICAR, _JS_IDS, _clicar_id, _ev
