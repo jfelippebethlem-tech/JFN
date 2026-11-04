@@ -309,7 +309,6 @@ output_dir.mkdir(exist_ok=True)
 
 app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
 app.mount("/output", StaticFiles(directory="output"), name="output")
-app.mount("/static/assets", StaticFiles(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
 # v49: o CSS e o JS do painel saíram de dentro do HTML (eram 178 KB + 337 KB inline, num arquivo de
 # 519 KB que ia inteiro pela rede a cada carga, sem compressão e sem cache). Servidos daqui, ganham
 # gzip (abaixo) e cache longo — o `?v=<hash>` no link é que invalida quando o conteúdo muda.
@@ -334,6 +333,18 @@ class _StaticVersionado(StaticFiles):
         return resp
 
 
+class _StaticAssets(_StaticVersionado):
+    """Fontes, vídeos e ícones: sem `?v=`, um dia de cache e depois revalida pelo etag.
+
+    Sem isto o navegador revalidava cada vídeo/fonte a cada visita (medido em 04/11/2026)."""
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        resp.headers.setdefault("Cache-Control", "public, max-age=86400")
+        return resp
+
+
+app.mount("/static/assets", _StaticAssets(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
 app.mount("/static/css", _StaticVersionado(directory="static/css"), name="css")
 app.mount("/static/js", _StaticVersionado(directory="static/js"), name="js")
 
@@ -342,7 +353,22 @@ app.mount("/static/js", _StaticVersionado(directory="static/js"), name="js")
 # que numa VM de 2 vCPU importa.
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402 — junto do mount que ele serve
 
-app.add_middleware(GZipMiddleware, minimum_size=1024)
+_JA_COMPRIMIDO = (".mp4", ".webm", ".jpg", ".jpeg", ".png", ".webp", ".woff2", ".pdf", ".zip", ".gz")
+
+
+class _GZipSemMidia(GZipMiddleware):
+    """Vídeo/imagem/fonte já vêm comprimidos: o gzip ganhava 0,15% num MP4 de 1,3 MB, gastava CPU
+    a cada visita e devolvia 206 com `content-encoding: gzip` e `content-range` dos bytes crus —
+    resposta inválida para o player que pede Range (medido em 04/11/2026)."""
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path", "").lower().endswith(_JA_COMPRIMIDO):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(_GZipSemMidia, minimum_size=1024)
 
 
 # ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────
