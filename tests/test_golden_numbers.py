@@ -63,7 +63,9 @@ GOLDEN = {
     # 2026-09-09: 1239 → 1288 (+49 OBs, +R$ 6,281,120.79). Auditado: 0 duplicatas
     # numero_ob+ug; o excedente é agosto (42) e setembro (8) de 2026 — o golden de 01/09 fechava em 31/07.
     # Mesmo dia em que 14.736 linhas alheias saíram da tabela (não tocavam MGS: ug/numero inválidos).
-    "mgs_clean": {"cnpj": "19088605000104", "obs": 1288, "total": 158222639.26},
+    # 2026-11-04: 1288 → 1336 (+R$ 6.709.893,07). Auditado antes de revisar: todo o acréscimo é `tfe_ob` de 2026
+    # (o espelho TFE trouxe set–01/out/2026, última carga antes de a SEFAZ recusar o IP da VM). Golden de 09/09.
+    "mgs_clean": {"cnpj": "19088605000104", "obs": 1336, "total": 164932532.33},
     # 2026-07-20: total revisado DE PROPÓSITO 295.179.659,72 → 295.301.277,60 (+121.617,88).
     # Mesmas 2.524 OBs e 197 fornecedores — o sweep SIAFE atualizou VALORES de OBs in place
     # (correção da fonte). Drift auditado antes da revisão (contagem e fornecedores intactos).
@@ -98,7 +100,8 @@ GOLDEN = {
     # contagem CAIR porque a OB que voltou vale mais que as duas que saíram somadas.
     # 2026-09-09: 2571 → 2629 (+58, +R$ 10,061,999.74); fornecedores 198 → 201. Auditado:
     # 0 duplicatas; excedente = agosto (51) + setembro (5) de 2026 + 2 de julho que entraram na coleta incremental.
-    "iterj_ug": {"ug": "133100", "obs": 2629, "total": 308452655.52, "fornecedores": 201},
+    # 2026-11-04: 2629 → 2664 (+R$ 5.018.182,60, +2 fornecedores) — mesma origem: `tfe_ob` de 2026 (jun–set).
+    "iterj_ug": {"ug": "133100", "obs": 2664, "total": 313470838.12, "fornecedores": 203},
     # 2026-08-12: piso 1.121.301 → 1.178.076 e pct_cnpj_min 76 → 75.
     # O piso sobe porque a recoleta de 2024-2026 (reparo da corrupção) trouxe a base de 1.142.056
     # para 1.178.076. O `pct_cnpj_min` cai por COMPOSIÇÃO, não por perda: o percentual de OBs com

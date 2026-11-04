@@ -48,12 +48,28 @@ def _modulos_locais() -> set[str]:
     return locais
 
 
+def _do_projeto() -> set[str] | None:
+    """Arquivos que um clone NOVO teria (rastreados + não rastreados não ignorados). Arquivo do `.gitignore` não
+    existe na venv nova que este teste protege — em 04/11/2026 ele acusava `tools/eleicao2026_*`, local e ignorado.
+    Sem git: None, e o teste varre tudo (lado estrito)."""
+    import subprocess
+    try:
+        r = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard", "*.py"], cwd=RAIZ,
+                           capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return set(r.stdout.splitlines()) if r.returncode == 0 else None
+
+
 def _importados() -> set[tuple[str, str]]:
     """`(módulo, arquivo)` — o arquivo importa para prender a exceção ao seu único uso legítimo."""
     achados: set[tuple[str, str]] = set()
+    projeto = _do_projeto()
     for pacote in PACOTES:
         for py in (RAIZ / pacote).rglob("*.py"):
             if any(k in str(py) for k in IGNORA_CAMINHO):
+                continue
+            if projeto is not None and str(py.relative_to(RAIZ)) not in projeto:
                 continue
             try:
                 arvore = ast.parse(py.read_text(encoding="utf-8", errors="ignore"))
