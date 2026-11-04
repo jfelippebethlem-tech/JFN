@@ -2151,6 +2151,14 @@ def api_intel_socio_sancionada():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/competencia_futura")
+def api_intel_competencia_futura():
+    """OB SIAFE paga antes da competência que quita: antecipação (L.14.133 art. 145) ou ano registrado errado.
+    Sem `except` genérico de propósito (catraca): erro aqui é 500 honesto, não `ok:false` mudo."""
+    from compliance_agent.pagamento_competencia_futura import pagamento_competencia_futura
+    return JSONResponse(_cache_calc("intel:competencia_futura", 3600, pagamento_competencia_futura))
+
+
 @router.get("/api/intel/porta_giratoria")
 def api_intel_porta_giratoria(limite: int = 120):
     """Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado."""

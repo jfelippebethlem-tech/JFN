@@ -163,7 +163,7 @@ export async function filaFiscal(soOsint){
   // fila demorava tanto que o card parecia não existir. Em sequência cada painel aparece assim que
   // fica pronto, na ordem em que o fiscal lê.
   (async () => {
-    for (const f of [taxaPorUnidade, fimDeExercicio, concentracaoPorGrupo,
+    for (const f of [taxaPorUnidade, fimDeExercicio, competenciaFutura, concentracaoPorGrupo,
                      coparticipacaoRelacionados, recuperacaoJudicial, aditivoPrecoce,
                      nucleoCartel, consorcioVeiculo, emergenciaRecorrente, leituraDupla, zerosSemCausa,
                      detectoresFramework]) {
@@ -227,6 +227,37 @@ async function fimDeExercicio() {
           <td class="right dim">${fmtN(x.obs)}</td></tr>`).join("")
       + `</tbody></table>`)
     + leitura(esc(d.ressalva || ""));
+  o.appendChild(alvo);
+}
+
+// PAGO ANTES DE ACONTECER. A OB quita uma competência que ainda não chegou: antecipação (Lei 14.133
+// art. 145 — vedada salvo "sensível economia de recursos") ou competência com o ano errado no SIAFE.
+// Até 12 meses as duas leituras explicam o caso; a data da NL decide. Ano trocado em RP (pago jan–mar
+// por competência out–dez do mesmo ano) já sai como fraco — não é antecipação.
+const _FORCA_CF = {forte:['rose','forte'], medio:['amber','implausível'], fraco:['accent','fraco']};
+async function competenciaFutura() {
+  const o = $("ff-out");
+  if (!o) return;
+  const d = await J("/api/intel/competencia_futura");
+  if (!d || d.ok === false) return;
+  const alvo = document.createElement("div");
+  const itens = (d.achados || []).filter((a) => a.forca !== "fraco").slice(0, 15);
+  if (!itens.length) {
+    alvo.innerHTML = sec("Pago antes da competência") + vazioDeclarado(d, "OB paga antes da competência que quita");
+    o.appendChild(alvo); return;
+  }
+  const pf = d.por_forca || {};
+  alvo.innerHTML = sec(`Pago antes da competência (${fmtN(pf.forte || 0)} fortes · ${fmtN(pf.medio || 0)} implausíveis · ${fmtRc(d.valor_total)})`)
+    + card(`<table class="tb"><thead><tr><th>Força</th><th>Credor</th><th>UG</th><th>pago em → competência</th>
+      <th class="right">meses</th><th class="right">valor</th></tr></thead><tbody>`
+      + itens.map((a) => { const ob = (a.obs || [])[0] || {}; const [cor, rot] = _FORCA_CF[a.forca] || ['accent', a.forca];
+          return `<tr><td><span class="tag ${cor}">${rot}</span></td>
+          <td>${esc((a.nome || "").slice(0, 44))} <span class="dim">${esc(a.credor_cnpj || "")}</span></td>
+          <td class="dim">${esc(a.ug || "")}</td>
+          <td>${esc(ob.pago_em || "")} → <b>${esc(ob.competencia || "")}</b> <span class="dim">${esc(ob.processo || "")}</span></td>
+          <td class="right">${fmtN(a.meses_max)}</td><td class="right">${fmtRc(a.valor)}</td></tr>`; }).join("")
+      + `</tbody></table>`)
+    + leitura(esc(d.nota || ""));
   o.appendChild(alvo);
 }
 
