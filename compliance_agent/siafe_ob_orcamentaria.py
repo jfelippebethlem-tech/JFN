@@ -131,6 +131,33 @@ def _migrar_chave(con) -> int:
         raise
 
 
+def _ckpt_sem_lastro(ug: str, exercicio: int, done: set, db=None) -> set:
+    """Fatias que o checkpoint diz "feitas" e o banco não sustenta: zero linha no SIAFE, ou menos da
+    metade do que o espelho TFE conhece. Voltam para a fila (zero legítimo custa segundos).
+
+    04/11/2026: checkpoints de agosto, anteriores à correção de 24/10 que barrou o zero transitório,
+    seguiam escondendo fatias inteiras — 100100/2023 com OB04–OB09 100% ausentes e "feitas"."""
+    try:
+        con = sqlite3.connect(f"file:{db or _DB}?mode=ro", uri=True, timeout=30)
+    except sqlite3.Error:
+        return set()
+    try:
+        fora = set()
+        for pref in done:
+            n_siafe = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE ug_emitente=? AND "
+                                  "exercicio=? AND numero_ob LIKE ?", (str(ug), int(exercicio), pref + "%")
+                                  ).fetchone()[0]
+            n_esp = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE ug_codigo=? AND numero_ob LIKE ?",
+                                (str(ug), pref + "%")).fetchone()[0]
+            if n_siafe == 0 or n_siafe < n_esp / 2:
+                fora.add(pref)
+        return fora
+    except sqlite3.Error:
+        return set()
+    finally:
+        con.close()
+
+
 def ingerir(exercicio: int, header: list, linhas: list) -> dict:
     """
     Ingere as OBs da OB Orçamentária na `compliance.db`, tabela `ob_orcamentaria_siafe`.
@@ -1180,6 +1207,11 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             except Exception:
                 _st = {}
             done = set(_st.get("done", [])); capped = set(_st.get("capped", []))
+            _sem_lastro = _ckpt_sem_lastro(ug, exercicio, done)
+            if _sem_lastro:                     # "feito" sem linha no banco não é feito
+                print(f"  {ug} {exercicio}: checkpoint sem lastro em {len(_sem_lastro)} fatia(s) → "
+                      f"refazendo {sorted(_sem_lastro)}", flush=True)
+                done -= _sem_lastro
 
             def _save_ckpt():
                 try:
