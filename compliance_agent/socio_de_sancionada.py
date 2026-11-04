@@ -12,9 +12,10 @@ BASE (conferida na fonte, 03/11/2026):
   • Lei 14.133/2021, art. 160 — desconsideração da personalidade jurídica estende a sanção a "administradores
     e sócios com poderes de administração", à "pessoa jurídica sucessora" e à "empresa do mesmo ramo com
     relação de coligação ou controle", com "contraditório, ampla defesa" e "análise jurídica prévia".
-  • TCU, Acórdão 1831/2014-Plenário (rel. José Múcio, TC 022.685/2013-8; existência conferida no índice
-    TCU local; teor por fontes secundárias): abuso evidenciado por (a) identidade dos sócios, (b) mesmo
-    ramo, (c) transferência do acervo técnico e humano.
+  • TCU, Acórdão 1831/2014-Plenário (09/07/2014, rel. José Múcio, TC 022.685/2013-8; voto lido na fonte
+    primária em 04/11/2026): abuso evidenciado por "a completa identidade dos sócios-proprietários", "a
+    atuação no mesmo ramo" e "a transferência integral do acervo técnico e humano". O caso era de
+    incorporação; aplicar a sócio comum é analogia.
   A força do sinal espelha esses critérios: mesmo CNAE = (b); mesmo endereço/telefone = proxy de (c).
 
 O QUE CONTA. Só a OB SIAFE Contabilizada paga à contratada na JANELA em que, ao mesmo tempo, a pessoa era

@@ -76,6 +76,29 @@ def test_citacao_sem_colegiado_confirma_pelo_par_numero_ano(con):
     assert T.conferir("Acórdão 871/2023", con)["status"] == "confirmado"
 
 
+def test_colegiado_abreviado_casa_com_o_extenso_da_base(con):
+    """A base do TCU grava "Primeira Câmara"; citação escreve "1ª Câmara". Medido em 04/11/2026:
+    o 2218/2011-1ª Câmara (citado no voto do 1831/2014-P) voltava `colegiado_diverge`."""
+    _grava(con, 2218, 2011, colegiado="Plenário")
+    _grava(con, 2218, 2011, colegiado="Primeira Câmara")
+    r = T.conferir("Acórdão 2218/2011-TCU-1ª Câmara", con)
+    assert r["status"] == "confirmado" and r["colegiado"] == "Primeira Câmara"
+
+
+def test_colegiado_por_extenso_e_conferido_e_nao_ignorado(con):
+    """"Segunda Câmara" por extenso não era reconhecido: o colegiado ficava vazio e confirmava."""
+    _grava(con, 2218, 2011, colegiado="Primeira Câmara")
+    assert T.conferir("Acórdão 2218/2011-Segunda Câmara", con)["status"] == "colegiado_diverge"
+    assert T.conferir("Acórdão 2218/2011-Primeira Câmara", con)["status"] == "confirmado"
+
+
+def test_metadado_e_do_colegiado_citado_nao_do_primeiro(con):
+    _grava(con, 2218, 2011, colegiado="Plenário", tipo="ACÓRDÃO DE RELAÇÃO")
+    _grava(con, 2218, 2011, colegiado="Primeira Câmara", tipo="ACÓRDÃO")
+    r = T.conferir("Acórdão 2218/2011-Primeira Câmara", con)
+    assert r["colegiado"] == "Primeira Câmara" and r["tipo"] == "ACÓRDÃO"
+
+
 def test_ponto_de_milhar_nao_atrapalha(con):
     _grava(con, 3243, 2020)
     assert T.conferir("Acórdão 3.243/2020-Plenário", con)["status"] == "confirmado"
