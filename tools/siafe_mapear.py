@@ -45,8 +45,8 @@ _JS_CLICAR = r"""(alvo)=>{const norm=s=>(s||'').trim().toLowerCase().replace(/\s
 # estrutura da grade para escrever o coletor: ids do corpo/scroller virtual, checkbox de remover o teto,
 # e 3 linhas de amostra (CPF mascarado). Só lê o DOM.
 _JS_DETALHE = r"""()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);
-    const db=ids.filter(i=>/tbl\w+.*::db$/.test(i)), sc=ids.filter(i=>/tbl\w+.*::scroller$/.test(i)),
-          ch=ids.filter(i=>/tbl\w+.*::ch$/.test(i)), lim=ids.filter(i=>/RemoveLimit|chkLimit|Limite/i.test(i));
+    const db=ids.filter(i=>/::db$/.test(i)), sc=ids.filter(i=>/::scroller$/.test(i)),
+          ch=ids.filter(i=>/::ch$/.test(i)), lim=ids.filter(i=>/RemoveLimit|chkLimit|Limite/i.test(i));
     const corpo=db.length?document.getElementById(db[0]):null; const linhas=[];
     if(corpo)[...corpo.querySelectorAll('tr')].slice(0,3).forEach(tr=>linhas.push([...tr.querySelectorAll('td')]
         .map(td=>(td.innerText||'').replace(/\s+/g,' ').trim().replace(/\b(\d{3})\.?(\d{3})\.?(\d{3})-?(\d{2})\b/g,'***.$2.$3-**'))));
@@ -123,7 +123,7 @@ async def _expandir(pg, topo: str) -> dict[str, list[str]]:
 
 async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int,
                  detalhar: bool = False, espera_grade: int = 30) -> dict:
-    from playwright.async_api import async_playwright
+    from playwright.async_api import Error as PWError, async_playwright
     inicio, out = time.time(), {"exercicio": exercicio, "em": time.strftime("%F %T")}
     async with async_playwright() as pw:
         ctx, pg = await S._novo_browser(pw, headless=True)
@@ -173,6 +173,14 @@ async def mapear(menu: bool, telas: list[str], exercicio: int, prazo_s: int,
                 out["telas"][tela] = {"achou": True, "caminho": [mod, sg], **info}
                 if detalhar:
                     out["telas"][tela]["detalhe"] = await _ev(pg, _JS_DETALHE)
+                    # a grade pode morar num iframe, que o `document` da página principal não vê
+                    out["telas"][tela]["frames"] = []
+                    for fr in pg.frames[1:]:
+                        try:
+                            out["telas"][tela]["frames"].append({"url": fr.url[:160],
+                                                                 "detalhe": await fr.evaluate(_JS_DETALHE)})
+                        except PWError as exc:  # frame sumindo no meio é esperado
+                            out["telas"][tela]["frames"].append({"url": fr.url[:160], "erro": str(exc)[:80]})
                 PARCIAL.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
         finally:
             await S._encerrar(pg, ctx)
