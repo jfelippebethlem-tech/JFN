@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -109,9 +110,20 @@ def sensor_catracas() -> list[dict]:
                acao_humana="conserto de código: a mensagem da catraca diz o que cresceu e onde") for f in falhas]
 
 
+def _env_sessao() -> dict:
+    """O cron não tem o barramento da sessão: sem XDG_RUNTIME_DIR, `systemctl --user` responde
+    "Failed to connect to bus" e a saída vazia parecia "nenhum serviço em falha" (04/11/2026)."""
+    env = dict(os.environ)
+    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path={env['XDG_RUNTIME_DIR']}/bus")
+    return env
+
+
 def sensor_systemd() -> list[dict]:
     r = subprocess.run(["systemctl", "--user", "list-units", "--failed", "--plain", "--no-legend"],
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30, env=_env_sessao())
+    if r.returncode != 0:          # INDISPONÍVEL ≠ 0: o sentir() registra o sensor como cego
+        raise RuntimeError(f"systemctl rc={r.returncode}: {(r.stderr or '').strip()[:160]}")
     unid = [ln.split()[0] for ln in r.stdout.splitlines() if ln.strip()]
     out = []
     for u in unid:
@@ -136,7 +148,7 @@ def _ultimo_erro(unidade: str) -> str:
     """A CAUSA no próprio item ("TFE recusou o IP…"), não só "em falha" — quem lê o /melhorias decide sem abrir o journal."""
     try:
         j = subprocess.run(["journalctl", "--user", "-u", unidade, "-n", "40", "--no-pager", "-o", "cat"],
-                           capture_output=True, text=True, timeout=20).stdout.splitlines()
+                           capture_output=True, text=True, timeout=20, env=_env_sessao()).stdout.splitlines()
     except (OSError, subprocess.TimeoutExpired):
         return ""
     erros = [ln.strip() for ln in j if re.match(r"^\s*[\w.]*(Error|Exception)\b", ln.strip())]
@@ -505,8 +517,9 @@ def _executar_destacado(cmd: str, log: Path) -> None:
         f.write(f"\n[{datetime.now():%F %T}] remédio automático: {cmd}\n")
         f.flush()
         # `nice` FORA do shell: `nice -n 10 PYTHONPATH=. …` falha ("No such file") — medido no 1º teste ao vivo
+        # env da sessão: no cron, `systemctl --user restart` sem barramento falhava sem curar nada
         subprocess.Popen(["nice", "-n", "10", "bash", "-c", cmd], cwd=_REPO, stdout=f, stderr=subprocess.STDOUT,
-                         start_new_session=True)
+                         start_new_session=True, env=_env_sessao())
 
 
 def resumo(fila: dict, max_itens: int = 15) -> str:

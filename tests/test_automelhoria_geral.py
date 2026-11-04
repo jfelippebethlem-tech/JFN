@@ -301,10 +301,36 @@ def test_causa_externa_nao_reinicia_servico(monkeypatch):
     """28/10/2026: o TFE recusa o IP da VM; reiniciar não cura e cada falha re-avisa o dono pelo OnFailure."""
     class _R:
         stdout = "jfn-tfe-ob.service loaded failed failed X\n"
+        stderr, returncode = "", 0
     monkeypatch.setattr(A.subprocess, "run", lambda *a, **k: _R())
     monkeypatch.setattr(A, "_ultimo_erro", lambda u: "RuntimeError: TFE recusou o IP de origem da VM (...)")
     [p] = A.sensor_systemd()
     assert p["remediar"] == "" and "OuvERJ" in p["acao_humana"]
+
+
+def test_systemctl_sem_barramento_e_sensor_cego_nao_zero(monkeypatch):
+    """04/11/2026: no cron, `systemctl --user` sem XDG_RUNTIME_DIR dava "Failed to connect to bus" (rc=1)
+    e a saída vazia virava "nenhum serviço em falha" — o jfn-pncp-resultados ficou 3 dias em falha fora da fila."""
+    class _R:
+        stdout, stderr, returncode = "", "Failed to connect to bus: No medium found", 1
+    monkeypatch.setattr(A.subprocess, "run", lambda *a, **k: _R())
+    problemas, medidos = A.sentir({"systemd": A.sensor_systemd})
+    assert medidos["systemd"] is None and "bus" in problemas[0]["detalhe"]
+
+
+def test_systemctl_recebe_o_barramento_da_sessao(monkeypatch):
+    visto = {}
+
+    class _R:
+        stdout, stderr, returncode = "", "", 0
+
+    def run(cmd, **k):
+        visto["env"] = k.get("env") or {}
+        return _R()
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setattr(A.subprocess, "run", run)
+    assert A.sensor_systemd() == []
+    assert visto["env"].get("XDG_RUNTIME_DIR", "").startswith("/run/user/")
 
 
 def test_login_que_voltou_depois_do_disjuntor_cura(tmp_path, monkeypatch):
@@ -398,3 +424,11 @@ def test_lacuna_tfe_colheita_no_plato_nao_vira_visita(tmp_path, monkeypatch):
     monkeypatch.setattr(M, "coletar_por_data", completo)
     asyncio.run(R.recoletar_tfe(["01/09/2026"], 2026))
     assert json.loads((tmp_path / "t.json").read_text())["01/09/2026"]["ingeridas"] == 3199
+
+
+def test_remedio_roda_com_o_barramento_da_sessao(tmp_path, monkeypatch):
+    visto = {}
+    monkeypatch.delenv("XDG_RUNTIME_DIR", raising=False)
+    monkeypatch.setattr(A.subprocess, "Popen", lambda *a, **k: visto.update(k))
+    A._executar_destacado("systemctl --user restart x.service", tmp_path / "r.log")
+    assert visto["env"]["XDG_RUNTIME_DIR"].startswith("/run/user/")
