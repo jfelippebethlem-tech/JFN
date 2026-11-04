@@ -50,9 +50,9 @@ def test_nl_liquidada_depois_e_paga_antes_fura_a_fila(tmp_path):
     r = ordem_cronologica(db, est)
     assert r["n"] == 1
     a = r["achados"][0]
-    assert a["nl"] == "2025NL2" and a["fonte"] == "500"
-    assert a["passou_na_frente_de"][0]["nl"] == "2025NL1"
-    assert a["passou_na_frente_de"][0]["dias_esperando"] == 49        # 12/03 → 30/04
+    assert a["nl"] == "2025NL1" and a["fonte"] == "500"              # o achado é quem ESPEROU
+    assert a["furaram"][0]["nl"] == "2025NL2"
+    assert a["espera_max_dias"] == 49                                 # 12/03 → 30/04
     assert a["forca"] == "forte"
     assert "art. 9" in r["nota"] and "indício" in r["nota"].lower()
 
@@ -80,8 +80,8 @@ def test_resto_a_pagar_tem_fila_propria_e_estatal_fica_fora(tmp_path):
     e.commit()
     e.close()
     r = ordem_cronologica(db, est)
-    assert all(x["nl"] != "2025NL2" for x in r["achados"])                       # estatal fora
-    assert all(y["nl"] != "2019NL9" for x in r["achados"] for y in x["passou_na_frente_de"])  # RP noutra fila
+    assert all(y["nl"] != "2025NL2" for x in r["achados"] for y in x["furaram"])   # estatal fora
+    assert all(x["nl"] != "2019NL9" for x in r["achados"])                          # RP noutra fila
 
 
 def test_inversao_de_poucos_dias_e_agenda_nao_quebra(tmp_path):

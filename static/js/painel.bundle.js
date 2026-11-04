@@ -5110,15 +5110,15 @@ void main(){
     }
     if (oc && oc.ok !== false) {
       const pf = oc.por_forca || {};
-      h += sec(`Ordem cronológica de pagamento (${fmtN(oc.n)} quebras · ${fmtN(pf.forte || 0)} fortes · ${fmtN(oc.inversoes_curtas || 0)} inversões curtas de agenda · UGs: ${esc((oc.ugs_cobertas || []).join(", "))})`) + ((oc.achados || []).length ? card(`<table class="tb"><thead><tr><th>Força</th><th>Passou na frente</th><th>liquidada → paga</th>
-          <th>Preterida (maior espera)</th><th class="right">dias</th></tr></thead><tbody>` + oc.achados.slice(0, 12).map((a) => {
-        const x = (a.passou_na_frente_de || [])[0] || {};
+      h += sec(`Ordem cronológica de pagamento (${fmtN(oc.n)} credores preteridos · ${fmtN(pf.forte || 0)} fortes · ${fmtN(oc.inversoes_curtas || 0)} inversões curtas de agenda · UGs: ${esc((oc.ugs_cobertas || []).join(", "))})`) + ((oc.achados || []).length ? card(`<table class="tb"><thead><tr><th>Força</th><th>Esperou na fila</th><th>liquidada → paga</th>
+          <th>Passaram na frente</th><th class="right">dias</th></tr></thead><tbody>` + oc.achados.slice(0, 12).map((a) => {
+        const x = (a.furaram || [])[0] || {};
         return `<tr><td><span class="tag ${a.forca === "forte" ? "rose" : "amber"}">${esc(a.forca)}</span></td>
               <td>${esc((a.nome || "").slice(0, 36))} <span class="dim">${esc(a.nl)}</span></td>
               <td>${esc(a.liquidada)} → ${esc(a.pago_em)}</td>
-              <td>${esc((x.nome || "").slice(0, 32))} <span class="dim">${esc(x.liquidada || "")}</span></td>
+              <td>${fmtN(a.n_furaram)} NL · ${fmtRc(a.valor_que_passou)} <span class="dim">ex.: ${esc((x.nome || "").slice(0, 28))}</span></td>
               <td class="right">${fmtN(a.espera_max_dias)}</td></tr>`;
-      }).join("") + `</tbody></table>`) : vazioDeclarado(oc, "quebra de ordem cronológica com espera de 10+ dias")) + leitura(esc(oc.nota || ""));
+      }).join("") + `</tbody></table>`) : vazioDeclarado(oc, "credor preterido na ordem cronológica por 10+ dias")) + leitura(esc(oc.nota || ""));
     }
     alvo.innerHTML = h;
     o.appendChild(alvo);

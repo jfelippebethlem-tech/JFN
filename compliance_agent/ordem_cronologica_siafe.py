@@ -17,8 +17,9 @@ UNIVERSO (alínea o lida como lista POSITIVA): NL Contabilizada cuja NE é de el
 credor CNPJ privado (natureza ≠ 1xxx — alínea n) fora de concessionária/combustível (CNAE 35, 36, 61, 4731,
 4681 — alínea g). Pessoal, diárias, sentenças, tributos, indenizações e bolsistas ficam fora pela natureza.
 
-O TESTE. Na mesma UG, fonte e ANO DA NL (RP tem fila própria, arts. 22–23), a NL B "passou na frente" da NL A quando A foi liquidada ANTES de B e B foi paga
-(1ª OB Contabilizada) antes de A — A paga DEPOIS (as duas OBs na base). `dias_esperando` = quanto A esperou depois que B foi paga. A sem OB na
+O TESTE. Na mesma UG, fonte e ANO DA NL (RP tem fila própria, arts. 22–23), a NL A foi PRETERIDA quando foi
+liquidada ANTES de B e B foi paga (1ª OB Contabilizada) antes de A — o achado é A (quem esperou), com a lista
+de quem furou; A paga DEPOIS (as duas OBs na base). `dias_esperando` = quanto A esperou depois que B foi paga. A sem OB na
 base vai para `pendentes` — cobertura parcial da OB não prova falta de pagamento. Só UGs com NE e NL
 COMPLETAS (`siafe_documento_cobertura`).
 
@@ -91,37 +92,34 @@ def ordem_cronologica(db_path=None, estab_path=None, hoje: str | None = None) ->
         # autorização do CPDP) — misturar RP de 2019 com NL de 2025 fabricava "furou a fila" (04/11/2026).
         filas[(ug, fonte, ano)].append({"nl": nl, "liquidada": _iso(dia), "pago_em": pago, "credor": credor,
                                    "nome": nome, "valor": valor, "processo": proc, "natureza": natureza})
+    # UNIDADE DO ACHADO = a NL PRETERIDA (o credor que esperou na fila), com quem passou na frente dela.
+    # Contar por quem furou repetia a mesma vítima uma vez por fura-fila: na 166100, 29 "fortes" eram UMA NL.
     achados, pendentes = [], set()
     for (ug, fonte, ano), fila in filas.items():
-        for b in fila:
-            if not b["pago_em"]:
+        pagas = [x for x in fila if x["pago_em"]]
+        for a in fila:
+            furaram = [b for b in pagas if b is not a and b["liquidada"] > a["liquidada"]
+                       and (not a["pago_em"] or b["pago_em"] < a["pago_em"])]
+            if not furaram:
                 continue
-            furadas = []
-            for a in fila:
-                if a is b or not a["liquidada"] < b["liquidada"]:
-                    continue
-                if a["pago_em"] and a["pago_em"] <= b["pago_em"]:
-                    continue                      # A já tinha sido paga: ordem respeitada
-                if not a["pago_em"]:
-                    # sem OB na base NÃO prova que não pagou (a cobertura da OB SIAFE é parcial): conferir à parte
-                    pendentes.add(a["nl"])
-                    continue
-                fim = a["pago_em"]
-                furadas.append({"nl": a["nl"], "nome": a["nome"], "liquidada": a["liquidada"],
-                                "pago_em": a["pago_em"], "valor": a["valor"],
-                                "dias_esperando": _dias(b["pago_em"], fim)})
-            if furadas:
-                furadas.sort(key=lambda x: -x["dias_esperando"])
-                achados.append({**b, "ug": ug, "fonte": fonte, "ano_nl": ano, "n_passou_na_frente": len(furadas),
-                                "valor_preterido": round(sum(x["valor"] for x in furadas), 2),
-                                "espera_max_dias": furadas[0]["dias_esperando"], "passou_na_frente_de": furadas[:10]})
+            if not a["pago_em"]:
+                # sem OB na base NÃO prova que não pagou (a cobertura da OB SIAFE é parcial): conferir à parte
+                pendentes.add(a["nl"])
+                continue
+            primeiro = min(b["pago_em"] for b in furaram)
+            furaram.sort(key=lambda b: -b["valor"])
+            achados.append({**a, "ug": ug, "fonte": fonte, "ano_nl": ano, "n_furaram": len(furaram),
+                            "valor_que_passou": round(sum(b["valor"] for b in furaram), 2),
+                            "espera_max_dias": _dias(primeiro, a["pago_em"]),
+                            "furaram": [{"nl": b["nl"], "nome": b["nome"], "liquidada": b["liquidada"],
+                                         "pago_em": b["pago_em"], "valor": b["valor"]} for b in furaram[:10]]})
     # Espera de poucos dias é agenda, não quebra: a PD vai ao Tesouro com 2 dias úteis de antecedência
     # (Dec. 49.134 art. 14 §3º). Medido no ITERJ/2025: as 10 inversões tinham 1–6 dias.
     curtas = [x for x in achados if x["espera_max_dias"] < _DIAS_MEDIO]
     achados = [x for x in achados if x["espera_max_dias"] >= _DIAS_MEDIO]
     for x in achados:
         x["forca"] = "forte" if x["espera_max_dias"] >= _DIAS_FORTE else "medio"
-    achados.sort(key=lambda x: (-x["espera_max_dias"], -x["valor_preterido"]))
+    achados.sort(key=lambda x: (-x["espera_max_dias"], -x["valor_que_passou"]))
     return {"ok": True, "n": len(achados), "ugs_cobertas": sorted({u for u, _, _ in filas}),
             "por_forca": {k: sum(x["forca"] == k for x in achados) for k in ("forte", "medio")},
             "inversoes_curtas": len(curtas),
