@@ -432,3 +432,29 @@ def test_remedio_roda_com_o_barramento_da_sessao(tmp_path, monkeypatch):
     monkeypatch.setattr(A.subprocess, "Popen", lambda *a, **k: visto.update(k))
     A._executar_destacado("systemctl --user restart x.service", tmp_path / "r.log")
     assert visto["env"]["XDG_RUNTIME_DIR"].startswith("/run/user/")
+
+
+def test_sensor_voz_acusa_falha_recente_config_e_venv(tmp_path):
+    import time
+    h = tmp_path / ".hermes"
+    (h / "logs").mkdir(parents=True)
+    (h / ".env").write_text("OUTRA=1\n", encoding="utf-8")
+    agora = time.mktime(time.strptime("2026-11-06 17:00:00", "%Y-%m-%d %H:%M:%S"))
+    (h / "logs" / "agent.log").write_text(
+        "2026-11-04 10:00:00,1 INFO gateway.run: Voice transcription failed for velho.ogg\n"
+        "2026-11-06 16:55:05,3 INFO gateway.run: Voice transcription failed for novo.ogg\n", encoding="utf-8")
+    sig = {p["assinatura"] for p in A.sensor_voz(h, tmp_path / "nao_existe", agora)}
+    assert sig == {"voz:stt-venv", "voz:config", "voz:falhou"}
+
+
+def test_sensor_voz_verde_quando_configurado_e_sem_falha(tmp_path):
+    import time
+    h = tmp_path / ".hermes"
+    (h / "logs").mkdir(parents=True)
+    (h / ".env").write_text("HERMES_LOCAL_STT_COMMAND=/x/python stt.py {input_path}\n", encoding="utf-8")
+    (h / "logs" / "agent.log").write_text(
+        "2026-11-01 10:00:00,1 INFO gateway.run: Voice transcription failed for velho.ogg\n", encoding="utf-8")
+    py = tmp_path / "python"
+    py.write_text("")
+    agora = time.mktime(time.strptime("2026-11-06 17:00:00", "%Y-%m-%d %H:%M:%S"))
+    assert A.sensor_voz(h, py, agora) == []

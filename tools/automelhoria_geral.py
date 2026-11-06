@@ -391,7 +391,32 @@ def sensor_pareceres(db: Path | None = None) -> list[dict]:
             for cod, ps in sorted(oscilou.items()) if len(ps) >= OSCILA_MIN_PROCESSOS]
 
 
-SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd,
+_HERMES = Path.home() / ".hermes"
+_STT_PY = Path.home() / "stt-venv" / "bin" / "python"
+_ACAO_VOZ = ("STT do Yoda roda FORA do venv do Hermes (hermes update apagou o faster-whisper em 06/11/2026): "
+             "~/stt-venv + ~/stt-venv/hermes_stt.py, ligado por HERMES_LOCAL_STT_COMMAND no ~/.hermes/.env. "
+             "Recriar: uv venv --python 3.12 ~/stt-venv && VIRTUAL_ENV=~/stt-venv uv pip install faster-whisper 'av<14'")
+
+
+def sensor_voz(hermes: Path = _HERMES, stt_py: Path = _STT_PY, agora: float | None = None) -> list[dict]:
+    """Voz do Yoda: configuração presente, ambiente presente e nenhuma falha de transcrição nas últimas 24 h."""
+    out = []
+    if not stt_py.exists():
+        out.append(_p("voz", "stt-venv", "Yoda: ambiente de transcrição de voz sumiu", str(stt_py), acao_humana=_ACAO_VOZ))
+    env = (hermes / ".env").read_text(encoding="utf-8")
+    if not re.search(r"^HERMES_LOCAL_STT_COMMAND=\S", env, re.M):
+        out.append(_p("voz", "config", "Yoda: HERMES_LOCAL_STT_COMMAND sumiu do .env", acao_humana=_ACAO_VOZ))
+    limite = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime((agora or time.time()) - 86400))
+    log = hermes / "logs" / "agent.log"
+    falhas = [ln for ln in (log.read_text(encoding="utf-8", errors="replace").splitlines() if log.exists() else [])
+              if "Voice transcription failed" in ln and ln[:19] >= limite]
+    if falhas:
+        out.append(_p("voz", "falhou", f"Yoda não transcreveu {len(falhas)} áudio(s) nas últimas 24 h",
+                      falhas[-1][:300], acao_humana=_ACAO_VOZ))
+    return out
+
+
+SENSORES = {"slo": sensor_slo, "ci": sensor_ci, "catracas": sensor_catracas, "systemd": sensor_systemd, "voz": sensor_voz,
             "ronda": sensor_ronda, "siafe": sensor_siafe, "yoda": sensor_yoda, "rem": sensor_rem,
             "dados": sensor_dados_siafe, "vm": sensor_vm, "polimonitor": sensor_polimonitor,
             "painel": sensor_painel, "filas": sensor_filas, "pareceres": sensor_pareceres}
