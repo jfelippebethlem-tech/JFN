@@ -115,6 +115,37 @@ def _instrumento_habil(docs: list[dict]) -> str | None:
     return None
 
 
+# ── contrato CITADO nos autos, sem o termo classificado como tal ───────────────
+# Medido em 2026-11-06 sobre os 177 processos com "Contrato/ata formalizados" ausente (F_CONTRATACAO
+# média, que saltou de 10 para 180 desde 09/09): **27 trazem no texto "Contrato nº NNN/AAAA"** — em
+# extrato de instrumento contratual publicado no DOERJ, em cópia do contrato anexada com título mudo
+# ("Anexo SEI_ERJ - ct 167 2022") ou em termo aditivo ao contrato. Ali o ajuste foi formalizado; o
+# que falta é a peça própria nos autos. Ano com 4 dígitos é obrigatório: "Contrato nº 06/05" era
+# data. A página do DOERJ pode trazer extrato de OUTRO órgão — por isso o achado cai de grau e
+# aponta a peça, não some.
+_RE_CONTRATO_NUMERADO = re.compile(
+    r"\bcontrato\s+(?:administrativo\s+)?n[ºo°.]*\s*:?\s*\d{1,4}\s*/\s*(?:19|20)\d{2}\b", re.I)
+
+
+def _contrato_citado(pasta: Path, docs: list[dict]) -> dict | None:
+    """{"ref", "trecho"} da primeira menção a contrato numerado no texto dos autos; `None` se não houver."""
+    for d in docs or []:
+        t = re.sub(r"\s+", " ", _texto_de(pasta, d) or "")
+        m = _RE_CONTRATO_NUMERADO.search(t)
+        if m:
+            return {"ref": str(d.get("titulo") or "documento"), "trecho": m.group(0)}
+    return None
+
+
+# ── processo ainda no PLANEJAMENTO: não há contrato a cobrar ───────────────────
+# Mesma medição: 19 dos 177 só têm planejamento (ETP/TR/cotações) e tramitação — sem seleção,
+# formalização, despesa, execução nem pagamento. Contrato é consequência da seleção; cobrá-lo de
+# quem nem selecionou é cobrar o futuro. A falta de seleção continua cobrada na sua própria lacuna.
+def _em_fase_anterior(fases_presentes: set[str], com_pagamento: bool) -> bool:
+    return ("planejamento" in fases_presentes and not com_pagamento
+            and not fases_presentes & {"selecao", "contratacao", "despesa", "execucao"})
+
+
 def _contrato_registrado(numero_sei: str) -> dict:
     """Vigência e valor do contrato como REGISTRADOS no TCE-RJ, ligados pelo número do processo.
 
@@ -536,6 +567,17 @@ def avaliar_pasta(pasta: Path, *, com_llm: bool = False, teto_docs_llm: int | No
                                   "conferir o enquadramento antes de tratar como falta de "
                                   "formalização")
                     ach["apoio"] = ne
+                elif _em_fase_anterior(fases_presentes, com_pagamento):
+                    ach["gravidade"] = "baixa"
+                    ach["diz"] = ("processo ainda no planejamento (sem seleção, despesa nem "
+                                  "execução nos autos) — contrato ainda não é exigível; conferir "
+                                  "se a contratação seguiu em outro processo")
+                elif (cit := _contrato_citado(pasta, docs)):
+                    ach["gravidade"] = "baixa"
+                    ach["diz"] = ("termo de contrato não juntado como peça própria, mas os autos "
+                                  "citam o contrato numerado (extrato/cópia/aditivo) — conferir se "
+                                  "é deste ajuste e juntar a referência")
+                    ach["apoio"] = f"{cit['ref']} · «{cit['trecho']}»"
             if item.get("fase") == "execucao_sem_evidencia":
                 decl = _declaracao_de_entrega(pasta, docs)
                 if decl:
