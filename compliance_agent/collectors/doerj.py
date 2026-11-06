@@ -29,6 +29,12 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+try:
+    from playwright.async_api import Error as PWError
+except ImportError:  # sem playwright o coletor não roda, mas o módulo importa
+    class PWError(Exception):
+        pass
+
 logger = logging.getLogger(__name__)
 
 CDP_URL = "http://127.0.0.1:9222"
@@ -60,11 +66,15 @@ _RE_NUMERO_ATO = re.compile(
 )
 # Lookahead que identifica o início de um novo ato pelo tipo + "Nº"
 _RE_ACT_START = re.compile(
+    # Texto de PDF (09/09/2026): entre o TIPO e o "Nº" há sigla de órgão ("PORTARIA UERJ/PPC Nº SEI
+    # 1080/2026", "RESOLUÇÃO SEPM Nº 9164 DE …") — até 40 caracteres sem quebra; e "Nº SEI 1080".
+    # Cabeçalhos de seção ("ATO DO SECRETÁRIO", "DESPACHOS DA DIRETORA") também abrem ato.
     r"(?m)(?=^[ \t]*(?:PORTARIA|RESOLU[ÇC][ÃA]O|DECRETO|ATO\b|EDITAL|EXTRATO"
     r"|AVISO\b|DESPACHO|DELIBERA[ÇC][ÃA]O|INSTRU[ÇC][ÃA]O\s+NORMATIVA"
     r"|LEI\b|CONTRATO\b|CHAMAMENTO|INEXIGIBILIDADE|DISPENSA\b|HOMOLOGA[ÇC][ÃA]O"
     r"|RATIFICA[ÇC][ÃA]O|ANULA[ÇC][ÃA]O|RESULTADO\b|TERMO\b|CONCURSO\b"
-    r"|AUTORIZA[ÇC][ÃA]O\b)\s+N[ºOo°]?\s*\d)",
+    r"|AUTORIZA[ÇC][ÃA]O\b)[^\n]{0,40}?\bN[ºOo°]?\.?\s*(?:SEI\s*)?\d"
+    r"|^[ \t]*(?:ATOS?|DESPACHOS?)\s+D[OA]S?\s+[A-ZÇÃÕÉÊÍÓÚÂ][A-ZÇÃÕÉÊÍÓÚÂ \-]{2,60}$)",
     re.IGNORECASE,
 )
 
@@ -128,10 +138,19 @@ def _extrair_numero_ato(texto: str) -> str:
     return m.group(0).strip()[:150] if m else ""
 
 
+_RE_PARTE = re.compile(r"\b(?:parte|se[çc][ãa]o)\s+(ib|iv|v|iii|ii|i)\b", re.I)
+
+
 def _inferir_secao(edicao: str, titulo: str) -> str:
+    """'Parte IB' / 'Parte IV' / 'Parte V' são cadernos próprios: `"parte i" in s` casava o PREFIXO e tudo
+    virava "I" (medido 09/09/2026: 50/50 publicações com secao I). Casa a palavra inteira."""
     s = (edicao + " " + titulo).lower()
-    if "parte i" in s or "seção i" in s or "secao i" in s:
-        return "I"
+    m = _RE_PARTE.search(s)
+    if m:
+        return m.group(1).upper()
+    if "extra" in s or "suplemento" in s or "supl" in s:
+        return "E"
+    return "I"
     if "parte ii" in s or "seção ii" in s:
         return "II"
     if "parte iii" in s:
@@ -151,7 +170,7 @@ def _pub_dict(texto: str, data: date, url: str,
         "tipo_ato":                classificar_tipo_ato(texto),
         "numero_ato":              _extrair_numero_ato(texto),
         "titulo":                  (titulo or texto[:200])[:500],
-        "texto":                   texto[:8000],
+        "texto":                   texto[:200000],  # o fatiador agrupa grosso no texto do PDF; 8.000 cortava o teor
         "cpfs_extraidos":          json.dumps(extrair_cpfs(texto)),
         "cnpjs_extraidos":         json.dumps(extrair_cnpjs(texto)),
         "valores_extraidos":       json.dumps(extrair_valores(texto)),
@@ -231,6 +250,20 @@ _JS_LE_IFRAME = r"""
 }
 """
 
+
+
+def _texto_pdf(b: bytes) -> str:
+    """Texto nativo do PDF da edição (PyMuPDF), página a página, com separador de página."""
+    try:
+        import fitz
+    except ImportError:
+        return ""
+    try:
+        with fitz.open(stream=b, filetype="pdf") as doc:
+            return "\n\n".join(pg.get_text("text") for pg in doc)
+    except (RuntimeError, ValueError, TypeError) as exc:  # fitz.FileDataError é RuntimeError; o DOM continua servindo
+        logger.debug("PyMuPDF não leu o PDF da edição (%d bytes): %s", len(b), exc)
+        return ""
 
 class DOERJCollector:
     """Coleta o DOERJ pelo Chrome aberto (CDP), sem esbarrar no 403."""
@@ -391,15 +424,48 @@ class DOERJCollector:
         titulo: str,
     ) -> list[dict]:
         """Navega para url, extrai texto (incluindo iframe se necessário), fatia atos."""
+        # A edição é um visualizador pdf.js: o DOM só tem o SUMÁRIO dos cadernos (medido em 09/09/2026:
+        # 14 "atos" por dia, todos índice). O teor integral chega ao viewer como `application/pdf`
+        # (`mostra_edicao.php?k=<GUID>`) — capturar esses bytes é o que dá o texto inteiro.
+        pdf_bytes: list[bytes] = []
+        pdf_urls: list[str] = []
+
+        async def _guarda_pdf(resp):
+            # O pdf.js pode pedir o arquivo em PEDAÇOS (206): o corpo desta resposta não é o PDF
+            # inteiro. Guarda-se a URL e baixa-se completo pela mesma sessão do Chrome (cookies/WAF).
+            try:
+                if "pdf" in (resp.headers.get("content-type") or "").lower() and not pdf_urls:
+                    pdf_urls.append(resp.url)
+            except (AttributeError, KeyError) as exc:      # resposta sem cabeçalho/URL legível
+                logger.debug("resposta PDF da edição %s não registrada: %s", data, exc)
+
+        page.on("response", _guarda_pdf)
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
         except Exception as e:
             print(f"[DOERJ] goto {url[:60]}: {e}")
             return []
         await asyncio.sleep(2.5)
+        for _ in range(12):                      # o PDF vem depois do DOM; até ~6 s a mais
+            if pdf_urls:
+                break
+            await asyncio.sleep(0.5)
+        if pdf_urls:
+            try:
+                r = await page.context.request.get(pdf_urls[0], timeout=120000)
+                if r.ok:
+                    pdf_bytes.append(await r.body())
+            except (PWError, asyncio.TimeoutError, OSError) as exc:
+                logger.debug("download integral do PDF da edição %s falhou: %s", data, exc)
 
         dump = await page.evaluate(_JS_EXTRACT)
         texto = dump.get("text", "")
+        if pdf_bytes:
+            texto_pdf = _texto_pdf(pdf_bytes[0])
+            if len(texto_pdf) > len(texto):
+                dump["fonte_texto"] = "pdf"
+                dump["pdf_bytes"] = len(pdf_bytes[0])
+                texto = texto_pdf
 
         # Se a página está vazia, tenta iframe (padrão antigo do IOERJ)
         if len(texto) < 300 and dump.get("has_iframe"):

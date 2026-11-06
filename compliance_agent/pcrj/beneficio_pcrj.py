@@ -47,7 +47,7 @@ _BENEFICIOS = [
      "url": "https://portaldatransparencia.gov.br/download-de-dados/gas-do-povo/{ym}",
      "de": "202512", "ate": "999912"},           # dez/2025 em diante (meses sem pagamento vêm vazios)
 ]
-_TMP = Path("/tmp/claude-1001/-home-ubuntu/b0a66c33-983b-415a-990a-72696e7566c0/scratchpad")
+_TMP = _db.DB_PATH.parent / "tmp" / "beneficios"   # antes: scratchpad de uma sessão antiga do Claude
 BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
 RIO = "RIO DE JANEIRO"
 
@@ -204,6 +204,13 @@ def coletar(ym: str = "202605") -> dict:
             logger.debug("tmp %s não removido: %s", dest, exc)
         print(f"[benef] {beneficio}: {len(achados)} linhas brutas", flush=True)
 
+    # NENHUM download funcionou → não toca no banco. O DELETE abaixo apagava a competência que já
+    # estava gravada, e o sweep (que pula meses pela contagem) a tratava como nunca coletada.
+    baixados = [v for v in resumo["por_beneficio"].values() if v != "download falhou"]
+    if not baixados:
+        resumo["gravado"] = False
+        return resumo
+    resumo["gravado"] = True
     agora = datetime.now().isoformat(timespec="seconds")
     con = sqlite3.connect(str(BENEF_DB), timeout=60)
     con.execute("PRAGMA journal_mode=WAL")

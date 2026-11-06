@@ -16,8 +16,9 @@ import csv
 import io
 import os
 import sqlite3
+import subprocess
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -36,8 +37,26 @@ def baixar(force=False):
     CACHE.mkdir(parents=True, exist_ok=True)
     if ZIP.exists() and ZIP.stat().st_size > 1_000_000 and not force:
         return ZIP
-    r = httpx.get(URL, headers=UA, timeout=300, verify=False, follow_redirects=True)
-    ZIP.write_bytes(r.content)
+    tmp = ZIP.with_suffix(".zip.part")
+    try:
+        r = httpx.get(URL, headers=UA, timeout=300, verify=False, follow_redirects=True)
+        r.raise_for_status()
+        tmp.write_bytes(r.content)
+    except httpx.RemoteProtocolError:
+        # 26/10/2026: o servidor do TFE passou a mandar "Connection: close\x00" (byte nulo no cabeçalho). O
+        # h11 do httpx recusa a resposta inteira; o curl aceita. O semanal caiu calado por isso até o loop ver.
+        subprocess.run(["curl", "-skfL", "--max-time", "600", "-A", UA["User-Agent"], "-o", str(tmp), URL], check=True)
+    # só troca o zip bom por um zip VÁLIDO: corpo de erro gravado como .zip apagaria a base no parse seguinte
+    if not zipfile.is_zipfile(tmp):
+        corpo = tmp.read_bytes()[:4000].decode("utf-8", "replace")
+        tmp.unlink(missing_ok=True)
+        # 28/10/2026: a SEFAZ responde 200 com uma página dizendo que o IP de origem está em catálogo internacional
+        # de abuso e recomenda "acessar de outra origem" ou abrir chamado na OuvERJ. É o servidor dizendo, não palpite.
+        if "endereços IP" in corpo and "bloqueia" in corpo:
+            raise RuntimeError("TFE recusou o IP de origem da VM (página da SEFAZ: IP listado em catálogo de abuso; "
+                               "recomenda outra origem ou chamado na OuvERJ). Mantido o zip anterior.")
+        raise RuntimeError(f"download do TFE não é um zip válido ({URL}); mantido o zip anterior")
+    os.replace(tmp, ZIP)
     return ZIP
 
 
@@ -66,14 +85,65 @@ def parse_ano(ano):
         yield r
 
 
+_DDL_RETIRADA = """
+CREATE TABLE IF NOT EXISTS ob_retirada (
+    numero_ob TEXT, ug_codigo TEXT, exercicio TEXT,
+    data_pagamento TEXT, ug_nome TEXT, favorecido_cpf TEXT, favorecido_nome TEXT,
+    valor REAL, observacao TEXT,
+    visto_ate TEXT,          -- quando ainda estava publicada (a ingestão anterior)
+    retirada_em TEXT,        -- quando a fonte deixou de publicá-la
+    PRIMARY KEY (numero_ob, ug_codigo, exercicio)
+);
+"""
+
+
+def _registrar_retiradas(con, ano: int, publicadas: set[tuple[str, str]]) -> int:
+    """OBs que ESTAVAM na base e a fonte deixou de publicar. Registra antes de apagar.
+
+    Por que existe (medido em 2026-08-03). `ingest()` apaga o exercício inteiro e reinsere a
+    partir do zip — fielmente, e em SILÊNCIO. Comparando a base com o backup de 02/08, **140 OBs
+    de sete exercícios, somando R$ 30.001.367,60, tinham desaparecido**, e nenhuma delas está no
+    zip baixado em 03/08: a fonte as retirou. O defeito não é apagar; é apagar sem dizer. A
+    descoberta veio dois dias depois, por um golden de números que quebrou — e só porque havia
+    backup off-box para provar o que existia antes.
+
+    Para uma casa de controle externo isto NÃO é ruído de dado: pagamento publicado no portal da
+    transparência e depois DESPUBLICADO é fato de interesse fiscalizatório, e some junto com a
+    linha. Aqui ele passa a ficar.
+    """
+    con.executescript(_DDL_RETIRADA)
+    agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    sumidas = [r for r in con.execute(
+        "SELECT numero_ob, ug_codigo, exercicio, data_pagamento, ug_nome, favorecido_cpf, "
+        "favorecido_nome, valor, observacao, coletado_em FROM ordens_bancarias "
+        "WHERE categoria='tfe_ob' AND exercicio=?", (str(ano),))
+        if ((r[0] or "").strip(), (r[1] or "").strip()) not in publicadas]
+    if sumidas:
+        con.executemany(
+            "INSERT OR REPLACE INTO ob_retirada(numero_ob, ug_codigo, exercicio, data_pagamento,"
+            " ug_nome, favorecido_cpf, favorecido_nome, valor, observacao, visto_ate, retirada_em)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            [(*r[:9], r[9], agora) for r in sumidas])
+    return len(sumidas)
+
+
 def ingest(ano):
     """Carrega TODAS as OBs do ano em ordens_bancarias (categoria='tfe_ob'). Idempotente por ano
-    (limpa o ano antes de inserir). Dedup vs SIAFE: categoria separada."""
+    (limpa o ano antes de inserir). Dedup vs SIAFE: categoria separada.
+
+    Devolve (n, total, retiradas): `retiradas` é quantas OBs a fonte deixou de publicar nesta
+    passada — ver `_registrar_retiradas`.
+    """
     if not DB.exists():
         raise RuntimeError(f"banco não existe: {DB}")
     from compliance_agent.reports import categorizar as cat
     con = sqlite3.connect(str(DB))
     con.execute("CREATE INDEX IF NOT EXISTS ix_ob_numero ON ordens_bancarias(numero_ob)")
+    # Lê o zip ANTES de apagar: sem a lista do que a fonte publica agora não há como saber o que
+    # ela deixou de publicar — e depois do DELETE a evidência já não existe.
+    publicadas = {((r.get("Ordem Bancaria") or "").strip(), (r.get("UG") or "").strip())
+                  for r in parse_ano(ano)}
+    retiradas = _registrar_retiradas(con, ano, publicadas)
     con.execute("DELETE FROM ordens_bancarias WHERE categoria='tfe_ob' AND exercicio=?", (str(ano),))
     cols = ("numero_ob", "data_emissao", "data_pagamento", "ug_codigo", "ug_nome", "favorecido_cpf",
             "favorecido_nome", "valor", "tipo_ob", "observacao", "categoria", "exercicio")
@@ -101,7 +171,7 @@ def ingest(ano):
         con.executemany(sql, batch)
     con.commit()
     con.close()
-    return n, total
+    return n, total, retiradas
 
 
 def main():
@@ -113,8 +183,11 @@ def main():
     if a.baixar:
         z = baixar(force=True); print(f"baixado: {z} ({z.stat().st_size:,} bytes)")
     if a.ingest:
-        n, total = ingest(a.ano)
+        n, total, retiradas = ingest(a.ano)
         print(f"INGERIDAS {n:,} OBs de {a.ano} | TOTAL PAGO: R$ {moeda(total)}")
+        if retiradas:
+            print(f"⚠️  {retiradas} OB(s) que a base tinha NÃO constam mais da fonte — "
+                  f"registradas em ob_retirada (despublicação é fato, não ruído)")
     if not (a.baixar or a.ingest):
         # resumo
         cnt = sum(1 for _ in parse_ano(a.ano))

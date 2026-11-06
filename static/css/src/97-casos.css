@@ -1,0 +1,44 @@
+/* Aba CASOS (03/11/2026) — dossiês do vault. Na camada v59 para não vencer as variantes de degradação. */
+@layer v59 {
+  .cs-filtros{display:grid;gap:4px;margin:14px 0 6px}
+  .cs-filtros .chips{margin-bottom:4px}
+  .cs-conta{margin:6px 0 10px;font-size:12.5px}
+  .cs-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr));gap:12px}
+  .cs-caso{position:relative;display:flex;flex-direction:column;gap:6px;padding-left:18px;
+    border-left:3px solid var(--cs,var(--mut))}
+  .cs-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+  .cs-nivel{font-weight:700;color:var(--cs,var(--mut));letter-spacing:.02em;text-transform:uppercase;font-size:11.5px}
+  .cs-sit{border:1px solid var(--bd2);border-radius:999px;padding:1px 9px;color:var(--tx2);font-size:11.5px}
+  .cs-sit.aberto{border-color:color-mix(in oklch,var(--amber) 55%,transparent);color:var(--amber)}
+  .cs-sit.concluído{border-color:color-mix(in oklch,var(--green) 55%,transparent);color:var(--green)}
+  .cs-data{margin-left:auto;font-variant-numeric:tabular-nums}
+  .cs-tit{margin:2px 0 0;font-size:15.5px;line-height:1.3;font-weight:750;color:var(--tx);text-wrap:balance}
+  .cs-ent{font-size:12.5px;line-height:1.4}
+  .cs-res{margin:2px 0;font-size:13.2px;line-height:1.55;color:var(--tx2);display:-webkit-box;
+    -webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+  .cs-tags{display:flex;gap:6px;flex-wrap:wrap}
+  .cs-tags .tag{font-size:11px}
+  .cs-cnpj{appearance:none;font:inherit;font-size:11.5px;font-variant-numeric:tabular-nums;background:transparent;
+    color:var(--accent);border:1px dashed color-mix(in oklch,var(--accent) 45%,transparent);border-radius:6px;
+    padding:2px 7px;cursor:pointer}
+  .cs-cnpj:hover{background:color-mix(in oklch,var(--accent) 10%,transparent)}
+  .cs-sei{font-size:11px;font-variant-numeric:tabular-nums;color:var(--tx2);border:1px solid var(--bd2);
+    border-radius:6px;padding:2px 7px;white-space:nowrap}
+  .cs-nota td,.cs-nota th{text-align:left;vertical-align:top}
+  .cs-nota .cs-nivel{text-transform:none;letter-spacing:0;font-size:12.5px}
+  .cs-piso{font-size:12px;color:var(--amber)}
+  .cs-caso .btns{margin-top:auto;padding-top:6px}
+  .cs-nota{border-left:3px solid var(--cs,var(--mut));padding-left:16px;line-height:1.6;font-size:14px;color:var(--tx2)}
+  .cs-nota .cs-h{color:var(--tx);margin:18px 0 6px;line-height:1.3}
+  .cs-nota h2.cs-h{font-size:19px} .cs-nota h3.cs-h{font-size:16px} .cs-nota h4.cs-h,.cs-nota h5.cs-h{font-size:14.5px}
+  .cs-nota blockquote{margin:10px 0;padding:8px 12px;border-left:3px solid var(--amber);
+    background:color-mix(in oklch,var(--amber) 7%,transparent);border-radius:0 8px 8px 0}
+  .cs-nota ul,.cs-nota ol{margin:6px 0 10px 20px}
+  .cs-nota code{font-size:12.5px}
+  .cs-nota hr{border:0;border-top:1px solid var(--bd2);margin:16px 0}
+  .cs-fonte{font-size:12px;margin:4px 0 6px}
+  .cs-tbw{overflow-x:auto;margin:8px 0}
+  .cs-tbw table{min-width:520px}
+  .cs-wl{color:var(--accent)}
+  @media (max-width:520px){.cs-tit{font-size:15px}.cs-data{margin-left:0}}
+}

@@ -126,3 +126,19 @@ def test_lacunas_dispensa_nao_cobra_edital():
 def test_fases_ordenadas():
     assert list(FASES)[:5] == ["planejamento", "selecao", "contratacao",
                                "execucao", "despesa"]
+
+
+def test_ata_de_registro_de_preco_numerada_e_contratacao():
+    """04/11/2026: 19 dos 180 F_CONTRATACAO ('Contrato/ata formalizados' ausente) tinham a ata NO PROCESSO, com
+    título "anexo ata srp 004 2021 …" ou "anexo sei erj 80073302 ata 122 2024" — caíam como anexo indefinido."""
+    for t in ("anexo ata srp 004 2021 item 1 moto aqua carreta min", "ata srp 056 2022", "anexo ata srp compras gov",
+              "anexo ata 043 2021 sup ger compras centr sergipe", "anexo sei erj 80073302 ata 122 2024",
+              "ata n 054 2024"):
+        assert classificar(t)[0] == "contratacao", t
+
+
+def test_o_que_nao_e_a_ata_nao_vira_contratacao():
+    assert classificar("oficio na 328 autorizacao de adesao a ata 122 2024")[0] == "tramitacao"   # cita, não é
+    assert classificar("ata de reuniao")[0] != "contratacao"
+    assert classificar("relatorio pesquisa de ata")[0] != "contratacao"
+    assert classificar("anexo ata de retomada da sessao resultado")[0] != "contratacao"

@@ -33,7 +33,12 @@ def cabecalho_frescor() -> str:
     só um COUNT na base. Vazio se a base não estiver acessível. Reusado pelos relatórios de fornecedor/órgão."""
     try:
         import sqlite3
-        con = sqlite3.connect(str(_DB))
+        # `JFN_DB` como o resto da casa (duckdb_util, cruzamento, varredura_orgaos, lex_render).
+        # Era o ÚNICO ponto do relatório que ignorava a variável: o snapshot determinístico
+        # apontava `JFN_DB` para uma base isolada e esta linha ia à `compliance.db` VIVA, então o
+        # golden congelava um número que cresce a cada coleta do SIAFE e ficava vermelho sozinho
+        # (1.138.236 → 1.159.305 OBs). Catraca que quebra por ambiente ensina a ignorar catraca.
+        con = sqlite3.connect(os.environ.get("JFN_DB", str(_DB)))
         try:
             tot = con.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0] or 0
             cnpj = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE length(favorecido_cpf)=14").fetchone()[0] or 0

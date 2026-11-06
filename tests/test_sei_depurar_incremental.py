@@ -20,6 +20,7 @@ import json
 import os
 import sqlite3
 import subprocess
+import time
 
 import pytest
 
@@ -85,7 +86,9 @@ def test_blob_tocado_depois_da_marca_entra_na_rodada_seguinte(acervo, tmp_path):
     """O refichador reescreve o blob — a ingestão TEM de pegar isso na próxima passada."""
     _blob(acervo, "030001_000111_2024", "a", mtime=1_700_000_000)
     D.depurar()
-    _blob(acervo, "030001_000999_2024", "recem chegado")  # mtime = agora
+    # mtime EXPLICITAMENTE depois da marca: com "agora", a marca e o blob caíam no mesmo instante num runner
+    # rápido e o blob não contava como novo — falhou no CI do d569ebac (assert 0 == 1), passa na VM lenta
+    _blob(acervo, "030001_000999_2024", "recem chegado", mtime=time.time() + 30)
 
     r = D.depurar()
 

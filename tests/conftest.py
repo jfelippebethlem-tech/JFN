@@ -37,6 +37,18 @@ _MODULOS_REDE = {
 }
 
 
+def pytest_addoption(parser):
+    """`--update-rotas`: regrava o inventário de rotas do server.
+
+    A opção estava DOCUMENTADA em `tests/test_server_snapshot.py` e não existia — o pytest
+    recusava a linha de comando e a única saída era "apagar o golden e rodar de novo", que é
+    armadilha: o golden se regenera com o que estiver lá, inclusive uma rota perdida no meio de
+    um refactor, e o teste volta ao verde sem ninguém ter olhado o diff. (2026-08-03)
+    """
+    parser.addoption("--update-rotas", action="store_true", default=False,
+                     help="regrava tests/golden/server_rotas.txt após mudança INTENCIONAL de rotas")
+
+
 def pytest_collection_modifyitems(config, items):
     for item in items:
         nome = item.module.__name__.split(".")[-1]

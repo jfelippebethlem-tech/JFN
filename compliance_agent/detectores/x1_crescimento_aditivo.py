@@ -206,7 +206,27 @@ class X1CrescimentoAditivo(Detector):
 
         score = 0.0
         razoes: list[str] = []
-        estourou = pct_acrescimo > teto
+        # BASE DESMENTIDA PELOS AUTOS. A base vem da 1ª ocorrência do padrão num monte de
+        # documentos concatenados e já foi colhida de uma "Publicação Errata" — no
+        # SEI-070002/001289/2022 isso virou "acréscimo de 10.024%" sobre R$ 46.866,00, quando o
+        # contrato é de R$ 105.988.095,41 (declarado seis vezes nos autos) e o aditivo é 4,4%.
+        # Não se afirma estouro sobre base que o próprio processo contradiz. (2026-08-04)
+        if estourou_check := (pct_acrescimo > teto):
+            from compliance_agent.execucao_fatos import base_contraditada
+            outra = base_contraditada(str(contexto.get("_texto_fonte") or ""),
+                                      valor_inicial, acrescimos)
+            if outra:
+                res.status = "nao_avaliavel"
+                res.score = 0.0
+                res.valores = {**valores, "base_contraditada_por": round(outra, 2)}
+                res.motivo_refutacao = (
+                    f"nao_avaliavel: a base extraída (R$ {moeda(valor_inicial)}) daria acréscimo "
+                    f"de {pct_acrescimo*100:.0f}%, mas os próprios autos declaram "
+                    f"R$ {moeda(outra)} como valor de contrato — e sobre esse o acréscimo cabe no "
+                    "teto. Duas leituras do mesmo processo não fecham: conferir o valor inicial "
+                    "antes de afirmar estouro.")
+                return res
+        estourou = estourou_check
 
         if estourou:
             score = ancora("critico")

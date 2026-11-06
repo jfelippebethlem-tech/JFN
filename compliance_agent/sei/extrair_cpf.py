@@ -55,9 +55,52 @@ def extrair_cpfs(texto: str, max_pares: int = 200) -> list[dict]:
         vistos.add(cpf)
         jan = texto[max(0, pos - 120):pos]  # janela antes do CPF p/ achar o nome
         nomes = _NOME.findall(jan)
-        nome = nomes[-1].strip() if nomes else ""
+        nome = limpar_nome(nomes[-1]) if nomes else ""
         ctx = re.sub(r"\s+", " ", texto[max(0, pos - 80):pos + 30]).strip()
         out.append({"cpf": cpf, "nome": nome, "contexto": ctx})
         if len(out) >= max_pares:
             break
     return out
+
+# ── LIMPEZA DO NOME (2026-08-12) ────────────────────────────────────────────────────────────────
+# O nome é colhido como o último trecho capitalizado da janela anterior ao CPF. Como "Nome",
+# "CTPS" e "Contrato de Gestão" também são trechos capitalizados, entravam no nome — e aí o
+# casamento por `nome_norm` do resolver falha, comparando "NOME MARCIO FREITAS DE OLIVEIRA" com
+# "MARCIO FREITAS DE OLIVEIRA". Medido no acervo: **122 sócios** cujo fragmento de CPF batia, com
+# candidato único, e que só não fechavam por esse tipo de sujeira.
+#
+# CONSERVADORA de propósito: na dúvida devolve o nome como está. Nome de pessoa é a chave de
+# identificação de toda a perícia — cortar demais cria homônimo onde não havia, e homônimo
+# fabricado é pior que sujeira visível.
+_ROTULOS = {
+    "NOME", "CPF", "RG", "CTPS", "PIS", "PASEP", "MATRICULA", "MATRÍCULA", "ID", "IDENTIDADE",
+    "SR", "SRA", "SENHOR", "SENHORA", "DR", "DRA", "GESTOR", "GESTORA", "FISCAL", "SUPLENTE",
+    "TITULAR", "TESTEMUNHA", "CONTRATANTE", "CONTRATADA", "CONTRATADO", "REPRESENTANTE",
+    "RESPONSAVEL", "RESPONSÁVEL", "ASSINADO", "ASSINATURA", "DOCUMENTO", "ANEXO", "PROCESSO",
+    "TERMO", "CONTRATO", "GESTAO", "GESTÃO", "POSSE", "ADITIVO", "PORTARIA", "OFICIO", "OFÍCIO",
+}
+_CONECTIVOS = {"E", "DE", "DA", "DO", "DAS", "DOS"}
+
+
+def limpar_nome(nome: str | None) -> str:
+    """Tira rótulo colado, sigla à direita e conectivo solto no fim do nome extraído.
+
+    Devolve o ORIGINAL quando a limpeza deixaria menos de duas palavras — ver a nota acima.
+    """
+    bruto = str(nome or "").strip()
+    if not bruto:
+        return ""
+    toks = bruto.split()
+    def _up(t: str) -> str:
+        return "".join(ch for ch in t.upper() if ch.isalpha())
+    # à esquerda: rótulos e conectivos que os seguem ("CONTRATO DE GESTAO ...")
+    ini = 0
+    while ini < len(toks) and (_up(toks[ini]) in _ROTULOS or
+                               (ini > 0 and _up(toks[ini]) in _CONECTIVOS)):
+        ini += 1
+    # à direita: rótulos e conectivos soltos ("... DA COSTA E", "... DA SILVA RG")
+    fim = len(toks)
+    while fim > ini and (_up(toks[fim - 1]) in _ROTULOS or _up(toks[fim - 1]) in _CONECTIVOS):
+        fim -= 1
+    limpo = " ".join(toks[ini:fim]).strip()
+    return limpo if len(limpo.split()) >= 2 else bruto

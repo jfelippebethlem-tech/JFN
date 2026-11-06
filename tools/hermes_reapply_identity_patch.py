@@ -30,7 +30,14 @@ PATCH = (
 )
 
 
+# O upstream moveu o tratamento da mensagem de entrada para `run_inbound.py` (merge de 09/09/2026) e o patch foi
+# reaplicado LÁ. Procurar só no run.py dava "ÂNCORA não encontrada" a cada boot — falso alarme (27/09/2026).
+RUN_INBOUND_PY = RUN_PY.with_name("run_inbound.py")
+
+
 def main() -> int:
+    if RUN_INBOUND_PY.exists() and MARKER in RUN_INBOUND_PY.read_text(encoding="utf-8"):
+        return 0                                  # já aplicado no arquivo novo — nada a fazer
     if not RUN_PY.exists():
         print(f"[reapply-patch] run.py não encontrado em {RUN_PY} — nada a fazer.")
         return 0

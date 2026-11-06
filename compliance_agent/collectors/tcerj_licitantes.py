@@ -191,6 +191,21 @@ def gravar(con: sqlite3.Connection, linhas: Iterable[dict], *, tentativas: int =
 
 # ── ponte para os detectores e para o CRI ─────────────────────────────────────────────────────
 
+# Homologado acima deste múltiplo do estimado é defeito da fonte, não negócio. Medido em
+# 2026-08-09 sobre as 125.060 linhas com os dois valores: 1,10% delas passam de 10× e carregam
+# **87,4% da soma** do campo (R$ 2,43 tri brutos → R$ 306 bi podados). O extremo é uma compra de
+# gaze em Macaé com R$ 2,21 bi homologados contra R$ 2,95 mi estimados — 750×. Somar o campo cru
+# publica número ~8× inflado; calcular "desconto" com ele dá −75.000%.
+MAX_HOMOLOGADO_SOBRE_ESTIMADO = 10.0
+
+
+def _homologado_implausivel(ref: dict) -> bool:
+    est, hom = ref.get("valor_estimado"), ref.get("valor_homologacao")
+    if not est or not hom or est <= 0:
+        return False
+    return float(hom) > MAX_HOMOLOGADO_SOBRE_ESTIMADO * float(est)
+
+
 def contexto_certame(con: sqlite3.Connection, ente: str, ano: int, processo: str) -> dict:
     """Monta o contexto de um certame no formato que J4, J3 e o CRI consomem.
 
@@ -235,8 +250,12 @@ def contexto_certame(con: sqlite3.Connection, ente: str, ano: int, processo: str
         "proponentes_medios_mercado": media_mercado,
         "valor": ref.get("valor_homologacao"),
         "valor_estimado": ref.get("valor_estimado"),
-        "desconto": ((ref["valor_estimado"] - ref["valor_homologacao"]) / ref["valor_estimado"]
-                     if ref.get("valor_estimado") and ref.get("valor_homologacao") else None),
+        "valor_implausivel": _homologado_implausivel(ref),
+        # Homologado muito acima do estimado não é desconto negativo, é dado impossível: vira
+        # INDISPONÍVEL, como `aviso_publicado` logo abaixo. Ver `_homologado_implausivel`.
+        "desconto": (None if _homologado_implausivel(ref) else
+                     ((ref["valor_estimado"] - ref["valor_homologacao"]) / ref["valor_estimado"]
+                      if ref.get("valor_estimado") and ref.get("valor_homologacao") else None)),
         "criterio_julgamento": ref.get("modalidade"),
         "aviso_publicado": None,          # a fonte não informa — INDISPONÍVEL, não False
         "dias_publicidade": None,

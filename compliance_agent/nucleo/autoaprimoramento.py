@@ -108,6 +108,41 @@ class RelatorioEvolucao:
     mantidos: list[dict] = field(default_factory=list)
     revertidos: int = 0
     red_flags_propostas: list[str] = field(default_factory=list)
+    saturado: bool = False
+    sem_caso_real: bool = False
+    casos_reais: int = 0
+    motivo: str = ""
+
+
+def _casos_reais() -> int:
+    """Quantos casos-ouro vieram da vida real (o embutido é sintético, não conta)."""
+    from compliance_agent.nucleo.avaliacao import CASOS_EMBUTIDOS, carregar_casos
+    try:
+        return max(0, len(carregar_casos()) - len(CASOS_EMBUTIDOS))
+    except (OSError, ValueError, KeyError):
+        return 0
+
+
+def diagnosticar_sinal(placar, mantidos: list[dict], casos_reais: int) -> dict:
+    """O loop tem margem para aprender? Se não tem, ele DIZ — não simula rodada normal.
+
+    Achado de 2026-08-02: 36 rodadas seguidas com F1 1.0 -> 1.0 e 922 reverts. O teto do
+    conjunto-ouro estava saturado desde o primeiro dia, e o diário registrava como rodada
+    comum. Um sistema de fiscalização que se engana sobre si mesmo não pode auditar ninguém.
+    """
+    saturado = bool(placar.f1_global >= 1.0 and placar.falsos_alarmes == 0 and not mantidos)
+    sem_caso_real = casos_reais == 0
+    partes: list[str] = []
+    if saturado:
+        partes.append(
+            "conjunto-ouro sem margem: F1 já é 1.0 com 0 falsos alarmes — nenhuma calibração "
+            "pode ser aprovada, o loop não tem o que aprender")
+    if sem_caso_real:
+        partes.append(
+            "régua 100% sintética: nenhum caso-ouro veio de perícia real — o placar mede o "
+            "motor contra o próprio desenho, não contra o acervo")
+    return {"saturado": saturado, "sem_caso_real": sem_caso_real,
+            "casos_reais": casos_reais, "motivo": " · ".join(partes)}
 
 
 def executar_loop(max_rodadas: int = 3, passo: float = 0.10) -> RelatorioEvolucao:
@@ -152,10 +187,13 @@ def executar_loop(max_rodadas: int = 3, passo: float = 0.10) -> RelatorioEvoluca
         if not houve_melhora:
             break  # convergiu: nada mais melhora o placar
 
+    diag = diagnosticar_sinal(inicial, mantidos, _casos_reais())
     relatorio = RelatorioEvolucao(
         placar_inicial=inicial, placar_final=atual,
         mantidos=mantidos, revertidos=revertidos,
         red_flags_propostas=descobrir_red_flags(),
+        saturado=diag["saturado"], sem_caso_real=diag["sem_caso_real"],
+        casos_reais=diag["casos_reais"], motivo=diag["motivo"],
     )
     _registrar_evolucao(relatorio)
     return relatorio
@@ -228,6 +266,10 @@ def _registrar_evolucao(rel: RelatorioEvolucao) -> None:
         "mantidos": rel.mantidos,
         "revertidos": rel.revertidos,
         "red_flags_propostas": rel.red_flags_propostas,
+        "saturado": rel.saturado,
+        "sem_caso_real": rel.sem_caso_real,
+        "casos_reais": rel.casos_reais,
+        "motivo": rel.motivo,
     })
     arq.write_text(json.dumps(historico[-100:], ensure_ascii=False, indent=2),
                    encoding="utf-8")

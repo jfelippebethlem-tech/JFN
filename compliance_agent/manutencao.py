@@ -72,11 +72,21 @@ def checkpoint_wal(db: str = _DB) -> dict:
     return {"wal_antes": antes, "wal_depois": _sz(db + "-wal"), "pragma": res}
 
 
-def vacuum(db: str = _DB) -> dict:
-    """VACUUM — reescreve o .db compactando páginas livres deixadas por DELETE/INSERT OR REPLACE."""
+_VACUUM_MIN_LIVRE_PCT = 5.0
+
+
+def vacuum(db: str = _DB, min_livre_pct: float = _VACUUM_MIN_LIVRE_PCT) -> dict:
+    """VACUUM — reescreve o .db compactando páginas livres deixadas por DELETE/INSERT OR REPLACE.
+
+    Só quando as páginas livres passam de `min_livre_pct`: reescrever 5 GB trava toda gravação
+    além do busy_timeout (a coleta do PNCP morreu assim em 01/11/2026) e rendia ~2% por semana."""
     antes = _sz(db)
     con = sqlite3.connect(db, timeout=120)
     try:
+        paginas = con.execute("PRAGMA page_count").fetchone()[0] or 1
+        livre_pct = round(100 * con.execute("PRAGMA freelist_count").fetchone()[0] / paginas, 2)
+        if livre_pct < min_livre_pct:
+            return {"db_antes": antes, "db_depois": antes, "pulado": True, "livre_pct": livre_pct}
         con.execute("VACUUM")
         con.commit()
     finally:

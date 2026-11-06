@@ -164,3 +164,112 @@ def test_base_ausente_e_indisponivel_nao_zero():
 def test_dominio_de():
     assert dominio_de("a@b.com.br") == "b.com.br"
     assert dominio_de("sem-arroba") == ""
+
+
+# ── filial não é outra empresa (2026-08-06) ──────────────────────────────────
+
+def _base_com(tmp_path, linhas):
+    """Base de estabelecimentos mínima: (cnpj, telefone1, telefone2, email)."""
+    import sqlite3
+    p = tmp_path / "estab.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE estabelecimentos (cnpj TEXT PRIMARY KEY, telefone1 TEXT, "
+                "telefone2 TEXT, correio_eletronico TEXT)")
+    con.executemany("INSERT INTO estabelecimentos VALUES (?,?,?,?)", linhas)
+    con.commit()
+    con.close()
+    return str(p)
+
+
+def test_filiais_do_destino_valem_uma_aresta_so(tmp_path):
+    """O filtro `substr(cnpj,1,8)<>?` tirava as filiais do PRÓPRIO alvo, mas as do DESTINO
+    contavam uma a uma. Medido em 2026-08-06 sobre os 120 CNPJs vencedores do acervo: das 252
+    arestas, **65 eram 21 pares de raiz repetidos por filial** — a APPA SERVIÇOS TEMPORÁRIOS e a
+    OBJETIVA SERVIÇOS TERCEIRIZADOS dividem o telefone 1147593220 e apareciam 3×, porque a
+    OBJETIVA tem 3 filiais com o mesmo número. A aresta é UMA."""
+    from compliance_agent.osint.contato_compartilhado import vinculos_por_contato
+
+    db = _base_com(tmp_path, [
+        ("05969071000110", "1147593220", "", ""),
+        ("10874523000978", "1147593220", "", ""),
+        ("10874523001192", "1147593220", "", ""),
+        ("10874523001001", "1147593220", "", ""),
+    ])
+    ar = vinculos_por_contato(["05969071000110"], db_estab=db)["arestas"]
+    assert len(ar) == 1, f"filial contada como empresa distinta: {ar}"
+    assert ar[0]["para"][:8] == "10874523"
+
+
+def test_fanout_conta_RAIZ_e_recupera_o_vinculo_real(tmp_path):
+    """O erro simétrico, e pior: um telefone compartilhado com 6 filiais de UMA empresa media
+    fan-out 7 e era DESCARTADO como contato de prestador — quando é exatamente o vínculo
+    procurado. Contar por raiz recupera o falso negativo (fan-out de telefone caiu 30 → 26 e o de
+    e-mail 14 → 12 na amostra real)."""
+    from compliance_agent.osint.contato_compartilhado import vinculos_por_contato
+
+    linhas = [("05969071000110", "2133334444", "", "")]
+    linhas += [(f"108745230009{i:02d}", "2133334444", "", "") for i in range(1, 7)]
+    ar = vinculos_por_contato(["05969071000110"], db_estab=_base_com(tmp_path, linhas))["arestas"]
+    assert len(ar) == 1, "6 filiais de uma empresa não são fan-out de 7"
+
+
+def test_mesmo_numero_nos_dois_campos_nao_duplica(tmp_path):
+    """Empresa que cadastra o telefone em `telefone1` e `telefone2` gerava a aresta duas vezes —
+    foi o único par ainda repetido depois da agregação por raiz."""
+    from compliance_agent.osint.contato_compartilhado import vinculos_por_contato
+
+    db = _base_com(tmp_path, [("11389387000136", "2227851280", "2227851280", ""),
+                              ("11412771000102", "2227851280", "", "")])
+    ar = vinculos_por_contato(["11389387000136"], db_estab=db)["arestas"]
+    assert len(ar) == 1, f"o mesmo número em dois campos virou duas arestas: {ar}"
+
+
+@pytest.mark.parametrize("na,nb,tem", [
+    ("2151", "2062", True),   # consórcio × LTDA
+    ("2062", "2127", True),   # LTDA × SCP
+    ("1333", "2062", True),   # fundo público × LTDA
+    ("2143", "2062", True),   # cooperativa × LTDA
+    ("2062", "2062", False),  # duas LTDAs — aí o contato dividido pede explicação
+    ("2054", "2062", False),  # S/A fechada × LTDA
+])
+def test_estrutura_juridica_explica_o_contato_dividido(na, nb, tem):
+    """Ao percorrer 850 credores, as empresas mais ligadas por contato eram CONSÓRCIOS.
+
+    Consórcio divide telefone e e-mail com as consorciadas POR DESENHO — a lei o define como
+    reunião de empresas sem personalidade própria. Idem SCP (aparece o sócio ostensivo) e fundo
+    público (que não é empresa). Medido sobre 761 arestas: 9,1% citam "CONSORCIO" no nome, e entre
+    os nós há 59 de natureza 2151, 53 de 2127 e 79 de 1333.
+
+    O corte é pela NATUREZA JURÍDICA e nunca pelo nome: `CONSTRUTORA METROPOLITANA S.A. SCP
+    ACADEMIA DE BOMBEIROS` traz as duas palavras e é o que o código disser.
+    """
+    from compliance_agent.osint.contato_compartilhado import explicacao_estrutural
+
+    assert bool(explicacao_estrutural(na, nb)) is tem
+
+
+@pytest.mark.parametrize("email,servico", [
+    # o caso que escapou: contador com domínio livre e o nome na PARTE LOCAL
+    ("burgarellicontabilidade@outlook.com", True),
+    ("144consultoriacontabil@gmail.com", True),
+    ("escritoriomartins@gmail.com", True),
+    ("assessoriafiscal@hotmail.com", True),
+    # domínio de serviço continua valendo
+    ("abertura@maismei.com.br", True),
+    ("contato@contabilidadexyz.com.br", True),
+    # e-mail comum da própria empresa NÃO é de serviço
+    ("fiscal@medmax.com.br", False),
+    ("compras@empresa.com.br", False),
+    ("financeiro@biosys.com.br", False),
+])
+def test_contato_de_servico_olha_a_parte_local_tambem(email, servico):
+    """A regra via um terço do problema.
+
+    `burgarellicontabilidade@outlook.com` uniu LUGOM SOLUÇÕES e AVANTTE num mesmo certame como se
+    fosse elo societário — e é escritório de contabilidade com domínio livre. Medido na base de
+    6,17 milhões de estabelecimentos: **126.537 e-mails trazem "contabil" na parte local com
+    domínio livre**, contra 76.078 no domínio.
+    """
+    from compliance_agent.osint.contato_compartilhado import _de_servico
+
+    assert _de_servico(email) is servico

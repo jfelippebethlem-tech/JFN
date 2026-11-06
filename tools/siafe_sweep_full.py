@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 siafe_sweep_full — varredura COMPLETA das OBs por UG × ano (fura o teto de 1000).
-Por UG/ano: tenta coletar_por_ug (1 filtro); se bater o cap (>=990), refaz com coletar_por_ug_grande
+Por UG/ano: tenta coletar_por_ug (1 filtro); se bater o cap (>=980, platô medido), refaz com coletar_por_ug_grande
 (UG + Número prefixo + subdivisão automática). Resumível (checkpoint por sistema:ug:ano). Começa por TJRJ.
 
 SIAFE 2 (siafe2, anos 2024-2026) e SIAFE 1 (www5/SiafeRio, 2016-2023) — sessões independentes (paralelizáveis).
@@ -131,7 +131,8 @@ async def main():
             try:
                 r = await M.coletar_por_ug(ano, ug)
                 colh = r.get("colhidas", 0)
-                if r.get("ok") and colh >= 990:           # capou → refaz com subdivisão
+                if r.get("ok") and colh >= M._FATIA_CAPOU:   # capou → refaz com subdivisão (platô MEDIDO: nenhuma
+                                                  # das 5.893 fatias de junho chegou a 990; 76 pararam em 989/984)
                     _log(sistema, f"{ug} {ano}: {colh} (CAP) → ug-grande")
                     r = await M.coletar_por_ug_grande(ano, ug)
             except Exception as e:  # noqa: BLE001

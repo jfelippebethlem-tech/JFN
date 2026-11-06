@@ -28,6 +28,37 @@ Grava `data/sei_cache/integra_<TAG>/NNN.pdf` + `manifest.json` (títulos da árv
 .venv/bin/python tools/sei_arquivar.py --pendentes     # tudo que falta (o sweep já faz)
 ```
 
+## 2-B. BUSCA POR TEXTO — enumerar processos por termo  ⭐ NOVO 2026-08-12
+
+Serve para a pergunta "quais processos falam de X?" (fornecedor, objeto, número de contrato).
+
+```bash
+.venv/bin/python tools/sei_busca_mgs.py "AGILE CORP"        # `Considerar Documentos` já é o padrão
+.venv/bin/python tools/sei_busca_mgs.py "MGS CLEAN" --sem-docs   # só metadado de processo
+```
+
+> ⚠️ **O ÍNDICE DE TEXTO LIVRE DO SEI É SOBRE DOCUMENTOS.** Com `Considerar Documentos`
+> DESMARCADO — o padrão antigo desta ferramenta — a busca varre só metadado de processo e devolve
+> **zero para QUALQUER termo**, inclusive o controle positivo. Foi o que manteve o item #10 do
+> handoff aberto por um dia inteiro, com a causa registrada como "provável mudança de layout".
+> Marcada a caixa, `LIMPEZA` devolve **213.563 documentos**.
+
+Três armadilhas medidas em 2026-08-12, todas na mesma tela:
+
+1. **A contagem não é `(N registros)`** — é `<div class="pesquisaBarraD">Exibindo 1 - 10 de
+   213.563</div>`. O parser antigo procurava a primeira forma e não achava nada.
+2. **`Nenhum resultado encontrado` é TEMPLATE ESCONDIDO** — está no HTML mesmo quando há 213.563
+   resultados. Lê-lo no texto cru como veredito é publicar ausência que não existe.
+3. **Zero legítimo ≠ não consegui ler.** `parse_resultado` devolve três estados —
+   `com_resultado`, `sem_resultado` e `nao_parseei` — e **`nao_parseei` NUNCA é zero**. Enquanto os
+   dois últimos saíam iguais (`n_total: 0, n_registros: null`), a causa ficava invisível.
+
+**Onde rodar.** A sessão itkava é ÚNICA por IP: rodar a busca por fora do ciclo do sweep disputa a
+sessão e devolve zero com cara de "não achei". O caminho certo é o `data/sei_busca_pedidos.txt`,
+que o `tools/sweep_sei.sh` consome DENTRO do ciclo (sessão já é dele) e sempre com controle
+positivo — se o controle não devolver contagem válida, o ciclo ABORTA a busca em vez de registrar
+um zero inconclusivo. Fora do ciclo, exige `load < 1,7` (vm_guard) e paciência.
+
 ## 3. Leitura pontual sem íntegra (browser)  ⭐ REESCRITO 2026-07-10
 
 > ⚠️ **Teto de texto por documento = `SEI_MAX_CHARS_DOC` (default 60000, era 20000 até

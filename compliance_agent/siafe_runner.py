@@ -26,6 +26,66 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _LOCK = _REPO / "data" / "sei_cache" / "siafe_lock.json"
+# Último resultado do diário — o painel (LED de frescor do SIAFE) lê isto para dizer POR QUE a coleta
+# parou. Sem isto, 7 dias de "senha expirada" (02→09/09/2026) apareceram como um LED só desatualizado.
+ULTIMO = _LOCK.parent / "siafe_runner_ultimo.json"
+
+
+def ultimo_ok_iso() -> str | None:
+    """Quando o diário deu certo pela última vez (sobrevive às falhas — `iso` é o da última TENTATIVA)."""
+    try:
+        d = json.loads(ULTIMO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return d.get("ultimo_ok_iso") or (d.get("iso") if d.get("ok") else None)
+
+
+def gravar_ultimo(res: dict) -> None:
+    try:
+        agora = datetime.now(timezone.utc).isoformat()
+        ok_ant = ultimo_ok_iso()
+        ULTIMO.parent.mkdir(parents=True, exist_ok=True)
+        ULTIMO.write_text(json.dumps({"iso": agora, "ok": bool(res.get("ok")),
+                                      "erro": res.get("erro") or res.get("etapa"), "detail": (res.get("detail") or "")[:300],
+                                      "n": res.get("n"), "ultimo_ok_iso": agora if res.get("ok") else ok_ant},
+                                     ensure_ascii=False))
+    except OSError as exc:
+        logger.debug("não gravei o último resultado do diário: %s", exc)
+
+
+def dias_a_verificar(ultimo_ok: str | None, agora: datetime | None = None, minimo: int = 2,
+                     maximo: int = 10) -> list[int]:
+    """Quantos dias para trás o verificador anti-teto confere. Ontem e anteontem bastam quando o diário
+    roda todo dia; depois de uma LACUNA, os dias do meio também caíram abaixo da posição 1000. Medido em
+    24/10/2026: o diário morreu 4 madrugadas seguidas (lock do browser) e o verificador só olharia 22-23/10,
+    deixando 19-21/10 sem conferência. Teto de 10 dias = ~1 h de browser no pior caso."""
+    agora = agora or datetime.now(timezone.utc)
+    lacuna = minimo
+    if ultimo_ok:
+        try:
+            lacuna = (agora - datetime.fromisoformat(ultimo_ok)).days + 1
+        except ValueError:
+            lacuna = maximo
+    return list(range(1, max(minimo, min(maximo, lacuna)) + 1))
+
+
+def ultimo_resultado() -> dict | None:
+    try:
+        return json.loads(ULTIMO.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def detalhe_frescor(base: str) -> str:
+    """Texto do LED de frescor do SIAFE: o `base` quando a última coleta foi bem, senão o MOTIVO."""
+    u = ultimo_resultado()
+    if not u or u.get("ok"):
+        return base
+    quando = (u.get("iso") or "")[:16].replace("T", " ")
+    motivo = u.get("erro") or "falhou"
+    det = u.get("detail") or ""
+    return f"⛔ última coleta {quando} UTC falhou: {motivo}" + (f" — {det}" if det else "") + f" · {base}"
+
 _LOG = _REPO / "data" / "siafe_runner.log"
 LOCK_TTL = 1800  # lock vence em 30min SEM heartbeat (recuperação de crash). Processos longos (sweep)
                  # RENOVAM o lock via refresh_lock() a cada passo → fica vivo enquanto ativo, sem colisão.
@@ -104,9 +164,28 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
         return {"ok": False, "erro": "lock", "detail": "Outra coleta SIAFE em andamento", "lock": lock_status()}
     try:
         _log(f"diário {ano}: iniciando (maxn={maxn})")
-        res = await M.coletar(ano, maxn=maxn)
+        ok_anterior = ultimo_ok_iso()      # lido ANTES de gravar este resultado — é a régua da lacuna
+
+        async def _coletar():
+            # BROWSER OCUPADO NÃO PODE MATAR O DIÁRIO CALADO. 21→24/10/2026: o dreno das 04:50 segurava o
+            # browser do SIAFE até ~05:45, o `browser_lock_async` estourava aos 15 min e a exceção subia
+            # crua — sem `gravar_ultimo`, sem Telegram. Quatro madrugadas sem OB e só o SLO (123 h) notou.
+            try:
+                return await M.coletar(ano, maxn=maxn)
+            except TimeoutError as e:
+                return {"ok": False, "etapa": "browser_lock", "erro": "navegador_ocupado",
+                        "detail": f"{e} — outra coleta SIAFE segurava o navegador"}
+
+        res = await _coletar()
+        if not res.get("ok") and res.get("etapa") == "navegacao":
+            # 11/09/2026 05:00: 'tabela tblOBOrcamentaria não apareceu' com login OK — transitório do SIAFE
+            # às 5 h (às 16 h a mesma navegação colheu 971). Uma 2ª tentativa custa 3 min; o alarme, um dia.
+            _log(f"diário {ano}: navegação falhou ({res.get('detail')}) — 2ª tentativa em 90 s")
+            await asyncio.sleep(90)
+            res = await _coletar()
         if not res.get("ok"):
             _log(f"diário {ano}: coleta falhou: {res}")
+            gravar_ultimo(res)
             # falha NUNCA silenciosa: o dono fica sabendo na hora (a defasagem de 16-17/07 passou batida)
             try:
                 from compliance_agent import siafe_coord
@@ -118,12 +197,13 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             return {"ok": False, "etapa": "coleta", **res}
         ing = M.ingerir(ano, res.get("header", []), res.get("linhas", []))
         _log(f"diário {ano}: {res.get('n')} colhidas, {ing.get('ingeridas')} ingeridas (total {ing.get('total_tabela')})")
+        gravar_ultimo({"ok": True, "n": res.get("n")})
         # VERIFICADOR: o incremental pega as ~1000 OBs mais novas GLOBAIS; se um dia teve >1000 OBs (ex.: dia de
         # FOLHA), as OBs antigas desse dia caem abaixo da posição 1000 e seriam PERDIDAS. Conferimos o dia anterior
         # por Data Emissão; se estourou (>1000), coletar_por_data subdivide por Número e completa o dia.
         from datetime import timedelta
         verif = {}
-        for delta in (1, 2):                      # ontem e anteontem (margem)
+        for delta in dias_a_verificar(ok_anterior):   # ontem e anteontem — ou toda a lacuna desde o último OK
             d = (datetime.now(timezone.utc) - timedelta(days=delta)).strftime("%d/%m/%Y")
             try:
                 r = await M.coletar_por_data(ano, d)
@@ -179,7 +259,10 @@ async def coletar_ug(ug: str, exercicio: int | None = None) -> dict:
         return {"ok": False, "erro": "lock", "lock": lock_status()}
     try:
         r = await M.coletar_por_ug(ano, ug)
-        if r.get("ok") and r.get("colhidas", 0) >= 990:
+        # PLATÔ MEDIDO, não teto nominal: em 5.893 fatias coletadas, NENHUMA chegou a 990 e 76
+        # pararam em 989/984 — a colheita satura antes do limite do SIAFE. Com o limiar antigo
+        # este caminho nunca subdividia (ver `_fatia_capou`, corrigido nos outros três pontos).
+        if r.get("ok") and r.get("colhidas", 0) >= M._FATIA_CAPOU:
             r = await M.coletar_por_ug_grande(ano, ug)
         return r
     finally:

@@ -47,11 +47,14 @@ def _guarda_recursos() -> None:
 
 
 def _alvos(con: sqlite3.Connection, limite: int, min_valor: float) -> list[tuple[str, float]]:
-    """Fornecedores de maior valor SEM cadastro completo (situação nula) em `empresas`."""
+    """Fornecedores de maior valor SEM cadastro completo (situação nula) em `empresas`.
+    Só CNPJ de 14 DÍGITOS: o CPF mascarado do espelho ('***.123.456-**') também tem 14 caracteres e era
+    consultado como CNPJ — 494 de 500 alvos davam HTTP 404 todo dia (medido 10/09), e o filtro por
+    comprimento passava por cima da linha de baixo da lista."""
     rows = con.execute(
         "SELECT f.favorecido_cpf, f.total_pago FROM favorecido_resumo f "
         "LEFT JOIN empresas e ON e.cnpj=f.favorecido_cpf "
-        "WHERE length(f.favorecido_cpf)=14 AND f.total_pago>=? "
+        "WHERE length(f.favorecido_cpf)=14 AND f.favorecido_cpf NOT GLOB '*[^0-9]*' AND f.total_pago>=? "
         "AND (e.cnpj IS NULL OR e.situacao IS NULL OR e.situacao='') "
         "ORDER BY f.total_pago DESC LIMIT ?", (min_valor, limite)).fetchall()
     return [(r[0], r[1] or 0.0) for r in rows]
