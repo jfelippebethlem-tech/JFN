@@ -212,6 +212,35 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.debug("warmup do motor de relatório não agendado: %s", exc)
 
+    # WARMUP DAS TELAS DE PADRÃO da fila do fiscal. Elas varrem o acervo e têm cache de 1 h; na
+    # PRIMEIRA visita depois de um restart o cache está frio, e como a API é single-process os oito
+    # cards entram em fila — medido em 2026-08-09, um deles não chegava à tela e o verificador
+    # reprovava. Aquecer em background resolve para quem abre o painel, sem atrasar o boot: cada
+    # tela roda uma vez, em série, com o servidor já respondendo.
+    async def _warmup_padroes():
+        try:
+            await asyncio.sleep(20)          # deixa o boot e o warmup de relatório passarem
+            import anyio
+            from tools.screen_aditivo_precoce import medir as _adit
+            from tools.screen_consorcio_veiculo import medir as _consv
+            from tools.screen_coparticipacao_relacionados import medir as _copa
+            from tools.screen_fim_de_exercicio import medir as _fim
+            from tools.screen_recuperacao_judicial import medir as _recj
+            for nome, fn in (("fim_de_exercicio", _fim), ("coparticipacao", _copa),
+                             ("recuperacao_judicial", _recj), ("aditivo_precoce", _adit),
+                             ("consorcio_veiculo", _consv)):
+                await anyio.to_thread.run_sync(fn)   # fora do event loop: não trava as rotas
+                await asyncio.sleep(1)
+            print("[warmup] telas de padrão aquecidas (fila do fiscal abre instantânea)")
+        except (ImportError, OSError, RuntimeError, ValueError, KeyError, TypeError) as exc:
+            # aquecimento é conforto, nunca requisito — mas o motivo tem de sair, senão a tela
+            # lenta na primeira visita vira mistério
+            print(f"[warmup] telas de padrão não aquecidas (não-fatal): {exc.__class__.__name__}")
+    try:
+        asyncio.create_task(_warmup_padroes())
+    except RuntimeError as exc:              # sem event loop rodando — só isso pode falhar aqui
+        logger.debug("warmup das telas de padrão não agendado: %s", exc)
+
     # Guard de idle: encerra o Chromium ocioso após N min (§6, evita o leak de browser 24h numa VM sem swap).
     global _browser_reaper_task
     if _BROWSER_IDLE_MIN > 0:
@@ -280,7 +309,6 @@ output_dir.mkdir(exist_ok=True)
 
 app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
 app.mount("/output", StaticFiles(directory="output"), name="output")
-app.mount("/static/assets", StaticFiles(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
 # v49: o CSS e o JS do painel saíram de dentro do HTML (eram 178 KB + 337 KB inline, num arquivo de
 # 519 KB que ia inteiro pela rede a cada carga, sem compressão e sem cache). Servidos daqui, ganham
 # gzip (abaixo) e cache longo — o `?v=<hash>` no link é que invalida quando o conteúdo muda.
@@ -305,6 +333,18 @@ class _StaticVersionado(StaticFiles):
         return resp
 
 
+class _StaticAssets(_StaticVersionado):
+    """Fontes, vídeos e ícones: sem `?v=`, um dia de cache e depois revalida pelo etag.
+
+    Sem isto o navegador revalidava cada vídeo/fonte a cada visita (medido em 04/11/2026)."""
+
+    def file_response(self, full_path, stat_result, scope, status_code=200):
+        resp = super().file_response(full_path, stat_result, scope, status_code)
+        resp.headers.setdefault("Cache-Control", "public, max-age=86400")
+        return resp
+
+
+app.mount("/static/assets", _StaticAssets(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
 app.mount("/static/css", _StaticVersionado(directory="static/css"), name="css")
 app.mount("/static/js", _StaticVersionado(directory="static/js"), name="js")
 
@@ -313,7 +353,22 @@ app.mount("/static/js", _StaticVersionado(directory="static/js"), name="js")
 # que numa VM de 2 vCPU importa.
 from fastapi.middleware.gzip import GZipMiddleware  # noqa: E402 — junto do mount que ele serve
 
-app.add_middleware(GZipMiddleware, minimum_size=1024)
+_JA_COMPRIMIDO = (".mp4", ".webm", ".jpg", ".jpeg", ".png", ".webp", ".woff2", ".pdf", ".zip", ".gz")
+
+
+class _GZipSemMidia(GZipMiddleware):
+    """Vídeo/imagem/fonte já vêm comprimidos: o gzip ganhava 0,15% num MP4 de 1,3 MB, gastava CPU
+    a cada visita e devolvia 206 com `content-encoding: gzip` e `content-range` dos bytes crus —
+    resposta inválida para o player que pede Range (medido em 04/11/2026)."""
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path", "").lower().endswith(_JA_COMPRIMIDO):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(_GZipSemMidia, minimum_size=1024)
 
 
 # ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────
@@ -329,6 +384,17 @@ _DASH_COOKIE = "jfn_session"
 _DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(30 * 24 * 3600)))  # 30 dias
 _DASH_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
 _DASH_LOCAL = {"127.0.0.1", "::1", "localhost", "testclient", None, ""}  # "testclient" = TestClient in-process (testes/Yoda)
+# Os dois túneis (Cloudflare e Tailscale Funnel) entregam o visitante da INTERNET pela porta 127.0.0.1.
+# Hoje quem salva é o uvicorn reescrever request.client a partir do X-Forwarded-For — padrão implícito
+# (proxy_headers), que um upgrade ou flag muda sem aviso e abriria o painel inteiro. Por isso a isenção
+# de localhost exige também que NÃO haja cabeçalho de proxy: o Yoda nunca manda nenhum.
+_DASH_PROXY_HDRS = ("x-forwarded-for", "x-real-ip", "forwarded", "cf-connecting-ip", "tailscale-user-login")
+# Login sem limite de tentativa = senha adivinhável pela internet. 5 erros em 15 min por IP → 429.
+_LOGIN_FALHAS: dict[str, list[float]] = {}
+_LOGIN_MAX, _LOGIN_JANELA = 5, 15 * 60
+_SEC_HDRS = {"X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
+             "Referrer-Policy": "same-origin", "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+             "Content-Security-Policy": "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"}
 
 
 def _dash_token() -> str:
@@ -357,7 +423,8 @@ async def _auth_jfn(request: Request, call_next):
         return await call_next(request)
     cliente = request.client.host if request.client else ""
     path = request.url.path
-    if (cliente in _DASH_LOCAL                      # Yoda interno (127.0.0.1) nunca é barrado
+    via_proxy = any(h in request.headers for h in _DASH_PROXY_HDRS)
+    if ((cliente in _DASH_LOCAL and not via_proxy)  # Yoda interno (127.0.0.1) nunca é barrado
             or path == "/login_jfn"
             or path == "/favicon.ico"
             or path.startswith("/static/login")):
@@ -507,13 +574,29 @@ async def login_jfn_form(erro: int = 0):
     return HTMLResponse(_LOGIN_HTML.replace("{{ERRO}}", msg))
 
 
+@app.middleware("http")
+async def _cabecalhos_seguranca(request: Request, call_next):
+    resp = await call_next(request)
+    for k, v in _SEC_HDRS.items():
+        resp.headers.setdefault(k, v)
+    return resp
+
+
 @app.post("/login_jfn")
-async def login_jfn_post(senha: str = Form("")):
-    if _DASH_SENHA and hmac.compare_digest(senha, _DASH_SENHA):
+async def login_jfn_post(request: Request, senha: str = Form("")):
+    ip = request.client.host if request.client else ""
+    agora = time.time()
+    falhas = [t for t in _LOGIN_FALHAS.get(ip, []) if agora - t < _LOGIN_JANELA]
+    if len(falhas) >= _LOGIN_MAX:
+        _LOGIN_FALHAS[ip] = falhas
+        return HTMLResponse("Muitas tentativas. Aguarde 15 minutos.", status_code=429)
+    if _DASH_SENHA and hmac.compare_digest(senha.encode(), _DASH_SENHA.encode()):
+        _LOGIN_FALHAS.pop(ip, None)
         resp = RedirectResponse("/painel", status_code=303)
         resp.set_cookie(_DASH_COOKIE, _dash_token(), max_age=_DASH_TTL,
                         httponly=True, samesite="lax", secure=_DASH_COOKIE_SECURE)
         return resp
+    _LOGIN_FALHAS[ip] = falhas + [agora]
     return RedirectResponse("/login_jfn?erro=1", status_code=303)
 
 
@@ -787,13 +870,20 @@ async def serve_report(filename: str):
 
 @app.get("/status")
 async def status():
-    """Check agent status."""
-    agent = await get_agent()
+    """Check agent status — SEM acordar o browser. `get_agent()` aqui LANÇAVA o Chromium e marcava
+    "uso" a cada poll do painel/Yoda, e o guard de idle de 15 min nunca disparava (medido 10/09:
+    Chromium do servidor vivo 2,8 h sem nenhuma leitura). Status é observação, não uso."""
+    agent = _agent
+    if agent is None:
+        return {"logged_in": False, "username": os.environ.get("SIAFE_USER", ""),
+                "exercicio": os.environ.get("SIAFE_EXERCICIO") or str(__import__('datetime').date.today().year),
+                "extracted_records": 0, "browser": "ocioso (relança na próxima leitura)"}
     return {
         "logged_in": agent._siafe._logged_in,
         "username": agent._siafe_username,
         "exercicio": agent._siafe_exercicio or str(__import__('datetime').date.today().year),
         "extracted_records": len(agent._extracted_data),
+        "browser": "ativo",
     }
 
 
@@ -1141,9 +1231,9 @@ def parse_args():
 # ── Split 2026-07-06: rotas por domínio (ver rotas/*.py; rede de segurança em tests/test_server_snapshot.py) ──
 # `vinculos` entrou em módulo próprio (2026-07-29): investigacao.py já tinha 2.291 linhas e 98
 # rotas, e o eixo de vínculos é um domínio inteiro — somar ali só pioraria o problema.
-from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao, vinculos as _r_vinculos  # noqa: E402
+from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao, vinculos as _r_vinculos, lai as _r_lai, acervo as _r_acervo  # noqa: E402
 
-for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_vinculos):
+for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_vinculos, _r_lai, _r_acervo):
     app.include_router(_r.router)
 
 

@@ -71,19 +71,42 @@ if ! out="$("$py" -m pytest -q -p no:randomly \
   exit 1
 fi
 
-# ── 2. viva, quando a máquina permite ────────────────────────────────────────────────────────────
+# ── 2. viva, quando a máquina permite ────────────────────────────────────────────────────────
+# SAIR DO BLOCO NÃO É SAIR DO ARQUIVO. Até 2026-08-11 as duas escapadas abaixo eram `exit 0` — e
+# `exit 0` encerra o SCRIPT, levando junto a etapa 3, que é o gate dos cards que só nascem de um
+# CLIQUE. Numa VM de 2 vCPU a carga passa de 3 quase sempre (neste commit: `load 4.32`), então esse
+# gate estava, na prática, DESLIGADO — e o aviso citava só o boot_check, dizendo menos do que o
+# script fazia. Agora as camadas vivas dividem UMA guarda e o aviso declara as duas.
+vivas_ok=1
 carga="$(cut -d' ' -f1 /proc/loadavg)"
 if ! curl -sf -m 4 -o /dev/null "${JFN_BASE:-http://127.0.0.1:8000}/status"; then
-  echo "[pre-commit] ⚠️  servidor fora — `painel_boot_check` não rodou (rode à mão antes de push)" >&2
-  exit 0
+  # NADA de crase aqui: entre aspas duplas ela é substituição de comando, e o shell tentava
+  # EXECUTAR `painel_boot_check` só para montar a mensagem de aviso.
+  echo "[pre-commit] ⚠️  servidor fora — as checagens VIVAS (boot_check + gate da fila/clique) NÃO rodaram; rode à mão antes do push" >&2
+  vivas_ok=0
+elif awk -v c="$carga" 'BEGIN{exit !(c > 3.0)}'; then
+  echo "[pre-commit] ⚠️  load $carga em 2 vCPU — pulei as checagens VIVAS (boot_check + gate da fila/clique) para não derrubar a VM" >&2
+  vivas_ok=0
 fi
-if awk -v c="$carga" 'BEGIN{exit !(c > 3.0)}'; then
-  echo "[pre-commit] ⚠️  load $carga em 2 vCPU — pulei o boot_check para não derrubar a VM" >&2
-  exit 0
+if [ "$vivas_ok" = 1 ]; then
+  if ! out="$(PYTHONPATH=. nice -n 10 "$py" -m tools.painel_boot_check 2>&1)"; then
+    echo "[pre-commit] ❌ gate do painel BLOQUEOU (pageerror no boot):" >&2
+    echo "$out" | tail -25 >&2
+    exit 1
+  fi
 fi
-if ! out="$(PYTHONPATH=. nice -n 10 "$py" -m tools.painel_boot_check 2>&1)"; then
-  echo "[pre-commit] ❌ gate do painel BLOQUEOU (pageerror no boot):" >&2
-  echo "$out" | tail -25 >&2
-  exit 1
+
+# ── 3. os cards que nascem de um CLIQUE ──────────────────────────────────────────────────────────
+# O boot_check percorre abas e falha em `pageerror`; os seis painéis de padrão da fila do fiscal só
+# são montados quando alguém aperta "Ver a fila", e card que não renderiza NÃO produz erro — some
+# em silêncio. Medido em 2026-08-09: dois dos seis não chegavam à tela e a causa era uma rota de
+# 171 s bloqueando o event loop. Só roda quando a aba do fiscal ou as rotas dela foram tocadas.
+if [ "$vivas_ok" = 1 ] && git diff --cached --name-only --diff-filter=ACM \
+   | grep -qE '^(static/js/src/abas/index\.js|rotas/vinculos\.py|tools/screen_)'; then
+  if ! out="$(PYTHONPATH=. nice -n 10 "$py" -m tools.painel_fila_check 2>&1)"; then
+    echo "[pre-commit] ❌ gate do painel BLOQUEOU (card da fila não chegou à tela):" >&2
+    echo "$out" | tail -20 >&2
+    exit 1
+  fi
 fi
 exit 0

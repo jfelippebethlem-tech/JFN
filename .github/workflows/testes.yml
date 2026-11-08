@@ -23,6 +23,21 @@ name: Testes (em LOTES, critério = delta zero)
 on:
   push:
     branches: ["**"]
+    # RUÍDO DE E-MAIL É PROBLEMA DE ENGENHARIA (2026-08-12). O dono recebeu centenas de avisos: em
+    # 10/08 foram 60 runs num dia, em 09/08 outros 41. Cada push da branch de trabalho dispara a
+    # suíte inteira (~5 min), e quem tem a notificação do GitHub em "all workflow runs" recebe um
+    # e-mail por run — falhando ou não.
+    #
+    # Push que só mexe em documentação não pode custar um run. O `paths-ignore` do GitHub só pula
+    # quando TODOS os arquivos do push casam, então commit misto (código + docs) continua rodando —
+    # é a garantia de que isto corta ruído sem abrir buraco.
+    #
+    # Conferido antes de escrever: nenhum teste LÊ `docs/` — as quatro ocorrências em `tests/` são
+    # menções em docstring (`test_jfn2_skilltree`, `conftest`, `test_golden_numbers`) e a rota
+    # `/docs` do FastAPI em `test_rotas_sem_orfa`, que não é caminho de arquivo.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
   workflow_dispatch:
 
@@ -113,9 +128,19 @@ jobs:
 
       - name: Delta contra as falhas conhecidas
         run: |
+          # SÓ A BASE DO CI. Unir a base da VM-2 aqui importava as falhas de ambiente de OUTRA
+          # máquina para dentro da tolerância do runner — e junto vinham as CATRACAS. Verificado
+          # em 2026-08-06: `tests/BASE-FALHAS-VM2.txt` lista
+          # `test_catraca_excepts::test_except_exception_nao_cresce`, de modo que um commit que
+          # subisse `except Exception` de 1626 para 1700 falhava o teste e o `ci_delta` o
+          # classificava como "falha conhecida, tolerada". A catraca existia e não impedia nada.
+          # O mesmo valia para `test_lex_snapshot` e `test_inteligencia_snapshot` — que rodam
+          # sobre `tests/golden/snapshot_vazio.db`, versionado, e portanto NÃO dependem do
+          # `compliance.db` que falta no runner. Os três passam com verde medido.
+          # Cada base serve ao seu ambiente: a da VM-2 para rodadas na VM-2, esta para o runner.
           PYTHONPATH=. .venv/bin/python -m tools.ci_delta \
             /tmp/lote1.log /tmp/lote2.log /tmp/lote3.log /tmp/lote4.log \
-            --base tests/BASE-FALHAS-VM2.txt --base tests/BASE-FALHAS-CI.txt
+            --base tests/BASE-FALHAS-CI.txt
 
       - name: Guardar os logs (para popular a base na primeira rodada)
         if: always()

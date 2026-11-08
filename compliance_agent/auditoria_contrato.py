@@ -141,6 +141,16 @@ def _t01_3way(d) -> dict:
     # honestidade: NÃO afirmar 3-way completo onde a NL é nula (SIAFE 1 não expõe NL no grid) — é só 2-way RE↔PD.
     sem_nl = [o for o in contab if not (o.get("nl") or "").strip()]
     elo3 = len(contab) - len(sem_nl)
+    if elo3 == 0 and sem_nl:
+        # NENHUMA OB tem liquidação: o three-way não foi verificado em ponto algum. Antes isto
+        # voltava AFASTADO com a evidência dizendo "Integridade 3-way NÃO afirmável" — texto e
+        # status se contradiziam, e AFASTADO significa "verifiquei e está ok". Medido em
+        # 31/08/2026: 6.385 dos 31.017 itens do T01 (20,6%) caíam nesse ramo, contados como
+        # teste que rodou e afastou.
+        return _indisp("T01-3WAY", "Three-way match (NL→RE→PD→OB)",
+                       f"a liquidação (NL) das {len(contab)} OBs Contabilizado — SIAFE 1 não a "
+                       f"expõe no grid; só há o elo RE↔PD (2-way)",
+                       "Lei 4.320/1964 arts. 58/63/64; LC 101/2000", _PESO["alta"])
     if sem_nl:
         ev = (f"{elo3}/{len(contab)} OBs com cadeia 3-way completa (NL→RE→PD→OB); "
               # `evidencia` é TEXTO PURO: o painel imprime a string como veio (esc()), então o
@@ -148,9 +158,15 @@ def _t01_3way(d) -> dict:
               # de `evidencia` é a UI, não um renderizador de markdown — a ênfase sai daqui.
               f"{len(sem_nl)} apenas com RE↔PD (2-way; NL INDISPONÍVEL — SIAFE 1 não expõe). "
               f"Nenhuma OB órfã. {len(repetidos)} par(es) RE/PD em 2+ OBs (split/retroativo — cruza T07). "
-              f"Integridade 3-way NÃO afirmável onde falta a liquidação.")
-        return _hip("T01-3WAY", "Three-way match (NL→RE→PD→OB)", "AFASTADO", "—", ev,
-                    "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 58/63/64; LC 101/2000", _PESO["alta"])
+              f"AFASTADO cobre apenas as {elo3} com cadeia completa; nas demais o 3-way NÃO foi "
+              f"verificado.")
+        a = _hip("T01-3WAY", "Three-way match (NL→RE→PD→OB)", "AFASTADO", "—", ev,
+                 "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 58/63/64; LC 101/2000", _PESO["alta"])
+        # campo NOVO e aditivo: quem lê `status` não muda de comportamento, e quem quiser saber
+        # o alcance do AFASTADO passa a ter o número
+        a["cobertura_3way"] = elo3 / len(contab)
+        a["obs_sem_liquidacao"] = len(sem_nl)
+        return a
     ev = (f"Cadeia 3-way íntegra: as {len(contab)} OBs Contabilizado têm NL→RE→PD, nenhuma órfã. "
           f"{len(repetidos)} par(es) RE/PD aparecem em 2+ OBs — esperado em split/retroativo; "
           f"confirmar lastro distinto pela NL/NF (cruza T07).")

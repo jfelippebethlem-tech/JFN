@@ -102,7 +102,7 @@ def construir_grafo_intel(db_path: str | None = None):
         except (OSError, ValueError, KeyError):
             ug_nome = {}
         for r in _q(con, "SELECT substr(credor,1,8) b, credor, ug_emitente ug, SUM(valor) v "
-                         "FROM ob_orcamentaria_siafe WHERE length(credor)=14 AND valor>0 "
+                         "FROM ob_orcamentaria_siafe WHERE status='Contabilizado' AND length(credor)=14 AND valor>0 "
                          "GROUP BY b, ug_emitente"):
             oid = f"org:ug{r['ug']}"
             if oid not in G:

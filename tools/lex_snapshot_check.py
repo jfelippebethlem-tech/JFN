@@ -105,7 +105,12 @@ def _gerar() -> dict[str, str]:
     return {"lex_parecer_fornecedor.md": forn, "lex_parecer_orgao.md": org_md}
 
 
-RE_REGUA = re.compile(r"(\*\*Régua empírica \(aprendida da base JFN\):\*\*).*")
+# O parêntese é solto de propósito. A versão anterior fixava "(aprendida da base JFN)", o texto do
+# parecer passou a dizer "(aprendida da base histórica)", e o normalizador deixou de casar EM
+# SILÊNCIO: o snapshot voltou a comparar o número vivo e quebrou sozinho quando o SIAFE ingeriu
+# 21.069 OBs a mais (1.138.236 → 1.159.305). Guarda que para de guardar sem avisar é pior que
+# guarda nenhuma — a catraca vermelha por ambiente ensina a ignorar a catraca. (2026-08-03)
+RE_REGUA = re.compile(r"(\*\*R[ée]gua emp[íi]rica\b[^:]*:\*\*).*")
 
 
 def _normalizar(texto: str) -> str:

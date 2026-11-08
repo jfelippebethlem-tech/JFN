@@ -135,3 +135,32 @@ def test_fundamentar_so_cita_acordao_do_acervo(db):
 def test_status_indice(db):
     s = T.status_indice(db=db)
     assert s["construido"] and s["acordaos"] == 3 and s["sumulas"] == 1
+
+
+def _acervo(db, linhas, anos):
+    """Índice de existência (acervo completo) no mesmo banco, como em produção."""
+    from tools import tcu_indice_existencia as E
+    con = sqlite3.connect(db)
+    con.executescript(E._DDL + ";\n" + E._DDL_CTRL)
+    for num, ano, col in linhas:
+        con.execute("INSERT INTO tcu_acordao_existencia(key,numero,ano,colegiado,tipo,relator,processo)"
+                    " VALUES(?,?,?,?,?,?,?)", (f"{ano}-{num}-{col}", num, ano, col, "ACÓRDÃO", "REL", "0"))
+    for a in anos:
+        con.execute("INSERT INTO tcu_existencia_cobertura(ano,linhas,bytes,ingerido_em) VALUES(?,1,0,'x')", (a,))
+    con.commit()
+    con.close()
+
+
+def test_colegiado_fora_da_selecionada_e_conferido_no_acervo(db):
+    """04/11/2026: 2218/2011 existe nos três colegiados; a Selecionada só tem a 1ª Câmara. Citar a 2ª
+    Câmara (real) voltava `colegiado_diverge` sem olhar o acervo completo."""
+    _acervo(db, [(2696, 2019, "Primeira Câmara"), (2696, 2019, "Segunda Câmara")], [2019])
+    r = T.verificar_citacao("Acórdão 2696/2019-Segunda Câmara", db=db)[0]
+    assert r["status"] == "confirmado_acervo" and r["colegiado_real"] == "Segunda Câmara"
+    r = T.verificar_citacao("Acórdão 2696/2019-Plenário", db=db)[0]
+    assert r["status"] == "colegiado_diverge"
+
+
+def test_divergencia_da_selecionada_fica_quando_o_ano_nao_foi_indexado(db):
+    r = T.verificar_citacao("Acórdão 2696/2019-Segunda Câmara", db=db)[0]
+    assert r["status"] == "colegiado_diverge" and r["colegiado_real"] == ["Primeira Câmara"]

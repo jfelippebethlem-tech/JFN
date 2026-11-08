@@ -38,6 +38,8 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
+from compliance_agent.sei import acervo_texto  # noqa: E402
+
 ACERVO = pathlib.Path(os.environ.get("JFN_SEI_ARQUIVO", "data/sei_arquivo"))
 VAULT = pathlib.Path(os.path.expanduser("~/vault/processos"))
 INDICE = pathlib.Path("data/analise_serie.json")
@@ -121,8 +123,10 @@ def sem_texto(limite: int | None = None) -> list[tuple[str, float]]:
     for p in ACERVO.iterdir():
         if not p.is_dir():
             continue
-        td = p / "texto"
-        if td.is_dir() and any(td.glob("*.txt")):
+        # CONTEÚDO, não arquivo: 10.323 dos 43.963 .txt do acervo (23,5%) trazem só a etiqueta
+        # que nós escrevemos, e um processo inteiro assim não é processo capturado — era
+        # invisível para esta fila. (2026-08-03 — ver `sei/acervo_texto`)
+        if acervo_texto.docs_com_conteudo(p):
             continue
         vazios.append((p.name, pagos.get(_chave(p.name), 0.0)))
     vazios.sort(key=lambda x: -x[1])

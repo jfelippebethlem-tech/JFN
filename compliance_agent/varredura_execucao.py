@@ -27,15 +27,24 @@ O QUE FICA DE FORA, e por quê — a mesma regra de `varredura_certames`:
     1.138.236 OBs, mas a ponte contrato↔OB não existe: `contrato_aditivo.numero_controle_pncp` é
     chave de CONTRATO ("-2-") e `pncp_resultado.certame` é chave de COMPRA ("-1-"), com zero
     casamentos hoje.
+    SEGUNDA PONTE TESTADA E REPROVADA (2026-08-11): desde 2026-08-09 o coletor guarda
+    `contrato_aditivo.processo`, e a OB tem `processo` — parecia a ponte que faltava. Não é: dos
+    1.030 processos de aditivo contra 99.994 de OB, só **13 casam**. Os formatos são de entes
+    diferentes e não se falam ("E-20/001.001945/2024", "303576-5/2025", "2026-06041596"). Ligar X3
+    sobre isso daria `nao_avaliavel` em 99% dos contratos, que é o que esta lista existe para
+    evitar. Medido para ninguém refazer a conta.
   · X4 (carona) pede itens e quantitativos da ata de registro de preços.
   · X5 (jogo de planilha) pede a planilha orçamentária item a item — não há tabela de itens de
-    contrato na base.
+    contrato na base. Reconferido em 2026-08-11: a única tabela de item é `proposta_item`, que é
+    de PROPOSTA de certame, não de execução contratual.
   · X6 (entrega fantasma) pede atestos e medições.
-  · X8 (aditivo retroativo) pede a data de ASSINATURA do termo, e `contrato_aditivo` não a tem —
-    guarda `vigencia_fim` e `coletado_em`, que são outra coisa. Usar a data de coleta como proxy
-    faria todo termo parecer retroativo; usar a de publicação mediria atraso de publicação, que é
-    irregularidade de outra natureza. O card existe e roda sobre autos do SEI, onde a data de
-    assinatura consta; na varredura tabular ele fica fora, declarado.
+  · X8 (aditivo retroativo) ENTROU em 2026-08-11. O bloqueio era real quando foi escrito —
+    `contrato_aditivo` guardava só `vigencia_fim` e `coletado_em` — e CADUCOU em 2026-08-09, quando
+    o coletor do PNCP passou a gravar `dataAssinatura`: hoje 1.684 dos 1.770 termos (95,1%) a têm.
+    Ninguém releu o comentário, e o detector seguia fora por um motivo que já não existia. Medido ao
+    ligar: **36 contratos de 1.099** têm termo assinado DEPOIS do fim da vigência corrente — entre
+    eles um do MPRJ (R$ 3,62 mi) cujo 1º termo, de acréscimo quantitativo, foi assinado quatro dias
+    após o contrato expirar. Aditar contrato extinto não é prorrogação.
 
 Rodá-los aqui devolveria `nao_avaliavel` em massa, que não informa nada e ainda faz a cobertura
 parecer maior do que é. Quando a ponte contrato↔OB existir (é item do plano), X3 entra aqui.
@@ -66,7 +75,7 @@ DB_LEITURA = os.environ.get("JFN_DB", "data/compliance.db")
 DB_ACHADOS = os.environ.get("JFN_DB_ACHADOS", "data/achados.db")
 
 # Manter esta lista curta e honesta é o ponto — ver o cabeçalho.
-DETECTORES_EXECUCAO = ("X1", "X2", "X7")
+DETECTORES_EXECUCAO = ("X1", "X2", "X7", "X8")
 
 
 def abrir_leitura(caminho: str | None = None) -> sqlite3.Connection:

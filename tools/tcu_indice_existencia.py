@@ -256,7 +256,8 @@ def conferir(citacao: str, con: sqlite3.Connection | None = None) -> dict:
             return {"citacao": citacao, "status": "ilegivel"}
         numero, ano = _num(m.group(1)), int(m.group(2))
         col = ""
-        mc = re.search(r"(Plen[áa]rio|1[ªa]\s*C[âa]mara|2[ªa]\s*C[âa]mara)", citacao or "", re.I)
+        mc = re.search(r"(Plen[áa]rio|(?:1[ªa]|Primeira)\s*C[âa]mara|(?:2[ªa]|Segunda)\s*C[âa]mara)",
+                       citacao or "", re.I)
         if mc:
             col = mc.group(1)
         if not con.execute("SELECT 1 FROM tcu_existencia_cobertura WHERE ano=?", (ano,)).fetchone():
@@ -272,7 +273,9 @@ def conferir(citacao: str, con: sqlite3.Connection | None = None) -> dict:
         if col and not any(_norm_col(col) == _norm_col(c) for c in cols):
             return {"citacao": citacao, "numero": numero, "ano": ano,
                     "status": "colegiado_diverge", "colegiados_reais": sorted(cols)}
-        r = linhas[0]
+        # O número existe nos três colegiados no mesmo ano (2218/2011): mostrar o da linha citada,
+        # não a primeira — senão a conferência parece ter confirmado outra coisa.
+        r = next((x for x in linhas if col and _norm_col(col) == _norm_col(x[0])), linhas[0])
         return {"citacao": citacao, "numero": numero, "ano": ano, "status": "confirmado",
                 "colegiado": r[0], "tipo": r[1], "data_sessao": r[2], "relator": r[3],
                 "processo": r[4]}
@@ -284,7 +287,8 @@ def conferir(citacao: str, con: sqlite3.Connection | None = None) -> dict:
 def _norm_col(s: str) -> str:
     t = re.sub(r"[^a-z0-9]", "", (s or "").lower()
                .replace("á", "a").replace("â", "a").replace("ª", "a"))
-    return t
+    # A base grava "Primeira Câmara"; citação costuma escrever "1ª Câmara".
+    return t.replace("primeira", "1a").replace("segunda", "2a")
 
 
 def _anos(spec: str) -> list[int]:

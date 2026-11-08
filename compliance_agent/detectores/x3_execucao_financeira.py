@@ -134,8 +134,34 @@ class X3ExecucaoFinanceira(Detector):
                 ciclos.append((dp - de).days)
         min_ciclo = min(ciclos) if ciclos else None
         valores["min_ciclo_empenho_pagamento_dias"] = min_ciclo
+        # TRÍADE DEGENERADA — e a prova de que era isso, não velocidade. As etapas são colhidas
+        # do texto pela 1ª frase que menciona cada uma, num monte de documentos concatenados.
+        # Medido em 2026-08-04 nos processos de maior risco, TODO disparo de "ciclo de 0 dias"
+        # tinha `data_empenho == data_pagamento`, e as liquidações saíam fora de ordem:
+        #     080002/012937/2026  empenho 01/02 · liquidação 11/05 · pagamento 01/02
+        #     260006/006916/2025  empenho 27/08 · liquidação 16/06 · pagamento 27/08
+        # Pagamento antes da liquidação e liquidação antes do empenho não são anomalia do
+        # processo: são a mesma data lida duas vezes num documento que cita as duas etapas.
+        # A regra-mãe da casa fecha o argumento — empenho ≠ liquidação ≠ OB são TRÊS eventos com
+        # ordem legal. Sem marcos distinguíveis e ordenados não há tríade a comprimir, e o que
+        # não se distingue não se acusa.
+        def _sem_triade(p) -> bool:
+            """As três datas descrevem TRÊS eventos na ordem legal, ou é leitura quebrada?"""
+            e, li, pg = (_data(p.get("data_empenho")), _data(p.get("data_liquidacao")),
+                         _data(p.get("data_pagamento")))
+            if e is None or pg is None:
+                return True
+            if e == pg:
+                return True          # mesma data para empenho e OB: uma data contada duas vezes
+            if li is not None and not (e <= li <= pg):
+                return True          # fora da ordem legal: os marcos não são o que se supôs
+            return False
+
+        degenerada = any(_sem_triade(p) for p in pagamentos)
+        valores["triade_degenerada"] = degenerada
         triade_comprimida = (
-            min_ciclo is not None and min_ciclo >= 0 and min_ciclo < _DELTA_TRIADE_CURTO_DIAS
+            not degenerada
+            and min_ciclo is not None and min_ciclo >= 0 and min_ciclo < _DELTA_TRIADE_CURTO_DIAS
         )
         if triade_comprimida:
             if pronto:
@@ -218,8 +244,13 @@ class X3ExecucaoFinanceira(Detector):
         if score <= 0:
             res.status = "descartado"
             res.motivo_refutacao = (
-                "regras objetivas não acionaram: tríade não comprimida (ou pronto pagamento), sem pagamento antes "
-                "do atesto, dezembro abaixo do limiar/com cronograma, sem inversão recorrente de fila")
+                ("os marcos extraídos não formam tríade (empenho, liquidação e OB não são "
+                 "distinguíveis ou estão fora da ordem legal) — não se afere velocidade sobre "
+                 "leitura quebrada; demais regras objetivas não acionaram"
+                 if valores.get("triade_degenerada") else
+                 "regras objetivas não acionaram: tríade não comprimida (ou pronto pagamento), "
+                 "sem pagamento antes do atesto, dezembro abaixo do limiar/com cronograma, sem "
+                 "inversão recorrente de fila"))
             res.valores = valores
             res.explicacao_inocente = (
                 "execução financeira regular: pagamentos no curso normal, atestados antes de pagar, sem concentração "

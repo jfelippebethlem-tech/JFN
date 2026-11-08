@@ -14,19 +14,9 @@
   "tramitacao": 0,
   "indefinida": 0
  },
- "lacunas": [
-  {
-   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
-   "gravidade": "media"
-  },
-  {
-   "falta": "Seleção (edital, julgamento, homologação)",
-   "gravidade": "alta"
-  },
-  {
-   "falta": "Contrato/ata formalizados",
-   "gravidade": "media"
-  }
- ],
- "fotos_total": 0
+ "lacunas": [],
+ "fotos_total": 0,
+ "captura_vazia": true,
+ "aviso": "Nada foi capturado desta íntegra (falha/pendência de coleta). NÃO interpretar como processo sem documentos — reprocessar.",
+ "saneado_em": "2026-08-04T01:28:45+00:00"
 }

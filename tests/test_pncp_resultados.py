@@ -295,3 +295,44 @@ def test_conluio_do_orgao_casa_por_nome_da_unidade():
         assert r["n_certames"] == 4  # match pelo nome da UNIDADE (orgao_nome é o ente)
     finally:
         os.unlink(path)
+
+
+def test_pagina_sobrevive_a_banco_travado_e_nao_duplica(monkeypatch):
+    """01/11/2026: o VACUUM de domingo travou o compliance.db além dos 60 s e a coleta morreu com
+    `database is locked`, perdendo a semana. Agora a página é refeita depois de esperar."""
+    import asyncio
+    con = sqlite3.connect(":memory:")
+    paginas = iter([{"data": [{"id": 1}, {"id": 2}], "totalPaginas": 1}])
+
+    async def consulta(client, endpoint, params):
+        return next(paginas, None)
+    chamadas = {"n": 0}
+
+    async def gravar(con_, client, ct, tot):
+        chamadas["n"] += 1
+        if chamadas["n"] == 2:
+            raise sqlite3.OperationalError("database is locked")
+        tot["certames"] += 1
+        return 1
+    monkeypatch.setattr(PR, "_consulta", consulta)
+    monkeypatch.setattr(PR, "_gravar_certame", gravar)
+    monkeypatch.setattr(PR, "_LOCK_ESPERA", 0)
+    r = asyncio.run(PR.coletar_resultados(con, ano_ini=2026, mes_ini=1, ano_fim=2026, mes_fim=1,
+                                          modalidades=[6], pausa=0))
+    assert r["gravados"] == 2 and r["certames"] == 2      # refez a página sem contar duas vezes
+
+
+def test_erro_que_nao_e_trava_continua_subindo(monkeypatch):
+    import asyncio
+
+    async def consulta(client, endpoint, params):
+        return {"data": [{"id": 1}], "totalPaginas": 1}
+
+    async def gravar(*a):
+        raise sqlite3.OperationalError("no such table: x")
+    monkeypatch.setattr(PR, "_consulta", consulta)
+    monkeypatch.setattr(PR, "_gravar_certame", gravar)
+    import pytest
+    with pytest.raises(sqlite3.OperationalError, match="no such table"):
+        asyncio.run(PR.coletar_resultados(sqlite3.connect(":memory:"), ano_ini=2026, mes_ini=1,
+                                          ano_fim=2026, mes_fim=1, modalidades=[6], pausa=0))

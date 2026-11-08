@@ -134,10 +134,12 @@ def rodar(max_proc: int = 400, limiar: int = 3, top: int = 6, com_llm: bool = Tr
         for tema, c in top_temas:
             msg = f"Perícia: tema '{tema}' aparece como lacuna/dúvida em {c} de {n} processos recentes."
             sug = "Avaliar wirar a fonte de dado desse tema na perícia (cruzar OB/contrato/NF/base) e calibrar o prompt."
-            if registrar("jfn", "dificuldade", "perícia SEI (loop de aprendizado)", msg, sug):
+            if registrar("jfn", "dificuldade", "perícia SEI (loop de aprendizado)", msg, sug,
+                         chave=f"Perícia: tema '{tema}' "):
                 novos += 1
         for d, c in top_duvidas:
-            if registrar("jfn", "dificuldade", "perícia SEI — dúvida recorrente do modelo", f"({c}×) {d}", ""):
+            if registrar("jfn", "dificuldade", "perícia SEI — dúvida recorrente do modelo", f"{d} ({c}×)", "",
+                        chave=d):
                 novos += 1
         try:
             _regenerar_vault()

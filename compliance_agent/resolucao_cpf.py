@@ -211,10 +211,12 @@ def carregar_indice_sei(db_path: str | Path | None = None) -> dict:
 
 
 def folha_middle(cpf_mascarado_folha) -> str:
-    """6 dígitos visíveis da máscara da FOLHA de pagamento (`XX######XXX` = posições **3-8**) ou ''.
+    """6 dígitos visíveis da máscara da FOLHA de pagamento — posições **4-9**, as MESMAS do QSA.
 
-    A folha do RJ mascara o CPF expondo posições DIFERENTES do QSA (que expõe 4-9). Essa diferença é o
-    que permite a 'fusão de máscaras' (mais dígitos conhecidos do mesmo CPF)."""
+    CORRIGIDO EM 2026-08-12, com controle positivo. A docstring anterior afirmava posições 3-8 e a
+    fusão de máscaras se apoiava nessa diferença. Confrontando os 117 sócios cujo CPF COMPLETO já
+    estava resolvido e cujo nome consta na folha: **94 batem em 4-9**, 3 em 3-8 (coincidência) e 20
+    são homônimos reais. Não há janela diferente, logo não há dígito novo a ganhar."""
     s = str(cpf_mascarado_folha or "")
     if "*" not in s and "x" not in s.lower() and "X" not in s:
         return ""
@@ -263,16 +265,21 @@ def fusao_folha_qsa(nome: str, doc_mascarado_qsa: str, folha_idx: dict) -> dict:
     ms_folha = folha_idx.get(nome_n)
     if not ms_folha:
         return {**base, "motivo": "nome não consta na folha de pagamento"}
-    # posições comuns 4-8: no QSA são m6_qsa[0:5]; na folha (pos 3-8) são m_folha[1:6]
+    # AS DUAS MÁSCARAS EXPÕEM A MESMA JANELA (4-9), então o casamento é dos SEIS dígitos — não há
+    # sobreposição parcial a alinhar. A versão anterior comparava `m6_qsa[0:5]` com `m_folha[1:6]`,
+    # isto é, posições 4-8 contra 5-9: um deslocamento de um dígito que declarava homônimos 1.007
+    # dos 1.014 nomes encontrados na folha e marcava os 7 restantes por coincidência.
     for m_folha in ms_folha:
-        if m6_qsa[0:5] == m_folha[1:6]:
-            # conhecidos: pos3 = m_folha[0], pos4-9 = m6_qsa  → 7 dígitos (posições 3..9)
-            conhecidos = m_folha[0] + m6_qsa
-            return {"servidor": True, "conhecidos_3a9": conhecidos, "n_candidatos": 100,
-                    "motivo": ("nome na folha + dígitos sobrepostos (pos.4-8) consistentes → provável "
-                               "servidor público sócio de fornecedora; CPF estreitado p/ posições 3-9 "
-                               "(~100 candidatos) — apurar vínculo/impedimento (indício, não acusação)")}
-    return {**base, "motivo": "homônimo provável (nome na folha mas dígitos do CPF divergem) — não afirma servidor"}
+        if m6_qsa == m_folha:
+            # Mesma régua que o cruzamento de benefício chama de ALTA: nome + fragmento batendo é
+            # anti-homônimo. NÃO estreita candidatos — mesma janela não acrescenta dígito, e
+            # prometer 100 seria mentir sobre o esforço que falta.
+            return {"servidor": True, "conhecidos_3a9": m6_qsa, "n_candidatos": 1000,
+                    "motivo": ("nome na folha + os SEIS dígitos do fragmento batendo → sócio de "
+                               "fornecedora que também consta na folha de pagamento; apurar "
+                               "vínculo, período e impedimento (indício, não acusação). O CPF NÃO "
+                               "fica mais estreito: as duas fontes expõem a mesma janela (4-9).")}
+    return {**base, "motivo": "homônimo provável (nome na folha mas o fragmento do CPF diverge) — não afirma servidor"}
 
 
 def socios_servidores(cnpj: str, db_path: str | Path | None = None) -> list[dict]:

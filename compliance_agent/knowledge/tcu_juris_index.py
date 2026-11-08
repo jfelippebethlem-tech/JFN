@@ -300,8 +300,14 @@ def verificar_citacao(texto: str, db: str | Path | None = None) -> list[dict]:
                 else:
                     item.update(_conferir_no_acervo(con, num, ano, coleg))
             elif coleg and not any(l["colegiado"] == coleg for l in linhas):
-                item["status"] = "colegiado_diverge"
-                item["colegiado_real"] = sorted({l["colegiado"] for l in linhas})
+                # A Selecionada é recorte: 2218/2011 existe nos três colegiados e ela só tem a 1ª Câmara.
+                # O acervo completo decide; ano não indexado mantém a divergência (nunca vira "não sei").
+                acervo = _conferir_no_acervo(con, num, ano, coleg)
+                if acervo["status"] == "nao_confirmado":
+                    item["status"] = "colegiado_diverge"
+                    item["colegiado_real"] = sorted({l["colegiado"] for l in linhas})
+                else:
+                    item.update(acervo)
             else:
                 item["status"] = "confirmado"
                 escolhida = next((l for l in linhas if not coleg or l["colegiado"] == coleg), linhas[0])

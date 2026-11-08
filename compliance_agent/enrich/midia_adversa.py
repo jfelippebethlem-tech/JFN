@@ -26,6 +26,7 @@ _RISCO = [
     "condena", "desvio", "irregularidade", "irregular", "quadrilha", "apura", "apuração",
     "denúncia", "denuncia", "tce", "ministério público", "ministerio publico", "mpf", "mprj",
     "polícia federal", "policia federal", "cpi", "esquema", "propin", "corrup", "suspeit",
+    "punid", "advertid", "multad", "sanção", "sancao", "inidône", "inidone", "impedid", "suspens",
 ]
 
 
@@ -74,6 +75,35 @@ def _ddg_fallback(alvo: str, max_r: int = 12) -> tuple[list | None, str]:
     return adversos, ""
 
 
+_GNEWS = "https://news.google.com/rss/search"
+
+
+def _gnews(alvo: str, max_r: int = 20) -> tuple[list | None, str]:
+    """Google News RSS (sem chave, sem API): é o que enxerga a imprensa BRASILEIRA local — o GDELT devolveu
+    0 artigos para "RESTAURANTE NOVA RODOVIA 2007" enquanto o RSS trouxe a Metrópoles (empresa punida por servir
+    salsicha, 26/02/2026) e um procedimento do MP; e o DuckDuckGo HTML passou a responder 'anomaly' (bot).
+    Medido em 12/09/2026. Retorna (artigos brutos, erro)."""
+    import html as _html
+    q = {"q": f'"{alvo}"', "hl": "pt-BR", "gl": "BR", "ceid": "BR:pt-419"}
+    try:
+        r = httpx.get(_GNEWS, params=q, headers={"User-Agent": "Mozilla/5.0 (JFN/2.0 fiscalizacao)"},
+                      timeout=20, follow_redirects=True)
+    except (httpx.HTTPError, OSError) as e:
+        return None, f"gnews {str(e)[:50]}"
+    if r.status_code != 200:
+        return None, f"gnews HTTP {r.status_code}"
+    corpo = getattr(r, "text", "") or ""   # resposta sem corpo (ou fake de teste) = sem itens, não erro
+    itens = re.findall(r"<item>(.*?)</item>", corpo, re.S)
+    out = []
+    for it in itens[:max_r]:
+        def _tag(t):
+            m = re.search(rf"<{t}>(.*?)</{t}>", it, re.S)
+            return _html.unescape(re.sub(r"^<!\[CDATA\[|\]\]>$", "", m.group(1).strip())) if m else ""
+        out.append({"title": _tag("title"), "url": _tag("link"), "seendate": _tag("pubDate"),
+                    "domain": _tag("source") or "google-news"})
+    return out, ""
+
+
 def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int = 25) -> dict:
     """Varre mídia adversa sobre `nome`. {ok, alvo, n_total, adversos:[{titulo,fonte,url,data,termos}],
     n_adversos} | INDISPONÍVEL (rate-limit/erro). Nunca fabrica."""
@@ -85,7 +115,7 @@ def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int =
     headers = {"User-Agent": "JFN/2.0 (fiscalizacao publica)"}
     arts = None
     erro = ""
-    for tentativa in range(3):  # GDELT free dá 429 sob carga; backoff curto resolve a maioria
+    for tentativa in range(1):  # GDELT: UMA tentativa — o Google News RSS é a fonte que rende p/ imprensa BR; o 429 do GDELT custava 7,5 s de sono por alvo
         try:
             r = httpx.get(_GDELT, params=params, headers=headers, timeout=25)
             if r.status_code == 200:
@@ -111,15 +141,20 @@ def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int =
                 "_fonte": "GDELT DOC 2.0 + DuckDuckGo (ambos indisponíveis)",
                 "_nota": f"INDISPONÍVEL: GDELT {erro}; DDG {ddg_err}. Nada fabricado."}
 
-    adversos = []
-    for a in arts:
+    # Google News RSS SEMPRE (não só como fallback): cobre a imprensa local que o GDELT não indexa
+    gn, gn_err = _gnews(alvo)
+    fontes = "GDELT DOC 2.0 + Google News RSS (grátis, sem chave)" if gn is not None else f"GDELT DOC 2.0 (Google News {gn_err})"
+    adversos, vistos = [], set()
+    for a in list(arts) + list(gn or []):
         titulo = a.get("title")
         tom = a.get("tone")
         adv, hits = _classificar(titulo, tom)
-        if adv:
+        chave = (titulo or "").strip().lower()[:80]
+        if adv and chave not in vistos:
+            vistos.add(chave)
             adversos.append({"titulo": titulo, "fonte": a.get("domain"), "url": a.get("url"),
                              "data": a.get("seendate"), "termos": hits, "tom": tom})
-    return {"ok": True, "alvo": alvo, "n_total": len(arts), "n_adversos": len(adversos),
-            "adversos": adversos[:15], "_fonte": "GDELT DOC 2.0 (grátis, sem chave)",
+    return {"ok": True, "alvo": alvo, "n_total": len(arts) + len(gn or []), "n_adversos": len(adversos),
+            "adversos": adversos[:15], "_fonte": fontes,
             "_nota": "Mídia adversa = INDÍCIO a confirmar na fonte (presunção de legitimidade). Cobertura "
                      "jornalística não é prova e pode conter homônimos."}

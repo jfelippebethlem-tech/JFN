@@ -1,0 +1,17 @@
+{
+  "n": 100,
+  "acuracia": 0.43,
+  "f1_macro": 0.4818117400655919,
+  "f1_por_classe": {
+    "vicio": 0.5957446808510638,
+    "licito": 0.4137931034482759,
+    "vicio_por_omissao": 0.4358974358974359
+  },
+  "abstencao": 0.17,
+  "alucinacao_citacao": 0.01,
+  "indisponivel": 0.11,
+  "invalido": 0.0,
+  "bate_o_baseline": true,
+  "prompt_versao": "v1",
+  "prompt_hash": "300d9347d2af"
+}

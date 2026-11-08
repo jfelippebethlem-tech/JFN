@@ -81,6 +81,10 @@ export function portalStart(){
   if(pular||_redMotion){el.remove();return;}
   try{sessionStorage.setItem('jfn_v9_portal','1');}catch(_){}
   el.hidden=false;
+  /* 1,6 MB (vídeo + pôster) vinham com autoplay/preload=auto no HTML: o navegador baixava em TODA
+     visita, inclusive nas que pulam o portal (sessão já aberta). Agora só aqui, quando ele aparece. */
+  const pv=$('pvid');
+  if(pv){pv.poster=pv.dataset.poster||'';pv.preload='auto';pv.play().catch(()=>{});}
 
   const cv=$('pcv'),pm=$('pmap');
   const dpr=Math.min(devicePixelRatio||1,1.5);   // 4K real na GPU da VM não paga o pixel

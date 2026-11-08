@@ -10,13 +10,16 @@ def _seed(con):
         sei_norm text, ano_processo int, data_contratacao text, valor_contrato real, status text,
         unidade text, objeto text, fornecedor text, cnpj text, vig_inicio text, vig_fim text,
         criterio_julgamento text)""")
+    # `status` desde d9ad0848 (24/09/2026): só OB Contabilizada é pagamento — o fixture sem a coluna quebrou o
+    # teste calado por seis semanas (achado na suíte completa de 04/11/2026).
     con.execute("""create table if not exists ob_orcamentaria_siafe (numero_ob text, processo text,
-        credor text, nome_credor text, valor real)""")
+        credor text, nome_credor text, valor real, status text)""")
     con.execute("""insert into contratos_tcerj (id, processo, valor_contrato, unidade, objeto,
         fornecedor, cnpj, vig_inicio, vig_fim) values
         (1,'SEI-030/2024',5000000,'DETRAN - DEPARTAMENTO','locação de sistema','ACME LTDA',
          '11.222.333/0001-81','2024-01-01','2025-01-01')""")
-    con.execute("insert into ob_orcamentaria_siafe (numero_ob, processo, valor) values ('OB1','SEI-030/2024',4800000)")
+    con.execute("insert into ob_orcamentaria_siafe (numero_ob, processo, valor, status) values "
+                "('OB1','SEI-030/2024',4800000,'Contabilizado'), ('OB2','SEI-030/2024',999,'Anulado')")
     con.commit()
 
 
@@ -31,7 +34,7 @@ def test_montar_dossie_tcerj(tmp_path):
     d = estado.montar_dossie_tcerj(con, row)
     assert d["contrato"]["fornecedor_documento"] == "11222333000181"
     assert d["contrato"]["valor_inicial"] == 5000000
-    assert d["pagamentos"]["pago"] == 4800000       # ligado por processo
+    assert d["pagamentos"]["pago"] == 4800000       # ligado por processo; a OB anulada (999) não é pagamento
     assert d["aditivos"] == []                        # TCE-RJ não traz termos
 
 
