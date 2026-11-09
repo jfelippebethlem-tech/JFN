@@ -49,6 +49,9 @@ import {a11yfy, holografar, glossario, fecharDossie, abrirDossie, seiArvore, sei
 import {renderCasos, ligarCasos} from './abas/casos.js';
 import {ligarVinculos, ligarFila, SEV_LEGENDA, TIPO_ALERTA, _CK, _DETS_ORFAOS, _DET_ROTULO, _TEMA_ROTULO, _acPick, _acRenderSel, _acTimer, _acuLiftHtml, _blocoVedada, _bq, _cjEsf, _ckCount, _ckTick, _ckTimer, _comisView, _compBuscar, _compCatalogo, _compDossie, _compEconomia, _compEsfChips, _compForn, _compItemView, _compOrgaos, _compView, _ctrView, _ehEmail, _fantFaixa, _gastosDet, _liftBloco, _montarGrupoCard, _perOrdem, _respProc, _riscoView, _unOf, _valCard, _valLista, _vincCnpj, abrirCapMestra, acKeydown, acao, autocompletar, blocoComandosMestres, ckBoot, ckCard, ckFill, ckPull, ckPush, detRodar, fazBusca, frescorHtml, fxConsultar, instAcionar, instUgs, limparEfemeros, missaoCriar, missaoListar, missaoVer, pecaGerar, sinteseProcesso, pollarPdf, renderAcoes, renderAcuracia, renderAditivos, renderAlertas, renderBeneficiosPref, renderBuscar, renderCapital, renderCartel, renderCartelMun, renderCertames, renderCockpit, renderComissionadosPref, renderComparador, renderComunidades, renderConluio, renderConluioQSA, renderContratosPref, renderCorridaDezembro, renderDetectoresOrfaos, renderEscalada, renderFantasmasPref, renderFenix, renderFontesExternas, renderFornecedorDependente, renderFracionamento, renderGastosPref, renderHubFisico, renderInstrumentacao, renderLaranjas, renderIntegras, renderLentes, renderMissoes, renderNepotismo, renderNepotismoCruzado, renderPPPPref, renderPanoramaEstado, renderPanoramaPref, renderPecas, renderPericias, renderPoder, renderPortaGiratoria, renderPrioridade, renderRadar, renderResponsaveis, renderRetro, renderRiscos, renderSancionadas, renderSancionadasMun, renderSiafe, renderSobrepreco, renderSocioOculto, renderSocioServidor, renderSweeps, renderValidar, renderVinculos, sweep, validar, _set_cjEsf, _set_comisView, _set_compView, _set_ctrView, _set_fantFaixa, _set_gastosDet, _set_perOrdem, _set_respProc, _set_riscoView, _set_compCat, _set_compDisp, _set_compEsf, _set_compGrupo, _set_compOrd, _set_compTermo, _set_perGrau, _compCat, _compDisp, _compEsf, _compGrupo, _compOrd, _compTermo, _perGrau, renderTacRecorrente, renderImprensa} from './abas/index.js';
 import {renderLai, ligarLai} from './abas/lai.js';
+/* MÍDIA (2026-11-09): som de interface (desligado por padrão) e a sonda das ilustrações de vazio.
+   Sem efeito de topo — liga pela chamada `ligarMidia()` na sequência de boot. */
+import {ligarMidia, somTocar} from './ui/midia.js';
 import {renderAcervo, ligarAcervo} from './abas/acervo.js';
 
 async function gerarPdfIntel(tipo,el){
@@ -272,6 +275,7 @@ async function ir(id){
   let t=TABS[esfera].find(x=>x.id===id);
   if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){setEsfera(e);t=cand;montarSpheres();break;}}}
   if(!t)return;
+  if(_abaAntes&&_abaAntes!==id)somTocar('area');   // som de troca de área (só se o som estiver ligado)
   setAba(id);montarTabs();
   if(location.hash.slice(1)!==id){_hashMeu=true;location.hash=id;}
   /* v36: sentido da navegacao — a faceta do cristal gira PARA o lado do
@@ -368,6 +372,9 @@ ligarLai();
 ligarAcervo();
 /* Um ouvinte para TODAS as métricas clicáveis do painel — ver nucleo/drill.js. */
 ligarDrill();
+/* Botão "Som" do cabeçalho (delegado por `data-som`) + sonda das ilustrações de vazio. Mesma
+   família dos `ligar*` acima: um ouvinte no `document`, nada novo no `window`. */
+ligarMidia();
 sobrioAoMudar(() => { nebulaViva(); nucleoViva(); holoRJ(); mesaViva(); conscienciaRever();
                       energiaRever(); });
 conscienciaLigar(ritmoEstado);
@@ -377,7 +384,10 @@ sabreStart({
      taxa, porque cada traço na tela corresponde a uma linha que entrou no banco. Barramento
      calado = nada se move, e o laço de animação nem chega a existir. */
   aoEvento: ev => { nucleoPulse(ev.tipo); energiaPacote(ev.tipo); ritmoEvento();
-                    conscienciaEvento(ev, ev.tipo === 'alerta' || ev.tipo === 'radar'); },
+                    conscienciaEvento(ev, ev.tipo === 'alerta' || ev.tipo === 'radar');
+                    /* a MESMA régua de crítico do conduíte (`sabre.js`): alerta/radar = pulso rosa.
+                       Só soa se o som estiver ligado; `somTocar` segura a rajada (1 a cada 8 s). */
+                    if (ev.tipo === 'alerta' || ev.tipo === 'radar') somTocar('alerta'); },
   aoBatimento: ev => { ritmoTelemetria(ev.load1, ev.sweeps); conscienciaBatimento(ev); },
   podeAnimar: () => !_redMotion && !_sobrio,
 });

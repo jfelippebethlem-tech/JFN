@@ -2692,6 +2692,119 @@ void main(){
     return { aresta: 1 - Math.pow(1 - a, 3), no: 1 - Math.pow(1 - n, 3) };
   }
 
+  // static/js/src/ui/midia.js
+  var SFX = {
+    area: { src: "/static/assets/sfx/area.mp3", vol: 0.1, intervalo: 350 },
+    alerta: { src: "/static/assets/sfx/alerta.mp3", vol: 0.16, intervalo: 8e3 },
+    dossie: { src: "/static/assets/sfx/dossie.mp3", vol: 0.12, intervalo: 600 }
+  };
+  var CHAVE = "jfn.som";
+  var ILUS = { doc: "/static/assets/gen/vazio-doc.webp", rede: "/static/assets/gen/vazio-rede.webp" };
+  var _ligado = false;
+  var _audio = {};
+  var _ultimo = {};
+  var _quebrado = {};
+  function _lerPref() {
+    try {
+      return localStorage.getItem(CHAVE) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+  function _gravarPref(v) {
+    try {
+      localStorage.setItem(CHAVE, v ? "1" : "0");
+    } catch (_) {
+    }
+  }
+  function _quieto() {
+    try {
+      return !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (_) {
+      return false;
+    }
+  }
+  function _pegar(tipo) {
+    if (_audio[tipo] || _quebrado[tipo]) return _audio[tipo] || null;
+    const s = SFX[tipo];
+    if (!s || typeof Audio !== "function") return null;
+    const a = new Audio();
+    a.preload = "auto";
+    a.addEventListener("error", () => {
+      _quebrado[tipo] = true;
+      delete _audio[tipo];
+    });
+    a.src = s.src;
+    _audio[tipo] = a;
+    return a;
+  }
+  function somTocar(tipo) {
+    if (!_ligado) return;
+    const s = SFX[tipo];
+    if (!s) return;
+    const quieto = _quieto();
+    if (quieto && tipo === "area") return;
+    const agora = Date.now();
+    if (agora - (_ultimo[tipo] || 0) < s.intervalo) return;
+    const a = _pegar(tipo);
+    if (!a) return;
+    _ultimo[tipo] = agora;
+    try {
+      a.volume = quieto ? s.vol / 2 : s.vol;
+      a.currentTime = 0;
+      const p = a.play();
+      if (p && p.catch) p.catch(() => {
+      });
+    } catch (_) {
+    }
+  }
+  function _pintarBotao() {
+    document.querySelectorAll("[data-som]").forEach((b) => {
+      b.setAttribute("aria-pressed", _ligado ? "true" : "false");
+      b.classList.toggle("on", _ligado);
+      b.title = _ligado ? "Som de interface LIGADO — clique para silenciar" : "Som de interface desligado — clique para ligar";
+      const t = b.querySelector(".som-t");
+      if (t) t.textContent = _ligado ? "Som" : "Mudo";
+    });
+  }
+  function _alternar() {
+    _ligado = !_ligado;
+    _gravarPref(_ligado);
+    _pintarBotao();
+    if (_ligado) {
+      Object.keys(SFX).forEach(_pegar);
+      somTocar("area");
+    }
+  }
+  function _sondarIlustracoes() {
+    Object.keys(ILUS).forEach((k) => {
+      const im = new Image();
+      im.decoding = "async";
+      im.onload = () => document.documentElement.classList.add("ilus-" + k);
+      im.src = ILUS[k];
+    });
+  }
+  function ligarMidia() {
+    _ligado = _lerPref();
+    _pintarBotao();
+    document.addEventListener("click", (e) => {
+      const b = e.target && e.target.closest && e.target.closest("[data-som]");
+      if (b) {
+        e.preventDefault();
+        _alternar();
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const b = e.target && e.target.closest && e.target.closest("[data-som]");
+      if (b) {
+        e.preventDefault();
+        _alternar();
+      }
+    });
+    setTimeout(_sondarIlustracoes, 4e3);
+  }
+
   // static/js/src/ui/index.js
   function a11yfy(root) {
     (root || document).querySelectorAll("[onclick]:not(button):not(input):not([tabindex]):not(a[href])").forEach((el) => {
@@ -2991,6 +3104,7 @@ void main(){
     if (dig.length !== 14) return;
     const ov = $("ov"), sh = $("sheet");
     ov.classList.add("on");
+    somTocar("dossie");
     sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin("Montando dossiê de " + esc(nome || dig) + "…")}`;
     a11yfy(sh);
     const d = await J("/api/perfil?cnpj=" + dig);
@@ -5163,11 +5277,11 @@ void main(){
     const t = f.tabelas || {};
     if (f.ok === false) {
       const falta = Object.entries(t).filter(([, v]) => v === "ausente" || v === 0).map(([k]) => k).join(", ");
-      return card(`<div class="dim"><b>Não medido</b> — ${esc(oQue)}: fonte indisponível${falta ? " (" + esc(falta) + ")" : ""}${f.erro ? ": " + esc(f.erro) : ""}. Lista vazia aqui significa
-      <b>não medi</b>, nunca "nada a apurar".</div>`);
+      return card(`<i class="ilus rede" aria-hidden="true"></i><div class="dim"><b>Não medido</b> — ${esc(oQue)}: fonte indisponível${falta ? " (" + esc(falta) + ")" : ""}${f.erro ? ": " + esc(f.erro) : ""}. Lista vazia aqui significa
+      <b>não medi</b>, nunca "nada a apurar".</div>`, "vazio-ilus");
     }
-    return card(`<div class="dim">Nenhum caso de ${esc(oQue)} <b>na fatia já medida</b> — a base foi
-    varrida e respondeu. Ausência aqui é resultado, não silêncio; a fatia é que limita.</div>`);
+    return card(`<i class="ilus doc" aria-hidden="true"></i><div class="dim">Nenhum caso de ${esc(oQue)} <b>na fatia já medida</b> — a base foi
+    varrida e respondeu. Ausência aqui é resultado, não silêncio; a fatia é que limita.</div>`, "vazio-ilus");
   }
   async function coparticipacaoRelacionados() {
     const o = $("ff-out");
@@ -9234,6 +9348,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       }
     }
     if (!t) return;
+    if (_abaAntes && _abaAntes !== id) somTocar("area");
     setAba(id);
     montarTabs();
     if (location.hash.slice(1) !== id) {
@@ -9321,6 +9436,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   ligarLai();
   ligarAcervo();
   ligarDrill();
+  ligarMidia();
   sobrioAoMudar(() => {
     nebulaViva();
     nucleoViva();
@@ -9340,6 +9456,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       energiaPacote(ev.tipo);
       ritmoEvento();
       conscienciaEvento(ev, ev.tipo === "alerta" || ev.tipo === "radar");
+      if (ev.tipo === "alerta" || ev.tipo === "radar") somTocar("alerta");
     },
     aoBatimento: (ev) => {
       ritmoTelemetria(ev.load1, ev.sweeps);

@@ -61,6 +61,9 @@ SEQUENCIA = [
     # duas prendem UM ouvinte no `document`, que sobrevive a troca de `innerHTML` do `#view`, e
     # nenhuma delas toca a tela. Verificado com `pageerror` limpo na pagina viva.
     "chamada:ligarDrill()",
+    # 2026-11-09: botao "Som" do cabecalho (delegado por `data-som`) + sonda das ilustracoes de
+    # vazio. Mesma familia: um ouvinte no `document`, nada no `window`, nao toca a tela.
+    "chamada:ligarMidia()",
     "chamada:sobrioAoMudar()",        # o que reavaliar quando o modo sobrio vira: os tres
                                       # videos da cena. Gancho, nao import — senao a folha
                                       # das bandeiras e a cena se importariam em circulo

@@ -3447,6 +3447,45 @@
   .cs-wl{color:var(--accent)}
   @media (max-width:520px){.cs-tit{font-size:15px}.cs-data{margin-left:0}}
 }
+/* ══ MÍDIA (2026-11-09) — ilustrações dos estados vazios + botão de som do cabeçalho ══════════════
+   Na camada v59 (como `97-casos`) para não vencer as variantes de degradação da cauda `!important`.
+   As figuras são ARTE GERADA (static/assets/gen/), nunca composta aqui; o CSS só posiciona. E só
+   aparecem depois que a peça carregou (`html.ilus-doc` / `html.ilus-rede`, ver ui/midia.js): peça
+   ausente = o vazio de sempre, sem buraco reservado.
+     doc  = MEDI e não achei      rede = NÃO DEU PARA SABER (INDISPONÍVEL ≠ 0)
+   O fundo das peças é preto: `screen` faz o preto sumir no vidro escuro do cartão. */
+@layer v59 {
+  .ilus{display:none}
+  html.ilus-doc .card.vazio-ilus>.ilus.doc,
+  html.ilus-rede .card.vazio-ilus>.ilus.rede{display:block;width:96px;height:96px;margin:0 auto 10px;
+    background:center/contain no-repeat;mix-blend-mode:screen;opacity:.92;pointer-events:none}
+  html.ilus-doc .card.vazio-ilus>.ilus.doc{background-image:url(/static/assets/gen/vazio-doc.webp)}
+  html.ilus-rede .card.vazio-ilus>.ilus.rede{background-image:url(/static/assets/gen/vazio-rede.webp)}
+  html.ilus-doc .card.vazio-ilus:has(>.ilus.doc),
+  html.ilus-rede .card.vazio-ilus:has(>.ilus.rede){text-align:center;padding-top:18px}
+  html.ilus-doc .card.vazio-ilus:has(>.ilus.doc)>.dim,
+  html.ilus-rede .card.vazio-ilus:has(>.ilus.rede)>.dim{max-width:62ch;margin-inline:auto;text-wrap:pretty}
+
+  /* O erro de rede/fonte (`erroHumano`, ~50 telas) é o estado "não deu para saber" mais comum.
+     Sem tocar nas chamadas: o cartão cujo aviso traz o botão "Tentar de novo" ganha a figura da
+     rede acima do texto. Só no CARTÃO — o mesmo aviso em linha (dentro de lista, de gaveta
+     estreita) continua sem figura, onde ela só atrapalharia. */
+  html.ilus-rede .card>.warn:has(>.v10retry){flex-wrap:wrap;justify-content:center;text-align:center;
+    row-gap:8px;padding-top:14px}
+  html.ilus-rede .card>.warn:has(>.v10retry)::before{content:"";flex:0 0 100%;height:88px;
+    background:url(/static/assets/gen/vazio-rede.webp) center/contain no-repeat;
+    mix-blend-mode:screen;opacity:.9;pointer-events:none}
+
+  /* botão "Som" do cabeçalho: herda o vidro/hover de `.help`; o ponto diz o estado sem depender
+     de glifo de fonte (lição do v27: ✓/✗ não existem nas três fontes embarcadas). */
+  .htop a.som{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;
+    -webkit-user-select:none}
+  .htop a.som .som-d{width:7px;height:7px;border-radius:50%;flex:0 0 auto;
+    background:color-mix(in oklch,var(--tx2) 55%,transparent)}
+  .htop a.som.on{color:var(--tx);border-color:color-mix(in oklch,var(--ion) 50%,transparent)}
+  .htop a.som.on .som-d{background:var(--ion);box-shadow:0 0 7px color-mix(in oklch,var(--ion) 75%,transparent)}
+  .htop a.som:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+}
 /* CAMADADO por tools/painel_css_camadar.py — nao editar esta linha */
 /* A CAUDA NAO-CAMADADA — toda regra com `!important`, na ordem original.
    Ler o cabecalho de tools/painel_css_camadar.py antes de tocar: a ordem destes

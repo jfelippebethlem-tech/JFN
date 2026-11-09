@@ -22,6 +22,7 @@ import {J, _jCache, erroHumano} from '../nucleo/http.js';
 import {_redMotion, _sobrio} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
 import {revelar, _wireFase} from './revelacao.js';
+import {somTocar} from './midia.js';
 
 export function a11yfy(root){
   (root||document).querySelectorAll('[onclick]:not(button):not(input):not([tabindex]):not(a[href])').forEach(el=>{
@@ -295,6 +296,7 @@ export function uiLigarDialogo(){
 export async function abrirDossie(cnpj,nome){
   const dig=String(cnpj||'').replace(/\D/g,'');if(dig.length!==14)return;
   const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
+  somTocar('dossie');   // a voz do dossiê (só com o som ligado)
   sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin('Montando dossiê de '+esc(nome||dig)+'…')}`;
   a11yfy(sh);
   const d=await J('/api/perfil?cnpj='+dig);

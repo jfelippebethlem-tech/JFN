@@ -365,12 +365,15 @@ function vazioDeclarado(d, oQue){
   const f=d.fonte||{}; const t=f.tabelas||{};
   if(f.ok===false){
     const falta=Object.entries(t).filter(([,v])=>v==='ausente'||v===0).map(([k])=>k).join(', ');
-    return card(`<div class="dim"><b>Não medido</b> — ${esc(oQue)}: fonte indisponível${
+    /* `.ilus.rede` / `.ilus.doc`: a figura (arte gerada) só acende quando a peça carregou — ver
+       `ui/midia.js`. As duas são DIFERENTES de propósito: "não deu para saber" nunca pode ter a
+       mesma cara de "medi e não achei". O texto continua sendo o que informa. */
+    return card(`<i class="ilus rede" aria-hidden="true"></i><div class="dim"><b>Não medido</b> — ${esc(oQue)}: fonte indisponível${
       falta?' ('+esc(falta)+')':''}${f.erro?': '+esc(f.erro):''}. Lista vazia aqui significa
-      <b>não medi</b>, nunca "nada a apurar".</div>`);
+      <b>não medi</b>, nunca "nada a apurar".</div>`, 'vazio-ilus');
   }
-  return card(`<div class="dim">Nenhum caso de ${esc(oQue)} <b>na fatia já medida</b> — a base foi
-    varrida e respondeu. Ausência aqui é resultado, não silêncio; a fatia é que limita.</div>`);
+  return card(`<i class="ilus doc" aria-hidden="true"></i><div class="dim">Nenhum caso de ${esc(oQue)} <b>na fatia já medida</b> — a base foi
+    varrida e respondeu. Ausência aqui é resultado, não silêncio; a fatia é que limita.</div>`, 'vazio-ilus');
 }
 
 async function coparticipacaoRelacionados() {

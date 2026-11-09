@@ -436,116 +436,164 @@ async def _auth_jfn(request: Request, call_next):
     return RedirectResponse("/login_jfn", status_code=303)
 
 
+# ── A PORTA DE ENTRADA SERVE A SI MESMA (2026-11-09) ────────────────────────────────────────────
+# Para quem chega pela INTERNET (Funnel/Cloudflare = sem cookie e com cabeçalho de proxy), tudo fora
+# de `/login_jfn` e `/static/login*` é 303 para o próprio login. A página citava
+# `/static/assets/portal-hero.jpg` e as fontes em `/static/assets/fonts/` — e as quatro voltavam 303:
+# o visitante de verdade via o login SEM fundo e SEM fonte; só o localhost via a página inteira.
+# A correção NÃO alarga a isenção: tudo o que esta página cita mora em `static/login/`, que a
+# isenção `/static/login*` já cobria e onde nada estava publicado. Teste: `test_painel_seguranca`.
+Path("static/login").mkdir(parents=True, exist_ok=True)
+app.mount("/static/login", _StaticAssets(directory="static/login"), name="login")
+
 _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
-<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name=color-scheme content=dark><meta name=robots content="noindex,nofollow">
+<meta name=theme-color content="#02040a">
 <title>Acesso — Controle Externo</title>
+<link rel=preload href=/static/login/fonts/IBMPlexSans-Regular.woff2 as=font type=font/woff2 crossorigin>
+<link rel=preload href=/static/login/fonts/IBMPlexSans-SemiBold.woff2 as=font type=font/woff2 crossorigin>
 <style>
-  /* A porta de entrada usava paleta, fonte e botao de outro produto: azul de
-     framework, emoji no lugar da marca, campo sem rotulo. Quem entra aqui via
-     uma tela generica e so depois descobria o painel. Agora e o mesmo predio. */
-  @font-face{font-family:"Plex";src:url(/static/assets/fonts/IBMPlexSans-Regular.woff2) format("woff2");
+  /* Tudo o que esta pagina cita vem de /static/login/ — a UNICA pasta que um visitante sem
+     sessao consegue baixar. Citar a pasta de assets do painel aqui e 303 para quem vem da internet. */
+  @font-face{font-family:"Plex";src:url(/static/login/fonts/IBMPlexSans-Regular.woff2) format("woff2");
     font-weight:400;font-display:swap}
-  @font-face{font-family:"Plex";src:url(/static/assets/fonts/IBMPlexSans-SemiBold.woff2) format("woff2");
+  @font-face{font-family:"Plex";src:url(/static/login/fonts/IBMPlexSans-SemiBold.woff2) format("woff2");
     font-weight:600;font-display:swap}
-  @font-face{font-family:"PlexMono";src:url(/static/assets/fonts/IBMPlexMono-Medium.woff2) format("woff2");
+  @font-face{font-family:"PlexMono";src:url(/static/login/fonts/IBMPlexMono-Medium.woff2) format("woff2");
     font-weight:500;font-display:swap}
   :root{
     --bg:oklch(0.035 0.014 265); --surf:oklch(0.108 0.021 265);
     --bd:oklch(0.30 0.031 265);  --bd2:oklch(0.24 0.026 265);
-    --tx:oklch(0.95 0.008 265);  --tx2:oklch(0.80 0.014 265);
-    --mut:oklch(0.70 0.019 265);            /* 4.5:1 no fundo — nao e cinza claro */
-    --ion:oklch(0.72 0.175 258); --gold:oklch(0.80 0.128 78);
+    --tx:oklch(0.95 0.008 265);  --tx2:oklch(0.82 0.014 265);
+    --mut:oklch(0.72 0.019 265);            /* >=4.5:1 sobre o vidro escurecido */
+    --ion:oklch(0.78 0.14 220); --ion2:oklch(0.62 0.16 250);
+    --flame:oklch(0.78 0.16 55); --flame2:oklch(0.70 0.18 45); --flame-ink:oklch(0.21 0.05 50);
     --rose:oklch(0.66 0.20 18);
     --mono:"PlexMono",ui-monospace,Menlo,Consolas,monospace}
   *{box-sizing:border-box}
+  html{background:var(--bg)}
   body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;
-    background:var(--bg);color:var(--tx);
+    background:transparent;color:var(--tx);
     font:400 16px/1.5 "Plex",system-ui,Segoe UI,Roboto,sans-serif;
     -webkit-font-smoothing:antialiased}
-  /* a mesma peca da abertura do painel, em vinheta: reconhecivel, nunca disputando
-     com o formulario. `fixed` + z-index -1 mantem fora do fluxo e do foco.       */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;
-    background:url(/static/assets/portal-hero.jpg) 50% 42%/cover no-repeat;
-    opacity:.22;filter:saturate(.85)}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(ellipse 70% 55% at 50% 44%,transparent,oklch(0.035 0.014 265/.82) 62%,var(--bg) 100%)}
-  .card{position:relative;width:min(370px,100%);padding:32px 30px 26px;
-    border:1px solid var(--bd2);border-radius:16px;
-    background:color-mix(in oklch,var(--surf) 84%,transparent);
-    box-shadow:0 24px 70px oklch(0 0 0/.55),0 0 0 1px oklch(1 0 0/.03) inset}
-  .marca{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+
+  /* == O FUNDO VIVO ======================================================
+     Camadas, de baixo para cima: poster (a imagem chega primeiro e sozinha
+     ja e a cena) -> video em loop (so entra quando REALMENTE toca, por cima
+     do poster, sem piscar) -> veu escuro (contraste do texto nao depende do
+     quadro do video). Retrato usa a peca 9:16; paisagem, a 16:9.          */
+  .fundo{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:var(--bg)}
+  .fundo img,.fundo video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    object-position:50% 30%}
+  .fundo video{opacity:0;transition:opacity .9s cubic-bezier(.2,.7,.2,1)}
+  .fundo video.on{opacity:1}
+  .fundo::after{content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 120% 70% at 50% 30%,transparent 0,oklch(0.035 0.014 265/.28) 55%,oklch(0.035 0.014 265/.70) 100%),
+      linear-gradient(180deg,oklch(0.035 0.014 265/.30) 0%,oklch(0.035 0.014 265/.18) 30%,oklch(0.035 0.014 265/.62) 62%,oklch(0.035 0.014 265/.90) 100%)}
+  /* sem a peca nova (arquivo ainda nao publicado): volta a vinheta de antes */
+  .sem-poster .fundo img{display:none}
+  .sem-poster .fundo{background:var(--bg) url(/static/login/portal-hero.jpg) 50% 42%/cover no-repeat}
+  .sem-poster .fundo::after{background:oklch(0.035 0.014 265/.74)}
+
+  /* == O CARTAO DE VIDRO (visionOS) =====================================
+     Vidro de verdade: o fundo passa borrado e ESCURECIDO (brightness) — e
+     o escurecimento que segura o texto acima de 4.5:1 mesmo quando o anel
+     incandescente do video passa atras do cartao. Highlight especular no
+     topo, borda-hairline, sombra de profundidade.                          */
+  .card{position:relative;width:min(380px,100%);padding:30px 28px 24px;border-radius:22px;
+    border:1px solid oklch(1 0 0/.12);
+    background:linear-gradient(180deg,oklch(1 0 0/.075),oklch(1 0 0/.015) 38%,transparent 70%),
+      oklch(0.095 0.022 262/.62);
+    -webkit-backdrop-filter:blur(22px) saturate(1.5) brightness(.72);
+    backdrop-filter:blur(22px) saturate(1.5) brightness(.72);
+    box-shadow:inset 0 1px 0 oklch(1 0 0/.20),inset 0 0 0 1px oklch(1 0 0/.025),
+      inset 0 -18px 40px -30px color-mix(in oklch,var(--ion) 60%,transparent),
+      0 30px 80px oklch(0 0 0/.55),0 0 0 .5px oklch(0 0 0/.6)}
+  /* a lamina: um fio de luz ion no topo do vidro, como o conduite do painel */
+  .card::before{content:"";position:absolute;left:22px;right:22px;top:-1px;height:1px;border-radius:1px;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--ion) 85%,white) 30%,
+      color-mix(in oklch,var(--ion) 85%,white) 70%,transparent);
+    box-shadow:0 0 10px color-mix(in oklch,var(--ion) 70%,transparent)}
+  .marca{display:flex;align-items:center;gap:11px;margin-bottom:20px}
   /* o selo do painel, nao um emoji: a marca tem que ser a mesma dos dois lados */
-  .selo{width:34px;height:34px;flex:0 0 auto;border-radius:9px;display:grid;place-items:center;
+  .selo{width:36px;height:36px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;
     font:600 13px/1 var(--mono);letter-spacing:.5px;color:oklch(0.98 0.01 265);
-    background:linear-gradient(150deg,var(--ion),oklch(0.52 0.16 268));
-    box-shadow:0 0 16px color-mix(in oklch,var(--ion) 45%,transparent)}
+    background:linear-gradient(150deg,var(--ion),var(--ion2));
+    box-shadow:inset 0 1px 0 oklch(1 0 0/.35),0 0 18px color-mix(in oklch,var(--ion) 50%,transparent)}
   h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.1px}
   .sub{margin:2px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:2px;
     text-transform:uppercase;color:var(--ion)}
   label{display:block;font-size:12.5px;color:var(--tx2);margin-bottom:7px}
-  input{width:100%;padding:13px 14px;border-radius:10px;font-size:15px;
-    border:1px solid var(--bd);background:oklch(0.06 0.016 265);color:var(--tx);
+  input{width:100%;padding:13px 14px;border-radius:12px;font-size:16px;
+    border:1px solid oklch(1 0 0/.14);background:oklch(0.05 0.016 265/.72);color:var(--tx);
+    box-shadow:inset 0 1px 2px oklch(0 0 0/.5);
     transition:border-color .16s,box-shadow .16s}
-  input::placeholder{color:var(--mut)}          /* mesmo 4.5:1 do corpo */
+  input::placeholder{color:var(--mut)}
   input:focus-visible{outline:0;border-color:var(--ion);
-    box-shadow:0 0 0 3px color-mix(in oklch,var(--ion) 26%,transparent)}
-  button{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;cursor:pointer;
-    font:600 15px/1 "Plex",system-ui,sans-serif;color:oklch(0.99 0.005 265);
-    background:linear-gradient(180deg,var(--ion),oklch(0.60 0.17 260));
-    box-shadow:0 6px 18px color-mix(in oklch,var(--ion) 30%,transparent);
-    transition:filter .16s,transform .1s}
-  button:hover{filter:brightness(1.09)}
+    box-shadow:inset 0 1px 2px oklch(0 0 0/.5),0 0 0 3px color-mix(in oklch,var(--ion) 28%,transparent)}
+  /* acao = chama (DESIGN v9): o unico laranja da tela, sobre uma cena toda ion */
+  button{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;cursor:pointer;
+    font:600 15px/1 "Plex",system-ui,sans-serif;color:var(--flame-ink);
+    background:linear-gradient(180deg,var(--flame),var(--flame2));
+    box-shadow:inset 0 1px 0 oklch(1 0 0/.40),0 8px 22px color-mix(in oklch,var(--flame) 30%,transparent);
+    transition:filter .16s,transform .1s,box-shadow .16s}
+  button:hover{filter:brightness(1.06);box-shadow:inset 0 1px 0 oklch(1 0 0/.40),0 10px 30px color-mix(in oklch,var(--flame) 45%,transparent)}
   button:active{transform:translateY(1px)}
-  button:focus-visible{outline:2px solid var(--ion);outline-offset:3px}
-  button[aria-busy=true]{pointer-events:none;filter:saturate(.5) brightness(.86)}
+  button:focus-visible{outline:2px solid var(--flame);outline-offset:3px}
+  button[aria-busy=true]{pointer-events:none;filter:saturate(.6) brightness(.9)}
   button[aria-busy=true] .rot{display:inline-block;width:12px;height:12px;margin-right:8px;
-    vertical-align:-1px;border:2px solid oklch(1 0 0/.35);border-top-color:#fff;border-radius:50%;
+    vertical-align:-1px;border:2px solid oklch(0.21 0.05 50/.35);border-top-color:var(--flame-ink);border-radius:50%;
     animation:gira .7s linear infinite}
   @keyframes gira{to{transform:rotate(1turn)}}
   /* erro com borda inteira e tinta — sem faixa lateral, sem cor sozinha */
-  .err{margin:14px 0 0;padding:9px 12px;border-radius:8px;font-size:13px;line-height:1.4;
-    border:1px solid color-mix(in oklch,var(--rose) 46%,transparent);
-    background:color-mix(in oklch,var(--rose) 11%,transparent);color:oklch(0.84 0.11 18)}
+  .err{margin:14px 0 0;padding:9px 12px;border-radius:10px;font-size:13px;line-height:1.4;
+    border:1px solid color-mix(in oklch,var(--rose) 50%,transparent);
+    background:color-mix(in oklch,var(--rose) 16%,oklch(0.08 0.02 265/.6));color:oklch(0.86 0.10 18)}
   .err:empty{display:none}                      /* sem espaco reservado a vazio */
   .foot{margin:18px 0 0;font-size:11.5px;line-height:1.5;color:var(--mut);text-align:center}
   .vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
     clip-path:inset(50%);white-space:nowrap}
+
+  /* sem vidro (preferencia do sistema ou navegador sem backdrop-filter): cartao solido */
+  @media (prefers-reduced-transparency:reduce){
+    .card{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surf)}}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .card{background:oklch(0.10 0.021 265/.94)}}
   @media (prefers-reduced-motion:reduce){
     *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+    .fundo video{display:none}
     button:active{transform:none}}
 
-  /* == TELEFONE ============================================================
-     A peca e 16:9. Em `cover` numa tela de 390x844 ela e ampliada ~3x para
-     cobrir a altura, e o que sobra na tela e um canto sem forma — o reator,
-     que e o assunto da imagem, fica fora do enquadramento. Em retrato o
-     enquadramento tem que mudar, nao so encolher.
+  /* == PAISAGEM / DESKTOP ===============================================
+     Na peca 16:9 o reator mora a DIREITA e a esquerda e escuro: o cartao
+     vai para a esquerda e a cena fica inteira a vista.                   */
+  @media (min-aspect-ratio:1/1) and (min-width:820px){
+    body{justify-items:start;padding:24px clamp(24px,9vw,170px)}
+    .fundo img,.fundo video{object-position:62% 40%}
+    .fundo::after{background:
+      linear-gradient(90deg,oklch(0.035 0.014 265/.80) 0%,oklch(0.035 0.014 265/.55) 32%,oklch(0.035 0.014 265/.12) 62%,oklch(0.035 0.014 265/.28) 100%),
+      linear-gradient(180deg,transparent 55%,oklch(0.035 0.014 265/.55) 100%)}}
 
-     `contain` mostra a peca inteira e a ancora no alto, atras da marca; a
-     vinheta cresce para o rodape para o cartao continuar pousado no escuro. */
-  @media (max-width:560px){
-    /* `auto` faz a peca terminar numa linha reta no meio da tela: abaixo dela
-       nao ha imagem, e a emenda com o preto aparece como um corte. A mascara
-       dissolve o rodape da propria peca, entao ela FUNDE no fundo em vez de
-       acabar. Vale so em retrato — no desktop `cover` ja preenche tudo.      */
-    body::before{background-size:168% auto;background-position:50% 13%;opacity:.34;
-      -webkit-mask-image:linear-gradient(180deg,#000 0 46%,transparent 92%);
-      mask-image:linear-gradient(180deg,#000 0 46%,transparent 92%)}
-    body::after{background:radial-gradient(ellipse 120% 34% at 50% 16%,transparent,
-      oklch(0.035 0.014 265/.80) 64%,var(--bg) 100%)}
-    /* "CENTRAL DE INTELIGENCIA · RJ" quebrava com o RJ orfao na segunda linha.
-       Menos tracking e balance resolvem sem encolher a letra a ponto de sumir. */
-    .sub{font-size:9.5px;letter-spacing:1.3px;text-wrap:balance}
+  /* == TELEFONE (retrato) ===============================================
+     Na peca 9:16 o reator ocupa o terco de cima: o cartao desce para a
+     metade de baixo, onde a peca e o chao escuro do grid, e o reator fica
+     inteiro acima dele — a abertura e o assunto, o cartao e o pouso.    */
+  @media (max-aspect-ratio:1/1){
+    body{align-items:end;padding:24px 16px max(28px,env(safe-area-inset-bottom))}
     .card{padding:26px 22px 22px}
-    /* O cartao pousava no terco superior e a metade de baixo ficava preta e
-       morta. Duas coisas resolvem: o cartao vai para o centro optico de vez
-       (sem o padding que o empurrava para cima), e a peca deixa de ser so uma
-       faixa no topo — sobe para 210% e desce por tras do cartao, entao o escuro
-       de baixo passa a ser o fim da imagem e nao a ausencia dela.            */
-    body{align-items:center;padding-bottom:0}
-    body::before{background-size:210% auto;background-position:50% 4%}
-  }
+    .sub{font-size:9.5px;letter-spacing:1.3px;text-wrap:balance}}
+  @media (max-aspect-ratio:1/1) and (max-height:640px){body{align-items:center}}
 </style></head><body>
+<div class=fundo aria-hidden=true>
+  <picture>
+    <source media="(min-aspect-ratio:1/1)" srcset=/static/login/login-169.jpg>
+    <img src=/static/login/login-916.jpg alt="" decoding=async fetchpriority=high
+      onerror="document.documentElement.classList.add('sem-poster')">
+  </picture>
+  <video muted loop playsinline disablepictureinpicture preload=none tabindex=-1></video>
+</div>
 <form class=card method=post action=/login_jfn>
   <div class=marca><div class=selo aria-hidden=true>CE</div>
     <div><h1>Controle Externo</h1><p class=sub>Central de Inteligência · RJ</p></div></div>
@@ -565,6 +613,33 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
     b.setAttribute('aria-busy','true');
     b.lastChild.textContent='Verificando…';
   });
+  /* O VIDEO DE FUNDO. Poster primeiro, sempre. O video so e pedido quando ha permissao para
+     movimento E para gastar dados: reduced-motion e Save-Data ficam no poster, sem baixar um
+     byte de video. Arquivo ausente (ainda nao publicado) = erro silencioso, fica o poster. */
+  (function(){
+    var raiz=document.documentElement,img=document.querySelector('.fundo img'),
+        v=document.querySelector('.fundo video');
+    if(img&&img.complete&&!img.naturalWidth)raiz.classList.add('sem-poster');
+    if(!v||!window.matchMedia)return;
+    var rm=matchMedia('(prefers-reduced-motion: reduce)'),larga=matchMedia('(min-aspect-ratio: 1/1)'),
+        c=navigator.connection,
+        poupa=!!(c&&c.saveData)||matchMedia('(prefers-reduced-data: reduce)').matches;
+    function parar(){v.classList.remove('on');v.pause();v.removeAttribute('src');try{v.load()}catch(_){}}
+    function ligar(){
+      if(rm.matches||poupa){parar();return;}
+      var src='/static/login/login-'+(larga.matches?'169':'916')+'.mp4';
+      if(v.getAttribute('src')===src)return;
+      v.classList.remove('on');v.src=src;
+      var p=v.play();if(p&&p.catch)p.catch(function(){});
+    }
+    v.addEventListener('playing',function(){v.classList.add('on')});
+    v.addEventListener('error',function(){v.classList.remove('on')});
+    function ouvir(m){if(m.addEventListener)m.addEventListener('change',ligar);else if(m.addListener)m.addListener(ligar);}
+    ouvir(rm);ouvir(larga);
+    document.addEventListener('visibilitychange',function(){
+      if(document.hidden)v.pause();else if(v.getAttribute('src')){var p=v.play();if(p&&p.catch)p.catch(function(){});}});
+    ligar();
+  })();
 </script></body></html>"""
 
 

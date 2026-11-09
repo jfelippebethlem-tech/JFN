@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Central de Inteligência — Controle Externo · RJ</title>
-<link rel="stylesheet" href="/static/css/painel.css?v=4d222d22">
+<link rel="stylesheet" href="/static/css/painel.css?v=955af8d8">
 </head>
 <body>
 <div id="portal" hidden><video id="pvid" muted loop playsinline preload="none" aria-hidden="true"
@@ -43,6 +43,9 @@
           <circle class="karc" id="karc" cx="15" cy="15" r="11.5" stroke-dasharray="72.3" stroke-dashoffset="72.3"/>
           <circle class="knuc" cx="15" cy="15" r="3.2"/></svg>
         </span>
+        <!-- 2026-11-09: som de interface, DESLIGADO por padrão. Delegado por `data-som` (ui/midia.js) —
+             sem onclick, sem nome novo no window. Reaproveita o visual de `.help`. -->
+        <a class="help som" data-som role="button" tabindex="0" aria-pressed="false" title="Som de interface desligado — clique para ligar"><i class="som-d" aria-hidden="true"></i><span class="som-t">Mudo</span></a>
         <a class="help" onclick="glossario()">Termos</a><a class="ctrl" href="/controle">Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
     <div id="conduit" aria-hidden="true"><span class="cblade"></span></div>
@@ -69,6 +72,6 @@
      Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
      com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
      bate com a tag e ela diz "em dia" enquanto serve código velho). -->
-<script src="/static/js/painel.bundle.js?v=abf6f3e0"></script>
+<script src="/static/js/painel.bundle.js?v=9d59bdac"></script>
 </body>
 </html>
