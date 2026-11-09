@@ -1,0 +1,25 @@
+/* ══ v60 · O RÓTULO QUE VIRAVA COLUNA (2026-11-09) ══════════════════════════════════════════════════
+   Sintoma: na grade compacta do núcleo (celular, e o cartão estreito do desktop) o chip "empresa
+   morta" aparecia como uma coluna de letras soltas — E M P R E S A … M O R T A — e invadia a
+   fileira de baixo.
+
+   Causa (medida): o chip era UMA linha (rótulo à esquerda, valor à direita, largura FIXA de ~154px
+   posta pelo JS). O valor é `nowrap` e `flex:0 0 auto`; o rótulo é `min-width:0` com
+   `overflow-wrap:anywhere`. Com "R$ 592.783.833,62" o valor ocupou 136 de 138px úteis e o rótulo
+   foi espremido a ZERO de largura — e `anywhere` quebrou uma letra por linha: chip de 122px de
+   altura numa grade que o JS espaça pela altura de UM chip (29px). Qualquer valor em reais na casa
+   das centenas de milhões disparava o mesmo defeito.
+
+   Correção: na grade compacta o chip vira LEITURA DE INSTRUMENTO em duas linhas — rótulo em cima
+   (uma linha, nunca quebra), valor embaixo com a largura inteira do chip. Entrelinha justa: a
+   altura fica a mesma de antes (~30px), então a grade do JS continua certa. O valor nunca é
+   abreviado ("o número sai inteiro", v54): só encolhe o corpo, via `cqi`, quando a largura do chip
+   não comporta 17 caracteres em mono — num chip de 154px ele fica nos 13px de sempre. */
+@layer v59 {
+  .ck-nucleo.compacto .nu-chip{flex-direction:column;align-items:flex-start;justify-content:center;
+    gap:2px;padding:3px 8px;container-type:inline-size}
+  .ck-nucleo.compacto .nu-chip small{max-width:100%;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;overflow-wrap:normal;line-height:1}
+  .ck-nucleo.compacto .nu-chip .n{max-width:100%;white-space:nowrap;line-height:1;
+    font-size:min(13px,9.6cqi)}
+}
