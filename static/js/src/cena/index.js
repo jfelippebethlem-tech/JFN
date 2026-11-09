@@ -141,6 +141,19 @@ export function _setNuHover(v){_nuHover=v;}
    .jpg por baixo, sonda HEAD uma vez por nome, reduced-motion e modo sobrio apagam.
    Estado e Inicio seguem no nucleo-holo-rj, que NAO tem .jpg: o poster so entra para os nomes de
    `NUCLEO_COM_POSTER`, sem sondagem nenhuma — sondar por HEAD tambem produz 404. */
+/* v60 · A MISTURA SAI DO VIDEO (2026-11-09). `mix-blend-mode` aplicado no PROPRIO <video> nao e
+   desenhado de forma consistente pelo compositor por software (SwiftShader — o Chromium sem GPU, e
+   qualquer Chrome com aceleracao desligada ou GPU na lista negra): em regime o video simplesmente
+   nao aparece, e durante o fade de entrada um PEDACO dele aparece cru, sem mistura — o retangulo
+   com um fragmento do holograma sobre o mapa do RJ (medido: o conteudo do retangulo bate quadro a
+   quadro com `nucleo-holo-rj.webm` naquela posicao; com `mix-blend-mode:normal` o video inteiro
+   aparece, com a mistura nada aparece). Com a mistura num EMBRULHO (<div>) e o video normal la
+   dentro, o mesmo compositor desenha a mistura certa e estavel — e o mesmo padrao que a nebulosa
+   (#esfnebula) sempre usou. O CSS do embrulho mora em `98-nucleo-video.css`. */
+function _nuEmbrulhar(box,v,tipo){
+  const w=document.createElement('div');w.className='nu-vid nu-vid-'+tipo;
+  w.setAttribute('aria-hidden','true');w.appendChild(v);box.insertBefore(w,box.firstChild);
+}
 export async function nucleoViva(){
   const box=$('ck-nucleo');if(!box)return;
   const mapa={inicio:'nucleo-holo-rj',estado:'nucleo-holo-rj',
@@ -161,7 +174,7 @@ export async function nucleoViva(){
     /* .on so quando ha QUADRO de verdade — play() que resolve sem codec deixaria
        o veu ligado sobre video preto. */
     v.addEventListener('playing',()=>v.classList.add('on'));
-    box.insertBefore(v,box.firstChild);}
+    _nuEmbrulhar(box,v,'holo');}
   if(v.dataset.nu!==nome){v.classList.remove('on');v.dataset.nu=nome;
     /* O comentario acima dizia "sem poster, sem erro" e a linha original dizia o contrario: o
        poster era atribuido SEM condicao, e `nucleo-holo-rj.jpg` nao existe — 404 em toda carga
@@ -210,7 +223,7 @@ export async function mesaViva(){
     v.addEventListener('playing',()=>v.classList.add('on'));
     v.innerHTML='<source src="/static/assets/mesa-projecao.webm" type="video/webm">'
                +'<source src="'+url+'" type="video/mp4">';
-    box.insertBefore(v,box.firstChild);v.load();}
+    _nuEmbrulhar(box,v,'mesa');v.load();}
   v.play().catch(()=>{});
 }
 export function nucleoStart(){

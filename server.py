@@ -526,11 +526,13 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
   .sub{margin:2px 0 0;font-family:var(--mono);font-size:10.5px;letter-spacing:2px;
     text-transform:uppercase;color:var(--ion)}
   label{display:block;font-size:12.5px;color:var(--tx2);margin-bottom:7px}
-  input{width:100%;padding:13px 14px;border-radius:12px;font-size:16px;
+  /* campo nao herda fonte por padrao: sem `font-family:inherit` o texto e o placeholder
+     saiam na fonte do sistema, e so ali a pagina deixava de ser Plex */
+  input{width:100%;padding:13px 14px;border-radius:12px;font-family:inherit;font-size:16px;
     border:1px solid oklch(1 0 0/.14);background:oklch(0.05 0.016 265/.72);color:var(--tx);
     box-shadow:inset 0 1px 2px oklch(0 0 0/.5);
     transition:border-color .16s,box-shadow .16s}
-  input::placeholder{color:var(--mut)}
+  input::placeholder{color:var(--mut);font-family:inherit;opacity:1}
   input:focus-visible{outline:0;border-color:var(--ion);
     box-shadow:inset 0 1px 2px oklch(0 0 0/.5),0 0 0 3px color-mix(in oklch,var(--ion) 28%,transparent)}
   /* acao = chama (DESIGN v9): o unico laranja da tela, sobre uma cena toda ion */

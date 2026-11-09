@@ -1,0 +1,26 @@
+/* ══ v60 · O NÚCLEO SEM RETÂNGULO (2026-11-09) ══════════════════════════════════════════════════════
+   A mistura `screen` saiu do <video> e foi para um embrulho `.nu-vid` (criado em cena/index.js).
+   Por quê: com `mix-blend-mode` no próprio vídeo, o compositor por software (Chromium sem GPU) não
+   desenha o vídeo em regime e, no fade de entrada, desenha um PEDAÇO dele cru — o retângulo com um
+   fragmento do holograma por cima do mapa do RJ. No embrulho a mistura é estável nos dois
+   caminhos (GPU e software). É o padrão que #esfnebula sempre usou.
+
+   E, já que o vídeo agora aparece de verdade em todo navegador, ele obedece à regra do PRODUCT.md
+   ("camadas ambientes ficam ATRÁS e discretas; o dado lê primeiro"): o fundo cinza da sala da arte
+   é esmagado para preto (contraste — o mesmo "piso de preto" do reator-core), e uma máscara radial
+   o concentra em volta do reator; as bordas do cartão, onde ficam os rótulos, ficam limpas. */
+@layer v59 {
+  .ck-nucleo>.nu-vid{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;
+    border-radius:inherit;overflow:hidden}
+  .ck-nucleo>.nu-vid-mesa{z-index:0}
+  .ck-nucleo .nu-vid>video{mix-blend-mode:normal}
+  .ck-nucleo>.nu-vid-holo{
+    -webkit-mask-image:radial-gradient(ellipse 58% 48% at 50% 42%,#000 26%,rgba(0,0,0,.35) 62%,transparent 90%);
+            mask-image:radial-gradient(ellipse 58% 48% at 50% 42%,#000 26%,rgba(0,0,0,.35) 62%,transparent 90%)}
+  .ck-nucleo .nu-vid-holo>video.holo{filter:contrast(1.9) brightness(.62) saturate(1.2)}
+  .ck-nucleo .nu-vid-holo>video.holo.on{opacity:.7}
+  /* #holorj (holograma do Estado) tinha a mesma mistura no vídeo. Como o contêiner já tem opacidade
+     e máscara, ele isola o grupo: misturar contra o transparente de dentro dá o mesmo pixel que
+     `normal`. Trocar para `normal` não muda um pixel e tira o vídeo do caminho frágil. */
+  #holorj video{mix-blend-mode:normal}
+}

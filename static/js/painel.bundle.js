@@ -1549,6 +1549,13 @@ void main(){
   function _setNuHover(v) {
     _nuHover = v;
   }
+  function _nuEmbrulhar(box, v, tipo) {
+    const w = document.createElement("div");
+    w.className = "nu-vid nu-vid-" + tipo;
+    w.setAttribute("aria-hidden", "true");
+    w.appendChild(v);
+    box.insertBefore(w, box.firstChild);
+  }
   async function nucleoViva() {
     const box = $("ck-nucleo");
     if (!box) return;
@@ -1588,7 +1595,7 @@ void main(){
       v.autoplay = true;
       v.setAttribute("aria-hidden", "true");
       v.addEventListener("playing", () => v.classList.add("on"));
-      box.insertBefore(v, box.firstChild);
+      _nuEmbrulhar(box, v, "holo");
     }
     if (v.dataset.nu !== nome) {
       v.classList.remove("on");
@@ -1635,7 +1642,7 @@ void main(){
       v.poster = "/static/assets/mesa-projecao.jpg";
       v.addEventListener("playing", () => v.classList.add("on"));
       v.innerHTML = '<source src="/static/assets/mesa-projecao.webm" type="video/webm"><source src="' + url + '" type="video/mp4">';
-      box.insertBefore(v, box.firstChild);
+      _nuEmbrulhar(box, v, "mesa");
       v.load();
     }
     v.play().catch(() => {
