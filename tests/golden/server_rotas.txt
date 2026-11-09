@@ -233,5 +233,6 @@ WS /screenshots -> Mount
 WS /static/assets -> Mount
 WS /static/css -> Mount
 WS /static/js -> Mount
+WS /static/login -> Mount
 WS /tunnel -> websocket_tunnel
 WS /ws -> websocket_chat
