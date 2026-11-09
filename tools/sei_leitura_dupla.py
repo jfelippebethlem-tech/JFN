@@ -401,7 +401,7 @@ def _registrar_trace(provedor: str, ok: bool, ms: int, erro: str = "") -> None:
 def _gerar_nous():
     """A IA do volume de SEI. Devolve `None` (sem token) para o chamador cair na cadeia curta."""
     try:
-        from tools.sei_ficha import _nous_cred, marcar_morto, modelo_morto, modelo_sweep
+        from tools.sei_ficha import _MAX_TOKENS as _TETO, _nous_cred, marcar_morto, modelo_morto, modelo_sweep
         tok, base = _nous_cred()
     except (ImportError, OSError, ValueError, RuntimeError) as exc:
         print(f"  ⚠️  nous indisponível ({type(exc).__name__}) — caio na cadeia curta", file=sys.stderr)
@@ -427,14 +427,19 @@ def _gerar_nous():
         while True:  # modelo do catálogo grátis morreu -> próximo da lista (sei_ficha.MODELOS_SWEEP)
             r = httpx.post(f"{base}/chat/completions", timeout=200,
                            headers={"Authorization": f"Bearer {tok}"},
-                           json={"model": modelo, "temperature": 0.1, "max_tokens": 8000, "top_p": 0.9,
+                           json={"model": modelo, "temperature": 0.1, "max_tokens": _TETO, "top_p": 0.9,
                                  "messages": [{"role": "system", "content": sistema},
                                               {"role": "user", "content": prompt}]})
             if r.status_code < 400 or not modelo_morto(r.status_code, r.text) or not (modelo := marcar_morto(modelo, r.status_code, r.text)):
                 break
         try:
             r.raise_for_status()
-            saida = ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+            _esc = (r.json().get("choices") or [{}])[0]
+            saida = (_esc.get("message") or {}).get("content") or ""
+            if not saida:
+                # 09/11/2026: 47 de 259 leituras voltaram vazias com erro em branco no trace — era o
+                # raciocínio do beam estourando o teto (8000, igual ao que o sei_ficha já tinha subido p/ 20000).
+                _erro = f"content vazio (finish={_esc.get('finish_reason')})"
         except (httpx.HTTPError, ValueError, KeyError) as exc:
             _erro = f"{type(exc).__name__}: {exc}"[:120]
             saida = ""
