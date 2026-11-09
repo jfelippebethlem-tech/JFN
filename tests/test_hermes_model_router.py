@@ -27,7 +27,7 @@ def test_bulk_repetitivo_usa_groq_free():
     """Bulk/lote → Groq instantâneo free (gemma2-9b-it DESCONTINUADO pelo Groq
     em 2026-06; sucessor llama-3.1-8b-instant). Nous = fallback do bulk."""
     from tools.hermes_model_router import escolher_modelo, BULK, BULK_FALLBACK
-    assert BULK == ("groq", "llama-3.1-8b-instant")
+    assert BULK == ("groq", "qwen/qwen3.8-27b")  # 09/11/2026: Llama saiu do Groq
     assert BULK_FALLBACK[0] == "nous"
     assert escolher_modelo("classifique esta noticia", tarefa="bulk") == BULK
     assert escolher_modelo("extraia campos", tarefa="lote") == BULK

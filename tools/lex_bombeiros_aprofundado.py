@@ -22,7 +22,7 @@ from compliance_agent.llm.free_llm import _cap_ok, _cap_inc, _envk
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
 FILA = "/home/ubuntu/JFN/data/bombeiros_sei_fila.json"
-MODEL = os.environ.get("DEEPSEEK_LANE_MODEL", "deepseek-ai/deepseek-v4-pro")
+MODEL = os.environ.get("DEEPSEEK_LANE_MODEL", "nvidia/nemotron-3.5-super-vl-120b-a12b")  # deepseek-v4-pro: 410 Gone (09/11/2026)
 NIM = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 

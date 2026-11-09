@@ -160,19 +160,22 @@ async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
         except Exception as e:  # noqa: BLE001
             _marcar_cooldown("groq", e)
             erros.append(f"groq: {str(e)[:50]}")
-    # FALLBACK aditivo (pedido do dono): groq → cerebras → nvidia → resto do _EXTRA. Só roda quando
+    # FALLBACK aditivo (pedido do dono): groq → openrouter :free → nvidia → resto do _EXTRA. Só roda quando
     # gemini+groq falham/cooldown — o caminho de sucesso atual fica intacto. O cap mensal (§4.1) protege
     # os provedores _EXTRA de cobrança (extra_available já checa cap + chave).
     try:
         from compliance_agent.llm.free_llm import (
             cerebras_available, cerebras_chat_async, extra_available, extra_chat_async, _EXTRA,
+            openrouter_available, openrouter_chat_async,
         )
         sys_txt = " ".join(m["content"] for m in messages if m.get("role") == "system")
         usr_txt = "\n".join(m["content"] for m in messages if m.get("role") != "system")
         provedores = []
-        if cerebras_available():
+        if openrouter_available():  # 09/11/2026: Cerebras saiu (crédito único, 402) — :free do OpenRouter no lugar
+            provedores.append(("openrouter", lambda: openrouter_chat_async(usr_txt, sys_txt, smart=True, max_tokens=4000)))
+        if cerebras_available():  # desligado por padrão (free_llm._DESLIGADOS); religável por env
             provedores.append(("cerebras", lambda: cerebras_chat_async(usr_txt, sys_txt, smart=True, max_tokens=2000)))
-        for prov in (["nvidia"] + [p for p in _EXTRA if p != "nvidia"]):
+        for prov in (["nvidia", "cohere"] + [p for p in _EXTRA if p not in ("nvidia", "cohere")]):
             if extra_available(prov):
                 provedores.append((prov, lambda p=prov: extra_chat_async(p, usr_txt, sys_txt, max_tokens=2000)))
         for nome, chamada in provedores:
@@ -299,10 +302,15 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
     keys = _gemini_keys()
     if not keys:
         raise RuntimeError("nenhuma chave Gemini (JFN/.env nem ~/.hermes/.env)")
-    modelos = [model] if model else [
-        os.environ.get("DIRECIONAMENTO_GEMINI_MODEL", "gemini-2.5-flash"),
-        "gemini-2.0-flash", "gemini-2.5-flash-lite",
-    ]
+    # 09/11/2026 — cascata medida (JSON nativo + jurídico art. 75 VIII + agulha em 50k tokens). A cota free é
+    # POR MODELO: espalhar entre 4 modelos multiplica a cota. gemini-2.0-flash não existe mais; flash-lite errou
+    # o jurídico (disse "1 mês") e por isso NÃO entra no parecer. 3.6-flash passou em tudo mas deu 503 "alta
+    # demanda" em 8/8 chaves na mesma tarde — por isso o preview (6 s, acertou tudo) vem 1º.
+    _env1 = os.environ.get("DIRECIONAMENTO_GEMINI_MODEL", "")
+    modelos = [model] if model else list(dict.fromkeys(
+        ([_env1] if _env1 else []) + [m.strip() for m in os.environ.get(
+            "DIRECIONAMENTO_GEMINI_MODELS",
+            "gemini-3-flash-preview,gemini-3.6-flash,gemini-3.5-flash,gemini-2.5-flash").split(",") if m.strip()]))
     sys_txt = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_txt = "\n".join(m["content"] for m in messages if m["role"] != "system")
     body: dict = {"contents": [{"role": "user", "parts": [{"text": user_txt}]}],
@@ -334,8 +342,10 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                         if r.status_code in (429, 403, 401):
                             erros.append(f"{mdl}:{r.status_code}")
                             continue
-                        if r.status_code == 404:
-                            erros.append(f"{mdl}:404")
+                        if r.status_code in (404, 500, 503):
+                            # 404 = modelo saiu; 500/503 = "alta demanda" do MODELO (não da chave): as outras
+                            # 7 chaves dão o mesmo 503 — medido 09/11, 45 s perdidos. Próximo modelo.
+                            erros.append(f"{mdl}:{r.status_code}")
                             so_rate = False
                             break
                         r.raise_for_status()
@@ -360,8 +370,8 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                     await _aio.sleep(3.0)
                 else:
                     break
-    # Rede de segurança de QUALIDADE: se TODAS as chaves/modelos Gemini falharem, cai p/ Cerebras
-    # (gpt-oss-120b, ultrarrápido, com saldo) — os produtos nunca ficam sem IA. Gemini continua o 1º (qualidade).
+    # Rede de segurança: Cerebras SÓ se religado (desligado por padrão desde 09/11/2026 — 402, crédito
+    # único). Quem chama pelo `_gerar_default` ainda tem groq → openrouter → nvidia → cohere depois daqui.
     try:
         from compliance_agent.llm.free_llm import cerebras_available, cerebras_chat_async
         if cerebras_available():

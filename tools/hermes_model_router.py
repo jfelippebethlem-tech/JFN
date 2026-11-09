@@ -35,8 +35,8 @@ MELHOR = ("gemini", "gemini-2.5-pro")
 # 2026-06-08: Gemma não supera o gemini-2.5-flash em qualidade, mas no bulk a VELOCIDADE do Groq+Gemma vence;
 # não queima a cota free-tier do gemini). Nous segue como fallback do bulk.
 # NOTA: NÃO se aplica ao sweep SIAFE/coletores (código determinístico, SEM LLM) nem a OCR/visão (easyocr/gemini).
-BULK = ("groq", "llama-3.1-8b-instant")  # gemma2-9b-it DESCONTINUADO pelo Groq (2026-06); sucessor instantâneo
-BULK_FALLBACK = ("nous", "stepfun/step-3.7-flash:free")
+BULK = ("groq", "qwen/qwen3.8-27b")  # 09/11/2026: llama-3.1-8b-instant saiu do Groq (404); qwen3.8 0,5 s, JSON certo
+BULK_FALLBACK = ("nous", "reflection/beam-1.0-501b-a23b:free")  # step-3.7-flash:free -> 400 (morto)
 
 # gatilhos de "caso difícil" → escalar p/ PESADO
 _GATILHOS = re.compile(

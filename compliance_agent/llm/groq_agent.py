@@ -41,7 +41,7 @@ def _chave() -> str:
     silêncio. O `free_llm._groq_key()` já resolvia assim; aqui a lição não tinha chegado.
     """
     return (os.environ.get("GROQ_API_KEY") or GROQ_API_KEY or "").strip()
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b")  # 09/11/2026: Llama saiu do Groq (404)
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 MEMORY_FILE = Path("data/groq_memory.json")

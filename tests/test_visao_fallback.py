@@ -39,6 +39,7 @@ def test_teto_para_antes_de_chamar(monkeypatch):
 
 
 def test_primeiro_provedor_que_responde_encerra(monkeypatch):
+    monkeypatch.setenv("JFN_VISAO_PROVEDORES", "openrouter,nvidia")
     chamados = []
 
     def _oc(base, chave, modelos, img, prompt, mt):
@@ -53,6 +54,7 @@ def test_primeiro_provedor_que_responde_encerra(monkeypatch):
 
 def test_cai_para_o_proximo_provedor(monkeypatch):
     """OpenRouter falha, NVIDIA responde — é o fallback fazendo o trabalho."""
+    monkeypatch.setenv("JFN_VISAO_PROVEDORES", "openrouter,nvidia")
     def _oc(base, chave, modelos, img, prompt, mt):
         return (None, None) if "openrouter" in base else ("veio da nvidia", modelos[0])
 
@@ -100,4 +102,13 @@ def test_nunca_levanta_excecao(monkeypatch):
 
 def test_modelos_openrouter_sao_todos_free():
     """Regra absoluta: no OpenRouter, SEMPRE `:free`."""
+    assert all(m.endswith(":free") for m in visao.OPENROUTER_VISAO)
+
+
+def test_gemini_vem_primeiro_e_sem_ids_mortos():
+    """09/11/2026: dono aceitou o free do Gemini; a lista de 25/07 tinha 4 ids que sumiram dos catálogos."""
+    assert visao.ORDEM_PADRAO[0] == "gemini"
+    todos = visao.OPENROUTER_VISAO + visao.NVIDIA_VISAO + visao.GEMINI_VISAO + visao.CLOUDFLARE_VISAO
+    for morto in ("gemini-2.0-flash", "nemotron-nano-12b-v2-vl", "llama-3.2-11b-vision"):
+        assert not any(morto in m for m in todos), morto
     assert all(m.endswith(":free") for m in visao.OPENROUTER_VISAO)

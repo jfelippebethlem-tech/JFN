@@ -64,8 +64,10 @@ def _hermes_modelos() -> list[str]:
     fixo = os.environ.get("HERMES_MODELO", "")
     if fixo:
         return [fixo]
-    from compliance_agent.llm.openrouter_catalogo import escolher
-    ordem = [escolher("documento"), escolher("smart"), escolher("fast")]
+    from compliance_agent.llm.free_llm import modelo_or
+    # modelo_or = catálogo vivo + override do .env CONFERIDO no catálogo (09/11/2026: o catálogo sozinho
+    # escolhia gemma-4, em 429 upstream constante; o .env fixa o nemotron-3.5, medido no bench).
+    ordem = [modelo_or("documento"), modelo_or("smart"), modelo_or("fast")]
     return list(dict.fromkeys([m for m in ordem if m]))
 
 

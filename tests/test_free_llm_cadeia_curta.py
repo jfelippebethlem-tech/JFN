@@ -30,15 +30,15 @@ def _ordem(monkeypatch, **env):
 
 
 def test_a_lista_curta_corta_a_cascata(monkeypatch):
-    _, ordem = _ordem(monkeypatch, FREE_LLM_ONLY="cerebras,zai")
-    assert ordem == ["cerebras", "zai"], "sem o corte, cada leitura paga o timeout dos doze"
+    _, ordem = _ordem(monkeypatch, FREE_LLM_ONLY="groq,zai")
+    assert ordem == ["groq", "zai"], "sem o corte, cada leitura paga o timeout dos doze"
 
 
 def test_nome_que_nao_existe_AVISA_em_vez_de_sumir(monkeypatch, caplog):
     caplog.set_level(logging.WARNING, logger="compliance_agent.llm.free_llm")
-    F, ordem = _ordem(monkeypatch, FREE_LLM_ONLY="cerebras,nao_existe")
+    F, ordem = _ordem(monkeypatch, FREE_LLM_ONLY="groq,nao_existe")
     F._get_provider_order()          # a leitura do env acontece na chamada, não no import
-    assert ordem == ["cerebras"]
+    assert ordem == ["groq"]
     assert "nao_existe" in caplog.text, (
         "nome desconhecido sumindo em silêncio foi o que fez `FREE_LLM_PREFER=nous` parecer válido")
 
@@ -48,4 +48,16 @@ def test_sem_a_variavel_nada_muda(monkeypatch):
     monkeypatch.delenv("FREE_LLM_ONLY", raising=False)
     monkeypatch.delenv("FREE_LLM_PREFER", raising=False)
     _, ordem = _ordem(monkeypatch)
-    assert len(ordem) > 10 and ordem[0] == "cerebras"
+    assert len(ordem) > 8 and ordem[0] == "gemini"
+
+
+def test_desligados_nunca_entram_nem_pela_lista_curta(monkeypatch):
+    """09/11/2026: cerebras (crédito único, 402), github_models (encerrado), sambanova (401), mistral (exige
+    billing)… Ficam com a chave no .env, mas fora de QUALQUER cascata — cada degrau morto custava um timeout."""
+    monkeypatch.delenv("FREE_LLM_PREFER", raising=False)
+    _, ordem = _ordem(monkeypatch, FREE_LLM_ONLY="cerebras,groq")
+    assert ordem == ["groq"]
+    monkeypatch.delenv("FREE_LLM_ONLY")
+    _, ordem = _ordem(monkeypatch, FREE_LLM_PREFER="cerebras")
+    for morto in ("cerebras", "github_models", "sambanova", "siliconflow", "wisdomgate", "mistral"):
+        assert morto not in ordem

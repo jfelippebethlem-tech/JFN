@@ -86,13 +86,41 @@ def _forcar_free(model: str) -> str:
         return m
     return m.split(":", 1)[0] + ":free"
 
+# PROVEDORES DESLIGADOS (auditoria de 09/11/2026, medida): ficam FORA de toda cascata, com a chave
+# preservada no .env (reversível: FREE_LLM_DESLIGADOS="" religa todos).
+#   cerebras ....... 402 — era crédito único de US$5/30 dias, não free recorrente
+#   github_models .. serviço encerrado em 30/07/2026
+#   sambanova ...... 401 (chave inválida) · siliconflow: só crédito único de US$1
+#   wisdomgate ..... domínio morto · mistral: 429 em tudo (a API exige billing)
+_DESLIGADOS = {x.strip().lower() for x in os.environ.get(
+    "FREE_LLM_DESLIGADOS", "cerebras,github_models,sambanova,siliconflow,wisdomgate,mistral").split(",") if x.strip()}
+
+
+def desligado(provider: str) -> bool:
+    return provider.lower() in _DESLIGADOS
+
+
 # Modelos Groq (free tier) — usados em groq_chat_async e status_provedores.
+# 09/11/2026: os Llama sumiram do Groq (404). qwen3.8-27b: 0,5 s, JSON e jurídico certos, tool-calling ok —
+# MAS o free do Groq recusa pedido acima de ~8k tokens (413): serve para tarefa CURTA, nunca documento.
 # Antes eram referenciados sem definição global (NameError). Configuráveis por env.
-GROQ_MODEL_FAST  = os.environ.get("GROQ_MODEL_FAST",  "llama-3.1-8b-instant")
-GROQ_MODEL_SMART = os.environ.get("GROQ_MODEL_SMART", "llama-3.3-70b-versatile")
+GROQ_MODEL_FAST  = os.environ.get("GROQ_MODEL_FAST",  "qwen/qwen3.8-27b")
+GROQ_MODEL_SMART = os.environ.get("GROQ_MODEL_SMART", "qwen/qwen3.8-27b")
 
 
 # ── Cliente genérico OpenAI-compatible ────────────────────────────────────────
+
+def _sem_raciocinio(base_url: str, payload: dict) -> None:
+    """Nemotron 3.x (OpenRouter e NVIDIA) é modelo de RACIOCÍNIO: com teto de 300–2000 tokens ele gasta tudo
+    pensando e devolve `content` VAZIO com finish_reason 'length' (medido 09/11/2026 em foto do acervo).
+    Desligado o raciocínio, responde em ~3 s. Os dois provedores usam chaves DIFERENTES para isso."""
+    if "nemotron" not in str(payload.get("model", "")).lower():
+        return
+    if "openrouter.ai" in (base_url or ""):
+        payload["reasoning"] = {"enabled": False}
+    elif "nvidia.com" in (base_url or ""):
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
+
 
 def _openai_compat_chat_sync(
     base_url: str,
@@ -123,6 +151,7 @@ def _openai_compat_chat_sync(
         "max_tokens": max_tokens,
         "temperature": 0.1,
     }
+    _sem_raciocinio(base_url, payload)
 
     with httpx.Client(timeout=30) as client:
         resp = client.post(
@@ -288,6 +317,7 @@ def _openai_compat_chat_sync_retry(
         "max_tokens": max_tokens,
         "temperature": 0.1,
     }
+    _sem_raciocinio(base_url, payload)
 
     last_exc: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -344,6 +374,7 @@ async def _openai_compat_chat_retry(
         "max_tokens": max_tokens,
         "temperature": 0.1,
     }
+    _sem_raciocinio(base_url, payload)
 
     last_exc: Exception | None = None
     for attempt in range(max_retries + 1):
@@ -553,7 +584,7 @@ def _cerebras_key() -> str:
 
 
 def cerebras_available() -> bool:
-    return bool(_cerebras_key())
+    return bool(_cerebras_key()) and not desligado("cerebras")
 
 
 def _cerebras_msgs(prompt: str, system: str) -> list:
@@ -630,7 +661,7 @@ def _github_models_key() -> str:
     return os.environ.get("GITHUB_MODELS_TOKEN", "")
 
 def github_models_available() -> bool:
-    return bool(_github_models_key() and _cap_ok("github_models"))
+    return bool(_github_models_key() and _cap_ok("github_models")) and not desligado("github_models")
 
 def github_models_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
     key = _github_models_key()
@@ -654,10 +685,10 @@ async def github_models_chat_async(prompt: str, system: str = "", smart: bool = 
 # (base_url, modelo_default, [envs_da_chave], env_do_modelo)
 _EXTRA = {
     "sambanova":   ("https://api.sambanova.ai/v1",          "Meta-Llama-3.3-70B-Instruct", ["SAMBANOVA_API_KEY"],            "SAMBANOVA_MODEL"),
-    "nvidia":      ("https://integrate.api.nvidia.com/v1",  "meta/llama-3.3-70b-instruct", ["NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY"], "NVIDIA_MODEL"),
-    "zai":         (os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4"), "glm-4.5-flash", ["ZAI_API_KEY", "ZHIPU_API_KEY"], "ZAI_MODEL"),
+    "nvidia":      ("https://integrate.api.nvidia.com/v1",  "nvidia/nemotron-3.5-super-vl-120b-a12b", ["NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY"], "NVIDIA_MODEL"),
+    "zai":         (os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4"), "glm-4.7-flash", ["ZAI_API_KEY", "ZHIPU_API_KEY"], "ZAI_MODEL"),
     "siliconflow": ("https://api.siliconflow.com/v1",       "Qwen/Qwen3-8B",               ["SILICONFLOW_API_KEY"],          "SILICONFLOW_MODEL"),
-    "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-r-08-2024",         ["COHERE_API_KEY"],               "COHERE_MODEL"),
+    "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-a-plus-05-2026",    ["COHERE_API_KEY"],               "COHERE_MODEL"),
     # BazaarLink: gateway com modelos PAGOS no catálogo → fixar 'auto:free' (só roteia grátis). NUNCA outro modelo.
     "bazaarlink":  ("https://bazaarlink.ai/api/v1",           "auto:free",                  ["BAZAARLINK_API_KEY"],           "BAZAARLINK_MODEL"),
     # Wisdom Gate: sandbox grátis (one-api) — SEM cartão do dono (billing é da conta deles). DeepSeek-R1 default.
@@ -730,7 +761,7 @@ def _envk(*names: str) -> str:
 
 def extra_available(name: str) -> bool:
     spec = _EXTRA.get(name)
-    return bool(spec and _envk(*spec[2]) and _cap_ok(name))  # cap mensal (§4.1) impede cobrança
+    return bool(spec and _envk(*spec[2]) and _cap_ok(name)) and not desligado(name)  # cap mensal (§4.1) impede cobrança
 
 def _extra_cfg(name: str):
     base, dmodel, keys, menv = _EXTRA[name]
@@ -997,8 +1028,13 @@ def _get_provider_order() -> list[str]:
     # Cerebras 1º (ultrarrápido/grátis, ideal p/ volume do sweep); GEMINI no pool p/ redundância+qualidade
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
-    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
-                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink", "wisdomgate", "ofox", "routeway", "mistral"]
+    # 09/11/2026 (bench medido, ver docs): gemini 1º (pool de 8 chaves × cascata de modelos); groq qwen3.8
+    # (curto e rápido; 413 acima de ~8k tokens falha em 1 s); openrouter :free; nvidia (termos: prototipagem
+    # — reserva, nunca 1º); cloudflare (10k neurons/dia); cohere (1k/mês); zai glm-4.7-flash; resto no fim.
+    # Os de _DESLIGADOS continuam na lista só para nome conhecido, mas são filtrados abaixo.
+    all_providers = ["gemini", "groq", "openrouter", "nvidia", "cloudflare", "cohere", "zai", "ollama",
+                     "bazaarlink", "ofox", "routeway",
+                     "cerebras", "github_models", "sambanova", "siliconflow", "wisdomgate", "mistral"]
     # CADEIA CURTA PARA VOLUME (`FREE_LLM_ONLY`). Medido em 2026-08-13 no sweep do SEI: com o
     # cerebras em 429 (cota do dia estourada, 50 vezes), CADA leitura passava a percorrer os doze
     # provedores em sequência, somando o timeout de todos — 437 chamadas em 4 h para 54 sucessos
@@ -1010,12 +1046,13 @@ def _get_provider_order() -> list[str]:
     # existe) parecer configurado por semanas.
     somente = [x.strip().lower() for x in os.environ.get("FREE_LLM_ONLY", "").split(",") if x.strip()]
     if somente:
-        curta = [p for p in somente if p in all_providers]
+        curta = [p for p in somente if p in all_providers and not desligado(p)]
         if len(curta) != len(somente):
             logger.warning("FREE_LLM_ONLY tem nome(s) que não existem: %s",
                            [p for p in somente if p not in all_providers])
         if curta:
             return curta
+    all_providers = [p for p in all_providers if not desligado(p)]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]

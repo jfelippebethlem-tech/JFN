@@ -480,7 +480,7 @@ def _resumo_ficha(f: dict) -> str:
 # (tag, model, provider). nous *:free = 100% grátis/sem limite (catálogo nousresearch);
 # gemini = a "melhor" de referência (free-tier com limites).
 _MODELOS = [
-    ("stepfun", "stepfun/step-3.7-flash:free", "nous"),     # nous 100% grátis/sem limite — ENSINADO+PARAMETRIZADO
+    ("stepfun", STEPFUN, "nous"),                           # modelo vivo do sweep (MODELOS_SWEEP)
     ("g-lite", MODELO_BARATO, "gemini"),                    # gemini free-tier de referência de qualidade
 ]
 

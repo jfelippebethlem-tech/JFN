@@ -23,19 +23,20 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# Modelos com visão, medidos em 25/07/2026 (não presumidos: a lista veio da API de cada provedor).
-OPENROUTER_VISAO = ("google/gemma-4-31b-it:free", "nvidia/nemotron-nano-12b-v2-vl:free",
+# Modelos com visão, REMEDIDOS em 09/11/2026 (foto real; a lista de 25/07 tinha 4 ids mortos:
+# nemotron-nano-12b-v2-vl e llama-3.2-11b-vision sumiram dos catálogos; gemini-2.0-flash não existe mais).
+OPENROUTER_VISAO = ("nvidia/nemotron-3.5-super-vl:free", "google/gemma-4-31b-it:free",
                     "google/gemma-4-26b-a4b-it:free")
-NVIDIA_VISAO = ("nvidia/nemotron-nano-12b-v2-vl", "meta/llama-3.2-11b-vision-instruct",
-                "meta/llama-3.2-90b-vision-instruct")
-GEMINI_VISAO = ("gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash")
+NVIDIA_VISAO = ("nvidia/nemotron-3.5-super-vl-120b-a12b", "meta/llama-3.2-90b-vision-instruct")
+GEMINI_VISAO = ("gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-2.5-flash-lite")
 # O `llama-3.2-11b-vision-instruct` do Cloudflare responde 403 até que a conta aceite a Licença
-# Comunitária do Llama — aceite jurídico do DONO da conta, não de quem escreve o código. Por isso o
-# mistral-small vem primeiro: funciona sem esse aceite (medido em foto real do acervo).
-CLOUDFLARE_VISAO = ("@cf/mistralai/mistral-small-3.1-24b-instruct",
-                    "@cf/meta/llama-3.2-11b-vision-instruct")
+# Comunitária do Llama — aceite jurídico do DONO da conta. llama-4-scout e mistral-small funcionam sem ele.
+CLOUDFLARE_VISAO = ("@cf/meta/llama-4-scout-17b-16e-instruct",
+                    "@cf/mistralai/mistral-small-3.1-24b-instruct")
 
-ORDEM_PADRAO = ("openrouter", "nvidia", "gemini", "cloudflare")
+# Gemini 1º desde 09/11/2026: o dono aceitou o free tier (sem billing, dados treinam) e o flash-lite lê
+# foto em ~1 s. NVIDIA é "prototipagem" pelos termos — reserva, nunca 1º.
+ORDEM_PADRAO = ("gemini", "openrouter", "nvidia", "cloudflare")
 _TETO_PADRAO = 400
 
 _gastas = 0

@@ -401,7 +401,7 @@ _GROQ_BASE       = "https://api.groq.com/openai/v1"
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 _ANTHROPIC_BASE  = "https://api.anthropic.com"
 
-_GROQ_MODEL      = "llama-3.3-70b-versatile"
+_GROQ_MODEL      = os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b")  # 09/11/2026: Llama saiu do Groq (404)
 _ANTHROPIC_MODEL = "claude-opus-4-8"
 
 

@@ -397,7 +397,8 @@ def _gemini_vision_sync(img: bytes, mime: str, prompt: str) -> str:
         {"text": prompt},
         {"inline_data": {"mime_type": mime, "data": base64.b64encode(img).decode()}}]}],
         "generationConfig": {"temperature": 0, "maxOutputTokens": 250, "responseMimeType": "application/json"}}
-    for mdl in ("gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"):
+    from compliance_agent.llm.visao import GEMINI_VISAO  # fonte única da cadeia de visão
+    for mdl in GEMINI_VISAO:
         for key in keys:
             try:
                 r = httpx.post(
@@ -438,7 +439,7 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
         if chave:
             # Default GRÁTIS de verdade: `gemini-2.5-flash-lite` não tem variante `:free` no OpenRouter,
             # então o guard o transformaria em 404. Estes dois têm visão e são `:free` (testados no acervo).
-            modelo = os.environ.get("OPENROUTER_VISION_MODEL", "google/gemma-4-31b-it:free")
+            modelo = os.environ.get("OPENROUTER_VISION_MODEL", "nvidia/nemotron-3.5-super-vl:free")
             b64 = base64.b64encode(img).decode()
             messages = [{"role": "user", "content": [
                 {"type": "text", "text": prompt},
