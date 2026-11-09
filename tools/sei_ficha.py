@@ -238,10 +238,18 @@ async def _chamar_nous(texto: str, model: str) -> str:
         # (finish_reason 'length') → "JSON inválido". 4000 era curto p/ processos complexos (o raciocínio
         # estourava o teto antes do JSON, ~76% de falha no cluster denso); 8000 dá folga p/ raciocínio+JSON
         # (comprovado: caso que falhava passou a parsear). top_p conservador, temperatura baixa (factual).
-        r = await c.post(f"{base}/chat/completions",
-                         headers={"Authorization": f"Bearer {tok}"},
-                         json={"model": model, "messages": _prompt(texto), "temperature": 0.1,
-                               "max_tokens": _MAX_TOKENS, "top_p": 0.9})
+        model = modelo_sweep(model)
+        while True:
+            r = await c.post(f"{base}/chat/completions",
+                             headers={"Authorization": f"Bearer {tok}"},
+                             json={"model": model, "messages": _prompt(texto), "temperature": 0.1,
+                                   "max_tokens": _MAX_TOKENS, "top_p": 0.9})
+            if r.status_code < 400 or not modelo_morto(r.status_code, r.text):
+                break
+            prox = marcar_morto(model, r.status_code, r.text)
+            if not prox:
+                break
+            model = prox
         if r.status_code == 401:
             raise RuntimeError("401 token nous expirado (rode `hermes` p/ re-auth)")
         r.raise_for_status()
@@ -379,7 +387,50 @@ def conteudo_real(d: dict) -> str:
 #
 # COMO CONFERIR quando isto voltar a quebrar (e vai): `GET {base}/v1/models` com a chave do nous e
 # filtrar `pricing.prompt == 0`. Não presumir cota antes de testar UM modelo do catálogo vivo.
-STEPFUN = os.environ.get("SEI_MODELO_SWEEP", "meituan/longcat-2.0:free")
+#
+# 09/11/2026 — QUEBROU DE NOVO: `meituan/longcat-2.0:free` -> 404 "no longer free" desde 25/09 (12,5k erros
+# em 2 dias, sweep parado 6 semanas sem ninguém notar). Por isso agora é uma LISTA com troca automática:
+# o modelo que responder 404/410/400-de-modelo é marcado morto NO PROCESSO e a chamada passa ao próximo.
+# Medido em 09/11 (bench JSON PT-BR 3/3 + agulha em processo SEI de 50k tokens):
+#   reflection/beam-1.0-501b-a23b:free ... 3,4–5 s, JSON certo, agulha ok, contexto 262k   <- 1º
+#   meituan/longcat-2.5:free ............. 10–21 s, JSON certo, agulha ok, contexto 1M     <- 2º
+# Só ids `:free` entram (a conta nous não tem crédito, mas a guarda não depende disso).
+_PADRAO_SWEEP = "reflection/beam-1.0-501b-a23b:free,meituan/longcat-2.5:free"
+MODELOS_SWEEP = [m.strip() for m in (
+    ([os.environ["SEI_MODELO_SWEEP"]] if os.environ.get("SEI_MODELO_SWEEP") else [])
+    + os.environ.get("SEI_MODELOS_SWEEP", _PADRAO_SWEEP).split(","))
+    if m.strip().endswith(":free")]
+MODELOS_SWEEP = list(dict.fromkeys(MODELOS_SWEEP)) or _PADRAO_SWEEP.split(",")
+STEPFUN = MODELOS_SWEEP[0]
+_MORTOS: set[str] = set()
+
+
+def modelo_morto(status: int, corpo: str) -> bool:
+    """O provedor disse que o MODELO não existe/não é mais grátis (não é cota nem instabilidade)."""
+    c = (corpo or "").lower()
+    if status in (404, 410):
+        return True
+    return status in (400, 402, 403) and any(k in c for k in (
+        "model", "no longer free", "not found", "missing tags", "credits"))
+
+
+def modelo_sweep(model: str | None = None) -> str:
+    """O modelo do sweep a usar agora: `model` se vivo; senão o 1º vivo da lista (ou o último, se todos
+    caíram — aí o erro aparece em vez de sumir)."""
+    if model and model not in _MORTOS:
+        return model
+    vivos = [m for m in MODELOS_SWEEP if m not in _MORTOS]
+    return vivos[0] if vivos else MODELOS_SWEEP[-1]
+
+
+def marcar_morto(model: str, status: int, corpo: str) -> str | None:
+    """Marca `model` morto e devolve o substituto vivo, ou None se não há outro."""
+    if model not in _MORTOS:
+        logger.warning("modelo do sweep MORTO (%s %s) — troco para o próximo da lista: %s",
+                       status, model, (corpo or "")[:120])
+    _MORTOS.add(model)
+    prox = [m for m in MODELOS_SWEEP if m not in _MORTOS]
+    return prox[0] if prox else None
 
 
 async def extrair_ficha_producao(texto: str, preferir_gratis: bool = True) -> tuple[dict, str]:
@@ -389,10 +440,7 @@ async def extrair_ficha_producao(texto: str, preferir_gratis: bool = True) -> tu
     if preferir_gratis:
         # Cerebras gpt-oss-120b primeiro: ultrarrápido + com saldo (acelera MUITO o sweep) e melhor que o
         # stepfun. Tier coletor (produtos seguem gemini). Cai p/ nous stepfun:free e por fim gemini-lite.
-        if os.environ.get("CEREBRAS_API_KEY"):
-            f = await extrair_ficha(texto, CEREBRAS_MODEL, provider="cerebras")
-            if not f.get("_erro"):
-                return f, "cerebras:" + CEREBRAS_MODEL
+        # (Cerebras saiu em 09/11/2026: era crédito único de US$5 e responde 402.)
         f = await extrair_ficha(texto, STEPFUN, provider="nous")
         if not f.get("_erro"):
             return f, "stepfun:free"

@@ -144,7 +144,7 @@ def _gerar_nous():
     oscila; "lento tá ok" enquanto a qualidade segura).
     """
     import httpx
-    from tools.sei_ficha import STEPFUN, _nous_cred
+    from tools.sei_ficha import _nous_cred, marcar_morto, modelo_morto, modelo_sweep
 
     tok, base = _nous_cred()
     if not tok:
@@ -153,16 +153,21 @@ def _gerar_nous():
 
     async def _post(prompt: str) -> str:
         async with httpx.AsyncClient(timeout=240) as c:
+            modelo = modelo_sweep()
             for tentativa in range(3):
                 r = await c.post(
                     f"{base}/chat/completions",
                     headers={"Authorization": f"Bearer {tok}"},
-                    json={"model": STEPFUN,
+                    json={"model": modelo,
                           "messages": [{"role": "user", "content": prompt}],
                           "temperature": 0.1, "max_tokens": teto, "top_p": 0.9})
                 # 520-527 = família Cloudflare (524 = "origin timed out"). O nous fica atrás de CF e
                 # devolve 524 quando o modelo demora demais para o primeiro byte — medido no piloto,
                 # 1 documento de 3 perdido por não estar nesta lista. Transitório, retenta.
+                # modelo grátis saiu do catálogo -> próximo da lista (conta como uma tentativa)
+                if r.status_code >= 400 and modelo_morto(r.status_code, r.text) and (prox := marcar_morto(modelo, r.status_code, r.text)):
+                    modelo = prox
+                    continue
                 if r.status_code in (429, 500, 502, 503, 504) or 520 <= r.status_code <= 527:
                     await asyncio.sleep(3 * (tentativa + 1))
                     continue

@@ -401,7 +401,7 @@ def _registrar_trace(provedor: str, ok: bool, ms: int, erro: str = "") -> None:
 def _gerar_nous():
     """A IA do volume de SEI. Devolve `None` (sem token) para o chamador cair na cadeia curta."""
     try:
-        from tools.sei_ficha import STEPFUN, _nous_cred
+        from tools.sei_ficha import _nous_cred, marcar_morto, modelo_morto, modelo_sweep
         tok, base = _nous_cred()
     except (ImportError, OSError, ValueError, RuntimeError) as exc:
         print(f"  ⚠️  nous indisponível ({type(exc).__name__}) — caio na cadeia curta", file=sys.stderr)
@@ -423,11 +423,15 @@ def _gerar_nous():
         # `max_tokens` alto de propósito: stepfun é modelo de RACIOCÍNIO e gasta tokens no campo
         # `reasoning` ANTES do `content`. Teto baixo devolve content vazio com finish_reason
         # 'length', que chega aqui como "JSON inválido" — a mesma lição que o sei_ficha já pagou.
-        r = httpx.post(f"{base}/chat/completions", timeout=200,
-                       headers={"Authorization": f"Bearer {tok}"},
-                       json={"model": STEPFUN, "temperature": 0.1, "max_tokens": 8000, "top_p": 0.9,
-                             "messages": [{"role": "system", "content": sistema},
-                                          {"role": "user", "content": prompt}]})
+        modelo = modelo_sweep()
+        while True:  # modelo do catálogo grátis morreu -> próximo da lista (sei_ficha.MODELOS_SWEEP)
+            r = httpx.post(f"{base}/chat/completions", timeout=200,
+                           headers={"Authorization": f"Bearer {tok}"},
+                           json={"model": modelo, "temperature": 0.1, "max_tokens": 8000, "top_p": 0.9,
+                                 "messages": [{"role": "system", "content": sistema},
+                                              {"role": "user", "content": prompt}]})
+            if r.status_code < 400 or not modelo_morto(r.status_code, r.text) or not (modelo := marcar_morto(modelo, r.status_code, r.text)):
+                break
         try:
             r.raise_for_status()
             saida = ((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
