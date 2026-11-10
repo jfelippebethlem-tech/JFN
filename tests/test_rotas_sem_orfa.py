@@ -49,6 +49,7 @@ _SEM_UI_POR_DESENHO = {
     "/api/trace/{correlation_id}",
     # mount de arquivos estáticos, não endpoint
     "/output",
+    "/static/login",   # 2026-11-09: mídia da tela de login (mount do 33821cd9, entrou no golden em 1676e85b)
 }
 
 _RE_ROTA = re.compile(r"^\S+\s+(\S+)\s+->")
