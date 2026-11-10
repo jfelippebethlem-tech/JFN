@@ -3915,3 +3915,59 @@ html.v60 .v60-mi.on .som-d{background:var(--ion)}
   html.v60 #holofeed{right:16px;bottom:16px;width:auto;opacity:1;pointer-events:auto;border-radius:999px}
   html.v60 #holofeed.open{width:330px;border-radius:var(--r-l)}
 }
+
+/* ── componente BOTÃO (base das fases 4–8) ───────────────────────────────────────────────────────
+   Mesmo método da navegação: `.btn` tem 30 regras em 4 gerações (chanfro por clip-path, varredura,
+   holofote, 3D). Um reset não camadado e o botão inteiro num lugar. */
+html.v60 .btn{all:unset;box-sizing:border-box;position:relative;display:inline-flex;align-items:center;
+  justify-content:center;gap:8px;min-height:40px;padding:8px 14px;border-radius:var(--r-m);
+  font-size:.875rem;font-weight:600;line-height:1.2;text-align:center;cursor:pointer;
+  color:oklch(0.20 0.04 55);background:var(--flame);border:1px solid transparent;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .16s var(--ease),border-color .16s var(--ease),color .16s var(--ease),transform .16s var(--ease)}
+html.v60 .btn::before, html.v60 .btn::after{content:none}
+html.v60 .btn:hover{background:color-mix(in oklch,var(--flame) 88%,white)}
+html.v60 .btn.accent{background:var(--ion);color:oklch(0.18 0.04 258)}
+html.v60 .btn.accent:hover{background:color-mix(in oklch,var(--ion) 88%,white)}
+html.v60 .btn.red{background:color-mix(in oklch,var(--crit) 18%,transparent);color:color-mix(in oklch,var(--crit) 70%,white);
+  border-color:color-mix(in oklch,var(--crit) 45%,transparent)}
+html.v60 .btn.green{background:color-mix(in oklch,var(--ok) 16%,transparent);color:color-mix(in oklch,var(--ok) 80%,white);
+  border-color:color-mix(in oklch,var(--ok) 40%,transparent)}
+html.v60 .btn.ghost{background:oklch(1 0 0 / .04);color:var(--ink-2);border-color:var(--line)}
+html.v60 .btn.ghost:hover{background:oklch(1 0 0 / .07);color:var(--ink);border-color:color-mix(in oklch,var(--ion) 50%,transparent)}
+html.v60 .btn.sm{min-height:32px;padding:4px 10px;font-size:.8125rem}
+html.v60 .btn:disabled, html.v60 .btn[disabled], html.v60 .btn[aria-disabled="true"]{opacity:.5;cursor:default}
+html.v60 .btns{display:flex;flex-wrap:wrap;gap:8px}
+html.v60 .btns > .btn{flex:0 1 auto}
+@media (max-width:760px){
+  html.v60 .btn{min-height:44px}
+  html.v60 .btn.sm{min-height:44px}
+  html.v60 .btns > .btn{flex:1 1 auto}
+}
+
+/* ── Fase 4 · CABEÇALHO DE ABA `.cover` (D7) ─────────────────────────────────────────────────────
+   Selo plano de 40px, título 1.25rem, descrição em até 2 linhas com "mais"; saem a lâmina/scanline
+   (`.cover::before/::after`), o trilho raster e os colchetes (`.cover-row::before/::after`) e o
+   bisel/anel do selo (`.cover-seal::before/::after`). */
+html.v60 .cover{padding:4px 0 16px;margin-bottom:16px;border-bottom:1px solid var(--line-soft);isolation:auto}
+html.v60 .cover::before, html.v60 .cover::after, html.v60 .cover-row::before, html.v60 .cover-row::after,
+html.v60 .cover-seal::before, html.v60 .cover-seal::after{display:none}
+html.v60 .cover-row{display:flex;align-items:flex-start;gap:12px}
+html.v60 .cover-seal{width:40px;height:40px;border-radius:var(--r-m);border:0;box-shadow:none;transform:none;
+  animation:none;filter:none;background:color-mix(in oklch,var(--ion) 12%,transparent);color:var(--ion)}
+html.v60 .cover-seal .jico{width:20px;height:20px;color:var(--ion);animation:none;transform:none;filter:none}
+html.v60 .cover-seal .jico *{animation:none}
+html.v60 .cover .t{font-size:1.25rem;font-weight:700;letter-spacing:-.01em;line-height:1.25;text-shadow:none;color:var(--ink)}
+html.v60 .cover .s{color:var(--muted);font-size:.875rem;line-height:1.45;margin-top:4px;max-width:72ch;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+html.v60 .cover.v60-aberta .s{display:block;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
+html.v60 .v60-desc-mais{all:unset;display:inline-block;margin-top:2px;padding:4px 0;font-size:.8125rem;font-weight:550;
+  color:var(--ion);cursor:pointer}
+html.v60 .v60-desc-mais:hover{text-decoration:underline}
+html.v60 .cover-acts{flex:0 0 auto;margin:0;align-self:center}
+@media (max-width:760px){
+  html.v60 .cover-row{flex-wrap:wrap}
+  html.v60 .cover-tx{flex:1 1 0}
+  html.v60 .cover-acts{flex:1 0 100%}
+  html.v60 .cover-acts > .btn{width:100%}
+}

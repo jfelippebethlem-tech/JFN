@@ -799,6 +799,51 @@
     if (hs) hs.textContent = "Central de inteligência · RJ";
     _acoes();
     _feed();
+    _observar();
+  }
+  var _passe = 0;
+  function _observar() {
+    const v = $("view");
+    if (!v) return;
+    new MutationObserver(() => {
+      clearTimeout(_passe);
+      _passe = setTimeout(() => v60Vivo(v), 60);
+    }).observe(v, { childList: true, subtree: true });
+    document.addEventListener("click", (e) => {
+      const b = e.target && e.target.closest && e.target.closest("[data-v60-desc]");
+      if (!b) return;
+      const cv = b.closest(".cover");
+      if (!cv) return;
+      const ab = cv.classList.toggle("v60-aberta");
+      b.textContent = ab ? "menos" : "mais";
+      b.setAttribute("aria-expanded", ab ? "true" : "false");
+    });
+    v60Vivo(v);
+  }
+  function v60Vivo(v) {
+    if (!_v60 || !v) return;
+    _capa(v);
+  }
+  function _capa(v) {
+    const cv = v.querySelector(".cover");
+    if (!cv || cv.dataset.v60) return;
+    cv.dataset.v60 = "1";
+    const row = cv.querySelector(".cover-row"), nx = cv.nextElementSibling;
+    if (row && nx && nx.classList.contains("btns") && nx.querySelector('[onclick^="gerarPdfIntel"]')) {
+      nx.classList.add("cover-acts");
+      nx.removeAttribute("style");
+      row.appendChild(nx);
+    }
+    const s = cv.querySelector(".s"), tx = cv.querySelector(".cover-tx");
+    if (s && tx && s.scrollHeight > s.clientHeight + 2) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "v60-desc-mais";
+      b.dataset.v60Desc = "1";
+      b.setAttribute("aria-expanded", "false");
+      b.textContent = "mais";
+      tx.appendChild(b);
+    }
   }
   var _ACOES = [
     ["a.help:not(.som)", "§info", "Termos — o que cada conceito do painel significa"],
