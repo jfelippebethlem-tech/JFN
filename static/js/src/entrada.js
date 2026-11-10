@@ -162,7 +162,7 @@ import {esfera, aba, setEsfera, setAba} from './app/estado.js';
    era `sessaoReports is not defined` ao gerar uma peça e a cada `pagehide`. */
 
 function montarSpheres(){
-  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
+  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}"${_v60?` title="${s.c}"`:''} aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
 }
 /* v49 — A BARRA DESLOCAVA A CADA NAVEGAÇÃO, e o motivo era esta função.
    Ela reescrevia o `innerHTML` da nav INTEIRA (até 30 botões na esfera "Transversal") a cada `ir()`,
@@ -180,13 +180,15 @@ function montarTabs(){
     _tabsEsfera=esfera;
     nav.innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}" data-aba="${t.id}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
     _tabsMais();
+    /* v60: o trilho de chips fica no topo; a aba ativa entra CENTRADA já na montagem */
+    if(_v60){const o=nav.querySelector('button.on');if(o)o.scrollIntoView({block:'nearest',inline:'center'});}
     return;
   }
   for(const b of nav.children)b.classList.toggle('on',b.dataset.aba===aba);
   /* v57: a aba ativa não pode ficar do lado de fora. `block:'nearest'` é o que impede
      o scrollIntoView de mexer na página (a nav é fixa no rodapé) — só rola a própria barra. */
   const _on=nav.querySelector('button.on');
-  if(_on)_on.scrollIntoView({block:'nearest',inline:'nearest',behavior:_redMotion?'auto':'smooth'});
+  if(_on)_on.scrollIntoView({block:'nearest',inline:_v60?'center':'nearest',behavior:_redMotion?'auto':'smooth'});
   _tabsMaisPintar();
 }
 /* ═══ v57 — A BARRA DE ABAS ESCONDIA METADE DE SI ══════════════════════════════════════════

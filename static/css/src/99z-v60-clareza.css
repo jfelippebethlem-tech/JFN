@@ -78,3 +78,164 @@ html.v60 body{font-size:.9375rem;line-height:1.5;color:var(--ink)}
 html.v60 :is(.ck-big,.ck-inst .val,.ck-ved .n,.fage,.caps-cmd,.nu-sweep),
 html.v60 :is(.ck-big,.ck-inst .val,.ck-ved .n,.fage,.caps-cmd,.nu-sweep) *{
   font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* ── Fase 3 · CABEÇALHO E NAVEGAÇÃO (D4, D5, D6, D11) ────────────────────────────────────────────
+   `all:unset` nos controles de navegação é deliberado: `.sph` e `nav.tabs button` acumulam ~90
+   regras em 3 gerações (3D, chanfro, sabre, glow). Regra não camadada com `all:unset` limpa TODAS
+   de uma vez sem tocar nos estratos; o que vem depois é o componente inteiro, legível num lugar só.
+   A camada `.hlx` (holograma pulsando em cada botão) e a `.onda` do toque saem: o retorno tátil
+   passa a ser `:active` (fase 8). */
+html.v60 .hlx, html.v60 .onda{display:none !important}
+html.v60 .wrap{max-width:1280px}
+html.v60 header{order:0;position:sticky;top:0;z-index:20;display:grid;align-items:center;
+  background:var(--bg-2);backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:0;box-shadow:none}
+html.v60 header::before, html.v60 header::after{display:none}
+html.v60 .htop{display:contents}
+html.v60 .brand{grid-row:1;grid-column:1;min-width:0;gap:10px;font-weight:650}
+html.v60 .brand .lg{width:28px;height:28px;border-radius:var(--r-s);box-shadow:none;flex:0 0 auto;
+  align-items:center;justify-content:center;font-size:11px;font-weight:700}
+html.v60 .brand h1{font-size:15px;font-weight:650;line-height:1.25;color:var(--ink);white-space:nowrap;min-width:0}
+html.v60 .brand small{font-size:11px;font-weight:400;color:var(--muted);margin-top:1px;line-height:1.3}
+/* AO VIVO vira um ponto de 6px ao lado do título (o clique continua abrindo a atividade) */
+html.v60 .live{grid-row:1;grid-column:2;display:inline-flex;border:0;background:none;padding:10px 8px;
+  gap:0;font-size:0;border-radius:var(--r-s);box-shadow:none}
+html.v60 .live #livetxt{display:none}
+html.v60 .live .pulse{width:6px;height:6px;animation:none}
+html.v60 .live .pulse::after{display:none}
+html.v60 .htop .actions{grid-row:1;grid-column:4;margin:0;display:flex;align-items:center;gap:4px;flex-wrap:nowrap}
+/* reator pequeno, sem halo: a única coisa que brilha no cabeçalho é a lâmina */
+html.v60 #kyber{width:22px;height:22px;padding:7px;box-sizing:content-box;filter:none;transform:none;border-radius:50%}
+html.v60 #kyber::before{display:none}
+html.v60 #kyber .karc{filter:none}
+html.v60 #conduit{grid-row:2;grid-column:1 / -1;height:2px}
+html.v60 #conduit .cblade{top:0}
+/* "⋯" — três pontos em CSS (não depende de glifo de fonte) */
+html.v60 .v60-mais{all:unset;box-sizing:border-box;width:44px;height:44px;display:grid;place-items:center;
+  border-radius:var(--r-m);color:var(--ink-2);cursor:pointer;-webkit-tap-highlight-color:transparent}
+html.v60 .v60-mais i{width:4px;height:4px;border-radius:50%;background:currentColor;
+  box-shadow:-7px 0 0 currentColor,7px 0 0 currentColor}
+html.v60 .v60-mais:hover{background:oklch(1 0 0 / .06);color:var(--ink)}
+
+/* esferas: reset + base comum */
+html.v60 #spheres{overflow:visible;-webkit-mask-image:none;mask-image:none;perspective:none}
+html.v60 .sph{all:unset;box-sizing:border-box;position:relative;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);white-space:nowrap;-webkit-tap-highlight-color:transparent;
+  transition:color .16s var(--ease),background .16s var(--ease)}
+html.v60 .sph::before, html.v60 .sph::after{content:none}
+html.v60 .sph .c{display:none}
+html.v60 .sph .i{display:grid;place-items:center;flex:0 0 auto;perspective:none;transition:background .16s var(--ease)}
+html.v60 .sph .i .jico, html.v60 nav.tabs button .ti .jico{color:currentColor;transform:none;filter:none;animation:none}
+html.v60 .sph .i .jico *, html.v60 nav.tabs button .ti .jico *{animation:none}
+html.v60 .sph:hover{color:var(--ink-2)}
+html.v60 .sph.on{color:var(--ink)}
+
+/* abas: trilho de chips, sticky sob o cabeçalho (saem do rodapé) */
+html.v60 nav.tabs{all:unset;box-sizing:border-box;order:1;position:sticky;top:64px;z-index:19;
+  display:flex;align-items:center;gap:6px;height:40px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  background:var(--bg-2);border-bottom:1px solid var(--line-soft)}
+html.v60 nav.tabs::-webkit-scrollbar{display:none}
+html.v60 nav.tabs::before, html.v60 nav.tabs::after{content:none}
+html.v60 nav.tabs button{all:unset;box-sizing:border-box;position:relative;flex:0 0 auto;display:inline-flex;
+  align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid transparent;
+  font-size:13px;font-weight:550;line-height:1;color:var(--muted);cursor:pointer;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+  transition:color .16s var(--ease),background .16s var(--ease),border-color .16s var(--ease)}
+html.v60 nav.tabs button:first-of-type{margin-left:16px}
+html.v60 nav.tabs button:last-of-type{margin-right:16px}
+html.v60 nav.tabs button::before{content:none}
+html.v60 nav.tabs button::after{all:unset;content:"";position:absolute;inset:-6px 0;
+  animation:none !important}                                              /* só área de toque, invisível */
+html.v60 nav.tabs button .ti{display:grid;place-items:center;height:16px;perspective:none}
+html.v60 nav.tabs button .ti .jico{width:16px;height:16px}
+html.v60 nav.tabs button .tl{font-size:13px;font-weight:550;color:inherit}
+html.v60 nav.tabs button:hover{color:var(--ink);background:oklch(1 0 0 / .05)}
+html.v60 nav.tabs button.on{color:var(--ink);background:color-mix(in oklch,var(--ion) 16%,transparent);
+  border-color:color-mix(in oklch,var(--ion) 45%,transparent)}
+/* pontas do trilho: sticky dentro do próprio scroller (o `transform` que as ancorava saiu) */
+html.v60 nav.tabs .tmais{position:sticky;top:auto;bottom:auto;flex:0 0 28px;width:28px;height:100%;z-index:2;
+  display:grid;place-items:center;opacity:0;pointer-events:none;cursor:pointer;transition:opacity .16s var(--ease)}
+html.v60 nav.tabs .tmais.e{left:0;order:-1;margin-right:-28px;background:linear-gradient(90deg,var(--bg-2) 35%,transparent)}
+html.v60 nav.tabs .tmais.d{right:0;margin-left:-28px;background:linear-gradient(270deg,var(--bg-2) 35%,transparent)}
+html.v60 nav.tabs.mais-e .tmais.e, html.v60 nav.tabs.mais-d .tmais.d{opacity:1}
+html.v60 main{order:2}
+
+/* holofeed: recolhido por padrão; o título vira o gatilho "Ao vivo · N" */
+html.v60 #holofeed{background:var(--bg-2);backdrop-filter:none;-webkit-backdrop-filter:none;
+  border:1px solid var(--line-soft);box-shadow:var(--sh);transform:none;overflow:hidden}
+html.v60 #holofeed .hf-t{cursor:pointer;gap:8px;padding:9px 14px;border-bottom:0;font-size:12px;font-weight:550;
+  color:var(--ink-2);user-select:none;-webkit-user-select:none}
+html.v60 #holofeed .hf-t b{display:none}
+html.v60 #holofeed .hf-t::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);flex:0 0 auto}
+html.v60 #holofeed #hfload{color:var(--muted);font-size:11px}
+html.v60 #holofeed:not(.open) ul, html.v60 #holofeed:not(.open) .hf-vazio, html.v60 #holofeed:not(.open) #hfload{display:none}
+html.v60 #holofeed.open .hf-t{border-bottom:1px solid var(--line-soft)}
+html.v60 #holofeed li, html.v60 #holofeed .hf-vazio{color:var(--ink-2)}
+html.v60 #holofeed li .t{color:var(--muted)}
+html.v60 #holofeed li .d{text-shadow:none}
+
+/* menu "⋯" dentro do #sheet existente */
+html.v60 .v60-menu{display:grid;margin:6px 0 2px}
+html.v60 .v60-mi{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;min-height:48px;
+  padding:0 8px;border-radius:var(--r-m);font-size:15px;font-weight:550;color:var(--ink);cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+html.v60 .v60-mi + .v60-mi{border-top:1px solid var(--line-soft);border-radius:0}
+html.v60 .v60-mi:hover, html.v60 .v60-mi:active{background:oklch(1 0 0 / .05)}
+html.v60 .v60-mi small{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted)}
+html.v60 .v60-mi .v60-ic{width:24px;height:24px;display:grid;place-items:center;color:var(--ion);flex:0 0 auto}
+html.v60 .v60-mi .v60-ic .jico{width:20px;height:20px}
+html.v60 .v60-mi .som-d{width:8px;height:8px;border-radius:50%;background:color-mix(in oklch,var(--ink-2) 55%,transparent)}
+html.v60 .v60-mi.on .som-d{background:var(--ion)}
+
+/* ·· celular ·· */
+@media (max-width:760px){
+  html.v60 header{grid-template-columns:minmax(0,auto) auto 1fr auto;grid-template-rows:54px 2px}
+  html.v60 .brand{padding-left:16px}
+  html.v60 .brand small{max-width:52vw}
+  html.v60 .htop .actions{padding-right:6px;gap:0}
+  html.v60 .htop .actions > a{display:none}                 /* Mudo/Termos/Controle/Sair → menu "⋯" */
+  html.v60 #kyber{padding:11px}                             /* alvo de 44px */
+  html.v60 #spheres{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
+    gap:0;height:calc(64px + env(safe-area-inset-bottom));padding:0 4px env(safe-area-inset-bottom);
+    background:var(--bg-2);border-top:1px solid var(--line-soft)}
+  html.v60 .sph{flex-direction:column;gap:4px;height:64px;font-size:11px;font-weight:500;line-height:1}
+  html.v60 .sph .i{width:56px;height:28px;border-radius:999px}
+  html.v60 .sph .i .jico{width:22px;height:22px}
+  html.v60 .sph.on .i{background:color-mix(in oklch,var(--ion) 14%,transparent);color:var(--ion)}
+  html.v60 nav.tabs{top:56px;height:44px}
+  html.v60 nav.tabs .tmais::after{display:none}             /* no toque a ponta é só o esmaecimento */
+  html.v60 main{padding:12px 16px calc(80px + env(safe-area-inset-bottom))}
+  html.v60 #holofeed{display:none}
+  html.v60 #holofeed.open{display:block;left:8px;right:8px;width:auto;bottom:calc(72px + env(safe-area-inset-bottom));
+    opacity:1;pointer-events:auto;border-radius:var(--r-l)}
+}
+/* ·· desktop ·· */
+@media (min-width:761px){
+  html.v60 header{grid-template-columns:auto auto 1fr auto;grid-template-rows:62px 2px;column-gap:8px}
+  html.v60 .brand{padding-left:24px}
+  html.v60 .htop .actions{padding-right:16px}
+  html.v60 .v60-mais{display:none}
+  /* esferas = segmented control central */
+  html.v60 #spheres{grid-row:1;grid-column:3;justify-self:center;display:inline-flex;gap:2px;padding:3px;
+    background:oklch(1 0 0 / .04);border:1px solid var(--line-soft);border-radius:999px}
+  html.v60 .sph{gap:8px;height:34px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:550;line-height:1}
+  html.v60 .sph .i .jico{width:18px;height:18px}
+  html.v60 .sph:hover{background:oklch(1 0 0 / .05)}
+  html.v60 .sph.on{background:color-mix(in oklch,var(--ion) 16%,transparent)}
+  html.v60 .sph.on .i{color:var(--ion)}
+  /* ações = botões-ícone de 36px, sem borda; o rótulo vai para o `title` */
+  html.v60 .htop .actions > a{all:unset;box-sizing:border-box;position:relative;min-width:36px;height:36px;
+    display:inline-grid;grid-auto-flow:column;place-items:center;gap:6px;padding:0 9px;border-radius:var(--r-s);
+    font-size:12px;font-weight:550;color:var(--muted);cursor:pointer;
+    transition:color .16s var(--ease),background .16s var(--ease)}
+  html.v60 .htop .actions > a::after{content:none}
+  html.v60 .htop .actions > a:hover{color:var(--ink);background:oklch(1 0 0 / .06)}
+  html.v60 .htop .actions > a .v60-ic{display:grid;place-items:center}
+  html.v60 .htop .actions > a .v60-ic .jico{width:18px;height:18px}
+  html.v60 .htop .actions > a .v60-tx{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  html.v60 .htop a.som .som-d{box-shadow:none}
+  html.v60 nav.tabs button:first-of-type{margin-left:24px}
+  html.v60 nav.tabs button:last-of-type{margin-right:24px}
+  html.v60 main{padding:20px 24px 56px}
+  html.v60 #holofeed{right:16px;bottom:16px;width:auto;opacity:1;pointer-events:auto;border-radius:999px}
+  html.v60 #holofeed.open{width:330px;border-radius:var(--r-l)}
+}

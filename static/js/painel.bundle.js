@@ -797,6 +797,88 @@
     if (!_v60) return;
     const hs = $("hsub");
     if (hs) hs.textContent = "Central de inteligência · RJ";
+    _acoes();
+    _feed();
+  }
+  var _ACOES = [
+    ["a.help:not(.som)", "§info", "Termos — o que cada conceito do painel significa"],
+    ["a.ctrl", "🔧", "Controle do sistema"],
+    ["a.sair", "🚪", "Sair"]
+  ];
+  function _acoes() {
+    const box = document.querySelector(".htop .actions");
+    if (!box) return;
+    for (const [sel, ico, dica] of _ACOES) {
+      const a = box.querySelector(sel);
+      if (!a || a.querySelector(".v60-ic")) continue;
+      const txt = a.textContent.trim();
+      a.innerHTML = `<span class="v60-ic" aria-hidden="true">${svgIco(ico)}</span><span class="v60-tx">${txt}</span>`;
+      a.title = dica;
+      a.setAttribute("aria-label", txt);
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "v60-mais";
+    b.id = "v60-mais";
+    b.title = "Mais ações";
+    b.setAttribute("aria-label", "Mais ações");
+    b.setAttribute("aria-haspopup", "menu");
+    b.innerHTML = '<i aria-hidden="true"></i>';
+    b.addEventListener("click", v60Mais);
+    box.appendChild(b);
+  }
+  function v60Mais() {
+    const ov = $("ov"), sh = $("sheet");
+    if (!ov || !sh) return;
+    const som = document.querySelector(".htop [data-som]");
+    const ligado = !!(som && som.classList.contains("on"));
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+   <div class="v60-menu">
+    <button type="button" class="v60-mi${ligado ? " on" : ""}" data-som aria-pressed="${ligado}"><span class="v60-ic" aria-hidden="true"><i class="som-d"></i></span><span class="som-t">${ligado ? "Som" : "Mudo"}</span><small>som de interface</small></button>
+    <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco("§info")}</span>Termos<small>o que cada conceito significa</small></button>
+    <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco("§sweep")}</span>Atividade ao vivo<small>últimos eventos</small></button>
+    <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco("🔧")}</span>Controle</a>
+    <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco("🚪")}</span>Sair</a>
+   </div>`;
+    ov.classList.add("on");
+  }
+  function _feed() {
+    const hf = $("holofeed"), ul = $("hflist");
+    if (!hf || !ul) return;
+    hf.classList.remove("open");
+    const t = hf.querySelector(".hf-t");
+    if (!t) return;
+    for (const n of [...t.childNodes]) if (n.nodeType === 3) n.remove();
+    const lab = document.createElement("span");
+    lab.innerHTML = 'Ao vivo · <span id="v60-hfn" class="num">0</span>';
+    t.insertBefore(lab, $("hfload"));
+    t.setAttribute("role", "button");
+    t.tabIndex = 0;
+    t.title = "Eventos recentes do barramento (janela das últimas 10 linhas) — clique para abrir ou recolher";
+    const pinta = () => {
+      const n = $("v60-hfn");
+      if (n) n.textContent = ul.children.length;
+      t.setAttribute("aria-expanded", hf.classList.contains("open") ? "true" : "false");
+    };
+    const alterna = () => {
+      hf.classList.toggle("open");
+      pinta();
+    };
+    t.addEventListener("click", alterna);
+    t.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        alterna();
+      }
+    });
+    new MutationObserver(pinta).observe(ul, { childList: true });
+    pinta();
+    document.addEventListener("click", (e) => {
+      if (!(e.target && e.target.closest && e.target.closest("[data-v60-feed]"))) return;
+      $("ov").classList.remove("on");
+      hf.classList.add("open");
+      pinta();
+    });
   }
 
   // static/js/src/capacidade/sobrio.js
@@ -9371,7 +9453,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     ]
   };
   function montarSpheres() {
-    $("spheres").innerHTML = SPHERES.map((s) => `<button type="button" class="sph ${s.id} ${s.id === esfera ? "on" : ""}" aria-pressed="${s.id === esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join("");
+    $("spheres").innerHTML = SPHERES.map((s) => `<button type="button" class="sph ${s.id} ${s.id === esfera ? "on" : ""}"${_v60 ? ` title="${s.c}"` : ""} aria-pressed="${s.id === esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join("");
   }
   var _tabsEsfera = null;
   function montarTabs() {
@@ -9381,11 +9463,15 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       _tabsEsfera = esfera;
       nav.innerHTML = TABS[esfera].map((t) => `<button class="${t.id === aba ? "on" : ""}" onclick="ir('${t.id}')" title="${t.tl}" data-aba="${t.id}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join("");
       _tabsMais();
+      if (_v60) {
+        const o = nav.querySelector("button.on");
+        if (o) o.scrollIntoView({ block: "nearest", inline: "center" });
+      }
       return;
     }
     for (const b of nav.children) b.classList.toggle("on", b.dataset.aba === aba);
     const _on = nav.querySelector("button.on");
-    if (_on) _on.scrollIntoView({ block: "nearest", inline: "nearest", behavior: _redMotion ? "auto" : "smooth" });
+    if (_on) _on.scrollIntoView({ block: "nearest", inline: _v60 ? "center" : "nearest", behavior: _redMotion ? "auto" : "smooth" });
     _tabsMaisPintar();
   }
   function _tabsMais() {
