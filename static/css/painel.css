@@ -3674,3 +3674,40 @@
      manchete vazia que parecia dado indisponível. Qualquer `display:` de classe vence o `hidden` do navegador;
      esta regra devolve ao atributo o sentido que o JS espera. */
   [hidden]{display:none!important}
+/* ══ v60 · CLAREZA (2026-11-10) ══════════════════════════════════════════════════════════════════
+   Brief: docs/superpowers/specs/BRIEF-painel-v60-clareza-2026-11-10.md
+   Ordem do dono: "o painel tá muito feio — ajuste tudo". O dado lê primeiro; a vida fica em UM
+   lugar por tela. Vivo ≠ poluído.
+
+   REGRAS DESTE ESTRATO
+   · É o ÚLTIMO da concatenação e NÃO é camadado (@layer): declaração normal daqui vence qualquer
+     estrato antigo, sem precisar de `!important`. As variantes de degradação da cauda
+     (`99-cauda-important.css`: reduced-motion, modo sóbrio) continuam vencendo — de propósito.
+   · TODO seletor começa por `html.v60`. Sem a classe, nenhum byte daqui se aplica: `/painel?v60=0`
+     devolve o painel anterior inteiro.
+   · Nenhum estrato antigo foi reescrito. Desfazer = tirar a classe (ou apagar este arquivo).
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── §3 · tokens ─────────────────────────────────────────────────────────────────────────────── */
+html.v60{
+  --bg:        oklch(0.145 0.018 255);   /* fundo único, azul-noite */
+  --bg-2:      oklch(0.175 0.020 255);   /* header/nav */
+  --card:      oklch(0.200 0.020 255 / .82);
+  --card-hi:   oklch(0.235 0.022 255 / .90);
+  --line:      oklch(0.36 0.025 255 / .55);
+  --line-soft: oklch(0.30 0.020 255 / .45);
+  --ink:       oklch(0.97 0.006 255);
+  --ink-2:     oklch(0.86 0.012 255);
+  --muted:     oklch(0.72 0.016 255);    /* ≥4.5:1 sobre --card */
+  --ion:       oklch(0.78 0.14 258);     /* estrutura/seleção/link */
+  --flame:     oklch(0.78 0.16 55);      /* ação/dinheiro */
+  --crit:      oklch(0.70 0.18 18);
+  --warn:      oklch(0.82 0.14 80);
+  --ok:        oklch(0.80 0.14 158);
+  --r-s:8px; --r-m:12px; --r-l:16px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px;
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --sh: 0 1px 0 oklch(1 0 0 / .05) inset, 0 8px 24px -12px oklch(0 0 0 / .6);
+  --f-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
