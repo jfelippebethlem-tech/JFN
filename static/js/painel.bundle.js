@@ -524,6 +524,7 @@
   // static/js/src/capacidade/estado.js
   var _redMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   var _sobrio = false;
+  var _v60 = document.documentElement.classList.contains("v60");
   function _setSobrio(v) {
     _sobrio = !!v;
   }
@@ -1277,6 +1278,10 @@ void main(){
   function rjbgStart() {
     const cv = $("rjbg");
     if (!cv) return;
+    if (_v60) {
+      cv.remove();
+      return;
+    }
     const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
     const ctx = cv.getContext("2d");
     let W, H, dpr, mapC = null, raf = 0, corAtual = "";
@@ -1388,6 +1393,10 @@ void main(){
   function netbgStart() {
     const cv = $("netbg");
     if (!cv) return;
+    if (_v60) {
+      cv.remove();
+      return;
+    }
     const ctx = cv.getContext("2d");
     let W, H, pts, raf;
     const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
@@ -2383,6 +2392,15 @@ void main(){
       }
       return;
     }
+    if (_v60 && (matchMedia("(max-width:760px)").matches || navigator.connection && navigator.connection.saveData)) {
+      const v0 = host.querySelector("video");
+      if (v0) {
+        v0.classList.remove("on");
+        v0.pause();
+        v0.removeAttribute("autoplay");
+      }
+      return;
+    }
     const url = "/static/assets/" + nome + ".mp4";
     if (_nebVid[nome] === void 0) {
       try {
@@ -2428,7 +2446,7 @@ void main(){
         v.pause();
       }
     };
-    if (esfera !== "estado" || _redMotion || _sobrio) {
+    if (_v60 || esfera !== "estado" || _redMotion || _sobrio) {
       apaga();
       return;
     }
@@ -2566,6 +2584,11 @@ void main(){
   }
   function energiaLigar() {
     energiaParar();
+    if (_v60) {
+      const c = $("ck-energia");
+      if (c) c.remove();
+      return;
+    }
     if (!_medir()) {
       const c = $("ck-energia");
       if (c) c.hidden = true;
@@ -2957,6 +2980,7 @@ void main(){
   }
   var _ESF_RGB = { inicio: "99,224,255", estado: "125,175,255", prefeitura: "235,190,105", geral: "200,150,255" };
   function _wire(nodes, rm) {
+    if (_v60) return;
     cancelAnimationFrame(_wireRAF);
     const C = _ESF_RGB[esfera] || _ESF_RGB.inicio;
     const v = $("view"), fade = v && v.querySelector(".fade");

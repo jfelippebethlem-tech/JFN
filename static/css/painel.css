@@ -3711,3 +3711,30 @@ html.v60{
   --f-sans: "IBM Plex Sans", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
+
+/* legado → v60: os estratos antigos leem estes nomes; apontá-los para os tokens novos consolida a
+   paleta sem reescrever nenhuma regra antiga. `--display` era Orbitron (fase 2: banido). */
+html.v60{
+  --bg2:var(--bg-2); --tx:var(--ink); --tx2:var(--ink-2); --mut:var(--muted);
+  --bd:var(--line); --bd2:var(--line-soft);
+  --sans:var(--f-sans); --mono:var(--f-mono); --display:var(--f-sans);
+}
+
+/* ── Fase 1 · FUNDO: de 12 camadas para 1 (D1) ───────────────────────────────────────────────────
+   Saem: grade holográfica, malha do RJ em canvas, holograma do Estado, malha de rede, as duas
+   auras, a aurora, os dois cometas, a malha de luz atrás dos cards (canvas.view-wire), a textura
+   de placa (body::before) e o piso em perspectiva (body::after, que vira o SCRIM).
+   Fica: #esfnebula, de tela cheia, com o vídeo/poster da esfera a .45 sob um scrim fixo. */
+html.v60 #hologrid, html.v60 #rjbg, html.v60 #holorj, html.v60 #netbg, html.v60 .aura,
+html.v60 #aurora, html.v60 .cometa, html.v60 canvas.view-wire{display:none !important}
+html.v60 body{background:var(--bg)}
+html.v60 body::before{display:none}
+html.v60 #esfnebula{inset:0;width:100%;height:100%;opacity:.45;filter:saturate(1.15);
+  mix-blend-mode:normal;-webkit-mask-image:none;mask-image:none;animation:none;transform:none;
+  background-size:cover;background-position:center;will-change:auto}
+html.v60 #esfnebula video{object-fit:cover}
+html.v60 body::after{content:"";display:block;position:fixed;inset:0;height:auto;z-index:1;
+  pointer-events:none;opacity:1;transform:none;-webkit-mask-image:none;mask-image:none;animation:none;
+  background:linear-gradient(180deg,oklch(0.145 0.018 255 / .55) 0,oklch(0.145 0.018 255 / .88) 40vh,var(--bg) 100vh)}
+/* a pílula "modo sóbrio · N fps" sai da 1ª dobra; a informação continua no Controle */
+html.v60 #modo-sobrio{display:none}

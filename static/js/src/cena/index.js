@@ -34,7 +34,7 @@
 import {$, esc, svgIco, card, kpi, sec, spin, corta, clk} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J} from '../nucleo/http.js';
-import {_redMotion, _sobrio} from '../capacidade/estado.js';
+import {_redMotion, _sobrio, _v60} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
 /* A malha do Estado saiu para `cena/malha-rj.js` (v59). O `import` E o reexport lá no fim são as
    duas metades da mesma decisão: aqui ela é USADA (fundo e mesa a pedem), e lá embaixo ela é
@@ -890,6 +890,11 @@ export async function nebulaViva(){
      dando conta — some o veu, o JPG do pai reaparece por baixo e o quadro fica igual. */
   if(_sobrio){const v0=host.querySelector('video');
     if(v0){v0.classList.remove('on');v0.pause();}return;}
+  /* v60: no celular e com economia de dados o backdrop é SÓ o poster (o JPG que o CSS já pinta no
+     pai, por esfera). Nenhum vídeo é criado nem baixado — é a tela onde decodificar custa mais. */
+  if(_v60&&(matchMedia('(max-width:760px)').matches||(navigator.connection&&navigator.connection.saveData))){
+    const v0=host.querySelector('video');
+    if(v0){v0.classList.remove('on');v0.pause();v0.removeAttribute('autoplay');}return;}
   const url='/static/assets/'+nome+'.mp4';
   if(_nebVid[nome]===undefined){
     try{_nebVid[nome]=(await fetch(url,{method:'HEAD'})).ok}
@@ -921,7 +926,7 @@ export async function holoRJ(){
   const host=$('holorj');if(!host)return;
   let v=host.querySelector('video');
   const apaga=()=>{document.body.classList.remove('holo-on');if(v){v.classList.remove('on');v.pause();}};
-  if(esfera!=='estado'||_redMotion||_sobrio){apaga();return;}
+  if(_v60||esfera!=='estado'||_redMotion||_sobrio){apaga();return;}   // v60: #holorj aposentado (1 camada ambiente)
   const url='/static/assets/holo-rj-estado.mp4';
   if(_nebVid.holorj===undefined){
     try{_nebVid.holorj=(await fetch(url,{method:'HEAD'})).ok}

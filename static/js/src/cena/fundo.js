@@ -17,7 +17,7 @@
  * Sem efeito de topo.
  */
 import {$} from '../nucleo/dom.js';
-import {_sobrio} from '../capacidade/estado.js';
+import {_sobrio, _v60} from '../capacidade/estado.js';
 import {esfera} from '../app/estado.js';
 import {_rjCarregar} from './malha-rj.js';
 import {_ckMX, _ckMY} from './ponteiro.js';
@@ -26,6 +26,7 @@ import {_ckMX, _ckMY} from './ponteiro.js';
 export let _rjbgTinge=()=>{};
 export function rjbgStart(){
   const cv=$('rjbg');if(!cv)return;
+  if(_v60){cv.remove();return;}   // v60: uma camada ambiente só (#esfnebula) — sem canvas, sem RAF
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
   const ctx=cv.getContext('2d');
   let W,H,dpr,mapC=null,raf=0,corAtual='';
@@ -93,7 +94,9 @@ export function rjbgStart(){
   draw(performance.now());
 }
 export function netbgStart(){
-  const cv=$('netbg');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts,raf;
+  const cv=$('netbg');if(!cv)return;
+  if(_v60){cv.remove();return;}   // v60: idem — a malha de rede de tela cheia saiu
+  const ctx=cv.getContext('2d');let W,H,pts,raf;
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
   function size(){const d=Math.min(2,devicePixelRatio);W=cv.width=innerWidth*d;H=cv.height=innerHeight*d;
     cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';cv._d=d;

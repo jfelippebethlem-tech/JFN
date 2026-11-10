@@ -19,7 +19,7 @@
 import {$, esc, corta, card, spin, clk, svgIco, sec, leitura} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
-import {_redMotion, _sobrio} from '../capacidade/estado.js';
+import {_redMotion, _sobrio, _v60} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
 import {revelar, _wireFase} from './revelacao.js';
 import {somTocar} from './midia.js';
@@ -169,6 +169,7 @@ export function _countUp(el){
 }
 const _ESF_RGB={inicio:'99,224,255',estado:'125,175,255',prefeitura:'235,190,105',geral:'200,150,255'};
 export function _wire(nodes,rm){
+  if(_v60)return;   // v60: a malha de luz atrás dos cards saiu (linha cruzando texto) — sem canvas, sem RAF
   cancelAnimationFrame(_wireRAF);
   const C=_ESF_RGB[esfera]||_ESF_RGB.inicio;
   const v=$('view'),fade=v&&v.querySelector('.fade'); if(!v||!fade||nodes.length<2)return;

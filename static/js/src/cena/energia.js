@@ -42,7 +42,7 @@
  * que aparece na tela. O que custa é o pacote, e é o pacote que sai.
  */
 import {$} from '../nucleo/dom.js';
-import {_redMotion, _sobrio} from '../capacidade/estado.js';
+import {_redMotion, _sobrio, _v60} from '../capacidade/estado.js';
 import {EV_COR, EV_DOMINIO} from './index.js';
 import {esfera} from '../app/estado.js';
 
@@ -160,6 +160,9 @@ function _desenhar(agora) {
 /** Liga a órbita. Chamada do `ckBoot`, depois de o `#ck-grid` estar preenchido. */
 export function energiaLigar() {
   energiaParar();
+  /* v60: a órbita de fios entre KPIs e núcleo saiu (o cockpit virou grade; o único canvas é o do
+     núcleo). Sem canvas não há `_linhas`, e `energiaPacote` já se cala sozinho nessa guarda. */
+  if (_v60) { const c = $('ck-energia'); if (c) c.remove(); return; }
   if (!_medir()) { const c = $('ck-energia'); if (c) c.hidden = true; return; }
   _cv.hidden = false;
   _desenhar(performance.now());

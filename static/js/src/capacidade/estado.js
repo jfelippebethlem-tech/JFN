@@ -30,5 +30,11 @@ export let _redMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
    recuo: o painel media o orçamento, dizia "não cabe", e gastava igual. */
 export let _sobrio = false;
 
+/* v60 CLAREZA (2026-11-10): a flag que o script inline do <head> grava em `<html class="v60">`
+   ANTES deste bundle. É constante por carga de página: ligar/desligar é `?v60=1` / `?v60=0`, que
+   recarrega. Mora nesta folha pelo mesmo motivo das outras duas — `cena/*` e `ui/*` a leem para
+   NÃO iniciar os laços das camadas ambientes que o v60 aposentou. */
+export const _v60 = document.documentElement.classList.contains('v60');
+
 /** Único caminho de escrita da bandeira de sobriedade. Chamado só por `capacidade/sobrio.js`. */
 export function _setSobrio(v) { _sobrio = !!v; }
