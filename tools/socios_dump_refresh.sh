@@ -113,7 +113,10 @@ cnpjs = sorted(r[0] for r in rows)
 meses = sorted(r[0] or "" for r in con.execute("SELECT DISTINCT fonte_mes FROM socios_receita"))
 con.close()
 # a foto carregada tem de ser UMA e do mês baixado (o passo 2 troca a foto inteira)
-ok = (nrev > 0 and nemp > 0 and nsoc > 0 and "28470707" in cnpjs and len(cnpjs) >= 2
+# Controle positivo: o presidente do IDESI tem de aparecer no reverso ligado ao IDESI (28470707). NÃO exigir
+# uma segunda empresa: em 10/11/2026 a validação falhou porque ele saiu do quadro da 23645251 entre as fotos
+# de 05 e 10/2026 — fato societário novo, não defeito da carga. Controle que depende de fato mutável mente.
+ok = (nrev > 0 and nemp > 0 and nsoc > 0 and "28470707" in cnpjs
       and meses == [os.environ["MES"]])
 print(f"socios_receita={nsoc} socios_reverso={nrev} empresas_min={nemp}")
 print("MES_CARREGADO=" + ",".join(meses))
