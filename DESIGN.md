@@ -1,5 +1,41 @@
 # DESIGN.md — JFN
 
+> ## 🟦 v60 CLAREZA (2026-11-10) — VIGENTE, supersede o que conflitar abaixo
+> Ordem do dono: "o painel tá muito feio — ajuste tudo". Direção: **Linear/Raycast/Stripe com alma
+> Jarvis** — o dado lê primeiro; a vida fica em UM lugar por tela. Vivo ≠ poluído.
+> Tudo mora em **um** estrato, `static/css/src/99z-v60-clareza.css` (último, não camadado, todo
+> seletor prefixado por `html.v60`), e no par `static/js/src/ui/v60.js`. Os estratos antigos não
+> foram reescritos. Desligar: `/painel?v60=0` (volta o painel anterior inteiro); religar: `?v60=1`.
+> Detalhe por fase: `docs/superpowers/specs/HANDOFF-painel-v60-2026-11-10.md`.
+>
+> **Tokens (bloco `html.v60{…}`)** — fundo `--bg` oklch(0.145 0.018 255) · header/nav `--bg-2` ·
+> cartão `--card` (.82) / `--card-hi` · linhas `--line` / `--line-soft` · tinta `--ink` / `--ink-2` /
+> `--muted` (≥4.5:1 sobre o cartão) · `--ion` oklch(0.78 0.14 258) = estrutura/seleção/link ·
+> `--flame` oklch(0.78 0.16 55) = ação/dinheiro · severidade `--crit` / `--warn` / `--ok` ·
+> raios `--r-s:8 / --r-m:12 / --r-l:16` · espaço 4/8/12/16/24/32 · `--ease` cubic-bezier(.2,.7,.2,1) ·
+> `--sh` (sombra única). ÍON + CHAMA continuam; nunca dessaturar.
+> Tipos (rem, fixos): display 1.75/700 · título de aba 1.25/700 · seção 1/650 · corpo .9375/400 ·
+> valor de KPI 1.5 mono 600 tabular · rótulo .8125 sans 550 em sentence case, sem letter-spacing ·
+> meta .75 mono.
+>
+> **Regras v60 (as que não se negociam):**
+> 1. **Uma camada ambiente**: só `#esfnebula` (vídeo/poster da esfera a .45 sob scrim fixo). Grade,
+>    malha do RJ, rede, auras, aurora, cometas, malha de luz entre cartões e textura NÃO voltam.
+>    No cockpit, um canvas (o núcleo) e um vídeo. No celular, poster — vídeo só ao toque.
+> 2. **Duas fontes**: IBM Plex Sans (texto) + IBM Plex Mono (número/CNPJ/valor). **Sem Orbitron.**
+>    Sem caixa alta em rótulo, sem letter-spacing.
+> 3. **Rating sem emoji**: ponto CSS de 10px + rótulo ("grave", "atenção", "ok"); a legenda da escala
+>    continua explícita. Ícone de UI = SVG de `jfn-icones.js` (nunca emoji, nunca raster).
+> 4. **Navegação**: celular = cabeçalho 56px, esferas no RODAPÉ (64px + safe-area), abas como chips
+>    sticky no topo, ações no menu "⋯". Desktop = cabeçalho 64px numa linha, esferas como segmented
+>    control, chips sticky sob o cabeçalho. Nenhum elemento fixo cobre conteúdo.
+> 5. **KPI**: rótulo → valor → nota; alturas iguais na grade; cor no valor só para severidade ou
+>    dinheiro; sem barra-glow, sem anel, sem ponto de canto. Lista = um contêiner com separadores
+>    (nunca card dentro de card), linha inteira clicável.
+> 6. **Movimento = estado**: 150–220ms, sem bounce, crossfade de 160ms na troca de aba;
+>    `prefers-reduced-motion` desliga tudo. Foco visível: anel 2px `--ion`. Toque ≥44px no celular.
+> 7. Honestidade intacta: INDISPONÍVEL ≠ 0, nenhum número inventado, indício ≠ acusação.
+
 > ## 🔷 v9 "ÍON" + v10 "AGÊNCIA" (2026-07-22) — VIGENTES, supersedem o que conflitar abaixo
 > As camadas são ADITIVAS no CSS (v7 → v8 → v9 → v10, a cascata vence; nunca reescrever bloco antigo).
 > O que está REALMENTE renderizado hoje:
