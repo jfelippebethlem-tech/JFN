@@ -2,7 +2,9 @@
   // static/js/src/nucleo/dom.js
   var $ = (id) => document.getElementById(id);
   var esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  var _ICO_V60 = { "🔬": "🔍", "📁": "📑", "📝": "📜", "🗂️": "🧾", "📨": "📧" };
   var svgIco = (e) => {
+    if (_ICO_V60[e] && document.documentElement.classList.contains("v60")) e = _ICO_V60[e];
     const g = window.JFN_ICO && window.JFN_ICO[e];
     return g ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>` : e;
   };
@@ -788,6 +790,13 @@
         conscienciaToggle();
       }
     });
+  }
+
+  // static/js/src/ui/v60.js
+  function v60Boot() {
+    if (!_v60) return;
+    const hs = $("hsub");
+    if (hs) hs.textContent = "Central de inteligência · RJ";
   }
 
   // static/js/src/capacidade/sobrio.js
@@ -3846,7 +3855,7 @@ void main(){
     J("/api/intel/radar?limite=6").then((d) => {
       if (!d || !d.ok) return;
       ckFill("radar", { num: d.n, meta: `fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico` });
-      ckPush((d.achados || []).slice(0, 5).map((a) => ({ c: "", h: `▸ RADAR ${a.score} — <b>${(a.nome || "").slice(0, 30)}</b> · ${(a.sinais || []).map((s) => rot(s.sinal)).slice(0, 2).join(", ")}` })));
+      ckPush((d.achados || []).slice(0, 5).map((a) => ({ c: "", h: `▸ ${_v60 ? "Radar" : "RADAR"} ${a.score} — <b>${(a.nome || "").slice(0, 30)}</b> · ${(a.sinais || []).map((s) => rot(s.sinal)).slice(0, 2).join(", ")}` })));
     });
     J("/api/intel/comunidades").then((d) => {
       if (!d || !d.ok) return;
@@ -9529,6 +9538,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     cenaPonteiro(e.clientX / innerWidth, e.clientY / innerHeight);
   }, { passive: true });
   (async () => {
+    v60Boot();
     montarSpheres();
     montarTabs();
     netbgStart();
@@ -9541,7 +9551,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (st.exercicio) {
       const hs = $("hsub");
       hs.textContent = "";
-      hs.append("CENTRAL DE INTELIGÊNCIA · SIAFE ");
+      hs.append(_v60 ? "Central de inteligência · SIAFE " : "CENTRAL DE INTELIGÊNCIA · SIAFE ");
       const pt = document.createElement("i");
       pt.className = "sinal " + (st.logged_in ? "ok" : "off");
       pt.title = st.logged_in ? "SIAFE conectado" : "SIAFE sem sessão";

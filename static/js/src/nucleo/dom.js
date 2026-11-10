@@ -13,7 +13,12 @@ export const esc = s => String(s == null ? '' : s)
   .replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
 // ícone da aba = glifo SVG sci-fi, tingido pela esfera. Fallback: o próprio emoji.
+/* v60 (D11): cinco abas ainda caíam no emoji por não terem glifo no set. Em vez de desenhar ícone
+   novo (regra do brief: ícone de UI = o SVG que já existe em `jfn-icones.js`), cada uma aponta
+   para o glifo existente de sentido mais próximo. Só vale com `html.v60`. */
+const _ICO_V60 = {'🔬': '🔍', '📁': '📑', '📝': '📜', '🗂️': '🧾', '📨': '📧'};
 export const svgIco = e => {
+  if (_ICO_V60[e] && document.documentElement.classList.contains('v60')) e = _ICO_V60[e];
   const g = window.JFN_ICO && window.JFN_ICO[e];
   return g ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>` : e;
 };

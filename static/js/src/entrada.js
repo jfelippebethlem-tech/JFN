@@ -33,7 +33,8 @@ import {ritmoEstado} from './ritmo.js';
    `cena/*` le `_sobrio` para parar de agendar quadro, e quem ESCREVE `_sobrio` precisa dos videos
    da cena para pausa-los. Com a bandeira na folha, os dois lados a leem sem se enxergarem.
    As ~40 leituras espalhadas pelo painel nao mudaram: `export let` da binding VIVO. */
-import {_redMotion, _sobrio} from './capacidade/estado.js';
+import {_redMotion, _sobrio, _v60} from './capacidade/estado.js';
+import {v60Boot} from './ui/v60.js';
 import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 /* A CENA — canvas de fundo, mesa de vigilia, videos de esfera e portal. Sem efeito de topo:
    quem a liga e a sequencia de boot abaixo. */
@@ -340,7 +341,7 @@ fetch('/static/assets/no-energia.png',{method:'HEAD'})
    importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/innerHeight);},{passive:true});
-(async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();
+(async()=>{v60Boot();montarSpheres();montarTabs();netbgStart();rjbgStart();
   /* v57: a URL manda no boot — `#g_radar` abre direto na aba, e o Voltar volta pra cá. */
   const _h=decodeURIComponent(location.hash.slice(1));
   await ir(_abaValida(_h)?_h:'i_cockpit');
@@ -352,7 +353,7 @@ addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/i
        embarcadas tem U+2717, e U+2713 a 10px le como a letra "v". Estado de
        sistema e SINAL, nao caractere — e sinal nao depende de fonte. */
     const hs=$('hsub'); hs.textContent='';
-    hs.append('CENTRAL DE INTELIGÊNCIA · SIAFE ');
+    hs.append(_v60?'Central de inteligência · SIAFE ':'CENTRAL DE INTELIGÊNCIA · SIAFE ');   // v60: rótulo sem caixa alta
     const pt=document.createElement('i');
     pt.className='sinal '+(st.logged_in?'ok':'off');
     pt.title=st.logged_in?'SIAFE conectado':'SIAFE sem sessão';

@@ -3738,3 +3738,19 @@ html.v60 body::after{content:"";display:block;position:fixed;inset:0;height:auto
   background:linear-gradient(180deg,oklch(0.145 0.018 255 / .55) 0,oklch(0.145 0.018 255 / .88) 40vh,var(--bg) 100vh)}
 /* a pílula "modo sóbrio · N fps" sai da 1ª dobra; a informação continua no Controle */
 html.v60 #modo-sobrio{display:none}
+
+/* ── Fase 2 · TIPOGRAFIA ÚNICA (D2) ──────────────────────────────────────────────────────────────
+   Duas vozes: Plex Sans (texto) e Plex Mono (número/CNPJ/telemetria). Orbitron sai — ele só
+   entrava por `--display`, remapeado acima. O `*` é deliberado: os estratos antigos declaram
+   família em dezenas de seletores, e só uma regra não camadada os alcança todos de uma vez.
+   A lista mono inclui os DESCENDENTES (`… *`) porque o `*` de cima casa cada filho diretamente:
+   sem isso um <b> dentro de `.v` voltaria a ser sans. */
+html.v60 *{font-family:var(--f-sans);text-transform:none;letter-spacing:0}
+html.v60 :is(.num,.v,.mono,code,pre,kbd,samp,[data-cnpj],.cnpj,td.r,.valor,.money,#hfload,.hf-ts),
+html.v60 :is(.num,.v,.mono,code,pre,kbd,samp,[data-cnpj],.cnpj,td.r,.valor,.money,#hfload,.hf-ts) *{
+  font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+html.v60 body{font-size:.9375rem;line-height:1.5;color:var(--ink)}
+/* valores do cockpit também são número: mono tabular */
+html.v60 :is(.ck-big,.ck-inst .val,.ck-ved .n,.fage,.caps-cmd,.nu-sweep),
+html.v60 :is(.ck-big,.ck-inst .val,.ck-ved .n,.fage,.caps-cmd,.nu-sweep) *{
+  font-family:var(--f-mono);font-variant-numeric:tabular-nums}
