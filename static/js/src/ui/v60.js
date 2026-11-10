@@ -36,6 +36,12 @@ function _observar() {
     const ab = cv.classList.toggle('v60-aberta');
     b.textContent = ab ? 'menos' : 'mais'; b.setAttribute('aria-expanded', ab ? 'true' : 'false');
   });
+  /* linha de lista inteira clicável: repassa o clique ao `.clk` da própria linha */
+  v.addEventListener('click', e => {
+    const linha = e.target && e.target.closest && e.target.closest('.v60-lista > .card.v60-abre');
+    if (!linha || e.target.closest('button,a,input,select,label,[onclick]')) return;
+    const alvo = linha.querySelector('.clk'); if (alvo) alvo.click();
+  });
   v60Vivo(v);
 }
 
@@ -43,6 +49,87 @@ export function v60Vivo(v) {
   if (!_v60 || !v) return;
   _capa(v);
   _kpiN(v);
+  _graus(v);
+  _listas(v);
+  _miudos(v);
+}
+
+/* ── rating sem emoji ───────────────────────────────────────────────────────────────────────────
+   🔴🟡🟢 (e ⚪/🟠) chegam dos renders E do servidor, em ~40 pontos. Em vez de caçar cada um, o passe
+   troca o EMOJI pelo mesmo significado em forma de ponto CSS. Só mexe em nó de TEXTO (atributo e
+   `onclick` ficam intactos — os filtros continuam mandando o emoji para a API).
+   Emoji sozinho no nó = é o rating da linha → ponto + rótulo curto. Emoji no meio de uma frase
+   (legenda da escala, "🔴 ≥50 · 🟡 25-49") → só o ponto, com `aria-label`; o texto em volta já diz
+   o que cada um é, e a legenda segue explícita. */
+/* classes `g-*` e não `crit`/`warn`/`ok`: `.warn` já é uma caixa de aviso da casa */
+const _GRAU = {'🔴': ['g-crit', 'grave'], '🟠': ['g-warn', 'atenção'], '🟡': ['g-warn', 'atenção'],
+               '🟢': ['g-ok', 'ok'], '⚪': ['g-nd', 'sem classificação']};
+const _GRAU_RE = /(?:🔴|🟠|🟡|🟢|⚪)\uFE0F?/gu;
+function _graus(v) {
+  const w = document.createTreeWalker(v, NodeFilter.SHOW_TEXT, {acceptNode: n =>
+    n.nodeValue.search(_GRAU_RE) >= 0 && n.parentElement
+      && !n.parentElement.closest('script,style,textarea,option,select,code,pre,.v60-grau')
+      ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT});
+  const nos = []; let n; while ((n = w.nextNode())) nos.push(n);
+  for (const no of nos) {
+    const txt = no.nodeValue, so = txt.trim().replace(/\uFE0F/g, '');
+    const frag = document.createDocumentFragment();
+    if (_GRAU[so]) {                                   // rating isolado → ponto + rótulo
+      const [c, r] = _GRAU[so];
+      const s = document.createElement('span'); s.className = 'v60-grau ' + c;
+      s.innerHTML = `<i class="v60-pt ${c}" aria-hidden="true"></i>${r}`;
+      frag.appendChild(s);
+    } else {                                           // dentro de frase → só o ponto
+      let i = 0;
+      for (const m of txt.matchAll(_GRAU_RE)) {
+        if (m.index > i) frag.appendChild(document.createTextNode(txt.slice(i, m.index)));
+        const [c, r] = _GRAU[m[0].replace(/\uFE0F/g, '')];
+        const p = document.createElement('i'); p.className = 'v60-pt ' + c;
+        p.setAttribute('role', 'img'); p.setAttribute('aria-label', r);
+        frag.appendChild(p); i = m.index + m[0].length;
+      }
+      if (i < txt.length) frag.appendChild(document.createTextNode(txt.slice(i)));
+    }
+    no.parentNode.replaceChild(frag, no);
+  }
+}
+
+/* ── listas ─────────────────────────────────────────────────────────────────────────────────────
+   Lista = `.grid` de coluna única cujos filhos são todos cartões-linha (sem KPI, sem tabela, sem
+   gráfico, sem grade dentro). Vira UM contêiner com separadores. A linha que tem `.clk` (o nome
+   que abre o dossiê) fica inteira clicável — o clique é repassado ao próprio `.clk`. */
+function _listas(v) {
+  v.querySelectorAll('.grid:not(.g2):not(.g3):not(.g4):not(.two):not(.v60-lista):not(.v60-nl)').forEach(g => {
+    const fs = [...g.children];
+    const ok = fs.length >= 3 && fs.every(c => c.classList.contains('card') && !c.classList.contains('kpi'))
+      && !g.querySelector('table,canvas,.grid,textarea,.chart,svg:not(.jico)')
+      && fs.some(c => c.querySelector('.clk,[onclick]') || c.hasAttribute('onclick'));
+    g.classList.add(ok ? 'v60-lista' : 'v60-nl');
+  });
+  v.querySelectorAll('.v60-lista > .card:not(.v60-abre)').forEach(c => {
+    if (c.querySelector('.clk') || c.hasAttribute('onclick')) c.classList.add('v60-abre');
+  });
+  /* dinheiro à direita da linha fala em chama */
+  v.querySelectorAll('.v60-lista .right > *:not(.v60-din)').forEach(el => {
+    if (!el.children.length && /^R\$\s?[\d.]/.test((el.textContent || '').trim())) el.classList.add('v60-din');
+  });
+}
+
+/* ── miúdos: "+25" da pill em mono, lupa na busca ──────────────────────────────────────────────── */
+function _miudos(v) {
+  v.querySelectorAll('.tag:not([data-v60])').forEach(t => {
+    t.dataset.v60 = '1';
+    if (t.children.length) return;
+    const m = (t.textContent || '').match(/^(.*\S)\s+([+−-]\d+)$/); if (!m) return;
+    t.textContent = m[1];
+    const b = document.createElement('span'); b.className = 'v60-pts'; b.textContent = m[2];
+    t.appendChild(b);
+  });
+  v.querySelectorAll('.search').forEach(b => {
+    let m = b.querySelector('.mag');
+    if (!m) { m = document.createElement('span'); m.className = 'mag'; m.setAttribute('aria-hidden', 'true'); b.insertBefore(m, b.firstChild); }
+    if (!m.firstChild) m.innerHTML = svgIco('🔍');
+  });
 }
 
 /* KPI: `--n` = caracteres do valor (cockpit), para o CSS encolher o corpo só quando o número

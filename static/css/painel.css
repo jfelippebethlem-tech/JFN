@@ -4050,3 +4050,150 @@ html.v60 #view :is(.card,.cover,.ck-inst,.ck-hero,.lnk,.rise){opacity:1;
 @media (prefers-reduced-motion:reduce){
   html.v60 #view :is(.card,.cover,.ck-inst,.ck-hero,.lnk,.rise){animation:none}
 }
+
+/* ── Fase 6 · LISTAS, PILLS, TABELAS, FILTROS (D8, D9) ───────────────────────────────────────────
+   `--dim` (hint de baixo contraste) passa a ser `--muted`: todo rótulo fica ≥4.5:1 sobre o cartão. */
+html.v60{--dim:var(--muted);--dim-sm:var(--muted);--leg:var(--muted)}
+
+/* cartão genérico: plano, sem holofote (`::before`), sem faixa/cantos (`::after`), sem 3D */
+html.v60 .card{background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r-l);padding:16px;
+  box-shadow:var(--sh);transform:none;transform-style:flat;background-image:none;
+  transition:border-color .16s var(--ease)}
+html.v60 .card::before, html.v60 .card::after{display:none}
+html.v60 .card:hover{background:var(--card);background-image:none;border-color:var(--line);box-shadow:var(--sh);transform:none}
+html.v60 .card.hl{border-color:color-mix(in oklch,var(--crit) 45%,transparent)}
+html.v60 .card .card{background:none;border:0;box-shadow:none;padding:0;border-radius:0}   /* nunca card dentro de card */
+/* título de seção */
+html.v60 h2.sec{margin:24px 0 12px;font-size:1rem;font-weight:650;color:var(--ink);gap:8px}
+html.v60 h2.sec::before, html.v60 h2.sec::after{display:none}
+html.v60 h2.sec .cnt{font-size:.8125rem;font-weight:400;color:var(--muted)}
+html.v60 .sect::before{content:none}
+html.v60 .dim{color:var(--muted)}
+html.v60 .note{background:oklch(1 0 0 / .03);border:1px solid var(--line-soft);border-radius:var(--r-m);
+  padding:12px 14px;color:var(--ink-2);font-size:.8125rem;line-height:1.5}
+html.v60 .leitura{border-radius:var(--r-m)}
+html.v60 .clk{font-weight:600;color:var(--ink);border-bottom:0;text-decoration:none;padding:0;filter:none;
+  transition:color .16s var(--ease)}
+html.v60 .clk:hover{color:var(--ion);border-bottom:0;text-shadow:none}
+
+/* LISTA — a classe é posta por `ui/v60.js` em toda `.grid` de coluna única que só tem cartões-linha.
+   Um contêiner, separador entre linhas; a linha inteira abre o dossiê. */
+html.v60 .grid.v60-lista{gap:0;background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r-l);
+  box-shadow:var(--sh);overflow:hidden}
+html.v60 .grid.v60-lista > .card{position:relative;background:none;border:0;border-top:1px solid var(--line-soft);
+  border-radius:0;box-shadow:none;padding:12px 16px;min-height:60px;display:grid;align-content:center;
+  animation:none;transition:background .16s var(--ease)}
+html.v60 .grid.v60-lista > .card:first-child{border-top:0}
+html.v60 .grid.v60-lista > .card.v60-abre{cursor:pointer;padding-right:40px}
+html.v60 .grid.v60-lista > .card.v60-abre::after{content:"";display:block;position:absolute;right:18px;top:50%;
+  width:7px;height:7px;margin-top:-4px;inset-inline-start:auto;inset-block-end:auto;border:0;
+  border-right:1.6px solid var(--muted);border-bottom:1.6px solid var(--muted);border-radius:0;background:none;
+  opacity:1;transform:rotate(-45deg);animation:none}
+html.v60 .grid.v60-lista > .card:hover{background:oklch(1 0 0 / .03)}
+html.v60 .grid.v60-lista > .card:hover .clk{color:var(--ion)}
+html.v60 .grid.v60-lista > .card:active{background:oklch(1 0 0 / .05)}
+html.v60 .grid.v60-lista .clk{font-size:.9375rem;line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+html.v60 .grid.v60-lista .dim{font-family:var(--f-mono);font-size:.75rem;line-height:1.4;color:var(--muted);margin-top:2px}
+html.v60 .grid.v60-lista .right{flex:0 0 auto;display:grid;justify-items:end;gap:4px}
+html.v60 .v60-din{font-family:var(--f-mono);font-size:.875rem;color:var(--flame);font-variant-numeric:tabular-nums;white-space:nowrap}
+html.v60 .grid.v60-lista .right .v60-din{margin:0;font-size:.875rem;color:var(--flame)}
+@media (min-width:761px){
+  /* desktop: valor e rating na MESMA linha (valor · ponto+rótulo · ›) — a linha fica em ~60px */
+  html.v60 .grid.v60-lista .right{display:flex;flex-direction:row-reverse;align-items:center;gap:20px}
+  html.v60 .grid.v60-lista .right .v60-grau{min-width:72px}
+}
+
+/* RATING sem emoji: ponto CSS de 10px + rótulo curto. A escala continua explícita na legenda. */
+html.v60 .v60-grau{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-sans);font-size:.75rem;
+  font-weight:550;line-height:1;white-space:nowrap;color:var(--ink-2);vertical-align:middle}
+html.v60 .v60-pt{display:inline-block;width:10px;height:10px;border-radius:50%;flex:0 0 auto;vertical-align:-1px;
+  background:var(--muted)}
+html.v60 .v60-pt.g-crit{background:var(--crit)}
+html.v60 .v60-pt.g-warn{background:var(--warn)}
+html.v60 .v60-pt.g-ok{background:var(--ok)}
+html.v60 .v60-pt.g-nd{background:none;box-shadow:inset 0 0 0 1.5px var(--muted)}
+html.v60 .v60-grau.g-crit{color:color-mix(in oklch,var(--crit) 60%,white)}
+html.v60 .v60-grau.g-warn{color:color-mix(in oklch,var(--warn) 75%,white)}
+html.v60 .v60-grau.g-ok{color:color-mix(in oklch,var(--ok) 75%,white)}
+
+/* PILLS de sinal */
+html.v60 :is(.tag,.pill){display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:0;border-radius:999px;
+  font-size:.75rem;font-weight:550;line-height:1.35;white-space:normal;box-shadow:none;animation:none;
+  background:oklch(1 0 0 / .07);color:var(--ink-2)}
+html.v60 .tag.rose, html.v60 .pill.alto{background:color-mix(in oklch,var(--crit) 14%,transparent);color:color-mix(in oklch,var(--crit) 55%,white)}
+html.v60 .tag.amber, html.v60 .pill.medio{background:color-mix(in oklch,var(--warn) 14%,transparent);color:color-mix(in oklch,var(--warn) 72%,white)}
+html.v60 .tag.green{background:color-mix(in oklch,var(--ok) 14%,transparent);color:color-mix(in oklch,var(--ok) 75%,white)}
+html.v60 :is(.tag.accent,.tag.teal,.tag.purple){background:color-mix(in oklch,var(--ion) 14%,transparent);color:color-mix(in oklch,var(--ion) 70%,white)}
+html.v60 td .tag{margin:2px 6px 2px 0}
+html.v60 .v60-pts{font-family:var(--f-mono);font-size:.75rem;font-weight:500;opacity:.8}
+html.v60 :is(.sev-alta,.grave,.sev-media,.medio){animation:none}
+html.v60 .meter{width:64px;height:4px;border-radius:2px;background:oklch(1 0 0 / .08);box-shadow:none}
+html.v60 .meter::after{display:none}
+html.v60 .meter i{background:var(--warn);box-shadow:none}
+html.v60 .meter.crit i{background:var(--crit);box-shadow:none}
+
+/* TABELAS */
+html.v60 table{font-size:.875rem;border-collapse:separate;border-spacing:0}
+html.v60 thead tr{border-bottom:0}
+html.v60 thead th{font-size:.75rem;font-weight:600;color:var(--muted);padding:0 12px 10px 0;
+  border-bottom:1px solid var(--line);white-space:nowrap}
+html.v60 tbody td{height:44px;padding:8px 12px 8px 0;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+html.v60 tbody tr:nth-child(even) td{background:oklch(1 0 0 / .02)}
+html.v60 tbody tr{animation:none}
+html.v60 tbody tr::after{display:none}
+html.v60 tbody tr:hover td{background:oklch(1 0 0 / .04)}
+html.v60 tbody tr:hover td:first-child{text-shadow:none}
+html.v60 :is(td.num,td.r,td.right,th.right,th.num){text-align:right}
+html.v60 :is(td.num,td.r,td .num){font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+html.v60 th.srt:hover{color:var(--ion)}
+/* tabela larga rola DENTRO do cartão, com sombra de borda dizendo que há mais */
+html.v60 .card:has(> table){overflow-x:auto;
+  background:
+    linear-gradient(90deg,oklch(0.200 0.020 255) 30%,transparent) left / 24px 100% no-repeat local,
+    linear-gradient(270deg,oklch(0.200 0.020 255) 30%,transparent) right / 24px 100% no-repeat local,
+    linear-gradient(90deg,oklch(0 0 0 / .45),transparent) left / 12px 100% no-repeat scroll,
+    linear-gradient(270deg,oklch(0 0 0 / .45),transparent) right / 12px 100% no-repeat scroll,
+    var(--card)}
+@media (min-width:1100px){
+  /* desktop largo: o cartão não recorta, então o cabeçalho gruda sob o trilho de abas */
+  html.v60 .card:has(> table){overflow:visible !important;background:var(--card)}   /* vence o `overflow-x:auto` inline dos renders */
+  html.v60 .card > table > thead th{position:sticky;top:104px;z-index:2;background:oklch(0.200 0.020 255);padding-top:10px}
+}
+
+/* FILTROS / BUSCA */
+html.v60 :where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){min-height:44px;
+  padding:10px 14px;border-radius:var(--r-m);border:1px solid var(--line);background:oklch(0 0 0 / .22);
+  color:var(--ink);font-size:.9375rem;box-shadow:none;transition:border-color .16s var(--ease)}
+html.v60 :is(input,select,textarea)::placeholder{color:var(--muted)}
+html.v60 :is(input,select,textarea):focus{outline:0;border-color:var(--ion);box-shadow:0 0 0 2px color-mix(in oklch,var(--ion) 30%,transparent)}
+html.v60 .search{position:relative;margin:0 0 12px}
+html.v60 .search input{padding-left:40px;padding-right:52px}
+html.v60 .search .mag{position:absolute;left:14px;top:50%;width:16px;height:16px;margin-top:-8px;color:var(--muted);line-height:0;pointer-events:none}
+html.v60 .search .mag::before, html.v60 .search .mag::after{content:none}
+html.v60 .search .mag .jico{width:16px;height:16px}
+html.v60 .search .az{all:unset;box-sizing:border-box;position:absolute;right:4px;top:50%;margin-top:-18px;
+  min-width:36px;height:36px;padding:0 8px;display:grid;place-items:center;border-radius:var(--r-s);
+  font-family:var(--f-mono);font-size:.75rem;font-weight:500;color:var(--muted);cursor:pointer;
+  transition:color .16s var(--ease),background .16s var(--ease)}
+html.v60 .search .az::before, html.v60 .search .az::after{content:none}
+html.v60 .search .az:hover{color:var(--ink);background:oklch(1 0 0 / .06)}
+html.v60 .search .az.on{color:var(--ion)}
+/* chips de filtro = o mesmo chip do trilho de abas */
+html.v60 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+html.v60 .chip{all:unset;box-sizing:border-box;position:relative;display:inline-flex;align-items:center;gap:6px;
+  height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line-soft);
+  font-size:.8125rem;font-weight:550;line-height:1;color:var(--muted);cursor:pointer;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+  transition:color .16s var(--ease),background .16s var(--ease),border-color .16s var(--ease)}
+html.v60 .chip::before, html.v60 .chip::after{content:none}
+html.v60 .chip:hover{color:var(--ink);background:oklch(1 0 0 / .05)}
+html.v60 .chip.on{color:var(--ink);background:color-mix(in oklch,var(--ion) 16%,transparent);
+  border-color:color-mix(in oklch,var(--ion) 45%,transparent)}
+html.v60 .chip.sev.media::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn)}
+html.v60 .chip.sev.alta::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--crit)}
+html.v60 .chip .jico{width:14px;height:14px}
+@media (max-width:760px){
+  html.v60 .chip{height:36px}
+  html.v60 .chip::after{content:"";position:absolute;inset:-4px 0}            /* alvo de 44px */
+}
