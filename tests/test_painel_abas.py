@@ -32,8 +32,10 @@ from tools.painel_abas import abas, abas_por_esfera
 # pagamento sem contrato como rotina na saúde estadual; a aba expõe quem, quantas vezes e quanto.
 # 2026-09-12: 63 → 64 e estado 18 → 19. Entrou "Imprensa por órgão" (`e_imprensa`): Google News RSS (sem chave)
 # por órgão, classificado por termo de risco — pedido do dono por fontes online sem API.
-TOTAL = 67
-POR_ESFERA = {"inicio": 1, "estado": 19, "prefeitura": 15, "geral": 32}
+# 2026-11-09: 67 → 68 e geral 32 → 33. Entrou "Requerimentos" (`g_requerimentos`): os pedidos de informação
+# sugeridos pelas investigações, lidos de `~/vault/requerimentos/` — pedido do dono; só leitura.
+TOTAL = 68
+POR_ESFERA = {"inicio": 1, "estado": 19, "prefeitura": 15, "geral": 33}
 
 
 def test_le_todas_as_abas_do_painel():

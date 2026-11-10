@@ -53,6 +53,21 @@ async def api_casos_nota(slug: str = ""):
     return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
 
 
+@router.get("/api/requerimentos")
+async def api_requerimentos():
+    """Os requerimentos de informação sugeridos pelas investigações (notas do vault) — só leitura."""
+    from compliance_agent.requerimentos_vault import listar
+    r = await asyncio.to_thread(listar)
+    return JSONResponse(content=r, status_code=200 if r.get("ok") else 503)
+
+
+@router.get("/api/requerimentos/minuta")
+async def api_requerimentos_minuta(slug: str = ""):
+    from compliance_agent.requerimentos_vault import minuta
+    r = await asyncio.to_thread(minuta, slug)
+    return JSONResponse(content=r, status_code=200 if r.get("ok") else 404)
+
+
 _EST: dict = {}
 
 
