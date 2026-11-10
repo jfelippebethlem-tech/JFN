@@ -812,7 +812,7 @@
     document.addEventListener("click", (e) => {
       const b = e.target && e.target.closest && e.target.closest("[data-v60-desc]");
       if (!b) return;
-      const cv = b.closest(".cover");
+      const cv = b.closest(".cover,.ck-lead");
       if (!cv) return;
       const ab = cv.classList.toggle("v60-aberta");
       b.textContent = ab ? "menos" : "mais";
@@ -833,6 +833,43 @@
     _graus(v);
     _listas(v);
     _miudos(v);
+    _cockpit(v);
+  }
+  function _cockpit(v) {
+    const ck = v.querySelector(".ck");
+    if (!ck) return;
+    const big = ck.querySelector(".ck-big");
+    if (big) {
+      const n = String((big.textContent || "").trim().length || 1);
+      if (big.style.getPropertyValue("--n") !== n) big.style.setProperty("--n", n);
+    }
+    const sub = ck.querySelector(".ck-sub"), lead = ck.querySelector(".ck-lead");
+    if (sub && lead && !lead.querySelector(".v60-desc-mais") && sub.scrollHeight > sub.clientHeight + 2) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "v60-desc-mais";
+      b.dataset.v60Desc = "1";
+      b.setAttribute("aria-expanded", "false");
+      b.textContent = "mais";
+      lead.appendChild(b);
+    }
+    if (!ck.querySelector(".v60-feed")) {
+      const d = document.createElement("details");
+      d.className = "v60-feed";
+      d.innerHTML = '<summary>Atividade ao vivo · <span class="num v60-feed-n">0</span></summary><ul></ul><div class="v60-feed-vz">Sem eventos novos por enquanto.</div>';
+      ck.appendChild(d);
+      v60FeedEspelhar();
+    }
+  }
+  function v60FeedEspelhar() {
+    const ul = $("hflist");
+    if (!ul) return;
+    document.querySelectorAll(".v60-feed").forEach((d) => {
+      const n = d.querySelector(".v60-feed-n"), l = d.querySelector("ul"), z = d.querySelector(".v60-feed-vz");
+      if (n) n.textContent = ul.children.length;
+      if (l) l.innerHTML = ul.innerHTML;
+      if (z) z.hidden = ul.children.length > 0;
+    });
   }
   var _GRAU = {
     "🔴": ["g-crit", "grave"],
@@ -1011,7 +1048,10 @@
         alterna();
       }
     });
-    new MutationObserver(pinta).observe(ul, { childList: true });
+    new MutationObserver(() => {
+      pinta();
+      v60FeedEspelhar();
+    }).observe(ul, { childList: true });
     pinta();
     document.addEventListener("click", (e) => {
       if (!(e.target && e.target.closest && e.target.closest("[data-v60-feed]"))) return;
@@ -1697,7 +1737,7 @@ void main(){
   // static/js/src/cena/index.js
   var _nebVid = {};
   var _nuVid = {};
-  var NUCLEO_COM_POSTER = /* @__PURE__ */ new Set(["nucleo-holo-prefeitura", "nucleo-holo-transversal"]);
+  var NUCLEO_COM_POSTER = /* @__PURE__ */ new Set(["nucleo-holo-rj", "nucleo-holo-prefeitura", "nucleo-holo-transversal"]);
   var NU_NODES = [
     { id: "radar", lab: "radar de risco", tab: "g_radar", cor: "#5fd9ff", orb: 0.9, sp: 1 },
     { id: "alertas", lab: "alertas", tab: "e_alertas", cor: "#ff7a8a", orb: 0.66, sp: -0.7 },
@@ -1826,13 +1866,27 @@ void main(){
       if (v) v.classList.remove("on");
       return;
     }
+    const semAuto = _v60 && matchMedia("(max-width:760px)").matches;
     if (!v) {
       v = document.createElement("video");
       v.className = "holo";
       v.muted = true;
       v.loop = true;
       v.playsInline = true;
-      v.autoplay = true;
+      v.autoplay = !semAuto;
+      if (semAuto) {
+        v.preload = "none";
+        v.classList.add("on");
+        box.title = "Toque na mesa para animar o holograma (toque de novo para pausar)";
+        box.addEventListener("click", (e) => {
+          if (e.target.closest(".nu-chip,button,a")) return;
+          const vv = box.querySelector("video.holo");
+          if (!vv) return;
+          if (vv.paused) vv.play().catch(() => {
+          });
+          else vv.pause();
+        });
+      }
       v.setAttribute("aria-hidden", "true");
       v.addEventListener("playing", () => v.classList.add("on"));
       _nuEmbrulhar(box, v, "holo");
@@ -1845,6 +1899,10 @@ void main(){
       v.innerHTML = '<source src="' + url.replace(".mp4", ".webm") + '" type="video/webm"><source src="' + url + '" type="video/mp4">';
       v.load();
     }
+    if (semAuto) {
+      v.classList.add("on");
+      return;
+    }
     v.play().catch(() => {
     });
   }
@@ -1852,6 +1910,13 @@ void main(){
     const box = $("ck-nucleo");
     if (!box) return;
     let v = box.querySelector("video.mesa");
+    if (_v60) {
+      if (v) {
+        v.classList.remove("on");
+        v.pause();
+      }
+      return;
+    }
     if (_redMotion || _sobrio) {
       if (v) {
         v.classList.remove("on");
@@ -1934,9 +1999,17 @@ void main(){
     }
     let _railW = 182, _compacto = false, _gradeH = 0;
     function trilhos() {
-      _compacto = W < 720;
+      _compacto = _v60 || W < 720;
       box.classList.toggle("compacto", _compacto);
       if (_compacto) {
+        if (_v60) {
+          _gradeH = 0;
+          NU_NODES.forEach((no) => {
+            no._ax = null;
+          });
+          box.style.setProperty("--grade-h", "0px");
+          return;
+        }
         const cols = W < 430 ? 2 : 3, gap = 8, marg = 12;
         const cw = Math.floor((W - marg * 2 - gap * (cols - 1)) / cols);
         let ch = 0;
@@ -4006,7 +4079,18 @@ void main(){
   function ckBoot() {
     const g = $("ck-grid");
     if (!g) return;
-    g.innerHTML = [
+    if (_v60) g.innerHTML = [
+      ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
+      ckCard("alertas", "Alertas", "ckrose", "bgrose", "e_alertas"),
+      ckCard("fenix", "Pago a empresa morta", "ckrose", "bgrose", "g_fenix"),
+      ckCard("compras", "Compras auditáveis", "", "bgteal", "e_comp"),
+      ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
+      ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
+      ckCard("orgao", "Órgão que mais economiza", "ckgood", "bgteal", "e_comp"),
+      ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos"),
+      ckCard("lift", "Melhor detector (lift)", "", "bgteal", "g_retro")
+    ].join("");
+    else g.innerHTML = [
       ckCard("radar", "Radar de risco", "", "bgteal", "g_radar"),
       ckCard("com", "Comunidades", "", "bgteal", "g_comun"),
       ckCard("dossie", "Caro + suspeito", "ckrose", "bgrose", "e_comp"),
@@ -4032,9 +4116,15 @@ void main(){
       if (!a || a.total == null) {
         nuSet("alertas", null);
         if (el) el.title = erroHumano(d && d.erro);
+        const m = $("cki-alertas") && $("cki-alertas").querySelector(".meta");
+        if (m) {
+          m.textContent = "indisponível — " + erroHumano(d && d.erro);
+          m.classList.remove("esperando");
+        }
         return;
       }
       nuSet("alertas", a.total);
+      ckFill("alertas", { num: a.total, meta: `<b class="ckrose">${fmtN(a.alta || 0)}</b> de gravidade alta · ${fmtN(a.media || 0)} média` });
       if (el) el.title = `${fmtN(a.alta || 0)} de gravidade alta · ${fmtN(a.media || 0)} média — a lista da tela mostra as ${fmtN((d.lista_alertas || []).length)} primeiras`;
     });
     if (first) J("/api/intel/ninho_sala?limite=60").then((d) => {

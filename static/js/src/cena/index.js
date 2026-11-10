@@ -54,7 +54,7 @@ var _nebVid={};   // cache das sondas HEAD da nebulosa — lido no boot, antes d
 var _nuVid={};    // idem para o núcleo holográfico (um loop por esfera)
 /* Quais núcleos TÊM poster no disco. Nem toda esfera tem: `nucleo-holo-rj` nunca teve .jpg.
    Conferida contra `static/assets/` por `tests/test_painel_assets.py` — ver `nucleoViva`. */
-export const NUCLEO_COM_POSTER=new Set(['nucleo-holo-prefeitura','nucleo-holo-transversal']);
+export const NUCLEO_COM_POSTER=new Set(['nucleo-holo-rj','nucleo-holo-prefeitura','nucleo-holo-transversal']);   // v60: o .jpg do RJ é um quadro do próprio vídeo (ffmpeg), poster do celular
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -168,8 +168,17 @@ export async function nucleoViva(){
     try{_nuVid[nome]=(await fetch(url,{method:'HEAD'})).ok}
     catch(e){_nuVid[nome]=false}}
   if(!_nuVid[nome]){if(v)v.classList.remove('on');return;}
+  /* v60: no celular o núcleo é POSTER estático e só toca se a pessoa tocar na mesa — decodificar
+     vídeo sem ninguém pedir é o custo que o celular menos aguenta. Desktop segue em autoplay. */
+  const semAuto=_v60&&matchMedia('(max-width:760px)').matches;
   if(!v){v=document.createElement('video');v.className='holo';
-    v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=true;
+    v.muted=true;v.loop=true;v.playsInline=true;v.autoplay=!semAuto;
+    if(semAuto){v.preload='none';v.classList.add('on');
+      box.title='Toque na mesa para animar o holograma (toque de novo para pausar)';
+      box.addEventListener('click',e=>{
+        if(e.target.closest('.nu-chip,button,a'))return;
+        const vv=box.querySelector('video.holo');if(!vv)return;
+        if(vv.paused)vv.play().catch(()=>{});else vv.pause();});}
     v.setAttribute('aria-hidden','true');
     /* .on so quando ha QUADRO de verdade — play() que resolve sem codec deixaria
        o veu ligado sobre video preto. */
@@ -195,6 +204,7 @@ export async function nucleoViva(){
     v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'
                +'<source src="'+url+'" type="video/mp4">';
     v.load();}
+  if(semAuto){v.classList.add('on');return;}   // poster à vista; o play é do toque
   v.play().catch(()=>{});
 }
 /* A MESA VIVA. O piso de projecao sob o nucleo era um JPG estatico: uma foto de mesa embaixo de
@@ -210,6 +220,8 @@ export async function nucleoViva(){
 export async function mesaViva(){
   const box=$('ck-nucleo');if(!box)return;
   let v=box.querySelector('video.mesa');
+  /* v60: UM vídeo só no núcleo (o holograma). O piso vivo não é criado. */
+  if(_v60){if(v){v.classList.remove('on');v.pause();}return;}
   if(_redMotion||_sobrio){if(v){v.classList.remove('on');v.pause();}return;}
   const url='/static/assets/mesa-projecao.mp4';
   if(_nuVid.mesa===undefined){
@@ -272,9 +284,12 @@ export function nucleoStart(){
        largura toda e a mesa vira um borrão de 120px (medido no emulador a 390px).
        Nesse regime os rótulos descem para uma GRADE sob a mesa e a cena fica com a
        largura inteira — a linha-guia perde a função e sai. */
-    _compacto=W<720;
+    _compacto=_v60||W<720;
     box.classList.toggle('compacto',_compacto);
     if(_compacto){
+      /* v60: os rótulos-chip da mesa saem (os mesmos 7 números estão na grade de KPIs ao lado,
+         que agora inclui Alertas). Sem grade de chips a mesa fica com a altura INTEIRA do cartão. */
+      if(_v60){_gradeH=0;NU_NODES.forEach(no=>{no._ax=null;});box.style.setProperty('--grade-h','0px');return;}
       const cols=W<430?2:3, gap=8, marg=12;
       const cw=Math.floor((W-marg*2-gap*(cols-1))/cols);
       let ch=0;

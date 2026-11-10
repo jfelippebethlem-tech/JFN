@@ -32,7 +32,7 @@ function _observar() {
   /* "mais"/"menos" da descrição do cabeçalho de aba — delegado */
   document.addEventListener('click', e => {
     const b = e.target && e.target.closest && e.target.closest('[data-v60-desc]'); if (!b) return;
-    const cv = b.closest('.cover'); if (!cv) return;
+    const cv = b.closest('.cover,.ck-lead'); if (!cv) return;
     const ab = cv.classList.toggle('v60-aberta');
     b.textContent = ab ? 'menos' : 'mais'; b.setAttribute('aria-expanded', ab ? 'true' : 'false');
   });
@@ -52,6 +52,40 @@ export function v60Vivo(v) {
   _graus(v);
   _listas(v);
   _miudos(v);
+  _cockpit(v);
+}
+
+/* ── cockpit: "mais" no texto do herói e o mini-card "Atividade ao vivo" ───────────────────────── */
+function _cockpit(v) {
+  const ck = v.querySelector('.ck'); if (!ck) return;
+  const big = ck.querySelector('.ck-big');
+  if (big) { const n = String((big.textContent || '').trim().length || 1);
+             if (big.style.getPropertyValue('--n') !== n) big.style.setProperty('--n', n); }
+  const sub = ck.querySelector('.ck-sub'), lead = ck.querySelector('.ck-lead');
+  if (sub && lead && !lead.querySelector('.v60-desc-mais') && sub.scrollHeight > sub.clientHeight + 2) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'v60-desc-mais'; b.dataset.v60Desc = '1';
+    b.setAttribute('aria-expanded', 'false'); b.textContent = 'mais';
+    lead.appendChild(b);
+  }
+  if (!ck.querySelector('.v60-feed')) {
+    const d = document.createElement('details'); d.className = 'v60-feed';
+    d.innerHTML = '<summary>Atividade ao vivo · <span class="num v60-feed-n">0</span></summary>'
+      + '<ul></ul><div class="v60-feed-vz">Sem eventos novos por enquanto.</div>';
+    ck.appendChild(d);
+    v60FeedEspelhar();
+  }
+}
+
+/** Copia a janela do holofeed para o mini-card do cockpit (quando ele existe). */
+export function v60FeedEspelhar() {
+  const ul = $('hflist'); if (!ul) return;
+  document.querySelectorAll('.v60-feed').forEach(d => {
+    const n = d.querySelector('.v60-feed-n'), l = d.querySelector('ul'), z = d.querySelector('.v60-feed-vz');
+    if (n) n.textContent = ul.children.length;
+    if (l) l.innerHTML = ul.innerHTML;
+    if (z) z.hidden = ul.children.length > 0;
+  });
 }
 
 /* ── rating sem emoji ───────────────────────────────────────────────────────────────────────────
@@ -223,7 +257,7 @@ function _feed() {
   const alterna = () => { hf.classList.toggle('open'); pinta(); };
   t.addEventListener('click', alterna);
   t.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alterna(); } });
-  new MutationObserver(pinta).observe(ul, {childList: true});
+  new MutationObserver(() => { pinta(); v60FeedEspelhar(); }).observe(ul, {childList: true});
   pinta();
   /* item "Atividade ao vivo" do menu "⋯" — delegado: o #sheet troca de innerHTML a cada abertura */
   document.addEventListener('click', e => {

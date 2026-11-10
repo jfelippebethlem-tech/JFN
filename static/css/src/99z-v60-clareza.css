@@ -521,3 +521,80 @@ html.v60 .chip .jico{width:14px;height:14px}
   html.v60 .chip{height:36px}
   html.v60 .chip::after{content:"";position:absolute;inset:-4px 0}            /* alvo de 44px */
 }
+
+/* ── Fase 7 · COCKPIT (`i_cockpit`) ──────────────────────────────────────────────────────────────
+   Ordem: herói → grade de KPIs → núcleo → ticker → atividade ao vivo → funções mestras → fontes.
+   A órbita v59 (`.ck-orbita` em grade de 3 colunas com fios de energia) vira `display:contents`:
+   a grade é a do `.ck`. O núcleo fica com UM vídeo (o holograma) + o canvas; o piso `video.mesa`
+   e o JPG da mesa (`.ck-nucleo::before`) saem. */
+html.v60 .ck{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+html.v60 .ck > *, html.v60 .ck-orbita > *{margin:0;min-width:0}
+html.v60 .ck-orbita{display:contents}
+html.v60 .ck-inst{grid-column:auto;grid-row:auto}
+html.v60 .ck-hero{order:1;display:block;padding:16px;background:var(--card);background-image:none;
+  border:1px solid var(--line-soft);border-radius:var(--r-l);box-shadow:var(--sh)}
+html.v60 .ck-hero::before, html.v60 .ck-hero::after{display:none}
+html.v60 .ck-lead{container-type:inline-size}
+html.v60 .ck-eye{font-size:.8125rem;font-weight:550;color:var(--muted)}
+html.v60 .ck-big{font-size:min(2.25rem,calc(100cqi / (var(--n,16) * .62)));font-weight:650;line-height:1.15;
+  letter-spacing:-.01em;color:var(--flame);margin:4px 0 8px;text-shadow:none;white-space:nowrap}
+html.v60 .ck-sub{font-size:.875rem;line-height:1.45;color:var(--muted);max-width:72ch;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+html.v60 .ck-lead.v60-aberta .ck-sub{display:block;-webkit-line-clamp:unset;line-clamp:unset;overflow:visible}
+html.v60 .ck-ved{margin-top:12px;border-radius:var(--r-m);animation:none;box-shadow:none}
+html.v60 #ck-grid{order:2;display:grid}
+html.v60 .ck-nucleo{order:3;height:280px;margin-bottom:28px;overflow:visible;border:1px solid var(--line-soft);
+  border-radius:var(--r-l);background:oklch(0.125 0.02 255);box-shadow:var(--sh)}
+html.v60 .ck-nucleo::before{display:none}
+html.v60 .ck-nucleo > .nu-vid-mesa{display:none}
+/* os chips-rótulo da mesa repetiam os números da grade de KPIs e cobriam o mapa no celular */
+html.v60 #nu-chips{display:none}
+html.v60 .nu-legend, html.v60 .nu-hud{font-size:.6875rem;color:var(--muted)}
+/* a pílula "alimentando · SEI · …" vira legenda sob o cartão */
+html.v60 .nu-sweep{top:100%;bottom:auto;left:0;right:0;transform:none;margin-top:8px;padding:0;border:0;
+  border-radius:0;background:none;box-shadow:none;justify-content:flex-start;gap:6px;
+  font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;backdrop-filter:none;animation:none}
+html.v60 .ck-ticker{order:4;height:36px;margin:0;border:1px solid var(--line-soft);border-radius:var(--r-m);
+  background:var(--card);-webkit-mask-image:linear-gradient(90deg,transparent,#000 32px,#000 calc(100% - 32px),transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 32px,#000 calc(100% - 32px),transparent)}
+html.v60 .ck-ticker .lane{animation-duration:100s;font-size:.8125rem;color:var(--muted)}   /* era 60s: −40% de velocidade */
+html.v60 .ck-ticker .lane span b{color:var(--ink-2)}
+html.v60 .ck-ticker:hover .lane, html.v60 .ck-ticker:active .lane{animation-play-state:paused}
+html.v60 .v60-feed{order:5;background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r-l);
+  box-shadow:var(--sh);overflow:hidden}
+html.v60 .v60-feed summary{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;cursor:pointer;
+  font-size:.875rem;font-weight:600;color:var(--ink);list-style:none}
+html.v60 .v60-feed summary::-webkit-details-marker{display:none}
+html.v60 .v60-feed summary::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+html.v60 .v60-feed summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:1.6px solid var(--muted);
+  border-bottom:1.6px solid var(--muted);transform:rotate(45deg);transition:transform .16s var(--ease)}
+html.v60 .v60-feed[open] summary::after{transform:rotate(-135deg)}
+html.v60 .v60-feed ul{list-style:none;margin:0;padding:0 16px 8px}
+html.v60 .v60-feed li{display:flex;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line-soft);
+  font-size:.8125rem;color:var(--ink-2)}
+html.v60 .v60-feed li .t{font-family:var(--f-mono);font-size:.75rem;color:var(--muted);flex:0 0 auto}
+html.v60 .v60-feed li .d{font-family:var(--f-mono);font-weight:600;color:var(--evc,var(--ion));flex:0 0 auto}
+html.v60 .v60-feed-vz{padding:0 16px 14px;font-size:.8125rem;color:var(--muted)}
+html.v60 .ck-caps{order:6}
+html.v60 .ck-fontes{order:7}
+html.v60 .ck-caps .ck-eye{font-size:1rem;font-weight:650;color:var(--ink);margin-bottom:8px}
+html.v60 .caps-gt{font-size:.8125rem;font-weight:550;color:var(--muted)}
+html.v60 .caps-cmd{font-size:.75rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){
+  /* sem movimento o ticker é uma lista parada de 3 itens */
+  html.v60 .ck-ticker{height:auto;padding:10px 14px;overflow:visible;-webkit-mask-image:none;mask-image:none}
+  html.v60 .ck-ticker .lane{display:grid;gap:6px;white-space:normal;padding:0;transform:none}
+  html.v60 .ck-ticker .lane span:nth-child(n+4){display:none}
+}
+@media (min-width:761px){
+  html.v60 .ck-nucleo{height:420px}
+  html.v60 .ck-hero{padding:24px}
+}
+@media (min-width:1000px){
+  html.v60 .ck{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:dense}
+  html.v60 .ck > *, html.v60 .ck-orbita > *{grid-column:1 / -1}
+  html.v60 .ck-hero{grid-column:1 / 8;grid-row:1}
+  html.v60 #ck-grid{grid-column:1 / 8;grid-row:2}
+  html.v60 .ck-nucleo{grid-column:8 / 13;grid-row:1 / 3;height:auto;min-height:420px}
+  html.v60 .v60-feed{display:none}          /* no desktop a atividade é a pílula "Ao vivo · N" */
+}

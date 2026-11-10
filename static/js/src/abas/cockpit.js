@@ -157,7 +157,18 @@ export let _ckTick=[];
 export function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
 export function ckBoot(){
   const g=$('ck-grid');if(!g)return;
-  g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
+  /* v60: grade de 9 na ordem do brief, com ALERTAS (o total já vinha de `/api/compliance/painel`
+     para o chip da mesa — é o mesmo número, agora também em cartão). */
+  if(_v60)g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
+    ckCard('alertas','Alertas','ckrose','bgrose','e_alertas'),
+    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
+    ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
+    ckCard('com','Comunidades','','bgteal','g_comun'),
+    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
+    ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
+    ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos'),
+    ckCard('lift','Melhor detector (lift)','','bgteal','g_retro')].join('');
+  else g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
     ckCard('com','Comunidades','','bgteal','g_comun'),
     ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
@@ -185,8 +196,13 @@ export function ckPull(first){
      (o número) e falha é falha (o motivo no title). */
   J('/api/compliance/painel').then(d=>{
     const a=(d&&d.alertas)||null,el=$('nu-alertas');
-    if(!a||a.total==null){nuSet('alertas',null);if(el)el.title=erroHumano(d&&d.erro);return;}
+    if(!a||a.total==null){nuSet('alertas',null);if(el)el.title=erroHumano(d&&d.erro);
+      /* v60: INDISPONÍVEL ≠ 0 — o cartão fica no traço e diz o motivo */
+      const m=$('cki-alertas')&&$('cki-alertas').querySelector('.meta');
+      if(m){m.textContent='indisponível — '+erroHumano(d&&d.erro);m.classList.remove('esperando');}
+      return;}
     nuSet('alertas',a.total);
+    ckFill('alertas',{num:a.total,meta:`<b class="ckrose">${fmtN(a.alta||0)}</b> de gravidade alta · ${fmtN(a.media||0)} média`});   // sem `#cki-alertas` (v60 desligado) o ckFill sai sem fazer nada
     if(el)el.title=`${fmtN(a.alta||0)} de gravidade alta · ${fmtN(a.media||0)} média`
       +` — a lista da tela mostra as ${fmtN((d.lista_alertas||[]).length)} primeiras`;});
   if(first)J('/api/intel/ninho_sala?limite=60').then(d=>{
