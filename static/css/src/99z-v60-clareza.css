@@ -490,7 +490,7 @@ html.v60 :where(input:not([type=checkbox]):not([type=radio]):not([type=range]):n
   padding:10px 14px;border-radius:var(--r-m);border:1px solid var(--line);background:oklch(0 0 0 / .22);
   color:var(--ink);font-size:.9375rem;box-shadow:none;transition:border-color .16s var(--ease)}
 html.v60 :is(input,select,textarea)::placeholder{color:var(--muted)}
-html.v60 :is(input,select,textarea):focus{outline:0;border-color:var(--ion);box-shadow:0 0 0 2px color-mix(in oklch,var(--ion) 30%,transparent)}
+html.v60 :is(input,select,textarea):focus{border-color:var(--ion);box-shadow:none}
 html.v60 .search{position:relative;margin:0 0 12px}
 html.v60 .search input{padding-left:40px;padding-right:52px}
 html.v60 .search .mag{position:absolute;left:14px;top:50%;width:16px;height:16px;margin-top:-8px;color:var(--muted);line-height:0;pointer-events:none}
@@ -598,3 +598,82 @@ html.v60 .caps-cmd{font-size:.75rem;color:var(--muted)}
   html.v60 .ck-nucleo{grid-column:8 / 13;grid-row:1 / 3;height:auto;min-height:420px}
   html.v60 .v60-feed{display:none}          /* no desktop a atividade é a pílula "Ao vivo · N" */
 }
+
+/* ── Fase 8 · MICROINTERAÇÕES, ESTADOS, FOCO, TOQUE ──────────────────────────────────────────────
+   Movimento = estado: 150–220ms, `--ease`, sem bounce. Troca de aba = crossfade de 160ms. */
+html.v60 .fade{animation:none}
+@keyframes v60some{to{opacity:0}}
+@keyframes v60surge{from{opacity:0}}
+html.v60::view-transition-old(jfn-miolo){animation:v60some .16s var(--ease) both}
+html.v60::view-transition-new(jfn-miolo){animation:v60surge .16s var(--ease) both}
+html.v60 :is(.btn,.chip,.sph,.v60-mi,.v60-mais):active, html.v60 nav.tabs button:active{transform:scale(.98)}
+
+/* foco visível: anel de 2px em --ion, offset 2px, em todo controle */
+html.v60 :focus-visible{outline:2px solid var(--ion);outline-offset:2px;box-shadow:none}
+html.v60 :is(input,select,textarea):focus-visible{outline-offset:1px}
+html.v60 .sheet:focus-visible{outline:none}      /* o contêiner do diálogo recebe foco por a11y; anel só nos controles */
+
+/* carregando = esqueleto com a forma do conteúdo (linha de KPIs + linhas de lista) */
+@keyframes v60pulsa{from{opacity:.55}to{opacity:1}}
+html.v60 .skel{padding:12px 0;text-align:left;font-size:.8125rem;color:var(--muted)}
+html.v60 .skel .sp{display:none}
+html.v60 .skel::after{content:"";display:block;height:44px;margin-top:10px;border-radius:var(--r-m);
+  background:
+    linear-gradient(var(--card),var(--card)) 0 0 / 62% 12px no-repeat,
+    linear-gradient(var(--card),var(--card)) 0 20px / 88% 12px no-repeat,
+    linear-gradient(var(--card),var(--card)) 0 40px / 40% 4px no-repeat;
+  animation:v60pulsa .9s var(--ease) infinite alternate}
+html.v60 #view > .skel::before{content:"";display:block;height:96px;margin:12px 0 16px;
+  background:
+    linear-gradient(var(--card),var(--card)) 0 0 / calc(50% - 6px) 100% no-repeat,
+    linear-gradient(var(--card),var(--card)) 100% 0 / calc(50% - 6px) 100% no-repeat;
+  border-radius:var(--r-l);animation:v60pulsa .9s var(--ease) infinite alternate}
+html.v60 #view > .skel::after{height:300px;border-radius:var(--r-l);
+  background:repeating-linear-gradient(180deg,var(--card) 0 59px,transparent 59px 60px)}
+@media (min-width:761px){
+  html.v60 #view > .skel::before{
+    background:
+      linear-gradient(var(--card),var(--card)) 0 0 / calc(25% - 12px) 100% no-repeat,
+      linear-gradient(var(--card),var(--card)) 33.33% 0 / calc(25% - 12px) 100% no-repeat,
+      linear-gradient(var(--card),var(--card)) 66.66% 0 / calc(25% - 12px) 100% no-repeat,
+      linear-gradient(var(--card),var(--card)) 100% 0 / calc(25% - 12px) 100% no-repeat}
+}
+@media (prefers-reduced-motion:reduce){
+  html.v60 .skel::before, html.v60 .skel::after{animation:none}
+  html.v60::view-transition-old(jfn-miolo), html.v60::view-transition-new(jfn-miolo){animation:none}
+}
+
+/* vazio / fonte indisponível: as duas ilustrações já geradas, centradas, 160px, texto em 2 linhas */
+html.v60.ilus-doc .card.vazio-ilus>.ilus.doc,
+html.v60.ilus-rede .card.vazio-ilus>.ilus.rede{width:160px;height:160px;margin:4px auto 12px}
+html.v60.ilus-doc .card.vazio-ilus:has(>.ilus.doc)>.dim,
+html.v60.ilus-rede .card.vazio-ilus:has(>.ilus.rede)>.dim{max-width:44ch;font-size:.875rem;line-height:1.45}
+html.v60.ilus-rede .card>.warn:has(>.v10retry)::before{height:160px}
+html.v60 .warn{border-radius:var(--r-m);border-left-width:1px;padding:12px 14px;color:var(--ink-2)}
+
+/* #sheet (dossiê, termos, menu): mesma superfície do cabeçalho, sem brilho de borda */
+html.v60 .ov{background:oklch(0.08 0.015 255 / .72);backdrop-filter:none;-webkit-backdrop-filter:none}
+html.v60 .sheet{background:var(--bg-2);backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--line);
+  box-shadow:0 -12px 40px -12px oklch(0 0 0 / .7);border-radius:var(--r-l) var(--r-l) 0 0}
+html.v60 .sheet .x{all:unset;box-sizing:border-box;position:sticky;top:0;float:right;z-index:2;display:inline-flex;
+  align-items:center;min-height:36px;padding:0 12px;border-radius:var(--r-s);border:1px solid var(--line);
+  background:var(--bg-2);font-size:.8125rem;font-weight:550;color:var(--ink-2);cursor:pointer}
+html.v60 .sheet .x:hover{color:var(--ink);border-color:color-mix(in oklch,var(--ion) 50%,transparent)}
+@media (min-width:761px){
+  html.v60 .sheet{border-radius:var(--r-l)}
+}
+
+/* alvos de toque ≥44px no celular */
+@media (max-width:760px){
+  html.v60 .search .az{height:44px;min-width:44px;margin-top:-22px;right:0}
+  html.v60 .search input{padding-right:56px}
+  html.v60 .v60-desc-mais{padding:12px 12px 12px 0}
+  html.v60 .sheet .x{min-height:44px}
+  html.v60 th.srt{padding-top:12px;padding-bottom:14px}
+}
+
+/* a malha de luz entre blocos (v34: trilho vertical + pulso + barramento horizontal das grades) e a
+   lâmina que varria o topo de cada aba são linhas atrás/entre o conteúdo — saem em v60 (D1) */
+html.v60 .fade::before{display:none}
+html.v60 #view > .fade > *::before, html.v60 #view > .fade > *::after{content:none}
+html.v60 :is(.grid,.cols)::before, html.v60 :is(.grid,.cols)::after{content:none}

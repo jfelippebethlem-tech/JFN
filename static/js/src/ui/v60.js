@@ -24,11 +24,15 @@ export function v60Boot() {
    O `#view` troca de `innerHTML` a cada aba e várias listas chegam depois (fetch). Um observador
    só, com debounce, chama `v60Vivo` sempre que o miolo muda. O passe é IDEMPOTENTE — na segunda
    volta não altera nada, então não se realimenta. */
-let _passe = 0;
+let _passe = 0, _passeS = 0;
 function _observar() {
   const v = $('view'); if (!v) return;
   new MutationObserver(() => { clearTimeout(_passe); _passe = setTimeout(() => v60Vivo(v), 60); })
     .observe(v, {childList: true, subtree: true});
+  /* o #sheet (dossiê, termos, gavetas) recebe o mesmo passe: rating sem emoji, pills, listas */
+  const sh = $('sheet');
+  if (sh) new MutationObserver(() => { clearTimeout(_passeS); _passeS = setTimeout(() => v60Vivo(sh), 60); })
+    .observe(sh, {childList: true, subtree: true});
   /* "mais"/"menos" da descrição do cabeçalho de aba — delegado */
   document.addEventListener('click', e => {
     const b = e.target && e.target.closest && e.target.closest('[data-v60-desc]'); if (!b) return;

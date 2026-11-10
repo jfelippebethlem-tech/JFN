@@ -802,6 +802,7 @@
     _observar();
   }
   var _passe = 0;
+  var _passeS = 0;
   function _observar() {
     const v = $("view");
     if (!v) return;
@@ -809,6 +810,11 @@
       clearTimeout(_passe);
       _passe = setTimeout(() => v60Vivo(v), 60);
     }).observe(v, { childList: true, subtree: true });
+    const sh = $("sheet");
+    if (sh) new MutationObserver(() => {
+      clearTimeout(_passeS);
+      _passeS = setTimeout(() => v60Vivo(sh), 60);
+    }).observe(sh, { childList: true, subtree: true });
     document.addEventListener("click", (e) => {
       const b = e.target && e.target.closest && e.target.closest("[data-v60-desc]");
       if (!b) return;
