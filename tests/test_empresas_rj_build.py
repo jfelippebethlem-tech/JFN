@@ -53,7 +53,7 @@ def cenario(tmp_path, monkeypatch):
 def test_so_entra_raiz_que_ja_tem_estabelecimento(cenario):
     """O recorte É a decisão: 63 milhões de linhas nacionais sem endereço não respondem nada aqui."""
     assert raizes_conhecidas(cenario) == {"11111111", "22222222"}
-    r = construir(estab=cenario)
+    r = construir("2026-05", estab=cenario)
     assert r["gravadas"] == 2 and r["linhas_lidas"] == 3
 
     con = sqlite3.connect(cenario)
@@ -65,7 +65,7 @@ def test_so_entra_raiz_que_ja_tem_estabelecimento(cenario):
 
 def test_busca_por_nome_passa_a_existir(cenario):
     """O motivo do módulo: procurar empresa pelo NOME, que antes era impossível nesta base."""
-    construir(estab=cenario)
+    construir("2026-05", estab=cenario)
     con = sqlite3.connect(cenario)
     achado = con.execute(
         "SELECT cnpj_basico, natureza_cod FROM empresas WHERE razao_social LIKE '%6MAX%'"
@@ -85,7 +85,7 @@ def test_capital_em_formato_brasileiro_nao_vira_lixo():
 
 
 def test_medir_declara_a_cobertura(cenario):
-    construir(estab=cenario)
+    construir("2026-05", estab=cenario)
     m = medir(cenario)
     assert m["empresas"] == 2 and m["raizes_com_estabelecimento"] == 2
     assert m["cobertura_pct"] == 100.0
@@ -95,7 +95,7 @@ def test_sem_zip_falha_dizendo_o_que_fazer(tmp_path, monkeypatch):
     """Falha silenciosa aqui produziria uma tabela vazia indistinguível de 'não há empresas'."""
     monkeypatch.setattr("tools.empresas_rj_build._DUMP", tmp_path)
     with pytest.raises(SystemExit, match="baixar_receita_dump"):
-        construir(estab=tmp_path / "x.db")
+        construir("2026-05", estab=tmp_path / "x.db")
 
 
 def test_unzip_disponivel():

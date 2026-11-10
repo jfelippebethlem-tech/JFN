@@ -10,10 +10,11 @@ Formato Empresas CSV (`;`-delim, latin1, SEM header):
 VM-safe: STREAMING linha-a-linha via `unzip -p`; guarda de load/mem; nice(10). Bounded pelo filtro.
 
 Uso:
-  PYTHONPATH=. .venv/bin/python -m tools.empresas_min_build
+  PYTHONPATH=. .venv/bin/python -m tools.empresas_min_build --mes AAAA-MM   (o refresh repassa)
 """
 from __future__ import annotations
 
+import argparse
 import os
 import sqlite3
 import subprocess
@@ -103,7 +104,7 @@ def _stream_zip(zf: Path, alvo: set[str], con: sqlite3.Connection, mes: str):
     return lidas, match
 
 
-def construir(mes: str = "2026-05") -> None:
+def construir(mes: str) -> None:
     con = _conectar()
     con.execute(_DDL)
     con.commit()
@@ -136,5 +137,8 @@ def construir(mes: str = "2026-05") -> None:
 
 
 if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mes", required=True, help="AAAA-MM do dump baixado (o refresh repassa)")
+    args = ap.parse_args()
     os.nice(10)
-    construir()
+    construir(args.mes)

@@ -16,7 +16,7 @@ Layout Empresas CSV (`;`-delim, latin1, SEM header):
 NÃO tem situação cadastral, data de abertura nem endereço (esses vivem no dump Estabelecimentos, que
 não temos — ficam para enriquecimento BrasilAPI dos periciados de alto valor).
 
-Uso:  PYTHONPATH=. .venv/bin/python -m tools.empresas_dump_sweep
+Uso:  PYTHONPATH=. .venv/bin/python -m tools.empresas_dump_sweep AAAA-MM   (mês do dump baixado)
 """
 from __future__ import annotations
 
@@ -122,7 +122,7 @@ def _stream_zip(zf: Path, raizes: set[str], con, mes: str):
     return lidas, match
 
 
-def indexar(mes: str = "2026-05") -> None:
+def indexar(mes: str) -> None:
     raizes = _carregar_raizes()
     con = _conectar()
     con.execute(_DDL)
@@ -150,4 +150,6 @@ def indexar(mes: str = "2026-05") -> None:
 
 
 if __name__ == "__main__":
-    indexar(sys.argv[1] if len(sys.argv) > 1 else "2026-05")
+    if len(sys.argv) < 2:
+        raise SystemExit("uso: python -m tools.empresas_dump_sweep AAAA-MM (mês do dump baixado)")
+    indexar(sys.argv[1])

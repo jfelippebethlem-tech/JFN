@@ -29,7 +29,7 @@ nenhuma delas responderia pergunta desta casa sem o endereço correspondente.
 Layout Empresas CSV (`;`, latin1, sem cabeçalho):
   1=cnpj_basico 2=razao_social 3=natureza_cod 4=qualif_resp 5=capital_social(BR) 6=porte 7=ente
 
-    python -m tools.empresas_rj_build          # constrói
+    python -m tools.empresas_rj_build --mes AAAA-MM  # constrói
     python -m tools.empresas_rj_build --medir  # só mede o que já está lá
 """
 from __future__ import annotations
@@ -86,7 +86,7 @@ def raizes_conhecidas(estab: Path = _ESTAB) -> set[str]:
         con.close()
 
 
-def construir(fonte_mes: str = "2026-05", estab: Path = _ESTAB) -> dict:
+def construir(fonte_mes: str, estab: Path = _ESTAB) -> dict:
     zips = sorted(_DUMP.glob("Empresas*.zip"))
     if not zips:
         raise SystemExit(f"nenhum Empresas*.zip em {_DUMP} — rode tools/baixar_receita_dump.sh empresas")
@@ -154,9 +154,12 @@ def medir(estab: Path = _ESTAB) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--medir", action="store_true")
+    ap.add_argument("--mes", help="AAAA-MM do dump baixado (obrigatório ao construir; o refresh repassa)")
     a = ap.parse_args()
     if not a.medir:
-        for k, v in construir().items():
+        if not a.mes:
+            ap.error("--mes é obrigatório ao construir (o mês que foi de fato baixado)")
+        for k, v in construir(a.mes).items():
             print(f"{k:24s} {v}")
     for k, v in medir().items():
         print(f"{k:30s} {v}")

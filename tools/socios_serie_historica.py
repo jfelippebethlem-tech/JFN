@@ -24,6 +24,7 @@ Uso:
   PYTHONPATH=. .venv/bin/python -m tools.socios_serie_historica --mes 2026-07 --mes 2026-05
   PYTHONPATH=. .venv/bin/python -m tools.socios_serie_historica --ultimos 6      # os 6 mais recentes
   PYTHONPATH=. .venv/bin/python -m tools.socios_serie_historica --diff           # só recalcula
+  PYTHONPATH=. .venv/bin/python -m tools.socios_serie_historica --faltantes      # meses após o último ingerido
 """
 from __future__ import annotations
 
@@ -42,6 +43,7 @@ sys.path.insert(0, str(_REPO))
 from compliance_agent.osint.historico_societario import (  # noqa: E402
     criar_schema,
     diff_snapshots,
+    normalizar_doc_socio,
     snapshots_ingeridos,
 )
 from tools.socios_dump_sweep import (  # noqa: E402
@@ -68,6 +70,27 @@ def listar_snapshots() -> list[str]:
 
 def _mes(data_pasta: str) -> str:
     return data_pasta[:7]
+
+
+def faltantes(disponiveis: list[str], ingeridos: list[str]) -> list[str]:
+    """Pastas do espelho cujo MÊS é posterior ao último ingerido — uma por mês (a mais recente).
+
+    Só para a frente, de propósito: é o que o refresh mensal precisa manter. Buraco antigo no meio
+    da série é decisão de backfill (dezenas de GB de download), não de cron.
+    """
+    ultimo = max(ingeridos) if ingeridos else ""
+    por_mes: dict[str, str] = {}
+    for d in sorted(disponiveis):
+        if _mes(d) > ultimo:
+            por_mes[_mes(d)] = d
+    return [por_mes[m] for m in sorted(por_mes)]
+
+
+def _legado_pj14(con) -> int:
+    """Sócio PJ ainda com 14 dígitos na série: ingerir mês novo (8 dígitos) por cima disso fabrica
+    saída+entrada de cada sócio PJ. A migração (`tools.migrar_socio_pj_raiz`) vem antes."""
+    return con.execute("SELECT COUNT(*) FROM socio_snapshot WHERE ident='1' AND length(doc_socio)=14 "
+                       "AND doc_socio NOT GLOB '*[^0-9]*'").fetchone()[0]
 
 
 def _baixar(url: str, destino: Path) -> int:
@@ -136,7 +159,8 @@ def _stream_para_snapshot(zf: Path, raizes: set[str], qualif: dict, con, mes: st
             if len(p) < 6:
                 continue
             cod = (p[4] or "").zfill(2) if p[4] else ""
-            buf.append((mes, p[0], p[3], _norm(p[2]), p[1], qualif.get(cod, cod), p[5]))
+            buf.append((mes, p[0], normalizar_doc_socio(p[1], p[3]), _norm(p[2]), p[1],
+                        qualif.get(cod, cod), p[5]))
             casadas += 1
             if len(buf) >= _BATCH:
                 _gravar_com_espera(con, sql, buf); buf.clear()
@@ -201,6 +225,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mes", action="append", default=[], help="data de pasta (AAAA-MM-DD), repetível")
     ap.add_argument("--ultimos", type=int, default=0, help="ingere os N snapshots mais recentes")
     ap.add_argument("--diff", action="store_true", help="só recalcula socio_historico")
+    ap.add_argument("--faltantes", action="store_true",
+                    help="ingere os meses do espelho posteriores ao último já ingerido")
     ap.add_argument("--manter-zip", action="store_true", help="não apaga os zips (depuração)")
     a = ap.parse_args(argv)
 
@@ -219,6 +245,14 @@ def main(argv: list[str] | None = None) -> int:
         alvos = list(a.mes)
         if a.ultimos:
             alvos = listar_snapshots()[-a.ultimos:]
+        if a.faltantes:
+            alvos = faltantes(listar_snapshots(), snapshots_ingeridos(con))
+            print(f"[serie] faltantes: {alvos or 'nenhum — série em dia'}", flush=True)
+        if alvos and _legado_pj14(con):
+            print("[serie] RECUSADO: socio_snapshot ainda tem sócio PJ com 14 dígitos — rode "
+                  "`python -m tools.migrar_socio_pj_raiz` antes (senão: falsa troca de controle)",
+                  flush=True)
+            return 1
         for d in alvos:
             print(f"[serie] ingerindo {d} …", flush=True)
             print("[serie]", ingerir_snapshot(d, con=con, manter_zip=a.manter_zip), flush=True)

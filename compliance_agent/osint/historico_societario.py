@@ -33,7 +33,7 @@ import sqlite3
 from typing import Any, Iterable
 
 __all__ = [
-    "SCHEMA", "criar_schema", "registrar_snapshot", "snapshots_ingeridos",
+    "SCHEMA", "criar_schema", "normalizar_doc_socio", "registrar_snapshot", "snapshots_ingeridos",
     "diff_snapshots", "vinculo_na_data", "historico_do_socio", "trocas_perto_de",
 ]
 
@@ -43,7 +43,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS socio_snapshot (
   fonte_mes   TEXT NOT NULL,          -- 'AAAA-MM' do snapshot da Receita
   cnpj_basico TEXT NOT NULL,
-  doc_socio   TEXT NOT NULL,          -- CNPJ íntegro (sócio PJ) ou máscara ***NNNNNN**
+  doc_socio   TEXT NOT NULL,          -- raiz de 8 dígitos (sócio PJ) ou máscara ***NNNNNN**
   nome_norm   TEXT NOT NULL,
   ident       TEXT,                   -- 1=PJ, 2=PF, 3=estrangeiro
   qualificacao TEXT,
@@ -84,6 +84,23 @@ def criar_schema(con: sqlite3.Connection) -> None:
     con.commit()
 
 
+def normalizar_doc_socio(ident: Any, doc: Any) -> str:
+    """Documento do sócio na forma ÚNICA da casa: sócio PJ (identificador `1`) pela raiz de 8 dígitos.
+
+    A Receita mudou o leiaute do `Socios*.zip`: o documento do sócio PJ vinha com 14 dígitos até
+    2026-07 e vem só com a raiz (8) em 2026-10. Sem normalizar na ENTRADA, a chave da série
+    (`cnpj_basico`, `doc_socio`, `nome_norm`) vê cada sócio PJ "sair" com 14 e "entrar" com 8 — falsa
+    troca de controle em ~3.200 vínculos. PF (máscara `***NNNNNN**`) e estrangeiro ficam como vêm.
+    Todo ponto que grava `socios_receita`, `socios_reverso` ou `socio_snapshot` passa por aqui.
+    """
+    doc = str(doc or "").strip()
+    if str(ident or "").strip() == "1":
+        dig = _RE_DIG.sub("", doc)
+        if len(dig) in (8, 14):
+            return dig[:8]
+    return doc
+
+
 def _norm_nome(s: Any) -> str:
     return re.sub(r"\s+", " ", str(s or "")).strip().upper()
 
@@ -101,7 +118,7 @@ def registrar_snapshot(con: sqlite3.Connection, fonte_mes: str, linhas: Iterable
     raizes: set[str] = set()
     for ln in linhas:
         raiz = str(ln.get("cnpj_basico") or "").strip()
-        doc = str(ln.get("doc_socio") or "").strip()
+        doc = normalizar_doc_socio(ln.get("ident"), ln.get("doc_socio"))
         nome = _norm_nome(ln.get("nome_socio") or ln.get("nome_norm"))
         if not raiz or not (doc or nome):
             continue

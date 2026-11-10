@@ -27,6 +27,7 @@ playwright/.cache/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+data/backup_socio_pj_14dig_*.csv.gz
 
 # Núcleo de Inteligência Progressiva: estado de runtime (calibração/aprendizado),
 # não código-fonte. Overrides, feedback, memória e diário são gerados no uso.

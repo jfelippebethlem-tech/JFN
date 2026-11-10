@@ -204,3 +204,10 @@ def test_ressalva_do_cpf_mascarado_viaja_com_o_resultado(con):
     _socio(con)
     assert "não é identidade" in it.avaliar(con, "12345678000199")["ressalva"]
     assert "não é identidade" in it.avaliar(con, "99999999000100")["ressalva"]
+
+
+def test_socio_pj_com_doc_de_8_digitos_nao_conta_como_pf(con):
+    """Leiaute da Receita de 2026-10: o sócio PJ vem só com a raiz (8 dígitos). Ele continua sendo
+    PJ — contá-lo como PF acenderia `quadro_raso` numa empresa cujo único sócio é uma holding."""
+    _socio(con, doc="98765432", nome="HOLDING ALFA LTDA", faixa="0")
+    assert it.avaliar(con, "12345678000199")["quadro_raso"] is False

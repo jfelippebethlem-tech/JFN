@@ -207,7 +207,8 @@ def avaliar(con: sqlite3.Connection, cnpj: str, *, data_referencia: str | None =
     perfis = [perfil_socio(con, s, corte=corte, data_referencia=data_referencia,
                            servidores=servidores) for s in socios]
 
-    pf = [p for p in perfis if len(re.sub(r"\D", "", p["doc"])) != 14]
+    # sócio PJ: 14 dígitos (leiaute até 2026-07) ou só a raiz de 8 (leiaute novo, base normalizada)
+    pf = [p for p in perfis if len(re.sub(r"\D", "", p["doc"])) not in (8, 14)]
     # Característica declarada, NÃO eixo: 54,9% das empresas têm um só sócio.
     quadro_raso = len(pf) == 1 and len(socios) == 1
 

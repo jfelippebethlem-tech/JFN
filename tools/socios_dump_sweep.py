@@ -27,6 +27,8 @@ import time
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.osint.historico_societario import _com_espera, normalizar_doc_socio
+
 _REPO = Path(__file__).resolve().parent.parent
 _DB = _REPO / "data" / "compliance.db"
 _DUMP = _REPO / "data" / "receita_dump"
@@ -72,7 +74,7 @@ CREATE TABLE IF NOT EXISTS socios_receita (
     ident           TEXT,            -- 1=PJ 2=PF 3=estrangeiro
     nome_socio      TEXT,
     nome_norm       TEXT,
-    doc_socio       TEXT,            -- PF mascarado ***NNNNNN** ; PJ = CNPJ completo
+    doc_socio       TEXT,            -- PF mascarado ***NNNNNN** ; PJ = raiz (8)
     qualificacao_cod TEXT,
     qualificacao_txt TEXT,
     data_entrada    TEXT,
@@ -81,6 +83,12 @@ CREATE TABLE IF NOT EXISTS socios_receita (
     PRIMARY KEY (cnpj_basico, nome_norm, doc_socio, qualificacao_cod)
 )
 """
+# Carga em tabela de trabalho e TROCA numa transação só: a foto anterior sai inteira (ex-sócio não
+# fica para sempre, o que o INSERT OR IGNORE por cima fazia) e falha no meio não deixa a tabela vazia.
+_CARGA = "_socios_receita_carga"
+_COLS = ("cnpj_basico,ident,nome_socio,nome_norm,doc_socio,qualificacao_cod,qualificacao_txt,"
+         "data_entrada,faixa_etaria,fonte_mes")
+
 _IDX = [
     "CREATE INDEX IF NOT EXISTS ix_socrec_cnpj ON socios_receita(cnpj_basico)",
     "CREATE INDEX IF NOT EXISTS ix_socrec_nome ON socios_receita(nome_norm)",
@@ -111,13 +119,16 @@ def _guarda_recursos() -> None:
         pass
 
 
-def indexar(mes: str = "2026-05") -> None:
+def indexar(mes: str) -> None:
+    """Reconstrói `socios_receita` com a foto do mês `mes` (o mês que foi de fato baixado)."""
     raizes = _carregar_raizes()
     qualif = _carregar_qualif()
     con = _conectar()
     con.execute(_DDL)
     for ddl in _IDX:
         con.execute(ddl)
+    con.execute(f"DROP TABLE IF EXISTS {_CARGA}")
+    con.execute(_DDL.replace("socios_receita", _CARGA, 1))
     con.commit()
 
     zips = sorted(_DUMP.glob("Socios*.zip"))
@@ -130,15 +141,36 @@ def indexar(mes: str = "2026-05") -> None:
     total_match = 0
     for zf in zips:
         if not _zip_ok(zf):
-            print(f"[socrec] PULA {zf.name} (zip incompleto/inválido — download em curso?)", flush=True)
-            continue
+            # pular um zip e trocar a foto seria publicar um QSA parcial como se fosse o do mês
+            con.execute(f"DROP TABLE IF EXISTS {_CARGA}")
+            con.commit()
+            con.close()
+            raise SystemExit(f"[socrec] {zf.name} incompleto/inválido — foto anterior PRESERVADA")
         _guarda_recursos()
-        lidas, match = _stream_zip(zf, raizes, qualif, con, mes)
+        lidas, match = _stream_zip(zf, raizes, qualif, con, mes, tabela=_CARGA)
         total_lidas += lidas
         total_match += match
         print(f"[socrec] {zf.name}: lidas={lidas:,} match={match:,} "
               f"| acum match={total_match:,} | {time.time()-t0:.0f}s", flush=True)
     con.commit()
+    n_carga = con.execute(f"SELECT COUNT(*) FROM {_CARGA}").fetchone()[0]
+    if n_carga == 0:
+        con.execute(f"DROP TABLE IF EXISTS {_CARGA}")
+        con.commit()
+        con.close()
+        raise SystemExit("[socrec] carga VAZIA (nenhuma raiz nossa casou) — foto anterior PRESERVADA")
+
+    def _trocar():
+        try:
+            con.execute("BEGIN IMMEDIATE")
+            con.execute("DELETE FROM socios_receita")
+            con.execute(f"INSERT INTO socios_receita ({_COLS}) SELECT {_COLS} FROM {_CARGA}")
+            con.execute(f"DROP TABLE {_CARGA}")
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+    _com_espera(_trocar, rotulo="troca da foto de socios_receita")
     n = con.execute("SELECT COUNT(*) FROM socios_receita").fetchone()[0]
     nf = con.execute("SELECT COUNT(DISTINCT cnpj_basico) FROM socios_receita").fetchone()[0]
     print(f"[socrec] CONCLUÍDO: {total_lidas:,} linhas lidas | {n:,} sócios | "
@@ -153,13 +185,14 @@ def _zip_ok(zf: Path) -> bool:
         return False
 
 
-def _stream_zip(zf: Path, raizes: set[str], qualif: dict, con: sqlite3.Connection, mes: str):
+def _stream_zip(zf: Path, raizes: set[str], qualif: dict, con: sqlite3.Connection, mes: str,
+                tabela: str = "socios_receita"):
     """Stream linha-a-linha do ZIP; insere só linhas cujo CNPJ_BÁSICO ∈ raízes nossas."""
     proc = subprocess.Popen(["unzip", "-p", str(zf)], stdout=subprocess.PIPE, bufsize=1 << 20)
     lidas = match = 0
     buf = []
     BATCH = 5000
-    sql = ("INSERT OR IGNORE INTO socios_receita(cnpj_basico,ident,nome_socio,nome_norm,doc_socio,"
+    sql = (f"INSERT OR IGNORE INTO {tabela}(cnpj_basico,ident,nome_socio,nome_norm,doc_socio,"
            "qualificacao_cod,qualificacao_txt,data_entrada,faixa_etaria,fonte_mes) "
            "VALUES (?,?,?,?,?,?,?,?,?,?)")
     try:
@@ -178,7 +211,7 @@ def _stream_zip(zf: Path, raizes: set[str], qualif: dict, con: sqlite3.Connectio
                 continue
             cod = (p[4] or "").zfill(2) if p[4] else ""
             buf.append((
-                p[0], p[1], p[2], _norm(p[2]), p[3], cod, qualif.get(cod, ""),
+                p[0], p[1], p[2], _norm(p[2]), normalizar_doc_socio(p[1], p[3]), cod, qualif.get(cod, ""),
                 p[5], p[10] if len(p) > 10 else "", mes,
             ))
             match += 1
@@ -264,11 +297,13 @@ def materializar_rede(con: sqlite3.Connection | None = None) -> None:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--rede", action="store_true", help="só (re)materializa o cruzamento")
-    ap.add_argument("--mes", default="2026-05")
+    ap.add_argument("--mes", help="AAAA-MM do dump baixado (obrigatório ao indexar; o refresh repassa)")
     args = ap.parse_args()
     os.nice(10)
     if args.rede:
         materializar_rede()
     else:
+        if not args.mes:
+            ap.error("--mes é obrigatório ao indexar (o mês que foi de fato baixado)")
         indexar(args.mes)
         materializar_rede()

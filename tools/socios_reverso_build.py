@@ -28,13 +28,15 @@ import time
 import unicodedata
 from pathlib import Path
 
+from compliance_agent.osint.historico_societario import normalizar_doc_socio
+
 _REPO = Path(__file__).resolve().parent.parent
 _DB = _REPO / "data" / "compliance.db"
 _DUMP = _REPO / "data" / "receita_dump"
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS socios_reverso (
-    doc_socio    TEXT NOT NULL,      -- PF mascarado ***NNNNNN** ; PJ = CNPJ completo
+    doc_socio    TEXT NOT NULL,      -- PF mascarado ***NNNNNN** ; PJ = raiz (8)
     nome_socio   TEXT,
     nome_norm    TEXT,
     cnpj_basico  TEXT NOT NULL,      -- raiz (8) de um CNPJ onde a pessoa aparece (Brasil inteiro)
@@ -110,7 +112,7 @@ def _stream_zip(zf: Path, alvo: set[tuple[str, str]], con: sqlite3.Connection, m
             if len(p) < 5:
                 continue
             nome_norm = _norm(p[2])
-            doc = p[3]
+            doc = normalizar_doc_socio(p[1], p[3])  # sócio PJ pela raiz: casa os dois leiautes
             if not nome_norm or not doc:
                 continue
             if (nome_norm, doc) not in alvo:
@@ -131,7 +133,7 @@ def _stream_zip(zf: Path, alvo: set[tuple[str, str]], con: sqlite3.Connection, m
     return lidas, match
 
 
-def construir(mes: str = "2026-05") -> None:
+def construir(mes: str) -> None:
     con = _conectar()
     con.execute(_DDL)
     for ddl in _IDX:
@@ -171,7 +173,7 @@ def construir(mes: str = "2026-05") -> None:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mes", default="2026-05")
+    ap.add_argument("--mes", required=True, help="AAAA-MM do dump baixado (o refresh repassa)")
     args = ap.parse_args()
     os.nice(10)
     construir(args.mes)
