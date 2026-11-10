@@ -42,7 +42,7 @@ def listar_receita(timeout: int = 60) -> str | None:
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 — host fixo e público
             return mes_mais_recente(r.read().decode("utf-8", "ignore"))
-    except Exception as e:  # rede/HTTP: quem chama decide; aqui só não se inventa mês
+    except (OSError, ValueError) as e:  # rede/HTTP/timeout: quem chama decide; não se inventa mês
         print(f"[receita_mes] listagem indisponível: {str(e)[:120]}", file=sys.stderr)
         return None
 

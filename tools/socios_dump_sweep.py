@@ -167,7 +167,7 @@ def indexar(mes: str) -> None:
             con.execute(f"INSERT INTO socios_receita ({_COLS}) SELECT {_COLS} FROM {_CARGA}")
             con.execute(f"DROP TABLE {_CARGA}")
             con.commit()
-        except Exception:
+        except sqlite3.Error:
             con.rollback()
             raise
     _com_espera(_trocar, rotulo="troca da foto de socios_receita")

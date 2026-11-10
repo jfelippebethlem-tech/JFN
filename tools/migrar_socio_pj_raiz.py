@@ -120,7 +120,7 @@ def _converter_tabela(con: sqlite3.Connection, t: str) -> dict[str, int]:
                                 lote).rowcount
                 con.commit()
                 return a, b
-            except Exception:
+            except sqlite3.Error:
                 con.rollback()
                 raise
         a, b = _com_espera(_um_lote, rotulo=f"migração {t}")
