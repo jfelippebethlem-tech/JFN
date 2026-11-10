@@ -823,6 +823,17 @@
   function v60Vivo(v) {
     if (!_v60 || !v) return;
     _capa(v);
+    _kpiN(v);
+  }
+  function _kpiN(v) {
+    v.querySelectorAll(".ck-inst .val").forEach((el) => {
+      const n = String((el.textContent || "").trim().length || 1);
+      if (el.style.getPropertyValue("--n") !== n) el.style.setProperty("--n", n);
+    });
+    v.querySelectorAll(".card.kpi > .v, .ck-inst > .val").forEach((el) => {
+      const largo = (el.textContent || "").trim().length >= 17, k = el.parentElement;
+      if (k.classList.contains("v60-largo") !== largo) k.classList.toggle("v60-largo", largo);
+    });
   }
   function _capa(v) {
     const cv = v.querySelector(".cover");

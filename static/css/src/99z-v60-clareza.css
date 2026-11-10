@@ -295,3 +295,82 @@ html.v60 .cover-acts{flex:0 0 auto;margin:0;align-self:center}
   html.v60 .cover-acts{flex:1 0 100%}
   html.v60 .cover-acts > .btn{width:100%}
 }
+
+/* ── Fase 5 · KPIs (D3, D10) ─────────────────────────────────────────────────────────────────────
+   Vale para as duas marcações de KPI da casa: `.card.kpi` (todas as abas) e `.ck-inst` (cockpit).
+   Saem: a barra-glow sob o valor (`.v::after` / `.val::after`), o anel marca-d'água
+   (`.ck-inst::after`), o ponto do canto (`.ck-inst .dot`), o cone holográfico (`.kpi::before`),
+   os cantos de mira (`.card::after`/`.kpi::after`), a seta do canto (`.kpi-go::after`) e o
+   batimento (`.kpi.rise::after`). O valor só ganha cor quando o dado é severidade ou dinheiro. */
+html.v60{--rose:var(--crit);--green:var(--ok);--amber:var(--warn);--gold:var(--flame)}
+html.v60 :is(.card.kpi,.ck-inst){position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-content:start;gap:6px 8px;overflow:hidden;container-type:inline-size;
+  background:var(--card);border:1px solid var(--line-soft);border-radius:var(--r-l);padding:16px;
+  box-shadow:var(--sh);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);
+  transform:none;transform-style:flat;
+  transition:border-color .16s var(--ease),transform .16s var(--ease)}
+html.v60 :is(.card.kpi,.ck-inst)::before, html.v60 :is(.card.kpi,.ck-inst)::after,
+html.v60 .kpi .v::after, html.v60 .ck-inst .val::after{display:none}
+html.v60 .ck-inst .dot{display:none}
+html.v60 :is(.card.kpi,.ck-inst) > *{grid-column:1 / -1;min-width:0;position:static;transform:none;margin:0}
+html.v60 .kpi > .l{grid-row:1;grid-column:1}
+html.v60 :is(.kpi .l,.ck-inst .lab){font-size:.8125rem;font-weight:550;line-height:1.3;color:var(--muted);
+  padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.v60 .ck-inst .k{display:block}
+html.v60 .ck-inst .lab{display:block}
+html.v60 .kpi > .v{grid-row:2}
+html.v60 :is(.kpi .v,.ck-inst .val){font-size:max(.9375rem,min(1.5rem,calc(100cqi / (var(--n,8) * .62))));font-weight:600;
+  line-height:1.2;color:var(--ink);white-space:nowrap;overflow:visible;overflow-wrap:normal;word-break:keep-all}
+html.v60 .kpi .v.counting{color:var(--ink)}
+/* cor do valor: os renders passam a cor por `style`; as de "informação" (teal/azul/violeta) viram
+   tinta neutra — severidade (rosa/âmbar/verde) e dinheiro (ouro→chama) continuam falando */
+html.v60 .kpi .v:is([style*="--accent"],[style*="--teal"],[style*="--blue"],[style*="--violet"],[style*="--purple"],[style*="--ion"]){
+  color:var(--ink) !important}
+html.v60 .ck-inst .val.ckrose{color:var(--crit)}
+html.v60 .ck-inst .val.ckamber{color:var(--warn)}
+html.v60 .ck-inst .val.ckgood{color:var(--ok)}
+html.v60 .ck-inst .val.ckgold{color:var(--flame)}
+html.v60 .kpi > .gl{display:none}          /* `.gl` é um emoji-glifo decorativo, não nota: segue oculto */
+html.v60 .ck-inst .meta{font-size:.75rem;line-height:1.4;color:var(--muted);
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+/* ⚠ só na KPI crítica, 14px, ao lado do rótulo */
+html.v60 .kpi-ico{display:none}
+html.v60 .kpi-ico[style*="rose"]{display:block;grid-row:1;grid-column:2;opacity:1;line-height:0;align-self:center;
+  color:var(--crit) !important}
+html.v60 .kpi-ico .jico{width:14px;height:14px;filter:none}
+/* grade: alturas iguais, sem buracos */
+html.v60 .grid:has(> .kpi), html.v60 .ck-grid{grid-auto-rows:1fr;grid-auto-flow:dense;gap:12px}
+html.v60 .grid:not(.g2):not(.g3):not(.g4):not(.two):has(> .kpi), html.v60 .ck-grid{
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+html.v60 :is(.card.kpi.kpi-go,.ck-inst){cursor:pointer}
+html.v60 :is(.card.kpi.kpi-go,.ck-inst):active{transform:scale(.98)}
+html.v60 :is(.card.kpi.kpi-go,.ck-inst):focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+@media (hover:hover){
+  html.v60 :is(.card.kpi,.ck-inst):hover{border-color:color-mix(in oklch,var(--ion) 50%,transparent);
+    background:var(--card);box-shadow:var(--sh)}
+  html.v60 :is(.card.kpi.kpi-go,.ck-inst):hover{transform:translateY(-1px)}
+}
+@media (max-width:760px){
+  /* valor longo (≥17 caracteres, ex.: R$ de 12 dígitos) ocupa as 2 colunas em vez de encolher até sumir */
+  html.v60 :is(.card.kpi,.ck-inst).v60-largo{grid-column:1 / -1}
+  /* 2 colunas em 390px: o rótulo pode ir a 2 linhas — cortado em 1 ele perdia o sentido */
+  html.v60 :is(.kpi .l,.ck-inst .lab){white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;
+    -webkit-line-clamp:2;line-clamp:2}
+}
+@media (min-width:761px){
+  html.v60 .grid:has(> .kpi), html.v60 .ck-grid{gap:16px}
+  html.v60 .grid:not(.g2):not(.g3):not(.g4):not(.two):has(> .kpi), html.v60 .ck-grid{
+    grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+}
+@media (prefers-reduced-transparency:reduce){
+  html.v60 :is(.card,.card.kpi,.ck-inst){background:oklch(0.200 0.020 255);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+
+/* entrada dos blocos: UMA animação curta para tudo (as cascatas/giros antigos deixavam o cartão em
+   `opacity:0` à espera de keyframes que o v60 não usa). Base visível; o keyframe só antecede. */
+@keyframes v60in{from{opacity:0;transform:translateY(4px)}}
+html.v60 #view :is(.card,.cover,.ck-inst,.ck-hero,.lnk,.rise){opacity:1;
+  animation:v60in .2s var(--ease) backwards;animation-delay:min(var(--d,0ms),120ms)}
+@media (prefers-reduced-motion:reduce){
+  html.v60 #view :is(.card,.cover,.ck-inst,.ck-hero,.lnk,.rise){animation:none}
+}

@@ -42,6 +42,22 @@ function _observar() {
 export function v60Vivo(v) {
   if (!_v60 || !v) return;
   _capa(v);
+  _kpiN(v);
+}
+
+/* KPI: `--n` = caracteres do valor (cockpit), para o CSS encolher o corpo só quando o número
+   exato não cabe (mesmo contrato que `kpi()` já cumpre nas outras abas). Escreve em `style`,
+   que o observador não escuta — não se realimenta. */
+function _kpiN(v) {
+  v.querySelectorAll('.ck-inst .val').forEach(el => {
+    const n = String((el.textContent || '').trim().length || 1);
+    if (el.style.getPropertyValue('--n') !== n) el.style.setProperty('--n', n);
+  });
+  /* valor longo ganha a largura inteira no celular (classe; o observador não escuta atributo) */
+  v.querySelectorAll('.card.kpi > .v, .ck-inst > .val').forEach(el => {
+    const largo = (el.textContent || '').trim().length >= 17, k = el.parentElement;
+    if (k.classList.contains('v60-largo') !== largo) k.classList.toggle('v60-largo', largo);
+  });
 }
 
 /* cabeçalho de aba: a barra "Gerar PDF" sobe para a direita do título e a descrição ganha "mais"
