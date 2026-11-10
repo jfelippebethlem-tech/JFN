@@ -3729,7 +3729,8 @@ html.v60 #hologrid, html.v60 #rjbg, html.v60 #holorj, html.v60 #netbg, html.v60 
 html.v60 #aurora, html.v60 .cometa, html.v60 canvas.view-wire{display:none !important}
 html.v60 body{background:var(--bg)}
 html.v60 body::before{display:none}
-html.v60 #esfnebula{inset:0;width:100%;height:100%;opacity:.45;filter:saturate(1.15);
+html.v60 #esfnebula{inset:0;width:100%;height:100%;opacity:.45;filter:none;   /* `saturate(1.15)` saiu: filtro em camada fixa de tela cheia = passe extra a cada pintura */
+ 
   mix-blend-mode:normal;-webkit-mask-image:none;mask-image:none;animation:none;transform:none;
   background-size:cover;background-position:center;will-change:auto}
 html.v60 #esfnebula video{object-fit:cover}
@@ -4027,6 +4028,9 @@ html.v60 :is(.card.kpi.kpi-go,.ck-inst):focus-visible{outline:2px solid var(--io
   html.v60 :is(.card.kpi.kpi-go,.ck-inst):hover{transform:translateY(-1px)}
 }
 @media (max-width:760px){
+  /* celular: sem blur atrás do KPI. Medido no perfil (CPU 4×): repintar cartão com backdrop-filter a
+     cada quadro da contagem era o maior custo de pintura; com --card a .82 o resultado é o mesmo. */
+  html.v60 :is(.card.kpi,.ck-inst){backdrop-filter:none;-webkit-backdrop-filter:none}
   /* valor longo (≥17 caracteres, ex.: R$ de 12 dígitos) ocupa as 2 colunas em vez de encolher até sumir */
   html.v60 :is(.card.kpi,.ck-inst).v60-largo{grid-column:1 / -1}
   /* 2 colunas em 390px: o rótulo pode ir a 2 linhas — cortado em 1 ele perdia o sentido */
@@ -4277,7 +4281,7 @@ html.v60 .caps-cmd{font-size:.75rem;color:var(--muted)}
 
 /* ── Fase 8 · MICROINTERAÇÕES, ESTADOS, FOCO, TOQUE ──────────────────────────────────────────────
    Movimento = estado: 150–220ms, `--ease`, sem bounce. Troca de aba = crossfade de 160ms. */
-html.v60 .fade{animation:none}
+html.v60 .fade{animation:v60surge .16s var(--ease) both}
 @keyframes v60some{to{opacity:0}}
 @keyframes v60surge{from{opacity:0}}
 html.v60::view-transition-old(jfn-miolo){animation:v60some .16s var(--ease) both}
@@ -4315,6 +4319,7 @@ html.v60 #view > .skel::after{height:300px;border-radius:var(--r-l);
       linear-gradient(var(--card),var(--card)) 100% 0 / calc(25% - 12px) 100% no-repeat}
 }
 @media (prefers-reduced-motion:reduce){
+  html.v60 .fade{animation:none}
   html.v60 .skel::before, html.v60 .skel::after{animation:none}
   html.v60::view-transition-old(jfn-miolo), html.v60::view-transition-new(jfn-miolo){animation:none}
 }
@@ -4353,3 +4358,9 @@ html.v60 .sheet .x:hover{color:var(--ink);border-color:color-mix(in oklch,var(--
 html.v60 .fade::before{display:none}
 html.v60 #view > .fade > *::before, html.v60 #view > .fade > *::after{content:none}
 html.v60 :is(.grid,.cols)::before, html.v60 :is(.grid,.cols)::after{content:none}
+
+/* link sem classe herdava o azul-padrão do navegador (#0000EE): 2,0:1 sobre o fundo escuro.
+   Medido na auditoria da fase 9 (e_imprensa, e_tac, p_lai, g_acervo). Link = --ion. */
+html.v60 :where(#view,#sheet,#consciencia) a:not([class]){color:var(--ion);text-decoration-color:color-mix(in oklch,var(--ion) 45%,transparent);
+  text-underline-offset:2px}
+html.v60 :where(#view,#sheet,#consciencia) a:not([class]):hover{color:color-mix(in oklch,var(--ion) 80%,white)}

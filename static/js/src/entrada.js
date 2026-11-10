@@ -311,7 +311,10 @@ async function ir(id){
      navegador congelaria a tela durante o fetch.                          */
   try{const html=await t.render();if(meu!==_nav)return;
     const pintar=()=>{v.innerHTML=`<div class="fade">${html}</div>`;if(typeof marcarValores==='function')marcarValores(v);};
-    if(document.startViewTransition&&!_redMotion){
+    /* v60: a troca de aba é um crossfade de 160ms em CSS (`.fade`). A View Transition fotografa a
+       tela inteira antes e depois — medido no perfil (celular, CPU 4×): era o item mais caro da
+       troca, e o resultado visual que o v60 quer é só o fade. */
+    if(document.startViewTransition&&!_redMotion&&!_v60){
       await document.startViewTransition(pintar).updateCallbackDone;
     }else{pintar();}}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">Falha: ${esc(e)}</div>`);}

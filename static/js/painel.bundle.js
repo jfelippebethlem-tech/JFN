@@ -9834,7 +9834,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         v.innerHTML = `<div class="fade">${html}</div>`;
         if (typeof marcarValores === "function") marcarValores(v);
       };
-      if (document.startViewTransition && !_redMotion) {
+      if (document.startViewTransition && !_redMotion && !_v60) {
         await document.startViewTransition(pintar).updateCallbackDone;
       } else {
         pintar();
