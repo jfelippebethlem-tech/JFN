@@ -8,7 +8,10 @@ Quatro fontes, todas de leitura:
                                 kernel; não tenta pegar a trava (pegar, mesmo por um instante, faria
                                 o job real desistir com "já rodando");
   3. logs conhecidos          — só linhas que casam a LISTA BRANCA de `motores.yaml` viram evento;
-  4. `MAX(rowid)` de tabelas  — salto entre leituras = linhas novas (bancos abertos em `mode=ro`).
+  4. `MAX(rowid)` de tabelas  — salto entre leituras = linhas novas (bancos abertos em `mode=ro`);
+  5. `efeito` (opcional)      — onde o trabalho do motor APARECE (coluna de data, mtime de arquivo ou
+                                valor de log). Medido em 11/11/2026: o painel via 2 dos 5 vermelhos,
+                                porque `sei-varredura` e `bombeiros` rodavam com exit 0 sem produzir.
 
 Um coletor por processo, com trava e intervalo mínimo: dez abas abertas não multiplicam o trabalho.
 INDISPONÍVEL ≠ ocioso: se o systemd não responde, o motor sai como `indisponivel`, nunca "parado".
@@ -36,6 +39,8 @@ _REPO = _AQUI.parent.parent
 DATA = Path(os.environ.get("JFN_DATA_DIR") or (_REPO / "data"))
 INTERVALO = 3.0            # s entre leituras de systemd/log
 INTERVALO_CONTADOR = 20.0  # s entre leituras de MAX(rowid)
+INTERVALO_EFEITO = 300.0   # s entre medições do efeito (efeito se mede em horas, não em segundos)
+_RE_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 ANEL = 240                 # eventos guardados (replay por Last-Event-ID)
 _PROPS = "Id,ActiveState,SubState,Type,Result,ExecMainStatus,ExecMainStartTimestamp,ActiveEnterTimestamp,InactiveEnterTimestamp,StateChangeTimestamp,LoadState"
 _RE_TS_LOG = re.compile(r"^\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})( UTC)?\]")
@@ -70,6 +75,78 @@ def _ts_timer(v: str | None) -> float | None:
         return datetime.fromisoformat(f"{m.group(1)}T{m.group(2)}{m.group(3)}:{m.group(4) or '00'}").timestamp()
     except ValueError:
         return None
+
+
+def _ts_texto(v) -> float | None:
+    """'2026-11-11T14:44:12' / '2026-11-11 14:44:12' (hora local se sem fuso) → epoch; resto → None."""
+    try:
+        dt = datetime.fromisoformat(str(v).strip().replace(" ", "T", 1)[:32])
+    except (TypeError, ValueError):
+        return None
+    return (dt if dt.tzinfo else dt.astimezone()).timestamp()
+
+
+def medir_efeito(cfg: dict) -> float | None:
+    """Epoch do ÚLTIMO efeito do motor, ou None se não dá para medir (INDISPONÍVEL ≠ parado).
+
+      {db, tabela, coluna}  MAX(coluna) de data (banco em `mode=ro`) — use coluna indexada ou tabela pequena
+      {arquivo}             mtime do arquivo
+      {log, regex}          hora da última linha em que o 1º grupo MUDOU de valor (cauda de 512 KB) —
+                            para motor que repete o mesmo placar a cada lote (bombeiros: "LACUNA: 9459");
+                            `sentido: desce|sobe` conta só a mudança na direção do progresso (a lacuna
+                            dos bombeiros SUBIU 9.458→9.459 em 09/11 — processo novo, não trabalho feito)
+    """
+    try:
+        if cfg.get("arquivo"):
+            a = Path(cfg["arquivo"])
+            return (a if a.is_absolute() else _REPO / a).stat().st_mtime
+        if cfg.get("log"):
+            lg = Path(cfg["log"]) if os.path.isabs(cfg["log"]) else _REPO / cfg["log"]
+            rg = re.compile(cfg["regex"])
+            with open(lg, "rb") as f:
+                tam = f.seek(0, 2)
+                f.seek(max(0, tam - 512_000))
+                bloco = f.read().decode("utf-8", "replace")
+            ult_val, mudou_em, primeira = None, None, None
+            for ln in bloco.splitlines():
+                mm, mt = rg.search(ln), _RE_TS_LOG.match(ln)
+                if not mm or not mt:
+                    continue
+                ts = _ts_texto(f"{mt.group(1)}T{mt.group(2)}")
+                primeira = primeira or ts
+                if ult_val is not None and mm.group(1) != ult_val:
+                    sentido = cfg.get("sentido")
+                    try:
+                        a, b = float(ult_val), float(mm.group(1))
+                    except ValueError:
+                        a = b = None
+                    if not sentido or a is None or (b < a if sentido == "desce" else b > a):
+                        mudou_em = ts
+                ult_val = mm.group(1)
+            # sem mudança na cauda: o efeito é no máximo tão recente quanto a 1ª linha lida
+            return mudou_em or primeira
+        if cfg.get("db"):
+            if not (_RE_IDENT.match(cfg.get("tabela", "")) and _RE_IDENT.match(cfg.get("coluna", ""))):
+                return None
+            arq = DATA / cfg["db"]
+            if not arq.exists():
+                return None
+            c = sqlite3.connect(f"file:{arq}?mode=ro", uri=True, timeout=2)
+            try:
+                v = c.execute(f"SELECT MAX({cfg['coluna']}) FROM {cfg['tabela']}").fetchone()[0]
+            finally:
+                c.close()
+            return _ts_texto(v) if v else None
+    except (OSError, sqlite3.Error, re.error, KeyError, TypeError):
+        return None
+    return None
+
+
+def efeito_parado(ultimo: float | None, horas: float, agora: float) -> bool | None:
+    """True = o efeito não avança há mais de `horas`; None = não medido."""
+    if ultimo is None:
+        return None
+    return agora - ultimo > horas * 3600
 
 
 def ler_systemd(units: list[str]) -> dict[str, dict] | None:
@@ -154,6 +231,9 @@ class Coletor:
         self._trava = threading.Lock()
         self._ult = 0.0
         self._ult_cont = 0.0
+        self._ult_efeito = 0.0
+        self._efeito: dict[str, float | None] = {}
+        self._sem_efeito_ant: dict[str, bool] = {}
         self._seq = 0
         self.eventos: deque = deque(maxlen=ANEL)
         self._estado_ant: dict[str, str] = {}
@@ -311,12 +391,17 @@ class Coletor:
                 self._ult_cont = agora
                 self._ler_contadores()
                 self._ler_territorio()
+            if agora - self._ult_efeito >= INTERVALO_EFEITO:
+                self._ult_efeito = agora
+                for m in self.cat:
+                    if m.get("efeito"):
+                        self._efeito[m["id"]] = medir_efeito(m["efeito"])
             limite = agora - 3600
             novos = []
             for m in self.cat:
                 d = {"id": m["id"], "nome": m["nome"], "classe": m.get("classe", "motor"), "descricao": m.get("descricao"),
                      "unidade": m.get("unidade"), "estado": "indisponivel", "desde": None, "proxima": None, "saida": None,
-                     "progresso": None, "ultimo_evento": None}
+                     "progresso": None, "ultimo_evento": None, "efeito": None}
                 if m.get("sonda_env"):
                     d["estado"] = self._sonda(m)
                 elif m.get("unidade") and sd is None:
@@ -344,6 +429,15 @@ class Coletor:
                     if ts >= limite:
                         self._emitir(m["id"], "falha", f"{m['nome']}: falhou" + (f" (código {d['saida']})" if d["saida"] else ""), ts)
                 self._estado_ant[m["id"]] = d["estado"]
+                if m.get("efeito"):
+                    h = float(m["efeito"].get("horas") or 24)
+                    ult = self._efeito.get(m["id"])
+                    # motor que falhou ou está indisponível já aparece como tal; o 🟡 é para o "saudável" que não produz
+                    parado = efeito_parado(ult, h, agora) if d["estado"] in ("rodando", "agendado", "ocioso") else None
+                    d["efeito"] = {"ultimo": _iso(ult), "horas": h, "parado": parado}
+                    if parado and not self._sem_efeito_ant.get(m["id"]):
+                        self._emitir(m["id"], "estado", f"{m['nome']}: rodando sem efeito há {(agora - ult) / 3600:.0f} h")
+                    self._sem_efeito_ant[m["id"]] = bool(parado)
                 if d["estado"] == "rodando":
                     d["progresso"] = self._prog.get(m["id"])
                 else:
@@ -374,7 +468,8 @@ class Coletor:
         return {"atualizado_em": _iso(agora), "fontes": self.fontes, "motores": self.motores,
                 "eventos": self.eventos_publicos(), "eventos_min": round(sum(1 for x in self.eventos if x["_ts"] >= agora - 300) / 5, 2),
                 "resumo": {e: sum(1 for m in self.motores if m["estado"] == e and m["classe"] == "motor")
-                           for e in ("rodando", "agendado", "ocioso", "falhou", "indisponivel")}}
+                           for e in ("rodando", "agendado", "ocioso", "falhou", "indisponivel")}
+                | {"sem_efeito": sum(1 for m in self.motores if (m.get("efeito") or {}).get("parado") and m["classe"] == "motor")}}
 
 
 _coletor: Coletor | None = None

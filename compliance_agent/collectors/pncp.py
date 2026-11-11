@@ -73,7 +73,23 @@ async def _get_pncp(endpoint: str, params: dict) -> Optional[dict]:
     return None
 
 
-async def _get_consulta(endpoint: str, params: dict) -> tuple[Optional[dict], str]:
+# HTTP 429 = o PNCP pedindo para esperar. Medido no run de 09/11/2026 do `jfn-fisc-refresh`: 751
+# respostas 429 tratadas como erro comum (2/4 s de sono e desistência na 3ª) — semestre com buraco.
+_TENTATIVAS_429 = 5
+_TETO_ESPERA_429 = 120.0
+
+
+def _retry_after(r) -> Optional[float]:
+    """Segundos pedidos pelo `Retry-After` (só a forma numérica; data HTTP é ignorada)."""
+    try:
+        v = float(str((getattr(r, "headers", None) or {}).get("Retry-After", "")).strip())
+        return v if v >= 0 else None
+    except ValueError:
+        return None
+
+
+async def _get_consulta(endpoint: str, params: dict,
+                        _info: Optional[dict] = None) -> tuple[Optional[dict], str]:
     """GET na API de CONSULTA do PNCP (sem login). Devolve `(json|None, motivo)`.
 
     O MOTIVO existe para o retry escolher a espera. Antes esta função engolia o status e devolvia
@@ -84,6 +100,7 @@ async def _get_consulta(endpoint: str, params: dict) -> tuple[Optional[dict], st
       "ok"   — 200 com JSON
       "http" — o servidor RESPONDEU um erro (5xx/4xx): não é congestionamento nosso
       "rede" — timeout/conexão: o caso para o qual o backoff longo foi escrito
+      "limite" — HTTP 429: a fonte pediu para esperar; o `Retry-After` vai em `_info["retry_after"]`
     """
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -97,6 +114,12 @@ async def _get_consulta(endpoint: str, params: dict) -> tuple[Optional[dict], st
                 # 2/4/6 s de espera: a maioria dos pares órgão×mês é 204, e o `--incremental` do
                 # jfn-intel-cache estourava as 2 h de TimeoutStartSec (medido 09-10/09/2026).
                 return {"data": [], "totalPaginas": 0}, "ok"
+            if r.status_code == 429:
+                if _info is not None:
+                    _info["retry_after"] = _retry_after(r)
+                logger.warning("PNCP %s devolveu HTTP 429 (limite de taxa) — vai esperar e retentar",
+                               endpoint)
+                return None, "limite"
             logger.warning("PNCP %s devolveu HTTP %s (None pode ser falso 'sem contrato')",
                            endpoint, r.status_code)
             return None, "http"
@@ -533,14 +556,25 @@ async def _consulta_retry(endpoint: str, params: dict, tentativas: int = 3) -> O
     a paciência longa para a qual este backoff foi escrito; erro HTTP não merece, porque a fonte já
     respondeu. Insistir 60 s contra um 503 instantâneo travava a rota do painel sem ajudar ninguém —
     se a fonte caiu, o sweep volta na próxima janela.
+
+    O 429 tem trilho próprio: backoff exponencial (5·2^n s) ou o `Retry-After` se maior, com teto
+    de `_TETO_ESPERA_429` por espera e até `_TENTATIVAS_429` tentativas.
     """
-    for i in range(tentativas):
-        j, motivo = await _get_consulta(endpoint, params)
+    i = 0
+    while True:
+        info: dict = {}
+        j, motivo = await _get_consulta(endpoint, params, info)
         if j is not None:
             return j
-        if i < tentativas - 1:
-            await asyncio.sleep((20 if motivo == "rede" else 2) * (i + 1))
-    return None
+        limite = _TENTATIVAS_429 if motivo == "limite" else tentativas
+        if i >= limite - 1:
+            return None
+        if motivo == "limite":
+            espera = min(max(5.0 * 2 ** i, info.get("retry_after") or 0.0), _TETO_ESPERA_429)
+        else:
+            espera = (20 if motivo == "rede" else 2) * (i + 1)
+        await asyncio.sleep(espera)
+        i += 1
 
 
 def _simplificar_contrato_pcrj(it: dict) -> dict:
