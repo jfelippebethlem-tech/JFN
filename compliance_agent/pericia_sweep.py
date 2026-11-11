@@ -31,7 +31,9 @@ _DDL = """CREATE TABLE IF NOT EXISTS pericia_fornecedor (
 
 
 def _conn():
-    c = sqlite3.connect(DB); c.row_factory = sqlite3.Row
+    # TIMEOUT NA ESCRITA (11/11/2026): com o padrão do sqlite (5 s) o sweep perdia par para qualquer outro
+    # escritor — 5.377 "database is locked" no log do cron e 28.414 numa passada concorrente. A casa espera 120 s.
+    c = sqlite3.connect(DB, timeout=120); c.row_factory = sqlite3.Row
     c.execute(_DDL); return c
 
 
