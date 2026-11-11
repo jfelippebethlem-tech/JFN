@@ -10,6 +10,10 @@
 #   eventos   lista branca: regex → texto humano com {1},{2}… (os grupos). `progresso: [a, b]` = grupos
 #             numerador/denominador; `tipo` = estado|progresso|dado|achado|falha (padrão: progresso)
 #   contador  {db, tabela, rotulo}: MAX(rowid) da tabela; o salto entre leituras vira evento "+N"
+#   efeito    (opcional) onde o trabalho APARECE + `horas`: sem avanço nessa janela → efeito.parado
+#             (🟡 "rodando sem efeito"). Uma de: {db, tabela, coluna} (MAX de coluna de data; só
+#             tabela pequena ou coluna indexada) · {arquivo} (mtime) · {log, regex} (hora em que o
+#             1º grupo MUDOU de valor). Não medível = None, nunca "parado".
 #
 # NUNCA se transmite linha bruta de log: o que não casa a lista branca é ignorado, e o que casa
 # ainda passa pelo saneamento (`saneamento.py`).
@@ -37,6 +41,8 @@ motores:
     classe: motor
     descricao: Varredura periódica de processos SEI (cron)
     trava: /tmp/varredura_sei.lock
+    # 11/11/2026: girava a cada 10 min com `resumo: {}` e aparecia saudável
+    efeito: {db: compliance.db, tabela: sei_leitura_dupla, coluna: lido_em, horas: 24}
   - id: tfe
     nome: TFE · despesa
     classe: motor
@@ -68,6 +74,8 @@ motores:
     descricao: Perícia paralela dos contratos do FUNESBOM
     unidade: jfn-bombeiros-supervisor
     log: data/bombeiros_supervisor.log
+    # 11/11/2026: LACUNA parada em 9.458–9.459 de 01/11 a 11/11 com todos os passos rc=0
+    efeito: {log: data/bombeiros_integra.log, regex: 'LACUNA: (\d+) processos sem íntegra', sentido: desce, horas: 48}
     eventos:
       - regex: '\] (arquivar|lex|achar_edital|reconcilia|integra|pericia) rc=(\d+)'
         texto: 'passo {1} terminou (código {2})'
