@@ -1,7 +1,7 @@
 /* AO VIVO — a interface dos motores (v61). O estado mora em `aovivo/estado.js`; aqui é só tela. */
 import {$, esc} from '../nucleo/dom.js';
 import {aoVivo, aoVivoLigar, aoVivoOuvir, motoresRodando} from '../aovivo/estado.js';
-import {rotuloEstado, quando, haQuanto} from '../aovivo/formato.js';
+import {rotuloEstado, quando, haQuanto, semEfeito} from '../aovivo/formato.js';
 
 /** Cartão de UM motor na folha (toque no nó em órbita, no cartão da grade ou no ticker). */
 export function abrirMotor(id) {
@@ -106,12 +106,13 @@ function _motoresPinta(host) {
   }
   const ms = [...aoVivo.motores].sort((a, b) => (a.classe === 'infra') - (b.classe === 'infra') || _ORDEM[a.estado] - _ORDEM[b.estado] || a.nome.localeCompare(b.nome, 'pt-BR'));
   const n = c => ms.filter(m => m.classe !== 'infra' && m.estado === c).length;
-  cnt.textContent = `${n('rodando')} rodando · ${n('falhou')} com falha · ${n('agendado')} agendados`;
+  const se = ms.filter(semEfeito).length;
+  cnt.textContent = `${n('rodando')} rodando · ${n('falhou')} com falha${se ? ` · ${se} sem efeito` : ''} · ${n('agendado')} agendados`;
   let infra = false;
   g.innerHTML = ms.map(m => {
     const sep = (!infra && m.classe === 'infra') ? (infra = true, '<div class="mt-sep">Serviços de apoio</div>') : '';
     const pr = typeof m.progresso === 'number' ? Math.round(m.progresso * 100) : null;
-    return `${sep}<article class="mt-card e-${esc(m.estado)}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
+    return `${sep}<article class="mt-card e-${esc(m.estado)}${semEfeito(m) ? ' sem-efeito' : ''}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
       <header><i class="mt-pt" aria-hidden="true"></i><b>${esc(m.nome)}</b><span class="mt-rot">${esc(rotuloEstado(m))}</span></header>
       ${pr != null ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pr}"><i style="width:${pr}%"></i></div>` : ''}
       <canvas class="mt-spark" width="240" height="28" data-at="${(m.atividade || []).join(',')}" aria-hidden="true"></canvas>

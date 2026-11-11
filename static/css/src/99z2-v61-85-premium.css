@@ -58,8 +58,8 @@ html.v61 .chip.on, html.v61 .chip.on:hover{background:#fff;color:var(--ink);bord
 html.v61 .tm-ctl .chips{margin:0;padding:3px}
 /* chip SOZINHO não é seleção, é botão ("Motores · ver todos"): sem trilho, placa com contorno fino */
 html.v61 .chips:has(> .chip:only-child){background:none;padding:0}
-html.v61 .chips > .chip:only-child:not(.on){background:#fff;border:1px solid var(--hair);box-shadow:0 1px 2px rgba(11,27,51,.06)}
-html.v61 .chips > .chip:only-child:not(.on):hover{border-color:rgba(20,184,245,.45);color:var(--ion-text)}
+html.v61 :is(.chips > .chip:only-child,.c61-ir-motores):not(.on){background:#fff;border:1px solid var(--hair);box-shadow:0 1px 2px rgba(11,27,51,.06)}
+html.v61 :is(.chips > .chip:only-child,.c61-ir-motores):not(.on):hover{border-color:rgba(20,184,245,.45);color:var(--ion-text)}
 
 /* ── 4 · sub-abas: mesma linguagem — placa branca + fio, sem azul cheio ──────────────────────── */
 html.v61 nav.tabs button{border-radius:10px;transition:background .2s var(--ease),color .2s var(--ease)}

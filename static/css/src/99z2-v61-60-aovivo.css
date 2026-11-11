@@ -76,3 +76,8 @@ html.v61 .mt-evs li b{font-weight:600;color:var(--ink)}
 
 /* a pílula "Ao vivo · N" da v60 (holofeed do barramento antigo) sai: o ticker é o fio ao vivo da v61 */
 html.v61 #holofeed{display:none !important}
+/* rodando SEM EFEITO (sinal de efeito do motores.yaml, 11/11/2026): o ponto vira âmbar e o rótulo diz por quê */
+html.v61 .mt-card.sem-efeito{border-color:rgba(201,132,0,.45)}
+html.v61 .mt-card.sem-efeito .mt-pt{background:var(--warn);animation:none}
+html.v61 .mt-card.sem-efeito .mt-rot{color:var(--warn-text);font-weight:600}
+html.v61 .rt-sefeito{color:var(--warn-text)}

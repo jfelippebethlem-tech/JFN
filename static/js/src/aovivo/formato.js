@@ -2,7 +2,7 @@
  * abertura, o ticker, os cartões de Motores e o reator dizem o estado com as MESMAS palavras.
  *
  * Contrato de `/api/ao-vivo/estado` (router `compliance_agent/aovivo/api.py`):
- *   motor = {id, nome, estado: 'rodando'|'ocioso'|'agendado'|'falhou'|'indisponivel',
+ *   motor = {id, nome, estado: 'rodando'|'ocioso'|'agendado'|'falhou'|'indisponivel', efeito: {ultimo, horas, parado}|null,
  *            desde: ISO|null, proxima: ISO|null, progresso: 0..1|null, ultimo_evento: {t, texto}|null}
  */
 
@@ -26,6 +26,14 @@ export function quando(iso, agora = new Date()) {
 /** Rótulo humano do estado: "rodando · 99%", "agendado · próx. 03:00", "falhou há 2h". */
 export function rotuloEstado(m) {
   if (!m) return 'INDISPONÍVEL';
+  const r = _rotuloBase(m);
+  /* SINAL DE EFEITO (11/11/2026): systemd diz "rodando", mas o produto não avança — o bombeiros relia os
+     mesmos processos há 48 h e a tela o pintava de verde. O rótulo diz as DUAS coisas. */
+  return semEfeito(m) ? `${r} · sem efeito há ${Math.round(m.efeito.horas)}h` : r;
+}
+/** O motor roda mas o que ele produz parou (`efeito.parado` do `motores.yaml`). */
+export function semEfeito(m) { return !!(m && m.efeito && m.efeito.parado && typeof m.efeito.horas === 'number'); }
+function _rotuloBase(m) {
   if (m.estado === 'rodando') return 'rodando' + (typeof m.progresso === 'number' ? ` · ${Math.round(m.progresso * 100)}%` : '');
   if (m.estado === 'falhou') { const h = haQuanto(m.desde); return 'falhou' + (h ? ' ' + h : ''); }
   if (m.estado === 'agendado') { const q = quando(m.proxima); return 'agendado' + (q ? ` · próx. ${q}` : ''); }

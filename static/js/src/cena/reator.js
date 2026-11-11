@@ -18,6 +18,7 @@ import {quadroLigar} from '../ritmo.js';
 import {aoVivo, aoVivoOuvir, eventosPorMinuto, motoresRodando} from '../aovivo/estado.js';
 import {abrirMotor} from '../ui/aovivo.js';
 import {esc} from '../nucleo/dom.js';
+import {semEfeito} from '../aovivo/formato.js';
 
 const A = '/static/assets/v61/';
 const TAU = Math.PI * 2;
@@ -77,11 +78,13 @@ export function reatorMontar(host) {
       nos.appendChild(b);
       orb.set(m.id, {el: b, a: (i / Math.max(1, vivos.length)) * TAU});
     });
-    const n = motoresRodando().length, f = aoVivo.motores.filter(m => m.estado === 'falhou').length;
+    const n = motoresRodando().length, f = aoVivo.motores.filter(m => m.estado === 'falhou').length,
+      se = aoVivo.motores.filter(semEfeito).length;
     if (aoVivo.disponivel === false) leg.innerHTML = 'ao vivo: <b>INDISPONÍVEL</b>';
     else if (aoVivo.disponivel === null) leg.textContent = 'ao vivo: lendo…';
     else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? 'motor rodando' : 'motores rodando'}`
       + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? 'falhou' : 'falharam'}` : '')
+      + (se ? ` · <b class="num rt-sefeito">${se}</b> sem efeito` : '')
       + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace('.', ',')}</b> eventos/min`
       + (aoVivo.conectado ? '' : ' · <span class="rt-pausa">reconectando</span>');
     raiz.classList.toggle('rt-indisp', aoVivo.disponivel === false);

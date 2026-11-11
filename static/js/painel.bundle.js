@@ -977,6 +977,13 @@
   }
   function rotuloEstado(m) {
     if (!m) return "INDISPONÍVEL";
+    const r = _rotuloBase(m);
+    return semEfeito(m) ? `${r} · sem efeito há ${Math.round(m.efeito.horas)}h` : r;
+  }
+  function semEfeito(m) {
+    return !!(m && m.efeito && m.efeito.parado && typeof m.efeito.horas === "number");
+  }
+  function _rotuloBase(m) {
     if (m.estado === "rodando") return "rodando" + (typeof m.progresso === "number" ? ` · ${Math.round(m.progresso * 100)}%` : "");
     if (m.estado === "falhou") {
       const h = haQuanto(m.desde);
@@ -1236,12 +1243,13 @@
     }
     const ms = [...aoVivo.motores].sort((a, b) => (a.classe === "infra") - (b.classe === "infra") || _ORDEM[a.estado] - _ORDEM[b.estado] || a.nome.localeCompare(b.nome, "pt-BR"));
     const n = (c) => ms.filter((m) => m.classe !== "infra" && m.estado === c).length;
-    cnt.textContent = `${n("rodando")} rodando · ${n("falhou")} com falha · ${n("agendado")} agendados`;
+    const se = ms.filter(semEfeito).length;
+    cnt.textContent = `${n("rodando")} rodando · ${n("falhou")} com falha${se ? ` · ${se} sem efeito` : ""} · ${n("agendado")} agendados`;
     let infra = false;
     g.innerHTML = ms.map((m) => {
       const sep = !infra && m.classe === "infra" ? (infra = true, '<div class="mt-sep">Serviços de apoio</div>') : "";
       const pr = typeof m.progresso === "number" ? Math.round(m.progresso * 100) : null;
-      return `${sep}<article class="mt-card e-${esc(m.estado)}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
+      return `${sep}<article class="mt-card e-${esc(m.estado)}${semEfeito(m) ? " sem-efeito" : ""}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
       <header><i class="mt-pt" aria-hidden="true"></i><b>${esc(m.nome)}</b><span class="mt-rot">${esc(rotuloEstado(m))}</span></header>
       ${pr != null ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pr}"><i style="width:${pr}%"></i></div>` : ""}
       <canvas class="mt-spark" width="240" height="28" data-at="${(m.atividade || []).join(",")}" aria-hidden="true"></canvas>
@@ -4673,10 +4681,10 @@ void main(){
         nos.appendChild(b);
         orb.set(m.id, { el: b, a: i / Math.max(1, vivos.length) * TAU });
       });
-      const n = motoresRodando().length, f = aoVivo.motores.filter((m) => m.estado === "falhou").length;
+      const n = motoresRodando().length, f = aoVivo.motores.filter((m) => m.estado === "falhou").length, se = aoVivo.motores.filter(semEfeito).length;
       if (aoVivo.disponivel === false) leg.innerHTML = "ao vivo: <b>INDISPONÍVEL</b>";
       else if (aoVivo.disponivel === null) leg.textContent = "ao vivo: lendo…";
-      else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? "motor rodando" : "motores rodando"}` + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? "falhou" : "falharam"}` : "") + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace(".", ",")}</b> eventos/min` + (aoVivo.conectado ? "" : ' · <span class="rt-pausa">reconectando</span>');
+      else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? "motor rodando" : "motores rodando"}` + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? "falhou" : "falharam"}` : "") + (se ? ` · <b class="num rt-sefeito">${se}</b> sem efeito` : "") + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace(".", ",")}</b> eventos/min` + (aoVivo.conectado ? "" : ' · <span class="rt-pausa">reconectando</span>');
       raiz.classList.toggle("rt-indisp", aoVivo.disponivel === false);
       sujo = true;
     };
