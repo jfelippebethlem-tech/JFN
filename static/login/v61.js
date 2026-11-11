@@ -3,7 +3,7 @@
    de a página pintar. Mesma regra do painel: `jfn_v61` ligada e `jfn_tema` ≠ escuro → classe `v61`.
    Tudo o que cita mora em /static/login/ (a única pasta que o visitante sem sessão baixa). */
 (function () {
-  var PADRAO = '0';   /* fase 11 do brief: vira '1' junto com window.JFN_V61_DEFAULT do painel */
+  var PADRAO = '1';   /* fase 11 do brief: vira '1' junto com window.JFN_V61_DEFAULT do painel */
   try {
     var q = new URLSearchParams(location.search).get('v61');
     if (q === '1' || q === '0') localStorage.setItem('jfn_v61', q);

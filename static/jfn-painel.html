@@ -6,7 +6,7 @@ if(q==='1')localStorage.setItem('jfn_v60','1');if(q==='0')localStorage.setItem('
 var on=localStorage.getItem('jfn_v60');if(on===null)on=window.JFN_V60_DEFAULT||'0';
 if(on==='1')document.documentElement.classList.add('v60');}catch(e){}})();</script>
 <script>/* v61 TRON CLARO: tema claro sobre a v60. `?v61=0|1` grava `jfn_v61`; `jfn_tema=escuro` devolve a v60 escura. */
-window.JFN_V61_DEFAULT='0';(function(){try{var h=document.documentElement,q=new URLSearchParams(location.search).get('v61');
+window.JFN_V61_DEFAULT='1';(function(){try{var h=document.documentElement,q=new URLSearchParams(location.search).get('v61');
 if(q==='1')localStorage.setItem('jfn_v61','1');if(q==='0')localStorage.setItem('jfn_v61','0');
 var on=localStorage.getItem('jfn_v61');if(on===null)on=window.JFN_V61_DEFAULT||'0';
 if(on==='1'&&h.classList.contains('v60')){h.setAttribute('data-v61','1');
