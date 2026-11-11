@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Pista APROFUNDADA (segunda opinião forte) — SÓ nos contratos PRIORITÁRIOS do FUNESBOM.
 
-deepseek-v4-pro (NVIDIA NIM) reanalisa a execução com a MESMA perícia calibrada do lex_execucao
+Modelo forte do catálogo NVIDIA (nemotron-3.5-super-vl; o deepseek-v4-pro deu 410 Gone em 09/11/2026) reanalisa a execução com a MESMA perícia calibrada do lex_execucao
 (reusa _SYS/_SCHEMA/_flags/_regras_calibracao), gravando em tabela SEPARADA `lex_aprofundado` para
-comparar Lex-fraco × deepseek-forte SEM destruir o baseline.
+comparar Lex-fraco × forte SEM destruir o baseline. Resposta vazia NÃO é gravada (volta à fila).
 
 Custo (§4.1): NVIDIA NIM, guardado pelo cap mensal de `nvidia` (_cap_ok/_cap_inc). ~50s/caso → por isso
 é ON-DEMAND (NÃO entra no auto-loop do supervisor) e com --top pequeno.
@@ -18,7 +18,7 @@ import argparse
 import httpx
 from pathlib import Path
 import tools.lex_execucao as L  # reusa _SYS, _SCHEMA, _flags, _parse_json, _regras_calibracao, _agora
-from compliance_agent.llm.free_llm import _cap_ok, _cap_inc, _envk
+from compliance_agent.llm.free_llm import _cap_ok, _cap_inc, _envk, _sem_raciocinio
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
 FILA = "/home/ubuntu/JFN/data/bombeiros_sei_fila.json"
@@ -42,10 +42,11 @@ def _gerar_deepseek(prompt: str, system: str, timeout: float = 150.0) -> str:
     key = _envk("NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY")
     if not key:
         raise RuntimeError("NVIDIA key ausente")
-    r = httpx.post(NIM, headers={"Authorization": f"Bearer {key}"},
-                   json={"model": MODEL, "temperature": 0.1, "max_tokens": 1500,
-                         "messages": [{"role": "system", "content": system},
-                                      {"role": "user", "content": prompt}]}, timeout=timeout)
+    payload = {"model": MODEL, "temperature": 0.1, "max_tokens": 1500,
+               "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}]}
+    # nemotron é modelo de RACIOCÍNIO: com 1500 tokens pensa tudo e devolve content vazio (medido 09/11/2026)
+    _sem_raciocinio(NIM, payload)
+    r = httpx.post(NIM, headers={"Authorization": f"Bearer {key}"}, json=payload, timeout=timeout)
     r.raise_for_status()
     j = r.json()
     from compliance_agent.llm.free_llm import garantir_sem_erro
@@ -68,7 +69,9 @@ def _con() -> sqlite3.Connection:
 def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list:
     """Prioritários = bombeiros com docs, NÃO monopólio_legítimo, ordem de score da fila; pula já-feitos."""
     fila = {x["sei"]: x for x in json.load(open(FILA))}
-    ja = set() if reavaliar else {r[0] for r in con.execute("SELECT numero_sei FROM lex_aprofundado")}
+    # linha sem veredito (as 5 de 27/06, todas vazias/indeterminado de resposta cortada) não é "feito"
+    ja = set() if reavaliar else {r[0] for r in con.execute(
+        "SELECT numero_sei FROM lex_aprofundado WHERE execucao_comprovada IS NOT NULL")}
     rows = con.execute("SELECT numero_sei,objeto,valores,documentos,red_flags FROM sei_ficha "
                        "WHERE n_docs>0 AND numero_sei LIKE 'SEI-2700%'").fetchall()
     cand = []
@@ -131,6 +134,9 @@ def main() -> None:
             dt = time.time() - t
             _cap_inc("nvidia")
             r = L._parse_json(txt) or {}
+            if r.get("execucao_comprovada") not in ("sim", "parcial", "nao", "indeterminado"):
+                # vazio/cortado = pendência: não grava (gravar marcava "feito" e tirava da fila para sempre)
+                print(f"  {ns}: resposta sem veredito válido ({tok} tok) — fica pendente"); continue
             nota = r.get("nota_risco_execucao")
             try:
                 nota = int(nota)

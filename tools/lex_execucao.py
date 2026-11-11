@@ -273,13 +273,17 @@ def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
     return [ns for ns in cand if _chave_processo(ns) in m]
 
 
+# "Já avaliado" = tem veredito, OU tentou há menos de 7 dias. Veredito VAZIO (resposta do LLM cortada — 616 em
+# 29/10/2026) não é avaliação: volta após 7 dias. Régua ÚNICA — o lex_bombeiros tinha a sua e contava o vazio
+# como feito ("periciados nesta passada: 0", medido 11/11/2026).
+SQL_JA_AVALIADO = ("SELECT numero_sei FROM lex_execucao WHERE execucao_comprovada IS NOT NULL "
+                   "OR em >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-7 days')")
+
+
 def _alvos(con: sqlite3.Connection, top: int, reavaliar: bool) -> list[tuple]:
     ja = set()
     if not reavaliar:
-        # veredito VAZIO (resposta do LLM cortada — 616 em 29/10/2026) não é avaliação: volta após 7 dias
-        ja = {r[0] for r in con.execute(
-            "SELECT numero_sei FROM lex_execucao WHERE execucao_comprovada IS NOT NULL "
-            "OR em >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-7 days')")}
+        ja = {r[0] for r in con.execute(SQL_JA_AVALIADO)}
     # mesmo ritmo do slot (top por rodada): só a ORDEM muda — veredito errado vale mais que cobertura nova
     primeiro = set(_contestados_por_siafe(con)[:top]) if not reavaliar else set()
     ja -= primeiro
