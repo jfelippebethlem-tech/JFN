@@ -429,7 +429,8 @@ def _juizo(comp: str, obs: list[dict], procs: dict, nfs_por_ob: dict, gerar) -> 
     if not cit or _norm_cit(cit) not in _norm_cit(docs):
         return {"veredito": "INDETERMINADO", "camada": "juizo", "citacao": "", "nf_por_ob": j.get("nf_por_ob"),
                 "motivo": f"juízo disse '{v}' mas a citação literal não existe no texto — descartado ({motivo})"}
-    if v == "confirmado" and not _confirmacao_sustentada(j.get("nf_por_ob"), cit):
+    valores = {o["numero_ob"]: float(o.get("valor") or 0) for o in obs}
+    if v == "confirmado" and not _confirmacao_sustentada(j.get("nf_por_ob"), cit, valores):
         # medido 11/11/2026: o juízo "confirmou" citando o histórico de OUTRA OB e chamando de NF o nº de um
         # documento SEI. Citação que existe não basta: tem de ser a NF REPETIDA, atribuída a 2 OBs.
         return {"veredito": "INDETERMINADO", "camada": "juizo", "citacao": cit[:400], "nf_por_ob": j.get("nf_por_ob"),
@@ -438,18 +439,28 @@ def _juizo(comp: str, obs: list[dict], procs: dict, nfs_por_ob: dict, gerar) -> 
             "nf_por_ob": j.get("nf_por_ob")}
 
 
-def _confirmacao_sustentada(nf_por_ob, citacao: str) -> bool:
-    """CONFIRMADO do juízo só vale se a MESMA NF foi atribuída a 2+ OBs E o número dela está na citação literal."""
+def _confirmacao_sustentada(nf_por_ob, citacao: str, valores: dict | None = None) -> bool:
+    """CONFIRMADO do juízo só vale se a MESMA NF foi atribuída a 2+ OBs, o número dela está na citação literal e
+    (com `valores`) 2 dessas OBs pagam a MESMA quantia (±1%). Mesma NF em OBs de valores diferentes = a NF
+    liquidada em parcelas (medido 11/11/2026: NF 58044 do SAMU em 2 NLs que somam exatamente o valor da NF)."""
     if not isinstance(nf_por_ob, dict):
         return False
-    cont = Counter()
-    for v in nf_por_ob.values():
+    por_nf: dict[str, list] = {}
+    for ob, v in nf_por_ob.items():
         for x in (v if isinstance(v, list) else [v]):
             d = re.sub(r"\D", "", str(x or "")).lstrip("0")
             if d:
-                cont[d] += 1
+                por_nf.setdefault(d, []).append(ob)
     nums_cit = {x.lstrip("0") for x in re.findall(r"\d+", _norm(citacao))}
-    return any(n in nums_cit for n, k in cont.items() if k >= 2)
+    for n, obs_nf in por_nf.items():
+        if len(obs_nf) < 2 or n not in nums_cit:
+            continue
+        if valores is None:
+            return True
+        vs = sorted(valores.get(o, 0.0) for o in obs_nf)
+        if any(b and abs(a - b) <= 0.01 * b for a, b in zip(vs, vs[1:])):
+            return True
+    return False
 
 
 # ───────────────────────── camada determinística ─────────────────────────
@@ -616,6 +627,26 @@ def enfileirar(c, linhas: list[dict], vagas: int) -> int:
     return n
 
 
+def _manter_juizo(c, cnpj: str, ug: str, linhas: list[dict]) -> list[dict]:
+    """Rodada SÓ COM A REGRA (cron) não apaga o juízo já feito: competência que a regra deixaria em
+    "falta o juízo" mantém o veredito do juízo gravado para as MESMAS OBs (OB nova = juízo velho não vale)."""
+    try:
+        velhos = {r[0]: r for r in c.execute(
+            "SELECT competencia, veredito, motivo, nfs_json, citacao, camada, obs_json FROM resolucao_duplicidade "
+            "WHERE cnpj=? AND ug=? AND camada='juizo'", (cnpj, str(ug)))}
+    except sqlite3.OperationalError:
+        return linhas
+    out = []
+    for r in linhas:
+        v = velhos.get(r["competencia"])
+        if (v and r["veredito"] == "INDETERMINADO" and r.get("camada") == "deterministica"
+                and "falta o juízo" in (r.get("motivo") or "")
+                and sorted(json.loads(v[6] or "[]")) == sorted(r.get("obs") or [])):
+            r = {**r, "veredito": v[1], "motivo": v[2], "nfs_json": v[3], "citacao": v[4], "camada": v[5]}
+        out.append(r)
+    return out
+
+
 def pares_amarelos(c, limit: int | None = None) -> list[tuple]:
     """Pares 🟡 cujo T07 é INDICIO, maior pago primeiro (a fila de captura herda essa prioridade)."""
     out = []
@@ -656,6 +687,8 @@ def rodar(db=DB, limit: int | None = None, gerar=None, dry_run: bool = False, lo
                                                                          Counter(r['veredito'] for r in linhas).items()))
             if dry_run:
                 continue
+            if gerar is None:
+                linhas = _manter_juizo(c, cnpj, ug, linhas)
             c.execute("DELETE FROM resolucao_duplicidade WHERE cnpj=? AND ug=?", (cnpj, str(ug)))
             gravar(c, linhas)
             enfileirados += enfileirar(c, linhas, max(0, teto_fila - enfileirados))

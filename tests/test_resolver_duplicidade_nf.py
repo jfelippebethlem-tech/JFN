@@ -459,3 +459,21 @@ def test_juizo_confirmado_sem_a_nf_repetida_na_citacao_nao_confirma():
     assert R._confirmacao_sustentada({"A": "NF 250", "B": "250"}, "NOTA FISCAL nº 250 emitida em 03/01/2025")
     assert not R._confirmacao_sustentada({"A": "250", "B": "251"}, "NOTA FISCAL nº 250")
     assert not R._confirmacao_sustentada(None, "NOTA FISCAL nº 250")
+
+
+def test_mesma_nf_em_obs_de_valores_diferentes_e_parcela_nao_confirma():
+    # caso real 11/11/2026: NF 58044 (SAMU) liquidada em 2 NLs, OBs de 243.794,69 e 304.691,00
+    npo = {"2024OB24456": "58044", "2024OB24457": "58044"}
+    assert not R._confirmacao_sustentada(npo, "Nota Fiscal 58044", {"2024OB24456": 243794.69, "2024OB24457": 304691.0})
+    assert R._confirmacao_sustentada(npo, "Nota Fiscal 58044", {"2024OB24456": 304691.0, "2024OB24457": 304691.0})
+
+
+def test_rodada_so_com_a_regra_nao_apaga_o_juizo(tmp_path):
+    c = sqlite3.connect(tmp_path / "j.db")
+    R.garantir_tabela(c)
+    c.execute("INSERT INTO resolucao_duplicidade VALUES (?,?,?,?,?,?,?,?,?,?)",
+              (CNPJ, "1", "03/2026", "AFASTADO", "juízo: x", "{}", "cit", "juizo", json.dumps(["A", "B"]), "t"))
+    nova = {"competencia": "03/2026", "veredito": "INDETERMINADO", "camada": "deterministica",
+            "motivo": "NFs não fecham pela regra (…) — falta o juízo sobre o texto", "obs": ["B", "A"]}
+    assert R._manter_juizo(c, CNPJ, "1", [dict(nova)])[0]["veredito"] == "AFASTADO"
+    assert R._manter_juizo(c, CNPJ, "1", [dict(nova, obs=["A", "B", "C"])])[0]["veredito"] == "INDETERMINADO"
