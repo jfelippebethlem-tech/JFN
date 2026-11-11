@@ -1461,7 +1461,7 @@ def api_laranjas(limite: int = 100):
 
 @router.get("/api/pericias")
 def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "score"):
-    """Ranking pesquisável de perícias de fornecedor (pericia_fornecedor). ?q=nome/cnpj &grau=🟡/🟢
+    """Ranking pesquisável de perícias de fornecedor (pericia_fornecedor). ?q=nome/cnpj &grau=🟡/🟢/⚪
     &ordem=score|total. Cada fornecedor é agregado (maior grau, soma de OB, achados). Indício."""
     import sqlite3 as _sq
     try:
@@ -1476,10 +1476,12 @@ def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "sc
         if grau:
             where += " AND grau = ?"
             params.append(grau)
+        # ⚪ (nada verificável) é estado próprio: o antigo `ELSE '🟢'` pintava de "limpo" o não-determinado.
         rows = con.execute(
             f"SELECT cnpj, MAX(favorecido) favorecido, "
             f"       CASE WHEN SUM(CASE WHEN grau='🔴' THEN 1 ELSE 0 END)>0 THEN '🔴' "
-            f"            WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' ELSE '🟢' END grau, "
+            f"            WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' "
+            f"            WHEN SUM(CASE WHEN grau='🟢' THEN 1 ELSE 0 END)>0 THEN '🟢' ELSE '⚪' END grau, "
             f"       MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
             f"       SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs "
             f"FROM pericia_fornecedor {where} GROUP BY cnpj "
@@ -1510,7 +1512,8 @@ def api_perfil(cnpj: str):
             "SELECT MAX(favorecido) nome, MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
             "SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs, "
             "CASE WHEN SUM(CASE WHEN grau='🔴' THEN 1 ELSE 0 END)>0 THEN '🔴' "
-            "WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' ELSE '🟢' END grau "
+            "WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' "
+            "WHEN SUM(CASE WHEN grau='🟢' THEN 1 ELSE 0 END)>0 THEN '🟢' ELSE '⚪' END grau "
             "FROM pericia_fornecedor WHERE cnpj=?", (dig,)).fetchone()
         out["pericia"] = dict(per) if per and per["nome"] else None
         # achados detalhados (do maior score)
