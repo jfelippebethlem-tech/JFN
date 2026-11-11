@@ -10,6 +10,7 @@
  */
 import {$, svgIco} from '../nucleo/dom.js';
 import {_v60} from '../capacidade/estado.js';
+import {v61TemaItem} from './v61.js';
 
 export function v60Boot() {
   if (!_v60) return;
@@ -237,6 +238,7 @@ export function v60Mais() {
     <button type="button" class="v60-mi${ligado ? ' on' : ''}" data-som aria-pressed="${ligado}"><span class="v60-ic" aria-hidden="true"><i class="som-d"></i></span><span class="som-t">${ligado ? 'Som' : 'Mudo'}</span><small>som de interface</small></button>
     <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco('§info')}</span>Termos<small>o que cada conceito significa</small></button>
     <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco('§sweep')}</span>Atividade ao vivo<small>últimos eventos</small></button>
+    ${v61TemaItem()}
     <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco('🔧')}</span>Controle</a>
     <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco('🚪')}</span>Sair</a>
    </div>`;

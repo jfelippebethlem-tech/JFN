@@ -4364,3 +4364,267 @@ html.v60 :is(.grid,.cols)::before, html.v60 :is(.grid,.cols)::after{content:none
 html.v60 :where(#view,#sheet,#consciencia) a:not([class]){color:var(--ion);text-decoration-color:color-mix(in oklch,var(--ion) 45%,transparent);
   text-underline-offset:2px}
 html.v60 :where(#view,#sheet,#consciencia) a:not([class]):hover{color:color-mix(in oklch,var(--ion) 80%,white)}
+/* ══ v61 · TRON CLARO — tema «GELO» (2026-11-11) ════════════════════════════════════════════════
+   Brief: docs/superpowers/specs/BRIEF-painel-v61-tron-claro-2026-11-11.md
+   Ordem do dono: "tá muito dark esse site" — tema CLARO, azul / azul-claro, "ultratech, nível Tron",
+   mantendo TODA a legibilidade e a estrutura da v60.
+
+   REGRAS DESTES ESTRATOS (`99z2-v61-*.css`)
+   · Vêm DEPOIS do `99z-v60-clareza.css` e, como ele, não são camadados: com a mesma especificidade,
+     a declaração daqui vence a da v60 pela ordem.
+   · TODO seletor começa por `html.v61`. A classe só existe junto com `html.v60` (o script do <head>
+     garante): sem ela — `?v61=0`, ou "Tema escuro" na folha "⋯" — o painel é a v60, byte a byte.
+   · A v60 não foi reescrita. Aqui só se RECOLORE o que ela desenhou; estrutura, medidas e
+     hierarquia são as dela.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* ── tokens do brief ─────────────────────────────────────────────────────────────────────────── */
+html.v61{
+  color-scheme:light;
+  --bg:#F3F8FE; --bg-2:#E8F1FC; --bg-3:#DCEAFB;
+  --surface:rgba(255,255,255,.74); --surface-solid:#FFFFFF; --surface-2:rgba(240,247,255,.82);
+  --line:rgba(30,110,220,.16); --line-strong:rgba(30,110,220,.32);
+  --ink:#0B1B33; --ink-2:#34496A; --ink-3:#6A7E9B;
+  --ion:#1E7BF0; --ion-text:#0A63D1; --cyan:#22B5F5; --glow:rgba(34,181,245,.42);
+  --ok:#0E9E74; --warn:#C98400; --crit:#D93A40; --money:#0B7A64;
+  --radius:14px; --blur:saturate(150%) blur(18px);
+
+  /* ── derivados por CONTRASTE (medidos em `tools/v61_contraste.py`; AA = 4,5:1 no pior fundo, --bg-3).
+     Os tokens do brief acima valem para PREENCHIMENTO (ponto, barra, borda, brilho). Como TEXTO,
+     cinco deles não chegam a 4,5:1 sobre o claro; cada um ganha um par `-text` mais escuro, no
+     mesmo matiz. `--ion-solid` é o fundo dos controles ativos com texto branco (o --ion puro dá
+     4,1:1 com branco). `--muted` é o texto secundário real: o --ink-3 do brief dá 4,1:1 sobre
+     branco, então fica para traço/ícone e o texto usa este. */
+  --ion-solid:#1470E6;
+  --muted:#51667F;
+  --ok-text:#0A7557; --warn-text:#8A5A00; --crit-text:#BE2A31; --money-text:#086B55;
+}
+
+/* v60 → v61: a v60 lê estes nomes; apontá-los para os tokens novos recolore o estrato inteiro dela */
+html.v61{
+  --card:var(--surface); --card-hi:var(--surface-solid); --line-soft:var(--line);
+  --flame:var(--money-text);
+  --r-l:var(--radius);
+  --sh:0 1px 0 #fff inset, 0 8px 24px rgba(20,70,140,.08);
+  --tinta:rgba(30,110,220,.07);            /* o "véu de hover" que na v60 era branco a 5% */
+}
+/* legado → v61: os estratos antigos e os `style="color:var(--…)"` dos renders usam estes nomes quase
+   sempre como COR DE TEXTO — por isso apontam para os pares `-text` (AA), não para o preenchimento. */
+html.v61{
+  --bg2:var(--bg-2); --tx:var(--ink); --tx2:var(--ink-2); --mut:var(--muted);
+  --dim:var(--muted); --dim-sm:var(--muted); --leg:var(--muted);
+  --bd:var(--line-strong); --bd2:var(--line);
+  --card2:var(--surface-2); --raise:var(--surface-solid); --glass:var(--surface);
+  --accent:var(--ion-text); --teal:var(--ion-text); --blue:var(--ion-text); --blue-d:var(--ion-text); --teal-d:var(--ion-text);
+  --accent2:#6B46C8; --purple:#6B46C8; --violet:#6B46C8;
+  --rose:var(--crit-text); --rose-d:var(--crit-text);
+  --green:var(--ok-text); --green-d:var(--ok-text);
+  --amber:var(--warn-text); --amber-d:var(--warn-text);
+  --gold:var(--money-text);
+  --accent-ink:#fff;
+}
+
+/* ── fundo: UMA pilha fixa ───────────────────────────────────────────────────────────────────────
+   1. `#esfnebula` — vídeo/pôster da esfera ativa a .55 (peças claras de `assets/v61/`);
+   2. `.v61-veu` — véu claro (o scrim `body::after` da v60 sai: era escuro);
+   3. `.v61-grade` — grade Tron em perspectiva, só no terço de baixo, deslizando;
+   4. `.v61-plano > i` — 3 rastros de luz correndo pelas linhas da grade (7s / 11s / 17s). */
+html.v61 body{background:var(--bg);color:var(--ink)}
+html.v61 body::after{display:none}
+html.v61 #esfnebula{opacity:.55;background-color:var(--bg)}
+html.v61 body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/v61/sala.webp)}
+html.v61 body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/v61/estado.webp)}
+html.v61 body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/v61/prefeitura.webp)}
+html.v61 body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/v61/transversal.webp)}
+@media (max-width:760px){
+  html.v61 body[data-esf="inicio"] #esfnebula{background-image:url(/static/assets/v61/sala-sm.webp)}
+  html.v61 body[data-esf="estado"] #esfnebula{background-image:url(/static/assets/v61/estado-sm.webp)}
+  html.v61 body[data-esf="prefeitura"] #esfnebula{background-image:url(/static/assets/v61/prefeitura-sm.webp)}
+  html.v61 body[data-esf="geral"] #esfnebula{background-image:url(/static/assets/v61/transversal-sm.webp)}
+}
+html.v61 #v61-fundo{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;contain:strict}
+html.v61 .v61-veu{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(243,248,254,.55),rgba(243,248,254,.92) 60%)}
+html.v61 .v61-piso{position:absolute;left:-30%;right:-30%;bottom:0;height:34vh;perspective:600px;perspective-origin:50% 0;
+  -webkit-mask-image:linear-gradient(0deg,#000 10%,transparent 96%);mask-image:linear-gradient(0deg,#000 10%,transparent 96%)}
+html.v61 .v61-plano{position:absolute;inset:-60% 0 0;transform-origin:50% 100%;transform:rotateX(62deg);overflow:hidden}
+/* a grade desliza por `transform` (compositor) e não por `background-position` (repintura de uma
+   camada de tela cheia a cada quadro): UMA célula por ciclo emenda sem costura — 10 células em 40s */
+html.v61 .v61-grade{position:absolute;inset:-56px 0 0;will-change:transform;
+  background:
+    repeating-linear-gradient(0deg,var(--line-strong) 0 1px,transparent 1px 56px),
+    repeating-linear-gradient(90deg,var(--line-strong) 0 1px,transparent 1px 56px);
+  animation:v61grade 4s linear infinite}
+@keyframes v61grade{to{transform:translate3d(0,56px,0)}}
+html.v61 .v61-plano > i{position:absolute;top:0;width:1px;height:160px;will-change:transform;
+  background:linear-gradient(180deg,transparent,var(--cyan));box-shadow:0 0 6px var(--glow);
+  transform:translate3d(0,-180px,0);animation:v61rastro 7s linear infinite}
+html.v61 .v61-plano > i.r1{left:calc(50% - 168px)}
+html.v61 .v61-plano > i.r2{left:calc(50% + 112px);animation-duration:11s;animation-delay:-4s}
+html.v61 .v61-plano > i.r3{left:calc(50% + 392px);animation-duration:17s;animation-delay:-9s}
+@keyframes v61rastro{to{transform:translate3d(0,120vh,0)}}
+@media (prefers-reduced-motion:reduce){
+  html.v61 .v61-grade{animation:none}
+  html.v61 .v61-plano > i{display:none}
+}
+
+/* ── cabeçalho, esferas, abas ────────────────────────────────────────────────────────────────── */
+/* a faixa vai de borda a borda da janela: o `header` mora dentro do `.wrap` (1280px) e, no claro, a
+   aresta dele aparecia. Sombra de 100vmax na MESMA cor + recorte só na vertical = faixa inteira. */
+html.v61 header{--faixa:rgba(255,255,255,.84);background:var(--faixa);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:0 0 0 100vmax var(--faixa);clip-path:inset(0 -100vmax)}
+html.v61 .brand h1{color:var(--ink)}
+html.v61 .brand .lg{background:linear-gradient(135deg,var(--cyan),var(--ion-solid));color:#fff;
+  box-shadow:0 0 0 3px rgba(34,181,245,.16)}
+html.v61 .live .pulse{background:var(--ok)}
+html.v61 #kyber .ktrk{stroke:var(--line-strong)}
+html.v61 #kyber .kseg{stroke:var(--line)}
+html.v61 #kyber .karc{stroke:var(--ion)}
+html.v61 #kyber .knuc{fill:var(--cyan)}
+html.v61 .cblade{background:linear-gradient(90deg,transparent,var(--cyan) 18%,var(--ion) 50%,var(--cyan) 82%,transparent);
+  box-shadow:0 0 8px var(--glow);opacity:.8}
+html.v61 .v60-mais:hover{background:var(--tinta)}
+html.v61 nav.tabs{--faixa:rgba(243,248,254,.9);background:var(--faixa);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom-color:var(--line);box-shadow:0 0 0 100vmax var(--faixa),0 1px 0 100vmax var(--line);clip-path:inset(0 -100vmax -1px)}
+html.v61 nav.tabs button:hover{background:var(--tinta)}
+/* chip ativo = fundo azul cheio, texto branco, brilho de 3px */
+html.v61 nav.tabs button.on, html.v61 .chip.on{color:#fff;background:var(--ion-solid);border-color:var(--ion-solid);
+  box-shadow:0 0 0 3px var(--glow)}
+html.v61 nav.tabs .tmais.e{background:linear-gradient(90deg,var(--bg) 35%,transparent)}
+html.v61 nav.tabs .tmais.d{background:linear-gradient(270deg,var(--bg) 35%,transparent)}
+html.v61 .chip{background:rgba(255,255,255,.6)}
+html.v61 .chip:hover{background:var(--tinta)}
+html.v61 .chip.on:hover{background:var(--ion-solid);color:#fff}
+@media (max-width:760px){
+  html.v61 #spheres{background:rgba(255,255,255,.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+    border-top-color:var(--line);box-shadow:0 -6px 20px rgba(20,70,140,.08)}
+  html.v61 .sph.on{color:var(--ion-text)}
+  html.v61 .sph.on .i{background:var(--ion-solid);color:#fff;box-shadow:0 0 0 3px var(--glow)}
+}
+@media (min-width:761px){
+  html.v61 #spheres{background:rgba(30,110,220,.06);border-color:var(--line)}
+  html.v61 .sph:hover{background:var(--tinta)}
+  html.v61 .sph.on, html.v61 .sph.on:hover{background:var(--ion-solid);color:#fff;box-shadow:0 0 0 3px var(--glow)}
+  html.v61 .sph.on .i{color:#fff}
+  html.v61 .htop .actions > a:hover{background:var(--tinta)}
+}
+
+/* ── cartões = vidro branco, com colchetes de canto em --ion a 50% ───────────────────────────────
+   Os colchetes são 8 fundos de 10×1px (a v60 aposentou os pseudo-elementos do cartão; fundo não
+   gasta pseudo nem nó). Entram só no cartão "de instrumento" (KPI, herói) — em linha de lista
+   seriam ruído. */
+html.v61{--brk:rgba(30,123,240,.5)}
+html.v61 .card, html.v61 :is(.card.kpi,.ck-inst), html.v61 .ck-hero, html.v61 .grid.v60-lista, html.v61 .v60-feed{
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
+html.v61 :is(.card.kpi,.ck-inst), html.v61 .ck-hero{
+  background:
+    linear-gradient(var(--brk),var(--brk)) 7px 7px / 10px 1px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) 7px 7px / 1px 10px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) calc(100% - 7px) 7px / 10px 1px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) calc(100% - 7px) 7px / 1px 10px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) 7px calc(100% - 7px) / 10px 1px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) 7px calc(100% - 7px) / 1px 10px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) calc(100% - 7px) calc(100% - 7px) / 10px 1px no-repeat,
+    linear-gradient(var(--brk),var(--brk)) calc(100% - 7px) calc(100% - 7px) / 1px 10px no-repeat,
+    var(--surface)}
+html.v61 .card:hover{background:var(--surface);border-color:var(--line-strong);box-shadow:var(--sh)}
+html.v61 .card .card{background:none;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+html.v61 .grid.v60-lista > .card{background:none;border:0;border-top:1px solid var(--line);box-shadow:none;
+  backdrop-filter:none;-webkit-backdrop-filter:none}
+html.v61 .grid.v60-lista > .card:first-child{border-top:0}
+html.v61 .grid.v60-lista > .card:hover{background:var(--tinta)}
+html.v61 .grid.v60-lista > .card:active{background:rgba(30,110,220,.11)}
+html.v61 .card.hl{border-color:color-mix(in srgb,var(--crit) 50%,transparent)}
+@media (hover:hover){
+  html.v61 :is(.card.kpi,.ck-inst):hover{border-color:var(--line-strong);box-shadow:0 1px 0 #fff inset,0 10px 28px rgba(20,70,140,.12)}
+}
+@media (max-width:760px){
+  /* mesma decisão da v60 (medida): sem blur atrás de cartão no celular; a superfície sobe para .9 */
+  html.v61 .card, html.v61 :is(.card.kpi,.ck-inst), html.v61 .ck-hero, html.v61 .grid.v60-lista, html.v61 .v60-feed{
+    backdrop-filter:none;-webkit-backdrop-filter:none;--surface:rgba(255,255,255,.9)}
+}
+@media (prefers-reduced-transparency:reduce){
+  html.v61 :is(.card,.card.kpi,.ck-inst){background:var(--surface-solid);backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+
+/* ── texto de acento e semântico: sempre o par `-text` ───────────────────────────────────────── */
+html.v61 .v60-mi .v60-ic, html.v61 .cover-seal, html.v61 .cover-seal .jico, html.v61 .v60-desc-mais,
+html.v61 .clk:hover, html.v61 .grid.v60-lista > .card:hover .clk, html.v61 th.srt:hover, html.v61 .search .az.on{
+  color:var(--ion-text)}
+html.v61 :where(#view,#sheet,#consciencia) a:not([class]){color:var(--ion-text);
+  text-decoration-color:color-mix(in srgb,var(--ion-text) 45%,transparent)}
+html.v61 :where(#view,#sheet,#consciencia) a:not([class]):hover{color:var(--ink)}
+html.v61 .cover-seal{background:rgba(30,123,240,.1)}
+html.v61 .cover{border-bottom-color:var(--line)}
+html.v61 .ck-inst .val.ckrose{color:var(--crit-text)}
+html.v61 .ck-inst .val.ckamber{color:var(--warn-text)}
+html.v61 .ck-inst .val.ckgood{color:var(--ok-text)}
+html.v61 .ck-inst .val.ckgold, html.v61 .ck-big, html.v61 .v60-din, html.v61 .grid.v60-lista .right .v60-din{color:var(--money-text)}
+html.v61 .kpi-ico[style*="rose"]{color:var(--crit-text) !important}
+html.v61 .v60-grau.g-crit{color:var(--crit-text)}
+html.v61 .v60-grau.g-warn{color:var(--warn-text)}
+html.v61 .v60-grau.g-ok{color:var(--ok-text)}
+html.v61 .v60-pt{background:var(--ink-3)}
+html.v61 .v60-pt.g-crit{background:var(--crit)}
+html.v61 .v60-pt.g-warn{background:var(--warn)}
+html.v61 .v60-pt.g-ok{background:var(--ok)}
+html.v61 .v60-pt.g-nd{background:none;box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+
+/* ── botões ──────────────────────────────────────────────────────────────────────────────────── */
+html.v61 .btn{background:var(--ion-solid);color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 4px 12px rgba(20,112,230,.22)}
+html.v61 .btn:hover{background:var(--ion-text)}
+html.v61 .btn.accent{background:var(--ion-solid);color:#fff}
+html.v61 .btn.accent:hover{background:var(--ion-text)}
+html.v61 .btn.red{background:rgba(217,58,64,.1);color:var(--crit-text);border-color:rgba(217,58,64,.4);box-shadow:none}
+html.v61 .btn.green{background:rgba(14,158,116,.1);color:var(--ok-text);border-color:rgba(14,158,116,.4);box-shadow:none}
+html.v61 .btn.ghost{background:rgba(255,255,255,.7);color:var(--ink-2);border-color:var(--line-strong);box-shadow:none}
+html.v61 .btn.ghost:hover{background:#fff;color:var(--ion-text);border-color:var(--ion)}
+
+/* ── pills, medidores, notas ─────────────────────────────────────────────────────────────────── */
+html.v61 :is(.tag,.pill){background:rgba(30,110,220,.09);color:var(--ink-2)}
+html.v61 .tag.rose, html.v61 .pill.alto{background:rgba(217,58,64,.11);color:var(--crit-text)}
+html.v61 .tag.amber, html.v61 .pill.medio{background:rgba(201,132,0,.14);color:var(--warn-text)}
+html.v61 .tag.green{background:rgba(14,158,116,.12);color:var(--ok-text)}
+html.v61 :is(.tag.accent,.tag.teal,.tag.purple){background:rgba(30,123,240,.11);color:var(--ion-text)}
+html.v61 .meter{background:rgba(30,110,220,.14)}
+html.v61 .note{background:rgba(255,255,255,.6);border-color:var(--line)}
+html.v61 .warn{background:rgba(201,132,0,.09);border-color:rgba(201,132,0,.35);color:var(--ink-2)}
+
+/* ── tabelas ─────────────────────────────────────────────────────────────────────────────────── */
+html.v61 thead th{border-bottom-color:var(--line-strong)}
+html.v61 tbody td{border-bottom-color:var(--line)}
+html.v61 tbody tr:nth-child(even) td{background:rgba(30,110,220,.03)}
+html.v61 tbody tr:hover td{background:var(--tinta)}
+html.v61 .card:has(> table){
+  background:
+    linear-gradient(90deg,#fff 30%,transparent) left / 24px 100% no-repeat local,
+    linear-gradient(270deg,#fff 30%,transparent) right / 24px 100% no-repeat local,
+    linear-gradient(90deg,rgba(20,70,140,.16),transparent) left / 12px 100% no-repeat scroll,
+    linear-gradient(270deg,rgba(20,70,140,.16),transparent) right / 12px 100% no-repeat scroll,
+    var(--surface)}
+@media (min-width:1100px){
+  html.v61 .card:has(> table){background:var(--surface)}
+  html.v61 .card > table > thead th{background:#F7FAFF}
+}
+
+/* ── filtros / busca ─────────────────────────────────────────────────────────────────────────── */
+html.v61 :where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),select,textarea){
+  background:rgba(255,255,255,.86);border-color:var(--line-strong);color:var(--ink)}
+html.v61 :is(input,select,textarea):focus{border-color:var(--ion);box-shadow:0 0 0 3px var(--glow)}
+html.v61 .search .az:hover{background:var(--tinta)}
+
+/* ── folha, holofeed, esqueleto ──────────────────────────────────────────────────────────────── */
+html.v61 .ov{background:rgba(11,27,51,.34)}
+html.v61 .sheet{background:rgba(255,255,255,.96);border-color:var(--line-strong);color:var(--ink);
+  box-shadow:0 -12px 40px -12px rgba(20,70,140,.28)}
+html.v61 .sheet .x{background:#fff;border-color:var(--line-strong)}
+html.v61 .sheet .x:hover{border-color:var(--ion);color:var(--ion-text)}
+html.v61 .v60-mi:hover, html.v61 .v60-mi:active{background:var(--tinta)}
+html.v61 .v60-mi .som-d{background:var(--ink-3)}
+html.v61 .v60-mi.on .som-d{background:var(--ion)}
+html.v61 #holofeed{background:rgba(255,255,255,.92);border-color:var(--line-strong)}
+html.v61 :is(.skel::after,#view > .skel::before,#view > .skel::after){--card:var(--bg-3)}
+html.v61 .ck-ticker{background:var(--surface);border-color:var(--line)}
+html.v61 :focus-visible{outline-color:var(--ion)}
+html.v61 ::selection{background:rgba(34,181,245,.3)}

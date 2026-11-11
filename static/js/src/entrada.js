@@ -35,6 +35,7 @@ import {ritmoEstado} from './ritmo.js';
    As ~40 leituras espalhadas pelo painel nao mudaram: `export let` da binding VIVO. */
 import {_redMotion, _sobrio, _v60} from './capacidade/estado.js';
 import {v60Boot} from './ui/v60.js';
+import {v61Boot} from './ui/v61.js';
 import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
 /* A CENA — canvas de fundo, mesa de vigilia, videos de esfera e portal. Sem efeito de topo:
    quem a liga e a sequencia de boot abaixo. */
@@ -346,7 +347,7 @@ fetch('/static/assets/no-energia.png',{method:'HEAD'})
    importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/innerHeight);},{passive:true});
-(async()=>{v60Boot();montarSpheres();montarTabs();netbgStart();rjbgStart();
+(async()=>{v60Boot();v61Boot();montarSpheres();montarTabs();netbgStart();rjbgStart();
   /* v57: a URL manda no boot — `#g_radar` abre direto na aba, e o Voltar volta pra cá. */
   const _h=decodeURIComponent(location.hash.slice(1));
   await ir(_abaValida(_h)?_h:'i_cockpit');

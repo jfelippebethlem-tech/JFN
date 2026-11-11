@@ -527,6 +527,8 @@
   var _redMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   var _sobrio = false;
   var _v60 = document.documentElement.classList.contains("v60");
+  var _v61flag = document.documentElement.hasAttribute("data-v61");
+  var _v61 = document.documentElement.classList.contains("v61");
   function _setSobrio(v) {
     _sobrio = !!v;
   }
@@ -792,6 +794,56 @@
     });
   }
 
+  // static/js/src/ui/v61.js
+  var _SOL = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/></svg>';
+  var _LUA = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+  function v61Boot() {
+    if (!_v61flag) return;
+    _tema();
+    if (!_v61) return;
+    _fundo();
+  }
+  function v61TemaItem() {
+    if (!_v61flag) return "";
+    return `<button type="button" class="v60-mi" data-v61-tema><span class="v60-ic" aria-hidden="true">${_v61 ? _LUA : _SOL}</span>${_v61 ? "Tema escuro" : "Tema claro"}<small>${_v61 ? "volta ao painel escuro" : "volta ao painel claro"}</small></button>`;
+  }
+  function _tema() {
+    const box = document.querySelector(".htop .actions");
+    if (box && !box.querySelector("[data-v61-tema]")) {
+      const a = document.createElement("a");
+      const txt = _v61 ? "Tema escuro" : "Tema claro";
+      a.setAttribute("role", "button");
+      a.tabIndex = 0;
+      a.dataset.v61Tema = "1";
+      a.title = txt;
+      a.setAttribute("aria-label", txt);
+      a.innerHTML = `<span class="v60-ic" aria-hidden="true">${_v61 ? _LUA : _SOL}</span><span class="v60-tx">${txt}</span>`;
+      box.insertBefore(a, box.querySelector("a.help:not(.som)") || null);
+    }
+    const troca = (e) => {
+      const b = e.target && e.target.closest && e.target.closest("[data-v61-tema]");
+      if (!b) return;
+      if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      try {
+        if (_v61) localStorage.setItem("jfn_tema", "escuro");
+        else localStorage.removeItem("jfn_tema");
+      } catch (_) {
+      }
+      location.reload();
+    };
+    document.addEventListener("click", troca);
+    document.addEventListener("keydown", troca);
+  }
+  function _fundo() {
+    if (document.getElementById("v61-fundo")) return;
+    const f = document.createElement("div");
+    f.id = "v61-fundo";
+    f.setAttribute("aria-hidden", "true");
+    f.innerHTML = '<div class="v61-veu"></div><div class="v61-piso"><div class="v61-plano"><div class="v61-grade"></div><i class="r1"></i><i class="r2"></i><i class="r3"></i></div></div>';
+    document.body.insertBefore(f, document.body.firstChild);
+  }
+
   // static/js/src/ui/v60.js
   function v60Boot() {
     if (!_v60) return;
@@ -1020,6 +1072,7 @@
     <button type="button" class="v60-mi${ligado ? " on" : ""}" data-som aria-pressed="${ligado}"><span class="v60-ic" aria-hidden="true"><i class="som-d"></i></span><span class="som-t">${ligado ? "Som" : "Mudo"}</span><small>som de interface</small></button>
     <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco("§info")}</span>Termos<small>o que cada conceito significa</small></button>
     <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco("§sweep")}</span>Atividade ao vivo<small>últimos eventos</small></button>
+    ${v61TemaItem()}
     <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco("🔧")}</span>Controle</a>
     <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco("🚪")}</span>Sair</a>
    </div>`;
@@ -9861,6 +9914,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }, { passive: true });
   (async () => {
     v60Boot();
+    v61Boot();
     montarSpheres();
     montarTabs();
     netbgStart();
