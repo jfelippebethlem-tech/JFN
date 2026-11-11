@@ -168,10 +168,12 @@ def mesmo_grupo(cnpj_a: str, cnpj_b: str) -> bool:
     return len(a) == 14 and len(b) == 14 and a[:8] == b[:8]
 
 
-# ───────────────────────── histórico da OB (o MESMO SIAFE, tela da OB) ─────────────────────────
+# ───────────────────────── histórico da OB (texto do espelho TFE, NUNCA valor) ─────────────────────────
 # A coluna `processo` da `ob_orcamentaria_siafe` vem VAZIA em parte das OBs (medido 11/11/2026: 1.926
-# competências sem processo em nenhuma OB). O histórico que o gestor digita na OB (`ordens_bancarias.observacao`,
-# mesma OB, mesma UG, mesmo credor) costuma dizer o processo SEI, o contrato, a unidade e o mês do serviço:
+# competências sem processo em nenhuma OB), e a tabela do SIAFE não guarda o HISTÓRICO que o gestor digita na
+# OB. O espelho TFE (`ordens_bancarias.observacao`) guarda. REGRA DE OURO mantida: quais OBs, valor e status
+# vêm SÓ do SIAFE; do TFE sai apenas o TEXTO do histórico da MESMA OB (mesmo número, UG e credor), que diz o
+# processo SEI, o contrato, a unidade e o mês do serviço:
 # "PG DO DOCUMENTO 2594 CONFORME PROCESSO HOTELARIA - CONTRATO 424/2022 - COMPETENCIA 03/2023 - UNIDADE HMHS".
 _RX_H_CONTRATO = re.compile(r"\bcontrato\s+(?:de\s+gestao\s+)?(?:n\s*[o.]?\s*)?(\d{1,4})\s*/\s*(\d{2,4})\b")
 _RX_H_UNIDADE = re.compile(r"\b(?:unidade|opm)\s*:?\s+([a-z0-9][a-z0-9 .]{1,40}?)\s*(?=$|[-,;()]|\bretenc|\bcomp)")
@@ -197,7 +199,8 @@ def ler_historico(texto: str) -> dict:
 
 
 def historicos(c, ug: str, cnpj: str, numeros: list[str]) -> dict[str, str]:
-    """numero_ob → histórico (`ordens_bancarias.observacao`) da MESMA OB/UG/credor. Sem a tabela → {}."""
+    """numero_ob → histórico (`ordens_bancarias.observacao`, espelho TFE — só o texto) da MESMA OB/UG/credor.
+    Sem a tabela → {}."""
     out: dict[str, list[str]] = {}
     nums = sorted(set(numeros))
     try:
@@ -494,7 +497,7 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
                 return {**res, "veredito": "CONFIRMADO", "citacao": tit,
                         "motivo": f"NF nº {num} é a nota cobrada pela OB {a} e pela OB {b} ({onde}) — mesma NF paga "
                                   f"em 2 OBs na competência {comp}"}
-    # (1b) HISTÓRICO DA OB (mesmo SIAFE): outro mês de serviço, ou contratos/unidades distintos → AFASTADO,
+    # (1b) HISTÓRICO DA OB (texto do espelho TFE; valores seguem do SIAFE): outro mês de serviço, ou contratos/unidades distintos → AFASTADO,
     # sem precisar do processo. Só AFASTA — duplicidade só se CONFIRMA pela NF (acima).
     h = afastado_pelo_historico(comp, obs)
     if h:
