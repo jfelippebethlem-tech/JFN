@@ -229,7 +229,7 @@ def _fila_geral() -> list[dict]:
 
 
 _MOTIVOS_EM_MASSA = ("nunca_capturado", "parecer cita", "familia_contratacao", "fila_tac_recorrente",
-                     "medviva_regime_tac", "recaptura:")
+                     "medviva_regime_tac", "recaptura:", "duplicidade_nf")
 
 
 def _fila_inscrita(limite: int = 40) -> list[str]:
