@@ -34,7 +34,7 @@
 import {$, esc, svgIco, card, kpi, sec, spin, corta, clk} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J} from '../nucleo/http.js';
-import {_redMotion, _sobrio, _v60} from '../capacidade/estado.js';
+import {_redMotion, _sobrio, _v60, _v61} from '../capacidade/estado.js';
 import {esfera, aba} from '../app/estado.js';
 /* A malha do Estado saiu para `cena/malha-rj.js` (v59). O `import` E o reexport lá no fim são as
    duas metades da mesma decisão: aqui ela é USADA (fundo e mesa a pedem), e lá embaixo ela é
@@ -896,8 +896,11 @@ export function nucleoStart(){
 
 /* ══ VIDEO DAS ESFERAS ══ */
 export async function nebulaViva(){
-  const mapa={estado:'nebula-estado',prefeitura:'nebula-prefeitura',
-              geral:'nebula-transversal',inicio:'portal-hero'};
+  /* v61: as peças claras de `assets/v61/` (loop por esfera; Início = a sala de comando) */
+  const mapa=_v61?{estado:'v61/estado',prefeitura:'v61/prefeitura',geral:'v61/transversal',inicio:'v61/sala'}
+                 :{estado:'nebula-estado',prefeitura:'nebula-prefeitura',
+                   geral:'nebula-transversal',inicio:'portal-hero'};
+  const _cel=matchMedia('(max-width:760px)').matches,_eco=!!(navigator.connection&&navigator.connection.saveData);
   const nome=mapa[esfera],host=$('esfnebula');
   if(!nome||!host||_redMotion)return;
   /* v51: modo sobrio (FPS MEDIDO < 24) tambem apaga a nebulosa viva. Decodificar video
@@ -907,13 +910,18 @@ export async function nebulaViva(){
     if(v0){v0.classList.remove('on');v0.pause();}return;}
   /* v60: no celular e com economia de dados o backdrop é SÓ o poster (o JPG que o CSS já pinta no
      pai, por esfera). Nenhum vídeo é criado nem baixado — é a tela onde decodificar custa mais. */
-  if(_v60&&(matchMedia('(max-width:760px)').matches||(navigator.connection&&navigator.connection.saveData))){
+  /* v61: o celular TOCA a versão leve (`-m`, 854×480); só a economia de dados fica no pôster. */
+  if(_v61?_eco:(_v60&&(_cel||_eco))){
     const v0=host.querySelector('video');
     if(v0){v0.classList.remove('on');v0.pause();v0.removeAttribute('autoplay');}return;}
-  const url='/static/assets/'+nome+'.mp4';
+  const _m=_v61&&_cel?'-m':'';
+  const url='/static/assets/'+nome+_m+'.mp4';
   if(_nebVid[nome]===undefined){
     try{_nebVid[nome]=(await fetch(url,{method:'HEAD'})).ok}
     catch(e){_nebVid[nome]=false}}
+  /* a sonda é assíncrona: se a esfera trocou enquanto ela voltava, esta chamada é a VELHA e não pode
+     pôr o vídeo dela por cima do da esfera atual (visto no v61: `sala` tocando sob a aba Estado). */
+  if(mapa[esfera]!==nome)return;
   let v=host.querySelector('video');
   if(!_nebVid[nome]){if(v)v.classList.remove('on');return;}
   if(!v){v=document.createElement('video');
@@ -925,7 +933,8 @@ export async function nebulaViva(){
     v.addEventListener('playing',()=>v.classList.add('on'));
     host.appendChild(v);}
   if(v.dataset.neb!==nome){v.classList.remove('on');v.dataset.neb=nome;
-    v.poster='/static/assets/'+nome+'.jpg';   // v51: mesmo quadro do JPG do pai enquanto nao toca
+    v.poster=_v61?'/static/assets/'+nome+(_cel?'-sm':'')+'.webp'
+                 :'/static/assets/'+nome+'.jpg';   // v51: mesmo quadro do JPG do pai enquanto nao toca
     /* v41.1: webm primeiro (harness sem H.264), mp4 como caminho canonico */
     v.innerHTML='<source src="'+url.replace('.mp4','.webm')+'" type="video/webm">'
                +'<source src="'+url+'" type="video/mp4">';

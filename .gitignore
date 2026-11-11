@@ -214,3 +214,4 @@ data/siafe_dias_verificados.json
 data/siafe_dias_inconclusivos.json
 # cache persistido do painel (rotas/investigacao.py) — derivado, regenerável
 data/cache_painel/
+static/assets/v61/src/
