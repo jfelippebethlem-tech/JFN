@@ -220,6 +220,9 @@ SQL_FEITO = (f"NOT (escala IS NULL "
              f"AND avaliado_em <= datetime('now', '-{RETENTATIVA_HORAS} hours'))")
 
 
+_TIPOS_SEGUNDO_VOTO = ("parecer", "homologacao", "pesquisa_precos")
+
+
 def _pendente_infra(v: dict) -> bool:
     return v.get("escala") is None and (bool(v.get("pendente"))
                                          or str(v.get("aviso") or "").startswith(_AVISO_INFRA))
@@ -302,7 +305,11 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
             prompt = (f"{rubrica}\n\n--- DOCUMENTO ({d.get('titulo')}) ---\n{texto}\n--- FIM ---")
             v = _um_voto(gerar, prompt, texto)
             # rubrica crítica (emergência): 2º voto independente; divergência >1 rebaixa p/ o menor
-            if d["tipo"] == "contratacao_direta" and v.get("escala") is not None:
+            # 11/11/2026: também parecer/homologação/pesquisa de preços quando o 1º voto aponta problema (≥ 2) —
+            # 805 juízos v3 de mérito tinham voto único; custo medido ≈ 6 chamadas extras/dia (61 em 10 dias)
+            if v.get("escala") is not None and (
+                    d["tipo"] == "contratacao_direta"
+                    or (d["tipo"] in _TIPOS_SEGUNDO_VOTO and v["escala"] >= 2)):
                 v2 = _um_voto(gerar, prompt, texto)
                 if v2.get("escala") is not None and abs(v2["escala"] - v["escala"]) > 1:
                     v = {**v, "escala": min(v["escala"], v2["escala"]),
