@@ -174,6 +174,11 @@ GET /api/sobrepreco -> api_sobrepreco
 GET /api/sugestoes -> api_sugestoes
 GET /api/sweeps/status -> api_sweeps_status
 GET /api/tac/ranking -> api_tac_ranking
+GET /api/territorio/baldes -> territorio_baldes
+GET /api/territorio/estado -> territorio_estado
+GET /api/territorio/estado/{cod_ibge} -> territorio_municipio
+GET /api/territorio/pcrj -> territorio_pcrj
+GET /api/territorio/pcrj/{ap} -> territorio_ap
 GET /api/trace/{correlation_id} -> _get_trace
 GET /api/tunnel/status -> api_tunnel_status
 GET /api/ugs -> api_ugs

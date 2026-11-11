@@ -1,0 +1,14 @@
+[Unit]
+Description=JFN — motor território (contratos do Estado por município · PCRJ por AP)
+OnFailure=notificar-falha@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=JFN_DATA_DIR=%h/JFN/data
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=1800
+# a própria CLI segura `flock data/territorio.lock` (LOCK_NB): duas execuções nunca escrevem juntas.
+# NÃO embrulhar em /usr/bin/flock no mesmo arquivo — a CLI veria a trava do embrulho e sairia sem rodar.
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.territorio.cli --incremental

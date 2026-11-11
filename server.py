@@ -1315,6 +1315,12 @@ from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_si
 for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_vinculos, _r_lai, _r_acervo):
     app.include_router(_r.router)
 
+# v61 (2026-11-11): território — o router mora junto do motor (`compliance_agent/territorio/`), só lê
+# `data/territorio.db`. Autenticação = a do middleware `_auth_jfn`, como todo `/api/*`.
+from compliance_agent.territorio import api as _r_territorio  # noqa: E402
+
+app.include_router(_r_territorio.router)
+
 
 def main():
     global _args

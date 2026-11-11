@@ -88,7 +88,7 @@ export function mapaMontar(host) {
       <div class="tm-placa" id="tm-placa">
         <svg class="tm-svg" viewBox="0 0 ${W} ${H}" role="group" aria-label="Mapa">
           <defs><pattern id="tm-hach" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-            <rect width="6" height="6" fill="#F4F9FF"/><line x1="0" y1="0" x2="0" y2="6" stroke="#B7CCE6" stroke-width="1.4"/></pattern></defs>
+            <rect width="6" height="6" fill="#EEF4FB"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9FB9D9" stroke-width="1.4"/></pattern></defs>
           <g class="tm-cam" id="tm-cam"><g class="tm-g tm-est" id="tm-est"></g></g>
           <g class="tm-g tm-rio" id="tm-rio"></g>
           <g class="tm-pulsos" id="tm-pulsos"></g>
@@ -235,6 +235,7 @@ export function mapaMontar(host) {
     return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub} · ${esc((PERIODOS.find(p => p[0] === S.periodo) || [])[1] || '')}</p>
       <div class="tf-kpis">${kp('Em execução', fmtN(k.n_em_execucao))}${kp('Executados', fmtN(k.n_executados))}
         ${kp('Valor contratado', rs(k.valor_contratado))}${kp('Pago', rs(k.pago))}${kp('% executado', pct(k.pct_executado))}</div>
+      <p class="tf-nota">${k.n_com_pago ? `Pago e % executado consideram só os <b class="num">${fmtN(k.n_com_pago)}</b> de <b class="num">${fmtN(k.n_contratos)}</b> contratos com pagamento vinculado.` : 'Nenhum contrato desta seleção tem pagamento vinculado: pago <b>INDISPONÍVEL</b> (≠ zero).'}${f.nota_pago ? ' ' + esc(f.nota_pago) + '.' : ''}</p>
       ${k.n_multi ? `<p class="tf-nota">Participa de <b class="num">${fmtN(k.n_multi)}</b> contratos multimunicipais (valor não repartido — fica no balde "vários municípios").</p>` : ''}
       ${f.ras && f.ras.length ? `<h4>Regiões administrativas</h4><div class="tf-ras">${f.ras.map(r => `<span class="tag">${esc(r)}</span>`).join('')}</div>` : ''}
       <h4>Órgãos ${S.escopo === 'estado' ? 'estaduais' : 'municipais'}</h4>
