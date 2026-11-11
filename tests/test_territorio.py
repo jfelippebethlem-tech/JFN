@@ -130,6 +130,67 @@ def test_status_rescisao_vem_como_termo_de_rescisao():
     assert ae.status_de(False, None, "2026-11-11") == "executado"
 
 
+# ── fase 7b: unidades (CNES, ISP), distritos e abrangência ─────────────────────────────────────
+UNID = ae.carregar_unidades()
+
+
+@pytest.mark.parametrize("objeto, esperado, metodo", [
+    ("serviços assistenciais a serem executados no Hospital Estadual Azevedo Lima", ["Niterói"], "unidade"),
+    ("serviços médicos no Hospital Estadual Ricardo Cruz", ["Nova Iguaçu"], "unidade"),              # CNES grava "DR RICARDO CRUZ"
+    ("APOIO ASSISTENCIAL COM EQUIPE MULTIDISCIPLINAR - HERCRUZ", ["Nova Iguaçu"], "unidade"),         # sigla → CNES
+    ("manutenção predial do IECAC", ["Rio de Janeiro"], "unidade"),
+    ("coleta de resíduos do Hospital Estadual Getulio Vargas", ["Rio de Janeiro"], "unidade"),
+    ("materiais para a Policlínica Piquet Carneiro", ["Rio de Janeiro"], "unidade"),
+    ("Reforma da 105ª DP", ["Petrópolis"], "unidade"),                                                # ISP: circunscrição da delegacia
+    ("AQUISIÇÃO DE MATERIAL DE CONSTRUÇÃO PARA O 14° BPM.", ["Rio de Janeiro"], "unidade"),           # AISP de município único
+    ("obras no quartel do 16º GBM, em Itaipava", ["Petrópolis"], "texto"),                            # distrito (IBGE)
+    ("pavimentação no distrito de Posse", ["Petrópolis"], "texto"),                                   # distrito genérico só com âncora
+    ("recuperação da estrada em Xerém", ["Duque de Caxias"], "texto"),
+])
+def test_unidades_e_distritos(objeto, esperado, metodo):
+    at = ae.atribuir(objeto, "FUNDAÇÃO SAÚDE DO EST. DO RIO DE JANEIRO", REG, UNID)
+    assert (sorted(m["nome"] for m in at["municipios"]), at["metodo"]) == (esperado, metodo)
+
+
+def test_bpm_de_varios_municipios_e_distrito_generico_nao_casam():
+    assert ae.atribuir("viaturas para o 10º BPM", "SEPM", REG, UNID)["cod_ibge"] is None      # AISP com mais de um município
+    assert ae.atribuir("posse de terreno pela companhia", "CEHAB", REG, UNID)["cod_ibge"] is None
+
+
+@pytest.mark.parametrize("objeto, orgao, trecho", [
+    ("AQUISIÇÃO DE MEDICAMENTOS", "FUNDO ESTADUAL DE SAÚDE", "aquisição distribuída à rede"),
+    ("licença de software para elaboração de orçamento de obras", "Fundo Especial de Adm Fazendária", "tecnologia corporativa"),
+    ("aquisição de Material de Apoio Pedagógico para a Rede Pública Estadual de Ensino", "SECRETARIA DE ESTADO DE EDUCACAO", "rede estadual"),
+    ("CREDENCIAMENTO DE SERVIÇOS DE UNIDADES HOSPITALARES DO SETOR PRIVADO", "FUNDO ESTADUAL DE SAÚDE", "âmbito estadual"),
+    ("Aquisição de deionizador", "Secretaria de Estado da Casa Civil", "órgão-meio"),
+])
+def test_balde_estado_inteiro_tem_motivo_gravado(objeto, orgao, trecho):
+    at = ae.atribuir(objeto, orgao, REG, UNID)
+    assert at["cod_ibge"] is None and at["abrangencia"] == "estado_inteiro" and trecho in at["evidencia"]
+
+
+def test_sem_pista_continua_sem_municipio_e_lugar_vence_a_abrangencia():
+    at = ae.atribuir("Conforme consta no Processo nº. 350006/002446/2025.", "Secretaria de Estado de Polícia Militar", REG, UNID)
+    assert at["cod_ibge"] is None and at["abrangencia"] is None                                # não se sabe ≠ estado inteiro
+    at = ae.atribuir("seguro do imóvel do quartel do 15º GBM, Centro – Petrópolis", "FUNDO ESPECIAL DO CORPO DE BOMBEIROS", REG, UNID)
+    assert at["cod_ibge"] == "3303906" and at["abrangencia"] is None                           # "seguro" não rouba contrato que tem lugar
+
+
+def test_pcrj_unidades_ra_e_cidade_inteira():
+    saude, ras = ap.unidades_saude(), ap.ra_para_ap()
+    f = lambda o, ug="1801 - SECRETARIA MUNICIPAL DE SAÚDE": ap.atribuir(o, ug, ORG, CRE, [], saude, ras, ug)   # noqa: E731
+    assert (f("locação de ambulância para o HOSPITAL MUNICIPAL ROCHA FARIA")["ap"], f("x HOSPITAL MUNICIPAL ROCHA FARIA")["metodo"]) == (5, "unidade")
+    assert f("OBRAS NA ESTRADA DO TINGUI, NA ÁREA DA XVIII R.A.")["ap"] == 5                    # XVIII RA = Campo Grande
+    assert f("Conservação de pavimentos na Área da AP1 e AP2")["aps"] == [1, 2]                 # "AP1" colado
+    assert f("locação de imóvel, apartamento AP 101")["ap"] is None
+    assert f("OBRAS DO PARQUE - AVENIDA CESÁRIO DE MELO, 6851 - CAMPO GRANDE")["ap"] == 5       # nº do logradouro ancora o bairro
+    at = f("LEI MUNICIPAL DE INCENTIVO À CULTURA PROJETO ?PROGRAMAÇÃO BANGU 2024? C.I. HOSPITAIS INTEGRADOS DA GAVEA", "1201 - CULTURA")
+    assert at["ap"] == 5 and at["multi"] == 0                                                   # patrocinador não é lugar
+    at = f("UNIFORME ESCOLAR", "1601 - SECRETARIA MUNICIPAL DE EDUCAÇÃO")
+    assert at["ap"] is None and at["abrangencia"] == "cidade_inteira"
+    assert f("Termo de cooperação técnica")["abrangencia"] is None
+
+
 # ── (B) PCRJ → AP ──────────────────────────────────────────────────────────────────────────────
 ORG = ap.orgaos_regionais()
 CRE = ap.cre_para_ap(ORG)

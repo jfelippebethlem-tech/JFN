@@ -108,7 +108,7 @@ _BAIRRO_LOC = {"SANTA CRUZ", "CAMPO GRANDE", "PENHA", "LARANJEIRAS", "SANTA TERE
                "ESTACIO", "CAJU", "MARE", "RAMOS", "OLARIA", "PIEDADE", "PACIENCIA", "COSMOS", "FREGUESIA",
                "CIDADE NOVA", "GALEAO", "VARGEM GRANDE", "JARDIM AMERICA", "VISTA ALEGRE", "CIDADE UNIVERSITARIA",
                "ALTO DA BOA VISTA", "TODOS OS SANTOS", "LEME", "LAGOA"}
-_BAIRRO_ANTES = r"(?:BAIRRO DE|BAIRRO DA|BAIRRO DO|BAIRRO|NO|NA|EM)"
+_BAIRRO_ANTES = r"(?:BAIRRO DE|BAIRRO DA|BAIRRO DO|BAIRRO|NO|NA|EM|\d{2,5})"      # o número é o do logradouro: "…, 6851 - Campo Grande"
 # no escopo ESTADO o bairro só vale ANCORADO em lugar/unidade: "UPA de Jacarepaguá", "campus Maracanã".
 # Sem âncora ele pode ser título de obra — a auditoria achou "espetáculo Copacabana (Tu) Não Me Engana".
 _BAIRRO_ANCORA = (r"(?:UPA|HOSPITAL|CAMPUS|UNIDADE|BAIRRO|QUARTEL|DELEGACIA|ESCOLA|COLEGIO|TERMINAL|ESTACAO|PRESIDIO|"
@@ -116,7 +116,8 @@ _BAIRRO_ANCORA = (r"(?:UPA|HOSPITAL|CAMPUS|UNIDADE|BAIRRO|QUARTEL|DELEGACIA|ESCO
 # não são bairro oficial, mas são território inequívoco da capital (nome → AP)
 _BAIRRO_EXTRA = {"ILHA DO GOVERNADOR": 3, "ILHA DE PAQUETA": 1, "ZONA PORTUARIA": 1, "PORTO MARAVILHA": 1,
                  "SAMBODROMO": 1, "ESTADIO DO MARACANA": 2, "JACAREPAGUA": 4, "BARRA DA TIJUCA": 4,
-                 "RECREIO": 4, "ILHA DO FUNDAO": 3}
+                 "RECREIO": 4, "ILHA DO FUNDAO": 3, "TELEFERICO DO ALEMAO": 3, "BONDES DE SANTA TERESA": 1,
+                 "REGIAO DO PORTO": 1, "REGIAO PORTUARIA": 1}
 
 
 @dataclass
@@ -206,11 +207,54 @@ def ler_municipios(texto: str | None) -> Leitura:
         else:
             fim_valido = None
     if not out.municipios:
+        d = ler_distritos(original)
+        if d:
+            out.municipios.append(Achado(d[0], d[1], d[2]))
+    if not out.municipios:
         bs = ler_bairros(texto, estrito=True)
         if bs:
             out.municipios.append(Achado(RIO, "Rio de Janeiro", "bairro carioca: " + bs[0]["bairro"]))
             out.capital_por = "bairro"
     return out
+
+
+# ── distritos (IBGE) ───────────────────────────────────────────────────────────────────────────
+# Distrito de nome inconfundível vale sozinho; os demais (muitos são palavra comum, santo ou sobrenome:
+# "Posse", "Santa Maria", "Werneck") só com âncora forte — "distrito de …", "localidade de …", "em …".
+_DISTRITO_LIVRE = {
+    "ITAIPAVA", "XEREM", "CONSERVATORIA", "BARRA DE SAO JOAO", "LUMIAR", "VISCONDE DE MAUA", "ITAIPUACU", "BACAXA", "TAMOIOS",
+    "MAMBUCABA", "MURIQUI", "ITACURUSSA", "IMBARIE", "INOA", "ATAFONA", "GRUSSAI", "PEDRO DO RIO", "CASCATINHA", "CAMPOS ELYSEOS",
+    "SANTO ALEIXO", "INHOMIRIM", "SURUI", "GUIA DE PACOBAIBA", "ARROZAL", "ENGENHEIRO PASSOS", "LIDICE", "PARATY MIRIM", "TARITUBA",
+    "CONCEICAO DE JACAREI", "PRAIA SECA", "IGUABINHA", "CACHOEIROS DE MACAE", "GLICERIO", "MONNERAT", "RIOGRANDINA",
+    "CAMPO DO COELHO", "VILA DA GRAMA", "PURILANDIA", "EUCLIDELANDIA", "GETULANDIA", "DORANDIA", "IPIABAS",
+    "SACRA FAMILIA DO TINGUA", "MORRO AZUL DO TINGUA", "SAO PEDRO DA SERRA", "SODRELANDIA", "MORRO DO COCO",
+    "SANTO AMARO DE CAMPOS", "SANTO EDUARDO", "PORTO DAS CAIXAS", "ITAMBI", "SAMBAETIBA", "VALE DO PAQUEQUER", "CUNHAMBEBE",
+    "COELHO DA ROCHA", "SAO JOSE DO RIBEIRAO", "SANTA ISABEL DO RIO PRETO", "BOM JESUS DO QUERENDO", "RETIRO DO MURIAE",
+}
+_DISTRITO_ANCORA = r"(?:DISTRITO DE|DISTRITO|LOCALIDADE DE|LOCALIDADE|EM)"
+
+
+@lru_cache(maxsize=1)
+def _padroes_distrito():
+    import csv
+    from pathlib import Path
+    with open(Path(__file__).resolve().parent / "dados" / "distritos_rj.csv", encoding="utf-8") as f:
+        linhas = sorted(csv.DictReader(f), key=lambda r: -len(r["nome_norm"]))
+    return [(re.compile(rf"\b{re.escape(r['nome_norm'])}\b"), r["nome_norm"], r["cod_ibge"], r["municipio"], r["distrito"]) for r in linhas]
+
+
+def ler_distritos(texto_norm: str) -> tuple[str, str, str] | None:
+    """(cod_ibge, município, evidência) do 1º distrito citado como lugar — texto JÁ normalizado."""
+    for rg, n, cod, mun, dist in _padroes_distrito():
+        m = rg.search(texto_norm)
+        if not m:
+            continue
+        antes = texto_norm[max(0, m.start() - 40):m.start()]
+        if re.search(rf"\b{_HOMENAGEM} $", antes):
+            continue
+        if n in _DISTRITO_LIVRE or re.search(rf"\b{_DISTRITO_ANCORA} $", antes):
+            return cod, mun, f"distrito de {dist} ({mun})"
+    return None
 
 
 @lru_cache(maxsize=1)

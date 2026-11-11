@@ -185,8 +185,13 @@ export function mapaMontar(host) {
     const um = (x, rot) => x && x.n ? `<b class="num">${fmtN(x.n)}</b> ${rot} (<span class="num">${rs(x.valor)}</span>)` : '';
     if (S.escopo === 'estado') {
       p.push(um(b.sem_municipio, 'contratos sem município identificado') || '<b class="num">0</b> contratos sem município identificado');
-      p.push(um(b.multimunicipio, 'em vários municípios'), um(b.regiao, 'só com região'));
-    } else p.push(um(b.sem_ap, 'contratos da cidade inteira / sem AP') || '<b class="num">0</b> contratos sem AP');
+      p.push(um(b.multimunicipio, 'em vários municípios'), um(b.estado_inteiro, 'do Estado inteiro / sede'), um(b.regiao, 'só com região'));
+    } else {
+      p.push(um(b.sem_ap, 'contratos sem AP identificada') || '<b class="num">0</b> contratos sem AP identificada');
+      p.push(um(b.multi_ap, 'em várias APs'), um(b.cidade_inteira, 'da cidade inteira / sede'));
+    }
+    const at = b.atribuido, tt = b.total;
+    if (at && tt && tt.valor > 0) p.push(`cobertura: <b class="num">${(100 * at.valor / tt.valor).toLocaleString('pt-BR', {maximumFractionDigits: 1})}%</b> do valor em ${S.escopo === 'estado' ? 'um município' : 'uma AP'}`);
     if (d.confianca_texto === 'baixa') p.push('atribuição por <b>texto</b> com confiança <b>baixa</b> (auditoria &lt; 85%)');
     return p.filter(Boolean).join(' · ');
   }

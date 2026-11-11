@@ -71,15 +71,18 @@ def baldes_estado(c: sqlite3.Connection, periodo: str = "tudo") -> dict:
     w = PERIODOS.get(periodo, PERIODOS["tudo"])
     um = lambda cond: dict(c.execute(  # noqa: E731
         f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) valor FROM territorio_contrato_estado WHERE {cond} AND {w}").fetchone())
-    return {"sem_municipio": um("cod_ibge IS NULL AND multi=0 AND regiao IS NULL"), "multimunicipio": um("multi=1"),
-            "regiao": um("cod_ibge IS NULL AND multi=0 AND regiao IS NOT NULL")}
+    return {"sem_municipio": um("cod_ibge IS NULL AND multi=0 AND regiao IS NULL AND abrangencia IS NULL"),
+            "estado_inteiro": um("cod_ibge IS NULL AND multi=0 AND abrangencia IS NOT NULL"), "multimunicipio": um("multi=1"),
+            "regiao": um("cod_ibge IS NULL AND multi=0 AND regiao IS NOT NULL"),
+            "atribuido": um("cod_ibge IS NOT NULL AND multi=0"), "total": um("1=1")}
 
 
 def baldes_pcrj(c: sqlite3.Connection, periodo: str = "tudo") -> dict:
     w = PERIODOS.get(periodo, PERIODOS["tudo"])
     um = lambda cond: dict(c.execute(  # noqa: E731
         f"SELECT COUNT(*) n, COALESCE(SUM(valor),0) valor FROM territorio_contrato_pcrj WHERE {cond} AND {w}").fetchone())
-    return {"sem_ap": um("ap IS NULL AND multi=0"), "multi_ap": um("multi=1")}
+    return {"sem_ap": um("ap IS NULL AND multi=0 AND abrangencia IS NULL"), "cidade_inteira": um("ap IS NULL AND multi=0 AND abrangencia IS NOT NULL"),
+            "multi_ap": um("multi=1"), "atribuido": um("ap IS NOT NULL AND multi=0"), "total": um("1=1")}
 
 
 def rodar(log=print) -> dict:
