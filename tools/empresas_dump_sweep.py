@@ -16,7 +16,7 @@ Layout Empresas CSV (`;`-delim, latin1, SEM header):
 NÃO tem situação cadastral, data de abertura nem endereço (esses vivem no dump Estabelecimentos, que
 não temos — ficam para enriquecimento BrasilAPI dos periciados de alto valor).
 
-Uso:  PYTHONPATH=. .venv/bin/python -m tools.empresas_dump_sweep AAAA-MM   (mês do dump baixado)
+Uso:  PYTHONPATH=. .venv/bin/python -m tools.empresas_dump_sweep [AAAA-MM]   (padrão: .mes_baixado)
 """
 from __future__ import annotations
 
@@ -149,7 +149,28 @@ def indexar(mes: str) -> None:
     con.close()
 
 
+def _mes_do_dump(argv: list[str]) -> str:
+    """Mês do dump: argumento > env `MES` > `data/receita_dump/.mes_baixado` (a mesma regra do
+    `socios_dump_refresh.sh`). Não é um mês padrão chutado: é o mês do dump que ESTÁ no disco.
+
+    Medido em 10–11/11/2026: o drop-in `cadenrich.conf` do `jfn-intel-cache` chama sem argumento
+    e a unit ficou `failed` 4 vezes em 2 dias (o remédio automático reexecutava a unit inteira:
+    11 min de CPU, pico de 3,8 GB). Sem mês válido em nenhuma das três, falha NOMEADA."""
+    import os
+    import re
+    if len(argv) > 1:
+        return argv[1]
+    mes = (os.environ.get("MES") or "").strip()
+    if not mes:
+        try:
+            mes = (_DUMP / ".mes_baixado").read_text(encoding="utf-8").strip()
+        except OSError:
+            mes = ""
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", mes):
+        raise SystemExit(f"mês do dump desconhecido ('{mes}') — sem {_DUMP}/.mes_baixado válido; "
+                         "uso: python -m tools.empresas_dump_sweep AAAA-MM")
+    return mes
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        raise SystemExit("uso: python -m tools.empresas_dump_sweep AAAA-MM (mês do dump baixado)")
-    indexar(sys.argv[1])
+    indexar(_mes_do_dump(sys.argv))
