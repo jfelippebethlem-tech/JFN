@@ -144,7 +144,7 @@ def _trace(provedor: str, ok: bool, ini: float, erro: str = "", modelo: str = ""
         from compliance_agent.llm.free_llm import _trace as _ft
         _ft(provedor, ok, int((_t.monotonic() - ini) * 1000), erro, modelo=modelo,
             tokens_in=tokens_in, tokens_out=tokens_out)
-    except Exception as e:  # noqa: BLE001 — telemetria é melhoria, não dependência dura
+    except (ImportError, AttributeError, TypeError) as e:  # telemetria é melhoria, não dependência dura
         logger.debug("trace indisponível: %s", e)
 
 
@@ -156,7 +156,7 @@ def _quota_429(r) -> str:
     try:
         m = _RE_QUOTA.findall(getattr(r, "text", "") or "")
         return ";".join(dict.fromkeys(x.rsplit("/", 1)[-1] for x in m))[:150]
-    except Exception:  # noqa: BLE001
+    except (TypeError, AttributeError):
         return ""
 
 
