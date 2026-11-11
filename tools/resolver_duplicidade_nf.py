@@ -168,6 +168,103 @@ def mesmo_grupo(cnpj_a: str, cnpj_b: str) -> bool:
     return len(a) == 14 and len(b) == 14 and a[:8] == b[:8]
 
 
+# ───────────────────────── histórico da OB (o MESMO SIAFE, tela da OB) ─────────────────────────
+# A coluna `processo` da `ob_orcamentaria_siafe` vem VAZIA em parte das OBs (medido 11/11/2026: 1.926
+# competências sem processo em nenhuma OB). O histórico que o gestor digita na OB (`ordens_bancarias.observacao`,
+# mesma OB, mesma UG, mesmo credor) costuma dizer o processo SEI, o contrato, a unidade e o mês do serviço:
+# "PG DO DOCUMENTO 2594 CONFORME PROCESSO HOTELARIA - CONTRATO 424/2022 - COMPETENCIA 03/2023 - UNIDADE HMHS".
+_RX_H_CONTRATO = re.compile(r"\bcontrato\s+(?:de\s+gestao\s+)?(?:n\s*[o.]?\s*)?(\d{1,4})\s*/\s*(\d{2,4})\b")
+_RX_H_UNIDADE = re.compile(r"\b(?:unidade|opm)\s*:?\s+([a-z0-9][a-z0-9 .]{1,40}?)\s*(?=$|[-,;()]|\bretenc|\bcomp)")
+_RX_H_COMP = [re.compile(r"\bcomp(?:etencia)?\s*\.?\s*:?\s*(?:de\s+)?(\d{1,2})\s*/\s*(\d{4})\b"),
+              re.compile(r"\bno\s+mes\s+(?:de\s+)?(\d{1,2})\s*/\s*(\d{4})\b"),
+              re.compile(r"\bcomp(?:etencia)?\s*\.?\s*:?\s*(?:de\s+)?" + _MES + r"\s*(?:/|-|de)\s*" + _ANO)]
+
+
+def ler_historico(texto: str) -> dict:
+    """{processo, contrato, unidade, comp} do histórico da OB — cada um None quando o texto não diz (ou diz 2)."""
+    t = _norm(texto)
+    procs = {x for x in (tag_processo(m.group(0)) for m in _RX_SEI.finditer(t)) if x}
+    ctrs = {f"{int(m[1])}/{m[2] if len(m[2]) == 4 else '20' + m[2]}" for m in _RX_H_CONTRATO.finditer(t)}
+    unids = {re.sub(r"[\s.]+", " ", m[1]).strip() for m in _RX_H_UNIDADE.finditer(t)}
+    comps = set()
+    for rx in _RX_H_COMP:
+        for m in rx.finditer(t):
+            c = _comp(m[1], m[2])
+            if c:
+                comps.add(c)
+    um = lambda s: next(iter(s)) if len(s) == 1 else None  # noqa: E731 — ambíguo (2 valores) = não diz
+    return {"processo": um(procs), "contrato": um(ctrs), "unidade": um(unids), "comp": um(comps)}
+
+
+def historicos(c, ug: str, cnpj: str, numeros: list[str]) -> dict[str, str]:
+    """numero_ob → histórico (`ordens_bancarias.observacao`) da MESMA OB/UG/credor. Sem a tabela → {}."""
+    out: dict[str, list[str]] = {}
+    nums = sorted(set(numeros))
+    try:
+        for i in range(0, len(nums), 400):
+            lote = nums[i:i + 400]
+            for ob, obs_txt, fav in c.execute(
+                    f"SELECT numero_ob, observacao, favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
+                    f"AND numero_ob IN ({','.join('?' * len(lote))})", [str(ug), *lote]):
+                fav_d = re.sub(r"\D", "", str(fav or ""))
+                if fav_d and fav_d != cnpj:          # OB de outro credor com o mesmo número: não é esta
+                    continue
+                if obs_txt:
+                    out.setdefault(ob, []).append(str(obs_txt))
+    except sqlite3.OperationalError:
+        return {}
+    return {k: " | ".join(dict.fromkeys(v)) for k, v in out.items()}
+
+
+def completar_pelo_historico(obs: list[dict], hist: dict[str, str]) -> list[dict]:
+    """Anexa o histórico a cada OB; processo VAZIO na coluna do SIAFE é completado pelo do histórico."""
+    for o in obs:
+        h = hist.get(o.get("numero_ob"), "")
+        o["historico"] = h
+        if h and tag_processo(o.get("processo")) is None:
+            p = ler_historico(h)["processo"]
+            if p:
+                o["processo"] = numero_sei(p)
+                o["processo_fonte"] = "historico"
+    return obs
+
+
+def _unidades_distintas(a: str, b: str) -> bool:
+    """Nome de unidade escrito de 2 jeitos ("UPA CAMPO GRANDE I" / "UPA C GRANDE I") NÃO é unidade distinta:
+    só conta como distinta quando os nomes não compartilham a maioria das palavras."""
+    ta, tb = set(a.split()), set(b.split())
+    if a == b or a.startswith(b) or b.startswith(a):
+        return False
+    return len(ta & tb) / max(1, len(ta | tb)) < 0.5
+
+
+def afastado_pelo_historico(comp: str, obs: list[dict]) -> tuple[str, str] | None:
+    """(motivo, citação) quando o histórico das OBs mostra que NÃO é o mesmo mês pago 2×; senão None.
+      • histórico diz outro mês de serviço → a OB não repete esta competência;
+      • as OBs que sobram são, duas a duas, de CONTRATOS distintos ou de UNIDADES distintas."""
+    info = {o["numero_ob"]: ler_historico(o.get("historico") or "") for o in obs}
+    fora = [ob for ob, i in info.items() if i["comp"] and i["comp"] != comp]
+    resto = [ob for ob in info if ob not in fora]
+    cita = lambda ob: next(o.get("historico", "") for o in obs if o["numero_ob"] == ob)[:300]  # noqa: E731
+    notas = [f"OB {ob}: histórico diz competência {info[ob]['comp']}" for ob in fora]
+    if fora and len(resto) <= 1:
+        return ("o histórico das OBs diz outro mês de serviço — " + "; ".join(notas)
+                + f"; o campo competência do SIAFE repete {comp}", cita(fora[0]))
+    if len(resto) < 2:
+        return None
+
+    def distintas(a, b):
+        ia, ib = info[a], info[b]
+        return bool((ia["contrato"] and ib["contrato"] and ia["contrato"] != ib["contrato"])
+                    or (ia["unidade"] and ib["unidade"] and _unidades_distintas(ia["unidade"], ib["unidade"])))
+    if all(distintas(a, b) for i, a in enumerate(resto) for b in resto[i + 1:]):
+        rot = "; ".join(f"OB {ob}: " + ", ".join(f"{k} {info[ob][k]}" for k in ("contrato", "unidade") if info[ob][k])
+                        for ob in resto)
+        return ("OBs de contratos/unidades distintos no mesmo mês, não o mesmo serviço pago 2× — " + rot
+                + (f"; {'; '.join(notas)}" if notas else ""), cita(resto[0]))
+    return None
+
+
 def _eh_nf(doc: dict) -> bool:
     if _TITULO_NF.match(_norm(doc.get("titulo")).strip()):
         return True
@@ -397,6 +494,11 @@ def resolver_competencia(cnpj: str, comp: str, obs: list[dict], gerar=None) -> d
                 return {**res, "veredito": "CONFIRMADO", "citacao": tit,
                         "motivo": f"NF nº {num} é a nota cobrada pela OB {a} e pela OB {b} ({onde}) — mesma NF paga "
                                   f"em 2 OBs na competência {comp}"}
+    # (1b) HISTÓRICO DA OB (mesmo SIAFE): outro mês de serviço, ou contratos/unidades distintos → AFASTADO,
+    # sem precisar do processo. Só AFASTA — duplicidade só se CONFIRMA pela NF (acima).
+    h = afastado_pelo_historico(comp, obs)
+    if h:
+        return {**res, "veredito": "AFASTADO", "motivo": h[0], "citacao": h[1], "camada": "historico_ob"}
     # (2) processo sem texto → captura (sem a NF dele não há como fechar)
     if sem_texto:
         cap = [numero_sei(t) for t in sem_texto]
@@ -522,7 +624,9 @@ def rodar(db=DB, limit: int | None = None, gerar=None, dry_run: bool = False, lo
         if not dry_run:
             garantir_tabela(c)
         for i, (cnpj, ug, fav) in enumerate(pares, 1):
-            linhas = resolver_par(cnpj, ug, ps._obs_de(c, cnpj, ug), favorecido=fav, gerar=gerar)
+            obs = ps._obs_de(c, cnpj, ug)
+            completar_pelo_historico(obs, historicos(c, ug, cnpj, [o["numero_ob"] for o in obs]))
+            linhas = resolver_par(cnpj, ug, obs, favorecido=fav, gerar=gerar)
             n_comp += len(linhas)
             vereditos.update(r["veredito"] for r in linhas)
             if log:

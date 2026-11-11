@@ -389,3 +389,64 @@ def test_enriquecer_le_a_tabela_e_tolera_ausencia(tmp_path):
     d = ps.enriquecer({"obs": [], "favorecido": "X", "orgao": "200100", "_cnpj": CNPJ}, c)
     assert d["resolucao_duplicidade"]["03/2026"]["veredito"] == "AFASTADO"
     assert d["resolucao_duplicidade"]["03/2026"]["obs"] == ["OB3A", "OB3B"]
+
+
+# ── histórico da OB (ordens_bancarias.observacao): processo, contrato, unidade e mês que o gestor digitou ──
+def test_ler_historico_extrai_contrato_unidade_mes_e_processo():
+    h = R.ler_historico("PG DO (S) DOCUMENTO (S) 2594 CONFORME PROCESSO PRESTAÇÃO DE SERVIÇO DE HOTELARIA HOSPITALAR"
+                        " - CONTRATO 424/2022 - COMPETENCIA 03/2023 - UNIDADE HMHS")
+    assert h == {"processo": None, "contrato": "424/2022", "unidade": "hmhs", "comp": "03/2023"}
+    h = R.ler_historico("PAGAMENTO DO (S) DOCUMENTO (S) 2021NE00281 CONFORME PROCESSO SEI-080001/000746/2021 - "
+                        "Contrato de Gestão nº 021/2020. Operacionalização")
+    assert h["processo"] == "080001_000746_2021" and h["contrato"] == "21/2020"
+    assert R.ler_historico("SERVIÇO DE LIMPEZA NAS UNIDADES DA SEPM. COMP.: 08/2021. OPM: APM RETENÇÃO")["comp"] == "08/2021"
+
+
+def test_historico_com_dois_contratos_nao_diz_contrato():
+    assert R.ler_historico("contrato 1/2020 e contrato 2/2020")["contrato"] is None
+
+
+def _obh(n, hist, valor=50000.0, proc=""):
+    return {"numero_ob": n, "valor": valor, "processo": proc, "historico": hist}
+
+
+def test_contratos_distintos_no_mesmo_mes_e_afastado_sem_processo():
+    obs = [_obh("2023OB1", "SERVIÇO X - CONTRATO 193/2023, NO MES 08/2023, NA UNIDADE UPA CAMPO GRANDE I"),
+           _obh("2023OB2", "SERVIÇO X - CONTRATO 201/2023, NO MES 08/2023, NA UNIDADE UPA CAMPO GRANDE I")]
+    r = R.resolver_competencia(CNPJ, "08/2023", obs)
+    assert r["veredito"] == "AFASTADO" and r["camada"] == "historico_ob" and "193/2023" in r["motivo"]
+
+
+def test_unidades_distintas_e_afastado_mas_mesma_unidade_escrita_diferente_nao():
+    a = [_obh("1", "CONTRATO 5/2023 - COMPETENCIA 03/2023 - UNIDADE HMHS"),
+         _obh("2", "CONTRATO 5/2023 - COMPETENCIA 03/2023 - UNIDADE HEAT")]
+    assert R.resolver_competencia(CNPJ, "03/2023", a)["veredito"] == "AFASTADO"
+    b = [_obh("1", "CONTRATO 5/2023 NO MES 03/2023 NA UNIDADE UPA CAMPO GRANDE I"),
+         _obh("2", "CONTRATO 5/2023 NO MES 03/2023 NA UNIDADE UPA C. GRANDE I")]
+    assert R.resolver_competencia(CNPJ, "03/2023", b)["veredito"] == "INDETERMINADO"
+
+
+def test_historico_que_diz_outro_mes_tira_a_ob_da_competencia():
+    obs = [_obh("1", "LIMPEZA. COMP.: 07/2021."), _obh("2", "LIMPEZA. COMP.: 08/2021.")]
+    r = R.resolver_competencia(CNPJ, "08/2021", obs)
+    assert r["veredito"] == "AFASTADO" and "07/2021" in r["motivo"]
+
+
+def test_mesmo_contrato_mesmo_mes_continua_sem_afastar():
+    obs = [_obh("1", "CONTRATO 5/2023 COMPETENCIA 03/2023"), _obh("2", "CONTRATO 5/2023 COMPETENCIA 03/2023")]
+    assert R.resolver_competencia(CNPJ, "03/2023", obs)["veredito"] == "INDETERMINADO"
+
+
+def test_processo_vazio_no_siafe_e_completado_pelo_historico(arq):
+    obs = [_obh("1", "CONFORME PROCESSO SEI-080001/000746/2021 - Contrato de Gestão nº 021/2020")]
+    R.completar_pelo_historico(obs, {"1": obs[0]["historico"]})
+    assert obs[0]["processo"] == "SEI-080001/000746/2021" and obs[0]["processo_fonte"] == "historico"
+
+
+def test_historicos_le_so_o_mesmo_credor(tmp_path):
+    c = sqlite3.connect(tmp_path / "h.db")
+    c.execute("CREATE TABLE ordens_bancarias (numero_ob TEXT, ug_codigo TEXT, observacao TEXT, favorecido_cpf TEXT)")
+    c.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?)",
+                  [("1", "296100", "do credor", CNPJ_FMT), ("1", "296100", "de outro", "11.111.111/0001-11")])
+    assert R.historicos(c, "296100", CNPJ, ["1"]) == {"1": "do credor"}
+    assert R.historicos(sqlite3.connect(":memory:"), "1", CNPJ, ["1"]) == {}
