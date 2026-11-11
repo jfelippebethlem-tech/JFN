@@ -24,6 +24,7 @@ Idempotente: `INSERT OR REPLACE` por (ug, detector, processo). Nunca `DELETE`.
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import pathlib
@@ -36,6 +37,8 @@ from compliance_agent.detectores.base import ResultadoDetector
 
 DB_LEITURA = os.environ.get("JFN_DB", "data/compliance.db")
 DB_ACHADOS = os.environ.get("JFN_DB_ACHADOS", "data/achados.db")
+
+logger = logging.getLogger(__name__)
 
 
 def abrir_leitura(caminho: str | None = None) -> sqlite3.Connection:
@@ -114,8 +117,8 @@ def _caminho_do_banco(con: sqlite3.Connection) -> str:
         for _, nome, arquivo in con.execute("PRAGMA database_list"):
             if nome == "main":
                 return arquivo or f"mem:{id(con)}"
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        logger.debug("varredura_orgaos: arquivo do banco não identificado: %s", exc)
     return f"mem:{id(con)}"
 
 
@@ -193,8 +196,8 @@ def _sancoes_do_cnpj(con: sqlite3.Connection,
     try:
         sancoes += montar_ctx_sancoes(con, cnpj)
         leu = True
-    except sqlite3.OperationalError:
-        pass
+    except sqlite3.OperationalError as exc:
+        logger.debug("varredura_orgaos: tabela de sanções ausente: %s", exc)
     try:
         for categoria, inicio, orgao, status in con.execute(
                 "SELECT enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes "
@@ -207,8 +210,8 @@ def _sancoes_do_cnpj(con: sqlite3.Connection,
             elif st == "decorrido":
                 incertas.append(item)
         leu = True
-    except sqlite3.OperationalError:
-        pass
+    except sqlite3.OperationalError as exc:
+        logger.debug("varredura_orgaos: tabela de sanções SIGA ausente: %s", exc)
     return (sancoes, incertas) if leu else None
 
 
@@ -346,8 +349,8 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
                 ctx["data_referencia_origem"] = (
                     "1ª OB do credor" + (f" na UG {ug}" if ug else "")
                     + " (proxy: a data de assinatura do contrato não está na base)")
-    except sqlite3.OperationalError:
-        pass
+    except sqlite3.OperationalError as exc:
+        logger.debug("varredura_orgaos: OBs do credor indisponíveis p/ data de referência: %s", exc)
 
     # Rede e geocode ficam DESLIGADOS na varredura: cruzamento de co-endereço em DuckDB e
     # Nominatim a 1 req/s são inviáveis em 118 UGs. Quem quiser o exame profundo roda o dossiê

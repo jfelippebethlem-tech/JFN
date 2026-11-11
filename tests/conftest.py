@@ -110,7 +110,10 @@ def _base_utilizavel() -> bool:
 
 
 _BASE_UTILIZAVEL = _base_utilizavel()
-_SINTOMAS_SEM_BASE = ("no such table", "no such column", "unable to open database file")
+# 11/11/2026: no runner a base criada por teste passou a sair CORROMPIDA (dois criadores concorrentes) em vez
+# de vazia — 20 "regressões" no delta (gabarito, filial, leitura dupla, OBs coerentes, osint) que na VM passam.
+_SINTOMAS_SEM_BASE = ("no such table", "no such column", "unable to open database file",
+                      "disk i/o error", "file is not a database", "malformed database schema")
 
 
 @pytest.hookimpl(hookwrapper=True, trylast=True)
