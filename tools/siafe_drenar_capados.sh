@@ -11,8 +11,9 @@
 #
 # COMO RODA. Um par por vez (a sessão do SIAFE é ÚNICA por IP e serializa com o sweep do SEI pelo
 # browser_lock). Resumível: cada par tem checkpoint próprio, e repetir o comando continua de onde
-# parou. Anos até 2023 vão ao SIAFE 1; 2024+ ao SIAFE 2 — errar o sistema devolve zero e parece
-# bloqueio (ver docs/PLAYBOOK-SIAFE-NAVEGACAO.md).
+# parou. TUDO vai ao SIAFE 2 (o SIAFE 1/www5 foi DESATIVADO em 10/11/2026). Medido em 11/11/2026: a tela
+# de login do SIAFE 2 só oferece os exercícios 2023–2027 — os pares de 2016–2022 ficam FORA do dreno até
+# existir fonte para eles (antes pedir 2022 caía calado em 2026; ver tests/test_siafe_ob_exercicio_errado.py).
 #
 #   bash tools/siafe_drenar_capados.sh            # lista o que falta e drena 1 par
 #   bash tools/siafe_drenar_capados.sh 3          # drena até 3 pares nesta passada
@@ -40,7 +41,8 @@ export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/siafe_drenar.log
 MAX=${1:-1}
-LOGIN1="https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
+# primeiro exercício que a tela de login do SIAFE 2 oferece (medido em 11/11/2026: 2023–2027)
+SIAFE2_PRIMEIRO=${SIAFE2_PRIMEIRO:-2023}
 say(){ echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
 
 # QUARENTENA POR PAR E DISJUNTOR DE LOGIN (24/10/2026). Medido no log: 3.721 "SEM GANHO", a UG 180100/2021
@@ -146,7 +148,7 @@ say "pares com coleta incompleta (teto + interrompida): ${#PARES[@]}"
 mapfile -t RESTRITO < <($PY - <<'PYEOF'
 import sqlite3
 c = sqlite3.connect("file:data/compliance.db?mode=ro", uri=True)
-for ano, ug in c.execute("SELECT exercicio, MIN(ug_emitente) FROM ob_orcamentaria_siafe WHERE exercicio <= 2023 "
+for ano, ug in c.execute("SELECT exercicio, MIN(ug_emitente) FROM ob_orcamentaria_siafe WHERE exercicio <= 2022 "
                          "GROUP BY exercicio HAVING COUNT(DISTINCT ug_emitente) = 1"):
     print(f"{ano}:{ug}")
 PYEOF
@@ -165,10 +167,14 @@ credencial_recusada() {  # $1=sistema (1|2) → 0 se a senha foi recusada depois
 N_FORA=0; for par in "${PARES[@]}"; do set -- $par; fora_do_perfil "$1" "$2" && N_FORA=$((N_FORA+1)); done
 [ "$N_FORA" -gt 0 ] && say "fora do perfil da conta (exercício só expõe a UG própria): $N_FORA par(es) — $(sonda_vencida && echo 'sonda mensal liberada' || echo 'próxima sonda em até 30 dias')"
 
+N_SEM_FONTE=0; for par in "${PARES[@]}"; do set -- $par; [ "$2" -lt "$SIAFE2_PRIMEIRO" ] && N_SEM_FONTE=$((N_SEM_FONTE+1)); done
+[ "$N_SEM_FONTE" -gt 0 ] && say "sem fonte hoje (exercício < $SIAFE2_PRIMEIRO; SIAFE 1 desativado, SIAFE 2 não oferece): $N_SEM_FONTE par(es) — pulados"
+
 feitos=0
 for par in "${PARES[@]}"; do
   [ "$feitos" -ge "$MAX" ] && break
   set -- $par; UG=$1; ANO=$2
+  [ "$ANO" -lt "$SIAFE2_PRIMEIRO" ] && continue
   # JANELA DO DIÁRIO. O cron das 04:50 começava um par que segurava o browser do SIAFE até ~05:45; o
   # diário das 05:00 esperava 15 min pelo lock e morria (21→24/10/2026, quatro madrugadas sem OB).
   HM=$((10#$(date +%H%M)))
@@ -182,7 +188,7 @@ for par in "${PARES[@]}"; do
   # em 28/10/2026 um soluço às 13:36 (sessão presa no servidor, que vive 30 min) parou 37 pares por um dia
   # inteiro, embora 240 s entre logins já resolvessem (A/B das 10:37). A pausa curta é a sonda: se o login
   # seguir quebrado, o disjuntor rearma sozinho; o AVISO ao dono continua no máximo 1 por 24 h.
-  _S=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); _PAUSA=data/.siafe_dreno_pausa_login_$_S
+  _S=2; _PAUSA=data/.siafe_dreno_pausa_login_$_S
   if [ -f "$_PAUSA" ] && [ $(( $(date +%s) - $(stat -c %Y "$_PAUSA") )) -lt 5400 ]; then continue; fi
   credencial_recusada "$_S" && continue
   # backstop de VM: 2 vCPU não comportam browser sob carga alta
@@ -246,8 +252,8 @@ PYEOF
     mv -f "$CK" "$CK.desmentido_pelo_banco"
     say "checkpoint de $UG/$ANO afastado (1ª vez): dizia 'feito' com a contagem redonda ($ANTES)"
   fi
-  if [ "$ANO" -le 2023 ]; then export JFN_SIAFE_LOGIN_URL="$LOGIN1"; else unset JFN_SIAFE_LOGIN_URL; fi
-  say "drenando UG $UG ano $ANO (SIAFE $([ "$ANO" -le 2023 ] && echo 1 || echo 2)) — $ANTES linhas"
+  unset JFN_SIAFE_LOGIN_URL
+  say "drenando UG $UG ano $ANO (SIAFE 2) — $ANTES linhas"
   # LOG POR PAR. Com todos os pares escrevendo no mesmo arquivo não dá para saber de QUAL coleta
   # veio um erro — e foi exatamente o que me custou três medições erradas em 2026-08-09, quando um
   # processo antigo (código de antes de um conserto) seguia escrevendo ao lado do novo. Saída sem
@@ -289,14 +295,14 @@ PYEOF
     _mot=$(grep -o '"etapa": "[a-z_]*"' "$SAIDA" | head -1 | cut -d'"' -f4)
     quar sem_ganho "${UG}_${ANO}" "${_mot:-sem_ganho}"
     if grep -qE '"erro": "senha_(incorreta|expirada)"' "$SAIDA"; then
-      SIS=$([ "$ANO" -le 2023 ] && echo 1 || echo 2); touch "data/.siafe_dreno_credencial_$SIS"
+      SIS=2; touch "data/.siafe_dreno_credencial_$SIS"
       say "SENHA RECUSADA pelo SIAFE $SIS — paro esse sistema até o .env mudar (ver $SAIDA)"
       $PY -c "from compliance_agent.siafe_coord import notificar; notificar('🔑 JFN — o SIAFE $SIS recusou a senha (Usuário e/ou senha incorretos, ou senha expirada). Parei as tentativas para não bloquear a conta. Atualize SIAFE_PASS no .env do JFN; o dreno volta sozinho quando o .env mudar.')" >/dev/null 2>&1
       feitos=$((feitos+1)); continue
     fi
     # DISJUNTOR: dois pares seguidos do MESMO sistema caindo no login = o login está quebrado, não o par.
     if [ "${_mot:-}" = "login_nav" ] || [ "${_mot:-}" = "login" ]; then
-      SIS=$([ "$ANO" -le 2023 ] && echo 1 || echo 2)
+      SIS=2
       if [ "${ULT_LOGIN_FALHO:-}" = "$SIS" ]; then
         say "DISJUNTOR: 2 pares seguidos do SIAFE $SIS falharam no LOGIN — paro a passada (ver $SAIDA)"
         AVISO=data/.siafe_dreno_aviso_login_$SIS; touch "data/.siafe_dreno_pausa_login_$SIS"
@@ -320,7 +326,7 @@ PYEOF
   # SIAFE 1 SEGURA A SESSÃO MAIS TEMPO. Medido em 25/10/2026 com logins espaçados: 2016, 2020, 2021, 2022 e
   # 2023 entram num browser novo, mas a tentativa feita 45-90 s depois da anterior cai em errorDisplay/campo
   # ausente (sessão do usuário ainda presa no servidor). 4 min entre pares do SIAFE 1; o SIAFE 2 segue em 45 s.
-  if [ "$feitos" -lt "$MAX" ]; then if [ "$ANO" -le 2023 ]; then sleep 240; else sleep 45; fi; fi
+  if [ "$feitos" -lt "$MAX" ]; then sleep 45; fi
 done
 # O AVISO DO VAULT SE MANTÉM SOZINHO. As notas de caso avisam que seus valores de SIAFE são PISO
 # e listam quais (UG, ano) faltam — lista que ENVELHECE a cada par drenado. Aviso desatualizado é

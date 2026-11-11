@@ -33,7 +33,8 @@ class _PaginaSenhaExpirada:
     async def press(self, *a, **k): pass
     async def wait_for_load_state(self, *a, **k): pass
     async def wait_for_selector(self, *a, **k): pass
-    async def select_option(self, *a, **k): pass
+    async def select_option(self, *a, **k):
+        self.ano = k.get("label", "2026")   # o <select> fica no ano pedido (o login confere desde 11/11/2026)
     async def screenshot(self, *a, **k): pass
 
     async def click(self, seletor, **k):
@@ -54,7 +55,7 @@ class _PaginaSenhaExpirada:
         if "a.xyo" in js:                       # _logado / tem_workspace
             return False
         if "cbxExercicio" in js:                # exercício selecionado
-            return "2026"
+            return getattr(self, "ano", "2026")
         if "itxSenhaAtual::content').value" in js:
             return 6                            # senha continua preenchida
         if "itxSenhaAtual::content')" in js:    # tem_senha_login

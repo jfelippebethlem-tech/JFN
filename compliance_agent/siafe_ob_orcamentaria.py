@@ -167,7 +167,7 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
     import sqlite3
     import time as _t
     if not linhas:
-        return {"ok": True, "ingeridas": 0, "exercicio": exercicio}
+        return {"ok": True, "ingeridas": 0, "recusadas_outro_ano": 0, "exercicio": exercicio}
     # TIMEOUT NA ESCRITA, como o resto da casa faz. O banco tem vários escritores (sweeps do
     # SEI, avaliação 360, cruzamentos) e o padrão do sqlite é esperar só 5 s: medido em
     # 2026-08-09, a recoleta do SIAFE morreu com `database is locked` DEPOIS de 18 fatias, e
@@ -199,13 +199,20 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
                 if col:
                     col_por_idx[i] = col
         usar_header = len(col_por_idx) >= 4
-        n = 0
+        n = recusadas = 0
+        i_num = _COLS_SIAFE.index("numero_ob")
         for r in linhas:
             if usar_header:
                 rowmap = {col_por_idx[i]: r[i] for i in col_por_idx if i < len(r)}
                 vals = [(_money_br(rowmap.get(c, "")) if c == "valor" else rowmap.get(c, "")) for c in _COLS_SIAFE]
             else:
                 vals = [(_money_br(r[i]) if c == "valor" else (r[i] if i < len(r) else "")) for i, c in enumerate(_COLS_SIAFE)]
+            # OB de OUTRO ano não entra rotulada com este exercício (11/11/2026: SIAFE 2 sem 2022 na tela de
+            # login caiu calado em 2026 e 592 OBs `2026OB…` foram gravadas como 2022).
+            num = str(vals[i_num] or "").strip()
+            if exercicio and len(num) >= 4 and num[:4].isdigit() and num[:4] != str(int(exercicio)):
+                recusadas += 1
+                continue
             vals += [int(exercicio) if exercicio else None, agora]
             con.execute(sql, vals)
             n += 1
@@ -213,7 +220,10 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
         tot = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
     finally:
         con.close()
-    return {"ok": True, "ingeridas": n, "total_tabela": tot, "exercicio": exercicio}
+    if recusadas:
+        logger.warning("ingerir: %d OB(s) de outro ano recusadas para o exercício %s", recusadas, exercicio)
+    return {"ok": True, "ingeridas": n, "recusadas_outro_ano": recusadas, "total_tabela": tot,
+            "exercicio": exercicio}
 
 
 class SessaoPerdida(Exception):
@@ -325,6 +335,14 @@ async def _login(pg, exercicio: int):
             atual = await pg.evaluate("""()=>{const s=document.getElementById('loginBox:cbxExercicio::content');return s?(s.options[s.selectedIndex]||{}).label:'';}""")
             if atual == alvo:
                 break
+        # ANO FORA DA LISTA = erro com nome. Antes o `break` acima seguia calado no exercício PADRÃO
+        # (11/11/2026: SIAFE 2 oferece só 2023–2027; pedir 2022 logou em 2026 e gravou OBs de 2026 como 2022).
+        atual = await pg.evaluate("""()=>{const s=document.getElementById('loginBox:cbxExercicio::content');return s?(s.options[s.selectedIndex]||{}).label:'';}""")
+        if atual != alvo:
+            opcoes = await pg.evaluate("""()=>{const s=document.getElementById('loginBox:cbxExercicio::content');return s?[...s.options].map(o=>o.label).filter(l=>/^\\d{4}$/.test(l)):[];}""")
+            return {"ok": False, "erro": "exercicio_indisponivel", "ano": exercicio, "disponiveis": opcoes,
+                    "detail": f"Exercício {exercicio} não está na tela de login deste SIAFE ({LOGIN_URL}); "
+                              f"oferecidos: {', '.join(opcoes) or 'nenhum'}."}
         # repõe a senha se o re-render do ADF a limpou
         if (await pg.evaluate("""()=>{const e=document.getElementById('loginBox:itxSenhaAtual::content');return e?e.value.length:0;}""")) == 0:
             await pg.fill('[id="loginBox:itxSenhaAtual::content"]', p)
@@ -836,9 +854,9 @@ async def coletar_resiliente(exercicio=2025, maxn=100000, max_tentativas=24,
             await _esperar(f"fui desconectado no meio da varredura (já tenho {len(linhas)} OBs)")
             continue
         if not res.get("ok"):
-            if res.get("erro") == "exercicio_bloqueado":
-                # ano bloqueado para a conta (ex.: 2023). NÃO insistir — devolve para o sweep PULAR este ano.
-                return {"ok": False, "erro": "exercicio_bloqueado", "ano": res.get("ano"),
+            if res.get("erro") in ("exercicio_bloqueado", "exercicio_indisponivel"):
+                # ano bloqueado para a conta (ex.: 2023) ou fora da tela de login. NÃO insistir — o sweep PULA.
+                return {"ok": False, "erro": res.get("erro"), "ano": res.get("ano"),
                         "n": len(linhas), "detail": res.get("detail")}
             if res.get("erro") == "mfa":
                 if siafe_coord:
