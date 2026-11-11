@@ -231,3 +231,17 @@ def test_lex_nao_imprime_t08_t02_indeterminados_como_indicio(banco):
     # aí o T02 é indício DETERMINADO — e o laudo diz por quê, não "se qualquer agregado as somar"
     t02 = md.split("### T02-STATUS-PAGO")[1].split("###")[0]
     assert "sem reemissão" in t02 and "se qualquer agregado" not in t02
+
+
+# ───────────────── rodada 2 (11/11/2026, conferência dos 308 🟡 que sobraram) ─────────────────
+def test_t07_competencia_parada_em_meses_diferentes_e_indisponivel():
+    """UG 403200: 7 pagamentos mensais de R$ 46.336,19, de abr a ago/2026, TODOS com competência '01/2024'.
+    O campo não é a competência do pagamento — é um rótulo parado. Sem ele não há como ver duplicidade."""
+    obs = [_ob(f"OB{i}", "01/2024", 46336.19, data=f"10/{m:02d}/2026") for i, m in enumerate(range(3, 10))]
+    h = ac._t07_duplicidade({"obs": obs})
+    assert h["status"] == "INDISPONIVEL", h
+
+
+def test_filtro_pega_abreviacao_do_siafe():
+    assert ps._fora_da_bateria("11384874000106", "Fundo Mun. De Saude De Campos Dos Goytacazes")
+    assert ps._fora_da_bateria("30134050000122", "Ipalerj")

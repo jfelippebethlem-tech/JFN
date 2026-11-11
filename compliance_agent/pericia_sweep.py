@@ -105,7 +105,9 @@ _NAO_CONTRATUAL = ("FOLHA DE PAGAMENTO", "RIOPREV", "INATIVO", "PENSIONISTA", "I
                    # prefeitura, 164 de fundo municipal, 165 de ministério, 42 de tribunal na perícia
                    "PREFEITURA", "MUNICIPIO D", "FUNDO MUNICIPAL", "FUNDO ESTADUAL", "FUNDO NACIONAL",
                    "SECRETARIA DE", "MINISTERIO D", "TRIBUNAL", "CAMARA MUNICIPAL", "ASSEMBLEIA LEGISLATIVA",
-                   "DEFENSORIA PUBLICA", "PROCURADORIA", "GOVERNO DO ESTADO")
+                   "DEFENSORIA PUBLICA", "PROCURADORIA", "GOVERNO DO ESTADO",
+                   # abreviações do nome no SIAFE (conferência dos 308 🟡, 11/11): "Fundo Mun. De Saude…", IPALERJ
+                   "FUNDO MUN.", "FUNDO MUN ", "FUNDO EST.", "FUNDO EST ", "IPALERJ")
 
 # Código de credor que não é fornecedor identificável (medido 11/11 em pericia_fornecedor): 518 pares com
 # código de UG (6 dígitos = repasse intragoverno), CG (inscrição genérica: folha, auxílios, multas — 1.213),

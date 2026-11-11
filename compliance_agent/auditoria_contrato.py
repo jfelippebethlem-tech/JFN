@@ -361,6 +361,17 @@ def _t07_duplicidade(d) -> dict:
     if not contab or _detectar_dup is None:
         return _indisp("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "OBs Contabilizado com competência",
                        "Lei 4.320/64 arts. 62-63; Lei 14.133/2021", _PESO["alta"])
+    # COMPETÊNCIA PARADA (11/11/2026, conferência dos 308 🟡): na UG 403200, 7 pagamentos mensais de abr a
+    # ago/2026 traziam TODOS a competência "01/2024" — o campo é rótulo do processo, não do pagamento, e o
+    # detector lia "7 pagamentos para 1 mês". Poucas competências para muitos meses de emissão = o campo
+    # não diz a competência; sem ela não se VÊ duplicidade → INDISPONÍVEL, nunca indício.
+    meses_emissao = {str(o.get("data_emissao") or "")[3:10] for o in contab if len(str(o.get("data_emissao") or "")) >= 10}
+    comps_dist = {str(o.get("competencia") or "").strip() for o in contab if str(o.get("competencia") or "").strip()}
+    if len(meses_emissao) >= 4 and comps_dist and len(comps_dist) <= max(1, len(meses_emissao) // 4):
+        return _indisp("T07-DUPLICIDADE-COMP", "Duplicidade por competência",
+                       f"competência por pagamento — {len(comps_dist)} competência(s) para {len(meses_emissao)} "
+                       "meses de emissão (o campo do SIAFE é rótulo do processo, não do mês pago); a NF no SEI fecha",
+                       "Lei 4.320/64 arts. 62-63; Lei 14.133/2021", _PESO["alta"])
     flags = _detectar_dup(contab, favorecido=d.get("favorecido", ""), orgao=d.get("orgao", ""))
     if not flags:
         return _hip("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "AFASTADO", "—",

@@ -191,4 +191,6 @@ def test_acervo_real_tem_apenas_dois_testes_uteis():
     except sqlite3.OperationalError:
         pytest.skip("pericia_fornecedor ausente")
     assert set(r["uteis"]) == {"T02-STATUS-PAGO", "T07-DUPLICIDADE-COMP"}, r["uteis"]
-    assert r["inertes"] == ["T01-3WAY"] and r["nao_discriminam"] == ["T08-GAP-COMPETENCIA"]
+    # 11/11/2026: T08 deixou de "não discriminar" — sem contrato contínuo com periodicidade ele é INDISPONÍVEL
+    # (antes apontava 85% dos pares). Lista vazia aqui é o conserto medido, não perda de cobertura.
+    assert r["inertes"] == ["T01-3WAY"] and r["nao_discriminam"] == []
