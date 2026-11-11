@@ -28,6 +28,7 @@ import {J, erroHumano} from '../nucleo/http.js';
 import {_redMotion, _v60, _v61} from '../capacidade/estado.js';
 import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
+import {mapaMontar} from '../mapa/territorio.js';
 import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
 import {energiaLigar} from '../cena/energia.js';
@@ -183,7 +184,7 @@ export function ckBoot(){
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
-  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));}   // v61: o reator vivo no lugar da mesa
+  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));}   // v61: o reator vivo no lugar da mesa
   else nucleoStart();
   /* v59 · a órbita. DEPOIS do `nucleoStart` e do grid preenchido: ela mede a geometria dos oito
      instrumentos e do núcleo, e medir antes de os cartões existirem daria oito retângulos de

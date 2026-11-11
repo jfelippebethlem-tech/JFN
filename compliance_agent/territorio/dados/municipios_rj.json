@@ -1,0 +1,741 @@
+{
+ "fonte": "IBGE — API de localidades v1 (estados/33/municipios)",
+ "municipios": [
+  {
+   "cod_ibge": "3300100",
+   "nome": "Angra dos Reis",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Baía da Ilha Grande",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Angra dos Reis"
+  },
+  {
+   "cod_ibge": "3300159",
+   "nome": "Aperibé",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Santo Antônio de Pádua",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Santo Antônio de Pádua"
+  },
+  {
+   "cod_ibge": "3300209",
+   "nome": "Araruama",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Cabo Frio"
+  },
+  {
+   "cod_ibge": "3300225",
+   "nome": "Areal",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Três Rios",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Petrópolis"
+  },
+  {
+   "cod_ibge": "3300233",
+   "nome": "Armação dos Búzios",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Cabo Frio"
+  },
+  {
+   "cod_ibge": "3300258",
+   "nome": "Arraial do Cabo",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Cabo Frio"
+  },
+  {
+   "cod_ibge": "3300308",
+   "nome": "Barra do Piraí",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Barra do Piraí",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3300407",
+   "nome": "Barra Mansa",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3300456",
+   "nome": "Belford Roxo",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3300506",
+   "nome": "Bom Jardim",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Nova Friburgo",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3300605",
+   "nome": "Bom Jesus do Itabapoana",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3300704",
+   "nome": "Cabo Frio",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Cabo Frio"
+  },
+  {
+   "cod_ibge": "3300803",
+   "nome": "Cachoeiras de Macacu",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Macacu-Caceribu",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio Bonito"
+  },
+  {
+   "cod_ibge": "3300902",
+   "nome": "Cambuci",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Santo Antônio de Pádua",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Santo Antônio de Pádua"
+  },
+  {
+   "cod_ibge": "3300936",
+   "nome": "Carapebus",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Macaé",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Macaé - Rio das Ostras"
+  },
+  {
+   "cod_ibge": "3300951",
+   "nome": "Comendador Levy Gasparian",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Três Rios",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Três Rios - Paraíba do Sul"
+  },
+  {
+   "cod_ibge": "3301009",
+   "nome": "Campos dos Goytacazes",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Campos dos Goytacazes",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Campos dos Goytacazes"
+  },
+  {
+   "cod_ibge": "3301108",
+   "nome": "Cantagalo",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Cantagalo-Cordeiro",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3301157",
+   "nome": "Cardoso Moreira",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Campos dos Goytacazes",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Campos dos Goytacazes"
+  },
+  {
+   "cod_ibge": "3301207",
+   "nome": "Carmo",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Cantagalo-Cordeiro",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3301306",
+   "nome": "Casimiro de Abreu",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Bacia de São João",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Macaé - Rio das Ostras"
+  },
+  {
+   "cod_ibge": "3301405",
+   "nome": "Conceição de Macabu",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Macaé",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Macaé - Rio das Ostras"
+  },
+  {
+   "cod_ibge": "3301504",
+   "nome": "Cordeiro",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Cantagalo-Cordeiro",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3301603",
+   "nome": "Duas Barras",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Nova Friburgo",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3301702",
+   "nome": "Duque de Caxias",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3301801",
+   "nome": "Engenheiro Paulo de Frontin",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Vassouras",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3301850",
+   "nome": "Guapimirim",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3301876",
+   "nome": "Iguaba Grande",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Cabo Frio"
+  },
+  {
+   "cod_ibge": "3301900",
+   "nome": "Itaboraí",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302007",
+   "nome": "Itaguaí",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Itaguaí",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302056",
+   "nome": "Italva",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Campos dos Goytacazes"
+  },
+  {
+   "cod_ibge": "3302106",
+   "nome": "Itaocara",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Santo Antônio de Pádua",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Santo Antônio de Pádua"
+  },
+  {
+   "cod_ibge": "3302205",
+   "nome": "Itaperuna",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3302254",
+   "nome": "Itatiaia",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Resende"
+  },
+  {
+   "cod_ibge": "3302270",
+   "nome": "Japeri",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302304",
+   "nome": "Laje do Muriaé",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3302403",
+   "nome": "Macaé",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Macaé",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Macaé - Rio das Ostras"
+  },
+  {
+   "cod_ibge": "3302452",
+   "nome": "Macuco",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Cantagalo-Cordeiro",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3302502",
+   "nome": "Magé",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302601",
+   "nome": "Mangaratiba",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Itaguaí",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302700",
+   "nome": "Maricá",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302809",
+   "nome": "Mendes",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Vassouras",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3302858",
+   "nome": "Mesquita",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3302908",
+   "nome": "Miguel Pereira",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Vassouras",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Valença"
+  },
+  {
+   "cod_ibge": "3303005",
+   "nome": "Miracema",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Santo Antônio de Pádua",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Santo Antônio de Pádua"
+  },
+  {
+   "cod_ibge": "3303104",
+   "nome": "Natividade",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3303203",
+   "nome": "Nilópolis",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3303302",
+   "nome": "Niterói",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3303401",
+   "nome": "Nova Friburgo",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Nova Friburgo",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3303500",
+   "nome": "Nova Iguaçu",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3303609",
+   "nome": "Paracambi",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Vassouras",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3303708",
+   "nome": "Paraíba do Sul",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Três Rios",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Três Rios - Paraíba do Sul"
+  },
+  {
+   "cod_ibge": "3303807",
+   "nome": "Paraty",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Baía da Ilha Grande",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Angra dos Reis"
+  },
+  {
+   "cod_ibge": "3303856",
+   "nome": "Paty do Alferes",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Vassouras",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Valença"
+  },
+  {
+   "cod_ibge": "3303906",
+   "nome": "Petrópolis",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Serrana",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Petrópolis"
+  },
+  {
+   "cod_ibge": "3303955",
+   "nome": "Pinheiral",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3304003",
+   "nome": "Piraí",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3304102",
+   "nome": "Porciúncula",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3304110",
+   "nome": "Porto Real",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Resende"
+  },
+  {
+   "cod_ibge": "3304128",
+   "nome": "Quatis",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Resende"
+  },
+  {
+   "cod_ibge": "3304144",
+   "nome": "Queimados",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3304151",
+   "nome": "Quissamã",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Macaé",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Macaé - Rio das Ostras"
+  },
+  {
+   "cod_ibge": "3304201",
+   "nome": "Resende",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Resende"
+  },
+  {
+   "cod_ibge": "3304300",
+   "nome": "Rio Bonito",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Macacu-Caceribu",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio Bonito"
+  },
+  {
+   "cod_ibge": "3304409",
+   "nome": "Rio Claro",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  },
+  {
+   "cod_ibge": "3304508",
+   "nome": "Rio das Flores",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Barra do Piraí",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Valença"
+  },
+  {
+   "cod_ibge": "3304524",
+   "nome": "Rio das Ostras",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Bacia de São João",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Macaé - Rio das Ostras"
+  },
+  {
+   "cod_ibge": "3304557",
+   "nome": "Rio de Janeiro",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3304607",
+   "nome": "Santa Maria Madalena",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Santa Maria Madalena",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3304706",
+   "nome": "Santo Antônio de Pádua",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Santo Antônio de Pádua",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Santo Antônio de Pádua"
+  },
+  {
+   "cod_ibge": "3304755",
+   "nome": "São Francisco de Itabapoana",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Campos dos Goytacazes",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Campos dos Goytacazes"
+  },
+  {
+   "cod_ibge": "3304805",
+   "nome": "São Fidélis",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Campos dos Goytacazes",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Campos dos Goytacazes"
+  },
+  {
+   "cod_ibge": "3304904",
+   "nome": "São Gonçalo",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3305000",
+   "nome": "São João da Barra",
+   "mesorregiao": "Norte Fluminense",
+   "microrregiao": "Campos dos Goytacazes",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Campos dos Goytacazes"
+  },
+  {
+   "cod_ibge": "3305109",
+   "nome": "São João de Meriti",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3305133",
+   "nome": "São José de Ubá",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Santo Antônio de Pádua",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3305158",
+   "nome": "São José do Vale do Rio Preto",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Serrana",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Petrópolis"
+  },
+  {
+   "cod_ibge": "3305208",
+   "nome": "São Pedro da Aldeia",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Macaé - Rio das Ostras - Cabo Frio",
+   "regiao_imediata": "Cabo Frio"
+  },
+  {
+   "cod_ibge": "3305307",
+   "nome": "São Sebastião do Alto",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Santa Maria Madalena",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3305406",
+   "nome": "Sapucaia",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Três Rios",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Três Rios - Paraíba do Sul"
+  },
+  {
+   "cod_ibge": "3305505",
+   "nome": "Saquarema",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Lagos",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3305554",
+   "nome": "Seropédica",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Itaguaí",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3305604",
+   "nome": "Silva Jardim",
+   "mesorregiao": "Baixadas",
+   "microrregiao": "Bacia de São João",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio Bonito"
+  },
+  {
+   "cod_ibge": "3305703",
+   "nome": "Sumidouro",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Nova Friburgo",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3305752",
+   "nome": "Tanguá",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Rio de Janeiro",
+   "regiao_intermediaria": "Rio de Janeiro",
+   "regiao_imediata": "Rio de Janeiro"
+  },
+  {
+   "cod_ibge": "3305802",
+   "nome": "Teresópolis",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Serrana",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Petrópolis"
+  },
+  {
+   "cod_ibge": "3305901",
+   "nome": "Trajano de Moraes",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Santa Maria Madalena",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Nova Friburgo"
+  },
+  {
+   "cod_ibge": "3306008",
+   "nome": "Três Rios",
+   "mesorregiao": "Centro Fluminense",
+   "microrregiao": "Três Rios",
+   "regiao_intermediaria": "Petrópolis",
+   "regiao_imediata": "Três Rios - Paraíba do Sul"
+  },
+  {
+   "cod_ibge": "3306107",
+   "nome": "Valença",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Barra do Piraí",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Valença"
+  },
+  {
+   "cod_ibge": "3306156",
+   "nome": "Varre-Sai",
+   "mesorregiao": "Noroeste Fluminense",
+   "microrregiao": "Itaperuna",
+   "regiao_intermediaria": "Campos dos Goytacazes",
+   "regiao_imediata": "Itaperuna"
+  },
+  {
+   "cod_ibge": "3306206",
+   "nome": "Vassouras",
+   "mesorregiao": "Metropolitana do Rio de Janeiro",
+   "microrregiao": "Vassouras",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Valença"
+  },
+  {
+   "cod_ibge": "3306305",
+   "nome": "Volta Redonda",
+   "mesorregiao": "Sul Fluminense",
+   "microrregiao": "Vale do Paraíba Fluminense",
+   "regiao_intermediaria": "Volta Redonda - Barra Mansa",
+   "regiao_imediata": "Volta Redonda - Barra Mansa"
+  }
+ ]
+}

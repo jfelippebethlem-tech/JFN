@@ -219,7 +219,7 @@
       } catch (e) {
         const estourou = e && e.name === "AbortError";
         if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO3 / 1e3}s` : String(e) };
-        await new Promise((rs) => setTimeout(rs, 1200));
+        await new Promise((rs2) => setTimeout(rs2, 1200));
       } finally {
         if (relogio) clearTimeout(relogio);
       }
@@ -1279,24 +1279,24 @@
     };
     document.head.appendChild(s);
   }
-  function _rjBuild(M, W, H, dpr, modo) {
+  function _rjBuild(M2, W2, H2, dpr, modo) {
     const c = document.createElement("canvas");
-    c.width = Math.round(W * dpr);
-    c.height = Math.round(H * dpr);
+    c.width = Math.round(W2 * dpr);
+    c.height = Math.round(H2 * dpr);
     const x = c.getContext("2d");
     x.scale(dpr, dpr);
     const nu = modo === "nucleo";
     const FX = nu ? 0.94 : 0.88, FY = nu ? 0.96 : 0.82;
-    const s = Math.min(W * FX / M.w, H * FY / M.h);
-    const ox = (W - M.w * s) / 2, oy = nu ? (H - M.h * s) / 2 : (H * FY - M.h * s) / 2;
+    const s = Math.min(W2 * FX / M2.w, H2 * FY / M2.h);
+    const ox = (W2 - M2.w * s) / 2, oy = nu ? (H2 - M2.h * s) / 2 : (H2 * FY - M2.h * s) / 2;
     const mk = (flat) => {
       const p = new Path2D();
       let X = flat[0], Y = flat[1];
-      p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
+      p.moveTo(ox + X / M2.q * s, oy + Y / M2.q * s);
       for (let i = 2; i < flat.length; i += 2) {
         X += flat[i];
         Y += flat[i + 1];
-        p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
+        p.lineTo(ox + X / M2.q * s, oy + Y / M2.q * s);
       }
       p.closePath();
       return p;
@@ -1304,17 +1304,17 @@
     x.lineJoin = x.lineCap = "round";
     x.strokeStyle = nu ? "rgba(120,170,245,0.16)" : "rgba(126,178,250,0.52)";
     x.lineWidth = nu ? 0.55 : 0.75;
-    M.m.forEach((f) => x.stroke(mk(f)));
+    M2.m.forEach((f) => x.stroke(mk(f)));
     x.shadowColor = "rgba(140,196,255,0.95)";
     x.shadowBlur = nu ? 9 : 18;
     x.strokeStyle = nu ? "rgba(176,210,255,0.42)" : "rgba(214,234,255,1)";
     x.lineWidth = nu ? 1.1 : 2.1;
-    M.o.forEach((f) => x.stroke(mk(f)));
+    M2.o.forEach((f) => x.stroke(mk(f)));
     x.shadowBlur = nu ? 14 : 30;
     x.shadowColor = "rgba(255,150,60,0.8)";
     x.strokeStyle = nu ? "rgba(255,190,120,0.20)" : "rgba(255,196,124,0.72)";
     x.lineWidth = nu ? 0.7 : 1.1;
-    M.o.forEach((f) => x.stroke(mk(f)));
+    M2.o.forEach((f) => x.stroke(mk(f)));
     return c;
   }
 
@@ -1339,27 +1339,27 @@
   };
   function _holoProj(x, y, z, c) {
     const X = x * c.cy_ - z * c.sy_, Z = x * c.sy_ + z * c.cy_;
-    const Y2 = y * c.cp + Z * c.sp;
-    const Z2 = Math.max(0.42, Z * c.cp - y * c.sp + c.camd);
-    const k = c.camd / Z2;
-    return { x: c.cx + X * k * c.s, y: c.cy - Y2 * k * c.s, k, z: Z2 };
+    const Y22 = y * c.cp + Z * c.sp;
+    const Z22 = Math.max(0.42, Z * c.cp - y * c.sp + c.camd);
+    const k = c.camd / Z22;
+    return { x: c.cx + X * k * c.s, y: c.cy - Y22 * k * c.s, k, z: Z22 };
   }
-  function _rjPlaca(M, SZ) {
+  function _rjPlaca(M2, SZ) {
     const c = document.createElement("canvas");
     c.width = c.height = SZ;
     const x = c.getContext("2d");
     const GIRO = HOLO.GIRO;
     const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
-    const lw = M.w * cg + M.h * sg, lh = M.w * sg + M.h * cg;
-    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M.w * s) / 2, oy = (SZ - M.h * s) / 2;
+    const lw = M2.w * cg + M2.h * sg, lh = M2.w * sg + M2.h * cg;
+    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M2.w * s) / 2, oy = (SZ - M2.h * s) / 2;
     const mk = (flat) => {
       const p = new Path2D();
       let X = flat[0], Y = flat[1];
-      p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
+      p.moveTo(ox + X / M2.q * s, oy + Y / M2.q * s);
       for (let i = 2; i < flat.length; i += 2) {
         X += flat[i];
         Y += flat[i + 1];
-        p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
+        p.lineTo(ox + X / M2.q * s, oy + Y / M2.q * s);
       }
       p.closePath();
       return p;
@@ -1370,29 +1370,29 @@
     x.lineJoin = x.lineCap = "round";
     x.strokeStyle = "rgba(120,170,245,0.22)";
     x.lineWidth = 0.9;
-    M.m.forEach((f) => x.stroke(mk(f)));
+    M2.m.forEach((f) => x.stroke(mk(f)));
     x.shadowColor = "rgba(140,196,255,0.95)";
     x.shadowBlur = 10;
     x.strokeStyle = "rgba(186,218,255,0.62)";
     x.lineWidth = 1.7;
-    M.o.forEach((f) => x.stroke(mk(f)));
+    M2.o.forEach((f) => x.stroke(mk(f)));
     x.shadowBlur = 16;
     x.shadowColor = "rgba(255,150,60,0.8)";
     x.strokeStyle = "rgba(255,190,120,0.26)";
     x.lineWidth = 1.1;
-    M.o.forEach((f) => x.stroke(mk(f)));
+    M2.o.forEach((f) => x.stroke(mk(f)));
     return c;
   }
-  function _rjContornoMundo(M) {
+  function _rjContornoMundo(M2) {
     const PL = HOLO.PL, SZ = HOLO.SZ, GIRO = HOLO.GIRO;
     const cg = Math.abs(Math.cos(GIRO)), sg = Math.abs(Math.sin(GIRO));
-    const lw = M.w * cg + M.h * sg, lh = M.w * sg + M.h * cg;
-    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M.w * s) / 2, oy = (SZ - M.h * s) / 2;
-    return M.o.map((flat) => {
+    const lw = M2.w * cg + M2.h * sg, lh = M2.w * sg + M2.h * cg;
+    const s = Math.min(SZ * 0.99 / lw, SZ * 0.99 / lh), ox = (SZ - M2.w * s) / 2, oy = (SZ - M2.h * s) / 2;
+    return M2.o.map((flat) => {
       const pts = [];
       let X = flat[0], Y = flat[1];
       const põe = () => {
-        const rx = ox + X / M.q * s - SZ / 2, ry = oy + Y / M.q * s - SZ / 2;
+        const rx = ox + X / M2.q * s - SZ / 2, ry = oy + Y / M2.q * s - SZ / 2;
         const sx = SZ / 2 + rx * Math.cos(GIRO) - ry * Math.sin(GIRO);
         const sy = SZ / 2 + rx * Math.sin(GIRO) + ry * Math.cos(GIRO);
         pts.push([sx / SZ * 2 * PL - PL, PL - sy / SZ * 2 * PL]);
@@ -1406,9 +1406,9 @@
       return pts;
     });
   }
-  function _holoPiso(g, bmp, c, W, H, alt) {
+  function _holoPiso(g, bmp, c, W2, H2, alt) {
     const PL = HOLO.PL, SZ = bmp.width, NF = 26, dz = 2 * PL / NF, y = alt || 0;
-    g.clearRect(0, 0, W, H);
+    g.clearRect(0, 0, W2, H2);
     for (let i = 0; i < NF; i++) {
       const zF = PL - i * dz, zN = zF - dz, sy0 = i * SZ / NF, sy1 = (i + 1) * SZ / NF, hs = sy1 - sy0;
       const P00 = _holoProj(-PL, y, zF, c), P10 = _holoProj(PL, y, zF, c), P01 = _holoProj(-PL, y, zN, c);
@@ -1691,16 +1691,16 @@ void main(){
     }
     const mctx = pm.getContext("2d");
     function medir() {
-      const W = innerWidth, H = innerHeight;
+      const W2 = innerWidth, H2 = innerHeight;
       if (gl) {
-        cv.width = Math.round(W * dpr);
-        cv.height = Math.round(H * dpr);
+        cv.width = Math.round(W2 * dpr);
+        cv.height = Math.round(H2 * dpr);
         gl.viewport(0, 0, cv.width, cv.height);
       }
-      pm.width = Math.round(W * dpr);
-      pm.height = Math.round(H * dpr);
+      pm.width = Math.round(W2 * dpr);
+      pm.height = Math.round(H2 * dpr);
       mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (window.RJ_MALHA) mapC = _rjBuild(window.RJ_MALHA, W, H, dpr, "portal");
+      if (window.RJ_MALHA) mapC = _rjBuild(window.RJ_MALHA, W2, H2, dpr, "portal");
     }
     medir();
     addEventListener("resize", medir, { passive: true });
@@ -1726,22 +1726,22 @@ void main(){
         gl.drawArrays(gl.TRIANGLES, 0, 3);
       }
       if (mapC) {
-        const W = innerWidth, H = innerHeight;
+        const W2 = innerWidth, H2 = innerHeight;
         const rev = Math.min(1, Math.max(0, (t - 620) / 1650));
-        mctx.clearRect(0, 0, W, H);
+        mctx.clearRect(0, 0, W2, H2);
         if (rev > 0) {
-          const cx = W / 2, cy = H * 0.41;
-          const R = Math.max(1, rev * Math.hypot(W, H) * 0.66);
+          const cx = W2 / 2, cy = H2 * 0.41;
+          const R = Math.max(1, rev * Math.hypot(W2, H2) * 0.66);
           const g = mctx.createRadialGradient(cx, cy, 0, cx, cy, R);
           g.addColorStop(0, "rgba(255,255,255,1)");
           g.addColorStop(0.74, "rgba(255,255,255,1)");
           g.addColorStop(1, "rgba(255,255,255,0)");
           mctx.globalCompositeOperation = "source-over";
           mctx.fillStyle = g;
-          mctx.fillRect(0, 0, W, H);
+          mctx.fillRect(0, 0, W2, H2);
           mctx.globalCompositeOperation = "source-in";
           mctx.globalAlpha = Math.min(1, rev * 1.6) * (1 - jmp * 0.85);
-          mctx.drawImage(mapC, 0, 0, W, H);
+          mctx.drawImage(mapC, 0, 0, W2, H2);
           mctx.globalAlpha = 1;
         }
       }
@@ -1811,11 +1811,11 @@ void main(){
     }
     const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
     const ctx = cv.getContext("2d");
-    let W, H, dpr, mapC = null, raf = 0, corAtual = "";
+    let W2, H2, dpr, mapC = null, raf = 0, corAtual = "";
     const corEsf = () => getComputedStyle(document.body).getPropertyValue("--esf").trim() || "oklch(0.72 0.175 258)";
     function build() {
-      const M = window.RJ_MALHA;
-      if (!M) return;
+      const M2 = window.RJ_MALHA;
+      if (!M2) return;
       const cor = corEsf();
       corAtual = cor;
       mapC = document.createElement("canvas");
@@ -1823,16 +1823,16 @@ void main(){
       mapC.height = cv.height;
       const x = mapC.getContext("2d");
       x.scale(dpr, dpr);
-      const s = Math.min(W / M.w, H / M.h) * 1.04;
-      const ox = W - M.w * s * 0.66, oy = (H - M.h * s) / 2;
+      const s = Math.min(W2 / M2.w, H2 / M2.h) * 1.04;
+      const ox = W2 - M2.w * s * 0.66, oy = (H2 - M2.h * s) / 2;
       const mk = (flat) => {
         const p = new Path2D();
         let X = flat[0], Y = flat[1];
-        p.moveTo(ox + X / M.q * s, oy + Y / M.q * s);
+        p.moveTo(ox + X / M2.q * s, oy + Y / M2.q * s);
         for (let i = 2; i < flat.length; i += 2) {
           X += flat[i];
           Y += flat[i + 1];
-          p.lineTo(ox + X / M.q * s, oy + Y / M.q * s);
+          p.lineTo(ox + X / M2.q * s, oy + Y / M2.q * s);
         }
         p.closePath();
         return p;
@@ -1840,25 +1840,25 @@ void main(){
       x.lineJoin = x.lineCap = "round";
       x.strokeStyle = `color-mix(in oklch, ${cor} 34%, transparent)`;
       x.lineWidth = 0.6;
-      M.m.forEach((f) => x.stroke(mk(f)));
+      M2.m.forEach((f) => x.stroke(mk(f)));
       x.shadowColor = cor;
       x.shadowBlur = 12;
       x.strokeStyle = `color-mix(in oklch, ${cor} 78%, white 12%)`;
       x.lineWidth = 1.5;
-      M.o.forEach((f) => x.stroke(mk(f)));
+      M2.o.forEach((f) => x.stroke(mk(f)));
       cv._ox = ox;
       cv._oy = oy;
       cv._s = s;
-      cv._M = M;
+      cv._M = M2;
     }
     function size() {
       dpr = Math.min(1.5, devicePixelRatio || 1);
-      W = innerWidth;
-      H = innerHeight;
-      cv.width = Math.round(W * dpr);
-      cv.height = Math.round(H * dpr);
-      cv.style.width = W + "px";
-      cv.style.height = H + "px";
+      W2 = innerWidth;
+      H2 = innerHeight;
+      cv.width = Math.round(W2 * dpr);
+      cv.height = Math.round(H2 * dpr);
+      cv.style.width = W2 + "px";
+      cv.style.height = H2 + "px";
       build();
     }
     function draw(t) {
@@ -1876,9 +1876,9 @@ void main(){
       g.drawImage(mapC, 0, 0);
       if (!rm) {
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const M = cv._M, s = cv._s;
-        const cx = cv._ox + M.w * s * 0.42 / 1, cy = cv._oy + M.h * s * 0.5;
-        const ang = t * 16e-5, R = Math.hypot(W, H);
+        const M2 = cv._M, s = cv._s;
+        const cx = cv._ox + M2.w * s * 0.42 / 1, cy = cv._oy + M2.h * s * 0.5;
+        const ang = t * 16e-5, R = Math.hypot(W2, H2);
         const grad = g.createConicGradient ? g.createConicGradient(ang, cx, cy) : null;
         if (grad) {
           grad.addColorStop(0, `color-mix(in oklch, ${corAtual} 22%, transparent)`);
@@ -1925,19 +1925,19 @@ void main(){
       return;
     }
     const ctx = cv.getContext("2d");
-    let W, H, pts, raf;
+    let W2, H2, pts, raf;
     const rm = matchMedia("(prefers-reduced-motion:reduce)").matches;
     function size() {
       const d = Math.min(2, devicePixelRatio);
-      W = cv.width = innerWidth * d;
-      H = cv.height = innerHeight * d;
+      W2 = cv.width = innerWidth * d;
+      H2 = cv.height = innerHeight * d;
       cv.style.width = innerWidth + "px";
       cv.style.height = innerHeight + "px";
       cv._d = d;
       const n = Math.min(76, Math.floor(innerWidth / 20));
       pts = Array.from({ length: n }, () => ({
-        x: Math.random() * W,
-        y: Math.random() * H,
+        x: Math.random() * W2,
+        y: Math.random() * H2,
         z: Math.random() * 0.8 + 0.2,
         vx: (Math.random() - 0.5) * 0.11 * d,
         vy: (Math.random() - 0.5) * 0.11 * d,
@@ -1946,15 +1946,15 @@ void main(){
     }
     function draw() {
       const d = cv._d, D = 150 * d;
-      ctx.clearRect(0, 0, W, H);
+      ctx.clearRect(0, 0, W2, H2);
       const px = (_ckMX - 0.5) * 26 * d, py = (_ckMY - 0.5) * 26 * d;
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i];
         if (!rm) {
           p.x += p.vx;
           p.y += p.vy;
-          if (p.x < 0 || p.x > W) p.vx *= -1;
-          if (p.y < 0 || p.y > H) p.vy *= -1;
+          if (p.x < 0 || p.x > W2) p.vx *= -1;
+          if (p.y < 0 || p.y > H2) p.vy *= -1;
         }
         const ox = p.x + px * p.z, oy = p.y + py * p.z;
         p._ox = ox;
@@ -2230,7 +2230,7 @@ void main(){
       });
     });
     const ESP = HOLO.ESP, ARO = HOLO.ARO;
-    let W, H, placa = null, contorno = null, piso = null, pisoG = null, pisoSujo = true, _nuVisivel = true, _nuPintou = false;
+    let W2, H2, placa = null, contorno = null, piso = null, pisoG = null, pisoSujo = true, _nuVisivel = true, _nuPintou = false;
     const cam = {
       cx: 0,
       cy: 0,
@@ -2255,7 +2255,7 @@ void main(){
     }
     let _railW = 182, _compacto = false, _gradeH = 0;
     function trilhos() {
-      _compacto = _v60 || W < 720;
+      _compacto = _v60 || W2 < 720;
       box.classList.toggle("compacto", _compacto);
       if (_compacto) {
         if (_v60) {
@@ -2266,8 +2266,8 @@ void main(){
           box.style.setProperty("--grade-h", "0px");
           return;
         }
-        const cols = W < 430 ? 2 : 3, gap = 8, marg = 12;
-        const cw = Math.floor((W - marg * 2 - gap * (cols - 1)) / cols);
+        const cols = W2 < 430 ? 2 : 3, gap = 8, marg = 12;
+        const cw = Math.floor((W2 - marg * 2 - gap * (cols - 1)) / cols);
         let ch = 0;
         NU_NODES.forEach((no, i) => {
           const el = $("nu-" + no.id);
@@ -2289,7 +2289,7 @@ void main(){
         NU_NODES.forEach((no, i) => {
           const el = $("nu-" + no.id);
           if (!el) return;
-          el.style.top = Math.round(H - _gradeH + gap + Math.floor(i / cols) * (ch + gap)) + "px";
+          el.style.top = Math.round(H2 - _gradeH + gap + Math.floor(i / cols) * (ch + gap)) + "px";
         });
         box.style.setProperty("--grade-h", _gradeH + "px");
         return;
@@ -2311,25 +2311,25 @@ void main(){
       });
     }
     function size() {
-      W = box.clientWidth;
-      H = box.clientHeight;
-      cv.width = W * dpr;
-      cv.height = H * dpr;
-      cv.style.width = W + "px";
-      cv.style.height = H + "px";
+      W2 = box.clientWidth;
+      H2 = box.clientHeight;
+      cv.width = W2 * dpr;
+      cv.height = H2 * dpr;
+      cv.style.width = W2 + "px";
+      cv.style.height = H2 + "px";
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       setCam();
       trilhos();
       const PL = HOLO.PL, kN = cam.camd / Math.max(0.42, cam.camd - PL * cam.cp), kF = cam.camd / (cam.camd + PL * cam.cp);
-      const A3 = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
+      const A5 = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
       const gut = _compacto ? 10 : 48;
-      const Hu = Math.max(150, H - _gradeH);
-      cam.s = Math.min(Hu * 0.965 / (A3 + B + HT), Math.max(140, W - 2 * gut) / (2 * PL * kN));
-      cam.cx = W / 2;
-      cam.cy = (Hu - (A3 + B + HT) * cam.s) / 2 + (A3 + HT) * cam.s;
+      const Hu = Math.max(150, H2 - _gradeH);
+      cam.s = Math.min(Hu * 0.965 / (A5 + B + HT), Math.max(140, W2 - 2 * gut) / (2 * PL * kN));
+      cam.cx = W2 / 2;
+      cam.cy = (Hu - (A5 + B + HT) * cam.s) / 2 + (A5 + HT) * cam.s;
       piso = document.createElement("canvas");
-      piso.width = W * dpr;
-      piso.height = H * dpr;
+      piso.width = W2 * dpr;
+      piso.height = H2 * dpr;
       pisoG = piso.getContext("2d");
       pisoG.setTransform(dpr, 0, 0, dpr, 0, 0);
       pisoSujo = true;
@@ -2364,8 +2364,8 @@ void main(){
     cv.onpointermove = (e) => {
       const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
       if (!rm) {
-        cam.tyaw = (mx / W - 0.5) * 0.46;
-        cam.telev = HOLO.ELEV + (my / H - 0.5) * 0.2;
+        cam.tyaw = (mx / W2 - 0.5) * 0.46;
+        cam.telev = HOLO.ELEV + (my / H2 - 0.5) * 0.2;
       }
       _nuHover = null;
       let best = 520;
@@ -2419,7 +2419,7 @@ void main(){
         pisoSujo = true;
       }
       const P = (x, y, z) => _holoProj(x, y, z, cam);
-      ctx.clearRect(0, 0, W, H);
+      ctx.clearRect(0, 0, W2, H2);
       ctx.lineWidth = 1;
       for (let a = 0; a < 4; a++) {
         const r = 0.3 + a * 0.27;
@@ -2444,9 +2444,9 @@ void main(){
       ctx.stroke();
       ctx.strokeStyle = "rgba(130,180,255,0.06)";
       for (let i = 0; i < 12; i++) {
-        const th = i / 12 * 6.283, A3 = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
+        const th = i / 12 * 6.283, A5 = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
         ctx.beginPath();
-        ctx.moveTo(A3.x, A3.y);
+        ctx.moveTo(A5.x, A5.y);
         ctx.lineTo(B.x, B.y);
         ctx.stroke();
       }
@@ -2481,10 +2481,10 @@ void main(){
       }
       if (placa && pisoG) {
         if (pisoSujo) {
-          _holoPiso(pisoG, placa, cam, W, H, ESP);
+          _holoPiso(pisoG, placa, cam, W2, H2, ESP);
           pisoSujo = false;
         }
-        ctx.drawImage(piso, 0, 0, W, H);
+        ctx.drawImage(piso, 0, 0, W2, H2);
       }
       ANEIS2.forEach((an) => {
         for (let s = 0; s < 8; s++) {
@@ -2557,8 +2557,8 @@ void main(){
             for (const gir of [0, 0.3, -0.3, 0.62, -0.62, 0.95, -0.95, 1.3, -1.3, 1.7, -1.7, 2.2, -2.2, Math.PI]) {
               const a = a0 + gir;
               let x2 = o.x + Math.cos(a) * rad, y2 = o.y + Math.sin(a) * rad * 0.62 - 18;
-              x2 = Math.max(w / 2 + 8, Math.min(W - w / 2 - 8, x2));
-              y2 = Math.max(h + 8, Math.min(H - 8, y2));
+              x2 = Math.max(w / 2 + 8, Math.min(W2 - w / 2 - 8, x2));
+              y2 = Math.max(h + 8, Math.min(H2 - 8, y2));
               const cy = y2 - h / 2;
               let ov = 0;
               for (const c of _cx2) {
@@ -2587,11 +2587,11 @@ void main(){
         });
       }
       for (let i = 0; i < pos.length; i++) {
-        const A3 = pos[i], B = pos[(i + 1) % pos.length];
-        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A3.k, B.k)).toFixed(3) + ")";
+        const A5 = pos[i], B = pos[(i + 1) % pos.length];
+        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A5.k, B.k)).toFixed(3) + ")";
         ctx.lineWidth = 0.7;
         ctx.beginPath();
-        ctx.moveTo(A3.x, A3.y);
+        ctx.moveTo(A5.x, A5.y);
         ctx.lineTo(B.x, B.y);
         ctx.stroke();
       }
@@ -2697,9 +2697,9 @@ void main(){
           const o = pos.find((q) => q.n.id === f.id);
           if (!o) return;
           f.p += 0.022;
-          const e = 1 - Math.pow(1 - f.p, 2), e2 = Math.max(0, e - 0.1);
+          const e = 1 - Math.pow(1 - f.p, 2), e22 = Math.max(0, e - 0.1);
           const at = (u) => P(o.wx * (1 - u), o.h + (0.6 - o.h) * u, o.wz * (1 - u));
-          const a = at(e), b = at(e2);
+          const a = at(e), b = at(e22);
           ctx.strokeStyle = "rgba(" + f.c + "," + (0.34 * (1 - f.p)).toFixed(2) + ")";
           ctx.lineWidth = 1.2;
           ctx.beginPath();
@@ -2823,8 +2823,8 @@ void main(){
         ctx.fill();
         const pt = new Path2D(), aT = -Math.PI / 2 - spin2 * 5;
         for (let k = 0; k < 3; k++) {
-          const a = aT + k * 2.0944, x0 = Math.cos(a) * R(15.5), y0 = Math.sin(a) * R(15.5);
-          k ? pt.lineTo(x0, y0) : pt.moveTo(x0, y0);
+          const a = aT + k * 2.0944, x02 = Math.cos(a) * R(15.5), y02 = Math.sin(a) * R(15.5);
+          k ? pt.lineTo(x02, y02) : pt.moveTo(x02, y02);
         }
         pt.closePath();
         ctx.lineJoin = "round";
@@ -3555,11 +3555,11 @@ void main(){
       v.insertBefore(cv, fade);
     }
     const cx = cv.getContext("2d"), dpr = Math.min(2, devicePixelRatio || 1), vr = v.getBoundingClientRect();
-    const W = v.clientWidth, H = Math.max(v.scrollHeight, fade.scrollHeight);
-    cv.width = W * dpr;
-    cv.height = H * dpr;
-    cv.style.width = W + "px";
-    cv.style.height = H + "px";
+    const W2 = v.clientWidth, H2 = Math.max(v.scrollHeight, fade.scrollHeight);
+    cv.width = W2 * dpr;
+    cv.height = H2 * dpr;
+    cv.style.width = W2 + "px";
+    cv.style.height = H2 + "px";
     cx.scale(dpr, dpr);
     const pts = nodes.slice(0, 46).map((el) => {
       const r = el.getBoundingClientRect();
@@ -3575,15 +3575,15 @@ void main(){
     });
     const t0i = rm ? null : performance.now();
     function draw(t) {
-      cx.clearRect(0, 0, W, H);
+      cx.clearRect(0, 0, W2, H2);
       const f = _wireFase(t0i == null ? null : t - t0i);
       if (f.aresta > 0) edges.forEach((e) => {
-        const A3 = pts[e.a], B = pts[e.b];
+        const A5 = pts[e.a], B = pts[e.b];
         cx.strokeStyle = "rgba(" + C + ",.15)";
         cx.lineWidth = 1;
         cx.beginPath();
-        cx.moveTo(A3.x, A3.y);
-        cx.lineTo(A3.x + (B.x - A3.x) * f.aresta, A3.y + (B.y - A3.y) * f.aresta);
+        cx.moveTo(A5.x, A5.y);
+        cx.lineTo(A5.x + (B.x - A5.x) * f.aresta, A5.y + (B.y - A5.y) * f.aresta);
         cx.stroke();
       });
       if (f.no > 0) pts.forEach((p) => {
@@ -3594,8 +3594,8 @@ void main(){
       });
       if (!rm) {
         if (f.aresta >= 1) edges.forEach((e, i) => {
-          const A3 = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
-          const x = A3.x + (B.x - A3.x) * ph, y = A3.y + (B.y - A3.y) * ph;
+          const A5 = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
+          const x = A5.x + (B.x - A5.x) * ph, y = A5.y + (B.y - A5.y) * ph;
           const g = cx.createRadialGradient(x, y, 0, x, y, 8);
           g.addColorStop(0, "rgba(" + C + ",.8)");
           g.addColorStop(1, "rgba(" + C + ",0)");
@@ -3805,9 +3805,9 @@ void main(){
         clearInterval(_seiArvoreTimer);
         return;
       }
-      const pct = s.n_processos ? Math.round(100 * s.n_arquivados / s.n_processos) : 0;
+      const pct2 = s.n_processos ? Math.round(100 * s.n_arquivados / s.n_processos) : 0;
       box.innerHTML = `<div class="dim">${fmtN(s.n_arquivados)} de ${fmtN(s.n_processos)} processo(s) SEI arquivado(s)${s.rodando ? " · buscando/baixando… (pode fechar e conferir depois)" : ""}</div>
-      <div style="background:var(--card2);border-radius:6px;height:6px;margin-top:6px;overflow:hidden"><div style="background:var(--accent);width:${pct}%;height:100%"></div></div>
+      <div style="background:var(--card2);border-radius:6px;height:6px;margin-top:6px;overflow:hidden"><div style="background:var(--accent);width:${pct2}%;height:100%"></div></div>
       ${s.pronto ? `<div class="btns" style="margin-top:8px"><button class="btn accent" onclick="seiBaixarZip('${cnpj}')">Baixar ZIP (${fmtN(s.n_arquivados)} de ${fmtN(s.n_processos)})</button>${!s.rodando && !s.concluido ? `<button class="btn ghost" onclick="seiArvore('${cnpj}')">Continuar buscando</button>` : ""}</div>` : ""}
       ${s.concluido ? '<div class="note" style="margin-top:6px">✅ completo — todos os processos conhecidos (via OB paga) foram arquivados.</div>' : ""}
       ${!s.n_processos ? '<div class="note" style="margin-top:6px">Nenhum processo SEI conhecido via OB paga para este CNPJ ainda.</div>' : ""}`;
@@ -4508,6 +4508,2297 @@ void main(){
     _sair = sair;
   }
 
+  // node_modules/d3-array/dist/d3-array.mjs
+  function ascending(a, b) {
+    return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+  }
+  function descending(a, b) {
+    return a == null || b == null ? NaN : b < a ? -1 : b > a ? 1 : b >= a ? 0 : NaN;
+  }
+  function bisector(f) {
+    let compare1, compare2, delta;
+    if (f.length !== 2) {
+      compare1 = ascending;
+      compare2 = (d, x) => ascending(f(d), x);
+      delta = (d, x) => f(d) - x;
+    } else {
+      compare1 = f === ascending || f === descending ? f : zero;
+      compare2 = f;
+      delta = f;
+    }
+    function left(a, x, lo = 0, hi = a.length) {
+      if (lo < hi) {
+        if (compare1(x, x) !== 0) return hi;
+        do {
+          const mid = lo + hi >>> 1;
+          if (compare2(a[mid], x) < 0) lo = mid + 1;
+          else hi = mid;
+        } while (lo < hi);
+      }
+      return lo;
+    }
+    function right(a, x, lo = 0, hi = a.length) {
+      if (lo < hi) {
+        if (compare1(x, x) !== 0) return hi;
+        do {
+          const mid = lo + hi >>> 1;
+          if (compare2(a[mid], x) <= 0) lo = mid + 1;
+          else hi = mid;
+        } while (lo < hi);
+      }
+      return lo;
+    }
+    function center(a, x, lo = 0, hi = a.length) {
+      const i = left(a, x, lo, hi - 1);
+      return i > lo && delta(a[i - 1], x) > -delta(a[i], x) ? i - 1 : i;
+    }
+    return { left, center, right };
+  }
+  function zero() {
+    return 0;
+  }
+  function number(x) {
+    return x === null ? NaN : +x;
+  }
+  var ascendingBisect = bisector(ascending);
+  var bisectRight = ascendingBisect.right;
+  var bisectLeft = ascendingBisect.left;
+  var bisectCenter = bisector(number).center;
+  var blur2 = Blur2(blurf);
+  var blurImage = Blur2(blurfImage);
+  function Blur2(blur) {
+    return function(data, rx, ry = rx) {
+      if (!((rx = +rx) >= 0)) throw new RangeError("invalid rx");
+      if (!((ry = +ry) >= 0)) throw new RangeError("invalid ry");
+      let { data: values, width, height } = data;
+      if (!((width = Math.floor(width)) >= 0)) throw new RangeError("invalid width");
+      if (!((height = Math.floor(height !== void 0 ? height : values.length / width)) >= 0)) throw new RangeError("invalid height");
+      if (!width || !height || !rx && !ry) return data;
+      const blurx = rx && blur(rx);
+      const blury = ry && blur(ry);
+      const temp = values.slice();
+      if (blurx && blury) {
+        blurh(blurx, temp, values, width, height);
+        blurh(blurx, values, temp, width, height);
+        blurh(blurx, temp, values, width, height);
+        blurv(blury, values, temp, width, height);
+        blurv(blury, temp, values, width, height);
+        blurv(blury, values, temp, width, height);
+      } else if (blurx) {
+        blurh(blurx, values, temp, width, height);
+        blurh(blurx, temp, values, width, height);
+        blurh(blurx, values, temp, width, height);
+      } else if (blury) {
+        blurv(blury, values, temp, width, height);
+        blurv(blury, temp, values, width, height);
+        blurv(blury, values, temp, width, height);
+      }
+      return data;
+    };
+  }
+  function blurh(blur, T, S, w, h) {
+    for (let y = 0, n = w * h; y < n; ) {
+      blur(T, S, y, y += w, 1);
+    }
+  }
+  function blurv(blur, T, S, w, h) {
+    for (let x = 0, n = w * h; x < w; ++x) {
+      blur(T, S, x, x + n, w);
+    }
+  }
+  function blurfImage(radius) {
+    const blur = blurf(radius);
+    return (T, S, start, stop, step) => {
+      start <<= 2, stop <<= 2, step <<= 2;
+      blur(T, S, start + 0, stop + 0, step);
+      blur(T, S, start + 1, stop + 1, step);
+      blur(T, S, start + 2, stop + 2, step);
+      blur(T, S, start + 3, stop + 3, step);
+    };
+  }
+  function blurf(radius) {
+    const radius0 = Math.floor(radius);
+    if (radius0 === radius) return bluri(radius);
+    const t = radius - radius0;
+    const w = 2 * radius + 1;
+    return (T, S, start, stop, step) => {
+      if (!((stop -= step) >= start)) return;
+      let sum = radius0 * S[start];
+      const s0 = step * radius0;
+      const s1 = s0 + step;
+      for (let i = start, j = start + s0; i < j; i += step) {
+        sum += S[Math.min(stop, i)];
+      }
+      for (let i = start, j = stop; i <= j; i += step) {
+        sum += S[Math.min(stop, i + s0)];
+        T[i] = (sum + t * (S[Math.max(start, i - s1)] + S[Math.min(stop, i + s1)])) / w;
+        sum -= S[Math.max(start, i - s0)];
+      }
+    };
+  }
+  function bluri(radius) {
+    const w = 2 * radius + 1;
+    return (T, S, start, stop, step) => {
+      if (!((stop -= step) >= start)) return;
+      let sum = radius * S[start];
+      const s = step * radius;
+      for (let i = start, j = start + s; i < j; i += step) {
+        sum += S[Math.min(stop, i)];
+      }
+      for (let i = start, j = stop; i <= j; i += step) {
+        sum += S[Math.min(stop, i + s)];
+        T[i] = sum / w;
+        sum -= S[Math.max(start, i - s)];
+      }
+    };
+  }
+  var Adder = class {
+    constructor() {
+      this._partials = new Float64Array(32);
+      this._n = 0;
+    }
+    add(x) {
+      const p = this._partials;
+      let i = 0;
+      for (let j = 0; j < this._n && j < 32; j++) {
+        const y = p[j], hi = x + y, lo = Math.abs(x) < Math.abs(y) ? x - (hi - y) : y - (hi - x);
+        if (lo) p[i++] = lo;
+        x = hi;
+      }
+      p[i] = x;
+      this._n = i + 1;
+      return this;
+    }
+    valueOf() {
+      const p = this._partials;
+      let n = this._n, x, y, lo, hi = 0;
+      if (n > 0) {
+        hi = p[--n];
+        while (n > 0) {
+          x = hi;
+          y = p[--n];
+          hi = x + y;
+          lo = y - (hi - x);
+          if (lo) break;
+        }
+        if (n > 0 && (lo < 0 && p[n - 1] < 0 || lo > 0 && p[n - 1] > 0)) {
+          y = lo * 2;
+          x = hi + y;
+          if (y == x - hi) hi = x;
+        }
+      }
+      return hi;
+    }
+  };
+  var array = Array.prototype;
+  var slice = array.slice;
+  var e10 = Math.sqrt(50);
+  var e5 = Math.sqrt(10);
+  var e2 = Math.sqrt(2);
+  function* flatten(arrays) {
+    for (const array2 of arrays) {
+      yield* array2;
+    }
+  }
+  function merge(arrays) {
+    return Array.from(flatten(arrays));
+  }
+  var shuffle = shuffler(Math.random);
+  function shuffler(random) {
+    return function shuffle2(array2, i0 = 0, i1 = array2.length) {
+      let m = i1 - (i0 = +i0);
+      while (m) {
+        const i = random() * m-- | 0, t = array2[m + i0];
+        array2[m + i0] = array2[i + i0];
+        array2[i + i0] = t;
+      }
+      return array2;
+    };
+  }
+
+  // node_modules/d3-geo/dist/d3-geo.mjs
+  var epsilon = 1e-6;
+  var epsilon2 = 1e-12;
+  var pi = Math.PI;
+  var halfPi = pi / 2;
+  var quarterPi = pi / 4;
+  var tau = pi * 2;
+  var degrees = 180 / pi;
+  var radians = pi / 180;
+  var abs = Math.abs;
+  var atan = Math.atan;
+  var atan2 = Math.atan2;
+  var cos = Math.cos;
+  var exp = Math.exp;
+  var log = Math.log;
+  var sin = Math.sin;
+  var sign = Math.sign || function(x) {
+    return x > 0 ? 1 : x < 0 ? -1 : 0;
+  };
+  var sqrt = Math.sqrt;
+  var tan = Math.tan;
+  function acos(x) {
+    return x > 1 ? 0 : x < -1 ? pi : Math.acos(x);
+  }
+  function asin(x) {
+    return x > 1 ? halfPi : x < -1 ? -halfPi : Math.asin(x);
+  }
+  function noop() {
+  }
+  function streamGeometry(geometry, stream) {
+    if (geometry && streamGeometryType.hasOwnProperty(geometry.type)) {
+      streamGeometryType[geometry.type](geometry, stream);
+    }
+  }
+  var streamObjectType = {
+    Feature: function(object2, stream) {
+      streamGeometry(object2.geometry, stream);
+    },
+    FeatureCollection: function(object2, stream) {
+      var features = object2.features, i = -1, n = features.length;
+      while (++i < n) streamGeometry(features[i].geometry, stream);
+    }
+  };
+  var streamGeometryType = {
+    Sphere: function(object2, stream) {
+      stream.sphere();
+    },
+    Point: function(object2, stream) {
+      object2 = object2.coordinates;
+      stream.point(object2[0], object2[1], object2[2]);
+    },
+    MultiPoint: function(object2, stream) {
+      var coordinates = object2.coordinates, i = -1, n = coordinates.length;
+      while (++i < n) object2 = coordinates[i], stream.point(object2[0], object2[1], object2[2]);
+    },
+    LineString: function(object2, stream) {
+      streamLine(object2.coordinates, stream, 0);
+    },
+    MultiLineString: function(object2, stream) {
+      var coordinates = object2.coordinates, i = -1, n = coordinates.length;
+      while (++i < n) streamLine(coordinates[i], stream, 0);
+    },
+    Polygon: function(object2, stream) {
+      streamPolygon(object2.coordinates, stream);
+    },
+    MultiPolygon: function(object2, stream) {
+      var coordinates = object2.coordinates, i = -1, n = coordinates.length;
+      while (++i < n) streamPolygon(coordinates[i], stream);
+    },
+    GeometryCollection: function(object2, stream) {
+      var geometries = object2.geometries, i = -1, n = geometries.length;
+      while (++i < n) streamGeometry(geometries[i], stream);
+    }
+  };
+  function streamLine(coordinates, stream, closed) {
+    var i = -1, n = coordinates.length - closed, coordinate;
+    stream.lineStart();
+    while (++i < n) coordinate = coordinates[i], stream.point(coordinate[0], coordinate[1], coordinate[2]);
+    stream.lineEnd();
+  }
+  function streamPolygon(coordinates, stream) {
+    var i = -1, n = coordinates.length;
+    stream.polygonStart();
+    while (++i < n) streamLine(coordinates[i], stream, 1);
+    stream.polygonEnd();
+  }
+  function geoStream(object2, stream) {
+    if (object2 && streamObjectType.hasOwnProperty(object2.type)) {
+      streamObjectType[object2.type](object2, stream);
+    } else {
+      streamGeometry(object2, stream);
+    }
+  }
+  var areaRingSum$1 = new Adder();
+  var areaSum$1 = new Adder();
+  function spherical(cartesian2) {
+    return [atan2(cartesian2[1], cartesian2[0]), asin(cartesian2[2])];
+  }
+  function cartesian(spherical2) {
+    var lambda = spherical2[0], phi = spherical2[1], cosPhi = cos(phi);
+    return [cosPhi * cos(lambda), cosPhi * sin(lambda), sin(phi)];
+  }
+  function cartesianDot(a, b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  }
+  function cartesianCross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  }
+  function cartesianAddInPlace(a, b) {
+    a[0] += b[0], a[1] += b[1], a[2] += b[2];
+  }
+  function cartesianScale(vector, k) {
+    return [vector[0] * k, vector[1] * k, vector[2] * k];
+  }
+  function cartesianNormalizeInPlace(d) {
+    var l = sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+    d[0] /= l, d[1] /= l, d[2] /= l;
+  }
+  function compose(a, b) {
+    function compose2(x, y) {
+      return x = a(x, y), b(x[0], x[1]);
+    }
+    if (a.invert && b.invert) compose2.invert = function(x, y) {
+      return x = b.invert(x, y), x && a.invert(x[0], x[1]);
+    };
+    return compose2;
+  }
+  function rotationIdentity(lambda, phi) {
+    if (abs(lambda) > pi) lambda -= Math.round(lambda / tau) * tau;
+    return [lambda, phi];
+  }
+  rotationIdentity.invert = rotationIdentity;
+  function rotateRadians(deltaLambda, deltaPhi, deltaGamma) {
+    return (deltaLambda %= tau) ? deltaPhi || deltaGamma ? compose(rotationLambda(deltaLambda), rotationPhiGamma(deltaPhi, deltaGamma)) : rotationLambda(deltaLambda) : deltaPhi || deltaGamma ? rotationPhiGamma(deltaPhi, deltaGamma) : rotationIdentity;
+  }
+  function forwardRotationLambda(deltaLambda) {
+    return function(lambda, phi) {
+      lambda += deltaLambda;
+      if (abs(lambda) > pi) lambda -= Math.round(lambda / tau) * tau;
+      return [lambda, phi];
+    };
+  }
+  function rotationLambda(deltaLambda) {
+    var rotation2 = forwardRotationLambda(deltaLambda);
+    rotation2.invert = forwardRotationLambda(-deltaLambda);
+    return rotation2;
+  }
+  function rotationPhiGamma(deltaPhi, deltaGamma) {
+    var cosDeltaPhi = cos(deltaPhi), sinDeltaPhi = sin(deltaPhi), cosDeltaGamma = cos(deltaGamma), sinDeltaGamma = sin(deltaGamma);
+    function rotation2(lambda, phi) {
+      var cosPhi = cos(phi), x = cos(lambda) * cosPhi, y = sin(lambda) * cosPhi, z = sin(phi), k = z * cosDeltaPhi + x * sinDeltaPhi;
+      return [
+        atan2(y * cosDeltaGamma - k * sinDeltaGamma, x * cosDeltaPhi - z * sinDeltaPhi),
+        asin(k * cosDeltaGamma + y * sinDeltaGamma)
+      ];
+    }
+    rotation2.invert = function(lambda, phi) {
+      var cosPhi = cos(phi), x = cos(lambda) * cosPhi, y = sin(lambda) * cosPhi, z = sin(phi), k = z * cosDeltaGamma - y * sinDeltaGamma;
+      return [
+        atan2(y * cosDeltaGamma + z * sinDeltaGamma, x * cosDeltaPhi + k * sinDeltaPhi),
+        asin(k * cosDeltaPhi - x * sinDeltaPhi)
+      ];
+    };
+    return rotation2;
+  }
+  function rotation(rotate) {
+    rotate = rotateRadians(rotate[0] * radians, rotate[1] * radians, rotate.length > 2 ? rotate[2] * radians : 0);
+    function forward(coordinates) {
+      coordinates = rotate(coordinates[0] * radians, coordinates[1] * radians);
+      return coordinates[0] *= degrees, coordinates[1] *= degrees, coordinates;
+    }
+    forward.invert = function(coordinates) {
+      coordinates = rotate.invert(coordinates[0] * radians, coordinates[1] * radians);
+      return coordinates[0] *= degrees, coordinates[1] *= degrees, coordinates;
+    };
+    return forward;
+  }
+  function circleStream(stream, radius, delta, direction, t0, t1) {
+    if (!delta) return;
+    var cosRadius = cos(radius), sinRadius = sin(radius), step = direction * delta;
+    if (t0 == null) {
+      t0 = radius + direction * tau;
+      t1 = radius - step / 2;
+    } else {
+      t0 = circleRadius(cosRadius, t0);
+      t1 = circleRadius(cosRadius, t1);
+      if (direction > 0 ? t0 < t1 : t0 > t1) t0 += direction * tau;
+    }
+    for (var point, t = t0; direction > 0 ? t > t1 : t < t1; t -= step) {
+      point = spherical([cosRadius, -sinRadius * cos(t), -sinRadius * sin(t)]);
+      stream.point(point[0], point[1]);
+    }
+  }
+  function circleRadius(cosRadius, point) {
+    point = cartesian(point), point[0] -= cosRadius;
+    cartesianNormalizeInPlace(point);
+    var radius = acos(-point[1]);
+    return ((-point[2] < 0 ? -radius : radius) + tau - epsilon) % tau;
+  }
+  function clipBuffer() {
+    var lines = [], line;
+    return {
+      point: function(x, y, m) {
+        line.push([x, y, m]);
+      },
+      lineStart: function() {
+        lines.push(line = []);
+      },
+      lineEnd: noop,
+      rejoin: function() {
+        if (lines.length > 1) lines.push(lines.pop().concat(lines.shift()));
+      },
+      result: function() {
+        var result = lines;
+        lines = [];
+        line = null;
+        return result;
+      }
+    };
+  }
+  function pointEqual(a, b) {
+    return abs(a[0] - b[0]) < epsilon && abs(a[1] - b[1]) < epsilon;
+  }
+  function Intersection(point, points, other, entry) {
+    this.x = point;
+    this.z = points;
+    this.o = other;
+    this.e = entry;
+    this.v = false;
+    this.n = this.p = null;
+  }
+  function clipRejoin(segments, compareIntersection2, startInside, interpolate, stream) {
+    var subject = [], clip2 = [], i, n;
+    segments.forEach(function(segment) {
+      if ((n2 = segment.length - 1) <= 0) return;
+      var n2, p0 = segment[0], p1 = segment[n2], x;
+      if (pointEqual(p0, p1)) {
+        if (!p0[2] && !p1[2]) {
+          stream.lineStart();
+          for (i = 0; i < n2; ++i) stream.point((p0 = segment[i])[0], p0[1]);
+          stream.lineEnd();
+          return;
+        }
+        p1[0] += 2 * epsilon;
+      }
+      subject.push(x = new Intersection(p0, segment, null, true));
+      clip2.push(x.o = new Intersection(p0, null, x, false));
+      subject.push(x = new Intersection(p1, segment, null, false));
+      clip2.push(x.o = new Intersection(p1, null, x, true));
+    });
+    if (!subject.length) return;
+    clip2.sort(compareIntersection2);
+    link(subject);
+    link(clip2);
+    for (i = 0, n = clip2.length; i < n; ++i) {
+      clip2[i].e = startInside = !startInside;
+    }
+    var start = subject[0], points, point;
+    while (1) {
+      var current = start, isSubject = true;
+      while (current.v) if ((current = current.n) === start) return;
+      points = current.z;
+      stream.lineStart();
+      do {
+        current.v = current.o.v = true;
+        if (current.e) {
+          if (isSubject) {
+            for (i = 0, n = points.length; i < n; ++i) stream.point((point = points[i])[0], point[1]);
+          } else {
+            interpolate(current.x, current.n.x, 1, stream);
+          }
+          current = current.n;
+        } else {
+          if (isSubject) {
+            points = current.p.z;
+            for (i = points.length - 1; i >= 0; --i) stream.point((point = points[i])[0], point[1]);
+          } else {
+            interpolate(current.x, current.p.x, -1, stream);
+          }
+          current = current.p;
+        }
+        current = current.o;
+        points = current.z;
+        isSubject = !isSubject;
+      } while (!current.v);
+      stream.lineEnd();
+    }
+  }
+  function link(array2) {
+    if (!(n = array2.length)) return;
+    var n, i = 0, a = array2[0], b;
+    while (++i < n) {
+      a.n = b = array2[i];
+      b.p = a;
+      a = b;
+    }
+    a.n = b = array2[0];
+    b.p = a;
+  }
+  function longitude(point) {
+    return abs(point[0]) <= pi ? point[0] : sign(point[0]) * ((abs(point[0]) + pi) % tau - pi);
+  }
+  function polygonContains(polygon, point) {
+    var lambda = longitude(point), phi = point[1], sinPhi = sin(phi), normal = [sin(lambda), -cos(lambda), 0], angle = 0, winding = 0;
+    var sum = new Adder();
+    if (sinPhi === 1) phi = halfPi + epsilon;
+    else if (sinPhi === -1) phi = -halfPi - epsilon;
+    for (var i = 0, n = polygon.length; i < n; ++i) {
+      if (!(m = (ring = polygon[i]).length)) continue;
+      var ring, m, point0 = ring[m - 1], lambda0 = longitude(point0), phi0 = point0[1] / 2 + quarterPi, sinPhi0 = sin(phi0), cosPhi0 = cos(phi0);
+      for (var j = 0; j < m; ++j, lambda0 = lambda1, sinPhi0 = sinPhi1, cosPhi0 = cosPhi1, point0 = point1) {
+        var point1 = ring[j], lambda1 = longitude(point1), phi1 = point1[1] / 2 + quarterPi, sinPhi1 = sin(phi1), cosPhi1 = cos(phi1), delta = lambda1 - lambda0, sign2 = delta >= 0 ? 1 : -1, absDelta = sign2 * delta, antimeridian = absDelta > pi, k = sinPhi0 * sinPhi1;
+        sum.add(atan2(k * sign2 * sin(absDelta), cosPhi0 * cosPhi1 + k * cos(absDelta)));
+        angle += antimeridian ? delta + sign2 * tau : delta;
+        if (antimeridian ^ lambda0 >= lambda ^ lambda1 >= lambda) {
+          var arc = cartesianCross(cartesian(point0), cartesian(point1));
+          cartesianNormalizeInPlace(arc);
+          var intersection = cartesianCross(normal, arc);
+          cartesianNormalizeInPlace(intersection);
+          var phiArc = (antimeridian ^ delta >= 0 ? -1 : 1) * asin(intersection[2]);
+          if (phi > phiArc || phi === phiArc && (arc[0] || arc[1])) {
+            winding += antimeridian ^ delta >= 0 ? 1 : -1;
+          }
+        }
+      }
+    }
+    return (angle < -epsilon || angle < epsilon && sum < -epsilon2) ^ winding & 1;
+  }
+  function clip(pointVisible, clipLine2, interpolate, start) {
+    return function(sink) {
+      var line = clipLine2(sink), ringBuffer = clipBuffer(), ringSink = clipLine2(ringBuffer), polygonStarted = false, polygon, segments, ring;
+      var clip2 = {
+        point,
+        lineStart,
+        lineEnd,
+        polygonStart: function() {
+          clip2.point = pointRing;
+          clip2.lineStart = ringStart;
+          clip2.lineEnd = ringEnd;
+          segments = [];
+          polygon = [];
+        },
+        polygonEnd: function() {
+          clip2.point = point;
+          clip2.lineStart = lineStart;
+          clip2.lineEnd = lineEnd;
+          segments = merge(segments);
+          var startInside = polygonContains(polygon, start);
+          if (segments.length) {
+            if (!polygonStarted) sink.polygonStart(), polygonStarted = true;
+            clipRejoin(segments, compareIntersection, startInside, interpolate, sink);
+          } else if (startInside) {
+            if (!polygonStarted) sink.polygonStart(), polygonStarted = true;
+            sink.lineStart();
+            interpolate(null, null, 1, sink);
+            sink.lineEnd();
+          }
+          if (polygonStarted) sink.polygonEnd(), polygonStarted = false;
+          segments = polygon = null;
+        },
+        sphere: function() {
+          sink.polygonStart();
+          sink.lineStart();
+          interpolate(null, null, 1, sink);
+          sink.lineEnd();
+          sink.polygonEnd();
+        }
+      };
+      function point(lambda, phi) {
+        if (pointVisible(lambda, phi)) sink.point(lambda, phi);
+      }
+      function pointLine(lambda, phi) {
+        line.point(lambda, phi);
+      }
+      function lineStart() {
+        clip2.point = pointLine;
+        line.lineStart();
+      }
+      function lineEnd() {
+        clip2.point = point;
+        line.lineEnd();
+      }
+      function pointRing(lambda, phi) {
+        ring.push([lambda, phi]);
+        ringSink.point(lambda, phi);
+      }
+      function ringStart() {
+        ringSink.lineStart();
+        ring = [];
+      }
+      function ringEnd() {
+        pointRing(ring[0][0], ring[0][1]);
+        ringSink.lineEnd();
+        var clean = ringSink.clean(), ringSegments = ringBuffer.result(), i, n = ringSegments.length, m, segment, point2;
+        ring.pop();
+        polygon.push(ring);
+        ring = null;
+        if (!n) return;
+        if (clean & 1) {
+          segment = ringSegments[0];
+          if ((m = segment.length - 1) > 0) {
+            if (!polygonStarted) sink.polygonStart(), polygonStarted = true;
+            sink.lineStart();
+            for (i = 0; i < m; ++i) sink.point((point2 = segment[i])[0], point2[1]);
+            sink.lineEnd();
+          }
+          return;
+        }
+        if (n > 1 && clean & 2) ringSegments.push(ringSegments.pop().concat(ringSegments.shift()));
+        segments.push(ringSegments.filter(validSegment));
+      }
+      return clip2;
+    };
+  }
+  function validSegment(segment) {
+    return segment.length > 1;
+  }
+  function compareIntersection(a, b) {
+    return ((a = a.x)[0] < 0 ? a[1] - halfPi - epsilon : halfPi - a[1]) - ((b = b.x)[0] < 0 ? b[1] - halfPi - epsilon : halfPi - b[1]);
+  }
+  var clipAntimeridian = clip(
+    function() {
+      return true;
+    },
+    clipAntimeridianLine,
+    clipAntimeridianInterpolate,
+    [-pi, -halfPi]
+  );
+  function clipAntimeridianLine(stream) {
+    var lambda0 = NaN, phi0 = NaN, sign0 = NaN, clean;
+    return {
+      lineStart: function() {
+        stream.lineStart();
+        clean = 1;
+      },
+      point: function(lambda1, phi1) {
+        var sign1 = lambda1 > 0 ? pi : -pi, delta = abs(lambda1 - lambda0);
+        if (abs(delta - pi) < epsilon) {
+          stream.point(lambda0, phi0 = (phi0 + phi1) / 2 > 0 ? halfPi : -halfPi);
+          stream.point(sign0, phi0);
+          stream.lineEnd();
+          stream.lineStart();
+          stream.point(sign1, phi0);
+          stream.point(lambda1, phi0);
+          clean = 0;
+        } else if (sign0 !== sign1 && delta >= pi) {
+          if (abs(lambda0 - sign0) < epsilon) lambda0 -= sign0 * epsilon;
+          if (abs(lambda1 - sign1) < epsilon) lambda1 -= sign1 * epsilon;
+          phi0 = clipAntimeridianIntersect(lambda0, phi0, lambda1, phi1);
+          stream.point(sign0, phi0);
+          stream.lineEnd();
+          stream.lineStart();
+          stream.point(sign1, phi0);
+          clean = 0;
+        }
+        stream.point(lambda0 = lambda1, phi0 = phi1);
+        sign0 = sign1;
+      },
+      lineEnd: function() {
+        stream.lineEnd();
+        lambda0 = phi0 = NaN;
+      },
+      clean: function() {
+        return 2 - clean;
+      }
+    };
+  }
+  function clipAntimeridianIntersect(lambda0, phi0, lambda1, phi1) {
+    var cosPhi0, cosPhi1, sinLambda0Lambda1 = sin(lambda0 - lambda1);
+    return abs(sinLambda0Lambda1) > epsilon ? atan((sin(phi0) * (cosPhi1 = cos(phi1)) * sin(lambda1) - sin(phi1) * (cosPhi0 = cos(phi0)) * sin(lambda0)) / (cosPhi0 * cosPhi1 * sinLambda0Lambda1)) : (phi0 + phi1) / 2;
+  }
+  function clipAntimeridianInterpolate(from, to, direction, stream) {
+    var phi;
+    if (from == null) {
+      phi = direction * halfPi;
+      stream.point(-pi, phi);
+      stream.point(0, phi);
+      stream.point(pi, phi);
+      stream.point(pi, 0);
+      stream.point(pi, -phi);
+      stream.point(0, -phi);
+      stream.point(-pi, -phi);
+      stream.point(-pi, 0);
+      stream.point(-pi, phi);
+    } else if (abs(from[0] - to[0]) > epsilon) {
+      var lambda = from[0] < to[0] ? pi : -pi;
+      phi = direction * lambda / 2;
+      stream.point(-lambda, phi);
+      stream.point(0, phi);
+      stream.point(lambda, phi);
+    } else {
+      stream.point(to[0], to[1]);
+    }
+  }
+  function clipCircle(radius) {
+    var cr = cos(radius), delta = 2 * radians, smallRadius = cr > 0, notHemisphere = abs(cr) > epsilon;
+    function interpolate(from, to, direction, stream) {
+      circleStream(stream, radius, delta, direction, from, to);
+    }
+    function visible(lambda, phi) {
+      return cos(lambda) * cos(phi) > cr;
+    }
+    function clipLine2(stream) {
+      var point0, c0, v0, v00, clean;
+      return {
+        lineStart: function() {
+          v00 = v0 = false;
+          clean = 1;
+        },
+        point: function(lambda, phi) {
+          var point1 = [lambda, phi], point2, v = visible(lambda, phi), c = smallRadius ? v ? 0 : code(lambda, phi) : v ? code(lambda + (lambda < 0 ? pi : -pi), phi) : 0;
+          if (!point0 && (v00 = v0 = v)) stream.lineStart();
+          if (v !== v0) {
+            point2 = intersect(point0, point1);
+            if (!point2 || pointEqual(point0, point2) || pointEqual(point1, point2))
+              point1[2] = 1;
+          }
+          if (v !== v0) {
+            clean = 0;
+            if (v) {
+              stream.lineStart();
+              point2 = intersect(point1, point0);
+              stream.point(point2[0], point2[1]);
+            } else {
+              point2 = intersect(point0, point1);
+              stream.point(point2[0], point2[1], 2);
+              stream.lineEnd();
+            }
+            point0 = point2;
+          } else if (notHemisphere && point0 && smallRadius ^ v) {
+            var t;
+            if (!(c & c0) && (t = intersect(point1, point0, true))) {
+              clean = 0;
+              if (smallRadius) {
+                stream.lineStart();
+                stream.point(t[0][0], t[0][1]);
+                stream.point(t[1][0], t[1][1]);
+                stream.lineEnd();
+              } else {
+                stream.point(t[1][0], t[1][1]);
+                stream.lineEnd();
+                stream.lineStart();
+                stream.point(t[0][0], t[0][1], 3);
+              }
+            }
+          }
+          if (v && (!point0 || !pointEqual(point0, point1))) {
+            stream.point(point1[0], point1[1]);
+          }
+          point0 = point1, v0 = v, c0 = c;
+        },
+        lineEnd: function() {
+          if (v0) stream.lineEnd();
+          point0 = null;
+        },
+        // Rejoin first and last segments if there were intersections and the first
+        // and last points were visible.
+        clean: function() {
+          return clean | (v00 && v0) << 1;
+        }
+      };
+    }
+    function intersect(a, b, two) {
+      var pa = cartesian(a), pb = cartesian(b);
+      var n1 = [1, 0, 0], n2 = cartesianCross(pa, pb), n2n2 = cartesianDot(n2, n2), n1n2 = n2[0], determinant = n2n2 - n1n2 * n1n2;
+      if (!determinant) return !two && a;
+      var c1 = cr * n2n2 / determinant, c2 = -cr * n1n2 / determinant, n1xn2 = cartesianCross(n1, n2), A5 = cartesianScale(n1, c1), B = cartesianScale(n2, c2);
+      cartesianAddInPlace(A5, B);
+      var u = n1xn2, w = cartesianDot(A5, u), uu = cartesianDot(u, u), t2 = w * w - uu * (cartesianDot(A5, A5) - 1);
+      if (t2 < 0) return;
+      var t = sqrt(t2), q = cartesianScale(u, (-w - t) / uu);
+      cartesianAddInPlace(q, A5);
+      q = spherical(q);
+      if (!two) return q;
+      var lambda0 = a[0], lambda1 = b[0], phi0 = a[1], phi1 = b[1], z;
+      if (lambda1 < lambda0) z = lambda0, lambda0 = lambda1, lambda1 = z;
+      var delta2 = lambda1 - lambda0, polar = abs(delta2 - pi) < epsilon, meridian = polar || delta2 < epsilon;
+      if (!polar && phi1 < phi0) z = phi0, phi0 = phi1, phi1 = z;
+      if (meridian ? polar ? phi0 + phi1 > 0 ^ q[1] < (abs(q[0] - lambda0) < epsilon ? phi0 : phi1) : phi0 <= q[1] && q[1] <= phi1 : delta2 > pi ^ (lambda0 <= q[0] && q[0] <= lambda1)) {
+        var q1 = cartesianScale(u, (-w + t) / uu);
+        cartesianAddInPlace(q1, A5);
+        return [q, spherical(q1)];
+      }
+    }
+    function code(lambda, phi) {
+      var r = smallRadius ? radius : pi - radius, code2 = 0;
+      if (lambda < -r) code2 |= 1;
+      else if (lambda > r) code2 |= 2;
+      if (phi < -r) code2 |= 4;
+      else if (phi > r) code2 |= 8;
+      return code2;
+    }
+    return clip(visible, clipLine2, interpolate, smallRadius ? [0, -radius] : [-pi, radius - pi]);
+  }
+  function clipLine(a, b, x02, y02, x12, y12) {
+    var ax = a[0], ay = a[1], bx = b[0], by = b[1], t0 = 0, t1 = 1, dx = bx - ax, dy = by - ay, r;
+    r = x02 - ax;
+    if (!dx && r > 0) return;
+    r /= dx;
+    if (dx < 0) {
+      if (r < t0) return;
+      if (r < t1) t1 = r;
+    } else if (dx > 0) {
+      if (r > t1) return;
+      if (r > t0) t0 = r;
+    }
+    r = x12 - ax;
+    if (!dx && r < 0) return;
+    r /= dx;
+    if (dx < 0) {
+      if (r > t1) return;
+      if (r > t0) t0 = r;
+    } else if (dx > 0) {
+      if (r < t0) return;
+      if (r < t1) t1 = r;
+    }
+    r = y02 - ay;
+    if (!dy && r > 0) return;
+    r /= dy;
+    if (dy < 0) {
+      if (r < t0) return;
+      if (r < t1) t1 = r;
+    } else if (dy > 0) {
+      if (r > t1) return;
+      if (r > t0) t0 = r;
+    }
+    r = y12 - ay;
+    if (!dy && r < 0) return;
+    r /= dy;
+    if (dy < 0) {
+      if (r > t1) return;
+      if (r > t0) t0 = r;
+    } else if (dy > 0) {
+      if (r < t0) return;
+      if (r < t1) t1 = r;
+    }
+    if (t0 > 0) a[0] = ax + t0 * dx, a[1] = ay + t0 * dy;
+    if (t1 < 1) b[0] = ax + t1 * dx, b[1] = ay + t1 * dy;
+    return true;
+  }
+  var clipMax = 1e9;
+  var clipMin = -clipMax;
+  function clipRectangle(x02, y02, x12, y12) {
+    function visible(x, y) {
+      return x02 <= x && x <= x12 && y02 <= y && y <= y12;
+    }
+    function interpolate(from, to, direction, stream) {
+      var a = 0, a1 = 0;
+      if (from == null || (a = corner(from, direction)) !== (a1 = corner(to, direction)) || comparePoint(from, to) < 0 ^ direction > 0) {
+        do
+          stream.point(a === 0 || a === 3 ? x02 : x12, a > 1 ? y12 : y02);
+        while ((a = (a + direction + 4) % 4) !== a1);
+      } else {
+        stream.point(to[0], to[1]);
+      }
+    }
+    function corner(p, direction) {
+      return abs(p[0] - x02) < epsilon ? direction > 0 ? 0 : 3 : abs(p[0] - x12) < epsilon ? direction > 0 ? 2 : 1 : abs(p[1] - y02) < epsilon ? direction > 0 ? 1 : 0 : direction > 0 ? 3 : 2;
+    }
+    function compareIntersection2(a, b) {
+      return comparePoint(a.x, b.x);
+    }
+    function comparePoint(a, b) {
+      var ca = corner(a, 1), cb = corner(b, 1);
+      return ca !== cb ? ca - cb : ca === 0 ? b[1] - a[1] : ca === 1 ? a[0] - b[0] : ca === 2 ? a[1] - b[1] : b[0] - a[0];
+    }
+    return function(stream) {
+      var activeStream = stream, bufferStream = clipBuffer(), segments, polygon, ring, x__, y__, v__, x_, y_, v_, first, clean;
+      var clipStream = {
+        point,
+        lineStart,
+        lineEnd,
+        polygonStart,
+        polygonEnd
+      };
+      function point(x, y) {
+        if (visible(x, y)) activeStream.point(x, y);
+      }
+      function polygonInside() {
+        var winding = 0;
+        for (var i = 0, n = polygon.length; i < n; ++i) {
+          for (var ring2 = polygon[i], j = 1, m = ring2.length, point2 = ring2[0], a0, a1, b0 = point2[0], b1 = point2[1]; j < m; ++j) {
+            a0 = b0, a1 = b1, point2 = ring2[j], b0 = point2[0], b1 = point2[1];
+            if (a1 <= y12) {
+              if (b1 > y12 && (b0 - a0) * (y12 - a1) > (b1 - a1) * (x02 - a0)) ++winding;
+            } else {
+              if (b1 <= y12 && (b0 - a0) * (y12 - a1) < (b1 - a1) * (x02 - a0)) --winding;
+            }
+          }
+        }
+        return winding;
+      }
+      function polygonStart() {
+        activeStream = bufferStream, segments = [], polygon = [], clean = true;
+      }
+      function polygonEnd() {
+        var startInside = polygonInside(), cleanInside = clean && startInside, visible2 = (segments = merge(segments)).length;
+        if (cleanInside || visible2) {
+          stream.polygonStart();
+          if (cleanInside) {
+            stream.lineStart();
+            interpolate(null, null, 1, stream);
+            stream.lineEnd();
+          }
+          if (visible2) {
+            clipRejoin(segments, compareIntersection2, startInside, interpolate, stream);
+          }
+          stream.polygonEnd();
+        }
+        activeStream = stream, segments = polygon = ring = null;
+      }
+      function lineStart() {
+        clipStream.point = linePoint;
+        if (polygon) polygon.push(ring = []);
+        first = true;
+        v_ = false;
+        x_ = y_ = NaN;
+      }
+      function lineEnd() {
+        if (segments) {
+          linePoint(x__, y__);
+          if (v__ && v_) bufferStream.rejoin();
+          segments.push(bufferStream.result());
+        }
+        clipStream.point = point;
+        if (v_) activeStream.lineEnd();
+      }
+      function linePoint(x, y) {
+        var v = visible(x, y);
+        if (polygon) ring.push([x, y]);
+        if (first) {
+          x__ = x, y__ = y, v__ = v;
+          first = false;
+          if (v) {
+            activeStream.lineStart();
+            activeStream.point(x, y);
+          }
+        } else {
+          if (v && v_) activeStream.point(x, y);
+          else {
+            var a = [x_ = Math.max(clipMin, Math.min(clipMax, x_)), y_ = Math.max(clipMin, Math.min(clipMax, y_))], b = [x = Math.max(clipMin, Math.min(clipMax, x)), y = Math.max(clipMin, Math.min(clipMax, y))];
+            if (clipLine(a, b, x02, y02, x12, y12)) {
+              if (!v_) {
+                activeStream.lineStart();
+                activeStream.point(a[0], a[1]);
+              }
+              activeStream.point(b[0], b[1]);
+              if (!v) activeStream.lineEnd();
+              clean = false;
+            } else if (v) {
+              activeStream.lineStart();
+              activeStream.point(x, y);
+              clean = false;
+            }
+          }
+        }
+        x_ = x, y_ = y, v_ = v;
+      }
+      return clipStream;
+    };
+  }
+  var identity$1 = (x) => x;
+  var areaSum = new Adder();
+  var areaRingSum = new Adder();
+  var x00$2;
+  var y00$2;
+  var x0$3;
+  var y0$3;
+  var areaStream = {
+    point: noop,
+    lineStart: noop,
+    lineEnd: noop,
+    polygonStart: function() {
+      areaStream.lineStart = areaRingStart;
+      areaStream.lineEnd = areaRingEnd;
+    },
+    polygonEnd: function() {
+      areaStream.lineStart = areaStream.lineEnd = areaStream.point = noop;
+      areaSum.add(abs(areaRingSum));
+      areaRingSum = new Adder();
+    },
+    result: function() {
+      var area = areaSum / 2;
+      areaSum = new Adder();
+      return area;
+    }
+  };
+  function areaRingStart() {
+    areaStream.point = areaPointFirst;
+  }
+  function areaPointFirst(x, y) {
+    areaStream.point = areaPoint;
+    x00$2 = x0$3 = x, y00$2 = y0$3 = y;
+  }
+  function areaPoint(x, y) {
+    areaRingSum.add(y0$3 * x - x0$3 * y);
+    x0$3 = x, y0$3 = y;
+  }
+  function areaRingEnd() {
+    areaPoint(x00$2, y00$2);
+  }
+  var x0$2 = Infinity;
+  var y0$2 = x0$2;
+  var x1 = -x0$2;
+  var y1 = x1;
+  var boundsStream = {
+    point: boundsPoint,
+    lineStart: noop,
+    lineEnd: noop,
+    polygonStart: noop,
+    polygonEnd: noop,
+    result: function() {
+      var bounds = [[x0$2, y0$2], [x1, y1]];
+      x1 = y1 = -(y0$2 = x0$2 = Infinity);
+      return bounds;
+    }
+  };
+  function boundsPoint(x, y) {
+    if (x < x0$2) x0$2 = x;
+    if (x > x1) x1 = x;
+    if (y < y0$2) y0$2 = y;
+    if (y > y1) y1 = y;
+  }
+  var X0 = 0;
+  var Y0 = 0;
+  var Z0 = 0;
+  var X1 = 0;
+  var Y1 = 0;
+  var Z1 = 0;
+  var X2 = 0;
+  var Y2 = 0;
+  var Z2 = 0;
+  var x00$1;
+  var y00$1;
+  var x0$1;
+  var y0$1;
+  var centroidStream = {
+    point: centroidPoint,
+    lineStart: centroidLineStart,
+    lineEnd: centroidLineEnd,
+    polygonStart: function() {
+      centroidStream.lineStart = centroidRingStart;
+      centroidStream.lineEnd = centroidRingEnd;
+    },
+    polygonEnd: function() {
+      centroidStream.point = centroidPoint;
+      centroidStream.lineStart = centroidLineStart;
+      centroidStream.lineEnd = centroidLineEnd;
+    },
+    result: function() {
+      var centroid = Z2 ? [X2 / Z2, Y2 / Z2] : Z1 ? [X1 / Z1, Y1 / Z1] : Z0 ? [X0 / Z0, Y0 / Z0] : [NaN, NaN];
+      X0 = Y0 = Z0 = X1 = Y1 = Z1 = X2 = Y2 = Z2 = 0;
+      return centroid;
+    }
+  };
+  function centroidPoint(x, y) {
+    X0 += x;
+    Y0 += y;
+    ++Z0;
+  }
+  function centroidLineStart() {
+    centroidStream.point = centroidPointFirstLine;
+  }
+  function centroidPointFirstLine(x, y) {
+    centroidStream.point = centroidPointLine;
+    centroidPoint(x0$1 = x, y0$1 = y);
+  }
+  function centroidPointLine(x, y) {
+    var dx = x - x0$1, dy = y - y0$1, z = sqrt(dx * dx + dy * dy);
+    X1 += z * (x0$1 + x) / 2;
+    Y1 += z * (y0$1 + y) / 2;
+    Z1 += z;
+    centroidPoint(x0$1 = x, y0$1 = y);
+  }
+  function centroidLineEnd() {
+    centroidStream.point = centroidPoint;
+  }
+  function centroidRingStart() {
+    centroidStream.point = centroidPointFirstRing;
+  }
+  function centroidRingEnd() {
+    centroidPointRing(x00$1, y00$1);
+  }
+  function centroidPointFirstRing(x, y) {
+    centroidStream.point = centroidPointRing;
+    centroidPoint(x00$1 = x0$1 = x, y00$1 = y0$1 = y);
+  }
+  function centroidPointRing(x, y) {
+    var dx = x - x0$1, dy = y - y0$1, z = sqrt(dx * dx + dy * dy);
+    X1 += z * (x0$1 + x) / 2;
+    Y1 += z * (y0$1 + y) / 2;
+    Z1 += z;
+    z = y0$1 * x - x0$1 * y;
+    X2 += z * (x0$1 + x);
+    Y2 += z * (y0$1 + y);
+    Z2 += z * 3;
+    centroidPoint(x0$1 = x, y0$1 = y);
+  }
+  function PathContext(context) {
+    this._context = context;
+  }
+  PathContext.prototype = {
+    _radius: 4.5,
+    pointRadius: function(_) {
+      return this._radius = _, this;
+    },
+    polygonStart: function() {
+      this._line = 0;
+    },
+    polygonEnd: function() {
+      this._line = NaN;
+    },
+    lineStart: function() {
+      this._point = 0;
+    },
+    lineEnd: function() {
+      if (this._line === 0) this._context.closePath();
+      this._point = NaN;
+    },
+    point: function(x, y) {
+      switch (this._point) {
+        case 0: {
+          this._context.moveTo(x, y);
+          this._point = 1;
+          break;
+        }
+        case 1: {
+          this._context.lineTo(x, y);
+          break;
+        }
+        default: {
+          this._context.moveTo(x + this._radius, y);
+          this._context.arc(x, y, this._radius, 0, tau);
+          break;
+        }
+      }
+    },
+    result: noop
+  };
+  var lengthSum = new Adder();
+  var lengthRing;
+  var x00;
+  var y00;
+  var x0;
+  var y0;
+  var lengthStream = {
+    point: noop,
+    lineStart: function() {
+      lengthStream.point = lengthPointFirst;
+    },
+    lineEnd: function() {
+      if (lengthRing) lengthPoint(x00, y00);
+      lengthStream.point = noop;
+    },
+    polygonStart: function() {
+      lengthRing = true;
+    },
+    polygonEnd: function() {
+      lengthRing = null;
+    },
+    result: function() {
+      var length = +lengthSum;
+      lengthSum = new Adder();
+      return length;
+    }
+  };
+  function lengthPointFirst(x, y) {
+    lengthStream.point = lengthPoint;
+    x00 = x0 = x, y00 = y0 = y;
+  }
+  function lengthPoint(x, y) {
+    x0 -= x, y0 -= y;
+    lengthSum.add(sqrt(x0 * x0 + y0 * y0));
+    x0 = x, y0 = y;
+  }
+  var cacheDigits;
+  var cacheAppend;
+  var cacheRadius;
+  var cacheCircle;
+  var PathString = class {
+    constructor(digits) {
+      this._append = digits == null ? append : appendRound(digits);
+      this._radius = 4.5;
+      this._ = "";
+    }
+    pointRadius(_) {
+      this._radius = +_;
+      return this;
+    }
+    polygonStart() {
+      this._line = 0;
+    }
+    polygonEnd() {
+      this._line = NaN;
+    }
+    lineStart() {
+      this._point = 0;
+    }
+    lineEnd() {
+      if (this._line === 0) this._ += "Z";
+      this._point = NaN;
+    }
+    point(x, y) {
+      switch (this._point) {
+        case 0: {
+          this._append`M${x},${y}`;
+          this._point = 1;
+          break;
+        }
+        case 1: {
+          this._append`L${x},${y}`;
+          break;
+        }
+        default: {
+          this._append`M${x},${y}`;
+          if (this._radius !== cacheRadius || this._append !== cacheAppend) {
+            const r = this._radius;
+            const s = this._;
+            this._ = "";
+            this._append`m0,${r}a${r},${r} 0 1,1 0,${-2 * r}a${r},${r} 0 1,1 0,${2 * r}z`;
+            cacheRadius = r;
+            cacheAppend = this._append;
+            cacheCircle = this._;
+            this._ = s;
+          }
+          this._ += cacheCircle;
+          break;
+        }
+      }
+    }
+    result() {
+      const result = this._;
+      this._ = "";
+      return result.length ? result : null;
+    }
+  };
+  function append(strings) {
+    let i = 1;
+    this._ += strings[0];
+    for (const j = strings.length; i < j; ++i) {
+      this._ += arguments[i] + strings[i];
+    }
+  }
+  function appendRound(digits) {
+    const d = Math.floor(digits);
+    if (!(d >= 0)) throw new RangeError(`invalid digits: ${digits}`);
+    if (d > 15) return append;
+    if (d !== cacheDigits) {
+      const k = 10 ** d;
+      cacheDigits = d;
+      cacheAppend = function append2(strings) {
+        let i = 1;
+        this._ += strings[0];
+        for (const j = strings.length; i < j; ++i) {
+          this._ += Math.round(arguments[i] * k) / k + strings[i];
+        }
+      };
+    }
+    return cacheAppend;
+  }
+  function index(projection2, context) {
+    let digits = 3, pointRadius = 4.5, projectionStream, contextStream;
+    function path(object2) {
+      if (object2) {
+        if (typeof pointRadius === "function") contextStream.pointRadius(+pointRadius.apply(this, arguments));
+        geoStream(object2, projectionStream(contextStream));
+      }
+      return contextStream.result();
+    }
+    path.area = function(object2) {
+      geoStream(object2, projectionStream(areaStream));
+      return areaStream.result();
+    };
+    path.measure = function(object2) {
+      geoStream(object2, projectionStream(lengthStream));
+      return lengthStream.result();
+    };
+    path.bounds = function(object2) {
+      geoStream(object2, projectionStream(boundsStream));
+      return boundsStream.result();
+    };
+    path.centroid = function(object2) {
+      geoStream(object2, projectionStream(centroidStream));
+      return centroidStream.result();
+    };
+    path.projection = function(_) {
+      if (!arguments.length) return projection2;
+      projectionStream = _ == null ? (projection2 = null, identity$1) : (projection2 = _).stream;
+      return path;
+    };
+    path.context = function(_) {
+      if (!arguments.length) return context;
+      contextStream = _ == null ? (context = null, new PathString(digits)) : new PathContext(context = _);
+      if (typeof pointRadius !== "function") contextStream.pointRadius(pointRadius);
+      return path;
+    };
+    path.pointRadius = function(_) {
+      if (!arguments.length) return pointRadius;
+      pointRadius = typeof _ === "function" ? _ : (contextStream.pointRadius(+_), +_);
+      return path;
+    };
+    path.digits = function(_) {
+      if (!arguments.length) return digits;
+      if (_ == null) digits = null;
+      else {
+        const d = Math.floor(_);
+        if (!(d >= 0)) throw new RangeError(`invalid digits: ${_}`);
+        digits = d;
+      }
+      if (context === null) contextStream = new PathString(digits);
+      return path;
+    };
+    return path.projection(projection2).digits(digits).context(context);
+  }
+  function transformer(methods) {
+    return function(stream) {
+      var s = new TransformStream();
+      for (var key in methods) s[key] = methods[key];
+      s.stream = stream;
+      return s;
+    };
+  }
+  function TransformStream() {
+  }
+  TransformStream.prototype = {
+    constructor: TransformStream,
+    point: function(x, y) {
+      this.stream.point(x, y);
+    },
+    sphere: function() {
+      this.stream.sphere();
+    },
+    lineStart: function() {
+      this.stream.lineStart();
+    },
+    lineEnd: function() {
+      this.stream.lineEnd();
+    },
+    polygonStart: function() {
+      this.stream.polygonStart();
+    },
+    polygonEnd: function() {
+      this.stream.polygonEnd();
+    }
+  };
+  function fit(projection2, fitBounds, object2) {
+    var clip2 = projection2.clipExtent && projection2.clipExtent();
+    projection2.scale(150).translate([0, 0]);
+    if (clip2 != null) projection2.clipExtent(null);
+    geoStream(object2, projection2.stream(boundsStream));
+    fitBounds(boundsStream.result());
+    if (clip2 != null) projection2.clipExtent(clip2);
+    return projection2;
+  }
+  function fitExtent(projection2, extent, object2) {
+    return fit(projection2, function(b) {
+      var w = extent[1][0] - extent[0][0], h = extent[1][1] - extent[0][1], k = Math.min(w / (b[1][0] - b[0][0]), h / (b[1][1] - b[0][1])), x = +extent[0][0] + (w - k * (b[1][0] + b[0][0])) / 2, y = +extent[0][1] + (h - k * (b[1][1] + b[0][1])) / 2;
+      projection2.scale(150 * k).translate([x, y]);
+    }, object2);
+  }
+  function fitSize(projection2, size, object2) {
+    return fitExtent(projection2, [[0, 0], size], object2);
+  }
+  function fitWidth(projection2, width, object2) {
+    return fit(projection2, function(b) {
+      var w = +width, k = w / (b[1][0] - b[0][0]), x = (w - k * (b[1][0] + b[0][0])) / 2, y = -k * b[0][1];
+      projection2.scale(150 * k).translate([x, y]);
+    }, object2);
+  }
+  function fitHeight(projection2, height, object2) {
+    return fit(projection2, function(b) {
+      var h = +height, k = h / (b[1][1] - b[0][1]), x = -k * b[0][0], y = (h - k * (b[1][1] + b[0][1])) / 2;
+      projection2.scale(150 * k).translate([x, y]);
+    }, object2);
+  }
+  var maxDepth = 16;
+  var cosMinDistance = cos(30 * radians);
+  function resample(project, delta2) {
+    return +delta2 ? resample$1(project, delta2) : resampleNone(project);
+  }
+  function resampleNone(project) {
+    return transformer({
+      point: function(x, y) {
+        x = project(x, y);
+        this.stream.point(x[0], x[1]);
+      }
+    });
+  }
+  function resample$1(project, delta2) {
+    function resampleLineTo(x02, y02, lambda0, a0, b0, c0, x12, y12, lambda1, a1, b1, c1, depth, stream) {
+      var dx = x12 - x02, dy = y12 - y02, d2 = dx * dx + dy * dy;
+      if (d2 > 4 * delta2 && depth--) {
+        var a = a0 + a1, b = b0 + b1, c = c0 + c1, m = sqrt(a * a + b * b + c * c), phi2 = asin(c /= m), lambda2 = abs(abs(c) - 1) < epsilon || abs(lambda0 - lambda1) < epsilon ? (lambda0 + lambda1) / 2 : atan2(b, a), p = project(lambda2, phi2), x2 = p[0], y2 = p[1], dx2 = x2 - x02, dy2 = y2 - y02, dz = dy * dx2 - dx * dy2;
+        if (dz * dz / d2 > delta2 || abs((dx * dx2 + dy * dy2) / d2 - 0.5) > 0.3 || a0 * a1 + b0 * b1 + c0 * c1 < cosMinDistance) {
+          resampleLineTo(x02, y02, lambda0, a0, b0, c0, x2, y2, lambda2, a /= m, b /= m, c, depth, stream);
+          stream.point(x2, y2);
+          resampleLineTo(x2, y2, lambda2, a, b, c, x12, y12, lambda1, a1, b1, c1, depth, stream);
+        }
+      }
+    }
+    return function(stream) {
+      var lambda00, x002, y002, a00, b00, c00, lambda0, x02, y02, a0, b0, c0;
+      var resampleStream = {
+        point,
+        lineStart,
+        lineEnd,
+        polygonStart: function() {
+          stream.polygonStart();
+          resampleStream.lineStart = ringStart;
+        },
+        polygonEnd: function() {
+          stream.polygonEnd();
+          resampleStream.lineStart = lineStart;
+        }
+      };
+      function point(x, y) {
+        x = project(x, y);
+        stream.point(x[0], x[1]);
+      }
+      function lineStart() {
+        x02 = NaN;
+        resampleStream.point = linePoint;
+        stream.lineStart();
+      }
+      function linePoint(lambda, phi) {
+        var c = cartesian([lambda, phi]), p = project(lambda, phi);
+        resampleLineTo(x02, y02, lambda0, a0, b0, c0, x02 = p[0], y02 = p[1], lambda0 = lambda, a0 = c[0], b0 = c[1], c0 = c[2], maxDepth, stream);
+        stream.point(x02, y02);
+      }
+      function lineEnd() {
+        resampleStream.point = point;
+        stream.lineEnd();
+      }
+      function ringStart() {
+        lineStart();
+        resampleStream.point = ringPoint;
+        resampleStream.lineEnd = ringEnd;
+      }
+      function ringPoint(lambda, phi) {
+        linePoint(lambda00 = lambda, phi), x002 = x02, y002 = y02, a00 = a0, b00 = b0, c00 = c0;
+        resampleStream.point = linePoint;
+      }
+      function ringEnd() {
+        resampleLineTo(x02, y02, lambda0, a0, b0, c0, x002, y002, lambda00, a00, b00, c00, maxDepth, stream);
+        resampleStream.lineEnd = lineEnd;
+        lineEnd();
+      }
+      return resampleStream;
+    };
+  }
+  var transformRadians = transformer({
+    point: function(x, y) {
+      this.stream.point(x * radians, y * radians);
+    }
+  });
+  function transformRotate(rotate) {
+    return transformer({
+      point: function(x, y) {
+        var r = rotate(x, y);
+        return this.stream.point(r[0], r[1]);
+      }
+    });
+  }
+  function scaleTranslate(k, dx, dy, sx, sy) {
+    function transform(x, y) {
+      x *= sx;
+      y *= sy;
+      return [dx + k * x, dy - k * y];
+    }
+    transform.invert = function(x, y) {
+      return [(x - dx) / k * sx, (dy - y) / k * sy];
+    };
+    return transform;
+  }
+  function scaleTranslateRotate(k, dx, dy, sx, sy, alpha) {
+    if (!alpha) return scaleTranslate(k, dx, dy, sx, sy);
+    var cosAlpha = cos(alpha), sinAlpha = sin(alpha), a = cosAlpha * k, b = sinAlpha * k, ai = cosAlpha / k, bi = sinAlpha / k, ci = (sinAlpha * dy - cosAlpha * dx) / k, fi = (sinAlpha * dx + cosAlpha * dy) / k;
+    function transform(x, y) {
+      x *= sx;
+      y *= sy;
+      return [a * x - b * y + dx, dy - b * x - a * y];
+    }
+    transform.invert = function(x, y) {
+      return [sx * (ai * x - bi * y + ci), sy * (fi - bi * x - ai * y)];
+    };
+    return transform;
+  }
+  function projection(project) {
+    return projectionMutator(function() {
+      return project;
+    })();
+  }
+  function projectionMutator(projectAt) {
+    var project, k = 150, x = 480, y = 250, lambda = 0, phi = 0, deltaLambda = 0, deltaPhi = 0, deltaGamma = 0, rotate, alpha = 0, sx = 1, sy = 1, theta = null, preclip = clipAntimeridian, x02 = null, y02, x12, y12, postclip = identity$1, delta2 = 0.5, projectResample, projectTransform, projectRotateTransform, cache, cacheStream;
+    function projection2(point) {
+      return projectRotateTransform(point[0] * radians, point[1] * radians);
+    }
+    function invert(point) {
+      point = projectRotateTransform.invert(point[0], point[1]);
+      return point && [point[0] * degrees, point[1] * degrees];
+    }
+    projection2.stream = function(stream) {
+      return cache && cacheStream === stream ? cache : cache = transformRadians(transformRotate(rotate)(preclip(projectResample(postclip(cacheStream = stream)))));
+    };
+    projection2.preclip = function(_) {
+      return arguments.length ? (preclip = _, theta = void 0, reset()) : preclip;
+    };
+    projection2.postclip = function(_) {
+      return arguments.length ? (postclip = _, x02 = y02 = x12 = y12 = null, reset()) : postclip;
+    };
+    projection2.clipAngle = function(_) {
+      return arguments.length ? (preclip = +_ ? clipCircle(theta = _ * radians) : (theta = null, clipAntimeridian), reset()) : theta * degrees;
+    };
+    projection2.clipExtent = function(_) {
+      return arguments.length ? (postclip = _ == null ? (x02 = y02 = x12 = y12 = null, identity$1) : clipRectangle(x02 = +_[0][0], y02 = +_[0][1], x12 = +_[1][0], y12 = +_[1][1]), reset()) : x02 == null ? null : [[x02, y02], [x12, y12]];
+    };
+    projection2.scale = function(_) {
+      return arguments.length ? (k = +_, recenter()) : k;
+    };
+    projection2.translate = function(_) {
+      return arguments.length ? (x = +_[0], y = +_[1], recenter()) : [x, y];
+    };
+    projection2.center = function(_) {
+      return arguments.length ? (lambda = _[0] % 360 * radians, phi = _[1] % 360 * radians, recenter()) : [lambda * degrees, phi * degrees];
+    };
+    projection2.rotate = function(_) {
+      return arguments.length ? (deltaLambda = _[0] % 360 * radians, deltaPhi = _[1] % 360 * radians, deltaGamma = _.length > 2 ? _[2] % 360 * radians : 0, recenter()) : [deltaLambda * degrees, deltaPhi * degrees, deltaGamma * degrees];
+    };
+    projection2.angle = function(_) {
+      return arguments.length ? (alpha = _ % 360 * radians, recenter()) : alpha * degrees;
+    };
+    projection2.reflectX = function(_) {
+      return arguments.length ? (sx = _ ? -1 : 1, recenter()) : sx < 0;
+    };
+    projection2.reflectY = function(_) {
+      return arguments.length ? (sy = _ ? -1 : 1, recenter()) : sy < 0;
+    };
+    projection2.precision = function(_) {
+      return arguments.length ? (projectResample = resample(projectTransform, delta2 = _ * _), reset()) : sqrt(delta2);
+    };
+    projection2.fitExtent = function(extent, object2) {
+      return fitExtent(projection2, extent, object2);
+    };
+    projection2.fitSize = function(size, object2) {
+      return fitSize(projection2, size, object2);
+    };
+    projection2.fitWidth = function(width, object2) {
+      return fitWidth(projection2, width, object2);
+    };
+    projection2.fitHeight = function(height, object2) {
+      return fitHeight(projection2, height, object2);
+    };
+    function recenter() {
+      var center = scaleTranslateRotate(k, 0, 0, sx, sy, alpha).apply(null, project(lambda, phi)), transform = scaleTranslateRotate(k, x - center[0], y - center[1], sx, sy, alpha);
+      rotate = rotateRadians(deltaLambda, deltaPhi, deltaGamma);
+      projectTransform = compose(project, transform);
+      projectRotateTransform = compose(rotate, projectTransform);
+      projectResample = resample(projectTransform, delta2);
+      return reset();
+    }
+    function reset() {
+      cache = cacheStream = null;
+      return projection2;
+    }
+    return function() {
+      project = projectAt.apply(this, arguments);
+      projection2.invert = project.invert && invert;
+      return recenter();
+    };
+  }
+  function azimuthalRaw(scale) {
+    return function(x, y) {
+      var cx = cos(x), cy = cos(y), k = scale(cx * cy);
+      if (k === Infinity) return [2, 0];
+      return [
+        k * cy * sin(x),
+        k * sin(y)
+      ];
+    };
+  }
+  function azimuthalInvert(angle) {
+    return function(x, y) {
+      var z = sqrt(x * x + y * y), c = angle(z), sc = sin(c), cc = cos(c);
+      return [
+        atan2(x * sc, z * cc),
+        asin(z && y * sc / z)
+      ];
+    };
+  }
+  var azimuthalEqualAreaRaw = azimuthalRaw(function(cxcy) {
+    return sqrt(2 / (1 + cxcy));
+  });
+  azimuthalEqualAreaRaw.invert = azimuthalInvert(function(z) {
+    return 2 * asin(z / 2);
+  });
+  var azimuthalEquidistantRaw = azimuthalRaw(function(c) {
+    return (c = acos(c)) && c / sin(c);
+  });
+  azimuthalEquidistantRaw.invert = azimuthalInvert(function(z) {
+    return z;
+  });
+  function mercatorRaw(lambda, phi) {
+    return [lambda, log(tan((halfPi + phi) / 2))];
+  }
+  mercatorRaw.invert = function(x, y) {
+    return [x, 2 * atan(exp(y)) - halfPi];
+  };
+  function mercator() {
+    return mercatorProjection(mercatorRaw).scale(961 / tau);
+  }
+  function mercatorProjection(project) {
+    var m = projection(project), center = m.center, scale = m.scale, translate = m.translate, clipExtent = m.clipExtent, x02 = null, y02, x12, y12;
+    m.scale = function(_) {
+      return arguments.length ? (scale(_), reclip()) : scale();
+    };
+    m.translate = function(_) {
+      return arguments.length ? (translate(_), reclip()) : translate();
+    };
+    m.center = function(_) {
+      return arguments.length ? (center(_), reclip()) : center();
+    };
+    m.clipExtent = function(_) {
+      return arguments.length ? (_ == null ? x02 = y02 = x12 = y12 = null : (x02 = +_[0][0], y02 = +_[0][1], x12 = +_[1][0], y12 = +_[1][1]), reclip()) : x02 == null ? null : [[x02, y02], [x12, y12]];
+    };
+    function reclip() {
+      var k = pi * scale(), t = m(rotation(m.rotate()).invert([0, 0]));
+      return clipExtent(x02 == null ? [[t[0] - k, t[1] - k], [t[0] + k, t[1] + k]] : project === mercatorRaw ? [[Math.max(t[0] - k, x02), y02], [Math.min(t[0] + k, x12), y12]] : [[x02, Math.max(t[1] - k, y02)], [x12, Math.min(t[1] + k, y12)]]);
+    }
+    return reclip();
+  }
+  function equirectangularRaw(lambda, phi) {
+    return [lambda, phi];
+  }
+  equirectangularRaw.invert = equirectangularRaw;
+  var A1 = 1.340264;
+  var A22 = -0.081106;
+  var A3 = 893e-6;
+  var A4 = 3796e-6;
+  var M = sqrt(3) / 2;
+  var iterations = 12;
+  function equalEarthRaw(lambda, phi) {
+    var l = asin(M * sin(phi)), l2 = l * l, l6 = l2 * l2 * l2;
+    return [
+      lambda * cos(l) / (M * (A1 + 3 * A22 * l2 + l6 * (7 * A3 + 9 * A4 * l2))),
+      l * (A1 + A22 * l2 + l6 * (A3 + A4 * l2))
+    ];
+  }
+  equalEarthRaw.invert = function(x, y) {
+    var l = y, l2 = l * l, l6 = l2 * l2 * l2;
+    for (var i = 0, delta, fy, fpy; i < iterations; ++i) {
+      fy = l * (A1 + A22 * l2 + l6 * (A3 + A4 * l2)) - y;
+      fpy = A1 + 3 * A22 * l2 + l6 * (7 * A3 + 9 * A4 * l2);
+      l -= delta = fy / fpy, l2 = l * l, l6 = l2 * l2 * l2;
+      if (abs(delta) < epsilon2) break;
+    }
+    return [
+      M * x * (A1 + 3 * A22 * l2 + l6 * (7 * A3 + 9 * A4 * l2)) / cos(l),
+      asin(sin(l) / M)
+    ];
+  };
+  function gnomonicRaw(x, y) {
+    var cy = cos(y), k = cos(x) * cy;
+    return [cy * sin(x) / k, sin(y) / k];
+  }
+  gnomonicRaw.invert = azimuthalInvert(atan);
+  function naturalEarth1Raw(lambda, phi) {
+    var phi2 = phi * phi, phi4 = phi2 * phi2;
+    return [
+      lambda * (0.8707 - 0.131979 * phi2 + phi4 * (-0.013791 + phi4 * (3971e-6 * phi2 - 1529e-6 * phi4))),
+      phi * (1.007226 + phi2 * (0.015085 + phi4 * (-0.044475 + 0.028874 * phi2 - 5916e-6 * phi4)))
+    ];
+  }
+  naturalEarth1Raw.invert = function(x, y) {
+    var phi = y, i = 25, delta;
+    do {
+      var phi2 = phi * phi, phi4 = phi2 * phi2;
+      phi -= delta = (phi * (1.007226 + phi2 * (0.015085 + phi4 * (-0.044475 + 0.028874 * phi2 - 5916e-6 * phi4))) - y) / (1.007226 + phi2 * (0.015085 * 3 + phi4 * (-0.044475 * 7 + 0.028874 * 9 * phi2 - 5916e-6 * 11 * phi4)));
+    } while (abs(delta) > epsilon && --i > 0);
+    return [
+      x / (0.8707 + (phi2 = phi * phi) * (-0.131979 + phi2 * (-0.013791 + phi2 * phi2 * phi2 * (3971e-6 - 1529e-6 * phi2)))),
+      phi
+    ];
+  };
+  function orthographicRaw(x, y) {
+    return [cos(y) * sin(x), sin(y)];
+  }
+  orthographicRaw.invert = azimuthalInvert(asin);
+  function stereographicRaw(x, y) {
+    var cy = cos(y), k = 1 + cos(x) * cy;
+    return [cy * sin(x) / k, sin(y) / k];
+  }
+  stereographicRaw.invert = azimuthalInvert(function(z) {
+    return 2 * atan(z);
+  });
+  function transverseMercatorRaw(lambda, phi) {
+    return [log(tan((halfPi + phi) / 2)), -lambda];
+  }
+  transverseMercatorRaw.invert = function(x, y) {
+    return [-y, 2 * atan(exp(x)) - halfPi];
+  };
+
+  // node_modules/topojson-client/src/identity.js
+  function identity_default(x) {
+    return x;
+  }
+
+  // node_modules/topojson-client/src/transform.js
+  function transform_default(transform) {
+    if (transform == null) return identity_default;
+    var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
+    return function(input, i) {
+      if (!i) x02 = y02 = 0;
+      var j = 2, n = input.length, output = new Array(n);
+      output[0] = (x02 += input[0]) * kx + dx;
+      output[1] = (y02 += input[1]) * ky + dy;
+      while (j < n) output[j] = input[j], ++j;
+      return output;
+    };
+  }
+
+  // node_modules/topojson-client/src/reverse.js
+  function reverse_default(array2, n) {
+    var t, j = array2.length, i = j - n;
+    while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
+  }
+
+  // node_modules/topojson-client/src/feature.js
+  function feature_default(topology, o) {
+    if (typeof o === "string") o = topology.objects[o];
+    return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
+      return feature(topology, o2);
+    }) } : feature(topology, o);
+  }
+  function feature(topology, o) {
+    var id = o.id, bbox = o.bbox, properties = o.properties == null ? {} : o.properties, geometry = object(topology, o);
+    return id == null && bbox == null ? { type: "Feature", properties, geometry } : bbox == null ? { type: "Feature", id, properties, geometry } : { type: "Feature", id, bbox, properties, geometry };
+  }
+  function object(topology, o) {
+    var transformPoint = transform_default(topology.transform), arcs = topology.arcs;
+    function arc(i, points) {
+      if (points.length) points.pop();
+      for (var a = arcs[i < 0 ? ~i : i], k = 0, n = a.length; k < n; ++k) {
+        points.push(transformPoint(a[k], k));
+      }
+      if (i < 0) reverse_default(points, n);
+    }
+    function point(p) {
+      return transformPoint(p);
+    }
+    function line(arcs2) {
+      var points = [];
+      for (var i = 0, n = arcs2.length; i < n; ++i) arc(arcs2[i], points);
+      if (points.length < 2) points.push(points[0]);
+      return points;
+    }
+    function ring(arcs2) {
+      var points = line(arcs2);
+      while (points.length < 4) points.push(points[0]);
+      return points;
+    }
+    function polygon(arcs2) {
+      return arcs2.map(ring);
+    }
+    function geometry(o2) {
+      var type = o2.type, coordinates;
+      switch (type) {
+        case "GeometryCollection":
+          return { type, geometries: o2.geometries.map(geometry) };
+        case "Point":
+          coordinates = point(o2.coordinates);
+          break;
+        case "MultiPoint":
+          coordinates = o2.coordinates.map(point);
+          break;
+        case "LineString":
+          coordinates = line(o2.arcs);
+          break;
+        case "MultiLineString":
+          coordinates = o2.arcs.map(line);
+          break;
+        case "Polygon":
+          coordinates = polygon(o2.arcs);
+          break;
+        case "MultiPolygon":
+          coordinates = o2.arcs.map(polygon);
+          break;
+        default:
+          return null;
+      }
+      return { type, coordinates };
+    }
+    return geometry(o);
+  }
+
+  // node_modules/topojson-client/src/stitch.js
+  function stitch_default(topology, arcs) {
+    var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
+    arcs.forEach(function(i, j) {
+      var arc = topology.arcs[i < 0 ? ~i : i], t;
+      if (arc.length < 3 && !arc[1][0] && !arc[1][1]) {
+        t = arcs[++emptyIndex], arcs[emptyIndex] = i, arcs[j] = t;
+      }
+    });
+    arcs.forEach(function(i) {
+      var e = ends(i), start = e[0], end = e[1], f, g;
+      if (f = fragmentByEnd[start]) {
+        delete fragmentByEnd[f.end];
+        f.push(i);
+        f.end = end;
+        if (g = fragmentByStart[end]) {
+          delete fragmentByStart[g.start];
+          var fg = g === f ? f : f.concat(g);
+          fragmentByStart[fg.start = f.start] = fragmentByEnd[fg.end = g.end] = fg;
+        } else {
+          fragmentByStart[f.start] = fragmentByEnd[f.end] = f;
+        }
+      } else if (f = fragmentByStart[end]) {
+        delete fragmentByStart[f.start];
+        f.unshift(i);
+        f.start = start;
+        if (g = fragmentByEnd[start]) {
+          delete fragmentByEnd[g.end];
+          var gf = g === f ? f : g.concat(f);
+          fragmentByStart[gf.start = g.start] = fragmentByEnd[gf.end = f.end] = gf;
+        } else {
+          fragmentByStart[f.start] = fragmentByEnd[f.end] = f;
+        }
+      } else {
+        f = [i];
+        fragmentByStart[f.start = start] = fragmentByEnd[f.end = end] = f;
+      }
+    });
+    function ends(i) {
+      var arc = topology.arcs[i < 0 ? ~i : i], p0 = arc[0], p1;
+      if (topology.transform) p1 = [0, 0], arc.forEach(function(dp) {
+        p1[0] += dp[0], p1[1] += dp[1];
+      });
+      else p1 = arc[arc.length - 1];
+      return i < 0 ? [p1, p0] : [p0, p1];
+    }
+    function flush(fragmentByEnd2, fragmentByStart2) {
+      for (var k in fragmentByEnd2) {
+        var f = fragmentByEnd2[k];
+        delete fragmentByStart2[f.start];
+        delete f.start;
+        delete f.end;
+        f.forEach(function(i) {
+          stitchedArcs[i < 0 ? ~i : i] = 1;
+        });
+        fragments.push(f);
+      }
+    }
+    flush(fragmentByEnd, fragmentByStart);
+    flush(fragmentByStart, fragmentByEnd);
+    arcs.forEach(function(i) {
+      if (!stitchedArcs[i < 0 ? ~i : i]) fragments.push([i]);
+    });
+    return fragments;
+  }
+
+  // node_modules/topojson-client/src/mesh.js
+  function mesh_default(topology) {
+    return object(topology, meshArcs.apply(this, arguments));
+  }
+  function meshArcs(topology, object2, filter) {
+    var arcs, i, n;
+    if (arguments.length > 1) arcs = extractArcs(topology, object2, filter);
+    else for (i = 0, arcs = new Array(n = topology.arcs.length); i < n; ++i) arcs[i] = i;
+    return { type: "MultiLineString", arcs: stitch_default(topology, arcs) };
+  }
+  function extractArcs(topology, object2, filter) {
+    var arcs = [], geomsByArc = [], geom;
+    function extract0(i) {
+      var j = i < 0 ? ~i : i;
+      (geomsByArc[j] || (geomsByArc[j] = [])).push({ i, g: geom });
+    }
+    function extract1(arcs2) {
+      arcs2.forEach(extract0);
+    }
+    function extract2(arcs2) {
+      arcs2.forEach(extract1);
+    }
+    function extract3(arcs2) {
+      arcs2.forEach(extract2);
+    }
+    function geometry(o) {
+      switch (geom = o, o.type) {
+        case "GeometryCollection":
+          o.geometries.forEach(geometry);
+          break;
+        case "LineString":
+          extract1(o.arcs);
+          break;
+        case "MultiLineString":
+        case "Polygon":
+          extract2(o.arcs);
+          break;
+        case "MultiPolygon":
+          extract3(o.arcs);
+          break;
+      }
+    }
+    geometry(object2);
+    geomsByArc.forEach(filter == null ? function(geoms) {
+      arcs.push(geoms[0].i);
+    } : function(geoms) {
+      if (filter(geoms[0].g, geoms[geoms.length - 1].g)) arcs.push(geoms[0].i);
+    });
+    return arcs;
+  }
+
+  // static/js/src/mapa/territorio.js
+  var GEO = "/static/assets/geo/";
+  var W = 800;
+  var H = 520;
+  var RAMPA = ["#EAF4FF", "#B9D9FB", "#6FAEF6", "#1E7BF0", "#0A3E8C"];
+  var RIO = "3304557";
+  var METRICAS = [
+    ["valor_contratado", "Valor contratado", "rs"],
+    ["valor_em_execucao", "Em execução", "rs"],
+    ["pago", "Pago", "rs"],
+    ["n_contratos", "Nº de contratos", "n"],
+    ["n_alertas", "Alertas", "n"]
+  ];
+  var PERIODOS = [["vigentes", "Vigentes hoje"], ["2023", "2023–hoje"], ["tudo", "Tudo"]];
+  var METODO = {
+    campo: "campo",
+    orcamento: "orçamento",
+    unidade: "unidade",
+    endereco: "endereço",
+    texto: "texto",
+    orgao: "órgão regional"
+  };
+  var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido" };
+  var rs = (v) => v == null ? "INDISPONÍVEL" : fmtR(v);
+  var pct = (v) => v == null ? "INDISPONÍVEL" : (Math.round(v * 1e3) / 10).toLocaleString("pt-BR") + "%";
+  var dma = (s) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || "");
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : "—";
+  };
+  var dmhm = (s) => {
+    const d = s ? new Date(s) : null;
+    if (!d || isNaN(d)) return "—";
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  var curto = (v, tipo) => {
+    if (v == null) return "—";
+    if (tipo === "n") return fmtN(Math.round(v));
+    const a = Math.abs(v), f = (x, s) => "R$ " + x.toLocaleString("pt-BR", { maximumFractionDigits: x < 10 ? 1 : 0 }) + s;
+    return a >= 1e9 ? f(v / 1e9, " bi") : a >= 1e6 ? f(v / 1e6, " mi") : a >= 1e3 ? f(v / 1e3, " mil") : f(v, "");
+  };
+  var _topo = {};
+  async function topo(nome) {
+    if (!_topo[nome]) _topo[nome] = fetch(GEO + nome + ".topo.json", { credentials: "same-origin" }).then((r) => {
+      if (!r.ok) throw new Error(nome);
+      return r.json();
+    });
+    return _topo[nome];
+  }
+  async function api(caminho) {
+    try {
+      const r = await fetch("/api/territorio/" + caminho, { credentials: "same-origin" });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (_) {
+      return null;
+    }
+  }
+  var _vivo = null;
+  function mapaMontar(host) {
+    if (!host) return;
+    if (_vivo) _vivo.sair();
+    const S = { escopo: "estado", metrica: "valor_contratado", periodo: "vigentes", dados: {}, sel: null };
+    host.classList.add("tm");
+    host.innerHTML = `
+    <div class="tm-topo">
+      <h3 class="tm-tit v61-disp" id="tm-tit">Território</h3>
+      <div class="tm-ctl">
+        <div class="chips" role="group" aria-label="Escopo">
+          <button type="button" class="chip on" data-tm-escopo="estado">Estado · por município</button>
+          <button type="button" class="chip" data-tm-escopo="pcrj">Prefeitura do Rio · por AP</button>
+        </div>
+        <div class="chips" role="group" aria-label="Métrica">${METRICAS.map(([k, r], i) => `<button type="button" class="chip${i ? "" : " on"}" data-tm-metrica="${k}">${r}</button>`).join("")}</div>
+        <div class="chips" role="group" aria-label="Período">${PERIODOS.map(([k, r], i) => `<button type="button" class="chip${i ? "" : " on"}" data-tm-periodo="${k}">${r}</button>`).join("")}
+          <select class="tm-ir" id="tm-ir" aria-label="Abrir a ficha de um território"><option value="">Ir para…</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="tm-palco" id="tm-palco">
+      <div class="tm-placa" id="tm-placa">
+        <svg class="tm-svg" viewBox="0 0 ${W} ${H}" role="group" aria-label="Mapa">
+          <defs><pattern id="tm-hach" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="#F4F9FF"/><line x1="0" y1="0" x2="0" y2="6" stroke="#B7CCE6" stroke-width="1.4"/></pattern></defs>
+          <g class="tm-cam" id="tm-cam"><g class="tm-g tm-est" id="tm-est"></g></g>
+          <g class="tm-g tm-rio" id="tm-rio"></g>
+          <g class="tm-pulsos" id="tm-pulsos"></g>
+        </svg>
+        <div class="tm-radar" aria-hidden="true"></div>
+      </div>
+      <div class="tm-dica" id="tm-dica" role="status" hidden></div>
+      <div class="tm-aviso" id="tm-aviso" hidden></div>
+      <div class="tm-leg" id="tm-leg"></div>
+      <aside class="tm-ficha" id="tm-ficha" aria-live="polite" hidden></aside>
+    </div>
+    <div class="tm-pe" id="tm-pe">Fonte: lendo…</div>`;
+    const q = (s) => host.querySelector(s);
+    const gEst = q("#tm-est"), gRio = q("#tm-rio"), cam = q("#tm-cam"), dica = q("#tm-dica"), ficha = q("#tm-ficha");
+    const geo = { est: null, rio: null };
+    async function carregarEstado() {
+      const t = await topo("rj-municipios");
+      const fc = feature_default(t, t.objects.municipios);
+      const path = index(mercator().fitExtent([[14, 14], [W - 14, H - 14]], fc));
+      const centro = /* @__PURE__ */ new Map();
+      gEst.innerHTML = fc.features.map((f) => {
+        const k = f.properties.cod_ibge;
+        centro.set(k, path.centroid(f));
+        return `<path class="tm-a" data-k="${k}" d="${path(f)}" tabindex="-1"><title>${esc(f.properties.nome)}</title></path>`;
+      }).join("") + `<path class="tm-div" d="${path(mesh_default(t, t.objects.municipios, (a, b) => a !== b))}"/>`;
+      geo.est = { feats: fc.features, path, centro, nomes: new Map(fc.features.map((f) => [f.properties.cod_ibge, f.properties.nome])) };
+      const rio = fc.features.find((f) => f.properties.cod_ibge === RIO);
+      geo.est.caixaRio = rio ? path.bounds(rio) : null;
+    }
+    async function carregarRio() {
+      if (geo.rio) return;
+      const t = await topo("rio-aps");
+      const aps = feature_default(t, t.objects.aps);
+      const path = index(mercator().fitExtent([[24, 24], [W - 24, H - 24]], aps));
+      const centro = /* @__PURE__ */ new Map();
+      gRio.innerHTML = aps.features.map((f) => {
+        const k = String(f.properties.ap);
+        centro.set(k, path.centroid(f));
+        return `<path class="tm-a" data-k="${k}" d="${path(f)}" tabindex="-1"><title>AP ${k}</title></path>`;
+      }).join("") + `<path class="tm-div fina" d="${path(mesh_default(t, t.objects.ras, (a, b) => a !== b))}"/><path class="tm-div" d="${path(mesh_default(t, t.objects.aps, (a, b) => a !== b))}"/>` + aps.features.map((f) => {
+        const c = path.centroid(f);
+        return `<text class="tm-rot" x="${c[0].toFixed(1)}" y="${c[1].toFixed(1)}">AP ${f.properties.ap}</text>`;
+      }).join("");
+      const ras = feature_default(t, t.objects.ras).features.map((f) => f.properties);
+      geo.rio = { path, centro, ras, nomes: new Map(aps.features.map((f) => [String(f.properties.ap), "AP " + f.properties.ap])) };
+    }
+    const chave = () => S.escopo + "|" + S.periodo;
+    async function lerDados() {
+      const k = chave();
+      if (S.dados[k] === void 0) S.dados[k] = await api(`${S.escopo}?periodo=${S.periodo}`);
+      return S.dados[k];
+    }
+    const linhas = (d) => !d ? [] : (S.escopo === "estado" ? d.municipios : d.aps) || [];
+    const idDe = (l) => S.escopo === "estado" ? String(l.cod_ibge) : String(l.ap);
+    const valorDe = (l) => {
+      const v = l[S.metrica];
+      return v == null || !(l.n_contratos > 0) ? null : Number(v);
+    };
+    function pintar(d) {
+      const g = S.escopo === "estado" ? gEst : gRio, G = S.escopo === "estado" ? geo.est : geo.rio;
+      if (!G) return;
+      const por = new Map(linhas(d).map((l) => [idDe(l), l]));
+      const vals = [...por.values()].map(valorDe).filter((v) => v != null && v > 0).sort((a, b) => a - b);
+      const cortes = [];
+      if (vals.length) for (let i = 1; i < RAMPA.length; i++) cortes.push(vals[Math.min(vals.length - 1, Math.floor(i * vals.length / RAMPA.length))]);
+      const classe = (v) => {
+        let c = 0;
+        while (c < cortes.length && v >= cortes[c]) c++;
+        return c;
+      };
+      const tipo = METRICAS.find((m) => m[0] === S.metrica)[2];
+      let semDado = 0;
+      g.querySelectorAll("path.tm-a").forEach((p) => {
+        const l = por.get(p.dataset.k), v = l ? valorDe(l) : null;
+        const tem = v != null && v > 0;
+        p.style.fill = tem ? RAMPA[classe(v)] : "url(#tm-hach)";
+        p.classList.toggle("tm-sd", !tem);
+        if (!tem) semDado++;
+        const nome = G.nomes.get(p.dataset.k) || p.dataset.k;
+        p.setAttribute("aria-label", tem ? `${nome}: ${curto(v, tipo)}` : `${nome}: sem dado`);
+      });
+      const faixas = !vals.length ? "" : RAMPA.map((c, i) => {
+        const de = i ? cortes[i - 1] : vals[0], ate = i < cortes.length ? cortes[i] : vals[vals.length - 1];
+        return `<span class="tm-lg"><i style="background:${c}"></i>${i === RAMPA.length - 1 ? "≥ " + curto(de, tipo) : curto(de, tipo) + (ate > de ? " – " + curto(ate, tipo) : "")}</span>`;
+      }).join("");
+      q("#tm-leg").innerHTML = faixas + `<span class="tm-lg"><i class="hach"></i>sem dado${semDado ? ` (${fmtN(semDado)})` : ""}</span>`;
+      const av = q("#tm-aviso");
+      av.hidden = !!d;
+      if (!d) av.innerHTML = "<b>dados do território: INDISPONÍVEL</b> — a API <code>/api/territorio</code> não respondeu (a rota entra no próximo reinício do serviço). O mapa mostra só as divisas.";
+      q("#tm-pe").innerHTML = rodape(d);
+      const sel = q("#tm-ir"), ids = [...G.nomes.entries()].sort((a, b) => a[1].localeCompare(b[1], "pt-BR", { numeric: true }));
+      sel.innerHTML = `<option value="">${S.escopo === "estado" ? "Ir para município…" : "Ir para AP…"}</option>` + ids.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join("");
+      q("#tm-tit").textContent = S.escopo === "estado" ? "Contratos do Estado · por município" : "Prefeitura do Rio · por área de planejamento";
+    }
+    function rodape(d) {
+      if (!d) return "Fonte: INDISPONÍVEL";
+      const b = d.baldes || {}, p = [];
+      p.push(`Fonte: ${esc(d.fonte || "—")}`, `atualizado em <span class="num">${dmhm(d.atualizado_em)}</span>`);
+      const um = (x, rot2) => x && x.n ? `<b class="num">${fmtN(x.n)}</b> ${rot2} (<span class="num">${rs(x.valor)}</span>)` : "";
+      if (S.escopo === "estado") {
+        p.push(um(b.sem_municipio, "contratos sem município identificado") || '<b class="num">0</b> contratos sem município identificado');
+        p.push(um(b.multimunicipio, "em vários municípios"), um(b.regiao, "só com região"));
+      } else p.push(um(b.sem_ap, "contratos da cidade inteira / sem AP") || '<b class="num">0</b> contratos sem AP');
+      if (d.confianca_texto === "baixa") p.push("atribuição por <b>texto</b> com confiança <b>baixa</b> (auditoria &lt; 85%)");
+      return p.filter(Boolean).join(" · ");
+    }
+    function mostrarDica(p, ev) {
+      const d = S.dados[chave()], G = S.escopo === "estado" ? geo.est : geo.rio;
+      const l = linhas(d).find((x2) => idDe(x2) === p.dataset.k), nome = G.nomes.get(p.dataset.k) || "";
+      const tem = l && l.n_contratos > 0;
+      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct(l.pct_executado)}</b></span>` + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : ""));
+      dica.hidden = false;
+      const r = q("#tm-palco").getBoundingClientRect(), b = p.getBoundingClientRect();
+      const x = (ev && ev.clientX != null && ev.pointerType === "mouse" ? ev.clientX : b.left + b.width / 2) - r.left;
+      const y = (ev && ev.clientY != null && ev.pointerType === "mouse" ? ev.clientY : b.top) - r.top;
+      dica.style.left = Math.max(8, Math.min(r.width - dica.offsetWidth - 8, x - dica.offsetWidth / 2)) + "px";
+      dica.style.top = Math.max(8, y - dica.offsetHeight - 14) + "px";
+    }
+    const sumirDica = () => {
+      dica.hidden = true;
+    };
+    async function abrirFicha(k) {
+      S.sel = k;
+      host.querySelectorAll("path.tm-a.on").forEach((p2) => p2.classList.remove("on"));
+      const g = S.escopo === "estado" ? gEst : gRio, p = g.querySelector(`path.tm-a[data-k="${k}"]`);
+      if (p) {
+        p.classList.add("on");
+        g.insertBefore(p, g.querySelector(".tm-div"));
+      }
+      const G = S.escopo === "estado" ? geo.est : geo.rio, nome = G.nomes.get(k) || k;
+      ficha.hidden = false;
+      ficha.classList.add("on");
+      host.classList.add("tm-com-ficha");
+      ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>
+      <h3 class="v61-disp">${esc(nome)}</h3><div class="dim">lendo…</div>`;
+      const f = await api(`${S.escopo}/${encodeURIComponent(k)}?periodo=${S.periodo}`);
+      if (S.sel !== k) return;
+      ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>` + fichaHTML(nome, f);
+      ficha.scrollTop = 0;
+    }
+    function fecharFicha() {
+      S.sel = null;
+      ficha.classList.remove("on");
+      ficha.hidden = true;
+      ficha.style.transform = "";
+      host.classList.remove("tm-com-ficha");
+      host.querySelectorAll("path.tm-a.on").forEach((p) => p.classList.remove("on"));
+    }
+    function fichaHTML(nome, f) {
+      const sub = S.escopo === "estado" ? "Contratos do Estado executados neste município" : "Contratos da Prefeitura do Rio nesta área de planejamento";
+      if (!f) return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub}</p><div class="tf-indisp"><b>INDISPONÍVEL</b> — a API do território não respondeu.</div>`;
+      const k = f.kpis || {}, kp = (r, v) => `<div class="tf-k"><span>${r}</span><b class="num">${v}</b></div>`;
+      const maxO = Math.max(1, ...(f.orgaos || []).map((o) => o.valor || 0));
+      const selo = (c) => `<span class="tf-selo m-${esc(c.metodo || "")} c-${esc(c.confianca || "")}" title="${esc(c.evidencia || "")}">${esc(METODO[c.metodo] || c.metodo || "—")} · ${esc(c.confianca || "—")}</span>`;
+      return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub} · ${esc((PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "")}</p>
+      <div class="tf-kpis">${kp("Em execução", fmtN(k.n_em_execucao))}${kp("Executados", fmtN(k.n_executados))}
+        ${kp("Valor contratado", rs(k.valor_contratado))}${kp("Pago", rs(k.pago))}${kp("% executado", pct(k.pct_executado))}</div>
+      ${k.n_multi ? `<p class="tf-nota">Participa de <b class="num">${fmtN(k.n_multi)}</b> contratos multimunicipais (valor não repartido — fica no balde "vários municípios").</p>` : ""}
+      ${f.ras && f.ras.length ? `<h4>Regiões administrativas</h4><div class="tf-ras">${f.ras.map((r) => `<span class="tag">${esc(r)}</span>`).join("")}</div>` : ""}
+      <h4>Órgãos ${S.escopo === "estado" ? "estaduais" : "municipais"}</h4>
+      ${(f.orgaos || []).length ? `<ul class="tf-bar">${f.orgaos.map((o) => `<li><span class="tf-n">${esc(o.orgao)}</span><span class="num">${rs(o.valor)}</span><i style="width:${Math.max(2, (o.valor || 0) / maxO * 100).toFixed(1)}%"></i></li>`).join("")}</ul>` : '<div class="dim">Nenhum órgão nesta seleção.</div>'}
+      <h4>Fornecedores</h4>
+      ${(f.fornecedores || []).length ? `<ul class="tf-forn">${f.fornecedores.map((x) => `<li><button type="button" class="tf-lk" data-tf-cnpj="${esc(x.cnpj || "")}" data-tf-nome="${esc(x.nome || "")}">${esc(x.nome || x.cnpj || "—")}</button><span class="num">${rs(x.valor)}</span></li>`).join("")}</ul>` : '<div class="dim">Nenhum fornecedor nesta seleção.</div>'}
+      <h4>Contratos <span class="tf-cnt num">${fmtN((f.contratos || []).length)}${f.n_contratos_total > (f.contratos || []).length ? " de " + fmtN(f.n_contratos_total) : ""}</span></h4>
+      ${(f.contratos || []).length ? `<ul class="tf-ctr">${f.contratos.map((c) => `<li${c.fornecedor_cnpj ? ` data-tf-cnpj="${esc(c.fornecedor_cnpj)}" data-tf-nome="${esc(c.fornecedor_nome || "")}" tabindex="0" role="button"` : ""}>
+          <div class="tf-obj">${esc(c.objeto || "(sem objeto na fonte)")}</div>
+          <div class="tf-meta">${esc(c.orgao || "—")} · ${esc(c.fornecedor_nome || c.fornecedor_cnpj || "—")}</div>
+          <div class="tf-lin"><span class="num tf-val">${rs(c.valor)}</span><span class="num">${dma(c.vig_ini)} – ${dma(c.vig_fim)}</span></div>
+          <div class="tf-lin"><span class="tf-st s-${esc(c.status || "")}">${esc(STATUS[c.status] || c.status || "—")}</span><span>pago: <b class="num">${pct(c.pct_pago)}</b></span>${selo(c)}${c.multi ? '<span class="tf-selo">multimunicipal</span>' : ""}</div></li>`).join("")}</ul>` : '<div class="dim">Nenhum contrato atribuído nesta seleção.</div>'}
+      <h4>Alertas e achados</h4>
+      ${(f.alertas || []).length ? `<ul class="tf-al">${f.alertas.map((a) => `<li>${esc(a.texto || "")}</li>`).join("")}</ul>` : `<div class="dim">${f.alertas === null ? "INDISPONÍVEL — os alertas ainda não têm vínculo territorial." : "Nenhum alerta ligado a este território."}</div>`}
+      <p class="tf-fonte">Fonte: ${esc(f.fonte || "—")} · atualizado em <span class="num">${dmhm(f.atualizado_em)}</span></p>`;
+    }
+    async function trocarEscopo(e) {
+      if (e === S.escopo) return;
+      fecharFicha();
+      sumirDica();
+      S.escopo = e;
+      host.querySelectorAll("[data-tm-escopo]").forEach((b) => b.classList.toggle("on", b.dataset.tmEscopo === e));
+      if (e === "pcrj") {
+        try {
+          await carregarRio();
+        } catch (_) {
+        }
+      }
+      const cx = geo.est && geo.est.caixaRio;
+      if (e === "pcrj" && cx) {
+        const [[x02, y02], [x12, y12]] = cx, k = Math.min(W / (x12 - x02), H / (y12 - y02)) * 0.9;
+        cam.style.transform = `translate(${(W / 2 - k * (x02 + x12) / 2).toFixed(1)}px,${(H / 2 - k * (y02 + y12) / 2).toFixed(1)}px) scale(${k.toFixed(3)})`;
+      } else cam.style.transform = "";
+      host.classList.toggle("tm-pcrj", e === "pcrj");
+      pintar(await lerDados());
+    }
+    const pararVivo = aoVivoOuvir((tipo, ev) => {
+      if (tipo !== "evento" || !ev || _redMotion) return;
+      const G = S.escopo === "estado" ? geo.est : geo.rio, k = S.escopo === "estado" ? ev.cod_ibge : ev.ap != null ? String(ev.ap) : null;
+      const c = G && k && G.centro.get(String(k));
+      if (!c) return;
+      const o = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      o.setAttribute("cx", c[0].toFixed(1));
+      o.setAttribute("cy", c[1].toFixed(1));
+      o.setAttribute("r", "4");
+      o.setAttribute("class", "tm-onda");
+      q("#tm-pulsos").appendChild(o);
+      setTimeout(() => o.remove(), 1300);
+    });
+    const ouvir = (t, fn, o) => host.addEventListener(t, fn, o);
+    ouvir("click", async (e) => {
+      const b = e.target.closest("[data-tm-escopo],[data-tm-metrica],[data-tm-periodo],[data-tf-x],[data-tf-cnpj],path.tm-a");
+      if (!b) return;
+      if (b.dataset.tmEscopo) return trocarEscopo(b.dataset.tmEscopo);
+      if (b.dataset.tmMetrica) {
+        S.metrica = b.dataset.tmMetrica;
+        host.querySelectorAll("[data-tm-metrica]").forEach((x) => x.classList.toggle("on", x === b));
+        return pintar(await lerDados());
+      }
+      if (b.dataset.tmPeriodo) {
+        S.periodo = b.dataset.tmPeriodo;
+        host.querySelectorAll("[data-tm-periodo]").forEach((x) => x.classList.toggle("on", x === b));
+        pintar(await lerDados());
+        if (S.sel) abrirFicha(S.sel);
+        return;
+      }
+      if ("tfX" in b.dataset) return fecharFicha();
+      if (b.dataset.tfCnpj) return abrirDossie(b.dataset.tfCnpj, b.dataset.tfNome || "");
+      if (b.matches("path.tm-a")) abrirFicha(b.dataset.k);
+    });
+    ouvir("keydown", (e) => {
+      const li = e.target.closest && e.target.closest("li[data-tf-cnpj]");
+      if (li && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        abrirDossie(li.dataset.tfCnpj, li.dataset.tfNome || "");
+      }
+      if (e.key === "Escape" && S.sel) fecharFicha();
+    });
+    ouvir("change", (e) => {
+      if (e.target.id === "tm-ir" && e.target.value) {
+        abrirFicha(e.target.value);
+        e.target.value = "";
+      }
+    });
+    ouvir("pointerover", (e) => {
+      const p = e.target.closest && e.target.closest("path.tm-a");
+      if (p) mostrarDica(p, e);
+    });
+    ouvir("pointermove", (e) => {
+      const p = e.target.closest && e.target.closest("path.tm-a");
+      if (p && e.pointerType === "mouse") mostrarDica(p, e);
+    });
+    ouvir("pointerout", (e) => {
+      if (e.target.closest && e.target.closest("path.tm-a")) sumirDica();
+    });
+    let arr = null;
+    ouvir("pointerdown", (e) => {
+      if (!e.target.closest("[data-tf-alca]")) return;
+      arr = { y: e.clientY };
+      ficha.setPointerCapture(e.pointerId);
+      ficha.classList.add("arrastando");
+    });
+    ouvir("pointermove", (e) => {
+      if (!arr) return;
+      ficha.style.transform = `translateY(${Math.max(0, e.clientY - arr.y)}px)`;
+    });
+    const solta = (e) => {
+      if (!arr) return;
+      const dy = e.clientY - arr.y;
+      arr = null;
+      ficha.classList.remove("arrastando");
+      if (dy > 90) fecharFicha();
+      else ficha.style.transform = "";
+    };
+    ouvir("pointerup", solta);
+    ouvir("pointercancel", solta);
+    (async () => {
+      try {
+        await carregarEstado();
+      } catch (_) {
+        q("#tm-aviso").hidden = false;
+        q("#tm-aviso").innerHTML = "<b>mapa: INDISPONÍVEL</b> — a malha municipal não carregou.";
+        return;
+      }
+      pintar(await lerDados());
+    })();
+    _vivo = { sair() {
+      pararVivo();
+      if (_vivo && _vivo.host === host) _vivo = null;
+    }, host };
+  }
+
   // static/js/src/abas/cockpit.js
   var _ckTimer = null;
   function _ckCount(el, to, fmt, ms = 1e3) {
@@ -4652,6 +6943,7 @@ void main(){
     if (_v61) {
       aoVivoLigar();
       reatorMontar($("c61-reator"));
+      mapaMontar($("c61-mapa"));
     } else nucleoStart();
     if (!_v61) requestAnimationFrame(() => energiaLigar());
     ckPull(true);
@@ -6776,16 +9068,16 @@ void main(){
     }
     h += sec("Pagamento fora de contrato regular (TAC/indenização) — por unidade");
     if (tk && tk.indisponivel === false && (tk.unidades || []).length) {
-      const us2 = tk.unidades.slice(0, 8), topo = us2[0];
+      const us2 = tk.unidades.slice(0, 8), topo2 = us2[0];
       h += card(`<div class="grid g3">
         <div><div class="dim">Mediana entre ${fmtN(tk.unidades.length)} unidades</div><div style="font-size:1.5rem;font-weight:700">${tk.mediana_pct}%</div></div>
-        <div><div class="dim">Mais alta: ${esc(topo.ug)}</div><div style="font-size:1.5rem;font-weight:700">${topo.pct}%</div></div>
-        <div><div class="dim">Valor via TAC nessa unidade</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(topo.total_tac)}</div></div>
+        <div><div class="dim">Mais alta: ${esc(topo2.ug)}</div><div style="font-size:1.5rem;font-weight:700">${topo2.pct}%</div></div>
+        <div><div class="dim">Valor via TAC nessa unidade</div><div style="font-size:1.5rem;font-weight:700">${fmtRc(topo2.total_tac)}</div></div>
       </div>
       <div style="margin-top:8px">` + us2.map(
         (u) => `<div class="kv"><span class="k">${esc(u.ug)} — ${esc(u.nome || "")}</span><b>${u.pct}%</b> <span class="dim">${fmtRc(u.total_tac)} de ${fmtRc(u.total)}</span></div>`
       ).join("") + `</div>
-      <div class="dim" style="margin-top:6px">${esc(tk.nota || "")}</div>`, topo.pct >= 25 ? "hl" : "");
+      <div class="dim" style="margin-top:6px">${esc(tk.nota || "")}</div>`, topo2.pct >= 25 ? "hl" : "");
     } else {
       h += card(`<div class="warn">Ranking de TAC INDISPONÍVEL${tk && tk.motivo ? ": " + esc(tk.motivo) : ""} — indisponível não é zero.</div>`);
     }
@@ -6831,11 +9123,11 @@ void main(){
     }
     h += sec("Perícia documental — cobertura do acervo (24/7)");
     if (cb && cb.indisponivel === false) {
-      const pct = cb.pct == null ? "—" : cb.pct + "%";
+      const pct2 = cb.pct == null ? "—" : cb.pct + "%";
       const cadeias = Object.entries(cb.por_cadeia || {}).map(([k, v]) => `${esc(k)}: ${v}`).join(" · ") || "—";
       const esc3 = (cb.por_escala || {})["3"] || 0, esc2 = (cb.por_escala || {})["2"] || 0, esc1 = (cb.por_escala || {})["1"] || 0, escN = (cb.por_escala || {})["null"] || 0;
       h += card(`<div class="grid g3">
-        <div><div class="dim">Processos com juízo</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_com_juizo} <span class="dim" style="font-size:.9rem">de ${cb.processos_periciaveis == null ? cb.processos_avaliados : cb.processos_periciaveis} periciáveis (${pct})</span></div></div>
+        <div><div class="dim">Processos com juízo</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_com_juizo} <span class="dim" style="font-size:.9rem">de ${cb.processos_periciaveis == null ? cb.processos_avaliados : cb.processos_periciaveis} periciáveis (${pct2})</span></div></div>
         <div><div class="dim">Documentos julgados</div><div style="font-size:1.5rem;font-weight:700">${cb.documentos_julgados}</div></div>
         <div><div class="dim">Pendentes</div><div style="font-size:1.5rem;font-weight:700">${cb.processos_pendentes}</div></div>
       </div>
@@ -7152,15 +9444,15 @@ void main(){
     )}</div>`;
     h += `<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
     h += `<div id="frac-list" class="grid">` + g.map((x) => {
-      const pct = Math.round(x.concentracao * 100);
-      const cor = pct >= 60 ? "var(--rose)" : pct >= 40 ? "var(--amber)" : "var(--tx2)";
+      const pct2 = Math.round(x.concentracao * 100);
+      const cor = pct2 >= 60 ? "var(--rose)" : pct2 >= 40 ? "var(--amber)" : "var(--tx2)";
       return card(
         `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">${clk(x.credor, x.nome || x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · UG ${esc(String(x.ug_emitente))} · ${esc(x.mes)}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:${cor}">${pct}%</div><div class="dim">colado no teto</div></div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:${cor}">${pct2}%</div><div class="dim">colado no teto</div></div></div>
       <div class="kv" style="margin-top:8px"><span class="k">${x.n_colado} de ${x.n} OBs em 85–100% do teto (R$ ${Number(x.teto).toLocaleString("pt-BR", { maximumFractionDigits: 0 })})</span><b>${fmtRc(x.soma)}</b></div>
       ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
-        pct >= 50 ? "hl" : ""
+        pct2 >= 50 ? "hl" : ""
       );
     }).join("") + `</div>`;
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
@@ -7808,15 +10100,15 @@ void main(){
     const d = await J("/api/certames/lista?esfera=prefeitura&limite=600");
     let h = cover("prefeitura", "Contratações do município — cada uma com a sua análise", "Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.", "📄") + chips + acoesAba("contratos_analise");
     if (!d.ok) return h + card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-    const its = d.itens || [], rs = d.resumo || {};
+    const its = d.itens || [], rs2 = d.resumo || {};
     h += `<div class="grid g2">${kpi(
-      fmtN(rs.total),
+      fmtN(rs2.total),
       "Certames na base",
       null,
       "📄",
       { sobre: "Certames municipais capturados. É o denominador de tudo nesta aba: certame fora da base não foi considerado regular — não foi visto." }
     )}${kpi(
-      fmtN(rs.analisados),
+      fmtN(rs2.analisados),
       "Com análise (índice calculado)",
       "var(--amber)",
       "🧮",
@@ -10582,9 +12874,9 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     if (!raiz) return;
     const EH_VALOR = /^(R\$\s*)?-?\d{1,3}([.\s]\d{3})*(,\d+)?\s*(mi|bi|mil|%|x|×)?$/i;
     const it = document.createTreeWalker(raiz, NodeFilter.SHOW_ELEMENT, {
-      acceptNode(e2) {
-        if (e2.children.length) return NodeFilter.FILTER_SKIP;
-        if (e2.closest("nav,header,.ck-ticker")) return NodeFilter.FILTER_REJECT;
+      acceptNode(e3) {
+        if (e3.children.length) return NodeFilter.FILTER_SKIP;
+        if (e3.closest("nav,header,.ck-ticker")) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       }
     });
