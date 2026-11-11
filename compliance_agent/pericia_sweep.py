@@ -14,8 +14,10 @@ Uso:
 """
 from __future__ import annotations
 import json
+import re
 import sqlite3
 import time
+import unicodedata
 from pathlib import Path
 
 REPO = Path("/home/ubuntu/JFN")
@@ -53,6 +55,12 @@ def enriquecer(dados: dict, c) -> dict:
         dados["serie_reajustes"] = [90419.34, 98276.62, 103988.53, 109687.73, 118441.47]
         dados["cct_percentuais"] = {2022: 9.91, 2023: 6.01, 2024: 6.20, 2025: 7.50}
         dados["cct_data_base"] = 3
+        if str(dados.get("orgao")) == "133100":
+            # só o par ITERJ×MGS tem contrato lido (005/2021, limpeza com faturamento mensal): é o único em que o
+            # T08 sabe que deveria haver OB todo mês e pode citar o contrato. Nos demais pares o T08 é INDISPONÍVEL.
+            dados["contrato_ref"] = "005/2021"
+            dados["servico_continuo"] = True
+            dados["periodicidade_meses"] = 1
     return dados
 
 
@@ -66,7 +74,11 @@ def periciar(cnpj: str, ug: str, c=None) -> dict:
         dados = enriquecer({"obs": obs, "favorecido": fav, "orgao": ug, "contrato": f"{fav}×UG{ug}", "_cnpj": cnpj}, c)
         res = auditar_contrato(dados)
         res["cnpj"] = cnpj; res["ug"] = ug; res["favorecido"] = fav
-        res["n_obs"] = len(obs); res["total_pago"] = sum(o["valor"] for o in obs)
+        # REGRA DE OURO: só OB Contabilizado é "pago". Somar tudo inflava o par (62162335000163/370200:
+        # R$ 1,04 bi contabilizado + R$ 1,03 bi Excluído saía como ~R$ 2,07 bi "pago").
+        res["n_obs"] = len(obs)
+        res["total_pago"] = sum(o["valor"] or 0 for o in obs
+                                if str(o.get("status") or "").strip().lower().startswith("contabiliz"))
         return res
     finally:
         if own:
@@ -82,15 +94,47 @@ def _gravar(c, res: dict):
          json.dumps(res["achados"], ensure_ascii=False), time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
 
 
-# Credores NÃO-contratuais (repasse intra-governo / folha / previdência / precatório): NÃO recebem a bateria
-# T01-T22 (são transferência, não contrato de fornecimento) — antes caíam na perícia e geravam grau ruidoso.
+# Credores NÃO-contratuais (repasse intra-governo / folha / previdência / precatório / órgão público): NÃO
+# recebem a bateria T01-T25 (são transferência, não contrato de fornecimento). Comparação SEM acento.
 _NAO_CONTRATUAL = ("FOLHA DE PAGAMENTO", "RIOPREV", "INATIVO", "PENSIONISTA", "INSS", "TESOURO DO ESTADO",
-                   "FUNDO UNICO DE PREVID", "FUNDO ÚNICO DE PREVID", "PRECATORIO", "PRECATÓRIO",
-                   "AUXILIO ALIMENTA", "AUXÍLIO ALIMENTA", "PECUNIA", "PECÚNIA", "ESTADO DO RIO DE JANEIRO")
+                   "FUNDO UNICO DE PREV", "PREVIDENCI", "PRECATORI", "AUXILIO ALIMENTA", "PECUNIA",
+                   "ESTADO DO RIO DE JANEIRO", "INSTITUTO NACIONAL DO SEGURO SOCIAL",
+                   # órgão público / ente (repasse, convênio, fundo a fundo) — medido 11/11: 629 pares de
+                   # prefeitura, 164 de fundo municipal, 165 de ministério, 42 de tribunal na perícia
+                   "PREFEITURA", "MUNICIPIO D", "FUNDO MUNICIPAL", "FUNDO ESTADUAL", "FUNDO NACIONAL",
+                   "SECRETARIA DE", "MINISTERIO D", "TRIBUNAL", "CAMARA MUNICIPAL", "ASSEMBLEIA LEGISLATIVA",
+                   "DEFENSORIA PUBLICA", "PROCURADORIA", "GOVERNO DO ESTADO")
+
+# Código de credor que não é fornecedor identificável (medido 11/11 em pericia_fornecedor): 518 pares com
+# código de UG (6 dígitos = repasse intragoverno), CG (inscrição genérica: folha, auxílios, multas — 1.213),
+# RP/RF/PR/PP (precatório/RPV/processo judicial — 576), BJ (bloqueio judicial — 53), PO (tributo — 1).
+# CS (consórcio) e CNPJ/CPF seguem na bateria.
+_CODIGO_NAO_FORNECEDOR = re.compile(r"^(\d{6}|(CG|RP|RF|PR|PP|BJ|PO)\w*)$")
+
+
+def _sem_acento(s: str) -> str:
+    return unicodedata.normalize("NFKD", (s or "").upper()).encode("ascii", "ignore").decode()
 
 
 def _eh_nao_contratual(nome: str) -> bool:
-    return any(p in (nome or "").upper() for p in _NAO_CONTRATUAL)
+    n = _sem_acento(nome)
+    return any(p in n for p in _NAO_CONTRATUAL)
+
+
+def _fora_da_bateria(credor: str, nome: str) -> bool:
+    """O par não é contrato de fornecimento → fora da perícia. Antes o sweep passava o CÓDIGO do credor a
+    `_eh_nao_contratual` (nunca casava): 246 pares 🟡 de folha/RIOPREV/precatório, R$ 233 bi."""
+    return bool(_CODIGO_NAO_FORNECEDOR.match((credor or "").strip().upper())) or _eh_nao_contratual(nome)
+
+
+def _podar(c, elegiveis: set, completo: bool) -> int:
+    """Remove de `pericia_fornecedor` o par que não deveria existir. O sweep só fazia INSERT OR REPLACE e
+    NUNCA removia (36 pares parados desde jul–ago; folha/precatório de antes do filtro). Sempre sai o par
+    fora da bateria; numa passada COMPLETA (sem --limit/--ugs) sai também o que deixou de ser elegível."""
+    rm = [(r[0], r[1]) for r in c.execute("SELECT cnpj, ug, favorecido FROM pericia_fornecedor")
+          if _fora_da_bateria(r[0], r[2]) or (completo and (r[0], r[1]) not in elegiveis)]
+    c.executemany("DELETE FROM pericia_fornecedor WHERE cnpj=? AND ug=?", rm)
+    return len(rm)
 
 
 def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = None) -> dict:
@@ -101,13 +145,14 @@ def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = No
         filtro_ug = f" AND ug_emitente IN ({','.join('?' * len(ugs))})"
         params = list(ugs)
     # só OB efetivamente paga (status contabilizado) — exclui anulada/excluída/não-contab que inflavam o ranking
-    pares = c.execute(f"""SELECT credor,ug_emitente,COUNT(*) n FROM ob_orcamentaria_siafe
+    pares = c.execute(f"""SELECT credor,ug_emitente,COUNT(*) n,MAX(nome_credor) nome FROM ob_orcamentaria_siafe
         WHERE credor IS NOT NULL AND credor!='' AND lower(status) LIKE 'contabiliz%'{filtro_ug}
         GROUP BY credor,ug_emitente HAVING n>=? ORDER BY SUM(valor) DESC""", (*params, min_obs)).fetchall()
-    pares = [r for r in pares if not _eh_nao_contratual(r["credor"])]  # repasse/folha/precatório fora da bateria
+    pares = [r for r in pares if not _fora_da_bateria(r["credor"], r["nome"])]  # repasse/folha/precatório fora
+    removidos = _podar(c, {(r["credor"], r["ug_emitente"]) for r in pares}, completo=not (limit or ugs))
     if limit:
         pares = pares[:limit]
-    n = 0; graus = {"🔴": 0, "🟡": 0, "🟢": 0}
+    n = 0; graus = {"🔴": 0, "🟡": 0, "🟢": 0, "⚪": 0}
     for r in pares:
         try:
             res = periciar(r["credor"], r["ug_emitente"], c)
@@ -117,7 +162,7 @@ def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = No
         except Exception as e:  # noqa: BLE001
             print(f"  erro {r['credor']}/{r['ug_emitente']}: {str(e)[:60]}", flush=True)
     c.commit(); c.close()
-    return {"periciados": n, "de": len(pares), "graus": graus}
+    return {"periciados": n, "de": len(pares), "graus": graus, "removidos": removidos}
 
 
 if __name__ == "__main__":

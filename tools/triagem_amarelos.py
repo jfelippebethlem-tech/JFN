@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sqlite3
 from pathlib import Path
 
@@ -24,15 +25,29 @@ DB = REPO / "data" / "compliance.db"
 
 # score interno (0-100) pesa mais que volume; sanção federal ativa é multiplicador forte.
 _SQL = """
-SELECT p.cnpj, p.ug, p.favorecido, p.n_obs, p.total_pago, p.score, p.resumo,
+SELECT p.cnpj, p.ug, p.favorecido, p.n_obs, p.total_pago, p.score, p.resumo, p.achados_json,
        (SELECT COUNT(*) FROM sancoes_federais s WHERE s.cpf_cnpj = p.cnpj) AS n_sancoes
 FROM pericia_fornecedor p
 WHERE p.grau = '🟡'
 ORDER BY (p.score * 1.0) * (1.0 + MIN(p.total_pago, 1e9) / 1e8)
          * (CASE WHEN (SELECT COUNT(*) FROM sancoes_federais s
                        WHERE s.cpf_cnpj = p.cnpj) > 0 THEN 3.0 ELSE 1.0 END) DESC
-LIMIT :top
 """
+
+
+def _ainda_amarelo(r: dict) -> bool:
+    """Mesmo critério do motor (`grau_de` + `_fora_da_bateria`), reaplicado à linha gravada: até o sweep
+    regravar, o banco guarda 🟡 que só eram T08/T02 INDETERMINADOS (8.761 de 8.772 em 11/11/2026) e pares
+    de folha/RIOPREV/precatório (o log mandou "FOLHA DE PAGAMENTOS" com score 65). Não vai ao dono."""
+    from compliance_agent.auditoria_contrato import grau_de
+    from compliance_agent.pericia_sweep import _fora_da_bateria
+    if _fora_da_bateria(r["cnpj"], r["favorecido"]):
+        return False
+    try:
+        achados = json.loads(r.get("achados_json") or "[]")
+    except (ValueError, TypeError):
+        return False
+    return grau_de(achados)[0] in ("🟡", "🔴")
 
 
 def _brl(v: float) -> str:
@@ -44,7 +59,8 @@ def top_amarelos(top: int = 20) -> list[dict]:
     con.row_factory = sqlite3.Row
     try:
         con.execute("PRAGMA busy_timeout=15000")
-        return [dict(r) for r in con.execute(_SQL, {"top": top})]
+        rows = (dict(r) for r in con.execute(_SQL))
+        return [r for r in rows if _ainda_amarelo(r)][:top]
     finally:
         con.close()
 

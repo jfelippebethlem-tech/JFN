@@ -10513,11 +10513,12 @@ void main(){
   async function renderPericias() {
     const d = await J("/api/pericias?limite=80&ordem=" + _perOrdem + (_perGrau ? "&grau=" + encodeURIComponent(_perGrau) : ""));
     const it = d.itens || [];
-    let h = cover("estado", "Perícias de fornecedor", "8.648 fornecedores periciados (grau 🟢🟡🔴 + achados). Clique num nome para o dossiê 360.", "⚖️");
+    let h = cover("estado", "Perícias de fornecedor", "Grau 🔴🟡🟢 só com o que foi verificado; ⚪ = não verificável (falta dado-fonte), nunca atenção. Clique num nome para o dossiê 360.", "⚖️");
     h += `<div class="chips">
     <button type="button" class="chip ${_perGrau === "" ? "on" : ""}" onclick="_perGrau='';ir('e_pericias')">Todos</button>
     <button type="button" class="chip ${_perGrau === "🟡" ? "on" : ""}" onclick="_perGrau='🟡';ir('e_pericias')">Atenção</button>
     <button type="button" class="chip ${_perGrau === "🔴" ? "on" : ""}" onclick="_perGrau='🔴';ir('e_pericias')">Grave</button>
+    <button type="button" class="chip ${_perGrau === "⚪" ? "on" : ""}" onclick="_perGrau='⚪';ir('e_pericias')">Não verificável</button>
     <button type="button" class="chip ${_perOrdem === "total" ? "on" : ""}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem === "total" ? "ordenar: R$" : "ordenar: score"}</button></div>`;
     h += `<div class="search"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
     h += `<div id="per-list" class="grid">` + it.map((x) => card(

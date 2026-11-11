@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
+from datetime import date
 from compliance_agent.reporting.intel_base import moeda
 
 # Reusa o detector determinístico de duplicidade já validado no caso (T07).
@@ -53,6 +54,11 @@ _STATUS = ("CONFIRMADO", "INDICIO", "AFASTADO", "INDISPONIVEL")
 
 # peso por severidade declarada na bateria (alimenta o grau/score, como no DD)
 _PESO = {"alta": 25, "media": 15, "baixa": 8}
+
+# Marca dos achados T02/T08 gravados com o critério "INDETERMINADO ≠ INDÍCIO" (11/11/2026). Linhas antigas
+# de `pericia_fornecedor` não a têm: lá T02/T08 INDICIO era indeterminado rotulado de indício (ver `grau_de`).
+CRITERIO = "determinado-v2"
+_INDETERMINADOS_LEGADO = ("T02-STATUS-PAGO", "T08-GAP-COMPETENCIA")
 
 
 # ───────────────────────── helpers ─────────────────────────
@@ -174,14 +180,36 @@ def _t01_3way(d) -> dict:
                 "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 58/63/64; LC 101/2000", _PESO["alta"])
 
 
+def _data_ob(o) -> int | None:
+    """'DD/MM/AAAA' (texto do SIAFE) -> ordinal do dia; inválido -> None."""
+    try:
+        dd, mm, aaaa = str(o.get("data_emissao") or "")[:10].split("/")
+        return date(int(aaaa), int(mm), int(dd)).toordinal()
+    except (ValueError, TypeError):
+        return None
+
+
+JANELA_REEMISSAO_DIAS = 60      # anulação/exclusão e a OB que a substitui saem na mesma janela (M2 da auditoria)
+_NAO_PAGAS = ("anulado", "excluído", "excluido", "não contabilizado", "nao contabilizado")
+
+
 def _t02_status_pago(d) -> dict:
-    """T02 — Saneamento de status: OB Anulado/Excluído computada como paga."""
-    nao_pagas = [o for o in d["obs"]
-                 if str(o.get("status", "")).strip().lower() in ("anulado", "excluído", "excluido", "não contabilizado", "nao contabilizado")]
+    """T02 — Saneamento de status: OB Anulado/Excluído computada como paga.
+
+    Medido em 11/11/2026: 5.803 pares saíam INDÍCIO "se qualquer agregado as somar" — sem agregado nenhum
+    para testar (`relatorio_total_pago` nunca é fornecido pelo sweep) e anular+reemitir é rotina contábil
+    (12.642 OBs Anulado e 6.994 Excluído no SIAFE). Agora: CONFIRMADO só contra um total declarado;
+    sem ele, a anulada só é INDÍCIO se NÃO houver reemissão (mesmo credor do par, mesmo valor, ±60 dias)
+    E a janela tiver OB Contabilizado coletada (senão é lacuna de coleta — SIAFE ~21% —, INDISPONÍVEL)."""
+    if not d["obs"]:   # acervo vazio não "afasta" nada: não houve o que ler
+        return _indisp("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "OBs do SIAFE do par",
+                       "Lei 4.320/1964 arts. 62-64", _PESO["alta"])
+    nao_pagas =[o for o in d["obs"] if str(o.get("status", "")).strip().lower() in _NAO_PAGAS]
     soma_nao_paga = sum(_money(o.get("valor")) for o in nao_pagas)
     relatorio_total = d.get("relatorio_total_pago")     # total que a fonte derivada alega pago
-    pago_verdadeiro = sum(_money(o.get("valor")) for o in _contabilizadas(d["obs"]))
-    detalhe = "; ".join(f"OB {o.get('numero_ob')} {o.get('status')} {_moeda(_money(o.get('valor')))}" for o in nao_pagas)
+    contab = _contabilizadas(d["obs"])
+    pago_verdadeiro = sum(_money(o.get("valor")) for o in contab)
+    detalhe = "; ".join(f"OB {o.get('numero_ob')} {o.get('status')} {_moeda(_money(o.get('valor')))}" for o in nao_pagas[:8])
     if relatorio_total is not None and soma_nao_paga > TOL_CENTAVOS \
             and abs(abs(relatorio_total - pago_verdadeiro) - soma_nao_paga) <= TOL_CENTAVOS:
         ev = (f"Fonte derivada alega pago {_moeda(relatorio_total)}; pago verdadeiro (só Contabilizado) = "
@@ -189,15 +217,46 @@ def _t02_status_pago(d) -> dict:
               f"computada indevidamente ({detalhe}).")
         return _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "CONFIRMADO", "alto", ev,
                     "SIAFE + fonte derivada", "Lei 4.320/1964 arts. 62-64; REGRA DE OURO JFN", _PESO["alta"])
-    if soma_nao_paga > TOL_CENTAVOS:
-        ev = (f"No acervo há {len(nao_pagas)} OB não-paga(s) totalizando {_moeda(soma_nao_paga)} ({detalhe}). "
-              f"Pago verdadeiro = {_moeda(pago_verdadeiro)} (só Contabilizado). "
-              f"INDÍCIO de inflação de 'total pago' se qualquer agregado as somar — confrontar com o relatório do órgão.")
-        return _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "INDICIO", "alto", ev,
-                    "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 62-64; REGRA DE OURO JFN", _PESO["alta"])
-    return _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "AFASTADO", "—",
-                "Nenhuma OB Anulado/Excluído no acervo; total pago = só Contabilizado.", "SIAFE",
-                "Lei 4.320/1964 arts. 62-64", _PESO["alta"])
+    if soma_nao_paga <= TOL_CENTAVOS:
+        return _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "AFASTADO", "—",
+                    "Nenhuma OB Anulado/Excluído no acervo; total pago = só Contabilizado.", "SIAFE",
+                    "Lei 4.320/1964 arts. 62-64", _PESO["alta"])
+    dias_c = [_data_ob(c) for c in contab]
+    usadas: set[int] = set()
+    sem_reemissao, sem_janela = [], []
+    for o in nao_pagas:
+        dia, v = _data_ob(o), _money(o.get("valor"))
+        perto = [i for i, dc in enumerate(dias_c)
+                 if dia is not None and dc is not None and abs(dc - dia) <= JANELA_REEMISSAO_DIAS]
+        par = next((i for i in perto if i not in usadas and abs(_money(contab[i].get("valor")) - v) <= TOL_CENTAVOS), None)
+        if par is not None:
+            usadas.add(par)
+        elif perto:
+            sem_reemissao.append(o)
+        else:
+            sem_janela.append(o)
+    base = (f"No acervo há {len(nao_pagas)} OB não-paga(s) totalizando {_moeda(soma_nao_paga)}; "
+            f"pago verdadeiro = {_moeda(pago_verdadeiro)} (só Contabilizado). ")
+    if sem_reemissao:
+        lst = "; ".join(f"OB {o.get('numero_ob')} {o.get('status')} {_moeda(_money(o.get('valor')))} em {o.get('data_emissao')}"
+                        for o in sem_reemissao[:8])
+        ev = (base + f"{len(sem_reemissao)} sem reemissão de mesmo valor em ±{JANELA_REEMISSAO_DIAS} dias, num trecho "
+              f"em que o SIAFE coletado TEM OB Contabilizado ao credor ({lst}). INDÍCIO: débito anulado sem quitação "
+              f"visível — apurar se foi pago por outra via ou se algum agregado o soma como pago.")
+        h = _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "INDICIO", "medio", ev,
+                 "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 62-64; REGRA DE OURO JFN", _PESO["alta"])
+    elif sem_janela:
+        h = _indisp("T02-STATUS-PAGO", "OB anulada/excluída computada como paga",
+                    f"um total declarado como pago para confrontar e OB coletada na janela de ±{JANELA_REEMISSAO_DIAS} "
+                    f"dias de {len(sem_janela)} OB não-paga(s) (reemissão não verificável — cobertura SIAFE parcial)",
+                    "Lei 4.320/1964 arts. 62-64; REGRA DE OURO JFN", _PESO["alta"])
+    else:
+        h = _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "AFASTADO", "—",
+                 base + f"Todas reemitidas (mesmo valor, ±{JANELA_REEMISSAO_DIAS} dias): anulação regularizada; "
+                 f"o total pago desta perícia já soma só Contabilizado.",
+                 "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 62-64", _PESO["alta"])
+    h["criterio"] = CRITERIO
+    return h
 
 
 def _t03_reconcilia(d) -> dict:
@@ -321,31 +380,54 @@ def _t07_duplicidade(d) -> dict:
 
 
 def _t08_gap(d) -> dict:
-    """T08 — Continuidade temporal: lacuna de competência em serviço contínuo."""
+    """T08 — Continuidade temporal: lacuna de competência em serviço contínuo.
+
+    Medido em 11/11/2026: apontava 28.754 de 33.744 pares (85%) — rodava em compra pontual, CPF, UG e
+    faturamento bimestral, sem saber se havia contrato contínuo nem a periodicidade (amostra de 600: só 15%
+    dos meses-lacuna tinham OB no TFE). Mês sem OB só é lacuna se o par é SERVIÇO CONTÍNUO
+    (`servico_continuo`) com PERIODICIDADE conhecida (`periodicidade_meses`), vindos do contrato do par
+    (`enriquecer`). Sem isso → INDISPONÍVEL, nunca indício."""
+    if not d.get("servico_continuo") or not d.get("periodicidade_meses"):
+        h = _indisp("T08-GAP-COMPETENCIA", "Continuidade temporal",
+                    "a natureza de serviço contínuo e a periodicidade de faturamento do contrato do par "
+                    "(vigência/termos no PNCP ou SEI) — mês sem OB não é lacuna sem saber que deveria haver OB",
+                    "Lei 14.133/2021 (vigência e execução)", _PESO["media"])
+        h["criterio"] = CRITERIO
+        return h
+    per = max(1, int(d["periodicidade_meses"]))
+    ref = (d.get("contrato_ref") or "").strip()
     contab = _contabilizadas(d["obs"])
     comps = sorted({_comp(o.get("competencia")) for o in contab if _midx(_comp(o.get("competencia"))) is not None},
                    key=_midx)
     if not comps:
-        return _indisp("T08-GAP-COMPETENCIA", "Continuidade temporal", "OBs Contabilizado com competência",
-                       "Lei 14.133/2021 (vigência e execução)", _PESO["media"])
+        h = _indisp("T08-GAP-COMPETENCIA", "Continuidade temporal", "OBs Contabilizado com competência",
+                    "Lei 14.133/2021 (vigência e execução)", _PESO["media"])
+        h["criterio"] = CRITERIO
+        return h
     idx = sorted(set(_midx(c) for c in comps))
-    gaps_idx = [i for i in range(idx[0], idx[-1] + 1) if i not in idx]
+    # competência esperada a cada `per` meses a partir da observada anterior; o que falta até a próxima é lacuna
+    gaps_idx = [m for a, b in zip(idx, idx[1:]) for m in range(a + per, b, per)]
     glosa_meses = {_midx(_comp(g)) for g in (d.get("glosas_competencias") or []) if _midx(_comp(g)) is not None}
     gaps_inexplicados = [i for i in gaps_idx if i not in glosa_meses]
     def fmt(i):
         return f"{i % 12 or 12:02d}/{(i - 1) // 12}"
     vig_ok = bool(d.get("vigencia"))     # bordas de vigência só com o contrato (tarefa #8)
+    contrato = f"contrato {ref}" if ref else "contrato do par (PNCP/SEI)"
+    bordas = "Bordas de vigência verificadas." if vig_ok else f"Bordas de vigência INDISPONÍVEL (ler {contrato})."
     if gaps_inexplicados:
-        ev = (f"Mês(es) sem OB no intervalo [{comps[0]}–{comps[-1]}] não cobertos por glosa documentada: "
-              f"{[fmt(i) for i in gaps_inexplicados]}. INDÍCIO de inadimplência/glosa não-formalizada (risco subsidiário) "
-              f"ou apenas timing — confrontar com SEI. {'Bordas de vigência verificadas.' if vig_ok else 'Bordas de vigência INDISPONÍVEL (ler contrato 005/2021).'}")
-        return _hip("T08-GAP-COMPETENCIA", "Continuidade temporal", "INDICIO", "medio", ev,
-                    "SIAFE — competências", "Lei 14.133/2021 (vigência); cláusula de vigência 005/2021", _PESO["media"])
-    ev = (f"Sequência de competências {comps[0]}–{comps[-1]} sem lacuna inexplicada "
-          f"({'gaps cobertos por glosa documentada' if gaps_idx else 'sem gaps'}). "
-          f"{'' if vig_ok else 'Bordas de vigência ainda INDISPONÍVEL (contrato 005/2021).'}")
-    return _hip("T08-GAP-COMPETENCIA", "Continuidade temporal", "AFASTADO", "—", ev,
-                "SIAFE — competências", "Lei 14.133/2021 (vigência)", _PESO["media"])
+        ev = (f"Serviço contínuo, faturamento a cada {per} mês(es): competência(s) esperada(s) sem OB no intervalo "
+              f"[{comps[0]}–{comps[-1]}] não cobertas por glosa documentada: {[fmt(i) for i in gaps_inexplicados]}. "
+              f"INDÍCIO de inadimplência/glosa não-formalizada (risco subsidiário) ou apenas timing — confrontar com SEI. "
+              f"{bordas}")
+        h = _hip("T08-GAP-COMPETENCIA", "Continuidade temporal", "INDICIO", "medio", ev, "SIAFE — competências",
+                 f"Lei 14.133/2021 (vigência){f'; cláusula de vigência {ref}' if ref else ''}", _PESO["media"])
+    else:
+        ev = (f"Sequência de competências {comps[0]}–{comps[-1]} (periodicidade {per} mês(es)) sem lacuna inexplicada "
+              f"({'gaps cobertos por glosa documentada' if gaps_idx else 'sem gaps'}). {'' if vig_ok else bordas}")
+        h = _hip("T08-GAP-COMPETENCIA", "Continuidade temporal", "AFASTADO", "—", ev,
+                 "SIAFE — competências", "Lei 14.133/2021 (vigência)", _PESO["media"])
+    h["criterio"] = CRITERIO
+    return h
 
 
 def _t09_inss(d) -> dict:
@@ -525,7 +607,7 @@ def _t19_preclusao(d) -> dict:
                        "IN SEGES 05/2017 Anexo IX; jurisprudência TCU; Lei 14.133/2021 art. 135", _PESO["media"])
     return _hip("T19-PRECLUSAO-PRORROGACAO", "Preclusão da repactuação", "INDICIO", "medio",
                 "Cruzar reajuste de MO pós-prorrogação sem ressalva/pleito tempestivo (pagamento indevido) × pleito "
-                "tempestivo não pago (crédito legítimo da MGS). Pode explicar o saldo do relatório (cruza T03).",
+                "tempestivo não pago (crédito legítimo da contratada). Pode explicar o saldo do relatório (cruza T03).",
                 "Aditivos + pleitos (SEI)", "IN SEGES 05/2017 Anexo IX; TCU", _PESO["media"])
 
 
@@ -697,20 +779,8 @@ def auditar_contrato(dados: dict) -> dict:
         if h:
             achados.append(h)
 
-    confirmados = [a for a in achados if a["status"] == "CONFIRMADO"]
-    indicios = [a for a in achados if a["status"] == "INDICIO"]
+    grau, score, confirmados, indicios = grau_de(achados)
     indisp = [a for a in achados if a["status"] == "INDISPONIVEL"]
-    score = min(100, sum(a["peso"] for a in achados if a["status"] in ("CONFIRMADO", "INDICIO")))
-    # grau: 🔴 SÓ com FATO CONFIRMADO (proven). score≥25 cobre um único CONFIRMADO grave (peso 25 — corrige
-    #   o caso em que 1 confirmado forte ficava 🟡). NÃO fabricar 🔴 por convergência de INDÍCIOS: muitos são
-    #   absence-driven (T13/T04-sem-planilha) e geravam 331 🔴 sem nenhum confirmado, incl. MGS-limpo (workflow
-    #   jedi-audit 2026-06-28). indício≠acusação · presunção de regularidade. 🟡 = a apurar; 🟢 = limpo.
-    if confirmados and score >= 25:
-        grau = "🔴"
-    elif score >= 30 or len(indicios) >= 2:
-        grau = "🟡"
-    else:
-        grau = "🟢"
 
     return {
         "contrato": d.get("contrato", ""), "favorecido": d.get("favorecido", ""), "orgao": d.get("orgao", ""),
@@ -720,17 +790,50 @@ def auditar_contrato(dados: dict) -> dict:
     }
 
 
+def _determinado(a: dict) -> bool:
+    """Achado que conta para o grau: CONFIRMADO/INDÍCIO, exceto T02/T08 legados (sem `criterio`), que eram
+    indeterminados gravados como INDICIO antes de 11/11/2026 — vale para ler linhas antigas do banco."""
+    if a.get("status") not in ("CONFIRMADO", "INDICIO"):
+        return False
+    return not (a.get("codigo") in _INDETERMINADOS_LEGADO and a.get("criterio") != CRITERIO)
+
+
+def grau_de(achados: list[dict]) -> tuple[str, int, list, list]:
+    """(grau, score, confirmados, indícios) — fonte única do grau (motor e triagem do Telegram).
+
+    grau: 🔴 SÓ com FATO CONFIRMADO (proven). score≥25 cobre um único CONFIRMADO grave (peso 25 — corrige
+      o caso em que 1 confirmado forte ficava 🟡). NÃO fabricar 🔴 por convergência de INDÍCIOS: muitos são
+      absence-driven (T13/T04-sem-planilha) e geravam 331 🔴 sem nenhum confirmado, incl. MGS-limpo (workflow
+      jedi-audit 2026-06-28). indício≠acusação · presunção de regularidade. 🟡 = a apurar; 🟢 = verificado e
+      sem indício; ⚪ = NADA pôde ser verificado (nenhum teste AFASTADO/INDÍCIO/CONFIRMADO) — nem 🟢 nem 🟡."""
+    conta = [a for a in achados if _determinado(a)]
+    confirmados = [a for a in conta if a["status"] == "CONFIRMADO"]
+    indicios = [a for a in conta if a["status"] == "INDICIO"]
+    score = min(100, sum(int(a.get("peso") or 0) for a in conta))
+    if confirmados and score >= 25:
+        grau = "🔴"
+    elif score >= 30 or len(indicios) >= 2:
+        grau = "🟡"
+    elif conta or any(a.get("status") == "AFASTADO" for a in achados):
+        grau = "🟢"
+    else:
+        grau = "⚪"
+    return grau, score, confirmados, indicios
+
+
 def _gate_completude(d: dict) -> dict:
     """T22 — mapa honesto de disponibilidade dos insumos (DISPONÍVEL / PARCIAL / INDISPONÍVEL)."""
     contab = _contabilizadas(d.get("obs", []))
+    ref = f" {d['contrato_ref']}" if d.get("contrato_ref") else ""
     return {
         "OBs SIAFE": f"DISPONÍVEL ({len(contab)} Contabilizado de {len(d.get('obs', []))} no acervo)" if d.get("obs") else "INDISPONÍVEL",
         "Série de reajustes/CCT": "DISPONÍVEL" if (d.get("serie_reajustes") and d.get("cct_percentuais")) else "PARCIAL/INDISPONÍVEL",
         "Retenções INSS/IR (OCR)": "DISPONÍVEL" if d.get("retencoes") else "INDISPONÍVEL",
         "Glosas": "DISPONÍVEL" if d.get("glosas") else "INDISPONÍVEL",
         "Relatório Créditos/Débitos (a testar)": "DISPONÍVEL" if d.get("relatorio_saldo") is not None else "INDISPONÍVEL",
-        "Planilha de custos 005/2021": "DISPONÍVEL" if d.get("planilha") else "INDISPONÍVEL (tarefa #8)",
-        "Contrato/aditivos 005/2021": "DISPONÍVEL" if d.get("vigencia") else "INDISPONÍVEL (tarefa #8)",
+        # o número do contrato vem do DADO do par (`contrato_ref`); antes "005/2021" (MGS) saía em 33.734 laudos
+        f"Planilha de custos{ref}": "DISPONÍVEL" if d.get("planilha") else "INDISPONÍVEL",
+        f"Contrato/aditivos{ref}": "DISPONÍVEL" if d.get("vigencia") else "INDISPONÍVEL",
         "Notas Fiscais (bruto)": "DISPONÍVEL" if d.get("bruto_nf") else "INDISPONÍVEL",
     }
 
@@ -738,6 +841,8 @@ def _gate_completude(d: dict) -> dict:
 def _resumo(grau: str, confirmados: list, indicios: list, indisp: list) -> str:
     base = (f"Auditoria de contrato contínuo: {len(confirmados)} fato(s) confirmado(s), "
             f"{len(indicios)} indício(s) a apurar, {len(indisp)} teste(s) INDISPONÍVEL (sem dado-fonte/critério). ")
+    if grau == "⚪":
+        return base + "Nada verificável com o dado disponível — NÃO DETERMINADO (não é limpo nem atenção)."
     if not confirmados and not indicios:
         return base + "Nenhuma irregularidade verificável nos testes com dado disponível (não exclui o que está INDISPONÍVEL)."
     foco = [a["codigo"] for a in (confirmados + indicios)]
