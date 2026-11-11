@@ -177,51 +177,63 @@ def _bloco_siafe(numero_sei: str, obs: dict | None) -> str:
             "O pagamento está registrado — avalie se a ENTREGA está comprovada.\n")
 
 
-def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valores: str,
-                     documentos: list[dict], red_flags: list, gerar, obs_siafe: dict | None = None) -> dict | None:
-    fl = _flags(documentos)
-    docs_txt = "\n".join(f"- [{d.get('tipo','?')}] {d.get('ponto','')}" for d in documentos[:40] if isinstance(d, dict))
-    prompt = (
-        f"OBJETO CONTRATADO: {objeto or '(não informado na ficha)'}\n"
-        f"VALORES: {valores or '(n/d)'}\n"
-        f"RED FLAGS já anotadas: {red_flags or '[]'}\n"
-        f"{_bloco_siafe(numero_sei, obs_siafe)}"
-        f"PRESENÇA DETECTADA (1=sim): {fl}\n\n"
-        f"DOCUMENTOS DO PROCESSO ({len(documentos)}):\n{docs_txt or '(nenhum doc inventariado)'}\n\n"
-        f"LIÇÕES DE CALIBRAÇÃO DA PERÍCIA (aplique antes de pontuar):\n{_regras_calibracao()}\n\n"
-        f"Avalie se a execução do contrato está comprovada e coerente com o objeto/quantidade. "
-        f"Se a árvore é rasa (poucos docs, só empenho/envio-TCE/despacho, sem fase de execução), é captura "
-        f"incompleta → 'indeterminado' e nota ≤4, NÃO risco alto. "
-        f"Dê atenção à fiscalização/relatório fotográfico e à plausibilidade física da entrega. "
-        f"Responda SOMENTE o JSON: {_SCHEMA}"
-    )
-    try:
-        txt = gerar(prompt, _SYS, 60.0)
-    except Exception as e:
-        # TimeoutError do futuro (60 s) vem sem argumentos: str(e) == "" e o log
-        # dizia só "erro LLM: ". O tipo é o que identifica a falha.
-        print(f"  [{numero_sei}] erro LLM: {type(e).__name__}: {str(e)[:80]}")
+# ── PRÉ-FILTRO DETERMINÍSTICO (11/11/2026) ───────────────────────────────────────────────────────────────
+# A regra decide SE há execução a julgar; o LLM julga O TEXTO da peça. Medido: 2.020 de 4.839 vereditos
+# (41,7%) eram "indeterminado", 1.314 deles com < 5 docs — sem atesto/medição/NF nos autos capturados não há
+# o que o LLM avaliar, e a chamada era gasta para dizer isso. Tipos = vocabulário canônico de `sei/fases.py`.
+TIPOS_EXECUCAO = ("aceite", "medicao", "nota_fiscal", "relatorio_fotografico", "fiscalizacao")
+SEM_DOC_EXECUCAO = "sem_documento_execucao"
+_TETO_TEXTO_DOC, _TETO_TEXTO_TOTAL = 4000, 12000
+
+
+def evidencia_execucao(numero_sei: str, documentos: list[dict]) -> dict:
+    """Há documento de execução? Fonte 1 = manifesto do `data/sei_arquivo` (36–71 docs por processo, com
+    texto); fonte 2 (sem arquivo) = a ficha, classificada pelo MESMO `fases.classificar` (o regex `_SINAIS`
+    casa "medi" em "medicamento"/"imediato" e não serve de árbitro). Devolve {tem, fonte, textos}."""
+    from compliance_agent.sei import acervo_texto, fases, manifesto_norm
+    man = manifesto_norm.carregar(numero_sei)
+    if man is not None:
+        norm = manifesto_norm.normalizar(man)
+        exec_docs = [d for d in norm["docs"] if d.get("tipo") in TIPOS_EXECUCAO]
+        textos, total = [], 0
+        for d in exec_docs:
+            if total >= _TETO_TEXTO_TOTAL:
+                break
+            t = acervo_texto.ler(man["_pasta"], d, min(_TETO_TEXTO_DOC, _TETO_TEXTO_TOTAL - total)).strip()
+            if t:
+                textos.append((d.get("tipo"), str(d.get("titulo") or "")[:120], t))
+                total += len(t)
+        return {"tem": bool(exec_docs), "fonte": "arquivo SEI", "textos": textos}
+    tem = any(fases.classificar(f"{d.get('tipo', '')} {d.get('ponto', '')}")[1] in TIPOS_EXECUCAO
+              for d in documentos if isinstance(d, dict))
+    return {"tem": tem, "fonte": "ficha SEI (sem arquivo local)", "textos": []}
+
+
+def _nota_0a10(v) -> int | None:
+    """Nota de risco só na escala 0–10. Fora dela é REJEITADA (None), não clampada: medido 11/11/2026, 21 notas
+    entre 70 e 100 — o clamp antigo fazia 75 virar 10, inventando risco máximo de uma escala desconhecida."""
+    if v is None or isinstance(v, bool):
         return None
-    r = _parse_json(txt) or {}
-    if r.get("execucao_comprovada") not in ("sim", "parcial", "nao", "indeterminado"):
-        # resposta sem veredito NUNCA sobrescreve um veredito: o upsert gravava NULL por cima (medido em
-        # 29/10/2026 no SEI-420001/004995/2025, ao reavaliar). Sem veredito anterior, a linha vazia segue
-        # sendo gravada — ela marca a TENTATIVA, e `_alvos` só a refaz depois de 7 dias.
-        ant = con.execute("SELECT execucao_comprovada FROM lex_execucao WHERE numero_sei=?", (numero_sei,)).fetchone()
-        if ant and ant[0]:
-            print(f"  [{numero_sei}] resposta do LLM sem veredito válido — mantido o anterior: {str(txt)[:120]!r}")
+    if isinstance(v, (int, float)):
+        x = float(v)
+    else:
+        m = re.fullmatch(r"\s*(-?\d+(?:[.,]\d+)?)\s*(?:/\s*10)?\s*", str(v))
+        if not m:
             return None
-    nota = r.get("nota_risco_execucao")
-    try:
-        nota = max(0, min(10, int(nota)))  # clamp 0-10: o LLM às vezes devolve fora de faixa/negativo
-    except Exception:
-        nota = None
-    r["nota_risco_execucao"] = nota  # verdict devolvido carrega a nota CLAMPADA (o log lia a crua, ex. 75)
-    try:
-        from compliance_agent import direcionamento_cerebro as _dc
-        modelo = _dc.ultimo_provedor or "desconhecido"
-    except Exception:
-        modelo = "desconhecido"
+        x = float(m.group(1).replace(",", "."))
+    return int(round(x)) if 0 <= x <= 10 else None
+
+
+def _exec_norm(v) -> str | None:
+    """'Não'/'NAO'/' sim ' → vocabulário da coluna (2 linhas com 'não' acentuado contaminavam agregados)."""
+    if not isinstance(v, str):
+        return v
+    import unicodedata
+    t = unicodedata.normalize("NFKD", v.strip().lower()).encode("ascii", "ignore").decode()
+    return t if t in ("sim", "parcial", "nao", "indeterminado") else v
+
+
+def _gravar(con, numero_sei, objeto, fl, r, nota, modelo):
     con.execute(
         """INSERT INTO lex_execucao (numero_sei,objeto,tem_prestacao_contas,tem_fiscalizacao,
             tem_relatorio_fotografico,tem_atesto_recebimento,tem_nota_fiscal,tem_medicao,
@@ -242,6 +254,81 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
          r.get("resumo"), modelo, _agora()),
     )
     con.commit()
+
+
+def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valores: str,
+                     documentos: list[dict], red_flags: list, gerar, obs_siafe: dict | None = None) -> dict | None:
+    fl = _flags(documentos)
+    ev = evidencia_execucao(numero_sei, documentos)
+    if not ev["tem"]:
+        ant = con.execute("SELECT execucao_comprovada FROM lex_execucao WHERE numero_sei=?",
+                          (numero_sei,)).fetchone() if con is not None else None
+        if ant and ant[0] and ant[0] != SEM_DOC_EXECUCAO:
+            # a regra não apaga juízo já dado sobre outro recorte; só não gasta LLM de novo
+            print(f"  [{numero_sei}] sem documento de execução ({ev['fonte']}) — mantido o veredito anterior")
+            return None
+        r = {"execucao_comprovada": SEM_DOC_EXECUCAO, "coerencia_objeto_evidencia": "indeterminado",
+             "indicios": [],
+             "duvidas": [f"Nenhum documento de execução (atesto, medição, nota fiscal, relatório fotográfico ou "
+                         f"fiscalização) na {ev['fonte']}: captura a completar ou fragilidade a verificar — "
+                         f"INDISPONÍVEL ≠ irregular."],
+             "nota_risco_execucao": None,
+             "resumo": "Sem documento de execução nos autos capturados; não submetido ao LLM (regra)."}
+        if con is not None:
+            _gravar(con, numero_sei, objeto, fl, r, None, "regra:sem_doc_execucao")
+        return {"numero_sei": numero_sei, **fl, "verdict": r, "deterministico": True}
+    bloco_texto = ""
+    if ev["textos"]:
+        bloco_texto = ("TEXTO DOS DOCUMENTOS DE EXECUÇÃO (íntegra capturada, cortada em "
+                       f"{_TETO_TEXTO_DOC} caracteres por peça — julgue SOBRE ESTE TEXTO):\n"
+                       + "\n".join(f"--- [{tp}] {tit} ---\n{tx}" for tp, tit, tx in ev["textos"])
+                       + "\n--- FIM ---\n\n")
+    docs_txt = "\n".join(f"- [{d.get('tipo','?')}] {d.get('ponto','')}" for d in documentos[:40] if isinstance(d, dict))
+    prompt = (
+        f"OBJETO CONTRATADO: {objeto or '(não informado na ficha)'}\n"
+        f"VALORES: {valores or '(n/d)'}\n"
+        f"RED FLAGS já anotadas: {red_flags or '[]'}\n"
+        f"{_bloco_siafe(numero_sei, obs_siafe)}"
+        f"PRESENÇA DETECTADA (1=sim): {fl}\n\n"
+        f"DOCUMENTOS DO PROCESSO ({len(documentos)}):\n{docs_txt or '(nenhum doc inventariado)'}\n\n"
+        f"{bloco_texto}"
+        f"LIÇÕES DE CALIBRAÇÃO DA PERÍCIA (aplique antes de pontuar):\n{_regras_calibracao()}\n\n"
+        f"Avalie se a execução do contrato está comprovada e coerente com o objeto/quantidade. "
+        f"Se a árvore é rasa (poucos docs, só empenho/envio-TCE/despacho, sem fase de execução), é captura "
+        f"incompleta → 'indeterminado' e nota ≤4, NÃO risco alto. "
+        f"Dê atenção à fiscalização/relatório fotográfico e à plausibilidade física da entrega. "
+        f"Responda SOMENTE o JSON: {_SCHEMA}"
+    )
+    try:
+        txt = gerar(prompt, _SYS, 60.0)
+    except Exception as e:
+        # TimeoutError do futuro (60 s) vem sem argumentos: str(e) == "" e o log
+        # dizia só "erro LLM: ". O tipo é o que identifica a falha.
+        print(f"  [{numero_sei}] erro LLM: {type(e).__name__}: {str(e)[:80]}")
+        return None
+    r = _parse_json(txt) or {}
+    r["execucao_comprovada"] = _exec_norm(r.get("execucao_comprovada"))
+    if r.get("execucao_comprovada") not in ("sim", "parcial", "nao", "indeterminado"):
+        # resposta sem veredito NUNCA sobrescreve um veredito: o upsert gravava NULL por cima (medido em
+        # 29/10/2026 no SEI-420001/004995/2025, ao reavaliar). Sem veredito anterior, a linha vazia segue
+        # sendo gravada — ela marca a TENTATIVA, e `_alvos` só a refaz depois de 7 dias.
+        ant = con.execute("SELECT execucao_comprovada FROM lex_execucao WHERE numero_sei=?", (numero_sei,)).fetchone()
+        if ant and ant[0]:
+            print(f"  [{numero_sei}] resposta do LLM sem veredito válido — mantido o anterior: {str(txt)[:120]!r}")
+            return None
+    bruta = r.get("nota_risco_execucao")
+    nota = _nota_0a10(bruta)
+    if nota is None and bruta is not None:
+        r["duvidas"] = list(r.get("duvidas") or []) + [f"nota do LLM fora da escala 0–10 ({str(bruta)[:12]}) — descartada"]
+    r["nota_risco_execucao"] = nota  # verdict devolvido carrega a nota VALIDADA (o log lia a crua, ex. 75)
+    try:
+        from compliance_agent import direcionamento_cerebro as _dc
+        modelo = _dc.ultimo_provedor or "desconhecido"
+        if getattr(_dc, "ultimo_modelo", "") and modelo == "gemini":
+            modelo = f"gemini:{_dc.ultimo_modelo}"   # versão exata (3-flash-preview/3.6/3.5/2.5) p/ auditar regressão
+    except Exception:
+        modelo = "desconhecido"
+    _gravar(con, numero_sei, objeto, fl, r, nota, modelo)
     # Execução frágil NÃO vai mais para `lex_feedback`: é achado DE CASO e já está aqui em `lex_execucao` (é
     # daqui que a seção 1-G do relatório lê). Lá virava 1 item por processo — 2.400 dos 3.074 abertos em
     # 28/10/2026 — numa fila de dificuldades DO SISTEMA que ninguém consome por processo.
@@ -276,7 +363,10 @@ def _contestados_por_siafe(con: sqlite3.Connection) -> list[str]:
 # "Já avaliado" = tem veredito, OU tentou há menos de 7 dias. Veredito VAZIO (resposta do LLM cortada — 616 em
 # 29/10/2026) não é avaliação: volta após 7 dias. Régua ÚNICA — o lex_bombeiros tinha a sua e contava o vazio
 # como feito ("periciados nesta passada: 0", medido 11/11/2026).
-SQL_JA_AVALIADO = ("SELECT numero_sei FROM lex_execucao WHERE execucao_comprovada IS NOT NULL "
+# O veredito da REGRA ("sem_documento_execucao") é revisto após 30 dias: o sweep SEI pode ter capturado o atesto.
+SQL_JA_AVALIADO = ("SELECT numero_sei FROM lex_execucao WHERE (execucao_comprovada IS NOT NULL "
+                   "AND NOT (execucao_comprovada = 'sem_documento_execucao' "
+                   "AND em < strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-30 days'))) "
                    "OR em >= strftime('%Y-%m-%dT%H:%M:%S', 'now', 'localtime', '-7 days')")
 
 
@@ -334,7 +424,20 @@ def main() -> None:
             rfl = json.loads(rf) if rf else []
             alvos = [(ns, obj or "", val or "", dl if isinstance(dl, list) else [], rfl)]
         else:
-            alvos = _alvos(con, a.top, a.reavaliar)
+            # o veredito da REGRA não consome vaga do LLM: completa o lote até `top` processos COM documento de
+            # execução (teto de 200 extras por passada — é leitura de disco, mas o slot divide a VM com o sweep SEI)
+            alvos, vistos, n_llm = [], set(), 0
+            while n_llm < a.top and len(vistos) < a.top + 200:
+                lote = [x for x in _alvos(con, a.top + len(vistos), a.reavaliar) if x[0] not in vistos]
+                if not lote:
+                    break
+                for x in lote:
+                    vistos.add(x[0])
+                    alvos.append(x)
+                    if evidencia_execucao(x[0], x[3])["tem"]:
+                        n_llm += 1
+                        if n_llm >= a.top:
+                            break
         if not alvos:
             print("nada a avaliar (todas as fichas com docs já avaliadas; use --reavaliar).")
             return
