@@ -452,7 +452,6 @@ def test_ciclo_mira_favorecidos_sancionados():
     if not _tem_sqlalchemy():
         return
     from sqlalchemy import text
-    from compliance_agent.database.models import OrdemBancaria
     from compliance_agent.nucleo.ciclo import _periciar_base
 
     s = _sessao_ob_memoria()
@@ -463,11 +462,14 @@ def test_ciclo_mira_favorecidos_sancionados():
     s.execute(text(
         "INSERT INTO sancoes_federais VALUES ('CEIS','11222333000181','X LTDA',"
         "'Suspensão','2025-01-01','2027-01-01','TCU','DF','','')"))
-    # OB pequena (ficaria fora do top por valor) de favorecido sancionado
-    s.add(OrdemBancaria(numero_ob="2026OB00009", data_emissao=date(2026, 5, 1),
-                        ug_codigo="290100", favorecido_cpf="11222333000181",
-                        favorecido_nome="X LTDA", valor=120_000.0,
-                        tipo_ob="Saúde", categoria="tfe_ob"))
+    # OB pequena (ficaria fora do top por valor) de favorecido sancionado — fonte SIAFE desde 11/11/2026
+    # (o ciclo não lê mais o espelho TFE `ordens_bancarias`)
+    s.execute(text(
+        "CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, data_emissao TEXT,"
+        " status TEXT, credor TEXT, nome_credor TEXT, processo TEXT, valor REAL, exercicio INTEGER)"))
+    s.execute(text(
+        "INSERT INTO ob_orcamentaria_siafe VALUES ('2026OB00009','290100','01/05/2026','Contabilizado',"
+        "'11222333000181','X LTDA','',120000.0,2026)"))
     s.commit()
     r = _periciar_base(s, limite=5)
     assert r["pericias_novas"] >= 1

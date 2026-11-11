@@ -282,13 +282,14 @@ def periciar_ob(session, ob, enriquecer: bool = False) -> Laudo:
         # SEMPRE ob:<id>: numero_ob NÃO é único (cada UG numera as suas OBs) —
         # com numero_ob como chave, OBs de UGs diferentes colidiam na memória
         # pericial, no dedup do ciclo e no /veredito.
-        identificador=f"ob:{getattr(ob, 'id', '')}",
+        # OB do SIAFE (ciclo, 11/11/2026) traz a própria chave: siafe:<numero_ob>:<ug>:<exercício>
+        identificador=getattr(ob, "referencia_pericia", None) or f"ob:{getattr(ob, 'id', '')}",
         objeto=getattr(ob, "observacao", "") or "",
         orgao=getattr(ob, "ug_nome", "") or "",
         valor=getattr(ob, "valor", None),
         data=getattr(ob, "data_emissao", None) or getattr(ob, "data_pagamento", None),
         categoria=_categoria_de_ob(ob),
-        fonte="tfe_ob",
+        fonte=getattr(ob, "fonte_pericia", None) or "tfe_ob",
     )
     return periciar(contratacao=contratacao, fornecedor=fornecedor,
                     usar_memoria=True)
