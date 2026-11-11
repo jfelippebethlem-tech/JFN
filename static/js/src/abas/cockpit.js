@@ -29,6 +29,7 @@ import {_redMotion, _v60, _v61} from '../capacidade/estado.js';
 import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
 import {mapaMontar} from '../mapa/territorio.js';
+import {motoresMontar} from '../ui/aovivo.js';
 import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
 import {energiaLigar} from '../cena/energia.js';
@@ -100,7 +101,8 @@ export async function renderCockpit(){
   /* v61: o mapa do território (centro-esquerda) e a coluna do reator (direita) entram ANTES do
      resto; a mesa de vigília antiga segue no DOM, oculta pelo CSS, e o laço dela não é iniciado. */
   const v61=_v61?`<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
-    <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div></aside>`:'';
+    <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
+      <button type="button" class="chip c61-ir-motores" onclick="document.getElementById('c61-motores').scrollIntoView({behavior:'smooth',block:'start'})">Motores · ver todos</button></aside>`:'';
   const html=`<div class="ck${_v61?' ck61':''}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
@@ -139,6 +141,7 @@ export async function renderCockpit(){
     <div class="ck-grid" id="ck-grid"></div>
     <canvas class="ck-energia" id="ck-energia" aria-hidden="true"></canvas>
     </div>
+    ${_v61?'<section class="c61-motores" id="c61-motores" aria-labelledby="c61-motores-t"></section>':''}
     ${blocoComandosMestres()}
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
   /* v48: quem monta o cockpit e o ir(), DEPOIS de pintar — nao um timer daqui.
@@ -184,7 +187,7 @@ export function ckBoot(){
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
-  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));}   // v61: o reator vivo no lugar da mesa
+  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));mapaMontar($('c61-mapa'));motoresMontar($('c61-motores'));}   // v61: o reator vivo no lugar da mesa
   else nucleoStart();
   /* v59 · a órbita. DEPOIS do `nucleoStart` e do grid preenchido: ela mede a geometria dos oito
      instrumentos e do núcleo, e medir antes de os cartões existirem daria oito retângulos de

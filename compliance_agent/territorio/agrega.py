@@ -19,7 +19,7 @@ from compliance_agent.territorio import base
 from compliance_agent.territorio.geo import nome_municipio, ras_por_ap
 
 PERIODOS = {"vigentes": "status='em_execucao'", "2023": "(vig_fim IS NULL OR vig_fim>='2023-01-01')", "tudo": "1=1"}
-_COLS = ("COUNT(*) n_contratos, SUM(status='em_execucao') n_em_execucao, SUM(status<>'em_execucao') n_executados, "
+_COLS = ("COUNT(*) n_contratos, SUM(status='em_execucao') n_em_execucao, SUM(status='executado') n_executados, SUM(status='rescindido') n_rescindidos, "
          "COALESCE(SUM(valor),0) valor_contratado, COALESCE(SUM(CASE WHEN status='em_execucao' THEN valor END),0) valor_em_execucao, "
          "SUM(pago) pago, SUM(CASE WHEN pago IS NOT NULL THEN valor END) valor_com_pago, SUM(pago IS NOT NULL) n_com_pago")
 
@@ -43,7 +43,7 @@ def por_municipio(c: sqlite3.Connection, periodo: str = "tudo") -> list[dict]:
         f"SELECT cod_ibge, {_COLS} FROM territorio_contrato_estado WHERE cod_ibge IS NOT NULL AND multi=0 AND {w} GROUP BY cod_ibge")}
     out = []
     for cod, nome in sorted(nomes.items()):
-        d = por.get(cod) or {"cod_ibge": cod, "n_contratos": 0, "n_em_execucao": 0, "n_executados": 0, "valor_contratado": 0.0,
+        d = por.get(cod) or {"cod_ibge": cod, "n_contratos": 0, "n_em_execucao": 0, "n_executados": 0, "n_rescindidos": 0, "valor_contratado": 0.0,
                              "valor_em_execucao": 0.0, "pago": None, "n_com_pago": 0, "pct_executado": None, "n_alertas": None}
         d["nome"], d["n_multi"] = nome, multi.get(cod, 0)
         out.append(d)
@@ -60,7 +60,7 @@ def por_ap(c: sqlite3.Connection, periodo: str = "tudo") -> list[dict]:
         f"SELECT ap, {_COLS} FROM territorio_contrato_pcrj WHERE ap IS NOT NULL AND multi=0 AND {w} GROUP BY ap")}
     out = []
     for ap, ras in ras_por_ap().items():
-        d = por.get(ap) or {"ap": ap, "n_contratos": 0, "n_em_execucao": 0, "n_executados": 0, "valor_contratado": 0.0,
+        d = por.get(ap) or {"ap": ap, "n_contratos": 0, "n_em_execucao": 0, "n_executados": 0, "n_rescindidos": 0, "valor_contratado": 0.0,
                             "valor_em_execucao": 0.0, "pago": None, "n_com_pago": 0, "pct_executado": None, "n_alertas": None}
         d["nome"], d["ras"], d["n_multi"] = f"AP {ap}", ras, multi.get(ap, 0)
         out.append(d)

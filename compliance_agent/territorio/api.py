@@ -76,7 +76,7 @@ def _ficha(c, tabela: str, onde: str, args: tuple, periodo: str, conf_texto: str
     k = dict(c.execute(f"SELECT {agrega._COLS} FROM {tabela} WHERE multi=0 AND {w}", args).fetchone())
     vp = k.pop("valor_com_pago", None)
     k["pct_executado"] = (k["pago"] / vp) if k.get("pago") is not None and vp else None
-    for z in ("n_contratos", "n_em_execucao", "n_executados", "n_com_pago"):
+    for z in ("n_contratos", "n_em_execucao", "n_executados", "n_rescindidos", "n_com_pago"):
         k[z] = k[z] or 0
     orgaos = [dict(r) for r in c.execute(
         f"SELECT orgao, COUNT(*) n, COALESCE(SUM(valor),0) valor FROM {tabela} WHERE multi=0 AND {w} GROUP BY orgao ORDER BY valor DESC LIMIT 10", args)]

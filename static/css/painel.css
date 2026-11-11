@@ -4750,7 +4750,8 @@ html.v61 .rt-no{all:unset;position:absolute;left:0;top:0;display:flex;align-item
   color:var(--ink-2);white-space:nowrap;will-change:transform;-webkit-tap-highlight-color:transparent}
 html.v61 .rt-no i{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 0 3px rgba(14,158,116,.2),0 0 8px rgba(14,158,116,.5)}
-html.v61 .rt-no span{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.86);border:1px solid var(--line)}
+html.v61 .rt-no span{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.86);border:1px solid var(--line);
+  max-width:96px;overflow:hidden;text-overflow:ellipsis}
 html.v61 .rt-no.esq{flex-direction:row-reverse;margin-left:0;transform-origin:0 0}
 html.v61 .rt-no.esq span{position:absolute;right:calc(100% - 2px)}
 html.v61 .rt-no::after{content:"";position:absolute;inset:-12px}             /* alvo de toque ≥ 44px */
@@ -4788,7 +4789,7 @@ html.v61 .mt-evs li .num{flex:0 0 auto;font-size:.75rem;color:var(--muted)}
   html.v61 .ck61 .ck-hero{grid-column:9 / 13;grid-row:2;align-self:start}
   html.v61 .ck61 #ck-grid{grid-column:1 / -1;grid-row:3}
   html.v61 .c61-reator{grid-template-columns:minmax(0,1fr);justify-items:center;padding:18px 16px 14px;text-align:center}
-  html.v61 .v61-reator{width:min(100%,264px)}
+  html.v61 .v61-reator{width:min(calc(100% - 200px),236px)}          /* sobra 100px de cada lado para o nome do agente em órbita */
 }
 /* ══ v61 · Fase 6 — MAPA DO TERRITÓRIO ═════════════════════════════════════════════════════════
    `.tm` é o hospedeiro (`#c61-mapa`), montado por `mapa/territorio.js`. Mesa holográfica clara:
@@ -4935,3 +4936,82 @@ html.v61 .tf-al li{padding:6px 0;border-top:1px solid var(--line);font-size:.75r
   html.v61 .tm-cam, html.v61 .tm-g, html.v61 .tm-a{transition:none}
   html.v61 .tm-ficha{animation:none}
 }
+/* ══ v61 · Fase 8 — AO VIVO: ticker, motores, selo de conexão ══════════════════════════════════
+   Ticker: faixa de 28px sob o cabeçalho, em todas as abas (o trilho de abas e o cabeçalho de tabela
+   grudados descem 28px). Motores: grade de cartões no Início. Tudo vem de `/api/ao-vivo`.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61{--tk:28px}
+html.v61 #v61-ticker{order:0;position:sticky;top:64px;z-index:19;height:var(--tk);display:flex;align-items:center;gap:12px;
+  padding:0 24px;overflow:hidden;cursor:pointer;font-size:.75rem;line-height:1;color:var(--ink-2);
+  --faixa:rgba(232,241,252,.94);background:var(--faixa);box-shadow:0 0 0 100vmax var(--faixa);clip-path:inset(0 -100vmax);
+  border-bottom:1px solid var(--line);-webkit-tap-highlight-color:transparent}
+html.v61 #v61-ticker:focus-visible{outline:2px solid var(--ion);outline-offset:-2px}
+html.v61 .tk-selo{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.04em;color:var(--ink)}
+html.v61 .tk-selo b{font-weight:600;font-size:.6875rem}
+html.v61 .tk-selo i{width:7px;height:7px;border-radius:50%;background:var(--ink-3)}
+html.v61 .tk-selo.tk-vivo i{background:var(--ok);animation:v61pulsa 1.6s ease-in-out infinite}
+html.v61 .tk-selo.tk-pausa, html.v61 .tk-selo.tk-indisp, html.v61 .tk-selo.tk-lendo{color:var(--muted);letter-spacing:0}
+html.v61 .tk-selo.tk-indisp i{background:none;box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+@keyframes v61pulsa{0%,100%{box-shadow:0 0 0 0 rgba(14,158,116,.45)}50%{box-shadow:0 0 0 5px rgba(14,158,116,0)}}
+html.v61 .tk-lane{flex:1 1 auto;min-width:0;display:flex;justify-content:flex-end;gap:22px;margin:0;padding:0;list-style:none;
+  white-space:nowrap;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 48px);mask-image:linear-gradient(90deg,transparent,#000 48px)}
+html.v61 .tk-lane li{flex:0 0 auto;display:inline-flex;align-items:baseline;gap:6px}
+html.v61 .tk-lane li .num{font-size:.6875rem;color:var(--muted)}
+html.v61 .tk-lane li b{font-weight:600;color:var(--ink)}
+html.v61 .tk-lane li.t-falha, html.v61 .tk-lane li.t-falha b{color:var(--crit-text)}
+html.v61 .tk-lane li.t-achado b{color:var(--ion-text)}
+html.v61 .tk-lane li.tk-vz{color:var(--muted)}
+html.v61 .tk-lane li.novo{animation:v61tk var(--dur-3,480ms) var(--ease) both}
+@keyframes v61tk{from{transform:translateX(64px);opacity:0}}
+html.v61 #v61-ticker.pausado .tk-lane{opacity:.55}
+/* o que gruda abaixo desce a altura do ticker */
+html.v61 nav.tabs{top:calc(64px + var(--tk))}
+@media (min-width:1100px){html.v61 .card > table > thead th{top:calc(104px + var(--tk))}}
+@media (max-width:760px){
+  html.v61 #v61-ticker{top:56px;padding:0 16px;gap:10px}
+  html.v61 nav.tabs{top:calc(56px + var(--tk))}
+  html.v61 .tk-lane{gap:16px}
+  html.v61 .tk-selo{max-width:46%;min-width:0}
+  html.v61 .tk-selo b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media (prefers-reduced-motion:reduce){
+  html.v61 .tk-selo.tk-vivo i, html.v61 .tk-lane li.novo{animation:none}
+}
+
+/* ── chip e grade de motores ── */
+html.v61 .c61-ir-motores{justify-self:start}
+html.v61 .c61-motores{order:4}
+html.v61 .c61-motores h2.sec{margin-top:8px}
+html.v61 .mt-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+html.v61 .mt-sep{grid-column:1 / -1;margin:8px 0 -2px;font-size:.8125rem;font-weight:600;color:var(--muted)}
+html.v61 .mt-indisp{grid-column:1 / -1;padding:14px 16px;border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);
+  font-size:.875rem;color:var(--ink-2)}
+html.v61 .mt-indisp b{color:var(--ink)}
+html.v61 .mt-card{display:grid;gap:7px;align-content:start;padding:12px 14px;min-width:0;border-radius:var(--radius);border:1px solid var(--line);
+  background:var(--surface);box-shadow:var(--sh);cursor:pointer;transition:border-color var(--dur-1,120ms) var(--ease),transform var(--dur-1,120ms) var(--ease)}
+html.v61 .mt-card:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+html.v61 .mt-card:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+/* nome numa linha, estado na de baixo: lado a lado o estado ("agendado · próx. 07:40") engolia o nome */
+html.v61 .mt-card header{all:unset;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:3px 8px;min-width:0}
+html.v61 .mt-card header b{flex:1 1 auto;min-width:0;font-size:.875rem;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.v61 .mt-card .mt-rot{grid-column:2;font-family:var(--f-mono);font-size:.6875rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.v61 .mt-card .mt-pt{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+html.v61 .mt-card.e-rodando .mt-pt{background:var(--ok);animation:v61pulsa 1.6s ease-in-out infinite}
+html.v61 .mt-card.e-rodando .mt-rot{color:var(--ok-text)}
+html.v61 .mt-card.e-agendado .mt-pt{background:var(--ion)}
+html.v61 .mt-card.e-falhou{border-color:rgba(217,58,64,.45);background:linear-gradient(0deg,rgba(217,58,64,.05),rgba(217,58,64,.05)),var(--surface)}
+html.v61 .mt-card.e-falhou .mt-pt{background:var(--crit)}
+html.v61 .mt-card.e-falhou .mt-rot{color:var(--crit-text);font-weight:600}
+html.v61 .mt-card.e-indisponivel .mt-pt{background:none;box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+html.v61 .mt-card .mt-barra{margin:0}
+html.v61 .mt-spark{width:100%;height:28px;display:block}
+html.v61 .mt-ult{font-size:.75rem;line-height:1.35;color:var(--ink-2);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.7em}
+html.v61 .mt-ult .num{color:var(--muted)}
+html.v61 .mt-prox{font-size:.6875rem;color:var(--muted)}
+html.v61 .mt-evs li.t-falha{color:var(--crit-text)}
+html.v61 .mt-evs li b{font-weight:600;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){html.v61 .mt-card.e-rodando .mt-pt{animation:none}}
+@media (max-width:760px){html.v61 .mt-grade{grid-template-columns:1fr}}
+
+/* a pílula "Ao vivo · N" da v60 (holofeed do barramento antigo) sai: o ticker é o fio ao vivo da v61 */
+html.v61 #holofeed{display:none !important}

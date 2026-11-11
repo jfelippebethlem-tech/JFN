@@ -5,6 +5,7 @@
  * Não tem efeito de topo (o boot é ordenado pelo entrypoint, não pelo import).
  */
 import {_v61, _v61flag} from '../capacidade/estado.js';
+import {tickerMontar, abrirHistorico} from './aovivo.js';
 
 /* glifos de linha próprios (traço 1.6, cantos redondos, caixa 24) — o set da casa não tem sol/lua */
 const _SOL = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/></svg>';
@@ -15,6 +16,11 @@ export function v61Boot() {
   _tema();
   if (!_v61) return;
   _fundo();
+  tickerMontar();
+  /* "Atividade ao vivo" da folha "⋯" abre o histórico da v61 (o holofeed antigo fica oculto) */
+  document.addEventListener('click', e => {
+    if (e.target && e.target.closest && e.target.closest('[data-v60-feed]')) { e.stopPropagation(); abrirHistorico(); }
+  }, true);
 }
 
 /** Linha "Tema escuro / Tema claro" da folha "⋯" (o `ui/v60.js` a encaixa no menu). */

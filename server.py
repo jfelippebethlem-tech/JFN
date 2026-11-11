@@ -1321,6 +1321,11 @@ from compliance_agent.territorio import api as _r_territorio  # noqa: E402
 
 app.include_router(_r_territorio.router)
 
+# v61: AO VIVO — estado dos motores (systemd, travas, logs por lista branca) e o fio SSE. Só leitura.
+from compliance_agent.aovivo import api as _r_aovivo  # noqa: E402
+
+app.include_router(_r_aovivo.router)
+
 
 def main():
     global _args

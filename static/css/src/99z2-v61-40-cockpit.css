@@ -26,7 +26,8 @@ html.v61 .rt-no{all:unset;position:absolute;left:0;top:0;display:flex;align-item
   color:var(--ink-2);white-space:nowrap;will-change:transform;-webkit-tap-highlight-color:transparent}
 html.v61 .rt-no i{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--ok);
   box-shadow:0 0 0 3px rgba(14,158,116,.2),0 0 8px rgba(14,158,116,.5)}
-html.v61 .rt-no span{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.86);border:1px solid var(--line)}
+html.v61 .rt-no span{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.86);border:1px solid var(--line);
+  max-width:96px;overflow:hidden;text-overflow:ellipsis}
 html.v61 .rt-no.esq{flex-direction:row-reverse;margin-left:0;transform-origin:0 0}
 html.v61 .rt-no.esq span{position:absolute;right:calc(100% - 2px)}
 html.v61 .rt-no::after{content:"";position:absolute;inset:-12px}             /* alvo de toque ≥ 44px */
@@ -64,5 +65,5 @@ html.v61 .mt-evs li .num{flex:0 0 auto;font-size:.75rem;color:var(--muted)}
   html.v61 .ck61 .ck-hero{grid-column:9 / 13;grid-row:2;align-self:start}
   html.v61 .ck61 #ck-grid{grid-column:1 / -1;grid-row:3}
   html.v61 .c61-reator{grid-template-columns:minmax(0,1fr);justify-items:center;padding:18px 16px 14px;text-align:center}
-  html.v61 .v61-reator{width:min(100%,264px)}
+  html.v61 .v61-reator{width:min(calc(100% - 200px),236px)}          /* sobra 100px de cada lado para o nome do agente em órbita */
 }

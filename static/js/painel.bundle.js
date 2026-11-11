@@ -837,6 +837,313 @@
     });
   }
 
+  // static/js/src/aovivo/formato.js
+  function haQuanto(iso, agora = Date.now()) {
+    const t = iso ? Date.parse(iso) : NaN;
+    if (!isFinite(t)) return "";
+    const s = Math.max(0, (agora - t) / 1e3);
+    if (s < 90) return "há instantes";
+    if (s < 3600) return `há ${Math.round(s / 60)} min`;
+    if (s < 86400) return `há ${Math.round(s / 3600)}h`;
+    return `há ${Math.round(s / 86400)} d`;
+  }
+  function quando(iso, agora = /* @__PURE__ */ new Date()) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return "";
+    const p = (n) => String(n).padStart(2, "0"), hm = `${p(d.getHours())}:${p(d.getMinutes())}`;
+    return d.toDateString() === agora.toDateString() ? hm : `${p(d.getDate())}/${p(d.getMonth() + 1)} ${hm}`;
+  }
+  function rotuloEstado(m) {
+    if (!m) return "INDISPONÍVEL";
+    if (m.estado === "rodando") return "rodando" + (typeof m.progresso === "number" ? ` · ${Math.round(m.progresso * 100)}%` : "");
+    if (m.estado === "falhou") {
+      const h = haQuanto(m.desde);
+      return "falhou" + (h ? " " + h : "");
+    }
+    if (m.estado === "agendado") {
+      const q = quando(m.proxima);
+      return "agendado" + (q ? ` · próx. ${q}` : "");
+    }
+    if (m.estado === "ocioso") return "ocioso";
+    return "INDISPONÍVEL";
+  }
+  async function lerEstado(ms = 4e3) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
+    try {
+      const r = await fetch("/api/ao-vivo/estado", { credentials: "same-origin", signal: c.signal });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j && Array.isArray(j.motores) ? j : null;
+    } catch (_) {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // static/js/src/aovivo/estado.js
+  var aoVivo = {
+    motores: [],
+    eventos: [],
+    disponivel: null,
+    conectado: false,
+    atualizadoEm: null,
+    fontes: null
+  };
+  var _ouv = /* @__PURE__ */ new Set();
+  var JANELA = 5 * 60 * 1e3;
+  var TETO = 120;
+  var _ligado = false;
+  var _es = null;
+  var _poll = 0;
+  function aoVivoOuvir(fn) {
+    _ouv.add(fn);
+    return () => _ouv.delete(fn);
+  }
+  function _avisa(tipo, dado) {
+    for (const fn of [..._ouv]) {
+      try {
+        fn(tipo, dado);
+      } catch (_) {
+      }
+    }
+  }
+  function eventosPorMinuto(motor) {
+    const de = Date.now() - JANELA;
+    let n = 0;
+    for (const e of aoVivo.eventos) if (e._ms >= de && (!motor || e.motor === motor)) n++;
+    return n / 5;
+  }
+  var motoresRodando = () => aoVivo.motores.filter((m) => m.estado === "rodando" && m.classe !== "infra");
+  function _snapshot(j) {
+    if (!j) {
+      if (aoVivo.disponivel === null) aoVivo.disponivel = false;
+      _avisa("estado");
+      return;
+    }
+    aoVivo.disponivel = true;
+    aoVivo.motores = j.motores;
+    aoVivo.atualizadoEm = j.atualizado_em || null;
+    aoVivo.fontes = j.fontes || null;
+    if (Array.isArray(j.eventos)) for (const e of j.eventos) _entra(e, false);
+    _avisa("estado");
+  }
+  function _entra(e, avisar) {
+    if (!e || !e.id || aoVivo.eventos.some((x) => x.id === e.id)) return;
+    e._ms = Date.parse(e.t) || Date.now();
+    aoVivo.eventos.push(e);
+    aoVivo.eventos.sort((a, b) => a._ms - b._ms);
+    if (aoVivo.eventos.length > TETO) aoVivo.eventos.splice(0, aoVivo.eventos.length - TETO);
+    if (avisar) _avisa("evento", e);
+  }
+  function _fio(ok) {
+    if (aoVivo.conectado !== ok) {
+      aoVivo.conectado = ok;
+      _avisa("fio", ok);
+    }
+  }
+  function aoVivoLigar() {
+    if (_ligado) return;
+    _ligado = true;
+    lerEstado().then(_snapshot);
+    const abrir = () => {
+      if (!window.EventSource || _es) return;
+      try {
+        _es = new EventSource("/api/ao-vivo/stream");
+      } catch (_) {
+        _es = null;
+        return;
+      }
+      _es.addEventListener("open", () => _fio(true));
+      _es.addEventListener("estado", (ev) => {
+        try {
+          _snapshot(JSON.parse(ev.data));
+          _fio(true);
+        } catch (_) {
+        }
+      });
+      _es.addEventListener("evento", (ev) => {
+        try {
+          _entra(JSON.parse(ev.data), true);
+          _fio(true);
+        } catch (_) {
+        }
+      });
+      _es.addEventListener("error", () => {
+        _fio(false);
+        if (_es && _es.readyState === 2) {
+          _es = null;
+        }
+      });
+    };
+    abrir();
+    _poll = setInterval(() => {
+      if (document.hidden || aoVivo.conectado) return;
+      lerEstado().then((j) => {
+        _snapshot(j);
+        if (j) abrir();
+      });
+    }, 3e4);
+  }
+
+  // static/js/src/ui/aovivo.js
+  function abrirMotor(id) {
+    const m = aoVivo.motores.find((x) => x.id === id), ov = $("ov"), sh = $("sheet");
+    if (!m || !ov || !sh) return;
+    const evs = aoVivo.eventos.filter((e) => e.motor === id).slice(-8).reverse();
+    const linha = (r, v) => v ? `<div class="mt-l"><span>${r}</span><b>${esc(v)}</b></div>` : "";
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+    <div class="mt-ficha e-${esc(m.estado)}">
+      <h3 class="v61-disp"><i class="mt-pt" aria-hidden="true"></i>${esc(m.nome)}</h3>
+      <div class="mt-estado">${esc(rotuloEstado(m))}</div>
+      ${typeof m.progresso === "number" ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(m.progresso * 100)}"><i style="width:${Math.round(m.progresso * 100)}%"></i></div>` : ""}
+      ${linha("O que faz", m.descricao)}
+      ${linha("Desde", m.desde ? `${quando(m.desde)} (${haQuanto(m.desde)})` : "")}
+      ${linha("Próxima execução", quando(m.proxima))}
+      ${linha("Unidade", m.unidade)}
+      ${linha("Último código de saída", m.saida == null ? "" : String(m.saida))}
+      <h4>Últimos eventos</h4>
+      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li><span class="num">${esc(quando(e.t))}</span>${esc(e.texto)}</li>`).join("")}</ul>` : '<div class="dim">Sem evento registrado nesta janela.</div>'}
+    </div>`;
+    ov.classList.add("on");
+  }
+  var _hm = (iso) => {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return "";
+    const p = (n) => String(n).padStart(2, "0");
+    return `${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+  var _nome = (id) => (aoVivo.motores.find((m) => m.id === id) || {}).nome || id;
+  var _pausado = false;
+  function tickerMontar() {
+    if ($("v61-ticker")) return;
+    const cab = document.querySelector(".wrap > header");
+    if (!cab) return;
+    const t = document.createElement("div");
+    t.id = "v61-ticker";
+    t.setAttribute("role", "button");
+    t.tabIndex = 0;
+    t.title = "Atividade dos motores ao vivo — toque para pausar e ver o histórico";
+    t.innerHTML = '<span class="tk-selo" id="tk-selo"><i aria-hidden="true"></i><b>AO VIVO</b></span><ul class="tk-lane" id="tk-lane" aria-live="off"></ul>';
+    cab.insertAdjacentElement("afterend", t);
+    const abrir = () => {
+      _pausado = true;
+      t.classList.add("pausado");
+      abrirHistorico();
+    };
+    t.addEventListener("click", abrir);
+    t.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        abrir();
+      }
+    });
+    const ov = $("ov");
+    if (ov) new MutationObserver(() => {
+      if (!ov.classList.contains("on") && _pausado) {
+        _pausado = false;
+        t.classList.remove("pausado");
+        _tickerPinta();
+      }
+    }).observe(ov, { attributes: true, attributeFilter: ["class"] });
+    aoVivoOuvir(() => _tickerPinta());
+    aoVivoLigar();
+    _tickerPinta();
+  }
+  var _ultimoNoTicker = 0;
+  function _tickerPinta() {
+    const selo = $("tk-selo"), lane = $("tk-lane");
+    if (!selo || !lane) return;
+    const est = aoVivo.disponivel === false ? "indisp" : aoVivo.disponivel === null ? "lendo" : aoVivo.conectado ? "vivo" : "pausa";
+    selo.className = "tk-selo tk-" + est;
+    selo.querySelector("b").textContent = { vivo: "AO VIVO", pausa: "ao vivo pausado · reconectando", lendo: "ao vivo: lendo…", indisp: "ao vivo: INDISPONÍVEL" }[est];
+    if (_pausado) return;
+    const evs = aoVivo.eventos.slice(-6);
+    if (!evs.length) {
+      lane.innerHTML = `<li class="tk-vz">${est === "indisp" ? "a API dos motores não respondeu" : est === "lendo" ? "" : "sem evento na última hora — os motores seguem como estão"}</li>`;
+      return;
+    }
+    const novo = evs[evs.length - 1].id !== _ultimoNoTicker;
+    _ultimoNoTicker = evs[evs.length - 1].id;
+    lane.innerHTML = evs.map((e, i) => `<li class="t-${esc(e.tipo)}${novo && i === evs.length - 1 ? " novo" : ""}"><span class="num">${_hm(e.t)}</span><b>${esc(_nome(e.motor))}</b>${esc(e.texto)}</li>`).join("");
+  }
+  function abrirHistorico() {
+    const ov = $("ov"), sh = $("sheet");
+    if (!ov || !sh) return;
+    const evs = aoVivo.eventos.slice(-60).reverse();
+    const r = motoresRodando().length, f = aoVivo.motores.filter((m) => m.estado === "falhou").length;
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+    <div class="mt-ficha"><h3 class="v61-disp">Atividade dos motores</h3>
+      <div class="mt-estado">${aoVivo.disponivel === false ? "ao vivo: INDISPONÍVEL" : `${r} rodando · ${f} com falha · ${aoVivo.conectado ? "fio conectado" : "fio caído — relendo a cada 30 s"}`}</div>
+      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li class="t-${esc(e.tipo)}"><span class="num">${esc(quando(e.t))}</span><span><b>${esc(_nome(e.motor))}</b> — ${esc(e.texto)}</span></li>`).join("")}</ul>` : '<div class="dim">Nenhum evento registrado na última hora.</div>'}
+    </div>`;
+    ov.classList.add("on");
+  }
+  function motoresMontar(host) {
+    if (!host) return;
+    host.innerHTML = `<h2 class="sec" id="c61-motores-t">Motores <span class="cnt" id="mt-cnt"></span></h2><div class="mt-grade" id="mt-grade"></div>`;
+    const pinta = () => {
+      if (!host.isConnected) {
+        parar();
+        return;
+      }
+      _motoresPinta(host);
+    };
+    const parar = aoVivoOuvir(pinta);
+    host.addEventListener("click", (e) => {
+      const c = e.target.closest("[data-motor]");
+      if (c) abrirMotor(c.dataset.motor);
+    });
+    host.addEventListener("keydown", (e) => {
+      const c = e.target.closest("[data-motor]");
+      if (c && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        abrirMotor(c.dataset.motor);
+      }
+    });
+    pinta();
+  }
+  var _ORDEM = { rodando: 0, falhou: 1, agendado: 2, ocioso: 3, indisponivel: 4 };
+  function _motoresPinta(host) {
+    const g = host.querySelector("#mt-grade"), cnt = host.querySelector("#mt-cnt");
+    if (!g) return;
+    if (aoVivo.disponivel !== true) {
+      cnt.textContent = "";
+      g.innerHTML = `<div class="mt-indisp">${aoVivo.disponivel === null ? "Lendo o estado dos motores…" : "<b>motores: INDISPONÍVEL</b> — a API <code>/api/ao-vivo/estado</code> não respondeu (a rota entra no próximo reinício do serviço)."}</div>`;
+      return;
+    }
+    const ms = [...aoVivo.motores].sort((a, b) => (a.classe === "infra") - (b.classe === "infra") || _ORDEM[a.estado] - _ORDEM[b.estado] || a.nome.localeCompare(b.nome, "pt-BR"));
+    const n = (c) => ms.filter((m) => m.classe !== "infra" && m.estado === c).length;
+    cnt.textContent = `${n("rodando")} rodando · ${n("falhou")} com falha · ${n("agendado")} agendados`;
+    let infra = false;
+    g.innerHTML = ms.map((m) => {
+      const sep = !infra && m.classe === "infra" ? (infra = true, '<div class="mt-sep">Serviços de apoio</div>') : "";
+      const pr = typeof m.progresso === "number" ? Math.round(m.progresso * 100) : null;
+      return `${sep}<article class="mt-card e-${esc(m.estado)}" data-motor="${esc(m.id)}" tabindex="0" role="button" aria-label="${esc(m.nome)}: ${esc(rotuloEstado(m))}">
+      <header><i class="mt-pt" aria-hidden="true"></i><b>${esc(m.nome)}</b><span class="mt-rot">${esc(rotuloEstado(m))}</span></header>
+      ${pr != null ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pr}"><i style="width:${pr}%"></i></div>` : ""}
+      <canvas class="mt-spark" width="240" height="28" data-at="${(m.atividade || []).join(",")}" aria-hidden="true"></canvas>
+      <div class="mt-ult">${m.ultimo_evento ? `<span class="num">${_hm(m.ultimo_evento.t)}</span> ${esc(m.ultimo_evento.texto)}` : "sem evento na última hora"}</div>
+      <div class="mt-prox">${m.proxima ? 'próxima: <span class="num">' + esc(quando(m.proxima)) + "</span>" : m.estado === "falhou" && m.desde ? 'desde <span class="num">' + esc(quando(m.desde)) + "</span>" : "&nbsp;"}</div>
+    </article>`;
+    }).join("");
+    g.querySelectorAll("canvas.mt-spark").forEach(_spark);
+  }
+  function _spark(cv) {
+    const at = (cv.dataset.at || "").split(",").map(Number), ctx = cv.getContext("2d"), W2 = cv.width, H2 = cv.height;
+    const mx = Math.max(1, ...at), w = W2 / 60;
+    ctx.clearRect(0, 0, W2, H2);
+    ctx.fillStyle = "rgba(30,110,220,.16)";
+    ctx.fillRect(0, H2 - 1, W2, 1);
+    ctx.fillStyle = "#1E7BF0";
+    at.forEach((v, i) => {
+      if (v > 0) {
+        const h = Math.max(2, v / mx * (H2 - 3));
+        ctx.fillRect(i * w + 0.5, H2 - 1 - h, Math.max(1, w - 1), h);
+      }
+    });
+  }
+
   // static/js/src/ui/v61.js
   var _SOL = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/></svg>';
   var _LUA = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
@@ -845,6 +1152,13 @@
     _tema();
     if (!_v61) return;
     _fundo();
+    tickerMontar();
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.closest && e.target.closest("[data-v60-feed]")) {
+        e.stopPropagation();
+        abrirHistorico();
+      }
+    }, true);
   }
   function v61TemaItem() {
     if (!_v61flag) return "";
@@ -1427,50 +1741,6 @@
   function cenaPonteiro(x, y) {
     _ckMX = x;
     _ckMY = y;
-  }
-
-  // static/js/src/aovivo/formato.js
-  function haQuanto(iso, agora = Date.now()) {
-    const t = iso ? Date.parse(iso) : NaN;
-    if (!isFinite(t)) return "";
-    const s = Math.max(0, (agora - t) / 1e3);
-    if (s < 90) return "há instantes";
-    if (s < 3600) return `há ${Math.round(s / 60)} min`;
-    if (s < 86400) return `há ${Math.round(s / 3600)}h`;
-    return `há ${Math.round(s / 86400)} d`;
-  }
-  function quando(iso, agora = /* @__PURE__ */ new Date()) {
-    const d = iso ? new Date(iso) : null;
-    if (!d || isNaN(d)) return "";
-    const p = (n) => String(n).padStart(2, "0"), hm = `${p(d.getHours())}:${p(d.getMinutes())}`;
-    return d.toDateString() === agora.toDateString() ? hm : `${p(d.getDate())}/${p(d.getMonth() + 1)} ${hm}`;
-  }
-  function rotuloEstado(m) {
-    if (!m) return "INDISPONÍVEL";
-    if (m.estado === "rodando") return "rodando" + (typeof m.progresso === "number" ? ` · ${Math.round(m.progresso * 100)}%` : "");
-    if (m.estado === "falhou") {
-      const h = haQuanto(m.desde);
-      return "falhou" + (h ? " " + h : "");
-    }
-    if (m.estado === "agendado") {
-      const q = quando(m.proxima);
-      return "agendado" + (q ? ` · próx. ${q}` : "");
-    }
-    if (m.estado === "ocioso") return "ocioso";
-    return "INDISPONÍVEL";
-  }
-  async function lerEstado(ms = 4e3) {
-    const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
-    try {
-      const r = await fetch("/api/ao-vivo/estado", { credentials: "same-origin", signal: c.signal });
-      if (!r.ok) return null;
-      const j = await r.json();
-      return j && Array.isArray(j.motores) ? j : null;
-    } catch (_) {
-      return null;
-    } finally {
-      clearTimeout(t);
-    }
   }
 
   // static/js/src/cena/abertura.js
@@ -3061,7 +3331,7 @@ void main(){
   var _W = 0;
   var _H = 0;
   var _dpr = 1;
-  var TETO = 30;
+  var TETO2 = 30;
   var DUR = 1500;
   function _medir() {
     const box = $("ck-orbita"), nuc = $("ck-nucleo"), g = $("ck-grid");
@@ -3174,7 +3444,7 @@ void main(){
     const i = _linhas.findIndex((L) => L.id === alvo);
     if (i < 0) return;
     _pacotes.push({ i, t0: performance.now(), c: EV_COR[tipo] || "95,217,255" });
-    if (_pacotes.length > TETO) _pacotes.splice(0, _pacotes.length - TETO);
+    if (_pacotes.length > TETO2) _pacotes.splice(0, _pacotes.length - TETO2);
     if (!_raf2) _raf2 = requestAnimationFrame(_desenhar);
   }
   function energiaRever() {
@@ -3293,7 +3563,7 @@ void main(){
   };
   var CHAVE = "jfn.som";
   var ILUS = { doc: "/static/assets/gen/vazio-doc.webp", rede: "/static/assets/gen/vazio-rede.webp" };
-  var _ligado = false;
+  var _ligado2 = false;
   var _audio = {};
   var _ultimo = {};
   var _quebrado = {};
@@ -3332,7 +3602,7 @@ void main(){
     return a;
   }
   function somTocar(tipo) {
-    if (!_ligado) return;
+    if (!_ligado2) return;
     const s = SFX[tipo];
     if (!s) return;
     const quieto = _quieto();
@@ -3353,18 +3623,18 @@ void main(){
   }
   function _pintarBotao() {
     document.querySelectorAll("[data-som]").forEach((b) => {
-      b.setAttribute("aria-pressed", _ligado ? "true" : "false");
-      b.classList.toggle("on", _ligado);
-      b.title = _ligado ? "Som de interface LIGADO — clique para silenciar" : "Som de interface desligado — clique para ligar";
+      b.setAttribute("aria-pressed", _ligado2 ? "true" : "false");
+      b.classList.toggle("on", _ligado2);
+      b.title = _ligado2 ? "Som de interface LIGADO — clique para silenciar" : "Som de interface desligado — clique para ligar";
       const t = b.querySelector(".som-t");
-      if (t) t.textContent = _ligado ? "Som" : "Mudo";
+      if (t) t.textContent = _ligado2 ? "Som" : "Mudo";
     });
   }
   function _alternar() {
-    _ligado = !_ligado;
-    _gravarPref(_ligado);
+    _ligado2 = !_ligado2;
+    _gravarPref(_ligado2);
     _pintarBotao();
-    if (_ligado) {
+    if (_ligado2) {
       Object.keys(SFX).forEach(_pegar);
       somTocar("area");
     }
@@ -3378,7 +3648,7 @@ void main(){
     });
   }
   function ligarMidia() {
-    _ligado = _lerPref();
+    _ligado2 = _lerPref();
     _pintarBotao();
     document.addEventListener("click", (e) => {
       const b = e.target && e.target.closest && e.target.closest("[data-som]");
@@ -4219,133 +4489,6 @@ void main(){
         _abrir(a.dataset.rqAbrir);
       }
     });
-  }
-
-  // static/js/src/aovivo/estado.js
-  var aoVivo = {
-    motores: [],
-    eventos: [],
-    disponivel: null,
-    conectado: false,
-    atualizadoEm: null,
-    fontes: null
-  };
-  var _ouv = /* @__PURE__ */ new Set();
-  var JANELA = 5 * 60 * 1e3;
-  var TETO2 = 120;
-  var _ligado2 = false;
-  var _es = null;
-  var _poll = 0;
-  function aoVivoOuvir(fn) {
-    _ouv.add(fn);
-    return () => _ouv.delete(fn);
-  }
-  function _avisa(tipo, dado) {
-    for (const fn of [..._ouv]) {
-      try {
-        fn(tipo, dado);
-      } catch (_) {
-      }
-    }
-  }
-  function eventosPorMinuto(motor) {
-    const de = Date.now() - JANELA;
-    let n = 0;
-    for (const e of aoVivo.eventos) if (e._ms >= de && (!motor || e.motor === motor)) n++;
-    return n / 5;
-  }
-  var motoresRodando = () => aoVivo.motores.filter((m) => m.estado === "rodando");
-  function _snapshot(j) {
-    if (!j) {
-      if (aoVivo.disponivel === null) aoVivo.disponivel = false;
-      _avisa("estado");
-      return;
-    }
-    aoVivo.disponivel = true;
-    aoVivo.motores = j.motores;
-    aoVivo.atualizadoEm = j.atualizado_em || null;
-    aoVivo.fontes = j.fontes || null;
-    if (Array.isArray(j.eventos)) for (const e of j.eventos) _entra(e, false);
-    _avisa("estado");
-  }
-  function _entra(e, avisar) {
-    if (!e || !e.id || aoVivo.eventos.some((x) => x.id === e.id)) return;
-    e._ms = Date.parse(e.t) || Date.now();
-    aoVivo.eventos.push(e);
-    aoVivo.eventos.sort((a, b) => a._ms - b._ms);
-    if (aoVivo.eventos.length > TETO2) aoVivo.eventos.splice(0, aoVivo.eventos.length - TETO2);
-    if (avisar) _avisa("evento", e);
-  }
-  function _fio(ok) {
-    if (aoVivo.conectado !== ok) {
-      aoVivo.conectado = ok;
-      _avisa("fio", ok);
-    }
-  }
-  function aoVivoLigar() {
-    if (_ligado2) return;
-    _ligado2 = true;
-    lerEstado().then(_snapshot);
-    const abrir = () => {
-      if (!window.EventSource || _es) return;
-      try {
-        _es = new EventSource("/api/ao-vivo/stream");
-      } catch (_) {
-        _es = null;
-        return;
-      }
-      _es.addEventListener("open", () => _fio(true));
-      _es.addEventListener("estado", (ev) => {
-        try {
-          _snapshot(JSON.parse(ev.data));
-          _fio(true);
-        } catch (_) {
-        }
-      });
-      _es.addEventListener("evento", (ev) => {
-        try {
-          _entra(JSON.parse(ev.data), true);
-          _fio(true);
-        } catch (_) {
-        }
-      });
-      _es.addEventListener("error", () => {
-        _fio(false);
-        if (_es && _es.readyState === 2) {
-          _es = null;
-        }
-      });
-    };
-    abrir();
-    _poll = setInterval(() => {
-      if (document.hidden || aoVivo.conectado) return;
-      lerEstado().then((j) => {
-        _snapshot(j);
-        if (j) abrir();
-      });
-    }, 3e4);
-  }
-
-  // static/js/src/ui/aovivo.js
-  function abrirMotor(id) {
-    const m = aoVivo.motores.find((x) => x.id === id), ov = $("ov"), sh = $("sheet");
-    if (!m || !ov || !sh) return;
-    const evs = aoVivo.eventos.filter((e) => e.motor === id).slice(-8).reverse();
-    const linha = (r, v) => v ? `<div class="mt-l"><span>${r}</span><b>${esc(v)}</b></div>` : "";
-    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
-    <div class="mt-ficha e-${esc(m.estado)}">
-      <h3 class="v61-disp"><i class="mt-pt" aria-hidden="true"></i>${esc(m.nome)}</h3>
-      <div class="mt-estado">${esc(rotuloEstado(m))}</div>
-      ${typeof m.progresso === "number" ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(m.progresso * 100)}"><i style="width:${Math.round(m.progresso * 100)}%"></i></div>` : ""}
-      ${linha("O que faz", m.descricao)}
-      ${linha("Desde", m.desde ? `${quando(m.desde)} (${haQuanto(m.desde)})` : "")}
-      ${linha("Próxima execução", quando(m.proxima))}
-      ${linha("Unidade", m.unidade)}
-      ${linha("Último código de saída", m.saida == null ? "" : String(m.saida))}
-      <h4>Últimos eventos</h4>
-      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li><span class="num">${esc(quando(e.t))}</span>${esc(e.texto)}</li>`).join("")}</ul>` : '<div class="dim">Sem evento registrado nesta janela.</div>'}
-    </div>`;
-    ov.classList.add("on");
   }
 
   // static/js/src/cena/reator.js
@@ -6849,7 +6992,8 @@ void main(){
   }
   async function renderCockpit() {
     const v61 = _v61 ? `<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
-    <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div></aside>` : "";
+    <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div>
+      <button type="button" class="chip c61-ir-motores" onclick="document.getElementById('c61-motores').scrollIntoView({behavior:'smooth',block:'start'})">Motores · ver todos</button></aside>` : "";
     const html = `<div class="ck${_v61 ? " ck61" : ""}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
@@ -6888,6 +7032,7 @@ void main(){
     <div class="ck-grid" id="ck-grid"></div>
     <canvas class="ck-energia" id="ck-energia" aria-hidden="true"></canvas>
     </div>
+    ${_v61 ? '<section class="c61-motores" id="c61-motores" aria-labelledby="c61-motores-t"></section>' : ""}
     ${blocoComandosMestres()}
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
     return html;
@@ -6945,6 +7090,7 @@ void main(){
       aoVivoLigar();
       reatorMontar($("c61-reator"));
       mapaMontar($("c61-mapa"));
+      motoresMontar($("c61-motores"));
     } else nucleoStart();
     if (!_v61) requestAnimationFrame(() => energiaLigar());
     ckPull(true);
@@ -11434,7 +11580,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
     const est = d.por_estado || {};
     h += card(`<div class="dim">por tipo de divergência: ` + Object.entries(est).map(([k, v]) => `<b>${esc(k)}</b> ${fmtN(v)}`).join(" · ") + `</div>`);
     const _fora = d.fora_da_fila_por_motivo || {};
-    const _nome = {
+    const _nome2 = {
       nenhum_dos_dois: "nenhum dos dois achou",
       ausencia_declarada: "o documento declara que NÃO HÁ",
       ia_errou_o_maior: "ranque de valor — aritmética decide",
@@ -11444,7 +11590,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
       fora_da_janela_da_ia: "⚠️ o valor está além do texto que a IA leu",
       nao_perguntado: "⚠️ campo criado DEPOIS da leitura — a IA não foi perguntada"
     };
-    if (Object.keys(_fora).length) h += card(`<div class="dim">fora da fila, por motivo: ` + Object.entries(_fora).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<b>${fmtN(v)}</b> ${esc(_nome[k] || k)}`).join(" · ") + `</div>`);
+    if (Object.keys(_fora).length) h += card(`<div class="dim">fora da fila, por motivo: ` + Object.entries(_fora).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<b>${fmtN(v)}</b> ${esc(_nome2[k] || k)}`).join(" · ") + `</div>`);
     if (d.medidos_com_regua_antiga > 0) h += card(`<div class="dim">⚠️ <b>${fmtN(d.medidos_com_regua_antiga)}</b> de ${fmtN(d.total)} processos foram medidos com a RÉGUA ANTIGA, que contava ausência concorde como divergência — a fila deles está inflada e não é comparável com as leituras novas.</div>`);
     const _fal = d.documentos_que_mais_faltam || [];
     if (_fal.length) h += card(`<div><b>${fmtN(d.processos_com_lacuna || 0)}</b> processos declaram documento AUSENTE nos autos<div class="dim" style="margin-top:6px">` + _fal.slice(0, 6).map(([doc, n]) => `<b>${fmtN(n)}×</b> ${esc(String(doc).slice(0, 70))}`).join("<br>") + `</div></div>`);

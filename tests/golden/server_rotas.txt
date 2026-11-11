@@ -7,6 +7,8 @@ GET /api/acervo/processo -> api_acervo_processo
 GET /api/acervo/regras -> api_acervo_regras
 GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
+GET /api/ao-vivo/estado -> ao_vivo_estado
+GET /api/ao-vivo/stream -> ao_vivo_stream
 GET /api/captura/cobertura -> api_captura_cobertura
 GET /api/cartel -> api_cartel
 GET /api/casos -> api_casos

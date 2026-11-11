@@ -28,7 +28,8 @@ export function eventosPorMinuto(motor) {
   for (const e of aoVivo.eventos) if (e._ms >= de && (!motor || e.motor === motor)) n++;
   return n / 5;
 }
-export const motoresRodando = () => aoVivo.motores.filter(m => m.estado === 'rodando');
+/* só a classe `motor` (coleta/análise): serviço de apoio sempre ligado não acelera o reator */
+export const motoresRodando = () => aoVivo.motores.filter(m => m.estado === 'rodando' && m.classe !== 'infra');
 
 function _snapshot(j) {
   if (!j) { if (aoVivo.disponivel === null) aoVivo.disponivel = false; _avisa('estado'); return; }

@@ -1,0 +1,176 @@
+# Catálogo dos motores do "AO VIVO" (painel v61). Fonte única do que aparece na tela.
+#
+#   id        chave estável (vai no JSON e no CSS)
+#   nome      nome humano
+#   classe    motor = trabalho de coleta/análise (conta na velocidade do reator) · infra = serviço de apoio
+#   descricao uma linha: o que faz
+#   unidade   unit systemd --user (sem .service); o .timer de mesmo nome, se existir, dá a próxima execução
+#   trava     arquivo de lock: preso (em /proc/locks) = rodando agora, mesmo sem unit (jobs de cron)
+#   log       arquivo de log; SÓ as linhas que casam uma regex de `eventos` viram evento
+#   eventos   lista branca: regex → texto humano com {1},{2}… (os grupos). `progresso: [a, b]` = grupos
+#             numerador/denominador; `tipo` = estado|progresso|dado|achado|falha (padrão: progresso)
+#   contador  {db, tabela, rotulo}: MAX(rowid) da tabela; o salto entre leituras vira evento "+N"
+#
+# NUNCA se transmite linha bruta de log: o que não casa a lista branca é ignorado, e o que casa
+# ainda passa pelo saneamento (`saneamento.py`).
+motores:
+  - id: sei-noturno
+    nome: SEI noturno
+    classe: motor
+    descricao: Varre processos SEI nas janelas ociosas (22h–5h), recaptura documentos sem texto
+    unidade: jfn-sei-noturno
+    log: data/sei_sweep.log
+    eventos:
+      - regex: '\[recap (\d+)/(\d+)\] SEI-[\d/]+: (\d+) → (\d+) docs com texto'
+        texto: 'recaptura {1}/{2}: processo com {4} documentos lidos'
+        progresso: [1, 2]
+      - regex: '\[recap\] fim do slot — \+(\d+) documentos com texto'
+        texto: 'fim do slot: +{1} documentos com texto'
+        tipo: dado
+  - id: sei-integras
+    nome: SEI · íntegras
+    classe: motor
+    descricao: Drena a fila de íntegras SEI (baixa e arquiva processos)
+    unidade: jfn-integra-fila
+  - id: sei-varredura
+    nome: SEI · varredura
+    classe: motor
+    descricao: Varredura periódica de processos SEI (cron)
+    trava: /tmp/varredura_sei.lock
+  - id: tfe
+    nome: TFE · despesa
+    classe: motor
+    descricao: Coleta o espelho D-1 da despesa (dados abertos do Estado)
+    unidade: jfn-tfe
+  - id: tfe-ob
+    nome: TFE · OBs
+    classe: motor
+    descricao: Base completa de ordens bancárias (download TFE + ingestão 2019–2026)
+    unidade: jfn-tfe-ob
+  - id: siafe-ob
+    nome: SIAFE · OBs
+    classe: motor
+    descricao: Ordens bancárias do SIAFE (a fonte de pagamento da casa)
+    contador: {db: compliance.db, tabela: ob_orcamentaria_siafe, rotulo: OBs do SIAFE}
+  - id: intel-cache
+    nome: Inteligência · cache
+    classe: motor
+    descricao: Materializa os cruzamentos de inteligência e a esfera oficial dos entes do PNCP
+    unidade: jfn-intel-cache
+  - id: nucleo
+    nome: Núcleo · ciclo
+    classe: motor
+    descricao: Ciclo de inteligência progressiva (perícia, aprendizado, autoaprimoramento)
+    unidade: jfn-nucleo-ciclo
+  - id: bombeiros
+    nome: Bombeiros · perícia
+    classe: motor
+    descricao: Perícia paralela dos contratos do FUNESBOM
+    unidade: jfn-bombeiros-supervisor
+    log: data/bombeiros_supervisor.log
+    eventos:
+      - regex: '\] (arquivar|lex|achar_edital|reconcilia|integra|pericia) rc=(\d+)'
+        texto: 'passo {1} terminou (código {2})'
+  - id: territorio
+    nome: Território
+    classe: motor
+    descricao: Atribui contratos do Estado ao município e da Prefeitura do Rio à AP
+    unidade: jfn-territorio
+    trava: data/territorio.lock
+  - id: pncp
+    nome: PNCP · resultados
+    classe: motor
+    descricao: Coleta os resultados estruturados do PNCP (vencedor homologado por item)
+    unidade: jfn-pncp-resultados
+    contador: {db: compliance.db, tabela: pncp_resultado, rotulo: resultados do PNCP}
+  - id: doerj
+    nome: DOERJ
+    classe: motor
+    descricao: Atos do Diário Oficial do Estado na base
+    contador: {db: compliance.db, tabela: publicacoes_doerj, rotulo: atos do DOERJ}
+  - id: atas
+    nome: Atas de julgamento
+    classe: motor
+    descricao: Varredura de atas de julgamento de licitações (cron)
+    trava: /tmp/sweep_atas_julgamento.lock
+  - id: pcrj-intel
+    nome: PCRJ · inteligência
+    classe: motor
+    descricao: Refresh da inteligência da Prefeitura do Rio (servidor-fantasma, comissionados × candidatos)
+    unidade: jfn-pcrj-intel
+  - id: fiscalizacao
+    nome: Fiscalização · refresh
+    classe: motor
+    descricao: Refresh semanal da fiscalização (emendas, PIX, favorecidos, PNCP municipal)
+    unidade: jfn-fisc-refresh
+  - id: sancoes
+    nome: Sanções CEIS/CNEP
+    classe: motor
+    descricao: Refresh semanal das sanções federais
+    unidade: jfn-sancoes
+  - id: ronda
+    nome: Ronda
+    classe: motor
+    descricao: Checa o serviço e os alertas; avisa quando há alerta novo
+    unidade: jfn-ronda
+    log: data/ronda.log
+    contador: {db: compliance.db, tabela: alertas, rotulo: alertas de compliance, tipo: achado}
+    eventos:
+      - regex: 'serviço=(\w+) api=(\w+) alertas=(\d+) eventos=(\d+)'
+        texto: 'ronda: serviço {1}, API {2}, {3} alertas na base'
+        tipo: estado
+  - id: digest
+    nome: Digest diário
+    classe: motor
+    descricao: Resumo diário enviado ao Yoda
+    unidade: jfn-digest-diario
+  - id: metacognicao
+    nome: Hermes · metacognição
+    classe: motor
+    descricao: Reflexão e automelhoria do Hermes
+    unidade: jfn-metacognicao
+  - id: arquivo
+    nome: Arquivo · cache
+    classe: motor
+    descricao: Arquiva o cache de processos SEI (cron)
+    trava: /tmp/arquivar_cache.lock
+  - id: prewarm
+    nome: Pré-aquecimento do painel
+    classe: infra
+    descricao: Aquece o cache das rotas do painel (cron)
+    trava: /tmp/prewarm_painel.lock
+  - id: painel
+    nome: API do painel
+    classe: infra
+    descricao: O servidor do painel e do Yoda (porta 8000)
+    unidade: jfn
+  - id: chrome
+    nome: Chrome · ponte CDP
+    classe: infra
+    descricao: Navegador sem tela usado nas coletas TFE/SIAFE
+    unidade: chrome-jfn
+  - id: tunel
+    nome: Túnel do painel
+    classe: infra
+    descricao: Túnel de acesso externo ao painel
+    unidade: painel-tunnel
+  - id: hermes
+    nome: Hermes · gateway
+    classe: infra
+    descricao: Gateway de mensagens do Hermes
+    unidade: hermes-gateway
+  - id: wal
+    nome: WAL keeper
+    classe: infra
+    descricao: Segura o WAL do compliance.db (proteção contra corrupção)
+    unidade: jfn-wal-keeper
+  - id: warp
+    nome: WARP · saída
+    classe: infra
+    descricao: Saída de rede usada pela coleta TFE
+    unidade: jfn-warp
+  - id: massare
+    nome: Massare (VM2)
+    classe: motor
+    descricao: Agente de mercado (fora desta VM); só aparece vivo se houver endpoint de status configurado
+    sonda_env: JFN_MASSARE_STATUS_URL
