@@ -429,8 +429,27 @@ def _juizo(comp: str, obs: list[dict], procs: dict, nfs_por_ob: dict, gerar) -> 
     if not cit or _norm_cit(cit) not in _norm_cit(docs):
         return {"veredito": "INDETERMINADO", "camada": "juizo", "citacao": "", "nf_por_ob": j.get("nf_por_ob"),
                 "motivo": f"juízo disse '{v}' mas a citação literal não existe no texto — descartado ({motivo})"}
+    if v == "confirmado" and not _confirmacao_sustentada(j.get("nf_por_ob"), cit):
+        # medido 11/11/2026: o juízo "confirmou" citando o histórico de OUTRA OB e chamando de NF o nº de um
+        # documento SEI. Citação que existe não basta: tem de ser a NF REPETIDA, atribuída a 2 OBs.
+        return {"veredito": "INDETERMINADO", "camada": "juizo", "citacao": cit[:400], "nf_por_ob": j.get("nf_por_ob"),
+                "motivo": f"juízo disse 'confirmado' sem citar a NF repetida em 2 OBs — não confirmado ({motivo})"}
     return {"veredito": v.upper(), "motivo": f"juízo: {motivo}", "citacao": cit[:400], "camada": "juizo",
             "nf_por_ob": j.get("nf_por_ob")}
+
+
+def _confirmacao_sustentada(nf_por_ob, citacao: str) -> bool:
+    """CONFIRMADO do juízo só vale se a MESMA NF foi atribuída a 2+ OBs E o número dela está na citação literal."""
+    if not isinstance(nf_por_ob, dict):
+        return False
+    cont = Counter()
+    for v in nf_por_ob.values():
+        for x in (v if isinstance(v, list) else [v]):
+            d = re.sub(r"\D", "", str(x or "")).lstrip("0")
+            if d:
+                cont[d] += 1
+    nums_cit = {x.lstrip("0") for x in re.findall(r"\d+", _norm(citacao))}
+    return any(n in nums_cit for n, k in cont.items() if k >= 2)
 
 
 # ───────────────────────── camada determinística ─────────────────────────

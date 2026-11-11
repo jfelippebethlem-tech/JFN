@@ -450,3 +450,12 @@ def test_historicos_le_so_o_mesmo_credor(tmp_path):
                   [("1", "296100", "do credor", CNPJ_FMT), ("1", "296100", "de outro", "11.111.111/0001-11")])
     assert R.historicos(c, "296100", CNPJ, ["1"]) == {"1": "do credor"}
     assert R.historicos(sqlite3.connect(":memory:"), "1", CNPJ, ["1"]) == {}
+
+
+def test_juizo_confirmado_sem_a_nf_repetida_na_citacao_nao_confirma():
+    # caso real 11/11/2026: citação existia no texto, mas era o histórico de OUTRA OB com outra NF
+    assert not R._confirmacao_sustentada({"A": "79126992", "B": "79126992", "C": "17692"},
+                                         "LIQUIDAÇÃO DO DOCUMENTO 17692 CONFORME PROCESSO")
+    assert R._confirmacao_sustentada({"A": "NF 250", "B": "250"}, "NOTA FISCAL nº 250 emitida em 03/01/2025")
+    assert not R._confirmacao_sustentada({"A": "250", "B": "251"}, "NOTA FISCAL nº 250")
+    assert not R._confirmacao_sustentada(None, "NOTA FISCAL nº 250")
