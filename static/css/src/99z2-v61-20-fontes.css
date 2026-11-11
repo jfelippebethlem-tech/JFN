@@ -26,3 +26,4 @@ html.v61 body{font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased;
    utilitária `.v61-disp` (rótulos do HUD da abertura, título do mapa — fases 4 e 6) */
 html.v61 .cover .t, html.v61 .v61-disp{font-family:var(--f-display);font-weight:600;letter-spacing:.01em}
 html.v61 .sph > div > div:first-child{font-family:var(--f-display);font-weight:600;letter-spacing:.02em}
+@media (max-width:760px){html.v61 .sph > div > div:first-child{letter-spacing:0}}     /* 4 esferas em 390px: sem folga para tracking */

@@ -1,0 +1,55 @@
+/* ══ v61 · Fase 9 — MOVIMENTO CONTÍNUO (sistema) ═══════════════════════════════════════════════
+   Três durações e uma curva para tudo. Movimento = mudança de estado; nada gira à toa.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61{--dur-1:120ms;--dur-2:240ms;--dur-3:480ms;--ease:cubic-bezier(.2,.8,.2,1)}
+
+/* troca de aba: View Transition só no MIOLO (fade + 12px); cabeçalho, ticker e trilho ficam parados.
+   Navegador sem a API (ou modo sóbrio / reduced-motion) cai no `.fade` em CSS, com o mesmo gesto. */
+@keyframes v61sai{to{opacity:0;transform:translateY(-12px)}}
+@keyframes v61vem{from{opacity:0;transform:translateY(12px)}}
+html.v61::view-transition-old(jfn-miolo){animation:v61sai var(--dur-1) var(--ease) both}
+html.v61::view-transition-new(jfn-miolo){animation:v61vem var(--dur-2) var(--ease) both}
+html.v61::view-transition-group(jfn-topo), html.v61::view-transition-group(jfn-abas), html.v61::view-transition-group(root){animation:none}
+html.v61::view-transition-old(root), html.v61::view-transition-new(root){animation:none}
+html.v61 .fade{animation:v61vem var(--dur-2) var(--ease) both}
+html.v61.v61-vt .fade{animation:none}                     /* a transição já está fazendo o gesto */
+
+/* o engasgo da troca: o que está fora da tela não entra no layout nem na pintura até chegar perto.
+   · linha de lista (o contêiner já recorta) e cartão que carrega tabela — os dois casos pesados;
+   · `contain-intrinsic-size: auto` guarda a altura real depois da 1ª pintura (a rolagem não pula).
+   Não vai em `.grid`: a contenção de pintura cortaria a sombra dos cartões-filhos. */
+html.v61 #view .grid.v60-lista > .card{content-visibility:auto;contain-intrinsic-size:auto 64px}
+html.v61 #view .card:has(> table){content-visibility:auto;contain-intrinsic-size:auto 480px}
+html.v61 #view .mt-card, html.v61 #view .ck-caps, html.v61 #view .ck-fontes{content-visibility:auto;contain-intrinsic-size:auto 150px}
+
+/* listas entram em cascata: 30 ms por linha, teto de 480 ms (regra v16) */
+@keyframes v61cascata{from{opacity:0;transform:translateY(6px)}}
+/* SÓ as 16 primeiras linhas animam: animar todas criava milhares de animações numa lista longa
+   (medido: era parte do engasgo da troca de aba). Da 17ª em diante a linha simplesmente está lá. */
+html.v61 #view .grid.v60-lista > .card{animation:none}
+html.v61 #view .grid.v60-lista > .card:nth-child(-n+16){animation:v61cascata var(--dur-2) var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+html.v61 #view .grid.v60-lista > .card:nth-child(1){--i:0} html.v61 #view .grid.v60-lista > .card:nth-child(2){--i:1}
+html.v61 #view .grid.v60-lista > .card:nth-child(3){--i:2} html.v61 #view .grid.v60-lista > .card:nth-child(4){--i:3}
+html.v61 #view .grid.v60-lista > .card:nth-child(5){--i:4} html.v61 #view .grid.v60-lista > .card:nth-child(6){--i:5}
+html.v61 #view .grid.v60-lista > .card:nth-child(7){--i:6} html.v61 #view .grid.v60-lista > .card:nth-child(8){--i:7}
+html.v61 #view .grid.v60-lista > .card:nth-child(9){--i:8} html.v61 #view .grid.v60-lista > .card:nth-child(10){--i:9}
+html.v61 #view .grid.v60-lista > .card:nth-child(11){--i:10} html.v61 #view .grid.v60-lista > .card:nth-child(12){--i:11}
+html.v61 #view .grid.v60-lista > .card:nth-child(13){--i:12} html.v61 #view .grid.v60-lista > .card:nth-child(14){--i:13}
+html.v61 #view .grid.v60-lista > .card:nth-child(15){--i:14} html.v61 #view .grid.v60-lista > .card:nth-child(16){--i:15}
+
+/* número atualizado ao vivo: flip curto + lâmina de luz na borda superior do cartão */
+@keyframes v61flip{0%{transform:rotateX(0)}45%{transform:rotateX(88deg);opacity:.35}100%{transform:rotateX(0)}}
+html.v61 .v61-flip{display:inline-block;animation:v61flip var(--dur-3) var(--ease) both;transform-origin:50% 60%}
+html.v61 .v61-lamina{position:relative}
+html.v61 .v61-lamina::after{content:"";display:block !important;position:absolute;left:0;top:0;width:38%;height:2px;border:0;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),#fff,var(--cyan),transparent);box-shadow:0 0 10px var(--glow);
+  opacity:1;pointer-events:none;animation:v61lamina var(--dur-3) var(--ease) both;inset-inline-end:auto;inset-block-end:auto}
+@keyframes v61lamina{from{transform:translateX(-100%)}to{transform:translateX(265%);opacity:0}}
+
+/* toque: os controles respondem em --dur-1 */
+html.v61 :is(.btn,.chip,.sph,.v60-mi,.mt-card,.tf-lk){transition-duration:var(--dur-1);transition-timing-function:var(--ease)}
+
+@media (prefers-reduced-motion:reduce){
+  html.v61 .fade, html.v61 #view .grid.v60-lista > .card:nth-child(-n+16), html.v61 .v61-flip, html.v61 .v61-lamina::after{animation:none}
+  html.v61::view-transition-old(jfn-miolo), html.v61::view-transition-new(jfn-miolo){animation:none}
+}

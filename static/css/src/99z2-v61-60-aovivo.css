@@ -4,9 +4,8 @@
    ════════════════════════════════════════════════════════════════════════════════════════════ */
 html.v61{--tk:28px}
 html.v61 #v61-ticker{order:0;position:sticky;top:64px;z-index:19;height:var(--tk);display:flex;align-items:center;gap:12px;
-  padding:0 24px;overflow:hidden;cursor:pointer;font-size:.75rem;line-height:1;color:var(--ink-2);
-  --faixa:rgba(232,241,252,.94);background:var(--faixa);box-shadow:0 0 0 100vmax var(--faixa);clip-path:inset(0 -100vmax);
-  border-bottom:1px solid var(--line);-webkit-tap-highlight-color:transparent}
+  padding:0 calc(24px + var(--col));overflow:hidden;cursor:pointer;font-size:.75rem;line-height:1;color:var(--ink-2);
+  background:rgba(232,241,252,.94);border-bottom:1px solid var(--line);-webkit-tap-highlight-color:transparent}
 html.v61 #v61-ticker:focus-visible{outline:2px solid var(--ion);outline-offset:-2px}
 html.v61 .tk-selo{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.04em;color:var(--ink)}
 html.v61 .tk-selo b{font-weight:600;font-size:.6875rem}

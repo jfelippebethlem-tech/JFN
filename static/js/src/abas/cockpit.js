@@ -30,6 +30,7 @@ import {reatorMontar} from '../cena/reator.js';
 import {aoVivoLigar} from '../aovivo/estado.js';
 import {mapaMontar} from '../mapa/territorio.js';
 import {motoresMontar} from '../ui/aovivo.js';
+import {flipAoVivo} from '../ui/movimento.js';
 import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
 import {energiaLigar} from '../cena/energia.js';
@@ -159,7 +160,14 @@ export function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst"
   <div class="val ${valc}">—</div><div class="meta esperando">lendo o barramento — o número aparece aqui</div>
   </div>`;}
 export function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
-  if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
+  /* v61: a 1ª leitura conta de 0 ao valor; quando o número MUDA numa leitura seguinte (a cada 30 s),
+     ele troca com flip + lâmina de luz em vez de recontar do zero. */
+  const _novo=num!=null&&isFinite(num)?fmtN(Math.round(num)):(txt!=null?String(txt):null);
+  const _mudou=_v61&&_novo!=null&&el.dataset.v61Val!==undefined&&el.dataset.v61Val!==_novo;
+  if(_v61&&_novo!=null&&el.dataset.v61Val===_novo){/* mesmo valor: nada a animar */}
+  else if(_mudou){v.textContent=_novo;flipAoVivo(el);}
+  else if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
+  if(_novo!=null)el.dataset.v61Val=_novo;
   if(meta!=null){m.innerHTML=meta;m.classList.remove("esperando");}
   nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt);   // espelha no Núcleo orbital
 }

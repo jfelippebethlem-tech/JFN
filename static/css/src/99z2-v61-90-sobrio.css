@@ -1,0 +1,16 @@
+/* ══ v61 · degradação ═══════════════════════════════════════════════════════════════════════════
+   O modo sóbrio da casa (`body.fps-baixo`: FPS MEDIDO abaixo do piso) tira o desfoque e os laços no
+   estrato camadado `70-v49-sobrio.css`. Os estratos v61 não são camadados e o venciam — a v61
+   religava desfoque e animação infinita justamente na máquina que já tinha dito "não cabe".
+   Medido (celular simulado, CPU 4×, sem GPU): 97 tarefas longas em 30 s de repouso antes deste bloco.
+   Aqui a v61 obedece ao mesmo recuo. No celular o desfoque sai sempre (decisão medida da v60).
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 body.fps-baixo{--blur:none}
+html.v61 body.fps-baixo :is(.v61-grade,.tk-selo i,.mt-card .mt-pt,.tm-onda){animation:none}
+html.v61 body.fps-baixo .v61-piso, html.v61 body.fps-baixo .tm-radar{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
+html.v61 body.fps-baixo #view .grid.v60-lista > .card{animation:none}
+html.v61 body.fps-baixo .tm-placa{transform:none;margin-top:0}
+html.v61 body.fps-baixo #esfnebula video{display:none}
+@media (max-width:760px){
+  html.v61 body{--blur:none}
+}

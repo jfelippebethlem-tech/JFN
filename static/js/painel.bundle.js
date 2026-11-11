@@ -837,6 +837,82 @@
     });
   }
 
+  // static/js/src/ui/movimento.js
+  var RE_NUM = /^(R\$\s?)?(-?\d{1,3}(?:\.\d{3})*|-?\d+)(?:,(\d+))?(\s?(?:%|×|x))?$/;
+  var ALVO = ".card.kpi .v, .tf-k b";
+  var _io = null;
+  function movimentoBoot() {
+    if (!_v61) return;
+    document.addEventListener("visibilitychange", () => {
+      document.querySelectorAll("#esfnebula video").forEach((v) => {
+        if (document.hidden) v.pause();
+        else if (v.classList.contains("on")) v.play().catch(() => {
+        });
+      });
+    });
+    if (_redMotion || !("IntersectionObserver" in window)) return;
+    _io = new IntersectionObserver(
+      (es) => {
+        for (const e of es) if (e.isIntersecting) {
+          _io.unobserve(e.target);
+          _contar(e.target);
+        }
+      },
+      { threshold: 0.6 }
+    );
+    let passe = 0;
+    const marcar = (raiz) => raiz.querySelectorAll(ALVO).forEach((el) => {
+      if (el.dataset.v61n !== void 0 || el.children.length) return;
+      const t = el.textContent.trim();
+      el.dataset.v61n = RE_NUM.test(t) ? t : "";
+      if (el.dataset.v61n) _io.observe(el);
+    });
+    for (const id of ["view", "c61-mapa"]) {
+      const r = $(id);
+      if (!r) continue;
+      new MutationObserver(() => {
+        clearTimeout(passe);
+        passe = setTimeout(() => marcar(document), 90);
+      }).observe(r, { childList: true, subtree: true });
+    }
+    marcar(document);
+  }
+  function _contar(el) {
+    const fim = el.dataset.v61n, m = RE_NUM.exec(fim);
+    if (!m || _sobrio || el.textContent.trim() !== fim) return;
+    const dec = (m[3] || "").length, alvo = parseFloat(m[2].replace(/\./g, "") + (dec ? "." + m[3] : ""));
+    if (!isFinite(alvo) || alvo === 0) return;
+    const fmt = (x) => (m[1] || "") + x.toLocaleString("pt-BR", { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (m[4] || "");
+    const t0 = performance.now(), DUR2 = 600;
+    let ultimo = fim;
+    const passo = (t) => {
+      if (!el.isConnected || el.textContent.trim() !== ultimo) return;
+      const k = Math.min(1, (t - t0) / DUR2), e = 1 - Math.pow(1 - k, 3);
+      ultimo = k >= 1 ? fim : fmt(dec ? alvo * e : Math.round(alvo * e));
+      el.textContent = ultimo;
+      if (k < 1) requestAnimationFrame(passo);
+    };
+    ultimo = fmt(0);
+    el.textContent = ultimo;
+    requestAnimationFrame(passo);
+  }
+  function flipAoVivo(cartao) {
+    if (!_v61 || _redMotion || _sobrio || !cartao) return;
+    cartao.classList.remove("v61-lamina");
+    void cartao.offsetWidth;
+    cartao.classList.add("v61-lamina");
+    const v = cartao.querySelector(".val,.v");
+    if (v) {
+      v.classList.remove("v61-flip");
+      void v.offsetWidth;
+      v.classList.add("v61-flip");
+    }
+    setTimeout(() => {
+      cartao.classList.remove("v61-lamina");
+      if (v) v.classList.remove("v61-flip");
+    }, 700);
+  }
+
   // static/js/src/aovivo/formato.js
   function haQuanto(iso, agora = Date.now()) {
     const t = iso ? Date.parse(iso) : NaN;
@@ -4535,13 +4611,14 @@ void main(){
         });
       });
     }
-    let L = 0, dpr = 1;
+    let L = 0, dpr = 1, sujo = true;
     const medir = () => {
       const b = raiz.getBoundingClientRect();
       dpr = Math.min(devicePixelRatio || 1, 2);
       L = b.width;
       cv.width = Math.round(L * dpr);
       cv.height = Math.round(L * dpr);
+      sujo = true;
     };
     medir();
     const ro = new ResizeObserver(medir);
@@ -4572,6 +4649,7 @@ void main(){
       else if (aoVivo.disponivel === null) leg.textContent = "ao vivo: lendo…";
       else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? "motor rodando" : "motores rodando"}` + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? "falhou" : "falharam"}` : "") + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace(".", ",")}</b> eventos/min` + (aoVivo.conectado ? "" : ' · <span class="rt-pausa">reconectando</span>');
       raiz.classList.toggle("rt-indisp", aoVivo.disponivel === false);
+      sujo = true;
     };
     const parar = aoVivoOuvir((tipo, ev) => {
       if (tipo === "evento" && ev && ev.tipo === "achado" && !_redMotion) onda = 0;
@@ -4584,6 +4662,14 @@ void main(){
         return false;
       }
       const parado = _redMotion || _sobrio;
+      const vid = corpo.querySelector("video");
+      if (vid) {
+        if (parado && !vid.paused) vid.pause();
+        else if (!parado && vid.paused && !document.hidden) vid.play().catch(() => {
+        });
+      }
+      if (parado && !sujo) return true;
+      sujo = false;
       const sabe = aoVivo.disponivel === true, n = sabe ? motoresRodando().length : 0;
       const vel = sabe ? 0.05 + 0.09 * Math.min(n, 8) : 0;
       const epm = sabe ? eventosPorMinuto() : 0;
@@ -7047,8 +7133,15 @@ void main(){
     const el = $("cki-" + id);
     if (!el) return;
     const v = el.querySelector(".val"), m = el.querySelector(".meta");
-    if (num != null && isFinite(num)) _ckCount(v, num, (x) => fmtN(Math.round(x)));
+    const _novo = num != null && isFinite(num) ? fmtN(Math.round(num)) : txt != null ? String(txt) : null;
+    const _mudou = _v61 && _novo != null && el.dataset.v61Val !== void 0 && el.dataset.v61Val !== _novo;
+    if (_v61 && _novo != null && el.dataset.v61Val === _novo) {
+    } else if (_mudou) {
+      v.textContent = _novo;
+      flipAoVivo(el);
+    } else if (num != null && isFinite(num)) _ckCount(v, num, (x) => fmtN(Math.round(x)));
     else if (txt != null) v.textContent = txt;
+    if (_novo != null) el.dataset.v61Val = _novo;
     if (meta != null) {
       m.innerHTML = meta;
       m.classList.remove("esperando");
@@ -12818,8 +12911,12 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
         v.innerHTML = `<div class="fade">${html}</div>`;
         if (typeof marcarValores === "function") marcarValores(v);
       };
-      if (document.startViewTransition && !_redMotion && !_v60) {
-        await document.startViewTransition(pintar).updateCallbackDone;
+      if (document.startViewTransition && !_redMotion && (!_v60 || _v61 && !_sobrio)) {
+        const _h = document.documentElement;
+        _h.classList.add("v61-vt");
+        const _vt = document.startViewTransition(pintar);
+        _vt.finished.finally(() => _h.classList.remove("v61-vt"));
+        await _vt.updateCallbackDone;
       } else {
         pintar();
       }
@@ -12846,6 +12943,7 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   (async () => {
     v60Boot();
     v61Boot();
+    movimentoBoot();
     montarSpheres();
     montarTabs();
     netbgStart();
@@ -12971,12 +13069,12 @@ ${esc((d.resumo || "").slice(0, 500))}` + (pdf ? `
   }, true);
   setTimeout(_sphMask, 600);
   (function _ligarTato() {
-    const ALVO = ".btn,.chip,.tab,.lnk,.ck-inst,nav.tabs button,.sph,.htop a,.kpi";
+    const ALVO2 = ".btn,.chip,.tab,.lnk,.ck-inst,nav.tabs button,.sph,.htop a,.kpi";
     let ultima = 0;
     addEventListener("pointerdown", (ev) => {
       const agora = performance.now();
       if (agora - ultima < 60) return;
-      const el = ev.target && ev.target.closest && ev.target.closest(ALVO);
+      const el = ev.target && ev.target.closest && ev.target.closest(ALVO2);
       if (!el) return;
       if (matchMedia("(prefers-reduced-motion:reduce)").matches) return;
       ultima = agora;

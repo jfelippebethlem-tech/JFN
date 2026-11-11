@@ -33,7 +33,8 @@ import {ritmoEstado} from './ritmo.js';
    `cena/*` le `_sobrio` para parar de agendar quadro, e quem ESCREVE `_sobrio` precisa dos videos
    da cena para pausa-los. Com a bandeira na folha, os dois lados a leem sem se enxergarem.
    As ~40 leituras espalhadas pelo painel nao mudaram: `export let` da binding VIVO. */
-import {_redMotion, _sobrio, _v60} from './capacidade/estado.js';
+import {_redMotion, _sobrio, _v60, _v61} from './capacidade/estado.js';
+import {movimentoBoot} from './ui/movimento.js';
 import {v60Boot} from './ui/v60.js';
 import {v61Boot} from './ui/v61.js';
 import {_medirFps, sobrioAoMudar} from './capacidade/sobrio.js';
@@ -315,8 +316,13 @@ async function ir(id){
     /* v60: a troca de aba é um crossfade de 160ms em CSS (`.fade`). A View Transition fotografa a
        tela inteira antes e depois — medido no perfil (celular, CPU 4×): era o item mais caro da
        troca, e o resultado visual que o v60 quer é só o fade. */
-    if(document.startViewTransition&&!_redMotion&&!_v60){
-      await document.startViewTransition(pintar).updateCallbackDone;
+    /* v61: a View Transition VOLTA, mas só no miolo (fade + 12px; `99z2-v61-70-movimento.css`) e só em
+       máquina que entrega quadro — no modo sóbrio (FPS medido baixo) vale o `.fade` em CSS. */
+    if(document.startViewTransition&&!_redMotion&&(!_v60||(_v61&&!_sobrio))){
+      const _h=document.documentElement;_h.classList.add('v61-vt');
+      const _vt=document.startViewTransition(pintar);
+      _vt.finished.finally(()=>_h.classList.remove('v61-vt'));
+      await _vt.updateCallbackDone;
     }else{pintar();}}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
@@ -347,7 +353,7 @@ fetch('/static/assets/no-energia.png',{method:'HEAD'})
    importados dentro de `capacidade/sobrio.js`, que criaria ciclo com a folha das bandeiras. */
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 addEventListener('pointermove',e=>{cenaPonteiro(e.clientX/innerWidth,e.clientY/innerHeight);},{passive:true});
-(async()=>{v60Boot();v61Boot();montarSpheres();montarTabs();netbgStart();rjbgStart();
+(async()=>{v60Boot();v61Boot();movimentoBoot();montarSpheres();montarTabs();netbgStart();rjbgStart();
   /* v57: a URL manda no boot — `#g_radar` abre direto na aba, e o Voltar volta pra cá. */
   const _h=decodeURIComponent(location.hash.slice(1));
   await ir(_abaValida(_h)?_h:'i_cockpit');

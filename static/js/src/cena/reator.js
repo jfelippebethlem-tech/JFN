@@ -55,9 +55,9 @@ export function reatorMontar(host) {
     document.addEventListener('visibilitychange', () => { if (!v.isConnected) return; document.hidden ? v.pause() : v.play().catch(() => {}); });
   }
 
-  let L = 0, dpr = 1;
+  let L = 0, dpr = 1, sujo = true;      // `sujo`: há algo novo para desenhar (estado, tamanho)
   const medir = () => { const b = raiz.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, 2);
-    L = b.width; cv.width = Math.round(L * dpr); cv.height = Math.round(L * dpr); };
+    L = b.width; cv.width = Math.round(L * dpr); cv.height = Math.round(L * dpr); sujo = true; };
   medir();
   const ro = new ResizeObserver(medir); ro.observe(raiz);
 
@@ -85,6 +85,7 @@ export function reatorMontar(host) {
       + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace('.', ',')}</b> eventos/min`
       + (aoVivo.conectado ? '' : ' · <span class="rt-pausa">reconectando</span>');
     raiz.classList.toggle('rt-indisp', aoVivo.disponivel === false);
+    sujo = true;
   };
   const parar = aoVivoOuvir((tipo, ev) => {
     if (tipo === 'evento' && ev && ev.tipo === 'achado' && !_redMotion) onda = 0;
@@ -95,6 +96,12 @@ export function reatorMontar(host) {
   const pinta = (t, dt) => {
     if (!raiz.isConnected) { sair(); return false; }
     const parado = _redMotion || _sobrio;
+    /* modo sóbrio / reduced-motion: NÃO redesenha a cada quadro — só quando o estado muda. O laço fica
+       inscrito (um retorno vazio não custa) para retomar sozinho se a máquina voltar a entregar quadro. */
+    const vid = corpo.querySelector('video');
+    if (vid) { if (parado && !vid.paused) vid.pause(); else if (!parado && vid.paused && !document.hidden) vid.play().catch(() => {}); }
+    if (parado && !sujo) return true;
+    sujo = false;
     const sabe = aoVivo.disponivel === true, n = sabe ? motoresRodando().length : 0;
     const vel = sabe ? 0.05 + 0.09 * Math.min(n, 8) : 0;           // rad/s: ∝ motores rodando
     const epm = sabe ? eventosPorMinuto() : 0;

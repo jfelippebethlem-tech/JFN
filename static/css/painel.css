@@ -4469,10 +4469,15 @@ html.v61 .v61-plano > i.r3{left:calc(50% + 392px);animation-duration:17s;animati
 }
 
 /* ── cabeçalho, esferas, abas ────────────────────────────────────────────────────────────────── */
-/* a faixa vai de borda a borda da janela: o `header` mora dentro do `.wrap` (1280px) e, no claro, a
-   aresta dele aparecia. Sombra de 100vmax na MESMA cor + recorte só na vertical = faixa inteira. */
-html.v61 header{--faixa:rgba(255,255,255,.84);background:var(--faixa);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  box-shadow:0 0 0 100vmax var(--faixa);clip-path:inset(0 -100vmax)}
+/* a faixa vai de borda a borda da janela: no claro, a aresta do `header` (que morava num `.wrap` de
+   1280px) aparecia. O `.wrap` passa a ocupar a janela; cada barra alinha o SEU conteúdo à coluna de
+   1280px por `padding-inline`. (A 1ª versão usava sombra de 100vmax + recorte: rasterizar essa sombra
+   a cada repintura custava caro na troca de aba — medido na fase 9.) */
+html.v61{--col:max(0px,calc((100vw - 1280px) / 2))}
+html.v61 .wrap{max-width:none}
+html.v61 main{width:100%;max-width:1280px;margin-inline:auto;box-sizing:border-box}
+html.v61 header{background:rgba(255,255,255,.84);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:0 1px 0 var(--line);padding-inline:var(--col)}
 html.v61 .brand h1{color:var(--ink)}
 html.v61 .brand .lg{background:linear-gradient(135deg,var(--cyan),var(--ion-solid));color:#fff;
   box-shadow:0 0 0 3px rgba(34,181,245,.16)}
@@ -4484,8 +4489,8 @@ html.v61 #kyber .knuc{fill:var(--cyan)}
 html.v61 .cblade{background:linear-gradient(90deg,transparent,var(--cyan) 18%,var(--ion) 50%,var(--cyan) 82%,transparent);
   box-shadow:0 0 8px var(--glow);opacity:.8}
 html.v61 .v60-mais:hover{background:var(--tinta)}
-html.v61 nav.tabs{--faixa:rgba(243,248,254,.9);background:var(--faixa);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-bottom-color:var(--line);box-shadow:0 0 0 100vmax var(--faixa),0 1px 0 100vmax var(--line);clip-path:inset(0 -100vmax -1px)}
+html.v61 nav.tabs{background:rgba(243,248,254,.9);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--line);padding-inline:var(--col)}
 html.v61 nav.tabs button:hover{background:var(--tinta)}
 /* chip ativo = fundo azul cheio, texto branco, brilho de 3px */
 html.v61 nav.tabs button.on, html.v61 .chip.on{color:#fff;background:var(--ion-solid);border-color:var(--ion-solid);
@@ -4496,7 +4501,7 @@ html.v61 .chip{background:rgba(255,255,255,.6)}
 html.v61 .chip:hover{background:var(--tinta)}
 html.v61 .chip.on:hover{background:var(--ion-solid);color:#fff}
 @media (max-width:760px){
-  html.v61 #spheres{background:rgba(255,255,255,.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  html.v61 #spheres{background:#fff;backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
     border-top-color:var(--line);box-shadow:0 -6px 20px rgba(20,70,140,.08)}
   html.v61 .sph.on{color:var(--ion-text)}
   html.v61 .sph.on .i{background:var(--ion-solid);color:#fff;box-shadow:0 0 0 3px var(--glow)}
@@ -4656,6 +4661,7 @@ html.v61 body{font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased;
    utilitária `.v61-disp` (rótulos do HUD da abertura, título do mapa — fases 4 e 6) */
 html.v61 .cover .t, html.v61 .v61-disp{font-family:var(--f-display);font-weight:600;letter-spacing:.01em}
 html.v61 .sph > div > div:first-child{font-family:var(--f-display);font-weight:600;letter-spacing:.02em}
+@media (max-width:760px){html.v61 .sph > div > div:first-child{letter-spacing:0}}     /* 4 esferas em 390px: sem folga para tracking */
 /* ══ v61 · Fase 4 — ABERTURA ═══════════════════════════════════════════════════════════════════
    `#v61-abertura` nasce em `cena/abertura.js` (o `#portal` antigo é removido). Tela cheia: pôster do
    reator → filme → HUD em código por cima. Três formas: `.ab-completa`, `.ab-curta`, `.ab-minima`.
@@ -4942,9 +4948,8 @@ html.v61 .tf-al li{padding:6px 0;border-top:1px solid var(--line);font-size:.75r
    ════════════════════════════════════════════════════════════════════════════════════════════ */
 html.v61{--tk:28px}
 html.v61 #v61-ticker{order:0;position:sticky;top:64px;z-index:19;height:var(--tk);display:flex;align-items:center;gap:12px;
-  padding:0 24px;overflow:hidden;cursor:pointer;font-size:.75rem;line-height:1;color:var(--ink-2);
-  --faixa:rgba(232,241,252,.94);background:var(--faixa);box-shadow:0 0 0 100vmax var(--faixa);clip-path:inset(0 -100vmax);
-  border-bottom:1px solid var(--line);-webkit-tap-highlight-color:transparent}
+  padding:0 calc(24px + var(--col));overflow:hidden;cursor:pointer;font-size:.75rem;line-height:1;color:var(--ink-2);
+  background:rgba(232,241,252,.94);border-bottom:1px solid var(--line);-webkit-tap-highlight-color:transparent}
 html.v61 #v61-ticker:focus-visible{outline:2px solid var(--ion);outline-offset:-2px}
 html.v61 .tk-selo{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;font-weight:600;letter-spacing:.04em;color:var(--ink)}
 html.v61 .tk-selo b{font-weight:600;font-size:.6875rem}
@@ -5015,3 +5020,74 @@ html.v61 .mt-evs li b{font-weight:600;color:var(--ink)}
 
 /* a pílula "Ao vivo · N" da v60 (holofeed do barramento antigo) sai: o ticker é o fio ao vivo da v61 */
 html.v61 #holofeed{display:none !important}
+/* ══ v61 · Fase 9 — MOVIMENTO CONTÍNUO (sistema) ═══════════════════════════════════════════════
+   Três durações e uma curva para tudo. Movimento = mudança de estado; nada gira à toa.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61{--dur-1:120ms;--dur-2:240ms;--dur-3:480ms;--ease:cubic-bezier(.2,.8,.2,1)}
+
+/* troca de aba: View Transition só no MIOLO (fade + 12px); cabeçalho, ticker e trilho ficam parados.
+   Navegador sem a API (ou modo sóbrio / reduced-motion) cai no `.fade` em CSS, com o mesmo gesto. */
+@keyframes v61sai{to{opacity:0;transform:translateY(-12px)}}
+@keyframes v61vem{from{opacity:0;transform:translateY(12px)}}
+html.v61::view-transition-old(jfn-miolo){animation:v61sai var(--dur-1) var(--ease) both}
+html.v61::view-transition-new(jfn-miolo){animation:v61vem var(--dur-2) var(--ease) both}
+html.v61::view-transition-group(jfn-topo), html.v61::view-transition-group(jfn-abas), html.v61::view-transition-group(root){animation:none}
+html.v61::view-transition-old(root), html.v61::view-transition-new(root){animation:none}
+html.v61 .fade{animation:v61vem var(--dur-2) var(--ease) both}
+html.v61.v61-vt .fade{animation:none}                     /* a transição já está fazendo o gesto */
+
+/* o engasgo da troca: o que está fora da tela não entra no layout nem na pintura até chegar perto.
+   · linha de lista (o contêiner já recorta) e cartão que carrega tabela — os dois casos pesados;
+   · `contain-intrinsic-size: auto` guarda a altura real depois da 1ª pintura (a rolagem não pula).
+   Não vai em `.grid`: a contenção de pintura cortaria a sombra dos cartões-filhos. */
+html.v61 #view .grid.v60-lista > .card{content-visibility:auto;contain-intrinsic-size:auto 64px}
+html.v61 #view .card:has(> table){content-visibility:auto;contain-intrinsic-size:auto 480px}
+html.v61 #view .mt-card, html.v61 #view .ck-caps, html.v61 #view .ck-fontes{content-visibility:auto;contain-intrinsic-size:auto 150px}
+
+/* listas entram em cascata: 30 ms por linha, teto de 480 ms (regra v16) */
+@keyframes v61cascata{from{opacity:0;transform:translateY(6px)}}
+/* SÓ as 16 primeiras linhas animam: animar todas criava milhares de animações numa lista longa
+   (medido: era parte do engasgo da troca de aba). Da 17ª em diante a linha simplesmente está lá. */
+html.v61 #view .grid.v60-lista > .card{animation:none}
+html.v61 #view .grid.v60-lista > .card:nth-child(-n+16){animation:v61cascata var(--dur-2) var(--ease) backwards;animation-delay:calc(var(--i,0) * 30ms)}
+html.v61 #view .grid.v60-lista > .card:nth-child(1){--i:0} html.v61 #view .grid.v60-lista > .card:nth-child(2){--i:1}
+html.v61 #view .grid.v60-lista > .card:nth-child(3){--i:2} html.v61 #view .grid.v60-lista > .card:nth-child(4){--i:3}
+html.v61 #view .grid.v60-lista > .card:nth-child(5){--i:4} html.v61 #view .grid.v60-lista > .card:nth-child(6){--i:5}
+html.v61 #view .grid.v60-lista > .card:nth-child(7){--i:6} html.v61 #view .grid.v60-lista > .card:nth-child(8){--i:7}
+html.v61 #view .grid.v60-lista > .card:nth-child(9){--i:8} html.v61 #view .grid.v60-lista > .card:nth-child(10){--i:9}
+html.v61 #view .grid.v60-lista > .card:nth-child(11){--i:10} html.v61 #view .grid.v60-lista > .card:nth-child(12){--i:11}
+html.v61 #view .grid.v60-lista > .card:nth-child(13){--i:12} html.v61 #view .grid.v60-lista > .card:nth-child(14){--i:13}
+html.v61 #view .grid.v60-lista > .card:nth-child(15){--i:14} html.v61 #view .grid.v60-lista > .card:nth-child(16){--i:15}
+
+/* número atualizado ao vivo: flip curto + lâmina de luz na borda superior do cartão */
+@keyframes v61flip{0%{transform:rotateX(0)}45%{transform:rotateX(88deg);opacity:.35}100%{transform:rotateX(0)}}
+html.v61 .v61-flip{display:inline-block;animation:v61flip var(--dur-3) var(--ease) both;transform-origin:50% 60%}
+html.v61 .v61-lamina{position:relative}
+html.v61 .v61-lamina::after{content:"";display:block !important;position:absolute;left:0;top:0;width:38%;height:2px;border:0;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),#fff,var(--cyan),transparent);box-shadow:0 0 10px var(--glow);
+  opacity:1;pointer-events:none;animation:v61lamina var(--dur-3) var(--ease) both;inset-inline-end:auto;inset-block-end:auto}
+@keyframes v61lamina{from{transform:translateX(-100%)}to{transform:translateX(265%);opacity:0}}
+
+/* toque: os controles respondem em --dur-1 */
+html.v61 :is(.btn,.chip,.sph,.v60-mi,.mt-card,.tf-lk){transition-duration:var(--dur-1);transition-timing-function:var(--ease)}
+
+@media (prefers-reduced-motion:reduce){
+  html.v61 .fade, html.v61 #view .grid.v60-lista > .card:nth-child(-n+16), html.v61 .v61-flip, html.v61 .v61-lamina::after{animation:none}
+  html.v61::view-transition-old(jfn-miolo), html.v61::view-transition-new(jfn-miolo){animation:none}
+}
+/* ══ v61 · degradação ═══════════════════════════════════════════════════════════════════════════
+   O modo sóbrio da casa (`body.fps-baixo`: FPS MEDIDO abaixo do piso) tira o desfoque e os laços no
+   estrato camadado `70-v49-sobrio.css`. Os estratos v61 não são camadados e o venciam — a v61
+   religava desfoque e animação infinita justamente na máquina que já tinha dito "não cabe".
+   Medido (celular simulado, CPU 4×, sem GPU): 97 tarefas longas em 30 s de repouso antes deste bloco.
+   Aqui a v61 obedece ao mesmo recuo. No celular o desfoque sai sempre (decisão medida da v60).
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 body.fps-baixo{--blur:none}
+html.v61 body.fps-baixo :is(.v61-grade,.tk-selo i,.mt-card .mt-pt,.tm-onda){animation:none}
+html.v61 body.fps-baixo .v61-piso, html.v61 body.fps-baixo .tm-radar{display:none}          /* o piso em perspectiva sai inteiro: camada fixa com máscara = repintura cara */
+html.v61 body.fps-baixo #view .grid.v60-lista > .card{animation:none}
+html.v61 body.fps-baixo .tm-placa{transform:none;margin-top:0}
+html.v61 body.fps-baixo #esfnebula video{display:none}
+@media (max-width:760px){
+  html.v61 body{--blur:none}
+}

@@ -103,10 +103,15 @@ html.v61 .v61-plano > i.r3{left:calc(50% + 392px);animation-duration:17s;animati
 }
 
 /* ── cabeçalho, esferas, abas ────────────────────────────────────────────────────────────────── */
-/* a faixa vai de borda a borda da janela: o `header` mora dentro do `.wrap` (1280px) e, no claro, a
-   aresta dele aparecia. Sombra de 100vmax na MESMA cor + recorte só na vertical = faixa inteira. */
-html.v61 header{--faixa:rgba(255,255,255,.84);background:var(--faixa);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  box-shadow:0 0 0 100vmax var(--faixa);clip-path:inset(0 -100vmax)}
+/* a faixa vai de borda a borda da janela: no claro, a aresta do `header` (que morava num `.wrap` de
+   1280px) aparecia. O `.wrap` passa a ocupar a janela; cada barra alinha o SEU conteúdo à coluna de
+   1280px por `padding-inline`. (A 1ª versão usava sombra de 100vmax + recorte: rasterizar essa sombra
+   a cada repintura custava caro na troca de aba — medido na fase 9.) */
+html.v61{--col:max(0px,calc((100vw - 1280px) / 2))}
+html.v61 .wrap{max-width:none}
+html.v61 main{width:100%;max-width:1280px;margin-inline:auto;box-sizing:border-box}
+html.v61 header{background:rgba(255,255,255,.84);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:0 1px 0 var(--line);padding-inline:var(--col)}
 html.v61 .brand h1{color:var(--ink)}
 html.v61 .brand .lg{background:linear-gradient(135deg,var(--cyan),var(--ion-solid));color:#fff;
   box-shadow:0 0 0 3px rgba(34,181,245,.16)}
@@ -118,8 +123,8 @@ html.v61 #kyber .knuc{fill:var(--cyan)}
 html.v61 .cblade{background:linear-gradient(90deg,transparent,var(--cyan) 18%,var(--ion) 50%,var(--cyan) 82%,transparent);
   box-shadow:0 0 8px var(--glow);opacity:.8}
 html.v61 .v60-mais:hover{background:var(--tinta)}
-html.v61 nav.tabs{--faixa:rgba(243,248,254,.9);background:var(--faixa);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
-  border-bottom-color:var(--line);box-shadow:0 0 0 100vmax var(--faixa),0 1px 0 100vmax var(--line);clip-path:inset(0 -100vmax -1px)}
+html.v61 nav.tabs{background:rgba(243,248,254,.9);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--line);padding-inline:var(--col)}
 html.v61 nav.tabs button:hover{background:var(--tinta)}
 /* chip ativo = fundo azul cheio, texto branco, brilho de 3px */
 html.v61 nav.tabs button.on, html.v61 .chip.on{color:#fff;background:var(--ion-solid);border-color:var(--ion-solid);
@@ -130,7 +135,7 @@ html.v61 .chip{background:rgba(255,255,255,.6)}
 html.v61 .chip:hover{background:var(--tinta)}
 html.v61 .chip.on:hover{background:var(--ion-solid);color:#fff}
 @media (max-width:760px){
-  html.v61 #spheres{background:rgba(255,255,255,.95);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  html.v61 #spheres{background:#fff;backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
     border-top-color:var(--line);box-shadow:0 -6px 20px rgba(20,70,140,.08)}
   html.v61 .sph.on{color:var(--ion-text)}
   html.v61 .sph.on .i{background:var(--ion-solid);color:#fff;box-shadow:0 0 0 3px var(--glow)}
