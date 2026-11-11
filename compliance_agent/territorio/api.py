@@ -21,7 +21,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, Response
 
 from compliance_agent.territorio import agrega, atribui_estado, atribui_pcrj, base
-from compliance_agent.territorio.geo import nome_municipio, ras_por_ap
+from compliance_agent.territorio.geo import nome_municipio, norm, ras_por_ap
 
 router = APIRouter()
 _PERIODOS = tuple(agrega.PERIODOS)
@@ -78,8 +78,14 @@ def _ficha(c, tabela: str, onde: str, args: tuple, periodo: str, conf_texto: str
     k["pct_executado"] = (k["pago"] / vp) if k.get("pago") is not None and vp else None
     for z in ("n_contratos", "n_em_execucao", "n_executados", "n_rescindidos", "n_com_pago"):
         k[z] = k[z] or 0
-    orgaos = [dict(r) for r in c.execute(
-        f"SELECT orgao, COUNT(*) n, COALESCE(SUM(valor),0) valor FROM {tabela} WHERE multi=0 AND {w} GROUP BY orgao ORDER BY valor DESC LIMIT 10", args)]
+    # o mesmo órgão chega com grafias diferentes de cada fonte ("Univ Est do Norte Fluminense Darcy Rib" no PNCP,
+    # "UNIV EST DO NORTE FLUMINENSE DARCY RIBEIRO" no SIGA): soma pelo nome normalizado, mostra a 1ª grafia
+    por_orgao: dict[str, dict] = {}
+    for r in c.execute(f"SELECT orgao, COUNT(*) n, COALESCE(SUM(valor),0) valor FROM {tabela} WHERE multi=0 AND {w} GROUP BY orgao ORDER BY valor DESC", args):
+        o = por_orgao.setdefault(norm(r["orgao"])[:34], {"orgao": r["orgao"], "n": 0, "valor": 0.0})
+        o["n"] += r["n"]
+        o["valor"] += r["valor"]
+    orgaos = sorted(por_orgao.values(), key=lambda x: -x["valor"])[:10]
     forn = [dict(r) for r in c.execute(
         f"SELECT fornecedor_cnpj cnpj, MAX(fornecedor_nome) nome, COUNT(*) n, COALESCE(SUM(valor),0) valor FROM {tabela} "
         f"WHERE multi=0 AND {w} GROUP BY fornecedor_cnpj ORDER BY valor DESC LIMIT 10", args)]

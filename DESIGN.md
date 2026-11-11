@@ -1,5 +1,55 @@
 # DESIGN.md — JFN
 
+> ## ⬜ v61 TRON CLARO (2026-11-11) — VIGENTE sobre a v60 (tema claro; a v60 é o fallback escuro)
+> Ordem do dono: "tá muito dark esse site" → tema CLARO, azul / azul-claro, "ultratech, nível Tron",
+> tudo animado e ao vivo, **sem perder a legibilidade e a estrutura da v60**. Princípio herdado do v27:
+> **a arte dá o CORPO, o código dá a VIDA** — vídeo é cenário; mapa, número, status e pulso são código
+> e refletem o estado real.
+> Mora em `static/css/src/99z2-v61-*.css` (9 estratos, depois do v60, não camadados, todo seletor
+> prefixado por `html.v61`) e em `static/js/src/{ui/v61.js, ui/movimento.js, ui/aovivo.js, aovivo/*,
+> cena/abertura.js, cena/reator.js, mapa/territorio.js}`. A classe `v61` só existe junto com `v60`.
+> Desligar: `/painel?v61=0` (volta a v60 escura); "Tema escuro" na folha "⋯" grava `jfn_tema=escuro`.
+> Detalhe por fase: `docs/superpowers/specs/HANDOFF-painel-v61-2026-11-11.md`.
+>
+> **Tema «Gelo» (tokens `html.v61{…}`)** — fundo `--bg #F3F8FE` / `--bg-2 #E8F1FC` / `--bg-3 #DCEAFB` ·
+> superfície `--surface` rgba(255,255,255,.74) / `--surface-solid #FFF` · linhas `--line` / `--line-strong`
+> (azul a 16% / 32%) · tinta `--ink #0B1B33` / `--ink-2 #34496A` · acento `--ion #1E7BF0`, `--cyan #22B5F5`,
+> `--glow` · severidade `--ok` / `--warn` / `--crit` · dinheiro `--money` · raio 14px · `--blur`.
+> **Regra de contraste (medida por `tools/v61_contraste.py`, AA 4,5:1 no pior fundo):** os tokens do
+> brief valem para PREENCHIMENTO (ponto, barra, borda, brilho). Como TEXTO usa-se o par `-text`:
+> `--ion-text #0A63D1`, `--ok-text`, `--warn-text`, `--crit-text`, `--money-text`, e `--muted #51667F`
+> no lugar de `--ink-3`. Controle ativo com texto branco = `--ion-solid #1470E6`.
+>
+> **Fontes** — **Geist** (texto/UI, 400/500/600) + **Geist Mono** (todo número, tabular) + **Oxanium**
+> 600/700 **só em classe folha** (título da capa, nome das esferas, `.v61-disp`); nunca em contêiner,
+> corpo, tabela ou botão (lição v22). Locais em `static/assets/fonts/v61/` (OFL). Escala = a da v60.
+>
+> **Fundo** — uma pilha fixa: loop/pôster da esfera (`assets/v61/`, a .55) → véu claro → grade Tron em
+> perspectiva no terço de baixo → 3 rastros de luz. Cartão = vidro branco com colchetes de canto (só em
+> KPI/herói). Chip ativo = fundo cheio + brilho de 3px.
+>
+> **Movimento** — `--dur-1 120ms` / `--dur-2 240ms` / `--dur-3 480ms`, `--ease cubic-bezier(.2,.8,.2,1)`.
+> Troca de aba = View Transition só no miolo (fade + 12px), com fallback CSS. Número conta de 0 ao valor
+> na 1ª aparição (só valor real); número que muda ao vivo = flip + lâmina de luz. Lista em cascata
+> (30 ms/linha, só as 16 primeiras). **Um único laço rAF** (`ritmo.js: quadroLigar`), pausado em aba
+> oculta, 30 fps no celular. Modo sóbrio (FPS medido baixo), `prefers-reduced-motion` e Save-Data
+> recuam: sem desfoque, sem laço, pôster no lugar de vídeo.
+>
+> **Abertura** — filme do reator → sala (10 s) só na 1ª abertura do dia; HUD em código: marca JFN e
+> checklist com o estado REAL dos motores; 1,2 s nas demais; pôster + fade de 300 ms sob reduced-motion.
+>
+> **Cockpit** — mapa do território (centro-esquerda), reator vivo + herói (direita), KPIs, Motores.
+> **Mapa**: SVG `d3-geo` sobre TopoJSON oficial (IBGE: 92 municípios; Data.Rio: 5 APs / 33 RAs);
+> coroplético sequencial azul `#EAF4FF → #1E7BF0 → #0A3E8C` por quantis; **sem dado = hachura, nunca
+> zero**; o balde "sem município identificado" fica SEMPRE no rodapé; contrato multimunicipal não tem
+> valor repartido. **Reator**: anéis ∝ motores rodando, núcleo ∝ eventos/min, onda no `achado`,
+> agentes em órbita. **AO VIVO**: ticker de 28px em todas as abas + grade de Motores; sem API a tela
+> diz INDISPONÍVEL, com o fio caído diz "ao vivo pausado · reconectando".
+>
+> **Regras v61 que não se negociam:** INDISPONÍVEL ≠ 0 (API muda, pagamento sem OB, alerta sem
+> vínculo) · nenhum número em arte ou placeholder · ícone = glifo de LINHA (raster reprovado no v27;
+> os 5 de aba e os do cabeçalho são desenhados em `_ICO_V61`) · nenhuma linha bruta de log na tela.
+
 > ## 🟦 v60 CLAREZA (2026-11-10) — VIGENTE, supersede o que conflitar abaixo
 > Ordem do dono: "o painel tá muito feio — ajuste tudo". Direção: **Linear/Raycast/Stripe com alma
 > Jarvis** — o dado lê primeiro; a vida fica em UM lugar por tela. Vivo ≠ poluído.

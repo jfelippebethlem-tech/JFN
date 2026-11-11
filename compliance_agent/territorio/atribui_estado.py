@@ -386,7 +386,7 @@ def _integrar_tcerj(src: sqlite3.Connection, linhas: list[dict], hoje: str, fora
     vistos, juntados, novos, repetidos = set(), 0, 0, 0
     for r in src.execute("SELECT id, sei_norm, valor_contrato, status, unidade, objeto, fornecedor, cnpj, vig_inicio, vig_fim "
                          "FROM contratos_tcerj WHERE status IN ('Ativo','Encerrado') AND valor_contrato>0"):
-        orgao = (r["unidade"] or "").split(" - ", 1)[-1].strip()
+        orgao = (r["unidade"] or "").rsplit(" - ", 1)[-1].strip()      # "UERJ - HOSPITAL UNIVERSITÁRIO - HOSPITAL UNIVERSITARIO PEDRO ERNESTO"
         esf = esfera_unidade(orgao)
         if esf != "estadual":
             fora[esf] += 1

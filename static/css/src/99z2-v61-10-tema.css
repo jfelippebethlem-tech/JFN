@@ -267,3 +267,19 @@ html.v61 :is(.skel::after,#view > .skel::before,#view > .skel::after){--card:var
 html.v61 .ck-ticker{background:var(--surface);border-color:var(--line)}
 html.v61 :focus-visible{outline-color:var(--ion)}
 html.v61 ::selection{background:rgba(34,181,245,.3)}
+
+/* ── achados da auditoria das 68 abas (fase 11) ──────────────────────────────────────────────────
+   Texto abaixo de 4,5:1 medido no DOM, aba a aba. Cada regra aqui fecha um padrão encontrado. */
+/* renders antigos escrevem `style="color:#fff"` (era texto claro sobre cartão escuro): branco sobre
+   branco no tema claro. Só onde o próprio elemento NÃO pinta fundo — selo com fundo próprio fica. */
+html.v61 :where(#view,#sheet) [style*="color:#fff"]:not([style*="background"]),
+html.v61 :where(#view,#sheet) [style*="color: #fff"]:not([style*="background"]),
+html.v61 :where(#view,#sheet) [style*="color:white"]:not([style*="background"]){color:var(--ink) !important}
+html.v61 .brand .lg{background:var(--ion-solid)}                     /* degradê ia a ciano: "CE" branco dava menos de 3:1 na ponta clara */
+html.v61 .clabel{color:var(--muted);text-shadow:none}
+html.v61 .sev.alta, html.v61 .sev.grave{color:#9F1F26;background:rgba(217,58,64,.12)}
+html.v61 .sev.media{color:#7A4F00;background:rgba(201,132,0,.16)}
+html.v61 :where(#view,#sheet) code{color:var(--ink-2);background:rgba(30,110,220,.08)}
+html.v61 .caps-cmd{color:var(--muted)}                               /* Lighthouse: 2,61:1 (#92a0af sobre branco) */
+html.v61 .btn .caps-cmd{color:rgba(255,255,255,.86)}
+html.v61 .btn.ghost .caps-cmd{color:var(--muted)}

@@ -117,8 +117,12 @@ html.v61 .tf-selo.c-baixa{background:rgba(201,132,0,.14);color:var(--warn-text)}
 html.v61 .tf-al li{padding:6px 0;border-top:1px solid var(--line);font-size:.75rem;color:var(--ink-2)}
 
 @media (max-width:999px){
-  /* celular/tablet: bottom sheet arrastável */
-  html.v61 .tm-ficha{position:fixed;left:0;right:0;bottom:0;max-height:78vh;padding:26px 16px calc(24px + env(safe-area-inset-bottom));
+  /* celular/tablet: bottom sheet arrastável. `perspective` e `backdrop-filter` num ancestral viram o bloco
+     de contenção de quem é `position:fixed` — a folha ficava presa DENTRO do cartão do mapa (visto no
+     print final). Aqui a placa não inclina, então os dois saem. */
+  html.v61 .tm-palco{perspective:none}
+  html.v61 .ck61 .c61-mapa{backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible;content-visibility:visible}
+  html.v61 .tm-ficha{position:fixed;left:0;right:0;bottom:0;max-height:78vh;background:#fff;font-family:var(--f-sans);font-size:.875rem;padding:26px 16px calc(24px + env(safe-area-inset-bottom));
     border-radius:18px 18px 0 0;border-bottom:0;z-index:60;animation:v61sobe var(--dur-2,240ms) var(--ease) both}
   html.v61 .tm-ficha.arrastando{transition:none}
   html.v61 .tm-ficha:not(.arrastando){transition:transform var(--dur-2,240ms) var(--ease)}

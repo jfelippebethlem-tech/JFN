@@ -4633,6 +4633,22 @@ html.v61 :is(.skel::after,#view > .skel::before,#view > .skel::after){--card:var
 html.v61 .ck-ticker{background:var(--surface);border-color:var(--line)}
 html.v61 :focus-visible{outline-color:var(--ion)}
 html.v61 ::selection{background:rgba(34,181,245,.3)}
+
+/* ── achados da auditoria das 68 abas (fase 11) ──────────────────────────────────────────────────
+   Texto abaixo de 4,5:1 medido no DOM, aba a aba. Cada regra aqui fecha um padrão encontrado. */
+/* renders antigos escrevem `style="color:#fff"` (era texto claro sobre cartão escuro): branco sobre
+   branco no tema claro. Só onde o próprio elemento NÃO pinta fundo — selo com fundo próprio fica. */
+html.v61 :where(#view,#sheet) [style*="color:#fff"]:not([style*="background"]),
+html.v61 :where(#view,#sheet) [style*="color: #fff"]:not([style*="background"]),
+html.v61 :where(#view,#sheet) [style*="color:white"]:not([style*="background"]){color:var(--ink) !important}
+html.v61 .brand .lg{background:var(--ion-solid)}                     /* degradê ia a ciano: "CE" branco dava menos de 3:1 na ponta clara */
+html.v61 .clabel{color:var(--muted);text-shadow:none}
+html.v61 .sev.alta, html.v61 .sev.grave{color:#9F1F26;background:rgba(217,58,64,.12)}
+html.v61 .sev.media{color:#7A4F00;background:rgba(201,132,0,.16)}
+html.v61 :where(#view,#sheet) code{color:var(--ink-2);background:rgba(30,110,220,.08)}
+html.v61 .caps-cmd{color:var(--muted)}                               /* Lighthouse: 2,61:1 (#92a0af sobre branco) */
+html.v61 .btn .caps-cmd{color:rgba(255,255,255,.86)}
+html.v61 .btn.ghost .caps-cmd{color:var(--muted)}
 /* ══ v61 · Fase 2 — FONTES ═════════════════════════════════════════════════════════════════════
    Geist (texto/UI) + Geist Mono (todo número, tabular) + Oxanium (só display, em classe FOLHA).
    Origem: pacotes npm `geist` e `@fontsource-variable/oxanium` (SIL OFL 1.1), copiados para
@@ -4916,8 +4932,12 @@ html.v61 .tf-selo.c-baixa{background:rgba(201,132,0,.14);color:var(--warn-text)}
 html.v61 .tf-al li{padding:6px 0;border-top:1px solid var(--line);font-size:.75rem;color:var(--ink-2)}
 
 @media (max-width:999px){
-  /* celular/tablet: bottom sheet arrastável */
-  html.v61 .tm-ficha{position:fixed;left:0;right:0;bottom:0;max-height:78vh;padding:26px 16px calc(24px + env(safe-area-inset-bottom));
+  /* celular/tablet: bottom sheet arrastável. `perspective` e `backdrop-filter` num ancestral viram o bloco
+     de contenção de quem é `position:fixed` — a folha ficava presa DENTRO do cartão do mapa (visto no
+     print final). Aqui a placa não inclina, então os dois saem. */
+  html.v61 .tm-palco{perspective:none}
+  html.v61 .ck61 .c61-mapa{backdrop-filter:none;-webkit-backdrop-filter:none;overflow:visible;content-visibility:visible}
+  html.v61 .tm-ficha{position:fixed;left:0;right:0;bottom:0;max-height:78vh;background:#fff;font-family:var(--f-sans);font-size:.875rem;padding:26px 16px calc(24px + env(safe-area-inset-bottom));
     border-radius:18px 18px 0 0;border-bottom:0;z-index:60;animation:v61sobe var(--dur-2,240ms) var(--ease) both}
   html.v61 .tm-ficha.arrastando{transition:none}
   html.v61 .tm-ficha:not(.arrastando){transition:transform var(--dur-2,240ms) var(--ease)}
@@ -5033,7 +5053,10 @@ html.v61::view-transition-old(jfn-miolo){animation:v61sai var(--dur-1) var(--eas
 html.v61::view-transition-new(jfn-miolo){animation:v61vem var(--dur-2) var(--ease) both}
 html.v61::view-transition-group(jfn-topo), html.v61::view-transition-group(jfn-abas), html.v61::view-transition-group(root){animation:none}
 html.v61::view-transition-old(root), html.v61::view-transition-new(root){animation:none}
-html.v61 .fade{animation:v61vem var(--dur-2) var(--ease) both}
+/* `backwards`, não `both`: animação de `transform` que continua "em efeito" depois de terminar mantém o
+   elemento como bloco de contenção de quem é `position:fixed` — a ficha do mapa (bottom sheet) ia parar
+   no fim da página em vez do fim da janela. */
+html.v61 .fade{animation:v61vem var(--dur-2) var(--ease) backwards}
 html.v61.v61-vt .fade{animation:none}                     /* a transição já está fazendo o gesto */
 
 /* o engasgo da troca: o que está fora da tela não entra no layout nem na pintura até chegar perto.

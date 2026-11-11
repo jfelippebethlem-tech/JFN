@@ -70,7 +70,7 @@ export function mapaMontar(host) {
   host.classList.add('tm');
   host.innerHTML = `
     <div class="tm-topo">
-      <h3 class="tm-tit v61-disp" id="tm-tit">Território</h3>
+      <h2 class="tm-tit v61-disp" id="tm-tit">Território</h2>
       <div class="tm-ctl">
         <div class="chips" role="group" aria-label="Escopo">
           <button type="button" class="chip on" data-tm-escopo="estado">Estado · por município</button>
@@ -284,8 +284,21 @@ export function mapaMontar(host) {
     q('#tm-pulsos').appendChild(o); setTimeout(() => o.remove(), 1300);
   });
 
-  /* ── eventos (delegados no hospedeiro) ── */
-  const ouvir = (t, fn, o) => host.addEventListener(t, fn, o);
+  /* ── celular/tablet: a ficha é um bottom sheet e vai morar no <body> ──
+     Dentro do miolo ela herdava o contexto de empilhamento do `#view` (ficava ATRÁS da barra de esferas) e
+     qualquer ancestral com transform/perspective virava o seu bloco de contenção. No <body> ela é fixa na
+     janela de verdade. Como sai de dentro do hospedeiro, os ouvintes delegados são postos nela também; e
+     quando o hospedeiro some (troca de aba) ela é removida junto. */
+  const portal = matchMedia('(max-width:999px)').matches;
+  if (portal) {
+    document.querySelectorAll('body > .tm-ficha').forEach(x => x.remove());
+    document.body.appendChild(ficha);
+    const v = $('view');
+    if (v) { const mo = new MutationObserver(() => { if (!host.isConnected) { ficha.remove(); mo.disconnect(); } });
+             mo.observe(v, {childList: true}); }
+  }
+  /* ── eventos (delegados no hospedeiro e, com portal, na ficha) ── */
+  const ouvir = (t, fn, o) => { host.addEventListener(t, fn, o); if (portal) ficha.addEventListener(t, fn, o); };
   ouvir('click', async e => {
     const b = e.target.closest('[data-tm-escopo],[data-tm-metrica],[data-tm-periodo],[data-tf-x],[data-tf-cnpj],path.tm-a');
     if (!b) return;
@@ -320,5 +333,5 @@ export function mapaMontar(host) {
     pintar(await lerDados());
   })();
 
-  _vivo = {sair() { pararVivo(); if (_vivo && _vivo.host === host) _vivo = null; }, host};
+  _vivo = {sair() { pararVivo(); if (portal) ficha.remove(); if (_vivo && _vivo.host === host) _vivo = null; }, host};
 }

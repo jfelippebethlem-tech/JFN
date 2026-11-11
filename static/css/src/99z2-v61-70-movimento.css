@@ -11,7 +11,10 @@ html.v61::view-transition-old(jfn-miolo){animation:v61sai var(--dur-1) var(--eas
 html.v61::view-transition-new(jfn-miolo){animation:v61vem var(--dur-2) var(--ease) both}
 html.v61::view-transition-group(jfn-topo), html.v61::view-transition-group(jfn-abas), html.v61::view-transition-group(root){animation:none}
 html.v61::view-transition-old(root), html.v61::view-transition-new(root){animation:none}
-html.v61 .fade{animation:v61vem var(--dur-2) var(--ease) both}
+/* `backwards`, não `both`: animação de `transform` que continua "em efeito" depois de terminar mantém o
+   elemento como bloco de contenção de quem é `position:fixed` — a ficha do mapa (bottom sheet) ia parar
+   no fim da página em vez do fim da janela. */
+html.v61 .fade{animation:v61vem var(--dur-2) var(--ease) backwards}
 html.v61.v61-vt .fade{animation:none}                     /* a transição já está fazendo o gesto */
 
 /* o engasgo da troca: o que está fora da tela não entra no layout nem na pintura até chegar perto.
