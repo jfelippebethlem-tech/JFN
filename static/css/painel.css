@@ -4656,3 +4656,69 @@ html.v61 body{font-feature-settings:"ss01" 0;-webkit-font-smoothing:antialiased;
    utilitária `.v61-disp` (rótulos do HUD da abertura, título do mapa — fases 4 e 6) */
 html.v61 .cover .t, html.v61 .v61-disp{font-family:var(--f-display);font-weight:600;letter-spacing:.01em}
 html.v61 .sph > div > div:first-child{font-family:var(--f-display);font-weight:600;letter-spacing:.02em}
+/* ══ v61 · Fase 4 — ABERTURA ═══════════════════════════════════════════════════════════════════
+   `#v61-abertura` nasce em `cena/abertura.js` (o `#portal` antigo é removido). Tela cheia: pôster do
+   reator → filme → HUD em código por cima. Três formas: `.ab-completa`, `.ab-curta`, `.ab-minima`.
+   O fim é sempre um fade do contêiner inteiro (`.ab-off`, duração em `--ab-sai`): por baixo está o
+   cockpit com o loop `sala` no fundo, então a passagem é contínua.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 #v61-abertura{position:fixed;inset:0;z-index:200;overflow:hidden;background:#EAF3FD;color:var(--ink);
+  opacity:1;transition:opacity var(--ab-sai,600ms) cubic-bezier(.2,.8,.2,1)}
+html.v61 #v61-abertura.ab-off{opacity:0;pointer-events:none}
+html.v61 #v61-abertura :is(.ab-poster,.ab-vid,.ab-clarao){position:absolute;inset:0;width:100%;height:100%}
+html.v61 #v61-abertura .ab-poster{background:center / cover no-repeat}
+html.v61 #v61-abertura .ab-vid{object-fit:cover;opacity:0;transition:opacity .3s linear}
+html.v61 #v61-abertura.ab-tocando .ab-vid{opacity:1}
+/* clarão: só na forma curta — o núcleo do reator "acende" e leva ao painel */
+html.v61 #v61-abertura .ab-clarao{opacity:0;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,#fff 0,rgba(255,255,255,.9) 12%,rgba(190,232,255,.55) 34%,transparent 62%)}
+html.v61 #v61-abertura.ab-curta.ab-on .ab-clarao{animation:v61clarao .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes v61clarao{0%{opacity:0;transform:scale(.4)}45%{opacity:1}100%{opacity:.85;transform:scale(2.6)}}
+
+/* marca: JFN letra a letra, sobre o núcleo claro do reator */
+html.v61 #v61-abertura .ab-marca{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;
+  transition:opacity .5s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+html.v61 #v61-abertura .ab-jfn{font-size:clamp(3rem,11vw,6.5rem);font-weight:700;line-height:1;letter-spacing:.16em;
+  margin-right:-.16em;color:var(--ink);text-shadow:0 0 28px #fff,0 0 10px #fff,0 0 2px #fff}
+html.v61 #v61-abertura .ab-jfn span{display:inline-block;opacity:0;transform:translateY(.18em) scale(1.12)}
+html.v61 #v61-abertura.ab-on .ab-jfn span{animation:v61letra .5s cubic-bezier(.2,.8,.2,1) both}
+html.v61 #v61-abertura.ab-on .ab-jfn span:nth-child(2){animation-delay:.22s}
+html.v61 #v61-abertura.ab-on .ab-jfn span:nth-child(3){animation-delay:.44s}
+@keyframes v61letra{to{opacity:1;transform:none}}
+html.v61 #v61-abertura .ab-sub{margin-top:.9em;font-size:clamp(.72rem,2.6vw,1rem);font-weight:600;letter-spacing:.32em;
+  margin-right:-.32em;color:var(--ink-2);white-space:nowrap;opacity:0;text-shadow:0 0 12px #fff,0 0 4px #fff}
+html.v61 #v61-abertura.ab-on .ab-sub{animation:v61letra .6s cubic-bezier(.2,.8,.2,1) .9s both}
+html.v61 #v61-abertura.ab-curta .ab-jfn span, html.v61 #v61-abertura.ab-curta .ab-sub{opacity:1;transform:none;animation:none}
+html.v61 #v61-abertura.ab-marca-off .ab-marca{opacity:0}
+
+/* checklist de boot: estado REAL dos motores, canto inferior esquerdo, numa placa de vidro */
+html.v61 #v61-abertura .ab-boot{position:absolute;left:max(20px,env(safe-area-inset-left));
+  bottom:max(24px,env(safe-area-inset-bottom));margin:0;padding:10px 14px;list-style:none;display:grid;gap:3px;
+  min-width:220px;max-width:min(440px,calc(100vw - 40px));border-radius:var(--radius);border:1px solid var(--line-strong);
+  background:rgba(255,255,255,.72);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  box-shadow:var(--sh);transition:opacity .5s cubic-bezier(.2,.8,.2,1)}
+html.v61 #v61-abertura .ab-boot:empty{display:none}
+html.v61 #v61-abertura .ab-boot li{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.75rem;
+  line-height:1.5;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transform:translateX(-6px);transition:opacity .24s cubic-bezier(.2,.8,.2,1),transform .24s cubic-bezier(.2,.8,.2,1)}
+html.v61 #v61-abertura .ab-boot li.on{opacity:1;transform:none}
+html.v61 #v61-abertura .ab-boot li i{flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--ink-3)}
+html.v61 #v61-abertura .ab-boot li.e-rodando i{background:var(--ok);box-shadow:0 0 0 3px rgba(14,158,116,.2)}
+html.v61 #v61-abertura .ab-boot li.e-agendado i{background:var(--ion)}
+html.v61 #v61-abertura .ab-boot li.e-falhou{color:var(--crit-text)}
+html.v61 #v61-abertura .ab-boot li.e-falhou i{background:var(--crit)}
+html.v61 #v61-abertura .ab-boot li.e-indisponivel{color:var(--muted)}
+html.v61 #v61-abertura .ab-boot li.e-indisponivel i{background:none;box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+html.v61 #v61-abertura.ab-hud-off .ab-boot{opacity:0}
+
+/* Pular: alvo de 44px, canto superior direito */
+html.v61 #v61-abertura .ab-pular{all:unset;box-sizing:border-box;position:absolute;
+  top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));min-width:44px;min-height:44px;
+  padding:0 18px;display:inline-grid;place-items:center;border-radius:999px;cursor:pointer;
+  font-family:var(--f-sans);font-size:.875rem;font-weight:600;color:var(--ink);
+  background:rgba(255,255,255,.78);border:1px solid var(--line-strong);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);-webkit-tap-highlight-color:transparent;
+  transition:background .12s,border-color .12s}
+html.v61 #v61-abertura .ab-pular:hover{background:#fff;border-color:var(--ion)}
+html.v61 #v61-abertura .ab-pular:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+html.v61 #v61-abertura.ab-hud-off .ab-pular{opacity:0;pointer-events:none;transition:opacity .4s}

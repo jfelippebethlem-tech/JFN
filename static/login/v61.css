@@ -1,0 +1,38 @@
+/* v61 TRON CLARO — login no tema «Gelo». Só vale sob `html.v61` (posta por /static/login/v61.js).
+   Fundo: loop `fluxo` (rio de luz) + véu claro; cartão em vidro branco; ação em azul cheio. */
+@font-face{font-family:"Geist";src:url(/static/login/fonts/Geist-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Geist";src:url(/static/login/fonts/Geist-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Oxanium";src:url(/static/login/fonts/Oxanium-latin-wght.woff2) format("woff2");font-weight:200 800;font-display:swap}
+html.v61{
+  --bg:#F3F8FE; --surf:#FFFFFF; --bd:rgba(30,110,220,.32); --bd2:rgba(30,110,220,.16);
+  --tx:#0B1B33; --tx2:#34496A; --mut:#51667F;
+  --ion:#0A63D1; --ion2:#1470E6; --rose:#D93A40;
+  --flame:#1E7BF0; --flame2:#1470E6; --flame-ink:#FFFFFF;
+  color-scheme:light}
+html.v61 body{font-family:"Geist",system-ui,"Segoe UI",Roboto,sans-serif;color:var(--tx)}
+html.v61 .fundo{background:var(--bg) url(/static/login/v61/fluxo.webp) 50% 50% / cover no-repeat}
+@media (max-width:760px){html.v61 .fundo{background-image:url(/static/login/v61/fluxo-sm.webp)}}
+html.v61 .fundo picture, html.v61 .fundo img{display:none}
+html.v61 .fundo video{object-position:50% 50%}
+html.v61 .fundo::after, html.v61.sem-poster .fundo::after{
+  background:linear-gradient(180deg,rgba(243,248,254,.22),rgba(243,248,254,.6) 75%)}
+html.v61.sem-poster .fundo{background:var(--bg) url(/static/login/v61/fluxo.webp) 50% 50% / cover no-repeat}
+html.v61 .card{border:1px solid rgba(30,110,220,.22);background:rgba(255,255,255,.78);
+  -webkit-backdrop-filter:saturate(150%) blur(18px);backdrop-filter:saturate(150%) blur(18px);
+  box-shadow:0 1px 0 #fff inset,0 18px 50px rgba(20,70,140,.16)}
+html.v61 .card::before{background:linear-gradient(90deg,transparent,#22B5F5 30%,#1E7BF0 70%,transparent);
+  box-shadow:0 0 10px rgba(34,181,245,.42)}
+html.v61 .selo{color:#fff;background:linear-gradient(135deg,#22B5F5,#1470E6);
+  box-shadow:0 0 0 3px rgba(34,181,245,.18)}
+html.v61 h1{font-family:"Oxanium","Geist",sans-serif;font-weight:600;letter-spacing:.01em}
+html.v61 .sub{font-family:"Geist",sans-serif;letter-spacing:.08em;color:var(--ion)}
+html.v61 input{border:1px solid rgba(30,110,220,.32);background:rgba(255,255,255,.9);color:var(--tx);box-shadow:none}
+html.v61 input:focus-visible{border-color:#1E7BF0;box-shadow:0 0 0 3px rgba(34,181,245,.42)}
+html.v61 button{font-family:"Geist",system-ui,sans-serif;color:#fff;background:#1470E6;
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 8px 22px rgba(20,112,230,.26)}
+html.v61 button:hover{filter:none;background:#0A63D1;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 10px 28px rgba(20,112,230,.34)}
+html.v61 button:focus-visible{outline-color:#1E7BF0}
+html.v61 button[aria-busy=true] .rot{border-color:rgba(255,255,255,.4);border-top-color:#fff}
+html.v61 .err{border-color:rgba(217,58,64,.45);background:rgba(217,58,64,.08);color:#BE2A31}
+@media (prefers-reduced-transparency:reduce){html.v61 .card{background:#fff}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html.v61 .card{background:rgba(255,255,255,.96)}}

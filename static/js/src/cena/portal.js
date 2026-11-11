@@ -18,7 +18,8 @@
  * Sem efeito de topo: quem liga é a sequência de boot do entrypoint.
  */
 import {$} from '../nucleo/dom.js';
-import {_redMotion} from '../capacidade/estado.js';
+import {_redMotion, _v61} from '../capacidade/estado.js';
+import {aberturaStart} from './abertura.js';
 import {_rjCarregar, _rjBuild} from './malha-rj.js';
 
 /* ══ PORTAL E MALHA ══ */
@@ -75,7 +76,9 @@ void main(){
 
 
 export function portalStart(){
-  const el=$('portal');if(!el)return;
+  const el=$('portal');
+  if(_v61){aberturaStart(el);return;}     // v61: a abertura é outra (cena/abertura.js); o portal antigo sai
+  if(!el)return;
   let pular=false;
   try{pular=sessionStorage.getItem('jfn_v9_portal')==='1'||localStorage.getItem('jfn_portal_off')==='1';}catch(_){}
   if(pular||_redMotion){el.remove();return;}

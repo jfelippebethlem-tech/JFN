@@ -451,6 +451,7 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
 <meta name=color-scheme content=dark><meta name=robots content="noindex,nofollow">
 <meta name=theme-color content="#02040a">
 <title>Acesso — Controle Externo</title>
+<script src=/static/login/v61.js></script>
 <link rel=preload href=/static/login/fonts/IBMPlexSans-Regular.woff2 as=font type=font/woff2 crossorigin>
 <link rel=preload href=/static/login/fonts/IBMPlexSans-SemiBold.woff2 as=font type=font/woff2 crossorigin>
 <style>
@@ -629,7 +630,8 @@ _LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
     function parar(){v.classList.remove('on');v.pause();v.removeAttribute('src');try{v.load()}catch(_){}}
     function ligar(){
       if(rm.matches||poupa){parar();return;}
-      var src='/static/login/login-'+(larga.matches?'169':'916')+'.mp4';
+      var src=window.JFN_LOGIN_V61?'/static/login/v61/fluxo'+(matchMedia('(max-width:760px)').matches?'-m':'')+'.mp4'
+              :'/static/login/login-'+(larga.matches?'169':'916')+'.mp4';
       if(v.getAttribute('src')===src)return;
       v.classList.remove('on');v.src=src;
       var p=v.play();if(p&&p.catch)p.catch(function(){});

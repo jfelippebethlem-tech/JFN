@@ -1386,6 +1386,156 @@
     _ckMY = y;
   }
 
+  // static/js/src/aovivo/formato.js
+  function haQuanto(iso, agora = Date.now()) {
+    const t = iso ? Date.parse(iso) : NaN;
+    if (!isFinite(t)) return "";
+    const s = Math.max(0, (agora - t) / 1e3);
+    if (s < 90) return "há instantes";
+    if (s < 3600) return `há ${Math.round(s / 60)} min`;
+    if (s < 86400) return `há ${Math.round(s / 3600)}h`;
+    return `há ${Math.round(s / 86400)} d`;
+  }
+  function quando(iso, agora = /* @__PURE__ */ new Date()) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return "";
+    const p = (n) => String(n).padStart(2, "0"), hm = `${p(d.getHours())}:${p(d.getMinutes())}`;
+    return d.toDateString() === agora.toDateString() ? hm : `${p(d.getDate())}/${p(d.getMonth() + 1)} ${hm}`;
+  }
+  function rotuloEstado(m) {
+    if (!m) return "INDISPONÍVEL";
+    if (m.estado === "rodando") return "rodando" + (typeof m.progresso === "number" ? ` · ${Math.round(m.progresso * 100)}%` : "");
+    if (m.estado === "falhou") {
+      const h = haQuanto(m.desde);
+      return "falhou" + (h ? " " + h : "");
+    }
+    if (m.estado === "agendado") {
+      const q = quando(m.proxima);
+      return "agendado" + (q ? ` · próx. ${q}` : "");
+    }
+    if (m.estado === "ocioso") return "ocioso";
+    return "INDISPONÍVEL";
+  }
+  async function lerEstado(ms = 4e3) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
+    try {
+      const r = await fetch("/api/ao-vivo/estado", { credentials: "same-origin", signal: c.signal });
+      if (!r.ok) return null;
+      const j = await r.json();
+      return j && Array.isArray(j.motores) ? j : null;
+    } catch (_) {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // static/js/src/cena/abertura.js
+  var A = "/static/assets/v61/";
+  var HOJE = () => {
+    const d = /* @__PURE__ */ new Date(), p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+  function aberturaStart(portal) {
+    if (portal) portal.remove();
+    let off = false, dia = "";
+    try {
+      off = localStorage.getItem("jfn_portal_off") === "1";
+      dia = localStorage.getItem("jfn_abertura_dia") || "";
+    } catch (_) {
+    }
+    if (off) return;
+    const eco = !!(navigator.connection && navigator.connection.saveData);
+    const cel = matchMedia("(max-width:760px)").matches;
+    const modo = _redMotion || eco ? "minima" : dia === HOJE() ? "curta" : "completa";
+    const el = document.createElement("div");
+    el.id = "v61-abertura";
+    el.className = "ab-" + modo;
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-label", "Abertura do painel");
+    const poster = A + "reator" + (cel ? "-sm" : "") + ".webp";
+    el.innerHTML = `<div class="ab-poster" style="background-image:url(${poster})"></div>` + (modo === "completa" ? `<video class="ab-vid" muted playsinline preload="auto" aria-hidden="true"><source src="${A}abertura${cel ? "-m" : ""}.webm" type="video/webm"><source src="${A}abertura${cel ? "-m" : ""}.mp4" type="video/mp4"></video>` : "") + `<div class="ab-clarao" aria-hidden="true"></div>` + (modo === "minima" ? "" : `<div class="ab-marca"><div class="ab-jfn v61-disp" aria-label="JFN"><span>J</span><span>F</span><span>N</span></div><div class="ab-sub v61-disp">INTELIGÊNCIA FISCAL · RJ</div></div>`) + (modo === "completa" ? `<ul class="ab-boot" aria-live="polite" aria-label="Motores do sistema"></ul><button type="button" class="ab-pular">Pular</button>` : "");
+    document.body.appendChild(el);
+    let fim = false;
+    const fechar = (ms) => {
+      if (fim) return;
+      fim = true;
+      el.style.setProperty("--ab-sai", ms + "ms");
+      el.classList.add("ab-off");
+      removeEventListener("keydown", tecla);
+      setTimeout(() => el.remove(), ms + 60);
+    };
+    const tecla = (e) => {
+      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") fechar(300);
+    };
+    if (modo === "minima") {
+      setTimeout(() => fechar(300), 350);
+      return;
+    }
+    if (modo === "curta") {
+      requestAnimationFrame(() => el.classList.add("ab-on"));
+      setTimeout(() => fechar(400), 800);
+      return;
+    }
+    try {
+      localStorage.setItem("jfn_abertura_dia", HOJE());
+    } catch (_) {
+    }
+    const v = el.querySelector("video"), boot = el.querySelector(".ab-boot");
+    const DUR2 = 10, t0 = performance.now();
+    let tocando = false;
+    v.addEventListener("playing", () => {
+      tocando = true;
+      el.classList.add("ab-tocando");
+    });
+    v.addEventListener("ended", () => fechar(600));
+    v.play().catch(() => {
+    });
+    const tempo = () => tocando && v.currentTime > 0 ? v.currentTime : (performance.now() - t0) / 1e3;
+    let linhas = null;
+    lerEstado(3500).then((j) => {
+      linhas = j ? j.motores.map((m) => ({ cls: "e-" + (m.estado || "indisponivel"), txt: `${m.nome} — ${rotuloEstado(m)}` })) : [];
+    });
+    let postas = 0, avisou = false;
+    const passo = () => {
+      if (fim) return;
+      const t = tempo();
+      if (t >= 0.05) el.classList.add("ab-on");
+      if (t >= 2.5) el.classList.add("ab-marca-off");
+      if (t >= 1 && t < 7.4 && linhas) {
+        if (!linhas.length) {
+          if (!avisou) {
+            avisou = true;
+            boot.innerHTML = '<li class="e-indisponivel on"><i></i>motores: INDISPONÍVEL</li>';
+          }
+        } else {
+          const alvo = Math.min(linhas.length, Math.ceil((t - 1) / (6 / linhas.length)));
+          for (; postas < alvo; postas++) {
+            const li = document.createElement("li");
+            li.className = linhas[postas].cls;
+            li.innerHTML = "<i></i>" + esc(linhas[postas].txt);
+            boot.appendChild(li);
+            requestAnimationFrame(() => li.classList.add("on"));
+            while (boot.children.length > (cel ? 7 : 12)) boot.firstChild.remove();
+          }
+        }
+      }
+      if (t >= 7.5) el.classList.add("ab-hud-off");
+      if (t >= DUR2 - 0.6) {
+        fechar(600);
+        return;
+      }
+      setTimeout(passo, 80);
+    };
+    passo();
+    el.querySelector(".ab-pular").addEventListener("click", () => fechar(300));
+    addEventListener("keydown", tecla);
+    setTimeout(() => fechar(600), (DUR2 + 2) * 1e3);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && (performance.now() - t0) / 1e3 >= DUR2) fechar(0);
+    });
+  }
+
   // static/js/src/cena/portal.js
   var _PORTAL_VS = "attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}";
   var _PORTAL_FS = `precision highp float;
@@ -1439,6 +1589,10 @@ void main(){
 }`;
   function portalStart() {
     const el = $("portal");
+    if (_v61) {
+      aberturaStart(el);
+      return;
+    }
     if (!el) return;
     let pular = false;
     try {
@@ -2124,12 +2278,12 @@ void main(){
       setCam();
       trilhos();
       const PL = HOLO.PL, kN = cam.camd / Math.max(0.42, cam.camd - PL * cam.cp), kF = cam.camd / (cam.camd + PL * cam.cp);
-      const A = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
+      const A2 = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
       const gut = _compacto ? 10 : 48;
       const Hu = Math.max(150, H - _gradeH);
-      cam.s = Math.min(Hu * 0.965 / (A + B + HT), Math.max(140, W - 2 * gut) / (2 * PL * kN));
+      cam.s = Math.min(Hu * 0.965 / (A2 + B + HT), Math.max(140, W - 2 * gut) / (2 * PL * kN));
       cam.cx = W / 2;
-      cam.cy = (Hu - (A + B + HT) * cam.s) / 2 + (A + HT) * cam.s;
+      cam.cy = (Hu - (A2 + B + HT) * cam.s) / 2 + (A2 + HT) * cam.s;
       piso = document.createElement("canvas");
       piso.width = W * dpr;
       piso.height = H * dpr;
@@ -2247,9 +2401,9 @@ void main(){
       ctx.stroke();
       ctx.strokeStyle = "rgba(130,180,255,0.06)";
       for (let i = 0; i < 12; i++) {
-        const th = i / 12 * 6.283, A = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
+        const th = i / 12 * 6.283, A2 = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
         ctx.beginPath();
-        ctx.moveTo(A.x, A.y);
+        ctx.moveTo(A2.x, A2.y);
         ctx.lineTo(B.x, B.y);
         ctx.stroke();
       }
@@ -2390,11 +2544,11 @@ void main(){
         });
       }
       for (let i = 0; i < pos.length; i++) {
-        const A = pos[i], B = pos[(i + 1) % pos.length];
-        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A.k, B.k)).toFixed(3) + ")";
+        const A2 = pos[i], B = pos[(i + 1) % pos.length];
+        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A2.k, B.k)).toFixed(3) + ")";
         ctx.lineWidth = 0.7;
         ctx.beginPath();
-        ctx.moveTo(A.x, A.y);
+        ctx.moveTo(A2.x, A2.y);
         ctx.lineTo(B.x, B.y);
         ctx.stroke();
       }
@@ -3381,12 +3535,12 @@ void main(){
       cx.clearRect(0, 0, W, H);
       const f = _wireFase(t0i == null ? null : t - t0i);
       if (f.aresta > 0) edges.forEach((e) => {
-        const A = pts[e.a], B = pts[e.b];
+        const A2 = pts[e.a], B = pts[e.b];
         cx.strokeStyle = "rgba(" + C + ",.15)";
         cx.lineWidth = 1;
         cx.beginPath();
-        cx.moveTo(A.x, A.y);
-        cx.lineTo(A.x + (B.x - A.x) * f.aresta, A.y + (B.y - A.y) * f.aresta);
+        cx.moveTo(A2.x, A2.y);
+        cx.lineTo(A2.x + (B.x - A2.x) * f.aresta, A2.y + (B.y - A2.y) * f.aresta);
         cx.stroke();
       });
       if (f.no > 0) pts.forEach((p) => {
@@ -3397,8 +3551,8 @@ void main(){
       });
       if (!rm) {
         if (f.aresta >= 1) edges.forEach((e, i) => {
-          const A = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
-          const x = A.x + (B.x - A.x) * ph, y = A.y + (B.y - A.y) * ph;
+          const A2 = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
+          const x = A2.x + (B.x - A2.x) * ph, y = A2.y + (B.y - A2.y) * ph;
           const g = cx.createRadialGradient(x, y, 0, x, y, 8);
           g.addColorStop(0, "rgba(" + C + ",.8)");
           g.addColorStop(1, "rgba(" + C + ",0)");
