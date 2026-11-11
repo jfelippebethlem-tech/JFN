@@ -225,7 +225,7 @@ def _ler_cache(tag: str):
     try:
         from compliance_agent.sei.cache_arquivo import ler_json
         return ler_json(CACHE / f"cdp_SEI_{tag}.json")
-    except Exception:  # noqa: BLE001 — cache ilegível = sem texto (vira PENDENTE_CAPTURA, nunca "sem NF")
+    except (OSError, ValueError, ImportError):  # cache ilegível = sem texto (vira PENDENTE_CAPTURA, nunca "sem NF"); ler_json já devolve None p/ JSON torto
         return None
 
 
