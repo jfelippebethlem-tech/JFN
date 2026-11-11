@@ -121,6 +121,15 @@ def test_contrato_de_prefeitura_fica_fora(unidade, esfera):
     assert ae.esfera_unidade(unidade) == esfera
 
 
+def test_status_rescisao_vem_como_termo_de_rescisao():
+    assert ae.eh_rescisao("Termo de Rescisão") and ae.eh_rescisao("Rescisão") and not ae.eh_rescisao("Termo Aditivo")
+    assert not ae.eh_rescisao(None) and not ae.eh_rescisao("Termo de Apostilamento")
+    assert ae.status_de(True, "2030-01-01", "2026-11-11") == "rescindido"            # rescindido vence a vigência
+    assert ae.status_de(False, "2026-11-11", "2026-11-11") == "em_execucao"          # vence hoje: ainda em execução
+    assert ae.status_de(False, "2026-11-10", "2026-11-11") == "executado"
+    assert ae.status_de(False, None, "2026-11-11") == "executado"
+
+
 # ── (B) PCRJ → AP ──────────────────────────────────────────────────────────────────────────────
 ORG = ap.orgaos_regionais()
 CRE = ap.cre_para_ap(ORG)

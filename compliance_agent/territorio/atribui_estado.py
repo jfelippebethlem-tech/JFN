@@ -174,6 +174,18 @@ def atribuir(objeto: str | None, unidade: str | None, regionais, unidades) -> di
     return out
 
 
+def eh_rescisao(tipo_termo: str | None) -> bool:
+    """No PNCP o termo vem como "Termo de Rescisão" (não começa por "Rescisão")."""
+    return "RESCIS" in norm(tipo_termo)
+
+
+def status_de(rescindido: bool, vig_fim: str | None, hoje: str) -> str:
+    """`rescindido` vence tudo; senão vigência final (já com aditivo de prazo) ≥ hoje = em execução."""
+    if rescindido:
+        return "rescindido"
+    return "em_execucao" if vig_fim and vig_fim[:10] >= hoje else "executado"
+
+
 def _digitos(s: str | None) -> str:
     return re.sub(r"\D", "", s or "")
 
@@ -239,7 +251,7 @@ def rodar(incremental: bool = False, log=print) -> dict:
     adit: dict[str, dict] = {}
     for r in src.execute("SELECT numero_controle_pncp, tipo_termo, vigencia_fim FROM contrato_aditivo"):
         a = adit.setdefault(r[0], {"resc": False, "fim": None})
-        if (r[1] or "").lower().startswith("resc"):
+        if eh_rescisao(r[1]):
             a["resc"] = True
         if r[2] and (a["fim"] is None or r[2] > a["fim"]):
             a["fim"] = r[2]
@@ -253,7 +265,7 @@ def rodar(incremental: bool = False, log=print) -> dict:
             continue
         a = adit.get(r["numero_controle_pncp"], {})
         fim = max(x for x in (r["vigencia_fim"], a.get("fim")) if x) if (r["vigencia_fim"] or a.get("fim")) else None
-        status = "rescindido" if a.get("resc") else ("em_execucao" if fim and fim[:10] >= hoje else "executado")
+        status = status_de(bool(a.get("resc")), fim, hoje)
         valor = r["valor_global"] if r["valor_global"] is not None else r["valor_inicial"]
         linhas.append({"contrato_id": r["numero_controle_pncp"], "orgao": (r["unidade"] or "").strip(),
                        "fornecedor_cnpj": _digitos(r["fornecedor_documento"]), "fornecedor_nome": r["fornecedor_nome"],
