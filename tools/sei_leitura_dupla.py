@@ -1058,7 +1058,15 @@ def _pendentes(con: sqlite3.Connection, n: int) -> list[str]:
         if proc in lidos:
             continue
         t = d / "texto"
-        cands.append((sum(f.stat().st_size for f in t.glob("*.txt")) if t.is_dir() else 0, proc))
+        tam = sum(f.stat().st_size for f in t.glob("*.txt")) if t.is_dir() else 0
+        # PASTA SEM TEXTO É FILA DE CAPTURA, NÃO DE LEITURA. Medido em 11/11/2026: 111 dos 115
+        # pendentes tinham 0 byte de texto; `confrontar` devolve "não está no acervo" sem gravar, e
+        # as 4 fatias retentavam a cada 10 min (400.786 linhas desse erro no log). A íntegra
+        # (`sei_integra_fila._arquivado_ok`) já devolve pasta sem texto à captura; com o texto
+        # chegando, o processo volta para cá sozinho.
+        if tam == 0:
+            continue
+        cands.append((tam, proc))
     cands.sort(reverse=True)
     return [p for _, p in cands[:n]]
 
