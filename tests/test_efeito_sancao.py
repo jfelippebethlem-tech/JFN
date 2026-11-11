@@ -81,3 +81,10 @@ def test_fundamento_e_por_extenso_e_cita_a_norma():
                 "Impedimento/proibição de contratar com prazo determinado", "Multa"):
         f = efeito(cat)["fundamento"]
         assert len(f) > 40 and ("art." in f or "Lei" in f)
+
+
+def test_advertencia_nao_impede_contratar():
+    """Categoria nova no CEIS/CNEP (medido 11/11/2026): caía em 'não catalogada'."""
+    e = efeito("Advertência")
+    assert e["efeito"] == SEM_IMPEDIMENTO and "156, I" in e["fundamento"]
+    assert veda_contratar("Advertência")["veda"] is False

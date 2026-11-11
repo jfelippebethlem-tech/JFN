@@ -18,6 +18,7 @@ INDISPONÍVEL ≠ ocioso: se o systemd não responde, o motor sai como `indispon
 """
 from __future__ import annotations
 
+import logging
 import http.client
 import os
 import re
@@ -29,6 +30,8 @@ import urllib.request
 from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 import yaml
 
@@ -295,8 +298,8 @@ class Coletor:
                     try:
                         a, b = (float(mm.group(i)) for i in e["progresso"])
                         self._prog[m["id"]] = max(0.0, min(1.0, a / b)) if b else None
-                    except (ValueError, IndexError):
-                        pass
+                    except (ValueError, IndexError) as exc:   # linha de progresso torta: segue sem barra
+                        logger.debug("ao vivo: progresso ilegível em %s: %s", m["id"], exc)
                 else:
                     self._prog.pop(m["id"], None)          # evento sem fração encerra a barra (ex.: "fim do slot")
                 self._emitir(m["id"], e.get("tipo", "progresso"), txt, ts)
@@ -354,8 +357,8 @@ class Coletor:
                     if col == "cod_ibge":
                         try:
                             nome = __import__("json").loads(js or "[]")[0]["nome"]
-                        except (ValueError, IndexError, KeyError):
-                            pass
+                        except (ValueError, IndexError, KeyError) as exc:   # sem nome: fica o código IBGE
+                            logger.debug("ao vivo: nome do município ilegível (%s): %s", alvo, exc)
                     self._emitir("territorio", "dado", f"{rot} {nome}")
                     self.eventos[-1]["cod_ibge" if col == "cod_ibge" else "ap"] = alvo
         finally:

@@ -73,6 +73,9 @@ _REGRAS: tuple[tuple[str, str, int, str], ...] = (
      "IV da Lei 12.846/2013): veda BENEFÍCIO, não veda contrato oneroso"),
     (r"perdimento de bens", SEM_IMPEDIMENTO, 1,
      "perdimento de bens: sanção patrimonial — não interdita contratar"),
+    (r"advert[êe]ncia", SEM_IMPEDIMENTO, 0,
+     "advertência — art. 156, I da Lei 14.133/2021 (art. 87, I da Lei 8.666/93): sanção mais "
+     "branda do rol, aplicada por falta leve — NÃO interdita licitar nem contratar"),
     (r"demiss[ãa]o", SEM_IMPEDIMENTO, 0,
      "demissão: sanção aplicada a AGENTE PÚBLICO, não a fornecedor"),
 )
