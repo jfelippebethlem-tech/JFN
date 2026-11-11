@@ -612,7 +612,10 @@ def _render_execucao(ctx: dict) -> str:
         add(f"_Cruzamento de execução indisponível nesta execução ({str(e)[:60]}) — **INDISPONÍVEL**._")
         add("")
         return "\n".join(L)
-    suspeitos = [x for x in itens if (x.get("exec") in ("nao", "parcial", "indeterminado")) and (x.get("total") or 0) > 0]
+    # "sem_documento_execucao" = veredito da REGRA (11/11/2026, lex_execucao): pago sem atesto/medição/NF nos autos
+    # capturados. Fora desta lista, o texto abaixo diria "execução aparentemente regular" — omissão que mente.
+    suspeitos = [x for x in itens if (x.get("exec") in ("nao", "parcial", "indeterminado", "sem_documento_execucao"))
+                 and (x.get("total") or 0) > 0]
     periciados = [x for x in itens if x.get("exec")]
     if not suspeitos:
         if periciados:
@@ -638,7 +641,7 @@ def _render_execucao(ctx: dict) -> str:
                 _NEGA_OB.search(f"{x.get('indicios') or ''} {x.get('resumo') or ''}"):
             res = "⚠️ veredito anterior negava a OB que o SIAFE registra — em reavaliação. " + res
             n_contest += 1
-        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {x.get('nota')}/10 | {res} |")
+        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {'—' if x.get('nota') is None else str(x.get('nota')) + '/10'} | {res} |")
     add("")
     if n_contest:
         add(f"> ⚠️ **{n_contest} processo(s) acima** têm veredito de execução dado antes de a perícia consultar o "

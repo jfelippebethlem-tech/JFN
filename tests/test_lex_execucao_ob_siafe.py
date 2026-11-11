@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import inspect
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -20,6 +21,9 @@ def _sem_memoria_real(monkeypatch):
     """`_regras_calibracao` abre a memória pelo ORM, que CRIA data/compliance.db vazio — no CI isso fazia
     /api/ugs responder 500 noutro teste do mesmo lote (29/10/2026)."""
     monkeypatch.setattr(L, "_regras_calibracao", lambda: "(teste)")
+    # o pré-filtro lê o manifesto do sei_arquivo: o acervo REAL não pode decidir o teste
+    from compliance_agent.sei import manifesto_norm
+    monkeypatch.setattr(manifesto_norm, "_BASE", Path("/nonexistent-sei-arquivo"))
 
 
 def _base():
@@ -60,7 +64,9 @@ def test_prompt_leva_o_bloco_do_siafe():
         vistos.append((prompt, sys_))
         raise TimeoutError
     m = L.mapa_obs_siafe(_base(), ["SEI-330002/031566/2024"])
-    L.avaliar_processo(None, "SEI-330002/031566/2024", "obj", "", [], [], _gerar, m)
+    # com documento de execução: sem ele o pré-filtro determinístico (11/11/2026) nem chama o LLM
+    L.avaliar_processo(None, "SEI-330002/031566/2024", "obj", "",
+                       [{"tipo": "aceite", "ponto": "Termo de recebimento definitivo"}], [], _gerar, m)
     assert "PAGAMENTO NO SIAFE (fonte oficial da OB): 2 OB(s)" in vistos[0][0]
     assert "NUNCA aponte 'ausência de OB'" in vistos[0][1]
 

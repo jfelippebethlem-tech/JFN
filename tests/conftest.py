@@ -68,6 +68,10 @@ def _isola_db(request, tmp_path, monkeypatch):
     nome = request.module.__name__.split(".")[-1]
     if nome in _MODULOS_ISOLAR_DB:
         monkeypatch.setenv("JFN_DB", str(tmp_path / "test_compliance.db"))
+    # 11/11/2026: o trace do LLM (free_llm._trace) passou a gravar cada tentativa do Gemini — teste com
+    # HTTP mockado não pode entrar no `data/llm_trace.db` real e inflar a medição de volume (§4.1).
+    if not __import__("os").environ.get("JFN_LLM_TRACE_DB"):
+        monkeypatch.setenv("JFN_LLM_TRACE_DB", str(tmp_path / "llm_trace_teste.db"))
     yield
 
 

@@ -131,14 +131,42 @@ async def _groq_gerar(messages: list[dict]) -> str:
 
 
 ultimo_provedor: str = ""  # provedor que respondeu a ÚLTIMA chamada — proveniência real p/ quem persiste 'modelo'
+ultimo_modelo: str = ""    # modelo exato do Gemini que respondeu (3-flash-preview/3.6/3.5/2.5) — "" fora do Gemini
+
+
+def _trace(provedor: str, ok: bool, ini: float, erro: str = "", modelo: str = "",
+           tokens_in=None, tokens_out=None) -> None:
+    """Grava a chamada em `data/llm_trace.db` (free_llm._trace). 11/11/2026: este caminho (lex_execucao ~32/dia,
+    doc_juizo ~150 docs/dia, bombeiros) não gravava desde 14/08 — 3 meses de Gemini sem medição (§4.1).
+    Nunca derruba a chamada."""
+    import time as _t
+    try:
+        from compliance_agent.llm.free_llm import _trace as _ft
+        _ft(provedor, ok, int((_t.monotonic() - ini) * 1000), erro, modelo=modelo,
+            tokens_in=tokens_in, tokens_out=tokens_out)
+    except (ImportError, AttributeError, TypeError) as e:  # telemetria é melhoria, não dependência dura
+        logger.debug("trace indisponível: %s", e)
+
+
+_RE_QUOTA = re.compile(r'"quota(?:Metric|Id)"\s*:\s*"([^"]+)"')
+
+
+def _quota_429(r) -> str:
+    """Métrica de cota do corpo do 429 — `...free_tier_requests` é a evidência do TIER da chave (§4.1)."""
+    try:
+        m = _RE_QUOTA.findall(getattr(r, "text", "") or "")
+        return ";".join(dict.fromkeys(x.rsplit("/", 1)[-1] for x in m))[:150]
+    except (TypeError, AttributeError):
+        return ""
 
 
 async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
     """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
     Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
     # cooldown por TIPO de erro (mesma lógica do free_llm.best_free_chat — não re-bater provedor morto)
-    global ultimo_provedor
+    global ultimo_provedor, ultimo_modelo
     from compliance_agent.llm.free_llm import _em_cooldown, _marcar_cooldown, _limpar_cooldown
+    import time as _t
     erros = []
     if _gemini_keys() and not _em_cooldown("gemini"):
         try:
@@ -152,13 +180,16 @@ async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
             _marcar_cooldown("gemini", e)
             erros.append(f"gemini: {str(e)[:50]}")
     if not _em_cooldown("groq"):
+        _ini = _t.monotonic()
         try:
             r = await _groq_gerar(messages)  # Hermes usa Groq/OpenRouter
             _limpar_cooldown("groq")
-            ultimo_provedor = "groq"
+            ultimo_provedor, ultimo_modelo = "groq", ""
+            _trace("groq", True, _ini)
             return r
         except Exception as e:  # noqa: BLE001
             _marcar_cooldown("groq", e)
+            _trace("groq", False, _ini, f"{type(e).__name__}: {e}")
             erros.append(f"groq: {str(e)[:50]}")
     # FALLBACK aditivo (pedido do dono): groq → openrouter :free → nvidia → resto do _EXTRA. Só roda quando
     # gemini+groq falham/cooldown — o caminho de sucesso atual fica intacto. O cap mensal (§4.1) protege
@@ -181,15 +212,19 @@ async def _gerar_default(messages: list[dict], json_saida: bool = True) -> str:
         for nome, chamada in provedores:
             if _em_cooldown(nome):
                 continue
+            _ini = _t.monotonic()
             try:
                 r = await chamada()
                 if r and r.strip():
                     _limpar_cooldown(nome)
-                    ultimo_provedor = nome
+                    ultimo_provedor, ultimo_modelo = nome, ""
+                    _trace(nome, True, _ini)
                     return r
+                _trace(nome, False, _ini, "resposta vazia")
                 erros.append(f"{nome}: vazio")
             except Exception as e:  # noqa: BLE001
                 _marcar_cooldown(nome, e)
+                _trace(nome, False, _ini, f"{type(e).__name__}: {e}")
                 erros.append(f"{nome}: {str(e)[:50]}")
     except Exception as e:  # noqa: BLE001 — import/setup do fallback falhou: cai no raise honesto
         erros.append(f"fallback-extra indisponível: {str(e)[:50]}")
@@ -295,8 +330,9 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                        max_tokens: int | None = None, json_saida: bool = True) -> str:
     """Gemini robusto: ROTAÇÃO do pool de chaves (round-robin) × MODELOS em cascata (buckets de RPM
     distintos no free tier) × backoff. Adapta messages OpenAI→Gemini (system → systemInstruction)."""
-    global _GEMINI_RR
+    global _GEMINI_RR, ultimo_modelo
     import asyncio as _aio
+    import time as _t
     import os
     import httpx
     keys = _gemini_keys()
@@ -337,8 +373,13 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                         # raciocínio + 604 de resposta num teto de 4.096 — passando um pouco, o JSON saía cortado
                         corpo = {**body, "generationConfig": {**body["generationConfig"],
                                                               "thinkingConfig": {"thinkingBudget": 2048}}}
+                    _ini = _t.monotonic()
                     try:
                         r = await client.post(url, json=corpo)
+                        if r.status_code != 200:
+                            # cada tentativa HTTP é requisição feita (conta na cota e, se houver billing, na
+                            # fatura) — vai ao trace com a métrica de cota do 429 quando houver
+                            _trace("gemini", False, _ini, f"{r.status_code} {_quota_429(r)}".strip(), modelo=mdl)
                         if r.status_code in (429, 403, 401):
                             erros.append(f"{mdl}:{r.status_code}")
                             continue
@@ -352,6 +393,11 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                         j = r.json()
                         cand = j.get("candidates", [{}])[0]
                         txt = cand.get("content", {}).get("parts", [{}])[0].get("text", "")
+                        _uso = j.get("usageMetadata") or {}
+                        _trace("gemini", cand.get("finishReason") != "MAX_TOKENS", _ini,
+                               "MAX_TOKENS" if cand.get("finishReason") == "MAX_TOKENS" else "", modelo=mdl,
+                               tokens_in=_uso.get("promptTokenCount"),
+                               tokens_out=_uso.get("candidatesTokenCount"))
                         if cand.get("finishReason") == "MAX_TOKENS":
                             # resposta CORTADA não é resposta: 616 vereditos de lex_execucao nasceram vazios
                             # assim (JSON truncado). Próximo modelo da cascata, não texto pela metade.
@@ -359,11 +405,13 @@ async def gerar_gemini(messages: list[dict], model: str | None = None,
                             so_rate = False
                             break
                         _GEMINI_RR = (_GEMINI_RR + off + 1) % n
+                        ultimo_modelo = mdl
                         return txt
                     except httpx.HTTPStatusError as e:
                         erros.append(str(e.response.status_code))
                         so_rate = False
                     except Exception as e:  # noqa: BLE001
+                        _trace("gemini", False, _ini, f"{type(e).__name__}: {e}", modelo=mdl)
                         erros.append(str(e)[:20])
                         so_rate = False
                 if mi == 0 and tentativa == 0 and so_rate:

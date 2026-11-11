@@ -494,7 +494,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         _ex, _ex_erro = [], str(_e)[:60]   # degrada honesto, sem esconder defeito de programação
     else:
         _ex_erro = ""
-    _susp = [x for x in _ex if x.get("exec") in ("nao", "parcial", "indeterminado")
+    # "sem_documento_execucao" (regra do lex_execucao, 11/11/2026) é execução NÃO comprovada — tem de constar
+    _susp = [x for x in _ex if x.get("exec") in ("nao", "parcial", "indeterminado", "sem_documento_execucao")
              and (x.get("total") or 0) > 0]
     _peric = [x for x in _ex if x.get("exec")]
     _cab = ("<p class='nota'>Cruza os processos <b>pagos</b> (Ordem Bancária) com a <b>perícia de "
@@ -516,7 +517,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         _erows = "".join(
             f"<tr><td>{esc(x.get('numero_sei'))}</td><td>{esc(x.get('n_obs'))}</td>"
             f"<td>{esc(moeda(x.get('total')))}</td><td>{esc(x.get('exec'))}</td>"
-            f"<td>{esc(x.get('nota'))}/10</td><td>{esc(campo(x.get('resumo'), 110))}</td></tr>"
+            f"<td>{'—' if x.get('nota') is None else esc(x.get('nota')) + '/10'}</td><td>{esc(campo(x.get('resumo'), 110))}</td></tr>"
             for x in sorted(_susp, key=lambda y: -(y.get("total") or 0)))
         _eh = _cab + (
             f"<p class='nota'>🟡 <b>{len(_susp)}</b> processo(s) pago(s) — <b>R$ {moeda(_etot)}</b> — "

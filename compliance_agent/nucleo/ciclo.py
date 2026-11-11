@@ -6,8 +6,8 @@ Ciclo de inteligência progressiva — o loop completo, num comando só.
 
 Cada execução:
 
-  1. PERICIA  — se houver banco, varre as maiores OBs/contratos ainda não
-                periciados e registra cada laudo na memória pericial.
+  1. PERICIA  — se houver banco, varre as OBs do SIAFE (contabilizadas) ainda não
+                periciadas, por cursor, e registra cada laudo na memória pericial.
                 (cada perícia torna as referências de preço mais precisas)
   2. AVALIA   — mede o desempenho no conjunto-ouro (placar F1).
   3. APRIMORA — roda o loop de autoaprimoramento: testa calibrações e mantém
@@ -29,33 +29,68 @@ from compliance_agent.nucleo.autoaprimoramento import executar_loop, historico_e
 from compliance_agent.nucleo.avaliacao import avaliar_sistema
 
 
+_PAGINA = 500
+
+
+def _data_siafe(txt):
+    """`data_emissao` do SIAFE é TEXTO 'dd/mm/aaaa' — vira date (a régua de sanção vigente compara ISO)."""
+    from datetime import datetime
+    try:
+        return datetime.strptime((txt or "").strip()[:10], "%d/%m/%Y").date()
+    except ValueError:
+        return None
+
+
+def _ob_siafe(row):
+    """Linha de `ob_orcamentaria_siafe` → objeto que `periciar_ob` lê por getattr. Chave = (numero_ob, UG,
+    exercício): `numero_ob` sozinho NÃO é único entre UGs (cada UG numera as suas)."""
+    from types import SimpleNamespace
+    numero_ob, ug, exercicio, data, credor, nome, processo, valor = row
+    return SimpleNamespace(
+        numero_ob=numero_ob, ug_codigo=ug, ug_nome=ug or "", exercicio=exercicio,
+        referencia_pericia=f"siafe:{numero_ob}:{ug}:{exercicio}", fonte_pericia="siafe_ob",
+        favorecido_cpf=credor or "", favorecido_nome=nome or "", valor=valor,
+        data_emissao=_data_siafe(data), observacao=f"OB {numero_ob} · processo {processo or '—'}",
+        categoria="", tipo_ob="")
+
+
+def _paginar(session, filtro: str, params: dict):
+    """Cursor por (valor desc, rowid desc) — página a página, SEM teto: quem para é o consumidor, ao achar
+    `limite` OBs novas. O teto fixo (`.limit(limite*3)`) cortava ANTES do filtro do já periciado."""
+    from sqlalchemy import text
+    ultimo = None
+    while True:
+        cond = "" if ultimo is None else " AND (valor < :uv OR (valor = :uv AND rowid < :ur))"
+        rows = session.execute(text(
+            "SELECT rowid, numero_ob, ug_emitente, exercicio, data_emissao, credor, nome_credor, processo, valor "
+            "FROM ob_orcamentaria_siafe WHERE status LIKE 'contabiliz%' AND valor IS NOT NULL AND "
+            + filtro + cond + " ORDER BY valor DESC, rowid DESC LIMIT :pag"),
+            {**params, "pag": _PAGINA, **({} if ultimo is None else {"uv": ultimo[0], "ur": ultimo[1]})}).fetchall()
+        if not rows:
+            return
+        for r in rows:
+            yield _ob_siafe(tuple(r)[1:])
+        ultimo = (rows[-1][8], rows[-1][0])
+
+
 def _obs_alvo(session, limite: int):
     """
     Duas miras, na ordem: (1) OBs de favorecidos SANCIONADOS (CEIS/CNEP local)
     — alto rendimento, qualquer valor relevante; (2) maiores OBs da base.
     Só as maiores re-encontraria sempre transferências estruturais.
+
+    11/11/2026: fonte = `ob_orcamentaria_siafe`, só OB Contabilizada (regra "OB → sempre SIAFE"; anulada e
+    excluída não são pagamento). Antes lia o espelho TFE `ordens_bancarias` e só as 600 maiores — esgotadas,
+    `pericias_novas: 0` todo dia de 25/10 a 11/11. Agora é cursor: segue até o consumidor parar.
     """
     from sqlalchemy import text
-    from compliance_agent.database.models import OrdemBancaria
-
-    metade = max(1, limite // 2)
     try:
-        docs = [d for (d,) in session.execute(text(
-            "SELECT DISTINCT cpf_cnpj FROM sancoes_federais")).fetchall()]
+        tem_sancao = session.execute(text("SELECT 1 FROM sancoes_federais LIMIT 1")).fetchone() is not None
     except Exception:
-        docs = []
-    if docs:
-        yield from (session.query(OrdemBancaria)
-                    .filter(OrdemBancaria.favorecido_cpf.in_(docs),
-                            OrdemBancaria.valor.isnot(None),
-                            OrdemBancaria.valor >= 10_000)
-                    .order_by(OrdemBancaria.valor.desc())
-                    .limit(metade * 3))
-    yield from (session.query(OrdemBancaria)
-                .filter(OrdemBancaria.valor.isnot(None),
-                        OrdemBancaria.valor >= 100_000)
-                .order_by(OrdemBancaria.valor.desc())
-                .limit(limite * 3))
+        tem_sancao = False
+    if tem_sancao:
+        yield from _paginar(session, "valor >= 10000 AND credor IN (SELECT cpf_cnpj FROM sancoes_federais)", {})
+    yield from _paginar(session, "valor >= 100000", {})
 
 
 def _periciar_base(session, limite: int = 200) -> dict:
@@ -76,7 +111,7 @@ def _periciar_base(session, limite: int = 200) -> dict:
             con.close()
 
         for ob in _obs_alvo(session, limite):
-            ref = f"ob:{ob.id}"  # numero_ob NÃO é único entre UGs
+            ref = ob.referencia_pericia  # siafe:<numero_ob>:<ug>:<exercício>
             if ref in ja:
                 continue
             ja.add(ref)  # as duas miras podem trazer a mesma OB

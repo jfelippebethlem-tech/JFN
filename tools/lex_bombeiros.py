@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Lex SÓ nos contratos do FUNESBOM (não no corpus inteiro): pericía execução das fichas bombeiros
 (SEI-2700%) com docs e ainda não avaliadas, em ordem de nº de docs. Reusa avaliar_processo canônico.
-Sem Gemini (GEMINI_DISABLED=1 → cadeia free). Honestidade: indício≠acusação; INDISPONÍVEL≠irregular."""
+Cadeia `gerar_sync` = Gemini primeiro (→ groq → openrouter:free → nvidia); o docstring antigo dizia "sem
+Gemini" e estava errado. Honestidade: indício≠acusação; INDISPONÍVEL≠irregular."""
 import argparse
 import json
 import tools.lex_execucao as L
@@ -13,7 +14,8 @@ def main():
     a = ap.parse_args()
     con = L._con()
     try:
-        ja = {r[0] for r in con.execute("SELECT numero_sei FROM lex_execucao")}
+        # veredito vazio NÃO é feito (régua única do lex_execucao: volta após 7 dias)
+        ja = {r[0] for r in con.execute(L.SQL_JA_AVALIADO)}
         rows = con.execute("SELECT numero_sei,objeto,valores,documentos,red_flags FROM sei_ficha "
                            "WHERE n_docs>0 AND numero_sei LIKE 'SEI-2700%' ORDER BY n_docs DESC").fetchall()
         n = 0
