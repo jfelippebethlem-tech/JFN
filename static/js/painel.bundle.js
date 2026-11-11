@@ -1242,12 +1242,8 @@
   }
 
   // static/js/src/ui/v61.js
-  var _SOL = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/></svg>';
-  var _LUA = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
   function v61Boot() {
-    if (!_v61flag) return;
-    _tema();
-    if (!_v61) return;
+    if (!_v61flag || !_v61) return;
     _fundo();
     _som();
     tickerMontar();
@@ -1259,36 +1255,7 @@
     }, true);
   }
   function v61TemaItem() {
-    if (!_v61flag) return "";
-    return `<button type="button" class="v60-mi" data-v61-tema><span class="v60-ic" aria-hidden="true">${_v61 ? _LUA : _SOL}</span>${_v61 ? "Tema escuro" : "Tema claro"}<small>${_v61 ? "volta ao painel escuro" : "volta ao painel claro"}</small></button>`;
-  }
-  function _tema() {
-    const box = document.querySelector(".htop .actions");
-    if (box && !box.querySelector("[data-v61-tema]")) {
-      const a = document.createElement("a");
-      const txt = _v61 ? "Tema escuro" : "Tema claro";
-      a.setAttribute("role", "button");
-      a.tabIndex = 0;
-      a.dataset.v61Tema = "1";
-      a.title = txt;
-      a.setAttribute("aria-label", txt);
-      a.innerHTML = `<span class="v60-ic" aria-hidden="true">${_v61 ? _LUA : _SOL}</span><span class="v60-tx">${txt}</span>`;
-      box.insertBefore(a, box.querySelector("a.help:not(.som)") || null);
-    }
-    const troca = (e) => {
-      const b = e.target && e.target.closest && e.target.closest("[data-v61-tema]");
-      if (!b) return;
-      if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
-      e.preventDefault();
-      try {
-        if (_v61) localStorage.setItem("jfn_tema", "escuro");
-        else localStorage.removeItem("jfn_tema");
-      } catch (_) {
-      }
-      location.reload();
-    };
-    document.addEventListener("click", troca);
-    document.addEventListener("keydown", troca);
+    return "";
   }
   function _fundo() {
     if (document.getElementById("v61-fundo")) return;

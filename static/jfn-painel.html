@@ -1,18 +1,12 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-<script>window.JFN_V60_DEFAULT='1';(function(){try{var q=new URLSearchParams(location.search).get('v60');
-if(q==='1')localStorage.setItem('jfn_v60','1');if(q==='0')localStorage.setItem('jfn_v60','0');
-var on=localStorage.getItem('jfn_v60');if(on===null)on=window.JFN_V60_DEFAULT||'0';
-if(on==='1')document.documentElement.classList.add('v60');}catch(e){}})();</script>
-<script>/* v61 TRON CLARO: tema claro sobre a v60. `?v61=0|1` grava `jfn_v61`; `jfn_tema=escuro` devolve a v60 escura. */
-window.JFN_V61_DEFAULT='1';(function(){try{var h=document.documentElement,q=new URLSearchParams(location.search).get('v61');
-if(q==='1')localStorage.setItem('jfn_v61','1');if(q==='0')localStorage.setItem('jfn_v61','0');
-var on=localStorage.getItem('jfn_v61');if(on===null)on=window.JFN_V61_DEFAULT||'0';
-if(on==='1'&&h.classList.contains('v60')){h.setAttribute('data-v61','1');
-if(localStorage.getItem('jfn_tema')!=='escuro'){h.classList.add('v61');
+<script>/* SÓ O MODELO CLARO (pedido do dono, 11/11/2026): v61 TRON CLARO sobre a v60, sempre. Sem chave de tema
+   nem volta à versão escura — as classes nascem aqui, antes do CSS pintar. */
+(function(){var h=document.documentElement;h.classList.add('v60','v61');h.setAttribute('data-v61','1');
+try{localStorage.removeItem('jfn_tema');localStorage.removeItem('jfn_v61');localStorage.removeItem('jfn_v60');}catch(e){}
 ['Geist-Regular','Geist-SemiBold'].forEach(function(f){var l=document.createElement('link');l.rel='preload';l.as='font';
-l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/v61/'+f+'.woff2';document.head.appendChild(l);});}}}catch(e){}})();</script>
+l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/v61/'+f+'.woff2';document.head.appendChild(l);});})();</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Central de Inteligência — Controle Externo · RJ</title>
@@ -84,6 +78,6 @@ l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/v61/'
      Editou `src/`? rode `npm run build:painel`. `tools/painel_build_check.py` bloqueia o commit
      com o bundle defasado — a catraca `?v=` sozinha NÃO enxerga esse caso (o hash do artefato
      bate com a tag e ela diz "em dia" enquanto serve código velho). -->
-<script src="/static/js/painel.bundle.js?v=f3b5a7a9"></script>
+<script src="/static/js/painel.bundle.js?v=40821fe9"></script>
 </body>
 </html>
