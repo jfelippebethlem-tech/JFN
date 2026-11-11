@@ -10,11 +10,13 @@ window.JFN_V61_DEFAULT='0';(function(){try{var h=document.documentElement,q=new 
 if(q==='1')localStorage.setItem('jfn_v61','1');if(q==='0')localStorage.setItem('jfn_v61','0');
 var on=localStorage.getItem('jfn_v61');if(on===null)on=window.JFN_V61_DEFAULT||'0';
 if(on==='1'&&h.classList.contains('v60')){h.setAttribute('data-v61','1');
-if(localStorage.getItem('jfn_tema')!=='escuro')h.classList.add('v61');}}catch(e){}})();</script>
+if(localStorage.getItem('jfn_tema')!=='escuro'){h.classList.add('v61');
+['Geist-Regular','Geist-SemiBold'].forEach(function(f){var l=document.createElement('link');l.rel='preload';l.as='font';
+l.type='font/woff2';l.crossOrigin='anonymous';l.href='/static/assets/fonts/v61/'+f+'.woff2';document.head.appendChild(l);});}}}catch(e){}})();</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Central de Inteligência — Controle Externo · RJ</title>
-<link rel="stylesheet" href="/static/css/painel.css?v=2e6aaf22">
+<link rel="stylesheet" href="/static/css/painel.css?v=d79c3514">
 </head>
 <body>
 <div id="portal" hidden><video id="pvid" muted loop playsinline preload="none" aria-hidden="true"
