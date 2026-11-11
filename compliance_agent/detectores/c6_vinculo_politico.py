@@ -127,13 +127,32 @@ class C6VinculoPolitico(Detector):
         qsa = [s for s in (contexto.get("qsa") or []) if isinstance(s, dict)]
         doacoes = [d for d in (contexto.get("doacoes") or []) if isinstance(d, dict)]
 
+        # ── BUSCA FEITA E VAZIA É RESULTADO ──
+        # `doacoes_consultadas_em` é a marca de que o chamador CONSULTOU a base do TSE com os
+        # sócios deste QSA e nada voltou. Sem ela, lista vazia é indistinguível de "não buscou".
+        # Medido em 11/11/2026: 317 fornecedores com QSA ficavam `nao_avaliavel` com "faltam
+        # doações" enquanto `doacoes_eleitorais` tinha 542.244 linhas — a ausência era o juízo.
+        base_tse = str(contexto.get("doacoes_consultadas_em") or "").strip()
+        if qsa and not doacoes and base_tse:
+            res.status = "descartado"
+            res.score = 0.0
+            res.valores = {"tem_qsa": True, "tem_doacoes": False, "n_socios": len(qsa),
+                           "base_consultada": base_tse, "papel": "multiplicador_prioridade"}
+            res.motivo_refutacao = (
+                f"nenhum dos {len(qsa)} sócio(s) do QSA consta como doador em {base_tse} "
+                "(busca por CPF e por nome exato) — sem indício C6. Limite: CPF mascarado só "
+                "casa por nome; doação fora da base consultada não é vista")
+            res.explicacao_inocente = self._explicacao_inocente()
+            return res
+
         # ── HONESTIDADE: sem QSA OU sem doações → nao_avaliavel (campo ausente ≠ 0) ──
         if not qsa or not doacoes:
             falta = []
             if not qsa:
-                falta.append("qsa (CPFs/nomes dos sócios)")
+                falta.append("qsa (CPFs/nomes dos sócios — fonte: socios_fornecedor/QSA da "
+                             "Receita, sem linha para este CNPJ)")
             if not doacoes:
-                falta.append("doacoes (TSE divulgacandcontas)")
+                falta.append("doacoes (TSE divulgacandcontas → doacoes_eleitorais)")
             res.motivo_refutacao = (
                 "nao_avaliavel: faltam " + " e ".join(falta) + " — sem o cruzamento sócio×doador não há juízo "
                 "possível (campo ausente ≠ 0); CPF de sócio pode vir mascarado (LGPD)")

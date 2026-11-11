@@ -33,6 +33,7 @@ from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
 
 # categorias CEIS/CNEP que VEDAM contratar (art. 156 §§4º-5º; art. 87 III-IV da 8.666)
 _IMPEDITIVAS = ("impedimento", "proibicao de contratar", "proibição de contratar",
+                "proibido de contratar",   # grafia do SIGA-RJ (Lei 8.429 art. 12): 31 vigentes
                 "inidoneidade", "suspensão", "suspensao")
 # multa/publicação extraordinária/demissão/incentivos: punição sem vedação de contratar
 _SO_DIGITOS = str.maketrans("", "", "./- ")
@@ -77,6 +78,11 @@ class C7SancionadaContratada(Detector):
             res.motivo_refutacao = ("nao_avaliavel: sem data_referencia ou lista de sanções "
                                     "(INDISPONÍVEL ≠ 0) — consultar sancoes_federais antes")
             return res
+        # Data que NÃO é a da assinatura (a varredura por UG usa a 1ª OB do credor): o teste
+        # objetivo de vedação fica não aferível e o grau desce um nível — a sanção pode ter
+        # começado entre a assinatura e o 1º pagamento.
+        origem = str(contexto.get("data_referencia_origem") or "").strip()
+        nota_origem = f" [data de referência: {origem}]" if origem else ""
 
         vigentes = [s for s in sancoes
                     if (s.get("data_inicio") or "9999") <= data
@@ -90,6 +96,24 @@ class C7SancionadaContratada(Detector):
             "categorias_vigentes": sorted({s.get("categoria") or "?" for s in vigentes})[:6],
         }
 
+        if not vigentes:
+            # Sanção 'Decorrida' no SIGA-RJ sem data de término na base: começou antes da data
+            # de referência e não se sabe se ainda valia. Afirmar "sem sanção vigente" seria
+            # inventar a data final.
+            incertas = [s for s in (contexto.get("sancoes_vigencia_incerta") or [])
+                        if (s.get("data_inicio") or "9999") <= data
+                        and _eh_impeditiva(s.get("categoria"))]
+            if incertas:
+                s = incertas[0]
+                res.valores["n_vigencia_incerta"] = len(incertas)
+                res.motivo_refutacao = (
+                    f"nao_avaliavel: {len(incertas)} sanção(ões) impeditiva(s) do "
+                    f"{s.get('cadastro') or 'SIGA-RJ'} iniciada(s) antes de {data} (ex.: "
+                    f"'{s.get('categoria')}' desde {s.get('data_inicio')}) com status "
+                    "'Decorrido' e SEM data de término na base — FALTA: data final da "
+                    "penalidade · FONTE: registro da sanção no SIGA-RJ (siga_sancoes guarda "
+                    "só a data de efetivação)")
+                return res
         if not sancoes or not vigentes:
             res.status = "descartado"
             res.motivo_refutacao = ("sem sanção vigente na data de referência "
@@ -99,13 +123,16 @@ class C7SancionadaContratada(Detector):
 
         if impeditivas:
             s = impeditivas[0]
-            res.score = ancora("critico")
+            res.score = ancora("forte" if origem else "critico")
             res.status = "confirmado"
-            res.valores["teste_objetivo"] = "violado"  # vedação legal objetiva → flag A possível
+            # vedação legal objetiva → flag A possível; com data-proxy, só depois de conferir
+            # a data de assinatura nos autos
+            res.valores["teste_objetivo"] = "nao_aferivel" if origem else "violado"
             res.evidencia = [(
                 f"{s.get('cadastro')}: '{s.get('categoria')}' vigente em {data} "
                 f"({s.get('data_inicio')} → {s.get('data_fim') or 'sem prazo'}; "
                 f"órgão sancionador: {s.get('orgao') or '?'}) — Lei 14.133/2021 art. 156 §§4º-5º"
+                + nota_origem
             )]
             return res
 
@@ -116,5 +143,6 @@ class C7SancionadaContratada(Detector):
         res.evidencia = [(
             f"{s.get('cadastro')}: '{s.get('categoria')}' vigente em {data} — sanção NÃO "
             "impeditiva de contratar; verificar alcance/condições no processo sancionador"
+            + nota_origem
         )]
         return res

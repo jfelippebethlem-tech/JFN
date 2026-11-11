@@ -73,9 +73,18 @@ class J3DescontoAnomalo(Detector):
         desc = _desconto(estimado, homologado) if (estimado is not None and homologado is not None) else None
 
         if desc is None:
+            # O motivo diz QUAL falta e DE ONDE viria — sem isso a fila de coleta não se monta
+            # a partir do registro (104 J3 nao_avaliavel em 11/11/2026, sem dizer qual lado).
+            falta = []
+            if not (estimado is not None and estimado > 0):
+                falta.append("valor_estimado (valorTotalEstimado da contratação — FONTE: "
+                             "edital_documento via coletor_edital / PNCP compras/{ano}/{seq})")
+            if homologado is None:
+                falta.append("valor_homologado (vencedor classificado ou resultado único por item "
+                             "— FONTE: pncp_resultado via PNCP itens/{n}/resultados)")
             res.motivo_refutacao = (
-                "nao_avaliavel: faltam valor_estimado (>0) e/ou valor_homologado — sem base para o desconto "
-                "(campo ausente ≠ 0); não inventamos número")
+                "nao_avaliavel: FALTA " + " e ".join(falta or ["desconto calculável"])
+                + " — sem base para o desconto (campo ausente ≠ 0); não inventamos número")
             res.valores = {"tem_estimado": estimado is not None and (estimado or 0) > 0,
                            "tem_homologado": homologado is not None}
             return res

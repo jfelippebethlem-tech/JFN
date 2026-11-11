@@ -74,7 +74,10 @@ class P3Sobrepreco(Detector):
             registros = contexto.get("registros") or []
             if not registros:
                 res.motivo_refutacao = ("nao_avaliavel: sem registros de preço p/ comparar (sem_referencial) — "
-                                        "item sem referência NÃO pontua sobrepreço (regra dura do spec P3)")
+                                        "item sem referência NÃO pontua sobrepreço (regra dura do spec P3). "
+                                        "FALTA: ≥3 preços homologados do mesmo item em outros certames · "
+                                        "FONTE: pncp_resultado (item_descricao/CATMAT) ou Painel de "
+                                        "Preços — base de preços ainda não montada")
                 res.valores = {"n_registros": 0}
                 return res
             try:

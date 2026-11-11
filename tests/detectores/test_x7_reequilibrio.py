@@ -41,7 +41,9 @@ def test_sem_aditivos_e_nao_avaliavel():
 def test_so_acrescimo_e_prazo_nao_aciona_o_card():
     """X7 é sobre RECOMPOSIÇÃO — acréscimo é do X1, prazo é do X2."""
     r = X7.avaliar(_ctx(aditivos=[_ad(tipo="valor"), _ad(tipo="prazo")]))
-    assert r.status == "nao_avaliavel"
+    # "não se aplica" é juízo determinado (descartado), não falta de dado — ver
+    # tests/test_nao_avaliavel_resolvivel.py
+    assert r.status == "descartado"
     assert r.valores["n_recomposicoes"] == 0
 
 

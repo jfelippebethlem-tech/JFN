@@ -142,7 +142,10 @@ class J2PropostasCobertura(Detector):
                 "nao_avaliavel: lista de propostas dos perdedores indisponível "
                 f"({n_com_valor} proposta(s) com valor < {_MIN_PROPOSTAS} necessárias). O PNCP só expõe o VENCEDOR; "
                 "sem os valores dos licitantes perdedores NÃO há como calcular o screen de cobertura. "
-                "Conluio NÃO é pontuado sem os dados das propostas (campo ausente ≠ 0)."
+                "Conluio NÃO é pontuado sem os dados das propostas (campo ausente ≠ 0). "
+                "FALTA: valores das propostas dos perdedores · FONTE: ata de julgamento/mapa de "
+                "lances nos autos (SEI ou portal do órgão) — limite de fonte do PNCP "
+                "(limites_de_fonte.py), não há coleta automática"
             )
             res.valores = {"n_propostas_com_valor": n_com_valor, "tem_vencedor": venc is not None,
                            "gap_pncp": "lista de propostas/licitantes ausente"}

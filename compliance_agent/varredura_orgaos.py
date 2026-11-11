@@ -99,6 +99,119 @@ def fornecedores_da_ug(con: sqlite3.Connection, ug: str, *, exercicio: int | Non
     return [r[0] for r in con.execute(sql, params).fetchall()]
 
 
+_OB_ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+
+# Índice folha×QSA por arquivo de banco. `registros_folha` tem 1.359.447 linhas e NENHUM índice
+# por nome (medido em 11/11/2026): `montar_ctx_servidores` lê a tabela inteira a cada chamada,
+# o que em 118 UGs × 25 fornecedores seriam ~3.000 varreduras completas. Aqui é UMA por
+# execução, guardando só as linhas cujo nome está em algum QSA (31.449 sócios).
+_INDICE_FOLHA: dict[str, dict[str, list[dict]] | None] = {}
+_BASE_TSE: dict[str, str] = {}
+
+
+def _caminho_do_banco(con: sqlite3.Connection) -> str:
+    try:
+        for _, nome, arquivo in con.execute("PRAGMA database_list"):
+            if nome == "main":
+                return arquivo or f"mem:{id(con)}"
+    except sqlite3.Error:
+        pass
+    return f"mem:{id(con)}"
+
+
+def _indice_folha(con: sqlite3.Connection) -> dict[str, list[dict]] | None:
+    """`nome normalizado → servidores` restrito a nomes de sócio. None = folha ilegível."""
+    chave = _caminho_do_banco(con)
+    if chave in _INDICE_FOLHA:
+        return _INDICE_FOLHA[chave]
+    from compliance_agent.detectores.c8_servidor_socio import _norm
+    try:
+        alvo = {_norm(r[0]) for r in con.execute(
+            "SELECT DISTINCT socio_nome FROM socios_fornecedor WHERE COALESCE(socio_nome,'') <> ''")}
+    except sqlite3.OperationalError:
+        alvo = set()
+    alvo.discard("")
+    indice: dict[str, list[dict]] | None = {}
+    norm_cache: dict[str, str] = {}
+    vistos: set[tuple] = set()
+    try:
+        for nome, cpf, orgao, cargo, vinculo, fonte in con.execute(
+                "SELECT nome, cpf, orgao_nome, cargo, vinculo, fonte FROM registros_folha "
+                "WHERE COALESCE(nome,'') <> ''"):
+            n = norm_cache.get(nome)
+            if n is None:
+                n = norm_cache[nome] = _norm(nome)
+            if n not in alvo:
+                continue
+            chave_linha = (n, cpf, orgao, cargo, vinculo)   # a folha repete por competência
+            if chave_linha in vistos:
+                continue
+            vistos.add(chave_linha)
+            indice.setdefault(n, []).append({"nome": nome, "cpf": cpf, "orgao": orgao,
+                                             "cargo": cargo, "vinculo": vinculo, "fonte": fonte})
+    except sqlite3.OperationalError:
+        indice = None
+    _INDICE_FOLHA[chave] = indice
+    return indice
+
+
+def _descricao_base_tse(con: sqlite3.Connection) -> str:
+    """Nome da base de doações e as eleições que ela cobre — vai literal para o motivo do C6."""
+    chave = _caminho_do_banco(con)
+    if chave not in _BASE_TSE:
+        try:
+            anos = [str(r[0]) for r in con.execute(
+                "SELECT DISTINCT ano_eleicao FROM doacoes_eleitorais "
+                "WHERE ano_eleicao IS NOT NULL ORDER BY 1")]
+        except sqlite3.OperationalError:
+            anos = []
+        _BASE_TSE[chave] = ("doacoes_eleitorais (TSE"
+                            + (f", eleições {', '.join(anos)})" if anos else ")"))
+    return _BASE_TSE[chave]
+
+
+def _iso_br(d: str | None) -> str | None:
+    s = str(d or "").strip()
+    if len(s) >= 10 and s[2] == "/" and s[5] == "/":
+        return f"{s[6:10]}-{s[3:5]}-{s[0:2]}"
+    return s[:10] or None
+
+
+def _sancoes_do_cnpj(con: sqlite3.Connection,
+                     cnpj: str) -> tuple[list[dict], list[dict]] | None:
+    """(sanções com vigência conhecida, sanções de vigência incerta). None = nenhuma base legível.
+
+    `siga_sancoes` (SIGA-RJ, 3.078 linhas) não tem data de término, só a de efetivação e o status
+    visto na coleta. 'Vigente' vale da efetivação até hoje — entra sem `data_fim`. 'Decorrido'
+    terminou em data que a base não guarda: entra como INCERTA e o C7 declara a lacuna em vez de
+    inventar o fim. Multa/advertência não têm vigência e não vedam contratar — ficam fora.
+    """
+    from compliance_agent.detectores.c7_sancionada_contratada import montar_ctx_sancoes
+    leu = False
+    sancoes: list[dict] = []
+    incertas: list[dict] = []
+    try:
+        sancoes += montar_ctx_sancoes(con, cnpj)
+        leu = True
+    except sqlite3.OperationalError:
+        pass
+    try:
+        for categoria, inicio, orgao, status in con.execute(
+                "SELECT enquadramento, data_efetivacao, orgao_apenador, status FROM siga_sancoes "
+                "WHERE doc = ?", (cnpj,)):
+            item = {"cadastro": "SIGA-RJ", "categoria": categoria, "data_inicio": _iso_br(inicio),
+                    "data_fim": None, "orgao": orgao, "uf": "RJ"}
+            st = (status or "").strip().lower()
+            if st == "vigente":
+                sancoes.append(item)
+            elif st == "decorrido":
+                incertas.append(item)
+        leu = True
+    except sqlite3.OperationalError:
+        pass
+    return (sancoes, incertas) if leu else None
+
+
 def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = None) -> dict:
     """Monta o contexto que os detectores de fornecedor pedem, a partir do que a base JÁ tem.
 
@@ -115,21 +228,24 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
         ctx["orgao_contratante"] = ug
 
     qsa: list[dict] = []
+    socios: list[dict] = []   # o formato do C8: doc mascarado da RFB (D4–D9) + qualificação
     try:
         for r in con.execute(
-            "SELECT socio_nome, socio_doc, cpf_resolvido FROM socios_fornecedor WHERE cnpj = ?",
-            (cnpj,),
+            "SELECT socio_nome, socio_doc, cpf_resolvido, qualificacao FROM socios_fornecedor "
+            "WHERE cnpj = ?", (cnpj,),
         ):
             nome = (r[0] or "").strip()
             if nome:
                 qsa.append({"nome": nome, "cpf": (r[2] or r[1] or "") or None})
+                socios.append({"nome": nome, "doc": r[1], "qualificacao": r[3] or ""})
     except sqlite3.OperationalError:
-        qsa = []
+        qsa, socios = [], []
     if qsa:
         ctx["qsa"] = qsa
 
     # Doações dos sócios — cruza por CPF quando há, senão por nome normalizado.
     doacoes: list[dict] = []
+    consultou_tse = False
     if qsa:
         cpfs = [q["cpf"] for q in qsa if q.get("cpf")]
         nomes = [q["nome"].upper() for q in qsa]
@@ -150,10 +266,35 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
                                 f"SELECT cpf_cnpj_doador, nome_doador, nome_candidato, "
                                 f"cargo_candidato, valor FROM doacoes_eleitorais "
                                 f"WHERE UPPER(nome_doador) IN ({marcas})", nomes)]
+            consultou_tse = True
         except sqlite3.OperationalError:
             doacoes = []
     if doacoes:
         ctx["doacoes"] = doacoes
+    elif consultou_tse:
+        # Busca FEITA e vazia é resultado: o C6 grava `descartado` citando a base consultada.
+        # Era "faltam doações" em 317 fornecedores com QSA (achados.db, 11/11/2026).
+        ctx["doacoes_consultadas_em"] = _descricao_base_tse(con)
+
+    # SANÇÕES (C7) — CEIS/CNEP federais + SIGA-RJ estadual. A lista entra mesmo vazia: busca
+    # feita e vazia é "sem sanção", não "falta". 285 C7 eram `nao_avaliavel` só por isso.
+    sancoes = _sancoes_do_cnpj(con, cnpj)
+    if sancoes is not None:
+        ctx["sancoes"], incertas = sancoes
+        if incertas:
+            ctx["sancoes_vigencia_incerta"] = incertas
+
+    # SERVIDORES (C8) — folha × QSA. Só entra quando a folha é legível; lista vazia = nenhum
+    # sócio consta nas folhas coletadas (juízo), não ausência de dado.
+    if socios:
+        ctx["socios"] = socios
+        folha = _indice_folha(con)
+        if folha is not None:
+            from compliance_agent.detectores.c8_servidor_socio import _norm as _norm_c8
+            vistos: list[dict] = []
+            for s in socios:
+                vistos.extend(folha.get(_norm_c8(s["nome"]), []))
+            ctx["servidores"] = vistos
 
     # CADASTRO — `empresas.raw_json` já está no formato que `investigacao_dd.investigar` espera
     # (situacao, abertura, capital, porte, cnae, logradouro, numero, bairro, socios[]). Sem isto o
@@ -184,9 +325,11 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
 
     # PEGADA NAS OBs — total pago, nº de ordens e a primeira data. Alimenta tanto a razão
     # retorno/doação do C6 quanto a hipótese "empresa recém-aberta antes do 1º recebimento".
+    # `data_emissao` é TEXTO DD/MM/AAAA: MIN() direto era lexicográfico (01/10/2024 "antes" de
+    # 16/12/2022). Converte para ISO dentro do MIN, a mesma expressão de `cruzamentos_intel`.
     try:
-        sql = ("SELECT SUM(valor), COUNT(*), MIN(data_emissao) FROM ob_orcamentaria_siafe "
-               "WHERE credor = ?")
+        sql = (f"SELECT SUM(valor), COUNT(*), MIN(CASE WHEN data_emissao LIKE '__/__/____' "
+               f"THEN {_OB_ISO} END) FROM ob_orcamentaria_siafe WHERE credor = ?")
         params: list = [cnpj]
         if ug:
             sql += " AND ug_emitente = ?"
@@ -196,6 +339,13 @@ def contexto_fornecedor(con: sqlite3.Connection, cnpj: str, ug: str | None = Non
             ctx["valor_contratado"] = float(total)
             ctx["pagamentos"] = {"total_pago": float(total), "n_obs": int(n_obs or 0),
                                  "primeira_data": primeira}
+            if primeira and "sancoes" in ctx:
+                # C7 pede a data da contratação; a assinatura não está na base por UG. A 1ª OB
+                # é o ato mais antigo que a base prova — o C7 rebaixa e declara o proxy.
+                ctx["data_referencia"] = primeira
+                ctx["data_referencia_origem"] = (
+                    "1ª OB do credor" + (f" na UG {ug}" if ug else "")
+                    + " (proxy: a data de assinatura do contrato não está na base)")
     except sqlite3.OperationalError:
         pass
 

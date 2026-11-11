@@ -149,7 +149,10 @@ class P2CotacoesCombinadas(Detector):
         cotacoes = [c for c in (contexto.get("cotacoes") or []) if isinstance(c, dict)]
         if len(cotacoes) < 2:
             res.motivo_refutacao = ("nao_avaliavel: menos de 2 cotações no contexto (campo ausente ≠ 0) — "
-                                    "sem base para cruzar vínculos/similaridade")
+                                    "sem base para cruzar vínculos/similaridade. FALTA: as cotações "
+                                    "da pesquisa de preços (fornecedor, CNPJ, valor) · FONTE: "
+                                    "pesquisa de preços/mapa comparativo nos autos (SEI) — o "
+                                    "PNCP não publica; não há coleta automática")
             res.valores = {"n_cotacoes": len(cotacoes)}
             return res
 

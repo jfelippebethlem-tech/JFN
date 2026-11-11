@@ -135,8 +135,13 @@ class X7ReequilibrioIndevido(Detector):
 
         recomposicoes = [a for a in aditivos if str(a.get("tipo") or "") == "reajuste"]
         if not recomposicoes:
-            res.motivo_refutacao = ("nao_avaliavel: nenhum aditivo de recomposição (reajuste/"
-                                    "repactuação/revisão) entre os termos — X7 não se aplica")
+            # NÃO SE APLICA é juízo determinado, não falta de dado: os termos foram lidos e
+            # nenhum é recomposição. Era `nao_avaliavel` e inflava a fatia "sem dado" em 1.082
+            # contratos (achados.db, 11/11/2026). Mesma régua do X9 ("nenhuma supressão").
+            res.status = "descartado"
+            res.score = 0.0
+            res.motivo_refutacao = ("nenhum aditivo de recomposição (reajuste/repactuação/"
+                                    "revisão) entre os termos — X7 não se aplica")
             res.valores = {"n_aditivos": len(aditivos), "n_recomposicoes": 0}
             return res
 
