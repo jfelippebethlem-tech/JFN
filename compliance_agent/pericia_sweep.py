@@ -169,13 +169,28 @@ def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = No
         pares = pares[:limit]
     n = 0; graus = {"🔴": 0, "🟡": 0, "🟢": 0, "⚪": 0}
     for r in pares:
-        try:
-            res = periciar(r["credor"], r["ug_emitente"], c)
-            _gravar(c, res); graus[res["grau"]] = graus.get(res["grau"], 0) + 1; n += 1
-            if n % 200 == 0:
-                c.commit(); print(f"  {n}/{len(pares)} periciados…", flush=True)
-        except Exception as e:  # noqa: BLE001
-            print(f"  erro {r['credor']}/{r['ug_emitente']}: {str(e)[:60]}", flush=True)
+        # SNAPSHOT VELHO NÃO SE CURA SOZINHO (11/11/2026): em WAL, a transação que LEU e depois tenta
+        # ESCREVER recebe "database is locked" NA HORA (sem esperar o timeout) se outro processo gravou no
+        # meio. Sem rollback a conexão seguia presa no retrato velho e TODOS os pares seguintes falhavam —
+        # 30.005 de 30.005 numa passada, 28.414 noutra. Desfaz, e tenta o par de novo uma vez.
+        for tentativa in (1, 2):
+            try:
+                res = periciar(r["credor"], r["ug_emitente"], c)
+                _gravar(c, res); c.commit()       # commit POR PAR: o rollback de um erro não leva os anteriores
+                graus[res["grau"]] = graus.get(res["grau"], 0) + 1; n += 1
+                if n % 200 == 0:
+                    print(f"  {n}/{len(pares)} periciados…", flush=True)
+                break
+            except sqlite3.OperationalError as e:
+                c.rollback()
+                if tentativa == 2 or "locked" not in str(e):
+                    print(f"  erro {r['credor']}/{r['ug_emitente']}: {str(e)[:60]}", flush=True)
+                    break
+                time.sleep(1)
+            except Exception as e:  # noqa: BLE001
+                c.rollback()
+                print(f"  erro {r['credor']}/{r['ug_emitente']}: {str(e)[:60]}", flush=True)
+                break
     c.commit(); c.close()
     return {"periciados": n, "de": len(pares), "graus": graus, "removidos": removidos}
 

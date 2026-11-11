@@ -263,3 +263,19 @@ def test_t07_mesmo_valor_duas_vezes_na_competencia_continua_indicio():
     obs.append(_ob("DUP", "03/2025", 150000.0))
     h = ac._t07_duplicidade({"obs": obs})
     assert h["status"] == "INDICIO", h
+
+
+def test_sweep_se_recupera_de_lock_e_nao_contamina_os_pares_seguintes(banco, monkeypatch):
+    """11/11/2026: em WAL, o 'database is locked' do snapshot velho vinha NA HORA e, sem rollback, todos os
+    30.005 pares seguintes falhavam. Um lock transitório no 1º par não pode custar a passada."""
+    real = ps._gravar
+    estado = {"falhou": False}
+
+    def gravar_com_lock(c, res):
+        if not estado["falhou"]:
+            estado["falhou"] = True
+            raise sqlite3.OperationalError("database is locked")
+        return real(c, res)
+    monkeypatch.setattr(ps, "_gravar", gravar_com_lock)
+    r = ps.sweep(min_obs=1)
+    assert estado["falhou"] and r["periciados"] == r["de"] and r["de"] > 0, r
