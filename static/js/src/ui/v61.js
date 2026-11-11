@@ -6,6 +6,7 @@
  */
 import {_v61, _v61flag} from '../capacidade/estado.js';
 import {tickerMontar, abrirHistorico} from './aovivo.js';
+import {svgIco} from '../nucleo/dom.js';
 
 /* glifos de linha próprios (traço 1.6, cantos redondos, caixa 24) — o set da casa não tem sol/lua */
 const _SOL = '<svg class="jico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/></svg>';
@@ -16,6 +17,7 @@ export function v61Boot() {
   _tema();
   if (!_v61) return;
   _fundo();
+  _som();
   tickerMontar();
   /* "Atividade ao vivo" da folha "⋯" abre o histórico da v61 (o holofeed antigo fica oculto) */
   document.addEventListener('click', e => {
@@ -60,4 +62,15 @@ function _fundo() {
   f.id = 'v61-fundo'; f.setAttribute('aria-hidden', 'true');
   f.innerHTML = '<div class="v61-veu"></div><div class="v61-piso"><div class="v61-plano"><div class="v61-grade"></div><i class="r1"></i><i class="r2"></i><i class="r3"></i></div></div>';
   document.body.insertBefore(f, document.body.firstChild);
+}
+
+/* ── som: o set não tinha alto-falante (o botão era um ponto + "Mudo"). Entram os dois glifos; a
+   classe `.on`, que o `ui/midia.js` já alterna, decide pelo CSS qual aparece. O texto segue para o
+   leitor de tela. */
+function _som() {
+  const a = document.querySelector('.htop a.som'); if (!a || a.querySelector('.v61-som')) return;
+  const i = document.createElement('span');
+  i.className = 'v60-ic v61-som'; i.setAttribute('aria-hidden', 'true');
+  i.innerHTML = `<span class="s-on">${svgIco('§v61-som')}</span><span class="s-off">${svgIco('§v61-mudo')}</span>`;
+  a.insertBefore(i, a.firstChild);
 }

@@ -3,8 +3,29 @@
   var $ = (id) => document.getElementById(id);
   var esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
   var _ICO_V60 = { "🔬": "🔍", "📁": "📑", "📝": "📜", "🗂️": "🧾", "📨": "📧" };
+  var _ICO_V61 = {
+    "🔬": '<circle cx="9" cy="10" r="5.5"/><circle cx="15.5" cy="13.5" r="4"/><path d="M18.4 16.4 21 19"/>',
+    // Lentes
+    "📁": '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h9A1.5 1.5 0 0 1 21 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M8 13.5h8"/>',
+    // Casos
+    "📝": '<path d="M12.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h4.5"/><path d="M12.5 3.5 17 8h-4.5z"/><path d="m14.5 20 .9-3.4 4.7-4.7a1.4 1.4 0 0 1 2 2l-4.7 4.7z"/><path d="M8.5 12h3.5M8.5 15.5h2"/>',
+    // Requerimentos
+    "🗂️": '<rect x="3" y="4.5" width="18" height="4.5" rx="1"/><path d="M4.5 9v9A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',
+    // Acervo
+    "📨": '<rect x="3" y="6" width="18" height="12.5" rx="1.5"/><path d="m3.6 7.2 8.4 6.3 8.4-6.3"/><path d="M12 16.2v.01"/>',
+    // LAI
+    "§v61-termos": '<path d="M12 6.5c-1.8-1.3-4.3-2-7.5-2v13c3.2 0 5.7.7 7.5 2 1.8-1.3 4.3-2 7.5-2v-13c-3.2 0-5.7.7-7.5 2z"/><path d="M12 6.5v13"/>',
+    "§v61-controle": '<path d="M5 6.5h8M17 6.5h2M5 12h2M11 12h8M5 17.5h9M18 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="17.5" r="2"/>',
+    "§v61-sair": '<path d="M10 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M14.5 8 19 12l-4.5 4"/><path d="M19 12H9.5"/>',
+    "§v61-som": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+    "§v61-mudo": '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
+    "§v61-atividade": '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>'
+  };
   var svgIco = (e) => {
-    if (_ICO_V60[e] && document.documentElement.classList.contains("v60")) e = _ICO_V60[e];
+    const _h = document.documentElement.classList;
+    if (_ICO_V61[e] && (_h.contains("v61") || e.startsWith("§v61-")))
+      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${_ICO_V61[e]}</svg>`;
+    if (_ICO_V60[e] && _h.contains("v60")) e = _ICO_V60[e];
     const g = window.JFN_ICO && window.JFN_ICO[e];
     return g ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>` : e;
   };
@@ -1228,6 +1249,7 @@
     _tema();
     if (!_v61) return;
     _fundo();
+    _som();
     tickerMontar();
     document.addEventListener("click", (e) => {
       if (e.target && e.target.closest && e.target.closest("[data-v60-feed]")) {
@@ -1275,6 +1297,15 @@
     f.setAttribute("aria-hidden", "true");
     f.innerHTML = '<div class="v61-veu"></div><div class="v61-piso"><div class="v61-plano"><div class="v61-grade"></div><i class="r1"></i><i class="r2"></i><i class="r3"></i></div></div>';
     document.body.insertBefore(f, document.body.firstChild);
+  }
+  function _som() {
+    const a = document.querySelector(".htop a.som");
+    if (!a || a.querySelector(".v61-som")) return;
+    const i = document.createElement("span");
+    i.className = "v60-ic v61-som";
+    i.setAttribute("aria-hidden", "true");
+    i.innerHTML = `<span class="s-on">${svgIco("§v61-som")}</span><span class="s-off">${svgIco("§v61-mudo")}</span>`;
+    a.insertBefore(i, a.firstChild);
   }
 
   // static/js/src/ui/v60.js
@@ -1468,10 +1499,16 @@
       tx.appendChild(b);
     }
   }
+  var _IC = {
+    termos: _v61 ? "§v61-termos" : "§info",
+    controle: _v61 ? "§v61-controle" : "🔧",
+    sair: _v61 ? "§v61-sair" : "🚪",
+    atividade: _v61 ? "§v61-atividade" : "§sweep"
+  };
   var _ACOES = [
-    ["a.help:not(.som)", "§info", "Termos — o que cada conceito do painel significa"],
-    ["a.ctrl", "🔧", "Controle do sistema"],
-    ["a.sair", "🚪", "Sair"]
+    ["a.help:not(.som)", _IC.termos, "Termos — o que cada conceito do painel significa"],
+    ["a.ctrl", _IC.controle, "Controle do sistema"],
+    ["a.sair", _IC.sair, "Sair"]
   ];
   function _acoes() {
     const box = document.querySelector(".htop .actions");
@@ -1503,11 +1540,11 @@
     sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
    <div class="v60-menu">
     <button type="button" class="v60-mi${ligado ? " on" : ""}" data-som aria-pressed="${ligado}"><span class="v60-ic" aria-hidden="true"><i class="som-d"></i></span><span class="som-t">${ligado ? "Som" : "Mudo"}</span><small>som de interface</small></button>
-    <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco("§info")}</span>Termos<small>o que cada conceito significa</small></button>
-    <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco("§sweep")}</span>Atividade ao vivo<small>últimos eventos</small></button>
+    <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco(_IC.termos)}</span>Termos<small>o que cada conceito significa</small></button>
+    <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco(_IC.atividade)}</span>Atividade ao vivo<small>últimos eventos</small></button>
     ${v61TemaItem()}
-    <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco("🔧")}</span>Controle</a>
-    <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco("🚪")}</span>Sair</a>
+    <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco(_IC.controle)}</span>Controle</a>
+    <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco(_IC.sair)}</span>Sair</a>
    </div>`;
     ov.classList.add("on");
   }

@@ -17,8 +17,28 @@ export const esc = s => String(s == null ? '' : s)
    novo (regra do brief: ícone de UI = o SVG que já existe em `jfn-icones.js`), cada uma aponta
    para o glifo existente de sentido mais próximo. Só vale com `html.v60`. */
 const _ICO_V60 = {'🔬': '🔍', '📁': '📑', '📝': '📜', '🗂️': '🧾', '📨': '📧'};
+/* v61 — GLIFOS PRÓPRIOS (fecha a pendência nº 3 da v60: cinco abas e os botões do cabeçalho usavam
+   ícone "emprestado" de sentido próximo). Desenhados à mão no mesmo traço do set da casa: caixa 24,
+   só linha, cantos redondos, nenhum preenchimento — raster em ícone foi REPROVADO no v27.
+   As chaves de aba são as mesmas do registro (o emoji é só a chave histórica, nunca é exibido). */
+const _ICO_V61 = {
+  '🔬': '<circle cx="9" cy="10" r="5.5"/><circle cx="15.5" cy="13.5" r="4"/><path d="M18.4 16.4 21 19"/>',                                   // Lentes
+  '📁': '<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h9A1.5 1.5 0 0 1 21 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M8 13.5h8"/>',   // Casos
+  '📝': '<path d="M12.5 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h4.5"/><path d="M12.5 3.5 17 8h-4.5z"/><path d="m14.5 20 .9-3.4 4.7-4.7a1.4 1.4 0 0 1 2 2l-4.7 4.7z"/><path d="M8.5 12h3.5M8.5 15.5h2"/>',   // Requerimentos
+  '🗂️': '<rect x="3" y="4.5" width="18" height="4.5" rx="1"/><path d="M4.5 9v9A1.5 1.5 0 0 0 6 19.5h12a1.5 1.5 0 0 0 1.5-1.5V9"/><path d="M10 13h4"/>',     // Acervo
+  '📨': '<rect x="3" y="6" width="18" height="12.5" rx="1.5"/><path d="m3.6 7.2 8.4 6.3 8.4-6.3"/><path d="M12 16.2v.01"/>',                    // LAI
+  '§v61-termos': '<path d="M12 6.5c-1.8-1.3-4.3-2-7.5-2v13c3.2 0 5.7.7 7.5 2 1.8-1.3 4.3-2 7.5-2v-13c-3.2 0-5.7.7-7.5 2z"/><path d="M12 6.5v13"/>',
+  '§v61-controle': '<path d="M5 6.5h8M17 6.5h2M5 12h2M11 12h8M5 17.5h9M18 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="17.5" r="2"/>',
+  '§v61-sair': '<path d="M10 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H10"/><path d="M14.5 8 19 12l-4.5 4"/><path d="M19 12H9.5"/>',
+  '§v61-som': '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+  '§v61-mudo': '<path d="M4 9.5v5h3.5l4.5 4v-13l-4.5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/>',
+  '§v61-atividade': '<path d="M3 12h4l2.5-6 4 12 2.5-6h5"/>',
+};
 export const svgIco = e => {
-  if (_ICO_V60[e] && document.documentElement.classList.contains('v60')) e = _ICO_V60[e];
+  const _h = document.documentElement.classList;
+  if (_ICO_V61[e] && (_h.contains('v61') || e.startsWith('§v61-')))
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${_ICO_V61[e]}</svg>`;
+  if (_ICO_V60[e] && _h.contains('v60')) e = _ICO_V60[e];
   const g = window.JFN_ICO && window.JFN_ICO[e];
   return g ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" class="jico" aria-hidden="true">${g}</svg>` : e;
 };

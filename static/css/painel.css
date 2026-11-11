@@ -5075,6 +5075,46 @@ html.v61 :is(.btn,.chip,.sph,.v60-mi,.mt-card,.tf-lk){transition-duration:var(--
   html.v61 .fade, html.v61 #view .grid.v60-lista > .card:nth-child(-n+16), html.v61 .v61-flip, html.v61 .v61-lamina::after{animation:none}
   html.v61::view-transition-old(jfn-miolo), html.v61::view-transition-new(jfn-miolo){animation:none}
 }
+/* ══ v61 · Fase 10 — CAPAS DAS ABAS e GLIFOS PRÓPRIOS ══════════════════════════════════════════
+   A capa (estrutura da v60: selo, título, descrição em 2 linhas, ação) ganha como fundo o pôster da
+   SUA esfera — Estado (treliça de vidro), Prefeitura (cidade de vidro), Transversal (esfera de fios) —
+   recortado à direita, sob um véu claro que mantém o título em --ink. Um fundo só, na própria capa
+   (sem pseudo-elemento: a v60 aposentou os dois). O selo continua sendo glifo de LINHA.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 .cover{--capa:url(/static/assets/v61/sala.webp);padding:18px 18px 16px;margin-bottom:16px;
+  border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--sh);
+  background:
+    linear-gradient(90deg,#fff 0,rgba(255,255,255,.94) 36%,rgba(255,255,255,.62) 70%,rgba(255,255,255,.3) 100%),
+    var(--capa) right center / cover no-repeat,
+    #fff}
+html.v61 .cover.estado{--capa:url(/static/assets/v61/estado.webp)}
+html.v61 .cover.prefeitura{--capa:url(/static/assets/v61/prefeitura.webp)}
+html.v61 .cover.geral{--capa:url(/static/assets/v61/transversal.webp)}
+html.v61 .cover .t{color:var(--ink);font-size:1.3125rem}
+html.v61 .cover .s{color:var(--ink-2)}
+html.v61 .cover-seal{background:#fff;box-shadow:0 0 0 1px var(--line-strong),0 4px 12px rgba(20,70,140,.1)}
+@media (max-width:760px){
+  /* no celular o texto ocupa a largura toda: o véu fica quase cheio, a arte é só um tom no canto */
+  html.v61 .cover{padding:14px 14px 12px;
+    background:
+      linear-gradient(100deg,rgba(255,255,255,.97) 0,rgba(255,255,255,.9) 60%,rgba(255,255,255,.74) 100%),
+      var(--capa) right center / cover no-repeat,
+      #fff}
+  html.v61 .cover.estado{--capa:url(/static/assets/v61/estado-sm.webp)}
+  html.v61 .cover.prefeitura{--capa:url(/static/assets/v61/prefeitura-sm.webp)}
+  html.v61 .cover.geral{--capa:url(/static/assets/v61/transversal-sm.webp)}
+}
+
+/* botão de som com alto-falante (desktop: só o glifo; o texto fica para o leitor de tela) */
+html.v61 .v61-som .s-on{display:none}
+html.v61 a.som.on .v61-som .s-on{display:block}
+html.v61 a.som.on .v61-som .s-off{display:none}
+html.v61 .v61-som .jico{width:18px;height:18px;display:block}
+@media (min-width:761px){
+  html.v61 .htop a.som .som-d{display:none}
+  html.v61 .htop a.som .som-t{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  html.v61 .htop a.som.on{color:var(--ion-text)}
+}
 /* ══ v61 · degradação ═══════════════════════════════════════════════════════════════════════════
    O modo sóbrio da casa (`body.fps-baixo`: FPS MEDIDO abaixo do piso) tira o desfoque e os laços no
    estrato camadado `70-v49-sobrio.css`. Os estratos v61 não são camadados e o venciam — a v61

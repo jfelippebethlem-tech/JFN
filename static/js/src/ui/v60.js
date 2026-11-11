@@ -9,7 +9,7 @@
  * Não tem efeito de topo (o boot é ordenado pelo entrypoint, não pelo import).
  */
 import {$, svgIco} from '../nucleo/dom.js';
-import {_v60} from '../capacidade/estado.js';
+import {_v60, _v61} from '../capacidade/estado.js';
 import {v61TemaItem} from './v61.js';
 
 export function v60Boot() {
@@ -207,10 +207,13 @@ function _capa(v) {
 /* ── cabeçalho: gatilho "⋯" (celular) e ações como botão-ícone (desktop) ───────────────────────
    As quatro ações continuam sendo os MESMOS elementos e as MESMAS funções; só ganham ícone (do set
    da casa) e rótulo acessível. O som não tem glifo no set — fica com o ponto de estado + o texto. */
+/* v61: glifos próprios (`_ICO_V61` em `nucleo/dom.js`) no lugar dos emprestados */
+const _IC = {termos: _v61 ? '§v61-termos' : '§info', controle: _v61 ? '§v61-controle' : '🔧', sair: _v61 ? '§v61-sair' : '🚪',
+             atividade: _v61 ? '§v61-atividade' : '§sweep'};
 const _ACOES = [
-  ['a.help:not(.som)', '§info', 'Termos — o que cada conceito do painel significa'],
-  ['a.ctrl', '🔧', 'Controle do sistema'],
-  ['a.sair', '🚪', 'Sair'],
+  ['a.help:not(.som)', _IC.termos, 'Termos — o que cada conceito do painel significa'],
+  ['a.ctrl', _IC.controle, 'Controle do sistema'],
+  ['a.sair', _IC.sair, 'Sair'],
 ];
 function _acoes() {
   const box = document.querySelector('.htop .actions'); if (!box) return;
@@ -236,11 +239,11 @@ export function v60Mais() {
   sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
    <div class="v60-menu">
     <button type="button" class="v60-mi${ligado ? ' on' : ''}" data-som aria-pressed="${ligado}"><span class="v60-ic" aria-hidden="true"><i class="som-d"></i></span><span class="som-t">${ligado ? 'Som' : 'Mudo'}</span><small>som de interface</small></button>
-    <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco('§info')}</span>Termos<small>o que cada conceito significa</small></button>
-    <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco('§sweep')}</span>Atividade ao vivo<small>últimos eventos</small></button>
+    <button type="button" class="v60-mi" onclick="glossario()"><span class="v60-ic" aria-hidden="true">${svgIco(_IC.termos)}</span>Termos<small>o que cada conceito significa</small></button>
+    <button type="button" class="v60-mi" data-v60-feed><span class="v60-ic" aria-hidden="true">${svgIco(_IC.atividade)}</span>Atividade ao vivo<small>últimos eventos</small></button>
     ${v61TemaItem()}
-    <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco('🔧')}</span>Controle</a>
-    <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco('🚪')}</span>Sair</a>
+    <a class="v60-mi" href="/controle"><span class="v60-ic" aria-hidden="true">${svgIco(_IC.controle)}</span>Controle</a>
+    <a class="v60-mi" href="/logout_jfn"><span class="v60-ic" aria-hidden="true">${svgIco(_IC.sair)}</span>Sair</a>
    </div>`;
   ov.classList.add('on');
 }
