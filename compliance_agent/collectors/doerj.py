@@ -49,8 +49,21 @@ _DIAG_DIR = Path(__file__).parent.parent.parent / "data" / "diagnostics"
 _RE_CPF  = re.compile(r"\b\d{3}[\.\s]?\d{3}[\.\s]?\d{3}[-\.\s]?\d{2}\b")
 _RE_CNPJ = re.compile(r"\b\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\.\s]?\d{4}[-\.\s]?\d{2}\b")
 _RE_VALOR = re.compile(r"R\$\s*[\d.,]+(?:\s*(?:mil|milh[õo]es|bilh[õo]es))?")
-_RE_SEI_PROC = re.compile(
-    r"\b(?:SEI[-\s]*\d|E[-/]\d{1,4}[-/]\d{3,6}[-/]\d{4})\b", re.IGNORECASE
+# PROCESSO SEI. A regex anterior (`SEI[-\s]*\d`) casava UM dígito: medido em 11/11/2026, só 185
+# de 2.636 atos de contrato tinham processo, e só 49 válidos — o resto gravado como `"SEI-\n0"`.
+# Formato atual: SEI-XXXXXX/XXXXXX/AAAA (15.031 ocorrências numa amostra de 4.000 atos; 2.754 com
+# quebra de linha depois do hífen; PDF às vezes espaça os dígitos). Sem o prefixo, o desenho 6/6/4
+# só vale se não vier grudado em outra sigla ("JPR-010125/000713/2025" é outro sistema).
+_RE_SEI_NOVO = re.compile(
+    r"(?:\bSEI\s*[-:/]?\s*|(?<![\w/.\-]))"
+    r"((?:\d\s*){5}\d)\s*/\s*((?:\d\s*){5}\d)\s*/\s*((?:\d\s*){3}\d)(?!\d)",
+    re.IGNORECASE,
+)
+# Numeração antiga E-XX/…/AAAA (com ou sem "SEI" na frente, e às vezes sem o "E-" depois de "SEI").
+_RE_SEI_ANTIGO = re.compile(
+    r"(?:\bSEI\s*[-:/]?\s*(?:E\s*-?\s*)?|(?<![\w/.\-])E\s*-\s*)"
+    r"(\d{2})\s*/\s*([\d.]{3,9}(?:\s*/\s*[\d.]{3,9})?)\s*/\s*((?:19|20)\d{2})(?!\d)",
+    re.IGNORECASE,
 )
 _RE_ORGAO = re.compile(
     r"(?m)^[ \t]*(?:SECRETARIA|FUNDA[ÇC][ÃA]O|AUTARQUIA|AG[ÊEẼE]NCIA|INSTITUTO"
@@ -125,7 +138,18 @@ def extrair_valores(texto: str) -> list[str]:
 
 
 def extrair_processos_sei(texto: str) -> list[str]:
-    return list(dict.fromkeys(_RE_SEI_PROC.findall(texto)))[:20]
+    """Processos SEI do ato, normalizados (`SEI-XXXXXX/XXXXXX/AAAA` ou `E-XX/…/AAAA`), na ordem do
+    texto, sem repetição. Número de documento do SEI (9 dígitos, sem barras) não é processo."""
+    achados: list[tuple[int, str]] = []
+    for m in _RE_SEI_NOVO.finditer(texto or ""):
+        a, b, ano = (re.sub(r"\s", "", g) for g in m.groups())
+        if ano[:2] in ("19", "20"):
+            achados.append((m.start(), f"SEI-{a}/{b}/{ano}"))
+    for m in _RE_SEI_ANTIGO.finditer(texto or ""):
+        orgao, meio, ano = (re.sub(r"\s", "", g) for g in m.groups())
+        achados.append((m.start(), f"E-{orgao}/{meio}/{ano}"))
+    achados.sort()
+    return list(dict.fromkeys(p for _, p in achados))[:20]
 
 
 def _extrair_orgao(texto: str) -> str:
