@@ -112,6 +112,48 @@ def _serie_do_item(con: sqlite3.Connection, descricao: str, limite: int = 40) ->
     """, (f"%{alvo}%", limite))]
 
 
+def _homologado_pareado(con: sqlite3.Connection, certame: str, itens: list[dict],
+                        valor_estimado: float) -> float | None:
+    """Valor homologado do certame quando o PNCP não traz `ordem_classificacao`.
+
+    Medido em 11/11/2026: 20.433 das 82.987 linhas de `pncp_resultado` vêm sem classificação, e
+    50 certames ficavam `nao_avaliavel` no J3 tendo valor estimado no edital e o vencedor do item
+    na base. Cada linha de `pncp_resultado` é o RESULTADO homologado do item (o PNCP só expõe o
+    vencedor), então a soma por item é o homologado — DESDE QUE cubra exatamente os mesmos itens
+    do estimado. Só preenche quando TODOS os itens do edital estão 'Homologado', têm valor
+    estimado e exatamente UM resultado; qualquer furo devolve None. Homologado parcial contra
+    estimado total fabricaria desconto.
+    """
+    if not itens:
+        return None
+    por_item: dict[int, list[float]] = {}
+    for r in _linhas(con, "SELECT item, valor_homologado FROM pncp_resultado WHERE certame = ?",
+                     (certame,)):
+        por_item.setdefault(int(r[0]), []).append(r[1])
+    soma_est = soma_hom = 0.0
+    for it in itens:
+        if not isinstance(it, dict):
+            return None
+        try:
+            n = int(it.get("numeroItem"))
+            est = float(it.get("valorTotal") or 0)
+        except (TypeError, ValueError):
+            return None
+        if str(it.get("situacaoCompraItemNome") or "").lower() != "homologado" or est <= 0:
+            return None
+        res = por_item.get(n) or []
+        if len(res) != 1 or not res[0] or res[0] <= 0:
+            return None
+        soma_est += est
+        soma_hom += float(res[0])
+    if len(por_item) != len(itens):          # resultado de item que o edital não lista
+        return None
+    # a soma dos itens tem de ser o próprio estimado do edital (lista de itens completa)
+    if abs(soma_est - float(valor_estimado)) > 0.01 * float(valor_estimado):
+        return None
+    return round(soma_hom, 2)
+
+
 def montar_contexto(con: sqlite3.Connection, certame: str) -> dict[str, Any]:
     """Contexto do certame. Chave ausente = dado ausente — nunca preenchida por estimativa."""
     cab = _cabecalho(con, certame)
@@ -148,6 +190,10 @@ def montar_contexto(con: sqlite3.Connection, certame: str) -> dict[str, Any]:
 
     if edital.get("valor_estimado") is not None:
         ctx["valor_estimado"] = edital["valor_estimado"]
+    if "valor_homologado" not in ctx and ctx.get("valor_estimado"):
+        homologado = _homologado_pareado(con, certame, _itens(edital), ctx["valor_estimado"])
+        if homologado is not None:
+            ctx["valor_homologado"] = homologado
     if edital.get("texto"):
         ctx["tr_texto"] = edital["texto"]
         ctx["texto_habilitacao"] = edital["texto"]

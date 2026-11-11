@@ -47,7 +47,10 @@ class C9TacFornecedor(Detector):
             return res
         cobertura = str(tac.get("cobertura") or "")
         if cobertura.startswith("INDISPONIVEL") or not tac.get("n"):
-            res.motivo_refutacao = f"nao_avaliavel: cobertura da observação das OB = {cobertura or 'vazia'}"
+            res.motivo_refutacao = (
+                f"nao_avaliavel: cobertura da observação das OB = {cobertura or 'vazia'} — "
+                "FALTA: texto de observação das OBs do credor · FONTE: espelho TFE "
+                "(ordens_bancarias.observacao); a OB do SIAFE não traz esse texto")
             return res
 
         pct = float(tac.get("pct") or 0.0)

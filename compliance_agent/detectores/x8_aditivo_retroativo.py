@@ -98,7 +98,11 @@ class X8AditivoRetroativo(Detector):
                 "nao_avaliavel: nenhum termo com data de ASSINATURA. "
                 + ("Há data de publicação, que NÃO serve: publicar tarde é irregularidade de "
                    "outra natureza, e muito menos grave que assinar fora da vigência."
-                   if so_publicacao else "Sem datas, nada a aferir."))
+                   if so_publicacao else "Sem datas, nada a aferir.")
+                # 65 contratos em 11/11/2026: termos coletados antes de 2026-08-09, quando o
+                # coletor ainda descartava `dataAssinatura`. Recoletar resolve; não há proxy.
+                + " FALTA: dataAssinatura dos termos · FONTE: PNCP /orgaos/{cnpj}/contratos/"
+                  "{ano}/{seq}/termos (collectors.pncp.termos_contrato → contrato_aditivo)")
             res.valores = {"tem_vigencia": True, "n_aditivos": len(aditivos),
                            "n_datados": 0, "so_publicacao": len(so_publicacao)}
             return res

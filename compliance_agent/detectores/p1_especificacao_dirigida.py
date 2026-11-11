@@ -179,7 +179,9 @@ class P1EspecificacaoDirigida(Detector):
         tr_texto = str(contexto.get("tr_texto") or "")
         if not requisitos and not tr_texto:
             res.motivo_refutacao = ("nao_avaliavel: sem TR e sem lista de requisitos no contexto "
-                                    "(campo ausente ≠ 0) — sem base para avaliar especificação")
+                                    "(campo ausente ≠ 0) — sem base para avaliar especificação. "
+                                    "FALTA: texto do TR/edital · FONTE: PDF do edital no PNCP → "
+                                    "coletor_edital → edital_documento.texto")
             res.valores = {"n_requisitos": 0, "tem_tr": False}
             return res
 

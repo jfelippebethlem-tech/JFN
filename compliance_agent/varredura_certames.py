@@ -161,6 +161,7 @@ def varrer_certame(con: sqlite3.Connection, certame: str, *, gerar: Callable | N
         "n_propostas": len(ctx.get("propostas") or []),
         "score_max": max((r.score for r in resultados), default=0.0),
         "achados": sorted(confirmados, key=lambda r: -r.score),
+        "todos": resultados,   # como em varredura_execucao: quem reprocessa lê o status de cada um
     }
 
     if con_achados is not None:

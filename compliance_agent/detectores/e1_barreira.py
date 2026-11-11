@@ -111,7 +111,10 @@ class E1Barreira(Detector):
 
         exigencias = contexto.get("exigencias_habilitacao") or []
         if not exigencias:
-            res.motivo_refutacao = "nao_avaliavel: sem seção de habilitação no contexto (campo ausente ≠ 0)"
+            res.motivo_refutacao = ("nao_avaliavel: sem seção de habilitação no contexto (campo "
+                                    "ausente ≠ 0) — FALTA: cláusulas de habilitação do edital · "
+                                    "FONTE: PDF do edital no PNCP → coletor_edital → "
+                                    "edital_clausula (eixo habilitação)")
             res.valores = {"n_exigencias": 0}
             return res
 

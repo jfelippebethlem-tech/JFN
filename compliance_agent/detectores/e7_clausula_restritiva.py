@@ -229,7 +229,9 @@ class E7ClausulaRestritiva(Detector):
 
         clausulas = contexto.get("clausulas_edital") or []
         if not clausulas:
-            res.motivo_refutacao = "nao_avaliavel: sem cláusulas do edital no contexto (campo ausente ≠ 0)"
+            res.motivo_refutacao = ("nao_avaliavel: sem cláusulas do edital no contexto (campo "
+                                    "ausente ≠ 0) — FALTA: cláusulas classificadas · FONTE: PDF do "
+                                    "edital no PNCP → coletor_edital → edital_clausula")
             res.valores = {"n_clausulas": 0}
             return res
 
