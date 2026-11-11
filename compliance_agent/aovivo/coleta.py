@@ -15,6 +15,7 @@ INDISPONÍVEL ≠ ocioso: se o systemd não responde, o motor sai como `indispon
 """
 from __future__ import annotations
 
+import http.client
 import os
 import re
 import sqlite3
@@ -287,7 +288,7 @@ class Coletor:
         try:
             with urllib.request.urlopen(url, timeout=2) as r:
                 return "rodando" if 200 <= r.status < 300 else "falhou"
-        except Exception:
+        except (OSError, ValueError, http.client.HTTPException):   # URLError/HTTPError/timeout são OSError; URL torta é ValueError
             return "indisponivel"
 
     # ── uma leitura ──
