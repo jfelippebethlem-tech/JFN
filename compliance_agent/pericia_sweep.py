@@ -63,6 +63,17 @@ def enriquecer(dados: dict, c) -> dict:
             dados["contrato_ref"] = "005/2021"
             dados["servico_continuo"] = True
             dados["periodicidade_meses"] = 1
+    # T07 fechado pela NF (tools/resolver_duplicidade_nf.py): o veredito por competência que o resolvedor gravou.
+    # Tabela ausente (banco que nunca rodou o resolvedor) = nenhuma resolução, o T07 segue como antes.
+    if c is None:
+        return dados
+    try:
+        dados["resolucao_duplicidade"] = {
+            r[0]: {"veredito": r[1], "motivo": r[2], "citacao": r[3], "camada": r[4], "obs": json.loads(r[5] or "[]")}
+            for r in c.execute("SELECT competencia, veredito, motivo, citacao, camada, obs_json FROM resolucao_duplicidade"
+                               " WHERE cnpj=? AND ug=?", (dados.get("_cnpj") or "", str(dados.get("orgao") or "")))}
+    except sqlite3.OperationalError:
+        dados["resolucao_duplicidade"] = {}
     return dados
 
 

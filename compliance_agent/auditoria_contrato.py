@@ -379,6 +379,9 @@ def _t07_duplicidade(d) -> dict:
                     "SIAFE — duplicidade_competencia.py", "Lei 4.320/64 arts. 62-63", _PESO["alta"])
     exc = next((f for f in flags if f["tipo_indicio"] == "excedente_liquido"), None)
     dobradas = [f for f in flags if f["tipo_indicio"] == "competencia_dobrada"]
+    resolvido = _t07_pela_nf(dobradas, d.get("resolucao_duplicidade") or {})
+    if resolvido:
+        return resolvido
     partes = []
     if exc:
         partes.append(exc["evidencia"].split(". ")[0] + ".")
@@ -388,6 +391,51 @@ def _t07_duplicidade(d) -> dict:
     partes.append("CONFIRMADO só com mesma NF em 2 OBs (exige OCR/SEI) — sem ela, INDÍCIO a apurar (pode ser retroativo/glosa).")
     return _hip("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "INDICIO", "alto", " ".join(partes),
                 "SIAFE — duplicidade_competencia.py", "Lei 4.320/64 arts. 62-63; Lei 14.133/2021", _PESO["alta"])
+
+
+def _t07_pela_nf(dobradas: list, resol: dict) -> dict | None:
+    """T07 fechado pela NOTA FISCAL (tabela `resolucao_duplicidade`, de tools/resolver_duplicidade_nf.py).
+
+    Medido em 11/11/2026: 299 dos 300 pares 🟡 tinham T07 INDICIO parado — 4.865 competências dobradas que
+    ninguém confrontava com a NF. A resolução só vale para a competência cujas OBs dobradas ela COBRIU: se o mês
+    ganhou OB nova depois, o veredito velho não fala dela (continua indício). CONFIRMADO em qualquer mês →
+    CONFIRMADO; todos os meses AFASTADOS → AFASTADO; o resto continua INDICIO dizendo o que falta.
+    Devolve None quando não há resolução aplicável (o T07 segue o caminho de sempre)."""
+    if not dobradas or not resol:
+        return None
+    vistos = {}
+    for f in dobradas:
+        r = resol.get(f["competencia"])
+        if r and set(f.get("obs") or []) <= set(r.get("obs") or []):
+            vistos[f["competencia"]] = r
+    if not vistos:
+        return None
+    fonte = "SIAFE (OB) + NF no processo SEI — resolver_duplicidade_nf.py"
+    base = "Lei 4.320/64 arts. 62-63; Lei 14.133/2021"
+
+    def _linha(comp, r):
+        cit = f" Trecho: “{r['citacao']}”." if r.get("citacao") else ""
+        return f"{comp} [{r['veredito']}, camada {r.get('camada') or '?'}]: {r.get('motivo') or ''}.{cit}"
+
+    conf = sorted(c for c, r in vistos.items() if r["veredito"] == "CONFIRMADO")
+    if conf:
+        ev = "Mesma NF paga em mais de uma OB — " + " ".join(_linha(c, vistos[c]) for c in conf)
+        return _hip("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "CONFIRMADO", "alto", ev, fonte, base,
+                    _PESO["alta"])
+    if len(vistos) == len(dobradas) and all(r["veredito"] == "AFASTADO" for r in vistos.values()):
+        ev = (f"{len(vistos)} competência(s) dobrada(s) conferida(s) com a NF e afastada(s): "
+              + " ".join(_linha(c, vistos[c]) for c in sorted(vistos)))
+        return _hip("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "AFASTADO", "—", ev, fonte, base,
+                    _PESO["alta"])
+    abertas = sorted({f["competencia"] for f in dobradas} - {c for c, r in vistos.items() if r["veredito"] == "AFASTADO"})
+    partes = [f"{len(dobradas)} competência(s) dobrada(s) com REs/PDs distintos; {len(abertas)} ainda sem fechamento pela NF."]
+    for c in abertas:
+        partes.append(_linha(c, vistos[c]) if c in vistos else f"{c}: sem resolução pela NF ainda.")
+    afastadas = sorted(c for c, r in vistos.items() if r["veredito"] == "AFASTADO")
+    if afastadas:
+        partes.append(f"Afastada(s) pela NF: {', '.join(afastadas)}.")
+    return _hip("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "INDICIO", "alto", " ".join(partes), fonte, base,
+                _PESO["alta"])
 
 
 def _t08_gap(d) -> dict:

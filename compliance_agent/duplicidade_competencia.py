@@ -90,6 +90,8 @@ def detectar(obs: list[dict], favorecido: str = "", orgao: str = "") -> list[dic
         flags.append({
             "favorecido": favorecido, "orgao": orgao, "competencia": comp,
             "tipo_indicio": "competencia_dobrada", "severidade": sev, "evidencia": ev,
+            # quais OBs dobram o mês — o resolvedor por NF (tools/resolver_duplicidade_nf.py) lê o processo SEI de cada
+            "obs": [x["ob"] for x in grandes],
         })
     # excedente líquido sobre a vida do contrato (nº meses lógicos vs nº meses-calendário do span)
     span = (max(meses) - min(meses) + 1) if meses else 0
