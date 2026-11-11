@@ -586,12 +586,23 @@ def _falha_recente(f: dict | None, horas: float = 4.0) -> bool:
 
 def _ja_lido_ok(proc: str) -> bool:
     """True só se o processo já foi lido COM SUCESSO (documentos>0) e fresco (<7d). Um cache de 0 docs
-    é leitura intermitente que FALHOU — não pular, retentar (a abertura do SEI é flaky)."""
-    cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
-    if not cf.exists():
+    é leitura intermitente que FALHOU — não pular, retentar (a abertura do SEI é flaky).
+
+    `.json` OU `.json.zst`: medido em 11/11/2026, o cache tinha **9.336 `.json.zst` contra 610
+    `.json`** — procurando só o cru, ~94% dos processos pareciam "nunca lidos" e voltavam à fila
+    (o motor bombeiros releu os mesmos processos até 56 vezes)."""
+    from compliance_agent.sei.cache_arquivo import localizar, ler_json
+    cf = localizar(CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json")
+    if cf is None:
         return False
     try:
-        c = json.loads(cf.read_text(encoding="utf-8"))
+        # atalho barato antes de descomprimir: o arquivo nunca é mais velho que o `_cached_at` que
+        # carrega (o zstd preserva o mtime do original), então mtime >7d já decide "não fresco".
+        if time.time() - cf.stat().st_mtime >= 7 * 86400:
+            return False
+        c = ler_json(cf)
+        if not isinstance(c, dict):
+            return False
         if len(c.get("documentos") or []) > 0 and c.get("_cached_at"):
             return (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 7 * 86400
     except Exception as exc:
@@ -683,6 +694,49 @@ def _arquivo_incompleto(proc: str) -> bool:
         return not manifesto_norm.captura_integra(man, pasta)[0]
     except (ImportError, OSError, ValueError, KeyError, TypeError):
         return False
+
+
+# TETO DA RELEITURA POR CAPTURA INCOMPLETA. O ramo `_arquivo_incompleto` devolvia o processo à
+# fila SEM LIMITE: o manifesto do acervo não muda quando a releitura não rende ("mantido: arquivo
+# existente é mais completo"), então o processo seguia incompleto e voltava a cada lote. Medido em
+# 11/11/2026: processos com `n_docs>0` com **56, 49, 39 tentativas**, 47 processos somando 1.311
+# releituras, e a cobertura dos bombeiros parada em 150/9.609 por 11 dias. Agora: backoff
+# exponencial (6h·2^n) a cada releitura sem ganho e, passado o teto, só a janela longa — desistir
+# continua não sendo para sempre.
+_TETO_RELEITURA_SEM_GANHO = int(os.environ.get("SEI_SWEEP_TETO_RELEITURA", "4"))
+_DIAS_RELEITURA_ESGOTADA = int(os.environ.get("SEI_SWEEP_DIAS_RELEITURA_ESGOTADA", "30"))
+
+
+def _contar_sem_ganho(anterior: dict, nd: int) -> int:
+    """Releituras seguidas que NÃO aumentaram `n_docs`. Zera quando a leitura rende; processo
+    sem registro anterior não começa devendo."""
+    if not anterior:
+        return 0
+    if (nd or 0) > (anterior.get("n_docs", 0) or 0):
+        return 0
+    return _sem_ganho(anterior) + 1
+
+
+def _sem_ganho(f: dict) -> int:
+    # Registro anterior a este campo: cada tentativa além da primeira foi releitura que não tirou o
+    # processo da fila — ou seja, sem ganho que bastasse. É a leitura conservadora do histórico.
+    if "sem_ganho" in f:
+        return int(f.get("sem_ganho") or 0)
+    return max(0, int(f.get("tentativas", 0) or 0) - 1)
+
+
+def _releitura_liberada(f: dict) -> bool:
+    """Captura incompleta pode voltar à fila AGORA? Backoff de 6h·2^n por releitura sem ganho;
+    a partir do teto, só depois de `_DIAS_RELEITURA_ESGOTADA` dias. Sem data, libera (o sweep só
+    grava registro com `em`, então a ausência é registro alheio, não martelo)."""
+    n = _sem_ganho(f or {})
+    espera_h = (_DIAS_RELEITURA_ESGOTADA * 24 if n >= _TETO_RELEITURA_SEM_GANHO
+                else 6 * 2 ** n)
+    try:
+        idade_h = (datetime.now() - datetime.fromisoformat(str((f or {}).get("em")))).total_seconds() / 3600
+    except (TypeError, ValueError):
+        return True
+    return idade_h >= espera_h
 
 
 def _arquivo_integro(proc: str) -> str | None:
@@ -825,7 +879,9 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # DECLARAR a captura vazia virou isenção permanente de nova tentativa. Declarar é honesto;
         # desistir não era o combinado. Mesma doutrina do `captura_integra`: o disco decide.
         if f and f.get("n_docs", 0) > 0 and _arquivo_incompleto(p):
-            return False
+            if _releitura_liberada(f):
+                return False
+            return True  # em backoff: releitura sem ganho recente (teto acima) — próxima janela
         # E A METADE SIMÉTRICA: captura ÍNTEGRA no acervo TIRA da fila, mesmo com o progresso
         # dizendo zero. Progresso e acervo são preenchidos por caminhos diferentes e divergem —
         # medido em 2026-08-11: 118 processos completos continuavam elegíveis para releitura,
@@ -1003,6 +1059,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             ficha_info = None
                     _f = prog["feitos"].get(proc, {})
                     prog["feitos"][proc] = {"n_docs": nd, "tentativas": _f.get("tentativas", 0) + 1,
+                                            "sem_ganho": _contar_sem_ganho(_f, nd),
                                             "rel": len(rel), "arvore_docs": nd_arv, "arvore_n": len(cadeia),
                                             "em": datetime.now().isoformat(timespec="seconds")}
                     _salvar_prog(prog)
