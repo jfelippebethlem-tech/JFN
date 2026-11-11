@@ -23,6 +23,7 @@ export function movimentoBoot() {
       if (document.hidden) v.pause(); else if (v.classList.contains('on')) v.play().catch(() => {});
     });
   });
+  _caberBoot();
   if (_redMotion || !('IntersectionObserver' in window)) return;
   _io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { _io.unobserve(e.target); _contar(e.target); } },
     {threshold: 0.6});
@@ -38,6 +39,29 @@ export function movimentoBoot() {
     new MutationObserver(() => { clearTimeout(passe); passe = setTimeout(() => marcar(document), 90); }).observe(r, {childList: true, subtree: true});
   }
   marcar(document);
+}
+
+/* ── o número-manchete CABE no cartão. Com a sans do acabamento premium, "R$ 141.532.323.112,11" passava
+   da borda do KPI (1440 px, 4 colunas); cortar os centavos fere a regra das duas casas. Reduz a fonte só
+   do valor que não cabe, na proporção exata (piso 15 px). Roda depois que a contagem assenta (debounce:
+   cada quadro da contagem é uma mutação), no resize e quando as fontes chegam. */
+const CABER = '.card.kpi .v, .ck-big, .ck-inst .val';
+function _caber(el) {
+  el.style.fontSize = '';
+  const w = el.clientWidth; if (!w) return;
+  const s = el.scrollWidth; if (s <= w + 1) return;
+  const fs = parseFloat(getComputedStyle(el).fontSize) || 24;
+  el.style.fontSize = Math.max(15, Math.floor(fs * w / s * 0.98)) + 'px';
+}
+function _caberBoot() {
+  let t = 0;
+  const todos = () => { clearTimeout(t); t = setTimeout(() => document.querySelectorAll(CABER).forEach(_caber), 140); };
+  for (const id of ['view', 'c61-mapa']) {
+    const r = $(id); if (r) new MutationObserver(todos).observe(r, {childList: true, subtree: true, characterData: true});
+  }
+  window.addEventListener('resize', todos, {passive: true});
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(todos);
+  todos();
 }
 
 function _contar(el) {

@@ -871,6 +871,7 @@
         });
       });
     });
+    _caberBoot();
     if (_redMotion || !("IntersectionObserver" in window)) return;
     _io = new IntersectionObserver(
       (es) => {
@@ -897,6 +898,30 @@
       }).observe(r, { childList: true, subtree: true });
     }
     marcar(document);
+  }
+  var CABER = ".card.kpi .v, .ck-big, .ck-inst .val";
+  function _caber(el) {
+    el.style.fontSize = "";
+    const w = el.clientWidth;
+    if (!w) return;
+    const s = el.scrollWidth;
+    if (s <= w + 1) return;
+    const fs = parseFloat(getComputedStyle(el).fontSize) || 24;
+    el.style.fontSize = Math.max(15, Math.floor(fs * w / s * 0.98)) + "px";
+  }
+  function _caberBoot() {
+    let t = 0;
+    const todos = () => {
+      clearTimeout(t);
+      t = setTimeout(() => document.querySelectorAll(CABER).forEach(_caber), 140);
+    };
+    for (const id of ["view", "c61-mapa"]) {
+      const r = $(id);
+      if (r) new MutationObserver(todos).observe(r, { childList: true, subtree: true, characterData: true });
+    }
+    window.addEventListener("resize", todos, { passive: true });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(todos);
+    todos();
   }
   function _contar(el) {
     const fim = el.dataset.v61n, m = RE_NUM.exec(fim);

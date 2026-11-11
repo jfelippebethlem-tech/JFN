@@ -1,0 +1,97 @@
+/* ══ v61 · ACABAMENTO PREMIUM (2026-11-11) ═══════════════════════════════════════════════════════
+   Pedido do dono: "quero muito melhor — referências Apple, ultratech, sci-fi, Tron, Star Wars",
+   só o tema claro. Auditoria (papel 8 da skill site-3d-premium) sobre as telas reais da v61:
+     1. Número em MONO no KPI lia como código ("R$ 5.976.128,58" com vírgula espaçada), não como
+        instrumento. Apple usa a MESMA sans do texto, com algarismo tabular e tracking negativo.
+     2. Colchetes de mira em TODO KPI = enfeite repetido vira ruído (8 fundos por cartão).
+     3. Três fileiras de chips com o ativo em azul CHEIO + halo de 3px — a tela pesava para o filtro,
+        não para o dado. Vira controle SEGMENTADO (trilho cinza, ativo = placa branca).
+     4. Faltava UMA linha de luz com função. O Tron aqui é um fio ciano que marca o que está ATIVO
+        (aba, chip, foco) e acende a borda do instrumento no hover — nunca grade em toda parte.
+   Regras: todo seletor começa por `html.v61`; só `transform`/`opacity`/`box-shadow` em transição
+   curta (nada `infinite` — o modo sóbrio, estrato 90, segue o último a falar); tokens AA do
+   estrato 10 intocados. Desfazer = apagar este arquivo e juntar de novo.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+
+html.v61{
+  --tron:#14B8F5;                                   /* o fio de luz (preenchimento, nunca texto) */
+  --tron-glow:rgba(20,184,245,.28);
+  --hair:rgba(11,27,51,.08);                        /* contorno de vidro: mais fino que --line */
+  --rail:rgba(11,27,51,.05);                        /* trilho do controle segmentado */
+  --lift:0 1px 1px rgba(11,27,51,.04),0 8px 24px -10px rgba(20,70,140,.18);
+  --lift-hi:0 1px 1px rgba(11,27,51,.04),0 0 0 1px var(--tron-glow),0 18px 40px -14px rgba(30,123,240,.30);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --r-card:18px;
+}
+
+/* ── 1 · instrumento (KPI): sem mira; vidro branco, contorno fino e o fio de luz no topo ──────── */
+html.v61 :is(.card.kpi,.ck-inst), html.v61 .ck-hero{
+  background:
+    linear-gradient(90deg,transparent,var(--tron) 50%,transparent) 50% 0 / 56% 1px no-repeat,
+    var(--surface);
+  border:1px solid var(--hair);border-radius:var(--r-card);box-shadow:var(--lift);
+  transition:transform .28s var(--ease),box-shadow .28s var(--ease),border-color .28s var(--ease)}
+@media (hover:hover){
+  html.v61 :is(.card.kpi,.ck-inst):hover{transform:translateY(-2px);border-color:rgba(20,184,245,.45);box-shadow:var(--lift-hi)}
+}
+/* só o número-MANCHETE vira sans: tabela e lista seguem mono tabular (coluna alinhada é função). A regra
+   global da v60 casa também os FILHOS (`… *`) — a contagem animada escreve em <span> —, então aqui também.
+   `!important` MEDIDO, não preguiça: o `:is()` da v60 leva `#hfload` na lista, e `:is` herda a especificidade
+   do argumento mais forte — a regra mono pesa um ID (1,1,1) e nenhuma soma de classes a vence. */
+html.v61 :is(.card.kpi .v,.ck-inst .val,.ck-big), html.v61 :is(.card.kpi .v,.ck-inst .val,.ck-big) *{
+  font-family:var(--f-sans) !important;font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1;
+  font-weight:600;letter-spacing:-.03em;line-height:1.1;font-size:clamp(24px,1.9vw,31px);white-space:nowrap}
+html.v61 .card.kpi .k, html.v61 .card.kpi .l, html.v61 .ck-inst .lbl{font-weight:500;letter-spacing:-.005em}
+
+/* ── 2 · cartões: um raio, um contorno, uma sombra ───────────────────────────────────────────── */
+html.v61 .card, html.v61 .grid.v60-lista, html.v61 .v60-feed{border-color:var(--hair);border-radius:var(--r-card);box-shadow:var(--lift)}
+html.v61 .card .card, html.v61 .grid.v60-lista > .card{box-shadow:none;border-radius:0}
+
+/* ── 3 · controle segmentado: trilho cinza, ativo = placa branca com o fio ciano embaixo ─────── */
+html.v61 .chips{background:var(--rail);border-radius:12px;padding:3px;gap:2px;width:fit-content;max-width:100%}
+html.v61 .chip{background:transparent;border-color:transparent;border-radius:9px;color:var(--ink-2);font-weight:500;
+  box-shadow:none;transition:background .2s var(--ease),color .2s var(--ease),box-shadow .2s var(--ease)}
+html.v61 .chip:hover{background:rgba(255,255,255,.66);color:var(--ink)}
+html.v61 .chip.on, html.v61 .chip.on:hover{background:#fff;color:var(--ink);border-color:transparent;font-weight:600;
+  box-shadow:0 1px 2px rgba(11,27,51,.12),0 0 0 .5px rgba(11,27,51,.06),inset 0 -2px 0 var(--tron)}
+/* o trilho do mapa rola na horizontal (estrato 50): o fundo acompanha sem cortar o 1º chip */
+html.v61 .tm-ctl .chips{margin:0;padding:3px}
+/* chip SOZINHO não é seleção, é botão ("Motores · ver todos"): sem trilho, placa com contorno fino */
+html.v61 .chips:has(> .chip:only-child){background:none;padding:0}
+html.v61 .chips > .chip:only-child:not(.on){background:#fff;border:1px solid var(--hair);box-shadow:0 1px 2px rgba(11,27,51,.06)}
+html.v61 .chips > .chip:only-child:not(.on):hover{border-color:rgba(20,184,245,.45);color:var(--ion-text)}
+
+/* ── 4 · sub-abas: mesma linguagem — placa branca + fio, sem azul cheio ──────────────────────── */
+html.v61 nav.tabs button{border-radius:10px;transition:background .2s var(--ease),color .2s var(--ease)}
+html.v61 nav.tabs button.on{color:var(--ink);background:#fff;border-color:transparent;font-weight:600;
+  box-shadow:0 1px 2px rgba(11,27,51,.12),0 0 0 .5px rgba(11,27,51,.06),inset 0 -2px 0 var(--tron)}
+html.v61 nav.tabs button.on .jico, html.v61 nav.tabs button.on svg{color:var(--ion-text)}
+
+/* ── 5 · esferas (topo, desktop): trilho de vidro; a ativa é a placa iluminada ───────────────── */
+@media (min-width:761px){
+  html.v61 #spheres{background:var(--rail);border-color:transparent}
+  html.v61 .sph.on, html.v61 .sph.on:hover{background:#fff;color:var(--ink);
+    box-shadow:0 1px 2px rgba(11,27,51,.12),0 0 0 .5px rgba(11,27,51,.06),0 6px 18px -6px var(--tron-glow),inset 0 -2px 0 var(--tron)}
+  html.v61 .sph.on .i{color:var(--ion-text)}
+}
+
+/* ── 6 · cabeçalho: vidro mais denso, contorno fino e o fio de luz central ───────────────────── */
+html.v61 header{
+  background:
+    linear-gradient(90deg,transparent 20%,rgba(20,184,245,.55) 50%,transparent 80%) 0 100% / 100% 1px no-repeat,
+    rgba(255,255,255,.74);
+  backdrop-filter:saturate(180%) blur(22px);-webkit-backdrop-filter:saturate(180%) blur(22px);
+  box-shadow:0 1px 0 var(--hair)}
+
+/* ── 7 · tipografia de seção: a hierarquia é peso e tracking, não cor ─────────────────────────── */
+html.v61 h2.sec{font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+html.v61 .cover .t{letter-spacing:-.005em}
+
+/* ── 8 · foco do teclado = o fio de luz (acessível e na mesma linguagem) ─────────────────────── */
+html.v61 :is(a,button,[role=button],select,input,.chip,.sph):focus-visible{
+  outline:2px solid var(--tron);outline-offset:2px;box-shadow:0 0 0 5px var(--tron-glow)}
+
+@media (prefers-reduced-motion:reduce){
+  html.v61 :is(.card.kpi,.ck-inst), html.v61 .chip, html.v61 nav.tabs button{transition:none}
+  html.v61 :is(.card.kpi,.ck-inst):hover{transform:none}
+}
