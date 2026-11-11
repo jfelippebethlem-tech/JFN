@@ -204,6 +204,27 @@ def ressalva_de_competencia(trecho: str | None) -> bool:
     return any(r in t for r in _RESSALVAS_COMPETENCIA)
 
 
+# FALHA DE INFRA ≠ VEREDITO (11/11/2026). 2.462 linhas v3 com "cadeia LLM indisponível" (ago 540 · set 1.030 ·
+# out 877 · nov 15) ficaram presas como definitivas: o cache devolvia a linha e o sweep a contava como feita.
+# Agora a falha é gravada como PENDÊNCIA (`pendente: true`, `tentativas: n`) e volta à fila depois de
+# RETENTATIVA_HORAS, até RETENTATIVA_TETO tentativas (re-tentar para sempre só queima cota numa cadeia caída).
+RETENTATIVA_TETO = 4
+RETENTATIVA_HORAS = 6
+_AVISO_INFRA = "cadeia LLM indispon"
+# "Feito" para a fila do sweep_360.sh: tudo, MENOS pendência de infra madura (passou do espaçamento) e abaixo
+# do teto. Linha antiga sem `tentativas` vale como 1ª tentativa.
+# coalesce: sem ele o aviso NULL tornava o NOT(...) NULL e reabria 1.643 linhas sem aviso (4.102 em vez de 2.462).
+SQL_FEITO = (f"NOT (escala IS NULL "
+             f"AND coalesce(json_extract(veredito_json, '$.aviso'), '') LIKE '{_AVISO_INFRA}%' "
+             f"AND coalesce(json_extract(veredito_json, '$.tentativas'), 1) < {RETENTATIVA_TETO} "
+             f"AND avaliado_em <= datetime('now', '-{RETENTATIVA_HORAS} hours'))")
+
+
+def _pendente_infra(v: dict) -> bool:
+    return v.get("escala") is None and (bool(v.get("pendente"))
+                                         or str(v.get("aviso") or "").startswith(_AVISO_INFRA))
+
+
 _DB_PADRAO = object()  # sentinela: default abre o compliance.db; con=None desliga o cache
 
 
@@ -245,7 +266,7 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
         c.executescript(_DDL)
 
     vereditos: list[dict] = []
-    sem_resposta = cache_hits = 0
+    sem_resposta = cache_hits = pendentes = 0
     try:
         for d in sel:
             # Pela porta única: sem a etiqueta do arquivo. Ela mandava a NOSSA classificação
@@ -258,14 +279,24 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                                   "aviso": "sem texto capturado (INDISPONÍVEL ≠ 0)"})
                 continue
             h = hashlib.sha256(f"{texto}|{RUBRICA_VERSAO}".encode()).hexdigest()
+            tentativas_antes = 0
             if c is not None:
-                row = c.execute("select veredito_json from doc_veredito where numero_sei=? "
+                row = c.execute("select veredito_json, avaliado_em <= datetime('now', ?) "
+                                "from doc_veredito where numero_sei=? "
                                 "and doc_i=? and rubrica_versao=? and hash_texto=?",
-                                (numero, d.get("i"), RUBRICA_VERSAO, h)).fetchone()
+                                (f"-{RETENTATIVA_HORAS} hours", numero, d.get("i"), RUBRICA_VERSAO,
+                                 h)).fetchone()
                 if row:
-                    cache_hits += 1
-                    vereditos.append(json.loads(row[0]))
-                    continue
+                    antigo = json.loads(row[0])
+                    if _pendente_infra(antigo):
+                        tentativas_antes = int(antigo.get("tentativas") or 1)
+                    if not tentativas_antes or tentativas_antes >= RETENTATIVA_TETO or not row[1]:
+                        cache_hits += 1
+                        if tentativas_antes:
+                            antigo.update({"pendente": True, "tentativas": tentativas_antes})
+                            pendentes += 1
+                        vereditos.append(antigo)
+                        continue
 
             rubrica = RUBRICAS[d["tipo"]]
             prompt = (f"{rubrica}\n\n--- DOCUMENTO ({d.get('titulo')}) ---\n{texto}\n--- FIM ---")
@@ -278,6 +309,9 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
                          "aviso": "votos divergentes — rebaixado ao menor (adversarial)"}
             if v.get("escala") is None and not v.get("aviso"):
                 sem_resposta += 1
+            if _pendente_infra(v):
+                v.update({"pendente": True, "tentativas": tentativas_antes + 1})
+                pendentes += 1
 
             score = {1: 0.0, 2: 0.6, 3: 0.85}.get(v.get("escala"))
             v.update({"i": d.get("i"), "tipo": d.get("tipo"), "titulo": d.get("titulo"),
@@ -308,7 +342,7 @@ def julgar_docs(man: dict, pasta: Path, *, teto: int | None = None,
     return {"numero_sei": numero, "n_selecionados": len(sel), "vereditos": vereditos,
             "problematicos": len(problematicos),
             "cobertura": {"cache_hits": cache_hits, "sem_resposta": sem_resposta,
-                          "rubrica_versao": RUBRICA_VERSAO}}
+                          "pendentes": pendentes, "rubrica_versao": RUBRICA_VERSAO}}
 
 
 def _um_voto(gerar, prompt: str, texto: str) -> dict:

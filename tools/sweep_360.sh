@@ -78,14 +78,18 @@ con.row_factory = sqlite3.Row
 # que só têm veredito de uma rubrica velha — e a v3 (2026-08-02) mudou o que conta como vício.
 # Ler a constante do módulo evita esta linha envelhecer calada de novo.
 from compliance_agent.sei.doc_juizo import RUBRICA_VERSAO, RUBRICAS
+from compliance_agent.sei.doc_juizo import SQL_FEITO
 from compliance_agent.sei import manifesto_norm
 # A fila raciocina por DOCUMENTO, não por processo. Com o critério antigo (distinct numero_sei),
 # um processo com um único despacho julgado ficava "pronto" para sempre — e as peças que ganharam
 # rubrica depois (autorização de despesa, TR, pesquisa de preços: 1.398 documentos no acervo)
 # nunca seriam avaliadas em nenhum dos processos já visitados.
+# Falha de infra ("cadeia LLM indisponível") NÃO é feito: 2.462 ficaram presas assim até 11/11/2026.
+# SQL_FEITO reabre a pendência madura (espaçamento + teto de tentativas moram no doc_juizo).
 julgados = {}
 for sei, doc_i in con.execute(
-        "select numero_sei, doc_i from doc_veredito where rubrica_versao=?", (RUBRICA_VERSAO,)):
+        "select numero_sei, doc_i from doc_veredito where rubrica_versao=? and " + SQL_FEITO,
+        (RUBRICA_VERSAO,)):
     julgados.setdefault(sei, set()).add(doc_i)
 # TODO o acervo entra na fila; a pontuação só decide a ORDEM (o mais grave primeiro). Cortar em
 # >=5 deixava 1.686 processos sem juízo documental nenhum, para sempre.
