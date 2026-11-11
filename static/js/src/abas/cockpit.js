@@ -25,7 +25,9 @@
 import {$, esc, svgIco, card, kpi, sec, cover, corta, clk} from '../nucleo/dom.js';
 import {fmtN, fmtD, fmtR, fmtRc, rot} from '../nucleo/formato.js';
 import {J, erroHumano} from '../nucleo/http.js';
-import {_redMotion, _v60} from '../capacidade/estado.js';
+import {_redMotion, _v60, _v61} from '../capacidade/estado.js';
+import {reatorMontar} from '../cena/reator.js';
+import {aoVivoLigar} from '../aovivo/estado.js';
 import {aba, esfera} from '../app/estado.js';
 import {nuSet, nuSweepPoll, NU_NODES, nucleoStart} from '../cena/index.js';
 import {energiaLigar} from '../cena/energia.js';
@@ -94,7 +96,11 @@ export function abrirCapMestra(id){
 }
 
 export async function renderCockpit(){
-  const html=`<div class="ck">
+  /* v61: o mapa do território (centro-esquerda) e a coluna do reator (direita) entram ANTES do
+     resto; a mesa de vigília antiga segue no DOM, oculta pelo CSS, e o laço dela não é iniciado. */
+  const v61=_v61?`<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
+    <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div></aside>`:'';
+  const html=`<div class="ck${_v61?' ck61':''}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
       <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
@@ -177,12 +183,13 @@ export function ckBoot(){
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
   a11yfy(g);   // ck-grid é preenchido após o a11yfy do ir() → operar os cards por teclado aqui
-  nucleoStart();
+  if(_v61){aoVivoLigar();reatorMontar($('c61-reator'));}   // v61: o reator vivo no lugar da mesa
+  else nucleoStart();
   /* v59 · a órbita. DEPOIS do `nucleoStart` e do grid preenchido: ela mede a geometria dos oito
      instrumentos e do núcleo, e medir antes de os cartões existirem daria oito retângulos de
      largura zero. Um `requestAnimationFrame` porque o `innerHTML` acima ainda não passou pelo
      layout — `getBoundingClientRect` no mesmo quadro leria a posição anterior. */
-  requestAnimationFrame(()=>energiaLigar());
+  if(!_v61)requestAnimationFrame(()=>energiaLigar());
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }

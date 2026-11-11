@@ -207,10 +207,10 @@
       const c = _jCache.get(ep);
       if (c && Date.now() - c.t < 9e4) return c.d;
     }
-    const TETO2 = opt && opt.tetoMs || 3e4;
+    const TETO3 = opt && opt.tetoMs || 3e4;
     for (let t = 0; ; t++) {
       const ac = "AbortController" in window ? new AbortController() : null;
-      const relogio = ac ? setTimeout(() => ac.abort(), TETO2) : 0;
+      const relogio = ac ? setTimeout(() => ac.abort(), TETO3) : 0;
       try {
         const r = await fetch(ep, ac ? Object.assign({}, opt, { signal: ac.signal }) : opt);
         const d = await r.json();
@@ -218,7 +218,7 @@
         return d;
       } catch (e) {
         const estourou = e && e.name === "AbortError";
-        if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO2 / 1e3}s` : String(e) };
+        if (!isGet || t >= 1) return { erro: estourou ? `a rota ${ep} não respondeu em ${TETO3 / 1e3}s` : String(e) };
         await new Promise((rs) => setTimeout(rs, 1200));
       } finally {
         if (relogio) clearTimeout(relogio);
@@ -429,6 +429,49 @@
   function ritmoEstado() {
     _podar();
     return { marcha: _marcha, eventosPorMinuto: _eventos.length, load1: _load1, sweep: _sweepVivo };
+  }
+  var _pintores = /* @__PURE__ */ new Set();
+  var _raf = 0;
+  var _ult = 0;
+  var _visArmado = false;
+  var _passoMin = () => matchMedia("(max-width:760px)").matches ? 33 : 0;
+  function _volta(t) {
+    _raf = 0;
+    if (t - _ult >= _passoMin() - 1) {
+      const dt = Math.min(0.1, (t - _ult) / 1e3);
+      _ult = t;
+      for (const fn of [..._pintores]) {
+        let fica = true;
+        try {
+          fica = fn(t, dt);
+        } catch (_) {
+          fica = false;
+        }
+        if (fica === false) _pintores.delete(fn);
+      }
+    }
+    _armar();
+  }
+  function _armar() {
+    if (!_raf && !document.hidden && _pintores.size) _raf = requestAnimationFrame(_volta);
+  }
+  function quadroLigar(fn) {
+    if (!_visArmado) {
+      _visArmado = true;
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          cancelAnimationFrame(_raf);
+          _raf = 0;
+        } else {
+          _ult = performance.now();
+          _armar();
+        }
+      });
+    }
+    _pintores.add(fn);
+    _ult = _ult || performance.now();
+    _armar();
+    return () => _pintores.delete(fn);
   }
 
   // static/js/src/barramento/sabre.js
@@ -2175,7 +2218,7 @@ void main(){
     $("nu-chips").innerHTML = NU_NODES.map((n) => `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')"
        onpointerenter="_nuHover='${n.id}'" onpointerleave="_nuHover=null">
       <small>${n.lab}</small><span class="n">—</span></button>`).join("");
-    const ANEIS = [{ r: 0.46, h: 0.48 }, { r: 0.74, h: 0.32 }, { r: 1, h: 0.18 }];
+    const ANEIS2 = [{ r: 0.46, h: 0.48 }, { r: 0.74, h: 0.32 }, { r: 1, h: 0.18 }];
     NU_NODES.forEach((n, i) => {
       n._an = n.orb <= 0.7 ? 0 : n.orb <= 0.88 ? 1 : 2;
       n._idx = i;
@@ -2278,12 +2321,12 @@ void main(){
       setCam();
       trilhos();
       const PL = HOLO.PL, kN = cam.camd / Math.max(0.42, cam.camd - PL * cam.cp), kF = cam.camd / (cam.camd + PL * cam.cp);
-      const A2 = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
+      const A3 = PL * cam.sp * kF, B = PL * cam.sp * kN, HT = HOLO.ALT * cam.cp * 1.14;
       const gut = _compacto ? 10 : 48;
       const Hu = Math.max(150, H - _gradeH);
-      cam.s = Math.min(Hu * 0.965 / (A2 + B + HT), Math.max(140, W - 2 * gut) / (2 * PL * kN));
+      cam.s = Math.min(Hu * 0.965 / (A3 + B + HT), Math.max(140, W - 2 * gut) / (2 * PL * kN));
       cam.cx = W / 2;
-      cam.cy = (Hu - (A2 + B + HT) * cam.s) / 2 + (A2 + HT) * cam.s;
+      cam.cy = (Hu - (A3 + B + HT) * cam.s) / 2 + (A3 + HT) * cam.s;
       piso = document.createElement("canvas");
       piso.width = W * dpr;
       piso.height = H * dpr;
@@ -2401,9 +2444,9 @@ void main(){
       ctx.stroke();
       ctx.strokeStyle = "rgba(130,180,255,0.06)";
       for (let i = 0; i < 12; i++) {
-        const th = i / 12 * 6.283, A2 = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
+        const th = i / 12 * 6.283, A3 = P(Math.cos(th) * 0.2, 0, Math.sin(th) * 0.2), B = P(Math.cos(th) * 1.11, 0, Math.sin(th) * 1.11);
         ctx.beginPath();
-        ctx.moveTo(A2.x, A2.y);
+        ctx.moveTo(A3.x, A3.y);
         ctx.lineTo(B.x, B.y);
         ctx.stroke();
       }
@@ -2443,7 +2486,7 @@ void main(){
         }
         ctx.drawImage(piso, 0, 0, W, H);
       }
-      ANEIS.forEach((an) => {
+      ANEIS2.forEach((an) => {
         for (let s = 0; s < 8; s++) {
           ctx.beginPath();
           let zm = 0;
@@ -2459,7 +2502,7 @@ void main(){
         }
       });
       const pos = NU_NODES.map((n, i) => {
-        const an = ANEIS[n._an], a = -Math.PI / 2 + (n._fase || 0) + (rm ? 0 : t * 3e-5);
+        const an = ANEIS2[n._an], a = -Math.PI / 2 + (n._fase || 0) + (rm ? 0 : t * 3e-5);
         const wx = Math.cos(a) * an.r, wz = Math.sin(a) * an.r;
         const p = P(wx, an.h, wz), pe = P(wx, ESP, wz);
         return { n, a, wx, wz, h: an.h, x: p.x, y: p.y, k: p.k, z: p.z, px: pe.x, py: pe.y, pk: pe.k };
@@ -2544,11 +2587,11 @@ void main(){
         });
       }
       for (let i = 0; i < pos.length; i++) {
-        const A2 = pos[i], B = pos[(i + 1) % pos.length];
-        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A2.k, B.k)).toFixed(3) + ")";
+        const A3 = pos[i], B = pos[(i + 1) % pos.length];
+        ctx.strokeStyle = "rgba(150,190,255," + (0.03 + 0.07 * Math.min(A3.k, B.k)).toFixed(3) + ")";
         ctx.lineWidth = 0.7;
         ctx.beginPath();
-        ctx.moveTo(A2.x, A2.y);
+        ctx.moveTo(A3.x, A3.y);
         ctx.lineTo(B.x, B.y);
         ctx.stroke();
       }
@@ -3010,7 +3053,7 @@ void main(){
     prefeitura: "235,190,105",
     geral: "200,150,255"
   };
-  var _raf = 0;
+  var _raf2 = 0;
   var _pacotes = [];
   var _linhas = [];
   var _cv = null;
@@ -3082,7 +3125,7 @@ void main(){
       _cx.fill();
     }
     if (parado) {
-      _raf = 0;
+      _raf2 = 0;
       return;
     }
     _pacotes = _pacotes.filter((p) => agora - p.t0 < DUR);
@@ -3100,7 +3143,7 @@ void main(){
       _cx.arc(q.x, q.y, 9, 0, 6.283);
       _cx.fill();
     }
-    _raf = _pacotes.length ? requestAnimationFrame(_desenhar) : 0;
+    _raf2 = _pacotes.length ? requestAnimationFrame(_desenhar) : 0;
   }
   function energiaLigar() {
     energiaParar();
@@ -3118,8 +3161,8 @@ void main(){
     _desenhar(performance.now());
   }
   function energiaParar() {
-    if (_raf) cancelAnimationFrame(_raf);
-    _raf = 0;
+    if (_raf2) cancelAnimationFrame(_raf2);
+    _raf2 = 0;
     _pacotes = [];
     _linhas = [];
     _cx = null;
@@ -3132,7 +3175,7 @@ void main(){
     if (i < 0) return;
     _pacotes.push({ i, t0: performance.now(), c: EV_COR[tipo] || "95,217,255" });
     if (_pacotes.length > TETO) _pacotes.splice(0, _pacotes.length - TETO);
-    if (!_raf) _raf = requestAnimationFrame(_desenhar);
+    if (!_raf2) _raf2 = requestAnimationFrame(_desenhar);
   }
   function energiaRever() {
     if (!$("ck-orbita")) return;
@@ -3141,7 +3184,7 @@ void main(){
   var energiaCenso = () => ({
     linhas: _linhas.length,
     pacotes: _pacotes.length,
-    laco: !!_raf,
+    laco: !!_raf2,
     ligada: !!(_cv && !_cv.hidden)
   });
 
@@ -3535,12 +3578,12 @@ void main(){
       cx.clearRect(0, 0, W, H);
       const f = _wireFase(t0i == null ? null : t - t0i);
       if (f.aresta > 0) edges.forEach((e) => {
-        const A2 = pts[e.a], B = pts[e.b];
+        const A3 = pts[e.a], B = pts[e.b];
         cx.strokeStyle = "rgba(" + C + ",.15)";
         cx.lineWidth = 1;
         cx.beginPath();
-        cx.moveTo(A2.x, A2.y);
-        cx.lineTo(A2.x + (B.x - A2.x) * f.aresta, A2.y + (B.y - A2.y) * f.aresta);
+        cx.moveTo(A3.x, A3.y);
+        cx.lineTo(A3.x + (B.x - A3.x) * f.aresta, A3.y + (B.y - A3.y) * f.aresta);
         cx.stroke();
       });
       if (f.no > 0) pts.forEach((p) => {
@@ -3551,8 +3594,8 @@ void main(){
       });
       if (!rm) {
         if (f.aresta >= 1) edges.forEach((e, i) => {
-          const A2 = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
-          const x = A2.x + (B.x - A2.x) * ph, y = A2.y + (B.y - A2.y) * ph;
+          const A3 = pts[e.a], B = pts[e.b], ph = (t / 1400 + i * 0.16) % 1;
+          const x = A3.x + (B.x - A3.x) * ph, y = A3.y + (B.y - A3.y) * ph;
           const g = cx.createRadialGradient(x, y, 0, x, y, 8);
           g.addColorStop(0, "rgba(" + C + ",.8)");
           g.addColorStop(1, "rgba(" + C + ",0)");
@@ -4178,6 +4221,293 @@ void main(){
     });
   }
 
+  // static/js/src/aovivo/estado.js
+  var aoVivo = {
+    motores: [],
+    eventos: [],
+    disponivel: null,
+    conectado: false,
+    atualizadoEm: null,
+    fontes: null
+  };
+  var _ouv = /* @__PURE__ */ new Set();
+  var JANELA = 5 * 60 * 1e3;
+  var TETO2 = 120;
+  var _ligado2 = false;
+  var _es = null;
+  var _poll = 0;
+  function aoVivoOuvir(fn) {
+    _ouv.add(fn);
+    return () => _ouv.delete(fn);
+  }
+  function _avisa(tipo, dado) {
+    for (const fn of [..._ouv]) {
+      try {
+        fn(tipo, dado);
+      } catch (_) {
+      }
+    }
+  }
+  function eventosPorMinuto(motor) {
+    const de = Date.now() - JANELA;
+    let n = 0;
+    for (const e of aoVivo.eventos) if (e._ms >= de && (!motor || e.motor === motor)) n++;
+    return n / 5;
+  }
+  var motoresRodando = () => aoVivo.motores.filter((m) => m.estado === "rodando");
+  function _snapshot(j) {
+    if (!j) {
+      if (aoVivo.disponivel === null) aoVivo.disponivel = false;
+      _avisa("estado");
+      return;
+    }
+    aoVivo.disponivel = true;
+    aoVivo.motores = j.motores;
+    aoVivo.atualizadoEm = j.atualizado_em || null;
+    aoVivo.fontes = j.fontes || null;
+    if (Array.isArray(j.eventos)) for (const e of j.eventos) _entra(e, false);
+    _avisa("estado");
+  }
+  function _entra(e, avisar) {
+    if (!e || !e.id || aoVivo.eventos.some((x) => x.id === e.id)) return;
+    e._ms = Date.parse(e.t) || Date.now();
+    aoVivo.eventos.push(e);
+    aoVivo.eventos.sort((a, b) => a._ms - b._ms);
+    if (aoVivo.eventos.length > TETO2) aoVivo.eventos.splice(0, aoVivo.eventos.length - TETO2);
+    if (avisar) _avisa("evento", e);
+  }
+  function _fio(ok) {
+    if (aoVivo.conectado !== ok) {
+      aoVivo.conectado = ok;
+      _avisa("fio", ok);
+    }
+  }
+  function aoVivoLigar() {
+    if (_ligado2) return;
+    _ligado2 = true;
+    lerEstado().then(_snapshot);
+    const abrir = () => {
+      if (!window.EventSource || _es) return;
+      try {
+        _es = new EventSource("/api/ao-vivo/stream");
+      } catch (_) {
+        _es = null;
+        return;
+      }
+      _es.addEventListener("open", () => _fio(true));
+      _es.addEventListener("estado", (ev) => {
+        try {
+          _snapshot(JSON.parse(ev.data));
+          _fio(true);
+        } catch (_) {
+        }
+      });
+      _es.addEventListener("evento", (ev) => {
+        try {
+          _entra(JSON.parse(ev.data), true);
+          _fio(true);
+        } catch (_) {
+        }
+      });
+      _es.addEventListener("error", () => {
+        _fio(false);
+        if (_es && _es.readyState === 2) {
+          _es = null;
+        }
+      });
+    };
+    abrir();
+    _poll = setInterval(() => {
+      if (document.hidden || aoVivo.conectado) return;
+      lerEstado().then((j) => {
+        _snapshot(j);
+        if (j) abrir();
+      });
+    }, 3e4);
+  }
+
+  // static/js/src/ui/aovivo.js
+  function abrirMotor(id) {
+    const m = aoVivo.motores.find((x) => x.id === id), ov = $("ov"), sh = $("sheet");
+    if (!m || !ov || !sh) return;
+    const evs = aoVivo.eventos.filter((e) => e.motor === id).slice(-8).reverse();
+    const linha = (r, v) => v ? `<div class="mt-l"><span>${r}</span><b>${esc(v)}</b></div>` : "";
+    sh.innerHTML = `<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+    <div class="mt-ficha e-${esc(m.estado)}">
+      <h3 class="v61-disp"><i class="mt-pt" aria-hidden="true"></i>${esc(m.nome)}</h3>
+      <div class="mt-estado">${esc(rotuloEstado(m))}</div>
+      ${typeof m.progresso === "number" ? `<div class="mt-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(m.progresso * 100)}"><i style="width:${Math.round(m.progresso * 100)}%"></i></div>` : ""}
+      ${linha("O que faz", m.descricao)}
+      ${linha("Desde", m.desde ? `${quando(m.desde)} (${haQuanto(m.desde)})` : "")}
+      ${linha("Próxima execução", quando(m.proxima))}
+      ${linha("Unidade", m.unidade)}
+      ${linha("Último código de saída", m.saida == null ? "" : String(m.saida))}
+      <h4>Últimos eventos</h4>
+      ${evs.length ? `<ul class="mt-evs">${evs.map((e) => `<li><span class="num">${esc(quando(e.t))}</span>${esc(e.texto)}</li>`).join("")}</ul>` : '<div class="dim">Sem evento registrado nesta janela.</div>'}
+    </div>`;
+    ov.classList.add("on");
+  }
+
+  // static/js/src/cena/reator.js
+  var A2 = "/static/assets/v61/";
+  var TAU = Math.PI * 2;
+  var ANEIS = [
+    { r: 0.74, s: 1, w: 2, arcos: [[0, 0.22], [0.3, 0.1], [0.5, 0.27], [0.84, 0.08]] },
+    { r: 0.84, s: -1, w: 1.25, arcos: [[0.05, 0.4], [0.55, 0.05], [0.66, 0.24]] },
+    { r: 0.94, s: 1, w: 1, arcos: [[0.1, 0.12], [0.36, 0.34], [0.78, 0.16]] }
+  ];
+  var _sair = null;
+  function reatorMontar(host) {
+    if (!host) return;
+    if (_sair) {
+      _sair();
+      _sair = null;
+    }
+    const cel = matchMedia("(max-width:760px)").matches;
+    const eco = !!(navigator.connection && navigator.connection.saveData);
+    host.innerHTML = `<div class="v61-reator" id="v61-reator">
+      <div class="rt-corpo" style="background-image:url(${A2}reator-sm.webp)"></div>
+      <canvas class="rt-cv" aria-hidden="true"></canvas>
+      <div class="rt-nos" id="rt-nos"></div>
+    </div>
+    <div class="rt-leg" id="rt-leg" aria-live="polite">ao vivo: lendo…</div>`;
+    const raiz = host.querySelector(".v61-reator"), corpo = raiz.querySelector(".rt-corpo");
+    const cv = raiz.querySelector("canvas"), nos = raiz.querySelector(".rt-nos"), leg = host.querySelector(".rt-leg");
+    const ctx = cv.getContext("2d");
+    if (!_redMotion && !_sobrio && !eco) {
+      const v = document.createElement("video");
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.preload = "metadata";
+      v.setAttribute("aria-hidden", "true");
+      v.innerHTML = `<source src="${A2}reator-m.webm" type="video/webm"><source src="${A2}reator-m.mp4" type="video/mp4">`;
+      v.addEventListener("playing", () => v.classList.add("on"));
+      corpo.appendChild(v);
+      v.play().catch(() => {
+      });
+      document.addEventListener("visibilitychange", () => {
+        if (!v.isConnected) return;
+        document.hidden ? v.pause() : v.play().catch(() => {
+        });
+      });
+    }
+    let L = 0, dpr = 1;
+    const medir = () => {
+      const b = raiz.getBoundingClientRect();
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      L = b.width;
+      cv.width = Math.round(L * dpr);
+      cv.height = Math.round(L * dpr);
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(raiz);
+    const ang = [0, 0, 0];
+    const orb = /* @__PURE__ */ new Map();
+    let onda = -1;
+    const sincNos = () => {
+      const vivos = motoresRodando().slice(0, cel ? 5 : 8);
+      for (const [id, o] of orb) if (!vivos.some((m) => m.id === id)) {
+        o.el.remove();
+        orb.delete(id);
+      }
+      vivos.forEach((m, i) => {
+        if (orb.has(m.id)) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "rt-no";
+        b.dataset.motor = m.id;
+        b.title = m.nome + " — rodando";
+        b.innerHTML = `<i aria-hidden="true"></i><span>${esc(m.nome)}</span>`;
+        b.addEventListener("click", () => abrirMotor(m.id));
+        nos.appendChild(b);
+        orb.set(m.id, { el: b, a: i / Math.max(1, vivos.length) * TAU });
+      });
+      const n = motoresRodando().length, f = aoVivo.motores.filter((m) => m.estado === "falhou").length;
+      if (aoVivo.disponivel === false) leg.innerHTML = "ao vivo: <b>INDISPONÍVEL</b>";
+      else if (aoVivo.disponivel === null) leg.textContent = "ao vivo: lendo…";
+      else leg.innerHTML = `<b class="num">${n}</b> ${n === 1 ? "motor rodando" : "motores rodando"}` + (f ? ` · <b class="num rt-falha">${f}</b> ${f === 1 ? "falhou" : "falharam"}` : "") + ` · <b class="num">${eventosPorMinuto().toFixed(1).replace(".", ",")}</b> eventos/min` + (aoVivo.conectado ? "" : ' · <span class="rt-pausa">reconectando</span>');
+      raiz.classList.toggle("rt-indisp", aoVivo.disponivel === false);
+    };
+    const parar = aoVivoOuvir((tipo, ev) => {
+      if (tipo === "evento" && ev && ev.tipo === "achado" && !_redMotion) onda = 0;
+      sincNos();
+    });
+    sincNos();
+    const pinta = (t, dt) => {
+      if (!raiz.isConnected) {
+        sair();
+        return false;
+      }
+      const parado = _redMotion || _sobrio;
+      const sabe = aoVivo.disponivel === true, n = sabe ? motoresRodando().length : 0;
+      const vel = sabe ? 0.05 + 0.09 * Math.min(n, 8) : 0;
+      const epm = sabe ? eventosPorMinuto() : 0;
+      const c = L * dpr / 2;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      const brilho = Math.min(0.55, epm * 0.06);
+      if (brilho > 0.01) {
+        const g = ctx.createRadialGradient(c, c, 0, c, c, c * 0.42);
+        g.addColorStop(0, `rgba(255,255,255,${brilho})`);
+        g.addColorStop(0.5, `rgba(34,181,245,${brilho * 0.6})`);
+        g.addColorStop(1, "rgba(34,181,245,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(c, c, c * 0.42, 0, TAU);
+        ctx.fill();
+      }
+      ctx.lineCap = "round";
+      ANEIS.forEach((an, i) => {
+        if (!parado) ang[i] += an.s * vel * (1 + i * 0.35) * dt;
+        ctx.lineWidth = an.w * dpr;
+        ctx.strokeStyle = sabe ? i === 1 ? "rgba(34,181,245,.85)" : "rgba(30,123,240,.7)" : "rgba(106,126,155,.55)";
+        ctx.setLineDash(sabe ? [] : [3 * dpr, 5 * dpr]);
+        for (const [a0, len] of an.arcos) {
+          ctx.beginPath();
+          ctx.arc(c, c, c * an.r, ang[i] + a0 * TAU, ang[i] + (a0 + len) * TAU);
+          ctx.stroke();
+        }
+      });
+      ctx.setLineDash([]);
+      if (onda >= 0) {
+        onda += dt / 1.2;
+        if (onda >= 1) onda = -1;
+        else {
+          const k = 1 - Math.pow(1 - onda, 3);
+          ctx.lineWidth = (3 - 2 * onda) * dpr;
+          ctx.strokeStyle = `rgba(34,181,245,${0.9 * (1 - onda)})`;
+          ctx.beginPath();
+          ctx.arc(c, c, c * (0.2 + 0.78 * k), 0, TAU);
+          ctx.stroke();
+          if (onda < 0.25) {
+            ctx.fillStyle = `rgba(255,255,255,${0.7 * (1 - onda / 0.25)})`;
+            ctx.beginPath();
+            ctx.arc(c, c, c * 0.36, 0, TAU);
+            ctx.fill();
+          }
+        }
+      }
+      const R = L / 2;
+      for (const [id, o] of orb) {
+        if (!parado) o.a += (0.16 + Math.min(0.5, eventosPorMinuto(id) * 0.12)) * dt;
+        const x = R + Math.cos(o.a) * R * 0.94, y = R + Math.sin(o.a) * R * 0.94;
+        o.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+        o.el.classList.toggle("esq", Math.cos(o.a) < 0);
+      }
+      return true;
+    };
+    const desliga = quadroLigar(pinta);
+    function sair() {
+      desliga();
+      parar();
+      ro.disconnect();
+      if (_sair === sair) _sair = null;
+    }
+    _sair = sair;
+  }
+
   // static/js/src/abas/cockpit.js
   var _ckTimer = null;
   function _ckCount(el, to, fmt, ms = 1e3) {
@@ -4226,7 +4556,9 @@ void main(){
     a11yfy(sh);
   }
   async function renderCockpit() {
-    const html = `<div class="ck">
+    const v61 = _v61 ? `<section class="c61-mapa" id="c61-mapa" aria-label="Mapa do território"></section>
+    <aside class="c61-lado" id="c61-lado"><div class="c61-reator" id="c61-reator"></div></aside>` : "";
+    const html = `<div class="ck${_v61 ? " ck61" : ""}">${v61}
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ sincronizando o barramento — os primeiros sinais chegam em segundos…</span></div></div>
     <div class="ck-hero">
       <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
@@ -4317,8 +4649,11 @@ void main(){
       ckCard("ninho", "Ninhos de fachada", "ckamber", "bgamber", "g_riscos")
     ].join("");
     a11yfy(g);
-    nucleoStart();
-    requestAnimationFrame(() => energiaLigar());
+    if (_v61) {
+      aoVivoLigar();
+      reatorMontar($("c61-reator"));
+    } else nucleoStart();
+    if (!_v61) requestAnimationFrame(() => energiaLigar());
     ckPull(true);
     clearInterval(_ckTimer);
     _ckTimer = setInterval(() => {

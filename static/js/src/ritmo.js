@@ -118,3 +118,35 @@ export function ritmoEstado() {
   _podar();
   return {marcha: _marcha, eventosPorMinuto: _eventos.length, load1: _load1, sweep: _sweepVivo};
 }
+
+/* ── v61 · UM LAÇO DE QUADRO para a cena viva ──────────────────────────────────────────────────
+   O reator, o mapa (radar/pulsos) e as sparklines dos motores desenham em canvas. Cada um com o seu
+   `requestAnimationFrame` seriam três laços disputando o mesmo quadro — o defeito que já derrubou
+   esta VM. Aqui há UM: quem desenha se inscreve com `quadroLigar(fn)` e recebe `(t, dt)`.
+   · aba em segundo plano → o laço PARA (não é o navegador que estrangula: é cancelado);
+   · celular → teto de 30 quadros por segundo;
+   · sem inscritos → nenhum quadro é pedido.
+   Quem se inscreve devolve `false` para sair (ex.: o seu nó saiu do DOM na troca de aba). */
+const _pintores = new Set();
+let _raf = 0, _ult = 0, _visArmado = false;
+const _passoMin = () => (matchMedia('(max-width:760px)').matches ? 33 : 0);
+function _volta(t) {
+  _raf = 0;
+  if (t - _ult >= _passoMin() - 1) {
+    const dt = Math.min(0.1, (t - _ult) / 1000); _ult = t;
+    for (const fn of [..._pintores]) { let fica = true; try { fica = fn(t, dt); } catch (_) { fica = false; }
+                                       if (fica === false) _pintores.delete(fn); }
+  }
+  _armar();
+}
+function _armar() { if (!_raf && !document.hidden && _pintores.size) _raf = requestAnimationFrame(_volta); }
+/** Inscreve um pintor no laço único. Devolve a função que o desinscreve. */
+export function quadroLigar(fn) {
+  if (!_visArmado) { _visArmado = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { cancelAnimationFrame(_raf); _raf = 0; } else { _ult = performance.now(); _armar(); } }); }
+  _pintores.add(fn); _ult = _ult || performance.now(); _armar();
+  return () => _pintores.delete(fn);
+}
+/** Quantos pintores vivos (para o relatório de desempenho: tem de haver UM laço, não N). */
+export function quadroInscritos() { return _pintores.size; }

@@ -1,0 +1,67 @@
+/* ══ v61 · Fase 5 — COCKPIT: reator vivo + mesa + mapa ═════════════════════════════════════════
+   Desktop: mapa no centro-esquerda (8 de 12 colunas), coluna da direita com o reator no topo e o
+   herói abaixo; os 9 KPIs em grade inteira logo depois. Celular: reator compacto (120px) no topo,
+   mapa a largura toda, cartões abaixo. A mesa de vigília antiga (`.ck-nucleo`) sai: o mapa é a mesa.
+   ════════════════════════════════════════════════════════════════════════════════════════════ */
+html.v61 .ck61 .ck-nucleo, html.v61 .ck61 .ck-energia{display:none}
+html.v61 .ck61 .c61-lado{order:-2;display:grid;gap:12px;align-content:start}
+html.v61 .ck61 .c61-mapa{order:-1;min-height:320px;border-radius:var(--radius);border:1px solid var(--line);
+  background:var(--surface);box-shadow:var(--sh);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);overflow:hidden}
+
+/* reator: corpo em vídeo recortado em círculo + canvas dos anéis + nós em órbita */
+html.v61 .c61-reator{display:grid;grid-template-columns:120px minmax(0,1fr);align-items:center;gap:14px;padding:10px 14px;
+  border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);box-shadow:var(--sh)}
+html.v61 .v61-reator{position:relative;width:100%;aspect-ratio:1;isolation:isolate}
+html.v61 .v61-reator .rt-corpo{position:absolute;inset:9%;border-radius:50%;overflow:hidden;
+  background:center / 178% auto no-repeat;
+  -webkit-mask-image:radial-gradient(circle,#000 62%,transparent 70%);mask-image:radial-gradient(circle,#000 62%,transparent 70%)}
+html.v61 .v61-reator .rt-corpo video{position:absolute;left:50%;top:50%;height:100%;width:auto;aspect-ratio:16 / 9;
+  transform:translate(-50%,-50%);opacity:0;transition:opacity .4s linear}
+html.v61 .v61-reator .rt-corpo video.on{opacity:1}
+html.v61 .v61-reator .rt-cv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+html.v61 .v61-reator.rt-indisp .rt-corpo{filter:grayscale(.7);opacity:.75}
+html.v61 .v61-reator .rt-nos{position:absolute;inset:0}
+html.v61 .rt-no{all:unset;position:absolute;left:0;top:0;display:flex;align-items:center;gap:5px;cursor:pointer;
+  margin:-9px 0 0 -9px;padding:4px;border-radius:999px;font-family:var(--f-sans);font-size:11px;font-weight:500;line-height:1;
+  color:var(--ink-2);white-space:nowrap;will-change:transform;-webkit-tap-highlight-color:transparent}
+html.v61 .rt-no i{flex:0 0 auto;width:10px;height:10px;border-radius:50%;background:var(--ok);
+  box-shadow:0 0 0 3px rgba(14,158,116,.2),0 0 8px rgba(14,158,116,.5)}
+html.v61 .rt-no span{padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.86);border:1px solid var(--line)}
+html.v61 .rt-no.esq{flex-direction:row-reverse;margin-left:0;transform-origin:0 0}
+html.v61 .rt-no.esq span{position:absolute;right:calc(100% - 2px)}
+html.v61 .rt-no::after{content:"";position:absolute;inset:-12px}             /* alvo de toque ≥ 44px */
+html.v61 .rt-no:focus-visible{outline:2px solid var(--ion);outline-offset:2px}
+html.v61 .rt-leg{font-size:.8125rem;line-height:1.45;color:var(--muted)}
+html.v61 .rt-leg b{font-weight:600;color:var(--ink)}
+html.v61 .rt-leg .rt-falha{color:var(--crit-text)}
+html.v61 .rt-leg .rt-pausa{color:var(--muted)}
+@media (max-width:760px){
+  html.v61 .rt-no span{display:none}                        /* no reator de 120px só cabem os pontos */
+}
+
+/* cartão do motor na folha */
+html.v61 .mt-ficha h3{display:flex;align-items:center;gap:10px;margin:4px 0 2px;font-size:1.125rem;color:var(--ink)}
+html.v61 .mt-pt{width:10px;height:10px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+html.v61 .mt-ficha.e-rodando .mt-pt{background:var(--ok);box-shadow:0 0 0 4px rgba(14,158,116,.18)}
+html.v61 .mt-ficha.e-agendado .mt-pt{background:var(--ion)}
+html.v61 .mt-ficha.e-falhou .mt-pt{background:var(--crit)}
+html.v61 .mt-estado{font-family:var(--f-mono);font-size:.875rem;color:var(--ink-2);margin-bottom:12px}
+html.v61 .mt-ficha.e-falhou .mt-estado{color:var(--crit-text)}
+html.v61 .mt-barra{height:6px;border-radius:3px;background:rgba(30,110,220,.14);overflow:hidden;margin:0 0 12px}
+html.v61 .mt-barra i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--cyan),var(--ion))}
+html.v61 .mt-l{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-top:1px solid var(--line);font-size:.875rem}
+html.v61 .mt-l span{color:var(--muted);flex:0 0 auto}
+html.v61 .mt-l b{font-weight:500;color:var(--ink);text-align:right;overflow-wrap:anywhere}
+html.v61 .mt-ficha h4{margin:18px 0 6px;font-size:.875rem;font-weight:600;color:var(--ink)}
+html.v61 .mt-evs{list-style:none;margin:0;padding:0}
+html.v61 .mt-evs li{display:flex;gap:10px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line);font-size:.8125rem;color:var(--ink-2)}
+html.v61 .mt-evs li .num{flex:0 0 auto;font-size:.75rem;color:var(--muted)}
+
+@media (min-width:1000px){
+  html.v61 .ck61 .c61-mapa{grid-column:1 / 9;grid-row:1 / 3;order:0;min-height:560px}
+  html.v61 .ck61 .c61-lado{grid-column:9 / 13;grid-row:1;order:0}
+  html.v61 .ck61 .ck-hero{grid-column:9 / 13;grid-row:2;align-self:start}
+  html.v61 .ck61 #ck-grid{grid-column:1 / -1;grid-row:3}
+  html.v61 .c61-reator{grid-template-columns:minmax(0,1fr);justify-items:center;padding:18px 16px 14px;text-align:center}
+  html.v61 .v61-reator{width:min(100%,264px)}
+}
