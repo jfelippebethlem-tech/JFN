@@ -245,3 +245,21 @@ def test_t07_competencia_parada_em_meses_diferentes_e_indisponivel():
 def test_filtro_pega_abreviacao_do_siafe():
     assert ps._fora_da_bateria("11384874000106", "Fundo Mun. De Saude De Campos Dos Goytacazes")
     assert ps._fora_da_bateria("30134050000122", "Ipalerj")
+
+
+def test_t07_mes_com_valores_distintos_nao_e_duplicidade_visivel():
+    """IDEAS (OS com vários contratos de gestão na mesma UG): 467 pagamentos em 66 meses, valores distintos no
+    mesmo mês. Sem o nº de contratos do par isso não se VÊ como duplicidade → INDISPONÍVEL (99 dos 300 🟡)."""
+    obs = []
+    for m in range(1, 7):
+        obs.append(_ob(f"A{m}", f"{m:02d}/2025", 150000.0))
+        obs.append(_ob(f"B{m}", f"{m:02d}/2025", 87000.0))
+    h = ac._t07_duplicidade({"obs": obs})
+    assert h["status"] == "INDISPONIVEL", h
+
+
+def test_t07_mesmo_valor_duas_vezes_na_competencia_continua_indicio():
+    obs = [_ob(f"A{m}", f"{m:02d}/2025", 150000.0) for m in range(1, 7)]
+    obs.append(_ob("DUP", "03/2025", 150000.0))
+    h = ac._t07_duplicidade({"obs": obs})
+    assert h["status"] == "INDICIO", h

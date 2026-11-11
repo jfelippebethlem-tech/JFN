@@ -355,6 +355,23 @@ def _t06_interregno(d) -> dict:
                 "Competências das OBs", "Lei 14.133/2021 art. 135,I-II", _PESO["media"])
 
 
+def _mesmo_valor_dobrado(contab: list[dict], piso: float = 20000.0, tol: float = 0.01) -> bool:
+    """Há competência com a MESMA quantia (±tol, ≥ piso) paga em 2+ OBs de REs distintos?"""
+    from collections import defaultdict
+    by: dict = defaultdict(list)
+    for o in contab:
+        v = _money(o.get("valor"))
+        if v >= piso:
+            by[str(o.get("competencia") or "").strip()[-7:]].append((v, o.get("re") or o.get("numero_ob")))
+    for lst in by.values():
+        if len({r for _, r in lst}) < 2:
+            continue
+        vs = sorted(v for v, _ in lst)
+        if any(abs(vs[i + 1] - vs[i]) <= tol * vs[i + 1] for i in range(len(vs) - 1)):
+            return True
+    return False
+
+
 def _t07_duplicidade(d) -> dict:
     """T07 — Duplicidade de pagamento por competência (delega ao detector validado)."""
     contab = _contabilizadas(d["obs"])
@@ -377,6 +394,17 @@ def _t07_duplicidade(d) -> dict:
         return _hip("T07-DUPLICIDADE-COMP", "Duplicidade por competência", "AFASTADO", "—",
                     "Reconciliação pela vida do contrato sem excedente líquido nem mês dobrado sem vizinho ausente.",
                     "SIAFE — duplicidade_competencia.py", "Lei 4.320/64 arts. 62-63", _PESO["alta"])
+    # O QUE SE VÊ É O MESMO VALOR DUAS VEZES (11/11/2026, conferência dos 300 🟡): o detector supõe 1 contrato
+    # por par (credor×UG). Uma OS com vários contratos de gestão na mesma UG (IDEAS: 467 pagamentos em 66
+    # meses) ou recolhimentos em parcelas (CEF, R$ 734,80 + R$ 102,68 no mesmo mês) dobram a competência sem
+    # haver duplicidade. Medido: 201 dos 300 pares têm a MESMA quantia (±1%, ≥ R$ 20 mil, REs distintos) na
+    # mesma competência — isso é indício visto; os 99 restantes não se distinguem de vários contratos sem o
+    # nº de contratos do par → INDISPONÍVEL, nunca atenção.
+    if not _mesmo_valor_dobrado(contab):
+        return _indisp("T07-DUPLICIDADE-COMP", "Duplicidade por competência",
+                       "o nº de contratos do par — há meses com 2+ OBs, mas de valores DISTINTOS (vários contratos, "
+                       "parcelas ou recolhimentos são indistinguíveis de duplicidade); nenhuma quantia paga 2× na "
+                       "mesma competência", "Lei 4.320/64 arts. 62-63; Lei 14.133/2021", _PESO["alta"])
     exc = next((f for f in flags if f["tipo_indicio"] == "excedente_liquido"), None)
     dobradas = [f for f in flags if f["tipo_indicio"] == "competencia_dobrada"]
     partes = []

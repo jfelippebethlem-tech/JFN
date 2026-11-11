@@ -14,7 +14,18 @@ import json
 import sqlite3
 import sys
 
+import pytest
+
 import tools.lex_execucao as L
+
+
+@pytest.fixture(autouse=True)
+def _sem_memoria_real(monkeypatch):
+    """`A.main()` chama `L._regras_calibracao`, que abre a memória pelo ORM e CRIA `data/compliance.db` (+WAL)
+    quando ele não existe. No CI (11/11/2026, run 43074074836) esse arquivo semeado no lote 1 fazia ~14 testes
+    dos lotes seguintes, que abrem a base real "se existir", morrerem com `file is not a database`/`disk I/O
+    error`. Mesma cura de `test_lex_execucao_ob_siafe` (29/10/2026)."""
+    monkeypatch.setattr(L, "_regras_calibracao", lambda: "(teste)")
 
 
 class _SemFechar:
