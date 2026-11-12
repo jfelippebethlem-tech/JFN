@@ -125,7 +125,7 @@ def rodar(forcar: bool = False) -> dict:
                     res["baixados"] += 1
                     res["linhas"] += len(lote)
                     print(f"  {pacote}/{nome}: {len(lote)} linhas · {periodo}")
-                except Exception as e:  # noqa: BLE001 — um recurso ruim não derruba os outros; fica no relatório
+                except (httpx.HTTPError, ValueError, KeyError, csv.Error, sqlite3.Error) as e:  # um recurso ruim não derruba os outros
                     c.rollback()
                     res["erros"].append(f"{pacote}/{nome}: {type(e).__name__}: {e}")
                     print(f"  ERRO {pacote}/{nome}: {e}")

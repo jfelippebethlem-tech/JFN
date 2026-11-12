@@ -68,7 +68,7 @@ def ipca_medio_anual() -> dict[int, float]:
         r = httpx.get("https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados",
                       params={"formato": "json", "dataInicial": "01/01/2016"}, timeout=60)
         serie = r.json()
-    except Exception:  # noqa: BLE001 — sem IPCA o relatório sai em valores nominais, declarado
+    except (httpx.HTTPError, ValueError, KeyError):  # sem IPCA o relatório sai em valores nominais, declarado
         return {}
     idx, acc, por_ano = 1.0, {}, {}
     for p in serie:
