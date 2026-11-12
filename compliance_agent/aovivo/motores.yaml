@@ -53,6 +53,17 @@ motores:
     classe: motor
     descricao: Base completa de ordens bancárias (download TFE + ingestão 2019–2026)
     unidade: jfn-tfe-ob
+  - id: dados-abertos-rj
+    nome: Dados Abertos RJ · orçamento
+    classe: motor
+    descricao: TFE Despesa e Receita do portal de dados abertos (agregado por órgão/função) → trajetória das finanças do Estado
+    trava: /tmp/dadosabertos_rj.lock
+    log: data/dadosabertos_rj.log
+    eventos:
+      - regex: '"baixados": (\d+), "inalterados": (\d+)'
+        texto: '{1} arquivo(s) novo(s) no portal, {2} sem mudança'
+        tipo: dado
+    contador: {db: dadosabertos_rj.db, tabela: da_recurso, rotulo: arquivos do portal}
   - id: siafe-ob
     nome: SIAFE · OBs
     classe: motor
