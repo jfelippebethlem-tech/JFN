@@ -221,6 +221,22 @@ def _t02_status_pago(d) -> dict:
         return _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "AFASTADO", "—",
                     "Nenhuma OB Anulado/Excluído no acervo; total pago = só Contabilizado.", "SIAFE",
                     "Lei 4.320/1964 arts. 62-64", _PESO["alta"])
+    # RASCUNHO NÃO É OB (12/11/2026): no SIAFE, TODAS as 6.994 "Excluído" e as 1.236 "Não contabilizado" têm
+    # sufixo P — documento de PREPARAÇÃO que nunca pagou nem foi anulado. Contá-los como "anulada sem
+    # reemissão" fazia 91 dos 189 T02 INDÍCIO dos 🟡. Eles seguem valendo contra um total declarado (acima);
+    # na pergunta "anulada sem reemissão" só entra OB realmente Anulada.
+    rascunhos = [o for o in nao_pagas if str(o.get("status", "")).strip().lower() != "anulado"]
+    nao_pagas = [o for o in nao_pagas if str(o.get("status", "")).strip().lower() == "anulado"]
+    nota_rasc = (f" {len(rascunhos)} documento(s) de preparação excluído(s)/não contabilizado(s) "
+                 f"({_moeda(sum(_money(o.get('valor')) for o in rascunhos))}) — não são OB emitida, não entram."
+                 if rascunhos else "")
+    if not nao_pagas:
+        h = _hip("T02-STATUS-PAGO", "OB anulada/excluída computada como paga", "AFASTADO", "—",
+                 f"Nenhuma OB Anulada; total pago = só Contabilizado.{nota_rasc}", "SIAFE",
+                 "Lei 4.320/1964 arts. 62-64", _PESO["alta"])
+        h["criterio"] = CRITERIO
+        return h
+    soma_nao_paga = sum(_money(o.get("valor")) for o in nao_pagas)
     dias_c = [_data_ob(c) for c in contab]
     usadas: set[int] = set()
     sem_reemissao, sem_janela = [], []
@@ -235,8 +251,8 @@ def _t02_status_pago(d) -> dict:
             sem_reemissao.append(o)
         else:
             sem_janela.append(o)
-    base = (f"No acervo há {len(nao_pagas)} OB não-paga(s) totalizando {_moeda(soma_nao_paga)}; "
-            f"pago verdadeiro = {_moeda(pago_verdadeiro)} (só Contabilizado). ")
+    base = (f"No acervo há {len(nao_pagas)} OB anulada(s) totalizando {_moeda(soma_nao_paga)}; "
+            f"pago verdadeiro = {_moeda(pago_verdadeiro)} (só Contabilizado).{nota_rasc} ")
     if sem_reemissao:
         lst = "; ".join(f"OB {o.get('numero_ob')} {o.get('status')} {_moeda(_money(o.get('valor')))} em {o.get('data_emissao')}"
                         for o in sem_reemissao[:8])

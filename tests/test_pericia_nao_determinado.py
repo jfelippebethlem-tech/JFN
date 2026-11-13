@@ -87,9 +87,19 @@ def test_t02_anulada_sem_reemissao_mas_sem_coleta_na_janela_e_indisponivel():
 
 
 def test_t02_anulada_sem_reemissao_com_coleta_na_janela_e_indicio():
-    obs = [_ob("1", "01/2023", 500.0, "Excluído", "10/01/2023"), _ob("2", "01/2023", 900.0, data="25/01/2023")]
+    obs = [_ob("1", "01/2023", 500.0, "Anulado", "10/01/2023"), _ob("2", "01/2023", 900.0, data="25/01/2023")]
     h = ac._t02_status_pago({"obs": obs})
     assert h["status"] == "INDICIO" and "sem reemissão" in h["evidencia"]
+
+
+def test_t02_rascunho_excluido_ou_nao_contabilizado_nao_e_indicio():
+    """No SIAFE, Excluído/Não contabilizado (sufixo P) é documento de preparação, não OB emitida."""
+    obs = [_ob("1P", "01/2023", 500.0, "Excluído", "10/01/2023"), _ob("2", "01/2023", 900.0, data="25/01/2023"),
+           _ob("3P", "02/2023", 300.0, "Não contabilizado", "12/02/2023")]
+    h = ac._t02_status_pago({"obs": obs})
+    assert h["status"] == "AFASTADO" and "preparação" in h["evidencia"]
+    # contra um total declarado que os soma, o rascunho continua pegando
+    assert ac._t02_status_pago({"obs": obs, "relatorio_total_pago": 1700.0})["status"] == "CONFIRMADO"
 
 
 def test_t02_total_declarado_que_soma_a_anulada_continua_confirmado():
@@ -227,10 +237,10 @@ def test_lex_nao_imprime_t08_t02_indeterminados_como_indicio(banco):
     assert "005/2021" not in md
     t08 = md.split("### T08-GAP-COMPETENCIA")[1].split("###")[0] if "### T08-GAP-COMPETENCIA" in md else ""
     assert "INDÍCIO" not in t08, t08[:200]
-    # o par do fixture tem 2 OB Excluídas de R$ 5.000,00 SEM reemissão e com OB contabilizada na janela:
-    # aí o T02 é indício DETERMINADO — e o laudo diz por quê, não "se qualquer agregado as somar"
+    # o par do fixture tem 2 OB Excluídas de R$ 5.000,00: no SIAFE isso é RASCUNHO de preparação (sufixo P),
+    # não OB — o laudo diz isso e não imprime indício (antes: "sem reemissão", 91 dos 189 T02 dos 🟡)
     t02 = md.split("### T02-STATUS-PAGO")[1].split("###")[0]
-    assert "sem reemissão" in t02 and "se qualquer agregado" not in t02
+    assert "preparação" in t02 and "INDÍCIO" not in t02 and "se qualquer agregado" not in t02
 
 
 # ───────────────── rodada 2 (11/11/2026, conferência dos 308 🟡 que sobraram) ─────────────────

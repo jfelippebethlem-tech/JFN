@@ -769,19 +769,28 @@ def _manter_juizo(c, cnpj: str, ug: str, linhas: list[dict]) -> list[dict]:
 
 
 def pares_amarelos(c, limit: int | None = None) -> list[tuple]:
-    """Pares 🟡 cujo T07 é INDICIO, maior pago primeiro (a fila de captura herda essa prioridade)."""
+    """Pares cujo T07 é INDICIO — de QUALQUER grau —, os nunca resolvidos primeiro e, dentro disso, o maior pago
+    (a fila de captura herda essa prioridade).
+
+    Até 12/11/2026 só os 🟡: 2.404 pares 🟢 carregavam T07 INDICIO (um indício só não fecha 🟡 em `grau_de`) e
+    NUNCA passaram pelo resolvedor. Com ~2.600 pares a rodada noturna não cobre tudo: quem ainda não tem linha em
+    `resolucao_duplicidade` vai na frente, para cada noite avançar em vez de refazer o topo."""
+    try:
+        feitos = {(r[0], str(r[1])) for r in c.execute("SELECT DISTINCT cnpj, ug FROM resolucao_duplicidade")}
+    except sqlite3.OperationalError:
+        feitos = set()
     out = []
     for cnpj, ug, fav, aj in c.execute("SELECT cnpj, ug, favorecido, achados_json FROM pericia_fornecedor "
-                                       "WHERE grau='🟡' ORDER BY total_pago DESC"):
+                                       "WHERE grau IN ('🟡', '🟢') "
+                                       "ORDER BY total_pago DESC"):
         try:
             ach = json.loads(aj or "[]")
         except ValueError:
             continue
         if any(a.get("codigo") == "T07-DUPLICIDADE-COMP" and a.get("status") == "INDICIO" for a in ach):
             out.append((cnpj, ug, fav or ""))
-            if limit and len(out) >= limit:
-                break
-    return out
+    out.sort(key=lambda p: (p[0], str(p[1])) in feitos)      # estável: mantém o maior pago primeiro em cada grupo
+    return out[:limit] if limit else out
 
 
 def rodar(db=DB, limit: int | None = None, gerar=None, dry_run: bool = False, lote: int = 20,

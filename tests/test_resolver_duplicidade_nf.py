@@ -50,8 +50,9 @@ def _serie(proc_a="SEI-040002/001422/2026", proc_b="SEI-040002/001999/2026", val
     obs = [_ob(f"OB{m}", f"{m:02d}/2026", 30000.0, f"SEI-040002/00100{m}/2026") for m in (1, 2, 4, 5, 6)]
     obs.append(_ob("OB3A", "03/2026", 30000.0, proc_a))
     obs.append(_ob("OB3B", "03/2026", valor_b, proc_b))
-    # OB excluída sem reemissão (T02 INDICIO): o 🟡 real é T07 + T02 (291 dos 300 em 11/11/2026)
-    obs.append(_ob("OBX", "05/2026", 7000.0, "", status="Excluído"))
+    # OB ANULADA sem reemissão (T02 INDICIO): o 🟡 real é T07 + T02. "Excluído" não serve mais: no SIAFE é
+    # rascunho de preparação (sufixo P), não OB — o T02 o ignora desde 12/11/2026.
+    obs.append(_ob("OBX", "05/2026", 7000.0, "", status="Anulado"))
     return obs
 
 
@@ -553,3 +554,18 @@ def test_busca_candidato_unico_vira_processo_e_varios_decide_pela_nf(monkeypatch
     R.completar_pela_busca(obs, "35208086000127", "133100", m)
     assert obs[0]["processo"] == "SEI-330020/000300/2021" and obs[0]["processo_fonte"] == "busca_sei_nf"
     assert not obs[1]["processo"]                       # nenhuma NF com o valor: não escolhe
+
+
+def test_pares_inclui_verde_com_t07_e_poe_nunca_resolvido_na_frente():
+    import sqlite3 as _sq
+    c = _sq.connect(":memory:")
+    c.execute("CREATE TABLE pericia_fornecedor (cnpj TEXT, ug TEXT, favorecido TEXT, achados_json TEXT, grau TEXT, "
+              "total_pago REAL)")
+    c.execute("CREATE TABLE resolucao_duplicidade (cnpj TEXT, ug TEXT)")
+    t07 = json.dumps([{"codigo": "T07-DUPLICIDADE-COMP", "status": "INDICIO"}])
+    c.executemany("INSERT INTO pericia_fornecedor VALUES (?,?,?,?,?,?)", [
+        ("A", "1", "a", t07, "🟡", 900.0), ("B", "1", "b", t07, "🟢", 500.0),
+        ("C", "1", "c", json.dumps([]), "🟢", 999.0), ("D", "1", "d", t07, "🟢", 100.0)])
+    c.execute("INSERT INTO resolucao_duplicidade VALUES ('A','1')")
+    assert [p[0] for p in R.pares_amarelos(c)] == ["B", "D", "A"]
+    assert [p[0] for p in R.pares_amarelos(c, limit=1)] == ["B"]
