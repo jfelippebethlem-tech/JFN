@@ -1337,34 +1337,57 @@ export async function renderAditivos(esf='estado'){
   return h;
 }
 
-// ═══ SOBREPREÇO (Estado) ═══
+// ═══ SOBREPREÇO (Estado / Prefeitura) ═══
+// Refeito em 2026-11-13. Dono: "não pode comparar itens de unidades métricas diferentes com o
+// mesmo preço [...] não pode ter margem pra erro em nada". A aba antes punha no topo 'Água
+// Destilada / Ampola' a R$ 140 contra mediana de R$ 0,21 ("666×", preço de caixa lançado como
+// ampola) e somava Δ unitários de itens diferentes num KPI. Agora: preço NORMALIZADO pela
+// unidade comprovada, só grupo homogêneo, e cada achado mostra o grupo de comparação, o link do
+// PNCP e o estado da conferência. Unidade ambígua é INDETERMINADO e aparece à parte.
+const _VERIF_TAG={VERIFICADO:['teal','VERIFICADO no PNCP'],PENDENTE:['amber','PENDENTE de conferência'],DIVERGENTE:['rose','DIVERGENTE do PNCP']};
+function _fmtPU(v){return v==null?'—':(v>=1?fmtR(v):'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4}));}
 export async function renderSobrepreco(esf='estado'){
   const d=await J('/api/intel/sobrepreco?limite=120&esfera='+esf);
   if(!d.ok)return sec('Sobrepreço')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
-  const a=d.achados||[];
-  let h=cover(esf,'Sobrepreço — pagou muito acima da mediana',
-    'Mesmo item (descrição normalizada) comprado por vários órgãos: sinaliza quem pagou o preço <b>unitário</b> muito acima da mediana do grupo (≥ 2× a mediana e fora de mediana+3·MAD, medida robusta a outliers). Fonte: preço unitário homologado do PNCP.','📈')+acoesAba('sobrepreco');
-  if(!a.length){
-    h+=`<div class="warn" style="margin-top:12px">Base de preços unitários em formação: ${fmtN(d.itens_com_preco)} itens com preço, ${fmtN(d.grupos_comparaveis)} grupos comparáveis (≥5 compras do mesmo item). O backfill do PNCP popula o preço unitário item a item; a aba acende conforme a cobertura cresce.</div>`;
-    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  const a=d.achados||[], ind=d.indeterminados||{};
+  let h=cover(esf,'Sobrepreço — mesmo item, mesma unidade, acima da mediana',
+    'Compara só o <b>mesmo item na mesma unidade e apresentação</b> (galão com galão, copo com copo; caixa com quantidade declarada vira preço por unidade). Sinaliza o preço unitário <b>normalizado</b> ≥ 2× a mediana do grupo e fora da banda robusta (z ≥ 3,5). Grupo com salto de preço ≥ 4× ou dispersão p90/p10 > 4 mistura produtos e <b>não</b> gera achado. Unidade ambígua fica <b>INDETERMINADA</b>, fora da conta. Fonte: preço unitário homologado do PNCP.','📈')+acoesAba('sobrepreco');
+  const verif=a.filter(x=>x.verificacao==='VERIFICADO');
+  const excVer=verif.filter(x=>x.ata_registro_precos===false).reduce((s,x)=>s+(x.excesso_total_est||0),0);
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Indícios de sobrepreço','var(--rose)','📈',
+        {sobre:'Compras com preço unitário normalizado ≥ 2× a mediana do MESMO item, na MESMA unidade e apresentação, num grupo homogêneo. Indício a conferir no termo de referência — não é sobrepreço apurado.'})}${kpi(fmtN(d.n_verificados),'Conferidos no PNCP','var(--teal)','✅',
+        {sobre:'VERIFICADO = descrição, unidade, quantidade e preço homologado conferidos item a item na API do PNCP (fonte primária). PENDENTE ainda não foi conferido e não entra em soma nenhuma.'})}
+      ${kpi(fmtN(d.grupos_comparaveis),'Grupos homogêneos',null,'🧺',
+        {sobre:'Grupos de comparação válidos (≥5 compras, ≥4 certames, ≥3 órgãos, sem salto de preço ≥4×, p90/p10 ≤ 4). É o DENOMINADOR: item fora de grupo não foi absolvido — ficou sem comparação segura.'})}${kpi(fmtN(ind.n),'Indeterminados (fora da conta)','var(--amber)','❔',
+        {sobre:'Compras desta esfera que NÃO entram em comparação: unidade ausente ou genérica, embalagem sem quantidade declarada, conflito entre unidade e descrição, inexigibilidade, grupo heterogêneo ou preço isolado por salto. Lista de motivos abaixo.'})}</div>`;
+  if(excVer>0)h+=`<div class="note" style="margin-top:8px">Excesso estimado nos indícios <b>conferidos</b> e fora de ata de registro de preços: <b>${fmtRc(excVer)}</b> (preço normalizado − mediana) × quantidade homologada. Não é pagamento (OB): o efetivamente pago a mais é INDISPONÍVEL sem empenho/OB.</div>`;
+  if(!a.length)h+=`<div class="warn" style="margin-top:12px">Nenhum indício nesta esfera com comparação segura (mesmo item, mesma unidade, grupo homogêneo). ${fmtN(d.itens_com_preco)} itens com preço na base; ${fmtN(ind.n)} desta esfera ficaram INDETERMINADOS (motivos abaixo).</div>`;
+  else{
+    h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
+    h+=`<div id="sob-list" class="grid">`+a.map(x=>{
+      const g=x.grupo_comparacao||{}, vt=_VERIF_TAG[x.verificacao]||_VERIF_TAG.PENDENTE;
+      const conv=x.fator_unidade&&x.fator_unidade!==1?` · <span class="dim">${esc(x.unidade_medida)} = ${fmtN(x.fator_unidade)} × ${esc(x.unidade_normalizada)} (“${esc(x.trecho_unidade||'')}”)</span>`:'';
+      const ata=x.ata_registro_precos===true?`<span class="tag amber">ata de registro de preços — quantidade estimada</span>`:'';
+      const amostra=(g.amostra||[]).map(s=>`<tr><td class="num">${_fmtPU(s.preco_normalizado)}</td><td>${esc(s.unidade_medida||'')}</td><td>${esc((s.orgao||'').slice(0,40))}</td><td>${esc(s.data||'')}</td><td>${s.link_pncp?`<a href="${esc(s.link_pncp)}" target="_blank" rel="noopener">PNCP ↗</a>`:''}</td></tr>`).join('');
+      return card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div style="min-width:0"><div style="font-weight:700">${esc(x.item)} <span class="dim">/ ${esc(x.unidade_medida||'—')}</span></div>
+        <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,60))}${x.municipio?' · '+esc(x.municipio):''}</div>
+        <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')}${x.data?' · '+esc(x.data):''}</div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><span class="tag ${vt[0]}" title="${esc(x.verificacao_detalhe||x.verificado_em||'')}">${vt[1]}</span>${ata}</div></div>
+        <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">a mediana</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">Pagou <b>${_fmtPU(x.preco)}</b> por ${esc(x.unidade_medida||'—')} → <b style="color:var(--rose)">${_fmtPU(x.preco_normalizado)}</b> por ${esc(x.unidade_normalizada||'—')}${conv} · quantidade ${fmtN(x.quantidade)}</span></div>
+      <div class="kv"><span class="k">Grupo de comparação: <b>${fmtN(g.n)}</b> compras em ${fmtN(g.n_certames)} certames e ${fmtN(g.n_orgaos)} órgãos · mediana <b>${_fmtPU(g.mediana)}</b> por ${esc(g.unidade_normalizada||'')} · faixa ${_fmtPU(g.min)}–${_fmtPU(g.max)} · dispersão p90/p10 ${fmtN(g.dispersao_p90_p10)}×${g.n_faixas>1?` · faixa ${g.faixa} de ${g.n_faixas} (separada por salto de preço)`:''}</span></div>
+      <div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap">${x.link_pncp?`<a href="${esc(x.link_pncp)}" target="_blank" rel="noopener">Contratação no PNCP ↗</a>`:''}${x.api_pncp?`<a href="${esc(x.api_pncp)}" target="_blank" rel="noopener" class="dim">item ${fmtN(x.item_n)} (API) ↗</a>`:''}</div>
+      <details style="margin-top:8px"><summary class="dim" style="cursor:pointer">ver o grupo de comparação (${fmtN((g.amostra||[]).length)} de ${fmtN(g.n)})</summary>
+        <table class="tb" style="margin-top:6px"><thead><tr><th>Preço normalizado</th><th>Unidade no PNCP</th><th>Órgão</th><th>Data</th><th>Fonte</th></tr></thead><tbody>${amostra}</tbody></table></details>
+      ${leitura(`Este órgão pagou <b>${_fmtPU(x.preco_normalizado)}</b> por ${esc(x.unidade_normalizada||'unidade')} de "${esc(x.item)}", enquanto a mediana de ${fmtN(g.n)} compras do <b>mesmo item na mesma unidade</b> foi <b>${_fmtPU(x.mediana)}</b> — <b>${fmtN(x.razao)}×</b> (z robusto ${fmtN(x.z_robusto)}). ${x.verificacao==='VERIFICADO'?'Preço, unidade e quantidade conferidos no PNCP.':'Ainda não conferido no PNCP — não entra em soma.'} Confirmar marca/especificação no termo de referência.`)}`,
+      'hl');}).join('')+`</div>`;
   }
-  // total do servidor: só ganha gaveta se a página trouxer o universo
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈',drillSeCompleto('itensSobrepreco',d.n,a,{titulo:'Itens com indício de sobrepreço',nota:'Comparação com a mediana de mercado do MESMO item — produto diferente não compara.'})
-        ||{sobre:'Itens com preço unitário acima da mediana do MESMO item entre compradores públicos. Comparação só vale entre produtos equivalentes — 60% da \'economia\' de uma medição anterior desta casa vinha de comparar coisas diferentes sob descrição parecida. A gaveta está desligada porque a tela recebe uma página.'})}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺',
-        {sobre:'Grupos de itens que puderam ser comparados entre si. É o DENOMINADOR: item sem par comparável não é caro nem barato — é INDISPONÍVEL, e sair dessa contagem não significa aprovação.'})}
-      ${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior caso (× mediana)','var(--rose)',null,
-        {sobre:'Quantas vezes o item mais caro supera a mediana do MESMO item. Comparação só vale entre produtos equivalentes: 60% de uma estimativa anterior desta casa comparava coisas diferentes sob descrição genérica.'})}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸',
-        {sobre:'Diferença unitária entre o preço praticado e a mediana. É estimativa de sobrepreço, não dano apurado — sobrepreço se confirma com pesquisa de mercado da época e especificação completa do item.'})}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
-  h+=`<div id="sob-list" class="grid">`+a.map(x=>card(
-    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,48))}${x.municipio?' · '+esc(x.municipio):''}</div>
-      <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')}${x.data?' · '+esc(x.data):''}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">a mediana</div></div></div>
-      <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${fmtN(x.amostra)})</span><b>z ${fmtN(x.z_robusto)}</b></div>
-      ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${fmtN(x.amostra)} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${fmtN(x.razao)}× mais caro</b> (z robusto ${fmtN(x.z_robusto)}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
-    'hl')).join('')+`</div>`;
+  const mot=(ind.por_motivo||[]).map(m=>`<tr><td class="num">${fmtN(m.n)}</td><td style="text-align:left">${esc(m.motivo)}</td></tr>`).join('');
+  if(mot)h+=sec('Indeterminados — fora da mediana e de qualquer soma')+card(`<div class="dim" style="margin-bottom:6px">Compras desta esfera sem comparação segura. Não foram absolvidas: falta a informação que tornaria a comparação justa.</div><table class="tb"><thead><tr><th>Compras</th><th style="text-align:left">Motivo</th></tr></thead><tbody>${mot}</tbody></table>`);
+  const disc=(ind.discrepancias_de_salto||[]);
+  if(disc.length)h+=sec(`Preço isolado por salto — conferir a unidade (${fmtN(ind.n_discrepancias_de_salto)})`)+card(`<div class="dim" style="margin-bottom:6px">Preço que fica ≥ 4× acima (ou abaixo) do resto do mesmo item na mesma unidade. O padrão real mais comum é preço de caixa lançado como unidade — por isso <b>não</b> é tratado como sobrepreço. Abrir a fonte e conferir.</div><table class="tb"><thead><tr><th>Preço</th><th>Item / unidade</th><th>Órgão</th><th>Fonte</th></tr></thead><tbody>`+disc.map(z=>`<tr><td class="num">${_fmtPU(z.preco)}</td><td style="text-align:left">${esc(z.item)} <span class="dim">/ ${esc(z.unidade_medida||'—')}</span></td><td>${esc((z.orgao||'').slice(0,40))}</td><td>${z.link_pncp?`<a href="${esc(z.link_pncp)}" target="_blank" rel="noopener">PNCP ↗</a>`:''}</td></tr>`).join('')+`</tbody></table>`);
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
