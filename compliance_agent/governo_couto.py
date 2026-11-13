@@ -513,6 +513,9 @@ def _pontos_atencao() -> dict:
                 "mensagem": "Análise em andamento — o arquivo de pontos de atenção ainda não foi gravado."}
     try:
         bruto = json.loads(SUSPEITAS.read_text(encoding="utf-8"))
+        meta = {k: bruto.get(k) for k in ("verificacao_definicao", "por_verificacao", "camada_subjetiva", "regua",
+                                          "recorte", "gerado_em")
+                if isinstance(bruto, dict) and bruto.get(k) is not None}
         if isinstance(bruto, dict):
             bruto = bruto.get("itens") or bruto.get("achados") or bruto.get("suspeitas") or []
         if not isinstance(bruto, list):
@@ -533,7 +536,7 @@ def _pontos_atencao() -> dict:
         itens.append(it)
     itens.sort(key=lambda x: (_ORDEM_GRAU[x["grau"]], -(float(x.get("valor_ob") or 0))))
     mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(SUSPEITAS.stat().st_mtime))
-    return {**base, "estado": "ok", "atualizado_em": mtime, "itens": itens,
+    return {**base, **meta, "estado": "ok", "atualizado_em": mtime, "itens": itens,
             "por_camada": dict(Counter(x["camada"] for x in itens)), "por_grau": dict(Counter(x["grau"] for x in itens))}
 
 
