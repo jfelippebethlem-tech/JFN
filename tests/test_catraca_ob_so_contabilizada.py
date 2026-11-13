@@ -11,7 +11,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 ARQS = ["compliance_agent/cruzamentos_intel.py", "compliance_agent/contratos/estado.py",
         "compliance_agent/osint/grupo_economico.py", "compliance_agent/retro_auditoria.py",
-        "compliance_agent/grafo_comunidades.py", "compliance_agent/correlacao_sei.py"]
+        "compliance_agent/grafo_comunidades.py", "compliance_agent/correlacao_sei.py",
+        "compliance_agent/pericia_contabil.py"]
 FILTRO = re.compile(r"_OB_PAGA|status\s*=\s*'Contabilizado'", re.I)
 
 
