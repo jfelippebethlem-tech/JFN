@@ -189,6 +189,9 @@ def test_rodada_pula_vazio_recente_e_declara(tmp_path, monkeypatch):
     monkeypatch.setattr(F, "_esperar_browser_livre", lambda *a, **k: None)
     monkeypatch.setattr(F, "PAUSA", tmp_path / ".p1")
     monkeypatch.setattr(F, "PAUSA_SEI", tmp_path / ".p2")
+    # a delegação à VM-2 (data/.integras_na_vm2 real, fresco) faria a rodada sair antes de escolher alvos
+    monkeypatch.setattr(F, "DELEGADO_VM2", tmp_path / ".integras_na_vm2")
+    monkeypatch.setattr(F, "RESERVA_VM2", tmp_path / ".reserva.json")
     tentados = []
     monkeypatch.setattr(F, "_rodar_fila", lambda alvos, env, dl, log: tentados.extend(alvos) or len(alvos))
     linhas = []
