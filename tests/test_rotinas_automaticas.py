@@ -168,7 +168,8 @@ def base_couto(tmp_path):
     c.executemany("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,NULL,?,?,'SEI-100001/000001/2026',?,?)",
                   [o[:6] + o[6:] for o in obs])
     c.execute("INSERT INTO sancoes_federais VALUES ('CEIS','11.111.111/0001-11','ALFA','Impedimento de licitar',"
-              "'2026-01-01',NULL,'ORGAO SANCIONADOR FICTICIO','lei')")
+              # sanção do PRÓPRIO Estado: alcança o pagador (a de órgão sem esfera conhecida não alcança — revisão 13/11)
+              "'2026-01-01',NULL,'SECRETARIA DE ESTADO FICTICIA','lei')")
     c.commit()
     c.close()
     return db
