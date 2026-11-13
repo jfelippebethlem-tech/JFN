@@ -100,6 +100,13 @@ def _serie_do_item(con: sqlite3.Connection, descricao: str, limite: int = 40) ->
     Casamento por descrição normalizada é grosseiro e produz falso negativo (grafia diferente
     não casa). Falso negativo aqui é o erro tolerável: deixa de apontar sobrepreço que existe,
     em vez de apontar sobrepreço que não existe.
+
+    ⚠ NÃO "CONSERTAR" PARA item_descricao/valor_unitario SEM CALIBRAR (medido 12/11/2026): esta consulta
+    olha a coluna `item` (o NÚMERO do item) e, por isso, nunca casa — o P3 fica `nao_avaliavel`. Religada
+    em `item_descricao` + `unidade_medida` + `valor_unitario`, há 4.108 itens com ≥3 preços, mas a régua
+    do P3 (máx/mín ≥ 2×) marcaria 2.889 deles (70%) e "preço ≥ 2× a mediana dos outros" marca 24% —
+    descrição genérica do PNCP ("Ventilador") cobre produtos distintos e unidade vem trocada (caixa ×
+    unidade; ≥10× em 8%). Sem CATMAT + especificação, isso é falso indício em massa, não referência.
     """
     alvo = " ".join((descricao or "").upper().split())[:60]
     if len(alvo) < 12:
