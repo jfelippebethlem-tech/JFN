@@ -18,7 +18,7 @@ from compliance_agent import comparador_precos as CP
 _DDL = """CREATE TABLE pncp_resultado (item_descricao TEXT, unidade_medida TEXT,
     valor_unitario REAL, quantidade REAL, orgao_nome TEXT, orgao_cnpj TEXT, unidade_nome TEXT,
     municipio TEXT, fornecedor_nome TEXT, fornecedor_cnpj TEXT, ordem_classificacao INTEGER,
-    data_pub TEXT, certame TEXT)"""
+    data_pub TEXT, certame TEXT, item INTEGER DEFAULT 1)"""
 _INS = ("INSERT INTO pncp_resultado (item_descricao, unidade_medida, valor_unitario, "
         "quantidade, orgao_nome, orgao_cnpj, unidade_nome, municipio, fornecedor_nome, "
         "fornecedor_cnpj, ordem_classificacao, certame) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)")
@@ -55,13 +55,29 @@ def db(tmp_path):
     return p
 
 
+def _tudo_verificado(db):
+    """Economia só soma compra VERIFICADA no PNCP e fora de ata (2026-11-13). Aqui o teste é do
+    roteamento por ente: marca todas as linhas como conferidas e não-SRP."""
+    con = sqlite3.connect(db)
+    linhas = con.execute("SELECT certame, item, fornecedor_cnpj FROM pncp_resultado").fetchall()
+    con.close()
+    return ({tuple(r): {"estado": "VERIFICADO"} for r in linhas},
+            {r[0]: {"srp": False} for r in linhas})
+
+
+def _eco(db, **kw):
+    v, info = _tudo_verificado(db)
+    return CP.economia_potencial(db_path=db, min_amostra=3, min_orgaos=2, min_certames=3,
+                                 verificacao=v, info_certames=info, **kw)
+
+
 def _orgaos(d):
     return {o["orgao"] for o in d["por_orgao"]}
 
 
 def test_default_restringe_aos_dois_entes_rj(db):
     """Sem escolher aba, o achado é só Estado RJ + Prefeitura do Rio."""
-    d = CP.economia_potencial(db_path=db, min_amostra=3, min_orgaos=2, min_certames=3)
+    d = _eco(db)
     orgs = _orgaos(d)
     assert any("ESTADO" in o for o in orgs)
     assert any("EDUCACAO" in o or "MUNICIPAL" in o for o in orgs)
@@ -73,23 +89,21 @@ def test_default_restringe_aos_dois_entes_rj(db):
 def test_mediana_continua_global(db):
     """A mediana usa TODAS as compras (inclui federal), não só as dos dois entes.
     Se a mediana virasse local, o excesso mudaria — aqui deve seguir 10."""
-    d = CP.economia_potencial(db_path=db, min_amostra=3, min_orgaos=2, min_certames=3)
+    d = _eco(db)
     # excesso do estado = (30-10)×100 = 2000 confirma mediana 10 (global)
     est = [o for o in d["por_orgao"] if "ESTADO" in o["orgao"]][0]
     assert est["economia"] == pytest.approx(2000.0)
 
 
 def test_aba_estado_isola_so_o_estado(db):
-    d = CP.economia_potencial(db_path=db, esfera="estado", min_amostra=3,
-                              min_orgaos=2, min_certames=3)
+    d = _eco(db, esfera="estado")
     orgs = _orgaos(d)
     assert any("ESTADO" in o for o in orgs)
     assert not any("EDUCACAO" in o or "OBRAS" in o for o in orgs)
 
 
 def test_aba_prefeitura_isola_so_a_prefeitura(db):
-    d = CP.economia_potencial(db_path=db, esfera="prefeitura", min_amostra=3,
-                              min_orgaos=2, min_certames=3)
+    d = _eco(db, esfera="prefeitura")
     orgs = _orgaos(d)
     assert any("EDUCACAO" in o or "MUNICIPAL" in o for o in orgs)
     assert not any("ESTADO" in o or "OBRAS" in o for o in orgs)
@@ -97,6 +111,5 @@ def test_aba_prefeitura_isola_so_a_prefeitura(db):
 
 def test_pode_pedir_tudo_explicitamente(db):
     """esfera='todas' volta ao comportamento antigo (achado global) — para quem quiser."""
-    d = CP.economia_potencial(db_path=db, esfera="todas", min_amostra=3,
-                              min_orgaos=2, min_certames=3)
+    d = _eco(db, esfera="todas")
     assert any("OBRAS" in o["orgao"] for o in d["por_orgao"])
