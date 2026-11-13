@@ -78,8 +78,13 @@ _ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(dat
 def con_baixa(tmp_path):
     estab = str(tmp_path / "estab.db")
     e = sqlite3.connect(estab)
-    e.execute("CREATE TABLE estabelecimentos (cnpj TEXT, data_situacao TEXT, motivo_situacao TEXT)")
-    e.execute("INSERT INTO estabelecimentos VALUES ('11111111000111', '20240101', 'EXTINCAO')")
+    e.execute("CREATE TABLE estabelecimentos (cnpj TEXT, situacao_cadastral TEXT, data_situacao TEXT, "
+              "motivo_situacao TEXT)")
+    e.executemany("INSERT INTO estabelecimentos VALUES (?, ?, ?, ?)", [
+        ('11111111000111', 'BAIXADA', '20240101', '01'),
+        ('22222222000122', 'ATIVA', '20240101', '00'),     # data = quando FICOU ativa, não baixa
+        ('33333333000133', 'BAIXADA', '20240101', '02'),   # incorporada: a sucessora recebe
+    ])
     e.commit(); e.close()
     con = sqlite3.connect(":memory:")
     con.row_factory = sqlite3.Row
@@ -104,4 +109,13 @@ def test_pago_apos_baixa_soma_so_ob_contabilizada(con_baixa):
 
 def test_sem_data_de_baixa_e_indisponivel_nao_regular(con_baixa):
     r = _pagou_apos_baixa(con_baixa, "99999999000199", "2024-03-12", _ISO)
+    assert r["pagou_apos_baixa"] is None and r["data_baixa"] is None
+
+
+# Revisão cética de 13/11/2026: 91 de 146 "mortas" estavam ATIVAS no dump (data_situacao = data em que
+# ficaram ativas) e boa parte do resto era sucessão. Nenhuma das duas é "pago a empresa morta".
+@pytest.mark.parametrize("cnpj", ["22222222000122", "33333333000133"])
+def test_ativa_ou_sucessao_nao_e_empresa_morta(con_baixa, cnpj):
+    con_baixa.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?, 3000.0, '10/03/2024', 'Contabilizado')", (cnpj,))
+    r = _pagou_apos_baixa(con_baixa, cnpj, "2024-03-12", _ISO)
     assert r["pagou_apos_baixa"] is None and r["data_baixa"] is None

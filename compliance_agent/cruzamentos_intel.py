@@ -1491,6 +1491,10 @@ def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_em
         con.close()
 
 
+_SITUACOES_SEM_ATIVIDADE = frozenset({"BAIXADA", "INAPTA", "SUSPENSA", "NULA"})
+_MOTIVOS_SUCESSAO = frozenset({"02", "03", "04"})   # incorporação, fusão, cisão total (tabela de motivos da Receita)
+
+
 def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     """A baixa é ANTERIOR ao último pagamento? Só então "pago a empresa morta" se sustenta.
 
@@ -1501,11 +1505,19 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
     vazio = {"data_baixa": None, "motivo_baixa": None, "pagou_apos_baixa": None,
              "valor_apos_baixa": 0.0, "n_ob_apos_baixa": 0}
     try:
-        r = con.execute("SELECT data_situacao, motivo_situacao FROM estab.estabelecimentos "
+        r = con.execute("SELECT situacao_cadastral, data_situacao, motivo_situacao FROM estab.estabelecimentos "
                         "WHERE cnpj=?", (cnpj,)).fetchone()
     except sqlite3.OperationalError:
         return vazio
     if not r or not str(r["data_situacao"] or "").strip():
+        return vazio
+    # Revisão de 13/11/2026: em 91 de 146 casos o dump dizia ATIVA e `data_situacao` era a data em que a
+    # empresa FICOU ATIVA — e isso virava "pago depois da baixa". Só há "baixa" se a situação do dump for de
+    # empresa sem atividade; e sucessão (incorporação 02, fusão 03, cisão total 04) não é empresa morta: a
+    # sucessora recebe legitimamente.
+    if str(r["situacao_cadastral"] or "").strip().upper() not in _SITUACOES_SEM_ATIVIDADE:
+        return vazio
+    if str(r["motivo_situacao"] or "").strip() in _MOTIVOS_SUCESSAO:
         return vazio
     d = str(r["data_situacao"])[:10]
     if len(d) == 8 and d.isdigit():                      # AAAAMMDD do dump → ISO
