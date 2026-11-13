@@ -114,6 +114,7 @@ motores:
     classe: motor
     descricao: Varredura de atas de julgamento de licitações (cron)
     trava: /tmp/sweep_atas_julgamento.lock
+    log: data/sweep_atas.log          # o mtime do log dá a hora REAL do "terminou" (job de cron sem systemd)
     # laudo 13/11/2026: 108 de 116 rodadas com 0 atas e o painel dizia "ocioso". Efeito = ata gravada.
     efeito: {db: compliance.db, tabela: ata_documento, coluna: coletado_em, horas: 168}
   - id: pcrj-intel

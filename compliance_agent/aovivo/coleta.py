@@ -252,6 +252,13 @@ def estado_do_motor(svc: dict | None, timer: dict | None, presa: bool | None, ag
     return out
 
 
+def _desde_texto(anterior: float | None, agora: float) -> str:
+    """Contador é ACUMULADO desde a leitura anterior; leitura espaçada (painel fechado) diz desde quando."""
+    if not anterior or agora - anterior < 15 * 60:
+        return ""
+    return f" (desde {datetime.fromtimestamp(anterior).strftime('%d/%m %H:%M')})"
+
+
 class Coletor:
     def __init__(self):
         self.cat = catalogo()
@@ -262,6 +269,10 @@ class Coletor:
         self._efeito: dict[str, float | None] = {}
         self._sem_efeito_ant: dict[str, bool] = {}
         self._seq = 0
+        self._ult_id = 0
+        self._ult_leitura = 0.0                       # hora da leitura anterior (a transição aconteceu depois dela)
+        self._inicio_trava: dict[str, float] = {}     # início observado do job de cron (mtime da trava)
+        self._cont_em: dict[str, float] = {}          # hora da leitura anterior de cada contador
         self.eventos: deque = deque(maxlen=ANEL)
         self._estado_ant: dict[str, str] = {}
         self._pos_log: dict[str, int] = {}
@@ -272,11 +283,41 @@ class Coletor:
         self._regex = {m["id"]: [(re.compile(e["regex"]), e) for e in m.get("eventos", [])] for m in self.cat}
 
     # ── eventos ──
-    def _emitir(self, motor: str, tipo: str, texto: str, t: float | None = None) -> None:
+    def _emitir(self, motor: str, tipo: str, texto: str, t: float | None = None, hora_real: bool = True) -> None:
         self._seq += 1
         ts = t or time.time()
-        self.eventos.append({"id": int(ts * 1000) * 100 + self._seq % 100, "t": _iso(ts), "_ts": ts, "motor": motor, "tipo": tipo,
-                             "texto": sanear(texto)})
+        # o id segue a ordem de EMISSÃO (cursor do SSE), não a hora do evento: com a hora real no passado
+        # (laudo 13/11/2026, 3.2), um id derivado de `ts` ficaria abaixo do cursor e o evento sumiria do stream
+        self._ult_id = max(int(time.time() * 1000) * 100 + self._seq % 100, self._ult_id + 1)
+        ev = {"id": self._ult_id, "t": _iso(ts), "_ts": ts, "motor": motor, "tipo": tipo, "texto": sanear(texto)}
+        if not hora_real:
+            ev["hora_real"] = False          # hora da DETECÇÃO: a real é INDISPONÍVEL (não "agora")
+        self.eventos.append(ev)
+
+    def _hora_da_transicao(self, m: dict, d: dict, agora: float) -> float | None:
+        """Hora REAL da transição, ou None se não dá para saber. O coletor só lê quando alguém abre o painel:
+        sem isto, "Atas: terminou" (02:11) e "SEI noturno: terminou" (03:33) saíam às 07:54 (laudo 13/11/2026).
+          • serviço do systemd → `desde` (InactiveEnterTimestamp ao parar; ActiveEnterTimestamp ao começar);
+          • job de cron com trava → início = mtime da trava (`exec 9>` a trunca); fim = mtime do log do motor,
+            se posterior ao início observado."""
+        if m.get("unidade") and d.get("desde"):
+            ts = datetime.fromisoformat(d["desde"]).timestamp()
+            return ts if ts <= agora + 60 else None
+        if not m.get("trava"):
+            return None
+        trava = _REPO / m["trava"] if not os.path.isabs(m["trava"]) else Path(m["trava"])
+        try:
+            if d["estado"] == "rodando":
+                ts = trava.stat().st_mtime
+                return ts if self._ult_leitura < ts <= agora + 60 else None
+            if not m.get("log"):
+                return None
+            lg = _REPO / m["log"] if not os.path.isabs(m["log"]) else Path(m["log"])
+            ts = lg.stat().st_mtime
+        except OSError:
+            return None
+        inicio = self._inicio_trava.get(m["id"])
+        return ts if (inicio is None or ts >= inicio) and ts <= agora + 60 else None
 
     def _ler_log(self, m: dict, semear: bool) -> None:
         caminho = _REPO / m["log"] if not os.path.isabs(m["log"]) else Path(m["log"])
@@ -347,11 +388,14 @@ class Coletor:
                     except sqlite3.Error:
                         continue
                     ant = self._cont.get(m["id"])
+                    agora = time.time()
+                    desde = _desde_texto(self._cont_em.get(m["id"]), agora)
                     self._cont[m["id"]] = v
+                    self._cont_em[m["id"]] = agora
                     if ant is not None and v > ant:
                         n = v - ant
-                        self._emitir(m["id"], k.get("tipo", "dado"), f"+{n} {k['rotulo']}" if k.get("tipo") != "achado"
-                                     else f"{n} {'novo alerta' if n == 1 else 'novos alertas'} de compliance")
+                        self._emitir(m["id"], k.get("tipo", "dado"), (f"+{n} {k['rotulo']}" if k.get("tipo") != "achado"
+                                     else f"{n} {'novo alerta' if n == 1 else 'novos alertas'} de compliance") + desde)
             finally:
                 c.close()
 
@@ -445,12 +489,23 @@ class Coletor:
                     d.update(estado=e["estado"], desde=_iso(e["desde"]), proxima=_iso(e["proxima"]), saida=e["saida"])
                 ant = self._estado_ant.get(m["id"])
                 if ant is not None and ant != d["estado"]:
+                    th = self._hora_da_transicao(m, d, agora)
+                    real = {"t": th, "hora_real": th is not None}
                     if d["estado"] == "rodando":
-                        self._emitir(m["id"], "estado", f"{m['nome']}: começou")
+                        self._emitir(m["id"], "estado", f"{m['nome']}: começou", **real)
                     elif d["estado"] == "falhou":
-                        self._emitir(m["id"], "falha", f"{m['nome']}: falhou" + (f" (código {d['saida']})" if d["saida"] else ""))
+                        self._emitir(m["id"], "falha", f"{m['nome']}: falhou" + (f" (código {d['saida']})" if d["saida"] else ""), **real)
                     elif ant == "rodando":
-                        self._emitir(m["id"], "estado", f"{m['nome']}: terminou" + (f" (código {d['saida']})" if d["saida"] else ""))
+                        self._emitir(m["id"], "estado", f"{m['nome']}: terminou" + (f" (código {d['saida']})" if d["saida"] else ""), **real)
+                if d["estado"] == "rodando" and m.get("trava") and not m.get("unidade"):
+                    if m["id"] not in self._inicio_trava:
+                        try:
+                            tv = _REPO / m["trava"] if not os.path.isabs(m["trava"]) else Path(m["trava"])
+                            self._inicio_trava[m["id"]] = tv.stat().st_mtime
+                        except OSError:
+                            pass
+                elif ant == "rodando" and d["estado"] != "rodando":
+                    self._inicio_trava.pop(m["id"], None)
                 elif ant is None and d["estado"] == "falhou" and d["desde"]:
                     ts = datetime.fromisoformat(d["desde"]).timestamp()   # falha antiga: entra com a hora REAL da falha
                     if ts >= limite:
@@ -483,6 +538,7 @@ class Coletor:
                 d["atividade"] = at
             self.motores = novos
             self._ult = time.time()
+            self._ult_leitura = agora
 
     def eventos_publicos(self, depois_de: int = 0, limite: int = 60) -> list[dict]:
         evs = sorted(self.eventos, key=lambda x: (x["_ts"], x["id"]))
