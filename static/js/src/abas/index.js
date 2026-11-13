@@ -3018,7 +3018,7 @@ function _intDelegar(ev){
 /* `ir` vive no window (as outras abas so a chamam de onclick inline). Chamada direta daqui
  * dava ReferenceError e o clique morria calado — sem pageerror visivel no smoke. */
 function _intIr(){
-  if(typeof window!=='undefined'&&typeof window.ir==='function') window.ir('e_integras');
+  if(typeof window!=='undefined'&&typeof window.ir==='function') window.ir('p_integras');
 }
 if(typeof document!=='undefined'&&!document.__intLigado){
   document.__intLigado=true;

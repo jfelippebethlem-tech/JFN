@@ -92,7 +92,6 @@ const TABS={
     {id:'e_tac',     ic:'🧾',tl:'TAC recorrente',render:renderTacRecorrente},
     {id:'e_imprensa',ic:'📰',tl:'Imprensa por órgão',render:renderImprensa},
     {id:'e_lentes',  ic:'🔬',tl:'Lentes',   render:renderLentes},
-    {id:'e_integras',ic:'📄',tl:'Íntegras', render:renderIntegras},
     {id:'e_frac',    ic:'§frac',tl:'Fracion.',render:renderFracionamento},
     {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
     {id:'e_escal',   ic:'🪜',tl:'Escalada', render:renderEscalada},
@@ -121,6 +120,7 @@ const TABS={
     {id:'p_ppp',     ic:'🏗️',tl:'PPP',     render:renderPPPPref},
     {id:'p_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio('prefeitura')},
     {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
+    {id:'p_integras',ic:'📄',tl:'Íntegras', render:renderIntegras},
     {id:'p_lai',     ic:'📨',tl:'LAI',      render:renderLai},
   ],
   geral:[
