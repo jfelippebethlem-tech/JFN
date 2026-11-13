@@ -238,34 +238,43 @@ def _b_conluio(d):
 
 
 def _d_nomeados(p):
+    """Mesmo cruzamento da aba (compliance_agent/nomeados_candidatos): uma linha por pessoa, VERIFICADO pelo CPF
+    parcial ou PENDENTE (possível homônimo). O PDF antigo era nome a nome com LIMIT 2000 — teto, não total."""
     import sqlite3
+    from pathlib import Path
+
+    from compliance_agent import nomeados_candidatos as N
     con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
-    con.row_factory = sqlite3.Row
     try:
-        # mesma otimização do endpoint: TEMP TABLE indexada de candidatos, evita o cross-join lento
-        con.execute("CREATE TEMP TABLE _cand AS SELECT DISTINCT UPPER(TRIM(nome_candidato)) nc, "
-                    "cargo_candidato, partido, ano_eleicao FROM doacoes_eleitorais")
-        con.execute("CREATE INDEX _tc ON _cand(nc)")
-        rows = con.execute(
-            "SELECT f.nome, f.cargo, f.orgao_nome, c.cargo_candidato, c.partido, c.ano_eleicao "
-            "FROM (SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha) f "
-            "JOIN _cand c ON UPPER(TRIM(f.nome))=c.nc ORDER BY f.nome LIMIT 2000").fetchall()
-        it = [{"nome": r["nome"], "cargo": r["cargo"], "orgao": r["orgao_nome"],
-               "disputou": r["cargo_candidato"], "partido": r["partido"], "ano": r["ano_eleicao"],
-               "comiss": "comiss" in (r["cargo"] or "").lower()} for r in rows]
-        return {"ok": True, "itens": it, "n": len(it)}
+        base = N.cruzar(con, Path(p).resolve().parent / "tse_cache")
     finally:
         con.close()
+    r = N.recortar(base, "estado")
+    return {"ok": True, **r, "n": r["total"]}
 
 
 def _b_nomeados(d):
-    ls = [f"<tr><td>{'🎖️' if x['comiss'] else ''}</td><td>{_esc(x['nome'])}</td>"
-          f"<td>{_esc((x['orgao'] or '')[:34])} · {_esc(x['cargo'])}</td>"
-          f"<td>{_esc(x['disputou'])} / {_esc(x['partido'])} / {_esc(str(x['ano']))}</td></tr>"
-          for x in d.get("itens", [])[:1000]]
+    def _linhas(itens):
+        out = []
+        for x in itens:
+            v = x["vinculos"][0] if x.get("vinculos") else {}
+            cands = "; ".join(f"{c['ano']} {c['cargo']} {c['municipio']} ({'CPF confere' if c['verificacao'] == 'VERIFICADO' else 'não verificado'})"
+                              for c in x.get("candidaturas", []))
+            out.append(f"<tr><td>{'🎖️' if x.get('comissionado') else ''}</td><td>{_esc(x['nome'])}</td>"
+                       f"<td>{_esc((v.get('orgao') or '')[:34])} · {_esc(v.get('cargo') or v.get('vinculo') or '')}</td>"
+                       f"<td>{_esc(cands)}</td></tr>")
+        return out
+    ver = [x for x in d.get("itens", []) if x.get("verificacao") == "VERIFICADO"]
+    pen = [x for x in d.get("itens", []) if x.get("verificacao") != "VERIFICADO"]
+    cab = ["", "Servidor", "Órgão / cargo (vínculo mais recente)", "Candidaturas (TSE)"]
     return ("Servidores × candidatos (folha × TSE)",
-            f"{d.get('n',0)} servidores que também foram candidatos",
-            [{"titulo": "1. Cruzamento nome a nome", "html": _tabela(["", "Servidor", "Órgão / cargo", "Disputou"], ls)}], d)
+            f"{d.get('total', 0)} pessoas no Estado: {d.get('n_verificados', 0)} VERIFICADAS pelo CPF parcial, "
+            f"{d.get('n_pendentes', 0)} PENDENTES (possível homônimo — não verificado); "
+            f"{d.get('homonimos_descartados', 0)} candidaturas de homônimo descartadas pelo CPF",
+            [{"titulo": "1. Vínculos VERIFICADOS (CPF parcial da folha confere com o CPF do TSE)",
+              "html": _tabela(cab, _linhas(ver))},
+             {"titulo": "2. PENDENTES — possível homônimo, não verificado (só o nome coincide)",
+              "html": _tabela(cab, _linhas(pen))}], d)
 
 
 def _d_comissionados(p):

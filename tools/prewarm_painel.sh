@@ -54,6 +54,9 @@ URLS=(
   "intel/ordem_cronologica"
   # 2026-11-13: aba Governo Couto — ~25 s a frio (load 5) (DOERJ + OB SIAFE de dois exercícios)
   "governo_couto"
+  # 2026-11-13: Nomeados × candidatos — o cache antigo (10 min, sem SWR, fora daqui) estourava o teto de 30 s do
+  # cliente a frio (26,5 s medidos a load 22; 61 s = dois estouros). Agora 1 h + SWR + disco, mantido quente aqui.
+  "poder/nomeados_candidatos?esfera=estado"
 )
 {
   echo "── $(date -Is) prewarm"
