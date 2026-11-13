@@ -331,7 +331,7 @@ def verificar_com_opus(con: sqlite3.Connection, n: int = 10, *, pensar=None, avi
         a = (_por_ids(con, [aid]) or [None])[0]
         if a is None:
             continue
-        p = pensar(TAREFA, montar_prompt(a), modelo=claude_motor.MODELO_JUIZO, sistema=_SYS, backend="cli")
+        p = pensar("verificacao_opus", montar_prompt(a), modelo=claude_motor.MODELO_JUIZO, sistema=_SYS, backend="cli")
         if p is None:
             break                                   # sem cota da assinatura: para e retoma depois
         r = interpretar(p.texto)

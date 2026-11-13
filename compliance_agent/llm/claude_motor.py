@@ -68,6 +68,7 @@ TETOS_TAREFA = {
     "triagem_alertas": 40,
     "camada_subjetiva": 20,
     "investigacao_risco": 10,
+    "verificacao_opus": 30,      # todo 🔴/🟡 da triagem relido pelo Opus (diretriz "sem margem pra erro")
 }
 
 SISTEMA_PADRAO = (

@@ -465,15 +465,15 @@ def painel() -> dict:
         b = d["por_balde"].get(nome) or {"usd": 0.0, "reservado": 0.0, "itens": 0, "restantes": None}
         por_item = (b["usd"] / b["itens"]) if b.get("itens") else None
         proj = round(b["usd"] + por_item * b["restantes"], 2) if (por_item is not None and b.get("restantes") is not None) else None
-        baldes[nome] = {"teto_usd": teto, "gasto_usd": round(b["usd"], 4), "reservado_usd": round(b["reservado"], 4),
+        baldes[nome] = {"teto_usd": teto, "gasto_usd": round(b["usd"], 6), "reservado_usd": round(b["reservado"], 6),
                         "itens": b.get("itens", 0), "usd_por_item": round(por_item, 6) if por_item is not None else None,
                         "restantes": b.get("restantes"), "projecao_total_usd": proj,
                         "projecao_cabe": (proj <= teto) if proj is not None else None,
                         "pausada": d["pausadas"].get(nome)}
     cache = {m: {"cache_lido": v.get("cache_lido", 0), "entrada": v.get("entrada", 0)} for m, v in d["por_modelo"].items()}
     return {"disponivel": disponivel(), "teto_usd": teto_usd(), "limite_efetivo_usd": limite_efetivo(),
-            "gasto_usd": round(d["total_usd"], 4), "reservado_usd": round(d["reservado_usd"], 4),
-            "resta_usd": round(max(0.0, limite_efetivo() - d["total_usd"] - d["reservado_usd"]), 4),
+            "gasto_usd": round(d["total_usd"], 6), "reservado_usd": round(d["reservado_usd"], 6),
+            "resta_usd": round(max(0.0, limite_efetivo() - d["total_usd"] - d["reservado_usd"]), 6),
             "chamadas": d["chamadas"], "recusadas_teto": d["recusadas_teto"], "baldes": baldes,
             "por_tarefa": d["por_tarefa"], "por_modelo": d["por_modelo"], "cache": cache,
             "lotes_em_curso": len(d["lotes"]), "ultima": d["ultima"], "ultimo_erro": d["ultimo_erro"],
