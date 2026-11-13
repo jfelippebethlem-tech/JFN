@@ -40,14 +40,25 @@ def ultimo_ok_iso() -> str | None:
     return d.get("ultimo_ok_iso") or (d.get("iso") if d.get("ok") else None)
 
 
+def _ultimo_efeito_iso() -> str | None:
+    try:
+        return json.loads(ULTIMO.read_text(encoding="utf-8")).get("ultimo_efeito_iso")
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
 def gravar_ultimo(res: dict) -> None:
     try:
         agora = datetime.now(timezone.utc).isoformat()
         ok_ant = ultimo_ok_iso()
+        # EFEITO (laudo 13/11/2026): só renova com OB INGERIDA — é o que o AO VIVO mede; "ok" com 0 OB não conta
+        produziu = bool(res.get("ok")) and (res.get("ingeridas") or 0) > 0
+        efeito = agora if produziu else _ultimo_efeito_iso()
         ULTIMO.parent.mkdir(parents=True, exist_ok=True)
         ULTIMO.write_text(json.dumps({"iso": agora, "ok": bool(res.get("ok")),
                                       "erro": res.get("erro") or res.get("etapa"), "detail": (res.get("detail") or "")[:300],
-                                      "n": res.get("n"), "ultimo_ok_iso": agora if res.get("ok") else ok_ant},
+                                      "n": res.get("n"), "ultimo_ok_iso": agora if res.get("ok") else ok_ant,
+                                      "ultimo_efeito_iso": efeito},
                                      ensure_ascii=False))
     except OSError as exc:
         logger.debug("não gravei o último resultado do diário: %s", exc)
@@ -197,7 +208,7 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             return {"ok": False, "etapa": "coleta", **res}
         ing = M.ingerir(ano, res.get("header", []), res.get("linhas", []))
         _log(f"diário {ano}: {res.get('n')} colhidas, {ing.get('ingeridas')} ingeridas (total {ing.get('total_tabela')})")
-        gravar_ultimo({"ok": True, "n": res.get("n")})
+        gravar_ultimo({"ok": True, "n": res.get("n"), "ingeridas": ing.get("ingeridas")})
         # VERIFICADOR: o incremental pega as ~1000 OBs mais novas GLOBAIS; se um dia teve >1000 OBs (ex.: dia de
         # FOLHA), as OBs antigas desse dia caem abaixo da posição 1000 e seriam PERDIDAS. Conferimos o dia anterior
         # por Data Emissão; se estourou (>1000), coletar_por_data subdivide por Número e completa o dia.

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import http.client
+import json
 import os
 import re
 import sqlite3
@@ -98,11 +99,22 @@ def medir_efeito(cfg: dict) -> float | None:
                             para motor que repete o mesmo placar a cada lote (bombeiros: "LACUNA: 9459");
                             `sentido: desce|sobe` conta só a mudança na direção do progresso (a lacuna
                             dos bombeiros SUBIU 9.458→9.459 em 09/11 — processo novo, não trabalho feito)
+      {log, regex sem grupo} hora da ÚLTIMA linha que casa (ex.: "proc: ok" da fila de íntegras); `desde`
+                            descarta linhas anteriores (o "ok" de antes de uma correção mentia). Sem linha
+                            válida, o efeito é no máximo o início da cauda lida — 🟡, nunca verde por omissão
+      {json, chave}         ISO gravado pelo próprio motor só quando PRODUZ (siafe-ob: `ultimo_efeito_iso`);
+                            `chave` pode ser lista — vale a 1ª presente
     """
     try:
         if cfg.get("arquivo"):
             a = Path(cfg["arquivo"])
             return (a if a.is_absolute() else _REPO / a).stat().st_mtime
+        if cfg.get("json"):
+            a = Path(cfg["json"])
+            d = json.loads((a if a.is_absolute() else _REPO / a).read_text(encoding="utf-8"))
+            chaves = cfg["chave"] if isinstance(cfg["chave"], list) else [cfg["chave"]]
+            v = next((d[k] for k in chaves if isinstance(d, dict) and d.get(k)), None)
+            return _ts_texto(v) if v else None
         if cfg.get("log"):
             lg = Path(cfg["log"]) if os.path.isabs(cfg["log"]) else _REPO / cfg["log"]
             rg = re.compile(cfg["regex"])
@@ -110,6 +122,18 @@ def medir_efeito(cfg: dict) -> float | None:
                 tam = f.seek(0, 2)
                 f.seek(max(0, tam - 512_000))
                 bloco = f.read().decode("utf-8", "replace")
+            if rg.groups == 0:
+                desde = _ts_texto(cfg["desde"]) if cfg.get("desde") else None
+                ultima, inicio = None, None
+                for ln in bloco.splitlines():
+                    mt = _RE_TS_LOG.match(ln)
+                    if not mt:
+                        continue
+                    ts = _ts_texto(f"{mt.group(1)}T{mt.group(2)}")
+                    inicio = inicio or ts
+                    if rg.search(ln) and ts is not None and (desde is None or ts >= desde):
+                        ultima = ts
+                return ultima or inicio
             ult_val, mudou_em, primeira = None, None, None
             for ln in bloco.splitlines():
                 mm, mt = rg.search(ln), _RE_TS_LOG.match(ln)
@@ -140,7 +164,7 @@ def medir_efeito(cfg: dict) -> float | None:
             finally:
                 c.close()
             return _ts_texto(v) if v else None
-    except (OSError, sqlite3.Error, re.error, KeyError, TypeError):
+    except (OSError, sqlite3.Error, re.error, KeyError, TypeError, ValueError):
         return None
     return None
 
