@@ -246,38 +246,39 @@ export function ckPull(first){
       const big=$('ck-econ');if(big&&/—/.test(big.textContent)){big.textContent='—';
         if($('ck-sub'))$('ck-sub').innerHTML=erroHumano(d&&d.erro);}
       return;}
-    // A manchete passa a ser a economia HOMOGÊNEA — a que se apoia em comparação de
-    // produto igual. Medido em 25/07/2026: dos R$ 15,6 mi, R$ 9,4 mi (60,4%) vinham de
-    // grupos cuja descrição do PNCP mistura produtos diferentes ('Locação de Veículos -
-    // Leves / Pesados', dispersão 300,9×; 'peça de veículo', onde parafuso e motor têm a
-    // mesma descrição, 1292,5×). O total não some: vira o teto da faixa, ao lado.
-    const _eco=(d.economia_homogenea!=null?d.economia_homogenea:d.economia_total);
-    const _nc =(d.n_compras_homogeneas!=null?d.n_compras_homogeneas:d.n_compras_acima_mediana);
-    _ckCount($('ck-econ'),_eco,fmtRc,first?1300:900);
+    // Refeito em 2026-11-13 ("não pode ter margem pra erro em nada"; revisão D4/D5):
+    // o herói era R$ 5,98 mi — 89% Prefeitura do Rio sem dizer a esfera, os 4 maiores certames
+    // eram ATA de registro de preços (quantidade estimada, não compra), e somava QUALQUER compra
+    // acima da mediana, inclusive orgânico de agricultura familiar e óleo de marca exigida.
+    // Agora o herói só soma indício de sobrepreço (≥2× a mediana do MESMO item na MESMA unidade)
+    // CONFERIDO no PNCP e fora de ata; Estado e Prefeitura aparecem separados; o resto é dito.
+    const pe=d.por_esfera||{},est=pe.estado||{},pre=pe.prefeitura||{};
+    _ckCount($('ck-econ'),d.economia_total||0,fmtRc,first?1300:900);
     if($('ck-sub'))$('ck-sub').innerHTML=
-      `Se cada uma das <b>${fmtN(_nc)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item`
-      +(d.economia_descricao_generica>0
-        ? ` — contando só itens de <b>descrição consistente</b>. Há mais <b>${fmtRc(d.economia_descricao_generica)}</b>`
-          +` em itens de descrição genérica (ex.: "peça de veículo"), onde a mediana pode comparar produtos diferentes.`
-        : `.`);
-    ckFill('compras',{num:_nc,meta:'acima da mediana, em itens de descrição consistente'});
+      `Indícios de sobrepreço <b>conferidos no PNCP</b> (≥ 2× a mediana do mesmo item, na mesma unidade), fora de ata de registro de preços: `
+      +`<b>Estado ${fmtRc(est.economia||0)}</b> · <b>Prefeitura do Rio ${fmtRc(pre.economia||0)}</b>.`
+      +(d.economia_pendente>0?` Mais <b>${fmtRc(d.economia_pendente)}</b> em ${fmtN(d.n_compras_pendentes)} compras <b>pendentes de conferência</b> (não somadas).`:'')
+      +(d.economia_ata_teto>0?` Ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto — quantidade estimada).`:'')
+      +` Quantidade homologada, não OB paga.`;
+    ckFill('compras',{num:d.n_compras_acima_mediana,meta:'compras com indício conferido no PNCP'});
     const o=d.por_orgao&&d.por_orgao[0],onm=o?(o.orgao||''):'';
-    // o valor grande é a caixa do NÚMERO: um nome de órgão cortado duas vezes (25 chars
-    // no JS + reticências do CSS a 26px) virava "PREFEITURA …", que não informa nada.
-    // O número é a economia; o nome do órgão vive inteiro na linha de baixo.
-    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> — potencial a recuperar`:'—'});
-    // economia_total (15,6 mi/337) compara produtos DIFERENTES sob rótulo genérico — o herói
-    // desta mesma tela já publica a homogênea (6,2 mi/106). O ticker ficou com o número velho:
-    // duas manchetes contraditórias a 30px uma da outra. Uma fonte só, a defensável.
-    ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_homogenea)}</b> em ${fmtN(d.n_compras_homogeneas)} compras`}]);});
+    // mesma base do herói (conferido, homogêneo) — antes vinha do conjunto genérico e punha
+    // aluguel de imóvel comparado pela mediana de outros imóveis (R$ 25,9 mi "a recuperar").
+    ckFill('orgao',{txt:o?fmtRc(o.economia):'—',meta:o?`<b>${esc(onm)}</b> — acima da mediana nos indícios conferidos`:'nenhum indício conferido ainda'});
+    ckPush([{c:'g',h:`✦ sobrepreço conferido <b>${fmtRc(d.economia_total||0)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras · ${fmtN(d.n_compras_pendentes||0)} pendentes`}]);});
+
   J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.hidden=false;_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
     ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ ${_v60?'Radar':'RADAR'} ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
   J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
     ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
-  J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
-    ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
+  // Revisão D6 (2026-11-13): o ticker dizia "(sancionada)" para os 5 casos e NENHUM estava
+  // sancionado na data da compra. O sinal agora vem do servidor já com vigência e alcance;
+  // o rótulo diz qual sinal é, e "sancionada depois" não se passa por vedação.
+  J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:`itens ≥3× a mediana do mesmo item com fornecedor marcado · <b>${fmtN(d.n_sancionada||0)}</b> sancionado(s) à época`});
+    const _sin=a=>{const s=(a.sinais||[]).map(x=>x.sinal);return s.includes('sancionada')?'sancionada à época':s.includes('sancionada_depois')?'sancionada só depois':esc(rot(s[0]||''));};
+    ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${esc((a.orgao||'').slice(0,24))} pagou <b>${a.vs_mediana}× a mediana</b> — ${esc((a.fornecedor||'').slice(0,24))} (${_sin(a)})`})));});
   J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;
     // "Pago a empresa MORTA" só vale para quem recebeu DEPOIS da baixa. O card mostrava
     // `total_defunta` — o conjunto AMPLO de "hoje está baixada e um dia recebeu" — e dizia

@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-"""economia_potencial — quanto os cofres economizariam pagando a mediana; cap anti-artefato."""
+"""economia_potencial — refeita em 2026-11-13 ("não pode ter margem pra erro em nada").
+
+Só soma compra que (1) está em grupo HOMOGÊNEO de preço normalizado, (2) tem indício de
+sobrepreço (≥2× a mediana, fora da banda robusta), (3) foi VERIFICADA no PNCP e (4) não é
+ata de registro de preços (quantidade de ata é estimativa — vai para o teto, rotulado).
+Sintéticos (repositório público).
+"""
 from __future__ import annotations
 
 import sqlite3
@@ -8,68 +14,127 @@ import pytest
 
 from compliance_agent import comparador_precos as CP
 
+_DDL = """CREATE TABLE pncp_resultado (item_descricao TEXT, unidade_medida TEXT,
+    valor_unitario REAL, quantidade REAL, orgao_nome TEXT, unidade_nome TEXT, municipio TEXT,
+    fornecedor_nome TEXT, fornecedor_cnpj TEXT, ordem_classificacao INTEGER, data_pub TEXT,
+    certame TEXT, item INTEGER, modalidade INTEGER, objeto TEXT)"""
 
-@pytest.fixture()
-def db(tmp_path):
-    p = str(tmp_path / "t.db")
+
+def _db(tmp_path, linhas, nome="t.db"):
+    p = str(tmp_path / nome)
     con = sqlite3.connect(p)
-    con.execute("""CREATE TABLE pncp_resultado (item_descricao TEXT, unidade_medida TEXT,
-        valor_unitario REAL, quantidade REAL, orgao_nome TEXT, unidade_nome TEXT, municipio TEXT,
-        fornecedor_nome TEXT, fornecedor_cnpj TEXT, ordem_classificacao INTEGER, data_pub TEXT,
-        certame TEXT)""")
-    ins = ("INSERT INTO pncp_resultado (item_descricao, unidade_medida, valor_unitario, quantidade, "
-           "orgao_nome, unidade_nome, fornecedor_nome, fornecedor_cnpj, ordem_classificacao, certame) "
-           "VALUES (?,?,?,?,?,?,?,?,1,?)")
-    rows = [
-        # Item "Cadeira": mediana 10. Um órgão paga 30 (excesso 20) × 100 unid = R$2.000 de economia.
-        ("Cadeira", "UN", 10.0, 10, "A", "A", "F1", "11111111000111", "c1"),
-        ("Cadeira", "UN", 10.0, 10, "B", "B", "F1", "11111111000111", "c2"),
-        ("Cadeira", "UN", 10.0, 10, "C", "C", "F1", "11111111000111", "c3"),
-        ("Cadeira", "UN", 30.0, 100, "D", "D", "F2", "22222222000122", "c4"),
-    ]
-    con.executemany(ins, rows)
+    con.execute(_DDL)
+    con.executemany(
+        "INSERT INTO pncp_resultado (item_descricao, unidade_medida, valor_unitario, quantidade, "
+        "orgao_nome, unidade_nome, fornecedor_nome, fornecedor_cnpj, ordem_classificacao, "
+        "certame, item, modalidade, objeto) VALUES (?,?,?,?,?,?,?,?,1,?,1,?,?)", linhas)
     con.commit()
     con.close()
     return p
 
 
-def test_economia_soma_excesso_vezes_quantidade(db):
-    # esfera='todas': estes testes exercem a MATEMÁTICA (excesso×qtd, cap), não o
-    # roteamento por ente — cujo default agora é {estado, prefeitura}, coberto em
-    # tests/test_economia_esferas_rj.py.
-    d = CP.economia_potencial(db_path=db, esfera="todas", min_amostra=3, min_orgaos=2, min_certames=3)
-    assert d["ok"] is True
-    # excesso (30-10) × 100 = 2.000
-    assert d["economia_total"] == pytest.approx(2000.0)
+def _base(desc="Cadeira", un="UN", precos=(10, 10, 10, 11, 9)):
+    return [(desc, un, p, 10, f"O{i}", f"O{i}", "F1", "11111111000111", f"c{i}", 6, "")
+            for i, p in enumerate(precos)]
+
+
+CARA = ("Cadeira", "UN", 30.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
+_KW = dict(esfera="todas", min_amostra=5, min_orgaos=2, min_certames=3)
+
+
+def _v(estado="VERIFICADO", cert="cX", cnpj="22222222000122"):
+    return {(cert, 1, cnpj): {"estado": estado}}
+
+
+def test_soma_so_compra_verificada_fora_de_ata(tmp_path):
+    db = _db(tmp_path, _base() + [CARA])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
+                              **_KW)
+    assert d["economia_total"] == pytest.approx((30 - 10) * 100)
     assert d["n_compras_acima_mediana"] == 1
-    assert d["por_orgao"][0]["orgao"] == "D" and d["por_orgao"][0]["economia"] == pytest.approx(2000.0)
     assert d["por_fornecedor"][0]["fornecedor_cnpj"] == "22222222000122"
 
 
-def test_cap_anti_artefato_limita_excesso(tmp_path):
-    p = str(tmp_path / "a.db")
-    con = sqlite3.connect(p)
-    ins = ("INSERT INTO pncp_resultado (item_descricao, unidade_medida, valor_unitario, quantidade, "
-           "orgao_nome, unidade_nome, fornecedor_nome, fornecedor_cnpj, ordem_classificacao, certame) "
-           "VALUES (?,?,?,?,?,?,?,?,1,?)")
-    con.execute("""CREATE TABLE pncp_resultado (item_descricao TEXT, unidade_medida TEXT,
-        valor_unitario REAL, quantidade REAL, orgao_nome TEXT, unidade_nome TEXT, municipio TEXT,
-        fornecedor_nome TEXT, fornecedor_cnpj TEXT, ordem_classificacao INTEGER, data_pub TEXT,
-        certame TEXT)""")
-    con.executemany(ins, [
-        ("Toner", "UN", 10.0, 2, "A", "A", "F", "11111111000111", "c1"),
-        ("Toner", "UN", 10.0, 2, "B", "B", "F", "11111111000111", "c2"),
-        ("Toner", "UN", 10.0, 2, "C", "C", "F", "11111111000111", "c3"),
-        # artefato: 5000 (500× a mediana 10), qtd 2 → capado em 20× = 200, excesso (200−10)×2=380
-        ("Toner", "UN", 5000.0, 2, "D", "D", "F2", "22222222000122", "c4"),
-    ])
-    con.commit()
-    con.close()
-    d = CP.economia_potencial(db_path=p, esfera="todas", min_amostra=3, min_orgaos=2,
-                              min_certames=3, teto_razao=20.0)
-    assert d["economia_total"] == pytest.approx(380.0)   # (200 capado − 10) × 2, não (5000−10)×2
+def test_nao_verificada_fica_pendente_e_fora_da_manchete(tmp_path):
+    db = _db(tmp_path, _base() + [CARA])
+    d = CP.economia_potencial(db_path=db, verificacao={}, info_certames={}, **_KW)
+    assert d["economia_total"] == 0
+    assert d["economia_pendente"] == pytest.approx(2000)
+    assert d["por_orgao"] == []                 # quebras só com o que se sustenta
 
 
-def test_ressalva_teto_teorico(db):
-    d = CP.economia_potencial(db_path=db, esfera="todas")
-    assert "teto" in d["ressalva"].lower() and "Indício" in d["ressalva"]
+def test_ata_de_registro_de_precos_vai_para_o_teto(tmp_path):
+    db = _db(tmp_path, _base() + [CARA])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": True}},
+                              **_KW)
+    assert d["economia_total"] == 0 and d["economia_ata_teto"] == pytest.approx(2000)
+
+
+def test_divergente_no_pncp_sai_da_conta(tmp_path):
+    db = _db(tmp_path, _base() + [CARA])
+    d = CP.economia_potencial(db_path=db, verificacao=_v("DIVERGENTE"),
+                              info_certames={"cX": {"srp": False}}, **_KW)
+    assert d["economia_total"] == 0 and d["economia_divergente"] == pytest.approx(2000)
+
+
+def test_acima_da_mediana_mas_abaixo_de_2x_nao_e_economia(tmp_path):
+    """Pagar 1,5× a mediana é variação de mercado, não sobrepreço identificado."""
+    linha = ("Cadeira", "UN", 15.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    db = _db(tmp_path, _base() + [linha])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
+                              **_KW)
+    assert d["economia_total"] == 0
+
+
+def test_salto_de_preco_nao_vira_economia(tmp_path):
+    """500× a mediana não é sobrepreço comparável: é unidade/produto diferente (antes era
+    'capado' em 10× e SOMADO)."""
+    linha = ("Cadeira", "UN", 5000.0, 2, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    db = _db(tmp_path, _base() + [linha])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
+                              **_KW)
+    assert d["economia_total"] == 0 and d["economia_pendente"] == 0
+
+
+def test_inexigibilidade_e_agricultura_familiar_ficam_fora(tmp_path):
+    inex = CARA[:9] + (9, "")
+    agri = CARA[:8] + ("cY", 6, "Chamada pública da agricultura familiar - PNAE")
+    db = _db(tmp_path, _base() + [inex, agri])
+    v = {**_v(), **_v(cert="cY")}
+    d = CP.economia_potencial(db_path=db, verificacao=v,
+                              info_certames={"cX": {"srp": False}, "cY": {"srp": False}}, **_KW)
+    assert d["economia_total"] == 0
+
+
+def test_comodato_fica_fora(tmp_path):
+    """Água 20 L 'em comodato' (conferido no PNCP em 13/11/2026): o preço inclui o equipamento."""
+    linha = CARA[:9] + (8, "Aquisição de água mineral 20 L, em comodato")
+    db = _db(tmp_path, _base() + [linha])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
+                              **_KW)
+    assert d["economia_total"] == 0 and d["economia_pendente"] == 0
+
+
+def test_unidade_ambigua_nao_entra(tmp_path):
+    """Mesma descrição, unidade 'Caixa' sem quantidade declarada: INDETERMINADO."""
+    linha = ("Cadeira", "Caixa", 30.0, 100, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    db = _db(tmp_path, _base() + [linha])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
+                              **_KW)
+    assert d["economia_total"] == 0
+
+
+def test_caixa_com_quantidade_e_normalizada_antes_de_comparar(tmp_path):
+    """'Caixa 10 UN' a R$ 300 = R$ 30/un — compara com a unidade avulsa (mediana R$ 10)."""
+    linha = ("Cadeira", "Caixa 10,00 UN", 300.0, 10, "D", "D", "F2", "22222222000122", "cX", 6, "")
+    db = _db(tmp_path, _base() + [linha])
+    d = CP.economia_potencial(db_path=db, verificacao=_v(), info_certames={"cX": {"srp": False}},
+                              **_KW)
+    # (30 − 10) × (10 caixas × 10 un) = 2.000
+    assert d["economia_total"] == pytest.approx(2000)
+
+
+def test_ressalva_declara_que_nao_e_ob(tmp_path):
+    db = _db(tmp_path, _base())
+    d = CP.economia_potencial(db_path=db, **_KW)
+    assert "OB" in d["ressalva"] and "Indício" in d["ressalva"]

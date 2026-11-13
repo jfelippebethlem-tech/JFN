@@ -115,11 +115,11 @@ export async function renderComissao(){
     'ALERJ · contas do Governo do Estado, TJRJ, MPRJ, Defensoria Pública e TCE-RJ. Peças geradas pelo sistema e, órgão a órgão, os problemas encontrados nos fornecedores. Indício não é acusação.','🏛️');
   h+=await _pecas();
   const d=await J('/api/comissao/orgaos?limite=15');
-  if(!d||d.ok===false){ return h+card(`<div class="warn">${esc(erroHumano(d))}</div>`); }
+  if(!d||d.ok===false){ return h+card(`<div class="warn">${erroHumano(d)}</div>`); }
   const t=d.totais||{};
   h+=`<div class="grid g2" style="margin-top:12px">
-    ${kpi(fmtN(t.orgaos),'Órgãos com fornecedor periciado',null,'🏛️')}
-    ${kpi(fmtN(t.fornecedores_com_problema),'Fornecedores com problema','var(--rose)','🟡')}
+    ${kpi(fmtN(t.orgaos),'Órgãos com fornecedor periciado',null,'🏛️',{sobre:'Órgãos (UG do SIAFE) que pagaram por OB Contabilizada a ao menos um fornecedor com perícia 🔴/🟡. Mede exposição do órgão, não irregularidade do órgão.'})}
+    ${kpi(fmtN(t.fornecedores_com_problema),'Fornecedores com problema','var(--rose)','🟡',{sobre:'Fornecedores com perícia 🔴/🟡 pagos por esses órgãos. Indício a apurar, não conclusão: o grau vem da perícia de fornecedor e pode ser de outro órgão.'})}
     ${kpi(fmtR(t.valor_com_problema),'Pago a fornecedor com problema',null,'💳',
       {sobre:'Soma das OB Contabilizadas no SIAFE aos pares fornecedor×UG com indício. É o valor EXPOSTO, não o valor irregular.'})}
   </div>`;

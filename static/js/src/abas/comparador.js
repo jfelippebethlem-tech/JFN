@@ -141,15 +141,15 @@ export async function _compEconomia(){
   const d=await J('/api/comparador/economia?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   let h=`<div style="text-align:center;margin:10px 0 18px">
-    <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
+    <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL — SOBREPREÇO CONFERIDO (PNCP)</div>
     <div style="font-weight:800;font-size:46px;color:var(--green);line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
-    <div class="dim">se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item · ${fmtN(d.n_compras_acima_mediana)} compras acima da mediana · o número cresce conforme a base de preços do PNCP é coletada</div></div>`;
+    <div class="dim">indícios de sobrepreço (≥ 2× a mediana do <b>mesmo item na mesma unidade</b>) <b>conferidos no PNCP</b> e fora de ata de registro de preços · ${fmtN(d.n_compras_acima_mediana)} compra(s)${d.economia_pendente>0?` · mais ${fmtRc(d.economia_pendente)} em ${fmtN(d.n_compras_pendentes)} pendente(s) de conferência, não somados`:''}${d.economia_ata_teto>0?` · ata de registro de preços: até ${fmtRc(d.economia_ata_teto)} (teto)`:''} · quantidade homologada, não OB paga</div></div>`;
   const bloco=(titulo,arr,campo,fn)=>{
     let s=sec(titulo)+`<div class="grid">`;
     s+=(arr||[]).slice(0,12).map(x=>card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) acima da mediana</div></div>
-        <div class="right"><div class="num" style="font-weight:800;color:var(--green)">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`)).join('');
+        <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) com indício conferido</div></div>
+        <div class="right"><div class="num" style="font-weight:800;color:var(--green)">${fmtRc(x.economia)}</div><div class="dim">acima da mediana</div></div></div>`)).join('');
     return s+`</div>`;
   };
   // destaque: sobrepreço pago a fornecedor JURIDICAMENTE VEDADO (o número mais forte)

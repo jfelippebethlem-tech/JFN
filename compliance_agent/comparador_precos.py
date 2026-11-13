@@ -99,6 +99,144 @@ def _grupos(con, certs: set | None = None, por_medida: bool = False) -> dict:
     return g
 
 
+# ── comparação HOMOGÊNEA (base única do sobrepreço, da economia e do caro+suspeito) ──────
+# Pedido do dono (2026-11-13): "não pode comparar itens de unidades métricas diferentes [...]
+# não pode ter margem pra erro em nada". Regras em compliance_agent/preco_normalizado.py.
+
+_COLS_RICAS = ("item_descricao d", "unidade_medida un", "valor_unitario vu", "quantidade",
+               "orgao_cnpj", "orgao_nome", "unidade_nome", "uf", "municipio", "fornecedor_nome",
+               "fornecedor_cnpj", "certame", "item", "data_pub", "modalidade", "objeto")
+
+# preço que não é de MERCADO: não serve de referência nem de achado
+_OBJ_FORA_DE_MERCADO = re.compile(
+    r"agricultura familiar|chamada publica|\bpnae\b|homologad\w* pelo fabricante|genuin|"
+    r"originais? (?:do|de) fabrica|exclusiv\w* d[ao] marca|comodato")
+_MODALIDADE_INEXIGIBILIDADE = 9   # código PNCP
+
+
+def _linhas_ricas(con) -> list[dict]:
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")}
+    sel = ", ".join(c if c.split()[0] in cols else f"NULL {c.split()[-1]}" for c in _COLS_RICAS)
+    return [dict(r) for r in con.execute(
+        f"SELECT {sel} FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 "
+        "AND quantidade>=2 AND item_descricao IS NOT NULL AND length(item_descricao)>=3")]
+
+
+def fora_de_mercado(r: dict) -> str | None:
+    """Motivo pelo qual o preço desta compra não é preço de mercado comparável (ou None)."""
+    if r.get("modalidade") == _MODALIDADE_INEXIGIBILIDADE:
+        return ("inexigibilidade: preço sem disputa (fornecedor exclusivo, chamada pública) — "
+                "não é referência de mercado nem se compara com ela")
+    from compliance_agent.medida_item import _norm as _n
+    m = _OBJ_FORA_DE_MERCADO.search(_n(r.get("objeto") or ""))
+    if m:
+        return (f"objeto com condição que muda o preço (agricultura familiar, marca exigida, "
+                f"comodato) ('{m.group(0)}') — não se compara com o item genérico")
+    return None
+
+
+def comparacao_homogenea(con, min_amostra: int = 5, min_certames: int = 4,
+                         min_orgaos: int = 3) -> dict:
+    """Todas as compras do PNCP → grupos homogêneos (preço normalizado) + INDETERMINADOS.
+    A mediana é GLOBAL (mercado); quem filtra esfera é o chamador, no ACHADO.
+
+    Memo de 10 min por (banco, parâmetros): a aba Estado, a Prefeitura, a economia e o
+    caro+suspeito pedem a MESMA base — sob carga cada passada custa minutos. Só leitura."""
+    import time
+    try:
+        db_id = con.execute("PRAGMA database_list").fetchone()[2]
+    except Exception:  # noqa: BLE001 — sem identificação do banco, não memoriza
+        db_id = None
+    chave = (db_id, min_amostra, min_certames, min_orgaos)
+    hit = _MEMO_COMP.get(chave) if db_id else None
+    if hit and time.time() - hit[0] < 600:
+        return hit[1]
+    g = _comparacao_homogenea(con, min_amostra, min_certames, min_orgaos)
+    if db_id:
+        if len(_MEMO_COMP) >= 4:
+            _MEMO_COMP.clear()
+        _MEMO_COMP[chave] = (time.time(), g)
+    return g
+
+
+_MEMO_COMP: dict = {}
+
+
+def _comparacao_homogenea(con, min_amostra: int, min_certames: int, min_orgaos: int) -> dict:
+    from compliance_agent.preco_normalizado import agrupar
+    ok, fora = [], []
+    for r in _linhas_ricas(con):
+        m = fora_de_mercado(r)
+        (fora.append((r, m)) if m else ok.append(r))
+    g = agrupar(ok, _norm_item, min_amostra=min_amostra, min_certames=min_certames,
+                min_orgaos=min_orgaos)
+    g["indeterminados"] = fora + g["indeterminados"]
+    return g
+
+
+def achados_do_grupo(grp: dict, fator: float = 2.0, z_min: float = 3.5):
+    """(registro, z) das compras do grupo HOMOGÊNEO com preço normalizado ≥ fator×mediana E
+    fora da banda robusta (z de Iglewicz–Hoaglin ≥ z_min)."""
+    med = grp["mediana"]
+    if med <= 0:
+        return
+    from compliance_agent.preco_normalizado import mediana
+    mad = mediana([abs(r["pn"] - med) for r in grp["itens"]]) or (med * 0.1)
+    for r in grp["itens"]:
+        z = (r["pn"] - med) / (1.4826 * mad)
+        if r["pn"] >= fator * med and z >= z_min:
+            yield r, z
+
+
+def resumo_grupo(grp: dict, n_amostra: int = 12) -> dict:
+    """O GRUPO DE COMPARAÇÃO como se mostra ao lado de cada achado."""
+    from compliance_agent.verificacao_pncp import link_pncp
+    return {
+        "descricao_normalizada": grp["desc"], "unidade_normalizada": grp["rotulo"],
+        "n": grp["n"], "n_certames": grp["n_certames"], "n_orgaos": grp.get("n_orgaos"),
+        "mediana": round(grp["mediana"], 4), "min": round(grp["min"], 4),
+        "max": round(grp["max"], 4), "p10": round(grp["p10"], 4), "p90": round(grp["p90"], 4),
+        "dispersao_p90_p10": round(grp["dispersao"], 2), "faixa": grp["faixa"],
+        "n_faixas": grp["n_faixas"],
+        "amostra": [{"preco_normalizado": round(r["pn"], 4), "unidade_medida": r["un"],
+                     "orgao": r.get("unidade_nome") or r.get("orgao_nome"),
+                     "data": (r.get("data_pub") or "")[:10], "link_pncp": link_pncp(r["certame"])}
+                    for r in grp["itens"][:: max(1, len(grp["itens"]) // n_amostra)][:n_amostra]]}
+
+
+def resumo_indeterminados(indet: list, certs: set | None, n_lista: int = 40) -> dict:
+    """Contagem por motivo (só da esfera do achado) + as discrepâncias de SALTO, listadas à parte."""
+    from compliance_agent.verificacao_pncp import link_pncp
+    por_motivo: dict[str, int] = defaultdict(int)
+    saltos = []
+    for r, motivo in indet:
+        if certs is not None and r["certame"] not in certs:
+            continue
+        chave = re.sub(r"'[^']*'", "'…'", motivo)
+        chave = re.sub(r"R\$ [\d.,]+|[\d.,]+×|\(\d+ compra\(s\)\)", "…", chave)
+        por_motivo[chave] += 1
+        if "salto" in motivo:
+            saltos.append({"item": r["d"], "unidade_medida": r["un"], "preco": r["vu"],
+                           "orgao": r.get("unidade_nome") or r.get("orgao_nome"),
+                           "fornecedor": r.get("fornecedor_nome"), "motivo": motivo,
+                           "certame": r["certame"], "item_n": r.get("item"),
+                           "link_pncp": link_pncp(r["certame"])})
+    saltos.sort(key=lambda x: -(x["preco"] or 0))
+    return {"n": sum(por_motivo.values()),
+            "por_motivo": sorted(({"motivo": k, "n": v} for k, v in por_motivo.items()),
+                                 key=lambda x: -x["n"]),
+            "discrepancias_de_salto": saltos[:n_lista], "n_discrepancias_de_salto": len(saltos)}
+
+
+def _norm_ente(nome: str | None) -> str:
+    """'MRJ-PREFEITURA MUNICIPAL DO RIO DE JANEIRO' e '... DO RIO DE JANEIRO - RJ' = o mesmo ente."""
+    from compliance_agent.medida_item import _norm as _n
+    s = _n(nome or "—").upper()
+    s = re.sub(r"^MRJ\s*-\s*", "", s)
+    s = re.sub(r"\s*[-/]\s*RJ$", "", s)
+    return re.sub(r"\s+", " ", s).strip() or "—"
+
+
 def buscar_grupos(termo: str, db_path: str | None = None, min_compras: int = 3,
                   min_orgaos: int = 2, limite: int = 40, esfera: str | None = None) -> dict:
     """Grupos de item cuja descrição normalizada casa TODAS as palavras do termo, com estatística
@@ -357,118 +495,141 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
         con.close()
 
 
-def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
-                       min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60,
-                       esfera: str | None = None, disp_max: float = 4.0) -> dict:
-    """QUANTO os cofres públicos economizariam se cada compra acima da mediana tivesse pago a
-    MEDIANA de mercado do item. Economia = Σ (preço_pago − mediana) × quantidade, sobre as compras
-    com preço > mediana, em grupos comparáveis. Quebra por ITEM, ÓRGÃO e FORNECEDOR.
+def _esferas_das_linhas(con, esfera: str | None) -> dict[str, set] | None:
+    """Esfera(s) do ACHADO → {rótulo: certames}. 'todas' → None (sem filtro)."""
+    if esfera == "todas":
+        return None
+    alvo = [esfera] if esfera else list(_ESFERAS_FISCALIZADAS)
+    return {e: (_certs(con, e) or set()) for e in alvo}
 
-    Honestidade: é um teto teórico (a mediana é atingível — metade já paga abaixo). Robusto a
-    outlier (mediana como referência); razões acima de `teto_razao`× a mediana são CAPADAS no teto
-    (a descrição do PNCP mistura especificação — sem o cap, 1 artefato de 500× dominaria o total).
-    Artefato (<10% da mediana) descartado. Só compras com quantidade real entram."""
+
+def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
+                       min_certames: int = 4, limite: int = 60, esfera: str | None = None,
+                       fator: float = 2.0, verificacao: dict | None = None,
+                       info_certames: dict | None = None) -> dict:
+    """Quanto se teria deixado de gastar se cada compra com INDÍCIO DE SOBREPREÇO tivesse pago a
+    MEDIANA de mercado do MESMO item, na MESMA unidade e apresentação.
+
+    Refeito em 2026-11-13 ("não pode ter margem pra erro em nada"). Só entra na soma a compra que:
+      1. está num GRUPO HOMOGÊNEO (preco_normalizado: unidade comprovada, mesma apresentação,
+         sem salto de preço, dispersão p90/p10 ≤ 4) — unidade ambígua é INDETERMINADO, fora;
+      2. tem preço normalizado ≥ `fator`× a mediana E fora da banda robusta (o mesmo critério
+         do sobrepreço da aba — antes a economia somava QUALQUER compra acima da mediana);
+      3. não é inexigibilidade, agricultura familiar/chamada pública nem objeto com marca
+         exigida (preço legalmente diferenciado não é sobrepreço);
+      4. foi VERIFICADA na fonte primária (PNCP: descrição, unidade, quantidade e preço
+         homologado conferem) — o resto fica em `economia_pendente`, nunca na manchete;
+      5. NÃO é ata de registro de preços: a quantidade de ata é ESTIMATIVA, não compra; vai
+         para `economia_ata_teto` (teto, rotulado), nunca para o total.
+    Separa Estado × Prefeitura (`por_esfera`). Quantidade = homologada no PNCP — não é OB paga.
+    """
+    from compliance_agent import verificacao_pncp as V
     con = _ro(db_path)
     try:
-        certs = _certs_alvo(con, esfera)   # mediana GLOBAL (mercado); achado = entes fiscalizados
-        total = 0.0
-        total_homog = 0.0          # só grupos de descrição consistente (dispersão <= disp_max)
-        n_compras_homog = 0
-        por_item: dict[str, dict] = {}
-        por_orgao: dict[str, dict] = {}
-        por_forn: dict[str, dict] = {}
-        n_compras_caras = 0
-        # por_medida: fardo não entra na mesma mediana de copinho (medida_item). Não perde
-        # cobertura — a fusão de unidade (galao/gl/gal) compensa a separação por tamanho.
-        for (base, un, _sig), itens in _grupos(con, por_medida=True).items():
-            orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
-            n_cert = len({r["certame"] for r in itens})
-            # amostra E diversidade suficientes → a mediana é confiável e um único item genérico
-            # de alto valor ('Sistema para compressão' com 1 compra) não domina a economia.
-            if len(itens) < min_amostra or len(orgaos) < min_orgaos or n_cert < min_certames:
-                continue
-            precos = sorted(r["vu"] for r in itens)
-            med = _mediana(precos)
-            if med <= 0:
-                continue
-            # a mediana só vale se o grupo é homogêneo: ≥60% dos certames perto dela (mesma
-            # guarda do sobrepreço) — senão são produtos diferentes sob rótulo genérico.
-            n_perto = len({r["certame"] for r in itens if r["vu"] <= 2 * med})
-            if n_perto < 0.6 * n_cert:
-                continue
-            # ── DISPERSÃO: a mediana é válida, mas a cauda CARA é o mesmo produto? ────────
-            # O guarda acima responde "a mediana faz sentido?"; não responde "quem está
-            # acima dela é comparável?". Em 'Pneu veículo automotivo' a mediana é R$ 594
-            # (pneu leve) e a cauda vai a R$ 3.105 (pneu pesado) — os dois têm a MESMA
-            # descrição no PNCP. Medido em 25/07/2026: **60,4% da economia (R$ 9,41 mi de
-            # R$ 15,58 mi) vinha de grupos assim**, e as descrições denunciam sozinhas —
-            # 'Locação de Veículos - Leves / Pesados' com dispersão 300,9× e
-            # 'peça de veículo' (parafuso e motor são ambos "peça") com 1292,5×.
-            # Não se descarta: separa-se. O total continua inteiro, e quem lê sabe qual
-            # parte se apoia em comparação de produto igual.
-            p10 = precos[int(len(precos) * 0.10)]
-            p90 = precos[int(len(precos) * 0.90) - 1] if len(precos) > 1 else precos[0]
-            dispersao = round(p90 / p10, 1) if p10 > 0 else None
-            generico = dispersao is None or dispersao > disp_max
-            piso = 0.10 * med
-            teto = teto_razao * med                    # cap anti-artefato: preço efetivo p/ economia
-            for r in itens:
-                if certs is not None and r["certame"] not in certs:
-                    continue                       # compra de outra esfera não entra na aba
-                p = r["vu"]
-                if p < piso or p <= med:
-                    continue
-                p_ef = min(p, teto)
-                qtd = r["quantidade"] if ("quantidade" in r.keys() and r["quantidade"]) else 1
-                excesso = (p_ef - med) * qtd
-                if excesso <= 0:
-                    continue
-                total += excesso
-                n_compras_caras += 1
-                if not generico:
-                    total_homog += excesso
-                    n_compras_homog += 1
-                org = r["unidade_nome"] or r["orgao_nome"] or "—"
-                it = por_item.setdefault(base, {"item": r["d"], "unidade_medida": r["un"],
-                                                "economia": 0.0, "n": 0,
-                                                "dispersao": dispersao, "descricao_generica": generico})
-                it["economia"] += excesso
-                it["n"] += 1
-                og = por_orgao.setdefault(org, {"orgao": org, "economia": 0.0, "n": 0})
-                og["economia"] += excesso
-                og["n"] += 1
-                fk = r["fornecedor_cnpj"]
-                fo = por_forn.setdefault(fk, {"fornecedor": r["fornecedor_nome"],
-                                              "fornecedor_cnpj": fk, "economia": 0.0, "n": 0})
-                fo["economia"] += excesso
-                fo["n"] += 1
-
-        def _top(d):
-            xs = sorted(d.values(), key=lambda x: -x["economia"])
-            for x in xs:
-                x["economia"] = round(x["economia"], 2)
-            return xs[:limite]
-
-        return {"ok": True, "economia_total": round(total, 2),
-                "n_compras_acima_mediana": n_compras_caras,
-                # o par HOMOGÊNEO é o que se sustenta em comparação de produto igual —
-                # é ele que deve virar manchete; o resto entra como faixa superior.
-                "economia_homogenea": round(total_homog, 2),
-                "n_compras_homogeneas": n_compras_homog,
-                "economia_descricao_generica": round(total - total_homog, 2),
-                "dispersao_max": disp_max,
-                "por_item": _top(por_item), "por_orgao": _top(por_orgao),
-                "por_fornecedor": _top(por_forn),
-                "explicacao": ("Economia potencial = quanto o poder público deixaria de gastar se "
-                               "cada compra acima da mediana tivesse pago a MEDIANA de mercado do "
-                               "item (por unidade × quantidade). Referência conservadora — metade "
-                               "das compras já paga abaixo dela."),
-                "ressalva": ("Teto teórico. Preços acima de "
-                             f"{teto_razao:g}× a mediana são capados (a descrição do PNCP mistura "
-                             "especificação; sem o cap um artefato dominaria). Confirmar termo de "
-                             "referência. É priorização de auditoria, não valor a ressarcir. Indício ≠ acusação.")}
+        esferas = _esferas_das_linhas(con, esfera)
+        g = comparacao_homogenea(con, min_amostra=min_amostra, min_certames=min_certames,
+                                 min_orgaos=min_orgaos)
     finally:
         con.close()
+    verif = verificacao if verificacao is not None else V.estados(db_path)
+    info = info_certames if info_certames is not None else V.info_certames(db_path)
+
+    def _esfera_de(cert):
+        if esferas is None:
+            return "todas"
+        for e, cs in esferas.items():
+            if cert in cs:
+                return e
+        return None
+
+    tot = {"verificada": 0.0, "ata": 0.0, "pendente": 0.0, "divergente": 0.0}
+    n = {"verificada": 0, "ata": 0, "pendente": 0, "divergente": 0}
+    por_esfera: dict[str, dict] = {}
+    por_item: dict[tuple, dict] = {}
+    por_orgao: dict[str, dict] = {}
+    por_forn: dict[str, dict] = {}
+    for grp in g["grupos"]:
+        med = grp["mediana"]
+        for r, _z in achados_do_grupo(grp, fator=fator):
+            esf = _esfera_de(r["certame"])
+            if esf is None:
+                continue                                  # achado de outra esfera
+            excesso = (r["pn"] - med) * (r["qn"] or 0)
+            if excesso <= 0:
+                continue
+            ev = V.estado_de(verif, r["certame"], r.get("item"), r["fornecedor_cnpj"])["estado"]
+            srp = (info.get(r["certame"]) or {}).get("srp")
+            if ev == V.DIVERGENTE:
+                balde = "divergente"
+            elif ev != V.VERIFICADO or srp is None:
+                balde = "pendente"
+            elif srp:
+                balde = "ata"
+            else:
+                balde = "verificada"
+            tot[balde] += excesso
+            n[balde] += 1
+            pe = por_esfera.setdefault(esf, {"esfera": esf, "economia": 0.0, "n": 0,
+                                             "ata_teto": 0.0, "pendente": 0.0})
+            if balde == "verificada":
+                pe["economia"] += excesso
+                pe["n"] += 1
+            elif balde == "ata":
+                pe["ata_teto"] += excesso
+            elif balde == "pendente":
+                pe["pendente"] += excesso
+            if balde != "verificada":
+                continue                                  # quebras só com o que se sustenta
+            it = por_item.setdefault((grp["desc"], grp["chave"], grp["faixa"]), {
+                "item": r["d"], "unidade_medida": r["un"], "unidade_normalizada": grp["rotulo"],
+                "mediana": round(med, 4), "dispersao": round(grp["dispersao"], 2),
+                "descricao_generica": False, "economia": 0.0, "n": 0})
+            it["economia"] += excesso
+            it["n"] += 1
+            org = _norm_ente(r.get("unidade_nome") or r.get("orgao_nome"))
+            og = por_orgao.setdefault(org, {"orgao": org, "esfera": esf, "economia": 0.0, "n": 0})
+            og["economia"] += excesso
+            og["n"] += 1
+            fk = r["fornecedor_cnpj"]
+            fo = por_forn.setdefault(fk, {"fornecedor": r["fornecedor_nome"],
+                                          "fornecedor_cnpj": fk, "economia": 0.0, "n": 0})
+            fo["economia"] += excesso
+            fo["n"] += 1
+
+    def _top(d):
+        xs = sorted(d.values(), key=lambda x: -x["economia"])
+        for x in xs:
+            x["economia"] = round(x["economia"], 2)
+        return xs[:limite]
+
+    for pe in por_esfera.values():
+        for k in ("economia", "ata_teto", "pendente"):
+            pe[k] = round(pe[k], 2)
+    certs_todos = set().union(*esferas.values()) if esferas else None
+    return {"ok": True,
+            # manchete: só compra VERIFICADA no PNCP, fora de ata, em grupo homogêneo
+            "economia_total": round(tot["verificada"], 2),
+            "n_compras_acima_mediana": n["verificada"],
+            "economia_homogenea": round(tot["verificada"], 2),   # compat (cockpit antigo)
+            "n_compras_homogeneas": n["verificada"],
+            "economia_descricao_generica": 0.0,   # compat: grupo genérico não entra mais em conta
+            "economia_ata_teto": round(tot["ata"], 2), "n_compras_ata": n["ata"],
+            "economia_pendente": round(tot["pendente"], 2), "n_compras_pendentes": n["pendente"],
+            "economia_divergente": round(tot["divergente"], 2),
+            "n_compras_divergentes": n["divergente"],
+            "por_esfera": por_esfera, "fator": fator, "dispersao_max": 4.0,
+            "por_item": _top(por_item), "por_orgao": _top(por_orgao),
+            "por_fornecedor": _top(por_forn),
+            "indeterminados": resumo_indeterminados(g["indeterminados"], certs_todos, n_lista=0),
+            "explicacao": (f"Quanto se teria deixado de gastar se cada compra com indício de "
+                           f"sobrepreço (preço ≥ {fator:g}× a mediana do MESMO item, na MESMA "
+                           "unidade e apresentação) tivesse pago a mediana — somando só compras "
+                           "conferidas no PNCP e fora de ata de registro de preços."),
+            "ressalva": ("Quantidade homologada no PNCP, não pagamento (OB): o efetivamente pago a "
+                         "mais é INDISPONÍVEL sem empenho/OB. Ata de registro de preços aparece à "
+                         "parte como teto (quantidade estimada). Item com unidade ambígua ou grupo "
+                         "heterogêneo fica INDETERMINADO e fora da conta. Confirmar termo de "
+                         "referência. Indício ≠ acusação.")}
 
 
 _ESFERA_PNCP = {"E": "estadual", "F": "federal", "M": "municipal", "N": "federal"}
@@ -599,30 +760,34 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
 
 
 def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: int = 2,
-                    min_certames: int = 3, limite: int = 120, esfera: str | None = None) -> dict:
+                    min_certames: int = 3, limite: int = 120, esfera: str | None = None,
+                    min_amostra: int = 5) -> dict:
     """DOSSIÊ AUTOMÁTICO: item comprado MUITO acima da mediana (≥`fator`×) por um órgão, cujo
     fornecedor vencedor É SUSPEITO por outra fonte independente — sancionado (CEIS/CNEP), no radar
-    de risco, ou fantasma. É o cruzamento 'paga caro + fornecedor com problema': prioriza o que
-    tem preço fora da curva E fornecedor já marcado, o alvo mais forte para auditoria.
+    de risco, ou fantasma.
 
-    Guarda anti-FP: grupo comparável (≥`min_orgaos` órgãos, ≥`min_certames` certames); preço do
-    achado ≥`fator`× a mediana E ≥ mediana+3·MAD (fora da banda robusta); artefato (<10% da
-    mediana) descartado. O 'suspeito' vem de fonte INDEPENDENTE do preço."""
-    from compliance_agent.sancao_abrangencia import classificar_sancao
+    Corrigido em 2026-11-13 (revisão D6): o card dizia "5 itens pagos caro a fornecedor
+    sancionado" e **nenhum** dos 5 estava sancionado na data da compra — todas as sanções eram
+    posteriores, e uma vinha de outro ente. Agora 'sancionada' só se a sanção (a) estava VIGENTE
+    na data do certame e (b) VEDAVA aquele ente comprador (`sancao_abrangencia.veda_ente`).
+    Sanção posterior aparece como 'sancionada_depois' (peso 1, informativo — não é vedação).
+    O preço vem da mesma base homogênea do sobrepreço (unidade comprovada, sem salto, sem
+    grupo heterogêneo)."""
+    from compliance_agent.sancao_abrangencia import classificar_sancao, veda_ente
     con = _ro(db_path)
     try:
-        # sanção → maior abrangência por CNPJ (total > ente > órgão) para exibir o alcance
-        sanc: dict[str, str] = {}
-        _ordem = {"total": 3, "ente": 2, "orgao": 1, "nenhuma": 0}
+        sanc: dict[str, list] = {}
         for r in con.execute(
-                "SELECT cpf_cnpj, categoria, fundamentacao, cadastro FROM sancoes_federais "
-                "WHERE length(cpf_cnpj)=14"):
+                "SELECT cpf_cnpj, categoria, fundamentacao, cadastro, orgao, uf, data_inicio, "
+                "data_fim FROM sancoes_federais WHERE length(cpf_cnpj)=14"):
             cl = classificar_sancao(r["categoria"], r["fundamentacao"], r["cadastro"])
-            if not cl["veda_contratacao"]:
-                continue
-            atual = sanc.get(r["cpf_cnpj"])
-            if atual is None or _ordem[cl["abrangencia"]] > _ordem[atual]:
-                sanc[r["cpf_cnpj"]] = cl["abrangencia"]
+            if cl["veda_contratacao"]:
+                sanc.setdefault(r["cpf_cnpj"], []).append(dict(r))
+        try:
+            esfera_oficial = {r["cnpj"]: _ESFERA_PNCP.get(r["esfera_id"]) for r in
+                              con.execute("SELECT cnpj, esfera_id FROM pncp_ente")}
+        except sqlite3.OperationalError:
+            esfera_oficial = {}
         try:
             fant = {r["cnpj"]: r["classificacao"] for r in con.execute(
                 "SELECT cnpj, classificacao FROM fantasma_score WHERE classificacao IN ('alto','medio')")}
@@ -634,58 +799,75 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
                      (ler_cache_intel("radar_risco") or {}).get("achados") or [] if a.get("cnpj")}
         except Exception:  # noqa: BLE001
             radar = {}
-
         certs = _certs_alvo(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
-        achados = []
-        for (base, un, _sig), itens in _grupos(con, por_medida=True).items():   # fardo ≠ copinho
-            orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
-            n_cert = len({r["certame"] for r in itens})
-            if len(orgaos) < min_orgaos or n_cert < min_certames:
-                continue
-            precos = sorted(r["vu"] for r in itens)
-            med = _mediana(precos)
-            if med <= 0:
-                continue
-            mad = _mediana([abs(p - med) for p in precos]) or (med * 0.1)
-            for r in itens:
-                if certs is not None and r["certame"] not in certs:
-                    continue
-                p = r["vu"]
-                if p < fator * med or (p - med) < 3 * 1.4826 * mad:
-                    continue                      # não está caro o bastante / dentro da banda
-                cnpj = r["fornecedor_cnpj"]
-                sinais = []
-                if cnpj in sanc:
-                    sinais.append({"sinal": "sancionada", "peso": 3,
-                                   "abrangencia": sanc.get(cnpj)})
-                if cnpj in radar:
-                    sinais.append({"sinal": f"radar_{radar[cnpj]}", "peso": 2})
-                if cnpj in fant:
-                    sinais.append({"sinal": f"fantasma_{fant[cnpj]}", "peso": 2})
-                if not sinais:
-                    continue                      # caro MAS sem outro sinal → fica no sobrepreço, não aqui
-                achados.append({
-                    "item": r["d"], "grupo": base, "unidade_medida": r["un"],
-                    "orgao": r["unidade_nome"] or r["orgao_nome"], "municipio": r["municipio"] if "municipio" in r.keys() else None,
-                    "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": cnpj,
-                    "preco": round(p, 2), "mediana": round(med, 2),
-                    "vs_mediana": round(p / med, 1), "sobrepreco_est": round(p - med, 2),
-                    "certame": r["certame"], "data": (r["data_pub"] or "")[:10],
-                    "sinais": sinais, "gravidade": sum(s["peso"] for s in sinais)})
-        # ranking: mais sinais/sanção primeiro, depois quão acima da mediana
-        achados.sort(key=lambda a: (-a["gravidade"], -a["vs_mediana"]))
-        return {"ok": True, "achados": achados[:limite], "n": len(achados),
-                "n_sancionada": sum(1 for a in achados
-                                    if any(s["sinal"] == "sancionada" for s in a["sinais"])),
-                "explicacao": ("Cruzamento do comparador de preços com o gabarito de risco: item pago "
-                               f"≥{fator:g}× a mediana de mercado por um órgão, cujo FORNECEDOR já é "
-                               "sancionado (CEIS/CNEP), está no radar de risco ou é fantasma. Preço "
-                               "fora da curva + fornecedor marcado por fonte independente = alvo forte."),
-                "ressalva": ("O preço alto e o sinal de risco vêm de FONTES INDEPENDENTES — a "
-                             "coincidência é o indício, não prova. Descrição do PNCP é curta (pode "
-                             "misturar especificação). Confirmar termo de referência. Indício ≠ acusação.")}
+        g = comparacao_homogenea(con, min_amostra=min_amostra, min_certames=min_certames,
+                                 min_orgaos=min_orgaos)
     finally:
         con.close()
+
+    rank = {"total": 3, "ente": 2, "orgao": 1}
+    achados = []
+    for grp in g["grupos"]:
+        med = grp["mediana"]
+        for r, _z in achados_do_grupo(grp, fator=fator):
+            if certs is not None and r["certame"] not in certs:
+                continue
+            cnpj = r["fornecedor_cnpj"]
+            data = (r.get("data_pub") or "")[:10]
+            sinais = []
+            if cnpj in sanc:
+                melhor, depois = None, False
+                esf_alvo = esfera_oficial.get(r.get("orgao_cnpj")) or "estadual"
+                uf_alvo = (r.get("uf") or "RJ").upper()
+                for s in sanc[cnpj]:
+                    ini, fim = s.get("data_inicio") or "", s.get("data_fim") or "9999"
+                    if not data or not ini:
+                        continue                   # sem data não se afirma vigência
+                    if ini > data:
+                        depois = True
+                        continue
+                    if data > fim:
+                        continue
+                    v = veda_ente(s, esf_alvo, uf_alvo)
+                    if v["veda"] and (melhor is None or
+                                      rank[v["abrangencia"]] > rank[melhor["abrangencia"]]):
+                        melhor = v
+                if melhor:
+                    sinais.append({"sinal": "sancionada", "peso": 3,
+                                   "abrangencia": melhor["abrangencia"],
+                                   "motivo": melhor.get("motivo")})
+                elif depois:
+                    sinais.append({"sinal": "sancionada_depois", "peso": 1})
+            if cnpj in radar:
+                sinais.append({"sinal": f"radar_{radar[cnpj]}", "peso": 2})
+            if cnpj in fant:
+                sinais.append({"sinal": f"fantasma_{fant[cnpj]}", "peso": 2})
+            if not sinais:
+                continue                      # caro MAS sem outro sinal → fica no sobrepreço
+            achados.append({
+                "item": r["d"], "grupo": grp["desc"], "unidade_medida": r["un"],
+                "unidade_normalizada": grp["rotulo"],
+                "orgao": r.get("unidade_nome") or r.get("orgao_nome"),
+                "municipio": r.get("municipio"),
+                "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": cnpj,
+                "preco": round(r["vu"], 2), "preco_normalizado": round(r["pn"], 4),
+                "mediana": round(med, 4), "vs_mediana": round(r["pn"] / med, 1),
+                "sobrepreco_est": round(r["pn"] - med, 4),
+                "certame": r["certame"], "data": data,
+                "sinais": sinais, "gravidade": sum(s["peso"] for s in sinais)})
+    achados.sort(key=lambda a: (-a["gravidade"], -a["vs_mediana"]))
+    return {"ok": True, "achados": achados[:limite], "n": len(achados),
+            "n_sancionada": sum(1 for a in achados
+                                if any(s["sinal"] == "sancionada" for s in a["sinais"])),
+            "explicacao": ("Cruzamento do comparador de preços com o gabarito de risco: item pago "
+                           f"≥{fator:g}× a mediana do MESMO item (mesma unidade e apresentação) por "
+                           "um órgão, cujo FORNECEDOR estava sancionado À ÉPOCA com vedação para "
+                           "aquele ente, está no radar de risco ou é fantasma."),
+            "ressalva": ("O preço alto e o sinal de risco vêm de FONTES INDEPENDENTES — a "
+                         "coincidência é o indício, não prova. 'sancionada_depois' é sanção "
+                         "POSTERIOR à compra: não vedava a contratação. Confirmar termo de "
+                         "referência. Indício ≠ acusação.")}
+
 
 
 if __name__ == "__main__":

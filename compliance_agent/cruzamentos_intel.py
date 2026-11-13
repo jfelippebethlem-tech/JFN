@@ -970,84 +970,88 @@ def _mediana(xs: list) -> float:
 
 
 def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: int = 4,
-               fator: float = 2.0, limite: int = 120, esfera: str | None = None) -> dict:
-    """Sobrepreço por MEDIANA de item: agrupa compras pela descrição normalizada do item
-    (mesmo produto entre órgãos) e sinaliza quem pagou preço UNITÁRIO muito acima da mediana do
-    grupo (≥ `fator`× a mediana E fora da banda robusta mediana+3·MAD). Fonte: valorUnitarioHomologado
-    do PNCP. Robusto a outlier (mediana/MAD, não média).
+               fator: float = 2.0, limite: int = 120, esfera: str | None = None,
+               min_orgaos: int = 3, verificacao: dict | None = None) -> dict:
+    """Sobrepreço por MEDIANA do MESMO item, na MESMA unidade e apresentação.
 
-    Guarda anti-falso-positivo: o grupo precisa abranger ≥`min_certames` CERTAMES distintos — senão
-    a 'mediana' seria só a variedade de produtos dentro de um mesmo pregão sob rótulo genérico
-    (ex.: esteira e halteres ambos como 'Aparelho de Acondicionamento Físico'). E o achado precisa
-    ser de um certame DIFERENTE da maioria (compara compras independentes, não itens do mesmo lote)."""
+    Refeito em 2026-11-13 (dono: "não pode comparar itens de unidades métricas diferentes [...]
+    não pode ter margem pra erro em nada"). Medido no dado real antes da correção: o topo da aba
+    era 'Água Destilada / Ampola 10 ML' a R$ 140,00 contra mediana R$ 0,21 ("666×" — preço de
+    caixa lançado como ampola, TCE-RJ), copo de água a R$ 26,00 (caixa de copos registrada como
+    copo) e 'Desinfetante / Litro' num grupo que ia de R$ 1,32 a R$ 296,55 (saneante hospitalar
+    e de limpeza sob o mesmo nome). Nenhum era sobrepreço.
+
+    Agora (base única em comparador_precos.comparacao_homogenea + preco_normalizado):
+      · preço NORMALIZADO pela unidade comprovada (campo do PNCP ou texto explícito por regra);
+        unidade ambígua → INDETERMINADO, fora da mediana e da lista;
+      · grupo = mesma descrição + mesma unidade canônica + mesma apresentação + mesmas medidas;
+        salto ≥4× separa faixas; dispersão p90/p10 > 4 → grupo heterogêneo, sem achado;
+      · inexigibilidade, agricultura familiar e marca exigida ficam fora (preço não é de mercado);
+      · achado = preço normalizado ≥ `fator`× a mediana E z robusto ≥ 3,5, com o GRUPO DE
+        COMPARAÇÃO, o link do PNCP e o estado da conferência (VERIFICADO/PENDENTE/DIVERGENTE)."""
+    from compliance_agent import comparador_precos as CP
+    from compliance_agent import verificacao_pncp as V
     con = _ro(db_path)
     try:
         from compliance_agent.collectors.pncp_resultados import certames_da_esfera
         certs = certames_da_esfera(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
-        # quantidade>=2: preço unitário só é comparável em compra REAL por unidade. Linha com
-        # quantidade 1 costuma trazer o total do lote/contrato no campo unitário (Água a R$62 mil,
-        # serviço a R$85 mi) — poluiria a mediana e viraria falso outlier.
-        rows = con.execute(
-            "SELECT item_descricao d, unidade_medida un, valor_unitario vu, certame, orgao_nome, "
-            "unidade_nome, fornecedor_cnpj, fornecedor_nome, municipio, data_pub "
-            "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
-            "AND item_descricao IS NOT NULL AND length(item_descricao)>=3").fetchall()
-        from compliance_agent.medida_item import assinatura_medida, un_canon
-        grupos: dict[tuple, list] = {}
-        for r in rows:
-            base = _norm_item(r["d"])
-            if not base:
-                continue
-            # a UNIDADE DE MEDIDA entra na chave: "óleo" em litro ≠ em tambor; "refeição" ≠ "evento".
-            # + assinatura de tamanho/embalagem (medida_item): fardo de 1,5L não entra na mesma
-            # mediana de copinho de 200ml (senão vira sobrepreço falso). Descrição+unidade.
-            un = un_canon(r["un"])
-            sig = assinatura_medida(r["d"], r["un"])["sig"]
-            grupos.setdefault((base, un, sig), []).append(r)
-        achados = []
-        n_grupos_validos = 0
-        for chave, itens in grupos.items():
-            precos = [r["vu"] for r in itens]
-            n_certames = len({r["certame"] for r in itens})
-            # exige amostra E diversidade de certames (compras independentes, não 1 lote genérico)
-            if len(precos) < min_amostra or n_certames < min_certames:
-                continue
-            med = _mediana(precos)
-            if med <= 0:
-                continue
-            mad = _mediana([abs(p - med) for p in precos]) or (med * 0.1)
-            n_grupos_validos += 1
-            # a mediana só é confiável se a maioria dos certames fica perto dela: exige que
-            # ≥60% dos certames distintos tenham preço ≤ 2× mediana (senão o grupo é heterogêneo).
-            base = len({r["certame"] for r in itens if r["vu"] <= 2 * med})
-            if base < 0.6 * n_certames:
-                continue
-            for r in itens:
-                if certs is not None and r["certame"] not in certs:
-                    continue                       # compra de outra esfera não entra na aba
-                p = r["vu"]
-                z = (p - med) / (1.4826 * mad) if mad else 0  # z-score robusto (Iglewicz/Nigrini)
-                if p >= fator * med and z >= 3.5:
-                    achados.append({
-                        "item": r["d"], "unidade_medida": r["un"], "grupo": chave[0],
-                        "preco": p, "mediana": round(med, 2), "razao": round(p / med, 1),
-                        "z_robusto": round(z, 1), "amostra": len(precos), "certames": n_certames,
-                        "orgao": r["unidade_nome"] or r["orgao_nome"], "municipio": r["municipio"],
-                        "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": r["fornecedor_cnpj"],
-                        "certame": r["certame"], "data": (r["data_pub"] or "")[:10],
-                        "sobrepreco_est": round(p - med, 2)})
-        achados.sort(key=lambda a: -a["razao"])
-        return {"ok": True, "achados": achados[:limite], "n": len(achados),
-                "grupos_comparaveis": n_grupos_validos, "itens_com_preco": len(rows),
-                "explicacao": ("Mesmo item (descrição normalizada) comprado por vários órgãos: "
-                               "sinaliza quem pagou preço UNITÁRIO muito acima da mediana do grupo "
-                               "(≥ 2× a mediana e fora de mediana+3·MAD, medida robusta a outliers). "
-                               "Fonte: preço unitário homologado do PNCP."),
-                "ressalva": ("Itens com MESMO nome podem diferir em marca, especificação, embalagem ou "
-                             "quantidade — a descrição do PNCP é curta. Confirmar o termo de referência "
-                             "antes de concluir sobrepreço. Indício ≠ acusação.")}
+        g = CP.comparacao_homogenea(con, min_amostra=min_amostra, min_certames=min_certames,
+                                    min_orgaos=min_orgaos)
+        n_linhas = con.execute(
+            "SELECT COUNT(*) FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 "
+            "AND quantidade>=2").fetchone()[0]
     finally:
         con.close()
+    verif = verificacao if verificacao is not None else V.estados(db_path)
+    info = V.info_certames(db_path) if verificacao is None else {}
+    achados = []
+    for grp in g["grupos"]:
+        resumo = None
+        for r, z in CP.achados_do_grupo(grp, fator=fator):
+            if certs is not None and r["certame"] not in certs:
+                continue                       # compra de outra esfera não entra na aba
+            resumo = resumo or CP.resumo_grupo(grp)
+            nz = r["_norm"]
+            ev = V.estado_de(verif, r["certame"], r.get("item"), r["fornecedor_cnpj"])
+            srp = (info.get(r["certame"]) or {}).get("srp")
+            med = grp["mediana"]
+            achados.append({
+                "item": r["d"], "unidade_medida": r["un"], "grupo": grp["desc"],
+                "unidade_normalizada": nz["rotulo"], "fator_unidade": nz["fator"],
+                "trecho_unidade": nz["trecho"],
+                "preco": r["vu"], "preco_normalizado": round(r["pn"], 4),
+                "mediana": round(med, 4), "razao": round(r["pn"] / med, 1),
+                "z_robusto": round(z, 1), "amostra": grp["n"], "certames": grp["n_certames"],
+                "quantidade": r.get("quantidade"),
+                "quantidade_normalizada": r.get("qn"),
+                "orgao": r.get("unidade_nome") or r.get("orgao_nome"), "municipio": r.get("municipio"),
+                "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": r["fornecedor_cnpj"],
+                "certame": r["certame"], "item_n": r.get("item"), "data": (r.get("data_pub") or "")[:10],
+                "link_pncp": V.link_pncp(r["certame"]),
+                "api_pncp": V.url_api_item(r["certame"], r["item"]) if r.get("item") else None,
+                "verificacao": ev["estado"], "verificacao_detalhe": ev["divergencias"],
+                "verificado_em": ev["verificado_em"],
+                "ata_registro_precos": srp,
+                "sobrepreco_est": round(r["pn"] - med, 4),
+                "excesso_total_est": (round((r["pn"] - med) * r["qn"], 2) if r.get("qn") else None),
+                "grupo_comparacao": resumo})
+    achados.sort(key=lambda a: -a["razao"])
+    ind = CP.resumo_indeterminados(g["indeterminados"], certs)
+    return {"ok": True, "achados": achados[:limite], "n": len(achados),
+            "n_verificados": sum(1 for a in achados if a["verificacao"] == V.VERIFICADO),
+            "n_divergentes": sum(1 for a in achados if a["verificacao"] == V.DIVERGENTE),
+            "grupos_comparaveis": len(g["grupos"]), "itens_com_preco": n_linhas,
+            "indeterminados": ind, "sem_par": g["sem_par"],
+            "explicacao": ("Mesmo item, MESMA unidade e MESMA apresentação, comprado por vários "
+                           "órgãos: sinaliza quem pagou preço unitário normalizado ≥ 2× a mediana do "
+                           "grupo (e fora da banda robusta mediana±3,5·MAD). Grupo só existe se for "
+                           "homogêneo (sem salto ≥4× e com p90/p10 ≤ 4). Fonte: preço unitário "
+                           "homologado do PNCP."),
+            "ressalva": ("Item com unidade ambígua, embalagem sem quantidade declarada ou grupo "
+                         "heterogêneo fica INDETERMINADO e fora da conta — não foi absolvido, ficou "
+                         "sem comparação segura. VERIFICADO = descrição, unidade, quantidade e preço "
+                         "conferidos no PNCP; não dispensa o termo de referência. Indício ≠ acusação.")}
+
 
 
 def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: float = 3.0,
