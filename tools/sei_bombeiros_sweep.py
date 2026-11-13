@@ -14,8 +14,35 @@ import tools.sei_sweep as S
 
 FILA = pathlib.Path("data/bombeiros_sei_fila.json")
 
+PISO_VALOR = 1000.0
+
+
+def _valor(x: dict) -> float:
+    try:
+        return float(x.get("valor") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _cascata(x: dict, tipo: dict) -> bool:
+    """Item de 2ª geração ou mais: "licitação" enfileirada por ter sido CITADA num processo que já era
+    ele próprio uma "licitação" enfileirada (`bombeiros_achar_edital`), não por um contrato."""
+    if x.get("tipo") != "LICITACAO":
+        return False
+    pais = [f.split(":", 1)[1] for f in (x.get("flags") or []) if str(f).startswith("LICITACAO_DE:")]
+    return any(tipo.get(p) == "LICITACAO" for p in pais)
+
+
 def _carregar_fila():
     itens = json.loads(FILA.read_text(encoding="utf-8"))
+    # CONTRATOS ANTES DA CASCATA (13/11/2026): 7.105 de 9.659 itens eram "licitação de licitação" no
+    # topo do arquivo, herdando o valor de quem os citou (3.202 com o mesmo "R$ 617"), e 1.051
+    # contratos — o alvo desta lane — nunca tinham sido lidos. Rebaixa, não exclui; ordem do arquivo
+    # preservada dentro de cada grupo (sort estável). Dentro do grupo, valor abaixo de PISO_VALOR vai
+    # para o fim (laudo dos motores: < 20% das leituras abaixo de R$ 1.000,00) — também rebaixado, não
+    # excluído; item sem valor (0) é INDISPONÍVEL, não ínfimo, e não é rebaixado por isso.
+    tipo = {x.get("sei"): x.get("tipo") for x in itens}
+    itens = sorted(itens, key=lambda x: (_cascata(x, tipo), 0 < _valor(x) < PISO_VALOR))
     # (proc, nob, tot) — nob fica 1 (só p/ log); tot=valor do contrato (ordena o log, prioridade já no arquivo)
     return [(x["sei"], 1, float(x.get("valor") or 0)) for x in itens]
 
