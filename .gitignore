@@ -215,3 +215,11 @@ data/siafe_dias_inconclusivos.json
 # cache persistido do painel (rotas/investigacao.py) — derivado, regenerável
 data/cache_painel/
 static/assets/v61/src/
+
+# ruflo (ruvnet/ruflo) — estado local de agentes/memória; nunca versionar (repo público)
+.claude-flow/
+.swarm/
+.hive-mind/
+.ruflo/
+agentdb.rvf
+agentdb.rvf.lock
