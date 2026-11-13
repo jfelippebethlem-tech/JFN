@@ -43,6 +43,10 @@ _RF = {
             "Arts. 125-126 Lei 14.133/2021; Acórdãos TCU 1.755/2004 e 2.988/2018-Plenário (independe de dolo)"),
     "R14": ("Conluio entre licitantes (rodízio/cobertura/supressão — OCDE)",
             "Art. 337-F CP (frustração do caráter competitivo — tipo inserido pelo art. 178 da Lei 14.133/2021; o antigo art. 90 da Lei 8.666/93 foi revogado); Art. 36 Lei 12.529/2011 (CADE)"),
+    "R-RAPP": ("Pesquisa de preços (RAPP) frágil: menos de 3 fontes, fonte única ou referências não independentes",
+               "Art. 23, §§1º e 4º, e art. 72, II, Lei 14.133/2021 (estimativa por pesquisa com fontes diversas; "
+               "inexigibilidade justifica o preço por contratações da própria contratada com terceiros); Decreto RJ "
+               "48.816/2023 (pesquisa de preços); Acórdão 1875/2021-TCU (cesta de preços)"),
     "R15": ("Parecer jurídico/controle prévio não acatado sem motivação",
             "Art. 53 Lei 14.133/2021 (controle prévio de legalidade); LINDB art. 22; art. 11 Lei 8.429/92 (dolo específico — Lei 14.230/2021)"),
     # Investigação de Due Diligence (fachada/laranja) — motor investigacao_dd; detalhe na seção II-E.
@@ -147,6 +151,11 @@ _MATRIZ = {
             "competição de fachada: preço de reserva capturado pelo grupo (bid rigging OCDE)",
             "cruzar QSA/vínculos dos licitantes e representar ao MP-RJ e ao CADE "
             "(art. 90 Lei 14.133; art. 36 Lei 12.529)"),
+    "R-RAPP": ("valor estimado sem cesta de preços independente (fonte única, < 3 fontes ou referências "
+               "negociadas por interessados)",
+               "preço de referência sem lastro de mercado: sobrepreço não detectável na contratação",
+               "refazer a pesquisa com ≥ 3 fontes independentes (painel de preços, PNCP, contratações similares) "
+               "e tratar outliers; na inexigibilidade, comparar com contratos da contratada com terceiros"),
     "R15": ("ressalva de parecer (PGE/CGE/jurídico) aparentemente sem resposta da autoridade",
             "instrução viciada: decisão sem enfrentar o controle prévio de legalidade",
             "localizar o despacho decisório; sem acolhimento nem divergência motivada, representar "
@@ -211,6 +220,9 @@ _EXCULPATORIO = {
            "por planilha de custos e fato superveniente documentado — não de recomposição do desconto.",
     "R14": "Preços próximos entre licitantes podem refletir tabela referencial pública ou mercado de margem "
            "estreita, sem qualquer coordenação entre os concorrentes.",
+    "R-RAPP": "Mercado restrito pode ter poucas fontes de fato, e a pesquisa pode ter justificado a impossibilidade de "
+              "três cotações (art. 23 §1º admite combinação de parâmetros); na inexigibilidade, a nota fiscal da "
+              "própria contratada com terceiros é o método legal (art. 23 §4º).",
     "R15": "A autoridade pode ter acolhido a ressalva em despacho posterior não capturado na leitura, ou "
            "divergido com motivação idônea registrada em documento apartado (LINDB art. 22).",
     "DD": "Sinais cadastrais isolados (endereço residencial, capital baixo, empresa recente) são comuns em "
@@ -319,6 +331,7 @@ _RF_DESTINATARIO = {
     "R13": ("debito",),
     "R14": ("conluio", "improbidade"),
     "R15": ("improbidade",),
+    "R-RAPP": ("debito",),
     "DD": ("par", "improbidade"),
     "DD/TAC-RECORRENTE": ("debito", "improbidade"),   # dano/gestão (TCE-RJ) + omissão do gestor (MP)
     "DD/RF-TAC": ("debito",),
@@ -452,3 +465,70 @@ def _primeira_data_pag(p: dict) -> str:
     return melhor.isoformat() if melhor else ""
 
 
+
+
+# ── R-RAPP — pesquisa de preços frágil (confronto CGE × JFN 13/11/2026, lacuna 3) ────────────────────
+# O achado MAIS frequente da CGE (LOTERJ A-003 a A-009; ISP Q2; DETRO 004; RIOTRILHOS) e que o Lex só tocava pela
+# ausência de palavra-chave (R3). Regra de LEITURA sobre o texto da pesquisa: conta as fontes INDEPENDENTES (painel
+# de preços, PNCP/contratações similares, banco de preços, mídia/sítio especializado, cotações de CNPJ fora do grupo
+# da contratada) e procura as duas formas de "fonte que não vale": a proposta da própria contratada como única
+# referência e referências negociadas por terceiros interessados (o patrocínio "justificado" por cotas negociadas
+# pelas emissoras, LOTERJ) ou cotações de empresas do mesmo grupo (mesma raiz de CNPJ).
+_RX_RAPP = re.compile(r"pesquisa\s+de\s+pre[çc]|\brapp\b|cesta\s+de\s+pre[çc]|mapa\s+(?:comparativo\s+)?de\s+pre[çc]|"
+                      r"cota[çc][ãa]o|cota[çc][õo]es|or[çc]amentos?\b|justificativa\s+de\s+pre[çc]|estimativa\s+de\s+pre[çc]",
+                      re.I)
+_FONTES_PUBLICAS = {
+    "painel_de_precos": re.compile(r"painel\s+de\s+pre[çc]os", re.I),
+    "pncp_contratacoes_similares": re.compile(r"\bpncp\b|contrata[çc][õo]es\s+similares|compras\s+p[úu]blicas\s+similares",
+                                              re.I),
+    "banco_de_precos": re.compile(r"banco\s+de\s+pre[çc]os", re.I),
+    "midia_especializada": re.compile(r"m[íi]dia\s+especializada|s[íi]tio\s+eletr[ôo]nico\s+especializado|"
+                                      r"tabela\s+de\s+refer[êe]ncia|sinapi|sicro", re.I),
+}
+_RX_FONTE_UNICA = re.compile(r"proposta\s+d[ae]\s+(?:pr[óo]pria\s+)?contratada|[úu]nica\s+(?:fonte|cota[çc][ãa]o|proposta)|"
+                             r"fonte\s+[úu]nica|or[çc]amento\s+[úu]nico", re.I)
+_RX_NAO_INDEPENDENTE = re.compile(
+    r"negociad[oa]s?\s+(?:por|pel[oa]s?)\s+(?:\w+\s+){0,2}(?:emissora|ag[êe]ncia|intermedi[áa]ri|terceir|patrocinador|"
+    r"organizador|representante)", re.I)
+_RX_CNPJ_RAPP = re.compile(r"\b(\d{2})\.?(\d{3})\.?(\d{3})/?(\d{4})-?(\d{2})\b")
+
+
+def avaliar_rapp(texto: str, *, cnpj_contratada: str | None = None, texto_integral: bool = False) -> list[dict]:
+    """Achados R-RAPP sobre o TEXTO da pesquisa de preços (ou do processo). Puro, sem I/O.
+
+    `texto_integral=True` só quando o texto é o processo INTEIRO: aí, sem marcador de pesquisa, cabe dizer
+    "ausência de RAPP". Num recorte, ausência no texto ≠ ausência no processo (INDISPONÍVEL ≠ 0) e nada sai.
+    Devolve [{rf, grav, subtipo, obs}] no formato dos achados do Lex."""
+    txt = texto or ""
+    if not _RX_RAPP.search(txt):
+        if texto_integral and txt.strip():
+            return [{"rf": "R-RAPP", "grav": 3, "subtipo": "ausencia_rapp",
+                     "obs": "No processo integral **não há** pesquisa de preços (RAPP/cotações) — valor estimado sem "
+                            "lastro documentado (art. 23 Lei 14.133/2021)."}]
+        return []
+    contratada = re.sub(r"\D", "", cnpj_contratada or "")
+    publicas = [k for k, rx in _FONTES_PUBLICAS.items() if rx.search(txt)]
+    cnpjs = {"".join(m.groups()) for m in _RX_CNPJ_RAPP.finditer(txt)}
+    mesma_raiz = {c for c in cnpjs if contratada and c[:8] == contratada[:8]}
+    do_grupo = mesma_raiz - {contratada}          # filial/coligada cotando: a própria contratada não é "grupo"
+    independentes = cnpjs - mesma_raiz
+    n_fontes = len(publicas) + len(independentes)
+    achados: list[dict] = []
+    if n_fontes < 3:
+        achados.append({"rf": "R-RAPP", "grav": 3, "subtipo": "fontes_insuficientes",
+                        "obs": f"Pesquisa de preços com **{n_fontes} fonte(s) independente(s)** "
+                               f"({', '.join(publicas + sorted(independentes)) or 'nenhuma identificada'}) — "
+                               "menos de 3 (art. 23 Lei 14.133/2021; Acórdão 1875/2021-TCU)."})
+    if _RX_FONTE_UNICA.search(txt) or (cnpjs and cnpjs == mesma_raiz and not publicas):
+        achados.append({"rf": "R-RAPP", "grav": 4, "subtipo": "fonte_unica_contratada",
+                        "obs": "A referência de preço é a **proposta da própria contratada** (fonte única) — não "
+                               "afere mercado."})
+    motivos = []
+    if _RX_NAO_INDEPENDENTE.search(txt):
+        motivos.append("referências negociadas por terceiros interessados no contrato")
+    if do_grupo:
+        motivos.append(f"{len(do_grupo)} cotação(ões) de CNPJ do mesmo grupo da contratada (mesma raiz)")
+    if motivos:
+        achados.append({"rf": "R-RAPP", "grav": 3, "subtipo": "referencias_nao_independentes",
+                        "obs": "Referências **não independentes**: " + "; ".join(motivos) + "."})
+    return achados

@@ -10,11 +10,16 @@ import re
 
 from compliance_agent.reporting.inteligencia import moeda
 from compliance_agent.lex_redflags import (
-    _RF, _eh_servico_continuo, _ramo_objeto,
+    _RF, _eh_servico_continuo, _ramo_objeto, avaliar_rapp,
 )
 from compliance_agent.lex_sei_leitura import (
     _bloqueio_rede, _eh_interface_sei, _texto_integra,
 )
+
+# Título de documento SEI que É a pesquisa de preços (RAPP, mapa/relatório de cotações) — alvo do R-RAPP.
+_RX_DOC_RAPP = re.compile(r"pesquisa\s+de\s+pre[çc]|\brapp\b|mapa\s+(?:comparativo\s+)?de\s+pre[çc]|cota[çc]|"
+                          r"or[çc]amento|cesta\s+de\s+pre[çc]", re.I)
+
 
 def _modalidade(low: str) -> str:
     for chave, rotulo in [
@@ -113,6 +118,13 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
             achados.append({"rf": "R3", "grav": 2,
                             "obs": "No texto lido **não localizei** pesquisa/cesta de preços (Acórdão 1875/2021-TCU) — "
                                    "verificar a instrução do ETP/valor estimado."})
+        # R-RAPP — QUALIDADE da pesquisa de preços (confronto CGE × JFN 13/11/2026, lacuna 3). Lê só os documentos
+        # cujo TÍTULO é de pesquisa de preços: no processo inteiro, os CNPJs da NF/contrato inflariam as "fontes".
+        docs_rapp = [str(d.get("conteudo") or "") for d in integra.get("conteudo_documentos") or []
+                     if _RX_DOC_RAPP.search(str(d.get("doc") or ""))]
+        if docs_rapp:
+            achados.extend(avaliar_rapp("\n".join(docs_rapp),
+                                        cnpj_contratada=integra.get("cnpj_contratada") or integra.get("cnpj")))
         # R9 — aditivos
         n_adit = low.count("termo aditivo") + low.count("aditamento")
         if n_adit >= 2:
@@ -130,7 +142,8 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
     _gat = {"R5": ["dispensa", "inexigibil"],
             "R3": ["edital", "termo de referência", "termo de referencia", "contrato"],
             "R9": ["termo aditivo", "aditamento"],
-            "R7": ["atestado de capacidade", "marca", "modelo "]}
+            "R7": ["atestado de capacidade", "marca", "modelo "],
+            "R-RAPP": ["pesquisa de preç", "cotaç", "rapp", "mapa de preç"]}
     for a in achados:
         a["numero_proc"] = integra.get("numero", "")
         a["trecho"] = _trecho(txt, _gat.get(a["rf"], []))
