@@ -19,6 +19,7 @@ Regras da casa aplicadas aqui:
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re
@@ -27,6 +28,8 @@ import time
 import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 RAIZ = Path(__file__).resolve().parents[1]
 DB = RAIZ / "data" / "compliance.db"
@@ -248,16 +251,16 @@ def _marcas_por_cnpj(con: sqlite3.Connection, con_ach: sqlite3.Connection | None
                                  f"({q}) AND grau IN ('🔴','🟡') GROUP BY cnpj", lote):
                 marcas[r[0]].append({"fonte": "perícia", "grau": "🔴" if "🔴" in str(r[1]) else r[1],
                                      "rotulo": "Perícia de fornecedor"})
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            logger.warning("governo_couto: perícias indisponíveis para as marcas: %s", exc)
         if con_ach is not None:
             try:
                 for r in con_ach.execute(f"SELECT processo, detector, motivo FROM achado_detector WHERE status="
                                          f"'confirmado' AND processo IN ({q})", lote):
                     marcas[r[0]].append({"fonte": "detector", "grau": "🟡",
                                          "rotulo": f"Detector {r[1]}: {(r[2] or '')[:120]}"})
-            except sqlite3.OperationalError:
-                pass
+            except sqlite3.OperationalError as exc:
+                logger.warning("governo_couto: detectores indisponíveis para as marcas: %s", exc)
     return marcas
 
 
@@ -472,8 +475,8 @@ def _controle(con: sqlite3.Connection, con_ach: sqlite3.Connection | None, seis_
                 if r[2] in credores:
                     det.append({"ug": r[0], "detector": r[1], "cnpj": r[2], "score": r[3],
                                 "motivo": mascarar_texto((r[4] or "")[:200])})
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            logger.warning("governo_couto: detectores indisponíveis no bloco de controle: %s", exc)
     return {
         "estado": "ok",
         "fonte": ("DOERJ (atos que citam o Decreto 50.254/2026 — auditorias AGE/CGE nas secretarias); penalidades do "
