@@ -67,3 +67,27 @@ def test_reserva_expira(monkeypatch, tmp_path):
     assert F._reservados_vm2() == {"100000/000001/2025"}
     r.write_text(json.dumps({"ts": time.time() - 13 * 3600, "procs": ["100000/000001/2025"]}))
     assert F._reservados_vm2() == set()
+
+
+def test_devolver_nao_entrega_falha_do_navegador_e_rebaixa_o_log(monkeypatch, tmp_path):
+    log = tmp_path / "fila.log"
+    log.write_text(
+        "[2026-11-13 16:51:08]   270032/000052/2023: SEM ÁRVORE (processo não abriu) — via='cracked' "
+        "erro_cracked=\"link 'Pesquisa' NÃO ESTÁ no DOM (o clique nunca aconteceu)\"\n"
+        "[2026-11-13 16:51:08]   270032/000052/2023: sem_arvore\n"
+        "[2026-11-13 17:00:00]   270003/004118/2024: ok\n", encoding="utf-8")
+    monkeypatch.setattr(F, "LOG", log)
+    monkeypatch.setattr(V, "RESUMO", tmp_path / "resumo.jsonl")
+    monkeypatch.setattr(V, "_limpar_local", lambda tag: None)
+    enviados, chamadas = [], []
+    monkeypatch.setattr(V, "_entregar", lambda tag: (enviados.append(tag) or True, "", 44))
+
+    class R:
+        returncode, stdout = 0, ""
+    monkeypatch.setattr(V, "_ssh", lambda cmd, entrada=None, timeout=300: chamadas.append(entrada) or R())
+    r = V.devolver(0)
+    assert enviados == ["270003_004118_2024"]
+    assert r["entregues"] == {"270003/004118/2024": 44}
+    texto_vm1 = chamadas[-1]
+    assert "270003/004118/2024: ok\n" in texto_vm1
+    assert "270032/000052/2023: sem_arvore-vm2-nao-entregue" in texto_vm1

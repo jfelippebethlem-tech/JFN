@@ -42,6 +42,9 @@ say "fila exportada pela VM-1: $N processo(s), orçamento ${SEG}s"
 PAUSA="$ANTIGO/data/.pause_sei_sweep"; CRIEI=0
 if [ -d "$ANTIGO/data" ] && [ ! -f "$PAUSA" ]; then touch "$PAUSA"; CRIEI=1; fi
 trap '[ "$CRIEI" = 1 ] && rm -f "$PAUSA"' EXIT
+# `systemctl stop` manda SIGTERM: sem isto o bash morre sem rodar o EXIT e a pausa do sweep fica para sempre
+# (medido em 13/11: a 1ª parada manual deixou ~/JFN/data/.pause_sei_sweep para trás)
+trap 'exit 143' TERM INT
 for _ in $(seq 1 180); do                      # até 30 min (o sei_sweep de lá tem teto de 1300 s)
   # lock só conta se o PID dono estiver vivo (lock órfão não pode segurar 30 min a cada rodada)
   DONO=$(cut -d: -f1 "$ANTIGO/data/browser.lock" 2>/dev/null | tr -dc '0-9')

@@ -116,6 +116,7 @@ def batida() -> None:
 
 _RX_STATUS = re.compile(r"^\[[^\]]+\]\s+(\d{6}/\d{6}/\d{4}): (\w+)\s*$")
 _ENTREGAR = {"ok", "vazio", "sem_arvore"}
+_RX_CAUSA_METODO = re.compile(r"^\[[^\]]+\]\s+(\d{6}/\d{6}/\d{4}): SEM ÁRVORE.*NÃO ESTÁ no DOM")
 
 
 def _ssh(cmd: str, entrada: str | None = None, timeout: int = 300) -> subprocess.CompletedProcess:
@@ -172,11 +173,18 @@ def devolver(desde: int) -> dict:
     except OSError:
         linhas = []
     status: dict[str, str] = {}
+    falha_de_metodo: set[str] = set()
     for ln in linhas:
         m = _RX_STATUS.match(ln)
         if m:
             status[m.group(1)] = m.group(2)
-    a_entregar = [p for p, s in status.items() if s in _ENTREGAR]
+        m = _RX_CAUSA_METODO.match(ln)
+        if m:
+            falha_de_metodo.add(m.group(1))
+    # "SEM ÁRVORE" porque o link da Pesquisa nem estava na página é falha do NAVEGADOR, não do processo:
+    # entregar o manifesto vazio daria 7 dias de espera a um processo que nem chegou a ser procurado.
+    # Medido na 1ª rodada (13/11 16:51-16:53): dois seguidos assim; o mesmo worker, minutos depois, leu 44 docs.
+    a_entregar = [p for p, s in status.items() if s in _ENTREGAR and p not in falha_de_metodo]
     vazios = [p.replace("/", "_") for p in a_entregar if status[p] != "ok"]
     aceitos = set()
     if vazios:
@@ -184,6 +192,9 @@ def devolver(desde: int) -> dict:
         aceitos = set(r.stdout.split()) if r.returncode == 0 else set()
     entregues: dict[str, int] = {}
     falhas: dict[str, str] = {}
+    for proc in falha_de_metodo:
+        falhas[proc] = "falha do navegador (link da Pesquisa ausente) — fica para a próxima rodada"
+        _limpar_local(proc.replace("/", "_"))
     for proc in a_entregar:
         tag = proc.replace("/", "_")
         if status[proc] != "ok" and tag not in aceitos:
