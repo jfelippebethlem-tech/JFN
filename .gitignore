@@ -223,3 +223,10 @@ static/assets/v61/src/
 .ruflo/
 agentdb.rvf
 agentdb.rvf.lock
+
+# Rotinas automáticas do painel (2026-11-13): saídas com DADO REAL — repositório público, nunca versionar
+data/pericia_contabil_resumo.json
+data/governo_couto_suspeitas.json
+data/governo_couto_regras.json
+data/cge_confronto.json
+data/cge_auditorias.json

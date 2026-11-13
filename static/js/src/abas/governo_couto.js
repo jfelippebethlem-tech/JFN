@@ -78,6 +78,16 @@ function _placar(p, d){
   </div>`;
 }
 
+// Diretriz do dono (13/11/2026): estado VERIFICADO/PENDENTE visível em cada ponto, com a prova primária citada.
+// Arquivo antigo sem o campo → "não declarada" (não se presume verificado).
+function _verif(x){
+  const v = x.verificacao || 'NÃO DECLARADA';
+  const cor = v === 'VERIFICADO' ? 'var(--green)' : (v === 'INDISPONÍVEL' ? 'var(--dim)' : 'var(--amber)');
+  const prova = (x.prova_primaria || []).map(p => `<div>· ${esc(p)}</div>`).join('');
+  return `<div style="font-size:12px;margin-top:3px"><b style="color:${cor}">${esc(v)}</b>${x.grau_proposto ? ` <span class="dim">(grau proposto ${esc(x.grau_proposto)}, rebaixado até a verificação)</span>` : ''}${x.natureza ? ` <span class="dim">· ${esc(x.natureza)}</span>` : ''}
+    ${prova ? `<details><summary style="cursor:pointer" class="dim">prova primária citada</summary><div class="dim">${prova}</div></details>` : ''}</div>`;
+}
+
 function _pontos(b){
   if (b.estado === 'em_andamento') return card(`<div class="warn">${esc(b.mensagem || 'Análise em andamento.')}</div>${_fonte(b)}`);
   if (b.estado !== 'ok') return card(`<div class="warn">Pontos de atenção INDISPONÍVEIS — ${esc(b.erro || '')}. Não é "nenhum ponto".</div>${_fonte(b)}`);
@@ -87,7 +97,7 @@ function _pontos(b){
   const chip = (k, v, t, on) => `<button type="button" class="chip${on ? ' on' : ''}" data-gc-pt="${k}:${v}">${t}</button>`;
   const rows = b.itens.map(x => ({c: x.camada, g: x.grau, o: _norm(x.orgao), h: `<tr>
       <td style="min-width:150px">${esc(x.grau)} <span class="dim" style="font-size:11px">· ${x.camada === 'deterministica' ? 'determinística' : 'subjetiva'}</span><div style="margin-top:4px">${_verifTag(x)}</div></td>
-      <td style="min-width:220px"><b>${esc(x.regra_ou_hipotese || '')}</b><div class="dim" style="font-size:12px">${esc(x.orgao || '')}${x.processo ? ' · ' + esc(x.processo) : ''}${x.fonte ? ' · fonte: ' + esc(x.fonte) : ''}</div></td>
+      <td style="min-width:220px"><b>${esc(x.regra_ou_hipotese || '')}</b><div class="dim" style="font-size:12px">${esc(x.orgao || '')}${x.processo ? ' · ' + esc(x.processo) : ''}${x.fonte ? ' · fonte: ' + esc(x.fonte) : ''}</div>${_verif(x)}</td>
       <td class="right" style="white-space:nowrap">${x.valor_ob == null ? '<span class="dim">—</span>' : fmtR(x.valor_ob)}</td>
       <td style="font-size:13px;min-width:160px">${esc(x.explicacao_inocente)}</td>
       <td style="font-size:13px;min-width:140px">${esc(x.proximo_passo || '')}</td></tr>`}));
@@ -95,7 +105,9 @@ function _pontos(b){
     <div class="chips">${chip('camada', '', 'Todas as camadas', 1)}${chip('camada', 'deterministica', `Determinística (${fmtN(pc.deterministica || 0)})`)}${chip('camada', 'subjetiva', `Subjetiva (${fmtN(pc.subjetiva || 0)})`)}</div>
     <div class="chips">${chip('grau', '', 'Todos os graus', 1)}${['🔴', '🟡', '⚪'].map(g => chip('grau', g, `${g} ${fmtN(pg[g] || 0)}`)).join('')}</div>
     <div style="margin-top:8px">${_tabela('pt', '<th>Grau e verificação</th><th>Indício (regra ou hipótese)</th><th class="right">OB</th><th>Explicação inocente</th><th>Próximo passo</th>', rows)}</div>
-    <div class="dim" style="font-size:12px;margin-top:6px">Atualizado em ${esc(b.atualizado_em || '—')}. Indício não é acusação: a explicação inocente fica sempre ao lado. VERIFICADO = o fato está na fonte citada; não é juízo de irregularidade.</div>${_fonte(b)}`);
+    <div class="dim" style="font-size:12px;margin-top:6px">Atualizado em ${esc(b.atualizado_em || '—')}. Indício não é acusação: a explicação inocente fica sempre ao lado. VERIFICADO = o fato está na fonte citada; não é juízo de irregularidade.</div>
+    ${b.por_verificacao ? `<div class="dim" style="font-size:12px;margin-top:4px"><b>Verificação:</b> ${Object.entries(b.por_verificacao).map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(' · ')}${b.camada_subjetiva ? ` · camada subjetiva: ${esc(b.camada_subjetiva.estado || '')}${b.camada_subjetiva.motivo ? ' (' + esc(b.camada_subjetiva.motivo) + ')' : ''}` : ''}</div>
+      <div class="dim" style="font-size:12px;margin-top:2px">${esc(b.verificacao_definicao || '')}</div>` : '<div class="warn" style="font-size:12px;margin-top:4px">Arquivo sem estado de verificação por ponto — tratar todos como PENDENTES.</div>'}${_fonte(b)}`);
 }
 
 function _atos(b){
