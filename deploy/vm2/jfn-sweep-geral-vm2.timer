@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — varredura geral do SEI na VM-2 a cada 30 min (cede às íntegras pela trava compartilhada)
+
+[Timer]
+OnCalendar=*-*-* *:05,35:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

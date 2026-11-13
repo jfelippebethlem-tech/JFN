@@ -143,8 +143,18 @@ async def main():
                 #
                 # Log que afirma menos do que o código sabe custa rodada de diagnóstico: eu tinha de
                 # abrir o dump à mão para descobrir algo que o processo já tinha em mãos.
+                # E A RESPOSTA DO PRÓPRIO SEI. Medido em 13/11/2026 (tela capturada, VM-2): os quatro processos
+                # que saíam com "link 'Pesquisa' NÃO ESTÁ no DOM" tinham, na página, "Unidade atual não possui
+                # acesso ao processo restrito SEI-…" — nível de acesso RESTRITO do processo, dito pelo SEI. A
+                # mensagem do cracked apontava o navegador; a da página aponta o processo. Registrar a da página.
+                try:
+                    corpo = await pg.evaluate("()=>document.body ? document.body.innerText : ''")
+                except PWError:
+                    corpo = ""
+                aviso = re.search(r"Unidade atual não possui acesso ao processo restrito[^\n.]*", corpo or "")
                 print("SEM ÁRVORE (processo não abriu) — "
-                      f"via={dump.get('via')!r} erro_cracked={dump.get('erro_cracked')!r} "
+                      + (f"RESTRITO: SEI diz '{aviso.group(0)}' — " if aviso else "")
+                      + f"via={dump.get('via')!r} erro_cracked={dump.get('erro_cracked')!r} "
                       f"cadeado={dump.get('cadeado')!r} "
                       f"n_docs_restritos={dump.get('n_docs_restritos')!r} "
                       f"relacionados={len(dump.get('relacionados') or [])} "

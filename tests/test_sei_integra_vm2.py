@@ -101,3 +101,14 @@ def test_tirar_da_fila_mantem_adiados(tmp_path):
     fila.write_text(json.dumps([{"sei": "SEI-100000/000001/2025"}, {"sei": "SEI-100000/000002/2025"}]))
     V._tirar_da_fila(fila, ["100000/000001/2025"])
     assert [e["sei"] for e in json.loads(fila.read_text())] == ["SEI-100000/000002/2025"]
+
+
+def test_fila_usa_precalculo_fresco_e_ignora_velho(monkeypatch, tmp_path):
+    _isolar(monkeypatch, tmp_path)
+    monkeypatch.setattr(V, "PRE", tmp_path / "pre.json")
+    caro = []
+    monkeypatch.setattr(F, "_fila_geral", lambda: caro.append(1) or [{"sei": "SEI-300000/000004/2025"}])
+    (tmp_path / "pre.json").write_text(json.dumps({"ts": time.time(), "reler": [], "geral": ["SEI-400000/000001/2025"]}))
+    assert "SEI-400000/000001/2025" in [e["sei"] for e in V.montar_fila(10)] and not caro
+    (tmp_path / "pre.json").write_text(json.dumps({"ts": time.time() - 27 * 3600, "reler": [], "geral": []}))
+    assert "SEI-300000/000004/2025" in [e["sei"] for e in V.montar_fila(10)] and caro

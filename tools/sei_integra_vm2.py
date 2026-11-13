@@ -61,12 +61,40 @@ def _ler_fila(caminho: Path) -> list[dict]:
     return [e for e in d if isinstance(e, dict)] if isinstance(d, list) else []
 
 
+PRE = RAIZ / "data" / ".integras_fila_pre.json"
+PRE_HORAS = 26
+
+
+def precalcular() -> dict:
+    """As duas partes CARAS da fila, uma vez por dia (cron 00:20 e 12:20 na VM-1). Medido em 13/11/2026 com
+    load 20: `_fila_reler_por_ob` 528 s e `_fila_geral` 204 s — doze minutos de CPU a cada exportação. A lista
+    pré-calculada é refiltrada na hora de exportar (`_arquivado_ok`/`_vazio_recente`), então não envelhece
+    para o que importa: o que entrou no arquivo depois sai da fila mesmo assim."""
+    t0 = time.time()
+    d = {"ts": time.time(), "reler": F._fila_reler_por_ob(), "geral": [c["sei"] for c in F._fila_geral()]}
+    d["segundos"] = round(time.time() - t0, 1)
+    tmp = PRE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(d), encoding="utf-8")
+    tmp.replace(PRE)
+    return {"reler": len(d["reler"]), "geral": len(d["geral"]), "segundos": d["segundos"]}
+
+
+def _pre() -> dict | None:
+    try:
+        d = json.loads(PRE.read_text(encoding="utf-8"))
+        return d if time.time() - float(d.get("ts") or 0) < PRE_HORAS * 3600 else None
+    except (OSError, ValueError, TypeError):
+        return None
+
+
 def montar_fila(max_n: int, k_bombeiros: int = K_BOMBEIROS) -> list[dict]:
     """Fila na ORDEM do código da VM-1: bombeiros (por score) → dinheiro (por valor pago) → geral."""
     bomb = sorted(_ler_fila(RAIZ / "data" / "bombeiros_sei_fila.json"), key=lambda e: -(e.get("score") or 0))
     dinheiro = _ler_fila(RAIZ / "data" / "sei_fila_dinheiro.json")
-    reler = F._fila_reler_por_ob()
-    geral = list(dict.fromkeys(F._fila_inscrita() + [c["sei"] for c in F._fila_geral()] + reler))
+    pre = _pre()
+    reler = pre["reler"] if pre else F._fila_reler_por_ob()
+    geral_cdp = pre["geral"] if pre else [c["sei"] for c in F._fila_geral()]
+    geral = list(dict.fromkeys(F._fila_inscrita() + geral_cdp + reler))
     fontes = [("bombeiros", [e.get("sei", "") for e in bomb], k_bombeiros),
               ("dinheiro", [e.get("sei", "") for e in dinheiro], max_n),
               ("geral", geral, max_n)]
@@ -116,7 +144,8 @@ def batida() -> None:
 
 _RX_STATUS = re.compile(r"^\[[^\]]+\]\s+(\d{6}/\d{6}/\d{4}): (\w+)\s*$")
 _ENTREGAR = {"ok", "vazio", "sem_arvore"}
-_RX_CAUSA_METODO = re.compile(r"^\[[^\]]+\]\s+(\d{6}/\d{6}/\d{4}): SEM ÁRVORE.*NÃO ESTÁ no DOM")
+# sem a causa do SEI ("RESTRITO: SEI diz …", registrada desde 13/11) e com o cracked sem achar a Pesquisa
+_RX_CAUSA_METODO = re.compile(r"^\[[^\]]+\]\s+(\d{6}/\d{6}/\d{4}): SEM ÁRVORE \(processo não abriu\) — via=.*NÃO ESTÁ no DOM")
 
 
 def _ssh(cmd: str, entrada: str | None = None, timeout: int = 300) -> subprocess.CompletedProcess:
@@ -231,6 +260,7 @@ def main() -> int:
     e = sub.add_parser("exportar"); e.add_argument("--max", type=int, default=300)
     a = sub.add_parser("aceita"); a.add_argument("tags", nargs="*")
     sub.add_parser("batida")
+    sub.add_parser("precalcular")
     d = sub.add_parser("devolver"); d.add_argument("--desde", type=int, default=0)
     d.add_argument("--fila", default="")
     args = ap.parse_args()
@@ -240,6 +270,8 @@ def main() -> int:
         print(" ".join(aceita(args.tags)))
     elif args.cmd == "batida":
         batida()
+    elif args.cmd == "precalcular":
+        print(json.dumps(precalcular(), ensure_ascii=False))
     else:
         print(json.dumps(devolver(args.desde, Path(args.fila) if args.fila else None), ensure_ascii=False))
     return 0

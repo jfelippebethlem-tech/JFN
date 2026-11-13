@@ -1,0 +1,13 @@
+[Unit]
+Description=JFN — varredura geral do SEI na VM-2 (fatia 1/2, fila exportada pela VM-1, lote conferido)
+Documentation=file:/home/ubuntu/JFN-worker/tools/vm2_sweep_geral.py
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN-worker
+ExecStart=/bin/bash /home/ubuntu/JFN-worker/tools/vm2_sweep_geral.sh 8
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+TimeoutStartSec=45min
