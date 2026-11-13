@@ -236,10 +236,16 @@ export function ckPull(first){
        o total é a rota (`n_alto`, `n`), não o tamanho da página que chegou. */
     const gs=(d.grupos||[]),altos=gs.filter(g=>g.grau==='alto'),
           nAlto=(d.n_alto!=null?d.n_alto:altos.length),nTot=(d.n!=null?d.n:gs.length);
+    /* Revisão cética 13/11/2026 (D7): o número é de grupos de grau ALTO; o R$ ao lado era o do
+       CONJUNTO (todos os graus). Agora é a soma dos grupos ALTO — da rota quando ela traz
+       (`total_recebido_ob_alto`), senão dos altos da página, dito como piso. */
+    const vAlto=(d.total_recebido_ob_alto!=null?d.total_recebido_ob_alto
+                 :altos.reduce((s,g)=>s+(g.total_recebido_ob||0),0)),
+          piso=(d.total_recebido_ob_alto==null&&nAlto>altos.length);
     ckFill('ninho',{num:nAlto,
       meta:`grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada`
            +(nTot>nAlto?` · outros ${fmtN(nTot-nAlto)} com menos fatores`:'')
-           +` — <b>${fmtRc(d.total_recebido_ob||0)}</b> em OB no conjunto`});
+           +` — <b>${piso?'≥ ':''}${fmtRc(vAlto)}</b> em OB nesses grupos`});
     ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores||[])[1]||'')} · ${fmtRc(g.total_recebido_ob)}`})));});
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok){
       // herói nunca fica preso no placeholder: erro vira mensagem humana + retry
@@ -272,7 +278,7 @@ export function ckPull(first){
     ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ ${_v60?'Radar':'RADAR'} ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
   J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
-    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
+    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra sanção ${b.lift}× acima da base (sanção de qualquer época ou ente)`:'—'});});
   // Revisão D6 (2026-11-13): o ticker dizia "(sancionada)" para os 5 casos e NENHUM estava
   // sancionado na data da compra. O sinal agora vem do servidor já com vigência e alcance;
   // o rótulo diz qual sinal é, e "sancionada depois" não se passa por vedação.

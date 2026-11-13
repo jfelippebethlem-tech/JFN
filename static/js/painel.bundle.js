@@ -5343,7 +5343,7 @@ void main(){
     _sair = sair;
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../../../node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -5551,7 +5551,7 @@ void main(){
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../../../node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -7052,12 +7052,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../../../node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../../../node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -7071,13 +7071,13 @@ void main(){
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../../../node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../../../node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -7145,7 +7145,7 @@ void main(){
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../../../node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -7211,7 +7211,7 @@ void main(){
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../../../node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -7846,9 +7846,10 @@ void main(){
         return;
       }
       const gs = d.grupos || [], altos = gs.filter((g) => g.grau === "alto"), nAlto = d.n_alto != null ? d.n_alto : altos.length, nTot = d.n != null ? d.n : gs.length;
+      const vAlto = d.total_recebido_ob_alto != null ? d.total_recebido_ob_alto : altos.reduce((s, g) => s + (g.total_recebido_ob || 0), 0), piso = d.total_recebido_ob_alto == null && nAlto > altos.length;
       ckFill("ninho", {
         num: nAlto,
-        meta: `grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada` + (nTot > nAlto ? ` · outros ${fmtN(nTot - nAlto)} com menos fatores` : "") + ` — <b>${fmtRc(d.total_recebido_ob || 0)}</b> em OB no conjunto`
+        meta: `grupos na <b>MESMA SALA</b> com 2+ CNPJs recebendo e <b>3+ fatores</b> de fachada` + (nTot > nAlto ? ` · outros ${fmtN(nTot - nAlto)} com menos fatores` : "") + ` — <b>${piso ? "≥ " : ""}${fmtRc(vAlto)}</b> em OB nesses grupos`
       });
       ckPush(altos.slice(0, 3).map((g) => ({ c: "a", h: `◉ mesma sala — <b>${fmtN(g.n_recebem_ob)} de ${fmtN(g.n_cnpjs)} CNPJs recebem</b> · ${esc((g.fatores || [])[1] || "")} · ${fmtRc(g.total_recebido_ob)}` })));
     });
@@ -7888,7 +7889,7 @@ void main(){
     J("/api/intel/lift").then((d) => {
       if (!d || !d.ok) return;
       const b = (d.detectores || []).filter((x) => !x.circular).sort((a, c) => (c.lift || 0) - (a.lift || 0))[0];
-      ckFill("lift", { txt: b ? b.lift + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base` : "—" });
+      ckFill("lift", { txt: b ? b.lift + "×" : "—", meta: b ? `<b>${rot(b.detector)}</b> concentra sanção ${b.lift}× acima da base (sanção de qualquer época ou ente)` : "—" });
     });
     J("/api/comparador/dossie").then((d) => {
       if (!d || !d.ok) return;
