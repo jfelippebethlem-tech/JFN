@@ -73,8 +73,19 @@ def main() -> int:
     ap.add_argument("--ate", default="04:40", help="não começa coleta nova depois deste horário (HH:MM)")
     ap.add_argument("--max-ugs", type=int, default=3)
     ap.add_argument("--load-max", type=float, default=3.0)
+    ap.add_argument("--ugs", default="", help="UGs separadas por vírgula, NESTA ordem (fila dirigida)")
+    ap.add_argument("--tipos", default="NE,NL", help="NE, NL ou NE,NL")
     a = ap.parse_args()
-    trabalho = fila(a.exercicio, max_ugs=a.max_ugs)
+    tipos = [t.strip().upper() for t in a.tipos.split(",") if t.strip()]
+    if a.ugs:
+        # fila DIRIGIDA (12/11/2026): o resolvedor de duplicidade precisa do PROCESSO das NEs de 2023 das UGs
+        # cujas OBs vieram sem processo (SIAFE 1 desativado; o SIAFE 2 ainda serve 2023). Mesma regra de
+        # frescor da fila por valor: tipo completo há < 30 dias fica fora.
+        alvo = [u.strip() for u in a.ugs.split(",") if u.strip()]
+        livres = set(fila(a.exercicio, max_ugs=10 ** 6))
+        trabalho = [(u, t) for u in alvo for t in tipos if (u, t) in livres][: a.max_ugs * len(tipos)]
+    else:
+        trabalho = [x for x in fila(a.exercicio, max_ugs=a.max_ugs) if x[1] in tipos]
     print(f"[{time.strftime('%F %T')}] fila: {trabalho}", flush=True)
     for ug, tipo in trabalho:
         if _passou(a.ate):

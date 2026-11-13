@@ -286,6 +286,37 @@ def completar_pelo_contrato(obs: list[dict], cnpj: str, ug: str, mapas: tuple[di
     return obs
 
 
+def mapa_empenhos(c) -> dict:
+    """(credor, ug, exercício) → {numero_sei} das NEs do SIAFE (`ne_siafe`). Processo truncado sem ano (o SIAFE
+    corta: 'SEI-330005/0002') não reconhece e fica fora. Sem a tabela → {}."""
+    out: dict = {}
+    try:
+        for cred, ug, ex, proc in c.execute("SELECT credor, ug_emitente, exercicio, processo FROM ne_siafe "
+                                            "WHERE processo LIKE '%/%/%'"):
+            t = tag_processo(proc)
+            if t:
+                out.setdefault((re.sub(r"\D", "", cred or ""), str(ug), int(ex)), set()).add(numero_sei(t))
+    except sqlite3.OperationalError:
+        return {}
+    return out
+
+
+def completar_pelo_empenho(obs: list[dict], cnpj: str, ug: str, mapa: dict) -> list[dict]:
+    """OB sem processo recebe o processo das NEs do MESMO credor/UG/exercício quando ele é ÚNICO (fonte
+    "empenho_siafe"). Mais específico que o contrato do TCE: vem antes dele."""
+    for o in obs:
+        if tag_processo(o.get("processo")) is not None:
+            continue
+        mm = _comp_mm_aaaa(o.get("competencia")) or ""
+        if not mm[-4:].isdigit():
+            continue
+        cands = mapa.get((cnpj, str(ug), int(mm[-4:])), set())
+        if len(cands) == 1:
+            o["processo"] = next(iter(cands))
+            o["processo_fonte"] = "empenho_siafe"
+    return obs
+
+
 def _unidades_distintas(a: str, b: str) -> bool:
     """Nome de unidade escrito de 2 jeitos ("UPA CAMPO GRANDE I" / "UPA C GRANDE I") NÃO é unidade distinta:
     só conta como distinta quando os nomes não compartilham a maioria das palavras."""
@@ -731,9 +762,11 @@ def rodar(db=DB, limit: int | None = None, gerar=None, dry_run: bool = False, lo
         if not dry_run:
             garantir_tabela(c)
         mapas = mapa_contratos(c)
+        empenhos = mapa_empenhos(c)
         for i, (cnpj, ug, fav) in enumerate(pares, 1):
             obs = ps._obs_de(c, cnpj, ug)
             completar_pelo_historico(obs, historicos(c, ug, cnpj, [o["numero_ob"] for o in obs]))
+            completar_pelo_empenho(obs, cnpj, ug, empenhos)
             completar_pelo_contrato(obs, cnpj, ug, mapas)
             linhas = resolver_par(cnpj, ug, obs, favorecido=fav, gerar=gerar)
             n_comp += len(linhas)

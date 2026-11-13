@@ -515,3 +515,24 @@ def test_contrato_aberto_depois_da_competencia_nao_serve_e_dois_candidatos_nao_c
 def test_sem_tabela_de_contratos_nao_quebra():
     import sqlite3 as _sq
     assert R.mapa_contratos(_sq.connect(":memory:")) == ({}, {})
+
+
+# ── camada do processo da NOTA DE EMPENHO (SIAFE) ──
+def test_empenho_unico_do_credor_no_ano_vira_processo_e_truncado_fica_fora():
+    import sqlite3 as _sq
+    c = _sq.connect(":memory:")
+    c.execute("CREATE TABLE ne_siafe (credor TEXT, ug_emitente TEXT, exercicio INTEGER, processo TEXT)")
+    c.execute("INSERT INTO ne_siafe VALUES ('35208086000127','133100',2023,'SEI-330020/000868/2021')")
+    c.execute("INSERT INTO ne_siafe VALUES ('35208086000127','133100',2023,'SEI-330005/0002')")   # truncado: ignora
+    c.execute("INSERT INTO ne_siafe VALUES ('11111111000111','133100',2023,'SEI-330020/000001/2023')")
+    c.execute("INSERT INTO ne_siafe VALUES ('11111111000111','133100',2023,'SEI-330020/000002/2023')")
+    m = R.mapa_empenhos(c)
+    obs = [{"numero_ob": "a", "competencia": "06/2023", "processo": None}]
+    R.completar_pelo_empenho(obs, "35208086000127", "133100", m)
+    assert obs[0]["processo"] == "SEI-330020/000868/2021" and obs[0]["processo_fonte"] == "empenho_siafe"
+    obs = [{"numero_ob": "b", "competencia": "06/2023", "processo": None}]
+    R.completar_pelo_empenho(obs, "11111111000111", "133100", m)
+    assert obs[0]["processo"] is None                         # dois processos no ano: ambíguo
+    obs = [{"numero_ob": "c", "competencia": "06/2022", "processo": None}]
+    R.completar_pelo_empenho(obs, "35208086000127", "133100", m)
+    assert obs[0]["processo"] is None                         # outro exercício: não serve
