@@ -27,10 +27,11 @@ from compliance_agent import varredura_certames as VC  # noqa: E402
 from compliance_agent import varredura_execucao as VE  # noqa: E402
 from compliance_agent import varredura_orgaos as V  # noqa: E402
 from compliance_agent.detectores import rodar_fornecedor  # noqa: E402
+from compliance_agent.pericia_sweep import _fora_da_bateria  # noqa: E402
 
 # detector → (tabela, colunas-chave). Só os que o conserto de 11/11/2026 resolve em casa.
 ALVOS = {
-    "ug": ("achado_detector", ("C6", "C7", "C8", "C9")),
+    "ug": ("achado_detector", ("C", "C6", "C7", "C8", "C9")),
     "certame": ("achado_certame", ("J3",)),
     "execucao": ("achado_execucao", ("X7",)),
 }
@@ -57,6 +58,16 @@ def reprocessar(ro: sqlite3.Connection, ach: sqlite3.Connection, *, escopos=tupl
         for i, chave in enumerate(itens, 1):
             if escopo == "ug":
                 ug, cnpj = chave
+                nome = (ro.execute("SELECT MAX(nome_credor) FROM ob_orcamentaria_siafe WHERE credor=?",
+                                   (cnpj,)).fetchone() or [""])[0] or ""
+                if _fora_da_bateria(cnpj, nome):
+                    # ente público (repasse) não é fornecedor: a varredura já não o escolhe, e a linha antiga
+                    # "nao_avaliavel" (faltam qsa) sai da base — não determinado não aparece como indício.
+                    conta[("ente_publico", "podado")] += 1
+                    if destino is not None:
+                        destino.execute("DELETE FROM achado_detector WHERE ug=? AND processo=?", (ug, cnpj))
+                        destino.commit()
+                    continue
                 res = rodar_fornecedor(cnpj, contexto=V.contexto_fornecedor(ro, cnpj, ug))
                 if destino is not None:
                     V._persistir(destino, ug, "ug", res)

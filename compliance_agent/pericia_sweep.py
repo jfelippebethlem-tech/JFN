@@ -136,18 +136,64 @@ def _eh_nao_contratual(nome: str) -> bool:
     return any(p in n for p in _NAO_CONTRATUAL)
 
 
-def _fora_da_bateria(credor: str, nome: str) -> bool:
+# Ente público pelo nome ABREVIADO do SIAFE ou pela Receita (12/11/2026): sobravam como "fornecedor" "Inst.de
+# Prev.serv.mun.de Nova Iguacu", "NITEROI PREV", "Pref Munic De Campos", "Fundo Munic.de Saude", "Conselho
+# Nacional De Justic", "Sup.regional Do D.p.f.", "Universidade Federal…" — e viravam C6/C8 "faltam qsa".
+_RX_ENTE = re.compile(
+    r"\b(PREF\.?\s+MUN|INST\.?\s*(DE\s+)?PREV|INST\.?\s*PREV|\w*PREV\b|PREVI\b|SEGURIDADE SOCIAL|SEGURO SOCIAL|"
+    r"FUNDO MUNIC|CONSELHO NACIONAL|UNIVERSIDADE (FEDERAL|ESTADUAL)|MINISTERIO PUBLICO|SEC\.?\s*DE ESTADO|"
+    r"SECRETARIA NACIONAL|FUNDO DE EQUALIZACAO|D\.\s*P\.\s*F\.)")
+# Salvaguarda: nome de EMPRESA ou entidade PRIVADA nunca é ente — "Empr.proc.de Dados Prev.social Dataprev"
+# (contrato de TI), "Fund.p/o Vest.da Unesp" (concurso), "Instituição Adventista… de Prev." (privada).
+_RX_EMPRESA = re.compile(r"\b(LTDA|S\.?\s?A\.?|S/A|EIRELI|ME|EPP|SOCIEDADE INDIVIDUAL|EMPR\.?|EMPRESA|DATAPREV|"
+                         r"ASSOCIACAO|INSTITUICAO|VEST\.?|VESTIBULAR)\b")
+_NATUREZA_PUBLICA = ("ORGAO PUBLICO", "FUNDO PUBLICO", "AUTARQUIA", "FUNDACAO PUBLICA", "MUNICIPIO",
+                     "ESTADO OU DISTRITO", "UNIAO", "CONSORCIO PUBLICO", "SERVICO SOCIAL AUTONOMO",
+                     "FUNDACAO ESTADUAL", "FUNDACAO FEDERAL", "FUNDACAO MUNICIPAL")
+_NATUREZA_PRIVADA = ("ENTIDADE SINDICAL", "SOCIEDADE EMPRESARIA", "SOCIEDADE SIMPLES", "ASSOCIACAO PRIVADA",
+                     "EMPRESARIO", "COOPERATIVA", "FUNDACAO PRIVADA", "ORGANIZACAO SOCIAL", "SOCIEDADE ANONIMA",
+                     "SOCIEDADE UNIPESSOAL", "EMPRESA INDIVIDUAL")
+
+
+def eh_ente_publico(nome: str, razao_rfb: str = "", natureza: str = "") -> bool:
+    """Ente público / repasse pelo nome do SIAFE, pela razão social ou pela natureza jurídica da Receita.
+    Nome de EMPRESA (LTDA, S.A., EIRELI, ME/EPP) nunca é ente — a regex de abreviação não pode pegar fornecedor."""
+    nat = _sem_acento(natureza)
+    if nat and any(p in nat for p in _NATUREZA_PUBLICA):
+        return True
+    if nat and any(p in nat for p in _NATUREZA_PRIVADA):
+        return False                       # a Receita diz que é privado: Fetranspor (entidade sindical) etc.
+    s = _sem_acento(nome)
+    if s and not _RX_EMPRESA.search(s) and (_eh_nao_contratual(s) or _RX_ENTE.search(s)):
+        return True
+    # na razão social da Receita SÓ o padrão de ente: a lista de substrings ("ESTADO DO RIO DE JANEIRO") pegava
+    # "FEDERACAO DAS EMPRESAS DE MOBILIDADE DO ESTADO DO RIO DE JANEIRO"
+    r = _sem_acento(razao_rfb)
+    return bool(r and not _RX_EMPRESA.search(r) and _RX_ENTE.search(r))
+
+
+def _fora_da_bateria(credor: str, nome: str, razao_rfb: str = "", natureza: str = "") -> bool:
     """O par não é contrato de fornecimento → fora da perícia. Antes o sweep passava o CÓDIGO do credor a
     `_eh_nao_contratual` (nunca casava): 246 pares 🟡 de folha/RIOPREV/precatório, R$ 233 bi."""
-    return bool(_CODIGO_NAO_FORNECEDOR.match((credor or "").strip().upper())) or _eh_nao_contratual(nome)
+    return (bool(_CODIGO_NAO_FORNECEDOR.match((credor or "").strip().upper())) or _eh_nao_contratual(nome)
+            or eh_ente_publico(nome, razao_rfb, natureza))
 
 
-def _podar(c, elegiveis: set, completo: bool) -> int:
+def _rfb(c) -> dict:
+    """cnpj → (razão social, natureza jurídica) da Receita (`empresas`) — uma leitura por passada. Sem tabela → {}."""
+    try:
+        return {r[0]: (r[1] or "", r[2] or "") for r in c.execute("SELECT cnpj, razao_social, natureza_jur FROM empresas")}
+    except sqlite3.OperationalError:
+        return {}
+
+
+def _podar(c, elegiveis: set, completo: bool, rfb: dict | None = None) -> int:
     """Remove de `pericia_fornecedor` o par que não deveria existir. O sweep só fazia INSERT OR REPLACE e
     NUNCA removia (36 pares parados desde jul–ago; folha/precatório de antes do filtro). Sempre sai o par
     fora da bateria; numa passada COMPLETA (sem --limit/--ugs) sai também o que deixou de ser elegível."""
     rm = [(r[0], r[1]) for r in c.execute("SELECT cnpj, ug, favorecido FROM pericia_fornecedor")
-          if _fora_da_bateria(r[0], r[2]) or (completo and (r[0], r[1]) not in elegiveis)]
+          if _fora_da_bateria(r[0], r[2], *(rfb or {}).get(r[0], ("", "")))
+          or (completo and (r[0], r[1]) not in elegiveis)]
     c.executemany("DELETE FROM pericia_fornecedor WHERE cnpj=? AND ug=?", rm)
     return len(rm)
 
@@ -163,8 +209,9 @@ def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = No
     pares = c.execute(f"""SELECT credor,ug_emitente,COUNT(*) n,MAX(nome_credor) nome FROM ob_orcamentaria_siafe
         WHERE credor IS NOT NULL AND credor!='' AND lower(status) LIKE 'contabiliz%'{filtro_ug}
         GROUP BY credor,ug_emitente HAVING n>=? ORDER BY SUM(valor) DESC""", (*params, min_obs)).fetchall()
-    pares = [r for r in pares if not _fora_da_bateria(r["credor"], r["nome"])]  # repasse/folha/precatório fora
-    removidos = _podar(c, {(r["credor"], r["ug_emitente"]) for r in pares}, completo=not (limit or ugs))
+    rfb = _rfb(c)
+    pares = [r for r in pares if not _fora_da_bateria(r["credor"], r["nome"], *rfb.get(r["credor"], ("", "")))]
+    removidos = _podar(c, {(r["credor"], r["ug_emitente"]) for r in pares}, completo=not (limit or ugs), rfb=rfb)
     if limit:
         pares = pares[:limit]
     n = 0; graus = {"🔴": 0, "🟡": 0, "🟢": 0, "⚪": 0}

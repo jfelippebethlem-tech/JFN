@@ -128,6 +128,12 @@ def cnpjs_top(limite: int = 300) -> list[str]:
         con.close()
 
 
+# COLUNAS NOMEADAS (12/11/2026): a tabela ganhou 6 colunas (cpf_resolvido…cpf_pos3a9) e o `VALUES (7 ?)` posicional
+# passou a dar "table has 13 columns but 7 values" — engolido pelo except: TODO enriquecimento de QSA falhava calado.
+_INSERT_SOCIO = ("INSERT OR REPLACE INTO socios_fornecedor (cnpj, razao, socio_nome, socio_nome_norm, socio_doc, "
+                 "qualificacao, ingerido_em) VALUES (?,?,?,?,?,?,?)")
+
+
 async def ingerir(cnpjs: list[str], delay: float = 0.5) -> dict:
     """Busca o QSA (sócios) de cada CNPJ na BrasilAPI e grava em socios_fornecedor. Idempotente."""
     from compliance_agent.collectors.cnpj import buscar_cnpj
@@ -135,6 +141,7 @@ async def ingerir(cnpjs: list[str], delay: float = 0.5) -> dict:
     con = _con()
     agora = datetime.now().isoformat(timespec="seconds")
     ok = falha = n_socios = 0
+    erros: list[str] = []
     pendentes = [re.sub(r"\D", "", c) for c in cnpjs if len(re.sub(r"\D", "", c)) == 14]
     # pula quem já tem sócio ingerido
     ja = {r[0] for r in con.execute("SELECT DISTINCT cnpj FROM socios_fornecedor")}
@@ -153,20 +160,22 @@ async def ingerir(cnpjs: list[str], delay: float = 0.5) -> dict:
                     rows.append((cnpj, r.get("razao_social") or r.get("nome") or "", nome, _norm_nome(nome),
                                  s.get("cpf_cnpj", "") or "", s.get("qualificacao", "") or "", agora))
                 if rows:
-                    con.executemany("INSERT OR REPLACE INTO socios_fornecedor VALUES (?,?,?,?,?,?,?)", rows)
+                    con.executemany(_INSERT_SOCIO, rows)
                     con.commit()
                     n_socios += len(rows)
                 else:
                     # marca CNPJ sem QSA (evita re-buscar) com linha-sentinela
-                    con.execute("INSERT OR REPLACE INTO socios_fornecedor VALUES (?,?,?,?,?,?,?)",
+                    con.execute(_INSERT_SOCIO,
                                 (cnpj, r.get("razao_social") or "", "", "", "", "(sem QSA público)", agora))
                     con.commit()
                 ok += 1
-            except Exception:
+            except (httpx.HTTPError, ValueError, KeyError, TypeError, sqlite3.Error) as e:
                 falha += 1
+                erros.append(f"{cnpj}: {type(e).__name__}: {str(e)[:120]}")
             await asyncio.sleep(delay)
     con.close()
-    return {"ok": True, "consultados": len(pendentes), "sucesso": ok, "falha": falha, "socios_gravados": n_socios}
+    return {"ok": True, "consultados": len(pendentes), "sucesso": ok, "falha": falha, "socios_gravados": n_socios,
+            "erros": erros[:10]}
 
 
 def rede_por_socio(cnpj: str) -> dict:

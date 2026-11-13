@@ -90,16 +90,22 @@ def ugs_com_pagamento(con: sqlite3.Connection, *, exercicio: int | None = None,
 
 def fornecedores_da_ug(con: sqlite3.Connection, ug: str, *, exercicio: int | None = None,
                        limite: int = 25) -> list[str]:
-    """Maiores credores pessoa jurídica da UG. Só CNPJ de 14 dígitos — código de fundo não é fornecedor."""
-    sql = ("SELECT credor, SUM(valor) t FROM ob_orcamentaria_siafe "
+    """Maiores credores pessoa jurídica da UG. Só CNPJ de 14 dígitos — código de fundo não é fornecedor.
+
+    ENTE PÚBLICO FORA (12/11/2026): prefeitura, fundo municipal de saúde, instituto de previdência, tribunal,
+    ministério e INSS recebem REPASSE, não contrato — e não têm quadro societário. Na bateria de fornecedor
+    eles viravam C6/C8 `nao_avaliavel` ("faltam qsa"): 85 dos 99 CNPJs dos 133 pares C6/C8 não avaliáveis
+    eram ente público. Mesmo critério da perícia (`pericia_sweep._fora_da_bateria`)."""
+    from compliance_agent.pericia_sweep import _fora_da_bateria
+    sql = ("SELECT credor, MAX(nome_credor), SUM(valor) t FROM ob_orcamentaria_siafe "
            "WHERE ug_emitente = ? AND LENGTH(TRIM(credor)) = 14 AND TRIM(credor) GLOB '[0-9]*'")
     params: list = [ug]
     if exercicio:
         sql += " AND exercicio = ?"
         params.append(exercicio)
     sql += " GROUP BY credor ORDER BY t DESC LIMIT ?"
-    params.append(limite)
-    return [r[0] for r in con.execute(sql, params).fetchall()]
+    params.append(limite * 4)          # sobra para, depois de tirar os entes públicos, ainda dar `limite`
+    return [r[0] for r in con.execute(sql, params).fetchall() if not _fora_da_bateria(r[0], r[1] or "")][:limite]
 
 
 _OB_ISO = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"

@@ -70,6 +70,39 @@ def _explicacao_inocente(cid: str) -> str:
     return base
 
 
+# Sem hipótese mapeada ≠ "não avaliável" (12/11/2026). Medido: dos 343 C `nao_avaliavel`, ~300 tinham recência,
+# situação cadastral, capital e porte VERIFICADOS e nenhum sinal — a empresa foi olhada e não mostrou nada, e isso
+# aparecia na base como ponto de atenção. Regra determinística: (1) qualquer sinal na cobertura (INDÍCIO,
+# CONFIRMADO, sócio servidor) mantém nao_avaliavel citando o sinal — é de outro card, não se descarta; (2) as
+# checagens BÁSICAS feitas e nenhum sinal → descartado, dizendo o que foi e o que NÃO foi verificado;
+# (3) sem as básicas → nao_avaliavel, dizendo quais faltam.
+_BASICAS_C = ("capital", "porte", "recencia", "situacao_cadastral")
+
+
+def _sem_hipotese(cnpj: str, inv: dict) -> ResultadoDetector:
+    cob = inv.get("cobertura") or {}
+    txt = {k: str(v or "") for k, v in cob.items()}
+    sinais = sorted(k for k, v in txt.items()
+                    if v.upper().startswith(("INDICIO", "CONFIRMADO")) or ("servidor" in k and v[:1].isdigit()
+                                                                          and not v.startswith("0")))
+    feitas = sorted(k for k, v in txt.items() if v.startswith("verificado") or v.startswith("AFASTADO"))
+    faltam = sorted(k for k, v in txt.items() if k not in feitas and k not in sinais)
+    if sinais:
+        st, mot = "nao_avaliavel", (f"sinal fora das hipóteses de fachada do card C: "
+                                    f"{'; '.join(f'{k} = {txt[k]}' for k in sinais)} — avaliar no card próprio")
+    elif all(k in feitas for k in _BASICAS_C):
+        st = "descartado"
+        mot = (f"verificado sem sinal de fachada/laranja: {', '.join(feitas)}"
+               + (f". Não verificado (INDISPONÍVEL ≠ regular): {', '.join(faltam)}" if faltam else ""))
+    else:
+        st, mot = "nao_avaliavel", (f"checagens básicas incompletas — faltam: "
+                                    f"{', '.join(k for k in _BASICAS_C if k not in feitas)}")
+    r = ResultadoDetector(detector="C", processo=cnpj, status=st, motivo_refutacao=mot)
+    r.valores = {"cobertura": cob, "grau_geral": inv.get("grau"), "verificado": feitas, "nao_verificado": faltam,
+                 "sinais": sinais}
+    return r
+
+
 class CFachada(Detector):
     """Detector(es) C — perfil do contratado (fachada/laranja), via `investigacao_dd.investigar`.
 
@@ -143,11 +176,7 @@ class CFachada(Detector):
             resultados.append(r)
 
         if not resultados:
-            r = ResultadoDetector(detector="C", processo=cnpj, status="nao_avaliavel",
-                                  motivo_refutacao=("nenhuma hipótese de fachada/laranja mapeável (campos não "
-                                                    "ingeridos ou empresa sem sinais) — ausência de juízo ≠ regular"))
-            r.valores = {"cobertura": inv.get("cobertura"), "grau_geral": inv.get("grau")}
-            return [r]
+            return [_sem_hipotese(cnpj, inv)]
         # ordena por score desc (achado-líder primeiro)
         resultados.sort(key=lambda x: -x.score)
         return resultados

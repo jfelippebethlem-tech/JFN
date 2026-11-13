@@ -206,3 +206,16 @@ def test_grava_tambem_o_que_NAO_virou_achado(leitura, achados):
     V.varrer_ug(leitura, "133100", exercicio=2026, max_fornecedores=1, con_achados=achados)
     status = {r[0] for r in achados.execute("SELECT DISTINCT status FROM achado_detector")}
     assert status - {"confirmado"}, "tem de registrar descartado/nao_avaliavel também"
+
+
+def test_ente_publico_nao_entra_como_fornecedor(base):
+    """Prefeitura/fundo de saúde/previdência recebem repasse e não têm QSA — viravam C6/C8 nao_avaliavel."""
+    con = sqlite3.connect(base)
+    for i, (cnpj, nome) in enumerate([("29138278000101", "MUNICIPIO DE NOVA IGUACU"),
+                                       ("11715094000100", "FUNDO MUNICIPAL DE SAUDE DA CIDADE DO RIO DE JANEIRO")]):
+        con.execute("INSERT INTO ob_orcamentaria_siafe VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (f"2026OB7777{i}", "133100", "10/03/2026", cnpj, nome, "2026-1", "2026NE9", 9e6, 2026, "PAGO"))
+    con.commit()
+    con.close()
+    ro = V.abrir_leitura(str(base))
+    assert V.fornecedores_da_ug(ro, "133100", exercicio=2026) == ["11222333000144"]
