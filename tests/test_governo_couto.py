@@ -254,3 +254,13 @@ def test_placar(bases):
     p = bases.montar()["placar"]
     assert p["decretos"] == 2 and p["contratacoes"] == 4 and p["pago"] == pytest.approx(500.0)
     assert p["diretas"] == 2 and p["nomeacoes"] == 1 and p["exoneracoes"] == 1
+
+
+def test_pontos_de_atencao_aceita_envelope_achados(bases):
+    """A análise grava {"achados": [...]} com metadados ao lado — tem de aparecer, não virar vazio."""
+    bases.SUSPEITAS.write_text(json.dumps({"titulo": "t", "n_achados": 1, "achados": [
+        {"id": "a1", "camada": "deterministica", "regra_ou_hipotese": "regra", "grau": "🟡", "orgao": "SEX",
+         "processo": "SEI-1", "valor_ob": 1.0, "fonte": "SIAFE", "explicacao_inocente": "x", "proximo_passo": "y"}]}),
+        encoding="utf-8")
+    p = bases.montar()["pontos_atencao"]
+    assert p["estado"] == "ok" and [i["id"] for i in p["itens"]] == ["a1"]

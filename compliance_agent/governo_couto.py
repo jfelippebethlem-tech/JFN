@@ -511,7 +511,7 @@ def _pontos_atencao() -> dict:
     try:
         bruto = json.loads(SUSPEITAS.read_text(encoding="utf-8"))
         if isinstance(bruto, dict):
-            bruto = bruto.get("itens") or bruto.get("suspeitas") or []
+            bruto = bruto.get("itens") or bruto.get("achados") or bruto.get("suspeitas") or []
         if not isinstance(bruto, list):
             raise ValueError("esperava uma lista de pontos")
     except (OSError, ValueError) as exc:
