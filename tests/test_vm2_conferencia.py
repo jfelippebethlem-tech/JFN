@@ -84,3 +84,29 @@ def test_legivel():
     assert C.legivel(TEXTO)
     assert not C.legivel("@@@@ #### 1234 5678 9999 %%%% ----" * 3)
     assert not C.legivel("")
+
+
+def test_lote_sweep_importa_cdp_e_nao_sobrescreve_leitura_boa_com_vazia(monkeypatch, tmp_path):
+    d = _isolar(monkeypatch, tmp_path)
+    monkeypatch.setattr(C, "_sweep_vm1_vivo", lambda: False)
+    src = tmp_path / "vm2"
+    src.mkdir()
+    bom = {"numero": "SEI-100000/000007/2025", "documentos": [{"titulo": "Despacho 1"}],
+           "conteudo_documentos": [{"doc": "Despacho 1", "conteudo": TEXTO}]}
+    vazio = {"numero": "SEI-100000/000008/2025", "documentos": [], "conteudo_documentos": []}
+    (src / "cdp_SEI_100000_000007_2025.json").write_text(json.dumps(bom), encoding="utf-8")
+    (src / "cdp_SEI_100000_000008_2025.json").write_text(json.dumps(vazio), encoding="utf-8")
+    # a VM-1 já tem leitura COM documento do 2º: a vazia da VM-2 não pode apagá-la
+    (d / "sei_cache" / "cdp_SEI_100000_000008_2025.json").write_text(json.dumps(
+        {"documentos": [{"titulo": "X"}], "conteudo_documentos": []}), encoding="utf-8")
+    (d / "sei_cache" / "sei_sweep_progress.json").write_text(json.dumps({"feitos": {}}), encoding="utf-8")
+    nomes = ["cdp_SEI_100000_000007_2025.json", "cdp_SEI_100000_000008_2025.json"]
+    base = L.montar("sweep", {f"cache/{n}": src / n for n in nomes}, {n: {"juizo": None} for n in nomes},
+                    {"progresso": {"SEI-100000/000007/2025": {"n_docs": 1, "em": "2026-11-13T18:00:00"}},
+                     "restritos": {}})
+    r = C.importar(base.name)
+    assert sorted(r["aprovados"]) == nomes
+    assert json.loads((d / "sei_cache" / nomes[0]).read_text())["documentos"]
+    assert json.loads((d / "sei_cache" / nomes[1]).read_text())["documentos"] == [{"titulo": "X"}]
+    prog = json.loads((d / "sei_cache" / "sei_sweep_progress.json").read_text())
+    assert prog["feitos"]["SEI-100000/000007/2025"]["n_docs"] == 1
