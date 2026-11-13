@@ -42,6 +42,24 @@ CREATE TABLE IF NOT EXISTS sancoes_federais (
 CREATE INDEX IF NOT EXISTS ix_sancoes_doc ON sancoes_federais (cpf_cnpj);
 """
 
+# Colunas acrescentadas em 13/11/2026 (revisão cética): sem elas a sanção era lida só pela categoria —
+# "No órgão sancionador" (IFRJ) virou vedação ao Estado do RJ. Migração por ALTER TABLE ADD COLUMN,
+# idempotente; nunca DROP.
+COLUNAS_NOVAS = {
+    "abrangencia": "TEXT",          # ABRANGÊNCIA DA SANÇÃO (texto da CGU; "Sem Informação" → NULL)
+    "esfera_sancionador": "TEXT",   # ESFERA ÓRGÃO SANCIONADOR: FEDERAL | ESTADUAL | MUNICIPAL
+    "data_publicacao": "TEXT",      # DATA PUBLICAÇÃO (ISO; NULL = sem informação)
+}
+
+
+def migrar(con: sqlite3.Connection) -> None:
+    """Cria a tabela se faltar e acrescenta as colunas novas que faltarem. Idempotente; não apaga dado."""
+    con.executescript(DDL)
+    tem = {r[1] for r in con.execute("PRAGMA table_info(sancoes_federais)")}
+    for col, tipo in COLUNAS_NOVAS.items():
+        if col not in tem:
+            con.execute(f"ALTER TABLE sancoes_federais ADD COLUMN {col} {tipo}")
+
 
 def _data_iso(s: str) -> str | None:
     s = (s or "").strip()
@@ -60,25 +78,40 @@ def _baixar(cad: str, dia: str) -> list[dict]:
     nome_csv = next(n for n in zf.namelist() if n.lower().endswith(".csv"))
     texto = zf.read(nome_csv).decode("latin-1")
     linhas = list(csv.DictReader(io.StringIO(texto), delimiter=";"))
-    saida = []
-    for ln in linhas:
-        doc = re.sub(r"\D", "", ln.get("CPF OU CNPJ DO SANCIONADO") or "")
-        if len(doc) not in (11, 14):
-            continue
-        saida.append({
-            "cadastro": cad.upper(),
-            "cpf_cnpj": doc,
-            "nome": (ln.get("NOME DO SANCIONADO") or "").strip()[:300],
-            "categoria": (ln.get("CATEGORIA DA SANÇÃO")
-                          or ln.get("TIPO DE SANÇÃO") or "").strip()[:200],
-            "data_inicio": _data_iso(ln.get("DATA INÍCIO SANÇÃO", "")),
-            "data_fim": _data_iso(ln.get("DATA FINAL SANÇÃO", "")),
-            "orgao": (ln.get("ÓRGÃO SANCIONADOR") or "").strip()[:300],
-            "uf": (ln.get("UF ÓRGÃO SANCIONADOR") or "").strip()[:2],
-            "processo": (ln.get("NÚMERO DO PROCESSO") or "").strip()[:60],
-            "fundamentacao": (ln.get("FUNDAMENTAÇÃO LEGAL") or "").strip()[:300],
-        })
-    return saida
+    return [r for r in (registro(ln, cad) for ln in linhas) if r]
+
+
+def _campo_abrangencia(ln: dict) -> str:
+    # o CSV da CGU grafa "ABRAGÊNCIA DA SANÇÃO"; aceitar também a grafia correta
+    for k, v in ln.items():
+        if k and k.upper().startswith(("ABRAGÊNCIA", "ABRANGÊNCIA", "ABRANGENCIA", "ABRAGENCIA")):
+            return (v or "").strip()
+    return ""
+
+
+def registro(ln: dict, cad: str) -> dict | None:
+    """Uma linha do CSV → registro de `sancoes_federais`. Documento sem 11/14 dígitos → None."""
+    doc = re.sub(r"\D", "", ln.get("CPF OU CNPJ DO SANCIONADO") or "")
+    if len(doc) not in (11, 14):
+        return None
+    abr = _campo_abrangencia(ln)
+    esf = (ln.get("ESFERA ÓRGÃO SANCIONADOR") or "").strip().upper()
+    return {
+        "cadastro": cad.upper(),
+        "cpf_cnpj": doc,
+        "nome": (ln.get("NOME DO SANCIONADO") or "").strip()[:300],
+        "categoria": (ln.get("CATEGORIA DA SANÇÃO")
+                      or ln.get("TIPO DE SANÇÃO") or "").strip()[:200],
+        "data_inicio": _data_iso(ln.get("DATA INÍCIO SANÇÃO", "")),
+        "data_fim": _data_iso(ln.get("DATA FINAL SANÇÃO", "")),
+        "orgao": (ln.get("ÓRGÃO SANCIONADOR") or "").strip()[:300],
+        "uf": (ln.get("UF ÓRGÃO SANCIONADOR") or "").strip()[:2],
+        "processo": (ln.get("NÚMERO DO PROCESSO") or "").strip()[:60],
+        "fundamentacao": (ln.get("FUNDAMENTAÇÃO LEGAL") or "").strip()[:300],
+        "abrangencia": (abr[:120] if abr and abr.lower() != "sem informação" else None),
+        "esfera_sancionador": esf or None,
+        "data_publicacao": _data_iso(ln.get("DATA PUBLICAÇÃO", "")),
+    }
 
 
 def main() -> int:
@@ -114,13 +147,15 @@ def main() -> int:
     con = sqlite3.connect(DB)
     try:
         con.execute("PRAGMA busy_timeout=15000")  # convive com jfn.service/backfill
-        con.executescript(DDL)
-        con.execute("DELETE FROM sancoes_federais")
+        migrar(con)
+        con.execute("DELETE FROM sancoes_federais")   # snapshot completo do dia (ver docstring)
         con.executemany(
             "INSERT INTO sancoes_federais (cadastro, cpf_cnpj, nome, categoria,"
-            " data_inicio, data_fim, orgao, uf, processo, fundamentacao)"
+            " data_inicio, data_fim, orgao, uf, processo, fundamentacao,"
+            " abrangencia, esfera_sancionador, data_publicacao)"
             " VALUES (:cadastro, :cpf_cnpj, :nome, :categoria, :data_inicio,"
-            " :data_fim, :orgao, :uf, :processo, :fundamentacao)", regs)
+            " :data_fim, :orgao, :uf, :processo, :fundamentacao,"
+            " :abrangencia, :esfera_sancionador, :data_publicacao)", regs)
         con.commit()
         n = con.execute("SELECT COUNT(*) FROM sancoes_federais").fetchone()[0]
         print(f"sancoes_federais: {n} registros gravados", flush=True)

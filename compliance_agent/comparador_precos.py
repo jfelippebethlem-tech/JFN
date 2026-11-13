@@ -646,7 +646,7 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
     sanção precisa estar VIGENTE na data da compra (teste à época); (c) só compras acima da mediana
     em grupos comparáveis (mesma robustez da economia_potencial). Esfera do comprador vem do
     pncp_ente (oficial). Separa 'total' (inidoneidade, alcance certo) de 'ente' (impedimento)."""
-    from compliance_agent.sancao_abrangencia import classificar_sancao, veda_ente
+    from compliance_agent.sancao_abrangencia import classificar_sancao, sql_campos_ceis, veda_ente, vigente_em
     con = _ro(db_path)
     try:
         certs_esf = _certs_alvo(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
@@ -654,7 +654,7 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
         sanc: dict[str, list] = {}
         for r in con.execute(
                 "SELECT cpf_cnpj, categoria, fundamentacao, cadastro, orgao, uf, data_inicio, "
-                "data_fim FROM sancoes_federais WHERE length(cpf_cnpj)=14"):
+                f"data_fim, {sql_campos_ceis(con)} FROM sancoes_federais WHERE length(cpf_cnpj)=14"):
             cl = classificar_sancao(r["categoria"], r["fundamentacao"], r["cadastro"])
             if cl["veda_contratacao"]:
                 sanc.setdefault(r["cpf_cnpj"], []).append(dict(r))
@@ -709,12 +709,11 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
                 # a sanção mais forte que VEDA este comprador E está vigente na data
                 melhor = None
                 for s in sanc[cnpj]:
-                    ini, fim = s.get("data_inicio") or "0000", s.get("data_fim") or "9999"
-                    if data and not (ini <= data <= fim):
-                        continue                       # não vigente à época
+                    if not vigente_em(s, data):
+                        continue                       # não vigente à época (sem data não se afirma)
                     v = veda_ente(s, esfera_alvo, uf_alvo)
                     if v["veda"]:
-                        rank = {"total": 3, "ente": 2, "orgao": 1}
+                        rank = {"total": 3, "ente": 2, "ente_poder": 2, "orgao": 1}
                         if melhor is None or rank[v["abrangencia"]] > rank[melhor["abrangencia"]]:
                             melhor = v
                 if not melhor:
@@ -773,13 +772,13 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
     Sanção posterior aparece como 'sancionada_depois' (peso 1, informativo — não é vedação).
     O preço vem da mesma base homogênea do sobrepreço (unidade comprovada, sem salto, sem
     grupo heterogêneo)."""
-    from compliance_agent.sancao_abrangencia import classificar_sancao, veda_ente
+    from compliance_agent.sancao_abrangencia import classificar_sancao, sql_campos_ceis, veda_ente, vigente_em
     con = _ro(db_path)
     try:
         sanc: dict[str, list] = {}
         for r in con.execute(
                 "SELECT cpf_cnpj, categoria, fundamentacao, cadastro, orgao, uf, data_inicio, "
-                "data_fim FROM sancoes_federais WHERE length(cpf_cnpj)=14"):
+                f"data_fim, {sql_campos_ceis(con)} FROM sancoes_federais WHERE length(cpf_cnpj)=14"):
             cl = classificar_sancao(r["categoria"], r["fundamentacao"], r["cadastro"])
             if cl["veda_contratacao"]:
                 sanc.setdefault(r["cpf_cnpj"], []).append(dict(r))
@@ -805,7 +804,7 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
     finally:
         con.close()
 
-    rank = {"total": 3, "ente": 2, "orgao": 1}
+    rank = {"total": 3, "ente": 2, "ente_poder": 2, "orgao": 1}
     achados = []
     for grp in g["grupos"]:
         med = grp["mediana"]
@@ -826,7 +825,7 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
                     if ini > data:
                         depois = True
                         continue
-                    if data > fim:
+                    if data > fim or not vigente_em(s, data):
                         continue
                     v = veda_ente(s, esf_alvo, uf_alvo)
                     if v["veda"] and (melhor is None or

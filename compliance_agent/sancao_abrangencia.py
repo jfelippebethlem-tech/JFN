@@ -53,6 +53,22 @@ def classificar_sancao(categoria: str | None, fundamentacao: str | None = None,
     if "proibicao de receber incentivos" in cat:
         return _out("proibicao_incentivos", False, "nenhuma",
                     "Proibição de receber incentivos/subvenções (não impede contratar)")
+    # 1-A) FUNDAMENTAÇÃO antes da categoria (revisão 13/11/2026): no CEIS a categoria contradiz a base legal
+    #    em casos reais — "Suspensão/Interdição das atividades" e até "Inidoneidade" com base na Lei 13.019
+    #    art. 73, II (suspensão de parceria, alcance do ente sancionador), e "Impedimento" com base na
+    #    Lei 8.666 art. 87, III (suspensão, alcance do órgão sancionador).
+    if "13019" in fund or "13.019" in fund or "organizacoes da sociedade civil" in fund:
+        if re.search(r"art\.?\s*73[,\s]+iii", fund):
+            return _out("inidoneidade", True, "total",
+                        "Declaração de inidoneidade (Lei 13.019, art. 73, III) — toda a Administração")
+        if re.search(r"art\.?\s*73[,\s]+ii\b", fund):
+            return _out("suspensao", True, "ente",
+                        "Suspensão de parceria (Lei 13.019, art. 73, II) — só a esfera do ente sancionador")
+    tem_87_iv = bool(re.search(r"art\.?\s*87[,\s]+iv", fund) or re.search(r"art\.?\s*156[,\s]+iv", fund))
+    if re.search(r"art\.?\s*87[,\s]+iii", fund) and not tem_87_iv and "8429" not in fund:
+        return _out("suspensao", True, "orgao",
+                    "Suspensão temporária (Lei 8.666, art. 87, III) — veda contratar com o ÓRGÃO sancionador")
+
     if "dissolucao compulsoria" in cat:
         return _out("dissolucao", True, "total", "Dissolução compulsória da PJ")
     if "interdicao das atividades" in cat or "suspensao/interdicao" in cat:
@@ -109,11 +125,80 @@ def ente_do_orgao(orgao: str | None, uf: str | None) -> dict:
     return {"esfera": "?", "uf": uf or None}
 
 
-def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ") -> dict:
-    """Uma sanção efetivamente VEDA um contrato do ente-alvo (default: Estado do RJ)?
-    {veda, motivo}. 'total' sempre veda; 'ente'/'orgao' só se a esfera+UF do sancionador batem."""
+_ABRANGENCIA_CEIS = {
+    # coluna "ABRANGÊNCIA DA SANÇÃO" do CEIS/CNEP (grafada "ABRAGÊNCIA" no CSV da CGU) → tier
+    "todas as esferas em todos os poderes": "total",
+    "em todos os poderes da esfera do orgao sancionador": "ente",
+    "na esfera e no poder do orgao sancionador": "ente_poder",
+    "no orgao sancionador": "orgao",
+}
+_RX_JUDICIARIO = re.compile(r"tribunal de justica|justica (federal|do trabalho|eleitoral|militar)|"
+                            r"tribunal regional|\btrf\d?\b|\btrt\b|\btre\b|\bstf\b|\bstj\b|\btst\b|"
+                            r"supremo tribunal|superior tribunal|vara\b|comarca|juizo")
+_RX_LEGISLATIVO = re.compile(r"assembleia legislativa|camara (municipal|dos deputados)|senado federal|"
+                             r"tribunal de contas|\btce\b|\btcu\b|\btcm\b")
+
+
+CAMPOS_CEIS = ("abrangencia", "esfera_sancionador", "data_publicacao")
+
+
+def sql_campos_ceis(con) -> str:
+    """Fragmento de SELECT com as colunas que `tools/ingerir_ceis_cnep.py` passou a guardar; base antiga
+    (sem a migração) devolve NULL com o mesmo nome — o chamador não precisa saber qual é o caso."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(sancoes_federais)")}
+    return ", ".join(c if c in cols else f"NULL AS {c}" for c in CAMPOS_CEIS)
+
+
+def abrangencia_declarada(texto: str | None) -> str | None:
+    """Tier da abrangência que o próprio CEIS declara; 'Sem Informação'/vazio/'Em outro órgão' → None."""
+    return _ABRANGENCIA_CEIS.get(_norm(texto).strip())
+
+
+def poder_do_orgao(orgao: str | None) -> str:
+    o = _norm(orgao)
+    if _RX_JUDICIARIO.search(o):
+        return "judiciario"
+    if _RX_LEGISLATIVO.search(o):
+        return "legislativo"
+    return "executivo"
+
+
+def vigente_em(sancao: dict, data_iso: str | None) -> bool:
+    """A sanção estava VIGENTE na data (ISO AAAA-MM-DD)? Sem início ou sem data do ato → não se afirma.
+    "Com prazo determinado" sem data final → não se afirma (revisão 13/11/2026: era lido como vigente)."""
+    d = (data_iso or "")[:10]
+    ini = (sancao.get("data_inicio") or "")[:10]
+    fim = (sancao.get("data_fim") or "")[:10]
+    if not d or not ini or d < ini:
+        return False
+    if fim:
+        return d <= fim
+    return "com prazo determinado" not in _norm(sancao.get("categoria"))
+
+
+def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ",
+              poder_alvo: str = "executivo") -> dict:
+    """Uma sanção efetivamente VEDA um contrato do ente-alvo (default: Executivo do Estado do RJ)?
+    {veda, motivo}. 'total' sempre veda; 'ente'/'orgao' só se a esfera+UF do sancionador batem.
+    A abrangência DECLARADA no CEIS (quando ingerida) prevalece sobre a inferida pela categoria/base legal;
+    a esfera declarada do sancionador prevalece sobre o palpite pelo nome do órgão."""
     cl = classificar_sancao(sancao.get("categoria"), sancao.get("fundamentacao"),
                             sancao.get("cadastro"))
+    decl = abrangencia_declarada(sancao.get("abrangencia"))
+    if decl and cl["veda_contratacao"]:
+        cl = {**cl, "abrangencia": decl}
+    esf_decl = _norm(sancao.get("esfera_sancionador")).strip()
+    if decl == "ente_poder":
+        ente = ente_do_orgao(sancao.get("orgao"), sancao.get("uf"))
+        esfera = esf_decl if esf_decl in ("federal", "estadual", "municipal") else ente["esfera"]
+        uf = (sancao.get("uf") or "").strip().upper() or None
+        poder = poder_do_orgao(sancao.get("orgao"))
+        veda = (esfera == esfera_alvo and (esfera_alvo == "federal" or uf in (uf_alvo, None))
+                and poder == poder_alvo)
+        return {"veda": veda, "abrangencia": "ente_poder", "tipo": cl["tipo"], "esfera_sancionador": esfera,
+                "uf_sancionador": uf,
+                "motivo": (f"{cl['tipo']} na esfera e no poder do sancionador ({esfera}/{poder})"
+                           + (" — alcança o alvo" if veda else " — NÃO alcança o alvo"))}
     if not cl["veda_contratacao"]:
         return {"veda": False, "motivo": cl["rotulo"], "abrangencia": cl["abrangencia"],
                 "tipo": cl["tipo"]}
@@ -126,6 +211,8 @@ def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ") 
         return {"veda": False, "abrangencia": "orgao", "tipo": cl["tipo"],
                 "motivo": "suspensão restrita ao órgão sancionador — não verificável p/ outro órgão"}
     ente = ente_do_orgao(sancao.get("orgao"), sancao.get("uf"))
+    if esf_decl in ("federal", "estadual", "municipal"):
+        ente = {"esfera": esf_decl, "uf": None if esf_decl == "federal" else ente["uf"]}
     # impedimento (ente) ou suspensão (órgão): só veda se a esfera do sancionador == a do alvo
     mesma_esfera = ente["esfera"] == esfera_alvo
     mesma_uf = (esfera_alvo == "federal") or (ente["uf"] == uf_alvo) or (ente["uf"] is None and mesma_esfera)
@@ -144,15 +231,16 @@ def detalhar(cnpj: str, con, esfera_alvo: str = "estadual", uf_alvo: str = "RJ")
     linhas = []
     veda_alvo = False
     for r in con.execute(
-            "SELECT cadastro, categoria, orgao, uf, data_inicio, data_fim, fundamentacao, processo "
-            "FROM sancoes_federais WHERE cpf_cnpj=? ORDER BY data_inicio DESC", (cnpj,)):
+            "SELECT cadastro, categoria, orgao, uf, data_inicio, data_fim, fundamentacao, processo, "
+            f"{sql_campos_ceis(con)} FROM sancoes_federais WHERE cpf_cnpj=? ORDER BY data_inicio DESC", (cnpj,)):
         s = dict(r)
         v = veda_ente(s, esfera_alvo, uf_alvo)
         cl = classificar_sancao(s["categoria"], s["fundamentacao"], s["cadastro"])
         veda_alvo = veda_alvo or v["veda"]
         linhas.append({
             "cadastro": s["cadastro"], "tipo": cl["tipo"], "rotulo": cl["rotulo"],
-            "abrangencia": cl["abrangencia"], "orgao": s["orgao"], "uf": s["uf"],
+            "abrangencia": v.get("abrangencia") or cl["abrangencia"], "orgao": s["orgao"], "uf": s["uf"],
+            "abrangencia_declarada": s.get("abrangencia"),
             "vigencia": f"{s['data_inicio'] or '?'} → {s['data_fim'] or 'sem prazo'}",
             "veda_alvo": v["veda"], "motivo_alcance": v["motivo"]}
         )
