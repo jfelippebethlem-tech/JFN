@@ -410,7 +410,7 @@ def _execucao(con: sqlite3.Connection, con_ab: sqlite3.Connection | None) -> dic
 
 def _casos_vault(seis: set[str]) -> dict:
     if not VAULT_CASOS.is_dir():
-        return {"estado": "indisponivel", "erro": f"pasta de casos indisponível", "itens": []}
+        return {"estado": "indisponivel", "erro": "pasta de casos indisponível", "itens": []}
     from compliance_agent.casos_vault import _frontmatter, _nivel, _titulo
     itens = []
     for p in sorted(VAULT_CASOS.glob("*.md")):
