@@ -64,6 +64,7 @@ GET /api/fiscal/zeros_sem_causa -> api_zeros_sem_causa
 GET /api/flags -> api_flags
 GET /api/fontes/frescor -> api_fontes_frescor
 GET /api/fontes/limites -> api_fontes_limites
+GET /api/governo_couto -> api_governo_couto
 GET /api/grafo -> api_grafo
 GET /api/grafo/ftm -> api_grafo_ftm
 GET /api/hermes/auditor24h/status -> api_auditor24h_status

@@ -52,6 +52,8 @@ URLS=(
   "intel/competencia_futura"
   "intel/dea_recorrente"
   "intel/ordem_cronologica"
+  # 2026-11-13: aba Governo Couto — ~25 s a frio (load 5) (DOERJ + OB SIAFE de dois exercícios)
+  "governo_couto"
 )
 {
   echo "── $(date -Is) prewarm"

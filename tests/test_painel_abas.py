@@ -36,8 +36,10 @@ from tools.painel_abas import abas, abas_por_esfera
 # sugeridos pelas investigações, lidos de `~/vault/requerimentos/` — pedido do dono; só leitura.
 # 2026-11-13: 68 → 69 e estado 19 → 20. Entrou "Comissão de Orçamento" (`e_comissao`): sub-aba da Comissão
 # de Orçamento da ALERJ (problemas por fornecedor órgão a órgão, peças P1–P18, SICONFI por Poder) — pedido do dono.
-TOTAL = 69
-POR_ESFERA = {"inicio": 1, "estado": 20, "prefeitura": 15, "geral": 33}
+# 2026-11-13: 69 → 70 e estado 20 → 21. Entrou "Governo Couto" (`e_couto`): tudo o que a base tem sobre a gestão do
+# governador em exercício desde 23/03/2026 (atos DOERJ, contratações, OB SIAFE, controle, pontos de atenção) — pedido do dono.
+TOTAL = 70
+POR_ESFERA = {"inicio": 1, "estado": 21, "prefeitura": 15, "geral": 33}
 
 
 def test_le_todas_as_abas_do_painel():
