@@ -13,6 +13,7 @@ CLI:
   python -m compliance_agent.siafe_runner diario [ANO]      # atualização incremental (default: ano corrente)
   python -m compliance_agent.siafe_runner sweep [2|1]       # sweep completo (sistema 2=2024-26, 1=2016-23)
   python -m compliance_agent.siafe_runner ug <UG> [ANO]     # uma UG (fura o teto)
+  python -m compliance_agent.siafe_runner retentar [MIN]    # retentativa diurna: avisa o dono MIN min antes (MFA)
 """
 from __future__ import annotations
 
@@ -202,7 +203,9 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
                 from compliance_agent import siafe_coord
                 siafe_coord.notificar(
                     f"🚨 JFN — coleta diária do SIAFE {ano} FALHOU: {res.get('erro') or res.get('etapa')}\n"
-                    f"{(res.get('detail') or '')[:200]}\nOs dados de OB ficam defasados até resolver.")
+                    f"{(res.get('detail') or '')[:200]}\nOs dados de OB ficam defasados até resolver."
+                    + ("\nRetento em horário diurno e aviso 10 min antes do novo pedido de código."
+                       if res.get("erro") in ("mfa_sem_codigo", "mfa_codigo_rejeitado") else ""))
             except Exception as exc:
                 logger.debug("notificação de falha do diário não enviada: %s", exc)
             return {"ok": False, "etapa": "coleta", **res}
@@ -250,6 +253,55 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
         _release()
 
 
+# MFA (laudo de motores 13/11/2026, 4.5): o diário das 05:00 espera 15 min pelo código no Telegram e o dono dorme
+# — 10, 12 e 13/11 sem OB. A retentativa só dispara em horário em que ele responde e AVISA antes, para o código
+# (que chega no e-mail) não expirar sem leitura.
+JANELA_DIURNA = (8, 21)            # [início, fim) em hora local
+_ERROS_DE_SENHA = ("senha_incorreta", "senha_expirada")
+
+
+def decidir_retentativa(agora: datetime) -> tuple[bool, str]:
+    """(pode, motivo_de_não_poder). Função pura sobre `ULTIMO` + relógio."""
+    u = ultimo_resultado() or {}
+    ok_iso = ultimo_ok_iso()
+    if ok_iso:
+        try:
+            if datetime.fromisoformat(ok_iso).astimezone().date() == agora.date():
+                return False, "diário de hoje já deu certo"
+        except ValueError:
+            pass
+    if u.get("erro") in _ERROS_DE_SENHA:
+        return False, f"senha recusada ({u.get('erro')}): retentar só soma login errado — trocar SIAFE_PASS"
+    if not (JANELA_DIURNA[0] <= agora.hour < JANELA_DIURNA[1]):
+        return False, f"fora do horário diurno ({JANELA_DIURNA[0]}h–{JANELA_DIURNA[1]}h): o código MFA ficaria sem resposta"
+    return True, ""
+
+
+def texto_aviso_previo(minutos: int, ultimo_ok: str | None) -> str:
+    desde = ""
+    if ultimo_ok:
+        try:
+            desde = f" Última coleta com sucesso: {datetime.fromisoformat(ultimo_ok).astimezone():%d/%m %H:%M}."
+        except ValueError:
+            pass
+    return (f"🛰️ JFN — SIAFE: em {minutos} min vou rodar a coleta diária de OBs (a das 05:00 não foi concluída).{desde}\n"
+            "Se o SIAFE pedir o código MFA, ele chega no seu e-mail da ALERJ: responda aqui com o código "
+            "(sozinho ou como /siafe XXXX). Espero até 15 min por ele.")
+
+
+async def retentar(antecedencia_min: int = 10, _sleep=asyncio.sleep, _agora=datetime.now) -> dict:
+    """Retentativa DIURNA do diário: só se hoje ainda não deu certo; avisa o dono `antecedencia_min` antes."""
+    pode, motivo = decidir_retentativa(_agora())
+    if not pode:
+        _log(f"retentativa do diário pulada: {motivo}")
+        return {"ok": True, "pulado": motivo}
+    from compliance_agent import siafe_coord
+    enviado = siafe_coord.notificar(texto_aviso_previo(antecedencia_min, ultimo_ok_iso()))
+    _log(f"retentativa do diário: aviso prévio {'enviado' if enviado else 'NÃO enviado'}; disparo em {antecedencia_min} min")
+    await _sleep(antecedencia_min * 60)
+    return await atualizar_diario()
+
+
 async def verificar_dia(data: str, exercicio: int | None = None) -> dict:
     """Verifica/completa um dia específico (DD/MM/AAAA): conta OBs por Data Emissão; se >1000, subdivide."""
     from compliance_agent import siafe_ob_orcamentaria as M
@@ -291,6 +343,9 @@ def main():
     if cmd == "diario":
         ano = int(sys.argv[2]) if len(sys.argv) > 2 else None
         print(json.dumps(asyncio.run(atualizar_diario(ano)), ensure_ascii=False, indent=1))
+    elif cmd == "retentar":
+        ant = int(sys.argv[2]) if len(sys.argv) > 2 else 10
+        print(json.dumps(asyncio.run(retentar(ant)), ensure_ascii=False, indent=1))
     elif cmd == "ug":
         ug = sys.argv[2]; ano = int(sys.argv[3]) if len(sys.argv) > 3 else None
         print(json.dumps(asyncio.run(coletar_ug(ug, ano)), ensure_ascii=False, indent=1))

@@ -365,6 +365,18 @@ def test_senha_recusada_vira_acao_do_dono_sem_remedio(tmp_path, monkeypatch):
     assert "siafe:credencial_1" not in {p["assinatura"] for p in A.sensor_siafe()}
 
 
+def test_mfa_sem_codigo_remedia_pela_retentativa_diurna(tmp_path, monkeypatch):
+    """Laudo 13/11/2026: o remédio rodava o diário de madrugada e pedia código MFA a quem dormia. Falha de MFA
+    usa `siafe_runner retentar`, que só dispara de dia e avisa o dono antes."""
+    import os
+    data = tmp_path / "data"; (data / "sei_cache").mkdir(parents=True)
+    monkeypatch.setattr(A, "DATA", data)
+    (data / "sei_cache" / "siafe_runner_ultimo.json").write_text(json.dumps({"ok": False, "erro": "mfa_sem_codigo"}))
+    env = tmp_path / ".env"; env.write_text("x"); os.utime(env, (1_000, 1_000))
+    rem = {p["assinatura"]: p for p in A.sensor_siafe()}["siafe:diario"]["remediar"]
+    assert "siafe_runner retentar" in rem and "siafe_runner diario" not in rem
+
+
 def test_carimbo_de_senha_recusada_tira_o_remedio_do_diario(tmp_path, monkeypatch):
     """O último diário pode ter rodado ANTES de o erro ser nomeado ('login_falhou'): o carimbo manda."""
     import os
