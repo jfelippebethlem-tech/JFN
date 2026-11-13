@@ -1,0 +1,14 @@
+[Unit]
+Description=JFN — íntegras SEI na VM-2 (fila exportada pela VM-1; resultado devolvido a ela)
+Documentation=file:/home/ubuntu/JFN-worker/tools/sei_integra_vm2.py
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/JFN-worker
+# orçamento: o script decide pela hora (madrugada 5 h, dia 3 h) e soma 20 min de folga no timeout
+ExecStart=/bin/bash /home/ubuntu/JFN-worker/tools/vm2_integras.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+TimeoutStartSec=6h

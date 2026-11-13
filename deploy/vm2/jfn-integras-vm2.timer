@@ -1,0 +1,10 @@
+[Unit]
+Description=JFN — íntegras SEI na VM-2: madrugada 01:00 (5 h) e janela diurna 13:00 (3 h), horário de Brasília
+
+[Timer]
+OnCalendar=*-*-* 01:00:00 America/Sao_Paulo
+OnCalendar=*-*-* 13:00:00 America/Sao_Paulo
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -66,6 +66,31 @@ def _ja_rodando() -> bool:
         return False
 
 
+# VM-2 COMO NÓ DE ÍNTEGRAS (13/11/2026, tools/sei_integra_vm2.py). A VM-2 bate `.integras_na_vm2` a cada
+# rodada entregue; enquanto a batida é fresca, as rodadas agendadas daqui cedem a vez (a VM-1 adiava por
+# carga: 3 tentativas na madrugada de 13/11). A RESERVA lista o que a VM-2 levou — nem a fila por empresa
+# daqui pega o mesmo processo ao mesmo tempo. Batida velha (VM-2 parada) = a fila volta sozinha para cá.
+DELEGADO_VM2 = RAIZ / "data" / ".integras_na_vm2"
+RESERVA_VM2 = RAIZ / "data" / ".integras_vm2_reserva.json"
+
+
+def _delegado_vm2(horas: float = 30) -> bool:
+    try:
+        return time.time() - DELEGADO_VM2.stat().st_mtime < horas * 3600
+    except OSError:
+        return False
+
+
+def _reservados_vm2(horas: float = 12) -> set[str]:
+    try:
+        d = json.loads(RESERVA_VM2.read_text(encoding="utf-8"))
+        if time.time() - float(d.get("ts") or 0) < horas * 3600:
+            return {str(p) for p in d.get("procs") or []}
+    except (OSError, ValueError, TypeError, AttributeError):
+        pass
+    return set()
+
+
 def _sweep_no_browser() -> bool:
     """Há um sweep segurando o browser AGORA? (sei_integra_completa NÃO usa browser_lock → nunca 2 browsers)."""
     try:
@@ -477,6 +502,10 @@ def main() -> int:
     if _ja_rodando():  # NUNCA 2 browsers: outra instância (timer 03:30 vs cron) já baixa → sai limpo
         _log("outra sei_integra_fila já em execução — saindo (single-instance, evita 2 browsers)")
         return 0
+    if not args.empresa and _delegado_vm2():
+        _log(f"fila delegada à VM-2 ({DELEGADO_VM2.name} fresco) — saindo; apagar o arquivo traz a fila de volta")
+        return 0
+    reservados = _reservados_vm2()
 
     # candidatos ordenados (não arquivados). Fonte: geral (todo o SEI), empresa (CNPJ) ou fila json (bombeiros).
     reler: list[str] = []
@@ -505,8 +534,8 @@ def main() -> int:
     n_vazio_recente = 0
     for sei in candidatos:
         proc = _proc_limpo(sei)
-        if not proc:
-            continue
+        if not proc or proc in reservados:
+            continue                      # reservado = a VM-2 está capturando agora
         if _arquivado_ok(ARQUIVO / proc.replace("/", "_")) and f"SEI-{proc}" not in reler:
             continue                      # já arquivado COM conteúdo — resumível (exceto re-ler por OB)
         if _vazio_recente(ARQUIVO / proc.replace("/", "_")):
