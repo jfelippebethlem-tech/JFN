@@ -28,6 +28,8 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from compliance_agent.siafe_documento import prazo_absoluto
+
 _REPO = Path(__file__).resolve().parents[1]
 _DB = _REPO / "data" / "compliance.db"
 _FRESCA_DIAS = 30
@@ -63,8 +65,14 @@ def fila(exercicio: int, db=None, max_ugs: int = 3) -> list[tuple[str, str]]:
     return saida
 
 
-def _passou(ate: str) -> bool:
-    return datetime.now().strftime("%H:%M") >= ate
+def _agora() -> datetime:
+    return datetime.now()
+
+
+def _passou(prazo: datetime) -> bool:
+    """`prazo` é absoluto (ver `siafe_documento.prazo_absoluto`): comparar `HH:MM` como texto fazia a execução
+    das 23:20 com `--ate 02:55` parar na hora (laudo 13/11/2026)."""
+    return _agora() >= prazo
 
 
 def main() -> int:
@@ -86,10 +94,12 @@ def main() -> int:
         trabalho = [(u, t) for u in alvo for t in tipos if (u, t) in livres][: a.max_ugs * len(tipos)]
     else:
         trabalho = [x for x in fila(a.exercicio, max_ugs=a.max_ugs) if x[1] in tipos]
-    print(f"[{time.strftime('%F %T')}] fila: {trabalho}", flush=True)
+    prazo = prazo_absoluto(a.ate, _agora())
+    ate_abs = prazo.strftime("%Y-%m-%dT%H:%M")
+    print(f"[{time.strftime('%F %T')}] fila: {trabalho} · prazo {ate_abs}", flush=True)
     for ug, tipo in trabalho:
-        if _passou(a.ate):
-            print(f"  prazo {a.ate} atingido — paro antes de {ug}/{tipo}", flush=True)
+        if _passou(prazo):
+            print(f"  prazo {ate_abs} atingido — paro antes de {ug}/{tipo}", flush=True)
             break
         carga = os.getloadavg()[0]
         if carga > a.load_max:
@@ -99,7 +109,7 @@ def main() -> int:
         # o prazo vai PARA DENTRO do coletor: ele para entre fatias e faz logout. Matar no meio deixaria a sessão
         # viva no servidor e o login seguinte (o diário das 05:00) cairia na sessão órfã.
         r = subprocess.run([sys.executable, "-m", "compliance_agent.siafe_documento", "--tipo", tipo, "--ug", ug,
-                            "--exercicio", str(a.exercicio), "--ate", a.ate], cwd=_REPO, capture_output=True,
+                            "--exercicio", str(a.exercicio), "--ate", ate_abs], cwd=_REPO, capture_output=True,
                            text=True, timeout=7200)
         ult = (r.stdout.strip().splitlines() or [""])[-1]
         try:
