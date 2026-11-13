@@ -204,7 +204,7 @@ class Ctx:
         return self.W.execute("SELECT ug_emitente, credor, nome_credor, valor, dt, processo FROM ob "
                               "WHERE status='Contabilizado' AND dt BETWEEN ? AND ?", (d0, d1)).fetchall()
 
-    def refs_ob(self, doc, limite: int = 3) -> list[str]:
+    def refs_ob(self, doc, limite: int = 3, d0: str = G0, d1: str | None = None) -> list[str]:
         """Prova primária: as maiores OB Contabilizadas do credor (CNPJ de 14 dígitos ou raiz de 8) desde P0, com nº,
         UG, data e valor — o leitor confere uma a uma no SIAFE. Índice montado uma vez, sob demanda."""
         if not hasattr(self, "_idx_ob"):
@@ -217,7 +217,9 @@ class Ctx:
                     idx[d[:8]].append((v or 0, num, ug, dt))
             self._idx_ob = idx
         d = dig(doc)
-        top = sorted(self._idx_ob.get(d, ()), key=lambda x: -x[0])[:limite]
+        # só OB DENTRO da janela da regra — prova fora dela não prova o caso
+        fim = d1 or self.GFIM
+        top = sorted((x for x in self._idx_ob.get(d, ()) if d0 <= x[3] <= fim), key=lambda x: -x[0])[:limite]
         return [f"OB {num} · UG {ug} · {dt} · {brl(round(v, 2))} (SIAFE, Contabilizado)" for v, num, ug, dt in top]
 
     @staticmethod
@@ -866,7 +868,7 @@ _CHAVE_DOC = {"D14": "cnpj", "D05": "cnpj", "D10": "cnpj", "D18": "cnpj", "D03":
 def anexar_provas(c: Ctx, res: dict) -> None:
     for rid, campo in _CHAVE_DOC.items():
         for x in (res.get(rid) or {}).get("casos", []):
-            p = c.refs_ob(x.get(campo))
+            p = c.refs_ob(x.get(campo), d0=P0, d1=P1) if rid == "D09" else c.refs_ob(x.get(campo))
             if rid == "D14" and p:
                 p.append(f"{x.get('cadastro')} — {x.get('categoria')} desde {x.get('inicio')} ({x.get('orgao_sancionador')})")
             if rid == "D18" and p:

@@ -318,6 +318,7 @@ def test_casos_da_regua_citam_a_ob(base_couto, tmp_path):
     p = res["D14"]["casos"][0]["prova_primaria"]
     assert p[0].startswith("OB 1 · UG 100100 · 2026-05-10") and "CEIS" in p[-1]
     assert res["D14"]["prova_primaria"][0].startswith("amostra conferível")
+    assert all("2025-" not in q for q in res["D10"]["casos"][0]["prova_primaria"])   # prova só na janela da regra
 
 
 def test_confronto_sem_lista_grava_indisponivel(tmp_path, monkeypatch):
