@@ -66,6 +66,11 @@ class Lado:
     com_exemplos: bool = False
 
 
+def _teste_sem_banco_proprio() -> bool:
+    """Sob pytest sem `JFN_CRUZAMENTO_DB`: não grava no banco real (teste de outro módulo passando pelo co-motor)."""
+    return bool(os.environ.get("PYTEST_CURRENT_TEST")) and not os.environ.get("JFN_CRUZAMENTO_DB")
+
+
 def caminho() -> Path:
     return Path(os.environ.get("JFN_CRUZAMENTO_DB") or (_REPO / "data" / "cruzamento_motores.db"))
 
@@ -102,6 +107,8 @@ def cruzar(tarefa: str, item: str | None, claude: Lado | None, outro: Lado | Non
            entrada_resumo: str = "", par: str | None = None, con: sqlite3.Connection | None = None) -> dict:
     """Grava os lados que existirem; divergência vira exemplo; divergência grave vira revisão."""
     par = par or novo_par()
+    if _teste_sem_banco_proprio() and con is None:
+        return {"par": par, "divergencia": None, "grave": None}
     proprio = con is None
     con = con or conectar()
     try:
@@ -137,6 +144,8 @@ def cruzar(tarefa: str, item: str | None, claude: Lado | None, outro: Lado | Non
 
 def exemplos(tarefa: str, k: int = 3, con: sqlite3.Connection | None = None) -> list[dict]:
     """Few-shot ROTATIVO: os menos usados primeiro (e os mais novos no empate); cada uso é contado."""
+    if _teste_sem_banco_proprio() and con is None:
+        return []
     proprio = con is None
     con = con or conectar()
     try:
@@ -171,6 +180,8 @@ def concordancia(dias: int = 30, tarefa: str | None = None, con: sqlite3.Connect
     """
     proprio = con is None
     try:
+        if proprio and _teste_sem_banco_proprio():
+            raise sqlite3.OperationalError("sob teste sem banco próprio")
         con = con or conectar(somente_leitura=True)
     except sqlite3.Error:
         return {"medido": False, "motivo": "sem cruzamentos ainda", "por_tarefa_modelo": [], "matriz": {}}

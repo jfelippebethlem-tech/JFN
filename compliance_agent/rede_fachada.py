@@ -388,8 +388,11 @@ def veredito_llm(pac: dict, *, gerar=None, timeout: float = 45.0) -> dict:
               + resumo + "\n\nDe o veredito conforme as regras (SOMENTE JSON).")
     if gerar is None:
         try:
-            from compliance_agent.direcionamento_cerebro import gerar_sync
-            gerar = lambda p, s="": gerar_sync(p, s, timeout=timeout)  # noqa: E731
+            # co-motor (13/11/2026): Claude + cascata sobre o mesmo pacote, vereditos cruzados; produto
+            # interativo → espera curta pela trava do claude (passou disso, responde só a cascata)
+            from compliance_agent.llm.comotor import juizo
+            _g = juizo("pericia_fornecedor", espera=15.0, timeout_claude=120.0)
+            gerar = lambda p, s="": _g(p, s, timeout)  # noqa: E731
         except Exception:  # noqa: BLE001
             return {"disponivel": False, "motivo": "LLM indisponível (import)"}
     try:
@@ -410,7 +413,18 @@ def veredito_llm(pac: dict, *, gerar=None, timeout: float = 45.0) -> dict:
     return {"disponivel": True, "veredito": str(d.get("veredito", ""))[:40],
             "confianca": str(d.get("confianca", ""))[:20],
             "fundamentacao": str(d.get("fundamentacao", "")).strip(),
-            "base_legal": str(d.get("base_legal", "")).strip()}
+            "base_legal": str(d.get("base_legal", "")).strip(), "motor": _motor_da_resposta()}
+
+
+def _motor_da_resposta() -> str:
+    """Proveniência do veredito (co-motor: 'claude:<id> (+<cascata>)'; senão o provedor da cascata)."""
+    try:
+        from compliance_agent import direcionamento_cerebro as dc
+        from compliance_agent.llm.comotor import proveniencia
+        prov = dc.ultimo_provedor or "desconhecido"
+        return proveniencia(prov) if prov == "claude" else prov
+    except ImportError:
+        return "desconhecido"
 
 
 if __name__ == "__main__":

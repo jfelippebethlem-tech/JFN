@@ -31,6 +31,7 @@ import hashlib
 import logging
 import os
 import random
+import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
@@ -39,6 +40,14 @@ from compliance_agent.llm import claude_motor, cruzamento
 from compliance_agent.llm.cruzamento import Lado
 
 logger = logging.getLogger(__name__)
+
+try:
+    import httpx
+    _HTTP: tuple = (httpx.HTTPError,)
+except ImportError:  # sem httpx não há provedor HTTP a falhar
+    _HTTP = ()
+# o que um provedor/banco pode levantar: RespostaProvedorErro é RuntimeError; prazo do futuro é TimeoutError (OSError)
+_FALHAS = (RuntimeError, OSError, ValueError, TypeError, KeyError, sqlite3.Error) + _HTTP
 
 _ultima: dict = {}
 
@@ -157,14 +166,24 @@ def _chamar_provedor(provedor: str, prompt: str, sistema: str) -> str | None:
 
 def _gerar_sync_padrao(prompt, sistema="", timeout=45.0, json_saida=True):
     from compliance_agent.direcionamento_cerebro import gerar_sync
-    return gerar_sync(prompt, sistema, timeout, json_saida)
+    # mesma forma de chamada dos chamadores antigos (3 posicionais): quem substitui gerar_sync segue servindo
+    return gerar_sync(prompt, sistema, timeout) if json_saida else gerar_sync(prompt, sistema, timeout, json_saida)
 
 
 def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Callable | None = None,
-          normalizar: Callable | None = None, pensar: Callable | None = None, sorteio: Callable | None = None):
-    """Fábrica do `gerar` co-motor de uma tarefa. `cascata`/`pensar`/`sorteio` são injetáveis para teste."""
+          normalizar: Callable | None = None, pensar: Callable | None = None, sorteio: Callable | None = None,
+          espera: float | None = None, timeout_claude: float = 180.0):
+    """Fábrica do `gerar` co-motor de uma tarefa. `cascata`/`pensar`/`sorteio` são injetáveis para teste.
+
+    `espera` = quanto aguardar a trava do único `claude` da VM (produto interativo: curto, ex. 15 s — passou
+    disso, a resposta sai da cascata em vez de deixar o dono esperando). `timeout_claude` = prazo da chamada.
+    """
     normalizar = normalizar or NORMALIZADORES.get(tarefa)
-    pensar = pensar or claude_motor.pensar
+    _pensar = pensar or claude_motor.pensar
+
+    def pensar(t, p, **kw):
+        extra = {"timeout": timeout_claude} | ({"espera": espera} if espera is not None else {})
+        return _pensar(t, p, **kw, **extra)
     sorteio = sorteio or random.random
 
     def _cascata(prompt, sistema, timeout, json_saida) -> tuple[str, str, bool]:
@@ -172,7 +191,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
         if normalizar is not None and sorteio() < _fracao_fewshot():
             try:
                 fs = cruzamento.exemplos(tarefa, k=3)
-            except Exception as e:  # noqa: BLE001 — sem exemplos a cascata segue igual
+            except _FALHAS as e:  # sem exemplos a cascata segue igual
                 logger.debug("comotor: exemplos indisponíveis (%s)", e)
         p = _com_exemplos(prompt, fs) if fs else prompt
         if cascata is None and normalizar is not None:
@@ -182,7 +201,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                     r = _chamar_provedor(pref, p, sistema)
                     if r and r.strip():
                         return r, pref, bool(fs)
-            except Exception as e:  # noqa: BLE001 — preferência é otimização; a cascata é o caminho garantido
+            except _FALHAS as e:  # preferência é otimização; a cascata é o caminho garantido
                 logger.debug("comotor: provedor preferido falhou (%s)", e)
         if cascata is not None:
             return cascata(p, sistema, timeout, json_saida), "cascata", bool(fs)
@@ -203,7 +222,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                 t1 = time.monotonic()
                 try:
                     r_casc = _cascata(prompt, sistema, timeout, json_saida)
-                except Exception as e:  # noqa: BLE001
+                except _FALHAS as e:  # cascata fora: devolve-se o erro só se o Claude também faltar
                     erro_casc = e
                 lat_o = int((time.monotonic() - t1) * 1000)
         else:
@@ -220,7 +239,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
                 fo = ex.submit(_medido, "o", _cascata, prompt, sistema, timeout, json_saida)
                 try:
                     r_casc = fo.result()
-                except Exception as e:  # noqa: BLE001 — cascata fora: o Claude ainda pode responder
+                except _FALHAS as e:  # cascata fora: o Claude ainda pode responder
                     erro_casc = e
                 r_claude = fc.result()
             lat_c, lat_o = fim.get("c"), fim.get("o")
@@ -237,7 +256,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
             lado_o = Lado("cascata", mod, v, n, c, lat_o, fs)
         try:
             cz = cruzamento.cruzar(tarefa, item, lado_c, lado_o, entrada_resumo=prompt[:600])
-        except Exception as e:  # noqa: BLE001 — registrar o cruzamento nunca derruba o juízo
+        except _FALHAS as e:  # registrar o cruzamento nunca derruba o juízo
             logger.warning("comotor: cruzamento não gravado (%s)", type(e).__name__)
             cz = {"par": None, "divergencia": None, "grave": None}
 
@@ -250,7 +269,7 @@ def juizo(tarefa: str, *, modelo: str = claude_motor.MODELO_VOLUME, cascata: Cal
             if r_claude is not None:
                 dc.ultimo_provedor, dc.ultimo_modelo = "claude", r_claude.modelo
         except ImportError:
-            pass
+            logger.debug("comotor: direcionamento_cerebro indisponível — proveniência só em ultima_chamada()")
         if r_claude is not None:
             return r_claude.texto
         if r_casc is not None:

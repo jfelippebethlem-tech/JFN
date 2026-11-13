@@ -215,8 +215,12 @@ def analise_discursiva(achados: list[dict], gerar=None) -> list[dict]:
         return achados
     if gerar is None:
         try:
-            from compliance_agent.direcionamento_cerebro import gerar_sync
-            gerar = lambda p, s="": gerar_sync(p, s, timeout=45.0)  # noqa: E731
+            # co-motor (13/11/2026): análise jurídica discursiva = juízo pesado → Claude Opus pela assinatura;
+            # prosa não tem régua para cruzar, então a cascata só entra quando o Claude não responde
+            from compliance_agent.llm.claude_motor import MODELO_JUIZO
+            from compliance_agent.llm.comotor import juizo
+            _g = juizo("parecer_juridico", modelo=MODELO_JUIZO, espera=15.0, timeout_claude=150.0)
+            gerar = lambda p, s="": _g(p, s, 45.0)  # noqa: E731
         except Exception:
             return achados
     itens = "\n\n".join(

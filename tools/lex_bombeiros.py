@@ -6,7 +6,11 @@ Gemini" e estava errado. Honestidade: indício≠acusação; INDISPONÍVEL≠irr
 import argparse
 import json
 import tools.lex_execucao as L
-from compliance_agent.direcionamento_cerebro import gerar_sync
+from compliance_agent.llm.comotor import juizo
+
+# co-motor (13/11/2026): Claude (assinatura, com teto) + a cascata de sempre, vereditos cruzados;
+# mesma tarefa e mesmo orçamento do lex_execucao
+gerar_sync = juizo("pericia_execucao")
 
 def main():
     ap = argparse.ArgumentParser()

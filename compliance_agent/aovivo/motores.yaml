@@ -143,6 +143,30 @@ motores:
       - regex: 'serviço=(\w+) api=(\w+) alertas=(\d+) eventos=(\d+)'
         texto: 'ronda: serviço {1}, API {2}, {3} alertas na base'
         tipo: estado
+  # 13/11/2026 (dono): "o claude vai ser o CO-MOTOR de tudo". O Claude Code pela assinatura julga ao lado da
+  # cascata (perícia, parecer, triagem dos alertas, camada subjetiva). Rodando = trava do único `claude` presa.
+  # `uso: claude_motor` põe no JSON do motor: chamadas hoje, por tarefa, tetos, último erro e o canário.
+  - id: claude
+    nome: Claude · co-motor
+    classe: motor
+    descricao: Claude (assinatura) julga ao lado da cascata gratuita; os vereditos se cruzam e treinam os outros
+    trava: data/claude_motor.lock
+    log: data/claude_motor.log
+    uso: claude_motor
+    efeito: {json: data/claude_motor_estado.json, chave: ultima_ok_iso, horas: 30}
+    eventos:
+      - regex: 'tarefa=(\w+) ok modelo=(\S+) ([\d.]+)s'
+        texto: '{1}: respondeu ({2}, {3} s)'
+        tipo: dado
+      - regex: 'tarefa=(\w+) erro (\w+):'
+        texto: '{1}: falhou ({2}) — a cascata respondeu sozinha'
+        tipo: falha
+      - regex: 'canário (OK|FALHOU)'
+        texto: 'canário da assinatura: {1}'
+        tipo: estado
+      - regex: 'limite de uso: motor em pausa por (\d+) s'
+        texto: 'limite de uso da assinatura: pausa de {1} s'
+        tipo: falha
   - id: digest
     nome: Digest diário
     classe: motor

@@ -140,7 +140,8 @@ def test_api_estado_e_stream(tmp_path, monkeypatch):
     for m in j["motores"]:
         assert set(m) >= {"id", "nome", "classe", "estado", "desde", "proxima", "progresso", "ultimo_evento", "atividade"}
     rotas = {r.path: r.methods for r in api.router.routes}
-    assert rotas == {"/api/ao-vivo/estado": {"GET"}, "/api/ao-vivo/stream": {"GET"}}        # só leitura: nenhuma rota de escrita
+    assert set(rotas) == {"/api/ao-vivo/estado", "/api/ao-vivo/stream", "/api/ao-vivo/claude", "/api/ao-vivo/cruzamento"}
+    assert all(m == {"GET"} for m in rotas.values())        # só leitura: nenhuma rota de escrita
 
     class Req:
         async def is_disconnected(self):

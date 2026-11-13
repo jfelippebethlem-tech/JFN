@@ -90,6 +90,30 @@ def _ts_texto(v) -> float | None:
     return (dt if dt.tzinfo else dt.astimezone()).timestamp()
 
 
+def ler_uso(fonte: str) -> dict | None:
+    """Painel de USO de um motor (`uso:` no catálogo). Lista fechada de fontes — o YAML não importa código.
+
+      claude_motor   chamadas hoje, por tarefa, tetos, último erro e canário do co-motor Claude (dois JSON
+                     pequenos em data/); textos livres passam pelo saneamento como todo o resto
+    """
+    if fonte != "claude_motor":
+        return None
+    try:
+        from compliance_agent.llm.claude_motor import painel
+        p = painel()
+    except (ImportError, OSError, ValueError, TypeError, KeyError) as exc:  # uso ilegível: INDISPONÍVEL
+        logger.debug("ao vivo: uso de %s indisponível: %s", fonte, exc)
+        return None
+    for k in ("ultimo_erro",):
+        if isinstance(p.get(k), dict) and p[k].get("motivo"):
+            p[k] = dict(p[k], motivo=sanear(p[k]["motivo"]))
+    if p.get("motivo_desligado"):
+        p["motivo_desligado"] = sanear(p["motivo_desligado"])
+    if isinstance(p.get("canario"), dict) and p["canario"].get("motivo"):
+        p["canario"] = dict(p["canario"], motivo=sanear(p["canario"]["motivo"]))
+    return p
+
+
 def medir_efeito(cfg: dict) -> float | None:
     """Epoch do ÚLTIMO efeito do motor, ou None se não dá para medir (INDISPONÍVEL ≠ parado).
 
@@ -473,6 +497,8 @@ class Coletor:
                 d = {"id": m["id"], "nome": m["nome"], "classe": m.get("classe", "motor"), "descricao": m.get("descricao"),
                      "unidade": m.get("unidade"), "estado": "indisponivel", "desde": None, "proxima": None, "saida": None,
                      "progresso": None, "ultimo_evento": None, "efeito": None}
+                if m.get("uso"):
+                    d["uso"] = ler_uso(m["uso"])
                 if m.get("sonda_env"):
                     d["estado"] = self._sonda(m)
                 elif m.get("unidade") and sd is None:

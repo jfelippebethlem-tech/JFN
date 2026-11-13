@@ -288,7 +288,7 @@ def _executar_cli(cmd: list[str], entrada: str, env: dict, cwd: Path, timeout: f
         try:
             os.killpg(proc.pid, signal.SIGKILL)
         except ProcessLookupError:
-            pass
+            logger.debug("claude_motor: grupo %s já tinha saído no prazo estourado", proc.pid)
         proc.communicate()
         raise
 
@@ -346,6 +346,10 @@ def pensar(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME
     """Uma chamada ao Claude pela assinatura. `None` ⇒ cair na cascata (motivo em `ultimo_motivo`)."""
     global ultimo_motivo
     ultimo_motivo = ""
+    if executar is None and os.environ.get("PYTEST_CURRENT_TEST"):
+        # guarda dura: teste nenhum chama o claude de verdade (cota da assinatura) — só com executor dublê
+        ultimo_motivo = "sob pytest sem executor dublê"
+        return None
     executar = executar or _executar_cli
     espera = float(os.environ.get("JFN_CLAUDE_ESPERA_S", "90")) if espera is None else espera
     try:
@@ -388,7 +392,8 @@ def pensar(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME
                 return None
             seg = time.monotonic() - ini
         return _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt)
-    except Exception as e:  # noqa: BLE001 — contrato: pensar() nunca derruba o chamador
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RuntimeError) as e:
+        # contrato: pensar() nunca derruba o chamador (arquivo de uso, JSON, executor torto)
         ultimo_motivo = f"falha interna do motor ({type(e).__name__})"
         logger.warning("claude_motor: %s", ultimo_motivo)
         return None
@@ -436,6 +441,7 @@ def _interpretar(tarefa, modelo, rc, out, err, seg, schema, prompt) -> Pensament
         tt["segundos"] = round(tt["segundos"] + seg, 1)
         d["ultima_ok"] = {"em": _agora(), "tarefa": tarefa, "modelo": modelo, "segundos": round(seg, 1)}
     _mutar_uso(f)
+    _mutar_estado(ultima_ok_iso=_agora())      # persiste à virada do dia: é o "efeito" do motor no AO VIVO
     _log(f"tarefa={tarefa} ok modelo={modelo} {seg:.1f}s")
     return Pensamento(texto=resultado, modelo=modelo, segundos=round(seg, 1), tarefa=tarefa, dados=dados,
                       extras={k: corpo.get(k) for k in ("num_turns", "duration_ms") if k in corpo})
@@ -455,7 +461,8 @@ def _avisar_telegram(texto: str) -> bool:
         from compliance_agent.notifications.telegram import enviar_mensagem
         r = asyncio.run(enviar_mensagem(texto, parse_mode="HTML"))
         return bool(isinstance(r, dict) and r.get("ok"))
-    except Exception as e:  # noqa: BLE001 — aviso é melhor-esforço; o estado do canário já foi gravado
+    except (ImportError, OSError, RuntimeError, ValueError) as e:
+        # aviso é melhor-esforço (enviar_mensagem já devolve {"ok": False} em erro de rede); o estado já foi gravado
         logger.warning("canário: aviso ao Telegram falhou (%s)", type(e).__name__)
         return False
 
