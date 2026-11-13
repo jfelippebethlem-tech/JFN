@@ -10,8 +10,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
@@ -1388,38 +1388,54 @@ def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+_NC_CORPO: dict = {}   # corpo JSON pronto de /api/poder/nomeados_candidatos, por (geração da base, esfera, limite)
+
+
 @router.get("/api/poder/nomeados_candidatos")
-def api_nomeados_candidatos(limite: int = 200):
-    """Cruzamento SERVIDOR/NOMEADO (registros_folha) × CANDIDATO (doacoes_eleitorais/TSE) por nome.
-    Servidor público — sobretudo cargo em comissão — que foi candidato a cargo eletivo. Match por
-    NOME (verificar homônimo). Indício de relação político-administrativa, não irregularidade."""
+def api_nomeados_candidatos(request: Request, esfera: str = "estado", limite: int = 50000):
+    """Servidor/nomeado (folha) × candidato (TSE consulta_cand) — UMA linha por pessoa, com a verificação
+    declarada: VERIFICADO (CPF parcial da folha confere com o do TSE) ou PENDENTE ("possível homônimo — não
+    verificado"). `total` é o total REAL do recorte; `truncado` diz se o `limite` cortou. Esfera pela fonte da
+    folha (Câmara Municipal = municipal). Lógica e motivo em `compliance_agent/nomeados_candidatos.py`."""
     import sqlite3 as _sq
-    lim = max(10, min(int(limite or 200), 1000))
-    ck = f"nomcand:{lim}"  # o payload varia com o limite — chave fixa congelava o tamanho p/ todos
-    cache = _cache_get(ck, 600)
-    if cache:
-        return JSONResponse(cache)
-    try:
+    from compliance_agent import nomeados_candidatos as _N
+
+    def _calc():
         con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
-        con.row_factory = _sq.Row
-        con.execute("CREATE TEMP TABLE _cand AS SELECT DISTINCT UPPER(TRIM(nome_candidato)) nc, "
-                    "cargo_candidato, partido, ano_eleicao FROM doacoes_eleitorais")
-        con.execute("CREATE INDEX _tc ON _cand(nc)")
-        rows = con.execute(
-            "SELECT f.nome, f.cargo, f.orgao_nome, c.cargo_candidato, c.partido, c.ano_eleicao "
-            "FROM (SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha) f "
-            "JOIN _cand c ON UPPER(TRIM(f.nome))=c.nc "
-            "ORDER BY f.nome LIMIT ?", (lim,)).fetchall()
-        con.close()
-        comissao = [r for r in rows if "comiss" in (r["cargo"] or "").lower()]
-        itens = [{"nome": r["nome"], "cargo_folha": r["cargo"], "orgao": r["orgao_nome"],
-                  "cargo_disputado": r["cargo_candidato"], "partido": r["partido"],
-                  "ano": r["ano_eleicao"],
-                  "comissionado": "comiss" in (r["cargo"] or "").lower()} for r in rows]
-        out = {"ok": True, "total": len(itens), "n_comissionados": len(comissao), "itens": itens,
-               "aviso": "Match por NOME (homônimos possíveis) — indício de relação político-administrativa "
-                        "a verificar, não irregularidade. Ser candidato é direito; o foco é conflito de interesse."}
-        return JSONResponse(_cache_put(ck, out))
+        try:
+            return _N.cruzar(con)
+        finally:
+            con.close()
+
+    try:
+        base = _cache_calc("nomcand:v2", 3600, _calc)   # single-flight + SWR; o prewarm de 30 min o mantém quente
+        lim = max(1, min(int(limite or 50000), 50000))
+        # ~4 MB de JSON: serializar a cada visita custava 3 s a load 20. O corpo pronto fica guardado enquanto a
+        # base for a MESMA — chave = instante em que a base foi calculada (o que o cache grava), nunca id() de
+        # objeto, que o Python reaproveita depois do GC.
+        geracao = (_cache.get("nomcand:v2") or (0.0,))[0]
+        ck = (geracao, esfera, lim)
+        if (corpo := _NC_CORPO.get(ck)) is None:
+            out = _N.recortar(base, esfera)
+            out["truncado"] = len(out["itens"]) > lim
+            out["itens"] = out["itens"][:lim]
+            out["ok"] = True
+            out["aviso"] = ("VERIFICADO = os 6 dígitos centrais do CPF publicados na folha conferem com o CPF da "
+                            "candidatura no TSE. PENDENTE = só o nome coincide (possível homônimo — não verificado). "
+                            "Ser candidato é direito político; o cruzamento é indício de relação "
+                            "político-administrativa, não irregularidade.")
+            import gzip as _gz
+            bruto = json.dumps(out, ensure_ascii=False).encode("utf-8")
+            # gzip também pronto: o middleware recomprimia os ~4 MB a cada visita (1,2 s a load 21). Resposta com
+            # Content-Encoding já definido o middleware deixa passar.
+            corpo = (bruto, _gz.compress(bruto, 6))
+            for k in [k for k in _NC_CORPO if k[0] != geracao]:   # guarda só a geração atual da base
+                _NC_CORPO.pop(k, None)
+            _NC_CORPO[ck] = corpo
+        if "gzip" in (request.headers.get("accept-encoding") or "").lower():
+            return Response(corpo[1], media_type="application/json",
+                            headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
+        return Response(corpo[0], media_type="application/json")
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 

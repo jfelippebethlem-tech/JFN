@@ -12,7 +12,7 @@
  * a sequencia de boot e a ponte.
  */
 import {$, esc, svgIco, card, kpi, sec, cover, spin, leitura, semMedicao, btnPdf, acoesAba,
-        toggle, corta, clk} from '../nucleo/dom.js';
+        toggle, corta, clk, avisoDemora} from '../nucleo/dom.js';
 import {drillSeCompleto, limparDrill, registrarDrill} from '../nucleo/drill.js';
 import {fmtN, fmtD, fmtData, fmtPct, fmtR, fmtRc, ROTULOS, rot} from '../nucleo/formato.js';
 import {J, _jCache, erroHumano} from '../nucleo/http.js';
@@ -1840,18 +1840,47 @@ export async function fazBusca(){
 }
 
 // ═══ PODER / LARANJAS / CARTEL / ALERTAS / SIAFE / SWEEPS / VALIDAR / AÇÕES ═══
-export async function renderPoder(){
-  const d=await J('/api/poder/nomeados_candidatos?limite=1000');
-  if(!d.ok)return sec('Poder')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+/* v62 — NOMEADOS × CANDIDATOS, refeito (13/11/2026). A tela antiga dizia "Cruzamentos 1000" e era o TETO
+   do `LIMIT` (a lista parava nos nomes começados por "ARI"); eram 442 pessoas em até 54 cartões cada;
+   misturava a Câmara Municipal do Rio com o Estado; e era SÓ NOME. Conferido contra o TSE (consulta_cand)
+   pelo CPF parcial da folha: das 442, 84 eram homônimos comprovados e 160 não tinham como ser conferidas.
+   Agora: um cartão por PESSOA; VERIFICADO (CPF parcial confere) ou PENDENTE ("possível homônimo — não
+   verificado") em cada cartão e em cada candidatura; total real do servidor; esfera pela fonte da folha;
+   e a lista entra em lotes (`listaPaginada`) — 1.000 cartões de uma vez travavam o celular. */
+const _pdTag=v=>v==='VERIFICADO'?'<span class="tag teal">VERIFICADO</span>':'<span class="tag amber">PENDENTE · possível homônimo</span>';
+const _pdEsf={estado:'Estado',municipal:'Município do Rio',indefinida:'esfera indefinida',mista:'Estado + Município'};
+function _pdCard(x){
+  const vin=(x.vinculos||[]).slice(0,4).map(v=>`<div class="dim" style="font-size:12.5px;margin-top:2px">${esc(v.orgao||'—')} · ${esc(v.cargo||v.vinculo||'—')}${v.cargo&&v.vinculo?' · '+esc(v.vinculo):''} · até ${esc(v.ultima_competencia||'?')} <span style="opacity:.75">(${esc(v.fonte)})</span></div>`).join('')
+    +((x.vinculos||[]).length>4?`<div class="dim" style="font-size:12px">+ ${fmtN(x.vinculos.length-4)} vínculo(s)</div>`:'');
+  const cand=(x.candidaturas||[]).map(c=>`<div style="font-size:13px;margin-top:3px">${c.verificacao==='VERIFICADO'?'✔':'?'} <b>${esc(String(c.ano))}</b> · ${esc(c.cargo||'—')}${c.municipio?' · '+esc(c.municipio):''}${c.partido?' · '+esc(c.partido):''}${c.resultado?' · '+esc(c.resultado):''}
+      <div class="dim" style="font-size:11.5px;margin-left:16px">${esc(c.nota||'')}</div></div>`).join('');
+  return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap">
+      <div style="min-width:0;font-weight:700">${esc(x.nome)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${_pdTag(x.verificacao)}${x.esfera!=='estado'?`<span class="tag purple">${esc(_pdEsf[x.esfera]||x.esfera)}</span>`:''}${x.comissionado?'<span class="tag rose">comissão</span>':''}</div></div>
+    <div class="dim" style="font-size:12px;margin-top:4px">${esc(x.motivo_verificacao||'')}</div>
+    <div style="margin-top:6px">${vin}</div><div style="margin-top:6px">${cand}</div>`,x.verificacao==='VERIFICADO'&&x.comissionado?'hl':'');
+}
+export async function renderPoder(esf){
+  esf=esf==='todos'||esf==='municipal'?esf:'estado';
+  const demora=avisoDemora(aba,4000,'Cruzando a folha (1,3 milhão de linhas) com as candidaturas do TSE e conferindo o CPF parcial. Logo após um reinício do servidor isso leva até ~30 s; depois abre na hora.');
+  const d=await J('/api/poder/nomeados_candidatos?esfera='+esf,{tetoMs:90000});
+  clearTimeout(demora);
+  const tit=esf==='todos'?'Nomeados × candidatos (todas as esferas)':'Nomeados × candidatos (Estado)';
+  let h=cover(esf==='todos'?'geral':'estado',tit,'Servidor público que aparece numa folha coletada (Executivo estadual/GESPERJ, Defensoria, TJRJ'+(esf==='todos'?', Câmara Municipal do Rio':'')+') e também numa candidatura registrada no TSE. <b>Cada cartão é uma pessoa</b> e diz se o vínculo foi <b>VERIFICADO</b> (os 6 dígitos de CPF que a folha publica conferem com o CPF da candidatura) ou está <b>PENDENTE</b> — possível homônimo, só o nome coincide. Ser candidato é direito político; isto é indício de relação político-administrativa, não irregularidade.','🏛️')+acoesAba('nomeados');
+  if(!d||d.ok===false)return h+card(`<div class="warn">${erroHumano(d&&d.erro)}</div>`);
   const it=d.itens||[];
-  let h=cover('estado','Nomeados × candidatos (Estado)','Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.','🏛️')+acoesAba('nomeados');
-  const _linPoder=x=>card(`<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="dim">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div><div class="dim">disputou ${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div>`);
-  registrarDrill('poderCruzamentos',{titulo:'Servidor que também foi candidato',itens:it,render:_linPoder,
-    nota:'Cruzamento por NOME — verificar homônimo antes de qualquer juízo.'});
-  registrarDrill('poderComissionados',{titulo:'Cruzamentos em cargo COMISSIONADO',itens:it.filter(x=>x.comissionado),render:_linPoder});
-  h+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️',{drill:'poderCruzamentos'})}${kpi(fmtN(it.filter(x=>x.comissionado).length),'Comissionados','var(--rose)','🎖️',{drill:'poderComissionados'})}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
-  h+=`<div id="pod-list" class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
+  const ver=it.filter(x=>x.verificacao==='VERIFICADO'),pen=it.filter(x=>x.verificacao!=='VERIFICADO');
+  h+=`<div class="grid g2">${kpi(fmtN(d.total),'Pessoas no cruzamento',null,'🏛️',{sobre:`Total REAL de pessoas desta esfera — não é teto de consulta. ${fmtN(d.n_candidaturas)} candidaturas no total.`})}${kpi(fmtN(d.n_verificados),'Verificadas pelo CPF','var(--teal)','✔',{sobre:'O CPF parcial publicado na folha (6 dígitos) confere com o CPF da candidatura no TSE (consulta_cand, dados abertos). É a mesma pessoa.'})}
+    ${kpi(fmtN(d.n_pendentes),'Pendentes — possível homônimo','var(--amber)','?',{sobre:'Só o nome coincide: a folha da fonte não publica CPF (TJRJ, Câmara) ou a candidatura é de ano que o TSE publicou sem CPF (2024; 2018 só pela prestação de contas). NÃO é vínculo confirmado.'})}${kpi(fmtN(d.n_comissionados_verificados),'Comissionados verificados','var(--rose)','🎖️',{sobre:`Cargo em comissão com vínculo verificado pelo CPF. Com os pendentes: ${fmtN(d.n_comissionados)}.`})}</div>`;
+  const cob=Object.entries(d.cobertura_tse||{}).sort().map(([a,c])=>`${esc(a)}: ${c.candidaturas==null?esc(c.estado):fmtN(c.candidaturas)+' cand.'+(c.com_cpf?'':' <b>sem CPF</b>')}`).join(' · ');
+  h+=`<div class="dim" style="font-size:12px;margin-top:8px"><b>Homônimos descartados:</b> ${fmtN(d.homonimos_descartados)} candidaturas de mesmo nome cujo CPF NÃO confere (outra pessoa, provado pelo TSE).
+    ${esf==='estado'&&(d.por_esfera||{}).municipal?` · <b>${fmtN(d.por_esfera.municipal)}</b> pessoa(s) da Câmara Municipal do Rio ficam fora (esfera municipal) — estão em Transversal › Poder, rotuladas.`:''}
+    <br><b>Candidaturas (TSE):</b> ${cob}</div>`;
+  if(d.truncado)h+=`<div class="warn" style="margin-top:8px">A resposta foi cortada pelo limite do servidor — ${fmtN(it.length)} de ${fmtN(d.total)}.</div>`;
+  h+=sec('Verificadas pelo CPF',ver.length)+buscaPag('pod-ver','filtrar por nome, órgão, cargo, partido, município — busca em TODAS…')+listaPaginada('pod-ver',ver,_pdCard,40,x=>x.nome);
+  h+=`<details style="margin-top:16px"><summary style="cursor:pointer"><b>Pendentes — possível homônimo, não verificado</b> (${fmtN(pen.length)})</summary>
+    <div class="dim" style="font-size:12px;margin:6px 0">Mesmo nome, sem segundo atributo que confirme. Não usar como vínculo sem conferir o CPF no órgão.</div>
+    ${buscaPag('pod-pen','filtrar pendentes…')}${listaPaginada('pod-pen',pen,_pdCard,40,x=>x.nome)}</details>`;
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;
 }
 export async function renderSocioServidor(){

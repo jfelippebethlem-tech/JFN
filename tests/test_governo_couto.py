@@ -264,3 +264,29 @@ def test_pontos_de_atencao_aceita_envelope_achados(bases):
         encoding="utf-8")
     p = bases.montar()["pontos_atencao"]
     assert p["estado"] == "ok" and [i["id"] for i in p["itens"]] == ["a1"]
+
+
+def test_pontos_de_atencao_declaram_verificado_ou_pendente(bases):
+    """Diretriz do dono (13/11/2026): cada item diz VERIFICADO ou PENDENTE; casamento só por NOME é
+    "possível homônimo — não verificado", nunca vínculo confirmado."""
+    cnpj = "00000000000191"
+    bases.SUSPEITAS.write_text(json.dumps({"achados": [
+        {"id": "c1", "tipo": "caso", "camada": "deterministica", "grau": "🔴", "cnpj": cnpj,
+         "regra_ou_hipotese": "D14 · EMPRESA TESTE paga na vigência de sanção", "fonte": "SIAFE; CEIS"},
+        {"id": "r1", "tipo": "regra", "camada": "deterministica", "grau": "🟡",
+         "regra_ou_hipotese": "Sócio homônimo de agente público: 9 credores", "fonte": "ver relatório"},
+        {"id": "r2", "tipo": "regra", "camada": "deterministica", "grau": "🟡",
+         "regra_ou_hipotese": "Concentração por órgão: 3", "fonte": "ver relatório"},
+        {"id": "h1", "tipo": "hipotese", "camada": "subjetiva", "grau": "⚪",
+         "regra_ou_hipotese": "Redes com laços políticos", "explicacao_inocente": "homônimo; doação lícita"},
+        {"id": "r3", "tipo": "regra", "camada": "deterministica", "grau": "🟡",
+         "regra_ou_hipotese": "Doação eleitoral de sócio: 2 vínculos", "fonte": "ver relatório"},
+        {"id": "h2", "tipo": "hipotese", "camada": "subjetiva", "grau": "⚪", "regra_ou_hipotese": "Ritmo sazonal"},
+    ]}), encoding="utf-8")
+    it = {i["id"]: i for i in bases.montar()["pontos_atencao"]["itens"]}
+    assert it["c1"]["verificacao"] == "VERIFICADO" and "CNPJ" in it["c1"]["verificacao_motivo"]
+    for k in ("r1", "h1", "r3"):
+        assert it[k]["verificacao"] == "PENDENTE"
+        assert "possível homônimo — não verificado" in it[k]["verificacao_motivo"], k
+    assert it["r2"]["verificacao"] == "PENDENTE" and "agregado" in it["r2"]["verificacao_motivo"]
+    assert it["h2"]["verificacao"] == "PENDENTE" and "hipótese" in it["h2"]["verificacao_motivo"]
