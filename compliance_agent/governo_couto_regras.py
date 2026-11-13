@@ -904,7 +904,7 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
                            explicacao_inocente=INOCENTE_REGRA[rid], proximo_passo="restabelecer a fonte", tipo="regra"))
             continue
         grau = GRAU_REGRA[rid] if (r.get("n") or 0) > 0 else "⚪"
-        A.append(_base(id=rid, camada="deterministica", regra_ou_hipotese=r.get("resumo") or rid, grau=grau,
+        A.append(_base(id=rid, camada="deterministica", regra_ou_hipotese=f"{rid} · {r.get('resumo') or ''}", grau=grau,
                        valor_ob=r.get("valor_ob"), fonte=r.get("criterio"), explicacao_inocente=INOCENTE_REGRA[rid],
                        proximo_passo=PASSO_REGRA[rid], tipo="regra", prova_primaria=r.get("prova_primaria") or []))
     for x in (res.get("D14") or {}).get("casos", []):
@@ -936,8 +936,8 @@ def achados_deterministicos(res: dict, ugn=lambda u: "?") -> list[dict]:
                        prova_primaria=x.get("prova_primaria") or []))
     for x in (res.get("D18") or {}).get("casos", []):
         A.append(_base(id=f"D18-{x['cnpj']}", camada="deterministica",
-                       regra_ou_hipotese=f"D18 · {x['credor']} — fachada confirmada: {'sim' if x['fachada_confirmada'] else 'não'}; "
-                                         f"score {x['score']}",
+                       regra_ou_hipotese=f"D18 · {x['credor']} — fachada confirmada: {'sim' if x['fachada_confirmada'] else 'não'}; " +
+                                         (f"score {x['score']}" if x.get("score") is not None else "sem score de fantasma"),
                        grau="🔴" if x["fachada_confirmada"] or (x["score"] or 0) >= 80 else "🟡", valor_ob=x["pago_ob"],
                        fonte=SIAFE + "; registro de vistoria de sede", explicacao_inocente=INOCENTE_REGRA["D18"],
                        proximo_passo=PASSO_REGRA["D18"], tipo="caso", cnpj=x["cnpj"],

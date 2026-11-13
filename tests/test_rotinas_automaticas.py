@@ -356,3 +356,13 @@ def test_rota_de_rotina_sem_arquivo_diz_sem_execucao(tmp_path, monkeypatch):
     RB.gravar_json(tmp_path / "cge_confronto.json", {"estado": "ok", "metricas": {}, "linhas": [], "x": "CPF 123.456.789-01"})
     d = json.loads(R.api_cge_confronto().body)
     assert d["estado"] == "ok" and "456.789" not in json.dumps(d, ensure_ascii=False)
+
+
+def test_caso_d18_sem_score_nao_imprime_none():
+    from compliance_agent.governo_couto_regras import achados_deterministicos
+    res = {"D18": {"n": 1, "resumo": "x", "casos": [{"cnpj": "11111111000111", "credor": "EMPRESA FICTICIA",
+                                                     "pago_ob": 1.0, "fantasma_alto": False, "score": None,
+                                                     "fachada_confirmada": True, "prova_primaria": ["OB 1"]}]}}
+    a = [x for x in achados_deterministicos(res) if x["id"] == "D18-11111111000111"][0]
+    assert "None" not in a["regra_ou_hipotese"] and a["grau"] == "🔴"
+    assert [x for x in achados_deterministicos(res) if x["id"] == "D18"][0]["regra_ou_hipotese"].startswith("D18 · ")
