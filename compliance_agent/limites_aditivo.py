@@ -85,6 +85,17 @@ def ato_normativo(regime: str = REGIME_VIGENTE) -> str:
     return ATO_NORMATIVO.get(str(regime), ATO_NORMATIVO[REGIME_VIGENTE])
 
 
+# Objeto de REFORMA de edifício/equipamento (teto de 50%). Mesmo padrão de `pcrj/pericia_gastos`,
+# `execucao_fatos` e `varredura_execucao_ctx`, que ainda têm cópia própria — código novo usa este.
+_RE_REFORMA_OBJETO = re.compile(r"reforma\s+(?:de\s+)?(?:edif[íi]cio|pr[ée]dio|im[óo]vel|equipamento|cobertura)|"
+                                r"reforma\s+d[ao]\s", re.I)
+
+
+def tipo_objeto(objeto: str | None) -> str | None:
+    """'reforma' quando o objeto é reforma de edifício/equipamento (art. 125, teto de 50%); senão None."""
+    return "reforma" if _RE_REFORMA_OBJETO.search(objeto or "") else None
+
+
 # ───────────────────────────── a natureza do aditivo ──────────────────────────────────────────
 # Vocabulário consolidado das três implementações anteriores mais o que a base real ensinou em
 # 2026-07-29 (extratos do PNCP, que não usam a redação do texto corrido do processo SEI).
