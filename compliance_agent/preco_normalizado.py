@@ -188,6 +188,33 @@ def medidas_texto(texto: str) -> list[tuple[str, float, str]]:
     return out
 
 
+def _legivel(spec: str) -> str:
+    """'ml1000,mg500' → '1 L 500 mg' — só para exibição (a chave continua canônica)."""
+    out = []
+    for p in filter(None, spec.split(",")):
+        m = re.fullmatch(r"([a-z]+?)([\d.e+-]+)", p)
+        if not m:
+            out.append(p)
+            continue
+        d, v = m.group(1), float(m.group(2))
+        if d == "ml":
+            out.append(f"{_fmt(v / 1000)} L" if v >= 1000 else f"{_fmt(v)} mL")
+        elif d == "mg":
+            out.append(f"{_fmt(v / 1e6)} kg" if v >= 1e6 else
+                       f"{_fmt(v / 1000)} g" if v >= 1000 else f"{_fmt(v)} mg")
+        elif d == "mm":
+            out.append(f"{_fmt(v / 1000)} m" if v >= 1000 else f"{_fmt(v)} mm")
+        elif d == "pct":
+            out.append(f"{_fmt(v)}%")
+        elif d == "ui":
+            out.append(f"{_fmt(v)} UI")
+        elif d in ("ro", "fl"):
+            out.append(f"{_fmt(v)} {'rolos' if d == 'ro' else 'folhas'}")
+        else:
+            out.append(p)
+    return " ".join(out).replace(".", ",")   # número pt-BR
+
+
 def _spec(meds: list[tuple[str, float, str]]) -> str:
     return ",".join(sorted({f"{d}{_fmt(round(v, 6))}" for d, v, _ in meds}))
 
@@ -333,7 +360,7 @@ def normalizar(descricao: str | None, unidade: str | None) -> dict:
             if dd in dims_u and dd in ("ml", "mm") and abs(dims_u[dd] - v) > 1e-9:
                 return _indet(f"conflito: unidade '{u_raw}' × descrição '{t}'", t)
         spec = _spec(meds_u + meds_d)
-        cont = f" {cont_u.replace(',', ' ')}" if cont_u else ""
+        cont = f" {_legivel(cont_u)}" if cont_u else ""
         return {"ok": True, "estado": "OK", "motivo": "", "trecho": u_raw,
                 "chave": f"rc|{nome}|{spec}", "fator": 1.0, "rotulo": f"{nome}{cont}"}
 
@@ -353,7 +380,7 @@ def normalizar(descricao: str | None, unidade: str | None) -> dict:
         spec = _spec(meds_u + meds_d)
         return {"ok": True, "estado": "OK", "motivo": "", "trecho": u_raw,
                 "chave": f"rc|{nome}|{spec}", "fator": 1.0,
-                "rotulo": f"{nome} {_spec(meds_u).replace(',', ' ')}"}
+                "rotulo": f"{nome} {_legivel(_spec(meds_u))}"}
     m_cnt = re.search(rf"{_N}\s*(fl|folhas?|ro|rolos?)\b", u)
     if m_cnt:
         # 'Fardo 64 RO', 'Pacote 500 FL': a contagem é parte da APRESENTAÇÃO (rolo de 30 m e
@@ -361,7 +388,7 @@ def normalizar(descricao: str | None, unidade: str | None) -> dict:
         n_txt = f"{m_cnt.group(2)[:2]}{_fmt(_num(m_cnt.group(1)))}"
         spec = ",".join(x for x in (n_txt, spec_d) if x)
         return {"ok": True, "estado": "OK", "motivo": "", "trecho": u_raw,
-                "chave": f"rc|{nome}|{spec}", "fator": 1.0, "rotulo": f"{nome} {n_txt}"}
+                "chave": f"rc|{nome}|{spec}", "fator": 1.0, "rotulo": f"{nome} {_legivel(n_txt)}"}
     if re.search(r"\d", u):
         return _indet(f"embalagem '{u_raw}' com contagem não conversível — sem regra", u_raw)
     # sem nada no campo: a descrição pode declarar explicitamente
@@ -371,7 +398,7 @@ def normalizar(descricao: str | None, unidade: str | None) -> dict:
         if n >= 2:
             return {"ok": True, "estado": "OK", "motivo": "", "trecho": fardo_x.group(0),
                     "chave": f"rc|garrafa|ml{_fmt(vol)}", "fator": float(n),
-                    "rotulo": f"garrafa ml{_fmt(vol)}"}
+                    "rotulo": f"garrafa {_legivel(f'ml{_fmt(vol)}')}"}
     if pack and pack.group(1) in ("caixa", "cx", "pacote", "pct", "fardo", "fd", "embalagem",
                                   "emb"):
         n = int(pack.group(2))
