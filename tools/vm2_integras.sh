@@ -52,14 +52,22 @@ for _ in $(seq 1 180); do                      # até 30 min (o sei_sweep de lá
   sleep 10
 done
 
-# 3) a rodada: código da casa, sem alteração
-DESDE=$(stat -c %s "$W/data/sei_integra_fila.log" 2>/dev/null || echo 0)
-nice -n 10 ionice -c2 -n6 timeout -k 120 --foreground $((SEG + 1200)) \
-  "$PY" tools/sei_integra_fila.py --fila "$FILA" --segundos "$SEG" >> "$LOG" 2>&1
-say "sei_integra_fila rc=$?"
-
-# 4) devolve à VM-1 (arquivo + cache da íntegra + linhas do log) e bate o ponto da delegação
-"$PY" -m tools.sei_integra_vm2 devolver --desde "$DESDE" >> "$LOG" 2>&1 && \
-  ssh -o BatchMode=yes vm1-ts "cd /home/ubuntu/JFN && PYTHONPATH=. .venv/bin/python -m tools.sei_integra_vm2 batida" \
-  2>>"$LOG"
-say "devolução rc=$? — fim"
+# 3) a rodada em FATIAS de até 30 min: depois de cada uma, entrega à VM-1 (o painel vê o efeito em meia hora,
+#    não no fim de 5 h) e tira da fila o que já foi tentado. Código da casa, sem alteração.
+FIM=$((SECONDS + SEG))
+while [ $((FIM - SECONDS)) -ge 300 ]; do
+  FATIA=$((FIM - SECONDS)); [ "$FATIA" -gt 1800 ] && FATIA=1800
+  DESDE=$(stat -c %s "$W/data/sei_integra_fila.log" 2>/dev/null || echo 0)
+  nice -n 10 ionice -c2 -n6 timeout -k 120 --foreground $((FATIA + 1200)) \
+    "$PY" tools/sei_integra_fila.py --fila "$FILA" --segundos "$FATIA" >> "$LOG" 2>&1
+  say "sei_integra_fila rc=$? (fatia ${FATIA}s)"
+  # 4) devolve à VM-1 (arquivo + cache da íntegra + linhas do log) e bate o ponto da delegação
+  RES=$("$PY" -m tools.sei_integra_vm2 devolver --desde "$DESDE" --fila "$FILA" 2>>"$LOG")
+  RC=$?; echo "$RES" >> "$LOG"
+  [ $RC -eq 0 ] && ssh -o BatchMode=yes vm1-ts \
+    "cd /home/ubuntu/JFN && PYTHONPATH=. .venv/bin/python -m tools.sei_integra_vm2 batida" 2>>"$LOG"
+  say "devolução rc=$RC"
+  # sem nenhum processo tentado de fato (fila vazia ou só adiados por carga): encerra a rodada
+  echo "$RES" | "$PY" -c "import json,sys;d=json.loads(sys.stdin.read() or '{}');sys.exit(0 if any(s not in ('adiado','login') for s in d.get('status',{}).values()) else 1)" || break
+done
+say "fim"

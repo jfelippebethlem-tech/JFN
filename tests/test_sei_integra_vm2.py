@@ -91,3 +91,10 @@ def test_devolver_nao_entrega_falha_do_navegador_e_rebaixa_o_log(monkeypatch, tm
     texto_vm1 = chamadas[-1]
     assert "270003/004118/2024: ok\n" in texto_vm1
     assert "270032/000052/2023: sem_arvore-vm2-nao-entregue" in texto_vm1
+
+
+def test_tirar_da_fila_mantem_adiados(tmp_path):
+    fila = tmp_path / "f.json"
+    fila.write_text(json.dumps([{"sei": "SEI-100000/000001/2025"}, {"sei": "SEI-100000/000002/2025"}]))
+    V._tirar_da_fila(fila, ["100000/000001/2025"])
+    assert [e["sei"] for e in json.loads(fila.read_text())] == ["SEI-100000/000002/2025"]

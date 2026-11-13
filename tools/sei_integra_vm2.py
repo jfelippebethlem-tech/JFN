@@ -165,7 +165,17 @@ def _limpar_local(tag: str) -> None:
         p.unlink(missing_ok=True)
 
 
-def devolver(desde: int) -> dict:
+def _tirar_da_fila(fila: Path, tentados: list[str]) -> None:
+    """Tira da fila exportada o que já foi tentado (menos adiado/login, que não dizem nada do processo)."""
+    try:
+        d = json.loads(fila.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    sair = {f"SEI-{p}" for p in tentados}
+    fila.write_text(json.dumps([e for e in d if e.get("sei") not in sair], ensure_ascii=False), encoding="utf-8")
+
+
+def devolver(desde: int, fila: Path | None = None) -> dict:
     try:
         with F.LOG.open("rb") as f:
             f.seek(desde)
@@ -216,6 +226,8 @@ def devolver(desde: int) -> dict:
             ln = ln.rstrip() + f"-vm2-nao-entregue ({falhas[m.group(1)]})"
         saida.append(ln)
     r = _ssh(f"cat >> {VM1_JFN}/data/sei_integra_fila.log", entrada="\n".join(saida) + "\n")
+    if fila:
+        _tirar_da_fila(fila, [p for p, s in status.items() if s not in ("adiado", "login")])
     resumo = {"ts": time.strftime("%F %T"), "status": status, "entregues": entregues,
               "docs_entregues": sum(entregues.values()), "falhas": falhas, "log_vm1": r.returncode == 0}
     with RESUMO.open("a", encoding="utf-8") as f:
@@ -230,6 +242,7 @@ def main() -> int:
     a = sub.add_parser("aceita"); a.add_argument("tags", nargs="*")
     sub.add_parser("batida")
     d = sub.add_parser("devolver"); d.add_argument("--desde", type=int, default=0)
+    d.add_argument("--fila", default="")
     args = ap.parse_args()
     if args.cmd == "exportar":
         print(json.dumps(exportar(args.max), ensure_ascii=False))
@@ -238,7 +251,7 @@ def main() -> int:
     elif args.cmd == "batida":
         batida()
     else:
-        print(json.dumps(devolver(args.desde), ensure_ascii=False))
+        print(json.dumps(devolver(args.desde, Path(args.fila) if args.fila else None), ensure_ascii=False))
     return 0
 
 
