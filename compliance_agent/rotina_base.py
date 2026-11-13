@@ -20,6 +20,8 @@ import fcntl
 import json
 import logging
 import os
+import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
@@ -99,6 +101,11 @@ def agora_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S")
 
 
+# exceções ESPECÍFICAS (catraca de `except Exception`): o que o motor e as rotinas levantam de verdade
+_FALHAS_DO_MOTOR = (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, TimeoutError,
+                    subprocess.SubprocessError)
+_FALHAS_DA_ROTINA = (sqlite3.Error, OSError, ValueError, TypeError, KeyError, RuntimeError, ImportError, AttributeError)
+
 ULTIMO_MODELO: str | None = None      # modelo que respondeu a última chamada (proveniência da camada subjetiva)
 
 
@@ -116,7 +123,7 @@ def pensar(tarefa: str, prompt: str, *, schema: dict | None = None, **kw) -> tup
         return None, "motor Claude sem a função pensar()"
     try:
         r = fn(tarefa, prompt, schema=schema, **kw)
-    except Exception as exc:  # noqa: BLE001 — qualquer falha do motor vira "pendente", nunca derruba a rotina
+    except _FALHAS_DO_MOTOR as exc:   # falha do motor vira "pendente", nunca derruba a rotina
         return None, f"motor Claude falhou: {type(exc).__name__}: {exc}"
     global ULTIMO_MODELO
     motivo = None
@@ -147,7 +154,7 @@ def executar(nome: str, fn, *, trava_arquivo: Path | None = None) -> int:
     except TravaOcupada as exc:
         log.info("outra execução segura a trava %s — saindo sem fazer nada", exc)
         return 0
-    except Exception:
+    except _FALHAS_DA_ROTINA:          # o resto sobe com traceback para o log do cron
         log.exception("falhou após %.1f s", time.time() - t0)
         return 1
     log.info("fim em %.1f s (rc=%s)", time.time() - t0, rc)
