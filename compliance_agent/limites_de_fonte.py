@@ -304,6 +304,22 @@ LIMITES: tuple[LimiteDeFonte, ...] = (
         caminho_alternativo="D.O. do RJ pelo coletor próprio (`collectors/doerj.py`).",
         medido_em="2026-07-17",
     ),
+    LimiteDeFonte(
+        fonte="PNCP — itens do Estado do RJ SEM código de catálogo (CATMAT/CATSER/NCM)",
+        tipo="limite_de_dado",
+        o_que_acontece=(
+            "O Estado compra pelo SIGA, com catálogo próprio, e no PNCP o item chega com "
+            "`catalogoCodigoItem`, `catalogo` e `ncmNbsCodigo` NULOS (medido 12/11/2026 em "
+            "42498600000171-1-002036/2025, API /orgaos/{cnpj}/compras/{ano}/{seq}/itens). Por isso o E3 "
+            "('nenhum item com classe CATMAT/CATSER', 470 certames) é limite da fonte, e o P3 não tem régua: "
+            "por DESCRIÇÃO, 4.108 itens têm ≥3 preços, mas máx/mín ≥ 2× marca 70% e '≥ 2× a mediana dos "
+            "outros' 24% — descrição genérica cobre produtos distintos e a unidade vem trocada."),
+        caminho_alternativo=(
+            "Código do item no catálogo do SIGA (siga.rj.gov.br) por certame, ou o Termo de Referência com "
+            "a especificação; com o código, P3 compara o MESMO item. Até lá: não pontuar sobrepreço por "
+            "descrição (ver docstring de `varredura_certames_ctx._serie_do_item`)."),
+        medido_em="2026-11-12",
+    ),
 )
 
 

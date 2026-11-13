@@ -317,6 +317,42 @@ def completar_pelo_empenho(obs: list[dict], cnpj: str, ug: str, mapa: dict) -> l
     return obs
 
 
+def mapa_busca(c) -> dict:
+    """(cnpj, ug, ano) → [numero_sei] dos processos de PAGAMENTO achados pela busca no SEI
+    (`tools/sei_busca_credor.py`, tabela `sei_busca_credor`). Sem a tabela → {}."""
+    try:
+        return {(cn, str(ug), int(ano)): json.loads(cj or "[]") for cn, ug, ano, cj in
+                c.execute("SELECT cnpj, ug, ano, candidatos_json FROM sei_busca_credor")}
+    except sqlite3.OperationalError:
+        return {}
+
+
+def completar_pela_busca(obs: list[dict], cnpj: str, ug: str, mapa: dict) -> list[dict]:
+    """OB sem processo: candidato ÚNICO da busca vira o processo (fonte "busca_sei"); com vários, vale o ÚNICO
+    candidato já capturado que tem NF do credor com o valor da OB (bruto ou líquido, ± centavos). Nada disso =
+    fica sem processo (honesto: a busca achou processos, nenhum provou ser o desta OB)."""
+    for o in obs:
+        if tag_processo(o.get("processo")) is not None:
+            continue
+        mm = _comp_mm_aaaa(o.get("competencia")) or ""
+        if not mm[-4:].isdigit():
+            continue
+        cands = mapa.get((cnpj, str(ug), int(mm[-4:]))) or []
+        if len(cands) == 1:
+            o["processo"], o["processo_fonte"] = cands[0], "busca_sei"
+            continue
+        v = float(o.get("valor") or 0)
+        casam = []
+        for p in cands:
+            t = tag_processo(p)
+            nfs = [n for n in extrair_nfs(textos_do_processo(t)) if not n["cnpj"] or n["cnpj"] == cnpj] if t else []
+            if any(abs(n["valor"] - v) <= TOL or (n["liquido"] and abs(n["liquido"] - v) <= TOL) for n in nfs):
+                casam.append(p)
+        if len(casam) == 1:
+            o["processo"], o["processo_fonte"] = casam[0], "busca_sei_nf"
+    return obs
+
+
 def _unidades_distintas(a: str, b: str) -> bool:
     """Nome de unidade escrito de 2 jeitos ("UPA CAMPO GRANDE I" / "UPA C GRANDE I") NÃO é unidade distinta:
     só conta como distinta quando os nomes não compartilham a maioria das palavras."""
@@ -763,11 +799,13 @@ def rodar(db=DB, limit: int | None = None, gerar=None, dry_run: bool = False, lo
             garantir_tabela(c)
         mapas = mapa_contratos(c)
         empenhos = mapa_empenhos(c)
+        buscas = mapa_busca(c)
         for i, (cnpj, ug, fav) in enumerate(pares, 1):
             obs = ps._obs_de(c, cnpj, ug)
             completar_pelo_historico(obs, historicos(c, ug, cnpj, [o["numero_ob"] for o in obs]))
             completar_pelo_empenho(obs, cnpj, ug, empenhos)
             completar_pelo_contrato(obs, cnpj, ug, mapas)
+            completar_pela_busca(obs, cnpj, ug, buscas)
             linhas = resolver_par(cnpj, ug, obs, favorecido=fav, gerar=gerar)
             n_comp += len(linhas)
             vereditos.update(r["veredito"] for r in linhas)

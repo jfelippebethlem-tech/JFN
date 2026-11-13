@@ -536,3 +536,20 @@ def test_empenho_unico_do_credor_no_ano_vira_processo_e_truncado_fica_fora():
     obs = [{"numero_ob": "c", "competencia": "06/2022", "processo": None}]
     R.completar_pelo_empenho(obs, "35208086000127", "133100", m)
     assert obs[0]["processo"] is None                         # outro exercício: não serve
+
+
+# ── camada da BUSCA NO SEI (processo de pagamento do credor) ──
+def test_busca_candidato_unico_vira_processo_e_varios_decide_pela_nf(monkeypatch):
+    m = {("35208086000127", "133100", 2022): ["SEI-330020/000100/2022"],
+         ("35208086000127", "133100", 2021): ["SEI-330020/000200/2021", "SEI-330020/000300/2021"]}
+    obs = [{"numero_ob": "a", "competencia": "01/07/2022", "processo": None, "valor": 100.0}]
+    R.completar_pela_busca(obs, "35208086000127", "133100", m)
+    assert obs[0]["processo"] == "SEI-330020/000100/2022" and obs[0]["processo_fonte"] == "busca_sei"
+    nfs = {"330020_000300_2021": [{"cnpj": "35208086000127", "valor": 500.0, "liquido": None}]}
+    monkeypatch.setattr(R, "textos_do_processo", lambda t: t)
+    monkeypatch.setattr(R, "extrair_nfs", lambda t: nfs.get(t, []))
+    obs = [{"numero_ob": "b", "competencia": "11/2021", "processo": "", "valor": 500.0},
+           {"numero_ob": "c", "competencia": "11/2021", "processo": "", "valor": 777.0}]
+    R.completar_pela_busca(obs, "35208086000127", "133100", m)
+    assert obs[0]["processo"] == "SEI-330020/000300/2021" and obs[0]["processo_fonte"] == "busca_sei_nf"
+    assert not obs[1]["processo"]                       # nenhuma NF com o valor: não escolhe
