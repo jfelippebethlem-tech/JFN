@@ -10,4 +10,4 @@ ExecStart=/bin/bash /home/ubuntu/JFN-worker/tools/vm2_sweep_geral.sh 8
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6
-TimeoutStartSec=45min
+TimeoutStartSec=70min

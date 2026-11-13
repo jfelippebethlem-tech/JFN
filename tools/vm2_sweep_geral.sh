@@ -44,9 +44,11 @@ rsync -a vm1-ts:/home/ubuntu/JFN/data/sei_cache/sei_sweep_progress.json "$W/data
 cp "$W/data/sei_cache/sei_sweep_progress.json" "$W/data/.vm2_prog_antes.json"
 cp "$W/data/sei_restritos.json" "$W/data/.vm2_restritos_antes.json"
 
-# 3) o lote (sweep canônico, fila injetada)
+# 3) o lote (sweep canônico, fila injetada). Teto 3000 s, não os 1500 da VM-1: medido em 13/11, o 1º
+#    processo passou 25 min no OCR (tesseract) de um PDF escaneado e o timeout de 1500 s o matava sem gravar
+#    nada — ele voltaria à fila e morreria de novo. O orçamento ENTRE processos (SEI_ORCAMENTO_S=1200) segue.
 DESDE=$(date +%s)
-nice -n 10 ionice -c2 -n6 timeout -k 120 --foreground 1500 "$PY" -m tools.vm2_sweep_geral rodar --max "$MAX" >> "$LOG" 2>&1
+nice -n 10 ionice -c2 -n6 timeout -k 120 --foreground 3000 "$PY" -m tools.vm2_sweep_geral rodar --max "$MAX" >> "$LOG" 2>&1
 say "rodar rc=$?"
 
 # 4) lote conferido para a VM-1
