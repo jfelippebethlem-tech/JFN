@@ -283,7 +283,8 @@ def verificar_adversarial(
     Retorna (refutada: bool, motivo_refutacao: str, explicacao_inocente: str)."""
     if gerar is None:
         try:
-            from compliance_agent.direcionamento_cerebro import gerar_sync as gerar  # type: ignore
+            from compliance_agent.llm.comotor import juizo  # co-motor Claude × cascata, cruzado
+            gerar = juizo("camada_subjetiva")
         except Exception as e:  # noqa: BLE001 — sem motor LLM disponível
             return False, f"nao_avaliavel: motor LLM não importável ({str(e)[:60]})", ""
 
@@ -394,7 +395,8 @@ def _com_sistema(gerar, sistema: str):
     """Envolve `gerar` fixando o system-prompt da lente. `None` resolve a cascata de produção."""
     if gerar is None:
         try:
-            from compliance_agent.direcionamento_cerebro import gerar_sync as gerar  # type: ignore
+            from compliance_agent.llm.comotor import juizo  # co-motor Claude × cascata, cruzado
+            gerar = juizo("camada_subjetiva")
         except ImportError:
             return None
     return lambda prompt, _sys="": gerar(prompt, sistema)

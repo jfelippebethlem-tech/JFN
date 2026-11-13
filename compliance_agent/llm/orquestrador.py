@@ -260,7 +260,8 @@ def _classificar_risco(conclusao: str, riscos_web: list | None, *, gerar=_GERAR_
 
     if gerar is _GERAR_PADRAO:
         try:
-            from compliance_agent.direcionamento_cerebro import gerar_sync as gerar
+            from compliance_agent.llm.comotor import juizo   # co-motor Claude × cascata, cruzado
+            gerar = juizo("investigacao_risco")
         except ImportError:  # sem a camada de LLM o veredito é indeterminado, não baixo
             gerar = None
     if gerar is None:

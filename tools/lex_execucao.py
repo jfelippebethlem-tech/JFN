@@ -326,6 +326,9 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
         modelo = _dc.ultimo_provedor or "desconhecido"
         if getattr(_dc, "ultimo_modelo", "") and modelo == "gemini":
             modelo = f"gemini:{_dc.ultimo_modelo}"   # versão exata (3-flash-preview/3.6/3.5/2.5) p/ auditar regressão
+        if modelo == "claude":   # co-motor: 'claude:<id> (+<modelo da cascata>)' — os dois vereditos no cruzamento
+            from compliance_agent.llm.comotor import proveniencia
+            modelo = proveniencia(f"claude:{getattr(_dc, 'ultimo_modelo', '')}")
     except Exception:
         modelo = "desconhecido"
     _gravar(con, numero_sei, objeto, fl, r, nota, modelo)
@@ -408,7 +411,10 @@ def main() -> None:
     ap.add_argument("--processo", type=str, default=None)
     ap.add_argument("--reavaliar", action="store_true")
     a = ap.parse_args()
-    from compliance_agent.direcionamento_cerebro import gerar_sync
+    # Co-motor (13/11/2026): Claude pela assinatura + a cascata de sempre sobre o mesmo processo; vereditos
+    # cruzados em data/cruzamento_motores.db; o exibido/gravado é o do Claude quando houver.
+    from compliance_agent.llm.comotor import juizo
+    gerar_sync = juizo("pericia_execucao")
     con = _con()
     try:
         if a.processo:

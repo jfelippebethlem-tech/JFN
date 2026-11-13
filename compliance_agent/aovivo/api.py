@@ -34,6 +34,21 @@ def ao_vivo_estado():
     return snapshot()
 
 
+@router.get("/api/ao-vivo/claude")
+def ao_vivo_claude():
+    """Uso do co-motor Claude hoje: chamadas, por tarefa, tetos, último erro, canário (sem conteúdo)."""
+    from compliance_agent.aovivo.coleta import ler_uso
+    return ler_uso("claude_motor") or {"disponivel": False}
+
+
+@router.get("/api/ao-vivo/cruzamento")
+def ao_vivo_cruzamento(dias: int = 30):
+    """Bloco "Cruzamento de motores": concordância com o Claude por tarefa × modelo, matriz ⚪🟡🔴, A/B do
+    few-shot, revisões pendentes (divergência grave). Acordo com o Claude é referência, não gabarito."""
+    from compliance_agent.llm.cruzamento import resumo_painel
+    return resumo_painel(max(1, min(int(dias), 365)))
+
+
 def _sse(evento: str, dado: dict, id_: int | None = None) -> str:
     cab = f"id: {id_}\n" if id_ is not None else ""
     return f"{cab}event: {evento}\ndata: {json.dumps(dado, ensure_ascii=False, separators=(',', ':'))}\n\n"
