@@ -36,6 +36,11 @@ def test_parse_data(bruto, esperado):
     assert pc.parse_data(bruto) == esperado
 
 
+def test_cpf_em_texto_livre_e_mascarado():
+    r = pc._resultado_base(pc.ESTADO, objeto="PAGAMENTO A JOAO, CPF 123.456.789-01, REFERENTE", fornecedor="X")
+    assert "123.456.789-01" not in r["objeto"] and "123.***.***-01" in r["objeto"]
+
+
 def test_mascara_cpf_e_preserva_cnpj():
     assert pc.mascarar_doc("12345678901") == "123.***.***-01"
     assert pc.mascarar_doc("12345678000199") == "12.345.678/0001-99"

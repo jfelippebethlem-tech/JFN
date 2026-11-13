@@ -414,6 +414,17 @@ def _resultado_base(esfera: str, **kw) -> dict:
          "obs_anteriores_ao_contrato": 0, "valor_obs_anteriores": 0.0, "encerrado": False, "corte": "",
          "obs_mesma_nl": 0, "valor_mesma_nl": 0.0, "obs_mesma_competencia": 0, "valor_mesma_competencia": 0.0}
     r.update(kw)
+    return mascarar_textos(r)
+
+
+_RE_CPF_TXT = re.compile(r"\b(\d{3})\.\d{3}\.\d{3}-(\d{2})\b")
+
+
+def mascarar_textos(r: dict) -> dict:
+    """CPF formatado dentro de texto livre (objeto, nome) — medido: 2 objetos reais traziam CPF em claro."""
+    for c in ("objeto", "fornecedor", "ressalvas"):
+        if r.get(c):
+            r[c] = _RE_CPF_TXT.sub(r"\1.***.***-\2", r[c])
     return r
 
 
@@ -1251,7 +1262,7 @@ def gerar(saida: str | Path, *, db: str | Path = _DB, db_pcrj: str | Path = _DB_
     saida.mkdir(parents=True, exist_ok=True)
     cache = saida / ".resultados.pkl"
     if reusar and cache.exists():
-        res = pickle.loads(cache.read_bytes())
+        res = [mascarar_textos(r) for r in pickle.loads(cache.read_bytes())]
     else:
         res = avaliar_estado(db) + avaliar_prefeitura(db_pcrj)
         cache.write_bytes(pickle.dumps(res))
