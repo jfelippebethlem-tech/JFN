@@ -855,9 +855,9 @@ def _tabela_consolidada(itens: list[dict], rotulo: str) -> str:
 MARCA_LINHA_ANEXO = "<tr class='ct'>"
 
 
-def _tabela_anexo(itens: list[dict]) -> str:
+def _tabela_anexo(itens: list[dict], inicio: int = 1) -> str:
     linhas = []
-    for i, r in enumerate(itens, start=1):
+    for i, r in enumerate(itens, start=inicio):
         nota = MOTIVOS.get(r["motivo"], "") if r["categoria"] == "INDETERMINADO" else r["criterio_devido"]
         linhas.append(
             f"{MARCA_LINHA_ANEXO}<td class='n'>{i}</td><td>{_E(campo_txt(r['orgao'], 38))}</td>"
@@ -873,7 +873,36 @@ def _tabela_anexo(itens: list[dict]) -> str:
             + "".join(linhas) + "</tbody></table>")
 
 
-def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date | None = None) -> dict:
+LEGENDA_ANEXO = (
+    "<p>Ordem: pago a maior (maior diferença primeiro), a menor encerrado, a menor em curso, conforme, "
+    "indeterminado. Valores em R$. \"—\" = indisponível (nunca zero). O CSV que acompanha este relatório traz "
+    "todas as colunas, inclusive objeto completo, UG, número de OBs, ressalvas e percentual de acréscimo.</p>")
+
+
+def blocos_por_esfera(resultados: list[dict]) -> list[tuple[str, list[dict]]]:
+    ordenados = ordenar(resultados)
+    return [(esf, [r for r in ordenados if r["esfera"] == esf]) for esf in (ESTADO, PREFEITURA)]
+
+
+def corpo_fornecedores(cons_f: list[dict]) -> str:
+    return "".join(f"<h3>{_E(esf)}</h3>" + _tabela_consolidada([a for a in cons_f if a["esfera"] == esf],
+                                                               "Fornecedor") for esf in (ESTADO, PREFEITURA))
+
+
+def montar_ctx_volume(titulo: str, subtitulo: str, corpo: str, emitido: date | None = None) -> dict:
+    """Volume anexo no MESMO render da casa (capa, proveniência, hash)."""
+    emitido = emitido or date.today()
+    return {"classificacao": "RESERVADO — PERÍCIA CONTÁBIL · ANEXO", "titulo": titulo, "subtitulo": subtitulo,
+            "data": emitido.strftime("%d/%m/%Y"), "sem_indice": True, "top_flags": [],
+            "metodologia": "Confronto devido × pago por Ordem Bancária contabilizada; Lei 4.320/64, arts. 58–65",
+            "secoes": [{"titulo": titulo, "html": _CSS_EXTRA + corpo}], "proveniencia": [],
+            "ressalva": ("Indícios para apuração; presunção de legitimidade dos atos administrativos. INDETERMINADO "
+                         "não equivale a zero. CPF de pessoa física mascarado."),
+            "_dados": {"titulo": titulo, "subtitulo": subtitulo}}
+
+
+def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date | None = None,
+               volumes: list[dict] | None = None) -> dict:
     """Contexto do `render_html` da casa. Nada é cortado: o anexo traz TODOS os contratos."""
     rs = resumo(resultados)
     emitido = emitido or date.today()
@@ -1067,10 +1096,15 @@ def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date 
     secoes.append(_sec("s8", "8. Consolidado por órgão / UG", "".join(
         f"<h3>{_E(esf)}</h3>" + _tabela_consolidada([a for a in cons_o if a["esfera"] == esf], "Órgão / unidade")
         for esf in (ESTADO, PREFEITURA)), quebra=True))
-    secoes.append(_sec("s9", "9. Consolidado por fornecedor", (
-        "<p>Todos os fornecedores, ordenados por excesso pago a maior. CPF de pessoa física mascarado.</p>" + "".join(
-            f"<h3>{_E(esf)}</h3>" + _tabela_consolidada([a for a in cons_f if a["esfera"] == esf], "Fornecedor")
-            for esf in (ESTADO, PREFEITURA))), quebra=True))
+    if volumes is None:
+        corpo_f = ("<p>Todos os fornecedores, ordenados por excesso pago a maior. CPF de pessoa física mascarado.</p>"
+                   + corpo_fornecedores(cons_f))
+    else:
+        top_f = [a for a in cons_f if a["n_a_maior"]][:40]
+        corpo_f = ("<p>Abaixo, os fornecedores com contrato pago a maior (até 40, por excesso). A lista INTEGRAL — "
+                   f"{fmt_int(len(cons_f))} fornecedores nas duas esferas — está no volume próprio indicado na "
+                   "seção 11.</p>" + _tabela_consolidada(top_f, "Fornecedor"))
+    secoes.append(_sec("s9", "9. Consolidado por fornecedor", corpo_f, quebra=True))
 
     secoes.append(_sec("s10", "10. Limitações e ressalvas", (
         "<ul>"
@@ -1089,16 +1123,21 @@ def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date 
         "pagamento nesta base; não há data por pagamento, e o corte é a data da consulta.</li>"
         "</ul>")))
 
-    ordenados = ordenar(resultados)
-    anexo = []
-    for esf in (ESTADO, PREFEITURA):
-        bloco = [r for r in ordenados if r["esfera"] == esf]
-        anexo.append(f"<h3>{_E(esf)} — {fmt_int(len(bloco))} contratos</h3>" + _tabela_anexo(bloco))
-    secoes.append(_sec("s11", "11. Anexo — tabela por contrato (todos os contratos)", (
-        "<p>Ordem: pago a maior (maior diferença primeiro), a menor encerrado, a menor em curso, conforme, "
-        "indeterminado. Valores em R$. \"—\" = indisponível (nunca zero). O CSV que acompanha este relatório traz "
-        "todas as colunas, inclusive objeto completo, UG, número de OBs, ressalvas e percentual de acréscimo.</p>"
-        + "".join(anexo)), quebra=True))
+    if volumes is None:
+        corpo_anexo = LEGENDA_ANEXO + "".join(
+            f"<h3>{_E(esf)} — {fmt_int(len(b))} contratos</h3>" + _tabela_anexo(b)
+            for esf, b in blocos_por_esfera(resultados))
+    else:
+        corpo_anexo = (
+            "<p>Com mais de cinquenta mil contratos, a tabela integral não cabe num único arquivo de impressão: ela "
+            "segue em volumes numerados, com a numeração dos contratos CONTÍNUA entre as partes de cada esfera. "
+            "Nada foi cortado — a soma das linhas dos volumes é igual ao número de contratos da base, e isso foi "
+            "conferido na geração.</p>"
+            "<table class='res'><thead><tr><th>Volume</th><th>Conteúdo</th><th>Linhas</th></tr></thead><tbody>"
+            + "".join(f"<tr><td class='mono'>{_E(v['arquivo'])}</td><td>{_E(v['conteudo'])}</td>"
+                      f"<td class='n'>{fmt_int(v['linhas'])}</td></tr>" for v in volumes)
+            + "</tbody></table>")
+    secoes.append(_sec("s11", "11. Anexo — tabela por contrato (todos os contratos)", corpo_anexo, quebra=True))
 
     return {
         "classificacao": "RESERVADO — PERÍCIA CONTÁBIL",
@@ -1179,32 +1218,74 @@ def garantir_neutro_exceto_dados(html: str, resultados: list[dict]) -> None:
         raise AssertionError(f"perícia contábil contém termo interno proibido: {sobra}")
 
 
-def gerar(saida: str | Path, *, db: str | Path = _DB, db_pcrj: str | Path = _DB_PCRJ, pdf: bool = True) -> dict:
-    """Roda as duas esferas, grava CSV + HTML (+ PDF) e confere que o documento contém todos os contratos."""
+LINHAS_POR_VOLUME = 8_000   # medido: 54.638 linhas num só HTML (28,5 MB) → Chromium a 5 GB e "Printing failed"
+NOME_BASE = "pericia-contabil-contratos"
+
+
+def planejar_volumes(resultados: list[dict], por_volume: int = LINHAS_POR_VOLUME) -> list[dict]:
+    """Fatia o anexo em volumes com numeração CONTÍNUA por esfera. Soma das linhas = base."""
+    vols = []
+    for letra, (esf, bloco) in zip("AB", blocos_por_esfera(resultados)):
+        partes = max(1, -(-len(bloco) // por_volume))
+        for k in range(partes):
+            fatia = bloco[k * por_volume:(k + 1) * por_volume]
+            ini = k * por_volume + 1
+            vols.append({"arquivo": f"{NOME_BASE}-anexo-{letra}{k + 1}.pdf", "esfera": esf, "itens": fatia,
+                         "inicio": ini, "linhas": len(fatia),
+                         "conteudo": f"Anexo {letra} — {esf}, parte {k + 1}/{partes}: contratos "
+                                     f"{fmt_int(ini)} a {fmt_int(ini + len(fatia) - 1)} de {fmt_int(len(bloco))}"})
+    return vols
+
+
+def gerar(saida: str | Path, *, db: str | Path = _DB, db_pcrj: str | Path = _DB_PCRJ, pdf: bool = True,
+          reusar: bool = False) -> dict:
+    """Roda as duas esferas e grava: CSV integral, volume principal e volumes anexos (HTML + PDF A4
+    paginado). Confere que a soma das linhas dos anexos é igual ao número de contratos da base."""
     import asyncio
+    import pickle
 
     from compliance_agent.reporting.neutralidade import termos_proibidos
     from compliance_agent.reporting.render_html import render_html
 
     saida = Path(saida)
     saida.mkdir(parents=True, exist_ok=True)
-    est = avaliar_estado(db)
-    pre = avaliar_prefeitura(db_pcrj)
-    res = est + pre
-    n_base = {ESTADO: len(est), PREFEITURA: len(pre)}
-    csv_p = saida / "pericia-contabil-contratos.csv"
-    escrever_csv(ordenar(res), csv_p)
-    html = render_html(montar_ctx(res, n_base=n_base))
-    garantir_neutro_exceto_dados(html, res)
-    out = {"csv": str(csv_p), "n_base": n_base, "linhas_anexo": html.count(MARCA_LINHA_ANEXO),
-           "termos_em_nomes_de_terceiros": termos_proibidos(html), "resumo": resumo(res)}
-    if out["linhas_anexo"] != len(res):
-        raise AssertionError(f"anexo com {out['linhas_anexo']} linhas para {len(res)} contratos")
-    html_p = saida / "pericia-contabil-contratos.html"
-    html_p.write_text(html, encoding="utf-8")
-    out["html"] = str(html_p)
-    if pdf:
-        out["pdf"] = asyncio.run(_pdf_paginado(str(html_p), str(saida / "pericia-contabil-contratos.pdf")))
+    cache = saida / ".resultados.pkl"
+    if reusar and cache.exists():
+        res = pickle.loads(cache.read_bytes())
+    else:
+        res = avaliar_estado(db) + avaliar_prefeitura(db_pcrj)
+        cache.write_bytes(pickle.dumps(res))
+    n_base = {e: sum(1 for r in res if r["esfera"] == e) for e in (ESTADO, PREFEITURA)}
+    escrever_csv(ordenar(res), saida / f"{NOME_BASE}.csv")
+
+    vols = planejar_volumes(res)
+    cons_f = consolidar(res, "fornecedor")
+    docs = [(f"{NOME_BASE}.pdf", render_html(montar_ctx(res, n_base=n_base, volumes=[
+        *({k: v for k, v in x.items() if k != "itens"} for x in vols),
+        {"arquivo": f"{NOME_BASE}-anexo-C-fornecedores.pdf", "conteudo": "Anexo C — consolidado integral por "
+         "fornecedor, duas esferas", "linhas": len(cons_f)}])))]
+    linhas = 0
+    for v in vols:
+        html = render_html(montar_ctx_volume(
+            f"Perícia Contábil de Contratos — {v['conteudo'].split(':')[0]}", v["conteudo"],
+            LEGENDA_ANEXO + f"<h3>{_E(v['esfera'])}</h3>" + _tabela_anexo(v["itens"], v["inicio"])))
+        linhas += html.count(MARCA_LINHA_ANEXO)
+        docs.append((v["arquivo"], html))
+    docs.append((f"{NOME_BASE}-anexo-C-fornecedores.pdf", render_html(montar_ctx_volume(
+        "Perícia Contábil de Contratos — Anexo C — Consolidado por fornecedor",
+        f"{fmt_int(len(cons_f))} fornecedores · esferas separadas · CPF mascarado", corpo_fornecedores(cons_f)))))
+    if linhas != len(res):
+        raise AssertionError(f"anexos com {linhas} linhas para {len(res)} contratos")
+    tudo_html = "\n".join(h for _, h in docs)
+    garantir_neutro_exceto_dados(tudo_html, res)
+    out = {"csv": str(saida / f"{NOME_BASE}.csv"), "n_base": n_base, "linhas_anexo": linhas,
+           "termos_em_nomes_de_terceiros": termos_proibidos(tudo_html), "arquivos": [], "resumo": resumo(res)}
+    for nome, html in docs:
+        hp = saida / nome.replace(".pdf", ".html")
+        hp.write_text(html, encoding="utf-8")
+        if pdf:
+            asyncio.run(_pdf_paginado(str(hp), str(saida / nome)))
+        out["arquivos"].append(str(saida / nome) if pdf else str(hp))
     return out
 
 
@@ -1214,15 +1295,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--db", default=_DB)
     ap.add_argument("--pcrj-db", default=_DB_PCRJ)
     ap.add_argument("--sem-pdf", action="store_true")
-    ap.add_argument("--so-pdf", action="store_true", help="só converte o HTML já gerado em --saida")
+    ap.add_argument("--reusar", action="store_true", help="reusa a varredura gravada em --saida (.resultados.pkl)")
     a = ap.parse_args(argv)
-    if a.so_pdf:
-        import asyncio
-        s = Path(a.saida)
-        print(asyncio.run(_pdf_paginado(str(s / "pericia-contabil-contratos.html"),
-                                        str(s / "pericia-contabil-contratos.pdf"))))
-        return 0
-    out = gerar(a.saida, db=a.db, db_pcrj=a.pcrj_db, pdf=not a.sem_pdf)
+    out = gerar(a.saida, db=a.db, db_pcrj=a.pcrj_db, pdf=not a.sem_pdf, reusar=a.reusar)
     print({k: v for k, v in out.items() if k != "resumo"})
     return 0
 

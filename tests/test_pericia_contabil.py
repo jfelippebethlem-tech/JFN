@@ -330,6 +330,27 @@ def test_relatorio_traz_todos_os_contratos_e_e_neutro(tmp_path):
     assert "135.000,00" in html                                    # separador de milhar + 2 casas
 
 
+def test_volumes_cobrem_todos_os_contratos_com_numeracao_continua(tmp_path):
+    res = pc.avaliar_estado(_base_estado(tmp_path), corte=date(2026, 7, 1)) + pc.avaliar_prefeitura(
+        _base_pcrj(tmp_path))
+    vols = pc.planejar_volumes(res, por_volume=3)
+    assert sum(v["linhas"] for v in vols) == len(res)
+    est = [v for v in vols if v["esfera"] == pc.ESTADO]
+    assert [v["inicio"] for v in est] == [1, 4, 7, 10]               # 10 contratos em fatias de 3
+    assert len({v["arquivo"] for v in vols}) == len(vols)
+    html = pc._tabela_anexo(est[1]["itens"], est[1]["inicio"])
+    assert "<td class='n'>4</td>" in html and html.count(pc.MARCA_LINHA_ANEXO) == 3
+    ctx = pc.montar_ctx(res, n_base={}, volumes=[{k: v for k, v in x.items() if k != "itens"} for x in vols])
+    corpo = " ".join(s["html"] for s in ctx["secoes"])
+    assert pc.MARCA_LINHA_ANEXO not in corpo and vols[-1]["arquivo"] in corpo
+
+
+def test_gerar_sem_pdf_fecha_a_conta(tmp_path):
+    out = pc.gerar(tmp_path / "saida", db=_base_estado(tmp_path), db_pcrj=_base_pcrj(tmp_path), pdf=False)
+    assert out["linhas_anexo"] == sum(out["n_base"].values())
+    assert all(p.endswith(".html") for p in out["arquivos"]) and len(out["arquivos"]) == 4  # principal + A1 + B1 + C
+
+
 def test_csv_tem_uma_linha_por_contrato(tmp_path):
     res = pc.avaliar_prefeitura(_base_pcrj(tmp_path))
     destino = tmp_path / "x.csv"
