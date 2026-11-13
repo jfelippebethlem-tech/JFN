@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import collections
 import datetime as D
+import logging
 import os
 import re
 import sqlite3
@@ -35,6 +36,8 @@ from pathlib import Path
 
 from compliance_agent import rotina_base
 from compliance_agent.rotina_base import DATA, RAIZ, agora_iso, executar, gravar_json, ler_json, pensar
+
+logger = logging.getLogger(__name__)
 
 NOME = "governo_couto_regras"
 SAIDA = DATA / "governo_couto_suspeitas.json"
@@ -183,8 +186,8 @@ class Ctx:
         try:
             for ug, nome in self.W.execute("SELECT ug, max(nome_ug) FROM m.despesa_execucao GROUP BY ug"):
                 self.UG[str(ug).zfill(6)] = nome
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:      # sem nome de UG: casos saem com '?' e o Executivo fica vazio
+            logger.warning("despesa_execucao indisponível para nomes de UG: %s", exc)
 
     def fechar(self):
         self.W.close()
