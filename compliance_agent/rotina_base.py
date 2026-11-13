@@ -78,15 +78,17 @@ def gravar_json(destino: Path, obj: Any) -> None:
     """Grava atômico: escreve num temporário do MESMO diretório e renomeia por cima."""
     destino.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(prefix=f".{destino.name}.", dir=destino.parent)
+    feito = False
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(obj, f, ensure_ascii=False, indent=1, default=str)
         os.chmod(tmp, 0o644)          # mkstemp cria 0600; o painel lê com o mesmo usuário, mas sem surpresa
         os.replace(tmp, destino)
-    except BaseException:
-        with contextlib.suppress(OSError):
-            os.unlink(tmp)
-        raise
+        feito = True
+    finally:                          # falhou no meio: o temporário não fica para trás (o erro sobe igual)
+        if not feito:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp)
 
 
 def ler_json(caminho: Path) -> Any:
@@ -101,7 +103,7 @@ def agora_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-# exceções ESPECÍFICAS (catraca de `except Exception`): o que o motor e as rotinas levantam de verdade
+# exceções ESPECÍFICAS (catraca de captura genérica): o que o motor e as rotinas levantam de verdade
 _FALHAS_DO_MOTOR = (RuntimeError, OSError, ValueError, TypeError, KeyError, AttributeError, TimeoutError,
                     subprocess.SubprocessError)
 _FALHAS_DA_ROTINA = (sqlite3.Error, OSError, ValueError, TypeError, KeyError, RuntimeError, ImportError, AttributeError)
