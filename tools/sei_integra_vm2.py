@@ -124,38 +124,6 @@ def _ssh(cmd: str, entrada: str | None = None, timeout: int = 300) -> subprocess
                           input=entrada, capture_output=True, text=True, timeout=timeout)
 
 
-def _md5_local(p: Path) -> str:
-    import hashlib
-    return hashlib.md5(p.read_bytes()).hexdigest()
-
-
-def _rsync(origem: Path, destino: str) -> bool:
-    r = subprocess.run(["rsync", "-a", "--partial", f"{origem}/", f"{VM1}:{destino}/"],
-                       capture_output=True, text=True, timeout=3600)
-    return r.returncode == 0
-
-
-def _entregar(tag: str) -> tuple[bool, str, int]:
-    """Copia pasta do arquivo + cache da íntegra para a VM-1 e confere o md5 do manifesto lá."""
-    arq = F.ARQUIVO / tag
-    man = arq / "manifest.json"
-    if not man.exists():
-        return False, "sem manifesto local", 0
-    try:
-        n_docs = len(json.loads(man.read_text(encoding="utf-8")).get("docs") or [])
-    except (OSError, ValueError, AttributeError):
-        n_docs = 0
-    if not _rsync(arq, f"{VM1_JFN}/data/sei_arquivo/{tag}"):
-        return False, "rsync do arquivo falhou", n_docs
-    cache = F.CACHE / f"integra_{tag}"
-    if cache.is_dir() and not _rsync(cache, f"{VM1_JFN}/data/sei_cache/integra_{tag}"):
-        return False, "rsync do cache falhou", n_docs
-    r = _ssh(f"md5sum {VM1_JFN}/data/sei_arquivo/{tag}/manifest.json")
-    if r.returncode != 0 or r.stdout.split()[:1] != [_md5_local(man)]:
-        return False, "md5 do manifesto não confere", n_docs
-    return True, "", n_docs
-
-
 def _limpar_local(tag: str) -> None:
     """A VM-1 é a dona do acervo: depois de conferido lá, a cópia daqui sai (disco e `_arquivado_ok` local)."""
     import shutil
@@ -175,7 +143,29 @@ def _tirar_da_fila(fila: Path, tentados: list[str]) -> None:
     fila.write_text(json.dumps([e for e in d if e.get("sei") not in sair], ensure_ascii=False), encoding="utf-8")
 
 
+def _amostra_texto(tag: str) -> tuple[str, str]:
+    """(título, texto) do documento mais substancioso do arquivo — a amostra que o Claude julga."""
+    try:
+        m = json.loads((F.ARQUIVO / tag / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "", ""
+    docs = [d for d in (m.get("docs") or []) if isinstance(d, dict) and str(d.get("texto") or "").endswith(".txt")]
+    if not docs:
+        return "", ""
+    d = max(docs, key=lambda d: F._chars(d))
+    p = F.ARQUIVO / tag / "texto" / Path(str(d["texto"])).name
+    try:
+        return str(d.get("titulo") or ""), p.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return "", ""
+
+
 def devolver(desde: int, fila: Path | None = None) -> dict:
+    """Monta um LOTE com o que a rodada produziu e entrega à VM-1, que CONFERE antes de importar
+    (`tools/vm2_conferencia.py`): md5, documentos × árvore, texto legível, amostra × leitura da VM-1,
+    juízo do Claude daqui. O log da fila da VM-1 só ganha "proc: ok" do que a conferência aprovou."""
+    from tools import vm2_lote as L
+    L.reenviar_pendentes()
     try:
         with F.LOG.open("rb") as f:
             f.seek(desde)
@@ -191,45 +181,45 @@ def devolver(desde: int, fila: Path | None = None) -> dict:
         m = _RX_CAUSA_METODO.match(ln)
         if m:
             falha_de_metodo.add(m.group(1))
-    # "SEM ÁRVORE" porque o link da Pesquisa nem estava na página é falha do NAVEGADOR, não do processo:
-    # entregar o manifesto vazio daria 7 dias de espera a um processo que nem chegou a ser procurado.
-    # Medido na 1ª rodada (13/11 16:51-16:53): dois seguidos assim; o mesmo worker, minutos depois, leu 44 docs.
+    # "SEM ÁRVORE" com "link 'Pesquisa' NÃO ESTÁ no DOM": medido em 13/11 (tela capturada), o SEI responde
+    # "Unidade atual não possui acesso ao processo restrito" — mas a captura NÃO registra essa causa, então
+    # aqui não se sabe se foi restrição ou página fora do lugar. Não entregar (não dar 7 dias de espera a
+    # quem pode não ter sido procurado); o processo volta na próxima exportação.
     a_entregar = [p for p, s in status.items() if s in _ENTREGAR and p not in falha_de_metodo]
+    nao_entregues = {p: "SEM ÁRVORE sem causa registrada (página da Pesquisa ausente)" for p in falha_de_metodo}
     vazios = [p.replace("/", "_") for p in a_entregar if status[p] != "ok"]
     aceitos = set()
     if vazios:
         r = _ssh(f"cd {VM1_JFN} && PYTHONPATH=. .venv/bin/python -m tools.sei_integra_vm2 aceita {' '.join(vazios)}")
         aceitos = set(r.stdout.split()) if r.returncode == 0 else set()
-    entregues: dict[str, int] = {}
-    falhas: dict[str, str] = {}
-    for proc in falha_de_metodo:
-        falhas[proc] = "falha do navegador (link da Pesquisa ausente) — fica para a próxima rodada"
-        _limpar_local(proc.replace("/", "_"))
+    itens: dict[str, Path] = {}
+    processos: dict[str, dict] = {}
     for proc in a_entregar:
         tag = proc.replace("/", "_")
         if status[proc] != "ok" and tag not in aceitos:
-            falhas[proc] = "VM-1 já tem conteúdo — vazio não sobrescreve"
-            _limpar_local(tag)
+            nao_entregues[proc] = "VM-1 já tem conteúdo — vazio não sobrescreve"
             continue
-        ok, motivo, n_docs = _entregar(tag)
-        if ok:
-            entregues[proc] = n_docs
-            _limpar_local(tag)
-        else:
-            falhas[proc] = motivo
-    # log para a VM-1: as linhas da rodada, com "ok" rebaixado onde o arquivo não chegou
-    saida = [f"[{time.strftime('%F %T')}] VM-2 ({socket.gethostname()}): rodada remota — "
-             f"{len(entregues)} entregue(s) em data/sei_arquivo, {len(falhas)} não entregue(s)"]
-    for ln in linhas:
-        m = _RX_STATUS.match(ln)
-        if m and m.group(1) in falhas:
-            ln = ln.rstrip() + f"-vm2-nao-entregue ({falhas[m.group(1)]})"
-        saida.append(ln)
-    r = _ssh(f"cat >> {VM1_JFN}/data/sei_integra_fila.log", entrada="\n".join(saida) + "\n")
+        if not (F.ARQUIVO / tag / "manifest.json").exists():
+            nao_entregues[proc] = "sem manifesto local"
+            continue
+        itens[f"arquivo/{tag}"] = F.ARQUIVO / tag
+        if (F.CACHE / f"integra_{tag}").is_dir():
+            itens[f"cache/integra_{tag}"] = F.CACHE / f"integra_{tag}"
+        juizo = None
+        if status[proc] == "ok":
+            titulo, texto = _amostra_texto(tag)
+            juizo = L.julgar(proc, titulo, texto)
+        processos[proc] = {"status": status[proc], "juizo": juizo}
+    res = None
+    if processos or linhas:
+        base = L.montar("integras", itens, processos, {"linhas_log": linhas, "nao_entregues": nao_entregues})
+        for proc in list(processos) + list(nao_entregues):
+            _limpar_local(proc.replace("/", "_"))     # a cópia está no lote (e o lote fica até a VM-1 conferir)
+        res = L.enviar(base)
     if fila:
         _tirar_da_fila(fila, [p for p, s in status.items() if s not in ("adiado", "login")])
-    resumo = {"ts": time.strftime("%F %T"), "status": status, "entregues": entregues,
-              "docs_entregues": sum(entregues.values()), "falhas": falhas, "log_vm1": r.returncode == 0}
+    resumo = {"ts": time.strftime("%F %T"), "status": status, "lote": res,
+              "nao_entregues": nao_entregues, "juizos": {p: v.get("juizo") for p, v in processos.items()}}
     with RESUMO.open("a", encoding="utf-8") as f:
         f.write(json.dumps(resumo, ensure_ascii=False) + "\n")
     return resumo

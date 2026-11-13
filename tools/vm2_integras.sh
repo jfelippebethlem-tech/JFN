@@ -15,11 +15,17 @@ if [ "$(date +%-H)" -lt 8 ]; then SEG=${1:-18000}; else SEG=${1:-10800}; fi
 MAX=${2:-400}
 cd "$W" || exit 1
 export PYTHONPATH="$W"
+# juízo das amostras pelo Claude Code DESTA máquina, pela assinatura (nunca API paga), com teto próprio
+export JFN_CLAUDE_BIN="${JFN_CLAUDE_BIN:-/home/ubuntu/.local/bin/claude}"
+export JFN_CLAUDE_MAX_CHAMADAS_DIA="${JFN_CLAUDE_MAX_CHAMADAS_DIA:-60}"
+export JFN_CLAUDE_MAX_CONFERENCIA_VM2="${JFN_CLAUDE_MAX_CONFERENCIA_VM2:-40}"
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN
 PY="$W/.venv/bin/python"
 LOG="$W/data/vm2_integras.log"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
-exec 9>"$W/data/.vm2_integras.lock"
+# trava COMPARTILHADA com a varredura geral (tools/vm2_sweep_geral.sh): um navegador SEI do worker por vez
+exec 9>"$W/data/.vm2_sei.lock"
 flock -n 9 || { say "rodada anterior ainda viva — pula"; exit 0; }
 [ -f "$W/data/.pause_vm2_integras" ] && { say "pausado (.pause_vm2_integras) — pulei"; exit 0; }
 

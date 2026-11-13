@@ -42,6 +42,22 @@ motores:
     # laudo 13/11/2026: 255 "ok" em 7 dias, 48 de 48 com captura vazia — o painel mostrava "agendado".
     # Efeito = último "proc: ok"; antes da correção de 13/11 08:04 o "ok" valia para captura vazia (`desde`).
     efeito: {log: data/sei_integra_fila.log, regex: '^\[[^\]]+\]\s+\S+: ok\s*$', desde: '2026-11-13 08:05:00', horas: 48}
+  # 13/11/2026 (dono: "checar se o que está vindo da VM-2 está certo"): nada da VM-2 entra no acervo sem passar
+  # por tools/vm2_conferencia.py. Efeito = último APROVADO; quarentena e amostra divergente viram evento.
+  - id: vm2-conferencia
+    nome: VM-2 · conferência
+    classe: motor
+    descricao: Confere cada entrega da VM-2 (md5, documentos × árvore, texto legível, amostra × leitura da VM-1, juízo do Claude) antes do acervo
+    trava: data/.vm2_conferencia.lock
+    log: data/vm2_conferencia.log
+    efeito: {log: data/vm2_conferencia.log, regex: '^\[[^\]]+\] CONFERÊNCIA \S+: APROVADO', horas: 24}
+    eventos:
+      - regex: 'LOTE \S+ \((\w+)\): (\d+) aprovado\(s\), (\d+) em quarentena'
+        texto: 'entrega da VM-2 ({1}): {2} aprovado(s), {3} em quarentena'
+        tipo: dado
+      - regex: 'AMOSTRA INDEPENDENTE [\d/]+: (CONFERE|DIVERGE)'
+        texto: 'leitura independente da VM-1: {1}'
+        tipo: dado
   - id: sei-varredura
     nome: SEI · varredura
     classe: motor

@@ -69,28 +69,31 @@ def test_reserva_expira(monkeypatch, tmp_path):
     assert F._reservados_vm2() == set()
 
 
-def test_devolver_nao_entrega_falha_do_navegador_e_rebaixa_o_log(monkeypatch, tmp_path):
+def test_devolver_monta_lote_sem_falha_do_navegador(monkeypatch, tmp_path):
     log = tmp_path / "fila.log"
     log.write_text(
         "[2026-11-13 16:51:08]   270032/000052/2023: SEM ÁRVORE (processo não abriu) — via='cracked' "
         "erro_cracked=\"link 'Pesquisa' NÃO ESTÁ no DOM (o clique nunca aconteceu)\"\n"
         "[2026-11-13 16:51:08]   270032/000052/2023: sem_arvore\n"
         "[2026-11-13 17:00:00]   270003/004118/2024: ok\n", encoding="utf-8")
+    arq = tmp_path / "sei_arquivo"
+    _arquivo_bom(arq / "270003_004118_2024")
     monkeypatch.setattr(F, "LOG", log)
+    monkeypatch.setattr(F, "ARQUIVO", arq)
+    monkeypatch.setattr(F, "CACHE", tmp_path / "sei_cache")
     monkeypatch.setattr(V, "RESUMO", tmp_path / "resumo.jsonl")
-    monkeypatch.setattr(V, "_limpar_local", lambda tag: None)
-    enviados, chamadas = [], []
-    monkeypatch.setattr(V, "_entregar", lambda tag: (enviados.append(tag) or True, "", 44))
-
-    class R:
-        returncode, stdout = 0, ""
-    monkeypatch.setattr(V, "_ssh", lambda cmd, entrada=None, timeout=300: chamadas.append(entrada) or R())
-    r = V.devolver(0)
-    assert enviados == ["270003_004118_2024"]
-    assert r["entregues"] == {"270003/004118/2024": 44}
-    texto_vm1 = chamadas[-1]
-    assert "270003/004118/2024: ok\n" in texto_vm1
-    assert "270032/000052/2023: sem_arvore-vm2-nao-entregue" in texto_vm1
+    import tools.vm2_lote as L
+    monkeypatch.setattr(L, "LOTES", tmp_path / "lotes")
+    monkeypatch.setattr(L, "julgar", lambda *a: {"legivel": True, "corresponde": True})
+    enviados = []
+    monkeypatch.setattr(L, "enviar", lambda base: enviados.append(base) or {"aprovados": ["270003/004118/2024"]})
+    monkeypatch.setattr(L, "reenviar_pendentes", lambda: [])
+    V.devolver(0)
+    man = json.loads((enviados[0] / "MANIFESTO.json").read_text())
+    assert list(man["processos"]) == ["270003/004118/2024"]
+    assert "270032/000052/2023" in man["nao_entregues"]
+    assert "arquivo/270003_004118_2024/manifest.json" in man["arquivos"]
+    assert not (arq / "270003_004118_2024").exists()          # cópia local sai depois de ir para o lote
 
 
 def test_tirar_da_fila_mantem_adiados(tmp_path):
