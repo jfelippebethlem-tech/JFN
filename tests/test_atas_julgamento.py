@@ -44,6 +44,78 @@ def test_extrair_texto_sem_ocr_devolve_pdf_pobre(monkeypatch):
     assert fonte == "pdf" and txt == ""
 
 
+def _db_certames(tmp_path, n=5):
+    """Banco sintético: `n` certames competitivos com vencedor; nenhum com ata."""
+    con = sqlite3.connect(str(tmp_path / "c.db"))
+    con.execute("CREATE TABLE pncp_resultado(certame, orgao_cnpj, modalidade, ordem_classificacao, data_pub)")
+    con.execute("CREATE TABLE certame_indice(certame, faixa)")
+    con.executemany("INSERT INTO pncp_resultado VALUES (?,?,6,1,?)",
+                    [(f"00000000000100-1-{i:06d}/2026", "00000000000100", f"2026-01-{i + 1:02d}")
+                     for i in range(n)])
+    con.commit()
+    return con
+
+
+def _sem_arquivo(monkeypatch):
+    async def _vazio(endpoint, params):
+        return []                                  # PNCP respondeu "não há arquivo" (fato, não falha)
+    monkeypatch.setattr(AJ, "_get_pncp", _vazio)
+
+
+def test_cursor_dias_seguidos_examinam_certames_diferentes(tmp_path, monkeypatch):
+    """Laudo 13/11/2026 (4.12): o lote de 400 era o mesmo todo dia. Certame examinado sem ata fica fora 30 dias."""
+    import asyncio
+    con = _db_certames(tmp_path, n=5)
+    _sem_arquivo(monkeypatch)
+    dia1 = set(c for c, _ in asyncio.run(AJ._certames_pendentes(con, 2)))
+    asyncio.run(AJ.coletar_atas_julgamento(con, limite=2, pausa=0))
+    dia2 = set(c for c, _ in asyncio.run(AJ._certames_pendentes(con, 2)))
+    assert len(dia1) == 2 and len(dia2) == 2 and dia1.isdisjoint(dia2)
+    motivos = dict(con.execute("SELECT certame, motivo FROM ata_exame"))
+    assert set(motivos) == dia1 and set(motivos.values()) == {"sem_arquivo_no_pncp"}
+
+
+def test_fila_esgotada_e_declarada(tmp_path, monkeypatch):
+    import asyncio
+    con = _db_certames(tmp_path, n=2)
+    _sem_arquivo(monkeypatch)
+    asyncio.run(AJ.coletar_atas_julgamento(con, limite=10, pausa=0))
+    r = asyncio.run(AJ.coletar_atas_julgamento(con, limite=10, pausa=0))
+    assert r["certames"] == 0 and r["fila_esgotada"] is True
+
+
+def test_reexame_depois_de_30_dias(tmp_path, monkeypatch):
+    import asyncio
+    con = _db_certames(tmp_path, n=1)
+    _sem_arquivo(monkeypatch)
+    asyncio.run(AJ.coletar_atas_julgamento(con, limite=10, pausa=0))
+    con.execute("UPDATE ata_exame SET examinado_em = datetime('now', '-31 days')")
+    assert len(asyncio.run(AJ._certames_pendentes(con, 10))) == 1
+
+
+def test_falha_da_api_nao_vira_exame_de_30_dias(tmp_path, monkeypatch):
+    """INDISPONÍVEL ≠ 'sem ata': a falha de rede volta à fila no dia seguinte, não daqui a 30 dias."""
+    import asyncio
+    con = _db_certames(tmp_path, n=1)
+
+    async def _falha(endpoint, params):
+        return None
+    monkeypatch.setattr(AJ, "_get_pncp", _falha)
+    r = asyncio.run(AJ.coletar_atas_julgamento(con, limite=10, pausa=0))
+    assert r["api_indisponivel"] == 1 and r["sem_arquivo_no_pncp"] == 0
+    assert con.execute("SELECT motivo FROM ata_exame").fetchone()[0] == "api_indisponivel"
+    assert asyncio.run(AJ._certames_pendentes(con, 10)) == []          # hoje não repete
+    con.execute("UPDATE ata_exame SET examinado_em = datetime('now', '-2 days')")
+    assert len(asyncio.run(AJ._certames_pendentes(con, 10))) == 1      # amanhã volta
+
+
+def test_resumo_tem_carimbo_de_data_para_o_ao_vivo():
+    linha = AJ.linha_resumo({"atas_gravadas": 0, "certames": 400})
+    import re
+    assert re.match(r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] resumo atas: ", linha)
+    assert "'atas_gravadas': 0" in linha
+
+
 def test_init_schema_cria_tabela(tmp_path):
     con = sqlite3.connect(str(tmp_path / "t.db"))
     AJ.init_schema(con)
