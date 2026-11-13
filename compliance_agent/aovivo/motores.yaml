@@ -117,6 +117,45 @@ motores:
     log: data/sweep_atas.log          # o mtime do log dá a hora REAL do "terminou" (job de cron sem systemd)
     # laudo 13/11/2026: 108 de 116 rodadas com 0 atas e o painel dizia "ocioso". Efeito = ata gravada.
     efeito: {db: compliance.db, tabela: ata_documento, coluna: coletado_em, horas: 168}
+  # 13/11/2026 (dono: "tudo rodando, periciando, cruzando"): rotinas que viraram cron. Efeito = o JSON que a aba lê
+  # traz `ultimo_efeito_iso`, gravado SÓ quando a rotina produziu (contratos avaliados, regras calculadas, confronto
+  # medido) — rodar sem produzir deixa o campo parado e o AO VIVO acende "rodando sem efeito".
+  - id: pericia-contabil
+    nome: Perícia contábil · todos os contratos
+    classe: motor
+    descricao: Devido × pago (OB Contabilizada) em todos os contratos do Estado e da Prefeitura — aba Estado › Perícia contábil
+    trava: data/pericia_contabil_rotina.lock
+    log: data/pericia_contabil_rotina.log
+    eventos:
+      - regex: '(Estado do RJ|Prefeitura do Rio): n=(\d+) conforme=\d+ a_maior=(\d+) .* indeterminado=(\d+) '
+        texto: '{1}: {2} contratos avaliados — {3} pagos a maior, {4} indeterminados'
+        tipo: dado
+    efeito: {json: data/pericia_contabil_resumo.json, chave: ultimo_efeito_iso, horas: 30}
+  - id: couto-regras
+    nome: Gestão Couto · 20 regras + hipóteses
+    classe: motor
+    descricao: Recalcula D01–D20 da gestão Couto e pede ao motor Claude as hipóteses (H*) — aba Estado › Governo Couto
+    trava: data/governo_couto_regras.lock
+    log: data/governo_couto_regras.log
+    eventos:
+      - regex: 'gravado \S+ \((\d+) achados: (\d+) determinísticos, (\d+) hipóteses\)'
+        texto: 'gestão Couto: {1} pontos de atenção ({2} determinísticos, {3} hipóteses do motor Claude)'
+        tipo: achado
+      - regex: 'camada subjetiva: PENDENTE — (.{0,80})'
+        texto: 'hipóteses pendentes: {1}'
+        tipo: estado
+    efeito: {json: data/governo_couto_suspeitas.json, chave: ultimo_efeito_iso, horas: 192}
+  - id: cge-confronto
+    nome: CGE × JFN · recall
+    classe: motor
+    descricao: Mede, processo a processo, o que o JFN tem sobre as contratações auditadas pela CGE — aba Estado › CGE × JFN
+    trava: data/cge_confronto.lock
+    log: data/cge_confronto.log
+    eventos:
+      - regex: 'CGE × JFN: (\d+) contratações · artefato (\d+) · sinal G1\+G2 (\d+)/(\d+) · '
+        texto: 'CGE × JFN: JFN tem artefato em {2} de {1}; sinal em {3} de {4} irregulares'
+        tipo: dado
+    efeito: {json: data/cge_confronto.json, chave: ultimo_efeito_iso, horas: 192}
   - id: pcrj-intel
     nome: PCRJ · inteligência
     classe: motor
