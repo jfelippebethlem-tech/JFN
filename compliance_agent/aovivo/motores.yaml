@@ -56,12 +56,15 @@ motores:
   - id: dados-abertos-rj
     nome: Dados Abertos RJ · orçamento
     classe: motor
-    descricao: TFE Despesa e Receita do portal de dados abertos (agregado por órgão/função) → trajetória das finanças do Estado
+    descricao: TFE Despesa/Receita (portal de dados abertos) + painéis da CGE (execução mensal e NE por credor, SIAFE) → trajetória das finanças
     trava: /tmp/dadosabertos_rj.lock
     log: data/dadosabertos_rj.log
     eventos:
       - regex: '"baixados": (\d+), "inalterados": (\d+)'
         texto: '{1} arquivo(s) novo(s) no portal, {2} sem mudança'
+        tipo: dado
+      - regex: '"painel": "([a-z0-9-]+)", "tabela": "\w+", "linhas": (\d+)'
+        texto: 'painel CGE {1}: {2} linhas'
         tipo: dado
     contador: {db: dadosabertos_rj.db, tabela: da_recurso, rotulo: arquivos do portal}
   - id: siafe-ob

@@ -232,6 +232,60 @@ def completar_pelo_historico(obs: list[dict], hist: dict[str, str]) -> list[dict
     return obs
 
 
+# ───────────── processo do CONTRATO (TCE-RJ) para OB sem processo — camada 2021–2023 ─────────────
+# Medido 12/11/2026: 1.204 das 1.241 competências INDETERMINADAS eram "sem processo SEI na coluna do SIAFE"
+# (1.124 delas de 2021–2023, SIAFE 1, coluna vazia). O contrato do par no TCE-RJ (contratos_tcerj, API pública,
+# 2023+) traz o processo SEI; renovação mantém o nº do processo original, então processo aberto até o ano da
+# competência cobre o par. Só UM candidato vira processo (fonte "contrato_tcerj"); 2+ = ambíguo, fica como está.
+# A UG do SIAFE ↔ "Unidade" do TCE é APRENDIDA do próprio dado: OBs cujo processo casa o processo de um contrato.
+_RX_PROC4 = re.compile(r"(\d{6})/(\d{3,6})/(\d{4})")
+
+
+def mapa_contratos(c) -> tuple[dict, dict]:
+    """(ug → unidade TCE, (cnpj, unidade) → [(numero_sei, ano_do_processo)]). Sem a tabela → ({}, {})."""
+    try:
+        contratos = c.execute("SELECT processo, cnpj, unidade FROM contratos_tcerj WHERE processo LIKE 'SEI%'").fetchall()
+        obs = c.execute("SELECT ug_emitente, processo FROM ob_orcamentaria_siafe WHERE processo LIKE '%/%/%'").fetchall()
+    except sqlite3.OperationalError:
+        return {}, {}
+    un_por_tag, por_par = {}, {}
+    for proc, cnpj, un in contratos:
+        m = _RX_PROC4.search(proc or "")
+        if not m:
+            continue
+        tag = f"{m[1]}_{int(m[2]):06d}_{m[3]}"
+        un_por_tag[tag] = un
+        por_par.setdefault((re.sub(r"\D", "", cnpj or ""), un), set()).add((numero_sei(tag), int(m[3])))
+    votos: dict[str, Counter] = {}
+    for ug, proc in obs:
+        t = tag_processo(proc)
+        if t and t in un_por_tag:
+            votos.setdefault(str(ug), Counter())[un_por_tag[t]] += 1
+    return ({ug: v.most_common(1)[0][0] for ug, v in votos.items()},
+            {k: sorted(v) for k, v in por_par.items()})
+
+
+def completar_pelo_contrato(obs: list[dict], cnpj: str, ug: str, mapas: tuple[dict, dict]) -> list[dict]:
+    """OB ainda sem processo recebe o processo do contrato do par quando há UM só candidato aberto até o ano."""
+    ug2un, por_par = mapas
+    un = ug2un.get(str(ug))
+    if not un:
+        return obs
+    cands = por_par.get((cnpj, un), [])
+    for o in obs:
+        if tag_processo(o.get("processo")) is not None:
+            continue
+        mm = _comp_mm_aaaa(o.get("competencia")) or ""
+        ano = int(mm[-4:]) if mm[-4:].isdigit() else None
+        if ano is None:
+            continue
+        unicos = {p for p, a in cands if a <= ano}
+        if len(unicos) == 1:
+            o["processo"] = next(iter(unicos))
+            o["processo_fonte"] = "contrato_tcerj"
+    return obs
+
+
 def _unidades_distintas(a: str, b: str) -> bool:
     """Nome de unidade escrito de 2 jeitos ("UPA CAMPO GRANDE I" / "UPA C GRANDE I") NÃO é unidade distinta:
     só conta como distinta quando os nomes não compartilham a maioria das palavras."""
@@ -676,9 +730,11 @@ def rodar(db=DB, limit: int | None = None, gerar=None, dry_run: bool = False, lo
         pares = pares_amarelos(c, limit)
         if not dry_run:
             garantir_tabela(c)
+        mapas = mapa_contratos(c)
         for i, (cnpj, ug, fav) in enumerate(pares, 1):
             obs = ps._obs_de(c, cnpj, ug)
             completar_pelo_historico(obs, historicos(c, ug, cnpj, [o["numero_ob"] for o in obs]))
+            completar_pelo_contrato(obs, cnpj, ug, mapas)
             linhas = resolver_par(cnpj, ug, obs, favorecido=fav, gerar=gerar)
             n_comp += len(linhas)
             vereditos.update(r["veredito"] for r in linhas)

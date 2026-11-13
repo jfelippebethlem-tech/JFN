@@ -477,3 +477,41 @@ def test_rodada_so_com_a_regra_nao_apaga_o_juizo(tmp_path):
             "motivo": "NFs não fecham pela regra (…) — falta o juízo sobre o texto", "obs": ["B", "A"]}
     assert R._manter_juizo(c, CNPJ, "1", [dict(nova)])[0]["veredito"] == "AFASTADO"
     assert R._manter_juizo(c, CNPJ, "1", [dict(nova, obs=["A", "B", "C"])])[0]["veredito"] == "INDETERMINADO"
+
+
+# ── camada do processo do CONTRATO (TCE-RJ) ──
+def _base_contratos():
+    import sqlite3 as _sq
+    c = _sq.connect(":memory:")
+    c.execute("CREATE TABLE contratos_tcerj (processo TEXT, cnpj TEXT, unidade TEXT)")
+    c.execute("CREATE TABLE ob_orcamentaria_siafe (ug_emitente TEXT, processo TEXT)")
+    c.execute("INSERT INTO contratos_tcerj VALUES ('SEI-330020/000868/2021','35208086000127','ITERJ - INSTITUTO')")
+    c.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('133100','SEI 330020/868/2021')")   # ensina UG→unidade
+    return c
+
+
+def test_contrato_unico_vira_processo_da_ob_sem_processo():
+    c = _base_contratos()
+    mapas = R.mapa_contratos(c)
+    assert mapas[0] == {"133100": "ITERJ - INSTITUTO"}
+    obs = [{"numero_ob": "2022OB1", "competencia": "01/07/2022", "processo": None},
+           {"numero_ob": "2022OB2", "competencia": "01/07/2022", "processo": "SEI-330005/000008/2024"}]
+    R.completar_pelo_contrato(obs, "35208086000127", "133100", mapas)
+    assert obs[0]["processo"] == "SEI-330020/000868/2021" and obs[0]["processo_fonte"] == "contrato_tcerj"
+    assert obs[1]["processo"] == "SEI-330005/000008/2024" and "processo_fonte" not in obs[1]
+
+
+def test_contrato_aberto_depois_da_competencia_nao_serve_e_dois_candidatos_nao_chuta():
+    c = _base_contratos()
+    obs = [{"numero_ob": "x", "competencia": "05/2020", "processo": ""}]
+    R.completar_pelo_contrato(obs, "35208086000127", "133100", R.mapa_contratos(c))
+    assert not obs[0]["processo"]                                  # processo de 2021 não cobre 2020
+    c.execute("INSERT INTO contratos_tcerj VALUES ('SEI-330020/000900/2021','35208086000127','ITERJ - INSTITUTO')")
+    obs = [{"numero_ob": "y", "competencia": "03/2022", "processo": None}]
+    R.completar_pelo_contrato(obs, "35208086000127", "133100", R.mapa_contratos(c))
+    assert obs[0]["processo"] is None                              # 2 contratos: ambíguo, não escolhe
+
+
+def test_sem_tabela_de_contratos_nao_quebra():
+    import sqlite3 as _sq
+    assert R.mapa_contratos(_sq.connect(":memory:")) == ({}, {})

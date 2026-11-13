@@ -211,6 +211,60 @@ def montar():
         ["Exercício", "Dotação inicial (LOA)", "Dotação atualizada", "Empenhado / dotação", "Pago / empenhado",
          "Restos a pagar pagos"], le) + "<p>* exercício parcial.</p>"})
 
+    # 7. Executivo 2024–ano corrente pelos painéis da CGE (SIAFE, movimento mensal) — supera o portal parado
+    try:
+        ex = c.execute("SELECT ano, mes, SUM(despesas_empenhadas), SUM(despesas_liquidadas), "
+                       "SUM(despesas_orcamentarias_pagas), SUM(restos_a_pagar_pagos) FROM cge_execucao_despesa "
+                       "GROUP BY ano, mes").fetchall()
+        fonte_cge = c.execute("SELECT atualizado_fonte FROM cge_coleta WHERE tabela='cge_execucao_despesa'").fetchone()
+    except sqlite3.OperationalError:
+        ex, fonte_cge = [], None
+    if ex:
+        por = {}
+        for a, m, e, l, p, rp in ex:
+            por.setdefault(a, {})[m] = (e or 0, l or 0, p or 0, rp or 0)
+        anos_cge = sorted(por)
+        ua = anos_cge[-1]
+        meses_ua = sorted(por[ua])
+        lim = meses_ua[-1]
+        # mês da atualização da fonte ainda corre (painel atualizado em 15/07 → julho tem meio mês): fica fora
+        fa = str(fonte_cge[0] if fonte_cge else "")
+        if fa[:7] == f"{ua}-{lim:02d}" and len(meses_ua) > 1:
+            lim = meses_ua[-2]
+        lin = []
+        for a in anos_cge:
+            tot = [sum(v[i] for v in por[a].values()) for i in range(4)]
+            ate = [sum(v[i] for m, v in por[a].items() if m <= lim) for i in range(4)]
+            lin.append([a, bi(tot[0]), bi(tot[2]), bi(ate[0]), bi(ate[2])])
+        var = ""
+        if len(anos_cge) >= 2:
+            a1, a2 = anos_cge[-2], anos_cge[-1]
+            p1 = sum(v[2] for m, v in por[a1].items() if m <= lim)
+            p2 = sum(v[2] for m, v in por[a2].items() if m <= lim)
+            e1 = sum(v[0] for m, v in por[a1].items() if m <= lim)
+            e2 = sum(v[0] for m, v in por[a2].items() if m <= lim)
+            fr = (ipca.get(a2, 1) / ipca.get(a1, 1)) if real and a2 in ipca and a1 in ipca else 1
+            pct = lambda x: f"{x:+.1f}%".replace(".", ",")  # noqa: E731
+            var = (f"<p>Jan–{lim:02d}/{a2} contra jan–{lim:02d}/{a1}: empenhado {pct((e2 / (e1 * fr) - 1) * 100)} "
+                   f"e pago {pct((p2 / (p1 * fr) - 1) * 100)} {'em termos reais (IPCA)' if real else '(nominal)'}.</p>")
+        fig, ax = plt.subplots(figsize=(8, 3.2))
+        for i, a in enumerate(anos_cge):
+            ms = sorted(por[a])
+            acc, s = [], 0
+            for m in ms:
+                s += por[a][m][2]
+                acc.append(s / B)
+            ax.plot(ms, acc, marker=".", color=cores[i], label=str(a))
+        ax.set_xticks(range(1, 13))
+        eixo(ax, "Executivo — despesa paga acumulada no ano (R$ bi nominais)"); ax.legend(fontsize=8, frameon=False)
+        sec.append({"titulo": f"7. Execução do Executivo {anos_cge[0]}–{ua} (CGE/SIAFE, até {lim:02d}/{ua})",
+                    "html": png(fig) + tabela(["Exercício", "Empenhado no ano", "Pago no ano",
+                                                f"Empenhado jan–{lim:02d}", f"Pago jan–{lim:02d}"], lin) + var
+                    + "<p>Fonte: painel de Execução Orçamentária da Despesa da CGE-RJ (SIAFE-Rio), só Poder Executivo "
+                      f"— sem Legislativo, Judiciário, MP, DPE e TCE, e sem AGERIO/CEDAE/Imprensa Oficial. "
+                      f"Atualização da fonte: {fonte_cge[0] if fonte_cge else '—'}. Não somar com as seções 2–6 "
+                      "(lá é o Estado inteiro).</p>"})
+
     r_ult, d_ult = rec[ult], des[ult]
     res_ult = (r_ult[4] or 0) - (d_ult[10] or 0)
     pico_rp = max(cheios, key=lambda a: des[a][9] or 0)

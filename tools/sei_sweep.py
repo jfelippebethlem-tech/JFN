@@ -1253,6 +1253,23 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
 
 
 
+def max_recaptura_adaptativo(feitos: dict, max_n: int, janela: int = 30, piso: float = 0.15) -> int:
+    """Quantos processos a recaptura lê neste ciclo, pelo RENDIMENTO recente dela.
+
+    Medido em 12/11/2026: no histórico a recaptura ganhou texto em 411 de 584 releituras, mas desde 01/11
+    ganhou em 16 de 176 (9%) — a fila dela virou anexo que nunca terá texto ("40 → 40"), e cada slot
+    (até 1.500 s, 72 mortes rc=137) era tempo de browser tirado do sweep principal, que é quem captura os
+    processos que o resolvedor de duplicidade pediu (fila de 3.071 competências). Com rendimento abaixo do
+    piso nas últimas `janela` releituras, lê 1 processo (segue sondando; se voltar a render, volta a max_n).
+    """
+    ult = sorted(feitos.values(), key=lambda v: str(v.get("em") or ""))[-janela:]
+    if len(ult) < janela:
+        return max_n
+    ganhou = sum(1 for v in ult if int(v.get("depois", v.get("lido_depois")) or 0)
+                 > int(v.get("antes", v.get("lido_antes")) or 0))
+    return min(max_n, 1) if ganhou / len(ult) < piso else max_n
+
+
 async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
                         ate: int = 0) -> None:
     """RELÊ processos cujo cache prova que há documento na árvore SEM texto — login ÚNICO.
@@ -1303,6 +1320,7 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
     # perpétua: com a recaptura viva, os casos "4 → 4" (doc que falhou hoje, restrição transitória)
     # sumiriam da fila para sempre. Quem GANHOU fica fora; quem não ganhou volta depois de 7 dias.
     from tools.sweep_recaptura_integral import _sem_ganho_expirou
+    max_n = max_recaptura_adaptativo(feitos, max_n)
     fila = [x for x in fila
             if x["numero"] not in feitos or _sem_ganho_expirou(feitos[x["numero"]])][:max_n]
     if not fila:
