@@ -459,19 +459,26 @@ class MotorCompliance:
                 RegistroFolha.cpf != "",
                 RegistroFolha.remuneracao_bruta > 0,
             )
-            .group_by(RegistroFolha.cpf)
+            # CPF da folha vem MASCARADO (6 dígitos do meio): agrupar só por ele juntava pessoas diferentes
+            # (revisão de 13/11/2026: 99,57% dos 70.533 grupos eram de pessoas distintas, e o alerta publicava
+            # o nome de uma somado à remuneração de outras). Mesma pessoa = mesmo CPF mascarado E mesmo nome.
+            .group_by(RegistroFolha.cpf, func.upper(func.trim(RegistroFolha.nome)))
             .having(func.count(func.distinct(RegistroFolha.orgao_nome)) > 1)
         )
         for row in q.all():
             pessoa = self.session.query(Pessoa).filter_by(cpf=row.cpf).first()
             self._criar_alerta(
                 tipo="acumulacao",
-                severidade="alta",
-                titulo=f"Emprego múltiplo suspeito — CPF {row.cpf}",
+                # média, não alta: acumular é lícito nos casos da CF art. 37, XVI (professor, técnico-científico,
+                # saúde), e a folha não diz o cargo com segurança para separar.
+                severidade="média",
+                titulo=f"Emprego múltiplo a verificar — {row.nome} (CPF {row.cpf})",
                 descricao=(
                     f"'{row.nome}' (CPF {row.cpf}) aparece com remuneração ativa em "
                     f"{row.n_orgaos} órgãos distintos na competência {competencia}, "
-                    f"totalizando R$ {moeda(row.total_bruto)}. Órgãos: {row.lista_orgaos}."
+                    f"totalizando R$ {moeda(row.total_bruto)}. Órgãos: {row.lista_orgaos}. "
+                    "Verificar se é acumulação lícita (CF art. 37, XVI) e se é a mesma pessoa "
+                    "(o CPF da folha é mascarado; o casamento usa CPF parcial + nome)."
                 ),
                 evidencias={
                     "cpf": row.cpf, "nome": row.nome,
