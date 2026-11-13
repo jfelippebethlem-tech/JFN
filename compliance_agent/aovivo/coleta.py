@@ -111,6 +111,15 @@ def ler_uso(fonte: str) -> dict | None:
         p["motivo_desligado"] = sanear(p["motivo_desligado"])
     if isinstance(p.get("canario"), dict) and p["canario"].get("motivo"):
         p["canario"] = dict(p["canario"], motivo=sanear(p["canario"]["motivo"]))
+    try:   # backend pago: gasto acumulado em US$, o que resta e projeção por balde
+        from compliance_agent.llm.claude_api import painel as painel_api
+        api = painel_api()
+        if isinstance(api.get("ultimo_erro"), dict) and api["ultimo_erro"].get("motivo"):
+            api["ultimo_erro"] = dict(api["ultimo_erro"], motivo=sanear(api["ultimo_erro"]["motivo"]))
+        p["api"] = api
+    except (ImportError, OSError, ValueError, TypeError, KeyError) as exc:
+        logger.debug("ao vivo: gasto da API indisponível: %s", exc)
+        p["api"] = None
     return p
 
 

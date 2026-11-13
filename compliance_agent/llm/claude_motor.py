@@ -340,9 +340,50 @@ def _falhar(tarefa: str, motivo: str, *, contar_erro: bool, segundos: float = 0.
         _log(f"tarefa={tarefa} erro {tipo or 'erro'}: {motivo[:160]}")
 
 
+_SEM_API = ("desligado (JFN_CLAUDE_MOTOR", "pausado", "sob pytest")   # kill-switch vale para os dois backends
+
+
 def pensar(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME, timeout: float = 180.0,
            ferramentas=(), sistema: str = "", espera: float | None = None, executar=None,
-           _canario: bool = False) -> Pensamento | None:
+           backend: str = "auto", api_cliente=None, _canario: bool = False) -> Pensamento | None:
+    """Claude pela ASSINATURA primeiro; sem ela (teto, limite de uso, canário fora, trava ocupada, erro), a API
+    paga com teto em dólares (`claude_api`, Haiku por padrão, nunca Opus). `backend`: auto | cli | api.
+    `None` ⇒ cair na cascata (motivo em `ultimo_motivo`). O modelo da API sai marcado `<id>@api`."""
+    global ultimo_motivo
+    r = None
+    if backend in ("auto", "cli"):
+        r = _pensar_cli(tarefa, prompt, schema=schema, modelo=modelo, timeout=timeout, ferramentas=ferramentas,
+                        sistema=sistema, espera=espera, executar=executar, _canario=_canario)
+        if r is not None or backend == "cli" or _canario or ultimo_motivo.startswith(_SEM_API):
+            return r
+    if ferramentas:                     # a API aqui é só texto: tarefa com ferramenta não migra
+        return None
+    motivo_cli = ultimo_motivo
+    from compliance_agent.llm import claude_api
+    entrada = prompt + (_instrucao_schema(schema) if schema is not None else "")
+    ini = time.monotonic()
+    res = claude_api.pensar_api(tarefa, entrada, sistema=sistema or SISTEMA_PADRAO, timeout=timeout,
+                                cliente=api_cliente)
+    if res is None:
+        ultimo_motivo = " | ".join(m for m in (motivo_cli, claude_api.ultimo_motivo) if m)
+        return None
+    texto, quem, usd = res
+    dados = None
+    if schema is not None:
+        from compliance_agent.llm.json_resposta import parse_json_llm
+        dados = parse_json_llm(texto)
+        if dados is None or [k for k in _chaves_exigidas(schema) if not (isinstance(dados, dict) and k in dados)]:
+            ultimo_motivo = "API: resposta sem o JSON pedido"
+            return None
+    _log(f"tarefa={tarefa} ok modelo={quem}@api {time.monotonic() - ini:.1f}s US$ {usd:.4f}")
+    _mutar_estado(ultima_ok_iso=_agora())
+    return Pensamento(texto=texto, modelo=f"{quem}@api", segundos=round(time.monotonic() - ini, 1), tarefa=tarefa,
+                      dados=dados, extras={"backend": "api", "usd": round(usd, 6)})
+
+
+def _pensar_cli(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_VOLUME, timeout: float = 180.0,
+                ferramentas=(), sistema: str = "", espera: float | None = None, executar=None,
+                _canario: bool = False) -> Pensamento | None:
     """Uma chamada ao Claude pela assinatura. `None` ⇒ cair na cascata (motivo em `ultimo_motivo`)."""
     global ultimo_motivo
     ultimo_motivo = ""
