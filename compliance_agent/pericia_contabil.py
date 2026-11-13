@@ -1127,9 +1127,12 @@ def montar_ctx(resultados: list[dict], *, n_base: dict[str, int], emitido: date 
     }
 
 
-async def _pdf_paginado(html: str, destino: str, timeout_s: float = 3600.0) -> str:
+async def _pdf_paginado(html_path: str, destino: str, timeout_s: float = 3600.0) -> str:
     """Mesmo motor do `render_html.html_to_pdf` (Playwright, A4), com rodapé NUMERADO — pedido
-    expresso desta peça ("numeração de páginas"), diferente da diretriz geral sem numeração."""
+    expresso desta peça ("numeração de páginas"), diferente da diretriz geral sem numeração.
+
+    Lê o HTML do DISCO (`goto file://`): com ~55 mil contratos o documento passa de 25 MB, e o
+    `set_content` estoura o timeout padrão de 30 s do Playwright antes de terminar de carregar."""
     import asyncio
 
     from playwright.async_api import async_playwright
@@ -1139,7 +1142,8 @@ async def _pdf_paginado(html: str, destino: str, timeout_s: float = 3600.0) -> s
         b = await pw.chromium.launch(headless=True, args=["--no-sandbox"])
         try:
             page = await b.new_page()
-            await asyncio.wait_for(page.set_content(html, wait_until="load"), timeout_s)
+            page.set_default_timeout(timeout_s * 1000)
+            await asyncio.wait_for(page.goto(Path(html_path).resolve().as_uri(), wait_until="load"), timeout_s)
             await asyncio.wait_for(page.pdf(
                 path=destino, format="A4", print_background=True, display_header_footer=True,
                 header_template="<span></span>",
@@ -1200,7 +1204,7 @@ def gerar(saida: str | Path, *, db: str | Path = _DB, db_pcrj: str | Path = _DB_
     html_p.write_text(html, encoding="utf-8")
     out["html"] = str(html_p)
     if pdf:
-        out["pdf"] = asyncio.run(_pdf_paginado(html, str(saida / "pericia-contabil-contratos.pdf")))
+        out["pdf"] = asyncio.run(_pdf_paginado(str(html_p), str(saida / "pericia-contabil-contratos.pdf")))
     return out
 
 
@@ -1210,7 +1214,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--db", default=_DB)
     ap.add_argument("--pcrj-db", default=_DB_PCRJ)
     ap.add_argument("--sem-pdf", action="store_true")
+    ap.add_argument("--so-pdf", action="store_true", help="só converte o HTML já gerado em --saida")
     a = ap.parse_args(argv)
+    if a.so_pdf:
+        import asyncio
+        s = Path(a.saida)
+        print(asyncio.run(_pdf_paginado(str(s / "pericia-contabil-contratos.html"),
+                                        str(s / "pericia-contabil-contratos.pdf"))))
+        return 0
     out = gerar(a.saida, db=a.db, db_pcrj=a.pcrj_db, pdf=not a.sem_pdf)
     print({k: v for k, v in out.items() if k != "resumo"})
     return 0
