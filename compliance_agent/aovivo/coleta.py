@@ -502,8 +502,8 @@ class Coletor:
                         try:
                             tv = _REPO / m["trava"] if not os.path.isabs(m["trava"]) else Path(m["trava"])
                             self._inicio_trava[m["id"]] = tv.stat().st_mtime
-                        except OSError:
-                            pass
+                        except OSError as exc:      # sem início observado: o fim sai sem a régua (hora_real cai)
+                            logger.debug("ao vivo: trava de %s ilegível: %s", m["id"], exc)
                 elif ant == "rodando" and d["estado"] != "rodando":
                     self._inicio_trava.pop(m["id"], None)
                 elif ant is None and d["estado"] == "falhou" and d["desde"]:

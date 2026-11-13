@@ -268,8 +268,8 @@ def decidir_retentativa(agora: datetime) -> tuple[bool, str]:
         try:
             if datetime.fromisoformat(ok_iso).astimezone().date() == agora.date():
                 return False, "diário de hoje já deu certo"
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("ultimo_ok_iso ilegível (%r): %s — sigo como se não houvesse ok hoje", ok_iso, exc)
     if u.get("erro") in _ERROS_DE_SENHA:
         return False, f"senha recusada ({u.get('erro')}): retentar só soma login errado — trocar SIAFE_PASS"
     if not (JANELA_DIURNA[0] <= agora.hour < JANELA_DIURNA[1]):
@@ -282,8 +282,8 @@ def texto_aviso_previo(minutos: int, ultimo_ok: str | None) -> str:
     if ultimo_ok:
         try:
             desde = f" Última coleta com sucesso: {datetime.fromisoformat(ultimo_ok).astimezone():%d/%m %H:%M}."
-        except ValueError:
-            pass
+        except ValueError as exc:
+            logger.debug("ultimo_ok ilegível no aviso prévio (%r): %s", ultimo_ok, exc)
     return (f"🛰️ JFN — SIAFE: em {minutos} min vou rodar a coleta diária de OBs (a das 05:00 não foi concluída).{desde}\n"
             "Se o SIAFE pedir o código MFA, ele chega no seu e-mail da ALERJ: responda aqui com o código "
             "(sozinho ou como /siafe XXXX). Espero até 15 min por ele.")
