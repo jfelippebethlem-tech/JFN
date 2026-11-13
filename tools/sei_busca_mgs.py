@@ -6,7 +6,9 @@ enumerar os processos de pagamento/execução da MGS no ITERJ (ciclos 2022-2023,
 VM-guarded. Uso: sei_busca_mgs.py "MGS CLEAN" [--docs]   (--docs = Considerar Documentos)."""
 import asyncio
 import json
+import os
 import sys
+from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools.vm_guard import preflight, cleanup_orphans
 
@@ -125,12 +127,12 @@ async def main():
             try:
                 async with pg.expect_navigation(wait_until="domcontentloaded", timeout=35000):
                     await pg.evaluate(r"""()=>{const b=document.querySelector('#sbmPesquisar');if(b){b.click();return;}const f=document.querySelector('#frmProtocoloPesquisa,form[action*=protocolo_pesquisar],form[action*=pesquisa]');if(f)f.submit();}""")
-            except Exception:
-                pass
+            except Exception as exc:  # sem navegação a espera por presença abaixo decide; fica o rastro
+                print(f"[busca_mgs] submit sem navegação: {str(exc)[:120]}", file=sys.stderr)
             try:
                 await pg.wait_for_load_state("networkidle", timeout=25000)
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[busca_mgs] rede não assentou em 25 s: {str(exc)[:120]}", file=sys.stderr)
             # ESPERAR PELA PRESENÇA, NÃO PELO RELÓGIO. A lição já é da casa (o falso INDISPONÍVEL
             # em massa da árvore do SEI saiu exatamente disto): `networkidle` + `sleep(3)` é aposta,
             # e sob carga a aposta perde. A barra de resultado é a PROVA de que a tela chegou —
@@ -199,7 +201,11 @@ async def main():
                     achados.setdefault(num, tipo or achados.get(num, ""))
 
             await colher()
-            for _ in range(5):  # paginação (capada — antes travava em 20×networkidle)
+            # Teto de páginas configurável (SEI_BUSCA_PAGINAS, padrão 5 = comportamento antigo).
+            # Capado originalmente porque 20×networkidle travava; com 369 registros, porém, 5
+            # páginas = 70 resultados e a lista PARECE completa sem ser — foi o que me enganou
+            # em 18/09/2026. Quem precisa do universo inteiro sobe o teto explicitamente.
+            for _ in range(int(os.environ.get("SEI_BUSCA_PAGINAS", "5"))):
                 antes = len(achados)
                 try:
                     prox = await pg.evaluate(r"""()=>{const a=[...document.querySelectorAll('a')].find(e=>/pr[oó]xim|seguinte|^›$|^»$/i.test(((e.innerText||'')+' '+(e.title||'')).trim())&&!/desabilit|disabled/i.test(e.className||''));if(a){a.click();return true;}return false;}""")
@@ -209,6 +215,18 @@ async def main():
                     break
                 await pg.wait_for_timeout(2500)
                 await colher()
+                # PERSISTÊNCIA INCREMENTAL. O JSON final só era gravado no fim; quando um timeout
+                # externo matava a paginação no meio (medido 18/09/2026: 40 min de varredura
+                # perdidos, log com crash EPIPE do driver e o runner registrando rc=0), TODAS as
+                # páginas já colhidas iam junto. Agora cada página deixa rastro em disco: uma
+                # interrupção passa a custar a última página, não a rodada inteira.
+                try:
+                    Path("data/busca_parcial.json").write_text(
+                        json.dumps({"termo": TERMO, "parcial": True, "n_ate_agora": len(achados),
+                                    "todos": dict(sorted(achados.items()))},
+                                   ensure_ascii=False, indent=1))
+                except Exception as e:                       # nunca derrubar a busca por causa do rastro
+                    print(f"[aviso] parcial não gravou: {type(e).__name__}: {e}", file=sys.stderr)
                 if len(achados) == antes:  # não cresceu → fim
                     break
             pagamentos = {n: t for n, t in achados.items() if re.search(r"pagament", t, re.I)}

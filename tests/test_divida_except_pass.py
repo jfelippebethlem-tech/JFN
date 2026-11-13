@@ -46,7 +46,9 @@ SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__
 #   3 em `notifications/telegram.py` (prompt do agente SEM contexto legal virava resposta pobre
 #   sem aviso; queda do groq para o openrouter era invisível; esquema com JSON inválido sumia).
 #   157 → 151, teto acompanha em 151.
-TETO_MUDOS_PRODUCAO = 151
+# 2026-11-13: a ponta da branch já chegou em 152 (dívida alheia) e o trabalho do SEI somou 1 → curei 3
+#   (marca de fila vazia em `sei_leitura_dupla`, submit e espera de rede em `sei_busca_mgs`): 150.
+TETO_MUDOS_PRODUCAO = 150
 
 
 def _mudos(py: Path) -> list[int]:

@@ -51,8 +51,10 @@ def _marcar_sem_alvo(vazio: bool, marca: Path = _MARCA_SEM_ALVO) -> None:
             marca.touch()
         else:
             marca.unlink(missing_ok=True)
-    except OSError:
-        pass                 # a marca só economiza disparo; sem ela o lane segue como antes
+    except OSError as exc:   # a marca só economiza disparo; sem ela o lane segue como antes
+        print(f"[leitura_dupla] marca de fila vazia não gravada: {exc}", file=sys.stderr)
+
+
 def _esp(p: str) -> str:
     """`fundamenta` → casa também `F U N D A M E N TA` (maiúscula espaçada da extração de PDF)."""
     return r"\s*".join(f"[{c}{c.upper()}]" for c in p)
