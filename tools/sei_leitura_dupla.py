@@ -40,6 +40,19 @@ from tools.sei_confronto_llm import texto_do_processo
 _REPO = Path(__file__).resolve().parent.parent
 _DB = _REPO / "data" / "compliance.db"
 _ARQ = _REPO / "data" / "sei_arquivo"
+# Marca de "fila vazia" lida pelo `tools/varredura_sei_lane.sh`: com ela recente, o lane não dispara
+# Python à toa (laudo de 13/11/2026: ~576 disparos/dia, quase todos `resumo: {}`).
+_MARCA_SEM_ALVO = _REPO / "data" / ".varredura_sei.sem_alvo"
+
+
+def _marcar_sem_alvo(vazio: bool, marca: Path = _MARCA_SEM_ALVO) -> None:
+    try:
+        if vazio:
+            marca.touch()
+        else:
+            marca.unlink(missing_ok=True)
+    except OSError:
+        pass                 # a marca só economiza disparo; sem ela o lane segue como antes
 def _esp(p: str) -> str:
     """`fundamenta` → casa também `F U N D A M E N TA` (maiúscula espaçada da extração de PDF)."""
     return r"\s*".join(f"[{c}{c.upper()}]" for c in p)
@@ -1096,9 +1109,12 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover
             i, n = (int(x) for x in a.fatia.split("/"))
             if not 0 <= i < n:
                 raise SystemExit(f"--fatia {a.fatia}: i tem de estar em [0, n)")
-            alvos = _pendentes(con, (a.amostra or 3) * n)[i::n]
+            todos = _pendentes(con, (a.amostra or 3) * n)
+            _marcar_sem_alvo(not todos)
+            alvos = todos[i::n]
         else:
             alvos = _pendentes(con, a.amostra or 3)
+            _marcar_sem_alvo(not alvos)
         tot = Counter()
         seco = 0            # leituras seguidas sem resposta (ver a pausa por cota, abaixo)
         for proc in alvos:

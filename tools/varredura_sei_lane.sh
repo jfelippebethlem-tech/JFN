@@ -19,6 +19,11 @@ cd /home/ubuntu/JFN || exit 1
 
 [ -f data/.varredura_sei.off ] && exit 0          # kill-switch do dono, sem precisar mexer no cron
 
+# FILA VAZIA RECENTE → nem acorda o Python. O leitor deixa `data/.varredura_sei.sem_alvo` quando a fila
+# INTEIRA está vazia (e apaga quando há alvo). Laudo de 13/11/2026: ~576 disparos Python/dia, quase
+# todos `resumo: {}`. Com a marca de até 120 min, ocioso cai para ≤ 48/dia; texto novo espera ≤ 2 h.
+[ -n "$(find data/.varredura_sei.sem_alvo -mmin -120 2>/dev/null)" ] && exit 0
+
 exec 9>/tmp/varredura_sei.lock
 flock -n 9 || exit 0                              # já tem um DISPARO DESTE LANE lendo
 
