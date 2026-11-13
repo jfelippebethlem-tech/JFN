@@ -915,7 +915,10 @@ def grau_de(achados: list[dict]) -> tuple[str, int, list, list]:
     score = min(100, sum(int(a.get("peso") or 0) for a in conta))
     if confirmados and score >= 25:
         grau = "🔴"
-    elif score >= 30 or len(indicios) >= 2:
+    elif score >= 30 or indicios or confirmados:
+        # 13/11/2026 (decisão do dono): UM indício determinado já é "a apurar". Antes exigia score ≥ 30 ou 2+
+        # indícios — e 2.899 pares saíam 🟢 com indício aberto (2.404 de T07: competência paga 2×), contra a
+        # própria definição acima. Confirmado de peso < 25 também não é 🟢.
         grau = "🟡"
     elif conta or any(a.get("status") == "AFASTADO" for a in achados):
         grau = "🟢"

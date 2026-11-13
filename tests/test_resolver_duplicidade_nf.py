@@ -302,7 +302,8 @@ def test_rodar_grava_tabela_enfileira_sem_rebaixar_e_repericia(arq, tmp_path):
 def test_rodar_afastado_tira_o_par_do_amarelo_no_banco(arq, tmp_path):
     _arquivar(arq, "040002_001422_2026", [("Nota Fiscal - NF 93", "outros", _nf(93, "MARÇO/2026"))])
     _arquivar(arq, "040002_001999_2026", [("Nota Fiscal - NF 88", "outros", _nf(88, "FEVEREIRO/2026"))])
-    db = _banco(tmp_path, _serie())
+    # sem a OBX anulada (T02): afastado o T07, não resta indício e o par sai do 🟡 (desde 13/11 UM indício já é 🟡)
+    db = _banco(tmp_path, [o for o in _serie() if o["numero_ob"] != "OBX"])
     out = R.rodar(db=db, gerar=None)
     assert out["vereditos"] == {"AFASTADO": 1}
     c = sqlite3.connect(db)
@@ -358,7 +359,12 @@ def test_t07_afastado_tira_o_par_do_amarelo():
     h = _t07(_serie(), _res("AFASTADO", motivo="NFs de meses distintos"))
     assert h["status"] == "AFASTADO" and "NFs de meses distintos" in h["evidencia"]
     assert ac.auditar_contrato({"obs": _serie()})["grau"] == "🟡"
+    # sobra o T02 (OBX anulada sem reemissão): desde 13/11 UM indício já é 🟡
     res = ac.auditar_contrato({"obs": _serie(), "resolucao_duplicidade": _res("AFASTADO")})
+    assert res["grau"] == "🟡" and [a["codigo"] for a in res["achados"] if a["status"] == "INDICIO"] == ["T02-STATUS-PAGO"]
+    # sem a anulada, nenhum indício resta: 🟢
+    sem_t02 = [o for o in _serie() if o["numero_ob"] != "OBX"]
+    res = ac.auditar_contrato({"obs": sem_t02, "resolucao_duplicidade": _res("AFASTADO")})
     assert res["grau"] == "🟢", res["resumo"]
 
 

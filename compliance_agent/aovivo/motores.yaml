@@ -18,6 +18,9 @@
 # NUNCA se transmite linha bruta de log: o que não casa a lista branca é ignorado, e o que casa
 # ainda passa pelo saneamento (`saneamento.py`).
 motores:
+  # 13/11/2026 (dono): TFE desligado — `tfe`/`tfe-ob`/`warp` saíram do catálogo. TFE recusa IP de datacenter
+  # (Oracle, WARP, GitHub, proxy Google, Tor); a despesa vem dos painéis da CGE (`dados-abertos-rj`) e a OB
+  # do SIAFE direto (`siafe-ob`). Unidades systemd preservadas, só desabilitadas (reversível).
   - id: sei-noturno
     nome: SEI noturno
     classe: motor
@@ -43,16 +46,6 @@ motores:
     trava: /tmp/varredura_sei.lock
     # 11/11/2026: girava a cada 10 min com `resumo: {}` e aparecia saudável
     efeito: {db: compliance.db, tabela: sei_leitura_dupla, coluna: lido_em, horas: 24}
-  - id: tfe
-    nome: TFE · despesa
-    classe: motor
-    descricao: Coleta o espelho D-1 da despesa (dados abertos do Estado)
-    unidade: jfn-tfe
-  - id: tfe-ob
-    nome: TFE · OBs
-    classe: motor
-    descricao: Base completa de ordens bancárias (download TFE + ingestão 2019–2026)
-    unidade: jfn-tfe-ob
   - id: dados-abertos-rj
     nome: Dados Abertos RJ · orçamento
     classe: motor
@@ -186,11 +179,6 @@ motores:
     classe: infra
     descricao: Segura o WAL do compliance.db (proteção contra corrupção)
     unidade: jfn-wal-keeper
-  - id: warp
-    nome: WARP · saída
-    classe: infra
-    descricao: Saída de rede usada pela coleta TFE
-    unidade: jfn-warp
   - id: massare
     nome: Massare (VM2)
     classe: motor

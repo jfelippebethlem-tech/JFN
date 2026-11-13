@@ -65,7 +65,8 @@ def test_timestamps_do_systemd():
 def test_catalogo_integro():
     cat = coleta.catalogo()
     ids = [m["id"] for m in cat]
-    assert len(ids) == len(set(ids)) and {"sei-noturno", "tfe-ob", "intel-cache", "territorio", "massare"} <= set(ids)
+    assert len(ids) == len(set(ids)) and {"sei-noturno", "siafe-ob", "dados-abertos-rj", "intel-cache", "territorio", "massare"} <= set(ids) \
+        and not {"tfe", "tfe-ob", "warp"} & set(ids)  # TFE desligado pelo dono em 13/11/2026
     for m in cat:
         assert m["nome"] and m.get("classe") in ("motor", "infra")
         assert m.get("unidade") or m.get("trava") or m.get("contador") or m.get("sonda_env"), m["id"]

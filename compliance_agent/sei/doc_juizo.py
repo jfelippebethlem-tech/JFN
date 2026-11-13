@@ -176,9 +176,39 @@ def _norm_txt(s: str) -> str:
     return re.sub(r"\s+", " ", s)
 
 
+_RX_PONTUACAO = re.compile(r"[\"'“”‘’«»`´\-–—_.,;:!?()\[\]{}/\\|*•·]+")
+_RX_RETICENCIAS = re.compile(r"\s*(?:\.\.\.|…|\[\.\.\.\]|\(\.\.\.\))\s*")
+
+
+def _sem_pontuacao(s: str) -> str:
+    return re.sub(r"\s+", " ", _RX_PONTUACAO.sub(" ", _norm_txt(s))).strip()
+
+
 def _trecho_confere(trecho: str | None, texto: str) -> bool:
+    """O trecho citado EXISTE no texto? Exato após normalização; senão, sem pontuação/aspas/travessões; e,
+    com reticências, cada pedaço (≥ 8 caracteres) presente NA ORDEM.
+
+    Medido em 13/11/2026: 1.763 de 28.916 juízos descartados por "trecho não confere" — amostra: juízos
+    favoráveis com aspas curvas, travessão e "..." que a comparação exata reprovava. Continua estrito no que
+    importa: palavra que não está no documento não passa; só a tipografia deixou de decidir."""
     t = _norm_txt(trecho or "").strip()
-    return bool(t) and len(t) >= 8 and t in _norm_txt(texto)
+    if not t or len(t) < 8:
+        return False
+    alvo = _norm_txt(texto)
+    if t in alvo:
+        return True
+    alvo_sp = _sem_pontuacao(texto)
+    pedacos = [_sem_pontuacao(p) for p in _RX_RETICENCIAS.split(trecho or "")]
+    pedacos = [p for p in pedacos if p]
+    if not pedacos or any(len(p) < 8 for p in pedacos):
+        return False
+    pos = 0
+    for p in pedacos:
+        i = alvo_sp.find(p, pos)
+        if i < 0:
+            return False
+        pos = i + len(p)
+    return True
 
 
 # Cláusulas que a NORMA impõe ao parecerista (art. 50, §1º do Dec. est. 48.816/2023; art. 31 do
