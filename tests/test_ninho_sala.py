@@ -78,6 +78,19 @@ def test_mesma_sala_com_dois_recebendo_e_varios_fatores_e_ALTO():
     assert "baixada" in juntos
 
 
+def test_total_dos_grupos_de_grau_alto_e_separado_do_conjunto():
+    """Revisão cética 13/11/2026 (D7): o card mostrava o nº de grupos ALTO ao lado do R$ do CONJUNTO."""
+    estabs = [_e(111, "SALA 601", sit="BAIXADA"), _e(222, "SALA 601", sit="INAPTA"), _e(333, "SALA 601"),
+              _e(444, "SALA 900", ano="2010", tel="21111", cnae="1111"),
+              _e(555, "SALA 900", ano="2015", tel="21222", cnae="1111")]
+    db, rec = _bases(estabs, [(cnpj(111), 500.0), (cnpj(222), 700.0), (cnpj(444), 9_000.0), (cnpj(555), 1_000.0)])
+    r = ninhos_por_sala(db_path=db, receita_path=rec)
+    altos = [g for g in r["grupos"] if g["grau"] == "alto"]
+    assert len(altos) == 1 and r["n"] == 2
+    assert r["total_recebido_ob_alto"] == pytest.approx(1_200.0)
+    assert r["total_recebido_ob"] == pytest.approx(11_200.0)
+
+
 def test_UM_recebendo_nao_e_ninho():
     """O defeito original: 1 recebedor é fornecedor com vizinhos."""
     estabs = [_e(111, "SALA 601"), _e(222, "SALA 601"), _e(333, "SALA 601")]

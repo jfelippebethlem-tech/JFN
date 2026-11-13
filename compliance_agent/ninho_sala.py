@@ -175,6 +175,9 @@ def ninhos_por_sala(db_path: str | None = None, receita_path: str | None = None,
             "ok": True, "grupos": grupos[:limite], "n": len(grupos),
             "n_alto": sum(1 for g in grupos if g["grau"] == "alto"),
             "total_recebido_ob": round(sum(g["total_recebido_ob"] for g in grupos), 2),
+            # o card do cockpit mostra o número de grupos de grau ALTO; o valor ao lado tem de ser o DELES,
+            # não o do conjunto (revisão cética 13/11/2026, D7)
+            "total_recebido_ob_alto": round(sum(g["total_recebido_ob"] for g in grupos if g["grau"] == "alto"), 2),
             "explicacao": (
                 "CNPJs que dividem a MESMA SALA (endereço + complemento), em que mais de um "
                 "recebe dinheiro público. Dividir o prédio não diz nada — 'Rua da Assembleia 10' "

@@ -68,13 +68,21 @@ def _ro(db_path: str | None = None) -> sqlite3.Connection:
 
 def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) -> dict:
     """Cruza sanções impeditivas × OB SIAFE (Estado) × vitórias PNCP (todas as esferas).
-    Por empresa: sanções, pagamentos/vitórias TOTAIS e os DURANTE a vigência ("à época")."""
+    Por empresa: sanções, pagamentos/vitórias TOTAIS e os DURANTE a vigência ("à época").
+
+    "À época" (revisão cética 13/11/2026) exige as DUAS coisas: a sanção VIGENTE na data do ato
+    (`sancao_abrangencia.vigente_em` — "com prazo determinado" sem fim não se afirma) **e** com ALCANCE
+    sobre o ente pagador/comprador (`veda_ente`: abrangência declarada no CEIS, esfera do sancionador,
+    fundamentação antes da categoria). Vigente sem alcance é contado à parte (`*_vigente_sem_alcance`):
+    risco reputacional, não vedação — 56% do "sancionada paga" do D14 era isso."""
+    from compliance_agent.sancao_abrangencia import sql_campos_ceis, veda_ente, vigente_em
     con = _ro(db_path)
     try:
         # sanções impeditivas de PJ (14 dígitos; CPF sancionado não contrata como empresa)
         sanc: dict[str, list] = {}
         for r in con.execute(
-                f"SELECT cpf_cnpj, nome, cadastro, categoria, data_inicio, data_fim, orgao "
+                f"SELECT cpf_cnpj, nome, cadastro, categoria, data_inicio, data_fim, orgao, uf, fundamentacao, "
+                f"{sql_campos_ceis(con)} "
                 f"FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND {_SQL_IMPEDITIVA}"):
             sanc.setdefault(r["cpf_cnpj"], []).append(dict(r))
 
@@ -84,9 +92,10 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
             return achados.setdefault(cnpj, {
                 "cnpj": cnpj, "nome": nome, "sancoes": sanc.get(cnpj, []),
                 "estado": {"obs": 0, "valor": 0.0, "obs_durante": 0, "valor_durante": 0.0,
-                           "exemplos_durante": []},
+                           "exemplos_durante": [], "obs_vigente_sem_alcance": 0,
+                           "valor_vigente_sem_alcance": 0.0},
                 "pncp": {"vitorias": 0, "valor": 0.0, "vitorias_durante": 0, "valor_durante": 0.0,
-                         "esferas": {}, "exemplos_durante": []},
+                         "esferas": {}, "exemplos_durante": [], "vitorias_vigente_sem_alcance": 0},
             })
 
         # Estado: OBs SIAFE pagas a CNPJ sancionado (total e durante a vigência)
@@ -98,16 +107,20 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
                 a = _base(r["credor"], r["nome_credor"])
                 a["estado"]["obs"] += 1
                 a["estado"]["valor"] += r["valor"] or 0.0
-                for s in a["sancoes"]:
-                    ini, fim = s.get("data_inicio") or "0000", s.get("data_fim") or "9999"
-                    if ini <= r["dt"] <= fim:
-                        a["estado"]["obs_durante"] += 1
-                        a["estado"]["valor_durante"] += r["valor"] or 0.0
-                        if len(a["estado"]["exemplos_durante"]) < 5:
-                            a["estado"]["exemplos_durante"].append(
-                                {"ob": r["numero_ob"], "data": r["dt"], "valor": r["valor"],
-                                 "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
-                        break
+                vigentes = [s for s in a["sancoes"] if vigente_em(s, r["dt"])]
+                com_alcance = [s for s in vigentes if veda_ente(s, "estadual", "RJ")["veda"]]
+                if vigentes and not com_alcance:
+                    a["estado"]["obs_vigente_sem_alcance"] += 1
+                    a["estado"]["valor_vigente_sem_alcance"] += r["valor"] or 0.0
+                if com_alcance:
+                    s = com_alcance[0]
+                    ini, fim = s.get("data_inicio") or "?", s.get("data_fim") or "sem prazo"
+                    a["estado"]["obs_durante"] += 1
+                    a["estado"]["valor_durante"] += r["valor"] or 0.0
+                    if len(a["estado"]["exemplos_durante"]) < 5:
+                        a["estado"]["exemplos_durante"].append(
+                            {"ob": r["numero_ob"], "data": r["dt"], "valor": r["valor"],
+                             "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
 
         # PNCP: vitórias homologadas de CNPJ sancionado (com esfera oficial do ente)
         try:
@@ -117,7 +130,7 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
         except Exception:
             oficial, classificar_esfera = {}, None
         if sanc:
-            q_pncp = ("SELECT certame, orgao_cnpj, orgao_nome, unidade_nome, municipio, "
+            q_pncp = ("SELECT certame, orgao_cnpj, orgao_nome, unidade_nome, municipio, uf, "
                       "fornecedor_cnpj, fornecedor_nome, data_pub, SUM(valor_homologado) v "
                       "FROM pncp_resultado WHERE ordem_classificacao=1 AND fornecedor_cnpj IN "
                       f"({','.join('?' * len(sanc))}) GROUP BY certame, fornecedor_cnpj")
@@ -128,17 +141,23 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
                 a["pncp"]["valor"] += r["v"] or 0.0
                 a["pncp"]["esferas"][esf] = a["pncp"]["esferas"].get(esf, 0) + 1
                 dt = (r["data_pub"] or "")[:10]
-                for s in a["sancoes"]:
-                    ini, fim = s.get("data_inicio") or "0000", s.get("data_fim") or "9999"
-                    if dt and ini <= dt <= fim:
-                        a["pncp"]["vitorias_durante"] += 1
-                        a["pncp"]["valor_durante"] += r["v"] or 0.0
-                        if len(a["pncp"]["exemplos_durante"]) < 5:
-                            a["pncp"]["exemplos_durante"].append(
-                                {"certame": r["certame"], "orgao": r["unidade_nome"] or r["orgao_nome"],
-                                 "esfera": esf, "data": dt, "valor": r["v"],
-                                 "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
-                        break
+                vigentes = [s for s in a["sancoes"] if vigente_em(s, dt)]
+                esf_alvo = esf if esf in ("federal", "estadual", "municipal") else None
+                uf_alvo = (r["uf"] or "").upper() if "uf" in r.keys() else ""
+                com_alcance = [s for s in vigentes
+                               if esf_alvo and veda_ente(s, esf_alvo, uf_alvo or "RJ")["veda"]]
+                if vigentes and not com_alcance:
+                    a["pncp"]["vitorias_vigente_sem_alcance"] += 1
+                if com_alcance:
+                    s = com_alcance[0]
+                    ini, fim = s.get("data_inicio") or "?", s.get("data_fim") or "sem prazo"
+                    a["pncp"]["vitorias_durante"] += 1
+                    a["pncp"]["valor_durante"] += r["v"] or 0.0
+                    if len(a["pncp"]["exemplos_durante"]) < 5:
+                        a["pncp"]["exemplos_durante"].append(
+                            {"certame": r["certame"], "orgao": r["unidade_nome"] or r["orgao_nome"],
+                             "esfera": esf, "data": dt, "valor": r["v"],
+                             "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
 
         lista = [a for a in achados.values()
                  if (a["estado"]["valor"] + a["pncp"]["valor"]) >= min_valor]
@@ -526,8 +545,11 @@ def radar_risco(db_path: str | None = None, limite: int = 100) -> dict:
                 for c in g.get("cnpjs", []):
                     _add(c, "hub_massa", f"{g.get('n_cnpjs')} CNPJs no mesmo {g.get('chave')}")
     try:
-        for a in empresa_fenix(db_path).get("achados", []):
-            _add(a.get("cnpj"), "fenix", a.get("situacao") or a.get("motivo") or "")
+        # revisão 13/11/2026 (D1/D2): só pagamento DEPOIS da baixa confirmada é sinal; a lista inteira
+        # (o corte em 120 deixava de fora quem vinha depois na ordenação por valor)
+        for a in empresa_fenix(db_path, limite=None).get("achados", []):
+            if a.get("pagou_apos_baixa") is True:
+                _add(a.get("cnpj"), "fenix", a.get("situacao") or a.get("motivo") or "")
     except Exception as exc:
         logger.warning("radar sem fênix: %s", exc)
     try:
@@ -1535,7 +1557,7 @@ def _pagou_apos_baixa(con, cnpj: str, ultima_ob: str | None, iso: str) -> dict:
             "valor_apos_baixa": round(q["v"] or 0.0, 2), "n_ob_apos_baixa": q["n"]}
 
 
-def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
+def empresa_fenix(db_path: str | None = None, limite: int | None = 120) -> dict:
     """Empresa FÊNIX: (a) BAIXADA/INAPTA na Receita que ainda recebeu do Estado (paga a empresa
     morta); ou (b) aberta ≤12 meses antes do 1º pagamento (nasceu já para faturar). Exclui
     consórcio/SPE (legitimamente criados para um projeto). Cadastro Receita ainda parcial."""

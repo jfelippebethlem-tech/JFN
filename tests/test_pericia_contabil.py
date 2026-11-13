@@ -255,8 +255,9 @@ def test_estado_fim_a_fim(tmp_path):
     assert res["B"]["categoria"] == res["B2"]["categoria"] == "INDETERMINADO"
     assert res["B"]["motivo"] == "vinculo_ambiguo"
 
-    assert res["C"]["categoria"] == "A_MENOR_ENCERRADO"
-    assert res["C"]["pago"] == 0.0 and res["C"]["vinculo"] == "credor_sem_ob"
+    # sem OB na base não é "pago a menor" (revisão 13/11/2026): INDISPONÍVEL ≠ zero
+    assert res["C"]["categoria"] == "INDETERMINADO" and res["C"]["motivo"] == "credor_sem_ob_na_base"
+    assert res["C"]["pago"] is None and res["C"]["vinculo"] == "credor_sem_ob"
 
     assert res["D"]["categoria"] == "INDETERMINADO"
     assert res["D"]["motivo"] == "ob_do_credor_fora_do_processo"
@@ -375,3 +376,122 @@ def test_prefeitura(tmp_path):
     q = res["4"]                                   # 2.008/2.191 dias desde 2021 → devido ≈ 549.931,54
     assert q["categoria"] == "CONFORME", q
     assert q["devido"] == pytest.approx(600_000.0 * 2008 / 2191, rel=1e-6)
+
+
+# ───────────────── revisão cética 13/11/2026: devolução, duplicidade, sem OB, vigência PCRJ ─────────────────
+# Medido na base real: no SIAFE-Rio a OB devolvida pelo banco continua 'Contabilizado', com Guia de Devolução
+# na coluna `gd` e `status_envio = 'Erro no Pagamento'`; a reemissão para a mesma NL é OUTRA OB. O espelho do
+# TFE publica a devolvida com valor 0,00 (205/205) e a parcialmente devolvida com o valor efetivamente pago.
+
+def _base_devolucao(tmp_path):
+    db = tmp_path / "d.db"
+    con = sqlite3.connect(db)
+    con.executescript("""
+    CREATE TABLE contratos_tcerj (id TEXT, processo TEXT, sei_norm TEXT, data_contratacao TEXT, valor_contrato REAL,
+      status TEXT, unidade TEXT, objeto TEXT, fornecedor TEXT, cnpj TEXT, vig_inicio TEXT, vig_fim TEXT,
+      num_contratacao TEXT);
+    CREATE TABLE ob_orcamentaria_siafe (numero_ob TEXT, ug_emitente TEXT, ug_pagadora TEXT, data_emissao TEXT,
+      status TEXT, credor TEXT, nome_credor TEXT, processo TEXT, valor REAL, exercicio INTEGER,
+      nl TEXT DEFAULT '', competencia TEXT DEFAULT '', gd TEXT DEFAULT '', status_envio TEXT DEFAULT '');
+    CREATE TABLE ordens_bancarias (numero_ob TEXT, ug_codigo TEXT, data_emissao TEXT, valor REAL);
+    """)
+    C = ("INSERT INTO contratos_tcerj (id,processo,sei_norm,data_contratacao,valor_contrato,status,unidade,objeto,"
+         "fornecedor,cnpj,vig_inicio,vig_fim) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+    con.executemany(C, [
+        # J: devolvida (GD + erro no pagamento) e reemitida — pagou UMA vez
+        ("J", "SEI-200001/000001/2026", "", "2026-01-10", 100_000.0, "Ativo", "ORG", "AQUISIÇÃO DE ITENS",
+         "FORN J", "10101010000110", "10/01/2026", "10/12/2026"),
+        # K: devolução PARCIAL (GD, TFE mostra o que foi pago de fato)
+        ("K", "SEI-200001/000002/2026", "", "2026-01-10", 30_000.0, "Ativo", "ORG", "AQUISIÇÃO DE ITENS",
+         "FORN K", "20202020000120", "10/01/2026", "10/12/2026"),
+        # L: GD sem valor no TFE (coleta não chegou) — o valor efetivamente pago é desconhecido
+        ("L", "SEI-200001/000003/2026", "", "2026-01-10", 90_000.0, "Encerrado", "ORG", "AQUISIÇÃO DE ITENS",
+         "FORN L", "30303030000130", "10/01/2026", "10/03/2026"),
+        # M: credor sem NENHUMA OB na base — sem OB não é "pago a menor"
+        ("M", "SEI-200001/000004/2026", "", "2026-01-10", 80_000.0, "Encerrado", "ORG", "AQUISIÇÃO DE ITENS",
+         "FORN M", "40404040000140", "10/01/2026", "10/03/2026"),
+    ])
+    O = ("INSERT INTO ob_orcamentaria_siafe (numero_ob,ug_emitente,ug_pagadora,data_emissao,status,credor,nome_credor,"
+         "processo,valor,exercicio,nl,competencia,gd,status_envio) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+    con.executemany(O, [
+        ("2026OB00101", "700700", "700700", "01/02/2026", "Contabilizado", "10101010000110", "J",
+         "SEI-200001/000001/2026", 100_000.0, 2026, "2026NL00010", "02/2026", "2026GD00001", "Erro no Pagamento"),
+        ("2026OB00102", "700700", "700700", "05/02/2026", "Contabilizado", "10101010000110", "J",
+         "SEI-200001/000001/2026", 100_000.0, 2026, "2026NL00010", "02/2026", "", "Enviado Manualmente"),
+        ("2026OB00201", "700700", "700700", "01/02/2026", "Contabilizado", "20202020000120", "K",
+         "SEI-200001/000002/2026", 50_000.0, 2026, "2026NL00020", "02/2026", "2026GD00002", "Parcialmente Pago"),
+        ("2026OB00301", "700700", "700700", "01/02/2026", "Contabilizado", "30303030000130", "L",
+         "SEI-200001/000003/2026", 90_000.0, 2026, "2026NL00030", "02/2026", "2026GD00003", "Enviado Manualmente"),
+    ])
+    con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?)", [
+        ("2026OB00101", "700700", "2026-02-01", 0.0), ("2026OB00102", "700700", "2026-02-05", 100_000.0),
+        ("2026OB00201", "700700", "2026-02-01", 30_000.0)])
+    con.commit()
+    con.close()
+    return db
+
+
+def test_ob_devolvida_e_reemitida_soma_uma_vez_e_nao_e_duplicidade(tmp_path):
+    res = {r["id"]: r for r in pc.avaliar_estado(_base_devolucao(tmp_path), corte=date(2026, 7, 1))}
+    j = res["J"]
+    assert j["pago"] == pytest.approx(100_000.0), j
+    assert j["categoria"] == "CONFORME"
+    assert j["obs_mesma_nl"] == 0 and "duplicidade" not in j["ressalvas"]
+    assert "devolvida" in j["ressalvas"]
+
+
+def test_devolucao_parcial_soma_o_valor_pago_no_tfe(tmp_path):
+    k = {r["id"]: r for r in pc.avaliar_estado(_base_devolucao(tmp_path), corte=date(2026, 7, 1))}["K"]
+    assert k["pago"] == pytest.approx(30_000.0) and k["categoria"] == "CONFORME", k
+
+
+def test_devolucao_sem_valor_apurado_nao_vira_a_menor(tmp_path):
+    lin = {r["id"]: r for r in pc.avaliar_estado(_base_devolucao(tmp_path), corte=date(2026, 7, 1))}["L"]
+    assert lin["categoria"] == "INDETERMINADO" and lin["motivo"] == "devolucao_sem_valor_apurado", lin
+
+
+def test_credor_sem_ob_na_base_e_indeterminado_nunca_a_menor(tmp_path):
+    m = {r["id"]: r for r in pc.avaliar_estado(_base_devolucao(tmp_path), corte=date(2026, 7, 1))}["M"]
+    assert m["categoria"] == "INDETERMINADO" and m["motivo"] == "credor_sem_ob_na_base", m
+    assert m["pago"] is None                                   # INDISPONÍVEL ≠ zero
+
+
+def test_duplicidade_exige_mesma_competencia_e_nenhuma_devolucao():
+    d = date(2026, 1, 1)
+    parcelas = [(d, "k", "1", 10.0, "NL1", "01/2026", "OB1", ""), (d, "k", "1", 10.0, "NL1", "02/2026", "OB2", "")]
+    assert pc.sinais_duplicidade(parcelas)["obs_mesma_nl"] == 0          # parcelas de competências distintas
+    devol = [(d, "k", "1", 10.0, "NL1", "01/2026", "OB1", "devolvida"),
+             (d, "k", "1", 10.0, "NL1", "01/2026", "OB2", "")]
+    assert pc.sinais_duplicidade(devol)["obs_mesma_nl"] == 0             # devolução + reemissão
+    dup = [(d, "k", "1", 10.0, "NL1", "01/2026", "OB1", ""), (d, "k", "1", 10.0, "NL1", "01/2026", "OB2", "")]
+    assert pc.sinais_duplicidade(dup)["obs_mesma_nl"] == 1
+    comp = [(d, "k", "1", 7.0, "NL2", "02/2026", "OB3", "devolvida"),
+            (d, "k", "1", 7.0, "NL3", "02/2026", "OB4", "")]
+    assert pc.sinais_duplicidade(comp)["obs_mesma_competencia"] == 0     # a devolvida sai antes de agrupar
+
+
+def _pcrj_um(tmp_path, ano, vini, vfim, dpub, valor, pago):
+    db = tmp_path / f"p{ano}{vini.replace('/', '')}.db"
+    con = sqlite3.connect(db)
+    con.execute("""CREATE TABLE contasrio_contrato (contrato TEXT, favorecido_doc TEXT, favorecido_nome TEXT,
+      orgao TEXT, ug TEXT, ano INTEGER, data_publicacao TEXT, objeto TEXT, situacao TEXT, vigencia_ini TEXT,
+      vigencia_fim TEXT, processo TEXT, valor_atualizado REAL, total_pago REAL, coletado_em TEXT)""")
+    con.execute("INSERT INTO contasrio_contrato VALUES ('9','12345678000199','EMPRESA','ORG','UG',?,?,"
+                "'SERVIÇO DE VIGILÂNCIA','Assinado',?,?,'P',?,?,'2026-07-01 02:00:00')",
+                (ano, dpub, vini, vfim, valor, pago))
+    con.commit()
+    con.close()
+    return pc.avaliar_prefeitura(db)[0]
+
+
+def test_prefeitura_vigencia_do_periodo_prorrogado_e_indeterminado(tmp_path):
+    # contrato de 2024; o Contas Rio mostra a vigência do período prorrogado (2026–2027) e a publicação do termo
+    r = _pcrj_um(tmp_path, 2024, "02/01/2026", "01/01/2028", "02/01/2026", 2_000_000.0, 1_200_000.0)
+    assert r["categoria"] == "INDETERMINADO" and r["motivo"] == "vigencia_do_periodo_prorrogado", r
+
+
+def test_prefeitura_inicio_nao_passa_de_01_01_do_ano_do_contrato(tmp_path):
+    # mesmo ano: o início é o mais antigo entre vigência, publicação e 01/01 do ano do contrato
+    r = _pcrj_um(tmp_path, 2026, "01/04/2026", "31/12/2026", "-", 365_000.0, 181_000.0)
+    assert r["devido"] == pytest.approx(365_000.0 * 182 / 365, rel=1e-6), r
+    assert r["categoria"] == "CONFORME"

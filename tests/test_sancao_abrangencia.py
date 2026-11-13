@@ -78,3 +78,71 @@ def test_detalhar_lista_e_marca_veda(tmp_path):
     assert multa["veda_alvo"] is False
     imp = [s for s in d["sancoes"] if s["tipo"] == "impedimento"][0]
     assert imp["veda_alvo"] is False                            # impedimento federal não veda RJ
+
+
+# ── revisão cética 13/11/2026: fundamentação ANTES da categoria; abrangência declarada no CEIS ──
+
+def test_lei_13019_art73_ii_nao_e_interdicao_total():
+    # parceria com OSC suspensa por município: alcance do ente sancionador, não toda a Administração
+    c = SA.classificar_sancao("Suspensão/Interdição das atividades com prazo determinado",
+                              "ESTABELECE O REGIME JURÍDICO DAS PARCERIAS ENTRE A ADMINISTRAÇÃO PÚBLICA E AS "
+                              "ORGANIZAÇÕES DA SOCIEDADE CIVIL. - ART. 73, II - ART. 73. PELA EXECUÇÃO DA PARCERIA")
+    assert c["tipo"] == "suspensao" and c["abrangencia"] == "ente"
+    s = {"categoria": "Declaração de Inidoneidade sem prazo determinado", "orgao": "Fundo Municipal Ficticio",
+         "uf": "RJ", "fundamentacao": "LEI 13019 - ART. 73, II - SUSPENSÃO TEMPORÁRIA"}
+    assert SA.veda_ente(s, "estadual", "RJ")["veda"] is False
+
+
+def test_impedimento_com_base_no_art_87_iii_e_suspensao_so_no_orgao():
+    c = SA.classificar_sancao("Impedimento/proibição de contratar com prazo determinado",
+                              "LEI 8666 - ART. 87, III - PELA INEXECUÇÃO TOTAL OU PARCIAL DO CONTRATO")
+    assert c["tipo"] == "suspensao" and c["abrangencia"] == "orgao"
+
+
+def test_abrangencia_declarada_no_ceis_prevalece():
+    base = {"categoria": "Impedimento/proibição de contratar com prazo determinado",
+            "orgao": "Secretaria de Estado Ficticia", "uf": "RJ", "fundamentacao": ""}
+    assert SA.veda_ente({**base, "abrangencia": "No órgão sancionador"}, "estadual", "RJ")["veda"] is False
+    assert SA.veda_ente({**base, "abrangencia": "Em todos os Poderes da Esfera do órgão sancionador",
+                         "esfera_sancionador": "ESTADUAL"}, "estadual", "RJ")["veda"] is True
+    fed = {**base, "orgao": "Instituto Federal Ficticio", "abrangencia": "Todas as Esferas em todos os Poderes",
+           "esfera_sancionador": "FEDERAL"}
+    assert SA.veda_ente(fed, "estadual", "RJ")["veda"] is True
+    # esfera declarada pela fonte vence o palpite pelo nome do órgão
+    mun = {**base, "orgao": "Secretaria de Estado Ficticia", "esfera_sancionador": "MUNICIPAL",
+           "abrangencia": "Em todos os Poderes da Esfera do órgão sancionador"}
+    assert SA.veda_ente(mun, "estadual", "RJ")["veda"] is False
+    # "na Esfera e no Poder": Judiciário estadual não alcança o Executivo
+    jud = {**base, "orgao": "Tribunal de Justiça do Estado Ficticio", "esfera_sancionador": "ESTADUAL",
+           "abrangencia": "Na Esfera e no Poder do órgão sancionador"}
+    assert SA.veda_ente(jud, "estadual", "RJ")["veda"] is False
+
+
+def test_abrangencia_declarada_nao_alarga_o_teto_da_lei():
+    # CEIS real: "Inidoneidade" + Lei 13.019 art. 73, II + "Todas as Esferas" — a lei limita a suspensão à esfera
+    # do ente sancionador; a declaração só pode ESTREITAR o alcance legal, nunca alargar
+    s = {"categoria": "Declaração de Inidoneidade sem prazo determinado", "orgao": "Fundo Municipal Ficticio",
+         "uf": "RJ", "fundamentacao": "PARCERIAS ... ORGANIZAÇÕES DA SOCIEDADE CIVIL. - ART. 73, II - ART. 73.",
+         "abrangencia": "Todas as Esferas em todos os Poderes", "esfera_sancionador": "MUNICIPAL"}
+    assert SA.veda_ente(s, "estadual", "RJ")["veda"] is False
+    imp = {"categoria": "Impedimento/proibição de contratar com prazo determinado", "orgao": "Prefeitura Ficticia",
+           "uf": "RS", "fundamentacao": "LEI 14133 - ART. 156, III - IMPEDIMENTO DE LICITAR E CONTRATAR",
+           "abrangencia": "Todas as Esferas em todos os Poderes", "esfera_sancionador": "MUNICIPAL"}
+    assert SA.veda_ente(imp, "estadual", "RJ")["veda"] is False
+    # sem teto legal na fundamentação (cautelar penal), a declaração "todas as esferas" vale
+    caut = {**imp, "fundamentacao": "CÓDIGO DE PROCESSO PENAL - ART. 319, VI", "esfera_sancionador": "FEDERAL"}
+    assert SA.veda_ente(caut, "estadual", "RJ")["veda"] is True
+
+
+def test_vigencia_na_data():
+    s = {"data_inicio": "2026-01-01", "data_fim": "2026-06-30", "categoria": "Impedimento com prazo determinado"}
+    assert SA.vigente_em(s, "2026-03-01") is True
+    assert SA.vigente_em(s, "2026-07-01") is False
+    assert SA.vigente_em(s, "2025-12-31") is False
+    assert SA.vigente_em({"data_inicio": "2026-01-01", "data_fim": None,
+                          "categoria": "Declaração de Inidoneidade sem prazo determinado"}, "2026-03-01") is True
+    # "com prazo determinado" sem data final: vigência não se afirma
+    assert SA.vigente_em({"data_inicio": "2026-01-01", "data_fim": None,
+                          "categoria": "Impedimento/proibição de contratar com prazo determinado"},
+                         "2026-03-01") is False
+    assert SA.vigente_em({"data_inicio": None, "data_fim": None, "categoria": "x"}, "2026-03-01") is False

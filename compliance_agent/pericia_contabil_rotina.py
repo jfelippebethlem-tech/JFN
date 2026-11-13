@@ -5,7 +5,7 @@ Roda a mesma régua do relatório de 13/11/2026 (`pericia_contabil.avaliar_estad
 PDF e grava `data/pericia_contabil_resumo.json`:
   · placar por esfera — conforme / a maior / a menor encerrado / a menor em curso / indeterminado;
   · os maiores "a maior" (diferença pago − devido);
-  · duplicidades (mesma NL, mesmo valor em mais de uma OB) — sinal que NÃO muda a classe;
+  · OBs repetidas (mesma NL, competência e valor, nenhuma devolvida pelo banco) — sinal que NÃO muda a classe;
   · o motivo de cada indeterminado, contado.
 
 Pago no Estado = SÓ OB Contabilizada do SIAFE (a régua já filtra); Prefeitura = total pago no SIAFIC-Rio por contrato.
@@ -115,8 +115,11 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
         "definicoes": {
             "pago_estado": "SÓ Ordem Bancária do SIAFE com status Contabilizado; empenho e liquidação nunca entram",
             "pago_prefeitura": "total pago por contrato no SIAFIC-Rio (Contas Rio/CCON)",
-            "duplicidade": ("mesma NL + mesmo valor em mais de uma OB do contrato — a liquidação é paga uma vez; "
-                            "sinal a verificar, não muda a classe"),
+            "duplicidade": ("mesma NL + mesma competência + mesmo valor em mais de uma OB do contrato, nenhuma delas "
+                            "devolvida pelo banco (GD/erro no pagamento) — sinal a conferir na NF, não muda a classe "
+                            "e não é duplicidade comprovada"),
+            "devolucao": ("OB devolvida pelo banco (Guia de Devolução ou status 'Erro no Pagamento') conta só pelo "
+                          "valor efetivamente pago (TFE); a reemissão é que vale"),
             "indeterminado": "sem base para afirmar a maior/a menor — o motivo vem ao lado; INDISPONÍVEL ≠ zero",
         },
         "ressalva": "Indício não é acusação. Diferença é sinal para requerer documentos, não conclusão de dano.",
