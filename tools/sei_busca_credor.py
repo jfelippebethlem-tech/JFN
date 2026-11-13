@@ -34,7 +34,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
-from tools.resolver_duplicidade_nf import tag_processo  # noqa: E402
+from tools.resolver_duplicidade_nf import mapa_contratos, tag_processo  # noqa: E402
 
 DB = REPO / "data" / "compliance.db"
 _DDL = """CREATE TABLE IF NOT EXISTS sei_busca_credor (
@@ -69,6 +69,46 @@ def filtrar(todos: dict[str, str], prefixos: set[str]) -> list[str]:
     return sorted(set(out))
 
 
+ORGAOS_SEI = REPO / "data" / "sei_orgaos_pesquisa.json"   # `sei_busca_mgs.py x --listorgaos`
+
+
+def siglas_por_ug(c) -> dict[str, str]:
+    """UG → sigla do órgão na pesquisa do SEI. A unidade do TCE-RJ começa pela sigla ("ITERJ - INSTIT DE TERRAS…")
+    e o mapa UG→unidade já é aprendido do dado (`mapa_contratos`). Só vale sigla que EXISTE na lista de órgãos da
+    pesquisa (`ORGAOS_SEI`): filtro com nome errado devolveria zero, e zero não é "não achei".
+
+    POR QUE FILTRAR (13/11/2026): sem órgão, um credor com contratos em muitos órgãos (MGS) pagina dezenas de
+    processos de pagamento alheios e passa de 15 min antes de chegar ao órgão certo (controle positivo)."""
+    try:
+        validas = {o.strip().upper() for o in json.loads(ORGAOS_SEI.read_text()).get("orgaos", [])}
+    except (OSError, ValueError):
+        return {}
+    ug2un, _ = mapa_contratos(c)
+    out = {}
+    for ug, un in ug2un.items():
+        sig = sigla_sei((un or "").split(" - ")[0], validas)
+        if sig:
+            out[ug] = sig
+    return out
+
+
+# Sigla do TCE-RJ → órgão da pesquisa do SEI quando o nome difere (medido 13/11/2026 contra as 105 opções).
+# Fundo especial vai para a secretaria que o gere: os processos dele nascem nas unidades dela.
+_ALIAS_SEI = {"FSERJ": "FS", "FES": "SES", "SETRANS": "SETRAM", "SEPPENRJ": "SEPPEN", "FUNPERJ": "PGE",
+              "FUNESBOM": "SEDEC", "SEAPPA": "SEAPPADI", "FAF": "SEFAZ", "FUNESPOM": "SEPM",
+              "RIOPREVIDENCIA": "RIOPREV", "SMGSI": "GSI", "RIO SEGURANCA": "ISP", "FSCABRINI": "FSC",
+              "PROCON RJ": "PROCON"}
+
+
+def sigla_sei(sigla_tce: str, validas: set[str]) -> str:
+    """Sigla do TCE → opção de órgão do SEI: exata; sem sufixo -RJ/-RIO/ RJ; sem 'NOVO '; tabela de equivalência.
+    Nada casa → '' (a chave não é buscada às cegas)."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (sigla_tce or "").strip().upper()).encode("ascii", "ignore").decode()
+    cands = [s, re.sub(r"[- ](RJ|RIO)$", "", s), re.sub(r"^NOVO ", "", s), _ALIAS_SEI.get(s, "")]
+    return next((x for x in cands if x and x in validas), "")
+
+
 def chaves(c) -> list[tuple[str, str, int]]:
     """(cnpj, ug, ano) das competências INDETERMINADAS por falta de processo, mais competências primeiro."""
     cont = Counter()
@@ -91,10 +131,10 @@ def pendentes(c, todas: list[tuple]) -> list[tuple]:
             or (feitos[k][0] not in ("com_resultado", "sem_resultado") and (feitos[k][1] or "") < limite)]
 
 
-def buscar(cnpj: str, ano: int) -> dict:
+def buscar(cnpj: str, ano: int, sigla: str) -> dict:
     env = dict(os.environ, SEI_BUSCA_PAGINAS="10")
     r = subprocess.run([sys.executable, str(REPO / "tools" / "sei_busca_mgs.py"), cnpj_fmt(cnpj),
-                        f"--de=01/01/{ano}", f"--ate=31/12/{ano + 1}"],
+                        f"--de=01/01/{ano}", f"--ate=31/12/{ano + 1}", f"--orgao=^{re.escape(sigla)}$"],
                        capture_output=True, text=True, timeout=900, env=env, cwd=REPO)
     out = r.stdout.strip()
     i = out.find("{")
@@ -111,20 +151,23 @@ def main() -> int:
     a = ap.parse_args()
     ro = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=60)
     pref = prefixos_por_ug(ro)
+    siglas = siglas_por_ug(ro)
     fila = pendentes(ro, chaves(ro))
     ro.close()
     print(f"[{time.strftime('%F %T')}] {len(fila)} chave(s) pendentes; lote {a.lote}", flush=True)
     if a.dry_run:
         for k in fila[: a.lote]:
-            print("  ", k, sorted(pref.get(k[1], set())))
+            print("  ", k, siglas.get(k[1], "SEM SIGLA"), sorted(pref.get(k[1], set())))
         return 0
     from compliance_agent.recursos import browser_lock
     for cnpj, ug, ano in fila[: a.lote]:
         if not pref.get(ug):
             estado, cands, n = "sem_prefixo_ug", [], 0
+        elif not siglas.get(ug):
+            estado, cands, n = "sem_orgao_sei", [], 0      # sem filtro de órgão a busca não cabe no slot
         else:
             with browser_lock(espera_max=1800):
-                d = buscar(cnpj, ano)
+                d = buscar(cnpj, ano, siglas[ug])
             estado = d.get("estado") or ("erro" if not d.get("ok") else "nao_parseei")
             if d.get("vm_guard"):
                 estado = "adiado_carga"
