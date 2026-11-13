@@ -149,6 +149,25 @@ def sql_campos_ceis(con) -> str:
     return ", ".join(c if c in cols else f"NULL AS {c}" for c in CAMPOS_CEIS)
 
 
+_TIER = {"orgao": 1, "ente_poder": 2, "ente": 3, "total": 4}
+
+
+def teto_legal(fundamentacao: str | None) -> str | None:
+    """Alcance MÁXIMO que a base legal citada permite (None = sem teto: inidoneidade, improbidade, cautelar penal).
+    Revisão cética 13/11/2026: o CEIS traz "Todas as Esferas" em suspensão de parceria (Lei 13.019 art. 73, II) e
+    em impedimento municipal (Lei 14.133 art. 156, III) — a declaração não pode alargar o que a lei limita."""
+    f = _norm(fundamentacao)
+    if not f or re.search(r"art\.?\s*(87|156)[,\s]+iv|art\.?\s*73[,\s]+iii", f) or "8429" in f:
+        return None
+    if ("13019" in f or "organizacoes da sociedade civil" in f) and re.search(r"art\.?\s*73[,\s]+ii\b", f):
+        return "ente"
+    if re.search(r"art\.?\s*87[,\s]+iii", f):
+        return "orgao"
+    if re.search(r"art\.?\s*156[,\s]+iii", f) or "10520" in f or "10.520" in f:
+        return "ente"
+    return None
+
+
 def abrangencia_declarada(texto: str | None) -> str | None:
     """Tier da abrangência que o próprio CEIS declara; 'Sem Informação'/vazio/'Em outro órgão' → None."""
     return _ABRANGENCIA_CEIS.get(_norm(texto).strip())
@@ -186,6 +205,9 @@ def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ",
                             sancao.get("cadastro"))
     decl = abrangencia_declarada(sancao.get("abrangencia"))
     if decl and cl["veda_contratacao"]:
+        teto = teto_legal(sancao.get("fundamentacao"))
+        if teto and _TIER[decl] > _TIER[teto]:
+            decl = teto        # a declaração só estreita o alcance que a lei dá; nunca o alarga
         cl = {**cl, "abrangencia": decl}
     esf_decl = _norm(sancao.get("esfera_sancionador")).strip()
     if decl == "ente_poder":

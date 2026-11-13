@@ -149,6 +149,22 @@ def test_curadoria_manual_nao_carrega_vermelho_fixo_e_refutado_vira_branco():
     assert t05["grau"] == "⚪" and t05["revisao_cetica"]["veredito"] == "REFUTADA"
 
 
+def test_d18_veredito_fachada_sem_registro_do_juizo_nao_e_confirmado(base, tmp_path):
+    con = sqlite3.connect(base)
+    con.executescript("""CREATE TABLE fantasma_score (cnpj TEXT, score INTEGER, classificacao TEXT);
+        CREATE TABLE fachada_veredito (cnpj TEXT, status TEXT, veredito_raw TEXT);""")
+    con.executemany("INSERT INTO fachada_veredito VALUES (?,?,?)", [(NOVA, "fachada", ""),
+                                                                    (FILIAL, "fachada", "fachada — sede vazia (vistoria)")])
+    con.commit()
+    con.close()
+    c = GR.Ctx(base, receita=None, tse=None, dir_tmp=tmp_path)
+    try:
+        r = {x["cnpj"]: x for x in GR.d18(c)["casos"]}
+    finally:
+        c.fechar()
+    assert r[NOVA]["fachada_confirmada"] is False and r[FILIAL]["fachada_confirmada"] is True
+
+
 def test_d18_score_alto_sem_fachada_registrada_nao_e_vermelho():
     res = {"D18": {"n": 1, "casos": [{"cnpj": NOVA, "credor": "X", "pago_ob": 1.0, "fantasma_alto": True, "score": 95,
                                       "fachada_confirmada": False}]}}

@@ -118,6 +118,22 @@ def test_abrangencia_declarada_no_ceis_prevalece():
     assert SA.veda_ente(jud, "estadual", "RJ")["veda"] is False
 
 
+def test_abrangencia_declarada_nao_alarga_o_teto_da_lei():
+    # CEIS real: "Inidoneidade" + Lei 13.019 art. 73, II + "Todas as Esferas" — a lei limita a suspensão à esfera
+    # do ente sancionador; a declaração só pode ESTREITAR o alcance legal, nunca alargar
+    s = {"categoria": "Declaração de Inidoneidade sem prazo determinado", "orgao": "Fundo Municipal Ficticio",
+         "uf": "RJ", "fundamentacao": "PARCERIAS ... ORGANIZAÇÕES DA SOCIEDADE CIVIL. - ART. 73, II - ART. 73.",
+         "abrangencia": "Todas as Esferas em todos os Poderes", "esfera_sancionador": "MUNICIPAL"}
+    assert SA.veda_ente(s, "estadual", "RJ")["veda"] is False
+    imp = {"categoria": "Impedimento/proibição de contratar com prazo determinado", "orgao": "Prefeitura Ficticia",
+           "uf": "RS", "fundamentacao": "LEI 14133 - ART. 156, III - IMPEDIMENTO DE LICITAR E CONTRATAR",
+           "abrangencia": "Todas as Esferas em todos os Poderes", "esfera_sancionador": "MUNICIPAL"}
+    assert SA.veda_ente(imp, "estadual", "RJ")["veda"] is False
+    # sem teto legal na fundamentação (cautelar penal), a declaração "todas as esferas" vale
+    caut = {**imp, "fundamentacao": "CÓDIGO DE PROCESSO PENAL - ART. 319, VI", "esfera_sancionador": "FEDERAL"}
+    assert SA.veda_ente(caut, "estadual", "RJ")["veda"] is True
+
+
 def test_vigencia_na_data():
     s = {"data_inicio": "2026-01-01", "data_fim": "2026-06-30", "categoria": "Impedimento com prazo determinado"}
     assert SA.vigente_em(s, "2026-03-01") is True

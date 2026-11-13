@@ -830,14 +830,20 @@ def d14(c: Ctx) -> dict:
 
 def d18(c: Ctx) -> dict:
     fs = {dig(x): s for x, s in c.W.execute("SELECT cnpj, score FROM m.fantasma_score WHERE classificacao='alto'")}
-    fv = {dig(x) for (x,) in c.W.execute("SELECT cnpj FROM m.fachada_veredito WHERE status='fachada'")}
+    # veredito "fachada" só é CONFIRMADO com o registro do juízo (veredito_raw); status sem conteúdo é marcação, não
+    # prova (revisão cética 13/11/2026: 0 dos credores do D18 tinham fachada documentada)
+    fv, fv_conf = set(), set()
+    for x, raw in c.W.execute("SELECT cnpj, veredito_raw FROM m.fachada_veredito WHERE status='fachada'"):
+        fv.add(dig(x))
+        if str(raw or "").strip():
+            fv_conf.add(dig(x))
     agg = collections.defaultdict(lambda: [0.0, ""])
     for ug, cr, nm, v, dt, pr in c.obs(G0, c.GFIM):
         d = dig(cr)
         if d in fs or d in fv:
             agg[d][0] += v or 0
             agg[d][1] = nm
-    casos = [dict(cnpj=d, credor=nm, pago_ob=round(v, 2), fantasma_alto=d in fs, score=fs.get(d), fachada_confirmada=d in fv)
+    casos = [dict(cnpj=d, credor=nm, pago_ob=round(v, 2), fantasma_alto=d in fs, score=fs.get(d), fachada_confirmada=d in fv_conf)
              for d, (v, nm) in agg.items() if v >= 100e3]
     casos.sort(key=lambda x: -x["pago_ob"])
     soma = round(sum(x["pago_ob"] for x in casos), 2)
