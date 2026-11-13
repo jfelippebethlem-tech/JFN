@@ -19,6 +19,7 @@ Uso:
 """
 from __future__ import annotations
 
+import sys
 import argparse
 import os
 import sqlite3
@@ -57,8 +58,8 @@ def _carregar_qualif() -> dict[str, str]:
                 p = ln.replace('"', "").split(";")
                 if len(p) >= 2 and p[0].strip().isdigit():
                     m[p[0].strip().zfill(2)] = p[1].strip()
-        except Exception:
-            pass
+        except Exception as exc:  # tabela auxiliar ilegível: o mapa sai sem ela, mas fica o rastro
+            print(f"[socios_dump_sweep] tabela auxiliar ilegível: {str(exc)[:120]}", file=sys.stderr)
     return m
 
 
