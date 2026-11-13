@@ -503,6 +503,22 @@ def _controle(con: sqlite3.Connection, con_ach: sqlite3.Connection | None, seis_
 
 _CAMADAS = ("deterministica", "subjetiva")
 _ORDEM_GRAU = {"🔴": 0, "🟡": 1, "⚪": 2}
+# Casamento por NOME (sócio × agente público, doador × sócio, "homônimo" citado como explicação): sem segundo
+# atributo, é "possível homônimo — não verificado" (diretriz do dono, 13/11/2026: zero margem de erro).
+_RE_SO_NOME = re.compile(r"hom[ôo]nim|doa[çc][ãa]o eleitoral|mesmo nome|por nome", re.I)
+
+
+def _verificacao(it: dict) -> tuple[str, str]:
+    """VERIFICADO só quando a ligação do indício ao credor é por CHAVE (CNPJ de 14 dígitos) numa análise
+    determinística de caso. Verificado = o FATO está na fonte; continua sendo indício, não acusação."""
+    txt = " ".join(str(it.get(k) or "") for k in ("regra_ou_hipotese", "explicacao_inocente", "fonte"))
+    if _RE_SO_NOME.search(txt):
+        return "PENDENTE", "possível homônimo — não verificado: o casamento é por nome, sem segundo atributo"
+    if it.get("camada") == "subjetiva" or it.get("tipo") == "hipotese":
+        return "PENDENTE", "hipótese analítica — não verificada; depende de apuração"
+    if it.get("tipo") == "caso" and len(re.sub(r"\D", "", str(it.get("cnpj") or ""))) == 14:
+        return "VERIFICADO", "fato conferido por CNPJ na fonte citada (SIAFE/cadastro de sanções); indício, não acusação"
+    return "PENDENTE", "agregado ou regra sem chave por credor — conferir no relatório item a item"
 
 
 def _pontos_atencao() -> dict:
@@ -530,6 +546,7 @@ def _pontos_atencao() -> dict:
         it["grau"] = it.get("grau") if it.get("grau") in _ORDEM_GRAU else "⚪"
         if not str(it.get("explicacao_inocente") or "").strip():
             it["explicacao_inocente"] = "(a análise não registrou explicação inocente — apurar antes de concluir)"
+        it["verificacao"], it["verificacao_motivo"] = _verificacao(it)
         itens.append(it)
     itens.sort(key=lambda x: (_ORDEM_GRAU[x["grau"]], -(float(x.get("valor_ob") or 0))))
     mtime = time.strftime("%Y-%m-%d %H:%M", time.localtime(SUSPEITAS.stat().st_mtime))

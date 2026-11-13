@@ -86,6 +86,14 @@ export const kpi = (v, l, cor, gl, dest) => {
 
 export const sec = (t, cnt) => `<h2 class="sec">${t}${cnt != null ? `<span class="cnt">${cnt}</span>` : ''}</h2>`;
 export const spin = t => `<div class="skel"><span class="sp"></span>${t || 'Carregando…'}</div>`;
+/* Aviso HONESTO de demora: se a aba `id` ainda está no spinner depois de `ms`, diz por quê em vez de girar
+   mudo. Devolve o timer — quem chamou faz clearTimeout quando o dado chega. Confere o hash para não
+   escrever no spinner de OUTRA aba (o usuário pode ter trocado no meio). */
+export const avisoDemora = (id, ms, txt) => setTimeout(() => {
+  const sk = document.querySelector('#view > .skel');
+  if (sk && location.hash === '#' + id && !sk.querySelector('.skel-aviso'))
+    sk.insertAdjacentHTML('beforeend', `<div class="dim skel-aviso" style="font-size:12px;margin-top:8px">${txt}</div>`);
+}, ms);
 export const cover = (sph, t, s, ic) => `<div class="cover ${sph}"><div class="cover-row">${ic ? `<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>` : ''}<div class="cover-tx"><h2 class="t">${t}</h2><div class="s">${s}</div></div></div></div>`;
 export const leitura = t => `<div class="leitura">${t}</div>`;
 

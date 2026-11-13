@@ -152,7 +152,7 @@ const TABS={
     {id:'g_porta',   ic:'🚪',tl:'Porta giratória',render:renderPortaGiratoria},
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
     {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
-    {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
+    {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:()=>renderPoder('todos')},   // todas as esferas, cada cartão rotulado
     {id:'g_conluio', ic:'§conluio',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
     {id:'g_sweeps',  ic:'🛰️',tl:'Sistema', render:renderSweeps},
