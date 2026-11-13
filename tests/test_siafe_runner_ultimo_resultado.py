@@ -41,6 +41,18 @@ def test_falha_preserva_o_ultimo_ok(tmp_path, monkeypatch):
     assert R.ultimo_ok_iso() == ok
 
 
+def test_efeito_so_com_ob_ingerida(tmp_path, monkeypatch):
+    """Laudo 13/11/2026: o AO VIVO lê `ultimo_efeito_iso`. Ok com 0 OB ingerida e falha não o renovam."""
+    import json
+    monkeypatch.setattr(R, "ULTIMO", tmp_path / "ultimo.json")
+    R.gravar_ultimo({"ok": True, "n": 997, "ingeridas": 997})
+    efeito = json.loads(R.ULTIMO.read_text())["ultimo_efeito_iso"]
+    assert efeito
+    R.gravar_ultimo({"ok": True, "n": 0, "ingeridas": 0})
+    R.gravar_ultimo({"ok": False, "erro": "mfa_sem_codigo"})
+    assert json.loads(R.ULTIMO.read_text())["ultimo_efeito_iso"] == efeito
+
+
 def test_verificador_cobre_a_lacuna():
     from datetime import datetime, timedelta, timezone
     agora = datetime(2026, 10, 24, 14, 30, tzinfo=timezone.utc)

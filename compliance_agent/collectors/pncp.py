@@ -606,25 +606,32 @@ async def coletar_contratos_pcrj(data_ini: str, data_fim: str,
                                  cnpj_orgao: str = CNPJ_PCRJ) -> dict:
     """Contratos/empenhos do órgão municipal (datas AAAAMMDD).
 
-    HONESTIDADE: se a 1ª página falhar, retorna verificado=False (INDISPONÍVEL ≠ 0).
+    HONESTIDADE: se a 1ª página falhar, retorna verificado=False (INDISPONÍVEL ≠ 0). Se uma página
+    POSTERIOR falhar, os itens colhidos valem, mas o retorno é `parcial=True` e `verificado=False` —
+    antes o `break` devolvia `verificado: True` sobre um conjunto incompleto (laudo 13/11/2026; 751 de
+    774 chamadas com 429 no refresh de 09/11).
     """
     itens: list[dict] = []
     pagina = 1
+    total = 1
     while True:
         j = await _consulta_retry("/contratos", {
             "dataInicial": data_ini, "dataFinal": data_fim,
             "cnpjOrgao": cnpj_orgao, "pagina": pagina, "tamanhoPagina": 50})
         if j is None:
             if pagina == 1:
-                return {"verificado": False, "itens": [], "motivo": "PNCP /contratos indisponível"}
-            break  # páginas já coletadas valem; total pode estar incompleto
+                return {"verificado": False, "parcial": False, "itens": [],
+                        "motivo": "PNCP /contratos indisponível"}
+            return {"verificado": False, "parcial": True, "itens": itens,
+                    "motivo": f"PNCP /contratos: página {pagina} de {total} falhou — conjunto incompleto"}
         data = j.get("data") or []
         itens.extend(_simplificar_contrato_pcrj(it) for it in data)
-        if pagina >= (j.get("totalPaginas") or 1) or not data:
+        total = j.get("totalPaginas") or 1
+        if pagina >= total or not data:
             break
         pagina += 1
         await asyncio.sleep(0.3)
-    return {"verificado": True, "itens": itens, "motivo": None}
+    return {"verificado": True, "parcial": False, "itens": itens, "motivo": None}
 
 
 async def coletar_contratacoes_municipio_rio(data_ini: str, data_fim: str,
@@ -637,6 +644,7 @@ async def coletar_contratacoes_municipio_rio(data_ini: str, data_fim: str,
     itens: list[dict] = []
     vistos: set[str] = set()
     falhas_pag1 = 0
+    furos: list[str] = []          # modalidade/página que falhou com dado já colhido → parcial
     for mod in (modalidades or MODALIDADES_PADRAO):
         pagina = 1
         while True:
@@ -648,6 +656,7 @@ async def coletar_contratacoes_municipio_rio(data_ini: str, data_fim: str,
             if j is None:
                 if pagina == 1:
                     falhas_pag1 += 1
+                furos.append(f"modalidade {mod} página {pagina}")
                 break
             data = j.get("data") or []
             for it in data:
@@ -660,8 +669,11 @@ async def coletar_contratacoes_municipio_rio(data_ini: str, data_fim: str,
             pagina += 1
             await asyncio.sleep(0.3)
     if falhas_pag1 == len(modalidades or MODALIDADES_PADRAO):
-        return {"verificado": False, "itens": [], "motivo": "PNCP /contratacoes indisponível"}
-    return {"verificado": True, "itens": itens, "motivo": None}
+        return {"verificado": False, "parcial": False, "itens": [], "motivo": "PNCP /contratacoes indisponível"}
+    if furos:
+        return {"verificado": False, "parcial": True, "itens": itens,
+                "motivo": "PNCP /contratacoes: falhou " + "; ".join(furos[:5]) + " — conjunto incompleto"}
+    return {"verificado": True, "parcial": False, "itens": itens, "motivo": None}
 
 
 # ---------------------------------------------------------------------------
@@ -808,6 +820,8 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
             tot["entes"] += 1
             for d_ini, d_fim in _meses_iso(ano_ini, mes_ini, ano_fim, mes_fim):
                 res = await coletar_contratos_pcrj(d_ini, d_fim, cnpj_orgao=cnpj)
+                if not res.get("verificado"):       # parcial ou indisponível: o total fica incompleto
+                    tot["janelas_incompletas"] = tot.get("janelas_incompletas", 0) + 1
                 for c in res.get("itens", []):
                     if c.get("numero_controle_pncp"):
                         _upsert_contrato_estado(con, c)

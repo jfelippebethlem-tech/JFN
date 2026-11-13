@@ -30,6 +30,7 @@ import re
 import sqlite3
 import time
 import unicodedata
+from datetime import datetime, timedelta
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
@@ -295,8 +296,27 @@ def _subdividir(prefixo: str, n: int, base_len: int) -> list[str]:
     return []
 
 
+def prazo_absoluto(ate: str, inicio: datetime) -> datetime:
+    """`HH:MM` → data/hora absoluta. Prazo anterior (ou igual) à hora de início é o da madrugada SEGUINTE: o cron
+    das 23:20 com `--ate 02:55` parava na hora, porque "23:20" >= "02:55" como texto (laudo 13/11/2026)."""
+    h, m = (int(x) for x in ate.split(":"))
+    alvo = inicio.replace(hour=h, minute=m, second=0, microsecond=0)
+    return alvo + timedelta(days=1) if alvo <= inicio else alvo
+
+
+def _normalizar_prazo(ate: str | None, inicio: datetime) -> str | None:
+    """`HH:MM` vira `AAAA-MM-DDTHH:MM` relativo ao início; o que já é absoluto passa como veio."""
+    if not ate or "T" in ate:
+        return ate
+    return prazo_absoluto(ate, inicio).strftime("%Y-%m-%dT%H:%M")
+
+
 def _passou(ate: str | None) -> bool:
-    return bool(ate) and time.strftime("%H:%M") >= ate
+    if not ate:
+        return False
+    if "T" in ate:                       # prazo absoluto (vindo da varredura ou normalizado no main)
+        return time.strftime("%Y-%m-%dT%H:%M") >= ate
+    return time.strftime("%H:%M") >= ate
 
 
 async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | None = None,
@@ -383,6 +403,7 @@ def main() -> None:
     ap.add_argument("--exercicio", type=int, required=True)
     ap.add_argument("--ate", default=None, help="HH:MM — para entre fatias (com logout) a partir deste horário")
     a = ap.parse_args()
+    a.ate = _normalizar_prazo(a.ate, datetime.now())
     from compliance_agent import host_siafe
     from compliance_agent import siafe_runner as R
     host_siafe.exigir_autorizacao()

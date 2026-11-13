@@ -57,19 +57,35 @@ def _semestres(desde: int, ate: date):
     return janelas
 
 
+def _gravavel(r: dict) -> bool:
+    """Completo ou PARCIAL: o que veio é dado real (upsert). INDISPONÍVEL não grava nada."""
+    return bool(r.get("verificado") or r.get("parcial"))
+
+
+def _rotulo(r: dict) -> str:
+    """Sufixo do log: vazio quando completo; o parcial e o indisponível se declaram (laudo 13/11/2026)."""
+    if r.get("verificado"):
+        return ""
+    if r.get("parcial"):
+        return f" [PARCIAL: {r.get('motivo')}]"
+    return f" [INDISPONÍVEL: {r.get('motivo')}]"
+
+
 async def _pncp(con, desde: int):
     hoje = date.today()
     pncp_desde = max(desde, 2023)   # PNCP só tem cobertura densa a partir de 2023
     total_c = total_l = 0
+    incompletas = 0                 # janelas parciais ou indisponíveis — o resumo não pode calar
     for di, df in _semestres(pncp_desde, hoje):
         rc = await pncp.coletar_contratos_pcrj(di, df)
-        if rc["verificado"]:
+        if _gravavel(rc):
             total_c += gravar_contratos(con, rc["itens"])
         rl = await pncp.coletar_contratacoes_municipio_rio(di, df)
-        if rl["verificado"]:
+        if _gravavel(rl):
             total_l += gravar_licitacoes(con, rl["itens"])
-        _log(f"  PNCP {di[:6]}: +{len(rc.get('itens', []))} contratos, "
-             f"+{len(rl.get('itens', []))} licitações")
+        incompletas += (not rc.get("verificado")) + (not rl.get("verificado"))
+        _log(f"  PNCP {di[:6]}: +{len(rc.get('itens', []))} contratos{_rotulo(rc)}, "
+             f"+{len(rl.get('itens', []))} licitações{_rotulo(rl)}")
     # órgãos municipais descobertos → contratos de cada um
     outros = [r[0] for r in con.execute(
         "select distinct orgao_cnpj from pcrj_licitacoes "
@@ -77,10 +93,12 @@ async def _pncp(con, desde: int):
     for cnpj in outros:
         for di, df in _semestres(pncp_desde, hoje):
             rc = await pncp.coletar_contratos_pcrj(di, df, cnpj_orgao=cnpj)
-            if rc["verificado"] and rc["itens"]:
+            incompletas += not rc.get("verificado")
+            if _gravavel(rc) and rc["itens"]:
                 total_c += gravar_contratos(con, rc["itens"])
     _log(f"  PNCP total: {total_c} contratos, {total_l} licitações "
-         f"({len(outros)} órgãos municipais extras)")
+         f"({len(outros)} órgãos municipais extras)"
+         + (f" — {incompletas} janela(s) PARCIAL/INDISPONÍVEL: total incompleto" if incompletas else ""))
 
 
 async def main():

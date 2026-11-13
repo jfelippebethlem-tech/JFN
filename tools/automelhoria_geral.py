@@ -69,6 +69,9 @@ _ACAO_CONFLITO = {"326100_2025": "recoleta limpa de 24/10 devolveu 0 em TODAS as
 _ACAO_SENHA = ("o SIAFE recusou a senha (sonda de 30/10/2026: 'Usuário e/ou senha incorretos'; ou senha expirada). "
                "Conferir/trocar a senha no SIAFE e atualizar SIAFE_PASS no ~/JFN/.env — dreno e diário voltam sozinhos")
 _DIARIO_SIAFE = "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario >> data/siafe_runner_cron.log 2>&1"
+# MFA sem resposta (laudo 13/11/2026): rodar o diário de madrugada pede código a quem dorme. A retentativa diurna
+# só dispara entre 8h e 21h, se o dia ainda não teve coleta, e avisa o dono 10 min antes.
+_RETENTAR_SIAFE = "PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner retentar 10 >> data/siafe_runner_cron.log 2>&1"
 
 
 # ─────────────────────────── sensores (cada um devolve a lista de problemas AGORA) ───────────────────────────
@@ -187,7 +190,9 @@ def sensor_siafe() -> list[dict]:
         cred = ult.get("erro") in ("senha_incorreta", "senha_expirada") or (
             c2.exists() and c2.stat().st_mtime > (DATA.parent / ".env").stat().st_mtime)
         out.append(_p("siafe", "diario", "coleta diária do SIAFE falhou",
-                      f"{ult.get('erro')} — {ult.get('detail', '')}", remediar="" if cred else _DIARIO_SIAFE,
+                      f"{ult.get('erro')} — {ult.get('detail', '')}",
+                      remediar="" if cred else (_RETENTAR_SIAFE if str(ult.get("erro") or "").startswith("mfa_")
+                                                else _DIARIO_SIAFE),
                       acao_humana=_ACAO_SENHA if cred else ""))
     for sis in ("1", "2"):
         c = DATA / f".siafe_dreno_credencial_{sis}"           # carimbado pelo dreno; o .env novo destrava

@@ -56,10 +56,45 @@ CREATE TABLE IF NOT EXISTS ata_documento (
 _MODALIDADES_COMPETITIVAS = (4, 5, 6, 7)
 
 
+# CURSOR por certame (laudo de motores 13/11/2026, 4.12): sem ele, o lote de 400 era o MESMO todo dia
+# (108 de 116 rodadas com 0 atas; estatística idêntica em 11, 12 e 13/11). Todo certame examinado ganha
+# `examinado_em` + motivo e sai da fila por `_REEXAME_DIAS`; falha da API (INDISPONÍVEL ≠ "sem ata") sai só
+# por `_REEXAME_INDISPONIVEL_DIAS`.
+_DDL_EXAME = """
+CREATE TABLE IF NOT EXISTS ata_exame (
+    certame       TEXT PRIMARY KEY,
+    examinado_em  TEXT NOT NULL DEFAULT (datetime('now')),
+    motivo        TEXT NOT NULL
+)"""
+_REEXAME_DIAS = 30
+_REEXAME_INDISPONIVEL_DIAS = 1
+_MOTIVOS_TRANSITORIOS = ("api_indisponivel", "download_falhou")
+
+
 def init_schema(con: sqlite3.Connection) -> None:
     con.execute(_DDL)
     con.execute("CREATE INDEX IF NOT EXISTS ix_ata_certame ON ata_documento(certame)")
+    con.execute(_DDL_EXAME)
     con.commit()
+
+
+def _marcar_exame(con, certame: str, motivo: str) -> None:
+    con.execute("INSERT OR REPLACE INTO ata_exame (certame, examinado_em, motivo) "
+                "VALUES (?, datetime('now'), ?)", (certame, motivo))
+
+
+def _motivo_do_certame(motivos: list[str]) -> str:
+    """Um motivo por certame: ata gravada vence; download falho (transitório) vence descarte de conteúdo."""
+    for m in ("ata_gravada", "download_falhou"):
+        if m in motivos:
+            return m
+    return motivos[-1] if motivos else "sem_arquivo_ata"
+
+
+def linha_resumo(tot: dict) -> str:
+    """Linha de resumo com carimbo `[AAAA-MM-DD HH:MM:SS]` — o `efeito` do AO VIVO só lê linha datada."""
+    import time
+    return f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] resumo atas: {tot}"
 
 
 def _ocr_pdf(blob: bytes, max_paginas: int = 8, dpi: int = 200) -> str:
@@ -117,7 +152,11 @@ async def _certames_pendentes(con, limite: int) -> list[tuple[str, str]]:
         f"FROM pncp_resultado p LEFT JOIN certame_indice ci ON ci.certame = p.certame "
         f"WHERE p.modalidade IN ({marc}) AND p.ordem_classificacao=1 AND p.certame IS NOT NULL "
         f"AND p.certame NOT IN (SELECT certame FROM ata_documento) "
-        f"ORDER BY prio, p.data_pub DESC LIMIT ?", (*_MODALIDADES_COMPETITIVAS, limite)).fetchall()
+        f"AND p.certame NOT IN (SELECT certame FROM ata_exame WHERE examinado_em > datetime('now', "
+        f"  CASE WHEN motivo IN ({','.join('?' * len(_MOTIVOS_TRANSITORIOS))}) THEN ? ELSE ? END)) "
+        f"ORDER BY prio, p.data_pub DESC LIMIT ?",
+        (*_MODALIDADES_COMPETITIVAS, *_MOTIVOS_TRANSITORIOS, f"-{_REEXAME_INDISPONIVEL_DIAS} days",
+         f"-{_REEXAME_DIAS} days", limite)).fetchall()
     return [(r[0], r[1]) for r in rows]
 
 
@@ -138,21 +177,31 @@ async def coletar_atas_julgamento(con, limite: int = 200, com_ocr: bool = True,
     # dizendo por quê. Coleta que devolve zero sem motivo é indistinguível de coleta que não rodou.
     tot = {"certames": 0, "sem_id_valido": 0, "sem_arquivo_no_pncp": 0, "com_arquivo_ata": 0,
            "download_falhou": 0, "texto_vazio": 0, "sem_marcador_conteudo": 0,
-           "sem_perdedora": 0, "atas_gravadas": 0, "por_ocr": 0,
-           "amostra_descartes": []}
+           "sem_perdedora": 0, "atas_gravadas": 0, "por_ocr": 0, "api_indisponivel": 0,
+           "fila_esgotada": not pend, "amostra_descartes": []}
+    if not pend:
+        logger.info("atas_julgamento: fila esgotada — todo certame elegível examinado nos últimos %d dias",
+                    _REEXAME_DIAS)
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
         for idp, ocnpj in pend:
             tot["certames"] += 1
             pr = _parse_id_pncp(idp)
             if not pr:
                 tot["sem_id_valido"] += 1
+                _marcar_exame(con, idp, "sem_id_valido")
                 continue
             cnpj, ano, seq = pr
             meta = await _get_pncp(f"/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos", {})
+            if meta is None:                       # falha da API: INDISPONÍVEL, não "sem arquivo"
+                tot["api_indisponivel"] += 1
+                _marcar_exame(con, idp, "api_indisponivel")
+                con.commit()
+                continue
             arqs = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
             if not arqs:
                 tot["sem_arquivo_no_pncp"] += 1
             gravou_algum = False
+            motivos: list[str] = [] if arqs else ["sem_arquivo_no_pncp"]
             for a in (arqs or []):
                 tit = a.get("titulo") or ""
                 tipo = a.get("tipoDocumentoNome") or ""
@@ -172,12 +221,14 @@ async def coletar_atas_julgamento(con, limite: int = 200, com_ocr: bool = True,
                 if not blob:
                     tot["download_falhou"] += 1
                     _anotar(tot, idp, tit, "download falhou ou 4xx/5xx no arquivo")
+                    motivos.append("download_falhou")
                     continue
                 texto, fonte = _extrair_texto_ata(blob, com_ocr)
                 if not (texto or "").strip():
                     tot["texto_vazio"] += 1
                     _anotar(tot, idp, tit, f"PDF sem camada de texto e OCR não produziu nada "
                                            f"({len(blob) // 1024} KB, com_ocr={com_ocr})")
+                    motivos.append("texto_vazio")
                     continue
                 if not _RX_ATA_CONTEUDO.search(texto):
                     # NÃO é necessariamente "não é ata": pode ser ata cujo vocabulário o regex não
@@ -186,20 +237,24 @@ async def coletar_atas_julgamento(con, limite: int = 200, com_ocr: bool = True,
                     _anotar(tot, idp, tit,
                             f"sem marcador de ata no conteúdo ({len(texto)} chars, fonte={fonte}): "
                             + " ".join((texto or "")[:180].split()))
+                    motivos.append("sem_marcador_conteudo")
                     continue
                 n_cnpj = len(set(re.sub(r"\D", "", m.group(0)) for m in _RX_CNPJ.finditer(texto)))
                 if n_cnpj < 2:
                     tot["sem_perdedora"] += 1
                     _anotar(tot, idp, tit, f"ata legível com {n_cnpj} CNPJ — sem disputa registrável")
+                    motivos.append("sem_perdedora")
                     continue                       # <2 CNPJs → sem disputa registrável
                 con.execute(
                     "INSERT OR REPLACE INTO ata_documento "
                     "(certame, orgao_cnpj, titulo, fonte_texto, n_cnpj, texto) VALUES (?,?,?,?,?,?)",
                     (idp, ocnpj, tit[:200], fonte, n_cnpj, texto[:400_000]))
                 tot["atas_gravadas"] += 1
+                motivos.append("ata_gravada")
                 if fonte == "ocr":
                     tot["por_ocr"] += 1
                 await asyncio.sleep(pausa)
+            _marcar_exame(con, idp, _motivo_do_certame(motivos))
             con.commit()
             await asyncio.sleep(pausa)
     return tot
@@ -213,4 +268,6 @@ if __name__ == "__main__":
     _con.execute("PRAGMA busy_timeout=60000")
     _r = asyncio.run(coletar_atas_julgamento(_con, limite=_lim))
     _con.close()
-    print(_r)
+    print(linha_resumo(_r))
+    if _r.get("fila_esgotada"):
+        print("fila esgotada — nenhum certame elegível fora da janela de reexame")

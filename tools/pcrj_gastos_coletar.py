@@ -75,16 +75,18 @@ async def main():
         gastos_db.init_schema(con)
 
         rc = await pncp.coletar_contratos_pcrj(args.ini, args.fim)
-        if not rc["verificado"]:
+        if not (rc["verificado"] or rc.get("parcial")):
             print(f"contratos INDISPONÍVEL: {rc['motivo']}")
             sys.exit(2)
-        print(f"contratos PCRJ: {gravar_contratos(con, rc['itens'])} gravados", flush=True)
+        print(f"contratos PCRJ: {gravar_contratos(con, rc['itens'])} gravados"
+              + ("" if rc["verificado"] else f" — PARCIAL: {rc['motivo']}"), flush=True)
 
         rl = await pncp.coletar_contratacoes_municipio_rio(args.ini, args.fim)
-        if not rl["verificado"]:
+        if not (rl["verificado"] or rl.get("parcial")):
             print(f"licitações INDISPONÍVEL: {rl['motivo']}")
             sys.exit(2)
-        print(f"licitações município Rio: {gravar_licitacoes(con, rl['itens'])} gravadas", flush=True)
+        print(f"licitações município Rio: {gravar_licitacoes(con, rl['itens'])} gravadas"
+              + ("" if rl["verificado"] else f" — PARCIAL: {rl['motivo']}"), flush=True)
 
         # órgãos municipais descobertos nas licitações (COMLURB, RioSaúde, secretarias
         # com CNPJ próprio…) → contratos de cada um, sem lista manual
@@ -93,8 +95,9 @@ async def main():
             "where orgao_cnpj is not null and orgao_cnpj != ?", (pncp.CNPJ_PCRJ,))]
         for cnpj in outros:
             rc2 = await pncp.coletar_contratos_pcrj(args.ini, args.fim, cnpj_orgao=cnpj)
-            if rc2["verificado"] and rc2["itens"]:
-                print(f"contratos {cnpj}: {gravar_contratos(con, rc2['itens'])}", flush=True)
+            if (rc2["verificado"] or rc2.get("parcial")) and rc2["itens"]:
+                print(f"contratos {cnpj}: {gravar_contratos(con, rc2['itens'])}"
+                      + ("" if rc2["verificado"] else " (PARCIAL)"), flush=True)
 
 
 if __name__ == "__main__":

@@ -39,6 +39,9 @@ motores:
     classe: motor
     descricao: Drena a fila de íntegras SEI (baixa e arquiva processos)
     unidade: jfn-integra-fila
+    # laudo 13/11/2026: 255 "ok" em 7 dias, 48 de 48 com captura vazia — o painel mostrava "agendado".
+    # Efeito = último "proc: ok"; antes da correção de 13/11 08:04 o "ok" valia para captura vazia (`desde`).
+    efeito: {log: data/sei_integra_fila.log, regex: '^\[[^\]]+\]\s+\S+: ok\s*$', desde: '2026-11-13 08:05:00', horas: 48}
   - id: sei-varredura
     nome: SEI · varredura
     classe: motor
@@ -65,6 +68,9 @@ motores:
     classe: motor
     descricao: Ordens bancárias do SIAFE (a fonte de pagamento da casa)
     contador: {db: compliance.db, tabela: ob_orcamentaria_siafe, rotulo: OBs do SIAFE}
+    # laudo 13/11/2026: 51 h sem OB (MFA não respondido) e o painel dizia "ocioso". O runner grava
+    # `ultimo_efeito_iso` só com OB ingerida (`ultimo_ok_iso` é o teto enquanto o campo novo não existe).
+    efeito: {json: data/sei_cache/siafe_runner_ultimo.json, chave: [ultimo_efeito_iso, ultimo_ok_iso], horas: 30}
   - id: intel-cache
     nome: Inteligência · cache
     classe: motor
@@ -108,6 +114,9 @@ motores:
     classe: motor
     descricao: Varredura de atas de julgamento de licitações (cron)
     trava: /tmp/sweep_atas_julgamento.lock
+    log: data/sweep_atas.log          # o mtime do log dá a hora REAL do "terminou" (job de cron sem systemd)
+    # laudo 13/11/2026: 108 de 116 rodadas com 0 atas e o painel dizia "ocioso". Efeito = ata gravada.
+    efeito: {db: compliance.db, tabela: ata_documento, coluna: coletado_em, horas: 168}
   - id: pcrj-intel
     nome: PCRJ · inteligência
     classe: motor

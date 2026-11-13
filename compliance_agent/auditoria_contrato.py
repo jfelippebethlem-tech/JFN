@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Auditoria de CONTRATO CONTÍNUO (serviço com dedicação de mão de obra) — bateria T01–T25 (T22 = gate de completude, roda antes e fora de _TESTES).
+"""Auditoria de CONTRATO CONTÍNUO (serviço com dedicação de mão de obra) — bateria T01–T27 (T22 = gate de completude, roda antes e fora de _TESTES).
 
 Motor DETERMINÍSTICO e HONESTO que, dado o acervo de um contrato (OBs do SIAFE + retenções OCR/SEI +
 série de reajustes/CCT + glosas + planilha/contrato quando houver), roda a bateria de testes de execução
@@ -839,16 +839,125 @@ def _t25_jogo_planilha(d) -> dict:
                 "valor_inicial × valor_global", "Lei 14.133/2021 art. 125", _PESO["media"])
 
 
+# ── T26/T27 (confronto CGE × JFN 13/11/2026, lacuna 4) ─────────────────────────────────────────────────────
+# A CGE achou (ISP) liquidação em 30/12/2025 de equipamentos entregues só em 07/05/2026, e pagamento mensal de
+# mobiliário num contrato de LOCAÇÃO de imóvel cuja proposta dizia "sem custos extras". A bateria não tinha teste
+# para nenhum dos dois. Ambos dependem dos AUTOS (termo de recebimento; objeto do contrato): sem eles, INDISPONÍVEL.
+
+def _data_iso(v) -> date | None:
+    """'AAAA-MM-DD' (com ou sem hora) ou 'DD/MM/AAAA' → date; resto → None."""
+    t = str(v or "").strip()
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", t)
+    try:
+        if m:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        m = re.match(r"(\d{2})/(\d{2})/(\d{4})", t)
+        if m:
+            return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    except ValueError:
+        return None
+    return None
+
+
+def _t26_liquidacao_antes_recebimento(d) -> dict:
+    """T26 — Liquidação ANTES do recebimento do objeto (Lei 4.320/64 art. 63, §2º, III; Lei 14.133/2021 art. 140).
+
+    A liquidação verifica o direito adquirido pelo credor "tendo por base ... os comprovantes da entrega de material
+    ou da prestação efetiva do serviço": liquidar antes de receber é atestar o que ainda não existe. Entradas:
+    `liquidacoes` [{nl, data, valor?}] (NL do SIAFE) e/ou `obs[].data_liquidacao`; `recebimentos` [{data, documento?}]
+    (termo de recebimento provisório/definitivo nos autos SEI). Sem um dos lados → INDISPONÍVEL.
+    """
+    codigo, titulo = "T26-LIQUIDACAO-ANTES-RECEBIMENTO", "Liquidação antes do recebimento do objeto"
+    base = "Lei 4.320/1964 art. 63, §2º, III; Lei 14.133/2021 art. 140 (recebimento provisório/definitivo)"
+    liqs = [(x.get("nl") or "", _data_iso(x.get("data")), x.get("valor")) for x in (d.get("liquidacoes") or [])]
+    liqs += [(o.get("nl") or "", _data_iso(o.get("data_liquidacao")), o.get("valor")) for o in d.get("obs") or []
+             if o.get("data_liquidacao")]
+    liqs = [x for x in liqs if x[1]]
+    recs = sorted(r for r in (_data_iso(x.get("data")) for x in d.get("recebimentos") or []) if r)
+    if not liqs or not recs:
+        falta = "datas de liquidação (NL do SIAFE)" if not liqs else "termo de recebimento datado (autos SEI)"
+        return _indisp(codigo, titulo, falta, base, _PESO["alta"])
+    antes = sorted((x for x in liqs if x[1] < recs[0]), key=lambda x: x[1])
+    if antes:
+        nl, dt, val = antes[0]
+        dias = (recs[0] - dt).days
+        ev = (f"{len(antes)} liquidação(ões) anterior(es) ao 1º recebimento do objeto: {nl or 'NL'} em "
+              f"{dt:%d/%m/%Y}" + (f" (R$ {moeda(_money(val))})" if val else "") + f", recebimento em "
+              f"{recs[0]:%d/%m/%Y} — {dias} dia(s) depois. Liquidar exige a entrega comprovada. INDÍCIO a apurar "
+              "(o recebimento pode estar em documento não capturado).")
+        return _hip(codigo, titulo, "INDICIO", "alto" if dias > 30 else "medio", ev,
+                    "NL (SIAFE) × termo de recebimento (SEI)", base, _PESO["alta"])
+    return _hip(codigo, titulo, "AFASTADO", "—",
+                f"{len(liqs)} liquidação(ões), todas no dia ou depois do 1º recebimento ({recs[0]:%d/%m/%Y}).",
+                "NL (SIAFE) × termo de recebimento (SEI)", base, _PESO["media"])
+
+
+# Vocabulário de NATUREZA do gasto. T27 compara a natureza do que a OB/NL diz pagar com a do objeto do contrato.
+_NATUREZAS_GASTO = {
+    "mobiliario": r"mobili[áa]ri|\bm[óo]ve(?:l|is)\b",
+    "alimentacao": r"aliment|refei[çc]|lanche|coffee|buffet",
+    "veiculo": r"ve[íi]culo|combust[íi]vel|\bfrota\b",
+    "viagem": r"passage[mn]|hospedag",
+    "evento": r"\bevento|decora[çc]|sonoriza",
+    "equipamento_ti": r"computador|notebook|\bservidor(?:es)?\s+(?:de\s+(?:rede|dados)|tic)|licen[çc]a\s+de\s+(?:uso|software)",
+    "obra": r"\breforma|\bobras?\b|constru[çc]",
+    "limpeza": r"limpeza|conserva[çc]|asseio",
+    "vigilancia": r"vigil[âa]ncia|seguran[çc]a\s+patrimonial",
+    "locacao": r"aluguel|\bloca[çc][ãa]o|\blocad[oa]",
+    "consultoria": r"consultoria|assessoria",
+    "publicidade": r"publicidade|propaganda",
+}
+_RX_NATUREZAS = {k: re.compile(v, re.I) for k, v in _NATUREZAS_GASTO.items()}
+
+
+def _naturezas(txt: str) -> set[str]:
+    return {k for k, rx in _RX_NATUREZAS.items() if rx.search(txt or "")}
+
+
+def _t27_item_fora_do_objeto(d) -> dict:
+    """T27 — Pagamento de item FORA do objeto contratual (Lei 14.133/2021 arts. 92, I, e 124; Lei 4.320/64 art. 63).
+
+    Compara a NATUREZA do que cada OB Contabilizada diz pagar (`obs[].historico`) com a do objeto do contrato
+    (`objeto`). Natureza paga que o objeto não tem (ex.: "mobiliário" em contrato de locação de imóvel) é INDÍCIO
+    de pagamento sem cobertura contratual. Objeto fora do vocabulário, ou OB sem histórico → INDISPONÍVEL.
+    """
+    codigo, titulo = "T27-ITEM-FORA-DO-OBJETO", "Pagamento de item fora do objeto contratual"
+    base = "Lei 14.133/2021 arts. 92, I, e 124 (objeto e suas alterações por termo); Lei 4.320/1964 art. 63"
+    objeto = str(d.get("objeto") or "")
+    com_hist = [o for o in _contabilizadas(d.get("obs") or []) if str(o.get("historico") or "").strip()]
+    if not objeto.strip() or not com_hist:
+        falta = "objeto do contrato" if not objeto.strip() else "histórico das OBs Contabilizadas"
+        return _indisp(codigo, titulo, falta, base, _PESO["media"])
+    nat_obj = _naturezas(objeto)
+    if not nat_obj:
+        return _indisp(codigo, titulo, "objeto em vocabulário reconhecível (natureza do gasto)", base, _PESO["media"])
+    fora = [(o, sorted(_naturezas(o["historico"]) - nat_obj)) for o in com_hist]
+    fora = [(o, n) for o, n in fora if n]
+    if fora:
+        total = sum(_money(o.get("valor") or 0) for o, _ in fora)
+        exemplos = "; ".join(f"OB {o.get('numero_ob') or '?'} ({', '.join(n)}): {str(o['historico'])[:90]}"
+                             for o, n in fora[:3])
+        ev = (f"{len(fora)} OB(s) Contabilizada(s) pagando natureza que o objeto ('{objeto[:80]}') não prevê"
+              + (f", R$ {moeda(total)}" if total else "") + f" — {exemplos}. INDÍCIO: pode haver termo aditivo ou "
+              "cláusula acessória não capturada.")
+        return _hip(codigo, titulo, "INDICIO", "medio", ev, "histórico das OBs (SIAFE) × objeto do contrato", base,
+                    _PESO["media"])
+    return _hip(codigo, titulo, "AFASTADO", "—",
+                f"{len(com_hist)} OB(s) com histórico, todas da natureza do objeto ({', '.join(sorted(nat_obj))}).",
+                "histórico das OBs (SIAFE) × objeto do contrato", base, _PESO["baixa"])
+
+
 _TESTES = [
     _t01_3way, _t02_status_pago, _t03_reconcilia, _t04_reajuste_cct, _t05_database, _t06_interregno,
     _t07_duplicidade, _t08_gap, _t09_inss, _t10_ir, _t11_identidade, _t12_glosa, _t13_trabalhista,
     _t14_piso, _t15_grupo_a, _t16_regime, _t17_lucro, _t18_beneficio, _t19_preclusao, _t20_garantia,
     _t21_conta_vinculada, _t23_auto_aritmetica, _t24_bruto_liquido, _t25_jogo_planilha,
+    _t26_liquidacao_antes_recebimento, _t27_item_fora_do_objeto,
 ]
 
 
 def auditar_contrato(dados: dict) -> dict:
-    """Roda a bateria T01–T25 de auditoria de contrato contínuo e devolve o quadro estruturado.
+    """Roda a bateria T01–T27 de auditoria de contrato contínuo e devolve o quadro estruturado.
 
     Args (`dados`) — tudo opcional exceto `obs`; ausência → INDISPONÍVEL honesto, nunca achado fabricado:
       obs: list[dict] das OBs (SIAFE) — numero_ob, status, nl, re, pd, valor, competencia, data_emissao, processo.
@@ -862,6 +971,7 @@ def auditar_contrato(dados: dict) -> dict:
       relatorio_saldo / relatorio_total_pago: o derivado do órgão a TESTAR (T03/T02).
       planilha / planilha_original / planilha_repactuada: dicts de custos (tarefa #8) — T14-T18/T21.
       datas_prorrogacao / datas_pleito / garantia / conta_vinculada / comprovantes_trabalhistas — T19/T20/T21/T13.
+      liquidacoes [{nl, data, valor}] / recebimentos [{data, documento}] — T26; objeto + obs[].historico — T27.
 
     Retorna {contrato, favorecido, orgao, achados:[…], score, grau, n_confirmados, n_indicios,
              n_indisponivel, resumo, cobertura}. Padrão IDÊNTICO ao investigacao_dd.investigar().

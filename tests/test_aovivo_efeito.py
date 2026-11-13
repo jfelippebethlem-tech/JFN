@@ -107,5 +107,49 @@ def test_catalogo_efeito_bem_formado():
         if not ef:
             continue
         assert ef.get("horas", 0) > 0, m["id"]
-        assert ef.get("arquivo") or ef.get("log") and ef.get("regex") or \
+        assert ef.get("arquivo") or ef.get("log") and ef.get("regex") or ef.get("json") and ef.get("chave") or \
             (ef.get("db") and ef.get("tabela") and ef.get("coluna")), m["id"]
+
+
+# ── laudo de motores 13/11/2026 (3.1): siafe-ob, sei-integras e atas apareciam "ociosos" sem produzir ──────────
+def test_catalogo_da_efeito_aos_tres_motores_que_rodavam_sem_produzir():
+    por_id = {m["id"]: m for m in coleta.catalogo()}
+    for mid in ("siafe-ob", "sei-integras", "atas"):
+        assert por_id[mid].get("efeito"), mid
+
+
+def test_efeito_por_chave_de_json(tmp_path):
+    """siafe-ob: o runner grava `ultimo_efeito_iso` só com OB ingerida; falhas de MFA não o renovam."""
+    f = tmp_path / "ultimo.json"
+    f.write_text('{"iso": "2026-11-13T08:15:30+00:00", "ok": false, '
+                 '"ultimo_ok_iso": "2026-11-11T08:02:38+00:00"}')
+    cfg = {"json": str(f), "chave": ["ultimo_efeito_iso", "ultimo_ok_iso"]}
+    assert coleta.medir_efeito(cfg) == datetime.fromisoformat("2026-11-11T08:02:38+00:00").timestamp()
+    f.write_text('{"ultimo_efeito_iso": "2026-11-12T08:00:00+00:00", "ultimo_ok_iso": "2026-11-13T08:00:00+00:00"}')
+    assert coleta.medir_efeito(cfg) == datetime.fromisoformat("2026-11-12T08:00:00+00:00").timestamp()
+    assert coleta.medir_efeito({"json": str(tmp_path / "nao.json"), "chave": "x"}) is None
+
+
+def test_efeito_por_log_sem_grupo_e_a_ultima_linha_que_casa(tmp_path):
+    """sei-integras: o efeito é a última linha 'proc: ok' — não a mudança de um número."""
+    log = tmp_path / "f.log"
+    log.write_text(
+        "[2026-11-10 03:30:00] rodada: 4 candidato(s)\n"
+        "[2026-11-10 03:31:00]   000001/000001/2026: ok\n"
+        "[2026-11-12 03:31:00]   000001/000002/2026: vazio\n")
+    assert coleta.medir_efeito({"log": str(log), "regex": r"^\[[^\]]+\]\s+\S+: ok\s*$"}) == \
+        datetime(2026, 11, 10, 3, 31).timestamp()
+
+
+def test_efeito_por_log_desde_ignora_o_ok_que_mentia(tmp_path):
+    """Antes da correção de 13/11/2026 o 'ok' da fila de íntegras valia também para captura vazia: linha anterior
+    a `desde` não prova efeito, e sem linha válida o efeito é no máximo o início da cauda (🟡, nunca verde)."""
+    log = tmp_path / "f.log"
+    log.write_text(
+        "[2026-11-06 03:30:00] rodada: 4 candidato(s)\n"
+        "[2026-11-13 03:53:14]   000001/000001/2026: ok\n")
+    cfg = {"log": str(log), "regex": r"^\[[^\]]+\]\s+\S+: ok\s*$", "desde": "2026-11-13 08:05:00"}
+    assert coleta.medir_efeito(cfg) == datetime(2026, 11, 6, 3, 30).timestamp()
+    with open(log, "a") as fh:
+        fh.write("[2026-11-14 03:40:00]   000001/000003/2026: ok\n")
+    assert coleta.medir_efeito(cfg) == datetime(2026, 11, 14, 3, 40).timestamp()
