@@ -34,8 +34,10 @@ from tools.painel_abas import abas, abas_por_esfera
 # por órgão, classificado por termo de risco — pedido do dono por fontes online sem API.
 # 2026-11-09: 67 → 68 e geral 32 → 33. Entrou "Requerimentos" (`g_requerimentos`): os pedidos de informação
 # sugeridos pelas investigações, lidos de `~/vault/requerimentos/` — pedido do dono; só leitura.
-TOTAL = 68
-POR_ESFERA = {"inicio": 1, "estado": 19, "prefeitura": 15, "geral": 33}
+# 2026-11-13: 68 → 69 e estado 19 → 20. Entrou "Comissão de Orçamento" (`e_comissao`): sub-aba da Comissão
+# de Orçamento da ALERJ (problemas por fornecedor órgão a órgão, peças P1–P18, SICONFI por Poder) — pedido do dono.
+TOTAL = 69
+POR_ESFERA = {"inicio": 1, "estado": 20, "prefeitura": 15, "geral": 33}
 
 
 def test_le_todas_as_abas_do_painel():

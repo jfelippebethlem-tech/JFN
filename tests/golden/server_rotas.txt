@@ -16,6 +16,9 @@ GET /api/casos/nota -> api_casos_nota
 GET /api/certame/indice -> api_certame_indice
 GET /api/certames/lista -> api_certames_lista
 GET /api/coendereco/clusters -> api_coendereco_clusters
+GET /api/comissao/orgaos -> api_comissao_orgaos
+GET /api/comissao/pecas -> api_comissao_pecas
+GET /api/comissao/pecas/gerar -> api_comissao_pecas_gerar
 GET /api/comparador/buscar -> api_comparador_buscar
 GET /api/comparador/catalogo -> api_comparador_catalogo
 GET /api/comparador/dossie -> api_comparador_dossie

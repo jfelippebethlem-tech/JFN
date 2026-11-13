@@ -97,9 +97,9 @@ _TEMPLATE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
   </div>
 
   <div class="rating">
-    <div class="score-badge" style="background:{{ cor_faixa }}"><span class="n">{{ score }}</span><span class="f">{{ faixa }}</span></div>
+    {% if not sem_indice %}<div class="score-badge" style="background:{{ cor_faixa }}"><span class="n">{{ score }}</span><span class="f">{{ faixa }}</span></div>{% endif %}
     <div>
-      <b>{{ rotulo_score }}:</b> {{ score }}/100 ({{ faixa }}) — risco de ACHADO, não de punição.<br>
+      {% if not sem_indice %}<b>{{ rotulo_score }}:</b> {{ score }}/100 ({{ faixa }}) — risco de ACHADO, não de punição.<br>{% endif %}
       <b>Destaques:</b> {% for c in top_flags %}<span class="flag">{{ c }}</span> {% endfor %}
     </div>
   </div>
@@ -179,6 +179,8 @@ def render_html(ctx: dict) -> str:
         "score": ctx.get("score", 0), "faixa": faixa,
         "cor_faixa": _FAIXA_COR.get(faixa, "#777"),
         "rotulo_score": ctx.get("rotulo_score", "Índice de risco"),
+        # peça institucional (nota de RGF, subsídio de audiência) não tem "índice de risco de fornecedor"
+        "sem_indice": bool(ctx.get("sem_indice")),
         "top_flags": ctx.get("top_flags", []),
         "secoes": secoes,
         "proveniencia": ctx.get("proveniencia", []),

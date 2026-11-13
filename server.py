@@ -1310,9 +1310,9 @@ def parse_args():
 # ── Split 2026-07-06: rotas por domínio (ver rotas/*.py; rede de segurança em tests/test_server_snapshot.py) ──
 # `vinculos` entrou em módulo próprio (2026-07-29): investigacao.py já tinha 2.291 linhas e 98
 # rotas, e o eixo de vínculos é um domínio inteiro — somar ali só pioraria o problema.
-from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao, vinculos as _r_vinculos, lai as _r_lai, acervo as _r_acervo  # noqa: E402
+from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao, vinculos as _r_vinculos, lai as _r_lai, acervo as _r_acervo, comissao as _r_comissao  # noqa: E402
 
-for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_vinculos, _r_lai, _r_acervo):
+for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao, _r_vinculos, _r_lai, _r_acervo, _r_comissao):
     app.include_router(_r.router)
 
 # v61 (2026-11-11): território — o router mora junto do motor (`compliance_agent/territorio/`), só lê
