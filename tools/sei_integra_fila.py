@@ -155,6 +155,47 @@ def _arquivado_ok(dir_arq: Path) -> bool:
     return (m.get("gerado_em") or "") >= CORTE_ESCRITOR
 
 
+# INTERVALO PARA QUEM VOLTOU VAZIO. Medido em 2026-11-13 (30 dias de log): 1.202 das 1.384 rodadas
+# "ok" (87%) caíram em 48 processos cuja captura termina com ZERO documento, cada um retentado 25-36
+# vezes — 40,5 h das 52,5 h da rodada noturna (77%), contra 3,9 h que renderam documento. Os
+# inscritos encabeçam a fila, então os mesmos vazios comiam a janela toda noite. Isto NÃO afirma
+# causa (vazio ≠ restrito ≠ inexistente): só espera alguns dias e o processo volta sozinho.
+DIAS_ESPERA_VAZIO = int(os.environ.get("INTEGRA_DIAS_ESPERA_VAZIO", "7"))
+
+
+def _captura_vazia(dir_arq: Path) -> bool:
+    """O manifesto do arquivo diz que a última captura não trouxe documento nenhum?
+    Sem manifesto = nunca tentado, que NÃO é vazio."""
+    try:
+        m = json.loads((dir_arq / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(m, dict):
+        return False
+    docs = m.get("docs")
+    n = len(docs) if isinstance(docs, list) else _chars({"chars": docs})
+    return bool(m.get("captura_vazia")) or n == 0
+
+
+def _vazio_recente(dir_arq: Path, dias: int | None = None) -> bool:
+    """Voltou vazio há menos de `dias`? Sem data legível não segura (na dúvida, tenta)."""
+    if not _captura_vazia(dir_arq):
+        return False
+    from datetime import datetime, timezone
+    try:
+        m = json.loads((dir_arq / "manifest.json").read_text(encoding="utf-8"))
+        quando = datetime.fromisoformat(str(m.get("gerado_em") or ""))
+    except (OSError, ValueError, TypeError):
+        return False
+    if quando.tzinfo is None:
+        quando = quando.replace(tzinfo=timezone.utc)
+    dias = DIAS_ESPERA_VAZIO if dias is None else dias
+    return (datetime.now(timezone.utc) - quando).total_seconds() < dias * 86400
+
+
+_RX_CAUSA = re.compile(r"^(SEM ÁRVORE.*|LOGIN FALHOU.*|cracked: .*)$", re.M)
+
+
 _RX_REL_FOTO = re.compile(r"relat[óo]rio\s+fotogr|registro\s+fotogr|memorial\s+fotogr", re.I)
 
 
@@ -359,9 +400,12 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
     retoma. Converter em status deixa o loop seguir para o próximo processo.
     """
     try:
-        rc = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
-                            cwd=RAIZ, env=env, timeout=900,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        # stdout capturado (antes DEVNULL): a captura imprime POR QUE não abriu a árvore, e essa
+        # causa morria aqui — o log da fila dizia "ok" para um processo sem nenhum documento.
+        r1 = subprocess.run([PY, "tools/sei_integra_completa.py", proc],
+                            cwd=RAIZ, env=env, timeout=900, text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        rc = r1.returncode
         if rc == 75:
             # o preflight de carga recusou: o alvo continua na fila e a próxima passada retoma.
             # Registrar como "erro" fazia parecer defeito do processo — era a VM ocupada.
@@ -369,7 +413,13 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
         rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                              cwd=RAIZ, env=env, timeout=900,
                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
-        return "ok" if rc == 0 and rc2 == 0 else "erro"
+        if rc != 0 or rc2 != 0:
+            return "erro"
+        if _captura_vazia(ARQUIVO / proc.replace("/", "_")):
+            for causa in _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]:
+                _log(f"  {proc}: {causa[:200]}")
+            return "vazio"
+        return "ok"
     except subprocess.TimeoutExpired:
         return "timeout"
     except OSError:
@@ -440,15 +490,22 @@ def main() -> int:
         candidatos = [e.get("sei", "") for e in fila]
 
     alvos = []
+    n_vazio_recente = 0
     for sei in candidatos:
         proc = _proc_limpo(sei)
         if not proc:
             continue
         if _arquivado_ok(ARQUIVO / proc.replace("/", "_")) and f"SEI-{proc}" not in reler:
             continue                      # já arquivado COM conteúdo — resumível (exceto re-ler por OB)
+        if _vazio_recente(ARQUIVO / proc.replace("/", "_")):
+            n_vazio_recente += 1          # voltou vazio há < DIAS_ESPERA_VAZIO — volta depois sozinho
+            continue
         alvos.append(proc)
         if not args.segundos and len(alvos) >= args.max:
             break                         # sem orçamento de tempo → corta em --max (comportamento antigo)
+    if n_vazio_recente:
+        _log(f"{n_vazio_recente} processo(s) com captura vazia há menos de {DIAS_ESPERA_VAZIO} dia(s) "
+             "ficam para depois (intervalo, não veredito: a causa do vazio não foi medida)")
     if not alvos:
         _log("fila drenada — nada a baixar")
         return 0
