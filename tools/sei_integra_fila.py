@@ -193,6 +193,11 @@ def _vazio_recente(dir_arq: Path, dias: int | None = None) -> bool:
     return (datetime.now(timezone.utc) - quando).total_seconds() < dias * 86400
 
 
+# Códigos de saída de `sei_integra_completa.py` (mesmos valores de lá; importar aquele módulo puxa
+# Playwright/fitz só para ler duas constantes — o teste trava que os dois lados concordam).
+RC_LOGIN_FALHOU = 3
+RC_SEM_ARVORE = 4
+
 _RX_CAUSA = re.compile(r"^(SEM ÁRVORE.*|LOGIN FALHOU.*|cracked: .*)$", re.M)
 
 
@@ -406,6 +411,12 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
                             cwd=RAIZ, env=env, timeout=900, text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         rc = r1.returncode
+        causas = _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]
+        if rc == RC_LOGIN_FALHOU:
+            # login não completou: nada se sabe do processo — não arquiva vazio (que o seguraria)
+            for causa in causas:
+                _log(f"  {proc}: {causa[:200]}")
+            return "login"
         if rc == 75:
             # o preflight de carga recusou: o alvo continua na fila e a próxima passada retoma.
             # Registrar como "erro" fazia parecer defeito do processo — era a VM ocupada.
@@ -413,12 +424,13 @@ def _baixar_e_arquivar(proc: str, env: dict) -> str:
         rc2 = subprocess.run([PY, "tools/sei_arquivar.py", proc],
                              cwd=RAIZ, env=env, timeout=900,
                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).returncode
+        if rc == RC_SEM_ARVORE or (rc == 0 and rc2 == 0 and _captura_vazia(ARQUIVO / proc.replace("/", "_"))):
+            # o arquivar acima já gravou o manifesto `captura_vazia` — é ele que dá o intervalo
+            for causa in causas:
+                _log(f"  {proc}: {causa[:200]}")
+            return "sem_arvore" if rc == RC_SEM_ARVORE else "vazio"
         if rc != 0 or rc2 != 0:
             return "erro"
-        if _captura_vazia(ARQUIVO / proc.replace("/", "_")):
-            for causa in _RX_CAUSA.findall(getattr(r1, "stdout", "") or "")[-2:]:
-                _log(f"  {proc}: {causa[:200]}")
-            return "vazio"
         return "ok"
     except subprocess.TimeoutExpired:
         return "timeout"

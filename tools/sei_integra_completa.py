@@ -30,6 +30,11 @@ PROC = sys.argv[1] if len(sys.argv) > 1 else ""   # import (pytest) não traz ar
 PROC = re.sub(r"^SEI-", "", PROC.strip())
 TAG = re.sub(r"[^0-9]", "_", PROC)
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
+# Códigos de saída — antes LOGIN FALHOU e SEM ÁRVORE saíam com 0 e a fila (`sei_integra_fila`)
+# chamava de "ok" uma captura sem documento nenhum (laudo dos motores, 13/11/2026: 255 "ok" em
+# 7 dias, 48 processos, todos com 0 documento). 75 (adiado por carga) já existia.
+RC_LOGIN_FALHOU = 3
+RC_SEM_ARVORE = 4
 ENV = Path.home() / ".hermes" / ".env"   # por usuário: `/home/ubuntu` cravado quebrava fora desta VM
 def _k(n):
     # `_k` roda no IMPORT (linha abaixo), então não pode depender de arquivo existir: o CI pegou
@@ -98,7 +103,7 @@ async def main():
               user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
         pg = await ctx.new_page(); await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
-            if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU"); return
+            if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU", flush=True); return RC_LOGIN_FALHOU
             print("login OK", flush=True)
             # ENUMERAÇÃO — caminho CRACKED primeiro (mesmo do ler() canônico): abre processos de OUTRA
             # unidade que o itkava VÊ mas o abrir_processo/arvore_do_fonte não abre (070002/INEA,
@@ -144,7 +149,7 @@ async def main():
                       f"n_docs_restritos={dump.get('n_docs_restritos')!r} "
                       f"relacionados={len(dump.get('relacionados') or [])} "
                       f"abrir_processo={'ok' if fr else 'falhou'}", flush=True)
-                return
+                return RC_SEM_ARVORE
             # formato p/ o resto do script: {t: titulo, u: url, pai: ''}
             docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
                     for d in arv if d.get("url")]

@@ -122,6 +122,58 @@ def test_captura_com_documentos_continua_ok(tmp_path, monkeypatch):
     assert F._baixar_e_arquivar("030001/008372/2024", {}) == "ok"
 
 
+# ── códigos de saída distintos da captura (laudo dos motores 13/11, P1) ──
+
+def _rc(monkeypatch, rc_captura, arq, gravar_manifesto=True):
+    chamadas = []
+
+    class _R:
+        def __init__(self, rc, out=""):
+            self.returncode, self.stdout = rc, out
+
+    def _fake(cmd, **kw):
+        chamadas.append(" ".join(cmd))
+        if "sei_arquivar.py" in chamadas[-1]:
+            if gravar_manifesto:
+                _manifesto(arq / "030001_008372_2024", docs=0, gerado_em=_iso(0), captura_vazia=True)
+            return _R(0)
+        return _R(rc_captura, "SEM ÁRVORE (processo não abriu) — via='cracked'\n" if rc_captura == 4
+                  else "LOGIN FALHOU\n")
+
+    monkeypatch.setattr(F.subprocess, "run", _fake)
+    monkeypatch.setattr(F, "_log", lambda m: None)
+    return chamadas
+
+
+def test_login_falho_e_status_proprio_e_nao_arquiva(tmp_path, monkeypatch):
+    """Login que não completou não diz nada sobre o processo: não arquiva manifesto vazio
+    (que o seguraria 7 dias) e não é "ok"."""
+    arq = tmp_path / "sei_arquivo"
+    monkeypatch.setattr(F, "ARQUIVO", arq)
+    chamadas = _rc(monkeypatch, F.RC_LOGIN_FALHOU, arq)
+    assert F._baixar_e_arquivar("030001/008372/2024", {}) == "login"
+    assert not any("sei_arquivar.py" in c for c in chamadas)
+
+
+def test_sem_arvore_e_status_proprio_e_registra_o_vazio(tmp_path, monkeypatch):
+    """Árvore que não abriu: arquiva (o manifesto `captura_vazia` é o que dá o intervalo) e
+    devolve "sem_arvore", nunca "ok"."""
+    arq = tmp_path / "sei_arquivo"
+    monkeypatch.setattr(F, "ARQUIVO", arq)
+    chamadas = _rc(monkeypatch, F.RC_SEM_ARVORE, arq)
+    assert F._baixar_e_arquivar("030001/008372/2024", {}) == "sem_arvore"
+    assert any("sei_arquivar.py" in c for c in chamadas)
+
+
+def test_captura_sai_com_codigos_distintos():
+    """O roteiro de captura tem de SAIR com esses códigos (antes: `return` → 0 nos dois casos)."""
+    from pathlib import Path
+    fonte = (Path(F.__file__).parent / "sei_integra_completa.py").read_text(encoding="utf-8")
+    assert "return RC_LOGIN_FALHOU" in fonte and "return RC_SEM_ARVORE" in fonte
+    import tools.sei_integra_completa as C
+    assert (C.RC_LOGIN_FALHOU, C.RC_SEM_ARVORE) == (F.RC_LOGIN_FALHOU, F.RC_SEM_ARVORE)
+
+
 # ── a seleção da rodada pula quem acabou de voltar vazio, e declara quantos ──
 
 def test_rodada_pula_vazio_recente_e_declara(tmp_path, monkeypatch):
