@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "data" / "compliance.db"
+DB_DADOS_ABERTOS = REPO / "data" / "dadosabertos_rj.db"   # cge_ne_credor (modalidade da NE)
 CACHE = REPO / "data" / "sei_cache"
 PROG = CACHE / "sei_sweep_progress.json"
 PAUSE = REPO / "data" / ".pause_sei_sweep"  # pausa PRÓPRIA (o browser_lock já serializa com o SIAFE)
@@ -336,7 +337,10 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     where_siafe = where_siafe.replace(
         "replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')", "credor")
     rows = con.execute(
-        f"SELECT processo, COUNT(*) nob, ROUND(SUM(valor),2) tot FROM ob_orcamentaria_siafe "
+        # SÓ OB `Contabilizado` é pago (13/11/2026): Anulado (R$ 7,06 bi) e Excluído (R$ 8,91 bi) entravam
+        # no valor que ordena a fila. O universo de processos não muda — só o valor.
+        f"SELECT processo, COUNT(*) nob, ROUND(SUM(CASE WHEN status='Contabilizado' THEN valor ELSE 0 END),2) tot "
+        f"FROM ob_orcamentaria_siafe "
         f"WHERE {where_siafe} GROUP BY processo ORDER BY tot DESC",
         tuple(args),
     ).fetchall()
@@ -362,8 +366,16 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     # ...e sobe também de unidade NUNCA tentada: "legível" é aprendido lendo, e o alvo à mão de unidade nova
     # (SEDSODH 310001, 23/09) caía atrás de 125 mil legíveis — ninguém lia, ela nunca virava legível.
     # Unidade aprendida como sem acesso continua pulada pelo loop (`_unidades_sem_acesso`).
-    rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis or _norm_proc(r[0]) in dirigidos_norm else 1,
+    # CONTRATAÇÃO DIRETA GRANDE (13/11/2026, confronto CGE × JFN): dos 64 processos de contratação direta
+    # que a CGE auditou, o JFN não lera nenhum. Inexigibilidade/dispensa/emergencial com OB paga
+    # (Contabilizado) ≥ PISO_DIRETA sobe para logo abaixo do enfileirado à mão — mesmo de unidade nunca lida.
+    diretas = _contratacao_direta()
+    diretas_grandes = {_norm_proc(r[0]) for r in rows
+                       if _norm_proc(r[0]) in diretas and (r[2] or 0) >= PISO_DIRETA}
+    rows.sort(key=lambda r: (0 if (_unidade(r[0]) in legiveis or _norm_proc(r[0]) in dirigidos_norm
+                                   or _norm_proc(r[0]) in diretas_grandes) else 1,
                              0 if _norm_proc(r[0]) in dirigidos_norm else 1,
+                             0 if _norm_proc(r[0]) in diretas_grandes else 1,
                              0 if _norm_proc(r[0]) in provados_norm else 1,
                              0 if (credores.get(r[0]) or set()) & sinal else 1,
                              # FOLHA/PREVIDÊNCIA por último dentro do estrato: 82% do top-50 por
@@ -377,6 +389,9 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
         _log(f"fila: {n_prov} com lacuna PROVADA pelo parecer e {n_pri} com sinal OSINT no credor "
              f"entram na frente (de {len(rows)}); ordem = legível > lacuna provada > sinal > "
              f"fornecedor antes de folha > valor")
+    if diretas_grandes:
+        _log(f"fila: {len(diretas_grandes)} processos de CONTRATAÇÃO DIRETA (inexigibilidade/dispensa/"
+             f"emergencial) com OB paga ≥ R$ {PISO_DIRETA:,.0f} entram no topo".replace(",", "."))
     if n_folha:
         _log(f"fila: {n_folha} processos são de FOLHA/PREVIDÊNCIA (credor genérico) e foram "
              f"rebaixados dentro do próprio estrato — rebaixados, não excluídos.")
@@ -386,9 +401,38 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     indice, total = fatia_desta_maquina()
     if total > 1:
         antes = len(rows)
-        rows = _aplicar_fatia(rows, indice, total, dirigidos_norm)
+        rows = _aplicar_fatia(rows, indice, total, dirigidos_norm | diretas_grandes)
         _log(f"fatia {indice}/{total}: {len(rows)} de {antes} processos são desta máquina")
     return rows
+
+
+PISO_DIRETA = float(os.environ.get("SEI_PISO_CONTRATACAO_DIRETA", "1000000"))
+_MODALIDADES_DIRETAS = ("Inexigibilidade", "Dispensa de Licitação")
+
+
+def _contratacao_direta(db: Path | None = None) -> set[str]:
+    """Processos SEI (só dígitos) citados em NE de inexigibilidade, dispensa ou emergencial
+    (`cge_ne_credor` do painel da CGE, em `dadosabertos_rj.db`). Sem a base, vazio — a fila volta a
+    ser a de antes, nunca quebra."""
+    db = db or DB_DADOS_ABERTOS
+    if not Path(db).exists():
+        return set()
+    try:
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
+        try:
+            linhas = con.execute(
+                "SELECT processos_sei FROM cge_ne_credor WHERE COALESCE(processos_sei,'') NOT IN ('','[]') "
+                "AND (tipo_de_licitacao IN (?,?) OR LOWER(COALESCE(historico,'')) LIKE '%emergenc%')",
+                _MODALIDADES_DIRETAS).fetchall()
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return set()
+    out: set[str] = set()
+    for (ps,) in linhas:
+        for a, b, c in re.findall(r"(\d{6})[/.]?(\d{6})[/.]?(\d{4})", ps or ""):
+            out.add(a + b + c)
+    return out
 
 
 def _aplicar_fatia(rows: list[tuple], indice: int, total: int, dirigidos_norm: set[str]) -> list[tuple]:
@@ -785,11 +829,25 @@ def _salvar_cadeia_no_cache(proc: str, cadeia: list):
         logger.warning("falha ao gravar cadeia no cache de %s — árvore perdida: %s", proc, exc)
 
 
+def _fmt_tempos(t: dict | None) -> str:
+    """Fases da leitura (`_tempos` do `ler_processo`) em forma curta para a linha do processo."""
+    if not t:
+        return ""
+    partes = []
+    if "pesquisa" in t:
+        partes.append(f"pesq {t['pesquisa']:.0f}s")
+    if "arvore" in t:
+        partes.append(f"árv {t['arvore']:.0f}s")
+    if "conteudo" in t:
+        partes.append(f"docs {t['conteudo']:.0f}s/{t.get('docs_tentados', 0)}")
+    return f" [t {' · '.join(partes)}]" if partes else ""
+
+
 async def _ficha_e_storage(proc: str):
     """Extrai a FICHA (cascata gemini-lite→stepfun:free) do conteúdo REAL e guarda SÓ a ficha no cache,
     DESCARTANDO o `texto` (menu lateral do SEI = lixo de ~12k chars). Storage: ~3-7× menor, sem perda útil.
     Retorna (n_chars_antes, n_chars_depois, modelo) ou None."""
-    from tools.sei_ficha import conteudo_real, extrair_ficha, STEPFUN
+    from tools.sei_ficha import conteudo_real, extrair_ficha, STEPFUN, modelo_sweep
     cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
     if not cf.exists():
         return None
@@ -803,7 +861,9 @@ async def _ficha_e_storage(proc: str):
         # extrair_ficha já retenta 502/503 transientes. Se falhar, retorna None → fica p/ a próxima passada
         # (sweep resumível: não marca como feito, retenta depois). Vamos aos poucos.
         f = await extrair_ficha(cont, STEPFUN, provider="nous")
-        modelo = STEPFUN  # id real do catálogo (o rótulo antigo "stepfun:free" não existe mais — 404)
+        # o modelo que RESPONDEU (1º vivo depois da chamada), não a constante: com o 1º da lista morto,
+        # o rótulo dizia `beam-1.0` em ficha feita pelo seguinte (laudo dos motores, 13/11/2026)
+        modelo = modelo_sweep()
         if f.get("_erro"):
             return None
         d["ficha"] = f
@@ -1072,7 +1132,8 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                     if ficha_info:
                         a, dp, mdl = ficha_info
                         _fic = f" · ficha[{mdl}] {a}→{dp}ch ({a / max(dp, 1):.0f}× menor)"
-                    _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv}{_fic} (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
+                    _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv}{_fic}{_fmt_tempos(r.get('_tempos'))} "
+                         f"(R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
             finally:
                 try:
                     await b.close()  # fechar um browser JÁ MORTO levanta (EPIPE/TargetClosed) — nunca pode crashar
@@ -1270,6 +1331,26 @@ def max_recaptura_adaptativo(feitos: dict, max_n: int, janela: int = 30, piso: f
     return min(max_n, 1) if ganhou / len(ult) < piso else max_n
 
 
+def recap_leitura_indisponivel(r: dict, nd: int) -> bool:
+    """A releitura FALHOU (árvore não abriu), em vez de ter lido zero?
+
+    Laudo dos motores (13/11/2026): `127 → 0` logado e registrado como releitura sem ganho, com o
+    cache e o acervo intactos (127 textos). INDISPONÍVEL ≠ 0: isso não é resultado do processo."""
+    return not nd and bool((r or {}).get("indisponivel"))
+
+
+_HORAS_RECAP_INDISPONIVEL = 24
+
+
+def recap_indisponivel_recente(registro: dict, proc: str, agora: datetime | None = None) -> bool:
+    """A recaptura deste processo falhou (indisponível) há menos de 24 h? Data ilegível não segura."""
+    try:
+        quando = datetime.fromisoformat(str((registro or {}).get(proc) or ""))
+    except ValueError:
+        return False
+    return ((agora or datetime.now()) - quando).total_seconds() < _HORAS_RECAP_INDISPONIVEL * 3600
+
+
 async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
                         ate: int = 0) -> None:
     """RELÊ processos cujo cache prova que há documento na árvore SEM texto — login ÚNICO.
@@ -1321,8 +1402,12 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
     # sumiriam da fila para sempre. Quem GANHOU fica fora; quem não ganhou volta depois de 7 dias.
     from tools.sweep_recaptura_integral import _sem_ganho_expirou
     max_n = max_recaptura_adaptativo(feitos, max_n)
+    # leitura que FALHOU (indisponível) não entra em `feitos`; aqui só espera um dia para não
+    # encabeçar todos os slots seguintes
+    indisp = prog.get("recaptura_indisponivel") or {}
     fila = [x for x in fila
-            if x["numero"] not in feitos or _sem_ganho_expirou(feitos[x["numero"]])][:max_n]
+            if (x["numero"] not in feitos or _sem_ganho_expirou(feitos[x["numero"]]))
+            and not recap_indisponivel_recente(indisp, x["numero"])][:max_n]
     if not fila:
         _log("[recap] nada pendente (fila de recaptura vazia ou já percorrida).")
         return
@@ -1388,6 +1473,14 @@ async def run_recaptura(max_n: int, tentativas_login: int = 20, teto: int = 120,
                         if _browser_morto(e):
                             _log("  [recap] browser caiu — encerrando a sessão LIMPO.")
                             break
+                        continue
+                    if recap_leitura_indisponivel(r, nd):
+                        indisp[proc] = datetime.now().isoformat(timespec="seconds")
+                        prog["recaptura_indisponivel"] = indisp
+                        _salvar_prog(prog)
+                        _log(f"  [recap {i}/{len(fila)}] {proc}: INDISPONÍVEL nesta leitura (árvore não "
+                             f"abriu) — {antes} docs com texto preservados no cache; volta em "
+                             f"{_HORAS_RECAP_INDISPONIVEL} h")
                         continue
                     feitos[proc] = {"antes": antes, "depois": nd,
                                     "em": datetime.now().isoformat(timespec="seconds")}

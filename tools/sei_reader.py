@@ -909,6 +909,10 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
                 c["_de_cache"] = True; return c
         except (OSError, ValueError) as exc:
             logger.warning("leitura do cache %s falhou, seguindo p/ leitura viva: %s", cache_file, exc)
+    # TEMPO POR FASE (13/11/2026): o log só tinha o total por processo — não dava para dizer se o tempo
+    # ia na pesquisa, na árvore ou no laço de documentos. `_tempos` sai no resultado e na linha do sweep.
+    import time as _time
+    _t0 = _time.monotonic()
     # navega p/ a Pesquisa AVANÇADA (menu "Pesquisa") — clique REAL preserva a sessão
     await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
     await _ate(pg, lambda: _tem_campo_protocolo(pg), 5000)
@@ -959,10 +963,13 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
         return {"numero": proc, "url": pg.url, "documentos": [], "relacionados": [], "cadeado": False,
                 "n_docs_restritos": 0, "texto": "", "conteudo_documentos": [], "cnpjs": [], "valores": [],
                 "indisponivel": True, "sem_resultado": True,
-                "_login": {"ok": True, "via": "sei_reader/itkava"}}
+                "_login": {"ok": True, "via": "sei_reader/itkava"},
+                "_tempos": {"pesquisa": round(_time.monotonic() - _t0, 1)}}
+    _t_pesq = _time.monotonic()
     await _abrir_primeiro_resultado(pg)
     await pg.wait_for_timeout(3000)
     dump = await _extrair_de_todos_frames(pg)
+    _t_arv = _time.monotonic()
     res = {"numero": proc, "url": pg.url, "documentos": dump["documentos"],
            "relacionados": dump.get("relacionados", []), "cadeado": dump.get("cadeado", False),
            "n_docs_restritos": dump.get("n_docs_restritos", 0), "texto": dump["texto"],
@@ -979,6 +986,8 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
         if c:
             docs_txt.append(c)
     res["conteudo_documentos"] = docs_txt
+    res["_tempos"] = {"pesquisa": round(_t_pesq - _t0, 1), "arvore": round(_t_arv - _t_pesq, 1),
+                      "conteudo": round(_time.monotonic() - _t_arv, 1), "docs_tentados": len(_tentados)}
     tot = res["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in docs_txt)
     res["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
     res["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))

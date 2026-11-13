@@ -395,7 +395,9 @@ def conteudo_real(d: dict) -> str:
 #   reflection/beam-1.0-501b-a23b:free ... 3,4–5 s, JSON certo, agulha ok, contexto 262k   <- 1º
 #   meituan/longcat-2.5:free ............. 10–21 s, JSON certo, agulha ok, contexto 1M     <- 2º
 # Só ids `:free` entram (a conta nous não tem crédito, mas a guarda não depende disso).
-_PADRAO_SWEEP = "reflection/beam-1.0-501b-a23b:free,meituan/longcat-2.5:free"
+# 13/11/2026 — `beam-1.0` responde 404 "free period has ended" desde 10/11 (~122 linhas "MORTO (404"
+# nos logs do sweep e da varredura): sai do padrão. A troca automática segue valendo para o próximo.
+_PADRAO_SWEEP = "meituan/longcat-2.5:free"
 MODELOS_SWEEP = [m.strip() for m in (
     ([os.environ["SEI_MODELO_SWEEP"]] if os.environ.get("SEI_MODELO_SWEEP") else [])
     + os.environ.get("SEI_MODELOS_SWEEP", _PADRAO_SWEEP).split(","))
