@@ -1145,7 +1145,7 @@ export async function renderSancionadas(esf){
       <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
       ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');},80,e=>e.nome);
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
-  return h+_blocoSocioSancionada(await pSoc)+blocoPeriodo(['sancoes'],'Sanções por ano e mês de início');
+  return h+_blocoSocioSancionada(await pSoc)+blocoPeriodo(esf==='estado'?['sancoes_estado']:['sancoes_estado','sancoes_prefeitura'],'Sanções por ano e mês de início');
 }
 
 /* A sanção contornada pelo SÓCIO (03/11/2026, caso GUARAILHA): a contratada não é a punida, mas o sócio dela
@@ -1305,7 +1305,7 @@ export async function renderSancionadasMun(){
       ${forte&&ex?leitura(`Contrato <b>${esc(ex.contrato||'')}</b> (${esc(ex.data||'?')}, ${fmtRc(ex.valor||0)}) assinado <b>dentro da vigência</b> da sanção ${esc(ex.sancao||'')} (${esc(ex.vigencia||'')}) — "${esc((ex.objeto||'').slice(0,90))}". Vedação objetiva: matéria para representação ao TCM-RJ com pedido de apuração da habilitação.`):''}`,
     forte?'hl':'');},100,e=>e.nome);
   h+=`<div class="note">${esc(d.explicacao||'')}</div>`;
-  return h+blocoPeriodo(['sancoes'],'Sanções por ano e mês de início');
+  return h+blocoPeriodo(['sancoes_prefeitura'],'Sanções por ano e mês de início');
 }
 
 export async function renderAditivos(esf='estado'){

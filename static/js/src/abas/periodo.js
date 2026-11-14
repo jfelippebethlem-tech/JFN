@@ -138,7 +138,7 @@ function _extra(x){
   if (x.sem_valor_legivel) p.push(`<b>Extratos sem valor legível</b> (contam em registros, não em R$): ${fmtN(x.sem_valor_legivel)}`);
   if (x.descartados_fora) p.push(`<b>Descartados pela triagem</b> fora da contagem: ${fmtN(x.descartados_fora)}`);
   if (x.datas_futuras) p.push(`<b>Assinatura com data futura</b> na fonte: ${fmtN(x.datas_futuras)} (erro de digitação do órgão provável)`);
-  if (x.por_cadastro) p.push('<b>Por cadastro</b>: ' + Object.entries(x.por_cadastro).map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(' · '));
+  if (x.sem_alcance_fora) p.push(`<b>Sanções que NÃO alcançam este ente</b> (outro ente ou outro órgão) fora da contagem: ${fmtN(x.sem_alcance_fora)}`);
   return p.length ? `<div class="dim" style="font-size:12px;margin-top:4px">${p.join('<br>')}</div>` : '';
 }
 

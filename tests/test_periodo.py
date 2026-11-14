@@ -193,6 +193,28 @@ def test_contratos_e_aditivos_nao_misturam_esfera(con):
     assert F.calcular(con, "aditivos_prefeitura", HOJE)["quebra"]["total_geral"]["c"]["valor_acrescido"] == 500
 
 
+def test_sancao_so_conta_quando_alcanca_o_ente():
+    """CNF-03: sanção só vale com alcance sobre o ente — a régua é `sancao_abrangencia.veda_ente`."""
+    from compliance_agent.sancao_abrangencia import veda_ente
+    c = sqlite3.connect(":memory:")
+    c.execute("CREATE TABLE sancoes_federais (cadastro TEXT, cpf_cnpj TEXT, nome TEXT, categoria TEXT, data_inicio TEXT, "
+              "data_fim TEXT, orgao TEXT, uf TEXT, fundamentacao TEXT, abrangencia TEXT, esfera_sancionador TEXT, "
+              "data_publicacao TEXT)")
+    linhas = [("CEIS", "11111111000111", "INIDONEA", "Declaração de Inidoneidade", "2025-03-10", None, "ORGAO FEDERAL X",
+               "", "Lei 8666 art. 87 IV", None, "federal", None),
+              ("CEIS", "22222222000122", "IMPEDIDA SP", "Impedimento/proibição de contratar com prazo determinado",
+               "2025-03-20", "2027-01-01", "SECRETARIA DE ESTADO DA SAUDE", "SP", "Lei 14133 art. 156 III", None,
+               "estadual", None)]
+    c.executemany("INSERT INTO sancoes_federais VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", linhas)
+    cols = ("cadastro", "cpf_cnpj", "nome", "categoria", "data_inicio", "data_fim", "orgao", "uf", "fundamentacao",
+            "abrangencia", "esfera_sancionador", "data_publicacao")
+    esperado = sum(veda_ente(dict(zip(cols, r)), "estadual", "RJ")["veda"] for r in linhas)
+    assert esperado == 1                                         # a inidônea alcança; a impedida em SP não
+    d = F.calcular(c, "sancoes_estado", HOJE)
+    assert d["quebra"]["total_geral"]["n"] == 1 and d["extra"]["sem_alcance_fora"] == 1
+    assert [x["nome"] for x in F.FONTES["sancoes_estado"].itens(c, 2025, 3)] == ["INIDONEA"]
+
+
 def test_toda_fonte_declara_esfera_medida_e_campo_de_data():
     for f in F.FONTES.values():
         assert f.esfera in ("estado", "prefeitura", "transversal")

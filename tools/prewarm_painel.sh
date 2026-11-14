@@ -68,7 +68,8 @@ URLS=(
   "periodo/contratos_prefeitura"
   "periodo/aditivos_prefeitura"
   "periodo/despesa_prefeitura"
-  "periodo/sancoes"
+  "periodo/sancoes_estado"
+  "periodo/sancoes_prefeitura"
   "periodo/alertas"
 )
 {

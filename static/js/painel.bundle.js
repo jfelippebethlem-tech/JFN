@@ -5173,7 +5173,7 @@ void main(){
     if (x.sem_valor_legivel) p.push(`<b>Extratos sem valor legível</b> (contam em registros, não em R$): ${fmtN(x.sem_valor_legivel)}`);
     if (x.descartados_fora) p.push(`<b>Descartados pela triagem</b> fora da contagem: ${fmtN(x.descartados_fora)}`);
     if (x.datas_futuras) p.push(`<b>Assinatura com data futura</b> na fonte: ${fmtN(x.datas_futuras)} (erro de digitação do órgão provável)`);
-    if (x.por_cadastro) p.push("<b>Por cadastro</b>: " + Object.entries(x.por_cadastro).map(([k, v]) => `${esc(k)} ${fmtN(v)}`).join(" · "));
+    if (x.sem_alcance_fora) p.push(`<b>Sanções que NÃO alcançam este ente</b> (outro ente ou outro órgão) fora da contagem: ${fmtN(x.sem_alcance_fora)}`);
     return p.length ? `<div class="dim" style="font-size:12px;margin-top:4px">${p.join("<br>")}</div>` : "";
   }
   function _repintarTodos() {
@@ -10761,7 +10761,7 @@ void main(){
       ${grave && ex ? leitura(`Exemplo: ${ex.ob ? "OB <b>" + esc(ex.ob) + "</b> paga em " : "certame homologado em "}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`) : ""}`, grave ? "hl" : "");
     }, 80, (e) => e.nome);
     h += `<div class="note">${esc(d.ressalva || "")}</div>`;
-    return h + _blocoSocioSancionada(await pSoc) + blocoPeriodo(["sancoes"], "Sanções por ano e mês de início");
+    return h + _blocoSocioSancionada(await pSoc) + blocoPeriodo(esf === "estado" ? ["sancoes_estado"] : ["sancoes_estado", "sancoes_prefeitura"], "Sanções por ano e mês de início");
   }
   var _FORCA = { forte: ["rose", "forte — mesmo ramo e mesmo endereço/telefone"], medio: ["amber", "médio — um critério"], fraco: ["accent", "fraco — só o sócio"] };
   function _blocoSocioSancionada(r) {
@@ -10967,7 +10967,7 @@ void main(){
       );
     }, 100, (e) => e.nome);
     h += `<div class="note">${esc(d.explicacao || "")}</div>`;
-    return h + blocoPeriodo(["sancoes"], "Sanções por ano e mês de início");
+    return h + blocoPeriodo(["sancoes_prefeitura"], "Sanções por ano e mês de início");
   }
   async function renderAditivos(esf = "estado") {
     const d = await J("/api/intel/aditivos?limite=120&esfera=" + esf);

@@ -294,28 +294,56 @@ def _tac_itens(con, ano, mes):
 
 
 # ── Sanções (CEIS/CNEP) e alertas (transversal) ─────────────────────────────────────────────────
-_SAN_A, _SAN_M = P.sql_ano_mes("data_inicio", "iso")
+_ALVO = {"estado": ("estadual", "RJ"), "prefeitura": ("municipal", "RJ")}
 
 
-def _sanc_agregar(con, hoje):
-    linhas = [(a, m, n, {}) for a, m, n in con.execute(
-        f"SELECT {_SAN_A}, {_SAN_M}, COUNT(*) FROM sancoes_federais GROUP BY 1, 2")]
-    inicio = min(((a, m) for a, m, *_ in linhas if a), default=_mes_corrente(hoje))
-    por = {c: n for c, n in con.execute("SELECT cadastro, COUNT(*) FROM sancoes_federais GROUP BY 1")}
-    cob = P.Cobertura(inicio=inicio, fim=_mes_corrente(hoje), mes_corrente=_mes_corrente(hoje),
-                      nota=("Cadastros federais CEIS/CNEP (CGU), espelho completo. Data = início da vigência da "
-                            "sanção. Inclui sanção aplicada por QUALQUER ente — não é recorte do Estado nem da "
-                            "Prefeitura; quem contratou durante a vigência está na lista da aba."))
-    return linhas, cob, {"por_cadastro": por}
+def _sancoes_que_alcancam(con, esfera, where="", par=()):
+    """Sanções CEIS/CNEP que VEDAM contratar com o ente (régua única: ``sancao_abrangencia.veda_ente``, a mesma das
+    abas Sancionadas). Sanção de outro ente ou restrita a outro órgão não entra — CNF-03."""
+    from compliance_agent.sancao_abrangencia import sql_campos_ceis, veda_ente
+    esf_alvo, uf_alvo = _ALVO[esfera]
+    cols = ("cadastro", "cpf_cnpj", "nome", "categoria", "data_inicio", "data_fim", "orgao", "uf", "fundamentacao",
+            "abrangencia", "esfera_sancionador", "data_publicacao")
+    sql = (f"SELECT cadastro, cpf_cnpj, nome, categoria, data_inicio, data_fim, orgao, uf, fundamentacao, "
+           f"{sql_campos_ceis(con)} FROM sancoes_federais {where}")
+    dentro, fora = [], 0
+    for r in con.execute(sql, par):
+        s = dict(zip(cols, r))
+        if veda_ente(s, esf_alvo, uf_alvo)["veda"]:
+            dentro.append(s)
+        else:
+            fora += 1
+    return dentro, fora
 
 
-def _sanc_itens(con, ano, mes):
-    pref = f"{ano:04d}-{mes:02d}" if mes else f"{ano:04d}"
-    return [{"nome": nm or "—", "doc": P.mascarar_doc(d), "orgao": (o or "—")[:80], "data": di,
-             "objeto": f"{cad} · {(cat or '')[:80]}", "fim": df}
-            for cad, d, nm, cat, di, df, o in con.execute(
-                "SELECT cadastro, cpf_cnpj, nome, categoria, data_inicio, data_fim, orgao FROM sancoes_federais "
-                f"WHERE substr(data_inicio,1,?)=? ORDER BY data_inicio DESC LIMIT {TOP}", (len(pref), pref))]
+def _sanc_agregar_de(esfera):
+    def agregar(con, hoje):
+        dentro, fora = _sancoes_que_alcancam(con, esfera)
+        acc: dict = {}
+        for s in dentro:
+            k = P.ano_mes(s["data_inicio"]) or (None, None)
+            acc[k] = acc.get(k, 0) + 1
+        linhas = [(a, m, n, {}) for (a, m), n in acc.items()]
+        inicio = min((k for k in acc if k[0]), default=_mes_corrente(hoje))
+        cob = P.Cobertura(inicio=inicio, fim=_mes_corrente(hoje), mes_corrente=_mes_corrente(hoje),
+                          nota=("Cadastros federais CEIS/CNEP (CGU), espelho completo. Data = início da vigência da "
+                                "sanção. Conta só a sanção que VEDA contratar com "
+                                + ("o Estado do RJ" if esfera == "estado" else "o Município do Rio")
+                                + " (abrangência pela lei e pela esfera do sancionador). Quem contratou durante a "
+                                  "vigência está na lista da aba."))
+        return linhas, cob, {"sem_alcance_fora": fora}
+    return agregar
+
+
+def _sanc_itens_de(esfera):
+    def itens(con, ano, mes):
+        pref = f"{ano:04d}-{mes:02d}" if mes else f"{ano:04d}"
+        dentro, _ = _sancoes_que_alcancam(con, esfera, "WHERE substr(data_inicio,1,?)=?", (len(pref), pref))
+        dentro.sort(key=lambda s: s["data_inicio"] or "", reverse=True)
+        return [{"nome": s["nome"] or "—", "doc": P.mascarar_doc(s["cpf_cnpj"]), "orgao": (s["orgao"] or "—")[:80],
+                 "data": s["data_inicio"], "objeto": f"{s['cadastro']} · {(s['categoria'] or '')[:80]}",
+                 "fim": s["data_fim"]} for s in dentro[:TOP]]
+    return itens
 
 
 _AL_A, _AL_M = P.sql_ano_mes("created_at", "iso")
@@ -372,8 +400,12 @@ FONTES: dict[str, Fonte] = {f.id: f for f in (
     Fonte("despesa_prefeitura", "prefeitura", "Despesa da Prefeitura por exercício (ContasRio)",
           ("empenhado", "liquidado", "pago_relatorio"), _R_EXEC, "exercício (acumulado anual)",
           "ContasRio · pcrj_despesa", "ano", _exec_pref_agregar, _exec_pref_itens),
-    Fonte("sancoes", "transversal", "Sanções CEIS/CNEP por início de vigência", (), {},
-          "início da vigência da sanção", "CGU · sancoes_federais", "mes", _sanc_agregar, _sanc_itens),
+    Fonte("sancoes_estado", "estado", "Sanções que impedem contratar com o Estado (CEIS/CNEP)", (), {},
+          "início da vigência da sanção", "CGU · sancoes_federais", "mes",
+          _sanc_agregar_de("estado"), _sanc_itens_de("estado")),
+    Fonte("sancoes_prefeitura", "prefeitura", "Sanções que impedem contratar com o Município do Rio (CEIS/CNEP)",
+          (), {}, "início da vigência da sanção", "CGU · sancoes_federais", "mes",
+          _sanc_agregar_de("prefeitura"), _sanc_itens_de("prefeitura")),
     Fonte("alertas", "transversal", "Alertas de auditoria por mês de detecção", (), {},
           "data em que o sistema gerou o alerta", "JFN · alertas", "mes", _alertas_agregar, _alertas_itens),
 )}
