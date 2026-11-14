@@ -5655,7 +5655,7 @@ void main(){
     host.innerHTML = CAB + (corpo ? `<div class="pq-grade">${corpo}</div>` : '<div class="dim">Nenhum sinal verificado para mostrar agora.</div>') + '<div class="pq-nota">Indício não é acusação. Cada item abre a aba com a prova primária e a explicação inocente.</div>';
   }
 
-  // node_modules/d3-array/dist/d3-array.mjs
+  // ../../../node_modules/d3-array/dist/d3-array.mjs
   function ascending(a, b) {
     return a == null || b == null ? NaN : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
   }
@@ -5863,7 +5863,7 @@ void main(){
     };
   }
 
-  // node_modules/d3-geo/dist/d3-geo.mjs
+  // ../../../node_modules/d3-geo/dist/d3-geo.mjs
   var epsilon = 1e-6;
   var epsilon2 = 1e-12;
   var pi = Math.PI;
@@ -7364,12 +7364,12 @@ void main(){
     return [-y, 2 * atan(exp(x)) - halfPi];
   };
 
-  // node_modules/topojson-client/src/identity.js
+  // ../../../node_modules/topojson-client/src/identity.js
   function identity_default(x) {
     return x;
   }
 
-  // node_modules/topojson-client/src/transform.js
+  // ../../../node_modules/topojson-client/src/transform.js
   function transform_default(transform) {
     if (transform == null) return identity_default;
     var x02, y02, kx = transform.scale[0], ky = transform.scale[1], dx = transform.translate[0], dy = transform.translate[1];
@@ -7383,13 +7383,13 @@ void main(){
     };
   }
 
-  // node_modules/topojson-client/src/reverse.js
+  // ../../../node_modules/topojson-client/src/reverse.js
   function reverse_default(array2, n) {
     var t, j = array2.length, i = j - n;
     while (i < --j) t = array2[i], array2[i++] = array2[j], array2[j] = t;
   }
 
-  // node_modules/topojson-client/src/feature.js
+  // ../../../node_modules/topojson-client/src/feature.js
   function feature_default(topology, o) {
     if (typeof o === "string") o = topology.objects[o];
     return o.type === "GeometryCollection" ? { type: "FeatureCollection", features: o.geometries.map(function(o2) {
@@ -7457,7 +7457,7 @@ void main(){
     return geometry(o);
   }
 
-  // node_modules/topojson-client/src/stitch.js
+  // ../../../node_modules/topojson-client/src/stitch.js
   function stitch_default(topology, arcs) {
     var stitchedArcs = {}, fragmentByStart = {}, fragmentByEnd = {}, fragments = [], emptyIndex = -1;
     arcs.forEach(function(i, j) {
@@ -7523,7 +7523,7 @@ void main(){
     return fragments;
   }
 
-  // node_modules/topojson-client/src/mesh.js
+  // ../../../node_modules/topojson-client/src/mesh.js
   function mesh_default(topology) {
     return object(topology, meshArcs.apply(this, arguments));
   }
@@ -7589,14 +7589,26 @@ void main(){
   ];
   var PERIODOS = [["vigentes", "Vigentes hoje"], ["2023", "2023–hoje"], ["tudo", "Tudo"]];
   var METODO = {
-    campo: "campo",
+    campo: "unidade compradora",
     orcamento: "orçamento",
-    unidade: "unidade",
-    endereco: "endereço",
+    unidade: "unidade citada",
+    endereco: "endereço (CEP)",
     texto: "texto",
-    orgao: "órgão regional"
+    orgao: "órgão regional",
+    sede: "sede do órgão"
   };
-  var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido" };
+  var STATUS = { em_execucao: "Em execução", executado: "Executado", rescindido: "Rescindido", sem_vigencia: "Sem vigência na fonte" };
+  var GRAUS = [
+    ["explicito", "Explícito no texto", "explícito no texto", "#0A3E8C"],
+    ["unidade", "Inferido pela unidade", "inferido pela unidade", "#1E7BF0"],
+    ["sede", "Sede do órgão", "sede do órgão", "#8CBEF8"]
+  ];
+  var MESES2 = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  var mesRot = (am) => {
+    const m = /^(\d{4})-(\d{2})$/.exec(am || "");
+    return m ? `${MESES2[+m[2] - 1] || m[2]}/${m[1]}` : am || "—";
+  };
+  var pc1 = (a, b) => b > 0 ? (100 * a / b).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%" : "—";
   var rs = (v) => v == null ? "INDISPONÍVEL" : fmtR(v);
   var pct2 = (v) => v == null ? "INDISPONÍVEL" : (Math.round(v * 1e3) / 10).toLocaleString("pt-BR") + "%";
   var dma = (s) => {
@@ -7636,7 +7648,15 @@ void main(){
   function mapaMontar(host) {
     if (!host) return;
     if (_vivo) _vivo.sair();
-    const S = { escopo: "estado", metrica: "valor_contratado", periodo: "vigentes", dados: {}, sel: null };
+    const S = {
+      escopo: "estado",
+      metrica: "valor_contratado",
+      periodo: "vigentes",
+      dados: {},
+      sel: null,
+      graus: { explicito: true, unidade: true, sede: false },
+      filtro: ""
+    };
     host.classList.add("tm");
     host.innerHTML = `
     <div class="tm-topo">
@@ -7650,6 +7670,7 @@ void main(){
         <div class="chips" role="group" aria-label="Período">${PERIODOS.map(([k, r], i) => `<button type="button" class="chip${i ? "" : " on"}" data-tm-periodo="${k}">${r}</button>`).join("")}
           <select class="tm-ir" id="tm-ir" aria-label="Abrir a ficha de um território"><option value="">Ir para…</option></select>
         </div>
+        <div class="chips tm-graus" id="tm-graus" role="group" aria-label="Certeza da atribuição ao município"><span class="tm-rotg">Certeza</span>${GRAUS.map(([k, r]) => `<button type="button" class="chip${S.graus[k] ? " on" : ""}" data-tm-grau="${k}" aria-pressed="${S.graus[k]}">${r}</button>`).join("")}</div>
       </div>
     </div>
     <div class="tm-palco" id="tm-palco">
@@ -7703,10 +7724,12 @@ void main(){
       const ras = feature_default(t, t.objects.ras).features.map((f) => f.properties);
       geo.rio = { path, centro, ras, nomes: new Map(aps.features.map((f) => [String(f.properties.ap), "AP " + f.properties.ap])) };
     }
-    const chave = () => S.escopo + "|" + S.periodo;
+    const grausSel = () => GRAUS.map((g) => g[0]).filter((k) => S.graus[k]).join(",");
+    const qGraus = () => S.escopo === "estado" ? "&graus=" + grausSel() : "";
+    const chave = () => S.escopo + "|" + S.periodo + "|" + (S.escopo === "estado" ? grausSel() : "");
     async function lerDados() {
       const k = chave();
-      if (S.dados[k] === void 0) S.dados[k] = await api(`${S.escopo}?periodo=${S.periodo}`);
+      if (S.dados[k] === void 0) S.dados[k] = await api(`${S.escopo}?periodo=${S.periodo}${qGraus()}`);
       return S.dados[k];
     }
     const linhas = (d) => !d ? [] : (S.escopo === "estado" ? d.municipios : d.aps) || [];
@@ -7742,7 +7765,8 @@ void main(){
         const de = i ? cortes[i - 1] : vals[0], ate = i < cortes.length ? cortes[i] : vals[vals.length - 1];
         return `<span class="tm-lg"><i style="background:${c}"></i>${i === RAMPA.length - 1 ? "≥ " + curto(de, tipo) : curto(de, tipo) + (ate > de ? " – " + curto(ate, tipo) : "")}</span>`;
       }).join("");
-      q("#tm-leg").innerHTML = faixas + `<span class="tm-lg"><i class="hach"></i>sem dado${semDado ? ` (${fmtN(semDado)})` : ""}</span>`;
+      q("#tm-leg").innerHTML = faixas + `<span class="tm-lg"><i class="hach"></i>${S.escopo === "estado" ? "nenhum contrato atribuído" : "sem dado"}${semDado ? ` (${fmtN(semDado)})` : ""}</span>`;
+      q("#tm-graus").hidden = S.escopo !== "estado";
       const av = q("#tm-aviso");
       av.hidden = !!d;
       if (!d) av.innerHTML = "<b>dados do território: INDISPONÍVEL</b> — a API <code>/api/territorio</code> não respondeu (a rota entra no próximo reinício do serviço). O mapa mostra só as divisas.";
@@ -7751,8 +7775,43 @@ void main(){
       sel.innerHTML = `<option value="">${S.escopo === "estado" ? "Ir para município…" : "Ir para AP…"}</option>` + ids.map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join("");
       q("#tm-tit").textContent = S.escopo === "estado" ? "Contratos do Estado · por município" : "Prefeitura do Rio · por área de planejamento";
     }
+    function rodapeEstado(d) {
+      const b = d.baldes || {}, tt = b.total || { n: 0, valor: 0 }, z = { n: 0, valor: 0 };
+      const partes = [
+        ...GRAUS.map(([k, , longo, cor]) => ({ k, rot: "em um município — " + longo, x: b["atribuido_" + k] || z, cor, on: S.graus[k] })),
+        { k: "multi", rot: "em vários municípios (valor não repartido)", x: b.multimunicipio || z, cor: "#B9C9DD" },
+        { k: "regiao", rot: "só com região", x: b.regiao || z, cor: "#CFD9E6" },
+        { k: "estado", rot: "do Estado inteiro (rede, frota, âmbito estadual) ou de sede não conferida", x: b.estado_inteiro || z, cor: "#DDE5EE" },
+        { k: "sem", rot: "sem município identificado (o objeto não diz onde)", x: b.sem_municipio || z, hach: true }
+      ];
+      const barra = tt.valor > 0 ? `<div class="tm-cob" role="img" aria-label="Cobertura do valor por grau de certeza">${partes.filter((q2) => q2.x.valor > 0).map((q2) => `<i class="${q2.hach ? "hach" : ""}${q2.on === false ? " off" : ""}" style="flex:${(q2.x.valor / tt.valor).toFixed(5)} 1 0;${q2.hach ? "" : "background:" + q2.cor}" title="${esc(q2.rot)}: ${pc1(q2.x.valor, tt.valor)}"></i>`).join("")}</div>` : "";
+      const linhas2 = partes.map((q2) => `<li${q2.on === false ? ' class="off"' : ""}><i class="${q2.hach ? "hach" : ""}" ${q2.hach ? "" : `style="background:${q2.cor}"`}></i>
+        <span>${esc(q2.rot)}${q2.on === false ? " — <em>fora do mapa (ligue em “Certeza”)</em>" : ""}</span>
+        <b class="num">${pc1(q2.x.valor, tt.valor)}</b><span class="num">${rs(q2.x.valor)}</span><span class="num tm-n">${fmtN(q2.x.n)} contratos</span></li>`).join("");
+      const noMapa = GRAUS.filter((g) => S.graus[g[0]]).reduce((a, g) => a + ((b["atribuido_" + g[0]] || z).valor || 0), 0);
+      const cp = b.com_pago, fe = d.fora_do_escopo || {}, dup = d.possivel_duplicidade || {}, falta = [];
+      if (cp) falta.push(`<b>Pago:</b> só <b class="num">${fmtN(cp.n)}</b> de <b class="num">${fmtN(tt.n)}</b> contratos têm OB do SIAFE vinculada (<span class="num">${rs(cp.pago)}</span> pagos sobre <span class="num">${rs(cp.valor)}</span> contratados); nos demais o pago é <b>INDISPONÍVEL</b>, não zero.`);
+      if (b.sem_vigencia && b.sem_vigencia.n) falta.push(`<b class="num">${fmtN(b.sem_vigencia.n)}</b> contratações sem fim de vigência na fonte (<span class="num">${rs(b.sem_vigencia.valor)}</span>) ${S.periodo === "vigentes" ? "ficam <b>fora</b> de “Vigentes hoje”" : "não entram em “Vigentes hoje”"}.`);
+      if (dup.n) falta.push(`<b class="num">${fmtN(dup.n)}</b> contratos (<span class="num">${rs(dup.valor)}</span>) podem estar contados <b>duas vezes</b> (PNCP e SIGA sem chave que feche) — a conferir.`);
+      const foraTxt = [
+        [fe.unidade_municipal, "de unidade municipal"],
+        [fe.fora_do_executivo, "de órgão fora do Executivo"],
+        [fe.siga_cancelado, "cancelados no SIGA"],
+        [fe.siga_em_elaboracao, "em elaboração no SIGA"],
+        [fe.siga_repeticoes, "repetições do SIGA"]
+      ].filter((x) => x[0]).map((x) => `<span class="num">${fmtN(x[0])}</span> ${x[1]}`).join(" · ");
+      if (foraTxt) falta.push("<b>Fora do mapa, por regra:</b> " + foraTxt + ".");
+      return `<div class="tm-pe1"><b>Cobertura do valor</b> — <span class="num">${fmtN(tt.n)}</span> contratos, <span class="num">${rs(tt.valor)}</span> · no mapa agora: <b class="num">${pc1(noMapa, tt.valor)}</b> (<span class="num">${rs(noMapa)}</span>)</div>
+      ${barra}<ul class="tm-cobl">${linhas2}</ul>
+      ${falta.length ? `<ul class="tm-falta">${falta.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}
+      <details class="tm-crit"><summary>Critérios e fontes</summary>
+        <p><b>Certeza.</b> ${GRAUS.map(([k, , longo]) => `<i>${esc(longo)}</i>: ${esc((d.nota_grau || {})[k] || "")}`).join("; ")}.</p>
+        <p><b>Em execução.</b> ${esc(d.nota_execucao || "")}.</p><p><b>Pago.</b> ${esc(d.nota_pago || "")}.</p><p><b>Alertas.</b> ${esc(d.nota_alertas || "")}.</p></details>
+      <div class="tm-pe2">Fonte: ${esc(d.fonte || "—")} · atualizado em <span class="num">${dmhm(d.atualizado_em)}</span>${d.pago_apurado_em ? ` · pago apurado em <span class="num">${dmhm(d.pago_apurado_em)}</span>` : ""}${d.confianca_texto === "baixa" ? " · atribuição por <b>texto</b> com confiança <b>baixa</b> (auditoria &lt; 85%)" : ""}</div>`;
+    }
     function rodape(d) {
       if (!d) return "Fonte: INDISPONÍVEL";
+      if (S.escopo === "estado" && d.baldes && d.baldes.atribuido_explicito) return rodapeEstado(d);
       const b = d.baldes || {}, p = [];
       p.push(`Fonte: ${esc(d.fonte || "—")}`, `atualizado em <span class="num">${dmhm(d.atualizado_em)}</span>`);
       const um = (x, rot2) => x && x.n ? `<b class="num">${fmtN(x.n)}</b> ${rot2} (<span class="num">${rs(x.valor)}</span>)` : "";
@@ -7772,7 +7831,9 @@ void main(){
       const d = S.dados[chave()], G = S.escopo === "estado" ? geo.est : geo.rio;
       const l = linhas(d).find((x2) => idDe(x2) === p.dataset.k), nome = G.nomes.get(p.dataset.k) || "";
       const tem = l && l.n_contratos > 0;
-      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : ""));
+      dica.innerHTML = `<b>${esc(nome)}</b>` + (!d ? "<span>dados: INDISPONÍVEL</span>" : !tem ? "<span>nenhum contrato atribuído</span>" : `<span class="num">${rs(l.valor_contratado)}</span><span><b class="num">${fmtN(l.n_contratos)}</b> contratos · <b class="num">${fmtN(l.n_em_execucao)}</b> em execução</span><span>executado: <b class="num">${pct2(l.pct_executado)}</b></span>` + (l.por_grau ? `<span>${GRAUS.filter((g) => (l.por_grau[g[0]] || {}).n).map((g) => `${g[2]}: <b class="num">${fmtN(l.por_grau[g[0]].n)}</b>${S.graus[g[0]] ? "" : " (fora)"}`).join(" · ")}</span>` : "") + (l.n_alertas ? `<span>indícios: <b class="num">${fmtN(l.n_alertas)}</b></span>` : "") + (l.n_multi ? `<span>participa de <b class="num">${fmtN(l.n_multi)}</b> multimunicipais</span>` : ""));
+      if (d && !tem && l && l.por_grau && GRAUS.some((g) => !S.graus[g[0]] && (l.por_grau[g[0]] || {}).n))
+        dica.innerHTML += `<span>há contratos só por <b>${GRAUS.filter((g) => !S.graus[g[0]] && (l.por_grau[g[0]] || {}).n).map((g) => g[2]).join(", ")}</b> (grau desligado)</span>`;
       dica.hidden = false;
       const r = q("#tm-palco").getBoundingClientRect(), b = p.getBoundingClientRect();
       const x = (ev && ev.clientX != null && ev.pointerType === "mouse" ? ev.clientX : b.left + b.width / 2) - r.left;
@@ -7797,10 +7858,68 @@ void main(){
       host.classList.add("tm-com-ficha");
       ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>
       <h3 class="v61-disp">${esc(nome)}</h3><div class="dim">lendo…</div>`;
-      const f = await api(`${S.escopo}/${encodeURIComponent(k)}?periodo=${S.periodo}`);
+      const f = await api(`${S.escopo}/${encodeURIComponent(k)}?periodo=${S.periodo}${qGraus()}`);
       if (S.sel !== k) return;
-      ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>` + fichaHTML(nome, f);
+      S.filtro = "";
+      S.ficha = f;
+      ficha.innerHTML = `<div class="tf-alca" data-tf-alca></div><button type="button" class="tf-x" data-tf-x aria-label="Fechar a ficha">✕</button>` + (S.escopo === "estado" && f && f.serie ? fichaEstadoHTML(nome, f) : fichaHTML(nome, f));
       ficha.scrollTop = 0;
+    }
+    const selo = (c) => `<span class="tf-selo g-${esc(c.grau || "")} c-${esc(c.confianca || "")}">${esc((GRAUS.find((g) => g[0] === c.grau) || [])[2] || METODO[c.metodo] || "—")}</span>`;
+    function contratoLi(c) {
+      const pago = c.pago == null ? `<b>INDISPONÍVEL</b>` : `<b class="num">${rs(c.pago)}</b> <span class="num">(${pct2(c.pct_pago)} · ${fmtN(c.n_obs || 0)} OB)</span>`;
+      return `<li>
+      <div class="tf-obj">${esc(c.objeto || "(sem objeto na fonte)")}</div>
+      <dl class="tf-dl">
+        <dt>Órgão</dt><dd>${esc(c.orgao || "—")}</dd>
+        <dt>Fornecedor</dt><dd>${c.fornecedor_cnpj ? `<button type="button" class="tf-lk" data-tf-cnpj="${esc(c.fornecedor_cnpj)}" data-tf-nome="${esc(c.fornecedor_nome || "")}">${esc(c.fornecedor_nome || c.fornecedor_doc)}</button>` : esc(c.fornecedor_nome || "—")}${c.fornecedor_doc ? ` <span class="num dim">${esc(c.fornecedor_doc)}</span>` : ""}</dd>
+        <dt>Contratado</dt><dd><b class="num tf-val">${rs(c.valor)}</b></dd>
+        <dt>Pago (SIAFE)</dt><dd>${pago}${c.pago == null && c.pago_motivo ? `<span class="tf-pq">${esc(c.pago_motivo)}</span>` : ""}</dd>
+        <dt>Vigência</dt><dd><span class="num">${dma(c.vig_ini)} – ${dma(c.vig_fim)}</span>${c.data_assinatura ? ` · assinado em <span class="num">${dma(c.data_assinatura)}</span>` : ""}</dd>
+        <dt>Situação</dt><dd><span class="tf-st s-${esc(c.status || "")}">${esc(STATUS[c.status] || c.status || "—")}</span>${c.situacao_fonte ? ` · no SIGA: ${esc(c.situacao_fonte)}` : ""}</dd>
+        <dt>Fonte</dt><dd>${esc(c.fonte || "—")}${c.processo ? ` · processo <span class="num">${esc(c.processo)}</span>` : ""}</dd>
+        <dt>Município</dt><dd>${selo(c)}${c.multi ? ' <span class="tf-selo">multimunicipal</span>' : ""}<span class="tf-pq">${esc(c.evidencia || "")}</span></dd>
+      </dl>${c.alerta ? `<div class="tf-ind">${esc(c.alerta)}</div>` : ""}</li>`;
+    }
+    function contratosHTML(f) {
+      const t = S.filtro.trim().toLowerCase(), todos = f.contratos || [];
+      const ls = !t ? todos : todos.filter((c) => [c.objeto, c.orgao, c.fornecedor_nome, c.fornecedor_doc, c.processo].some((x) => (x || "").toLowerCase().includes(t)));
+      return ls.length ? `<ul class="tf-ctr tf-ctr2">${ls.map(contratoLi).join("")}</ul>` : `<div class="dim">${t ? "Nenhum contrato da lista casa com o filtro." : "Nenhum contrato atribuído nesta seleção."}</div>`;
+    }
+    function fichaEstadoHTML(nome, f) {
+      const k = f.kpis || {}, kp = (r, v, cls) => `<div class="tf-k${cls ? " " + cls : ""}"><span>${r}</span><b class="num">${v}</b></div>`;
+      const per = (PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "", sr = f.serie || { anos: [] };
+      const maxO = Math.max(1, ...(f.orgaos || []).map((o) => o.valor || 0)), nMulti = (f.contratos || []).filter((c) => c.multi).length;
+      const lista = (f.contratos || []).length - nMulti;
+      const pg = (v) => v > 0 ? rs(v) : "—";
+      const ano = (a, i) => `<details class="tf-ano"${i ? "" : " open"}><summary><b class="num">${esc(a.ano)}</b><span><span class="num">${fmtN(a.n)}</span> assinados · <span class="num">${rs(a.valor)}</span></span><span>pago (OBs vinculadas) <span class="num">${pg(a.pago)}</span></span></summary>
+        <table class="tf-tab"><thead><tr><th>Mês</th><th>Assin.</th><th>Contratado</th><th>Pago (SIAFE)</th></tr></thead><tbody>${a.meses.map((m) => `<tr><td>${esc(mesRot(m.mes))}</td><td class="num">${m.n ? fmtN(m.n) : "—"}</td><td class="num">${m.n ? rs(m.valor) : "—"}</td><td class="num">${pg(m.pago)}</td></tr>`).join("")}</tbody></table></details>`;
+      return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">Contratos do Estado executados neste município · ${esc(per)} · certeza: ${GRAUS.filter((g) => S.graus[g[0]]).map((g) => g[2]).join(" + ") || "—"}</p>
+      <div class="tf-kpis tf-kpis2">${kp("Contratos", fmtN(k.n_contratos))}${kp("Em execução", fmtN(k.n_em_execucao))}
+        ${kp("Valor contratado", rs(k.valor_contratado), "larga")}${kp("Em execução (valor)", rs(k.valor_em_execucao), "larga")}
+        ${kp("Pago (OB SIAFE)", rs(k.pago), "larga")}${kp("% pago", pct2(k.pct_executado))}${kp("Indícios", fmtN(k.n_alertas || 0))}</div>
+      <p class="tf-nota">${k.n_com_pago ? `Pago e % pago consideram só os <b class="num">${fmtN(k.n_com_pago)}</b> de <b class="num">${fmtN(k.n_contratos)}</b> contratos com OB vinculada; nos demais o pago é <b>INDISPONÍVEL</b> (≠ zero).` : "Nenhum contrato desta seleção tem OB vinculada: pago <b>INDISPONÍVEL</b> (≠ zero)."}
+        ${k.n_sem_vigencia ? ` <b class="num">${fmtN(k.n_sem_vigencia)}</b> sem fim de vigência na fonte.` : ""}${k.n_executados ? ` <b class="num">${fmtN(k.n_executados)}</b> já executados.` : ""}${k.n_rescindidos ? ` <b class="num">${fmtN(k.n_rescindidos)}</b> rescindidos.` : ""}</p>
+      ${k.n_multi ? `<p class="tf-nota">Participa de <b class="num">${fmtN(k.n_multi)}</b> contratos multimunicipais (valor não repartido — fica no balde "vários municípios").</p>` : ""}
+      <h4>Certeza da atribuição</h4>
+      <ul class="tf-grau">${(f.por_grau || []).map((g) => `<li class="${g.incluido ? "" : "off"}"><span class="tf-selo g-${esc(g.grau)}">${esc((GRAUS.find((x) => x[0] === g.grau) || [])[2] || g.grau)}</span>
+        <span class="num">${fmtN(g.n)}</span><span class="num">${rs(g.valor)}</span><small>${esc(g.nota || "")}${g.incluido ? "" : " — <b>fora desta ficha</b> (ligue em “Certeza”)"}</small></li>`).join("")}</ul>
+      <h4>Por ano e mês</h4>
+      ${sr.anos.length ? sr.anos.map(ano).join("") : '<div class="dim">Sem contrato datado nesta seleção.</div>'}
+      <p class="tf-nota">${esc(sr.criterio || "")}. “—” no pago = nenhuma OB <b>vinculada</b> no período (não é zero pago).${sr.sem_data && sr.sem_data.n ? ` <b class="num">${fmtN(sr.sem_data.n)}</b> contratos sem data (<span class="num">${rs(sr.sem_data.valor)}</span>) ficam fora da série.` : ""}${sr.pago_sem_serie_mensal && sr.pago_sem_serie_mensal.n ? ` <span class="num">${rs(sr.pago_sem_serie_mensal.valor)}</span> pagos sem série mensal.` : ""}</p>
+      <h4>Órgãos que mais contratam aqui <span class="tf-cnt num">${fmtN((f.orgaos || []).length)}${f.n_orgaos > (f.orgaos || []).length ? " de " + fmtN(f.n_orgaos) : ""}</span></h4>
+      ${(f.orgaos || []).length ? `<ul class="tf-bar tf-bar2">${f.orgaos.map((o) => `<li><span class="tf-n">${esc(o.orgao)}</span><span class="num">${rs(o.valor)}</span>
+        <small><span class="num">${fmtN(o.n)}</span> contratos · pago <span class="num">${rs(o.pago)}</span></small><i style="width:${Math.max(2, (o.valor || 0) / maxO * 100).toFixed(1)}%"></i></li>`).join("")}</ul>` : '<div class="dim">Nenhum órgão nesta seleção.</div>'}
+      <h4>Maiores fornecedores <span class="tf-cnt num">${fmtN((f.fornecedores || []).length)}${f.n_fornecedores > (f.fornecedores || []).length ? " de " + fmtN(f.n_fornecedores) : ""}</span></h4>
+      ${(f.fornecedores || []).length ? `<ul class="tf-forn tf-forn2">${f.fornecedores.map((x) => `<li>${x.cnpj ? `<button type="button" class="tf-lk" data-tf-cnpj="${esc(x.cnpj)}" data-tf-nome="${esc(x.nome || "")}">${esc(x.nome || x.doc || "—")}</button>` : `<span class="tf-n">${esc(x.nome || "—")}</span>`}<span class="num">${rs(x.valor)}</span>
+        <small>${x.doc ? `<span class="num">${esc(x.doc)}</span> · ` : ""}<span class="num">${fmtN(x.n)}</span> contratos · pago <span class="num">${rs(x.pago)}</span></small></li>`).join("")}</ul>` : '<div class="dim">Nenhum fornecedor nesta seleção.</div>'}
+      <h4>Indícios <span class="tf-cnt num">${fmtN((f.alertas || []).length)}</span></h4>
+      ${(f.alertas || []).length ? `<ul class="tf-al">${f.alertas.map((a) => `<li><b>${esc(a.fornecedor_nome || "—")}</b> · ${esc(a.orgao || "")}<br>${esc(a.texto || "")}</li>`).join("")}</ul>` : '<div class="dim">Nenhum contrato desta seleção com pago acima do valor registrado.</div>'}
+      <p class="tf-nota">${esc(f.nota_alertas || "")}.</p>
+      <h4>Contratos <span class="tf-cnt num">${fmtN(lista)}${f.n_contratos_total > lista ? " de " + fmtN(f.n_contratos_total) + " (os de maior valor)" : ""}${nMulti ? " + " + fmtN(nMulti) + " multimunicipais" : ""}</span></h4>
+      <input type="search" class="tf-filtro" id="tf-filtro" placeholder="Filtrar por objeto, órgão, fornecedor ou processo" aria-label="Filtrar os contratos da ficha">
+      <div id="tf-lista">${contratosHTML(f)}</div>
+      <p class="tf-fonte">Fonte: ${esc(f.fonte || "—")} · atualizado em <span class="num">${dmhm(f.atualizado_em)}</span>${f.pago_apurado_em ? ` · pago apurado em <span class="num">${dmhm(f.pago_apurado_em)}</span>` : ""}<br>${esc(f.nota_pago || "")}.<br>${esc(f.nota_execucao || "")}.</p>`;
     }
     function fecharFicha() {
       S.sel = null;
@@ -7815,7 +7934,7 @@ void main(){
       if (!f) return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub}</p><div class="tf-indisp"><b>INDISPONÍVEL</b> — a API do território não respondeu.</div>`;
       const k = f.kpis || {}, kp = (r, v) => `<div class="tf-k"><span>${r}</span><b class="num">${v}</b></div>`;
       const maxO = Math.max(1, ...(f.orgaos || []).map((o) => o.valor || 0));
-      const selo = (c) => `<span class="tf-selo m-${esc(c.metodo || "")} c-${esc(c.confianca || "")}" title="${esc(c.evidencia || "")}">${esc(METODO[c.metodo] || c.metodo || "—")} · ${esc(c.confianca || "—")}</span>`;
+      const selo2 = (c) => `<span class="tf-selo m-${esc(c.metodo || "")} c-${esc(c.confianca || "")}" title="${esc(c.evidencia || "")}">${esc(METODO[c.metodo] || c.metodo || "—")} · ${esc(c.confianca || "—")}</span>`;
       return `<h3 class="v61-disp">${esc(nome)}</h3><p class="tf-sub">${sub} · ${esc((PERIODOS.find((p) => p[0] === S.periodo) || [])[1] || "")}</p>
       <div class="tf-kpis">${kp("Em execução", fmtN(k.n_em_execucao))}${kp("Executados", fmtN(k.n_executados))}
         ${kp("Valor contratado", rs(k.valor_contratado))}${kp("Pago", rs(k.pago))}${kp("% executado", pct2(k.pct_executado))}</div>
@@ -7831,7 +7950,7 @@ void main(){
           <div class="tf-obj">${esc(c.objeto || "(sem objeto na fonte)")}</div>
           <div class="tf-meta">${esc(c.orgao || "—")} · ${esc(c.fornecedor_nome || c.fornecedor_cnpj || "—")}</div>
           <div class="tf-lin"><span class="num tf-val">${rs(c.valor)}</span><span class="num">${dma(c.vig_ini)} – ${dma(c.vig_fim)}</span></div>
-          <div class="tf-lin"><span class="tf-st s-${esc(c.status || "")}">${esc(STATUS[c.status] || c.status || "—")}</span><span>pago: <b class="num">${pct2(c.pct_pago)}</b></span>${selo(c)}${c.multi ? '<span class="tf-selo">multimunicipal</span>' : ""}</div></li>`).join("")}</ul>` : '<div class="dim">Nenhum contrato atribuído nesta seleção.</div>'}
+          <div class="tf-lin"><span class="tf-st s-${esc(c.status || "")}">${esc(STATUS[c.status] || c.status || "—")}</span><span>pago: <b class="num">${pct2(c.pct_pago)}</b></span>${selo2(c)}${c.multi ? '<span class="tf-selo">multimunicipal</span>' : ""}</div></li>`).join("")}</ul>` : '<div class="dim">Nenhum contrato atribuído nesta seleção.</div>'}
       <h4>Alertas e achados</h4>
       ${(f.alertas || []).length ? `<ul class="tf-al">${f.alertas.map((a) => `<li>${esc(a.texto || "")}</li>`).join("")}</ul>` : `<div class="dim">${f.alertas === null ? "INDISPONÍVEL — os alertas ainda não têm vínculo territorial." : "Nenhum alerta ligado a este território."}</div>`}
       <p class="tf-fonte">Fonte: ${esc(f.fonte || "—")} · atualizado em <span class="num">${dmhm(f.atualizado_em)}</span></p>`;
@@ -7889,9 +8008,19 @@ void main(){
       if (portal) ficha.addEventListener(t, fn, o);
     };
     ouvir("click", async (e) => {
-      const b = e.target.closest("[data-tm-escopo],[data-tm-metrica],[data-tm-periodo],[data-tf-x],[data-tf-cnpj],path.tm-a");
+      const b = e.target.closest("[data-tm-escopo],[data-tm-metrica],[data-tm-periodo],[data-tm-grau],[data-tf-x],[data-tf-cnpj],path.tm-a");
       if (!b) return;
       if (b.dataset.tmEscopo) return trocarEscopo(b.dataset.tmEscopo);
+      if (b.dataset.tmGrau) {
+        const g = b.dataset.tmGrau;
+        if (S.graus[g] && GRAUS.filter((x) => S.graus[x[0]]).length === 1) return;
+        S.graus[g] = !S.graus[g];
+        b.classList.toggle("on", S.graus[g]);
+        b.setAttribute("aria-pressed", S.graus[g]);
+        pintar(await lerDados());
+        if (S.sel) abrirFicha(S.sel);
+        return;
+      }
       if (b.dataset.tmMetrica) {
         S.metrica = b.dataset.tmMetrica;
         host.querySelectorAll("[data-tm-metrica]").forEach((x) => x.classList.toggle("on", x === b));
@@ -7921,6 +8050,12 @@ void main(){
         abrirFicha(e.target.value);
         e.target.value = "";
       }
+    });
+    ouvir("input", (e) => {
+      if (e.target.id !== "tf-filtro" || !S.ficha) return;
+      S.filtro = e.target.value;
+      const l = ficha.querySelector("#tf-lista");
+      if (l) l.innerHTML = contratosHTML(S.ficha);
     });
     ouvir("pointerover", (e) => {
       const p = e.target.closest && e.target.closest("path.tm-a");
