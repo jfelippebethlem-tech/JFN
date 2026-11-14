@@ -73,7 +73,7 @@ def api_periodo(fonte: str, ano: str = "", mes: str = ""):
     except P.PeriodoInvalido as exc:
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=400)
     try:
-        d = _cache_calc(f"periodo:{fonte}:v1", _TTL, _calc(fonte))
+        d = _cache_calc(f"periodo:{fonte}:v2", _TTL, _calc(fonte))
         P.conferir(d["quebra"])                  # o que sai do cache em disco também tem de fechar
         sel = P.selecao(d["quebra"], a, m)
         itens = None

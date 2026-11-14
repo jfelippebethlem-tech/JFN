@@ -71,8 +71,12 @@ def _ob_agregar(con, hoje):
         "WHERE status IS NOT 'Contabilizado' GROUP BY 1 ORDER BY 3 DESC")]
     cob = P.Cobertura(
         inicio=inicio, fim=fim, anos_sem_coleta=frozenset(set(range(inicio[0], fim[0] + 1)) - anos),
+        # 2016–2020: ~2,2 mil OB/ano coletadas contra ~180 mil+ a partir de 2021
+        # (medido em 14/11/2026). Ano assim não pode sair "ok" ao lado dos completos — sai PARCIAL.
+        anos_parciais=frozenset(range(2016, 2021)),
         mes_corrente=_mes_corrente(hoje), zero_possivel=False,
-        nota=("SIAFE-Rio 1 (2016–2023) e SIAFE-Rio 2 (2021+). A coleta é PARCIAL por unidade gestora: todo "
+        nota=("SIAFE-Rio 1 (2016–2023) e SIAFE-Rio 2 (2021+); 2016–2020 com coleta mínima (~2,2 mil OB por ano). "
+              "A coleta é PARCIAL por unidade gestora: todo "
               "valor é PISO do que o Estado pagou, e mês sem OB coletada é lacuna de coleta (INDISPONÍVEL), "
               "não mês sem pagamento."))
     return linhas, cob, {"fora_do_pago": fora}
