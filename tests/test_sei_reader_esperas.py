@@ -149,3 +149,11 @@ def test_arquivador_sem_texto_da_captura_roda_o_ocr(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "_ocr_pdf", lambda b: chamadas.append(1) or "TEOR DO OCR FEITO AGORA")
     man = A.arquivar(origem, tmp_path / "arq", "270001/000001/2026")
     assert chamadas == [1] and man["docs"][0]["chars"] == len("TEOR DO OCR FEITO AGORA")
+
+
+def test_liberar_memoria_pdf_nao_quebra_e_o_leitor_chama_depois_do_ocr():
+    from pathlib import Path
+    from compliance_agent.sei import ocr_docs
+    ocr_docs.liberar_memoria_pdf()                      # idempotente, sem PDF aberto, em qualquer libc
+    src = Path(SR.__file__).read_text(encoding="utf-8")
+    assert src.index("ocr_documento(body, tipo=tipo))") < src.index("liberar_memoria_pdf()       #")

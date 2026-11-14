@@ -286,6 +286,25 @@ def _render_paginas_pdf(dados: bytes, max_paginas: int):
 # --------------------------------------------------------------------------- #
 # API pública
 # --------------------------------------------------------------------------- #
+def liberar_memoria_pdf() -> None:
+    """Devolve ao sistema o que o último PDF ocupou. Para laços longos de captura (centenas de anexos por processo).
+
+    O MuPDF guarda páginas/imagens decodificadas num cache global (até 256 MB) e a glibc não devolve sozinha o
+    que os PDFs e as páginas a 200 dpi ocuparam. Medido no it-campo em 14/11/2026 sobre 250 PDFs (181 MB) de um
+    processo real: pico de RSS 0,58 GB sem liberar, 0,25 só com `store_shrink`, 0,37 só com `malloc_trim`, 0,10
+    com os dois — ao custo de 0,03 s por documento. Com ~13 sessões no nó, é a memória de 3 a 4 sessões."""
+    try:
+        import fitz
+        fitz.TOOLS.store_shrink(100)
+    except (ImportError, AttributeError, RuntimeError) as exc:
+        log.debug("liberar_memoria_pdf: store_shrink indisponível: %s", exc)
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError) as exc:           # libc sem malloc_trim (não-glibc): segue sem
+        log.debug("liberar_memoria_pdf: malloc_trim indisponível: %s", exc)
+
+
 def ocr_documento(fonte: Fonte, *, tipo: Optional[str] = None, lang: str = "por") -> str:
     """Lê um documento do SEI (PDF ou imagem), usando OCR quando for um SCAN.
 

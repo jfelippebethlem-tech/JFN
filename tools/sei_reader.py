@@ -819,7 +819,7 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
         if txt.strip():
             break
     txt = txt.strip()
-    from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY
+    from compliance_agent.sei.ocr_docs import ocr_documento, liberar_memoria_pdf  # import LAZY
     # placeholder de doc EXTERNO/escaneado ("Clique aqui … nova janela") → baixa o anexo e OCR
     if "nova janela" in txt.lower() or len(txt) < 120:
         try:
@@ -855,6 +855,7 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                                 "conteudo": off.strip()[:MAX_CHARS_DOC], "via": "office"}
                     continue
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
+                liberar_memoria_pdf()       # laço de centenas de anexos: sem isto o RSS sobe a ~0,6 GB e fica
                 if txt_ocr and len(txt_ocr.strip()) > 20:
                     # anexo_bytes preserva o PDF ORIGINAL (imagens/fotos de prova) p/ quem
                     # arquiva — só quando é PDF (imagem solta não vira .pdf direto). Chave
