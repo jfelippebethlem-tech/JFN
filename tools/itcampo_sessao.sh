@@ -34,7 +34,7 @@ NF=$("$PY" -c "import json,sys;print(len(json.load(open(sys.argv[1]))))" "$FILA"
 DESDE=$(stat -c %s data/sei_integra_fila.log 2>/dev/null || echo 0)
 titulo "JFN SEI sessão $K/$N — começando ($NF na fila)"
 echo "=== JFN SEI — sessão $K de $N — $(date '+%F %T') — $NF processo(s) na fatia, orçamento ${SEG}s ==="
-echo "    navegador: $([ "${SEI_HEADED:-}" = 1 ] && echo 'VISÍVEL (WSLg)' || echo 'sem tela disponível')"
+echo "    navegador: $([ "${SEI_HEADED:-}" = 1 ] && echo 'VISÍVEL (WSLg, lento com PDF)' || echo 'sem janela (headless: PDF visível trava 450 s/doc) — o progresso aparece aqui')"
 # progresso documento a documento do processo em captura (o stdout da captura fica dentro da fila da casa)
 ( while sleep 30; do
     T=$(cut -d' ' -f1 data/itcampo_estado.txt 2>/dev/null | tr / _)
