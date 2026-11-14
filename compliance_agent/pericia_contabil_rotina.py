@@ -129,9 +129,10 @@ def resumir(resultados: list[dict], *, top: int = TOP) -> dict:
                             "conferir na NF, não muda a classe e não é duplicidade comprovada. OBs do mesmo dia para a "
                             "mesma NL são parcelas (uma NL liquida vários documentos). OB repetida SEM confirmação do "
                             "banco na coleta é INDISPONÍVEL: a devolução posterior não aparece até recoletar o status"),
-            "devolucao": ("só pelo SIAFE: 'Erro no Pagamento' = devolvida inteira (0,00); Guia de Devolução com outro "
-                          "status = valor devolvido desconhecido → a OB sai da soma e o pago vira piso (o valor da guia "
-                          "está na tela Guia de Devolução do SIAFE, ainda não coletada)"),
+            "devolucao": ("só pelo SIAFE: com a Guia de Devolução coletada (tela Guia de Devolução, vínculo OB + UG), "
+                          "pago = valor da OB − valor devolvido; sem guia coletada, 'Erro no Pagamento' = devolvida "
+                          "inteira (0,00) e GD com outro status = valor devolvido desconhecido → a OB sai da soma e o "
+                          "pago vira piso"),
             "acima_do_valor": ("pago acima do valor registrado/atualizado do contrato. No Estado a fonte (TCE-RJ) não "
                                "publica termos aditivos: é indício a conferir nos termos, não dano apurado"),
             "adiantado": ("pago à frente do pró-rata linear, mas dentro do valor contratado — não é pagamento a maior "

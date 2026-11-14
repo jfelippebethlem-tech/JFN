@@ -457,6 +457,46 @@ def test_devolucao_parcial_nao_usa_o_espelho_do_tfe(tmp_path):
     assert pc.valor_efetivo_ob(50_000.0, "erro", 50_000.0) == (0.0, pc.DEVOLVIDA)      # o espelho não ressuscita a OB
 
 
+def _com_guias(db, guias):
+    """Guias de Devolução coletadas do SIAFE (tabela `gd_siafe`, `siafe_documento --tipo GD`)."""
+    con = sqlite3.connect(db)
+    con.execute("CREATE TABLE gd_siafe (numero TEXT, ug_emitente TEXT, exercicio INTEGER, status TEXT, ob TEXT, "
+                "valor REAL)")
+    con.executemany("INSERT INTO gd_siafe VALUES (?,?,2026,?,?,?)", guias)
+    con.commit()
+    con.close()
+    return db
+
+
+def test_devolucao_parcial_usa_o_valor_da_guia_quando_coletada(tmp_path):
+    db = _com_guias(_base_devolucao(tmp_path), [("2026GD00002", "700700", "Contabilizado", "2026OB00201", 20_000.0)])
+    k = {r["id"]: r for r in pc.avaliar_estado(db, corte=date(2026, 7, 1))}["K"]
+    assert k["pago"] == pytest.approx(30_000.0), k                   # 50.000,00 − 20.000,00 devolvidos
+    assert k["motivo"] != "devolucao_sem_valor_apurado"
+    assert "sem o valor efetivamente pago" not in k["ressalvas"] and "devolvida" in k["ressalvas"]
+
+
+def test_guia_de_outra_ug_ou_cancelada_nao_abate(tmp_path):
+    db = _com_guias(_base_devolucao(tmp_path), [("2026GD00002", "999999", "Contabilizado", "2026OB00201", 20_000.0),
+                                                ("2026GD00009", "700700", "Cancelado", "2026OB00201", 20_000.0)])
+    k = {r["id"]: r for r in pc.avaliar_estado(db, corte=date(2026, 7, 1))}["K"]
+    assert k["motivo"] == "devolucao_sem_valor_apurado"              # nada conhecido: segue piso
+
+
+def test_devolucao_posterior_a_coleta_da_ob_e_abatida_pela_guia(tmp_path):
+    # a OB foi colhida 'Enviado Manualmente' e sem GD; a guia chegou depois e só a tela de GD a mostra
+    db = _com_guias(_base_devolucao(tmp_path), [("2026GD00011", "700700", "Contabilizado", "2026OB00102", 100_000.0)])
+    j = {r["id"]: r for r in pc.avaliar_estado(db, corte=date(2026, 7, 1))}["J"]
+    assert j["pago"] == pytest.approx(0.0), j                        # as duas OBs voltaram
+
+
+def test_valor_efetivo_com_guia_conhecida():
+    assert pc.valor_efetivo_ob(50_000.0, "gd", devolvido=20_000.0) == (30_000.0, pc.DEVOLVIDA)
+    assert pc.valor_efetivo_ob(50_000.0, "erro", devolvido=50_000.0) == (0.0, pc.DEVOLVIDA)
+    assert pc.valor_efetivo_ob(50_000.0, "gd", devolvido=60_000.0) == (0.0, pc.DEVOLVIDA_SEM_VALOR)  # incoerente
+    assert pc.valor_efetivo_ob(50_000.0, "", devolvido=50_000.0) == (0.0, pc.DEVOLVIDA)
+
+
 def test_devolucao_sem_valor_apurado_nao_vira_a_menor(tmp_path):
     lin = {r["id"]: r for r in pc.avaliar_estado(_base_devolucao(tmp_path), corte=date(2026, 7, 1))}["L"]
     assert lin["categoria"] == "INDETERMINADO" and lin["motivo"] == "devolucao_sem_valor_apurado", lin

@@ -327,16 +327,25 @@ def situacao_devolucao(gd: Any, status_envio: Any) -> str:
     return ""
 
 
-def valor_efetivo_ob(valor: float, situacao: str, valor_tfe: float | None = None) -> tuple[float, str]:
+def valor_efetivo_ob(valor: float, situacao: str, valor_tfe: float | None = None, *,
+                     devolvido: float | None = None) -> tuple[float, str]:
     """(valor que conta como pago, marca) — SÓ com o SIAFE (regra da casa: fonte de OB nunca é o espelho do TFE).
+
+    · `devolvido` (soma das Guias de Devolução válidas da OB, tabela `gd_siafe`) conhecido → pago = valor −
+      devolvido, marcado como devolvida apurada — vale também para a devolução POSTERIOR à coleta da OB, que não
+      deixa GD nem status na OB. Guia que devolve mais do que a OB pagou é incoerente → valor desconhecido.
 
     · 'erro' (status_envio 'Erro no Pagamento') → devolvida inteira: 0,00. Conferido contra o espelho em 13/11/2026
       só como CONTROLE: 13.659 de 13.733 (99,5%) saem lá com 0,00.
     · 'gd' com outro status (Parcialmente Pago, Processado e Pago…) → devolução PARCIAL ou posterior; o valor da
-      guia está na tela Guia de Devolução do SIAFE (`tblGuiaDevolucao`: OB · Valor), que a casa ainda não coleta →
-      valor efetivo DESCONHECIDO: fora da soma (o pago vira piso) e marcado.
+      guia está na tela Guia de Devolução do SIAFE (`gd_siafe`); sem a guia coletada → valor efetivo DESCONHECIDO:
+      fora da soma (o pago vira piso) e marcado.
     `valor_tfe` é ignorado (mantido na assinatura por compatibilidade): o espelho parou em 01/10/2026, não é
     recoletável de datacenter e não é fonte de OB. Efeito medido da troca: 0 em "acima do valor"; 3 contratos mudam."""
+    if devolvido is not None:
+        if 0 <= devolvido <= valor + 0.005:
+            return round(max(0.0, valor - devolvido), 2), DEVOLVIDA
+        return 0.0, DEVOLVIDA_SEM_VALOR
     if not situacao:
         return float(valor), ""
     if situacao == "erro":
@@ -355,6 +364,8 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
     cols = _colunas(con, "ob_orcamentaria_siafe")
     c_gd = "gd" if "gd" in cols else "''"
     c_env = "status_envio" if "status_envio" in cols else "''"
+    from compliance_agent.siafe_gd import devolvido_por_ob
+    devolvido = devolvido_por_ob(con)       # {} sem a tabela: segue a regra de piso
     vistos: set = set()
     brutas: list = []
     for num, ex, ug, dt, proc, cred, val, nl, comp, gd, env in con.execute(
@@ -370,7 +381,7 @@ def _obs_por_credor(con, credores: set[str]) -> tuple[dict, dict]:
         brutas.append((c, num, str(ug), dt, proc, val, nl, comp, situacao_devolucao(gd, env), str(env or "").strip()))
     por_credor: dict[str, list] = defaultdict(list)
     for c, num, ug, dt, proc, val, nl, comp, sit, env in brutas:
-        v, marca = valor_efetivo_ob(float(val or 0), sit)
+        v, marca = valor_efetivo_ob(float(val or 0), sit, devolvido=devolvido.get((str(num).strip(), ug)))
         # (data, chave do processo, UG, valor efetivo, NL, competência, número da OB, devolução, valor bruto,
         #  status_envio)
         por_credor[c].append((parse_data(dt), chave_sei(proc), ug, v, nl or "", comp or "", num, marca,

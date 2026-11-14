@@ -14,12 +14,16 @@ CLI:
   python -m compliance_agent.siafe_runner sweep [2|1]       # sweep completo (sistema 2=2024-26, 1=2016-23)
   python -m compliance_agent.siafe_runner ug <UG> [ANO]     # uma UG (fura o teto)
   python -m compliance_agent.siafe_runner retentar [MIN]    # retentativa diurna: avisa o dono MIN min antes (MFA)
+  python -m compliance_agent.siafe_runner status [DIAS] [ANO]  # recoleta status_envio das OBs intermediárias
+  python -m compliance_agent.siafe_runner gd [UGS] [ANO]       # Guias de Devolução, fila por valor
+O diário roda status + gd ao final (pós-coleta, teto POS_MINUTOS; desliga com JFN_SIAFE_POS_DIARIO=0).
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
@@ -246,11 +250,52 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             _log(f"diário {ano}: favorecido_resumo → {resumo_fav.get('linhas')} favorecidos")
         except Exception as e:  # noqa: BLE001
             _log(f"diário {ano}: favorecido_resumo falhou: {type(e).__name__}: {str(e)[:60]}")
+        # PÓS-COLETA (verificação Fable 13/11/2026): status das OBs intermediárias + Guias de Devolução. Aqui, e
+        # não num cron próprio, porque só roda depois de um login que deu certo — sem MFA pendente de madrugada.
+        pos = await pos_coleta(ano)
         return {"ok": True, "exercicio": ano, "colhidas": res.get("n"),
                 "ingeridas": ing.get("ingeridas"), "total_tabela": ing.get("total_tabela"),
-                "verificador_dias": verif, "correlacao_sei": corr, "favorecido_resumo": resumo_fav}
+                "verificador_dias": verif, "correlacao_sei": corr, "favorecido_resumo": resumo_fav,
+                "pos_coleta": pos}
     finally:
         _release()
+
+
+POS_MINUTOS = 45        # teto da pós-coleta: o diário das 05:00 termina antes das ~06:15 (dreno às 06:50)
+POS_MAX_DIAS = 6        # dias de OB recolhidos por passada (~37 mil OBs intermediárias em ~200 dias)
+POS_MAX_UGS_GD = 2
+
+
+async def pos_coleta(ano: int, minutos: int = POS_MINUTOS, _status=None, _gd=None, _relogio=time.time) -> dict:
+    """Recoleta de status (maior valor intermediário primeiro) e depois a fila da GD, com um prazo comum conferido
+    entre dias/UGs/fatias. Uma etapa que falha não derruba a outra nem o diário. Desliga com
+    JFN_SIAFE_POS_DIARIO=0. Quem chama segura o lock do runner."""
+    import os
+    if os.environ.get("JFN_SIAFE_POS_DIARIO", "1") == "0":
+        return {"ok": True, "pulado": "JFN_SIAFE_POS_DIARIO=0"}
+    from playwright.async_api import Error as PwError
+    if _status is None:
+        from compliance_agent import siafe_status_ob
+
+        async def _status(a, max_dias, prazo):
+            return await siafe_status_ob.recoletar(a, max_dias=max_dias, prazo=prazo, batimento=refresh_lock)
+    if _gd is None:
+        from compliance_agent import siafe_gd
+
+        async def _gd(a, max_ugs, ate):
+            return await siafe_gd.coletar_fila(a, max_ugs=max_ugs, ate=ate, batimento=refresh_lock)
+    prazo = _relogio() + minutos * 60
+    ate = datetime.fromtimestamp(prazo).strftime("%Y-%m-%dT%H:%M")
+    saida: dict = {"ok": True}
+    for nome, etapa in (("status", lambda: _status(ano, POS_MAX_DIAS, prazo)),
+                        ("gd", lambda: _gd(ano, POS_MAX_UGS_GD, ate))):
+        refresh_lock()
+        try:
+            saida[nome] = await etapa()
+        except (TimeoutError, OSError, ValueError, sqlite3.Error, PwError) as e:
+            saida[nome] = {"ok": False, "erro": f"{type(e).__name__}: {str(e)[:120]}"}
+        _log(f"pós-coleta {ano} {nome}: {json.dumps(saida[nome], ensure_ascii=False)[:400]}")
+    return saida
 
 
 # MFA (laudo de motores 13/11/2026, 4.5): o diário das 05:00 espera 15 min pelo código no Telegram e o dono dorme
@@ -352,6 +397,21 @@ def main():
     elif cmd == "verificar":
         data = sys.argv[2]; ano = int(sys.argv[3]) if len(sys.argv) > 3 else None
         print(json.dumps(asyncio.run(verificar_dia(data, ano)), ensure_ascii=False, indent=1))
+    elif cmd in ("status", "gd"):
+        n = int(sys.argv[2]) if len(sys.argv) > 2 else (POS_MAX_DIAS if cmd == "status" else POS_MAX_UGS_GD)
+        ano = int(sys.argv[3]) if len(sys.argv) > 3 else _ano_corrente()
+        if not _acquire(f"{cmd}:{ano}"):
+            print(json.dumps({"ok": False, "erro": "lock", "lock": lock_status()})); return
+        try:
+            if cmd == "status":
+                from compliance_agent import siafe_status_ob
+                r = asyncio.run(siafe_status_ob.recoletar(ano, max_dias=n, batimento=refresh_lock))
+            else:
+                from compliance_agent import siafe_gd
+                r = asyncio.run(siafe_gd.coletar_fila(ano, max_ugs=n, batimento=refresh_lock))
+            print(json.dumps(r, ensure_ascii=False, indent=1))
+        finally:
+            _release()
     elif cmd == "sweep":
         sistema = sys.argv[2] if len(sys.argv) > 2 else "2"
         if not _acquire(f"sweep:{sistema}"):

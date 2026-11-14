@@ -1,5 +1,5 @@
 """siafe_documento — coletor dos DOCUMENTOS de execução do SIAFE-Rio 2: Nota de Empenho (NE) e Nota de
-Liquidação (NL) (Execução › Execução Orçamentária).
+Liquidação (NL) (Execução › Execução Orçamentária) e Guia de Devolução (GD) (Execução › Execução Financeira).
 
 POR QUE EXISTE (04/11/2026). O JFN só coletava a OB. A NE traz **Fonte** (a ordem cronológica do Decreto RJ
 49.134/2024 art. 9º é "por fonte de recursos"), **Natureza**, **Processo** e o **tipo de reconhecimento de
@@ -20,6 +20,7 @@ Coleta que para perto de 1.000 linhas devolve `capou: true` — não é completa
 Uso:
     PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_documento --tipo NE --ug 133100 --exercicio 2025
     PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_documento --tipo NL --ug 133100 --exercicio 2025
+    PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_documento --tipo GD --ug 180100 --exercicio 2026
 """
 from __future__ import annotations
 
@@ -73,7 +74,27 @@ TIPOS = {
            "idx": ("CREATE INDEX IF NOT EXISTS ix_nl_ne ON nl_siafe(ne)",
                    "CREATE INDEX IF NOT EXISTS ix_nl_credor ON nl_siafe(credor)")},
 }
+# GUIA DE DEVOLUÇÃO (13/11/2026). A perícia contábil só sabe quanto voltou de uma OB devolvida quando o status é
+# 'Erro no Pagamento' (devolução integral). Com GD e outro status (Parcialmente Pago, Processado e Pago…) o valor
+# devolvido só existe nesta tela — Execução › Execução FINANCEIRA › Guia de Devolução, mesma grade da NE/NL
+# (`tblGuiaDevolucao`, colunas lidas pela sonda `siafe_mapear` em 04/11/2026). A coluna OB é o vínculo; a chave
+# inclui a UG porque o número da guia, como o da OB, se repete entre unidades.
+TIPOS["GD"] = {
+    "tela": "Guia de Devolução", "menu": "Execução Financeira", "tbl": "pt1:tblGuiaDevolucao",
+    "re": re.compile(r"\b20\d\dGD\d{5,6}\b"), "tabela": "gd_siafe", "ano": "ano_gd", "dinheiro": ("valor",),
+    "cols": {"numero": "numero", "ug emitente": "ug_emitente", "data emissao": "data_emissao",
+             "tipo de baixa": "tipo_baixa", "status": "status", "cod. ug liquidante": "ug_liquidante",
+             "ob": "ob", "valor": "valor"},
+    "ddl": """CREATE TABLE IF NOT EXISTS gd_siafe (
+    numero TEXT NOT NULL, ug_emitente TEXT NOT NULL, exercicio INTEGER NOT NULL, ano_gd INTEGER,
+    data_emissao TEXT, tipo_baixa TEXT, status TEXT, ug_liquidante TEXT, ob TEXT, valor REAL, coletado_em TEXT,
+    PRIMARY KEY (numero, ug_emitente, exercicio))""",
+    "idx": ("CREATE INDEX IF NOT EXISTS ix_gd_ob ON gd_siafe(ob, ug_emitente)",)}
 NE_RE = TIPOS["NE"]["re"]
+
+
+def _tbl(t: dict) -> str:
+    return t.get("tbl", TBL)
 
 
 _DDL_COB = """CREATE TABLE IF NOT EXISTS siafe_documento_cobertura (
@@ -158,22 +179,24 @@ def ingerir(exercicio: int, header: list[str], linhas: list[list[str]], db=None,
 
 # ─────────────────────────────── navegação e colheita (precisa do SIAFE) ───────────────────────────────
 
-async def _ir_para(pg, tela: str, tentativas: int = 4) -> bool:
+async def _ir_para(pg, tela: str, tentativas: int = 4, menu: str = "Execução Orçamentária",
+                  tbl: str = TBL) -> bool:
     """Navega com novas tentativas: logo após o login o menu às vezes ainda não montou (04/11/2026, 166100:
     `etapa: navegacao` em 53 s com login incluso) — o mesmo prólogo intermitente que o coletor da OB trata."""
     for i in range(tentativas):
-        if await _ir_para_uma_vez(pg, tela):
+        kw = {} if (menu, tbl) == ("Execução Orçamentária", TBL) else {"menu": menu, "tbl": tbl}
+        if await _ir_para_uma_vez(pg, tela, **kw):
             return True
         await pg.wait_for_timeout(6000 * (i + 1))
     return False
 
 
-async def _ir_para_uma_vez(pg, tela: str) -> bool:
+async def _ir_para_uma_vez(pg, tela: str, menu: str = "Execução Orçamentária", tbl: str = TBL) -> bool:
     """Execução (pt_np4) › Execução Orçamentária (pt_np3) › <tela> — pelo TEXTO (índice de menu não é
     identidade; ver siafe1-navegacao-e-cabecalho-vivo)."""
     from tools.siafe_mapear import _JS_CLICAR, _JS_IDS, _clicar_id, _ev
     for padrao, alvo in ((r"pt_np4:\d+:pt_cni6::disclosureAnchor$", "Execução"),
-                         (r"pt_np3:\d+:pt_cni4::disclosureAnchor$", "Execução Orçamentária")):
+                         (r"pt_np3:\d+:pt_cni4::disclosureAnchor$", menu)):
         el = [x for x in await _ev(pg, _JS_IDS, padrao) if x["t"] == alvo]
         if not el:
             return False
@@ -182,7 +205,7 @@ async def _ir_para_uma_vez(pg, tela: str) -> bool:
         return False
     for _ in range(60):
         await pg.wait_for_timeout(2000)
-        if await _ev(pg, "()=>!!document.getElementById('" + TBL + ":tabViewerDec::db')"):
+        if await _ev(pg, "()=>!!document.getElementById('" + tbl + ":tabViewerDec::db')"):
             return True
     return False
 
@@ -199,9 +222,9 @@ def _acao_limite(rotulo: str, marcado: bool) -> str:
     return "desconhecido"
 
 
-async def _remover_limite(pg) -> str:
+async def _remover_limite(pg, tbl: str = TBL) -> str:
     from tools.siafe_mapear import _ev
-    cid = TBL + ":chkRemoveLimit::content"
+    cid = tbl + ":chkRemoveLimit::content"
     info = await _ev(pg, r"""(i)=>{const cb=document.getElementById(i); if(!cb)return null;
         const lb=document.querySelector('label[for="'+i+'"]'); const pai=cb.closest('span,div,td');
         return {marcado:cb.checked, rotulo:((lb&&lb.innerText)||(pai&&pai.innerText)||'').trim()};}""", cid)
@@ -216,16 +239,16 @@ async def _remover_limite(pg) -> str:
     return {"nada": "sem_limite", "desconhecido": f"rotulo_desconhecido:{info['rotulo'][:40]}"}[acao]
 
 
-async def _filtrar_ug(pg, ug: str) -> dict:
+async def _filtrar_ug(pg, ug: str, tbl: str = TBL) -> dict:
     """Receita do coletor da OB (validada 2026-06-07), com o id desta tabela: Propriedade/Operador por
     typeahead, valor commitado com Tab."""
     from compliance_agent import siafe_ob_orcamentaria as S
     from compliance_agent.siafe_adf import AdfSync
     adf = AdfSync(pg)
-    prop = f"{TBL}:table_rtfFilter:0:cbx_col_sel_rtfFilter::content"
-    op = f"{TBL}:table_rtfFilter:0:cbx_op_sel_rtfFilter::content"
+    prop = f"{tbl}:table_rtfFilter:0:cbx_col_sel_rtfFilter::content"
+    op = f"{tbl}:table_rtfFilter:0:cbx_op_sel_rtfFilter::content"
     if await pg.locator(f'[id="{prop}"]').count() == 0:
-        await S._click_real(pg, f"{TBL}:sdtFilter::disAcr"); await adf.wait()
+        await S._click_real(pg, f"{tbl}:sdtFilter::disAcr"); await adf.wait()
     if await pg.locator(f'[id="{prop}"]').count() == 0:
         return {"ok": False, "erro": "painel de filtro não abriu"}
     await S._typeahead(pg, prop, "UG Emi"); await adf.wait()
@@ -240,15 +263,15 @@ async def _filtrar_ug(pg, ug: str) -> dict:
     return {"ok": True, "ug": ug}
 
 
-async def _colher(pg, regex, maxn: int = 20000) -> tuple[list[str], list[list[str]]]:
+async def _colher(pg, regex, maxn: int = 20000, tbl: str = TBL) -> tuple[list[str], list[list[str]]]:
     """Rola o `::scroller` virtual e colhe o `::db` a cada passo (a tabela só tem ~50 linhas no DOM)."""
     from tools.siafe_mapear import _ev
-    header = await _ev(pg, r"""()=>{const h=document.getElementById('""" + TBL + r""":tabViewerDec::ch');
+    header = await _ev(pg, r"""()=>{const h=document.getElementById('""" + tbl + r""":tabViewerDec::ch');
         return h?[...h.querySelectorAll('th,td')].map(c=>(c.innerText||'').replace(/\s+/g,' ').trim()).filter(x=>x):[];}""")
-    js_rows = (r"""()=>{const db=document.getElementById('""" + TBL + r""":tabViewerDec::db');const o=[];
+    js_rows = (r"""()=>{const db=document.getElementById('""" + tbl + r""":tabViewerDec::db');const o=[];
         if(db)db.querySelectorAll('tr').forEach(tr=>{const t=[...tr.querySelectorAll('td')].map(td=>(td.innerText||'')
         .replace(/\s+/g,' ').trim());if(t.some(x=>x))o.push(t);});return o;}""")
-    sc = TBL + ":tabViewerDec::scroller"
+    sc = tbl + ":tabViewerDec::scroller"
     vistos, linhas, y, seco = set(), [], 0, 0
     while len(linhas) < maxn and seco < 10:
         novos = 0
@@ -289,6 +312,35 @@ def cobertura_pela_ob(ug: str, exercicio: int, db=None) -> float | None:
     return round(ach / tot, 4) if tot else None
 
 
+def cobertura_gd_pela_ob(ug: str, exercicio: int, db=None) -> float | None:
+    """Fração das GD que as OBs da (UG, exercício) citam na coluna `gd` e que estão em `gd_siafe` com a MESMA OB —
+    o controle positivo da GD, como o da NL. None se nenhuma OB cita GD (nada a conferir)."""
+    con = sqlite3.connect(db or _DB, timeout=60)
+    try:
+        con.execute(TIPOS["GD"]["ddl"])
+        tot, ach = con.execute(
+            "SELECT COUNT(DISTINCT o.gd), COUNT(DISTINCT g.numero) FROM ob_orcamentaria_siafe o LEFT JOIN gd_siafe g "
+            "ON g.numero=o.gd AND g.ug_emitente=o.ug_emitente AND g.ob=o.numero_ob WHERE o.ug_emitente=? "
+            "AND o.exercicio=? AND o.gd LIKE ?", (str(ug), int(exercicio), f"{exercicio}GD%")).fetchone()
+    finally:
+        con.close()
+    return round(ach / tot, 4) if tot else None
+
+
+def fechar_cobertura(tipo: str, ug: str, exercicio: int, r: dict, db=None) -> bool:
+    """Registra se a (UG, exercício) ficou INTEIRA. O coletor dizer "completo" não basta: NL e GD conferem contra
+    o que as OBs citam (≥95%). Devolve o `completo` registrado e põe a cobertura medida em `r`."""
+    n = r.get("colhidas", r.get("ingeridas", 0))
+    completo = bool(r.get("ok")) and not r.get("capou")
+    medir = {"NL": cobertura_pela_ob, "GD": cobertura_gd_pela_ob}.get(tipo)
+    if completo and medir:
+        cob = medir(ug, exercicio, db=db)
+        r["cobertura_pela_ob"] = cob
+        completo = cob is None or cob >= _COBERTURA_MIN
+    registrar_cobertura(tipo, ug, exercicio, completo, n or 0, db=db)
+    return completo
+
+
 def _subdividir(prefixo: str, n: int, base_len: int) -> list[str]:
     """Fatia que encosta no teto vira 10 fatias filhas, até 3 dígitos após o tipo (mesma regra da OB)."""
     if n >= _PLATO and len(prefixo) < base_len + 3:
@@ -327,8 +379,9 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | Non
     adf = AdfSync(pg)
     if not await S._esperar_linha_filtro(pg, 1, adf):
         return {"ok": False, "etapa": "filtro_linha1"}
-    await S._typeahead(pg, f"{TBL}:table_rtfFilter:1:cbx_col_sel_rtfFilter::content", "Número"); await adf.wait()
-    await S._typeahead(pg, f"{TBL}:table_rtfFilter:1:cbx_op_sel_rtfFilter::content", "começa com"); await adf.wait()
+    tbl = _tbl(t)
+    await S._typeahead(pg, f"{tbl}:table_rtfFilter:1:cbx_col_sel_rtfFilter::content", "Número"); await adf.wait()
+    await S._typeahead(pg, f"{tbl}:table_rtfFilter:1:cbx_op_sel_rtfFilter::content", "começa com"); await adf.wait()
     base = f"{exercicio}{tipo}"
     ckp = _REPO / "data" / "sei_cache" / f"siafe_doc_{tipo}_{ug_ckpt}_{exercicio}.json"
     feitas = set(json.loads(ckp.read_text())) if ckp.exists() else set()
@@ -342,7 +395,7 @@ async def _colher_fatiado(pg, t: dict, exercicio: int, tipo: str, ate: str | Non
             continue
         await S._set_valor(pg, '[id*="table_rtfFilter:1"] input[type="text"]:visible', pref)
         await adf.wait(); await pg.wait_for_timeout(4000)
-        header, linhas = await _colher(pg, t["re"])
+        header, linhas = await _colher(pg, t["re"], tbl=tbl)
         if not _fatia_casa(linhas, pref, t["re"]):
             return {"ok": False, "etapa": "filtro_numero_nao_aplicou", "fatia": pref, "fatias": fatias,
                     "ingeridas": total}
@@ -375,13 +428,13 @@ async def coletar_ug(ug: str, exercicio: int, tipo: str = "NE", ate: str | None 
             lg = await S._login(pg, exercicio)
             if not lg.get("ok"):
                 return {"ok": False, "etapa": "login", "erro": lg.get("erro")}
-            if not await _ir_para(pg, t["tela"]):
+            if not await _ir_para(pg, t["tela"], menu=t.get("menu", "Execução Orçamentária"), tbl=_tbl(t)):
                 return {"ok": False, "etapa": "navegacao"}
-            lim = await _remover_limite(pg)
-            f = await _filtrar_ug(pg, ug)
+            lim = await _remover_limite(pg, tbl=_tbl(t))
+            f = await _filtrar_ug(pg, ug, tbl=_tbl(t))
             if not f.get("ok"):
                 return {"ok": False, "etapa": "filtro", **f}
-            header, linhas = await _colher(pg, t["re"])
+            header, linhas = await _colher(pg, t["re"], tbl=_tbl(t))
             if len(linhas) < _PLATO:
                 r = ingerir(exercicio, header, linhas, tipo=tipo)
                 return {**r, "tipo": tipo, "ug": ug, "exercicio": exercicio, "colhidas": len(linhas),
@@ -411,13 +464,7 @@ def main() -> None:
         raise SystemExit(f"SIAFE ocupado: {R.lock_status()}")
     try:
         r = asyncio.run(coletar_ug(a.ug, a.exercicio, a.tipo, a.ate))
-        n = r.get("colhidas", r.get("ingeridas", 0))
-        completo = bool(r.get("ok")) and not r.get("capou")
-        if completo and a.tipo == "NL":           # o coletor dizer "completo" não basta: conferir contra as OBs
-            cob = cobertura_pela_ob(a.ug, a.exercicio)
-            r["cobertura_pela_ob"] = cob
-            completo = cob is None or cob >= _COBERTURA_MIN
-        registrar_cobertura(a.tipo, a.ug, a.exercicio, completo, n or 0)
+        fechar_cobertura(a.tipo, a.ug, a.exercicio, r)
         print(json.dumps(r, ensure_ascii=False))
     finally:
         R._release()
