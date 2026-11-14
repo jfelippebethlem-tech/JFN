@@ -2461,6 +2461,8 @@ detectores:
       excluida_por: compliance_agent/vinculo_ob_contrato.py:decidir_regra
     - hipotese: processo de pagamento mais antigo que o contrato citado (paga outra coisa também)
       excluida_por: compliance_agent/vinculo_ob_contrato.py:linhas_do_par
+    - hipotese: compra por ata de registro de preços (processo-base comum a vários desdobramentos)
+      excluida_por: compliance_agent/vinculo_ob_contrato.py:motivo_rebaixa
     - hipotese: documento órfão de captura anterior na pasta
       excluida_por: compliance_agent/vinculo_ob_contrato.py:ler_docs
     dominio: OB Contabilizada do SIAFE de credor com contrato no TCE-RJ, em processo de pagamento arquivado no acervo
@@ -2469,6 +2471,8 @@ detectores:
     - tests/test_vinculo_ob_contrato.py::test_dois_contratos_citados_nao_se_escolhe_por_regra
     - tests/test_vinculo_ob_contrato.py::test_ob_anterior_ao_contrato_deixa_o_par_pendente
     - tests/test_vinculo_ob_contrato.py::test_dupla_leitura_so_verifica_quando_as_duas_concordam
+    - tests/test_vinculo_ob_contrato.py::test_desdobramento_de_ata_e_citacao_em_ata_nao_verificam
+    - tests/test_vinculo_ob_contrato.py::test_citacao_so_com_o_numero_nao_liga_o_pagamento
   processo_360:
     modulo: compliance_agent/processo_360.py
     simbolo: avaliar
