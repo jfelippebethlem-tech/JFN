@@ -60,6 +60,14 @@ _SYS = (
     "explica o alerta de forma inocente ou o detector disparou por artefato), 'nao_avaliavel' (evidência "
     "insuficiente para qualquer juízo). Em 'citacao', copie LITERALMENTE um trecho (8 a 200 caracteres) do "
     "alerta em que a decisão se apoia — o sistema confere e descarta citação que não existe no alerta."
+    # A/B de 14/11/2026 contra o Opus (36 alertas; treino 17, teste 19 não visto no desenho): sem esta regra
+    # o Haiku marcava 🔴 pelo VALOR (fracionamento com média por OB 10× o limite de dispensa) — 21/36; com
+    # ela 31/36 (teste 17/19), sem perder nenhum 🔴/🟡 do Opus. Effort medium sem a regra: 21/36 (não é o
+    # effort). Mudar este texto exige novo A/B (memória prompt-mais-especifico-piorou-recall).
+    " Antes de classificar, refaça o raciocínio do detector com os números da própria evidência e diga se a "
+    "regra que disparou se sustenta neles — faça a conta quando a evidência permitir. Valor alto mede o "
+    "TAMANHO do que está em jogo, não a existência do problema: sozinho, não é sinal. 'aprofundar' exige que "
+    "a evidência mostre o padrão irregular, não apenas que o detector disparou."
 )
 _SCHEMA = ('{"prioridade":"aprofundar|monitorar|provavel_falso_positivo|nao_avaliavel","nota":0-10,'
            '"citacao":"trecho literal do alerta","justificativa":"1-2 frases","proximo_passo":"o que verificar"}')
