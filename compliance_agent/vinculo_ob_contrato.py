@@ -644,7 +644,7 @@ def main(argv: list[str] | None = None) -> int:
                           "fecha_contrato": {"processos": len(fecha),
                                              "vagas_de_contrato": sum(e["n_contratos"] for e in fecha)},
                           "escore_total": round(sum(e["score"] for e in fila), 2),
-                          "valor_ob_total": round(sum(e["valor_ob"] for e in fila), 2),
+                          "valor_ob_total": round(sum(e.get("valor_ob", 0.0) for e in fila), 2),
                           "escore_gravados": round(sum(e["score"] for e in gravar_fila), 2),
                           "credores_com_indeterminado": len(indet), "gravado": str(SAIDA_FILA),
                           "top10": fila[:10]}, ensure_ascii=False, indent=1))
