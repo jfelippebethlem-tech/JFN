@@ -8752,7 +8752,7 @@ void main(){
   async function renderConformidade() {
     const d = await J("/api/qualidade/conformidade");
     let h = cover(
-      "geral",
+      "sistema",
       "Conformidade — regras de qualidade do JFN",
       "Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.",
       "✅"
@@ -10713,7 +10713,7 @@ void main(){
   }
   async function renderAcuracia() {
     let h = cover(
-      "geral",
+      "sistema",
       "Acurácia — o quanto o juízo do motor acerta",
       "Publica a métrica do próprio motor: acurácia do juízo jurídico contra o conjunto-ouro de casos do TCU (F1 macro contra baseline burro) e o <b>lift</b> de cada detector — quantas vezes ele acerta acima da taxa-base. Detector com lift abaixo de 1 é <b>anti-preditivo</b>: acende mais no regular que no irregular.",
       "🎯"
@@ -10909,7 +10909,7 @@ void main(){
   }
   async function renderInstrumentacao() {
     let h = cover(
-      "geral",
+      "sistema",
       "Instrumentação — o estado da máquina, sem abrir terminal",
       "Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.",
       "🔧"
@@ -11181,7 +11181,7 @@ void main(){
   }
   async function renderMissoes() {
     let h = cover(
-      "geral",
+      "sistema",
       "Missões — a fila do auditor autônomo",
       "O Hermes aceita <b>várias missões em paralelo</b> desde sempre no backend; a tela só sabia operar uma. Aqui a fila fica visível: o que está rodando, o que já terminou, e o resultado de cada uma.",
       "🛰️"
@@ -13022,7 +13022,7 @@ void main(){
     const idade = (st) => st == null ? "—" : st < 90 ? "agora" : st < 5400 ? Math.round(st / 60) + " min atrás" : Math.round(st / 3600) + " h atrás";
     const aprTotal = (apr.memoria_db || 0) + (apr.fichas_sei || 0) + (apr.direcionamentos || 0) + (apr.vault_notas || 0);
     let h = cover(
-      "geral",
+      "sistema",
       "Coletas e rotinas — a atividade de toda a máquina",
       "O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.",
       "🛰️"

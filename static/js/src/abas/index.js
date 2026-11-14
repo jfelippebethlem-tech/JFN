@@ -594,7 +594,7 @@ export async function renderHubFisico(){
 
 // ═══ ACURÁCIA — o motor medido, publicado junto do produto ═══
 export async function renderAcuracia(){
-  let h=cover('geral','Acurácia — o quanto o juízo do motor acerta',
+  let h=cover('sistema','Acurácia — o quanto o juízo do motor acerta',
     'Publica a métrica do próprio motor: acurácia do juízo jurídico contra o conjunto-ouro de casos do TCU (F1 macro contra baseline burro) e o <b>lift</b> de cada detector — quantas vezes ele acerta acima da taxa-base. Detector com lift abaixo de 1 é <b>anti-preditivo</b>: acende mais no regular que no irregular.','🎯');
   /* DUAS ETAPAS, medido em campo (2026-07-31): hermenêutica volta em 0,031 s e o lift em 18,95 s.
      Num Promise.all a aba inteira ficava 19 s em "Carregando…" sem dizer nada — não era aba muda,
@@ -723,7 +723,7 @@ export async function detRodar(id){
 
 // ═══ INSTRUMENTAÇÃO — agenda, pipelines, memória, UGs, SIAFE, radar, núcleo ═══
 export async function renderInstrumentacao(){
-  let h=cover('geral','Instrumentação — o estado da máquina, sem abrir terminal',
+  let h=cover('sistema','Instrumentação — o estado da máquina, sem abrir terminal',
     'Timers e crons agendados, frescor de cada pipeline, aprendizados na memória, catálogo de UGs, estado do SIAFE, radar de vigilância e o comando do núcleo de perícia. Tudo isto era alcançável só por curl.','🔧');
   const [ag,pp,mm,ug,sf,rd,cb,rt,cc,tr,tk,mo]=await Promise.all([
     J('/api/agenda'),J('/api/pipelines'),J('/api/memoria'),J('/api/ugs?limite=15'),
@@ -1034,7 +1034,7 @@ export async function instAcionar(rota,metodo){
 
 // ═══ MISSÕES DO HERMES — a fila paralela que só existia no backend ═══
 export async function renderMissoes(){
-  let h=cover('geral','Missões — a fila do auditor autônomo',
+  let h=cover('sistema','Missões — a fila do auditor autônomo',
     'O Hermes aceita <b>várias missões em paralelo</b> desde sempre no backend; a tela só sabia operar uma. Aqui a fila fica visível: o que está rodando, o que já terminou, e o resultado de cada uma.','🛰️');
   h+=card(`<div class="search"><span class="mag"></span>
       <input id="ms-txt" placeholder="descreva a missão (ex.: audite os pagamentos do ITERJ em 2025)…"
@@ -2393,7 +2393,7 @@ export async function renderSweeps(){
   const gb=v=>v==null?'—':fmtD(v/1e9,2)+' GB';
   const idade=st=>st==null?'—':(st<90?'agora':(st<5400?Math.round(st/60)+' min atrás':Math.round(st/3600)+' h atrás'));
   const aprTotal=(apr.memoria_db||0)+(apr.fichas_sei||0)+(apr.direcionamentos||0)+(apr.vault_notas||0);
-  let h=cover('geral','Coletas e rotinas — a atividade de toda a máquina',
+  let h=cover('sistema','Coletas e rotinas — a atividade de toda a máquina',
     'O que está coletando agora, quanto da fila SEI já virou <b>arquivo compacto</b>, o estado de cada pipeline e quantos <b>aprendizados</b> a leitura já produziu. Atualiza sozinho a cada 30s.','🛰️');
   h+=`<div class="grid g2" id="sis-live">
     ${kpi(sei.pct_lido==null?'—':fmtD(sei.pct_lido,1)+'%','Fila SEI já lida',null,'📄',

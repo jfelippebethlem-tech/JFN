@@ -79,7 +79,7 @@ function _divida(d){
 
 export async function renderConformidade(){
   const d = await J('/api/qualidade/conformidade');
-  let h = cover('geral', 'Conformidade — regras de qualidade do JFN',
+  let h = cover('sistema', 'Conformidade — regras de qualidade do JFN',
     'Por sistema do JFN: as regras de qualidade que valem, as violações abertas medidas pelos sensores, a tendência, a avaliação do juiz subjetivo e a dívida. Lê a última fotografia; não mede na hora. INDISPONÍVEL não é zero.', '✅');
   if (!d || (d.ok === false && !d.estado)) return h + card(`<div class="warn">${erroHumano(d && (d.erro || d))}</div>`);
   const medido = d.estado === 'MEDIDO';
